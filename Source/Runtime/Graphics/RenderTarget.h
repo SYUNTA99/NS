@@ -5,7 +5,7 @@
 
 #include <memory>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     class Texture;
@@ -53,4 +53,4 @@ namespace NS::Graphics
         std::unique_ptr<Texture> m_depth; // 深度 (DSV)
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

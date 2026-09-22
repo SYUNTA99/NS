@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace NS::Object
+namespace NS::Obj
 {
 
     Transform::~Transform() noexcept
@@ -102,4 +102,4 @@ namespace NS::Object
         m_parent = nullptr;
     }
 
-} // namespace NS::Object
+} // namespace NS::Obj

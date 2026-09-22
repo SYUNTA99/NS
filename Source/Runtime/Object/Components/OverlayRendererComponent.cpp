@@ -3,7 +3,7 @@
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     void OverlayRendererComponent::OnStart()
     {
@@ -34,4 +34,4 @@ namespace NS::Object
         }
         scene->UnregisterOverlay(this);
     }
-} // namespace NS::Object
+} // namespace NS::Obj

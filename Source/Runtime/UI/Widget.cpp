@@ -36,7 +36,7 @@ namespace NS::UI
         }
     }
 
-    void Widget::Draw(NS::Graphics::Renderer& renderer, float parentAlpha, float scale)
+    void Widget::Draw(NS::Gfx::Renderer& renderer, float parentAlpha, float scale)
     {
         if (!m_visible)
         {

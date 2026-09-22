@@ -14,13 +14,13 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Renderer;
     struct RenderContext;
-} // namespace NS::Graphics
+} // namespace NS::Gfx
 
-namespace NS::Object
+namespace NS::Obj
 {
     class AssetManager;
     class CameraBrainComponent;
@@ -75,22 +75,22 @@ namespace NS::Object
         [[nodiscard]] CameraComponent* MainCamera() noexcept;
 
         //! PhysicsScene への参照。Scene が値で持つので寿命は Scene と同じ
-        [[nodiscard]] NS::Physics::PhysicsScene& Physics() noexcept { return m_physicsScene; }
-        [[nodiscard]] const NS::Physics::PhysicsScene& Physics() const noexcept { return m_physicsScene; }
+        [[nodiscard]] NS::Phys::PhysicsScene& Physics() noexcept { return m_physicsScene; }
+        [[nodiscard]] const NS::Phys::PhysicsScene& Physics() const noexcept { return m_physicsScene; }
 
         //! AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
         void SetAssets(AssetManager* assets) noexcept { m_assets = assets; }
 
         //! レンダラーを非所有で差す。標準の OnRenderScene が使う。未設定 (テスト等) は描かない
-        void SetRenderer(NS::Graphics::Renderer* renderer) noexcept { m_sceneRenderer.SetRenderer(renderer); }
+        void SetRenderer(NS::Gfx::Renderer* renderer) noexcept { m_sceneRenderer.SetRenderer(renderer); }
 
         //! @brief シーンの見た目を確定する環境値。実体側が唯一の出所で、保存は保存時にここから写す
         [[nodiscard]] SceneEnvironment& Environment() noexcept { return m_environment; }
         [[nodiscard]] const SceneEnvironment& Environment() const noexcept { return m_environment; }
 
         //! @brief シーンデータから組んだ配置物の一覧
-        [[nodiscard]] NS::Object::ObjectList& Objects() noexcept { return m_objects; }
-        [[nodiscard]] const NS::Object::ObjectList& Objects() const noexcept { return m_objects; }
+        [[nodiscard]] NS::Obj::ObjectList& Objects() noexcept { return m_objects; }
+        [[nodiscard]] const NS::Obj::ObjectList& Objects() const noexcept { return m_objects; }
 
         //! @brief 読み込んだシーンデータを取り込み配置物を組み直す。データは取込後に用済みになる一時データ
         void LoadFromData(SceneData&& data);
@@ -164,21 +164,21 @@ namespace NS::Object
 
     protected:
         //! Opaque バケットの Renderable を並べ替えずに描画する
-        void DrawOpaque(const NS::Graphics::RenderContext& context);
+        void DrawOpaque(const NS::Gfx::RenderContext& context);
         //! Transparent バケットを context.cameraPosition から遠い順にソートして描画する
         //! 距離が同じなら SortPriority 昇順、それも同じなら stable_sort が元の並びを保つ
-        void DrawTransparent(const NS::Graphics::RenderContext& context);
+        void DrawTransparent(const NS::Gfx::RenderContext& context);
 
         //! 登録中の OverlayRendererComponent を priority 昇順で描画する。IsActive が偽なら飛ばす
-        void DrawOverlays(const NS::Graphics::RenderContext& context);
+        void DrawOverlays(const NS::Gfx::RenderContext& context);
 
         //! @brief 標準の描画。シーン描画パス→デバッグ描画の吐き出し→OverlayRendererComponent の重ね描き
         virtual void OnRenderScene();
 
         //! @brief project 既定値から scene 段の描画設定を作る。登録された平行光があれば照明を上書きする
         //! 登録が無ければ project 既定値がそのまま残る
-        [[nodiscard]] NS::Graphics::RenderSettings ResolveSceneSettings(
-            const NS::Graphics::RenderSettings& projectDefaults);
+        [[nodiscard]] NS::Gfx::RenderSettings ResolveSceneSettings(
+            const NS::Gfx::RenderSettings& projectDefaults);
 
         //! @brief 配置物の組み直し・当たりの張り直しの後に呼ばれる。派生は live への参照をここで取り直す
         virtual void OnObjectsRebuilt() {}
@@ -194,9 +194,9 @@ namespace NS::Object
 
         //! 衝突判定の PhysicsScene。当たりの有る scene だけ ObjectList::SyncPhysics が body を入れ、無ければ空のまま
         //! m_objects より前に宣言してあるので破棄は後になり、これを借りる移動の Component より長く生きる
-        NS::Physics::PhysicsScene m_physicsScene;
+        NS::Phys::PhysicsScene m_physicsScene;
 
-        NS::Object::ObjectList m_objects;        // 配置物の一覧
+        NS::Obj::ObjectList m_objects;        // 配置物の一覧
         CameraBrainComponent* m_brain = nullptr; // 常駐するカメラ一時オブジェクトの brain。所有は m_objects、これは控え
         SceneEnvironment m_environment;          // シーンの環境値。実体側の唯一の出所
 
@@ -209,4 +209,4 @@ namespace NS::Object
         bool m_simulationPaused = false;         // 時間停止中か
         std::int32_t m_simulationStepFrames = 0; // コマ送り残り fixed step 数。止めたままこの数だけ進める
     };
-} // namespace NS::Object
+} // namespace NS::Obj

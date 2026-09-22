@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     MeshGeometry MakeCube(const NS::Core::Vector3& extents)
     {
@@ -174,4 +174,4 @@ namespace NS::Graphics
         return geom;
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

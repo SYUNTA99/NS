@@ -4,7 +4,7 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/GraphicObject.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     namespace
@@ -163,4 +163,4 @@ namespace NS::Graphics
         return m_depthStencil.Get();
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

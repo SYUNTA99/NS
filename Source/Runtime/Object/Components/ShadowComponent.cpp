@@ -11,9 +11,9 @@
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsScene.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
-    void ShadowComponent::SetResources(NS::Graphics::StaticMesh* mesh, NS::Graphics::Material* material) noexcept
+    void ShadowComponent::SetResources(NS::Gfx::StaticMesh* mesh, NS::Gfx::Material* material) noexcept
     {
         m_mesh = mesh;
         m_material = material;
@@ -98,7 +98,7 @@ namespace NS::Object
         return f;
     }
 
-    void ShadowComponent::Collect(const NS::Graphics::RenderContext& context, std::vector<NS::Graphics::DrawItem>& out)
+    void ShadowComponent::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
     {
         GameObject* owner = Owner();
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
@@ -134,10 +134,10 @@ namespace NS::Object
             NS::Core::Matrix::CreateScale(scale, 1.0f, scale) *
             NS::Core::Matrix::CreateTranslation(origin.x, groundY + m_surfaceOffset, origin.z);
 
-        NS::Graphics::DrawItem item{};
+        NS::Gfx::DrawItem item{};
         item.mesh = m_mesh;
         item.material = m_material;
-        item.blend = NS::Graphics::BlendMode::Alpha; // 深度は読むだけで書かない。手前の物には隠れる
+        item.blend = NS::Gfx::BlendMode::Alpha; // 深度は読むだけで書かない。手前の物には隠れる
         item.constants.world = world;
         item.constants.viewProj = context.viewProjection;
         item.constants.baseColor = NS::Core::Vector3{alpha, 0.0f, 0.0f}; // x = 高さフェードアルファで shadow.ps が読む
@@ -145,4 +145,4 @@ namespace NS::Object
     }
 
     NS_CLASS(ShadowComponent)
-} // namespace NS::Object
+} // namespace NS::Obj

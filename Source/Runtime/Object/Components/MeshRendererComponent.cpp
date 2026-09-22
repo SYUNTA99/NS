@@ -11,9 +11,9 @@
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
-    void MeshRendererComponent::SetPerObjectVsConstant(const NS::Graphics::Buffer* cb,
+    void MeshRendererComponent::SetPerObjectVsConstant(const NS::Gfx::Buffer* cb,
                                                        const void* cpuData,
                                                        std::size_t cpuDataSize,
                                                        unsigned slot) noexcept
@@ -28,7 +28,7 @@ namespace NS::Object
     {
         // 共有 material 名 (player / water / shadow) を先に引き、外れたら .mat 相対パスとして読む
         // 空・トラバーサル・読込失敗は既定の共有 player material にして、描けない状態を作らない
-        NS::Graphics::Material* material = assets.SharedMaterial(m_materialRef);
+        NS::Gfx::Material* material = assets.SharedMaterial(m_materialRef);
         if (material == nullptr)
         {
             material = assets.SharedMaterial("player");
@@ -46,7 +46,7 @@ namespace NS::Object
         SetMaterial(material);
 
         // mesh は解決不可なら cube をフォールバックとする
-        NS::Graphics::Mesh* resolved = ResolveMeshFromRef(assets, m_meshRef);
+        NS::Gfx::Mesh* resolved = ResolveMeshFromRef(assets, m_meshRef);
         if (resolved == nullptr)
         {
             resolved = assets.Builtin("cube");
@@ -86,8 +86,8 @@ namespace NS::Object
         scene->UnregisterRenderable(this);
     }
 
-    void MeshRendererComponent::Collect(const NS::Graphics::RenderContext& context,
-                                        std::vector<NS::Graphics::DrawItem>& out)
+    void MeshRendererComponent::Collect(const NS::Gfx::RenderContext& context,
+                                        std::vector<NS::Gfx::DrawItem>& out)
     {
         GameObject* owner = Owner();
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
@@ -96,9 +96,9 @@ namespace NS::Object
         }
 
         // context.resolvedSettings は project 既定に配置された平行光まで解決済
-        const NS::Graphics::RenderSettings& settings = context.resolvedSettings;
+        const NS::Gfx::RenderSettings& settings = context.resolvedSettings;
 
-        NS::Graphics::DrawItem item{};
+        NS::Gfx::DrawItem item{};
         item.mesh = m_mesh;
         item.material = m_material;
         item.blend = m_material->Blend();
@@ -124,7 +124,7 @@ namespace NS::Object
         {
             return RenderBucket::Opaque;
         }
-        if (m_material->Blend() == NS::Graphics::BlendMode::Opaque)
+        if (m_material->Blend() == NS::Gfx::BlendMode::Opaque)
         {
             return RenderBucket::Opaque;
         }
@@ -174,4 +174,4 @@ namespace NS::Object
 
     // mesh / material は空で構築し、読み込み時にリフレクションと ResolveAssets が差し込む
     NS_CLASS(MeshRendererComponent)
-} // namespace NS::Object
+} // namespace NS::Obj

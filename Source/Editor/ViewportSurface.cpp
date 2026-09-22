@@ -79,18 +79,18 @@ namespace NS::Editor
 #endif
     }
 
-    std::optional<NS::Object::SceneView> ViewportSurface::CollectView(
-        std::optional<NS::Object::CameraPose> pose) noexcept
+    std::optional<NS::Obj::SceneView> ViewportSurface::CollectView(
+        std::optional<NS::Obj::CameraPose> pose) noexcept
     {
         if (!m_visible || m_size.width < 8 || m_size.height < 8)
             return std::nullopt;
 
         if (!m_target)
-            m_target = NS::Graphics::RenderTarget::Create(m_size);
+            m_target = NS::Gfx::RenderTarget::Create(m_size);
         else
             m_target->Resize(m_size);
 
-        return NS::Object::SceneView{m_target.get(), pose};
+        return NS::Obj::SceneView{m_target.get(), pose};
     }
 
     void ViewportSurface::Release() noexcept

@@ -25,18 +25,18 @@
 
 namespace
 {
-    using NS::Graphics::AnimationClip;
-    using NS::Graphics::BoneTrack;
-    using NS::Graphics::Interpolation;
-    using NS::Graphics::Skeleton;
+    using NS::Gfx::AnimationClip;
+    using NS::Gfx::BoneTrack;
+    using NS::Gfx::Interpolation;
+    using NS::Gfx::Skeleton;
     using NS::Core::Quaternion;
     using NS::Core::Vector3;
-    using NS::Object::AssetManager;
-    using NS::Object::BuildSceneObject;
-    using NS::Object::GameObject;
-    using NS::Object::MeshRendererComponent;
-    using NS::Object::ObjectData;
-    using NS::Object::SkeletalAnimationComponent;
+    using NS::Obj::AssetManager;
+    using NS::Obj::BuildSceneObject;
+    using NS::Obj::GameObject;
+    using NS::Obj::MeshRendererComponent;
+    using NS::Obj::ObjectData;
+    using NS::Obj::SkeletalAnimationComponent;
 
     Quaternion RotZ(float degrees)
     {
@@ -235,14 +235,14 @@ TEST_F(SkeletalAnimationMeshTest, DrivesMeshPaletteWithoutCrash)
     NS::Platform::Window window(wd);
     ASSERT_TRUE(window.IsValid());
 
-    NS::Graphics::RendererDesc rd{};
+    NS::Gfx::RendererDesc rd{};
     rd.vsync = false;
     rd.enableDebugLayer = false;
-    NS::Graphics::Renderer renderer(rd, window);
+    NS::Gfx::Renderer renderer(rd, window);
     ASSERT_TRUE(renderer.IsValid());
 
-    std::array<NS::Graphics::SkinnedVertex, 3> verts{};
-    for (NS::Graphics::SkinnedVertex& v : verts)
+    std::array<NS::Gfx::SkinnedVertex, 3> verts{};
+    for (NS::Gfx::SkinnedVertex& v : verts)
     {
         v.normal = Vector3(0.0f, 0.0f, -1.0f);
         v.joints[0] = 0;
@@ -253,17 +253,17 @@ TEST_F(SkeletalAnimationMeshTest, DrivesMeshPaletteWithoutCrash)
     verts[2].position = Vector3(1.0f, -1.0f, 0.0f);
     const std::array<std::uint32_t, 3> idx{0, 1, 2};
 
-    NS::Graphics::SkinnedMeshDesc desc{};
+    NS::Gfx::SkinnedMeshDesc desc{};
     desc.vertices = verts.data();
     desc.vertexCount = verts.size();
     desc.indices = idx.data();
     desc.indexCount = idx.size();
     desc.boneCount = 1;
-    std::unique_ptr<NS::Graphics::SkeletalMesh> meshHolder = NS::Graphics::SkeletalMesh::Create(desc);
-    NS::Graphics::SkeletalMesh& mesh = *meshHolder;
+    std::unique_ptr<NS::Gfx::SkeletalMesh> meshHolder = NS::Gfx::SkeletalMesh::Create(desc);
+    NS::Gfx::SkeletalMesh& mesh = *meshHolder;
     ASSERT_TRUE(mesh.IsValid());
 
-    std::vector<NS::Graphics::Bone> bones(1);
+    std::vector<NS::Gfx::Bone> bones(1);
     bones[0].parentIndex = -1;
     const Skeleton skeleton(std::move(bones));
     const std::vector<AnimationClip> clips = OneClip(1.0f);
@@ -321,10 +321,10 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsWiresRealSkinnedModelAndSiblingMe
     NS::Platform::Window window(wd);
     ASSERT_TRUE(window.IsValid());
 
-    NS::Graphics::RendererDesc rd{};
+    NS::Gfx::RendererDesc rd{};
     rd.vsync = false;
     rd.enableDebugLayer = false;
-    NS::Graphics::Renderer renderer(rd, window);
+    NS::Gfx::Renderer renderer(rd, window);
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
@@ -338,13 +338,13 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsWiresRealSkinnedModelAndSiblingMe
     anim.ResolveAssets(am);
 
     // どの mesh が差さったかまで確かめる。キャッシュの重複排除で同一 path は同一ポインタになる
-    const NS::Object::LoadedSkinnedModel loaded = am.GetOrLoadSkinnedModel(modelPath);
+    const NS::Obj::LoadedSkinnedModel loaded = am.GetOrLoadSkinnedModel(modelPath);
     ASSERT_TRUE(loaded.valid);
     EXPECT_GT(anim.ClipCount(), 0u);
     EXPECT_EQ(meshComp.GetMesh(), loaded.mesh);
 
     // skeleton もキャッシュ record への参照なので、同一 path の再取得で同一ポインタになる
-    const NS::Object::LoadedSkinnedModel loadedAgain = am.GetOrLoadSkinnedModel(modelPath);
+    const NS::Obj::LoadedSkinnedModel loadedAgain = am.GetOrLoadSkinnedModel(modelPath);
     ASSERT_TRUE(loadedAgain.valid);
     EXPECT_NE(loaded.skeleton, nullptr);
     EXPECT_EQ(loaded.skeleton, loadedAgain.skeleton);
@@ -364,10 +364,10 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsAddsClipsFromClipsRef)
     NS::Platform::Window window(wd);
     ASSERT_TRUE(window.IsValid());
 
-    NS::Graphics::RendererDesc rd{};
+    NS::Gfx::RendererDesc rd{};
     rd.vsync = false;
     rd.enableDebugLayer = false;
-    NS::Graphics::Renderer renderer(rd, window);
+    NS::Gfx::Renderer renderer(rd, window);
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
@@ -379,7 +379,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsAddsClipsFromClipsRef)
     anim.SetClipsRef("Assets/Models/CesiumMan.glb");
     anim.ResolveAssets(am);
 
-    const NS::Object::LoadedSkinnedModel loaded = am.GetOrLoadSkinnedModel(modelPath);
+    const NS::Obj::LoadedSkinnedModel loaded = am.GetOrLoadSkinnedModel(modelPath);
     ASSERT_TRUE(loaded.valid);
     ASSERT_NE(loaded.clips, nullptr);
     ASSERT_NE(loaded.skeleton, nullptr);
@@ -412,10 +412,10 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSkipsBadClipEntriesIndependently)
     NS::Platform::Window window(wd);
     ASSERT_TRUE(window.IsValid());
 
-    NS::Graphics::RendererDesc rd{};
+    NS::Gfx::RendererDesc rd{};
     rd.vsync = false;
     rd.enableDebugLayer = false;
-    NS::Graphics::Renderer renderer(rd, window);
+    NS::Gfx::Renderer renderer(rd, window);
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
@@ -427,7 +427,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSkipsBadClipEntriesIndependently)
     anim.SetClipsRef(" ;__ns_missing__.glb; Assets/Models/CesiumMan.glb ;../escape.glb");
     anim.ResolveAssets(am);
 
-    const NS::Object::LoadedSkinnedModel loaded = am.GetOrLoadSkinnedModel(modelPath);
+    const NS::Obj::LoadedSkinnedModel loaded = am.GetOrLoadSkinnedModel(modelPath);
     ASSERT_TRUE(loaded.valid);
     ASSERT_NE(loaded.clips, nullptr);
     // 空白・不在・トラバーサルの 3 エントリは skip され、有効な 1 エントリの分だけ増える
@@ -448,10 +448,10 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSharesBoundClipsBetweenInstances)
     NS::Platform::Window window(wd);
     ASSERT_TRUE(window.IsValid());
 
-    NS::Graphics::RendererDesc rd{};
+    NS::Gfx::RendererDesc rd{};
     rd.vsync = false;
     rd.enableDebugLayer = false;
-    NS::Graphics::Renderer renderer(rd, window);
+    NS::Gfx::Renderer renderer(rd, window);
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
@@ -491,10 +491,10 @@ TEST_F(SkeletalAnimationMeshTest, BuildSceneObjectOverridesMeshRendererWithSkinn
     NS::Platform::Window window(wd);
     ASSERT_TRUE(window.IsValid());
 
-    NS::Graphics::RendererDesc rd{};
+    NS::Gfx::RendererDesc rd{};
     rd.vsync = false;
     rd.enableDebugLayer = false;
-    NS::Graphics::Renderer renderer(rd, window);
+    NS::Gfx::Renderer renderer(rd, window);
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
@@ -502,11 +502,11 @@ TEST_F(SkeletalAnimationMeshTest, BuildSceneObjectOverridesMeshRendererWithSkinn
     am.RegisterBuiltins();
 
     ObjectData data;
-    nlohmann::json meshEntry = NS::Object::MakeComponentEntry("MeshRendererComponent");
-    NS::Object::SetField(meshEntry, "メッシュ", std::string("cube"));
+    nlohmann::json meshEntry = NS::Obj::MakeComponentEntry("MeshRendererComponent");
+    NS::Obj::SetField(meshEntry, "メッシュ", std::string("cube"));
     data.components.push_back(meshEntry);
-    nlohmann::json animEntry = NS::Object::MakeComponentEntry("SkeletalAnimationComponent");
-    NS::Object::SetField(animEntry, "モデル", std::string("Assets/Models/CesiumMan.glb"));
+    nlohmann::json animEntry = NS::Obj::MakeComponentEntry("SkeletalAnimationComponent");
+    NS::Obj::SetField(animEntry, "モデル", std::string("Assets/Models/CesiumMan.glb"));
     data.components.push_back(animEntry);
 
     auto built = BuildSceneObject(data, &am);
@@ -514,7 +514,7 @@ TEST_F(SkeletalAnimationMeshTest, BuildSceneObjectOverridesMeshRendererWithSkinn
     auto* meshComp = built->FindComponent<MeshRendererComponent>();
     ASSERT_NE(meshComp, nullptr);
 
-    const NS::Object::LoadedSkinnedModel loaded = am.GetOrLoadSkinnedModel(modelPath);
+    const NS::Obj::LoadedSkinnedModel loaded = am.GetOrLoadSkinnedModel(modelPath);
     ASSERT_TRUE(loaded.valid);
     EXPECT_EQ(meshComp->GetMesh(), loaded.mesh);
 }

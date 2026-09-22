@@ -7,17 +7,17 @@
 
 namespace
 {
-    using NS::Graphics::RenderContext;
-    using NS::Object::IRenderable;
-    using NS::Object::RenderBucket;
-    using NS::Object::SceneRenderer;
+    using NS::Gfx::RenderContext;
+    using NS::Obj::IRenderable;
+    using NS::Obj::RenderBucket;
+    using NS::Obj::SceneRenderer;
 
     class FakeRenderable : public IRenderable
     {
     public:
         FakeRenderable(int id, std::vector<int>* log) : m_id(id), m_log(log) {}
 
-        void Collect(const RenderContext&, std::vector<NS::Graphics::DrawItem>&) override { m_log->push_back(m_id); }
+        void Collect(const RenderContext&, std::vector<NS::Gfx::DrawItem>&) override { m_log->push_back(m_id); }
         [[nodiscard]] RenderBucket Bucket() const noexcept override { return RenderBucket::Opaque; }
         [[nodiscard]] NS::Core::Vector3 SortCenter() const noexcept override { return NS::Core::Vector3{}; }
         [[nodiscard]] int SortPriority() const noexcept override { return 0; }

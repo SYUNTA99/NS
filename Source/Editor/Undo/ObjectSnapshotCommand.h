@@ -19,8 +19,8 @@ namespace NS::Editor
         //! 永続 id id を after の姿へ置くコマンド。Undo で before へ戻す
         //! 追加は before 無 / after 有、削除は before 有 / after 無、編集は両方
         ObjectSnapshotCommand(std::uint32_t id,
-                              std::optional<NS::Object::ObjectData> before,
-                              std::optional<NS::Object::ObjectData> after) noexcept;
+                              std::optional<NS::Obj::ObjectData> before,
+                              std::optional<NS::Obj::ObjectData> after) noexcept;
 
         void Do(IObjectSnapshotApplier& target) noexcept override;
         void Undo(IObjectSnapshotApplier& target) noexcept override;
@@ -29,8 +29,8 @@ namespace NS::Editor
 
     private:
         std::uint32_t m_id;                              // 対象オブジェクトの永続 id
-        std::optional<NS::Object::ObjectData> m_before; // 適用前の姿 (Undo 復元用、無ければ未存在)
-        std::optional<NS::Object::ObjectData> m_after;  // 適用後の姿 (無ければ除去)
+        std::optional<NS::Obj::ObjectData> m_before; // 適用前の姿 (Undo 復元用、無ければ未存在)
+        std::optional<NS::Obj::ObjectData> m_after;  // 適用後の姿 (無ければ除去)
     };
 
 } // namespace NS::Editor

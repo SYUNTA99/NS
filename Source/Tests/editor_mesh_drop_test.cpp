@@ -10,9 +10,9 @@
 
 namespace
 {
-    NS::Object::GameObject* FindFirstPlaced(NS::Object::ObjectList& objects)
+    NS::Obj::GameObject* FindFirstPlaced(NS::Obj::ObjectList& objects)
     {
-        for (NS::Object::GameObject* obj : objects)
+        for (NS::Obj::GameObject* obj : objects)
         {
             if (!obj->IsTransient())
                 return obj;
@@ -25,17 +25,17 @@ namespace
 // 参照の実体化は AssetManager を差した Scene だけが行う。この試しは差していないので実在しない file で足りる
 TEST(EditorMeshDrop, DroppedMeshCollidesWithItsOwnTriangles)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
 
     editor.AddObjectWithMesh(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"), "__ns_missing_terrain__.glb"));
 
-    NS::Object::GameObject* placed = FindFirstPlaced(scene.Objects());
+    NS::Obj::GameObject* placed = FindFirstPlaced(scene.Objects());
     ASSERT_NE(placed, nullptr);
 
-    const auto* renderer = placed->FindComponent<NS::Object::MeshRendererComponent>();
+    const auto* renderer = placed->FindComponent<NS::Obj::MeshRendererComponent>();
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(renderer->MeshRef(), "Assets/Models/__ns_missing_terrain__.glb");
-    EXPECT_NE(placed->FindComponent<NS::Object::MeshColliderComponent>(), nullptr);
-    EXPECT_EQ(placed->FindComponent<NS::Object::BoxColliderComponent>(), nullptr);
+    EXPECT_NE(placed->FindComponent<NS::Obj::MeshColliderComponent>(), nullptr);
+    EXPECT_EQ(placed->FindComponent<NS::Obj::BoxColliderComponent>(), nullptr);
 }

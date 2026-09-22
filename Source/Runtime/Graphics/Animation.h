@@ -6,7 +6,7 @@
 #include <span>
 #include <string>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     //! キーとキーの間の埋め方。3 次スプラインには対応しない
     enum class Interpolation
@@ -83,4 +83,4 @@ namespace NS::Graphics
     //! @post outPose.size() == skeleton.BoneCount()
     void SampleClipPose(const AnimationClip& clip, const Skeleton& skeleton, float t, std::vector<BonePose>& outPose);
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

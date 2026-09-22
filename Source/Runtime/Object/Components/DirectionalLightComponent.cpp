@@ -4,7 +4,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     NS_CLASS(DirectionalLightComponent)
 
@@ -37,4 +37,4 @@ namespace NS::Object
         }
         scene->UnregisterLight(this);
     }
-} // namespace NS::Object
+} // namespace NS::Obj

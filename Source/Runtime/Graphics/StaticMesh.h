@@ -7,7 +7,7 @@
 #include <memory>
 #include <type_traits>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     //! アニメーションを持たない静的モデル用の頂点データ構造
     struct StaticVertex
@@ -48,4 +48,4 @@ namespace NS::Graphics
         explicit StaticMesh(const MeshDesc& desc);
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

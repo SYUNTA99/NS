@@ -9,7 +9,7 @@
 #include "Runtime/Graphics/Texture.h"
 #include "Runtime/Graphics/TextureArray.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     namespace
     {
@@ -514,4 +514,4 @@ namespace NS::Graphics
         return m_context;
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

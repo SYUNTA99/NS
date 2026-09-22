@@ -14,24 +14,24 @@
 
 namespace
 {
-    using NS::Object::Scene;
+    using NS::Obj::Scene;
 
     // 据え置きカメラを 1 体だけ持つレベル。組み立ては AssetManager 不在でも通る
-    NS::Object::SceneData MakePlacedCameraLevel()
+    NS::Obj::SceneData MakePlacedCameraLevel()
     {
-        NS::Object::SceneData data;
-        NS::Object::ObjectData object{};
-        object.components.push_back(NS::Object::MakeComponentEntry("PlacedVirtualCamera"));
+        NS::Obj::SceneData data;
+        NS::Obj::ObjectData object{};
+        object.components.push_back(NS::Obj::MakeComponentEntry("PlacedVirtualCamera"));
         data.objects.push_back(std::move(object));
-        NS::Object::EnsureUniqueObjectIds(data);
+        NS::Obj::EnsureUniqueObjectIds(data);
         return data;
     }
 
-    NS::Object::PlacedVirtualCamera* FindPlaced(Scene& scene)
+    NS::Obj::PlacedVirtualCamera* FindPlaced(Scene& scene)
     {
-        NS::Object::PlacedVirtualCamera* found = nullptr;
-        scene.Objects().ForEachComponent<NS::Object::PlacedVirtualCamera>(
-            [&found](NS::Object::PlacedVirtualCamera& placed) {
+        NS::Obj::PlacedVirtualCamera* found = nullptr;
+        scene.Objects().ForEachComponent<NS::Obj::PlacedVirtualCamera>(
+            [&found](NS::Obj::PlacedVirtualCamera& placed) {
                 if (found == nullptr)
                     found = &placed;
             });
@@ -74,10 +74,10 @@ TEST(CameraHost, BrainRunsInTheLateUpdateBand)
     Scene scene;
     ASSERT_NE(scene.CameraBrain(), nullptr);
     // vcam を供給する follow / placed の LateUpdate + 50 より後ろに居る
-    EXPECT_EQ(scene.CameraBrain()->Priority(), NS::Object::TickPriority::LateUpdate + 60);
+    EXPECT_EQ(scene.CameraBrain()->Priority(), NS::Obj::TickPriority::LateUpdate + 60);
 
     scene.LoadFromData(MakePlacedCameraLevel());
-    NS::Object::PlacedVirtualCamera* placed = FindPlaced(scene);
+    NS::Obj::PlacedVirtualCamera* placed = FindPlaced(scene);
     ASSERT_NE(placed, nullptr);
     placed->SetActive(true);
     ASSERT_EQ(scene.CameraBrain()->ActiveVirtualCamera(), nullptr);
@@ -91,16 +91,16 @@ TEST(CameraHost, BrainRunsInTheLateUpdateBand)
 TEST(CameraHost, SurvivesRebuildAndRebindsVirtualCameras)
 {
     Scene scene;
-    NS::Object::CameraBrainComponent* brainBefore = scene.CameraBrain();
+    NS::Obj::CameraBrainComponent* brainBefore = scene.CameraBrain();
     ASSERT_NE(brainBefore, nullptr);
-    const NS::Object::GameObject* hostBefore = brainBefore->Owner();
+    const NS::Obj::GameObject* hostBefore = brainBefore->Owner();
 
     scene.LoadFromData(MakePlacedCameraLevel());
     // データから組み直しても同じ host が残る
     EXPECT_EQ(scene.CameraBrain(), brainBefore);
     EXPECT_EQ(scene.CameraBrain()->Owner(), hostBefore);
 
-    NS::Object::PlacedVirtualCamera* first = FindPlaced(scene);
+    NS::Obj::PlacedVirtualCamera* first = FindPlaced(scene);
     ASSERT_NE(first, nullptr);
     first->SetActive(true);
     scene.OnUpdate();
@@ -108,7 +108,7 @@ TEST(CameraHost, SurvivesRebuildAndRebindsVirtualCameras)
 
     // 2 回目の組み直しで古い登録が外れ、新しい実体が選ばれる
     scene.LoadFromData(MakePlacedCameraLevel());
-    NS::Object::PlacedVirtualCamera* second = FindPlaced(scene);
+    NS::Obj::PlacedVirtualCamera* second = FindPlaced(scene);
     ASSERT_NE(second, nullptr);
     // アドレス比較はしない。解放直後の再確保が同じ番地を返すと、新しい実体でも偽で赤になる
     // 古い実体が残っていれば active のままここに出る。null は登録が外れて作り直された証拠
@@ -124,13 +124,13 @@ TEST(CameraHost, ShakeOffsetsFinalPose)
 {
     Scene scene;
     scene.LoadFromData(MakePlacedCameraLevel());
-    NS::Object::PlacedVirtualCamera* placed = FindPlaced(scene);
+    NS::Obj::PlacedVirtualCamera* placed = FindPlaced(scene);
     ASSERT_NE(placed, nullptr);
     placed->SetActive(true);
     placed->SetView(NS::Core::Vector3{0.0f, 3.0f, -6.0f}, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
     scene.OnUpdate();
 
-    NS::Object::CameraBrainComponent* brain = scene.CameraBrain();
+    NS::Obj::CameraBrainComponent* brain = scene.CameraBrain();
     ASSERT_NE(brain, nullptr);
     brain->Evaluate(1.0f);
     const NS::Core::Vector3 before = brain->LastPose().position;
@@ -147,13 +147,13 @@ TEST(CameraHost, ShakeTranslatesViewWithoutTurning)
 {
     Scene scene;
     scene.LoadFromData(MakePlacedCameraLevel());
-    NS::Object::PlacedVirtualCamera* placed = FindPlaced(scene);
+    NS::Obj::PlacedVirtualCamera* placed = FindPlaced(scene);
     ASSERT_NE(placed, nullptr);
     placed->SetActive(true);
     placed->SetView(NS::Core::Vector3{0.0f, 3.0f, -6.0f}, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
     scene.OnUpdate();
 
-    NS::Object::CameraBrainComponent* brain = scene.CameraBrain();
+    NS::Obj::CameraBrainComponent* brain = scene.CameraBrain();
     brain->Evaluate(1.0f);
     const NS::Core::Vector3 lookBefore = brain->LastPose().target - brain->LastPose().position;
     const NS::Core::Vector3 forwardBefore = brain->ForwardHorizontal();
@@ -175,13 +175,13 @@ TEST(CameraHost, ShakeEndsWithinSteps)
 {
     Scene scene;
     scene.LoadFromData(MakePlacedCameraLevel());
-    NS::Object::PlacedVirtualCamera* placed = FindPlaced(scene);
+    NS::Obj::PlacedVirtualCamera* placed = FindPlaced(scene);
     ASSERT_NE(placed, nullptr);
     placed->SetActive(true);
     placed->SetView(NS::Core::Vector3{0.0f, 3.0f, -6.0f}, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
     scene.OnUpdate();
 
-    NS::Object::CameraBrainComponent* brain = scene.CameraBrain();
+    NS::Obj::CameraBrainComponent* brain = scene.CameraBrain();
     brain->Evaluate(1.0f);
     const NS::Core::Vector3 before = brain->LastPose().position;
 
@@ -201,13 +201,13 @@ TEST(CameraHost, ShakeRejectsBrokenInput)
 {
     Scene scene;
     scene.LoadFromData(MakePlacedCameraLevel());
-    NS::Object::PlacedVirtualCamera* placed = FindPlaced(scene);
+    NS::Obj::PlacedVirtualCamera* placed = FindPlaced(scene);
     ASSERT_NE(placed, nullptr);
     placed->SetActive(true);
     placed->SetView(NS::Core::Vector3{0.0f, 3.0f, -6.0f}, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
     scene.OnUpdate();
 
-    NS::Object::CameraBrainComponent* brain = scene.CameraBrain();
+    NS::Obj::CameraBrainComponent* brain = scene.CameraBrain();
     brain->Evaluate(1.0f);
     const NS::Core::Vector3 before = brain->LastPose().position;
 

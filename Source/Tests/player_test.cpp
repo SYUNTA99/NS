@@ -25,14 +25,14 @@ TEST(PlayerTest, ConstructsWithDefaultComposition)
 TEST(PlayerTest, DefaultComponentsResolveByType)
 {
     Player player{};
-    EXPECT_EQ(player.FindComponent<NS::Object::PlayerInputComponent>(), player.Components()[0]);
+    EXPECT_EQ(player.FindComponent<NS::Obj::PlayerInputComponent>(), player.Components()[0]);
     EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerInputRelayComponent>(), player.Components()[1]);
-    EXPECT_EQ(player.FindComponent<NS::Object::TransformComponent>(), player.Components()[2]);
-    EXPECT_EQ(player.FindComponent<NS::Object::MeshRendererComponent>(), player.Components()[3]);
+    EXPECT_EQ(player.FindComponent<NS::Obj::TransformComponent>(), player.Components()[2]);
+    EXPECT_EQ(player.FindComponent<NS::Obj::MeshRendererComponent>(), player.Components()[3]);
     EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerStateManagerComponent>(), player.Components()[4]);
     EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerComponent>(), player.Components()[5]);
     EXPECT_EQ(player.FindComponent<NS::Game::Level::HealthComponent>(), player.Components()[6]);
-    EXPECT_EQ(player.FindComponent<NS::Object::ShadowComponent>(), player.Components()[7]);
+    EXPECT_EQ(player.FindComponent<NS::Obj::ShadowComponent>(), player.Components()[7]);
 }
 
 TEST(PlayerTest, ResponseComponentsTrailTheUpdateBand)
@@ -55,7 +55,7 @@ TEST(PlayerTest, InputRelayResolvesBothSidesOnStart)
     Player player{};
     player.OnStart();
 
-    auto* input = player.FindComponent<NS::Object::PlayerInputComponent>();
+    auto* input = player.FindComponent<NS::Obj::PlayerInputComponent>();
     auto* relay = player.FindComponent<NS::Game::Player::PlayerInputRelayComponent>();
     auto* entity = player.FindComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(input, nullptr);

@@ -9,9 +9,9 @@
 namespace
 {
     using NS::Game::Level::TryGetColliderBounds;
-    using NS::Object::BoxColliderComponent;
-    using NS::Object::GameObject;
-    using NS::Object::SphereColliderComponent;
+    using NS::Obj::BoxColliderComponent;
+    using NS::Obj::GameObject;
+    using NS::Obj::SphereColliderComponent;
 } // namespace
 
 TEST(ColliderBoundsTest, BoxColliderYieldsItsWorldAABB)

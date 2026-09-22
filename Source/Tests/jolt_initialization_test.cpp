@@ -5,7 +5,7 @@
 
 TEST(JoltInitialization, RegisterTypesRunsThroughSceneConstruction)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
 
     EXPECT_EQ(scene.Physics().BodyCount(), 0u);
     ASSERT_NE(JPH::Factory::sInstance, nullptr);

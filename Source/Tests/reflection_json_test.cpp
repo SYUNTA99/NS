@@ -12,12 +12,12 @@
 
 namespace
 {
-    using NS::Object::ApplyJsonFields;
-    using NS::Object::Component;
-    using NS::Object::CreateComponent;
-    using NS::Object::GameObject;
-    using NS::Object::ReflectionInfo;
-    using NS::Object::SerializeComponent;
+    using NS::Obj::ApplyJsonFields;
+    using NS::Obj::Component;
+    using NS::Obj::CreateComponent;
+    using NS::Obj::GameObject;
+    using NS::Obj::ReflectionInfo;
+    using NS::Obj::SerializeComponent;
 
     // std::string 1 欄だけをリフレクションするテスト用 Component
     class FakeStringComponent : public Component
@@ -45,17 +45,17 @@ namespace
         NS_REFLECT_FIELD(m_target, "Target")
         NS_REFLECT_END()
 
-        [[nodiscard]] NS::Object::ObjectRef Target() const noexcept { return m_target; }
+        [[nodiscard]] NS::Obj::ObjectRef Target() const noexcept { return m_target; }
 
     private:
-        NS::Object::ObjectRef m_target{};
+        NS::Obj::ObjectRef m_target{};
     };
 } // namespace
 
 TEST(ReflectionJsonTest, SerializeWritesTypeAndFields)
 {
     GameObject obj;
-    auto* box = obj.AddComponent<NS::Object::BoxColliderComponent>();
+    auto* box = obj.AddComponent<NS::Obj::BoxColliderComponent>();
 
     const nlohmann::json j = SerializeComponent(*box);
     EXPECT_EQ(j["type"], "BoxColliderComponent");
@@ -67,7 +67,7 @@ TEST(ReflectionJsonTest, SerializeWritesTypeAndFields)
 TEST(ReflectionJsonTest, RoundTripVector3Fields)
 {
     GameObject src;
-    auto* box = src.AddComponent<NS::Object::BoxColliderComponent>();
+    auto* box = src.AddComponent<NS::Obj::BoxColliderComponent>();
     box->SetHalfExtents(NS::Core::Vector3{2.0f, 3.0f, 4.0f});
     box->SetCenterOffset(NS::Core::Vector3{1.0f, -2.0f, 0.5f});
 
@@ -78,7 +78,7 @@ TEST(ReflectionJsonTest, RoundTripVector3Fields)
     ASSERT_NE(restored, nullptr);
     ApplyJsonFields(*restored, j["fields"]);
 
-    auto* restoredBox = static_cast<NS::Object::BoxColliderComponent*>(restored);
+    auto* restoredBox = static_cast<NS::Obj::BoxColliderComponent*>(restored);
     EXPECT_FLOAT_EQ(restoredBox->HalfExtents().x, 2.0f);
     EXPECT_FLOAT_EQ(restoredBox->HalfExtents().y, 3.0f);
     EXPECT_FLOAT_EQ(restoredBox->HalfExtents().z, 4.0f);
@@ -115,7 +115,7 @@ TEST(ReflectionJsonTest, HazardReflectsWithEmptyFields)
 
 TEST(ReflectionJsonTest, SlopeReflectsAngleAndRoundTrips)
 {
-    NS::Object::SlopeColliderComponent slope;
+    NS::Obj::SlopeColliderComponent slope;
     const ReflectionInfo* info = slope.GetReflection();
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 2u);
@@ -126,7 +126,7 @@ TEST(ReflectionJsonTest, SlopeReflectsAngleAndRoundTrips)
 
     // 角度を変えた JSON を適用すると set で書き戻る
     j["fields"]["角度 (度)"] = 30.0f;
-    NS::Object::SlopeColliderComponent dst;
+    NS::Obj::SlopeColliderComponent dst;
     ApplyJsonFields(dst, j["fields"]);
     EXPECT_FLOAT_EQ(dst.AngleDegrees(), 30.0f);
 }
@@ -134,7 +134,7 @@ TEST(ReflectionJsonTest, SlopeReflectsAngleAndRoundTrips)
 TEST(ReflectionJsonTest, UnknownAndMissingKeysAreIgnored)
 {
     GameObject obj;
-    auto* box = obj.AddComponent<NS::Object::BoxColliderComponent>();
+    auto* box = obj.AddComponent<NS::Obj::BoxColliderComponent>();
     box->SetHalfExtents(NS::Core::Vector3{2.0f, 2.0f, 2.0f});
 
     // 未知キー + 欠損 (半径を含まない) + 型不一致を混ぜても落ちず、既定/現状値が保たれる

@@ -8,7 +8,7 @@
 #include "Runtime/Graphics/MeshPrimitives.h"
 #include "Runtime/Graphics/Renderer.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     namespace
     {
@@ -127,4 +127,4 @@ namespace NS::Graphics
         return k_Layout;
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

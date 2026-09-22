@@ -5,9 +5,9 @@
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
-    CameraComponent::CameraComponent() noexcept : Component(NS::Object::TickPriority::LateUpdate + 50) {}
+    CameraComponent::CameraComponent() noexcept : Component(NS::Obj::TickPriority::LateUpdate + 50) {}
 
     void CameraComponent::SetPosition(const NS::Core::Vector3& position) noexcept
     {
@@ -34,7 +34,7 @@ namespace NS::Object
         m_camera.SetAspectRatio(aspect);
     }
 
-    void CameraComponent::SetAspectRatioFromRenderer(const NS::Graphics::Renderer& renderer) noexcept
+    void CameraComponent::SetAspectRatioFromRenderer(const NS::Gfx::Renderer& renderer) noexcept
     {
         const NS::Core::Size2D size = renderer.Size();
         const float aspect = [&]() -> float {
@@ -79,4 +79,4 @@ namespace NS::Object
     }
 
     NS_CLASS(CameraComponent)
-} // namespace NS::Object
+} // namespace NS::Obj

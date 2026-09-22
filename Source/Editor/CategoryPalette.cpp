@@ -28,12 +28,12 @@ namespace NS::Editor
     {
         // コンポーネントからスロープ角度を読み取る。角度を持たない場合は負値を返す
         const nlohmann::json* slope =
-            NS::Object::FindComponentEntry(PaletteTemplateSlots()[m_activeSlot].prototype, "SlopeColliderComponent");
+            NS::Obj::FindComponentEntry(PaletteTemplateSlots()[m_activeSlot].prototype, "SlopeColliderComponent");
         if (slope == nullptr)
         {
             return -1.0f;
         }
-        return NS::Object::FieldFloat(*slope, "角度 (度)", -1.0f);
+        return NS::Obj::FieldFloat(*slope, "角度 (度)", -1.0f);
     }
 
     void CategoryPalette::TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept

@@ -7,7 +7,7 @@
 #include <string_view>
 #include <utility>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class SkeletalAnimationComponent;
 }
@@ -22,8 +22,8 @@ namespace NS::Game::Player
     //! 状態 1 つにクリップ 1 本を割り当てる形は採らない。走りの速度と跳ぶと落ちるの出し分けが
     //! 同じ状態の中で変わるので、状態は入力の 1 つとして使う
     //! 優先度は Update 帯の +50。移動が終わった後に選び、骨を回す SkeletalAnimationComponent (+100) より前に置く
-    //! 依存: PlayerComponent, PlayerStateManagerComponent, NS::Object::SkeletalAnimationComponent
-    class PlayerAnimatorComponent : public NS::Object::Component
+    //! 依存: PlayerComponent, PlayerStateManagerComponent, NS::Obj::SkeletalAnimationComponent
+    class PlayerAnimatorComponent : public NS::Obj::Component
     {
     public:
         PlayerAnimatorComponent() noexcept;
@@ -40,7 +40,7 @@ namespace NS::Game::Player
         void SetFallClip(std::string name) noexcept { m_fallClip = std::move(name); }
         void SetLedgeHangClip(std::string name) noexcept { m_ledgeHangClip = std::move(name); }
 
-        NS_REFLECT_BEGIN(PlayerAnimatorComponent, NS::Object::Component)
+        NS_REFLECT_BEGIN(PlayerAnimatorComponent, NS::Obj::Component)
         NS_REFLECT_FIELD(m_idleClip, "立ちのクリップ")
         NS_REFLECT_FIELD(m_walkClip, "歩きのクリップ")
         NS_REFLECT_FIELD(m_runClip, "走りのクリップ")
@@ -72,7 +72,7 @@ namespace NS::Game::Player
 
         PlayerComponent* m_player = nullptr;                           // 速さと接地の出所 (非所有)
         PlayerStateManagerComponent* m_states = nullptr;               // 現在状態の問い合わせ先 (非所有)
-        NS::Object::SkeletalAnimationComponent* m_animation = nullptr; // クリップの差し先 (非所有)
+        NS::Obj::SkeletalAnimationComponent* m_animation = nullptr; // クリップの差し先 (非所有)
         std::string m_appliedClip{};                                   // 最後に選べたクリップ名
     };
 } // namespace NS::Game::Player

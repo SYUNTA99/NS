@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! 状態の型を指す印。型ごとに 1 つだけある静的な変数の番地で、実行時型情報を使わずに型を見分ける
     using StateId = const void*;
@@ -176,4 +176,4 @@ namespace NS::Object
         State<TOwner>* m_current = nullptr;                   // 現在状態。未組立は nullptr
     };
 
-} // namespace NS::Object
+} // namespace NS::Obj

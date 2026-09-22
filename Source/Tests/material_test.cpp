@@ -9,13 +9,13 @@
 
 namespace
 {
-    using NS::Graphics::Material;
-    using NS::Graphics::MaterialDesc;
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
-    using NS::Graphics::Shader;
-    using NS::Graphics::Texture;
-    using NS::Graphics::TextureDesc;
+    using NS::Gfx::Material;
+    using NS::Gfx::MaterialDesc;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
+    using NS::Gfx::Shader;
+    using NS::Gfx::Texture;
+    using NS::Gfx::TextureDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
@@ -58,12 +58,12 @@ TEST_F(MaterialLoggerTest, BlendAndRenderPriorityReflectDescEvenWhenInvalid)
 {
     // blend / renderPriority は GPU リソースに依らない分類メタなので、device が無い状態でも desc の値を返す
     MaterialDesc desc{};
-    desc.blend = NS::Graphics::BlendMode::Alpha;
+    desc.blend = NS::Gfx::BlendMode::Alpha;
     desc.renderPriority = 7;
     const auto material = Material::Create(desc);
     ASSERT_NE(material, nullptr);
     EXPECT_FALSE(material->IsValid());
-    EXPECT_EQ(material->Blend(), NS::Graphics::BlendMode::Alpha);
+    EXPECT_EQ(material->Blend(), NS::Gfx::BlendMode::Alpha);
     EXPECT_EQ(material->RenderPriority(), 7);
 }
 
@@ -71,7 +71,7 @@ TEST_F(MaterialLoggerTest, DefaultBlendIsOpaque)
 {
     const auto material = Material::Create(MaterialDesc{});
     ASSERT_NE(material, nullptr);
-    EXPECT_EQ(material->Blend(), NS::Graphics::BlendMode::Opaque);
+    EXPECT_EQ(material->Blend(), NS::Gfx::BlendMode::Opaque);
     EXPECT_EQ(material->RenderPriority(), 0);
 }
 

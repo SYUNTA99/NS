@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Renderer;
 
@@ -53,4 +53,4 @@ namespace NS::Graphics
         float m_alpha = 0.0f;    // 黒の不透明度 (0=透明 / 1=全黒)。Render が読む
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

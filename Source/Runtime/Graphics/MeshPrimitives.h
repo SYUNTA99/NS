@@ -4,7 +4,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/StaticMesh.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     //! @brief 基本プリミティブ生成処理が返す、CPU側のジオメトリデータ
     //! @details 描画用メッシュの構築パラメータとして使用する
@@ -37,4 +37,4 @@ namespace NS::Graphics
     //! @param[in] rings 上下方向の分割数。2 未満は 2 に切り上げる
     //! @param[in] segments 周方向の分割数。3 未満は 3 に切り上げる
     [[nodiscard]] MeshGeometry MakeSphere(float radius, std::uint32_t rings = 16, std::uint32_t segments = 32);
-} // namespace NS::Graphics
+} // namespace NS::Gfx

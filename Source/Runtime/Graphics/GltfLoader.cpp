@@ -16,7 +16,7 @@
 
 #include <unordered_set>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     namespace
     {
@@ -1090,4 +1090,4 @@ namespace NS::Graphics
             source.animations);
         return source;
     }
-} // namespace NS::Graphics
+} // namespace NS::Gfx

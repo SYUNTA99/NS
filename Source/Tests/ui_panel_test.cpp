@@ -22,8 +22,8 @@ TEST(UIPanelTest, BeginEndPairInValidContext)
     NS::Platform::Window window(wd);
     if (!window.IsValid())
         GTEST_SKIP();
-    NS::Graphics::RendererDesc rd{};
-    NS::Graphics::Renderer renderer(rd, window);
+    NS::Gfx::RendererDesc rd{};
+    NS::Gfx::Renderer renderer(rd, window);
     if (!renderer.IsValid())
         GTEST_SKIP();
     NS::UI::ImGuiContext imgui(window, renderer);

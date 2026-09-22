@@ -6,15 +6,15 @@
 
 namespace
 {
-    using NS::Graphics::AnimationClip;
-    using NS::Graphics::Bone;
-    using NS::Graphics::BonePose;
-    using NS::Graphics::BoneTrack;
-    using NS::Graphics::Interpolation;
-    using NS::Graphics::SampleClipPose;
-    using NS::Graphics::SampleQuat;
-    using NS::Graphics::SampleVec3;
-    using NS::Graphics::Skeleton;
+    using NS::Gfx::AnimationClip;
+    using NS::Gfx::Bone;
+    using NS::Gfx::BonePose;
+    using NS::Gfx::BoneTrack;
+    using NS::Gfx::Interpolation;
+    using NS::Gfx::SampleClipPose;
+    using NS::Gfx::SampleQuat;
+    using NS::Gfx::SampleVec3;
+    using NS::Gfx::Skeleton;
     using NS::Core::Quaternion;
     using NS::Core::Vector3;
 

@@ -8,7 +8,7 @@
 
 #include <string>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     //! @brief 描画システムの初期化パラメータ
@@ -164,4 +164,4 @@ namespace NS::Graphics
         bool m_resizeCallbackRegistered = false; // デストラクタの購読解除判定
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

@@ -8,7 +8,7 @@ namespace
 
 TEST(RenderSettings, DefaultsMatchCurrentValues)
 {
-    const NS::Graphics::RenderSettings s{};
+    const NS::Gfx::RenderSettings s{};
     EXPECT_NEAR(s.clearColor.R(), 0.10f, k_Epsilon);
     EXPECT_NEAR(s.clearColor.G(), 0.10f, k_Epsilon);
     EXPECT_NEAR(s.clearColor.B(), 0.15f, k_Epsilon);
@@ -31,6 +31,6 @@ TEST(RenderSettings, DefaultsMatchCurrentValues)
 // 空側と地面側は別の色。同じにすると影の中で面の向きが読めなくなる
 TEST(RenderSettings, SkyAndGroundAmbientDiffer)
 {
-    const NS::Graphics::RenderSettings s{};
+    const NS::Gfx::RenderSettings s{};
     EXPECT_GT(s.ambientColor.z, s.groundColor.z);
 }

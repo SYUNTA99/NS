@@ -14,14 +14,14 @@
 
 #include <algorithm>
 
-namespace NS::Object
+namespace NS::Obj
 {
     namespace
     {
         // RenderScene の proxy を IRenderable::Collect へつなぐ。owner は登録元の IRenderable
         void CollectRenderable(void* owner,
-                               const NS::Graphics::RenderContext& context,
-                               std::vector<NS::Graphics::DrawItem>& out)
+                               const NS::Gfx::RenderContext& context,
+                               std::vector<NS::Gfx::DrawItem>& out)
         {
             static_cast<IRenderable*>(owner)->Collect(context, out);
         }
@@ -41,7 +41,7 @@ namespace NS::Object
             }
         }
 
-        NS::Graphics::RenderProxyDesc desc{};
+        NS::Gfx::RenderProxyDesc desc{};
         desc.bounds = renderable->WorldBounds();
         desc.sortCenter = renderable->SortCenter();
         desc.sortPriority = renderable->SortPriority();
@@ -162,17 +162,17 @@ namespace NS::Object
         }
     }
 
-    void SceneRenderer::DrawOpaque(const NS::Graphics::RenderContext& context)
+    void SceneRenderer::DrawOpaque(const NS::Gfx::RenderContext& context)
     {
         m_renderScene.DrawBucket(context, false);
     }
 
-    void SceneRenderer::DrawTransparent(const NS::Graphics::RenderContext& context)
+    void SceneRenderer::DrawTransparent(const NS::Gfx::RenderContext& context)
     {
         m_renderScene.DrawBucket(context, true);
     }
 
-    void SceneRenderer::DrawOverlays(const NS::Graphics::RenderContext& context)
+    void SceneRenderer::DrawOverlays(const NS::Gfx::RenderContext& context)
     {
         // 更新・当たりと同じ IsActive で切る。自分の値だけ見ると親を寝かせても描き続ける
         for (OverlayRendererComponent* overlay : m_overlays)
@@ -184,10 +184,10 @@ namespace NS::Object
         }
     }
 
-    NS::Graphics::RenderSettings SceneRenderer::ResolveSceneSettings(
-        const NS::Graphics::RenderSettings& projectDefaults)
+    NS::Gfx::RenderSettings SceneRenderer::ResolveSceneSettings(
+        const NS::Gfx::RenderSettings& projectDefaults)
     {
-        NS::Graphics::RenderSettings resolved = projectDefaults;
+        NS::Gfx::RenderSettings resolved = projectDefaults;
         for (DirectionalLightComponent* light : m_lights)
         {
             if (!light->IsActive())
@@ -241,16 +241,16 @@ namespace NS::Object
                                                const SceneEnvironment& environment,
                                                const std::optional<CameraPose>& viewOverride)
     {
-        const NS::Graphics::RenderContext ctx = RenderWorld(brain, camera, environment, viewOverride);
+        const NS::Gfx::RenderContext ctx = RenderWorld(brain, camera, environment, viewOverride);
 
 #if !defined(NS_SHIPPING)
-        NS::Graphics::DebugDraw::Flush(*ctx.renderer, ctx.viewProjection);
+        NS::Gfx::DebugDraw::Flush(*ctx.renderer, ctx.viewProjection);
 #endif
 
         DrawOverlays(ctx);
     }
 
-    NS::Graphics::RenderContext SceneRenderer::RenderWorld(CameraBrainComponent& brain,
+    NS::Gfx::RenderContext SceneRenderer::RenderWorld(CameraBrainComponent& brain,
                                                            CameraComponent& camera,
                                                            const SceneEnvironment& environment,
                                                            const std::optional<CameraPose>& viewOverride)
@@ -258,15 +258,15 @@ namespace NS::Object
         // レンダラーの現在サイズから毎回取り直し、リサイズとビュー切替に追従する
         camera.SetAspectRatioFromRenderer(*m_renderer);
 
-        NS::Graphics::RenderContext ctx{};
+        NS::Gfx::RenderContext ctx{};
         ctx.renderer = m_renderer;
         ctx.alpha = NS::Platform::FrameTimer::Alpha();
 
         brain.Evaluate(ctx.alpha);
 
         // 上書き視点は実カメラを経由せず、その場で行列を組む。実カメラの中身はゲーム視点のまま残す
-        NS::Graphics::Camera overrideCamera{};
-        const NS::Graphics::Camera* skyCamera = &camera.Camera();
+        NS::Gfx::Camera overrideCamera{};
+        const NS::Gfx::Camera* skyCamera = &camera.Camera();
         if (viewOverride.has_value())
         {
             overrideCamera.SetPosition(viewOverride->position);
@@ -303,4 +303,4 @@ namespace NS::Object
         DrawTransparent(ctx);
         return ctx;
     }
-} // namespace NS::Object
+} // namespace NS::Obj

@@ -13,7 +13,7 @@
 
 #include <map>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     std::unique_ptr<Material> Material::Create(const MaterialDesc& desc)
@@ -146,4 +146,4 @@ namespace NS::Graphics
         }
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

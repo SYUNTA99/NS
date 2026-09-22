@@ -2,7 +2,7 @@
 
 #include "Runtime/Object/Scene/SceneData.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     namespace
     {
@@ -300,4 +300,4 @@ namespace NS::Object
         EnsureFields(entry)[std::string(name)] = std::move(ref);
     }
 
-} // namespace NS::Object
+} // namespace NS::Obj

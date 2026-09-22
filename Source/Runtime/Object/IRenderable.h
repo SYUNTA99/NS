@@ -8,12 +8,12 @@
 #include <cstdint>
 #include <vector>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     struct RenderContext;
 }
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! 描画バケット。Opaque は登録順、Transparent はカメラから遠い順にソートされる
     enum class RenderBucket : std::uint8_t
@@ -35,7 +35,7 @@ namespace NS::Object
 
         //! Scene::OnRender から呼ばれる。描画は発行せず、自分の DrawItem を out に積むだけにする
         //! Alpha 補間後の transform は context.alpha 経由で取得する
-        virtual void Collect(const NS::Graphics::RenderContext& context, std::vector<NS::Graphics::DrawItem>& out) = 0;
+        virtual void Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out) = 0;
 
         //! @brief カリング用のワールド空間 AABB。Scene が視錐台の外を Collect 前に間引く
         //! @details 全描画物が必ず境界を返す。常に描きたいものは全域を覆う AABB を返して自ら申告する
@@ -51,4 +51,4 @@ namespace NS::Object
         [[nodiscard]] virtual int SortPriority() const noexcept { return 0; }
     };
 
-} // namespace NS::Object
+} // namespace NS::Obj

@@ -9,7 +9,7 @@
 
 namespace
 {
-    class MockScene : public NS::Object::Scene
+    class MockScene : public NS::Obj::Scene
     {
     public:
         int startCount = 0;
@@ -68,7 +68,7 @@ TEST(SceneTest, LifecycleOrderIsIndependent)
 
 TEST(SceneTest, BaseClassDefaultsAreNoop)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     scene.OnStart();
     scene.OnUpdate();
     scene.OnRender();
@@ -79,36 +79,36 @@ TEST(SceneTest, BaseClassDefaultsAreNoop)
 TEST(SceneTest, PolymorphicDeleteCallsDerivedDtor)
 {
     bool dtorCalled = false;
-    struct TrackedScene : public NS::Object::Scene
+    struct TrackedScene : public NS::Obj::Scene
     {
         bool* flag;
         explicit TrackedScene(bool* f) : flag(f) {}
         ~TrackedScene() override { *flag = true; }
     };
     {
-        std::unique_ptr<NS::Object::Scene> scene = std::make_unique<TrackedScene>(&dtorCalled);
+        std::unique_ptr<NS::Obj::Scene> scene = std::make_unique<TrackedScene>(&dtorCalled);
     }
     EXPECT_TRUE(dtorCalled);
 }
 
 TEST(SceneTest, DestroyObjectKeepsTheSurvivingColliderBodyId)
 {
-    NS::Object::SceneData data;
-    NS::Object::ObjectData removed;
+    NS::Obj::SceneData data;
+    NS::Obj::ObjectData removed;
     removed.objectId = 10;
-    removed.components.push_back(NS::Object::MakeComponentEntry("BoxColliderComponent"));
+    removed.components.push_back(NS::Obj::MakeComponentEntry("BoxColliderComponent"));
     data.objects.push_back(std::move(removed));
 
-    NS::Object::ObjectData survivor;
+    NS::Obj::ObjectData survivor;
     survivor.objectId = 20;
-    survivor.components.push_back(NS::Object::MakeComponentEntry("BoxColliderComponent"));
+    survivor.components.push_back(NS::Obj::MakeComponentEntry("BoxColliderComponent"));
     data.objects.push_back(std::move(survivor));
 
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     scene.LoadFromData(std::move(data));
-    NS::Object::GameObject* survivingObject = scene.Objects().FindByObjectId(20);
+    NS::Obj::GameObject* survivingObject = scene.Objects().FindByObjectId(20);
     ASSERT_NE(survivingObject, nullptr);
-    auto* collider = survivingObject->FindComponent<NS::Object::BoxColliderComponent>();
+    auto* collider = survivingObject->FindComponent<NS::Obj::BoxColliderComponent>();
     ASSERT_NE(collider, nullptr);
     const JPH::BodyID bodyId = collider->BodyId();
 
@@ -122,17 +122,17 @@ namespace
 {
     using NS::Core::Sphere;
     using NS::Core::Vector3;
-    namespace ObjectLayers = NS::Physics::ObjectLayers;
+    namespace ObjectLayers = NS::Phys::ObjectLayers;
 
-    JPH::BodyID DropSphereInto(NS::Object::Scene& scene)
+    JPH::BodyID DropSphereInto(NS::Obj::Scene& scene)
     {
         const JPH::BodyID id =
-            scene.Physics().AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, NS::Physics::DynamicBodyDesc{});
+            scene.Physics().AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, NS::Phys::DynamicBodyDesc{});
         scene.Physics().OptimizeBroadPhase();
         return id;
     }
 
-    void RunFrames(NS::Object::Scene& scene, int frames)
+    void RunFrames(NS::Obj::Scene& scene, int frames)
     {
         NS::Platform::FrameTimer::SetFixedDelta(1.0f / 60.0f);
         for (int i = 0; i < frames; ++i)
@@ -142,7 +142,7 @@ namespace
 
 TEST(SceneTest, OnUpdateStepsThePhysicsScene)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     const JPH::BodyID id = DropSphereInto(scene);
 
     RunFrames(scene, 30);
@@ -152,7 +152,7 @@ TEST(SceneTest, OnUpdateStepsThePhysicsScene)
 
 TEST(SceneTest, EditModeLeavesThePhysicsSceneStill)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     const JPH::BodyID id = DropSphereInto(scene);
     scene.SetSimulationEnabled(false);
 
@@ -163,7 +163,7 @@ TEST(SceneTest, EditModeLeavesThePhysicsSceneStill)
 
 TEST(SceneTest, PausedSceneLeavesThePhysicsSceneStill)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     const JPH::BodyID id = DropSphereInto(scene);
     scene.SetSimulationPaused(true);
 
@@ -174,12 +174,12 @@ TEST(SceneTest, PausedSceneLeavesThePhysicsSceneStill)
 
 namespace
 {
-    class MoverComponent : public NS::Object::Component
+    class MoverComponent : public NS::Obj::Component
     {
     public:
         void OnUpdate() override
         {
-            NS::Object::Transform& root = Owner()->Root();
+            NS::Obj::Transform& root = Owner()->Root();
             root.SetPosition(root.Position() + Vector3{1.0f, 0.0f, 0.0f});
         }
     };
@@ -188,8 +188,8 @@ namespace
 TEST(SceneTest, UpdateLeavesThePreviousStepForInterpolation)
 {
     NS::Platform::FrameTimer::SetFixedDelta(1.0f / 60.0f);
-    NS::Object::Scene scene;
-    NS::Object::GameObject* obj = scene.SpawnTransient<NS::Object::GameObject>();
+    NS::Obj::Scene scene;
+    NS::Obj::GameObject* obj = scene.SpawnTransient<NS::Obj::GameObject>();
     ASSERT_NE(obj, nullptr);
     obj->AddComponent<MoverComponent>();
 
@@ -206,8 +206,8 @@ TEST(SceneTest, UpdateLeavesThePreviousStepForInterpolation)
 TEST(SceneTest, PausedSceneFreezesTheInterpolation)
 {
     NS::Platform::FrameTimer::SetFixedDelta(1.0f / 60.0f);
-    NS::Object::Scene scene;
-    NS::Object::GameObject* obj = scene.SpawnTransient<NS::Object::GameObject>();
+    NS::Obj::Scene scene;
+    NS::Obj::GameObject* obj = scene.SpawnTransient<NS::Obj::GameObject>();
     ASSERT_NE(obj, nullptr);
     obj->AddComponent<MoverComponent>();
 

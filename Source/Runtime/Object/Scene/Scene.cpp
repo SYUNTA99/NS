@@ -9,7 +9,7 @@
 
 #include <limits>
 
-namespace NS::Object
+namespace NS::Obj
 {
     Scene::Scene()
     {
@@ -222,7 +222,7 @@ namespace NS::Object
         m_brain = nullptr;
     }
 
-    NS::Graphics::RenderSettings Scene::ResolveSceneSettings(const NS::Graphics::RenderSettings& projectDefaults)
+    NS::Gfx::RenderSettings Scene::ResolveSceneSettings(const NS::Gfx::RenderSettings& projectDefaults)
     {
         return m_sceneRenderer.ResolveSceneSettings(projectDefaults);
     }
@@ -264,17 +264,17 @@ namespace NS::Object
         m_sceneRenderer.UnregisterLight(light);
     }
 
-    void Scene::DrawOpaque(const NS::Graphics::RenderContext& context)
+    void Scene::DrawOpaque(const NS::Gfx::RenderContext& context)
     {
         m_sceneRenderer.DrawOpaque(context);
     }
 
-    void Scene::DrawTransparent(const NS::Graphics::RenderContext& context)
+    void Scene::DrawTransparent(const NS::Gfx::RenderContext& context)
     {
         m_sceneRenderer.DrawTransparent(context);
     }
 
-    void Scene::DrawOverlays(const NS::Graphics::RenderContext& context)
+    void Scene::DrawOverlays(const NS::Gfx::RenderContext& context)
     {
         m_sceneRenderer.DrawOverlays(context);
     }
@@ -303,4 +303,4 @@ namespace NS::Object
         }
         m_sceneRenderer.Render(*brain, *camera, m_environment);
     }
-} // namespace NS::Object
+} // namespace NS::Obj

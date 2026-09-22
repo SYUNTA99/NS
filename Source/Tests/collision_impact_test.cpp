@@ -36,7 +36,7 @@
 #include <vector>
 
 namespace LevelNs = NS::Game::Level;
-namespace SceneNs = NS::Object;
+namespace SceneNs = NS::Obj;
 
 namespace
 {
@@ -61,7 +61,7 @@ namespace
         LevelNs::ImpactResolverComponent* impact = nullptr;
         LevelNs::CollisionInputComponent* input = nullptr;
         SceneNs::BoxColliderComponent* targetBox = nullptr;
-        NS::Object::GameObject* target = nullptr;
+        NS::Obj::GameObject* target = nullptr;
         LevelNs::BreakableComponent* breakable = nullptr;
     };
 
@@ -572,7 +572,7 @@ TEST(CollisionImpact, NoReboundInEmptyCornerOfRotatedTarget)
     const NS::Core::AABB bounds = rig.targetBox->WorldAABB();
     ASSERT_LE(std::abs(position.x - bounds.Center.x), bounds.Extents.x);
     ASSERT_LE(std::abs(position.z - bounds.Center.z), bounds.Extents.z);
-    const NS::Physics::Capsule capsule{
+    const NS::Phys::Capsule capsule{
         position, Vector3{0.0f, 1.0f, 0.0f}, rig.movement->CapsuleHalfHeight(), rig.movement->CapsuleRadius()};
     const std::vector<JPH::BodyID> touching = scene.Physics().OverlapCapsule(capsule);
     ASSERT_EQ(std::find(touching.begin(), touching.end(), rig.targetBox->BodyId()), touching.end());
@@ -2352,17 +2352,17 @@ TEST(LaunchedBody, DoesNotFlyWithoutCollider)
 // 飛ばされた物の重力は自機の上昇重力と同じ値
 TEST(LaunchedBody, FallsAtThePlayersUpwardGravity)
 {
-    NS::Physics::PhysicsScene physics;
+    NS::Phys::PhysicsScene physics;
     NS::Core::Sphere ball;
     ball.center = Vector3{0.0f, 50.0f, 0.0f};
     ball.radius = 0.5f;
-    const JPH::BodyID body = physics.AddDynamicSphere(ball, NS::Physics::DynamicBodyDesc{});
+    const JPH::BodyID body = physics.AddDynamicSphere(ball, NS::Phys::DynamicBodyDesc{});
     physics.OptimizeBroadPhase();
 
     physics.Update(k_FixedDt);
     const float fallenSpeed = physics.BodyVelocity(body).y;
 
-    NS::Object::GameObject probe;
+    NS::Obj::GameObject probe;
     auto& player = *probe.AddComponent<NS::Game::Player::PlayerComponent>();
     EXPECT_NEAR(fallenSpeed / k_FixedDt, NsTest::ReadTuningField(player, "上昇重力"), 1.0f);
 }

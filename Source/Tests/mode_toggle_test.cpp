@@ -19,35 +19,35 @@
 namespace
 {
     // 接触クリアの印だけを持つゴールを組む
-    NS::Object::ObjectData MakeGoal(float x, float y, float z)
+    NS::Obj::ObjectData MakeGoal(float x, float y, float z)
     {
-        NS::Object::ObjectData object;
-        NS::Object::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
-        object.components.push_back(NS::Object::MakeComponentEntry("GoalComponent"));
+        NS::Obj::ObjectData object;
+        NS::Obj::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
+        object.components.push_back(NS::Obj::MakeComponentEntry("GoalComponent"));
         return object;
     }
 
     // プレイヤーと同じ場所に置くトリガの hazard 箱を組む
-    NS::Object::ObjectData MakeTriggerHazard()
+    NS::Obj::ObjectData MakeTriggerHazard()
     {
-        NS::Object::ObjectData object;
-        nlohmann::json box = NS::Object::MakeComponentEntry("BoxColliderComponent");
-        NS::Object::SetField(box, "トリガー", true);
-        object.components = nlohmann::json::array({std::move(box), NS::Object::MakeComponentEntry("HazardComponent")});
+        NS::Obj::ObjectData object;
+        nlohmann::json box = NS::Obj::MakeComponentEntry("BoxColliderComponent");
+        NS::Obj::SetField(box, "トリガー", true);
+        object.components = nlohmann::json::array({std::move(box), NS::Obj::MakeComponentEntry("HazardComponent")});
         return object;
     }
 
-    NS::Object::ObjectData MakeRock(float x, float y, float z)
+    NS::Obj::ObjectData MakeRock(float x, float y, float z)
     {
-        NS::Object::ObjectData object;
-        NS::Object::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
-        object.components.push_back(NS::Object::MakeComponentEntry("BoxColliderComponent"));
+        NS::Obj::ObjectData object;
+        NS::Obj::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
+        object.components.push_back(NS::Obj::MakeComponentEntry("BoxColliderComponent"));
         return object;
     }
 
-    NS::Object::GameObject* FindFirstPlaced(NS::Object::ObjectList& objects)
+    NS::Obj::GameObject* FindFirstPlaced(NS::Obj::ObjectList& objects)
     {
-        for (NS::Object::GameObject* obj : objects)
+        for (NS::Obj::GameObject* obj : objects)
         {
             if (!obj->IsTransient())
                 return obj;
@@ -55,9 +55,9 @@ namespace
         return nullptr;
     }
 
-    void SetFloatField(NS::Object::Component& comp, std::string_view name, float value)
+    void SetFloatField(NS::Obj::Component& comp, std::string_view name, float value)
     {
-        const NS::Object::ReflectionInfo* info = comp.GetReflection();
+        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
         for (std::size_t i = 0; i < info->fieldCount; ++i)
         {
             if (std::string_view{info->fields[i].name} == name)
@@ -68,9 +68,9 @@ namespace
         }
     }
 
-    float GetFloatField(const NS::Object::Component& comp, std::string_view name)
+    float GetFloatField(const NS::Obj::Component& comp, std::string_view name)
     {
-        const NS::Object::ReflectionInfo* info = comp.GetReflection();
+        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
         for (std::size_t i = 0; i < info->fieldCount; ++i)
         {
             if (std::string_view{info->fields[i].name} == name)
@@ -84,7 +84,7 @@ namespace
     }
 
     // 応答 component を載せた GameObject から暗転を引く
-    NS::Game::Level::ScreenFadeComponent* FindFade(NS::Object::Scene& scene)
+    NS::Game::Level::ScreenFadeComponent* FindFade(NS::Obj::Scene& scene)
     {
         NS::Game::Level::ScreenFadeComponent* found = nullptr;
         scene.Objects().ForEachComponent<NS::Game::Level::ScreenFadeComponent>(
@@ -98,14 +98,14 @@ namespace
 
 TEST(ModeToggle, InitialModeIsEdit)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
     EXPECT_EQ(editor.CurrentMode(), LevelEditorController::Mode::Edit);
 }
 
 TEST(ModeToggle, EnterPlayDeactivatesEditor)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
     editor.EnterPlay();
     EXPECT_EQ(editor.CurrentMode(), LevelEditorController::Mode::Play);
@@ -115,7 +115,7 @@ TEST(ModeToggle, EnterPlayDeactivatesEditor)
 
 TEST(ModeToggle, EnterEditReactivatesEditor)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
     editor.EnterPlay();
     editor.EnterEdit();
@@ -126,7 +126,7 @@ TEST(ModeToggle, EnterEditReactivatesEditor)
 
 TEST(ModeToggle, RedundantEnterIsNoOp)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
     editor.EnterEdit();
     EXPECT_EQ(editor.CurrentMode(), LevelEditorController::Mode::Edit);
@@ -137,7 +137,7 @@ TEST(ModeToggle, RedundantEnterIsNoOp)
 
 TEST(ModeToggle, EditorStateIsPreservedAcrossToggle)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
     // 適用経路を grid 編集へ差す。照会と採番は実行時と同じ live 配線
     NS::Editor::ObjectSnapshotApplier applier{&scene};
@@ -160,7 +160,7 @@ TEST(ModeToggle, EditorStateIsPreservedAcrossToggle)
 
 TEST(ModeToggle, SingleFrameFlipIsComplete)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
     editor.EnterPlay();
     EXPECT_EQ(editor.CurrentMode(), LevelEditorController::Mode::Play);
@@ -170,7 +170,7 @@ TEST(ModeToggle, SingleFrameFlipIsComplete)
 
 TEST(ModeToggle, QuitToEditWhilePausedResetsPausedFlag)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
     editor.EnterPlay();
     editor.TogglePlayPause();
@@ -184,18 +184,18 @@ TEST(ModeToggle, QuitToEditWhilePausedResetsPausedFlag)
 
 TEST(ModeToggle, EditModeRebuildKeepsWorldStill)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
     NS::Editor::ObjectSnapshotApplier applier{&scene};
     editor.EnterPlay();
     editor.EnterEdit();
 
     // 編集中の構造編集で世界が組み直っても、止めた世界は動き出さない
-    NS::Object::ObjectData player = MakePlayerObject(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, NS::Core::Quaternion{});
+    NS::Obj::ObjectData player = MakePlayerObject(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, NS::Core::Quaternion{});
     const std::uint32_t playerId = scene.Objects().AllocateObjectId();
     applier.ApplyObjectSnapshot(playerId, player);
-    NS::Object::ObjectData hazard = MakeTriggerHazard();
-    NS::Object::SetObjectPosition(hazard, NS::Core::Vector3{0.0f, 2.0f, 0.0f});
+    NS::Obj::ObjectData hazard = MakeTriggerHazard();
+    NS::Obj::SetObjectPosition(hazard, NS::Core::Vector3{0.0f, 2.0f, 0.0f});
     const std::uint32_t hazardId = scene.Objects().AllocateObjectId();
     applier.ApplyObjectSnapshot(hazardId, hazard);
 
@@ -208,18 +208,18 @@ TEST(ModeToggle, EditModeRebuildKeepsWorldStill)
 
 TEST(ModeToggle, EnterPlayPlacesPlayerAtBaselinePosition)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Object::SceneData live;
+    NS::Obj::SceneData live;
     live.objects.push_back(MakePlayerObject(NS::Core::Vector3{1.0f, 1.0f, 1.0f}, NS::Core::Quaternion{}));
     scene.LoadFromData(std::move(live));
-    NS::Object::SceneData data;
+    NS::Obj::SceneData data;
     data.objects.push_back(MakePlayerObject(NS::Core::Vector3{7.0f, 2.0f, -4.0f}, NS::Core::Quaternion{}));
     scene.SetPlayBaselineForTest(std::move(data));
     editor.EnterPlay();
 
     // プレイヤーの位置は capsule 中心のワールド座標そのもので、凍結スナップショットの値がそのまま入る
-    NS::Object::GameObject* player = FindPlayer(scene.Objects());
+    NS::Obj::GameObject* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     EXPECT_NEAR(player->Root().Position().x, 7.0f, 1e-4f);
     EXPECT_NEAR(player->Root().Position().y, 2.0f, 1e-4f);
@@ -228,21 +228,21 @@ TEST(ModeToggle, EnterPlayPlacesPlayerAtBaselinePosition)
 
 TEST(ModeToggle, EnterEditRestoresPoseMovedDuringPlay)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Object::SceneData data;
+    NS::Obj::SceneData data;
     data.objects.push_back(MakeRock(1.0f, 2.0f, 3.0f));
     scene.LoadFromData(std::move(data));
     editor.EnterPlay();
 
-    NS::Object::GameObject* rock = FindFirstPlaced(scene.Objects());
+    NS::Obj::GameObject* rock = FindFirstPlaced(scene.Objects());
     ASSERT_NE(rock, nullptr);
     const std::uint32_t rockId = rock->Id();
     rock->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
 
     editor.EnterEdit();
 
-    NS::Object::GameObject* restored = scene.Objects().FindObject(NS::Object::ObjectRef{rockId});
+    NS::Obj::GameObject* restored = scene.Objects().FindObject(NS::Obj::ObjectRef{rockId});
     ASSERT_NE(restored, nullptr);
     EXPECT_NEAR(restored->Root().Position().x, 1.0f, 1e-4f);
     EXPECT_NEAR(restored->Root().Position().y, 2.0f, 1e-4f);
@@ -251,22 +251,22 @@ TEST(ModeToggle, EnterEditRestoresPoseMovedDuringPlay)
 
 TEST(ModeToggle, EnterEditRevivesObjectDestroyedDuringPlay)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Object::SceneData data;
+    NS::Obj::SceneData data;
     data.objects.push_back(MakeRock(1.0f, 2.0f, 3.0f));
     scene.LoadFromData(std::move(data));
     editor.EnterPlay();
 
-    NS::Object::GameObject* rock = FindFirstPlaced(scene.Objects());
+    NS::Obj::GameObject* rock = FindFirstPlaced(scene.Objects());
     ASSERT_NE(rock, nullptr);
     const std::uint32_t rockId = rock->Id();
     scene.DestroyObject(rockId);
-    ASSERT_EQ(scene.Objects().FindObject(NS::Object::ObjectRef{rockId}), nullptr);
+    ASSERT_EQ(scene.Objects().FindObject(NS::Obj::ObjectRef{rockId}), nullptr);
 
     editor.EnterEdit();
 
-    NS::Object::GameObject* revived = scene.Objects().FindObject(NS::Object::ObjectRef{rockId});
+    NS::Obj::GameObject* revived = scene.Objects().FindObject(NS::Obj::ObjectRef{rockId});
     ASSERT_NE(revived, nullptr);
     EXPECT_NEAR(revived->Root().Position().x, 1.0f, 1e-4f);
     EXPECT_NEAR(revived->Root().Position().y, 2.0f, 1e-4f);
@@ -275,16 +275,16 @@ TEST(ModeToggle, EnterEditRevivesObjectDestroyedDuringPlay)
 
 TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Object::SceneData data;
-    NS::Object::ObjectData rock = MakeRock(1.0f, 2.0f, 3.0f);
-    rock.components.push_back(NS::Object::MakeComponentEntry("LaunchedBodyComponent"));
+    NS::Obj::SceneData data;
+    NS::Obj::ObjectData rock = MakeRock(1.0f, 2.0f, 3.0f);
+    rock.components.push_back(NS::Obj::MakeComponentEntry("LaunchedBodyComponent"));
     data.objects.push_back(std::move(rock));
     scene.LoadFromData(std::move(data));
     editor.EnterPlay();
 
-    NS::Object::GameObject* live = FindFirstPlaced(scene.Objects());
+    NS::Obj::GameObject* live = FindFirstPlaced(scene.Objects());
     ASSERT_NE(live, nullptr);
     const std::uint32_t rockId = live->Id();
     live->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
@@ -295,7 +295,7 @@ TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
 
     editor.EnterEdit();
 
-    NS::Object::GameObject* restored = scene.Objects().FindObject(NS::Object::ObjectRef{rockId});
+    NS::Obj::GameObject* restored = scene.Objects().FindObject(NS::Obj::ObjectRef{rockId});
     ASSERT_NE(restored, nullptr);
     EXPECT_NEAR(restored->Root().Position().x, 1.0f, 1e-4f);
     EXPECT_NEAR(restored->Root().Position().y, 2.0f, 1e-4f);
@@ -307,9 +307,9 @@ TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
 
 TEST(ModeToggle, EnterEditCancelsInFlightFade)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Object::SceneData data;
+    NS::Obj::SceneData data;
     data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
@@ -330,9 +330,9 @@ TEST(ModeToggle, EnterEditCancelsInFlightFade)
 
 TEST(ModeToggle, CancelledClearDoesNotRefireAfterReenter)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Object::SceneData data;
+    NS::Obj::SceneData data;
     data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(MakeGoal(5.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));

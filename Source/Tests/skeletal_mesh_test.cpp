@@ -15,20 +15,20 @@
 
 namespace
 {
-    using NS::Graphics::InputElement;
-    using NS::Graphics::InputElementFormat;
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
-    using NS::Graphics::SkeletalMesh;
-    using NS::Graphics::SkinnedMeshDesc;
-    using NS::Graphics::SkinnedVertex;
+    using NS::Gfx::InputElement;
+    using NS::Gfx::InputElementFormat;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
+    using NS::Gfx::SkeletalMesh;
+    using NS::Gfx::SkinnedMeshDesc;
+    using NS::Gfx::SkinnedVertex;
     using NS::Core::Matrix;
     using NS::Core::Vector2;
     using NS::Core::Vector3;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
-    static_assert(std::is_base_of_v<NS::Graphics::Mesh, SkeletalMesh>, "SkeletalMesh は Mesh を基底に持つ");
+    static_assert(std::is_base_of_v<NS::Gfx::Mesh, SkeletalMesh>, "SkeletalMesh は Mesh を基底に持つ");
 
     WindowDesc MakeWindowDesc(const char* title)
     {
@@ -167,7 +167,7 @@ TEST_F(SkeletalMeshLoggerTest, EmptyDescIsInvalidWithoutFallback)
     EXPECT_EQ(mesh.IndexCount(), 0u);
 
     // 不正な mesh の Draw は何もせずクラッシュしない
-    NS::Graphics::DrawMesh(renderer.Commands(), mesh);
+    NS::Gfx::DrawMesh(renderer.Commands(), mesh);
     SUCCEED();
 }
 
@@ -192,7 +192,7 @@ TEST_F(SkeletalMeshLoggerTest, SkinnedMeshDrawDoesNotCrash)
     ASSERT_TRUE(mesh.IsValid());
 
     // ボーンパレットは mesh から外れたので、純ジオメトリとして DrawMesh できる
-    NS::Graphics::DrawMesh(renderer.Commands(), mesh);
+    NS::Gfx::DrawMesh(renderer.Commands(), mesh);
     SUCCEED();
 }
 
@@ -206,10 +206,10 @@ TEST_F(SkeletalMeshLoggerTest, SkinnedShaderCompiles)
     const auto shaderDir = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), "Shaders");
 
     // fallback でなければ skinned VS/PS のコンパイルは成功している
-    std::unique_ptr<NS::Graphics::Shader> vsHolder = NS::Graphics::Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "skinned.vs.hlsl"));
-    NS::Graphics::Shader& vs = *vsHolder;
-    std::unique_ptr<NS::Graphics::Shader> psHolder = NS::Graphics::Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "player.ps.hlsl"));
-    NS::Graphics::Shader& ps = *psHolder;
+    std::unique_ptr<NS::Gfx::Shader> vsHolder = NS::Gfx::Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "skinned.vs.hlsl"));
+    NS::Gfx::Shader& vs = *vsHolder;
+    std::unique_ptr<NS::Gfx::Shader> psHolder = NS::Gfx::Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "player.ps.hlsl"));
+    NS::Gfx::Shader& ps = *psHolder;
     EXPECT_TRUE(vs.IsValid());
     EXPECT_TRUE(ps.IsValid());
 }
@@ -235,8 +235,8 @@ TEST_F(SkeletalMeshLoggerTest, CreateInputLayoutSucceedsWithSkinnedShader)
     EXPECT_EQ(mesh.InputLayout(), nullptr);
 
     const auto shaderDir = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), "Shaders");
-    std::unique_ptr<NS::Graphics::Shader> shaderHolder = NS::Graphics::Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "skinned.vs.hlsl"));
-    NS::Graphics::Shader& shader = *shaderHolder;
+    std::unique_ptr<NS::Gfx::Shader> shaderHolder = NS::Gfx::Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "skinned.vs.hlsl"));
+    NS::Gfx::Shader& shader = *shaderHolder;
     ASSERT_TRUE(shader.IsValid());
 
     // BLENDINDICES=UInt4 を含む SkinnedInputLayout が skinned.vs の入力シグネチャと照合して生成される

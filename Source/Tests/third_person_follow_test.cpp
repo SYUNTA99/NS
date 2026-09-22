@@ -8,8 +8,8 @@
 
 namespace
 {
-    using NS::Object::GameObject;
-    using NS::Object::ThirdPersonFollowComponent;
+    using NS::Obj::GameObject;
+    using NS::Obj::ThirdPersonFollowComponent;
 
     constexpr float k_Dt = 1.0f / 60.0f;
 

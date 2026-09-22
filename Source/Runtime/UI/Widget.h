@@ -6,10 +6,10 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Renderer;
-} // namespace NS::Graphics
+} // namespace NS::Gfx
 
 namespace NS::UI
 {
@@ -86,14 +86,14 @@ namespace NS::UI
         void Layout(const WidgetRect& parent) noexcept;
 
         //! 自分と子孫を描く。scale は基準解像度 → 実ピクセルの拡縮率
-        void Draw(NS::Graphics::Renderer& renderer, float parentAlpha, float scale);
+        void Draw(NS::Gfx::Renderer& renderer, float parentAlpha, float scale);
 
         //! 点 (基準解像度単位) を自分以下の誰かが吸うか。後に描かれる子から先に見る
         [[nodiscard]] bool HitTest(float px, float py) const noexcept;
 
     protected:
         //! 自分だけを描く。rectPx は実ピクセルへ拡縮済みの矩形、alpha は親から掛かった実効値
-        virtual void OnDraw(NS::Graphics::Renderer&, const WidgetRect& /*rectPx*/, float /*alpha*/) {}
+        virtual void OnDraw(NS::Gfx::Renderer&, const WidgetRect& /*rectPx*/, float /*alpha*/) {}
 
     private:
         //! 組み上がった子を受け取って所有する。AddChild<T> だけが通る

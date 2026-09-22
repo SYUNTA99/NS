@@ -26,15 +26,15 @@ namespace NS::Editor
         }
 
         //! sizeof 外の heap 量。components の JSON 木を再帰で概算する
-        std::size_t EstimatedHeapBytes(const NS::Object::ObjectData& object) noexcept
+        std::size_t EstimatedHeapBytes(const NS::Obj::ObjectData& object) noexcept
         {
             return object.className.capacity() + EstimatedJsonBytes(object.components);
         }
     } // namespace
 
     ObjectSnapshotCommand::ObjectSnapshotCommand(std::uint32_t id,
-                                                 std::optional<NS::Object::ObjectData> before,
-                                                 std::optional<NS::Object::ObjectData> after) noexcept
+                                                 std::optional<NS::Obj::ObjectData> before,
+                                                 std::optional<NS::Obj::ObjectData> after) noexcept
         : m_id(id), m_before(std::move(before)), m_after(std::move(after))
     {}
 

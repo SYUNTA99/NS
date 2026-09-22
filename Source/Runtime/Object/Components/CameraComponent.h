@@ -4,16 +4,16 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Renderer;
 }
 
-namespace NS::Object
+namespace NS::Obj
 {
     struct CameraPose;
 
-    //! @brief NS::Graphics::Camera を value member で内包する Component
+    //! @brief NS::Gfx::Camera を value member で内包する Component
     //! @details Getter / Setter は内包 Camera への薄いラッパー
     //! view forward の XZ 成分は PlayerInput が camera 相対移動入力の参照に使う
     class CameraComponent : public Component
@@ -27,7 +27,7 @@ namespace NS::Object
         void SetUp(const NS::Core::Vector3& up) noexcept;
         void SetFovY(NS::Core::Radians fov) noexcept;
         void SetAspectRatio(float aspect) noexcept;
-        void SetAspectRatioFromRenderer(const NS::Graphics::Renderer& renderer) noexcept;
+        void SetAspectRatioFromRenderer(const NS::Gfx::Renderer& renderer) noexcept;
         void SetNearPlane(float nearPlane) noexcept;
         void SetFarPlane(float farPlane) noexcept;
 
@@ -40,8 +40,8 @@ namespace NS::Object
         [[nodiscard]] NS::Core::Radians FovY() const noexcept { return m_camera.FovY(); }
 
         //! 内包 Camera への変更不可参照。skybox 描画とカメラ位置を読むのに使う
-        [[nodiscard]] const NS::Graphics::Camera& Camera() const noexcept { return m_camera; }
-        [[nodiscard]] NS::Graphics::Camera& Camera() noexcept { return m_camera; }
+        [[nodiscard]] const NS::Gfx::Camera& Camera() const noexcept { return m_camera; }
+        [[nodiscard]] NS::Gfx::Camera& Camera() noexcept { return m_camera; }
 
         [[nodiscard]] NS::Core::Matrix ViewProjection() const noexcept { return m_camera.ViewProjection(); }
 
@@ -52,6 +52,6 @@ namespace NS::Object
         NS_REFLECT_NONE(CameraComponent, Component)
 
     private:
-        NS::Graphics::Camera m_camera; // 内包する実カメラ
+        NS::Gfx::Camera m_camera; // 内包する実カメラ
     };
-} // namespace NS::Object
+} // namespace NS::Obj

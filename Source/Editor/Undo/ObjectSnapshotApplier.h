@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <optional>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class Scene;
 }
@@ -20,16 +20,16 @@ namespace NS::Editor
     class ObjectSnapshotApplier final : public IObjectSnapshotApplier
     {
     public:
-        explicit ObjectSnapshotApplier(NS::Object::Scene* scene) noexcept : m_scene(scene) {}
+        explicit ObjectSnapshotApplier(NS::Obj::Scene* scene) noexcept : m_scene(scene) {}
 
         //! objectId の現在の姿を写す。居なければ nullopt。シーン未設定も nullopt
-        [[nodiscard]] std::optional<NS::Object::ObjectData> CaptureObject(std::uint32_t objectId) const override;
+        [[nodiscard]] std::optional<NS::Obj::ObjectData> CaptureObject(std::uint32_t objectId) const override;
 
         //! objectId を desired の姿へ揃える。シーン未設定なら何もしない
         void ApplyObjectSnapshot(std::uint32_t objectId,
-                                 const std::optional<NS::Object::ObjectData>& desired) override;
+                                 const std::optional<NS::Obj::ObjectData>& desired) override;
 
     private:
-        NS::Object::Scene* m_scene = nullptr; // 編集対象のシーン、非所有
+        NS::Obj::Scene* m_scene = nullptr; // 編集対象のシーン、非所有
     };
 } // namespace NS::Editor

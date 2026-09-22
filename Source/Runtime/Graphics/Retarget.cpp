@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <utility>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     std::string NormalizeBoneName(std::string_view raw)
     {
@@ -88,4 +88,4 @@ namespace NS::Graphics
         }
         return bound;
     }
-} // namespace NS::Graphics
+} // namespace NS::Gfx

@@ -21,7 +21,7 @@
 #include <memory>
 #include <new>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     namespace
@@ -690,4 +690,4 @@ namespace NS::Graphics
         return *m_commands;
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

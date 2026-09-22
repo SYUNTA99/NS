@@ -23,7 +23,7 @@ namespace NS::Game::Player
         return m_machine.IsBuilt();
     }
 
-    bool PlayerStateManagerComponent::ChangeToState(NS::Object::StateId id)
+    bool PlayerStateManagerComponent::ChangeToState(NS::Obj::StateId id)
     {
         if (m_player == nullptr)
         {
@@ -32,7 +32,7 @@ namespace NS::Game::Player
         return m_machine.Change(*m_player, id);
     }
 
-    NS::Object::StateId PlayerStateManagerComponent::CurrentStateId() const noexcept
+    NS::Obj::StateId PlayerStateManagerComponent::CurrentStateId() const noexcept
     {
         return m_machine.CurrentId();
     }

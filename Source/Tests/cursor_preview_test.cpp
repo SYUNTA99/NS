@@ -16,10 +16,10 @@ TEST(CursorPreview, RendersAABBToDebugDrawWhenCursorValid)
     state.placementBlocked = false;
     editor.SetCursorForTest(state);
 
-    NS::Graphics::DebugDraw::Clear();
+    NS::Gfx::DebugDraw::Clear();
     editor.RenderCursorPreview();
 
-    EXPECT_GT(NS::Graphics::DebugDraw::VertexCount(), 0u);
+    EXPECT_GT(NS::Gfx::DebugDraw::VertexCount(), 0u);
 }
 
 TEST(CursorPreview, DoesNothingWhenCursorInvalid)
@@ -31,10 +31,10 @@ TEST(CursorPreview, DoesNothingWhenCursorInvalid)
     state.valid = false;
     editor.SetCursorForTest(state);
 
-    NS::Graphics::DebugDraw::Clear();
+    NS::Gfx::DebugDraw::Clear();
     editor.RenderCursorPreview();
 
-    EXPECT_EQ(NS::Graphics::DebugDraw::VertexCount(), 0u);
+    EXPECT_EQ(NS::Gfx::DebugDraw::VertexCount(), 0u);
 }
 
 TEST(CursorPreview, DoesNothingWhenInactive)
@@ -47,8 +47,8 @@ TEST(CursorPreview, DoesNothingWhenInactive)
     state.placementCenter = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
     editor.SetCursorForTest(state);
 
-    NS::Graphics::DebugDraw::Clear();
+    NS::Gfx::DebugDraw::Clear();
     editor.RenderCursorPreview();
 
-    EXPECT_EQ(NS::Graphics::DebugDraw::VertexCount(), 0u);
+    EXPECT_EQ(NS::Gfx::DebugDraw::VertexCount(), 0u);
 }

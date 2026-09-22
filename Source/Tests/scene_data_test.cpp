@@ -6,7 +6,7 @@
 #include <gtest/gtest.h>
 
 namespace LevelNs = NS::Game::Level;
-namespace SceneNs = NS::Object;
+namespace SceneNs = NS::Obj;
 
 namespace
 {

@@ -24,7 +24,7 @@
 #include <vector>
 
 namespace LevelNs = NS::Game::Level;
-namespace SceneNs = NS::Object;
+namespace SceneNs = NS::Obj;
 namespace EditorNs = NS::Editor;
 
 namespace
@@ -480,7 +480,7 @@ TEST(EnsurePlayableObjects, SynthesizesFollowCameraTargetingExistingPlayer)
     EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "追従対象").id, playerId);
     // データが持つのは誰を追うかだけ。遠景を抑える投影値は component のコード既定を使う
     EXPECT_FALSE(SceneNs::HasField(*comp, "ファークリップ"));
-    NS::Object::ThirdPersonFollowComponent live;
+    NS::Obj::ThirdPersonFollowComponent live;
     EXPECT_FLOAT_EQ(live.FarPlane(), 100.0f);
 }
 

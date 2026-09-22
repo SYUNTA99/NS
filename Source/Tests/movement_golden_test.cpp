@@ -26,7 +26,7 @@ namespace
     using NS::Game::Player::FallPlayerState;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Object::GameObject;
+    using NS::Obj::GameObject;
     using NS::Tests::CompareTraces;
     using NS::Tests::DescribeDiff;
     using NS::Tests::FoldTrace;
@@ -61,7 +61,7 @@ namespace
 
     //! 自機 2 部品を載せて OnStart まで通す。積む順は Player のコンストラクタと同じ
     //! @details 開始位置は空中に取り、数フレームの自然落下で着地させる
-    PlayerComponent& SetUpMovement(GameObject& owner, NS::Physics::PhysicsScene& physics, const Vector3& startPosition)
+    PlayerComponent& SetUpMovement(GameObject& owner, NS::Phys::PhysicsScene& physics, const Vector3& startPosition)
     {
         auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
         auto& movement = *owner.AddComponent<PlayerComponent>();
@@ -84,7 +84,7 @@ namespace
     {
         NsTest::EntityStage stage;
         GameObject& owner = stage.owner;
-        NS::Physics::PhysicsScene& physics = stage.physics;
+        NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{16.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, physics, Vector3{0.0f, 1.0f, 0.0f});
 
@@ -108,7 +108,7 @@ namespace
     {
         NsTest::EntityStage stage;
         GameObject& owner = stage.owner;
-        NS::Physics::PhysicsScene& physics = stage.physics;
+        NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{32.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, physics, Vector3{0.0f, 1.0f, 0.0f});
 
@@ -131,7 +131,7 @@ namespace
     {
         NsTest::EntityStage stage;
         GameObject& owner = stage.owner;
-        NS::Physics::PhysicsScene& physics = stage.physics;
+        NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{2.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, physics, Vector3{0.0f, 1.0f, 0.0f});
 
@@ -166,7 +166,7 @@ namespace
     {
         NsTest::EntityStage stage;
         GameObject& owner = stage.owner;
-        NS::Physics::PhysicsScene& physics = stage.physics;
+        NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, physics, Vector3{0.0f, 3.0f, 0.0f});
 
@@ -192,7 +192,7 @@ namespace
     {
         NsTest::EntityStage stage;
         GameObject& owner = stage.owner;
-        NS::Physics::PhysicsScene& physics = stage.physics;
+        NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
         NsTest::AddBox(physics, AABB{Vector3{6.0f, 1.5f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
         auto& movement = SetUpMovement(owner, physics, Vector3{0.0f, 1.0f, 0.0f});
@@ -214,7 +214,7 @@ namespace
     {
         NsTest::EntityStage stage;
         GameObject& owner = stage.owner;
-        NS::Physics::PhysicsScene& physics = stage.physics;
+        NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}});
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, 1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, -1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
@@ -265,12 +265,12 @@ namespace
 
         NsTest::EntityStage stage;
         GameObject& owner = stage.owner;
-        NS::Physics::PhysicsScene& physics = stage.physics;
-        const std::array<NS::Physics::Triangle, 2> slope{
-            NS::Physics::Triangle{lowLeft, highRight, lowRight},
-            NS::Physics::Triangle{lowLeft, highLeft, highRight},
+        NS::Phys::PhysicsScene& physics = stage.physics;
+        const std::array<NS::Phys::Triangle, 2> slope{
+            NS::Phys::Triangle{lowLeft, highRight, lowRight},
+            NS::Phys::Triangle{lowLeft, highLeft, highRight},
         };
-        physics.AddMesh(slope, NS::Physics::ObjectLayers::Terrain);
+        physics.AddMesh(slope, NS::Phys::ObjectLayers::Terrain);
         auto& movement = SetUpMovement(owner, physics, Vector3{0.0f, 2.5f, -10.5f});
 
         std::vector<StepRecord> trajectory;

@@ -5,7 +5,7 @@
 #include "Runtime/Core/Sphere.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! @brief 球 collider を Scene に登録する Component
     //! @details owner の world 変換から中心と scale 込み半径を備えた WorldSphere を返す
@@ -42,9 +42,9 @@ namespace NS::Object
 
     private:
         // world 座標の球を body 1 個として入れる
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
 
         float m_radius = 0.5f;                              // 球の半径 (owner scale 前)
         NS::Core::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f}; // owner local 空間での中心オフセット
     };
-} // namespace NS::Object
+} // namespace NS::Obj

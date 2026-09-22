@@ -8,7 +8,7 @@
 
 #include <memory>
 
-namespace NS::Physics
+namespace NS::Phys
 {
     class PhysicsScene;
 
@@ -52,4 +52,4 @@ namespace NS::Physics
     //! @param[in] normalY 単位法線の Y 成分
     //! @return 歩いて登れる場合 true、それ以外の場合は false
     [[nodiscard]] bool IsWalkableNormal(float normalY) noexcept;
-} // namespace NS::Physics
+} // namespace NS::Phys

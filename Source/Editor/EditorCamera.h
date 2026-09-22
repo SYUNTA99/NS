@@ -39,7 +39,7 @@ namespace NS::Editor
         void Tick() noexcept;
 
         //! 現在姿勢と投影設定をまとめた pose を返す
-        [[nodiscard]] NS::Object::CameraPose Pose() const noexcept;
+        [[nodiscard]] NS::Obj::CameraPose Pose() const noexcept;
 
         //! 投影設定。Pose() が返す pose に載せる
         void SetFovY(NS::Core::Radians fov) noexcept { m_fovY = fov; }

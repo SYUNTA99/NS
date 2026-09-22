@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Physics
+namespace NS::Phys
 {
     std::array<Triangle, 8> BuildWedgeTriangles(const NS::Core::Vector3& center,
                                                 const NS::Core::Vector3& halfExtents,
@@ -46,4 +46,4 @@ namespace NS::Physics
             Triangle{fBR, bTR, bBR},
         };
     }
-} // namespace NS::Physics
+} // namespace NS::Phys

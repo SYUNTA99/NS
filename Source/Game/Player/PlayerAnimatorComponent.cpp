@@ -14,12 +14,12 @@ namespace NS::Game::Player
     // 移動 (Update) と骨を回す SkeletalAnimationComponent (Update + 100) の間ならどこでもよい
     // 真ん中に置いて両側へ足せる幅を残す
     PlayerAnimatorComponent::PlayerAnimatorComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::Update + 50)
+        : NS::Obj::Component(NS::Obj::TickPriority::Update + 50)
     {}
 
     void PlayerAnimatorComponent::OnStart()
     {
-        NS::Object::Component::OnStart();
+        NS::Obj::Component::OnStart();
 
         if (Owner() == nullptr)
         {
@@ -28,7 +28,7 @@ namespace NS::Game::Player
 
         m_player = Owner()->FindComponent<PlayerComponent>();
         m_states = Owner()->FindComponent<PlayerStateManagerComponent>();
-        m_animation = Owner()->FindComponent<NS::Object::SkeletalAnimationComponent>();
+        m_animation = Owner()->FindComponent<NS::Obj::SkeletalAnimationComponent>();
     }
 
     void PlayerAnimatorComponent::OnUpdate()

@@ -5,7 +5,7 @@
 #include "Runtime/Graphics/Mesh.h"
 #include "Runtime/Graphics/Renderer.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     void IssueDrawItem(Renderer& renderer, const DrawItem& item) noexcept
     {
@@ -35,4 +35,4 @@ namespace NS::Graphics
         DrawMesh(cmd, *item.mesh);
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

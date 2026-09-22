@@ -13,9 +13,9 @@
 namespace
 {
     // 地形ブロックを指定数だけ並べたレベルデータ
-    NS::Object::SceneData MakeLevel(std::int16_t cellCount)
+    NS::Obj::SceneData MakeLevel(std::int16_t cellCount)
     {
-        NS::Object::SceneData data;
+        NS::Obj::SceneData data;
         for (std::int16_t i = 0; i < cellCount; ++i)
         {
             data.objects.push_back(NS::Game::Level::MakeCellObject(i, 0, 0));
@@ -26,10 +26,10 @@ namespace
 
 TEST(SceneSwap, SwapReplacesObjectListContents)
 {
-    NS::Object::SceneManager manager;
+    NS::Obj::SceneManager manager;
     manager.LoadScene(MakeLevel(3));
 
-    NS::Object::Scene& swapped = manager.LoadScene(MakeLevel(1));
+    NS::Obj::Scene& swapped = manager.LoadScene(MakeLevel(1));
 
     EXPECT_EQ(&swapped, manager.Current());
     // データの分 + シーンに常駐するカメラ 1 体
@@ -38,10 +38,10 @@ TEST(SceneSwap, SwapReplacesObjectListContents)
 
 TEST(SceneSwap, SwappedSceneKeepsRunning)
 {
-    NS::Object::SceneManager manager;
+    NS::Obj::SceneManager manager;
     manager.LoadScene(MakeLevel(1));
 
-    NS::Object::Scene& swapped = manager.LoadScene(MakeLevel(2));
+    NS::Obj::Scene& swapped = manager.LoadScene(MakeLevel(2));
 
     // 差し替え後の scene が動くことを、1 tick 回して確かめる
     EXPECT_TRUE(swapped.IsSimulationEnabled());
@@ -53,10 +53,10 @@ TEST(SceneSwap, SwappedSceneKeepsRunning)
 
 TEST(SceneSwap, SwapAfterUnloadStartsFresh)
 {
-    NS::Object::SceneManager manager;
+    NS::Obj::SceneManager manager;
     manager.LoadScene(MakeLevel(3));
     manager.UnloadScene();
 
-    NS::Object::Scene& reloaded = manager.LoadScene(MakeLevel(1));
+    NS::Obj::Scene& reloaded = manager.LoadScene(MakeLevel(1));
     EXPECT_EQ(reloaded.Objects().ObjectCount(), 2u);
 }

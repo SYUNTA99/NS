@@ -5,10 +5,10 @@
 
 #include <cstdint>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class GameObject;
-} // namespace NS::Object
+} // namespace NS::Obj
 
 namespace NS::Game::Player
 {
@@ -25,11 +25,11 @@ namespace NS::Game::Level
     //! @details 帯は Update より前。PlayerComponent が動く前にその 1 固定ステップの結末を決めるので、
     //! 壁の手前で止められて速度を消された後から結果を推測し直さずに済む
     //! 相手は PhysicsScene::OverlapCapsule で重なった body を集め、ObjectList::ForEachComponent で回した
-    //! BreakableComponent の body と照合して決める。NS::Physics は NS::Object を知らないので、
+    //! BreakableComponent の body と照合して決める。NS::Phys は NS::Obj を知らないので、
     //! body から持ち主を引く関数は無い
     //! 衝突の瞬間は自機を数固定ステップ止め、反発・発射・破壊を明けたフレームへ保留する
     //! 依存: NS::Game::Player::PlayerComponent, BreakableComponent, LaunchedBodyComponent, CollisionInputComponent
-    class ImpactResolverComponent : public NS::Object::OverlayRendererComponent
+    class ImpactResolverComponent : public NS::Obj::OverlayRendererComponent
     {
     public:
         ImpactResolverComponent() noexcept;
@@ -62,13 +62,13 @@ namespace NS::Game::Level
         void OnEndPlay() override;
 
         //! ピークで当てた直後だけ、フレームごとに減衰する白を画面全体へ重ねる
-        void OnRenderOverlay(const NS::Graphics::RenderContext& ctx) override;
+        void OnRenderOverlay(const NS::Gfx::RenderContext& ctx) override;
 
         //! 潰した形で凍結中か、伸びから元の形へ戻している途中の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsScaleAnimating() const noexcept { return m_scaleHeld || m_recoverRemaining > 0; }
 
         // 返り方は当てた時の手触りそのもの。プレイ中に Inspector で触って詰められるよう公開する
-        NS_REFLECT_BEGIN(ImpactResolverComponent, NS::Object::OverlayRendererComponent)
+        NS_REFLECT_BEGIN(ImpactResolverComponent, NS::Obj::OverlayRendererComponent)
         NS_REFLECT_FIELD(m_reboundSpeed, "反発基準初速")
         NS_REFLECT_FIELD(m_reboundUpSpeed, "反発の上向き初速")
         NS_REFLECT_FIELD(m_launchSpeed, "押し飛ばし基準初速")

@@ -37,11 +37,11 @@ namespace
     // 描画用のリソース一式
     struct LineBackend
     {
-        std::unique_ptr<NS::Graphics::Shader> vs;
-        std::unique_ptr<NS::Graphics::Shader> ps;
-        NS::Graphics::ComPtr<ID3D11InputLayout> inputLayout;
-        std::unique_ptr<NS::Graphics::Buffer> vb;
-        std::unique_ptr<NS::Graphics::Buffer> cb;
+        std::unique_ptr<NS::Gfx::Shader> vs;
+        std::unique_ptr<NS::Gfx::Shader> ps;
+        NS::Gfx::ComPtr<ID3D11InputLayout> inputLayout;
+        std::unique_ptr<NS::Gfx::Buffer> vb;
+        std::unique_ptr<NS::Gfx::Buffer> cb;
         bool initAttempted = false;
         bool valid = false;
     };
@@ -61,7 +61,7 @@ namespace
         }
         b.initAttempted = true;
 
-        ID3D11Device* device = NS::Graphics::Gpu().device;
+        ID3D11Device* device = NS::Gfx::Gpu().device;
         if (device == nullptr)
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: グローバル Device が無効");
@@ -69,8 +69,8 @@ namespace
         }
 
         const std::string shaderDir = ::NS::Platform::FileSystem::Combine(::NS::Platform::FileSystem::ContentRoot(), "Shaders");
-        b.vs = NS::Graphics::Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "debug_line.vs.hlsl"));
-        b.ps = NS::Graphics::Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "debug_line.ps.hlsl"));
+        b.vs = NS::Gfx::Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "debug_line.vs.hlsl"));
+        b.ps = NS::Gfx::Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "debug_line.ps.hlsl"));
         if (!b.vs->IsValid() || !b.ps->IsValid())
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: shader 構築失敗");
@@ -90,9 +90,9 @@ namespace
             return false;
         }
 
-        b.vb = NS::Graphics::Buffer::Create(
-            NS::Graphics::MakeVertexBufferDesc(nullptr, k_MaxVertices, sizeof(DebugVertex), D3D11_USAGE_DYNAMIC));
-        b.cb = NS::Graphics::Buffer::Create(NS::Graphics::MakeConstantBufferDesc(sizeof(NS::Core::Matrix)));
+        b.vb = NS::Gfx::Buffer::Create(
+            NS::Gfx::MakeVertexBufferDesc(nullptr, k_MaxVertices, sizeof(DebugVertex), D3D11_USAGE_DYNAMIC));
+        b.cb = NS::Gfx::Buffer::Create(NS::Gfx::MakeConstantBufferDesc(sizeof(NS::Core::Matrix)));
         if (!b.vb->IsValid() || !b.cb->IsValid())
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: VB / CB 構築失敗");
@@ -138,7 +138,7 @@ namespace
     }
 } // namespace
 
-namespace NS::Graphics::DebugDraw
+namespace NS::Gfx::DebugDraw
 {
     void Line(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept
     {
@@ -341,4 +341,4 @@ namespace NS::Graphics::DebugDraw
     {
         return Storage().size();
     }
-} // namespace NS::Graphics::DebugDraw
+} // namespace NS::Gfx::DebugDraw

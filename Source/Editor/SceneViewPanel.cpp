@@ -106,7 +106,7 @@ namespace NS::Editor
         m_freeFlying = false;
     }
 
-    std::optional<NS::Object::SceneView> SceneViewPanel::CollectView(LevelEditorController& editor) noexcept
+    std::optional<NS::Obj::SceneView> SceneViewPanel::CollectView(LevelEditorController& editor) noexcept
     {
         return m_surface.CollectView(editor.SceneViewPose());
     }

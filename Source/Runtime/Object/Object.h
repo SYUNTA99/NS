@@ -6,7 +6,7 @@
 #include <string>
 #include <utility>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class ObjectList;
 
@@ -50,4 +50,4 @@ namespace NS::Object
         static void SetId(Object& object, std::uint32_t id) noexcept { object.SetId(id); }
     };
 
-} // namespace NS::Object
+} // namespace NS::Obj

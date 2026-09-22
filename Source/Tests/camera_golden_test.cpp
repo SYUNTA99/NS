@@ -24,14 +24,14 @@ namespace
 {
     using NS::Core::AABB;
     using NS::Core::Vector3;
-    using NS::Object::CameraBrainComponent;
-    using NS::Object::CameraComponent;
-    using NS::Object::CameraPose;
+    using NS::Obj::CameraBrainComponent;
+    using NS::Obj::CameraComponent;
+    using NS::Obj::CameraPose;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Object::GameObject;
-    using NS::Object::PlacedVirtualCamera;
-    using NS::Object::ThirdPersonFollowComponent;
+    using NS::Obj::GameObject;
+    using NS::Obj::PlacedVirtualCamera;
+    using NS::Obj::ThirdPersonFollowComponent;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
@@ -102,7 +102,7 @@ namespace
     {
         NsTest::EntityStage stage;
         GameObject& player = stage.owner;
-        NS::Physics::PhysicsScene& physics = stage.physics;
+        NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 8.0f}});
         player.AddComponent<PlayerStateManagerComponent>();
         auto& movement = *player.AddComponent<PlayerComponent>();

@@ -14,7 +14,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Camera;
 
@@ -97,4 +97,4 @@ namespace NS::Graphics
         std::string m_effectRoot;
         float m_elapsedSeconds = 0.0f;
     };
-} // namespace NS::Graphics
+} // namespace NS::Gfx

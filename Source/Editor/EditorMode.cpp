@@ -59,7 +59,7 @@ namespace NS::Editor
 
     bool EditorMode::HasObjectAtCell(std::int16_t x, std::int16_t y, std::int16_t z) const noexcept
     {
-        return m_findCellObject && m_findCellObject(x, y, z) != NS::Object::k_NoObjectId;
+        return m_findCellObject && m_findCellObject(x, y, z) != NS::Obj::k_NoObjectId;
     }
 
     void EditorMode::Tick() noexcept
@@ -153,8 +153,8 @@ namespace NS::Editor
         (void)EnsureScenesDirectoryExists();
 
         // 保存の出所は live 実体。捕捉関数で実体から SceneData を作って書く
-        const NS::Object::SceneData snapshot = m_captureLevel();
-        const bool ok = NS::Object::SaveSceneToJsonFile(snapshot, *path);
+        const NS::Obj::SceneData snapshot = m_captureLevel();
+        const bool ok = NS::Obj::SaveSceneToJsonFile(snapshot, *path);
         if (ok)
         {
             m_currentLevelName = safe;
@@ -229,8 +229,8 @@ namespace NS::Editor
                 break;
             }
 
-            NS::Object::SceneData fresh;
-            const bool ok = NS::Object::LoadSceneFromJsonFile(fresh, *path);
+            NS::Obj::SceneData fresh;
+            const bool ok = NS::Obj::LoadSceneFromJsonFile(fresh, *path);
             if (ok)
             {
                 // プレイヤー / 追従カメラ / 落下死体積が欠けたレベルには既定の 1 体を補う
@@ -306,7 +306,7 @@ namespace NS::Editor
             cursorColor = k_CursorBlockedColor;
         }
 
-        NS::Graphics::DebugDraw::AABB(placeBox, cursorColor);
+        NS::Gfx::DebugDraw::AABB(placeBox, cursorColor);
 
 #if NS_EDITOR_ENABLED
         if (m_camera == nullptr)
@@ -467,15 +467,15 @@ namespace NS::Editor
         }();
 
         // パレット雛形を cell 座標と回転 step だけ書き込んで 1 体分の姿を作る
-        NS::Object::ObjectData placed = m_palette.CurrentTemplate();
-        NS::Object::SetObjectPosition(
+        NS::Obj::ObjectData placed = m_palette.CurrentTemplate();
+        NS::Obj::SetObjectPosition(
             placed, NS::Core::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
         NS::Editor::SetCellRotationStep(placed, rotation);
 
         // 既存 cell は同じ永続 id で置換、空 cell は新規採番
-        std::optional<NS::Object::ObjectData> before;
+        std::optional<NS::Obj::ObjectData> before;
         std::uint32_t id = m_findCellObject(x, y, z);
-        if (id != NS::Object::k_NoObjectId)
+        if (id != NS::Obj::k_NoObjectId)
         {
             before = m_applier->CaptureObject(id);
         }
@@ -498,11 +498,11 @@ namespace NS::Editor
         }
 
         const std::uint32_t id = m_findCellObject(x, y, z);
-        if (id == NS::Object::k_NoObjectId)
+        if (id == NS::Obj::k_NoObjectId)
         {
             return;
         }
-        std::optional<NS::Object::ObjectData> before = m_applier->CaptureObject(id);
+        std::optional<NS::Obj::ObjectData> before = m_applier->CaptureObject(id);
         if (!before)
         {
             return;
@@ -520,16 +520,16 @@ namespace NS::Editor
         }
 
         const std::uint32_t id = m_findCellObject(x, y, z);
-        if (id == NS::Object::k_NoObjectId)
+        if (id == NS::Obj::k_NoObjectId)
         {
             return;
         }
-        std::optional<NS::Object::ObjectData> before = m_applier->CaptureObject(id);
+        std::optional<NS::Obj::ObjectData> before = m_applier->CaptureObject(id);
         if (!before || !NS::Editor::IsRotatableObject(*before))
         {
             return;
         }
-        NS::Object::ObjectData after = *before;
+        NS::Obj::ObjectData after = *before;
         const std::uint8_t step = NS::Editor::CellRotationStep(*before);
         NS::Editor::SetCellRotationStep(after, RotateMod4(step, std::int8_t{1}));
         m_undo.Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(*before), std::move(after)),

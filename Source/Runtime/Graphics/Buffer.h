@@ -4,7 +4,7 @@
 
 #include <cstddef>
 #include <memory>
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Buffer;
     //! バッファ構築パラメータ。役割は D3D11_BIND_* の bindFlags で表す
@@ -72,4 +72,4 @@ namespace NS::Graphics
     //! 定数バッファ用 BufferDesc を作成する。usage = Dynamic、bind = CONSTANT、byteSize はコンストラクタが 16 切り上げ
     //! @param[in] byteSize 構造体のバイト数。内部で 16 バイト境界へ切り上げる
     [[nodiscard]] BufferDesc MakeConstantBufferDesc(std::size_t byteSize) noexcept;
-} // namespace NS::Graphics
+} // namespace NS::Gfx

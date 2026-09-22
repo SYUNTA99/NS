@@ -56,7 +56,7 @@ namespace NS::App
             return;
         }
 
-        m_renderer = std::make_unique<NS::Graphics::Renderer>(desc.renderer, *m_window);
+        m_renderer = std::make_unique<NS::Gfx::Renderer>(desc.renderer, *m_window);
         if (!m_renderer->IsValid())
         {
             NS_LOG_ERROR(App, "Application: Renderer 構築失敗");
@@ -94,12 +94,12 @@ namespace NS::App
         return *m_window;
     }
 
-    NS::Graphics::Renderer& Application::Renderer() noexcept
+    NS::Gfx::Renderer& Application::Renderer() noexcept
     {
         return *m_renderer;
     }
 
-    const NS::Graphics::Renderer& Application::Renderer() const noexcept
+    const NS::Gfx::Renderer& Application::Renderer() const noexcept
     {
         return *m_renderer;
     }
@@ -114,13 +114,13 @@ namespace NS::App
         return NS::Platform::Input::Get();
     }
 
-    NS::Object::AssetManager& Application::Assets() noexcept
+    NS::Obj::AssetManager& Application::Assets() noexcept
     {
         NS_ASSERT(App, m_assets, "Init 前 / Shutdown 後に Assets() を呼んでいる");
         return *m_assets;
     }
 
-    const NS::Object::AssetManager& Application::Assets() const noexcept
+    const NS::Obj::AssetManager& Application::Assets() const noexcept
     {
         NS_ASSERT(App, m_assets, "Init 前 / Shutdown 後に Assets() を呼んでいる");
         return *m_assets;
@@ -161,7 +161,7 @@ namespace NS::App
         NS::Platform::FrameTimer::Reset();
 
         // アセットマネージャーを準備する
-        m_assets = std::make_unique<NS::Object::AssetManager>(NS::Platform::FileSystem::ContentRoot());
+        m_assets = std::make_unique<NS::Obj::AssetManager>(NS::Platform::FileSystem::ContentRoot());
         m_assets->RegisterBuiltins();
         m_assets->RegisterSharedMaterials();
 

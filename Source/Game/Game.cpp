@@ -57,10 +57,10 @@ void Game::OnAttach()
     if (!LoadScene("new_scene"))
     {
         NS_LOG_ERROR(Game, "起動シーンを読めなかった。 空のシーンで立ち上げる");
-        (void)m_scenes.LoadScene(NS::Object::SceneData{});
+        (void)m_scenes.LoadScene(NS::Obj::SceneData{});
     }
 
-    NS::Object::Scene* scene = m_scenes.Current();
+    NS::Obj::Scene* scene = m_scenes.Current();
     if (scene == nullptr)
     {
         NS_LOG_ERROR(Game, "Game::OnAttach: シーンが立たなかった");
@@ -71,8 +71,8 @@ void Game::OnAttach()
     (void)scene->BeginPlayBaseline();
 
     // 追従カメラは生成直後は休止している。出荷はプレイしかないので起動で有効化する
-    scene->Objects().ForEachComponent<NS::Object::ThirdPersonFollowComponent>(
-        [](NS::Object::ThirdPersonFollowComponent& follow) { follow.SetActive(true); });
+    scene->Objects().ForEachComponent<NS::Obj::ThirdPersonFollowComponent>(
+        [](NS::Obj::ThirdPersonFollowComponent& follow) { follow.SetActive(true); });
 
     // カーソルを消し、マウスを相対モードにして視点操作をカーソル位置から切り離す
     // Esc で出すまで非表示のまま。出し直しは OnUpdate の Esc 処理が行う
@@ -90,7 +90,7 @@ void Game::OnUpdate()
 {
     // プレイ中の Esc は 2 段階。1 回目で隠したカーソルを出し、出ている状態の 2 回目で終了する
     // カーソルの状態がそのまま段階の記録になる。世界が止まっている編集モードの Esc はエディタが処理する
-    const NS::Object::Scene* scene = m_scenes.Current();
+    const NS::Obj::Scene* scene = m_scenes.Current();
     if (scene != nullptr && scene->IsSimulationEnabled())
     {
         if (auto* app = NS::App::Application::Get())
@@ -135,8 +135,8 @@ bool Game::LoadScene(std::string_view sceneName)
         return false;
     }
 
-    NS::Object::SceneData data;
-    if (!NS::Object::LoadSceneFromJsonFile(data, *path))
+    NS::Obj::SceneData data;
+    if (!NS::Obj::LoadSceneFromJsonFile(data, *path))
     {
         return false;
     }
@@ -146,7 +146,7 @@ bool Game::LoadScene(std::string_view sceneName)
     return true;
 }
 
-NS::Object::Scene* Game::CurrentScene() noexcept
+NS::Obj::Scene* Game::CurrentScene() noexcept
 {
     return m_scenes.Current();
 }

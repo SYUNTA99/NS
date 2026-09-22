@@ -3,10 +3,10 @@
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/UI/Widget.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Renderer;
-} // namespace NS::Graphics
+} // namespace NS::Gfx
 
 namespace NS::UI
 {
@@ -29,7 +29,7 @@ namespace NS::UI
         void Layout(float viewportWidth, float viewportHeight) noexcept;
 
         //! 現在の描画先へ UI を重ねて描く。中身が無ければ何もしない
-        void Render(NS::Graphics::Renderer& renderer);
+        void Render(NS::Gfx::Renderer& renderer);
 
         //! 描画先ピクセル座標の点を UI が吸うか。直近 Layout の結果で判定する
         [[nodiscard]] bool ConsumesPointer(float px, float py) const noexcept;

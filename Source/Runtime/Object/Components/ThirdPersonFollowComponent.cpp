@@ -25,11 +25,11 @@ namespace
     }
 } // namespace
 
-namespace NS::Object
+namespace NS::Obj
 {
 
     ThirdPersonFollowComponent::ThirdPersonFollowComponent() noexcept
-        : VirtualCameraComponent(NS::Object::TickPriority::LateUpdate + 50)
+        : VirtualCameraComponent(NS::Obj::TickPriority::LateUpdate + 50)
     {
         // 生成直後は非 active でプレイ突入時に有効化される。編集中は free-fly が active のまま
         SetActive(false);
@@ -254,4 +254,4 @@ namespace NS::Object
     }
 
     NS_CLASS(ThirdPersonFollowComponent)
-} // namespace NS::Object
+} // namespace NS::Obj

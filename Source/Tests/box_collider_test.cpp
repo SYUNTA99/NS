@@ -8,8 +8,8 @@
 
 namespace
 {
-    using NS::Object::GameObject;
-    using NS::Object::BoxColliderComponent;
+    using NS::Obj::GameObject;
+    using NS::Obj::BoxColliderComponent;
 } // namespace
 
 TEST(BoxColliderTest, DefaultHalfExtentsAreHalfMeterCube)

@@ -5,7 +5,7 @@
 
 #include <vector>
 
-namespace NS::Object
+namespace NS::Obj
 {
 
     //! @brief 階層構造を持つ位置 / 回転 / スケール
@@ -68,4 +68,4 @@ namespace NS::Object
         void DetachFromParent() noexcept;
     };
 
-} // namespace NS::Object
+} // namespace NS::Obj

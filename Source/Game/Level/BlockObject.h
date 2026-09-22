@@ -25,5 +25,5 @@ namespace NS::Game::Level
     [[nodiscard]] nlohmann::json MakeCellCubeComponents();
 
     //! cell の x, y, z に既定 solid の ObjectData を作る
-    [[nodiscard]] NS::Object::ObjectData MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z);
+    [[nodiscard]] NS::Obj::ObjectData MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z);
 } // namespace NS::Game::Level

@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     void ScreenFade::BeginOut(float seconds) noexcept
     {
@@ -85,4 +85,4 @@ namespace NS::Graphics
         renderer.DrawFullscreenColor(NS::Core::Color{0.0f, 0.0f, 0.0f, m_alpha});
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

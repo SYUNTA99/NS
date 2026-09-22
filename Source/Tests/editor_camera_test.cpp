@@ -177,7 +177,7 @@ TEST(EditorCameraTest, PoseCarriesProjectionSettings)
     cam.SetFarPlane(3000.0f);
     cam.SetCenter(NS::Core::Vector3{1.0f, 2.0f, 3.0f});
 
-    const NS::Object::CameraPose pose = cam.Pose();
+    const NS::Obj::CameraPose pose = cam.Pose();
     EXPECT_FLOAT_EQ(pose.nearPlane, 0.5f);
     EXPECT_FLOAT_EQ(pose.farPlane, 3000.0f);
     EXPECT_FLOAT_EQ(pose.target.x, 1.0f);

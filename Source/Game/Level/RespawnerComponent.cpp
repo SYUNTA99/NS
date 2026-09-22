@@ -12,7 +12,7 @@ namespace NS::Game::Level
 {
     // 判定の後、カメラ追従の前。同じ LateUpdate でやり直す
     RespawnerComponent::RespawnerComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::LateUpdate + 10)
+        : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate + 10)
     {}
 
     void RespawnerComponent::OnUpdate()
@@ -27,17 +27,17 @@ namespace NS::Game::Level
     void RespawnerComponent::RestartRun() noexcept
     {
         // プレイヤーに載る component なので、戻す相手は自分の owner
-        auto* scene = static_cast<NS::Object::Scene*>(Owner()->OwningScene());
+        auto* scene = static_cast<NS::Obj::Scene*>(Owner()->OwningScene());
         if (scene == nullptr)
             return;
 
         // 出現位置はエディタで配置したプレイヤーの capsule 中心 world 位置そのもの
         // 凍結スナップショットに既にある値なので写しは持たず、その都度読む
-        const NS::Object::SceneData& level = scene->PlayBaseline();
+        const NS::Obj::SceneData& level = scene->PlayBaseline();
         NS::Core::Vector3 spawn{0.0f, ::Player::k_DefaultSpawnY, 0.0f};
         const std::size_t playerIndex = FindPlayerObjectIndex(level);
-        if (playerIndex != NS::Object::k_NoObjectIndex)
-            spawn = NS::Object::ObjectPosition(level.objects[playerIndex]);
+        if (playerIndex != NS::Obj::k_NoObjectIndex)
+            spawn = NS::Obj::ObjectPosition(level.objects[playerIndex]);
 
         Owner()->Root().SetPosition(spawn);
         if (auto* movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>())

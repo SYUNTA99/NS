@@ -3,7 +3,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/RenderSettings.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Renderer;
 
@@ -26,4 +26,4 @@ namespace NS::Graphics
         RenderSettings resolvedSettings{};
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

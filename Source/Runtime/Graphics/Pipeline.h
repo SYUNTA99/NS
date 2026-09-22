@@ -5,7 +5,7 @@
 
 #include <memory>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     //! ポリゴンのどちらの面を描画せずにカリングするか
@@ -79,4 +79,4 @@ namespace NS::Graphics
         bool m_valid = false;
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

@@ -8,8 +8,8 @@ namespace
 {
     using NS::Core::Vector2;
     using NS::Core::Vector3;
-    using NS::Graphics::MakeCube;
-    using NS::Graphics::MakePlane;
+    using NS::Gfx::MakeCube;
+    using NS::Gfx::MakePlane;
 
     bool IsAxisAligned(const Vector3& n) noexcept
     {

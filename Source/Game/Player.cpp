@@ -32,7 +32,7 @@ Player::Player() noexcept
 {
     // 構成と見た目のコード既定。値と追加分はファクトリが player object のデータから写す
     // 同居する部品の引き当ては OnStart なので生成順に縛りは無い
-    auto* mesh = AddComponent<NS::Object::MeshRendererComponent>();
+    auto* mesh = AddComponent<NS::Obj::MeshRendererComponent>();
     // 参照はファクトリが cube mesh と共有 player 材質へ解決する
     mesh->SetMeshRef("cube");
     mesh->SetMaterialRef("player");
@@ -40,13 +40,13 @@ Player::Player() noexcept
     // 2 つで 1 組。状態機械が欠けると遷移が 1 つも起きない
     AddComponent<NS::Game::Player::PlayerStateManagerComponent>();
     AddComponent<NS::Game::Player::PlayerComponent>();
-    AddComponent<NS::Object::PlayerInputComponent>();
-    // 入力は NS::Object に居て自機の型を名指しできないので、値の受け渡しを挟む
+    AddComponent<NS::Obj::PlayerInputComponent>();
+    // 入力は NS::Obj に居て自機の型を名指しできないので、値の受け渡しを挟む
     AddComponent<NS::Game::Player::PlayerInputRelayComponent>();
     // 命は player 自身の持ち物。hazard 等のルール配置物がこれを削る
     AddComponent<NS::Game::Level::HealthComponent>();
     // 接地シャドウ。mesh / material は後から注入される
-    AddComponent<NS::Object::ShadowComponent>();
+    AddComponent<NS::Obj::ShadowComponent>();
 
     // ルール判定への応答。死んだらやり直す・ゴールでクリアする・自分の位置を area camera へ渡す、は
     // どれもプレイヤーの振る舞いなのでここに積む。暗転はクリアシーケンスが使う部品として隣に置く
@@ -54,7 +54,7 @@ Player::Player() noexcept
     AddComponent<NS::Game::Level::RespawnerComponent>();
     AddComponent<NS::Game::Level::FinisherComponent>();
     AddComponent<NS::Game::Level::AreaCameraActivatorComponent>();
-    // 追従カメラは NS::Object に居るので、自動ズームが要る接地と速度を値で送る
+    // 追従カメラは NS::Obj に居るので、自動ズームが要る接地と速度を値で送る
     AddComponent<NS::Game::Level::FollowCameraFeedComponent>();
 }
 
@@ -90,9 +90,9 @@ int Player::Health() const noexcept
     return 0;
 }
 
-Player* FindPlayer(NS::Object::ObjectList& objects) noexcept
+Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept
 {
-    for (NS::Object::GameObject* obj : objects)
+    for (NS::Obj::GameObject* obj : objects)
     {
         if (std::strcmp(obj->ClassName(), "Player") == 0)
             return static_cast<Player*>(obj);
@@ -100,44 +100,44 @@ Player* FindPlayer(NS::Object::ObjectList& objects) noexcept
     return nullptr;
 }
 
-bool IsPlayerObject(const NS::Object::ObjectData& object) noexcept
+bool IsPlayerObject(const NS::Obj::ObjectData& object) noexcept
 {
     return object.className == "Player";
 }
 
-std::size_t FindPlayerObjectIndex(const NS::Object::SceneData& level) noexcept
+std::size_t FindPlayerObjectIndex(const NS::Obj::SceneData& level) noexcept
 {
     for (std::size_t i = 0; i < level.objects.size(); ++i)
     {
         if (IsPlayerObject(level.objects[i]))
             return i;
     }
-    return NS::Object::k_NoObjectIndex;
+    return NS::Obj::k_NoObjectIndex;
 }
 
-NS::Object::ObjectData MakePlayerObject(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation)
+NS::Obj::ObjectData MakePlayerObject(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation)
 {
     // 構成は Player のコンストラクタが決める。データは型名だけ持ち、値はコード既定を使う
-    NS::Object::ObjectData object = NS::Object::MakeObjectData<Player>();
-    NS::Object::SetObjectPosition(object, position);
-    NS::Object::SetObjectRotation(object, rotation);
+    NS::Obj::ObjectData object = NS::Obj::MakeObjectData<Player>();
+    NS::Obj::SetObjectPosition(object, position);
+    NS::Obj::SetObjectRotation(object, rotation);
     // cube mesh の半サイズ 0.5 を capsule 当たり radius 0.4 / 半高 0.9 に合わせる倍率
-    NS::Object::SetObjectScale(object, NS::Core::Vector3{0.8f, 1.8f, 0.8f});
+    NS::Obj::SetObjectScale(object, NS::Core::Vector3{0.8f, 1.8f, 0.8f});
     return object;
 }
 
-std::uint32_t PlayerObjectId(const NS::Object::SceneData& level) noexcept
+std::uint32_t PlayerObjectId(const NS::Obj::SceneData& level) noexcept
 {
     const std::size_t index = FindPlayerObjectIndex(level);
-    if (index == NS::Object::k_NoObjectIndex)
-        return NS::Object::k_NoObjectId;
+    if (index == NS::Obj::k_NoObjectIndex)
+        return NS::Obj::k_NoObjectId;
     return level.objects[index].objectId;
 }
 
-bool EnsurePlayerObject(NS::Object::SceneData& level)
+bool EnsurePlayerObject(NS::Obj::SceneData& level)
 {
     bool created = false;
-    if (FindPlayerObjectIndex(level) == NS::Object::k_NoObjectIndex)
+    if (FindPlayerObjectIndex(level) == NS::Obj::k_NoObjectIndex)
     {
         level.objects.push_back(
             MakePlayerObject(NS::Core::Vector3{0.0f, Player::k_DefaultSpawnY, 0.0f}, NS::Core::Quaternion{}));
@@ -145,7 +145,7 @@ bool EnsurePlayerObject(NS::Object::SceneData& level)
     }
 
     std::size_t count = 0;
-    for (const NS::Object::ObjectData& object : level.objects)
+    for (const NS::Obj::ObjectData& object : level.objects)
     {
         if (IsPlayerObject(object))
             ++count;
@@ -154,6 +154,6 @@ bool EnsurePlayerObject(NS::Object::SceneData& level)
         NS_LOG_WARN(Game, "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う", count);
 
     // 追従カメラが Target へ書き込む id が要るので、ここで採番まで済ませる
-    NS::Object::EnsureUniqueObjectIds(level);
+    NS::Obj::EnsureUniqueObjectIds(level);
     return created;
 }

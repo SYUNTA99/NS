@@ -7,7 +7,7 @@
 #include "Runtime/Graphics/GraphicObject.h"
 #include "Runtime/Graphics/Renderer.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     namespace
     {
@@ -155,4 +155,4 @@ namespace NS::Graphics
         return m_dynamic;
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

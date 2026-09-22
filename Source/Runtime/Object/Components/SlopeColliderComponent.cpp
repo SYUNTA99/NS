@@ -6,12 +6,12 @@
 #include "Runtime/Physics/PhysicsScene.h"
 #include "Runtime/Physics/WedgeGeometry.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
-    std::array<NS::Physics::Triangle, 8> SlopeColliderComponent::WorldTriangles() const noexcept
+    std::array<NS::Phys::Triangle, 8> SlopeColliderComponent::WorldTriangles() const noexcept
     {
         // local 生成では rotation を Owner transform に載せるので yaw=0。向き・位置は world matrix で反映
-        auto tris = NS::Physics::BuildWedgeTriangles({0.0f, 0.0f, 0.0f}, m_halfExtents, m_angleDegrees, 0.0f);
+        auto tris = NS::Phys::BuildWedgeTriangles({0.0f, 0.0f, 0.0f}, m_halfExtents, m_angleDegrees, 0.0f);
 
         if (const GameObject* owner = Owner(); owner != nullptr)
         {
@@ -26,11 +26,11 @@ namespace NS::Object
         return tris;
     }
 
-    JPH::BodyID SlopeColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID SlopeColliderComponent::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
-        const std::array<NS::Physics::Triangle, 8> triangles = WorldTriangles();
-        return physics.SyncMesh(current, triangles, NS::Physics::ObjectLayers::Terrain);
+        const std::array<NS::Phys::Triangle, 8> triangles = WorldTriangles();
+        return physics.SyncMesh(current, triangles, NS::Phys::ObjectLayers::Terrain);
     }
 
     NS_CLASS(SlopeColliderComponent)
-} // namespace NS::Object
+} // namespace NS::Obj

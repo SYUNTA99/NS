@@ -8,10 +8,10 @@
 
 namespace
 {
-    using NS::Graphics::Bone;
-    using NS::Graphics::BonePose;
-    using NS::Graphics::Skeleton;
-    using NS::Graphics::SkinnedVertex;
+    using NS::Gfx::Bone;
+    using NS::Gfx::BonePose;
+    using NS::Gfx::Skeleton;
+    using NS::Gfx::SkinnedVertex;
     using NS::Core::Matrix;
     using NS::Core::Quaternion;
     using NS::Core::Vector3;

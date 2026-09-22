@@ -4,7 +4,7 @@
 
 namespace
 {
-    using NS::Object::CameraComponent;
+    using NS::Obj::CameraComponent;
 } // namespace
 
 TEST(CameraComponentTest, DefaultsMatchCameraDefaults)

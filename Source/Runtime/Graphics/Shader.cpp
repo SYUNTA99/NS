@@ -12,7 +12,7 @@
 
 #include <string>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     namespace
@@ -359,4 +359,4 @@ namespace NS::Graphics
         }
     } // namespace detail
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

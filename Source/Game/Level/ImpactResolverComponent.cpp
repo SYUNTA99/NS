@@ -64,7 +64,7 @@ namespace NS::Game::Level
             return NS::Core::Clamp(lateral / radius, 0.0f, 1.0f);
         }
 
-        [[nodiscard]] JPH::BodyID CurrentBodyOf(const NS::Object::GameObject& object) noexcept
+        [[nodiscard]] JPH::BodyID CurrentBodyOf(const NS::Obj::GameObject& object) noexcept
         {
             // 飛んでいる間は collider の body が外れて無効になる。LaunchedBodyComponent が作った動的 body を先に見る
             if (const auto* launched = object.FindComponent<LaunchedBodyComponent>();
@@ -72,7 +72,7 @@ namespace NS::Game::Level
             {
                 return launched->BodyId();
             }
-            if (const auto* collider = object.FindComponent<NS::Object::ColliderComponent>())
+            if (const auto* collider = object.FindComponent<NS::Obj::ColliderComponent>())
             {
                 return collider->BodyId();
             }
@@ -87,13 +87,13 @@ namespace NS::Game::Level
 
     // PlayerComponent の 200 より前。書き込んだ速度が同じ固定ステップの移動に乗る
     ImpactResolverComponent::ImpactResolverComponent() noexcept
-        : NS::Object::OverlayRendererComponent(NS::Object::TickPriority::Update - 100)
+        : NS::Obj::OverlayRendererComponent(NS::Obj::TickPriority::Update - 100)
     {}
 
     void ImpactResolverComponent::OnStart()
     {
         // 基底が重ね描きの登録簿へ自分を入れる
-        NS::Object::OverlayRendererComponent::OnStart();
+        NS::Obj::OverlayRendererComponent::OnStart();
 
         m_movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>();
         // 無ければ null のまま。ボタンを積んでいない配置物でも裁定は続ける
@@ -102,7 +102,7 @@ namespace NS::Game::Level
 
     BreakableComponent* ImpactResolverComponent::FindOverlapped() const
     {
-        NS::Object::Scene* scene = Owner()->OwningScene();
+        NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
         {
             return nullptr;
@@ -113,7 +113,7 @@ namespace NS::Game::Level
         const float dt = NS::Platform::FrameTimer::FixedDelta();
 
         // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
-        const NS::Physics::Capsule capsule{
+        const NS::Phys::Capsule capsule{
             NS::Core::Vector3{position.x + velocity.x * dt, position.y + velocity.y * dt, position.z + velocity.z * dt},
             NS::Core::Vector3::UnitY,
             m_movement->CapsuleHalfHeight(),
@@ -130,7 +130,7 @@ namespace NS::Game::Level
             }
 
             // トリガの箱は通り抜ける体積なのでぶつかる相手にならない
-            const auto* box = breakable.Owner()->FindComponent<NS::Object::BoxColliderComponent>();
+            const auto* box = breakable.Owner()->FindComponent<NS::Obj::BoxColliderComponent>();
             if (box != nullptr && box->IsTrigger())
             {
                 return;
@@ -367,19 +367,19 @@ namespace NS::Game::Level
             RootTransform().SetScale(ScaledAlongImpact(m_squashThickness, m_squashHeight));
         }
 
-        NS::Object::Scene* scene = Owner()->OwningScene();
+        NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
         {
             return;
         }
 
         // 力が伝わった瞬間の絵。凍結の頭で相手を発射方向へ食い込ませて止める。当たりは動かさない
-        if (NS::Object::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId))
+        if (NS::Obj::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId))
         {
             target->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * m_pushInDistance);
         }
 
-        if (NS::Object::CameraBrainComponent* brain = scene->CameraBrain())
+        if (NS::Obj::CameraBrainComponent* brain = scene->CameraBrain())
         {
             brain->StartShake(m_pendingShakeStrength, stopSteps);
         }
@@ -388,7 +388,7 @@ namespace NS::Game::Level
     void ImpactResolverComponent::OnEndPlay()
     {
         // 基底が重ね描きの登録簿から自分を外す
-        NS::Object::OverlayRendererComponent::OnEndPlay();
+        NS::Obj::OverlayRendererComponent::OnEndPlay();
 
         // 凍結の途中で裁定が外れても、移動が止まったまま残らないようにする
         if (m_movement != nullptr)
@@ -398,7 +398,7 @@ namespace NS::Game::Level
         m_peakFlashRemaining = 0;
     }
 
-    void ImpactResolverComponent::OnRenderOverlay(const NS::Graphics::RenderContext& ctx)
+    void ImpactResolverComponent::OnRenderOverlay(const NS::Gfx::RenderContext& ctx)
     {
         if (m_peakFlashRemaining <= 0)
         {
@@ -446,14 +446,14 @@ namespace NS::Game::Level
         const bool wasBreak = m_pendingBreak;
         m_pendingBreak = false;
 
-        NS::Object::Scene* scene = Owner()->OwningScene();
+        NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
         {
             return;
         }
 
         // 相手は id で引き直す。止まっている数フレームの間に消されていたら残りだけ諦める
-        NS::Object::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId);
+        NS::Obj::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId);
         if (target == nullptr)
         {
             return;
@@ -509,12 +509,12 @@ namespace NS::Game::Level
 
     void ImpactResolverComponent::ApplyFreezeVibration()
     {
-        NS::Object::Scene* scene = Owner()->OwningScene();
+        NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
         {
             return;
         }
-        NS::Object::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId);
+        NS::Obj::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId);
         if (target == nullptr || m_hitStopTotal <= 0)
         {
             return;

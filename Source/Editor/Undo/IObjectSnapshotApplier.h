@@ -6,7 +6,7 @@
 // live 実体を唯一の正データとして編集するための、objectId 単位の捕捉・適用の経路
 // undo コマンドはこの抽象越しに 1 体の before/after スナップショットを往復させる
 
-namespace NS::Object
+namespace NS::Obj
 {
     struct ObjectData;
 }
@@ -23,10 +23,10 @@ namespace NS::Editor
         virtual ~IObjectSnapshotApplier() = default;
 
         //! objectId の現在状態を ObjectData へ写す。居なければ nullopt
-        [[nodiscard]] virtual std::optional<NS::Object::ObjectData> CaptureObject(std::uint32_t objectId) const = 0;
+        [[nodiscard]] virtual std::optional<NS::Obj::ObjectData> CaptureObject(std::uint32_t objectId) const = 0;
 
         //! objectId を desired の姿へ揃える。desired 有=組み直して差し替え/新規、nullopt=除去
         virtual void ApplyObjectSnapshot(std::uint32_t objectId,
-                                         const std::optional<NS::Object::ObjectData>& desired) = 0;
+                                         const std::optional<NS::Obj::ObjectData>& desired) = 0;
     };
 } // namespace NS::Editor

@@ -42,7 +42,7 @@ namespace
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
     using NS::Game::Player::WalkPlayerState;
-    using NS::Object::GameObject;
+    using NS::Obj::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
@@ -117,7 +117,7 @@ namespace
     }
 
     //! 床 1 枚を敷いて接地させた自機を返す。壁は呼び出し側が先に足す
-    PlayerComponent& MakeSlamReady(GameObject& owner, NS::Physics::PhysicsScene& physics)
+    PlayerComponent& MakeSlamReady(GameObject& owner, NS::Phys::PhysicsScene& physics)
     {
         auto& player = MakePlayer(owner);
 
@@ -188,7 +188,7 @@ TEST_F(PlayerComponentTest, MaxSpeedScaleRoundsNegativeAndKeepsTheValueOnNonFini
 TEST_F(PlayerComponentTest, AdoptsSiblingCapsuleColliderSize)
 {
     GameObject obj;
-    obj.AddComponent<NS::Object::CapsuleColliderComponent>(0.7f, 0.9f);
+    obj.AddComponent<NS::Obj::CapsuleColliderComponent>(0.7f, 0.9f);
     auto& player = MakePlayer(obj);
 
     player.OnUpdate();
@@ -256,11 +256,11 @@ TEST_F(PlayerComponentTest, ReflectsEveryTuningFieldName)
     GameObject obj;
     auto& player = *obj.AddComponent<PlayerComponent>();
 
-    const NS::Object::ReflectionInfo* info = player.GetReflection();
+    const NS::Obj::ReflectionInfo* info = player.GetReflection();
     ASSERT_NE(info, nullptr);
 
     for (const std::string& name : k_TuningFieldNames)
-        EXPECT_NE(NS::Object::FindField(info, name.c_str()), nullptr)
+        EXPECT_NE(NS::Obj::FindField(info, name.c_str()), nullptr)
             << name << " の欄が無い。シーン JSON のこの値は警告だけ残して捨てられ、調整値が既定へ化ける";
 }
 
@@ -375,7 +375,7 @@ TEST_F(PlayerComponentTest, SecondJumpDoesNotFireWithoutLanding)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
     ASSERT_TRUE(player.IsGrounded());
 
@@ -468,7 +468,7 @@ TEST_F(PlayerComponentTest, TapSlamFiresOnTheStepAfterTheRequest)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
     ASSERT_TRUE(player.IsGrounded());
 
@@ -487,7 +487,7 @@ TEST_F(PlayerComponentTest, SlamUsesTheAimMarkedAtPress)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -505,7 +505,7 @@ TEST_F(PlayerComponentTest, StaleAimFallsBackToTheCurrentDirection)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -526,7 +526,7 @@ TEST_F(PlayerComponentTest, ChargedSlamFiresWithTheRushSpeed)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -580,7 +580,7 @@ TEST_F(PlayerComponentTest, LandingRestoresTheSlam)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
     ASSERT_TRUE(player.IsGrounded());
 
@@ -613,7 +613,7 @@ TEST_F(PlayerComponentTest, GroundedSlamsFireBackToBack)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -637,7 +637,7 @@ TEST_F(PlayerComponentTest, SlamAgainstAWallEndsWithoutRunningTheFullDistance)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     // 壁の面は x=0.45。半径 0.4 の自機との隙間は 0.05
     NsTest::AddBox(physics, AABB{Vector3{0.95f, 1.0f, 0.0f}, Vector3{0.5f, 1.0f, 4.0f}});
     auto& player = MakeSlamReady(obj, physics);
@@ -695,7 +695,7 @@ TEST_F(PlayerComponentTest, BufferedRequestExpiresAfterTheBufferTime)
 // 反発後の残り速度が向きに勝つと狙いと食い違う方へ飛ぶ。速度よりカメラの前が先
 TEST_F(PlayerComponentTest, AimsAtTheCameraForwardWithoutInput)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     GameObject* obj = scene.SpawnTransient<GameObject>();
     ASSERT_NE(obj, nullptr);
     ASSERT_NE(scene.CameraBrain(), nullptr);
@@ -745,7 +745,7 @@ TEST_F(PlayerComponentTest, NonFiniteChargeIsTreatedAsTap)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -762,7 +762,7 @@ TEST_F(PlayerComponentTest, RushIgnoresDirectionInput)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -783,7 +783,7 @@ TEST_F(PlayerComponentTest, RushEndsAfterTheRushDistance)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
     const float startX = obj.Root().Position().x;
 
@@ -808,7 +808,7 @@ TEST_F(PlayerComponentTest, RushEndsWhenTheWallStopsIt)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, AABB{Vector3{2.0f, 1.0f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
     auto& player = MakeSlamReady(obj, physics);
 
@@ -833,7 +833,7 @@ TEST_F(PlayerComponentTest, TapHopEndsAfterTheShortDistance)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
     const float startX = obj.Root().Position().x;
 
@@ -861,7 +861,7 @@ TEST_F(PlayerComponentTest, TapSlamStaysAirborneUntilTheEndOfTheLunge)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
     const Vector3 start = obj.Root().Position();
 
@@ -903,7 +903,7 @@ TEST_F(PlayerComponentTest, ProgressRisesThenCancelResets)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
     EXPECT_FLOAT_EQ(player.BodySlamProgress01(), 0.0f);
 
@@ -931,7 +931,7 @@ TEST_F(PlayerComponentTest, BufferedRequestSurvivesALongerRush)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -962,7 +962,7 @@ TEST_F(PlayerComponentTest, BufferedRequestFiresWhenTheRushEnds)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -988,7 +988,7 @@ TEST_F(PlayerComponentTest, StaysIdleWhileGroundedWithoutInput)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
     ASSERT_TRUE(player.IsGrounded());
 
@@ -1001,7 +1001,7 @@ TEST_F(PlayerComponentTest, MovesToWalkWhileTheRunInputIsHeld)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
     ASSERT_EQ(CurrentStateName(obj), IdlePlayerState::k_Name);
 
@@ -1016,7 +1016,7 @@ TEST_F(PlayerComponentTest, ReleasingTheStickStopsAtExactlyZero)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
@@ -1071,7 +1071,7 @@ TEST_F(PlayerComponentTest, ReverseInputBrakesToAStop)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
     player.SetVelocity(Vector3{8.0f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1097,7 +1097,7 @@ TEST_F(PlayerComponentTest, SlamThatHitsNothingEndsAtTheTopSpeed)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.RequestBodySlam(1.0f);
@@ -1129,7 +1129,7 @@ TEST_F(PlayerComponentTest, MovesToBodySlamOnTheStepOfTheRequest)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1143,7 +1143,7 @@ TEST_F(PlayerComponentTest, ResetStateReturnsToTheFirstState)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
@@ -1159,7 +1159,7 @@ TEST_F(PlayerComponentTest, IdleLeavesTheLedgeGrabToFall)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakePlayer(obj);
@@ -1177,7 +1177,7 @@ TEST_F(PlayerComponentTest, GrabsLedgeWhenDescendingIntoEdge)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1199,7 +1199,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhileGrounded)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1215,7 +1215,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhileAscending)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1233,7 +1233,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabWithoutHorizontalMovement)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1249,7 +1249,7 @@ TEST_F(PlayerComponentTest, GrabsWithoutInputWhileMovingIntoTheLedge)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1268,7 +1268,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabOutsideTheHandBand)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1285,7 +1285,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabALedgeAboveTheHand)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1302,7 +1302,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhenTheClimbTargetIsBlocked)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     NsTest::AddBox(physics, MakeBlock(0.0f, 1.0f, 0.0f));
     physics.OptimizeBroadPhase();
@@ -1319,7 +1319,7 @@ TEST_F(PlayerComponentTest, HangHoldsTheLedgeHeightWithoutGravity)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1345,7 +1345,7 @@ TEST_F(PlayerComponentTest, ForwardInputClimbsImmediately)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1376,7 +1376,7 @@ TEST_F(PlayerComponentTest, NonPositiveClimbDurationFinishesTheClimbAtOnce)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1400,7 +1400,7 @@ TEST_F(PlayerComponentTest, JumpFromTheLedgeGoesStraightUp)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1434,7 +1434,7 @@ TEST_F(PlayerComponentTest, StandsOnTheTopAfterClimbing)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     NsTest::AddBox(physics, MakeBlock(1.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
@@ -1469,7 +1469,7 @@ TEST_F(PlayerComponentTest, ReleaseButtonDropsFromTheLedge)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1496,7 +1496,7 @@ TEST_F(PlayerComponentTest, BackInputKeepsHangingOnTheLedge)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1520,7 +1520,7 @@ TEST_F(PlayerComponentTest, GrabsTheLedgeWhenFallingPastItInOneFrame)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1539,7 +1539,7 @@ TEST_F(PlayerComponentTest, DoesNotRegrabAfterReleasingWithoutInput)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1567,7 +1567,7 @@ TEST_F(PlayerComponentTest, DoesNotRegrabWhileFallingPastTheLedge)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1595,7 +1595,7 @@ TEST_F(PlayerComponentTest, ZeroTurnSpeedFacesTheMoveAtOnce)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1621,7 +1621,7 @@ TEST_F(PlayerComponentTest, ShimmyMovesAlongTheLedge)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 1.0f));
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, -1.0f));
@@ -1648,7 +1648,7 @@ TEST_F(PlayerComponentTest, ShimmyFollowsTheNextLedgeHeight)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     NsTest::AddBox(physics, MakeBlock(0.0f, -0.2f, -1.0f));
     physics.OptimizeBroadPhase();
@@ -1676,7 +1676,7 @@ TEST_F(PlayerComponentTest, ShimmyStopsAtTheLedgeEnd)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -1701,7 +1701,7 @@ TEST_F(PlayerComponentTest, ShimmyMovesWithWeakInput)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 1.0f));
     physics.OptimizeBroadPhase();
@@ -1730,7 +1730,7 @@ TEST_F(PlayerComponentTest, ShimmyStaysWithoutInput)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 1.0f));
     physics.OptimizeBroadPhase();

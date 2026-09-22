@@ -27,9 +27,9 @@ TEST(ImGuiContextTest, ValidModeWithRealWindowAndRenderer)
     if (!window.IsValid())
         GTEST_SKIP() << "headless 環境で Window 構築失敗";
 
-    NS::Graphics::RendererDesc rd{};
+    NS::Gfx::RendererDesc rd{};
     rd.enableDebugLayer = false;
-    NS::Graphics::Renderer renderer(rd, window);
+    NS::Gfx::Renderer renderer(rd, window);
     if (!renderer.IsValid())
         GTEST_SKIP() << "headless 環境で Renderer 構築失敗";
 
@@ -52,8 +52,8 @@ TEST(ImGuiContextTest, WantCaptureSafeBeforeNewFrame)
     NS::Platform::Window window(MakeHiddenWindowDesc());
     if (!window.IsValid())
         GTEST_SKIP();
-    NS::Graphics::RendererDesc rd{};
-    NS::Graphics::Renderer renderer(rd, window);
+    NS::Gfx::RendererDesc rd{};
+    NS::Gfx::Renderer renderer(rd, window);
     if (!renderer.IsValid())
         GTEST_SKIP();
 

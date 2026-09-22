@@ -5,7 +5,7 @@
 namespace NS::UI
 {
 
-    void ColorRect::OnDraw(NS::Graphics::Renderer& renderer, const WidgetRect& rectPx, float alpha)
+    void ColorRect::OnDraw(NS::Gfx::Renderer& renderer, const WidgetRect& rectPx, float alpha)
     {
         const float effective = m_color.A() * alpha;
         if (effective <= 0.0f)

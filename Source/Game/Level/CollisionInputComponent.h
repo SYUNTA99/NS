@@ -19,8 +19,8 @@ namespace NS::Game::Level
     //! どちらも離したフレームに、溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ
     //! チャージ中は最高速度へ減速を掛ける。構えの縮みは押したフレームから掛かる
     //! 威力のチャージ倍率カーブと当たり位置係数カーブもここが持ち、ImpactResolverComponent が参照する
-    //! 依存: NS::Game::Player::PlayerComponent, NS::Object::Curve, ImpactInputJudge, ImpactResolverComponent
-    class CollisionInputComponent : public NS::Object::Component
+    //! 依存: NS::Game::Player::PlayerComponent, NS::Obj::Curve, ImpactInputJudge, ImpactResolverComponent
+    class CollisionInputComponent : public NS::Obj::Component
     {
     public:
         CollisionInputComponent() noexcept;
@@ -53,7 +53,7 @@ namespace NS::Game::Level
         //! 判定の実体。自動テストは実機入力を差し替えられないので、保持を直接入れる口として出す
         [[nodiscard]] ImpactInputJudge& Judge() noexcept { return m_judge; }
 
-        NS_REFLECT_BEGIN(CollisionInputComponent, NS::Object::Component)
+        NS_REFLECT_BEGIN(CollisionInputComponent, NS::Obj::Component)
         NS_REFLECT_FIELD(m_chargeThresholdSeconds, "チャージしきい値秒")
         NS_REFLECT_FIELD(m_chargeFullSeconds, "チャージ満タン秒")
         NS_REFLECT_FIELD(m_chargeSlowRate, "チャージ減速率")
@@ -76,10 +76,10 @@ namespace NS::Game::Level
         float m_chargeFullSeconds = 1.0f;
         float m_chargeSlowRate = 0.3f;
         // 既定の形は使う側が持つのが Curve の決まりなので、既定の点はコンストラクタで入れる
-        NS::Object::Curve m_chargeFactorCurve{};
+        NS::Obj::Curve m_chargeFactorCurve{};
         // 既定は中心直撃で 1.0、縁かすりで 0.7。画面に見えている相手の中心が狙う対象になる
         // TODO: リフレクション欄は「突進位置係数カーブ」のまま。改名すると保存済みの値が読めなくなる
-        NS::Object::Curve m_positionFactorCurve{};
+        NS::Obj::Curve m_positionFactorCurve{};
         // 0.95 は既定カーブで横ずれ 0〜0.167 の区間だけがピークになる値
         float m_peakThreshold = 0.95f;
         float m_chargeSquashScale = 0.95f; // 構えと分かる最小の変化。深いと衝突の潰れ演出と紛れる

@@ -9,10 +9,10 @@
 
 namespace
 {
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
-    using NS::Graphics::Shader;
-    using NS::Graphics::ShaderType;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
+    using NS::Gfx::Shader;
+    using NS::Gfx::ShaderType;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
@@ -97,7 +97,7 @@ TEST_F(ShaderLoggerTest, RealVertexShaderCompiles)
 
     // 頂点ステージは InputLayout 用の VS バイトコードを持つ
     EXPECT_FALSE(vs.VertexShaderBytecode().empty());
-    EXPECT_FALSE(NS::Graphics::detail::GetVertexShaderBytecode(vs).empty());
+    EXPECT_FALSE(NS::Gfx::detail::GetVertexShaderBytecode(vs).empty());
 
     renderer.Commands().VSSetShader(vs);
     SUCCEED();
@@ -120,7 +120,7 @@ TEST_F(ShaderLoggerTest, RealPixelShaderCompiles)
 
     // ピクセルステージは VS バイトコードを持たない
     EXPECT_TRUE(ps.VertexShaderBytecode().empty());
-    EXPECT_TRUE(NS::Graphics::detail::GetVertexShaderBytecode(ps).empty());
+    EXPECT_TRUE(NS::Gfx::detail::GetVertexShaderBytecode(ps).empty());
 
     renderer.Commands().PSSetShader(ps);
     SUCCEED();

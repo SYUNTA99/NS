@@ -8,10 +8,10 @@
 
 namespace
 {
-    using NS::Object::IRenderable;
-    using NS::Object::RenderBucket;
-    using NS::Graphics::RenderContext;
-    using NS::Object::Scene;
+    using NS::Obj::IRenderable;
+    using NS::Obj::RenderBucket;
+    using NS::Gfx::RenderContext;
+    using NS::Obj::Scene;
 
     // 描画された順に id を log へ積む fake。device 不要で bucket / sort のロジックだけ検証する
     class FakeRenderable : public IRenderable
@@ -27,7 +27,7 @@ namespace
         // カリングを検証するテストが視錐台内外へ置き直すための差し替え手段
         void SetWorldBounds(const NS::Core::AABB& bounds) noexcept { m_bounds = bounds; }
 
-        void Collect(const RenderContext&, std::vector<NS::Graphics::DrawItem>&) override { m_log->push_back(m_id); }
+        void Collect(const RenderContext&, std::vector<NS::Gfx::DrawItem>&) override { m_log->push_back(m_id); }
         [[nodiscard]] RenderBucket Bucket() const noexcept override { return m_bucket; }
         [[nodiscard]] NS::Core::Vector3 SortCenter() const noexcept override { return m_center; }
         [[nodiscard]] int SortPriority() const noexcept override { return m_priority; }
@@ -43,16 +43,16 @@ namespace
     };
 
     // 描かれた順に id を log へ積む fake。priority 順と IsActive の扱いだけ検証する
-    class FakeOverlay : public NS::Object::OverlayRendererComponent
+    class FakeOverlay : public NS::Obj::OverlayRendererComponent
     {
     public:
         FakeOverlay(int id, int priority, std::vector<int>* log)
-            : NS::Object::OverlayRendererComponent(priority), m_id(id), m_log(log)
+            : NS::Obj::OverlayRendererComponent(priority), m_id(id), m_log(log)
         {}
 
         void OnRenderOverlay(const RenderContext&) override { m_log->push_back(m_id); }
 
-        NS_REFLECT_NONE(FakeOverlay, NS::Object::OverlayRendererComponent)
+        NS_REFLECT_NONE(FakeOverlay, NS::Obj::OverlayRendererComponent)
 
     private:
         int m_id;
@@ -202,8 +202,8 @@ TEST(SceneRenderQueue, TransparentOutsideFrustumIsCulled)
 TEST(SceneRenderQueue, OverlaysDrawInPriorityOrder)
 {
     std::vector<int> log;
-    FakeOverlay late(1, NS::Object::TickPriority::LateUpdate + 5, &log);
-    FakeOverlay early(2, NS::Object::TickPriority::Update - 100, &log);
+    FakeOverlay late(1, NS::Obj::TickPriority::LateUpdate + 5, &log);
+    FakeOverlay early(2, NS::Obj::TickPriority::Update - 100, &log);
 
     TestScene scene;
     scene.RegisterOverlay(&late);
@@ -220,8 +220,8 @@ TEST(SceneRenderQueue, OverlaysDrawInPriorityOrder)
 TEST(SceneRenderQueue, InactiveOverlayIsSkipped)
 {
     std::vector<int> log;
-    FakeOverlay shown(1, NS::Object::TickPriority::Update, &log);
-    FakeOverlay hidden(2, NS::Object::TickPriority::Update, &log);
+    FakeOverlay shown(1, NS::Obj::TickPriority::Update, &log);
+    FakeOverlay hidden(2, NS::Obj::TickPriority::Update, &log);
     hidden.SetActive(false);
 
     TestScene scene;

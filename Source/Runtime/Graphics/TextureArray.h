@@ -6,7 +6,7 @@
 
 #include <string>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     class TextureArray;
@@ -60,4 +60,4 @@ namespace NS::Graphics
         bool m_fallback = false;
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

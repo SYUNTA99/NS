@@ -33,7 +33,7 @@ namespace
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerEvents;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Object::GameObject;
+    using NS::Obj::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
@@ -48,7 +48,7 @@ namespace
         return AABB{Vector3{cx, cy, cz}, Vector3{0.5f, 0.5f, 0.5f}};
     }
 
-    void AddFloor(NS::Physics::PhysicsScene& physics)
+    void AddFloor(NS::Phys::PhysicsScene& physics)
     {
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 64.0f}});
         physics.OptimizeBroadPhase();
@@ -75,7 +75,7 @@ namespace
         return player;
     }
 
-    PlayerComponent& MakeSlamReady(GameObject& owner, NS::Physics::PhysicsScene& physics)
+    PlayerComponent& MakeSlamReady(GameObject& owner, NS::Phys::PhysicsScene& physics)
     {
         auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
         auto& player = *owner.AddComponent<PlayerComponent>();
@@ -186,7 +186,7 @@ TEST_F(EntityEventsTest, GroundEnterFiresOnceOnTheLandingStep)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     AddFloor(physics);
     auto& entity = MakeAirborneEntity(obj);
 
@@ -207,7 +207,7 @@ TEST_F(EntityEventsTest, GroundExitFiresOnceOnTheLeavingStep)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     AddFloor(physics);
     auto& entity = MakeAirborneEntity(obj);
     for (int i = 0; i < 60; ++i)
@@ -232,7 +232,7 @@ TEST_F(EntityEventsTest, StayingGroundedFiresNeitherNotification)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     AddFloor(physics);
     auto& entity = MakeAirborneEntity(obj);
     for (int i = 0; i < 60; ++i)
@@ -272,7 +272,7 @@ TEST_F(EntityEventsTest, LedgeGrabbedFiresOnTheGrabbingStep)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -293,7 +293,7 @@ TEST_F(EntityEventsTest, LedgeClimbingFiresWhenTheClimbStarts)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
@@ -319,7 +319,7 @@ TEST_F(EntityEventsTest, BodySlamStartedAndEndedFireAroundTheRush)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
 
     int started = 0;
@@ -347,7 +347,7 @@ TEST_F(EntityEventsTest, CancelBodySlamFiresTheEndNotification)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);

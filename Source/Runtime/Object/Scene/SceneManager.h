@@ -4,12 +4,12 @@
 
 #include <memory>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Renderer;
 }
 
-namespace NS::Object
+namespace NS::Obj
 {
 
     class AssetManager;
@@ -31,7 +31,7 @@ namespace NS::Object
         void SetAssets(AssetManager* assets) noexcept;
 
         //! 立てる scene へ引き継ぐレンダラーを非所有で差す。以降 LoadScene する scene が受け取る
-        void SetRenderer(NS::Graphics::Renderer* renderer) noexcept;
+        void SetRenderer(NS::Gfx::Renderer* renderer) noexcept;
 
         //! データから scene を立てる。現 scene は破棄してから作り直す
         //! サブシステムの生成は OnStart より先、world の組み立ては OnStart より後に行う
@@ -57,7 +57,7 @@ namespace NS::Object
         std::unique_ptr<Scene> m_current;
         //! 立てる scene へ引き継ぐ参照で非所有。未設定なら scene 側が未設定のまま動く
         AssetManager* m_assets = nullptr;
-        NS::Graphics::Renderer* m_renderer = nullptr;
+        NS::Gfx::Renderer* m_renderer = nullptr;
     };
 
-} // namespace NS::Object
+} // namespace NS::Obj

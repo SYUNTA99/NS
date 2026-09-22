@@ -25,7 +25,7 @@ namespace NS::UI
         m_root.Layout(m_canvas);
     }
 
-    void UISystem::Render(NS::Graphics::Renderer& renderer)
+    void UISystem::Render(NS::Gfx::Renderer& renderer)
     {
         if (!m_root.HasChildren())
         {

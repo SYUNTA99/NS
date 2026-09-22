@@ -9,7 +9,7 @@
 #include <memory>
 #include <type_traits>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class AssetManager;
     class Component;
@@ -47,4 +47,4 @@ namespace NS::Object
         return MakeObjectData(prototype);
     }
 
-} // namespace NS::Object
+} // namespace NS::Obj

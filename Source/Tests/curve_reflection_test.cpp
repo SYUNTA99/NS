@@ -12,11 +12,11 @@
 
 namespace
 {
-    using NS::Object::Component;
-    using NS::Object::Curve;
-    using NS::Object::FieldDesc;
-    using NS::Object::FieldType;
-    using NS::Object::FindField;
+    using NS::Obj::Component;
+    using NS::Obj::Curve;
+    using NS::Obj::FieldDesc;
+    using NS::Obj::FieldType;
+    using NS::Obj::FindField;
 
     class FakeCurveComponent : public Component
     {
@@ -128,7 +128,7 @@ TEST(CurveReflection, SameShapesCompareEqual)
 
 TEST(CurveReflection, FieldTypeOfCurveIsCurve)
 {
-    EXPECT_EQ(NS::Object::FieldTypeOf<Curve>(), FieldType::Curve);
+    EXPECT_EQ(NS::Obj::FieldTypeOf<Curve>(), FieldType::Curve);
 }
 
 TEST(CurveReflection, ReflectedFieldHasCurveTypeAndRoundTrips)
@@ -150,7 +150,7 @@ TEST(CurveReflection, SerializeWritesSingleKeyCurveObject)
     FakeCurveComponent comp;
     comp.SetShape(MakeCurve({{0.0f, 1.0f}, {1.0f, 3.0f}, {2.0f, 0.5f}}));
 
-    const nlohmann::json out = NS::Object::SerializeComponent(comp);
+    const nlohmann::json out = NS::Obj::SerializeComponent(comp);
     const nlohmann::json& field = out["fields"]["カーブ"];
     ASSERT_TRUE(field.is_object());
     ASSERT_TRUE(field.contains("curve"));
@@ -167,10 +167,10 @@ TEST(CurveReflection, SaveLoadRoundTripKeepsShape)
 {
     FakeCurveComponent source;
     source.SetShape(MakeCurve({{0.0f, 1.0f}, {1.0f, 3.0f}, {2.0f, 0.5f}}));
-    const nlohmann::json out = NS::Object::SerializeComponent(source);
+    const nlohmann::json out = NS::Obj::SerializeComponent(source);
 
     FakeCurveComponent loaded;
-    NS::Object::ApplyJsonFields(loaded, out["fields"]);
+    NS::Obj::ApplyJsonFields(loaded, out["fields"]);
     ASSERT_EQ(loaded.Shape().count, 3u);
     EXPECT_TRUE(loaded.Shape() == source.Shape());
 }
@@ -182,11 +182,11 @@ TEST(CurveReflection, WrongShapeKeepsCurrentValue)
     comp.SetShape(before);
 
     const nlohmann::json fields = nlohmann::json::parse(R"({"カーブ": {"curve": 5}})");
-    NS::Object::ApplyJsonFields(comp, fields);
+    NS::Obj::ApplyJsonFields(comp, fields);
     EXPECT_TRUE(comp.Shape() == before);
 
     const nlohmann::json bare = nlohmann::json::parse(R"({"カーブ": 5})");
-    NS::Object::ApplyJsonFields(comp, bare);
+    NS::Obj::ApplyJsonFields(comp, bare);
     EXPECT_TRUE(comp.Shape() == before);
 }
 
@@ -194,7 +194,7 @@ TEST(CurveReflection, MalformedPointsAreSkipped)
 {
     FakeCurveComponent comp;
     const nlohmann::json fields = nlohmann::json::parse(R"({"カーブ": {"curve": [[1], [2, 3], ["a", 4]]}})");
-    NS::Object::ApplyJsonFields(comp, fields);
+    NS::Obj::ApplyJsonFields(comp, fields);
     ASSERT_EQ(comp.Shape().count, 1u);
     EXPECT_FLOAT_EQ(comp.Shape().keys[0].x, 2.0f);
     EXPECT_FLOAT_EQ(comp.Shape().keys[0].y, 3.0f);
@@ -211,7 +211,7 @@ TEST(CurveReflection, ExtraPointsBeyondLimitAreDropped)
     nlohmann::json fields;
     fields["カーブ"]["curve"] = points;
 
-    NS::Object::ApplyJsonFields(comp, fields);
+    NS::Obj::ApplyJsonFields(comp, fields);
     ASSERT_EQ(comp.Shape().count, Curve::k_MaxKeys);
     EXPECT_FLOAT_EQ(comp.Shape().keys[Curve::k_MaxKeys - 1].x, 7.0f);
 }
@@ -220,7 +220,7 @@ TEST(CurveReflection, LoadSortsKeysAscending)
 {
     FakeCurveComponent comp;
     const nlohmann::json fields = nlohmann::json::parse(R"({"カーブ": {"curve": [[2, 20], [0, 0], [1, 10]]}})");
-    NS::Object::ApplyJsonFields(comp, fields);
+    NS::Obj::ApplyJsonFields(comp, fields);
     ASSERT_EQ(comp.Shape().count, 3u);
     EXPECT_FLOAT_EQ(comp.Shape().keys[0].x, 0.0f);
     EXPECT_FLOAT_EQ(comp.Shape().keys[1].x, 1.0f);
@@ -348,7 +348,7 @@ TEST(CurveReflection, SerializeWritesModeTaggedPoints)
                              {0.5f, 2.0f, Curve::InterpMode::AutoSmooth},
                              {1.0f, 3.0f, Curve::InterpMode::Manual, 0.25f, -1.0f}}));
 
-    const nlohmann::json out = NS::Object::SerializeComponent(comp);
+    const nlohmann::json out = NS::Obj::SerializeComponent(comp);
     const nlohmann::json& points = out["fields"]["カーブ"]["curve"];
     ASSERT_EQ(points.size(), 3u);
     ASSERT_EQ(points[0].size(), 2u);
@@ -366,10 +366,10 @@ TEST(CurveReflection, ModeRoundTripKeepsTangents)
     source.SetShape(MakeCurve({{0.0f, 1.0f},
                                {0.5f, 2.0f, Curve::InterpMode::AutoSmooth},
                                {1.0f, 3.0f, Curve::InterpMode::Manual, 0.25f, -1.0f}}));
-    const nlohmann::json out = NS::Object::SerializeComponent(source);
+    const nlohmann::json out = NS::Obj::SerializeComponent(source);
 
     FakeCurveComponent loaded;
-    NS::Object::ApplyJsonFields(loaded, out["fields"]);
+    NS::Obj::ApplyJsonFields(loaded, out["fields"]);
     EXPECT_TRUE(loaded.Shape() == source.Shape());
 }
 
@@ -377,7 +377,7 @@ TEST(CurveReflection, LegacyTwoElementPointsLoadAsLinear)
 {
     FakeCurveComponent comp;
     const nlohmann::json fields = nlohmann::json::parse(R"({"カーブ": {"curve": [[0, 1], [1, 3]]}})");
-    NS::Object::ApplyJsonFields(comp, fields);
+    NS::Obj::ApplyJsonFields(comp, fields);
     ASSERT_EQ(comp.Shape().count, 2u);
     EXPECT_EQ(comp.Shape().keys[0].mode, Curve::InterpMode::Linear);
     EXPECT_EQ(comp.Shape().keys[1].mode, Curve::InterpMode::Linear);
@@ -389,7 +389,7 @@ TEST(CurveReflection, MismatchedModePointsAreSkipped)
     // 要素数とモード番号が食い違う点と要素数 4 の点は飛ばす。壊れた点だけ捨てて残りを読む扱いに揃えるため
     const nlohmann::json fields =
         nlohmann::json::parse(R"({"カーブ": {"curve": [[0, 1, 2], [0.25, 4, 1, 9], [0.5, 2, 1, 0, 0], [1, 3, 1]]}})");
-    NS::Object::ApplyJsonFields(comp, fields);
+    NS::Obj::ApplyJsonFields(comp, fields);
     ASSERT_EQ(comp.Shape().count, 1u);
     EXPECT_FLOAT_EQ(comp.Shape().keys[0].x, 1.0f);
     EXPECT_EQ(comp.Shape().keys[0].mode, Curve::InterpMode::AutoSmooth);

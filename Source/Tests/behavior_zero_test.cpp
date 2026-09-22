@@ -23,10 +23,10 @@
 
 namespace
 {
-    using NS::Object::DeserializeSceneFromJson;
-    using NS::Object::SceneData;
-    using NS::Object::ObjectData;
-    using NS::Object::SerializeSceneToJson;
+    using NS::Obj::DeserializeSceneFromJson;
+    using NS::Obj::SceneData;
+    using NS::Obj::ObjectData;
+    using NS::Obj::SerializeSceneToJson;
     using NS::Core::Vector3;
 
     constexpr float k_Tol = 1e-4f;
@@ -54,33 +54,33 @@ namespace
         float capsuleRadius = 0.0f;
         float capsuleHalfHeight = 0.0f;
         float slopeAngle = 0.0f;
-        std::array<NS::Physics::Triangle, 8> slopeTriangles{};
+        std::array<NS::Phys::Triangle, 8> slopeTriangles{};
     };
 
-    ColliderSignature ExtractColliderSignature(NS::Object::GameObject& obj)
+    ColliderSignature ExtractColliderSignature(NS::Obj::GameObject& obj)
     {
         ColliderSignature sig;
-        if (auto* box = obj.FindComponent<NS::Object::BoxColliderComponent>())
+        if (auto* box = obj.FindComponent<NS::Obj::BoxColliderComponent>())
         {
             sig.hasBox = true;
             sig.boxAabb = box->WorldAABB();
             sig.boxObb = box->WorldOBB();
         }
-        if (auto* sphere = obj.FindComponent<NS::Object::SphereColliderComponent>())
+        if (auto* sphere = obj.FindComponent<NS::Obj::SphereColliderComponent>())
         {
             sig.hasSphere = true;
             sig.sphere = sphere->WorldSphere();
         }
-        if (auto* capsule = obj.FindComponent<NS::Object::CapsuleColliderComponent>())
+        if (auto* capsule = obj.FindComponent<NS::Obj::CapsuleColliderComponent>())
         {
             sig.hasCapsule = true;
-            const NS::Physics::Capsule worldCapsule = capsule->WorldCapsule();
+            const NS::Phys::Capsule worldCapsule = capsule->WorldCapsule();
             sig.capsuleCenter = worldCapsule.center;
             sig.capsuleAxis = worldCapsule.axis;
             sig.capsuleRadius = worldCapsule.radius;
             sig.capsuleHalfHeight = worldCapsule.halfHeight;
         }
-        if (auto* slope = obj.FindComponent<NS::Object::SlopeColliderComponent>())
+        if (auto* slope = obj.FindComponent<NS::Obj::SlopeColliderComponent>())
         {
             sig.hasSlope = true;
             sig.slopeAngle = slope->AngleDegrees();
@@ -142,19 +142,19 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
 {
     SceneData src;
     ObjectData obj;
-    NS::Object::SetObjectPosition(obj, Vector3{2.0f, 1.0f, 3.0f});
-    obj.components.push_back(NS::Object::MakeComponentEntry("MeshRendererComponent"));
-    nlohmann::json boxEntry = NS::Object::MakeComponentEntry("BoxColliderComponent");
-    NS::Object::SetField(boxEntry, "半径", Vector3{1.0f, 2.0f, 3.0f});
-    NS::Object::SetField(boxEntry, "中心オフセット", Vector3{0.1f, 0.2f, 0.3f});
+    NS::Obj::SetObjectPosition(obj, Vector3{2.0f, 1.0f, 3.0f});
+    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshRendererComponent"));
+    nlohmann::json boxEntry = NS::Obj::MakeComponentEntry("BoxColliderComponent");
+    NS::Obj::SetField(boxEntry, "半径", Vector3{1.0f, 2.0f, 3.0f});
+    NS::Obj::SetField(boxEntry, "中心オフセット", Vector3{0.1f, 0.2f, 0.3f});
     obj.components.push_back(std::move(boxEntry));
-    nlohmann::json sphere = NS::Object::MakeComponentEntry("SphereColliderComponent");
-    NS::Object::SetField(sphere, "半径", 0.7f);
-    NS::Object::SetField(sphere, "中心オフセット", Vector3{0.0f, 1.0f, 0.0f});
+    nlohmann::json sphere = NS::Obj::MakeComponentEntry("SphereColliderComponent");
+    NS::Obj::SetField(sphere, "半径", 0.7f);
+    NS::Obj::SetField(sphere, "中心オフセット", Vector3{0.0f, 1.0f, 0.0f});
     obj.components.push_back(std::move(sphere));
-    nlohmann::json capsule = NS::Object::MakeComponentEntry("CapsuleColliderComponent");
-    NS::Object::SetField(capsule, "半径", 0.4f);
-    NS::Object::SetField(capsule, "半分の高さ", 0.9f);
+    nlohmann::json capsule = NS::Obj::MakeComponentEntry("CapsuleColliderComponent");
+    NS::Obj::SetField(capsule, "半径", 0.4f);
+    NS::Obj::SetField(capsule, "半分の高さ", 0.9f);
     obj.components.push_back(std::move(capsule));
     src.objects.push_back(std::move(obj));
     src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
@@ -164,9 +164,9 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     ASSERT_EQ(restored.objects.size(), 2u);
     ASSERT_FALSE(restored.objects[0].components.empty()); // 往復後も components 駆動で組ませる前提
 
-    NS::Object::AssetManager assets{std::string{"."}};
-    auto before = NS::Object::BuildSceneObject(src.objects[0], &assets);
-    auto after = NS::Object::BuildSceneObject(restored.objects[0], &assets);
+    NS::Obj::AssetManager assets{std::string{"."}};
+    auto before = NS::Obj::BuildSceneObject(src.objects[0], &assets);
+    auto after = NS::Obj::BuildSceneObject(restored.objects[0], &assets);
     ASSERT_NE(before, nullptr);
     ASSERT_NE(after, nullptr);
 
@@ -175,7 +175,7 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     ExpectSignatureEqual(beforeSig, ExtractColliderSignature(*after));
 
     // リフレクション set が効いたか box の寸法で直接確かめる
-    auto* box = before->FindComponent<NS::Object::BoxColliderComponent>();
+    auto* box = before->FindComponent<NS::Obj::BoxColliderComponent>();
     ASSERT_NE(box, nullptr);
     const Vector3 half = box->HalfExtents();
     EXPECT_NEAR(half.x, 1.0f, k_Tol);

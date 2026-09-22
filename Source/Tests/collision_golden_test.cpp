@@ -35,7 +35,7 @@ namespace
     using NS::Core::Vector3;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Object::GameObject;
+    using NS::Obj::GameObject;
     using NS::Tests::CompareTraces;
     using NS::Tests::DescribeDiff;
     using NS::Tests::FoldTrace;
@@ -89,7 +89,7 @@ namespace
     private:
         NsTest::EntityStage m_stage;
         GameObject& m_object = m_stage.owner;
-        NS::Physics::PhysicsScene& m_physics = m_stage.physics;
+        NS::Phys::PhysicsScene& m_physics = m_stage.physics;
         PlayerComponent* m_movement = nullptr;
         std::vector<StepRecord> m_trace;
     };
@@ -119,18 +119,18 @@ namespace
     public:
         ImpactRig()
         {
-            NS::Object::SceneData data;
+            NS::Obj::SceneData data;
             for (std::int16_t z = 0; z < k_ImpactFloorCells; ++z)
                 data.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, z));
 
-            NS::Object::ObjectData player =
+            NS::Obj::ObjectData player =
                 MakePlayerObject(Vector3{0.0f, Player::k_DefaultSpawnY, 0.0f}, NS::Core::Quaternion{});
-            player.components.push_back(NS::Object::MakeComponentEntry("ImpactResolverComponent"));
-            player.components.push_back(NS::Object::MakeComponentEntry("CollisionInputComponent"));
+            player.components.push_back(NS::Obj::MakeComponentEntry("ImpactResolverComponent"));
+            player.components.push_back(NS::Obj::MakeComponentEntry("CollisionInputComponent"));
             data.objects.push_back(player);
 
-            NS::Object::ObjectData target = NS::Game::Level::MakeCellObject(0, 1, k_ImpactTargetZ);
-            target.components.push_back(NS::Object::MakeComponentEntry("BreakableComponent"));
+            NS::Obj::ObjectData target = NS::Game::Level::MakeCellObject(0, 1, k_ImpactTargetZ);
+            target.components.push_back(NS::Obj::MakeComponentEntry("BreakableComponent"));
             data.objects.push_back(target);
 
             m_scene.LoadFromData(std::move(data));
@@ -142,7 +142,7 @@ namespace
                 m_player = live;
                 m_movement = live->FindComponent<PlayerComponent>();
                 // 入力の component は EarlyUpdate で実機の入力を書き込む。起こしたままだと走行入力が毎フレーム 0 になる
-                if (auto* input = live->FindComponent<NS::Object::PlayerInputComponent>())
+                if (auto* input = live->FindComponent<NS::Obj::PlayerInputComponent>())
                     input->SetActive(false);
             }
             m_scene.Objects().ForEachComponent<NS::Game::Level::BreakableComponent>(
@@ -161,9 +161,9 @@ namespace
                     m_movement->RequestBodySlam(k_ImpactSlamCharge);
                 ++m_stepIndex;
                 // 岩は Jolt の剛体なので、帯だけ回しても動かない。物理の 1 フレームを LateUpdate 帯の手前へ挟む
-                m_scene.Objects().UpdateObjects(std::numeric_limits<int>::min(), NS::Object::TickPriority::LateUpdate);
+                m_scene.Objects().UpdateObjects(std::numeric_limits<int>::min(), NS::Obj::TickPriority::LateUpdate);
                 m_scene.Physics().Update(k_FixedDt);
-                m_scene.Objects().UpdateObjects(NS::Object::TickPriority::LateUpdate);
+                m_scene.Objects().UpdateObjects(NS::Obj::TickPriority::LateUpdate);
                 m_scene.Objects().SnapshotObjects();
                 m_trace.push_back(
                     StepRecord{m_player->Root().Position(), m_movement->Velocity(), m_movement->IsGrounded()});
@@ -173,7 +173,7 @@ namespace
         [[nodiscard]] const std::vector<StepRecord>& Trace() const noexcept { return m_trace; }
 
     private:
-        NS::Object::Scene m_scene;
+        NS::Obj::Scene m_scene;
         Player* m_player = nullptr;
         PlayerComponent* m_movement = nullptr;
         std::vector<StepRecord> m_trace;

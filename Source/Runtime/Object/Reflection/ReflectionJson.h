@@ -9,7 +9,7 @@
 // リフレクションを辿って Component を {type, fields} JSON へ相互変換する
 // 値は nlohmann::json を直接受け渡し、呼出側は object 配列へそのまま積める
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! comp を {"type": リフレクション typeName, "fields": {名前: 値}} の JSON object へ書き出す
     //! GetReflection() が nullptr のリフレクションの無い component は type 空文字 + 空 fields を返す
@@ -24,4 +24,4 @@ namespace NS::Object
     //! 読み手のいないキーは値がどこにも入らないので 1 件ずつ警告を出す
     //! @return 読み手のいなかったキーの数
     std::size_t ApplyJsonFields(Component& comp, const nlohmann::json& fields);
-} // namespace NS::Object
+} // namespace NS::Obj

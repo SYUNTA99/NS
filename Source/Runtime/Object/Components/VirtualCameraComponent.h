@@ -3,7 +3,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! 仮想カメラが返す 1 フレーム分のカメラ姿勢 + 投影設定。Brain が実 Camera へそのまま書く
     struct CameraPose
@@ -38,7 +38,7 @@ namespace NS::Object
     //! 状態は fixed step の OnUpdate で進め、最終姿勢は EvaluatePose で返す。follow 系は
     //! render 時に alpha で補間 target を追うため、姿勢決定を pose 返却へ分離する
     //! 所属 scene の brain へ OnStart で自分を登録し、OnEndPlay で外す
-    //! 依存: NS::Core, NS::Object::Component
+    //! 依存: NS::Core, NS::Obj::Component
     class VirtualCameraComponent : public Component
     {
     public:
@@ -93,4 +93,4 @@ namespace NS::Object
         float m_nearPlane = 0.1f;                                                // ニアクリップ距離
         float m_farPlane = 1000.0f;                                              // ファークリップ距離
     };
-} // namespace NS::Object
+} // namespace NS::Obj

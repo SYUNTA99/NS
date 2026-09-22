@@ -8,13 +8,13 @@
 
 namespace
 {
-    using NS::Object::CameraBrainComponent;
-    using NS::Object::CameraComponent;
-    using NS::Object::CameraPose;
-    using NS::Object::GameObject;
-    using NS::Object::PlacedVirtualCamera;
-    using NS::Object::TickPriority;
-    using NS::Object::VirtualCameraComponent;
+    using NS::Obj::CameraBrainComponent;
+    using NS::Obj::CameraComponent;
+    using NS::Obj::CameraPose;
+    using NS::Obj::GameObject;
+    using NS::Obj::PlacedVirtualCamera;
+    using NS::Obj::TickPriority;
+    using NS::Obj::VirtualCameraComponent;
 
     constexpr float k_Dt = 1.0f / 60.0f;
 

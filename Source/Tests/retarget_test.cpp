@@ -10,13 +10,13 @@
 
 namespace
 {
-    using NS::Graphics::AnimationClip;
-    using NS::Graphics::BindClipsByName;
-    using NS::Graphics::Bone;
-    using NS::Graphics::BoneTrack;
-    using NS::Graphics::Interpolation;
-    using NS::Graphics::NormalizeBoneName;
-    using NS::Graphics::Skeleton;
+    using NS::Gfx::AnimationClip;
+    using NS::Gfx::BindClipsByName;
+    using NS::Gfx::Bone;
+    using NS::Gfx::BoneTrack;
+    using NS::Gfx::Interpolation;
+    using NS::Gfx::NormalizeBoneName;
+    using NS::Gfx::Skeleton;
     using NS::Core::Quaternion;
     using NS::Core::Vector3;
 

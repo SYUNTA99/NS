@@ -8,7 +8,7 @@
 
 #include <string_view>
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! TransformComponent のリフレクション欄の名前。直列化の JSON キーそのもので、
     //! 欄を名指しで書く消費側と綴りがずれないよう定数で共有する
@@ -64,4 +64,4 @@ namespace NS::Object
     //! object に TransformComponent エントリが無ければ既定値(位置0 / 回転なし / スケール1)で 1 つ足して返す
     //! 既にあればそれを返す。factory と load 直後に通し、全 object が transform を必ず 1 つ持つ不変を保つ
     nlohmann::json& EnsureTransformComponent(ObjectData& object);
-} // namespace NS::Object
+} // namespace NS::Obj

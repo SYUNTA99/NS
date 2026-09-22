@@ -17,13 +17,13 @@
 
 namespace
 {
-    using NS::Object::Component;
-    using NS::Object::FieldDesc;
-    using NS::Object::FieldType;
-    using NS::Object::FindField;
-    using NS::Object::GameObject;
-    using NS::Object::PlacedVirtualCamera;
-    using NS::Object::ReflectionInfo;
+    using NS::Obj::Component;
+    using NS::Obj::FieldDesc;
+    using NS::Obj::FieldType;
+    using NS::Obj::FindField;
+    using NS::Obj::GameObject;
+    using NS::Obj::PlacedVirtualCamera;
+    using NS::Obj::ReflectionInfo;
 
     // float / int / bool / Vector3 を private に持ち、4 フィールドをリフレクションするテスト用 Component
     class FakeReflectedComponent : public Component
@@ -267,7 +267,7 @@ TEST(ReflectionTest, PlayerComponentReflectsFeelFloats)
 
 TEST(ReflectionTest, MeshRendererReflectsBaseColorMeshAndMaterialRef)
 {
-    NS::Object::MeshRendererComponent renderer;
+    NS::Obj::MeshRendererComponent renderer;
     const ReflectionInfo* info = renderer.GetReflection();
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 3u);
@@ -307,7 +307,7 @@ TEST(ReflectionTest, MeshRendererReflectsBaseColorMeshAndMaterialRef)
 
 TEST(ReflectionTest, BoxColliderHalfExtentsAccessorClampsNegative)
 {
-    NS::Object::BoxColliderComponent collider;
+    NS::Obj::BoxColliderComponent collider;
     const ReflectionInfo* info = collider.GetReflection();
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 4u);
@@ -331,7 +331,7 @@ TEST(ReflectionTest, BoxColliderHalfExtentsAccessorClampsNegative)
 
 TEST(ReflectionTest, BoxColliderExposesCenterOffsetAndRotation)
 {
-    NS::Object::BoxColliderComponent collider;
+    NS::Obj::BoxColliderComponent collider;
     const ReflectionInfo* info = collider.GetReflection();
     ASSERT_NE(info, nullptr);
 
@@ -355,7 +355,7 @@ TEST(ReflectionTest, BoxColliderExposesCenterOffsetAndRotation)
 
 TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
 {
-    NS::Object::ThirdPersonFollowComponent follow;
+    NS::Obj::ThirdPersonFollowComponent follow;
     const ReflectionInfo* info = follow.GetReflection();
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 19u);
@@ -393,7 +393,7 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
 
 TEST(ReflectionTest, CameraBrainBlendDurationAccessorClampsNegative)
 {
-    NS::Object::CameraBrainComponent brain;
+    NS::Obj::CameraBrainComponent brain;
     const ReflectionInfo* info = brain.GetReflection();
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 1u);
@@ -407,7 +407,7 @@ TEST(ReflectionTest, CameraBrainBlendDurationAccessorClampsNegative)
 
 TEST(ReflectionTest, ShadowReflectsAppearanceFields)
 {
-    NS::Object::ShadowComponent shadow;
+    NS::Obj::ShadowComponent shadow;
     const ReflectionInfo* info = shadow.GetReflection();
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 4u);
@@ -416,7 +416,7 @@ TEST(ReflectionTest, ShadowReflectsAppearanceFields)
 
 TEST(ReflectionTest, FieldTypeOfStringIsString)
 {
-    EXPECT_EQ(NS::Object::FieldTypeOf<std::string>(), FieldType::String);
+    EXPECT_EQ(NS::Obj::FieldTypeOf<std::string>(), FieldType::String);
 }
 
 TEST(ReflectionTest, StringFieldGetReturnsInitial)
@@ -444,7 +444,7 @@ TEST(ReflectionTest, StringFieldSetRoundTrips)
 
 TEST(ReflectionTest, FieldTypeOfObjectRefIsObjectRef)
 {
-    EXPECT_EQ(NS::Object::FieldTypeOf<NS::Object::ObjectRef>(), FieldType::ObjectRef);
+    EXPECT_EQ(NS::Obj::FieldTypeOf<NS::Obj::ObjectRef>(), FieldType::ObjectRef);
 }
 
 TEST(ReflectionValueTypeTest, ReflectsNonComponentStruct)
@@ -475,27 +475,27 @@ TEST(ReflectionValueTypeTest, ReflectsNonComponentStruct)
 
 TEST(ReflectionIsATest, MatchesSelfAndBaseChain)
 {
-    NS::Object::ThirdPersonFollowComponent follow;
-    EXPECT_TRUE(follow.IsA(NS::Object::ThirdPersonFollowComponent::StaticReflection()));
-    EXPECT_TRUE(follow.IsA(NS::Object::VirtualCameraComponent::StaticReflection()));
+    NS::Obj::ThirdPersonFollowComponent follow;
+    EXPECT_TRUE(follow.IsA(NS::Obj::ThirdPersonFollowComponent::StaticReflection()));
+    EXPECT_TRUE(follow.IsA(NS::Obj::VirtualCameraComponent::StaticReflection()));
 }
 
 TEST(ReflectionIsATest, RejectsUnrelatedTypeAndNull)
 {
-    NS::Object::ThirdPersonFollowComponent follow;
-    EXPECT_FALSE(follow.IsA(NS::Object::CameraBrainComponent::StaticReflection()));
+    NS::Obj::ThirdPersonFollowComponent follow;
+    EXPECT_FALSE(follow.IsA(NS::Obj::CameraBrainComponent::StaticReflection()));
     EXPECT_FALSE(follow.IsA(nullptr));
 
     // リフレクションを持たない素の派生はどの検索にも一致しない
     BareComponent bare;
-    EXPECT_FALSE(bare.IsA(NS::Object::CameraBrainComponent::StaticReflection()));
+    EXPECT_FALSE(bare.IsA(NS::Obj::CameraBrainComponent::StaticReflection()));
 }
 
 TEST(ReflectionIsATest, StaticAndVirtualShareOneInfo)
 {
     // 静的関数と仮想関数が同じ実体を返す。二重定義があると is-a のアドレス比較が壊れる
-    NS::Object::ThirdPersonFollowComponent follow;
-    EXPECT_EQ(follow.GetReflection(), NS::Object::ThirdPersonFollowComponent::StaticReflection());
+    NS::Obj::ThirdPersonFollowComponent follow;
+    EXPECT_EQ(follow.GetReflection(), NS::Obj::ThirdPersonFollowComponent::StaticReflection());
 
     PlacedVirtualCamera cam;
     EXPECT_EQ(cam.GetReflection(), PlacedVirtualCamera::StaticReflection());
@@ -503,30 +503,30 @@ TEST(ReflectionIsATest, StaticAndVirtualShareOneInfo)
 
 TEST(ReflectionComponentCastTest, CastsSelfAndBaseRejectsOthers)
 {
-    NS::Object::ThirdPersonFollowComponent follow;
+    NS::Obj::ThirdPersonFollowComponent follow;
     Component* comp = &follow;
-    EXPECT_EQ(NS::Object::ComponentCast<NS::Object::ThirdPersonFollowComponent>(comp), &follow);
-    EXPECT_EQ(NS::Object::ComponentCast<NS::Object::VirtualCameraComponent>(comp),
-              static_cast<NS::Object::VirtualCameraComponent*>(&follow));
-    EXPECT_EQ(NS::Object::ComponentCast<NS::Object::CameraBrainComponent>(comp), nullptr);
-    EXPECT_EQ(NS::Object::ComponentCast<NS::Object::ThirdPersonFollowComponent>(static_cast<Component*>(nullptr)),
+    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::ThirdPersonFollowComponent>(comp), &follow);
+    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::VirtualCameraComponent>(comp),
+              static_cast<NS::Obj::VirtualCameraComponent*>(&follow));
+    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::CameraBrainComponent>(comp), nullptr);
+    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::ThirdPersonFollowComponent>(static_cast<Component*>(nullptr)),
               nullptr);
 }
 
 TEST(ReflectionComponentCastTest, ConstOverloadMatchesNonConst)
 {
-    NS::Object::ThirdPersonFollowComponent follow;
+    NS::Obj::ThirdPersonFollowComponent follow;
     const Component* comp = &follow;
-    EXPECT_EQ(NS::Object::ComponentCast<NS::Object::ThirdPersonFollowComponent>(comp), &follow);
-    EXPECT_EQ(NS::Object::ComponentCast<NS::Object::CameraBrainComponent>(comp), nullptr);
+    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::ThirdPersonFollowComponent>(comp), &follow);
+    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::CameraBrainComponent>(comp), nullptr);
 }
 
 TEST(ReflectionComponentCastTest, CastsTypeWithRenderableSide)
 {
     // Component + IRenderable の多重継承でも Component* からの下向き static_cast が成立する
-    NS::Object::ShadowComponent shadow;
+    NS::Obj::ShadowComponent shadow;
     Component* comp = &shadow;
-    EXPECT_EQ(NS::Object::ComponentCast<NS::Object::ShadowComponent>(comp), &shadow);
+    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::ShadowComponent>(comp), &shadow);
 }
 
 TEST(ReflectionFiniteFieldTest, ReachesTheMemberInsideTheNestedStruct)

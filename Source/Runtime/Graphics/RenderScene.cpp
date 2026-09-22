@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     RenderHandle RenderScene::Register(const RenderProxyDesc& desc)
     {
@@ -133,4 +133,4 @@ namespace NS::Graphics
                m_proxies[handle.slot].generation == handle.generation;
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

@@ -6,8 +6,8 @@
 
 namespace
 {
-    using NS::Object::Component;
-    using NS::Object::GameObject;
+    using NS::Obj::Component;
+    using NS::Obj::GameObject;
 
     class MockComponent : public Component
     {
@@ -109,22 +109,22 @@ TEST(GameObjectTest, SetParentLinksHierarchyAndSyncsTransform)
 
 namespace
 {
-    class HighPrioComponent : public NS::Object::Component
+    class HighPrioComponent : public NS::Obj::Component
     {
     public:
-        HighPrioComponent() noexcept : Component(NS::Object::TickPriority::EarlyUpdate) {}
+        HighPrioComponent() noexcept : Component(NS::Obj::TickPriority::EarlyUpdate) {}
     };
 
-    class LowPrioComponent : public NS::Object::Component
+    class LowPrioComponent : public NS::Obj::Component
     {
     public:
-        LowPrioComponent() noexcept : Component(NS::Object::TickPriority::LateUpdate) {}
+        LowPrioComponent() noexcept : Component(NS::Obj::TickPriority::LateUpdate) {}
     };
 } // namespace
 
 TEST(GameObjectPriorityTest, AddComponentSortsByPriority)
 {
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto& low = *obj.AddComponent<LowPrioComponent>();   // 先に追加 (LateUpdate, 400)
     auto& high = *obj.AddComponent<HighPrioComponent>(); // 後に追加 (EarlyUpdate, 0)
 
@@ -136,7 +136,7 @@ TEST(GameObjectPriorityTest, AddComponentSortsByPriority)
 
 TEST(GameObjectPriorityTest, SamePriorityPreservesInsertionOrder)
 {
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto& a = *obj.AddComponent<HighPrioComponent>();
     auto& b = *obj.AddComponent<HighPrioComponent>();
 
@@ -148,7 +148,7 @@ TEST(GameObjectPriorityTest, SamePriorityPreservesInsertionOrder)
 
 TEST(GameObjectAddComponentTest, OwnsLifetimeInjectsOwnerAndOrdersByPriority)
 {
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto* low = obj.AddComponent<LowPrioComponent>();   // LateUpdate 400
     auto* high = obj.AddComponent<HighPrioComponent>(); // EarlyUpdate 0
     auto* mock = obj.AddComponent<MockComponent>();     // 既定 Update 200

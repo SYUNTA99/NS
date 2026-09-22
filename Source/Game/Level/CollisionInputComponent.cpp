@@ -38,15 +38,15 @@ namespace NS::Game::Level
 
     // -140 はチャージ減速を書いてから PlayerComponent (200) が動く並びにするため
     CollisionInputComponent::CollisionInputComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::Update - 140)
+        : NS::Obj::Component(NS::Obj::TickPriority::Update - 140)
     {
         m_chargeFactorCurve.count = 2;
-        m_chargeFactorCurve.keys[0] = NS::Object::Curve::Key{0.0f, 1.0f};
-        m_chargeFactorCurve.keys[1] = NS::Object::Curve::Key{1.0f, 2.0f};
+        m_chargeFactorCurve.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
+        m_chargeFactorCurve.keys[1] = NS::Obj::Curve::Key{1.0f, 2.0f};
 
         m_positionFactorCurve.count = 2;
-        m_positionFactorCurve.keys[0] = NS::Object::Curve::Key{0.0f, 1.0f};
-        m_positionFactorCurve.keys[1] = NS::Object::Curve::Key{1.0f, 0.7f};
+        m_positionFactorCurve.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
+        m_positionFactorCurve.keys[1] = NS::Obj::Curve::Key{1.0f, 0.7f};
     }
 
     void CollisionInputComponent::OnStart()
@@ -157,7 +157,7 @@ namespace NS::Game::Level
         {
             color = NS::Core::Color{1.0f, 1.0f, 1.0f, 1.0f};
         }
-        NS::Graphics::DebugDraw::Circle(NS::Core::Vector3{center.x, footY, center.z},
+        NS::Gfx::DebugDraw::Circle(NS::Core::Vector3{center.x, footY, center.z},
                                         NS::Core::Vector3{radius, 0.0f, 0.0f},
                                         NS::Core::Vector3{0.0f, 0.0f, radius},
                                         color);

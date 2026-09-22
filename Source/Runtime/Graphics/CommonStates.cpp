@@ -6,7 +6,7 @@
 #include <CommonStates.h>
 #include <memory>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     CommonStates::CommonStates(ID3D11Device* device) noexcept
@@ -119,4 +119,4 @@ namespace NS::Graphics
         return nullptr;
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

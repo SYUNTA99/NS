@@ -15,7 +15,7 @@
 #include <cmath>
 #include <string_view>
 
-namespace NS::Object
+namespace NS::Obj
 {
     namespace
     {
@@ -57,12 +57,12 @@ namespace NS::Object
 
     SkeletalAnimationComponent::~SkeletalAnimationComponent() = default;
 
-    void SkeletalAnimationComponent::SetMesh(NS::Graphics::SkeletalMesh* mesh) noexcept
+    void SkeletalAnimationComponent::SetMesh(NS::Gfx::SkeletalMesh* mesh) noexcept
     {
         m_mesh = mesh;
     }
 
-    void SkeletalAnimationComponent::SetSkeleton(const NS::Graphics::Skeleton* skeleton) noexcept
+    void SkeletalAnimationComponent::SetSkeleton(const NS::Gfx::Skeleton* skeleton) noexcept
     {
         m_skeleton = skeleton;
     }
@@ -130,10 +130,10 @@ namespace NS::Object
         return false;
     }
 
-    void SkeletalAnimationComponent::AddClips(std::span<const NS::Graphics::AnimationClip> clips)
+    void SkeletalAnimationComponent::AddClips(std::span<const NS::Gfx::AnimationClip> clips)
     {
         m_clips.reserve(m_clips.size() + clips.size());
-        for (const NS::Graphics::AnimationClip& clip : clips)
+        for (const NS::Gfx::AnimationClip& clip : clips)
         {
             m_clips.push_back(&clip);
         }
@@ -225,7 +225,7 @@ namespace NS::Object
                 NS_LOG_WARN(Graphics, "SkeletalAnimationComponent: clip 参照を解決できない: {}", entry);
                 continue;
             }
-            const std::vector<NS::Graphics::AnimationClip>* bound =
+            const std::vector<NS::Gfx::AnimationClip>* bound =
                 assets.GetOrLoadBoundClips(*resolvedClip, *resolved);
             if (bound == nullptr)
             {
@@ -238,9 +238,9 @@ namespace NS::Object
 
     void SkeletalAnimationComponent::OnStart()
     {
-        NS::Graphics::BufferDesc cbDesc = NS::Graphics::MakeConstantBufferDesc(sizeof(NS::Graphics::BonePaletteCB));
-        m_bonePaletteCB = NS::Graphics::Buffer::Create(cbDesc);
-        for (std::size_t i = 0; i < NS::Graphics::k_MaxBones; ++i)
+        NS::Gfx::BufferDesc cbDesc = NS::Gfx::MakeConstantBufferDesc(sizeof(NS::Gfx::BonePaletteCB));
+        m_bonePaletteCB = NS::Gfx::Buffer::Create(cbDesc);
+        for (std::size_t i = 0; i < NS::Gfx::k_MaxBones; ++i)
         {
             m_palette.bones[i] = NS::Core::Matrix::Identity;
         }
@@ -255,8 +255,8 @@ namespace NS::Object
         {
             m_renderer->SetPerObjectVsConstant(m_bonePaletteCB.get(),
                                                &m_palette,
-                                               sizeof(NS::Graphics::BonePaletteCB),
-                                               NS::Graphics::k_BonePaletteSlot);
+                                               sizeof(NS::Gfx::BonePaletteCB),
+                                               NS::Gfx::k_BonePaletteSlot);
         }
         ApplyPose(m_time);
     }
@@ -297,7 +297,7 @@ namespace NS::Object
         }
         if (m_current < m_clips.size() && m_clips[m_current] != nullptr && m_clips[m_current]->IsValid())
         {
-            NS::Graphics::SampleClipPose(*m_clips[m_current], *m_skeleton, time, m_poseScratch);
+            NS::Gfx::SampleClipPose(*m_clips[m_current], *m_skeleton, time, m_poseScratch);
             m_skeleton->ComputePalette(m_poseScratch, m_paletteScratch);
         }
         else
@@ -306,8 +306,8 @@ namespace NS::Object
         }
 
         // CPU 側パレットへ写す。余りは恒等で埋める。GPU への upload は描画側が毎描画行う
-        const std::size_t count = std::min(m_paletteScratch.size(), NS::Graphics::k_MaxBones);
-        for (std::size_t i = 0; i < NS::Graphics::k_MaxBones; ++i)
+        const std::size_t count = std::min(m_paletteScratch.size(), NS::Gfx::k_MaxBones);
+        for (std::size_t i = 0; i < NS::Gfx::k_MaxBones; ++i)
         {
             if (i < count)
             {
@@ -322,7 +322,7 @@ namespace NS::Object
         // 現在ポーズの締まった境界を描画側へ差し、カリングをポーズ追従させる
         if (m_renderer != nullptr)
         {
-            const NS::Core::AABB localBounds = NS::Graphics::MergeSkinnedBounds(
+            const NS::Core::AABB localBounds = NS::Gfx::MergeSkinnedBounds(
                 m_mesh->BoneSpheres(), m_palette.bones, m_mesh->BoneCount(), m_mesh->LocalBounds());
             m_renderer->SetLocalBoundsOverride(localBounds);
         }
@@ -330,4 +330,4 @@ namespace NS::Object
 
     // mesh / skeleton / clips は asset 由来なので data からは空で作る。mesh 未注入の間 ApplyPose は何もしない
     NS_CLASS(SkeletalAnimationComponent)
-} // namespace NS::Object
+} // namespace NS::Obj

@@ -8,7 +8,7 @@ namespace NS::Game::Player
 {
     // 入力 (EarlyUpdate) の直後、移動の PlayerComponent (Update) より前に渡す
     PlayerInputRelayComponent::PlayerInputRelayComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::EarlyUpdate + 10)
+        : NS::Obj::Component(NS::Obj::TickPriority::EarlyUpdate + 10)
     {}
 
     void PlayerInputRelayComponent::OnStart()
@@ -19,7 +19,7 @@ namespace NS::Game::Player
             m_player = nullptr;
             return;
         }
-        m_input = Owner()->FindComponent<NS::Object::PlayerInputComponent>();
+        m_input = Owner()->FindComponent<NS::Obj::PlayerInputComponent>();
         m_player = Owner()->FindComponent<PlayerComponent>();
     }
 

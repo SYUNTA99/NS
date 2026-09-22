@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! @brief 別の配置物を保存をまたいで指す参照値型。id はレベル側で採番される永続 id、0 は未設定
     //! @details ポインタや配列添字でなく永続 id で持つことで、並び替え・保存・再読込・undo を
@@ -16,4 +16,4 @@ namespace NS::Object
 
         [[nodiscard]] constexpr bool operator==(const ObjectRef&) const noexcept = default;
     };
-} // namespace NS::Object
+} // namespace NS::Obj

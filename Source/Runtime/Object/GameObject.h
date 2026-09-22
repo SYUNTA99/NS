@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class Scene;
     class TransformComponent;
@@ -133,4 +133,4 @@ namespace NS::Object
         void DetachFromParent() noexcept;
     };
 
-} // namespace NS::Object
+} // namespace NS::Obj

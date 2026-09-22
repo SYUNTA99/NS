@@ -9,17 +9,17 @@
 
 namespace
 {
-    using NS::Object::MeshRendererComponent;
-    using NS::Object::GameObject;
+    using NS::Obj::MeshRendererComponent;
+    using NS::Obj::GameObject;
 
-    class FakeScene : public NS::Object::Scene
+    class FakeScene : public NS::Obj::Scene
     {
     public:
-        void RegisterRenderable(NS::Object::IRenderable* renderable) override { registered.push_back(renderable); }
-        void UnregisterRenderable(NS::Object::IRenderable* renderable) override { unregistered.push_back(renderable); }
+        void RegisterRenderable(NS::Obj::IRenderable* renderable) override { registered.push_back(renderable); }
+        void UnregisterRenderable(NS::Obj::IRenderable* renderable) override { unregistered.push_back(renderable); }
 
-        std::vector<NS::Object::IRenderable*> registered;
-        std::vector<NS::Object::IRenderable*> unregistered;
+        std::vector<NS::Obj::IRenderable*> registered;
+        std::vector<NS::Obj::IRenderable*> unregistered;
     };
 } // namespace
 
@@ -37,8 +37,8 @@ TEST(MeshRendererComponentTest, CollectIsNoOpWhenInactive)
     mc.SetActive(false);
 
     // 非アクティブなら DrawItem を積まない
-    NS::Graphics::RenderContext ctx{};
-    std::vector<NS::Graphics::DrawItem> out;
+    NS::Gfx::RenderContext ctx{};
+    std::vector<NS::Gfx::DrawItem> out;
     mc.Collect(ctx, out);
     EXPECT_TRUE(out.empty());
 }
@@ -48,8 +48,8 @@ TEST(MeshRendererComponentTest, CollectIsNoOpWhenMeshOrMaterialIsNull)
     GameObject obj;
     auto& mc = *obj.AddComponent<MeshRendererComponent>();
 
-    NS::Graphics::RenderContext ctx{};
-    std::vector<NS::Graphics::DrawItem> out;
+    NS::Gfx::RenderContext ctx{};
+    std::vector<NS::Gfx::DrawItem> out;
     mc.Collect(ctx, out); // null ガードで何も積まない
     EXPECT_TRUE(out.empty());
 }
@@ -71,7 +71,7 @@ TEST(MeshRendererComponentTest, OnStartRegistersToOwningScene)
     mc.OnStart();
 
     ASSERT_EQ(scene.registered.size(), 1u);
-    EXPECT_EQ(scene.registered[0], static_cast<NS::Object::IRenderable*>(&mc));
+    EXPECT_EQ(scene.registered[0], static_cast<NS::Obj::IRenderable*>(&mc));
 }
 
 TEST(MeshRendererComponentTest, OnEndPlayUnregistersFromOwningScene)
@@ -85,7 +85,7 @@ TEST(MeshRendererComponentTest, OnEndPlayUnregistersFromOwningScene)
     mc.OnEndPlay();
 
     ASSERT_EQ(scene.unregistered.size(), 1u);
-    EXPECT_EQ(scene.unregistered[0], static_cast<NS::Object::IRenderable*>(&mc));
+    EXPECT_EQ(scene.unregistered[0], static_cast<NS::Obj::IRenderable*>(&mc));
 }
 
 TEST(MeshRendererComponentTest, OnStartIsNoOpWhenSceneIsNull)

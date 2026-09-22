@@ -3,7 +3,7 @@
 
 namespace
 {
-    using NS::Object::ShadowComponent;
+    using NS::Obj::ShadowComponent;
 } // namespace
 
 // 真下の地面探索は PhysicsScene::Raycast が持つ。検証は jolt_body_test.cpp

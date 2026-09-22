@@ -27,85 +27,85 @@ namespace NS::Editor
         // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す係数
         constexpr float k_QuarterTurnYaw = NS::Core::k_Pi * 0.5f;
 
-        bool HasComponentType(const NS::Object::ObjectData& object, const char* typeName) noexcept
+        bool HasComponentType(const NS::Obj::ObjectData& object, const char* typeName) noexcept
         {
-            return NS::Object::FindComponentEntry(object, typeName) != nullptr;
+            return NS::Obj::FindComponentEntry(object, typeName) != nullptr;
         }
 
         // Transform しか持たない = 中身が無い GameObject。データ側は Transform も component 列に居る
-        bool HasOnlyTransform(const NS::Object::ObjectData& object) noexcept
+        bool HasOnlyTransform(const NS::Obj::ObjectData& object) noexcept
         {
             for (const nlohmann::json& entry : object.components)
             {
-                if (NS::Object::ComponentEntryType(entry) != "TransformComponent")
+                if (NS::Obj::ComponentEntryType(entry) != "TransformComponent")
                     return false;
             }
             return true;
         }
 
-        float SlopeAngleOf(const NS::Object::ObjectData& object) noexcept
+        float SlopeAngleOf(const NS::Obj::ObjectData& object) noexcept
         {
-            const nlohmann::json* slope = NS::Object::FindComponentEntry(object, "SlopeColliderComponent");
+            const nlohmann::json* slope = NS::Obj::FindComponentEntry(object, "SlopeColliderComponent");
             if (!slope)
                 return -1.0f;
-            return NS::Object::FieldFloat(*slope, "角度 (度)", 0.0f);
+            return NS::Obj::FieldFloat(*slope, "角度 (度)", 0.0f);
         }
 
-        std::string MaterialRefOf(const NS::Object::ObjectData& object)
+        std::string MaterialRefOf(const NS::Obj::ObjectData& object)
         {
-            const nlohmann::json* renderer = NS::Object::FindComponentEntry(object, "MeshRendererComponent");
+            const nlohmann::json* renderer = NS::Obj::FindComponentEntry(object, "MeshRendererComponent");
             if (!renderer)
                 return {};
-            return NS::Object::FieldString(*renderer, "マテリアル", {});
+            return NS::Obj::FieldString(*renderer, "マテリアル", {});
         }
     } // namespace
 
-    std::int16_t ObjectCellX(const NS::Object::ObjectData& object) noexcept
+    std::int16_t ObjectCellX(const NS::Obj::ObjectData& object) noexcept
     {
-        return static_cast<std::int16_t>(std::lround(NS::Object::ObjectPosition(object).x));
+        return static_cast<std::int16_t>(std::lround(NS::Obj::ObjectPosition(object).x));
     }
 
-    std::int16_t ObjectCellY(const NS::Object::ObjectData& object) noexcept
+    std::int16_t ObjectCellY(const NS::Obj::ObjectData& object) noexcept
     {
-        return static_cast<std::int16_t>(std::lround(NS::Object::ObjectPosition(object).y));
+        return static_cast<std::int16_t>(std::lround(NS::Obj::ObjectPosition(object).y));
     }
 
-    std::int16_t ObjectCellZ(const NS::Object::ObjectData& object) noexcept
+    std::int16_t ObjectCellZ(const NS::Obj::ObjectData& object) noexcept
     {
-        return static_cast<std::int16_t>(std::lround(NS::Object::ObjectPosition(object).z));
+        return static_cast<std::int16_t>(std::lround(NS::Obj::ObjectPosition(object).z));
     }
 
-    bool IsCellBrushObject(const NS::Object::ObjectData& object) noexcept
+    bool IsCellBrushObject(const NS::Obj::ObjectData& object) noexcept
     {
         // プレイヤーとカメラは別経路で扱うため cell ブラシの対象から外す
         return !IsPlayerObject(object) && !NS::Game::Level::IsFollowCameraObject(object) &&
-               NS::Object::FindComponentEntry(object, "PlacedVirtualCamera") == nullptr;
+               NS::Obj::FindComponentEntry(object, "PlacedVirtualCamera") == nullptr;
     }
 
-    bool IsCellBrushObject(NS::Object::GameObject& object) noexcept
+    bool IsCellBrushObject(NS::Obj::GameObject& object) noexcept
     {
         // 実行時の一時オブジェクトは配置物でないため対象外
-        return !object.IsTransient() && object.FindComponent<NS::Object::PlayerInputComponent>() == nullptr &&
-               object.FindComponent<NS::Object::ThirdPersonFollowComponent>() == nullptr &&
-               object.FindComponent<NS::Object::PlacedVirtualCamera>() == nullptr;
+        return !object.IsTransient() && object.FindComponent<NS::Obj::PlayerInputComponent>() == nullptr &&
+               object.FindComponent<NS::Obj::ThirdPersonFollowComponent>() == nullptr &&
+               object.FindComponent<NS::Obj::PlacedVirtualCamera>() == nullptr;
     }
 
-    std::int16_t ObjectCellX(const NS::Object::GameObject& object) noexcept
+    std::int16_t ObjectCellX(const NS::Obj::GameObject& object) noexcept
     {
         return static_cast<std::int16_t>(std::lround(object.Root().Position().x));
     }
 
-    std::int16_t ObjectCellY(const NS::Object::GameObject& object) noexcept
+    std::int16_t ObjectCellY(const NS::Obj::GameObject& object) noexcept
     {
         return static_cast<std::int16_t>(std::lround(object.Root().Position().y));
     }
 
-    std::int16_t ObjectCellZ(const NS::Object::GameObject& object) noexcept
+    std::int16_t ObjectCellZ(const NS::Obj::GameObject& object) noexcept
     {
         return static_cast<std::int16_t>(std::lround(object.Root().Position().z));
     }
 
-    std::size_t FindObjectAtCell(const NS::Object::SceneData& level,
+    std::size_t FindObjectAtCell(const NS::Obj::SceneData& level,
                                  std::int16_t x,
                                  std::int16_t y,
                                  std::int16_t z) noexcept
@@ -119,30 +119,30 @@ namespace NS::Editor
                 return i;
             }
         }
-        return NS::Object::k_NoObjectIndex;
+        return NS::Obj::k_NoObjectIndex;
     }
 
-    std::uint32_t FindObjectIdAtCell(const NS::Object::ObjectList& objects,
+    std::uint32_t FindObjectIdAtCell(const NS::Obj::ObjectList& objects,
                                      std::int16_t x,
                                      std::int16_t y,
                                      std::int16_t z) noexcept
     {
-        for (NS::Object::GameObject* objPtr : objects)
+        for (NS::Obj::GameObject* objPtr : objects)
         {
-            NS::Object::GameObject& object = *objPtr;
+            NS::Obj::GameObject& object = *objPtr;
             if (IsCellBrushObject(object) && ObjectCellX(object) == x && ObjectCellY(object) == y &&
                 ObjectCellZ(object) == z)
             {
                 return object.Id();
             }
         }
-        return NS::Object::k_NoObjectId;
+        return NS::Obj::k_NoObjectId;
     }
 
-    std::uint8_t CellRotationStep(const NS::Object::ObjectData& object) noexcept
+    std::uint8_t CellRotationStep(const NS::Obj::ObjectData& object) noexcept
     {
         // q と -q は同じ回転なので fabs で符号を無視し、4 候補から一番近いものを選ぶ
-        const NS::Core::Quaternion current = NS::Object::ObjectRotation(object);
+        const NS::Core::Quaternion current = NS::Obj::ObjectRotation(object);
         std::uint8_t best = 0;
         float bestDot = -2.0f;
         for (std::uint8_t step = 0; step < 4; ++step)
@@ -160,11 +160,11 @@ namespace NS::Editor
         return best;
     }
 
-    void SetCellRotationStep(NS::Object::ObjectData& object, std::uint8_t rotationStep) noexcept
+    void SetCellRotationStep(NS::Obj::ObjectData& object, std::uint8_t rotationStep) noexcept
     {
         const float yaw = static_cast<float>(rotationStep & 0x03) * k_QuarterTurnYaw;
         const NS::Core::Quaternion rotation = NS::Core::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
-        NS::Object::SetObjectRotation(object, rotation);
+        NS::Obj::SetObjectRotation(object, rotation);
     }
 
     nlohmann::json MakeCellSlopeComponents(float angleDegrees)
@@ -177,9 +177,9 @@ namespace NS::Editor
         else if (angleDegrees < 37.5f)
             meshName = "wedge30";
 
-        nlohmann::json slope = NS::Object::MakeComponentEntry("SlopeColliderComponent");
-        NS::Object::SetField(slope, "角度 (度)", angleDegrees);
-        NS::Object::SetField(slope, "半径", NS::Game::Level::k_CellHalfExtents);
+        nlohmann::json slope = NS::Obj::MakeComponentEntry("SlopeColliderComponent");
+        NS::Obj::SetField(slope, "角度 (度)", angleDegrees);
+        NS::Obj::SetField(slope, "半径", NS::Game::Level::k_CellHalfExtents);
         return nlohmann::json::array(
             {NS::Game::Level::MakeMeshRendererEntry(meshName, "", NS::Game::Level::k_SolidBaseColor),
              std::move(slope)});
@@ -193,8 +193,8 @@ namespace NS::Editor
             return NS::Game::Level::MakeCellCubeComponents();
         case PrimitiveKind::Sphere:
         {
-            nlohmann::json sphere = NS::Object::MakeComponentEntry("SphereColliderComponent");
-            NS::Object::SetField(sphere, "半径", NS::Game::Level::k_CellHalfExtents.y);
+            nlohmann::json sphere = NS::Obj::MakeComponentEntry("SphereColliderComponent");
+            NS::Obj::SetField(sphere, "半径", NS::Game::Level::k_CellHalfExtents.y);
             return nlohmann::json::array(
                 {NS::Game::Level::MakeMeshRendererEntry("sphere", "", NS::Game::Level::k_SolidBaseColor),
                  std::move(sphere)});
@@ -212,10 +212,10 @@ namespace NS::Editor
         // 視覚用マーカーとして金色のキューブを付与する
         return nlohmann::json::array(
             {NS::Game::Level::MakeMeshRendererEntry("cube", "", NS::Core::Vector3{1.0f, 0.84f, 0.0f}),
-             NS::Object::MakeComponentEntry("GoalComponent")});
+             NS::Obj::MakeComponentEntry("GoalComponent")});
     }
 
-    bool IsSolidObject(const NS::Object::ObjectData& object)
+    bool IsSolidObject(const NS::Obj::ObjectData& object)
     {
         const bool hasBox = HasComponentType(object, "BoxColliderComponent");
         const bool hasSlope = HasComponentType(object, "SlopeColliderComponent");
@@ -225,12 +225,12 @@ namespace NS::Editor
         return hasBox && !hasSlope && !hasHazard && !hasGoal && !hasKillZone;
     }
 
-    bool IsRotatableObject(const NS::Object::ObjectData& object)
+    bool IsRotatableObject(const NS::Obj::ObjectData& object)
     {
         return SlopeAngleOf(object) >= 0.0f || IsSolidObject(object);
     }
 
-    const char* ObjectDisplayName(const NS::Object::ObjectData& object)
+    const char* ObjectDisplayName(const NS::Obj::ObjectData& object)
     {
         if (!object.name.empty())
             return object.name.c_str();
@@ -276,23 +276,23 @@ namespace NS::Editor
         return "?";
     }
 
-    const char* ObjectDisplayName(NS::Object::GameObject& object)
+    const char* ObjectDisplayName(NS::Obj::GameObject& object)
     {
         if (!object.Name().empty())
             return object.Name().c_str();
-        if (object.FindComponent<NS::Object::PlayerInputComponent>() != nullptr)
+        if (object.FindComponent<NS::Obj::PlayerInputComponent>() != nullptr)
             return "Player";
-        if (object.FindComponent<NS::Object::ThirdPersonFollowComponent>() != nullptr)
+        if (object.FindComponent<NS::Obj::ThirdPersonFollowComponent>() != nullptr)
             return "Follow Camera";
-        if (object.FindComponent<NS::Object::PlacedVirtualCamera>() != nullptr)
+        if (object.FindComponent<NS::Obj::PlacedVirtualCamera>() != nullptr)
             return "Camera";
-        if (object.FindComponent<NS::Object::DirectionalLightComponent>() != nullptr)
+        if (object.FindComponent<NS::Obj::DirectionalLightComponent>() != nullptr)
             return "Directional Light";
 
         if (object.FindComponent<NS::Game::Level::GoalComponent>() != nullptr)
             return "Goal";
 
-        if (auto* slope = object.FindComponent<NS::Object::SlopeColliderComponent>())
+        if (auto* slope = object.FindComponent<NS::Obj::SlopeColliderComponent>())
         {
             const float slopeAngle = slope->AngleDegrees();
             if (slopeAngle >= 44.0f)
@@ -308,12 +308,12 @@ namespace NS::Editor
 
         if (object.FindComponent<NS::Game::Level::HazardComponent>() != nullptr)
             return "Hazard";
-        auto* mesh = object.FindComponent<NS::Object::MeshRendererComponent>();
+        auto* mesh = object.FindComponent<NS::Obj::MeshRendererComponent>();
         if (mesh != nullptr && mesh->MaterialRef() == "water")
             return "Water";
-        if (object.FindComponent<NS::Object::SphereColliderComponent>() != nullptr)
+        if (object.FindComponent<NS::Obj::SphereColliderComponent>() != nullptr)
             return "Sphere";
-        if (object.FindComponent<NS::Object::BoxColliderComponent>() != nullptr)
+        if (object.FindComponent<NS::Obj::BoxColliderComponent>() != nullptr)
             return "Solid";
         if (mesh != nullptr)
             return "Decoration";
@@ -324,9 +324,9 @@ namespace NS::Editor
         return "?";
     }
 
-    NS::Core::AABB PickLocalBounds(const NS::Object::GameObject& object) noexcept
+    NS::Core::AABB PickLocalBounds(const NS::Obj::GameObject& object) noexcept
     {
-        const auto* renderer = object.FindComponent<NS::Object::MeshRendererComponent>();
+        const auto* renderer = object.FindComponent<NS::Obj::MeshRendererComponent>();
         if (renderer != nullptr && renderer->GetMesh() != nullptr)
             return renderer->GetMesh()->LocalBounds();
         return NS::Core::AABB{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Game::Level::k_CellHalfExtents};

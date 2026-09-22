@@ -7,13 +7,13 @@
 
 namespace
 {
-    using NS::Graphics::BlendMode;
-    using NS::Graphics::CullMode;
-    using NS::Graphics::DepthMode;
-    using NS::Graphics::Pipeline;
-    using NS::Graphics::PipelineDesc;
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
+    using NS::Gfx::BlendMode;
+    using NS::Gfx::CullMode;
+    using NS::Gfx::DepthMode;
+    using NS::Gfx::Pipeline;
+    using NS::Gfx::PipelineDesc;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 

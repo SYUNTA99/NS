@@ -208,10 +208,10 @@ void Editor::OnRender()
     // 次フレームの描画先を決める。SRV 参照 (ImGui 実描画) が終わった直後の安全な位置で切り替える
     if (m_uiVisible)
     {
-        std::vector<NS::Object::SceneView> views;
-        if (std::optional<NS::Object::SceneView> sceneView = m_sceneView.CollectView(editor))
+        std::vector<NS::Obj::SceneView> views;
+        if (std::optional<NS::Obj::SceneView> sceneView = m_sceneView.CollectView(editor))
             views.push_back(*sceneView);
-        if (std::optional<NS::Object::SceneView> gameView = m_gameView.CollectView(editor))
+        if (std::optional<NS::Obj::SceneView> gameView = m_gameView.CollectView(editor))
             views.push_back(*gameView);
         editor.SetSceneViews(std::move(views));
     }

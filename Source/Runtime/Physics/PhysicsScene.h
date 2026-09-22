@@ -22,7 +22,7 @@
 #include <span>
 #include <vector>
 
-namespace NS::Physics
+namespace NS::Phys
 {
     //! body の種別を表す ObjectLayer。どの組み合わせが当たるかは 2 つの ShouldCollide が同じ形で持つ
     namespace ObjectLayers
@@ -249,4 +249,4 @@ namespace NS::Physics
         JPH::JobSystemSingleThreaded m_jobSystem;
         JPH::PhysicsSystem m_physicsSystem;
     };
-} // namespace NS::Physics
+} // namespace NS::Phys

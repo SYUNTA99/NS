@@ -6,8 +6,8 @@
 
 namespace
 {
-    using NS::Object::GameObject;
-    using NS::Object::PlayerInputComponent;
+    using NS::Obj::GameObject;
+    using NS::Obj::PlayerInputComponent;
     using NS::Platform::Key;
 
     //! 入力はプロセスに 1 個しか無い。押したキーを次のテストへ持ち越さないよう前後で払う

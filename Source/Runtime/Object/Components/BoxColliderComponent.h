@@ -5,7 +5,7 @@
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! @brief 箱型 collider を Scene に登録する Component
     //! @details owner の world 変換を重ねた当たり箱を返す。body は WorldOBB の形と姿勢で入れる
@@ -60,7 +60,7 @@ namespace NS::Object
 
     private:
         // トリガなら sensor、そうでなければ固形の body として OBB のまま入れる
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
 
         // owner world 変換に重ねる当たり箱の local 変換を行列化する。offset と回転を合わせる
         [[nodiscard]] NS::Core::Matrix LocalMatrix() const noexcept;
@@ -73,4 +73,4 @@ namespace NS::Object
         NS::Core::Quaternion m_localRotation = NS::Core::Quaternion::Identity; // owner 回転に重ねる local 回転
         bool m_isTrigger = false; // 通り抜ける体積か。真なら sensor body にする
     };
-} // namespace NS::Object
+} // namespace NS::Obj

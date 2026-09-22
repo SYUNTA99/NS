@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace NS::Object
+namespace NS::Obj
 {
     namespace
     {
@@ -172,4 +172,4 @@ namespace NS::Object
         }
         return data;
     }
-} // namespace NS::Object
+} // namespace NS::Obj

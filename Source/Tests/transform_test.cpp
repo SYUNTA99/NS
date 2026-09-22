@@ -8,7 +8,7 @@ namespace
     using NS::Core::Matrix;
     using NS::Core::Quaternion;
     using NS::Core::Vector3;
-    using NS::Object::Transform;
+    using NS::Obj::Transform;
 
     bool MatricesNear(const Matrix& a, const Matrix& b, float eps = 1e-4f)
     {

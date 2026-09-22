@@ -4,7 +4,7 @@
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! @brief 視点とトリガ範囲を自分で持つ据え置き仮想カメラ
     //! @details 視点位置は owner の Transform が持ち、ギズモや transform 編集がそのままカメラ移動になる
@@ -12,7 +12,7 @@ namespace NS::Object
     //! UpdateActivation(playerPos) がトリガ内なら自分を active 化し、lookAtPlayer 時は注視点を
     //! プレイヤーへ向ける。SetVcamPriority を follow より高くしておけば、active な間だけ
     //! CameraBrain がこれを選んでブレンドする。EvaluatePose は alpha 無視で固定 pose を返す
-    //! 依存: NS::Core, NS::Object::VirtualCameraComponent
+    //! 依存: NS::Core, NS::Obj::VirtualCameraComponent
     class PlacedVirtualCamera : public VirtualCameraComponent
     {
     public:
@@ -65,4 +65,4 @@ namespace NS::Object
         NS::Core::Vector3 m_triggerExtent{1.0f, 1.0f, 1.0f}; // トリガ AABB の半径成分
         bool m_lookAtPlayer = false;                         // 進入中にプレイヤーを追視するか
     };
-} // namespace NS::Object
+} // namespace NS::Obj

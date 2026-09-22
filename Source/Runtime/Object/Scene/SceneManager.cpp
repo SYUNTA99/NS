@@ -5,7 +5,7 @@
 
 #include <utility>
 
-namespace NS::Object
+namespace NS::Obj
 {
 
     SceneManager::SceneManager() = default;
@@ -20,7 +20,7 @@ namespace NS::Object
         m_assets = assets;
     }
 
-    void SceneManager::SetRenderer(NS::Graphics::Renderer* renderer) noexcept
+    void SceneManager::SetRenderer(NS::Gfx::Renderer* renderer) noexcept
     {
         m_renderer = renderer;
     }
@@ -79,4 +79,4 @@ namespace NS::Object
         }
     }
 
-} // namespace NS::Object
+} // namespace NS::Obj

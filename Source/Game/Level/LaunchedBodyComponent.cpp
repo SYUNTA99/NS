@@ -31,7 +31,7 @@ namespace NS::Game::Level
     } // namespace
 
     LaunchedBodyComponent::LaunchedBodyComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::LateUpdate)
+        : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate)
     {}
 
     NS::Core::Vector3 LaunchedBodyComponent::TumbleFrom(const NS::Core::Vector3& velocity) const noexcept
@@ -55,7 +55,7 @@ namespace NS::Game::Level
 
     NS::Core::Vector3 LaunchedBodyComponent::Velocity() const noexcept
     {
-        NS::Physics::PhysicsScene* physics = ScenePhysics();
+        NS::Phys::PhysicsScene* physics = ScenePhysics();
         if (!m_flying || physics == nullptr)
             return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         return physics->BodyVelocity(m_bodyId);
@@ -73,7 +73,7 @@ namespace NS::Game::Level
         m_debrisCount = std::max(0, count);
     }
 
-    JPH::BodyID LaunchedBodyComponent::CreateFlyingBody(NS::Physics::PhysicsScene& physics) const
+    JPH::BodyID LaunchedBodyComponent::CreateFlyingBody(NS::Phys::PhysicsScene& physics) const
     {
         NS::Core::AABB bounds{};
         if (!TryGetColliderBounds(*Owner(), bounds))
@@ -81,9 +81,9 @@ namespace NS::Game::Level
             return JPH::BodyID{};
         }
 
-        NS::Physics::DynamicBodyDesc desc;
+        NS::Phys::DynamicBodyDesc desc;
         // 破片同士は当たらないレイヤーに置く。散った破片が互いを押し合うと元の勢いが読めなくなる
-        desc.layer = Owner()->IsTransient() ? NS::Physics::ObjectLayers::Debris : NS::Physics::ObjectLayers::Rock;
+        desc.layer = Owner()->IsTransient() ? NS::Phys::ObjectLayers::Debris : NS::Phys::ObjectLayers::Rock;
         desc.restitution = m_restitution;
         desc.friction = m_friction;
         if (const auto* breakable = Owner()->FindComponent<BreakableComponent>())
@@ -100,7 +100,7 @@ namespace NS::Game::Level
 
     void LaunchedBodyComponent::RemoveFlyingBody() noexcept
     {
-        NS::Physics::PhysicsScene* physics = ScenePhysics();
+        NS::Phys::PhysicsScene* physics = ScenePhysics();
         if (physics == nullptr)
             return;
 
@@ -113,7 +113,7 @@ namespace NS::Game::Level
         // 非有限値は位置へ流れ、配置物が二度と描かれない場所へ飛ぶ
         if (!IsFinite(velocity) || Owner() == nullptr)
             return;
-        NS::Object::Scene* scene = Owner()->OwningScene();
+        NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
             return;
 
@@ -145,7 +145,7 @@ namespace NS::Game::Level
 
     void LaunchedBodyComponent::HideAndSleep()
     {
-        if (auto* mesh = Owner()->FindComponent<NS::Object::MeshRendererComponent>())
+        if (auto* mesh = Owner()->FindComponent<NS::Obj::MeshRendererComponent>())
             mesh->SetActive(false);
         SetColliderActive(false);
         SetActive(false);
@@ -155,7 +155,7 @@ namespace NS::Game::Level
     {
         if (Owner() == nullptr)
             return;
-        NS::Object::Scene* scene = Owner()->OwningScene();
+        NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
             return;
 
@@ -177,16 +177,16 @@ namespace NS::Game::Level
             const float angle = 2.0f * NS::Core::k_Pi * static_cast<float>(i) / static_cast<float>(m_debrisCount);
             // 浮きは交互に変える。全部同じ高さだと 1 つの輪に見えて壊れた量が伝わらない
             const float up = 0.5f + 0.5f * static_cast<float>(i % 2);
-            auto owned = std::make_unique<NS::Object::GameObject>();
+            auto owned = std::make_unique<NS::Obj::GameObject>();
             owned->Root().SetPosition(origin);
             owned->Root().SetScale(NS::Core::Vector3{m_debrisScale, m_debrisScale, m_debrisScale});
-            auto* mesh = owned->AddComponent<NS::Object::MeshRendererComponent>();
+            auto* mesh = owned->AddComponent<NS::Obj::MeshRendererComponent>();
             mesh->SetMeshRef("cube");
             mesh->SetMaterialRef("player");
             mesh->SetBaseColor(m_debrisBaseColor);
-            owned->AddComponent<NS::Object::BoxColliderComponent>();
+            owned->AddComponent<NS::Obj::BoxColliderComponent>();
             owned->AddComponent<LaunchedBodyComponent>();
-            NS::Object::GameObject* spawned = scene->SpawnTransient(std::move(owned));
+            NS::Obj::GameObject* spawned = scene->SpawnTransient(std::move(owned));
             if (spawned == nullptr)
                 continue;
             auto* body = spawned->FindComponent<LaunchedBodyComponent>();
@@ -221,14 +221,14 @@ namespace NS::Game::Level
             return;
         }
 
-        NS::Physics::PhysicsScene* physics = ScenePhysics();
+        NS::Phys::PhysicsScene* physics = ScenePhysics();
         if (physics == nullptr)
             return;
 
-        for (const NS::Physics::BodyContact& contact : physics->ContactsOf(m_bodyId))
+        for (const NS::Phys::BodyContact& contact : physics->ContactsOf(m_bodyId))
         {
             // 歩ける面は床。着地で必ず当たる床を分けないと着地で割れる
-            if (!NS::Physics::IsWalkableNormal(contact.normal.y))
+            if (!NS::Phys::IsWalkableNormal(contact.normal.y))
             {
                 Shatter();
                 return;
@@ -253,12 +253,12 @@ namespace NS::Game::Level
     {
         if (Owner() == nullptr)
             return;
-        auto* collider = Owner()->FindComponent<NS::Object::ColliderComponent>();
+        auto* collider = Owner()->FindComponent<NS::Obj::ColliderComponent>();
         if (collider == nullptr || collider->IsActiveSelf() == active)
             return;
 
         collider->SetActive(active);
-        if (NS::Object::Scene* scene = Owner()->OwningScene())
+        if (NS::Obj::Scene* scene = Owner()->OwningScene())
         {
             if (active)
                 collider->SyncToPhysics(scene->Physics());
@@ -267,7 +267,7 @@ namespace NS::Game::Level
         }
     }
 
-    NS::Physics::PhysicsScene* LaunchedBodyComponent::ScenePhysics() const noexcept
+    NS::Phys::PhysicsScene* LaunchedBodyComponent::ScenePhysics() const noexcept
     {
         if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
             return nullptr;

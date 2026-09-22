@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <utility>
 
-namespace NS::Physics
+namespace NS::Phys
 {
     namespace
     {
@@ -512,4 +512,4 @@ namespace NS::Physics
     {
         return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetRotation(id));
     }
-} // namespace NS::Physics
+} // namespace NS::Phys

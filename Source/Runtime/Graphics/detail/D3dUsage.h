@@ -4,7 +4,7 @@
 
 #include <d3d11.h>
 
-namespace NS::Graphics::detail
+namespace NS::Gfx::detail
 {
 
     //! D3D11_USAGE に対し D3D11 が許す CPUAccessFlags を返す。両者は仕様で一意対応し矛盾すると Create が失敗する
@@ -24,4 +24,4 @@ namespace NS::Graphics::detail
         }
     }
 
-} // namespace NS::Graphics::detail
+} // namespace NS::Gfx::detail

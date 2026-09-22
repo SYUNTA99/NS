@@ -13,7 +13,7 @@
 #include <vector>
 
 namespace LevelNs = NS::Game::Level;
-namespace SceneNs = NS::Object;
+namespace SceneNs = NS::Obj;
 
 namespace
 {
@@ -140,7 +140,7 @@ TEST(ObjectIdTest, ObjectRefFieldSurvivesJsonRoundTrip)
     const std::uint32_t targetId = level.objects[0].objectId;
 
     nlohmann::json comp = SceneNs::MakeComponentEntry("FakeFollowComponent");
-    SceneNs::SetField(comp, "Target", NS::Object::ObjectRef{targetId});
+    SceneNs::SetField(comp, "Target", NS::Obj::ObjectRef{targetId});
     level.objects[1].components.push_back(std::move(comp));
 
     // 読込が全 object に transform を保証するため、比べる元も transform 込みで揃える
@@ -170,7 +170,7 @@ TEST(ObjectIdTest, DanglingObjectRefIsPrunedOnLoad)
 
     // どの object も持たない id を指す参照を仕込むと、読込で未設定 0 へ戻る
     nlohmann::json comp = SceneNs::MakeComponentEntry("FakeFollowComponent");
-    SceneNs::SetField(comp, "Target", NS::Object::ObjectRef{9999u});
+    SceneNs::SetField(comp, "Target", NS::Obj::ObjectRef{9999u});
     level.objects[0].components.push_back(std::move(comp));
 
     const std::string text = SceneNs::SerializeSceneToJson(level);
@@ -193,9 +193,9 @@ TEST(ObjectIdTest, PruneDanglingObjectRefsKeepsValidAndCountsPruned)
     const std::uint32_t validId = level.objects[1].objectId;
 
     nlohmann::json comp = SceneNs::MakeComponentEntry("FakeFollowComponent");
-    SceneNs::SetField(comp, "Valid", NS::Object::ObjectRef{validId});
-    SceneNs::SetField(comp, "Dangling", NS::Object::ObjectRef{12345u});
-    SceneNs::SetField(comp, "Unset", NS::Object::ObjectRef{});
+    SceneNs::SetField(comp, "Valid", NS::Obj::ObjectRef{validId});
+    SceneNs::SetField(comp, "Dangling", NS::Obj::ObjectRef{12345u});
+    SceneNs::SetField(comp, "Unset", NS::Obj::ObjectRef{});
     level.objects[0].components.push_back(std::move(comp));
 
     // 有効参照と未設定は数えず、宙参照 1 件だけが直る
@@ -266,11 +266,11 @@ TEST(ObjectIdTest, FindReferencesToCollectsPointingFieldsOnly)
 
     nlohmann::json a = SceneNs::MakeComponentEntry("FakeFollowComponent");
     SceneNs::SetField(a, "Idle", 1.0f); // ObjectRef でない欄は無視される
-    SceneNs::SetField(a, "Target", NS::Object::ObjectRef{targetId});
+    SceneNs::SetField(a, "Target", NS::Obj::ObjectRef{targetId});
     level.objects[1].components.push_back(std::move(a));
 
     nlohmann::json b = SceneNs::MakeComponentEntry("FakeFollowComponent");
-    SceneNs::SetField(b, "Target", NS::Object::ObjectRef{otherId});
+    SceneNs::SetField(b, "Target", NS::Obj::ObjectRef{otherId});
     level.objects[2].components.push_back(std::move(b));
 
     const auto refs = SceneNs::FindReferencesTo(level, targetId);

@@ -9,7 +9,7 @@ namespace
     using NS::Core::DegreesToRadians;
     using NS::Core::Matrix;
     using NS::Core::Vector3;
-    using NS::Graphics::Camera;
+    using NS::Gfx::Camera;
 
     bool MatricesNear(const Matrix& a, const Matrix& b, float eps = 1e-4f)
     {
@@ -172,7 +172,7 @@ TEST(CameraTest, AccessorsReturnSetValues)
 
 TEST(CameraTest, CameraDescCtorAppliesAllFieldsAtomically)
 {
-    const NS::Graphics::CameraDesc desc{
+    const NS::Gfx::CameraDesc desc{
         .position = Vector3(7.0f, 8.0f, 9.0f),
         .target = Vector3(1.0f, 2.0f, 3.0f),
         .up = Vector3(0.0f, 0.0f, 1.0f),
@@ -197,7 +197,7 @@ TEST(CameraTest, CameraDescCtorAppliesAllFieldsAtomically)
 TEST(CameraTest, CameraDescDefaultMatchesDefaultCtor)
 {
     const Camera fromDefault;
-    const Camera fromDesc{NS::Graphics::CameraDesc{}};
+    const Camera fromDesc{NS::Gfx::CameraDesc{}};
 
     EXPECT_FLOAT_EQ(fromDefault.Position().z, fromDesc.Position().z);
     EXPECT_FLOAT_EQ(fromDefault.FovY().value, fromDesc.FovY().value);

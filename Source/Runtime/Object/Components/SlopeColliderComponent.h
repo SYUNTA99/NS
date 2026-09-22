@@ -6,7 +6,7 @@
 
 #include <array>
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! @brief 楔形スロープの三角形 collider Component。BoxColliderComponent とは独立に登録する
     //! @details Owner の root world transform を基準に、wedge の 5 面、斜面・底面・裏壁の四角形と
@@ -26,7 +26,7 @@ namespace NS::Object
         [[nodiscard]] NS::Core::Vector3 HalfExtents() const noexcept { return m_halfExtents; }
 
         //! world 座標の wedge 三角形 8 個、内訳は斜面2・底2・裏壁2・側面各1。Owner 未登録なら local 座標版
-        [[nodiscard]] std::array<NS::Physics::Triangle, 8> WorldTriangles() const noexcept;
+        [[nodiscard]] std::array<NS::Phys::Triangle, 8> WorldTriangles() const noexcept;
 
         // 角度・半サイズを Inspector / 直列化へ公開する。WorldTriangles は member を都度読むため set で即反映する
         NS_REFLECT_BEGIN(SlopeColliderComponent, ColliderComponent)
@@ -36,9 +36,9 @@ namespace NS::Object
 
     private:
         // wedge の 8 三角形をまとめて body 1 個にする
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
 
         float m_angleDegrees = 45.0f;                      // 斜面の傾斜角
         NS::Core::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f}; // wedge の半サイズ
     };
-} // namespace NS::Object
+} // namespace NS::Obj

@@ -18,14 +18,14 @@
 namespace
 {
     using NS::Core::Vector3;
-    using NS::Object::BoxColliderComponent;
-    using NS::Object::CapsuleColliderComponent;
-    using NS::Object::GameObject;
-    using NS::Object::MeshColliderComponent;
-    using NS::Object::SlopeColliderComponent;
-    using NS::Object::SphereColliderComponent;
-    using NS::Physics::PhysicsScene;
-    using NS::Physics::Triangle;
+    using NS::Obj::BoxColliderComponent;
+    using NS::Obj::CapsuleColliderComponent;
+    using NS::Obj::GameObject;
+    using NS::Obj::MeshColliderComponent;
+    using NS::Obj::SlopeColliderComponent;
+    using NS::Obj::SphereColliderComponent;
+    using NS::Phys::PhysicsScene;
+    using NS::Phys::Triangle;
 
     std::vector<Triangle> MakeFloorQuad()
     {
@@ -38,7 +38,7 @@ namespace
     // collider は持ち主の Scene の PhysicsScene しか受け取らない。持ち主を Scene の中へ湧かして揃える
     struct ColliderStage
     {
-        NS::Object::Scene scene;
+        NS::Obj::Scene scene;
         GameObject& owner = *scene.SpawnTransient<GameObject>();
         PhysicsScene& physics = scene.Physics();
     };
@@ -109,8 +109,8 @@ TEST(ColliderJolt, ExcludedCapsuleCreatesNoBody)
 
 TEST(ColliderJolt, MeshCreatesOneBodyForAllTriangles)
 {
-    NS::Physics::MeshCollision floor{MakeFloorQuad(), nullptr};
-    floor.shape = NS::Physics::CreateMeshShape(floor.triangles);
+    NS::Phys::MeshCollision floor{MakeFloorQuad(), nullptr};
+    floor.shape = NS::Phys::CreateMeshShape(floor.triangles);
     ColliderStage stage;
     auto* mesh = stage.owner.AddComponent<MeshColliderComponent>();
     mesh->SetCollision(&floor);
@@ -125,8 +125,8 @@ TEST(ColliderJolt, MeshCreatesOneBodyForAllTriangles)
 // 2 体目は x = 5 に横 2 倍で置いたので、横に広がった x = 5.9 でも上面 (y = 0.5) に当たる
 TEST(ColliderJolt, PlacedMeshCollidersShareOneShape)
 {
-    NS::Object::AssetManager assets{std::string{"."}};
-    const NS::Physics::MeshCollision* cube = assets.GetOrLoadMeshCollision("cube");
+    NS::Obj::AssetManager assets{std::string{"."}};
+    const NS::Phys::MeshCollision* cube = assets.GetOrLoadMeshCollision("cube");
     ASSERT_NE(cube, nullptr);
     ASSERT_NE(cube->shape, nullptr);
     const JPH::uint32 before = cube->shape->GetRefCount();
@@ -155,8 +155,8 @@ TEST(ColliderJolt, PlacedMeshCollidersShareOneShape)
 // x = 1.2 に当たるのは描画と同じ形の時だけ
 TEST(ColliderJolt, ShearedMeshColliderKeepsTheDrawnShape)
 {
-    NS::Object::AssetManager assets{std::string{"."}};
-    const NS::Physics::MeshCollision* cube = assets.GetOrLoadMeshCollision("cube");
+    NS::Obj::AssetManager assets{std::string{"."}};
+    const NS::Phys::MeshCollision* cube = assets.GetOrLoadMeshCollision("cube");
     ASSERT_NE(cube, nullptr);
 
     ColliderStage stage;
@@ -250,7 +250,7 @@ TEST(ColliderJolt, SyncingResizedBoxKeepsTheBodyIdAndUpdatesTheJoltShape)
 // 寿命の終わりは持ち主の Scene の physics から外す。collider は physics を覚えていない
 TEST(ColliderJolt, EndPlayRemovesItsOwnBody)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     auto owned = std::make_unique<GameObject>();
     auto* box = owned->AddComponent<BoxColliderComponent>();
     scene.SpawnTransient(std::move(owned));
@@ -265,7 +265,7 @@ TEST(ColliderJolt, EndPlayRemovesItsOwnBody)
 // Scene に居る配置物の body は Scene の physics にだけ入る。別の physics に入ると、寿命の終わりに外しに行く先が違う
 TEST(ColliderJolt, SyncIntoAPhysicsSceneOtherThanTheOwnersIsRefused)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     auto owned = std::make_unique<GameObject>();
     auto* box = owned->AddComponent<BoxColliderComponent>();
     scene.SpawnTransient(std::move(owned));
@@ -280,7 +280,7 @@ TEST(ColliderJolt, SyncIntoAPhysicsSceneOtherThanTheOwnersIsRefused)
 // 別の physics から外そうとしても断る。断らないと、その physics が持たない id を消しに行って Jolt が落ちる
 TEST(ColliderJolt, RemoveFromAPhysicsSceneOtherThanTheOwnersKeepsTheBody)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
     auto owned = std::make_unique<GameObject>();
     auto* box = owned->AddComponent<BoxColliderComponent>();
     scene.SpawnTransient(std::move(owned));

@@ -10,14 +10,14 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Renderer;
     class RenderTarget;
     struct RenderContext;
-} // namespace NS::Graphics
+} // namespace NS::Gfx
 
-namespace NS::Object
+namespace NS::Obj
 {
     class CameraBrainComponent;
     class CameraComponent;
@@ -29,19 +29,19 @@ namespace NS::Object
     //! @details target が null なら backbuffer、viewPose が空なら Brain の選ぶカメラで描く
     struct SceneView
     {
-        NS::Graphics::RenderTarget* target = nullptr; // 描画先、非所有。null は backbuffer
+        NS::Gfx::RenderTarget* target = nullptr; // 描画先、非所有。null は backbuffer
         std::optional<CameraPose> viewPose;           // 描画視点。空なら Brain の選ぶカメラ
     };
 
     //! @brief 描画物・重ね描き・平行光の登録簿を持ち、1 フレーム分のシーンを描く
     //! @details 登録は Component が OnStart / OnEndPlay で自分で行い、Scene の同名メソッドがここへ転送する
     //! 描画は Scene::OnRenderScene が Render を 1 回呼んで駆動する
-    //! 依存: NS::Graphics::Renderer, NS::Graphics::RenderScene, CameraBrainComponent
+    //! 依存: NS::Gfx::Renderer, NS::Gfx::RenderScene, CameraBrainComponent
     class SceneRenderer : public NS::Core::NonCopyable
     {
     public:
         //! レンダラーを非所有で差す
-        void SetRenderer(NS::Graphics::Renderer* renderer) noexcept { m_renderer = renderer; }
+        void SetRenderer(NS::Gfx::Renderer* renderer) noexcept { m_renderer = renderer; }
 
         //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ Brain の視点で 1 回だけ描く
         //! @details 空でない間は各ビューを順に bind して描き分ける。差すのは Editor だけで、出荷では常に空
@@ -75,17 +75,17 @@ namespace NS::Object
         void Render(CameraBrainComponent& brain, CameraComponent& camera, const SceneEnvironment& environment);
 
         //! Opaque バケットを視錐台で絞り、並べ替えずに描画する
-        void DrawOpaque(const NS::Graphics::RenderContext& context);
+        void DrawOpaque(const NS::Gfx::RenderContext& context);
         //! Transparent バケットを視錐台で絞り、context.cameraPosition から遠い順に描画する
         //! 距離が同じなら SortPriority 昇順
-        void DrawTransparent(const NS::Graphics::RenderContext& context);
+        void DrawTransparent(const NS::Gfx::RenderContext& context);
         //! 登録中の OverlayRendererComponent を priority 昇順で描画する。IsActive が偽なら飛ばす
-        void DrawOverlays(const NS::Graphics::RenderContext& context);
+        void DrawOverlays(const NS::Gfx::RenderContext& context);
 
         //! @brief project 既定値から scene 段の描画設定を作る。有効な平行光があれば照明を上書きする
         //! @details 登録が無ければ project 既定値がそのまま残る
-        [[nodiscard]] NS::Graphics::RenderSettings ResolveSceneSettings(
-            const NS::Graphics::RenderSettings& projectDefaults);
+        [[nodiscard]] NS::Gfx::RenderSettings ResolveSceneSettings(
+            const NS::Gfx::RenderSettings& projectDefaults);
 
     private:
         //! 1 ビュー分のシーンを描き、その上へデバッグ描画と OverlayRendererComponent の重ね描きを出す
@@ -96,7 +96,7 @@ namespace NS::Object
 
         //! 不透明→空→半透明の順に 1 ビュー分を描き、組んだ RenderContext を返す
         //! viewOverride が空なら Brain の選ぶカメラで描く
-        [[nodiscard]] NS::Graphics::RenderContext RenderWorld(CameraBrainComponent& brain,
+        [[nodiscard]] NS::Gfx::RenderContext RenderWorld(CameraBrainComponent& brain,
                                                               CameraComponent& camera,
                                                               const SceneEnvironment& environment,
                                                               const std::optional<CameraPose>& viewOverride);
@@ -105,7 +105,7 @@ namespace NS::Object
         struct RenderEntry
         {
             IRenderable* renderable = nullptr;
-            NS::Graphics::RenderHandle handle{};
+            NS::Gfx::RenderHandle handle{};
         };
         std::vector<RenderEntry> m_renderables;
 
@@ -113,11 +113,11 @@ namespace NS::Object
 
         std::vector<DirectionalLightComponent*> m_lights; // 平行光の登録簿。登録順、非所有
 
-        NS::Graphics::RenderScene m_renderScene;
+        NS::Gfx::RenderScene m_renderScene;
 
         bool m_warnedZeroLightDirection = false;      // 平行光の向きが 0 の警告を出したか
-        NS::Graphics::Renderer* m_renderer = nullptr; // レンダラー、非所有。未設定なら描かない
+        NS::Gfx::Renderer* m_renderer = nullptr; // レンダラー、非所有。未設定なら描かない
 
         std::vector<SceneView> m_sceneViews; // 描くビュー列。空なら現描画先へ 1 回だけ描く
     };
-} // namespace NS::Object
+} // namespace NS::Obj

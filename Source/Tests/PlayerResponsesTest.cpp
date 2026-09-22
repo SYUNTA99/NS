@@ -11,7 +11,7 @@
 #include <utility>
 
 namespace LevelNs = NS::Game::Level;
-namespace SceneNs = NS::Object;
+namespace SceneNs = NS::Obj;
 
 //! Application 依存のない Scene で、走行のやり直しと応答 component の挙動を検証する
 //! 応答部品はプレイヤーに載るので、プレイヤーを 1 体置けば揃う

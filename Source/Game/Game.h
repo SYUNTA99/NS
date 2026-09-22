@@ -6,10 +6,10 @@
 
 #include <string_view>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class Scene;
-} // namespace NS::Object
+} // namespace NS::Obj
 
 //! @brief アプリケーション層とシーン管理層を仲介するメインゲームレイヤー
 class Game : public NS::App::Layer
@@ -35,7 +35,7 @@ public:
 
     //! @brief 現在ロードされているシーンを取得する
     //! @return シーン未ロードなら nullptr を返す
-    [[nodiscard]] NS::Object::Scene* CurrentScene() noexcept;
+    [[nodiscard]] NS::Obj::Scene* CurrentScene() noexcept;
 
     //! @brief ゲーム画面へ重ねる UI。HUD やメニューはこの Root() の下に組む
     [[nodiscard]] NS::UI::UISystem& Ui() noexcept { return m_ui; }
@@ -44,7 +44,7 @@ public:
     [[nodiscard]] static Game* Get() noexcept { return s_instance; }
 
 private:
-    NS::Object::SceneManager m_scenes; // シーンの所有と遷移管理
+    NS::Obj::SceneManager m_scenes; // シーンの所有と遷移管理
     NS::UI::UISystem m_ui;              // ゲーム画面の UI。world 描画の後に重ねる
 
     static Game* s_instance;

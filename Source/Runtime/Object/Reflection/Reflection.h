@@ -10,7 +10,7 @@
 #include <string_view>
 #include <type_traits>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class Component;
 
@@ -145,32 +145,32 @@ namespace NS::Object
         }
         return nullptr;
     }
-} // namespace NS::Object
+} // namespace NS::Obj
 
 //! フィールド宣言の開始。クラス本体の public 節に、自分の型と直接の基底型を並べて書く
 #define NS_REFLECT_BEGIN(ThisType, BaseType)                                                                           \
-    [[nodiscard]] static const NS::Object::ReflectionInfo* StaticReflection() noexcept                                 \
+    [[nodiscard]] static const NS::Obj::ReflectionInfo* StaticReflection() noexcept                                 \
     {                                                                                                                  \
         using Self = ThisType;                                                                                         \
         using ReflectBase = BaseType;                                                                                  \
         static constexpr const char* k_TypeName = #ThisType;                                                           \
-        static const NS::Object::FieldDesc k_Fields[] = {
+        static const NS::Obj::FieldDesc k_Fields[] = {
 
 //! メンバを 1 フィールドとして登録する。private も入れ子の struct のメンバ (m_tuning.speed) も書ける
 //! 型タグはメンバ型から推論する。float の欄は AssignIfFinite を通るので、非有限値の書き込みは捨てて元の値が残る
 #define NS_REFLECT_FIELD(member, label)                                                                                \
-    NS::Object::FieldDesc{                                                                                             \
+    NS::Obj::FieldDesc{                                                                                             \
         label,                                                                                                         \
-        NS::Object::FieldTypeOf<decltype(Self::member)>(),                                                             \
+        NS::Obj::FieldTypeOf<decltype(Self::member)>(),                                                             \
         +[](const void* c, void* out) noexcept {                                                                       \
             *static_cast<decltype(Self::member)*>(out) = static_cast<const Self*>(c)->member;                          \
         },                                                                                                             \
-        +[](void* c, const void* in) noexcept { NS::Object::AssignFieldValue(static_cast<Self*>(c)->member, in); }},
+        +[](void* c, const void* in) noexcept { NS::Obj::AssignFieldValue(static_cast<Self*>(c)->member, in); }},
 
 //! 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数
 #define NS_REFLECT_ACCESSOR(ValueType, label, getterCall, setterCall)                                                  \
-    NS::Object::FieldDesc{label,                                                                                       \
-                          NS::Object::FieldTypeOf<ValueType>(),                                                        \
+    NS::Obj::FieldDesc{label,                                                                                       \
+                          NS::Obj::FieldTypeOf<ValueType>(),                                                        \
                           +[](const void* c, void* out) noexcept {                                                     \
                               *static_cast<ValueType*>(out) = static_cast<const Self*>(c)->getterCall;                 \
                           },                                                                                           \
@@ -182,11 +182,11 @@ namespace NS::Object
 #define NS_REFLECT_END()                                                                                               \
     }                                                                                                                  \
     ;                                                                                                                  \
-    static const NS::Object::ReflectionInfo k_Info{                                                                    \
-        k_TypeName, k_Fields, sizeof(k_Fields) / sizeof(k_Fields[0]), NS::Object::ReflectionBaseOf<ReflectBase>()};    \
+    static const NS::Obj::ReflectionInfo k_Info{                                                                    \
+        k_TypeName, k_Fields, sizeof(k_Fields) / sizeof(k_Fields[0]), NS::Obj::ReflectionBaseOf<ReflectBase>()};    \
     return &k_Info;                                                                                                    \
     }                                                                                                                  \
-    [[nodiscard]] const NS::Object::ReflectionInfo* GetReflection() const noexcept override                            \
+    [[nodiscard]] const NS::Obj::ReflectionInfo* GetReflection() const noexcept override                            \
     {                                                                                                                  \
         return StaticReflection();                                                                                     \
     }
@@ -195,21 +195,21 @@ namespace NS::Object
 #define NS_REFLECT_END_VALUE()                                                                                         \
     }                                                                                                                  \
     ;                                                                                                                  \
-    static const NS::Object::ReflectionInfo k_Info{                                                                    \
-        k_TypeName, k_Fields, sizeof(k_Fields) / sizeof(k_Fields[0]), NS::Object::ReflectionBaseOf<ReflectBase>()};    \
+    static const NS::Obj::ReflectionInfo k_Info{                                                                    \
+        k_TypeName, k_Fields, sizeof(k_Fields) / sizeof(k_Fields[0]), NS::Obj::ReflectionBaseOf<ReflectBase>()};    \
     return &k_Info;                                                                                                    \
     }
 
 //! 調整フィールドを持たない型用。typeName と基底だけのリフレクション情報を返す。空配列は宣言できないため fields は
 //! nullptr
 #define NS_REFLECT_NONE(ThisType, BaseType)                                                                            \
-    [[nodiscard]] static const NS::Object::ReflectionInfo* StaticReflection() noexcept                                 \
+    [[nodiscard]] static const NS::Obj::ReflectionInfo* StaticReflection() noexcept                                 \
     {                                                                                                                  \
-        static const NS::Object::ReflectionInfo k_Info{                                                                \
-            #ThisType, nullptr, 0, NS::Object::ReflectionBaseOf<BaseType>()};                                          \
+        static const NS::Obj::ReflectionInfo k_Info{                                                                \
+            #ThisType, nullptr, 0, NS::Obj::ReflectionBaseOf<BaseType>()};                                          \
         return &k_Info;                                                                                                \
     }                                                                                                                  \
-    [[nodiscard]] const NS::Object::ReflectionInfo* GetReflection() const noexcept override                            \
+    [[nodiscard]] const NS::Obj::ReflectionInfo* GetReflection() const noexcept override                            \
     {                                                                                                                  \
         return StaticReflection();                                                                                     \
     }

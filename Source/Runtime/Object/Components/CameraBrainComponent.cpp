@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Object
+namespace NS::Obj
 {
     // vcam を供給する follow / placed が LateUpdate + 50 なので、選び直しはその後ろに置く
     CameraBrainComponent::CameraBrainComponent() noexcept : Component(TickPriority::LateUpdate + 60) {}
@@ -213,4 +213,4 @@ namespace NS::Object
     }
 
     NS_CLASS(CameraBrainComponent)
-} // namespace NS::Object
+} // namespace NS::Obj

@@ -3,7 +3,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! @brief シーンの平行光 (太陽) を 1 本供給する Component
     //! @details 配置物に載せ、Scene が有効な平行光を選んで描画のシーン段照明の出所にする
@@ -42,4 +42,4 @@ namespace NS::Object
         NS::Core::Vector3 m_ground{0.24f, 0.21f, 0.18f};    // 地面側の環境光
         float m_exposure = 1.35f;                           // 画面へ出す前の露出
     };
-} // namespace NS::Object
+} // namespace NS::Obj

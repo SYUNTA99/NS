@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace NS::Object
+namespace NS::Obj
 {
 
     std::size_t FindObjectIndexById(const SceneData& scene, std::uint32_t id) noexcept
@@ -222,4 +222,4 @@ namespace NS::Object
         return result;
     }
 
-} // namespace NS::Object
+} // namespace NS::Obj

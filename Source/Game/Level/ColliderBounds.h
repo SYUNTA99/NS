@@ -3,7 +3,7 @@
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     class GameObject;
 }
@@ -17,6 +17,6 @@ namespace NS::Game::Level
     //! @param[in] object 当たりを持つ配置物
     //! @param[out] outBounds 世界座標の外接箱
     //! @return 取り出せた場合 true、それ以外の場合は false
-    //! 依存: NS::Object::GameObject, NS::Object::BoxColliderComponent, NS::Object::SphereColliderComponent
-    [[nodiscard]] bool TryGetColliderBounds(const NS::Object::GameObject& object, NS::Core::AABB& outBounds) noexcept;
+    //! 依存: NS::Obj::GameObject, NS::Obj::BoxColliderComponent, NS::Obj::SphereColliderComponent
+    [[nodiscard]] bool TryGetColliderBounds(const NS::Obj::GameObject& object, NS::Core::AABB& outBounds) noexcept;
 } // namespace NS::Game::Level

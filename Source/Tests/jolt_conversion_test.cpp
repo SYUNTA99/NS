@@ -7,8 +7,8 @@ namespace
 {
     using NS::Core::Quaternion;
     using NS::Core::Vector3;
-    using NS::Physics::FromJolt;
-    using NS::Physics::ToJolt;
+    using NS::Phys::FromJolt;
+    using NS::Phys::ToJolt;
 
     constexpr float k_Epsilon = 1.0e-6f;
 } // namespace

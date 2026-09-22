@@ -13,7 +13,7 @@
 #include <string_view>
 #include <vector>
 
-namespace NS::Object
+namespace NS::Obj
 {
 
     //! 配置物の永続表現。コンポーネント一覧を内包し、当たりも見た目も transform も components が唯一の出所
@@ -66,7 +66,7 @@ namespace NS::Object
     //! 配置物は transform + リフレクションコンポーネント一覧の ObjectData に統一し、
     //! 当たりも見た目も components が唯一の出所になる
     //! プレイ経路には const 参照でしか渡さない
-    //! 依存: NS::Core, NS::Object::ObjectRef
+    //! 依存: NS::Core, NS::Obj::ObjectRef
     struct SceneData
     {
         //! 全配置物の唯一のリスト
@@ -117,4 +117,4 @@ namespace NS::Object
     //! k_NoObjectId は未設定の印なので空を返す。自分自身を指す参照も含める
     [[nodiscard]] std::vector<ObjectRefLocation> FindReferencesTo(const SceneData& scene, std::uint32_t targetId);
 
-} // namespace NS::Object
+} // namespace NS::Obj

@@ -20,13 +20,13 @@ namespace
     constexpr double k_FixedStepMs = 1000.0 / 60.0;
 
     // 帯を散らす。同じ priority ばかりだとソートが最良ケースになり実態より速く出る
-    constexpr int k_Bands[] = {NS::Object::TickPriority::EarlyUpdate,
-                               NS::Object::TickPriority::Update,
-                               NS::Object::TickPriority::LateUpdate,
-                               NS::Object::TickPriority::LateUpdate + 50};
+    constexpr int k_Bands[] = {NS::Obj::TickPriority::EarlyUpdate,
+                               NS::Obj::TickPriority::Update,
+                               NS::Obj::TickPriority::LateUpdate,
+                               NS::Obj::TickPriority::LateUpdate + 50};
 
     // 更新回数だけ数える。OnUpdate の中身が重いと経路の取り分が埋もれる
-    class TickCountingComponent : public NS::Object::Component
+    class TickCountingComponent : public NS::Obj::Component
     {
     public:
         explicit TickCountingComponent(int priority) noexcept : Component(priority) {}
@@ -41,17 +41,17 @@ namespace
         int m_count = 0; // OnUpdate が呼ばれた回数
     };
 
-    void Populate(NS::Object::ObjectList& objects, std::size_t objectCount, std::size_t componentsPerObject)
+    void Populate(NS::Obj::ObjectList& objects, std::size_t objectCount, std::size_t componentsPerObject)
     {
         for (std::size_t i = 0; i < objectCount; ++i)
         {
-            auto* obj = objects.Spawn<NS::Object::GameObject>();
+            auto* obj = objects.Spawn<NS::Obj::GameObject>();
             for (std::size_t c = 0; c < componentsPerObject; ++c)
                 obj->AddComponent<TickCountingComponent>(k_Bands[(i + c) % std::size(k_Bands)]);
         }
     }
 
-    [[nodiscard]] double MeasureMicros(NS::Object::ObjectList& objects, int iterations, bool snapshotOnly)
+    [[nodiscard]] double MeasureMicros(NS::Obj::ObjectList& objects, int iterations, bool snapshotOnly)
     {
         const auto begin = std::chrono::steady_clock::now();
         for (int i = 0; i < iterations; ++i)
@@ -76,7 +76,7 @@ namespace
     }
 
     // 経路が全 component を回したか。時間ではなくここで合否を決める
-    [[nodiscard]] int TotalTicks(const NS::Object::ObjectList& objects)
+    [[nodiscard]] int TotalTicks(const NS::Obj::ObjectList& objects)
     {
         int total = 0;
         objects.ForEachComponent<TickCountingComponent>(
@@ -92,7 +92,7 @@ TEST(ObjectListUpdateCost, BundledLevelScale)
     constexpr std::size_t k_PerObject = 5; // 4 体で 20 個。live 実測のおよそ 18 個に一番近い割り切り
     constexpr int k_Iterations = 20000;
 
-    NS::Object::ObjectList objects;
+    NS::Obj::ObjectList objects;
     Populate(objects, k_Objects, k_PerObject);
 
     const double all = MeasureMicros(objects, k_Iterations, false);
@@ -105,32 +105,32 @@ TEST(ObjectListUpdateCost, BundledLevelScale)
 namespace
 {
     // depth 段のツリーを組む。実際のレベルは浅く、1 列の鎖は最悪ケースの確認用
-    [[nodiscard]] NS::Object::SceneData MakeParentTree(std::uint32_t count, std::uint32_t depth)
+    [[nodiscard]] NS::Obj::SceneData MakeParentTree(std::uint32_t count, std::uint32_t depth)
     {
-        NS::Object::SceneData data{};
+        NS::Obj::SceneData data{};
         data.objects.reserve(count);
         // 1 段あたりの体数。深さ 1 なら全員が根、count なら 1 列の鎖になる
         const std::uint32_t perLevel = std::max(std::uint32_t{1}, count / std::max(depth, std::uint32_t{1}));
         for (std::uint32_t i = 0; i < count; ++i)
         {
-            NS::Object::ObjectData object{};
+            NS::Obj::ObjectData object{};
             object.objectId = i + 1;
             // 先頭の 1 段は根。以降は 1 段上の同じ位置にぶら下げる
             if (i >= perLevel)
                 object.parentId = i - perLevel + 1;
-            NS::Object::EnsureTransformComponent(object);
+            NS::Obj::EnsureTransformComponent(object);
             data.objects.push_back(std::move(object));
         }
         data.nextObjectId = count + 1;
         return data;
     }
 
-    [[nodiscard]] double MeasureRebuildMicros(const NS::Object::SceneData& data, int iterations)
+    [[nodiscard]] double MeasureRebuildMicros(const NS::Obj::SceneData& data, int iterations)
     {
-        NS::Object::Scene scene;
-        NS::Object::ObjectList objects;
-        const auto factory = [](const NS::Object::ObjectData& entry) {
-            return NS::Object::BuildSceneObject(entry, nullptr);
+        NS::Obj::Scene scene;
+        NS::Obj::ObjectList objects;
+        const auto factory = [](const NS::Obj::ObjectData& entry) {
+            return NS::Obj::BuildSceneObject(entry, nullptr);
         };
 
         const auto begin = std::chrono::steady_clock::now();
@@ -146,7 +146,7 @@ TEST(ObjectListRebuildCost, ShallowTreeScale)
 {
     for (const std::uint32_t count : {std::uint32_t{100}, std::uint32_t{500}, std::uint32_t{1000}})
     {
-        const NS::Object::SceneData data = MakeParentTree(count, 3);
+        const NS::Obj::SceneData data = MakeParentTree(count, 3);
         const double micros = MeasureRebuildMicros(data, 20);
         std::cout << "[組み直しの実測] 深さ 3 段  配置物=" << count << "  Rebuild " << micros << " us\n";
     }
@@ -157,7 +157,7 @@ TEST(ObjectListRebuildCost, DeepChainScale)
 {
     for (const std::uint32_t count : {std::uint32_t{100}, std::uint32_t{500}, std::uint32_t{1000}})
     {
-        const NS::Object::SceneData data = MakeParentTree(count, count);
+        const NS::Obj::SceneData data = MakeParentTree(count, count);
         const double micros = MeasureRebuildMicros(data, 5);
         std::cout << "[組み直しの実測] 1 列の鎖  配置物=" << count << "  Rebuild " << micros << " us\n";
     }
@@ -170,7 +170,7 @@ TEST(ObjectListUpdateCost, HeadroomScale)
     constexpr std::size_t k_PerObject = 4;
     constexpr int k_Iterations = 200;
 
-    NS::Object::ObjectList objects;
+    NS::Obj::ObjectList objects;
     Populate(objects, k_Objects, k_PerObject);
 
     const double all = MeasureMicros(objects, k_Iterations, false);

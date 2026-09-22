@@ -13,7 +13,7 @@ namespace NS::UI
         [[nodiscard]] const NS::Core::Color& GetColor() const noexcept { return m_color; }
 
     protected:
-        void OnDraw(NS::Graphics::Renderer& renderer, const WidgetRect& rectPx, float alpha) override;
+        void OnDraw(NS::Gfx::Renderer& renderer, const WidgetRect& rectPx, float alpha) override;
 
     private:
         NS::Core::Color m_color{1.0f, 1.0f, 1.0f, 1.0f}; // 塗り色。alpha は Widget の実効値と掛かる

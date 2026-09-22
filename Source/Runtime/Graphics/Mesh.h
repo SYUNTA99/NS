@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Buffer;
     class Shader;
@@ -121,4 +121,4 @@ namespace NS::Graphics
     //! Mesh のデータを読んで bind + DrawIndexed を発行する。Shader/Material の Bind は呼出側責任
     void DrawMesh(CommandList& commands, const Mesh& mesh) noexcept;
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

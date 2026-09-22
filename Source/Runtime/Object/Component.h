@@ -3,7 +3,7 @@
 #include "Runtime/Object/Object.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     class AssetManager;
     class GameObject;
@@ -128,4 +128,4 @@ namespace NS::Object
         return nullptr;
     }
 
-} // namespace NS::Object
+} // namespace NS::Obj

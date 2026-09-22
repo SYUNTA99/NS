@@ -1,11 +1,11 @@
 ﻿#include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
 #include <Runtime/Core/AABB.h>
-#include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsScene.h>
+#include <Runtime/Platform/Clock.h>
 
 #include "entity_test_stage.h"
 #include "jolt_test_scene.h"
@@ -18,14 +18,14 @@ namespace
     using NS::Core::Vector3;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Object::GameObject;
+    using NS::Obj::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
     constexpr int k_NumSteps = 120;
     constexpr int k_JumpPressStep = 10;
     constexpr int k_JumpReleaseStep = 20;
 
-    //! 床 1 枚 (center y=-0.5, half y=0.5、 上面が y=0) のみ。 壁なし
+    //! 床 1 枚 (center y=-0.5, half y=0.5、上面が y=0) のみ。壁なし
     AABB MakeFloorOnly() noexcept
     {
         return AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}};
@@ -43,7 +43,7 @@ namespace
         auto& movement = *owner.AddComponent<PlayerComponent>();
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
 
-        NS::Physics::PhysicsScene& physics = stage.physics;
+        NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, floor);
         physics.OptimizeBroadPhase();
         movement.OnStart();
@@ -118,7 +118,7 @@ TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
     auto& movement = *owner.AddComponent<PlayerComponent>();
     owner.Root().SetPosition(Vector3{0.0f, 0.5f, 0.0f}); // 床の上に直置きして接地から始める
 
-    NS::Physics::PhysicsScene& physics = stage.physics;
+    NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, floor);
     physics.OptimizeBroadPhase();
     movement.OnStart();

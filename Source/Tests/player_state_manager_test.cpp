@@ -11,7 +11,7 @@ namespace
     using NS::Game::Player::IdlePlayerState;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Object::GameObject;
+    using NS::Obj::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 

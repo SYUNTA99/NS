@@ -14,7 +14,7 @@ namespace
     using NS::Core::AABB;
     using NS::Core::Vector3;
     using NS::Game::Entity::EntityComponent;
-    using NS::Object::GameObject;
+    using NS::Obj::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
@@ -95,7 +95,7 @@ TEST_F(EntityComponentTest, CapsuleSizeDefaultsWithoutCollider)
 TEST_F(EntityComponentTest, AdoptsSiblingCapsuleColliderSize)
 {
     GameObject obj;
-    obj.AddComponent<NS::Object::CapsuleColliderComponent>(0.7f, 0.9f);
+    obj.AddComponent<NS::Obj::CapsuleColliderComponent>(0.7f, 0.9f);
     auto& entity = *obj.AddComponent<BareEntity>();
 
     entity.OnStart();

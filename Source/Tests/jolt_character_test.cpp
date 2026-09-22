@@ -10,9 +10,9 @@ namespace
 {
     using NS::Core::OBB;
     using NS::Core::Vector3;
-    using NS::Physics::JoltCharacter;
-    using NS::Physics::PhysicsScene;
-    namespace ObjectLayers = NS::Physics::ObjectLayers;
+    using NS::Phys::JoltCharacter;
+    using NS::Phys::PhysicsScene;
+    namespace ObjectLayers = NS::Phys::ObjectLayers;
 
     constexpr float k_Dt = 1.0f / 60.0f;
     constexpr float k_Radius = 0.4f;
@@ -454,6 +454,6 @@ TEST(JoltCharacterTest, WalkableNormalEndsAtFortyFiveDegrees)
     const float gentle = std::cos(44.5f * NS::Core::k_Pi / 180.0f);
     const float steep = std::cos(45.5f * NS::Core::k_Pi / 180.0f);
 
-    EXPECT_TRUE(NS::Physics::IsWalkableNormal(gentle));
-    EXPECT_FALSE(NS::Physics::IsWalkableNormal(steep));
+    EXPECT_TRUE(NS::Phys::IsWalkableNormal(gentle));
+    EXPECT_FALSE(NS::Phys::IsWalkableNormal(steep));
 }

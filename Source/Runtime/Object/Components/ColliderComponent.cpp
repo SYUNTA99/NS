@@ -6,9 +6,9 @@
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Physics/PhysicsScene.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
-    void ColliderComponent::SyncToPhysics(NS::Physics::PhysicsScene& physics)
+    void ColliderComponent::SyncToPhysics(NS::Phys::PhysicsScene& physics)
     {
         if (!AcceptsScenePhysics(physics))
         {
@@ -24,7 +24,7 @@ namespace NS::Object
         m_bodyId = body;
     }
 
-    void ColliderComponent::RemoveFromPhysics(NS::Physics::PhysicsScene& physics)
+    void ColliderComponent::RemoveFromPhysics(NS::Phys::PhysicsScene& physics)
     {
         if (!AcceptsScenePhysics(physics))
         {
@@ -42,7 +42,7 @@ namespace NS::Object
             return;
         }
 
-        NS::Physics::PhysicsScene* scenePhysics = ScenePhysics();
+        NS::Phys::PhysicsScene* scenePhysics = ScenePhysics();
         if (scenePhysics == nullptr)
         {
             NS_LOG_ERROR(Scene,"ColliderComponent: Scene に居ないので body を外せない。 body は PhysicsScene を壊すまで残る");
@@ -52,7 +52,7 @@ namespace NS::Object
         RemoveFromPhysics(*scenePhysics);
     }
 
-    NS::Physics::PhysicsScene* ColliderComponent::ScenePhysics() const noexcept
+    NS::Phys::PhysicsScene* ColliderComponent::ScenePhysics() const noexcept
     {
         const GameObject* owner = Owner();
         if (owner == nullptr || owner->OwningScene() == nullptr)
@@ -62,9 +62,9 @@ namespace NS::Object
         return &owner->OwningScene()->Physics();
     }
 
-    bool ColliderComponent::AcceptsScenePhysics(const NS::Physics::PhysicsScene& physics) const
+    bool ColliderComponent::AcceptsScenePhysics(const NS::Phys::PhysicsScene& physics) const
     {
-        const NS::Physics::PhysicsScene* scenePhysics = ScenePhysics();
+        const NS::Phys::PhysicsScene* scenePhysics = ScenePhysics();
         if (scenePhysics == nullptr)
         {
             NS_LOG_ERROR(Scene, "ColliderComponent: 持ち主が Scene に居ないので body を出し入れしない");
@@ -78,4 +78,4 @@ namespace NS::Object
         NS_LOG_ERROR(Scene, "ColliderComponent: 持ち主の Scene と違う PhysicsScene を渡された。 body を出し入れしない");
         return false;
     }
-} // namespace NS::Object
+} // namespace NS::Obj

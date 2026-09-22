@@ -7,12 +7,12 @@
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Core/Sphere.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Renderer;
 }
 
-namespace NS::Graphics::DebugDraw
+namespace NS::Gfx::DebugDraw
 {
     //! @brief 2点間に線分を追加する
     //! @param[in] a 始点の座標
@@ -67,4 +67,4 @@ namespace NS::Graphics::DebugDraw
 
     //! 現在バッファに蓄積されている頂点の総数を返す
     [[nodiscard]] std::size_t VertexCount() noexcept;
-} // namespace NS::Graphics::DebugDraw
+} // namespace NS::Gfx::DebugDraw

@@ -3,6 +3,6 @@
 namespace NS::Game::Entity
 {
     EntityStateManagerComponent::EntityStateManagerComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::Update)
+        : NS::Obj::Component(NS::Obj::TickPriority::Update)
     {}
 } // namespace NS::Game::Entity

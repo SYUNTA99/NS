@@ -4,8 +4,8 @@
 
 namespace
 {
-    using NS::Object::Component;
-    using NS::Object::GameObject;
+    using NS::Obj::Component;
+    using NS::Obj::GameObject;
 
     class CountingComponent : public Component
     {
@@ -81,7 +81,7 @@ TEST(ComponentTest, RootTransformReturnsOwnerRoot)
 namespace
 {
     //! 破棄回数を外部カウンタへ記録する Component。GameObject 所有の寿命検証に使う
-    class LifetimeComponent : public NS::Object::Component
+    class LifetimeComponent : public NS::Obj::Component
     {
     public:
         explicit LifetimeComponent(int* destroyCounter) noexcept : m_destroyCounter(destroyCounter) {}
@@ -98,7 +98,7 @@ namespace
 
 TEST(ComponentOwnershipTest, AddComponentRegistersAndInjectsOwner)
 {
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto* c = obj.AddComponent<CountingComponent>();
 
     // GameObject が先に transform を積むので、同 priority の後入れは末尾に来る
@@ -117,7 +117,7 @@ TEST(ComponentOwnershipTest, GameObjectOwnsComponentLifetime)
 {
     int destroyed = 0;
     {
-        NS::Object::GameObject obj;
+        NS::Obj::GameObject obj;
         obj.AddComponent<LifetimeComponent>(&destroyed);
         EXPECT_EQ(obj.Components().size(), std::size_t{2});
         EXPECT_EQ(destroyed, 0);

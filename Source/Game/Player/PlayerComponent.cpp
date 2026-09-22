@@ -22,7 +22,7 @@
 namespace
 {
     // 掴まりの走査で見る AABB 群。physics 未設定なら空を返し、掴めないだけにする
-    [[nodiscard]] std::vector<NS::Core::AABB> BoxesTouchingBand(const NS::Physics::PhysicsScene* physics,
+    [[nodiscard]] std::vector<NS::Core::AABB> BoxesTouchingBand(const NS::Phys::PhysicsScene* physics,
                                                                 const NS::Core::Vector3& probe,
                                                                 float below,
                                                                 float above)
@@ -36,7 +36,7 @@ namespace
         return physics->OverlapBox(region);
     }
 
-    [[nodiscard]] std::vector<NS::Core::AABB> BoxesAtPoint(const NS::Physics::PhysicsScene* physics,
+    [[nodiscard]] std::vector<NS::Core::AABB> BoxesAtPoint(const NS::Phys::PhysicsScene* physics,
                                                            const NS::Core::Vector3& point)
     {
         if (physics == nullptr)
@@ -193,7 +193,7 @@ namespace NS::Game::Player
         // 反発後の滑りなど残った速度が向きに勝つと狙いと食い違う方へ飛ぶ。入力が無ければ速度よりカメラの前を先に見る
         if (length < NS::Core::k_Epsilon && Owner() != nullptr && Owner()->OwningScene() != nullptr)
         {
-            if (NS::Object::CameraBrainComponent* brain = Owner()->OwningScene()->CameraBrain())
+            if (NS::Obj::CameraBrainComponent* brain = Owner()->OwningScene()->CameraBrain())
             {
                 const NS::Core::Vector3 forward = brain->ForwardHorizontal();
                 dir = NS::Core::Vector3{forward.x, 0.0f, forward.z};

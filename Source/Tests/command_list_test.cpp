@@ -12,18 +12,18 @@
 
 namespace
 {
-    using NS::Graphics::Buffer;
-    using NS::Graphics::BufferDesc;
-    using NS::Graphics::CommandList;
-    using NS::Graphics::MakeConstantBufferDesc;
-    using NS::Graphics::MakeIndexBufferDesc;
-    using NS::Graphics::MakeVertexBufferDesc;
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
-    using NS::Graphics::Shader;
-    using NS::Graphics::ShaderType;
-    using NS::Graphics::Texture;
-    using NS::Graphics::TextureCreateDesc;
+    using NS::Gfx::Buffer;
+    using NS::Gfx::BufferDesc;
+    using NS::Gfx::CommandList;
+    using NS::Gfx::MakeConstantBufferDesc;
+    using NS::Gfx::MakeIndexBufferDesc;
+    using NS::Gfx::MakeVertexBufferDesc;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
+    using NS::Gfx::Shader;
+    using NS::Gfx::ShaderType;
+    using NS::Gfx::Texture;
+    using NS::Gfx::TextureCreateDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 

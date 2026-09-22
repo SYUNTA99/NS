@@ -12,7 +12,7 @@
 namespace NS::Game::Level
 {
     // 判定より後の帯。接触と同じ LateUpdate で演出を始める
-    FinisherComponent::FinisherComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::LateUpdate + 10)
+    FinisherComponent::FinisherComponent() noexcept : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate + 10)
     {}
 
     ScreenFadeComponent* FinisherComponent::Fade() noexcept
@@ -47,7 +47,7 @@ namespace NS::Game::Level
 
     void FinisherComponent::SetPlayerInputActive(bool active) noexcept
     {
-        if (auto* input = Owner()->FindComponent<NS::Object::PlayerInputComponent>())
+        if (auto* input = Owner()->FindComponent<NS::Obj::PlayerInputComponent>())
         {
             input->SetActive(active);
         }

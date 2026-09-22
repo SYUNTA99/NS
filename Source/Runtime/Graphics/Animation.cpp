@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <span>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     namespace
     {
@@ -119,4 +119,4 @@ namespace NS::Graphics
         }
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

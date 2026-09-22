@@ -5,7 +5,7 @@
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Physics/Capsule.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! @brief カプセル collider を Scene に登録する Component
     //! @details owner の world 変換から中心・軸・半径・半高を個別に返す
@@ -44,7 +44,7 @@ namespace NS::Object
         //! owner の world 変換に local offset / 回転を重ねた capsule を返す
         //! axis は local 回転で回した Y 軸、半径は X/Z scale 最大、半高は Y scale で拡縮する
         //! Owner 未登録時は local offset / 回転だけを反映する。例外は投げない
-        [[nodiscard]] NS::Physics::Capsule WorldCapsule() const noexcept;
+        [[nodiscard]] NS::Phys::Capsule WorldCapsule() const noexcept;
 
         //! owner の world 変換を反映した世界軸並行 AABB を返す。Owner 未登録時は local だけを反映する
         [[nodiscard]] NS::Core::AABB WorldAABB() const noexcept;
@@ -64,7 +64,7 @@ namespace NS::Object
 
     private:
         // 静的世界から外した capsule は body を作らない
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
         [[nodiscard]] NS::Core::Matrix CapsuleWorldMatrix() const noexcept;
 
         float m_radius = 0.4f;                                                 // capsule 半径
@@ -73,4 +73,4 @@ namespace NS::Object
         NS::Core::Quaternion m_localRotation = NS::Core::Quaternion::Identity; // owner 回転に重ねる local 回転
         bool m_excludedFromStaticWorld = false;
     };
-} // namespace NS::Object
+} // namespace NS::Obj

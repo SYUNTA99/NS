@@ -3,7 +3,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! @brief Keyboard / Gamepad の入力を読んで値として持つ Component
     //! @details WASD + 左スティックを camera forward 相対の world 方向に変換し、Space / Gamepad A の
@@ -51,4 +51,4 @@ namespace NS::Object
         bool m_releaseLedgePressed = false;
         bool m_prevReleaseLedgeHeld = false;
     };
-} // namespace NS::Object
+} // namespace NS::Obj

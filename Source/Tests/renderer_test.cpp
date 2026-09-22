@@ -7,8 +7,8 @@
 
 namespace
 {
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
@@ -58,9 +58,9 @@ TEST_F(RendererLoggerTest, CommonPipelinesAreValidDistinctAndCached)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const NS::Graphics::Pipeline& opaque = renderer.CommonPipeline(NS::Graphics::BlendMode::Opaque);
-    const NS::Graphics::Pipeline& alpha = renderer.CommonPipeline(NS::Graphics::BlendMode::Alpha);
-    const NS::Graphics::Pipeline& additive = renderer.CommonPipeline(NS::Graphics::BlendMode::Additive);
+    const NS::Gfx::Pipeline& opaque = renderer.CommonPipeline(NS::Gfx::BlendMode::Opaque);
+    const NS::Gfx::Pipeline& alpha = renderer.CommonPipeline(NS::Gfx::BlendMode::Alpha);
+    const NS::Gfx::Pipeline& additive = renderer.CommonPipeline(NS::Gfx::BlendMode::Additive);
 
     EXPECT_TRUE(opaque.IsValid());
     EXPECT_TRUE(alpha.IsValid());
@@ -72,15 +72,15 @@ TEST_F(RendererLoggerTest, CommonPipelinesAreValidDistinctAndCached)
     EXPECT_NE(&alpha, &additive);
 
     // create-once: 再取得で同一インスタンスを返す
-    EXPECT_EQ(&opaque, &renderer.CommonPipeline(NS::Graphics::BlendMode::Opaque));
+    EXPECT_EQ(&opaque, &renderer.CommonPipeline(NS::Gfx::BlendMode::Opaque));
 
     // desc は意図どおり。半透明は深度読取専用
-    EXPECT_EQ(opaque.Desc().blend, NS::Graphics::BlendMode::Opaque);
-    EXPECT_EQ(opaque.Desc().depth, NS::Graphics::DepthMode::ReadWrite);
-    EXPECT_EQ(alpha.Desc().blend, NS::Graphics::BlendMode::Alpha);
-    EXPECT_EQ(alpha.Desc().depth, NS::Graphics::DepthMode::ReadOnly);
-    EXPECT_EQ(additive.Desc().blend, NS::Graphics::BlendMode::Additive);
-    EXPECT_EQ(additive.Desc().depth, NS::Graphics::DepthMode::ReadOnly);
+    EXPECT_EQ(opaque.Desc().blend, NS::Gfx::BlendMode::Opaque);
+    EXPECT_EQ(opaque.Desc().depth, NS::Gfx::DepthMode::ReadWrite);
+    EXPECT_EQ(alpha.Desc().blend, NS::Gfx::BlendMode::Alpha);
+    EXPECT_EQ(alpha.Desc().depth, NS::Gfx::DepthMode::ReadOnly);
+    EXPECT_EQ(additive.Desc().blend, NS::Gfx::BlendMode::Additive);
+    EXPECT_EQ(additive.Desc().depth, NS::Gfx::DepthMode::ReadOnly);
 }
 
 TEST_F(RendererLoggerTest, SizeMatchesWindow)

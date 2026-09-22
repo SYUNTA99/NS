@@ -11,7 +11,7 @@
 #include <cstdint>
 #include <limits>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     namespace
     {
@@ -248,4 +248,4 @@ namespace NS::Graphics
         return m_boneSpheres;
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

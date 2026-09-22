@@ -689,7 +689,7 @@ namespace
     // screen x 差 Δpx の X 軸移動が world Δx = 2*Δpx/width に対応する
     TEST(GizmoEditorDrag, MoveDragChangesOnlyAxis)
     {
-        NS::Object::Transform t;
+        NS::Obj::Transform t;
         GizmoEditor gizmo;
         gizmo.SelectForTest(&t);
         gizmo.SetToolForTest(GizmoTool::Move);
@@ -707,7 +707,7 @@ namespace
     // 選択物を Z 90° 回した状態で local X をドラッグすると、world では X でなく Y 方向へ動く
     TEST(GizmoEditorDrag, MoveFollowsLocalAxisWhenRotated)
     {
-        NS::Object::Transform t;
+        NS::Obj::Transform t;
         t.SetRotation(NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, k_Pi / 2.0f));
         GizmoEditor gizmo;
         gizmo.SelectForTest(&t);
@@ -727,7 +727,7 @@ namespace
     // World 空間では Z 90° 回しても local X ハンドル = world X。横ドラッグで world X が動く。local 化の逆
     TEST(GizmoEditorDrag, MoveUsesWorldAxisInWorldSpace)
     {
-        NS::Object::Transform t;
+        NS::Obj::Transform t;
         t.SetRotation(NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, k_Pi / 2.0f));
         GizmoEditor gizmo;
         gizmo.SelectForTest(&t);
@@ -745,7 +745,7 @@ namespace
 
     TEST(GizmoEditorDrag, NoOpDragLeavesPositionUnchanged)
     {
-        NS::Object::Transform t;
+        NS::Obj::Transform t;
         GizmoEditor gizmo;
         gizmo.SelectForTest(&t);
         gizmo.SetToolForTest(GizmoTool::Move);
@@ -759,7 +759,7 @@ namespace
 
     TEST(GizmoEditorDrag, RotateDragChangesRotation)
     {
-        NS::Object::Transform t;
+        NS::Obj::Transform t;
         const NS::Core::Quaternion identity = t.Rotation();
 
         GizmoEditor gizmo;
@@ -801,7 +801,7 @@ namespace
         };
 
         // Z 軸リングを「+X 点を掴んで +Y 点へ」 運ぶ。これはどちらの視点でも同じワールド操作
-        NS::Object::Transform tFront;
+        NS::Obj::Transform tFront;
         GizmoEditor gFront;
         gFront.SelectForTest(&tFront);
         gFront.SetToolForTest(GizmoTool::Rotate);
@@ -811,7 +811,7 @@ namespace
                                 projectToScreen(vpFront, viewport, {1.0f, 0.0f, 0.0f}),
                                 projectToScreen(vpFront, viewport, {0.0f, 1.0f, 0.0f}));
 
-        NS::Object::Transform tBack;
+        NS::Obj::Transform tBack;
         GizmoEditor gBack;
         gBack.SelectForTest(&tBack);
         gBack.SetToolForTest(GizmoTool::Rotate);
@@ -826,7 +826,7 @@ namespace
 
     TEST(GizmoEditorDrag, UniformScaleDragGrowsAllAxesUniformly)
     {
-        NS::Object::Transform t;
+        NS::Obj::Transform t;
         GizmoEditor gizmo;
         gizmo.SelectForTest(&t);
         gizmo.SetToolForTest(GizmoTool::Scale);
@@ -901,21 +901,21 @@ namespace
         windowDesc.visible = false;
         NS::Platform::Window window(windowDesc);
         ASSERT_TRUE(window.IsValid());
-        NS::Graphics::RendererDesc rendererDesc{};
+        NS::Gfx::RendererDesc rendererDesc{};
         rendererDesc.vsync = false;
         rendererDesc.enableDebugLayer = false;
-        NS::Graphics::Renderer renderer(rendererDesc, window);
+        NS::Gfx::Renderer renderer(rendererDesc, window);
         if (!renderer.IsValid())
             GTEST_SKIP() << "Device 確立不可 (headless)";
 
-        NS::Object::AssetManager assets{NS::Platform::FileSystem::ContentRoot()};
-        NS::Graphics::Mesh* soldier =
+        NS::Obj::AssetManager assets{NS::Platform::FileSystem::ContentRoot()};
+        NS::Gfx::Mesh* soldier =
             assets.GetOrLoadMesh(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"), "Soldier.glb"));
         ASSERT_NE(soldier, nullptr);
 
-        NS::Object::GameObject doll;
-        doll.AddComponent<NS::Object::MeshRendererComponent>()->SetMesh(soldier);
-        const std::array<NS::Object::GameObject*, 1> objects = {&doll};
+        NS::Obj::GameObject doll;
+        doll.AddComponent<NS::Obj::MeshRendererComponent>()->SetMesh(soldier);
+        const std::array<NS::Obj::GameObject*, 1> objects = {&doll};
 
         const NS::Core::Vector3 chest{0.0f, 1.4f, 0.0f};
         const NS::Core::Matrix vp = MakeOrbitViewProjection(NS::Core::Vector3{2.0f, 2.5f, -4.0f}, chest);

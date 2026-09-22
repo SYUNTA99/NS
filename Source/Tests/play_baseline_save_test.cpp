@@ -14,14 +14,14 @@
 #include <string_view>
 #include <utility>
 
-namespace SceneNs = NS::Object;
+namespace SceneNs = NS::Obj;
 namespace LevelNs = NS::Game::Level;
 
 namespace
 {
-    void SetFloatField(NS::Object::Component& comp, std::string_view name, float value)
+    void SetFloatField(NS::Obj::Component& comp, std::string_view name, float value)
     {
-        const NS::Object::ReflectionInfo* info = comp.GetReflection();
+        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
         for (std::size_t i = 0; i < info->fieldCount; ++i)
         {
             if (std::string_view{info->fields[i].name} == name)
@@ -32,9 +32,9 @@ namespace
         }
     }
 
-    float GetFloatField(const NS::Object::Component& comp, std::string_view name)
+    float GetFloatField(const NS::Obj::Component& comp, std::string_view name)
     {
-        const NS::Object::ReflectionInfo* info = comp.GetReflection();
+        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
         for (std::size_t i = 0; i < info->fieldCount; ++i)
         {
             if (std::string_view{info->fields[i].name} == name)
@@ -52,7 +52,7 @@ namespace
 // プレイ中の保存はこの控えを書くため、プレイの一時状態がレベルファイルへ書き込まれない
 TEST(PlayBaselineSave, FrozenBaselineIgnoresPlayMovement)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
 
     SceneNs::SceneData level;
     SceneNs::ObjectData cube = LevelNs::MakeCellObject(0, 0, 0);
@@ -89,7 +89,7 @@ TEST(PlayBaselineSave, FrozenBaselineIgnoresPlayMovement)
 
 TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
 
     SceneNs::SceneData level;
     SceneNs::ObjectData rock;
@@ -101,7 +101,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     scene.LoadFromData(std::move(level));
     scene.BeginPlayBaseline();
 
-    NS::Object::GameObject* live = scene.Objects().FindObject(NS::Object::ObjectRef{rockId});
+    NS::Obj::GameObject* live = scene.Objects().FindObject(NS::Obj::ObjectRef{rockId});
     ASSERT_NE(live, nullptr);
     auto* launched = live->FindComponent<LevelNs::LaunchedBodyComponent>();
     ASSERT_NE(launched, nullptr);
@@ -118,7 +118,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     EXPECT_FLOAT_EQ(frozen.z, 3.0f);
 
     scene.LoadFromData(std::move(copy));
-    NS::Object::GameObject* rebuilt = scene.Objects().FindObject(NS::Object::ObjectRef{rockId});
+    NS::Obj::GameObject* rebuilt = scene.Objects().FindObject(NS::Obj::ObjectRef{rockId});
     ASSERT_NE(rebuilt, nullptr);
     auto* rebuiltLaunched = rebuilt->FindComponent<LevelNs::LaunchedBodyComponent>();
     ASSERT_NE(rebuiltLaunched, nullptr);
@@ -128,7 +128,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
 // プレイ中に live の回転を直接動かした分が凍結側へ写り、編集へ戻った時に残る
 TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)
 {
-    NS::Object::Scene scene;
+    NS::Obj::Scene scene;
 
     SceneNs::SceneData level;
     level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
@@ -137,7 +137,7 @@ TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)
     scene.LoadFromData(std::move(level));
     scene.BeginPlayBaseline();
 
-    NS::Object::GameObject* live = scene.Objects().FindObject(NS::Object::ObjectRef{blockId});
+    NS::Obj::GameObject* live = scene.Objects().FindObject(NS::Obj::ObjectRef{blockId});
     ASSERT_NE(live, nullptr);
     auto* transform = live->FindComponent<SceneNs::TransformComponent>();
     ASSERT_NE(transform, nullptr);
@@ -149,7 +149,7 @@ TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)
 
     SceneNs::SceneData copy = scene.PlayBaseline();
     scene.LoadFromData(std::move(copy));
-    NS::Object::GameObject* rebuilt = scene.Objects().FindObject(NS::Object::ObjectRef{blockId});
+    NS::Obj::GameObject* rebuilt = scene.Objects().FindObject(NS::Obj::ObjectRef{blockId});
     ASSERT_NE(rebuilt, nullptr);
     const NS::Core::Quaternion restored = rebuilt->Root().Rotation();
     EXPECT_NEAR(std::abs(restored.Dot(edited)), 1.0f, 1e-4f);

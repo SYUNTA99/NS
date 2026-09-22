@@ -5,7 +5,7 @@
 
 #include <cmath>
 
-namespace NS::Object
+namespace NS::Obj
 {
     PlacedVirtualCamera::PlacedVirtualCamera() noexcept
         : VirtualCameraComponent(TickPriority::LateUpdate + 50)
@@ -50,4 +50,4 @@ namespace NS::Object
     }
 
     NS_CLASS(PlacedVirtualCamera)
-} // namespace NS::Object
+} // namespace NS::Obj

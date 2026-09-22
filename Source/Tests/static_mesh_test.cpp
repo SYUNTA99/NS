@@ -13,13 +13,13 @@ namespace
 {
     using NS::Core::Vector2;
     using NS::Core::Vector3;
-    using NS::Graphics::InputElement;
-    using NS::Graphics::InputElementFormat;
-    using NS::Graphics::StaticMesh;
-    using NS::Graphics::MeshDesc;
-    using NS::Graphics::StaticVertex;
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
+    using NS::Gfx::InputElement;
+    using NS::Gfx::InputElementFormat;
+    using NS::Gfx::StaticMesh;
+    using NS::Gfx::MeshDesc;
+    using NS::Gfx::StaticVertex;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
@@ -182,7 +182,7 @@ TEST_F(MeshLoggerTest, FallbackMeshDrawDoesNotCrash)
     ASSERT_TRUE(mesh.IsValid());
     ASSERT_TRUE(mesh.IsUsingFallback());
 
-    NS::Graphics::DrawMesh(renderer.Commands(), mesh);
+    NS::Gfx::DrawMesh(renderer.Commands(), mesh);
     SUCCEED();
 }
 
@@ -205,7 +205,7 @@ TEST_F(MeshLoggerTest, DrawDoesNotCrash)
     StaticMesh& mesh = *meshHolder;
     ASSERT_TRUE(mesh.IsValid());
 
-    NS::Graphics::DrawMesh(renderer.Commands(), mesh);
+    NS::Gfx::DrawMesh(renderer.Commands(), mesh);
     SUCCEED();
 }
 
@@ -254,8 +254,8 @@ TEST_F(MeshLoggerTest, CreateInputLayoutSucceedsWithStandardShader)
     EXPECT_EQ(mesh.InputLayout(), nullptr);
 
     const auto shaderDir = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), "Shaders");
-    std::unique_ptr<NS::Graphics::Shader> shaderHolder = NS::Graphics::Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "standard.vs.hlsl"));
-    NS::Graphics::Shader& shader = *shaderHolder;
+    std::unique_ptr<NS::Gfx::Shader> shaderHolder = NS::Gfx::Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "standard.vs.hlsl"));
+    NS::Gfx::Shader& shader = *shaderHolder;
     ASSERT_TRUE(shader.IsValid());
 
     mesh.CreateInputLayout(shader);

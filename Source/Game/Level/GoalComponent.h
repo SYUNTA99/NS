@@ -8,7 +8,7 @@ namespace NS::Game::Level
     //! @brief 触れたらクリアになるゴールの配置物
     //! @details プレイヤーとの中心距離を LateUpdate 帯で自分で判定し、触れたらフラグを立てて保持する
     //! フラグを読んでどう応答するかは FinisherComponent が決める。フラグは走行のやり直しと編集復帰で戻される
-    class GoalComponent : public NS::Object::Component
+    class GoalComponent : public NS::Obj::Component
     {
     public:
         //! 「触れた」とみなす player 中心からのメートル距離
@@ -24,12 +24,12 @@ namespace NS::Game::Level
         void ResetReached() noexcept { m_reached = false; }
 
         // 調整できるフィールドは無いが、リフレクション typeName を持たせて type と空 fields で直列化できるようにする
-        NS_REFLECT_NONE(GoalComponent, NS::Object::Component)
+        NS_REFLECT_NONE(GoalComponent, NS::Obj::Component)
 
     private:
         bool m_reached = false; // 触れたら立つ。保存しない
     };
 
     //! ゴールの印を持つ配置物か。表示と固形判定が同じ判定を読む
-    [[nodiscard]] bool IsGoalObject(const NS::Object::ObjectData& object) noexcept;
+    [[nodiscard]] bool IsGoalObject(const NS::Obj::ObjectData& object) noexcept;
 } // namespace NS::Game::Level

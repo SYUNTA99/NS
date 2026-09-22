@@ -9,10 +9,10 @@
 namespace
 {
     using NS::Game::Level::BreakableComponent;
-    using NS::Object::Component;
-    using NS::Object::FieldDesc;
-    using NS::Object::GameObject;
-    using NS::Object::ReflectionInfo;
+    using NS::Obj::Component;
+    using NS::Obj::FieldDesc;
+    using NS::Obj::GameObject;
+    using NS::Obj::ReflectionInfo;
 
     // 欄名から 1 欄を引く。Inspector と .scene が値を書き込むのと同じ経路
     const FieldDesc* FindLabel(const Component& comp, std::string_view label)
@@ -20,7 +20,7 @@ namespace
         const ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr)
             return nullptr;
-        return NS::Object::FindField(info, label);
+        return NS::Obj::FindField(info, label);
     }
 } // namespace
 
@@ -83,7 +83,7 @@ TEST(BreakableComponentTest, NonFiniteValuesAreIgnored)
 TEST(BreakableComponentTest, IsCreatableFromTypeName)
 {
     GameObject obj;
-    Component* comp = NS::Object::CreateComponent("BreakableComponent", obj);
+    Component* comp = NS::Obj::CreateComponent("BreakableComponent", obj);
     ASSERT_NE(comp, nullptr);
     ASSERT_NE(comp->GetReflection(), nullptr);
     EXPECT_STREQ(comp->GetReflection()->typeName, "BreakableComponent");
@@ -101,8 +101,8 @@ TEST(BreakableComponentTest, ReflectionLabelsAreMassAndToughness)
     const FieldDesc* toughness = FindLabel(*breakable, "耐久");
     ASSERT_NE(mass, nullptr);
     ASSERT_NE(toughness, nullptr);
-    EXPECT_EQ(mass->type, NS::Object::FieldType::Float);
-    EXPECT_EQ(toughness->type, NS::Object::FieldType::Float);
+    EXPECT_EQ(mass->type, NS::Obj::FieldType::Float);
+    EXPECT_EQ(toughness->type, NS::Obj::FieldType::Float);
 
     // 欄は setter 経由。Inspector のドラッグも JSON の手編集も同じ検証を通る
     const float belowBound = -2.0f;

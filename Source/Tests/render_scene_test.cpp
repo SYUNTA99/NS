@@ -6,11 +6,11 @@
 
 namespace
 {
-    using NS::Graphics::DrawItem;
-    using NS::Graphics::RenderContext;
-    using NS::Graphics::RenderHandle;
-    using NS::Graphics::RenderProxyDesc;
-    using NS::Graphics::RenderScene;
+    using NS::Gfx::DrawItem;
+    using NS::Gfx::RenderContext;
+    using NS::Gfx::RenderHandle;
+    using NS::Gfx::RenderProxyDesc;
+    using NS::Gfx::RenderScene;
 
     // collect で id を log に積むだけの owner。device 不要でカリング/順序/バケットを検証する
     struct Logger

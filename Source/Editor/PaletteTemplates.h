@@ -16,7 +16,7 @@ namespace NS::Editor
         bool rotatable = false;
 
         //! 配置時に複製して使用するオブジェクトデータ
-        NS::Object::ObjectData prototype;
+        NS::Obj::ObjectData prototype;
     };
 
     //! パレットのブラシの総数

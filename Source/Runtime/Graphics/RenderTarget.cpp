@@ -4,7 +4,7 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Texture.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     std::unique_ptr<RenderTarget> RenderTarget::Create(::NS::Core::Size2D size)
@@ -106,4 +106,4 @@ namespace NS::Graphics
         return m_color->Srv();
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

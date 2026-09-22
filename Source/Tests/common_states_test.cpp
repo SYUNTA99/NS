@@ -6,8 +6,8 @@
 
 namespace
 {
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 } // namespace

@@ -5,7 +5,7 @@
 #include "Runtime/Object/Reflection/ObjectRef.h"
 #include "Runtime/Object/Scene/SceneData.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     class Transform;
     class GameObject;
@@ -135,4 +135,4 @@ namespace NS::Object
         float m_pitchMax = -0.0873f; // 仰俯角の上限
     };
 
-} // namespace NS::Object
+} // namespace NS::Obj

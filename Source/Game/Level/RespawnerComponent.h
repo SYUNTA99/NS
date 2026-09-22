@@ -7,7 +7,7 @@ namespace NS::Game::Level
     //! @brief 命が尽きた owner を出現位置へ戻す。プレイヤーに載せる
     //! @details 判定が出そろった後、同じ LateUpdate 内で走行を最初からやり直す
     //! 何で死んだかは知らない。リスタートへ演出を挟みたくなったらここにシーケンスを足す
-    class RespawnerComponent : public NS::Object::Component
+    class RespawnerComponent : public NS::Obj::Component
     {
     public:
         RespawnerComponent() noexcept;
@@ -19,6 +19,6 @@ namespace NS::Game::Level
         void RestartRun() noexcept;
 
         // 状態は保存しない。型検索で引けるよう型名だけ登録する
-        NS_REFLECT_NONE(RespawnerComponent, NS::Object::Component)
+        NS_REFLECT_NONE(RespawnerComponent, NS::Obj::Component)
     };
 } // namespace NS::Game::Level

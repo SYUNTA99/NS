@@ -8,7 +8,7 @@ namespace NS::Game::Level
     //! @details 自分の BoxCollider とプレイヤーカプセルの重なりを LateUpdate 帯で自分で判定して削る
     //! 当たり箱は Is Trigger にして置く。固形だと中に入れず削れない
     //! 削られた後どうなるかは知らない。プレイ中しか帯更新が回らないため編集中は何もしない
-    class HazardComponent : public NS::Object::Component
+    class HazardComponent : public NS::Obj::Component
     {
     public:
         HazardComponent() noexcept;
@@ -16,6 +16,6 @@ namespace NS::Game::Level
         void OnUpdate() override;
 
         // 調整できるフィールドは無いが、リフレクション typeName を持たせて type と空 fields で直列化できるようにする
-        NS_REFLECT_NONE(HazardComponent, NS::Object::Component)
+        NS_REFLECT_NONE(HazardComponent, NS::Obj::Component)
     };
 } // namespace NS::Game::Level

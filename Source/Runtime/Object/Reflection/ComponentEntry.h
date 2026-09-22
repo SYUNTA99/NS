@@ -11,7 +11,7 @@
 #include <string>
 #include <string_view>
 
-namespace NS::Object
+namespace NS::Obj
 {
     // 配置物データに書かれたコンポーネント 1 件 (型名と欄) を読み書きする
     struct ObjectData;
@@ -73,4 +73,4 @@ namespace NS::Object
     void SetField(nlohmann::json& entry, std::string_view name, const char* value);
     void SetField(nlohmann::json& entry, std::string_view name, ObjectRef value);
 
-} // namespace NS::Object
+} // namespace NS::Obj

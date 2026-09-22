@@ -11,9 +11,9 @@
 
 namespace
 {
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
-    using NS::Graphics::Skybox;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
+    using NS::Gfx::Skybox;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
@@ -54,10 +54,10 @@ TEST_F(SkyboxRenderingTest, DepthStateIsLessEqual)
     ASSERT_TRUE(skybox.IsValid());
 
     ASSERT_NE(skybox.RenderPipeline(), nullptr);
-    const NS::Graphics::PipelineDesc& desc = skybox.RenderPipeline()->Desc();
+    const NS::Gfx::PipelineDesc& desc = skybox.RenderPipeline()->Desc();
 
     // skybox は z=1 の far plane に張り付くので LESS_EQUAL + 書込なし (= ReadOnly) 必須
-    EXPECT_EQ(desc.depth, NS::Graphics::DepthMode::ReadOnly);
+    EXPECT_EQ(desc.depth, NS::Gfx::DepthMode::ReadOnly);
 }
 
 TEST_F(SkyboxRenderingTest, RasterFrontCull)
@@ -72,11 +72,11 @@ TEST_F(SkyboxRenderingTest, RasterFrontCull)
     ASSERT_TRUE(skybox.IsValid());
 
     ASSERT_NE(skybox.RenderPipeline(), nullptr);
-    const NS::Graphics::PipelineDesc& desc = skybox.RenderPipeline()->Desc();
+    const NS::Gfx::PipelineDesc& desc = skybox.RenderPipeline()->Desc();
 
-    EXPECT_EQ(desc.fill, NS::Graphics::FillMode::Solid);
+    EXPECT_EQ(desc.fill, NS::Gfx::FillMode::Solid);
     // inside-out cube を視点中心で描くので Front or None が許容される
-    const bool cullOk = (desc.cull == NS::Graphics::CullMode::Front) || (desc.cull == NS::Graphics::CullMode::None);
+    const bool cullOk = (desc.cull == NS::Gfx::CullMode::Front) || (desc.cull == NS::Gfx::CullMode::None);
     EXPECT_TRUE(cullOk);
 }
 
@@ -93,7 +93,7 @@ TEST_F(SkyboxRenderingTest, RenderWithFallbackDoesNotCrash)
 
     // LoadCubemap を呼ばずに発行しても fallback が描かれてクラッシュしないこと
     NS::Core::Matrix vpNoTranslate = NS::Core::Matrix::Identity;
-    NS::Graphics::IssueSkybox(renderer, skybox, vpNoTranslate);
+    NS::Gfx::IssueSkybox(renderer, skybox, vpNoTranslate);
     SUCCEED();
 }
 
@@ -105,7 +105,7 @@ TEST_F(SkyboxRenderingTest, DrawSkyWithEmptyPathDrawsNothing)
     ASSERT_TRUE(renderer.IsValid());
 
     // cubemap を指定していないシーンは空を描かない。装置の構築にも入らない
-    NS::Graphics::Camera camera{};
+    NS::Gfx::Camera camera{};
     renderer.DrawSky(camera, std::string{});
     renderer.DrawSky(camera, std::string{});
     SUCCEED();
@@ -119,7 +119,7 @@ TEST_F(SkyboxRenderingTest, DrawSkyIgnoresPathOutsideContentRoot)
     ASSERT_TRUE(renderer.IsValid());
 
     // ContentRoot の外を指すパスは読まずに拒否し、二度目は警告も出さない
-    NS::Graphics::Camera camera{};
+    NS::Gfx::Camera camera{};
     const std::string outside{"../outside/sky"};
     renderer.DrawSky(camera, outside);
     renderer.DrawSky(camera, outside);

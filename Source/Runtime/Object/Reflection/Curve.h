@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! @brief 点列を結ぶカーブの値型。点は最大 8 個で x 昇順に持ち、区間の形は両端の点の補間モードで決まる
     //! @details 固定長なので値の写しにメモリ確保が要らず、FieldDesc の get / set が写しだけで完結する。
@@ -207,4 +207,4 @@ namespace NS::Object
             keys[j] = inserted;
         }
     }
-} // namespace NS::Object
+} // namespace NS::Obj

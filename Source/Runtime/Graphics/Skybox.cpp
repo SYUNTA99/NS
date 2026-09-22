@@ -18,7 +18,7 @@
 #include <WICTextureLoader.h>
 #include <algorithm>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     namespace
@@ -485,4 +485,4 @@ namespace NS::Graphics
         return m_cubeMesh.get();
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Object
+namespace NS::Obj
 {
     namespace
     {
@@ -140,15 +140,15 @@ namespace NS::Object
         return NS::Core::MakeOBB(translation, rotation, half);
     }
 
-    JPH::BodyID BoxColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID BoxColliderComponent::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
         // 通り抜ける体積も body にする。入れないと重なりの問い合わせに出てこず、触れても判定できない
         if (m_isTrigger)
         {
-            return physics.SyncBox(current, WorldOBB(), NS::Physics::ObjectLayers::Trigger, true);
+            return physics.SyncBox(current, WorldOBB(), NS::Phys::ObjectLayers::Trigger, true);
         }
-        return physics.SyncBox(current, WorldOBB(), NS::Physics::ObjectLayers::Terrain);
+        return physics.SyncBox(current, WorldOBB(), NS::Phys::ObjectLayers::Terrain);
     }
 
     NS_CLASS(BoxColliderComponent)
-} // namespace NS::Object
+} // namespace NS::Obj

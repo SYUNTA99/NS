@@ -2,7 +2,7 @@
 
 #include "Runtime/Graphics/D3dCommon.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     //! @brief プロセス唯一の D3D11 device / immediate context を束ねたグローバル
     //! @details 中身は Renderer が所有する非所有の観測ポインタで、未構築時は nullptr。直接参照は層内部と ImGui統合のみ
@@ -14,4 +14,4 @@ namespace NS::Graphics
 
     //! GraphicObject を返す
     [[nodiscard]] GraphicObject& Gpu() noexcept;
-} // namespace NS::Graphics
+} // namespace NS::Gfx

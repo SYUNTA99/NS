@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/Math.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     //! @brief プロジェクト全体の標準となる描画設定
     //! @details 描画システムが保持し、シーンは配置された平行光の値で照明を上書きした複製を描画に使う
@@ -18,4 +18,4 @@ namespace NS::Graphics
         //! 画面へ出す前の露出。S 字で潰す前に掛けるので、上げても明部は飛ばず暗部だけ持ち上がる
         float exposure = 1.35f;
     };
-} // namespace NS::Graphics
+} // namespace NS::Gfx

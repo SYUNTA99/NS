@@ -5,7 +5,7 @@
 
 #include <span>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     namespace
     {
@@ -134,4 +134,4 @@ namespace NS::Graphics
         return result;
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

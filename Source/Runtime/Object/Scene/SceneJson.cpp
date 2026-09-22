@@ -10,7 +10,7 @@
 #include <cstddef>
 #include <span>
 
-namespace NS::Object
+namespace NS::Obj
 {
     namespace
     {
@@ -290,4 +290,4 @@ namespace NS::Object
         }
         return true;
     }
-} // namespace NS::Object
+} // namespace NS::Obj

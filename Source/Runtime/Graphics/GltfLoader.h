@@ -6,7 +6,7 @@
 
 #include <string>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     //! @brief 指定された3Dモデルファイルを読み込み、単一のメッシュジオメトリとして展開する
     //! @details 全ノードのワールド変換を適用し、すべてのメッシュデータを連結する
@@ -46,4 +46,4 @@ namespace NS::Graphics
     //! @brief スキニング情報に依存しないアニメーションを読み込む
     //! @return 読み込み失敗時は無効な状態のデータを返す
     [[nodiscard]] AnimationSource LoadGltfAnimationSource(const std::string& path);
-} // namespace NS::Graphics
+} // namespace NS::Gfx

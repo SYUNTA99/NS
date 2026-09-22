@@ -10,7 +10,7 @@ namespace NS::Platform
     class Window;
 }
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Renderer;
 }
@@ -27,7 +27,7 @@ namespace NS::UI
         struct Impl;
 
         //! 指定されたウィンドウと描画システムを用いてUIコンテキストを初期化する
-        ImGuiContext(NS::Platform::Window& window, NS::Graphics::Renderer& renderer) noexcept;
+        ImGuiContext(NS::Platform::Window& window, NS::Gfx::Renderer& renderer) noexcept;
         ~ImGuiContext() noexcept;
 
         [[nodiscard]] bool IsValid() const noexcept;

@@ -21,13 +21,13 @@
 
 namespace
 {
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
-    using NS::Object::AssetManager;
-    using NS::Object::MaterialFileDesc;
-    using NS::Object::ParseMaterialJson;
+    using NS::Obj::AssetManager;
+    using NS::Obj::MaterialFileDesc;
+    using NS::Obj::ParseMaterialJson;
 
     WindowDesc MakeWindowDesc(const char* title)
     {
@@ -140,7 +140,7 @@ namespace
         return pathNorm.substr(contentRootNorm.size() + 1);
     }
 
-    NS::Core::Vector3 FaceNormal(const NS::Physics::Triangle& triangle)
+    NS::Core::Vector3 FaceNormal(const NS::Phys::Triangle& triangle)
     {
         return (triangle.v1 - triangle.v0).Cross(triangle.v2 - triangle.v0);
     }
@@ -211,11 +211,11 @@ TEST_F(AssetManagerTest, BuiltinCubeCollisionHasTwelveOutwardTriangles)
 {
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
-    const NS::Physics::MeshCollision* collision = am.GetOrLoadMeshCollision("cube");
+    const NS::Phys::MeshCollision* collision = am.GetOrLoadMeshCollision("cube");
     ASSERT_NE(collision, nullptr);
     EXPECT_NE(collision->shape, nullptr);
     ASSERT_EQ(collision->triangles.size(), 12u);
-    for (const NS::Physics::Triangle& triangle : collision->triangles)
+    for (const NS::Phys::Triangle& triangle : collision->triangles)
     {
         const NS::Core::Vector3 centroid = (triangle.v0 + triangle.v1 + triangle.v2) / 3.0f;
         EXPECT_GT(FaceNormal(triangle).Dot(centroid), 0.0f);
@@ -227,7 +227,7 @@ TEST_F(AssetManagerTest, SameMeshRefSharesCollision)
 {
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
-    const NS::Physics::MeshCollision* first = am.GetOrLoadMeshCollision("wedge45");
+    const NS::Phys::MeshCollision* first = am.GetOrLoadMeshCollision("wedge45");
     ASSERT_NE(first, nullptr);
     EXPECT_EQ(am.GetOrLoadMeshCollision("wedge45"), first);
 }
@@ -242,11 +242,11 @@ TEST_F(AssetManagerTest, GltfCollisionKeepsFrontFaceInLeftHandedSpace)
         GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path();
 
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
-    const NS::Physics::MeshCollision* collision = am.GetOrLoadMeshCollision(ref);
+    const NS::Phys::MeshCollision* collision = am.GetOrLoadMeshCollision(ref);
     ASSERT_NE(collision, nullptr);
     ASSERT_EQ(collision->triangles.size(), 1u);
 
-    const NS::Physics::Triangle& triangle = collision->triangles[0];
+    const NS::Phys::Triangle& triangle = collision->triangles[0];
     const std::array<NS::Core::Vector3, 3> vertices = {triangle.v0, triangle.v1, triangle.v2};
     const std::array<NS::Core::Vector3, 3> expected = {NS::Core::Vector3{0.0f, 0.0f, -1.0f},
                                                        NS::Core::Vector3{2.0f, 0.0f, -1.0f},
@@ -294,7 +294,7 @@ TEST_F(AssetManagerTest, CollisionRefSpellingsShareOneRecord)
         GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path();
 
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
-    const NS::Physics::MeshCollision* plain = am.GetOrLoadMeshCollision(ref);
+    const NS::Phys::MeshCollision* plain = am.GetOrLoadMeshCollision(ref);
     ASSERT_NE(plain, nullptr);
     EXPECT_EQ(am.GetOrLoadMeshCollision("./" + ref), plain);
     EXPECT_EQ(am.MeshCacheSize(), 1u);
@@ -314,10 +314,10 @@ TEST_F(AssetManagerTest, MeshAndCollisionReadTheGltfOnce)
     static_cast<void>(am.GetOrLoadMesh(fixture.Path()));
     fixture.Rewrite(SingleTriangleGltf(rewritten));
 
-    const NS::Physics::MeshCollision* collision = am.GetOrLoadMeshCollision(ref);
+    const NS::Phys::MeshCollision* collision = am.GetOrLoadMeshCollision(ref);
     ASSERT_NE(collision, nullptr);
     ASSERT_EQ(collision->triangles.size(), 1u);
-    const NS::Physics::Triangle& triangle = collision->triangles[0];
+    const NS::Phys::Triangle& triangle = collision->triangles[0];
     EXPECT_FLOAT_EQ(std::max({triangle.v0.x, triangle.v1.x, triangle.v2.x}), 1.0f);
     EXPECT_EQ(am.MeshCacheSize(), 1u);
 }
@@ -374,7 +374,7 @@ TEST(AssetManagerParseTest, FullValidJsonParsesAllFields)
     EXPECT_FLOAT_EQ(desc.baseColor.x, 0.6f);
     EXPECT_FLOAT_EQ(desc.baseColor.y, 0.5f);
     EXPECT_FLOAT_EQ(desc.baseColor.z, 0.4f);
-    EXPECT_EQ(desc.blend, NS::Graphics::BlendMode::Alpha);
+    EXPECT_EQ(desc.blend, NS::Gfx::BlendMode::Alpha);
 }
 
 TEST(AssetManagerParseTest, MissingVsOrPsFails)
@@ -405,12 +405,12 @@ TEST(AssetManagerParseTest, OptionalFieldsDefaultWhenAbsent)
     EXPECT_FLOAT_EQ(desc.baseColor.x, 1.0f);
     EXPECT_FLOAT_EQ(desc.baseColor.y, 1.0f);
     EXPECT_FLOAT_EQ(desc.baseColor.z, 1.0f);
-    EXPECT_EQ(desc.blend, NS::Graphics::BlendMode::Opaque);
+    EXPECT_EQ(desc.blend, NS::Gfx::BlendMode::Opaque);
 }
 
 TEST(AssetManagerParseTest, BlendStringMapsToEnum)
 {
-    const auto parseBlend = [](const char* blendValue, NS::Graphics::BlendMode& outBlend) {
+    const auto parseBlend = [](const char* blendValue, NS::Gfx::BlendMode& outBlend) {
         const std::string json =
             std::string(R"({ "vs": "a.vs.hlsl", "ps": "b.ps.hlsl", "blend": ")") + blendValue + "\" }";
         MaterialFileDesc desc{};
@@ -419,14 +419,14 @@ TEST(AssetManagerParseTest, BlendStringMapsToEnum)
         outBlend = desc.blend;
         return ok;
     };
-    NS::Graphics::BlendMode blend{};
+    NS::Gfx::BlendMode blend{};
     ASSERT_TRUE(parseBlend("Additive", blend));
-    EXPECT_EQ(blend, NS::Graphics::BlendMode::Additive);
+    EXPECT_EQ(blend, NS::Gfx::BlendMode::Additive);
     ASSERT_TRUE(parseBlend("Alpha", blend));
-    EXPECT_EQ(blend, NS::Graphics::BlendMode::Alpha);
+    EXPECT_EQ(blend, NS::Gfx::BlendMode::Alpha);
     // 未知の blend は Opaque にフォールバックする
     ASSERT_TRUE(parseBlend("Nonsense", blend));
-    EXPECT_EQ(blend, NS::Graphics::BlendMode::Opaque);
+    EXPECT_EQ(blend, NS::Gfx::BlendMode::Opaque);
 }
 
 // 同一 .mat path の LoadMaterial は重複除去され同一 Material* を返す。内部 leaf を借りて組む

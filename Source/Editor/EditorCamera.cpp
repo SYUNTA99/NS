@@ -191,9 +191,9 @@ namespace NS::Editor
         ApplyInput(frameInput);
     }
 
-    NS::Object::CameraPose EditorCamera::Pose() const noexcept
+    NS::Obj::CameraPose EditorCamera::Pose() const noexcept
     {
-        NS::Object::CameraPose pose{};
+        NS::Obj::CameraPose pose{};
         pose.position = ComputeCameraPosition();
         pose.target = m_center;
         pose.up = NS::Core::Vector3{0.0f, 1.0f, 0.0f};

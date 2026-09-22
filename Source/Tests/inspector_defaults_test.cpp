@@ -8,11 +8,11 @@
 namespace
 {
     // 最初の float 欄。どの調整値かに依らずテストを書けるようにする
-    const NS::Object::FieldDesc* FindFloatField(const NS::Object::ReflectionInfo& info)
+    const NS::Obj::FieldDesc* FindFloatField(const NS::Obj::ReflectionInfo& info)
     {
         for (std::size_t i = 0; i < info.fieldCount; ++i)
         {
-            if (info.fields[i].type == NS::Object::FieldType::Float)
+            if (info.fields[i].type == NS::Obj::FieldType::Float)
                 return &info.fields[i];
         }
         return nullptr;
@@ -22,7 +22,7 @@ namespace
 TEST(InspectorDefaultsTest, SameTypeReusesOneInstance)
 {
     NS::Editor::ComponentDefaults defaults;
-    const NS::Object::Component* first = defaults.Find("PlayerComponent");
+    const NS::Obj::Component* first = defaults.Find("PlayerComponent");
     ASSERT_NE(first, nullptr);
     EXPECT_EQ(defaults.Find("PlayerComponent"), first);
 }
@@ -36,15 +36,15 @@ TEST(InspectorDefaultsTest, UnknownTypeHasNoDefaults)
 TEST(InspectorDefaultsTest, MarkFollowsTheEditedValue)
 {
     NS::Editor::ComponentDefaults defaults;
-    const NS::Object::Component* baseline = defaults.Find("PlayerComponent");
+    const NS::Obj::Component* baseline = defaults.Find("PlayerComponent");
     ASSERT_NE(baseline, nullptr);
 
-    NS::Object::GameObject obj;
-    NS::Object::Component* live = obj.AddComponent<NS::Game::Player::PlayerComponent>();
+    NS::Obj::GameObject obj;
+    NS::Obj::Component* live = obj.AddComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(live, nullptr);
-    const NS::Object::ReflectionInfo* info = live->GetReflection();
+    const NS::Obj::ReflectionInfo* info = live->GetReflection();
     ASSERT_NE(info, nullptr);
-    const NS::Object::FieldDesc* field = FindFloatField(*info);
+    const NS::Obj::FieldDesc* field = FindFloatField(*info);
     ASSERT_NE(field, nullptr);
 
     // 置いたままの値は既定と同じなので印を出さない
@@ -65,12 +65,12 @@ TEST(InspectorDefaultsTest, MarkFollowsTheEditedValue)
 
 TEST(InspectorDefaultsTest, NoBaselineMeansNoMark)
 {
-    NS::Object::GameObject obj;
-    NS::Object::Component* live = obj.AddComponent<NS::Game::Player::PlayerComponent>();
+    NS::Obj::GameObject obj;
+    NS::Obj::Component* live = obj.AddComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(live, nullptr);
-    const NS::Object::ReflectionInfo* info = live->GetReflection();
+    const NS::Obj::ReflectionInfo* info = live->GetReflection();
     ASSERT_NE(info, nullptr);
-    const NS::Object::FieldDesc* field = FindFloatField(*info);
+    const NS::Obj::FieldDesc* field = FindFloatField(*info);
     ASSERT_NE(field, nullptr);
 
     EXPECT_FALSE(NS::Editor::FieldDiffersFromDefault(*live, nullptr, *field));

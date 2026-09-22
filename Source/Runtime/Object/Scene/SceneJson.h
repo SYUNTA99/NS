@@ -10,7 +10,7 @@
 // SceneData を正準 JSON へ往復させるシーン直列化
 // nlohmann の既定辞書順キー出力で、同一 SceneData の 2 回保存は byte 一致になる
 
-namespace NS::Object
+namespace NS::Obj
 {
     struct SceneData;
 
@@ -27,4 +27,4 @@ namespace NS::Object
     //! 読込成功時は object id の一意化と宙に浮いた ObjectRef の除去まで済ませて返す
     [[nodiscard]] bool DeserializeSceneFromJson(SceneData& outScene, std::string_view jsonText);
 
-} // namespace NS::Object
+} // namespace NS::Obj

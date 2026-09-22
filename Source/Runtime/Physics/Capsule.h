@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/Math.h"
 
-namespace NS::Physics
+namespace NS::Phys
 {
     //! @brief カプセル形状
     //! @details 円柱の両端に半球がついた形状
@@ -13,4 +13,4 @@ namespace NS::Physics
         float halfHeight = 0.5f;                    // 中心から端の半球の中心までの距離
         float radius = 0.4f;                        // 半径
     };
-} // namespace NS::Physics
+} // namespace NS::Phys

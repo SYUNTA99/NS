@@ -10,7 +10,7 @@ namespace NS::Game::Level
 {
     ScreenFadeComponent::ScreenFadeComponent() noexcept
         // 応答より先の帯。やり直しが必ず全黒の裏に隠れる
-        : NS::Object::OverlayRendererComponent(NS::Object::TickPriority::LateUpdate + 5)
+        : NS::Obj::OverlayRendererComponent(NS::Obj::TickPriority::LateUpdate + 5)
     {}
 
     void ScreenFadeComponent::OnUpdate()
@@ -79,7 +79,7 @@ namespace NS::Game::Level
         }
     }
 
-    void ScreenFadeComponent::OnRenderOverlay(const NS::Graphics::RenderContext& ctx)
+    void ScreenFadeComponent::OnRenderOverlay(const NS::Gfx::RenderContext& ctx)
     {
         const float alpha = Alpha();
         if (alpha <= 0.0f)

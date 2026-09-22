@@ -17,8 +17,8 @@ namespace NsTest
         return out;
     }
 
-    inline void AddBox(NS::Physics::PhysicsScene& physics, const NS::Core::AABB& box)
+    inline void AddBox(NS::Phys::PhysicsScene& physics, const NS::Core::AABB& box)
     {
-        physics.AddBox(ToOBB(box), NS::Physics::ObjectLayers::Terrain);
+        physics.AddBox(ToOBB(box), NS::Phys::ObjectLayers::Terrain);
     }
 } // namespace NsTest

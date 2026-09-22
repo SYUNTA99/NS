@@ -7,7 +7,7 @@ namespace NS::Game::Level
     //! @brief プレイヤーの命。残量の所有と増減の能力だけ持ち、誰に削られるかは知らない
     //! @details hazard / KillZone 等のルール配置物が ApplyDamage / Kill を呼ぶ
     //! 死んだ後どうするかは RespawnerComponent が IsDead を読んで決める。OnUpdate は持たない
-    class HealthComponent : public NS::Object::Component
+    class HealthComponent : public NS::Obj::Component
     {
     public:
         HealthComponent() noexcept;
@@ -24,7 +24,7 @@ namespace NS::Game::Level
         [[nodiscard]] bool IsDead() const noexcept { return m_current <= 0; }
         [[nodiscard]] int Current() const noexcept { return m_current; }
 
-        NS_REFLECT_BEGIN(HealthComponent, NS::Object::Component)
+        NS_REFLECT_BEGIN(HealthComponent, NS::Obj::Component)
         NS_REFLECT_FIELD(m_maxHealth, "体力")
         NS_REFLECT_END()
 

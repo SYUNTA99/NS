@@ -20,7 +20,7 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
         GTEST_SKIP() << "CesiumMan.glb が無い: " << path;
     }
 
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh(path);
+    const auto data = NS::Gfx::LoadGltfSkinnedMesh(path);
     ASSERT_TRUE(data.IsValid());
     EXPECT_GT(data.vertices.size(), 0u);
     EXPECT_GT(data.indices.size(), 0u);
@@ -30,7 +30,7 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
 
     std::cout << "[CesiumMan] vertices=" << data.vertices.size() << " indices=" << data.indices.size()
               << " bones=" << data.skeleton.BoneCount() << " animations=" << data.animations.size() << "\n";
-    for (const NS::Graphics::AnimationClip& clip : data.animations)
+    for (const NS::Gfx::AnimationClip& clip : data.animations)
     {
         EXPECT_GT(clip.duration, 0.0f);
         EXPECT_GT(clip.tracks.size(), 0u);
@@ -39,11 +39,11 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
     }
 
     // 先頭クリップを t=0 と中間で評価し、ポーズが変化している = 実際にアニメする
-    const NS::Graphics::AnimationClip& clip = data.animations[0];
-    std::vector<NS::Graphics::BonePose> poseStart;
-    std::vector<NS::Graphics::BonePose> poseMid;
-    NS::Graphics::SampleClipPose(clip, data.skeleton, 0.0f, poseStart);
-    NS::Graphics::SampleClipPose(clip, data.skeleton, clip.duration * 0.5f, poseMid);
+    const NS::Gfx::AnimationClip& clip = data.animations[0];
+    std::vector<NS::Gfx::BonePose> poseStart;
+    std::vector<NS::Gfx::BonePose> poseMid;
+    NS::Gfx::SampleClipPose(clip, data.skeleton, 0.0f, poseStart);
+    NS::Gfx::SampleClipPose(clip, data.skeleton, clip.duration * 0.5f, poseMid);
     ASSERT_EQ(poseStart.size(), data.skeleton.BoneCount());
     ASSERT_EQ(poseMid.size(), data.skeleton.BoneCount());
 
@@ -66,12 +66,12 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
         const std::span<const NS::Core::Matrix> sp(palette.data(), palette.size());
         NS::Core::Vector3 mn{1e9f, 1e9f, 1e9f};
         NS::Core::Vector3 mx{-1e9f, -1e9f, -1e9f};
-        for (const NS::Graphics::SkinnedVertex& v : data.vertices)
+        for (const NS::Gfx::SkinnedVertex& v : data.vertices)
         {
             const NS::Core::Vector3 p = [&]() -> NS::Core::Vector3 {
                 if (palette.empty())
                     return v.position;
-                return NS::Graphics::Skeleton::SkinPositionReference(v, sp);
+                return NS::Gfx::Skeleton::SkinPositionReference(v, sp);
             }();
             mn = NS::Core::Vector3::Min(mn, p);
             mx = NS::Core::Vector3::Max(mx, p);
@@ -89,7 +89,7 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
 
     // 骨に node 名が入っている。リターゲットの対応づけキーになる
     std::size_t namedBones = 0;
-    for (const NS::Graphics::Bone& bone : data.skeleton.Bones())
+    for (const NS::Gfx::Bone& bone : data.skeleton.Bones())
         if (!bone.name.empty())
             ++namedBones;
     std::cout << "[CesiumMan] named bones = " << namedBones << " / " << data.skeleton.BoneCount() << "\n";
@@ -105,7 +105,7 @@ TEST(GltfAnimatedAssetTest, XbotStandsAtHumanScale)
         GTEST_SKIP() << "Xbot.glb が無い: " << path;
     }
 
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh(path);
+    const auto data = NS::Gfx::LoadGltfSkinnedMesh(path);
     ASSERT_TRUE(data.IsValid());
     ASSERT_GT(data.vertices.size(), 0u);
 
@@ -116,9 +116,9 @@ TEST(GltfAnimatedAssetTest, XbotStandsAtHumanScale)
 
     float lowest = 1e9f;
     float highest = -1e9f;
-    for (const NS::Graphics::SkinnedVertex& vertex : data.vertices)
+    for (const NS::Gfx::SkinnedVertex& vertex : data.vertices)
     {
-        const NS::Core::Vector3 p = NS::Graphics::Skeleton::SkinPositionReference(vertex, palette);
+        const NS::Core::Vector3 p = NS::Gfx::Skeleton::SkinPositionReference(vertex, palette);
         lowest = std::min(lowest, p.y);
         highest = std::max(highest, p.y);
     }
@@ -138,14 +138,14 @@ TEST(GltfAnimatedAssetTest, LoadsAnimationSourceSkinIndependent)
         GTEST_SKIP() << "CesiumMan.glb が無い: " << path;
     }
 
-    const auto source = NS::Graphics::LoadGltfAnimationSource(path);
+    const auto source = NS::Gfx::LoadGltfAnimationSource(path);
     ASSERT_TRUE(source.IsValid());
     EXPECT_GT(source.skeleton.BoneCount(), 0u);
     EXPECT_LE(source.skeleton.BoneCount(), 128u);
     EXPECT_GT(source.animations.size(), 0u);
 
     std::size_t namedBones = 0;
-    for (const NS::Graphics::Bone& bone : source.skeleton.Bones())
+    for (const NS::Gfx::Bone& bone : source.skeleton.Bones())
         if (!bone.name.empty())
             ++namedBones;
     std::cout << "[CesiumMan source] bones=" << source.skeleton.BoneCount() << " named=" << namedBones
@@ -153,6 +153,6 @@ TEST(GltfAnimatedAssetTest, LoadsAnimationSourceSkinIndependent)
     EXPECT_GT(namedBones, 0u) << "ソース骨格に骨名が無い";
 
     // 失敗系: 存在しないファイルは IsValid()==false
-    const auto missing = NS::Graphics::LoadGltfAnimationSource("does_not_exist_xyz.glb");
+    const auto missing = NS::Gfx::LoadGltfAnimationSource("does_not_exist_xyz.glb");
     EXPECT_FALSE(missing.IsValid());
 }

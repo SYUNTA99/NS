@@ -11,23 +11,23 @@
 
 namespace
 {
-    using NS::Object::FieldDesc;
-    using NS::Object::FindField;
-    using NS::Object::GameObject;
-    using NS::Object::ObjectData;
-    using NS::Object::ReflectionInfo;
-    using NS::Object::TransformComponent;
+    using NS::Obj::FieldDesc;
+    using NS::Obj::FindField;
+    using NS::Obj::GameObject;
+    using NS::Obj::ObjectData;
+    using NS::Obj::ReflectionInfo;
+    using NS::Obj::TransformComponent;
 
     // live 側の TransformComponent の数をリフレクション型名で数える
     [[nodiscard]] std::size_t CountTransformComponents(const GameObject& obj)
     {
         std::size_t count = 0;
-        for (const NS::Object::Component* comp : obj.Components())
+        for (const NS::Obj::Component* comp : obj.Components())
         {
             if (comp == nullptr)
                 continue;
             const ReflectionInfo* info = comp->GetReflection();
-            if (info != nullptr && NS::Object::k_TransformTypeName == info->typeName)
+            if (info != nullptr && NS::Obj::k_TransformTypeName == info->typeName)
                 ++count;
         }
         return count;
@@ -39,7 +39,7 @@ namespace
         std::size_t count = 0;
         for (const nlohmann::json& entry : object.components)
         {
-            if (NS::Object::ComponentEntryType(entry) == NS::Object::k_TransformTypeName)
+            if (NS::Obj::ComponentEntryType(entry) == NS::Obj::k_TransformTypeName)
                 ++count;
         }
         return count;
@@ -51,7 +51,7 @@ namespace
         nlohmann::json kept = nlohmann::json::array();
         for (const nlohmann::json& entry : object.components)
         {
-            if (NS::Object::ComponentEntryType(entry) != NS::Object::k_TransformTypeName)
+            if (NS::Obj::ComponentEntryType(entry) != NS::Obj::k_TransformTypeName)
                 kept.push_back(entry);
         }
         object.components = std::move(kept);
@@ -62,7 +62,7 @@ namespace
     {
         ObjectData object{};
         object.components = nlohmann::json::array();
-        object.components.push_back(NS::Object::MakeComponentEntry("MeshRendererComponent"));
+        object.components.push_back(NS::Obj::MakeComponentEntry("MeshRendererComponent"));
         return object;
     }
 } // namespace
@@ -171,7 +171,7 @@ TEST(TransformComponentTest, DataWithoutTransformEntryKeepsOneAtDefaults)
     ASSERT_EQ(CountTransformEntries(object), std::size_t{0});
 
     GameObject obj;
-    NS::Object::ApplyObjectComponents(obj, object, {});
+    NS::Obj::ApplyObjectComponents(obj, object, {});
 
     EXPECT_EQ(CountTransformComponents(obj), std::size_t{1});
     EXPECT_FLOAT_EQ(obj.Root().Position().x, 0.0f);
@@ -186,18 +186,18 @@ TEST(TransformComponentTest, DataWithoutTransformEntryKeepsOneAtDefaults)
 TEST(TransformComponentTest, ErasingTransformEntryDropsThePose)
 {
     ObjectData object = MakeMinimalObject();
-    NS::Object::SetObjectPosition(object, NS::Core::Vector3{5.0f, 6.0f, 7.0f});
+    NS::Obj::SetObjectPosition(object, NS::Core::Vector3{5.0f, 6.0f, 7.0f});
     ASSERT_EQ(CountTransformEntries(object), std::size_t{1});
 
     GameObject placed;
-    NS::Object::ApplyObjectComponents(placed, object, {});
+    NS::Obj::ApplyObjectComponents(placed, object, {});
     ASSERT_FLOAT_EQ(placed.Root().Position().y, 6.0f);
 
     EraseTransformEntries(object);
     ASSERT_EQ(CountTransformEntries(object), std::size_t{0});
 
     GameObject rebuilt;
-    NS::Object::ApplyObjectComponents(rebuilt, object, {});
+    NS::Obj::ApplyObjectComponents(rebuilt, object, {});
     EXPECT_EQ(CountTransformComponents(rebuilt), std::size_t{1});
     EXPECT_FLOAT_EQ(rebuilt.Root().Position().x, 0.0f);
     EXPECT_FLOAT_EQ(rebuilt.Root().Position().y, 0.0f);
@@ -208,22 +208,22 @@ TEST(TransformComponentTest, ErasingTransformEntryDropsThePose)
 TEST(TransformComponentTest, DuplicateEntriesBuildOnlyOne)
 {
     ObjectData object = MakeMinimalObject();
-    nlohmann::json first = NS::Object::MakeComponentEntry(NS::Object::k_TransformTypeName);
-    NS::Object::SetField(first, "位置", NS::Core::Vector3{1.0f, 2.0f, 3.0f});
-    nlohmann::json second = NS::Object::MakeComponentEntry(NS::Object::k_TransformTypeName);
-    NS::Object::SetField(second, "位置", NS::Core::Vector3{-8.0f, -8.0f, -8.0f});
+    nlohmann::json first = NS::Obj::MakeComponentEntry(NS::Obj::k_TransformTypeName);
+    NS::Obj::SetField(first, "位置", NS::Core::Vector3{1.0f, 2.0f, 3.0f});
+    nlohmann::json second = NS::Obj::MakeComponentEntry(NS::Obj::k_TransformTypeName);
+    NS::Obj::SetField(second, "位置", NS::Core::Vector3{-8.0f, -8.0f, -8.0f});
     object.components.push_back(std::move(first));
     object.components.push_back(std::move(second));
     ASSERT_EQ(CountTransformEntries(object), std::size_t{2});
 
     GameObject obj;
-    NS::Object::ApplyObjectComponents(obj, object, {});
+    NS::Obj::ApplyObjectComponents(obj, object, {});
 
     EXPECT_EQ(CountTransformComponents(obj), std::size_t{1});
     EXPECT_FLOAT_EQ(obj.Root().Position().x, 1.0f);
     EXPECT_FLOAT_EQ(obj.Root().Position().y, 2.0f);
     EXPECT_FLOAT_EQ(obj.Root().Position().z, 3.0f);
 
-    const ObjectData captured = NS::Object::CaptureObjectData(obj);
+    const ObjectData captured = NS::Obj::CaptureObjectData(obj);
     EXPECT_EQ(CountTransformEntries(captured), std::size_t{1});
 }

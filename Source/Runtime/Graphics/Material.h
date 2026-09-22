@@ -6,7 +6,7 @@
 #include <map>
 #include <memory>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     class Renderer;
@@ -87,4 +87,4 @@ namespace NS::Graphics
         bool m_valid = false;
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

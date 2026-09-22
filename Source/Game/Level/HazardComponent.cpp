@@ -13,11 +13,11 @@
 
 namespace NS::Game::Level
 {
-    HazardComponent::HazardComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::LateUpdate) {}
+    HazardComponent::HazardComponent() noexcept : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate) {}
 
     void HazardComponent::OnUpdate()
     {
-        auto* box = Owner()->FindComponent<NS::Object::BoxColliderComponent>();
+        auto* box = Owner()->FindComponent<NS::Obj::BoxColliderComponent>();
         if (box == nullptr)
         {
             return;
@@ -41,7 +41,7 @@ namespace NS::Game::Level
             return;
         }
 
-        const NS::Physics::Capsule capsule{player->Root().Position(),
+        const NS::Phys::Capsule capsule{player->Root().Position(),
                                            NS::Core::Vector3::UnitY,
                                            movement->CapsuleHalfHeight(),
                                            movement->CapsuleRadius()};

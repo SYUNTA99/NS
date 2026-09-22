@@ -8,12 +8,12 @@
 namespace
 {
     using NS::Core::Vector3;
-    using NS::Physics::BuildWedgeTriangles;
-    using NS::Physics::Triangle;
+    using NS::Phys::BuildWedgeTriangles;
+    using NS::Phys::Triangle;
 
     // 8 三角形の全頂点から最高 y 付近 (斜面の高い辺) の頂点を集め、その XZ 重心を返す
     // 三角形ごとに頂点が重複して現れ、かつ重複回数が頂点で異なるため、重心が偏らないよう
-    // 一意な頂点だけを集計する。wedge の「向き」 は高い辺がどちらを向くかで決まる
+    // 一意な頂点だけを集計する。wedge の「向き」は高い辺がどちらを向くかで決まる
     Vector3 HighEdgeCentroid(const std::array<Triangle, 8>& tris)
     {
         float maxY = -std::numeric_limits<float>::infinity();

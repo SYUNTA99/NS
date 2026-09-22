@@ -6,48 +6,48 @@
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Scene/SceneData.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     class GameObject;
     class ObjectList;
-} // namespace NS::Object
+} // namespace NS::Obj
 
 namespace NS::Editor
 {
 
     //! 配置物の cell 座標 = position を最近接整数へ丸めた値
-    [[nodiscard]] std::int16_t ObjectCellX(const NS::Object::ObjectData& object) noexcept;
-    [[nodiscard]] std::int16_t ObjectCellY(const NS::Object::ObjectData& object) noexcept;
-    [[nodiscard]] std::int16_t ObjectCellZ(const NS::Object::ObjectData& object) noexcept;
+    [[nodiscard]] std::int16_t ObjectCellX(const NS::Obj::ObjectData& object) noexcept;
+    [[nodiscard]] std::int16_t ObjectCellY(const NS::Obj::ObjectData& object) noexcept;
+    [[nodiscard]] std::int16_t ObjectCellZ(const NS::Obj::ObjectData& object) noexcept;
 
     //! cell ブラシが置換 / 削除できる配置物か。プレイヤーとカメラは別経路で扱うため除く
-    [[nodiscard]] bool IsCellBrushObject(const NS::Object::ObjectData& object) noexcept;
+    [[nodiscard]] bool IsCellBrushObject(const NS::Obj::ObjectData& object) noexcept;
 
     //! live 実体版。判定はデータ版と同じ基準で、component の有無を実体から見る
-    [[nodiscard]] bool IsCellBrushObject(NS::Object::GameObject& object) noexcept;
+    [[nodiscard]] bool IsCellBrushObject(NS::Obj::GameObject& object) noexcept;
 
     //! live 実体の cell 座標 = Root 位置を最近接整数へ丸めた値
-    [[nodiscard]] std::int16_t ObjectCellX(const NS::Object::GameObject& object) noexcept;
-    [[nodiscard]] std::int16_t ObjectCellY(const NS::Object::GameObject& object) noexcept;
-    [[nodiscard]] std::int16_t ObjectCellZ(const NS::Object::GameObject& object) noexcept;
+    [[nodiscard]] std::int16_t ObjectCellX(const NS::Obj::GameObject& object) noexcept;
+    [[nodiscard]] std::int16_t ObjectCellY(const NS::Obj::GameObject& object) noexcept;
+    [[nodiscard]] std::int16_t ObjectCellZ(const NS::Obj::GameObject& object) noexcept;
 
     //! cell の x, y, z に一致する最初の cell ブラシ配置物の添字。無ければ k_NoObjectIndex
-    [[nodiscard]] std::size_t FindObjectAtCell(const NS::Object::SceneData& level,
+    [[nodiscard]] std::size_t FindObjectAtCell(const NS::Obj::SceneData& level,
                                                std::int16_t x,
                                                std::int16_t y,
                                                std::int16_t z) noexcept;
 
     //! live の objects から cell 一致の最初の cell ブラシ配置物の永続 id。無ければ k_NoObjectId
-    [[nodiscard]] std::uint32_t FindObjectIdAtCell(const NS::Object::ObjectList& objects,
+    [[nodiscard]] std::uint32_t FindObjectIdAtCell(const NS::Obj::ObjectList& objects,
                                                    std::int16_t x,
                                                    std::int16_t y,
                                                    std::int16_t z) noexcept;
 
     //! object の現在の 90° 回転 step を quaternion から最近接で復元する
-    [[nodiscard]] std::uint8_t CellRotationStep(const NS::Object::ObjectData& object) noexcept;
+    [[nodiscard]] std::uint8_t CellRotationStep(const NS::Obj::ObjectData& object) noexcept;
 
     //! object の回転を rotationStep に対応する Y 軸 yaw quaternion に設定する
-    void SetCellRotationStep(NS::Object::ObjectData& object, std::uint8_t rotationStep) noexcept;
+    void SetCellRotationStep(NS::Obj::ObjectData& object, std::uint8_t rotationStep) noexcept;
 
     //! 指定角度のスロープの構成を作る
     [[nodiscard]] nlohmann::json MakeCellSlopeComponents(float angleDegrees);
@@ -68,22 +68,22 @@ namespace NS::Editor
     [[nodiscard]] nlohmann::json MakeGoalComponents();
 
     //! BoxCollider を持ち、ギミックでない固形ブロックか
-    [[nodiscard]] bool IsSolidObject(const NS::Object::ObjectData& object);
+    [[nodiscard]] bool IsSolidObject(const NS::Obj::ObjectData& object);
 
     //! 90 度回転できるスロープか固形箱か
-    [[nodiscard]] bool IsRotatableObject(const NS::Object::ObjectData& object);
+    [[nodiscard]] bool IsRotatableObject(const NS::Obj::ObjectData& object);
 
     //! component 構成から UI 表示用の分類名を返す
-    [[nodiscard]] const char* ObjectDisplayName(const NS::Object::ObjectData& object);
+    [[nodiscard]] const char* ObjectDisplayName(const NS::Obj::ObjectData& object);
 
     //! live 実体版。判定はデータ版と同じ基準で、component の有無と値を実体から見る
-    [[nodiscard]] const char* ObjectDisplayName(NS::Object::GameObject& object);
+    [[nodiscard]] const char* ObjectDisplayName(NS::Obj::GameObject& object);
 
     //! @brief クリックで配置物を選ぶ時の判定箱を、Root のローカル空間で返す
     //! @details メッシュを描く配置物はメッシュの境界、描かない配置物 (カメラ・光・空の GameObject) と
     //! メッシュが未解決の配置物は 1m 立方
     //! @param[in] object 判定箱を求める配置物
     //! @return Root のローカル空間の軸並行境界ボックス
-    [[nodiscard]] NS::Core::AABB PickLocalBounds(const NS::Object::GameObject& object) noexcept;
+    [[nodiscard]] NS::Core::AABB PickLocalBounds(const NS::Obj::GameObject& object) noexcept;
 
 } // namespace NS::Editor

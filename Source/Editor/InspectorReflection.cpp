@@ -22,9 +22,9 @@ namespace NS::Editor
     {
         // 同じ欄を 2 体から読んで見比べる
         template <class T>
-        bool SameValue(const NS::Object::Component& a,
-                       const NS::Object::Component& b,
-                       const NS::Object::FieldDesc& field)
+        bool SameValue(const NS::Obj::Component& a,
+                       const NS::Obj::Component& b,
+                       const NS::Obj::FieldDesc& field)
         {
             T lhs{};
             T rhs{};
@@ -35,7 +35,7 @@ namespace NS::Editor
 
         // 同じ欄を src から dst へ写す
         template <class T>
-        void CopyValue(NS::Object::Component& dst, const NS::Object::Component& src, const NS::Object::FieldDesc& field)
+        void CopyValue(NS::Obj::Component& dst, const NS::Obj::Component& src, const NS::Obj::FieldDesc& field)
         {
             T value{};
             field.get(&src, &value);
@@ -46,7 +46,7 @@ namespace NS::Editor
     ComponentDefaults::ComponentDefaults() noexcept = default;
     ComponentDefaults::~ComponentDefaults() noexcept = default;
 
-    const NS::Object::Component* ComponentDefaults::Find(std::string_view typeName)
+    const NS::Obj::Component* ComponentDefaults::Find(std::string_view typeName)
     {
         for (const auto& [name, comp] : m_byType)
         {
@@ -54,71 +54,71 @@ namespace NS::Editor
                 return comp;
         }
         if (!m_holder)
-            m_holder = std::make_unique<NS::Object::GameObject>();
+            m_holder = std::make_unique<NS::Obj::GameObject>();
 
         // 既定コンストラクタで作っただけの 1 体。未登録の型は nullptr が返り、その答も控えて再試行しない
-        NS::Object::Component* created = NS::Object::CreateComponent(typeName, *m_holder);
+        NS::Obj::Component* created = NS::Obj::CreateComponent(typeName, *m_holder);
         m_byType.emplace_back(std::string(typeName), created);
         return created;
     }
 
-    bool FieldDiffersFromDefault(const NS::Object::Component& comp,
-                                 const NS::Object::Component* defaults,
-                                 const NS::Object::FieldDesc& field) noexcept
+    bool FieldDiffersFromDefault(const NS::Obj::Component& comp,
+                                 const NS::Obj::Component* defaults,
+                                 const NS::Obj::FieldDesc& field) noexcept
     {
         if (defaults == nullptr)
             return false;
         switch (field.type)
         {
-        case NS::Object::FieldType::Float:
+        case NS::Obj::FieldType::Float:
             return !SameValue<float>(comp, *defaults, field);
-        case NS::Object::FieldType::Int:
+        case NS::Obj::FieldType::Int:
             return !SameValue<int>(comp, *defaults, field);
-        case NS::Object::FieldType::Bool:
+        case NS::Obj::FieldType::Bool:
             return !SameValue<bool>(comp, *defaults, field);
-        case NS::Object::FieldType::Vector3:
+        case NS::Obj::FieldType::Vector3:
             return !SameValue<NS::Core::Vector3>(comp, *defaults, field);
-        case NS::Object::FieldType::Quaternion:
+        case NS::Obj::FieldType::Quaternion:
             return !SameValue<NS::Core::Quaternion>(comp, *defaults, field);
-        case NS::Object::FieldType::String:
+        case NS::Obj::FieldType::String:
             return !SameValue<std::string>(comp, *defaults, field);
-        case NS::Object::FieldType::ObjectRef:
-            return !SameValue<NS::Object::ObjectRef>(comp, *defaults, field);
-        case NS::Object::FieldType::Curve:
-            return !SameValue<NS::Object::Curve>(comp, *defaults, field);
+        case NS::Obj::FieldType::ObjectRef:
+            return !SameValue<NS::Obj::ObjectRef>(comp, *defaults, field);
+        case NS::Obj::FieldType::Curve:
+            return !SameValue<NS::Obj::Curve>(comp, *defaults, field);
         }
         return false;
     }
 
-    void RevertFieldToDefault(NS::Object::Component& comp,
-                              const NS::Object::Component& defaults,
-                              const NS::Object::FieldDesc& field) noexcept
+    void RevertFieldToDefault(NS::Obj::Component& comp,
+                              const NS::Obj::Component& defaults,
+                              const NS::Obj::FieldDesc& field) noexcept
     {
         switch (field.type)
         {
-        case NS::Object::FieldType::Float:
+        case NS::Obj::FieldType::Float:
             CopyValue<float>(comp, defaults, field);
             break;
-        case NS::Object::FieldType::Int:
+        case NS::Obj::FieldType::Int:
             CopyValue<int>(comp, defaults, field);
             break;
-        case NS::Object::FieldType::Bool:
+        case NS::Obj::FieldType::Bool:
             CopyValue<bool>(comp, defaults, field);
             break;
-        case NS::Object::FieldType::Vector3:
+        case NS::Obj::FieldType::Vector3:
             CopyValue<NS::Core::Vector3>(comp, defaults, field);
             break;
-        case NS::Object::FieldType::Quaternion:
+        case NS::Obj::FieldType::Quaternion:
             CopyValue<NS::Core::Quaternion>(comp, defaults, field);
             break;
-        case NS::Object::FieldType::String:
+        case NS::Obj::FieldType::String:
             CopyValue<std::string>(comp, defaults, field);
             break;
-        case NS::Object::FieldType::ObjectRef:
-            CopyValue<NS::Object::ObjectRef>(comp, defaults, field);
+        case NS::Obj::FieldType::ObjectRef:
+            CopyValue<NS::Obj::ObjectRef>(comp, defaults, field);
             break;
-        case NS::Object::FieldType::Curve:
-            CopyValue<NS::Object::Curve>(comp, defaults, field);
+        case NS::Obj::FieldType::Curve:
+            CopyValue<NS::Obj::Curve>(comp, defaults, field);
             break;
         }
     }
@@ -127,7 +127,7 @@ namespace NS::Editor
     namespace
     {
         // コンポーネントの表示名を解決する
-        const char* DisplayTypeName(const NS::Object::ReflectionInfo* info) noexcept
+        const char* DisplayTypeName(const NS::Obj::ReflectionInfo* info) noexcept
         {
             if (info != nullptr)
             {
@@ -160,7 +160,7 @@ namespace NS::Editor
         };
 
         // y の表示範囲を点の最小最大から決める。最低でも 0..1 を含め、上下に 1 割の余白を足す
-        void ComputeCurveYRange(const NS::Object::Curve& curve, float& outMin, float& outMax) noexcept
+        void ComputeCurveYRange(const NS::Obj::Curve& curve, float& outMin, float& outMax) noexcept
         {
             float low = 0.0f;
             float high = 1.0f;
@@ -182,18 +182,18 @@ namespace NS::Editor
         }
 
         // 画面ピクセルをカーブ座標へ戻す。今の使い手の入力域が 0..1 のため x はそこへ収める
-        NS::Object::Curve::Key ScreenToCurve(const CurveGraphView& view, ImVec2 pos) noexcept
+        NS::Obj::Curve::Key ScreenToCurve(const CurveGraphView& view, ImVec2 pos) noexcept
         {
             const float x = std::clamp((pos.x - view.origin.x) / view.size.x, 0.0f, 1.0f);
             const float ratioY = 1.0f - (pos.y - view.origin.y) / view.size.y;
-            return NS::Object::Curve::Key{x, view.yMin + ratioY * (view.yMax - view.yMin)};
+            return NS::Obj::Curve::Key{x, view.yMin + ratioY * (view.yMax - view.yMin)};
         }
 
         // 昇格の初期値も表示も実際に効いている傾きから作る。ずれると掴んだ瞬間に形が飛ぶため
-        float DisplayTangent(const NS::Object::Curve& curve, std::uint32_t index, bool leftSide) noexcept
+        float DisplayTangent(const NS::Obj::Curve& curve, std::uint32_t index, bool leftSide) noexcept
         {
-            const NS::Object::Curve::Key& key = curve.keys[index];
-            if (key.mode == NS::Object::Curve::InterpMode::Manual)
+            const NS::Obj::Curve::Key& key = curve.keys[index];
+            if (key.mode == NS::Obj::Curve::InterpMode::Manual)
             {
                 if (leftSide)
                 {
@@ -201,7 +201,7 @@ namespace NS::Editor
                 }
                 return key.outTangent;
             }
-            if (key.mode == NS::Object::Curve::InterpMode::AutoSmooth)
+            if (key.mode == NS::Obj::Curve::InterpMode::AutoSmooth)
             {
                 return curve.AutoTangentAt(index);
             }
@@ -266,7 +266,7 @@ namespace NS::Editor
             return deltaY / deltaX;
         }
 
-        int FindKeyNear(const NS::Object::Curve& curve, const CurveGraphView& view, ImVec2 pos, float radius) noexcept
+        int FindKeyNear(const NS::Obj::Curve& curve, const CurveGraphView& view, ImVec2 pos, float radius) noexcept
         {
             int nearest = -1;
             float nearestSq = radius * radius;
@@ -286,7 +286,7 @@ namespace NS::Editor
         }
 
         // ドラッグ中の SortKeys は掴んでいる点の番号を飛ばすため、動かした点だけ入れ替えて移動先の番号を返す
-        std::uint32_t MoveKey(NS::Object::Curve& curve, std::uint32_t index, NS::Object::Curve::Key newKey) noexcept
+        std::uint32_t MoveKey(NS::Obj::Curve& curve, std::uint32_t index, NS::Obj::Curve::Key newKey) noexcept
         {
             curve.keys[index] = newKey;
             while (index > 0 && curve.keys[index - 1].x > newKey.x)
@@ -304,19 +304,19 @@ namespace NS::Editor
             return index;
         }
 
-        void RemoveKey(NS::Object::Curve& curve, std::uint32_t index) noexcept
+        void RemoveKey(NS::Obj::Curve& curve, std::uint32_t index) noexcept
         {
             for (std::uint32_t next = index; next + 1 < curve.count; ++next)
             {
                 curve.keys[next] = curve.keys[next + 1];
             }
             --curve.count;
-            curve.keys[curve.count] = NS::Object::Curve::Key{};
+            curve.keys[curve.count] = NS::Obj::Curve::Key{};
         }
 
         void DrawCurveGraph(ImDrawList& drawList,
                             const CurveGraphView& view,
-                            const NS::Object::Curve& curve,
+                            const NS::Obj::Curve& curve,
                             int highlighted,
                             int selected) noexcept
         {
@@ -347,12 +347,12 @@ namespace NS::Editor
                 drawList.AddLine(CurveToScreen(view, 0.0f, curve.keys[0].y), firstPoint, k_CurveLineColor, 2.0f);
                 for (std::uint32_t i = 0; i + 1 < curve.count; ++i)
                 {
-                    const NS::Object::Curve::Key& left = curve.keys[i];
-                    const NS::Object::Curve::Key& right = curve.keys[i + 1];
+                    const NS::Obj::Curve::Key& left = curve.keys[i];
+                    const NS::Obj::Curve::Key& right = curve.keys[i + 1];
                     ImVec2 prev = CurveToScreen(view, left.x, left.y);
                     const ImVec2 end = CurveToScreen(view, right.x, right.y);
-                    const bool straight = left.mode == NS::Object::Curve::InterpMode::Linear &&
-                                          right.mode == NS::Object::Curve::InterpMode::Linear;
+                    const bool straight = left.mode == NS::Obj::Curve::InterpMode::Linear &&
+                                          right.mode == NS::Obj::Curve::InterpMode::Linear;
                     if (straight || right.x - left.x <= 0.0f)
                     {
                         drawList.AddLine(prev, end, k_CurveLineColor, 2.0f);
@@ -370,7 +370,7 @@ namespace NS::Editor
                     }
                     drawList.AddLine(prev, end, k_CurveLineColor, 2.0f);
                 }
-                const NS::Object::Curve::Key& lastKey = curve.keys[curve.count - 1];
+                const NS::Obj::Curve::Key& lastKey = curve.keys[curve.count - 1];
                 const ImVec2 lastPoint = CurveToScreen(view, lastKey.x, lastKey.y);
                 drawList.AddLine(lastPoint, CurveToScreen(view, 1.0f, lastKey.y), k_CurveLineColor, 2.0f);
             }
@@ -410,11 +410,11 @@ namespace NS::Editor
         }
     } // namespace
 
-    ComponentEditResult DrawReflectedComponent(NS::Object::Component& comp,
+    ComponentEditResult DrawReflectedComponent(NS::Obj::Component& comp,
                                                std::span<const ObjectRefOption> refOptions,
-                                               const NS::Object::Component* defaults) noexcept
+                                               const NS::Obj::Component* defaults) noexcept
     {
-        const NS::Object::ReflectionInfo* info = comp.GetReflection();
+        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr || info->fieldCount == 0)
         {
             return ComponentEditResult{};
@@ -428,7 +428,7 @@ namespace NS::Editor
         // リフレクションの欄を 1 つずつ ImGui ウィジェットへ落とす
         for (std::size_t i = 0; i < info->fieldCount; ++i)
         {
-            const NS::Object::FieldDesc& field = info->fields[i];
+            const NS::Obj::FieldDesc& field = info->fields[i];
             const bool changed = FieldDiffersFromDefault(comp, defaults, field);
             const bool wasChanged = result.changed;
             ImGui::PushID(static_cast<int>(i));
@@ -436,7 +436,7 @@ namespace NS::Editor
 
             switch (field.type)
             {
-            case NS::Object::FieldType::Float:
+            case NS::Obj::FieldType::Float:
             {
                 float value = 0.0f;
                 field.get(&comp, &value);
@@ -447,7 +447,7 @@ namespace NS::Editor
                 }
                 break;
             }
-            case NS::Object::FieldType::Int:
+            case NS::Obj::FieldType::Int:
             {
                 int value = 0;
                 field.get(&comp, &value);
@@ -458,7 +458,7 @@ namespace NS::Editor
                 }
                 break;
             }
-            case NS::Object::FieldType::Bool:
+            case NS::Obj::FieldType::Bool:
             {
                 bool value = false;
                 field.get(&comp, &value);
@@ -469,7 +469,7 @@ namespace NS::Editor
                 }
                 break;
             }
-            case NS::Object::FieldType::Vector3:
+            case NS::Obj::FieldType::Vector3:
             {
                 NS::Core::Vector3 value{};
                 field.get(&comp, &value);
@@ -482,7 +482,7 @@ namespace NS::Editor
                 }
                 break;
             }
-            case NS::Object::FieldType::Quaternion:
+            case NS::Obj::FieldType::Quaternion:
             {
                 // 4 成分を直接触らせると正規化の崩れた回転を作れるので、度の Euler を経由する
                 NS::Core::Quaternion value{};
@@ -497,7 +497,7 @@ namespace NS::Editor
                 }
                 break;
             }
-            case NS::Object::FieldType::String:
+            case NS::Obj::FieldType::String:
             {
                 std::string value;
                 field.get(&comp, &value);
@@ -512,9 +512,9 @@ namespace NS::Editor
                 }
                 break;
             }
-            case NS::Object::FieldType::ObjectRef:
+            case NS::Obj::FieldType::ObjectRef:
             {
-                NS::Object::ObjectRef value{};
+                NS::Obj::ObjectRef value{};
                 field.get(&comp, &value);
 
                 // 参照候補が無ければ id を直接打たせる
@@ -579,9 +579,9 @@ namespace NS::Editor
                 }
                 break;
             }
-            case NS::Object::FieldType::Curve:
+            case NS::Obj::FieldType::Curve:
             {
-                NS::Object::Curve value{};
+                NS::Obj::Curve value{};
                 field.get(&comp, &value);
                 bool edited = false;
 
@@ -671,7 +671,7 @@ namespace NS::Editor
                     if (grabbedNow >= 0 && grabKind == k_GrabPoint)
                     {
                         // 掴んだ瞬間に点がカーソルへ飛ぶのを避けるため、点の中心と押した位置のずれを控える
-                        const NS::Object::Curve::Key& key = value.keys[grabbedNow];
+                        const NS::Obj::Curve::Key& key = value.keys[grabbedNow];
                         const ImVec2 center = CurveToScreen(view, key.x, key.y);
                         storage->SetFloat(grabOffsetXId, center.x - mouse.x);
                         storage->SetFloat(grabOffsetYId, center.y - mouse.y);
@@ -680,9 +680,9 @@ namespace NS::Editor
 
                 // 左の単クリックは掴みと選択に使うため、追加は空きのダブルクリックか右クリックのメニューに分ける
                 if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && highlighted < 0 &&
-                    value.count < NS::Object::Curve::k_MaxKeys)
+                    value.count < NS::Obj::Curve::k_MaxKeys)
                 {
-                    const NS::Object::Curve::Key added = ScreenToCurve(view, mouse);
+                    const NS::Obj::Curve::Key added = ScreenToCurve(view, mouse);
                     value.keys[value.count] = added;
                     ++value.count;
                     // 追加してから掴み直す手間を省くため、追加した点をそのまま掴んだ扱いにする
@@ -706,8 +706,8 @@ namespace NS::Editor
                             const ImVec2 target{mouse.x + storage->GetFloat(grabOffsetXId, 0.0f),
                                                 mouse.y + storage->GetFloat(grabOffsetYId, 0.0f)};
                             // 移動先の x y だけ写す。ScreenToCurve の返り値ごと代入するとモードと接線が既定へ戻るため
-                            const NS::Object::Curve::Key targetKey = ScreenToCurve(view, target);
-                            NS::Object::Curve::Key moved = value.keys[grabbed];
+                            const NS::Obj::Curve::Key targetKey = ScreenToCurve(view, target);
+                            NS::Obj::Curve::Key moved = value.keys[grabbed];
                             moved.x = targetKey.x;
                             moved.y = targetKey.y;
                             if (moved != value.keys[grabbed])
@@ -722,16 +722,16 @@ namespace NS::Editor
                         }
                         else if (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 1.0f))
                         {
-                            NS::Object::Curve::Key& key = value.keys[grabbed];
+                            NS::Obj::Curve::Key& key = value.keys[grabbed];
                             const ImVec2 center = CurveToScreen(view, key.x, key.y);
                             const float slope = ScreenToTangent(view, center, mouse, grabKind == k_GrabInHandle);
                             // 昇格は動かした瞬間に行う。掴んだだけで昇格するとクリックだけでモードが変わるため
-                            if (key.mode != NS::Object::Curve::InterpMode::Manual)
+                            if (key.mode != NS::Obj::Curve::InterpMode::Manual)
                             {
                                 const std::uint32_t grabbedIndex = static_cast<std::uint32_t>(grabbed);
                                 const float inNow = DisplayTangent(value, grabbedIndex, true);
                                 const float outNow = DisplayTangent(value, grabbedIndex, false);
-                                key.mode = NS::Object::Curve::InterpMode::Manual;
+                                key.mode = NS::Obj::Curve::InterpMode::Manual;
                                 key.inTangent = inNow;
                                 key.outTangent = outNow;
                                 edited = true;
@@ -754,7 +754,7 @@ namespace NS::Editor
                 if (hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
                 {
                     storage->SetInt(menuPointId, highlighted);
-                    const NS::Object::Curve::Key menuAt = ScreenToCurve(view, mouse);
+                    const NS::Obj::Curve::Key menuAt = ScreenToCurve(view, mouse);
                     storage->SetFloat(menuXId, menuAt.x);
                     storage->SetFloat(menuYId, menuAt.y);
                     // 開く瞬間に activated を立てる。undo の控えを開いている間の編集より前に取らせるため
@@ -766,17 +766,17 @@ namespace NS::Editor
                     const int menuPoint = storage->GetInt(menuPointId, -1);
                     if (menuPoint >= 0 && static_cast<std::uint32_t>(menuPoint) < value.count)
                     {
-                        NS::Object::Curve::Key& key = value.keys[menuPoint];
-                        const bool isLinear = key.mode == NS::Object::Curve::InterpMode::Linear;
-                        const bool isSmooth = key.mode == NS::Object::Curve::InterpMode::AutoSmooth;
+                        NS::Obj::Curve::Key& key = value.keys[menuPoint];
+                        const bool isLinear = key.mode == NS::Obj::Curve::InterpMode::Linear;
+                        const bool isSmooth = key.mode == NS::Obj::Curve::InterpMode::AutoSmooth;
                         if (ImGui::MenuItem("直線にする", nullptr, isLinear) && !isLinear)
                         {
-                            key.mode = NS::Object::Curve::InterpMode::Linear;
+                            key.mode = NS::Obj::Curve::InterpMode::Linear;
                             edited = true;
                         }
                         if (ImGui::MenuItem("なめらかにする", nullptr, isSmooth) && !isSmooth)
                         {
-                            key.mode = NS::Object::Curve::InterpMode::AutoSmooth;
+                            key.mode = NS::Obj::Curve::InterpMode::AutoSmooth;
                             edited = true;
                         }
                         ImGui::Separator();
@@ -787,9 +787,9 @@ namespace NS::Editor
                             edited = true;
                         }
                     }
-                    else if (ImGui::MenuItem("点を追加", nullptr, false, value.count < NS::Object::Curve::k_MaxKeys))
+                    else if (ImGui::MenuItem("点を追加", nullptr, false, value.count < NS::Obj::Curve::k_MaxKeys))
                     {
-                        const NS::Object::Curve::Key added{storage->GetFloat(menuXId, 0.0f),
+                        const NS::Obj::Curve::Key added{storage->GetFloat(menuXId, 0.0f),
                                                            storage->GetFloat(menuYId, 0.0f)};
                         value.keys[value.count] = added;
                         ++value.count;
@@ -854,7 +854,7 @@ namespace NS::Editor
                     }
                     const int selectedPoint = storage->GetInt(selectedId, -1);
                     if (selectedPoint >= 0 && static_cast<std::uint32_t>(selectedPoint) < value.count &&
-                        value.keys[selectedPoint].mode == NS::Object::Curve::InterpMode::Manual)
+                        value.keys[selectedPoint].mode == NS::Obj::Curve::InterpMode::Manual)
                     {
                         float tangents[2] = {value.keys[selectedPoint].inTangent, value.keys[selectedPoint].outTangent};
                         if (ImGui::DragFloat2("選択中の接線", tangents, 0.05f))
@@ -864,7 +864,7 @@ namespace NS::Editor
                             edited = true;
                         }
                     }
-                    if (value.count < NS::Object::Curve::k_MaxKeys && ImGui::SmallButton("点を追加"))
+                    if (value.count < NS::Obj::Curve::k_MaxKeys && ImGui::SmallButton("点を追加"))
                     {
                         // 離れた位置に湧くと並びが崩れて SortKeys で点の番号が飛ぶため、末尾の点の右隣へ足す
                         float lastX = 0.0f;
@@ -874,7 +874,7 @@ namespace NS::Editor
                             lastX = value.keys[value.count - 1].x;
                             lastY = value.keys[value.count - 1].y;
                         }
-                        value.keys[value.count] = NS::Object::Curve::Key{lastX + 0.1f, lastY};
+                        value.keys[value.count] = NS::Obj::Curve::Key{lastX + 0.1f, lastY};
                         ++value.count;
                         edited = true;
                     }
@@ -915,9 +915,9 @@ namespace NS::Editor
     }
 
 #else
-    ComponentEditResult DrawReflectedComponent(NS::Object::Component&,
+    ComponentEditResult DrawReflectedComponent(NS::Obj::Component&,
                                                std::span<const ObjectRefOption>,
-                                               const NS::Object::Component*) noexcept
+                                               const NS::Obj::Component*) noexcept
     {
         return ComponentEditResult{};
     }

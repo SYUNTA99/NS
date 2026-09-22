@@ -18,7 +18,7 @@ namespace
         int drawCount = 0;
 
     protected:
-        void OnDraw(NS::Graphics::Renderer&, const NS::UI::WidgetRect& rectPx, float alpha) override
+        void OnDraw(NS::Gfx::Renderer&, const NS::UI::WidgetRect& rectPx, float alpha) override
         {
             lastRectPx = rectPx;
             lastAlpha = alpha;
@@ -137,8 +137,8 @@ TEST(UIWidgetTest, RenderDrawsScaledRectAndCascadedAlpha)
     NS::Platform::Window window(wd);
     if (!window.IsValid())
         GTEST_SKIP();
-    NS::Graphics::RendererDesc rd{};
-    NS::Graphics::Renderer renderer(rd, window);
+    NS::Gfx::RendererDesc rd{};
+    NS::Gfx::Renderer renderer(rd, window);
     if (!renderer.IsValid())
         GTEST_SKIP();
 

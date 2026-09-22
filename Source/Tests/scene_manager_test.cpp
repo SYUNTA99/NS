@@ -14,8 +14,8 @@
 
 namespace
 {
-    using NS::Object::SceneData;
-    using NS::Object::SceneManager;
+    using NS::Obj::SceneData;
+    using NS::Obj::SceneManager;
 
     // 地形ブロックを指定数だけ並べたレベルデータ
     SceneData MakeLevel(std::int16_t cellCount)
@@ -39,7 +39,7 @@ TEST(NsSceneManager, EmptyOnConstruction)
 TEST(NsSceneManager, LoadSceneBuildsWorldFromData)
 {
     SceneManager mgr;
-    NS::Object::Scene& scene = mgr.LoadScene(MakeLevel(3));
+    NS::Obj::Scene& scene = mgr.LoadScene(MakeLevel(3));
 
     EXPECT_TRUE(mgr.HasScene());
     EXPECT_EQ(mgr.Current(), &scene);
@@ -52,7 +52,7 @@ TEST(NsSceneManager, LoadSceneReplacesPreviousWorld)
     SceneManager mgr;
     mgr.LoadScene(MakeLevel(3));
 
-    NS::Object::Scene& second = mgr.LoadScene(MakeLevel(1));
+    NS::Obj::Scene& second = mgr.LoadScene(MakeLevel(1));
     // 前の scene が破棄されていれば、残るのは新しいデータの分だけ
     EXPECT_EQ(second.Objects().ObjectCount(), 2u);
 }
@@ -96,10 +96,10 @@ TEST(NsSceneManager, UpdateRenderWhenNoSceneIsNoOp)
 namespace
 {
     // 引き当てと開始の順番を記録する検証用 Component
-    class ResolveOrderProbeComponent : public NS::Object::Component
+    class ResolveOrderProbeComponent : public NS::Obj::Component
     {
     public:
-        void ResolveAssets(NS::Object::AssetManager&) override
+        void ResolveAssets(NS::Obj::AssetManager&) override
         {
             resolved = true;
             resolvedBeforeStart = !started;
@@ -115,10 +115,10 @@ namespace
 // AssetManager 未設定でも SpawnTransient は落ちず、引き当てが走らない
 TEST(NsSceneManager, SpawnTransientWithoutAssetsSkipsResolve)
 {
-    NS::Object::Scene scene;
-    auto owned = std::make_unique<NS::Object::GameObject>();
+    NS::Obj::Scene scene;
+    auto owned = std::make_unique<NS::Obj::GameObject>();
     auto* probe = owned->AddComponent<ResolveOrderProbeComponent>();
-    NS::Object::GameObject* spawned = scene.SpawnTransient(std::move(owned));
+    NS::Obj::GameObject* spawned = scene.SpawnTransient(std::move(owned));
 
     ASSERT_NE(spawned, nullptr);
     EXPECT_TRUE(probe->started);
@@ -128,12 +128,12 @@ TEST(NsSceneManager, SpawnTransientWithoutAssetsSkipsResolve)
 // 引き当ては OnStart より前。OnStart の中で資産を読む Component が空の参照を掴まない
 TEST(NsSceneManager, SpawnTransientResolvesAssetsBeforeStart)
 {
-    NS::Object::AssetManager assets{std::string{"."}};
-    NS::Object::Scene scene;
+    NS::Obj::AssetManager assets{std::string{"."}};
+    NS::Obj::Scene scene;
     scene.SetAssets(&assets);
-    auto owned = std::make_unique<NS::Object::GameObject>();
+    auto owned = std::make_unique<NS::Obj::GameObject>();
     auto* probe = owned->AddComponent<ResolveOrderProbeComponent>();
-    NS::Object::GameObject* spawned = scene.SpawnTransient(std::move(owned));
+    NS::Obj::GameObject* spawned = scene.SpawnTransient(std::move(owned));
 
     ASSERT_NE(spawned, nullptr);
     EXPECT_TRUE(probe->resolved);

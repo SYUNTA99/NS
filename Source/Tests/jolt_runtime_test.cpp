@@ -9,9 +9,9 @@
 // PhysicsScene と CreateMeshShape の両方から呼ばれるので、2 度目の呼び出しは登録済みの Factory を差し替えない
 TEST(JoltRuntimeTest, SecondInitializationKeepsTheFactory)
 {
-    NS::Physics::detail::InitJoltRuntime();
+    NS::Phys::detail::InitJoltRuntime();
     JPH::Factory* first = JPH::Factory::sInstance;
-    NS::Physics::detail::InitJoltRuntime();
+    NS::Phys::detail::InitJoltRuntime();
 
     ASSERT_NE(first, nullptr);
     EXPECT_EQ(JPH::Factory::sInstance, first);

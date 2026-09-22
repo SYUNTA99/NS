@@ -10,8 +10,8 @@ namespace NsTest
     // Scene は必ずカメラを 1 台持つので、カメラの無い前提の試しには使えない
     struct EntityStage
     {
-        NS::Object::Scene scene;
-        NS::Object::GameObject& owner = *scene.SpawnTransient<NS::Object::GameObject>();
-        NS::Physics::PhysicsScene& physics = scene.Physics();
+        NS::Obj::Scene scene;
+        NS::Obj::GameObject& owner = *scene.SpawnTransient<NS::Obj::GameObject>();
+        NS::Phys::PhysicsScene& physics = scene.Physics();
     };
 } // namespace NsTest

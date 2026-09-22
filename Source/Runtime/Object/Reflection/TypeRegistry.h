@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace NS::Object
+namespace NS::Obj
 {
     struct ObjectData;
 
@@ -76,7 +76,7 @@ namespace NS::Object
             TypeRegistry::Get().Register(className, +[]() -> std::unique_ptr<GameObject> { return std::make_unique<T>(); }, nullptr);
         }
     }
-} // namespace NS::Object
+} // namespace NS::Obj
 
 //! 型をクラス名で自己登録する。その型の .cpp で 1 度だけ書く。#Type が保存形式と検索のキーになる
 //! Component は既定コンストラクタで生成されるので、値はリフレクション field と ResolveAssets で後から入れる
@@ -84,7 +84,7 @@ namespace NS::Object
     namespace                                                                                                          \
     {                                                                                                                  \
         const bool k_classRegistered_##Type = [] {                                                                     \
-            ::NS::Object::RegisterClass<Type>(#Type);                                                                 \
+            ::NS::Obj::RegisterClass<Type>(#Type);                                                                 \
             return true;                                                                                               \
         }();                                                                                                           \
     }

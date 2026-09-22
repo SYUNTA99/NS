@@ -8,10 +8,10 @@
 
 namespace
 {
-    using NS::Graphics::BoneSphere;
-    using NS::Graphics::ComputeBoneSpheres;
-    using NS::Graphics::MergeSkinnedBounds;
-    using NS::Graphics::SkinnedVertex;
+    using NS::Gfx::BoneSphere;
+    using NS::Gfx::ComputeBoneSpheres;
+    using NS::Gfx::MergeSkinnedBounds;
+    using NS::Gfx::SkinnedVertex;
     using NS::Core::AABB;
     using NS::Core::Matrix;
     using NS::Core::Vector3;

@@ -46,7 +46,7 @@ namespace NS::Editor
             ImGui::Separator();
 
             std::size_t shownCount = 0;
-            for (const NS::Object::GameObject* obj : editor.Objects())
+            for (const NS::Obj::GameObject* obj : editor.Objects())
                 if (!obj->IsTransient())
                     ++shownCount;
             ImGui::Text("オブジェクト %zu 個", shownCount);
@@ -67,14 +67,14 @@ namespace NS::Editor
 
             if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_F2))
             {
-                if (NS::Object::GameObject* target = editor.SelectedObjectGameObject())
+                if (NS::Obj::GameObject* target = editor.SelectedObjectGameObject())
                     BeginRename(*target);
             }
 
             // 検索中は木を畳んで、一致した物だけを親子に関係なく並べる
-            for (NS::Object::GameObject* objPtr : editor.Objects())
+            for (NS::Obj::GameObject* objPtr : editor.Objects())
             {
-                NS::Object::GameObject& object = *objPtr;
+                NS::Obj::GameObject& object = *objPtr;
                 // 一時オブジェクトは配置物でないので一覧に出さない
                 if (object.IsTransient())
                     continue;
@@ -180,7 +180,7 @@ namespace NS::Editor
     }
 
     void HierarchyPanel::RenderNode(LevelEditorController& editor,
-                                    NS::Object::GameObject& object,
+                                    NS::Obj::GameObject& object,
                                     bool withChildren) noexcept
     {
 #if NS_EDITOR_ENABLED
@@ -189,7 +189,7 @@ namespace NS::Editor
         bool hasChildren = false;
         if (withChildren)
         {
-            for (const NS::Object::GameObject* child : object.Children())
+            for (const NS::Obj::GameObject* child : object.Children())
             {
                 if (child != nullptr && !child->IsTransient())
                 {
@@ -307,7 +307,7 @@ namespace NS::Editor
 
         if (open && hasChildren)
         {
-            for (NS::Object::GameObject* child : object.Children())
+            for (NS::Obj::GameObject* child : object.Children())
             {
                 if (child != nullptr && !child->IsTransient())
                     RenderNode(editor, *child, true);
@@ -322,7 +322,7 @@ namespace NS::Editor
 #endif
     }
 
-    void HierarchyPanel::BeginRename(NS::Object::GameObject& object) noexcept
+    void HierarchyPanel::BeginRename(NS::Obj::GameObject& object) noexcept
     {
 #if NS_EDITOR_ENABLED
         m_renamingObjectId = object.Id();

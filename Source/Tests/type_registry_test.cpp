@@ -12,15 +12,15 @@
 
 namespace
 {
-    using NS::Object::Component;
-    using NS::Object::CreateComponent;
-    using NS::Object::GameObject;
-    using NS::Object::IsRegistered;
-    using NS::Object::ReflectionInfo;
-    using NS::Object::RegisteredNames;
+    using NS::Obj::Component;
+    using NS::Obj::CreateComponent;
+    using NS::Obj::GameObject;
+    using NS::Obj::IsRegistered;
+    using NS::Obj::ReflectionInfo;
+    using NS::Obj::RegisteredNames;
 
-    // 登録型を 1 つ生成し、 attach 先 obj の Components() が 1 増えて戻り値がその列に入るのを確かめる
-    // 並びは priority が決めるので、 末尾に来るとは限らない
+    // 登録型を 1 つ生成し、attach 先 obj の Components() が 1 増えて戻り値がその列に入るのを確かめる
+    // 並びは priority が決めるので、末尾に来るとは限らない
     Component* CreateAndExpectAttached(std::string_view typeName, GameObject& obj)
     {
         const std::size_t before = obj.Components().size();

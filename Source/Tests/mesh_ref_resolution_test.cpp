@@ -19,19 +19,19 @@
 
 namespace
 {
-    using NS::Object::AssetManager;
-    using NS::Object::BuildSceneObject;
-    using NS::Object::MeshRendererComponent;
-    using NS::Object::ObjectData;
-    using NS::Object::ResolveContentPath;
-    using NS::Object::ResolveMeshFromRef;
+    using NS::Obj::AssetManager;
+    using NS::Obj::BuildSceneObject;
+    using NS::Obj::MeshRendererComponent;
+    using NS::Obj::ObjectData;
+    using NS::Obj::ResolveContentPath;
+    using NS::Obj::ResolveMeshFromRef;
 
     // MeshRendererComponent 1 件分を作る。meshRef が空でなければ "メッシュ" フィールドに入れる
     nlohmann::json MakeMeshRenderer(const std::string& meshRef)
     {
-        nlohmann::json c = NS::Object::MakeComponentEntry("MeshRendererComponent");
+        nlohmann::json c = NS::Obj::MakeComponentEntry("MeshRendererComponent");
         if (!meshRef.empty())
-            NS::Object::SetField(c, "メッシュ", meshRef);
+            NS::Obj::SetField(c, "メッシュ", meshRef);
         return c;
     }
 
@@ -44,9 +44,9 @@ namespace
         return d;
     }
 
-    NS::Graphics::RendererDesc MakeRendererDesc()
+    NS::Gfx::RendererDesc MakeRendererDesc()
     {
-        NS::Graphics::RendererDesc d{};
+        NS::Gfx::RendererDesc d{};
         d.vsync = false;
         d.enableDebugLayer = false;
         return d;
@@ -59,7 +59,7 @@ TEST(MeshRefResolution, BuiltinNameResolvesToBuiltinMesh)
 {
     NS::Platform::Window window(MakeWindowDesc("ns_meshref_builtin"));
     ASSERT_TRUE(window.IsValid());
-    NS::Graphics::Renderer renderer(MakeRendererDesc(), window);
+    NS::Gfx::Renderer renderer(MakeRendererDesc(), window);
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
@@ -135,14 +135,14 @@ TEST(MeshRefResolution, MeshColliderTakesTrianglesFromRendererMesh)
 
     ObjectData obj;
     obj.components.push_back(MakeMeshRenderer("wedge45"));
-    obj.components.push_back(NS::Object::MakeComponentEntry("MeshColliderComponent"));
+    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshColliderComponent"));
 
     auto built = BuildSceneObject(obj, &assets);
     ASSERT_NE(built, nullptr);
-    auto* collider = built->FindComponent<NS::Object::MeshColliderComponent>();
+    auto* collider = built->FindComponent<NS::Obj::MeshColliderComponent>();
     ASSERT_NE(collider, nullptr);
 
-    const NS::Physics::MeshCollision* wedge = assets.GetOrLoadMeshCollision("wedge45");
+    const NS::Phys::MeshCollision* wedge = assets.GetOrLoadMeshCollision("wedge45");
     ASSERT_NE(wedge, nullptr);
     EXPECT_EQ(collider->Collision(), wedge);
 }
@@ -154,11 +154,11 @@ TEST(MeshRefResolution, MeshColliderFallsBackToCubeLikeRenderer)
 
     ObjectData obj;
     obj.components.push_back(MakeMeshRenderer("__ns_missing_mesh__.gltf"));
-    obj.components.push_back(NS::Object::MakeComponentEntry("MeshColliderComponent"));
+    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshColliderComponent"));
 
     auto built = BuildSceneObject(obj, &assets);
     ASSERT_NE(built, nullptr);
-    auto* collider = built->FindComponent<NS::Object::MeshColliderComponent>();
+    auto* collider = built->FindComponent<NS::Obj::MeshColliderComponent>();
     ASSERT_NE(collider, nullptr);
     ASSERT_NE(collider->Collision(), nullptr);
     EXPECT_EQ(collider->Collision(), assets.GetOrLoadMeshCollision("cube"));
@@ -170,11 +170,11 @@ TEST(MeshRefResolution, MeshColliderWithoutRendererStaysEmpty)
     AssetManager assets{std::string{"."}};
 
     ObjectData obj;
-    obj.components.push_back(NS::Object::MakeComponentEntry("MeshColliderComponent"));
+    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshColliderComponent"));
 
     auto built = BuildSceneObject(obj, &assets);
     ASSERT_NE(built, nullptr);
-    auto* collider = built->FindComponent<NS::Object::MeshColliderComponent>();
+    auto* collider = built->FindComponent<NS::Obj::MeshColliderComponent>();
     ASSERT_NE(collider, nullptr);
     EXPECT_EQ(collider->Collision(), nullptr);
 }
@@ -186,16 +186,16 @@ TEST(MeshRefResolution, BuiltCubeMeshColliderStopsRayAtTopFace)
 
     ObjectData obj;
     obj.components.push_back(MakeMeshRenderer("cube"));
-    obj.components.push_back(NS::Object::MakeComponentEntry("MeshColliderComponent"));
+    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshColliderComponent"));
 
-    NS::Object::Scene scene;
-    NS::Object::ObjectList objects;
-    NS::Object::GameObject* placed = objects.Append(BuildSceneObject(obj, &assets));
+    NS::Obj::Scene scene;
+    NS::Obj::ObjectList objects;
+    NS::Obj::GameObject* placed = objects.Append(BuildSceneObject(obj, &assets));
     ASSERT_NE(placed, nullptr);
     // collider は持ち主の Scene の PhysicsScene しか受け取らないので、組んだ配置物を Scene へ結ぶ
     placed->AttachScene(&scene);
 
-    NS::Physics::PhysicsScene& physics = scene.Physics();
+    NS::Phys::PhysicsScene& physics = scene.Physics();
     objects.SyncPhysics(physics);
     ASSERT_EQ(physics.BodyCount(), 1u);
 

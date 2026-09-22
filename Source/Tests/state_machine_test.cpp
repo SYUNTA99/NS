@@ -13,7 +13,7 @@ namespace
         std::vector<std::string> log;
     };
 
-    class AlphaState final : public NS::Object::StateOf<AlphaState, Rig>
+    class AlphaState final : public NS::Obj::StateOf<AlphaState, Rig>
     {
     public:
         static constexpr const char* k_Name = "Alpha";
@@ -22,7 +22,7 @@ namespace
         void OnExit(Rig& rig) override { rig.log.push_back("A:exit"); }
     };
 
-    class BetaState final : public NS::Object::StateOf<BetaState, Rig>
+    class BetaState final : public NS::Obj::StateOf<BetaState, Rig>
     {
     public:
         static constexpr const char* k_Name = "Beta";
@@ -31,7 +31,7 @@ namespace
         void OnExit(Rig& rig) override { rig.log.push_back("B:exit"); }
     };
 
-    class GammaState final : public NS::Object::StateOf<GammaState, Rig>
+    class GammaState final : public NS::Obj::StateOf<GammaState, Rig>
     {
     public:
         static constexpr const char* k_Name = "Gamma";
@@ -42,7 +42,7 @@ namespace
 TEST(StateMachineTest, BuildEntersFirstState)
 {
     Rig rig;
-    NS::Object::StateMachine<Rig> machine;
+    NS::Obj::StateMachine<Rig> machine;
 
     machine.Build<AlphaState, BetaState>(rig);
 
@@ -58,7 +58,7 @@ TEST(StateMachineTest, BuildEntersFirstState)
 TEST(StateMachineTest, ChangeRunsExitThenEnter)
 {
     Rig rig;
-    NS::Object::StateMachine<Rig> machine;
+    NS::Obj::StateMachine<Rig> machine;
     machine.Build<AlphaState, BetaState>(rig);
     rig.log.clear();
 
@@ -74,7 +74,7 @@ TEST(StateMachineTest, ChangeRunsExitThenEnter)
 TEST(StateMachineTest, ChangeToTheSameStateDoesNothing)
 {
     Rig rig;
-    NS::Object::StateMachine<Rig> machine;
+    NS::Obj::StateMachine<Rig> machine;
     machine.Build<AlphaState, BetaState>(rig);
     rig.log.clear();
 
@@ -86,7 +86,7 @@ TEST(StateMachineTest, ChangeToTheSameStateDoesNothing)
 TEST(StateMachineTest, ResetReturnsToHeadWithoutCeremony)
 {
     Rig rig;
-    NS::Object::StateMachine<Rig> machine;
+    NS::Obj::StateMachine<Rig> machine;
     machine.Build<AlphaState, BetaState>(rig);
     machine.Change<BetaState>(rig);
     rig.log.clear();
@@ -101,7 +101,7 @@ TEST(StateMachineTest, ResetReturnsToHeadWithoutCeremony)
 TEST(StateMachineTest, ChangeOnlyReachesStatesInTheBuiltList)
 {
     Rig rig;
-    NS::Object::StateMachine<Rig> machine;
+    NS::Obj::StateMachine<Rig> machine;
     machine.Build<AlphaState, BetaState>(rig);
 
     EXPECT_FALSE(machine.Change<GammaState>(rig));
@@ -111,7 +111,7 @@ TEST(StateMachineTest, ChangeOnlyReachesStatesInTheBuiltList)
 TEST(StateMachineTest, NotBuiltMachineDoesNothing)
 {
     Rig rig;
-    NS::Object::StateMachine<Rig> machine;
+    NS::Obj::StateMachine<Rig> machine;
 
     EXPECT_FALSE(machine.IsBuilt());
     EXPECT_FALSE(machine.IsCurrent<AlphaState>());

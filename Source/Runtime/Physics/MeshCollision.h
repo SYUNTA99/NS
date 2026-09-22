@@ -9,7 +9,7 @@
 #include <span>
 #include <vector>
 
-namespace NS::Physics
+namespace NS::Phys
 {
     //! @brief メッシュ 1 つ分の当たり。資産の座標の三角形と、そこから作った形
     //! @details 形は参照数つきで、置いた body がそれぞれ参照を持つ
@@ -26,4 +26,4 @@ namespace NS::Physics
     //! @param[in] triangles 形にする三角形群
     //! @return 作った形。空か、Jolt が形を作れなければ null
     [[nodiscard]] JPH::ShapeRefC CreateMeshShape(std::span<const Triangle> triangles);
-} // namespace NS::Physics
+} // namespace NS::Phys

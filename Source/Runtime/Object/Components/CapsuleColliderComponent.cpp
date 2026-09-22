@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Object
+namespace NS::Obj
 {
     CapsuleColliderComponent::CapsuleColliderComponent() noexcept {}
 
@@ -102,10 +102,10 @@ namespace NS::Object
         return owner != nullptr ? local * owner->Root().WorldMatrix() : local;
     }
 
-    NS::Physics::Capsule CapsuleColliderComponent::WorldCapsule() const noexcept
+    NS::Phys::Capsule CapsuleColliderComponent::WorldCapsule() const noexcept
     {
         const auto [scale, rotation, translation] = NS::Core::DecomposeAffine(CapsuleWorldMatrix());
-        return NS::Physics::Capsule{translation,
+        return NS::Phys::Capsule{translation,
                                     NS::Core::Vector3::Transform(NS::Core::Vector3::UnitY, rotation),
                                     m_halfHeight * std::abs(scale.y),
                                     m_radius * std::max(std::abs(scale.x), std::abs(scale.z))};
@@ -113,7 +113,7 @@ namespace NS::Object
 
     NS::Core::AABB CapsuleColliderComponent::WorldAABB() const noexcept
     {
-        const NS::Physics::Capsule capsule = WorldCapsule();
+        const NS::Phys::Capsule capsule = WorldCapsule();
         const NS::Core::Vector3 tip = capsule.center + capsule.axis * capsule.halfHeight;
         const NS::Core::Vector3 base = capsule.center - capsule.axis * capsule.halfHeight;
         const NS::Core::Vector3 r{capsule.radius, capsule.radius, capsule.radius};
@@ -127,14 +127,14 @@ namespace NS::Object
         m_excludedFromStaticWorld = excluded;
     }
 
-    JPH::BodyID CapsuleColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID CapsuleColliderComponent::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
         if (m_excludedFromStaticWorld)
         {
             return JPH::BodyID{};
         }
-        return physics.SyncCapsule(current, WorldCapsule(), NS::Physics::ObjectLayers::Terrain);
+        return physics.SyncCapsule(current, WorldCapsule(), NS::Phys::ObjectLayers::Terrain);
     }
 
     NS_CLASS(CapsuleColliderComponent)
-} // namespace NS::Object
+} // namespace NS::Obj

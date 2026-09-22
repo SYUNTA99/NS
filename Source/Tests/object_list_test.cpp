@@ -27,8 +27,8 @@
 #include <utility>
 #include <vector>
 
-using NS::Object::SceneData;
-using NS::Object::ObjectList;
+using NS::Obj::SceneData;
+using NS::Obj::ObjectList;
 
 namespace
 {
@@ -40,14 +40,14 @@ namespace
         return result;
     }
 
-    // 本番 Scene と同じ組み方: エンジンの汎用構築を ObjectList へ渡す
-    NS::Object::ObjectFactoryFn MakeFactory(NS::Object::AssetManager& assets, const SceneData&)
+    // 本番 Scene と同じ組み方: BuildSceneObject の汎用構築を ObjectList へ渡す
+    NS::Obj::ObjectFactoryFn MakeFactory(NS::Obj::AssetManager& assets, const SceneData&)
     {
-        return [&assets](const NS::Object::ObjectData& entry) { return NS::Object::BuildSceneObject(entry, &assets); };
+        return [&assets](const NS::Obj::ObjectData& entry) { return NS::Obj::BuildSceneObject(entry, &assets); };
     }
 
     // 帯の横断更新の検証用。OnUpdate が呼ばれた順を共有の並びへ書き足す
-    class BandRecordingComponent : public NS::Object::Component
+    class BandRecordingComponent : public NS::Obj::Component
     {
     public:
         BandRecordingComponent(int priority, std::vector<int>* order, int id) noexcept
@@ -61,7 +61,7 @@ namespace
     };
 
     // 本番の更新経路の検証用。OnUpdate が呼ばれた回数を数える
-    class CountingComponent : public NS::Object::Component
+    class CountingComponent : public NS::Obj::Component
     {
     public:
         void OnUpdate() override { ++m_count; }
@@ -75,13 +75,13 @@ namespace
     // ObjectList 自身は Scene を知らない。Rebuild だけが引数で受けて結ぶ
     struct PhysicsStage
     {
-        NS::Object::Scene scene;
+        NS::Obj::Scene scene;
         ObjectList objects;
-        NS::Physics::PhysicsScene& physics = scene.Physics();
+        NS::Phys::PhysicsScene& physics = scene.Physics();
 
-        NS::Object::GameObject* Spawn()
+        NS::Obj::GameObject* Spawn()
         {
-            NS::Object::GameObject* obj = objects.Spawn<NS::Object::GameObject>();
+            NS::Obj::GameObject* obj = objects.Spawn<NS::Obj::GameObject>();
             obj->AttachScene(&scene);
             return obj;
         }
@@ -99,12 +99,12 @@ TEST(ObjectListTest, BuildFollowsWrittenSequence)
     SceneData level;
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
     level.objects.push_back(NS::Game::Level::MakeCellObject(1, 0, 0));
-    NS::Object::EnsureUniqueObjectIds(level);
+    NS::Obj::EnsureUniqueObjectIds(level);
     const std::uint32_t first = level.objects[0].objectId;
     const std::uint32_t second = level.objects[1].objectId;
 
-    NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::string{"."}};
+    NS::Obj::Scene scene;
+    NS::Obj::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
@@ -117,18 +117,18 @@ TEST(ObjectListTest, InactiveObjectHasNoCollision)
 {
     SceneData level;
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
-    NS::Object::EnsureUniqueObjectIds(level);
+    NS::Obj::EnsureUniqueObjectIds(level);
     level.objects[0].active = false;
 
-    NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::string{"."}};
+    NS::Obj::Scene scene;
+    NS::Obj::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
     ASSERT_EQ(objects.ObjectCount(), std::size_t{1});
     EXPECT_FALSE(objects.ObjectAt(0)->IsActiveSelf());
     // active を切った配置物はすり抜ける
-    NS::Physics::PhysicsScene& physics = scene.Physics();
+    NS::Phys::PhysicsScene& physics = scene.Physics();
     objects.SyncPhysics(physics);
     EXPECT_EQ(physics.BodyCount(), 0u);
 }
@@ -136,21 +136,21 @@ TEST(ObjectListTest, InactiveObjectHasNoCollision)
 TEST(ObjectListTest, TriggerBoxHasNoSolidCollision)
 {
     SceneData level;
-    NS::Object::ObjectData object{};
-    nlohmann::json box = NS::Object::MakeComponentEntry("BoxColliderComponent");
-    NS::Object::SetField(box, "トリガー", true);
+    NS::Obj::ObjectData object{};
+    nlohmann::json box = NS::Obj::MakeComponentEntry("BoxColliderComponent");
+    NS::Obj::SetField(box, "トリガー", true);
     object.components = nlohmann::json::array({std::move(box)});
     level.objects.push_back(std::move(object));
-    NS::Object::EnsureUniqueObjectIds(level);
+    NS::Obj::EnsureUniqueObjectIds(level);
 
-    NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::string{"."}};
+    NS::Obj::Scene scene;
+    NS::Obj::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
     ASSERT_EQ(objects.ObjectCount(), std::size_t{1});
     // トリガの箱は sensor body として登録されるが、固形の衝突応答は起こさない
-    NS::Physics::PhysicsScene& physics = scene.Physics();
+    NS::Phys::PhysicsScene& physics = scene.Physics();
     objects.SyncPhysics(physics);
     EXPECT_EQ(physics.BodyCount(), 1u);
 }
@@ -160,14 +160,14 @@ TEST(ObjectListTest, RebuildDropsTheCollidersOfTheObjectsItReplaces)
 {
     SceneData level;
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
-    NS::Object::EnsureUniqueObjectIds(level);
+    NS::Obj::EnsureUniqueObjectIds(level);
 
-    NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::string{"."}};
+    NS::Obj::Scene scene;
+    NS::Obj::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
-    NS::Physics::PhysicsScene& physics = scene.Physics();
+    NS::Phys::PhysicsScene& physics = scene.Physics();
     objects.SyncPhysics(physics);
     ASSERT_EQ(physics.BodyCount(), 1u);
 
@@ -190,18 +190,18 @@ TEST(ObjectListTest, RebuildBuildsPlayerAndResolvesItById)
     SceneData level;
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
     level.objects.push_back(MakePlayerObject(NS::Core::Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{}));
-    NS::Object::EnsureUniqueObjectIds(level);
+    NS::Obj::EnsureUniqueObjectIds(level);
 
-    NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::string{"."}};
+    NS::Obj::Scene scene;
+    NS::Obj::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
     // grid block とプレイヤーの両方が組まれ、id 解決は所有リスト内の実体を指す
     ASSERT_EQ(objects.ObjectCount(), 2u);
     const std::size_t playerIndex = FindPlayerObjectIndex(level);
-    ASSERT_NE(playerIndex, NS::Object::k_NoObjectIndex);
-    NS::Object::GameObject* resolved = objects.FindObject(NS::Object::ObjectRef{level.objects[playerIndex].objectId});
+    ASSERT_NE(playerIndex, NS::Obj::k_NoObjectIndex);
+    NS::Obj::GameObject* resolved = objects.FindObject(NS::Obj::ObjectRef{level.objects[playerIndex].objectId});
     ASSERT_NE(resolved, nullptr);
     EXPECT_EQ(resolved, objects.ObjectAt(1));
     EXPECT_FLOAT_EQ(resolved->Root().Position().y, 1.41f);
@@ -214,24 +214,24 @@ TEST(ObjectListTest, RebuildBakesFollowCameraAndResolvesTarget)
     SceneData level;
     level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
-    NS::Object::EnsureUniqueObjectIds(level);
+    NS::Obj::EnsureUniqueObjectIds(level);
     // 追従先は自分より後ろに並ぶ grid block。追従対象の参照を採番後の実 id へ差し替える
     for (nlohmann::json& component : level.objects[0].components)
-        if (NS::Object::HasField(component, "追従対象"))
-            NS::Object::SetField(component, "追従対象", NS::Object::ObjectRef{level.objects[1].objectId});
+        if (NS::Obj::HasField(component, "追従対象"))
+            NS::Obj::SetField(component, "追従対象", NS::Obj::ObjectRef{level.objects[1].objectId});
 
-    NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::string{"."}};
+    NS::Obj::Scene scene;
+    NS::Obj::AssetManager assets{std::string{"."}};
     // 参照の解決は scene の ObjectList を引くので、組むのは scene 自身の ObjectList
-    NS::Object::ObjectList& objects = scene.Objects();
+    NS::Obj::ObjectList& objects = scene.Objects();
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
-    const auto follows = Collect<NS::Object::ThirdPersonFollowComponent>(objects);
+    const auto follows = Collect<NS::Obj::ThirdPersonFollowComponent>(objects);
     ASSERT_EQ(follows.size(), 1u);
     auto* follow = follows[0];
     EXPECT_FALSE(follow->IsActive());
     // CameraBrainComponent の登録が使う抽象基底の問い合わせでも同じ実体が引ける
-    const auto vcams = Collect<NS::Object::VirtualCameraComponent>(objects);
+    const auto vcams = Collect<NS::Obj::VirtualCameraComponent>(objects);
     ASSERT_EQ(vcams.size(), 1u);
     EXPECT_EQ(vcams[0], follow);
     // far plane 100 はコンストラクタの既定。データが持つのは追従対象だけ
@@ -250,14 +250,14 @@ TEST(ObjectListTest, EnsureUniqueObjectIdsNumbersComponents)
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
     level.objects.push_back(NS::Game::Level::MakeCellObject(1, 0, 0));
 
-    NS::Object::EnsureUniqueObjectIds(level);
+    NS::Obj::EnsureUniqueObjectIds(level);
 
     std::vector<std::uint32_t> ids;
-    for (const NS::Object::ObjectData& object : level.objects)
+    for (const NS::Obj::ObjectData& object : level.objects)
     {
         ids.push_back(object.objectId);
         for (const nlohmann::json& entry : object.components)
-            ids.push_back(NS::Object::ComponentEntryId(entry));
+            ids.push_back(NS::Obj::ComponentEntryId(entry));
     }
 
     // 0 (未採番) が残っていない
@@ -273,22 +273,22 @@ TEST(ObjectListTest, ComponentIdSurvivesBuildAndCapture)
 {
     SceneData level;
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
-    NS::Object::EnsureUniqueObjectIds(level);
+    NS::Obj::EnsureUniqueObjectIds(level);
 
-    NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::string{"."}};
+    NS::Obj::Scene scene;
+    NS::Obj::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
     ASSERT_EQ(objects.ObjectCount(), 1u);
-    NS::Object::GameObject* live = objects.ObjectAt(0);
+    NS::Obj::GameObject* live = objects.ObjectAt(0);
 
     // データに書かれた id がそのまま実体に載っている
-    const std::uint32_t dataId = NS::Object::ComponentEntryId(level.objects[0].components[0]);
+    const std::uint32_t dataId = NS::Obj::ComponentEntryId(level.objects[0].components[0]);
     ASSERT_NE(dataId, 0u);
-    const std::string_view dataType = NS::Object::ComponentEntryType(level.objects[0].components[0]);
-    NS::Object::Component* matched = nullptr;
-    for (NS::Object::Component* comp : live->Components())
+    const std::string_view dataType = NS::Obj::ComponentEntryType(level.objects[0].components[0]);
+    NS::Obj::Component* matched = nullptr;
+    for (NS::Obj::Component* comp : live->Components())
     {
         if (comp != nullptr && comp->Id() == dataId)
             matched = comp;
@@ -297,11 +297,11 @@ TEST(ObjectListTest, ComponentIdSurvivesBuildAndCapture)
     EXPECT_EQ(matched->GetReflection()->typeName, dataType);
 
     // 実体から書き戻しても番号は変わらない。落ちると保存のたびに振り直しになる
-    const NS::Object::ObjectData captured = NS::Object::CaptureObjectData(*live);
+    const NS::Obj::ObjectData captured = NS::Obj::CaptureObjectData(*live);
     bool found = false;
     for (const nlohmann::json& entry : captured.components)
     {
-        if (NS::Object::ComponentEntryId(entry) == dataId)
+        if (NS::Obj::ComponentEntryId(entry) == dataId)
             found = true;
     }
     EXPECT_TRUE(found);
@@ -313,20 +313,20 @@ TEST(ObjectListTest, RemoveByObjectIdDropsIdResolution)
     SceneData level;
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
     level.objects.push_back(NS::Game::Level::MakeCellObject(1, 0, 0));
-    NS::Object::EnsureUniqueObjectIds(level);
+    NS::Obj::EnsureUniqueObjectIds(level);
     const std::uint32_t victimId = level.objects[1].objectId;
 
-    NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::string{"."}};
+    NS::Obj::Scene scene;
+    NS::Obj::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
-    ASSERT_NE(objects.FindObject(NS::Object::ObjectRef{victimId}), nullptr);
+    ASSERT_NE(objects.FindObject(NS::Obj::ObjectRef{victimId}), nullptr);
 
     objects.RemoveByObjectId(victimId);
 
     EXPECT_EQ(objects.ObjectCount(), 1u);
-    EXPECT_EQ(objects.FindObject(NS::Object::ObjectRef{victimId}), nullptr);
+    EXPECT_EQ(objects.FindObject(NS::Obj::ObjectRef{victimId}), nullptr);
 }
 
 // 1 体消したら当たり箱もその場で減る。消えた物に当たり続けない
@@ -335,15 +335,15 @@ TEST(ObjectListTest, RemoveByObjectIdDropsCollider)
     SceneData level;
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
     level.objects.push_back(NS::Game::Level::MakeCellObject(1, 0, 0));
-    NS::Object::EnsureUniqueObjectIds(level);
+    NS::Obj::EnsureUniqueObjectIds(level);
     const std::uint32_t victimId = level.objects[1].objectId;
 
-    NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::string{"."}};
+    NS::Obj::Scene scene;
+    NS::Obj::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
-    NS::Physics::PhysicsScene& physics = scene.Physics();
+    NS::Phys::PhysicsScene& physics = scene.Physics();
     objects.SyncPhysics(physics);
     ASSERT_EQ(physics.BodyCount(), 2u);
 
@@ -356,19 +356,19 @@ TEST(ObjectListTest, RemoveByObjectIdDropsCollider)
 TEST(ObjectListTest, RebuildBakesPlacedCamerasInactive)
 {
     SceneData level;
-    NS::Object::ObjectData cameraObject{};
-    NS::Object::SetObjectPosition(cameraObject, NS::Core::Vector3{8.0f, 0.0f, 0.0f});
-    nlohmann::json comp = NS::Object::MakeComponentEntry("PlacedVirtualCamera");
-    NS::Object::SetField(comp, "優先度", 20);
+    NS::Obj::ObjectData cameraObject{};
+    NS::Obj::SetObjectPosition(cameraObject, NS::Core::Vector3{8.0f, 0.0f, 0.0f});
+    nlohmann::json comp = NS::Obj::MakeComponentEntry("PlacedVirtualCamera");
+    NS::Obj::SetField(comp, "優先度", 20);
     cameraObject.components.push_back(std::move(comp));
     level.objects.push_back(std::move(cameraObject));
 
-    NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::string{"."}};
+    NS::Obj::Scene scene;
+    NS::Obj::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
-    const auto placedCameras = Collect<NS::Object::PlacedVirtualCamera>(objects);
+    const auto placedCameras = Collect<NS::Obj::PlacedVirtualCamera>(objects);
     ASSERT_EQ(placedCameras.size(), 1u);
     auto* placed = placedCameras[0];
     EXPECT_FALSE(placed->IsActive());
@@ -382,25 +382,25 @@ TEST(ObjectListTest, UpdateObjectsRunsOnlyRequestedBand)
 {
     ObjectList objects;
     std::vector<int> order;
-    auto* mover = objects.Spawn<NS::Object::GameObject>();
-    mover->AddComponent<BandRecordingComponent>(NS::Object::TickPriority::EarlyUpdate, &order, 1);
-    mover->AddComponent<BandRecordingComponent>(NS::Object::TickPriority::Update, &order, 2);
-    auto* rules = objects.Spawn<NS::Object::GameObject>();
-    rules->AddComponent<BandRecordingComponent>(NS::Object::TickPriority::Update + 100, &order, 3);
-    rules->AddComponent<BandRecordingComponent>(NS::Object::TickPriority::LateUpdate, &order, 4);
-    auto* camera = objects.Spawn<NS::Object::GameObject>();
-    camera->AddComponent<BandRecordingComponent>(NS::Object::TickPriority::LateUpdate + 50, &order, 5);
+    auto* mover = objects.Spawn<NS::Obj::GameObject>();
+    mover->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::EarlyUpdate, &order, 1);
+    mover->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update, &order, 2);
+    auto* rules = objects.Spawn<NS::Obj::GameObject>();
+    rules->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update + 100, &order, 3);
+    rules->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::LateUpdate, &order, 4);
+    auto* camera = objects.Spawn<NS::Obj::GameObject>();
+    camera->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::LateUpdate + 50, &order, 5);
 
     // EarlyUpdate はすぐ上の Update を巻き込まない
-    objects.UpdateObjects(NS::Object::TickPriority::EarlyUpdate, NS::Object::TickPriority::Update);
+    objects.UpdateObjects(NS::Obj::TickPriority::EarlyUpdate, NS::Obj::TickPriority::Update);
     EXPECT_EQ(order, (std::vector<int>{1}));
 
     // Update は帯の途中 (+100) まで含み、すぐ上の LateUpdate を巻き込まない
-    objects.UpdateObjects(NS::Object::TickPriority::Update, NS::Object::TickPriority::LateUpdate);
+    objects.UpdateObjects(NS::Obj::TickPriority::Update, NS::Obj::TickPriority::LateUpdate);
     EXPECT_EQ(order, (std::vector<int>{1, 2, 3}));
 
     // LateUpdate は末尾の帯なので +50 の後方まで全部回る
-    objects.UpdateObjects(NS::Object::TickPriority::LateUpdate);
+    objects.UpdateObjects(NS::Obj::TickPriority::LateUpdate);
     EXPECT_EQ(order, (std::vector<int>{1, 2, 3, 4, 5}));
 }
 
@@ -409,15 +409,15 @@ TEST(ObjectListTest, UpdateObjectsRunsSameBandInObjectOrder)
 {
     ObjectList objects;
     std::vector<int> order;
-    auto first = std::make_unique<NS::Object::GameObject>();
-    first->AddComponent<BandRecordingComponent>(NS::Object::TickPriority::Update, &order, 1);
-    auto second = std::make_unique<NS::Object::GameObject>();
-    second->AddComponent<BandRecordingComponent>(NS::Object::TickPriority::Update, &order, 2);
-    second->AddComponent<BandRecordingComponent>(NS::Object::TickPriority::Update + 50, &order, 3);
+    auto first = std::make_unique<NS::Obj::GameObject>();
+    first->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update, &order, 1);
+    auto second = std::make_unique<NS::Obj::GameObject>();
+    second->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update, &order, 2);
+    second->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update + 50, &order, 3);
     objects.Append(std::move(first));
     objects.Append(std::move(second));
 
-    objects.UpdateObjects(NS::Object::TickPriority::Update);
+    objects.UpdateObjects(NS::Obj::TickPriority::Update);
     EXPECT_EQ(order, (std::vector<int>{1, 2, 3}));
 }
 
@@ -426,12 +426,12 @@ TEST(ObjectListTest, BandUpdatesIncludeTransientObjects)
 {
     ObjectList objects;
     std::vector<int> order;
-    auto transient = std::make_unique<NS::Object::GameObject>();
+    auto transient = std::make_unique<NS::Obj::GameObject>();
     transient->SetTransient(true);
-    transient->AddComponent<BandRecordingComponent>(NS::Object::TickPriority::Update, &order, 1);
+    transient->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update, &order, 1);
     objects.Append(std::move(transient));
 
-    objects.UpdateObjects(NS::Object::TickPriority::Update);
+    objects.UpdateObjects(NS::Obj::TickPriority::Update);
     EXPECT_EQ(order, (std::vector<int>{1}));
 }
 
@@ -440,12 +440,12 @@ TEST(ObjectListTest, BandUpdatesSkipInactiveComponents)
 {
     ObjectList objects;
     std::vector<int> order;
-    auto obj = std::make_unique<NS::Object::GameObject>();
-    auto* sleeping = obj->AddComponent<BandRecordingComponent>(NS::Object::TickPriority::Update, &order, 1);
+    auto obj = std::make_unique<NS::Obj::GameObject>();
+    auto* sleeping = obj->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update, &order, 1);
     sleeping->SetActive(false);
     objects.Append(std::move(obj));
 
-    objects.UpdateObjects(NS::Object::TickPriority::Update);
+    objects.UpdateObjects(NS::Obj::TickPriority::Update);
     EXPECT_TRUE(order.empty());
 }
 
@@ -453,7 +453,7 @@ TEST(ObjectListTest, BandUpdatesSkipInactiveComponents)
 TEST(ObjectListTest, UpdateAllObjectsSkipsInactiveComponent)
 {
     ObjectList objects;
-    auto* counter = objects.Spawn<NS::Object::GameObject>()->AddComponent<CountingComponent>();
+    auto* counter = objects.Spawn<NS::Obj::GameObject>()->AddComponent<CountingComponent>();
 
     counter->SetActive(false);
     objects.UpdateAllObjects();
@@ -468,7 +468,7 @@ TEST(ObjectListTest, UpdateAllObjectsSkipsInactiveComponent)
 TEST(ObjectListTest, UpdateAllObjectsFollowsOwnerActiveFlag)
 {
     ObjectList objects;
-    auto* owner = objects.Spawn<NS::Object::GameObject>();
+    auto* owner = objects.Spawn<NS::Obj::GameObject>();
     auto* counter = owner->AddComponent<CountingComponent>();
 
     owner->SetActive(false);
@@ -483,8 +483,8 @@ TEST(ObjectListTest, UpdateAllObjectsFollowsOwnerActiveFlag)
 TEST(ObjectListTest, SyncPhysicsFillsPhysicsScene)
 {
     PhysicsStage stage;
-    stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
-    stage.Spawn()->AddComponent<NS::Object::SphereColliderComponent>();
+    stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
+    stage.Spawn()->AddComponent<NS::Obj::SphereColliderComponent>();
 
     stage.objects.SyncPhysics(stage.physics);
 
@@ -494,7 +494,7 @@ TEST(ObjectListTest, SyncPhysicsFillsPhysicsScene)
 TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneTwiceKeepsTheCount)
 {
     PhysicsStage stage;
-    stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
+    stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
 
     stage.objects.SyncPhysics(stage.physics);
     stage.objects.SyncPhysics(stage.physics);
@@ -507,8 +507,8 @@ TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneTwiceKeepsTheCount)
 TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneKeepsEveryBodyId)
 {
     PhysicsStage stage;
-    auto* box = stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
-    auto* sphere = stage.Spawn()->AddComponent<NS::Object::SphereColliderComponent>();
+    auto* box = stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
+    auto* sphere = stage.Spawn()->AddComponent<NS::Obj::SphereColliderComponent>();
 
     stage.objects.SyncPhysics(stage.physics);
     const JPH::BodyID staleBox = box->BodyId();
@@ -525,8 +525,8 @@ TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneKeepsEveryBodyId)
 TEST(ObjectListTest, InactiveColliderStaysOutOfPhysicsScene)
 {
     PhysicsStage stage;
-    stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
-    auto* collider = stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
+    stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
+    auto* collider = stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
     collider->SetActive(false);
 
     stage.objects.SyncPhysics(stage.physics);
@@ -539,14 +539,14 @@ TEST(ObjectListTest, InactiveColliderStaysOutOfPhysicsScene)
 TEST(ObjectListTest, MeshColliderTrianglesReachPhysics)
 {
     // 法線が上を向く床の三角形。斜辺を x+z=4 まで押し出し、原点を縁でなく内側に置く
-    NS::Physics::MeshCollision collision{{NS::Physics::Triangle{NS::Core::Vector3{-4.0f, 0.0f, -4.0f},
-                                                                NS::Core::Vector3{-4.0f, 0.0f, 8.0f},
-                                                                NS::Core::Vector3{8.0f, 0.0f, -4.0f}}},
-                                         nullptr};
-    collision.shape = NS::Physics::CreateMeshShape(collision.triangles);
+    NS::Phys::MeshCollision collision{{NS::Phys::Triangle{NS::Core::Vector3{-4.0f, 0.0f, -4.0f},
+                                                          NS::Core::Vector3{-4.0f, 0.0f, 8.0f},
+                                                          NS::Core::Vector3{8.0f, 0.0f, -4.0f}}},
+                                      nullptr};
+    collision.shape = NS::Phys::CreateMeshShape(collision.triangles);
 
     PhysicsStage stage;
-    stage.Spawn()->AddComponent<NS::Object::MeshColliderComponent>()->SetCollision(&collision);
+    stage.Spawn()->AddComponent<NS::Obj::MeshColliderComponent>()->SetCollision(&collision);
 
     stage.objects.SyncPhysics(stage.physics);
     ASSERT_EQ(stage.physics.BodyCount(), 1u);
@@ -565,7 +565,7 @@ TEST(ObjectListTest, UpdateObjectsCostMeasurement)
         ObjectList objects;
         for (std::size_t i = 0; i < objectCount; ++i)
         {
-            NS::Object::GameObject* obj = objects.Spawn<NS::Object::GameObject>();
+            NS::Obj::GameObject* obj = objects.Spawn<NS::Obj::GameObject>();
             for (std::size_t c = 0; c < componentsPerObject; ++c)
                 obj->AddComponent<CountingComponent>();
         }
@@ -573,7 +573,7 @@ TEST(ObjectListTest, UpdateObjectsCostMeasurement)
         constexpr int k_Iterations = 1000;
         const auto start = std::chrono::steady_clock::now();
         for (int n = 0; n < k_Iterations; ++n)
-            objects.UpdateObjects(NS::Object::TickPriority::Update);
+            objects.UpdateObjects(NS::Obj::TickPriority::Update);
         const auto elapsed = std::chrono::steady_clock::now() - start;
 
         const double perCallMicros =
@@ -596,14 +596,14 @@ TEST(ObjectListTest, UpdateObjectsCostMeasurement)
 TEST(ObjectListTest, SyncPhysicsKeepsBodiesItDidNotCreate)
 {
     PhysicsStage stage;
-    stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
+    stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
 
     stage.objects.SyncPhysics(stage.physics);
 
     NS::Core::Sphere loose;
     loose.center = NS::Core::Vector3{20.0f, 20.0f, 20.0f};
     loose.radius = 0.5f;
-    const JPH::BodyID outsider = stage.physics.AddSphere(loose, NS::Physics::ObjectLayers::Rock);
+    const JPH::BodyID outsider = stage.physics.AddSphere(loose, NS::Phys::ObjectLayers::Rock);
 
     stage.objects.SyncPhysics(stage.physics);
 
@@ -615,7 +615,7 @@ TEST(ObjectListTest, SyncPhysicsKeepsBodiesItDidNotCreate)
 TEST(ObjectListTest, SyncPhysicsDropsTheBodyOfADeactivatedCollider)
 {
     PhysicsStage stage;
-    auto* box = stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
+    auto* box = stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
 
     stage.objects.SyncPhysics(stage.physics);
     ASSERT_EQ(stage.physics.BodyCount(), 1u);
@@ -630,12 +630,12 @@ TEST(ObjectListTest, SyncPhysicsDropsTheBodyOfADeactivatedCollider)
 // 配置物ごと消える時は破棄の前に OnEndPlay が通る。ここで外さないと body が誰の持ち物でもなくなる
 TEST(ObjectListTest, ClearTakesEveryColliderBodyOutOfThePhysicsScene)
 {
-    NS::Object::Scene scene;
-    auto box = std::make_unique<NS::Object::GameObject>();
-    box->AddComponent<NS::Object::BoxColliderComponent>();
+    NS::Obj::Scene scene;
+    auto box = std::make_unique<NS::Obj::GameObject>();
+    box->AddComponent<NS::Obj::BoxColliderComponent>();
     scene.SpawnTransient(std::move(box));
-    auto sphere = std::make_unique<NS::Object::GameObject>();
-    sphere->AddComponent<NS::Object::SphereColliderComponent>();
+    auto sphere = std::make_unique<NS::Obj::GameObject>();
+    sphere->AddComponent<NS::Obj::SphereColliderComponent>();
     scene.SpawnTransient(std::move(sphere));
 
     scene.SyncPhysics();

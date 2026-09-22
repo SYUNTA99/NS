@@ -7,7 +7,7 @@
 #include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     namespace
     {
@@ -356,4 +356,4 @@ namespace NS::Object
         }
         return unreadCount;
     }
-} // namespace NS::Object
+} // namespace NS::Obj

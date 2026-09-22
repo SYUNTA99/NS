@@ -26,9 +26,9 @@ namespace
     }
 } // namespace
 
-namespace NS::Object
+namespace NS::Obj
 {
-    PlayerInputComponent::PlayerInputComponent() noexcept : Component(NS::Object::TickPriority::EarlyUpdate) {}
+    PlayerInputComponent::PlayerInputComponent() noexcept : Component(NS::Obj::TickPriority::EarlyUpdate) {}
 
     void PlayerInputComponent::SetCameraForward(const NS::Core::Vector3& cameraForwardHorizontal) noexcept
     {
@@ -119,4 +119,4 @@ namespace NS::Object
     }
 
     NS_CLASS(PlayerInputComponent)
-} // namespace NS::Object
+} // namespace NS::Obj

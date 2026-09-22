@@ -10,14 +10,14 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Mesh;
     class Material;
     class Buffer;
-} // namespace NS::Graphics
+} // namespace NS::Gfx
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! @brief Mesh と Material を描く Component
     //! @details Collect が Transform::InterpolatedWorldMatrix(context.alpha) を FrameCB へ詰めた DrawItem を積む
@@ -34,15 +34,15 @@ namespace NS::Object
 
         //! 描画に使う Material を差し替える。material=nullptr で Collect は何も積まなくなる
         //! bucket は Bucket() が Material::Blend() から都度判定するため opaque↔transparent も即反映される
-        void SetMaterial(NS::Graphics::Material* material) noexcept { m_material = material; }
+        void SetMaterial(NS::Gfx::Material* material) noexcept { m_material = material; }
         //! 現在の Material で非所有。未設定なら nullptr
-        [[nodiscard]] NS::Graphics::Material* GetMaterial() const noexcept { return m_material; }
+        [[nodiscard]] NS::Gfx::Material* GetMaterial() const noexcept { return m_material; }
 
         //! 描画に使う Mesh を差し替える。mesh=nullptr で Collect は何も積まなくなる
         //! リフレクションでは Mesh を運べないので、MeshRef から解決したものをここで差す
-        void SetMesh(NS::Graphics::Mesh* mesh) noexcept { m_mesh = mesh; }
+        void SetMesh(NS::Gfx::Mesh* mesh) noexcept { m_mesh = mesh; }
         //! build 時に解決された実体 Mesh を返す。未解決なら nullptr
-        [[nodiscard]] const NS::Graphics::Mesh* GetMesh() const noexcept { return m_mesh; }
+        [[nodiscard]] const NS::Gfx::Mesh* GetMesh() const noexcept { return m_mesh; }
 
         //! 描くメッシュの参照。builtin 名または ContentRoot 配下の相対パス。空 / 解決不可なら構築側が既定にする
         [[nodiscard]] const std::string& MeshRef() const noexcept { return m_meshRef; }
@@ -57,7 +57,7 @@ namespace NS::Object
 
         //! skinned のボーンパレット等、オブジェクト単位の追加 VS 定数を差す。同じ object 上の別 component が OnStart
         //! で配線する cpuData 非 null なら描画側が毎描画 buffer へアップロードしてから bind する
-        void SetPerObjectVsConstant(const NS::Graphics::Buffer* cb,
+        void SetPerObjectVsConstant(const NS::Gfx::Buffer* cb,
                                     const void* cpuData,
                                     std::size_t cpuDataSize,
                                     unsigned slot) noexcept;
@@ -71,7 +71,7 @@ namespace NS::Object
         }
 
         //! alpha 補間 world matrix を FrameCB に詰めた DrawItem を out に積む。IsActive()==false なら何も積まない
-        void Collect(const NS::Graphics::RenderContext& context, std::vector<NS::Graphics::DrawItem>& out) override;
+        void Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out) override;
 
         //! Material の BlendMode から bucket を返し、Opaque 以外は Transparent。Material 不在は Opaque
         [[nodiscard]] RenderBucket Bucket() const noexcept override;
@@ -99,8 +99,8 @@ namespace NS::Object
         NS_REFLECT_END()
 
     private:
-        NS::Graphics::Mesh* m_mesh = nullptr;            // 描画する Mesh (非所有)
-        NS::Graphics::Material* m_material = nullptr;    // 描画に使う Material (非所有)
+        NS::Gfx::Mesh* m_mesh = nullptr;            // 描画する Mesh (非所有)
+        NS::Gfx::Material* m_material = nullptr;    // 描画に使う Material (非所有)
         NS::Core::Vector3 m_baseColor{1.0f, 1.0f, 1.0f}; // 個体色、lighting と別系統
         // 保存・編集される参照文字列。build 時に解決して m_mesh / m_material へ実体を当てる
         std::string m_meshRef{};
@@ -108,7 +108,7 @@ namespace NS::Object
 
         // オブジェクト単位の追加 VS 定数 (skinned のボーンパレット)。同じ object 上の別 component が
         // SetPerObjectVsConstant で差す
-        const NS::Graphics::Buffer* m_perObjectVsCb = nullptr;
+        const NS::Gfx::Buffer* m_perObjectVsCb = nullptr;
         const void* m_perObjectVsData = nullptr;
         std::size_t m_perObjectVsSize = 0;
         unsigned m_perObjectVsSlot = 1;
@@ -117,4 +117,4 @@ namespace NS::Object
         NS::Core::AABB m_localBoundsOverride{};
         bool m_hasLocalBoundsOverride = false;
     };
-} // namespace NS::Object
+} // namespace NS::Obj

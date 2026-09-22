@@ -17,7 +17,7 @@ namespace
 
 TEST(ScreenFade, BeginOutRaisesAlphaThenHoldsBlack)
 {
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
     EXPECT_FALSE(fade.IsFading());
     EXPECT_FALSE(fade.IsBlack());
@@ -42,7 +42,7 @@ TEST(ScreenFade, BeginOutRaisesAlphaThenHoldsBlack)
 
 TEST(ScreenFade, BeginInLowersAlphaToTransparent)
 {
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
     fade.BeginOut(k_OutSeconds);
     fade.Advance(k_OutSeconds);
@@ -63,7 +63,7 @@ TEST(ScreenFade, BeginInLowersAlphaToTransparent)
 
 TEST(ScreenFade, ReentryIsIgnoredWhileActive)
 {
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
     fade.BeginOut(k_OutSeconds);
     fade.Advance(k_OutSeconds * 0.5f);
@@ -82,7 +82,7 @@ TEST(ScreenFade, ReentryIsIgnoredWhileActive)
 
 TEST(ScreenFade, CancelReturnsToTransparent)
 {
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
     fade.BeginOut(k_OutSeconds);
     fade.Advance(k_OutSeconds * 0.5f);
@@ -96,7 +96,7 @@ TEST(ScreenFade, CancelReturnsToTransparent)
 
 TEST(ScreenFade, ZeroSecondsJumpsToEndState)
 {
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
     fade.BeginOut(0.0f);
     EXPECT_FALSE(fade.IsFading());
@@ -111,40 +111,40 @@ TEST(ScreenFade, ZeroSecondsJumpsToEndState)
 // 重ね描きの口を持つのは専用基底の派生だけ。本番の呼び出しと同じリフレクション照合で確かめる
 TEST(ScreenFade, OnlyOverlayRendererIsPickedUp)
 {
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto* fade = obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
-    auto* transform = obj.FindComponent<NS::Object::TransformComponent>();
+    auto* transform = obj.FindComponent<NS::Obj::TransformComponent>();
     ASSERT_NE(transform, nullptr);
 
     EXPECT_NE(
-        NS::Object::ComponentCast<NS::Object::OverlayRendererComponent>(static_cast<NS::Object::Component*>(fade)),
+        NS::Obj::ComponentCast<NS::Obj::OverlayRendererComponent>(static_cast<NS::Obj::Component*>(fade)),
         nullptr);
-    EXPECT_EQ(NS::Object::ComponentCast<NS::Object::OverlayRendererComponent>(
-                  static_cast<NS::Object::Component*>(transform)),
+    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::OverlayRendererComponent>(
+                  static_cast<NS::Obj::Component*>(transform)),
               nullptr);
 
     // 中間基底を挟んでも宣言する帯は変わらない
-    EXPECT_EQ(fade->Priority(), NS::Object::TickPriority::LateUpdate + 5);
+    EXPECT_EQ(fade->Priority(), NS::Obj::TickPriority::LateUpdate + 5);
 }
 
 // 暗転は player に積む配置物側の component なので、一時オブジェクトに絞ると一度も描かれない
 TEST(ScreenFade, PlacedObjectFadeIsPickedUp)
 {
-    NS::Object::ObjectList objects;
-    auto* obj = objects.Spawn<NS::Object::GameObject>();
+    NS::Obj::ObjectList objects;
+    auto* obj = objects.Spawn<NS::Obj::GameObject>();
     obj->AddComponent<NS::Game::Level::ScreenFadeComponent>();
     ASSERT_FALSE(obj->IsTransient());
 
     int found = 0;
-    objects.ForEachComponent<NS::Object::OverlayRendererComponent>(
-        [&found](const NS::Object::OverlayRendererComponent&) { ++found; });
+    objects.ForEachComponent<NS::Obj::OverlayRendererComponent>(
+        [&found](const NS::Obj::OverlayRendererComponent&) { ++found; });
     EXPECT_EQ(found, 1);
 }
 
 // active を切った暗転は描かない。更新・ 当たりと同じ問いで揃える
 TEST(ScreenFade, InactiveFadeIsSkipped)
 {
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto* fade = obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
     fade->BeginOut(0.0f);
     ASSERT_TRUE(fade->IsBlack());

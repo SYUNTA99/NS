@@ -17,11 +17,11 @@ namespace NS::UI
 {
     class ImGuiContext;
 }
-namespace NS::Object
+namespace NS::Obj
 {
     class CameraComponent;
     struct SceneData;
-} // namespace NS::Object
+} // namespace NS::Obj
 namespace NS::Editor
 {
     class IObjectSnapshotApplier;
@@ -57,13 +57,13 @@ namespace NS::Editor
         ~EditorMode() noexcept = default;
 
         //! @brief 保存時に live 実体から SceneData を作る捕捉関数を差す。未設定なら保存できない
-        void SetCaptureLevelFn(std::function<NS::Object::SceneData()> fn) noexcept { m_captureLevel = std::move(fn); }
+        void SetCaptureLevelFn(std::function<NS::Obj::SceneData()> fn) noexcept { m_captureLevel = std::move(fn); }
 
         //! @brief grid 編集・ undo を live へ通す適用経路を差す。未設定なら grid 編集は何もしない
         void SetApplier(IObjectSnapshotApplier* applier) noexcept { m_applier = applier; }
 
         //! @brief 読込済みシーンデータを実体側へ取り込む関数を差す。読込の完了時に呼ぶ
-        void SetLoadLevelFn(std::function<void(NS::Object::SceneData&&)> fn) noexcept { m_loadLevel = std::move(fn); }
+        void SetLoadLevelFn(std::function<void(NS::Obj::SceneData&&)> fn) noexcept { m_loadLevel = std::move(fn); }
 
         //! @brief cell に居る cell ブラシ配置物の永続 id を live から引く関数を差す。不在は k_NoObjectId
         void SetFindCellObjectFn(std::function<std::uint32_t(std::int16_t, std::int16_t, std::int16_t)> fn) noexcept
@@ -78,7 +78,7 @@ namespace NS::Editor
         void SetAllocateIdFn(std::function<std::uint32_t()> fn) noexcept { m_allocateId = std::move(fn); }
         void SetInput(NS::Platform::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
-        void SetCameraComponent(NS::Object::CameraComponent* camera) noexcept { m_camera = camera; }
+        void SetCameraComponent(NS::Obj::CameraComponent* camera) noexcept { m_camera = camera; }
 
         void SetActive(bool active) noexcept { m_active = active; }
         [[nodiscard]] bool IsActive() const noexcept { return m_active; }
@@ -151,16 +151,16 @@ namespace NS::Editor
         void OpenLoadModal() noexcept { m_fileBrowser.OpenLoadModal(); }
 
     private:
-        std::function<NS::Object::SceneData()> m_captureLevel;    // 保存時に live から SceneData を作る
+        std::function<NS::Obj::SceneData()> m_captureLevel;    // 保存時に live から SceneData を作る
         IObjectSnapshotApplier* m_applier = nullptr;              // grid 編集・ undo を live へ通す適用経路
-        std::function<void(NS::Object::SceneData&&)> m_loadLevel; // 読込済みデータを実体側へ取り込む
+        std::function<void(NS::Obj::SceneData&&)> m_loadLevel; // 読込済みデータを実体側へ取り込む
         std::function<std::uint32_t(std::int16_t, std::int16_t, std::int16_t)>
             m_findCellObject;                                   // cell に居る配置物の永続 id を live から引く
         std::function<std::vector<CellCoord>()> m_collectCells; // live の cell ブラシ座標一覧
         std::function<std::uint32_t()> m_allocateId;            // 新規配置物の永続 id 採番
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
-        NS::Object::CameraComponent* m_camera = nullptr;
+        NS::Obj::CameraComponent* m_camera = nullptr;
 
         bool m_active = true;
         bool m_inputSuppressed = false;

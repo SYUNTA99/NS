@@ -4,7 +4,7 @@
 //! @details editor 構成では friend class ClassName; に展開、出荷ビルドでは空に展開する
 //! 出荷バイナリに editor クラス名を残さず、開発時だけ内部を開放できる
 //! @code
-//! class MyScene : public NS::Object::Scene
+//! class MyScene : public NS::Obj::Scene
 //! {
 //!     NS_EDITOR_FRIEND(LevelEditorController)
 //! public:

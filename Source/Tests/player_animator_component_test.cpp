@@ -21,9 +21,9 @@ namespace
     using NS::Game::Player::PlayerAnimatorComponent;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Graphics::AnimationClip;
-    using NS::Object::GameObject;
-    using NS::Object::SkeletalAnimationComponent;
+    using NS::Gfx::AnimationClip;
+    using NS::Obj::GameObject;
+    using NS::Obj::SkeletalAnimationComponent;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 

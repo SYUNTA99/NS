@@ -10,9 +10,9 @@
 
 namespace
 {
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
-    using NS::Graphics::Skybox;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
+    using NS::Gfx::Skybox;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 

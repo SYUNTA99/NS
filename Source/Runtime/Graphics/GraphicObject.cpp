@@ -1,6 +1,6 @@
 #include "Runtime/Graphics/GraphicObject.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     namespace
     {
@@ -13,4 +13,4 @@ namespace NS::Graphics
     {
         return g_graphicObject;
     }
-} // namespace NS::Graphics
+} // namespace NS::Gfx

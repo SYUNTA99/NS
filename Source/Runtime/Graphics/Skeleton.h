@@ -6,7 +6,7 @@
 #include <span>
 #include <string>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     //! ボーン 1 本の姿勢。位置・回転・スケールを持つ
     struct BonePose
@@ -67,4 +67,4 @@ namespace NS::Graphics
         NS::Core::Matrix m_rootTransform{};
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

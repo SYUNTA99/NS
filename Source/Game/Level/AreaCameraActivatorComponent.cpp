@@ -9,7 +9,7 @@ namespace NS::Game::Level
 {
     // プレイヤーが動き終わった後 (LateUpdate)、カメラ追従 (+50) が読む前に進入判定へ位置を渡す
     AreaCameraActivatorComponent::AreaCameraActivatorComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::LateUpdate + 10)
+        : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate + 10)
     {}
 
     void AreaCameraActivatorComponent::OnUpdate()
@@ -22,6 +22,6 @@ namespace NS::Game::Level
 
         // 渡すのは owner の位置。プレイヤーに載せるので、これが進入判定の対象になる
         const NS::Core::Vector3 position = Owner()->Root().Position();
-        scene->Objects().ForEachComponent<NS::Object::PlacedVirtualCamera>([&position](NS::Object::PlacedVirtualCamera& placed) { placed.UpdateActivation(position); });
+        scene->Objects().ForEachComponent<NS::Obj::PlacedVirtualCamera>([&position](NS::Obj::PlacedVirtualCamera& placed) { placed.UpdateActivation(position); });
     }
 } // namespace NS::Game::Level

@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class GameObject;
 }
@@ -26,10 +26,10 @@ namespace NS::Editor
     private:
         //! @brief 1 行を描く
         //! @param[in] withChildren 真なら子を再帰で下へ潜る。検索中は一致した物だけを平らに並べるので偽で呼ぶ
-        void RenderNode(LevelEditorController& editor, NS::Object::GameObject& object, bool withChildren) noexcept;
+        void RenderNode(LevelEditorController& editor, NS::Obj::GameObject& object, bool withChildren) noexcept;
 
         //! 対象を改名待ちにして、入力欄へ現在の表示名を入れる
-        void BeginRename(NS::Object::GameObject& object) noexcept;
+        void BeginRename(NS::Obj::GameObject& object) noexcept;
 
         std::uint32_t m_renamingObjectId = 0; // 改名中の配置物の永続 id、0 なら改名していない
         char m_renameBuffer[64]{};            // 改名の入力欄

@@ -9,12 +9,12 @@
 
 namespace
 {
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
-    using NS::Graphics::ShaderType;
-    using NS::Graphics::Texture;
-    using NS::Graphics::TextureCreateDesc;
-    using NS::Graphics::TextureDesc;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
+    using NS::Gfx::ShaderType;
+    using NS::Gfx::Texture;
+    using NS::Gfx::TextureCreateDesc;
+    using NS::Gfx::TextureDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 

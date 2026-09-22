@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     struct RenderContext;
 
@@ -84,4 +84,4 @@ namespace NS::Graphics
         std::vector<DrawItem> m_drawScratch;
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

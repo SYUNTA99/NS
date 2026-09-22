@@ -11,7 +11,7 @@
 #include <optional>
 
 namespace EditorNs = NS::Editor;
-namespace SceneNs = NS::Object;
+namespace SceneNs = NS::Obj;
 
 namespace
 {

@@ -11,7 +11,7 @@
 #include <numeric>
 #include <unordered_map>
 
-namespace NS::Object
+namespace NS::Obj
 {
     ObjectList::ObjectList() = default;
     ObjectList::~ObjectList() = default;
@@ -176,7 +176,7 @@ namespace NS::Object
         return FindByObjectId(ref.id);
     }
 
-    void ObjectList::SyncPhysics(NS::Physics::PhysicsScene& physics)
+    void ObjectList::SyncPhysics(NS::Phys::PhysicsScene& physics)
     {
         // PhysicsScene を作り直さず、collider ごとに既存 body の shape と姿勢を同期する
         ForEachComponent<ColliderComponent>([&physics](ColliderComponent& collider) {
@@ -297,4 +297,4 @@ namespace NS::Object
         return result;
     }
 
-} // namespace NS::Object
+} // namespace NS::Obj

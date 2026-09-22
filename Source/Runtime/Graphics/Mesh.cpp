@@ -11,7 +11,7 @@
 
 #include <span>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     namespace
@@ -194,4 +194,4 @@ namespace NS::Graphics
         return m_inputLayout.Get();
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

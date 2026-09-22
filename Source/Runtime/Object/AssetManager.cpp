@@ -28,7 +28,7 @@
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
 
-namespace NS::Object
+namespace NS::Obj
 {
     std::optional<std::string> ResolveContentPath(const std::string& relative)
     {
@@ -36,12 +36,12 @@ namespace NS::Object
         return NS::Platform::FileSystem::ResolveUnder(NS::Platform::FileSystem::ContentRoot(), relative);
     }
 
-    NS::Graphics::Mesh* ResolveMeshFromRef(AssetManager& assets, const std::string& meshRef)
+    NS::Gfx::Mesh* ResolveMeshFromRef(AssetManager& assets, const std::string& meshRef)
     {
         if (meshRef.empty())
             return nullptr;
 
-        if (NS::Graphics::StaticMesh* builtin = assets.Builtin(meshRef))
+        if (NS::Gfx::StaticMesh* builtin = assets.Builtin(meshRef))
         {
             return builtin;
         }
@@ -73,17 +73,17 @@ namespace NS::Object
         struct BuiltinShape
         {
             const char* name;
-            NS::Graphics::MeshGeometry (*make)();
+            NS::Gfx::MeshGeometry (*make)();
         };
 
         constexpr std::array<BuiltinShape, 7> k_BuiltinShapes = {{
-            {k_BuiltinCube, [] { return NS::Graphics::MakeCube(NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
-            {k_BuiltinSphere, [] { return NS::Graphics::MakeSphere(0.5f); }},
-            {k_BuiltinWedge45, [] { return NS::Graphics::MakeSlope(45.0f, NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
-            {k_BuiltinWedge30, [] { return NS::Graphics::MakeSlope(30.0f, NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
-            {k_BuiltinWedge22, [] { return NS::Graphics::MakeSlope(22.5f, NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
-            {k_BuiltinWedge15, [] { return NS::Graphics::MakeSlope(15.0f, NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
-            {k_BuiltinShadowQuad, [] { return NS::Graphics::MakePlane(NS::Core::Vector2{0.5f, 0.5f}); }},
+            {k_BuiltinCube, [] { return NS::Gfx::MakeCube(NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {k_BuiltinSphere, [] { return NS::Gfx::MakeSphere(0.5f); }},
+            {k_BuiltinWedge45, [] { return NS::Gfx::MakeSlope(45.0f, NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {k_BuiltinWedge30, [] { return NS::Gfx::MakeSlope(30.0f, NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {k_BuiltinWedge22, [] { return NS::Gfx::MakeSlope(22.5f, NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {k_BuiltinWedge15, [] { return NS::Gfx::MakeSlope(15.0f, NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {k_BuiltinShadowQuad, [] { return NS::Gfx::MakePlane(NS::Core::Vector2{0.5f, 0.5f}); }},
         }};
 
         // 引く先は m_builtins でなく k_BuiltinShapes。RegisterBuiltins を呼んでいなくても引ける
@@ -101,9 +101,9 @@ namespace NS::Object
 
         // index の並びを入れ替えずに写す。描画の並びのまま (v1 - v0) × (v2 - v0) が表面の外を向く
         // 当たりの表裏もこの向きで決まる
-        [[nodiscard]] std::vector<NS::Physics::Triangle> MakeTriangles(const NS::Graphics::MeshGeometry& geom)
+        [[nodiscard]] std::vector<NS::Phys::Triangle> MakeTriangles(const NS::Gfx::MeshGeometry& geom)
         {
-            std::vector<NS::Physics::Triangle> triangles;
+            std::vector<NS::Phys::Triangle> triangles;
             triangles.reserve(geom.indices.size() / 3);
             const std::size_t vertexCount = geom.vertices.size();
             for (std::size_t i = 0; i + 2 < geom.indices.size(); i += 3)
@@ -116,26 +116,26 @@ namespace NS::Object
                     continue;
                 }
 
-                triangles.push_back(NS::Physics::Triangle{
+                triangles.push_back(NS::Phys::Triangle{
                     geom.vertices[a].position, geom.vertices[b].position, geom.vertices[c].position});
             }
             return triangles;
         }
 
         // Jolt の形は当たりを頼まれた時に 1 度だけ作る。描画だけの mesh には作らない
-        NS::Physics::MeshCollision* WithShape(NS::Physics::MeshCollision* collision)
+        NS::Phys::MeshCollision* WithShape(NS::Phys::MeshCollision* collision)
         {
             if (collision != nullptr && collision->shape == nullptr)
             {
-                collision->shape = NS::Physics::CreateMeshShape(collision->triangles);
+                collision->shape = NS::Phys::CreateMeshShape(collision->triangles);
             }
             return collision;
         }
 
         // geom はこの呼出中のみ参照される
-        [[nodiscard]] std::unique_ptr<NS::Graphics::StaticMesh> MakeStaticMesh(const NS::Graphics::MeshGeometry& geom)
+        [[nodiscard]] std::unique_ptr<NS::Gfx::StaticMesh> MakeStaticMesh(const NS::Gfx::MeshGeometry& geom)
         {
-            NS::Graphics::MeshDesc desc{};
+            NS::Gfx::MeshDesc desc{};
             desc.vertices = geom.vertices.data();
             desc.vertexCount = geom.vertices.size();
             desc.indices = geom.indices.data();
@@ -144,20 +144,20 @@ namespace NS::Object
             {
                 desc.precomputedBounds = &geom.bounds;
             }
-            return NS::Graphics::StaticMesh::Create(desc);
+            return NS::Gfx::StaticMesh::Create(desc);
         }
 
-        [[nodiscard]] NS::Graphics::BlendMode ParseBlend(const std::string& value) noexcept
+        [[nodiscard]] NS::Gfx::BlendMode ParseBlend(const std::string& value) noexcept
         {
             if (value == "Alpha")
             {
-                return NS::Graphics::BlendMode::Alpha;
+                return NS::Gfx::BlendMode::Alpha;
             }
             if (value == "Additive")
             {
-                return NS::Graphics::BlendMode::Additive;
+                return NS::Gfx::BlendMode::Additive;
             }
-            return NS::Graphics::BlendMode::Opaque;
+            return NS::Gfx::BlendMode::Opaque;
         }
     } // namespace
 
@@ -209,7 +209,7 @@ namespace NS::Object
         }
 
         // blend は任意
-        out.blend = NS::Graphics::BlendMode::Opaque;
+        out.blend = NS::Gfx::BlendMode::Opaque;
         if (j.contains("blend") && j["blend"].is_string())
         {
             out.blend = ParseBlend(j["blend"].get<std::string>());
@@ -222,7 +222,7 @@ namespace NS::Object
     AssetManager::AssetManager(std::string baseDir) noexcept : m_baseDir(std::move(baseDir)) {}
     AssetManager::~AssetManager() = default;
 
-    NS::Graphics::Shader* AssetManager::GetOrLoadShader(std::string_view path)
+    NS::Gfx::Shader* AssetManager::GetOrLoadShader(std::string_view path)
     {
         // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから重複をまとめる
         const std::string key = NS::Platform::FileSystem::Normalize(path);
@@ -231,8 +231,8 @@ namespace NS::Object
             return it->second.get();
         }
 
-        auto shader = NS::Graphics::Shader::Create(key);
-        NS::Graphics::Shader* raw = shader.get();
+        auto shader = NS::Gfx::Shader::Create(key);
+        NS::Gfx::Shader* raw = shader.get();
         if (raw->IsUsingFallback())
         {
             NS_LOG_ERROR(Graphics, "AssetManager: shader の読込/コンパイル失敗、 fallback 描画: {}", key);
@@ -241,19 +241,19 @@ namespace NS::Object
         return raw;
     }
 
-    NS::Graphics::Texture* AssetManager::GetOrLoadTexture(std::string_view path)
+    NS::Gfx::Texture* AssetManager::GetOrLoadTexture(std::string_view path)
     {
         const std::string key = NS::Platform::FileSystem::Normalize(path);
         if (const auto it = m_textures.find(key); it != m_textures.end())
         {
             return it->second.get();
         }
-        NS::Graphics::TextureDesc desc{};
+        NS::Gfx::TextureDesc desc{};
         desc.path = key;
         desc.generateMipmaps = true;
         desc.sRGB = false;
-        auto texture = NS::Graphics::Texture::Create(desc);
-        NS::Graphics::Texture* raw = texture.get();
+        auto texture = NS::Gfx::Texture::Create(desc);
+        NS::Gfx::Texture* raw = texture.get();
         m_textures.emplace(key, std::move(texture));
         return raw;
     }
@@ -269,14 +269,14 @@ namespace NS::Object
         // 描画と当たりのどちらを先に頼まれても両方ここで作る
         // 当たりは MeshColliderComponent が描画と同じ参照で頼む。当たりが先でも GPU mesh は描画に使われる
         MeshRecord record;
-        const NS::Graphics::MeshGeometry geom = NS::Graphics::LoadGltfMesh(key);
+        const NS::Gfx::MeshGeometry geom = NS::Gfx::LoadGltfMesh(key);
         if (geom.vertices.empty() || geom.indices.empty())
         {
             NS_LOG_WARN(Graphics, "AssetManager: mesh の読込失敗 / 空: {}", key);
         }
         else
         {
-            std::unique_ptr<NS::Graphics::StaticMesh> mesh = MakeStaticMesh(geom);
+            std::unique_ptr<NS::Gfx::StaticMesh> mesh = MakeStaticMesh(geom);
             if (mesh == nullptr || !mesh->IsValid())
             {
                 NS_LOG_ERROR(
@@ -292,14 +292,14 @@ namespace NS::Object
             // 当たりだけ頼まれた時も GPU 生成を通るので、device の無いテストでは上のエラーが出る
             // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
             // 大きな mesh を飾りに多く置いてメモリが効いてきたら、当たりを頼まれた時に作る形へ移す
-            record.collision = std::make_unique<NS::Physics::MeshCollision>();
+            record.collision = std::make_unique<NS::Phys::MeshCollision>();
             record.collision->triangles = MakeTriangles(geom);
         }
         // 失敗した記録も残し、同じ参照を持つ配置物が毎回ディスクを読むのを防ぐ。修正後の再試行は Clear() で解いてから
         return m_meshes.emplace(key, std::move(record)).first->second;
     }
 
-    NS::Graphics::Mesh* AssetManager::GetOrLoadMesh(std::string_view path)
+    NS::Gfx::Mesh* AssetManager::GetOrLoadMesh(std::string_view path)
     {
         return LoadMeshRecord(path).mesh.get();
     }
@@ -309,7 +309,7 @@ namespace NS::Object
         return m_meshes.size();
     }
 
-    const NS::Physics::MeshCollision* AssetManager::GetOrLoadMeshCollision(const std::string& meshRef)
+    const NS::Phys::MeshCollision* AssetManager::GetOrLoadMeshCollision(const std::string& meshRef)
     {
         if (meshRef.empty())
         {
@@ -321,7 +321,7 @@ namespace NS::Object
             auto it = m_builtinCollisions.find(meshRef);
             if (it == m_builtinCollisions.end())
             {
-                auto collision = std::make_unique<NS::Physics::MeshCollision>();
+                auto collision = std::make_unique<NS::Phys::MeshCollision>();
                 collision->triangles = MakeTriangles(shape->make());
                 it = m_builtinCollisions.emplace(meshRef, std::move(collision)).first;
             }
@@ -343,7 +343,7 @@ namespace NS::Object
         if (it == m_skinnedModels.end())
         {
             // glTF から skinned mesh を読む
-            NS::Graphics::SkinnedMeshData data = NS::Graphics::LoadGltfSkinnedMesh(key);
+            NS::Gfx::SkinnedMeshData data = NS::Gfx::LoadGltfSkinnedMesh(key);
             if (!data.IsValid())
             {
                 NS_LOG_ERROR(Graphics, "AssetManager: skinned glTF 読込失敗: {}", key);
@@ -357,7 +357,7 @@ namespace NS::Object
             }
 
             // GPU 生成用の記述子を組む
-            NS::Graphics::SkinnedMeshDesc smd{};
+            NS::Gfx::SkinnedMeshDesc smd{};
             smd.vertices = data.vertices.data();
             smd.vertexCount = data.vertices.size();
             smd.indices = data.indices.data();
@@ -365,7 +365,7 @@ namespace NS::Object
             smd.boneCount = data.skeleton.BoneCount();
 
             SkinnedModelRecord record{};
-            record.mesh = NS::Graphics::SkeletalMesh::Create(smd);
+            record.mesh = NS::Gfx::SkeletalMesh::Create(smd);
             if (record.mesh == nullptr || !record.mesh->IsValid())
             {
                 // GPU buffer 生成に失敗。壊れた mesh をキャッシュせず無効を返し、Draw が無音で何もしないのを防ぐ
@@ -387,7 +387,7 @@ namespace NS::Object
         return out;
     }
 
-    const NS::Graphics::AnimationSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
+    const NS::Gfx::AnimationSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
     {
         const std::string key = NS::Platform::FileSystem::Normalize(path);
         // null エントリは負キャッシュした失敗 path を表す。get() が nullptr を返し再読込を短絡する
@@ -396,7 +396,7 @@ namespace NS::Object
             return it->second.get();
         }
 
-        NS::Graphics::AnimationSource source = NS::Graphics::LoadGltfAnimationSource(key);
+        NS::Gfx::AnimationSource source = NS::Gfx::LoadGltfAnimationSource(key);
         if (!source.IsValid())
         {
             NS_LOG_WARN(Graphics, "AssetManager: アニメーション glTF の読込失敗 / 空: {}", key);
@@ -405,13 +405,13 @@ namespace NS::Object
             return nullptr;
         }
 
-        auto owned = std::make_unique<NS::Graphics::AnimationSource>(std::move(source));
-        const NS::Graphics::AnimationSource* raw = owned.get();
+        auto owned = std::make_unique<NS::Gfx::AnimationSource>(std::move(source));
+        const NS::Gfx::AnimationSource* raw = owned.get();
         m_animationSources.emplace(key, std::move(owned));
         return raw;
     }
 
-    const std::vector<NS::Graphics::AnimationClip>* AssetManager::GetOrLoadBoundClips(std::string_view clipPath,
+    const std::vector<NS::Gfx::AnimationClip>* AssetManager::GetOrLoadBoundClips(std::string_view clipPath,
                                                                                       std::string_view modelPath)
     {
         const std::pair<std::string, std::string> key{NS::Platform::FileSystem::Normalize(clipPath),
@@ -421,7 +421,7 @@ namespace NS::Object
             return it->second.get();
         }
 
-        const NS::Graphics::AnimationSource* source = GetOrLoadAnimationSource(key.first);
+        const NS::Gfx::AnimationSource* source = GetOrLoadAnimationSource(key.first);
         if (source == nullptr)
         {
             // クリップ側の読込失敗は上流で負キャッシュ済み。組としても負キャッシュする
@@ -438,9 +438,9 @@ namespace NS::Object
 
         // 結合で index を振り直した複製は避けられない派生データだが、所有はこちら側なので
         // 同じ組で解決する全インスタンスがこの 1 本を共有する
-        auto bound = std::make_unique<std::vector<NS::Graphics::AnimationClip>>(
-            NS::Graphics::BindClipsByName(source->animations, source->skeleton, *model.skeleton));
-        const std::vector<NS::Graphics::AnimationClip>* raw = bound.get();
+        auto bound = std::make_unique<std::vector<NS::Gfx::AnimationClip>>(
+            NS::Gfx::BindClipsByName(source->animations, source->skeleton, *model.skeleton));
+        const std::vector<NS::Gfx::AnimationClip>* raw = bound.get();
         m_boundClips.emplace(key, std::move(bound));
         return raw;
     }
@@ -453,7 +453,7 @@ namespace NS::Object
         }
     }
 
-    NS::Graphics::StaticMesh* AssetManager::Builtin(std::string_view name) const noexcept
+    NS::Gfx::StaticMesh* AssetManager::Builtin(std::string_view name) const noexcept
     {
         const auto it = m_builtins.find(std::string(name));
         if (it != m_builtins.end())
@@ -491,29 +491,29 @@ namespace NS::Object
         // 相対 path は構築時の baseDir 基準で解決する。絶対 / ドライブ相対は Combine が baseDir を捨てて通す
         const auto resolve = [this](std::string_view p) { return NS::Platform::FileSystem::Combine(m_baseDir, p); };
 
-        NS::Graphics::Shader* vertexShader = GetOrLoadShader(resolve(fileDesc.vertexShader));
-        NS::Graphics::Shader* pixelShader = GetOrLoadShader(resolve(fileDesc.pixelShader));
+        NS::Gfx::Shader* vertexShader = GetOrLoadShader(resolve(fileDesc.vertexShader));
+        NS::Gfx::Shader* pixelShader = GetOrLoadShader(resolve(fileDesc.pixelShader));
 
         // CB は slot 0 で MeshRendererComponent が流す FrameCB に合わせる
-        NS::Graphics::MaterialDesc matDesc{};
+        NS::Gfx::MaterialDesc matDesc{};
         matDesc.vertexShader = vertexShader;
         matDesc.pixelShader = pixelShader;
-        matDesc.constantBufferSize = sizeof(NS::Graphics::FrameCB);
+        matDesc.constantBufferSize = sizeof(NS::Gfx::FrameCB);
         matDesc.cbSlot = 0;
         matDesc.blend = fileDesc.blend;
-        auto material = NS::Graphics::Material::Create(matDesc);
+        auto material = NS::Gfx::Material::Create(matDesc);
 
         // texture を slot 順に bind する
         for (std::size_t i = 0; i < fileDesc.textures.size(); ++i)
         {
-            NS::Graphics::Texture* texture = GetOrLoadTexture(resolve(fileDesc.textures[i]));
+            NS::Gfx::Texture* texture = GetOrLoadTexture(resolve(fileDesc.textures[i]));
             material->SetTexture(static_cast<unsigned>(i), texture);
         }
 
         MaterialRecord record{};
         record.material = std::move(material);
         record.baseColor = fileDesc.baseColor;
-        NS::Graphics::Material* rawMaterial = record.material.get();
+        NS::Gfx::Material* rawMaterial = record.material.get();
         const NS::Core::Vector3 color = record.baseColor;
         m_materials.emplace(matKey, std::move(record));
         return LoadedMaterial{rawMaterial, color};
@@ -524,44 +524,44 @@ namespace NS::Object
         const auto shaderPath = [this](const char* name) {
             return NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(m_baseDir, "Shaders"), name);
         };
-        NS::Graphics::Shader* standardVS = GetOrLoadShader(shaderPath("standard.vs.hlsl"));
-        NS::Graphics::Shader* playerPS = GetOrLoadShader(shaderPath("player.ps.hlsl"));
-        NS::Graphics::Texture* baseTexture = GetOrLoadTexture(NS::Platform::FileSystem::Combine(
+        NS::Gfx::Shader* standardVS = GetOrLoadShader(shaderPath("standard.vs.hlsl"));
+        NS::Gfx::Shader* playerPS = GetOrLoadShader(shaderPath("player.ps.hlsl"));
+        NS::Gfx::Texture* baseTexture = GetOrLoadTexture(NS::Platform::FileSystem::Combine(
             NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(m_baseDir, "Assets"), "Textures"),
             "cube_test.png"));
 
         // CB は slot 0 で MeshRendererComponent が流す FrameCB に合わせる
-        NS::Graphics::MaterialDesc base{};
+        NS::Gfx::MaterialDesc base{};
         base.vertexShader = standardVS;
         base.pixelShader = playerPS;
-        base.constantBufferSize = sizeof(NS::Graphics::FrameCB);
+        base.constantBufferSize = sizeof(NS::Gfx::FrameCB);
         base.cbSlot = 0;
 
         // player: 単一 Texture2D。slot0 に基準テクスチャを bind する
         {
-            auto mat = NS::Graphics::Material::Create(base);
+            auto mat = NS::Gfx::Material::Create(base);
             mat->SetTexture(0, baseTexture);
             m_sharedMaterials.emplace(k_SharedPlayer, std::move(mat));
         }
         // water: alpha<1 を出す water.ps + Alpha ブレンドの専用 material
         {
-            NS::Graphics::MaterialDesc desc = base;
+            NS::Gfx::MaterialDesc desc = base;
             desc.pixelShader = GetOrLoadShader(shaderPath("water.ps.hlsl"));
-            desc.blend = NS::Graphics::BlendMode::Alpha;
-            auto mat = NS::Graphics::Material::Create(desc);
+            desc.blend = NS::Gfx::BlendMode::Alpha;
+            auto mat = NS::Gfx::Material::Create(desc);
             mat->SetTexture(0, baseTexture);
             m_sharedMaterials.emplace(k_SharedWater, std::move(mat));
         }
         // shadow: shadow.ps が放射状アルファを生成するためテクスチャ不要、Alpha ブレンド
         {
-            NS::Graphics::MaterialDesc desc = base;
+            NS::Gfx::MaterialDesc desc = base;
             desc.pixelShader = GetOrLoadShader(shaderPath("shadow.ps.hlsl"));
-            desc.blend = NS::Graphics::BlendMode::Alpha;
-            m_sharedMaterials.emplace(k_SharedShadow, NS::Graphics::Material::Create(desc));
+            desc.blend = NS::Gfx::BlendMode::Alpha;
+            m_sharedMaterials.emplace(k_SharedShadow, NS::Gfx::Material::Create(desc));
         }
     }
 
-    NS::Graphics::Material* AssetManager::SharedMaterial(std::string_view name) const noexcept
+    NS::Gfx::Material* AssetManager::SharedMaterial(std::string_view name) const noexcept
     {
         const auto it = m_sharedMaterials.find(std::string(name));
         if (it != m_sharedMaterials.end())
@@ -610,4 +610,4 @@ namespace NS::Object
         m_boundClips.clear();
         m_builtins.clear();
     }
-} // namespace NS::Object
+} // namespace NS::Obj

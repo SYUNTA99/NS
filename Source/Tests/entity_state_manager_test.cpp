@@ -35,17 +35,17 @@ namespace
         void ResetToFirst() noexcept override { m_machine.Reset(); }
 
     private:
-        bool ChangeToState(NS::Object::StateId id) override { return m_machine.Change(*this, id); }
+        bool ChangeToState(NS::Obj::StateId id) override { return m_machine.Change(*this, id); }
 
-        [[nodiscard]] NS::Object::StateId CurrentStateId() const noexcept override { return m_machine.CurrentId(); }
+        [[nodiscard]] NS::Obj::StateId CurrentStateId() const noexcept override { return m_machine.CurrentId(); }
 
-        NS::Object::StateMachine<FakeStateManager> m_machine;
+        NS::Obj::StateMachine<FakeStateManager> m_machine;
     };
 } // namespace
 
 TEST(EntityStateManagerTest, ChangeAndIsCurrentTakeTheStateType)
 {
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto& manager = *obj.AddComponent<FakeStateManager>();
     manager.Build();
     ASSERT_TRUE(manager.IsBuilt());
@@ -62,7 +62,7 @@ TEST(EntityStateManagerTest, ChangeAndIsCurrentTakeTheStateType)
 // 組む前の IsCurrent が真を返すと、初期状態を仮定した分岐が組む前に通る
 TEST(EntityStateManagerTest, NotBuiltManagerIsNoState)
 {
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto& manager = *obj.AddComponent<FakeStateManager>();
 
     EXPECT_FALSE(manager.IsBuilt());

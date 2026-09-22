@@ -8,16 +8,16 @@
 
 struct ImVec2;
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class RenderTarget;
 }
 
-namespace NS::Object
+namespace NS::Obj
 {
     struct SceneView;
     struct CameraPose;
-} // namespace NS::Object
+} // namespace NS::Obj
 
 namespace NS::Editor
 {
@@ -52,8 +52,8 @@ namespace NS::Editor
 
         //! @brief 目標サイズに追従して RT を用意し、pose とセットのビューを返す
         //! @return 可視だったフレームは {RT, pose}。不可視やサイズ不足なら nullopt
-        [[nodiscard]] std::optional<NS::Object::SceneView> CollectView(
-            std::optional<NS::Object::CameraPose> pose) noexcept;
+        [[nodiscard]] std::optional<NS::Obj::SceneView> CollectView(
+            std::optional<NS::Obj::CameraPose> pose) noexcept;
 
         //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
         void Release() noexcept;
@@ -62,7 +62,7 @@ namespace NS::Editor
         [[nodiscard]] bool IsVisible() const noexcept { return m_visible; }
 
     private:
-        std::unique_ptr<NS::Graphics::RenderTarget> m_target;
+        std::unique_ptr<NS::Gfx::RenderTarget> m_target;
         NS::Core::Size2D m_size{0, 0}; // content 領域。次フレームの描画先サイズ
         float m_fixedAspect = 0.0f;    // 固定する縦横比。0 以下はパネルの形に追従
         bool m_visible = false;        // このフレームにパネルが可視だったか

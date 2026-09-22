@@ -9,36 +9,36 @@
 namespace
 {
     // 描かれた回数を log の要素数で数える fake
-    class FakeOverlay : public NS::Object::OverlayRendererComponent
+    class FakeOverlay : public NS::Obj::OverlayRendererComponent
     {
     public:
         explicit FakeOverlay(std::vector<int>* log) : m_log(log) {}
 
-        void OnRenderOverlay(const NS::Graphics::RenderContext&) override { m_log->push_back(1); }
+        void OnRenderOverlay(const NS::Gfx::RenderContext&) override { m_log->push_back(1); }
 
-        NS_REFLECT_NONE(FakeOverlay, NS::Object::OverlayRendererComponent)
+        NS_REFLECT_NONE(FakeOverlay, NS::Obj::OverlayRendererComponent)
 
     private:
         std::vector<int>* m_log;
     };
 
     // OnStart を上書きする派生。基底を呼べば登録が効くことを見る
-    class OverridingOverlay : public NS::Object::OverlayRendererComponent
+    class OverridingOverlay : public NS::Obj::OverlayRendererComponent
     {
     public:
         explicit OverridingOverlay(std::vector<int>* log) : m_log(log) {}
 
         void OnStart() override
         {
-            NS::Object::OverlayRendererComponent::OnStart();
+            NS::Obj::OverlayRendererComponent::OnStart();
             m_started = true;
         }
 
-        void OnRenderOverlay(const NS::Graphics::RenderContext&) override { m_log->push_back(2); }
+        void OnRenderOverlay(const NS::Gfx::RenderContext&) override { m_log->push_back(2); }
 
         [[nodiscard]] bool Started() const noexcept { return m_started; }
 
-        NS_REFLECT_NONE(OverridingOverlay, NS::Object::OverlayRendererComponent)
+        NS_REFLECT_NONE(OverridingOverlay, NS::Obj::OverlayRendererComponent)
 
     private:
         std::vector<int>* m_log;
@@ -46,15 +46,15 @@ namespace
     };
 
     // protected の DrawOverlays を test から叩くための公開サブクラス
-    class TestScene : public NS::Object::Scene
+    class TestScene : public NS::Obj::Scene
     {
     public:
-        using NS::Object::Scene::DrawOverlays;
+        using NS::Obj::Scene::DrawOverlays;
     };
 
     FakeOverlay* PlaceOverlay(TestScene& scene, std::vector<int>* log)
     {
-        NS::Object::GameObject* obj = scene.SpawnTransient(std::make_unique<NS::Object::GameObject>());
+        NS::Obj::GameObject* obj = scene.SpawnTransient(std::make_unique<NS::Obj::GameObject>());
         if (obj == nullptr)
         {
             return nullptr;
@@ -72,7 +72,7 @@ TEST(OverlayRendererComponentTest, RegistersItselfOnStart)
 
     overlay->OnStart();
 
-    NS::Graphics::RenderContext ctx{};
+    NS::Gfx::RenderContext ctx{};
     scene.DrawOverlays(ctx);
     EXPECT_EQ(log.size(), 1u);
 }
@@ -87,7 +87,7 @@ TEST(OverlayRendererComponentTest, RegisteringTwiceDrawsOnce)
     overlay->OnStart();
     overlay->OnStart();
 
-    NS::Graphics::RenderContext ctx{};
+    NS::Gfx::RenderContext ctx{};
     scene.DrawOverlays(ctx);
     EXPECT_EQ(log.size(), 1u);
 }
@@ -102,7 +102,7 @@ TEST(OverlayRendererComponentTest, UnregistersOnEndPlay)
     overlay->OnStart();
     overlay->OnEndPlay();
 
-    NS::Graphics::RenderContext ctx{};
+    NS::Gfx::RenderContext ctx{};
     scene.DrawOverlays(ctx);
     EXPECT_TRUE(log.empty());
 }
@@ -110,7 +110,7 @@ TEST(OverlayRendererComponentTest, UnregistersOnEndPlay)
 TEST(OverlayRendererComponentTest, WithoutASceneNothingHappens)
 {
     std::vector<int> log;
-    NS::Object::GameObject obj;
+    NS::Obj::GameObject obj;
     auto* overlay = obj.AddComponent<FakeOverlay>(&log);
     ASSERT_NE(overlay, nullptr);
 
@@ -124,14 +124,14 @@ TEST(OverlayRendererComponentTest, DerivedThatOverridesOnStartStillRegisters)
 {
     std::vector<int> log;
     TestScene scene;
-    NS::Object::GameObject* obj = scene.SpawnTransient(std::make_unique<NS::Object::GameObject>());
+    NS::Obj::GameObject* obj = scene.SpawnTransient(std::make_unique<NS::Obj::GameObject>());
     ASSERT_NE(obj, nullptr);
     auto* overlay = obj->AddComponent<OverridingOverlay>(&log);
     ASSERT_NE(overlay, nullptr);
 
     overlay->OnStart();
 
-    NS::Graphics::RenderContext ctx{};
+    NS::Gfx::RenderContext ctx{};
     scene.DrawOverlays(ctx);
 
     EXPECT_TRUE(overlay->Started());

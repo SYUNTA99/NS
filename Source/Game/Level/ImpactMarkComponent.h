@@ -3,23 +3,23 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     class GameObject;
     class Scene;
-} // namespace NS::Object
+} // namespace NS::Obj
 
 namespace NS::Game::Level
 {
     //! @brief ぶつかった場所の床へ寝かせる跡
     //! @details 半透明の板を置き、時間で縮めて消す。消える時は配置物を破棄せず描画と自身の更新を止める
     //! 更新の最中の破棄は ObjectList::UpdateObjects が集めた並びに解放済みの位置を残すため使わない
-    //! 依存: NS::Object::MeshRendererComponent, NS::Object::Scene
-    class ImpactMarkComponent : public NS::Object::Component
+    //! 依存: NS::Obj::MeshRendererComponent, NS::Obj::Scene
+    class ImpactMarkComponent : public NS::Obj::Component
     {
     public:
         //! 指定の位置へ跡の一時オブジェクトを出す。scene が nullptr なら nullptr を返す
-        [[nodiscard]] static NS::Object::GameObject* SpawnAt(NS::Object::Scene* scene,
+        [[nodiscard]] static NS::Obj::GameObject* SpawnAt(NS::Obj::Scene* scene,
                                                              const NS::Core::Vector3& position);
 
         //! 出た直後の水平の大きさを跡の直径へ合わせる
@@ -29,7 +29,7 @@ namespace NS::Game::Level
         void OnUpdate() override;
 
         // 跡の残り方は衝突の余韻。プレイ中に Inspector で触って詰められるよう公開する
-        NS_REFLECT_BEGIN(ImpactMarkComponent, NS::Object::Component)
+        NS_REFLECT_BEGIN(ImpactMarkComponent, NS::Obj::Component)
         NS_REFLECT_FIELD(m_diameter, "跡の直径")
         NS_REFLECT_FIELD(m_lifeSeconds, "跡の残る秒")
         NS_REFLECT_END()

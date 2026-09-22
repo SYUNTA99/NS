@@ -4,7 +4,7 @@
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     namespace
     {
@@ -43,4 +43,4 @@ namespace NS::Object
 			brain->RemoveVirtualCamera(this);
         }
     }
-} // namespace NS::Object
+} // namespace NS::Obj

@@ -9,16 +9,16 @@
 
 namespace
 {
-    using NS::Object::GameObject;
-    using NS::Object::ObjectIdAccess;
-    using NS::Object::ObjectRef;
-    using NS::Object::Scene;
-    using NS::Object::ObjectList;
+    using NS::Obj::GameObject;
+    using NS::Obj::ObjectIdAccess;
+    using NS::Obj::ObjectRef;
+    using NS::Obj::Scene;
+    using NS::Obj::ObjectList;
 
     //! リフレクションフィールド名で ObjectRef を書き込む。データ経由の構築と同じ set 経路を通す
-    void SetTargetRef(NS::Object::Component& comp, std::uint32_t id)
+    void SetTargetRef(NS::Obj::Component& comp, std::uint32_t id)
     {
-        const NS::Object::ReflectionInfo* info = comp.GetReflection();
+        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
         ASSERT_NE(info, nullptr);
         for (std::size_t i = 0; i < info->fieldCount; ++i)
         {
@@ -67,7 +67,7 @@ TEST(ObjectRefTest, FollowResolvesTargetOnStart)
 
     GameObject rig;
     rig.AttachScene(&scene);
-    auto* follow = rig.AddComponent<NS::Object::ThirdPersonFollowComponent>();
+    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollowComponent>();
     SetTargetRef(*follow, 5u);
 
     rig.OnStart();
@@ -84,7 +84,7 @@ TEST(ObjectRefTest, FollowKeepsDirectWiringWhenRefUnset)
     GameObject player;
     GameObject rig;
     rig.AttachScene(&scene);
-    auto* follow = rig.AddComponent<NS::Object::ThirdPersonFollowComponent>();
+    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollowComponent>();
     follow->SetTarget(&player.Root());
 
     rig.OnStart();
@@ -101,7 +101,7 @@ TEST(ObjectRefTest, FollowKeepsWiringWhenRefDangling)
     GameObject player;
     GameObject rig;
     rig.AttachScene(&scene);
-    auto* follow = rig.AddComponent<NS::Object::ThirdPersonFollowComponent>();
+    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollowComponent>();
     follow->SetTarget(&player.Root());
     SetTargetRef(*follow, 123u);
 

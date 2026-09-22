@@ -1,6 +1,6 @@
 ﻿#include "Runtime/Graphics/Camera.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     namespace
     {
@@ -131,4 +131,4 @@ namespace NS::Graphics
         return View() * Projection();
     }
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

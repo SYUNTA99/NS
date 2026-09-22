@@ -23,10 +23,10 @@ TEST(EditorPickBounds, ObjectWithoutADrawnMeshIsPickedByTheUnitCell)
 {
     const NS::Core::AABB unitCell{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Vector3{0.5f, 0.5f, 0.5f}};
 
-    NS::Object::GameObject camera;
+    NS::Obj::GameObject camera;
     ExpectSameBounds(NS::Editor::PickLocalBounds(camera), unitCell);
 
-    NS::Object::GameObject unresolved;
-    unresolved.AddComponent<NS::Object::MeshRendererComponent>();
+    NS::Obj::GameObject unresolved;
+    unresolved.AddComponent<NS::Obj::MeshRendererComponent>();
     ExpectSameBounds(NS::Editor::PickLocalBounds(unresolved), unitCell);
 }

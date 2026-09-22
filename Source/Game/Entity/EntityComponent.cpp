@@ -31,7 +31,7 @@ namespace NS::Game::Entity
 {
     // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、
     // 天井に当たったフレームの上向き速度は Move を抜けた時点で 0 になっている
-    EntityComponent::EntityComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::Update) {}
+    EntityComponent::EntityComponent() noexcept : NS::Obj::Component(NS::Obj::TickPriority::Update) {}
 
     NS::Core::Vector3 EntityComponent::LateralVelocity() const noexcept
     {
@@ -66,7 +66,7 @@ namespace NS::Game::Entity
         return m_capsuleCollider != nullptr ? m_capsuleCollider->HalfHeight() : 0.5f;
     }
 
-    NS::Physics::PhysicsScene* EntityComponent::ScenePhysics() const noexcept
+    NS::Phys::PhysicsScene* EntityComponent::ScenePhysics() const noexcept
     {
         if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
         {
@@ -79,7 +79,7 @@ namespace NS::Game::Entity
     {
         if (Owner() != nullptr)
         {
-            m_capsuleCollider = Owner()->FindComponent<NS::Object::CapsuleColliderComponent>();
+            m_capsuleCollider = Owner()->FindComponent<NS::Obj::CapsuleColliderComponent>();
         }
         // 自分の capsule は Move が掃引する。静的世界に居ると自分に当たって動けない
         if (m_capsuleCollider != nullptr)
@@ -142,7 +142,7 @@ namespace NS::Game::Entity
     void EntityComponent::Move(float dt, float maxStepHeight) noexcept
     {
         const NS::Core::Vector3 before = RootTransform().Position();
-        NS::Physics::PhysicsScene* physics = ScenePhysics();
+        NS::Phys::PhysicsScene* physics = ScenePhysics();
         if (physics == nullptr)
         {
             RootTransform().SetPosition(before + m_velocity * dt);
@@ -156,7 +156,7 @@ namespace NS::Game::Entity
         // AttachScene は新しく組んだ配置物にしか呼ばれない。Scene が変わらないので m_character を作り直さない
         if (m_character == nullptr)
         {
-            m_character = std::make_unique<NS::Physics::JoltCharacter>(*physics, radius, halfHeight);
+            m_character = std::make_unique<NS::Phys::JoltCharacter>(*physics, radius, halfHeight);
         }
         m_character->Resize(radius, halfHeight);
 

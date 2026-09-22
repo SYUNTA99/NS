@@ -13,7 +13,7 @@ namespace DirectX
     }
 } // namespace DirectX
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     class Renderer;
@@ -49,4 +49,4 @@ namespace NS::Graphics
         explicit CommonStates(ID3D11Device* device) noexcept;
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

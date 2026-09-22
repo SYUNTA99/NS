@@ -5,7 +5,7 @@
 
 #include <cstddef>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Buffer;
     class Texture;
@@ -137,4 +137,4 @@ namespace NS::Graphics
         ID3D11DeviceContext* m_context; //!< 非所有。所有は Renderer
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

@@ -5,7 +5,7 @@
 
 #include <cstddef>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Mesh;
     class Material;
@@ -35,4 +35,4 @@ namespace NS::Graphics
     //! @note mesh か material が空なら何もしない
     void IssueDrawItem(Renderer& renderer, const DrawItem& item) noexcept;
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

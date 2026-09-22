@@ -116,7 +116,7 @@ namespace NS::UI
     } // namespace
 #endif
 
-    ImGuiContext::ImGuiContext(NS::Platform::Window& window, NS::Graphics::Renderer& renderer) noexcept
+    ImGuiContext::ImGuiContext(NS::Platform::Window& window, NS::Gfx::Renderer& renderer) noexcept
         : m_pImpl(std::make_unique<Impl>())
     {
 #if NS_UI_IMGUI_ENABLED
@@ -188,8 +188,8 @@ namespace NS::UI
 
         // DX11 backend 初期化
         (void)renderer;
-        ID3D11Device* device = NS::Graphics::Gpu().device;
-        ID3D11DeviceContext* context = NS::Graphics::Gpu().context;
+        ID3D11Device* device = NS::Gfx::Gpu().device;
+        ID3D11DeviceContext* context = NS::Gfx::Gpu().context;
         if (device == nullptr || context == nullptr || !::ImGui_ImplDX11_Init(device, context))
         {
             NS_LOG_ERROR(UI, "ImGui_ImplDX11_Init 失敗、 stub mode に fallback");

@@ -13,7 +13,7 @@
 #include <memory>
 #include <string>
 
-namespace SceneNs = NS::Object;
+namespace SceneNs = NS::Obj;
 namespace LevelNs = NS::Game::Level;
 
 namespace
@@ -31,10 +31,10 @@ namespace
 TEST(SceneRotationDrift, RepeatedCaptureRebuildKeepsExactQuaternion)
 {
     // device 無しの AssetManager でも組み立ては落ちない。mesh も material も解決できず空のまま
-    NS::Object::AssetManager assets{std::string{"."}};
+    NS::Obj::AssetManager assets{std::string{"."}};
 
     const SceneNs::ObjectData object = MakeRotatedCube(NS::Core::Vector3{89.9f, 40.0f, 20.0f});
-    std::unique_ptr<NS::Object::GameObject> live = SceneNs::BuildSceneObject(object, &assets);
+    std::unique_ptr<NS::Obj::GameObject> live = SceneNs::BuildSceneObject(object, &assets);
     ASSERT_NE(live, nullptr);
 
     const NS::Core::Quaternion reference = live->Root().Rotation();
@@ -89,10 +89,10 @@ TEST(SceneRotationDrift, RotationFieldLoadsToExpectedQuaternion)
 TEST(SceneRotationDrift, SaveWritesRotationAsQuaternionOnly)
 {
     // 1 つ目の試しと同じく device 無し
-    NS::Object::AssetManager assets{std::string{"."}};
+    NS::Obj::AssetManager assets{std::string{"."}};
 
     const SceneNs::ObjectData object = MakeRotatedCube(NS::Core::Vector3{30.0f, 45.0f, 60.0f});
-    std::unique_ptr<NS::Object::GameObject> live = SceneNs::BuildSceneObject(object, &assets);
+    std::unique_ptr<NS::Obj::GameObject> live = SceneNs::BuildSceneObject(object, &assets);
     ASSERT_NE(live, nullptr);
 
     SceneNs::SceneData data;

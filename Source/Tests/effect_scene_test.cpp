@@ -16,15 +16,15 @@
 
 namespace
 {
-    using NS::Graphics::Camera;
-    using NS::Graphics::CameraDesc;
-    using NS::Graphics::EffectHandle;
-    using NS::Graphics::EffectPlayDesc;
-    using NS::Graphics::EffectScene;
-    using NS::Graphics::EffectSceneDesc;
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
-    using NS::Graphics::RenderTarget;
+    using NS::Gfx::Camera;
+    using NS::Gfx::CameraDesc;
+    using NS::Gfx::EffectHandle;
+    using NS::Gfx::EffectPlayDesc;
+    using NS::Gfx::EffectScene;
+    using NS::Gfx::EffectSceneDesc;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
+    using NS::Gfx::RenderTarget;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
@@ -115,14 +115,14 @@ namespace
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
         desc.MiscFlags = 0;
 
-        NS::Graphics::ComPtr<ID3D11Texture2D> staging;
+        NS::Gfx::ComPtr<ID3D11Texture2D> staging;
         std::array<std::uint8_t, 4> pixel{};
-        if (FAILED(NS::Graphics::Gpu().device->CreateTexture2D(&desc, nullptr, &staging)))
+        if (FAILED(NS::Gfx::Gpu().device->CreateTexture2D(&desc, nullptr, &staging)))
         {
             ADD_FAILURE() << "読み戻し用のテクスチャを作れなかった";
             return pixel;
         }
-        ID3D11DeviceContext* context = NS::Graphics::Gpu().context;
+        ID3D11DeviceContext* context = NS::Gfx::Gpu().context;
         context->CopyResource(staging.Get(), source);
 
         D3D11_MAPPED_SUBRESOURCE mapped{};

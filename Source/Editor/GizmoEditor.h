@@ -16,11 +16,11 @@ namespace NS::UI
 {
     class ImGuiContext;
 }
-namespace NS::Object
+namespace NS::Obj
 {
     class Transform;
     class GameObject;
-} // namespace NS::Object
+} // namespace NS::Obj
 
 namespace NS::Editor
 {
@@ -73,7 +73,7 @@ namespace NS::Editor
         //! @param[in] objects 選択対象となるオブジェクト
         //! @param[in] pickable objects と同じ添字の優先度。0 の配置物は 1 の配置物に当たらなかった時だけ選ぶ。
         //! 省略すると全部を同じに扱う
-        void SetSelectableObjects(std::span<NS::Object::GameObject* const> objects,
+        void SetSelectableObjects(std::span<NS::Obj::GameObject* const> objects,
                                   std::span<const std::uint8_t> pickable = {}) noexcept;
 
         void SetActive(bool active) noexcept { m_active = active; }
@@ -96,7 +96,7 @@ namespace NS::Editor
         void Render(const NS::Core::Matrix& viewProjection, const ViewRect& view) noexcept;
 
         [[nodiscard]] GizmoTool Tool() const noexcept { return m_tool; }
-        [[nodiscard]] NS::Object::Transform* Selected() const noexcept { return m_selected; }
+        [[nodiscard]] NS::Obj::Transform* Selected() const noexcept { return m_selected; }
 
         //! @brief 選択を解除し、進行中のドラッグを取り消す
         void ClearSelection() noexcept
@@ -107,7 +107,7 @@ namespace NS::Editor
         }
 
         //! @brief 選択対象を直接指定して変更する。進行中のドラッグ操作はキャンセルされる
-        void SetSelected(NS::Object::Transform* target) noexcept
+        void SetSelected(NS::Obj::Transform* target) noexcept
         {
             m_selected = target;
             m_dragging = false;
@@ -172,7 +172,7 @@ namespace NS::Editor
                                                       NS::Core::Size2D viewport) noexcept;
 
         void SetToolForTest(GizmoTool tool) noexcept { m_tool = tool; }
-        void SelectForTest(NS::Object::Transform* target) noexcept { m_selected = target; }
+        void SelectForTest(NS::Obj::Transform* target) noexcept { m_selected = target; }
         void ApplyDragForTest(const NS::Core::Matrix& viewProjection,
                               NS::Core::Size2D viewport,
                               GizmoAxis axis,
@@ -185,13 +185,13 @@ namespace NS::Editor
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
 
-        std::span<NS::Object::GameObject* const> m_objects{}; //!< 選択判定の対象となるオブジェクト
+        std::span<NS::Obj::GameObject* const> m_objects{}; //!< 選択判定の対象となるオブジェクト
         std::span<const std::uint8_t> m_pickable{};           //!< 選択の優先度。1 の配置物を先に選ぶ
 
         bool m_active = false;                       //!< ギズモ操作が有効かどうか
         GizmoTool m_tool = GizmoTool::Move;          //!< 現在の変形ツール
         GizmoSpace m_space = GizmoSpace::Local;      //!< 変形の座標系
-        NS::Object::Transform* m_selected = nullptr; //!< 選択中の Transform
+        NS::Obj::Transform* m_selected = nullptr; //!< 選択中の Transform
 
         bool m_dragging = false;                //!< ドラッグ中か
         GizmoAxis m_dragAxis = GizmoAxis::None; //!< ドラッグ中の軸

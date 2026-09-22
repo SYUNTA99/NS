@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Physics
+namespace NS::Phys
 {
     namespace
     {
@@ -217,4 +217,4 @@ namespace NS::Physics
         return normalY >= k_MaxSlopeNormalY;
     }
 
-} // namespace NS::Physics
+} // namespace NS::Phys

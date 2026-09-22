@@ -6,7 +6,7 @@
 
 #include <string>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     class Renderer;
@@ -73,4 +73,4 @@ namespace NS::Graphics
     //! @note 不透明なオブジェクトを描画した後、かつ半透明なオブジェクトを描画する前に呼び出すこと
     void IssueSkybox(Renderer& renderer, const Skybox& skybox, const NS::Core::Matrix& viewProjNoTranslate) noexcept;
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

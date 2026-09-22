@@ -31,11 +31,11 @@ namespace NS::Editor
         const NS::Core::Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
 
         // 添字は CaptureObjectData の並びへそのまま渡る。絞り方を変えると編集操作が隣を掴む
-        std::vector<NS::Object::Component*> ReflectedComponents(NS::Object::GameObject& go)
+        std::vector<NS::Obj::Component*> ReflectedComponents(NS::Obj::GameObject& go)
         {
-            std::vector<NS::Object::Component*> result;
+            std::vector<NS::Obj::Component*> result;
             result.reserve(go.Components().size());
-            for (NS::Object::Component* comp : go.Components())
+            for (NS::Obj::Component* comp : go.Components())
             {
                 if (comp == nullptr || comp->GetReflection() == nullptr)
                 {
@@ -59,7 +59,7 @@ namespace NS::Editor
             refOptions.reserve(editor.Objects().ObjectCount());
             for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
             {
-                NS::Object::GameObject& candidate = *editor.Objects().ObjectAt(i);
+                NS::Obj::GameObject& candidate = *editor.Objects().ObjectAt(i);
                 if (candidate.IsTransient())
                     continue;
                 char label[96];
@@ -80,8 +80,8 @@ namespace NS::Editor
             }
 
             // 直前の HasInspectableSelection が同じ id を引けているので非 null
-            NS::Object::GameObject* go = editor.SelectedObjectGameObject();
-            const std::vector<NS::Object::Component*> components = ReflectedComponents(*go);
+            NS::Obj::GameObject* go = editor.SelectedObjectGameObject();
+            const std::vector<NS::Obj::Component*> components = ReflectedComponents(*go);
 
             // 名前は直接ここで書き換えられる。選択が変わったら今の表示名を入れ直す
             const std::uint32_t selectedId = editor.SelectedObjectId();
@@ -224,10 +224,10 @@ namespace NS::Editor
 
                 if (open)
                 {
-                    NS::Object::Component* live = components[k];
+                    NS::Obj::Component* live = components[k];
                     if (live->GetReflection() != nullptr)
                     {
-                        const NS::Object::Component* baseline = m_defaults.Find(typeName);
+                        const NS::Obj::Component* baseline = m_defaults.Find(typeName);
                         const NS::Editor::ComponentEditResult r =
                             NS::Editor::DrawReflectedComponent(*live, refOptions, baseline);
                         componentEdit.activated |= r.activated;
@@ -250,7 +250,7 @@ namespace NS::Editor
             // 戻すは控えを取ってから live を書く。順を逆にすると変更後が控えになり履歴が空になる
             if (componentEdit.revertTarget != nullptr && componentEdit.revertField != nullptr)
             {
-                const NS::Object::Component* baseline = m_defaults.Find(componentEdit.revertTarget->ClassName());
+                const NS::Obj::Component* baseline = m_defaults.Find(componentEdit.revertTarget->ClassName());
                 if (baseline != nullptr)
                 {
                     editor.BeginComponentEdit();
@@ -288,7 +288,7 @@ namespace NS::Editor
                 ImGui::InputTextWithHint(
                     "##addComponentFilter", "検索", m_addComponentFilter, sizeof(m_addComponentFilter));
                 ImGui::Separator();
-                for (const std::string& name : NS::Object::RegisteredNames())
+                for (const std::string& name : NS::Obj::RegisteredNames())
                 {
                     // プレイヤーの印である入力 component は手で足させない
                     if (name == "PlayerInputComponent")

@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Object
+namespace NS::Obj
 {
     namespace
     {
@@ -68,10 +68,10 @@ namespace NS::Object
         return NS::Core::AABB{s.center, NS::Core::Vector3{s.radius, s.radius, s.radius}};
     }
 
-    JPH::BodyID SphereColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID SphereColliderComponent::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
-        return physics.SyncSphere(current, WorldSphere(), NS::Physics::ObjectLayers::Terrain);
+        return physics.SyncSphere(current, WorldSphere(), NS::Phys::ObjectLayers::Terrain);
     }
 
     NS_CLASS(SphereColliderComponent)
-} // namespace NS::Object
+} // namespace NS::Obj

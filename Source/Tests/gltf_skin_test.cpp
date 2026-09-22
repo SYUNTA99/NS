@@ -16,13 +16,13 @@
 
 namespace
 {
-    using NS::Graphics::Bone;
-    using NS::Graphics::detail::ConjugateZMatrix;
-    using NS::Graphics::detail::MirrorQuaternionZ;
-    using NS::Graphics::detail::MirrorZ;
-    using NS::Graphics::detail::NormalizeJointWeights;
-    using NS::Graphics::detail::ReadColumnMajorMatrix;
-    using NS::Graphics::detail::TopologicalSortBones;
+    using NS::Gfx::Bone;
+    using NS::Gfx::detail::ConjugateZMatrix;
+    using NS::Gfx::detail::MirrorQuaternionZ;
+    using NS::Gfx::detail::MirrorZ;
+    using NS::Gfx::detail::NormalizeJointWeights;
+    using NS::Gfx::detail::ReadColumnMajorMatrix;
+    using NS::Gfx::detail::TopologicalSortBones;
     using NS::Core::Matrix;
     using NS::Core::Quaternion;
     using NS::Core::Vector3;
@@ -238,7 +238,7 @@ TEST(GltfSkinHelperTest, TopologicalSortPutsParentsBeforeChildren)
 
 TEST(GltfSkinLoadTest, NonexistentPathIsInvalid)
 {
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh("ns_skin_does_not_exist_7c2.gltf");
+    const auto data = NS::Gfx::LoadGltfSkinnedMesh("ns_skin_does_not_exist_7c2.gltf");
     EXPECT_FALSE(data.IsValid());
     EXPECT_TRUE(data.vertices.empty());
 }
@@ -249,7 +249,7 @@ TEST(GltfSkinLoadTest, StaticMeshWithoutSkinIsInvalid)
     const NsTest::ScopedFixture bin{"ns_skinned_fixture.bin", MakeSkinnedBufferBin()};
     const NsTest::ScopedFixture gltf{"ns_skin_noskin.gltf", NoSkinGltf()};
 
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltf.Path());
+    const auto data = NS::Gfx::LoadGltfSkinnedMesh(gltf.Path());
     EXPECT_FALSE(data.IsValid());
     EXPECT_TRUE(data.vertices.empty());
 }
@@ -260,7 +260,7 @@ TEST(GltfSkinLoadTest, LoadsSkinnedTriangleWithLeftHandedConversion)
     const NsTest::ScopedFixture bin{"ns_skinned_fixture.bin", MakeSkinnedBufferBin()};
     const NsTest::ScopedFixture gltf{"ns_skin_happy.gltf", SkinnedGltf()};
 
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltf.Path());
+    const auto data = NS::Gfx::LoadGltfSkinnedMesh(gltf.Path());
     ASSERT_TRUE(data.IsValid());
     EXPECT_EQ(data.vertices.size(), 3u);
     ASSERT_EQ(data.indices.size(), 3u);
@@ -287,11 +287,11 @@ TEST(GltfSkinLoadTest, LoadsAnimationClip)
     const NsTest::ScopedFixture bin{"ns_skinned_anim_fixture.bin", MakeAnimatedSkinnedBufferBin()};
     const NsTest::ScopedFixture gltf{"ns_skin_anim.gltf", AnimatedSkinnedGltf()};
 
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltf.Path());
+    const auto data = NS::Gfx::LoadGltfSkinnedMesh(gltf.Path());
     ASSERT_TRUE(data.IsValid());
     ASSERT_EQ(data.animations.size(), 1u);
 
-    const NS::Graphics::AnimationClip& clip = data.animations[0];
+    const NS::Gfx::AnimationClip& clip = data.animations[0];
     EXPECT_EQ(clip.name, "spin");
     EXPECT_NEAR(clip.duration, 1.0f, k_Eps);
     ASSERT_EQ(clip.tracks.size(), 1u);
@@ -299,8 +299,8 @@ TEST(GltfSkinLoadTest, LoadsAnimationClip)
     ASSERT_EQ(clip.tracks[0].rotationValues.size(), 2u);
 
     // t=1 の末尾キー (90Z) で評価すると (1,0,0) が (0,1,0) へ回る
-    std::vector<NS::Graphics::BonePose> pose;
-    NS::Graphics::SampleClipPose(clip, data.skeleton, 1.0f, pose);
+    std::vector<NS::Gfx::BonePose> pose;
+    NS::Gfx::SampleClipPose(clip, data.skeleton, 1.0f, pose);
     ASSERT_EQ(pose.size(), 1u);
     const Vector3 r = Vector3::Transform(Vector3(1.0f, 0.0f, 0.0f), pose[0].rotation);
     EXPECT_NEAR(r.x, 0.0f, k_Eps);

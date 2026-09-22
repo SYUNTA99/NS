@@ -10,7 +10,7 @@ namespace NS::Game::Player
 
     //! @brief 自機の状態機械を持つ Component
     //! @details 状態の並びは BuildStates にコードで書き、先頭の立ちが初期状態になる
-    //! 依存: NS::Game::Entity::EntityStateManagerComponent, NS::Object::StateMachine, PlayerComponent
+    //! 依存: NS::Game::Entity::EntityStateManagerComponent, NS::Obj::StateMachine, PlayerComponent
     class PlayerStateManagerComponent : public NS::Game::Entity::EntityStateManagerComponent
     {
     public:
@@ -34,14 +34,14 @@ namespace NS::Game::Player
         NS_REFLECT_NONE(PlayerStateManagerComponent, NS::Game::Entity::EntityStateManagerComponent)
 
     private:
-        bool ChangeToState(NS::Object::StateId id) override;
+        bool ChangeToState(NS::Obj::StateId id) override;
 
-        [[nodiscard]] NS::Object::StateId CurrentStateId() const noexcept override;
+        [[nodiscard]] NS::Obj::StateId CurrentStateId() const noexcept override;
 
         //! 自機の 7 状態を並べて状態機械を組む。並べた型がそのまま移れる状態の全部になる
         void BuildStates(PlayerComponent& player);
 
-        NS::Object::StateMachine<PlayerComponent> m_machine;
+        NS::Obj::StateMachine<PlayerComponent> m_machine;
         PlayerComponent* m_player = nullptr; // 遷移に渡す所有者 (非所有)
     };
 } // namespace NS::Game::Player

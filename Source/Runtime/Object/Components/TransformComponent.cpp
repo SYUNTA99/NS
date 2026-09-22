@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-namespace NS::Object
+namespace NS::Obj
 {
     void TransformComponent::SetPosition(const NS::Core::Vector3& position) noexcept
     {
@@ -114,4 +114,4 @@ namespace NS::Object
     {
         WriteTransformVec3(object, k_ScaleFieldName, scale);
     }
-} // namespace NS::Object
+} // namespace NS::Obj

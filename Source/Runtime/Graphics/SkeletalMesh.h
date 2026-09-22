@@ -8,7 +8,7 @@
 #include <memory>
 #include <vector>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Buffer;
 
@@ -100,4 +100,4 @@ namespace NS::Graphics
         std::vector<BoneSphere> m_boneSpheres; // ボーンごとの影響球、Create 時に頂点から求める
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

@@ -14,10 +14,10 @@ namespace
     using NS::Core::OBB;
     using NS::Core::Sphere;
     using NS::Core::Vector3;
-    using NS::Physics::PhysicsScene;
-    using NS::Physics::Capsule;
-    using NS::Physics::Triangle;
-    namespace ObjectLayers = NS::Physics::ObjectLayers;
+    using NS::Phys::PhysicsScene;
+    using NS::Phys::Capsule;
+    using NS::Phys::Triangle;
+    namespace ObjectLayers = NS::Phys::ObjectLayers;
 
     OBB MakeAxisAlignedBox(const Vector3& center, float halfX, float halfY, float halfZ)
     {
@@ -161,7 +161,7 @@ TEST(JoltStep, DynamicBodyFalls)
 {
     PhysicsScene physics;
     const JPH::BodyID id =
-        physics.AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, NS::Physics::DynamicBodyDesc{});
+        physics.AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, NS::Phys::DynamicBodyDesc{});
     physics.OptimizeBroadPhase();
 
     Step(physics, 30);
@@ -184,7 +184,7 @@ TEST(JoltStep, StaticBodyOfTheSameShapeStaysPut)
 TEST(JoltStep, TerrainLayerDynamicBodyFalls)
 {
     PhysicsScene physics;
-    NS::Physics::DynamicBodyDesc desc;
+    NS::Phys::DynamicBodyDesc desc;
     desc.layer = ObjectLayers::Terrain;
     const JPH::BodyID id = physics.AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, desc);
     physics.OptimizeBroadPhase();
@@ -210,7 +210,7 @@ TEST(JoltStep, LinearVelocityCarriesTheBody)
 {
     PhysicsScene physics;
     const JPH::BodyID id =
-        physics.AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, NS::Physics::DynamicBodyDesc{});
+        physics.AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, NS::Phys::DynamicBodyDesc{});
     physics.OptimizeBroadPhase();
 
     physics.SetBodyVelocity(id, Vector3{5.0f, 0.0f, 0.0f});
@@ -315,8 +315,8 @@ TEST(JoltQuery, OverlapBoxReturnsNothingInEmptySpace)
 
 namespace
 {
-    using NS::Physics::BodyContact;
-    using NS::Physics::DynamicBodyDesc;
+    using NS::Phys::BodyContact;
+    using NS::Phys::DynamicBodyDesc;
 
     void AddWideFloor(PhysicsScene& physics)
     {

@@ -8,7 +8,7 @@
 
 #include <EffekseerRendererDX11.h>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     namespace
     {
@@ -284,4 +284,4 @@ namespace NS::Graphics
         m_manager->Draw(drawParameter);
         m_renderer->EndRendering();
     }
-} // namespace NS::Graphics
+} // namespace NS::Gfx

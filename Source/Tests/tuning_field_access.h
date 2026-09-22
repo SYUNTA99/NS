@@ -13,7 +13,7 @@ namespace NsTest
     //! @return 欄の値。欄が無い場合は非数
     template <class T> [[nodiscard]] inline float ReadTuningField(const T& comp, const char* label)
     {
-        const NS::Object::FieldDesc* field = NS::Object::FindField(comp.GetReflection(), label);
+        const NS::Obj::FieldDesc* field = NS::Obj::FindField(comp.GetReflection(), label);
         EXPECT_NE(field, nullptr) << label;
         if (field == nullptr)
         {
@@ -32,7 +32,7 @@ namespace NsTest
     //! @param[in] value 書き込む値
     template <class T> inline void WriteTuningField(T& comp, const char* label, float value)
     {
-        const NS::Object::FieldDesc* field = NS::Object::FindField(comp.GetReflection(), label);
+        const NS::Obj::FieldDesc* field = NS::Obj::FindField(comp.GetReflection(), label);
         ASSERT_NE(field, nullptr) << label;
         field->set(&comp, &value);
     }

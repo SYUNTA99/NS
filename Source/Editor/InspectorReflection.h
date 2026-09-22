@@ -13,11 +13,11 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class Component;
     class GameObject;
-} // namespace NS::Object
+} // namespace NS::Obj
 
 namespace NS::Editor
 {
@@ -39,11 +39,11 @@ namespace NS::Editor
 
         //! @brief typeName の既定インスタンスを返す
         //! @details 初回だけ作って以降は使い回す。未登録の型は nullptr
-        [[nodiscard]] const NS::Object::Component* Find(std::string_view typeName);
+        [[nodiscard]] const NS::Obj::Component* Find(std::string_view typeName);
 
     private:
-        std::unique_ptr<NS::Object::GameObject> m_holder;                     // 既定インスタンスを持つ GameObject
-        std::vector<std::pair<std::string, NS::Object::Component*>> m_byType; // 型名から引く索引
+        std::unique_ptr<NS::Obj::GameObject> m_holder;                     // 既定インスタンスを持つ GameObject
+        std::vector<std::pair<std::string, NS::Obj::Component*>> m_byType; // 型名から引く索引
     };
 
     //! @brief 1フレームのコンポーネント編集で起きた相互作用の集約
@@ -56,33 +56,33 @@ namespace NS::Editor
 
         // 既定へ戻す要求。ボタンが押されたフレームだけ対象と欄が入る
         // 値をこの場で書くと undo の控えを取る前に live が動くので、適用は呼び出し側へ預ける
-        NS::Object::Component* revertTarget = nullptr;
-        const NS::Object::FieldDesc* revertField = nullptr;
+        NS::Obj::Component* revertTarget = nullptr;
+        const NS::Obj::FieldDesc* revertField = nullptr;
 
         // 値が編集された対象と欄。編集が起きたフレームだけ入る
         // 凍結スナップショットへの写しが欄単位で要るので、changed の集約とは別に持つ
-        NS::Object::Component* changedTarget = nullptr;
-        const NS::Object::FieldDesc* changedField = nullptr;
+        NS::Obj::Component* changedTarget = nullptr;
+        const NS::Obj::FieldDesc* changedField = nullptr;
     };
 
     //! @brief リフレクション欄 1 つの値が既定と違うか
     //! @param[in] defaults 既定インスタンス。nullptr なら常に false
-    [[nodiscard]] bool FieldDiffersFromDefault(const NS::Object::Component& comp,
-                                               const NS::Object::Component* defaults,
-                                               const NS::Object::FieldDesc& field) noexcept;
+    [[nodiscard]] bool FieldDiffersFromDefault(const NS::Obj::Component& comp,
+                                               const NS::Obj::Component* defaults,
+                                               const NS::Obj::FieldDesc& field) noexcept;
 
     //! @brief リフレクション欄 1 つを既定値へ戻す
-    void RevertFieldToDefault(NS::Object::Component& comp,
-                              const NS::Object::Component& defaults,
-                              const NS::Object::FieldDesc& field) noexcept;
+    void RevertFieldToDefault(NS::Obj::Component& comp,
+                              const NS::Obj::Component& defaults,
+                              const NS::Obj::FieldDesc& field) noexcept;
 
     //! @brief コンポーネントのフィールドをImGuiウィジェットとして描画する
     //! @param[in,out] comp 編集対象のコンポーネント
     //! @param[in] refOptions 参照先候補のリスト。指定しない場合は数値入力となる
     //! @param[in] defaults 既定インスタンス。渡すと既定と違う欄に印と戻すボタンが付く
     //! @return 値の編集有無と、編集の開始・確定フレームを集約した結果
-    [[nodiscard]] ComponentEditResult DrawReflectedComponent(NS::Object::Component& comp,
+    [[nodiscard]] ComponentEditResult DrawReflectedComponent(NS::Obj::Component& comp,
                                                              std::span<const ObjectRefOption> refOptions = {},
-                                                             const NS::Object::Component* defaults = nullptr) noexcept;
+                                                             const NS::Obj::Component* defaults = nullptr) noexcept;
 
 } // namespace NS::Editor

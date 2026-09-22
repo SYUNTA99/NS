@@ -9,7 +9,7 @@
 #include <string_view>
 #include <vector>
 
-namespace SceneNs = NS::Object;
+namespace SceneNs = NS::Obj;
 namespace EditorNs = NS::Editor;
 
 namespace

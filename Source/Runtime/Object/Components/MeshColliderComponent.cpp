@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Object
+namespace NS::Obj
 {
     namespace
     {
@@ -43,17 +43,17 @@ namespace NS::Object
 
     MeshColliderComponent::MeshColliderComponent() noexcept {}
 
-    void MeshColliderComponent::SetCollision(const NS::Physics::MeshCollision* collision) noexcept
+    void MeshColliderComponent::SetCollision(const NS::Phys::MeshCollision* collision) noexcept
     {
         m_collision = collision;
     }
 
-    const NS::Physics::MeshCollision* MeshColliderComponent::Collision() const noexcept
+    const NS::Phys::MeshCollision* MeshColliderComponent::Collision() const noexcept
     {
         return m_collision;
     }
 
-    std::vector<NS::Physics::Triangle> MeshColliderComponent::WorldTriangles() const
+    std::vector<NS::Phys::Triangle> MeshColliderComponent::WorldTriangles() const
     {
         if (m_collision == nullptr)
         {
@@ -66,18 +66,18 @@ namespace NS::Object
         }
 
         const NS::Core::Matrix world = owner->Root().WorldMatrix();
-        std::vector<NS::Physics::Triangle> result;
+        std::vector<NS::Phys::Triangle> result;
         result.reserve(m_collision->triangles.size());
-        for (const NS::Physics::Triangle& tri : m_collision->triangles)
+        for (const NS::Phys::Triangle& tri : m_collision->triangles)
         {
-            result.push_back(NS::Physics::Triangle{NS::Core::Vector3::Transform(tri.v0, world),
+            result.push_back(NS::Phys::Triangle{NS::Core::Vector3::Transform(tri.v0, world),
                                                    NS::Core::Vector3::Transform(tri.v1, world),
                                                    NS::Core::Vector3::Transform(tri.v2, world)});
         }
         return result;
     }
 
-    JPH::BodyID MeshColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID MeshColliderComponent::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
         if (m_collision == nullptr)
         {
@@ -93,11 +93,11 @@ namespace NS::Object
         // 描画は 4x4 の行列で歪みまで出すので、形の共有をやめて世界座標の三角形から作り、描画と当たりを揃える
         if (HasShear(world, parts))
         {
-            return physics.SyncMesh(current, WorldTriangles(), NS::Physics::ObjectLayers::Terrain);
+            return physics.SyncMesh(current, WorldTriangles(), NS::Phys::ObjectLayers::Terrain);
         }
 
-        const NS::Physics::MeshCollision& shared = *m_collision;
-        return physics.SyncMeshShape(current, shared, parts.translation, parts.rotation, parts.scale, NS::Physics::ObjectLayers::Terrain);
+        const NS::Phys::MeshCollision& shared = *m_collision;
+        return physics.SyncMeshShape(current, shared, parts.translation, parts.rotation, parts.scale, NS::Phys::ObjectLayers::Terrain);
     }
 
     void MeshColliderComponent::ResolveAssets(AssetManager& assets)
@@ -115,7 +115,7 @@ namespace NS::Object
             return;
         }
 
-        const NS::Physics::MeshCollision* collision = assets.GetOrLoadMeshCollision(renderer->MeshRef());
+        const NS::Phys::MeshCollision* collision = assets.GetOrLoadMeshCollision(renderer->MeshRef());
         if (collision == nullptr)
         {
             collision = assets.GetOrLoadMeshCollision("cube");
@@ -126,4 +126,4 @@ namespace NS::Object
 
     // data からは当たり無しで作る
     NS_CLASS(MeshColliderComponent)
-} // namespace NS::Object
+} // namespace NS::Obj

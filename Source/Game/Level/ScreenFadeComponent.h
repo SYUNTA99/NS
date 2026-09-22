@@ -10,7 +10,7 @@ namespace NS::Game::Level
     //! @details 黒の全画面塗りはフェードのやり方の 1 つで、演出としてゲーム側に置く
     //! 暗転しきったら BeginIn まで全黒を保持する。自分の OnUpdate が fixed step ぶん進み、
     //! シーケンス側は全黒 (IsBlack) を見て次の手を打つ。描画は world 描画の後に scene が OnRenderOverlay で呼ぶ
-    class ScreenFadeComponent : public NS::Object::OverlayRendererComponent
+    class ScreenFadeComponent : public NS::Obj::OverlayRendererComponent
     {
     public:
         ScreenFadeComponent() noexcept;
@@ -40,10 +40,10 @@ namespace NS::Game::Level
         [[nodiscard]] float Alpha() const noexcept;
 
         //! 現在の不透明度で黒を全画面へ重ねる。全透明フレームは描かない
-        void OnRenderOverlay(const NS::Graphics::RenderContext& ctx) override;
+        void OnRenderOverlay(const NS::Gfx::RenderContext& ctx) override;
 
         // 状態は保存しない。型検索で引けるよう型名だけ登録する
-        NS_REFLECT_NONE(ScreenFadeComponent, NS::Object::OverlayRendererComponent)
+        NS_REFLECT_NONE(ScreenFadeComponent, NS::Obj::OverlayRendererComponent)
 
     private:
         // 演出の段階。None は透明、Hold は全黒の保持

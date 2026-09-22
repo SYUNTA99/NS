@@ -7,13 +7,13 @@
 
 #include <vector>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class StaticMesh;
     class Material;
-} // namespace NS::Graphics
+} // namespace NS::Gfx
 
-namespace NS::Object
+namespace NS::Obj
 {
     //! @brief owner の真下の地面に半透明の接地シャドウを描く IRenderable Component
     //! @details 所属 Scene の PhysicsScene へ下向きのレイを撃ち、命中点の高さに水平な半透明クアッドを置く
@@ -25,10 +25,10 @@ namespace NS::Object
     {
     public:
         //! 共有の quad mesh と shadow material を非所有で注入する。未設定なら Collect は何も積まない
-        void SetResources(NS::Graphics::StaticMesh* mesh, NS::Graphics::Material* material) noexcept;
+        void SetResources(NS::Gfx::StaticMesh* mesh, NS::Gfx::Material* material) noexcept;
 
         //! 真下の地面に影クアッドの DrawItem を積む。地面が無い / リソース未設定なら何も積まない
-        void Collect(const NS::Graphics::RenderContext& context, std::vector<NS::Graphics::DrawItem>& out) override;
+        void Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out) override;
         //! 半透明バケットに分類させる
         [[nodiscard]] RenderBucket Bucket() const noexcept override { return RenderBucket::Transparent; }
         //! 半透明ソート用の中心で owner world 位置を返す
@@ -57,12 +57,12 @@ namespace NS::Object
         NS_REFLECT_END()
 
     private:
-        NS::Graphics::StaticMesh* m_mesh = nullptr;   // 共有 quad mesh (非所有)
-        NS::Graphics::Material* m_material = nullptr; // 共有 shadow material (非所有)
+        NS::Gfx::StaticMesh* m_mesh = nullptr;   // 共有 quad mesh (非所有)
+        NS::Gfx::Material* m_material = nullptr; // 共有 shadow material (非所有)
 
         float m_baseDiameter = 1.2f;   // 接地時の影の直径
         float m_maxDrop = 12.0f;       // 影が消える最大落下距離
         float m_surfaceOffset = 0.02f; // 地面へめり込ませない浮かせ量
         float m_baseAlpha = 0.5f;      // 接地時の不透明度
     };
-} // namespace NS::Object
+} // namespace NS::Obj

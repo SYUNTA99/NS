@@ -7,7 +7,7 @@
 #include <Jolt/Math/Quat.h>
 #include <Jolt/Math/Vec3.h>
 
-namespace NS::Physics
+namespace NS::Phys
 {
     //! @brief NS::Core::Vector3 を JPH::Vec3 へ変換する
     //! @details 軸の入れ替えも符号反転もしない
@@ -36,4 +36,4 @@ namespace NS::Physics
     {
         return NS::Core::Quaternion{value.GetX(), value.GetY(), value.GetZ(), value.GetW()};
     }
-} // namespace NS::Physics
+} // namespace NS::Phys

@@ -5,7 +5,7 @@
 
 #include <algorithm>
 
-namespace NS::Object
+namespace NS::Obj
 {
 
     GameObject::GameObject() noexcept
@@ -128,4 +128,4 @@ namespace NS::Object
         }
     }
 
-} // namespace NS::Object
+} // namespace NS::Obj

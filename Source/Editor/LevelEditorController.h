@@ -15,7 +15,7 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class GameObject;
     class Transform;
@@ -26,7 +26,7 @@ namespace NS::Object
     class ThirdPersonFollowComponent;
     class Scene;
     struct SceneView;
-} // namespace NS::Object
+} // namespace NS::Obj
 
 namespace NS::UI
 {
@@ -40,7 +40,7 @@ namespace NS::UI
 class LevelEditorController : public NS::Core::NonCopyable
 {
 public:
-    explicit LevelEditorController(NS::Object::Scene* scene) noexcept;
+    explicit LevelEditorController(NS::Obj::Scene* scene) noexcept;
     ~LevelEditorController();
 
     //! scene の OnStart 完了後に呼ぶ。free-fly カメラ / EditorMode / ギズモを立ち上げ編集モードへ入る
@@ -93,11 +93,11 @@ public:
     void TickPlaySceneView(const NS::Editor::EditorCameraInput& input) noexcept;
 
     //! @brief Scene パネルに映す視点。プレイ中は自由視点を上書き、編集中は Brain 任せ (nullopt)
-    [[nodiscard]] std::optional<NS::Object::CameraPose> SceneViewPose() noexcept;
+    [[nodiscard]] std::optional<NS::Obj::CameraPose> SceneViewPose() noexcept;
     //! @brief Game パネルに映す視点。編集中はゲームカメラを上書き、プレイ中は Brain 任せ (nullopt)
-    [[nodiscard]] std::optional<NS::Object::CameraPose> GameViewPose() noexcept;
+    [[nodiscard]] std::optional<NS::Obj::CameraPose> GameViewPose() noexcept;
     //! @brief 可視な中央ビュー列を Scene へ流す。空なら現描画先へ 1 回だけ描く
-    void SetSceneViews(std::vector<NS::Object::SceneView> views);
+    void SetSceneViews(std::vector<NS::Obj::SceneView> views);
 
     [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
 
@@ -109,10 +109,10 @@ public:
     void TogglePlayPause() noexcept;
 
     //! シーンの環境値。実体側が唯一の出所で、UI はこれを直接編集する
-    [[nodiscard]] NS::Object::SceneEnvironment& Environment() noexcept;
+    [[nodiscard]] NS::Obj::SceneEnvironment& Environment() noexcept;
 
     //! 編集対象の live な ObjectList。一覧 UI と参照候補は範囲 for か ObjectAt でここを直接読む
-    [[nodiscard]] const NS::Object::ObjectList& Objects() const noexcept;
+    [[nodiscard]] const NS::Obj::ObjectList& Objects() const noexcept;
 
     //! 配置ツールのモード (Build / Object) を取得する
     [[nodiscard]] bool ObjectToolActive() const noexcept { return m_editorToolMode == EditorToolMode::Object; }
@@ -157,7 +157,7 @@ public:
 
     //! プレイ中の手編集を凍結スナップショットへも写す。編集復帰の組み直しを跨いで調整値が残る
     //! 編集モードでは live が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
-    void MirrorPlayEditToBaseline(const NS::Object::Component& comp, std::string_view fieldName);
+    void MirrorPlayEditToBaseline(const NS::Obj::Component& comp, std::string_view fieldName);
 
     //! 編集視点の中心あたりに新しい自由オブジェクトを 1 個追加して選択する。Undo 対応
     void AddObject();
@@ -171,12 +171,12 @@ public:
     void AddObjectWithMesh(std::string_view meshPath);
 
     //! 選択中の配置物に対応する runtime GameObject。未選択 / 未構築は nullptr
-    [[nodiscard]] NS::Object::GameObject* SelectedObjectGameObject() noexcept;
+    [[nodiscard]] NS::Obj::GameObject* SelectedObjectGameObject() noexcept;
     //! 選択中の配置物がプレイヤー実体か
     [[nodiscard]] bool SelectedIsPlayerObject() const noexcept;
 
     //! 選択中のオブジェクトを指す ObjectRef 参照を全オブジェクトから集める
-    [[nodiscard]] std::vector<NS::Object::ObjectRefLocation> ReferencesToSelected();
+    [[nodiscard]] std::vector<NS::Obj::ObjectRefLocation> ReferencesToSelected();
 
     //! @brief 配置物の表示名を差し替えて undo へ積む
     //! @param[in] id 対象の永続 object id。居なければ何もしない
@@ -226,7 +226,7 @@ private:
     void LeavePlayForEdit();
 
     //! 配置物を新しい永続 id で 1 体追加する唯一の経路。採番・履歴登録・選択をまとめて面倒を見る
-    void PushCreateObject(NS::Object::ObjectData object);
+    void PushCreateObject(NS::Obj::ObjectData object);
 
     void RenderCameraGizmos(const NS::Core::Matrix& viewProjection, NS::Core::Size2D viewport) noexcept;
     //! @brief 当たり形状を線で描く
@@ -246,15 +246,15 @@ private:
     //! 主対象がドラッグで動いた分を、控えた残りの選択へ同じだけ効かせる
     void ApplyDragToFollowers() noexcept;
 
-    [[nodiscard]] NS::Object::ThirdPersonFollowComponent* SelectedFollowCamera() noexcept;
+    [[nodiscard]] NS::Obj::ThirdPersonFollowComponent* SelectedFollowCamera() noexcept;
     void SyncFollowCameraPoses();
     void ApplyFollowCameraGizmoDrag();
     void CaptureSelectionFromGizmo() noexcept;
 
-    [[nodiscard]] NS::Object::CameraBrainComponent* Brain() const noexcept;
-    [[nodiscard]] NS::Object::CameraComponent* MainCamera() const noexcept;
+    [[nodiscard]] NS::Obj::CameraBrainComponent* Brain() const noexcept;
+    [[nodiscard]] NS::Obj::CameraComponent* MainCamera() const noexcept;
 
-    NS::Object::Scene* m_scene = nullptr;        // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
+    NS::Obj::Scene* m_scene = nullptr;        // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
     NS::Editor::ObjectSnapshotApplier m_applier; // 編集を live へ写す口。undo コマンドが叩く適用先
 
     // 前面のパネルの表示矩形。未設定時は CurrentViewRect が全画面の予備矩形を返す
@@ -268,7 +268,7 @@ private:
     NS::Editor::EditorCamera m_editorCamera; // 編集用自由視点カメラ
 
     // 編集復帰時にプレイ視点から自由視点へ繋ぐブレンド。TickEdit が進める
-    NS::Object::CameraPose m_editBlendFrom{};
+    NS::Obj::CameraPose m_editBlendFrom{};
     float m_editBlendElapsed = 0.0f;
     bool m_editBlending = false;
 
@@ -284,12 +284,12 @@ private:
 
     NS::Editor::GizmoEditor m_gizmo{}; // 変形ギズモ管理
 
-    std::vector<NS::Object::GameObject*> m_selectablePtrs; // 選択可能なオブジェクト
+    std::vector<NS::Obj::GameObject*> m_selectablePtrs; // 選択可能なオブジェクト
     std::vector<std::uint8_t> m_selectablePickable;        // 1 は MeshRendererComponent を持つ配置物。ギズモが先に選ぶ
 
-    std::uint32_t m_selectedObjectId = NS::Object::k_NoObjectId; // 主対象の永続 id。選択の一次情報
+    std::uint32_t m_selectedObjectId = NS::Obj::k_NoObjectId; // 主対象の永続 id。選択の一次情報
     std::vector<std::uint32_t> m_selectionIds;                   // 選択中の全配置物。主対象も含む
-    NS::Object::Transform* m_lastGizmoSelected = nullptr;        // 前フレームの選択対象
+    NS::Obj::Transform* m_lastGizmoSelected = nullptr;        // 前フレームの選択対象
 
     //! ドラッグ開始時点の姿。主対象の動きを同じだけ他へ流すための控え
     struct DragFollower
@@ -306,9 +306,9 @@ private:
     bool m_transformEditing = false; // 変形編集の開始状態
 
     // 編集開始時の状態スナップショット。選択している分だけ並ぶ
-    std::vector<std::pair<std::uint32_t, NS::Object::ObjectData>> m_editBaselines;
+    std::vector<std::pair<std::uint32_t, NS::Obj::ObjectData>> m_editBaselines;
 
     bool m_componentEditing = false;                                    // コンポーネント編集の開始状態
-    std::uint32_t m_componentEditBaselineId = NS::Object::k_NoObjectId; // 編集開始時の対象 id
-    NS::Object::ObjectData m_componentEditBaseline{};                   // 編集開始時の状態スナップショット
+    std::uint32_t m_componentEditBaselineId = NS::Obj::k_NoObjectId; // 編集開始時の対象 id
+    NS::Obj::ObjectData m_componentEditBaseline{};                   // 編集開始時の状態スナップショット
 };

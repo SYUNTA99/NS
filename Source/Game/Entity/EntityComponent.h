@@ -7,12 +7,12 @@
 
 #include <memory>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class CapsuleColliderComponent;
 }
 
-namespace NS::Physics
+namespace NS::Phys
 {
     class PhysicsScene;
 }
@@ -27,9 +27,9 @@ namespace NS::Game::Entity
     //! 衝突の PhysicsScene は使う時に持ち主の Scene から引く。
     //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。
     //! dt は NS::Platform::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
-    //! 依存: NS::Core, NS::Platform::FrameTimer, NS::Physics::JoltCharacter / PhysicsScene, NS::Object::Scene /
+    //! 依存: NS::Core, NS::Platform::FrameTimer, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Scene /
     //! CapsuleColliderComponent
-    class EntityComponent : public NS::Object::Component
+    class EntityComponent : public NS::Obj::Component
     {
     public:
         EntityComponent() noexcept;
@@ -57,7 +57,7 @@ namespace NS::Game::Entity
         [[nodiscard]] float CapsuleHalfHeight() const noexcept;
 
         //! 持ち主の Scene の衝突の PhysicsScene。Scene に居なければ nullptr
-        [[nodiscard]] NS::Physics::PhysicsScene* ScenePhysics() const noexcept;
+        [[nodiscard]] NS::Phys::PhysicsScene* ScenePhysics() const noexcept;
 
         //! @brief 水平の速度を direction へ加速し、向きからずれた成分を turningDrag で減らす。縦は触らない
         //! @details 向きの成分に acceleration × dt を足すのは、水平の速さが topSpeed
@@ -94,7 +94,7 @@ namespace NS::Game::Entity
         void OnUpdate() override;
 
         // 抽象基底なので TypeRegistry には登録せず、リフレクションの鎖だけ通す
-        NS_REFLECT_NONE(EntityComponent, NS::Object::Component)
+        NS_REFLECT_NONE(EntityComponent, NS::Obj::Component)
 
     protected:
         //! 1 フレームの中身。派生が状態機械を回すか能力を直に並べる
@@ -109,8 +109,8 @@ namespace NS::Game::Entity
         NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f};
         bool m_isGrounded = false;
         bool m_wasGrounded = false; // 直前の Move より前の接地
-        NS::Object::CapsuleColliderComponent* m_capsuleCollider = nullptr;
-        std::unique_ptr<NS::Physics::JoltCharacter> m_character;
+        NS::Obj::CapsuleColliderComponent* m_capsuleCollider = nullptr;
+        std::unique_ptr<NS::Phys::JoltCharacter> m_character;
         EntityEvents m_events;
     };
 } // namespace NS::Game::Entity

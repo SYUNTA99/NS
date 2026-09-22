@@ -7,14 +7,14 @@
 
 #include <Jolt/Physics/Body/BodyID.h>
 
-namespace NS::Physics
+namespace NS::Phys
 {
     class PhysicsScene;
 }
 
 namespace NS::Game::Level
 {
-    class LaunchedBodyComponent : public NS::Object::Component
+    class LaunchedBodyComponent : public NS::Obj::Component
     {
     public:
         // 物理の更新が済んでから body を読むので LateUpdate 帯で名乗る
@@ -41,7 +41,7 @@ namespace NS::Game::Level
 
         void OnEndPlay() override;
 
-        NS_REFLECT_BEGIN(LaunchedBodyComponent, NS::Object::Component)
+        NS_REFLECT_BEGIN(LaunchedBodyComponent, NS::Obj::Component)
         NS_REFLECT_FIELD(m_restitution, "跳ね返り")
         NS_REFLECT_FIELD(m_friction, "摩擦")
         NS_REFLECT_FIELD(m_spinPerSpeed, "回転の強さ")
@@ -59,7 +59,7 @@ namespace NS::Game::Level
 
         [[nodiscard]] NS::Core::Vector3 TumbleFrom(const NS::Core::Vector3& velocity) const noexcept;
 
-        [[nodiscard]] JPH::BodyID CreateFlyingBody(NS::Physics::PhysicsScene& physics) const;
+        [[nodiscard]] JPH::BodyID CreateFlyingBody(NS::Phys::PhysicsScene& physics) const;
 
         void RemoveFlyingBody() noexcept;
 
@@ -69,7 +69,7 @@ namespace NS::Game::Level
 
         // 持ち主の Scene の PhysicsScene。 Scene に居なければ null
         // 控えを持つと Scene と正が 2 つになるので、 使う時に毎回引く
-        [[nodiscard]] NS::Physics::PhysicsScene* ScenePhysics() const noexcept;
+        [[nodiscard]] NS::Phys::PhysicsScene* ScenePhysics() const noexcept;
 
         float m_restitution = 0.35f;
         float m_friction = 0.6f;

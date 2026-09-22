@@ -8,12 +8,12 @@
 
 namespace NS::Game::Level
 {
-    using NS::Object::ObjectData;
-    using NS::Object::SceneData;
+    using NS::Obj::ObjectData;
+    using NS::Obj::SceneData;
 
     bool IsFollowCameraObject(const ObjectData& object) noexcept
     {
-        return NS::Object::FindComponentEntry(object, "ThirdPersonFollowComponent") != nullptr;
+        return NS::Obj::FindComponentEntry(object, "ThirdPersonFollowComponent") != nullptr;
     }
 
     std::size_t FindFollowCameraObjectIndex(const SceneData& scene) noexcept
@@ -25,31 +25,31 @@ namespace NS::Game::Level
                 return i;
             }
         }
-        return NS::Object::k_NoObjectIndex;
+        return NS::Obj::k_NoObjectIndex;
     }
 
     ObjectData MakeFollowCameraObject(std::uint32_t targetObjectId)
     {
         // 値はコード既定を使い、データが持つのは誰を追うかだけ
-        nlohmann::json follow = NS::Object::MakeComponentEntry("ThirdPersonFollowComponent");
-        NS::Object::SetField(follow, "追従対象", NS::Object::ObjectRef{targetObjectId});
+        nlohmann::json follow = NS::Obj::MakeComponentEntry("ThirdPersonFollowComponent");
+        NS::Obj::SetField(follow, "追従対象", NS::Obj::ObjectRef{targetObjectId});
 
         ObjectData object{};
         object.components = nlohmann::json::array({std::move(follow)});
         // 姿勢は実行時に追従で決まるが、データ側にも transform を 1 つ持たせる
-        NS::Object::EnsureTransformComponent(object);
+        NS::Obj::EnsureTransformComponent(object);
         return object;
     }
 
     bool EnsureFollowCameraObject(SceneData& scene, std::uint32_t targetObjectId)
     {
-        if (FindFollowCameraObjectIndex(scene) != NS::Object::k_NoObjectIndex)
+        if (FindFollowCameraObjectIndex(scene) != NS::Obj::k_NoObjectIndex)
         {
             return false;
         }
 
         scene.objects.push_back(MakeFollowCameraObject(targetObjectId));
-        NS::Object::EnsureUniqueObjectIds(scene);
+        NS::Obj::EnsureUniqueObjectIds(scene);
         return true;
     }
 } // namespace NS::Game::Level

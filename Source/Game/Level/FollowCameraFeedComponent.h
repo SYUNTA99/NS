@@ -10,11 +10,11 @@ namespace NS::Game::Entity
 namespace NS::Game::Level
 {
     //! @brief 持ち主の接地と速度を追従カメラへ渡す Component
-    //! @details ThirdPersonFollowComponent は NS::Object にあり、NS::Game の型を名指しできない
+    //! @details ThirdPersonFollowComponent は NS::Obj にあり、NS::Game の型を名指しできない
     //! 値だけを運ぶことで include の向きを保つ
     //! 帯は LateUpdate + 40 で、やり直しの後・カメラの追従の前
-    //! 依存: NS::Game::Entity::EntityComponent, NS::Object::ThirdPersonFollowComponent
-    class FollowCameraFeedComponent : public NS::Object::Component
+    //! 依存: NS::Game::Entity::EntityComponent, NS::Obj::ThirdPersonFollowComponent
+    class FollowCameraFeedComponent : public NS::Obj::Component
     {
     public:
         FollowCameraFeedComponent() noexcept;
@@ -25,7 +25,7 @@ namespace NS::Game::Level
         void OnUpdate() override;
 
         // 保存する調整値は無い。リフレクションの鎖と型名だけ通す
-        NS_REFLECT_NONE(FollowCameraFeedComponent, NS::Object::Component)
+        NS_REFLECT_NONE(FollowCameraFeedComponent, NS::Obj::Component)
 
     private:
         NS::Game::Entity::EntityComponent* m_entity = nullptr; // 持ち主の移動 (非所有)

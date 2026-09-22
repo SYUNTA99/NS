@@ -10,7 +10,7 @@ namespace
     using NS::Core::AABB;
     using NS::Core::Color;
     using NS::Core::Vector3;
-    namespace DD = NS::Graphics::DebugDraw;
+    namespace DD = NS::Gfx::DebugDraw;
 
     void Reset() noexcept
     {

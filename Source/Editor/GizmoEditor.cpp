@@ -231,7 +231,7 @@ namespace NS::Editor
             return std::sqrt(dx * dx + dy * dy);
         }
 
-        void ApplyState(NS::Object::Transform& target, const TransformState& state) noexcept
+        void ApplyState(NS::Obj::Transform& target, const TransformState& state) noexcept
         {
             target.SetPosition(state.position);
             target.SetRotation(state.rotation);
@@ -363,7 +363,7 @@ namespace NS::Editor
         }
     } // namespace
 
-    void GizmoEditor::SetSelectableObjects(std::span<NS::Object::GameObject* const> objects,
+    void GizmoEditor::SetSelectableObjects(std::span<NS::Obj::GameObject* const> objects,
                                            std::span<const std::uint8_t> pickable) noexcept
     {
         m_objects = objects;
@@ -483,7 +483,7 @@ namespace NS::Editor
         localBounds.reserve(m_objects.size());
         // 箱は Root のローカル空間のまま。WorldMatrix が拡縮を含むので、箱にも掛けると拡大した配置物の箱が
         // 拡縮の 2 乗に膨らみ、近くのクリックを先に取る
-        for (const NS::Object::GameObject* obj : m_objects)
+        for (const NS::Obj::GameObject* obj : m_objects)
         {
             worldMatrices.push_back(obj->Root().WorldMatrix());
             localBounds.push_back(PickLocalBounds(*obj));

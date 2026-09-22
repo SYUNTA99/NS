@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class MeshRendererComponent;
 
@@ -29,9 +29,9 @@ namespace NS::Object
         ~SkeletalAnimationComponent();
 
         //! 更新先の SkeletalMesh を差し替える。非所有で null の間 ApplyPose は何もしない
-        void SetMesh(NS::Graphics::SkeletalMesh* mesh) noexcept;
+        void SetMesh(NS::Gfx::SkeletalMesh* mesh) noexcept;
         //! ボーンパレット計算用の骨格を差し替える。非所有で呼出側が寿命を保証する。null の間 ApplyPose は何もしない
-        void SetSkeleton(const NS::Graphics::Skeleton* skeleton) noexcept;
+        void SetSkeleton(const NS::Gfx::Skeleton* skeleton) noexcept;
 
         //! この Component が表す skinned モデルの参照。ContentRoot 配下の glTF 相対パス
         [[nodiscard]] const std::string& ModelRef() const noexcept { return m_modelRef; }
@@ -61,7 +61,7 @@ namespace NS::Object
 
         //! クリップを後から追加する。既存の選択・再生位置は維持
         //! 各要素のアドレスを控えるだけなので、格納元の寿命は呼出側が保証する。右辺値の vector を渡すと参照が宙に浮く
-        void AddClips(std::span<const NS::Graphics::AnimationClip> clips);
+        void AddClips(std::span<const NS::Gfx::AnimationClip> clips);
 
         [[nodiscard]] std::size_t ClipCount() const noexcept;
         [[nodiscard]] std::size_t CurrentClip() const noexcept;
@@ -88,24 +88,24 @@ namespace NS::Object
     private:
         void ApplyPose(float time);
 
-        NS::Graphics::SkeletalMesh* m_mesh = nullptr; // 更新先の SkeletalMesh (非所有)
+        NS::Gfx::SkeletalMesh* m_mesh = nullptr; // 更新先の SkeletalMesh (非所有)
         std::string m_modelRef{}; // 保存・編集される参照文字列。ResolveAssets が mesh/skeleton/clips へ実体を当てる
         std::string m_clipsRef{}; // 追加アニメーションの参照一覧。セミコロン区切りで ResolveAssets が結合する
-        const NS::Graphics::Skeleton* m_skeleton = nullptr;      // ボーンパレット計算用の骨格 (非所有)
-        std::vector<const NS::Graphics::AnimationClip*> m_clips; // 再生できるクリップ一覧 (非所有)
+        const NS::Gfx::Skeleton* m_skeleton = nullptr;      // ボーンパレット計算用の骨格 (非所有)
+        std::vector<const NS::Gfx::AnimationClip*> m_clips; // 再生できるクリップ一覧 (非所有)
         std::size_t m_current = 0;                               // 選択中クリップの添字
         float m_time = 0.0f;                                     // 現在の再生時刻
         float m_speed = 1.0f;                                    // 再生速度
         bool m_playing = true;                                   // 再生中か
         bool m_looping = true;                                   // 末尾でループするか
-        std::vector<NS::Graphics::BonePose> m_poseScratch;       // サンプリング結果の一時ポーズ
+        std::vector<NS::Gfx::BonePose> m_poseScratch;       // サンプリング結果の一時ポーズ
         std::vector<NS::Core::Matrix> m_paletteScratch;          // ボーンパレットの一時バッファ
 
         // ボーンパレットはオブジェクト単位の状態なので mesh でなく本 component が所有する
-        std::unique_ptr<NS::Graphics::Buffer> m_bonePaletteCB; // VS b1 用の定数バッファ
-        NS::Graphics::BonePaletteCB m_palette;                 // CPU 側パレット、描画側が毎描画 GPU へ上げる
+        std::unique_ptr<NS::Gfx::Buffer> m_bonePaletteCB; // VS b1 用の定数バッファ
+        NS::Gfx::BonePaletteCB m_palette;                 // CPU 側パレット、描画側が毎描画 GPU へ上げる
 
         MeshRendererComponent* m_renderer = nullptr; // 同じ object の描画 component。パレットと境界の差し先 (非所有)
     };
 
-} // namespace NS::Object
+} // namespace NS::Obj

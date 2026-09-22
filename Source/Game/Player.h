@@ -3,16 +3,16 @@
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/SceneData.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
     class ObjectList;
-} // namespace NS::Object
+} // namespace NS::Obj
 
 //! @brief プレイヤーキャラクタ。Mesh / Movement / Input / Health / Shadow の既定構成をコードで組む
 //! @details 値と追加の component はファクトリがプレイヤーの ObjectData から写す
 //! 移動やつかみ等の能力 API はここに置き、実装は各 Component が持つ
 //! hazard / KillZone 等のルール配置物は FindPlayer で得た Player* へ能力を呼ぶ。プレイヤーはルールを知らない
-class Player : public NS::Object::GameObject
+class Player : public NS::Obj::GameObject
 {
 public:
     //! 新規レベルでプレイヤーを置く capsule 中心の高さ。床 block 上面 0.5 + capsule 半高 0.9 + 1cm
@@ -46,23 +46,23 @@ public:
 //! live の配置物からプレイヤーを引く。無ければ nullptr
 //! 型名の照合で見つける。能力は Player の公開関数を呼び、細部が要る側だけ FindComponent で引く
 //! @param[in,out] objects 探す先の配置物。返した Player* から中身が書き換わる
-[[nodiscard]] Player* FindPlayer(NS::Object::ObjectList& objects) noexcept;
+[[nodiscard]] Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept;
 
 //! プレイヤーの配置物か。live の FindPlayer と同じく型名で照合する
-[[nodiscard]] bool IsPlayerObject(const NS::Object::ObjectData& object) noexcept;
+[[nodiscard]] bool IsPlayerObject(const NS::Obj::ObjectData& object) noexcept;
 
 //! シーンデータからプレイヤーを探す。最初の 1 件の添字、無ければ k_NoObjectIndex
 //! 複数居ても先頭を正とする。2 体以上の警告は EnsurePlayerObject を通した時だけ出る
-[[nodiscard]] std::size_t FindPlayerObjectIndex(const NS::Object::SceneData& level) noexcept;
+[[nodiscard]] std::size_t FindPlayerObjectIndex(const NS::Obj::SceneData& level) noexcept;
 
 //! 指定の位置と向きでプレイヤーの ObjectData を作る。components は型名だけ持ち、値はコード既定を使う
 //! scale は capsule 当たり 0.4/0.9/0.4 に cube mesh の見た目を合わせる値
-[[nodiscard]] NS::Object::ObjectData MakePlayerObject(const NS::Core::Vector3& position,
+[[nodiscard]] NS::Obj::ObjectData MakePlayerObject(const NS::Core::Vector3& position,
                                                       const NS::Core::Quaternion& rotation);
 
 //! プレイヤーの永続 id。居なければ k_NoObjectId。追従カメラの追従先を結ぶのに使う
-[[nodiscard]] std::uint32_t PlayerObjectId(const NS::Object::SceneData& level) noexcept;
+[[nodiscard]] std::uint32_t PlayerObjectId(const NS::Obj::SceneData& level) noexcept;
 
 //! プレイヤーが 1 体も居なければ既定構成で足し、永続 id まで振る。2 体以上なら警告して先頭を正とする
 //! @retresult 足したなら true
-[[nodiscard]] bool EnsurePlayerObject(NS::Object::SceneData& level);
+[[nodiscard]] bool EnsurePlayerObject(NS::Obj::SceneData& level);

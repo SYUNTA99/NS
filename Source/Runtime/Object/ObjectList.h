@@ -11,12 +11,12 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Physics
+namespace NS::Phys
 {
     class PhysicsScene;
-} // namespace NS::Physics
+} // namespace NS::Phys
 
-namespace NS::Object
+namespace NS::Obj
 {
     class Scene;
     struct ObjectData;
@@ -33,7 +33,7 @@ namespace NS::Object
     //! 特定の 1 体は永続 id の解決で引く
     //! const の参照で受けても中身は守れない。ObjectAt と範囲 for と ForEachComponent が渡すのは
     //! 非 const の GameObject* と Component* で、呼び出し側はそこから書き換えられる
-    //! 依存: NS::Object::GameObject / ObjectData, NS::Physics::PhysicsScene
+    //! 依存: NS::Obj::GameObject / ObjectData, NS::Phys::PhysicsScene
     class ObjectList : public NS::Core::NonCopyable
     {
     public:
@@ -78,7 +78,7 @@ namespace NS::Object
 
         //! 稼働中の collider を PhysicsScene へ body として入れ、broadphase を張り直す
         //! 稼働していない collider は body を外す。既存 body は同じ id のまま shape と姿勢を更新する
-        void SyncPhysics(NS::Physics::PhysicsScene& physics);
+        void SyncPhysics(NS::Phys::PhysicsScene& physics);
 
         //! priority が [firstPriority, lastPriority) の Component を昇順で回す。同じ priority の中は配置物の並び順
         //! 帯の一部だけ回したい呼び出し側が使う。一時オブジェクトも同じ帯に乗る
@@ -154,4 +154,4 @@ namespace NS::Object
     //! 削除前に何が参照しているかを調べる関数。k_NoObjectId 相当の 0 は未設定の印なので空を返す
     [[nodiscard]] std::vector<ObjectRefLocation> FindReferencesTo(const ObjectList& objects, std::uint32_t targetId);
 
-} // namespace NS::Object
+} // namespace NS::Obj

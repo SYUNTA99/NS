@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/Math.h"
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
 
     //! @brief カメラの初期構築用パラメータ
@@ -77,4 +77,4 @@ namespace NS::Graphics
         mutable bool m_projDirty;              //!< 視野角・アスペクト・クリップ距離が変わったら立つ
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

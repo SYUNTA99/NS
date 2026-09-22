@@ -8,9 +8,9 @@
 
 namespace
 {
-    using NS::Graphics::Renderer;
-    using NS::Graphics::RendererDesc;
-    using NS::Graphics::Shader;
+    using NS::Gfx::Renderer;
+    using NS::Gfx::RendererDesc;
+    using NS::Gfx::Shader;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 

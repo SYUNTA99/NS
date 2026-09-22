@@ -9,7 +9,7 @@
 #include <cassert>
 #include <memory>
 
-namespace NS::Object
+namespace NS::Obj
 {
     TypeRegistry& TypeRegistry::Get() noexcept
     {
@@ -108,4 +108,4 @@ namespace NS::Object
         }();
         return names;
     }
-} // namespace NS::Object
+} // namespace NS::Obj

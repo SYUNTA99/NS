@@ -24,11 +24,11 @@ namespace
     using NS::Game::Level::FollowCameraFeedComponent;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerInputRelayComponent;
-    using NS::Object::GameObject;
-    using NS::Object::ObjectIdAccess;
-    using NS::Object::ObjectRef;
-    using NS::Object::Scene;
-    using NS::Object::ThirdPersonFollowComponent;
+    using NS::Obj::GameObject;
+    using NS::Obj::ObjectIdAccess;
+    using NS::Obj::ObjectRef;
+    using NS::Obj::Scene;
+    using NS::Obj::ThirdPersonFollowComponent;
     using NS::Platform::Key;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
@@ -43,15 +43,15 @@ namespace
 
     void BuildRelayRig(GameObject& owner)
     {
-        owner.AddComponent<NS::Object::PlayerInputComponent>();
+        owner.AddComponent<NS::Obj::PlayerInputComponent>();
         owner.AddComponent<PlayerInputRelayComponent>();
         owner.AddComponent<PlayerComponent>();
         owner.OnStart();
     }
 
-    NS::Object::PlayerInputComponent& Input(GameObject& owner)
+    NS::Obj::PlayerInputComponent& Input(GameObject& owner)
     {
-        return *owner.FindComponent<NS::Object::PlayerInputComponent>();
+        return *owner.FindComponent<NS::Obj::PlayerInputComponent>();
     }
 
     PlayerInputRelayComponent& Relay(GameObject& owner)
@@ -70,9 +70,9 @@ namespace
     }
 
     //! 追従先はリフレクション経由でしか書けない。データからの構築と同じ set を通す
-    void SetTargetRef(NS::Object::Component& comp, std::uint32_t id)
+    void SetTargetRef(NS::Obj::Component& comp, std::uint32_t id)
     {
-        const NS::Object::ReflectionInfo* info = comp.GetReflection();
+        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
         ASSERT_NE(info, nullptr);
         for (std::size_t i = 0; i < info->fieldCount; ++i)
         {
@@ -245,7 +245,7 @@ TEST_F(PlayerRelayTest, InactiveInputRelaysNothing)
 TEST_F(PlayerRelayTest, MissingSideIsHarmless)
 {
     GameObject withoutPlayer;
-    withoutPlayer.AddComponent<NS::Object::PlayerInputComponent>();
+    withoutPlayer.AddComponent<NS::Obj::PlayerInputComponent>();
     withoutPlayer.AddComponent<PlayerInputRelayComponent>();
     withoutPlayer.OnStart();
     Relay(withoutPlayer).OnUpdate();

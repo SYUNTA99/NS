@@ -4,7 +4,7 @@
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Transform.h"
 
-namespace NS::Object
+namespace NS::Obj
 {
 
     Component::Component(int priority) noexcept : m_priority(priority) {}
@@ -55,4 +55,4 @@ namespace NS::Object
         return m_owner->Root();
     }
 
-} // namespace NS::Object
+} // namespace NS::Obj

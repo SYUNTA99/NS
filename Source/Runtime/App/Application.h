@@ -20,7 +20,7 @@ namespace NS::Platform
     class Input;
 }
 
-namespace NS::Object
+namespace NS::Obj
 {
     class AssetManager;
 }
@@ -32,7 +32,7 @@ namespace NS::App
     struct ApplicationDesc
     {
         NS::Platform::WindowDesc window{};
-        NS::Graphics::RendererDesc renderer{};
+        NS::Gfx::RendererDesc renderer{};
         float fixedDelta = NS::Platform::FrameTimer::k_DefaultFixedDelta;
     };
 
@@ -62,15 +62,15 @@ namespace NS::App
         [[nodiscard]] NS::Platform::Window& Window() noexcept;
         [[nodiscard]] const NS::Platform::Window& Window() const noexcept;
         //! 起動時に作ったレンダラー。破棄の時期はウィンドウと同じ
-        [[nodiscard]] NS::Graphics::Renderer& Renderer() noexcept;
-        [[nodiscard]] const NS::Graphics::Renderer& Renderer() const noexcept;
+        [[nodiscard]] NS::Gfx::Renderer& Renderer() noexcept;
+        [[nodiscard]] const NS::Gfx::Renderer& Renderer() const noexcept;
         //! プロセス全体で共有される入力。Application は所有しない
         [[nodiscard]] NS::Platform::Input& Input() noexcept;
         [[nodiscard]] const NS::Platform::Input& Input() const noexcept;
 
         //! アプリの寿命に紐づくアセットキャッシュ
-        [[nodiscard]] NS::Object::AssetManager& Assets() noexcept;
-        [[nodiscard]] const NS::Object::AssetManager& Assets() const noexcept;
+        [[nodiscard]] NS::Obj::AssetManager& Assets() noexcept;
+        [[nodiscard]] const NS::Obj::AssetManager& Assets() const noexcept;
 
         //! 未構築時は nullptr を返す
         [[nodiscard]] static Application* Get() noexcept;
@@ -91,9 +91,9 @@ namespace NS::App
         [[nodiscard]] bool WantExit() noexcept;
 
         std::unique_ptr<NS::Platform::Window> m_window;
-        std::unique_ptr<NS::Graphics::Renderer> m_renderer;
+        std::unique_ptr<NS::Gfx::Renderer> m_renderer;
         // 下から順番に破棄されるから、アセットを Renderer より先に解放させるためにここに書く
-        std::unique_ptr<NS::Object::AssetManager> m_assets;
+        std::unique_ptr<NS::Obj::AssetManager> m_assets;
         Layers m_layers;
         bool m_valid = false;
         bool m_quitRequested = false;

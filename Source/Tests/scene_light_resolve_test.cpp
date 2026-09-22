@@ -8,9 +8,9 @@
 
 namespace
 {
-    using NS::Object::DirectionalLightComponent;
-    using NS::Object::GameObject;
-    using NS::Object::Scene;
+    using NS::Obj::DirectionalLightComponent;
+    using NS::Obj::GameObject;
+    using NS::Obj::Scene;
 
     constexpr float k_Epsilon = 1e-5f;
 
@@ -18,7 +18,7 @@ namespace
     class ResolveProbeScene : public Scene
     {
     public:
-        NS::Graphics::RenderSettings CallResolve(const NS::Graphics::RenderSettings& defaults)
+        NS::Gfx::RenderSettings CallResolve(const NS::Gfx::RenderSettings& defaults)
         {
             return ResolveSceneSettings(defaults);
         }
@@ -27,7 +27,7 @@ namespace
     //! リフレクションフィールド越しに平行光の値を書く。照明はデータ駆動で、公開の設定関数を持たない
     void SetLightField(DirectionalLightComponent& light, const char* name, const NS::Core::Vector3& value)
     {
-        const NS::Object::FieldDesc* field = NS::Object::FindField(DirectionalLightComponent::StaticReflection(), name);
+        const NS::Obj::FieldDesc* field = NS::Obj::FindField(DirectionalLightComponent::StaticReflection(), name);
         ASSERT_NE(field, nullptr) << name;
         field->set(&light, &value);
     }
@@ -68,9 +68,9 @@ TEST_F(SceneLightResolveTest, NoLightKeepsProjectDefaults)
     ResolveProbeScene scene;
 
     // 平行光が無ければ project 既定値がそのまま残る
-    NS::Graphics::RenderSettings defaults{};
+    NS::Gfx::RenderSettings defaults{};
     defaults.lightColor = NS::Core::Vector3{0.5f, 0.6f, 0.7f};
-    const NS::Graphics::RenderSettings resolved = scene.CallResolve(defaults);
+    const NS::Gfx::RenderSettings resolved = scene.CallResolve(defaults);
 
     EXPECT_NEAR(resolved.lightColor.x, 0.5f, k_Epsilon);
     EXPECT_NEAR(resolved.lightDir.x, defaults.lightDir.x, k_Epsilon);
@@ -88,14 +88,14 @@ TEST_F(SceneLightResolveTest, PlacedLightOverridesResolve)
     SetLightField(*light, "色", NS::Core::Vector3{0.9f, 0.8f, 0.7f});
     SetLightField(*light, "環境光", NS::Core::Vector3{0.1f, 0.2f, 0.3f});
 
-    const NS::Graphics::RenderSettings resolved = scene.CallResolve(NS::Graphics::RenderSettings{});
+    const NS::Gfx::RenderSettings resolved = scene.CallResolve(NS::Gfx::RenderSettings{});
 
     // 配置された平行光の値が解決値に映る
     EXPECT_NEAR(resolved.lightDir.z, 0.5f, k_Epsilon);
     EXPECT_NEAR(resolved.lightColor.x, 0.9f, k_Epsilon);
     EXPECT_NEAR(resolved.ambientColor.z, 0.3f, k_Epsilon);
     // clearColor は照明の語彙に無く、project 既定値のまま残す
-    EXPECT_NEAR(resolved.clearColor.B(), NS::Graphics::RenderSettings{}.clearColor.B(), k_Epsilon);
+    EXPECT_NEAR(resolved.clearColor.B(), NS::Gfx::RenderSettings{}.clearColor.B(), k_Epsilon);
 }
 
 TEST_F(SceneLightResolveTest, ZeroLightDirectionFallsToDefault)
@@ -107,8 +107,8 @@ TEST_F(SceneLightResolveTest, ZeroLightDirectionFallsToDefault)
     SetLightField(*light, "方向", NS::Core::Vector3{0.0f, 0.0f, 0.0f});
     SetLightField(*light, "色", NS::Core::Vector3{0.9f, 0.8f, 0.7f});
 
-    NS::Graphics::RenderSettings defaults{};
-    const NS::Graphics::RenderSettings resolved = scene.CallResolve(defaults);
+    NS::Gfx::RenderSettings defaults{};
+    const NS::Gfx::RenderSettings resolved = scene.CallResolve(defaults);
 
     // zero ベクトルは normalize で拡散光が無言で消えるため上書きせず既定 lightDir に落とす
     EXPECT_NEAR(resolved.lightDir.x, defaults.lightDir.x, k_Epsilon);
@@ -124,9 +124,9 @@ TEST_F(SceneLightResolveTest, LightWithoutStartDoesNotResolve)
     ASSERT_NE(light, nullptr);
     SetLightField(*light, "色", NS::Core::Vector3{0.9f, 0.8f, 0.7f});
 
-    NS::Graphics::RenderSettings defaults{};
+    NS::Gfx::RenderSettings defaults{};
     defaults.lightColor = NS::Core::Vector3{0.11f, 0.12f, 0.13f};
-    const NS::Graphics::RenderSettings resolved = scene.CallResolve(defaults);
+    const NS::Gfx::RenderSettings resolved = scene.CallResolve(defaults);
 
     EXPECT_NEAR(resolved.lightColor.x, 0.11f, k_Epsilon);
 }
@@ -140,9 +140,9 @@ TEST_F(SceneLightResolveTest, LightUnregistersOnEndPlay)
     SetLightField(*light, "色", NS::Core::Vector3{0.9f, 0.8f, 0.7f});
     light->OnEndPlay();
 
-    NS::Graphics::RenderSettings defaults{};
+    NS::Gfx::RenderSettings defaults{};
     defaults.lightColor = NS::Core::Vector3{0.11f, 0.12f, 0.13f};
-    const NS::Graphics::RenderSettings resolved = scene.CallResolve(defaults);
+    const NS::Gfx::RenderSettings resolved = scene.CallResolve(defaults);
 
     EXPECT_NEAR(resolved.lightColor.x, 0.11f, k_Epsilon);
 }
@@ -157,9 +157,9 @@ TEST_F(SceneLightResolveTest, DoubleStartStillUnregisters)
     SetLightField(*light, "色", NS::Core::Vector3{0.9f, 0.8f, 0.7f});
     light->OnEndPlay();
 
-    NS::Graphics::RenderSettings defaults{};
+    NS::Gfx::RenderSettings defaults{};
     defaults.lightColor = NS::Core::Vector3{0.11f, 0.12f, 0.13f};
-    const NS::Graphics::RenderSettings resolved = scene.CallResolve(defaults);
+    const NS::Gfx::RenderSettings resolved = scene.CallResolve(defaults);
 
     EXPECT_NEAR(resolved.lightColor.x, 0.11f, k_Epsilon);
 }
@@ -176,7 +176,7 @@ TEST_F(SceneLightResolveTest, LastRegisteredLightWins)
     ASSERT_NE(second, nullptr);
     SetLightField(*second, "色", NS::Core::Vector3{0.0f, 0.5f, 0.0f});
 
-    const NS::Graphics::RenderSettings resolved = scene.CallResolve(NS::Graphics::RenderSettings{});
+    const NS::Gfx::RenderSettings resolved = scene.CallResolve(NS::Gfx::RenderSettings{});
 
     // 多灯合成は持たないので、2 本置いたら後から登録した方の値が解決値に残る
     EXPECT_NEAR(resolved.lightColor.x, 0.0f, k_Epsilon);

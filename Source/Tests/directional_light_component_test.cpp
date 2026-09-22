@@ -5,10 +5,10 @@
 
 namespace
 {
-    using NS::Object::Component;
-    using NS::Object::ComponentCast;
-    using NS::Object::DirectionalLightComponent;
-    using NS::Object::GameObject;
+    using NS::Obj::Component;
+    using NS::Obj::ComponentCast;
+    using NS::Obj::DirectionalLightComponent;
+    using NS::Obj::GameObject;
 } // namespace
 
 TEST(DirectionalLightComponentTest, DefaultsAreNeutralSun)

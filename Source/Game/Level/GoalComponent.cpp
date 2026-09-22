@@ -9,7 +9,7 @@
 
 namespace NS::Game::Level
 {
-    GoalComponent::GoalComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::LateUpdate) {}
+    GoalComponent::GoalComponent() noexcept : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate) {}
 
     void GoalComponent::OnUpdate()
     {
@@ -37,9 +37,9 @@ namespace NS::Game::Level
         }
     }
 
-    bool IsGoalObject(const NS::Object::ObjectData& object) noexcept
+    bool IsGoalObject(const NS::Obj::ObjectData& object) noexcept
     {
-        return NS::Object::FindComponentEntry(object, "GoalComponent") != nullptr;
+        return NS::Obj::FindComponentEntry(object, "GoalComponent") != nullptr;
     }
 
     NS_CLASS(GoalComponent)

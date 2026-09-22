@@ -6,7 +6,7 @@
 #include <string>
 #include <span>
 
-namespace NS::Graphics
+namespace NS::Gfx
 {
     class Shader;
 
@@ -70,4 +70,4 @@ namespace NS::Graphics
         bool m_fallback = false;
     };
 
-} // namespace NS::Graphics
+} // namespace NS::Gfx

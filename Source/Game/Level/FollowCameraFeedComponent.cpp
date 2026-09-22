@@ -14,7 +14,7 @@ namespace NS::Game::Level
     // RespawnerComponent のやり直し (LateUpdate + 10) が済んだ後、
     // ThirdPersonFollowComponent (LateUpdate + 50) が読む前に渡す
     FollowCameraFeedComponent::FollowCameraFeedComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::LateUpdate + 40)
+        : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate + 40)
     {}
 
     void FollowCameraFeedComponent::OnStart()
@@ -46,8 +46,8 @@ namespace NS::Game::Level
         const bool grounded = m_entity->IsGrounded();
         const NS::Core::Vector3 velocity = m_entity->Velocity();
         // カメラは控えず毎フレーム引き直す。控えると畳まれた相手を指したまま次のフレームへ持ち越す
-        Owner()->OwningScene()->Objects().ForEachComponent<NS::Object::ThirdPersonFollowComponent>(
-            [ownerId, grounded, &velocity](NS::Object::ThirdPersonFollowComponent& follow) {
+        Owner()->OwningScene()->Objects().ForEachComponent<NS::Obj::ThirdPersonFollowComponent>(
+            [ownerId, grounded, &velocity](NS::Obj::ThirdPersonFollowComponent& follow) {
                 if (follow.TargetRef().id != ownerId)
                 {
 					return;

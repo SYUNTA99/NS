@@ -7,7 +7,7 @@
 
 #include <utility>
 
-namespace NS::Physics
+namespace NS::Phys
 {
     JPH::ShapeRefC CreateMeshShape(std::span<const Triangle> triangles)
     {
@@ -34,4 +34,4 @@ namespace NS::Physics
 
         return shape.Get();
     }
-} // namespace NS::Physics
+} // namespace NS::Phys

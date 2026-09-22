@@ -31,7 +31,7 @@ namespace NS::Editor
         void ClearForHiddenUi(LevelEditorController& editor) noexcept;
 
         //! @return 可視なら {RT, 編集 / 自由視点} のビュー。不可視なら nullopt
-        [[nodiscard]] std::optional<NS::Object::SceneView> CollectView(LevelEditorController& editor) noexcept;
+        [[nodiscard]] std::optional<NS::Obj::SceneView> CollectView(LevelEditorController& editor) noexcept;
 
         //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
         void ReleaseTarget() noexcept { m_surface.Release(); }

@@ -54,7 +54,7 @@ namespace NS::Editor
 #endif
     }
 
-    std::optional<NS::Object::SceneView> GameViewPanel::CollectView(LevelEditorController& editor) noexcept
+    std::optional<NS::Obj::SceneView> GameViewPanel::CollectView(LevelEditorController& editor) noexcept
     {
         return m_surface.CollectView(editor.GameViewPose());
     }

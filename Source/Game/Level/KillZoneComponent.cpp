@@ -15,11 +15,11 @@
 
 namespace NS::Game::Level
 {
-    KillZoneComponent::KillZoneComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::LateUpdate) {}
+    KillZoneComponent::KillZoneComponent() noexcept : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate) {}
 
     void KillZoneComponent::OnUpdate()
     {
-        auto* box = Owner()->FindComponent<NS::Object::BoxColliderComponent>();
+        auto* box = Owner()->FindComponent<NS::Obj::BoxColliderComponent>();
         if (box == nullptr)
             return;
 
@@ -33,7 +33,7 @@ namespace NS::Game::Level
         if (movement == nullptr)
             return;
 
-        const NS::Physics::Capsule capsule{player->Root().Position(),
+        const NS::Phys::Capsule capsule{player->Root().Position(),
                                            NS::Core::Vector3::UnitY,
                                            movement->CapsuleHalfHeight(),
                                            movement->CapsuleRadius()};
@@ -42,34 +42,34 @@ namespace NS::Game::Level
             player->Kill();
     }
 
-    bool IsKillZoneObject(const NS::Object::ObjectData& object) noexcept
+    bool IsKillZoneObject(const NS::Obj::ObjectData& object) noexcept
     {
-        return NS::Object::FindComponentEntry(object, "KillZoneComponent") != nullptr;
+        return NS::Obj::FindComponentEntry(object, "KillZoneComponent") != nullptr;
     }
 
-    NS::Object::ObjectData MakeKillZoneObject()
+    NS::Obj::ObjectData MakeKillZoneObject()
     {
         // 上面 y=-50 は従来の落下死の高さ。厚み 10m と 2km 四方は固定ステップの移動量では突き抜けられない
-        NS::Object::ObjectData object{};
-        nlohmann::json box = NS::Object::MakeComponentEntry("BoxColliderComponent");
-        NS::Object::SetField(box, "半径", NS::Core::Vector3{1000.0f, 5.0f, 1000.0f});
+        NS::Obj::ObjectData object{};
+        nlohmann::json box = NS::Obj::MakeComponentEntry("BoxColliderComponent");
+        NS::Obj::SetField(box, "半径", NS::Core::Vector3{1000.0f, 5.0f, 1000.0f});
         // トリガにしないと落ちてきたプレイヤーが上面に着地してしまう
-        NS::Object::SetField(box, "トリガー", true);
+        NS::Obj::SetField(box, "トリガー", true);
         object.components =
-            nlohmann::json::array({std::move(box), NS::Object::MakeComponentEntry("KillZoneComponent")});
-        NS::Object::SetObjectPosition(object, NS::Core::Vector3{0.0f, -55.0f, 0.0f});
+            nlohmann::json::array({std::move(box), NS::Obj::MakeComponentEntry("KillZoneComponent")});
+        NS::Obj::SetObjectPosition(object, NS::Core::Vector3{0.0f, -55.0f, 0.0f});
         return object;
     }
 
-    bool EnsureKillZoneObject(NS::Object::SceneData& level)
+    bool EnsureKillZoneObject(NS::Obj::SceneData& level)
     {
-        for (const NS::Object::ObjectData& object : level.objects)
+        for (const NS::Obj::ObjectData& object : level.objects)
         {
             if (IsKillZoneObject(object))
                 return false;
         }
         level.objects.push_back(MakeKillZoneObject());
-        NS::Object::EnsureUniqueObjectIds(level);
+        NS::Obj::EnsureUniqueObjectIds(level);
         return true;
     }
 

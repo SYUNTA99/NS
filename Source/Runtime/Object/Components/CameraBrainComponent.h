@@ -7,7 +7,7 @@
 #include <optional>
 #include <vector>
 
-namespace NS::Object
+namespace NS::Obj
 {
     class CameraComponent;
 
@@ -18,7 +18,7 @@ namespace NS::Object
     //! 描画 / aspect 設定 / PlayerInput の forward 取得もこの Brain 経由に集約する
     //! active 切替は SetBlendDuration 秒の ease-in-out で旧 pose から繋ぎ、0 で即時カット
     //! 帯は LateUpdate + 60。vcam を供給する follow / placed の LateUpdate + 50 より後ろで選び直す
-    //! 依存: NS::Core, NS::Object::Component / CameraComponent / VirtualCameraComponent
+    //! 依存: NS::Core, NS::Obj::Component / CameraComponent / VirtualCameraComponent
     class CameraBrainComponent : public Component
     {
     public:
@@ -90,4 +90,4 @@ namespace NS::Object
         int m_shakeTotal = 0;          // 揺れ始めのフレーム数。減衰の分母
         int m_shakeRemaining = 0;      // 揺れの残りフレーム数。0 は揺れていない
     };
-} // namespace NS::Object
+} // namespace NS::Obj
