@@ -1,6 +1,6 @@
-﻿#include "Runtime/Graphics/Camera.h"
+﻿#include "Runtime/Core/CameraData.h"
 
-namespace NS::Gfx
+namespace NS::Core
 {
     namespace
     {
@@ -24,81 +24,73 @@ namespace NS::Gfx
         }
     } // namespace
 
-    Camera::Camera() noexcept : Camera(CameraDesc{}) {}
-
-    Camera::Camera(const CameraDesc& desc) noexcept
-        : m_position(desc.position), m_target(desc.target), m_up(desc.up), m_fovY(desc.fovY),
-          m_aspect(desc.aspectRatio), m_near(desc.nearPlane), m_far(desc.farPlane), m_view(NS::Core::Matrix::Identity),
-          m_projection(NS::Core::Matrix::Identity), m_viewDirty(true), m_projDirty(true)
-    {}
-
-    void Camera::SetPosition(const NS::Core::Vector3& position) noexcept
+    void CameraData::SetPosition(const NS::Core::Vector3& position) noexcept
     {
         m_position = position;
         m_viewDirty = true;
     }
-    void Camera::SetTarget(const NS::Core::Vector3& target) noexcept
+    void CameraData::SetTarget(const NS::Core::Vector3& target) noexcept
     {
         m_target = target;
         m_viewDirty = true;
     }
-    void Camera::SetUp(const NS::Core::Vector3& up) noexcept
+    void CameraData::SetUp(const NS::Core::Vector3& up) noexcept
     {
         m_up = up;
         m_viewDirty = true;
     }
 
-    void Camera::SetFovY(NS::Core::Radians fov) noexcept
+    void CameraData::SetFovY(NS::Core::Radians fov) noexcept
     {
         m_fovY = fov;
         m_projDirty = true;
     }
-    void Camera::SetAspectRatio(float aspect) noexcept
+    void CameraData::SetAspectRatio(float aspect) noexcept
     {
         m_aspect = aspect;
         m_projDirty = true;
     }
-    void Camera::SetNearPlane(float nearPlane) noexcept
+    void CameraData::SetNearPlane(float nearPlane) noexcept
     {
         m_near = nearPlane;
         m_projDirty = true;
     }
-    void Camera::SetFarPlane(float farPlane) noexcept
+    void CameraData::SetFarPlane(float farPlane) noexcept
     {
         m_far = farPlane;
         m_projDirty = true;
     }
 
-    const NS::Core::Vector3& Camera::Position() const noexcept
+    const NS::Core::Vector3& CameraData::Position() const noexcept
     {
         return m_position;
     }
-    const NS::Core::Vector3& Camera::Target() const noexcept
+    const NS::Core::Vector3& CameraData::Target() const noexcept
     {
         return m_target;
     }
-    const NS::Core::Vector3& Camera::Up() const noexcept
+    const NS::Core::Vector3& CameraData::Up() const noexcept
     {
         return m_up;
     }
-    NS::Core::Radians Camera::FovY() const noexcept
+    NS::Core::Radians CameraData::FovY() const noexcept
     {
         return m_fovY;
     }
-    float Camera::AspectRatio() const noexcept
+    float CameraData::AspectRatio() const noexcept
     {
         return m_aspect;
     }
-    float Camera::NearPlane() const noexcept
+    float CameraData::NearPlane() const noexcept
     {
         return m_near;
     }
-    float Camera::FarPlane() const noexcept
+    float CameraData::FarPlane() const noexcept
     {
         return m_far;
     }
 
-    const NS::Core::Matrix& Camera::View() const noexcept
+    const NS::Core::Matrix& CameraData::View() const noexcept
     {
         if (m_viewDirty)
         {
@@ -116,7 +108,7 @@ namespace NS::Gfx
         return m_view;
     }
 
-    const NS::Core::Matrix& Camera::Projection() const noexcept
+    const NS::Core::Matrix& CameraData::Projection() const noexcept
     {
         if (m_projDirty)
         {
@@ -126,9 +118,9 @@ namespace NS::Gfx
         return m_projection;
     }
 
-    NS::Core::Matrix Camera::ViewProjection() const noexcept
+    NS::Core::Matrix CameraData::ViewProjection() const noexcept
     {
         return View() * Projection();
     }
 
-} // namespace NS::Gfx
+} // namespace NS::Core

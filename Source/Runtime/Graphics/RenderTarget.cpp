@@ -1,4 +1,4 @@
-#include "Runtime/Graphics/RenderTarget.h"
+﻿#include "Runtime/Graphics/RenderTarget.h"
 
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
@@ -27,7 +27,7 @@ namespace NS::Gfx
             return;
         }
 
-        TextureCreateDesc colorDesc{};
+        TextureDesc colorDesc{};
         colorDesc.width = static_cast<UINT>(size.width);
         colorDesc.height = static_cast<UINT>(size.height);
         colorDesc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -41,7 +41,7 @@ namespace NS::Gfx
         }
 
         // 深度は backbuffer 側と同じ形式で揃える
-        TextureCreateDesc depthDesc{};
+        TextureDesc depthDesc{};
         depthDesc.width = static_cast<UINT>(size.width);
         depthDesc.height = static_cast<UINT>(size.height);
         depthDesc.format = DXGI_FORMAT_D24_UNORM_S8_UINT;

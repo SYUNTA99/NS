@@ -1,11 +1,10 @@
 ﻿#include "Runtime/Graphics/Renderer.h"
 
 #include "Runtime/Core/Assert.h"
-#include "Runtime/Platform/Filesystem.h"
+#include "Runtime/Core/CameraData.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"
-#include "Runtime/Graphics/Camera.h"
 #include "Runtime/Graphics/CommandList.h"
 #include "Runtime/Graphics/CommonStates.h"
 #include "Runtime/Graphics/D3dCommon.h"
@@ -16,6 +15,7 @@
 #include "Runtime/Graphics/Shader.h"
 #include "Runtime/Graphics/Skybox.h"
 #include "Runtime/Graphics/Texture.h"
+#include "Runtime/Platform/Filesystem.h"
 
 #include <iterator>
 #include <memory>
@@ -146,7 +146,7 @@ namespace NS::Gfx
             }
 
             const ::NS::Core::Size2D size = backbuffer->Size();
-            TextureCreateDesc depthDesc{};
+            TextureDesc depthDesc{};
             depthDesc.width = static_cast<UINT>(size.width);
             depthDesc.height = static_cast<UINT>(size.height);
             depthDesc.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -229,7 +229,7 @@ namespace NS::Gfx
             return;
         }
 
-        // 共通 Pipeline を1回だけ生成しキャッシュする。Gpu() は上で公開済で、描画する者が毎回 set する
+        // 共通 Pipeline を 1 回だけ生成して使い回す。Pipeline::Create は Gpu() を引くので公開の後に呼ぶ
         m_commonPipelines[0] = Pipeline::Create(PipelineDesc{});
         m_commonPipelines[1] = Pipeline::Create(PipelineDesc{.blend = BlendMode::Alpha, .depth = DepthMode::ReadOnly});
         m_commonPipelines[2] =
@@ -473,9 +473,9 @@ namespace NS::Gfx
         m_skybox = std::move(skybox);
     }
 
-    void Renderer::DrawSky(const Camera& camera, std::string_view cubemapPath) noexcept
+    void Renderer::DrawSky(const NS::Core::CameraData& camera, std::string_view cubemapPath) noexcept
     {
-        // cubemap を指定していないシーンは空を持たない。装置の構築もしない
+        // cubemap を指定していないシーンは空を持たない。Skybox の構築もしない
         if (cubemapPath.empty())
             return;
 
@@ -483,7 +483,7 @@ namespace NS::Gfx
         if (!m_skybox)
             return;
 
-        // 毎フレーム LoadCubemap すると I/O が常時走るため、前回パスと差分があるときだけ再ロードする
+        // 毎フレーム LoadCubemap するとファイル読み込みが常時走るため、前回パスと差分があるときだけ読み直す
         if (cubemapPath != m_loadedSkyboxPath)
         {
             // ユーザー編集ファイル由来のパスを ContentRoot 配下へ閉じ込める。外を指す値は読み込まない
@@ -491,9 +491,8 @@ namespace NS::Gfx
                 ::NS::Platform::FileSystem::ResolveUnder(::NS::Platform::FileSystem::ContentRoot(), cubemapPath);
             if (!absPath.has_value())
             {
-                NS_LOG_WARN(Graphics,
-                            "Renderer: cubemap パス '{}' は ContentRoot 配下でないため読み込まない",
-                            cubemapPath);
+                NS_LOG_WARN(
+                    Graphics, "Renderer: cubemap パス '{}' は ContentRoot 配下でないため読み込まない", cubemapPath);
                 // 拒否はパスを直すまで変わらないので、覚えて警告の連打を止める
                 m_loadedSkyboxPath = cubemapPath;
             }

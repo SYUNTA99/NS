@@ -8,11 +8,15 @@
 
 #include <string>
 
+namespace NS::Core
+{
+    class CameraData;
+} // namespace NS::Core
+
 namespace NS::Gfx
 {
 
     //! @brief 描画システムの初期化パラメータ
-    //! @note アンチエイリアスやHDRなどの拡張設定は将来的に追加予定
     struct RendererDesc
     {
         bool enableDebugLayer = false; //!< DX11 のデバッグレイヤーを有効にするか
@@ -28,13 +32,12 @@ namespace NS::Gfx
     class Pipeline;
     class Shader;
     class Buffer;
-    class Camera;
     class Skybox;
     enum class BlendMode;
 
-    //! @brief グラフィックスデバイスや画面出力の仕組みを管理し、描画処理全体を統括するシステム
-    //! @details アプリケーションのウィンドウと1対1で対応し、リサイズ等のイベントを自動的に処理する
-    //! 内部で保持するグラフィックスリソースの生成機能は、グローバル関数を経由して外部にも提供される
+    //! @brief D3D11 の device / context / swapchain を持ち、フレームの描画を発行するクラス
+    //! @details ウィンドウ 1 つにつき 1 つ作る。ウィンドウのリサイズを購読して描画領域を作り直す
+    //! 構築した device と context は Gpu() へ公開し、Texture や Shader はそこから引く
     //! 構築に失敗した場合は例外を送出せず、無効な状態として扱う
     //! @warning
     //! 破棄順序のバグを防ぐため、静的・グローバル変数での保持は禁止。必ずメンバ変数かスタック上で管理すること
@@ -100,25 +103,25 @@ namespace NS::Gfx
 
         //! @brief 各種ブレンドモードに対応する標準的な描画パイプラインを取得する
         //! @param[in] blend 取得したいブレンドモード
-        //! @note 初期化失敗時などでも、常に非nullの有効なインスタンスを返す
+        //! @note 共通パイプラインは構築の最後に作るので、構築に失敗した Renderer では呼んではいけない
         [[nodiscard]] const Pipeline& CommonPipeline(BlendMode blend) const noexcept;
 
         //! @brief 画面全体をアルファ込みの指定色で塗る。描画済みシーンの上へ半透明合成で重ねる
-        //! @details 全画面三角形を1枚描く engine 共通の描画能力。暗転・フラッシュ等、色の意味は呼び出し側が決める
+        //! @details 全画面三角形を 1 枚描く。暗転・フラッシュ等、色の意味は呼び出し側が決める
         //! 資源は初回呼び出し時に一度だけ構築し、失敗時は以後何もしない。最前面に出すため全描画の最後に呼ぶ
         void DrawFullscreenColor(const NS::Core::Color& color) noexcept;
 
         //! @brief 現在の描画先へ色付き矩形を 1 枚重ねる。座標は描画先のピクセルで左上原点
-        //! @details 画面 UI の下地・板・ゲージを描く engine 共通の描画能力。何を表すかは呼び出し側が決める
+        //! @details 画面 UI の下地・板・ゲージに使う。何を表すかは呼び出し側が決める
         //! 半透明合成で最前面に出すため全描画の後に呼ぶ。資源は初回呼び出し時に一度だけ構築し、失敗時は以後何もしない
         void DrawScreenRect(float x, float y, float width, float height, const NS::Core::Color& color) noexcept;
 
         //! @brief cubemap を読んで camera 中心に空を描く。パスが前回と違う時だけ読み直す
         //! @details パスは ContentRoot 配下だけ許可し、外を指す値は読み込まない。読込失敗は直前の cubemap を描き続ける
-        //! 装置は初回呼び出し時に一度だけ構築し、失敗時は以後何もしない。不透明の描画後・半透明の描画前に呼ぶ
+        //! Skybox は初回呼び出し時に一度だけ構築し、失敗時は以後何もしない。不透明の描画後・半透明の描画前に呼ぶ
         //! @param[in] camera 空を貼る視点。view の平行移動成分は使わない
         //! @param[in] cubemapPath ContentRoot 配下相対の cubemap ディレクトリまたは .dds。空パスは何も描かない
-        void DrawSky(const Camera& camera, std::string_view cubemapPath) noexcept;
+        void DrawSky(const NS::Core::CameraData& camera, std::string_view cubemapPath) noexcept;
 
     private:
         // 全画面塗り資源を初回だけ構築する
@@ -127,7 +130,7 @@ namespace NS::Gfx
         // UI 矩形資源を初回だけ構築する
         void EnsureScreenRectResources() noexcept;
 
-        // 空描画装置を初回だけ構築する
+        // 空を描く Skybox を初回だけ構築する
         void EnsureSkyboxResources() noexcept;
 
         ComPtr<ID3D11Device> m_device;
@@ -152,11 +155,11 @@ namespace NS::Gfx
         std::unique_ptr<Pipeline> m_screenRectPipeline;
         bool m_screenRectTried = false; // 構築を試みたか
         bool m_screenRectReady = false; // 構築成功
-        // 空描画装置。初回 DrawSky で一度だけ構築する
+        // 空を描く Skybox。初回 DrawSky で一度だけ構築する
         std::unique_ptr<Skybox> m_skybox;
-        std::string m_loadedSkyboxPath; // 前回読み込んだ cubemap のパス。差分の時だけ読み直す
-        bool m_skyboxTried = false;               // 構築を試みたか
-        RenderTarget* m_sceneTarget = nullptr;    //!< 非所有のシーン描画先。null なら backbuffer へ描く
+        std::string m_loadedSkyboxPath;        // 前回読み込んだ cubemap のパス。差分の時だけ読み直す
+        bool m_skyboxTried = false;            // 構築を試みたか
+        RenderTarget* m_sceneTarget = nullptr; //!< 非所有のシーン描画先。null なら backbuffer へ描く
         ::NS::Platform::Window* m_window = nullptr;
         RenderSettings m_settings{};
         bool m_vsync = true;

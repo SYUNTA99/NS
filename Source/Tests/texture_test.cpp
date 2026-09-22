@@ -1,4 +1,4 @@
-#include <gtest/gtest.h>
+﻿#include <gtest/gtest.h>
 #include <memory>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Graphics/CommandList.h>
@@ -13,7 +13,6 @@ namespace
     using NS::Gfx::RendererDesc;
     using NS::Gfx::ShaderType;
     using NS::Gfx::Texture;
-    using NS::Gfx::TextureCreateDesc;
     using NS::Gfx::TextureDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
@@ -93,19 +92,6 @@ TEST_F(TextureLoggerTest, FallbackBindDoesNotCrash)
     SUCCEED();
 }
 
-TEST_F(TextureLoggerTest, SimpleOverloadConstructs)
-{
-    Window window(MakeWindowDesc("ns_tex_overload"));
-    ASSERT_TRUE(window.IsValid());
-    Renderer renderer(MakeRendererDesc(), window);
-    ASSERT_TRUE(renderer.IsValid());
-
-    std::unique_ptr<Texture> texHolder = Texture::Create("C:/nonexistent/__ns_test_overload__.png");
-    Texture& tex = *texHolder;
-    EXPECT_TRUE(tex.IsValid());
-    EXPECT_TRUE(tex.IsUsingFallback());
-}
-
 TEST_F(TextureLoggerTest, FallbackSrvIsNonNull)
 {
     Window window(MakeWindowDesc("ns_tex_srv"));
@@ -129,7 +115,7 @@ TEST_F(TextureLoggerTest, RenderTargetHasRtvOnly)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    TextureCreateDesc desc{};
+    TextureDesc desc{};
     desc.width = 64;
     desc.height = 64;
     desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -152,7 +138,7 @@ TEST_F(TextureLoggerTest, RenderToTextureHasRtvAndSrv)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    TextureCreateDesc desc{};
+    TextureDesc desc{};
     desc.width = 32;
     desc.height = 32;
     desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -173,7 +159,7 @@ TEST_F(TextureLoggerTest, DepthHasDsvOnly)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    TextureCreateDesc desc{};
+    TextureDesc desc{};
     desc.width = 128;
     desc.height = 96;
     desc.format = DXGI_FORMAT_D24_UNORM_S8_UINT;

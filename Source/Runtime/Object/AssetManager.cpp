@@ -1,4 +1,4 @@
-#include "Runtime/Object/AssetManager.h"
+﻿#include "Runtime/Object/AssetManager.h"
 
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
@@ -248,11 +248,7 @@ namespace NS::Obj
         {
             return it->second.get();
         }
-        NS::Gfx::TextureDesc desc{};
-        desc.path = key;
-        desc.generateMipmaps = true;
-        desc.sRGB = false;
-        auto texture = NS::Gfx::Texture::Create(desc);
+        auto texture = NS::Gfx::Texture::Create({.path = key});
         NS::Gfx::Texture* raw = texture.get();
         m_textures.emplace(key, std::move(texture));
         return raw;

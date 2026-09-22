@@ -153,53 +153,28 @@ namespace NS::Gfx
             return true;
         }
 
+        // mipmap は常に作る。RENDER_TARGET と GENERATE_MIPS は GenerateMips の前提
+        // sRGB へ強制しない。NS はどこでも色空間を変換しておらず、Skybox も IGNORE_SRGB で読む
         bool TryLoadWic(ID3D11Device* device,
                         ID3D11DeviceContext* context,
                         const std::uint8_t* bytes,
                         std::size_t size,
-                        bool generateMipmaps,
-                        bool sRGB,
                         ComPtr<ID3D11Resource>& outResource,
                         ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
         {
-            const DirectX::WIC_LOADER_FLAGS loadFlags = [&]() -> DirectX::WIC_LOADER_FLAGS {
-                if (sRGB)
-                {
-                    return DirectX::WIC_LOADER_FORCE_SRGB;
-                }
-                return DirectX::WIC_LOADER_IGNORE_SRGB;
-            }();
-
-            ID3D11DeviceContext* ctxForMipmap = nullptr;
-            if (generateMipmaps)
-            {
-                ctxForMipmap = context;
-            }
-
-            UINT mipmapBindFlag = 0u;
-            if (generateMipmaps)
-            {
-                mipmapBindFlag = D3D11_BIND_RENDER_TARGET;
-            }
-
-            UINT mipmapMiscFlag = 0u;
-            if (generateMipmaps)
-            {
-                mipmapMiscFlag = D3D11_RESOURCE_MISC_GENERATE_MIPS;
-            }
-
-            const HRESULT hr = DirectX::CreateWICTextureFromMemoryEx(device,
-                                                                     ctxForMipmap,
-                                                                     bytes,
-                                                                     size,
-                                                                     0u,
-                                                                     D3D11_USAGE_DEFAULT,
-                                                                     D3D11_BIND_SHADER_RESOURCE | mipmapBindFlag,
-                                                                     0u,
-                                                                     mipmapMiscFlag,
-                                                                     loadFlags,
-                                                                     outResource.GetAddressOf(),
-                                                                     outSrv.GetAddressOf());
+            const HRESULT hr = DirectX::CreateWICTextureFromMemoryEx(
+                device,
+                context,
+                bytes,
+                size,
+                0u,
+                D3D11_USAGE_DEFAULT,
+                D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET,
+                0u,
+                D3D11_RESOURCE_MISC_GENERATE_MIPS,
+                DirectX::WIC_LOADER_IGNORE_SRGB,
+                outResource.GetAddressOf(),
+                outSrv.GetAddressOf());
 
             if (FAILED(hr))
             {
@@ -208,19 +183,36 @@ namespace NS::Gfx
             }
             return true;
         }
+
+        // 中身の無いテクスチャを作る。mipmap 1 枚・単層のみ
+        bool CreateEmptyTexture(ID3D11Device* device, const TextureDesc& desc, ComPtr<ID3D11Texture2D>& outTex) noexcept
+        {
+            D3D11_TEXTURE2D_DESC td{};
+            td.Width = desc.width;
+            td.Height = desc.height;
+            td.MipLevels = 1;
+            td.ArraySize = 1;
+            td.Format = desc.format;
+            td.SampleDesc.Count = 1;
+            td.SampleDesc.Quality = 0;
+            td.Usage = D3D11_USAGE_DEFAULT;
+            td.BindFlags = desc.bindFlags;
+
+            const HRESULT hr = device->CreateTexture2D(&td, nullptr, outTex.GetAddressOf());
+            if (FAILED(hr))
+            {
+                NS_LOG_ERROR(Graphics,
+                             "Texture: CreateTexture2D 失敗 (W={} H={} hr=0x{:X})",
+                             desc.width,
+                             desc.height,
+                             static_cast<unsigned>(hr));
+                return false;
+            }
+            return true;
+        }
     } // namespace
 
     std::unique_ptr<Texture> Texture::Create(const TextureDesc& desc)
-    {
-        return std::unique_ptr<Texture>(new Texture(desc));
-    }
-
-    std::unique_ptr<Texture> Texture::Create(std::string_view path)
-    {
-        return std::unique_ptr<Texture>(new Texture(path));
-    }
-
-    std::unique_ptr<Texture> Texture::Create(const TextureCreateDesc& desc)
     {
         return std::unique_ptr<Texture>(new Texture(desc));
     }
@@ -240,6 +232,18 @@ namespace NS::Gfx
             return;
         }
 
+        // 生成の失敗はフォールバックへ差し替えない。描画先を頼んだ側が IsValid で弾いて畳む
+        // 大きさが 0 の時はここへ入らずフォールバックへ落ちる。マテリアルへ差すダミーがこの形
+        if (desc.path.empty() && desc.width > 0 && desc.height > 0)
+        {
+            if (CreateEmptyTexture(device, desc, m_tex))
+            {
+                CreateRequestedViews(device, m_tex.Get(), desc.bindFlags, m_srv, m_rtv, m_dsv);
+                m_size = ::NS::Core::Size2D{static_cast<int>(desc.width), static_cast<int>(desc.height)};
+            }
+            return;
+        }
+
         ComPtr<ID3D11Resource> resource;
         bool loaded = false;
         if (!desc.path.empty())
@@ -251,14 +255,13 @@ namespace NS::Gfx
                 const auto* data = reinterpret_cast<const std::uint8_t*>(bytes.data());
                 if (IsDdsExtension(desc.path))
                 {
-                    // DDS は内蔵 mipmap を尊重、generateMipmaps フラグは無視
+                    // DDS は内蔵 mipmap を尊重して作り直さない
                     // mipmap が欲しければ Texconv.exe 等で事前生成した DDS を渡すこと
                     loaded = TryLoadDds(device, context, data, bytes.size(), resource, m_srv);
                 }
                 else
                 {
-                    loaded = TryLoadWic(
-                        device, context, data, bytes.size(), desc.generateMipmaps, desc.sRGB, resource, m_srv);
+                    loaded = TryLoadWic(device, context, data, bytes.size(), resource, m_srv);
                 }
             }
             else
@@ -280,43 +283,6 @@ namespace NS::Gfx
         }
         m_size = ::NS::Core::Size2D{1, 1};
         m_fallback = true;
-    }
-
-    Texture::Texture(std::string_view path) : Texture(TextureDesc{std::string(path), true, false}) {}
-
-    Texture::Texture(const TextureCreateDesc& desc)
-    {
-        auto* device = Gpu().device;
-        if (device == nullptr)
-        {
-            NS_LOG_ERROR(Graphics, "Texture: Renderer の Device が無効");
-            return;
-        }
-
-        D3D11_TEXTURE2D_DESC td{};
-        td.Width = desc.width;
-        td.Height = desc.height;
-        td.MipLevels = desc.mipLevels;
-        td.ArraySize = desc.arraySize;
-        td.Format = desc.format;
-        td.SampleDesc.Count = 1;
-        td.SampleDesc.Quality = 0;
-        td.Usage = D3D11_USAGE_DEFAULT;
-        td.BindFlags = desc.bindFlags;
-
-        const HRESULT hr = device->CreateTexture2D(&td, nullptr, m_tex.GetAddressOf());
-        if (FAILED(hr))
-        {
-            NS_LOG_ERROR(Graphics,
-                         "Texture: CreateTexture2D 失敗 (W={} H={} hr=0x{:X})",
-                         desc.width,
-                         desc.height,
-                         static_cast<unsigned>(hr));
-            return;
-        }
-
-        CreateRequestedViews(device, m_tex.Get(), desc.bindFlags, m_srv, m_rtv, m_dsv);
-        m_size = ::NS::Core::Size2D{static_cast<int>(desc.width), static_cast<int>(desc.height)};
     }
 
     Texture::Texture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags)

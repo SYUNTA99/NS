@@ -12,43 +12,35 @@ namespace NS::Gfx
 
     class Texture;
 
-    //! ファイルからテクスチャを読み込むための初期化パラメータ
+    //! @brief テクスチャの作り方
+    //! @details path が空でなければ画像ファイルから読む。大きさと画素形式はファイルが決める
+    //! path が空なら width / height / format / bindFlags で中身の無いテクスチャを作る
+    //! path も大きさも無ければ 1x1 のフォールバックになる
     struct TextureDesc
     {
-        std::string path;
-        bool generateMipmaps = true;
-        bool sRGB = false;
-    };
-
-    //! テクスチャを生成するための初期化パラメータ
-    struct TextureCreateDesc
-    {
-        UINT width = 0;
-        UINT height = 0;
-        DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        UINT mipLevels = 1;
-        UINT arraySize = 1;
-        UINT bindFlags = D3D11_BIND_SHADER_RESOURCE;
+        std::string path;                                //!< 読み込む画像ファイル
+        UINT width = 0;                                  //!< 幅。path が空の時だけ見る
+        UINT height = 0;                                 //!< 高さ。path が空の時だけ見る
+        DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM; //!< 画素形式。path が空の時だけ見る
+        UINT bindFlags = D3D11_BIND_SHADER_RESOURCE;     //!< 作るビュー。path が空の時だけ見る
     };
 
     //! @brief 2D テクスチャ
-    //! @details 作り方は 3 通り。画像ファイルから読む、描画先などの空のテクスチャを作る、既存リソースを包む
+    //! @details 作り方は 2 通り。TextureDesc を渡す、既存リソースを包む
     //! bindFlags に応じて SRV / RTV / DSV のうち要る物だけを作る
     //! @note 画像の読み込みに失敗するとピンク一色のフォールバックへ差し替わる
     class Texture : public NS::Core::NonCopyable
     {
     public:
-        //! @brief ファイルからテクスチャを生成する
-        //! @return 生成に失敗しても非 null を返す。中身はフォールバックになる
+        //! @brief テクスチャを生成する
+        //! @param[in] desc 読み込む画像、または作る中身の無いテクスチャの形
+        //! @return 画像の読み込みに失敗しても非 null を返す。中身はフォールバックになる
+        //! @details 中身の無いテクスチャの生成に失敗した場合はフォールバックへ差し替えず IsValid() が false を返す
         [[nodiscard]] static std::unique_ptr<Texture> Create(const TextureDesc& desc);
 
-        //! ファイルパスを指定してテクスチャを生成する
-        [[nodiscard]] static std::unique_ptr<Texture> Create(std::string_view path);
-
-        //! パラメータを指定して空のテクスチャを生成する
-        [[nodiscard]] static std::unique_ptr<Texture> Create(const TextureCreateDesc& desc);
-
-        //! 既存のテクスチャリソースをラップして生成する
+        //! @brief 既存のテクスチャリソースを包んで生成する
+        //! @param[in] existing 包む対象。空なら IsValid() が false を返す
+        //! @param[in] bindFlags 作るビュー。立っている物だけ SRV / RTV / DSV を作る
         [[nodiscard]] static std::unique_ptr<Texture> Create(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
 
         ~Texture();
@@ -76,8 +68,6 @@ namespace NS::Gfx
 
     private:
         explicit Texture(const TextureDesc& desc);
-        explicit Texture(std::string_view path);
-        explicit Texture(const TextureCreateDesc& desc);
         Texture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
 
         ComPtr<ID3D11Texture2D> m_tex;

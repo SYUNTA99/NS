@@ -1,7 +1,7 @@
 #include <cmath>
 #include <DirectXMath.h>
 #include <gtest/gtest.h>
-#include <Runtime/Graphics/Camera.h>
+#include <Runtime/Core/CameraData.h>
 #include <Runtime/Core/Math.h>
 
 namespace
@@ -9,7 +9,7 @@ namespace
     using NS::Core::DegreesToRadians;
     using NS::Core::Matrix;
     using NS::Core::Vector3;
-    using NS::Gfx::Camera;
+    using NS::Core::CameraData;
 
     bool MatricesNear(const Matrix& a, const Matrix& b, float eps = 1e-4f)
     {
@@ -46,7 +46,7 @@ namespace
 
 TEST(CameraTest, DefaultConstructorHasFiniteMatrices)
 {
-    Camera camera;
+    CameraData camera;
     const auto& view = camera.View();
     const auto& proj = camera.Projection();
 
@@ -62,7 +62,7 @@ TEST(CameraTest, DefaultConstructorHasFiniteMatrices)
 
 TEST(CameraTest, SetPositionUpdatesView)
 {
-    Camera camera;
+    CameraData camera;
     const Matrix viewBefore = camera.View();
 
     camera.SetPosition(Vector3(10.0f, 5.0f, -10.0f));
@@ -73,7 +73,7 @@ TEST(CameraTest, SetPositionUpdatesView)
 
 TEST(CameraTest, RepeatedViewCallIsStable)
 {
-    Camera camera;
+    CameraData camera;
     camera.SetPosition(Vector3(2.0f, 3.0f, -8.0f));
 
     const Matrix v1 = camera.View();
@@ -84,7 +84,7 @@ TEST(CameraTest, RepeatedViewCallIsStable)
 
 TEST(CameraTest, ViewUsesLeftHanded)
 {
-    Camera camera;
+    CameraData camera;
     const Vector3 pos(1.5f, 2.0f, -7.0f);
     const Vector3 tgt(0.0f, 0.5f, 0.0f);
     const Vector3 up(0.0f, 1.0f, 0.0f);
@@ -99,7 +99,7 @@ TEST(CameraTest, ViewUsesLeftHanded)
 
 TEST(CameraTest, ProjectionUsesLeftHanded)
 {
-    Camera camera;
+    CameraData camera;
     camera.SetFovY(NS::Core::ToRadians(NS::Core::Degrees{45.0f}));
     camera.SetAspectRatio(1.6f);
     camera.SetNearPlane(0.5f);
@@ -111,7 +111,7 @@ TEST(CameraTest, ProjectionUsesLeftHanded)
 
 TEST(CameraTest, SetAspectRatioRebuildsProjection)
 {
-    Camera camera;
+    CameraData camera;
     camera.SetAspectRatio(16.0f / 9.0f);
     const Matrix projBefore = camera.Projection();
 
@@ -123,7 +123,7 @@ TEST(CameraTest, SetAspectRatioRebuildsProjection)
 
 TEST(CameraTest, ViewProjectionIsViewTimesProjection)
 {
-    Camera camera;
+    CameraData camera;
     camera.SetPosition(Vector3(0.0f, 1.0f, -3.0f));
     camera.SetTarget(Vector3(0.0f, 0.0f, 0.0f));
     camera.SetAspectRatio(1.0f);
@@ -135,7 +135,7 @@ TEST(CameraTest, ViewProjectionIsViewTimesProjection)
 
 TEST(CameraTest, DegenerateEyeEqualsTargetReturnsIdentity)
 {
-    Camera camera;
+    CameraData camera;
     camera.SetPosition(Vector3(2.0f, 2.0f, 2.0f));
     camera.SetTarget(Vector3(2.0f, 2.0f, 2.0f));
 
@@ -152,7 +152,7 @@ TEST(CameraTest, DegenerateEyeEqualsTargetReturnsIdentity)
 
 TEST(CameraTest, AccessorsReturnSetValues)
 {
-    Camera camera;
+    CameraData camera;
     camera.SetPosition(Vector3(1.0f, 2.0f, 3.0f));
     camera.SetTarget(Vector3(4.0f, 5.0f, 6.0f));
     camera.SetUp(Vector3(0.0f, 0.0f, 1.0f));
@@ -168,40 +168,4 @@ TEST(CameraTest, AccessorsReturnSetValues)
     EXPECT_FLOAT_EQ(camera.AspectRatio(), 2.0f);
     EXPECT_FLOAT_EQ(camera.NearPlane(), 0.25f);
     EXPECT_FLOAT_EQ(camera.FarPlane(), 750.0f);
-}
-
-TEST(CameraTest, CameraDescCtorAppliesAllFieldsAtomically)
-{
-    const NS::Gfx::CameraDesc desc{
-        .position = Vector3(7.0f, 8.0f, 9.0f),
-        .target = Vector3(1.0f, 2.0f, 3.0f),
-        .up = Vector3(0.0f, 0.0f, 1.0f),
-        .fovY = NS::Core::Radians{0.6f},
-        .aspectRatio = 1.25f,
-        .nearPlane = 0.2f,
-        .farPlane = 500.0f,
-    };
-    const Camera camera(desc);
-
-    EXPECT_FLOAT_EQ(camera.Position().x, 7.0f);
-    EXPECT_FLOAT_EQ(camera.Position().y, 8.0f);
-    EXPECT_FLOAT_EQ(camera.Position().z, 9.0f);
-    EXPECT_FLOAT_EQ(camera.Target().x, 1.0f);
-    EXPECT_FLOAT_EQ(camera.Up().z, 1.0f);
-    EXPECT_FLOAT_EQ(camera.FovY().value, 0.6f);
-    EXPECT_FLOAT_EQ(camera.AspectRatio(), 1.25f);
-    EXPECT_FLOAT_EQ(camera.NearPlane(), 0.2f);
-    EXPECT_FLOAT_EQ(camera.FarPlane(), 500.0f);
-}
-
-TEST(CameraTest, CameraDescDefaultMatchesDefaultCtor)
-{
-    const Camera fromDefault;
-    const Camera fromDesc{NS::Gfx::CameraDesc{}};
-
-    EXPECT_FLOAT_EQ(fromDefault.Position().z, fromDesc.Position().z);
-    EXPECT_FLOAT_EQ(fromDefault.FovY().value, fromDesc.FovY().value);
-    EXPECT_FLOAT_EQ(fromDefault.AspectRatio(), fromDesc.AspectRatio());
-    EXPECT_FLOAT_EQ(fromDefault.NearPlane(), fromDesc.NearPlane());
-    EXPECT_FLOAT_EQ(fromDefault.FarPlane(), fromDesc.FarPlane());
 }

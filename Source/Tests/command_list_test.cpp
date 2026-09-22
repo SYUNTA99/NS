@@ -23,7 +23,7 @@ namespace
     using NS::Gfx::Shader;
     using NS::Gfx::ShaderType;
     using NS::Gfx::Texture;
-    using NS::Gfx::TextureCreateDesc;
+    using NS::Gfx::TextureDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
@@ -90,14 +90,14 @@ TEST_F(CommandListLoggerTest, SetAndDrawDoNotCrash)
     ASSERT_TRUE(ib.IsValid());
     ASSERT_TRUE(cb.IsValid());
 
-    // 読込失敗で magenta fallback になり IsValid()==true
+    // 読込失敗でピンク一色のフォールバックになり IsValid は true
     std::unique_ptr<Shader> vsHolder = Shader::Create("C:/nonexistent/__ns_cmd.vs.hlsl");
     Shader& vs = *vsHolder;
     std::unique_ptr<Shader> psHolder = Shader::Create("C:/nonexistent/__ns_cmd.ps.hlsl");
     Shader& ps = *psHolder;
     ASSERT_TRUE(vs.IsValid());
     ASSERT_TRUE(ps.IsValid());
-    std::unique_ptr<Texture> texHolder = Texture::Create("C:/nonexistent/__ns_cmd.png");
+    std::unique_ptr<Texture> texHolder = Texture::Create({.path = "C:/nonexistent/__ns_cmd.png"});
     Texture& tex = *texHolder;
     ASSERT_TRUE(tex.IsValid());
 
@@ -146,7 +146,7 @@ TEST_F(CommandListLoggerTest, UpdateTextureDefaultUsesUpdateSubresource)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    TextureCreateDesc texDesc{};
+    TextureDesc texDesc{};
     texDesc.width = 2;
     texDesc.height = 2;
     texDesc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -168,14 +168,14 @@ TEST_F(CommandListLoggerTest, RenderTargetAndClearDoNotCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    TextureCreateDesc colorDesc{};
+    TextureDesc colorDesc{};
     colorDesc.width = 64;
     colorDesc.height = 64;
     colorDesc.bindFlags = D3D11_BIND_RENDER_TARGET;
     std::unique_ptr<Texture> colorHolder = Texture::Create(colorDesc);
     Texture& color = *colorHolder;
 
-    TextureCreateDesc depthDesc{};
+    TextureDesc depthDesc{};
     depthDesc.width = 64;
     depthDesc.height = 64;
     depthDesc.format = DXGI_FORMAT_D24_UNORM_S8_UINT;

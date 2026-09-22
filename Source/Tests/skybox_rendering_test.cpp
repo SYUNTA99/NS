@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <Runtime/Core/CameraData.h>
 #include <Runtime/Core/Logger.h>
-#include <Runtime/Graphics/Camera.h>
 #include <Runtime/Graphics/Pipeline.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/Skybox.h>
@@ -56,7 +56,7 @@ TEST_F(SkyboxRenderingTest, DepthStateIsLessEqual)
     ASSERT_NE(skybox.RenderPipeline(), nullptr);
     const NS::Gfx::PipelineDesc& desc = skybox.RenderPipeline()->Desc();
 
-    // skybox は z=1 の far plane に張り付くので LESS_EQUAL + 書込なし (= ReadOnly) 必須
+    // skybox は z=1 のファークリップ面に張り付くので、LESS_EQUAL かつ深度書き込み無しの ReadOnly が要る
     EXPECT_EQ(desc.depth, NS::Gfx::DepthMode::ReadOnly);
 }
 
@@ -75,7 +75,7 @@ TEST_F(SkyboxRenderingTest, RasterFrontCull)
     const NS::Gfx::PipelineDesc& desc = skybox.RenderPipeline()->Desc();
 
     EXPECT_EQ(desc.fill, NS::Gfx::FillMode::Solid);
-    // inside-out cube を視点中心で描くので Front or None が許容される
+    // 内側を向いた立方体を視点中心に描くので、Front と None のどちらでもよい
     const bool cullOk = (desc.cull == NS::Gfx::CullMode::Front) || (desc.cull == NS::Gfx::CullMode::None);
     EXPECT_TRUE(cullOk);
 }
@@ -91,7 +91,7 @@ TEST_F(SkyboxRenderingTest, RenderWithFallbackDoesNotCrash)
     Skybox& skybox = *skyboxHolder;
     ASSERT_TRUE(skybox.IsValid());
 
-    // LoadCubemap を呼ばずに発行しても fallback が描かれてクラッシュしないこと
+    // LoadCubemap を呼ばずに発行してもフォールバックが描かれてクラッシュしない
     NS::Core::Matrix vpNoTranslate = NS::Core::Matrix::Identity;
     NS::Gfx::IssueSkybox(renderer, skybox, vpNoTranslate);
     SUCCEED();
@@ -104,8 +104,8 @@ TEST_F(SkyboxRenderingTest, DrawSkyWithEmptyPathDrawsNothing)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    // cubemap を指定していないシーンは空を描かない。装置の構築にも入らない
-    NS::Gfx::Camera camera{};
+    // cubemap を指定していないシーンは空を描かない。Skybox の構築にも入らない
+    NS::Core::CameraData camera{};
     renderer.DrawSky(camera, std::string{});
     renderer.DrawSky(camera, std::string{});
     SUCCEED();
@@ -119,7 +119,7 @@ TEST_F(SkyboxRenderingTest, DrawSkyIgnoresPathOutsideContentRoot)
     ASSERT_TRUE(renderer.IsValid());
 
     // ContentRoot の外を指すパスは読まずに拒否し、二度目は警告も出さない
-    NS::Gfx::Camera camera{};
+    NS::Core::CameraData camera{};
     const std::string outside{"../outside/sky"};
     renderer.DrawSky(camera, outside);
     renderer.DrawSky(camera, outside);
