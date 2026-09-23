@@ -16,6 +16,12 @@
 #include "Runtime/Graphics/Skybox.h"
 #include "Runtime/Graphics/Texture.h"
 #include "Runtime/Platform/Filesystem.h"
+#include "ThirdParty/DirectXTex/ScreenGrab/ScreenGrab11.h"
+
+#include <cstring>
+#include <utility>
+
+#include <wincodec.h>
 
 #include <iterator>
 #include <memory>
@@ -268,6 +274,116 @@ namespace NS::Gfx
     bool Renderer::IsValid() const noexcept
     {
         return m_valid;
+    }
+
+    bool Renderer::CaptureBackbufferToPng(const std::filesystem::path& path) noexcept
+    {
+        if (!m_valid || !m_swapchain || !m_context)
+        {
+            return false;
+        }
+
+        ComPtr<ID3D11Texture2D> backbuffer;
+        HRESULT hr = m_swapchain->GetBuffer(0, IID_PPV_ARGS(backbuffer.GetAddressOf()));
+        if (FAILED(hr))
+        {
+            NS_LOG_ERROR(
+                Graphics, "CaptureBackbufferToPng: backbuffer を取れない (hr=0x{:08X})", static_cast<unsigned>(hr));
+            return false;
+        }
+
+        hr = DirectX::SaveWICTextureToFile(m_context.Get(), backbuffer.Get(), GUID_ContainerFormatPng, path.c_str());
+        if (FAILED(hr))
+        {
+            NS_LOG_ERROR(Graphics,
+                         "CaptureBackbufferToPng: 書き出しに失敗 (hr=0x{:08X}): {}",
+                         static_cast<unsigned>(hr),
+                         path.string());
+            return false;
+        }
+        return true;
+    }
+
+    bool Renderer::ReadBackbufferPixels(std::vector<std::uint8_t>& outBgra, NS::Core::Size2D& outSize) noexcept
+    {
+        if (!m_valid || !m_swapchain || !m_context)
+        {
+            return false;
+        }
+
+        ComPtr<ID3D11Texture2D> backbuffer;
+        HRESULT hr = m_swapchain->GetBuffer(0, IID_PPV_ARGS(backbuffer.GetAddressOf()));
+        if (FAILED(hr))
+        {
+            NS_LOG_ERROR(
+                Graphics, "ReadBackbufferPixels: backbuffer を取れない (hr=0x{:08X})", static_cast<unsigned>(hr));
+            return false;
+        }
+
+        D3D11_TEXTURE2D_DESC desc{};
+        backbuffer->GetDesc(&desc);
+
+        const bool redAndBlueSwapped =
+            desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM || desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+        const bool alreadyBgra =
+            desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM || desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+        if (!redAndBlueSwapped && !alreadyBgra)
+        {
+            // R8G8B8A8 と B8G8R8A8 の UNORM 以外は BGRA に直せず、渡すと色が化けたまま気付けない
+            NS_LOG_ERROR(Graphics, "ReadBackbufferPixels: BGRA へ直せない形式 ({})", static_cast<int>(desc.Format));
+            return false;
+        }
+
+        // GPU 専用のままでは Map できないので、CPU から読める写しへ複写する
+        desc.Usage = D3D11_USAGE_STAGING;
+        desc.BindFlags = 0u;
+        desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        desc.MiscFlags = 0u;
+
+        ComPtr<ID3D11Texture2D> staging;
+        auto* device = Gpu().device;
+        if (device == nullptr)
+        {
+            return false;
+        }
+        hr = device->CreateTexture2D(&desc, nullptr, staging.GetAddressOf());
+        if (FAILED(hr))
+        {
+            NS_LOG_ERROR(
+                Graphics, "ReadBackbufferPixels: 読み出し用の写しを作れない (hr=0x{:08X})", static_cast<unsigned>(hr));
+            return false;
+        }
+        m_context->CopyResource(staging.Get(), backbuffer.Get());
+
+        D3D11_MAPPED_SUBRESOURCE mapped{};
+        hr = m_context->Map(staging.Get(), 0u, D3D11_MAP_READ, 0u, &mapped);
+        if (FAILED(hr))
+        {
+            NS_LOG_ERROR(Graphics, "ReadBackbufferPixels: Map に失敗 (hr=0x{:08X})", static_cast<unsigned>(hr));
+            return false;
+        }
+
+        const std::size_t rowBytes = static_cast<std::size_t>(desc.Width) * 4u;
+        outBgra.resize(rowBytes * desc.Height);
+        const auto* source = static_cast<const std::uint8_t*>(mapped.pData);
+        for (UINT y = 0; y < desc.Height; ++y)
+        {
+            std::memcpy(
+                outBgra.data() + rowBytes * y, source + static_cast<std::size_t>(mapped.RowPitch) * y, rowBytes);
+        }
+        m_context->Unmap(staging.Get(), 0u);
+
+        if (redAndBlueSwapped)
+        {
+            // R8G8B8A8 の backbuffer は RGBA 並びなので、入れ替えないと赤と青が逆になる
+            for (std::size_t at = 0; at + 2u < outBgra.size(); at += 4u)
+            {
+                std::swap(outBgra[at], outBgra[at + 2u]);
+            }
+        }
+
+        outSize = NS::Core::Size2D{static_cast<int>(desc.Width), static_cast<int>(desc.Height)};
+        return true;
     }
 
     const Pipeline& Renderer::CommonPipeline(BlendMode blend) const noexcept

@@ -362,7 +362,10 @@ project "Graphics"
 
     files {
         "Source/Runtime/Graphics/**.h",
-        "Source/Runtime/Graphics/**.cpp"
+        "Source/Runtime/Graphics/**.cpp",
+        -- backbuffer を PNG へ書く同梱コード。DirectXTex は許諾表示に既に載っている
+        "Source/ThirdParty/DirectXTex/ScreenGrab/ScreenGrab11.h",
+        "Source/ThirdParty/DirectXTex/ScreenGrab/ScreenGrab11.cpp"
     }
 
     includedirs {

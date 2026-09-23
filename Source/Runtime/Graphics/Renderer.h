@@ -6,7 +6,10 @@
 #include "Runtime/Graphics/RenderSettings.h"
 #include "Runtime/Platform/Window.h"
 
+#include <cstdint>
+#include <filesystem>
 #include <string>
+#include <vector>
 
 namespace NS::Core
 {
@@ -94,6 +97,20 @@ namespace NS::Gfx
         //! @brief backbuffer を描画先へ戻し viewport を張り直す
         //! @details オフスクリーン描画のフレームで、UI の実描画直前に呼ぶ
         void BindBackbuffer() noexcept;
+
+        //! @brief 今の backbuffer の内容を PNG として書き出す
+        //! @details 書き出しは WIC を通る。IsValid() が false の間は何もしない
+        //! @param[in] path 書き出し先のファイルパス。親フォルダは作らない
+        //! @return 書き出せた場合 true、それ以外の場合は false
+        [[nodiscard]] bool CaptureBackbufferToPng(const std::filesystem::path& path) noexcept;
+
+        //! @brief 今の backbuffer の内容を BGRA の画素として読み出す
+        //! @details CPU から読める写しへ複写してから読む。IsValid() が false の間は何もしない
+        //! BGRA へ直せない形式の backbuffer も読み出さない
+        //! @param[out] outBgra 左上から行ごとに並ぶ BGRA の画素。false のときは書き換えない
+        //! @param[out] outSize 読み出した絵の幅と高さ (画素)
+        //! @return 読み出せた場合 true、それ以外の場合は false
+        [[nodiscard]] bool ReadBackbufferPixels(std::vector<std::uint8_t>& outBgra, NS::Core::Size2D& outSize) noexcept;
 
         //! よく使われる共通の描画ステート
         [[nodiscard]] CommonStates& States() noexcept;
