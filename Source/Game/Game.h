@@ -4,6 +4,7 @@
 #include "Runtime/Object/Scene/SceneManager.h"
 #include "Runtime/UI/UISystem.h"
 
+#include <string>
 #include <string_view>
 
 namespace NS::Obj
@@ -15,7 +16,12 @@ namespace NS::Obj
 class Game : public NS::App::Layer
 {
 public:
-    Game();
+    //! 既定の開始シーン。ContentRoot からの相対パス
+    static constexpr std::string_view k_DefaultStartScene = "Assets/Scenes/new_scene.scene";
+
+    //! @brief 開始シーンのパスを控える。読み込みは OnAttach
+    //! @param[in] startScenePath ContentRoot からの相対パス
+    explicit Game(std::string_view startScenePath = k_DefaultStartScene);
     ~Game() override;
 
     Game(const Game&) = delete;
@@ -28,10 +34,19 @@ public:
     void OnUpdate() override;
     void OnRender() override;
 
-    //! @brief シーン名を指定してシーンを読み込み、立て直す
-    //! @details 名前は Scenes/<name>.scene に対応する。パス区切りや ".." を含む名前は受け付けない
+    //! @brief ContentRoot 配下のシーンを読み込み、立て直す
+    //! @details 絶対パスと ContentRoot の外へ出るパスは受け付けない
+    //! @param[in] scenePath ContentRoot からの相対パス。空文字列は受け付けない
     //! @return 読めなければ false を返し、その時は今のシーンをそのまま保つ
-    bool LoadScene(std::string_view sceneName);
+    bool LoadScene(std::string_view scenePath);
+
+    //! @brief 構築時に受けた開始シーンを読む
+    //! @details 結果は StartSceneLoaded() に残る
+    //! @return 読めた場合 true、それ以外の場合は false
+    bool LoadStartScene();
+
+    //! 直近の LoadStartScene が読めた場合 true。呼ぶ前は false
+    [[nodiscard]] bool StartSceneLoaded() const noexcept { return m_startSceneLoaded; }
 
     //! @brief 現在ロードされているシーンを取得する
     //! @return シーン未ロードなら nullptr を返す
@@ -44,8 +59,11 @@ public:
     [[nodiscard]] static Game* Get() noexcept { return s_instance; }
 
 private:
+    std::string m_startScenePath;
+    bool m_startSceneLoaded = false;
+
     NS::Obj::SceneManager m_scenes; // シーンの所有と遷移管理
-    NS::UI::UISystem m_ui;              // ゲーム画面の UI。world 描画の後に重ねる
+    NS::UI::UISystem m_ui;          // ゲーム画面の UI。world 描画の後に重ねる
 
     static Game* s_instance;
 };

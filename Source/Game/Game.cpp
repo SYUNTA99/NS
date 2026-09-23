@@ -1,10 +1,10 @@
 #include "Game/Game.h"
 
 #include "Runtime/App/Application.h"
-#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Platform/Input.h"
 
 #include <optional>
@@ -13,21 +13,15 @@
 
 namespace
 {
-    //! @brief シーン名からファイルパスを組む
-    //! @details Assets/Scenes 配下に収まる相対パスだけを受け、".." 等で外へ抜ける名前は ResolveUnder が弾く
-    std::optional<std::string> BuildScenePath(std::string_view sceneName)
+    std::optional<std::string> ResolveScenePath(std::string_view scenePath)
     {
-        if (sceneName.empty())
-            return std::nullopt;
-        return NS::Platform::FileSystem::ResolveUnder(
-            NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets/Scenes"),
-            std::string{sceneName} + ".scene");
+        return NS::Platform::FileSystem::ResolveUnder(NS::Platform::FileSystem::ContentRoot(), scenePath);
     }
 } // namespace
 
 Game* Game::s_instance = nullptr;
 
-Game::Game() : NS::App::Layer("Game")
+Game::Game(std::string_view startScenePath) : NS::App::Layer("Game"), m_startScenePath(startScenePath)
 {
     s_instance = this;
 }
@@ -54,7 +48,7 @@ void Game::OnAttach()
 
     // 同梱シーンを読む。読めなければ何も置かない空のシーンを立てる
     // 遊べる物を代わりに合成すると、パッケージの取りこぼしが遊べる風の画面に隠れて気づけない
-    if (!LoadScene("new_scene"))
+    if (!LoadStartScene())
     {
         NS_LOG_ERROR(Game, "起動シーンを読めなかった。 空のシーンで立ち上げる");
         (void)m_scenes.LoadScene(NS::Obj::SceneData{});
@@ -126,12 +120,25 @@ void Game::OnRender()
         m_ui.Render(app->Renderer());
 }
 
-bool Game::LoadScene(std::string_view sceneName)
+bool Game::LoadStartScene()
 {
-    const std::optional<std::string> path = BuildScenePath(sceneName);
+    m_startSceneLoaded = LoadScene(m_startScenePath);
+    return m_startSceneLoaded;
+}
+
+bool Game::LoadScene(std::string_view scenePath)
+{
+    // 空のパスは ResolveUnder が ContentRoot 自体を返すので、フォルダを開けない失敗として出てしまう
+    if (scenePath.empty())
+    {
+        NS_LOG_ERROR(Game, "LoadScene: シーンのパスが空");
+        return false;
+    }
+
+    const std::optional<std::string> path = ResolveScenePath(scenePath);
     if (!path)
     {
-        NS_LOG_ERROR(Game, "LoadScene: シーン名が不正: {}", sceneName);
+        NS_LOG_ERROR(Game, "LoadScene: シーンのパスが ContentRoot 配下に収まらない: {}", scenePath);
         return false;
     }
 

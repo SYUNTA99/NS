@@ -914,10 +914,12 @@ project "Tests"
         "Source/Tests/**.h",
         "Source/Tests/**.cpp",
         -- Game 側 GameObject 派生 (Player) は Application 依存を持たないので
-        -- Tests から直接コンパイルしてリンクする。Game.cpp は Application や
-        -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
+        -- Tests から直接コンパイルしてリンクする。
         -- Source/Game/Player/ 配下とは別物。GameObject 派生の Player 本体
         "Source/Game/Player.cpp",
+        -- Game.cpp の Application と Window への依存は OnAttach / OnUpdate / OnRender の中だけなので、
+        -- 開始シーンのパスの試験はそれらを呼ばずに済む。リンクは既に App を繋いでいる
+        "Source/Game/Game.cpp",
         "Source/Editor/EditorCamera.cpp",
         -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
         -- Setup は Application::Get() を要求するため test では呼ばないが、 ctor / EnterPlay /
