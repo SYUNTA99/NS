@@ -1318,6 +1318,28 @@ TEST(CollisionImpact, PeakStretchesHitStop)
     EXPECT_EQ(StepsUntilMovementActive(scene, rig, 60), expected);
 }
 
+// 白が引いたフレームには、まだ潰れが残っている。白を長くすると落ちる
+TEST(CollisionImpact, PeakFlashClearsWhileTheSquashIsStillHeld)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_FarCourse);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    ASSERT_TRUE(rig.impact->WasPeakImpact());
+    ASSERT_GT(rig.impact->PeakFlashStepsRemaining(), 0);
+
+    int steps = 0;
+    while (rig.impact->PeakFlashStepsRemaining() > 0 && steps < 60)
+    {
+        Step(scene, rig);
+        ++steps;
+    }
+
+    EXPECT_LE(steps, 3);
+    EXPECT_TRUE(rig.impact->IsScaleAnimating());
+}
+
 TEST(CollisionImpact, ButtonReleaseStartsBodySlam)
 {
     SceneNs::Scene scene;
