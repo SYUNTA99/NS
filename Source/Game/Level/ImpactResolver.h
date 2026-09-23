@@ -21,6 +21,24 @@ namespace NS::Game::Level
     class CollisionInput;
     class LaunchedBody;
 
+    //! @brief 当たり 1 回の裁定の内訳
+    struct ImpactRecord
+    {
+        std::uint32_t sequence = 0;
+        std::uint32_t targetId = 0;
+        float power = 0.0f;
+        float charge01 = 0.0f;
+        float positionFactor = 0.0f;
+        float cameraShake = 0.0f;
+        int hitStopSteps = 0;
+        bool peak = false;
+        bool broke = false;
+        NS::Core::Vector3 selfVelocity;
+        NS::Core::Vector3 launchVelocity;
+        NS::Core::Vector3 impactDir;
+        NS::Core::Vector3 targetPos;
+    };
+
     //! @brief ぶつかった結果を自機側で決める Component
     //! @details 帯は Update より前。PlayerComponent が動く前にその 1 固定ステップの結末を決めるので、
     //! 壁の手前で止められて速度を消された後から結果を推測し直さずに済む
@@ -57,6 +75,12 @@ namespace NS::Game::Level
 
         //! 直近の裁定の最終威力
         [[nodiscard]] float LastPower() const noexcept { return m_lastPower; }
+
+        //! 直近の当たりで控えた内訳。まだ当たっていない間は sequence が 0
+        [[nodiscard]] const ImpactRecord& LastImpact() const noexcept { return m_lastImpact; }
+
+        //! 白フラッシュの残りフレーム数。出していない場合 0
+        [[nodiscard]] int PeakFlashStepsRemaining() const noexcept { return m_peakFlashRemaining; }
 
         //! 凍結の途中で外れても移動を止めたままにしない
         void OnEndPlay() override;
@@ -174,6 +198,7 @@ namespace NS::Game::Level
         float m_lastCharge01 = 0.0f;
         float m_lastPositionFactor = 0.0f;
         float m_lastPower = 0.0f;
+        ImpactRecord m_lastImpact{};
         int m_peakFlashRemaining = 0;
         NS::Game::Player::PlayerComponent* m_movement = nullptr; // 同じ配置物の移動。非所有
         CollisionInput* m_collisionInput = nullptr;

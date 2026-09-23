@@ -658,6 +658,31 @@ TEST(CollisionImpact, ReboundLaunchesHitBody)
     EXPECT_TRUE(body->IsFlying());
 }
 
+// 当たり 1 回の内訳を外から読めないと、止めと飛びを画面から目で数えることになる
+TEST(CollisionImpact, KeepsTheNumbersOfTheLastHitForReading)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    ASSERT_NE(rig.target, nullptr);
+    EXPECT_EQ(rig.impact->LastImpact().sequence, 0u);
+
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+
+    const LevelNs::ImpactRecord& hit = rig.impact->LastImpact();
+    EXPECT_EQ(hit.sequence, 1u);
+    EXPECT_EQ(hit.targetId, rig.target->Id());
+    EXPECT_FLOAT_EQ(hit.charge01, 1.0f);
+    EXPECT_GT(hit.power, 0.0f);
+    EXPECT_GT(hit.positionFactor, 0.0f);
+    EXPECT_GT(hit.hitStopSteps, 0);
+    EXPECT_GT(hit.cameraShake, 0.0f);
+    EXPECT_FALSE(hit.broke);
+    // 反発と押し飛ばしは符号が逆に出る。取り違えても値の大きさでは気づけない
+    EXPECT_LT(hit.selfVelocity.x, 0.0f);
+    EXPECT_GT(hit.launchVelocity.x, 0.0f);
+}
+
 TEST(CollisionImpact, ReboundsAgainstSphereTarget)
 {
     SceneNs::Scene scene;

@@ -335,6 +335,21 @@ namespace NS::Game::Level
             stopSteps = ComputeHitStopSteps(power, mass, hitStopScale);
         }
 
+        // 止めるフレーム数が決まってから控える。止めが 0 フレームの当たりも残すので、下の return より手前に置く
+        m_lastImpact.sequence += 1;
+        m_lastImpact.targetId = m_pendingTargetId;
+        m_lastImpact.power = power;
+        m_lastImpact.charge01 = charge01;
+        m_lastImpact.positionFactor = positionFactor;
+        m_lastImpact.cameraShake = m_pendingShakeStrength;
+        m_lastImpact.hitStopSteps = stopSteps;
+        m_lastImpact.peak = peak;
+        m_lastImpact.broke = m_pendingBreak;
+        m_lastImpact.selfVelocity = m_pendingSelfVelocity;
+        m_lastImpact.launchVelocity = m_pendingLaunchVelocity;
+        m_lastImpact.impactDir = m_pendingImpactDir;
+        m_lastImpact.targetPos = m_pendingTargetHome;
+
         if (stopSteps <= 0)
         {
             ReleaseHitStop();
