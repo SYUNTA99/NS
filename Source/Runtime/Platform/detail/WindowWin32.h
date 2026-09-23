@@ -32,7 +32,8 @@ namespace NS::Platform
         bool cursorVisible = true;
 
         bool cursorLocked = false;
-        bool hasFocus = true;
+        // 一度も前に出ない窓には WM_SETFOCUS が来ない。作成時に実際の状態を書く
+        bool hasFocus = false;
         bool lockPointSet = false;
         int lockPointX = 0;
         int lockPointY = 0;

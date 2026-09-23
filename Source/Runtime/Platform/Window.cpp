@@ -279,6 +279,8 @@ namespace NS::Platform
             showCommand = SW_SHOW;
         ::ShowWindow(m_pImpl->hwnd, showCommand);
         ::UpdateWindow(m_pImpl->hwnd);
+
+        m_pImpl->hasFocus = (::GetForegroundWindow() == m_pImpl->hwnd);
     }
 
     Window::~Window()

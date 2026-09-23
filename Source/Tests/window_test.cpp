@@ -2,6 +2,8 @@
 #include <Runtime/Platform/Window.h>
 #include <gtest/gtest.h>
 
+#include <windows.h>
+
 namespace
 {
     NS::Platform::WindowDesc MakeDesc(const char* title, int width = 320, int height = 240)
@@ -65,6 +67,24 @@ TEST_F(WindowLoggerTest, CursorLockFlagRoundTrips)
 
     window.SetCursorLocked(false);
     EXPECT_FALSE(window.IsCursorLocked());
+}
+
+TEST_F(WindowLoggerTest, CursorStaysPutWhileTheWindowHasNoFocus)
+{
+    POINT before{};
+    ASSERT_TRUE(::GetCursorPos(&before));
+
+    NS::Platform::Window window(MakeDesc("ns_test_cursor_focus"));
+    ASSERT_TRUE(window.IsValid());
+    window.SetCursorLocked(true);
+    for (int i = 0; i < 3; ++i)
+        window.PollMessages();
+
+    POINT after{};
+    ASSERT_TRUE(::GetCursorPos(&after));
+    ::SetCursorPos(before.x, before.y);
+    EXPECT_EQ(after.x, before.x);
+    EXPECT_EQ(after.y, before.y);
 }
 
 TEST_F(WindowLoggerTest, NativeHandleNotNull)
