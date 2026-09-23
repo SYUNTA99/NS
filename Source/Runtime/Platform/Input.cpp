@@ -310,6 +310,11 @@ namespace NS::Platform
         return m_rightTrigger;
     }
 
+    int Gamepad::UserIndex() const noexcept
+    {
+        return m_userIndex;
+    }
+
     void Gamepad::Update() noexcept
     {
         m_previous = m_current;
@@ -364,6 +369,16 @@ namespace NS::Platform
             return m_gamepads[0];
         }
         return m_gamepads[static_cast<std::size_t>(index)];
+    }
+
+    bool Input::SetGamepadUserIndex(int userIndex) noexcept
+    {
+        if (userIndex < 0 || userIndex >= static_cast<int>(XUSER_MAX_COUNT))
+        {
+            return false;
+        }
+        m_gamepads[0] = ::NS::Platform::Gamepad{userIndex};
+        return true;
     }
 
     void Input::Update() noexcept

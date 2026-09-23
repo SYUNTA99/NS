@@ -31,6 +31,12 @@ namespace NS::Platform
         [[nodiscard]] NS::Platform::Gamepad& Gamepad(int index = 0) noexcept;
         [[nodiscard]] const NS::Platform::Gamepad& Gamepad(int index = 0) const noexcept;
 
+        //! @brief Gamepad(0) が読む XInput のユーザー番号を切り替える
+        //! @details 0〜3 の外は何もしない。切り替えると状態を空に戻し、次の Update から読み直す
+        //! @param[in] userIndex XInput のユーザー番号 (0〜3)
+        //! @return 切り替えた場合 true、それ以外の場合は false
+        [[nodiscard]] bool SetGamepadUserIndex(int userIndex) noexcept;
+
         //! @brief 各入力デバイスの内部状態を更新する
         void Update() noexcept;
 

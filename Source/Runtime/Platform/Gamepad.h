@@ -65,6 +65,9 @@ namespace NS::Platform
         //! @brief 右トリガーの入力を取得する
         [[nodiscard]] float RightTrigger() const noexcept;
 
+        //! @brief Update で状態を読む XInput のユーザー番号を返す
+        [[nodiscard]] int UserIndex() const noexcept;
+
         //! @brief 最新のハードウェア状態を同期する
         void Update() noexcept;
 

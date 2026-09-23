@@ -397,3 +397,25 @@ TEST(NsPlatformInput, UpdateIsSafeToCallTwice)
     input.Update();
     EXPECT_FALSE(input.Gamepad(0).IsHeld(static_cast<GamepadButton>(-1)));
 }
+
+TEST(NsPlatformInput, GamepadSlotReadsUserIndexZeroByDefault)
+{
+    Input input;
+    EXPECT_EQ(input.Gamepad(0).UserIndex(), 0);
+}
+
+TEST(NsPlatformInput, SetGamepadUserIndexRebindsSlotZero)
+{
+    Input input;
+    EXPECT_TRUE(input.SetGamepadUserIndex(2));
+    EXPECT_EQ(input.Gamepad(0).UserIndex(), 2);
+}
+
+TEST(NsPlatformInput, SetGamepadUserIndexRejectsOutOfRange)
+{
+    Input input;
+    ASSERT_TRUE(input.SetGamepadUserIndex(3));
+    EXPECT_FALSE(input.SetGamepadUserIndex(-1));
+    EXPECT_FALSE(input.SetGamepadUserIndex(4));
+    EXPECT_EQ(input.Gamepad(0).UserIndex(), 3);
+}
