@@ -117,7 +117,7 @@ bindir = "build/bin/" .. outputdir
 objdir_base = "build/obj/" .. outputdir
 
 -- 共通 build options (全 Runtime 層 / Game / Tests project で使用)
-local function applyCommonBuildOptions()
+function applyCommonBuildOptions()
     warnings "Extra"
     -- flags { "FatalWarnings" }  -- build 安定後に有効化
     -- 実行時型情報は使わない方針。 /GR- で切り、 dynamic_cast / 多態 typeid の使用 (C4541) は error で弾く
@@ -145,7 +145,7 @@ end
 --  JPH_PROFILE_ENABLED / JPH_EXTERNAL_PROFILE / JPH_DEBUG_RENDERER / JPH_DISABLE_TEMP_ALLOCATOR /
 --  JPH_DISABLE_CUSTOM_ALLOCATOR / JPH_OBJECT_LAYER_BITS / JPH_ENABLE_ASSERTS / JPH_OBJECT_STREAM)。
 -- 既定のまま使う物は書かない。 書けば両側で書き忘れる余地が増える
-local function applyJoltDefines()
+function applyJoltDefines()
     -- NS_ENABLE_ASSERT と同じ構成で入れる
     filter { "configurations:Debug or Development or GameDebug" }
         defines { "JPH_ENABLE_ASSERTS" }
@@ -237,7 +237,7 @@ project "jolt"
 
 -- 上流の include の起点は 3 つの lib のルート。 兄弟へは "../3rdParty/..." のように起点から 1 段上がって辿る。
 -- Effekseer の型は Graphics の公開ヘッダ (EffectScene.h) へ出す方針なので、 それを読む project も同じ起点を入れる
-local effekseerIncludeDirs = {
+effekseerIncludeDirs = {
     "Source/ThirdParty/Effekseer/Effekseer",
     "Source/ThirdParty/Effekseer/EffekseerRendererCommon",
     "Source/ThirdParty/Effekseer/EffekseerRendererDX11",
@@ -1019,3 +1019,11 @@ project "Tests"
     disablewarnings { "4244", "4834" }  -- テスト用: 暗黙変換、[[nodiscard]]無視
 
     applyCommonBuildOptions()
+
+--============================================================================
+-- Tools/<名前>/premake.lua を置いた道具は、 ここに名前を書かなくても一緒に建つ
+--   道具の premake.lua から呼べるよう、 applyCommonBuildOptions / applyJoltDefines / effekseerIncludeDirs は local にしていない
+--============================================================================
+for _, toolScript in ipairs(os.matchfiles("Tools/*/premake.lua")) do
+    include(toolScript)
+end
