@@ -1,6 +1,5 @@
 ﻿#include "Runtime/Object/Components/MeshCollider.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
@@ -62,7 +61,7 @@ namespace NS::Obj
         const GameObject* owner = Owner();
         if (owner == nullptr)
         {
-			return m_collision->triangles;
+            return m_collision->triangles;
         }
 
         const NS::Core::Matrix world = owner->Root().WorldMatrix();
@@ -71,8 +70,8 @@ namespace NS::Obj
         for (const NS::Phys::Triangle& tri : m_collision->triangles)
         {
             result.push_back(NS::Phys::Triangle{NS::Core::Vector3::Transform(tri.v0, world),
-                                                   NS::Core::Vector3::Transform(tri.v1, world),
-                                                   NS::Core::Vector3::Transform(tri.v2, world)});
+                                                NS::Core::Vector3::Transform(tri.v1, world),
+                                                NS::Core::Vector3::Transform(tri.v2, world)});
         }
         return result;
     }
@@ -87,7 +86,7 @@ namespace NS::Obj
         NS::Core::Matrix world = NS::Core::Matrix::Identity;
         if (const GameObject* owner = Owner())
         {
-			world = owner->Root().WorldMatrix();
+            world = owner->Root().WorldMatrix();
         }
         const NS::Core::AffineDecomposition parts = NS::Core::DecomposeAffine(world);
         // 描画は 4x4 の行列で歪みまで出すので、形の共有をやめて世界座標の三角形から作り、描画と当たりを揃える
@@ -97,7 +96,8 @@ namespace NS::Obj
         }
 
         const NS::Phys::MeshCollision& shared = *m_collision;
-        return physics.SyncMeshShape(current, shared, parts.translation, parts.rotation, parts.scale, NS::Phys::ObjectLayers::Terrain);
+        return physics.SyncMeshShape(
+            current, shared, parts.translation, parts.rotation, parts.scale, NS::Phys::ObjectLayers::Terrain);
     }
 
     void MeshCollider::ResolveAssets(AssetManager& assets)

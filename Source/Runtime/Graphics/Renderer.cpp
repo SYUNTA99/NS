@@ -2,7 +2,6 @@
 
 #include "Runtime/Core/Assert.h"
 #include "Runtime/Core/CameraData.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/CommandList.h"

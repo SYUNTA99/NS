@@ -1,8 +1,5 @@
 ﻿#include "Runtime/Graphics/Skybox.h"
 
-#include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Platform/StringUtils.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/CommandList.h"
@@ -13,6 +10,8 @@
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Graphics/Shader.h"
 #include "Runtime/Graphics/StaticMesh.h"
+#include "Runtime/Platform/Filesystem.h"
+#include "Runtime/Platform/StringUtils.h"
 
 #include <DDSTextureLoader.h>
 #include <WICTextureLoader.h>
@@ -109,20 +108,20 @@ namespace NS::Gfx
                             ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
         {
             ComPtr<ID3D11Resource> resource;
-            const HRESULT hr = DirectX::CreateDDSTextureFromFileEx(device,
-                                                                   NS::Platform::StringUtils::WideFromUtf8(path).c_str(),
-                                                                   0,
-                                                                   D3D11_USAGE_IMMUTABLE,
-                                                                   D3D11_BIND_SHADER_RESOURCE,
-                                                                   0,
-                                                                   D3D11_RESOURCE_MISC_TEXTURECUBE,
-                                                                   DirectX::DDS_LOADER_DEFAULT,
-                                                                   resource.GetAddressOf(),
-                                                                   outSrv.GetAddressOf());
+            const HRESULT hr =
+                DirectX::CreateDDSTextureFromFileEx(device,
+                                                    NS::Platform::StringUtils::WideFromUtf8(path).c_str(),
+                                                    0,
+                                                    D3D11_USAGE_IMMUTABLE,
+                                                    D3D11_BIND_SHADER_RESOURCE,
+                                                    0,
+                                                    D3D11_RESOURCE_MISC_TEXTURECUBE,
+                                                    DirectX::DDS_LOADER_DEFAULT,
+                                                    resource.GetAddressOf(),
+                                                    outSrv.GetAddressOf());
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(
-                    Graphics, "Skybox .dds ロード失敗: {} (hr=0x{:08X})", path, static_cast<unsigned>(hr));
+                NS_LOG_ERROR(Graphics, "Skybox .dds ロード失敗: {} (hr=0x{:08X})", path, static_cast<unsigned>(hr));
                 return false;
             }
             return true;
@@ -144,14 +143,14 @@ namespace NS::Gfx
                 const std::string facePath = ::NS::Platform::FileSystem::Combine(dir, k_KurtFaceFileNames[i]);
                 if (!::NS::Platform::FileSystem::Exists(facePath))
                 {
-                    NS_LOG_ERROR(Graphics, "Skybox 6-face: {} が見つからない", facePath );
+                    NS_LOG_ERROR(Graphics, "Skybox 6-face: {} が見つからない", facePath);
                     return false;
                 }
 
                 auto bytesOpt = ::NS::Platform::FileSystem::ReadAllBytes(facePath);
                 if (!bytesOpt.has_value())
                 {
-                    NS_LOG_ERROR(Graphics, "Skybox 6-face: {} 読込失敗", facePath );
+                    NS_LOG_ERROR(Graphics, "Skybox 6-face: {} 読込失敗", facePath);
                     return false;
                 }
                 const auto& bytes = bytesOpt.value();
@@ -174,17 +173,15 @@ namespace NS::Gfx
                                                           tmpSrv.GetAddressOf());
                 if (FAILED(hr) || !resource)
                 {
-                    NS_LOG_ERROR(Graphics,
-                                 "Skybox 6-face: WIC 読込失敗 {} (hr=0x{:08X})",
-                                 facePath ,
-                                 static_cast<unsigned>(hr));
+                    NS_LOG_ERROR(
+                        Graphics, "Skybox 6-face: WIC 読込失敗 {} (hr=0x{:08X})", facePath, static_cast<unsigned>(hr));
                     return false;
                 }
 
                 ComPtr<ID3D11Texture2D> tex2d;
                 if (FAILED(resource->QueryInterface(IID_PPV_ARGS(tex2d.GetAddressOf()))) || !tex2d)
                 {
-                    NS_LOG_ERROR(Graphics, "Skybox 6-face: ID3D11Texture2D へ QI 失敗 {}", facePath );
+                    NS_LOG_ERROR(Graphics, "Skybox 6-face: ID3D11Texture2D へ QI 失敗 {}", facePath);
                     return false;
                 }
 
@@ -201,7 +198,7 @@ namespace NS::Gfx
                 {
                     NS_LOG_ERROR(Graphics,
                                  "Skybox 6-face: face {} の解像度/フォーマット不一致 ({}x{}, fmt={})",
-                                 facePath ,
+                                 facePath,
                                  static_cast<int>(d.Width),
                                  static_cast<int>(d.Height),
                                  static_cast<int>(d.Format));

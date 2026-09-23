@@ -1,12 +1,11 @@
 ﻿#include "Runtime/Graphics/Shader.h"
 
-#include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Platform/StringUtils.h"
 #include "Runtime/Graphics/D3dCommon.h"
 #include "Runtime/Graphics/GraphicObject.h"
 #include "Runtime/Graphics/Renderer.h"
+#include "Runtime/Platform/Filesystem.h"
+#include "Runtime/Platform/StringUtils.h"
 
 #include <d3dcompiler.h>
 

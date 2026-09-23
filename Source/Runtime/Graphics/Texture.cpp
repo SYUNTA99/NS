@@ -1,11 +1,10 @@
 ﻿#include "Runtime/Graphics/Texture.h"
 
-#include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/D3dCommon.h"
 #include "Runtime/Graphics/GraphicObject.h"
 #include "Runtime/Graphics/Renderer.h"
+#include "Runtime/Platform/Filesystem.h"
 
 #include <DDSTextureLoader.h>
 #include <WICTextureLoader.h>
@@ -162,19 +161,19 @@ namespace NS::Gfx
                         ComPtr<ID3D11Resource>& outResource,
                         ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
         {
-            const HRESULT hr = DirectX::CreateWICTextureFromMemoryEx(
-                device,
-                context,
-                bytes,
-                size,
-                0u,
-                D3D11_USAGE_DEFAULT,
-                D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET,
-                0u,
-                D3D11_RESOURCE_MISC_GENERATE_MIPS,
-                DirectX::WIC_LOADER_IGNORE_SRGB,
-                outResource.GetAddressOf(),
-                outSrv.GetAddressOf());
+            const HRESULT hr =
+                DirectX::CreateWICTextureFromMemoryEx(device,
+                                                      context,
+                                                      bytes,
+                                                      size,
+                                                      0u,
+                                                      D3D11_USAGE_DEFAULT,
+                                                      D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET,
+                                                      0u,
+                                                      D3D11_RESOURCE_MISC_GENERATE_MIPS,
+                                                      DirectX::WIC_LOADER_IGNORE_SRGB,
+                                                      outResource.GetAddressOf(),
+                                                      outSrv.GetAddressOf());
 
             if (FAILED(hr))
             {

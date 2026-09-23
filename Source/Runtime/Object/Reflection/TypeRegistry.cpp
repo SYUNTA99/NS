@@ -1,6 +1,5 @@
 ﻿#include "Runtime/Object/Reflection/TypeRegistry.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/SceneData.h"
@@ -23,7 +22,7 @@ namespace NS::Obj
         if (className == nullptr)
         {
             NS_LOG_ERROR(Scene, "TypeRegistry::Register: className が nullptr");
-			return;
+            return;
         }
         if ((create == nullptr) == (attach == nullptr))
         {
@@ -51,7 +50,7 @@ namespace NS::Obj
         {
             if (className == entry.className)
             {
-				return &entry;
+                return &entry;
             }
         }
         return nullptr;
@@ -65,7 +64,7 @@ namespace NS::Obj
             const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(object.className);
             if (entry != nullptr && entry->create != nullptr)
             {
-				return entry->create();
+                return entry->create();
             }
             NS_LOG_WARN(Scene, "CreateRegisteredObject: 未登録クラス {} を素の GameObject で組む", object.className);
         }

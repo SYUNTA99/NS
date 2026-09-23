@@ -1,7 +1,6 @@
 ﻿#include "Runtime/Graphics/SkeletalMesh.h"
 
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/GraphicObject.h"
@@ -26,7 +25,7 @@ namespace NS::Gfx
             std::unique_ptr<Buffer> vb = Buffer::Create(vbDesc);
             if (!vb->IsValid())
             {
-				return false;
+                return false;
             }
 
             BufferDesc ibDesc = MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT);
@@ -53,7 +52,7 @@ namespace NS::Gfx
         }
         if (vertices == nullptr || vertexCount == 0u || boneCount == 0u)
         {
-			return spheres;
+            return spheres;
         }
 
         constexpr float k_Big = std::numeric_limits<float>::max();
@@ -89,7 +88,6 @@ namespace NS::Gfx
             }
         }
 
-
         // 中心が決まってから最遠影響頂点までの距離を半径にする
         std::vector<float> maxD2(boneCount, 0.0f);
         for (std::size_t i = 0; i < vertexCount; ++i)
@@ -104,12 +102,12 @@ namespace NS::Gfx
                 const std::uint32_t j = v.joints[k];
                 if (j >= boneCount)
                 {
-					continue;
+                    continue;
                 }
                 const float d2 = NS::Core::Vector3::DistanceSquared(v.position, spheres[j].center);
                 if (d2 > maxD2[j])
                 {
-					maxD2[j] = d2;
+                    maxD2[j] = d2;
                 }
             }
         }
@@ -131,7 +129,7 @@ namespace NS::Gfx
         if (palette == nullptr)
         {
             NS_LOG_ERROR(Graphics, "MergeSkinnedBounds: palette が nullptr");
-			return fallback;
+            return fallback;
         }
 
         NS::Core::AABB merged{};
@@ -216,7 +214,8 @@ namespace NS::Gfx
 
         if (desc.boneCount > k_MaxBones)
         {
-            NS_LOG_ERROR(Graphics, "SkeletalMesh: boneCount {} が上限 {} を超過 — 上限に切詰め", desc.boneCount, k_MaxBones);
+            NS_LOG_ERROR(
+                Graphics, "SkeletalMesh: boneCount {} が上限 {} を超過 — 上限に切詰め", desc.boneCount, k_MaxBones);
         }
         m_boneCount = std::min(desc.boneCount, k_MaxBones);
 
@@ -229,11 +228,14 @@ namespace NS::Gfx
     std::vector<InputElement> SkeletalMesh::SkinnedInputLayout()
     {
         static const std::vector<InputElement> k_Layout = {
-            InputElement{"POSITION", InputElementFormat::Float3, static_cast<unsigned>(offsetof(SkinnedVertex, position))},
+            InputElement{
+                "POSITION", InputElementFormat::Float3, static_cast<unsigned>(offsetof(SkinnedVertex, position))},
             InputElement{"TEXCOORD", InputElementFormat::Float2, static_cast<unsigned>(offsetof(SkinnedVertex, uv))},
             InputElement{"NORMAL", InputElementFormat::Float3, static_cast<unsigned>(offsetof(SkinnedVertex, normal))},
-            InputElement{"BLENDINDICES", InputElementFormat::UInt4, static_cast<unsigned>(offsetof(SkinnedVertex, joints))},
-            InputElement{"BLENDWEIGHT", InputElementFormat::Float4, static_cast<unsigned>(offsetof(SkinnedVertex, weights))},
+            InputElement{
+                "BLENDINDICES", InputElementFormat::UInt4, static_cast<unsigned>(offsetof(SkinnedVertex, joints))},
+            InputElement{
+                "BLENDWEIGHT", InputElementFormat::Float4, static_cast<unsigned>(offsetof(SkinnedVertex, weights))},
         };
         return k_Layout;
     }

@@ -1,7 +1,6 @@
 ﻿#include "Runtime/Graphics/Mesh.h"
 
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/CommandList.h"
@@ -110,13 +109,13 @@ namespace NS::Gfx
     {
         if (m_inputLayout)
         {
-			return; 
+            return;
         }
         ID3D11Device* device = Gpu().device;
         if (device == nullptr || m_layoutElements.empty())
         {
             NS_LOG_ERROR(Graphics, "Mesh::CreateInputLayout: device が無効か、レイアウト要素が空");
-			return;
+            return;
         }
 
         const std::span<const std::byte> bytecode = detail::GetVertexShaderBytecode(vertexShader);

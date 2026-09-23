@@ -1,6 +1,5 @@
 #include "Runtime/Platform/Filesystem.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Platform/StringUtils.h"
 
@@ -299,7 +298,8 @@ namespace NS::Platform
                 {
                     continue;
                 }
-                onEntry(data.dwFileAttributes, FileSystem::Combine(dir, ::NS::Platform::StringUtils::Utf8FromWide(name)));
+                onEntry(data.dwFileAttributes,
+                        FileSystem::Combine(dir, ::NS::Platform::StringUtils::Utf8FromWide(name)));
             }
             while (::FindNextFileW(handle.Get(), &data) != 0);
 

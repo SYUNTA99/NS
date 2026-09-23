@@ -1,6 +1,5 @@
 ﻿#include "Runtime/Graphics/Pipeline.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/GraphicObject.h"
 

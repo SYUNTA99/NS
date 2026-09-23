@@ -1,6 +1,5 @@
 ﻿#include "Runtime/Graphics/Skeleton.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 
 #include <span>
@@ -36,7 +35,8 @@ namespace NS::Gfx
         out.assign(boneCount, NS::Core::Matrix::Identity);
         if (pose.size() != boneCount)
         {
-            NS_LOG_ERROR(Graphics, "Skeleton::ComputePalette: pose 数 ({}) が bone 数 ({}) と不一致", pose.size(), boneCount);
+            NS_LOG_ERROR(
+                Graphics, "Skeleton::ComputePalette: pose 数 ({}) が bone 数 ({}) と不一致", pose.size(), boneCount);
             return;
         }
 
@@ -66,7 +66,8 @@ namespace NS::Gfx
         out.assign(boneCount, NS::Core::Matrix::Identity);
         if (pose.size() != boneCount)
         {
-            NS_LOG_ERROR(Graphics, "Skeleton::ComputeGlobals: pose 数 ({}) が bone 数 ({}) と不一致", pose.size(), boneCount);
+            NS_LOG_ERROR(
+                Graphics, "Skeleton::ComputeGlobals: pose 数 ({}) が bone 数 ({}) と不一致", pose.size(), boneCount);
             return;
         }
 

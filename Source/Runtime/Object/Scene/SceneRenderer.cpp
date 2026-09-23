@@ -1,18 +1,17 @@
 #include "Runtime/Object/Scene/SceneRenderer.h"
 
-#include "Runtime/Platform/Clock.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Graphics/EffectScene.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/Renderer.h"
-#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/DirectionalLight.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
 #include "Runtime/Object/IRenderable.h"
+#include "Runtime/Platform/Clock.h"
+#include "Runtime/Platform/Filesystem.h"
 
 #include <algorithm>
 #include <string>
@@ -23,9 +22,7 @@ namespace NS::Obj
     namespace
     {
         // RenderProxyList の proxy を IRenderable::Collect へつなぐ。owner は登録元の IRenderable
-        void CollectRenderable(void* owner,
-                               const NS::Gfx::RenderContext& context,
-                               std::vector<NS::Gfx::DrawItem>& out)
+        void CollectRenderable(void* owner, const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
         {
             static_cast<IRenderable*>(owner)->Collect(context, out);
         }
@@ -131,12 +128,10 @@ namespace NS::Obj
         }
 
         // 挿入の時点で priority 昇順を保つ。同値は後から来た方が後ろ
-        const auto at = std::upper_bound(m_overlays.begin(),
-                                         m_overlays.end(),
-                                         overlay,
-                                         [](const OverlayRenderer* a, const OverlayRenderer* b) {
-                                             return a->Priority() < b->Priority();
-                                         });
+        const auto at = std::upper_bound(
+            m_overlays.begin(), m_overlays.end(), overlay, [](const OverlayRenderer* a, const OverlayRenderer* b) {
+                return a->Priority() < b->Priority();
+            });
         m_overlays.insert(at, overlay);
     }
 
@@ -231,8 +226,7 @@ namespace NS::Obj
         }
     }
 
-    NS::Gfx::RenderSettings SceneRenderer::ResolveSceneSettings(
-        const NS::Gfx::RenderSettings& projectDefaults)
+    NS::Gfx::RenderSettings SceneRenderer::ResolveSceneSettings(const NS::Gfx::RenderSettings& projectDefaults)
     {
         NS::Gfx::RenderSettings resolved = projectDefaults;
         for (DirectionalLight* light : m_lights)
@@ -260,9 +254,7 @@ namespace NS::Obj
         return resolved;
     }
 
-    void SceneRenderer::Render(CameraBrain& brain,
-                               CameraComponent& camera,
-                               const SceneEnvironment& environment)
+    void SceneRenderer::Render(CameraBrain& brain, CameraComponent& camera, const SceneEnvironment& environment)
     {
         if (m_renderer == nullptr)
         {
@@ -298,9 +290,9 @@ namespace NS::Obj
     }
 
     NS::Gfx::RenderContext SceneRenderer::RenderWorld(CameraBrain& brain,
-                                                           CameraComponent& camera,
-                                                           const SceneEnvironment& environment,
-                                                           const std::optional<CameraPose>& viewOverride)
+                                                      CameraComponent& camera,
+                                                      const SceneEnvironment& environment,
+                                                      const std::optional<CameraPose>& viewOverride)
     {
         // レンダラーの現在サイズから毎回取り直し、リサイズとビュー切替に追従する
         camera.SetAspectRatioFromRenderer(*m_renderer);

@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Runtime/Core/LogCategories.h"
+#include "Runtime/Core/LogType.h"
 
 #include <format>
 #include <magic_enum/magic_enum.hpp>
@@ -51,22 +51,28 @@ namespace NS::Core
 
         //! NS_LOG_* マクロ内部用。直接呼ばないこと
         static void LogImpl(LogLevel level,
-                            std::string_view category,
+                            LogType logType,
+                            std::string_view logTypeStr,
                             const char* file,
                             int line,
                             const char* func,
                             std::string_view msg);
 
         //! Fatal マクロ内部用。ログを書き出した後、開発環境ではデバッガで停止し、その後プロセスを強制終了する
-        [[noreturn]] static void FatalImpl(
-            std::string_view category, const char* file, int line, const char* func, std::string_view msg);
+        [[noreturn]] static void FatalImpl(LogType logType,
+                                           std::string_view logTypeStr,
+                                           const char* file,
+                                           int line,
+                                           const char* func,
+                                           std::string_view msg);
     };
 
 } // namespace NS::Core
 
 #define NS_LOG_IMPL_(lv, cat, ...)                                                                                     \
     ::NS::Core::Logger::LogImpl((lv),                                                                                  \
-                                ::magic_enum::enum_name(::NS::Core::LogCategory::cat),                                 \
+                                ::NS::Core::LogType::cat,                                                              \
+                                ::magic_enum::enum_name(::NS::Core::LogType::cat),                                     \
                                 __FILE__,                                                                              \
                                 __LINE__,                                                                              \
                                 __func__,                                                                              \
@@ -79,7 +85,8 @@ namespace NS::Core
 #define NS_LOG_ERROR(cat, ...) NS_LOG_IMPL_(::NS::Core::LogLevel::Error, cat, __VA_ARGS__)
 
 #define NS_LOG_FATAL(cat, ...)                                                                                         \
-    ::NS::Core::Logger::FatalImpl(::magic_enum::enum_name(::NS::Core::LogCategory::cat),                               \
+    ::NS::Core::Logger::FatalImpl(::NS::Core::LogType::cat,                                                            \
+                                  ::magic_enum::enum_name(::NS::Core::LogType::cat),                                   \
                                   __FILE__,                                                                            \
                                   __LINE__,                                                                            \
                                   __func__,                                                                            \

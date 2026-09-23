@@ -1,6 +1,5 @@
 ﻿#include "Runtime/Object/Reflection/ReflectionJson.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/GameObject.h"

@@ -153,8 +153,13 @@ namespace NS::Core
         spdlog::shutdown();
     }
 
-    void Logger::LogImpl(
-        LogLevel level, std::string_view category, const char* file, int line, const char* func, std::string_view msg)
+    void Logger::LogImpl(LogLevel level,
+                         LogType logType,
+                         std::string_view logTypeStr,
+                         const char* file,
+                         int line,
+                         const char* func,
+                         std::string_view msg)
     {
         auto logger = spdlog::default_logger();
         if (!logger)
@@ -163,16 +168,20 @@ namespace NS::Core
         }
 
         spdlog::source_loc loc{file, line, func};
-        logger->log(loc, ToSpdLevel(level), "[{}] {}", category, msg);
+        logger->log(loc, ToSpdLevel(level), "[{}] {}", logTypeStr, msg);
     }
 
-    [[noreturn]] void Logger::FatalImpl(
-        std::string_view category, const char* file, int line, const char* func, std::string_view msg)
+    [[noreturn]] void Logger::FatalImpl(LogType logType,
+                                        std::string_view logTypeStr,
+                                        const char* file,
+                                        int line,
+                                        const char* func,
+                                        std::string_view msg)
     {
         if (auto logger = spdlog::default_logger())
         {
             spdlog::source_loc loc{file, line, func};
-            logger->log(loc, spdlog::level::critical, "[{}] FATAL: {}", category, msg);
+            logger->log(loc, spdlog::level::critical, "[{}] FATAL: {}", logTypeStr, msg);
             logger->flush();
         }
         DebugBreakAndAbort();

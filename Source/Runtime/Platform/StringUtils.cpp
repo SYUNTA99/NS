@@ -1,6 +1,5 @@
 ﻿#include "Runtime/Platform/StringUtils.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 
 #include <limits>

@@ -1,6 +1,5 @@
 ﻿#include "Runtime/Graphics/CommonStates.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 
 #include <CommonStates.h>

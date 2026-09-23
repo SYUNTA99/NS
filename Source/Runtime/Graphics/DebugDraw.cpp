@@ -1,8 +1,6 @@
 ﻿#include "Runtime/Graphics/DebugDraw.h"
 
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Core/Sphere.h"
@@ -14,6 +12,7 @@
 #include "Runtime/Graphics/Pipeline.h"
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Graphics/Shader.h"
+#include "Runtime/Platform/Filesystem.h"
 
 namespace
 {
@@ -68,7 +67,8 @@ namespace
             return false;
         }
 
-        const std::string shaderDir = ::NS::Platform::FileSystem::Combine(::NS::Platform::FileSystem::ContentRoot(), "Shaders");
+        const std::string shaderDir =
+            ::NS::Platform::FileSystem::Combine(::NS::Platform::FileSystem::ContentRoot(), "Shaders");
         b.vs = NS::Gfx::Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "debug_line.vs.hlsl"));
         b.ps = NS::Gfx::Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "debug_line.ps.hlsl"));
         if (!b.vs->IsValid() || !b.ps->IsValid())

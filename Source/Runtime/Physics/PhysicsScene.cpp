@@ -3,7 +3,6 @@
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Core/Sphere.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Physics/detail/JoltConversion.h"
 #include "Runtime/Physics/detail/JoltRuntime.h"

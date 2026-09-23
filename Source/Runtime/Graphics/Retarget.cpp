@@ -1,6 +1,5 @@
 ﻿#include "Runtime/Graphics/Retarget.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 
 #include <cctype>
@@ -45,7 +44,8 @@ namespace NS::Gfx
         const std::vector<Bone>& targetBones = targetSkeleton.Bones();
         for (std::size_t i = 0; i < targetBones.size(); ++i)
         {
-            const bool inserted = targetIndexByName.try_emplace(NormalizeBoneName(targetBones[i].name), static_cast<int>(i)).second;
+            const bool inserted =
+                targetIndexByName.try_emplace(NormalizeBoneName(targetBones[i].name), static_cast<int>(i)).second;
             if (!inserted)
             {
                 NS_LOG_WARN(Graphics, "BindClipsByName: 正規化後の骨名が重複、 先の骨へ張る: {}", targetBones[i].name);
@@ -65,7 +65,7 @@ namespace NS::Gfx
                 if (track.boneIndex < 0 || static_cast<std::size_t>(track.boneIndex) >= sourceBones.size())
                 {
                     NS_LOG_WARN(Graphics, "BindClipsByName: 無効な骨番号のトラックを skip: {}", track.boneIndex);
-					continue;
+                    continue;
                 }
                 const std::string& sourceName = sourceBones[static_cast<std::size_t>(track.boneIndex)].name;
                 const auto found = targetIndexByName.find(NormalizeBoneName(sourceName));

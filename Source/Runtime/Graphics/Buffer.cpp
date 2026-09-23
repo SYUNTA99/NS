@@ -1,11 +1,10 @@
 ﻿#include "Runtime/Graphics/Buffer.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/D3dCommon.h"
-#include "Runtime/Graphics/detail/D3dUsage.h"
 #include "Runtime/Graphics/GraphicObject.h"
 #include "Runtime/Graphics/Renderer.h"
+#include "Runtime/Graphics/detail/D3dUsage.h"
 
 namespace NS::Gfx
 {
@@ -42,7 +41,7 @@ namespace NS::Gfx
         const std::size_t elementSize = [format]() -> std::size_t {
             if (format == DXGI_FORMAT_R16_UINT)
             {
-				return 2u;
+                return 2u;
             }
             return 4u;
         }();

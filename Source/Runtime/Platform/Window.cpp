@@ -1,9 +1,8 @@
 ﻿#include "Runtime/Platform/Window.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Platform/StringUtils.h"
 #include "Runtime/Platform/Input.h"
+#include "Runtime/Platform/StringUtils.h"
 #include "Runtime/Platform/detail/InputWin32.h"
 #include "Runtime/Platform/detail/WindowWin32.h"
 

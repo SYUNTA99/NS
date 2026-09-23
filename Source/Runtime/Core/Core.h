@@ -10,6 +10,6 @@
 #include "Runtime/Core/Sphere.h"
 
 #include "Runtime/Core/EditorAccess.h"
-#include "Runtime/Core/LogCategories.h"
+#include "Runtime/Core/LogType.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/NonCopyable.h"

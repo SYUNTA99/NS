@@ -1,11 +1,10 @@
 ﻿#include "Runtime/Object/Scene/SceneJson.h"
 
-#include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Platform/Filesystem.h"
 
 #include <cstddef>
 #include <span>

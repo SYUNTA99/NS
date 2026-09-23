@@ -2,11 +2,10 @@
 
 #include "Runtime/App/Layer.h"
 #include "Runtime/Core/Assert.h"
-#include "Runtime/Platform/Clock.h"
-#include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/AssetManager.h"
+#include "Runtime/Platform/Clock.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Platform/Input.h"
 
 #include <chrono>

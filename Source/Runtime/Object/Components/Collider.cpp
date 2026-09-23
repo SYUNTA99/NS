@@ -1,6 +1,5 @@
 ﻿#include "Runtime/Object/Components/Collider.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -28,7 +27,7 @@ namespace NS::Obj
     {
         if (!AcceptsScenePhysics(physics))
         {
-			return;
+            return;
         }
 
         physics.RemoveBody(m_bodyId);
@@ -45,7 +44,7 @@ namespace NS::Obj
         NS::Phys::PhysicsScene* scenePhysics = ScenePhysics();
         if (scenePhysics == nullptr)
         {
-            NS_LOG_ERROR(Scene,"Collider: Scene に居ないので body を外せない。 body は PhysicsScene を壊すまで残る");
+            NS_LOG_ERROR(Scene, "Collider: Scene に居ないので body を外せない。 body は PhysicsScene を壊すまで残る");
             m_bodyId = JPH::BodyID{};
             return;
         }
@@ -57,7 +56,7 @@ namespace NS::Obj
         const GameObject* owner = Owner();
         if (owner == nullptr || owner->OwningScene() == nullptr)
         {
-			return nullptr;
+            return nullptr;
         }
         return &owner->OwningScene()->Physics();
     }
@@ -72,7 +71,7 @@ namespace NS::Obj
         }
         if (scenePhysics == &physics)
         {
-			return true;
+            return true;
         }
 
         NS_LOG_ERROR(Scene, "Collider: 持ち主の Scene と違う PhysicsScene を渡された。 body を出し入れしない");

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Core/LogCategories.h"
+#include "Runtime/Core/LogType.h"
 #include "Runtime/Core/Logger.h"
 
 #include <chrono>
@@ -110,8 +110,8 @@ namespace NS::Platform
     class ScopedTimer
     {
     public:
-        ScopedTimer(::NS::Core::LogCategory category, std::string label)
-            : m_category(category), m_label(std::move(label)), m_startTime(std::chrono::steady_clock::now())
+        ScopedTimer(::NS::Core::LogType logType, std::string label)
+            : m_logType(logType), m_label(std::move(label)), m_startTime(std::chrono::steady_clock::now())
         {}
 
         ~ScopedTimer()
@@ -119,7 +119,8 @@ namespace NS::Platform
             const auto end = std::chrono::steady_clock::now();
             const double ms = std::chrono::duration<double, std::milli>(end - m_startTime).count();
             ::NS::Core::Logger::LogImpl(::NS::Core::LogLevel::Debug,
-                                        ::magic_enum::enum_name(m_category),
+                                        m_logType,
+                                        ::magic_enum::enum_name(m_logType),
                                         __FILE__,
                                         __LINE__,
                                         __func__,
@@ -130,7 +131,7 @@ namespace NS::Platform
         ScopedTimer& operator=(const ScopedTimer&) = delete;
 
     private:
-        ::NS::Core::LogCategory m_category;
+        ::NS::Core::LogType m_logType;
         std::string m_label;
         std::chrono::steady_clock::time_point m_startTime;
     };
@@ -144,7 +145,7 @@ namespace NS::Platform
 //! @details プロファイリングが無効な環境では何も展開されず、オーバーヘッドは発生しない
 #if defined(NS_ENABLE_PROFILING)
 #define NS_SCOPED_TIMER(cat, label)                                                                                    \
-    ::NS::Platform::ScopedTimer NS_CLOCK_PASTE(ns_scoped_timer_, __COUNTER__)((::NS::Core::LogCategory::cat), (label))
+    ::NS::Platform::ScopedTimer NS_CLOCK_PASTE(ns_scoped_timer_, __COUNTER__)((::NS::Core::LogType::cat), (label))
 #else
 #define NS_SCOPED_TIMER(cat, label) ((void)0)
 #endif

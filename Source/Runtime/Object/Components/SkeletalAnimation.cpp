@@ -1,14 +1,13 @@
 ﻿#include "Runtime/Object/Components/SkeletalAnimation.h"
 #include "Runtime/Core/AABB.h"
 
-#include "Runtime/Platform/Clock.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
 #include <cctype>
@@ -225,8 +224,7 @@ namespace NS::Obj
                 NS_LOG_WARN(Graphics, "SkeletalAnimation: clip 参照を解決できない: {}", entry);
                 continue;
             }
-            const std::vector<NS::Gfx::AnimationClip>* bound =
-                assets.GetOrLoadBoundClips(*resolvedClip, *resolved);
+            const std::vector<NS::Gfx::AnimationClip>* bound = assets.GetOrLoadBoundClips(*resolvedClip, *resolved);
             if (bound == nullptr)
             {
                 // 失敗はキャッシュ側が path 込みで報告済み
@@ -253,10 +251,8 @@ namespace NS::Obj
 
         if (m_renderer != nullptr && m_bonePaletteCB->IsValid())
         {
-            m_renderer->SetPerObjectVsConstant(m_bonePaletteCB.get(),
-                                               &m_palette,
-                                               sizeof(NS::Gfx::BonePaletteCB),
-                                               NS::Gfx::k_BonePaletteSlot);
+            m_renderer->SetPerObjectVsConstant(
+                m_bonePaletteCB.get(), &m_palette, sizeof(NS::Gfx::BonePaletteCB), NS::Gfx::k_BonePaletteSlot);
         }
         ApplyPose(m_time);
     }

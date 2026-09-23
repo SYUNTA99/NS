@@ -1,6 +1,5 @@
 ﻿#include "Runtime/Graphics/Material.h"
 
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/CommandList.h"

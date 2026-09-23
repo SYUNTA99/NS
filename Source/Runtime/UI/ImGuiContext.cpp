@@ -1,10 +1,9 @@
 ﻿#include "Runtime/UI/ImGuiContext.h"
 
-#include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/GraphicObject.h"
 #include "Runtime/Graphics/Renderer.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Platform/Window.h"
 
 #include <memory>
@@ -167,7 +166,7 @@ namespace NS::UI
                 if (io.Fonts->AddFontFromFileTTF(fontPath, 18.0f, nullptr, ranges) != nullptr)
                 {
                     NS_LOG_INFO(UI, "日本語フォントを読み込みました: {}", fontPath);
-					break;
+                    break;
                 }
             }
             if (io.Fonts->Fonts.Size == 0)

@@ -1,5 +1,4 @@
 ﻿#include "Runtime/App/Application.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Platform/Filesystem.h"
 

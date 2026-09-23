@@ -1,7 +1,6 @@
 ﻿#include "Runtime/Graphics/GltfLoader.h"
 
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Animation.h"
 #include "Runtime/Graphics/detail/GltfSkinHelpers.h"

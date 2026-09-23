@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 
 namespace NS::Core
 {
 
     //! ログ出力時に指定するカテゴリ
-    enum class LogCategory
+    enum class LogType
     {
         Core,
         Platform,

@@ -1,7 +1,6 @@
 ﻿#include "Runtime/Graphics/StaticMesh.h"
 
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/GraphicObject.h"
@@ -26,7 +25,7 @@ namespace NS::Gfx
             std::unique_ptr<Buffer> vb = Buffer::Create(vbDesc);
             if (!vb->IsValid())
             {
-				return false;
+                return false;
             }
 
             BufferDesc ibDesc = MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT);
@@ -47,7 +46,8 @@ namespace NS::Gfx
             NS::Core::AABB box{};
             if (vertices != nullptr && count > 0u)
             {
-                DirectX::BoundingBox::CreateFromPoints(box, count, static_cast<const DirectX::XMFLOAT3*>(&vertices[0].position), sizeof(StaticVertex));
+                DirectX::BoundingBox::CreateFromPoints(
+                    box, count, static_cast<const DirectX::XMFLOAT3*>(&vertices[0].position), sizeof(StaticVertex));
             }
             return box;
         }
@@ -71,7 +71,8 @@ namespace NS::Gfx
         std::unique_ptr<Buffer> vb;
         std::unique_ptr<Buffer> ib;
 
-        const bool descValid = (desc.vertices != nullptr && desc.vertexCount != 0u && desc.indices != nullptr && desc.indexCount != 0u);
+        const bool descValid =
+            (desc.vertices != nullptr && desc.vertexCount != 0u && desc.indices != nullptr && desc.indexCount != 0u);
         if (descValid && BuildBuffers(desc.vertices, desc.vertexCount, desc.indices, desc.indexCount, vb, ib))
         {
             SetGeometry(std::move(vb), std::move(ib), desc.vertexCount, desc.indexCount, false);
@@ -100,12 +101,13 @@ namespace NS::Gfx
         else
         {
             NS_LOG_ERROR(Graphics,
-                "StaticMesh: VertexBuffer / IndexBuffer 構築失敗 — fallback Cube に切替 (v={}, i={})",
-                desc.vertexCount,
-                desc.indexCount);
+                         "StaticMesh: VertexBuffer / IndexBuffer 構築失敗 — fallback Cube に切替 (v={}, i={})",
+                         desc.vertexCount,
+                         desc.indexCount);
         }
 
-        const MeshGeometry geom = MakeCube(NS::Core::Vector3{k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent});
+        const MeshGeometry geom =
+            MakeCube(NS::Core::Vector3{k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent});
         if (BuildBuffers(geom.vertices.data(), geom.vertices.size(), geom.indices.data(), geom.indices.size(), vb, ib))
         {
             SetGeometry(std::move(vb), std::move(ib), geom.vertices.size(), geom.indices.size(), true);
@@ -120,7 +122,8 @@ namespace NS::Gfx
     std::vector<InputElement> StaticMesh::StandardInputLayout()
     {
         static const std::vector<InputElement> k_Layout = {
-            InputElement{"POSITION", InputElementFormat::Float3, static_cast<unsigned>(offsetof(StaticVertex, position))},
+            InputElement{
+                "POSITION", InputElementFormat::Float3, static_cast<unsigned>(offsetof(StaticVertex, position))},
             InputElement{"TEXCOORD", InputElementFormat::Float2, static_cast<unsigned>(offsetof(StaticVertex, uv))},
             InputElement{"NORMAL", InputElementFormat::Float3, static_cast<unsigned>(offsetof(StaticVertex, normal))},
         };
