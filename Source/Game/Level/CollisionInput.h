@@ -41,8 +41,8 @@ namespace NS::Game::Level
         //! とみなす
         [[nodiscard]] float PositionFactorFor(float offset01) const noexcept;
 
-        //! 当たり位置係数がピークしきい値以上の場合 true、それ以外の場合は false
-        [[nodiscard]] bool IsPeak(float positionFactor) const noexcept;
+        //! 当たり位置係数が中心近くの当たりのしきい値以上の場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsCenterHit(float positionFactor) const noexcept;
 
         //! チャージ中の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsCharging() const noexcept { return m_judge.IsCharging(); }
@@ -59,7 +59,7 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_chargeSlowRate, "チャージ減速率")
         NS_REFLECT_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
         NS_REFLECT_FIELD(m_positionFactorCurve, "突進位置係数カーブ")
-        NS_REFLECT_FIELD(m_peakThreshold, "ピークしきい値")
+        NS_REFLECT_FIELD(m_centerHitThreshold, "中心近くの当たりのしきい値")
         NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
         NS_REFLECT_FIELD(m_pressSquashScale, "押しの構えの縮み")
         NS_REFLECT_END()
@@ -80,8 +80,8 @@ namespace NS::Game::Level
         // 既定は中心直撃で 1.0、縁かすりで 0.7。画面に見えている相手の中心が狙う対象になる
         // TODO: リフレクション欄は「突進位置係数カーブ」のまま。改名すると保存済みの値が読めなくなる
         NS::Obj::Curve m_positionFactorCurve{};
-        // 0.95 は既定カーブで横ずれ 0〜0.167 の区間だけがピークになる値
-        float m_peakThreshold = 0.95f;
+        // 0.95 は既定カーブで横ずれ 0〜0.167 の区間だけが中心近くの当たりになる値
+        float m_centerHitThreshold = 0.95f;
         float m_chargeSquashScale = 0.95f; // 構えと分かる最小の変化。深いと衝突の潰れ演出と紛れる
         float m_pressSquashScale = 0.97f;  // 押したフレームの反応。チャージ成立の 0.95 と見分けが付く浅さ
 

@@ -198,9 +198,9 @@ namespace NS::Game::Level
         return factor;
     }
 
-    bool CollisionInput::IsPeak(float positionFactor) const noexcept
+    bool CollisionInput::IsCenterHit(float positionFactor) const noexcept
     {
-        return positionFactor >= m_peakThreshold;
+        return positionFactor >= m_centerHitThreshold;
     }
 
     NS_CLASS(CollisionInput)

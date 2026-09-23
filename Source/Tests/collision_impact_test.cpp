@@ -273,7 +273,7 @@ namespace
     // 助走の長さだけが k_NearCourse と違う
     constexpr SlamCourse k_FarCourse{.start = -0.5f, .targetCell = 6};
     constexpr SlamCourse k_NearCourse{.start = 0.0f, .targetCell = 1};
-    // 横ずれ 0.45 ÷ 的の半幅 0.5 = 0.9 で係数 0.73。ピークしきい値 0.95 に届かない
+    // 横ずれ 0.45 ÷ 的の半幅 0.5 = 0.9 で係数 0.73。中心近くの当たりのしきい値 0.95 に届かない
     constexpr SlamCourse k_EdgeCourse{.start = 0.0f, .lateral = 0.45f, .targetCell = 1};
 
     // 飛んで着地して滑り切るまでの道。狭いと端から落ちて停止の検証にならない
@@ -629,7 +629,7 @@ TEST(CollisionImpact, WithoutCollisionInputPowerIsRatioOnly)
 
     ASSERT_TRUE(rig.impact->DidRebound());
     EXPECT_FLOAT_EQ(rig.impact->LastPower(), 1.0f);
-    EXPECT_FALSE(rig.impact->WasPeakImpact());
+    EXPECT_FALSE(rig.impact->WasCenterHit());
 }
 
 TEST(CollisionImpact, IsCreatableFromTypeName)
@@ -886,7 +886,7 @@ TEST(CollisionImpact, HeavierTargetStopsLonger)
 {
     SceneNs::Scene lightScene;
     Rig light = BuildSlam(lightScene, k_NearCourse);
-    // 中心直撃はピーク倍率が乗る。既定の基準秒だと重い側が上限 12 フレームに張り付くので、下げて上限の外で比べる
+    // 中心直撃は中心近くの当たりの倍率が乗る。既定の基準秒だと重い側が上限 12 フレームに張り付くので、下げて上限の外で比べる
     SetFloatField(*light.impact, "ヒットストップ基準秒", 1.0f / 60.0f);
     light.breakable->SetMass(1.0f);
     BeginSlam(lightScene, light, k_FastEntrySpeed, 0.0f);
@@ -937,7 +937,7 @@ TEST(CollisionImpact, HitStopBaseSecondsDrivesFreezeLength)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    // 中心直撃はピーク倍率 2.0 が乗る
+    // 中心直撃は中心近くの当たりの倍率 2.0 が乗る
     SetFloatField(*rig.impact, "ヒットストップ基準秒", 2.0f / 60.0f);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
@@ -1121,7 +1121,7 @@ TEST(CollisionImpact, NormalHitAtStartCannotBreakToughTwo)
     EXPECT_TRUE(rig.breakable->IsActiveSelf());
 }
 
-TEST(CollisionImpact, ChargedPeakBeatsPlainEdgeHit)
+TEST(CollisionImpact, ChargedCenterHitBeatsPlainEdgeHit)
 {
     SceneNs::Scene chargedScene;
     Rig charged = BuildSlam(chargedScene, k_FarCourse);
@@ -1137,7 +1137,7 @@ TEST(CollisionImpact, ChargedPeakBeatsPlainEdgeHit)
     BeginSlam(plainScene, plain, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(plainScene, plain, 30), 30);
 
-    EXPECT_TRUE(charged.impact->WasPeakImpact());
+    EXPECT_TRUE(charged.impact->WasCenterHit());
     EXPECT_TRUE(charged.impact->DidBreak());
     EXPECT_FALSE(plain.impact->DidBreak());
     EXPECT_TRUE(plain.impact->DidRebound());
@@ -1145,7 +1145,7 @@ TEST(CollisionImpact, ChargedPeakBeatsPlainEdgeHit)
 }
 
 // 走る距離と速度と溜めを揃えてあるので、差が出れば原因は横ずれだけ
-TEST(CollisionImpact, PeakFlagFollowsHitOffset)
+TEST(CollisionImpact, CenterHitFlagFollowsHitOffset)
 {
     SceneNs::Scene centerScene;
     Rig center = BuildSlam(centerScene, k_NearCourse);
@@ -1159,8 +1159,8 @@ TEST(CollisionImpact, PeakFlagFollowsHitOffset)
     BeginSlam(edgeScene, edge, k_RunSpeed, 1.0f);
     ASSERT_LT(StepUntilImpact(edgeScene, edge, 30), 30);
 
-    EXPECT_TRUE(center.impact->WasPeakImpact());
-    EXPECT_FALSE(edge.impact->WasPeakImpact());
+    EXPECT_TRUE(center.impact->WasCenterHit());
+    EXPECT_FALSE(edge.impact->WasCenterHit());
     EXPECT_GT(center.impact->LastPositionFactor(), edge.impact->LastPositionFactor());
     EXPECT_GT(center.impact->LastPower(), edge.impact->LastPower());
 }
@@ -1301,16 +1301,16 @@ TEST(CollisionImpact, SlamWithoutInputAimsCameraForward)
     EXPECT_NEAR(velocity.x, 0.0f, 1e-3f);
 }
 
-TEST(CollisionImpact, PeakStretchesHitStop)
+TEST(CollisionImpact, CenterHitStretchesHitStop)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_FarCourse);
-    // 既定の基準秒では上限 12 フレームで頭打ちになるため、ピーク倍率がフレーム数に出るまで基準を下げる
+    // 既定の基準秒では上限 12 フレームで頭打ちになるため、中心近くの当たりの倍率がフレーム数に出るまで基準を下げる
     SetFloatField(*rig.impact, "ヒットストップ基準秒", 2.0f / 60.0f);
     BeginSlam(scene, rig, k_RunSpeed, 1.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
-    ASSERT_TRUE(rig.impact->WasPeakImpact());
+    ASSERT_TRUE(rig.impact->WasCenterHit());
     Step(scene, rig);
     ASSERT_FALSE(rig.movement->IsActiveSelf());
 
@@ -1319,18 +1319,18 @@ TEST(CollisionImpact, PeakStretchesHitStop)
 }
 
 // 白が引いたフレームには、まだ潰れが残っている。白を長くすると落ちる
-TEST(CollisionImpact, PeakFlashClearsWhileTheSquashIsStillHeld)
+TEST(CollisionImpact, CenterHitFlashClearsWhileTheSquashIsStillHeld)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_FarCourse);
     BeginSlam(scene, rig, k_RunSpeed, 1.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
-    ASSERT_TRUE(rig.impact->WasPeakImpact());
-    ASSERT_GT(rig.impact->PeakFlashStepsRemaining(), 0);
+    ASSERT_TRUE(rig.impact->WasCenterHit());
+    ASSERT_GT(rig.impact->CenterHitFlashStepsRemaining(), 0);
 
     int steps = 0;
-    while (rig.impact->PeakFlashStepsRemaining() > 0 && steps < 60)
+    while (rig.impact->CenterHitFlashStepsRemaining() > 0 && steps < 60)
     {
         Step(scene, rig);
         ++steps;

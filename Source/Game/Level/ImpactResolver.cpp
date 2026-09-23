@@ -165,9 +165,9 @@ namespace NS::Game::Level
         m_didRebound = false;
         m_didBreak = false;
         // フラッシュの減衰は早期 return より前に置く。凍結中のフレームもここまでは来るので、止まっている間も白が薄れる
-        if (m_peakFlashRemaining > 0)
+        if (m_centerHitFlashRemaining > 0)
         {
-            --m_peakFlashRemaining;
+            --m_centerHitFlashRemaining;
         }
         if (m_movement == nullptr)
         {
@@ -255,24 +255,24 @@ namespace NS::Game::Level
         const float offset01 = HitOffset01(position, bounds, velocity);
         float chargeFactor = 1.0f;
         float positionFactor = 1.0f;
-        bool peak = false;
+        bool centerHit = false;
         if (m_collisionInput != nullptr)
         {
             chargeFactor = m_collisionInput->ChargeFactorFor(charge01);
             positionFactor = m_collisionInput->PositionFactorFor(offset01);
-            peak = m_collisionInput->IsPeak(positionFactor);
+            centerHit = m_collisionInput->IsCenterHit(positionFactor);
         }
         // 最終威力 = チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
         const float power = chargeFactor * positionFactor;
         m_lastCharge01 = charge01;
         m_lastPositionFactor = positionFactor;
         m_lastPower = power;
-        m_wasPeakImpact = peak;
+        m_wasCenterHit = centerHit;
         float hitStopScale = 1.0f;
-        if (peak)
+        if (centerHit)
         {
-            m_peakFlashRemaining = m_peakFlashSteps;
-            hitStopScale = m_peakHitStopScale;
+            m_centerHitFlashRemaining = m_centerHitFlashSteps;
+            hitStopScale = m_centerHitStopScale;
         }
         NS_LOG_INFO(Game,
                     "威力の内訳: 溜め {} × 当たり位置 {} = {} 溜め量 {} 中心からの横ずれ {}",
@@ -300,7 +300,7 @@ namespace NS::Game::Level
             // 向きを保ったまま減速する。倍率は相手の質量に依らない
             m_pendingSelfVelocity = velocity * m_breakSpeedScale;
             m_didBreak = true;
-            NS_LOG_INFO(Game, "貫通: 耐久 {} 威力 {} ピーク {}", hit->Toughness(), power, peak);
+            NS_LOG_INFO(Game, "貫通: 耐久 {} 威力 {} 中心近く {}", hit->Toughness(), power, centerHit);
             stopSteps = SecondsToSteps(m_breakStopSeconds * hitStopScale);
         }
         else
@@ -326,12 +326,12 @@ namespace NS::Game::Level
             m_pendingLaunchVelocity = NS::Core::Vector3{-awayX * launch, launch * m_launchUpScale, -awayZ * launch};
             m_didRebound = true;
             NS_LOG_INFO(Game,
-                        "衝突: 質量 {} 耐久 {} 返り {} 押し飛ばし {} ピーク {}",
+                        "衝突: 質量 {} 耐久 {} 返り {} 押し飛ばし {} 中心近く {}",
                         mass,
                         hit->Toughness(),
                         rebound,
                         launch,
-                        peak);
+                        centerHit);
             stopSteps = ComputeHitStopSteps(power, mass, hitStopScale);
         }
 
@@ -343,7 +343,7 @@ namespace NS::Game::Level
         m_lastImpact.positionFactor = positionFactor;
         m_lastImpact.cameraShake = m_pendingShakeStrength;
         m_lastImpact.hitStopSteps = stopSteps;
-        m_lastImpact.peak = peak;
+        m_lastImpact.centerHit = centerHit;
         m_lastImpact.broke = m_pendingBreak;
         m_lastImpact.selfVelocity = m_pendingSelfVelocity;
         m_lastImpact.launchVelocity = m_pendingLaunchVelocity;
@@ -410,18 +410,18 @@ namespace NS::Game::Level
         {
             m_movement->SetActive(true);
         }
-        m_peakFlashRemaining = 0;
+        m_centerHitFlashRemaining = 0;
     }
 
     void ImpactResolver::OnRenderOverlay(const NS::Gfx::RenderContext& ctx)
     {
-        if (m_peakFlashRemaining <= 0)
+        if (m_centerHitFlashRemaining <= 0)
         {
             return;
         }
         // ScreenFade は黒の固定色と暗転の段階機械で、白の瞬間減衰には流用できないためここで直接描く
-        const float decay = static_cast<float>(m_peakFlashRemaining) / static_cast<float>(m_peakFlashSteps);
-        ctx.renderer->DrawFullscreenColor(NS::Core::Color{1.0f, 1.0f, 1.0f, m_peakFlashAlpha * decay});
+        const float decay = static_cast<float>(m_centerHitFlashRemaining) / static_cast<float>(m_centerHitFlashSteps);
+        ctx.renderer->DrawFullscreenColor(NS::Core::Color{1.0f, 1.0f, 1.0f, m_centerHitFlashAlpha * decay});
     }
 
     int ImpactResolver::SecondsToSteps(float seconds) const noexcept

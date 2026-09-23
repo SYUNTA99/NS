@@ -31,7 +31,7 @@ namespace NS::Game::Level
         float positionFactor = 0.0f;
         float cameraShake = 0.0f;
         int hitStopSteps = 0;
-        bool peak = false;
+        bool centerHit = false;
         bool broke = false;
         NS::Core::Vector3 selfVelocity;
         NS::Core::Vector3 launchVelocity;
@@ -64,8 +64,8 @@ namespace NS::Game::Level
         //! 直近の更新で貫通を検知した場合 true、それ以外の場合は false
         [[nodiscard]] bool DidBreak() const noexcept { return m_didBreak; }
 
-        //! 直近の裁定がピークで当たった場合 true、それ以外の場合は false
-        [[nodiscard]] bool WasPeakImpact() const noexcept { return m_wasPeakImpact; }
+        //! 直近の裁定が中心近くで当たった場合 true、それ以外の場合は false
+        [[nodiscard]] bool WasCenterHit() const noexcept { return m_wasCenterHit; }
 
         //! 直近の裁定で読んだ溜め量 0..1
         [[nodiscard]] float LastCharge01() const noexcept { return m_lastCharge01; }
@@ -80,12 +80,12 @@ namespace NS::Game::Level
         [[nodiscard]] const ImpactRecord& LastImpact() const noexcept { return m_lastImpact; }
 
         //! 白フラッシュの残りフレーム数。出していない場合 0
-        [[nodiscard]] int PeakFlashStepsRemaining() const noexcept { return m_peakFlashRemaining; }
+        [[nodiscard]] int CenterHitFlashStepsRemaining() const noexcept { return m_centerHitFlashRemaining; }
 
         //! 凍結の途中で外れても移動を止めたままにしない
         void OnEndPlay() override;
 
-        //! ピークで当てた直後だけ、フレームごとに減衰する白を画面全体へ重ねる
+        //! 中心近くで当てた直後だけ、フレームごとに減衰する白を画面全体へ重ねる
         void OnRenderOverlay(const NS::Gfx::RenderContext& ctx) override;
 
         //! 潰した形で凍結中か、伸びから元の形へ戻している途中の場合 true、それ以外の場合は false
@@ -100,7 +100,7 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_launchUpScale, "押し飛ばしの浮き上がり")
         NS_REFLECT_FIELD(m_launchMaxSpeed, "押し飛ばしの最高速")
         NS_REFLECT_FIELD(m_hitStopBaseSeconds, "ヒットストップ基準秒")
-        NS_REFLECT_FIELD(m_peakHitStopScale, "ピークのヒットストップ倍率")
+        NS_REFLECT_FIELD(m_centerHitStopScale, "中心近くの当たりのヒットストップ倍率")
         NS_REFLECT_FIELD(m_hitStopMaxSeconds, "ヒットストップの上限秒")
         NS_REFLECT_FIELD(m_pushInDistance, "食い込み距離")
         NS_REFLECT_FIELD(m_shakeAmplitude, "振動の振幅")
@@ -109,8 +109,8 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_squashHeight, "潰れの伸び上がり")
         NS_REFLECT_FIELD(m_stretchAlong, "弾け伸びの倍率")
         NS_REFLECT_FIELD(m_stretchRecoverSteps, "弾け伸びを戻すフレーム数")
-        NS_REFLECT_FIELD(m_peakFlashAlpha, "ピークの白の濃さ")
-        NS_REFLECT_FIELD(m_peakFlashSteps, "ピークの白のフレーム数")
+        NS_REFLECT_FIELD(m_centerHitFlashAlpha, "中心近くの当たりの白の濃さ")
+        NS_REFLECT_FIELD(m_centerHitFlashSteps, "中心近くの当たりの白のフレーム数")
         NS_REFLECT_FIELD(m_breakEnabled, "破壊を許可")
         NS_REFLECT_FIELD(m_breakSpeedScale, "貫通時の減速倍率")
         NS_REFLECT_FIELD(m_breakStopSeconds, "貫通の止め秒")
@@ -151,11 +151,11 @@ namespace NS::Game::Level
         float m_launchMassExponent = 0.35f; // 押し飛ばしの初速を割る質量の指数。1 で反比例、0 で質量を見ない
         float m_launchUpScale = 0.35f;      // 水平初速に対する上向きの比
         // 押し飛ばしの初速の上限。軽い物ほど初速が伸び、上限が無いと画面の外へ消える
-        // 120 は、60 だと質量 1 以下の物を溜め切ってピークで当てた初速が 60 に揃い、軽いほど遠くへ飛ぶ差が消えるため
+        // 120 は、60 だと質量 1 以下の物を溜め切って中心近くで当てた初速が 60 に揃い、軽いほど遠くへ飛ぶ差が消えるため
         float m_launchMaxSpeed = 120.0f;
         // 既定の固定ステップ (1/60 秒) の 4 フレームぶん
         float m_hitStopBaseSeconds = 4.0f / 60.0f; // 質量 1 へ通常速度で当てた時に止める秒
-        float m_peakHitStopScale = 2.0f;           // 威力の伸び (最大 2 倍) と掛けて、素とピークの止まりを 4 倍差にする
+        float m_centerHitStopScale = 2.0f;         // 威力の伸び (最大 2 倍) と掛けて、素と中心近くの当たりの止まりを 4 倍差にする
         // 止める長さの上限。0.2 秒より長い停止は衝突の重さではなく処理落ちに見える
         float m_hitStopMaxSeconds = 12.0f / 60.0f;
         float m_pushInDistance = 0.06f;   // 凍結の頭で相手を発射方向へ食い込ませる距離
@@ -166,13 +166,13 @@ namespace NS::Game::Level
         float m_stretchAlong = 1.2f;      // 解放のフレームの弾かれる方向の倍率
         // 伸びから元の形へ戻すフレーム数。反発の滞空 0.3 秒の前半で戻し切り、着地の前に形を確定させる
         int m_stretchRecoverSteps = 6;
-        // ピークで当てた時だけの白フラッシュ。端で当てた時と見間違えない強さにする
+        // 中心近くで当てた時だけの白フラッシュ。端で当てた時と見間違えない強さにする
         // 0.5 は一瞬白と分かる濃さ。1.0 だと食い込みと潰れの絵が隠れる
-        float m_peakFlashAlpha = 0.5f;
+        float m_centerHitFlashAlpha = 0.5f;
         // 潰れは当たった次のフレームから始まる
         // 2 フレームなら白が重なるのは潰れの最初の 1 フレームだけで、そこも濃さは半分
         // 8 フレームでは潰れの最初の 7 フレームに重なり、形が読めなかった
-        int m_peakFlashSteps = 2;
+        int m_centerHitFlashSteps = 2;
         // 既定は壊さない。壊れて消えると重さが飛距離に出ず、押し飛ばしと反発だけを先に詰められない
         bool m_breakEnabled = false;
         float m_breakSpeedScale = 0.75f;         // 貫通した直後に速度へ掛ける倍率
@@ -196,12 +196,12 @@ namespace NS::Game::Level
         bool m_didRebound = false;   // 直近の更新で反発を検知したか
         bool m_didBreak = false;     // 直近の更新で貫通を検知したか
         bool m_pendingBreak = false; // 保留中の結果が貫通か
-        bool m_wasPeakImpact = false;
+        bool m_wasCenterHit = false;
         float m_lastCharge01 = 0.0f;
         float m_lastPositionFactor = 0.0f;
         float m_lastPower = 0.0f;
         ImpactRecord m_lastImpact{};
-        int m_peakFlashRemaining = 0;
+        int m_centerHitFlashRemaining = 0;
         NS::Game::Player::PlayerComponent* m_movement = nullptr; // 同じ配置物の移動。非所有
         CollisionInput* m_collisionInput = nullptr;
     };
