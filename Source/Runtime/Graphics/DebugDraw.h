@@ -57,6 +57,10 @@ namespace NS::Gfx::DebugDraw
                  float radius,
                  const NS::Core::Color& color) noexcept;
 
+    //! @brief 前の固定ステップで積んだ図形を捨てる
+    //! @details 固定ステップの頭で呼ぶ。描画までに固定ステップが複数進んでも、最後の 1 回で積んだ図形だけが残る
+    void BeginStep() noexcept;
+
     //! @brief 蓄積された図形群を一括で描画し、内部のバッファをクリアする
     //! @param[in,out] renderer 描画コマンドの発行先
     //! @param[in] viewProjection ビュー・プロジェクション行列

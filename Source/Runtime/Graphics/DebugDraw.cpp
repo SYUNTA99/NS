@@ -332,6 +332,11 @@ namespace NS::Gfx::DebugDraw
         Clear();
     }
 
+    void BeginStep() noexcept
+    {
+        Storage().clear();
+    }
+
     void Clear() noexcept
     {
         Storage().clear();

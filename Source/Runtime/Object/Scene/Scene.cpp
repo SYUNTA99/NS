@@ -1,11 +1,12 @@
 ﻿#include "Runtime/Object/Scene/Scene.h"
 
-#include "Runtime/Platform/Clock.h"
+#include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <limits>
 
@@ -209,6 +210,10 @@ namespace NS::Obj
             }
             m_simulationStepFrames -= 1;
         }
+#if !defined(NS_SHIPPING)
+        // 描画 1 回ごとに捨てると、その間に進む固定ステップの回数で映る図形が変わる
+        NS::Gfx::DebugDraw::BeginStep();
+#endif
         // カメラが追う前に物理を進める。自機と衝突の裁定は Update 帯までに終わっている
         m_objects.UpdateObjects(std::numeric_limits<int>::min(), TickPriority::LateUpdate);
         m_physicsScene.Update(NS::Platform::FrameTimer::FixedDelta());
