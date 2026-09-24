@@ -2,27 +2,19 @@
 
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace NS::Game::Level
 {
-    namespace
-    {
-        // 0 だと勢いを質量で割れなくなる。基準の 1 の 100 分の 1 まで軽くできれば足りる
-        constexpr float k_MinMass = 0.01f;
-    } // namespace
-
     void Breakable::SetMass(float mass) noexcept
     {
         if (!std::isfinite(mass))
         {
 			return;
         }
-        m_mass = mass;
-        if (m_mass < k_MinMass)
-        {
-            m_mass = k_MinMass;
-        }
+        // 0 だと勢いを質量で割れなくなる。基準の 1 の 100 分の 1 まで軽くできれば足りる
+        m_mass = std::max(mass, 0.01f);
     }
 
     void Breakable::SetToughness(float toughness) noexcept

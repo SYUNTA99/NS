@@ -58,7 +58,7 @@ namespace NS::Game::Level
         // 世界は止めず入力だけ切る。暗転の間も重力とカメラは動いたまま
         SetPlayerInputActive(false);
 
-        Fade()->BeginOut(k_FadeOutSeconds);
+        Fade()->BeginOut(m_fadeOutSeconds);
         co_await NS::Core::WaitUntil{[this] { return Fade()->IsBlack(); }};
 
         // 全黒の裏でやり直すので、出現位置への瞬間移動が黒に隠れる。手順は同じ object の respawner が持つ
@@ -67,7 +67,7 @@ namespace NS::Game::Level
             respawner->RestartRun();
         }
 
-        Fade()->BeginIn(k_FadeInSeconds);
+        Fade()->BeginIn(m_fadeInSeconds);
         co_await NS::Core::WaitUntil{[this] { return !Fade()->IsFading(); }};
 
         SetPlayerInputActive(true);

@@ -22,12 +22,6 @@
 
 NS_CLASS(Player)
 
-namespace
-{
-    // テクスチャが揃うまでプレイヤーを block と見分ける個体色
-    constexpr NS::Core::Vector3 k_PlayerBaseColor{0.85f, 0.20f, 0.20f};
-} // namespace
-
 Player::Player() noexcept
 {
     // 構成と見た目のコード既定。値と追加分はファクトリが player object のデータから写す
@@ -36,7 +30,8 @@ Player::Player() noexcept
     // 参照はファクトリが cube mesh と共有 player 材質へ解決する
     mesh->SetMeshRef("cube");
     mesh->SetMaterialRef("player");
-    mesh->SetBaseColor(k_PlayerBaseColor);
+    // テクスチャが揃うまでプレイヤーを block と見分ける個体色
+    mesh->SetBaseColor(NS::Core::Vector3{0.85f, 0.20f, 0.20f});
     // 2 つで 1 組。状態機械が欠けると遷移が 1 つも起きない
     AddComponent<NS::Game::Player::PlayerStateManager>();
     AddComponent<NS::Game::Player::PlayerComponent>();

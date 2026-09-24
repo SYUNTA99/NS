@@ -114,6 +114,7 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_breakEnabled, "破壊を許可")
         NS_REFLECT_FIELD(m_breakSpeedScale, "貫通時の減速倍率")
         NS_REFLECT_FIELD(m_breakStopSeconds, "貫通の止め秒")
+        NS_REFLECT_FIELD(m_markProbeDistance, "跡の床探しの距離")
         NS_REFLECT_END()
 
     private:
@@ -177,6 +178,7 @@ namespace NS::Game::Level
         bool m_breakEnabled = false;
         float m_breakSpeedScale = 0.75f;         // 貫通した直後に速度へ掛ける倍率
         float m_breakStopSeconds = 4.0f / 60.0f; // 貫通の瞬間に止める秒。4 フレームぶん
+        float m_markProbeDistance = 64.0f;       // 跡の床を真下へ探す上限。これより下に床が無ければ跡を出さない
 
         int m_freezePendingSteps = 0;                              // 次のフレームに掛ける凍結のフレーム数。0 は予約なし
         int m_hitStopRemaining = 0;                                // 止まっている残りフレーム数。0 は止まっていない

@@ -31,7 +31,7 @@ namespace NS::Game::Level
 
         // 中心間距離の単純比較。触れた事実はフラグとして保持し、離れても下ろさない
         const NS::Core::Vector3 toPlayer = player->Root().Position() - RootTransform().Position();
-        if (toPlayer.LengthSquared() < k_GoalRadius * k_GoalRadius)
+        if (toPlayer.LengthSquared() < m_radius * m_radius)
         {
             m_reached = true;
         }

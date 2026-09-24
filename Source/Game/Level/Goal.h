@@ -11,9 +11,6 @@ namespace NS::Game::Level
     class Goal : public NS::Obj::Component
     {
     public:
-        //! 「触れた」とみなす player 中心からのメートル距離
-        static constexpr float k_GoalRadius = 0.9f;
-
         Goal() noexcept;
 
         void OnUpdate() override;
@@ -23,10 +20,12 @@ namespace NS::Game::Level
         //! フラグを戻す。走行のやり直し (respawner) と編集へ戻る時 (エディタ) に呼ばれる
         void ResetReached() noexcept { m_reached = false; }
 
-        // 調整できるフィールドは無いが、リフレクション typeName を持たせて type と空 fields で直列化できるようにする
-        NS_REFLECT_NONE(Goal, NS::Obj::Component)
+        NS_REFLECT_BEGIN(Goal, NS::Obj::Component)
+        NS_REFLECT_FIELD(m_radius, "半径")
+        NS_REFLECT_END()
 
     private:
+        float m_radius = 0.9f;  // 「触れた」とみなす player 中心からの距離 (m)
         bool m_reached = false; // 触れたら立つ。保存しない
     };
 

@@ -29,15 +29,6 @@ namespace NS::Game::Level
 {
     namespace
     {
-        // 跡の床探しで真下を見る上限。これより下に床が無ければ跡を出さない
-        constexpr float k_MarkProbeDistance = 64.0f;
-
-        // 床の上面から跡を浮かせる高さ。面がぴったり重なるとちらつく
-        constexpr float k_MarkFloorOffset = 0.02f;
-
-        // レイの起点を相手の底からずらす量。誤差で相手自身に当たらない最小の隙間
-        constexpr float k_MarkProbeSkin = 0.01f;
-
         // 相手の中心からの横ずれ 0..1。OnUpdate へ式を埋めると当たり判定の流れが読めなくなる
         // 半径は AABB を突進方向に直交する軸へ投影した半幅。球と傾いた箱は外接箱で測るので実際の縁より広く出る
         // 水平が 0 の枝は要らない。向かっていないフレームは内積の判定で先に返しており、水平が 0 のフレームもそこへ入る
@@ -483,15 +474,16 @@ namespace NS::Game::Level
             NS::Core::AABB targetBounds{};
             if (TryGetColliderBounds(*target, targetBounds))
             {
-                probe.y = targetBounds.Center.y - targetBounds.Extents.y - k_MarkProbeSkin;
+                // 底から 1cm 下げる。誤差で相手自身に当たらない最小の隙間
+                probe.y = targetBounds.Center.y - targetBounds.Extents.y - 0.01f;
             }
 
             float dist = 0.0f;
-            if (scene->Physics().Raycast(probe, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, k_MarkProbeDistance, dist))
+            if (scene->Physics().Raycast(probe, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, m_markProbeDistance, dist))
             {
                 floorFound = true;
-                markPosition =
-                    NS::Core::Vector3{m_pendingTargetHome.x, probe.y - dist + k_MarkFloorOffset, m_pendingTargetHome.z};
+                // 床の上面から 2cm 浮かせる。面がぴったり重なるとちらつく
+                markPosition = NS::Core::Vector3{m_pendingTargetHome.x, probe.y - dist + 0.02f, m_pendingTargetHome.z};
             }
         }
 
