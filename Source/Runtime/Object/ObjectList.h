@@ -64,7 +64,8 @@ namespace NS::Obj
         //! 型が実行時にしか決まらないファクトリ経由の組み立て用。型が分かっているなら Spawn<T> を使う
         GameObject* Append(std::unique_ptr<GameObject> obj);
 
-        //! 組み上がった配置物に新しい永続 id と表示名を振って 1 体加える。scene attach は呼出側が済ませて渡す
+        //! 組み上がった配置物に新しい永続 id と名前を振って 1 体加える。名前は既存と重なれば番号を付ける
+        //! scene attach は呼出側が済ませて渡す
         GameObject* AppendWithNewId(std::unique_ptr<GameObject> obj, std::string name);
 
         //! objectId 一致の配置物を破棄して所有リストから外す。居なければ何もしない

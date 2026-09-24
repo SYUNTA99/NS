@@ -80,6 +80,49 @@ namespace NS::Obj
                 }
             }
         }
+
+        EnsureUniqueObjectNames(scene);
+    }
+
+    std::string MakeUniqueObjectName(std::string_view base, const std::unordered_set<std::string>& used)
+    {
+        std::string name{"Object"};
+        if (!base.empty())
+        {
+            name = std::string{base};
+        }
+        if (!used.contains(name))
+        {
+            return name;
+        }
+        for (std::uint32_t n = 1;; ++n)
+        {
+            std::string candidate = name + "_" + std::to_string(n);
+            if (!used.contains(candidate))
+            {
+                return candidate;
+            }
+        }
+    }
+
+    void EnsureUniqueObjectNames(SceneData& scene)
+    {
+        // 付いている名前を先に全部押さえる。空の物へ先に番号を振ると、後ろの手書きの名前と重なる
+        std::unordered_set<std::string> used;
+        used.reserve(scene.objects.size());
+        std::vector<ObjectData*> pending;
+        for (ObjectData& object : scene.objects)
+        {
+            if (object.name.empty() || !used.insert(object.name).second)
+            {
+                pending.push_back(&object);
+            }
+        }
+        for (ObjectData* object : pending)
+        {
+            object->name = MakeUniqueObjectName(object->name, used);
+            used.insert(object->name);
+        }
     }
 
     std::size_t PruneDanglingObjectRefs(SceneData& scene)

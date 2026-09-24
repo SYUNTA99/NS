@@ -34,6 +34,8 @@
 #include "Runtime/Platform/Keyboard.h"
 
 #include <algorithm>
+#include <string>
+#include <unordered_set>
 
 namespace
 {
@@ -1105,8 +1107,17 @@ void LevelEditorController::RenameObject(std::uint32_t id, std::string_view name
     if (before->name == name)
         return; // 同じ名前で履歴を汚さない
 
+    // 他の配置物と重ならない名前にする。組み直しの一意化に任せると、並びの前にいる相手の名前が変わり得る
+    std::unordered_set<std::string> used;
+    for (const NS::Obj::GameObject* object : m_scene->Objects())
+    {
+        if (object->Id() != id)
+            used.insert(object->Name());
+    }
     NS::Obj::ObjectData after = *before;
-    after.name = std::string(name);
+    after.name = NS::Obj::MakeUniqueObjectName(name, used);
+    if (after.name == before->name)
+        return;
 
     m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)),
                          m_applier);

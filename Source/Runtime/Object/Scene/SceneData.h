@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <vector>
 
 namespace NS::Obj
@@ -95,7 +96,15 @@ namespace NS::Obj
     //! 全 object と全 component の永続 id を「非 0 かつ一意」へ整える。未割当と重複には新 id を振り、
     //! nextObjectId を既存最大 id より先へ進める。手編集のファイルを読込直後に通す整合処理
     //! 番号の空間は object と component で共通なので、id 1 個で世界の誰か 1 人が決まる
+    //! 続けて EnsureUniqueObjectNames で object の名前も一意にする
     void EnsureUniqueObjectIds(SceneData& scene);
+
+    //! used に無い名前を返す。空は Object とし、重複したら UE と同じく _1, _2 と番号を付ける
+    [[nodiscard]] std::string MakeUniqueObjectName(std::string_view base, const std::unordered_set<std::string>& used);
+
+    //! 全 object に一意な名前を付ける。先に付いていた名前を保ち、空と重複にだけ新しい名前を振る
+    //! ファイルの参照は名前で書くので、名前が 1 つの object に決まることを保存と読込が当てにする
+    void EnsureUniqueObjectNames(SceneData& scene);
 
     //! 存在しない object を指す ObjectRef フィールドを未設定 0 へ戻し、直した件数を返す
     //! 手編集や参照先削除で宙に浮いた参照を読込直後に除去し、実行時の照合失敗を入口で断つ

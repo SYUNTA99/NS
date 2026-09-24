@@ -8,6 +8,8 @@
 
 #include <cstddef>
 #include <span>
+#include <string>
+#include <unordered_map>
 
 namespace NS::Obj
 {
@@ -54,6 +56,39 @@ namespace NS::Obj
                 return fallback;
             }
             return it->get<int>();
+        }
+
+        //! component の fields 直下にある参照の欄 {"ref": ...} の値を訪ねる
+        template <class Fn> void ForEachRefValue(nlohmann::json& components, Fn&& fn)
+        {
+            if (!components.is_array())
+            {
+                return;
+            }
+            for (nlohmann::json& entry : components)
+            {
+                if (!entry.is_object())
+                {
+                    continue;
+                }
+                const auto fieldsIt = entry.find("fields");
+                if (fieldsIt == entry.end() || !fieldsIt->is_object())
+                {
+                    continue;
+                }
+                for (nlohmann::json& value : *fieldsIt)
+                {
+                    if (!value.is_object())
+                    {
+                        continue;
+                    }
+                    const auto refIt = value.find("ref");
+                    if (refIt != value.end())
+                    {
+                        fn(*refIt);
+                    }
+                }
+            }
         }
 
         nlohmann::json SerializeObject(const ObjectData& object)
@@ -157,6 +192,40 @@ namespace NS::Obj
             objects.push_back(SerializeObject(object));
         }
 
+        // ファイルの参照は相手の名前で書く。空と重複した名前は相手が 1 つに決まらないので id のまま残す
+        std::unordered_map<std::string, int> nameCounts;
+        for (const auto& object : scene.objects)
+        {
+            ++nameCounts[object.name];
+        }
+        std::unordered_map<std::uint32_t, const std::string*> namesById;
+        for (const auto& object : scene.objects)
+        {
+            if (!object.name.empty() && nameCounts[object.name] == 1)
+            {
+                namesById.emplace(object.objectId, &object.name);
+            }
+        }
+        for (nlohmann::json& objectJson : objects)
+        {
+            const auto componentsIt = objectJson.find("components");
+            if (componentsIt == objectJson.end())
+            {
+                continue;
+            }
+            ForEachRefValue(*componentsIt, [&namesById](nlohmann::json& ref) {
+                if (!ref.is_number_unsigned())
+                {
+                    return;
+                }
+                const auto it = namesById.find(ref.get<std::uint32_t>());
+                if (it != namesById.end())
+                {
+                    ref = *it->second;
+                }
+            });
+        }
+
         root["objects"] = std::move(objects);
         root["nextObjectId"] = scene.nextObjectId;
 
@@ -223,6 +292,29 @@ namespace NS::Obj
         outScene.nextObjectId = static_cast<std::uint32_t>(ReadInt(root, "nextObjectId", 1));
         // 手編集ファイルは id 未割当・重複があり得る。読込直後に必ず一意化し、以降の経路は id を信頼できる
         EnsureUniqueObjectIds(outScene);
+
+        // ファイルの参照は相手の名前で書かれている。名前を一意にした後で id へ直す。旧形式の数値はそのまま通す
+        std::unordered_map<std::string, std::uint32_t> idsByName;
+        for (const ObjectData& object : outScene.objects)
+        {
+            idsByName.emplace(object.name, object.objectId);
+        }
+        for (ObjectData& object : outScene.objects)
+        {
+            ForEachRefValue(object.components, [&idsByName](nlohmann::json& ref) {
+                if (!ref.is_string())
+                {
+                    return;
+                }
+                const auto it = idsByName.find(ref.get<std::string>());
+                if (it == idsByName.end())
+                {
+                    ref = k_NoObjectId; // 居ない名前は未設定へ戻す
+                    return;
+                }
+                ref = it->second;
+            });
+        }
 
         // 手編集や参照先削除で宙に浮いた参照は入口で未設定へ戻す。実行時は id 照合の失敗を考えずに済む
         const std::size_t prunedRefs = PruneDanglingObjectRefs(outScene);

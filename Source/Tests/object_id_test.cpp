@@ -286,3 +286,19 @@ TEST(ObjectIdTest, FindReferencesToIsEmptyForNoReferrersOrUnsetTarget)
     // 未設定 id (0) を指す参照は「参照」ではない
     EXPECT_TRUE(SceneNs::FindReferencesTo(level, SceneNs::k_NoObjectId).empty());
 }
+
+// 付いている名前は保ち、空と重複にだけ UE と同じく番号付きの名前を振る
+TEST(ObjectNameTest, EnsureUniqueObjectNamesKeepsGivenNamesAndNumbersTheRest)
+{
+    SceneNs::SceneData level;
+    level.objects.resize(4);
+    level.objects[1].name = "Object";
+    level.objects[3].name = "Object";
+
+    SceneNs::EnsureUniqueObjectNames(level);
+
+    EXPECT_EQ(level.objects[0].name, "Object_1");
+    EXPECT_EQ(level.objects[1].name, "Object");
+    EXPECT_EQ(level.objects[2].name, "Object_2");
+    EXPECT_EQ(level.objects[3].name, "Object_3");
+}

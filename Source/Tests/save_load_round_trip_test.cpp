@@ -824,3 +824,21 @@ TEST(SaveLoadRoundTrip, ChargeFieldKeysAreTheLockedLabels)
         EXPECT_EQ(point.size(), 2u);
     }
 }
+
+// 参照はファイルに相手の名前で書き、読込で id へ戻す
+TEST(SaveLoadRoundTrip, ObjectRefIsWrittenByName)
+{
+    SceneNs::SceneData src;
+    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    src.objects[0].name = "Hero";
+    SceneNs::EnsureUniqueObjectIds(src);
+    src.objects.push_back(MakeFollowCameraObject(src.objects[0].objectId));
+    SceneNs::EnsureUniqueObjectIds(src);
+
+    const std::string json = SceneNs::SerializeSceneToJson(src);
+    EXPECT_NE(json.find("\"ref\": \"Hero\""), std::string::npos) << json;
+
+    SceneNs::SceneData dst;
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
+    EXPECT_TRUE(dst == src);
+}

@@ -11,6 +11,7 @@
 #include <limits>
 #include <numeric>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace NS::Obj
 {
@@ -135,7 +136,14 @@ namespace NS::Obj
             return nullptr;
         }
         obj->SetId(AllocateObjectId());
-        obj->SetName(std::move(name));
+        // ファイルの参照は名前で書くので、プレイ中に足す物も既存と重ならない名前にする
+        std::unordered_set<std::string> used;
+        used.reserve(m_objects.size());
+        for (const auto& existing : m_objects)
+        {
+            used.insert(existing->Name());
+        }
+        obj->SetName(MakeUniqueObjectName(name, used));
         return Append(std::move(obj));
     }
 
