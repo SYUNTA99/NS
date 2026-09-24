@@ -6,7 +6,6 @@
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
-#include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Object/Scene/SceneJson.h>
 #include <cmath>
 #include <gtest/gtest.h>
@@ -17,9 +16,9 @@ namespace SceneNs = NS::Obj;
 
 namespace
 {
-    SceneNs::ObjectData MakeRotatedCube(const NS::Core::Vector3& eulerDegrees)
+    nlohmann::json MakeRotatedCube(const NS::Core::Vector3& eulerDegrees)
     {
-        SceneNs::ObjectData object = NS::Editor::MakeCellObject(0, 0, 0);
+        nlohmann::json object = NS::Editor::MakeCellObject(0, 0, 0);
         SceneNs::SetObjectRotation(object, NS::Core::EulerDegreesToQuaternion(eulerDegrees));
         return object;
     }
@@ -32,16 +31,16 @@ TEST(SceneRotationDrift, RepeatedCaptureRebuildKeepsExactQuaternion)
     // device 無しの AssetManager でも組み立ては落ちない。mesh も material も解決できず空のまま
     NS::Obj::AssetManager assets{std::string{"."}};
 
-    const SceneNs::ObjectData object = MakeRotatedCube(NS::Core::Vector3{89.9f, 40.0f, 20.0f});
-    std::unique_ptr<NS::Obj::GameObject> live = SceneNs::BuildSceneObject(object, &assets);
+    const nlohmann::json object = MakeRotatedCube(NS::Core::Vector3{89.9f, 40.0f, 20.0f});
+    std::unique_ptr<NS::Obj::GameObject> live = SceneNs::ObjectFromJson(object, &assets);
     ASSERT_NE(live, nullptr);
 
     const NS::Core::Quaternion reference = live->Root().Rotation();
 
     for (int i = 0; i < 20; ++i)
     {
-        const SceneNs::ObjectData captured = SceneNs::CaptureObjectData(*live);
-        live = SceneNs::BuildSceneObject(captured, &assets);
+        const nlohmann::json captured = SceneNs::ObjectToJson(*live);
+        live = SceneNs::ObjectFromJson(captured, &assets);
         ASSERT_NE(live, nullptr);
     }
 
@@ -72,12 +71,12 @@ TEST(SceneRotationDrift, RotationFieldLoadsToExpectedQuaternion)
         ]
     })lvl";
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
-    ASSERT_EQ(dst.objects.size(), 1u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 1u);
 
     // yaw 90 度は Y 軸まわりの回転で quaternion (0, sin45, 0, cos45)
-    const NS::Core::Quaternion q = SceneNs::ObjectRotation(dst.objects[0]);
+    const NS::Core::Quaternion q = SceneNs::ObjectRotation(SceneNs::SceneJsonObjects(dst)[0]);
     EXPECT_NEAR(q.x, 0.0f, 1e-5f);
     EXPECT_NEAR(q.y, 0.70710677f, 1e-5f);
     EXPECT_NEAR(q.z, 0.0f, 1e-5f);
@@ -90,32 +89,32 @@ TEST(SceneRotationDrift, SaveWritesRotationAsQuaternionOnly)
     // 1 つ目の試しと同じく device 無し
     NS::Obj::AssetManager assets{std::string{"."}};
 
-    const SceneNs::ObjectData object = MakeRotatedCube(NS::Core::Vector3{30.0f, 45.0f, 60.0f});
-    std::unique_ptr<NS::Obj::GameObject> live = SceneNs::BuildSceneObject(object, &assets);
+    const nlohmann::json object = MakeRotatedCube(NS::Core::Vector3{30.0f, 45.0f, 60.0f});
+    std::unique_ptr<NS::Obj::GameObject> live = SceneNs::ObjectFromJson(object, &assets);
     ASSERT_NE(live, nullptr);
 
-    SceneNs::SceneData data;
-    data.objects.push_back(SceneNs::CaptureObjectData(*live));
-    data.objects[0].objectId = 1;
+    nlohmann::json data = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(data).push_back(SceneNs::ObjectToJson(*live));
+    SceneNs::SetObjectJsonId(SceneNs::SceneJsonObjects(data)[0], 1u);
 
-    const nlohmann::json* transform = SceneNs::FindComponentEntry(data.objects[0], "TransformComponent");
+    const nlohmann::json* transform = SceneNs::FindComponentEntry(SceneNs::SceneJsonObjects(data)[0], "TransformComponent");
     ASSERT_NE(transform, nullptr);
     EXPECT_TRUE(SceneNs::HasField(*transform, "回転"));
     EXPECT_FALSE(SceneNs::HasField(*transform, "回転 (度)"));
 
     // 現行 version の形式検査を通って読み戻せる
     const std::string json = SceneNs::SerializeSceneToJson(data);
-    SceneNs::SceneData reloaded;
+    nlohmann::json reloaded = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(reloaded, json));
-    ASSERT_EQ(reloaded.objects.size(), 1u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(reloaded).size(), 1u);
 
     // BoxCollider も「回転 (度)」を持つので、保存文字列全体でなく transform の項目だけを見る
-    const nlohmann::json* reloadedTransform = SceneNs::FindComponentEntry(reloaded.objects[0], "TransformComponent");
+    const nlohmann::json* reloadedTransform = SceneNs::FindComponentEntry(SceneNs::SceneJsonObjects(reloaded)[0], "TransformComponent");
     ASSERT_NE(reloadedTransform, nullptr);
     EXPECT_TRUE(SceneNs::HasField(*reloadedTransform, "回転"));
     EXPECT_FALSE(SceneNs::HasField(*reloadedTransform, "回転 (度)"));
 
     // 読込が 4 要素を受けないと無回転のまま素通りするので、向きまで突き合わせる
-    const NS::Core::Quaternion restored = SceneNs::ObjectRotation(reloaded.objects[0]);
+    const NS::Core::Quaternion restored = SceneNs::ObjectRotation(SceneNs::SceneJsonObjects(reloaded)[0]);
     EXPECT_NEAR(std::abs(restored.Dot(live->Root().Rotation())), 1.0f, 1e-5f);
 }

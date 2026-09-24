@@ -2,14 +2,16 @@
 
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/TransformComponent.h"
+#include "Runtime/Object/ObjectName.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Platform/Filesystem.h"
 
-#include <cstddef>
 #include <span>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 namespace NS::Obj
 {
@@ -24,212 +26,523 @@ namespace NS::Obj
         constexpr std::size_t k_MaxSceneFileBytes = 16u * 1024u * 1024u;
         constexpr std::size_t k_MaxObjectCount = 100'000u;
 
-        nlohmann::json Vec3Json(float x, float y, float z)
+        //! ファイルの配置物 1 体を、知っている欄だけの形へ整える。未知の欄は捨て、fields の中身は素通し
+        nlohmann::json NormalizeObject(const nlohmann::json& json)
         {
-            return nlohmann::json{x, y, z};
-        }
-
-        //! parent[key] が長さ 3 の数値配列なら x/y/z へ書き込む。不在 / 型不一致は据え置きで前方互換を保つ
-        void ReadVec3(const nlohmann::json& parent, const char* key, float& x, float& y, float& z)
-        {
-            const nlohmann::json::const_iterator it = parent.find(key);
-            if (it == parent.end() || !it->is_array() || it->size() < 3u)
-            {
-                return;
-            }
-            if (!(*it)[0].is_number() || !(*it)[1].is_number() || !(*it)[2].is_number())
-            {
-                return;
-            }
-
-            x = (*it)[0].get<float>();
-            y = (*it)[1].get<float>();
-            z = (*it)[2].get<float>();
-        }
-
-        //! parent[key] が数値なら int で返す。不在 / 型不一致は fallback。手編集の 1.0 形式も拾う
-        int ReadInt(const nlohmann::json& parent, const char* key, int fallback)
-        {
-            const nlohmann::json::const_iterator it = parent.find(key);
-            if (it == parent.end() || !it->is_number())
-            {
-                return fallback;
-            }
-            return it->get<int>();
-        }
-
-        nlohmann::json SerializeObject(const ObjectData& object)
-        {
-            nlohmann::json out;
-            out["id"] = object.objectId;
-            // GameObject のクラス名。素の GameObject は書かず、読込側は不在を空として扱う
-            if (!object.className.empty())
-            {
-                out["class"] = object.className;
-            }
-            // 表示名は付いている物だけ書き、未設定は型からの導出に任せる
-            if (!object.name.empty())
-            {
-                out["name"] = object.name;
-            }
-            // root は書かず、読込側は不在を 0 として扱う
-            if (object.parentId != k_NoObjectId)
-            {
-                out["parent"] = object.parentId;
-            }
-            // 既定値は書かない。active true は不在で表す
-            if (!object.active)
-            {
-                out["active"] = false;
-            }
-            // components はメモリ上も保存形式と同じ {type, fields} の JSON 配列なのでそのまま書く
-            out["components"] = object.components;
-            return out;
-        }
-
-        ObjectData DeserializeObject(const nlohmann::json& json)
-        {
-            ObjectData object{};
+            nlohmann::json object = MakeObjectJson();
             if (!json.is_object())
             {
                 return object;
             }
 
-            object.objectId = static_cast<std::uint32_t>(ReadInt(json, "id", 0));
-            const nlohmann::json::const_iterator classIt = json.find("class");
-            if (classIt != json.end() && classIt->is_string())
+            const nlohmann::json::const_iterator idIt = json.find("id");
+            if (idIt != json.end() && idIt->is_number_unsigned())
             {
-                object.className = classIt->get<std::string>();
+                SetObjectJsonId(object, idIt->get<std::uint32_t>());
             }
-            const nlohmann::json::const_iterator nameIt = json.find("name");
-            if (nameIt != json.end() && nameIt->is_string())
-            {
-                object.name = nameIt->get<std::string>();
-            }
-            object.parentId = static_cast<std::uint32_t>(ReadInt(json, "parent", 0));
+            SetObjectJsonClass(object, ObjectJsonClass(json));
+            SetObjectJsonName(object, ObjectJsonName(json));
+            SetObjectJsonParent(object, ObjectJsonParent(json));
             // 欄が無い古いファイルは有効として読む
-            const nlohmann::json::const_iterator activeIt = json.find("active");
-            if (activeIt != json.end() && activeIt->is_boolean())
-            {
-                object.active = activeIt->get<bool>();
-            }
+            SetObjectJsonActive(object, ObjectJsonActive(json));
 
-            const nlohmann::json::const_iterator componentsIt = json.find("components");
-            if (componentsIt != json.end() && componentsIt->is_array())
+            nlohmann::json& components = ObjectJsonComponents(object);
+            for (const nlohmann::json& componentJson : ObjectJsonComponents(json))
             {
-                // {type, id, name, enabled, fields} の骨格だけ整えて受け取る。未知キーは捨て、fields の中身は素通し
-                for (const nlohmann::json& componentJson : *componentsIt)
+                if (!componentJson.is_object())
                 {
-                    if (!componentJson.is_object())
-                    {
-                        continue;
-                    }
-                    nlohmann::json fields = nlohmann::json::object();
-                    const nlohmann::json::const_iterator fieldsIt = componentJson.find("fields");
-                    if (fieldsIt != componentJson.end() && fieldsIt->is_object())
-                    {
-                        fields = *fieldsIt;
-                    }
-                    nlohmann::json entry = MakeComponentEntry(ComponentEntryType(componentJson), std::move(fields));
-                    // id を落とすと読むたびに振り直しになり、名指ししている参照が外れる
-                    SetComponentEntryId(entry, ComponentEntryId(componentJson));
-                    // 名前はファイルの参照がコンポーネントを名指しするのに使う
-                    SetComponentEntryName(entry, ComponentEntryName(componentJson));
-                    // 保存側は書き出すので、ここで落とすと切った component が開くたびに有効へ戻る
-                    SetComponentEntryEnabled(entry, ComponentEntryEnabled(componentJson));
-                    object.components.push_back(std::move(entry));
+                    continue;
                 }
+                nlohmann::json fields = nlohmann::json::object();
+                const nlohmann::json::const_iterator fieldsIt = componentJson.find("fields");
+                if (fieldsIt != componentJson.end() && fieldsIt->is_object())
+                {
+                    fields = *fieldsIt;
+                }
+                nlohmann::json entry = MakeComponentEntry(ComponentEntryType(componentJson), std::move(fields));
+                // id を落とすと読むたびに振り直しになり、名指ししている参照が外れる
+                SetComponentEntryId(entry, ComponentEntryId(componentJson));
+                // 名前はファイルの参照がコンポーネントを名指しするのに使う
+                SetComponentEntryName(entry, ComponentEntryName(componentJson));
+                // 保存側は書き出すので、ここで落とすと切った component が開くたびに有効へ戻る
+                SetComponentEntryEnabled(entry, ComponentEntryEnabled(componentJson));
+                components.push_back(std::move(entry));
             }
             // 手編集で transform エントリを欠くファイルにも 1 つ保証し、以降の transform 読取を成立させる
-            EnsureTransformComponent(object);
+            (void)EnsureTransformComponent(object);
             return object;
-        }
-    } // namespace
-
-    std::string SerializeSceneToJson(const SceneData& scene)
-    {
-        nlohmann::json root;
-        root["version"] = k_FormatVersion;
-
-        nlohmann::json environment;
-        environment["skybox"] = scene.environment.skyboxCubemapPath;
-        root["environment"] = std::move(environment);
-
-        nlohmann::json objects = nlohmann::json::array();
-        for (const ObjectData& object : scene.objects)
-        {
-            objects.push_back(SerializeObject(object));
         }
 
         // ファイルの参照は相手の名前で書く。空と重複した名前は相手が 1 つに決まらないので id のまま残す
         // Component は持ち主の中の名前で書く。読込は持ち主を決めてから、その中で名前を引く
-        std::unordered_map<std::string, int> nameCounts;
-        for (const ObjectData& object : scene.objects)
+        void WriteRefsByName(nlohmann::json& scene)
         {
-            ++nameCounts[object.name];
-        }
-        std::unordered_map<std::uint32_t, const std::string*> namesById;
-        std::unordered_map<std::uint32_t, std::string> componentNamesById;
-        for (const ObjectData& object : scene.objects)
-        {
-            if (!object.name.empty() && nameCounts[object.name] == 1)
+            nlohmann::json& objects = SceneJsonObjects(scene);
+            std::unordered_map<std::string, int> nameCounts;
+            for (const nlohmann::json& object : objects)
             {
-                namesById.emplace(object.objectId, &object.name);
+                ++nameCounts[std::string{ObjectJsonName(object)}];
             }
-            if (!object.components.is_array())
+            std::unordered_map<std::uint32_t, std::string> namesById;
+            std::unordered_map<std::uint32_t, std::string> componentNamesById;
+            for (const nlohmann::json& object : objects)
             {
-                continue;
-            }
-            for (const nlohmann::json& entry : object.components)
-            {
-                const std::string_view componentName = ComponentEntryName(entry);
-                if (!componentName.empty())
+                const std::string name{ObjectJsonName(object)};
+                if (!name.empty() && nameCounts[name] == 1)
                 {
-                    componentNamesById.emplace(ComponentEntryId(entry), std::string{componentName});
+                    namesById.emplace(ObjectJsonId(object), name);
                 }
-            }
-        }
-        for (nlohmann::json& objectJson : objects)
-        {
-            const nlohmann::json::iterator componentsIt = objectJson.find("components");
-            if (componentsIt == objectJson.end())
-            {
-                continue;
-            }
-            ForEachRefValue(*componentsIt, [&namesById, &componentNamesById](nlohmann::json& value) {
-                nlohmann::json& ref = value["ref"];
-                if (ref.is_number_unsigned())
+                for (const nlohmann::json& entry : ObjectJsonComponents(object))
                 {
-                    const std::unordered_map<std::uint32_t, const std::string*>::iterator it =
-                        namesById.find(ref.get<std::uint32_t>());
-                    if (it != namesById.end())
+                    const std::string_view componentName = ComponentEntryName(entry);
+                    if (!componentName.empty())
                     {
-                        ref = *it->second;
+                        componentNamesById.emplace(ComponentEntryId(entry), std::string{componentName});
                     }
                 }
-                const nlohmann::json::iterator componentIt = value.find("component");
-                if (componentIt != value.end() && componentIt->is_number_unsigned())
-                {
-                    const std::unordered_map<std::uint32_t, std::string>::iterator it =
-                        componentNamesById.find(componentIt->get<std::uint32_t>());
-                    if (it != componentNamesById.end())
+            }
+            for (nlohmann::json& object : objects)
+            {
+                ForEachRefValue(object, [&namesById, &componentNamesById](nlohmann::json& value) {
+                    nlohmann::json& ref = value["ref"];
+                    if (ref.is_number_unsigned())
                     {
-                        *componentIt = it->second;
+                        const std::unordered_map<std::uint32_t, std::string>::iterator it =
+                            namesById.find(ref.get<std::uint32_t>());
+                        if (it != namesById.end())
+                        {
+                            ref = it->second;
+                        }
                     }
-                }
-            });
+                    const nlohmann::json::iterator componentIt = value.find("component");
+                    if (componentIt != value.end() && componentIt->is_number_unsigned())
+                    {
+                        const std::unordered_map<std::uint32_t, std::string>::iterator it =
+                            componentNamesById.find(componentIt->get<std::uint32_t>());
+                        if (it != componentNamesById.end())
+                        {
+                            *componentIt = it->second;
+                        }
+                    }
+                });
+            }
         }
 
-        root["objects"] = std::move(objects);
-        root["nextObjectId"] = scene.nextObjectId;
+        // ファイルの参照は相手の名前で書かれている。名前を一意にした後で id へ直す。旧形式の数値はそのまま通す
+        // Component の名前は持ち主の中で一意なので、持ち主の id を決めてからその中で引く
+        void ReadRefsByName(nlohmann::json& scene)
+        {
+            nlohmann::json& objects = SceneJsonObjects(scene);
+            std::unordered_map<std::string, std::uint32_t> idsByName;
+            std::unordered_map<std::uint32_t, std::unordered_map<std::string, std::uint32_t>> componentIdsByObject;
+            for (const nlohmann::json& object : objects)
+            {
+                const std::uint32_t objectId = ObjectJsonId(object);
+                idsByName.emplace(std::string{ObjectJsonName(object)}, objectId);
+                std::unordered_map<std::string, std::uint32_t>& componentIds = componentIdsByObject[objectId];
+                for (const nlohmann::json& entry : ObjectJsonComponents(object))
+                {
+                    componentIds.emplace(std::string{ComponentEntryName(entry)}, ComponentEntryId(entry));
+                }
+            }
+            for (nlohmann::json& object : objects)
+            {
+                ForEachRefValue(object, [&idsByName, &componentIdsByObject](nlohmann::json& value) {
+                    nlohmann::json& ref = value["ref"];
+                    if (ref.is_string())
+                    {
+                        const std::unordered_map<std::string, std::uint32_t>::iterator it =
+                            idsByName.find(ref.get<std::string>());
+                        if (it == idsByName.end())
+                        {
+                            ref = k_NoObjectId; // 居ない名前は未設定へ戻す
+                        }
+                        else
+                        {
+                            ref = it->second;
+                        }
+                    }
+                    const nlohmann::json::iterator componentIt = value.find("component");
+                    if (componentIt == value.end() || !componentIt->is_string())
+                    {
+                        return;
+                    }
+                    std::uint32_t componentId = 0;
+                    if (ref.is_number_unsigned())
+                    {
+                        const std::unordered_map<std::uint32_t, std::unordered_map<std::string, std::uint32_t>>::iterator
+                            owner = componentIdsByObject.find(ref.get<std::uint32_t>());
+                        if (owner != componentIdsByObject.end())
+                        {
+                            const std::unordered_map<std::string, std::uint32_t>::iterator it =
+                                owner->second.find(componentIt->get<std::string>());
+                            if (it != owner->second.end())
+                            {
+                                componentId = it->second;
+                            }
+                        }
+                    }
+                    // 居ない名前は未設定。持ち主だけ残すと、どれも指していない参照が生きて見える
+                    *componentIt = componentId;
+                    if (componentId == 0)
+                    {
+                        ref = k_NoObjectId;
+                    }
+                });
+            }
+        }
+    } // namespace
 
-        // 不正 UTF-8 は replace で握り、dump が例外を投げないようにして noexcept 経路を保つ
-        return root.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
+    nlohmann::json MakeSceneJson()
+    {
+        nlohmann::json scene = nlohmann::json::object();
+        scene["version"] = k_FormatVersion;
+        nlohmann::json environment = nlohmann::json::object();
+        environment["skybox"] = "";
+        scene["environment"] = std::move(environment);
+        scene["objects"] = nlohmann::json::array();
+        scene["nextObjectId"] = 1u;
+        return scene;
     }
 
-    bool DeserializeSceneFromJson(SceneData& outScene, std::string_view jsonText)
+    const nlohmann::json& SceneJsonObjects(const nlohmann::json& scene) noexcept
     {
-        outScene = SceneData{};
+        static const nlohmann::json k_Empty = nlohmann::json::array();
+        if (!scene.is_object())
+        {
+            return k_Empty;
+        }
+        const nlohmann::json::const_iterator it = scene.find("objects");
+        if (it == scene.end() || !it->is_array())
+        {
+            return k_Empty;
+        }
+        return *it;
+    }
+
+    nlohmann::json& SceneJsonObjects(nlohmann::json& scene)
+    {
+        if (!scene.is_object())
+        {
+            scene = MakeSceneJson();
+        }
+        nlohmann::json& objects = scene["objects"];
+        if (!objects.is_array())
+        {
+            objects = nlohmann::json::array();
+        }
+        return objects;
+    }
+
+    std::uint32_t SceneJsonNextObjectId(const nlohmann::json& scene) noexcept
+    {
+        if (!scene.is_object())
+        {
+            return 1;
+        }
+        const nlohmann::json::const_iterator it = scene.find("nextObjectId");
+        if (it == scene.end() || !it->is_number_unsigned())
+        {
+            return 1;
+        }
+        return it->get<std::uint32_t>();
+    }
+
+    void SetSceneJsonNextObjectId(nlohmann::json& scene, std::uint32_t nextObjectId)
+    {
+        if (!scene.is_object())
+        {
+            scene = MakeSceneJson();
+        }
+        scene["nextObjectId"] = nextObjectId;
+    }
+
+    std::string_view SceneJsonSkybox(const nlohmann::json& scene) noexcept
+    {
+        if (!scene.is_object())
+        {
+            return {};
+        }
+        const nlohmann::json::const_iterator environmentIt = scene.find("environment");
+        if (environmentIt == scene.end() || !environmentIt->is_object())
+        {
+            return {};
+        }
+        const nlohmann::json::const_iterator skyboxIt = environmentIt->find("skybox");
+        if (skyboxIt == environmentIt->end() || !skyboxIt->is_string())
+        {
+            return {};
+        }
+        return skyboxIt->get_ref<const std::string&>();
+    }
+
+    void SetSceneJsonSkybox(nlohmann::json& scene, std::string_view path)
+    {
+        if (!scene.is_object())
+        {
+            scene = MakeSceneJson();
+        }
+        nlohmann::json& environment = scene["environment"];
+        if (!environment.is_object())
+        {
+            environment = nlohmann::json::object();
+        }
+        environment["skybox"] = std::string{path};
+    }
+
+    std::size_t FindObjectIndexById(const nlohmann::json& scene, std::uint32_t id) noexcept
+    {
+        if (id == k_NoObjectId)
+        {
+            return k_NoObjectIndex;
+        }
+        const nlohmann::json& objects = SceneJsonObjects(scene);
+        for (std::size_t i = 0; i < objects.size(); ++i)
+        {
+            if (ObjectJsonId(objects[i]) == id)
+            {
+                return i;
+            }
+        }
+        return k_NoObjectIndex;
+    }
+
+    void EnsureUniqueObjectIds(nlohmann::json& scene)
+    {
+        nlohmann::json& objects = SceneJsonObjects(scene);
+
+        // 先にカウンタを既存最大 id の先へ進め、これから振る id が既存と衝突しないようにする
+        // component の id も同じ空間なので、カウンタを進める段から一緒に見る
+        std::uint32_t nextObjectId = SceneJsonNextObjectId(scene);
+        for (const nlohmann::json& object : objects)
+        {
+            if (ObjectJsonId(object) >= nextObjectId)
+            {
+                nextObjectId = ObjectJsonId(object) + 1;
+            }
+            for (const nlohmann::json& entry : ObjectJsonComponents(object))
+            {
+                if (ComponentEntryId(entry) >= nextObjectId)
+                {
+                    nextObjectId = ComponentEntryId(entry) + 1;
+                }
+            }
+        }
+
+        // 未割当や重複は手編集・複製で入り得る。先勝ちで後続へ新 id を振る
+        std::unordered_set<std::uint32_t> seen;
+        seen.reserve(objects.size());
+        for (nlohmann::json& object : objects)
+        {
+            const std::uint32_t id = ObjectJsonId(object);
+            if (id == 0 || !seen.insert(id).second)
+            {
+                const std::uint32_t fresh = nextObjectId++;
+                SetObjectJsonId(object, fresh);
+                seen.insert(fresh);
+            }
+        }
+
+        // component も同じ表で見るので、配置物と component の間でも id が重ならない
+        for (nlohmann::json& object : objects)
+        {
+            for (nlohmann::json& entry : ObjectJsonComponents(object))
+            {
+                const std::uint32_t id = ComponentEntryId(entry);
+                if (id == 0 || !seen.insert(id).second)
+                {
+                    const std::uint32_t fresh = nextObjectId++;
+                    SetComponentEntryId(entry, fresh);
+                    seen.insert(fresh);
+                }
+            }
+        }
+        SetSceneJsonNextObjectId(scene, nextObjectId);
+
+        EnsureUniqueObjectNames(scene);
+    }
+
+    void EnsureUniqueObjectNames(nlohmann::json& scene)
+    {
+        nlohmann::json& objects = SceneJsonObjects(scene);
+
+        // 付いている名前を先に全部押さえる。空の物へ先に番号を振ると、後ろの手書きの名前と重なる
+        std::unordered_set<std::string> used;
+        used.reserve(objects.size());
+        std::vector<nlohmann::json*> pending;
+        for (nlohmann::json& object : objects)
+        {
+            const std::string name{ObjectJsonName(object)};
+            if (name.empty() || !used.insert(name).second)
+            {
+                pending.push_back(&object);
+            }
+        }
+        for (nlohmann::json* object : pending)
+        {
+            const std::string unique = MakeUniqueObjectName(ObjectJsonName(*object), used);
+            SetObjectJsonName(*object, unique);
+            used.insert(unique);
+        }
+
+        // component の名前は配置物の中で一意にする。名前の無い古いデータは型名から付ける
+        for (nlohmann::json& object : objects)
+        {
+            nlohmann::json& components = ObjectJsonComponents(object);
+            std::unordered_set<std::string> usedComponentNames;
+            usedComponentNames.reserve(components.size());
+            std::vector<nlohmann::json*> pendingEntries;
+            for (nlohmann::json& entry : components)
+            {
+                const std::string name{ComponentEntryName(entry)};
+                if (name.empty() || !usedComponentNames.insert(name).second)
+                {
+                    pendingEntries.push_back(&entry);
+                }
+            }
+            for (nlohmann::json* entry : pendingEntries)
+            {
+                std::string_view base = ComponentEntryName(*entry);
+                if (base.empty())
+                {
+                    base = ComponentEntryType(*entry);
+                }
+                const std::string unique = MakeUniqueObjectName(base, usedComponentNames);
+                SetComponentEntryName(*entry, unique);
+                usedComponentNames.insert(unique);
+            }
+        }
+    }
+
+    std::size_t PruneDanglingObjectRefs(nlohmann::json& scene)
+    {
+        nlohmann::json& objects = SceneJsonObjects(scene);
+
+        // 配置物ごとに、持っている component の id を控える。ComponentRef は持ち主の中に居るかまで見る
+        std::unordered_map<std::uint32_t, std::unordered_set<std::uint32_t>> componentIdsByObject;
+        componentIdsByObject.reserve(objects.size());
+        for (const nlohmann::json& object : objects)
+        {
+            std::unordered_set<std::uint32_t>& componentIds = componentIdsByObject[ObjectJsonId(object)];
+            for (const nlohmann::json& entry : ObjectJsonComponents(object))
+            {
+                componentIds.insert(ComponentEntryId(entry));
+            }
+        }
+
+        std::size_t prunedCount = 0;
+        for (nlohmann::json& object : objects)
+        {
+            ForEachRefValue(object, [&componentIdsByObject, &prunedCount](nlohmann::json& value) {
+                nlohmann::json& ref = value["ref"];
+                if (!ref.is_number_unsigned())
+                {
+                    return;
+                }
+                const std::uint32_t objectId = ref.get<std::uint32_t>();
+                const std::unordered_map<std::uint32_t, std::unordered_set<std::uint32_t>>::const_iterator owner =
+                    componentIdsByObject.find(objectId);
+                const nlohmann::json::iterator componentIt = value.find("component");
+                if (componentIt == value.end())
+                {
+                    // ObjectRef。未設定か、居る相手なら残す
+                    if (objectId == k_NoObjectId || owner != componentIdsByObject.end())
+                    {
+                        return;
+                    }
+                    ref = 0u;
+                    ++prunedCount;
+                    return;
+                }
+
+                // ComponentRef。未設定か、持ち主の中に居る Component なら残す
+                if (!componentIt->is_number_unsigned())
+                {
+                    return;
+                }
+                const std::uint32_t componentId = componentIt->get<std::uint32_t>();
+                if (componentId == 0 && objectId == k_NoObjectId)
+                {
+                    return;
+                }
+                if (componentId != 0 && owner != componentIdsByObject.end() && owner->second.contains(componentId))
+                {
+                    return;
+                }
+                ref = 0u;
+                *componentIt = 0u;
+                ++prunedCount;
+            });
+        }
+        return prunedCount;
+    }
+
+    std::size_t PruneInvalidParents(nlohmann::json& scene)
+    {
+        nlohmann::json& objects = SceneJsonObjects(scene);
+        std::unordered_map<std::uint32_t, std::size_t> indexById;
+        indexById.reserve(objects.size());
+        for (std::size_t i = 0; i < objects.size(); ++i)
+        {
+            indexById.emplace(ObjectJsonId(objects[i]), i);
+        }
+
+        std::size_t prunedCount = 0;
+        for (nlohmann::json& object : objects)
+        {
+            const std::uint32_t objectId = ObjectJsonId(object);
+            const std::uint32_t parentId = ObjectJsonParent(object);
+            if (parentId == k_NoObjectId)
+            {
+                continue;
+            }
+
+            bool valid = parentId != objectId && indexById.contains(parentId);
+            // 祖先を辿って自分へ戻れば循環。その場で root へ落とすので、輪の残りは正当な親子として通る
+            std::uint32_t ancestor = parentId;
+            for (std::size_t step = 0; valid && step < objects.size(); ++step)
+            {
+                const std::unordered_map<std::uint32_t, std::size_t>::iterator it = indexById.find(ancestor);
+                if (it == indexById.end())
+                {
+                    valid = false;
+                    break;
+                }
+                ancestor = ObjectJsonParent(objects[it->second]);
+                if (ancestor == k_NoObjectId)
+                {
+                    break;
+                }
+                if (ancestor == objectId)
+                {
+                    valid = false;
+                }
+            }
+
+            if (!valid)
+            {
+                SetObjectJsonParent(object, k_NoObjectId);
+                ++prunedCount;
+            }
+        }
+        return prunedCount;
+    }
+
+    std::string SerializeSceneToJson(const nlohmann::json& scene)
+    {
+        nlohmann::json out = MakeSceneJson();
+        SetSceneJsonSkybox(out, SceneJsonSkybox(scene));
+        SetSceneJsonNextObjectId(out, SceneJsonNextObjectId(scene));
+        out["objects"] = SceneJsonObjects(scene);
+        WriteRefsByName(out);
+
+        // 不正 UTF-8 は replace で握り、dump が例外を投げないようにして noexcept 経路を保つ
+        return out.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
+    }
+
+    bool DeserializeSceneFromJson(nlohmann::json& outScene, std::string_view jsonText)
+    {
+        outScene = MakeSceneJson();
 
         const nlohmann::json root = nlohmann::json::parse(jsonText, nullptr, false);
         if (root.is_discarded())
@@ -251,100 +564,26 @@ namespace NS::Obj
             return false;
         }
 
-        // objects を上限ガード付きで読む
-        const nlohmann::json::const_iterator objectsIt = root.find("objects");
-        if (objectsIt != root.end() && objectsIt->is_array())
+        const nlohmann::json& objects = SceneJsonObjects(root);
+        if (objects.size() > k_MaxObjectCount)
         {
-            if (objectsIt->size() > k_MaxObjectCount)
-            {
-                NS_LOG_ERROR(Scene,
-                             "DeserializeSceneFromJson: object 数 {} が上限 {} を超過",
-                             objectsIt->size(),
-                             k_MaxObjectCount);
-                outScene = SceneData{};
-                return false;
-            }
-            outScene.objects.reserve(objectsIt->size());
-            for (const nlohmann::json& objectJson : *objectsIt)
-            {
-                outScene.objects.push_back(DeserializeObject(objectJson));
-            }
+            NS_LOG_ERROR(
+                Scene, "DeserializeSceneFromJson: object 数 {} が上限 {} を超過", objects.size(), k_MaxObjectCount);
+            return false;
+        }
+        nlohmann::json& outObjects = SceneJsonObjects(outScene);
+        for (const nlohmann::json& objectJson : objects)
+        {
+            outObjects.push_back(NormalizeObject(objectJson));
         }
 
-        // environment 欄は skybox だけを所有する。旧形式の lightDirection / lightColor / ambientColor は
-        // 照明が DirectionalLight へ移ったので、キーが残っていても読み飛ばす
-        const nlohmann::json::const_iterator environmentIt = root.find("environment");
-        if (environmentIt != root.end() && environmentIt->is_object())
-        {
-            const nlohmann::json::const_iterator skyboxIt = environmentIt->find("skybox");
-            if (skyboxIt != environmentIt->end() && skyboxIt->is_string())
-            {
-                outScene.environment.skyboxCubemapPath = skyboxIt->get<std::string>();
-            }
-        }
+        // environment 欄は skybox だけを所有する。旧形式の照明の欄は DirectionalLight へ移ったので読み飛ばす
+        SetSceneJsonSkybox(outScene, SceneJsonSkybox(root));
+        SetSceneJsonNextObjectId(outScene, SceneJsonNextObjectId(root));
 
-        outScene.nextObjectId = static_cast<std::uint32_t>(ReadInt(root, "nextObjectId", 1));
         // 手編集ファイルは id 未割当・重複があり得る。読込直後に必ず一意化し、以降の経路は id を信頼できる
         EnsureUniqueObjectIds(outScene);
-
-        // ファイルの参照は相手の名前で書かれている。名前を一意にした後で id へ直す。旧形式の数値はそのまま通す
-        // Component の名前は持ち主の中で一意なので、持ち主の id を決めてからその中で引く
-        std::unordered_map<std::string, std::uint32_t> idsByName;
-        std::unordered_map<std::uint32_t, std::unordered_map<std::string, std::uint32_t>> componentIdsByObject;
-        for (const ObjectData& object : outScene.objects)
-        {
-            idsByName.emplace(object.name, object.objectId);
-            std::unordered_map<std::string, std::uint32_t>& componentIds = componentIdsByObject[object.objectId];
-            for (const nlohmann::json& entry : object.components)
-            {
-                componentIds.emplace(std::string{ComponentEntryName(entry)}, ComponentEntryId(entry));
-            }
-        }
-        for (ObjectData& object : outScene.objects)
-        {
-            ForEachRefValue(object.components, [&idsByName, &componentIdsByObject](nlohmann::json& value) {
-                nlohmann::json& ref = value["ref"];
-                if (ref.is_string())
-                {
-                    const std::unordered_map<std::string, std::uint32_t>::iterator it =
-                        idsByName.find(ref.get<std::string>());
-                    if (it == idsByName.end())
-                    {
-                        ref = k_NoObjectId; // 居ない名前は未設定へ戻す
-                    }
-                    else
-                    {
-                        ref = it->second;
-                    }
-                }
-                const nlohmann::json::iterator componentIt = value.find("component");
-                if (componentIt == value.end() || !componentIt->is_string())
-                {
-                    return;
-                }
-                std::uint32_t componentId = 0;
-                if (ref.is_number_unsigned())
-                {
-                    const std::unordered_map<std::uint32_t, std::unordered_map<std::string, std::uint32_t>>::iterator owner =
-                        componentIdsByObject.find(ref.get<std::uint32_t>());
-                    if (owner != componentIdsByObject.end())
-                    {
-                        const std::unordered_map<std::string, std::uint32_t>::iterator it =
-                            owner->second.find(componentIt->get<std::string>());
-                        if (it != owner->second.end())
-                        {
-                            componentId = it->second;
-                        }
-                    }
-                }
-                // 居ない名前は未設定。持ち主だけ残すと、どれも指していない参照が生きて見える
-                *componentIt = componentId;
-                if (componentId == 0)
-                {
-                    ref = k_NoObjectId;
-                }
-            });
-        }
+        ReadRefsByName(outScene);
 
         // 手編集や参照先削除で宙に浮いた参照は入口で未設定へ戻す。実行時は id 照合の失敗を考えずに済む
         const std::size_t prunedRefs = PruneDanglingObjectRefs(outScene);
@@ -358,17 +597,16 @@ namespace NS::Obj
         {
             NS_LOG_WARN(Scene, "辿れない親を持つ object を {} 件 root に戻した", prunedParents);
         }
-
         return true;
     }
 
-    bool SaveSceneToJsonFile(const SceneData& scene, std::string_view path) noexcept
+    bool SaveSceneToJsonFile(const nlohmann::json& scene, std::string_view path) noexcept
     {
         // 保存前の上限ガード
-        if (scene.objects.size() > k_MaxObjectCount)
+        const std::size_t objectCount = SceneJsonObjects(scene).size();
+        if (objectCount > k_MaxObjectCount)
         {
-            NS_LOG_ERROR(
-                Scene, "SaveSceneToJsonFile: object 数が上限超過 ({} > {})", scene.objects.size(), k_MaxObjectCount);
+            NS_LOG_ERROR(Scene, "SaveSceneToJsonFile: object 数が上限超過 ({} > {})", objectCount, k_MaxObjectCount);
             return false;
         }
         const std::string text = SerializeSceneToJson(scene);
@@ -385,9 +623,9 @@ namespace NS::Obj
         return ::NS::Platform::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size()));
     }
 
-    bool LoadSceneFromJsonFile(SceneData& outScene, std::string_view path) noexcept
+    bool LoadSceneFromJsonFile(nlohmann::json& outScene, std::string_view path) noexcept
     {
-        outScene = SceneData{};
+        outScene = MakeSceneJson();
 
         std::optional<std::string> textOpt = ::NS::Platform::FileSystem::ReadAllText(path);
         if (!textOpt.has_value())
@@ -406,7 +644,7 @@ namespace NS::Obj
 
         if (!DeserializeSceneFromJson(outScene, *textOpt))
         {
-            outScene = SceneData{};
+            outScene = MakeSceneJson();
             return false;
         }
         return true;

@@ -35,12 +35,11 @@ namespace
     }
 
     // 追従先の参照だけを持つ追従カメラの配置物を作る
-    [[nodiscard]] NS::Obj::ObjectData MakeFollowCameraObject(std::uint32_t targetObjectId)
+    [[nodiscard]] nlohmann::json MakeFollowCameraObject(std::uint32_t targetObjectId)
     {
         nlohmann::json follow = NS::Obj::MakeComponentEntry("ThirdPersonFollow");
         NS::Obj::SetField(follow, "追従対象", NS::Obj::ObjectRef{targetObjectId});
-        NS::Obj::ObjectData object{};
-        object.components = nlohmann::json::array({std::move(follow)});
+        nlohmann::json object = NS::Obj::MakeObjectJson(nlohmann::json::array({std::move(follow)}));
         NS::Obj::EnsureTransformComponent(object);
         return object;
     }
@@ -51,39 +50,40 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
     std::optional<std::string> path = TestScenePath("test_roundtrip");
     ASSERT_TRUE(path.has_value());
 
-    SceneNs::SceneData src;
-    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{1.0f, 2.0f, 3.0f}, NS::Core::Quaternion{}));
-    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
-    SceneNs::ObjectData rotated = NS::Editor::MakeCellObject(1, 0, 1);
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(
+        MakePlayerObject(NS::Core::Vector3{1.0f, 2.0f, 3.0f}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(src).push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    nlohmann::json rotated = NS::Editor::MakeCellObject(1, 0, 1);
     SceneNs::SetObjectRotation(rotated,
                                NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.5f, 0.0f, 0.0f));
-    src.objects.push_back(rotated);
-    src.objects.push_back(NS::Editor::MakeCellObject(2, 0, 0));
+    SceneNs::SceneJsonObjects(src).push_back(rotated);
+    SceneNs::SceneJsonObjects(src).push_back(NS::Editor::MakeCellObject(2, 0, 0));
     // 編集中のレベルは読込採番か Command 採番で常に id を持つため、比べる元も採番後から取る
     SceneNs::EnsureUniqueObjectIds(src);
 
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::LoadSceneFromJsonFile(dst, *path));
     EXPECT_TRUE(dst == src);
 }
 
 TEST(SaveLoadRoundTrip, DisabledComponentSurvivesJsonRoundTrip)
 {
-    SceneNs::SceneData src;
-    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(NS::Editor::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
 
-    nlohmann::json* entry = SceneNs::FindComponentEntry(src.objects[0], "MeshRenderer");
+    nlohmann::json* entry = SceneNs::FindComponentEntry(SceneNs::SceneJsonObjects(src)[0], "MeshRenderer");
     ASSERT_NE(entry, nullptr);
     SceneNs::SetComponentEntryEnabled(*entry, false);
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
 
-    ASSERT_EQ(dst.objects.size(), 1u);
-    const nlohmann::json* reloaded = SceneNs::FindComponentEntry(dst.objects[0], "MeshRenderer");
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 1u);
+    const nlohmann::json* reloaded = SceneNs::FindComponentEntry(SceneNs::SceneJsonObjects(dst)[0], "MeshRenderer");
     ASSERT_NE(reloaded, nullptr);
     EXPECT_FALSE(SceneNs::ComponentEntryEnabled(*reloaded))
         << "切った component が読み直しで戻る。保存側は書き出すので、編集で切っても開くたびに復活する";
@@ -91,66 +91,66 @@ TEST(SaveLoadRoundTrip, DisabledComponentSurvivesJsonRoundTrip)
 
 TEST(SaveLoadRoundTrip, ObjectNameSurvivesJsonRoundTrip)
 {
-    SceneNs::SceneData src;
-    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(NS::Editor::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
-    src.objects[0].name = "足場A";
-    const SceneNs::SceneData named = src;
+    SceneNs::SetObjectJsonName(SceneNs::SceneJsonObjects(src)[0], "足場A");
+    const nlohmann::json named = src;
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
 
-    ASSERT_EQ(dst.objects.size(), 1u);
-    EXPECT_EQ(dst.objects[0].name, "足場A");
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 1u);
+    EXPECT_EQ(SceneNs::ObjectJsonName(SceneNs::SceneJsonObjects(dst)[0]), "足場A");
     EXPECT_TRUE(dst == named);
 
-    // 名前が operator== から抜けると、往復で消えても等しいと判定される
-    src.objects[0].name.clear();
+    // 名前が比較から抜けると、往復で消えても等しいと判定される
+    SceneNs::SetObjectJsonName(SceneNs::SceneJsonObjects(src)[0], "");
     EXPECT_FALSE(src == named);
 }
 
 TEST(SaveLoadRoundTrip, ObjectActiveSurvivesJsonRoundTrip)
 {
-    SceneNs::SceneData src;
-    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(NS::Editor::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
-    const SceneNs::SceneData enabled = src;
+    const nlohmann::json enabled = src;
 
-    src.objects[0].active = false;
-    const SceneNs::SceneData disabled = src;
+    SceneNs::SetObjectJsonActive(SceneNs::SceneJsonObjects(src)[0], false);
+    const nlohmann::json disabled = src;
     // 有効かどうかは比較対象
     EXPECT_FALSE(disabled == enabled);
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
 
-    ASSERT_EQ(dst.objects.size(), 1u);
-    EXPECT_FALSE(dst.objects[0].active);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 1u);
+    EXPECT_FALSE(SceneNs::ObjectJsonActive(SceneNs::SceneJsonObjects(dst)[0]));
     EXPECT_TRUE(dst == disabled);
 }
 
 TEST(SaveLoadRoundTrip, ObjectSequenceSurvivesJsonRoundTrip)
 {
-    SceneNs::SceneData src;
-    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
-    src.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    SceneNs::SceneJsonObjects(src).push_back(NS::Editor::MakeCellObject(1, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
-    const std::uint32_t first = src.objects[0].objectId;
-    const std::uint32_t second = src.objects[1].objectId;
+    const std::uint32_t first = SceneNs::ObjectJsonId(SceneNs::SceneJsonObjects(src)[0]);
+    const std::uint32_t second = SceneNs::ObjectJsonId(SceneNs::SceneJsonObjects(src)[1]);
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
 
-    ASSERT_EQ(dst.objects.size(), 2u);
-    EXPECT_EQ(dst.objects[0].objectId, first);
-    EXPECT_EQ(dst.objects[1].objectId, second);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 2u);
+    EXPECT_EQ(SceneNs::ObjectJsonId(SceneNs::SceneJsonObjects(dst)[0]), first);
+    EXPECT_EQ(SceneNs::ObjectJsonId(SceneNs::SceneJsonObjects(dst)[1]), second);
 }
 
 TEST(SaveLoadRoundTrip, MissingActiveReadsAsDefault)
 {
     // 欄を持たない古いファイルが従来どおり読めること
-    SceneNs::SceneData src;
-    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(NS::Editor::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
 
     const std::string text = SceneNs::SerializeSceneToJson(src);
@@ -159,31 +159,33 @@ TEST(SaveLoadRoundTrip, MissingActiveReadsAsDefault)
     // 既定値は書かない。欄が増えても古いファイルとバイト互換が保てる
     EXPECT_TRUE(first.find("active") == first.end());
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, text));
-    ASSERT_EQ(dst.objects.size(), 1u);
-    EXPECT_TRUE(dst.objects[0].active);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 1u);
+    EXPECT_TRUE(SceneNs::ObjectJsonActive(SceneNs::SceneJsonObjects(dst)[0]));
 }
 
 TEST(SaveLoadRoundTrip, ObjectParentSurvivesJsonRoundTrip)
 {
-    SceneNs::SceneData src;
-    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
-    src.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    SceneNs::SceneJsonObjects(src).push_back(NS::Editor::MakeCellObject(1, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
-    src.objects[1].parentId = src.objects[0].objectId;
-    const SceneNs::SceneData parented = src;
+    SceneNs::SetObjectJsonParent(SceneNs::SceneJsonObjects(src)[1],
+                                 SceneNs::ObjectJsonId(SceneNs::SceneJsonObjects(src)[0]));
+    const nlohmann::json parented = src;
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
 
-    ASSERT_EQ(dst.objects.size(), 2u);
-    EXPECT_EQ(dst.objects[0].parentId, SceneNs::k_NoObjectId);
-    EXPECT_EQ(dst.objects[1].parentId, dst.objects[0].objectId);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 2u);
+    EXPECT_EQ(SceneNs::ObjectJsonParent(SceneNs::SceneJsonObjects(dst)[0]), SceneNs::k_NoObjectId);
+    EXPECT_EQ(SceneNs::ObjectJsonParent(SceneNs::SceneJsonObjects(dst)[1]),
+              SceneNs::ObjectJsonId(SceneNs::SceneJsonObjects(dst)[0]));
     EXPECT_TRUE(dst == parented);
 
     // 親子も比較対象
-    src.objects[1].parentId = SceneNs::k_NoObjectId;
+    SceneNs::SetObjectJsonParent(SceneNs::SceneJsonObjects(src)[1], SceneNs::k_NoObjectId);
     EXPECT_FALSE(src == parented);
 }
 
@@ -196,8 +198,8 @@ TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
     ASSERT_TRUE(path1);
     ASSERT_TRUE(path2);
 
-    SceneNs::SceneData src;
-    src.objects.push_back(NS::Editor::MakeCellObject(5, 5, 5));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(NS::Editor::MakeCellObject(5, 5, 5));
 
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path1));
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path2));
@@ -215,20 +217,20 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     std::optional<std::string> path = TestScenePath("test_corrupted");
     ASSERT_TRUE(path.has_value());
 
-    SceneNs::SceneData src;
-    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(NS::Editor::MakeCellObject(0, 0, 0));
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
     std::optional<std::vector<std::byte>> bytes = NS::Platform::FileSystem::ReadAllBytes(*path);
     ASSERT_TRUE(bytes.has_value());
     ASSERT_GE(bytes->size(), 1u);
-    // 先頭の '{' を壊すと JSON parse が失敗し、load は false + 空 SceneData を返す
+    // 先頭の '{' を壊すと JSON parse が失敗し、load は false + 空のシーン文書を返す
     (*bytes)[0] = std::byte{'X'};
     ASSERT_TRUE(NS::Platform::FileSystem::WriteAllBytes(*path, std::span<const std::byte>(*bytes)));
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     EXPECT_FALSE(SceneNs::LoadSceneFromJsonFile(dst, *path));
-    EXPECT_TRUE(dst.objects.empty());
+    EXPECT_TRUE(SceneNs::SceneJsonObjects(dst).empty());
 }
 
 // object 数が上限を超えるレベルは保存段でクラッシュせず false を返す。メモリ枯渇まで走らせない
@@ -237,8 +239,9 @@ TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
     std::optional<std::string> path = TestScenePath("test_oversized");
     ASSERT_TRUE(path.has_value());
 
-    SceneNs::SceneData huge;
-    huge.objects.resize(100'001); // 上限 100'000 を 1 件超過させる
+    nlohmann::json huge = SceneNs::MakeSceneJson();
+    // 上限 100'000 を 1 件超過させる
+    SceneNs::SceneJsonObjects(huge) = nlohmann::json(std::size_t{100'001}, SceneNs::MakeObjectJson());
 
     EXPECT_FALSE(SceneNs::SaveSceneToJsonFile(huge, *path));
 }
@@ -250,8 +253,8 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
     std::optional<std::string> path = TestScenePath("test_components");
     ASSERT_TRUE(path.has_value());
 
-    SceneNs::SceneData src;
-    SceneNs::ObjectData freeObject{};
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    nlohmann::json freeObject = SceneNs::MakeObjectJson();
     SceneNs::SetObjectPosition(freeObject, NS::Core::Vector3{1.5f, 0.0f, 0.0f});
 
     nlohmann::json comp = SceneNs::MakeComponentEntry("BoxCollider");
@@ -260,23 +263,23 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
     SceneNs::SetField(comp, "bOn", true);
     SceneNs::SetField(comp, "fSpeed", 1.5f);
     SceneNs::SetField(comp, "fWhole", 4.0f); // 整数値の float が int に化けないことを確かめる
-    freeObject.components.push_back(std::move(comp));
-    src.objects.push_back(std::move(freeObject));
-    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    SceneNs::ObjectJsonComponents(freeObject).push_back(std::move(comp));
+    SceneNs::SceneJsonObjects(src).push_back(std::move(freeObject));
+    SceneNs::SceneJsonObjects(src).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     // 正準 JSON 同士の比較なので、読込側と同じく採番済の状態に揃えてから保存する
     SceneNs::EnsureUniqueObjectIds(src);
 
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::LoadSceneFromJsonFile(dst, *path));
 
     EXPECT_EQ(SceneNs::SerializeSceneToJson(dst), SceneNs::SerializeSceneToJson(src));
 
-    ASSERT_EQ(dst.objects.size(), 3u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 3u);
     // freeObject は BoxCollider と TransformComponent の 2 つを持つ
-    ASSERT_EQ(dst.objects[0].components.size(), 2u);
-    const nlohmann::json* box = SceneNs::FindComponentEntry(dst.objects[0], "BoxCollider");
+    ASSERT_EQ(SceneNs::ObjectJsonComponents(SceneNs::SceneJsonObjects(dst)[0]).size(), 2u);
+    const nlohmann::json* box = SceneNs::FindComponentEntry(SceneNs::SceneJsonObjects(dst)[0], "BoxCollider");
     ASSERT_NE(box, nullptr);
     const nlohmann::json& fields = box->at("fields");
     ASSERT_EQ(fields.size(), 5u);
@@ -306,44 +309,44 @@ TEST(SaveLoadRoundTrip, BuildLevelPathRejectsTraversal)
     EXPECT_TRUE(EditorNs::BuildLevelPath("a/b").has_value());
 }
 
-// 配置物 (ObjectData) の transform と className が保存・再読込の往復で戻る
+// 配置物の JSON の transform とクラス名が保存・再読込の往復で戻る
 TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
 {
     std::optional<std::string> path = TestScenePath("test_objects_roundtrip");
     ASSERT_TRUE(path.has_value());
 
-    SceneNs::SceneData src;
+    nlohmann::json src = SceneNs::MakeSceneJson();
 
-    SceneNs::ObjectData freeObject{};
+    nlohmann::json freeObject = SceneNs::MakeObjectJson();
     SceneNs::SetObjectPosition(freeObject, NS::Core::Vector3{1.5f, 2.25f, -3.75f});
     SceneNs::SetObjectRotation(freeObject, NS::Core::Quaternion{0.0f, 0.70710677f, 0.0f, 0.70710677f});
     SceneNs::SetObjectScale(freeObject, NS::Core::Vector3{2.0f, 0.5f, 1.0f});
-    src.objects.push_back(freeObject);
+    SceneNs::SceneJsonObjects(src).push_back(freeObject);
 
-    SceneNs::ObjectData gridObject{};
+    nlohmann::json gridObject = SceneNs::MakeObjectJson();
     // 読込は全 object に transform を保証するため、比べる元を合わせるよう src 側にも 1 つ持たせる
     SceneNs::EnsureTransformComponent(gridObject);
-    src.objects.push_back(gridObject);
-    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(src).push_back(gridObject);
+    SceneNs::SceneJsonObjects(src).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
 
     // 編集中のレベルは常に採番済なので、比べる元も採番済から取る
     SceneNs::EnsureUniqueObjectIds(src);
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::LoadSceneFromJsonFile(dst, *path));
     EXPECT_TRUE(dst == src);
 
-    ASSERT_EQ(dst.objects.size(), 4u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 4u);
 
-    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(dst.objects[0]).x, 1.5f);
-    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(dst.objects[0]).z, -3.75f);
-    EXPECT_NEAR(SceneNs::ObjectRotation(dst.objects[0]).w, 0.70710677f, 1e-5f);
-    EXPECT_FLOAT_EQ(SceneNs::ObjectScale(dst.objects[0]).x, 2.0f);
+    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(SceneNs::SceneJsonObjects(dst)[0]).x, 1.5f);
+    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(SceneNs::SceneJsonObjects(dst)[0]).z, -3.75f);
+    EXPECT_NEAR(SceneNs::ObjectRotation(SceneNs::SceneJsonObjects(dst)[0]).w, 0.70710677f, 1e-5f);
+    EXPECT_FLOAT_EQ(SceneNs::ObjectScale(SceneNs::SceneJsonObjects(dst)[0]).x, 2.0f);
 
     // クラス名は書いた object だけ載って戻り、素の object は空のまま
-    EXPECT_EQ(dst.objects[0].className, "");
-    EXPECT_EQ(dst.objects[2].className, "Player");
+    EXPECT_EQ(SceneNs::ObjectJsonClass(SceneNs::SceneJsonObjects(dst)[0]), "");
+    EXPECT_EQ(SceneNs::ObjectJsonClass(SceneNs::SceneJsonObjects(dst)[2]), "Player");
 }
 
 // 配置物の "基本色" リフレクション値が save→reload を往復で保持される
@@ -353,22 +356,22 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
     std::optional<std::string> path = TestScenePath("test_basecolor");
     ASSERT_TRUE(path.has_value());
 
-    SceneNs::SceneData src;
-    SceneNs::ObjectData solid = NS::Editor::MakeCellObject(0, 0, 0);
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    nlohmann::json solid = NS::Editor::MakeCellObject(0, 0, 0);
     const NS::Core::Vector3 baseColor{0.2f, 0.6f, 0.9f};
-    for (nlohmann::json& component : solid.components)
+    for (nlohmann::json& component : SceneNs::ObjectJsonComponents(solid))
         if (SceneNs::HasField(component, "基本色"))
             SceneNs::SetField(component, "基本色", baseColor);
-    src.objects.push_back(solid);
-    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(src).push_back(solid);
+    SceneNs::SceneJsonObjects(src).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
 
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::LoadSceneFromJsonFile(dst, *path));
 
-    ASSERT_EQ(dst.objects.size(), 2u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 2u);
     bool found = false;
-    for (const nlohmann::json& component : dst.objects[0].components)
+    for (const nlohmann::json& component : SceneNs::ObjectJsonComponents(SceneNs::SceneJsonObjects(dst)[0]))
     {
         if (!SceneNs::HasField(component, "基本色"))
             continue;
@@ -384,19 +387,19 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
 // プレイヤー実体の姿勢が保存・再読込の往復で保たれる。読込は object を足さない
 TEST(SaveLoadRoundTrip, PlayerObjectRoundTrip)
 {
-    SceneNs::SceneData src;
-    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{1.25f, 3.5f, -2.75f},
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(MakePlayerObject(NS::Core::Vector3{1.25f, 3.5f, -2.75f},
                                            NS::Core::Quaternion{0.0f, 0.70710677f, 0.0f, 0.70710677f}));
     SceneNs::EnsureUniqueObjectIds(src);
 
     const std::string json = SceneNs::SerializeSceneToJson(src);
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
 
-    ASSERT_EQ(dst.objects.size(), 1u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 1u);
     const std::size_t playerIndex = FindPlayerObjectIndex(dst);
     ASSERT_NE(playerIndex, SceneNs::k_NoObjectIndex);
-    const SceneNs::ObjectData& loaded = dst.objects[playerIndex];
+    const nlohmann::json& loaded = SceneNs::SceneJsonObjects(dst)[playerIndex];
     EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(loaded).x, 1.25f);
     EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(loaded).y, 3.5f);
     EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(loaded).z, -2.75f);
@@ -407,14 +410,14 @@ TEST(SaveLoadRoundTrip, PlayerObjectRoundTrip)
 // 補完の呼び手はエディタのレベル読込だけ
 TEST(EnsurePlayableObjects, SynthesizesPlayerAndKillZone)
 {
-    SceneNs::SceneData level;
+    nlohmann::json level = SceneNs::MakeSceneJson();
     EXPECT_TRUE(EnsurePlayerObject(level));
     EXPECT_TRUE(LevelNs::EnsureKillZoneObject(level));
 
     const std::size_t playerIndex = FindPlayerObjectIndex(level);
     ASSERT_NE(playerIndex, SceneNs::k_NoObjectIndex);
-    const SceneNs::ObjectData& player = level.objects[playerIndex];
-    EXPECT_NE(player.objectId, 0u); // 合成後の一意化で永続 id も振られる
+    const nlohmann::json& player = SceneNs::SceneJsonObjects(level)[playerIndex];
+    EXPECT_NE(SceneNs::ObjectJsonId(player), 0u); // 合成後の一意化で永続 id も振られる
     EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(player).y, 1.41f);
     // 既定構成のうち 5 つ
     EXPECT_NE(SceneNs::FindComponentEntry(player, "MeshRenderer"), nullptr);
@@ -425,7 +428,7 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndKillZone)
 
     // 落下死体積も 1 つ敷かれる
     bool hasKillZone = false;
-    for (const SceneNs::ObjectData& object : level.objects)
+    for (const nlohmann::json& object : SceneNs::SceneJsonObjects(level))
     {
         if (LevelNs::IsKillZoneObject(object))
             hasKillZone = true;
@@ -436,35 +439,37 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndKillZone)
 // プレイヤーが複数居ても先頭を正とする。手編集の重複でも読込と補完は成立する
 TEST(SaveLoadRoundTrip, MultiplePlayersFirstWins)
 {
-    SceneNs::SceneData src;
-    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, NS::Core::Quaternion{}));
-    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{9.0f, 0.0f, 0.0f}, NS::Core::Quaternion{}));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(
+        MakePlayerObject(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(src).push_back(
+        MakePlayerObject(NS::Core::Vector3{9.0f, 0.0f, 0.0f}, NS::Core::Quaternion{}));
     SceneNs::EnsureUniqueObjectIds(src);
 
     const std::string json = SceneNs::SerializeSceneToJson(src);
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
 
-    ASSERT_EQ(dst.objects.size(), 2u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 2u);
     EXPECT_FALSE(EnsurePlayerObject(dst)); // プレイヤーが居るので合成しない
     const std::size_t playerIndex = FindPlayerObjectIndex(dst);
     ASSERT_EQ(playerIndex, 0u);
-    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(dst.objects[playerIndex]).x, 1.0f);
+    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(SceneNs::SceneJsonObjects(dst)[playerIndex]).x, 1.0f);
 }
 
 // environment 欄が save→load で往復する。照明は Component へ移り、ここに残るのは skybox
 TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
 {
-    SceneNs::SceneData src;
-    src.environment.skyboxCubemapPath = "Assets/Skybox/kurt/";
-    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SetSceneJsonSkybox(src, "Assets/Skybox/kurt/");
+    SceneNs::SceneJsonObjects(src).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     SceneNs::EnsureUniqueObjectIds(src);
 
     const std::string json = SceneNs::SerializeSceneToJson(src);
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
 
-    EXPECT_EQ(dst.environment.skyboxCubemapPath, "Assets/Skybox/kurt/");
+    EXPECT_EQ(SceneNs::SceneJsonSkybox(dst), "Assets/Skybox/kurt/");
     EXPECT_TRUE(dst == src);
 }
 
@@ -472,7 +477,7 @@ TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
 TEST(SaveLoadRoundTrip, RejectsOldFormatVersion)
 {
     const std::string json = R"({ "version": 2, "objects": [] })";
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     EXPECT_FALSE(SceneNs::DeserializeSceneFromJson(dst, json));
 }
 
@@ -485,11 +490,11 @@ TEST(SaveLoadRoundTrip, LegacyLightingKeysAreIgnored)
         "environment": { "skybox": "Assets/Skybox/kurt/", "lightColor": [0.5, 0.6, 0.7] }
     })";
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
 
     // skybox は読める。旧照明キー lightColor は無視され、読込は壊れない
-    EXPECT_EQ(dst.environment.skyboxCubemapPath, "Assets/Skybox/kurt/");
+    EXPECT_EQ(SceneNs::SceneJsonSkybox(dst), "Assets/Skybox/kurt/");
 }
 
 // type が数値の component も空の型名で読み、読込を止めない。例外を切っているので型を確かめずに読むと異常終了する
@@ -500,43 +505,44 @@ TEST(SaveLoadRoundTrip, NonStringComponentTypeReadsAsEmpty)
         "objects": [ { "id": 1, "components": [ { "type": 5, "fields": {} } ] } ]
     })";
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
-    ASSERT_EQ(dst.objects.size(), 1u);
-    ASSERT_FALSE(dst.objects[0].components.empty());
-    EXPECT_EQ(SceneNs::ComponentEntryType(dst.objects[0].components[0]), "");
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 1u);
+    ASSERT_FALSE(SceneNs::ObjectJsonComponents(SceneNs::SceneJsonObjects(dst)[0]).empty());
+    EXPECT_EQ(SceneNs::ComponentEntryType(SceneNs::ObjectJsonComponents(SceneNs::SceneJsonObjects(dst)[0])[0]), "");
 }
 
 // 追従カメラの配置物は Target 参照ごと往復で保持される
 TEST(SaveLoadRoundTrip, FollowCameraObjectRoundTrip)
 {
-    SceneNs::SceneData src;
-    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     SceneNs::EnsureUniqueObjectIds(src);
-    src.objects.push_back(MakeFollowCameraObject(src.objects[0].objectId));
+    SceneNs::SceneJsonObjects(src).push_back(
+        MakeFollowCameraObject(SceneNs::ObjectJsonId(SceneNs::SceneJsonObjects(src)[0])));
     SceneNs::EnsureUniqueObjectIds(src);
 
     const std::string json = SceneNs::SerializeSceneToJson(src);
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
 
-    ASSERT_EQ(dst.objects.size(), 2u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 2u);
     EXPECT_TRUE(dst == src);
-    const nlohmann::json* comp = SceneNs::FindComponentEntry(dst.objects[1], "ThirdPersonFollow");
+    const nlohmann::json* comp = SceneNs::FindComponentEntry(SceneNs::SceneJsonObjects(dst)[1], "ThirdPersonFollow");
     ASSERT_NE(comp, nullptr);
     ASSERT_TRUE(SceneNs::HasField(*comp, "追従対象"));
-    EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "追従対象").id, dst.objects[0].objectId);
+    EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "追従対象").id, SceneNs::ObjectJsonId(SceneNs::SceneJsonObjects(dst)[0]));
 }
 
 namespace
 {
     // Cube 1 個へ耐久を積む。値は欄名をキーに書き、Inspector で入れた時と同じ形にする
-    SceneNs::ObjectData MakeBreakableCube(int cellX, float toughness)
+    nlohmann::json MakeBreakableCube(int cellX, float toughness)
     {
-        SceneNs::ObjectData object = NS::Editor::MakeCellObject(cellX, 0, 0);
+        nlohmann::json object = NS::Editor::MakeCellObject(cellX, 0, 0);
         nlohmann::json breakable = SceneNs::MakeComponentEntry("Breakable");
         SceneNs::SetField(breakable, "耐久", toughness);
-        object.components.push_back(std::move(breakable));
+        SceneNs::ObjectJsonComponents(object).push_back(std::move(breakable));
         return object;
     }
 
@@ -564,18 +570,19 @@ namespace
 // 入れた耐久が JSON を経て live の Component まで戻る
 TEST(SaveLoadRoundTrip, BreakableValuesSurviveRoundTrip)
 {
-    SceneNs::SceneData src;
-    src.objects.push_back(MakeBreakableCube(0, 2.0f));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(MakeBreakableCube(0, 2.0f));
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
-    ASSERT_EQ(dst.objects.size(), 1u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 1u);
 
-    const nlohmann::json* entry = SceneNs::FindComponentEntry(dst.objects[0], "Breakable");
+    const nlohmann::json* entry = SceneNs::FindComponentEntry(SceneNs::SceneJsonObjects(dst)[0], "Breakable");
     ASSERT_NE(entry, nullptr);
     EXPECT_FLOAT_EQ(SceneNs::FieldFloat(*entry, "耐久", -1.0f), 2.0f);
 
-    const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    const std::unique_ptr<SceneNs::GameObject> live =
+        SceneNs::ObjectFromJson(SceneNs::SceneJsonObjects(dst)[0], nullptr);
     ASSERT_NE(live, nullptr);
     const LevelNs::Breakable* breakable = live->FindComponent<LevelNs::Breakable>();
     ASSERT_NE(breakable, nullptr);
@@ -585,17 +592,19 @@ TEST(SaveLoadRoundTrip, BreakableValuesSurviveRoundTrip)
 // 同じ Cube を 2 個並べても値は個体ごと
 TEST(SaveLoadRoundTrip, BreakableValuesStayPerObject)
 {
-    SceneNs::SceneData src;
-    src.objects.push_back(MakeBreakableCube(0, 1.0f));
-    src.objects.push_back(MakeBreakableCube(1, 3.0f));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(MakeBreakableCube(0, 1.0f));
+    SceneNs::SceneJsonObjects(src).push_back(MakeBreakableCube(1, 3.0f));
     SceneNs::EnsureUniqueObjectIds(src);
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
-    ASSERT_EQ(dst.objects.size(), 2u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 2u);
 
-    const std::unique_ptr<SceneNs::GameObject> light = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
-    const std::unique_ptr<SceneNs::GameObject> heavy = SceneNs::BuildSceneObject(dst.objects[1], nullptr);
+    const std::unique_ptr<SceneNs::GameObject> light =
+        SceneNs::ObjectFromJson(SceneNs::SceneJsonObjects(dst)[0], nullptr);
+    const std::unique_ptr<SceneNs::GameObject> heavy =
+        SceneNs::ObjectFromJson(SceneNs::SceneJsonObjects(dst)[1], nullptr);
     ASSERT_NE(light, nullptr);
     ASSERT_NE(heavy, nullptr);
 
@@ -616,8 +625,8 @@ TEST(SaveLoadRoundTrip, BreakableFieldKeysAreTheLockedLabels)
     ASSERT_NE(breakable, nullptr);
     breakable->SetToughness(1.5f);
 
-    SceneNs::SceneData src;
-    src.objects.push_back(SceneNs::CaptureObjectData(live));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(SceneNs::ObjectToJson(live));
 
     const nlohmann::json root = nlohmann::json::parse(SceneNs::SerializeSceneToJson(src));
     const nlohmann::json* entry = FindBreakableEntry(root.at("objects").at(0).at("components"));
@@ -638,19 +647,20 @@ TEST(SaveLoadRoundTrip, MissingBreakableFieldFallsBackToDefault)
     ASSERT_NE(authored, nullptr);
     authored->SetToughness(2.0f);
 
-    SceneNs::SceneData src;
-    src.objects.push_back(SceneNs::CaptureObjectData(source));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(SceneNs::ObjectToJson(source));
 
     nlohmann::json root = nlohmann::json::parse(SceneNs::SerializeSceneToJson(src));
     nlohmann::json* entry = FindBreakableEntry(root.at("objects").at(0).at("components"));
     ASSERT_NE(entry, nullptr);
     entry->at("fields").erase("耐久");
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, root.dump()));
-    ASSERT_EQ(dst.objects.size(), 1u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 1u);
 
-    const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    const std::unique_ptr<SceneNs::GameObject> live =
+        SceneNs::ObjectFromJson(SceneNs::SceneJsonObjects(dst)[0], nullptr);
     ASSERT_NE(live, nullptr);
     const LevelNs::Breakable* breakable = live->FindComponent<LevelNs::Breakable>();
     ASSERT_NE(breakable, nullptr);
@@ -714,14 +724,15 @@ TEST(SaveLoadRoundTrip, ChargeSecondsSurviveRoundTrip)
     WriteChargeField(*authored, "チャージしきい値秒", 0.4f);
     WriteChargeField(*authored, "チャージ満タン秒", 1.8f);
 
-    SceneNs::SceneData src;
-    src.objects.push_back(SceneNs::CaptureObjectData(source));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(SceneNs::ObjectToJson(source));
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
-    ASSERT_EQ(dst.objects.size(), 1u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 1u);
 
-    const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    const std::unique_ptr<SceneNs::GameObject> live =
+        SceneNs::ObjectFromJson(SceneNs::SceneJsonObjects(dst)[0], nullptr);
     ASSERT_NE(live, nullptr);
     const LevelNs::CollisionInput* input = live->FindComponent<LevelNs::CollisionInput>();
     ASSERT_NE(input, nullptr);
@@ -736,14 +747,15 @@ TEST(SaveLoadRoundTrip, ChargeCurveSurvivesRoundTrip)
     ASSERT_NE(authored, nullptr);
     WriteChargeField(*authored, "チャージ倍率カーブ", ThreePointCurve());
 
-    SceneNs::SceneData src;
-    src.objects.push_back(SceneNs::CaptureObjectData(source));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(SceneNs::ObjectToJson(source));
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
-    ASSERT_EQ(dst.objects.size(), 1u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 1u);
 
-    const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    const std::unique_ptr<SceneNs::GameObject> live =
+        SceneNs::ObjectFromJson(SceneNs::SceneJsonObjects(dst)[0], nullptr);
     ASSERT_NE(live, nullptr);
     const LevelNs::CollisionInput* input = live->FindComponent<LevelNs::CollisionInput>();
     ASSERT_NE(input, nullptr);
@@ -769,14 +781,15 @@ TEST(SaveLoadRoundTrip, BreakFlagSurvivesRoundTrip)
     const bool enabled = true;
     field->set(authored, &enabled);
 
-    SceneNs::SceneData src;
-    src.objects.push_back(SceneNs::CaptureObjectData(source));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(SceneNs::ObjectToJson(source));
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
-    ASSERT_EQ(dst.objects.size(), 1u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 1u);
 
-    const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    const std::unique_ptr<SceneNs::GameObject> live =
+        SceneNs::ObjectFromJson(SceneNs::SceneJsonObjects(dst)[0], nullptr);
     ASSERT_NE(live, nullptr);
     const LevelNs::ImpactResolver* impact = live->FindComponent<LevelNs::ImpactResolver>();
     ASSERT_NE(impact, nullptr);
@@ -793,8 +806,8 @@ TEST(SaveLoadRoundTrip, ChargeFieldKeysAreTheLockedLabels)
     ASSERT_NE(input, nullptr);
     WriteChargeField(*input, "チャージ倍率カーブ", ThreePointCurve());
 
-    SceneNs::SceneData src;
-    src.objects.push_back(SceneNs::CaptureObjectData(live));
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(SceneNs::ObjectToJson(live));
 
     const nlohmann::json root = nlohmann::json::parse(SceneNs::SerializeSceneToJson(src));
     const nlohmann::json* entry = FindChargeEntry(root.at("objects").at(0).at("components"));
@@ -819,17 +832,18 @@ TEST(SaveLoadRoundTrip, ChargeFieldKeysAreTheLockedLabels)
 // 参照はファイルに相手の名前で書き、読込で id へ戻す
 TEST(SaveLoadRoundTrip, ObjectRefIsWrittenByName)
 {
-    SceneNs::SceneData src;
-    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    src.objects[0].name = "Hero";
+    nlohmann::json src = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(src).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    SceneNs::SetObjectJsonName(SceneNs::SceneJsonObjects(src)[0], "Hero");
     SceneNs::EnsureUniqueObjectIds(src);
-    src.objects.push_back(MakeFollowCameraObject(src.objects[0].objectId));
+    SceneNs::SceneJsonObjects(src).push_back(
+        MakeFollowCameraObject(SceneNs::ObjectJsonId(SceneNs::SceneJsonObjects(src)[0])));
     SceneNs::EnsureUniqueObjectIds(src);
 
     const std::string json = SceneNs::SerializeSceneToJson(src);
     EXPECT_NE(json.find("\"ref\": \"Hero\""), std::string::npos) << json;
 
-    SceneNs::SceneData dst;
+    nlohmann::json dst = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
     EXPECT_TRUE(dst == src);
 }

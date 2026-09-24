@@ -93,19 +93,19 @@ TEST(SceneTest, PolymorphicDeleteCallsDerivedDtor)
 
 TEST(SceneTest, DestroyObjectKeepsTheSurvivingColliderBodyId)
 {
-    NS::Obj::SceneData data;
-    NS::Obj::ObjectData removed;
-    removed.objectId = 10;
-    removed.components.push_back(NS::Obj::MakeComponentEntry("BoxCollider"));
-    data.objects.push_back(std::move(removed));
+    nlohmann::json data = NS::Obj::MakeSceneJson();
+    nlohmann::json removed = NS::Obj::MakeObjectJson();
+    NS::Obj::SetObjectJsonId(removed, 10u);
+    NS::Obj::ObjectJsonComponents(removed).push_back(NS::Obj::MakeComponentEntry("BoxCollider"));
+    NS::Obj::SceneJsonObjects(data).push_back(std::move(removed));
 
-    NS::Obj::ObjectData survivor;
-    survivor.objectId = 20;
-    survivor.components.push_back(NS::Obj::MakeComponentEntry("BoxCollider"));
-    data.objects.push_back(std::move(survivor));
+    nlohmann::json survivor = NS::Obj::MakeObjectJson();
+    NS::Obj::SetObjectJsonId(survivor, 20u);
+    NS::Obj::ObjectJsonComponents(survivor).push_back(NS::Obj::MakeComponentEntry("BoxCollider"));
+    NS::Obj::SceneJsonObjects(data).push_back(std::move(survivor));
 
     NS::Obj::Scene scene;
-    scene.LoadFromData(std::move(data));
+    scene.LoadJson(std::move(data));
     NS::Obj::GameObject* survivingObject = scene.Objects().FindByObjectId(20);
     ASSERT_NE(survivingObject, nullptr);
     NS::Obj::BoxCollider* collider = survivingObject->FindComponent<NS::Obj::BoxCollider>();

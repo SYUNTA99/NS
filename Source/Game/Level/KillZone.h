@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Runtime/Object/Component.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/Scene/SceneJson.h"
 
 namespace NS::Game::Level
 {
@@ -22,12 +22,12 @@ namespace NS::Game::Level
     };
 
     //! 即死体積の印を持つ配置物か
-    [[nodiscard]] bool IsKillZoneObject(const NS::Obj::ObjectData& object) noexcept;
+    [[nodiscard]] bool IsKillZoneObject(const nlohmann::json& object) noexcept;
 
-    //! 奈落用の即死体積の ObjectData を作る。落下死をレベルのデータとして持たせる
-    [[nodiscard]] NS::Obj::ObjectData MakeKillZoneObject();
+    //! 奈落用の即死体積のひな形の JSON を作る。落下死をレベルの配置物として持たせる
+    [[nodiscard]] nlohmann::json MakeKillZoneObject();
 
     //! 即死体積が 1 つも無ければ既定の落下死体積を敷き、永続 id まで振る
     //! 無いレベルは奈落で死ねず落ち続けてしまうので、読込のたびに通す
-    [[nodiscard]] bool EnsureKillZoneObject(NS::Obj::SceneData& level);
+    [[nodiscard]] bool EnsureKillZoneObject(nlohmann::json& scene);
 } // namespace NS::Game::Level

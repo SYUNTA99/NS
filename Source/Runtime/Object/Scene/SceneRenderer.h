@@ -4,11 +4,11 @@
 #include "Runtime/Graphics/RenderProxyList.h"
 #include "Runtime/Graphics/RenderSettings.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
-#include "Runtime/Object/Scene/SceneData.h"
 
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -89,8 +89,8 @@ namespace NS::Obj
         //! @details レンダラー未設定なら何も描かない。ビューごとに Renderer::BeginSceneView で描画先を差し替える
         //! @param[in,out] brain 描画の直前に Evaluate する CameraBrain
         //! @param[in,out] camera brain が駆動する実カメラ。アスペクト比をレンダラーの現在サイズへ揃える
-        //! @param[in] environment skybox の描画に読むシーン環境値
-        void Render(CameraBrain& brain, CameraComponent& camera, const SceneEnvironment& environment);
+        //! @param[in] skyboxPath 描く skybox の ContentRoot 配下相対パス。空なら skybox を描かない
+        void Render(CameraBrain& brain, CameraComponent& camera, std::string_view skyboxPath);
 
         //! Opaque バケットを視錐台で絞り、並べ替えずに描画する
         void DrawOpaque(const NS::Gfx::RenderContext& context);
@@ -108,14 +108,14 @@ namespace NS::Obj
         //! 1 ビュー分のシーンを描き、その上へデバッグ描画と OverlayRenderer の重ね描きを出す
         void RenderViewWithOverlays(CameraBrain& brain,
                                     CameraComponent& camera,
-                                    const SceneEnvironment& environment,
+                                    std::string_view skyboxPath,
                                     const std::optional<CameraPose>& viewOverride);
 
         //! 不透明→空→半透明→エフェクトの順に 1 ビュー分を描き、組んだ RenderContext を返す
         //! viewOverride が空なら Brain の選ぶカメラで描く
         [[nodiscard]] NS::Gfx::RenderContext RenderWorld(CameraBrain& brain,
                                                          CameraComponent& camera,
-                                                         const SceneEnvironment& environment,
+                                                         std::string_view skyboxPath,
                                                          const std::optional<CameraPose>& viewOverride);
 
         //! IRenderable と RenderProxyList 登録ハンドルの対。renderable は非所有

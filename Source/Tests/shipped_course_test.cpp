@@ -1,6 +1,5 @@
 #include "Editor/LevelFilePaths.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 
 #include <algorithm>
@@ -25,7 +24,7 @@ namespace
     constexpr float k_PlainHitPower = 1.0f;
 
     // 検査対象は Assets の実ファイルそのもの。固定データの複製を検査すると、実ファイル側の壊れを見逃す
-    bool LoadShippedCourse(SceneNs::SceneData& outScene)
+    bool LoadShippedCourse(nlohmann::json& outScene)
     {
         const std::optional<std::string> path = EditorNs::BuildLevelPath("new_scene");
         if (!path.has_value())
@@ -34,12 +33,12 @@ namespace
     }
 
     // 壊せる物ごとに、同じ配置物の typeName の欄を集める。typeName を持たない物は -1 を積む
-    std::vector<float> CollectBreakableField(const SceneNs::SceneData& scene,
+    std::vector<float> CollectBreakableField(const nlohmann::json& scene,
                                              std::string_view typeName,
                                              std::string_view fieldName)
     {
         std::vector<float> values;
-        for (const SceneNs::ObjectData& object : scene.objects)
+        for (const nlohmann::json& object : SceneNs::SceneJsonObjects(scene))
         {
             if (SceneNs::FindComponentEntry(object, "Breakable") == nullptr)
                 continue;
@@ -59,10 +58,10 @@ namespace
 // 置かれている間は動かないよう、キネマティックで置く
 TEST(ShippedCourse, BreakablesCarryKinematicRigidBody)
 {
-    SceneNs::SceneData scene;
+    nlohmann::json scene = SceneNs::MakeSceneJson();
     ASSERT_TRUE(LoadShippedCourse(scene));
     int breakables = 0;
-    for (const SceneNs::ObjectData& object : scene.objects)
+    for (const nlohmann::json& object : SceneNs::SceneJsonObjects(scene))
     {
         if (SceneNs::FindComponentEntry(object, "Breakable") == nullptr)
             continue;
@@ -80,7 +79,7 @@ TEST(ShippedCourse, BreakablesCarryKinematicRigidBody)
 // 質量が全部同じだと飛距離の違いが出ず、重さが飛距離に現れているかをこのコースで確かめられない
 TEST(ShippedCourse, MassesHaveAtLeastTwoDistinctValues)
 {
-    SceneNs::SceneData scene;
+    nlohmann::json scene = SceneNs::MakeSceneJson();
     ASSERT_TRUE(LoadShippedCourse(scene));
     const std::vector<float> masses = CollectBreakableField(scene, "RigidBody", "質量");
     ASSERT_FALSE(masses.empty());
@@ -91,7 +90,7 @@ TEST(ShippedCourse, MassesHaveAtLeastTwoDistinctValues)
 // 破壊を許可した時、耐久の最大が威力の上限以下だと溜め切りで全部壊せ、跳ね返される壁が無くなる
 TEST(ShippedCourse, ToughnessHasUnbreakableWall)
 {
-    SceneNs::SceneData scene;
+    nlohmann::json scene = SceneNs::MakeSceneJson();
     ASSERT_TRUE(LoadShippedCourse(scene));
     const std::vector<float> toughness = CollectBreakableField(scene, "Breakable", "耐久");
     ASSERT_FALSE(toughness.empty());
@@ -102,7 +101,7 @@ TEST(ShippedCourse, ToughnessHasUnbreakableWall)
 // 耐久が素当ての威力を超える物しか無いと、溜めを挟まないと 1 つも壊せない
 TEST(ShippedCourse, ToughnessHasBreakableTarget)
 {
-    SceneNs::SceneData scene;
+    nlohmann::json scene = SceneNs::MakeSceneJson();
     ASSERT_TRUE(LoadShippedCourse(scene));
     const std::vector<float> toughness = CollectBreakableField(scene, "Breakable", "耐久");
     ASSERT_FALSE(toughness.empty());

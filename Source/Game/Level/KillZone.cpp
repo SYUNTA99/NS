@@ -42,34 +42,33 @@ namespace NS::Game::Level
             player->Kill();
     }
 
-    bool IsKillZoneObject(const NS::Obj::ObjectData& object) noexcept
+    bool IsKillZoneObject(const nlohmann::json& object) noexcept
     {
         return NS::Obj::FindComponentEntry(object, "KillZone") != nullptr;
     }
 
-    NS::Obj::ObjectData MakeKillZoneObject()
+    nlohmann::json MakeKillZoneObject()
     {
         // 上面 y=-50 は従来の落下死の高さ。厚み 10m と 2km 四方は固定ステップの移動量では突き抜けられない
-        NS::Obj::ObjectData object{};
         nlohmann::json box = NS::Obj::MakeComponentEntry("BoxCollider");
         NS::Obj::SetField(box, "半径", NS::Core::Vector3{1000.0f, 5.0f, 1000.0f});
         // トリガにしないと落ちてきたプレイヤーが上面に着地してしまう
         NS::Obj::SetField(box, "トリガー", true);
-        object.components =
-            nlohmann::json::array({std::move(box), NS::Obj::MakeComponentEntry("KillZone")});
+        nlohmann::json object =
+            NS::Obj::MakeObjectJson(nlohmann::json::array({std::move(box), NS::Obj::MakeComponentEntry("KillZone")}));
         NS::Obj::SetObjectPosition(object, NS::Core::Vector3{0.0f, -55.0f, 0.0f});
         return object;
     }
 
-    bool EnsureKillZoneObject(NS::Obj::SceneData& level)
+    bool EnsureKillZoneObject(nlohmann::json& scene)
     {
-        for (const NS::Obj::ObjectData& object : level.objects)
+        for (const nlohmann::json& object : NS::Obj::SceneJsonObjects(scene))
         {
             if (IsKillZoneObject(object))
                 return false;
         }
-        level.objects.push_back(MakeKillZoneObject());
-        NS::Obj::EnsureUniqueObjectIds(level);
+        NS::Obj::SceneJsonObjects(scene).push_back(MakeKillZoneObject());
+        NS::Obj::EnsureUniqueObjectIds(scene);
         return true;
     }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/Core/NonCopyable.h"
+#include "Runtime/Object/ObjectJson.h"
 
 #include <memory>
 
@@ -14,7 +15,6 @@ namespace NS::Obj
 
     class AssetManager;
     class Scene;
-    struct SceneData;
 
     //! @brief シーンデータから scene を立てて寿命を握る単一 scene ホルダ
     //! @details ロード中の scene 1 つを保持し、OnStart / OnUpdate / OnRender / OnShutdown を
@@ -33,10 +33,10 @@ namespace NS::Obj
         //! 立てる scene へ引き継ぐレンダラーを非所有で差す。以降 LoadScene する scene が受け取る
         void SetRenderer(NS::Gfx::Renderer* renderer) noexcept;
 
-        //! データから scene を立てる。現 scene は破棄してから作り直す
+        //! シーンの JSON 文書から scene を立てる。現 scene は破棄してから作り直す
         //! サブシステムの生成は OnStart より先、world の組み立ては OnStart より後に行う
-        //! データは取込後に用済みになる一時データで、以降の出所は live 実体になる
-        Scene& LoadScene(SceneData&& data);
+        //! 文書は取込後に用済みで、以降の出所は live 実体になる
+        Scene& LoadScene(nlohmann::json&& scene);
 
         //! 現 scene を破棄して scene 無し状態にする。未ロードなら何もしない
         void UnloadScene();

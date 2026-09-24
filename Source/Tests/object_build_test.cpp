@@ -14,6 +14,7 @@
 #include <Runtime/Object/Components/SphereCollider.h>
 #include <Runtime/Object/Components/TransformComponent.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/ObjectJson.h>
 #include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
@@ -21,6 +22,7 @@
 #include <Runtime/Object/Reflection/ReflectionJson.h>
 #include <Runtime/Object/Reflection/TypeRegistry.h>
 #include <Runtime/Object/Scene/Scene.h>
+#include <Runtime/Object/Scene/SceneJson.h>
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <string_view>
@@ -31,7 +33,6 @@ namespace
 {
     using NS::Editor::MakeCellCubeComponents;
     using NS::Editor::MakeCellObject;
-    using NS::Obj::ObjectData;
     using NS::Core::Vector3;
 
     // RegisterBuiltins も RegisterSharedMaterials も呼ばない AssetManager。組み込みと共有材質は
@@ -41,26 +42,26 @@ namespace
     protected:
         NS::Obj::AssetManager m_assets{std::string{"."}};
 
-        std::unique_ptr<NS::Obj::GameObject> Build(const ObjectData& object)
+        std::unique_ptr<NS::Obj::GameObject> Build(const nlohmann::json& object)
         {
-            return NS::Obj::BuildSceneObject(object, &m_assets);
+            return NS::Obj::ObjectFromJson(object, &m_assets);
         }
     };
 
     // 格子に置く素の cube
-    ObjectData MakeGridCube()
+    nlohmann::json MakeGridCube()
     {
         return MakeCellObject(0, 0, 0);
     }
 
-    // 自由配置物のデータ。見た目の cube と渡された collider を component 直書きで積む
-    ObjectData MakeFreeObject(nlohmann::json collider)
+    // 自由配置物の JSON。見た目の cube と渡された collider を component 直書きで積む
+    nlohmann::json MakeFreeObject(nlohmann::json collider)
     {
-        ObjectData object;
+        nlohmann::json object = NS::Obj::MakeObjectJson();
         nlohmann::json mesh = NS::Obj::MakeComponentEntry("MeshRenderer");
         NS::Obj::SetField(mesh, "メッシュ", "cube");
-        object.components.push_back(std::move(mesh));
-        object.components.push_back(std::move(collider));
+        NS::Obj::ObjectJsonComponents(object).push_back(std::move(mesh));
+        NS::Obj::ObjectJsonComponents(object).push_back(std::move(collider));
         return object;
     }
 
@@ -105,8 +106,7 @@ TEST_F(ObjectBuildTest, GridCubeHasMeshAndBoxCollider)
 
 TEST_F(ObjectBuildTest, DefaultFreeCubeComponentsAreCubeWithBoxCollider)
 {
-    ObjectData object;
-    object.components = MakeCellCubeComponents();
+    nlohmann::json object = NS::Obj::MakeObjectJson(MakeCellCubeComponents());
 
     std::unique_ptr<NS::Obj::GameObject> obj = Build(object);
     ASSERT_NE(obj, nullptr);
@@ -188,7 +188,7 @@ TEST_F(ObjectBuildTest, CapsuleColliderWorldAabbEnclosesCapsule)
 
 TEST_F(ObjectBuildTest, TransformAppliedToRoot)
 {
-    ObjectData object = MakeGridCube();
+    nlohmann::json object = MakeGridCube();
     NS::Obj::SetObjectPosition(object, Vector3{3.0f, 4.0f, 5.0f});
 
     std::unique_ptr<NS::Obj::GameObject> obj = Build(object);
@@ -216,7 +216,7 @@ TEST_F(ObjectBuildTest, GridCubeWorldAabbMatchesCellHalfExtents)
 
 TEST_F(ObjectBuildTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
 {
-    ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
+    nlohmann::json object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
     NS::Obj::SetObjectPosition(object, Vector3{2.0f, 0.0f, 0.0f});
 
     std::unique_ptr<NS::Obj::GameObject> obj = Build(object);
@@ -235,8 +235,8 @@ TEST_F(ObjectBuildTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
 // components 一覧を持つ object は registry で component を生成し、リフレクション set でフィールドが入る
 TEST_F(ObjectBuildTest, ComponentsDriveBuild)
 {
-    ObjectData object;
-    object.components.push_back(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
+    nlohmann::json object = NS::Obj::MakeObjectJson();
+    NS::Obj::ObjectJsonComponents(object).push_back(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
 
     std::unique_ptr<NS::Obj::GameObject> obj = Build(object);
     ASSERT_NE(obj, nullptr);
@@ -251,8 +251,8 @@ TEST_F(ObjectBuildTest, ComponentsDriveBuild)
 // components を持たない object は配置物として組まれず nullptr が返る
 TEST_F(ObjectBuildTest, EmptyComponentsBuildsNothing)
 {
-    ObjectData object;
-    ASSERT_TRUE(object.components.empty());
+    const nlohmann::json object = NS::Obj::MakeObjectJson();
+    ASSERT_TRUE(NS::Obj::ObjectJsonComponents(object).empty());
 
     EXPECT_EQ(Build(object), nullptr);
 }
@@ -260,11 +260,11 @@ TEST_F(ObjectBuildTest, EmptyComponentsBuildsNothing)
 // 材質の参照が .. で ContentRoot の外へ出るなら拒否する。落ちずに component が揃うことだけを見る
 TEST_F(ObjectBuildTest, AssetPathTraversalRejectedFallsBackToDefault)
 {
-    ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
-    NS::Obj::SetField(object.components[0], "マテリアル", "../evil.mat");
+    nlohmann::json object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
+    NS::Obj::SetField(NS::Obj::ObjectJsonComponents(object)[0], "マテリアル", "../evil.mat");
 
     // const char* が string_view 版へ解決され、bool でなく文字列として書かれていること
-    ASSERT_TRUE(object.components[0]["fields"]["マテリアル"].is_string());
+    ASSERT_TRUE(NS::Obj::ObjectJsonComponents(object)[0]["fields"]["マテリアル"].is_string());
 
     std::unique_ptr<NS::Obj::GameObject> obj = Build(object);
     ASSERT_NE(obj, nullptr);
@@ -275,8 +275,8 @@ TEST_F(ObjectBuildTest, AssetPathTraversalRejectedFallsBackToDefault)
 // 45 度スロープの雛形は表示名が Slope 45 で、45 度の SlopeCollider を持ち、回せる
 TEST_F(ObjectBuildTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
 {
-    ObjectData slope = MakeCellObject(0, 0, 0);
-    slope.components = NS::Editor::MakeCellSlopeComponents(45.0f);
+    nlohmann::json slope = MakeCellObject(0, 0, 0);
+    NS::Obj::ObjectJsonComponents(slope) = NS::Editor::MakeCellSlopeComponents(45.0f);
 
     EXPECT_STREQ(NS::Editor::ObjectDisplayName(slope), "Slope 45");
     EXPECT_TRUE(NS::Editor::IsRotatableObject(slope));
@@ -293,8 +293,8 @@ TEST_F(ObjectBuildTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
 // ゴールの雛形は接触クリアの印を持ち、表示名は Goal。BoxCollider も SlopeCollider も積まないので回せない
 TEST_F(ObjectBuildTest, GoalHasMarkerAndDisplaysAsGoal)
 {
-    ObjectData goal = MakeCellObject(0, 0, 0);
-    goal.components = NS::Editor::MakeGoalComponents();
+    nlohmann::json goal = MakeCellObject(0, 0, 0);
+    NS::Obj::ObjectJsonComponents(goal) = NS::Editor::MakeGoalComponents();
 
     EXPECT_STREQ(NS::Editor::ObjectDisplayName(goal), "Goal");
     EXPECT_FALSE(NS::Editor::IsRotatableObject(goal));
@@ -313,19 +313,18 @@ TEST_F(ObjectBuildTest, GridCubeIsRotatable)
 // 自由配置の cube も固形 box なので回せる。固形判定には BoxCollider が要るので、空構成の marker は回せない
 TEST_F(ObjectBuildTest, FreeCubeRotatableButEmptyMarkerNot)
 {
-    ObjectData freeCube;
-    freeCube.components = MakeCellCubeComponents();
+    const nlohmann::json freeCube = NS::Obj::MakeObjectJson(MakeCellCubeComponents());
     EXPECT_TRUE(NS::Editor::IsRotatableObject(freeCube));
 
-    ObjectData marker;
+    const nlohmann::json marker = NS::Obj::MakeObjectJson();
     EXPECT_FALSE(NS::Editor::IsRotatableObject(marker));
 }
 
-// プレイヤー実体は className から Player 派生の GameObject に二重生成なしで組まれる
+// プレイヤー実体は class から Player 派生の GameObject に二重生成なしで組まれる
 TEST_F(ObjectBuildTest, PlayerObjectBuildsPlayerTyped)
 {
-    const ObjectData data = MakePlayerObject(Vector3{1.0f, 2.0f, 3.0f}, NS::Core::Quaternion{});
-    EXPECT_EQ(data.className, "Player");
+    const nlohmann::json data = MakePlayerObject(Vector3{1.0f, 2.0f, 3.0f}, NS::Core::Quaternion{});
+    EXPECT_EQ(NS::Obj::ObjectJsonClass(data), "Player");
 
     std::unique_ptr<NS::Obj::GameObject> obj = Build(data);
     ASSERT_NE(obj, nullptr);
@@ -340,18 +339,18 @@ TEST_F(ObjectBuildTest, PlayerObjectBuildsPlayerTyped)
 }
 
 // プレイヤーのデータ構成は Player のコンストラクタから吸い出した型名の一覧。値を持つのは transform だけ
-TEST_F(ObjectBuildTest, PlayerObjectDataIsSparseTypeListFromClass)
+TEST_F(ObjectBuildTest, PlayerObjectJsonIsSparseTypeListFromClass)
 {
-    const ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
+    const nlohmann::json data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
 
-    ASSERT_EQ(data.components.size(), Player{}.Components().size());
+    ASSERT_EQ(NS::Obj::ObjectJsonComponents(data).size(), Player{}.Components().size());
     EXPECT_NE(NS::Obj::FindComponentEntry(data, "MeshRenderer"), nullptr);
     EXPECT_NE(NS::Obj::FindComponentEntry(data, "PlayerComponent"), nullptr);
     EXPECT_NE(NS::Obj::FindComponentEntry(data, "PlayerStateManager"), nullptr);
     EXPECT_NE(NS::Obj::FindComponentEntry(data, "PlayerInput"), nullptr);
     EXPECT_NE(NS::Obj::FindComponentEntry(data, "Health"), nullptr);
     EXPECT_NE(NS::Obj::FindComponentEntry(data, "Shadow"), nullptr);
-    for (const nlohmann::json& entry : data.components)
+    for (const nlohmann::json& entry : NS::Obj::ObjectJsonComponents(data))
     {
         const std::string_view typeName = NS::Obj::ComponentEntryType(entry);
         if (typeName == "TransformComponent")
@@ -393,8 +392,8 @@ TEST_F(ObjectBuildTest, PlayerDefaultLookComesFromClassNotData)
 // data 側で書き込んだ値が既定構成の component へリフレクション適用される
 TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
 {
-    ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
-    for (nlohmann::json& entry : data.components)
+    nlohmann::json data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
+    for (nlohmann::json& entry : NS::Obj::ObjectJsonComponents(data))
         if (NS::Obj::ComponentEntryType(entry) == "PlayerComponent")
             NS::Obj::SetField(entry, "コヨーテ時間", 0.125f);
 
@@ -411,12 +410,12 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
 // 書き込みが組み立てと別の対応を引くと、コンストラクタが積んだ実体に id が載らないか入れ違う
 TEST_F(ObjectBuildTest, PlayerObjectAppliesDataIdsToConstructorComponents)
 {
-    ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
+    nlohmann::json data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
     const std::uint32_t objectId = 1234u;
-    data.objectId = objectId;
+    NS::Obj::SetObjectJsonId(data, objectId);
 
     nlohmann::json* entry = nullptr;
-    for (nlohmann::json& candidate : data.components)
+    for (nlohmann::json& candidate : NS::Obj::ObjectJsonComponents(data))
     {
         if (NS::Obj::ComponentEntryType(candidate) == "PlayerComponent")
         {
@@ -428,10 +427,10 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataIdsToConstructorComponents)
     const std::uint32_t dataId = 4321u;
     NS::Obj::SetComponentEntryId(*entry, dataId);
 
-    NS::Obj::SceneData level;
-    level.objects.push_back(std::move(data));
+    nlohmann::json level = NS::Obj::MakeSceneJson();
+    NS::Obj::SceneJsonObjects(level).push_back(std::move(data));
     NS::Obj::Scene scene;
-    scene.LoadFromData(std::move(level));
+    scene.LoadJson(std::move(level));
 
     NS::Obj::GameObject* obj = scene.Objects().FindObject(NS::Obj::ObjectRef{objectId});
     ASSERT_NE(obj, nullptr);
@@ -440,7 +439,7 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataIdsToConstructorComponents)
     EXPECT_EQ(movement->Id(), dataId);
 
     // 実体から書き戻しても同じ番号のまま。落ちると保存のたびに振り直しになる
-    const ObjectData captured = NS::Obj::CaptureObjectData(*obj);
+    const nlohmann::json captured = NS::Obj::ObjectToJson(*obj);
     const nlohmann::json* capturedEntry = NS::Obj::FindComponentEntry(captured, "PlayerComponent");
     ASSERT_NE(capturedEntry, nullptr);
     EXPECT_EQ(NS::Obj::ComponentEntryId(*capturedEntry), dataId);
@@ -450,8 +449,8 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataIdsToConstructorComponents)
 // 重ねた当たりは 1 つずつ body になる
 TEST_F(ObjectBuildTest, DuplicateColliderDataBuildsCompoundColliders)
 {
-    ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 1.0f, 1.0f}));
-    object.components.push_back(BoxColliderData(Vector3{2.0f, 2.0f, 2.0f}));
+    nlohmann::json object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 1.0f, 1.0f}));
+    NS::Obj::ObjectJsonComponents(object).push_back(BoxColliderData(Vector3{2.0f, 2.0f, 2.0f}));
 
     std::unique_ptr<NS::Obj::GameObject> obj = Build(object);
     ASSERT_NE(obj, nullptr);
@@ -469,7 +468,7 @@ TEST_F(ObjectBuildTest, DuplicateColliderDataBuildsCompoundColliders)
 // 保存を data でなく実体から作る前提。registry で組める component だけを対象にする
 TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
 {
-    ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
+    nlohmann::json object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
     NS::Obj::SetObjectPosition(object, Vector3{3.0f, 4.0f, 5.0f});
     NS::Obj::SetObjectScale(object, Vector3{2.0f, 1.0f, 0.5f});
 
@@ -496,19 +495,19 @@ TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
     }
 }
 
-// 実体を CaptureObjectData で値データへ忠実に写し、素の GameObject へ ApplyObjectComponents で復元すると
+// 実体を ObjectToJson で配置物の JSON へ忠実に写し、素の GameObject へ ApplyObjectComponents で復元すると
 // 元 live と component JSON が一致する。undo とプレイ↔編集の退避・復元に使う機構を直接確かめる
-TEST_F(ObjectBuildTest, CaptureObjectDataRestoresFaithfully)
+TEST_F(ObjectBuildTest, ObjectToJsonRestoresFaithfully)
 {
-    ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
+    nlohmann::json object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
     NS::Obj::SetObjectPosition(object, Vector3{3.0f, 4.0f, 5.0f});
     NS::Obj::SetObjectScale(object, Vector3{2.0f, 1.0f, 0.5f});
 
     std::unique_ptr<NS::Obj::GameObject> live = Build(object);
     ASSERT_NE(live, nullptr);
 
-    const ObjectData snapshot = NS::Obj::CaptureObjectData(*live);
-    ASSERT_EQ(snapshot.components.size(), live->Components().size());
+    const nlohmann::json snapshot = NS::Obj::ObjectToJson(*live);
+    ASSERT_EQ(NS::Obj::ObjectJsonComponents(snapshot).size(), live->Components().size());
 
     NS::Obj::GameObject restored;
     NS::Obj::ApplyObjectComponents(restored, snapshot, {});
@@ -518,8 +517,8 @@ TEST_F(ObjectBuildTest, CaptureObjectDataRestoresFaithfully)
 // データの active は保存の往復で残り、読み直した実体にも false のまま乗る
 TEST_F(ObjectBuildTest, DisabledComponentSurvivesRoundTrip)
 {
-    ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
-    NS::Obj::SetComponentEntryEnabled(object.components[0], false);
+    nlohmann::json object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
+    NS::Obj::SetComponentEntryEnabled(NS::Obj::ObjectJsonComponents(object)[0], false);
 
     std::unique_ptr<NS::Obj::GameObject> live = Build(object);
     ASSERT_NE(live, nullptr);
@@ -527,7 +526,7 @@ TEST_F(ObjectBuildTest, DisabledComponentSurvivesRoundTrip)
     ASSERT_NE(mesh, nullptr);
     EXPECT_FALSE(mesh->IsEnabled());
 
-    const ObjectData snapshot = NS::Obj::CaptureObjectData(*live);
+    const nlohmann::json snapshot = NS::Obj::ObjectToJson(*live);
     const nlohmann::json* entry = NS::Obj::FindComponentEntry(snapshot, "MeshRenderer");
     ASSERT_NE(entry, nullptr);
     EXPECT_FALSE(NS::Obj::ComponentEntryEnabled(*entry));
@@ -536,7 +535,7 @@ TEST_F(ObjectBuildTest, DisabledComponentSurvivesRoundTrip)
 // モード切替で休止させただけの component は保存に持ち込まない。書き込むと読み直しでも動かなくなる
 TEST_F(ObjectBuildTest, SleepingComponentIsSavedAsEnabled)
 {
-    ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
+    nlohmann::json object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
 
     std::unique_ptr<NS::Obj::GameObject> live = Build(object);
     ASSERT_NE(live, nullptr);
@@ -545,7 +544,7 @@ TEST_F(ObjectBuildTest, SleepingComponentIsSavedAsEnabled)
 
     mesh->SetActive(false);
 
-    const ObjectData snapshot = NS::Obj::CaptureObjectData(*live);
+    const nlohmann::json snapshot = NS::Obj::ObjectToJson(*live);
     const nlohmann::json* entry = NS::Obj::FindComponentEntry(snapshot, "MeshRenderer");
     ASSERT_NE(entry, nullptr);
     EXPECT_TRUE(NS::Obj::ComponentEntryEnabled(*entry));

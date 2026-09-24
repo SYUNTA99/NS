@@ -37,7 +37,7 @@ namespace NS::Game::Level
         }
     }
 
-    bool IsGoalObject(const NS::Obj::ObjectData& object) noexcept
+    bool IsGoalObject(const nlohmann::json& object) noexcept
     {
         return NS::Obj::FindComponentEntry(object, "Goal") != nullptr;
     }

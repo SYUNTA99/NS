@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ComponentRef.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
 
@@ -10,6 +11,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -22,30 +24,39 @@ namespace NS::Phys
 namespace NS::Obj
 {
     class Scene;
-    struct ObjectData;
-    struct SceneData;
-
-    //! ObjectData 1 件から配置物を組むファクトリ。組めないデータには nullptr を返し、Rebuild が読み飛ばす
-    using ObjectFactoryFn = std::function<std::unique_ptr<GameObject>(const ObjectData&)>;
+    //! 配置物の JSON 1 件から配置物を組むファクトリ。組めない JSON には nullptr を返し、Rebuild が読み飛ばす
+    using ObjectFactoryFn = std::function<std::unique_ptr<GameObject>(const nlohmann::json&)>;
 
     //! @brief 配置物 GameObject の単一所有リスト
-    //! @details SceneData から一括で組み直す。runtime も editor も同じ Rebuild 経路を通る
+    //! @details シーンの JSON 文書から一括で組み直す。runtime も editor も同じ Rebuild 経路を通る
+    //! 1 体だけ入れ替える InsertFromJson もあり、undo は組み直さずにこちらを通る
     //! 配置物 1 件の組み立ては呼出側のファクトリに委ね、GameObject の型選択や資産解決は持たない
     //! 機能別の型付き控えも持たず、欲しい component 型は ForEachComponent で問い合わせる
     //! 特定の 1 体は永続 id の解決で引く
     //! const の参照で受けても中身は守れない。ObjectAt と範囲 for と ForEachComponent が渡すのは
     //! 非 const の GameObject* と Component* で、呼び出し側はそこから書き換えられる
-    //! 依存: NS::Obj::GameObject / ObjectData, NS::Phys::PhysicsScene
+    //! 依存: NS::Obj::GameObject, ObjectJson, NS::Phys::PhysicsScene
     class ObjectList : public NS::Core::NonCopyable
     {
     public:
         ObjectList();
         ~ObjectList();
 
-        //! data の objects から配置物を組み直す。既存の配置物は先に空へ戻し、一時オブジェクトだけ残す
+        //! scene の objects から配置物を組み直す。既存の配置物は先に空へ戻し、一時オブジェクトだけ残す
         //! 当たりの同期は含まない。呼出側が続けて SyncPhysics を呼ぶ
         //! factory が空の起動前 / テストでは物を組まない
-        void Rebuild(const SceneData& data, Scene& scene, const ObjectFactoryFn& factory);
+        void Rebuild(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory);
+
+        //! @brief 組み上がった配置物へ entry の id・名前・active・component の id を書き、index の位置へ入れる
+        //! @details 組み直さずに 1 体だけ入れる経路。名前は既存と重なれば番号を付ける。index が末尾より先なら末尾
+        //! scene attach と親子の結び付けと開始は呼出側が済ませる
+        GameObject* InsertFromJson(std::unique_ptr<GameObject> obj, const nlohmann::json& entry, std::size_t index);
+
+        //! objectId の配置物の並びの位置。居なければ ObjectCount()
+        [[nodiscard]] std::size_t IndexOfObjectId(std::uint32_t objectId) const noexcept;
+
+        //! obj の名前を変える。他の配置物と重なれば番号を付ける。名前を書けるのはシーンの配置物を持つここだけ
+        void RenameObject(GameObject& obj, std::string_view name);
 
         //! 配置物の OnEndPlay を逆順に呼んでから所有物を空へ戻す。scene の OnShutdown と Rebuild 冒頭が呼ぶ
         void Clear();
@@ -167,7 +178,10 @@ namespace NS::Obj
         void MarkIndexDirty() noexcept;
 
         //! entry の component の id を obj の実体へ書く。id を書くのはシーンの配置物を持つここだけ
-        void AssignComponentIds(GameObject& obj, const ObjectData& entry);
+        void AssignComponentIds(GameObject& obj, const nlohmann::json& entry);
+
+        //! entry の id・名前・active・component の id を obj へ書く
+        void ApplyIdentity(GameObject& obj, const nlohmann::json& entry);
 
         //! 欄の型に合わない Component を指す ComponentRef を警告する。引けば nullptr になるだけなので値は変えない
         void WarnMismatchedComponentRefs();

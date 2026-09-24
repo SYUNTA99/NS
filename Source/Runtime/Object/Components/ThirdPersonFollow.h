@@ -3,7 +3,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/Reflection/ObjectRef.h"
 
 namespace NS::Obj
 {

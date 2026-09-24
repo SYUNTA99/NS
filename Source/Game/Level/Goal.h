@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Runtime/Object/Component.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/Scene/SceneJson.h"
 
 namespace NS::Game::Level
 {
@@ -30,5 +30,5 @@ namespace NS::Game::Level
     };
 
     //! ゴールの印を持つ配置物か。表示と固形判定が同じ判定を読む
-    [[nodiscard]] bool IsGoalObject(const NS::Obj::ObjectData& object) noexcept;
+    [[nodiscard]] bool IsGoalObject(const nlohmann::json& object) noexcept;
 } // namespace NS::Game::Level

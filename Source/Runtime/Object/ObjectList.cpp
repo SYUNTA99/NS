@@ -7,7 +7,8 @@
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/Reflection.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/ObjectName.h"
+#include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
@@ -21,7 +22,7 @@ namespace NS::Obj
     ObjectList::ObjectList() = default;
     ObjectList::~ObjectList() = default;
 
-    void ObjectList::Rebuild(const SceneData& data, Scene& scene, const ObjectFactoryFn& factory)
+    void ObjectList::Rebuild(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory)
     {
         // 実行時の一時オブジェクトはデータ由来でないため、退避して組み直し後も残す
         std::vector<std::unique_ptr<GameObject>> transients;
@@ -37,19 +38,16 @@ namespace NS::Obj
         Clear();
 
         // カウンタは 1 始まりでファイルの id を知らない。読込値まで上げないと次に置く 1 個目が既存とぶつかる
-        m_nextObjectId = std::max(m_nextObjectId, data.nextObjectId);
+        const nlohmann::json& objects = SceneJsonObjects(scene);
+        m_nextObjectId = std::max(m_nextObjectId, SceneJsonNextObjectId(scene));
         // 手編集でカウンタが既存 id より小さいファイルもあるので object と component の最大も見る
-        for (const ObjectData& entry : data.objects)
+        for (const nlohmann::json& entry : objects)
         {
-            if (entry.objectId >= m_nextObjectId)
+            if (ObjectJsonId(entry) >= m_nextObjectId)
             {
-                m_nextObjectId = entry.objectId + 1;
+                m_nextObjectId = ObjectJsonId(entry) + 1;
             }
-            if (!entry.components.is_array())
-            {
-                continue;
-            }
-            for (const nlohmann::json& component : entry.components)
+            for (const nlohmann::json& component : ObjectJsonComponents(entry))
             {
                 const std::uint32_t componentId = ComponentEntryId(component);
                 if (componentId >= m_nextObjectId)
@@ -59,14 +57,14 @@ namespace NS::Obj
             }
         }
 
-        m_objects.reserve(data.objects.size() + transients.size());
+        m_objects.reserve(objects.size() + transients.size());
 
         // 配置物の組み立ては呼出側の知識。ファクトリの無い起動前 / テストでは何も組まない
         if (factory)
         {
             // 先に全 object を組んで、開始は後段でまとめて行う
             // OnStart で ObjectRef を解決する component が、自分より後ろの object も引けるようにするため
-            for (const ObjectData& entry : data.objects)
+            for (const nlohmann::json& entry : objects)
             {
                 std::unique_ptr<GameObject> obj = factory(entry);
                 if (!obj)
@@ -74,12 +72,8 @@ namespace NS::Obj
                     continue; // 組み立てる component が無いオブジェクトはファクトリが nullptr を返す
                 }
 
-                obj->AttachScene(&scene);
-                obj->SetId(entry.objectId);
-                obj->SetName(entry.name);
-                AssignComponentIds(*obj, entry);
-                obj->SetActive(entry.active);
-
+                obj->AttachScene(&owner);
+                ApplyIdentity(*obj, entry);
                 m_objects.push_back(std::move(obj));
             }
 
@@ -101,14 +95,14 @@ namespace NS::Obj
                 return it->second;
             };
 
-            for (const ObjectData& entry : data.objects)
+            for (const nlohmann::json& entry : objects)
             {
-                if (entry.parentId == k_NoObjectId)
+                if (ObjectJsonParent(entry) == k_NoObjectId)
                 {
                     continue;
                 }
-                GameObject* child = find(entry.objectId);
-                GameObject* parent = find(entry.parentId);
+                GameObject* child = find(ObjectJsonId(entry));
+                GameObject* parent = find(ObjectJsonParent(entry));
                 if (child != nullptr && parent != nullptr && child != parent)
                 {
                     child->SetParent(parent);
@@ -383,16 +377,80 @@ namespace NS::Obj
         }
     }
 
-    void ObjectList::AssignComponentIds(GameObject& obj, const ObjectData& entry)
+    void ObjectList::ApplyIdentity(GameObject& obj, const nlohmann::json& entry)
     {
-        if (!entry.components.is_array())
+        obj.SetId(ObjectJsonId(entry));
+        obj.SetName(std::string{ObjectJsonName(entry)});
+        obj.SetActive(ObjectJsonActive(entry));
+        AssignComponentIds(obj, entry);
+    }
+
+    GameObject* ObjectList::InsertFromJson(std::unique_ptr<GameObject> obj, const nlohmann::json& entry, std::size_t index)
+    {
+        if (!obj)
         {
-            return;
+            return nullptr;
         }
+        ApplyIdentity(*obj, entry);
+        // 名前はシーンの中で一意に保つ。組み直さずに 1 体だけ入れるので、読込の一意化を通らない
+        std::unordered_set<std::string> used;
+        used.reserve(m_objects.size());
+        for (const std::unique_ptr<GameObject>& existing : m_objects)
+        {
+            used.insert(existing->Name());
+        }
+        obj->SetName(MakeUniqueObjectName(obj->Name(), used));
+        // 入れた物の id より先へカウンタを進める。進めないと次に置く 1 個目と重なる
+        m_nextObjectId = std::max(m_nextObjectId, obj->Id() + 1);
+        for (const Component* comp : obj->Components())
+        {
+            m_nextObjectId = std::max(m_nextObjectId, comp->Id() + 1);
+        }
+
+        GameObject* raw = obj.get();
+        index = std::min(index, m_objects.size());
+        m_objects.insert(m_objects.begin() + static_cast<std::ptrdiff_t>(index), std::move(obj));
+        MarkIndexDirty();
+        return raw;
+    }
+
+    std::size_t ObjectList::IndexOfObjectId(std::uint32_t objectId) const noexcept
+    {
+        if (objectId == k_NoObjectId)
+        {
+            return m_objects.size();
+        }
+        for (std::size_t i = 0; i < m_objects.size(); ++i)
+        {
+            if (m_objects[i]->Id() == objectId)
+            {
+                return i;
+            }
+        }
+        return m_objects.size();
+    }
+
+    void ObjectList::RenameObject(GameObject& obj, std::string_view name)
+    {
+        std::unordered_set<std::string> used;
+        used.reserve(m_objects.size());
+        for (const std::unique_ptr<GameObject>& existing : m_objects)
+        {
+            if (existing.get() != &obj)
+            {
+                used.insert(existing->Name());
+            }
+        }
+        obj.SetName(MakeUniqueObjectName(name, used));
+    }
+
+    void ObjectList::AssignComponentIds(GameObject& obj, const nlohmann::json& entry)
+    {
         // 組み立てと同じ規則で件と実体を対応させる。規則を別に書くと、同じ型が 2 つある時に id が入れ違う
+        const nlohmann::json& components = ObjectJsonComponents(entry);
         std::vector<Component*> taken;
-        taken.reserve(entry.components.size());
-        for (const nlohmann::json& component : entry.components)
+        taken.reserve(components.size());
+        for (const nlohmann::json& component : components)
         {
             Component* comp = MatchComponentEntry(obj, component, taken);
             if (comp == nullptr)

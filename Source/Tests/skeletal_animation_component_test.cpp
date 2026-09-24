@@ -12,7 +12,6 @@
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
-#include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Platform/Window.h>
 #include <array>
 #include <cstdint>
@@ -32,10 +31,9 @@ namespace
     using NS::Core::Quaternion;
     using NS::Core::Vector3;
     using NS::Obj::AssetManager;
-    using NS::Obj::BuildSceneObject;
     using NS::Obj::GameObject;
     using NS::Obj::MeshRenderer;
-    using NS::Obj::ObjectData;
+    using NS::Obj::ObjectFromJson;
     using NS::Obj::SkeletalAnimation;
 
     Quaternion RotZ(float degrees)
@@ -478,7 +476,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSharesBoundClipsBetweenInstances)
 }
 
 // 組立の全経路で cube 既定を skinned mesh が上書きする並び (MeshRenderer が先・こちらが後) を固定する
-TEST_F(SkeletalAnimationMeshTest, BuildSceneObjectOverridesMeshRendererWithSkinnedMesh)
+TEST_F(SkeletalAnimationMeshTest, ObjectFromJsonOverridesMeshRendererWithSkinnedMesh)
 {
     const std::string modelPath = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
     if (!NS::Platform::FileSystem::Exists(modelPath))
@@ -501,15 +499,15 @@ TEST_F(SkeletalAnimationMeshTest, BuildSceneObjectOverridesMeshRendererWithSkinn
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     am.RegisterBuiltins();
 
-    ObjectData data;
+    nlohmann::json data = NS::Obj::MakeObjectJson();
     nlohmann::json meshEntry = NS::Obj::MakeComponentEntry("MeshRenderer");
     NS::Obj::SetField(meshEntry, "メッシュ", std::string("cube"));
-    data.components.push_back(meshEntry);
+    NS::Obj::ObjectJsonComponents(data).push_back(meshEntry);
     nlohmann::json animEntry = NS::Obj::MakeComponentEntry("SkeletalAnimation");
     NS::Obj::SetField(animEntry, "モデル", std::string("Assets/Models/CesiumMan.glb"));
-    data.components.push_back(animEntry);
+    NS::Obj::ObjectJsonComponents(data).push_back(animEntry);
 
-    std::unique_ptr<GameObject> built = BuildSceneObject(data, &am);
+    std::unique_ptr<GameObject> built = ObjectFromJson(data, &am);
     ASSERT_NE(built, nullptr);
     MeshRenderer* meshComp = built->FindComponent<MeshRenderer>();
     ASSERT_NE(meshComp, nullptr);

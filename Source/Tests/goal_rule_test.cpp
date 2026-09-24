@@ -14,11 +14,11 @@ namespace SceneNs = NS::Obj;
 
 namespace
 {
-    SceneNs::ObjectData MakeGoal(float x, float y, float z)
+    nlohmann::json MakeGoal(float x, float y, float z)
     {
-        SceneNs::ObjectData object;
+        nlohmann::json object = SceneNs::MakeObjectJson();
         SceneNs::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
-        object.components.push_back(SceneNs::MakeComponentEntry("Goal"));
+        SceneNs::ObjectJsonComponents(object).push_back(SceneNs::MakeComponentEntry("Goal"));
         return object;
     }
 
@@ -33,10 +33,10 @@ namespace
 TEST(GoalTest, ReachedWhenPlayerWithinRadius)
 {
     SceneNs::Scene scene;
-    SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(data).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(data).push_back(MakeGoal(0.0f, 0.0f, 0.0f));
+    scene.LoadJson(std::move(data));
 
     LevelNs::Goal* goal = FindGoal(scene.Objects());
     ASSERT_NE(goal, nullptr);
@@ -50,10 +50,10 @@ TEST(GoalTest, ReachedWhenPlayerWithinRadius)
 TEST(GoalTest, NotReachedWhenFar)
 {
     SceneNs::Scene scene;
-    SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(MakeGoal(10.0f, 0.0f, 0.0f));
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(data).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(data).push_back(MakeGoal(10.0f, 0.0f, 0.0f));
+    scene.LoadJson(std::move(data));
 
     scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
 
@@ -65,10 +65,10 @@ TEST(GoalTest, NotReachedWhenFar)
 TEST(GoalTest, ReachedLatchesUntilReset)
 {
     SceneNs::Scene scene;
-    SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(data).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(data).push_back(MakeGoal(0.0f, 0.0f, 0.0f));
+    scene.LoadJson(std::move(data));
 
     LevelNs::Goal* goal = FindGoal(scene.Objects());
     ASSERT_NE(goal, nullptr);

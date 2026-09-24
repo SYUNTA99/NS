@@ -20,19 +20,19 @@
 namespace
 {
     // 接触クリアの印だけを持つゴールを組む
-    NS::Obj::ObjectData MakeGoal(float x, float y, float z)
+    nlohmann::json MakeGoal(float x, float y, float z)
     {
-        NS::Obj::ObjectData object;
+        nlohmann::json object = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
-        object.components.push_back(NS::Obj::MakeComponentEntry("Goal"));
+        NS::Obj::ObjectJsonComponents(object).push_back(NS::Obj::MakeComponentEntry("Goal"));
         return object;
     }
 
-    NS::Obj::ObjectData MakeRock(float x, float y, float z)
+    nlohmann::json MakeRock(float x, float y, float z)
     {
-        NS::Obj::ObjectData object;
+        nlohmann::json object = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
-        object.components.push_back(NS::Obj::MakeComponentEntry("BoxCollider"));
+        NS::Obj::ObjectJsonComponents(object).push_back(NS::Obj::MakeComponentEntry("BoxCollider"));
         return object;
     }
 
@@ -182,7 +182,7 @@ TEST(ModeToggle, EditModeRebuildKeepsWorldStill)
     editor.EnterEdit();
 
     // 編集中の構造編集で世界が組み直っても、止めた世界は動き出さない
-    NS::Obj::ObjectData player = MakePlayerObject(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, NS::Core::Quaternion{});
+    nlohmann::json player = MakePlayerObject(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, NS::Core::Quaternion{});
     const std::uint32_t playerId = scene.Objects().AllocateObjectId();
     applier.ApplyObjectSnapshot(playerId, player);
     // プレイヤーに重ねたゴール。世界が回るとその tick に接触の印が立つ
@@ -203,11 +203,13 @@ TEST(ModeToggle, EnterPlayPlacesPlayerAtBaselinePosition)
 {
     NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Obj::SceneData live;
-    live.objects.push_back(MakePlayerObject(NS::Core::Vector3{1.0f, 1.0f, 1.0f}, NS::Core::Quaternion{}));
-    scene.LoadFromData(std::move(live));
-    NS::Obj::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{7.0f, 2.0f, -4.0f}, NS::Core::Quaternion{}));
+    nlohmann::json live = NS::Obj::MakeSceneJson();
+    NS::Obj::SceneJsonObjects(live).push_back(
+        MakePlayerObject(NS::Core::Vector3{1.0f, 1.0f, 1.0f}, NS::Core::Quaternion{}));
+    scene.LoadJson(std::move(live));
+    nlohmann::json data = NS::Obj::MakeSceneJson();
+    NS::Obj::SceneJsonObjects(data).push_back(
+        MakePlayerObject(NS::Core::Vector3{7.0f, 2.0f, -4.0f}, NS::Core::Quaternion{}));
     scene.SetPlayBaselineForTest(std::move(data));
     editor.EnterPlay();
 
@@ -223,9 +225,9 @@ TEST(ModeToggle, EnterEditRestoresPoseMovedDuringPlay)
 {
     NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Obj::SceneData data;
-    data.objects.push_back(MakeRock(1.0f, 2.0f, 3.0f));
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = NS::Obj::MakeSceneJson();
+    NS::Obj::SceneJsonObjects(data).push_back(MakeRock(1.0f, 2.0f, 3.0f));
+    scene.LoadJson(std::move(data));
     editor.EnterPlay();
 
     NS::Obj::GameObject* rock = FindFirstPlaced(scene.Objects());
@@ -246,9 +248,9 @@ TEST(ModeToggle, EnterEditRevivesObjectDestroyedDuringPlay)
 {
     NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Obj::SceneData data;
-    data.objects.push_back(MakeRock(1.0f, 2.0f, 3.0f));
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = NS::Obj::MakeSceneJson();
+    NS::Obj::SceneJsonObjects(data).push_back(MakeRock(1.0f, 2.0f, 3.0f));
+    scene.LoadJson(std::move(data));
     editor.EnterPlay();
 
     NS::Obj::GameObject* rock = FindFirstPlaced(scene.Objects());
@@ -270,11 +272,11 @@ TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
 {
     NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Obj::SceneData data;
-    NS::Obj::ObjectData rock = MakeRock(1.0f, 2.0f, 3.0f);
-    rock.components.push_back(NS::Obj::MakeComponentEntry("LaunchedBody"));
-    data.objects.push_back(std::move(rock));
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = NS::Obj::MakeSceneJson();
+    nlohmann::json rock = MakeRock(1.0f, 2.0f, 3.0f);
+    NS::Obj::ObjectJsonComponents(rock).push_back(NS::Obj::MakeComponentEntry("LaunchedBody"));
+    NS::Obj::SceneJsonObjects(data).push_back(std::move(rock));
+    scene.LoadJson(std::move(data));
     editor.EnterPlay();
 
     NS::Obj::GameObject* live = FindFirstPlaced(scene.Objects());
@@ -302,10 +304,10 @@ TEST(ModeToggle, EnterEditCancelsInFlightFade)
 {
     NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Obj::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = NS::Obj::MakeSceneJson();
+    NS::Obj::SceneJsonObjects(data).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    NS::Obj::SceneJsonObjects(data).push_back(MakeGoal(0.0f, 0.0f, 0.0f));
+    scene.LoadJson(std::move(data));
     editor.EnterPlay();
 
     scene.OnUpdate();
@@ -325,10 +327,10 @@ TEST(ModeToggle, CancelledClearDoesNotRefireAfterReenter)
 {
     NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Obj::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(MakeGoal(5.0f, 0.0f, 0.0f));
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = NS::Obj::MakeSceneJson();
+    NS::Obj::SceneJsonObjects(data).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    NS::Obj::SceneJsonObjects(data).push_back(MakeGoal(5.0f, 0.0f, 0.0f));
+    scene.LoadJson(std::move(data));
     editor.EnterPlay();
 
     Player* player = FindPlayer(scene.Objects());

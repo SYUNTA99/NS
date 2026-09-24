@@ -108,9 +108,6 @@ public:
     [[nodiscard]] bool PlayPaused() const noexcept;
     void TogglePlayPause() noexcept;
 
-    //! シーンの環境値。実体側が唯一の出所で、UI はこれを直接編集する
-    [[nodiscard]] NS::Obj::SceneEnvironment& Environment() noexcept;
-
     //! 編集対象の live な ObjectList。一覧 UI と参照候補は範囲 for か ObjectAt でここを直接読む
     [[nodiscard]] const NS::Obj::ObjectList& Objects() const noexcept;
 
@@ -238,7 +235,7 @@ private:
     void LeavePlayForEdit();
 
     //! 配置物を新しい永続 id で 1 体追加する唯一の経路。採番・履歴登録・選択をまとめて面倒を見る
-    void PushCreateObject(NS::Obj::ObjectData object);
+    void PushCreateObject(nlohmann::json object);
 
     void RenderCameraGizmos(const NS::Core::Matrix& viewProjection, NS::Core::Size2D viewport) noexcept;
     //! @brief 当たり形状を線で描く
@@ -318,9 +315,9 @@ private:
     bool m_transformEditing = false; // 変形編集の開始状態
 
     // 編集開始時の状態スナップショット。選択している分だけ並ぶ
-    std::vector<std::pair<std::uint32_t, NS::Obj::ObjectData>> m_editBaselines;
+    std::vector<std::pair<std::uint32_t, nlohmann::json>> m_editBaselines;
 
     bool m_componentEditing = false;                                 // コンポーネント編集の開始状態
     std::uint32_t m_componentEditBaselineId = NS::Obj::k_NoObjectId; // 編集開始時の対象 id
-    NS::Obj::ObjectData m_componentEditBaseline{};                   // 編集開始時の状態スナップショット
+    nlohmann::json m_componentEditBaseline;                          // 編集開始時の状態スナップショット
 };

@@ -71,15 +71,10 @@ namespace NS::Obj
 
     // データを唯一の正とする主経路。既定構成を積む GameObject では値だけが写り二重生成しない
     // データと live は 1 対 1 で対応させる
-    void ApplyObjectComponents(GameObject& obj, const ObjectData& object, const ComponentBuiltFn& onBuilt)
+    void ApplyObjectComponents(GameObject& obj, const nlohmann::json& object, const ComponentBuiltFn& onBuilt)
     {
-        if (!object.components.is_array())
-        {
-            return;
-        }
-
         std::vector<Component*> applied;
-        for (const nlohmann::json& entry : object.components)
+        for (const nlohmann::json& entry : ObjectJsonComponents(object))
         {
             const std::string_view typeName = ComponentEntryType(entry);
             if (typeName.empty())
@@ -119,9 +114,9 @@ namespace NS::Obj
         }
     }
 
-    std::unique_ptr<GameObject> BuildSceneObject(const ObjectData& object, AssetManager* assets)
+    std::unique_ptr<GameObject> ObjectFromJson(const nlohmann::json& object, AssetManager* assets)
     {
-        if (object.components.empty())
+        if (ObjectJsonComponents(object).empty())
         {
             return nullptr;
         }
@@ -143,14 +138,17 @@ namespace NS::Obj
         return obj;
     }
 
-    ObjectData MakeObjectData(const GameObject& obj)
+    nlohmann::json MakePrototypeJson(const GameObject& obj)
     {
-        ObjectData data{};
-        data.className = obj.ClassName();
-        data.name = obj.Name();
-        data.active = obj.IsActiveSelf();
+        nlohmann::json object = MakeObjectJson();
+        SetObjectJsonClass(object, obj.ClassName());
+        SetObjectJsonName(object, obj.Name());
+        SetObjectJsonActive(object, obj.IsActiveSelf());
         if (const GameObject* parent = obj.Parent())
-            data.parentId = parent->Id();
+        {
+            SetObjectJsonParent(object, parent->Id());
+        }
+        nlohmann::json& components = ObjectJsonComponents(object);
         for (const Component* comp : obj.Components())
         {
             if (comp == nullptr)
@@ -165,32 +163,30 @@ namespace NS::Obj
             nlohmann::json entry = MakeComponentEntry(info->typeName);
             // コンストラクタが付けた名前も写す。同じ型を 2 つ積むクラスで、どちらの件かが名前で決まる
             SetComponentEntryName(entry, comp->Name());
-            data.components.push_back(std::move(entry));
+            components.push_back(std::move(entry));
         }
-        SetObjectPosition(data, obj.Root().Position());
-        SetObjectRotation(data, obj.Root().Rotation());
-        SetObjectScale(data, obj.Root().Scale());
-        return data;
+        SetObjectPosition(object, obj.Root().Position());
+        SetObjectRotation(object, obj.Root().Rotation());
+        SetObjectScale(object, obj.Root().Scale());
+        return object;
     }
 
-    ObjectData CaptureObjectData(const GameObject& obj)
+    nlohmann::json ObjectToJson(const GameObject& obj)
     {
-        ObjectData data{};
-        data.className = obj.ClassName();
-        data.name = obj.Name();
-        data.active = obj.IsActiveSelf();
+        nlohmann::json object = MakeObjectJson();
+        SetObjectJsonId(object, obj.Id());
+        SetObjectJsonClass(object, obj.ClassName());
+        SetObjectJsonName(object, obj.Name());
+        SetObjectJsonActive(object, obj.IsActiveSelf());
         if (const GameObject* parent = obj.Parent())
         {
-            data.parentId = parent->Id();
+            SetObjectJsonParent(object, parent->Id());
         }
 
+        nlohmann::json& components = ObjectJsonComponents(object);
         for (const Component* comp : obj.Components())
         {
-            if (comp == nullptr)
-            {
-                continue;
-            }
-            if (comp->GetReflection() == nullptr)
+            if (comp == nullptr || comp->GetReflection() == nullptr)
             {
                 continue;
             }
@@ -201,8 +197,8 @@ namespace NS::Obj
             SetComponentEntryName(entry, comp->Name());
             // active はデータ側だけを写す。モード切替の一時的な休止 (SetActive) は保存に持ち込まない
             SetComponentEntryEnabled(entry, comp->IsEnabled());
-            data.components.push_back(std::move(entry));
+            components.push_back(std::move(entry));
         }
-        return data;
+        return object;
     }
 } // namespace NS::Obj

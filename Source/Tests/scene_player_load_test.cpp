@@ -7,7 +7,6 @@
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/Reflection.h"
-#include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "tuning_field_access.h"
 
@@ -25,7 +24,7 @@ namespace PlayerNs = NS::Game::Player;
 
 namespace
 {
-    bool LoadShippedScene(SceneNs::SceneData& outScene, std::string_view name)
+    bool LoadShippedScene(nlohmann::json& outScene, std::string_view name)
     {
         const std::optional<std::string> path = EditorNs::BuildLevelPath(name);
         if (!path.has_value())
@@ -33,11 +32,11 @@ namespace
         return SceneNs::LoadSceneFromJsonFile(outScene, *path);
     }
 
-    const SceneNs::ObjectData* FindPlayerObject(const SceneNs::SceneData& scene)
+    const nlohmann::json* FindPlayerObject(const nlohmann::json& scene)
     {
-        for (const SceneNs::ObjectData& object : scene.objects)
+        for (const nlohmann::json& object : SceneNs::SceneJsonObjects(scene))
         {
-            if (object.className == "Player")
+            if (SceneNs::ObjectJsonClass(object) == "Player")
                 return &object;
         }
         return nullptr;
@@ -60,9 +59,9 @@ namespace
 
 TEST_P(ShippedScene, PlayerCarriesTheTwoNewComponents)
 {
-    SceneNs::SceneData scene;
+    nlohmann::json scene = SceneNs::MakeSceneJson();
     ASSERT_TRUE(LoadShippedScene(scene, GetParam()));
-    const SceneNs::ObjectData* player = FindPlayerObject(scene);
+    const nlohmann::json* player = FindPlayerObject(scene);
     ASSERT_NE(player, nullptr);
 
     EXPECT_NE(SceneNs::FindComponentEntry(*player, "PlayerComponent"), nullptr)
@@ -75,12 +74,12 @@ TEST_P(ShippedScene, PlayerCarriesTheTwoNewComponents)
 
 TEST_P(ShippedScene, LoadedPlayerBuildsItsStateMachine)
 {
-    SceneNs::SceneData scene;
+    nlohmann::json scene = SceneNs::MakeSceneJson();
     ASSERT_TRUE(LoadShippedScene(scene, GetParam()));
-    const SceneNs::ObjectData* object = FindPlayerObject(scene);
+    const nlohmann::json* object = FindPlayerObject(scene);
     ASSERT_NE(object, nullptr);
 
-    std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(*object, nullptr);
+    std::unique_ptr<SceneNs::GameObject> live = SceneNs::ObjectFromJson(*object, nullptr);
     ASSERT_NE(live, nullptr);
 
     PlayerNs::PlayerComponent* player = live->FindComponent<PlayerNs::PlayerComponent>();
@@ -96,12 +95,12 @@ TEST_P(ShippedScene, LoadedPlayerBuildsItsStateMachine)
 
 TEST_P(ShippedScene, EveryTuningFieldNameIsReflected)
 {
-    SceneNs::SceneData scene;
+    nlohmann::json scene = SceneNs::MakeSceneJson();
     ASSERT_TRUE(LoadShippedScene(scene, GetParam()));
-    const SceneNs::ObjectData* object = FindPlayerObject(scene);
+    const nlohmann::json* object = FindPlayerObject(scene);
     ASSERT_NE(object, nullptr);
 
-    std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(*object, nullptr);
+    std::unique_ptr<SceneNs::GameObject> live = SceneNs::ObjectFromJson(*object, nullptr);
     ASSERT_NE(live, nullptr);
 
     const std::vector<std::pair<const char*, const SceneNs::Component*>> targets{
@@ -129,9 +128,9 @@ TEST_P(ShippedScene, EveryTuningFieldNameIsReflected)
 
 TEST_P(ShippedScene, PlayerComponentCarriesEveryTuningField)
 {
-    SceneNs::SceneData scene;
+    nlohmann::json scene = SceneNs::MakeSceneJson();
     ASSERT_TRUE(LoadShippedScene(scene, GetParam()));
-    const SceneNs::ObjectData* object = FindPlayerObject(scene);
+    const nlohmann::json* object = FindPlayerObject(scene);
     ASSERT_NE(object, nullptr);
 
     const nlohmann::json* entry = SceneNs::FindComponentEntry(*object, "PlayerComponent");
@@ -145,12 +144,12 @@ TEST_P(ShippedScene, PlayerComponentCarriesEveryTuningField)
 
 TEST_P(ShippedScene, LoadedPlayerKeepsTheTunedSlamValues)
 {
-    SceneNs::SceneData scene;
+    nlohmann::json scene = SceneNs::MakeSceneJson();
     ASSERT_TRUE(LoadShippedScene(scene, GetParam()));
-    const SceneNs::ObjectData* object = FindPlayerObject(scene);
+    const nlohmann::json* object = FindPlayerObject(scene);
     ASSERT_NE(object, nullptr);
 
-    std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(*object, nullptr);
+    std::unique_ptr<SceneNs::GameObject> live = SceneNs::ObjectFromJson(*object, nullptr);
     ASSERT_NE(live, nullptr);
     PlayerNs::PlayerComponent* player = live->FindComponent<PlayerNs::PlayerComponent>();
     ASSERT_NE(player, nullptr);

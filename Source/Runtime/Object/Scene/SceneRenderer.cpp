@@ -254,7 +254,7 @@ namespace NS::Obj
         return resolved;
     }
 
-    void SceneRenderer::Render(CameraBrain& brain, CameraComponent& camera, const SceneEnvironment& environment)
+    void SceneRenderer::Render(CameraBrain& brain, CameraComponent& camera, std::string_view skyboxPath)
     {
         if (m_renderer == nullptr)
         {
@@ -264,23 +264,23 @@ namespace NS::Obj
         // ビュー列が空なら現描画先へ Brain の視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
         if (m_sceneViews.empty())
         {
-            RenderViewWithOverlays(brain, camera, environment, std::nullopt);
+            RenderViewWithOverlays(brain, camera, skyboxPath, std::nullopt);
             return;
         }
 
         for (const SceneView& view : m_sceneViews)
         {
             m_renderer->BeginSceneView(view.target);
-            RenderViewWithOverlays(brain, camera, environment, view.viewPose);
+            RenderViewWithOverlays(brain, camera, skyboxPath, view.viewPose);
         }
     }
 
     void SceneRenderer::RenderViewWithOverlays(CameraBrain& brain,
                                                CameraComponent& camera,
-                                               const SceneEnvironment& environment,
+                                               std::string_view skyboxPath,
                                                const std::optional<CameraPose>& viewOverride)
     {
-        const NS::Gfx::RenderContext ctx = RenderWorld(brain, camera, environment, viewOverride);
+        const NS::Gfx::RenderContext ctx = RenderWorld(brain, camera, skyboxPath, viewOverride);
 
 #if !defined(NS_SHIPPING)
         NS::Gfx::DebugDraw::Flush(*ctx.renderer, ctx.viewProjection);
@@ -291,7 +291,7 @@ namespace NS::Obj
 
     NS::Gfx::RenderContext SceneRenderer::RenderWorld(CameraBrain& brain,
                                                       CameraComponent& camera,
-                                                      const SceneEnvironment& environment,
+                                                      std::string_view skyboxPath,
                                                       const std::optional<CameraPose>& viewOverride)
     {
         // レンダラーの現在サイズから毎回取り直し、リサイズとビュー切替に追従する
@@ -338,7 +338,7 @@ namespace NS::Obj
         ctx.resolvedSettings = ResolveSceneSettings(m_renderer->Settings());
 
         DrawOpaque(ctx);
-        m_renderer->DrawSky(*viewCamera, environment.skyboxCubemapPath);
+        m_renderer->DrawSky(*viewCamera, skyboxPath);
         DrawTransparent(ctx);
         // ワールド空間の半透明物。半透明の後、デバッグ描画の前
         if (m_effects != nullptr)

@@ -6,7 +6,7 @@
 #include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Scene/Scene.h>
-#include <Runtime/Object/Scene/SceneData.h>
+#include <Runtime/Object/Scene/SceneJson.h>
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -17,12 +17,12 @@ namespace
     using NS::Obj::Scene;
 
     // 追従カメラを 1 体だけ持つレベル。追う相手が無いので固定の既定視点を返す。組み立ては AssetManager 不在でも通る
-    NS::Obj::SceneData MakeCameraLevel()
+    nlohmann::json MakeCameraLevel()
     {
-        NS::Obj::SceneData data;
-        NS::Obj::ObjectData object{};
-        object.components.push_back(NS::Obj::MakeComponentEntry("ThirdPersonFollow"));
-        data.objects.push_back(std::move(object));
+        nlohmann::json data = NS::Obj::MakeSceneJson();
+        nlohmann::json object = NS::Obj::MakeObjectJson();
+        NS::Obj::ObjectJsonComponents(object).push_back(NS::Obj::MakeComponentEntry("ThirdPersonFollow"));
+        NS::Obj::SceneJsonObjects(data).push_back(std::move(object));
         NS::Obj::EnsureUniqueObjectIds(data);
         return data;
     }
@@ -75,7 +75,7 @@ TEST(CameraHost, BrainRunsInTheLateUpdateBand)
     // vcam を供給する追従カメラの LateUpdate + 50 より後ろに居る
     EXPECT_EQ(scene.CameraBrain()->Priority(), NS::Obj::TickPriority::LateUpdate + 60);
 
-    scene.LoadFromData(MakeCameraLevel());
+    scene.LoadJson(MakeCameraLevel());
     NS::Obj::ThirdPersonFollow* camera = FindCamera(scene);
     ASSERT_NE(camera, nullptr);
     camera->SetActive(true);
@@ -94,7 +94,7 @@ TEST(CameraHost, SurvivesRebuildAndRebindsVirtualCameras)
     ASSERT_NE(brainBefore, nullptr);
     const NS::Obj::GameObject* hostBefore = brainBefore->Owner();
 
-    scene.LoadFromData(MakeCameraLevel());
+    scene.LoadJson(MakeCameraLevel());
     // データから組み直しても同じ host が残る
     EXPECT_EQ(scene.CameraBrain(), brainBefore);
     EXPECT_EQ(scene.CameraBrain()->Owner(), hostBefore);
@@ -106,7 +106,7 @@ TEST(CameraHost, SurvivesRebuildAndRebindsVirtualCameras)
     ASSERT_EQ(scene.CameraBrain()->ActiveVirtualCamera(), first);
 
     // 2 回目の組み直しで古い登録が外れ、新しい実体が選ばれる
-    scene.LoadFromData(MakeCameraLevel());
+    scene.LoadJson(MakeCameraLevel());
     NS::Obj::ThirdPersonFollow* second = FindCamera(scene);
     ASSERT_NE(second, nullptr);
     // アドレス比較はしない。解放直後の再確保が同じ番地を返すと、新しい実体でも偽で赤になる
@@ -122,7 +122,7 @@ TEST(CameraHost, SurvivesRebuildAndRebindsVirtualCameras)
 TEST(CameraHost, ShakeOffsetsFinalPose)
 {
     Scene scene;
-    scene.LoadFromData(MakeCameraLevel());
+    scene.LoadJson(MakeCameraLevel());
     NS::Obj::ThirdPersonFollow* camera = FindCamera(scene);
     ASSERT_NE(camera, nullptr);
     camera->SetActive(true);
@@ -144,7 +144,7 @@ TEST(CameraHost, ShakeOffsetsFinalPose)
 TEST(CameraHost, ShakeTranslatesViewWithoutTurning)
 {
     Scene scene;
-    scene.LoadFromData(MakeCameraLevel());
+    scene.LoadJson(MakeCameraLevel());
     NS::Obj::ThirdPersonFollow* camera = FindCamera(scene);
     ASSERT_NE(camera, nullptr);
     camera->SetActive(true);
@@ -171,7 +171,7 @@ TEST(CameraHost, ShakeTranslatesViewWithoutTurning)
 TEST(CameraHost, ShakeEndsWithinSteps)
 {
     Scene scene;
-    scene.LoadFromData(MakeCameraLevel());
+    scene.LoadJson(MakeCameraLevel());
     NS::Obj::ThirdPersonFollow* camera = FindCamera(scene);
     ASSERT_NE(camera, nullptr);
     camera->SetActive(true);
@@ -196,7 +196,7 @@ TEST(CameraHost, ShakeEndsWithinSteps)
 TEST(CameraHost, ShakeRejectsBrokenInput)
 {
     Scene scene;
-    scene.LoadFromData(MakeCameraLevel());
+    scene.LoadJson(MakeCameraLevel());
     NS::Obj::ThirdPersonFollow* camera = FindCamera(scene);
     ASSERT_NE(camera, nullptr);
     camera->SetActive(true);

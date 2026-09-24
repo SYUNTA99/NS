@@ -1,7 +1,7 @@
 #include "Game/Level/Goal.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/ObjectJson.h"
 
 #include <gtest/gtest.h>
 
@@ -10,19 +10,19 @@ namespace SceneNs = NS::Obj;
 
 namespace
 {
-    SceneNs::ObjectData MakeGoalObject()
+    nlohmann::json MakeGoalObject()
     {
-        SceneNs::ObjectData object{};
-        object.components.push_back(SceneNs::MakeComponentEntry("Goal"));
+        nlohmann::json object = SceneNs::MakeObjectJson();
+        SceneNs::ObjectJsonComponents(object).push_back(SceneNs::MakeComponentEntry("Goal"));
         return object;
     }
 } // namespace
 
 // 共有アクセサ FindComponentEntry / HasField / IsGoalObject の挙動 (発見 / 不在) を縛る
 // 編集とプレイ進行が同じアクセサを読むので、ここが種別判定の唯一の判定点になる
-TEST(SceneDataAccessors, FindComponentFieldAndGoalRule)
+TEST(SceneJsonAccessors, FindComponentFieldAndGoalRule)
 {
-    SceneNs::ObjectData goal = MakeGoalObject();
+    nlohmann::json goal = MakeGoalObject();
 
     const nlohmann::json* entry = SceneNs::FindComponentEntry(goal, "Goal");
     ASSERT_NE(entry, nullptr);
@@ -34,10 +34,10 @@ TEST(SceneDataAccessors, FindComponentFieldAndGoalRule)
     EXPECT_FALSE(SceneNs::HasField(box, "Missing")); // 欠損 field は無し
 
     EXPECT_TRUE(LevelNs::IsGoalObject(goal));
-    EXPECT_FALSE(LevelNs::IsGoalObject(SceneNs::ObjectData{})); // Goal 無し
+    EXPECT_FALSE(LevelNs::IsGoalObject(SceneNs::MakeObjectJson())); // Goal 無し
 }
 
-TEST(SceneDataComponents, ComponentEntryHoldsTypeAndFields)
+TEST(SceneJsonComponents, ComponentEntryHoldsTypeAndFields)
 {
     nlohmann::json entry = SceneNs::MakeComponentEntry("BoxCollider");
     SceneNs::SetField(entry, "半径", NS::Core::Vector3{0.5f, 0.5f, 0.5f});
@@ -49,14 +49,15 @@ TEST(SceneDataComponents, ComponentEntryHoldsTypeAndFields)
     EXPECT_TRUE(SceneNs::HasField(entry, "中心オフセット"));
 }
 
-TEST(SceneDataComponents, ObjectDataCopyIsDeep)
+// 配置物の JSON のコピーは components まで別物になる
+TEST(SceneJsonComponents, ObjectJsonCopyIsDeep)
 {
-    SceneNs::ObjectData a{};
-    a.components.push_back(SceneNs::MakeComponentEntry("Goal"));
+    nlohmann::json a = SceneNs::MakeObjectJson();
+    SceneNs::ObjectJsonComponents(a).push_back(SceneNs::MakeComponentEntry("Goal"));
 
-    SceneNs::ObjectData b = a;
-    b.components.clear();
+    nlohmann::json b = a;
+    SceneNs::ObjectJsonComponents(b).clear();
 
-    EXPECT_EQ(a.components.size(), 1u);
-    EXPECT_EQ(b.components.size(), 0u);
+    EXPECT_EQ(SceneNs::ObjectJsonComponents(a).size(), 1u);
+    EXPECT_EQ(SceneNs::ObjectJsonComponents(b).size(), 0u);
 }

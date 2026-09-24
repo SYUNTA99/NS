@@ -10,7 +10,7 @@
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/Scene/SceneJson.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -30,7 +30,7 @@ namespace NS::Editor
         const NS::Core::Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
         const NS::Core::Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
 
-        // 添字は CaptureObjectData の並びへそのまま渡る。絞り方を変えると編集操作が隣を掴む
+        // 添字は ObjectToJson の並びへそのまま渡る。絞り方を変えると編集操作が隣を掴む
         std::vector<NS::Obj::Component*> ReflectedComponents(NS::Obj::GameObject& go)
         {
             std::vector<NS::Obj::Component*> result;

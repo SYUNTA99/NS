@@ -22,11 +22,11 @@ namespace SceneNs = NS::Obj;
 namespace
 {
     // 接触クリアの印だけを持つゴールを組む
-    SceneNs::ObjectData MakeGoal(float x, float y, float z)
+    nlohmann::json MakeGoal(float x, float y, float z)
     {
-        SceneNs::ObjectData object;
+        nlohmann::json object = SceneNs::MakeObjectJson();
         SceneNs::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
-        object.components.push_back(SceneNs::MakeComponentEntry("Goal"));
+        SceneNs::ObjectJsonComponents(object).push_back(SceneNs::MakeComponentEntry("Goal"));
         return object;
     }
 
@@ -56,11 +56,11 @@ namespace
 TEST(PlayerResponses, RestartRunPlacesPlayerAtBaseline)
 {
     SceneNs::Scene scene;
-    SceneNs::SceneData live;
-    live.objects.push_back(MakePlayerObject(NS::Core::Vector3{1.0f, 1.0f, 1.0f}, NS::Core::Quaternion{}));
-    scene.LoadFromData(std::move(live));
-    SceneNs::SceneData baseline;
-    baseline.objects.push_back(MakePlayerObject(NS::Core::Vector3{7.0f, 2.0f, -4.0f}, NS::Core::Quaternion{}));
+    nlohmann::json live = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(live).push_back(MakePlayerObject(NS::Core::Vector3{1.0f, 1.0f, 1.0f}, NS::Core::Quaternion{}));
+    scene.LoadJson(std::move(live));
+    nlohmann::json baseline = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(baseline).push_back(MakePlayerObject(NS::Core::Vector3{7.0f, 2.0f, -4.0f}, NS::Core::Quaternion{}));
     scene.SetPlayBaselineForTest(std::move(baseline));
 
     Player* player = FindPlayer(scene.Objects());
@@ -76,10 +76,10 @@ TEST(PlayerResponses, RestartRunPlacesPlayerAtBaseline)
 TEST(PlayerResponses, FallIntoKillZoneRestartsSameTick)
 {
     SceneNs::Scene scene;
-    SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(LevelNs::MakeKillZoneObject());
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(data).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(data).push_back(LevelNs::MakeKillZoneObject());
+    scene.LoadJson(std::move(data));
     (void)scene.BeginPlayBaseline();
 
     Player* player = FindPlayer(scene.Objects());
@@ -100,11 +100,11 @@ TEST(PlayerResponses, FallIntoKillZoneRestartsSameTick)
 TEST(PlayerResponses, GoalContactStartsClearFadeSameTick)
 {
     SceneNs::Scene scene;
-    SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    nlohmann::json data = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(data).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     // プレイヤー実体と同じ位置にゴールを置くと中心距離 0 で必ず接触する
-    data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
-    scene.LoadFromData(std::move(data));
+    SceneNs::SceneJsonObjects(data).push_back(MakeGoal(0.0f, 0.0f, 0.0f));
+    scene.LoadJson(std::move(data));
     (void)scene.BeginPlayBaseline();
 
     scene.OnUpdate();
@@ -118,10 +118,10 @@ TEST(PlayerResponses, GoalContactStartsClearFadeSameTick)
 TEST(PlayerResponses, PausedTickAdvancesNothing)
 {
     SceneNs::Scene scene;
-    SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(data).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(data).push_back(MakeGoal(0.0f, 0.0f, 0.0f));
+    scene.LoadJson(std::move(data));
     (void)scene.BeginPlayBaseline();
 
     scene.SetSimulationPaused(true);
@@ -134,10 +134,10 @@ TEST(PlayerResponses, PausedTickAdvancesNothing)
 TEST(PlayerResponses, StepFrameAdvancesExactlyOneTick)
 {
     SceneNs::Scene scene;
-    SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(data).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(data).push_back(MakeGoal(0.0f, 0.0f, 0.0f));
+    scene.LoadJson(std::move(data));
     (void)scene.BeginPlayBaseline();
 
     // コマ送り 1 回でゴールの暗転が始まる
@@ -161,10 +161,10 @@ TEST(PlayerResponses, StepFrameAdvancesExactlyOneTick)
 TEST(PlayerResponses, DisabledSimulationSkipsObjectUpdates)
 {
     SceneNs::Scene scene;
-    SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(data).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(data).push_back(MakeGoal(0.0f, 0.0f, 0.0f));
+    scene.LoadJson(std::move(data));
     (void)scene.BeginPlayBaseline();
 
     // 編集モード相当。component の更新が走らないのでゴールに重なっていても何も起きない
@@ -181,10 +181,10 @@ TEST(PlayerResponses, DisabledSimulationSkipsObjectUpdates)
 TEST(PlayerResponses, ClearFadesOutRestartsAtBlackThenFadesIn)
 {
     SceneNs::Scene scene;
-    SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(data).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(data).push_back(MakeGoal(0.0f, 0.0f, 0.0f));
+    scene.LoadJson(std::move(data));
     (void)scene.BeginPlayBaseline();
 
     // 体力を減らしておくと、全回復が「全黒でリスタートが走った」証拠になる

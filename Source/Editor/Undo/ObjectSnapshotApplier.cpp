@@ -7,46 +7,35 @@
 
 namespace NS::Editor
 {
-    std::optional<NS::Obj::ObjectData> ObjectSnapshotApplier::CaptureObject(std::uint32_t objectId) const
+    std::optional<nlohmann::json> ObjectSnapshotApplier::CaptureObject(std::uint32_t objectId) const
     {
         if (m_scene == nullptr)
             return std::nullopt;
 
-        for (const NS::Obj::GameObject* obj : m_scene->Objects())
-        {
-            if (obj->Id() != objectId)
-                continue;
-            // undo は編集値ごと戻すため、全 component 値を忠実に写す
-            NS::Obj::ObjectData od = NS::Obj::CaptureObjectData(*obj);
-            od.objectId = objectId;
-            return od;
-        }
-        return std::nullopt;
+        const NS::Obj::GameObject* obj = m_scene->Objects().FindByObjectId(objectId);
+        if (obj == nullptr)
+            return std::nullopt;
+        // undo は編集値ごと戻すため、配置物が自分を全 component 値まで忠実に書き出す
+        return NS::Obj::ObjectToJson(*obj);
     }
 
-    void ObjectSnapshotApplier::ApplyObjectSnapshot(std::uint32_t objectId,
-                                                    const std::optional<NS::Obj::ObjectData>& desired)
+    void ObjectSnapshotApplier::ApplyObjectSnapshot(std::uint32_t objectId, const std::optional<nlohmann::json>& desired)
     {
         if (m_scene == nullptr)
             return;
 
-        // 現 live をその場限りの作業データへ忠実に写し、対象 1 体だけ差し替え/新規/除去して全体を組み直す
-        NS::Obj::SceneData working = m_scene->CaptureLiveToSceneData();
-        const std::size_t index = NS::Obj::FindObjectIndexById(working, objectId);
+        // 対象 1 体だけを作り直す。世界ごと組み直すと、他の配置物の実行時の状態まで最初へ戻る
         if (desired)
         {
-            NS::Obj::ObjectData entry = *desired;
-            entry.objectId = objectId;
-            if (index != NS::Obj::k_NoObjectIndex)
-                working.objects[index] = std::move(entry);
-            else
-                working.objects.push_back(std::move(entry));
+            nlohmann::json entry = *desired;
+            NS::Obj::SetObjectJsonId(entry, objectId);
+            (void)m_scene->ReplaceFromJson(entry);
         }
-        else if (index != NS::Obj::k_NoObjectIndex)
+        else
         {
-            working.objects.erase(working.objects.begin() + static_cast<std::ptrdiff_t>(index));
+            m_scene->DestroyObject(objectId);
         }
-        // 足したばかりの component の採番も、環境値の取込も、LoadFromData が中で済ませる
-        m_scene->LoadFromData(std::move(working));
+        // 作り直した 1 体の当たりを張り直し、参照を引き直す側へ知らせる
+        m_scene->SyncPhysics();
     }
 } // namespace NS::Editor

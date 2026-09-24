@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/GameObject.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/ObjectJson.h"
 
 #include <algorithm>
 #include <cassert>
@@ -56,17 +56,18 @@ namespace NS::Obj
         return nullptr;
     }
 
-    std::unique_ptr<GameObject> CreateRegisteredObject(const ObjectData& object)
+    std::unique_ptr<GameObject> CreateRegisteredObject(const nlohmann::json& object)
     {
-        // className が正。一致登録があればその型で作る
-        if (!object.className.empty())
+        // class が正。一致登録があればその型で作る
+        const std::string_view className = ObjectJsonClass(object);
+        if (!className.empty())
         {
-            const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(object.className);
+            const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
             if (entry != nullptr && entry->create != nullptr)
             {
                 return entry->create();
             }
-            NS_LOG_WARN(Scene, "CreateRegisteredObject: 未登録クラス {} を素の GameObject で組む", object.className);
+            NS_LOG_WARN(Scene, "CreateRegisteredObject: 未登録クラス {} を素の GameObject で組む", className);
         }
         return std::make_unique<GameObject>();
     }

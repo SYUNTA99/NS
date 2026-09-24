@@ -13,8 +13,7 @@
 
 namespace NS::Obj
 {
-    // 配置物データに書かれたコンポーネント 1 件 (型名と欄) を読み書きする
-    struct ObjectData;
+    // 配置物の JSON に書かれたコンポーネント 1 件 (型名と欄) を読み書きする
 
     //! {"type": typeName, "fields": fields} のコンポーネント 1 件を作る。fields 省略は空 object
     [[nodiscard]] nlohmann::json MakeComponentEntry(std::string_view typeName,
@@ -47,9 +46,9 @@ namespace NS::Obj
 
     //! object.components から型名一致の最初の 1 件を返す。無ければ nullptr
     //! component / field 走査の唯一の経路。各利用側が同じループを手書きするのを防ぐ
-    [[nodiscard]] const nlohmann::json* FindComponentEntry(const ObjectData& object,
+    [[nodiscard]] const nlohmann::json* FindComponentEntry(const nlohmann::json& object,
                                                            std::string_view typeName) noexcept;
-    [[nodiscard]] nlohmann::json* FindComponentEntry(ObjectData& object, std::string_view typeName) noexcept;
+    [[nodiscard]] nlohmann::json* FindComponentEntry(nlohmann::json& object, std::string_view typeName) noexcept;
 
     //! entry の fields から値を型付きで読む。不在・型不一致は fallback
     [[nodiscard]] float FieldFloat(const nlohmann::json& entry, std::string_view name, float fallback) noexcept;

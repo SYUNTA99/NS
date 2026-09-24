@@ -6,7 +6,6 @@
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Scene/Scene.h>
-#include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Object/Scene/SceneJson.h>
 #include <cmath>
 #include <gtest/gtest.h>
@@ -54,12 +53,12 @@ TEST(PlayBaselineSave, FrozenBaselineIgnoresPlayMovement)
 {
     NS::Obj::Scene scene;
 
-    SceneNs::SceneData level;
-    SceneNs::ObjectData cube = NS::Editor::MakeCellObject(0, 0, 0);
+    nlohmann::json level = SceneNs::MakeSceneJson();
+    nlohmann::json cube = NS::Editor::MakeCellObject(0, 0, 0);
     SceneNs::SetObjectPosition(cube, NS::Core::Vector3{1.0f, 2.0f, 3.0f});
-    level.objects.push_back(std::move(cube));
+    SceneNs::SceneJsonObjects(level).push_back(std::move(cube));
     SceneNs::EnsureUniqueObjectIds(level);
-    scene.LoadFromData(std::move(level));
+    scene.LoadJson(std::move(level));
 
     // プレイ突入時の姿を凍結する
     scene.BeginPlayBaseline();
@@ -69,19 +68,19 @@ TEST(PlayBaselineSave, FrozenBaselineIgnoresPlayMovement)
     scene.Objects().ObjectAt(0)->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
 
     // 控えは突入時の位置を保ち、動かした後の位置は映らない
-    const SceneNs::SceneData& baseline = scene.PlayBaseline();
-    ASSERT_EQ(baseline.objects.size(), 1u);
-    const NS::Core::Vector3 frozen = SceneNs::ObjectPosition(baseline.objects[0]);
+    const nlohmann::json& baseline = scene.PlayBaseline();
+    ASSERT_EQ(SceneNs::SceneJsonObjects(baseline).size(), 1u);
+    const NS::Core::Vector3 frozen = SceneNs::ObjectPosition(SceneNs::SceneJsonObjects(baseline)[0]);
     EXPECT_FLOAT_EQ(frozen.x, 1.0f);
     EXPECT_FLOAT_EQ(frozen.y, 2.0f);
     EXPECT_FLOAT_EQ(frozen.z, 3.0f);
 
     // 保存経路の直列化も凍結の姿を書く
     const std::string json = SceneNs::SerializeSceneToJson(baseline);
-    SceneNs::SceneData reloaded;
+    nlohmann::json reloaded = SceneNs::MakeSceneJson();
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(reloaded, json));
-    ASSERT_EQ(reloaded.objects.size(), 1u);
-    const NS::Core::Vector3 saved = SceneNs::ObjectPosition(reloaded.objects[0]);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(reloaded).size(), 1u);
+    const NS::Core::Vector3 saved = SceneNs::ObjectPosition(SceneNs::SceneJsonObjects(reloaded)[0]);
     EXPECT_FLOAT_EQ(saved.x, 1.0f);
     EXPECT_FLOAT_EQ(saved.y, 2.0f);
     EXPECT_FLOAT_EQ(saved.z, 3.0f);
@@ -91,14 +90,14 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
 {
     NS::Obj::Scene scene;
 
-    SceneNs::SceneData level;
-    SceneNs::ObjectData rock;
+    nlohmann::json level = SceneNs::MakeSceneJson();
+    nlohmann::json rock = SceneNs::MakeObjectJson();
     SceneNs::SetObjectPosition(rock, NS::Core::Vector3{1.0f, 2.0f, 3.0f});
-    rock.components.push_back(SceneNs::MakeComponentEntry("LaunchedBody"));
-    level.objects.push_back(std::move(rock));
+    SceneNs::ObjectJsonComponents(rock).push_back(SceneNs::MakeComponentEntry("LaunchedBody"));
+    SceneNs::SceneJsonObjects(level).push_back(std::move(rock));
     SceneNs::EnsureUniqueObjectIds(level);
-    const std::uint32_t rockId = level.objects[0].objectId;
-    scene.LoadFromData(std::move(level));
+    const std::uint32_t rockId = SceneNs::ObjectJsonId(SceneNs::SceneJsonObjects(level)[0]);
+    scene.LoadJson(std::move(level));
     scene.BeginPlayBaseline();
 
     NS::Obj::GameObject* live = scene.Objects().FindObject(NS::Obj::ObjectRef{rockId});
@@ -110,14 +109,14 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     SetFloatField(*launched, "回転の強さ", 0.9f);
     scene.WritePlayBaselineField(*launched, "回転の強さ");
 
-    SceneNs::SceneData copy = scene.PlayBaseline();
-    ASSERT_EQ(copy.objects.size(), 1u);
-    const NS::Core::Vector3 frozen = SceneNs::ObjectPosition(copy.objects[0]);
+    nlohmann::json copy = scene.PlayBaseline();
+    ASSERT_EQ(SceneNs::SceneJsonObjects(copy).size(), 1u);
+    const NS::Core::Vector3 frozen = SceneNs::ObjectPosition(SceneNs::SceneJsonObjects(copy)[0]);
     EXPECT_FLOAT_EQ(frozen.x, 1.0f);
     EXPECT_FLOAT_EQ(frozen.y, 2.0f);
     EXPECT_FLOAT_EQ(frozen.z, 3.0f);
 
-    scene.LoadFromData(std::move(copy));
+    scene.LoadJson(std::move(copy));
     NS::Obj::GameObject* rebuilt = scene.Objects().FindObject(NS::Obj::ObjectRef{rockId});
     ASSERT_NE(rebuilt, nullptr);
     LevelNs::LaunchedBody* rebuiltLaunched = rebuilt->FindComponent<LevelNs::LaunchedBody>();
@@ -130,11 +129,11 @@ TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)
 {
     NS::Obj::Scene scene;
 
-    SceneNs::SceneData level;
-    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    nlohmann::json level = SceneNs::MakeSceneJson();
+    SceneNs::SceneJsonObjects(level).push_back(NS::Editor::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(level);
-    const std::uint32_t blockId = level.objects[0].objectId;
-    scene.LoadFromData(std::move(level));
+    const std::uint32_t blockId = SceneNs::ObjectJsonId(SceneNs::SceneJsonObjects(level)[0]);
+    scene.LoadJson(std::move(level));
     scene.BeginPlayBaseline();
 
     NS::Obj::GameObject* live = scene.Objects().FindObject(NS::Obj::ObjectRef{blockId});
@@ -147,8 +146,8 @@ TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)
     live->Root().SetRotation(edited);
     scene.WritePlayBaselineField(*transform, SceneNs::k_RotationFieldName);
 
-    SceneNs::SceneData copy = scene.PlayBaseline();
-    scene.LoadFromData(std::move(copy));
+    nlohmann::json copy = scene.PlayBaseline();
+    scene.LoadJson(std::move(copy));
     NS::Obj::GameObject* rebuilt = scene.Objects().FindObject(NS::Obj::ObjectRef{blockId});
     ASSERT_NE(rebuilt, nullptr);
     const NS::Core::Quaternion restored = rebuilt->Root().Rotation();

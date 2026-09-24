@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Runtime/Object/GameObject.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/Scene/SceneJson.h"
 
 namespace NS::Obj
 {
@@ -9,7 +9,7 @@ namespace NS::Obj
 } // namespace NS::Obj
 
 //! @brief プレイヤーキャラクタ。Mesh / Movement / Input / Health / Shadow の既定構成をコードで組む
-//! @details 値と追加の component はファクトリがプレイヤーの ObjectData から写す
+//! @details 値と追加の component はファクトリがプレイヤーの JSON から写す
 //! 移動やつかみ等の能力 API はここに置き、実装は各 Component が持つ
 //! KillZone 等のルール配置物は FindPlayer で得た Player* へ能力を呼ぶ。プレイヤーはルールを知らない
 class Player : public NS::Obj::GameObject
@@ -46,20 +46,19 @@ public:
 [[nodiscard]] Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept;
 
 //! プレイヤーの配置物か。live の FindPlayer と同じく型名で照合する
-[[nodiscard]] bool IsPlayerObject(const NS::Obj::ObjectData& object) noexcept;
+[[nodiscard]] bool IsPlayerObject(const nlohmann::json& object) noexcept;
 
-//! シーンデータからプレイヤーを探す。最初の 1 件の添字、無ければ k_NoObjectIndex
+//! シーンの JSON 文書からプレイヤーを探す。最初の 1 件の添字、無ければ k_NoObjectIndex
 //! 複数居ても先頭を正とする。2 体以上の警告は EnsurePlayerObject を通した時だけ出る
-[[nodiscard]] std::size_t FindPlayerObjectIndex(const NS::Obj::SceneData& level) noexcept;
+[[nodiscard]] std::size_t FindPlayerObjectIndex(const nlohmann::json& scene) noexcept;
 
-//! 指定の位置と向きでプレイヤーの ObjectData を作る。components は型名だけ持ち、値はコード既定を使う
+//! 指定の位置と向きでプレイヤーのひな形の JSON を作る。components は型名だけ持ち、値はコード既定を使う
 //! scale は capsule 当たり 0.4/0.9/0.4 に cube mesh の見た目を合わせる値
-[[nodiscard]] NS::Obj::ObjectData MakePlayerObject(const NS::Core::Vector3& position,
-                                                      const NS::Core::Quaternion& rotation);
+[[nodiscard]] nlohmann::json MakePlayerObject(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation);
 
 //! プレイヤーの永続 id。居なければ k_NoObjectId。追従カメラの追従先を結ぶのに使う
-[[nodiscard]] std::uint32_t PlayerObjectId(const NS::Obj::SceneData& level) noexcept;
+[[nodiscard]] std::uint32_t PlayerObjectId(const nlohmann::json& scene) noexcept;
 
 //! プレイヤーが 1 体も居なければ既定構成で足し、永続 id まで振る。2 体以上なら警告して先頭を正とする
 //! @retresult 足したなら true
-[[nodiscard]] bool EnsurePlayerObject(NS::Obj::SceneData& level);
+[[nodiscard]] bool EnsurePlayerObject(nlohmann::json& scene);

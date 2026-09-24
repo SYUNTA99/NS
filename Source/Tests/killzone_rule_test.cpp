@@ -14,11 +14,11 @@ namespace SceneNs = NS::Obj;
 TEST(KillZoneTest, KillsPlayerInsideVolume)
 {
     SceneNs::Scene scene;
-    SceneNs::SceneData data;
+    nlohmann::json data = SceneNs::MakeSceneJson();
     // 体積の中心と同じ位置に置けば必ず重なる
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{0.0f, -55.0f, 0.0f}, NS::Core::Quaternion{}));
-    data.objects.push_back(LevelNs::MakeKillZoneObject());
-    scene.LoadFromData(std::move(data));
+    SceneNs::SceneJsonObjects(data).push_back(MakePlayerObject(NS::Core::Vector3{0.0f, -55.0f, 0.0f}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(data).push_back(LevelNs::MakeKillZoneObject());
+    scene.LoadJson(std::move(data));
 
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
@@ -34,11 +34,11 @@ TEST(KillZoneTest, KillsPlayerInsideVolume)
 TEST(KillZoneTest, DoesNotKillPlayerAboveVolume)
 {
     SceneNs::Scene scene;
-    SceneNs::SceneData data;
+    nlohmann::json data = SceneNs::MakeSceneJson();
     // 上面 y=-50 より十分上に居れば重ならない
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(LevelNs::MakeKillZoneObject());
-    scene.LoadFromData(std::move(data));
+    SceneNs::SceneJsonObjects(data).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    SceneNs::SceneJsonObjects(data).push_back(LevelNs::MakeKillZoneObject());
+    scene.LoadJson(std::move(data));
 
     scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
 

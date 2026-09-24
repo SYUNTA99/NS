@@ -4,7 +4,7 @@
 #include "Runtime/Graphics/RenderSettings.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/ObjectList.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Object/Scene/SceneRenderer.h"
 #include "Runtime/Physics/PhysicsScene.h"
 
@@ -32,14 +32,14 @@ namespace NS::Obj
     class IRenderable;
     class OverlayRenderer;
 
-    //! @brief SceneData から組んだ ObjectList を駆動するシーン
-    //! @details ObjectList と環境値を所有し、SceneData の読み書き・プレイの凍結・標準のシーン描画パスを受け持つ
+    //! @brief シーンの JSON 文書から組んだ ObjectList を駆動するシーン
+    //! @details ObjectList と skybox を所有し、JSON 文書への書き出しと読み込み・プレイの凍結・標準のシーン描画パスを受け持つ
     //! Application から OnStart / OnUpdate / OnRender / OnShutdown を順に呼び戻される
     //! 固定ステップの更新と可変フレームの描画で駆動し、IRenderable と OverlayRenderer の自己登録先も兼ねる
-    //! live な GameObject/Component が唯一の表現で、SceneData は境界でだけ使う一時データ
+    //! live な GameObject/Component が唯一の表現で、JSON は実体でない姿 (ファイル・凍結・undo の控え) にだけ使う
     //! 配置物は TypeRegistry と ResolveAssets で自力で組む。組み直し後の参照解決だけ派生が OnObjectsRebuilt で埋める
     //! 寿命は SceneManager が unique_ptr で所有する
-    //! 依存: ObjectList / SceneData / ObjectBuilder / TypeRegistry
+    //! 依存: ObjectList / SceneJson / ObjectBuilder / TypeRegistry
     class Scene : public NS::Core::NonCopyable
     {
     public:
@@ -94,28 +94,34 @@ namespace NS::Obj
         //! SceneRenderer が所有する EffectScene。SetRenderer より前は nullptr
         [[nodiscard]] NS::Gfx::EffectScene* Effects() noexcept { return m_sceneRenderer.Effects(); }
 
-        //! @brief シーンの見た目を確定する環境値。実体側が唯一の出所で、保存は保存時にここから写す
-        [[nodiscard]] SceneEnvironment& Environment() noexcept { return m_environment; }
-        [[nodiscard]] const SceneEnvironment& Environment() const noexcept { return m_environment; }
+        //! @brief skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空なら skybox を描かない
+        //! @details 描画が毎フレーム読む。保存は ToJson がここから写す
+        [[nodiscard]] const std::string& SkyboxPath() const noexcept { return m_skyboxPath; }
+        void SetSkyboxPath(std::string path) noexcept { m_skyboxPath = std::move(path); }
 
-        //! @brief シーンデータから組んだ配置物の一覧
+        //! @brief シーンの配置物の一覧
         [[nodiscard]] NS::Obj::ObjectList& Objects() noexcept { return m_objects; }
         [[nodiscard]] const NS::Obj::ObjectList& Objects() const noexcept { return m_objects; }
 
-        //! @brief 読み込んだシーンデータを取り込み配置物を組み直す。データは取込後に用済みになる一時データ
-        void LoadFromData(SceneData&& data);
+        //! @brief シーンの JSON 文書を取り込み配置物を組み直す。文書は取込後に用済みになる
+        //! @details 組む前に id と名前を一意に揃える
+        void LoadJson(nlohmann::json scene);
+
+        //! @brief シーンが自分を JSON 文書へ書き出す。保存と凍結の出所を実体に一本化する
+        //! @details 一時オブジェクトを除く全配置物を、全 component 値まで忠実に写す
+        [[nodiscard]] nlohmann::json ToJson() const;
 
         //! @brief 編集で動いた live の当たりを張り直し、OnObjectsRebuilt を呼ぶ。object は作り直さない
         void SyncPhysics();
 
-        //! @brief プレイ突入時に live を凍結して返す。プレイ規則の判定と編集復帰の姿はこの凍結を読む
-        const SceneData& BeginPlayBaseline();
+        //! @brief プレイ突入時に live を JSON 文書へ凍結して返す。プレイ規則の判定と編集復帰の姿はこの凍結を読む
+        const nlohmann::json& BeginPlayBaseline();
 
-        //! @brief 直近の凍結スナップショット。プレイ中に限り意味を持つ
-        [[nodiscard]] const SceneData& PlayBaseline() const noexcept { return m_playBaseline; }
+        //! @brief 直近の凍結。プレイ中に限り意味を持つ
+        [[nodiscard]] const nlohmann::json& PlayBaseline() const noexcept { return m_playBaseline; }
 
-        //! @brief テスト用に凍結スナップショットを外から与える。以降の BeginPlayBaseline は捕捉せず据え置く
-        void SetPlayBaselineForTest(SceneData data);
+        //! @brief テスト用に凍結を外から与える。以降の BeginPlayBaseline は捕捉せず据え置く
+        void SetPlayBaselineForTest(nlohmann::json scene);
 
         //! @brief live component の欄 1 つを凍結スナップショットの同じ欄へ写す
         //! @details プレイ中の手編集を、凍結から組み直す編集復帰の後へ残すための口
@@ -160,14 +166,19 @@ namespace NS::Obj
         //! @details 一時オブジェクトと違い保存に写り、データからの組み直しで他の配置物と一緒に消える
         GameObject* SpawnObject(std::unique_ptr<GameObject> obj, std::string name);
 
+        //! @brief 配置物の JSON から 1 体を組んで入れる。id と名前と component の id は JSON のまま使う
+        //! @details 名前は既存と重なれば番号を付ける。親の id があれば親へぶら下げ、資産を引き当ててから開始する
+        //! undo の作り直しと複製が通る。当たりは呼出側が SyncPhysics で張り直す
+        GameObject* SpawnFromJson(const nlohmann::json& object);
+
+        //! @brief 同じ id の配置物を JSON の姿へ作り直す。並びの位置と子の親子は保つ。居なければ SpawnFromJson と同じ
+        //! @details component の増減も含めて姿を丸ごと入れ替える。当たりは呼出側が SyncPhysics で張り直す
+        GameObject* ReplaceFromJson(const nlohmann::json& object);
+
         //! @brief 配置物を 1 体消す。居なければ何もしない
         //! @details 当たり箱も揃うので、走っている世界を止めずに消せる
         //! 子は根として残る。まとめて消したい呼び出し側が並びを決めて 1 体ずつ呼ぶ
         void DestroyObject(std::uint32_t objectId);
-
-        //! @brief live な配置物から SceneData を作る。保存の出所を実体に一本化するための捕捉
-        //! @details リフレクションで全 component の値を忠実に写す
-        [[nodiscard]] SceneData CaptureLiveToSceneData() const;
 
         //! 補間スナップショット・帯の更新・LateUpdate 帯の手前で物理の 1 フレーム・最後にエフェクトの 1 フレーム
         //! 世界の駆動はここが持つ
@@ -198,8 +209,8 @@ namespace NS::Obj
         //! @brief 配置物の組み直し・当たりの張り直しの後に呼ばれる。派生は live への参照をここで取り直す
         virtual void OnObjectsRebuilt() {}
 
-        //! @brief 渡されたシーンデータから配置物と当たりの body を組み直す。データはその場限りの一時データ
-        void RebuildObjectsFrom(const SceneData& data);
+        //! @brief 渡されたシーンの JSON 文書から配置物と当たりの body を組み直す
+        void RebuildObjectsFrom(const nlohmann::json& scene);
 
     private:
         //! 配置物の変化を一時オブジェクトへ知らせる。組み直しと当たりの張り直しの後に呼ぶ
@@ -216,11 +227,11 @@ namespace NS::Obj
 
         NS::Obj::ObjectList m_objects;           // 配置物の一覧
         NS::Obj::CameraBrain* m_brain = nullptr; // 常駐するカメラ一時オブジェクトの brain。所有は m_objects、これは控え
-        SceneEnvironment m_environment;          // シーンの環境値。実体側の唯一の出所
+        std::string m_skyboxPath;                // skybox のパス。実体側の唯一の出所
 
         AssetManager* m_assets = nullptr; // AssetManager、非所有。未設定なら参照の実体化を跳ばす
 
-        SceneData m_playBaseline;            // プレイ突入時の凍結スナップショット
+        nlohmann::json m_playBaseline = MakeSceneJson(); // プレイ突入時の凍結
         bool m_playBaselineInjected = false; // テスト注入の凍結を捕捉で潰さないための印
 
         bool m_simulationEnabled = true;         // 世界を回すか。エディタの編集モードだけが下ろす

@@ -1,7 +1,7 @@
 ﻿#include "Runtime/Object/Scene/SceneManager.h"
 
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/Scene/SceneJson.h"
 
 #include <utility>
 
@@ -25,7 +25,7 @@ namespace NS::Obj
         m_renderer = renderer;
     }
 
-    Scene& SceneManager::LoadScene(SceneData&& data)
+    Scene& SceneManager::LoadScene(nlohmann::json&& scene)
     {
         UnloadScene();
 
@@ -34,7 +34,7 @@ namespace NS::Obj
         m_current->SetRenderer(m_renderer);
 
         m_current->OnStart();
-        m_current->LoadFromData(std::move(data));
+        m_current->LoadJson(std::move(scene));
         return *m_current;
     }
 

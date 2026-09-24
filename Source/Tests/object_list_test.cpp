@@ -11,10 +11,12 @@
 #include <Runtime/Object/Components/ThirdPersonFollow.h>
 #include <Runtime/Object/Components/VirtualCamera.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/ObjectJson.h>
 #include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Reflection/ObjectRef.h>
 #include <Runtime/Object/Scene/Scene.h>
+#include <Runtime/Object/Scene/SceneJson.h>
 #include <Runtime/Physics/MeshCollision.h>
 #include <Runtime/Physics/PhysicsScene.h>
 #include <algorithm>
@@ -25,18 +27,16 @@
 #include <utility>
 #include <vector>
 
-using NS::Obj::SceneData;
 using NS::Obj::ObjectList;
 
 namespace
 {
     // 追従先の参照だけを持つ追従カメラの配置物を作る
-    [[nodiscard]] NS::Obj::ObjectData MakeFollowCameraObject(std::uint32_t targetObjectId)
+    [[nodiscard]] nlohmann::json MakeFollowCameraObject(std::uint32_t targetObjectId)
     {
         nlohmann::json follow = NS::Obj::MakeComponentEntry("ThirdPersonFollow");
         NS::Obj::SetField(follow, "追従対象", NS::Obj::ObjectRef{targetObjectId});
-        NS::Obj::ObjectData object{};
-        object.components = nlohmann::json::array({std::move(follow)});
+        nlohmann::json object = NS::Obj::MakeObjectJson(nlohmann::json::array({std::move(follow)}));
         NS::Obj::EnsureTransformComponent(object);
         return object;
     }
@@ -49,10 +49,10 @@ namespace
         return result;
     }
 
-    // 本番 Scene と同じ組み方: BuildSceneObject の汎用構築を ObjectList へ渡す
-    NS::Obj::ObjectFactoryFn MakeFactory(NS::Obj::AssetManager& assets, const SceneData&)
+    // 本番 Scene と同じ組み方: ObjectFromJson の汎用構築を ObjectList へ渡す
+    NS::Obj::ObjectFactoryFn MakeFactory(NS::Obj::AssetManager& assets, const nlohmann::json&)
     {
-        return [&assets](const NS::Obj::ObjectData& entry) { return NS::Obj::BuildSceneObject(entry, &assets); };
+        return [&assets](const nlohmann::json& entry) { return NS::Obj::ObjectFromJson(entry, &assets); };
     }
 
     // 帯の横断更新の検証用。OnUpdate が呼ばれた順を共有の並びへ書き足す
@@ -105,12 +105,13 @@ TEST(ObjectListTest, InitialStateIsEmpty)
 
 TEST(ObjectListTest, BuildFollowsWrittenSequence)
 {
-    SceneData level;
-    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
-    level.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
+    nlohmann::json level = NS::Obj::MakeSceneJson();
+    nlohmann::json& levelObjects = NS::Obj::SceneJsonObjects(level);
+    levelObjects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    levelObjects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
-    const std::uint32_t first = level.objects[0].objectId;
-    const std::uint32_t second = level.objects[1].objectId;
+    const std::uint32_t first = NS::Obj::ObjectJsonId(levelObjects[0]);
+    const std::uint32_t second = NS::Obj::ObjectJsonId(levelObjects[1]);
 
     NS::Obj::Scene scene;
     NS::Obj::AssetManager assets{std::string{"."}};
@@ -124,10 +125,11 @@ TEST(ObjectListTest, BuildFollowsWrittenSequence)
 
 TEST(ObjectListTest, InactiveObjectHasNoCollision)
 {
-    SceneData level;
-    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    nlohmann::json level = NS::Obj::MakeSceneJson();
+    nlohmann::json& levelObjects = NS::Obj::SceneJsonObjects(level);
+    levelObjects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
-    level.objects[0].active = false;
+    NS::Obj::SetObjectJsonActive(levelObjects[0], false);
 
     NS::Obj::Scene scene;
     NS::Obj::AssetManager assets{std::string{"."}};
@@ -144,12 +146,12 @@ TEST(ObjectListTest, InactiveObjectHasNoCollision)
 
 TEST(ObjectListTest, TriggerBoxHasNoSolidCollision)
 {
-    SceneData level;
-    NS::Obj::ObjectData object{};
+    nlohmann::json level = NS::Obj::MakeSceneJson();
+    nlohmann::json& levelObjects = NS::Obj::SceneJsonObjects(level);
     nlohmann::json box = NS::Obj::MakeComponentEntry("BoxCollider");
     NS::Obj::SetField(box, "トリガー", true);
-    object.components = nlohmann::json::array({std::move(box)});
-    level.objects.push_back(std::move(object));
+    nlohmann::json object = NS::Obj::MakeObjectJson(nlohmann::json::array({std::move(box)}));
+    levelObjects.push_back(std::move(object));
     NS::Obj::EnsureUniqueObjectIds(level);
 
     NS::Obj::Scene scene;
@@ -167,8 +169,9 @@ TEST(ObjectListTest, TriggerBoxHasNoSolidCollision)
 // 古い当たりが Rebuild 後に残ると、編集で消した block へ当たり続ける
 TEST(ObjectListTest, RebuildDropsTheCollidersOfTheObjectsItReplaces)
 {
-    SceneData level;
-    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    nlohmann::json level = NS::Obj::MakeSceneJson();
+    nlohmann::json& levelObjects = NS::Obj::SceneJsonObjects(level);
+    levelObjects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
 
     NS::Obj::Scene scene;
@@ -180,7 +183,7 @@ TEST(ObjectListTest, RebuildDropsTheCollidersOfTheObjectsItReplaces)
     objects.SyncPhysics(physics);
     ASSERT_EQ(physics.BodyCount(), 1u);
 
-    objects.Rebuild(SceneData{}, scene, nullptr);
+    objects.Rebuild(NS::Obj::MakeSceneJson(), scene, nullptr);
 
     EXPECT_EQ(physics.BodyCount(), 0u);
     EXPECT_EQ(objects.ObjectCount(), 0u);
@@ -196,9 +199,10 @@ TEST(ObjectListTest, ClearEmptiesEverything)
 // プレイヤー実体も他の配置物と同じ一本道で組まれ、データが決めた id の解決で実体が引ける
 TEST(ObjectListTest, RebuildBuildsPlayerAndResolvesItById)
 {
-    SceneData level;
-    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
-    level.objects.push_back(MakePlayerObject(NS::Core::Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{}));
+    nlohmann::json level = NS::Obj::MakeSceneJson();
+    nlohmann::json& levelObjects = NS::Obj::SceneJsonObjects(level);
+    levelObjects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    levelObjects.push_back(MakePlayerObject(NS::Core::Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{}));
     NS::Obj::EnsureUniqueObjectIds(level);
 
     NS::Obj::Scene scene;
@@ -210,7 +214,7 @@ TEST(ObjectListTest, RebuildBuildsPlayerAndResolvesItById)
     ASSERT_EQ(objects.ObjectCount(), 2u);
     const std::size_t playerIndex = FindPlayerObjectIndex(level);
     ASSERT_NE(playerIndex, NS::Obj::k_NoObjectIndex);
-    NS::Obj::GameObject* resolved = objects.FindObject(NS::Obj::ObjectRef{level.objects[playerIndex].objectId});
+    NS::Obj::GameObject* resolved = objects.FindObject(NS::Obj::ObjectRef{NS::Obj::ObjectJsonId(levelObjects[playerIndex])});
     ASSERT_NE(resolved, nullptr);
     EXPECT_EQ(resolved, objects.ObjectAt(1));
     EXPECT_FLOAT_EQ(resolved->Root().Position().y, 1.41f);
@@ -220,14 +224,15 @@ TEST(ObjectListTest, RebuildBuildsPlayerAndResolvesItById)
 // 参照先より前に並ぶ前方参照でも、組み立てを先に済ませてから開始する二段組みで解決できる
 TEST(ObjectListTest, RebuildBakesFollowCameraAndResolvesTarget)
 {
-    SceneData level;
-    level.objects.push_back(MakeFollowCameraObject(0u));
-    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    nlohmann::json level = NS::Obj::MakeSceneJson();
+    nlohmann::json& levelObjects = NS::Obj::SceneJsonObjects(level);
+    levelObjects.push_back(MakeFollowCameraObject(0u));
+    levelObjects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
     // 追従先は自分より後ろに並ぶ grid block。追従対象の参照を採番後の実 id へ差し替える
-    for (nlohmann::json& component : level.objects[0].components)
+    for (nlohmann::json& component : NS::Obj::ObjectJsonComponents(levelObjects[0]))
         if (NS::Obj::HasField(component, "追従対象"))
-            NS::Obj::SetField(component, "追従対象", NS::Obj::ObjectRef{level.objects[1].objectId});
+            NS::Obj::SetField(component, "追従対象", NS::Obj::ObjectRef{NS::Obj::ObjectJsonId(levelObjects[1])});
 
     NS::Obj::Scene scene;
     NS::Obj::AssetManager assets{std::string{"."}};
@@ -255,17 +260,18 @@ TEST(ObjectListTest, RebuildBakesFollowCameraAndResolvesTarget)
 // component にも永続 id が振られ、object と同じ番号空間で誰とも重ならない
 TEST(ObjectListTest, EnsureUniqueObjectIdsNumbersComponents)
 {
-    SceneData level;
-    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
-    level.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
+    nlohmann::json level = NS::Obj::MakeSceneJson();
+    nlohmann::json& levelObjects = NS::Obj::SceneJsonObjects(level);
+    levelObjects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    levelObjects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
 
     NS::Obj::EnsureUniqueObjectIds(level);
 
     std::vector<std::uint32_t> ids;
-    for (const NS::Obj::ObjectData& object : level.objects)
+    for (const nlohmann::json& object : levelObjects)
     {
-        ids.push_back(object.objectId);
-        for (const nlohmann::json& entry : object.components)
+        ids.push_back(NS::Obj::ObjectJsonId(object));
+        for (const nlohmann::json& entry : NS::Obj::ObjectJsonComponents(object))
             ids.push_back(NS::Obj::ComponentEntryId(entry));
     }
 
@@ -280,8 +286,9 @@ TEST(ObjectListTest, EnsureUniqueObjectIdsNumbersComponents)
 // データの id が実体へ書き込まれ、保存で往復しても同じ番号のまま
 TEST(ObjectListTest, ComponentIdSurvivesBuildAndCapture)
 {
-    SceneData level;
-    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    nlohmann::json level = NS::Obj::MakeSceneJson();
+    nlohmann::json& levelObjects = NS::Obj::SceneJsonObjects(level);
+    levelObjects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
 
     NS::Obj::Scene scene;
@@ -293,9 +300,9 @@ TEST(ObjectListTest, ComponentIdSurvivesBuildAndCapture)
     NS::Obj::GameObject* live = objects.ObjectAt(0);
 
     // データに書かれた id がそのまま実体に載っている
-    const std::uint32_t dataId = NS::Obj::ComponentEntryId(level.objects[0].components[0]);
+    const std::uint32_t dataId = NS::Obj::ComponentEntryId(NS::Obj::ObjectJsonComponents(levelObjects[0])[0]);
     ASSERT_NE(dataId, 0u);
-    const std::string_view dataType = NS::Obj::ComponentEntryType(level.objects[0].components[0]);
+    const std::string_view dataType = NS::Obj::ComponentEntryType(NS::Obj::ObjectJsonComponents(levelObjects[0])[0]);
     NS::Obj::Component* matched = nullptr;
     for (NS::Obj::Component* comp : live->Components())
     {
@@ -306,9 +313,9 @@ TEST(ObjectListTest, ComponentIdSurvivesBuildAndCapture)
     EXPECT_EQ(matched->GetReflection()->typeName, dataType);
 
     // 実体から書き戻しても番号は変わらない。落ちると保存のたびに振り直しになる
-    const NS::Obj::ObjectData captured = NS::Obj::CaptureObjectData(*live);
+    const nlohmann::json captured = NS::Obj::ObjectToJson(*live);
     bool found = false;
-    for (const nlohmann::json& entry : captured.components)
+    for (const nlohmann::json& entry : NS::Obj::ObjectJsonComponents(captured))
     {
         if (NS::Obj::ComponentEntryId(entry) == dataId)
             found = true;
@@ -319,11 +326,12 @@ TEST(ObjectListTest, ComponentIdSurvivesBuildAndCapture)
 // 組み直さずに 1 体消しても、破棄済みの実体が id 解決で引けない
 TEST(ObjectListTest, RemoveByObjectIdDropsIdResolution)
 {
-    SceneData level;
-    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
-    level.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
+    nlohmann::json level = NS::Obj::MakeSceneJson();
+    nlohmann::json& levelObjects = NS::Obj::SceneJsonObjects(level);
+    levelObjects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    levelObjects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
-    const std::uint32_t victimId = level.objects[1].objectId;
+    const std::uint32_t victimId = NS::Obj::ObjectJsonId(levelObjects[1]);
 
     NS::Obj::Scene scene;
     NS::Obj::AssetManager assets{std::string{"."}};
@@ -341,11 +349,12 @@ TEST(ObjectListTest, RemoveByObjectIdDropsIdResolution)
 // 1 体消したら当たり箱もその場で減る。消えた物に当たり続けない
 TEST(ObjectListTest, RemoveByObjectIdDropsCollider)
 {
-    SceneData level;
-    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
-    level.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
+    nlohmann::json level = NS::Obj::MakeSceneJson();
+    nlohmann::json& levelObjects = NS::Obj::SceneJsonObjects(level);
+    levelObjects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    levelObjects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
-    const std::uint32_t victimId = level.objects[1].objectId;
+    const std::uint32_t victimId = NS::Obj::ObjectJsonId(levelObjects[1]);
 
     NS::Obj::Scene scene;
     NS::Obj::AssetManager assets{std::string{"."}};

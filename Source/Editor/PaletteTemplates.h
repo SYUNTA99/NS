@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/ObjectJson.h"
 
 #include <array>
 
@@ -15,8 +15,8 @@ namespace NS::Editor
         //! 配置時に回転操作を許可するかどうか
         bool rotatable = false;
 
-        //! 配置時に複製して使用するオブジェクトデータ
-        NS::Obj::ObjectData prototype;
+        //! 配置時に複製して使うひな形の JSON
+        nlohmann::json prototype;
     };
 
     //! パレットのブラシの総数

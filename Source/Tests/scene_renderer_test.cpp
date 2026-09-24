@@ -35,7 +35,6 @@ namespace
     using NS::Obj::IRenderable;
     using NS::Obj::RenderBucket;
     using NS::Obj::Scene;
-    using NS::Obj::SceneEnvironment;
     using NS::Obj::SceneRenderer;
     using NS::Obj::SceneView;
     using NS::Platform::FileSystem;
@@ -278,15 +277,15 @@ TEST_F(SceneRendererEffectTest, RenderDrawsThePlayedEffect)
     view.viewPose = CameraPose{};
     renderer.SetSceneViews(std::vector<SceneView>{view});
 
-    const SceneEnvironment environment{};
-    renderer.Render(*brain, *camera, environment);
+    const std::string_view skyboxPath{}; // 空は skybox を描かない
+    renderer.Render(*brain, *camera, skyboxPath);
     const std::array<std::uint8_t, 4> before = ReadPixel(*target, k_Center);
 
     const EffectHandle handle = renderer.Effects()->Play("square_r");
     ASSERT_TRUE(handle.IsValid());
     renderer.UpdateEffects(k_Frame);
 
-    renderer.Render(*brain, *camera, environment);
+    renderer.Render(*brain, *camera, skyboxPath);
     const std::array<std::uint8_t, 4> after = ReadPixel(*target, k_Center);
 
     EXPECT_GT(LargestChannelDifference(before, after), k_VisibleDifference);

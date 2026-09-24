@@ -24,15 +24,15 @@ namespace NS::Editor
         // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す係数
         constexpr float k_QuarterTurnYaw = NS::Core::k_Pi * 0.5f;
 
-        bool HasComponentType(const NS::Obj::ObjectData& object, const char* typeName) noexcept
+        bool HasComponentType(const nlohmann::json& object, const char* typeName) noexcept
         {
             return NS::Obj::FindComponentEntry(object, typeName) != nullptr;
         }
 
-        // Transform しか持たない = 中身が無い GameObject。データ側は Transform も component 列に居る
-        bool HasOnlyTransform(const NS::Obj::ObjectData& object) noexcept
+        // Transform しか持たない = 中身が無い GameObject。JSON 側は Transform も component 列に居る
+        bool HasOnlyTransform(const nlohmann::json& object) noexcept
         {
-            for (const nlohmann::json& entry : object.components)
+            for (const nlohmann::json& entry : NS::Obj::ObjectJsonComponents(object))
             {
                 if (NS::Obj::ComponentEntryType(entry) != "TransformComponent")
                     return false;
@@ -40,7 +40,7 @@ namespace NS::Editor
             return true;
         }
 
-        float SlopeAngleOf(const NS::Obj::ObjectData& object) noexcept
+        float SlopeAngleOf(const nlohmann::json& object) noexcept
         {
             const nlohmann::json* slope = NS::Obj::FindComponentEntry(object, "SlopeCollider");
             if (!slope)
@@ -48,7 +48,7 @@ namespace NS::Editor
             return NS::Obj::FieldFloat(*slope, "角度 (度)", 0.0f);
         }
 
-        std::string MaterialRefOf(const NS::Obj::ObjectData& object)
+        std::string MaterialRefOf(const nlohmann::json& object)
         {
             const nlohmann::json* renderer = NS::Obj::FindComponentEntry(object, "MeshRenderer");
             if (!renderer)
@@ -57,25 +57,25 @@ namespace NS::Editor
         }
     } // namespace
 
-    std::int16_t ObjectCellX(const NS::Obj::ObjectData& object) noexcept
+    std::int16_t ObjectCellX(const nlohmann::json& object) noexcept
     {
         return static_cast<std::int16_t>(std::lround(NS::Obj::ObjectPosition(object).x));
     }
 
-    std::int16_t ObjectCellY(const NS::Obj::ObjectData& object) noexcept
+    std::int16_t ObjectCellY(const nlohmann::json& object) noexcept
     {
         return static_cast<std::int16_t>(std::lround(NS::Obj::ObjectPosition(object).y));
     }
 
-    std::int16_t ObjectCellZ(const NS::Obj::ObjectData& object) noexcept
+    std::int16_t ObjectCellZ(const nlohmann::json& object) noexcept
     {
         return static_cast<std::int16_t>(std::lround(NS::Obj::ObjectPosition(object).z));
     }
 
-    bool IsCellBrushObject(const NS::Obj::ObjectData& object) noexcept
+    bool IsCellBrushObject(const nlohmann::json& object) noexcept
     {
         // 派生型の配置物は自前の組み立てを持つので、ブラシの置換や削除で崩さない
-        return object.className.empty() && NS::Obj::FindComponentEntry(object, "MeshRenderer") != nullptr;
+        return NS::Obj::ObjectJsonClass(object).empty() && NS::Obj::FindComponentEntry(object, "MeshRenderer") != nullptr;
     }
 
     bool IsCellBrushObject(NS::Obj::GameObject& object) noexcept
@@ -100,14 +100,15 @@ namespace NS::Editor
         return static_cast<std::int16_t>(std::lround(object.Root().Position().z));
     }
 
-    std::size_t FindObjectAtCell(const NS::Obj::SceneData& level,
+    std::size_t FindObjectAtCell(const nlohmann::json& scene,
                                  std::int16_t x,
                                  std::int16_t y,
                                  std::int16_t z) noexcept
     {
-        for (std::size_t i = 0; i < level.objects.size(); ++i)
+        const nlohmann::json& objects = NS::Obj::SceneJsonObjects(scene);
+        for (std::size_t i = 0; i < objects.size(); ++i)
         {
-            const NS::Obj::ObjectData& object = level.objects[i];
+            const nlohmann::json& object = objects[i];
             if (IsCellBrushObject(object) && ObjectCellX(object) == x && ObjectCellY(object) == y &&
                 ObjectCellZ(object) == z)
             {
@@ -134,7 +135,7 @@ namespace NS::Editor
         return NS::Obj::k_NoObjectId;
     }
 
-    std::uint8_t CellRotationStep(const NS::Obj::ObjectData& object) noexcept
+    std::uint8_t CellRotationStep(const nlohmann::json& object) noexcept
     {
         // q と -q は同じ回転なので fabs で符号を無視し、4 候補から一番近いものを選ぶ
         const NS::Core::Quaternion current = NS::Obj::ObjectRotation(object);
@@ -155,7 +156,7 @@ namespace NS::Editor
         return best;
     }
 
-    void SetCellRotationStep(NS::Obj::ObjectData& object, std::uint8_t rotationStep) noexcept
+    void SetCellRotationStep(nlohmann::json& object, std::uint8_t rotationStep) noexcept
     {
         const float yaw = static_cast<float>(rotationStep & 0x03) * k_QuarterTurnYaw;
         const NS::Core::Quaternion rotation = NS::Core::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
@@ -183,10 +184,9 @@ namespace NS::Editor
             {MakeMeshRendererEntry("cube", "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}), std::move(box)});
     }
 
-    NS::Obj::ObjectData MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z)
+    nlohmann::json MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z)
     {
-        NS::Obj::ObjectData object{};
-        object.components = MakeCellCubeComponents();
+        nlohmann::json object = NS::Obj::MakeObjectJson(MakeCellCubeComponents());
         // components を確定した後に transform を書き込む。先に書くと components 代入が TransformComponent を消す
         NS::Obj::SetObjectPosition(object,
                                    NS::Core::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
@@ -241,7 +241,7 @@ namespace NS::Editor
              NS::Obj::MakeComponentEntry("Goal")});
     }
 
-    bool IsSolidObject(const NS::Obj::ObjectData& object)
+    bool IsSolidObject(const nlohmann::json& object)
     {
         const bool hasBox = HasComponentType(object, "BoxCollider");
         const bool hasSlope = HasComponentType(object, "SlopeCollider");
@@ -250,15 +250,17 @@ namespace NS::Editor
         return hasBox && !hasSlope && !hasGoal && !hasKillZone;
     }
 
-    bool IsRotatableObject(const NS::Obj::ObjectData& object)
+    bool IsRotatableObject(const nlohmann::json& object)
     {
         return SlopeAngleOf(object) >= 0.0f || IsSolidObject(object);
     }
 
-    const char* ObjectDisplayName(const NS::Obj::ObjectData& object)
+    const char* ObjectDisplayName(const nlohmann::json& object)
     {
-        if (!object.name.empty())
-            return object.name.c_str();
+        // 名前は JSON の中の文字列を指す。std::string の中身なので終端がある
+        const std::string_view name = NS::Obj::ObjectJsonName(object);
+        if (!name.empty())
+            return name.data();
         if (IsPlayerObject(object))
             return "Player";
         if (HasComponentType(object, "ThirdPersonFollow"))

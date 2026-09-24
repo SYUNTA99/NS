@@ -28,6 +28,7 @@
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
+#include "Runtime/Object/ObjectName.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Platform/Input.h"
@@ -49,6 +50,21 @@ namespace
             return absNorm.substr(rootNorm.size() + 1);
         }
         return absNorm;
+    }
+
+    // index 番目のリフレクション付き component。添字は ObjectToJson の components と Inspector の並びに揃う
+    NS::Obj::Component* ReflectedComponentAt(NS::Obj::GameObject& object, std::size_t index) noexcept
+    {
+        std::size_t count = 0;
+        for (NS::Obj::Component* comp : object.Components())
+        {
+            if (comp == nullptr || comp->GetReflection() == nullptr)
+                continue;
+            if (count == index)
+                return comp;
+            ++count;
+        }
+        return nullptr;
     }
 
     // カメラの視錐台を描く時の far。vcam の既定 1000 のままだと錐台が画面に収まらないので近くで切る
@@ -203,11 +219,6 @@ void LevelEditorController::TogglePlayPause() noexcept
     }
 }
 
-NS::Obj::SceneEnvironment& LevelEditorController::Environment() noexcept
-{
-    return m_scene->Environment();
-}
-
 const NS::Obj::ObjectList& LevelEditorController::Objects() const noexcept
 {
     return m_scene->Objects();
@@ -251,8 +262,8 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_editorCamera.SetDistance(5.0f);
 
     // 保存は live 実体から作り、読込は取込関数がデータを実体へ写して用済みにする
-    m_editor.SetCaptureLevelFn([this]() { return m_scene->CaptureLiveToSceneData(); });
-    m_editor.SetLoadLevelFn([this](NS::Obj::SceneData&& fresh) { m_scene->LoadFromData(std::move(fresh)); });
+    m_editor.SetCaptureLevelFn([this]() { return m_scene->ToJson(); });
+    m_editor.SetLoadLevelFn([this](nlohmann::json&& fresh) { m_scene->LoadJson(std::move(fresh)); });
     // grid 編集・undo は適用経路を通して live へ写す。セル照会・採番は live 側から引く
     m_editor.SetApplier(&m_applier);
     m_editor.SetFindCellObjectFn([this](std::int16_t x, std::int16_t y, std::int16_t z) {
@@ -284,7 +295,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     {
         if (NS::Platform::FileSystem::Exists(*bootPath))
         {
-            NS::Obj::SceneData probe;
+            nlohmann::json probe;
             if (!NS::Obj::LoadSceneFromJsonFile(probe, *bootPath))
                 m_editor.MarkBootLevelLoadFailed();
         }
@@ -403,8 +414,8 @@ void LevelEditorController::LeavePlayForEdit()
     // プレイは試走。位置・生成・破棄・演出の進行を live に残さず、突入時の凍結から世界を組み直す
     // 演出の破棄もゴールの旗戻しも組み直しが済ませるので、個別の後始末は置かない
     // 一時オブジェクトの実カメラは凍結に写らないが、Rebuild が退避して残す
-    NS::Obj::SceneData baseline = m_scene->PlayBaseline();
-    m_scene->LoadFromData(std::move(baseline));
+    nlohmann::json baseline = m_scene->PlayBaseline();
+    m_scene->LoadJson(std::move(baseline));
 
     if (Player* player = FindPlayer(m_scene->Objects()))
     {
@@ -1044,8 +1055,7 @@ void LevelEditorController::AddPrimitive(NS::Editor::PrimitiveKind kind)
     const NS::Core::Vector3 center = m_editorCamera.Center();
 
     // 構成を先に確定してから transform を書き込む。採番・履歴・選択は PushCreateObject が担う
-    NS::Obj::ObjectData object{};
-    object.components = NS::Editor::MakePrimitiveComponents(kind);
+    nlohmann::json object = NS::Obj::MakeObjectJson(NS::Editor::MakePrimitiveComponents(kind));
     NS::Obj::SetObjectPosition(object, center);
     PushCreateObject(std::move(object));
 }
@@ -1058,23 +1068,22 @@ void LevelEditorController::AddObjectWithMesh(std::string_view meshPath)
     const NS::Core::Vector3 center = m_editorCamera.Center();
 
     // 描いた形と当たりをずらさない。MeshCollider が描画と同じ三角形から当たりを作る
-    NS::Obj::ObjectData object{};
-    object.components = nlohmann::json::array(
+    nlohmann::json object = NS::Obj::MakeObjectJson(nlohmann::json::array(
         {NS::Editor::MakeMeshRendererEntry(meshRef, "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}),
-         NS::Obj::MakeComponentEntry("MeshCollider")});
+         NS::Obj::MakeComponentEntry("MeshCollider")}));
     NS::Obj::SetObjectPosition(object, center);
-    object.name = NS::Platform::FileSystem::Stem(meshPath);
+    NS::Obj::SetObjectJsonName(object, NS::Platform::FileSystem::Stem(meshPath));
 
     PushCreateObject(std::move(object));
 }
 
-void LevelEditorController::PushCreateObject(NS::Obj::ObjectData object)
+void LevelEditorController::PushCreateObject(nlohmann::json object)
 {
     // 新規配置物に永続 id を 1 個振る
     const std::uint32_t id = m_scene->Objects().AllocateObjectId();
-    object.objectId = id;
+    NS::Obj::SetObjectJsonId(object, id);
 
-    // 追加を undo 履歴へ。Do が live へ 1 体差し込んで全配置物を組み直す
+    // 追加を undo 履歴へ。Do がひな形から live へ 1 体組んで入れる
     m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::nullopt, std::move(object)),
                          m_applier);
 
@@ -1090,26 +1099,20 @@ void LevelEditorController::RenameObject(std::uint32_t id, std::string_view name
 {
     if (id == NS::Obj::k_NoObjectId)
         return;
-    std::optional<NS::Obj::ObjectData> before = m_applier.CaptureObject(id);
-    if (!before)
+    NS::Obj::GameObject* object = m_scene->Objects().FindByObjectId(id);
+    std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
+    if (object == nullptr || !before)
         return;
-    if (before->name == name)
+
+    // 実体の名前を直接変える。他の配置物と重なれば番号が付く。参照は id で持つので切れない
+    const std::string previous = object->Name();
+    m_scene->Objects().RenameObject(*object, name);
+    if (object->Name() == previous)
         return; // 同じ名前で履歴を汚さない
 
-    // 他の配置物と重ならない名前にする。組み直しの一意化に任せると、並びの前にいる相手の名前が変わり得る
-    std::unordered_set<std::string> used;
-    for (const NS::Obj::GameObject* object : m_scene->Objects())
-    {
-        if (object->Id() != id)
-            used.insert(object->Name());
-    }
-    NS::Obj::ObjectData after = *before;
-    after.name = NS::Obj::MakeUniqueObjectName(name, used);
-    if (after.name == before->name)
-        return;
-
-    m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)),
-                         m_applier);
+    std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
+    // 実体は既に after なので Do を呼ばず履歴だけ積む
+    m_editor.Undo().Record(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
 
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -1138,8 +1141,8 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
         }
     }
 
-    std::optional<NS::Obj::ObjectData> before = m_applier.CaptureObject(id);
-    if (!before || before->parentId == parentId)
+    std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
+    if (!before || child->Parent() == parent)
         return false;
 
     // 親空間が変わっても見た目が動かないよう、今のワールド変換から新しいローカル変換を割り出す
@@ -1147,17 +1150,16 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
     if (parent != nullptr)
         local *= parent->Root().WorldMatrix().Invert();
 
-    NS::Obj::ObjectData after = *before;
-    after.parentId = parentId;
-
+    // 実体の親を直接付け替える。付け替えは local の値を保つので、割り出した local を後から入れる
+    child->SetParent(parent);
     NS::Core::Vector3 scale{};
     NS::Core::Quaternion rotation{};
     NS::Core::Vector3 position{};
     if (local.Decompose(scale, rotation, position))
     {
-        NS::Obj::SetObjectPosition(after, position);
-        NS::Obj::SetObjectRotation(after, rotation);
-        NS::Obj::SetObjectScale(after, scale);
+        child->Root().SetPosition(position);
+        child->Root().SetRotation(rotation);
+        child->Root().SetScale(scale);
     }
     else
     {
@@ -1165,8 +1167,9 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
         NS_LOG_WARN(App, "変換を分解できないため object {} の見た目を保てなかった", id);
     }
 
-    m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)),
-                         m_applier);
+    std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
+    // 実体は既に after なので Do を呼ばず履歴だけ積む
+    m_editor.Undo().Record(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
 
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -1178,13 +1181,15 @@ void LevelEditorController::AddComponentToSelected(std::string_view typeName)
     const std::uint32_t id = m_selectedObjectId;
     if (id == NS::Obj::k_NoObjectId)
         return;
-    std::optional<NS::Obj::ObjectData> before = m_applier.CaptureObject(id);
+    std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
     if (!before)
         return;
 
-    // 現状の忠実な姿へ 1 個足す。field 無しの雛形は build 時に既定値で起きる
-    NS::Obj::ObjectData after = *before;
-    after.components.push_back(NS::Obj::MakeComponentEntry(typeName));
+    // component の増減は配置物を自分の JSON から作り直す。兄弟を OnStart で控える component がいるので、
+    // 実体へ直に足し引きせず、全員が新しい構成で開始し直す形にする (UE の作り直しと同じ)
+    // field 無しの雛形は作り直しで既定値のまま起きる
+    nlohmann::json after = *before;
+    NS::Obj::ObjectJsonComponents(after).push_back(NS::Obj::MakeComponentEntry(typeName));
 
     m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)),
                          m_applier);
@@ -1198,12 +1203,12 @@ void LevelEditorController::RemoveComponentFromSelected(std::size_t componentInd
     const std::uint32_t id = m_selectedObjectId;
     if (id == NS::Obj::k_NoObjectId)
         return;
-    std::optional<NS::Obj::ObjectData> before = m_applier.CaptureObject(id);
+    std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
     if (!before)
         return;
 
     // component が 0 個の配置物は build で消えるので最後の 1 個 / 範囲外は消さない。履歴も汚さない
-    const nlohmann::json& components = before->components;
+    const nlohmann::json& components = NS::Obj::ObjectJsonComponents(*before);
     if (componentIndex >= components.size() || components.size() <= 1)
         return;
     // 入力 component を消すと player を操作できなくなる。transform は root なので同様に守る
@@ -1211,8 +1216,10 @@ void LevelEditorController::RemoveComponentFromSelected(std::size_t componentInd
     if (typeName == "PlayerInput" || typeName == "TransformComponent")
         return;
 
-    NS::Obj::ObjectData after = *before;
-    after.components.erase(after.components.begin() + static_cast<std::ptrdiff_t>(componentIndex));
+    // 足す時と同じく、配置物を自分の JSON から作り直す
+    nlohmann::json after = *before;
+    nlohmann::json& afterComponents = NS::Obj::ObjectJsonComponents(after);
+    afterComponents.erase(afterComponents.begin() + static_cast<std::ptrdiff_t>(componentIndex));
 
     m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)),
                          m_applier);
@@ -1226,21 +1233,23 @@ void LevelEditorController::SetComponentEnabledOnSelected(std::size_t componentI
     const std::uint32_t id = m_selectedObjectId;
     if (id == NS::Obj::k_NoObjectId)
         return;
-    std::optional<NS::Obj::ObjectData> before = m_applier.CaptureObject(id);
-    if (!before)
+    NS::Obj::GameObject* object = m_scene->Objects().FindByObjectId(id);
+    if (object == nullptr)
         return;
-    if (componentIndex >= before->components.size())
+    NS::Obj::Component* comp = ReflectedComponentAt(*object, componentIndex);
+    if (comp == nullptr || comp->IsEnabled() == enabled)
         return;
     // 入力 component を休止させると player が動かなくなる。transform は root なので同様に守る
-    const std::string_view typeName = NS::Obj::ComponentEntryType(before->components[componentIndex]);
+    const std::string_view typeName = comp->ClassName();
     if (typeName == "PlayerInput" || typeName == "TransformComponent")
         return;
 
-    NS::Obj::ObjectData after = *before;
-    NS::Obj::SetComponentEntryEnabled(after.components[componentIndex], enabled);
-
-    m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)),
-                         m_applier);
+    // 実体の有効を直接切り替え、当たりを張り直す。実体は既に after なので Do を呼ばず履歴だけ積む
+    std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
+    comp->SetEnabled(enabled);
+    m_scene->SyncPhysics();
+    std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
+    m_editor.Undo().Record(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
 
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -1255,7 +1264,7 @@ void LevelEditorController::DuplicateSelectedObject()
 
     // 選択物の忠実コピーを新しい永続 id で増やす。component の id も振り直す
     // 元の id から新しい id への表を作り、コピーの中の親と参照を付け替えるのに使う
-    std::vector<std::pair<std::uint32_t, NS::Obj::ObjectData>> copies;
+    std::vector<nlohmann::json> copies;
     copies.reserve(m_selectionIds.size());
     std::unordered_map<std::uint32_t, std::uint32_t> idMap;
     for (const std::uint32_t id : m_selectionIds)
@@ -1263,13 +1272,13 @@ void LevelEditorController::DuplicateSelectedObject()
         // プレイヤーは必ず 1 体。複製で 2 体目を作らせない
         if (player != nullptr && id == player->Id())
             continue;
-        std::optional<NS::Obj::ObjectData> source = m_applier.CaptureObject(id);
+        std::optional<nlohmann::json> source = m_applier.CaptureObject(id);
         if (!source)
             continue;
         const std::uint32_t newId = m_scene->Objects().AllocateObjectId();
         idMap.emplace(id, newId);
-        source->objectId = newId;
-        for (nlohmann::json& component : source->components)
+        NS::Obj::SetObjectJsonId(*source, newId);
+        for (nlohmann::json& component : NS::Obj::ObjectJsonComponents(*source))
         {
             const std::uint32_t componentId = NS::Obj::ComponentEntryId(component);
             const std::uint32_t freshId = m_scene->Objects().AllocateObjectId();
@@ -1277,27 +1286,55 @@ void LevelEditorController::DuplicateSelectedObject()
                 idMap.emplace(componentId, freshId);
             NS::Obj::SetComponentEntryId(component, freshId);
         }
-        copies.emplace_back(id, std::move(*source));
+        copies.push_back(std::move(*source));
     }
     if (copies.empty())
         return;
 
     // 親も一緒に複製したなら、コピーの親はコピー側へ向ける。親が選択外ならそのまま元の親へぶら下がる
     // 参照も同じで、コピーした範囲の中を指す物だけコピー側へ向け、範囲の外を指す物は元の相手のまま残す
+    std::unordered_set<std::uint32_t> copiedIds;
+    for (nlohmann::json& copy : copies)
+    {
+        const std::unordered_map<std::uint32_t, std::uint32_t>::const_iterator parent =
+            idMap.find(NS::Obj::ObjectJsonParent(copy));
+        if (NS::Obj::ObjectJsonParent(copy) != NS::Obj::k_NoObjectId && parent != idMap.end())
+            NS::Obj::SetObjectJsonParent(copy, parent->second);
+        NS::Obj::RemapObjectRefs(copy, idMap);
+        copiedIds.insert(NS::Obj::ObjectJsonId(copy));
+    }
+
+    // 1 体ずつ組んで入れるので、コピーの親はコピーの子より先に入れる。後だと子が親を引けず根に落ちる
     std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
     std::vector<std::uint32_t> created;
     commands.reserve(copies.size());
     created.reserve(copies.size());
-    for (std::pair<std::uint32_t, NS::Obj::ObjectData>& entry : copies)
+    std::unordered_set<std::uint32_t> placed;
+    while (created.size() < copies.size())
     {
-        NS::Obj::ObjectData& copy = entry.second;
-        const std::unordered_map<std::uint32_t, std::uint32_t>::const_iterator parent = idMap.find(copy.parentId);
-        if (copy.parentId != NS::Obj::k_NoObjectId && parent != idMap.end())
-            copy.parentId = parent->second;
-        NS::Obj::RemapObjectRefs(copy, idMap);
-        created.push_back(copy.objectId);
-        commands.push_back(
-            std::make_unique<NS::Editor::ObjectSnapshotCommand>(copy.objectId, std::nullopt, std::move(copy)));
+        const std::size_t before = created.size();
+        for (nlohmann::json& copy : copies)
+        {
+            const std::uint32_t copyId = NS::Obj::ObjectJsonId(copy);
+            const std::uint32_t parentId = NS::Obj::ObjectJsonParent(copy);
+            if (placed.contains(copyId) || (copiedIds.contains(parentId) && !placed.contains(parentId)))
+                continue;
+            placed.insert(copyId);
+            created.push_back(copyId);
+            commands.push_back(std::make_unique<NS::Editor::ObjectSnapshotCommand>(copyId, std::nullopt, copy));
+        }
+        // 親子が輪になったデータは進まない。残りは並びのまま入れる
+        if (created.size() == before)
+        {
+            for (nlohmann::json& copy : copies)
+            {
+                const std::uint32_t copyId = NS::Obj::ObjectJsonId(copy);
+                if (!placed.insert(copyId).second)
+                    continue;
+                created.push_back(copyId);
+                commands.push_back(std::make_unique<NS::Editor::ObjectSnapshotCommand>(copyId, std::nullopt, copy));
+            }
+        }
     }
 
     m_editor.Undo().Push(MakeUndoUnit(std::move(commands)), m_applier);
@@ -1343,7 +1380,7 @@ void LevelEditorController::DeleteSelectedObject()
     commands.reserve(ordered.size());
     for (const std::uint32_t victim : ordered)
     {
-        std::optional<NS::Obj::ObjectData> before = m_applier.CaptureObject(victim);
+        std::optional<nlohmann::json> before = m_applier.CaptureObject(victim);
         if (!before)
             continue;
         commands.push_back(
@@ -1474,10 +1511,10 @@ void LevelEditorController::CopyComponentToClipboard(std::size_t componentIndex)
     if (id == NS::Obj::k_NoObjectId)
         return;
     // live の忠実な写しから 1 component を控える。Inspector でライブ編集した値ごと入る
-    const std::optional<NS::Obj::ObjectData> captured = m_applier.CaptureObject(id);
-    if (!captured || componentIndex >= captured->components.size())
+    const std::optional<nlohmann::json> captured = m_applier.CaptureObject(id);
+    if (!captured || componentIndex >= NS::Obj::ObjectJsonComponents(*captured).size())
         return;
-    m_componentClipboard = captured->components[componentIndex];
+    m_componentClipboard = NS::Obj::ObjectJsonComponents(*captured)[componentIndex];
 }
 
 void LevelEditorController::PasteClipboardComponentToSelected()
@@ -1487,17 +1524,25 @@ void LevelEditorController::PasteClipboardComponentToSelected()
     const std::uint32_t id = m_selectedObjectId;
     if (id == NS::Obj::k_NoObjectId)
         return;
-    std::optional<NS::Obj::ObjectData> before = m_applier.CaptureObject(id);
+    std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
     if (!before)
         return;
 
-    // 同型がすでにあっても末尾へ重ねて貼り、上書きはしない
+    // 同型がすでにあっても末尾へ重ねて貼り、上書きはしない。足す時と同じく配置物を自分の JSON から作り直す
     // id は新しく振る。コピー元の id のまま貼ると、組み直しの一意化で元の側の id が振り直され、元を指す参照が貼った側へ移る
     // 名前はそのまま貼り、配置物の中で重なれば組み直しの一意化が番号を付ける
-    NS::Obj::ObjectData after = *before;
+    nlohmann::json after = *before;
     nlohmann::json pasted = *m_componentClipboard;
     NS::Obj::SetComponentEntryId(pasted, m_scene->Objects().AllocateObjectId());
-    after.components.push_back(std::move(pasted));
+    // 名前は配置物の中で一意にする。同じ配置物へ貼ると元と同じ名前になる
+    std::unordered_set<std::string> usedNames;
+    for (const nlohmann::json& entry : NS::Obj::ObjectJsonComponents(after))
+        usedNames.insert(std::string{NS::Obj::ComponentEntryName(entry)});
+    std::string_view pastedBase = NS::Obj::ComponentEntryName(pasted);
+    if (pastedBase.empty())
+        pastedBase = NS::Obj::ComponentEntryType(pasted);
+    NS::Obj::SetComponentEntryName(pasted, NS::Obj::MakeUniqueObjectName(pastedBase, usedNames));
+    NS::Obj::ObjectJsonComponents(after).push_back(std::move(pasted));
 
     m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)),
                          m_applier);
@@ -1511,30 +1556,23 @@ void LevelEditorController::RenameComponentOnSelected(std::size_t componentIndex
     const std::uint32_t id = m_selectedObjectId;
     if (id == NS::Obj::k_NoObjectId)
         return;
-    std::optional<NS::Obj::ObjectData> before = m_applier.CaptureObject(id);
-    if (!before || componentIndex >= before->components.size())
+    NS::Obj::GameObject* object = m_scene->Objects().FindByObjectId(id);
+    if (object == nullptr)
+        return;
+    NS::Obj::Component* comp = ReflectedComponentAt(*object, componentIndex);
+    if (comp == nullptr)
         return;
 
-    // 同じ配置物の他の component と重ならない名前にする。空は型名へ戻す
-    std::unordered_set<std::string> used;
-    for (std::size_t i = 0; i < before->components.size(); ++i)
-    {
-        if (i != componentIndex)
-            used.insert(std::string{NS::Obj::ComponentEntryName(before->components[i])});
-    }
-    const nlohmann::json& target = before->components[componentIndex];
-    std::string_view base = name;
-    if (base.empty())
-        base = NS::Obj::ComponentEntryType(target);
-    const std::string unique = NS::Obj::MakeUniqueObjectName(base, used);
-    if (unique == NS::Obj::ComponentEntryName(target))
+    // 実体の名前を直接変える。配置物の中で重なれば番号が付き、空は型名へ戻る。参照は id で持つので切れない
+    std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
+    const std::string previous = comp->Name();
+    object->RenameComponent(*comp, name);
+    if (comp->Name() == previous)
         return; // 同じ名前で履歴を汚さない
 
-    NS::Obj::ObjectData after = *before;
-    NS::Obj::SetComponentEntryName(after.components[componentIndex], unique);
-
-    m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)),
-                         m_applier);
+    // 実体は既に after なので Do を呼ばず履歴だけ積む
+    std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
+    m_editor.Undo().Record(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
 
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -1548,7 +1586,7 @@ void LevelEditorController::BeginTransformEdit() noexcept
     // 選択している分をまとめて控える。動かなかった物は確定時に落ちる
     for (const std::uint32_t id : m_selectionIds)
     {
-        std::optional<NS::Obj::ObjectData> baseline = m_applier.CaptureObject(id);
+        std::optional<nlohmann::json> baseline = m_applier.CaptureObject(id);
         if (baseline)
             m_editBaselines.emplace_back(id, std::move(*baseline));
     }
@@ -1565,11 +1603,11 @@ void LevelEditorController::CommitTransformEdit() noexcept
 
     // ドラッグは live Root を既に動かしている。after は live の忠実な写し。baseline と同じなら履歴に積まない
     std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
-    for (std::pair<std::uint32_t, NS::Obj::ObjectData>& entry : m_editBaselines)
+    for (std::pair<std::uint32_t, nlohmann::json>& entry : m_editBaselines)
     {
         const std::uint32_t& id = entry.first;
-        NS::Obj::ObjectData& baseline = entry.second;
-        std::optional<NS::Obj::ObjectData> after = m_applier.CaptureObject(id);
+        nlohmann::json& baseline = entry.second;
+        std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
         if (!after || *after == baseline)
             continue;
         commands.push_back(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, baseline, std::move(*after)));
@@ -1586,7 +1624,7 @@ void LevelEditorController::BeginComponentEdit() noexcept
 {
     if (m_componentEditing)
         return;
-    std::optional<NS::Obj::ObjectData> baseline = m_applier.CaptureObject(m_selectedObjectId);
+    std::optional<nlohmann::json> baseline = m_applier.CaptureObject(m_selectedObjectId);
     if (!baseline)
         return;
     m_componentEditBaseline = std::move(*baseline);
@@ -1601,7 +1639,7 @@ void LevelEditorController::CommitComponentEdit() noexcept
     m_componentEditing = false;
 
     // リフレクション編集は live component へ直接入っている。after は live の忠実な写しで、baseline と同じなら積まない
-    std::optional<NS::Obj::ObjectData> after = m_applier.CaptureObject(m_componentEditBaselineId);
+    std::optional<nlohmann::json> after = m_applier.CaptureObject(m_componentEditBaselineId);
     if (!after || *after == m_componentEditBaseline)
         return;
 
@@ -1634,13 +1672,13 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
     const std::string stored = RelativeToRoot(matPath, NS::Platform::FileSystem::ContentRoot());
 
     // 差替前を忠実に写す。matRef を live へ書き込み、差替後との差分を undo 履歴へ積む
-    std::optional<NS::Obj::ObjectData> before = m_applier.CaptureObject(m_selectedObjectId);
+    std::optional<nlohmann::json> before = m_applier.CaptureObject(m_selectedObjectId);
 
     mesh->SetMaterial(loaded.material);
     mesh->SetBaseColor(loaded.baseColor);
     mesh->SetMaterialRef(stored);
 
-    std::optional<NS::Obj::ObjectData> after = m_applier.CaptureObject(m_selectedObjectId);
+    std::optional<nlohmann::json> after = m_applier.CaptureObject(m_selectedObjectId);
     if (before && after && !(*before == *after))
     {
         m_editor.Undo().Record(std::make_unique<NS::Editor::ObjectSnapshotCommand>(

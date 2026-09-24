@@ -23,8 +23,6 @@
 namespace
 {
     using NS::Obj::DeserializeSceneFromJson;
-    using NS::Obj::SceneData;
-    using NS::Obj::ObjectData;
     using NS::Obj::SerializeSceneToJson;
     using NS::Core::Vector3;
 
@@ -135,33 +133,33 @@ namespace
 // components 駆動の object が JSON 往復後も同じ当たりの構成に組み上がるか確かめる
 TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
 {
-    SceneData src;
-    ObjectData obj;
+    nlohmann::json src = NS::Obj::MakeSceneJson();
+    nlohmann::json obj = NS::Obj::MakeObjectJson();
     NS::Obj::SetObjectPosition(obj, Vector3{2.0f, 1.0f, 3.0f});
-    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshRenderer"));
+    NS::Obj::ObjectJsonComponents(obj).push_back(NS::Obj::MakeComponentEntry("MeshRenderer"));
     nlohmann::json boxEntry = NS::Obj::MakeComponentEntry("BoxCollider");
     NS::Obj::SetField(boxEntry, "半径", Vector3{1.0f, 2.0f, 3.0f});
     NS::Obj::SetField(boxEntry, "中心オフセット", Vector3{0.1f, 0.2f, 0.3f});
-    obj.components.push_back(std::move(boxEntry));
+    NS::Obj::ObjectJsonComponents(obj).push_back(std::move(boxEntry));
     nlohmann::json sphere = NS::Obj::MakeComponentEntry("SphereCollider");
     NS::Obj::SetField(sphere, "半径", 0.7f);
     NS::Obj::SetField(sphere, "中心オフセット", Vector3{0.0f, 1.0f, 0.0f});
-    obj.components.push_back(std::move(sphere));
+    NS::Obj::ObjectJsonComponents(obj).push_back(std::move(sphere));
     nlohmann::json capsule = NS::Obj::MakeComponentEntry("CapsuleCollider");
     NS::Obj::SetField(capsule, "半径", 0.4f);
     NS::Obj::SetField(capsule, "半分の高さ", 0.9f);
-    obj.components.push_back(std::move(capsule));
-    src.objects.push_back(std::move(obj));
-    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
+    NS::Obj::ObjectJsonComponents(obj).push_back(std::move(capsule));
+    NS::Obj::SceneJsonObjects(src).push_back(std::move(obj));
+    NS::Obj::SceneJsonObjects(src).push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
 
-    SceneData restored;
+    nlohmann::json restored = NS::Obj::MakeSceneJson();
     ASSERT_TRUE(DeserializeSceneFromJson(restored, SerializeSceneToJson(src)));
-    ASSERT_EQ(restored.objects.size(), 2u);
-    ASSERT_FALSE(restored.objects[0].components.empty()); // 往復後も components 駆動で組ませる前提
+    ASSERT_EQ(NS::Obj::SceneJsonObjects(restored).size(), 2u);
+    ASSERT_FALSE(NS::Obj::ObjectJsonComponents(NS::Obj::SceneJsonObjects(restored)[0]).empty()); // 往復後も components 駆動で組ませる前提
 
     NS::Obj::AssetManager assets{std::string{"."}};
-    std::unique_ptr<NS::Obj::GameObject> before = NS::Obj::BuildSceneObject(src.objects[0], &assets);
-    std::unique_ptr<NS::Obj::GameObject> after = NS::Obj::BuildSceneObject(restored.objects[0], &assets);
+    std::unique_ptr<NS::Obj::GameObject> before = NS::Obj::ObjectFromJson(NS::Obj::SceneJsonObjects(src)[0], &assets);
+    std::unique_ptr<NS::Obj::GameObject> after = NS::Obj::ObjectFromJson(NS::Obj::SceneJsonObjects(restored)[0], &assets);
     ASSERT_NE(before, nullptr);
     ASSERT_NE(after, nullptr);
 

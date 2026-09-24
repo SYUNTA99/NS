@@ -175,8 +175,8 @@ namespace NS::Editor
 
         (void)EnsureScenesDirectoryExists();
 
-        // 保存の出所は live 実体。捕捉関数で実体から SceneData を作って書く
-        const NS::Obj::SceneData snapshot = m_captureLevel();
+        // 保存の出所は live 実体。捕捉関数で実体からシーンの JSON 文書を作って書く
+        const nlohmann::json snapshot = m_captureLevel();
         const bool ok = NS::Obj::SaveSceneToJsonFile(snapshot, *path);
         if (ok)
         {
@@ -252,7 +252,7 @@ namespace NS::Editor
                 break;
             }
 
-            NS::Obj::SceneData fresh;
+            nlohmann::json fresh;
             const bool ok = NS::Obj::LoadSceneFromJsonFile(fresh, *path);
             if (ok)
             {
@@ -478,13 +478,13 @@ namespace NS::Editor
         }();
 
         // パレット雛形を cell 座標と回転 step だけ書き込んで 1 体分の姿を作る
-        NS::Obj::ObjectData placed = m_palette.CurrentTemplate();
+        nlohmann::json placed = m_palette.CurrentTemplate();
         NS::Obj::SetObjectPosition(
             placed, NS::Core::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
         NS::Editor::SetCellRotationStep(placed, rotation);
 
         // 既存 cell は同じ永続 id で置換、空 cell は新規採番
-        std::optional<NS::Obj::ObjectData> before;
+        std::optional<nlohmann::json> before;
         std::uint32_t id = m_findCellObject(x, y, z);
         if (id != NS::Obj::k_NoObjectId)
         {
@@ -494,7 +494,7 @@ namespace NS::Editor
         {
             id = m_allocateId();
         }
-        placed.objectId = id;
+        NS::Obj::SetObjectJsonId(placed, id);
 
         m_undo.Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(placed)),
                     *m_applier);
@@ -513,7 +513,7 @@ namespace NS::Editor
         {
             return;
         }
-        std::optional<NS::Obj::ObjectData> before = m_applier->CaptureObject(id);
+        std::optional<nlohmann::json> before = m_applier->CaptureObject(id);
         if (!before)
         {
             return;
@@ -535,12 +535,12 @@ namespace NS::Editor
         {
             return;
         }
-        std::optional<NS::Obj::ObjectData> before = m_applier->CaptureObject(id);
+        std::optional<nlohmann::json> before = m_applier->CaptureObject(id);
         if (!before || !NS::Editor::IsRotatableObject(*before))
         {
             return;
         }
-        NS::Obj::ObjectData after = *before;
+        nlohmann::json after = *before;
         const std::uint8_t step = NS::Editor::CellRotationStep(*before);
         NS::Editor::SetCellRotationStep(after, RotateMod4(step, std::int8_t{1}));
         m_undo.Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(*before), std::move(after)),

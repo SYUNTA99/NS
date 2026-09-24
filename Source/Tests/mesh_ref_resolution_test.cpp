@@ -9,7 +9,6 @@
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Scene/Scene.h>
-#include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Physics/MeshCollision.h>
 #include <Runtime/Physics/PhysicsScene.h>
 #include <Runtime/Platform/Window.h>
@@ -20,9 +19,8 @@
 namespace
 {
     using NS::Obj::AssetManager;
-    using NS::Obj::BuildSceneObject;
     using NS::Obj::MeshRenderer;
-    using NS::Obj::ObjectData;
+    using NS::Obj::ObjectFromJson;
     using NS::Obj::ResolveContentPath;
     using NS::Obj::ResolveMeshFromRef;
 
@@ -76,10 +74,10 @@ TEST(MeshRefResolution, EmptyMeshRefFallsBackToCube)
 {
     AssetManager assets{std::string{"."}};
 
-    ObjectData obj;
-    obj.components.push_back(MakeMeshRenderer(""));
+    nlohmann::json obj = NS::Obj::MakeObjectJson();
+    NS::Obj::ObjectJsonComponents(obj).push_back(MakeMeshRenderer(""));
 
-    std::unique_ptr<NS::Obj::GameObject> built = BuildSceneObject(obj, &assets);
+    std::unique_ptr<NS::Obj::GameObject> built = ObjectFromJson(obj, &assets);
     ASSERT_NE(built, nullptr);
     MeshRenderer* mr = built->FindComponent<MeshRenderer>();
     ASSERT_NE(mr, nullptr);
@@ -114,10 +112,10 @@ TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
 {
     AssetManager assets{std::string{"."}};
 
-    ObjectData compObj;
-    compObj.components.push_back(MakeMeshRenderer(""));
+    nlohmann::json compObj = NS::Obj::MakeObjectJson();
+    NS::Obj::ObjectJsonComponents(compObj).push_back(MakeMeshRenderer(""));
 
-    std::unique_ptr<NS::Obj::GameObject> compBuilt = BuildSceneObject(compObj, &assets);
+    std::unique_ptr<NS::Obj::GameObject> compBuilt = ObjectFromJson(compObj, &assets);
     ASSERT_NE(compBuilt, nullptr);
 
     MeshRenderer* compMesh = compBuilt->FindComponent<MeshRenderer>();
@@ -133,11 +131,11 @@ TEST(MeshRefResolution, MeshColliderTakesTrianglesFromRendererMesh)
 {
     AssetManager assets{std::string{"."}};
 
-    ObjectData obj;
-    obj.components.push_back(MakeMeshRenderer("wedge45"));
-    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
+    nlohmann::json obj = NS::Obj::MakeObjectJson();
+    NS::Obj::ObjectJsonComponents(obj).push_back(MakeMeshRenderer("wedge45"));
+    NS::Obj::ObjectJsonComponents(obj).push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
 
-    std::unique_ptr<NS::Obj::GameObject> built = BuildSceneObject(obj, &assets);
+    std::unique_ptr<NS::Obj::GameObject> built = ObjectFromJson(obj, &assets);
     ASSERT_NE(built, nullptr);
     NS::Obj::MeshCollider* collider = built->FindComponent<NS::Obj::MeshCollider>();
     ASSERT_NE(collider, nullptr);
@@ -152,11 +150,11 @@ TEST(MeshRefResolution, MeshColliderFallsBackToCubeLikeRenderer)
 {
     AssetManager assets{std::string{"."}};
 
-    ObjectData obj;
-    obj.components.push_back(MakeMeshRenderer("__ns_missing_mesh__.gltf"));
-    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
+    nlohmann::json obj = NS::Obj::MakeObjectJson();
+    NS::Obj::ObjectJsonComponents(obj).push_back(MakeMeshRenderer("__ns_missing_mesh__.gltf"));
+    NS::Obj::ObjectJsonComponents(obj).push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
 
-    std::unique_ptr<NS::Obj::GameObject> built = BuildSceneObject(obj, &assets);
+    std::unique_ptr<NS::Obj::GameObject> built = ObjectFromJson(obj, &assets);
     ASSERT_NE(built, nullptr);
     NS::Obj::MeshCollider* collider = built->FindComponent<NS::Obj::MeshCollider>();
     ASSERT_NE(collider, nullptr);
@@ -169,10 +167,10 @@ TEST(MeshRefResolution, MeshColliderWithoutRendererStaysEmpty)
 {
     AssetManager assets{std::string{"."}};
 
-    ObjectData obj;
-    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
+    nlohmann::json obj = NS::Obj::MakeObjectJson();
+    NS::Obj::ObjectJsonComponents(obj).push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
 
-    std::unique_ptr<NS::Obj::GameObject> built = BuildSceneObject(obj, &assets);
+    std::unique_ptr<NS::Obj::GameObject> built = ObjectFromJson(obj, &assets);
     ASSERT_NE(built, nullptr);
     NS::Obj::MeshCollider* collider = built->FindComponent<NS::Obj::MeshCollider>();
     ASSERT_NE(collider, nullptr);
@@ -184,13 +182,13 @@ TEST(MeshRefResolution, BuiltCubeMeshColliderStopsRayAtTopFace)
 {
     AssetManager assets{std::string{"."}};
 
-    ObjectData obj;
-    obj.components.push_back(MakeMeshRenderer("cube"));
-    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
+    nlohmann::json obj = NS::Obj::MakeObjectJson();
+    NS::Obj::ObjectJsonComponents(obj).push_back(MakeMeshRenderer("cube"));
+    NS::Obj::ObjectJsonComponents(obj).push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
 
     NS::Obj::Scene scene;
     NS::Obj::ObjectList objects;
-    NS::Obj::GameObject* placed = objects.Append(BuildSceneObject(obj, &assets));
+    NS::Obj::GameObject* placed = objects.Append(ObjectFromJson(obj, &assets));
     ASSERT_NE(placed, nullptr);
     // collider は持ち主の Scene の PhysicsScene しか受け取らないので、組んだ配置物を Scene へ結ぶ
     placed->AttachScene(&scene);

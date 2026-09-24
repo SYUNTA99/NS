@@ -5,7 +5,6 @@
 #include "Editor/EditorObjects.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Platform/Filesystem.h"
 
@@ -26,9 +25,9 @@ namespace
             return std::nullopt;
         }
 
-        NS::Obj::SceneData data;
-        data.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
-        data.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
+        nlohmann::json data = NS::Obj::MakeSceneJson();
+        NS::Obj::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(0, 0, 0));
+        NS::Obj::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(1, 0, 0));
         NS::Obj::EnsureUniqueObjectIds(data);
         if (!NS::Obj::SaveSceneToJsonFile(data, *path))
         {

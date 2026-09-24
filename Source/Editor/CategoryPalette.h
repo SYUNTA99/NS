@@ -3,7 +3,7 @@
 #include "Editor/GridMath.h"
 #include "Editor/PaletteTemplates.h"
 #include "Runtime/Core/NonCopyable.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/ObjectJson.h"
 
 namespace NS::Platform
 {
@@ -39,7 +39,7 @@ namespace NS::Editor
         [[nodiscard]] std::size_t ActiveSlot() const noexcept { return m_activeSlot; }
 
         //! 選択中のブラシのテンプレートを取得する
-        [[nodiscard]] const NS::Obj::ObjectData& CurrentTemplate() const noexcept
+        [[nodiscard]] const nlohmann::json& CurrentTemplate() const noexcept
         {
             return PaletteTemplateSlots()[m_activeSlot].prototype;
         }

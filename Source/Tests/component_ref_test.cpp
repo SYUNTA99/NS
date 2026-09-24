@@ -2,13 +2,13 @@
 #include <Runtime/Object/Components/BoxCollider.h>
 #include <Runtime/Object/Components/SphereCollider.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/ObjectJson.h>
 #include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ComponentRef.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Reflection/ReflectionJson.h>
 #include <Runtime/Object/Scene/Scene.h>
-#include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Object/Scene/SceneJson.h>
 
 #include <cstdint>
@@ -25,9 +25,7 @@ namespace
     using NS::Obj::ComponentRef;
     using NS::Obj::ComponentRefValue;
     using NS::Obj::GameObject;
-    using NS::Obj::ObjectData;
     using NS::Obj::Scene;
-    using NS::Obj::SceneData;
     using NS::Obj::SphereCollider;
 
     // 別の配置物の箱を名指しする欄を持つだけの Component。欄の型が選べる相手を BoxCollider に絞る
@@ -95,20 +93,21 @@ TEST(ComponentName, RenameStaysUniqueWithinOwner)
 // 保存された名前は組み立てで実体へ戻り、id は ObjectList が書く
 TEST(ComponentName, LoadedComponentsKeepSavedNamesAndIds)
 {
-    SceneData data;
-    ObjectData object;
-    object.name = "Gate";
+    nlohmann::json data = NS::Obj::MakeSceneJson();
+    nlohmann::json object = NS::Obj::MakeObjectJson();
+    NS::Obj::SetObjectJsonName(object, "Gate");
     nlohmann::json door = NS::Obj::MakeComponentEntry("BoxCollider");
     NS::Obj::SetComponentEntryName(door, "Door");
-    object.components.push_back(std::move(door));
-    object.components.push_back(NS::Obj::MakeComponentEntry("BoxCollider"));
-    data.objects.push_back(std::move(object));
+    NS::Obj::ObjectJsonComponents(object).push_back(std::move(door));
+    NS::Obj::ObjectJsonComponents(object).push_back(NS::Obj::MakeComponentEntry("BoxCollider"));
+    NS::Obj::SceneJsonObjects(data).push_back(std::move(object));
     NS::Obj::EnsureUniqueObjectIds(data);
-    const std::uint32_t objectId = data.objects[0].objectId;
-    const std::uint32_t doorId = NS::Obj::ComponentEntryId(data.objects[0].components[0]);
+    const nlohmann::json& placed = NS::Obj::SceneJsonObjects(data)[0];
+    const std::uint32_t objectId = NS::Obj::ObjectJsonId(placed);
+    const std::uint32_t doorId = NS::Obj::ComponentEntryId(NS::Obj::ObjectJsonComponents(placed)[0]);
 
     Scene scene;
-    scene.LoadFromData(std::move(data));
+    scene.LoadJson(std::move(data));
 
     GameObject* live = scene.Objects().FindObject(NS::Obj::ObjectRef{objectId});
     ASSERT_NE(live, nullptr);
@@ -220,21 +219,29 @@ TEST(ComponentRefTest, JsonRoundTrip)
 namespace
 {
     // [0] は箱を名指しする配置物、[1] は名前 Gate の配置物で、名前 Door の箱を持つ
-    SceneData MakeSwitchAndGate(std::uint32_t& outGateId, std::uint32_t& outDoorId)
+    nlohmann::json MakeSwitchAndGate(std::uint32_t& outGateId, std::uint32_t& outDoorId)
     {
-        SceneData data;
-        data.objects.resize(2);
-        data.objects[1].name = "Gate";
+        nlohmann::json data = NS::Obj::MakeSceneJson();
+        nlohmann::json& objects = NS::Obj::SceneJsonObjects(data);
+        objects.push_back(NS::Obj::MakeObjectJson());
+        objects.push_back(NS::Obj::MakeObjectJson());
+        NS::Obj::SetObjectJsonName(objects[1], "Gate");
         nlohmann::json door = NS::Obj::MakeComponentEntry("BoxCollider");
         NS::Obj::SetComponentEntryName(door, "Door");
-        data.objects[1].components.push_back(std::move(door));
-        data.objects[0].components.push_back(NS::Obj::MakeComponentEntry("GateSwitch"));
+        NS::Obj::ObjectJsonComponents(objects[1]).push_back(std::move(door));
+        NS::Obj::ObjectJsonComponents(objects[0]).push_back(NS::Obj::MakeComponentEntry("GateSwitch"));
         NS::Obj::EnsureUniqueObjectIds(data);
 
-        outGateId = data.objects[1].objectId;
-        outDoorId = NS::Obj::ComponentEntryId(data.objects[1].components[0]);
-        data.objects[0].components[0]["fields"]["開ける相手"] = RefValue(outGateId, outDoorId);
+        outGateId = NS::Obj::ObjectJsonId(objects[1]);
+        outDoorId = NS::Obj::ComponentEntryId(NS::Obj::ObjectJsonComponents(objects[1])[0]);
+        NS::Obj::ObjectJsonComponents(objects[0])[0]["fields"]["開ける相手"] = RefValue(outGateId, outDoorId);
         return data;
+    }
+
+    // 先頭の配置物 (箱を名指しする側) の先頭 component の参照の欄
+    const nlohmann::json& SwitchRefValue(const nlohmann::json& data)
+    {
+        return NS::Obj::ObjectJsonComponents(NS::Obj::SceneJsonObjects(data)[0])[0].at("fields").at("開ける相手");
     }
 
     const nlohmann::json* FindSwitchField(const nlohmann::json& objects)
@@ -256,7 +263,7 @@ TEST(ComponentRefFile, WrittenByNamesAndReadBackAsIds)
 {
     std::uint32_t gateId = 0;
     std::uint32_t doorId = 0;
-    const SceneData source = MakeSwitchAndGate(gateId, doorId);
+    const nlohmann::json source = MakeSwitchAndGate(gateId, doorId);
 
     const std::string text = NS::Obj::SerializeSceneToJson(source);
     const nlohmann::json root = nlohmann::json::parse(text);
@@ -265,9 +272,9 @@ TEST(ComponentRefFile, WrittenByNamesAndReadBackAsIds)
     EXPECT_EQ(written->at("ref").get<std::string>(), "Gate");
     EXPECT_EQ(written->at("component").get<std::string>(), "Door");
 
-    SceneData loaded;
+    nlohmann::json loaded = NS::Obj::MakeSceneJson();
     ASSERT_TRUE(NS::Obj::DeserializeSceneFromJson(loaded, text));
-    const nlohmann::json& read = loaded.objects[0].components[0].at("fields").at("開ける相手");
+    const nlohmann::json& read = SwitchRefValue(loaded);
     EXPECT_EQ(read.at("ref").get<std::uint32_t>(), gateId);
     EXPECT_EQ(read.at("component").get<std::uint32_t>(), doorId);
 }
@@ -277,7 +284,7 @@ TEST(ComponentRefFile, UnknownComponentNameBecomesUnset)
 {
     std::uint32_t gateId = 0;
     std::uint32_t doorId = 0;
-    const SceneData source = MakeSwitchAndGate(gateId, doorId);
+    const nlohmann::json source = MakeSwitchAndGate(gateId, doorId);
 
     nlohmann::json root = nlohmann::json::parse(NS::Obj::SerializeSceneToJson(source));
     for (nlohmann::json& object : root.at("objects"))
@@ -289,9 +296,9 @@ TEST(ComponentRefFile, UnknownComponentNameBecomesUnset)
         }
     }
 
-    SceneData loaded;
+    nlohmann::json loaded = NS::Obj::MakeSceneJson();
     ASSERT_TRUE(NS::Obj::DeserializeSceneFromJson(loaded, root.dump()));
-    const nlohmann::json& read = loaded.objects[0].components[0].at("fields").at("開ける相手");
+    const nlohmann::json& read = SwitchRefValue(loaded);
     EXPECT_EQ(read.at("ref").get<std::uint32_t>(), 0u);
     EXPECT_EQ(read.at("component").get<std::uint32_t>(), 0u);
 }
@@ -303,11 +310,11 @@ TEST(ComponentRefData, PruneResetsReferenceToMissingComponent)
 {
     std::uint32_t gateId = 0;
     std::uint32_t doorId = 0;
-    SceneData data = MakeSwitchAndGate(gateId, doorId);
-    data.objects[0].components[0]["fields"]["開ける相手"] = RefValue(gateId, doorId + 1000u);
+    nlohmann::json data = MakeSwitchAndGate(gateId, doorId);
+    NS::Obj::ObjectJsonComponents(NS::Obj::SceneJsonObjects(data)[0])[0]["fields"]["開ける相手"] = RefValue(gateId, doorId + 1000u);
 
     EXPECT_EQ(NS::Obj::PruneDanglingObjectRefs(data), 1u);
-    const nlohmann::json& value = data.objects[0].components[0].at("fields").at("開ける相手");
+    const nlohmann::json& value = SwitchRefValue(data);
     EXPECT_EQ(value.at("ref").get<std::uint32_t>(), 0u);
     EXPECT_EQ(value.at("component").get<std::uint32_t>(), 0u);
 }
@@ -316,26 +323,26 @@ TEST(ComponentRefData, PruneKeepsValidAndUnsetReferences)
 {
     std::uint32_t gateId = 0;
     std::uint32_t doorId = 0;
-    SceneData data = MakeSwitchAndGate(gateId, doorId);
+    nlohmann::json data = MakeSwitchAndGate(gateId, doorId);
     EXPECT_EQ(NS::Obj::PruneDanglingObjectRefs(data), 0u);
 
-    data.objects[0].components[0]["fields"]["開ける相手"] = RefValue(0u, 0u);
+    NS::Obj::ObjectJsonComponents(NS::Obj::SceneJsonObjects(data)[0])[0]["fields"]["開ける相手"] = RefValue(0u, 0u);
     EXPECT_EQ(NS::Obj::PruneDanglingObjectRefs(data), 0u);
 }
 
 // 複製の付け替えは表に載った id だけを変え、範囲の外を指す参照は元の相手のまま残す
 TEST(ComponentRefData, RemapChangesOnlyMappedIds)
 {
-    ObjectData object;
+    nlohmann::json object = NS::Obj::MakeObjectJson();
     nlohmann::json entry = NS::Obj::MakeComponentEntry("GateSwitch");
     entry["fields"]["開ける相手"] = RefValue(10u, 11u);
     entry["fields"]["外の相手"] = RefValue(20u, 21u);
-    object.components.push_back(std::move(entry));
+    NS::Obj::ObjectJsonComponents(object).push_back(std::move(entry));
 
     const std::unordered_map<std::uint32_t, std::uint32_t> idMap{{10u, 110u}, {11u, 111u}};
     NS::Obj::RemapObjectRefs(object, idMap);
 
-    const nlohmann::json& fields = object.components[0].at("fields");
+    const nlohmann::json& fields = NS::Obj::ObjectJsonComponents(object)[0].at("fields");
     EXPECT_EQ(fields.at("開ける相手").at("ref").get<std::uint32_t>(), 110u);
     EXPECT_EQ(fields.at("開ける相手").at("component").get<std::uint32_t>(), 111u);
     EXPECT_EQ(fields.at("外の相手").at("ref").get<std::uint32_t>(), 20u);

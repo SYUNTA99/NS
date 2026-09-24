@@ -5,7 +5,7 @@
 
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/Scene/SceneJson.h"
 
 #include <string_view>
 
@@ -19,14 +19,14 @@ namespace NS::Editor
 {
 
     //! 配置物の cell 座標 = position を最近接整数へ丸めた値
-    [[nodiscard]] std::int16_t ObjectCellX(const NS::Obj::ObjectData& object) noexcept;
-    [[nodiscard]] std::int16_t ObjectCellY(const NS::Obj::ObjectData& object) noexcept;
-    [[nodiscard]] std::int16_t ObjectCellZ(const NS::Obj::ObjectData& object) noexcept;
+    [[nodiscard]] std::int16_t ObjectCellX(const nlohmann::json& object) noexcept;
+    [[nodiscard]] std::int16_t ObjectCellY(const nlohmann::json& object) noexcept;
+    [[nodiscard]] std::int16_t ObjectCellZ(const nlohmann::json& object) noexcept;
 
     //! cell ブラシが置換 / 削除できる配置物か。見た目を持つ素の GameObject が対象
-    [[nodiscard]] bool IsCellBrushObject(const NS::Obj::ObjectData& object) noexcept;
+    [[nodiscard]] bool IsCellBrushObject(const nlohmann::json& object) noexcept;
 
-    //! live 実体版。判定はデータ版と同じ基準で、component の有無を実体から見る
+    //! live 実体版。判定は JSON 版と同じ基準で、component の有無を実体から見る
     [[nodiscard]] bool IsCellBrushObject(NS::Obj::GameObject& object) noexcept;
 
     //! live 実体の cell 座標 = Root 位置を最近接整数へ丸めた値
@@ -35,7 +35,7 @@ namespace NS::Editor
     [[nodiscard]] std::int16_t ObjectCellZ(const NS::Obj::GameObject& object) noexcept;
 
     //! cell の x, y, z に一致する最初の cell ブラシ配置物の添字。無ければ k_NoObjectIndex
-    [[nodiscard]] std::size_t FindObjectAtCell(const NS::Obj::SceneData& level,
+    [[nodiscard]] std::size_t FindObjectAtCell(const nlohmann::json& scene,
                                                std::int16_t x,
                                                std::int16_t y,
                                                std::int16_t z) noexcept;
@@ -47,10 +47,10 @@ namespace NS::Editor
                                                    std::int16_t z) noexcept;
 
     //! object の現在の 90° 回転 step を quaternion から最近接で復元する
-    [[nodiscard]] std::uint8_t CellRotationStep(const NS::Obj::ObjectData& object) noexcept;
+    [[nodiscard]] std::uint8_t CellRotationStep(const nlohmann::json& object) noexcept;
 
     //! object の回転を rotationStep に対応する Y 軸 yaw quaternion に設定する
-    void SetCellRotationStep(NS::Obj::ObjectData& object, std::uint8_t rotationStep) noexcept;
+    void SetCellRotationStep(nlohmann::json& object, std::uint8_t rotationStep) noexcept;
 
     //! MeshRenderer の component entry を作る。Mesh / Material / Base Color を書き込む
     [[nodiscard]] nlohmann::json MakeMeshRendererEntry(std::string_view meshName,
@@ -60,8 +60,8 @@ namespace NS::Editor
     //! 1m 立方の cube 描画と Box 当たりを積んだ、基本キューブの構成を作る
     [[nodiscard]] nlohmann::json MakeCellCubeComponents();
 
-    //! cell の x, y, z に基本キューブの ObjectData を作る
-    [[nodiscard]] NS::Obj::ObjectData MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z);
+    //! cell の x, y, z に基本キューブのひな形の JSON を作る
+    [[nodiscard]] nlohmann::json MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z);
 
     //! 指定角度のスロープの構成を作る
     [[nodiscard]] nlohmann::json MakeCellSlopeComponents(float angleDegrees);
@@ -82,15 +82,15 @@ namespace NS::Editor
     [[nodiscard]] nlohmann::json MakeGoalComponents();
 
     //! BoxCollider を持ち、ギミックでない固形ブロックか
-    [[nodiscard]] bool IsSolidObject(const NS::Obj::ObjectData& object);
+    [[nodiscard]] bool IsSolidObject(const nlohmann::json& object);
 
     //! 90 度回転できるスロープか固形箱か
-    [[nodiscard]] bool IsRotatableObject(const NS::Obj::ObjectData& object);
+    [[nodiscard]] bool IsRotatableObject(const nlohmann::json& object);
 
     //! component 構成から UI 表示用の分類名を返す
-    [[nodiscard]] const char* ObjectDisplayName(const NS::Obj::ObjectData& object);
+    [[nodiscard]] const char* ObjectDisplayName(const nlohmann::json& object);
 
-    //! live 実体版。判定はデータ版と同じ基準で、component の有無と値を実体から見る
+    //! live 実体版。判定は JSON 版と同じ基準で、component の有無と値を実体から見る
     [[nodiscard]] const char* ObjectDisplayName(NS::Obj::GameObject& object);
 
     //! @brief クリックで配置物を選ぶ時の判定箱を、Root のローカル空間で返す

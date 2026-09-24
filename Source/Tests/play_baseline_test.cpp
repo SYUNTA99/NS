@@ -12,10 +12,10 @@ namespace SceneNs = NS::Obj;
 namespace
 {
     // 視覚 / 当たりを持たず接触クリアの意味だけを持つゴールを作る
-    SceneNs::ObjectData MakeGoal()
+    nlohmann::json MakeGoal()
     {
-        SceneNs::ObjectData object{};
-        object.components.push_back(SceneNs::MakeComponentEntry("Goal"));
+        nlohmann::json object = SceneNs::MakeObjectJson();
+        SceneNs::ObjectJsonComponents(object).push_back(SceneNs::MakeComponentEntry("Goal"));
         return object;
     }
 } // namespace
@@ -26,18 +26,19 @@ namespace
 TEST(PlayBaseline, TickDoesNotTouchPlayBaseline)
 {
     SceneNs::Scene scene;
-    SceneNs::SceneData level;
-    level.objects.push_back(MakePlayerObject(NS::Core::Vector3{5.0f, 1.0f, -3.0f}, NS::Core::Quaternion{}));
-    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
-    SceneNs::ObjectData rotated = NS::Editor::MakeCellObject(1, 0, 0);
+    nlohmann::json level = SceneNs::MakeSceneJson();
+    nlohmann::json& objects = SceneNs::SceneJsonObjects(level);
+    objects.push_back(MakePlayerObject(NS::Core::Vector3{5.0f, 1.0f, -3.0f}, NS::Core::Quaternion{}));
+    objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    nlohmann::json rotated = NS::Editor::MakeCellObject(1, 0, 0);
     SceneNs::SetObjectRotation(rotated,
                                NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.5f, 0.0f, 0.0f));
-    level.objects.push_back(rotated);
-    level.objects.push_back(MakeGoal());
-    scene.LoadFromData(std::move(level));
+    objects.push_back(rotated);
+    objects.push_back(MakeGoal());
+    scene.LoadJson(std::move(level));
 
     (void)scene.BeginPlayBaseline();
-    const SceneNs::SceneData frozen = scene.PlayBaseline();
+    const nlohmann::json frozen = scene.PlayBaseline();
     for (int i = 0; i < 600; ++i)
     {
         scene.OnUpdate();

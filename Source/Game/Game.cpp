@@ -51,7 +51,7 @@ void Game::OnAttach()
     if (!LoadStartScene())
     {
         NS_LOG_ERROR(Game, "起動シーンを読めなかった。 空のシーンで立ち上げる");
-        (void)m_scenes.LoadScene(NS::Obj::SceneData{});
+        (void)m_scenes.LoadScene(NS::Obj::MakeSceneJson());
     }
 
     NS::Obj::Scene* scene = m_scenes.Current();
@@ -142,7 +142,7 @@ bool Game::LoadScene(std::string_view scenePath)
         return false;
     }
 
-    NS::Obj::SceneData data;
+    nlohmann::json data;
     if (!NS::Obj::LoadSceneFromJsonFile(data, *path))
     {
         return false;

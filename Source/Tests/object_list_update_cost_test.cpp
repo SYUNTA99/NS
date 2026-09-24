@@ -1,10 +1,11 @@
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/Scene/SceneJson.h"
 
 #include <chrono>
 #include <cstddef>
@@ -105,32 +106,33 @@ TEST(ObjectListUpdateCost, BundledLevelScale)
 namespace
 {
     // depth 段のツリーを組む。実際のレベルは浅く、1 列の鎖は最悪ケースの確認用
-    [[nodiscard]] NS::Obj::SceneData MakeParentTree(std::uint32_t count, std::uint32_t depth)
+    [[nodiscard]] nlohmann::json MakeParentTree(std::uint32_t count, std::uint32_t depth)
     {
-        NS::Obj::SceneData data{};
-        data.objects.reserve(count);
+        nlohmann::json data = NS::Obj::MakeSceneJson();
+        nlohmann::json& objects = NS::Obj::SceneJsonObjects(data);
+        objects.get_ref<nlohmann::json::array_t&>().reserve(count);
         // 1 段あたりの体数。深さ 1 なら全員が根、count なら 1 列の鎖になる
         const std::uint32_t perLevel = std::max(std::uint32_t{1}, count / std::max(depth, std::uint32_t{1}));
         for (std::uint32_t i = 0; i < count; ++i)
         {
-            NS::Obj::ObjectData object{};
-            object.objectId = i + 1;
+            nlohmann::json object = NS::Obj::MakeObjectJson();
+            NS::Obj::SetObjectJsonId(object, i + 1);
             // 先頭の 1 段は根。以降は 1 段上の同じ位置にぶら下げる
             if (i >= perLevel)
-                object.parentId = i - perLevel + 1;
+                NS::Obj::SetObjectJsonParent(object, i - perLevel + 1);
             NS::Obj::EnsureTransformComponent(object);
-            data.objects.push_back(std::move(object));
+            objects.push_back(std::move(object));
         }
-        data.nextObjectId = count + 1;
+        NS::Obj::SetSceneJsonNextObjectId(data, count + 1);
         return data;
     }
 
-    [[nodiscard]] double MeasureRebuildMicros(const NS::Obj::SceneData& data, int iterations)
+    [[nodiscard]] double MeasureRebuildMicros(const nlohmann::json& data, int iterations)
     {
         NS::Obj::Scene scene;
         NS::Obj::ObjectList objects;
-        std::unique_ptr<NS::Obj::GameObject> (*factory)(const NS::Obj::ObjectData&) = [](const NS::Obj::ObjectData& entry) -> std::unique_ptr<NS::Obj::GameObject> {
-            return NS::Obj::BuildSceneObject(entry, nullptr);
+        std::unique_ptr<NS::Obj::GameObject> (*factory)(const nlohmann::json&) = [](const nlohmann::json& entry) -> std::unique_ptr<NS::Obj::GameObject> {
+            return NS::Obj::ObjectFromJson(entry, nullptr);
         };
 
         const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -146,7 +148,7 @@ TEST(ObjectListRebuildCost, ShallowTreeScale)
 {
     for (const std::uint32_t count : {std::uint32_t{100}, std::uint32_t{500}, std::uint32_t{1000}})
     {
-        const NS::Obj::SceneData data = MakeParentTree(count, 3);
+        const nlohmann::json data = MakeParentTree(count, 3);
         const double micros = MeasureRebuildMicros(data, 20);
         std::cout << "[組み直しの実測] 深さ 3 段  配置物=" << count << "  Rebuild " << micros << " us\n";
     }
@@ -157,7 +159,7 @@ TEST(ObjectListRebuildCost, DeepChainScale)
 {
     for (const std::uint32_t count : {std::uint32_t{100}, std::uint32_t{500}, std::uint32_t{1000}})
     {
-        const NS::Obj::SceneData data = MakeParentTree(count, count);
+        const nlohmann::json data = MakeParentTree(count, count);
         const double micros = MeasureRebuildMicros(data, 5);
         std::cout << "[組み直しの実測] 1 列の鎖  配置物=" << count << "  Rebuild " << micros << " us\n";
     }

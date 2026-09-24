@@ -12,7 +12,7 @@ namespace NS::Obj
     class ObjectList;
 
     //! @brief GameObject と Component の共通基底。クラス名と永続 id と名前を持つ
-    //! @details ClassName() は保存が ObjectData.className へ写し、読込は TypeRegistry の同名登録で型を選ぶ
+    //! @details ClassName() は保存が配置物の JSON の class へ写し、読込は TypeRegistry の同名登録で型を選ぶ
     //! Id() は保存と参照解決で使う同一性。配置物と Component の両方に振られ、番号の空間は共通
     //! Name() は人が読む名前。配置物はシーンの中で、Component は持ち主の配置物の中で一意
     //! ファイルの参照は名前で書き、読込で id へ直す。実行中の参照は id で持つので、改名しても切れない

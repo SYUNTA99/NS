@@ -1,7 +1,7 @@
 #include "Editor/EditorObjects.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Object/Scene/SceneManager.h"
 
 #include <cstdint>
@@ -13,12 +13,12 @@
 namespace
 {
     // 地形ブロックを指定数だけ並べたレベルデータ
-    NS::Obj::SceneData MakeLevel(std::int16_t cellCount)
+    nlohmann::json MakeLevel(std::int16_t cellCount)
     {
-        NS::Obj::SceneData data;
+        nlohmann::json data = NS::Obj::MakeSceneJson();
         for (std::int16_t i = 0; i < cellCount; ++i)
         {
-            data.objects.push_back(NS::Editor::MakeCellObject(i, 0, 0));
+            NS::Obj::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(i, 0, 0));
         }
         return data;
     }

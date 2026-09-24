@@ -93,15 +93,15 @@ namespace
     {
         NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
 
-        SceneNs::SceneData data;
+        nlohmann::json data = SceneNs::MakeSceneJson();
         Vector3 spawn{course.start, 1.41f, course.lateral};
         if (course.alongZ)
             spawn = Vector3{course.lateral, 1.41f, course.start};
-        SceneNs::ObjectData player = MakePlayerObject(spawn, NS::Core::Quaternion{});
-        player.components.push_back(SceneNs::MakeComponentEntry("ImpactResolver"));
+        nlohmann::json player = MakePlayerObject(spawn, NS::Core::Quaternion{});
+        SceneNs::ObjectJsonComponents(player).push_back(SceneNs::MakeComponentEntry("ImpactResolver"));
         if (course.withCollisionInput)
-            player.components.push_back(SceneNs::MakeComponentEntry("CollisionInput"));
-        data.objects.push_back(player);
+            SceneNs::ObjectJsonComponents(player).push_back(SceneNs::MakeComponentEntry("CollisionInput"));
+        SceneNs::SceneJsonObjects(data).push_back(player);
 
         // カプセル半径 0.4 の自機を横へずらすと床 1 列からはみ出すので、ずらす側にもう 1 列敷く
         std::int16_t lateralCell = 0;
@@ -115,24 +115,24 @@ namespace
                 continue;
             if (course.alongZ)
             {
-                data.objects.push_back(NS::Editor::MakeCellObject(0, 0, i));
+                SceneNs::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(0, 0, i));
                 if (lateralCell != 0)
-                    data.objects.push_back(NS::Editor::MakeCellObject(lateralCell, 0, i));
+                    SceneNs::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(lateralCell, 0, i));
             }
             else
             {
-                data.objects.push_back(NS::Editor::MakeCellObject(i, 0, 0));
+                SceneNs::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(i, 0, 0));
                 if (lateralCell != 0)
-                    data.objects.push_back(NS::Editor::MakeCellObject(i, 0, lateralCell));
+                    SceneNs::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(i, 0, lateralCell));
             }
         }
 
-        SceneNs::ObjectData target = NS::Editor::MakeCellObject(course.targetCell, 1, 0);
+        nlohmann::json target = NS::Editor::MakeCellObject(course.targetCell, 1, 0);
         if (course.alongZ)
             target = NS::Editor::MakeCellObject(0, 1, course.targetCell);
         if (course.sphereTarget)
         {
-            for (nlohmann::json& entry : target.components)
+            for (nlohmann::json& entry : SceneNs::ObjectJsonComponents(target))
             {
                 if (SceneNs::ComponentEntryType(entry) != "BoxCollider")
                     continue;
@@ -142,11 +142,11 @@ namespace
         }
         if (course.withBreakable)
         {
-            target.components.push_back(MakeLaunchableRigidBodyEntry());
-            target.components.push_back(SceneNs::MakeComponentEntry("Breakable"));
+            SceneNs::ObjectJsonComponents(target).push_back(MakeLaunchableRigidBodyEntry());
+            SceneNs::ObjectJsonComponents(target).push_back(SceneNs::MakeComponentEntry("Breakable"));
         }
-        data.objects.push_back(target);
-        scene.LoadFromData(std::move(data));
+        SceneNs::SceneJsonObjects(data).push_back(target);
+        scene.LoadJson(std::move(data));
 
         Rig rig;
         Player* live = FindPlayer(scene.Objects());
@@ -315,18 +315,18 @@ namespace
     {
         NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
 
-        SceneNs::SceneData data;
+        nlohmann::json data = SceneNs::MakeSceneJson();
         for (std::int16_t x = k_FloorFirstX; x <= k_FloorLastX; ++x)
-            data.objects.push_back(NS::Editor::MakeCellObject(x, 0, 0));
+            SceneNs::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(x, 0, 0));
         if (withWall)
-            data.objects.push_back(NS::Editor::MakeCellObject(k_WallX, 1, 0));
+            SceneNs::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(k_WallX, 1, 0));
 
-        SceneNs::ObjectData target = NS::Editor::MakeCellObject(0, 1, 0);
+        nlohmann::json target = NS::Editor::MakeCellObject(0, 1, 0);
         if (withRigidBody)
-            target.components.push_back(MakeLaunchableRigidBodyEntry());
-        target.components.push_back(SceneNs::MakeComponentEntry("LaunchedBody"));
-        data.objects.push_back(target);
-        scene.LoadFromData(std::move(data));
+            SceneNs::ObjectJsonComponents(target).push_back(MakeLaunchableRigidBodyEntry());
+        SceneNs::ObjectJsonComponents(target).push_back(SceneNs::MakeComponentEntry("LaunchedBody"));
+        SceneNs::SceneJsonObjects(data).push_back(target);
+        scene.LoadJson(std::move(data));
 
         BodyRig rig;
         scene.Objects().ForEachComponent<LevelNs::LaunchedBody>(
@@ -2344,9 +2344,9 @@ TEST(ImpactMark, SkipsSaveCapture)
     SceneNs::GameObject* mark = LevelNs::ImpactMark::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
     ASSERT_NE(mark, nullptr);
 
-    const SceneNs::SceneData data = scene.CaptureLiveToSceneData();
+    const nlohmann::json data = scene.ToJson();
 
-    EXPECT_TRUE(data.objects.empty());
+    EXPECT_TRUE(SceneNs::SceneJsonObjects(data).empty());
 }
 
 // 見た目は床へ寝かせた半透明の板
@@ -2449,11 +2449,11 @@ TEST(LaunchedBody, DoesNotFlyWithoutCollider)
 {
     NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
-    SceneNs::SceneData data;
-    SceneNs::ObjectData bare;
-    bare.components.push_back(SceneNs::MakeComponentEntry("LaunchedBody"));
-    data.objects.push_back(bare);
-    scene.LoadFromData(std::move(data));
+    nlohmann::json data = SceneNs::MakeSceneJson();
+    nlohmann::json bare = SceneNs::MakeObjectJson();
+    SceneNs::ObjectJsonComponents(bare).push_back(SceneNs::MakeComponentEntry("LaunchedBody"));
+    SceneNs::SceneJsonObjects(data).push_back(bare);
+    scene.LoadJson(std::move(data));
 
     LevelNs::LaunchedBody* body = nullptr;
     scene.Objects().ForEachComponent<LevelNs::LaunchedBody>(

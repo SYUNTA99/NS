@@ -1,5 +1,6 @@
 ﻿#include "Runtime/Object/Components/TransformComponent.h"
 
+#include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 
 #include <algorithm>
@@ -41,7 +42,7 @@ namespace NS::Obj
 
     namespace
     {
-        NS::Core::Vector3 ReadTransformVec3(const ObjectData& object,
+        NS::Core::Vector3 ReadTransformVec3(const nlohmann::json& object,
                                             std::string_view fieldName,
                                             const NS::Core::Vector3& fallback) noexcept
         {
@@ -53,19 +54,16 @@ namespace NS::Obj
             return FieldVector3(*transform, fieldName, fallback);
         }
 
-        void WriteTransformVec3(ObjectData& object, std::string_view fieldName, const NS::Core::Vector3& value)
+        void WriteTransformVec3(nlohmann::json& object, std::string_view fieldName, const NS::Core::Vector3& value)
         {
             SetField(EnsureTransformComponent(object), fieldName, value);
         }
     } // namespace
 
-    nlohmann::json& EnsureTransformComponent(ObjectData& object)
+    nlohmann::json& EnsureTransformComponent(nlohmann::json& object)
     {
-        if (!object.components.is_array())
-        {
-            object.components = nlohmann::json::array();
-        }
-        for (nlohmann::json& entry : object.components)
+        nlohmann::json& components = ObjectJsonComponents(object);
+        for (nlohmann::json& entry : components)
         {
             if (ComponentEntryType(entry) == k_TransformTypeName)
             {
@@ -76,21 +74,21 @@ namespace NS::Obj
         SetField(transform, k_PositionFieldName, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         SetField(transform, k_RotationFieldName, NS::Core::Quaternion::Identity);
         SetField(transform, k_ScaleFieldName, NS::Core::Vector3{1.0f, 1.0f, 1.0f});
-        object.components.push_back(std::move(transform));
-        return object.components.back();
+        components.push_back(std::move(transform));
+        return components.back();
     }
 
-    NS::Core::Vector3 ObjectPosition(const ObjectData& object) noexcept
+    NS::Core::Vector3 ObjectPosition(const nlohmann::json& object) noexcept
     {
         return ReadTransformVec3(object, k_PositionFieldName, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
     }
 
-    void SetObjectPosition(ObjectData& object, const NS::Core::Vector3& position) noexcept
+    void SetObjectPosition(nlohmann::json& object, const NS::Core::Vector3& position) noexcept
     {
         WriteTransformVec3(object, k_PositionFieldName, position);
     }
 
-    NS::Core::Quaternion ObjectRotation(const ObjectData& object) noexcept
+    NS::Core::Quaternion ObjectRotation(const nlohmann::json& object) noexcept
     {
         const nlohmann::json* transform = FindComponentEntry(object, k_TransformTypeName);
         if (transform == nullptr)
@@ -100,17 +98,17 @@ namespace NS::Obj
         return FieldQuaternion(*transform, k_RotationFieldName, NS::Core::Quaternion::Identity);
     }
 
-    void SetObjectRotation(ObjectData& object, const NS::Core::Quaternion& rotation) noexcept
+    void SetObjectRotation(nlohmann::json& object, const NS::Core::Quaternion& rotation) noexcept
     {
         SetField(EnsureTransformComponent(object), k_RotationFieldName, rotation);
     }
 
-    NS::Core::Vector3 ObjectScale(const ObjectData& object) noexcept
+    NS::Core::Vector3 ObjectScale(const nlohmann::json& object) noexcept
     {
         return ReadTransformVec3(object, k_ScaleFieldName, NS::Core::Vector3{1.0f, 1.0f, 1.0f});
     }
 
-    void SetObjectScale(ObjectData& object, const NS::Core::Vector3& scale) noexcept
+    void SetObjectScale(nlohmann::json& object, const NS::Core::Vector3& scale) noexcept
     {
         WriteTransformVec3(object, k_ScaleFieldName, scale);
     }

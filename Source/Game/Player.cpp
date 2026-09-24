@@ -90,25 +90,26 @@ Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept
     return nullptr;
 }
 
-bool IsPlayerObject(const NS::Obj::ObjectData& object) noexcept
+bool IsPlayerObject(const nlohmann::json& object) noexcept
 {
-    return object.className == "Player";
+    return NS::Obj::ObjectJsonClass(object) == "Player";
 }
 
-std::size_t FindPlayerObjectIndex(const NS::Obj::SceneData& level) noexcept
+std::size_t FindPlayerObjectIndex(const nlohmann::json& scene) noexcept
 {
-    for (std::size_t i = 0; i < level.objects.size(); ++i)
+    const nlohmann::json& objects = NS::Obj::SceneJsonObjects(scene);
+    for (std::size_t i = 0; i < objects.size(); ++i)
     {
-        if (IsPlayerObject(level.objects[i]))
+        if (IsPlayerObject(objects[i]))
             return i;
     }
     return NS::Obj::k_NoObjectIndex;
 }
 
-NS::Obj::ObjectData MakePlayerObject(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation)
+nlohmann::json MakePlayerObject(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation)
 {
-    // 構成は Player のコンストラクタが決める。データは型名だけ持ち、値はコード既定を使う
-    NS::Obj::ObjectData object = NS::Obj::MakeObjectData<Player>();
+    // 構成は Player のコンストラクタが決める。ひな形は型名だけ持ち、値はコード既定を使う
+    nlohmann::json object = NS::Obj::MakePrototypeJson<Player>();
     NS::Obj::SetObjectPosition(object, position);
     NS::Obj::SetObjectRotation(object, rotation);
     // cube mesh の半サイズ 0.5 を capsule 当たり radius 0.4 / 半高 0.9 に合わせる倍率
@@ -116,26 +117,27 @@ NS::Obj::ObjectData MakePlayerObject(const NS::Core::Vector3& position, const NS
     return object;
 }
 
-std::uint32_t PlayerObjectId(const NS::Obj::SceneData& level) noexcept
+std::uint32_t PlayerObjectId(const nlohmann::json& scene) noexcept
 {
-    const std::size_t index = FindPlayerObjectIndex(level);
+    const std::size_t index = FindPlayerObjectIndex(scene);
     if (index == NS::Obj::k_NoObjectIndex)
         return NS::Obj::k_NoObjectId;
-    return level.objects[index].objectId;
+    return NS::Obj::ObjectJsonId(NS::Obj::SceneJsonObjects(scene)[index]);
 }
 
-bool EnsurePlayerObject(NS::Obj::SceneData& level)
+bool EnsurePlayerObject(nlohmann::json& scene)
 {
     bool created = false;
-    if (FindPlayerObjectIndex(level) == NS::Obj::k_NoObjectIndex)
+    if (FindPlayerObjectIndex(scene) == NS::Obj::k_NoObjectIndex)
     {
         // capsule 中心の高さは、床 block 上面 0.5 + capsule 半高 0.9 + 1cm
-        level.objects.push_back(MakePlayerObject(NS::Core::Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{}));
+        NS::Obj::SceneJsonObjects(scene).push_back(
+            MakePlayerObject(NS::Core::Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{}));
         created = true;
     }
 
     std::size_t count = 0;
-    for (const NS::Obj::ObjectData& object : level.objects)
+    for (const nlohmann::json& object : NS::Obj::SceneJsonObjects(scene))
     {
         if (IsPlayerObject(object))
             ++count;
@@ -144,6 +146,6 @@ bool EnsurePlayerObject(NS::Obj::SceneData& level)
         NS_LOG_WARN(Game, "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う", count);
 
     // 追従カメラが Target へ書き込む id が要るので、ここで採番まで済ませる
-    NS::Obj::EnsureUniqueObjectIds(level);
+    NS::Obj::EnsureUniqueObjectIds(scene);
     return created;
 }

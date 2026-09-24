@@ -27,12 +27,30 @@ namespace NS::Obj
 
     Scene::~Scene() = default;
 
-    void Scene::LoadFromData(SceneData&& data)
+    void Scene::LoadJson(nlohmann::json scene)
     {
-        m_environment = data.environment;
+        m_skyboxPath = std::string{SceneJsonSkybox(scene)};
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
-        EnsureUniqueObjectIds(data);
-        RebuildObjectsFrom(data);
+        EnsureUniqueObjectIds(scene);
+        RebuildObjectsFrom(scene);
+    }
+
+    nlohmann::json Scene::ToJson() const
+    {
+        nlohmann::json scene = MakeSceneJson();
+        SetSceneJsonSkybox(scene, m_skyboxPath);
+        SetSceneJsonNextObjectId(scene, m_objects.NextObjectId());
+        nlohmann::json& objects = SceneJsonObjects(scene);
+        for (const GameObject* obj : m_objects)
+        {
+            // 一時オブジェクトは保存にも凍結にも写さない
+            if (obj->IsTransient())
+            {
+                continue;
+            }
+            objects.push_back(ObjectToJson(*obj));
+        }
+        return scene;
     }
 
     void Scene::SyncPhysics()
@@ -54,19 +72,19 @@ namespace NS::Obj
         }
     }
 
-    const SceneData& Scene::BeginPlayBaseline()
+    const nlohmann::json& Scene::BeginPlayBaseline()
     {
         // プレイ規則の判定と編集復帰の姿はこの凍結を読む。シミュレーションが動かした値は映らず、編集へ持ち込まれない
         if (!m_playBaselineInjected)
         {
-            m_playBaseline = CaptureLiveToSceneData();
+            m_playBaseline = ToJson();
         }
         return m_playBaseline;
     }
 
-    void Scene::SetPlayBaselineForTest(SceneData data)
+    void Scene::SetPlayBaselineForTest(nlohmann::json scene)
     {
-        m_playBaseline = std::move(data);
+        m_playBaseline = std::move(scene);
         m_playBaselineInjected = true;
     }
 
@@ -84,9 +102,9 @@ namespace NS::Obj
             return;
         }
 
-        ObjectData& object = m_playBaseline.objects[objectIndex];
+        nlohmann::json& object = SceneJsonObjects(m_playBaseline)[objectIndex];
 
-        for (nlohmann::json& entry : object.components)
+        for (nlohmann::json& entry : ObjectJsonComponents(object))
         {
             if (ComponentEntryId(entry) != comp.Id())
             {
@@ -175,26 +193,74 @@ namespace NS::Obj
         obj.OnStart();
     }
 
-    SceneData Scene::CaptureLiveToSceneData() const
+    GameObject* Scene::SpawnFromJson(const nlohmann::json& object)
     {
-        // 一時オブジェクトを除く全 object を、全 component 値まで忠実に写す
-        SceneData data{};
-        data.environment = m_environment;
-        data.nextObjectId = m_objects.NextObjectId();
-
-        data.objects.reserve(m_objects.ObjectCount());
-        for (const GameObject* obj : m_objects)
+        // 資産の引き当ては開始の直前に StartSpawned がまとめて行う
+        std::unique_ptr<GameObject> built = ObjectFromJson(object, nullptr);
+        if (!built)
         {
-            if (obj->IsTransient())
-            {
-                continue;
-            }
-
-            ObjectData od = CaptureObjectData(*obj);
-            od.objectId = obj->Id();
-            data.objects.push_back(std::move(od));
+            return nullptr;
         }
-        return data;
+        built->AttachScene(this);
+        GameObject* raw = m_objects.InsertFromJson(std::move(built), object, m_objects.ObjectCount());
+        if (raw == nullptr)
+        {
+            return nullptr;
+        }
+        if (GameObject* parent = m_objects.FindByObjectId(ObjectJsonParent(object)); parent != nullptr && parent != raw)
+        {
+            raw->SetParent(parent);
+        }
+        StartSpawned(*raw);
+        return raw;
+    }
+
+    GameObject* Scene::ReplaceFromJson(const nlohmann::json& object)
+    {
+        const std::uint32_t id = ObjectJsonId(object);
+        const std::size_t index = m_objects.IndexOfObjectId(id);
+        GameObject* old = m_objects.FindByObjectId(id);
+        if (old == nullptr)
+        {
+            return SpawnFromJson(object);
+        }
+
+        std::unique_ptr<GameObject> built = ObjectFromJson(object, nullptr);
+        if (!built)
+        {
+            // 組める component が無い姿は、居ない姿として扱う
+            DestroyObject(id);
+            return nullptr;
+        }
+
+        // 子は古い方の破棄で根に落ちるので、先に控えて新しい方へ付け直す。local の姿はそのまま残る
+        std::vector<std::uint32_t> childIds;
+        childIds.reserve(old->Children().size());
+        for (const GameObject* child : old->Children())
+        {
+            childIds.push_back(child->Id());
+        }
+
+        DestroyObject(id);
+        built->AttachScene(this);
+        GameObject* raw = m_objects.InsertFromJson(std::move(built), object, index);
+        if (raw == nullptr)
+        {
+            return nullptr;
+        }
+        if (GameObject* parent = m_objects.FindByObjectId(ObjectJsonParent(object)); parent != nullptr && parent != raw)
+        {
+            raw->SetParent(parent);
+        }
+        for (const std::uint32_t childId : childIds)
+        {
+            if (GameObject* child = m_objects.FindByObjectId(childId))
+            {
+                child->SetParent(raw);
+            }
+        }
+        StartSpawned(*raw);
+        return raw;
     }
 
     void Scene::DestroyObject(std::uint32_t objectId)
@@ -202,11 +268,11 @@ namespace NS::Obj
         m_objects.RemoveByObjectId(objectId);
     }
 
-    void Scene::RebuildObjectsFrom(const SceneData& data)
+    void Scene::RebuildObjectsFrom(const nlohmann::json& scene)
     {
         // GameObject の型選択は登録一覧、参照の実体化は各 component の ResolveAssets が行う
         // vcam の brain への付け外しは VirtualCamera が OnStart / OnEndPlay で自分で行う
-        m_objects.Rebuild(data, *this, [this](const ObjectData& entry) { return BuildSceneObject(entry, m_assets); });
+        m_objects.Rebuild(scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, m_assets); });
         m_objects.SyncPhysics(m_physicsScene);
 
         OnObjectsRebuilt();
@@ -344,6 +410,6 @@ namespace NS::Obj
         {
             return;
         }
-        m_sceneRenderer.Render(*brain, *camera, m_environment);
+        m_sceneRenderer.Render(*brain, *camera, m_skyboxPath);
     }
 } // namespace NS::Obj

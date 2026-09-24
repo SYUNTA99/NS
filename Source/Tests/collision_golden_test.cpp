@@ -114,34 +114,34 @@ namespace
     // 壊れない高さ。破壊が入っても反発と押し飛ばしの経路が変わらない
     constexpr float k_ImpactTargetToughness = 99.0f;
 
-    // 反発と押し飛ばしを含む経路。当たりを持つ配置物が要るのでシーンデータから組む
+    // 反発と押し飛ばしを含む経路。当たりを持つ配置物が要るのでシーンの JSON から組む
     class ImpactRig
     {
     public:
         ImpactRig()
         {
-            NS::Obj::SceneData data;
+            nlohmann::json data = NS::Obj::MakeSceneJson();
             for (std::int16_t z = 0; z < k_ImpactFloorCells; ++z)
-                data.objects.push_back(NS::Editor::MakeCellObject(0, 0, z));
+                NS::Obj::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(0, 0, z));
 
-            NS::Obj::ObjectData player =
+            nlohmann::json player =
                 MakePlayerObject(Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{});
-            player.components.push_back(NS::Obj::MakeComponentEntry("ImpactResolver"));
-            player.components.push_back(NS::Obj::MakeComponentEntry("CollisionInput"));
-            data.objects.push_back(player);
+            NS::Obj::ObjectJsonComponents(player).push_back(NS::Obj::MakeComponentEntry("ImpactResolver"));
+            NS::Obj::ObjectJsonComponents(player).push_back(NS::Obj::MakeComponentEntry("CollisionInput"));
+            NS::Obj::SceneJsonObjects(data).push_back(player);
 
-            NS::Obj::ObjectData target = NS::Editor::MakeCellObject(0, 1, k_ImpactTargetZ);
+            nlohmann::json target = NS::Editor::MakeCellObject(0, 1, k_ImpactTargetZ);
             // 出荷のコースと同じく、重さと面は置かれている間キネマティックの RigidBody が持つ
             nlohmann::json body = NS::Obj::MakeComponentEntry("RigidBody");
             NS::Obj::SetField(body, "キネマティック", true);
             NS::Obj::SetField(body, "質量", k_ImpactTargetMass);
             NS::Obj::SetField(body, "摩擦", 0.6f);
             NS::Obj::SetField(body, "跳ね返り", 0.35f);
-            target.components.push_back(std::move(body));
-            target.components.push_back(NS::Obj::MakeComponentEntry("Breakable"));
-            data.objects.push_back(target);
+            NS::Obj::ObjectJsonComponents(target).push_back(std::move(body));
+            NS::Obj::ObjectJsonComponents(target).push_back(NS::Obj::MakeComponentEntry("Breakable"));
+            NS::Obj::SceneJsonObjects(data).push_back(target);
 
-            m_scene.LoadFromData(std::move(data));
+            m_scene.LoadJson(std::move(data));
 
             Player* live = FindPlayer(m_scene.Objects());
             EXPECT_NE(live, nullptr);

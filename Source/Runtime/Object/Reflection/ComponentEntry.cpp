@@ -1,6 +1,6 @@
 ﻿#include "Runtime/Object/Reflection/ComponentEntry.h"
 
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/ObjectJson.h"
 
 namespace NS::Obj
 {
@@ -164,13 +164,9 @@ namespace NS::Obj
         return &*it;
     }
 
-    const nlohmann::json* FindComponentEntry(const ObjectData& object, std::string_view typeName) noexcept
+    const nlohmann::json* FindComponentEntry(const nlohmann::json& object, std::string_view typeName) noexcept
     {
-        if (!object.components.is_array())
-        {
-            return nullptr;
-        }
-        for (const nlohmann::json& entry : object.components)
+        for (const nlohmann::json& entry : ObjectJsonComponents(object))
         {
             if (ComponentEntryType(entry) == typeName)
             {
@@ -180,13 +176,13 @@ namespace NS::Obj
         return nullptr;
     }
 
-    nlohmann::json* FindComponentEntry(ObjectData& object, std::string_view typeName) noexcept
+    nlohmann::json* FindComponentEntry(nlohmann::json& object, std::string_view typeName) noexcept
     {
-        if (!object.components.is_array())
+        if (!object.is_object() || !ObjectJsonComponents(static_cast<const nlohmann::json&>(object)).is_array())
         {
             return nullptr;
         }
-        for (nlohmann::json& entry : object.components)
+        for (nlohmann::json& entry : ObjectJsonComponents(object))
         {
             if (ComponentEntryType(entry) == typeName)
             {

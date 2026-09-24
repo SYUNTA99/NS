@@ -2,7 +2,7 @@
 #include "Editor/Undo/ObjectSnapshotCommand.h"
 #include "Editor/Undo/UndoStack.h"
 #include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/Scene/SceneJson.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -16,44 +16,45 @@ namespace SceneNs = NS::Obj;
 namespace
 {
     // 実 world を持たずに ObjectSnapshotCommand の往復だけを検証する適用経路
-    // ObjectSnapshotApplier の中核と同じ差し替え/新規/除去を SceneData 上で行う。組み直しはしない
+    // ObjectSnapshotApplier の中核と同じ差し替え/新規/除去をシーンの JSON 上で行う。組み直しはしない
     class FakeApplier final : public EditorNs::IObjectSnapshotApplier
     {
     public:
-        SceneNs::SceneData data;
+        nlohmann::json data = SceneNs::MakeSceneJson();
 
-        [[nodiscard]] std::optional<SceneNs::ObjectData> CaptureObject(std::uint32_t id) const override
+        [[nodiscard]] std::optional<nlohmann::json> CaptureObject(std::uint32_t id) const override
         {
             const std::size_t index = SceneNs::FindObjectIndexById(data, id);
             if (index == SceneNs::k_NoObjectIndex)
                 return std::nullopt;
-            return data.objects[index];
+            return std::make_optional<nlohmann::json>(SceneNs::SceneJsonObjects(data)[index]);
         }
 
-        void ApplyObjectSnapshot(std::uint32_t id, const std::optional<SceneNs::ObjectData>& desired) override
+        void ApplyObjectSnapshot(std::uint32_t id, const std::optional<nlohmann::json>& desired) override
         {
             const std::size_t index = SceneNs::FindObjectIndexById(data, id);
+            nlohmann::json& objects = SceneNs::SceneJsonObjects(data);
             if (desired)
             {
-                SceneNs::ObjectData entry = *desired;
-                entry.objectId = id;
+                nlohmann::json entry = *desired;
+                SceneNs::SetObjectJsonId(entry, id);
                 if (index != SceneNs::k_NoObjectIndex)
-                    data.objects[index] = std::move(entry);
+                    objects[index] = std::move(entry);
                 else
-                    data.objects.push_back(std::move(entry));
+                    objects.push_back(std::move(entry));
             }
             else if (index != SceneNs::k_NoObjectIndex)
             {
-                data.objects.erase(data.objects.begin() + static_cast<std::ptrdiff_t>(index));
+                objects.erase(objects.begin() + static_cast<std::ptrdiff_t>(index));
             }
         }
     };
 
-    [[nodiscard]] SceneNs::ObjectData MakeObjectAt(std::uint32_t id, float x)
+    [[nodiscard]] nlohmann::json MakeObjectAt(std::uint32_t id, float x)
     {
-        SceneNs::ObjectData obj;
+        nlohmann::json obj = SceneNs::MakeObjectJson();
         SceneNs::SetObjectPosition(obj, NS::Core::Vector3{x, 0.0f, 0.0f});
-        obj.objectId = id;
+        SceneNs::SetObjectJsonId(obj, id);
         return obj;
     }
 
@@ -78,7 +79,7 @@ TEST(UndoStackTest, PushExecutesDoAndStoresInUndoStack)
     stack.Push(AddCommand(1, 0.0f), applier);
     EXPECT_EQ(stack.UndoSize(), 1u);
     EXPECT_EQ(stack.RedoSize(), 0u);
-    EXPECT_EQ(applier.data.objects.size(), 1u);
+    EXPECT_EQ(SceneNs::SceneJsonObjects(applier.data).size(), 1u);
 }
 
 TEST(UndoStackTest, UndoRedoRoundTripPreservesState)
@@ -87,15 +88,15 @@ TEST(UndoStackTest, UndoRedoRoundTripPreservesState)
     FakeApplier applier;
 
     stack.Push(AddCommand(1, 0.0f), applier);
-    ASSERT_EQ(applier.data.objects.size(), 1u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(applier.data).size(), 1u);
 
     EXPECT_TRUE(stack.Undo(applier));
-    EXPECT_TRUE(applier.data.objects.empty());
+    EXPECT_TRUE(SceneNs::SceneJsonObjects(applier.data).empty());
     EXPECT_EQ(stack.UndoSize(), 0u);
     EXPECT_EQ(stack.RedoSize(), 1u);
 
     EXPECT_TRUE(stack.Redo(applier));
-    EXPECT_EQ(applier.data.objects.size(), 1u);
+    EXPECT_EQ(SceneNs::SceneJsonObjects(applier.data).size(), 1u);
     EXPECT_EQ(stack.UndoSize(), 1u);
     EXPECT_EQ(stack.RedoSize(), 0u);
 }
@@ -107,18 +108,18 @@ TEST(UndoStackTest, RecordStoresWithoutApplying)
 
     // 追加は先に適用しておき、Record は Do を呼ばずに履歴だけ積む
     applier.ApplyObjectSnapshot(1, MakeObjectAt(1, 0.0f));
-    SceneNs::ObjectData before = *applier.CaptureObject(1);
-    SceneNs::ObjectData after = MakeObjectAt(1, 5.0f);
+    nlohmann::json before = *applier.CaptureObject(1);
+    nlohmann::json after = MakeObjectAt(1, 5.0f);
     applier.ApplyObjectSnapshot(1, after);
 
     stack.Record(std::make_unique<EditorNs::ObjectSnapshotCommand>(1, before, after));
     EXPECT_EQ(stack.UndoSize(), 1u);
     // Record は適用しないので live は Record 前のまま (5.0)
-    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(applier.data.objects[0]).x, 5.0f);
+    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(SceneNs::SceneJsonObjects(applier.data)[0]).x, 5.0f);
 
     // Undo で before へ戻る
     ASSERT_TRUE(stack.Undo(applier));
-    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(applier.data.objects[0]).x, 0.0f);
+    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(SceneNs::SceneJsonObjects(applier.data)[0]).x, 0.0f);
 }
 
 TEST(UndoStackTest, MaxOpsCapPopsOldest)
@@ -165,27 +166,27 @@ TEST(UndoStackTest, InterleavedAddAndTransformUndoInLifoOrder)
 
     // 追加 (before 無 / after 有)
     stack.Push(AddCommand(1, 0.0f), applier);
-    ASSERT_EQ(applier.data.objects.size(), 1u);
-    const std::uint32_t id0 = applier.data.objects[0].objectId;
+    ASSERT_EQ(SceneNs::SceneJsonObjects(applier.data).size(), 1u);
+    const std::uint32_t id0 = SceneNs::ObjectJsonId(SceneNs::SceneJsonObjects(applier.data)[0]);
     ASSERT_NE(id0, SceneNs::k_NoObjectId);
 
     // 同じ object を移動する変形 (before / after 両方)
-    SceneNs::ObjectData before = applier.data.objects[0];
-    SceneNs::ObjectData after = MakeObjectAt(id0, 9.0f);
+    nlohmann::json before = SceneNs::SceneJsonObjects(applier.data)[0];
+    nlohmann::json after = MakeObjectAt(id0, 9.0f);
     stack.Push(std::make_unique<EditorNs::ObjectSnapshotCommand>(id0, before, after), applier);
-    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(applier.data.objects[0]).x, 9.0f);
+    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(SceneNs::SceneJsonObjects(applier.data)[0]).x, 9.0f);
 
     // LIFO: 先に変形を戻すと元位置へ
     ASSERT_TRUE(stack.Undo(applier));
-    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(applier.data.objects[0]).x, 0.0f);
+    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(SceneNs::SceneJsonObjects(applier.data)[0]).x, 0.0f);
 
     // 次に追加を戻すと空になる
     ASSERT_TRUE(stack.Undo(applier));
-    EXPECT_TRUE(applier.data.objects.empty());
+    EXPECT_TRUE(SceneNs::SceneJsonObjects(applier.data).empty());
 
     // redo 2 回で最終状態へ
     ASSERT_TRUE(stack.Redo(applier));
     ASSERT_TRUE(stack.Redo(applier));
-    ASSERT_EQ(applier.data.objects.size(), 1u);
-    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(applier.data.objects[0]).x, 9.0f);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(applier.data).size(), 1u);
+    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(SceneNs::SceneJsonObjects(applier.data)[0]).x, 9.0f);
 }

@@ -2,10 +2,10 @@
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/TransformComponent.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/ObjectJson.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Reflection/Reflection.h>
-#include <Runtime/Object/Scene/SceneData.h>
 #include <cstddef>
 #include <gtest/gtest.h>
 
@@ -14,7 +14,6 @@ namespace
     using NS::Obj::FieldDesc;
     using NS::Obj::FindField;
     using NS::Obj::GameObject;
-    using NS::Obj::ObjectData;
     using NS::Obj::ReflectionInfo;
     using NS::Obj::TransformComponent;
 
@@ -34,10 +33,10 @@ namespace
     }
 
     // データ側の TransformComponent エントリの数
-    [[nodiscard]] std::size_t CountTransformEntries(const ObjectData& object)
+    [[nodiscard]] std::size_t CountTransformEntries(const nlohmann::json& object)
     {
         std::size_t count = 0;
-        for (const nlohmann::json& entry : object.components)
+        for (const nlohmann::json& entry : NS::Obj::ObjectJsonComponents(object))
         {
             if (NS::Obj::ComponentEntryType(entry) == NS::Obj::k_TransformTypeName)
                 ++count;
@@ -46,23 +45,22 @@ namespace
     }
 
     // components から TransformComponent のエントリを全て取り除く
-    void EraseTransformEntries(ObjectData& object)
+    void EraseTransformEntries(nlohmann::json& object)
     {
         nlohmann::json kept = nlohmann::json::array();
-        for (const nlohmann::json& entry : object.components)
+        for (const nlohmann::json& entry : NS::Obj::ObjectJsonComponents(object))
         {
             if (NS::Obj::ComponentEntryType(entry) != NS::Obj::k_TransformTypeName)
                 kept.push_back(entry);
         }
-        object.components = std::move(kept);
+        NS::Obj::ObjectJsonComponents(object) = std::move(kept);
     }
 
     // 型名だけの component 1 件を持つ最小のデータ
-    [[nodiscard]] ObjectData MakeMinimalObject()
+    [[nodiscard]] nlohmann::json MakeMinimalObject()
     {
-        ObjectData object{};
-        object.components = nlohmann::json::array();
-        object.components.push_back(NS::Obj::MakeComponentEntry("MeshRenderer"));
+        nlohmann::json object = NS::Obj::MakeObjectJson();
+        NS::Obj::ObjectJsonComponents(object).push_back(NS::Obj::MakeComponentEntry("MeshRenderer"));
         return object;
     }
 } // namespace
@@ -167,7 +165,7 @@ TEST(TransformComponentTest, EveryObjectCarriesExactlyOne)
 // データに transform エントリが無くても GameObject の 1 つは残り、pose は既定のまま
 TEST(TransformComponentTest, DataWithoutTransformEntryKeepsOneAtDefaults)
 {
-    ObjectData object = MakeMinimalObject();
+    nlohmann::json object = MakeMinimalObject();
     ASSERT_EQ(CountTransformEntries(object), std::size_t{0});
 
     GameObject obj;
@@ -185,7 +183,7 @@ TEST(TransformComponentTest, DataWithoutTransformEntryKeepsOneAtDefaults)
 // エントリを消せば効果も消える。書き込んだ位置は組み直しで原点へ戻る
 TEST(TransformComponentTest, ErasingTransformEntryDropsThePose)
 {
-    ObjectData object = MakeMinimalObject();
+    nlohmann::json object = MakeMinimalObject();
     NS::Obj::SetObjectPosition(object, NS::Core::Vector3{5.0f, 6.0f, 7.0f});
     ASSERT_EQ(CountTransformEntries(object), std::size_t{1});
 
@@ -207,13 +205,13 @@ TEST(TransformComponentTest, ErasingTransformEntryDropsThePose)
 // エントリを 2 つ書いても live は 1 つ。値は先に書かれた方が勝ち、保存も 1 件に戻る
 TEST(TransformComponentTest, DuplicateEntriesBuildOnlyOne)
 {
-    ObjectData object = MakeMinimalObject();
+    nlohmann::json object = MakeMinimalObject();
     nlohmann::json first = NS::Obj::MakeComponentEntry(NS::Obj::k_TransformTypeName);
     NS::Obj::SetField(first, "位置", NS::Core::Vector3{1.0f, 2.0f, 3.0f});
     nlohmann::json second = NS::Obj::MakeComponentEntry(NS::Obj::k_TransformTypeName);
     NS::Obj::SetField(second, "位置", NS::Core::Vector3{-8.0f, -8.0f, -8.0f});
-    object.components.push_back(std::move(first));
-    object.components.push_back(std::move(second));
+    NS::Obj::ObjectJsonComponents(object).push_back(std::move(first));
+    NS::Obj::ObjectJsonComponents(object).push_back(std::move(second));
     ASSERT_EQ(CountTransformEntries(object), std::size_t{2});
 
     GameObject obj;
@@ -224,6 +222,6 @@ TEST(TransformComponentTest, DuplicateEntriesBuildOnlyOne)
     EXPECT_FLOAT_EQ(obj.Root().Position().y, 2.0f);
     EXPECT_FLOAT_EQ(obj.Root().Position().z, 3.0f);
 
-    const ObjectData captured = NS::Obj::CaptureObjectData(obj);
+    const nlohmann::json captured = NS::Obj::ObjectToJson(obj);
     EXPECT_EQ(CountTransformEntries(captured), std::size_t{1});
 }

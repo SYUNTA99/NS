@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/ObjectJson.h"
 
 #include <memory>
 #include <string>
@@ -10,8 +11,6 @@
 
 namespace NS::Obj
 {
-    struct ObjectData;
-
     //! GameObject 派生を生成する関数
     using GameObjectCreateFn = std::unique_ptr<GameObject> (*)();
 
@@ -21,7 +20,7 @@ namespace NS::Obj
     //! @brief クラス名から型を引く自己登録の集約先。GameObject 派生と Component を 1 表で持つ
     //! @details 各型は自身の .cpp で NS_CLASS を書くと、クラス名をキーに生成関数が静的初期化時に積まれる
     //! GameObject 側か Component 側かは NS_CLASS が継承で見分ける。中央の手書き列挙は持たない
-    //! 保存は ObjectData.className にクラス名を書き、読込は CreateRegisteredObject / CreateComponent がここから引く
+    //! 保存は配置物の JSON の class にクラス名を書き、読込は CreateRegisteredObject / CreateComponent がここから引く
     //! 登録マクロを書いた型しか生成できないので、信頼できない型名でも不正な生成はできない
     //! editor 専用コンポと抽象基底は登録しない
     //! StaticLib では自己登録の翻訳単位がリンカに除去され得るため、実行体側で除去対策を要する
@@ -52,7 +51,7 @@ namespace NS::Obj
     };
 
     //! object の GameObject を作る。className 一致の登録があればその生成関数、該当しなければ素の GameObject を返す
-    [[nodiscard]] std::unique_ptr<GameObject> CreateRegisteredObject(const ObjectData& object);
+    [[nodiscard]] std::unique_ptr<GameObject> CreateRegisteredObject(const nlohmann::json& object);
 
     //! 型名から登録済みコンポを生成し obj へ attach する。未登録型は何もせず nullptr を返す
     [[nodiscard]] Component* CreateComponent(std::string_view typeName, GameObject& obj);
