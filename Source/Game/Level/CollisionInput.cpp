@@ -2,13 +2,12 @@
 
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerComponent.h"
-#include "Runtime/Platform/Clock.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Platform/Gamepad.h"
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Mouse.h"
@@ -37,8 +36,7 @@ namespace NS::Game::Level
     } // namespace
 
     // -140 はチャージ減速を書いてから PlayerComponent (200) が動く並びにするため
-    CollisionInput::CollisionInput() noexcept
-        : NS::Obj::Component(NS::Obj::TickPriority::Update - 140)
+    CollisionInput::CollisionInput() noexcept : NS::Obj::Component(NS::Obj::TickPriority::Update - 140)
     {
         m_chargeFactorCurve.count = 2;
         m_chargeFactorCurve.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
@@ -158,9 +156,9 @@ namespace NS::Game::Level
             color = NS::Core::Color{1.0f, 1.0f, 1.0f, 1.0f};
         }
         NS::Gfx::DebugDraw::Circle(NS::Core::Vector3{center.x, footY, center.z},
-                                        NS::Core::Vector3{radius, 0.0f, 0.0f},
-                                        NS::Core::Vector3{0.0f, 0.0f, radius},
-                                        color);
+                                   NS::Core::Vector3{radius, 0.0f, 0.0f},
+                                   NS::Core::Vector3{0.0f, 0.0f, radius},
+                                   color);
     }
 #endif
 

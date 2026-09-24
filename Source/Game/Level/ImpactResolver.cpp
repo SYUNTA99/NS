@@ -7,8 +7,6 @@
 #include "Game/Level/LaunchedBody.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Platform/Clock.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/RenderContext.h"
@@ -21,6 +19,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Physics/PhysicsScene.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
 #include <cmath>
@@ -86,9 +85,7 @@ namespace NS::Game::Level
     } // namespace
 
     // PlayerComponent の 200 より前。書き込んだ速度が同じ固定ステップの移動に乗る
-    ImpactResolver::ImpactResolver() noexcept
-        : NS::Obj::OverlayRenderer(NS::Obj::TickPriority::Update - 100)
-    {}
+    ImpactResolver::ImpactResolver() noexcept : NS::Obj::OverlayRenderer(NS::Obj::TickPriority::Update - 100) {}
 
     void ImpactResolver::OnStart()
     {
