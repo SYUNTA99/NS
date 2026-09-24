@@ -9,7 +9,6 @@
 #include "Runtime/Graphics/Mesh.h"
 #include "Runtime/Object/Components/BoxCollider.h"
 #include "Runtime/Object/Components/DirectionalLight.h"
-#include "Runtime/Object/Components/PhysicsSettings.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Components/PlacedVirtualCamera.h"
 #include "Runtime/Object/Components/PlayerInput.h"
@@ -243,8 +242,6 @@ namespace NS::Editor
             return "Camera";
         if (HasComponentType(object, "DirectionalLight"))
             return "Directional Light";
-        if (HasComponentType(object, "PhysicsSettings"))
-            return "Physics Settings";
 
         if (NS::Game::Level::IsGoalObject(object))
             return "Goal";
@@ -291,8 +288,6 @@ namespace NS::Editor
             return "Camera";
         if (object.FindComponent<NS::Obj::DirectionalLight>() != nullptr)
             return "Directional Light";
-        if (object.FindComponent<NS::Obj::PhysicsSettings>() != nullptr)
-            return "Physics Settings";
 
         if (object.FindComponent<NS::Game::Level::Goal>() != nullptr)
             return "Goal";

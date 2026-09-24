@@ -546,6 +546,33 @@ namespace NS::Phys
         m_physicsSystem.GetBodyInterface().AddAngularImpulse(id, ToJolt(angularImpulse));
     }
 
+    void PhysicsScene::AddBodyAcceleration(JPH::BodyID id, const NS::Core::Vector3& acceleration)
+    {
+        if (id.IsInvalid() || !std::isfinite(acceleration.x) || !std::isfinite(acceleration.y) ||
+            !std::isfinite(acceleration.z))
+        {
+            return;
+        }
+
+        const JPH::BodyLockWrite lock{m_physicsSystem.GetBodyLockInterface(), id};
+        if (!lock.Succeeded())
+        {
+            return;
+        }
+        JPH::Body& body = lock.GetBody();
+        if (!body.IsDynamic() || !body.IsActive())
+        {
+            return;
+        }
+        // 移動の軸を全部止めた body は逆質量が 0 で、力を掛けても動かない
+        const float inverseMass = body.GetMotionProperties()->GetInverseMass();
+        if (!(inverseMass > 0.0f))
+        {
+            return;
+        }
+        body.AddForce(ToJolt(acceleration) / inverseMass);
+    }
+
     void PhysicsScene::WakeBody(JPH::BodyID id)
     {
         if (id.IsInvalid())

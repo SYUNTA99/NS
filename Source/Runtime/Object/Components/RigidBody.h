@@ -22,7 +22,8 @@ namespace NS::Obj
     //! ダイナミックは Scene が物理を 1 歩進めた後に、body の姿勢を持ち主の Transform へ書き戻す
     //! Transform を直接書いても次の 1 歩で上書きされるので、置き直しは Teleport を使う
     //! キネマティックは物理の 1 歩の前に Transform の姿勢へ body を運び、途中で触れた相手を押す
-    //! 重力の向きと強さは PhysicsScene が世界に 1 つ持ち、ここは受けるかと倍率だけを持つ
+    //! 重力は物体ごとに向きと強さを持つ。PhysicsScene の世界の重力は受けない
+    //! 物理の 1 歩の前に質量 × 重力の力を掛けるので、質量に依らず同じ速さで落ちる。眠っている物には掛けない
     //! 依存: Collider, NS::Phys::PhysicsScene
     class RigidBody : public Component
     {
@@ -57,12 +58,12 @@ namespace NS::Obj
         //! 質量 (kg)。0 以下は body へ入れる時に 1 として扱う
         void SetMass(float mass) noexcept { m_mass = mass; }
         [[nodiscard]] float Mass() const noexcept { return m_mass; }
-        //! 世界の重力を受けるか
+        //! 重力を受けるか
         void SetUseGravity(bool useGravity) noexcept { m_useGravity = useGravity; }
         [[nodiscard]] bool UsesGravity() const noexcept { return m_useGravity; }
-        //! 世界の重力に掛ける倍率。負なら重力と逆へ引かれる
-        void SetGravityScale(float scale) noexcept { m_gravityScale = scale; }
-        [[nodiscard]] float GravityScale() const noexcept { return m_gravityScale; }
+        //! この物体の重力の加速度 (m/s^2)。向きも持つので横や上にも引ける。非有限の成分を含む値は受け取らない
+        void SetGravity(const NS::Core::Vector3& gravity) noexcept;
+        [[nodiscard]] const NS::Core::Vector3& Gravity() const noexcept { return m_gravity; }
         //! 摩擦と跳ね返り。負は body へ入れる時に 0 として扱う
         void SetFriction(float friction) noexcept { m_friction = friction; }
         [[nodiscard]] float Friction() const noexcept { return m_friction; }
@@ -118,7 +119,7 @@ namespace NS::Obj
         NS_REFLECT_FIELD(m_kinematic, "キネマティック")
         NS_REFLECT_FIELD(m_mass, "質量")
         NS_REFLECT_FIELD(m_useGravity, "重力を使う")
-        NS_REFLECT_FIELD(m_gravityScale, "重力の倍率")
+        NS_REFLECT_FIELD(m_gravity, "重力")
         NS_REFLECT_FIELD(m_friction, "摩擦")
         NS_REFLECT_FIELD(m_restitution, "跳ね返り")
         NS_REFLECT_FIELD(m_linearDamping, "移動の減衰")
@@ -143,11 +144,13 @@ namespace NS::Obj
         void SetOwnerWorldPose(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation) noexcept;
         // 形にならず追従する collider の body を、持ち主の今の姿勢へ置き直す
         void SyncFollowers(NS::Phys::PhysicsScene& physics);
+        // 今掛ける重力。使わない時と、エディタの欄に非有限値が入った時は 0
+        [[nodiscard]] NS::Core::Vector3 EffectiveGravity() const noexcept;
 
         bool m_kinematic = false;            // 力を受けず Transform の姿勢へ運ばれるか
         float m_mass = 1.0f;                 // 質量 (kg)
-        bool m_useGravity = true;            // 世界の重力を受けるか
-        float m_gravityScale = 1.0f;         // 世界の重力に掛ける倍率
+        bool m_useGravity = true;                                   // 重力を受けるか
+        NS::Core::Vector3 m_gravity = NS::Phys::DefaultGravity();   // この物体の重力の加速度 (m/s^2)
         float m_friction = 0.2f;             // 摩擦
         float m_restitution = 0.0f;          // 跳ね返り
         float m_linearDamping = 0.05f;       // 移動の減衰
@@ -160,8 +163,9 @@ namespace NS::Obj
         bool m_lockRotationY = false;        // 世界の Y まわりの回転を止める
         bool m_lockRotationZ = false;        // 世界の Z まわりの回転を止める
 
-        JPH::BodyID m_bodyId;                       // 動く body。作っていなければ無効
-        NS::Phys::BodyMotion m_appliedMotion;    // 最後に body へ入れた動き方。欄の変化を見つけるのに使う
-        NS::Core::Matrix m_followedWorld;           // 追従する collider を最後に置き直した時の持ち主の世界行列
+        JPH::BodyID m_bodyId;                     // 動く body。作っていなければ無効
+        NS::Phys::BodyMotion m_appliedMotion;     // 最後に body へ入れた動き方。欄の変化を見つけるのに使う
+        NS::Core::Vector3 m_appliedGravity;       // 最後に掛けた重力。変わった時に眠った body を起こすのに使う
+        NS::Core::Matrix m_followedWorld;         // 追従する collider を最後に置き直した時の持ち主の世界行列
     };
 } // namespace NS::Obj

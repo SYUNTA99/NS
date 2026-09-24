@@ -8,6 +8,8 @@
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Platform/Clock.h"
 
+#include <cmath>
+
 namespace NS::Obj
 {
     void RigidBody::SyncToPhysics(NS::Phys::PhysicsScene& physics)
@@ -54,6 +56,7 @@ namespace NS::Obj
         }
         m_bodyId = body;
         m_appliedMotion = motion;
+        m_appliedGravity = EffectiveGravity();
         if (m_bodyId.IsInvalid())
         {
             NS_LOG_WARN(Scene,
@@ -98,7 +101,17 @@ namespace NS::Obj
             NS::Core::Quaternion rotation;
             OwnerWorldPose(position, rotation);
             physics->MoveKinematic(m_bodyId, position, rotation, NS::Platform::FrameTimer::FixedDelta());
+            return;
         }
+
+        const NS::Core::Vector3 gravity = EffectiveGravity();
+        // 眠っている物には重力を掛けない。向きを変えた時に起こさないと、宙で止まったまま新しい重力が効かない
+        if (!(gravity == m_appliedGravity))
+        {
+            physics->WakeBody(m_bodyId);
+            m_appliedGravity = gravity;
+        }
+        physics->AddBodyAcceleration(m_bodyId, gravity);
     }
 
     void RigidBody::PostPhysicsStep()
@@ -142,6 +155,24 @@ namespace NS::Obj
         RemoveFromPhysics(*physics);
     }
 
+    void RigidBody::SetGravity(const NS::Core::Vector3& gravity) noexcept
+    {
+        if (!std::isfinite(gravity.x) || !std::isfinite(gravity.y) || !std::isfinite(gravity.z))
+        {
+            return;
+        }
+        m_gravity = gravity;
+    }
+
+    NS::Core::Vector3 RigidBody::EffectiveGravity() const noexcept
+    {
+        if (!m_useGravity || !std::isfinite(m_gravity.x) || !std::isfinite(m_gravity.y) || !std::isfinite(m_gravity.z))
+        {
+            return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        }
+        return m_gravity;
+    }
+
     void RigidBody::LockPosition(bool x, bool y, bool z) noexcept
     {
         m_lockPositionX = x;
@@ -165,7 +196,8 @@ namespace NS::Obj
         motion.restitution = m_restitution;
         motion.linearDamping = m_linearDamping;
         motion.angularDamping = m_angularDamping;
-        motion.gravityFactor = m_useGravity ? m_gravityScale : 0.0f;
+        // 重力は PrePhysicsStep が物体ごとの向きで掛ける。世界の重力まで受けると二重に落ちる
+        motion.gravityFactor = 0.0f;
         motion.continuousCollision = m_continuousCollision;
 
         JPH::EAllowedDOFs allowed = JPH::EAllowedDOFs::All;
