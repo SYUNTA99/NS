@@ -1,6 +1,5 @@
 #include "Game/Player.h"
 
-#include "Game/Level/AreaCameraActivator.h"
 #include "Game/Level/Finisher.h"
 #include "Game/Level/Health.h"
 #include "Game/Level/Respawner.h"
@@ -42,12 +41,11 @@ Player::Player() noexcept
     // 接地シャドウ。mesh / material は後から注入される
     AddComponent<NS::Obj::Shadow>();
 
-    // ルール判定への応答。死んだらやり直す・ゴールでクリアする・自分の位置を area camera へ渡す、は
-    // どれもプレイヤーの振る舞いなのでここに積む。暗転はクリアシーケンスが使う部品として隣に置く
+    // ルール判定への応答。死んだらやり直す・ゴールでクリアする、はどれもプレイヤーの振る舞いなのでここに積む
+    // 暗転はクリアシーケンスが使う部品として隣に置く
     AddComponent<NS::Game::Level::ScreenFade>();
     AddComponent<NS::Game::Level::Respawner>();
     AddComponent<NS::Game::Level::Finisher>();
-    AddComponent<NS::Game::Level::AreaCameraActivator>();
 }
 
 void Player::ApplyDamage(int amount) noexcept

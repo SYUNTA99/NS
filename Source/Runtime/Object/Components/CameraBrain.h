@@ -17,7 +17,7 @@ namespace NS::Obj
     //! EvaluatePose(alpha) を実カメラへ書く
     //! 描画 / aspect 設定 / PlayerInput の forward 取得もこの Brain 経由に集約する
     //! active 切替は SetBlendDuration 秒の ease-in-out で旧 pose から繋ぎ、0 で即時カット
-    //! 帯は LateUpdate + 60。vcam を供給する follow / placed の LateUpdate + 50 より後ろで選び直す
+    //! 帯は LateUpdate + 60。vcam を供給する追従カメラの LateUpdate + 50 より後ろで選び直す
     //! 依存: NS::Core, NS::Obj::Component / CameraComponent / VirtualCamera
     class CameraBrain : public Component
     {
@@ -31,7 +31,7 @@ namespace NS::Obj
         void AddVirtualCamera(VirtualCamera* vcam);
 
         //! 登録済み vcam を外す。未登録と null は無視する。外した vcam が active 中なら選び直す
-        //! 寿命を呼出側が握る area camera を破棄する前に呼んで無効参照を防ぐ
+        //! 寿命を呼出側が握る vcam を破棄する前に呼んで無効参照を防ぐ
         void RemoveVirtualCamera(VirtualCamera* vcam) noexcept;
 
         //! active 切替時のブレンド秒数。0 以下で即時カット。負値は 0 に丸める

@@ -1,4 +1,3 @@
-#include <Game/Level/AreaCameraActivator.h>
 #include <Game/Level/Finisher.h>
 #include <Game/Level/Health.h>
 #include <Game/Level/Respawner.h>
@@ -18,7 +17,7 @@
 TEST(PlayerTest, ConstructsWithDefaultComposition)
 {
     Player player{};
-    EXPECT_EQ(player.Components().size(), 12u);
+    EXPECT_EQ(player.Components().size(), 11u);
 }
 
 TEST(PlayerTest, DefaultComponentsResolveByType)
@@ -38,10 +37,9 @@ TEST(PlayerTest, ResponseComponentsTrailTheUpdateBand)
 {
     Player player{};
     const std::size_t count = player.Components().size();
-    EXPECT_EQ(player.FindComponent<NS::Game::Level::ScreenFade>(), player.Components()[count - 4]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Level::Respawner>(), player.Components()[count - 3]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Level::Finisher>(), player.Components()[count - 2]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Level::AreaCameraActivator>(), player.Components()[count - 1]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::ScreenFade>(), player.Components()[count - 3]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::Respawner>(), player.Components()[count - 2]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::Finisher>(), player.Components()[count - 1]);
 }
 
 TEST(PlayerTest, InputRelayResolvesBothSidesOnStart)

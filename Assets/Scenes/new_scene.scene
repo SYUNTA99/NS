@@ -254,11 +254,6 @@
           "fields": {},
           "id": 22,
           "type": "Finisher"
-        },
-        {
-          "fields": {},
-          "id": 23,
-          "type": "AreaCameraActivator"
         }
       ],
       "id": 2

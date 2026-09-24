@@ -8,7 +8,6 @@
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/BoxCollider.h>
 #include <Runtime/Object/Components/MeshCollider.h>
-#include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/Components/ThirdPersonFollow.h>
 #include <Runtime/Object/Components/VirtualCamera.h>
 #include <Runtime/Object/GameObject.h>
@@ -360,31 +359,6 @@ TEST(ObjectListTest, RemoveByObjectIdDropsCollider)
     objects.RemoveByObjectId(victimId);
 
     EXPECT_EQ(physics.BodyCount(), 1u);
-}
-
-// 据え置きカメラの配置物は問い合わせで引け、エリア外の非アクティブで組み上がる
-TEST(ObjectListTest, RebuildBakesPlacedCamerasInactive)
-{
-    SceneData level;
-    NS::Obj::ObjectData cameraObject{};
-    NS::Obj::SetObjectPosition(cameraObject, NS::Core::Vector3{8.0f, 0.0f, 0.0f});
-    nlohmann::json comp = NS::Obj::MakeComponentEntry("PlacedVirtualCamera");
-    NS::Obj::SetField(comp, "優先度", 20);
-    cameraObject.components.push_back(std::move(comp));
-    level.objects.push_back(std::move(cameraObject));
-
-    NS::Obj::Scene scene;
-    NS::Obj::AssetManager assets{std::string{"."}};
-    ObjectList objects;
-    objects.Rebuild(level, scene, MakeFactory(assets, level));
-
-    const auto placedCameras = Collect<NS::Obj::PlacedVirtualCamera>(objects);
-    ASSERT_EQ(placedCameras.size(), 1u);
-    auto* placed = placedCameras[0];
-    EXPECT_FALSE(placed->IsActive());
-    EXPECT_EQ(placed->VcamPriority(), 20);
-    // 視点位置は object の Transform から来る
-    EXPECT_FLOAT_EQ(placed->ViewPosition().x, 8.0f);
 }
 
 // 指定した帯だけが回る。帯をどの順で回すかは呼ぶ側の並びで決まる

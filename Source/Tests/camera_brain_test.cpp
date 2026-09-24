@@ -2,7 +2,6 @@
 #include <Runtime/Platform/Clock.h>
 #include <Runtime/Object/Components/CameraBrain.h>
 #include <Runtime/Object/Components/CameraComponent.h>
-#include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/Components/VirtualCamera.h>
 #include <Runtime/Object/GameObject.h>
 
@@ -12,7 +11,6 @@ namespace
     using NS::Obj::CameraComponent;
     using NS::Obj::CameraPose;
     using NS::Obj::GameObject;
-    using NS::Obj::PlacedVirtualCamera;
     using NS::Obj::TickPriority;
     using NS::Obj::VirtualCamera;
 
@@ -173,21 +171,7 @@ TEST_F(CameraBrainTest, ZeroBlendDurationCutsInstantly)
     EXPECT_FLOAT_EQ(cam->Position().x, 10.0f);
 }
 
-TEST_F(CameraBrainTest, PlacedVcamReturnsItsSetView)
-{
-    GameObject host;
-    auto* placed = host.AddComponent<PlacedVirtualCamera>();
-    placed->SetView({3.0f, 7.0f, -2.0f}, {1.0f, 0.0f, 4.0f});
-
-    const auto pose = placed->EvaluatePose(1.0f);
-    EXPECT_FLOAT_EQ(pose.position.x, 3.0f);
-    EXPECT_FLOAT_EQ(pose.position.y, 7.0f);
-    EXPECT_FLOAT_EQ(pose.position.z, -2.0f);
-    EXPECT_FLOAT_EQ(pose.target.x, 1.0f);
-    EXPECT_FLOAT_EQ(pose.target.z, 4.0f);
-}
-
-TEST_F(CameraBrainTest, ActivatingPlacedVcamBlendsTowardIt)
+TEST_F(CameraBrainTest, ActivatingHigherPriorityVcamBlendsTowardIt)
 {
     GameObject host;
     auto* cam = host.AddComponent<CameraComponent>();
@@ -198,21 +182,20 @@ TEST_F(CameraBrainTest, ActivatingPlacedVcamBlendsTowardIt)
     GameObject followHost;
     GameObject areaHost;
     auto* follow = followHost.AddComponent<FixedVcam>(0.0f);
-    auto* area = areaHost.AddComponent<PlacedVirtualCamera>();
-    area->SetView({10.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f});
+    auto* area = areaHost.AddComponent<FixedVcam>(10.0f);
     follow->SetVcamPriority(0);
     area->SetVcamPriority(10); // active な間だけ follow を上回る
-    area->SetActive(false);    // エリア外を想定
+    area->SetActive(false);
     brain->AddVirtualCamera(follow);
     brain->AddVirtualCamera(area);
 
-    // エリア外: follow が選ばれる
+    // area が休止の間は follow が選ばれる
     brain->OnUpdate();
     brain->Evaluate(1.0f);
     EXPECT_EQ(brain->ActiveVirtualCamera(), follow);
     EXPECT_FLOAT_EQ(cam->Position().x, 0.0f);
 
-    // エリア進入で placed を active 化 → ブレンドで近づく
+    // area を起こすとブレンドで近づく
     area->SetActive(true);
     brain->OnUpdate();
     brain->Evaluate(1.0f);
@@ -226,49 +209,4 @@ TEST_F(CameraBrainTest, ActivatingPlacedVcamBlendsTowardIt)
         brain->Evaluate(1.0f);
     }
     EXPECT_FLOAT_EQ(cam->Position().x, 10.0f);
-}
-
-TEST_F(CameraBrainTest, PlacedVcamSelfActivatesInsideTrigger)
-{
-    GameObject host;
-    auto* cam = host.AddComponent<PlacedVirtualCamera>();
-    cam->SetTrigger({0.0f, 0.0f, 0.0f}, {2.0f, 2.0f, 2.0f});
-    cam->SetActive(false);
-
-    cam->UpdateActivation({1.0f, 0.0f, -1.5f}); // トリガ内
-    EXPECT_TRUE(cam->IsActive());
-
-    cam->UpdateActivation({5.0f, 0.0f, 0.0f}); // トリガ外
-    EXPECT_FALSE(cam->IsActive());
-}
-
-TEST_F(CameraBrainTest, PlacedVcamLookAtPlayerTracksTarget)
-{
-    GameObject host;
-    auto* cam = host.AddComponent<PlacedVirtualCamera>();
-    cam->SetView({0.0f, 5.0f, 0.0f}, {0.0f, 0.0f, 0.0f});
-    cam->SetTrigger({0.0f, 0.0f, 0.0f}, {10.0f, 10.0f, 10.0f});
-    cam->SetLookAtPlayer(true);
-
-    cam->UpdateActivation({3.0f, 1.0f, -2.0f}); // 進入中は注視点がプレイヤーへ追従する
-    const auto pose = cam->EvaluatePose(1.0f);
-    EXPECT_TRUE(cam->IsActive());
-    EXPECT_FLOAT_EQ(pose.target.x, 3.0f);
-    EXPECT_FLOAT_EQ(pose.target.y, 1.0f);
-    EXPECT_FLOAT_EQ(pose.target.z, -2.0f);
-    EXPECT_FLOAT_EQ(pose.position.y, 5.0f); // 視点位置は固定のまま
-}
-
-TEST_F(CameraBrainTest, PlacedVcamWithoutLookAtKeepsFixedTarget)
-{
-    GameObject host;
-    auto* cam = host.AddComponent<PlacedVirtualCamera>();
-    cam->SetView({0.0f, 5.0f, 0.0f}, {9.0f, 9.0f, 9.0f});
-    cam->SetTrigger({0.0f, 0.0f, 0.0f}, {10.0f, 10.0f, 10.0f});
-    cam->SetLookAtPlayer(false);
-
-    cam->UpdateActivation({3.0f, 1.0f, -2.0f}); // 進入中でも追視しないので注視点は固定
-    const auto pose = cam->EvaluatePose(1.0f);
-    EXPECT_TRUE(cam->IsActive());
-    EXPECT_FLOAT_EQ(pose.target.x, 9.0f);
 }

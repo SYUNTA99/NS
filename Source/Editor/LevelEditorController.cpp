@@ -21,7 +21,6 @@
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
-#include "Runtime/Object/Components/PlacedVirtualCamera.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/SlopeCollider.h"
 #include "Runtime/Object/Components/SphereCollider.h"
@@ -865,7 +864,7 @@ void LevelEditorController::SetPrimarySelection(std::uint32_t id) noexcept
 void LevelEditorController::RenderCameraGizmos(const NS::Core::Matrix& viewProjection,
                                                NS::Core::Size2D viewport) noexcept
 {
-    // edit 中、各カメラの視錐台を点線の四角錐で、視点位置を小箱で可視化する。据え置きは進入トリガ AABB も出す
+    // edit 中、各カメラの視錐台を点線の四角錐で、視点位置を小箱で可視化する
     // 選択中は強調色にする。追従カメラは pose がプレイヤー基準なので、錐台はプレイ中に居る視点位置へ出る
     const auto& objects = m_scene->Objects();
     // 錐台の横幅は実ビューポート比で出す。viewport が潰れている時だけ 16:9 目安へフォールバックする
@@ -891,18 +890,6 @@ void LevelEditorController::RenderCameraGizmos(const NS::Core::Matrix& viewProje
         const float markerHalf = CameraMarkerHalf(pose.position, viewProjection);
         NS::Gfx::DebugDraw::AABB(
             NS::Core::AABB{pose.position, NS::Core::Vector3{markerHalf, markerHalf, markerHalf}}, camColor);
-
-        // 据え置きカメラだけ進入トリガ範囲を出す。追従には無い
-        if (auto* placed = object->FindComponent<NS::Obj::PlacedVirtualCamera>())
-        {
-            const NS::Core::Color triggerColor = [selected]() -> NS::Core::Color {
-                if (selected)
-                    return NS::Core::Color{1.0f, 0.55f, 0.10f, 1.0f};
-                return NS::Core::Color{0.20f, 0.70f, 1.0f, 1.0f};
-            }();
-            NS::Gfx::DebugDraw::AABB(NS::Core::AABB{placed->TriggerCenter(), placed->TriggerExtent()},
-                                          triggerColor);
-        }
     }
 }
 

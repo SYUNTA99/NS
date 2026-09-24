@@ -8,7 +8,6 @@
 #include "Runtime/Object/Components/DirectionalLight.h"
 #include "Runtime/Object/Components/PhysicsSettings.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
-#include "Runtime/Object/Components/PlacedVirtualCamera.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/SlopeCollider.h"
 #include "Runtime/Object/Components/SphereCollider.h"
@@ -264,8 +263,6 @@ namespace NS::Editor
             return "Player";
         if (HasComponentType(object, "ThirdPersonFollow"))
             return "Follow Camera";
-        if (HasComponentType(object, "PlacedVirtualCamera"))
-            return "Camera";
         if (HasComponentType(object, "DirectionalLight"))
             return "Directional Light";
         if (HasComponentType(object, "PhysicsSettings"))
@@ -310,8 +307,6 @@ namespace NS::Editor
             return "Player";
         if (object.FindComponent<NS::Obj::ThirdPersonFollow>() != nullptr)
             return "Follow Camera";
-        if (object.FindComponent<NS::Obj::PlacedVirtualCamera>() != nullptr)
-            return "Camera";
         if (object.FindComponent<NS::Obj::DirectionalLight>() != nullptr)
             return "Directional Light";
         if (object.FindComponent<NS::Obj::PhysicsSettings>() != nullptr)

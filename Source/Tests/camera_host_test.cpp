@@ -1,7 +1,7 @@
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/CameraBrain.h>
 #include <Runtime/Object/Components/CameraComponent.h>
-#include <Runtime/Object/Components/PlacedVirtualCamera.h>
+#include <Runtime/Object/Components/ThirdPersonFollow.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
@@ -16,25 +16,24 @@ namespace
 {
     using NS::Obj::Scene;
 
-    // 据え置きカメラを 1 体だけ持つレベル。組み立ては AssetManager 不在でも通る
-    NS::Obj::SceneData MakePlacedCameraLevel()
+    // 追従カメラを 1 体だけ持つレベル。追う相手が無いので固定の既定視点を返す。組み立ては AssetManager 不在でも通る
+    NS::Obj::SceneData MakeCameraLevel()
     {
         NS::Obj::SceneData data;
         NS::Obj::ObjectData object{};
-        object.components.push_back(NS::Obj::MakeComponentEntry("PlacedVirtualCamera"));
+        object.components.push_back(NS::Obj::MakeComponentEntry("ThirdPersonFollow"));
         data.objects.push_back(std::move(object));
         NS::Obj::EnsureUniqueObjectIds(data);
         return data;
     }
 
-    NS::Obj::PlacedVirtualCamera* FindPlaced(Scene& scene)
+    NS::Obj::ThirdPersonFollow* FindCamera(Scene& scene)
     {
-        NS::Obj::PlacedVirtualCamera* found = nullptr;
-        scene.Objects().ForEachComponent<NS::Obj::PlacedVirtualCamera>(
-            [&found](NS::Obj::PlacedVirtualCamera& placed) {
-                if (found == nullptr)
-                    found = &placed;
-            });
+        NS::Obj::ThirdPersonFollow* found = nullptr;
+        scene.Objects().ForEachComponent<NS::Obj::ThirdPersonFollow>([&found](NS::Obj::ThirdPersonFollow& follow) {
+            if (found == nullptr)
+                found = &follow;
+        });
         return found;
     }
 } // namespace
@@ -73,19 +72,19 @@ TEST(CameraHost, BrainRunsInTheLateUpdateBand)
 {
     Scene scene;
     ASSERT_NE(scene.CameraBrain(), nullptr);
-    // vcam を供給する follow / placed の LateUpdate + 50 より後ろに居る
+    // vcam を供給する追従カメラの LateUpdate + 50 より後ろに居る
     EXPECT_EQ(scene.CameraBrain()->Priority(), NS::Obj::TickPriority::LateUpdate + 60);
 
-    scene.LoadFromData(MakePlacedCameraLevel());
-    NS::Obj::PlacedVirtualCamera* placed = FindPlaced(scene);
-    ASSERT_NE(placed, nullptr);
-    placed->SetActive(true);
+    scene.LoadFromData(MakeCameraLevel());
+    NS::Obj::ThirdPersonFollow* camera = FindCamera(scene);
+    ASSERT_NE(camera, nullptr);
+    camera->SetActive(true);
     ASSERT_EQ(scene.CameraBrain()->ActiveVirtualCamera(), nullptr);
 
     // 帯が brain を回すので、進行から手で呼ぶ 1 行は要らない
     scene.OnUpdate();
 
-    EXPECT_EQ(scene.CameraBrain()->ActiveVirtualCamera(), placed);
+    EXPECT_EQ(scene.CameraBrain()->ActiveVirtualCamera(), camera);
 }
 
 TEST(CameraHost, SurvivesRebuildAndRebindsVirtualCameras)
@@ -95,20 +94,20 @@ TEST(CameraHost, SurvivesRebuildAndRebindsVirtualCameras)
     ASSERT_NE(brainBefore, nullptr);
     const NS::Obj::GameObject* hostBefore = brainBefore->Owner();
 
-    scene.LoadFromData(MakePlacedCameraLevel());
+    scene.LoadFromData(MakeCameraLevel());
     // データから組み直しても同じ host が残る
     EXPECT_EQ(scene.CameraBrain(), brainBefore);
     EXPECT_EQ(scene.CameraBrain()->Owner(), hostBefore);
 
-    NS::Obj::PlacedVirtualCamera* first = FindPlaced(scene);
+    NS::Obj::ThirdPersonFollow* first = FindCamera(scene);
     ASSERT_NE(first, nullptr);
     first->SetActive(true);
     scene.OnUpdate();
     ASSERT_EQ(scene.CameraBrain()->ActiveVirtualCamera(), first);
 
     // 2 回目の組み直しで古い登録が外れ、新しい実体が選ばれる
-    scene.LoadFromData(MakePlacedCameraLevel());
-    NS::Obj::PlacedVirtualCamera* second = FindPlaced(scene);
+    scene.LoadFromData(MakeCameraLevel());
+    NS::Obj::ThirdPersonFollow* second = FindCamera(scene);
     ASSERT_NE(second, nullptr);
     // アドレス比較はしない。解放直後の再確保が同じ番地を返すと、新しい実体でも偽で赤になる
     // 古い実体が残っていれば active のままここに出る。null は登録が外れて作り直された証拠
@@ -123,11 +122,10 @@ TEST(CameraHost, SurvivesRebuildAndRebindsVirtualCameras)
 TEST(CameraHost, ShakeOffsetsFinalPose)
 {
     Scene scene;
-    scene.LoadFromData(MakePlacedCameraLevel());
-    NS::Obj::PlacedVirtualCamera* placed = FindPlaced(scene);
-    ASSERT_NE(placed, nullptr);
-    placed->SetActive(true);
-    placed->SetView(NS::Core::Vector3{0.0f, 3.0f, -6.0f}, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+    scene.LoadFromData(MakeCameraLevel());
+    NS::Obj::ThirdPersonFollow* camera = FindCamera(scene);
+    ASSERT_NE(camera, nullptr);
+    camera->SetActive(true);
     scene.OnUpdate();
 
     NS::Obj::CameraBrain* brain = scene.CameraBrain();
@@ -146,11 +144,10 @@ TEST(CameraHost, ShakeOffsetsFinalPose)
 TEST(CameraHost, ShakeTranslatesViewWithoutTurning)
 {
     Scene scene;
-    scene.LoadFromData(MakePlacedCameraLevel());
-    NS::Obj::PlacedVirtualCamera* placed = FindPlaced(scene);
-    ASSERT_NE(placed, nullptr);
-    placed->SetActive(true);
-    placed->SetView(NS::Core::Vector3{0.0f, 3.0f, -6.0f}, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+    scene.LoadFromData(MakeCameraLevel());
+    NS::Obj::ThirdPersonFollow* camera = FindCamera(scene);
+    ASSERT_NE(camera, nullptr);
+    camera->SetActive(true);
     scene.OnUpdate();
 
     NS::Obj::CameraBrain* brain = scene.CameraBrain();
@@ -174,11 +171,10 @@ TEST(CameraHost, ShakeTranslatesViewWithoutTurning)
 TEST(CameraHost, ShakeEndsWithinSteps)
 {
     Scene scene;
-    scene.LoadFromData(MakePlacedCameraLevel());
-    NS::Obj::PlacedVirtualCamera* placed = FindPlaced(scene);
-    ASSERT_NE(placed, nullptr);
-    placed->SetActive(true);
-    placed->SetView(NS::Core::Vector3{0.0f, 3.0f, -6.0f}, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+    scene.LoadFromData(MakeCameraLevel());
+    NS::Obj::ThirdPersonFollow* camera = FindCamera(scene);
+    ASSERT_NE(camera, nullptr);
+    camera->SetActive(true);
     scene.OnUpdate();
 
     NS::Obj::CameraBrain* brain = scene.CameraBrain();
@@ -200,11 +196,10 @@ TEST(CameraHost, ShakeEndsWithinSteps)
 TEST(CameraHost, ShakeRejectsBrokenInput)
 {
     Scene scene;
-    scene.LoadFromData(MakePlacedCameraLevel());
-    NS::Obj::PlacedVirtualCamera* placed = FindPlaced(scene);
-    ASSERT_NE(placed, nullptr);
-    placed->SetActive(true);
-    placed->SetView(NS::Core::Vector3{0.0f, 3.0f, -6.0f}, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+    scene.LoadFromData(MakeCameraLevel());
+    NS::Obj::ThirdPersonFollow* camera = FindCamera(scene);
+    ASSERT_NE(camera, nullptr);
+    camera->SetActive(true);
     scene.OnUpdate();
 
     NS::Obj::CameraBrain* brain = scene.CameraBrain();

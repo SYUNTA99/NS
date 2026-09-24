@@ -16,7 +16,6 @@
 #include <Runtime/Object/Components/BoxCollider.h>
 #include <Runtime/Object/Components/CameraBrain.h>
 #include <Runtime/Object/Components/MeshRenderer.h>
-#include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/Components/PlayerInput.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/ObjectList.h>
@@ -1625,11 +1624,10 @@ TEST(CollisionImpact, HitStopShakesCamera)
 
     SceneNs::CameraBrain* brain = scene.CameraBrain();
     ASSERT_NE(brain, nullptr);
-    auto* placed = brain->Owner()->AddComponent<SceneNs::PlacedVirtualCamera>();
-    // 据え置きカメラは進入まで非 active が既定。検証台では手で起こす
-    placed->SetActive(true);
-    placed->SetView(Vector3{0.0f, 3.0f, -6.0f}, Vector3{0.0f, 1.0f, 0.0f});
-    brain->AddVirtualCamera(placed);
+    // 追う相手の無い追従カメラは固定の既定視点を返す。揺れの有無だけを見るのでそれで足りる
+    auto* follow = brain->Owner()->AddComponent<SceneNs::ThirdPersonFollow>();
+    follow->SetActive(true);
+    brain->AddVirtualCamera(follow);
     brain->Evaluate(1.0f);
     const Vector3 before = brain->LastPose().position;
 

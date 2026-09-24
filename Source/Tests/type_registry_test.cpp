@@ -67,7 +67,6 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
         "MeshRenderer",
         "Goal",
         "CameraComponent",
-        "PlacedVirtualCamera",
         "CameraBrain",
         "ThirdPersonFollow",
         "PlayerComponent",
@@ -143,7 +142,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 28u);
+    EXPECT_EQ(names.size(), 27u);
     EXPECT_TRUE(Contains(names, "BoxCollider"));
     EXPECT_TRUE(Contains(names, "MeshRenderer"));
     EXPECT_TRUE(Contains(names, "PlayerComponent"));
@@ -229,7 +228,6 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"MeshCollider", {}},
         {"MeshRenderer", {"基本色", "メッシュ", "マテリアル"}},
         {"Goal", {"半径"}},
-        {"PlacedVirtualCamera", {"注視点", "上方向", "トリガー中心", "トリガー半径", "プレイヤー追視", "優先度"}},
         {"PlayerComponent",
          {"ジャンプ初速",
           "上昇重力",
@@ -342,7 +340,6 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"MeshCollider", {"Collider"}},
         {"MeshRenderer", {}},
         {"Goal", {}},
-        {"PlacedVirtualCamera", {"VirtualCamera"}},
         {"PlayerComponent", {"EntityComponent"}},
         {"PlayerInput", {}},
         {"PlayerStateManager", {"EntityStateManager"}},

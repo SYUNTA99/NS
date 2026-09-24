@@ -4,7 +4,6 @@
 #include <Runtime/Object/Components/BoxCollider.h>
 #include <Runtime/Object/Components/CameraBrain.h>
 #include <Runtime/Object/Components/MeshRenderer.h>
-#include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/Components/Shadow.h>
 #include <Runtime/Object/Components/ThirdPersonFollow.h>
 #include <Runtime/Object/GameObject.h>
@@ -22,7 +21,6 @@ namespace
     using NS::Obj::FieldType;
     using NS::Obj::FindField;
     using NS::Obj::GameObject;
-    using NS::Obj::PlacedVirtualCamera;
     using NS::Obj::ReflectionInfo;
 
     // float / int / bool / Vector3 を private に持ち、4 フィールドをリフレクションするテスト用 Component
@@ -202,45 +200,6 @@ TEST(ReflectionTest, BareComponentHasNullReflection)
 {
     BareComponent comp;
     EXPECT_EQ(comp.GetReflection(), nullptr);
-}
-
-TEST(ReflectionTest, PlacedVirtualCameraReflectsSixFields)
-{
-    GameObject host;
-    auto* cam = host.AddComponent<PlacedVirtualCamera>();
-    cam->SetView({1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f});
-    cam->SetTrigger({7.0f, 8.0f, 9.0f}, {10.0f, 11.0f, 12.0f});
-    cam->SetLookAtPlayer(true);
-    cam->SetVcamPriority(15);
-
-    const ReflectionInfo* info = cam->GetReflection();
-    ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 6u);
-
-    EXPECT_NE(FindField(info, "注視点"), nullptr);
-    EXPECT_NE(FindField(info, "上方向"), nullptr);
-    EXPECT_NE(FindField(info, "トリガー中心"), nullptr);
-    EXPECT_NE(FindField(info, "トリガー半径"), nullptr);
-    EXPECT_NE(FindField(info, "プレイヤー追視"), nullptr);
-    EXPECT_NE(FindField(info, "優先度"), nullptr);
-    // 視点位置は owner Transform 所有なのでリフレクションしない。transform 編集の経路と二重にしない
-    EXPECT_EQ(FindField(info, "Camera Pos"), nullptr);
-
-    // Priority は基底 accessor 経由で書き戻る
-    const FieldDesc* priority = FindField(info, "優先度");
-    ASSERT_NE(priority, nullptr);
-    int newPriority = 7;
-    priority->set(cam, &newPriority);
-    EXPECT_EQ(cam->VcamPriority(), 7);
-
-    // Trigger Center は直メンバ経由で書き戻る
-    const FieldDesc* center = FindField(info, "トリガー中心");
-    ASSERT_NE(center, nullptr);
-    NS::Core::Vector3 newCenter{20.0f, 21.0f, 22.0f};
-    center->set(cam, &newCenter);
-    EXPECT_FLOAT_EQ(cam->TriggerCenter().x, 20.0f);
-    EXPECT_FLOAT_EQ(cam->TriggerCenter().y, 21.0f);
-    EXPECT_FLOAT_EQ(cam->TriggerCenter().z, 22.0f);
 }
 
 TEST(ReflectionTest, PlayerComponentReflectsFeelFloats)
@@ -497,8 +456,6 @@ TEST(ReflectionIsATest, StaticAndVirtualShareOneInfo)
     NS::Obj::ThirdPersonFollow follow;
     EXPECT_EQ(follow.GetReflection(), NS::Obj::ThirdPersonFollow::StaticReflection());
 
-    PlacedVirtualCamera cam;
-    EXPECT_EQ(cam.GetReflection(), PlacedVirtualCamera::StaticReflection());
 }
 
 TEST(ReflectionComponentCastTest, CastsSelfAndBaseRejectsOthers)

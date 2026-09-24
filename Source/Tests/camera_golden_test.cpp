@@ -5,7 +5,6 @@
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CameraBrain.h>
 #include <Runtime/Object/Components/CameraComponent.h>
-#include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/Components/ThirdPersonFollow.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
@@ -30,7 +29,6 @@ namespace
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManager;
     using NS::Obj::GameObject;
-    using NS::Obj::PlacedVirtualCamera;
     using NS::Obj::ThirdPersonFollow;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
@@ -138,57 +136,8 @@ namespace
         return trajectory;
     }
 
-    //! 歩くプレイヤーが据え置きカメラのトリガへ進入 → 滞在 → 退出する
-    //! 進入時のブレンド・lookAtPlayer の追視・退出時の戻りブレンドを実カメラの姿勢として記録する
-    std::vector<CameraStepRecord> RunAreaCameraBlend()
-    {
-        GameObject host;
-        auto* cam = host.AddComponent<CameraComponent>();
-        auto* brain = host.AddComponent<CameraBrain>();
-        host.OnStart();
-        brain->SetBlendDuration(0.3f);
-
-        GameObject player;
-        player.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
-
-        GameObject rig;
-        auto& follow = *rig.AddComponent<ThirdPersonFollow>();
-        follow.SetTarget(&player.Root());
-        // 生成直後は休止なのでテスト側で有効化する
-        follow.SetActive(true);
-
-        GameObject areaHost;
-        auto& placed = *areaHost.AddComponent<PlacedVirtualCamera>();
-        placed.SetView(Vector3{8.0f, 4.0f, -6.0f}, Vector3{8.0f, 0.0f, 0.0f});
-        placed.SetTrigger(Vector3{8.0f, 1.0f, 0.0f}, Vector3{2.0f, 1.5f, 2.0f});
-        placed.SetLookAtPlayer(true);
-        placed.SetVcamPriority(20);
-        placed.SetFovY(NS::Core::ToRadians(NS::Core::Degrees{50.0f}));
-
-        brain->AddVirtualCamera(&follow);
-        brain->AddVirtualCamera(&placed);
-
-        std::vector<CameraStepRecord> trajectory;
-        for (int i = 0; i < 260; ++i)
-        {
-            player.Root().Snapshot();
-            // 3 u/s で X+ へ歩かせる。トリガ x 6..10 へは i=120 で入り i=200 で抜ける
-            const float x = 0.05f * static_cast<float>(i + 1);
-            player.Root().SetPosition(Vector3{x, 1.0f, 0.0f});
-
-            placed.UpdateActivation(player.Root().Position());
-            follow.OnUpdate();
-            brain->OnUpdate();
-            brain->Evaluate(1.0f);
-
-            trajectory.push_back(CameraStepRecord{cam->Position(), cam->Target(), cam->FovY().value});
-        }
-        return trajectory;
-    }
-
     // 基準ハッシュ。カメラか自機の動きを意図して変えた時だけ実測値で更新する
     constexpr uint64_t k_FollowWalkJumpGolden = 0x6A49F2A9A3EA6903ULL;
-    constexpr uint64_t k_AreaCameraBlendGolden = 0xDF21CBDB3D18F8D1ULL;
 } // namespace
 
 class CameraGolden : public ::testing::Test
@@ -201,7 +150,6 @@ protected:
 TEST_F(CameraGolden, HashIsStableAcrossTwoRuns)
 {
     EXPECT_EQ(HashTrajectory(RunFollowWalkJump()), HashTrajectory(RunFollowWalkJump()));
-    EXPECT_EQ(HashTrajectory(RunAreaCameraBlend()), HashTrajectory(RunAreaCameraBlend()));
 }
 
 TEST_F(CameraGolden, FollowWalkJumpMatchesGoldenTrace)
@@ -225,23 +173,4 @@ TEST_F(CameraGolden, FollowWalkJumpMatchesGoldenTrace)
 
     const uint64_t hash = HashTrajectory(trajectory);
     EXPECT_EQ(hash, k_FollowWalkJumpGolden) << DescribeTrajectory(trajectory, hash);
-}
-
-TEST_F(CameraGolden, AreaCameraBlendMatchesGoldenTrace)
-{
-    const auto trajectory = RunAreaCameraBlend();
-
-    // 滞在が安定した i=180 (x=9.05) では据え置き位置へ到達している
-    const CameraStepRecord& inside = trajectory[180];
-    EXPECT_NEAR(inside.position.x, 8.0f, 0.05f) << "滞在中に据え置きカメラ位置へ到達していない";
-    EXPECT_NEAR(inside.position.y, 4.0f, 0.05f);
-    EXPECT_NEAR(inside.target.x, 9.05f, 0.1f) << "lookAtPlayer が注視点をプレイヤーへ向けていない";
-
-    // 退出してブレンドが終わった末尾は追従カメラへ戻っている
-    const CameraStepRecord& last = trajectory.back();
-    EXPECT_GT(last.position.z, -6.0f + 1.0f) << "退出後も据え置きカメラに留まっている";
-    EXPECT_NEAR(last.target.y, 1.0f + 1.2f, 0.2f) << "退出後の注視点が頭高さに戻っていない";
-
-    const uint64_t hash = HashTrajectory(trajectory);
-    EXPECT_EQ(hash, k_AreaCameraBlendGolden) << DescribeTrajectory(trajectory, hash);
 }

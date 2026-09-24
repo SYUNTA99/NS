@@ -11,7 +11,7 @@
 
 namespace NS::Obj
 {
-    // vcam を供給する follow / placed が LateUpdate + 50 なので、選び直しはその後ろに置く
+    // vcam を供給する追従カメラが LateUpdate + 50 なので、選び直しはその後ろに置く
     CameraBrain::CameraBrain() noexcept : Component(TickPriority::LateUpdate + 60) {}
 
     void CameraBrain::OnStart()

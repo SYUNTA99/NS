@@ -22,7 +22,6 @@
 #include "Runtime/Object/Components/MeshCollider.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
-#include "Runtime/Object/Components/PlacedVirtualCamera.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/Shadow.h"
 #include "Runtime/Object/Components/SkeletalAnimation.h"
