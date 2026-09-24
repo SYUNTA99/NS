@@ -3,32 +3,33 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 
-#include <Jolt/Jolt.h>
-
-#include <Jolt/Physics/Body/BodyID.h>
-
-namespace NS::Phys
+namespace NS::Obj
 {
-    class PhysicsScene;
+    class RigidBody;
 }
 
 namespace NS::Game::Level
 {
+    //! @brief 押し飛ばされて転がり、止まるか壊れるまでを受け持つ Component
+    //! @details body は自分で作らず、同じ配置物の RigidBody を動かす
+    //! 置かれている間と止まった後は RigidBody をキネマティックにし、飛んでいる間だけダイナミックにする
+    //! 質量・摩擦・跳ね返りは RigidBody が持ち、ここは回転の強さ・止まってから消えるまで・破片の設定だけを持つ
+    //! RigidBody が無い配置物は、飛ばす時にキネマティックの RigidBody を足してから飛ばす
+    //! 依存: NS::Obj::RigidBody, NS::Obj::Collider, Breakable
     class LaunchedBody : public NS::Obj::Component
     {
     public:
         // 物理の更新が済んでから body を読むので LateUpdate 帯で名乗る
         LaunchedBody() noexcept;
 
-        // body の生成で確保が起きる。noexcept にしない
+        //! @brief 同じ配置物の RigidBody をダイナミックにして velocity で飛ばす
+        //! @details 前転の角速度も入れる。RigidBody が無ければ足す。body の生成で確保が起きるので noexcept にしない
         void Launch(const NS::Core::Vector3& velocity);
 
         [[nodiscard]] bool IsFlying() const noexcept { return m_flying; }
 
-        //! 飛んでいる間の動的 body の id。飛んでいない間は無効
-        [[nodiscard]] JPH::BodyID BodyId() const noexcept { return m_bodyId; }
-
-        [[nodiscard]] NS::Core::Vector3 Velocity() const noexcept;
+        //! 飛んでいる間の線速度。飛んでいない間は 0
+        [[nodiscard]] NS::Core::Vector3 Velocity() const;
 
         void SetRestLifeSeconds(float seconds) noexcept;
 
@@ -42,8 +43,6 @@ namespace NS::Game::Level
         void OnEndPlay() override;
 
         NS_REFLECT_BEGIN(LaunchedBody, NS::Obj::Component)
-        NS_REFLECT_FIELD(m_restitution, "跳ね返り")
-        NS_REFLECT_FIELD(m_friction, "摩擦")
         NS_REFLECT_FIELD(m_spinPerSpeed, "回転の強さ")
         NS_REFLECT_FIELD(m_restLifeSeconds, "止まってから消える秒")
         NS_REFLECT_FIELD(m_debrisCount, "破片の数")
@@ -54,25 +53,18 @@ namespace NS::Game::Level
         NS_REFLECT_END()
 
     private:
-        // 今と同じ値なら body を出し入れしない
-        void SetColliderActive(bool active);
-
         [[nodiscard]] NS::Core::Vector3 TumbleFrom(const NS::Core::Vector3& velocity) const noexcept;
 
-        [[nodiscard]] JPH::BodyID CreateFlyingBody(NS::Phys::PhysicsScene& physics) const;
+        // 同じ配置物の RigidBody。無ければキネマティックで足し、collider を形として取り込ませて body を作る
+        // 持ち主が Scene に居なければ null
+        [[nodiscard]] NS::Obj::RigidBody* EnsureRigidBody();
 
-        void RemoveFlyingBody() noexcept;
-
+        // 止まった所でキネマティックへ戻す。次に飛ばされるまでその場の当たりとして残る
         void ComeToRest();
 
+        // 当たりごと消す。RigidBody と collider の body を外し、描画と更新も止める
         void HideAndSleep();
 
-        // 持ち主の Scene の PhysicsScene。 Scene に居なければ null
-        // 控えを持つと Scene と正が 2 つになるので、 使う時に毎回引く
-        [[nodiscard]] NS::Phys::PhysicsScene* ScenePhysics() const noexcept;
-
-        float m_restitution = 0.35f;
-        float m_friction = 0.6f;
         float m_spinPerSpeed = 0.5f;
         float m_restLifeSeconds = 0.0f;
         float m_restAge = 0.0f;
@@ -84,7 +76,6 @@ namespace NS::Game::Level
         float m_debrisScale = 0.25f;
         NS::Core::Vector3 m_debrisBaseColor{0.35f, 0.32f, 0.30f};
 
-        JPH::BodyID m_bodyId;
         bool m_flying = false;
     };
 } // namespace NS::Game::Level

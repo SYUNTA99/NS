@@ -14,6 +14,7 @@
 #include "Runtime/Object/Components/BoxCollider.h"
 #include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/Collider.h"
+#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -56,17 +57,22 @@ namespace NS::Game::Level
 
         [[nodiscard]] JPH::BodyID CurrentBodyOf(const NS::Obj::GameObject& object) noexcept
         {
-            // 飛んでいる間は collider の body が外れて無効になる。LaunchedBody が作った動的 body を先に見る
-            if (const LaunchedBody* launched = object.FindComponent<LaunchedBody>();
-                launched != nullptr && launched->IsFlying())
-            {
-                return launched->BodyId();
-            }
+            // RigidBody の形になった collider は RigidBody の body を返す。飛んでいても置かれていても同じ口で引ける
             if (const NS::Obj::Collider* collider = object.FindComponent<NS::Obj::Collider>())
             {
                 return collider->BodyId();
             }
             return JPH::BodyID{};
+        }
+
+        // 押し飛ばしの重さ。RigidBody が無い配置物は基準の 1 個として扱う
+        [[nodiscard]] float MassOf(const NS::Obj::GameObject& object) noexcept
+        {
+            if (const NS::Obj::RigidBody* rigidBody = object.FindComponent<NS::Obj::RigidBody>())
+            {
+                return rigidBody->EffectiveMass();
+            }
+            return 1.0f;
         }
 
         [[nodiscard]] bool IsTouching(const std::vector<JPH::BodyID>& touching, JPH::BodyID id)
@@ -236,7 +242,7 @@ namespace NS::Game::Level
 
         const float charge01 = m_movement->BodySlamCharge01();
 
-        const float mass = hit->Mass();
+        const float mass = MassOf(*hit->Owner());
         const float massFactor = mass / (mass + 1.0f);
 
         // ボタン未搭載 (null) は係数 1.0 の素通し

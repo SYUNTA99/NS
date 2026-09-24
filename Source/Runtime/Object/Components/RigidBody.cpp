@@ -8,6 +8,8 @@
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Platform/Clock.h"
 
+#include <cmath>
+
 namespace NS::Obj
 {
     void RigidBody::SyncToPhysics(NS::Phys::PhysicsScene& physics)
@@ -46,7 +48,7 @@ namespace NS::Obj
         NS::Core::Quaternion rotation;
         OwnerWorldPose(position, rotation);
         const NS::Phys::BodyMotion motion = Motion();
-        const JPH::BodyID body = physics.SyncMovingBody(m_bodyId, parts, position, rotation, motion);
+        const JPH::BodyID body = physics.SyncMovingBody(m_bodyId, parts, position, rotation, motion, m_objectLayer);
         // 置き直しは同じ id を返す。違うのは初めて作った時か、無効が返った時だけ
         if (m_bodyId != body)
         {
@@ -76,6 +78,22 @@ namespace NS::Obj
         m_bodyId = JPH::BodyID{};
     }
 
+    void RigidBody::RefreshMotion()
+    {
+        NS::Phys::PhysicsScene* physics = ScenePhysics();
+        if (physics == nullptr || m_bodyId.IsInvalid())
+        {
+            return;
+        }
+
+        const NS::Phys::BodyMotion motion = Motion();
+        if (!(motion == m_appliedMotion))
+        {
+            physics->SetBodyMotion(m_bodyId, motion);
+            m_appliedMotion = motion;
+        }
+    }
+
     void RigidBody::PrePhysicsStep()
     {
         NS::Phys::PhysicsScene* physics = ScenePhysics();
@@ -85,12 +103,7 @@ namespace NS::Obj
         }
 
         // エディタの欄は setter を通らずに書き換わる。毎歩見比べ、変わった時だけ body へ入れる
-        const NS::Phys::BodyMotion motion = Motion();
-        if (!(motion == m_appliedMotion))
-        {
-            physics->SetBodyMotion(m_bodyId, motion);
-            m_appliedMotion = motion;
-        }
+        RefreshMotion();
 
         if (m_kinematic)
         {
@@ -154,6 +167,16 @@ namespace NS::Obj
         m_lockRotationX = x;
         m_lockRotationY = y;
         m_lockRotationZ = z;
+    }
+
+    float RigidBody::EffectiveMass() const noexcept
+    {
+        // PhysicsScene が body へ入れる時と同じ直し方。読む側と body で重さが食い違わないようにする
+        if (!std::isfinite(m_mass) || !(m_mass > 0.0f))
+        {
+            return 1.0f;
+        }
+        return m_mass;
     }
 
     NS::Phys::BodyMotion RigidBody::Motion() const noexcept

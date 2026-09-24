@@ -530,12 +530,11 @@ TEST(SaveLoadRoundTrip, FollowCameraObjectRoundTrip)
 
 namespace
 {
-    // Cube 1 個へ質量と耐久を積む。値は欄名をキーに書き、Inspector で入れた時と同じ形にする
-    SceneNs::ObjectData MakeBreakableCube(int cellX, float mass, float toughness)
+    // Cube 1 個へ耐久を積む。値は欄名をキーに書き、Inspector で入れた時と同じ形にする
+    SceneNs::ObjectData MakeBreakableCube(int cellX, float toughness)
     {
         SceneNs::ObjectData object = NS::Editor::MakeCellObject(cellX, 0, 0);
         nlohmann::json breakable = SceneNs::MakeComponentEntry("Breakable");
-        SceneNs::SetField(breakable, "質量", mass);
         SceneNs::SetField(breakable, "耐久", toughness);
         object.components.push_back(std::move(breakable));
         return object;
@@ -562,11 +561,11 @@ namespace
     }
 } // namespace
 
-// 入れた質量と耐久が JSON を経て live の Component まで戻る
+// 入れた耐久が JSON を経て live の Component まで戻る
 TEST(SaveLoadRoundTrip, BreakableValuesSurviveRoundTrip)
 {
     SceneNs::SceneData src;
-    src.objects.push_back(MakeBreakableCube(0, 3.5f, 2.0f));
+    src.objects.push_back(MakeBreakableCube(0, 2.0f));
 
     SceneNs::SceneData dst;
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
@@ -574,14 +573,12 @@ TEST(SaveLoadRoundTrip, BreakableValuesSurviveRoundTrip)
 
     const nlohmann::json* entry = SceneNs::FindComponentEntry(dst.objects[0], "Breakable");
     ASSERT_NE(entry, nullptr);
-    EXPECT_FLOAT_EQ(SceneNs::FieldFloat(*entry, "質量", -1.0f), 3.5f);
     EXPECT_FLOAT_EQ(SceneNs::FieldFloat(*entry, "耐久", -1.0f), 2.0f);
 
     const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
     ASSERT_NE(live, nullptr);
     const LevelNs::Breakable* breakable = live->FindComponent<LevelNs::Breakable>();
     ASSERT_NE(breakable, nullptr);
-    EXPECT_FLOAT_EQ(breakable->Mass(), 3.5f);
     EXPECT_FLOAT_EQ(breakable->Toughness(), 2.0f);
 }
 
@@ -589,8 +586,8 @@ TEST(SaveLoadRoundTrip, BreakableValuesSurviveRoundTrip)
 TEST(SaveLoadRoundTrip, BreakableValuesStayPerObject)
 {
     SceneNs::SceneData src;
-    src.objects.push_back(MakeBreakableCube(0, 0.5f, 1.0f));
-    src.objects.push_back(MakeBreakableCube(1, 4.0f, 3.0f));
+    src.objects.push_back(MakeBreakableCube(0, 1.0f));
+    src.objects.push_back(MakeBreakableCube(1, 3.0f));
     SceneNs::EnsureUniqueObjectIds(src);
 
     SceneNs::SceneData dst;
@@ -606,9 +603,7 @@ TEST(SaveLoadRoundTrip, BreakableValuesStayPerObject)
     const LevelNs::Breakable* heavyBreakable = heavy->FindComponent<LevelNs::Breakable>();
     ASSERT_NE(lightBreakable, nullptr);
     ASSERT_NE(heavyBreakable, nullptr);
-    EXPECT_FLOAT_EQ(lightBreakable->Mass(), 0.5f);
     EXPECT_FLOAT_EQ(lightBreakable->Toughness(), 1.0f);
-    EXPECT_FLOAT_EQ(heavyBreakable->Mass(), 4.0f);
     EXPECT_FLOAT_EQ(heavyBreakable->Toughness(), 3.0f);
 }
 
@@ -619,7 +614,6 @@ TEST(SaveLoadRoundTrip, BreakableFieldKeysAreTheLockedLabels)
     SceneNs::GameObject live;
     LevelNs::Breakable* breakable = live.AddComponent<LevelNs::Breakable>();
     ASSERT_NE(breakable, nullptr);
-    breakable->SetMass(2.0f);
     breakable->SetToughness(1.5f);
 
     SceneNs::SceneData src;
@@ -630,20 +624,18 @@ TEST(SaveLoadRoundTrip, BreakableFieldKeysAreTheLockedLabels)
     ASSERT_NE(entry, nullptr);
 
     const nlohmann::json& fields = entry->at("fields");
-    ASSERT_TRUE(fields.contains("質量")) << "欄名を変えると保存済みレベルの質量が既定へ戻る";
     ASSERT_TRUE(fields.contains("耐久")) << "欄名を変えると保存済みレベルの耐久が既定へ戻る";
-    EXPECT_FLOAT_EQ(fields.at("質量").get<float>(), 2.0f);
     EXPECT_FLOAT_EQ(fields.at("耐久").get<float>(), 1.5f);
-    EXPECT_EQ(fields.size(), 2u);
+    // 質量は RigidBody の欄。Breakable に書くと同じ重さの出所が 2 つになる
+    EXPECT_EQ(fields.size(), 1u);
 }
 
-// 欄が欠けた .scene でも読込は壊れない。欠けた欄だけコード既定へ落ち、隣の欄は残る
+// 欄が欠けた .scene でも読込は壊れない。欠けた欄はコード既定へ落ちる
 TEST(SaveLoadRoundTrip, MissingBreakableFieldFallsBackToDefault)
 {
     SceneNs::GameObject source;
     LevelNs::Breakable* authored = source.AddComponent<LevelNs::Breakable>();
     ASSERT_NE(authored, nullptr);
-    authored->SetMass(3.5f);
     authored->SetToughness(2.0f);
 
     SceneNs::SceneData src;
@@ -652,7 +644,7 @@ TEST(SaveLoadRoundTrip, MissingBreakableFieldFallsBackToDefault)
     nlohmann::json root = nlohmann::json::parse(SceneNs::SerializeSceneToJson(src));
     nlohmann::json* entry = FindBreakableEntry(root.at("objects").at(0).at("components"));
     ASSERT_NE(entry, nullptr);
-    entry->at("fields").erase("質量");
+    entry->at("fields").erase("耐久");
 
     SceneNs::SceneData dst;
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, root.dump()));
@@ -662,8 +654,7 @@ TEST(SaveLoadRoundTrip, MissingBreakableFieldFallsBackToDefault)
     ASSERT_NE(live, nullptr);
     const LevelNs::Breakable* breakable = live->FindComponent<LevelNs::Breakable>();
     ASSERT_NE(breakable, nullptr);
-    EXPECT_FLOAT_EQ(breakable->Mass(), 1.0f);
-    EXPECT_FLOAT_EQ(breakable->Toughness(), 2.0f);
+    EXPECT_FLOAT_EQ(breakable->Toughness(), 1.0f);
 }
 
 namespace

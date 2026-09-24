@@ -12,6 +12,7 @@
 #include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/PlayerInput.h>
+#include <Runtime/Object/Components/RigidBody.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
@@ -130,6 +131,13 @@ namespace
             data.objects.push_back(player);
 
             NS::Obj::ObjectData target = NS::Editor::MakeCellObject(0, 1, k_ImpactTargetZ);
+            // 出荷のコースと同じく、重さと面は置かれている間キネマティックの RigidBody が持つ
+            nlohmann::json body = NS::Obj::MakeComponentEntry("RigidBody");
+            NS::Obj::SetField(body, "キネマティック", true);
+            NS::Obj::SetField(body, "質量", k_ImpactTargetMass);
+            NS::Obj::SetField(body, "摩擦", 0.6f);
+            NS::Obj::SetField(body, "跳ね返り", 0.35f);
+            target.components.push_back(std::move(body));
             target.components.push_back(NS::Obj::MakeComponentEntry("Breakable"));
             data.objects.push_back(target);
 
@@ -147,7 +155,6 @@ namespace
             }
             m_scene.Objects().ForEachComponent<NS::Game::Level::Breakable>(
                 [](NS::Game::Level::Breakable& breakable) {
-                    breakable.SetMass(k_ImpactTargetMass);
                     breakable.SetToughness(k_ImpactTargetToughness);
                 });
         }
@@ -161,8 +168,17 @@ namespace
                     m_movement->RequestBodySlam(k_ImpactSlamCharge);
                 ++m_stepIndex;
                 // 岩は Jolt の剛体なので、帯だけ回しても動かない。物理の 1 フレームを LateUpdate 帯の手前へ挟む
+                // RigidBody の前後の処理も Scene::OnUpdate と同じ順で挟む。抜くと飛んだ岩の姿勢が書き戻らない
                 m_scene.Objects().UpdateObjects(std::numeric_limits<int>::min(), NS::Obj::TickPriority::LateUpdate);
+                m_scene.Objects().ForEachComponent<NS::Obj::RigidBody>([](NS::Obj::RigidBody& body) {
+                    if (body.IsActive())
+                        body.PrePhysicsStep();
+                });
                 m_scene.Physics().Update(k_FixedDt);
+                m_scene.Objects().ForEachComponent<NS::Obj::RigidBody>([](NS::Obj::RigidBody& body) {
+                    if (body.IsActive())
+                        body.PostPhysicsStep();
+                });
                 m_scene.Objects().UpdateObjects(NS::Obj::TickPriority::LateUpdate);
                 m_scene.Objects().SnapshotObjects();
                 m_trace.push_back(

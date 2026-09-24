@@ -47,7 +47,8 @@ namespace NS::Game::Level
     //! Breakable の body と照合して決める。NS::Phys は NS::Obj を知らないので、
     //! body から持ち主を引く関数は無い
     //! 衝突の瞬間は自機を数固定ステップ止め、反発・発射・破壊を明けたフレームへ保留する
-    //! 依存: NS::Game::Player::PlayerComponent, Breakable, LaunchedBody, CollisionInput
+    //! 重さは相手の RigidBody の質量で、RigidBody が無ければ 1
+    //! 依存: NS::Game::Player::PlayerComponent, Breakable, LaunchedBody, NS::Obj::RigidBody, CollisionInput
     class ImpactResolver : public NS::Obj::OverlayRenderer
     {
     public:

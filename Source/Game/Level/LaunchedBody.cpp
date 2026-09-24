@@ -1,14 +1,12 @@
 #include "Game/Level/LaunchedBody.h"
 
 #include "Game/Level/Breakable.h"
-#include "Game/Level/ColliderBounds.h"
-#include "Runtime/Core/AABB.h"
 #include "Runtime/Platform/Clock.h"
 #include "Runtime/Core/Math.h"
-#include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/BoxCollider.h"
 #include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
+#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -53,12 +51,14 @@ namespace NS::Game::Level
         return axis * rate;
     }
 
-    NS::Core::Vector3 LaunchedBody::Velocity() const noexcept
+    NS::Core::Vector3 LaunchedBody::Velocity() const
     {
-        NS::Phys::PhysicsScene* physics = ScenePhysics();
-        if (!m_flying || physics == nullptr)
+        if (!m_flying || Owner() == nullptr)
             return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-        return physics->BodyVelocity(m_bodyId);
+        const NS::Obj::RigidBody* rigidBody = Owner()->FindComponent<NS::Obj::RigidBody>();
+        if (rigidBody == nullptr)
+            return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        return rigidBody->Velocity();
     }
 
     void LaunchedBody::SetRestLifeSeconds(float seconds) noexcept
@@ -73,81 +73,85 @@ namespace NS::Game::Level
         m_debrisCount = std::max(0, count);
     }
 
-    JPH::BodyID LaunchedBody::CreateFlyingBody(NS::Phys::PhysicsScene& physics) const
+    NS::Obj::RigidBody* LaunchedBody::EnsureRigidBody()
     {
-        NS::Core::AABB bounds{};
-        if (!TryGetColliderBounds(*Owner(), bounds))
+        if (Owner() == nullptr)
+            return nullptr;
+        if (NS::Obj::RigidBody* found = Owner()->FindComponent<NS::Obj::RigidBody>())
+            return found;
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+            return nullptr;
+
+        // 積み忘れた配置物でも飛ばせるよう、置かれた姿のままのキネマティックで足す
+        NS::Obj::RigidBody* added = Owner()->AddComponent<NS::Obj::RigidBody>();
+        added->SetKinematic(true);
+        // collider に自分の静的な body を外させてから形を集める。残すと同じ場所に静的と動く body が二重に立つ
+        for (NS::Obj::Component* comp : Owner()->Components())
         {
-            return JPH::BodyID{};
+            NS::Obj::Collider* collider = NS::Obj::ComponentCast<NS::Obj::Collider>(comp);
+            if (collider != nullptr && collider->IsActive())
+                collider->SyncToPhysics(scene->Physics());
         }
-
-        NS::Phys::DynamicBodyDesc desc;
-        // 破片同士は当たらないレイヤーに置く。散った破片が互いを押し合うと元の勢いが読めなくなる
-        desc.layer = Owner()->IsTransient() ? NS::Phys::ObjectLayers::Debris : NS::Phys::ObjectLayers::Rock;
-        desc.restitution = m_restitution;
-        desc.friction = m_friction;
-        if (const Breakable* breakable = Owner()->FindComponent<Breakable>())
-            desc.mass = breakable->Mass();
-
-        // TODO: どの形も外接箱で近似している。球の的が箱として転がるのが気になったら形ごとに分ける
-        NS::Core::OBB box;
-        box.center = bounds.Center;
-        box.halfExtentX = std::max(bounds.Extents.x, 1.0e-3f);
-        box.halfExtentY = std::max(bounds.Extents.y, 1.0e-3f);
-        box.halfExtentZ = std::max(bounds.Extents.z, 1.0e-3f);
-        return physics.AddDynamicBox(box, desc);
-    }
-
-    void LaunchedBody::RemoveFlyingBody() noexcept
-    {
-        NS::Phys::PhysicsScene* physics = ScenePhysics();
-        if (physics == nullptr)
-            return;
-
-        physics->RemoveBody(m_bodyId);
-        m_bodyId = JPH::BodyID{};
+        added->SyncToPhysics(scene->Physics());
+        return added;
     }
 
     void LaunchedBody::Launch(const NS::Core::Vector3& velocity)
     {
         // 非有限値は位置へ流れ、配置物が二度と描かれない場所へ飛ぶ
-        if (!IsFinite(velocity) || Owner() == nullptr)
+        if (!IsFinite(velocity))
             return;
-        NS::Obj::Scene* scene = Owner()->OwningScene();
-        if (scene == nullptr)
+        NS::Obj::RigidBody* rigidBody = EnsureRigidBody();
+        if (rigidBody == nullptr || rigidBody->BodyId().IsInvalid())
             return;
 
-        if (!m_flying)
-        {
-            // 置かれた当たりを先に外す。残すと同じ場所に静的と動的の body が二重に立つ
-            SetColliderActive(false);
-            m_bodyId = CreateFlyingBody(scene->Physics());
-            if (m_bodyId.IsInvalid())
-            {
-                SetColliderActive(true);
-                return;
-            }
-            m_flying = true;
-        }
-
-        scene->Physics().SetBodyVelocity(m_bodyId, velocity);
-        scene->Physics().SetBodyAngularVelocity(m_bodyId, TumbleFrom(velocity));
+        // 速度はダイナミックへ切り替えてから置く。次の 1 歩を待つとキネマティックの運びが速度を上書きする
+        rigidBody->SetKinematic(false);
+        rigidBody->RefreshMotion();
+        rigidBody->SetVelocity(velocity);
+        rigidBody->SetAngularVelocity(TumbleFrom(velocity));
+        m_flying = true;
         m_restAge = 0.0f;
     }
 
     void LaunchedBody::ComeToRest()
     {
-        RemoveFlyingBody();
         m_flying = false;
         m_restAge = 0.0f;
-        SetColliderActive(true);
+        NS::Obj::RigidBody* rigidBody = Owner()->FindComponent<NS::Obj::RigidBody>();
+        if (rigidBody == nullptr)
+            return;
+        // 残った速度はキネマティックの運びに混ざる。止まった所へ置いたまま動かさない
+        rigidBody->SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        rigidBody->SetAngularVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        rigidBody->SetKinematic(true);
+        rigidBody->RefreshMotion();
     }
 
     void LaunchedBody::HideAndSleep()
     {
+        m_flying = false;
         if (NS::Obj::MeshRenderer* mesh = Owner()->FindComponent<NS::Obj::MeshRenderer>())
             mesh->SetActive(false);
-        SetColliderActive(false);
+
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (NS::Obj::RigidBody* rigidBody = Owner()->FindComponent<NS::Obj::RigidBody>())
+        {
+            if (scene != nullptr)
+                rigidBody->RemoveFromPhysics(scene->Physics());
+            rigidBody->SetActive(false);
+        }
+        // RigidBody を止めると collider が自分の body を持ち直せる。止めて外し、当たりを残さない
+        for (NS::Obj::Component* comp : Owner()->Components())
+        {
+            NS::Obj::Collider* collider = NS::Obj::ComponentCast<NS::Obj::Collider>(comp);
+            if (collider == nullptr)
+                continue;
+            collider->SetActive(false);
+            if (scene != nullptr)
+                collider->RemoveFromPhysics(scene->Physics());
+        }
         SetActive(false);
     }
 
@@ -160,15 +164,19 @@ namespace NS::Game::Level
             return;
 
         const NS::Core::Vector3 origin = RootTransform().Position();
+        const NS::Obj::RigidBody* source = Owner()->FindComponent<NS::Obj::RigidBody>();
         float mass = 1.0f;
+        if (source != nullptr)
+        {
+            mass = source->EffectiveMass();
+        }
         Breakable* breakable = Owner()->FindComponent<Breakable>();
         if (breakable != nullptr)
         {
-            mass = breakable->Mass();
+            breakable->SetActive(false);
         }
-
-        RemoveFlyingBody();
-        m_flying = false;
+        // 破片より先に自分の当たりを外す。残すと同じ場所に湧いた破片が押し出されて勢いが読めなくなる
+        HideAndSleep();
 
         // 重い物ほど破片が飛ばない。押し飛ばしと同じ向きの質量感を破片でも見せる
         const float speed = m_debrisSpeed / mass;
@@ -185,6 +193,15 @@ namespace NS::Game::Level
             mesh->SetMaterialRef("player");
             mesh->SetBaseColor(m_debrisBaseColor);
             owned->AddComponent<NS::Obj::BoxCollider>();
+            NS::Obj::RigidBody* debrisBody = owned->AddComponent<NS::Obj::RigidBody>();
+            // 破片同士は当たらない種別に置く。散った破片が互いを押し合うと元の勢いが読めなくなる
+            debrisBody->SetObjectLayer(NS::Phys::ObjectLayers::Debris);
+            // 面の手触りは壊れた物と揃える
+            if (source != nullptr)
+            {
+                debrisBody->SetFriction(source->Friction());
+                debrisBody->SetRestitution(source->Restitution());
+            }
             owned->AddComponent<LaunchedBody>();
             NS::Obj::GameObject* spawned = scene->SpawnTransient(std::move(owned));
             if (spawned == nullptr)
@@ -199,11 +216,6 @@ namespace NS::Game::Level
             body->Launch(NS::Core::Vector3{std::cos(angle) * speed, up * speed, std::sin(angle) * speed});
         }
 
-        if (breakable != nullptr)
-        {
-            breakable->SetActive(false);
-        }
-        HideAndSleep();
     }
 
     void LaunchedBody::OnUpdate()
@@ -221,11 +233,15 @@ namespace NS::Game::Level
             return;
         }
 
-        NS::Phys::PhysicsScene* physics = ScenePhysics();
-        if (physics == nullptr)
+        // 姿勢の書き戻しは RigidBody が物理の直後に済ませている。ここは接触と眠りだけを見る
+        const NS::Obj::RigidBody* rigidBody = Owner()->FindComponent<NS::Obj::RigidBody>();
+        if (rigidBody == nullptr)
+        {
+            m_flying = false;
             return;
+        }
 
-        for (const NS::Phys::BodyContact& contact : physics->ContactsOf(m_bodyId))
+        for (const NS::Phys::BodyContact& contact : rigidBody->Contacts())
         {
             // 歩ける面は床。着地で必ず当たる床を分けないと着地で割れる
             if (!NS::Phys::IsWalkableNormal(contact.normal.y))
@@ -235,43 +251,15 @@ namespace NS::Game::Level
             }
         }
 
-        RootTransform().SetPosition(physics->BodyPosition(m_bodyId));
-        RootTransform().SetRotation(physics->BodyRotation(m_bodyId));
-
         // 止まったかを決めるのは Jolt の睡眠。速度のしきい値を自分で持つと 2 か所で止まりを判断することになる
-        if (!physics->IsBodyAwake(m_bodyId))
+        if (rigidBody->IsSleeping())
             ComeToRest();
     }
 
     void LaunchedBody::OnEndPlay()
     {
-        RemoveFlyingBody();
+        // body は RigidBody が自分で外す
         m_flying = false;
-    }
-
-    void LaunchedBody::SetColliderActive(bool active)
-    {
-        if (Owner() == nullptr)
-            return;
-        NS::Obj::Collider* collider = Owner()->FindComponent<NS::Obj::Collider>();
-        if (collider == nullptr || collider->IsActiveSelf() == active)
-            return;
-
-        collider->SetActive(active);
-        if (NS::Obj::Scene* scene = Owner()->OwningScene())
-        {
-            if (active)
-                collider->SyncToPhysics(scene->Physics());
-            else
-                collider->RemoveFromPhysics(scene->Physics());
-        }
-    }
-
-    NS::Phys::PhysicsScene* LaunchedBody::ScenePhysics() const noexcept
-    {
-        if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
-            return nullptr;
-        return &Owner()->OwningScene()->Physics();
     }
 
     NS_CLASS(LaunchedBody)

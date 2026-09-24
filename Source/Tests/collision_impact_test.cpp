@@ -17,6 +17,7 @@
 #include <Runtime/Object/Components/CameraBrain.h>
 #include <Runtime/Object/Components/MeshRenderer.h>
 #include <Runtime/Object/Components/PlayerInput.h>
+#include <Runtime/Object/Components/RigidBody.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
@@ -62,6 +63,7 @@ namespace
         SceneNs::BoxCollider* targetBox = nullptr;
         NS::Obj::GameObject* target = nullptr;
         LevelNs::Breakable* breakable = nullptr;
+        SceneNs::RigidBody* rigidBody = nullptr;
     };
 
     struct SlamCourse
@@ -76,6 +78,16 @@ namespace
         bool alongZ = false;
         bool sphereTarget = false;
     };
+
+    // 置かれた壊せる物と同じ RigidBody。飛ぶまではキネマティックで、面の手触りは押し飛ばしを調整した値
+    nlohmann::json MakeLaunchableRigidBodyEntry()
+    {
+        nlohmann::json entry = SceneNs::MakeComponentEntry("RigidBody");
+        SceneNs::SetField(entry, "キネマティック", true);
+        SceneNs::SetField(entry, "摩擦", 0.6f);
+        SceneNs::SetField(entry, "跳ね返り", 0.35f);
+        return entry;
+    }
 
     Rig BuildSlam(SceneNs::Scene& scene, const SlamCourse& course)
     {
@@ -129,7 +141,10 @@ namespace
             }
         }
         if (course.withBreakable)
+        {
+            target.components.push_back(MakeLaunchableRigidBodyEntry());
             target.components.push_back(SceneNs::MakeComponentEntry("Breakable"));
+        }
         data.objects.push_back(target);
         scene.LoadFromData(std::move(data));
 
@@ -162,6 +177,8 @@ namespace
         }
         if (rig.target == nullptr && rig.targetBox != nullptr)
             rig.target = rig.targetBox->Owner();
+        if (rig.target != nullptr)
+            rig.rigidBody = rig.target->FindComponent<SceneNs::RigidBody>();
         return rig;
     }
 
@@ -288,11 +305,13 @@ namespace
         SceneNs::GameObject* object = nullptr;
         LevelNs::LaunchedBody* body = nullptr;
         SceneNs::BoxCollider* box = nullptr;
+        SceneNs::RigidBody* rigidBody = nullptr;
         JPH::uint restingBodies = 0;
     };
 
     // 床を 1 列並べ、その上へ飛ばされる物を 1 個置く検証台。自機は要らない
-    BodyRig BuildBody(SceneNs::Scene& scene, bool withWall = false)
+    // withRigidBody を外すと、RigidBody を積み忘れた配置物になる
+    BodyRig BuildBody(SceneNs::Scene& scene, bool withWall = false, bool withRigidBody = true)
     {
         NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
 
@@ -303,6 +322,8 @@ namespace
             data.objects.push_back(NS::Editor::MakeCellObject(k_WallX, 1, 0));
 
         SceneNs::ObjectData target = NS::Editor::MakeCellObject(0, 1, 0);
+        if (withRigidBody)
+            target.components.push_back(MakeLaunchableRigidBodyEntry());
         target.components.push_back(SceneNs::MakeComponentEntry("LaunchedBody"));
         data.objects.push_back(target);
         scene.LoadFromData(std::move(data));
@@ -314,16 +335,26 @@ namespace
         {
             rig.object = rig.body->Owner();
             rig.box = rig.object->FindComponent<SceneNs::BoxCollider>();
+            rig.rigidBody = rig.object->FindComponent<SceneNs::RigidBody>();
         }
         rig.restingBodies = scene.Physics().BodyCount();
         return rig;
     }
 
     // 飛ばされる物が乗る帯を回す。Scene::OnUpdate と同じく物理の 1 フレームを LateUpdate 帯の手前へ挟む
+    // 飛んでいる物の Transform は RigidBody が物理の直後に書くので、前後の呼び出しも Scene と揃える
     void StepBody(SceneNs::Scene& scene)
     {
         scene.Objects().UpdateObjects(SceneNs::TickPriority::Update, SceneNs::TickPriority::LateUpdate);
+        scene.Objects().ForEachComponent<SceneNs::RigidBody>([](SceneNs::RigidBody& body) {
+            if (body.IsActive())
+                body.PrePhysicsStep();
+        });
         scene.Physics().Update(k_FixedDt);
+        scene.Objects().ForEachComponent<SceneNs::RigidBody>([](SceneNs::RigidBody& body) {
+            if (body.IsActive())
+                body.PostPhysicsStep();
+        });
         scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
     }
 
@@ -447,14 +478,14 @@ TEST(CollisionImpact, HeavierTargetReboundsHarder)
     SceneNs::Scene lightScene;
     Rig light = BuildSlam(lightScene, k_NearCourse);
     SetInstantImpact(light);
-    light.breakable->SetMass(1.0f);
+    light.rigidBody->SetMass(1.0f);
     BeginSlam(lightScene, light, k_RunSpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(lightScene, light, 30), 30);
 
     SceneNs::Scene heavyScene;
     Rig heavy = BuildSlam(heavyScene, k_NearCourse);
     SetInstantImpact(heavy);
-    heavy.breakable->SetMass(8.0f);
+    heavy.rigidBody->SetMass(8.0f);
     BeginSlam(heavyScene, heavy, k_RunSpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(heavyScene, heavy, 30), 30);
 
@@ -583,16 +614,18 @@ TEST(CollisionImpact, NoReboundInEmptyCornerOfRotatedTarget)
     EXPECT_FALSE(rig.impact->DidRebound());
 }
 
-// 飛んでいる間は置かれた当たりが外れ、別の body で飛ぶ。そちらを見ないと飛んでいる物に当てても反発しない
+// 飛んでいる間も collider は RigidBody の body を返す。飛んでいる物に当てても置かれた物と同じく反発する
 TEST(CollisionImpact, ReboundsOffFlyingTarget)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     ASSERT_NE(rig.target, nullptr);
+    ASSERT_NE(rig.rigidBody, nullptr);
     LevelNs::LaunchedBody* body = rig.target->AddComponent<LevelNs::LaunchedBody>();
     body->Launch(Vector3{0.0f, 0.0f, 0.0f});
     ASSERT_TRUE(body->IsFlying());
-    ASSERT_TRUE(rig.targetBox->BodyId().IsInvalid());
+    ASSERT_FALSE(rig.rigidBody->BodyId().IsInvalid());
+    ASSERT_EQ(rig.targetBox->BodyId(), rig.rigidBody->BodyId());
 
     SetInstantImpact(rig);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
@@ -747,14 +780,14 @@ TEST(CollisionImpact, HeavierBodyLaunchesSlower)
     SceneNs::Scene lightScene;
     Rig light = BuildSlam(lightScene, k_NearCourse);
     SetInstantImpact(light);
-    light.breakable->SetMass(1.0f);
+    light.rigidBody->SetMass(1.0f);
     BeginSlam(lightScene, light, k_RunSpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(lightScene, light, 30), 30);
 
     SceneNs::Scene heavyScene;
     Rig heavy = BuildSlam(heavyScene, k_NearCourse);
     SetInstantImpact(heavy);
-    heavy.breakable->SetMass(4.0f);
+    heavy.rigidBody->SetMass(4.0f);
     BeginSlam(heavyScene, heavy, k_RunSpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(heavyScene, heavy, 30), 30);
 
@@ -795,7 +828,7 @@ TEST(CollisionImpact, LaunchFieldsDriveLaunchVelocity)
     SetFloatField(*rig.impact, "押し飛ばしの浮き上がり", 0.5f);
     // 指数は 1.0 に固定する。既定の 0.35 乗が混ざると、この 2 欄だけを見る式にならない
     SetFloatField(*rig.impact, "押し飛ばしの質量指数", 1.0f);
-    rig.breakable->SetMass(2.0f);
+    rig.rigidBody->SetMass(2.0f);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
@@ -814,7 +847,7 @@ TEST(CollisionImpact, LaunchMassExponentBendsMassEffect)
     Rig inverse = BuildSlam(inverseScene, k_NearCourse);
     SetInstantImpact(inverse);
     SetFloatField(*inverse.impact, "押し飛ばしの質量指数", 1.0f);
-    inverse.breakable->SetMass(4.0f);
+    inverse.rigidBody->SetMass(4.0f);
     BeginSlam(inverseScene, inverse, k_RunSpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(inverseScene, inverse, 30), 30);
 
@@ -822,7 +855,7 @@ TEST(CollisionImpact, LaunchMassExponentBendsMassEffect)
     SceneNs::Scene rootScene;
     Rig root = BuildSlam(rootScene, k_NearCourse);
     SetInstantImpact(root);
-    root.breakable->SetMass(4.0f);
+    root.rigidBody->SetMass(4.0f);
     BeginSlam(rootScene, root, k_RunSpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(rootScene, root, 30), 30);
 
@@ -835,21 +868,25 @@ TEST(CollisionImpact, LaunchMassExponentBendsMassEffect)
                     k_LaunchBaseSpeed * root.impact->LastPower() / std::pow(4.0f, 0.35f));
 }
 
-// 質量の下限 0.01 で割ると 100 倍になる。頭打ちが無いと画面の外へ消える
-TEST(CollisionImpact, TinyMassCannotBlowLaunchSpeedUp)
+// 質量 0 は基準の 1 として扱う。0 で割ると押し飛ばしが無限へ飛び、画面の外へ消える
+TEST(CollisionImpact, ZeroMassLaunchesLikeUnitMass)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    ASSERT_NE(rig.rigidBody, nullptr);
     SetInstantImpact(rig);
-    rig.breakable->SetMass(0.0f);
-    ASSERT_FLOAT_EQ(rig.breakable->Mass(), 0.01f);
+    rig.rigidBody->SetMass(0.0f);
+    ASSERT_FLOAT_EQ(rig.rigidBody->EffectiveMass(), 1.0f);
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
     LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
-    EXPECT_FLOAT_EQ(HorizontalSpeed(body->Velocity()), k_LaunchSpeedCap);
+    const float speed = HorizontalSpeed(body->Velocity());
+    ASSERT_TRUE(std::isfinite(speed));
+    EXPECT_FLOAT_EQ(speed, k_LaunchBaseSpeed * rig.impact->LastPower());
+    EXPECT_LT(speed, k_LaunchSpeedCap);
 }
 
 // 衝突の瞬間に自機が数フレーム止まる。止まっている間は反発も発射も適用されず、明けたフレームにまとめて掛かる
@@ -857,7 +894,7 @@ TEST(CollisionImpact, HitStopFreezesPlayerAndDefersLaunch)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    rig.breakable->SetMass(4.0f);
+    rig.rigidBody->SetMass(4.0f);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
@@ -887,7 +924,7 @@ TEST(CollisionImpact, HeavierTargetStopsLonger)
     Rig light = BuildSlam(lightScene, k_NearCourse);
     // 中心直撃は中心近くの当たりの倍率が乗る。既定の基準秒だと重い側が上限 12 フレームに張り付くので、下げて上限の外で比べる
     SetFloatField(*light.impact, "ヒットストップ基準秒", 1.0f / 60.0f);
-    light.breakable->SetMass(1.0f);
+    light.rigidBody->SetMass(1.0f);
     BeginSlam(lightScene, light, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(lightScene, light, 30), 30);
     Step(lightScene, light);
@@ -897,7 +934,7 @@ TEST(CollisionImpact, HeavierTargetStopsLonger)
     SceneNs::Scene heavyScene;
     Rig heavy = BuildSlam(heavyScene, k_NearCourse);
     SetFloatField(*heavy.impact, "ヒットストップ基準秒", 1.0f / 60.0f);
-    heavy.breakable->SetMass(8.0f);
+    heavy.rigidBody->SetMass(8.0f);
     BeginSlam(heavyScene, heavy, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(heavyScene, heavy, 30), 30);
     Step(heavyScene, heavy);
@@ -953,7 +990,7 @@ TEST(CollisionImpact, FreezeSquashesPlayerShape)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    rig.breakable->SetMass(4.0f);
+    rig.rigidBody->SetMass(4.0f);
     const Vector3 authored = rig.movement->Owner()->Root().Scale();
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
@@ -975,7 +1012,7 @@ TEST(CollisionImpact, ReleaseStretchesThenRestoresScaleExactly)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    rig.breakable->SetMass(4.0f);
+    rig.rigidBody->SetMass(4.0f);
     const Vector3 authored = rig.movement->Owner()->Root().Scale();
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
@@ -1004,7 +1041,7 @@ TEST(CollisionImpact, SquashLeavesPositionAndPhysicsAlone)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    rig.breakable->SetMass(4.0f);
+    rig.rigidBody->SetMass(4.0f);
     const JPH::uint bodies = scene.Physics().BodyCount();
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
@@ -1466,7 +1503,7 @@ TEST(CollisionImpact, FreezeWaitsOneStepAfterDetection)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    rig.breakable->SetMass(4.0f);
+    rig.rigidBody->SetMass(4.0f);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
@@ -1482,7 +1519,7 @@ TEST(CollisionImpact, DetectsOnlyOncePerImpact)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    rig.breakable->SetMass(4.0f);
+    rig.rigidBody->SetMass(4.0f);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
     int detections = 0;
@@ -1505,7 +1542,7 @@ TEST(CollisionImpact, HitStopPushesRockWhenFreezeBegins)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    rig.breakable->SetMass(4.0f);
+    rig.rigidBody->SetMass(4.0f);
     const Vector3 home = rig.targetBox->Owner()->Root().Position();
     const JPH::uint bodies = scene.Physics().BodyCount();
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
@@ -1529,7 +1566,7 @@ TEST(CollisionImpact, RockVibratesWhileFrozen)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    rig.breakable->SetMass(4.0f);
+    rig.rigidBody->SetMass(4.0f);
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
@@ -1550,7 +1587,7 @@ TEST(CollisionImpact, HeavierRockVibratesLess)
 {
     SceneNs::Scene lightScene;
     Rig light = BuildSlam(lightScene, k_NearCourse);
-    light.breakable->SetMass(0.5f);
+    light.rigidBody->SetMass(0.5f);
     BeginSlam(lightScene, light, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(lightScene, light, 30), 30);
     Step(lightScene, light);
@@ -1569,7 +1606,7 @@ TEST(CollisionImpact, HeavierRockVibratesLess)
 
     SceneNs::Scene heavyScene;
     Rig heavy = BuildSlam(heavyScene, k_NearCourse);
-    heavy.breakable->SetMass(8.0f);
+    heavy.rigidBody->SetMass(8.0f);
     BeginSlam(heavyScene, heavy, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(heavyScene, heavy, 30), 30);
     Step(heavyScene, heavy);
@@ -1595,7 +1632,7 @@ TEST(CollisionImpact, ReleaseRestoresRockExactlyBeforeLaunch)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    rig.breakable->SetMass(4.0f);
+    rig.rigidBody->SetMass(4.0f);
     const Vector3 home = rig.targetBox->Owner()->Root().Position();
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
@@ -1612,7 +1649,10 @@ TEST(CollisionImpact, ReleaseRestoresRockExactlyBeforeLaunch)
     LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     EXPECT_TRUE(body->IsFlying());
-    EXPECT_TRUE(rig.targetBox->BodyId().IsInvalid());
+    // 当たりは外れず、RigidBody の body として一緒に飛ぶ
+    ASSERT_NE(rig.rigidBody, nullptr);
+    EXPECT_TRUE(rig.targetBox->IsActiveSelf());
+    EXPECT_EQ(rig.targetBox->BodyId(), rig.rigidBody->BodyId());
 }
 
 // 凍結中だけカメラが揺れる。ImpactResolver がシーンの CameraBrain へ揺れを渡す
@@ -1620,7 +1660,7 @@ TEST(CollisionImpact, HitStopShakesCamera)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    rig.breakable->SetMass(4.0f);
+    rig.rigidBody->SetMass(4.0f);
 
     SceneNs::CameraBrain* brain = scene.CameraBrain();
     ASSERT_NE(brain, nullptr);
@@ -1777,7 +1817,7 @@ TEST(CollisionImpact, HeavierTargetScattersSlowerDebris)
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
-    rig.breakable->SetMass(4.0f);
+    rig.rigidBody->SetMass(4.0f);
     rig.breakable->SetToughness(1.0f);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
@@ -1934,20 +1974,46 @@ TEST(CollisionImpact, DebrisWaitForRelease)
     EXPECT_EQ(scene.Objects().ObjectCount(), before + 6);
 }
 
-TEST(LaunchedBody, LaunchSleepsColliderAndDropsItFromPhysics)
+TEST(LaunchedBody, LaunchMakesRigidBodyDynamicAndKeepsCollider)
 {
     SceneNs::Scene scene;
     BodyRig rig = BuildBody(scene);
     ASSERT_NE(rig.body, nullptr);
     ASSERT_NE(rig.box, nullptr);
+    ASSERT_NE(rig.rigidBody, nullptr);
     ASSERT_TRUE(rig.box->IsActiveSelf());
+    ASSERT_TRUE(rig.rigidBody->IsKinematic());
 
     rig.body->Launch(Vector3{10.0f, 4.0f, 0.0f});
 
     EXPECT_TRUE(rig.body->IsFlying());
-    EXPECT_FALSE(rig.box->IsActiveSelf());
-    // 置かれた当たりの body は外れる。飛ぶための動的 body が代わりに立つので数は変わらない
-    EXPECT_TRUE(rig.box->BodyId().IsInvalid());
+    EXPECT_FALSE(rig.rigidBody->IsKinematic());
+    // collider は RigidBody の形のまま残る。飛ぶのは RigidBody の body で、別の body は立たない
+    EXPECT_TRUE(rig.box->IsActiveSelf());
+    EXPECT_FALSE(rig.rigidBody->BodyId().IsInvalid());
+    EXPECT_EQ(rig.box->BodyId(), rig.rigidBody->BodyId());
+    EXPECT_EQ(scene.Physics().BodyCount(), rig.restingBodies);
+}
+
+// RigidBody を積み忘れた配置物も飛ぶ。飛ばす時にキネマティックで足し、collider はその形になる
+TEST(LaunchedBody, LaunchAddsRigidBodyWhenMissing)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene, false, false);
+    ASSERT_NE(rig.body, nullptr);
+    ASSERT_NE(rig.box, nullptr);
+    ASSERT_EQ(rig.rigidBody, nullptr);
+
+    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+
+    SceneNs::RigidBody* added = rig.object->FindComponent<SceneNs::RigidBody>();
+    ASSERT_NE(added, nullptr);
+    EXPECT_TRUE(rig.body->IsFlying());
+    EXPECT_FALSE(added->IsKinematic());
+    EXPECT_TRUE(rig.box->IsActiveSelf());
+    EXPECT_FALSE(added->BodyId().IsInvalid());
+    EXPECT_EQ(rig.box->BodyId(), added->BodyId());
+    // collider の静的な body は外れ、RigidBody の body が代わりに立つので数は変わらない
     EXPECT_EQ(scene.Physics().BodyCount(), rig.restingBodies);
 }
 
@@ -2018,20 +2084,28 @@ TEST(LaunchedBody, GroundFrictionSlowsHorizontalSpeed)
     EXPECT_GT(second, 0.0f);
 }
 
-TEST(LaunchedBody, RestWakesColliderBack)
+// 止まった所でキネマティックへ戻る。次に飛ばされるまでその場の当たりとして残る
+TEST(LaunchedBody, RestReturnsRigidBodyToKinematic)
 {
     SceneNs::Scene scene;
     BodyRig rig = BuildBody(scene);
     ASSERT_NE(rig.body, nullptr);
+    ASSERT_NE(rig.rigidBody, nullptr);
     rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
-    ASSERT_FALSE(rig.box->IsActiveSelf());
+    ASSERT_FALSE(rig.rigidBody->IsKinematic());
 
     const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
 
     EXPECT_LT(steps, k_RestStepLimit);
     EXPECT_FALSE(rig.body->IsFlying());
+    EXPECT_TRUE(rig.rigidBody->IsKinematic());
     EXPECT_TRUE(rig.box->IsActiveSelf());
+    EXPECT_EQ(rig.box->BodyId(), rig.rigidBody->BodyId());
     EXPECT_EQ(scene.Physics().BodyCount(), rig.restingBodies);
+    const Vector3 velocity = rig.rigidBody->Velocity();
+    EXPECT_FLOAT_EQ(velocity.x, 0.0f);
+    EXPECT_FLOAT_EQ(velocity.y, 0.0f);
+    EXPECT_FLOAT_EQ(velocity.z, 0.0f);
     EXPECT_FLOAT_EQ(rig.body->Velocity().x, 0.0f);
     EXPECT_FLOAT_EQ(rig.body->Velocity().z, 0.0f);
 }

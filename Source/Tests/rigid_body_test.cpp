@@ -599,3 +599,19 @@ TEST(RigidBody, ImpulseMovesTheOwner)
 
     EXPECT_GT(owner.Root().Position().x, 1.0f);
 }
+
+// 読む側が割る重さと body の重さを揃える。0 以下と非有限は body へ入れる時と同じく 1
+TEST(RigidBody, EffectiveMassTreatsInvalidAsOne)
+{
+    RigidBody body;
+    body.SetMass(2.5f);
+    EXPECT_FLOAT_EQ(body.EffectiveMass(), 2.5f);
+
+    body.SetMass(0.0f);
+    EXPECT_FLOAT_EQ(body.EffectiveMass(), 1.0f);
+    body.SetMass(-3.0f);
+    EXPECT_FLOAT_EQ(body.EffectiveMass(), 1.0f);
+    body.SetMass(std::numeric_limits<float>::quiet_NaN());
+    EXPECT_FLOAT_EQ(body.EffectiveMass(), 1.0f);
+}
+

@@ -283,8 +283,8 @@ TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
     live->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
     NS::Game::Level::LaunchedBody* launched = live->FindComponent<NS::Game::Level::LaunchedBody>();
     ASSERT_NE(launched, nullptr);
-    SetFloatField(*launched, "跳ね返り", 0.9f);
-    editor.MirrorPlayEditToBaseline(*launched, "跳ね返り");
+    SetFloatField(*launched, "回転の強さ", 0.9f);
+    editor.MirrorPlayEditToBaseline(*launched, "回転の強さ");
 
     editor.EnterEdit();
 
@@ -295,7 +295,7 @@ TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
     EXPECT_NEAR(restored->Root().Position().z, 3.0f, 1e-4f);
     NS::Game::Level::LaunchedBody* restoredLaunched = restored->FindComponent<NS::Game::Level::LaunchedBody>();
     ASSERT_NE(restoredLaunched, nullptr);
-    EXPECT_FLOAT_EQ(GetFloatField(*restoredLaunched, "跳ね返り"), 0.9f);
+    EXPECT_FLOAT_EQ(GetFloatField(*restoredLaunched, "回転の強さ"), 0.9f);
 }
 
 TEST(ModeToggle, EnterEditCancelsInFlightFade)

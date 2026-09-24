@@ -107,8 +107,8 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     ASSERT_NE(launched, nullptr);
 
     live->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
-    SetFloatField(*launched, "跳ね返り", 0.9f);
-    scene.WritePlayBaselineField(*launched, "跳ね返り");
+    SetFloatField(*launched, "回転の強さ", 0.9f);
+    scene.WritePlayBaselineField(*launched, "回転の強さ");
 
     SceneNs::SceneData copy = scene.PlayBaseline();
     ASSERT_EQ(copy.objects.size(), 1u);
@@ -122,7 +122,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     ASSERT_NE(rebuilt, nullptr);
     LevelNs::LaunchedBody* rebuiltLaunched = rebuilt->FindComponent<LevelNs::LaunchedBody>();
     ASSERT_NE(rebuiltLaunched, nullptr);
-    EXPECT_FLOAT_EQ(GetFloatField(*rebuiltLaunched, "跳ね返り"), 0.9f);
+    EXPECT_FLOAT_EQ(GetFloatField(*rebuiltLaunched, "回転の強さ"), 0.9f);
 }
 
 // プレイ中に live の回転を直接動かした分が凍結側へ写り、編集へ戻った時に残る

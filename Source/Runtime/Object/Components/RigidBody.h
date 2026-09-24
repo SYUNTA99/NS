@@ -39,6 +39,11 @@ namespace NS::Obj
         //! 動く body の id。まだ作っていないか、集まる形が無ければ無効
         [[nodiscard]] JPH::BodyID BodyId() const noexcept { return m_bodyId; }
 
+        //! @brief 欄の変化を今すぐ body へ入れる。変わっていなければ何もしない
+        //! @details 欄の変化は次の PrePhysicsStep でも入る。キネマティックを外してすぐ速度を置く時など、
+        //! その 1 歩を待てない時に呼ぶ。body が無ければ何もしない
+        void RefreshMotion();
+
         //! @brief Scene が物理を 1 歩進める直前に呼ぶ
         //! @details 欄の変化を body へ映し、キネマティックなら Transform の姿勢へ body を運ぶ
         void PrePhysicsStep();
@@ -57,6 +62,8 @@ namespace NS::Obj
         //! 質量 (kg)。0 以下は body へ入れる時に 1 として扱う
         void SetMass(float mass) noexcept { m_mass = mass; }
         [[nodiscard]] float Mass() const noexcept { return m_mass; }
+        //! body へ入れる質量 (kg)。0 以下と非有限は 1
+        [[nodiscard]] float EffectiveMass() const noexcept;
         //! 世界の重力を受けるか
         void SetUseGravity(bool useGravity) noexcept { m_useGravity = useGravity; }
         [[nodiscard]] bool UsesGravity() const noexcept { return m_useGravity; }
@@ -80,6 +87,11 @@ namespace NS::Obj
         void LockPosition(bool x, bool y, bool z) noexcept;
         //! 世界の各軸まわりの回転を止める
         void LockRotation(bool x, bool y, bool z) noexcept;
+
+        //! @brief 当たる相手を決める種別。既定は ObjectLayers::Rock
+        //! @details 保存しない実行時の設定で、次の SyncToPhysics から効く。破片同士を当てない時などに使う
+        void SetObjectLayer(JPH::ObjectLayer layer) noexcept { m_objectLayer = layer; }
+        [[nodiscard]] JPH::ObjectLayer ObjectLayer() const noexcept { return m_objectLayer; }
 
         //! 欄から作った body の動き方。body へ入れる前の値で、PhysicsScene が直す値はそのまま
         [[nodiscard]] NS::Phys::BodyMotion Motion() const noexcept;
@@ -160,6 +172,7 @@ namespace NS::Obj
         bool m_lockRotationY = false;        // 世界の Y まわりの回転を止める
         bool m_lockRotationZ = false;        // 世界の Z まわりの回転を止める
 
+        JPH::ObjectLayer m_objectLayer = NS::Phys::ObjectLayers::Rock; // 当たる相手を決める種別。保存しない
         JPH::BodyID m_bodyId;                       // 動く body。作っていなければ無効
         NS::Phys::BodyMotion m_appliedMotion;    // 最後に body へ入れた動き方。欄の変化を見つけるのに使う
         NS::Core::Matrix m_followedWorld;           // 追従する collider を最後に置き直した時の持ち主の世界行列

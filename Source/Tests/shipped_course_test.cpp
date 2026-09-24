@@ -33,26 +33,56 @@ namespace
         return SceneNs::LoadSceneFromJsonFile(outScene, *path);
     }
 
-    std::vector<float> CollectBreakableField(const SceneNs::SceneData& scene, std::string_view fieldName)
+    // 壊せる物ごとに、同じ配置物の typeName の欄を集める。typeName を持たない物は -1 を積む
+    std::vector<float> CollectBreakableField(const SceneNs::SceneData& scene,
+                                             std::string_view typeName,
+                                             std::string_view fieldName)
     {
         std::vector<float> values;
         for (const SceneNs::ObjectData& object : scene.objects)
         {
-            const nlohmann::json* entry = SceneNs::FindComponentEntry(object, "Breakable");
-            if (entry == nullptr)
+            if (SceneNs::FindComponentEntry(object, "Breakable") == nullptr)
                 continue;
+            const nlohmann::json* entry = SceneNs::FindComponentEntry(object, typeName);
+            if (entry == nullptr)
+            {
+                values.push_back(-1.0f);
+                continue;
+            }
             values.push_back(SceneNs::FieldFloat(*entry, fieldName, -1.0f));
         }
         return values;
     }
 } // namespace
 
+// 壊せる物の重さと面は RigidBody が持つ。無いと押し飛ばした時に既定の重さ 1 で飛び、置いた値が効かない
+// 置かれている間は動かないよう、キネマティックで置く
+TEST(ShippedCourse, BreakablesCarryKinematicRigidBody)
+{
+    SceneNs::SceneData scene;
+    ASSERT_TRUE(LoadShippedCourse(scene));
+    int breakables = 0;
+    for (const SceneNs::ObjectData& object : scene.objects)
+    {
+        if (SceneNs::FindComponentEntry(object, "Breakable") == nullptr)
+            continue;
+        ++breakables;
+        const nlohmann::json* body = SceneNs::FindComponentEntry(object, "RigidBody");
+        ASSERT_NE(body, nullptr);
+        const nlohmann::json* fields = SceneNs::ComponentEntryFields(*body);
+        ASSERT_NE(fields, nullptr);
+        ASSERT_TRUE(fields->contains("キネマティック"));
+        EXPECT_TRUE(fields->at("キネマティック").get<bool>());
+    }
+    EXPECT_GT(breakables, 0);
+}
+
 // 質量が全部同じだと飛距離の違いが出ず、重さが飛距離に現れているかをこのコースで確かめられない
 TEST(ShippedCourse, MassesHaveAtLeastTwoDistinctValues)
 {
     SceneNs::SceneData scene;
     ASSERT_TRUE(LoadShippedCourse(scene));
-    const std::vector<float> masses = CollectBreakableField(scene, "質量");
+    const std::vector<float> masses = CollectBreakableField(scene, "RigidBody", "質量");
     ASSERT_FALSE(masses.empty());
     const std::set<float> distinct(masses.begin(), masses.end());
     EXPECT_GE(distinct.size(), 2u);
@@ -63,7 +93,7 @@ TEST(ShippedCourse, ToughnessHasUnbreakableWall)
 {
     SceneNs::SceneData scene;
     ASSERT_TRUE(LoadShippedCourse(scene));
-    const std::vector<float> toughness = CollectBreakableField(scene, "耐久");
+    const std::vector<float> toughness = CollectBreakableField(scene, "Breakable", "耐久");
     ASSERT_FALSE(toughness.empty());
     const float maxToughness = *std::max_element(toughness.begin(), toughness.end());
     EXPECT_GT(maxToughness, k_MaxImpactPower);
@@ -74,7 +104,7 @@ TEST(ShippedCourse, ToughnessHasBreakableTarget)
 {
     SceneNs::SceneData scene;
     ASSERT_TRUE(LoadShippedCourse(scene));
-    const std::vector<float> toughness = CollectBreakableField(scene, "耐久");
+    const std::vector<float> toughness = CollectBreakableField(scene, "Breakable", "耐久");
     ASSERT_FALSE(toughness.empty());
     const float minToughness = *std::min_element(toughness.begin(), toughness.end());
     EXPECT_LE(minToughness, k_PlainHitPower);

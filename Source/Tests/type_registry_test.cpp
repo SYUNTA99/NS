@@ -157,7 +157,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
     // 増減が意図か事故かをこの一覧との突き合わせで判定する。抜けは気づけない保存漏れになる
     const std::map<std::string, std::vector<std::string>> k_Ledger = {
         {"BoxCollider", {"半径", "中心オフセット", "回転 (度)", "トリガー"}},
-        {"Breakable", {"質量", "耐久"}},
+        {"Breakable", {"耐久"}},
         {"CameraBrain", {"ブレンド秒数"}},
         {"CameraComponent", {}},
         {"CapsuleCollider", {"半径", "半分の高さ", "中心オフセット", "回転 (度)"}},
@@ -216,9 +216,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "Y 回転を固定",
           "Z 回転を固定"}},
         {"LaunchedBody",
-         {"跳ね返り",
-          "摩擦",
-          "回転の強さ",
+         {"回転の強さ",
           "止まってから消える秒",
           "破片の数",
           "破片の速さ",
