@@ -11,7 +11,6 @@
 #include <unordered_set>
 #include <vector>
 
-namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Obj;
 
 namespace

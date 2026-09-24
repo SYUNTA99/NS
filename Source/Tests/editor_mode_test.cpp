@@ -10,7 +10,6 @@
 #include <optional>
 
 namespace EditorNs = NS::Editor;
-namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Obj;
 
 namespace

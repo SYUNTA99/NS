@@ -14,7 +14,6 @@
 #include <string>
 
 namespace SceneNs = NS::Obj;
-namespace LevelNs = NS::Game::Level;
 
 namespace
 {

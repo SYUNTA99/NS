@@ -7,7 +7,6 @@
 #include <gtest/gtest.h>
 #include <utility>
 
-namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Obj;
 
 namespace
