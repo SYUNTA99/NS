@@ -39,7 +39,13 @@ namespace NS::Editor
         {
             ImGui::TextUnformatted("変更を保存して終了しますか");
             ImGui::Separator();
-            if (ImGui::Button("保存して終了", ImVec2(180.0f, 0.0f)))
+            const bool playing = editor.CurrentMode() == LevelEditorController::Mode::Play;
+            ImGui::BeginDisabled(playing);
+            const bool saveClicked = ImGui::Button("保存して終了", ImVec2(180.0f, 0.0f));
+            ImGui::EndDisabled();
+            if (playing)
+                ImGui::TextColored(k_MsgErrorColor, "プレイ中は保存できません。編集へ戻ってから保存してください");
+            if (saveClicked)
             {
                 // 保存成功でのみ終了する。失敗時は modal を残しデータ消失を防ぐ
                 if (editor.Editor().SaveForQuit())

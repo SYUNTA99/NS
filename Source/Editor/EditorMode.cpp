@@ -136,7 +136,8 @@ namespace NS::Editor
 
     bool EditorMode::SaveLevelToName(std::string_view name) noexcept
     {
-        if (!m_captureLevel)
+        // 休止中はプレイ中。live はプレイで動いた後の姿で、編集の内容ではないので書かない
+        if (!m_active || !m_captureLevel)
         {
             return false;
         }

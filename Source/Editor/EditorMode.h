@@ -80,6 +80,7 @@ namespace NS::Editor
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
         void SetCameraComponent(NS::Obj::CameraComponent* camera) noexcept { m_camera = camera; }
 
+        //! 休止の間はプレイ中として扱い、保存も受け付けない
         void SetActive(bool active) noexcept { m_active = active; }
         [[nodiscard]] bool IsActive() const noexcept { return m_active; }
 
