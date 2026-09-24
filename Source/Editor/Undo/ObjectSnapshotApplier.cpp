@@ -24,12 +24,12 @@ namespace NS::Editor
         if (m_scene == nullptr)
             return;
 
-        // 対象 1 体だけを作り直す。世界ごと組み直すと、他の配置物の実行時の状態まで最初へ戻る
+        // 対象 1 体へ姿を書き戻す。構成が同じなら実体は残し、component が増減した時だけ作り直す
         if (desired)
         {
             nlohmann::json entry = *desired;
             NS::Obj::SetObjectJsonId(entry, objectId);
-            (void)m_scene->ReplaceFromJson(entry);
+            (void)m_scene->ApplyFromJson(entry);
         }
         else
         {

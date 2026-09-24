@@ -175,6 +175,13 @@ namespace NS::Obj
         //! @details component の増減も含めて姿を丸ごと入れ替える。当たりは呼出側が SyncPhysics で張り直す
         GameObject* ReplaceFromJson(const nlohmann::json& object);
 
+        //! @brief 同じ id の配置物へ JSON の姿を書き戻す。undo / redo が通る
+        //! @details クラスと component の構成 (並び・型・id) が同じなら実体はそのまま残し、名前・有効・親・
+        //! component の名前と有効と値だけを写す。値の変わった component だけ資産を引き直す
+        //! 構成が違えば ReplaceFromJson で作り直し、居なければ SpawnFromJson で置く
+        //! 当たりは呼出側が SyncPhysics で張り直す
+        GameObject* ApplyFromJson(const nlohmann::json& object);
+
         //! @brief 配置物を 1 体消す。居なければ何もしない
         //! @details 当たり箱も揃うので、走っている世界を止めずに消せる
         //! 子は根として残る。まとめて消したい呼び出し側が並びを決めて 1 体ずつ呼ぶ

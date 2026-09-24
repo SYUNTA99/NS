@@ -6,13 +6,61 @@
 #include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
+#include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Platform/Clock.h"
 
 #include <limits>
+#include <string_view>
+#include <vector>
 
 namespace NS::Obj
 {
+    namespace
+    {
+        // obj の component のうち JSON へ写る物 (リフレクションを持つ物) を並び順に集める
+        [[nodiscard]] std::vector<Component*> ReflectedComponents(const GameObject& obj)
+        {
+            std::vector<Component*> reflected;
+            reflected.reserve(obj.Components().size());
+            for (Component* comp : obj.Components())
+            {
+                if (comp != nullptr && comp->GetReflection() != nullptr)
+                {
+                    reflected.push_back(comp);
+                }
+            }
+            return reflected;
+        }
+
+        // 実体を残したまま値だけ写せるか。クラスと component の並び・型・id が JSON と一致する時だけ真
+        // 一致しない姿は component の増減か入れ替えで、兄弟を開始時に掴む component があるため作り直す
+        [[nodiscard]] bool MatchesStructure(const GameObject& obj,
+                                            const std::vector<Component*>& reflected,
+                                            const nlohmann::json& object)
+        {
+            if (std::string_view(obj.ClassName()) != ObjectJsonClass(object))
+            {
+                return false;
+            }
+            const nlohmann::json& components = ObjectJsonComponents(object);
+            if (components.size() != reflected.size())
+            {
+                return false;
+            }
+            for (std::size_t i = 0; i < reflected.size(); ++i)
+            {
+                const nlohmann::json& entry = components[i];
+                if (ComponentEntryId(entry) != reflected[i]->Id() ||
+                    ComponentEntryType(entry) != std::string_view(reflected[i]->GetReflection()->typeName))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+    } // namespace
+
     Scene::Scene()
     {
         // 描くには実カメラが 1 個要る。配置物ではないがシーンには必ず居るので、ここで ObjectList へ入れる
@@ -261,6 +309,73 @@ namespace NS::Obj
         }
         StartSpawned(*raw);
         return raw;
+    }
+
+    GameObject* Scene::ApplyFromJson(const nlohmann::json& object)
+    {
+        GameObject* obj = m_objects.FindByObjectId(ObjectJsonId(object));
+        if (obj == nullptr)
+        {
+            return SpawnFromJson(object);
+        }
+        const std::vector<Component*> reflected = ReflectedComponents(*obj);
+        if (!MatchesStructure(*obj, reflected, object))
+        {
+            return ReplaceFromJson(object);
+        }
+
+        // 実体はそのまま。ポインタも実行時の状態も残し、JSON と違う値だけを書き戻す
+        const std::string_view name = ObjectJsonName(object);
+        if (!name.empty() && obj->Name() != name)
+        {
+            m_objects.RenameObject(*obj, name);
+        }
+        obj->SetActive(ObjectJsonActive(object));
+
+        // 親の付け替えは local の値を保つ。transform は後で JSON の local を写すので、親を先に戻す
+        GameObject* parent = m_objects.FindByObjectId(ObjectJsonParent(object));
+        if (parent == obj)
+        {
+            parent = nullptr;
+        }
+        if (obj->Parent() != parent)
+        {
+            obj->SetParent(parent);
+        }
+
+        const nlohmann::json& components = ObjectJsonComponents(object);
+        for (std::size_t i = 0; i < reflected.size(); ++i)
+        {
+            Component& comp = *reflected[i];
+            const nlohmann::json& entry = components[i];
+
+            const std::string_view compName = ComponentEntryName(entry);
+            if (!compName.empty() && comp.Name() != compName)
+            {
+                obj->RenameComponent(comp, compName);
+            }
+            comp.SetEnabled(ComponentEntryEnabled(entry));
+
+            const nlohmann::json::const_iterator fieldsIt = entry.find("fields");
+            if (fieldsIt == entry.end())
+            {
+                continue;
+            }
+            // 値の同じ component は触らない。資産の引き直しで実行時の状態 (再生位置など) を失わせない
+            const nlohmann::json current = SerializeComponent(comp);
+            const nlohmann::json::const_iterator currentIt = current.find("fields");
+            if (currentIt != current.end() && *currentIt == *fieldsIt)
+            {
+                continue;
+            }
+            (void)ApplyJsonFields(comp, *fieldsIt);
+            // 参照文字列が変わっていれば実体も差し替える。AssetManager が無い間 (テスト) は跳ばす
+            if (m_assets != nullptr)
+            {
+                comp.ResolveAssets(*m_assets);
+            }
+        }
+        return obj;
     }
 
     void Scene::DestroyObject(std::uint32_t objectId)
