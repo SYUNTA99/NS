@@ -19,8 +19,11 @@ namespace NS::Game::Level
     nlohmann::json MakeCellCubeComponents()
     {
         nlohmann::json box = NS::Obj::MakeComponentEntry("BoxCollider");
-        NS::Obj::SetField(box, "半径", k_CellHalfExtents);
-        return nlohmann::json::array({MakeMeshRendererEntry("cube", "", k_SolidBaseColor), std::move(box)});
+        // 1m 立方の cube mesh に当たりを合わせる
+        NS::Obj::SetField(box, "半径", NS::Core::Vector3{0.5f, 0.5f, 0.5f});
+        // 色はテクスチャ未解決時のフォールバック
+        return nlohmann::json::array(
+            {MakeMeshRendererEntry("cube", "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}), std::move(box)});
     }
 
     NS::Obj::ObjectData MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z)

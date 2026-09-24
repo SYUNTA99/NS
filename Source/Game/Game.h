@@ -16,12 +16,9 @@ namespace NS::Obj
 class Game : public NS::App::Layer
 {
 public:
-    //! 既定の開始シーン。ContentRoot からの相対パス
-    static constexpr std::string_view k_DefaultStartScene = "Assets/Scenes/new_scene.scene";
-
     //! @brief 開始シーンのパスを控える。読み込みは OnAttach
-    //! @param[in] startScenePath ContentRoot からの相対パス
-    explicit Game(std::string_view startScenePath = k_DefaultStartScene);
+    //! @param[in] startScenePath ContentRoot からの相対パス。既定は同梱の開始シーン
+    explicit Game(std::string_view startScenePath = "Assets/Scenes/new_scene.scene");
     ~Game() override;
 
     Game(const Game&) = delete;

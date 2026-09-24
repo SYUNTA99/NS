@@ -180,9 +180,9 @@ namespace NS::Editor
 
         nlohmann::json slope = NS::Obj::MakeComponentEntry("SlopeCollider");
         NS::Obj::SetField(slope, "角度 (度)", angleDegrees);
-        NS::Obj::SetField(slope, "半径", NS::Game::Level::k_CellHalfExtents);
+        NS::Obj::SetField(slope, "半径", NS::Core::Vector3{0.5f, 0.5f, 0.5f});
         return nlohmann::json::array(
-            {NS::Game::Level::MakeMeshRendererEntry(meshName, "", NS::Game::Level::k_SolidBaseColor),
+            {NS::Game::Level::MakeMeshRendererEntry(meshName, "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}),
              std::move(slope)});
     }
 
@@ -195,9 +195,9 @@ namespace NS::Editor
         case PrimitiveKind::Sphere:
         {
             nlohmann::json sphere = NS::Obj::MakeComponentEntry("SphereCollider");
-            NS::Obj::SetField(sphere, "半径", NS::Game::Level::k_CellHalfExtents.y);
+            NS::Obj::SetField(sphere, "半径", 0.5f);
             return nlohmann::json::array(
-                {NS::Game::Level::MakeMeshRendererEntry("sphere", "", NS::Game::Level::k_SolidBaseColor),
+                {NS::Game::Level::MakeMeshRendererEntry("sphere", "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}),
                  std::move(sphere)});
         }
         case PrimitiveKind::Slope:
@@ -334,7 +334,7 @@ namespace NS::Editor
         const auto* renderer = object.FindComponent<NS::Obj::MeshRenderer>();
         if (renderer != nullptr && renderer->GetMesh() != nullptr)
             return renderer->GetMesh()->LocalBounds();
-        return NS::Core::AABB{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Game::Level::k_CellHalfExtents};
+        return NS::Core::AABB{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Vector3{0.5f, 0.5f, 0.5f}};
     }
 
 } // namespace NS::Editor

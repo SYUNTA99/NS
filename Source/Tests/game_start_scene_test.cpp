@@ -17,12 +17,6 @@ namespace
 {
     using NS::Platform::FileSystem;
 
-    // 開始シーンは ContentRoot 相対で受けるため、試験も同じ基準で組み立てる
-    [[nodiscard]] std::optional<std::string> UnderContentRoot(std::string_view relative)
-    {
-        return FileSystem::ResolveUnder(FileSystem::ContentRoot(), relative);
-    }
-
     // 弾かれたかどうかは、読めるシーンを渡さないと分からない
     [[nodiscard]] std::optional<std::string> WriteTwoCellScene(const std::string& name)
     {
@@ -52,13 +46,12 @@ TEST(NsGameStartScene, DoesNotClaimTheStartSceneIsLoadedBeforeReadingIt)
     EXPECT_FALSE(game.StartSceneLoaded());
 }
 
-// k_DefaultStartScene の指す先が無くなると Game.exe が空の世界で立ち上がる。字面ではなくファイルがあるかを見る
-TEST(NsGameStartScene, DefaultStartScenePointsAtAFileThatExists)
+// 既定の開始シーンが読めないと Game.exe が空の世界で立ち上がる
+TEST(NsGameStartScene, ReadsTheDefaultStartScene)
 {
-    const std::optional<std::string> path = UnderContentRoot(Game::k_DefaultStartScene);
+    Game game;
 
-    ASSERT_TRUE(path.has_value());
-    EXPECT_TRUE(FileSystem::Exists(*path));
+    EXPECT_TRUE(game.LoadStartScene());
 }
 
 TEST(NsGameStartScene, ReadsTheSceneItWasGivenAtConstruction)

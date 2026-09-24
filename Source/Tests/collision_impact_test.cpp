@@ -83,9 +83,9 @@ namespace
         NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
 
         SceneNs::SceneData data;
-        Vector3 spawn{course.start, Player::k_DefaultSpawnY, course.lateral};
+        Vector3 spawn{course.start, 1.41f, course.lateral};
         if (course.alongZ)
-            spawn = Vector3{course.lateral, Player::k_DefaultSpawnY, course.start};
+            spawn = Vector3{course.lateral, 1.41f, course.start};
         SceneNs::ObjectData player = MakePlayerObject(spawn, NS::Core::Quaternion{});
         player.components.push_back(SceneNs::MakeComponentEntry("ImpactResolver"));
         if (course.withCollisionInput)
@@ -126,7 +126,7 @@ namespace
                 if (SceneNs::ComponentEntryType(entry) != "BoxCollider")
                     continue;
                 entry = SceneNs::MakeComponentEntry("SphereCollider");
-                SceneNs::SetField(entry, "半径", LevelNs::k_CellHalfExtents.y);
+                SceneNs::SetField(entry, "半径", 0.5f);
             }
         }
         if (course.withBreakable)

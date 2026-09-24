@@ -15,9 +15,6 @@ namespace NS::Obj
 class Player : public NS::Obj::GameObject
 {
 public:
-    //! 新規レベルでプレイヤーを置く capsule 中心の高さ。床 block 上面 0.5 + capsule 半高 0.9 + 1cm
-    static constexpr float k_DefaultSpawnY = 1.41f;
-
     //! 既定の構成と見た目で組む。Mesh / Material は後からファクトリが入れる
     Player() noexcept;
     ~Player() override = default;

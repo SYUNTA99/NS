@@ -932,9 +932,10 @@ void LevelEditorController::RenderSelectionOutlines() noexcept
         obb.axisX.Normalize();
         obb.axisY.Normalize();
         obb.axisZ.Normalize();
-        obb.halfExtentX = std::abs(scale.x) * NS::Game::Level::k_CellHalfExtents.x;
-        obb.halfExtentY = std::abs(scale.y) * NS::Game::Level::k_CellHalfExtents.y;
-        obb.halfExtentZ = std::abs(scale.z) * NS::Game::Level::k_CellHalfExtents.z;
+        // 1m 立方の cube mesh の半サイズ 0.5 に拡縮を掛ける
+        obb.halfExtentX = std::abs(scale.x) * 0.5f;
+        obb.halfExtentY = std::abs(scale.y) * 0.5f;
+        obb.halfExtentZ = std::abs(scale.z) * 0.5f;
         NS::Gfx::DebugDraw::OBB(obb, color);
     }
 }
@@ -1081,9 +1082,9 @@ void LevelEditorController::AddObjectWithMesh(std::string_view meshPath)
 
     // 描いた形と当たりをずらさない。MeshCollider が描画と同じ三角形から当たりを作る
     NS::Obj::ObjectData object{};
-    object.components =
-        nlohmann::json::array({NS::Game::Level::MakeMeshRendererEntry(meshRef, "", NS::Game::Level::k_SolidBaseColor),
-                               NS::Obj::MakeComponentEntry("MeshCollider")});
+    object.components = nlohmann::json::array(
+        {NS::Game::Level::MakeMeshRendererEntry(meshRef, "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}),
+         NS::Obj::MakeComponentEntry("MeshCollider")});
     NS::Obj::SetObjectPosition(object, center);
     object.name = NS::Platform::FileSystem::Stem(meshPath);
 
@@ -1391,8 +1392,8 @@ void LevelEditorController::FocusSelectedInView() noexcept
         sum += center;
 
         const NS::Core::Vector3 scale = object->Root().Scale();
-        const float half =
-            std::max({std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)}) * NS::Game::Level::k_CellHalfExtents.y;
+        // 1m 立方の cube mesh の半サイズ 0.5 に拡縮を掛ける
+        const float half = std::max({std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)}) * 0.5f;
         extent = std::max(extent, half);
     }
     if (centers.empty())

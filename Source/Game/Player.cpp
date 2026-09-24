@@ -134,8 +134,8 @@ bool EnsurePlayerObject(NS::Obj::SceneData& level)
     bool created = false;
     if (FindPlayerObjectIndex(level) == NS::Obj::k_NoObjectIndex)
     {
-        level.objects.push_back(
-            MakePlayerObject(NS::Core::Vector3{0.0f, Player::k_DefaultSpawnY, 0.0f}, NS::Core::Quaternion{}));
+        // capsule 中心の高さは、床 block 上面 0.5 + capsule 半高 0.9 + 1cm
+        level.objects.push_back(MakePlayerObject(NS::Core::Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{}));
         created = true;
     }
 

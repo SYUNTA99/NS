@@ -412,7 +412,7 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
     ASSERT_NE(playerIndex, SceneNs::k_NoObjectIndex);
     const SceneNs::ObjectData& player = level.objects[playerIndex];
     EXPECT_NE(player.objectId, 0u); // 合成後の一意化で永続 id も振られる
-    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(player).y, Player::k_DefaultSpawnY);
+    EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(player).y, 1.41f);
     // 既定構成のうち 5 つ
     EXPECT_NE(SceneNs::FindComponentEntry(player, "MeshRenderer"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "PlayerComponent"), nullptr);

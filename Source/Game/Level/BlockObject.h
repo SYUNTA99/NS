@@ -10,12 +10,6 @@
 
 namespace NS::Game::Level
 {
-    //! ブロック 1 個 (1m 立方) の半サイズ。cube 描画と Box 当たりが共有する
-    inline constexpr NS::Core::Vector3 k_CellHalfExtents{0.5f, 0.5f, 0.5f};
-
-    //! テクスチャ未解決時のフォールバック用基準色
-    inline constexpr NS::Core::Vector3 k_SolidBaseColor{0.70f, 0.70f, 0.75f};
-
     //! MeshRenderer の component entry を作る。Mesh / Material / Base Color を書き込む
     [[nodiscard]] nlohmann::json MakeMeshRendererEntry(std::string_view meshName,
                                                        std::string_view materialName,

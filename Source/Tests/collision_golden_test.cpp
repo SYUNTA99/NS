@@ -124,7 +124,7 @@ namespace
                 data.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, z));
 
             NS::Obj::ObjectData player =
-                MakePlayerObject(Vector3{0.0f, Player::k_DefaultSpawnY, 0.0f}, NS::Core::Quaternion{});
+                MakePlayerObject(Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{});
             player.components.push_back(NS::Obj::MakeComponentEntry("ImpactResolver"));
             player.components.push_back(NS::Obj::MakeComponentEntry("CollisionInput"));
             data.objects.push_back(player);

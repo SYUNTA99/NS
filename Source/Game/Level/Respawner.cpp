@@ -34,7 +34,8 @@ namespace NS::Game::Level
         // 出現位置はエディタで配置したプレイヤーの capsule 中心 world 位置そのもの
         // 凍結スナップショットに既にある値なので写しは持たず、その都度読む
         const NS::Obj::SceneData& level = scene->PlayBaseline();
-        NS::Core::Vector3 spawn{0.0f, ::Player::k_DefaultSpawnY, 0.0f};
+        // プレイヤーが居なければ、新規レベルで置く位置へ戻す
+        NS::Core::Vector3 spawn{0.0f, 1.41f, 0.0f};
         const std::size_t playerIndex = FindPlayerObjectIndex(level);
         if (playerIndex != NS::Obj::k_NoObjectIndex)
             spawn = NS::Obj::ObjectPosition(level.objects[playerIndex]);
