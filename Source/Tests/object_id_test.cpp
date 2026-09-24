@@ -1,5 +1,4 @@
 #include "Editor/EditorObjects.h"
-#include "Game/Level/FollowCameraObject.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -69,8 +68,6 @@ TEST(ObjectIdTest, JsonRoundTripPreservesIdsAndCounter)
     level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     level.objects.push_back(NS::Editor::MakeCellObject(3, 1, 2));
     level.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    // 追従カメラも積んでおく。読込時の既定合成で採番カウンタが動くと counter 比較が成り立たないため
-    level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
     SceneNs::EnsureUniqueObjectIds(level);
     const std::uint32_t id0 = level.objects[0].objectId;
     const std::uint32_t id1 = level.objects[1].objectId;
@@ -134,8 +131,6 @@ TEST(ObjectIdTest, ObjectRefFieldSurvivesJsonRoundTrip)
     level.objects.push_back(SceneNs::ObjectData{});
     level.objects.push_back(SceneNs::ObjectData{});
     level.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    // 追従カメラも積んでおく。読込時の既定合成で比べる元とずれないようにするため
-    level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
     SceneNs::EnsureUniqueObjectIds(level);
     const std::uint32_t targetId = level.objects[0].objectId;
 

@@ -12,6 +12,7 @@ namespace NS::Game::Level
     //! @brief 持ち主の接地と速度を追従カメラへ渡す Component
     //! @details ThirdPersonFollow は NS::Obj にあり、NS::Game の型を名指しできない
     //! 値だけを運ぶことで include の向きを保つ
+    //! 持ち主を追うカメラがシーンに無ければ、既定の 1 台を配置物として足す
     //! 帯は LateUpdate + 40 で、やり直しの後・カメラの追従の前
     //! 依存: NS::Game::Entity::EntityComponent, NS::Obj::ThirdPersonFollow
     class FollowCameraFeed : public NS::Obj::Component
@@ -21,7 +22,7 @@ namespace NS::Game::Level
 
         //! 同居する移動を控える。無ければ OnUpdate は何もしない
         void OnStart() override;
-        //! 持ち主を追っている追従カメラすべてへ接地と速度を渡す
+        //! 持ち主を追っている追従カメラすべてへ接地と速度を渡す。1 台も無ければ足してから渡す
         void OnUpdate() override;
 
         // 保存する調整値は無い。リフレクションの鎖と型名だけ通す

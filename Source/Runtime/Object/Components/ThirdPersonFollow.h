@@ -25,6 +25,8 @@ namespace NS::Obj
 
         //! 追従対象の永続参照。データ経由の構築がリフレクション set で書き、OnStart が live へ解決する
         [[nodiscard]] ObjectRef TargetRef() const noexcept { return m_targetRef; }
+        //! 追従対象の永続参照を置く。live への解決は OnStart が行う
+        void SetTargetRef(ObjectRef ref) noexcept { m_targetRef = ref; }
 
         //! 追従対象の参照を world の永続 id 解決で引き、その Transform を控える
         //! 参照未設定 / 解決不可なら SetTarget 済みの直結線を保つ。直結線とデータ経由の両立の要

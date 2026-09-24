@@ -1,5 +1,4 @@
 #include "Editor/EditorObjects.h"
-#include "Game/Level/FollowCameraObject.h"
 #include "Game/Player.h"
 #include "Runtime/Core/Sphere.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
@@ -32,6 +31,17 @@ using NS::Obj::ObjectList;
 
 namespace
 {
+    // 追従先の参照だけを持つ追従カメラの配置物を作る
+    [[nodiscard]] NS::Obj::ObjectData MakeFollowCameraObject(std::uint32_t targetObjectId)
+    {
+        nlohmann::json follow = NS::Obj::MakeComponentEntry("ThirdPersonFollow");
+        NS::Obj::SetField(follow, "追従対象", NS::Obj::ObjectRef{targetObjectId});
+        NS::Obj::ObjectData object{};
+        object.components = nlohmann::json::array({std::move(follow)});
+        NS::Obj::EnsureTransformComponent(object);
+        return object;
+    }
+
     // ObjectList は型付き控えを持たないので、テストも本番と同じ問い合わせ口から集める
     template <class T> std::vector<T*> Collect(const ObjectList& objects)
     {
@@ -212,7 +222,7 @@ TEST(ObjectListTest, RebuildBuildsPlayerAndResolvesItById)
 TEST(ObjectListTest, RebuildBakesFollowCameraAndResolvesTarget)
 {
     SceneData level;
-    level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
+    level.objects.push_back(MakeFollowCameraObject(0u));
     level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
     // 追従先は自分より後ろに並ぶ grid block。追従対象の参照を採番後の実 id へ差し替える

@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <string_view>
+#include <vector>
 
 namespace
 {
@@ -342,12 +343,37 @@ TEST_F(PlayerRelayTest, OwnerWithoutEntityFeedsNothing)
     EXPECT_NEAR(follow.Distance(), k_IdleDistance, 0.01f);
 }
 
-TEST_F(PlayerRelayTest, FeedWithoutAnyCameraIsHarmless)
+// 持ち主を追うカメラが無ければ、持ち主を追う 1 台を配置物として足す。次のフレームからはそれへ渡す
+TEST_F(PlayerRelayTest, FeedSpawnsACameraWhenNoneFollowsTheOwner)
 {
     Scene scene;
     GameObject& owner = SpawnFeeder(scene, k_PlayerId, true);
 
     Feed(owner).OnUpdate();
+    Feed(owner).OnUpdate();
 
-    SUCCEED();
+    std::vector<ThirdPersonFollow*> following;
+    scene.Objects().ForEachComponent<ThirdPersonFollow>([&following](ThirdPersonFollow& follow) {
+        if (follow.TargetRef().id == k_PlayerId)
+            following.push_back(&follow);
+    });
+    ASSERT_EQ(following.size(), 1u);
+    EXPECT_TRUE(following[0]->IsActive());
+    EXPECT_EQ(following[0]->Target(), &owner.Root());
+    // 一時オブジェクトだと組み直しを越えて残り、作り直された持ち主の代わりに古い Transform を指す
+    EXPECT_FALSE(following[0]->Owner()->IsTransient());
+}
+
+TEST_F(PlayerRelayTest, FeedDoesNotSpawnWhileACameraFollowsTheOwner)
+{
+    Scene scene;
+    GameObject& owner = SpawnFeeder(scene, k_PlayerId, true);
+    auto& follow = AddFollowCamera(scene);
+    SetTargetRef(follow, k_PlayerId);
+    follow.OnStart();
+    const std::size_t before = scene.Objects().ObjectCount();
+
+    Feed(owner).OnUpdate();
+
+    EXPECT_EQ(scene.Objects().ObjectCount(), before);
 }

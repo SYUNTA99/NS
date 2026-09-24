@@ -6,7 +6,6 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/IObjectSnapshotApplier.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
-#include "Game/Level/FollowCameraObject.h"
 #include "Game/Level/KillZone.h"
 #include "Game/Player.h"
 #include "Runtime/Core/AABB.h"
@@ -233,10 +232,8 @@ namespace NS::Editor
             const bool ok = NS::Obj::LoadSceneFromJsonFile(fresh, *path);
             if (ok)
             {
-                // プレイヤー / 追従カメラ / 落下死体積が欠けたレベルには既定の 1 体を補う
-                // 追従カメラの Target にプレイヤーの id が要るので、揃える順はこの並びで決まる
+                // プレイヤー / 落下死体積が欠けたレベルには既定の 1 体を補う
                 (void)EnsurePlayerObject(fresh);
-                (void)NS::Game::Level::EnsureFollowCameraObject(fresh, PlayerObjectId(fresh));
                 (void)NS::Game::Level::EnsureKillZoneObject(fresh);
 
                 // 読込済みデータを実体側へ取り込み world を組み直す。新レベルなので Undo 履歴もクリアする

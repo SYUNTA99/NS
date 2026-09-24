@@ -23,7 +23,7 @@ namespace NS::Editor
     [[nodiscard]] std::int16_t ObjectCellY(const NS::Obj::ObjectData& object) noexcept;
     [[nodiscard]] std::int16_t ObjectCellZ(const NS::Obj::ObjectData& object) noexcept;
 
-    //! cell ブラシが置換 / 削除できる配置物か。プレイヤーとカメラは別経路で扱うため除く
+    //! cell ブラシが置換 / 削除できる配置物か。見た目を持つ素の GameObject が対象
     [[nodiscard]] bool IsCellBrushObject(const NS::Obj::ObjectData& object) noexcept;
 
     //! live 実体版。判定はデータ版と同じ基準で、component の有無を実体から見る

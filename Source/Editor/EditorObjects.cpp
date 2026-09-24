@@ -1,6 +1,5 @@
 #include "Editor/EditorObjects.h"
 
-#include "Game/Level/FollowCameraObject.h"
 #include "Game/Level/Goal.h"
 #include "Game/Level/Hazard.h"
 #include "Game/Level/KillZone.h"
@@ -77,17 +76,15 @@ namespace NS::Editor
 
     bool IsCellBrushObject(const NS::Obj::ObjectData& object) noexcept
     {
-        // プレイヤーとカメラは別経路で扱うため cell ブラシの対象から外す
-        return !IsPlayerObject(object) && !NS::Game::Level::IsFollowCameraObject(object) &&
-               NS::Obj::FindComponentEntry(object, "PlacedVirtualCamera") == nullptr;
+        // 派生型の配置物は自前の組み立てを持つので、ブラシの置換や削除で崩さない
+        return object.className.empty() && NS::Obj::FindComponentEntry(object, "MeshRenderer") != nullptr;
     }
 
     bool IsCellBrushObject(NS::Obj::GameObject& object) noexcept
     {
         // 実行時の一時オブジェクトは配置物でないため対象外
-        return !object.IsTransient() && object.FindComponent<NS::Obj::PlayerInput>() == nullptr &&
-               object.FindComponent<NS::Obj::ThirdPersonFollow>() == nullptr &&
-               object.FindComponent<NS::Obj::PlacedVirtualCamera>() == nullptr;
+        return !object.IsTransient() && std::string_view{object.ClassName()}.empty() &&
+               object.FindComponent<NS::Obj::MeshRenderer>() != nullptr;
     }
 
     std::int16_t ObjectCellX(const NS::Obj::GameObject& object) noexcept

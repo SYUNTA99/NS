@@ -124,6 +124,16 @@ namespace NS::Obj
         return raw;
     }
 
+    GameObject* ObjectList::AppendWithNewId(std::unique_ptr<GameObject> obj)
+    {
+        if (!obj)
+        {
+            return nullptr;
+        }
+        obj->SetId(AllocateObjectId());
+        return Append(std::move(obj));
+    }
+
     void ObjectList::RemoveByObjectId(std::uint32_t objectId)
     {
         // 0 は未採番の印。一時オブジェクトは id を持たないので、素通しすると先頭の一時が消える

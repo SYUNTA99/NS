@@ -136,11 +136,34 @@ namespace NS::Obj
         {
             return nullptr;
         }
-        // データ由来の配置物は ObjectBuilder が引き当てる。後から入る一時オブジェクトはここで引き当てる
+        StartSpawned(*raw);
+        return raw;
+    }
+
+    GameObject* Scene::SpawnObject(std::unique_ptr<GameObject> obj)
+    {
+        if (!obj)
+        {
+            return nullptr;
+        }
+
+        obj->AttachScene(this);
+        GameObject* raw = m_objects.AppendWithNewId(std::move(obj));
+        if (raw == nullptr)
+        {
+            return nullptr;
+        }
+        StartSpawned(*raw);
+        return raw;
+    }
+
+    void Scene::StartSpawned(GameObject& obj)
+    {
+        // データ由来の配置物は ObjectBuilder が引き当てる。後から入る物はここで引き当てる
         // AssetManager が無い間は跳ばす。テストは資産なしでシーンを立てる
         if (m_assets != nullptr)
         {
-            for (Component* comp : raw->Components())
+            for (Component* comp : obj.Components())
             {
                 if (comp != nullptr)
                 {
@@ -149,8 +172,7 @@ namespace NS::Obj
             }
         }
         // 開始は引き当ての後。OnStart の中で資産を読む Component が空の参照を掴まない
-        raw->OnStart();
-        return raw;
+        obj.OnStart();
     }
 
     SceneData Scene::CaptureLiveToSceneData() const

@@ -156,6 +156,10 @@ namespace NS::Obj
         //! 型が実行時にしか決まらない時の受け口。型が分かっているなら SpawnTransient<T> を使う
         GameObject* SpawnTransient(std::unique_ptr<GameObject> obj);
 
+        //! @brief 実行時に配置物を 1 体入れる。新しい永続 id を振る
+        //! @details 一時オブジェクトと違い保存に写り、データからの組み直しで他の配置物と一緒に消える
+        GameObject* SpawnObject(std::unique_ptr<GameObject> obj);
+
         //! @brief 配置物を 1 体消す。居なければ何もしない
         //! @details 当たり箱も揃うので、走っている世界を止めずに消せる
         //! 子は根として残る。まとめて消したい呼び出し側が並びを決めて 1 体ずつ呼ぶ
@@ -200,6 +204,9 @@ namespace NS::Obj
     private:
         //! 配置物の変化を一時オブジェクトへ知らせる。組み直しと当たりの張り直しの後に呼ぶ
         void NotifyTransientsObjectsRebuilt();
+
+        //! 実行時に入れた配置物の資産を引き当ててから開始する
+        void StartSpawned(GameObject& obj);
 
         SceneRenderer m_sceneRenderer;
 

@@ -2,7 +2,6 @@
 #include "Editor/EditorObjects.h"
 #include "Game/Level/Breakable.h"
 #include "Game/Level/CollisionInput.h"
-#include "Game/Level/FollowCameraObject.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/KillZone.h"
 #include "Game/Player.h"
@@ -34,6 +33,17 @@ namespace
     {
         return EditorNs::BuildLevelPath("TestOutput/" + name);
     }
+
+    // 追従先の参照だけを持つ追従カメラの配置物を作る
+    [[nodiscard]] NS::Obj::ObjectData MakeFollowCameraObject(std::uint32_t targetObjectId)
+    {
+        nlohmann::json follow = NS::Obj::MakeComponentEntry("ThirdPersonFollow");
+        NS::Obj::SetField(follow, "追従対象", NS::Obj::ObjectRef{targetObjectId});
+        NS::Obj::ObjectData object{};
+        object.components = nlohmann::json::array({std::move(follow)});
+        NS::Obj::EnsureTransformComponent(object);
+        return object;
+    }
 } // namespace
 
 TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
@@ -50,8 +60,6 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
     src.objects.push_back(rotated);
     src.objects.push_back(NS::Editor::MakeCellObject(2, 0, 0));
     // 編集中のレベルは読込採番か Command 採番で常に id を持つため、比べる元も採番後から取る
-    SceneNs::EnsureUniqueObjectIds(src);
-    src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[0].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
 
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
@@ -255,9 +263,7 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
     freeObject.components.push_back(std::move(comp));
     src.objects.push_back(std::move(freeObject));
     src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    // 正準 JSON 同士の比較なので、読込側と同じく採番 + 追従カメラ済の状態に揃えてから保存する
-    SceneNs::EnsureUniqueObjectIds(src);
-    src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[1].objectId));
+    // 正準 JSON 同士の比較なので、読込側と同じく採番済の状態に揃えてから保存する
     SceneNs::EnsureUniqueObjectIds(src);
 
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
@@ -320,9 +326,7 @@ TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
     src.objects.push_back(gridObject);
     src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
 
-    // 編集中のレベルは常に採番済なので、比べる元も採番 + 追従カメラ済から取る
-    SceneNs::EnsureUniqueObjectIds(src);
-    src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[2].objectId));
+    // 編集中のレベルは常に採番済なので、比べる元も採番済から取る
     SceneNs::EnsureUniqueObjectIds(src);
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
@@ -401,11 +405,10 @@ TEST(SaveLoadRoundTrip, PlayerObjectRoundTrip)
 }
 
 // 補完の呼び手はエディタのレベル読込だけ
-TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
+TEST(EnsurePlayableObjects, SynthesizesPlayerAndKillZone)
 {
     SceneNs::SceneData level;
     EXPECT_TRUE(EnsurePlayerObject(level));
-    EXPECT_TRUE(NS::Game::Level::EnsureFollowCameraObject(level, PlayerObjectId(level)));
     EXPECT_TRUE(LevelNs::EnsureKillZoneObject(level));
 
     const std::size_t playerIndex = FindPlayerObjectIndex(level);
@@ -419,14 +422,6 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
     EXPECT_NE(SceneNs::FindComponentEntry(player, "PlayerInput"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "Health"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "Shadow"), nullptr);
-
-    // 追従カメラも 1 台合成され、追従対象は合成したプレイヤーを指す
-    const std::size_t followIndex = NS::Game::Level::FindFollowCameraObjectIndex(level);
-    ASSERT_NE(followIndex, SceneNs::k_NoObjectIndex);
-    const nlohmann::json* comp = SceneNs::FindComponentEntry(level.objects[followIndex], "ThirdPersonFollow");
-    ASSERT_NE(comp, nullptr);
-    ASSERT_TRUE(SceneNs::HasField(*comp, "追従対象"));
-    EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "追従対象").id, player.objectId);
 
     // 落下死体積も 1 つ敷かれる
     bool hasKillZone = false;
@@ -457,41 +452,12 @@ TEST(SaveLoadRoundTrip, MultiplePlayersFirstWins)
     EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(dst.objects[playerIndex]).x, 1.0f);
 }
 
-// エディタの読込の補完が、プレイヤーを追う 1 台を足す。既に居れば足さない
-TEST(EnsurePlayableObjects, SynthesizesFollowCameraTargetingExistingPlayer)
-{
-    SceneNs::SceneData dst;
-    dst.objects.push_back(MakePlayerObject(NS::Core::Vector3{2.0f, 1.41f, 0.0f}, NS::Core::Quaternion{}));
-    SceneNs::EnsureUniqueObjectIds(dst);
-    const std::uint32_t playerId = dst.objects[0].objectId;
-
-    EXPECT_FALSE(EnsurePlayerObject(dst)); // プレイヤー自体は合成していない
-    EXPECT_TRUE(NS::Game::Level::EnsureFollowCameraObject(dst, PlayerObjectId(dst)));
-
-    const std::size_t followIndex = NS::Game::Level::FindFollowCameraObjectIndex(dst);
-    ASSERT_NE(followIndex, SceneNs::k_NoObjectIndex);
-    const SceneNs::ObjectData& follow = dst.objects[followIndex];
-    EXPECT_NE(follow.objectId, 0u); // 合成後の一意化で永続 id も振られる
-
-    const nlohmann::json* comp = SceneNs::FindComponentEntry(follow, "ThirdPersonFollow");
-    ASSERT_NE(comp, nullptr);
-    // 追従先はプレイヤー実体への通常の ObjectRef
-    ASSERT_TRUE(SceneNs::HasField(*comp, "追従対象"));
-    EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "追従対象").id, playerId);
-    // データが持つのは誰を追うかだけ。遠景を抑える投影値は component のコード既定を使う
-    EXPECT_FALSE(SceneNs::HasField(*comp, "ファークリップ"));
-    NS::Obj::ThirdPersonFollow live;
-    EXPECT_FLOAT_EQ(live.FarPlane(), 100.0f);
-}
-
 // environment 欄が save→load で往復する。照明は Component へ移り、ここに残るのは skybox
 TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
 {
     SceneNs::SceneData src;
     src.environment.skyboxCubemapPath = "Assets/Skybox/kurt/";
     src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    SceneNs::EnsureUniqueObjectIds(src);
-    src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[0].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
 
     const std::string json = SceneNs::SerializeSceneToJson(src);
@@ -541,13 +507,13 @@ TEST(SaveLoadRoundTrip, NonStringComponentTypeReadsAsEmpty)
     EXPECT_EQ(SceneNs::ComponentEntryType(dst.objects[0].components[0]), "");
 }
 
-// 追従カメラ実体が既に居れば合成は走らず、Target 参照ごと往復で保持される
+// 追従カメラの配置物は Target 参照ごと往復で保持される
 TEST(SaveLoadRoundTrip, FollowCameraObjectRoundTrip)
 {
     SceneNs::SceneData src;
     src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     SceneNs::EnsureUniqueObjectIds(src);
-    src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[0].objectId));
+    src.objects.push_back(MakeFollowCameraObject(src.objects[0].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
 
     const std::string json = SceneNs::SerializeSceneToJson(src);
@@ -556,8 +522,6 @@ TEST(SaveLoadRoundTrip, FollowCameraObjectRoundTrip)
 
     ASSERT_EQ(dst.objects.size(), 2u);
     EXPECT_TRUE(dst == src);
-    const std::size_t followIndex = NS::Game::Level::FindFollowCameraObjectIndex(dst);
-    ASSERT_EQ(followIndex, 1u);
     const nlohmann::json* comp = SceneNs::FindComponentEntry(dst.objects[1], "ThirdPersonFollow");
     ASSERT_NE(comp, nullptr);
     ASSERT_TRUE(SceneNs::HasField(*comp, "追従対象"));
