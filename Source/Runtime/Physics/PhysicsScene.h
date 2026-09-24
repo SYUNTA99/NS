@@ -7,12 +7,14 @@
 #include "Runtime/Core/Sphere.h"
 #include "Runtime/Physics/Capsule.h"
 #include "Runtime/Physics/MeshCollision.h"
+#include "Runtime/Physics/ShapePart.h"
 #include "Runtime/Physics/Triangle.h"
 
 #include <Jolt/Jolt.h>
 
 #include <Jolt/Core/JobSystemSingleThreaded.h>
 #include <Jolt/Core/TempAllocator.h>
+#include <Jolt/Physics/Body/AllowedDOFs.h>
 #include <Jolt/Physics/Body/BodyID.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
@@ -51,6 +53,16 @@ namespace NS::Phys
         inline constexpr JPH::uint Count = ObjectLayers::Count;
     } // namespace BroadPhaseLayers
 
+    //! @brief 重力の既定の Y 成分 (m/s^2)
+    //! @details 自機の上昇重力と同じ値。下降の -35 は頂点から早く落として操作を返すための値で、操作の無い物には掛けない
+    inline constexpr float k_DefaultGravityY = -25.0f;
+
+    //! 重力の既定値。真下へ k_DefaultGravityY
+    [[nodiscard]] inline NS::Core::Vector3 DefaultGravity() noexcept
+    {
+        return NS::Core::Vector3{0.0f, k_DefaultGravityY, 0.0f};
+    }
+
     //! @brief 直近の Update で記録した接触 1 件
     struct BodyContact
     {
@@ -67,12 +79,31 @@ namespace NS::Phys
         float friction = 0.2f;                       // 摩擦
     };
 
+    //! @brief 動く body の動き方・質量・材質
+    //! @details PhysicsScene が受け取る時に直す値がある
+    //! 非有限値は既定値にし、負の摩擦・跳ね返り・減衰は 0 にし、0 以下の質量は 1 にする
+    struct BodyMotion
+    {
+        bool kinematic = false;           // 真なら力を受けず、MoveKinematic で運ばれて相手を押す
+        float mass = 1.0f;                // 質量 (kg)
+        float friction = 0.2f;            // 摩擦
+        float restitution = 0.0f;         // 跳ね返り
+        float linearDamping = 0.05f;      // 移動の減衰。速度が毎秒この割合で落ちる
+        float angularDamping = 0.05f;     // 回転の減衰
+        float gravityFactor = 1.0f;       // 世界の重力に掛ける倍率。0 なら重力を受けない
+        bool continuousCollision = false; // 真なら 1 歩で動いた道を掃引して当て、速い物のすり抜けを防ぐ
+        //! 動ける軸。世界の軸で数える。全部塞ぐと力で動かせないので、キネマティックとして作る
+        JPH::EAllowedDOFs allowedDOFs = JPH::EAllowedDOFs::All;
+
+        [[nodiscard]] bool operator==(const BodyMotion& other) const = default;
+    };
+
     //! @brief JPH::PhysicsSystem と、一時メモリ・ジョブ・layer の絞り込みを同じ寿命で持つ当たりの世界
     //! @details 最初の 1 個の構築か、形を作る最初の CreateMeshShape で、Jolt の登録を 1 度だけ通す
     //! 登録は JPH::RegisterDefaultAllocator / JPH::Factory / JPH::RegisterTypes
     //! 型の登録解除はプロセス終了時
     //! Add 系はどれも body を 1 つ作り、shape を作れなければ無効な BodyID を返す
-    //! 作った時点で動的なのは AddDynamic の付く 2 つだけで、これだけが起きた状態で入る
+    //! 作った時点で動くのは AddDynamic の付く 2 つと SyncMovingBody だけで、これらだけが起きた状態で入る
     class PhysicsScene : public NS::Core::NonCopyable
     {
     public:
@@ -120,6 +151,51 @@ namespace NS::Phys
         JPH::BodyID AddDynamicBox(const NS::Core::OBB& box, const DynamicBodyDesc& desc);
         //! 中心と半径をそのまま動的な球 body にする
         JPH::BodyID AddDynamicSphere(const NS::Core::Sphere& sphere, const DynamicBodyDesc& desc);
+
+        //! @brief 形の組を 1 つの動く body にまとめ、position・rotation を原点にして置いた id を返す
+        //! @details id が無効なら新しく作る。id が静的な body なら作り直し、古い body は外さない
+        //! 形は世界座標の置き場所ごと受け取り、body の原点から見た位置と向きへ直して入れる
+        //! 形が 2 つ以上なら合成形状、1 つなら位置と向きをずらした形にする
+        //! 形が null か静的にしか使えない部品は飛ばす。1 つも残らないか形を作れなければ無効な BodyID を返し、id の body は外さない
+        //! 置き直しは瞬間移動で、速度はそのまま残る
+        JPH::BodyID SyncMovingBody(JPH::BodyID id,
+                                   std::span<const ShapePart> parts,
+                                   const NS::Core::Vector3& position,
+                                   const NS::Core::Quaternion& rotation,
+                                   const BodyMotion& motion,
+                                   JPH::ObjectLayer layer = ObjectLayers::Rock);
+
+        //! 動く body の動き方・質量・材質を motion へ書き換えて起こす。無効な BodyID と静的な body は何もしない
+        void SetBodyMotion(JPH::BodyID id, const BodyMotion& motion);
+
+        //! @brief キネマティックの body を、次の Update の deltaTime 秒で position・rotation へ着くよう動かす
+        //! @details 瞬間移動ではなく速度を持たせて運ぶので、途中で触れた相手を押す
+        //! 無効な BodyID と、deltaTime が正でない時は何もしない
+        void MoveKinematic(JPH::BodyID id,
+                           const NS::Core::Vector3& position,
+                           const NS::Core::Quaternion& rotation,
+                           float deltaTime);
+
+        //! body を position・rotation へ瞬間移動させて起こす。速度はそのまま。無効な BodyID は何もしない
+        void TeleportBody(JPH::BodyID id, const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation);
+
+        //! 次の Update の間、重心へ力 (N) を掛け続ける。無効な BodyID は何もしない
+        void AddBodyForce(JPH::BodyID id, const NS::Core::Vector3& force);
+        //! 重心へ力積 (N·s) を与え、速度を即座に変える。無効な BodyID は何もしない
+        void AddBodyImpulse(JPH::BodyID id, const NS::Core::Vector3& impulse);
+        //! 次の Update の間、トルク (N·m) を掛け続ける。無効な BodyID は何もしない
+        void AddBodyTorque(JPH::BodyID id, const NS::Core::Vector3& torque);
+        //! 角力積 (N·m·s) を与え、角速度を即座に変える。無効な BodyID は何もしない
+        void AddBodyAngularImpulse(JPH::BodyID id, const NS::Core::Vector3& angularImpulse);
+        //! 眠っている body を起こす。無効な BodyID は何もしない
+        void WakeBody(JPH::BodyID id);
+
+        //! @brief 世界の重力 (m/s^2) を置く。既定は DefaultGravity
+        //! @details 置き換えるのは動く body に掛かる重力だけ。自機は重力を自分で持つので変わらない
+        //! 非有限の成分を含む値は受け取らない
+        void SetGravity(const NS::Core::Vector3& gravity);
+        //! 世界の重力 (m/s^2)
+        [[nodiscard]] NS::Core::Vector3 Gravity() const;
 
         //! body の角速度を置く。無効な BodyID は何もしない
         void SetBodyAngularVelocity(JPH::BodyID id, const NS::Core::Vector3& angularVelocity);

@@ -7,18 +7,22 @@
 #include "Runtime/Physics/detail/JoltConversion.h"
 #include "Runtime/Physics/detail/JoltRuntime.h"
 
+#include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Body/BodyLockInterface.h>
+#include <Jolt/Physics/Body/MotionProperties.h>
 #include <Jolt/Physics/Collision/CastResult.h>
 #include <Jolt/Physics/Collision/CollideShape.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
-#include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
-#include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
+#include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace NS::Phys
@@ -31,9 +35,103 @@ namespace NS::Phys
         constexpr JPH::uint k_MaxJobs = 1024;
         constexpr std::size_t k_TempAllocatorBytes = 10 * 1024 * 1024;
 
-        // 自機の上昇重力と同じ値。下降の -35 は頂点から早く落として操作を返すための値で、操作の無い物には掛けない
-        constexpr float k_GravityY = -25.0f;
+        [[nodiscard]] float FiniteOr(float value, float fallback) noexcept
+        {
+            return std::isfinite(value) ? value : fallback;
+        }
 
+        // Jolt は負の減衰と 0 以下の質量で assert する。受け取る所で揃えて、呼出側に同じ確かめを書かせない
+        [[nodiscard]] BodyMotion Sanitized(const BodyMotion& motion) noexcept
+        {
+            const BodyMotion defaults;
+            BodyMotion out = motion;
+            out.mass = FiniteOr(motion.mass, defaults.mass);
+            if (!(out.mass > 0.0f))
+            {
+                out.mass = defaults.mass;
+            }
+            out.friction = std::max(0.0f, FiniteOr(motion.friction, defaults.friction));
+            out.restitution = std::max(0.0f, FiniteOr(motion.restitution, defaults.restitution));
+            out.linearDamping = std::max(0.0f, FiniteOr(motion.linearDamping, defaults.linearDamping));
+            out.angularDamping = std::max(0.0f, FiniteOr(motion.angularDamping, defaults.angularDamping));
+            out.gravityFactor = FiniteOr(motion.gravityFactor, defaults.gravityFactor);
+            return out;
+        }
+
+        // 軸を全部塞いだ動的 body は Jolt が 0 で割って落ちる。力で動かせないので、キネマティックとして作る
+        [[nodiscard]] JPH::EMotionType MotionTypeOf(const BodyMotion& motion) noexcept
+        {
+            if (motion.kinematic || motion.allowedDOFs == JPH::EAllowedDOFs::None)
+            {
+                return JPH::EMotionType::Kinematic;
+            }
+            return JPH::EMotionType::Dynamic;
+        }
+
+        [[nodiscard]] JPH::EAllowedDOFs AllowedDOFsOf(const BodyMotion& motion) noexcept
+        {
+            if (MotionTypeOf(motion) == JPH::EMotionType::Kinematic)
+            {
+                return JPH::EAllowedDOFs::All;
+            }
+            return motion.allowedDOFs;
+        }
+
+        [[nodiscard]] JPH::EMotionQuality MotionQualityOf(const BodyMotion& motion) noexcept
+        {
+            return motion.continuousCollision ? JPH::EMotionQuality::LinearCast : JPH::EMotionQuality::Discrete;
+        }
+
+        // 形の組を body の原点から見た 1 つの形にする。部品が残らないか、作れなければ null
+        [[nodiscard]] JPH::ShapeRefC BuildMovingShape(std::span<const ShapePart> parts,
+                                                      JPH::Vec3Arg origin,
+                                                      JPH::QuatArg rotation)
+        {
+            const JPH::Quat toLocal = rotation.Conjugated();
+
+            JPH::StaticCompoundShapeSettings compound;
+            JPH::ShapeRefC single;
+            JPH::Vec3 singlePosition = JPH::Vec3::sZero();
+            JPH::Quat singleRotation = JPH::Quat::sIdentity();
+            std::size_t count = 0;
+            for (const ShapePart& part : parts)
+            {
+                // 三角形の形は動く body に入れられない。1 つでも混ぜると合成形状ごと静的専用になる
+                if (part.shape == nullptr || part.shape->MustBeStatic())
+                {
+                    continue;
+                }
+
+                const JPH::Vec3 localPosition = toLocal * (ToJolt(part.position) - origin);
+                const JPH::Quat localRotation = (toLocal * ToJolt(part.rotation).Normalized()).Normalized();
+                compound.AddShape(localPosition, localRotation, part.shape.GetPtr());
+                single = part.shape;
+                singlePosition = localPosition;
+                singleRotation = localRotation;
+                ++count;
+            }
+
+            if (count == 0)
+            {
+                return nullptr;
+            }
+
+            // Jolt の合成形状は部品を 2 つ以上要る。1 つならずらした形で包む
+            if (count == 1)
+            {
+                // body の原点にぴったり重なっていれば包まずにそのまま使う
+                if (singlePosition.IsNearZero() && singleRotation.IsClose(JPH::Quat::sIdentity()))
+                {
+                    return single;
+                }
+                const JPH::RotatedTranslatedShapeSettings shifted{singlePosition, singleRotation, single.GetPtr()};
+                const JPH::ShapeSettings::ShapeResult result = shifted.Create();
+                return result.HasError() ? nullptr : result.Get();
+            }
+
+            const JPH::ShapeSettings::ShapeResult result = compound.Create();
+            return result.HasError() ? nullptr : result.Get();
+        }
     } // namespace
 
     PhysicsScene::RuntimeInit::RuntimeInit()
@@ -144,7 +242,7 @@ namespace NS::Phys
                              m_objectVsBroadPhaseLayerFilter,
                              m_objectLayerPairFilter);
         m_physicsSystem.SetContactListener(&m_contactRecorder);
-        m_physicsSystem.SetGravity(JPH::Vec3{0.0f, k_GravityY, 0.0f});
+        m_physicsSystem.SetGravity(ToJolt(DefaultGravity()));
     }
 
     PhysicsScene::~PhysicsScene() = default;
@@ -205,19 +303,8 @@ namespace NS::Phys
 
     JPH::BodyID PhysicsScene::SyncBox(JPH::BodyID id, const NS::Core::OBB& box, JPH::ObjectLayer layer, bool sensor)
     {
-        const JPH::BoxShapeSettings shapeSettings{JPH::Vec3{box.halfExtentX, box.halfExtentY, box.halfExtentZ}};
-        const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
-        if (shape.HasError())
-        {
-            return JPH::BodyID{};
-        }
-
-        const JPH::Mat44 axes{JPH::Vec4{ToJolt(box.axisX), 0.0f},
-                              JPH::Vec4{ToJolt(box.axisY), 0.0f},
-                              JPH::Vec4{ToJolt(box.axisZ), 0.0f},
-                              JPH::Vec4{0.0f, 0.0f, 0.0f, 1.0f}};
-
-        return SyncStatic(id, shape.Get(), box.center, FromJolt(axes.GetQuaternion()), layer, sensor);
+        const ShapePart part = MakeBoxPart(box);
+        return SyncStatic(id, part.shape, part.position, part.rotation, layer, sensor);
     }
 
     JPH::BodyID PhysicsScene::AddSphere(const NS::Core::Sphere& sphere, JPH::ObjectLayer layer)
@@ -227,14 +314,8 @@ namespace NS::Phys
 
     JPH::BodyID PhysicsScene::SyncSphere(JPH::BodyID id, const NS::Core::Sphere& sphere, JPH::ObjectLayer layer)
     {
-        const JPH::SphereShapeSettings shapeSettings{sphere.radius};
-        const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
-        if (shape.HasError())
-        {
-            return JPH::BodyID{};
-        }
-
-        return SyncStatic(id, shape.Get(), sphere.center, NS::Core::Quaternion::Identity, layer, false);
+        const ShapePart part = MakeSpherePart(sphere);
+        return SyncStatic(id, part.shape, part.position, part.rotation, layer, false);
     }
 
     JPH::BodyID PhysicsScene::AddCapsule(const Capsule& capsule, JPH::ObjectLayer layer)
@@ -244,16 +325,8 @@ namespace NS::Phys
 
     JPH::BodyID PhysicsScene::SyncCapsule(JPH::BodyID id, const Capsule& capsule, JPH::ObjectLayer layer)
     {
-        const JPH::CapsuleShapeSettings shapeSettings{capsule.halfHeight, capsule.radius};
-        const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
-        if (shape.HasError())
-        {
-            return JPH::BodyID{};
-        }
-
-        const JPH::Quat rotation =
-            JPH::Quat::sFromTo(JPH::Vec3::sAxisY(), ToJolt(capsule.axis).NormalizedOr(JPH::Vec3::sAxisY()));
-        return SyncStatic(id, shape.Get(), capsule.center, FromJolt(rotation), layer, false);
+        const ShapePart part = MakeCapsulePart(capsule);
+        return SyncStatic(id, part.shape, part.position, part.rotation, layer, false);
     }
 
     JPH::BodyID PhysicsScene::AddMesh(std::span<const Triangle> triangles, JPH::ObjectLayer layer)
@@ -319,30 +392,183 @@ namespace NS::Phys
 
     JPH::BodyID PhysicsScene::AddDynamicBox(const NS::Core::OBB& box, const DynamicBodyDesc& desc)
     {
-        const JPH::BoxShapeSettings shapeSettings{JPH::Vec3{box.halfExtentX, box.halfExtentY, box.halfExtentZ}};
-        const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
-        if (shape.HasError())
-        {
-            return JPH::BodyID{};
-        }
-
-        const JPH::Mat44 axes{JPH::Vec4{ToJolt(box.axisX), 0.0f},
-                              JPH::Vec4{ToJolt(box.axisY), 0.0f},
-                              JPH::Vec4{ToJolt(box.axisZ), 0.0f},
-                              JPH::Vec4{0.0f, 0.0f, 0.0f, 1.0f}};
-        return AddDynamic(shape.Get(), box.center, FromJolt(axes.GetQuaternion()), desc);
+        const ShapePart part = MakeBoxPart(box);
+        return AddDynamic(part.shape, part.position, part.rotation, desc);
     }
 
     JPH::BodyID PhysicsScene::AddDynamicSphere(const NS::Core::Sphere& sphere, const DynamicBodyDesc& desc)
     {
-        const JPH::SphereShapeSettings shapeSettings{sphere.radius};
-        const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
-        if (shape.HasError())
+        const ShapePart part = MakeSpherePart(sphere);
+        return AddDynamic(part.shape, part.position, part.rotation, desc);
+    }
+
+    JPH::BodyID PhysicsScene::SyncMovingBody(JPH::BodyID id,
+                                             std::span<const ShapePart> parts,
+                                             const NS::Core::Vector3& position,
+                                             const NS::Core::Quaternion& rotation,
+                                             const BodyMotion& motion,
+                                             JPH::ObjectLayer layer)
+    {
+        const JPH::Vec3 origin = ToJolt(position);
+        const JPH::Quat orientation = ToJolt(rotation).Normalized();
+        const JPH::ShapeRefC shape = BuildMovingShape(parts, origin, orientation);
+        if (shape == nullptr)
         {
             return JPH::BodyID{};
         }
 
-        return AddDynamic(shape.Get(), sphere.center, NS::Core::Quaternion::Identity, desc);
+        JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
+        // 静的な body は動き方を持たないので、動く body へ切り替えられない。作り直す
+        if (!id.IsInvalid() && bodies.GetMotionType(id) != JPH::EMotionType::Static)
+        {
+            bodies.SetShape(id, shape, false, JPH::EActivation::DontActivate);
+            bodies.SetPositionAndRotation(id, origin, orientation, JPH::EActivation::DontActivate);
+            bodies.SetObjectLayer(id, layer);
+            // 形を替えた後に質量を形から計り直す。SetShape に計らせると上書きした質量が消える
+            SetBodyMotion(id, motion);
+            return id;
+        }
+
+        const BodyMotion safe = Sanitized(motion);
+        JPH::BodyCreationSettings settings{shape, origin, orientation, MotionTypeOf(safe), layer};
+        settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
+        settings.mMassPropertiesOverride.mMass = safe.mass;
+        settings.mFriction = safe.friction;
+        settings.mRestitution = safe.restitution;
+        settings.mLinearDamping = safe.linearDamping;
+        settings.mAngularDamping = safe.angularDamping;
+        settings.mGravityFactor = safe.gravityFactor;
+        settings.mMotionQuality = MotionQualityOf(safe);
+        settings.mAllowedDOFs = AllowedDOFsOf(safe);
+        return bodies.CreateAndAddBody(settings, JPH::EActivation::Activate);
+    }
+
+    void PhysicsScene::SetBodyMotion(JPH::BodyID id, const BodyMotion& motion)
+    {
+        if (id.IsInvalid())
+        {
+            return;
+        }
+
+        JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
+        if (bodies.GetMotionType(id) == JPH::EMotionType::Static)
+        {
+            return;
+        }
+
+        const BodyMotion safe = Sanitized(motion);
+        bodies.SetMotionType(id, MotionTypeOf(safe), JPH::EActivation::DontActivate);
+        bodies.SetFriction(id, safe.friction);
+        bodies.SetRestitution(id, safe.restitution);
+        bodies.SetGravityFactor(id, safe.gravityFactor);
+        bodies.SetMotionQuality(id, MotionQualityOf(safe));
+        {
+            // 減衰と質量は BodyInterface に口が無い。ロックは BodyInterface を呼ぶ前に外す
+            const JPH::BodyLockWrite lock{m_physicsSystem.GetBodyLockInterface(), id};
+            if (lock.Succeeded())
+            {
+                JPH::Body& body = lock.GetBody();
+                JPH::MotionProperties* properties = body.GetMotionProperties();
+                properties->SetLinearDamping(safe.linearDamping);
+                properties->SetAngularDamping(safe.angularDamping);
+                JPH::MassProperties mass = body.GetShape()->GetMassProperties();
+                mass.ScaleToMass(safe.mass);
+                properties->SetMassProperties(AllowedDOFsOf(safe), mass);
+            }
+        }
+        bodies.ActivateBody(id);
+    }
+
+    void PhysicsScene::MoveKinematic(JPH::BodyID id,
+                                     const NS::Core::Vector3& position,
+                                     const NS::Core::Quaternion& rotation,
+                                     float deltaTime)
+    {
+        if (id.IsInvalid() || !(deltaTime > 0.0f))
+        {
+            return;
+        }
+
+        m_physicsSystem.GetBodyInterface().MoveKinematic(
+            id, ToJolt(position), ToJolt(rotation).Normalized(), deltaTime);
+    }
+
+    void PhysicsScene::TeleportBody(JPH::BodyID id,
+                                    const NS::Core::Vector3& position,
+                                    const NS::Core::Quaternion& rotation)
+    {
+        if (id.IsInvalid())
+        {
+            return;
+        }
+
+        m_physicsSystem.GetBodyInterface().SetPositionAndRotation(
+            id, ToJolt(position), ToJolt(rotation).Normalized(), JPH::EActivation::Activate);
+    }
+
+    void PhysicsScene::AddBodyForce(JPH::BodyID id, const NS::Core::Vector3& force)
+    {
+        if (id.IsInvalid())
+        {
+            return;
+        }
+
+        m_physicsSystem.GetBodyInterface().AddForce(id, ToJolt(force));
+    }
+
+    void PhysicsScene::AddBodyImpulse(JPH::BodyID id, const NS::Core::Vector3& impulse)
+    {
+        if (id.IsInvalid())
+        {
+            return;
+        }
+
+        m_physicsSystem.GetBodyInterface().AddImpulse(id, ToJolt(impulse));
+    }
+
+    void PhysicsScene::AddBodyTorque(JPH::BodyID id, const NS::Core::Vector3& torque)
+    {
+        if (id.IsInvalid())
+        {
+            return;
+        }
+
+        m_physicsSystem.GetBodyInterface().AddTorque(id, ToJolt(torque));
+    }
+
+    void PhysicsScene::AddBodyAngularImpulse(JPH::BodyID id, const NS::Core::Vector3& angularImpulse)
+    {
+        if (id.IsInvalid())
+        {
+            return;
+        }
+
+        m_physicsSystem.GetBodyInterface().AddAngularImpulse(id, ToJolt(angularImpulse));
+    }
+
+    void PhysicsScene::WakeBody(JPH::BodyID id)
+    {
+        if (id.IsInvalid())
+        {
+            return;
+        }
+
+        m_physicsSystem.GetBodyInterface().ActivateBody(id);
+    }
+
+    void PhysicsScene::SetGravity(const NS::Core::Vector3& gravity)
+    {
+        if (!std::isfinite(gravity.x) || !std::isfinite(gravity.y) || !std::isfinite(gravity.z))
+        {
+            return;
+        }
+
+        m_physicsSystem.SetGravity(ToJolt(gravity));
+    }
+
+    NS::Core::Vector3 PhysicsScene::Gravity() const
+    {
+        return FromJolt(m_physicsSystem.GetGravity());
     }
 
     void PhysicsScene::OptimizeBroadPhase()
