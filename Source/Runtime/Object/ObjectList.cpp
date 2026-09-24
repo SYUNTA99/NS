@@ -124,13 +124,14 @@ namespace NS::Obj
         return raw;
     }
 
-    GameObject* ObjectList::AppendWithNewId(std::unique_ptr<GameObject> obj)
+    GameObject* ObjectList::AppendWithNewId(std::unique_ptr<GameObject> obj, std::string name)
     {
         if (!obj)
         {
             return nullptr;
         }
         obj->SetId(AllocateObjectId());
+        obj->SetName(std::move(name));
         return Append(std::move(obj));
     }
 

@@ -1,10 +1,10 @@
 #include <Game/Level/AreaCameraActivator.h>
 #include <Game/Level/Finisher.h>
-#include <Game/Level/FollowCameraFeed.h>
 #include <Game/Level/Health.h>
 #include <Game/Level/Respawner.h>
 #include <Game/Level/ScreenFade.h>
 #include <Game/Player.h>
+#include <Game/Player/PlayerCameraSpawner.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerInputRelay.h>
 #include <Game/Player/PlayerStateManager.h>
@@ -43,7 +43,7 @@ TEST(PlayerTest, ResponseComponentsTrailTheUpdateBand)
     EXPECT_EQ(player.FindComponent<NS::Game::Level::Respawner>(), player.Components()[count - 4]);
     EXPECT_EQ(player.FindComponent<NS::Game::Level::Finisher>(), player.Components()[count - 3]);
     EXPECT_EQ(player.FindComponent<NS::Game::Level::AreaCameraActivator>(), player.Components()[count - 2]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Level::FollowCameraFeed>(), player.Components()[count - 1]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerCameraSpawner>(), player.Components()[count - 1]);
 }
 
 TEST(PlayerTest, InputRelayResolvesBothSidesOnStart)

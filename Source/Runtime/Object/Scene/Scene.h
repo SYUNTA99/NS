@@ -156,9 +156,9 @@ namespace NS::Obj
         //! 型が実行時にしか決まらない時の受け口。型が分かっているなら SpawnTransient<T> を使う
         GameObject* SpawnTransient(std::unique_ptr<GameObject> obj);
 
-        //! @brief 実行時に配置物を 1 体入れる。新しい永続 id を振る
+        //! @brief 実行時に配置物を 1 体入れる。新しい永続 id と表示名を振る
         //! @details 一時オブジェクトと違い保存に写り、データからの組み直しで他の配置物と一緒に消える
-        GameObject* SpawnObject(std::unique_ptr<GameObject> obj);
+        GameObject* SpawnObject(std::unique_ptr<GameObject> obj, std::string name);
 
         //! @brief 配置物を 1 体消す。居なければ何もしない
         //! @details 当たり箱も揃うので、走っている世界を止めずに消せる

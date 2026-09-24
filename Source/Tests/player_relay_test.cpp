@@ -1,4 +1,5 @@
 #include <Game/Level/FollowCameraFeed.h>
+#include <Game/Player/PlayerCameraSpawner.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerInputRelay.h>
 #include <Runtime/Platform/Clock.h>
@@ -23,6 +24,7 @@ namespace
 {
     using NS::Core::Vector3;
     using NS::Game::Level::FollowCameraFeed;
+    using NS::Game::Player::PlayerCameraSpawner;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerInputRelay;
     using NS::Obj::GameObject;
@@ -40,7 +42,6 @@ namespace
     constexpr float k_RunSpeedThreshold = 4.0f;
 
     constexpr std::uint32_t k_PlayerId = 11u;
-    constexpr std::uint32_t k_StrangerId = 99u;
 
     void BuildRelayRig(GameObject& owner)
     {
@@ -65,39 +66,29 @@ namespace
         return *owner.FindComponent<PlayerComponent>();
     }
 
-    FollowCameraFeed& Feed(GameObject& owner)
+    //! 追従カメラと、それへ追う相手の運動を渡す部品を 1 組にして持つ
+    struct FeedCamera
     {
-        return *owner.FindComponent<FollowCameraFeed>();
-    }
-
-    //! 追従先はリフレクション経由でしか書けない。データからの構築と同じ set を通す
-    void SetTargetRef(NS::Obj::Component& comp, std::uint32_t id)
-    {
-        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
-        ASSERT_NE(info, nullptr);
-        for (std::size_t i = 0; i < info->fieldCount; ++i)
-        {
-            if (std::string_view{info->fields[i].name} != "追従対象")
-                continue;
-            const ObjectRef ref{id};
-            info->fields[i].set(&comp, &ref);
-            return;
-        }
-        FAIL() << "追従対象フィールドがリフレクションに無い";
-    }
+        ThirdPersonFollow& follow;
+        FollowCameraFeed& feed;
+    };
 
     //! 3 段の距離を既定値から離して置く。どの段に寄ったかを距離 1 つで見分けられる
-    ThirdPersonFollow& AddFollowCamera(Scene& scene)
+    FeedCamera AddFeedCamera(Scene& scene, std::uint32_t targetId)
     {
         GameObject* rig = scene.SpawnTransient<GameObject>();
         auto& follow = *rig->AddComponent<ThirdPersonFollow>();
         follow.SetActive(true);
         follow.SetAutoDistances(k_IdleDistance, k_RunDistance, k_JumpDistance);
         follow.SetRunSpeedThreshold(k_RunSpeedThreshold);
-        return follow;
+        follow.SetTargetRef(ObjectRef{targetId});
+        auto& feed = *rig->AddComponent<FollowCameraFeed>();
+        // 開始は部品が揃ってから。SpawnTransient の開始は積む前に済んでいる
+        rig->OnStart();
+        return FeedCamera{follow, feed};
     }
 
-    GameObject& SpawnFeeder(Scene& scene, std::uint32_t id, bool withEntity)
+    GameObject& SpawnTarget(Scene& scene, std::uint32_t id, bool withEntity)
     {
         GameObject* owner = scene.SpawnTransient<GameObject>();
         ObjectIdAccess::SetId(*owner, id);
@@ -105,7 +96,6 @@ namespace
         {
             owner->AddComponent<PlayerComponent>();
         }
-        owner->AddComponent<FollowCameraFeed>();
         owner->OnStart();
         return *owner;
     }
@@ -262,95 +252,70 @@ TEST_F(PlayerRelayTest, MissingSideIsHarmless)
     EXPECT_FLOAT_EQ(player.DesiredSpeedScale(), 0.5f);
 }
 
-TEST_F(PlayerRelayTest, AirborneOwnerZoomsTheFollowingCamera)
+TEST_F(PlayerRelayTest, AirborneTargetZoomsTheCamera)
 {
     Scene scene;
-    GameObject& owner = SpawnFeeder(scene, k_PlayerId, true);
-    auto& follow = AddFollowCamera(scene);
-    SetTargetRef(follow, k_PlayerId);
-    follow.OnStart();
-    ASSERT_EQ(follow.Target(), &owner.Root());
+    GameObject& target = SpawnTarget(scene, k_PlayerId, true);
+    FeedCamera camera = AddFeedCamera(scene, k_PlayerId);
+    ASSERT_EQ(camera.follow.Target(), &target.Root());
 
-    ASSERT_FALSE(Player(owner).IsGrounded());
-    Feed(owner).OnUpdate();
-    SettleZoom(follow);
+    ASSERT_FALSE(Player(target).IsGrounded());
+    camera.feed.OnUpdate();
+    SettleZoom(camera.follow);
 
-    EXPECT_NEAR(follow.Distance(), k_JumpDistance, 0.01f);
+    EXPECT_NEAR(camera.follow.Distance(), k_JumpDistance, 0.01f);
 }
 
-TEST_F(PlayerRelayTest, GroundedRunSpeedReachesTheFollowingCamera)
+TEST_F(PlayerRelayTest, GroundedRunSpeedReachesTheCamera)
 {
     Scene scene;
-    GameObject& owner = SpawnFeeder(scene, k_PlayerId, true);
-    auto& follow = AddFollowCamera(scene);
-    SetTargetRef(follow, k_PlayerId);
-    follow.OnStart();
+    GameObject& target = SpawnTarget(scene, k_PlayerId, true);
+    FeedCamera camera = AddFeedCamera(scene, k_PlayerId);
 
-    Player(owner).SetGrounded(true);
-    Player(owner).SetVelocity(Vector3{10.0f, 0.0f, 0.0f});
-    Feed(owner).OnUpdate();
-    SettleZoom(follow);
+    Player(target).SetGrounded(true);
+    Player(target).SetVelocity(Vector3{10.0f, 0.0f, 0.0f});
+    camera.feed.OnUpdate();
+    SettleZoom(camera.follow);
 
-    EXPECT_NEAR(follow.Distance(), k_RunDistance, 0.01f);
+    EXPECT_NEAR(camera.follow.Distance(), k_RunDistance, 0.01f);
 }
 
-TEST_F(PlayerRelayTest, CameraFollowingSomeoneElseIsNotFed)
+// 未採番の 0 同士を突き合わせると、追従対象の無いカメラが未採番の配置物を追っている扱いになる
+TEST_F(PlayerRelayTest, UnsetTargetFeedsNothing)
 {
     Scene scene;
-    GameObject& owner = SpawnFeeder(scene, k_PlayerId, true);
-    GameObject* stranger = scene.SpawnTransient<GameObject>();
-    ObjectIdAccess::SetId(*stranger, k_StrangerId);
+    GameObject& target = SpawnTarget(scene, 0u, true);
+    FeedCamera camera = AddFeedCamera(scene, 0u);
 
-    auto& follow = AddFollowCamera(scene);
-    SetTargetRef(follow, k_StrangerId);
-    follow.OnStart();
-    ASSERT_EQ(follow.Target(), &stranger->Root());
+    ASSERT_FALSE(Player(target).IsGrounded());
+    camera.feed.OnUpdate();
+    SettleZoom(camera.follow);
 
-    ASSERT_FALSE(Player(owner).IsGrounded());
-    Feed(owner).OnUpdate();
-    SettleZoom(follow);
-
-    EXPECT_NEAR(follow.Distance(), k_IdleDistance, 0.01f);
+    EXPECT_NEAR(camera.follow.Distance(), k_IdleDistance, 0.01f);
 }
 
-TEST_F(PlayerRelayTest, UnsetReferenceDoesNotMatchTheUnnumberedOwner)
+TEST_F(PlayerRelayTest, TargetWithoutEntityFeedsNothing)
 {
     Scene scene;
-    GameObject& owner = SpawnFeeder(scene, 0u, true);
-    auto& follow = AddFollowCamera(scene);
-    follow.SetTarget(&owner.Root());
-    ASSERT_FALSE(follow.TargetRef().IsSet());
+    GameObject& target = SpawnTarget(scene, k_PlayerId, false);
+    FeedCamera camera = AddFeedCamera(scene, k_PlayerId);
+    ASSERT_EQ(camera.follow.Target(), &target.Root());
 
-    ASSERT_FALSE(Player(owner).IsGrounded());
-    Feed(owner).OnUpdate();
-    SettleZoom(follow);
+    camera.feed.OnUpdate();
+    SettleZoom(camera.follow);
 
-    EXPECT_NEAR(follow.Distance(), k_IdleDistance, 0.01f);
+    EXPECT_NEAR(camera.follow.Distance(), k_IdleDistance, 0.01f);
 }
 
-TEST_F(PlayerRelayTest, OwnerWithoutEntityFeedsNothing)
+// 自機を追うカメラが無ければ、自機を追う Player Camera を配置物として 1 台だけ足す
+TEST_F(PlayerRelayTest, SpawnerAddsAPlayerCameraWhenNoneFollowsTheOwner)
 {
     Scene scene;
-    GameObject& owner = SpawnFeeder(scene, k_PlayerId, false);
-    auto& follow = AddFollowCamera(scene);
-    SetTargetRef(follow, k_PlayerId);
-    follow.OnStart();
-    ASSERT_EQ(follow.Target(), &owner.Root());
+    GameObject& owner = SpawnTarget(scene, k_PlayerId, true);
+    auto& spawner = *owner.AddComponent<PlayerCameraSpawner>();
 
-    Feed(owner).OnUpdate();
-    SettleZoom(follow);
-
-    EXPECT_NEAR(follow.Distance(), k_IdleDistance, 0.01f);
-}
-
-// 持ち主を追うカメラが無ければ、持ち主を追う 1 台を配置物として足す。次のフレームからはそれへ渡す
-TEST_F(PlayerRelayTest, FeedSpawnsACameraWhenNoneFollowsTheOwner)
-{
-    Scene scene;
-    GameObject& owner = SpawnFeeder(scene, k_PlayerId, true);
-
-    Feed(owner).OnUpdate();
-    Feed(owner).OnUpdate();
+    spawner.OnUpdate();
+    spawner.OnUpdate();
 
     std::vector<ThirdPersonFollow*> following;
     scene.Objects().ForEachComponent<ThirdPersonFollow>([&following](ThirdPersonFollow& follow) {
@@ -360,20 +325,22 @@ TEST_F(PlayerRelayTest, FeedSpawnsACameraWhenNoneFollowsTheOwner)
     ASSERT_EQ(following.size(), 1u);
     EXPECT_TRUE(following[0]->IsActive());
     EXPECT_EQ(following[0]->Target(), &owner.Root());
-    // 一時オブジェクトだと組み直しを越えて残り、作り直された持ち主の代わりに古い Transform を指す
-    EXPECT_FALSE(following[0]->Owner()->IsTransient());
+    GameObject* camera = following[0]->Owner();
+    EXPECT_EQ(camera->Name(), "Player Camera");
+    EXPECT_NE(camera->FindComponent<FollowCameraFeed>(), nullptr);
+    // 一時オブジェクトだと組み直しを越えて残り、作り直された自機の代わりに古い Transform を指す
+    EXPECT_FALSE(camera->IsTransient());
 }
 
-TEST_F(PlayerRelayTest, FeedDoesNotSpawnWhileACameraFollowsTheOwner)
+TEST_F(PlayerRelayTest, SpawnerLeavesAnExistingCameraAlone)
 {
     Scene scene;
-    GameObject& owner = SpawnFeeder(scene, k_PlayerId, true);
-    auto& follow = AddFollowCamera(scene);
-    SetTargetRef(follow, k_PlayerId);
-    follow.OnStart();
+    GameObject& owner = SpawnTarget(scene, k_PlayerId, true);
+    auto& spawner = *owner.AddComponent<PlayerCameraSpawner>();
+    (void)AddFeedCamera(scene, k_PlayerId);
     const std::size_t before = scene.Objects().ObjectCount();
 
-    Feed(owner).OnUpdate();
+    spawner.OnUpdate();
 
     EXPECT_EQ(scene.Objects().ObjectCount(), before);
 }

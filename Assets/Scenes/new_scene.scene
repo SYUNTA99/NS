@@ -2,7 +2,7 @@
   "environment": {
     "skybox": "Assets/Skybox/kurt/"
   },
-  "nextObjectId": 69,
+  "nextObjectId": 70,
   "objects": [
     {
       "components": [
@@ -259,11 +259,6 @@
           "fields": {},
           "id": 23,
           "type": "AreaCameraActivator"
-        },
-        {
-          "fields": {},
-          "id": 64,
-          "type": "FollowCameraFeed"
         }
       ],
       "id": 2
@@ -318,9 +313,15 @@
           },
           "id": 13,
           "type": "ThirdPersonFollow"
+        },
+        {
+          "fields": {},
+          "id": 69,
+          "type": "FollowCameraFeed"
         }
       ],
-      "id": 3
+      "id": 3,
+      "name": "Player Camera"
     },
     {
       "components": [

@@ -140,7 +140,7 @@ namespace NS::Obj
         return raw;
     }
 
-    GameObject* Scene::SpawnObject(std::unique_ptr<GameObject> obj)
+    GameObject* Scene::SpawnObject(std::unique_ptr<GameObject> obj, std::string name)
     {
         if (!obj)
         {
@@ -148,7 +148,7 @@ namespace NS::Obj
         }
 
         obj->AttachScene(this);
-        GameObject* raw = m_objects.AppendWithNewId(std::move(obj));
+        GameObject* raw = m_objects.AppendWithNewId(std::move(obj), std::move(name));
         if (raw == nullptr)
         {
             return nullptr;
