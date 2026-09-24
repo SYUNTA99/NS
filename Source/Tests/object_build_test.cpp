@@ -1,4 +1,3 @@
-#include "Game/Level/BlockObject.h"
 #include "Game/Player.h"
 #include "tuning_field_access.h"
 
@@ -26,8 +25,8 @@
 
 namespace
 {
-    using NS::Game::Level::MakeCellCubeComponents;
-    using NS::Game::Level::MakeCellObject;
+    using NS::Editor::MakeCellCubeComponents;
+    using NS::Editor::MakeCellObject;
     using NS::Obj::ObjectData;
     using NS::Core::Vector3;
 

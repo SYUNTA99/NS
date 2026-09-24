@@ -1,4 +1,4 @@
-#include "Game/Level/BlockObject.h"
+#include "Editor/EditorObjects.h"
 #include "Game/Level/LaunchedBody.h"
 
 #include <Runtime/Core/Math.h>
@@ -55,7 +55,7 @@ TEST(PlayBaselineSave, FrozenBaselineIgnoresPlayMovement)
     NS::Obj::Scene scene;
 
     SceneNs::SceneData level;
-    SceneNs::ObjectData cube = LevelNs::MakeCellObject(0, 0, 0);
+    SceneNs::ObjectData cube = NS::Editor::MakeCellObject(0, 0, 0);
     SceneNs::SetObjectPosition(cube, NS::Core::Vector3{1.0f, 2.0f, 3.0f});
     level.objects.push_back(std::move(cube));
     SceneNs::EnsureUniqueObjectIds(level);
@@ -131,7 +131,7 @@ TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)
     NS::Obj::Scene scene;
 
     SceneNs::SceneData level;
-    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(level);
     const std::uint32_t blockId = level.objects[0].objectId;
     scene.LoadFromData(std::move(level));

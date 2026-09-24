@@ -2,7 +2,7 @@
 
 #include "Editor/LevelFilePaths.h"
 #include "Game/Game.h"
-#include "Game/Level/BlockObject.h"
+#include "Editor/EditorObjects.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneData.h"
@@ -27,8 +27,8 @@ namespace
         }
 
         NS::Obj::SceneData data;
-        data.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
-        data.objects.push_back(NS::Game::Level::MakeCellObject(1, 0, 0));
+        data.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+        data.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
         NS::Obj::EnsureUniqueObjectIds(data);
         if (!NS::Obj::SaveSceneToJsonFile(data, *path))
         {

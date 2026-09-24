@@ -1,4 +1,4 @@
-#include "Game/Level/BlockObject.h"
+#include "Editor/EditorObjects.h"
 
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/AssetManager.h>
@@ -20,7 +20,7 @@ namespace
 {
     SceneNs::ObjectData MakeRotatedCube(const NS::Core::Vector3& eulerDegrees)
     {
-        SceneNs::ObjectData object = LevelNs::MakeCellObject(0, 0, 0);
+        SceneNs::ObjectData object = NS::Editor::MakeCellObject(0, 0, 0);
         SceneNs::SetObjectRotation(object, NS::Core::EulerDegreesToQuaternion(eulerDegrees));
         return object;
     }

@@ -1,6 +1,6 @@
 #include "golden_trace.h"
 
-#include "Game/Level/BlockObject.h"
+#include "Editor/EditorObjects.h"
 #include "Game/Player.h"
 
 #include <Game/Level/Breakable.h>
@@ -121,7 +121,7 @@ namespace
         {
             NS::Obj::SceneData data;
             for (std::int16_t z = 0; z < k_ImpactFloorCells; ++z)
-                data.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, z));
+                data.objects.push_back(NS::Editor::MakeCellObject(0, 0, z));
 
             NS::Obj::ObjectData player =
                 MakePlayerObject(Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{});
@@ -129,7 +129,7 @@ namespace
             player.components.push_back(NS::Obj::MakeComponentEntry("CollisionInput"));
             data.objects.push_back(player);
 
-            NS::Obj::ObjectData target = NS::Game::Level::MakeCellObject(0, 1, k_ImpactTargetZ);
+            NS::Obj::ObjectData target = NS::Editor::MakeCellObject(0, 1, k_ImpactTargetZ);
             target.components.push_back(NS::Obj::MakeComponentEntry("Breakable"));
             data.objects.push_back(target);
 

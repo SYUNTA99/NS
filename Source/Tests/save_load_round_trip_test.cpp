@@ -1,5 +1,5 @@
 #include "Editor/LevelFilePaths.h"
-#include "Game/Level/BlockObject.h"
+#include "Editor/EditorObjects.h"
 #include "Game/Level/Breakable.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/FollowCameraObject.h"
@@ -43,12 +43,12 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
 
     SceneNs::SceneData src;
     src.objects.push_back(MakePlayerObject(NS::Core::Vector3{1.0f, 2.0f, 3.0f}, NS::Core::Quaternion{}));
-    src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
-    SceneNs::ObjectData rotated = LevelNs::MakeCellObject(1, 0, 1);
+    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    SceneNs::ObjectData rotated = NS::Editor::MakeCellObject(1, 0, 1);
     SceneNs::SetObjectRotation(rotated,
                                NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.5f, 0.0f, 0.0f));
     src.objects.push_back(rotated);
-    src.objects.push_back(LevelNs::MakeCellObject(2, 0, 0));
+    src.objects.push_back(NS::Editor::MakeCellObject(2, 0, 0));
     // 編集中のレベルは読込採番か Command 採番で常に id を持つため、比べる元も採番後から取る
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[0].objectId));
@@ -64,7 +64,7 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
 TEST(SaveLoadRoundTrip, DisabledComponentSurvivesJsonRoundTrip)
 {
     SceneNs::SceneData src;
-    src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
+    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
 
     nlohmann::json* entry = SceneNs::FindComponentEntry(src.objects[0], "MeshRenderer");
@@ -84,7 +84,7 @@ TEST(SaveLoadRoundTrip, DisabledComponentSurvivesJsonRoundTrip)
 TEST(SaveLoadRoundTrip, ObjectNameSurvivesJsonRoundTrip)
 {
     SceneNs::SceneData src;
-    src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
+    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects[0].name = "足場A";
     const SceneNs::SceneData named = src;
@@ -104,7 +104,7 @@ TEST(SaveLoadRoundTrip, ObjectNameSurvivesJsonRoundTrip)
 TEST(SaveLoadRoundTrip, ObjectActiveSurvivesJsonRoundTrip)
 {
     SceneNs::SceneData src;
-    src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
+    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
     const SceneNs::SceneData enabled = src;
 
@@ -124,8 +124,8 @@ TEST(SaveLoadRoundTrip, ObjectActiveSurvivesJsonRoundTrip)
 TEST(SaveLoadRoundTrip, ObjectSequenceSurvivesJsonRoundTrip)
 {
     SceneNs::SceneData src;
-    src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
-    src.objects.push_back(LevelNs::MakeCellObject(1, 0, 0));
+    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    src.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
     const std::uint32_t first = src.objects[0].objectId;
     const std::uint32_t second = src.objects[1].objectId;
@@ -142,7 +142,7 @@ TEST(SaveLoadRoundTrip, MissingActiveReadsAsDefault)
 {
     // 欄を持たない古いファイルが従来どおり読めること
     SceneNs::SceneData src;
-    src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
+    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
 
     const std::string text = SceneNs::SerializeSceneToJson(src);
@@ -160,8 +160,8 @@ TEST(SaveLoadRoundTrip, MissingActiveReadsAsDefault)
 TEST(SaveLoadRoundTrip, ObjectParentSurvivesJsonRoundTrip)
 {
     SceneNs::SceneData src;
-    src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
-    src.objects.push_back(LevelNs::MakeCellObject(1, 0, 0));
+    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    src.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects[1].parentId = src.objects[0].objectId;
     const SceneNs::SceneData parented = src;
@@ -189,7 +189,7 @@ TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
     ASSERT_TRUE(path2);
 
     SceneNs::SceneData src;
-    src.objects.push_back(LevelNs::MakeCellObject(5, 5, 5));
+    src.objects.push_back(NS::Editor::MakeCellObject(5, 5, 5));
 
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path1));
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path2));
@@ -208,7 +208,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData src;
-    src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
+    src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
     auto bytes = NS::Platform::FileSystem::ReadAllBytes(*path);
@@ -350,7 +350,7 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData src;
-    SceneNs::ObjectData solid = LevelNs::MakeCellObject(0, 0, 0);
+    SceneNs::ObjectData solid = NS::Editor::MakeCellObject(0, 0, 0);
     const NS::Core::Vector3 baseColor{0.2f, 0.6f, 0.9f};
     for (nlohmann::json& component : solid.components)
         if (SceneNs::HasField(component, "基本色"))
@@ -569,7 +569,7 @@ namespace
     // Cube 1 個へ質量と耐久を積む。値は欄名をキーに書き、Inspector で入れた時と同じ形にする
     SceneNs::ObjectData MakeBreakableCube(int cellX, float mass, float toughness)
     {
-        SceneNs::ObjectData object = LevelNs::MakeCellObject(cellX, 0, 0);
+        SceneNs::ObjectData object = NS::Editor::MakeCellObject(cellX, 0, 0);
         nlohmann::json breakable = SceneNs::MakeComponentEntry("Breakable");
         SceneNs::SetField(breakable, "質量", mass);
         SceneNs::SetField(breakable, "耐久", toughness);

@@ -1,4 +1,4 @@
-#include "Game/Level/BlockObject.h"
+#include "Editor/EditorObjects.h"
 #include "Game/Level/FollowCameraObject.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Components/TransformComponent.h"
@@ -32,9 +32,9 @@ namespace
 TEST(ObjectIdTest, EnsureUniqueAssignsMissingIds)
 {
     SceneNs::SceneData level;
-    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
-    level.objects.push_back(LevelNs::MakeCellObject(1, 0, 0));
-    level.objects.push_back(LevelNs::MakeCellObject(2, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(2, 0, 0));
 
     SceneNs::EnsureUniqueObjectIds(level);
 
@@ -47,9 +47,9 @@ TEST(ObjectIdTest, EnsureUniqueAssignsMissingIds)
 TEST(ObjectIdTest, EnsureUniqueReassignsDuplicatesKeepingFirst)
 {
     SceneNs::SceneData level;
-    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
-    level.objects.push_back(LevelNs::MakeCellObject(1, 0, 0));
-    level.objects.push_back(LevelNs::MakeCellObject(2, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(2, 0, 0));
     level.objects[0].objectId = 5;
     level.objects[1].objectId = 5;
     level.objects[2].objectId = 2;
@@ -66,8 +66,8 @@ TEST(ObjectIdTest, EnsureUniqueReassignsDuplicatesKeepingFirst)
 TEST(ObjectIdTest, JsonRoundTripPreservesIdsAndCounter)
 {
     SceneNs::SceneData level;
-    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
-    level.objects.push_back(LevelNs::MakeCellObject(3, 1, 2));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(3, 1, 2));
     level.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     // 追従カメラも積んでおく。読込時の既定合成で採番カウンタが動くと counter 比較が成り立たないため
     level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
@@ -106,9 +106,9 @@ TEST(ObjectIdTest, JsonWithoutIdsGetsAssignedOnLoad)
 TEST(ObjectIdTest, FindObjectIndexByIdReturnsMatchingIndex)
 {
     SceneNs::SceneData level;
-    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
-    level.objects.push_back(LevelNs::MakeCellObject(1, 0, 0));
-    level.objects.push_back(LevelNs::MakeCellObject(2, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(2, 0, 0));
     SceneNs::EnsureUniqueObjectIds(level);
 
     const std::uint32_t id = level.objects[1].objectId;
@@ -118,7 +118,7 @@ TEST(ObjectIdTest, FindObjectIndexByIdReturnsMatchingIndex)
 TEST(ObjectIdTest, FindObjectIndexByIdReturnsNoIndexForUnknownOrUnset)
 {
     SceneNs::SceneData level;
-    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(level);
 
     EXPECT_EQ(SceneNs::FindObjectIndexById(level, 9999u), SceneNs::k_NoObjectIndex);

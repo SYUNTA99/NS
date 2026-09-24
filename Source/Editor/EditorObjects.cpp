@@ -1,6 +1,5 @@
 #include "Editor/EditorObjects.h"
 
-#include "Game/Level/BlockObject.h"
 #include "Game/Level/FollowCameraObject.h"
 #include "Game/Level/Goal.h"
 #include "Game/Level/Hazard.h"
@@ -168,6 +167,37 @@ namespace NS::Editor
         NS::Obj::SetObjectRotation(object, rotation);
     }
 
+    nlohmann::json MakeMeshRendererEntry(std::string_view meshName,
+                                         std::string_view materialName,
+                                         const NS::Core::Vector3& baseColor)
+    {
+        nlohmann::json entry = NS::Obj::MakeComponentEntry("MeshRenderer");
+        NS::Obj::SetField(entry, "メッシュ", meshName);
+        NS::Obj::SetField(entry, "マテリアル", materialName);
+        NS::Obj::SetField(entry, "基本色", baseColor);
+        return entry;
+    }
+
+    nlohmann::json MakeCellCubeComponents()
+    {
+        // 1m 立方の cube mesh に当たりを合わせる
+        nlohmann::json box = NS::Obj::MakeComponentEntry("BoxCollider");
+        NS::Obj::SetField(box, "半径", NS::Core::Vector3{0.5f, 0.5f, 0.5f});
+        // 色はテクスチャ未解決時のフォールバック
+        return nlohmann::json::array(
+            {MakeMeshRendererEntry("cube", "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}), std::move(box)});
+    }
+
+    NS::Obj::ObjectData MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z)
+    {
+        NS::Obj::ObjectData object{};
+        object.components = MakeCellCubeComponents();
+        // components を確定した後に transform を書き込む。先に書くと components 代入が TransformComponent を消す
+        NS::Obj::SetObjectPosition(object,
+                                   NS::Core::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
+        return object;
+    }
+
     nlohmann::json MakeCellSlopeComponents(float angleDegrees)
     {
         const char* meshName = "wedge45";
@@ -182,7 +212,7 @@ namespace NS::Editor
         NS::Obj::SetField(slope, "角度 (度)", angleDegrees);
         NS::Obj::SetField(slope, "半径", NS::Core::Vector3{0.5f, 0.5f, 0.5f});
         return nlohmann::json::array(
-            {NS::Game::Level::MakeMeshRendererEntry(meshName, "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}),
+            {MakeMeshRendererEntry(meshName, "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}),
              std::move(slope)});
     }
 
@@ -191,13 +221,13 @@ namespace NS::Editor
         switch (kind)
         {
         case PrimitiveKind::Cube:
-            return NS::Game::Level::MakeCellCubeComponents();
+            return MakeCellCubeComponents();
         case PrimitiveKind::Sphere:
         {
             nlohmann::json sphere = NS::Obj::MakeComponentEntry("SphereCollider");
             NS::Obj::SetField(sphere, "半径", 0.5f);
             return nlohmann::json::array(
-                {NS::Game::Level::MakeMeshRendererEntry("sphere", "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}),
+                {MakeMeshRendererEntry("sphere", "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}),
                  std::move(sphere)});
         }
         case PrimitiveKind::Slope:
@@ -212,7 +242,7 @@ namespace NS::Editor
     {
         // 視覚用マーカーとして金色のキューブを付与する
         return nlohmann::json::array(
-            {NS::Game::Level::MakeMeshRendererEntry("cube", "", NS::Core::Vector3{1.0f, 0.84f, 0.0f}),
+            {MakeMeshRendererEntry("cube", "", NS::Core::Vector3{1.0f, 0.84f, 0.0f}),
              NS::Obj::MakeComponentEntry("Goal")});
     }
 

@@ -1,4 +1,4 @@
-#include "Game/Level/BlockObject.h"
+#include "Editor/EditorObjects.h"
 #include "Game/Player.h"
 
 #include <Game/Level/Health.h>
@@ -73,7 +73,7 @@ TEST(HazardTest, DrainsPlayerHealthThroughLateUpdateBand)
     SceneNs::SceneData data;
     data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     // プレイヤーと同じ位置の cell に hazard の印を足すと、カプセルと箱が必ず重なる
-    SceneNs::ObjectData hazard = LevelNs::MakeCellObject(0, 0, 0);
+    SceneNs::ObjectData hazard = NS::Editor::MakeCellObject(0, 0, 0);
     hazard.components.push_back(SceneNs::MakeComponentEntry("Hazard"));
     data.objects.push_back(hazard);
     scene.LoadFromData(std::move(data));
@@ -93,7 +93,7 @@ TEST(HazardTest, NoOverlapNoDamage)
     SceneNs::Scene scene;
     SceneNs::SceneData data;
     data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    SceneNs::ObjectData hazard = LevelNs::MakeCellObject(10, 0, 0);
+    SceneNs::ObjectData hazard = NS::Editor::MakeCellObject(10, 0, 0);
     hazard.components.push_back(SceneNs::MakeComponentEntry("Hazard"));
     data.objects.push_back(hazard);
     scene.LoadFromData(std::move(data));

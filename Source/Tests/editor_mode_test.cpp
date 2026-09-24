@@ -1,7 +1,6 @@
 #include "Editor/EditorMode.h"
 #include "Editor/EditorObjects.h"
 #include "Editor/Undo/IObjectSnapshotApplier.h"
-#include "Game/Level/BlockObject.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Scene/SceneData.h"
 
@@ -91,7 +90,7 @@ TEST(EditorMode, ProgrammaticPlaceAddsBlock)
 TEST(EditorMode, ProgrammaticDeleteRemovesBlock)
 {
     SceneNs::SceneData lv;
-    lv.objects.push_back(LevelNs::MakeCellObject(2, 0, 4));
+    lv.objects.push_back(NS::Editor::MakeCellObject(2, 0, 4));
     SceneNs::EnsureUniqueObjectIds(lv);
     EditorNs::EditorMode editor;
     SceneNs::ObjectList objects;
@@ -107,7 +106,7 @@ TEST(EditorMode, ProgrammaticDeleteRemovesBlock)
 TEST(EditorMode, ProgrammaticRotateCycles)
 {
     SceneNs::SceneData lv;
-    lv.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
+    lv.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(lv);
     EditorNs::EditorMode editor;
     SceneNs::ObjectList objects;
@@ -165,7 +164,7 @@ TEST(EditorMode, LevelDirtyFlagSetByMutation)
 TEST(EditorMode, CellRotationViaProgrammaticOnExistingBlock)
 {
     SceneNs::SceneData lv;
-    lv.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
+    lv.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(lv);
     EditorNs::EditorMode editor;
     SceneNs::ObjectList objects;

@@ -4,7 +4,10 @@
 // cell ブラシの照合・90° 回転・Hierarchy の表示名・パレット雛形・クリックで選ぶ判定箱。出荷ビルドには載らない
 
 #include "Runtime/Core/AABB.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Scene/SceneData.h"
+
+#include <string_view>
 
 namespace NS::Obj
 {
@@ -48,6 +51,17 @@ namespace NS::Editor
 
     //! object の回転を rotationStep に対応する Y 軸 yaw quaternion に設定する
     void SetCellRotationStep(NS::Obj::ObjectData& object, std::uint8_t rotationStep) noexcept;
+
+    //! MeshRenderer の component entry を作る。Mesh / Material / Base Color を書き込む
+    [[nodiscard]] nlohmann::json MakeMeshRendererEntry(std::string_view meshName,
+                                                       std::string_view materialName,
+                                                       const NS::Core::Vector3& baseColor);
+
+    //! 1m 立方の cube 描画と Box 当たりを積んだ、基本キューブの構成を作る
+    [[nodiscard]] nlohmann::json MakeCellCubeComponents();
+
+    //! cell の x, y, z に基本キューブの ObjectData を作る
+    [[nodiscard]] NS::Obj::ObjectData MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z);
 
     //! 指定角度のスロープの構成を作る
     [[nodiscard]] nlohmann::json MakeCellSlopeComponents(float angleDegrees);

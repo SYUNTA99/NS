@@ -1,4 +1,4 @@
-#include "Game/Level/BlockObject.h"
+#include "Editor/EditorObjects.h"
 #include "Game/Player.h"
 #include "tuning_field_access.h"
 
@@ -104,21 +104,21 @@ namespace
                 continue;
             if (course.alongZ)
             {
-                data.objects.push_back(LevelNs::MakeCellObject(0, 0, i));
+                data.objects.push_back(NS::Editor::MakeCellObject(0, 0, i));
                 if (lateralCell != 0)
-                    data.objects.push_back(LevelNs::MakeCellObject(lateralCell, 0, i));
+                    data.objects.push_back(NS::Editor::MakeCellObject(lateralCell, 0, i));
             }
             else
             {
-                data.objects.push_back(LevelNs::MakeCellObject(i, 0, 0));
+                data.objects.push_back(NS::Editor::MakeCellObject(i, 0, 0));
                 if (lateralCell != 0)
-                    data.objects.push_back(LevelNs::MakeCellObject(i, 0, lateralCell));
+                    data.objects.push_back(NS::Editor::MakeCellObject(i, 0, lateralCell));
             }
         }
 
-        SceneNs::ObjectData target = LevelNs::MakeCellObject(course.targetCell, 1, 0);
+        SceneNs::ObjectData target = NS::Editor::MakeCellObject(course.targetCell, 1, 0);
         if (course.alongZ)
-            target = LevelNs::MakeCellObject(0, 1, course.targetCell);
+            target = NS::Editor::MakeCellObject(0, 1, course.targetCell);
         if (course.sphereTarget)
         {
             for (nlohmann::json& entry : target.components)
@@ -299,11 +299,11 @@ namespace
 
         SceneNs::SceneData data;
         for (std::int16_t x = k_FloorFirstX; x <= k_FloorLastX; ++x)
-            data.objects.push_back(LevelNs::MakeCellObject(x, 0, 0));
+            data.objects.push_back(NS::Editor::MakeCellObject(x, 0, 0));
         if (withWall)
-            data.objects.push_back(LevelNs::MakeCellObject(k_WallX, 1, 0));
+            data.objects.push_back(NS::Editor::MakeCellObject(k_WallX, 1, 0));
 
-        SceneNs::ObjectData target = LevelNs::MakeCellObject(0, 1, 0);
+        SceneNs::ObjectData target = NS::Editor::MakeCellObject(0, 1, 0);
         target.components.push_back(SceneNs::MakeComponentEntry("LaunchedBody"));
         data.objects.push_back(target);
         scene.LoadFromData(std::move(data));

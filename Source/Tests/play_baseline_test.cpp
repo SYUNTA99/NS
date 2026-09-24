@@ -1,4 +1,4 @@
-#include "Game/Level/BlockObject.h"
+#include "Editor/EditorObjects.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -29,8 +29,8 @@ TEST(PlayBaseline, TickDoesNotTouchPlayBaseline)
     SceneNs::Scene scene;
     SceneNs::SceneData level;
     level.objects.push_back(MakePlayerObject(NS::Core::Vector3{5.0f, 1.0f, -3.0f}, NS::Core::Quaternion{}));
-    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
-    SceneNs::ObjectData rotated = LevelNs::MakeCellObject(1, 0, 0);
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    SceneNs::ObjectData rotated = NS::Editor::MakeCellObject(1, 0, 0);
     SceneNs::SetObjectRotation(rotated,
                                NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.5f, 0.0f, 0.0f));
     level.objects.push_back(rotated);

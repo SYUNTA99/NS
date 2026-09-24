@@ -1,4 +1,4 @@
-#include "Game/Level/BlockObject.h"
+#include "Editor/EditorObjects.h"
 #include "Game/Level/FollowCameraObject.h"
 #include "Game/Player.h"
 #include "Runtime/Core/Sphere.h"
@@ -97,8 +97,8 @@ TEST(ObjectListTest, InitialStateIsEmpty)
 TEST(ObjectListTest, BuildFollowsWrittenSequence)
 {
     SceneData level;
-    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
-    level.objects.push_back(NS::Game::Level::MakeCellObject(1, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
     const std::uint32_t first = level.objects[0].objectId;
     const std::uint32_t second = level.objects[1].objectId;
@@ -116,7 +116,7 @@ TEST(ObjectListTest, BuildFollowsWrittenSequence)
 TEST(ObjectListTest, InactiveObjectHasNoCollision)
 {
     SceneData level;
-    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
     level.objects[0].active = false;
 
@@ -159,7 +159,7 @@ TEST(ObjectListTest, TriggerBoxHasNoSolidCollision)
 TEST(ObjectListTest, RebuildDropsTheCollidersOfTheObjectsItReplaces)
 {
     SceneData level;
-    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
 
     NS::Obj::Scene scene;
@@ -188,7 +188,7 @@ TEST(ObjectListTest, ClearEmptiesEverything)
 TEST(ObjectListTest, RebuildBuildsPlayerAndResolvesItById)
 {
     SceneData level;
-    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     level.objects.push_back(MakePlayerObject(NS::Core::Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{}));
     NS::Obj::EnsureUniqueObjectIds(level);
 
@@ -213,7 +213,7 @@ TEST(ObjectListTest, RebuildBakesFollowCameraAndResolvesTarget)
 {
     SceneData level;
     level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
-    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
     // 追従先は自分より後ろに並ぶ grid block。追従対象の参照を採番後の実 id へ差し替える
     for (nlohmann::json& component : level.objects[0].components)
@@ -247,8 +247,8 @@ TEST(ObjectListTest, RebuildBakesFollowCameraAndResolvesTarget)
 TEST(ObjectListTest, EnsureUniqueObjectIdsNumbersComponents)
 {
     SceneData level;
-    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
-    level.objects.push_back(NS::Game::Level::MakeCellObject(1, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
 
     NS::Obj::EnsureUniqueObjectIds(level);
 
@@ -272,7 +272,7 @@ TEST(ObjectListTest, EnsureUniqueObjectIdsNumbersComponents)
 TEST(ObjectListTest, ComponentIdSurvivesBuildAndCapture)
 {
     SceneData level;
-    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
 
     NS::Obj::Scene scene;
@@ -311,8 +311,8 @@ TEST(ObjectListTest, ComponentIdSurvivesBuildAndCapture)
 TEST(ObjectListTest, RemoveByObjectIdDropsIdResolution)
 {
     SceneData level;
-    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
-    level.objects.push_back(NS::Game::Level::MakeCellObject(1, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
     const std::uint32_t victimId = level.objects[1].objectId;
 
@@ -333,8 +333,8 @@ TEST(ObjectListTest, RemoveByObjectIdDropsIdResolution)
 TEST(ObjectListTest, RemoveByObjectIdDropsCollider)
 {
     SceneData level;
-    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
-    level.objects.push_back(NS::Game::Level::MakeCellObject(1, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
+    level.objects.push_back(NS::Editor::MakeCellObject(1, 0, 0));
     NS::Obj::EnsureUniqueObjectIds(level);
     const std::uint32_t victimId = level.objects[1].objectId;
 

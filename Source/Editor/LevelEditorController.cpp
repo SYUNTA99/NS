@@ -4,7 +4,6 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
-#include "Game/Level/BlockObject.h"
 #include "Game/Level/Respawner.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
@@ -1083,7 +1082,7 @@ void LevelEditorController::AddObjectWithMesh(std::string_view meshPath)
     // 描いた形と当たりをずらさない。MeshCollider が描画と同じ三角形から当たりを作る
     NS::Obj::ObjectData object{};
     object.components = nlohmann::json::array(
-        {NS::Game::Level::MakeMeshRendererEntry(meshRef, "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}),
+        {NS::Editor::MakeMeshRendererEntry(meshRef, "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}),
          NS::Obj::MakeComponentEntry("MeshCollider")});
     NS::Obj::SetObjectPosition(object, center);
     object.name = NS::Platform::FileSystem::Stem(meshPath);

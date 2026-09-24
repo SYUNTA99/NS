@@ -1,4 +1,4 @@
-#include "Game/Level/BlockObject.h"
+#include "Editor/EditorObjects.h"
 
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Component.h>
@@ -23,7 +23,7 @@ namespace
         SceneData data;
         for (std::int16_t i = 0; i < cellCount; ++i)
         {
-            data.objects.push_back(NS::Game::Level::MakeCellObject(i, 0, 0));
+            data.objects.push_back(NS::Editor::MakeCellObject(i, 0, 0));
         }
         return data;
     }

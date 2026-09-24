@@ -1,7 +1,6 @@
 ﻿#include "Editor/PaletteTemplates.h"
 
 #include "Editor/EditorObjects.h"
-#include "Game/Level/BlockObject.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 
 namespace NS::Editor
@@ -13,7 +12,7 @@ namespace NS::Editor
 
             // スロット0: 基本の立方体ブロック
             {
-                NS::Obj::ObjectData cube = NS::Game::Level::MakeCellObject(0, 0, 0);
+                NS::Obj::ObjectData cube = NS::Editor::MakeCellObject(0, 0, 0);
                 result[0].name = "Cube";
                 result[0].rotatable = NS::Editor::IsRotatableObject(cube);
                 result[0].prototype = std::move(cube);
@@ -21,7 +20,7 @@ namespace NS::Editor
 
             // スロット1: 45度傾斜のスロープ
             {
-                NS::Obj::ObjectData slope = NS::Game::Level::MakeCellObject(0, 0, 0);
+                NS::Obj::ObjectData slope = NS::Editor::MakeCellObject(0, 0, 0);
                 slope.components = NS::Editor::MakeCellSlopeComponents(45.0f);
                 NS::Obj::EnsureTransformComponent(slope);
                 result[1].name = "Slope 45";
@@ -31,7 +30,7 @@ namespace NS::Editor
 
             // スロット2: レベルクリア判定を持つゴールオブジェクト
             {
-                NS::Obj::ObjectData goal = NS::Game::Level::MakeCellObject(0, 0, 0);
+                NS::Obj::ObjectData goal = NS::Editor::MakeCellObject(0, 0, 0);
                 goal.components = NS::Editor::MakeGoalComponents();
                 NS::Obj::EnsureTransformComponent(goal);
                 result[2].name = "Goal";
