@@ -35,6 +35,11 @@ namespace NS::Obj
         //! owner の world 変換を反映した世界軸並行 AABB を返す。Owner 未登録時は local だけを反映する
         [[nodiscard]] NS::Core::AABB WorldAABB() const noexcept;
 
+        //! 球は常に RigidBody の形になれる
+        [[nodiscard]] bool CanJoinRigidBody() const noexcept override { return true; }
+        //! WorldSphere の球の形
+        [[nodiscard]] NS::Phys::ShapePart RigidBodyPart() const override;
+
         NS_REFLECT_BEGIN(SphereCollider, Collider)
         NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)
         NS_REFLECT_ACCESSOR(NS::Core::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)

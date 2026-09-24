@@ -167,6 +167,7 @@ namespace NS::Obj
 
         //! 補間スナップショット・帯の更新・LateUpdate 帯の手前で物理の 1 フレーム・最後にエフェクトの 1 フレーム
         //! 世界の駆動はここが持つ
+        //! 物理の 1 歩の直前と直後に、稼働中の RigidBody の PrePhysicsStep / PostPhysicsStep を呼ぶ
         //! 読み込んだら回り続けるのが既定で、止める口は SetSimulationEnabled / SetSimulationPaused
         virtual void OnUpdate();
 

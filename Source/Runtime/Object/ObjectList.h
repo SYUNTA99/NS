@@ -78,6 +78,7 @@ namespace NS::Obj
 
         //! 稼働中の collider を PhysicsScene へ body として入れ、broadphase を張り直す
         //! 稼働していない collider は body を外す。既存 body は同じ id のまま shape と姿勢を更新する
+        //! 続けて RigidBody が collider の形を集めて動く body を張り直す
         void SyncPhysics(NS::Phys::PhysicsScene& physics);
 
         //! priority が [firstPriority, lastPriority) の Component を昇順で回す。同じ priority の中は配置物の並び順

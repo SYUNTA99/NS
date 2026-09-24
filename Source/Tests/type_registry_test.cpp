@@ -77,6 +77,8 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
         "Shadow",
         "SkeletalAnimation",
         "DirectionalLight",
+        "RigidBody",
+        "PhysicsSettings",
     };
     for (const char* name : k_Registered)
     {
@@ -141,7 +143,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 26u);
+    EXPECT_EQ(names.size(), 28u);
     EXPECT_TRUE(Contains(names, "BoxCollider"));
     EXPECT_TRUE(Contains(names, "MeshRenderer"));
     EXPECT_TRUE(Contains(names, "PlayerComponent"));
@@ -196,6 +198,23 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "貫通時の減速倍率",
           "貫通の止め秒"}},
         {"KillZone", {}},
+        {"PhysicsSettings", {"重力"}},
+        {"RigidBody",
+         {"キネマティック",
+          "質量",
+          "重力を使う",
+          "重力の倍率",
+          "摩擦",
+          "跳ね返り",
+          "移動の減衰",
+          "回転の減衰",
+          "連続衝突判定",
+          "X 移動を固定",
+          "Y 移動を固定",
+          "Z 移動を固定",
+          "X 回転を固定",
+          "Y 回転を固定",
+          "Z 回転を固定"}},
         {"LaunchedBody",
          {"跳ね返り",
           "摩擦",
@@ -317,6 +336,8 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"ImpactResolver", {"OverlayRenderer"}},
         {"KillZone", {}},
         {"LaunchedBody", {}},
+        {"PhysicsSettings", {}},
+        {"RigidBody", {}},
         {"MeshCollider", {"Collider"}},
         {"MeshRenderer", {}},
         {"Goal", {}},

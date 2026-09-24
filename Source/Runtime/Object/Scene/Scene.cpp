@@ -3,6 +3,7 @@
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/CameraComponent.h"
+#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
@@ -216,7 +217,20 @@ namespace NS::Obj
 #endif
         // カメラが追う前に物理を進める。自機と衝突の裁定は Update 帯までに終わっている
         m_objects.UpdateObjects(std::numeric_limits<int>::min(), TickPriority::LateUpdate);
+        // RigidBody は物理の前後に挟む。Update 帯が動かしたキネマティックを運び、動いた body をカメラが追う前に書き戻す
+        m_objects.ForEachComponent<RigidBody>([](RigidBody& body) {
+            if (body.IsActive())
+            {
+                body.PrePhysicsStep();
+            }
+        });
         m_physicsScene.Update(NS::Platform::FrameTimer::FixedDelta());
+        m_objects.ForEachComponent<RigidBody>([](RigidBody& body) {
+            if (body.IsActive())
+            {
+                body.PostPhysicsStep();
+            }
+        });
         m_objects.UpdateObjects(TickPriority::LateUpdate);
         // 時間停止中は凍らせる。停止の判定より後ろ
         m_sceneRenderer.UpdateEffects(NS::Platform::FrameTimer::FixedDelta());

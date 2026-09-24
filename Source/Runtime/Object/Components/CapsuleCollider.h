@@ -55,6 +55,11 @@ namespace NS::Obj
         //! @param[in] excluded 静的世界から外す場合 true
         void SetExcludedFromStaticWorld(bool excluded) noexcept;
 
+        //! 静的世界から外していなければ RigidBody の形になれる。外した capsule は形にもならない
+        [[nodiscard]] bool CanJoinRigidBody() const noexcept override { return !m_excludedFromStaticWorld; }
+        //! WorldCapsule のカプセルの形
+        [[nodiscard]] NS::Phys::ShapePart RigidBodyPart() const override;
+
         NS_REFLECT_BEGIN(CapsuleCollider, Collider)
         NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)
         NS_REFLECT_ACCESSOR(float, "半分の高さ", HalfHeight(), SetHalfHeight)

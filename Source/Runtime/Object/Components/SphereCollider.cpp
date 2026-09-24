@@ -68,6 +68,11 @@ namespace NS::Obj
         return NS::Core::AABB{s.center, NS::Core::Vector3{s.radius, s.radius, s.radius}};
     }
 
+    NS::Phys::ShapePart SphereCollider::RigidBodyPart() const
+    {
+        return NS::Phys::MakeSpherePart(WorldSphere());
+    }
+
     JPH::BodyID SphereCollider::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
         return physics.SyncSphere(current, WorldSphere(), NS::Phys::ObjectLayers::Terrain);

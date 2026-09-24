@@ -140,6 +140,11 @@ namespace NS::Obj
         return NS::Core::MakeOBB(translation, rotation, half);
     }
 
+    NS::Phys::ShapePart BoxCollider::RigidBodyPart() const
+    {
+        return NS::Phys::MakeBoxPart(WorldOBB());
+    }
+
     JPH::BodyID BoxCollider::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
         // 通り抜ける体積も body にする。入れないと重なりの問い合わせに出てこず、触れても判定できない

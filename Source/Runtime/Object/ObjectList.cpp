@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/Assert.h"
 #include "Runtime/Object/Components/Collider.h"
+#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Physics/PhysicsScene.h"
@@ -187,6 +188,17 @@ namespace NS::Obj
             else
             {
                 collider.RemoveFromPhysics(physics);
+            }
+        });
+        // collider の後に回す。RigidBody の形になった collider が自分の body を外し終えてから形を集める
+        ForEachComponent<RigidBody>([&physics](RigidBody& body) {
+            if (body.IsActive())
+            {
+                body.SyncToPhysics(physics);
+            }
+            else
+            {
+                body.RemoveFromPhysics(physics);
             }
         });
         physics.OptimizeBroadPhase();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/Object/Component.h"
+#include "Runtime/Physics/ShapePart.h"
 
 #include <Jolt/Jolt.h>
 
@@ -17,18 +18,34 @@ namespace NS::Obj
     //! @details どの形の body として PhysicsScene へ入れるかは派生が決める
     //! ObjectList::SyncPhysics はこの型だけを見て回るので、形状を足しても同期側は変わらない
     //! body は id でだけ持つ。どの PhysicsScene に居るかは持ち主の Scene が決め、PhysicsScene の控えは持たない
+    //! 同じ object に稼働中の RigidBody があり、形が入れられる collider は自分の body を持たない
+    //! 形は RigidBody が集めて 1 つの動く body にする
     //! 抽象基底なので TypeRegistry には登録しない
-    //! 依存: NS::Phys::PhysicsScene, JPH::BodyID
+    //! 依存: NS::Phys::PhysicsScene, JPH::BodyID, RigidBody
     class Collider : public Component
     {
     public:
         //! world 座標の当たりを body 1 個として physics へ入れる。入れた body があれば置き直す
         //! 何も入れない形状もある。持ち主が Scene に居ない時と、持ち主の Scene 以外の PhysicsScene を
         //! 渡された時は、エラーを出して受け取らない
+        //! RigidBody の形になっている間は、自分の body を外すだけで何も入れない
         void SyncToPhysics(NS::Phys::PhysicsScene& physics);
 
-        //! 入れた body の id。何も入れなかった形状では無効
-        [[nodiscard]] JPH::BodyID BodyId() const noexcept { return m_bodyId; }
+        //! 当たりの body の id。RigidBody の形になっている間はその body の id。何も入れなかった形状では無効
+        [[nodiscard]] JPH::BodyID BodyId() const noexcept;
+
+        //! 同じ object の稼働中の RigidBody の形になっている場合 true、それ以外の場合は false
+        [[nodiscard]] bool JoinsRigidBody() const noexcept;
+
+        //! RigidBody の形になれる形状か。既定は false で、なれない形状は自分の body を持ち続ける
+        [[nodiscard]] virtual bool CanJoinRigidBody() const noexcept { return false; }
+
+        //! @brief RigidBody の形になれない時に、自分の body を物体の動きへ追従させるか。既定は false
+        //! @details 追従する collider は、物体が動いたフレームに RigidBody が SyncToPhysics を呼び直す
+        [[nodiscard]] virtual bool FollowsRigidBody() const noexcept { return false; }
+
+        //! RigidBody の合成形状へ入れる形を、世界座標の置き場所つきで返す。既定は形が null
+        [[nodiscard]] virtual NS::Phys::ShapePart RigidBodyPart() const { return {}; }
 
         //! 自分が入れた body を physics から外す。入れていなければ何もしない
         //! 受け取る条件は SyncToPhysics と同じ

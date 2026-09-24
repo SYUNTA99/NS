@@ -127,6 +127,11 @@ namespace NS::Obj
         m_excludedFromStaticWorld = excluded;
     }
 
+    NS::Phys::ShapePart CapsuleCollider::RigidBodyPart() const
+    {
+        return NS::Phys::MakeCapsulePart(WorldCapsule());
+    }
+
     JPH::BodyID CapsuleCollider::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
         if (m_excludedFromStaticWorld)
