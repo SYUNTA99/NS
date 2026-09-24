@@ -5,7 +5,6 @@
 #include "Game/Level/Health.h"
 #include "Game/Level/Respawner.h"
 #include "Game/Level/ScreenFade.h"
-#include "Game/Player/PlayerCameraSpawner.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerInputRelay.h"
 #include "Game/Player/PlayerStateManager.h"
@@ -49,8 +48,6 @@ Player::Player() noexcept
     AddComponent<NS::Game::Level::Respawner>();
     AddComponent<NS::Game::Level::Finisher>();
     AddComponent<NS::Game::Level::AreaCameraActivator>();
-    // 自分を追うカメラが置かれていないシーンでも遊べるよう、無ければ Player Camera を足す
-    AddComponent<NS::Game::Player::PlayerCameraSpawner>();
 }
 
 void Player::ApplyDamage(int amount) noexcept
