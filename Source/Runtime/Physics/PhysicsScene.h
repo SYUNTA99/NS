@@ -187,10 +187,6 @@ namespace NS::Phys
         void AddBodyTorque(JPH::BodyID id, const NS::Core::Vector3& torque);
         //! 角力積 (N·m·s) を与え、角速度を即座に変える。無効な BodyID は何もしない
         void AddBodyAngularImpulse(JPH::BodyID id, const NS::Core::Vector3& angularImpulse);
-        //! @brief 次の Update の間、body の質量に依らず acceleration (m/s^2) の加速度が付く力を掛ける
-        //! @details 物体ごとの重力に使う。眠っている body は起こさず、何もしない。世界の重力と同じく止まった物は止まったまま
-        //! 無効な BodyID、ダイナミックでない body、非有限の成分を含む値は何もしない
-        void AddBodyAcceleration(JPH::BodyID id, const NS::Core::Vector3& acceleration);
         //! 眠っている body を起こす。無効な BodyID は何もしない
         void WakeBody(JPH::BodyID id);
 

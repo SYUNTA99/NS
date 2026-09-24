@@ -3,6 +3,7 @@
 #include <Runtime/Core/Sphere.h>
 #include <Runtime/Object/Components/BoxCollider.h>
 #include <Runtime/Object/Components/MeshCollider.h>
+#include <Runtime/Object/Components/PhysicsSettings.h>
 #include <Runtime/Object/Components/RigidBody.h>
 #include <Runtime/Object/Components/SphereCollider.h>
 #include <Runtime/Object/GameObject.h>
@@ -29,6 +30,7 @@ namespace
     using NS::Obj::BoxCollider;
     using NS::Obj::GameObject;
     using NS::Obj::MeshCollider;
+    using NS::Obj::PhysicsSettings;
     using NS::Obj::RigidBody;
     using NS::Obj::SphereCollider;
     using NS::Phys::BodyMotion;
@@ -300,37 +302,6 @@ TEST(PhysicsMovingBody, AllAxesLockedStaysPut)
     EXPECT_NEAR(physics.BodyPosition(body).y, 10.0f, k_Tolerance);
 }
 
-TEST(PhysicsMovingBody, AccelerationDoesNotDependOnMass)
-{
-    PhysicsScene physics;
-    physics.SetGravity(Vector3{0.0f, 0.0f, 0.0f});
-    BodyMotion heavy;
-    heavy.mass = 10.0f;
-    heavy.linearDamping = 0.0f;
-    const JPH::BodyID body = AddMovingBox(physics, Vector3{0.0f, 0.0f, 0.0f}, heavy);
-    const float dt = NS::Platform::FrameTimer::FixedDelta();
-
-    physics.AddBodyAcceleration(body, Vector3{3.0f, 0.0f, 0.0f});
-    physics.Update(dt);
-
-    EXPECT_NEAR(physics.BodyVelocity(body).x, 3.0f * dt, 1.0e-4f);
-}
-
-TEST(PhysicsMovingBody, AccelerationLeavesASleepingBodyAlone)
-{
-    PhysicsScene physics;
-    physics.SetGravity(Vector3{0.0f, 0.0f, 0.0f});
-    const JPH::BodyID body = AddMovingBox(physics, Vector3{0.0f, 0.0f, 0.0f});
-    StepPhysics(physics, 120);
-    ASSERT_FALSE(physics.IsBodyAwake(body));
-
-    physics.AddBodyAcceleration(body, Vector3{3.0f, 0.0f, 0.0f});
-    physics.Update(NS::Platform::FrameTimer::FixedDelta());
-
-    EXPECT_FALSE(physics.IsBodyAwake(body));
-    EXPECT_NEAR(physics.BodyPosition(body).x, 0.0f, k_Tolerance);
-}
-
 // ---- RigidBody ----
 
 TEST(RigidBody, GathersCollidersIntoOneBody)
@@ -478,10 +449,12 @@ TEST(RigidBody, KinematicFollowsTheTransform)
     EXPECT_FLOAT_EQ(owner.Root().Position().x, 2.0f);
 }
 
-TEST(RigidBody, IgnoresTheWorldGravity)
+TEST(RigidBody, SceneGravityComesFromPhysicsSettings)
 {
     RigidStage stage;
-    stage.physics.SetGravity(Vector3{0.0f, 0.0f, 0.0f});
+    auto settings = std::make_unique<GameObject>();
+    settings->AddComponent<PhysicsSettings>()->SetGravity(Vector3{0.0f, 0.0f, 0.0f});
+    stage.Spawn(std::move(settings));
     auto obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
     obj->AddComponent<BoxCollider>();
     obj->AddComponent<RigidBody>();
@@ -489,66 +462,21 @@ TEST(RigidBody, IgnoresTheWorldGravity)
 
     stage.Step(30);
 
-    // 世界の重力を 0 にしても、物体が持つ既定の重力で落ちる
-    EXPECT_LT(owner.Root().Position().y, 9.0f);
-}
-
-TEST(RigidBody, SidewaysGravityPullsSideways)
-{
-    RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
-    obj->AddComponent<BoxCollider>();
-    obj->AddComponent<RigidBody>()->SetGravity(Vector3{5.0f, 0.0f, 0.0f});
-    GameObject& owner = stage.Spawn(std::move(obj));
-
-    stage.Step(30);
-
-    EXPECT_GT(owner.Root().Position().x, 0.5f);
+    EXPECT_NEAR(stage.physics.Gravity().y, 0.0f, k_Tolerance);
     EXPECT_NEAR(owner.Root().Position().y, 10.0f, k_Tolerance);
 }
 
-TEST(RigidBody, HeavyAndLightFallAtTheSameSpeed)
+TEST(RigidBody, PhysicsSettingsEditsApplyWhileRunning)
 {
     RigidStage stage;
-    auto light = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
-    light->AddComponent<BoxCollider>();
-    light->AddComponent<RigidBody>()->SetMass(1.0f);
-    GameObject& lightOwner = stage.Spawn(std::move(light));
-    auto heavy = MakeObjectAt(Vector3{5.0f, 10.0f, 0.0f});
-    heavy->AddComponent<BoxCollider>();
-    heavy->AddComponent<RigidBody>()->SetMass(10.0f);
-    GameObject& heavyOwner = stage.Spawn(std::move(heavy));
+    auto settings = std::make_unique<GameObject>();
+    auto* world = settings->AddComponent<PhysicsSettings>();
+    stage.Spawn(std::move(settings));
 
-    stage.Step(30);
+    world->SetGravity(Vector3{0.0f, -3.0f, 0.0f});
+    stage.Step(1);
 
-    EXPECT_LT(lightOwner.Root().Position().y, 9.0f);
-    EXPECT_NEAR(heavyOwner.Root().Position().y, lightOwner.Root().Position().y, 1.0e-3f);
-}
-
-TEST(RigidBody, GravityEditsWakeASleepingBody)
-{
-    RigidStage stage;
-    SpawnFloor(stage);
-    auto obj = MakeObjectAt(Vector3{0.0f, 1.0f, 0.0f});
-    obj->AddComponent<BoxCollider>();
-    auto* body = obj->AddComponent<RigidBody>();
-    GameObject& owner = stage.Spawn(std::move(obj));
-    stage.Step(180);
-    ASSERT_TRUE(body->IsSleeping());
-
-    body->SetGravity(Vector3{0.0f, 25.0f, 0.0f});
-    stage.Step(30);
-
-    EXPECT_GT(owner.Root().Position().y, 2.0f);
-}
-
-TEST(RigidBody, NonFiniteGravityIsRefused)
-{
-    RigidBody body;
-
-    body.SetGravity(Vector3{0.0f, std::numeric_limits<float>::infinity(), 0.0f});
-
-    EXPECT_FLOAT_EQ(body.Gravity().y, NS::Phys::k_DefaultGravityY);
+    EXPECT_FLOAT_EQ(stage.physics.Gravity().y, -3.0f);
 }
 
 TEST(RigidBody, DisablingItGivesCollidersTheirOwnStaticBodies)
