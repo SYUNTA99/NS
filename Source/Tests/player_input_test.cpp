@@ -20,7 +20,7 @@ namespace
         //! ClearState は現在の押下しか消さない。前フレームの控えは Update で揃える
         static void ClearKeyboard() noexcept
         {
-            auto& kb = NS::Platform::Input::Get().Keyboard();
+            NS::Platform::Keyboard& kb = NS::Platform::Input::Get().Keyboard();
             kb.ClearState();
             kb.Update();
         }
@@ -53,7 +53,7 @@ TEST(PlayerInputTest, CameraForwardSetterPersists)
 TEST_F(PlayerInputHeldValues, ForwardKeyProducesCameraRelativeDirection)
 {
     GameObject obj;
-    auto& input = *obj.AddComponent<PlayerInput>();
+    PlayerInput& input = *obj.AddComponent<PlayerInput>();
     obj.OnStart();
     input.SetCameraForward({0.0f, 0.0f, 1.0f});
 
@@ -68,7 +68,7 @@ TEST_F(PlayerInputHeldValues, ForwardKeyProducesCameraRelativeDirection)
 TEST_F(PlayerInputHeldValues, NoKeyLeavesSpeedScaleAtZero)
 {
     GameObject obj;
-    auto& input = *obj.AddComponent<PlayerInput>();
+    PlayerInput& input = *obj.AddComponent<PlayerInput>();
     obj.OnStart();
     input.SetCameraForward({0.0f, 0.0f, 1.0f});
 
@@ -80,7 +80,7 @@ TEST_F(PlayerInputHeldValues, NoKeyLeavesSpeedScaleAtZero)
 TEST_F(PlayerInputHeldValues, JumpPressedIsTrueOnlyForTheStepOfThePress)
 {
     GameObject obj;
-    auto& input = *obj.AddComponent<PlayerInput>();
+    PlayerInput& input = *obj.AddComponent<PlayerInput>();
     obj.OnStart();
 
     NS::Platform::Input::Get().Keyboard().OnKeyDown(Key::Space);
@@ -95,10 +95,10 @@ TEST_F(PlayerInputHeldValues, JumpPressedIsTrueOnlyForTheStepOfThePress)
 TEST_F(PlayerInputHeldValues, JumpHeldFollowsTheKeyState)
 {
     GameObject obj;
-    auto& input = *obj.AddComponent<PlayerInput>();
+    PlayerInput& input = *obj.AddComponent<PlayerInput>();
     obj.OnStart();
 
-    auto& kb = NS::Platform::Input::Get().Keyboard();
+    NS::Platform::Keyboard& kb = NS::Platform::Input::Get().Keyboard();
     kb.OnKeyDown(Key::Space);
     input.OnUpdate();
     EXPECT_TRUE(input.JumpHeld());
@@ -116,7 +116,7 @@ TEST_F(PlayerInputHeldValues, JumpHeldFollowsTheKeyState)
 TEST_F(PlayerInputHeldValues, ClimbMoveKeepsRawLocalInput)
 {
     GameObject obj;
-    auto& input = *obj.AddComponent<PlayerInput>();
+    PlayerInput& input = *obj.AddComponent<PlayerInput>();
     obj.OnStart();
     input.SetCameraForward({1.0f, 0.0f, 0.0f});
 
@@ -130,11 +130,11 @@ TEST_F(PlayerInputHeldValues, ClimbMoveKeepsRawLocalInput)
 TEST_F(PlayerInputHeldValues, InactiveStepKeepsThePreviousValues)
 {
     GameObject obj;
-    auto& input = *obj.AddComponent<PlayerInput>();
+    PlayerInput& input = *obj.AddComponent<PlayerInput>();
     obj.OnStart();
     input.SetCameraForward({0.0f, 0.0f, 1.0f});
 
-    auto& kb = NS::Platform::Input::Get().Keyboard();
+    NS::Platform::Keyboard& kb = NS::Platform::Input::Get().Keyboard();
     kb.OnKeyDown(Key::W);
     input.OnUpdate();
     const float held = input.DesiredSpeedScale();

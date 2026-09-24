@@ -145,7 +145,7 @@ namespace NS::Obj
         //! @details 所有はシーンが握る。印立てと開始は unique_ptr を取る SpawnTransient が行う
         template <class T, class... Args> T* SpawnTransient(Args&&... args)
         {
-            auto obj = std::make_unique<T>(std::forward<Args>(args)...);
+            std::unique_ptr<T> obj = std::make_unique<T>(std::forward<Args>(args)...);
             T* raw = obj.get();
             SpawnTransient(std::unique_ptr<GameObject>{std::move(obj)});
             return raw;

@@ -27,7 +27,7 @@ namespace
     // 検査対象は Assets の実ファイルそのもの。固定データの複製を検査すると、実ファイル側の壊れを見逃す
     bool LoadShippedCourse(SceneNs::SceneData& outScene)
     {
-        const auto path = EditorNs::BuildLevelPath("new_scene");
+        const std::optional<std::string> path = EditorNs::BuildLevelPath("new_scene");
         if (!path.has_value())
             return false;
         return SceneNs::LoadSceneFromJsonFile(outScene, *path);

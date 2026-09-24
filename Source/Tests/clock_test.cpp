@@ -13,8 +13,8 @@ protected:
 
 TEST(NsCoreClock, NowIsMonotonic)
 {
-    const auto t1 = NS::Platform::Clock::Now();
-    const auto t2 = NS::Platform::Clock::Now();
+    const std::chrono::steady_clock::time_point t1 = NS::Platform::Clock::Now();
+    const std::chrono::steady_clock::time_point t2 = NS::Platform::Clock::Now();
     EXPECT_GE(t2, t1);
 }
 

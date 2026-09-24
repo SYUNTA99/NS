@@ -50,7 +50,7 @@ TEST_F(CameraBrainTest, PoseLerpInterpolatesEachField)
     b.fovY = NS::Core::Radians{3.0f};
     b.farPlane = 200.0f;
 
-    const auto mid = CameraPose::Lerp(a, b, 0.5f);
+    const CameraPose mid = CameraPose::Lerp(a, b, 0.5f);
     EXPECT_FLOAT_EQ(mid.position.x, 5.0f);
     EXPECT_FLOAT_EQ(mid.fovY.value, 2.0f);
     EXPECT_FLOAT_EQ(mid.farPlane, 150.0f);
@@ -59,15 +59,15 @@ TEST_F(CameraBrainTest, PoseLerpInterpolatesEachField)
 TEST_F(CameraBrainTest, SelectsHighestPriorityActiveVcam)
 {
     GameObject host;
-    auto* cam = host.AddComponent<CameraComponent>();
-    auto* brain = host.AddComponent<CameraBrain>();
+    CameraComponent* cam = host.AddComponent<CameraComponent>();
+    CameraBrain* brain = host.AddComponent<CameraBrain>();
     host.OnStart();
     brain->SetBlendDuration(0.0f);
 
     GameObject hostLow;
     GameObject hostHigh;
-    auto* low = hostLow.AddComponent<FixedVcam>(1.0f);
-    auto* high = hostHigh.AddComponent<FixedVcam>(2.0f);
+    FixedVcam* low = hostLow.AddComponent<FixedVcam>(1.0f);
+    FixedVcam* high = hostHigh.AddComponent<FixedVcam>(2.0f);
     low->SetVcamPriority(10);
     high->SetVcamPriority(20);
     brain->AddVirtualCamera(low);
@@ -83,15 +83,15 @@ TEST_F(CameraBrainTest, SelectsHighestPriorityActiveVcam)
 TEST_F(CameraBrainTest, InactiveVcamIsSkipped)
 {
     GameObject host;
-    auto* cam = host.AddComponent<CameraComponent>();
-    auto* brain = host.AddComponent<CameraBrain>();
+    CameraComponent* cam = host.AddComponent<CameraComponent>();
+    CameraBrain* brain = host.AddComponent<CameraBrain>();
     host.OnStart();
     brain->SetBlendDuration(0.0f);
 
     GameObject hostA;
     GameObject hostB;
-    auto* a = hostA.AddComponent<FixedVcam>(1.0f);
-    auto* b = hostB.AddComponent<FixedVcam>(2.0f);
+    FixedVcam* a = hostA.AddComponent<FixedVcam>(1.0f);
+    FixedVcam* b = hostB.AddComponent<FixedVcam>(2.0f);
     a->SetVcamPriority(20); // 高優先だが休止
     a->SetActive(false);
     b->SetVcamPriority(10);
@@ -108,15 +108,15 @@ TEST_F(CameraBrainTest, InactiveVcamIsSkipped)
 TEST_F(CameraBrainTest, BlendSweepsFromOldToNewOverDuration)
 {
     GameObject host;
-    auto* cam = host.AddComponent<CameraComponent>();
-    auto* brain = host.AddComponent<CameraBrain>();
+    CameraComponent* cam = host.AddComponent<CameraComponent>();
+    CameraBrain* brain = host.AddComponent<CameraBrain>();
     host.OnStart();
     brain->SetBlendDuration(0.5f);
 
     GameObject hostA;
     GameObject hostB;
-    auto* a = hostA.AddComponent<FixedVcam>(0.0f);
-    auto* b = hostB.AddComponent<FixedVcam>(10.0f);
+    FixedVcam* a = hostA.AddComponent<FixedVcam>(0.0f);
+    FixedVcam* b = hostB.AddComponent<FixedVcam>(10.0f);
     a->SetVcamPriority(20);
     b->SetVcamPriority(10);
     brain->AddVirtualCamera(a);
@@ -146,15 +146,15 @@ TEST_F(CameraBrainTest, BlendSweepsFromOldToNewOverDuration)
 TEST_F(CameraBrainTest, ZeroBlendDurationCutsInstantly)
 {
     GameObject host;
-    auto* cam = host.AddComponent<CameraComponent>();
-    auto* brain = host.AddComponent<CameraBrain>();
+    CameraComponent* cam = host.AddComponent<CameraComponent>();
+    CameraBrain* brain = host.AddComponent<CameraBrain>();
     host.OnStart();
     brain->SetBlendDuration(0.0f);
 
     GameObject hostA;
     GameObject hostB;
-    auto* a = hostA.AddComponent<FixedVcam>(0.0f);
-    auto* b = hostB.AddComponent<FixedVcam>(10.0f);
+    FixedVcam* a = hostA.AddComponent<FixedVcam>(0.0f);
+    FixedVcam* b = hostB.AddComponent<FixedVcam>(10.0f);
     a->SetVcamPriority(20);
     b->SetVcamPriority(10);
     brain->AddVirtualCamera(a);
@@ -174,15 +174,15 @@ TEST_F(CameraBrainTest, ZeroBlendDurationCutsInstantly)
 TEST_F(CameraBrainTest, ActivatingHigherPriorityVcamBlendsTowardIt)
 {
     GameObject host;
-    auto* cam = host.AddComponent<CameraComponent>();
-    auto* brain = host.AddComponent<CameraBrain>();
+    CameraComponent* cam = host.AddComponent<CameraComponent>();
+    CameraBrain* brain = host.AddComponent<CameraBrain>();
     host.OnStart();
     brain->SetBlendDuration(0.5f);
 
     GameObject followHost;
     GameObject areaHost;
-    auto* follow = followHost.AddComponent<FixedVcam>(0.0f);
-    auto* area = areaHost.AddComponent<FixedVcam>(10.0f);
+    FixedVcam* follow = followHost.AddComponent<FixedVcam>(0.0f);
+    FixedVcam* area = areaHost.AddComponent<FixedVcam>(10.0f);
     follow->SetVcamPriority(0);
     area->SetVcamPriority(10); // active な間だけ follow を上回る
     area->SetActive(false);

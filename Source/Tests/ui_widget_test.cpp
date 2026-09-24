@@ -80,11 +80,11 @@ TEST(UIWidgetTest, LayoutScalesFromViewportHeight)
 TEST(UIWidgetTest, LayoutRectPropagatesThroughTree)
 {
     NS::UI::UISystem system;
-    auto* panel = system.Root().AddChild<NS::UI::Widget>();
+    NS::UI::Widget* panel = system.Root().AddChild<NS::UI::Widget>();
     panel->SetAnchor({0.5f, 0.5f});
     panel->SetPivot({0.5f, 0.5f});
     panel->SetSize({400.0f, 200.0f});
-    auto* child = panel->AddChild<NS::UI::Widget>();
+    NS::UI::Widget* child = panel->AddChild<NS::UI::Widget>();
     child->SetSize({50.0f, 50.0f});
 
     system.Layout(1920.0f, 1080.0f);
@@ -99,7 +99,7 @@ TEST(UIWidgetTest, LayoutRectPropagatesThroughTree)
 TEST(UIWidgetTest, ConsumesPointerHonorsBlocksInputAndVisibility)
 {
     NS::UI::UISystem system;
-    auto* panel = system.Root().AddChild<NS::UI::Widget>();
+    NS::UI::Widget* panel = system.Root().AddChild<NS::UI::Widget>();
     panel->SetSize({100.0f, 100.0f});
     panel->SetBlocksInput(true);
     system.Layout(1920.0f, 1080.0f);
@@ -120,7 +120,7 @@ TEST(UIWidgetTest, ConsumesPointerHonorsBlocksInputAndVisibility)
 TEST(UIWidgetTest, ConsumesPointerScalesFromViewport)
 {
     NS::UI::UISystem system;
-    auto* panel = system.Root().AddChild<NS::UI::Widget>();
+    NS::UI::Widget* panel = system.Root().AddChild<NS::UI::Widget>();
     panel->SetSize({100.0f, 100.0f});
     panel->SetBlocksInput(true);
 
@@ -143,10 +143,10 @@ TEST(UIWidgetTest, RenderDrawsScaledRectAndCascadedAlpha)
         GTEST_SKIP();
 
     NS::UI::UISystem system;
-    auto* panel = system.Root().AddChild<NS::UI::Widget>();
+    NS::UI::Widget* panel = system.Root().AddChild<NS::UI::Widget>();
     panel->SetStretch(true);
     panel->SetAlpha(0.5f);
-    auto* probe = panel->AddChild<ProbeWidget>();
+    ProbeWidget* probe = panel->AddChild<ProbeWidget>();
     probe->SetStretch(true);
     probe->SetAlpha(0.5f);
 

@@ -40,7 +40,7 @@ namespace NS::Game::Level
         {
             return;
         }
-        const auto* entity = target->FindComponent<NS::Game::Entity::EntityComponent>();
+        const NS::Game::Entity::EntityComponent* entity = target->FindComponent<NS::Game::Entity::EntityComponent>();
         if (entity == nullptr)
         {
             return;

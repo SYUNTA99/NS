@@ -84,19 +84,19 @@ namespace NS::Core
         {
             std::vector<spdlog::sink_ptr> sinks;
 
-            auto console = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
+            std::shared_ptr<spdlog::sinks::stderr_color_sink_mt> console = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
             console->set_pattern("%H:%M:%S.%e [%^%l%$] [%n] %v");
             sinks.push_back(console);
 
-            const auto logsDir = LogsDirectory(desc);
+            const std::string logsDir = LogsDirectory(desc);
             const std::string logFilePath = logsDir + "/" + desc.logName + ".log";
-            auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+            std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
                 logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, desc.rotateOnOpen);
             file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
             sinks.push_back(file);
 
 #if defined(_WIN32)
-            auto msvc = std::make_shared<spdlog::sinks::msvc_sink_mt>();
+            std::shared_ptr<spdlog::sinks::msvc_sink_mt> msvc = std::make_shared<spdlog::sinks::msvc_sink_mt>();
             msvc->set_pattern("[%H:%M:%S.%e] [%l] [%n] [%s:%#] %v");
             sinks.push_back(msvc);
 #endif
@@ -131,8 +131,8 @@ namespace NS::Core
 
         CreateDirectoryRecursive(LogsDirectory(desc));
 
-        auto sinks = BuildSinks(desc);
-        auto logger = std::make_shared<spdlog::logger>(k_LoggerName, sinks.begin(), sinks.end());
+        std::vector<spdlog::sink_ptr> sinks = BuildSinks(desc);
+        std::shared_ptr<spdlog::logger> logger = std::make_shared<spdlog::logger>(k_LoggerName, sinks.begin(), sinks.end());
 
         logger->set_level(spdlog::level::trace);
         logger->flush_on(spdlog::level::warn);
@@ -161,7 +161,7 @@ namespace NS::Core
                          const char* func,
                          std::string_view msg)
     {
-        auto logger = spdlog::default_logger();
+        std::shared_ptr<spdlog::logger> logger = spdlog::default_logger();
         if (!logger)
         {
             return;
@@ -178,7 +178,7 @@ namespace NS::Core
                                         const char* func,
                                         std::string_view msg)
     {
-        if (auto logger = spdlog::default_logger())
+        if (std::shared_ptr<spdlog::logger> logger = spdlog::default_logger())
         {
             spdlog::source_loc loc{file, line, func};
             logger->log(loc, spdlog::level::critical, "[{}] FATAL: {}", logTypeStr, msg);

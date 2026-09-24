@@ -32,7 +32,7 @@ TEST(NsMath, ToRadiansFromDegreesKnownAngles)
 
 TEST(NsMath, ToDegreesInvertsToRadians)
 {
-    const auto rt = NS::Core::ToDegrees(NS::Core::ToRadians(NS::Core::Degrees{60.0f}));
+    const NS::Core::Degrees rt = NS::Core::ToDegrees(NS::Core::ToRadians(NS::Core::Degrees{60.0f}));
     EXPECT_NEAR(rt.value, 60.0f, 1e-3f);
 }
 

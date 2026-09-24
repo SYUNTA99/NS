@@ -40,7 +40,7 @@ namespace
     {
         using ::NS::Core::LogType;
 
-        constexpr auto names = magic_enum::enum_names<LogType>();
+        constexpr std::array<std::string_view, magic_enum::enum_count<LogType>()> names = magic_enum::enum_names<LogType>();
         EXPECT_EQ(names.size(), 8u);
 
         EXPECT_EQ(magic_enum::enum_name(LogType::Core), "Core");

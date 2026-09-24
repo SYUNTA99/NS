@@ -164,13 +164,13 @@ TEST_F(AssetManagerTest, SamePathReturnsSamePointer)
 
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
-    auto* shaderA = am.GetOrLoadShader(ShaderPath("standard.vs.hlsl"));
-    auto* shaderB = am.GetOrLoadShader(ShaderPath("standard.vs.hlsl"));
+    NS::Gfx::Shader* shaderA = am.GetOrLoadShader(ShaderPath("standard.vs.hlsl"));
+    NS::Gfx::Shader* shaderB = am.GetOrLoadShader(ShaderPath("standard.vs.hlsl"));
     ASSERT_NE(shaderA, nullptr);
     EXPECT_EQ(shaderA, shaderB);
 
-    auto* texA = am.GetOrLoadTexture(TexturePath("cube_test.png"));
-    auto* texB = am.GetOrLoadTexture(TexturePath("cube_test.png"));
+    NS::Gfx::Texture* texA = am.GetOrLoadTexture(TexturePath("cube_test.png"));
+    NS::Gfx::Texture* texB = am.GetOrLoadTexture(TexturePath("cube_test.png"));
     ASSERT_NE(texA, nullptr);
     EXPECT_EQ(texA, texB);
 }
@@ -332,8 +332,8 @@ TEST_F(AssetManagerTest, ReloadShaderInPlaceKeepsIdentity)
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
-    const auto path = ShaderPath("standard.vs.hlsl");
-    auto* before = am.GetOrLoadShader(path);
+    const std::string path = ShaderPath("standard.vs.hlsl");
+    NS::Gfx::Shader* before = am.GetOrLoadShader(path);
     ASSERT_NE(before, nullptr);
 
     EXPECT_TRUE(am.Reload(path));
@@ -410,7 +410,7 @@ TEST(AssetManagerParseTest, OptionalFieldsDefaultWhenAbsent)
 
 TEST(AssetManagerParseTest, BlendStringMapsToEnum)
 {
-    const auto parseBlend = [](const char* blendValue, NS::Gfx::BlendMode& outBlend) {
+    bool (*parseBlend)(const char*, NS::Gfx::BlendMode&) = [](const char* blendValue, NS::Gfx::BlendMode& outBlend) -> bool {
         const std::string json =
             std::string(R"({ "vs": "a.vs.hlsl", "ps": "b.ps.hlsl", "blend": ")") + blendValue + "\" }";
         MaterialFileDesc desc{};
@@ -439,12 +439,12 @@ TEST_F(AssetManagerTest, LoadMaterialDedupReturnsSamePointer)
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
-    const auto matPath = MaterialPath("flat.mat");
+    const std::string matPath = MaterialPath("flat.mat");
     if (!NS::Platform::FileSystem::Exists(matPath))
         GTEST_SKIP() << "flat.mat が無い: " << matPath;
 
-    auto first = am.LoadMaterial(matPath);
-    auto second = am.LoadMaterial(matPath);
+    NS::Obj::LoadedMaterial first = am.LoadMaterial(matPath);
+    NS::Obj::LoadedMaterial second = am.LoadMaterial(matPath);
     ASSERT_NE(first.material, nullptr);
     EXPECT_EQ(first.material, second.material);
 }

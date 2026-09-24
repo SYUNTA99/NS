@@ -107,7 +107,7 @@ namespace NS::Editor
     {
         for (std::size_t i = 0; i < level.objects.size(); ++i)
         {
-            const auto& object = level.objects[i];
+            const NS::Obj::ObjectData& object = level.objects[i];
             if (IsCellBrushObject(object) && ObjectCellX(object) == x && ObjectCellY(object) == y &&
                 ObjectCellZ(object) == z)
             {
@@ -315,7 +315,7 @@ namespace NS::Editor
         if (object.FindComponent<NS::Game::Level::Goal>() != nullptr)
             return "Goal";
 
-        if (auto* slope = object.FindComponent<NS::Obj::SlopeCollider>())
+        if (NS::Obj::SlopeCollider* slope = object.FindComponent<NS::Obj::SlopeCollider>())
         {
             const float slopeAngle = slope->AngleDegrees();
             if (slopeAngle >= 44.0f)
@@ -329,7 +329,7 @@ namespace NS::Editor
             return "Slope";
         }
 
-        auto* mesh = object.FindComponent<NS::Obj::MeshRenderer>();
+        NS::Obj::MeshRenderer* mesh = object.FindComponent<NS::Obj::MeshRenderer>();
         if (mesh != nullptr && mesh->MaterialRef() == "water")
             return "Water";
         if (object.FindComponent<NS::Obj::SphereCollider>() != nullptr)
@@ -347,7 +347,7 @@ namespace NS::Editor
 
     NS::Core::AABB PickLocalBounds(const NS::Obj::GameObject& object) noexcept
     {
-        const auto* renderer = object.FindComponent<NS::Obj::MeshRenderer>();
+        const NS::Obj::MeshRenderer* renderer = object.FindComponent<NS::Obj::MeshRenderer>();
         if (renderer != nullptr && renderer->GetMesh() != nullptr)
             return renderer->GetMesh()->LocalBounds();
         return NS::Core::AABB{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Vector3{0.5f, 0.5f, 0.5f}};

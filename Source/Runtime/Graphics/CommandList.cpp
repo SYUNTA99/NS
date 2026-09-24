@@ -215,8 +215,8 @@ namespace NS::Gfx
             {
                 return;
             }
-            const auto* src = static_cast<const std::byte*>(data);
-            auto* dst = static_cast<std::byte*>(mapped.pData);
+            const std::byte* src = static_cast<const std::byte*>(data);
+            std::byte* dst = static_cast<std::byte*>(mapped.pData);
             for (UINT y = 0u; y < desc.Height; ++y)
             {
                 std::memcpy(dst + static_cast<std::size_t>(y) * mapped.RowPitch,

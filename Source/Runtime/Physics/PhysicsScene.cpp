@@ -185,7 +185,7 @@ namespace NS::Phys
 
     bool PhysicsScene::ObjVsBPLayerFilter::ShouldCollide(JPH::ObjectLayer object, JPH::BroadPhaseLayer broadPhase) const
     {
-        const auto other = static_cast<JPH::ObjectLayer>(broadPhase.GetValue());
+        const JPH::ObjectLayer other = static_cast<JPH::ObjectLayer>(broadPhase.GetValue());
         if (object == ObjectLayers::Terrain)
         {
             return other == ObjectLayers::Rock || other == ObjectLayers::Debris;

@@ -67,9 +67,9 @@ namespace
     TEST(GizmoEditorComputeAxisMove, NoneReturnsStart)
     {
         const NS::Core::Vector3 start{2.0f, 3.0f, 4.0f};
-        const auto r0 = MakeAxisProbeRayZ(0.0f, start.z);
-        const auto r1 = MakeAxisProbeRayZ(1.0f, start.z);
-        const auto out =
+        const NS::Core::Ray r0 = MakeAxisProbeRayZ(0.0f, start.z);
+        const NS::Core::Ray r1 = MakeAxisProbeRayZ(1.0f, start.z);
+        const NS::Core::Vector3 out =
             GizmoEditor::ComputeAxisMove(start, GizmoAxis::None, NS::Core::Quaternion::Identity, r0, r1, false);
         EXPECT_NEAR(out.x, start.x, 1e-4f);
         EXPECT_NEAR(out.y, start.y, 1e-4f);
@@ -79,9 +79,9 @@ namespace
     TEST(GizmoEditorComputeAxisMove, UniformReturnsStart)
     {
         const NS::Core::Vector3 start{2.0f, 3.0f, 4.0f};
-        const auto r0 = MakeAxisProbeRayZ(0.0f, start.z);
-        const auto r1 = MakeAxisProbeRayZ(1.0f, start.z);
-        const auto out =
+        const NS::Core::Ray r0 = MakeAxisProbeRayZ(0.0f, start.z);
+        const NS::Core::Ray r1 = MakeAxisProbeRayZ(1.0f, start.z);
+        const NS::Core::Vector3 out =
             GizmoEditor::ComputeAxisMove(start, GizmoAxis::Uniform, NS::Core::Quaternion::Identity, r0, r1, false);
         EXPECT_NEAR(out.x, start.x, 1e-4f);
         EXPECT_NEAR(out.y, start.y, 1e-4f);
@@ -91,9 +91,9 @@ namespace
     TEST(GizmoEditorComputeAxisMove, XAxisMovesOnlyX)
     {
         const NS::Core::Vector3 start{2.0f, 3.0f, 4.0f};
-        const auto r0 = MakeAxisProbeRayZ(0.0f, start.z);
-        const auto r1 = MakeAxisProbeRayZ(1.3f, start.z);
-        const auto out =
+        const NS::Core::Ray r0 = MakeAxisProbeRayZ(0.0f, start.z);
+        const NS::Core::Ray r1 = MakeAxisProbeRayZ(1.3f, start.z);
+        const NS::Core::Vector3 out =
             GizmoEditor::ComputeAxisMove(start, GizmoAxis::X, NS::Core::Quaternion::Identity, r0, r1, false);
         EXPECT_NEAR(out.x, start.x + 1.3f, 1e-3f);
         EXPECT_NEAR(out.y, start.y, 1e-4f);
@@ -106,7 +106,7 @@ namespace
         // 視線方向が X 軸とほぼ平行 -> 縮退時は何もしない
         const NS::Core::Ray r0{NS::Core::Vector3{-5.0f, 3.0f, 4.0f}, NS::Core::Vector3{1.0f, 0.0f, 0.0f}};
         const NS::Core::Ray r1{NS::Core::Vector3{-5.0f, 3.0f, 4.0f}, NS::Core::Vector3{1.0f, 0.0f, 0.0f}};
-        const auto out =
+        const NS::Core::Vector3 out =
             GizmoEditor::ComputeAxisMove(start, GizmoAxis::X, NS::Core::Quaternion::Identity, r0, r1, false);
         EXPECT_NEAR(out.x, start.x, 1e-4f);
         EXPECT_NEAR(out.y, start.y, 1e-4f);
@@ -117,9 +117,9 @@ namespace
     {
         const NS::Core::Vector3 start{2.0f, 3.0f, 4.0f};
         // 1.3 動かすと 3.3、0.5 刻みで丸めて 3.5
-        const auto r0 = MakeAxisProbeRayZ(0.0f, start.z);
-        const auto r1 = MakeAxisProbeRayZ(1.3f, start.z);
-        const auto out =
+        const NS::Core::Ray r0 = MakeAxisProbeRayZ(0.0f, start.z);
+        const NS::Core::Ray r1 = MakeAxisProbeRayZ(1.3f, start.z);
+        const NS::Core::Vector3 out =
             GizmoEditor::ComputeAxisMove(start, GizmoAxis::X, NS::Core::Quaternion::Identity, r0, r1, true);
         EXPECT_NEAR(out.x, 3.5f, 1e-4f);
         EXPECT_NEAR(out.y, start.y, 1e-4f);
@@ -136,10 +136,10 @@ namespace
             {0.0f, 1.0f, 0.0f},
             {0.0f, 0.0f, 1.0f},
         };
-        for (const auto& p : probes)
+        for (const NS::Core::Vector3& p : probes)
         {
-            const auto ra = NS::Core::Vector3::Transform(p, a);
-            const auto rb = NS::Core::Vector3::Transform(p, b);
+            const NS::Core::Vector3 ra = NS::Core::Vector3::Transform(p, a);
+            const NS::Core::Vector3 rb = NS::Core::Vector3::Transform(p, b);
             EXPECT_NEAR(ra.x, rb.x, tol);
             EXPECT_NEAR(ra.y, rb.y, tol);
             EXPECT_NEAR(ra.z, rb.z, tol);
@@ -219,15 +219,15 @@ namespace
 
     TEST(GizmoEditorComputeAxisRotate, NoneReturnsStart)
     {
-        const auto startRot = NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, 0.7f);
-        const auto out = GizmoEditor::ComputeAxisRotate(startRot, GizmoAxis::None, 0.5f, false);
+        const NS::Core::Quaternion startRot = NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, 0.7f);
+        const NS::Core::Quaternion out = GizmoEditor::ComputeAxisRotate(startRot, GizmoAxis::None, 0.5f, false);
         ExpectRotatesSame(out, startRot, 1e-5f);
     }
 
     TEST(GizmoEditorComputeAxisRotate, UniformReturnsStart)
     {
-        const auto startRot = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.3f);
-        const auto out = GizmoEditor::ComputeAxisRotate(startRot, GizmoAxis::Uniform, 0.5f, false);
+        const NS::Core::Quaternion startRot = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.3f);
+        const NS::Core::Quaternion out = GizmoEditor::ComputeAxisRotate(startRot, GizmoAxis::Uniform, 0.5f, false);
         ExpectRotatesSame(out, startRot, 1e-5f);
     }
 
@@ -235,8 +235,8 @@ namespace
     {
         const NS::Core::Quaternion identity = NS::Core::Quaternion::Identity;
         const float theta = 0.6f;
-        const auto out = GizmoEditor::ComputeAxisRotate(identity, GizmoAxis::Y, theta, false);
-        const auto expected = NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, theta);
+        const NS::Core::Quaternion out = GizmoEditor::ComputeAxisRotate(identity, GizmoAxis::Y, theta, false);
+        const NS::Core::Quaternion expected = NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, theta);
         ExpectRotatesSame(out, expected, 1e-5f);
     }
 
@@ -244,8 +244,8 @@ namespace
     {
         const NS::Core::Quaternion identity = NS::Core::Quaternion::Identity;
         const float theta = -0.9f;
-        const auto out = GizmoEditor::ComputeAxisRotate(identity, GizmoAxis::X, theta, false);
-        const auto expected = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, theta);
+        const NS::Core::Quaternion out = GizmoEditor::ComputeAxisRotate(identity, GizmoAxis::X, theta, false);
+        const NS::Core::Quaternion expected = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, theta);
         ExpectRotatesSame(out, expected, 1e-5f);
     }
 
@@ -255,8 +255,8 @@ namespace
         // 20 度相当 -> 最近接 15 度刻みは 15 度
         const float twentyDeg = k_Pi / 9.0f;
         const float fifteenDeg = k_Pi / 12.0f;
-        const auto out = GizmoEditor::ComputeAxisRotate(identity, GizmoAxis::Z, twentyDeg, true);
-        const auto expected = NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, fifteenDeg);
+        const NS::Core::Quaternion out = GizmoEditor::ComputeAxisRotate(identity, GizmoAxis::Z, twentyDeg, true);
+        const NS::Core::Quaternion expected = NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, fifteenDeg);
         ExpectRotatesSame(out, expected, 1e-5f);
     }
 
@@ -264,12 +264,12 @@ namespace
     // world Y 固定の旧挙動なら startRot が非単位のとき local Y が動くので、これで local 化を弁別する
     TEST(GizmoEditorComputeAxisRotate, LocalRotateLeavesLocalAxisFixed)
     {
-        const auto startRot = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
+        const NS::Core::Quaternion startRot = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
         const float theta = k_Pi / 2.0f;
-        const auto out = GizmoEditor::ComputeAxisRotate(startRot, GizmoAxis::Y, theta, false);
+        const NS::Core::Quaternion out = GizmoEditor::ComputeAxisRotate(startRot, GizmoAxis::Y, theta, false);
 
-        const auto localYBefore = NS::Core::Vector3::Transform({0.0f, 1.0f, 0.0f}, startRot);
-        const auto localYAfter = NS::Core::Vector3::Transform({0.0f, 1.0f, 0.0f}, out);
+        const NS::Core::Vector3 localYBefore = NS::Core::Vector3::Transform({0.0f, 1.0f, 0.0f}, startRot);
+        const NS::Core::Vector3 localYAfter = NS::Core::Vector3::Transform({0.0f, 1.0f, 0.0f}, out);
         EXPECT_NEAR(localYAfter.x, localYBefore.x, 1e-4f);
         EXPECT_NEAR(localYAfter.y, localYBefore.y, 1e-4f);
         EXPECT_NEAR(localYAfter.z, localYBefore.z, 1e-4f);
@@ -279,29 +279,29 @@ namespace
     // 旧 world 挙動なら差分は world Y 周りなので、両者を弁別する
     TEST(GizmoEditorComputeAxisRotate, LocalAxisCompositionOrder)
     {
-        const auto startRot = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
+        const NS::Core::Quaternion startRot = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
         const float theta = k_Pi / 2.0f;
-        const auto out = GizmoEditor::ComputeAxisRotate(startRot, GizmoAxis::Y, theta, false);
+        const NS::Core::Quaternion out = GizmoEditor::ComputeAxisRotate(startRot, GizmoAxis::Y, theta, false);
 
         NS::Core::Quaternion startConj = startRot;
         startConj.Conjugate();
         const NS::Core::Quaternion diff = startConj * out;
-        const auto localAxis = NS::Core::Vector3::Transform({0.0f, 1.0f, 0.0f}, startRot);
-        const auto expectedDelta = NS::Core::Quaternion::CreateFromAxisAngle(localAxis, theta);
+        const NS::Core::Vector3 localAxis = NS::Core::Vector3::Transform({0.0f, 1.0f, 0.0f}, startRot);
+        const NS::Core::Quaternion expectedDelta = NS::Core::Quaternion::CreateFromAxisAngle(localAxis, theta);
         ExpectRotatesSame(diff, expectedDelta, 1e-4f);
     }
 
     // World 空間回転は world 軸で回す。非単位 startRot でも世界差分が world Y 周りになる。local 化の逆
     TEST(GizmoEditorComputeAxisRotate, WorldRotateUsesWorldAxis)
     {
-        const auto startRot = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
+        const NS::Core::Quaternion startRot = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
         const float theta = k_Pi / 2.0f;
-        const auto out = GizmoEditor::ComputeAxisRotate(startRot, GizmoAxis::Y, theta, false, /*worldSpace=*/true);
+        const NS::Core::Quaternion out = GizmoEditor::ComputeAxisRotate(startRot, GizmoAxis::Y, theta, false, /*worldSpace=*/true);
 
         NS::Core::Quaternion startConj = startRot;
         startConj.Conjugate();
         const NS::Core::Quaternion diff = startConj * out;
-        const auto expected = NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, theta);
+        const NS::Core::Quaternion expected = NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, theta);
         ExpectRotatesSame(diff, expected, 1e-4f);
     }
 
@@ -579,7 +579,7 @@ namespace
         const NS::Core::Matrix vp;
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
-        const auto axis = GizmoEditor::ToolHandlePick(
+        const GizmoAxis axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Select, NS::Core::Vector2{600.0f, 302.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::None);
     }
@@ -590,7 +590,7 @@ namespace
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
         // origin2d=(400,300) -> Xend2d=(800,300) の水平線分の真上 (600,303)、距離約 3px
-        const auto axis = GizmoEditor::ToolHandlePick(
+        const GizmoAxis axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Move, NS::Core::Vector2{600.0f, 303.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::X);
     }
@@ -601,7 +601,7 @@ namespace
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
         // origin2d=(400,300) -> Yend2d=(400,0) の垂直線分の真横 (402,150)、距離約 2px
-        const auto axis = GizmoEditor::ToolHandlePick(
+        const GizmoAxis axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Move, NS::Core::Vector2{402.0f, 150.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::Y);
     }
@@ -612,7 +612,7 @@ namespace
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
         // どの軸線・中心からも 12px 以上離れた点
-        const auto axis = GizmoEditor::ToolHandlePick(
+        const GizmoAxis axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Move, NS::Core::Vector2{700.0f, 500.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::None);
     }
@@ -623,7 +623,7 @@ namespace
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
         // 画面中心 origin2d=(400,300) のすぐ近く。Scale では中心 Uniform が軸より優先される
-        const auto axis = GizmoEditor::ToolHandlePick(
+        const GizmoAxis axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Scale, NS::Core::Vector2{402.0f, 301.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::Uniform);
     }
@@ -634,7 +634,7 @@ namespace
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
         // 中心(400,300)から十分離れ Uniform 閾値外、だが X 軸線(600,303)には近い -> Scale でも X 軸が取れる
-        const auto axis = GizmoEditor::ToolHandlePick(
+        const GizmoAxis axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Scale, NS::Core::Vector2{600.0f, 303.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::X);
     }
@@ -644,7 +644,7 @@ namespace
         const NS::Core::Matrix vp;
         const NS::Core::Size2D viewport{0, 0};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
-        const auto axis = GizmoEditor::ToolHandlePick(
+        const GizmoAxis axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Move, NS::Core::Vector2{400.0f, 300.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::None);
     }
@@ -656,7 +656,7 @@ namespace
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
         // t=45° の Z リング点は screen (682.8, 87.9)。X/Y 軸線から十分離れ Z リングだけが近い
-        const auto axis = GizmoEditor::ToolHandlePick(
+        const GizmoAxis axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Rotate, NS::Core::Vector2{683.0f, 88.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::Z);
     }
@@ -667,7 +667,7 @@ namespace
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
         // 中心寄りでどの軸リングからも 12px 超なので掴めない
-        const auto axis = GizmoEditor::ToolHandlePick(
+        const GizmoAxis axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Rotate, NS::Core::Vector2{440.0f, 260.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::None);
     }
@@ -678,9 +678,9 @@ namespace
         const NS::Core::Matrix vp;
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
-        const auto rotation = NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, k_Pi / 2.0f);
+        const NS::Core::Quaternion rotation = NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, k_Pi / 2.0f);
         // (402,150) は identity なら world Y 軸線上だが、local X がそこを向くので X になる
-        const auto axis = GizmoEditor::ToolHandlePick(
+        const GizmoAxis axis = GizmoEditor::ToolHandlePick(
             origin, rotation, GizmoTool::Move, NS::Core::Vector2{402.0f, 150.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::X);
     }
@@ -783,15 +783,15 @@ namespace
     {
         const NS::Core::Size2D viewport{800, 600};
         const float aspect = 800.0f / 600.0f;
-        const auto proj = NS::Core::Matrix::CreatePerspectiveFieldOfView(k_Pi / 3.0f, aspect, 0.1f, 100.0f);
-        const auto viewFront =
+        const NS::Core::Matrix proj = NS::Core::Matrix::CreatePerspectiveFieldOfView(k_Pi / 3.0f, aspect, 0.1f, 100.0f);
+        const NS::Core::Matrix viewFront =
             NS::Core::Matrix::CreateLookAt({0.0f, 0.0f, -5.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f});
-        const auto viewBack =
+        const NS::Core::Matrix viewBack =
             NS::Core::Matrix::CreateLookAt({0.0f, 0.0f, 5.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f});
         const NS::Core::Matrix vpFront = viewFront * proj;
         const NS::Core::Matrix vpBack = viewBack * proj;
 
-        auto projectToScreen =
+        NS::Core::Vector2 (*projectToScreen)(const NS::Core::Matrix&, NS::Core::Size2D, NS::Core::Vector3) =
             [](const NS::Core::Matrix& vp, NS::Core::Size2D vpSize, NS::Core::Vector3 w) -> NS::Core::Vector2 {
             const NS::Core::Vector4 clip = NS::Core::Vector4::Transform(NS::Core::Vector4{w.x, w.y, w.z, 1.0f}, vp);
             NS::Core::Vector2 s{};

@@ -104,7 +104,10 @@ namespace NS::Obj
 
     NS::Phys::Capsule CapsuleCollider::WorldCapsule() const noexcept
     {
-        const auto [scale, rotation, translation] = NS::Core::DecomposeAffine(CapsuleWorldMatrix());
+        const NS::Core::AffineDecomposition decomposed = NS::Core::DecomposeAffine(CapsuleWorldMatrix());
+        const NS::Core::Vector3& scale = decomposed.scale;
+        const NS::Core::Quaternion& rotation = decomposed.rotation;
+        const NS::Core::Vector3& translation = decomposed.translation;
         return NS::Phys::Capsule{translation,
                                     NS::Core::Vector3::Transform(NS::Core::Vector3::UnitY, rotation),
                                     m_halfHeight * std::abs(scale.y),

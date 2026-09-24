@@ -18,7 +18,7 @@ namespace
     [[nodiscard]] bool AllIdsUniqueAndAssigned(const SceneNs::SceneData& level)
     {
         std::unordered_set<std::uint32_t> seen;
-        for (const auto& object : level.objects)
+        for (const SceneNs::ObjectData& object : level.objects)
         {
             if (object.objectId == 0 || !seen.insert(object.objectId).second)
                 return false;
@@ -38,7 +38,7 @@ TEST(ObjectIdTest, EnsureUniqueAssignsMissingIds)
 
     EXPECT_TRUE(AllIdsUniqueAndAssigned(level));
     // カウンタは既存最大 id の先を指す
-    for (const auto& object : level.objects)
+    for (const SceneNs::ObjectData& object : level.objects)
         EXPECT_LT(object.objectId, level.nextObjectId);
 }
 
@@ -267,7 +267,7 @@ TEST(ObjectIdTest, FindReferencesToCollectsPointingFieldsOnly)
     SceneNs::SetField(b, "Target", NS::Obj::ObjectRef{otherId});
     level.objects[2].components.push_back(std::move(b));
 
-    const auto refs = SceneNs::FindReferencesTo(level, targetId);
+    const std::vector<SceneNs::ObjectRefLocation> refs = SceneNs::FindReferencesTo(level, targetId);
     ASSERT_EQ(refs.size(), 1u);
     EXPECT_EQ(refs[0].objectId, level.objects[1].objectId);
     EXPECT_EQ(refs[0].componentIndex, 0u);

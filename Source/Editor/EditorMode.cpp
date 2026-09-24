@@ -54,6 +54,29 @@ namespace NS::Editor
             r = ((r % 4) + 4) % 4;
             return static_cast<std::uint8_t>(r);
         }
+
+        //! ワールド座標をパネル上のスクリーン座標へ射影する。カメラの後ろ (w <= 0) なら false を返す
+        struct CursorScreenProjector
+        {
+            NS::Core::Matrix viewProjection; // 射影に使う view * projection
+            float originX = 0.0f;            // パネル左上の X
+            float originY = 0.0f;            // パネル左上の Y
+            float width = 0.0f;              // パネル幅
+            float height = 0.0f;             // パネル高さ
+
+            bool operator()(const NS::Core::Vector3& world, ImVec2& out) const noexcept
+            {
+                const NS::Core::Vector4 worldH{world.x, world.y, world.z, 1.0f};
+                const NS::Core::Vector4 clip = NS::Core::Vector4::Transform(worldH, viewProjection);
+                if (clip.w <= 0.0f)
+                {
+                    return false;
+                }
+                out.x = originX + ((clip.x / clip.w) * 0.5f + 0.5f) * width;
+                out.y = originY + (1.0f - ((clip.y / clip.w) * 0.5f + 0.5f)) * height;
+                return true;
+            }
+        };
     } // namespace
 
     bool EditorMode::HasObjectAtCell(std::int16_t x, std::int16_t y, std::int16_t z) const noexcept
@@ -76,7 +99,7 @@ namespace NS::Editor
         m_palette.TickInput(m_input, m_imgui);
 
         // カーソルの回転状態に合わせて、表示用のヨー角を滑らかに追従させる
-        const auto targetQuat = NS::Core::Quaternion::CreateFromAxisAngle(
+        const NS::Core::Quaternion targetQuat = NS::Core::Quaternion::CreateFromAxisAngle(
             {0.0f, 1.0f, 0.0f}, static_cast<float>(m_currentRotation) * k_QuarterTurnYaw);
         constexpr float k_RotationSpringRate = 12.0f;
         const float dt = NS::Platform::FrameTimer::FixedDelta();
@@ -97,7 +120,7 @@ namespace NS::Editor
             return;
         }
 
-        const auto& kb = m_input->Keyboard();
+        const NS::Platform::Keyboard& kb = m_input->Keyboard();
         if (!kb.IsHeld(NS::Platform::Key::Ctrl))
         {
             return;
@@ -143,8 +166,8 @@ namespace NS::Editor
         }
 
         // 素の名前は Scenes/ 配下に直してから控える。保存先と現在名の指すファイルを一致させる
-        const auto safe = QualifyLevelPath(SanitizeLevelPath(name));
-        const auto path = BuildLevelPath(safe);
+        const std::string safe = QualifyLevelPath(SanitizeLevelPath(name));
+        const std::optional<std::string> path = BuildLevelPath(safe);
         if (safe.empty() || !path)
         {
             return false;
@@ -206,7 +229,7 @@ namespace NS::Editor
 
     void EditorMode::RenderFileBrowser() noexcept
     {
-        const auto result = m_fileBrowser.Render();
+        const LevelFileBrowser::Result result = m_fileBrowser.Render();
         switch (result.action)
         {
         case LevelFileBrowser::Action::RequestSave:
@@ -222,7 +245,7 @@ namespace NS::Editor
         }
         case LevelFileBrowser::Action::RequestLoad:
         {
-            auto path = BuildLevelPath(result.targetName);
+            std::optional<std::string> path = BuildLevelPath(result.targetName);
             if (!path || !m_loadLevel)
             {
                 m_fileBrowser.NotifyLoadResult(false, "不正な level name");
@@ -261,7 +284,7 @@ namespace NS::Editor
         if (m_statusTimer > 0.0f)
         {
             m_statusTimer -= NS::Platform::FrameTimer::DeltaSeconds();
-            const auto vp = ImGui::GetMainViewport();
+            ImGuiViewport* const vp = ImGui::GetMainViewport();
             if (vp != nullptr)
             {
                 ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.5f, vp->WorkPos.y + 12.0f),
@@ -318,7 +341,7 @@ namespace NS::Editor
             return;
         }
 
-        const auto vp = m_camera->ViewProjection();
+        const NS::Core::Matrix vp = m_camera->ViewProjection();
         const NS::Core::Vector3 c = m_cursor.placementCenter;
         constexpr float h = k_CellHalfExtent;
         const float vpW = static_cast<float>(view.width);
@@ -334,17 +357,7 @@ namespace NS::Editor
         }
         dl->PushClipRect(ImVec2{originX, originY}, ImVec2{originX + vpW, originY + vpH}, true);
 
-        const auto project = [&](const NS::Core::Vector3& world, ImVec2& out) -> bool {
-            const NS::Core::Vector4 worldH{world.x, world.y, world.z, 1.0f};
-            const NS::Core::Vector4 clip = NS::Core::Vector4::Transform(worldH, vp);
-            if (clip.w <= 0.0f)
-            {
-                return false;
-            }
-            out.x = originX + ((clip.x / clip.w) * 0.5f + 0.5f) * vpW;
-            out.y = originY + (1.0f - ((clip.y / clip.w) * 0.5f + 0.5f)) * vpH;
-            return true;
-        };
+        const CursorScreenProjector project{vp, originX, originY, vpW, vpH};
 
         // 選択セルの境界ボックスを描画する
         const NS::Core::Vector3 boxCorners[8] = {
@@ -387,7 +400,7 @@ namespace NS::Editor
             return IM_COL32(64, 255, 64, 255);
         }();
 
-        for (const auto& e : k_BoxEdges)
+        for (const int (&e)[2] : k_BoxEdges)
         {
             if (boxFront[e[0]] && boxFront[e[1]])
             {
@@ -418,7 +431,7 @@ namespace NS::Editor
             bool wedgeFront[6]{};
             for (int i = 0; i < 6; ++i)
             {
-                const auto r = NS::Core::Vector3::Transform(wedgeLocal[i], m_displayedYawQuat);
+                const NS::Core::Vector3 r = NS::Core::Vector3::Transform(wedgeLocal[i], m_displayedYawQuat);
                 wedgeFront[i] = project(NS::Core::Vector3{c.x + r.x, c.y + r.y, c.z + r.z}, wedgeScreen[i]);
             }
 
@@ -435,7 +448,7 @@ namespace NS::Editor
             };
 
             const ImU32 slopeColor = IM_COL32(150, 255, 210, 230);
-            for (const auto& e : k_WedgeEdges)
+            for (const int (&e)[2] : k_WedgeEdges)
             {
                 if (wedgeFront[e[0]] && wedgeFront[e[1]])
                 {
@@ -569,7 +582,7 @@ namespace NS::Editor
         int localY = 0;
         ViewRectToLocal(view, mouseX, mouseY, localX, localY);
 
-        const auto vp = m_camera->ViewProjection();
+        const NS::Core::Matrix vp = m_camera->ViewProjection();
         const NS::Core::Ray ray = NS::Editor::ScreenToWorldRay(vp, ViewRectSize(view), localX, localY);
 
         float bestT = std::numeric_limits<float>::max();
@@ -693,7 +706,7 @@ namespace NS::Editor
             return;
         }
 
-        auto& mouse = m_input->Mouse();
+        NS::Platform::Mouse& mouse = m_input->Mouse();
         if (mouse.IsPressed(NS::Platform::MouseButton::Left) && !m_cursor.placementBlocked)
         {
             PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
@@ -704,7 +717,7 @@ namespace NS::Editor
             DeleteAtProgrammatic(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
         }
 
-        auto& gp = m_input->Gamepad(0);
+        NS::Platform::Gamepad& gp = m_input->Gamepad(0);
         if (!gp.IsConnected())
         {
             return;
@@ -772,7 +785,7 @@ namespace NS::Editor
             return;
         }
 
-        auto& kb = m_input->Keyboard();
+        NS::Platform::Keyboard& kb = m_input->Keyboard();
         const bool ctrl = kb.IsHeld(NS::Platform::Key::Ctrl);
         const bool shift = kb.IsHeld(NS::Platform::Key::Shift);
 

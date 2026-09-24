@@ -187,7 +187,7 @@ namespace NS::Obj
         out.textures.clear();
         if (j.contains("textures") && j["textures"].is_array())
         {
-            for (const auto& tex : j["textures"])
+            for (const nlohmann::json& tex : j["textures"])
             {
                 if (tex.is_string())
                 {
@@ -200,7 +200,7 @@ namespace NS::Obj
         out.baseColor = NS::Core::Vector3{1.0f, 1.0f, 1.0f};
         if (j.contains("baseColor") && j["baseColor"].is_array() && j["baseColor"].size() == 3)
         {
-            const auto& c = j["baseColor"];
+            const nlohmann::json& c = j["baseColor"];
             if (c[0].is_number() && c[1].is_number() && c[2].is_number())
             {
                 out.baseColor = NS::Core::Vector3{c[0].get<float>(), c[1].get<float>(), c[2].get<float>()};
@@ -225,12 +225,12 @@ namespace NS::Obj
     {
         // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから重複をまとめる
         const std::string key = NS::Platform::FileSystem::Normalize(path);
-        if (const auto it = m_shaders.find(key); it != m_shaders.end())
+        if (const std::map<std::string, std::unique_ptr<NS::Gfx::Shader>>::iterator it = m_shaders.find(key); it != m_shaders.end())
         {
             return it->second.get();
         }
 
-        auto shader = NS::Gfx::Shader::Create(key);
+        std::unique_ptr<NS::Gfx::Shader> shader = NS::Gfx::Shader::Create(key);
         NS::Gfx::Shader* raw = shader.get();
         if (raw->IsUsingFallback())
         {
@@ -243,11 +243,11 @@ namespace NS::Obj
     NS::Gfx::Texture* AssetManager::GetOrLoadTexture(std::string_view path)
     {
         const std::string key = NS::Platform::FileSystem::Normalize(path);
-        if (const auto it = m_textures.find(key); it != m_textures.end())
+        if (const std::map<std::string, std::unique_ptr<NS::Gfx::Texture>>::iterator it = m_textures.find(key); it != m_textures.end())
         {
             return it->second.get();
         }
-        auto texture = NS::Gfx::Texture::Create({.path = key});
+        std::unique_ptr<NS::Gfx::Texture> texture = NS::Gfx::Texture::Create({.path = key});
         NS::Gfx::Texture* raw = texture.get();
         m_textures.emplace(key, std::move(texture));
         return raw;
@@ -256,7 +256,7 @@ namespace NS::Obj
     AssetManager::MeshRecord& AssetManager::LoadMeshRecord(std::string_view path)
     {
         const std::string key = NS::Platform::FileSystem::Normalize(path);
-        if (const auto it = m_meshes.find(key); it != m_meshes.end())
+        if (const std::map<std::string, MeshRecord>::iterator it = m_meshes.find(key); it != m_meshes.end())
         {
             return it->second;
         }
@@ -313,10 +313,10 @@ namespace NS::Obj
 
         if (const BuiltinShape* shape = FindBuiltinShape(meshRef))
         {
-            auto it = m_builtinCollisions.find(meshRef);
+            std::map<std::string, std::unique_ptr<NS::Phys::MeshCollision>>::iterator it = m_builtinCollisions.find(meshRef);
             if (it == m_builtinCollisions.end())
             {
-                auto collision = std::make_unique<NS::Phys::MeshCollision>();
+                std::unique_ptr<NS::Phys::MeshCollision> collision = std::make_unique<NS::Phys::MeshCollision>();
                 collision->triangles = MakeTriangles(shape->make());
                 it = m_builtinCollisions.emplace(meshRef, std::move(collision)).first;
             }
@@ -334,7 +334,7 @@ namespace NS::Obj
     LoadedSkinnedModel AssetManager::GetOrLoadSkinnedModel(std::string_view path)
     {
         const std::string key = NS::Platform::FileSystem::Normalize(path);
-        auto it = m_skinnedModels.find(key);
+        std::map<std::string, SkinnedModelRecord>::iterator it = m_skinnedModels.find(key);
         if (it == m_skinnedModels.end())
         {
             NS::Gfx::SkinnedMeshData data = NS::Gfx::LoadGltfSkinnedMesh(key);
@@ -385,7 +385,7 @@ namespace NS::Obj
     {
         const std::string key = NS::Platform::FileSystem::Normalize(path);
         // null エントリは負キャッシュした失敗 path を表す。get() が nullptr を返し再読込を短絡する
-        if (const auto it = m_animationSources.find(key); it != m_animationSources.end())
+        if (const std::map<std::string, std::unique_ptr<NS::Gfx::AnimationSource>>::iterator it = m_animationSources.find(key); it != m_animationSources.end())
         {
             return it->second.get();
         }
@@ -399,7 +399,7 @@ namespace NS::Obj
             return nullptr;
         }
 
-        auto owned = std::make_unique<NS::Gfx::AnimationSource>(std::move(source));
+        std::unique_ptr<NS::Gfx::AnimationSource> owned = std::make_unique<NS::Gfx::AnimationSource>(std::move(source));
         const NS::Gfx::AnimationSource* raw = owned.get();
         m_animationSources.emplace(key, std::move(owned));
         return raw;
@@ -410,7 +410,9 @@ namespace NS::Obj
     {
         const std::pair<std::string, std::string> key{NS::Platform::FileSystem::Normalize(clipPath),
                                                       NS::Platform::FileSystem::Normalize(modelPath)};
-        if (const auto it = m_boundClips.find(key); it != m_boundClips.end())
+        if (const std::map<std::pair<std::string, std::string>, std::unique_ptr<std::vector<NS::Gfx::AnimationClip>>>::iterator it =
+                m_boundClips.find(key);
+            it != m_boundClips.end())
         {
             return it->second.get();
         }
@@ -432,7 +434,7 @@ namespace NS::Obj
 
         // 結合で index を振り直した複製は避けられない派生データだが、所有はこちら側なので
         // 同じ組で解決する全インスタンスがこの 1 本を共有する
-        auto bound = std::make_unique<std::vector<NS::Gfx::AnimationClip>>(
+        std::unique_ptr<std::vector<NS::Gfx::AnimationClip>> bound = std::make_unique<std::vector<NS::Gfx::AnimationClip>>(
             NS::Gfx::BindClipsByName(source->animations, source->skeleton, *model.skeleton));
         const std::vector<NS::Gfx::AnimationClip>* raw = bound.get();
         m_boundClips.emplace(key, std::move(bound));
@@ -449,7 +451,7 @@ namespace NS::Obj
 
     NS::Gfx::StaticMesh* AssetManager::Builtin(std::string_view name) const noexcept
     {
-        const auto it = m_builtins.find(std::string(name));
+        const std::map<std::string, std::unique_ptr<NS::Gfx::StaticMesh>>::const_iterator it = m_builtins.find(std::string(name));
         if (it != m_builtins.end())
         {
             return it->second.get();
@@ -460,12 +462,12 @@ namespace NS::Obj
     LoadedMaterial AssetManager::LoadMaterial(std::string_view matPath)
     {
         const std::string matKey = NS::Platform::FileSystem::Normalize(matPath);
-        if (const auto it = m_materials.find(matKey); it != m_materials.end())
+        if (const std::map<std::string, MaterialRecord>::iterator it = m_materials.find(matKey); it != m_materials.end())
         {
             return LoadedMaterial{it->second.material.get(), it->second.baseColor};
         }
 
-        const auto textOpt = NS::Platform::FileSystem::ReadAllText(matKey);
+        const std::optional<std::string> textOpt = NS::Platform::FileSystem::ReadAllText(matKey);
         if (!textOpt)
         {
             NS_LOG_ERROR(Graphics, "AssetManager: .mat 読込失敗: {}", matKey);
@@ -494,7 +496,7 @@ namespace NS::Obj
         matDesc.constantBufferSize = sizeof(NS::Gfx::FrameCB);
         matDesc.cbSlot = 0;
         matDesc.blend = fileDesc.blend;
-        auto material = NS::Gfx::Material::Create(matDesc);
+        std::unique_ptr<NS::Gfx::Material> material = NS::Gfx::Material::Create(matDesc);
 
         // texture を slot 順に bind する
         for (std::size_t i = 0; i < fileDesc.textures.size(); ++i)
@@ -532,7 +534,7 @@ namespace NS::Obj
 
         // player: 単一 Texture2D。slot0 に基準テクスチャを bind する
         {
-            auto mat = NS::Gfx::Material::Create(base);
+            std::unique_ptr<NS::Gfx::Material> mat = NS::Gfx::Material::Create(base);
             mat->SetTexture(0, baseTexture);
             m_sharedMaterials.emplace(k_SharedPlayer, std::move(mat));
         }
@@ -541,7 +543,7 @@ namespace NS::Obj
             NS::Gfx::MaterialDesc desc = base;
             desc.pixelShader = GetOrLoadShader(shaderPath("water.ps.hlsl"));
             desc.blend = NS::Gfx::BlendMode::Alpha;
-            auto mat = NS::Gfx::Material::Create(desc);
+            std::unique_ptr<NS::Gfx::Material> mat = NS::Gfx::Material::Create(desc);
             mat->SetTexture(0, baseTexture);
             m_sharedMaterials.emplace(k_SharedWater, std::move(mat));
         }
@@ -556,7 +558,7 @@ namespace NS::Obj
 
     NS::Gfx::Material* AssetManager::SharedMaterial(std::string_view name) const noexcept
     {
-        const auto it = m_sharedMaterials.find(std::string(name));
+        const std::map<std::string, std::unique_ptr<NS::Gfx::Material>>::const_iterator it = m_sharedMaterials.find(std::string(name));
         if (it != m_sharedMaterials.end())
         {
             return it->second.get();
@@ -567,7 +569,7 @@ namespace NS::Obj
     bool AssetManager::Reload(std::string_view path)
     {
         const std::string key = NS::Platform::FileSystem::Normalize(path);
-        if (const auto it = m_shaders.find(key); it != m_shaders.end())
+        if (const std::map<std::string, std::unique_ptr<NS::Gfx::Shader>>::iterator it = m_shaders.find(key); it != m_shaders.end())
         {
             return it->second->Reload();
         }
@@ -578,7 +580,7 @@ namespace NS::Obj
     std::size_t AssetManager::ReloadAllShaders()
     {
         std::size_t reloaded = 0;
-        for (auto& entry : m_shaders)
+        for (std::pair<const std::string, std::unique_ptr<NS::Gfx::Shader>>& entry : m_shaders)
         {
             if (entry.second->Reload())
             {

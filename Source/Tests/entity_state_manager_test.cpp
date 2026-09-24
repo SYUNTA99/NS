@@ -41,7 +41,7 @@ namespace
 TEST(EntityStateManagerTest, ChangeAndIsCurrentTakeTheStateType)
 {
     NS::Obj::GameObject obj;
-    auto& manager = *obj.AddComponent<FakeStateManager>();
+    FakeStateManager& manager = *obj.AddComponent<FakeStateManager>();
     manager.Build();
     ASSERT_TRUE(manager.IsBuilt());
 
@@ -58,7 +58,7 @@ TEST(EntityStateManagerTest, ChangeAndIsCurrentTakeTheStateType)
 TEST(EntityStateManagerTest, NotBuiltManagerIsNoState)
 {
     NS::Obj::GameObject obj;
-    auto& manager = *obj.AddComponent<FakeStateManager>();
+    FakeStateManager& manager = *obj.AddComponent<FakeStateManager>();
 
     EXPECT_FALSE(manager.IsBuilt());
     EXPECT_FALSE(manager.IsCurrent<IdleTestState>());

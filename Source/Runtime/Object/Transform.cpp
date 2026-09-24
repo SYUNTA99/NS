@@ -97,7 +97,7 @@ namespace NS::Obj
         {
             return;
         }
-        auto& siblings = m_parent->m_children;
+        std::vector<Transform*>& siblings = m_parent->m_children;
         siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
         m_parent = nullptr;
     }

@@ -56,15 +56,15 @@ namespace
 
     FallingEntity& MakeAirborneEntity(GameObject& owner)
     {
-        auto& entity = *owner.AddComponent<FallingEntity>();
+        FallingEntity& entity = *owner.AddComponent<FallingEntity>();
         owner.Root().SetPosition(Vector3{0.0f, 2.0f, 0.0f});
         return entity;
     }
 
     PlayerComponent& MakeLedgeReady(GameObject& owner)
     {
-        auto& manager = *owner.AddComponent<PlayerStateManager>();
-        auto& player = *owner.AddComponent<PlayerComponent>();
+        PlayerStateManager& manager = *owner.AddComponent<PlayerStateManager>();
+        PlayerComponent& player = *owner.AddComponent<PlayerComponent>();
 
         player.OnStart();
         manager.OnStart();
@@ -77,8 +77,8 @@ namespace
 
     PlayerComponent& MakeSlamReady(GameObject& owner, NS::Phys::PhysicsScene& physics)
     {
-        auto& manager = *owner.AddComponent<PlayerStateManager>();
-        auto& player = *owner.AddComponent<PlayerComponent>();
+        PlayerStateManager& manager = *owner.AddComponent<PlayerStateManager>();
+        PlayerComponent& player = *owner.AddComponent<PlayerComponent>();
 
         AddFloor(physics);
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
@@ -188,7 +188,7 @@ TEST_F(EntityEventsTest, GroundEnterFiresOnceOnTheLandingStep)
     GameObject& obj = stage.owner;
     NS::Phys::PhysicsScene& physics = stage.physics;
     AddFloor(physics);
-    auto& entity = MakeAirborneEntity(obj);
+    FallingEntity& entity = MakeAirborneEntity(obj);
 
     int entered = 0;
     int exited = 0;
@@ -209,7 +209,7 @@ TEST_F(EntityEventsTest, GroundExitFiresOnceOnTheLeavingStep)
     GameObject& obj = stage.owner;
     NS::Phys::PhysicsScene& physics = stage.physics;
     AddFloor(physics);
-    auto& entity = MakeAirborneEntity(obj);
+    FallingEntity& entity = MakeAirborneEntity(obj);
     for (int i = 0; i < 60; ++i)
         entity.OnUpdate();
     ASSERT_TRUE(entity.IsGrounded());
@@ -234,7 +234,7 @@ TEST_F(EntityEventsTest, StayingGroundedFiresNeitherNotification)
     GameObject& obj = stage.owner;
     NS::Phys::PhysicsScene& physics = stage.physics;
     AddFloor(physics);
-    auto& entity = MakeAirborneEntity(obj);
+    FallingEntity& entity = MakeAirborneEntity(obj);
     for (int i = 0; i < 60; ++i)
         entity.OnUpdate();
     ASSERT_TRUE(entity.IsGrounded());
@@ -254,7 +254,7 @@ TEST_F(EntityEventsTest, StayingGroundedFiresNeitherNotification)
 TEST_F(EntityEventsTest, JumpNotificationFiresOnlyWhenTheJumpHappens)
 {
     GameObject obj;
-    auto& player = *obj.AddComponent<PlayerComponent>();
+    PlayerComponent& player = *obj.AddComponent<PlayerComponent>();
 
     int jumped = 0;
     player.PlayerEventsRef().onJump.Subscribe([&jumped]() { ++jumped; });
@@ -275,7 +275,7 @@ TEST_F(EntityEventsTest, LedgeGrabbedFiresOnTheGrabbingStep)
     NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj);
+    PlayerComponent& player = MakeLedgeReady(obj);
 
     int grabbed = 0;
     player.PlayerEventsRef().onLedgeGrabbed.Subscribe([&grabbed]() { ++grabbed; });
@@ -296,7 +296,7 @@ TEST_F(EntityEventsTest, LedgeClimbingFiresWhenTheClimbStarts)
     NS::Phys::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj);
+    PlayerComponent& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -320,7 +320,7 @@ TEST_F(EntityEventsTest, BodySlamStartedAndEndedFireAroundTheRush)
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
     NS::Phys::PhysicsScene& physics = stage.physics;
-    auto& player = MakeSlamReady(obj, physics);
+    PlayerComponent& player = MakeSlamReady(obj, physics);
 
     int started = 0;
     int ended = 0;
@@ -348,7 +348,7 @@ TEST_F(EntityEventsTest, CancelBodySlamFiresTheEndNotification)
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
     NS::Phys::PhysicsScene& physics = stage.physics;
-    auto& player = MakeSlamReady(obj, physics);
+    PlayerComponent& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.RequestBodySlam(1.0f);

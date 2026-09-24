@@ -44,8 +44,8 @@ Editor::~Editor() = default;
 void Editor::OnAttach()
 {
     // SceneManager::LoadScene が同期実行するので起動 scene は Game レイヤが既に load + OnStart 済
-    auto* app = NS::App::Application::Get();
-    auto* game = Game::Get();
+    NS::App::Application* app = NS::App::Application::Get();
+    Game* game = Game::Get();
     decltype(game->CurrentScene()) scene = nullptr;
     if (game != nullptr)
         scene = game->CurrentScene();
@@ -93,7 +93,7 @@ void Editor::OnDetach()
     m_controller.reset();
 
     // ImGui を破棄する前に hook を外し、WndProc から無効になった context を踏まないようにする
-    if (auto* app = NS::App::Application::Get())
+    if (NS::App::Application* app = NS::App::Application::Get())
     {
         app->SetQuitGuard(nullptr);
         app->Window().SetMessageHook(nullptr);
@@ -124,7 +124,7 @@ void Editor::OnRender()
     if (!IsActive() || !m_controller || !m_imgui)
         return;
     LevelEditorController& editor = *m_controller;
-    auto* app = NS::App::Application::Get();
+    NS::App::Application* app = NS::App::Application::Get();
     if (app == nullptr)
         return;
 
@@ -172,7 +172,7 @@ void Editor::OnRender()
 
             // モードが変わったフレームだけ前面のタブへ自動フォーカスする。Tab / ボタン / Quit to Edit のどこから
             // 切替わっても CurrentMode の変化検知で一律に効く
-            const auto tabFocus =
+            const std::optional<NS::Editor::CenterTab> tabFocus =
                 NS::Editor::TabFocusOnModeChange({.wasPlayMode = m_lastModeWasPlay, .playMode = playMode});
             if (tabFocus.has_value())
             {
@@ -241,10 +241,10 @@ void Editor::OnRender()
 
 void Editor::HandleModeToggleInput(LevelEditorController& editor) noexcept
 {
-    auto* app = NS::App::Application::Get();
+    NS::App::Application* app = NS::App::Application::Get();
     if (app == nullptr)
         return;
-    auto& input = app->Input();
+    NS::Platform::Input& input = app->Input();
 
     // UI がキーボードを握っている間は mode flip させない
     const bool wantKb = input.UiWantsKeyboard();
@@ -266,10 +266,10 @@ void Editor::HandlePauseInput(LevelEditorController& editor) noexcept
 {
     if (editor.CurrentMode() != LevelEditorController::Mode::Play)
         return;
-    auto* app = NS::App::Application::Get();
+    NS::App::Application* app = NS::App::Application::Get();
     if (app == nullptr)
         return;
-    auto& input = app->Input();
+    NS::Platform::Input& input = app->Input();
 
     const bool wantKb = input.UiWantsKeyboard();
 
@@ -290,10 +290,10 @@ void Editor::HandleUiVisibilityInput(LevelEditorController& editor) noexcept
         return;
     }
 
-    auto* app = NS::App::Application::Get();
+    NS::App::Application* app = NS::App::Application::Get();
     if (app == nullptr)
         return;
-    auto& input = app->Input();
+    NS::Platform::Input& input = app->Input();
 
     // 隠している間は ImGui がキーボードを掴まないので F5 で再表示できる
     if (!input.UiWantsKeyboard() && input.Keyboard().IsPressed(NS::Platform::Key::F5))

@@ -19,17 +19,17 @@ namespace NS::Game::Level
 
     void KillZone::OnUpdate()
     {
-        auto* box = Owner()->FindComponent<NS::Obj::BoxCollider>();
+        NS::Obj::BoxCollider* box = Owner()->FindComponent<NS::Obj::BoxCollider>();
         if (box == nullptr)
             return;
 
-        auto* scene = Owner()->OwningScene();
+        NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
             return;
-        auto* player = FindPlayer(scene->Objects());
+        ::Player* player = FindPlayer(scene->Objects());
         if (player == nullptr)
             return;
-        auto* movement = player->FindComponent<NS::Game::Player::PlayerComponent>();
+        NS::Game::Player::PlayerComponent* movement = player->FindComponent<NS::Game::Player::PlayerComponent>();
         if (movement == nullptr)
             return;
 
@@ -37,7 +37,7 @@ namespace NS::Game::Level
                                            NS::Core::Vector3::UnitY,
                                            movement->CapsuleHalfHeight(),
                                            movement->CapsuleRadius()};
-        const auto overlaps = scene->Physics().OverlapCapsule(capsule);
+        const std::vector<JPH::BodyID> overlaps = scene->Physics().OverlapCapsule(capsule);
         if (std::find(overlaps.begin(), overlaps.end(), box->BodyId()) != overlaps.end())
             player->Kill();
     }

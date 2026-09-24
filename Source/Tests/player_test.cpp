@@ -44,16 +44,16 @@ TEST(PlayerTest, ResponseComponentsTrailTheUpdateBand)
 
 TEST(PlayerTest, InputRelayResolvesBothSidesOnStart)
 {
-    auto& keyboard = NS::Platform::Input::Get().Keyboard();
+    NS::Platform::Keyboard& keyboard = NS::Platform::Input::Get().Keyboard();
     keyboard.ClearState();
     keyboard.Update();
 
     Player player{};
     player.OnStart();
 
-    auto* input = player.FindComponent<NS::Obj::PlayerInput>();
-    auto* relay = player.FindComponent<NS::Game::Player::PlayerInputRelay>();
-    auto* entity = player.FindComponent<NS::Game::Player::PlayerComponent>();
+    NS::Obj::PlayerInput* input = player.FindComponent<NS::Obj::PlayerInput>();
+    NS::Game::Player::PlayerInputRelay* relay = player.FindComponent<NS::Game::Player::PlayerInputRelay>();
+    NS::Game::Player::PlayerComponent* entity = player.FindComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(input, nullptr);
     ASSERT_NE(relay, nullptr);
     ASSERT_NE(entity, nullptr);

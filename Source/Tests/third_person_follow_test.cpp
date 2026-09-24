@@ -33,7 +33,7 @@ namespace
         GameObject* target = scene.SpawnTransient<GameObject>();
         ObjectIdAccess::SetId(*target, k_TargetId);
         GameObject* rig = scene.SpawnTransient<GameObject>();
-        auto& follow = *rig->AddComponent<ThirdPersonFollow>();
+        ThirdPersonFollow& follow = *rig->AddComponent<ThirdPersonFollow>();
         NsTest::WriteObjectRefField(follow, "追従対象", k_TargetId);
         return follow;
     }
@@ -41,7 +41,7 @@ namespace
     //! 3 段の距離を既定値から離して置く。どの段に寄ったかを距離 1 つで見分けられる
     ThirdPersonFollow& MakeZoomProbe(Scene& scene)
     {
-        auto& follow = AddFollowing(scene);
+        ThirdPersonFollow& follow = AddFollowing(scene);
         follow.SetActive(true);
         follow.SetAutoDistances(k_IdleDistance, k_RunDistance, k_JumpDistance);
         follow.SetRunSpeedThreshold(k_RunSpeedThreshold);
@@ -73,7 +73,7 @@ TEST_F(ThirdPersonFollowTest, ConstructsWithNullTarget)
 TEST_F(ThirdPersonFollowTest, OnUpdateRunsWhenActive)
 {
     Scene scene;
-    auto& follow = AddFollowing(scene);
+    ThirdPersonFollow& follow = AddFollowing(scene);
     follow.OnUpdate();
     SUCCEED();
 }
@@ -83,21 +83,21 @@ TEST_F(ThirdPersonFollowTest, EvaluatePoseFallbackWhenTargetIsNull)
     ThirdPersonFollow follow;
     follow.OnUpdate();
     // target が無い時は EvaluatePose が既定 pose を返す。実カメラは動かない
-    const auto pose = follow.EvaluatePose(1.0f);
+    const NS::Obj::CameraPose pose = follow.EvaluatePose(1.0f);
     EXPECT_FLOAT_EQ(pose.position.z, -5.0f);
 }
 
 TEST_F(ThirdPersonFollowTest, EvaluatePosePlacesCameraBehindTarget)
 {
     Scene scene;
-    auto& follow = AddFollowing(scene);
+    ThirdPersonFollow& follow = AddFollowing(scene);
     follow.SetDistance(5.0f);
 
     for (int i = 0; i < 60; ++i)
         follow.OnUpdate();
 
     // OnUpdate は state mutation のみ (yaw/pitch/distance)、最終姿勢は EvaluatePose が返す。揺れを避ける
-    const auto pose = follow.EvaluatePose(1.0f);
+    const NS::Obj::CameraPose pose = follow.EvaluatePose(1.0f);
 
     EXPECT_NEAR(pose.position.x, 0.0f, 0.1f);
     EXPECT_GT(pose.position.y, 1.0f);
@@ -129,7 +129,7 @@ TEST_F(ThirdPersonFollowTest, SetDistanceSyncsCurrentAndDesired)
 TEST_F(ThirdPersonFollowTest, PitchIsClampedAfterUpdate)
 {
     Scene scene;
-    auto& follow = AddFollowing(scene);
+    ThirdPersonFollow& follow = AddFollowing(scene);
 
     for (int i = 0; i < 200; ++i)
         follow.OnUpdate();
@@ -141,7 +141,7 @@ TEST_F(ThirdPersonFollowTest, PitchIsClampedAfterUpdate)
 TEST_F(ThirdPersonFollowTest, FollowMotionAirborneZoomsToJumpDistance)
 {
     Scene scene;
-    auto& follow = MakeZoomProbe(scene);
+    ThirdPersonFollow& follow = MakeZoomProbe(scene);
 
     follow.SetFollowMotion(false, {0.0f, 0.0f, 0.0f});
     SettleZoom(follow);
@@ -152,7 +152,7 @@ TEST_F(ThirdPersonFollowTest, FollowMotionAirborneZoomsToJumpDistance)
 TEST_F(ThirdPersonFollowTest, FollowMotionAboveRunThresholdZoomsToRunDistance)
 {
     Scene scene;
-    auto& follow = MakeZoomProbe(scene);
+    ThirdPersonFollow& follow = MakeZoomProbe(scene);
 
     follow.SetFollowMotion(true, {10.0f, 0.0f, 0.0f});
     SettleZoom(follow);
@@ -163,7 +163,7 @@ TEST_F(ThirdPersonFollowTest, FollowMotionAboveRunThresholdZoomsToRunDistance)
 TEST_F(ThirdPersonFollowTest, FollowMotionStandingStillZoomsToIdleDistance)
 {
     Scene scene;
-    auto& follow = MakeZoomProbe(scene);
+    ThirdPersonFollow& follow = MakeZoomProbe(scene);
 
     follow.SetFollowMotion(true, {0.0f, 0.0f, 0.0f});
     SettleZoom(follow);
@@ -174,7 +174,7 @@ TEST_F(ThirdPersonFollowTest, FollowMotionStandingStillZoomsToIdleDistance)
 TEST_F(ThirdPersonFollowTest, FollowMotionRejectsNonFiniteVelocity)
 {
     Scene scene;
-    auto& follow = MakeZoomProbe(scene);
+    ThirdPersonFollow& follow = MakeZoomProbe(scene);
 
     follow.SetFollowMotion(true, {std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f});
     SettleZoom(follow);
@@ -185,7 +185,7 @@ TEST_F(ThirdPersonFollowTest, FollowMotionRejectsNonFiniteVelocity)
 TEST_F(ThirdPersonFollowTest, WithoutAnyFollowMotionTheDistanceStaysAtIdle)
 {
     Scene scene;
-    auto& follow = MakeZoomProbe(scene);
+    ThirdPersonFollow& follow = MakeZoomProbe(scene);
 
     SettleZoom(follow);
 

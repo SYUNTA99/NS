@@ -142,7 +142,7 @@ namespace
             rig.impact = live->FindComponent<LevelNs::ImpactResolver>();
             rig.input = live->FindComponent<LevelNs::CollisionInput>();
             // 起こしたままだと実機の入力が毎フレーム 0 を書き込むため、走行入力と向きが検証台から消える
-            if (auto* input = live->FindComponent<SceneNs::PlayerInput>())
+            if (SceneNs::PlayerInput* input = live->FindComponent<SceneNs::PlayerInput>())
                 input->SetActive(false);
         }
         scene.Objects().ForEachComponent<LevelNs::Breakable>(
@@ -589,7 +589,7 @@ TEST(CollisionImpact, ReboundsOffFlyingTarget)
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     ASSERT_NE(rig.target, nullptr);
-    auto* body = rig.target->AddComponent<LevelNs::LaunchedBody>();
+    LevelNs::LaunchedBody* body = rig.target->AddComponent<LevelNs::LaunchedBody>();
     body->Launch(Vector3{0.0f, 0.0f, 0.0f});
     ASSERT_TRUE(body->IsFlying());
     ASSERT_TRUE(rig.targetBox->BodyId().IsInvalid());
@@ -1625,7 +1625,7 @@ TEST(CollisionImpact, HitStopShakesCamera)
     SceneNs::CameraBrain* brain = scene.CameraBrain();
     ASSERT_NE(brain, nullptr);
     // 追う相手の無い追従カメラは固定の既定視点を返す。揺れの有無だけを見るのでそれで足りる
-    auto* follow = brain->Owner()->AddComponent<SceneNs::ThirdPersonFollow>();
+    SceneNs::ThirdPersonFollow* follow = brain->Owner()->AddComponent<SceneNs::ThirdPersonFollow>();
     follow->SetActive(true);
     brain->AddVirtualCamera(follow);
     brain->Evaluate(1.0f);
@@ -1687,7 +1687,7 @@ TEST(CollisionImpact, BreakHidesTarget)
 
     ASSERT_TRUE(rig.impact->DidBreak());
     ASSERT_NE(rig.target, nullptr);
-    auto* mesh = rig.target->FindComponent<SceneNs::MeshRenderer>();
+    SceneNs::MeshRenderer* mesh = rig.target->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_FALSE(mesh->IsActiveSelf());
 }
@@ -1858,7 +1858,7 @@ TEST(CollisionImpact, DebrisLooksLikeSmallCube)
 
     const std::vector<LevelNs::LaunchedBody*> debris = DebrisBodies(scene);
     ASSERT_EQ(debris.size(), 5u);
-    auto* mesh = debris[0]->Owner()->FindComponent<SceneNs::MeshRenderer>();
+    SceneNs::MeshRenderer* mesh = debris[0]->Owner()->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_EQ(mesh->MeshRef(), "cube");
     const Vector3 scale = debris[0]->Owner()->Root().Scale();
@@ -1875,7 +1875,7 @@ TEST(CollisionImpact, DebrisRestsThenExpires)
     EnableBreak(rig);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     ASSERT_NE(rig.target, nullptr);
-    auto* targetBody = rig.target->AddComponent<LevelNs::LaunchedBody>();
+    LevelNs::LaunchedBody* targetBody = rig.target->AddComponent<LevelNs::LaunchedBody>();
     SetFloatField(*targetBody, "破片の速さ", 1.0f);
     SetFloatField(*targetBody, "破片の寿命秒", 0.05f);
     rig.breakable->SetToughness(1.0f);
@@ -1884,16 +1884,16 @@ TEST(CollisionImpact, DebrisRestsThenExpires)
 
     const std::vector<LevelNs::LaunchedBody*> debris = DebrisBodies(scene);
     ASSERT_EQ(debris.size(), 5u);
-    auto anyFlying = [&debris]() {
-        for (LevelNs::LaunchedBody* body : debris)
-        {
-            if (body->IsFlying())
-                return true;
-        }
-        return false;
-    };
     int guard = 0;
-    while (anyFlying() && guard < 300)
+    while ([&debris]() {
+               for (LevelNs::LaunchedBody* body : debris)
+               {
+                   if (body->IsFlying())
+                       return true;
+               }
+               return false;
+           }() &&
+           guard < 300)
     {
         StepBody(scene);
         ++guard;
@@ -1904,7 +1904,7 @@ TEST(CollisionImpact, DebrisRestsThenExpires)
         StepBody(scene);
     for (LevelNs::LaunchedBody* body : debris)
     {
-        auto* mesh = body->Owner()->FindComponent<SceneNs::MeshRenderer>();
+        SceneNs::MeshRenderer* mesh = body->Owner()->FindComponent<SceneNs::MeshRenderer>();
         ASSERT_NE(mesh, nullptr);
         EXPECT_FALSE(mesh->IsActiveSelf());
         EXPECT_FALSE(body->IsActiveSelf());
@@ -2194,7 +2194,7 @@ TEST(LaunchedBody, RestWithZeroLifeStaysVisible)
     for (int i = 0; i < 120; ++i)
         StepBody(scene);
 
-    auto* mesh = rig.object->FindComponent<SceneNs::MeshRenderer>();
+    SceneNs::MeshRenderer* mesh = rig.object->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_TRUE(mesh->IsActiveSelf());
     EXPECT_TRUE(rig.box->IsActiveSelf());
@@ -2215,7 +2215,7 @@ TEST(LaunchedBody, SetRestLifeSecondsHidesAfterRest)
     for (int i = 0; i < 5; ++i)
         StepBody(scene);
 
-    auto* mesh = rig.object->FindComponent<SceneNs::MeshRenderer>();
+    SceneNs::MeshRenderer* mesh = rig.object->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_FALSE(mesh->IsActiveSelf());
     EXPECT_FALSE(rig.box->IsActiveSelf());
@@ -2238,7 +2238,7 @@ TEST(LaunchedBody, RestLifeRejectsNonFiniteAndNegative)
     for (int i = 0; i < 120; ++i)
         StepBody(scene);
 
-    auto* mesh = rig.object->FindComponent<SceneNs::MeshRenderer>();
+    SceneNs::MeshRenderer* mesh = rig.object->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_TRUE(mesh->IsActiveSelf());
 }
@@ -2283,7 +2283,7 @@ TEST(ImpactMark, UsesShadowQuadLook)
     SceneNs::GameObject* mark = LevelNs::ImpactMark::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
     ASSERT_NE(mark, nullptr);
 
-    auto* mesh = mark->FindComponent<SceneNs::MeshRenderer>();
+    SceneNs::MeshRenderer* mesh = mark->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_EQ(mesh->MeshRef(), "shadowQuad");
     EXPECT_EQ(mesh->MaterialRef(), "shadow");
@@ -2330,10 +2330,10 @@ TEST(ImpactMark, HidesAfterLifeWithoutDestroy)
     for (int i = 0; i < 370; ++i)
         StepBody(scene);
 
-    auto* mesh = mark->FindComponent<SceneNs::MeshRenderer>();
+    SceneNs::MeshRenderer* mesh = mark->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_FALSE(mesh->IsActiveSelf());
-    auto* comp = mark->FindComponent<LevelNs::ImpactMark>();
+    LevelNs::ImpactMark* comp = mark->FindComponent<LevelNs::ImpactMark>();
     ASSERT_NE(comp, nullptr);
     EXPECT_FALSE(comp->IsActiveSelf());
     EXPECT_EQ(scene.Objects().ObjectCount(), after);
@@ -2408,6 +2408,6 @@ TEST(LaunchedBody, FallsAtThePlayersUpwardGravity)
     const float fallenSpeed = physics.BodyVelocity(body).y;
 
     NS::Obj::GameObject probe;
-    auto& player = *probe.AddComponent<NS::Game::Player::PlayerComponent>();
+    NS::Game::Player::PlayerComponent& player = *probe.AddComponent<NS::Game::Player::PlayerComponent>();
     EXPECT_NEAR(fallenSpeed / k_FixedDt, NsTest::ReadTuningField(player, "上昇重力"), 1.0f);
 }

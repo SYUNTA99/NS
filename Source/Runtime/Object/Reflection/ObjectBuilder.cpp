@@ -77,7 +77,7 @@ namespace NS::Obj
             ObjectIdAccess::SetId(*created, ComponentEntryId(entry));
             created->SetEnabled(ComponentEntryEnabled(entry));
 
-            const auto fieldsIt = entry.find("fields");
+            const nlohmann::json::const_iterator fieldsIt = entry.find("fields");
             if (fieldsIt != entry.end())
             {
                 ApplyJsonFields(*created, *fieldsIt);

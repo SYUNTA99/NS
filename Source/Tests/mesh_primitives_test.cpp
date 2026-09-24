@@ -24,23 +24,23 @@ namespace
 
 TEST(MeshPrimitivesTest, MakeCubeHas24VerticesAnd36Indices)
 {
-    auto geom = MakeCube({0.5f, 0.5f, 0.5f});
+    NS::Gfx::MeshGeometry geom = MakeCube({0.5f, 0.5f, 0.5f});
     EXPECT_EQ(geom.vertices.size(), std::size_t{24});
     EXPECT_EQ(geom.indices.size(), std::size_t{36});
 }
 
 TEST(MeshPrimitivesTest, MakeCubeNormalsAreAxisAligned)
 {
-    auto geom = MakeCube({0.5f, 0.5f, 0.5f});
-    for (const auto& v : geom.vertices)
+    NS::Gfx::MeshGeometry geom = MakeCube({0.5f, 0.5f, 0.5f});
+    for (const NS::Gfx::StaticVertex& v : geom.vertices)
         EXPECT_TRUE(IsAxisAligned(v.normal)) << "normal should be axis-aligned (per-face)";
 }
 
 TEST(MeshPrimitivesTest, MakeCubeRespectsExtents)
 {
-    auto geom = MakeCube({2.0f, 3.0f, 4.0f});
+    NS::Gfx::MeshGeometry geom = MakeCube({2.0f, 3.0f, 4.0f});
     float maxX = 0.0f, maxY = 0.0f, maxZ = 0.0f;
-    for (const auto& v : geom.vertices)
+    for (const NS::Gfx::StaticVertex& v : geom.vertices)
     {
         maxX = std::max(maxX, std::abs(v.position.x));
         maxY = std::max(maxY, std::abs(v.position.y));
@@ -53,15 +53,15 @@ TEST(MeshPrimitivesTest, MakeCubeRespectsExtents)
 
 TEST(MeshPrimitivesTest, MakePlaneHas4VerticesAnd6Indices)
 {
-    auto geom = MakePlane({1.0f, 1.0f});
+    NS::Gfx::MeshGeometry geom = MakePlane({1.0f, 1.0f});
     EXPECT_EQ(geom.vertices.size(), std::size_t{4});
     EXPECT_EQ(geom.indices.size(), std::size_t{6});
 }
 
 TEST(MeshPrimitivesTest, MakePlaneNormalsArePlusY)
 {
-    auto geom = MakePlane({2.5f, 3.5f});
-    for (const auto& v : geom.vertices)
+    NS::Gfx::MeshGeometry geom = MakePlane({2.5f, 3.5f});
+    for (const NS::Gfx::StaticVertex& v : geom.vertices)
     {
         EXPECT_FLOAT_EQ(v.normal.x, 0.0f);
         EXPECT_FLOAT_EQ(v.normal.y, 1.0f);

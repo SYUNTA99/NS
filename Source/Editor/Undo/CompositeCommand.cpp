@@ -9,7 +9,7 @@ namespace NS::Editor
 
     void CompositeCommand::Do(IObjectSnapshotApplier& target) noexcept
     {
-        for (auto& command : m_commands)
+        for (std::unique_ptr<ICommand>& command : m_commands)
         {
             if (command)
                 command->Do(target);
@@ -19,7 +19,8 @@ namespace NS::Editor
     void CompositeCommand::Undo(IObjectSnapshotApplier& target) noexcept
     {
         // 後から効かせた分を先に戻さないと、依存のある編集が食い違う
-        for (auto it = m_commands.rbegin(); it != m_commands.rend(); ++it)
+        for (std::vector<std::unique_ptr<ICommand>>::reverse_iterator it = m_commands.rbegin(); it != m_commands.rend();
+             ++it)
         {
             if (*it)
                 (*it)->Undo(target);
@@ -29,7 +30,7 @@ namespace NS::Editor
     std::size_t CompositeCommand::EstimatedBytes() const noexcept
     {
         std::size_t bytes = sizeof(CompositeCommand);
-        for (const auto& command : m_commands)
+        for (const std::unique_ptr<ICommand>& command : m_commands)
         {
             if (command)
                 bytes += command->EstimatedBytes();

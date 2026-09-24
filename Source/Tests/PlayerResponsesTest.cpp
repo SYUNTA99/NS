@@ -63,7 +63,7 @@ TEST(PlayerResponses, RestartRunPlacesPlayerAtBaseline)
     baseline.objects.push_back(MakePlayerObject(NS::Core::Vector3{7.0f, 2.0f, -4.0f}, NS::Core::Quaternion{}));
     scene.SetPlayBaselineForTest(std::move(baseline));
 
-    auto* player = FindPlayer(scene.Objects());
+    Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     // やり直しの手順はプレイヤーに載る respawner の持ち物
     player->FindComponent<LevelNs::Respawner>()->RestartRun();
@@ -82,7 +82,7 @@ TEST(PlayerResponses, FallIntoKillZoneRestartsSameTick)
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
 
-    auto* player = FindPlayer(scene.Objects());
+    Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     // 体力を減らしておくと、全回復が「リスタートが走った」証拠になる
     player->ApplyDamage(5);
@@ -110,7 +110,7 @@ TEST(PlayerResponses, GoalContactStartsClearFadeSameTick)
     scene.OnUpdate();
 
     // 接触のフラグが判定で立ち、同じ LateUpdate の finisher がシーケンスを始める
-    auto* fade = FindFade(scene);
+    LevelNs::ScreenFade* fade = FindFade(scene);
     ASSERT_NE(fade, nullptr);
     EXPECT_TRUE(fade->IsFading());
 }
@@ -143,7 +143,7 @@ TEST(PlayerResponses, StepFrameAdvancesExactlyOneTick)
     // コマ送り 1 回でゴールの暗転が始まる
     scene.StepSimulation();
     scene.OnUpdate();
-    auto* fade = FindFade(scene);
+    LevelNs::ScreenFade* fade = FindFade(scene);
     ASSERT_NE(fade, nullptr);
     ASSERT_TRUE(fade->IsFading());
     const float afterFirstStep = fade->Alpha();
@@ -188,16 +188,16 @@ TEST(PlayerResponses, ClearFadesOutRestartsAtBlackThenFadesIn)
     (void)scene.BeginPlayBaseline();
 
     // 体力を減らしておくと、全回復が「全黒でリスタートが走った」証拠になる
-    auto* player = FindPlayer(scene.Objects());
+    Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     player->ApplyDamage(5);
     scene.OnUpdate();
-    auto* fade = FindFade(scene);
+    LevelNs::ScreenFade* fade = FindFade(scene);
     ASSERT_NE(fade, nullptr);
     ASSERT_TRUE(fade->IsFading());
 
     // シーケンスの間も Scene の更新は止めず入力だけ切る
-    auto* input = player->FindComponent<SceneNs::PlayerInput>();
+    SceneNs::PlayerInput* input = player->FindComponent<SceneNs::PlayerInput>();
     ASSERT_NE(input, nullptr);
     EXPECT_FALSE(input->IsActiveSelf());
 

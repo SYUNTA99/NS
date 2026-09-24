@@ -65,7 +65,7 @@ namespace NS::UI
         }
 
         // 上に描かれる物から先に当てる。子は末尾ほど上
-        for (auto it = m_children.rbegin(); it != m_children.rend(); ++it)
+        for (std::vector<std::unique_ptr<Widget>>::const_reverse_iterator it = m_children.rbegin(); it != m_children.rend(); ++it)
         {
             if ((*it)->HitTest(px, py))
             {

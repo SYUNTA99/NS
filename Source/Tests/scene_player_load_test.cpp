@@ -27,7 +27,7 @@ namespace
 {
     bool LoadShippedScene(SceneNs::SceneData& outScene, std::string_view name)
     {
-        const auto path = EditorNs::BuildLevelPath(name);
+        const std::optional<std::string> path = EditorNs::BuildLevelPath(name);
         if (!path.has_value())
             return false;
         return SceneNs::LoadSceneFromJsonFile(outScene, *path);
@@ -83,8 +83,8 @@ TEST_P(ShippedScene, LoadedPlayerBuildsItsStateMachine)
     std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(*object, nullptr);
     ASSERT_NE(live, nullptr);
 
-    auto* player = live->FindComponent<PlayerNs::PlayerComponent>();
-    auto* states = live->FindComponent<PlayerNs::PlayerStateManager>();
+    PlayerNs::PlayerComponent* player = live->FindComponent<PlayerNs::PlayerComponent>();
+    PlayerNs::PlayerStateManager* states = live->FindComponent<PlayerNs::PlayerStateManager>();
     ASSERT_NE(player, nullptr);
     ASSERT_NE(states, nullptr);
 
@@ -109,19 +109,19 @@ TEST_P(ShippedScene, EveryTuningFieldNameIsReflected)
         {"PlayerStateManager", live->FindComponent<PlayerNs::PlayerStateManager>()},
     };
 
-    for (const auto& [typeName, comp] : targets)
+    for (const std::pair<const char*, const SceneNs::Component*>& target : targets)
     {
-        ASSERT_NE(comp, nullptr) << typeName;
-        const nlohmann::json* entry = SceneNs::FindComponentEntry(*object, typeName);
-        ASSERT_NE(entry, nullptr) << typeName;
-        const auto fields = entry->find("fields");
-        ASSERT_NE(fields, entry->end()) << typeName;
+        ASSERT_NE(target.second, nullptr) << target.first;
+        const nlohmann::json* entry = SceneNs::FindComponentEntry(*object, target.first);
+        ASSERT_NE(entry, nullptr) << target.first;
+        const nlohmann::json::const_iterator fields = entry->find("fields");
+        ASSERT_NE(fields, entry->end()) << target.first;
 
-        const std::vector<std::string> reflected = ReflectedFieldNames(*comp);
-        for (const auto& item : fields->items())
+        const std::vector<std::string> reflected = ReflectedFieldNames(*target.second);
+        for (nlohmann::json::const_iterator item = fields->begin(); item != fields->end(); ++item)
         {
             EXPECT_NE(std::find(reflected.begin(), reflected.end(), item.key()), reflected.end())
-                << GetParam() << " の " << typeName << " に欄 " << item.key()
+                << GetParam() << " の " << target.first << " に欄 " << item.key()
                 << " があるが、この型は同じ名前を持たない。名前が違う欄は警告だけ残して捨てられ、値は既定のまま残る";
         }
     }
@@ -136,7 +136,7 @@ TEST_P(ShippedScene, PlayerComponentCarriesEveryTuningField)
 
     const nlohmann::json* entry = SceneNs::FindComponentEntry(*object, "PlayerComponent");
     ASSERT_NE(entry, nullptr);
-    const auto fields = entry->find("fields");
+    const nlohmann::json::const_iterator fields = entry->find("fields");
     ASSERT_NE(fields, entry->end());
 
     // 22 は今の同梱シーンが持つ欄数。保存はリフレクションの欄 30 件を全部書き出すので、開いて保存し直すと増える
@@ -152,7 +152,7 @@ TEST_P(ShippedScene, LoadedPlayerKeepsTheTunedSlamValues)
 
     std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(*object, nullptr);
     ASSERT_NE(live, nullptr);
-    auto* player = live->FindComponent<PlayerNs::PlayerComponent>();
+    PlayerNs::PlayerComponent* player = live->FindComponent<PlayerNs::PlayerComponent>();
     ASSERT_NE(player, nullptr);
     live->OnStart();
 

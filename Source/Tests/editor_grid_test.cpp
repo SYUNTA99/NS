@@ -6,7 +6,7 @@
 
 TEST(EditorGridTest, SnapWorldPointToGridRoundsToNearestCell)
 {
-    auto c = NS::Editor::SnapWorldPointToGrid({0.3f, 1.7f, -2.6f}, 1.0f);
+    NS::Core::Vector3 c = NS::Editor::SnapWorldPointToGrid({0.3f, 1.7f, -2.6f}, 1.0f);
     // floor(x + 0.5) の丸めで 0.3 -> 0、1.7 -> 2、-2.6 -> -3
     EXPECT_FLOAT_EQ(c.x, 0.0f);
     EXPECT_FLOAT_EQ(c.y, 2.0f);
@@ -34,7 +34,7 @@ TEST(EditorGridTest, GroundFallbackFailsForUpwardRay)
 
 TEST(EditorGridTest, RotationU8ToQuaternionIdentityAt0)
 {
-    auto q = NS::Editor::RotationToQuaternion(0);
+    NS::Core::Quaternion q = NS::Editor::RotationToQuaternion(0);
     EXPECT_NEAR(q.w, 1.0f, 1e-4f);
     EXPECT_NEAR(q.x, 0.0f, 1e-4f);
     EXPECT_NEAR(q.y, 0.0f, 1e-4f);
@@ -43,15 +43,15 @@ TEST(EditorGridTest, RotationU8ToQuaternionIdentityAt0)
 
 TEST(EditorGridTest, RotationU8At2Is180Degrees)
 {
-    auto q = NS::Editor::RotationToQuaternion(2);
+    NS::Core::Quaternion q = NS::Editor::RotationToQuaternion(2);
     EXPECT_NEAR(q.w, 0.0f, 1e-4f);
     EXPECT_NEAR(std::abs(q.y), 1.0f, 1e-4f);
 }
 
 TEST(EditorGridTest, RotationU8WrapsAtModulo4)
 {
-    auto q4 = NS::Editor::RotationToQuaternion(4);
-    auto q0 = NS::Editor::RotationToQuaternion(0);
+    NS::Core::Quaternion q4 = NS::Editor::RotationToQuaternion(4);
+    NS::Core::Quaternion q0 = NS::Editor::RotationToQuaternion(0);
     EXPECT_NEAR(q4.w, q0.w, 1e-4f);
 }
 
@@ -59,7 +59,7 @@ TEST(EditorGridTest, ScreenToWorldRayDirectionIsUnitLength)
 {
     NS::Core::Matrix identity = NS::Core::Matrix::Identity;
     NS::Core::Size2D vp{1280, 720};
-    auto ray = NS::Editor::ScreenToWorldRay(identity, vp, 640, 360);
+    NS::Core::Ray ray = NS::Editor::ScreenToWorldRay(identity, vp, 640, 360);
     const float len = std::sqrt(ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y +
                                 ray.direction.z * ray.direction.z);
     EXPECT_NEAR(len, 1.0f, 1e-3f);
@@ -105,8 +105,8 @@ TEST(EditorGridTest, LocalizedRayMatchesOriginViewportRay)
     NS::Editor::ViewRectToLocal(rect, 500, 350, lx, ly);
 
     NS::Core::Matrix identity = NS::Core::Matrix::Identity;
-    const auto localized = NS::Editor::ScreenToWorldRay(identity, NS::Editor::ViewRectSize(rect), lx, ly);
-    const auto reference = NS::Editor::ScreenToWorldRay(identity, NS::Core::Size2D{800, 600}, 400, 300);
+    const NS::Core::Ray localized = NS::Editor::ScreenToWorldRay(identity, NS::Editor::ViewRectSize(rect), lx, ly);
+    const NS::Core::Ray reference = NS::Editor::ScreenToWorldRay(identity, NS::Core::Size2D{800, 600}, 400, 300);
 
     EXPECT_NEAR(localized.direction.x, reference.direction.x, 1e-5f);
     EXPECT_NEAR(localized.direction.y, reference.direction.y, 1e-5f);

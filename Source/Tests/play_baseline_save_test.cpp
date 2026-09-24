@@ -103,7 +103,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
 
     NS::Obj::GameObject* live = scene.Objects().FindObject(NS::Obj::ObjectRef{rockId});
     ASSERT_NE(live, nullptr);
-    auto* launched = live->FindComponent<LevelNs::LaunchedBody>();
+    LevelNs::LaunchedBody* launched = live->FindComponent<LevelNs::LaunchedBody>();
     ASSERT_NE(launched, nullptr);
 
     live->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
@@ -120,7 +120,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     scene.LoadFromData(std::move(copy));
     NS::Obj::GameObject* rebuilt = scene.Objects().FindObject(NS::Obj::ObjectRef{rockId});
     ASSERT_NE(rebuilt, nullptr);
-    auto* rebuiltLaunched = rebuilt->FindComponent<LevelNs::LaunchedBody>();
+    LevelNs::LaunchedBody* rebuiltLaunched = rebuilt->FindComponent<LevelNs::LaunchedBody>();
     ASSERT_NE(rebuiltLaunched, nullptr);
     EXPECT_FLOAT_EQ(GetFloatField(*rebuiltLaunched, "跳ね返り"), 0.9f);
 }
@@ -139,7 +139,7 @@ TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)
 
     NS::Obj::GameObject* live = scene.Objects().FindObject(NS::Obj::ObjectRef{blockId});
     ASSERT_NE(live, nullptr);
-    auto* transform = live->FindComponent<SceneNs::TransformComponent>();
+    SceneNs::TransformComponent* transform = live->FindComponent<SceneNs::TransformComponent>();
     ASSERT_NE(transform, nullptr);
 
     const NS::Core::Quaternion edited =

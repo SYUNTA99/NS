@@ -20,7 +20,7 @@ namespace NS::Obj
         [[nodiscard]] bool IsAxisAligned(const NS::Core::OBB& obb) noexcept
         {
             constexpr float k_AlignEpsilon = 1e-4f;
-            const auto alignedAxis = [](const NS::Core::Vector3& axis) noexcept {
+            bool (*const alignedAxis)(const NS::Core::Vector3&) noexcept = [](const NS::Core::Vector3& axis) noexcept -> bool {
                 const float maxComponent = std::max({std::abs(axis.x), std::abs(axis.y), std::abs(axis.z)});
                 return maxComponent >= 1.0f - k_AlignEpsilon;
             };
@@ -132,7 +132,10 @@ namespace NS::Obj
 
     NS::Core::OBB BoxCollider::WorldOBB() const noexcept
     {
-        const auto [scale, rotation, translation] = NS::Core::DecomposeAffine(CombinedWorldMatrix());
+        const NS::Core::AffineDecomposition decomposed = NS::Core::DecomposeAffine(CombinedWorldMatrix());
+        const NS::Core::Vector3& scale = decomposed.scale;
+        const NS::Core::Quaternion& rotation = decomposed.rotation;
+        const NS::Core::Vector3& translation = decomposed.translation;
         const NS::Core::Vector3 half{m_halfExtents.x * std::abs(scale.x),
                                      m_halfExtents.y * std::abs(scale.y),
                                      m_halfExtents.z * std::abs(scale.z)};

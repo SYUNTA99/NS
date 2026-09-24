@@ -78,7 +78,7 @@ TEST(MeshTypeLayoutTest, StaticVertexSizeIs32)
 
 TEST(MeshTypeLayoutTest, StandardInputLayoutHasExpectedElements)
 {
-    const auto elements = StaticMesh::StandardInputLayout();
+    const std::vector<InputElement> elements = StaticMesh::StandardInputLayout();
     ASSERT_EQ(elements.size(), 3u);
 
     EXPECT_EQ(elements[0].semanticName, "POSITION");
@@ -101,8 +101,8 @@ TEST_F(MeshLoggerTest, ConstructWithCubeDataIsValid)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto vertices = MakeCubeVertices();
-    const auto indices = MakeCubeIndices();
+    const std::array<StaticVertex, k_CubeVertexCount> vertices = MakeCubeVertices();
+    const std::array<std::uint32_t, k_CubeIndexCount> indices = MakeCubeIndices();
     MeshDesc desc{};
     desc.vertices = vertices.data();
     desc.vertexCount = vertices.size();
@@ -139,8 +139,8 @@ TEST_F(MeshLoggerTest, PartiallyEmptyDescFallsBackToCube)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto vertices = MakeCubeVertices();
-    const auto indices = MakeCubeIndices();
+    const std::array<StaticVertex, k_CubeVertexCount> vertices = MakeCubeVertices();
+    const std::array<std::uint32_t, k_CubeIndexCount> indices = MakeCubeIndices();
 
     // vertices あり / indices nullptr
     {
@@ -193,8 +193,8 @@ TEST_F(MeshLoggerTest, DrawDoesNotCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto vertices = MakeCubeVertices();
-    const auto indices = MakeCubeIndices();
+    const std::array<StaticVertex, k_CubeVertexCount> vertices = MakeCubeVertices();
+    const std::array<std::uint32_t, k_CubeIndexCount> indices = MakeCubeIndices();
     MeshDesc desc{};
     desc.vertices = vertices.data();
     desc.vertexCount = vertices.size();
@@ -216,8 +216,8 @@ TEST_F(MeshLoggerTest, AccessorsNonNull)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto vertices = MakeCubeVertices();
-    const auto indices = MakeCubeIndices();
+    const std::array<StaticVertex, k_CubeVertexCount> vertices = MakeCubeVertices();
+    const std::array<std::uint32_t, k_CubeIndexCount> indices = MakeCubeIndices();
     MeshDesc desc{};
     desc.vertices = vertices.data();
     desc.vertexCount = vertices.size();
@@ -239,8 +239,8 @@ TEST_F(MeshLoggerTest, CreateInputLayoutSucceedsWithStandardShader)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto vertices = MakeCubeVertices();
-    const auto indices = MakeCubeIndices();
+    const std::array<StaticVertex, k_CubeVertexCount> vertices = MakeCubeVertices();
+    const std::array<std::uint32_t, k_CubeIndexCount> indices = MakeCubeIndices();
     MeshDesc desc{};
     desc.vertices = vertices.data();
     desc.vertexCount = vertices.size();
@@ -253,7 +253,7 @@ TEST_F(MeshLoggerTest, CreateInputLayoutSucceedsWithStandardShader)
     // 生成前は layout 未所有
     EXPECT_EQ(mesh.InputLayout(), nullptr);
 
-    const auto shaderDir = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), "Shaders");
+    const std::string shaderDir = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), "Shaders");
     std::unique_ptr<NS::Gfx::Shader> shaderHolder = NS::Gfx::Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "standard.vs.hlsl"));
     NS::Gfx::Shader& shader = *shaderHolder;
     ASSERT_TRUE(shader.IsValid());

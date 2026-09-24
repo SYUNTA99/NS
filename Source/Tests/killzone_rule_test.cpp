@@ -20,7 +20,7 @@ TEST(KillZoneTest, KillsPlayerInsideVolume)
     data.objects.push_back(LevelNs::MakeKillZoneObject());
     scene.LoadFromData(std::move(data));
 
-    auto* player = FindPlayer(scene.Objects());
+    Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     ASSERT_FALSE(player->IsDead());
 
@@ -42,7 +42,7 @@ TEST(KillZoneTest, DoesNotKillPlayerAboveVolume)
 
     scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
 
-    auto* player = FindPlayer(scene.Objects());
+    Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     EXPECT_FALSE(player->IsDead());
 }

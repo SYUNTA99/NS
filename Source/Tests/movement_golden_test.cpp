@@ -63,8 +63,8 @@ namespace
     //! @details 開始位置は空中に取り、数フレームの自然落下で着地させる
     PlayerComponent& SetUpMovement(GameObject& owner, NS::Phys::PhysicsScene& physics, const Vector3& startPosition)
     {
-        auto& manager = *owner.AddComponent<PlayerStateManager>();
-        auto& movement = *owner.AddComponent<PlayerComponent>();
+        PlayerStateManager& manager = *owner.AddComponent<PlayerStateManager>();
+        PlayerComponent& movement = *owner.AddComponent<PlayerComponent>();
 
         owner.Root().SetPosition(startPosition);
         physics.OptimizeBroadPhase();
@@ -86,7 +86,7 @@ namespace
         GameObject& owner = stage.owner;
         NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{16.0f, 0.5f, 8.0f}});
-        auto& movement = SetUpMovement(owner, physics, Vector3{0.0f, 1.0f, 0.0f});
+        PlayerComponent& movement = SetUpMovement(owner, physics, Vector3{0.0f, 1.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
         for (int i = 0; i < 120; ++i)
@@ -110,7 +110,7 @@ namespace
         GameObject& owner = stage.owner;
         NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{32.0f, 0.5f, 8.0f}});
-        auto& movement = SetUpMovement(owner, physics, Vector3{0.0f, 1.0f, 0.0f});
+        PlayerComponent& movement = SetUpMovement(owner, physics, Vector3{0.0f, 1.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
         for (int i = 0; i < 180; ++i)
@@ -133,7 +133,7 @@ namespace
         GameObject& owner = stage.owner;
         NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{2.0f, 0.5f, 8.0f}});
-        auto& movement = SetUpMovement(owner, physics, Vector3{0.0f, 1.0f, 0.0f});
+        PlayerComponent& movement = SetUpMovement(owner, physics, Vector3{0.0f, 1.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
         bool prevGrounded = false;
@@ -168,7 +168,7 @@ namespace
         GameObject& owner = stage.owner;
         NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
-        auto& movement = SetUpMovement(owner, physics, Vector3{0.0f, 3.0f, 0.0f});
+        PlayerComponent& movement = SetUpMovement(owner, physics, Vector3{0.0f, 3.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
         bool pressed = false;
@@ -195,7 +195,7 @@ namespace
         NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
         NsTest::AddBox(physics, AABB{Vector3{6.0f, 1.5f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
-        auto& movement = SetUpMovement(owner, physics, Vector3{0.0f, 1.0f, 0.0f});
+        PlayerComponent& movement = SetUpMovement(owner, physics, Vector3{0.0f, 1.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
         for (int i = 0; i < 120; ++i)
@@ -218,10 +218,10 @@ namespace
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}});
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, 1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, -1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
-        auto& movement = SetUpMovement(owner, physics, Vector3{-0.9f, 0.1f, 0.0f});
+        PlayerComponent& movement = SetUpMovement(owner, physics, Vector3{-0.9f, 0.1f, 0.0f});
         // 入力は最初のフレームだけ。立ちから始めるとそのフレームに加速せず、縁を向かないまま落ちて掴まない
         // 状態機械は最初のフレームまで組まれないので、先に組んでから落下へ移す
-        auto& manager = *owner.FindComponent<PlayerStateManager>();
+        PlayerStateManager& manager = *owner.FindComponent<PlayerStateManager>();
         manager.EnsureBuilt(movement);
         manager.Change<FallPlayerState>();
 
@@ -271,7 +271,7 @@ namespace
             NS::Phys::Triangle{lowLeft, highLeft, highRight},
         };
         physics.AddMesh(slope, NS::Phys::ObjectLayers::Terrain);
-        auto& movement = SetUpMovement(owner, physics, Vector3{0.0f, 2.5f, -10.5f});
+        PlayerComponent& movement = SetUpMovement(owner, physics, Vector3{0.0f, 2.5f, -10.5f});
 
         std::vector<StepRecord> trajectory;
         for (int i = 0; i < 120; ++i)
@@ -298,7 +298,7 @@ TEST_F(MovementGolden, HashIsStableAcrossTwoRuns)
 
 TEST_F(MovementGolden, FlatWalkMatchesGoldenTrace)
 {
-    const auto trajectory = RunFlatWalk();
+    const std::vector<StepRecord> trajectory = RunFlatWalk();
 
     float maxVx = 0.0f;
     for (const StepRecord& s : trajectory)
@@ -309,7 +309,7 @@ TEST_F(MovementGolden, FlatWalkMatchesGoldenTrace)
     EXPECT_LT(trajectory.back().velocity.x, 0.5f) << "入力を切った後に停止していない";
     EXPECT_TRUE(trajectory.back().grounded);
 
-    const auto baseline = LoadBaseline("movement_flat_walk");
+    const std::optional<std::vector<StepRecord>> baseline = LoadBaseline("movement_flat_walk");
     ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_flat_walk");
     const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
     EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);
@@ -317,13 +317,13 @@ TEST_F(MovementGolden, FlatWalkMatchesGoldenTrace)
 
 TEST_F(MovementGolden, SingleJumpMatchesGoldenTrace)
 {
-    const auto trajectory = RunSingleJump();
+    const std::vector<StepRecord> trajectory = RunSingleJump();
 
     EXPECT_GT(MaxHeight(trajectory), 2.0f) << "ジャンプ頂点が低すぎる";
     EXPECT_LT(MaxHeight(trajectory), 6.0f) << "ジャンプ頂点が高すぎる";
     EXPECT_TRUE(trajectory.back().grounded) << "着地して終わっていない";
 
-    const auto baseline = LoadBaseline("movement_single_jump");
+    const std::optional<std::vector<StepRecord>> baseline = LoadBaseline("movement_single_jump");
     ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_single_jump");
     const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
     EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);
@@ -331,11 +331,11 @@ TEST_F(MovementGolden, SingleJumpMatchesGoldenTrace)
 
 TEST_F(MovementGolden, CoyoteJumpMatchesGoldenTrace)
 {
-    const auto trajectory = RunCoyoteJump();
+    const std::vector<StepRecord> trajectory = RunCoyoteJump();
 
     EXPECT_TRUE(HasUpwardBurst(trajectory)) << "踏み外し後の猶予ジャンプが発動していない";
 
-    const auto baseline = LoadBaseline("movement_coyote_jump");
+    const std::optional<std::vector<StepRecord>> baseline = LoadBaseline("movement_coyote_jump");
     ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_coyote_jump");
     const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
     EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);
@@ -343,11 +343,11 @@ TEST_F(MovementGolden, CoyoteJumpMatchesGoldenTrace)
 
 TEST_F(MovementGolden, JumpBufferMatchesGoldenTrace)
 {
-    const auto trajectory = RunJumpBuffer();
+    const std::vector<StepRecord> trajectory = RunJumpBuffer();
 
     EXPECT_TRUE(HasUpwardBurst(trajectory)) << "着地時に先行入力ジャンプが発動していない";
 
-    const auto baseline = LoadBaseline("movement_jump_buffer");
+    const std::optional<std::vector<StepRecord>> baseline = LoadBaseline("movement_jump_buffer");
     ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_jump_buffer");
     const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
     EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);
@@ -355,13 +355,13 @@ TEST_F(MovementGolden, JumpBufferMatchesGoldenTrace)
 
 TEST_F(MovementGolden, WallCollisionMatchesGoldenTrace)
 {
-    const auto trajectory = RunWallCollision();
+    const std::vector<StepRecord> trajectory = RunWallCollision();
 
     EXPECT_LT(trajectory.back().position.x, 5.5f) << "壁にめり込んでいる";
     EXPECT_GT(trajectory.back().position.x, 4.0f) << "壁のはるか手前で止まっている";
     EXPECT_LT(trajectory.back().velocity.x, 0.5f) << "壁に当たり続けているのに速度が残っている";
 
-    const auto baseline = LoadBaseline("movement_wall_collision");
+    const std::optional<std::vector<StepRecord>> baseline = LoadBaseline("movement_wall_collision");
     ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_wall_collision");
     const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
     EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);
@@ -369,12 +369,12 @@ TEST_F(MovementGolden, WallCollisionMatchesGoldenTrace)
 
 TEST_F(MovementGolden, LedgeClimbMatchesGoldenTrace)
 {
-    const auto trajectory = RunLedgeClimb();
+    const std::vector<StepRecord> trajectory = RunLedgeClimb();
 
     EXPECT_TRUE(trajectory.back().grounded) << "よじ登り切って立っていない";
     EXPECT_GT(trajectory.back().position.y, 0.5f) << "上面へ上がっていない";
 
-    const auto baseline = LoadBaseline("movement_ledge_climb");
+    const std::optional<std::vector<StepRecord>> baseline = LoadBaseline("movement_ledge_climb");
     ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_ledge_climb");
     const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
     EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);
@@ -382,7 +382,7 @@ TEST_F(MovementGolden, LedgeClimbMatchesGoldenTrace)
 
 TEST_F(MovementGolden, SlopeAscentMatchesGoldenTrace)
 {
-    const auto trajectory = RunSlopeAscent();
+    const std::vector<StepRecord> trajectory = RunSlopeAscent();
 
     int monotonicSteps = 0;
     for (std::size_t i = 61; i < trajectory.size(); ++i)
@@ -396,7 +396,7 @@ TEST_F(MovementGolden, SlopeAscentMatchesGoldenTrace)
     EXPECT_GT(trajectory.back().position.y, trajectory[60].position.y + 1.0f);
     EXPECT_TRUE(trajectory.back().grounded);
 
-    const auto baseline = LoadBaseline("movement_slope_ascent");
+    const std::optional<std::vector<StepRecord>> baseline = LoadBaseline("movement_slope_ascent");
     ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_slope_ascent");
     const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
     EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);

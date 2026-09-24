@@ -38,7 +38,7 @@ TEST(GoalTest, ReachedWhenPlayerWithinRadius)
     data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
 
-    auto* goal = FindGoal(scene.Objects());
+    LevelNs::Goal* goal = FindGoal(scene.Objects());
     ASSERT_NE(goal, nullptr);
     EXPECT_FALSE(goal->Reached());
 
@@ -57,7 +57,7 @@ TEST(GoalTest, NotReachedWhenFar)
 
     scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
 
-    auto* goal = FindGoal(scene.Objects());
+    LevelNs::Goal* goal = FindGoal(scene.Objects());
     ASSERT_NE(goal, nullptr);
     EXPECT_FALSE(goal->Reached());
 }
@@ -70,13 +70,13 @@ TEST(GoalTest, ReachedLatchesUntilReset)
     data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
 
-    auto* goal = FindGoal(scene.Objects());
+    LevelNs::Goal* goal = FindGoal(scene.Objects());
     ASSERT_NE(goal, nullptr);
     scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
     ASSERT_TRUE(goal->Reached());
 
     // 触れた後に離れてもフラグは立ったまま
-    auto* player = FindPlayer(scene.Objects());
+    Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     player->Root().SetPosition(NS::Core::Vector3{10.0f, 0.0f, 0.0f});
     scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);

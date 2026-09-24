@@ -54,7 +54,7 @@ namespace NS::Obj
         //! scene attach と objectId の書き込みは呼出側が返り値へ済ませる
         template <class T, class... Args> T* Spawn(Args&&... args)
         {
-            auto obj = std::make_unique<T>(std::forward<Args>(args)...);
+            std::unique_ptr<T> obj = std::make_unique<T>(std::forward<Args>(args)...);
             T* raw = obj.get();
             Append(std::move(obj));
             return raw;
@@ -139,11 +139,11 @@ namespace NS::Obj
         //! 型付き控えの代わりの問い合わせ口で、寿命は ObjectList が持ったまま
         template <class T, class Fn> void ForEachComponent(Fn&& fn) const
         {
-            for (const auto& obj : m_objects)
+            for (const std::unique_ptr<GameObject>& obj : m_objects)
             {
                 for (Component* comp : obj->Components())
                 {
-                    if (auto* typed = ComponentCast<T>(comp))
+                    if (T* typed = ComponentCast<T>(comp))
                     {
                         fn(*typed);
                     }

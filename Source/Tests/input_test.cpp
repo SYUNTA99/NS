@@ -76,8 +76,8 @@ TEST(NsPlatformKeyboard, UnknownKeyIsNoop)
 TEST(NsPlatformKeyboard, OutOfRangeKeyIsNoop)
 {
     Keyboard kb;
-    const auto negativeKey = static_cast<Key>(-1);
-    const auto overflowKey = static_cast<Key>(static_cast<int>(Key::Count) + 10);
+    const Key negativeKey = static_cast<Key>(-1);
+    const Key overflowKey = static_cast<Key>(static_cast<int>(Key::Count) + 10);
 
     kb.OnKeyDown(negativeKey);
     kb.OnKeyDown(overflowKey);
@@ -149,8 +149,8 @@ TEST(NsPlatformMouse, ReleasedAfterButtonUp)
 TEST(NsPlatformMouse, OutOfRangeButtonIsNoop)
 {
     Mouse m;
-    const auto negativeButton = static_cast<MouseButton>(-1);
-    const auto overflowButton = static_cast<MouseButton>(static_cast<int>(MouseButton::Count) + 10);
+    const MouseButton negativeButton = static_cast<MouseButton>(-1);
+    const MouseButton overflowButton = static_cast<MouseButton>(static_cast<int>(MouseButton::Count) + 10);
 
     m.OnButtonDown(negativeButton);
     m.OnButtonDown(overflowButton);
@@ -357,8 +357,8 @@ TEST(NsPlatformGamepad, DefaultStickAndTriggerZero)
 TEST(NsPlatformGamepad, OutOfRangeButtonIsNoop)
 {
     Gamepad pad;
-    const auto negative = static_cast<GamepadButton>(-1);
-    const auto overflow = static_cast<GamepadButton>(static_cast<int>(GamepadButton::Count) + 10);
+    const GamepadButton negative = static_cast<GamepadButton>(-1);
+    const GamepadButton overflow = static_cast<GamepadButton>(static_cast<int>(GamepadButton::Count) + 10);
 
     EXPECT_FALSE(pad.IsHeld(negative));
     EXPECT_FALSE(pad.IsHeld(overflow));

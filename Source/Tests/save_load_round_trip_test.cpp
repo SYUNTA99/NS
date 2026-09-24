@@ -48,7 +48,7 @@ namespace
 
 TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
 {
-    auto path = TestScenePath("test_roundtrip");
+    std::optional<std::string> path = TestScenePath("test_roundtrip");
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData src;
@@ -191,8 +191,8 @@ TEST(SaveLoadRoundTrip, ObjectParentSurvivesJsonRoundTrip)
 // バイト一致する。保存し直しただけでは git diff に行が出ない
 TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
 {
-    auto path1 = TestScenePath("test_byteid_a");
-    auto path2 = TestScenePath("test_byteid_b");
+    std::optional<std::string> path1 = TestScenePath("test_byteid_a");
+    std::optional<std::string> path2 = TestScenePath("test_byteid_b");
     ASSERT_TRUE(path1);
     ASSERT_TRUE(path2);
 
@@ -202,8 +202,8 @@ TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path1));
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path2));
 
-    auto b1 = NS::Platform::FileSystem::ReadAllBytes(*path1);
-    auto b2 = NS::Platform::FileSystem::ReadAllBytes(*path2);
+    std::optional<std::vector<std::byte>> b1 = NS::Platform::FileSystem::ReadAllBytes(*path1);
+    std::optional<std::vector<std::byte>> b2 = NS::Platform::FileSystem::ReadAllBytes(*path2);
     ASSERT_TRUE(b1.has_value());
     ASSERT_TRUE(b2.has_value());
     ASSERT_EQ(b1->size(), b2->size());
@@ -212,14 +212,14 @@ TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
 
 TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
 {
-    auto path = TestScenePath("test_corrupted");
+    std::optional<std::string> path = TestScenePath("test_corrupted");
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData src;
     src.objects.push_back(NS::Editor::MakeCellObject(0, 0, 0));
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
-    auto bytes = NS::Platform::FileSystem::ReadAllBytes(*path);
+    std::optional<std::vector<std::byte>> bytes = NS::Platform::FileSystem::ReadAllBytes(*path);
     ASSERT_TRUE(bytes.has_value());
     ASSERT_GE(bytes->size(), 1u);
     // 先頭の '{' を壊すと JSON parse が失敗し、load は false + 空 SceneData を返す
@@ -234,7 +234,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
 // object 数が上限を超えるレベルは保存段でクラッシュせず false を返す。メモリ枯渇まで走らせない
 TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
 {
-    auto path = TestScenePath("test_oversized");
+    std::optional<std::string> path = TestScenePath("test_oversized");
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData huge;
@@ -247,7 +247,7 @@ TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
 // 並びは正準化 (名前昇順) されるので、等価判定は正準 JSON の一致で行う
 TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 {
-    auto path = TestScenePath("test_components");
+    std::optional<std::string> path = TestScenePath("test_components");
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData src;
@@ -309,7 +309,7 @@ TEST(SaveLoadRoundTrip, BuildLevelPathRejectsTraversal)
 // 配置物 (ObjectData) の transform と className が保存・再読込の往復で戻る
 TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
 {
-    auto path = TestScenePath("test_objects_roundtrip");
+    std::optional<std::string> path = TestScenePath("test_objects_roundtrip");
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData src;
@@ -350,7 +350,7 @@ TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
 // 種別固定の色上書きが消え、色は component 経由で保存に残る
 TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
 {
-    auto path = TestScenePath("test_basecolor");
+    std::optional<std::string> path = TestScenePath("test_basecolor");
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData src;

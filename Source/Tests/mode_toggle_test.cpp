@@ -138,9 +138,9 @@ TEST(ModeToggle, EditorStateIsPreservedAcrossToggle)
     });
     editor.Editor().SetAllocateIdFn([&scene]() { return scene.Objects().AllocateObjectId(); });
     editor.Editor().PlaceUnderCursorProgrammatic(5, 0, 3);
-    const auto undoSizeBefore = editor.Editor().Undo().UndoSize();
+    const std::size_t undoSizeBefore = editor.Editor().Undo().UndoSize();
     ASSERT_GE(undoSizeBefore, 1u);
-    const auto objectsBefore = scene.Objects().ObjectCount();
+    const std::size_t objectsBefore = scene.Objects().ObjectCount();
 
     editor.EnterPlay();
     editor.EnterEdit();
@@ -281,7 +281,7 @@ TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
     ASSERT_NE(live, nullptr);
     const std::uint32_t rockId = live->Id();
     live->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
-    auto* launched = live->FindComponent<NS::Game::Level::LaunchedBody>();
+    NS::Game::Level::LaunchedBody* launched = live->FindComponent<NS::Game::Level::LaunchedBody>();
     ASSERT_NE(launched, nullptr);
     SetFloatField(*launched, "跳ね返り", 0.9f);
     editor.MirrorPlayEditToBaseline(*launched, "跳ね返り");
@@ -293,7 +293,7 @@ TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
     EXPECT_NEAR(restored->Root().Position().x, 1.0f, 1e-4f);
     EXPECT_NEAR(restored->Root().Position().y, 2.0f, 1e-4f);
     EXPECT_NEAR(restored->Root().Position().z, 3.0f, 1e-4f);
-    auto* restoredLaunched = restored->FindComponent<NS::Game::Level::LaunchedBody>();
+    NS::Game::Level::LaunchedBody* restoredLaunched = restored->FindComponent<NS::Game::Level::LaunchedBody>();
     ASSERT_NE(restoredLaunched, nullptr);
     EXPECT_FLOAT_EQ(GetFloatField(*restoredLaunched, "跳ね返り"), 0.9f);
 }
@@ -309,7 +309,7 @@ TEST(ModeToggle, EnterEditCancelsInFlightFade)
     editor.EnterPlay();
 
     scene.OnUpdate();
-    auto* fade = FindFade(scene);
+    NS::Game::Level::ScreenFade* fade = FindFade(scene);
     ASSERT_NE(fade, nullptr);
     ASSERT_TRUE(fade->IsFading());
 
@@ -335,7 +335,7 @@ TEST(ModeToggle, CancelledClearDoesNotRefireAfterReenter)
     ASSERT_NE(player, nullptr);
     player->Root().SetPosition(NS::Core::Vector3{5.0f, 0.0f, 0.0f});
     scene.OnUpdate();
-    auto* fade = FindFade(scene);
+    NS::Game::Level::ScreenFade* fade = FindFade(scene);
     ASSERT_NE(fade, nullptr);
     ASSERT_TRUE(fade->IsFading());
 

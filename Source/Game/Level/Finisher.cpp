@@ -28,7 +28,7 @@ namespace NS::Game::Level
             return;
         }
 
-        auto* scene = Owner()->OwningScene();
+        NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr || Fade() == nullptr)
         {
             return;
@@ -47,7 +47,7 @@ namespace NS::Game::Level
 
     void Finisher::SetPlayerInputActive(bool active) noexcept
     {
-        if (auto* input = Owner()->FindComponent<NS::Obj::PlayerInput>())
+        if (NS::Obj::PlayerInput* input = Owner()->FindComponent<NS::Obj::PlayerInput>())
         {
             input->SetActive(active);
         }
@@ -62,7 +62,7 @@ namespace NS::Game::Level
         co_await NS::Core::WaitUntil{[this] { return Fade()->IsBlack(); }};
 
         // 全黒の裏でやり直すので、出現位置への瞬間移動が黒に隠れる。手順は同じ object の respawner が持つ
-        if (auto* respawner = Owner()->FindComponent<Respawner>())
+        if (Respawner* respawner = Owner()->FindComponent<Respawner>())
         {
             respawner->RestartRun();
         }

@@ -515,7 +515,7 @@ TEST(JoltOverlap, SensorBoxIsFoundLikeAnyOtherBody)
 // 同じ勢いで突かれても重い物ほど動かない。飛距離が重さの表示になる
 TEST(JoltDynamic, HeavierTargetIsPushedLessByTheSameHit)
 {
-    const auto pushedDistance = [](float targetMass) {
+    float (*pushedDistance)(float) = [](float targetMass) -> float {
         PhysicsScene physics;
         AddWideFloor(physics);
         DynamicBodyDesc hitter;

@@ -258,7 +258,7 @@ namespace NS::Gfx
         {
             return;
         }
-        auto* device = Gpu().device;
+        ID3D11Device* device = Gpu().device;
         if (device == nullptr)
         {
             return;
@@ -278,7 +278,7 @@ namespace NS::Gfx
 
     bool Shader::Compile(ComPtr<ID3D11DeviceChild>& outShader, ComPtr<ID3DBlob>& outVsBytecode) const noexcept
     {
-        auto* device = Gpu().device;
+        ID3D11Device* device = Gpu().device;
         if (device == nullptr)
         {
             NS_LOG_ERROR(Graphics, "Shader: Renderer の Device が無効");

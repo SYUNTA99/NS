@@ -49,7 +49,7 @@ namespace NS::Tests
             ADD_FAILURE() << "読み戻し用のテクスチャを開けなかった";
             return pixel;
         }
-        const auto* bytes = static_cast<const std::uint8_t*>(mapped.pData);
+        const std::uint8_t* bytes = static_cast<const std::uint8_t*>(mapped.pData);
         const std::uint8_t* texel =
             bytes + static_cast<std::size_t>(at.row) * mapped.RowPitch + static_cast<std::size_t>(at.column) * 4;
         for (std::size_t i = 0; i < pixel.size(); ++i)

@@ -34,7 +34,7 @@ namespace NS::Obj
             material = assets.SharedMaterial("player");
             if (!m_materialRef.empty())
             {
-                if (const auto resolved = ResolveContentPath(m_materialRef))
+                if (const std::optional<std::string> resolved = ResolveContentPath(m_materialRef))
                 {
                     if (const LoadedMaterial loaded = assets.LoadMaterial(*resolved); loaded.material != nullptr)
                     {

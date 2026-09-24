@@ -68,7 +68,7 @@ namespace NS::Gfx
                     continue;
                 }
                 const std::string& sourceName = sourceBones[static_cast<std::size_t>(track.boneIndex)].name;
-                const auto found = targetIndexByName.find(NormalizeBoneName(sourceName));
+                const std::unordered_map<std::string, int>::iterator found = targetIndexByName.find(NormalizeBoneName(sourceName));
                 if (found == targetIndexByName.end())
                 {
                     continue;

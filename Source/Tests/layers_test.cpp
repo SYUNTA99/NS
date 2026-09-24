@@ -54,7 +54,7 @@ TEST(NsAppLayers, AddLayerInsertsBeforeOverlays)
 
     EXPECT_EQ(layers.Size(), 2u);
 
-    for (auto& l : layers)
+    for (std::unique_ptr<Layer>& l : layers)
         l->OnUpdate();
     EXPECT_EQ(log, "A:Update;B:Update;");
 }
@@ -67,7 +67,7 @@ TEST(NsAppLayers, AddOverlayGoesAfterRegularLayers)
     layers.AddLayer(std::make_unique<TrackingLayer>("Game", &log));
     layers.AddOverlay(std::make_unique<TrackingLayer>("HUD", &log));
 
-    for (auto& l : layers)
+    for (std::unique_ptr<Layer>& l : layers)
         l->OnUpdate();
     EXPECT_EQ(log, "Game:Update;HUD:Update;");
 }
@@ -82,7 +82,7 @@ TEST(NsAppLayers, IterationOrderRegularThenOverlay)
     layers.AddLayer(std::make_unique<TrackingLayer>("B", &log));
     layers.AddOverlay(std::make_unique<TrackingLayer>("O2", &log));
 
-    for (auto& l : layers)
+    for (std::unique_ptr<Layer>& l : layers)
         l->OnUpdate();
     EXPECT_EQ(log, "A:Update;B:Update;O1:Update;O2:Update;");
 }
@@ -92,19 +92,19 @@ TEST(NsAppLayers, RemoveRegularLayerKeepsOverlayOrder)
     Layers layers;
     std::string log;
 
-    auto a = std::make_unique<TrackingLayer>("A", &log);
+    std::unique_ptr<TrackingLayer> a = std::make_unique<TrackingLayer>("A", &log);
     Layer* aPtr = a.get();
     layers.AddLayer(std::move(a));
     layers.AddLayer(std::make_unique<TrackingLayer>("B", &log));
     layers.AddOverlay(std::make_unique<TrackingLayer>("O", &log));
 
-    auto removed = layers.Remove(aPtr);
+    std::unique_ptr<Layer> removed = layers.Remove(aPtr);
     ASSERT_NE(removed, nullptr);
     EXPECT_EQ(removed->Name(), "A");
     EXPECT_EQ(layers.Size(), 2u);
 
     log.clear();
-    for (auto& l : layers)
+    for (std::unique_ptr<Layer>& l : layers)
         l->OnUpdate();
     EXPECT_EQ(log, "B:Update;O:Update;");
 }
@@ -116,11 +116,11 @@ TEST(NsAppLayers, RemoveOverlayLeavesRegularUntouched)
 
     layers.AddLayer(std::make_unique<TrackingLayer>("Game", &log));
 
-    auto overlay = std::make_unique<TrackingLayer>("Pause", &log);
+    std::unique_ptr<TrackingLayer> overlay = std::make_unique<TrackingLayer>("Pause", &log);
     Layer* overlayPtr = overlay.get();
     layers.AddOverlay(std::move(overlay));
 
-    auto removed = layers.Remove(overlayPtr);
+    std::unique_ptr<Layer> removed = layers.Remove(overlayPtr);
     ASSERT_NE(removed, nullptr);
     EXPECT_EQ(layers.Size(), 1u);
 }
@@ -133,7 +133,7 @@ TEST(NsAppLayers, RemoveUnknownLayerReturnsNull)
     layers.AddLayer(std::make_unique<TrackingLayer>("A", &log));
 
     TrackingLayer stranger("Stranger", &log);
-    auto removed = layers.Remove(&stranger);
+    std::unique_ptr<Layer> removed = layers.Remove(&stranger);
     EXPECT_EQ(removed, nullptr);
     EXPECT_EQ(layers.Size(), 1u);
 }
@@ -144,7 +144,7 @@ TEST(NsAppLayers, RemoveNullPtrIsNoOp)
     std::string log;
 
     layers.AddLayer(std::make_unique<TrackingLayer>("A", &log));
-    auto removed = layers.Remove(nullptr);
+    std::unique_ptr<Layer> removed = layers.Remove(nullptr);
     EXPECT_EQ(removed, nullptr);
     EXPECT_EQ(layers.Size(), 1u);
 }
@@ -166,7 +166,7 @@ TEST(NsAppLayers, ReverseIterationForDetach)
     layers.AddLayer(std::make_unique<TrackingLayer>("B", &log));
     layers.AddOverlay(std::make_unique<TrackingLayer>("O", &log));
 
-    for (auto it = layers.rbegin(); it != layers.rend(); ++it)
+    for (std::vector<std::unique_ptr<Layer>>::reverse_iterator it = layers.rbegin(); it != layers.rend(); ++it)
         (*it)->OnDetach();
 
     EXPECT_EQ(log, "O:Detach;B:Detach;A:Detach;");

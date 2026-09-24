@@ -33,12 +33,12 @@ namespace NS::App
         [[nodiscard]] std::size_t Size() const noexcept { return m_layers.size(); }
         [[nodiscard]] bool Empty() const noexcept { return m_layers.empty(); }
 
-        [[nodiscard]] auto begin() noexcept { return m_layers.begin(); }
-        [[nodiscard]] auto end() noexcept { return m_layers.end(); }
-        [[nodiscard]] auto begin() const noexcept { return m_layers.begin(); }
-        [[nodiscard]] auto end() const noexcept { return m_layers.end(); }
-        [[nodiscard]] auto rbegin() noexcept { return m_layers.rbegin(); }
-        [[nodiscard]] auto rend() noexcept { return m_layers.rend(); }
+        [[nodiscard]] std::vector<std::unique_ptr<Layer>>::iterator begin() noexcept { return m_layers.begin(); }
+        [[nodiscard]] std::vector<std::unique_ptr<Layer>>::iterator end() noexcept { return m_layers.end(); }
+        [[nodiscard]] std::vector<std::unique_ptr<Layer>>::const_iterator begin() const noexcept { return m_layers.begin(); }
+        [[nodiscard]] std::vector<std::unique_ptr<Layer>>::const_iterator end() const noexcept { return m_layers.end(); }
+        [[nodiscard]] std::vector<std::unique_ptr<Layer>>::reverse_iterator rbegin() noexcept { return m_layers.rbegin(); }
+        [[nodiscard]] std::vector<std::unique_ptr<Layer>>::reverse_iterator rend() noexcept { return m_layers.rend(); }
 
     private:
         std::vector<std::unique_ptr<Layer>> m_layers;

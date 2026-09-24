@@ -72,7 +72,7 @@ namespace NS::Gfx
             td.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE;
 
             std::array<D3D11_SUBRESOURCE_DATA, 6> srd{};
-            for (auto& s : srd)
+            for (D3D11_SUBRESOURCE_DATA& s : srd)
             {
                 s.pSysMem = magenta;
                 s.SysMemPitch = sizeof(magenta);
@@ -147,13 +147,13 @@ namespace NS::Gfx
                     return false;
                 }
 
-                auto bytesOpt = ::NS::Platform::FileSystem::ReadAllBytes(facePath);
+                std::optional<std::vector<std::byte>> bytesOpt = ::NS::Platform::FileSystem::ReadAllBytes(facePath);
                 if (!bytesOpt.has_value())
                 {
                     NS_LOG_ERROR(Graphics, "Skybox 6-face: {} 読込失敗", facePath);
                     return false;
                 }
-                const auto& bytes = bytesOpt.value();
+                const std::vector<std::byte>& bytes = bytesOpt.value();
 
                 ComPtr<ID3D11Resource> resource;
                 ComPtr<ID3D11ShaderResourceView> tmpSrv;
@@ -276,7 +276,7 @@ namespace NS::Gfx
 
     Skybox::Skybox()
     {
-        auto* device = Gpu().device;
+        ID3D11Device* device = Gpu().device;
         if (device == nullptr)
         {
             NS_LOG_ERROR(Graphics, "Skybox: グローバル Device が無効");
@@ -284,7 +284,7 @@ namespace NS::Gfx
         }
 
         // スカイボックス用の立方体メッシュを生成する
-        auto geom = MakeCube({0.5f, 0.5f, 0.5f});
+        MeshGeometry geom = MakeCube({0.5f, 0.5f, 0.5f});
         MeshDesc md{};
         md.vertices = geom.vertices.data();
         md.vertexCount = geom.vertices.size();
@@ -298,7 +298,7 @@ namespace NS::Gfx
         }
 
         // 専用シェーダを読み込む
-        const auto exeDir = ::NS::Platform::FileSystem::ContentRoot();
+        const std::string exeDir = ::NS::Platform::FileSystem::ContentRoot();
         const std::string shaderDir = ::NS::Platform::FileSystem::Combine(exeDir, "Shaders");
         m_vs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "skybox.vs.hlsl"));
         m_ps = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "skybox.ps.hlsl"));
@@ -348,7 +348,7 @@ namespace NS::Gfx
 
     bool Skybox::LoadCubemap(std::string_view path)
     {
-        auto* device = Gpu().device;
+        ID3D11Device* device = Gpu().device;
         if (device == nullptr)
             return false;
 
@@ -392,7 +392,7 @@ namespace NS::Gfx
             return;
         }
 
-        auto& cmd = renderer.Commands();
+        CommandList& cmd = renderer.Commands();
         if (cmd.Native() == nullptr)
         {
             return;

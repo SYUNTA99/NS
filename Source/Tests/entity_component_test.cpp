@@ -44,7 +44,7 @@ protected:
 TEST_F(EntityComponentTest, SetVelocitySplitsLateralAndVertical)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
 
     entity.SetVelocity(Vector3{3.0f, 0.0f, 4.0f});
 
@@ -57,7 +57,7 @@ TEST_F(EntityComponentTest, SetVelocitySplitsLateralAndVertical)
 TEST_F(EntityComponentTest, SetVerticalVelocityKeepsLateral)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
     entity.SetVelocity(Vector3{3.0f, 0.0f, 4.0f});
 
     entity.SetVerticalVelocity(5.0f);
@@ -71,7 +71,7 @@ TEST_F(EntityComponentTest, SetVerticalVelocityKeepsLateral)
 TEST_F(EntityComponentTest, SetLateralVelocityKeepsVertical)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
     entity.SetVelocity(Vector3{0.0f, 7.0f, 0.0f});
 
     entity.SetLateralVelocity(Vector3{1.0f, 99.0f, 2.0f});
@@ -85,7 +85,7 @@ TEST_F(EntityComponentTest, SetLateralVelocityKeepsVertical)
 TEST_F(EntityComponentTest, CapsuleSizeDefaultsWithoutCollider)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
 
     EXPECT_FLOAT_EQ(entity.CapsuleRadius(), 0.4f);
     EXPECT_FLOAT_EQ(entity.CapsuleHalfHeight(), 0.5f);
@@ -96,7 +96,7 @@ TEST_F(EntityComponentTest, AdoptsSiblingCapsuleColliderSize)
 {
     GameObject obj;
     obj.AddComponent<NS::Obj::CapsuleCollider>(0.7f, 0.9f);
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
 
     entity.OnStart();
 
@@ -107,7 +107,7 @@ TEST_F(EntityComponentTest, AdoptsSiblingCapsuleColliderSize)
 TEST_F(EntityComponentTest, UpdateStepsHandleStatesOncePerCall)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
 
     entity.OnUpdate();
     entity.OnUpdate();
@@ -119,7 +119,7 @@ TEST_F(EntityComponentTest, UpdateStepsHandleStatesOncePerCall)
 TEST_F(EntityComponentTest, UpdateMovesOncePerCall)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
     entity.SetVelocity(Vector3{6.0f, 0.0f, 0.0f});
 
     entity.OnUpdate();
@@ -131,7 +131,7 @@ TEST_F(EntityComponentTest, UpdateMovesOncePerCall)
 TEST_F(EntityComponentTest, InactiveUpdateSkipsStatesButNotifies)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
     entity.SetActive(false);
 
     entity.OnUpdate();
@@ -144,7 +144,7 @@ TEST_F(EntityComponentTest, InactiveUpdateSkipsStatesButNotifies)
 TEST_F(EntityComponentTest, MoveWithoutPhysicsSceneAdvancesByVelocity)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
     obj.Root().SetPosition(Vector3{0.0f, 5.0f, 0.0f});
     entity.SetVelocity(Vector3{2.0f, 0.0f, -3.0f});
 
@@ -160,7 +160,7 @@ TEST_F(EntityComponentTest, MoveWithoutPhysicsSceneAdvancesByVelocity)
 TEST_F(EntityComponentTest, AccelerateAddsTheAccelerationTimesDt)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
 
     entity.Accelerate(Vector3{1.0f, 0.0f, 0.0f}, 0.0f, 60.0f, 8.0f, k_FixedDt);
 
@@ -171,7 +171,7 @@ TEST_F(EntityComponentTest, AccelerateAddsTheAccelerationTimesDt)
 TEST_F(EntityComponentTest, AccelerateKeepsVerticalVelocity)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
     entity.SetVelocity(Vector3{0.0f, -9.0f, 0.0f});
 
     entity.Accelerate(Vector3{1.0f, 0.0f, 0.0f}, 60.0f, 60.0f, 8.0f, k_FixedDt);
@@ -182,7 +182,7 @@ TEST_F(EntityComponentTest, AccelerateKeepsVerticalVelocity)
 TEST_F(EntityComponentTest, AccelerateStopsAtTheTopSpeed)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
     entity.SetVelocity(Vector3{7.9f, 0.0f, 0.0f});
 
     entity.Accelerate(Vector3{1.0f, 0.0f, 0.0f}, 60.0f, 60.0f, 8.0f, k_FixedDt);
@@ -193,7 +193,7 @@ TEST_F(EntityComponentTest, AccelerateStopsAtTheTopSpeed)
 TEST_F(EntityComponentTest, AccelerateRemovesSidewaysSpeedByTheTurningDrag)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
     entity.SetVelocity(Vector3{0.0f, 0.0f, 5.0f});
 
     entity.Accelerate(Vector3{1.0f, 0.0f, 0.0f}, 60.0f, 60.0f, 8.0f, k_FixedDt);
@@ -206,7 +206,7 @@ TEST_F(EntityComponentTest, AccelerateRemovesSidewaysSpeedByTheTurningDrag)
 TEST_F(EntityComponentTest, DecelerateStopsAtExactlyZero)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
     entity.SetVelocity(Vector3{6.0f, 1.0f, -8.0f});
 
     entity.Decelerate(60.0f, k_FixedDt);
@@ -227,7 +227,7 @@ TEST_F(EntityComponentTest, DecelerateStopsAtExactlyZero)
 TEST_F(EntityComponentTest, LateralVelocityReadsARoundingRemainderAsZero)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
     entity.SetVelocity(Vector3{6e-7f, 3.0f, -6e-7f});
 
     EXPECT_EQ(entity.LateralVelocity().x, 0.0f);
@@ -238,7 +238,7 @@ TEST_F(EntityComponentTest, LateralVelocityReadsARoundingRemainderAsZero)
 TEST_F(EntityComponentTest, GravityChangesOnlyVerticalVelocity)
 {
     GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
     entity.SetVelocity(Vector3{3.0f, 0.0f, 4.0f});
 
     entity.Gravity(-25.0f, k_FixedDt);

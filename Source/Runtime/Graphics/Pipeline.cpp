@@ -46,7 +46,7 @@ namespace NS::Gfx
         bool CreateBlend(ID3D11Device* device, const PipelineDesc& desc, ComPtr<ID3D11BlendState>& out) noexcept
         {
             D3D11_BLEND_DESC bd{};
-            auto& rt = bd.RenderTarget[0];
+            D3D11_RENDER_TARGET_BLEND_DESC& rt = bd.RenderTarget[0];
             rt.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
             switch (desc.blend)
             {

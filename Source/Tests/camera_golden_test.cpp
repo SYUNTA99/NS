@@ -106,14 +106,14 @@ namespace
         NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 8.0f}});
         player.AddComponent<PlayerStateManager>();
-        auto& movement = *player.AddComponent<PlayerComponent>();
+        PlayerComponent& movement = *player.AddComponent<PlayerComponent>();
         player.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
         physics.OptimizeBroadPhase();
         player.OnStart();
         ObjectIdAccess::SetId(player, k_PlayerId);
 
         GameObject& rig = *stage.scene.SpawnTransient<GameObject>();
-        auto& follow = *rig.AddComponent<ThirdPersonFollow>();
+        ThirdPersonFollow& follow = *rig.AddComponent<ThirdPersonFollow>();
         NsTest::WriteObjectRefField(follow, "追従対象", k_PlayerId);
         // 生成直後は休止なのでテスト側で有効化する
         follow.SetActive(true);
@@ -158,7 +158,7 @@ TEST_F(CameraGolden, HashIsStableAcrossTwoRuns)
 
 TEST_F(CameraGolden, FollowWalkJumpMatchesGoldenTrace)
 {
-    const auto trajectory = RunFollowWalkJump();
+    const std::vector<CameraStepRecord> trajectory = RunFollowWalkJump();
 
     // 自動ズームの全遷移が通ったかを距離 = |カメラ - 注視点| でざっくり確かめる
     float minDistance = 1000.0f;

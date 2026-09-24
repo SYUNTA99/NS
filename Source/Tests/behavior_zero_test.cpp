@@ -58,18 +58,18 @@ namespace
     ColliderSignature ExtractColliderSignature(NS::Obj::GameObject& obj)
     {
         ColliderSignature sig;
-        if (auto* box = obj.FindComponent<NS::Obj::BoxCollider>())
+        if (NS::Obj::BoxCollider* box = obj.FindComponent<NS::Obj::BoxCollider>())
         {
             sig.hasBox = true;
             sig.boxAabb = box->WorldAABB();
             sig.boxObb = box->WorldOBB();
         }
-        if (auto* sphere = obj.FindComponent<NS::Obj::SphereCollider>())
+        if (NS::Obj::SphereCollider* sphere = obj.FindComponent<NS::Obj::SphereCollider>())
         {
             sig.hasSphere = true;
             sig.sphere = sphere->WorldSphere();
         }
-        if (auto* capsule = obj.FindComponent<NS::Obj::CapsuleCollider>())
+        if (NS::Obj::CapsuleCollider* capsule = obj.FindComponent<NS::Obj::CapsuleCollider>())
         {
             sig.hasCapsule = true;
             const NS::Phys::Capsule worldCapsule = capsule->WorldCapsule();
@@ -78,7 +78,7 @@ namespace
             sig.capsuleRadius = worldCapsule.radius;
             sig.capsuleHalfHeight = worldCapsule.halfHeight;
         }
-        if (auto* slope = obj.FindComponent<NS::Obj::SlopeCollider>())
+        if (NS::Obj::SlopeCollider* slope = obj.FindComponent<NS::Obj::SlopeCollider>())
         {
             sig.hasSlope = true;
             sig.slopeAngle = slope->AngleDegrees();
@@ -160,8 +160,8 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     ASSERT_FALSE(restored.objects[0].components.empty()); // 往復後も components 駆動で組ませる前提
 
     NS::Obj::AssetManager assets{std::string{"."}};
-    auto before = NS::Obj::BuildSceneObject(src.objects[0], &assets);
-    auto after = NS::Obj::BuildSceneObject(restored.objects[0], &assets);
+    std::unique_ptr<NS::Obj::GameObject> before = NS::Obj::BuildSceneObject(src.objects[0], &assets);
+    std::unique_ptr<NS::Obj::GameObject> after = NS::Obj::BuildSceneObject(restored.objects[0], &assets);
     ASSERT_NE(before, nullptr);
     ASSERT_NE(after, nullptr);
 
@@ -170,7 +170,7 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     ExpectSignatureEqual(beforeSig, ExtractColliderSignature(*after));
 
     // リフレクション set が効いたか box の寸法で直接確かめる
-    auto* box = before->FindComponent<NS::Obj::BoxCollider>();
+    NS::Obj::BoxCollider* box = before->FindComponent<NS::Obj::BoxCollider>();
     ASSERT_NE(box, nullptr);
     const Vector3 half = box->HalfExtents();
     EXPECT_NEAR(half.x, 1.0f, k_Tol);

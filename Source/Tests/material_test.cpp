@@ -60,7 +60,7 @@ TEST_F(MaterialLoggerTest, BlendAndRenderPriorityReflectDescEvenWhenInvalid)
     MaterialDesc desc{};
     desc.blend = NS::Gfx::BlendMode::Alpha;
     desc.renderPriority = 7;
-    const auto material = Material::Create(desc);
+    const std::unique_ptr<Material> material = Material::Create(desc);
     ASSERT_NE(material, nullptr);
     EXPECT_FALSE(material->IsValid());
     EXPECT_EQ(material->Blend(), NS::Gfx::BlendMode::Alpha);
@@ -69,7 +69,7 @@ TEST_F(MaterialLoggerTest, BlendAndRenderPriorityReflectDescEvenWhenInvalid)
 
 TEST_F(MaterialLoggerTest, DefaultBlendIsOpaque)
 {
-    const auto material = Material::Create(MaterialDesc{});
+    const std::unique_ptr<Material> material = Material::Create(MaterialDesc{});
     ASSERT_NE(material, nullptr);
     EXPECT_EQ(material->Blend(), NS::Gfx::BlendMode::Opaque);
     EXPECT_EQ(material->RenderPriority(), 0);

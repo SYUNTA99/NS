@@ -47,7 +47,7 @@ namespace NS::UI
         //! 所有は自分が握り、呼出側へは生ポインタだけ返す
         template <class T, class... Args> T* AddChild(Args&&... args)
         {
-            auto child = std::make_unique<T>(std::forward<Args>(args)...);
+            std::unique_ptr<T> child = std::make_unique<T>(std::forward<Args>(args)...);
             T* raw = child.get();
             Adopt(std::move(child));
             return raw;

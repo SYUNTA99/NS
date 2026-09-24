@@ -235,12 +235,12 @@ TEST(ObjectListTest, RebuildBakesFollowCameraAndResolvesTarget)
     NS::Obj::ObjectList& objects = scene.Objects();
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
-    const auto follows = Collect<NS::Obj::ThirdPersonFollow>(objects);
+    const std::vector<NS::Obj::ThirdPersonFollow*> follows = Collect<NS::Obj::ThirdPersonFollow>(objects);
     ASSERT_EQ(follows.size(), 1u);
-    auto* follow = follows[0];
+    NS::Obj::ThirdPersonFollow* follow = follows[0];
     EXPECT_FALSE(follow->IsActive());
     // CameraBrain の登録が使う抽象基底の問い合わせでも同じ実体が引ける
-    const auto vcams = Collect<NS::Obj::VirtualCamera>(objects);
+    const std::vector<NS::Obj::VirtualCamera*> vcams = Collect<NS::Obj::VirtualCamera>(objects);
     ASSERT_EQ(vcams.size(), 1u);
     EXPECT_EQ(vcams[0], follow);
     // far plane 100 はコンストラクタの既定。データが持つのは追従対象だけ
@@ -366,13 +366,13 @@ TEST(ObjectListTest, UpdateObjectsRunsOnlyRequestedBand)
 {
     ObjectList objects;
     std::vector<int> order;
-    auto* mover = objects.Spawn<NS::Obj::GameObject>();
+    NS::Obj::GameObject* mover = objects.Spawn<NS::Obj::GameObject>();
     mover->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::EarlyUpdate, &order, 1);
     mover->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update, &order, 2);
-    auto* rules = objects.Spawn<NS::Obj::GameObject>();
+    NS::Obj::GameObject* rules = objects.Spawn<NS::Obj::GameObject>();
     rules->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update + 100, &order, 3);
     rules->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::LateUpdate, &order, 4);
-    auto* camera = objects.Spawn<NS::Obj::GameObject>();
+    NS::Obj::GameObject* camera = objects.Spawn<NS::Obj::GameObject>();
     camera->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::LateUpdate + 50, &order, 5);
 
     // EarlyUpdate はすぐ上の Update を巻き込まない
@@ -393,9 +393,9 @@ TEST(ObjectListTest, UpdateObjectsRunsSameBandInObjectOrder)
 {
     ObjectList objects;
     std::vector<int> order;
-    auto first = std::make_unique<NS::Obj::GameObject>();
+    std::unique_ptr<NS::Obj::GameObject> first = std::make_unique<NS::Obj::GameObject>();
     first->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update, &order, 1);
-    auto second = std::make_unique<NS::Obj::GameObject>();
+    std::unique_ptr<NS::Obj::GameObject> second = std::make_unique<NS::Obj::GameObject>();
     second->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update, &order, 2);
     second->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update + 50, &order, 3);
     objects.Append(std::move(first));
@@ -410,7 +410,7 @@ TEST(ObjectListTest, BandUpdatesIncludeTransientObjects)
 {
     ObjectList objects;
     std::vector<int> order;
-    auto transient = std::make_unique<NS::Obj::GameObject>();
+    std::unique_ptr<NS::Obj::GameObject> transient = std::make_unique<NS::Obj::GameObject>();
     transient->SetTransient(true);
     transient->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update, &order, 1);
     objects.Append(std::move(transient));
@@ -424,8 +424,8 @@ TEST(ObjectListTest, BandUpdatesSkipInactiveComponents)
 {
     ObjectList objects;
     std::vector<int> order;
-    auto obj = std::make_unique<NS::Obj::GameObject>();
-    auto* sleeping = obj->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update, &order, 1);
+    std::unique_ptr<NS::Obj::GameObject> obj = std::make_unique<NS::Obj::GameObject>();
+    BandRecordingComponent* sleeping = obj->AddComponent<BandRecordingComponent>(NS::Obj::TickPriority::Update, &order, 1);
     sleeping->SetActive(false);
     objects.Append(std::move(obj));
 
@@ -437,7 +437,7 @@ TEST(ObjectListTest, BandUpdatesSkipInactiveComponents)
 TEST(ObjectListTest, UpdateAllObjectsSkipsInactiveComponent)
 {
     ObjectList objects;
-    auto* counter = objects.Spawn<NS::Obj::GameObject>()->AddComponent<CountingComponent>();
+    CountingComponent* counter = objects.Spawn<NS::Obj::GameObject>()->AddComponent<CountingComponent>();
 
     counter->SetActive(false);
     objects.UpdateAllObjects();
@@ -452,8 +452,8 @@ TEST(ObjectListTest, UpdateAllObjectsSkipsInactiveComponent)
 TEST(ObjectListTest, UpdateAllObjectsFollowsOwnerActiveFlag)
 {
     ObjectList objects;
-    auto* owner = objects.Spawn<NS::Obj::GameObject>();
-    auto* counter = owner->AddComponent<CountingComponent>();
+    NS::Obj::GameObject* owner = objects.Spawn<NS::Obj::GameObject>();
+    CountingComponent* counter = owner->AddComponent<CountingComponent>();
 
     owner->SetActive(false);
     objects.UpdateAllObjects();
@@ -491,8 +491,8 @@ TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneTwiceKeepsTheCount)
 TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneKeepsEveryBodyId)
 {
     PhysicsStage stage;
-    auto* box = stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
-    auto* sphere = stage.Spawn()->AddComponent<NS::Obj::SphereCollider>();
+    NS::Obj::BoxCollider* box = stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
+    NS::Obj::SphereCollider* sphere = stage.Spawn()->AddComponent<NS::Obj::SphereCollider>();
 
     stage.objects.SyncPhysics(stage.physics);
     const JPH::BodyID staleBox = box->BodyId();
@@ -510,7 +510,7 @@ TEST(ObjectListTest, InactiveColliderStaysOutOfPhysicsScene)
 {
     PhysicsStage stage;
     stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
-    auto* collider = stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
+    NS::Obj::BoxCollider* collider = stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
     collider->SetActive(false);
 
     stage.objects.SyncPhysics(stage.physics);
@@ -545,7 +545,7 @@ TEST(ObjectListTest, MeshColliderTrianglesReachPhysics)
 // 時間で合否を決めると環境差で揺れるので、数字を出すだけにして判断は人が行う
 TEST(ObjectListTest, UpdateObjectsCostMeasurement)
 {
-    const auto measure = [](std::size_t objectCount, std::size_t componentsPerObject) {
+    void (*const measure)(std::size_t, std::size_t) = [](std::size_t objectCount, std::size_t componentsPerObject) -> void {
         ObjectList objects;
         for (std::size_t i = 0; i < objectCount; ++i)
         {
@@ -555,10 +555,10 @@ TEST(ObjectListTest, UpdateObjectsCostMeasurement)
         }
 
         constexpr int k_Iterations = 1000;
-        const auto start = std::chrono::steady_clock::now();
+        const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
         for (int n = 0; n < k_Iterations; ++n)
             objects.UpdateObjects(NS::Obj::TickPriority::Update);
-        const auto elapsed = std::chrono::steady_clock::now() - start;
+        const std::chrono::steady_clock::duration elapsed = std::chrono::steady_clock::now() - start;
 
         const double perCallMicros =
             std::chrono::duration<double, std::micro>(elapsed).count() / static_cast<double>(k_Iterations);
@@ -599,7 +599,7 @@ TEST(ObjectListTest, SyncPhysicsKeepsBodiesItDidNotCreate)
 TEST(ObjectListTest, SyncPhysicsDropsTheBodyOfADeactivatedCollider)
 {
     PhysicsStage stage;
-    auto* box = stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
+    NS::Obj::BoxCollider* box = stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
 
     stage.objects.SyncPhysics(stage.physics);
     ASSERT_EQ(stage.physics.BodyCount(), 1u);
@@ -615,10 +615,10 @@ TEST(ObjectListTest, SyncPhysicsDropsTheBodyOfADeactivatedCollider)
 TEST(ObjectListTest, ClearTakesEveryColliderBodyOutOfThePhysicsScene)
 {
     NS::Obj::Scene scene;
-    auto box = std::make_unique<NS::Obj::GameObject>();
+    std::unique_ptr<NS::Obj::GameObject> box = std::make_unique<NS::Obj::GameObject>();
     box->AddComponent<NS::Obj::BoxCollider>();
     scene.SpawnTransient(std::move(box));
-    auto sphere = std::make_unique<NS::Obj::GameObject>();
+    std::unique_ptr<NS::Obj::GameObject> sphere = std::make_unique<NS::Obj::GameObject>();
     sphere->AddComponent<NS::Obj::SphereCollider>();
     scene.SpawnTransient(std::move(sphere));
 

@@ -47,8 +47,8 @@ namespace
 TEST(CameraTest, DefaultConstructorHasFiniteMatrices)
 {
     CameraData camera;
-    const auto& view = camera.View();
-    const auto& proj = camera.Projection();
+    const Matrix& view = camera.View();
+    const Matrix& proj = camera.Projection();
 
     for (int row = 0; row < 4; ++row)
     {

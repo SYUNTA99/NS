@@ -17,20 +17,20 @@ namespace NS::Platform
         // 整数キャスト経由の不正値による m_current / m_previous の境界外アクセスを防ぐ
         [[nodiscard]] constexpr bool IsValidKey(Key k) noexcept
         {
-            const auto i = static_cast<std::size_t>(k);
+            const std::size_t i = static_cast<std::size_t>(k);
             return i > static_cast<std::size_t>(Key::Unknown) && i < static_cast<std::size_t>(Key::Count);
         }
 
         // Keyと同様に境界外アクセスを防ぐ
         [[nodiscard]] constexpr bool IsValidButton(MouseButton b) noexcept
         {
-            const auto i = static_cast<std::size_t>(b);
+            const std::size_t i = static_cast<std::size_t>(b);
             return i < static_cast<std::size_t>(MouseButton::Count);
         }
 
         [[nodiscard]] constexpr bool IsValidGamepadButton(GamepadButton b) noexcept
         {
-            const auto i = static_cast<std::size_t>(b);
+            const std::size_t i = static_cast<std::size_t>(b);
             return i < static_cast<std::size_t>(GamepadButton::Count);
         }
 
@@ -99,7 +99,7 @@ namespace NS::Platform
         {
             return false;
         }
-        const auto i = static_cast<std::size_t>(k);
+        const std::size_t i = static_cast<std::size_t>(k);
         return !m_previous[i] && m_current[i];
     }
 
@@ -118,7 +118,7 @@ namespace NS::Platform
         {
             return false;
         }
-        const auto i = static_cast<std::size_t>(k);
+        const std::size_t i = static_cast<std::size_t>(k);
         return m_previous[i] && !m_current[i];
     }
 
@@ -156,7 +156,7 @@ namespace NS::Platform
         {
             return false;
         }
-        const auto i = static_cast<std::size_t>(b);
+        const std::size_t i = static_cast<std::size_t>(b);
         return !m_previous[i] && m_current[i];
     }
 
@@ -175,7 +175,7 @@ namespace NS::Platform
         {
             return false;
         }
-        const auto i = static_cast<std::size_t>(b);
+        const std::size_t i = static_cast<std::size_t>(b);
         return m_previous[i] && !m_current[i];
     }
 
@@ -267,7 +267,7 @@ namespace NS::Platform
         {
             return false;
         }
-        const auto i = static_cast<std::size_t>(b);
+        const std::size_t i = static_cast<std::size_t>(b);
         return !m_previous[i] && m_current[i];
     }
 
@@ -286,7 +286,7 @@ namespace NS::Platform
         {
             return false;
         }
-        const auto i = static_cast<std::size_t>(b);
+        const std::size_t i = static_cast<std::size_t>(b);
         return m_previous[i] && !m_current[i];
     }
 
@@ -385,7 +385,7 @@ namespace NS::Platform
     {
         m_keyboard.Update();
         m_mouse.Update();
-        for (auto& pad : m_gamepads)
+        for (NS::Platform::Gamepad& pad : m_gamepads)
         {
             pad.Update();
         }
@@ -504,7 +504,7 @@ namespace NS::Platform
             break;
         case WM_XBUTTONDOWN:
         {
-            const auto xb = GET_XBUTTON_WPARAM(wparam);
+            const WORD xb = GET_XBUTTON_WPARAM(wparam);
             if (xb == XBUTTON1)
             {
                 input.Mouse().OnButtonDown(MouseButton::X1);
@@ -517,7 +517,7 @@ namespace NS::Platform
         }
         case WM_XBUTTONUP:
         {
-            const auto xb = GET_XBUTTON_WPARAM(wparam);
+            const WORD xb = GET_XBUTTON_WPARAM(wparam);
             if (xb == XBUTTON1)
             {
                 input.Mouse().OnButtonUp(MouseButton::X1);

@@ -14,7 +14,7 @@ namespace NS::Editor
             std::size_t bytes = 0;
             if (value.is_object())
             {
-                for (auto it = value.begin(); it != value.end(); ++it)
+                for (nlohmann::json::const_iterator it = value.begin(); it != value.end(); ++it)
                     bytes += sizeof(nlohmann::json) + it.key().size() + EstimatedJsonBytes(it.value());
             }
             else if (value.is_array())

@@ -50,8 +50,8 @@ TEST_F(CubemapLoaderTest, LoadKurt6FacePngSucceeds)
 
     std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
     Skybox& skybox = *skyboxHolder;
-    const auto exeDir = NS::Platform::FileSystem::GetExeDirectory();
-    const auto kurtDir = NS::Platform::FileSystem::Combine(
+    const std::string exeDir = NS::Platform::FileSystem::GetExeDirectory();
+    const std::string kurtDir = NS::Platform::FileSystem::Combine(
         NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(exeDir, "Assets"), "Skybox"), "kurt");
 
     if (!NS::Platform::FileSystem::Exists(NS::Platform::FileSystem::Combine(kurtDir, "space_ft.png")))
@@ -92,8 +92,8 @@ TEST_F(CubemapLoaderTest, LoadDdsCubemapReturnsTextureCubeDim)
 
     std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
     Skybox& skybox = *skyboxHolder;
-    const auto exeDir = NS::Platform::FileSystem::GetExeDirectory();
-    const auto ddsPath = NS::Platform::FileSystem::Combine(
+    const std::string exeDir = NS::Platform::FileSystem::GetExeDirectory();
+    const std::string ddsPath = NS::Platform::FileSystem::Combine(
         NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(exeDir, "Assets"), "Skybox"), "kurt.dds");
 
     if (!NS::Platform::FileSystem::Exists(ddsPath))
@@ -105,7 +105,7 @@ TEST_F(CubemapLoaderTest, LoadDdsCubemapReturnsTextureCubeDim)
     EXPECT_TRUE(ok);
     EXPECT_TRUE(skybox.IsValid());
 
-    auto* srv = skybox.Srv();
+    ID3D11ShaderResourceView* srv = skybox.Srv();
     ASSERT_NE(srv, nullptr);
     D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
     srv->GetDesc(&desc);

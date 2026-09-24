@@ -40,7 +40,7 @@ namespace NS::Editor
         if (m_undo.empty())
             return false;
         ++m_version;
-        auto& back = m_undo.back();
+        std::unique_ptr<ICommand>& back = m_undo.back();
         back->Undo(target);
         const std::size_t bytes = back->EstimatedBytes();
         m_undoBytes -= bytes;
@@ -55,7 +55,7 @@ namespace NS::Editor
         if (m_redo.empty())
             return false;
         ++m_version;
-        auto& back = m_redo.back();
+        std::unique_ptr<ICommand>& back = m_redo.back();
         back->Do(target);
         const std::size_t bytes = back->EstimatedBytes();
         m_redoBytes -= bytes;

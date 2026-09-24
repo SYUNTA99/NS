@@ -55,7 +55,7 @@ namespace
 TEST(ReflectionJsonTest, SerializeWritesTypeAndFields)
 {
     GameObject obj;
-    auto* box = obj.AddComponent<NS::Obj::BoxCollider>();
+    NS::Obj::BoxCollider* box = obj.AddComponent<NS::Obj::BoxCollider>();
 
     const nlohmann::json j = SerializeComponent(*box);
     EXPECT_EQ(j["type"], "BoxCollider");
@@ -67,7 +67,7 @@ TEST(ReflectionJsonTest, SerializeWritesTypeAndFields)
 TEST(ReflectionJsonTest, RoundTripVector3Fields)
 {
     GameObject src;
-    auto* box = src.AddComponent<NS::Obj::BoxCollider>();
+    NS::Obj::BoxCollider* box = src.AddComponent<NS::Obj::BoxCollider>();
     box->SetHalfExtents(NS::Core::Vector3{2.0f, 3.0f, 4.0f});
     box->SetCenterOffset(NS::Core::Vector3{1.0f, -2.0f, 0.5f});
 
@@ -78,7 +78,7 @@ TEST(ReflectionJsonTest, RoundTripVector3Fields)
     ASSERT_NE(restored, nullptr);
     ApplyJsonFields(*restored, j["fields"]);
 
-    auto* restoredBox = static_cast<NS::Obj::BoxCollider*>(restored);
+    NS::Obj::BoxCollider* restoredBox = static_cast<NS::Obj::BoxCollider*>(restored);
     EXPECT_FLOAT_EQ(restoredBox->HalfExtents().x, 2.0f);
     EXPECT_FLOAT_EQ(restoredBox->HalfExtents().y, 3.0f);
     EXPECT_FLOAT_EQ(restoredBox->HalfExtents().z, 4.0f);
@@ -134,7 +134,7 @@ TEST(ReflectionJsonTest, SlopeReflectsAngleAndRoundTrips)
 TEST(ReflectionJsonTest, UnknownAndMissingKeysAreIgnored)
 {
     GameObject obj;
-    auto* box = obj.AddComponent<NS::Obj::BoxCollider>();
+    NS::Obj::BoxCollider* box = obj.AddComponent<NS::Obj::BoxCollider>();
     box->SetHalfExtents(NS::Core::Vector3{2.0f, 2.0f, 2.0f});
 
     // 未知キー + 欠損 (半径を含まない) + 型不一致を混ぜても落ちず、既定/現状値が保たれる

@@ -204,8 +204,8 @@ TEST(PlayerAnimatorTest, UnknownClipNameFallsBackToIdle)
 TEST(PlayerAnimatorTest, WithoutASkeletalAnimationNothingHappens)
 {
     GameObject owner;
-    auto* player = owner.AddComponent<PlayerComponent>();
-    auto* animator = owner.AddComponent<PlayerAnimator>();
+    PlayerComponent* player = owner.AddComponent<PlayerComponent>();
+    PlayerAnimator* animator = owner.AddComponent<PlayerAnimator>();
     player->OnStart();
     animator->OnStart();
 

@@ -20,9 +20,9 @@ namespace NS::Game::Level
         }
 
         // 組み立ててから渡す。SpawnTransient の資産の引き当ては渡した時に持っている Component にしか効かない
-        auto owned = std::make_unique<NS::Obj::GameObject>();
+        std::unique_ptr<NS::Obj::GameObject> owned = std::make_unique<NS::Obj::GameObject>();
         owned->Root().SetPosition(position);
-        auto* mesh = owned->AddComponent<NS::Obj::MeshRenderer>();
+        NS::Obj::MeshRenderer* mesh = owned->AddComponent<NS::Obj::MeshRenderer>();
         mesh->SetMeshRef("shadowQuad");
         mesh->SetMaterialRef("shadow");
         owned->AddComponent<ImpactMark>();
@@ -51,7 +51,7 @@ namespace NS::Game::Level
         if (t >= 1.0f)
         {
             // 消える時も配置物は残す。更新の最中に消すと ObjectList::UpdateObjects が集めた並びに解放済みの位置が残る
-            if (auto* mesh = Owner()->FindComponent<NS::Obj::MeshRenderer>())
+            if (NS::Obj::MeshRenderer* mesh = Owner()->FindComponent<NS::Obj::MeshRenderer>())
             {
                 mesh->SetActive(false);
             }

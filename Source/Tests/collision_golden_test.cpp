@@ -142,7 +142,7 @@ namespace
                 m_player = live;
                 m_movement = live->FindComponent<PlayerComponent>();
                 // 入力の component は EarlyUpdate で実機の入力を書き込む。起こしたままだと走行入力が毎フレーム 0 になる
-                if (auto* input = live->FindComponent<NS::Obj::PlayerInput>())
+                if (NS::Obj::PlayerInput* input = live->FindComponent<NS::Obj::PlayerInput>())
                     input->SetActive(false);
             }
             m_scene.Objects().ForEachComponent<NS::Game::Level::Breakable>(
@@ -231,7 +231,7 @@ TEST_F(CollisionGolden, SteadyRunMatchesGoldenTrace)
     EXPECT_LT(MaxForwardSpeedFrom(trace, 0), 9.0f) << "走行速度 8 を超えて伸びている";
     EXPECT_TRUE(trace.back().grounded) << "走り切る前に床から外れている";
 
-    const auto baseline = LoadBaseline("collision_steady_run");
+    const std::optional<std::vector<StepRecord>> baseline = LoadBaseline("collision_steady_run");
     ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("collision_steady_run");
     const TraceDiff diff = CompareTraces(*baseline, trace, k_Exact);
     EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trace);
@@ -243,7 +243,7 @@ TEST_F(CollisionGolden, ImpactMatchesGoldenTrace)
 
     EXPECT_TRUE(HasReboundStep(trace)) << "経路に反発が現れていない";
 
-    const auto baseline = LoadBaseline("collision_impact");
+    const std::optional<std::vector<StepRecord>> baseline = LoadBaseline("collision_impact");
     ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("collision_impact");
     const TraceDiff diff = CompareTraces(*baseline, trace, k_Exact);
     EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trace);

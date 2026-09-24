@@ -670,19 +670,6 @@ namespace NS::Gfx
                 float duration = 0.0f;
                 std::vector<BoneTrack> tracks;
 
-                auto trackForBone = [&tracks](int boneIndex) -> BoneTrack& {
-                    for (BoneTrack& tr : tracks)
-                    {
-                        if (tr.boneIndex == boneIndex)
-                        {
-                            return tr;
-                        }
-                    }
-                    tracks.push_back(BoneTrack{});
-                    tracks.back().boneIndex = boneIndex;
-                    return tracks.back();
-                };
-
                 // channel ごとに TRS トラックを組む
                 for (cgltf_size c = 0; c < anim.channels_count; ++c)
                 {
@@ -741,7 +728,18 @@ namespace NS::Gfx
                     }
                     duration = std::max(duration, times.back());
 
-                    BoneTrack& track = trackForBone(boneIndex);
+                    BoneTrack& track = [&tracks, boneIndex]() -> BoneTrack& {
+                        for (BoneTrack& tr : tracks)
+                        {
+                            if (tr.boneIndex == boneIndex)
+                            {
+                                return tr;
+                            }
+                        }
+                        tracks.push_back(BoneTrack{});
+                        tracks.back().boneIndex = boneIndex;
+                        return tracks.back();
+                    }();
                     if (channel.target_path == cgltf_animation_path_type_translation)
                     {
                         track.positionTimes = times;
@@ -1080,7 +1078,7 @@ namespace NS::Gfx
         ParseAnimations(
             model,
             [&](const cgltf_node* node) -> int {
-                const auto it = nodeToBone.find(node);
+                const std::unordered_map<const cgltf_node*, int>::iterator it = nodeToBone.find(node);
                 if (it == nodeToBone.end())
                     return -1;
                 return it->second;

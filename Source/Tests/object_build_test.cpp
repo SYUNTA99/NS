@@ -91,7 +91,7 @@ namespace
 
 TEST_F(ObjectBuildTest, GridCubeHasMeshAndBoxCollider)
 {
-    auto obj = Build(MakeGridCube());
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(MakeGridCube());
     ASSERT_NE(obj, nullptr);
     EXPECT_TRUE(Has<NS::Obj::MeshRenderer>(*obj));
     EXPECT_TRUE(Has<NS::Obj::BoxCollider>(*obj));
@@ -104,10 +104,10 @@ TEST_F(ObjectBuildTest, DefaultFreeCubeComponentsAreCubeWithBoxCollider)
     ObjectData object;
     object.components = MakeCellCubeComponents();
 
-    auto obj = Build(object);
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(object);
     ASSERT_NE(obj, nullptr);
     EXPECT_TRUE(Has<NS::Obj::MeshRenderer>(*obj));
-    auto* box = obj->FindComponent<NS::Obj::BoxCollider>();
+    NS::Obj::BoxCollider* box = obj->FindComponent<NS::Obj::BoxCollider>();
     ASSERT_NE(box, nullptr);
     const Vector3 half = box->HalfExtents();
     EXPECT_FLOAT_EQ(half.x, 0.5f);
@@ -117,9 +117,9 @@ TEST_F(ObjectBuildTest, DefaultFreeCubeComponentsAreCubeWithBoxCollider)
 
 TEST_F(ObjectBuildTest, FreeBoxHasBoxColliderWithSavedHalfExtents)
 {
-    auto obj = Build(MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f})));
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f})));
     ASSERT_NE(obj, nullptr);
-    auto* box = obj->FindComponent<NS::Obj::BoxCollider>();
+    NS::Obj::BoxCollider* box = obj->FindComponent<NS::Obj::BoxCollider>();
     ASSERT_NE(box, nullptr);
     const Vector3 half = box->HalfExtents();
     EXPECT_FLOAT_EQ(half.x, 1.0f);
@@ -131,10 +131,10 @@ TEST_F(ObjectBuildTest, FreeBoxHasBoxColliderWithSavedHalfExtents)
 
 TEST_F(ObjectBuildTest, FreeSphereHasOnlySphereCollider)
 {
-    auto obj = Build(MakeFreeObject(SphereColliderData(0.7f, Vector3{0.0f, 1.0f, 0.0f})));
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(MakeFreeObject(SphereColliderData(0.7f, Vector3{0.0f, 1.0f, 0.0f})));
     ASSERT_NE(obj, nullptr);
     EXPECT_FALSE(Has<NS::Obj::BoxCollider>(*obj));
-    auto* sphere = obj->FindComponent<NS::Obj::SphereCollider>();
+    NS::Obj::SphereCollider* sphere = obj->FindComponent<NS::Obj::SphereCollider>();
     ASSERT_NE(sphere, nullptr);
     EXPECT_FALSE(Has<NS::Obj::CapsuleCollider>(*obj));
 
@@ -145,9 +145,9 @@ TEST_F(ObjectBuildTest, FreeSphereHasOnlySphereCollider)
 
 TEST_F(ObjectBuildTest, SphereColliderWorldAabbEnclosesSphere)
 {
-    auto obj = Build(MakeFreeObject(SphereColliderData(0.7f, Vector3{0.0f, 1.0f, 0.0f})));
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(MakeFreeObject(SphereColliderData(0.7f, Vector3{0.0f, 1.0f, 0.0f})));
     ASSERT_NE(obj, nullptr);
-    auto* sphere = obj->FindComponent<NS::Obj::SphereCollider>();
+    NS::Obj::SphereCollider* sphere = obj->FindComponent<NS::Obj::SphereCollider>();
     ASSERT_NE(sphere, nullptr);
     const NS::Core::AABB aabb = sphere->WorldAABB();
     EXPECT_NEAR(aabb.Center.y, 1.0f, 1e-4f);
@@ -158,10 +158,10 @@ TEST_F(ObjectBuildTest, SphereColliderWorldAabbEnclosesSphere)
 
 TEST_F(ObjectBuildTest, FreeCapsuleHasOnlyCapsuleCollider)
 {
-    auto obj = Build(MakeFreeObject(CapsuleColliderData(0.4f, 0.9f)));
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(MakeFreeObject(CapsuleColliderData(0.4f, 0.9f)));
     ASSERT_NE(obj, nullptr);
     EXPECT_FALSE(Has<NS::Obj::BoxCollider>(*obj));
-    auto* capsule = obj->FindComponent<NS::Obj::CapsuleCollider>();
+    NS::Obj::CapsuleCollider* capsule = obj->FindComponent<NS::Obj::CapsuleCollider>();
     ASSERT_NE(capsule, nullptr);
     EXPECT_FALSE(Has<NS::Obj::SphereCollider>(*obj));
 
@@ -172,9 +172,9 @@ TEST_F(ObjectBuildTest, FreeCapsuleHasOnlyCapsuleCollider)
 
 TEST_F(ObjectBuildTest, CapsuleColliderWorldAabbEnclosesCapsule)
 {
-    auto obj = Build(MakeFreeObject(CapsuleColliderData(0.4f, 0.9f)));
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(MakeFreeObject(CapsuleColliderData(0.4f, 0.9f)));
     ASSERT_NE(obj, nullptr);
-    auto* capsule = obj->FindComponent<NS::Obj::CapsuleCollider>();
+    NS::Obj::CapsuleCollider* capsule = obj->FindComponent<NS::Obj::CapsuleCollider>();
     ASSERT_NE(capsule, nullptr);
     const NS::Core::AABB aabb = capsule->WorldAABB();
     EXPECT_NEAR(aabb.Extents.x, 0.4f, 1e-4f);
@@ -187,7 +187,7 @@ TEST_F(ObjectBuildTest, TransformAppliedToRoot)
     ObjectData object = MakeGridCube();
     NS::Obj::SetObjectPosition(object, Vector3{3.0f, 4.0f, 5.0f});
 
-    auto obj = Build(object);
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(object);
     ASSERT_NE(obj, nullptr);
     const Vector3 pos = obj->Root().Position();
     EXPECT_FLOAT_EQ(pos.x, 3.0f);
@@ -197,9 +197,9 @@ TEST_F(ObjectBuildTest, TransformAppliedToRoot)
 
 TEST_F(ObjectBuildTest, GridCubeWorldAabbMatchesCellHalfExtents)
 {
-    auto obj = Build(MakeGridCube());
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(MakeGridCube());
     ASSERT_NE(obj, nullptr);
-    auto* box = obj->FindComponent<NS::Obj::BoxCollider>();
+    NS::Obj::BoxCollider* box = obj->FindComponent<NS::Obj::BoxCollider>();
     ASSERT_NE(box, nullptr);
     const NS::Core::AABB aabb = box->WorldAABB();
     EXPECT_NEAR(aabb.Center.x, 0.0f, 1e-4f);
@@ -215,9 +215,9 @@ TEST_F(ObjectBuildTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
     NS::Obj::SetObjectPosition(object, Vector3{2.0f, 0.0f, 0.0f});
 
-    auto obj = Build(object);
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(object);
     ASSERT_NE(obj, nullptr);
-    auto* box = obj->FindComponent<NS::Obj::BoxCollider>();
+    NS::Obj::BoxCollider* box = obj->FindComponent<NS::Obj::BoxCollider>();
     ASSERT_NE(box, nullptr);
     const NS::Core::AABB aabb = box->WorldAABB();
     EXPECT_NEAR(aabb.Center.x, 2.0f, 1e-4f);
@@ -234,9 +234,9 @@ TEST_F(ObjectBuildTest, ComponentsDriveBuild)
     ObjectData object;
     object.components.push_back(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
 
-    auto obj = Build(object);
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(object);
     ASSERT_NE(obj, nullptr);
-    auto* boxComp = obj->FindComponent<NS::Obj::BoxCollider>();
+    NS::Obj::BoxCollider* boxComp = obj->FindComponent<NS::Obj::BoxCollider>();
     ASSERT_NE(boxComp, nullptr);
     const Vector3 half = boxComp->HalfExtents();
     EXPECT_FLOAT_EQ(half.x, 1.0f);
@@ -262,7 +262,7 @@ TEST_F(ObjectBuildTest, AssetPathTraversalRejectedFallsBackToDefault)
     // const char* が string_view 版へ解決され、bool でなく文字列として書かれていること
     ASSERT_TRUE(object.components[0]["fields"]["マテリアル"].is_string());
 
-    auto obj = Build(object);
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(object);
     ASSERT_NE(obj, nullptr);
     EXPECT_TRUE(Has<NS::Obj::MeshRenderer>(*obj));
     EXPECT_TRUE(Has<NS::Obj::BoxCollider>(*obj));
@@ -277,10 +277,10 @@ TEST_F(ObjectBuildTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
     EXPECT_STREQ(NS::Editor::ObjectDisplayName(slope), "Slope 45");
     EXPECT_TRUE(NS::Editor::IsRotatableObject(slope));
 
-    auto obj = Build(slope);
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(slope);
     ASSERT_NE(obj, nullptr);
     EXPECT_TRUE(Has<NS::Obj::MeshRenderer>(*obj));
-    auto* collider = obj->FindComponent<NS::Obj::SlopeCollider>();
+    NS::Obj::SlopeCollider* collider = obj->FindComponent<NS::Obj::SlopeCollider>();
     ASSERT_NE(collider, nullptr);
     EXPECT_FLOAT_EQ(collider->AngleDegrees(), 45.0f);
     EXPECT_FALSE(Has<NS::Obj::BoxCollider>(*obj));
@@ -295,7 +295,7 @@ TEST_F(ObjectBuildTest, GoalHasMarkerAndDisplaysAsGoal)
     EXPECT_STREQ(NS::Editor::ObjectDisplayName(goal), "Goal");
     EXPECT_FALSE(NS::Editor::IsRotatableObject(goal));
 
-    auto obj = Build(goal);
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(goal);
     ASSERT_NE(obj, nullptr);
     EXPECT_NE(obj->FindComponent<NS::Game::Level::Goal>(), nullptr);
 }
@@ -323,7 +323,7 @@ TEST_F(ObjectBuildTest, PlayerObjectBuildsPlayerTyped)
     const ObjectData data = MakePlayerObject(Vector3{1.0f, 2.0f, 3.0f}, NS::Core::Quaternion{});
     EXPECT_EQ(data.className, "Player");
 
-    auto obj = Build(data);
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(data);
     ASSERT_NE(obj, nullptr);
     // 実行時型情報は切っているため、クラス名で型選択を確かめてから GameObject の API で見る
     ASSERT_STREQ(obj->ClassName(), "Player");
@@ -360,9 +360,9 @@ TEST_F(ObjectBuildTest, PlayerObjectDataIsSparseTypeListFromClass)
 // 疎なデータで組んでも、cube と共有 player 材質と赤の個体色はコンストラクタが与える
 TEST_F(ObjectBuildTest, PlayerDefaultLookComesFromClassNotData)
 {
-    auto obj = Build(MakePlayerObject(Vector3{}, NS::Core::Quaternion{}));
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(MakePlayerObject(Vector3{}, NS::Core::Quaternion{}));
     ASSERT_NE(obj, nullptr);
-    auto* mesh = obj->FindComponent<NS::Obj::MeshRenderer>();
+    NS::Obj::MeshRenderer* mesh = obj->FindComponent<NS::Obj::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
 
     EXPECT_EQ(mesh->MeshRef(), "cube");
@@ -394,10 +394,10 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
         if (NS::Obj::ComponentEntryType(entry) == "PlayerComponent")
             NS::Obj::SetField(entry, "コヨーテ時間", 0.125f);
 
-    auto obj = Build(data);
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(data);
     ASSERT_NE(obj, nullptr);
     obj->OnStart();
-    auto* movement = obj->FindComponent<NS::Game::Player::PlayerComponent>();
+    NS::Game::Player::PlayerComponent* movement = obj->FindComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(movement, nullptr);
     EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*movement, "コヨーテ時間"), 0.125f);
 }
@@ -422,9 +422,9 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataIdsToConstructorComponents)
     const std::uint32_t dataId = 4321u;
     NS::Obj::SetComponentEntryId(*entry, dataId);
 
-    auto obj = Build(data);
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(data);
     ASSERT_NE(obj, nullptr);
-    auto* movement = obj->FindComponent<NS::Game::Player::PlayerComponent>();
+    NS::Game::Player::PlayerComponent* movement = obj->FindComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(movement, nullptr);
     EXPECT_EQ(movement->Id(), dataId);
 }
@@ -436,12 +436,12 @@ TEST_F(ObjectBuildTest, DuplicateColliderDataBuildsCompoundColliders)
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 1.0f, 1.0f}));
     object.components.push_back(BoxColliderData(Vector3{2.0f, 2.0f, 2.0f}));
 
-    auto obj = Build(object);
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(object);
     ASSERT_NE(obj, nullptr);
 
     std::vector<NS::Obj::BoxCollider*> boxes;
     for (NS::Obj::Component* comp : obj->Components())
-        if (auto* box = NS::Obj::ComponentCast<NS::Obj::BoxCollider>(comp))
+        if (NS::Obj::BoxCollider* box = NS::Obj::ComponentCast<NS::Obj::BoxCollider>(comp))
             boxes.push_back(box);
     ASSERT_EQ(boxes.size(), 2u);
     EXPECT_FLOAT_EQ(boxes[0]->HalfExtents().x, 1.0f);
@@ -456,7 +456,7 @@ TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
     NS::Obj::SetObjectPosition(object, Vector3{3.0f, 4.0f, 5.0f});
     NS::Obj::SetObjectScale(object, Vector3{2.0f, 1.0f, 0.5f});
 
-    auto obj = Build(object);
+    std::unique_ptr<NS::Obj::GameObject> obj = Build(object);
     ASSERT_NE(obj, nullptr);
 
     const nlohmann::json components = NS::Obj::SerializeGameObjectComponents(*obj);
@@ -464,7 +464,7 @@ TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
 
     // 各 component を型名から既定生成し、書き出した fields を書き戻して、書き出し直した物が元に戻るか見る
     NS::Obj::GameObject rebuilt;
-    for (const auto& compJson : components)
+    for (const nlohmann::json& compJson : components)
     {
         const std::string typeName = compJson.at("type").get<std::string>();
         // transform は登録一覧に無く GameObject が最初から 1 つ持っているので、生成せずそれへ書き戻す
@@ -487,7 +487,7 @@ TEST_F(ObjectBuildTest, CaptureObjectDataRestoresFaithfully)
     NS::Obj::SetObjectPosition(object, Vector3{3.0f, 4.0f, 5.0f});
     NS::Obj::SetObjectScale(object, Vector3{2.0f, 1.0f, 0.5f});
 
-    auto live = Build(object);
+    std::unique_ptr<NS::Obj::GameObject> live = Build(object);
     ASSERT_NE(live, nullptr);
 
     const ObjectData snapshot = NS::Obj::CaptureObjectData(*live);
@@ -504,9 +504,9 @@ TEST_F(ObjectBuildTest, DisabledComponentSurvivesRoundTrip)
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
     NS::Obj::SetComponentEntryEnabled(object.components[0], false);
 
-    auto live = Build(object);
+    std::unique_ptr<NS::Obj::GameObject> live = Build(object);
     ASSERT_NE(live, nullptr);
-    auto* mesh = live->FindComponent<NS::Obj::MeshRenderer>();
+    NS::Obj::MeshRenderer* mesh = live->FindComponent<NS::Obj::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_FALSE(mesh->IsEnabled());
 
@@ -521,9 +521,9 @@ TEST_F(ObjectBuildTest, SleepingComponentIsSavedAsEnabled)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
 
-    auto live = Build(object);
+    std::unique_ptr<NS::Obj::GameObject> live = Build(object);
     ASSERT_NE(live, nullptr);
-    auto* mesh = live->FindComponent<NS::Obj::MeshRenderer>();
+    NS::Obj::MeshRenderer* mesh = live->FindComponent<NS::Obj::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
 
     mesh->SetActive(false);

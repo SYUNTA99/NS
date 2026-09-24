@@ -111,7 +111,7 @@ TEST(OverlayRendererComponentTest, WithoutASceneNothingHappens)
 {
     std::vector<int> log;
     NS::Obj::GameObject obj;
-    auto* overlay = obj.AddComponent<FakeOverlay>(&log);
+    FakeOverlay* overlay = obj.AddComponent<FakeOverlay>(&log);
     ASSERT_NE(overlay, nullptr);
 
     overlay->OnStart();
@@ -126,7 +126,7 @@ TEST(OverlayRendererComponentTest, DerivedThatOverridesOnStartStillRegisters)
     TestScene scene;
     NS::Obj::GameObject* obj = scene.SpawnTransient(std::make_unique<NS::Obj::GameObject>());
     ASSERT_NE(obj, nullptr);
-    auto* overlay = obj->AddComponent<OverridingOverlay>(&log);
+    OverridingOverlay* overlay = obj->AddComponent<OverridingOverlay>(&log);
     ASSERT_NE(overlay, nullptr);
 
     overlay->OnStart();

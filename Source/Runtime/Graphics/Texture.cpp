@@ -247,11 +247,11 @@ namespace NS::Gfx
         bool loaded = false;
         if (!desc.path.empty())
         {
-            auto bytesOpt = ::NS::Platform::FileSystem::ReadAllBytes(desc.path);
+            std::optional<std::vector<std::byte>> bytesOpt = ::NS::Platform::FileSystem::ReadAllBytes(desc.path);
             if (bytesOpt.has_value())
             {
-                const auto& bytes = bytesOpt.value();
-                const auto* data = reinterpret_cast<const std::uint8_t*>(bytes.data());
+                const std::vector<std::byte>& bytes = bytesOpt.value();
+                const std::uint8_t* data = reinterpret_cast<const std::uint8_t*>(bytes.data());
                 if (IsDdsExtension(desc.path))
                 {
                     // DDS は内蔵 mipmap を尊重して作り直さない

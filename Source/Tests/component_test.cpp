@@ -25,7 +25,7 @@ TEST(ComponentTest, DefaultIsActive)
 TEST(ComponentTest, SetActiveTogglesPropagation)
 {
     GameObject obj;
-    auto& c = *obj.AddComponent<CountingComponent>();
+    CountingComponent& c = *obj.AddComponent<CountingComponent>();
 
     c.SetActive(false);
     obj.OnUpdate();
@@ -39,7 +39,7 @@ TEST(ComponentTest, SetActiveTogglesPropagation)
 TEST(ComponentTest, SetEnabledStopsUpdate)
 {
     GameObject obj;
-    auto& c = *obj.AddComponent<CountingComponent>();
+    CountingComponent& c = *obj.AddComponent<CountingComponent>();
 
     c.SetEnabled(false);
     obj.OnUpdate();
@@ -69,7 +69,7 @@ TEST(ComponentTest, EnabledAndActiveAreSeparateFlags)
 TEST(ComponentTest, RootTransformReturnsOwnerRoot)
 {
     GameObject obj;
-    auto& c = *obj.AddComponent<CountingComponent>();
+    CountingComponent& c = *obj.AddComponent<CountingComponent>();
 
     obj.Root().SetPosition({1.0f, 2.0f, 3.0f});
 
@@ -99,7 +99,7 @@ namespace
 TEST(ComponentOwnershipTest, AddComponentRegistersAndInjectsOwner)
 {
     NS::Obj::GameObject obj;
-    auto* c = obj.AddComponent<CountingComponent>();
+    CountingComponent* c = obj.AddComponent<CountingComponent>();
 
     // GameObject が先に transform を積むので、同 priority の後入れは末尾に来る
     ASSERT_EQ(obj.Components().size(), std::size_t{2});

@@ -32,7 +32,7 @@ namespace NS::Platform
     private:
         static const std::chrono::steady_clock::time_point& StartTime() noexcept
         {
-            static const auto start = std::chrono::steady_clock::now();
+            static const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
             return start;
         }
     };
@@ -47,7 +47,7 @@ namespace NS::Platform
         //! 毎フレームの冒頭で呼び出すこと
         static void Tick() noexcept
         {
-            const auto now = std::chrono::steady_clock::now();
+            const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
             const float dt = std::chrono::duration<float>(now - s_lastTime).count();
             s_lastTime = now;
             s_delta = dt;
@@ -116,7 +116,7 @@ namespace NS::Platform
 
         ~ScopedTimer()
         {
-            const auto end = std::chrono::steady_clock::now();
+            const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
             const double ms = std::chrono::duration<double, std::milli>(end - m_startTime).count();
             ::NS::Core::Logger::LogImpl(::NS::Core::LogLevel::Debug,
                                         m_logType,

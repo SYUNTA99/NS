@@ -147,18 +147,18 @@ namespace NS::Obj
                 {
                     continue;
                 }
-                const auto fieldsIt = entry.find("fields");
+                const nlohmann::json::iterator fieldsIt = entry.find("fields");
                 if (fieldsIt == entry.end() || !fieldsIt->is_object())
                 {
                     continue;
                 }
-                for (auto& fieldValue : *fieldsIt)
+                for (nlohmann::json& fieldValue : *fieldsIt)
                 {
                     if (!fieldValue.is_object())
                     {
                         continue;
                     }
-                    const auto refIt = fieldValue.find("ref");
+                    const nlohmann::json::iterator refIt = fieldValue.find("ref");
                     if (refIt == fieldValue.end() || !refIt->is_number_unsigned())
                     {
                         continue;
@@ -198,7 +198,7 @@ namespace NS::Obj
             std::uint32_t ancestor = object.parentId;
             for (std::size_t step = 0; valid && step < scene.objects.size(); ++step)
             {
-                const auto it = indexById.find(ancestor);
+                const std::unordered_map<std::uint32_t, std::size_t>::iterator it = indexById.find(ancestor);
                 if (it == indexById.end())
                 {
                     valid = false;
@@ -242,14 +242,14 @@ namespace NS::Obj
                 {
                     continue;
                 }
-                for (auto it = fields->begin(); it != fields->end(); ++it)
+                for (nlohmann::json::const_iterator it = fields->begin(); it != fields->end(); ++it)
                 {
                     const nlohmann::json& fieldValue = it.value();
                     if (!fieldValue.is_object())
                     {
                         continue;
                     }
-                    const auto refIt = fieldValue.find("ref");
+                    const nlohmann::json::const_iterator refIt = fieldValue.find("ref");
                     if (refIt == fieldValue.end() || !refIt->is_number_unsigned())
                     {
                         continue;

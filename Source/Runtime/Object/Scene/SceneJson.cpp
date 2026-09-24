@@ -32,7 +32,7 @@ namespace NS::Obj
         //! parent[key] が長さ 3 の数値配列なら x/y/z へ書き込む。不在 / 型不一致は据え置きで前方互換を保つ
         void ReadVec3(const nlohmann::json& parent, const char* key, float& x, float& y, float& z)
         {
-            const auto it = parent.find(key);
+            const nlohmann::json::const_iterator it = parent.find(key);
             if (it == parent.end() || !it->is_array() || it->size() < 3u)
             {
                 return;
@@ -50,7 +50,7 @@ namespace NS::Obj
         //! parent[key] が数値なら int で返す。不在 / 型不一致は fallback。手編集の 1.0 形式も拾う
         int ReadInt(const nlohmann::json& parent, const char* key, int fallback)
         {
-            const auto it = parent.find(key);
+            const nlohmann::json::const_iterator it = parent.find(key);
             if (it == parent.end() || !it->is_number())
             {
                 return fallback;
@@ -71,7 +71,7 @@ namespace NS::Obj
                 {
                     continue;
                 }
-                const auto fieldsIt = entry.find("fields");
+                const nlohmann::json::iterator fieldsIt = entry.find("fields");
                 if (fieldsIt == entry.end() || !fieldsIt->is_object())
                 {
                     continue;
@@ -82,7 +82,7 @@ namespace NS::Obj
                     {
                         continue;
                     }
-                    const auto refIt = value.find("ref");
+                    const nlohmann::json::iterator refIt = value.find("ref");
                     if (refIt != value.end())
                     {
                         fn(*refIt);
@@ -129,36 +129,36 @@ namespace NS::Obj
             }
 
             object.objectId = static_cast<std::uint32_t>(ReadInt(json, "id", 0));
-            const auto classIt = json.find("class");
+            const nlohmann::json::const_iterator classIt = json.find("class");
             if (classIt != json.end() && classIt->is_string())
             {
                 object.className = classIt->get<std::string>();
             }
-            const auto nameIt = json.find("name");
+            const nlohmann::json::const_iterator nameIt = json.find("name");
             if (nameIt != json.end() && nameIt->is_string())
             {
                 object.name = nameIt->get<std::string>();
             }
             object.parentId = static_cast<std::uint32_t>(ReadInt(json, "parent", 0));
             // 欄が無い古いファイルは有効として読む
-            const auto activeIt = json.find("active");
+            const nlohmann::json::const_iterator activeIt = json.find("active");
             if (activeIt != json.end() && activeIt->is_boolean())
             {
                 object.active = activeIt->get<bool>();
             }
 
-            const auto componentsIt = json.find("components");
+            const nlohmann::json::const_iterator componentsIt = json.find("components");
             if (componentsIt != json.end() && componentsIt->is_array())
             {
                 // {type, id, enabled, fields} の骨格だけ整えて受け取る。未知キーは捨て、fields の中身は素通し
-                for (const auto& componentJson : *componentsIt)
+                for (const nlohmann::json& componentJson : *componentsIt)
                 {
                     if (!componentJson.is_object())
                     {
                         continue;
                     }
                     nlohmann::json fields = nlohmann::json::object();
-                    const auto fieldsIt = componentJson.find("fields");
+                    const nlohmann::json::const_iterator fieldsIt = componentJson.find("fields");
                     if (fieldsIt != componentJson.end() && fieldsIt->is_object())
                     {
                         fields = *fieldsIt;
@@ -187,19 +187,19 @@ namespace NS::Obj
         root["environment"] = std::move(environment);
 
         nlohmann::json objects = nlohmann::json::array();
-        for (const auto& object : scene.objects)
+        for (const ObjectData& object : scene.objects)
         {
             objects.push_back(SerializeObject(object));
         }
 
         // ファイルの参照は相手の名前で書く。空と重複した名前は相手が 1 つに決まらないので id のまま残す
         std::unordered_map<std::string, int> nameCounts;
-        for (const auto& object : scene.objects)
+        for (const ObjectData& object : scene.objects)
         {
             ++nameCounts[object.name];
         }
         std::unordered_map<std::uint32_t, const std::string*> namesById;
-        for (const auto& object : scene.objects)
+        for (const ObjectData& object : scene.objects)
         {
             if (!object.name.empty() && nameCounts[object.name] == 1)
             {
@@ -208,7 +208,7 @@ namespace NS::Obj
         }
         for (nlohmann::json& objectJson : objects)
         {
-            const auto componentsIt = objectJson.find("components");
+            const nlohmann::json::iterator componentsIt = objectJson.find("components");
             if (componentsIt == objectJson.end())
             {
                 continue;
@@ -218,7 +218,7 @@ namespace NS::Obj
                 {
                     return;
                 }
-                const auto it = namesById.find(ref.get<std::uint32_t>());
+                const std::unordered_map<std::uint32_t, const std::string*>::iterator it = namesById.find(ref.get<std::uint32_t>());
                 if (it != namesById.end())
                 {
                     ref = *it->second;
@@ -250,7 +250,7 @@ namespace NS::Obj
         }
 
         // 小数の version が切り捨てで一致に化けないよう、version の形式検査だけは整数のみ受ける
-        const auto versionIt = root.find("version");
+        const nlohmann::json::const_iterator versionIt = root.find("version");
         if (versionIt == root.end() || !versionIt->is_number_integer() || versionIt->get<int>() != k_FormatVersion)
         {
             NS_LOG_ERROR(Scene, "DeserializeSceneFromJson: version 欄が整数の {} と一致しない", k_FormatVersion);
@@ -258,7 +258,7 @@ namespace NS::Obj
         }
 
         // objects を上限ガード付きで読む
-        const auto objectsIt = root.find("objects");
+        const nlohmann::json::const_iterator objectsIt = root.find("objects");
         if (objectsIt != root.end() && objectsIt->is_array())
         {
             if (objectsIt->size() > k_MaxObjectCount)
@@ -271,7 +271,7 @@ namespace NS::Obj
                 return false;
             }
             outScene.objects.reserve(objectsIt->size());
-            for (const auto& objectJson : *objectsIt)
+            for (const nlohmann::json& objectJson : *objectsIt)
             {
                 outScene.objects.push_back(DeserializeObject(objectJson));
             }
@@ -279,10 +279,10 @@ namespace NS::Obj
 
         // environment 欄は skybox だけを所有する。旧形式の lightDirection / lightColor / ambientColor は
         // 照明が DirectionalLight へ移ったので、キーが残っていても読み飛ばす
-        const auto environmentIt = root.find("environment");
+        const nlohmann::json::const_iterator environmentIt = root.find("environment");
         if (environmentIt != root.end() && environmentIt->is_object())
         {
-            const auto skyboxIt = environmentIt->find("skybox");
+            const nlohmann::json::const_iterator skyboxIt = environmentIt->find("skybox");
             if (skyboxIt != environmentIt->end() && skyboxIt->is_string())
             {
                 outScene.environment.skyboxCubemapPath = skyboxIt->get<std::string>();
@@ -306,7 +306,7 @@ namespace NS::Obj
                 {
                     return;
                 }
-                const auto it = idsByName.find(ref.get<std::string>());
+                const std::unordered_map<std::string, std::uint32_t>::iterator it = idsByName.find(ref.get<std::string>());
                 if (it == idsByName.end())
                 {
                     ref = k_NoObjectId; // 居ない名前は未設定へ戻す
@@ -351,7 +351,7 @@ namespace NS::Obj
             return false;
         }
 
-        const auto* raw = reinterpret_cast<const std::byte*>(text.data());
+        const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
         return ::NS::Platform::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size()));
     }
 
@@ -359,7 +359,7 @@ namespace NS::Obj
     {
         outScene = SceneData{};
 
-        auto textOpt = ::NS::Platform::FileSystem::ReadAllText(path);
+        std::optional<std::string> textOpt = ::NS::Platform::FileSystem::ReadAllText(path);
         if (!textOpt.has_value())
         {
             return false;

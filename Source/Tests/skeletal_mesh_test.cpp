@@ -102,7 +102,7 @@ TEST(SkinnedVertexLayoutTest, MemberOffsetsMatchGpuStride)
 
 TEST(SkeletalMeshInputLayoutTest, SkinnedInputLayoutHasExpectedElements)
 {
-    const auto elements = SkeletalMesh::SkinnedInputLayout();
+    const std::vector<InputElement> elements = SkeletalMesh::SkinnedInputLayout();
     ASSERT_EQ(elements.size(), 5u);
 
     EXPECT_EQ(elements[0].semanticName, "POSITION");
@@ -133,8 +133,8 @@ TEST_F(SkeletalMeshLoggerTest, ConstructWithValidDescIsValid)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto vertices = MakeSkinnedTriangle();
-    const auto indices = MakeTriangleIndices();
+    const std::array<SkinnedVertex, k_TriVertexCount> vertices = MakeSkinnedTriangle();
+    const std::array<std::uint32_t, k_TriIndexCount> indices = MakeTriangleIndices();
     SkinnedMeshDesc desc{};
     desc.vertices = vertices.data();
     desc.vertexCount = vertices.size();
@@ -178,8 +178,8 @@ TEST_F(SkeletalMeshLoggerTest, SkinnedMeshDrawDoesNotCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto vertices = MakeSkinnedTriangle();
-    const auto indices = MakeTriangleIndices();
+    const std::array<SkinnedVertex, k_TriVertexCount> vertices = MakeSkinnedTriangle();
+    const std::array<std::uint32_t, k_TriIndexCount> indices = MakeTriangleIndices();
     SkinnedMeshDesc desc{};
     desc.vertices = vertices.data();
     desc.vertexCount = vertices.size();
@@ -203,7 +203,7 @@ TEST_F(SkeletalMeshLoggerTest, SkinnedShaderCompiles)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto shaderDir = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), "Shaders");
+    const std::string shaderDir = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), "Shaders");
 
     // fallback でなければ skinned VS/PS のコンパイルは成功している
     std::unique_ptr<NS::Gfx::Shader> vsHolder = NS::Gfx::Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "skinned.vs.hlsl"));
@@ -221,8 +221,8 @@ TEST_F(SkeletalMeshLoggerTest, CreateInputLayoutSucceedsWithSkinnedShader)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto vertices = MakeSkinnedTriangle();
-    const auto indices = MakeTriangleIndices();
+    const std::array<SkinnedVertex, k_TriVertexCount> vertices = MakeSkinnedTriangle();
+    const std::array<std::uint32_t, k_TriIndexCount> indices = MakeTriangleIndices();
     SkinnedMeshDesc meshDesc{};
     meshDesc.vertices = vertices.data();
     meshDesc.vertexCount = vertices.size();
@@ -234,7 +234,7 @@ TEST_F(SkeletalMeshLoggerTest, CreateInputLayoutSucceedsWithSkinnedShader)
     ASSERT_TRUE(mesh.IsValid());
     EXPECT_EQ(mesh.InputLayout(), nullptr);
 
-    const auto shaderDir = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), "Shaders");
+    const std::string shaderDir = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), "Shaders");
     std::unique_ptr<NS::Gfx::Shader> shaderHolder = NS::Gfx::Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "skinned.vs.hlsl"));
     NS::Gfx::Shader& shader = *shaderHolder;
     ASSERT_TRUE(shader.IsValid());

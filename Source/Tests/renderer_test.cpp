@@ -141,7 +141,7 @@ TEST_F(RendererLoggerTest, StatesAreAccessible)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    auto& states = renderer.States();
+    NS::Gfx::CommonStates& states = renderer.States();
     EXPECT_NE(states.Opaque(), nullptr);
     EXPECT_NE(states.DepthDefault(), nullptr);
     EXPECT_NE(states.CullCounterClockwise(), nullptr);

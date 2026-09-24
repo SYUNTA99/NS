@@ -200,7 +200,7 @@ namespace NS::Platform
 
     std::optional<std::string> FileSystem::ReadAllText(std::string_view path)
     {
-        const auto bytes = ReadAllBytes(path);
+        const std::optional<std::vector<std::byte>> bytes = ReadAllBytes(path);
         if (!bytes.has_value())
         {
             return std::nullopt;

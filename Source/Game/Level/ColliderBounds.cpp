@@ -10,12 +10,12 @@ namespace NS::Game::Level
     bool TryGetColliderBounds(const NS::Obj::GameObject& object, NS::Core::AABB& outBounds) noexcept
     {
         // 箱と球の両方を持つ配置物は無いので、どちらを先に見ても結果は変わらない
-        if (const auto* box = object.FindComponent<NS::Obj::BoxCollider>())
+        if (const NS::Obj::BoxCollider* box = object.FindComponent<NS::Obj::BoxCollider>())
         {
             outBounds = box->WorldAABB();
             return true;
         }
-        if (const auto* sphere = object.FindComponent<NS::Obj::SphereCollider>())
+        if (const NS::Obj::SphereCollider* sphere = object.FindComponent<NS::Obj::SphereCollider>())
         {
             outBounds = sphere->WorldAABB();
             return true;

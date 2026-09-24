@@ -116,8 +116,8 @@ namespace
 TEST(NsSceneManager, SpawnTransientWithoutAssetsSkipsResolve)
 {
     NS::Obj::Scene scene;
-    auto owned = std::make_unique<NS::Obj::GameObject>();
-    auto* probe = owned->AddComponent<ResolveOrderProbeComponent>();
+    std::unique_ptr<NS::Obj::GameObject> owned = std::make_unique<NS::Obj::GameObject>();
+    ResolveOrderProbeComponent* probe = owned->AddComponent<ResolveOrderProbeComponent>();
     NS::Obj::GameObject* spawned = scene.SpawnTransient(std::move(owned));
 
     ASSERT_NE(spawned, nullptr);
@@ -131,8 +131,8 @@ TEST(NsSceneManager, SpawnTransientResolvesAssetsBeforeStart)
     NS::Obj::AssetManager assets{std::string{"."}};
     NS::Obj::Scene scene;
     scene.SetAssets(&assets);
-    auto owned = std::make_unique<NS::Obj::GameObject>();
-    auto* probe = owned->AddComponent<ResolveOrderProbeComponent>();
+    std::unique_ptr<NS::Obj::GameObject> owned = std::make_unique<NS::Obj::GameObject>();
+    ResolveOrderProbeComponent* probe = owned->AddComponent<ResolveOrderProbeComponent>();
     NS::Obj::GameObject* spawned = scene.SpawnTransient(std::move(owned));
 
     ASSERT_NE(spawned, nullptr);

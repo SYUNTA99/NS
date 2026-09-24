@@ -48,7 +48,7 @@ TEST_F(RenderTargetLoggerTest, CreateBuildsColorAndDepth)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto target = RenderTarget::Create(NS::Core::Size2D{256, 128});
+    const std::unique_ptr<RenderTarget> target = RenderTarget::Create(NS::Core::Size2D{256, 128});
     ASSERT_NE(target, nullptr);
     EXPECT_TRUE(target->IsValid());
     EXPECT_EQ(target->Size(), (NS::Core::Size2D{256, 128}));
@@ -62,7 +62,7 @@ TEST_F(RenderTargetLoggerTest, ResizeRebuildsToNewSize)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto target = RenderTarget::Create(NS::Core::Size2D{256, 128});
+    const std::unique_ptr<RenderTarget> target = RenderTarget::Create(NS::Core::Size2D{256, 128});
     ASSERT_TRUE(target->IsValid());
 
     target->Resize(NS::Core::Size2D{512, 256});
@@ -77,7 +77,7 @@ TEST_F(RenderTargetLoggerTest, ResizeSameSizeKeepsTexture)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto target = RenderTarget::Create(NS::Core::Size2D{256, 128});
+    const std::unique_ptr<RenderTarget> target = RenderTarget::Create(NS::Core::Size2D{256, 128});
     ASSERT_TRUE(target->IsValid());
 
     void* const before = target->UiTextureHandle();
@@ -92,7 +92,7 @@ TEST_F(RenderTargetLoggerTest, ResizeZeroIsIgnored)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto target = RenderTarget::Create(NS::Core::Size2D{256, 128});
+    const std::unique_ptr<RenderTarget> target = RenderTarget::Create(NS::Core::Size2D{256, 128});
     ASSERT_TRUE(target->IsValid());
 
     void* const before = target->UiTextureHandle();
@@ -108,7 +108,7 @@ TEST_F(RenderTargetLoggerTest, SetSceneTargetSwitchesRendererSize)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto target = RenderTarget::Create(NS::Core::Size2D{256, 128});
+    const std::unique_ptr<RenderTarget> target = RenderTarget::Create(NS::Core::Size2D{256, 128});
     ASSERT_TRUE(target->IsValid());
 
     renderer.SetSceneTarget(target.get());

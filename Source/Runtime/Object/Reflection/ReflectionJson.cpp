@@ -173,7 +173,7 @@ namespace NS::Obj
                 {
                     return;
                 }
-                const auto it = value.find("ref");
+                const nlohmann::json::const_iterator it = value.find("ref");
                 // 負数は id として不正なので unsigned のみ受ける。手編集の壊れた値は既定 0 のまま
                 if (it == value.end() || !it->is_number_unsigned())
                 {
@@ -189,13 +189,13 @@ namespace NS::Obj
                 {
                     return;
                 }
-                const auto it = value.find("curve");
+                const nlohmann::json::const_iterator it = value.find("curve");
                 if (it == value.end() || !it->is_array())
                 {
                     return;
                 }
                 Curve v{};
-                for (const auto& point : *it)
+                for (const nlohmann::json& point : *it)
                 {
                     if (v.count >= Curve::k_MaxKeys)
                     {
@@ -332,7 +332,7 @@ namespace NS::Obj
         for (std::size_t i = 0; i < info->fieldCount; ++i)
         {
             const FieldDesc& field = info->fields[i];
-            const auto it = fields.find(field.name);
+            const nlohmann::json::const_iterator it = fields.find(field.name);
             if (it == fields.end())
             {
                 continue; // 欠損キーは既定値のまま据え置く
@@ -341,7 +341,7 @@ namespace NS::Obj
         }
 
         std::size_t unreadCount = 0;
-        for (const auto& entry : fields.items())
+        for (nlohmann::json::const_iterator entry = fields.begin(); entry != fields.end(); ++entry)
         {
             if (IsReflectedFieldName(*info, entry.key()))
             {

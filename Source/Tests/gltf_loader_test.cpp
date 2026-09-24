@@ -91,7 +91,7 @@ namespace
 
 TEST(GltfLoaderTest, NonexistentPathReturnsEmpty)
 {
-    const auto geom = NS::Gfx::LoadGltfMesh("ns_does_not_exist_3f9a1c.gltf");
+    const NS::Gfx::MeshGeometry geom = NS::Gfx::LoadGltfMesh("ns_does_not_exist_3f9a1c.gltf");
     EXPECT_TRUE(geom.vertices.empty());
     EXPECT_TRUE(geom.indices.empty());
 }
@@ -100,7 +100,7 @@ TEST(GltfLoaderTest, ConcatenatesPrimitivesWithNodeTransformAndOffset)
 {
     const std::string json = MultiPrimGltf();
     const NsTest::ScopedFixture fixture{"ns_gltf_loader_test_multi.gltf", json};
-    const auto geom = NS::Gfx::LoadGltfMesh(fixture.Path());
+    const NS::Gfx::MeshGeometry geom = NS::Gfx::LoadGltfMesh(fixture.Path());
 
     // 2 primitive 連結で 6 頂点 / 6 index
     ASSERT_EQ(geom.vertices.size(), 6u);
@@ -126,7 +126,7 @@ TEST(GltfLoaderTest, RejectsDracoCompressed)
 {
     const std::string json = DracoRequiredGltf();
     const NsTest::ScopedFixture fixture{"ns_gltf_loader_test_draco.gltf", json};
-    const auto geom = NS::Gfx::LoadGltfMesh(fixture.Path());
+    const NS::Gfx::MeshGeometry geom = NS::Gfx::LoadGltfMesh(fixture.Path());
     EXPECT_TRUE(geom.vertices.empty());
     EXPECT_TRUE(geom.indices.empty());
 }
@@ -135,7 +135,7 @@ TEST(GltfLoaderTest, SkipsNonTriangleTopology)
 {
     const std::string json = LineTopologyGltf();
     const NsTest::ScopedFixture fixture{"ns_gltf_loader_test_lines.gltf", json};
-    const auto geom = NS::Gfx::LoadGltfMesh(fixture.Path());
+    const NS::Gfx::MeshGeometry geom = NS::Gfx::LoadGltfMesh(fixture.Path());
     EXPECT_TRUE(geom.vertices.empty());
     EXPECT_TRUE(geom.indices.empty());
 }
@@ -144,12 +144,12 @@ TEST(GltfLoaderTest, ComputesSmoothNormalWhenAbsent)
 {
     const std::string json = NoNormalGltf();
     const NsTest::ScopedFixture fixture{"ns_gltf_loader_test_nonormal.gltf", json};
-    const auto geom = NS::Gfx::LoadGltfMesh(fixture.Path());
+    const NS::Gfx::MeshGeometry geom = NS::Gfx::LoadGltfMesh(fixture.Path());
 
     ASSERT_EQ(geom.vertices.size(), 3u);
 
     // XY 平面三角形の面法線 = RH で (0,0,1) -> Z 反転で NS の (0,0,-1)。3 頂点とも同方向
-    for (const auto& v : geom.vertices)
+    for (const NS::Gfx::StaticVertex& v : geom.vertices)
     {
         EXPECT_NEAR(v.normal.x, 0.0f, 1e-5f);
         EXPECT_NEAR(v.normal.y, 0.0f, 1e-5f);

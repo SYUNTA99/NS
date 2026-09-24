@@ -86,7 +86,7 @@ namespace NS::Game::Level
         desc.layer = Owner()->IsTransient() ? NS::Phys::ObjectLayers::Debris : NS::Phys::ObjectLayers::Rock;
         desc.restitution = m_restitution;
         desc.friction = m_friction;
-        if (const auto* breakable = Owner()->FindComponent<Breakable>())
+        if (const Breakable* breakable = Owner()->FindComponent<Breakable>())
             desc.mass = breakable->Mass();
 
         // TODO: どの形も外接箱で近似している。球の的が箱として転がるのが気になったら形ごとに分ける
@@ -145,7 +145,7 @@ namespace NS::Game::Level
 
     void LaunchedBody::HideAndSleep()
     {
-        if (auto* mesh = Owner()->FindComponent<NS::Obj::MeshRenderer>())
+        if (NS::Obj::MeshRenderer* mesh = Owner()->FindComponent<NS::Obj::MeshRenderer>())
             mesh->SetActive(false);
         SetColliderActive(false);
         SetActive(false);
@@ -161,7 +161,7 @@ namespace NS::Game::Level
 
         const NS::Core::Vector3 origin = RootTransform().Position();
         float mass = 1.0f;
-        auto* breakable = Owner()->FindComponent<Breakable>();
+        Breakable* breakable = Owner()->FindComponent<Breakable>();
         if (breakable != nullptr)
         {
             mass = breakable->Mass();
@@ -177,10 +177,10 @@ namespace NS::Game::Level
             const float angle = 2.0f * NS::Core::k_Pi * static_cast<float>(i) / static_cast<float>(m_debrisCount);
             // 浮きは交互に変える。全部同じ高さだと 1 つの輪に見えて壊れた量が伝わらない
             const float up = 0.5f + 0.5f * static_cast<float>(i % 2);
-            auto owned = std::make_unique<NS::Obj::GameObject>();
+            std::unique_ptr<NS::Obj::GameObject> owned = std::make_unique<NS::Obj::GameObject>();
             owned->Root().SetPosition(origin);
             owned->Root().SetScale(NS::Core::Vector3{m_debrisScale, m_debrisScale, m_debrisScale});
-            auto* mesh = owned->AddComponent<NS::Obj::MeshRenderer>();
+            NS::Obj::MeshRenderer* mesh = owned->AddComponent<NS::Obj::MeshRenderer>();
             mesh->SetMeshRef("cube");
             mesh->SetMaterialRef("player");
             mesh->SetBaseColor(m_debrisBaseColor);
@@ -189,7 +189,7 @@ namespace NS::Game::Level
             NS::Obj::GameObject* spawned = scene->SpawnTransient(std::move(owned));
             if (spawned == nullptr)
                 continue;
-            auto* body = spawned->FindComponent<LaunchedBody>();
+            LaunchedBody* body = spawned->FindComponent<LaunchedBody>();
             if (body == nullptr)
                 continue;
             // 破片だけ寿命を持つ。壊すたびに増えるので、止まったら消さないと世界に積み上がり続ける
@@ -253,7 +253,7 @@ namespace NS::Game::Level
     {
         if (Owner() == nullptr)
             return;
-        auto* collider = Owner()->FindComponent<NS::Obj::Collider>();
+        NS::Obj::Collider* collider = Owner()->FindComponent<NS::Obj::Collider>();
         if (collider == nullptr || collider->IsActiveSelf() == active)
             return;
 

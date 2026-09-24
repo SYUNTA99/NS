@@ -79,9 +79,9 @@ TEST(MeshRefResolution, EmptyMeshRefFallsBackToCube)
     ObjectData obj;
     obj.components.push_back(MakeMeshRenderer(""));
 
-    auto built = BuildSceneObject(obj, &assets);
+    std::unique_ptr<NS::Obj::GameObject> built = BuildSceneObject(obj, &assets);
     ASSERT_NE(built, nullptr);
-    auto* mr = built->FindComponent<MeshRenderer>();
+    MeshRenderer* mr = built->FindComponent<MeshRenderer>();
     ASSERT_NE(mr, nullptr);
     // この assets は RegisterBuiltins を呼んでいないので Builtin("cube") は nullptr
     // cube 比較は両辺 nullptr で素通りし、確かめているのは空参照の nullptr だけ
@@ -101,7 +101,7 @@ TEST(MeshRefResolution, TraversalRefIsRejected)
 // 普通の相対パスは ContentRoot 配下の GetOrLoadMesh に回る
 TEST(MeshRefResolution, RelativePathAttemptsContentRootLoad)
 {
-    const auto resolved = ResolveContentPath("meshes/foo.gltf");
+    const std::optional<std::string> resolved = ResolveContentPath("meshes/foo.gltf");
     ASSERT_TRUE(resolved.has_value());
 
     AssetManager assets{std::string{"."}};
@@ -117,10 +117,10 @@ TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
     ObjectData compObj;
     compObj.components.push_back(MakeMeshRenderer(""));
 
-    auto compBuilt = BuildSceneObject(compObj, &assets);
+    std::unique_ptr<NS::Obj::GameObject> compBuilt = BuildSceneObject(compObj, &assets);
     ASSERT_NE(compBuilt, nullptr);
 
-    auto* compMesh = compBuilt->FindComponent<MeshRenderer>();
+    MeshRenderer* compMesh = compBuilt->FindComponent<MeshRenderer>();
     ASSERT_NE(compMesh, nullptr);
     // 上と同じく確かめているのは ResolveMeshFromRef の nullptr だけ
     // cube 比較は RegisterBuiltins を呼んだ assets でしか効かない
@@ -137,9 +137,9 @@ TEST(MeshRefResolution, MeshColliderTakesTrianglesFromRendererMesh)
     obj.components.push_back(MakeMeshRenderer("wedge45"));
     obj.components.push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
 
-    auto built = BuildSceneObject(obj, &assets);
+    std::unique_ptr<NS::Obj::GameObject> built = BuildSceneObject(obj, &assets);
     ASSERT_NE(built, nullptr);
-    auto* collider = built->FindComponent<NS::Obj::MeshCollider>();
+    NS::Obj::MeshCollider* collider = built->FindComponent<NS::Obj::MeshCollider>();
     ASSERT_NE(collider, nullptr);
 
     const NS::Phys::MeshCollision* wedge = assets.GetOrLoadMeshCollision("wedge45");
@@ -156,9 +156,9 @@ TEST(MeshRefResolution, MeshColliderFallsBackToCubeLikeRenderer)
     obj.components.push_back(MakeMeshRenderer("__ns_missing_mesh__.gltf"));
     obj.components.push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
 
-    auto built = BuildSceneObject(obj, &assets);
+    std::unique_ptr<NS::Obj::GameObject> built = BuildSceneObject(obj, &assets);
     ASSERT_NE(built, nullptr);
-    auto* collider = built->FindComponent<NS::Obj::MeshCollider>();
+    NS::Obj::MeshCollider* collider = built->FindComponent<NS::Obj::MeshCollider>();
     ASSERT_NE(collider, nullptr);
     ASSERT_NE(collider->Collision(), nullptr);
     EXPECT_EQ(collider->Collision(), assets.GetOrLoadMeshCollision("cube"));
@@ -172,9 +172,9 @@ TEST(MeshRefResolution, MeshColliderWithoutRendererStaysEmpty)
     ObjectData obj;
     obj.components.push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
 
-    auto built = BuildSceneObject(obj, &assets);
+    std::unique_ptr<NS::Obj::GameObject> built = BuildSceneObject(obj, &assets);
     ASSERT_NE(built, nullptr);
-    auto* collider = built->FindComponent<NS::Obj::MeshCollider>();
+    NS::Obj::MeshCollider* collider = built->FindComponent<NS::Obj::MeshCollider>();
     ASSERT_NE(collider, nullptr);
     EXPECT_EQ(collider->Collision(), nullptr);
 }

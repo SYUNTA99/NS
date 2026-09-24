@@ -70,7 +70,7 @@ namespace
 TEST(TransformComponentTest, ReflectsPositionRotationScale)
 {
     GameObject obj;
-    auto* tc = obj.FindComponent<TransformComponent>();
+    TransformComponent* tc = obj.FindComponent<TransformComponent>();
     ASSERT_NE(tc, nullptr);
     const ReflectionInfo* info = tc->GetReflection();
     ASSERT_NE(info, nullptr);
@@ -84,7 +84,7 @@ TEST(TransformComponentTest, ReflectsPositionRotationScale)
 TEST(TransformComponentTest, PositionReflectionBridgesOwnerRootTransform)
 {
     GameObject obj;
-    auto* tc = obj.FindComponent<TransformComponent>();
+    TransformComponent* tc = obj.FindComponent<TransformComponent>();
     ASSERT_NE(tc, nullptr);
     const FieldDesc* pos = FindField(tc->GetReflection(), "位置");
     ASSERT_NE(pos, nullptr);
@@ -106,7 +106,7 @@ TEST(TransformComponentTest, PositionReflectionBridgesOwnerRootTransform)
 TEST(TransformComponentTest, ScaleReflectionRoundTrips)
 {
     GameObject obj;
-    auto* tc = obj.FindComponent<TransformComponent>();
+    TransformComponent* tc = obj.FindComponent<TransformComponent>();
     ASSERT_NE(tc, nullptr);
     const FieldDesc* scale = FindField(tc->GetReflection(), "スケール");
     ASSERT_NE(scale, nullptr);
@@ -125,7 +125,7 @@ TEST(TransformComponentTest, ScaleReflectionRoundTrips)
 TEST(TransformComponentTest, RotationReflectionRoundTripsExactly)
 {
     GameObject obj;
-    auto* tc = obj.FindComponent<TransformComponent>();
+    TransformComponent* tc = obj.FindComponent<TransformComponent>();
     ASSERT_NE(tc, nullptr);
     const FieldDesc* rot = FindField(tc->GetReflection(), "回転");
     ASSERT_NE(rot, nullptr);
@@ -159,7 +159,7 @@ TEST(TransformComponentTest, EveryObjectCarriesExactlyOne)
     GameObject obj;
     EXPECT_EQ(CountTransformComponents(obj), std::size_t{1});
 
-    auto* tc = obj.FindComponent<TransformComponent>();
+    TransformComponent* tc = obj.FindComponent<TransformComponent>();
     ASSERT_NE(tc, nullptr);
     EXPECT_EQ(&obj.Root(), &tc->Root());
 }

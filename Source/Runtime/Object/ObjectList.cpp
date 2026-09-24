@@ -22,7 +22,7 @@ namespace NS::Obj
     {
         // 実行時の一時オブジェクトはデータ由来でないため、退避して組み直し後も残す
         std::vector<std::unique_ptr<GameObject>> transients;
-        for (auto& obj : m_objects)
+        for (std::unique_ptr<GameObject>& obj : m_objects)
         {
             if (obj->IsTransient())
             {
@@ -53,7 +53,7 @@ namespace NS::Obj
             // OnStart で ObjectRef を解決する component が、自分より後ろの object も引けるようにするため
             for (const ObjectData& entry : data.objects)
             {
-                auto obj = factory(entry);
+                std::unique_ptr<GameObject> obj = factory(entry);
                 if (!obj)
                 {
                     continue; // 組み立てる component が無いオブジェクトはファクトリが nullptr を返す
@@ -73,11 +73,11 @@ namespace NS::Obj
             // 索引として持ち越さないのは、所有リストと同期を保つ手間を抱え込まないため
             std::unordered_map<std::uint32_t, GameObject*> byObjectId;
             byObjectId.reserve(m_objects.size());
-            for (auto& obj : m_objects)
+            for (std::unique_ptr<GameObject>& obj : m_objects)
                 byObjectId.emplace(obj->Id(), obj.get());
 
             const auto find = [&byObjectId](std::uint32_t id) -> GameObject* {
-                const auto it = byObjectId.find(id);
+                const std::unordered_map<std::uint32_t, GameObject*>::iterator it = byObjectId.find(id);
                 if (it == byObjectId.end())
                 {
                     return nullptr;
@@ -101,12 +101,12 @@ namespace NS::Obj
 
             // 開始中に参照を引く component がいる。積み終えた並びで索引を作り直させる
             MarkIndexDirty();
-            for (auto& objPtr : m_objects)
+            for (std::unique_ptr<GameObject>& objPtr : m_objects)
                 objPtr->OnStart();
         }
 
         // 退避した一時オブジェクトを末尾へ戻す。開始済みなので OnStart は呼ばない
-        for (auto& obj : transients)
+        for (std::unique_ptr<GameObject>& obj : transients)
         {
             m_objects.push_back(std::move(obj));
         }
@@ -139,7 +139,7 @@ namespace NS::Obj
         // ファイルの参照は名前で書くので、プレイ中に足す物も既存と重ならない名前にする
         std::unordered_set<std::string> used;
         used.reserve(m_objects.size());
-        for (const auto& existing : m_objects)
+        for (const std::unique_ptr<GameObject>& existing : m_objects)
         {
             used.insert(existing->Name());
         }
@@ -155,7 +155,7 @@ namespace NS::Obj
             return;
         }
 
-        for (auto it = m_objects.begin(); it != m_objects.end(); ++it)
+        for (std::vector<std::unique_ptr<GameObject>>::iterator it = m_objects.begin(); it != m_objects.end(); ++it)
         {
             if ((*it)->Id() != objectId)
             {
@@ -189,7 +189,7 @@ namespace NS::Obj
         if (m_indexDirty)
         {
             m_index.clear();
-            for (auto& obj : m_objects)
+            for (std::unique_ptr<GameObject>& obj : m_objects)
             {
                 if (obj->Id() != k_NoObjectId)
                 {
@@ -199,14 +199,14 @@ namespace NS::Obj
             m_indexDirty = false;
         }
 
-        const auto it = m_index.find(objectId);
+        const std::unordered_map<std::uint32_t, GameObject*>::iterator it = m_index.find(objectId);
         if (it != m_index.end() && it->second->Id() == objectId)
         {
             return it->second;
         }
 
         // 索引を作った後で id を書き換えた配置物は索引とずれる。全体を見て索引を直す
-        for (auto& obj : m_objects)
+        for (std::unique_ptr<GameObject>& obj : m_objects)
         {
             if (obj->Id() == objectId)
             {
@@ -262,7 +262,7 @@ namespace NS::Obj
 
     void ObjectList::SnapshotObjects()
     {
-        for (auto& obj : m_objects)
+        for (std::unique_ptr<GameObject>& obj : m_objects)
         {
             obj->Root().Snapshot();
         }
@@ -278,7 +278,7 @@ namespace NS::Obj
         // stable_sort なので同じ帯の中は配置物の並び順に落ちる
         // clear は容量を残すので毎フレームの確保が要らない
         m_scheduled.clear();
-        for (auto& obj : m_objects)
+        for (std::unique_ptr<GameObject>& obj : m_objects)
         {
             for (Component* comp : obj->Components())
             {
@@ -311,7 +311,7 @@ namespace NS::Obj
     void ObjectList::Clear()
     {
         // OnEndPlay は生成の逆順で呼ぶ。依存し合う component の後始末を生成と対称にする
-        for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
+        for (std::vector<std::unique_ptr<GameObject>>::reverse_iterator it = m_objects.rbegin(); it != m_objects.rend(); ++it)
         {
             (*it)->OnEndPlay();
         }
@@ -328,7 +328,7 @@ namespace NS::Obj
         }
         for (const GameObject* objPtr : objects)
         {
-            const auto& components = objPtr->Components();
+            const std::vector<Component*>& components = objPtr->Components();
             for (std::size_t c = 0; c < components.size(); ++c)
             {
                 const Component* comp = components[c];

@@ -48,10 +48,10 @@ namespace NS::Editor
 
     const NS::Obj::Component* ComponentDefaults::Find(std::string_view typeName)
     {
-        for (const auto& [name, comp] : m_byType)
+        for (const std::pair<std::string, NS::Obj::Component*>& entry : m_byType)
         {
-            if (name == typeName)
-                return comp;
+            if (entry.first == typeName)
+                return entry.second;
         }
         if (!m_holder)
             m_holder = std::make_unique<NS::Obj::GameObject>();

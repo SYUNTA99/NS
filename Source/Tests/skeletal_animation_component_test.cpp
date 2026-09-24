@@ -299,8 +299,8 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsDoesNothingWhenModelFileMissing)
 {
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     GameObject obj;
-    auto& renderer = *obj.AddComponent<MeshRenderer>();
-    auto& comp = *obj.AddComponent<SkeletalAnimation>();
+    MeshRenderer& renderer = *obj.AddComponent<MeshRenderer>();
+    SkeletalAnimation& comp = *obj.AddComponent<SkeletalAnimation>();
     comp.SetModelRef("__ns_sac_missing_model__.glb");
     comp.ResolveAssets(am);
     EXPECT_EQ(comp.ClipCount(), 0u);
@@ -331,8 +331,8 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsWiresRealSkinnedModelAndSiblingMe
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     GameObject obj;
-    auto& meshComp = *obj.AddComponent<MeshRenderer>();
-    auto& anim = *obj.AddComponent<SkeletalAnimation>();
+    MeshRenderer& meshComp = *obj.AddComponent<MeshRenderer>();
+    SkeletalAnimation& anim = *obj.AddComponent<SkeletalAnimation>();
     anim.SetModelRef("Assets/Models/CesiumMan.glb");
 
     anim.ResolveAssets(am);
@@ -374,7 +374,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsAddsClipsFromClipsRef)
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     GameObject obj;
-    auto& anim = *obj.AddComponent<SkeletalAnimation>();
+    SkeletalAnimation& anim = *obj.AddComponent<SkeletalAnimation>();
     anim.SetModelRef("Assets/Models/CesiumMan.glb");
     anim.SetClipsRef("Assets/Models/CesiumMan.glb");
     anim.ResolveAssets(am);
@@ -422,7 +422,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSkipsBadClipEntriesIndependently)
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     GameObject obj;
-    auto& anim = *obj.AddComponent<SkeletalAnimation>();
+    SkeletalAnimation& anim = *obj.AddComponent<SkeletalAnimation>();
     anim.SetModelRef("Assets/Models/CesiumMan.glb");
     anim.SetClipsRef(" ;__ns_missing__.glb; Assets/Models/CesiumMan.glb ;../escape.glb");
     anim.ResolveAssets(am);
@@ -458,7 +458,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSharesBoundClipsBetweenInstances)
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     GameObject objA;
-    auto& animA = *objA.AddComponent<SkeletalAnimation>();
+    SkeletalAnimation& animA = *objA.AddComponent<SkeletalAnimation>();
     animA.SetModelRef("Assets/Models/CesiumMan.glb");
     animA.SetClipsRef("Assets/Models/CesiumMan.glb");
     animA.ResolveAssets(am);
@@ -466,7 +466,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSharesBoundClipsBetweenInstances)
     ASSERT_NE(boundFirst, nullptr);
 
     GameObject objB;
-    auto& animB = *objB.AddComponent<SkeletalAnimation>();
+    SkeletalAnimation& animB = *objB.AddComponent<SkeletalAnimation>();
     animB.SetModelRef("Assets/Models/CesiumMan.glb");
     animB.SetClipsRef("Assets/Models/CesiumMan.glb");
     animB.ResolveAssets(am);
@@ -509,9 +509,9 @@ TEST_F(SkeletalAnimationMeshTest, BuildSceneObjectOverridesMeshRendererWithSkinn
     NS::Obj::SetField(animEntry, "モデル", std::string("Assets/Models/CesiumMan.glb"));
     data.components.push_back(animEntry);
 
-    auto built = BuildSceneObject(data, &am);
+    std::unique_ptr<GameObject> built = BuildSceneObject(data, &am);
     ASSERT_NE(built, nullptr);
-    auto* meshComp = built->FindComponent<MeshRenderer>();
+    MeshRenderer* meshComp = built->FindComponent<MeshRenderer>();
     ASSERT_NE(meshComp, nullptr);
 
     const NS::Obj::LoadedSkinnedModel loaded = am.GetOrLoadSkinnedModel(modelPath);

@@ -43,7 +43,7 @@ namespace NS::Editor
             return;
         }
 
-        auto& gp = input->Gamepad(0);
+        NS::Platform::Gamepad& gp = input->Gamepad(0);
         if (gp.IsConnected())
         {
             if (gp.IsPressed(NS::Platform::GamepadButton::LeftShoulder))
@@ -64,10 +64,10 @@ namespace NS::Editor
             return;
         }
 
-        auto& kb = input->Keyboard();
+        NS::Platform::Keyboard& kb = input->Keyboard();
         for (std::size_t i = 0; i < k_SlotCount; ++i)
         {
-            const auto code =
+            const NS::Platform::Key code =
                 static_cast<NS::Platform::Key>(static_cast<int>(NS::Platform::Key::Num1) + static_cast<int>(i));
             if (kb.IsPressed(code))
             {

@@ -24,7 +24,7 @@ namespace NS::Editor
             upper.reserve(name.size());
             for (char c : name)
                 upper.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(c))));
-            for (const auto& r : k_ReservedNames)
+            for (const std::string_view& r : k_ReservedNames)
             {
                 if (upper == r)
                     return true;
@@ -92,7 +92,7 @@ namespace NS::Editor
 
     std::optional<std::string> BuildLevelPath(std::string_view name) noexcept
     {
-        const auto safe = SanitizeLevelPath(name);
+        const std::string safe = SanitizeLevelPath(name);
         if (safe.empty())
             return std::nullopt;
         return NS::Platform::FileSystem::ResolveUnder(
@@ -102,7 +102,7 @@ namespace NS::Editor
 
     bool EnsureScenesDirectoryExists() noexcept
     {
-        const auto dir = GetScenesDirectory();
+        const std::string dir = GetScenesDirectory();
         if (NS::Platform::FileSystem::Exists(dir))
             return true;
         if (!NS::Platform::FileSystem::CreateDirectories(dir))

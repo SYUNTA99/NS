@@ -78,7 +78,7 @@ namespace NS::Obj
         {
 			return;
         }
-        auto& siblings = m_parent->m_children;
+        std::vector<GameObject*>& siblings = m_parent->m_children;
         siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
         m_parent = nullptr;
     }
@@ -118,7 +118,7 @@ namespace NS::Obj
     void GameObject::OnEndPlay()
     {
         // 更新の並びと逆順に呼ぶ
-        for (auto it = m_components.rbegin(); it != m_components.rend(); ++it)
+        for (std::vector<Component*>::reverse_iterator it = m_components.rbegin(); it != m_components.rend(); ++it)
         {
             Component* comp = *it;
             if (comp != nullptr)

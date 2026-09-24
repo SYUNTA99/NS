@@ -164,7 +164,7 @@ namespace NS::App
         m_assets->RegisterBuiltins();
         m_assets->RegisterSharedMaterials();
 
-        for (auto& layer : m_layers)
+        for (std::unique_ptr<Layer>& layer : m_layers)
         {
             layer->OnAttach();
         }
@@ -194,10 +194,10 @@ namespace NS::App
 
     void Application::MainLoop()
     {
-        auto& window = *m_window;
-        auto& renderer = *m_renderer;
-        auto& input = NS::Platform::Input::Get();
-        auto& stack = m_layers;
+        NS::Platform::Window& window = *m_window;
+        NS::Gfx::Renderer& renderer = *m_renderer;
+        NS::Platform::Input& input = NS::Platform::Input::Get();
+        Layers& stack = m_layers;
 
         while (true)
         {
@@ -215,8 +215,8 @@ namespace NS::App
             // 1フレームの更新が多すぎる場合は警告を出す
             if (steps >= 2)
             {
-                const auto now = std::chrono::steady_clock::now();
-                const auto since =
+                const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+                const std::chrono::milliseconds::rep since =
                     std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastStutterWarnAt).count();
                 if (since >= 1000)
                 {
@@ -229,7 +229,7 @@ namespace NS::App
                 NS_SCOPED_TIMER(App, "Application::FixedStepLoop");
                 for (int i = 0; i < steps; ++i)
                 {
-                    for (auto& layer : stack)
+                    for (std::unique_ptr<Layer>& layer : stack)
                     {
                         if (layer->IsActive())
                         {
@@ -245,7 +245,7 @@ namespace NS::App
             // 描画
             renderer.BeginFrame();
 
-            for (auto& layer : stack)
+            for (std::unique_ptr<Layer>& layer : stack)
             {
                 if (layer->IsActive())
                 {
@@ -266,7 +266,7 @@ namespace NS::App
 
         m_shutdownCalled = true;
 
-        for (auto it = m_layers.rbegin(); it != m_layers.rend(); ++it)
+        for (std::vector<std::unique_ptr<Layer>>::reverse_iterator it = m_layers.rbegin(); it != m_layers.rend(); ++it)
         {
             (*it)->OnDetach();
         }

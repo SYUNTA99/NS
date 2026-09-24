@@ -18,7 +18,7 @@ namespace NS::App
 #else
         desc.renderer.enableDebugLayer = false;
 #endif
-        auto app = std::make_unique<Application>(desc);
+        std::unique_ptr<Application> app = std::make_unique<Application>(desc);
 
         app->AddLayer(std::make_unique<::Game>());
 #if NS_EDITOR_ENABLED

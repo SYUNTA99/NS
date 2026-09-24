@@ -116,11 +116,11 @@ namespace NS::Gfx
         renderer.Commands().VSSetShader(*m_vertexShader);
         renderer.Commands().PSSetShader(*m_pixelShader);
 
-        for (auto& [slot, tex] : m_textures)
+        for (std::pair<const unsigned, const Texture*>& entry : m_textures)
         {
-            if (tex != nullptr)
+            if (entry.second != nullptr)
             {
-                renderer.Commands().PSSetShaderResource(*tex, slot);
+                renderer.Commands().PSSetShaderResource(*entry.second, entry.first);
             }
         }
 
@@ -131,7 +131,7 @@ namespace NS::Gfx
         }
 
         // テクスチャのサンプリング設定は、描画時にシステム共通のものを利用する
-        if (auto* sampler = renderer.States().LinearWrap())
+        if (ID3D11SamplerState* sampler = renderer.States().LinearWrap())
         {
             renderer.Commands().PSSetSampler(sampler, 0u);
         }

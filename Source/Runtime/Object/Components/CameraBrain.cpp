@@ -92,7 +92,7 @@ namespace NS::Obj
     VirtualCamera* CameraBrain::SelectActive() const noexcept
     {
         VirtualCamera* best = nullptr;
-        for (auto* vcam : m_vcams)
+        for (VirtualCamera* vcam : m_vcams)
         {
             if (vcam == nullptr || !vcam->IsActive())
             {
@@ -109,7 +109,7 @@ namespace NS::Obj
     std::optional<CameraPose> CameraBrain::EvaluateTopPose(float alpha) const noexcept
     {
         VirtualCamera* best = nullptr;
-        for (auto* vcam : m_vcams)
+        for (VirtualCamera* vcam : m_vcams)
         {
             if (vcam == nullptr)
             {

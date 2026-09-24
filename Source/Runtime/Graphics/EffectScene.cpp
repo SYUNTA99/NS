@@ -203,7 +203,7 @@ namespace NS::Gfx
         }
 
         const std::string key(name);
-        const auto found = m_effects.find(key);
+        const std::unordered_map<std::string, Effekseer::EffectRef>::iterator found = m_effects.find(key);
         if (found == m_effects.end())
         {
             // 続けて呼ばれてもログを埋めないよう、警告は名前ごとに 1 回

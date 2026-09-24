@@ -57,12 +57,12 @@ namespace NS::Game::Level
         [[nodiscard]] JPH::BodyID CurrentBodyOf(const NS::Obj::GameObject& object) noexcept
         {
             // 飛んでいる間は collider の body が外れて無効になる。LaunchedBody が作った動的 body を先に見る
-            if (const auto* launched = object.FindComponent<LaunchedBody>();
+            if (const LaunchedBody* launched = object.FindComponent<LaunchedBody>();
                 launched != nullptr && launched->IsFlying())
             {
                 return launched->BodyId();
             }
-            if (const auto* collider = object.FindComponent<NS::Obj::Collider>())
+            if (const NS::Obj::Collider* collider = object.FindComponent<NS::Obj::Collider>())
             {
                 return collider->BodyId();
             }
@@ -118,7 +118,7 @@ namespace NS::Game::Level
             }
 
             // トリガの箱は通り抜ける体積なのでぶつかる相手にならない
-            const auto* box = breakable.Owner()->FindComponent<NS::Obj::BoxCollider>();
+            const NS::Obj::BoxCollider* box = breakable.Owner()->FindComponent<NS::Obj::BoxCollider>();
             if (box != nullptr && box->IsTrigger())
             {
                 return;
@@ -488,7 +488,7 @@ namespace NS::Game::Level
         }
 
         // 積み忘れた配置物でも押し飛ばしと破壊が効くよう、無ければその場で足す
-        auto* body = target->FindComponent<LaunchedBody>();
+        LaunchedBody* body = target->FindComponent<LaunchedBody>();
         if (body == nullptr)
         {
             body = target->AddComponent<LaunchedBody>();

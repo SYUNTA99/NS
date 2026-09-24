@@ -17,7 +17,7 @@ namespace NS::Game::Level
 
     void Respawner::OnUpdate()
     {
-        auto* health = Owner()->FindComponent<Health>();
+        Health* health = Owner()->FindComponent<Health>();
         if (health == nullptr || !health->IsDead())
             return;
 
@@ -27,7 +27,7 @@ namespace NS::Game::Level
     void Respawner::RestartRun() noexcept
     {
         // プレイヤーに載る component なので、戻す相手は自分の owner
-        auto* scene = static_cast<NS::Obj::Scene*>(Owner()->OwningScene());
+        NS::Obj::Scene* scene = static_cast<NS::Obj::Scene*>(Owner()->OwningScene());
         if (scene == nullptr)
             return;
 
@@ -41,9 +41,9 @@ namespace NS::Game::Level
             spawn = NS::Obj::ObjectPosition(level.objects[playerIndex]);
 
         Owner()->Root().SetPosition(spawn);
-        if (auto* movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>())
+        if (NS::Game::Player::PlayerComponent* movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>())
             movement->ResetState();
-        if (auto* health = Owner()->FindComponent<Health>())
+        if (Health* health = Owner()->FindComponent<Health>())
             health->Reset();
 
         // ルール配置物のフラグも初期状態へ戻す。前のプレイのフラグが残ると開始直後に再クリアしてしまう

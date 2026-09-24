@@ -51,9 +51,9 @@ namespace NS::Obj
             }
         }
 
-        auto& input = NS::Platform::Input::Get();
-        const auto& kb = input.Keyboard();
-        const auto& pad = input.Gamepad(0);
+        NS::Platform::Input& input = NS::Platform::Input::Get();
+        const NS::Platform::Keyboard& kb = input.Keyboard();
+        const NS::Platform::Gamepad& pad = input.Gamepad(0);
 
         // UI のテキスト入力中はキーボード由来の移動 / ジャンプを取り合わない。gamepad は維持する
         const bool wantKb = input.UiWantsKeyboard();

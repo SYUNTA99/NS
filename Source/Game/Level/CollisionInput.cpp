@@ -69,11 +69,11 @@ namespace NS::Game::Level
         m_judge.chargeThresholdSteps = SecondsToSteps(m_chargeThresholdSeconds, dt);
         m_judge.chargeMaxSteps = SecondsToSteps(m_chargeFullSeconds, dt);
 
-        auto& input = NS::Platform::Input::Get();
+        NS::Platform::Input& input = NS::Platform::Input::Get();
         // エディタの操作クリックが衝突入力へ漏れるため、UI がマウスを取っている間は読まない
         const bool mouseFree = !input.UiWantsMouse();
-        const auto& mouse = input.Mouse();
-        const auto& pad = input.Gamepad(0);
+        const NS::Platform::Mouse& mouse = input.Mouse();
+        const NS::Platform::Gamepad& pad = input.Gamepad(0);
         const bool held =
             (mouseFree && mouse.IsHeld(NS::Platform::MouseButton::Left)) || pad.IsHeld(NS::Platform::GamepadButton::X);
         m_judge.Step(held);

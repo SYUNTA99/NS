@@ -340,7 +340,7 @@ namespace NS::Gfx
         desc.MiscFlags = 0u;
 
         ComPtr<ID3D11Texture2D> staging;
-        auto* device = Gpu().device;
+        ID3D11Device* device = Gpu().device;
         if (device == nullptr)
         {
             return false;
@@ -364,7 +364,7 @@ namespace NS::Gfx
 
         const std::size_t rowBytes = static_cast<std::size_t>(desc.Width) * 4u;
         outBgra.resize(rowBytes * desc.Height);
-        const auto* source = static_cast<const std::uint8_t*>(mapped.pData);
+        const std::uint8_t* source = static_cast<const std::uint8_t*>(mapped.pData);
         for (UINT y = 0; y < desc.Height; ++y)
         {
             std::memcpy(
@@ -418,7 +418,7 @@ namespace NS::Gfx
             return;
         }
 
-        const auto contentRoot = ::NS::Platform::FileSystem::ContentRoot();
+        const std::string contentRoot = ::NS::Platform::FileSystem::ContentRoot();
         const std::string shaderDir = ::NS::Platform::FileSystem::Combine(contentRoot, "Shaders");
         m_fullscreenVs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "fade.vs.hlsl"));
         m_fullscreenPs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "fade.ps.hlsl"));
@@ -494,7 +494,7 @@ namespace NS::Gfx
             return;
         }
 
-        const auto contentRoot = ::NS::Platform::FileSystem::ContentRoot();
+        const std::string contentRoot = ::NS::Platform::FileSystem::ContentRoot();
         const std::string shaderDir = ::NS::Platform::FileSystem::Combine(contentRoot, "Shaders");
         m_screenRectVs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "ui_rect.vs.hlsl"));
         m_screenRectPs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "ui_rect.ps.hlsl"));
@@ -586,7 +586,7 @@ namespace NS::Gfx
             return;
         }
 
-        auto skybox = Skybox::Create();
+        std::unique_ptr<Skybox> skybox = Skybox::Create();
         if (!skybox || !skybox->IsValid())
         {
             NS_LOG_WARN(Graphics, "Renderer: Skybox の構築失敗のため空を描かない");
@@ -609,7 +609,7 @@ namespace NS::Gfx
         if (cubemapPath != m_loadedSkyboxPath)
         {
             // ユーザー編集ファイル由来のパスを ContentRoot 配下へ閉じ込める。外を指す値は読み込まない
-            const auto absPath =
+            const std::optional<std::string> absPath =
                 ::NS::Platform::FileSystem::ResolveUnder(::NS::Platform::FileSystem::ContentRoot(), cubemapPath);
             if (!absPath.has_value())
             {
@@ -716,7 +716,7 @@ namespace NS::Gfx
             return;
         }
 
-        auto* context = m_context.Get();
+        ID3D11DeviceContext* context = m_context.Get();
         // ResizeBuffers の前に backbuffer 参照を全て手放す。RTV を握ったままだと失敗する
         context->OMSetRenderTargets(0, nullptr, nullptr);
         m_backbuffer.reset();

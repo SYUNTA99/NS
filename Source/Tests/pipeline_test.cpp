@@ -49,7 +49,7 @@ TEST_F(PipelineTest, CreateDefaultDescIsValid)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto pipeline = Pipeline::Create(PipelineDesc{});
+    const std::unique_ptr<Pipeline> pipeline = Pipeline::Create(PipelineDesc{});
     ASSERT_NE(pipeline, nullptr);
     EXPECT_TRUE(pipeline->IsValid());
     EXPECT_NE(pipeline->RasterizerState(), nullptr);
@@ -68,7 +68,7 @@ TEST_F(PipelineTest, DescRoundTripKeepsIntent)
     desc.cull = CullMode::None;
     desc.blend = BlendMode::Alpha;
     desc.depth = DepthMode::ReadOnly;
-    const auto pipeline = Pipeline::Create(desc);
+    const std::unique_ptr<Pipeline> pipeline = Pipeline::Create(desc);
     ASSERT_TRUE(pipeline->IsValid());
 
     EXPECT_EQ(pipeline->Desc().cull, CullMode::None);
@@ -79,7 +79,7 @@ TEST_F(PipelineTest, DescRoundTripKeepsIntent)
 TEST_F(PipelineTest, CreateWithoutDeviceIsInvalid)
 {
     // Renderer が無く device が空でも、Pipeline::Create は非 null を返し IsValid() は false になる
-    const auto pipeline = Pipeline::Create(PipelineDesc{});
+    const std::unique_ptr<Pipeline> pipeline = Pipeline::Create(PipelineDesc{});
     ASSERT_NE(pipeline, nullptr);
     EXPECT_FALSE(pipeline->IsValid());
 }
@@ -91,7 +91,7 @@ TEST_F(PipelineTest, SetPipelineDoesNotCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto pipeline = Pipeline::Create(PipelineDesc{});
+    const std::unique_ptr<Pipeline> pipeline = Pipeline::Create(PipelineDesc{});
     ASSERT_TRUE(pipeline->IsValid());
 
     renderer.BeginFrame();

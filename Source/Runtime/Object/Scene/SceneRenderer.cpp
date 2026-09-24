@@ -101,7 +101,7 @@ namespace NS::Obj
         {
             return;
         }
-        for (auto it = m_renderables.begin(); it != m_renderables.end(); ++it)
+        for (std::vector<RenderEntry>::iterator it = m_renderables.begin(); it != m_renderables.end(); ++it)
         {
             if (it->renderable != renderable)
             {
@@ -128,7 +128,7 @@ namespace NS::Obj
         }
 
         // 挿入の時点で priority 昇順を保つ。同値は後から来た方が後ろ
-        const auto at = std::upper_bound(
+        const std::vector<OverlayRenderer*>::iterator at = std::upper_bound(
             m_overlays.begin(), m_overlays.end(), overlay, [](const OverlayRenderer* a, const OverlayRenderer* b) {
                 return a->Priority() < b->Priority();
             });
@@ -141,7 +141,7 @@ namespace NS::Obj
         {
             return;
         }
-        for (auto it = m_overlays.begin(); it != m_overlays.end(); ++it)
+        for (std::vector<OverlayRenderer*>::iterator it = m_overlays.begin(); it != m_overlays.end(); ++it)
         {
             if (*it != overlay)
             {
@@ -175,7 +175,7 @@ namespace NS::Obj
         {
             return;
         }
-        for (auto it = m_lights.begin(); it != m_lights.end(); ++it)
+        for (std::vector<DirectionalLight*>::iterator it = m_lights.begin(); it != m_lights.end(); ++it)
         {
             if (*it != light)
             {

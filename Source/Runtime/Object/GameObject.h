@@ -56,7 +56,7 @@ namespace NS::Obj
             requires std::derived_from<T, Component>
         [[nodiscard]] T* FindComponent() noexcept
         {
-            const auto* target = T::StaticReflection();
+            const ReflectionInfo* target = T::StaticReflection();
             for (Component* comp : m_components)
             {
                 if (comp != nullptr && comp->IsA(target))
@@ -70,7 +70,7 @@ namespace NS::Obj
             requires std::derived_from<T, Component>
         [[nodiscard]] const T* FindComponent() const noexcept
         {
-            const auto* target = T::StaticReflection();
+            const ReflectionInfo* target = T::StaticReflection();
             for (const Component* comp : m_components)
             {
                 if (comp != nullptr && comp->IsA(target))
@@ -120,7 +120,7 @@ namespace NS::Obj
             requires std::derived_from<T, Component>
         T* AddComponentUnchecked(Args&&... args)
         {
-            auto owned = std::make_unique<T>(std::forward<Args>(args)...);
+            std::unique_ptr<T> owned = std::make_unique<T>(std::forward<Args>(args)...);
             T* raw = owned.get();
             m_ownedComponents.push_back(std::move(owned));
             AttachOwnedComponent(raw);

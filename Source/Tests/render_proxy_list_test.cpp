@@ -21,7 +21,7 @@ namespace
 
     void LogCollect(void* owner, const RenderContext&, std::vector<DrawItem>&)
     {
-        auto* logger = static_cast<Logger*>(owner);
+        Logger* logger = static_cast<Logger*>(owner);
         logger->log->push_back(logger->id);
     }
 

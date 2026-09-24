@@ -300,7 +300,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
     ASSERT_EQ(names.size(), k_Ledger.size());
     for (const std::string& name : names)
     {
-        const auto entry = k_Ledger.find(name);
+        const std::map<std::string, std::vector<std::string>>::const_iterator entry = k_Ledger.find(name);
         ASSERT_NE(entry, k_Ledger.end()) << name << " が台帳に無い";
 
         GameObject obj;
@@ -355,7 +355,7 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
     ASSERT_EQ(names.size(), k_BaseLedger.size());
     for (const std::string& name : names)
     {
-        const auto entry = k_BaseLedger.find(name);
+        const std::map<std::string, std::vector<std::string>>::const_iterator entry = k_BaseLedger.find(name);
         ASSERT_NE(entry, k_BaseLedger.end()) << name << " が台帳に無い";
 
         GameObject obj;

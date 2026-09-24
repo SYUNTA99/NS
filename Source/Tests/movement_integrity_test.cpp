@@ -39,8 +39,8 @@ namespace
 
         NsTest::EntityStage stage;
         GameObject& owner = stage.owner;
-        auto& manager = *owner.AddComponent<PlayerStateManager>();
-        auto& movement = *owner.AddComponent<PlayerComponent>();
+        PlayerStateManager& manager = *owner.AddComponent<PlayerStateManager>();
+        PlayerComponent& movement = *owner.AddComponent<PlayerComponent>();
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
 
         NS::Phys::PhysicsScene& physics = stage.physics;
@@ -75,8 +75,8 @@ protected:
 //! 固定ステップ物理が可変の経過時間や乱数を使っていなければ、同条件で 2 回走らせた軌跡は一致する
 TEST_F(MovementIntegrity, JumpTrajectoryIsDeterministicAcrossTwoRuns)
 {
-    const auto traj1 = RunDeterministicSim();
-    const auto traj2 = RunDeterministicSim();
+    const std::vector<Vector3> traj1 = RunDeterministicSim();
+    const std::vector<Vector3> traj2 = RunDeterministicSim();
 
     ASSERT_EQ(traj1.size(), traj2.size());
     ASSERT_EQ(traj1.size(), static_cast<size_t>(k_NumSteps));
@@ -93,7 +93,7 @@ TEST_F(MovementIntegrity, JumpTrajectoryIsDeterministicAcrossTwoRuns)
 //! 非対称重力や頂点の重力緩和、jumpReleaseScale が絡んで厳密値は出ないので範囲は広めにとる
 TEST_F(MovementIntegrity, JumpReachesExpectedPeakHeightRange)
 {
-    const auto trajectory = RunDeterministicSim();
+    const std::vector<Vector3> trajectory = RunDeterministicSim();
 
     float peakY = -1000.0f;
     for (const Vector3& p : trajectory)
@@ -114,8 +114,8 @@ TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
 
     NsTest::EntityStage stage;
     GameObject& owner = stage.owner;
-    auto& manager = *owner.AddComponent<PlayerStateManager>();
-    auto& movement = *owner.AddComponent<PlayerComponent>();
+    PlayerStateManager& manager = *owner.AddComponent<PlayerStateManager>();
+    PlayerComponent& movement = *owner.AddComponent<PlayerComponent>();
     owner.Root().SetPosition(Vector3{0.0f, 0.5f, 0.0f}); // 床の上に直置きして接地から始める
 
     NS::Phys::PhysicsScene& physics = stage.physics;

@@ -45,7 +45,7 @@ namespace
     {
         for (std::size_t i = 0; i < objectCount; ++i)
         {
-            auto* obj = objects.Spawn<NS::Obj::GameObject>();
+            NS::Obj::GameObject* obj = objects.Spawn<NS::Obj::GameObject>();
             for (std::size_t c = 0; c < componentsPerObject; ++c)
                 obj->AddComponent<TickCountingComponent>(k_Bands[(i + c) % std::size(k_Bands)]);
         }
@@ -53,7 +53,7 @@ namespace
 
     [[nodiscard]] double MeasureMicros(NS::Obj::ObjectList& objects, int iterations, bool snapshotOnly)
     {
-        const auto begin = std::chrono::steady_clock::now();
+        const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         for (int i = 0; i < iterations; ++i)
         {
             if (snapshotOnly)
@@ -61,7 +61,7 @@ namespace
             else
                 objects.UpdateAllObjects();
         }
-        const auto end = std::chrono::steady_clock::now();
+        const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         const double totalMicros = std::chrono::duration<double, std::micro>(end - begin).count();
         return totalMicros / static_cast<double>(iterations);
     }
@@ -129,14 +129,14 @@ namespace
     {
         NS::Obj::Scene scene;
         NS::Obj::ObjectList objects;
-        const auto factory = [](const NS::Obj::ObjectData& entry) {
+        std::unique_ptr<NS::Obj::GameObject> (*factory)(const NS::Obj::ObjectData&) = [](const NS::Obj::ObjectData& entry) -> std::unique_ptr<NS::Obj::GameObject> {
             return NS::Obj::BuildSceneObject(entry, nullptr);
         };
 
-        const auto begin = std::chrono::steady_clock::now();
+        const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         for (int i = 0; i < iterations; ++i)
             objects.Rebuild(data, scene, factory);
-        const auto end = std::chrono::steady_clock::now();
+        const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         return std::chrono::duration<double, std::micro>(end - begin).count() / static_cast<double>(iterations);
     }
 } // namespace

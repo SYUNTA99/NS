@@ -20,7 +20,7 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
         GTEST_SKIP() << "CesiumMan.glb が無い: " << path;
     }
 
-    const auto data = NS::Gfx::LoadGltfSkinnedMesh(path);
+    const NS::Gfx::SkinnedMeshData data = NS::Gfx::LoadGltfSkinnedMesh(path);
     ASSERT_TRUE(data.IsValid());
     EXPECT_GT(data.vertices.size(), 0u);
     EXPECT_GT(data.indices.size(), 0u);
@@ -62,7 +62,9 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
 
     // skinned 頂点 AABB の最長軸で向きを判定する。人型が立っていれば Y (身長) が最長
     // root 上位ノード変換 (アーマチュア Z-up→Y-up) を取りこぼすと Z 最長 = 寝た状態になる
-    auto extentOf = [&](const std::vector<NS::Core::Matrix>& palette) {
+    std::vector<NS::Core::Matrix> bindPalette;
+    data.skeleton.ComputeBindPalette(bindPalette);
+    const NS::Core::Vector3 bindExtent = [&](const std::vector<NS::Core::Matrix>& palette) {
         const std::span<const NS::Core::Matrix> sp(palette.data(), palette.size());
         NS::Core::Vector3 mn{1e9f, 1e9f, 1e9f};
         NS::Core::Vector3 mx{-1e9f, -1e9f, -1e9f};
@@ -77,10 +79,7 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
             mx = NS::Core::Vector3::Max(mx, p);
         }
         return NS::Core::Vector3{mx.x - mn.x, mx.y - mn.y, mx.z - mn.z};
-    };
-    std::vector<NS::Core::Matrix> bindPalette;
-    data.skeleton.ComputeBindPalette(bindPalette);
-    const NS::Core::Vector3 bindExtent = extentOf(bindPalette);
+    }(bindPalette);
     std::cout << "[CesiumMan] bind extent x=" << bindExtent.x << " y=" << bindExtent.y << " z=" << bindExtent.z << "\n";
 
     // 立っている = 身長 (Y) が幅 (X) と奥行 (Z) より大きい
@@ -105,7 +104,7 @@ TEST(GltfAnimatedAssetTest, XbotStandsAtHumanScale)
         GTEST_SKIP() << "Xbot.glb が無い: " << path;
     }
 
-    const auto data = NS::Gfx::LoadGltfSkinnedMesh(path);
+    const NS::Gfx::SkinnedMeshData data = NS::Gfx::LoadGltfSkinnedMesh(path);
     ASSERT_TRUE(data.IsValid());
     ASSERT_GT(data.vertices.size(), 0u);
 
@@ -138,7 +137,7 @@ TEST(GltfAnimatedAssetTest, LoadsAnimationSourceSkinIndependent)
         GTEST_SKIP() << "CesiumMan.glb が無い: " << path;
     }
 
-    const auto source = NS::Gfx::LoadGltfAnimationSource(path);
+    const NS::Gfx::AnimationSource source = NS::Gfx::LoadGltfAnimationSource(path);
     ASSERT_TRUE(source.IsValid());
     EXPECT_GT(source.skeleton.BoneCount(), 0u);
     EXPECT_LE(source.skeleton.BoneCount(), 128u);
@@ -153,6 +152,6 @@ TEST(GltfAnimatedAssetTest, LoadsAnimationSourceSkinIndependent)
     EXPECT_GT(namedBones, 0u) << "ソース骨格に骨名が無い";
 
     // 失敗系: 存在しないファイルは IsValid()==false
-    const auto missing = NS::Gfx::LoadGltfAnimationSource("does_not_exist_xyz.glb");
+    const NS::Gfx::AnimationSource missing = NS::Gfx::LoadGltfAnimationSource("does_not_exist_xyz.glb");
     EXPECT_FALSE(missing.IsValid());
 }

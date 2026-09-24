@@ -78,7 +78,7 @@ TEST(EditorMode, ProgrammaticPlaceAddsBlock)
     editor.PlaceUnderCursorProgrammatic(5, 0, 3);
 
     ASSERT_EQ(lv.objects.size(), 1u);
-    const auto idx = EditorNs::FindObjectAtCell(lv, 5, 0, 3);
+    const std::size_t idx = EditorNs::FindObjectAtCell(lv, 5, 0, 3);
     ASSERT_NE(idx, SceneNs::k_NoObjectIndex);
     EXPECT_EQ(EditorNs::ObjectCellX(lv.objects[idx]), 5);
     EXPECT_EQ(EditorNs::ObjectCellY(lv.objects[idx]), 0);

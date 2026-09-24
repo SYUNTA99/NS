@@ -176,8 +176,8 @@ namespace NS::Obj
         }
 
         // マウスと右スティックの手動回転
-        auto& input = NS::Platform::Input::Get();
-        const auto& mouse = input.Mouse();
+        NS::Platform::Input& input = NS::Platform::Input::Get();
+        const NS::Platform::Mouse& mouse = input.Mouse();
         float mxSign = 1.0f;
         if (m_invertX)
         {
@@ -191,7 +191,7 @@ namespace NS::Obj
         m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
         m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
 
-        const auto& pad = input.Gamepad(0);
+        const NS::Platform::Gamepad& pad = input.Gamepad(0);
         const NS::Platform::Stick rstick = pad.RightStick();
         m_yaw += rstick.x * m_stickSensX * dt * mxSign;
         m_pitch += rstick.y * m_stickSensY * dt * mySign;

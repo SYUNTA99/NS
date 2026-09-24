@@ -36,7 +36,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 {
     LoggerScope loggerScope;
 
-    auto app = ::NS::App::CreateApplication();
+    std::unique_ptr<::NS::App::Application> app = ::NS::App::CreateApplication();
     if (!app)
     {
         NS_LOG_ERROR(App, "WinMain: CreateApplication が nullptr");

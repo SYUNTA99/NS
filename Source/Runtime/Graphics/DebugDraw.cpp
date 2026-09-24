@@ -77,7 +77,7 @@ namespace
             return false;
         }
 
-        const auto bytecode = b.vs->VertexShaderBytecode();
+        const std::span<const std::byte> bytecode = b.vs->VertexShaderBytecode();
         const D3D11_INPUT_ELEMENT_DESC layout[] = {
             {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
             {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -105,7 +105,7 @@ namespace
 
     void PushLine(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept
     {
-        auto& v = Storage();
+        std::vector<DebugVertex>& v = Storage();
         if (v.size() + 2 > k_MaxVertices) // 最大容量を超える場合は最も古い線を破棄する
         {
             v.erase(v.begin(), v.begin() + 2);
@@ -286,7 +286,7 @@ namespace NS::Gfx::DebugDraw
 
         // 円柱の側面に沿う線 4 本
         const NS::Core::Vector3 dirs[4] = {uA, -uA, uB, -uB};
-        for (const auto& d : dirs)
+        for (const NS::Core::Vector3& d : dirs)
         {
             PushLine(bottom + d, top + d, color);
         }
@@ -306,7 +306,7 @@ namespace NS::Gfx::DebugDraw
             return;
         }
 
-        auto& cmd = renderer.Commands();
+        CommandList& cmd = renderer.Commands();
         if (cmd.Native() == nullptr)
         {
             Clear();

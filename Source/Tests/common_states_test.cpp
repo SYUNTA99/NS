@@ -32,7 +32,7 @@ TEST_F(CommonStatesLoggerTest, AllGettersAreNonNull)
     Renderer renderer(rd, window);
     ASSERT_TRUE(renderer.IsValid());
 
-    auto& s = renderer.States();
+    NS::Gfx::CommonStates& s = renderer.States();
     EXPECT_NE(s.Opaque(), nullptr);
     EXPECT_NE(s.AlphaBlend(), nullptr);
     EXPECT_NE(s.DepthDefault(), nullptr);
@@ -58,7 +58,7 @@ TEST_F(CommonStatesLoggerTest, RepeatedGettersReturnSameInstance)
     Renderer renderer(rd, window);
     ASSERT_TRUE(renderer.IsValid());
 
-    auto& s = renderer.States();
+    NS::Gfx::CommonStates& s = renderer.States();
     EXPECT_EQ(s.Opaque(), s.Opaque());
     EXPECT_EQ(s.LinearWrap(), s.LinearWrap());
     EXPECT_EQ(s.DepthDefault(), s.DepthDefault());

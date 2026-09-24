@@ -93,7 +93,7 @@ namespace
 
     std::unique_ptr<GameObject> MakeObjectAt(const Vector3& position)
     {
-        auto obj = std::make_unique<GameObject>();
+        std::unique_ptr<GameObject> obj = std::make_unique<GameObject>();
         obj->Root().SetPosition(position);
         return obj;
     }
@@ -101,7 +101,7 @@ namespace
     // 上面が y = 0.5 の広い床
     GameObject& SpawnFloor(RigidStage& stage)
     {
-        auto floor = MakeObjectAt(Vector3{0.0f, 0.0f, 0.0f});
+        std::unique_ptr<GameObject> floor = MakeObjectAt(Vector3{0.0f, 0.0f, 0.0f});
         floor->AddComponent<BoxCollider>(Vector3{10.0f, 0.5f, 10.0f});
         GameObject& spawned = stage.Spawn(std::move(floor));
         // 静的な collider は湧いただけでは入らない。本番と同じ張り直しの口を通す
@@ -307,11 +307,11 @@ TEST(PhysicsMovingBody, AllAxesLockedStaysPut)
 TEST(RigidBody, GathersCollidersIntoOneBody)
 {
     RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{0.0f, 5.0f, 0.0f});
-    auto* box = obj->AddComponent<BoxCollider>();
-    auto* sphere = obj->AddComponent<SphereCollider>();
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 5.0f, 0.0f});
+    BoxCollider* box = obj->AddComponent<BoxCollider>();
+    SphereCollider* sphere = obj->AddComponent<SphereCollider>();
     sphere->SetCenterOffset(Vector3{0.0f, 1.0f, 0.0f});
-    auto* body = obj->AddComponent<RigidBody>();
+    RigidBody* body = obj->AddComponent<RigidBody>();
     const JPH::uint before = stage.physics.BodyCount();
 
     stage.Spawn(std::move(obj));
@@ -325,9 +325,9 @@ TEST(RigidBody, GathersCollidersIntoOneBody)
 TEST(RigidBody, SyncPhysicsKeepsCollidersInsideTheBody)
 {
     RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{0.0f, 5.0f, 0.0f});
-    auto* box = obj->AddComponent<BoxCollider>();
-    auto* body = obj->AddComponent<RigidBody>();
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 5.0f, 0.0f});
+    BoxCollider* box = obj->AddComponent<BoxCollider>();
+    RigidBody* body = obj->AddComponent<RigidBody>();
     stage.Spawn(std::move(obj));
     const JPH::BodyID first = body->BodyId();
     const JPH::uint before = stage.physics.BodyCount();
@@ -342,10 +342,10 @@ TEST(RigidBody, SyncPhysicsKeepsCollidersInsideTheBody)
 TEST(RigidBody, BodyOriginIsTheOwnerNotTheColliderOffset)
 {
     RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{2.0f, 5.0f, 0.0f});
-    auto* box = obj->AddComponent<BoxCollider>();
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{2.0f, 5.0f, 0.0f});
+    BoxCollider* box = obj->AddComponent<BoxCollider>();
     box->SetCenterOffset(Vector3{0.0f, 1.0f, 0.0f});
-    auto* body = obj->AddComponent<RigidBody>();
+    RigidBody* body = obj->AddComponent<RigidBody>();
     body->SetUseGravity(false);
     GameObject& owner = stage.Spawn(std::move(obj));
 
@@ -361,9 +361,9 @@ TEST(RigidBody, BodyOriginIsTheOwnerNotTheColliderOffset)
 TEST(RigidBody, DynamicBodyFallsAndWritesTheTransform)
 {
     RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
     obj->AddComponent<BoxCollider>();
-    auto* body = obj->AddComponent<RigidBody>();
+    RigidBody* body = obj->AddComponent<RigidBody>();
     GameObject& owner = stage.Spawn(std::move(obj));
 
     stage.Step(30);
@@ -377,7 +377,7 @@ TEST(RigidBody, LandsOnAStaticFloor)
 {
     RigidStage stage;
     SpawnFloor(stage);
-    auto obj = MakeObjectAt(Vector3{0.0f, 3.0f, 0.0f});
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 3.0f, 0.0f});
     obj->AddComponent<BoxCollider>();
     obj->AddComponent<RigidBody>();
     GameObject& owner = stage.Spawn(std::move(obj));
@@ -392,7 +392,7 @@ TEST(RigidBody, OwnerScaleIsBakedIntoTheShape)
 {
     RigidStage stage;
     SpawnFloor(stage);
-    auto obj = MakeObjectAt(Vector3{0.0f, 4.0f, 0.0f});
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 4.0f, 0.0f});
     obj->Root().SetScale(Vector3{2.0f, 2.0f, 2.0f});
     obj->AddComponent<BoxCollider>();
     obj->AddComponent<RigidBody>();
@@ -407,7 +407,7 @@ TEST(RigidBody, OwnerScaleIsBakedIntoTheShape)
 TEST(RigidBody, WithoutGravityStaysPut)
 {
     RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
     obj->AddComponent<BoxCollider>();
     obj->AddComponent<RigidBody>()->SetUseGravity(false);
     GameObject& owner = stage.Spawn(std::move(obj));
@@ -420,9 +420,9 @@ TEST(RigidBody, WithoutGravityStaysPut)
 TEST(RigidBody, FieldChangesReachTheBodyOnTheNextStep)
 {
     RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
     obj->AddComponent<BoxCollider>();
-    auto* body = obj->AddComponent<RigidBody>();
+    RigidBody* body = obj->AddComponent<RigidBody>();
     body->SetUseGravity(false);
     GameObject& owner = stage.Spawn(std::move(obj));
 
@@ -435,9 +435,9 @@ TEST(RigidBody, FieldChangesReachTheBodyOnTheNextStep)
 TEST(RigidBody, KinematicFollowsTheTransform)
 {
     RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
     obj->AddComponent<BoxCollider>();
-    auto* body = obj->AddComponent<RigidBody>();
+    RigidBody* body = obj->AddComponent<RigidBody>();
     body->SetKinematic(true);
     GameObject& owner = stage.Spawn(std::move(obj));
 
@@ -452,10 +452,10 @@ TEST(RigidBody, KinematicFollowsTheTransform)
 TEST(RigidBody, SceneGravityComesFromPhysicsSettings)
 {
     RigidStage stage;
-    auto settings = std::make_unique<GameObject>();
+    std::unique_ptr<GameObject> settings = std::make_unique<GameObject>();
     settings->AddComponent<PhysicsSettings>()->SetGravity(Vector3{0.0f, 0.0f, 0.0f});
     stage.Spawn(std::move(settings));
-    auto obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
     obj->AddComponent<BoxCollider>();
     obj->AddComponent<RigidBody>();
     GameObject& owner = stage.Spawn(std::move(obj));
@@ -469,8 +469,8 @@ TEST(RigidBody, SceneGravityComesFromPhysicsSettings)
 TEST(RigidBody, PhysicsSettingsEditsApplyWhileRunning)
 {
     RigidStage stage;
-    auto settings = std::make_unique<GameObject>();
-    auto* world = settings->AddComponent<PhysicsSettings>();
+    std::unique_ptr<GameObject> settings = std::make_unique<GameObject>();
+    PhysicsSettings* world = settings->AddComponent<PhysicsSettings>();
     stage.Spawn(std::move(settings));
 
     world->SetGravity(Vector3{0.0f, -3.0f, 0.0f});
@@ -482,10 +482,10 @@ TEST(RigidBody, PhysicsSettingsEditsApplyWhileRunning)
 TEST(RigidBody, DisablingItGivesCollidersTheirOwnStaticBodies)
 {
     RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{0.0f, 5.0f, 0.0f});
-    auto* box = obj->AddComponent<BoxCollider>();
-    auto* sphere = obj->AddComponent<SphereCollider>();
-    auto* body = obj->AddComponent<RigidBody>();
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 5.0f, 0.0f});
+    BoxCollider* box = obj->AddComponent<BoxCollider>();
+    SphereCollider* sphere = obj->AddComponent<SphereCollider>();
+    RigidBody* body = obj->AddComponent<RigidBody>();
     stage.Spawn(std::move(obj));
     const JPH::uint withBody = stage.physics.BodyCount();
 
@@ -502,11 +502,11 @@ TEST(RigidBody, DisablingItGivesCollidersTheirOwnStaticBodies)
 TEST(RigidBody, TriggerBoxKeepsItsSensorAndFollows)
 {
     RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
     obj->AddComponent<SphereCollider>();
-    auto* trigger = obj->AddComponent<BoxCollider>();
+    BoxCollider* trigger = obj->AddComponent<BoxCollider>();
     trigger->SetTrigger(true);
-    auto* body = obj->AddComponent<RigidBody>();
+    RigidBody* body = obj->AddComponent<RigidBody>();
     GameObject& owner = stage.Spawn(std::move(obj));
     stage.scene.SyncPhysics();
 
@@ -523,11 +523,11 @@ TEST(RigidBody, MeshColliderStaysStatic)
     NS::Phys::MeshCollision floor{MakeFloorQuad(), nullptr};
     floor.shape = NS::Phys::CreateMeshShape(floor.triangles);
     RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{0.0f, 5.0f, 0.0f});
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 5.0f, 0.0f});
     obj->AddComponent<SphereCollider>();
-    auto* mesh = obj->AddComponent<MeshCollider>();
+    MeshCollider* mesh = obj->AddComponent<MeshCollider>();
     mesh->SetCollision(&floor);
-    auto* body = obj->AddComponent<RigidBody>();
+    RigidBody* body = obj->AddComponent<RigidBody>();
     stage.Spawn(std::move(obj));
 
     stage.scene.SyncPhysics();
@@ -540,8 +540,8 @@ TEST(RigidBody, MeshColliderStaysStatic)
 TEST(RigidBody, WithoutCollidersMakesNoBody)
 {
     RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{0.0f, 5.0f, 0.0f});
-    auto* body = obj->AddComponent<RigidBody>();
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 5.0f, 0.0f});
+    RigidBody* body = obj->AddComponent<RigidBody>();
     const JPH::uint before = stage.physics.BodyCount();
 
     stage.Spawn(std::move(obj));
@@ -553,9 +553,9 @@ TEST(RigidBody, WithoutCollidersMakesNoBody)
 TEST(RigidBody, TeleportMovesTransformAndBody)
 {
     RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
     obj->AddComponent<BoxCollider>();
-    auto* body = obj->AddComponent<RigidBody>();
+    RigidBody* body = obj->AddComponent<RigidBody>();
     GameObject& owner = stage.Spawn(std::move(obj));
     stage.Step(10);
 
@@ -569,12 +569,12 @@ TEST(RigidBody, TeleportMovesTransformAndBody)
 TEST(RigidBody, ChildWritesBackItsLocalPose)
 {
     RigidStage stage;
-    auto parent = MakeObjectAt(Vector3{10.0f, 0.0f, 0.0f});
+    std::unique_ptr<GameObject> parent = MakeObjectAt(Vector3{10.0f, 0.0f, 0.0f});
     GameObject& parentRef = stage.Spawn(std::move(parent));
-    auto child = MakeObjectAt(Vector3{0.0f, 5.0f, 0.0f});
+    std::unique_ptr<GameObject> child = MakeObjectAt(Vector3{0.0f, 5.0f, 0.0f});
     child->SetParent(&parentRef);
     child->AddComponent<BoxCollider>();
-    auto* body = child->AddComponent<RigidBody>();
+    RigidBody* body = child->AddComponent<RigidBody>();
     GameObject& childRef = stage.Spawn(std::move(child));
 
     stage.Step(30);
@@ -588,9 +588,9 @@ TEST(RigidBody, ChildWritesBackItsLocalPose)
 TEST(RigidBody, ImpulseMovesTheOwner)
 {
     RigidStage stage;
-    auto obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 10.0f, 0.0f});
     obj->AddComponent<BoxCollider>();
-    auto* body = obj->AddComponent<RigidBody>();
+    RigidBody* body = obj->AddComponent<RigidBody>();
     body->SetUseGravity(false);
     GameObject& owner = stage.Spawn(std::move(obj));
 

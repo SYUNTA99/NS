@@ -24,7 +24,7 @@ Player::Player() noexcept
 {
     // 構成と見た目のコード既定。値と追加分はファクトリが player object のデータから写す
     // 同居する部品の引き当ては OnStart なので生成順に縛りは無い
-    auto* mesh = AddComponent<NS::Obj::MeshRenderer>();
+    NS::Obj::MeshRenderer* mesh = AddComponent<NS::Obj::MeshRenderer>();
     // 参照はファクトリが cube mesh と共有 player 材質へ解決する
     mesh->SetMeshRef("cube");
     mesh->SetMaterialRef("player");
@@ -50,32 +50,32 @@ Player::Player() noexcept
 
 void Player::ApplyDamage(int amount) noexcept
 {
-    if (auto* health = FindComponent<NS::Game::Level::Health>())
+    if (NS::Game::Level::Health* health = FindComponent<NS::Game::Level::Health>())
         health->ApplyDamage(amount);
 }
 
 void Player::Kill() noexcept
 {
-    if (auto* health = FindComponent<NS::Game::Level::Health>())
+    if (NS::Game::Level::Health* health = FindComponent<NS::Game::Level::Health>())
         health->Kill();
 }
 
 void Player::ResetHealth() noexcept
 {
-    if (auto* health = FindComponent<NS::Game::Level::Health>())
+    if (NS::Game::Level::Health* health = FindComponent<NS::Game::Level::Health>())
         health->Reset();
 }
 
 bool Player::IsDead() const noexcept
 {
-    if (const auto* health = FindComponent<NS::Game::Level::Health>())
+    if (const NS::Game::Level::Health* health = FindComponent<NS::Game::Level::Health>())
         return health->IsDead();
     return false;
 }
 
 int Player::Health() const noexcept
 {
-    if (const auto* health = FindComponent<NS::Game::Level::Health>())
+    if (const NS::Game::Level::Health* health = FindComponent<NS::Game::Level::Health>())
         return health->Current();
     return 0;
 }

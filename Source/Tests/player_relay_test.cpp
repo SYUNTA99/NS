@@ -76,12 +76,12 @@ namespace
     FeedCamera AddFeedCamera(Scene& scene, std::uint32_t targetId)
     {
         GameObject* rig = scene.SpawnTransient<GameObject>();
-        auto& follow = *rig->AddComponent<ThirdPersonFollow>();
+        ThirdPersonFollow& follow = *rig->AddComponent<ThirdPersonFollow>();
         follow.SetActive(true);
         follow.SetAutoDistances(k_IdleDistance, k_RunDistance, k_JumpDistance);
         follow.SetRunSpeedThreshold(k_RunSpeedThreshold);
         NsTest::WriteObjectRefField(follow, "追従対象", targetId);
-        auto& feed = *rig->AddComponent<FollowCameraFeed>();
+        FollowCameraFeed& feed = *rig->AddComponent<FollowCameraFeed>();
         // 開始は部品が揃ってから。SpawnTransient の開始は積む前に済んでいる
         rig->OnStart();
         return FeedCamera{follow, feed};
@@ -119,7 +119,7 @@ protected:
     //! 入力はプロセスに 1 個しか無い。押したキーを次のテストへ持ち越さないよう前後で払う
     static void ClearKeyboard() noexcept
     {
-        auto& kb = NS::Platform::Input::Get().Keyboard();
+        NS::Platform::Keyboard& kb = NS::Platform::Input::Get().Keyboard();
         kb.ClearState();
         kb.Update();
     }
@@ -197,7 +197,7 @@ TEST_F(PlayerRelayTest, JumpHoldStateIsRelayed)
     GameObject owner;
     BuildRelayRig(owner);
 
-    auto& kb = NS::Platform::Input::Get().Keyboard();
+    NS::Platform::Keyboard& kb = NS::Platform::Input::Get().Keyboard();
     kb.OnKeyDown(Key::Space);
     Input(owner).OnUpdate();
     Relay(owner).OnUpdate();
@@ -242,7 +242,7 @@ TEST_F(PlayerRelayTest, MissingSideIsHarmless)
 
     GameObject withoutInput;
     withoutInput.AddComponent<PlayerInputRelay>();
-    auto& player = *withoutInput.AddComponent<PlayerComponent>();
+    PlayerComponent& player = *withoutInput.AddComponent<PlayerComponent>();
     withoutInput.OnStart();
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.5f);

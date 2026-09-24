@@ -21,7 +21,7 @@ TEST(PlayControlsTest, LiveTabIsGameWhilePlaying)
 
 TEST(PlayControlsTest, ToolbarAllOffWhileEditing)
 {
-    const auto state = MakePlayToolbarState({.playMode = false, .paused = false});
+    const NS::Editor::PlayToolbarState state = MakePlayToolbarState({.playMode = false, .paused = false});
     EXPECT_FALSE(state.playActive);
     EXPECT_FALSE(state.pauseDown);
     EXPECT_FALSE(state.pauseEnabled);
@@ -31,7 +31,7 @@ TEST(PlayControlsTest, ToolbarAllOffWhileEditing)
 TEST(PlayControlsTest, ToolbarIgnoresPausedWhileEditing)
 {
     // 編集中は paused が残っていても一時停止表示を出さない
-    const auto state = MakePlayToolbarState({.playMode = false, .paused = true});
+    const NS::Editor::PlayToolbarState state = MakePlayToolbarState({.playMode = false, .paused = true});
     EXPECT_FALSE(state.playActive);
     EXPECT_FALSE(state.pauseDown);
     EXPECT_FALSE(state.pauseEnabled);
@@ -40,7 +40,7 @@ TEST(PlayControlsTest, ToolbarIgnoresPausedWhileEditing)
 
 TEST(PlayControlsTest, ToolbarWhilePlaying)
 {
-    const auto state = MakePlayToolbarState({.playMode = true, .paused = false});
+    const NS::Editor::PlayToolbarState state = MakePlayToolbarState({.playMode = true, .paused = false});
     EXPECT_TRUE(state.playActive);
     EXPECT_FALSE(state.pauseDown);
     EXPECT_TRUE(state.pauseEnabled);
@@ -49,7 +49,7 @@ TEST(PlayControlsTest, ToolbarWhilePlaying)
 
 TEST(PlayControlsTest, ToolbarWhilePaused)
 {
-    const auto state = MakePlayToolbarState({.playMode = true, .paused = true});
+    const NS::Editor::PlayToolbarState state = MakePlayToolbarState({.playMode = true, .paused = true});
     EXPECT_TRUE(state.playActive);
     EXPECT_TRUE(state.pauseDown);
     EXPECT_TRUE(state.pauseEnabled);

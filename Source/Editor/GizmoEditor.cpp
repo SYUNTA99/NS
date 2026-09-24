@@ -361,6 +361,18 @@ namespace NS::Editor
             }
             return best;
         }
+
+        //! パネルローカル座標に原点を加算し、drawlist へ渡す画面座標にする
+        struct PanelToScreenPx
+        {
+            float panelX = 0.0f; // パネル左上の X
+            float panelY = 0.0f; // パネル左上の Y
+
+            ImVec2 operator()(NS::Core::Vector2 local) const noexcept
+            {
+                return ImVec2{panelX + local.x, panelY + local.y};
+            }
+        };
     } // namespace
 
     void GizmoEditor::SetSelectableObjects(std::span<NS::Obj::GameObject* const> objects,
@@ -529,9 +541,7 @@ namespace NS::Editor
         const float panelX = static_cast<float>(view.x);
         const float panelY = static_cast<float>(view.y);
         // ProjectToScreen はパネルローカルを返すので、drawlist へ渡す直前に原点を加算する
-        const auto toPx = [panelX, panelY](NS::Core::Vector2 local) -> ImVec2 {
-            return ImVec2{panelX + local.x, panelY + local.y};
-        };
+        const PanelToScreenPx toPx{panelX, panelY};
 
         // 選択ツールは何も出さない。掴む物が無い状態で印だけ置いても操作の手がかりにならない
         if (m_tool == GizmoTool::Select)

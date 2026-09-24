@@ -38,7 +38,7 @@ namespace NS::App
             return nullptr;
         }
 
-        auto it = std::find_if(
+        std::vector<std::unique_ptr<Layer>>::iterator it = std::find_if(
             m_layers.begin(), m_layers.end(), [layer](const std::unique_ptr<Layer>& p) { return p.get() == layer; });
         if (it == m_layers.end())
         {

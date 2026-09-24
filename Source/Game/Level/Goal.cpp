@@ -18,12 +18,12 @@ namespace NS::Game::Level
             return;
         }
 
-        auto* scene = Owner()->OwningScene();
+        NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
         {
 			return;
         }
-        auto* player = FindPlayer(scene->Objects());
+        ::Player* player = FindPlayer(scene->Objects());
         if (player == nullptr)
         {
             return;

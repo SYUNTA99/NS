@@ -38,7 +38,7 @@ namespace
 TEST(GameObjectTest, AddComponentAttachesOwnerAndAppendsToList)
 {
     GameObject obj;
-    auto& comp = *obj.AddComponent<MockComponent>();
+    MockComponent& comp = *obj.AddComponent<MockComponent>();
 
     EXPECT_EQ(comp.Owner(), &obj);
     // GameObject が先に transform を積むので、既定 priority の後入れは末尾に来る
@@ -49,8 +49,8 @@ TEST(GameObjectTest, AddComponentAttachesOwnerAndAppendsToList)
 TEST(GameObjectTest, OnUpdatePropagatesToActiveComponents)
 {
     GameObject obj;
-    auto& c1 = *obj.AddComponent<MockComponent>();
-    auto& c2 = *obj.AddComponent<MockComponent>();
+    MockComponent& c1 = *obj.AddComponent<MockComponent>();
+    MockComponent& c2 = *obj.AddComponent<MockComponent>();
 
     obj.OnUpdate();
     EXPECT_EQ(c1.updateCount, 1);
@@ -60,7 +60,7 @@ TEST(GameObjectTest, OnUpdatePropagatesToActiveComponents)
 TEST(GameObjectTest, OnUpdateSkipsInactiveComponents)
 {
     GameObject obj;
-    auto& comp = *obj.AddComponent<MockComponent>();
+    MockComponent& comp = *obj.AddComponent<MockComponent>();
     comp.SetActive(false);
 
     obj.OnUpdate();
@@ -72,9 +72,9 @@ TEST(GameObjectTest, OnEndPlayCallsComponentsInReverseRegistrationOrder)
     GameObject obj;
     std::vector<int> callOrder;
 
-    auto& a = *obj.AddComponent<OrderedComponent>();
-    auto& b = *obj.AddComponent<OrderedComponent>();
-    auto& c = *obj.AddComponent<OrderedComponent>();
+    OrderedComponent& a = *obj.AddComponent<OrderedComponent>();
+    OrderedComponent& b = *obj.AddComponent<OrderedComponent>();
+    OrderedComponent& c = *obj.AddComponent<OrderedComponent>();
     a.recorder = &callOrder;
     a.id = 1;
     b.recorder = &callOrder;
@@ -125,8 +125,8 @@ namespace
 TEST(GameObjectPriorityTest, AddComponentSortsByPriority)
 {
     NS::Obj::GameObject obj;
-    auto& low = *obj.AddComponent<LowPrioComponent>();   // 先に追加 (LateUpdate, 400)
-    auto& high = *obj.AddComponent<HighPrioComponent>(); // 後に追加 (EarlyUpdate, 0)
+    LowPrioComponent& low = *obj.AddComponent<LowPrioComponent>();   // 先に追加 (LateUpdate, 400)
+    HighPrioComponent& high = *obj.AddComponent<HighPrioComponent>(); // 後に追加 (EarlyUpdate, 0)
 
     // EarlyUpdate 0 の high、GameObject が積む transform (Update 200)、LateUpdate 400 の low の順
     ASSERT_EQ(obj.Components().size(), std::size_t{3});
@@ -137,8 +137,8 @@ TEST(GameObjectPriorityTest, AddComponentSortsByPriority)
 TEST(GameObjectPriorityTest, SamePriorityPreservesInsertionOrder)
 {
     NS::Obj::GameObject obj;
-    auto& a = *obj.AddComponent<HighPrioComponent>();
-    auto& b = *obj.AddComponent<HighPrioComponent>();
+    HighPrioComponent& a = *obj.AddComponent<HighPrioComponent>();
+    HighPrioComponent& b = *obj.AddComponent<HighPrioComponent>();
 
     // EarlyUpdate 0 の 2 つが登録順のまま先頭に並び、GameObject が積む transform (Update 200) は後ろ
     ASSERT_EQ(obj.Components().size(), std::size_t{3});
@@ -149,9 +149,9 @@ TEST(GameObjectPriorityTest, SamePriorityPreservesInsertionOrder)
 TEST(GameObjectAddComponentTest, OwnsLifetimeInjectsOwnerAndOrdersByPriority)
 {
     NS::Obj::GameObject obj;
-    auto* low = obj.AddComponent<LowPrioComponent>();   // LateUpdate 400
-    auto* high = obj.AddComponent<HighPrioComponent>(); // EarlyUpdate 0
-    auto* mock = obj.AddComponent<MockComponent>();     // 既定 Update 200
+    LowPrioComponent* low = obj.AddComponent<LowPrioComponent>();   // LateUpdate 400
+    HighPrioComponent* high = obj.AddComponent<HighPrioComponent>(); // EarlyUpdate 0
+    MockComponent* mock = obj.AddComponent<MockComponent>();         // 既定 Update 200
 
     ASSERT_NE(low, nullptr);
     ASSERT_NE(high, nullptr);
@@ -173,7 +173,7 @@ TEST(GameObjectAddComponentTest, OwnsLifetimeInjectsOwnerAndOrdersByPriority)
 TEST(GameObjectTest, OwnerFlagGatesItsComponents)
 {
     GameObject obj;
-    auto* comp = obj.AddComponent<MockComponent>();
+    MockComponent* comp = obj.AddComponent<MockComponent>();
     ASSERT_NE(comp, nullptr);
     EXPECT_TRUE(comp->IsActive());
 
@@ -193,7 +193,7 @@ TEST(GameObjectTest, AncestorFlagGatesDescendantComponents)
     GameObject grandChild;
     child.SetParent(&root);
     grandChild.SetParent(&child);
-    auto* comp = grandChild.AddComponent<MockComponent>();
+    MockComponent* comp = grandChild.AddComponent<MockComponent>();
     ASSERT_NE(comp, nullptr);
 
     root.SetActive(false);
@@ -221,7 +221,7 @@ TEST(GameObjectTest, ChildKeepsItsOwnFlagWhileParentIsOff)
 TEST(GameObjectTest, InactiveOwnerSkipsUpdate)
 {
     GameObject obj;
-    auto* comp = obj.AddComponent<MockComponent>();
+    MockComponent* comp = obj.AddComponent<MockComponent>();
     ASSERT_NE(comp, nullptr);
 
     obj.SetActive(false);

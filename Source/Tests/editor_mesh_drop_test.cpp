@@ -33,7 +33,7 @@ TEST(EditorMeshDrop, DroppedMeshCollidesWithItsOwnTriangles)
     NS::Obj::GameObject* placed = FindFirstPlaced(scene.Objects());
     ASSERT_NE(placed, nullptr);
 
-    const auto* renderer = placed->FindComponent<NS::Obj::MeshRenderer>();
+    const NS::Obj::MeshRenderer* renderer = placed->FindComponent<NS::Obj::MeshRenderer>();
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(renderer->MeshRef(), "Assets/Models/__ns_missing_terrain__.glb");
     EXPECT_NE(placed->FindComponent<NS::Obj::MeshCollider>(), nullptr);

@@ -33,7 +33,7 @@ TEST(MeshRendererComponentTest, ConstructsWithNullPointersWithoutCrashing)
 TEST(MeshRendererComponentTest, CollectIsNoOpWhenInactive)
 {
     GameObject obj;
-    auto& mc = *obj.AddComponent<MeshRenderer>();
+    MeshRenderer& mc = *obj.AddComponent<MeshRenderer>();
     mc.SetActive(false);
 
     // 非アクティブなら DrawItem を積まない
@@ -46,7 +46,7 @@ TEST(MeshRendererComponentTest, CollectIsNoOpWhenInactive)
 TEST(MeshRendererComponentTest, CollectIsNoOpWhenMeshOrMaterialIsNull)
 {
     GameObject obj;
-    auto& mc = *obj.AddComponent<MeshRenderer>();
+    MeshRenderer& mc = *obj.AddComponent<MeshRenderer>();
 
     NS::Gfx::RenderContext ctx{};
     std::vector<NS::Gfx::DrawItem> out;
@@ -66,7 +66,7 @@ TEST(MeshRendererComponentTest, OnStartRegistersToOwningScene)
     FakeScene scene;
     GameObject obj;
     obj.AttachScene(&scene);
-    auto& mc = *obj.AddComponent<MeshRenderer>();
+    MeshRenderer& mc = *obj.AddComponent<MeshRenderer>();
 
     mc.OnStart();
 
@@ -79,7 +79,7 @@ TEST(MeshRendererComponentTest, OnEndPlayUnregistersFromOwningScene)
     FakeScene scene;
     GameObject obj;
     obj.AttachScene(&scene);
-    auto& mc = *obj.AddComponent<MeshRenderer>();
+    MeshRenderer& mc = *obj.AddComponent<MeshRenderer>();
 
     mc.OnStart();
     mc.OnEndPlay();
@@ -91,7 +91,7 @@ TEST(MeshRendererComponentTest, OnEndPlayUnregistersFromOwningScene)
 TEST(MeshRendererComponentTest, OnStartIsNoOpWhenSceneIsNull)
 {
     GameObject obj;
-    auto& mc = *obj.AddComponent<MeshRenderer>();
+    MeshRenderer& mc = *obj.AddComponent<MeshRenderer>();
     // OwningScene が nullptr のまま OnStart を呼んでも落ちないこと
     mc.OnStart();
     SUCCEED();

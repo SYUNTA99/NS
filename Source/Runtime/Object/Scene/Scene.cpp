@@ -18,7 +18,7 @@ namespace NS::Obj
         // 描くには実カメラが 1 個要る。配置物ではないがシーンには必ず居るので、ここで ObjectList へ入れる
         // 保存・凍結・編集 UI に出ない一時オブジェクトで、データからの組み直しも跨いで残る
         // 描画 component は積まない。RegisterRenderable は virtual で、基底コンストラクタからは派生へ落ちない
-        auto host = std::make_unique<GameObject>();
+        std::unique_ptr<GameObject> host = std::make_unique<GameObject>();
         CameraComponent* camera = host->AddComponent<CameraComponent>();
         camera->SetUp({0.0f, 1.0f, 0.0f});
         m_brain = host->AddComponent<NS::Obj::CameraBrain>();
@@ -93,12 +93,12 @@ namespace NS::Obj
                 continue;
             }
             const nlohmann::json serialized = SerializeComponent(comp);
-            const auto fieldsIt = serialized.find("fields");
+            const nlohmann::json::const_iterator fieldsIt = serialized.find("fields");
             if (fieldsIt == serialized.end())
             {
                 return;
             }
-            const auto valueIt = fieldsIt->find(std::string(fieldName));
+            const nlohmann::json::const_iterator valueIt = fieldsIt->find(std::string(fieldName));
             if (valueIt == fieldsIt->end())
             {
                 return;

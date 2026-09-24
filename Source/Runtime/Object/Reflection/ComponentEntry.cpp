@@ -14,7 +14,7 @@ namespace NS::Obj
             {
                 return nullptr;
             }
-            for (auto it = fields->begin(); it != fields->end(); ++it)
+            for (nlohmann::json::const_iterator it = fields->begin(); it != fields->end(); ++it)
             {
                 if (it.key() == name)
                 {
@@ -58,7 +58,7 @@ namespace NS::Obj
         {
             return {};
         }
-        const auto it = entry.find("type");
+        const nlohmann::json::const_iterator it = entry.find("type");
         if (it == entry.end() || !it->is_string())
         {
             return {};
@@ -72,7 +72,7 @@ namespace NS::Obj
         {
             return 0;
         }
-        const auto it = entry.find("id");
+        const nlohmann::json::const_iterator it = entry.find("id");
         if (it == entry.end() || !it->is_number_unsigned())
         {
             return 0;
@@ -100,7 +100,7 @@ namespace NS::Obj
         {
             return true;
         }
-        const auto it = entry.find("enabled");
+        const nlohmann::json::const_iterator it = entry.find("enabled");
         if (it == entry.end() || !it->is_boolean())
         {
             return true;
@@ -128,7 +128,7 @@ namespace NS::Obj
         {
             return nullptr;
         }
-        const auto it = entry.find("fields");
+        const nlohmann::json::const_iterator it = entry.find("fields");
         if (it == entry.end() || !it->is_object())
         {
             return nullptr;
@@ -244,7 +244,7 @@ namespace NS::Obj
         {
             return ObjectRef{};
         }
-        const auto refIt = value->find("ref");
+        const nlohmann::json::const_iterator refIt = value->find("ref");
         if (refIt == value->end() || !refIt->is_number_unsigned())
         {
             return ObjectRef{};

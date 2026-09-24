@@ -52,7 +52,7 @@ TEST(ObjectRefTest, FollowResolvesTargetByRef)
 
     GameObject rig;
     rig.AttachScene(&scene);
-    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
+    NS::Obj::ThirdPersonFollow* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
     NsTest::WriteObjectRefField(*follow, "追従対象", 5u);
 
     EXPECT_EQ(follow->Target(), &target->Root());
@@ -64,7 +64,7 @@ TEST(ObjectRefTest, FollowHasNoTargetWhenRefUnset)
     Scene scene;
     GameObject rig;
     rig.AttachScene(&scene);
-    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
+    NS::Obj::ThirdPersonFollow* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
 
     EXPECT_EQ(follow->Target(), nullptr);
 }
@@ -74,7 +74,7 @@ TEST(ObjectRefTest, FollowHasNoTargetWhenRefDangling)
     Scene scene;
     GameObject rig;
     rig.AttachScene(&scene);
-    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
+    NS::Obj::ThirdPersonFollow* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
     NsTest::WriteObjectRefField(*follow, "追従対象", 123u);
 
     EXPECT_EQ(follow->Target(), nullptr);
@@ -89,7 +89,7 @@ TEST(ObjectRefTest, FollowLosesTargetDestroyedLater)
 
     GameObject rig;
     rig.AttachScene(&scene);
-    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
+    NS::Obj::ThirdPersonFollow* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
     NsTest::WriteObjectRefField(*follow, "追従対象", 5u);
     ASSERT_EQ(follow->Target(), &target->Root());
 

@@ -71,7 +71,7 @@ TEST(LevelFilePaths, BuildLevelPathReturnsNulloptOnSanitizeFail)
 
 TEST(LevelFilePaths, BuildLevelPathProducesExpectedShape)
 {
-    auto p = EditorNs::BuildLevelPath("Scenes/MyLevel");
+    std::optional<std::string> p = EditorNs::BuildLevelPath("Scenes/MyLevel");
     ASSERT_TRUE(p.has_value());
     EXPECT_EQ(NS::Platform::FileSystem::Extension(*p), ".scene");
     EXPECT_EQ(NS::Platform::FileSystem::Stem(*p), "MyLevel");
@@ -115,7 +115,7 @@ TEST(LevelFilePaths, SanitizeLevelPathRejectsReservedSegment)
 
 TEST(LevelFilePaths, BuildLevelPathAcceptsSubfolder)
 {
-    auto p = EditorNs::BuildLevelPath("Scenes/foo");
+    std::optional<std::string> p = EditorNs::BuildLevelPath("Scenes/foo");
     ASSERT_TRUE(p.has_value());
     EXPECT_EQ(NS::Platform::FileSystem::Stem(*p), "foo");
     EXPECT_EQ(NS::Platform::FileSystem::FileName(NS::Platform::FileSystem::ParentDirectory(*p)), "Scenes");
@@ -132,8 +132,8 @@ TEST(LevelFilePaths, QualifyLevelPathAddsScenesOnlyToBareName)
 TEST(LevelFilePaths, BuildLevelPathDefaultsBareNameToScenes)
 {
     // 素の名前は Scenes/ 配下に解決され、起動読込と保存が同じファイルを指す
-    auto bare = EditorNs::BuildLevelPath("MyLevel");
-    auto qualified = EditorNs::BuildLevelPath("Scenes/MyLevel");
+    std::optional<std::string> bare = EditorNs::BuildLevelPath("MyLevel");
+    std::optional<std::string> qualified = EditorNs::BuildLevelPath("Scenes/MyLevel");
     ASSERT_TRUE(bare.has_value());
     ASSERT_TRUE(qualified.has_value());
     EXPECT_EQ(*bare, *qualified);
@@ -148,9 +148,9 @@ TEST(LevelFilePaths, EnsureDirectoryCreatesAndIsIdempotent)
 TEST(LevelFilePaths, EnumerateReturnsSortedSafeNames)
 {
     // 既存 file の列挙のみ確認、新 file は作らない
-    auto names = EditorNs::EnumerateLevelFiles();
+    std::vector<std::string> names = EditorNs::EnumerateLevelFiles();
     for (std::size_t i = 1; i < names.size(); ++i)
         EXPECT_LE(names[i - 1], names[i]);
-    for (const auto& n : names)
+    for (const std::string& n : names)
         EXPECT_FALSE(EditorNs::SanitizeLevelPath(n).empty());
 }

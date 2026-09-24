@@ -34,7 +34,7 @@ Game::~Game()
 
 void Game::OnAttach()
 {
-    auto* app = NS::App::Application::Get();
+    NS::App::Application* app = NS::App::Application::Get();
     if (app == nullptr)
     {
         NS_LOG_ERROR(Game, "Game::OnAttach: Application::Get()==null");
@@ -87,7 +87,7 @@ void Game::OnUpdate()
     const NS::Obj::Scene* scene = m_scenes.Current();
     if (scene != nullptr && scene->IsSimulationEnabled())
     {
-        if (auto* app = NS::App::Application::Get())
+        if (NS::App::Application* app = NS::App::Application::Get())
         {
             if (app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
             {
@@ -116,7 +116,7 @@ void Game::OnRender()
     m_scenes.Render();
     // scene が最後に bind した描画先へ UI を重ねる。単体起動はバックバッファ、editor はビュー列の
     // 末尾にある Game ビューがそのまま残るので、どちらもゲームの絵の上に載る
-    if (auto* app = NS::App::Application::Get())
+    if (NS::App::Application* app = NS::App::Application::Get())
         m_ui.Render(app->Renderer());
 }
 

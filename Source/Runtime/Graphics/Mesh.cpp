@@ -52,7 +52,7 @@ namespace NS::Gfx
             // InputElement を D3D11_INPUT_ELEMENT_DESC へ詰め替える
             std::vector<D3D11_INPUT_ELEMENT_DESC> descs;
             descs.reserve(elements.size());
-            for (const auto& e : elements)
+            for (const InputElement& e : elements)
             {
                 D3D11_INPUT_ELEMENT_DESC d{};
                 d.SemanticName = e.semanticName.c_str();

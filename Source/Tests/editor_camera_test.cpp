@@ -120,9 +120,9 @@ TEST(EditorCameraTest, LookKeepsEyeFixed)
     cam.SetCenter(NS::Core::Vector3{1.0f, 2.0f, 3.0f});
 
     // その場の見回し: yaw/pitch は変わるが eye は不変。orbit ではない
-    const auto eyeBefore = cam.ComputeCameraPosition();
+    const NS::Core::Vector3 eyeBefore = cam.ComputeCameraPosition();
     cam.ApplyLook(0.4f, 0.1f);
-    const auto eyeAfter = cam.ComputeCameraPosition();
+    const NS::Core::Vector3 eyeAfter = cam.ComputeCameraPosition();
     EXPECT_NEAR(eyeAfter.x, eyeBefore.x, 1e-3f);
     EXPECT_NEAR(eyeAfter.y, eyeBefore.y, 1e-3f);
     EXPECT_NEAR(eyeAfter.z, eyeBefore.z, 1e-3f);
@@ -138,7 +138,7 @@ TEST(EditorCameraTest, ComputeCameraPositionForYawZeroPlacesCameraOnZAxis)
     cam.SetYawPitch(0.0f, -0.0873f); // ほぼ水平の pitch (-5°)
     cam.SetDistance(10.0f);
 
-    auto pos = cam.ComputeCameraPosition();
+    NS::Core::Vector3 pos = cam.ComputeCameraPosition();
     // yaw 0 なので x = 0。y = sin(-0.0873) * 10 ≒ -0.87 で少し下、z = cos(-0.0873) * 10 ≒ 9.96
     EXPECT_NEAR(pos.x, 0.0f, 1e-3f);
     EXPECT_NEAR(pos.z, 10.0f, 0.2f);
@@ -152,7 +152,7 @@ TEST(EditorCameraTest, ComputeCameraPositionForYaw90PlacesCameraOnXAxis)
     cam.SetYawPitch(1.5707963f, -0.0873f);
     cam.SetDistance(10.0f);
 
-    auto pos = cam.ComputeCameraPosition();
+    NS::Core::Vector3 pos = cam.ComputeCameraPosition();
     EXPECT_NEAR(pos.x, 10.0f, 0.2f);
     EXPECT_NEAR(pos.z, 0.0f, 1e-3f);
 }
@@ -161,9 +161,9 @@ TEST(EditorCameraTest, PanShiftsCenter)
 {
     EditorCamera cam;
 
-    const auto before = cam.Center();
+    const NS::Core::Vector3 before = cam.Center();
     cam.ApplyPan(1.0f, 0.5f);
-    const auto after = cam.Center();
+    const NS::Core::Vector3 after = cam.Center();
     // yaw=0 で right ≒ (1,0,0)、up = (0,1,0)、scale = distance*0.1 = 1.5
     EXPECT_NEAR(after.x - before.x, 1.5f, 1e-3f);
     EXPECT_NEAR(after.y - before.y, 0.75f, 1e-3f);
@@ -198,7 +198,7 @@ TEST(EditorCameraTest, ApplyInputFlyingLooksAndKeepsEyeFixed)
     EditorCamera cam;
     cam.SetCenter(NS::Core::Vector3{1.0f, 2.0f, 3.0f});
     cam.SetDistance(10.0f);
-    const auto eyeBefore = cam.ComputeCameraPosition();
+    const NS::Core::Vector3 eyeBefore = cam.ComputeCameraPosition();
 
     EditorCameraInput input{};
     input.flying = true;
@@ -207,7 +207,7 @@ TEST(EditorCameraTest, ApplyInputFlyingLooksAndKeepsEyeFixed)
 
     // 既定感度 FeelTuning::mouseSensOrbit = 0.003
     EXPECT_NEAR(cam.Yaw(), 100.0f * 0.003f, 1e-4f);
-    const auto eyeAfter = cam.ComputeCameraPosition();
+    const NS::Core::Vector3 eyeAfter = cam.ComputeCameraPosition();
     EXPECT_NEAR(eyeAfter.x, eyeBefore.x, 1e-3f);
     EXPECT_NEAR(eyeAfter.y, eyeBefore.y, 1e-3f);
     EXPECT_NEAR(eyeAfter.z, eyeBefore.z, 1e-3f);
@@ -217,7 +217,7 @@ TEST(EditorCameraTest, ApplyInputIgnoresLookAndMoveWhenNotFlying)
 {
     EditorCamera cam;
     cam.SetCenter(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
-    const auto centerBefore = cam.Center();
+    const NS::Core::Vector3 centerBefore = cam.Center();
 
     EditorCameraInput input{};
     input.flying = false;
@@ -270,13 +270,13 @@ TEST(EditorCameraTest, ApplyInputWheelZoomsInOverSpringSteps)
 TEST(EditorCameraTest, ApplyInputPanShiftsCenterWhenNotFlying)
 {
     EditorCamera cam;
-    const auto before = cam.Center();
+    const NS::Core::Vector3 before = cam.Center();
 
     EditorCameraInput input{};
     input.flying = false;
     input.panXPixels = 1.0f;
     cam.ApplyInput(input);
 
-    const auto after = cam.Center();
+    const NS::Core::Vector3 after = cam.Center();
     EXPECT_NEAR(after.x - before.x, 1.0f * cam.Distance() * 0.1f * 0.02f, 1e-3f);
 }

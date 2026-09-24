@@ -258,8 +258,8 @@ TEST_F(SceneRendererEffectTest, PausedSceneDoesNotAdvanceEffects)
 TEST_F(SceneRendererEffectTest, RenderDrawsThePlayedEffect)
 {
     GameObject host;
-    auto* camera = host.AddComponent<CameraComponent>();
-    auto* brain = host.AddComponent<CameraBrain>();
+    CameraComponent* camera = host.AddComponent<CameraComponent>();
+    CameraBrain* brain = host.AddComponent<CameraBrain>();
     host.OnStart();
 
     std::unique_ptr<RenderTarget> target = RenderTarget::Create(NS::Core::Size2D{k_WindowSize, k_WindowSize});

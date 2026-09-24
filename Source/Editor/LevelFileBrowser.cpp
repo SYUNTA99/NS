@@ -74,7 +74,7 @@ namespace NS::Editor
         // 保存ダイアログ
         if (m_saveModalOpen)
         {
-            const auto vp = ImGui::GetMainViewport();
+            ImGuiViewport* const vp = ImGui::GetMainViewport();
             if (vp != nullptr)
             {
                 ImGui::SetNextWindowPos(
@@ -94,7 +94,7 @@ namespace NS::Editor
 
                 if (ImGui::Button("Save", ImVec2(120.0f, 0.0f)))
                 {
-                    const auto sanitized = SanitizeLevelPath(m_saveNameBuffer);
+                    const std::string sanitized = SanitizeLevelPath(m_saveNameBuffer);
                     if (sanitized.empty())
                     {
                         m_lastMessage = "不正な path (英数字/空白/_-/、 各階層 200 char 以内)";
@@ -131,7 +131,7 @@ namespace NS::Editor
         // 読込ダイアログ
         if (m_loadModalOpen)
         {
-            const auto vp = ImGui::GetMainViewport();
+            ImGuiViewport* const vp = ImGui::GetMainViewport();
             if (vp != nullptr)
             {
                 ImGui::SetNextWindowPos(

@@ -25,7 +25,7 @@ namespace NS::Editor
 #if NS_EDITOR_ENABLED
         if (!m_open)
             return;
-        const auto vp = ImGui::GetMainViewport();
+        ImGuiViewport* const vp = ImGui::GetMainViewport();
         if (vp != nullptr)
         {
             ImGui::SetNextWindowPos(

@@ -125,7 +125,7 @@ namespace NS::Editor
     void EditorCamera::Tick() noexcept
     {
         const float dt = NS::Platform::FrameTimer::FixedDelta();
-        auto& input = NS::Platform::Input::Get();
+        NS::Platform::Input& input = NS::Platform::Input::Get();
 
         // Platform Input から 1 フレーム分の free-fly 入力を組む。感度適用とバネは注入する側に任せる
         EditorCameraInput frameInput{};
@@ -135,7 +135,7 @@ namespace NS::Editor
         const bool wantMouse = input.UiWantsMouse();
         if (!wantMouse)
         {
-            auto& mouse = input.Mouse();
+            NS::Platform::Mouse& mouse = input.Mouse();
             // 右ドラッグ中はその場で見回すフライ視点。eye 固定で回し、WASD/QE の移動も許可する
             frameInput.flying = mouse.IsHeld(NS::Platform::MouseButton::Right);
             if (frameInput.flying)
@@ -155,7 +155,7 @@ namespace NS::Editor
         // 右ドラッグ中のみ WASD で視線方向へフライ、Q E で world 上下する。UI がキー入力中なら無視する
         if (frameInput.flying && !input.UiWantsKeyboard())
         {
-            auto& kb = input.Keyboard();
+            NS::Platform::Keyboard& kb = input.Keyboard();
             if (kb.IsHeld(NS::Platform::Key::W))
                 frameInput.forwardAxis += 1.0f;
             if (kb.IsHeld(NS::Platform::Key::S))
@@ -177,11 +177,11 @@ namespace NS::Editor
 
         // Gamepad は ImGui キャプチャ対象外、常に入力する。free-fly 入力とは別枠でその場に適用する
         {
-            auto& gp = input.Gamepad(0);
+            NS::Platform::Gamepad& gp = input.Gamepad(0);
             if (gp.IsConnected())
             {
-                const auto rs = gp.RightStick();
-                const auto ls = gp.LeftStick();
+                const NS::Platform::Stick rs = gp.RightStick();
+                const NS::Platform::Stick ls = gp.LeftStick();
                 ApplyOrbit(rs.x * m_tuning.padSensOrbit * dt, -rs.y * m_tuning.padSensOrbit * dt);
                 ApplyPan(ls.x * m_tuning.padSensPan * dt, -ls.y * m_tuning.padSensPan * dt);
                 ApplyZoom((gp.RightTrigger() - gp.LeftTrigger()) * m_tuning.padSensZoom * dt);
