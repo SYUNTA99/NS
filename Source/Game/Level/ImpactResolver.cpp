@@ -273,7 +273,7 @@ namespace NS::Game::Level
         // 明けたフレームの反発と貫通速度を通常移動に乗せるため、凍結より先に突進を打ち切る
         m_movement->CancelBodySlam();
 
-        m_pendingTargetId = hit->Owner()->Id();
+        m_pendingTarget = NS::Obj::ObjectRef{hit->Owner()->Id()};
         m_pendingTargetHome = hit->Owner()->Root().Position();
         m_pendingImpactDir = NS::Core::Vector3{-awayX, 0.0f, -awayZ};
         // 反発の質量因子の残り。動きは軽い側が受け取るので、重い物ほど揺れない
@@ -325,7 +325,7 @@ namespace NS::Game::Level
 
         // 止めるフレーム数が決まってから控える。止めが 0 フレームの当たりも残すので、下の return より手前に置く
         m_lastImpact.sequence += 1;
-        m_lastImpact.targetId = m_pendingTargetId;
+        m_lastImpact.targetId = m_pendingTarget.id;
         m_lastImpact.power = power;
         m_lastImpact.charge01 = charge01;
         m_lastImpact.positionFactor = positionFactor;
@@ -377,7 +377,7 @@ namespace NS::Game::Level
         }
 
         // 力が伝わった瞬間の絵。凍結の頭で相手を発射方向へ食い込ませて止める。当たりは動かさない
-        if (NS::Obj::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId))
+        if (NS::Obj::GameObject* target = scene->Objects().FindObject(m_pendingTarget))
         {
             target->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * m_pushInDistance);
         }
@@ -456,7 +456,7 @@ namespace NS::Game::Level
         }
 
         // 相手は id で引き直す。止まっている数フレームの間に消されていたら残りだけ諦める
-        NS::Obj::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId);
+        NS::Obj::GameObject* target = scene->Objects().FindObject(m_pendingTarget);
         if (target == nullptr)
         {
             return;
@@ -518,7 +518,7 @@ namespace NS::Game::Level
         {
             return;
         }
-        NS::Obj::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId);
+        NS::Obj::GameObject* target = scene->Objects().FindObject(m_pendingTarget);
         if (target == nullptr || m_hitStopTotal <= 0)
         {
             return;

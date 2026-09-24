@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
+#include "Runtime/Object/Reflection/ObjectRef.h"
 
 #include <cstdint>
 
@@ -193,7 +194,7 @@ namespace NS::Game::Level
         NS::Core::Vector3 m_stretchScale{1.0f, 1.0f, 1.0f};          // 解放のフレームの伸びた形
         int m_recoverRemaining = 0;                                  // 形を戻し切るまでの残りフレーム数
         bool m_scaleHeld = false;                                    // 潰した形のまま凍結している最中か
-        std::uint32_t m_pendingTargetId = 0;                         // 発射する相手の永続 id
+        NS::Obj::ObjectRef m_pendingTarget{};                        // 発射する相手。凍結をまたぐので使うたびに引く
 
         bool m_didRebound = false;   // 直近の更新で反発を検知したか
         bool m_didBreak = false;     // 直近の更新で貫通を検知したか
