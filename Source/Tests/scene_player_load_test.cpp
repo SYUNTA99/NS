@@ -91,7 +91,7 @@ TEST_P(ShippedScene, LoadedPlayerBuildsItsStateMachine)
     live->OnStart();
     states->EnsureBuilt(*player);
     EXPECT_TRUE(states->IsBuilt());
-    EXPECT_STREQ(states->CurrentName(), PlayerNs::IdlePlayerState::k_Name);
+    EXPECT_TRUE(states->IsCurrent<PlayerNs::IdlePlayerState>());
 }
 
 TEST_P(ShippedScene, EveryTuningFieldNameIsReflected)

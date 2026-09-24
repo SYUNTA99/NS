@@ -14,7 +14,6 @@ namespace NS::Game::Player
     class PlayerStateManager : public NS::Game::Entity::EntityStateManager
     {
     public:
-        [[nodiscard]] const char* CurrentName() const noexcept override;
         [[nodiscard]] bool IsBuilt() const noexcept override;
         void ResetToFirst() noexcept override;
 

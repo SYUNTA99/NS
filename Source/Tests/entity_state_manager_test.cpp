@@ -11,16 +11,12 @@ namespace
     class IdleTestState final : public NS::Game::Entity::EntityState<IdleTestState, FakeStateManager>
     {
     public:
-        static constexpr const char* k_Name = "IdleTest";
-
         void OnStep(FakeStateManager&, float) override {}
     };
 
     class WalkTestState final : public NS::Game::Entity::EntityState<WalkTestState, FakeStateManager>
     {
     public:
-        static constexpr const char* k_Name = "WalkTest";
-
         void OnStep(FakeStateManager&, float) override {}
     };
 
@@ -30,7 +26,6 @@ namespace
     public:
         void Build() { m_machine.Build<IdleTestState, WalkTestState>(*this); }
 
-        [[nodiscard]] const char* CurrentName() const noexcept override { return m_machine.CurrentName(); }
         [[nodiscard]] bool IsBuilt() const noexcept override { return m_machine.IsBuilt(); }
         void ResetToFirst() noexcept override { m_machine.Reset(); }
 

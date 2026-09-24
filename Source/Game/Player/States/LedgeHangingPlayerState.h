@@ -8,8 +8,6 @@ namespace NS::Game::Player
     class LedgeHangingPlayerState final : public PlayerState<LedgeHangingPlayerState>
     {
     public:
-        static constexpr const char* k_Name = "LedgeHanging";
-
         void OnStep(PlayerComponent& player, float dt) override;
     };
 } // namespace NS::Game::Player

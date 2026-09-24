@@ -38,7 +38,6 @@ TEST(PlayerStateManagerTest, NothingIsBuiltBeforeTheFirstStep)
     Rig rig;
 
     EXPECT_FALSE(rig.manager->IsBuilt());
-    EXPECT_STREQ(rig.manager->CurrentName(), "");
 }
 
 TEST(PlayerStateManagerTest, BuildingEntersIdle)
@@ -67,7 +66,6 @@ TEST(PlayerStateManagerTest, ChangeMovesToTheState)
 
     EXPECT_TRUE(rig.manager->Change<FallPlayerState>());
     EXPECT_TRUE(rig.manager->IsCurrent<FallPlayerState>());
-    EXPECT_STREQ(rig.manager->CurrentName(), FallPlayerState::k_Name);
 }
 
 TEST(PlayerStateManagerTest, ResetToFirstReturnsToTheFirstState)

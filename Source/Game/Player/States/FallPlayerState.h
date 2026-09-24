@@ -8,8 +8,6 @@ namespace NS::Game::Player
     class FallPlayerState final : public PlayerState<FallPlayerState>
     {
     public:
-        static constexpr const char* k_Name = "Fall";
-
         void OnStep(PlayerComponent& player, float dt) override;
     };
 } // namespace NS::Game::Player

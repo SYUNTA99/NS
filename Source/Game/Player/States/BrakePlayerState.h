@@ -8,8 +8,6 @@ namespace NS::Game::Player
     class BrakePlayerState final : public PlayerState<BrakePlayerState>
     {
     public:
-        static constexpr const char* k_Name = "Brake";
-
         void OnStep(PlayerComponent& player, float dt) override;
     };
 } // namespace NS::Game::Player

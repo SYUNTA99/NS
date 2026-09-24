@@ -26,7 +26,7 @@ namespace NS::Obj
 
     //! @brief 状態機械の 1 状態。素のクラスで、所有者の能力を呼ぶ判断と遷移だけを書く
     //! @details 調整値や続きのデータは所有者側に置き、状態は持たない。どの状態からでも同じ記録を読める
-    //! 直接派生させず StateOf を挟む。Id と Name はそちらが埋める
+    //! 直接派生させず StateOf を挟む。Id はそちらが埋める
     template <typename TOwner> class State
     {
     public:
@@ -41,22 +41,17 @@ namespace NS::Obj
         //! 自分の型を指す印。Change の突き合わせに使う
         [[nodiscard]] virtual StateId Id() const noexcept = 0;
 
-        //! ログと試験の失敗文に出す表示名。遷移の指定には使わない
-        [[nodiscard]] virtual const char* Name() const noexcept = 0;
-
         virtual void OnEnter(TOwner&) {}
         virtual void OnStep(TOwner& owner, float dt) = 0;
         virtual void OnExit(TOwner&) {}
     };
 
-    //! @brief 状態の印と表示名を埋める中間クラス。状態は StateOf<自分の型, 所有者> から派生する
-    //! @details 派生は表示名 static constexpr const char* k_Name を持つ
-    //! Id と Name を派生に書かせると、状態を複製した時に型名を直し忘れてもビルドが通り、印が元の状態と重なる
+    //! @brief 状態の印を埋める中間クラス。状態は StateOf<自分の型, 所有者> から派生する
+    //! @details Id を派生に書かせると、状態を複製した時に型名を直し忘れてもビルドが通り、印が元の状態と重なる
     template <typename TState, typename TOwner> class StateOf : public State<TOwner>
     {
     public:
         [[nodiscard]] StateId Id() const noexcept final { return StateIdOf<TState>(); }
-        [[nodiscard]] const char* Name() const noexcept final { return TState::k_Name; }
     };
 
     //! @brief 型の並びから組む状態機械。先頭が初期状態で、Build 時に OnEnter する
@@ -96,16 +91,6 @@ namespace NS::Obj
 
         //! 状態を 1 つでも組めているか
         [[nodiscard]] bool IsBuilt() const noexcept { return m_current != nullptr; }
-
-        //! 現在状態の表示名。未組立は空文字
-        [[nodiscard]] const char* CurrentName() const noexcept
-        {
-            if (m_current == nullptr)
-            {
-                return "";
-            }
-            return m_current->Name();
-        }
 
         //! 現在状態の印。未組立は nullptr
         [[nodiscard]] StateId CurrentId() const noexcept

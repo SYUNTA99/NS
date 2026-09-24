@@ -16,7 +16,6 @@ namespace
     class AlphaState final : public NS::Obj::StateOf<AlphaState, Rig>
     {
     public:
-        static constexpr const char* k_Name = "Alpha";
         void OnEnter(Rig& rig) override { rig.log.push_back("A:enter"); }
         void OnStep(Rig& rig, float) override { rig.log.push_back("A:step"); }
         void OnExit(Rig& rig) override { rig.log.push_back("A:exit"); }
@@ -25,7 +24,6 @@ namespace
     class BetaState final : public NS::Obj::StateOf<BetaState, Rig>
     {
     public:
-        static constexpr const char* k_Name = "Beta";
         void OnEnter(Rig& rig) override { rig.log.push_back("B:enter"); }
         void OnStep(Rig& rig, float) override { rig.log.push_back("B:step"); }
         void OnExit(Rig& rig) override { rig.log.push_back("B:exit"); }
@@ -34,7 +32,6 @@ namespace
     class GammaState final : public NS::Obj::StateOf<GammaState, Rig>
     {
     public:
-        static constexpr const char* k_Name = "Gamma";
         void OnStep(Rig&, float) override {}
     };
 } // namespace
@@ -48,7 +45,6 @@ TEST(StateMachineTest, BuildEntersFirstState)
 
     EXPECT_TRUE(machine.IsBuilt());
     EXPECT_TRUE(machine.IsCurrent<AlphaState>());
-    EXPECT_STREQ(machine.CurrentName(), "Alpha");
     EXPECT_EQ(rig.log, (std::vector<std::string>{"A:enter"}));
 
     machine.Step(rig, 0.016f);
@@ -115,7 +111,6 @@ TEST(StateMachineTest, NotBuiltMachineDoesNothing)
 
     EXPECT_FALSE(machine.IsBuilt());
     EXPECT_FALSE(machine.IsCurrent<AlphaState>());
-    EXPECT_STREQ(machine.CurrentName(), "");
 
     machine.Step(rig, 0.016f);
     EXPECT_FALSE(machine.Change<AlphaState>(rig));

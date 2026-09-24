@@ -13,11 +13,6 @@
 
 namespace NS::Game::Player
 {
-    const char* PlayerStateManager::CurrentName() const noexcept
-    {
-        return m_machine.CurrentName();
-    }
-
     bool PlayerStateManager::IsBuilt() const noexcept
     {
         return m_machine.IsBuilt();

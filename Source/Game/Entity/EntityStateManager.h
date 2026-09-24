@@ -15,8 +15,6 @@ namespace NS::Game::Entity
     public:
         EntityStateManager() noexcept;
 
-        //! 現在状態の表示名。未組立は空文字
-        [[nodiscard]] virtual const char* CurrentName() const noexcept = 0;
         //! 状態を 1 つでも組めているか
         [[nodiscard]] virtual bool IsBuilt() const noexcept = 0;
         //! OnExit / OnEnter を呼ばずに先頭の状態へ戻す。やり直しで使う

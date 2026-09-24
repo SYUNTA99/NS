@@ -285,7 +285,7 @@ TEST_F(EntityEventsTest, LedgeGrabbedFiresOnTheGrabbingStep)
     player.OnUpdate();
     player.OnUpdate();
 
-    ASSERT_EQ(obj.FindComponent<PlayerStateManager>()->CurrentName(), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(obj.FindComponent<PlayerStateManager>()->IsCurrent<LedgeHangingPlayerState>());
     EXPECT_EQ(grabbed, 1);
 }
 
@@ -302,7 +302,7 @@ TEST_F(EntityEventsTest, LedgeClimbingFiresWhenTheClimbStarts)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(obj.FindComponent<PlayerStateManager>()->CurrentName(), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(obj.FindComponent<PlayerStateManager>()->IsCurrent<LedgeHangingPlayerState>());
 
     int climbing = 0;
     player.PlayerEventsRef().onLedgeClimbing.Subscribe([&climbing]() { ++climbing; });
@@ -311,7 +311,7 @@ TEST_F(EntityEventsTest, LedgeClimbingFiresWhenTheClimbStarts)
     player.SetClimbMove(0.0f, 1.0f);
     player.OnUpdate();
 
-    ASSERT_EQ(obj.FindComponent<PlayerStateManager>()->CurrentName(), LedgeClimbingPlayerState::k_Name);
+    ASSERT_TRUE(obj.FindComponent<PlayerStateManager>()->IsCurrent<LedgeClimbingPlayerState>());
     EXPECT_EQ(climbing, 1);
 }
 

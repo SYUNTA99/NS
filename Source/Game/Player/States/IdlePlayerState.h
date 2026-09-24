@@ -8,8 +8,6 @@ namespace NS::Game::Player
     class IdlePlayerState final : public PlayerState<IdlePlayerState>
     {
     public:
-        static constexpr const char* k_Name = "Idle";
-
         void OnStep(PlayerComponent& player, float dt) override;
     };
 } // namespace NS::Game::Player

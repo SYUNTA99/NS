@@ -26,7 +26,6 @@
 #include <cmath>
 #include <limits>
 #include <string>
-#include <string_view>
 #include <vector>
 
 namespace
@@ -111,9 +110,9 @@ namespace
         return player;
     }
 
-    [[nodiscard]] std::string_view CurrentStateName(GameObject& owner)
+    template <typename TState> [[nodiscard]] bool IsState(GameObject& owner)
     {
-        return owner.FindComponent<PlayerStateManager>()->CurrentName();
+        return owner.FindComponent<PlayerStateManager>()->IsCurrent<TState>();
     }
 
     //! 床 1 枚を敷いて接地させた自機を返す。壁は呼び出し側が先に足す
@@ -994,7 +993,7 @@ TEST_F(PlayerComponentTest, StaysIdleWhileGroundedWithoutInput)
 
     player.OnUpdate();
 
-    EXPECT_EQ(CurrentStateName(obj), IdlePlayerState::k_Name);
+    EXPECT_TRUE(IsState<IdlePlayerState>(obj));
 }
 
 TEST_F(PlayerComponentTest, MovesToWalkWhileTheRunInputIsHeld)
@@ -1003,12 +1002,12 @@ TEST_F(PlayerComponentTest, MovesToWalkWhileTheRunInputIsHeld)
     GameObject& obj = stage.owner;
     NS::Phys::PhysicsScene& physics = stage.physics;
     auto& player = MakeSlamReady(obj, physics);
-    ASSERT_EQ(CurrentStateName(obj), IdlePlayerState::k_Name);
+    ASSERT_TRUE(IsState<IdlePlayerState>(obj));
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
 
-    EXPECT_EQ(CurrentStateName(obj), WalkPlayerState::k_Name);
+    EXPECT_TRUE(IsState<WalkPlayerState>(obj));
 }
 
 // 走りの 8 m/s から手を放すと、減速度 40 で 12 フレーム目にちょうど止まって立ちへ移る
@@ -1020,7 +1019,7 @@ TEST_F(PlayerComponentTest, ReleasingTheStickStopsAtExactlyZero)
     auto& player = MakeSlamReady(obj, physics);
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), WalkPlayerState::k_Name);
+    ASSERT_TRUE(IsState<WalkPlayerState>(obj));
 
     player.SetVelocity(Vector3{8.0f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
@@ -1028,13 +1027,13 @@ TEST_F(PlayerComponentTest, ReleasingTheStickStopsAtExactlyZero)
     {
         player.OnUpdate();
     }
-    ASSERT_EQ(CurrentStateName(obj), WalkPlayerState::k_Name);
+    ASSERT_TRUE(IsState<WalkPlayerState>(obj));
 
     player.OnUpdate();
 
     EXPECT_EQ(player.LateralVelocity().x, 0.0f);
     EXPECT_EQ(player.LateralVelocity().z, 0.0f);
-    EXPECT_EQ(CurrentStateName(obj), IdlePlayerState::k_Name);
+    EXPECT_TRUE(IsState<IdlePlayerState>(obj));
 }
 
 // 空中は減速しない。手を放しても弾かれた勢いが残る
@@ -1043,7 +1042,7 @@ TEST_F(PlayerComponentTest, FallKeepsHorizontalSpeedWithoutInput)
     GameObject obj;
     auto& player = MakePlayer(obj);
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), FallPlayerState::k_Name);
+    ASSERT_TRUE(IsState<FallPlayerState>(obj));
 
     player.SetVelocity(Vector3{5.0f, 0.0f, 0.0f});
     player.OnUpdate();
@@ -1057,7 +1056,7 @@ TEST_F(PlayerComponentTest, HoldingTheStickKeepsSpeedAboveTheTop)
     GameObject obj;
     auto& player = MakePlayer(obj);
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), FallPlayerState::k_Name);
+    ASSERT_TRUE(IsState<FallPlayerState>(obj));
 
     player.SetVelocity(Vector3{20.0f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1077,18 +1076,18 @@ TEST_F(PlayerComponentTest, ReverseInputBrakesToAStop)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), WalkPlayerState::k_Name);
+    ASSERT_TRUE(IsState<WalkPlayerState>(obj));
 
     player.SetDesiredMove(Vector3{-1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), BrakePlayerState::k_Name);
+    ASSERT_TRUE(IsState<BrakePlayerState>(obj));
 
-    for (int i = 0; i < 30 && CurrentStateName(obj) == BrakePlayerState::k_Name; ++i)
+    for (int i = 0; i < 30 && IsState<BrakePlayerState>(obj); ++i)
     {
         player.OnUpdate();
     }
 
-    EXPECT_EQ(CurrentStateName(obj), IdlePlayerState::k_Name);
+    EXPECT_TRUE(IsState<IdlePlayerState>(obj));
     EXPECT_EQ(player.LateralVelocity().x, 0.0f);
 }
 
@@ -1121,7 +1120,7 @@ TEST_F(PlayerComponentTest, MovesToFallWithoutGround)
 
     player.OnUpdate();
 
-    EXPECT_EQ(CurrentStateName(obj), FallPlayerState::k_Name);
+    EXPECT_TRUE(IsState<FallPlayerState>(obj));
 }
 
 // 押したフレームに移らないと突進の初速がそのフレームに乗らない
@@ -1136,7 +1135,7 @@ TEST_F(PlayerComponentTest, MovesToBodySlamOnTheStepOfTheRequest)
     player.RequestBodySlam(1.0f);
     player.OnUpdate();
 
-    EXPECT_EQ(CurrentStateName(obj), BodySlamPlayerState::k_Name);
+    EXPECT_TRUE(IsState<BodySlamPlayerState>(obj));
 }
 
 TEST_F(PlayerComponentTest, ResetStateReturnsToTheFirstState)
@@ -1147,11 +1146,11 @@ TEST_F(PlayerComponentTest, ResetStateReturnsToTheFirstState)
     auto& player = MakeSlamReady(obj, physics);
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), WalkPlayerState::k_Name);
+    ASSERT_TRUE(IsState<WalkPlayerState>(obj));
 
     player.ResetState();
 
-    EXPECT_EQ(CurrentStateName(obj), IdlePlayerState::k_Name);
+    EXPECT_TRUE(IsState<IdlePlayerState>(obj));
 }
 
 // 立ちは地上の状態なので縁掴みを持たない。空中に出たフレームは落下へ移すだけで、掴むのは次のフレーム
@@ -1167,10 +1166,10 @@ TEST_F(PlayerComponentTest, IdleLeavesTheLedgeGrabToFall)
     player.SetVelocity(Vector3{1.0f, 0.0f, 0.0f});
 
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), FallPlayerState::k_Name);
+    ASSERT_TRUE(IsState<FallPlayerState>(obj));
 
     player.OnUpdate();
-    EXPECT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 }
 
 TEST_F(PlayerComponentTest, GrabsLedgeWhenDescendingIntoEdge)
@@ -1187,7 +1186,7 @@ TEST_F(PlayerComponentTest, GrabsLedgeWhenDescendingIntoEdge)
     player.OnUpdate();
     player.OnUpdate();
 
-    EXPECT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_TRUE(IsState<LedgeHangingPlayerState>(obj));
     // 掴んだ後も 1 フレーム動かす。壁からはキャラクタの余白 2 cm ぶん離れて止まる
     EXPECT_NEAR(obj.Root().Position().x, -0.9f, 0.05f);
     EXPECT_NEAR(obj.Root().Position().y, 0.0f, 1e-3f);
@@ -1226,7 +1225,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhileAscending)
     player.OnUpdate();
 
     ASSERT_GT(player.Velocity().y, 0.0f);
-    EXPECT_NE(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_FALSE(IsState<LedgeHangingPlayerState>(obj));
 }
 
 TEST_F(PlayerComponentTest, DoesNotGrabWithoutHorizontalMovement)
@@ -1242,7 +1241,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabWithoutHorizontalMovement)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
     player.OnUpdate();
 
-    EXPECT_NE(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_FALSE(IsState<LedgeHangingPlayerState>(obj));
 }
 
 TEST_F(PlayerComponentTest, GrabsWithoutInputWhileMovingIntoTheLedge)
@@ -1260,7 +1259,7 @@ TEST_F(PlayerComponentTest, GrabsWithoutInputWhileMovingIntoTheLedge)
     player.OnUpdate();
     player.OnUpdate();
 
-    EXPECT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 }
 
 // 手の高さの帯を外れた縁は掴まない。手が block 上端より 2m 上にある位置から前へ押しても素通りする
@@ -1277,7 +1276,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabOutsideTheHandBand)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
 
-    EXPECT_NE(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_FALSE(IsState<LedgeHangingPlayerState>(obj));
 }
 
 // 帯の上は今フレーム動いた距離まで。手が届いていない縁へは体を引き上げない
@@ -1294,7 +1293,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabALedgeAboveTheHand)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
 
-    EXPECT_NE(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_FALSE(IsState<LedgeHangingPlayerState>(obj));
 }
 
 // 登り先が別の block で塞がれた縁は掴まない。オーバーハングの下でぶら下がったまま出られなくなる
@@ -1312,7 +1311,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhenTheClimbTargetIsBlocked)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
 
-    EXPECT_NE(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_FALSE(IsState<LedgeHangingPlayerState>(obj));
 }
 
 TEST_F(PlayerComponentTest, HangHoldsTheLedgeHeightWithoutGravity)
@@ -1328,14 +1327,14 @@ TEST_F(PlayerComponentTest, HangHoldsTheLedgeHeightWithoutGravity)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
     const Vector3 hangPos = obj.Root().Position();
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
     for (int i = 0; i < 10; ++i)
         player.OnUpdate();
 
-    EXPECT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_TRUE(IsState<LedgeHangingPlayerState>(obj));
     EXPECT_FLOAT_EQ(obj.Root().Position().y, hangPos.y);
     EXPECT_FLOAT_EQ(player.Velocity().y, 0.0f);
 }
@@ -1354,19 +1353,19 @@ TEST_F(PlayerComponentTest, ForwardInputClimbsImmediately)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
     player.SetClimbMove(0.0f, 1.0f);
     player.OnUpdate();
-    EXPECT_EQ(CurrentStateName(obj), LedgeClimbingPlayerState::k_Name);
+    EXPECT_TRUE(IsState<LedgeClimbingPlayerState>(obj));
 
     for (int i = 0; i < 20; ++i)
     {
         player.OnUpdate();
     }
 
-    EXPECT_EQ(CurrentStateName(obj), IdlePlayerState::k_Name);
+    EXPECT_TRUE(IsState<IdlePlayerState>(obj));
     EXPECT_TRUE(player.IsGrounded());
     EXPECT_EQ(player.JumpsRemaining(), 1);
     EXPECT_GT(obj.Root().Position().y, 0.5f);
@@ -1386,14 +1385,14 @@ TEST_F(PlayerComponentTest, NonPositiveClimbDurationFinishesTheClimbAtOnce)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
     player.SetClimbMove(0.0f, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
 
-    EXPECT_EQ(CurrentStateName(obj), IdlePlayerState::k_Name);
+    EXPECT_TRUE(IsState<IdlePlayerState>(obj));
 }
 
 TEST_F(PlayerComponentTest, JumpFromTheLedgeGoesStraightUp)
@@ -1409,15 +1408,15 @@ TEST_F(PlayerComponentTest, JumpFromTheLedgeGoesStraightUp)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
     const float hangY = obj.Root().Position().y;
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
     player.SetJumpPressed();
     player.OnUpdate();
 
-    EXPECT_NE(CurrentStateName(obj), LedgeClimbingPlayerState::k_Name);
-    EXPECT_NE(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_FALSE(IsState<LedgeClimbingPlayerState>(obj));
+    EXPECT_FALSE(IsState<LedgeHangingPlayerState>(obj));
     EXPECT_GT(player.Velocity().y, 0.0f);
     EXPECT_FALSE(player.IsGrounded());
 
@@ -1444,15 +1443,15 @@ TEST_F(PlayerComponentTest, StandsOnTheTopAfterClimbing)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
     player.SetClimbMove(0.0f, 1.0f);
-    for (int i = 0; i < 30 && CurrentStateName(obj) != IdlePlayerState::k_Name; ++i)
+    for (int i = 0; i < 30 && !IsState<IdlePlayerState>(obj); ++i)
     {
         player.OnUpdate();
     }
-    ASSERT_EQ(CurrentStateName(obj), IdlePlayerState::k_Name);
+    ASSERT_TRUE(IsState<IdlePlayerState>(obj));
     player.SetClimbMove(0.0f, 0.0f);
 
     const float restY = 0.5f + player.CapsuleHalfHeight() + player.CapsuleRadius();
@@ -1460,7 +1459,7 @@ TEST_F(PlayerComponentTest, StandsOnTheTopAfterClimbing)
     {
         player.OnUpdate();
         EXPECT_TRUE(player.IsGrounded()) << "登り切ってから " << i << " フレーム目";
-        EXPECT_EQ(CurrentStateName(obj), IdlePlayerState::k_Name) << "登り切ってから " << i << " フレーム目";
+        EXPECT_TRUE(IsState<IdlePlayerState>(obj)) << "登り切ってから " << i << " フレーム目";
     }
     EXPECT_NEAR(obj.Root().Position().y, restY, 1e-3f);
 }
@@ -1478,13 +1477,13 @@ TEST_F(PlayerComponentTest, ReleaseButtonDropsFromTheLedge)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
     player.SetReleaseLedgePressed();
     player.OnUpdate();
 
-    EXPECT_EQ(CurrentStateName(obj), FallPlayerState::k_Name);
+    EXPECT_TRUE(IsState<FallPlayerState>(obj));
     // 掴んでいる間も動かす。壁からはキャラクタの余白 2 cm ぶん離れた所で手を放す
     EXPECT_NEAR(obj.Root().Position().x, -0.9f, 0.05f);
     EXPECT_FLOAT_EQ(player.Velocity().x, 0.0f);
@@ -1505,14 +1504,14 @@ TEST_F(PlayerComponentTest, BackInputKeepsHangingOnTheLedge)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
     for (int i = 0; i < 30; ++i)
     {
         player.SetClimbMove(0.0f, -1.0f);
         player.OnUpdate();
-        ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name) << "後ろ入力 " << i << " フレーム目";
+        ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj)) << "後ろ入力 " << i << " フレーム目";
     }
 }
 
@@ -1532,7 +1531,7 @@ TEST_F(PlayerComponentTest, GrabsTheLedgeWhenFallingPastItInOneFrame)
     player.OnUpdate();
     player.OnUpdate();
 
-    EXPECT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 }
 
 TEST_F(PlayerComponentTest, DoesNotRegrabAfterReleasingWithoutInput)
@@ -1548,17 +1547,17 @@ TEST_F(PlayerComponentTest, DoesNotRegrabAfterReleasingWithoutInput)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
     player.SetReleaseLedgePressed();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), FallPlayerState::k_Name);
+    ASSERT_TRUE(IsState<FallPlayerState>(obj));
 
     for (int i = 0; i < 60; ++i)
     {
         player.OnUpdate();
-        ASSERT_NE(CurrentStateName(obj), LedgeHangingPlayerState::k_Name) << "手放してから " << i << " フレーム目";
+        ASSERT_FALSE(IsState<LedgeHangingPlayerState>(obj)) << "手放してから " << i << " フレーム目";
     }
 }
 
@@ -1576,17 +1575,17 @@ TEST_F(PlayerComponentTest, DoesNotRegrabWhileFallingPastTheLedge)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 
     player.SetReleaseLedgePressed();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), FallPlayerState::k_Name);
+    ASSERT_TRUE(IsState<FallPlayerState>(obj));
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     for (int i = 0; i < 60; ++i)
     {
         player.OnUpdate();
-        EXPECT_NE(CurrentStateName(obj), LedgeHangingPlayerState::k_Name) << "手放してから " << i << " フレーム目";
+        EXPECT_FALSE(IsState<LedgeHangingPlayerState>(obj)) << "手放してから " << i << " フレーム目";
     }
 }
 
@@ -1605,16 +1604,16 @@ TEST_F(PlayerComponentTest, ZeroTurnSpeedFacesTheMoveAtOnce)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 
     player.SetReleaseLedgePressed();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), FallPlayerState::k_Name);
+    ASSERT_TRUE(IsState<FallPlayerState>(obj));
 
     // 向きが決まるのは動かす所。壁を向いた向きで掴みを試すのはその次のフレーム
     player.OnUpdate();
     player.OnUpdate();
-    EXPECT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 }
 
 TEST_F(PlayerComponentTest, ShimmyMovesAlongTheLedge)
@@ -1632,7 +1631,7 @@ TEST_F(PlayerComponentTest, ShimmyMovesAlongTheLedge)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
     const float zStart = obj.Root().Position().z;
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
@@ -1640,7 +1639,7 @@ TEST_F(PlayerComponentTest, ShimmyMovesAlongTheLedge)
     for (int i = 0; i < 20; ++i)
         player.OnUpdate();
 
-    EXPECT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_TRUE(IsState<LedgeHangingPlayerState>(obj));
     EXPECT_GT(std::abs(obj.Root().Position().z - zStart), 0.4f);
 }
 
@@ -1658,7 +1657,7 @@ TEST_F(PlayerComponentTest, ShimmyFollowsTheNextLedgeHeight)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
     player.SetClimbMove(1.0f, 0.0f);
@@ -1667,7 +1666,7 @@ TEST_F(PlayerComponentTest, ShimmyFollowsTheNextLedgeHeight)
         player.OnUpdate();
     }
 
-    EXPECT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_TRUE(IsState<LedgeHangingPlayerState>(obj));
     EXPECT_LT(obj.Root().Position().z, -0.5f);
     EXPECT_NEAR(obj.Root().Position().y, 0.3f - player.CapsuleHalfHeight(), 1e-3f);
 }
@@ -1685,14 +1684,14 @@ TEST_F(PlayerComponentTest, ShimmyStopsAtTheLedgeEnd)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
     player.SetClimbMove(1.0f, 0.0f);
     for (int i = 0; i < 60; ++i)
         player.OnUpdate();
 
-    EXPECT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_TRUE(IsState<LedgeHangingPlayerState>(obj));
     EXPECT_LE(std::abs(obj.Root().Position().z), 0.55f);
 }
 
@@ -1711,7 +1710,7 @@ TEST_F(PlayerComponentTest, ShimmyMovesWithWeakInput)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
     const float zStart = obj.Root().Position().z;
 
     // 0.3 はパッドの遊び 7849 / 32767 = 0.24 を越えた直後に届く値
@@ -1722,7 +1721,7 @@ TEST_F(PlayerComponentTest, ShimmyMovesWithWeakInput)
         player.OnUpdate();
     }
 
-    EXPECT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    EXPECT_TRUE(IsState<LedgeHangingPlayerState>(obj));
     EXPECT_GT(std::abs(obj.Root().Position().z - zStart), 0.1f);
 }
 
@@ -1740,7 +1739,7 @@ TEST_F(PlayerComponentTest, ShimmyStaysWithoutInput)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
     const float zStart = obj.Root().Position().z;
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
