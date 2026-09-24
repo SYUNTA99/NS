@@ -1,3 +1,4 @@
+#include "Game/Level/Goal.h"
 #include "Game/Level/KillZone.h"
 #include "Game/Level/Respawner.h"
 #include "Game/Level/ScreenFade.h"
@@ -29,14 +30,15 @@ namespace
         return object;
     }
 
-    // プレイヤーと同じ場所に置くトリガの hazard 箱を組む。トリガなので物理に押し出されない
-    SceneNs::ObjectData MakeTriggerHazard()
+    // ゴールの接触判定は LateUpdate 帯で走る。印が立ったかで、その tick に帯の更新が回ったかを見る
+    bool GoalReached(SceneNs::Scene& scene)
     {
-        SceneNs::ObjectData object;
-        nlohmann::json box = SceneNs::MakeComponentEntry("BoxCollider");
-        SceneNs::SetField(box, "トリガー", true);
-        object.components = nlohmann::json::array({std::move(box), SceneNs::MakeComponentEntry("Hazard")});
-        return object;
+        bool reached = false;
+        scene.Objects().ForEachComponent<LevelNs::Goal>([&reached](LevelNs::Goal& goal) {
+            if (goal.Reached())
+                reached = true;
+        });
+        return reached;
     }
 
     // 応答 component を載せた GameObject から暗転を引く。GameObject は無名なので component 検索で見つける
@@ -95,23 +97,6 @@ TEST(PlayerResponses, FallIntoKillZoneRestartsSameTick)
     EXPECT_GT(player->Root().Position().y, -50.0f);
 }
 
-TEST(PlayerResponses, HazardDrainsExactlyOncePerTick)
-{
-    SceneNs::Scene scene;
-    SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(MakeTriggerHazard());
-    scene.LoadFromData(std::move(data));
-    (void)scene.BeginPlayBaseline();
-
-    auto* player = FindPlayer(scene.Objects());
-    ASSERT_NE(player, nullptr);
-    scene.OnUpdate();
-
-    // 判定が 1 tick に 2 回走ると 6 になる
-    EXPECT_EQ(player->Health(), 7);
-}
-
 TEST(PlayerResponses, GoalContactStartsClearFadeSameTick)
 {
     SceneNs::Scene scene;
@@ -135,18 +120,15 @@ TEST(PlayerResponses, PausedTickAdvancesNothing)
     SceneNs::Scene scene;
     SceneNs::SceneData data;
     data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(MakeTriggerHazard());
+    data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
 
-    auto* player = FindPlayer(scene.Objects());
-    ASSERT_NE(player, nullptr);
-    player->ApplyDamage(5);
     scene.SetSimulationPaused(true);
     scene.OnUpdate();
 
-    // 時間停止中は hazard の中に居てもルール評価は走らない
-    EXPECT_EQ(player->Health(), 3);
+    // 時間停止中はゴールに重なっていてもルール評価は走らない
+    EXPECT_FALSE(GoalReached(scene));
 }
 
 TEST(PlayerResponses, StepFrameAdvancesExactlyOneTick)
@@ -154,19 +136,26 @@ TEST(PlayerResponses, StepFrameAdvancesExactlyOneTick)
     SceneNs::Scene scene;
     SceneNs::SceneData data;
     data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(MakeTriggerHazard());
+    data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
 
-    auto* player = FindPlayer(scene.Objects());
-    ASSERT_NE(player, nullptr);
-
-    // コマ送り 1 回で hazard がちょうど 1 削り、その後は止まったまま
+    // コマ送り 1 回でゴールの暗転が始まる
     scene.StepSimulation();
     scene.OnUpdate();
-    EXPECT_EQ(player->Health(), 7);
+    auto* fade = FindFade(scene);
+    ASSERT_NE(fade, nullptr);
+    ASSERT_TRUE(fade->IsFading());
+    const float afterFirstStep = fade->Alpha();
+
+    // コマ送りしない tick は止まったまま
     scene.OnUpdate();
-    EXPECT_EQ(player->Health(), 7);
+    EXPECT_FLOAT_EQ(fade->Alpha(), afterFirstStep);
+
+    // 次のコマ送りでだけ暗転が進む
+    scene.StepSimulation();
+    scene.OnUpdate();
+    EXPECT_GT(fade->Alpha(), afterFirstStep);
 }
 
 TEST(PlayerResponses, DisabledSimulationSkipsObjectUpdates)
@@ -174,22 +163,19 @@ TEST(PlayerResponses, DisabledSimulationSkipsObjectUpdates)
     SceneNs::Scene scene;
     SceneNs::SceneData data;
     data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    data.objects.push_back(MakeTriggerHazard());
+    data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
 
-    auto* player = FindPlayer(scene.Objects());
-    ASSERT_NE(player, nullptr);
-
-    // 編集モード相当。component の更新が走らないので hazard の中でも何も起きない
+    // 編集モード相当。component の更新が走らないのでゴールに重なっていても何も起きない
     scene.SetSimulationEnabled(false);
     scene.OnUpdate();
-    EXPECT_EQ(player->Health(), 8);
+    EXPECT_FALSE(GoalReached(scene));
 
     // 回し直すと同じ tick からルール評価が戻る
     scene.SetSimulationEnabled(true);
     scene.OnUpdate();
-    EXPECT_EQ(player->Health(), 7);
+    EXPECT_TRUE(GoalReached(scene));
 }
 
 TEST(PlayerResponses, ClearFadesOutRestartsAtBlackThenFadesIn)

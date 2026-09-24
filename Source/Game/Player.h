@@ -11,7 +11,7 @@ namespace NS::Obj
 //! @brief プレイヤーキャラクタ。Mesh / Movement / Input / Health / Shadow の既定構成をコードで組む
 //! @details 値と追加の component はファクトリがプレイヤーの ObjectData から写す
 //! 移動やつかみ等の能力 API はここに置き、実装は各 Component が持つ
-//! hazard / KillZone 等のルール配置物は FindPlayer で得た Player* へ能力を呼ぶ。プレイヤーはルールを知らない
+//! KillZone 等のルール配置物は FindPlayer で得た Player* へ能力を呼ぶ。プレイヤーはルールを知らない
 class Player : public NS::Obj::GameObject
 {
 public:

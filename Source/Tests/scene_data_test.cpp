@@ -52,7 +52,7 @@ TEST(SceneDataComponents, ComponentEntryHoldsTypeAndFields)
 TEST(SceneDataComponents, ObjectDataCopyIsDeep)
 {
     SceneNs::ObjectData a{};
-    a.components.push_back(SceneNs::MakeComponentEntry("Hazard"));
+    a.components.push_back(SceneNs::MakeComponentEntry("Goal"));
 
     SceneNs::ObjectData b = a;
     b.components.clear();

@@ -1,7 +1,6 @@
 #include "Editor/EditorObjects.h"
 
 #include "Game/Level/Goal.h"
-#include "Game/Level/Hazard.h"
 #include "Game/Level/KillZone.h"
 #include "Game/Player.h"
 #include "Runtime/Graphics/Mesh.h"
@@ -247,10 +246,9 @@ namespace NS::Editor
     {
         const bool hasBox = HasComponentType(object, "BoxCollider");
         const bool hasSlope = HasComponentType(object, "SlopeCollider");
-        const bool hasHazard = HasComponentType(object, "Hazard");
         const bool hasGoal = NS::Game::Level::IsGoalObject(object);
         const bool hasKillZone = NS::Game::Level::IsKillZoneObject(object);
-        return hasBox && !hasSlope && !hasHazard && !hasGoal && !hasKillZone;
+        return hasBox && !hasSlope && !hasGoal && !hasKillZone;
     }
 
     bool IsRotatableObject(const NS::Obj::ObjectData& object)
@@ -290,8 +288,6 @@ namespace NS::Editor
             return "Slope";
         }
 
-        if (HasComponentType(object, "Hazard"))
-            return "Hazard";
         if (MaterialRefOf(object) == "water")
             return "Water";
         if (HasComponentType(object, "SphereCollider"))
@@ -338,8 +334,6 @@ namespace NS::Editor
             return "Slope";
         }
 
-        if (object.FindComponent<NS::Game::Level::Hazard>() != nullptr)
-            return "Hazard";
         auto* mesh = object.FindComponent<NS::Obj::MeshRenderer>();
         if (mesh != nullptr && mesh->MaterialRef() == "water")
             return "Water";

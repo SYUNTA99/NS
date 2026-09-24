@@ -2,6 +2,7 @@
 #include "Editor/EditorObjects.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
+#include "Game/Level/Goal.h"
 #include "Game/Level/LaunchedBody.h"
 #include "Game/Level/ScreenFade.h"
 #include "Game/Player.h"
@@ -24,16 +25,6 @@ namespace
         NS::Obj::ObjectData object;
         NS::Obj::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
         object.components.push_back(NS::Obj::MakeComponentEntry("Goal"));
-        return object;
-    }
-
-    // プレイヤーと同じ場所に置くトリガの hazard 箱を組む
-    NS::Obj::ObjectData MakeTriggerHazard()
-    {
-        NS::Obj::ObjectData object;
-        nlohmann::json box = NS::Obj::MakeComponentEntry("BoxCollider");
-        NS::Obj::SetField(box, "トリガー", true);
-        object.components = nlohmann::json::array({std::move(box), NS::Obj::MakeComponentEntry("Hazard")});
         return object;
     }
 
@@ -194,16 +185,18 @@ TEST(ModeToggle, EditModeRebuildKeepsWorldStill)
     NS::Obj::ObjectData player = MakePlayerObject(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, NS::Core::Quaternion{});
     const std::uint32_t playerId = scene.Objects().AllocateObjectId();
     applier.ApplyObjectSnapshot(playerId, player);
-    NS::Obj::ObjectData hazard = MakeTriggerHazard();
-    NS::Obj::SetObjectPosition(hazard, NS::Core::Vector3{0.0f, 2.0f, 0.0f});
-    const std::uint32_t hazardId = scene.Objects().AllocateObjectId();
-    applier.ApplyObjectSnapshot(hazardId, hazard);
+    // プレイヤーに重ねたゴール。世界が回るとその tick に接触の印が立つ
+    const std::uint32_t goalId = scene.Objects().AllocateObjectId();
+    applier.ApplyObjectSnapshot(goalId, MakeGoal(0.0f, 2.0f, 0.0f));
 
     scene.OnUpdate();
 
-    Player* live = FindPlayer(scene.Objects());
-    ASSERT_NE(live, nullptr);
-    EXPECT_EQ(live->Health(), 8);
+    bool reached = false;
+    scene.Objects().ForEachComponent<NS::Game::Level::Goal>([&reached](NS::Game::Level::Goal& goal) {
+        if (goal.Reached())
+            reached = true;
+    });
+    EXPECT_FALSE(reached);
 }
 
 TEST(ModeToggle, EnterPlayPlacesPlayerAtBaselinePosition)

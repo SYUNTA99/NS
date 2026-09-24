@@ -5,7 +5,7 @@
 namespace NS::Game::Level
 {
     //! @brief プレイヤーの命。残量の所有と増減の能力だけ持ち、誰に削られるかは知らない
-    //! @details hazard / KillZone 等のルール配置物が ApplyDamage / Kill を呼ぶ
+    //! @details KillZone 等のルール配置物が ApplyDamage / Kill を呼ぶ
     //! 死んだ後どうするかは Respawner が IsDead を読んで決める。OnUpdate は持たない
     class Health : public NS::Obj::Component
     {
@@ -29,7 +29,7 @@ namespace NS::Game::Level
         NS_REFLECT_END()
 
     private:
-        int m_maxHealth = 8; // 8 段階。hazard 接触 1 回で 1 減る
+        int m_maxHealth = 8; // 8 段階
         int m_current = 8;   // プレイ中の残量。保存せず、プレイ突入とリスタートで満タンに戻る
     };
 } // namespace NS::Game::Level

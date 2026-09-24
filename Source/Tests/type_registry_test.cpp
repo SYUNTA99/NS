@@ -60,7 +60,6 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
         "CollisionInput",
         "ImpactResolver",
         "FollowCameraFeed",
-        "Hazard",
         "Health",
         "ImpactMark",
         "KillZone",
@@ -144,7 +143,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 29u);
+    EXPECT_EQ(names.size(), 28u);
     EXPECT_TRUE(Contains(names, "BoxCollider"));
     EXPECT_TRUE(Contains(names, "MeshRenderer"));
     EXPECT_TRUE(Contains(names, "PlayerComponent"));
@@ -174,7 +173,6 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "押しの構えの縮み"}},
         {"DirectionalLight", {"方向", "色", "環境光", "地面環境光", "露出"}},
         {"FollowCameraFeed", {}},
-        {"Hazard", {}},
         {"Health", {"体力"}},
         {"ImpactMark", {"跡の直径", "跡の残る秒"}},
         {"ImpactResolver",
@@ -334,7 +332,6 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"CollisionInput", {}},
         {"DirectionalLight", {}},
         {"FollowCameraFeed", {}},
-        {"Hazard", {}},
         {"Health", {}},
         {"ImpactMark", {}},
         {"ImpactResolver", {"OverlayRenderer"}},

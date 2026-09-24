@@ -1,4 +1,4 @@
-#include <Game/Level/Hazard.h>
+#include <Game/Level/KillZone.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/BoxCollider.h>
@@ -100,15 +100,15 @@ TEST(ReflectionJsonTest, RoundTripStringField)
     EXPECT_EQ(dst.Label(), "world");
 }
 
-TEST(ReflectionJsonTest, HazardReflectsWithEmptyFields)
+TEST(ReflectionJsonTest, KillZoneReflectsWithEmptyFields)
 {
-    NS::Game::Level::Hazard hazard;
-    const ReflectionInfo* info = hazard.GetReflection();
+    NS::Game::Level::KillZone killZone;
+    const ReflectionInfo* info = killZone.GetReflection();
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 0u);
 
-    const nlohmann::json j = SerializeComponent(hazard);
-    EXPECT_EQ(j["type"], "Hazard");
+    const nlohmann::json j = SerializeComponent(killZone);
+    EXPECT_EQ(j["type"], "KillZone");
     ASSERT_TRUE(j["fields"].is_object());
     EXPECT_TRUE(j["fields"].empty());
 }

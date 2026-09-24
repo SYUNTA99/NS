@@ -1,6 +1,5 @@
 #include "Game/Player.h"
 
-#include <Game/Level/Hazard.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Core/OBB.h>
@@ -45,7 +44,6 @@ namespace
         bool hasSphere = false;
         bool hasCapsule = false;
         bool hasSlope = false;
-        bool hasHazard = false;
         NS::Core::AABB boxAabb{};
         NS::Core::OBB boxObb;
         NS::Core::Sphere sphere;
@@ -86,8 +84,6 @@ namespace
             sig.slopeAngle = slope->AngleDegrees();
             sig.slopeTriangles = slope->WorldTriangles();
         }
-        if (obj.FindComponent<NS::Game::Level::Hazard>())
-            sig.hasHazard = true;
         return sig;
     }
 
@@ -97,7 +93,6 @@ namespace
         EXPECT_EQ(expected.hasSphere, actual.hasSphere);
         EXPECT_EQ(expected.hasCapsule, actual.hasCapsule);
         EXPECT_EQ(expected.hasSlope, actual.hasSlope);
-        EXPECT_EQ(expected.hasHazard, actual.hasHazard);
 
         if (expected.hasBox && actual.hasBox)
         {

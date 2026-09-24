@@ -37,7 +37,7 @@ Player::Player() noexcept
     AddComponent<NS::Obj::PlayerInput>();
     // 入力は NS::Obj に居て自機の型を名指しできないので、値の受け渡しを挟む
     AddComponent<NS::Game::Player::PlayerInputRelay>();
-    // 命は player 自身の持ち物。hazard 等のルール配置物がこれを削る
+    // 命は player 自身の持ち物。ルール配置物がこれを削る
     AddComponent<NS::Game::Level::Health>();
     // 接地シャドウ。mesh / material は後から注入される
     AddComponent<NS::Obj::Shadow>();
