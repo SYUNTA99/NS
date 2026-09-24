@@ -175,9 +175,6 @@ public:
     //! 選択中の配置物がプレイヤー実体か
     [[nodiscard]] bool SelectedIsPlayerObject() const noexcept;
 
-    //! 選択中のオブジェクトを指す ObjectRef 参照を全オブジェクトから集める
-    [[nodiscard]] std::vector<NS::Obj::ObjectRefLocation> ReferencesToSelected();
-
     //! @brief 配置物の表示名を差し替えて undo へ積む
     //! @param[in] id 対象の永続 object id。居なければ何もしない
     //! @param[in] name 新しい表示名。空にすると型からの導出名へ戻る
@@ -217,6 +214,10 @@ public:
     void CopyComponentToClipboard(std::size_t componentIndex);
     //! クリップボードのコンポーネントを選択中の配置物の末尾へ追加する。上書きはしない
     void PasteClipboardComponentToSelected();
+
+    //! @brief 選択中の配置物の componentIndex 番目の component の名前を変えて undo へ積む
+    //! @details 配置物の中で重なれば番号を付ける。空は型名に戻す。参照は id で持つので切れない
+    void RenameComponentOnSelected(std::size_t componentIndex, std::string_view name);
 
     //! クリップボードにコンポーネントが控えられているか
     [[nodiscard]] bool HasClipboardComponent() const noexcept { return m_componentClipboard.has_value(); }

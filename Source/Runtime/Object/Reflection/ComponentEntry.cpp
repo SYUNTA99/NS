@@ -94,6 +94,34 @@ namespace NS::Obj
         entry["id"] = id;
     }
 
+    std::string_view ComponentEntryName(const nlohmann::json& entry) noexcept
+    {
+        if (!entry.is_object())
+        {
+            return {};
+        }
+        const nlohmann::json::const_iterator it = entry.find("name");
+        if (it == entry.end() || !it->is_string())
+        {
+            return {};
+        }
+        return it->get_ref<const std::string&>();
+    }
+
+    void SetComponentEntryName(nlohmann::json& entry, std::string_view name)
+    {
+        if (!entry.is_object())
+        {
+            return;
+        }
+        if (name.empty())
+        {
+            entry.erase("name");
+            return;
+        }
+        entry["name"] = std::string(name);
+    }
+
     bool ComponentEntryEnabled(const nlohmann::json& entry) noexcept
     {
         if (!entry.is_object())

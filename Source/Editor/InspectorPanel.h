@@ -22,6 +22,9 @@ namespace NS::Editor
         std::uint32_t m_nameId = 0;       // 名前欄が今映している対象。選択が変わったら入れ直す
         std::uint32_t m_nameCommitId = 0; // このフレームに確定した名前の対象、0 なら無し
         char m_addComponentFilter[64]{};  // Add Component ポップアップの検索欄。開くたびに空へ戻す
+        char m_componentNameBuffer[64]{}; // component のメニューの名前欄。メニューを開くたびに今の名前を入れる
+        std::size_t m_componentRenameIndex = 0;  // このフレームに名前が確定した component の添字
+        bool m_componentRenameCommitted = false; // このフレームに component の名前が確定したか
         ComponentDefaults m_defaults;     // 既定と違う欄に印を出すための比べ先
     };
 } // namespace NS::Editor

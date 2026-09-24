@@ -52,6 +52,7 @@ namespace NS::Editor
     {
 #if NS_EDITOR_ENABLED
         m_nameCommitId = 0;
+        m_componentRenameCommitted = false;
         if (ImGui::Begin(k_PanelInspector))
         {
             // ObjectRef フィールドの参照先候補。Hierarchy と同じ並びと表示名で全配置物を出す
@@ -70,6 +71,25 @@ namespace NS::Editor
                               NS::Editor::ObjectDisplayName(candidate),
                               candidate.Id());
                 refOptions.push_back(NS::Editor::ObjectRefOption{candidate.Id(), label});
+            }
+
+            // ComponentRef フィールドの参照先候補。「配置物の名前 / Component の名前」で出し、型の絞り込みは欄が行う
+            std::vector<NS::Editor::ComponentRefOption> componentOptions;
+            for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
+            {
+                NS::Obj::GameObject& candidate = *editor.Objects().ObjectAt(i);
+                if (candidate.IsTransient())
+                    continue;
+                for (const NS::Obj::Component* comp : candidate.Components())
+                {
+                    if (comp == nullptr || comp->Id() == 0)
+                        continue;
+                    std::string label = NS::Editor::ObjectDisplayName(candidate);
+                    label += " / ";
+                    label += comp->Name();
+                    componentOptions.push_back(
+                        NS::Editor::ComponentRefOption{candidate.Id(), comp->Id(), comp, std::move(label)});
+                }
             }
 
             if (!editor.HasInspectableSelection())
@@ -202,8 +222,17 @@ namespace NS::Editor
                 ImGui::PushStyleColor(ImGuiCol_HeaderHovered, NS::Editor::k_ComponentHeaderHoveredColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderActive, NS::Editor::k_ComponentHeaderActiveColor);
                 // AllowOverlap 無しだとヘッダが全幅の当たりを取り、右端に重ねた「...」がクリックを拾えない
+                // 見出しは名前。型名と違う名前を付けた物だけ型名を添える
+                std::string header = components[k]->Name();
+                if (header != typeName)
+                {
+                    header += " (";
+                    header += typeName;
+                    header += ")";
+                }
+                header += "###component";
                 const bool open = ImGui::CollapsingHeader(
-                    typeName.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
+                    header.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
                 ImGui::PopStyleColor(3);
 
                 // コピー / 削除はヘッダ右端の三点メニューへまとめる
@@ -213,6 +242,18 @@ namespace NS::Editor
                     ImGui::OpenPopup("ComponentMenu");
                 if (ImGui::BeginPopup("ComponentMenu"))
                 {
+                    // 名前はメニューから変える。改名は配置物を組み直すので、このパネルを描き終えてから流す
+                    if (ImGui::IsWindowAppearing())
+                        std::snprintf(
+                            m_componentNameBuffer, sizeof(m_componentNameBuffer), "%s", components[k]->Name().c_str());
+                    ImGui::SetNextItemWidth(160.0f);
+                    ImGui::InputText("名前", m_componentNameBuffer, sizeof(m_componentNameBuffer));
+                    if (ImGui::IsItemDeactivatedAfterEdit())
+                    {
+                        m_componentRenameIndex = k;
+                        m_componentRenameCommitted = true;
+                    }
+                    ImGui::Separator();
                     if (ImGui::MenuItem("コンポーネントをコピー"))
                         editor.CopyComponentToClipboard(k);
                     // 最後の 1 個は消すと空構成になる。プレイヤーの印の入力 component も消させない
@@ -229,7 +270,7 @@ namespace NS::Editor
                     {
                         const NS::Obj::Component* baseline = m_defaults.Find(typeName);
                         const NS::Editor::ComponentEditResult r =
-                            NS::Editor::DrawReflectedComponent(*live, refOptions, baseline);
+                            NS::Editor::DrawReflectedComponent(*live, refOptions, baseline, componentOptions);
                         componentEdit.activated |= r.activated;
                         componentEdit.committed |= r.committed;
                         componentEdit.changed |= r.changed;
@@ -305,6 +346,8 @@ namespace NS::Editor
 
         if (m_nameCommitId != 0)
             editor.RenameObject(m_nameCommitId, m_nameBuffer);
+        if (m_componentRenameCommitted)
+            editor.RenameComponentOnSelected(m_componentRenameIndex, m_componentNameBuffer);
 #else
         (void)editor;
 #endif

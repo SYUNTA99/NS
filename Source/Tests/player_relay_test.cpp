@@ -27,7 +27,6 @@ namespace
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerInputRelay;
     using NS::Obj::GameObject;
-    using NS::Obj::ObjectIdAccess;
     using NS::Obj::ObjectRef;
     using NS::Obj::Scene;
     using NS::Obj::ThirdPersonFollow;
@@ -40,7 +39,6 @@ namespace
     constexpr float k_JumpDistance = 12.0f;
     constexpr float k_RunSpeedThreshold = 4.0f;
 
-    constexpr std::uint32_t k_PlayerId = 11u;
 
     void BuildRelayRig(GameObject& owner)
     {
@@ -87,10 +85,14 @@ namespace
         return FeedCamera{follow, feed};
     }
 
-    GameObject& SpawnTarget(Scene& scene, std::uint32_t id, bool withEntity)
+    // numbered を外すと id の無い一時オブジェクトになる。参照では引けない
+    GameObject& SpawnTarget(Scene& scene, bool numbered, bool withEntity)
     {
-        GameObject* owner = scene.SpawnTransient<GameObject>();
-        ObjectIdAccess::SetId(*owner, id);
+        GameObject* owner = nullptr;
+        if (numbered)
+            owner = scene.SpawnObject(std::make_unique<GameObject>(), "Target");
+        else
+            owner = scene.SpawnTransient<GameObject>();
         if (withEntity)
         {
             owner->AddComponent<PlayerComponent>();
@@ -254,8 +256,8 @@ TEST_F(PlayerRelayTest, MissingSideIsHarmless)
 TEST_F(PlayerRelayTest, AirborneTargetZoomsTheCamera)
 {
     Scene scene;
-    GameObject& target = SpawnTarget(scene, k_PlayerId, true);
-    FeedCamera camera = AddFeedCamera(scene, k_PlayerId);
+    GameObject& target = SpawnTarget(scene, true, true);
+    FeedCamera camera = AddFeedCamera(scene, target.Id());
     ASSERT_EQ(camera.follow.Target(), &target.Root());
 
     ASSERT_FALSE(Player(target).IsGrounded());
@@ -268,8 +270,8 @@ TEST_F(PlayerRelayTest, AirborneTargetZoomsTheCamera)
 TEST_F(PlayerRelayTest, GroundedRunSpeedReachesTheCamera)
 {
     Scene scene;
-    GameObject& target = SpawnTarget(scene, k_PlayerId, true);
-    FeedCamera camera = AddFeedCamera(scene, k_PlayerId);
+    GameObject& target = SpawnTarget(scene, true, true);
+    FeedCamera camera = AddFeedCamera(scene, target.Id());
 
     Player(target).SetGrounded(true);
     Player(target).SetVelocity(Vector3{10.0f, 0.0f, 0.0f});
@@ -283,7 +285,7 @@ TEST_F(PlayerRelayTest, GroundedRunSpeedReachesTheCamera)
 TEST_F(PlayerRelayTest, UnsetTargetFeedsNothing)
 {
     Scene scene;
-    GameObject& target = SpawnTarget(scene, 0u, true);
+    GameObject& target = SpawnTarget(scene, false, true);
     FeedCamera camera = AddFeedCamera(scene, 0u);
 
     ASSERT_FALSE(Player(target).IsGrounded());
@@ -296,8 +298,8 @@ TEST_F(PlayerRelayTest, UnsetTargetFeedsNothing)
 TEST_F(PlayerRelayTest, TargetWithoutEntityFeedsNothing)
 {
     Scene scene;
-    GameObject& target = SpawnTarget(scene, k_PlayerId, false);
-    FeedCamera camera = AddFeedCamera(scene, k_PlayerId);
+    GameObject& target = SpawnTarget(scene, true, false);
+    FeedCamera camera = AddFeedCamera(scene, target.Id());
     ASSERT_EQ(camera.follow.Target(), &target.Root());
 
     camera.feed.OnUpdate();

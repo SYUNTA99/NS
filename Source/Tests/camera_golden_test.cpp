@@ -30,11 +30,9 @@ namespace
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManager;
     using NS::Obj::GameObject;
-    using NS::Obj::ObjectIdAccess;
     using NS::Obj::ThirdPersonFollow;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
-    constexpr std::uint32_t k_PlayerId = 1u;
 
     //! 1 step ごとのカメラ姿勢。見えはこの 3 つで決まる
     struct CameraStepRecord
@@ -102,7 +100,8 @@ namespace
     std::vector<CameraStepRecord> RunFollowWalkJump()
     {
         NsTest::EntityStage stage;
-        GameObject& player = stage.owner;
+        // 追従カメラが参照で引く相手なので、id を振る SpawnObject で置く
+        GameObject& player = *stage.scene.SpawnObject(std::make_unique<GameObject>(), "Player");
         NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 8.0f}});
         player.AddComponent<PlayerStateManager>();
@@ -110,11 +109,10 @@ namespace
         player.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
         physics.OptimizeBroadPhase();
         player.OnStart();
-        ObjectIdAccess::SetId(player, k_PlayerId);
 
         GameObject& rig = *stage.scene.SpawnTransient<GameObject>();
         ThirdPersonFollow& follow = *rig.AddComponent<ThirdPersonFollow>();
-        NsTest::WriteObjectRefField(follow, "追従対象", k_PlayerId);
+        NsTest::WriteObjectRefField(follow, "追従対象", player.Id());
         // 生成直後は休止なのでテスト側で有効化する
         follow.SetActive(true);
 

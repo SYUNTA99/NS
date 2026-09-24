@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/Core/Math.h"
+#include "Runtime/Object/Reflection/ComponentRef.h"
 #include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
 
@@ -25,7 +26,8 @@ namespace NS::Obj
         Quaternion,
         String,
         ObjectRef,
-        Curve
+        Curve,
+        ComponentRef
     };
 
     //! メンバ型から FieldType タグを引く。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
@@ -59,12 +61,37 @@ namespace NS::Obj
         {
             return FieldType::Curve;
         }
+        else if constexpr (std::is_base_of_v<ComponentRefValue, T>)
+        {
+            return FieldType::ComponentRef;
+        }
         else
         {
             static_assert(std::is_same_v<T, NS::Core::Vector3>,
                           "FieldTypeOf の T は float / int / bool / NS::Core::Vector3 / NS::Core::Quaternion / "
-                          "std::string / ObjectRef / Curve のいずれか");
+                          "std::string / ObjectRef / Curve / ComponentRef<T> のいずれか");
             return FieldType::Vector3;
+        }
+    }
+
+    //! @brief 型消去した get / set が値を受け渡す型。ComponentRef<T> は型を問わない ComponentRefValue で渡す
+    //! @details 保存と Inspector は欄の T を知らないので、共通の形で読み書きする
+    template <class T>
+    using FieldStorageOf = std::conditional_t<std::is_base_of_v<ComponentRefValue, T>, ComponentRefValue, T>;
+
+    //! 型のリフレクション情報を返す関数。ComponentRef<T> の欄が T::StaticReflection を持つのに使う
+    using ReflectionInfoFn = const ReflectionInfo* (*)() noexcept;
+
+    //! ComponentRef<T> の欄なら T のリフレクションを返す関数を、それ以外は nullptr を返す
+    template <class T> constexpr ReflectionInfoFn FieldRefTypeOf() noexcept
+    {
+        if constexpr (requires { typename T::Target; })
+        {
+            return &T::Target::StaticReflection;
+        }
+        else
+        {
+            return nullptr;
         }
     }
 
@@ -86,6 +113,10 @@ namespace NS::Obj
         {
             AssignIfFinite(target, *static_cast<const float*>(in));
         }
+        else if constexpr (std::is_base_of_v<ComponentRefValue, Field>)
+        {
+            static_cast<ComponentRefValue&>(target) = *static_cast<const ComponentRefValue*>(in);
+        }
         else
         {
             target = *static_cast<const Field*>(in);
@@ -101,6 +132,7 @@ namespace NS::Obj
         FieldType type;                                        // 値の型タグ
         void (*get)(const void* obj, void* outValue) noexcept; // obj から値を outValue へ取り出す
         void (*set)(void* obj, const void* inValue) noexcept;  // inValue を obj へ書き込む
+        ReflectionInfoFn refType = nullptr; // ComponentRef<T> の欄だけ T のリフレクション。選べる相手を絞る
     };
 
     //! @brief 1 コンポーネント型のリフレクション情報。マクロで宣言したフィールドの名前 / 型 / get / set を束ねる
@@ -163,9 +195,10 @@ namespace NS::Obj
         label,                                                                                                         \
         NS::Obj::FieldTypeOf<decltype(Self::member)>(),                                                             \
         +[](const void* c, void* out) noexcept {                                                                       \
-            *static_cast<decltype(Self::member)*>(out) = static_cast<const Self*>(c)->member;                          \
+            *static_cast<NS::Obj::FieldStorageOf<decltype(Self::member)>*>(out) = static_cast<const Self*>(c)->member; \
         },                                                                                                             \
-        +[](void* c, const void* in) noexcept { NS::Obj::AssignFieldValue(static_cast<Self*>(c)->member, in); }},
+        +[](void* c, const void* in) noexcept { NS::Obj::AssignFieldValue(static_cast<Self*>(c)->member, in); },      \
+        NS::Obj::FieldRefTypeOf<decltype(Self::member)>()},
 
 //! 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数
 #define NS_REFLECT_ACCESSOR(ValueType, label, getterCall, setterCall)                                                  \

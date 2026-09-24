@@ -19,9 +19,9 @@ namespace NS::Obj
     {
         // GameObject に既に載る同型 component をリフレクション型名で探す。適用済みの控えにある分は飛ばし、無ければ
         // nullptr
-        Component* FindExistingComponent(GameObject& obj,
+        Component* FindExistingComponent(const GameObject& obj,
                                          std::string_view typeName,
-                                         const std::vector<Component*>& applied)
+                                         const std::vector<Component*>& applied) noexcept
         {
             for (Component* comp : obj.Components())
             {
@@ -44,6 +44,31 @@ namespace NS::Obj
 
     } // namespace
 
+    Component* MatchComponentEntry(const GameObject& obj,
+                                   const nlohmann::json& entry,
+                                   const std::vector<Component*>& taken) noexcept
+    {
+        const std::string_view typeName = ComponentEntryType(entry);
+        if (typeName.empty())
+        {
+            return nullptr;
+        }
+        const std::string_view name = ComponentEntryName(entry);
+        if (!name.empty())
+        {
+            Component* named = obj.FindComponentByName(name);
+            if (named != nullptr && std::find(taken.begin(), taken.end(), named) == taken.end())
+            {
+                const ReflectionInfo* info = named->GetReflection();
+                if (info != nullptr && typeName == info->typeName)
+                {
+                    return named;
+                }
+            }
+        }
+        return FindExistingComponent(obj, typeName, taken);
+    }
+
     // データを唯一の正とする主経路。既定構成を積む GameObject では値だけが写り二重生成しない
     // データと live は 1 対 1 で対応させる
     void ApplyObjectComponents(GameObject& obj, const ObjectData& object, const ComponentBuiltFn& onBuilt)
@@ -62,7 +87,7 @@ namespace NS::Obj
                 continue;
             }
 
-            Component* created = FindExistingComponent(obj, typeName, applied);
+            Component* created = MatchComponentEntry(obj, entry, applied);
             if (created == nullptr)
             {
                 created = CreateComponent(std::string(typeName), obj);
@@ -73,8 +98,12 @@ namespace NS::Obj
             }
             applied.push_back(created);
 
-            // data の id を実体へ書く。以降この component は並び順でなく id で名指しできる
-            ObjectIdAccess::SetId(*created, ComponentEntryId(entry));
+            // 保存された名前へ付け直す。名前の無い古いデータは作った時の型名のまま
+            const std::string_view name = ComponentEntryName(entry);
+            if (!name.empty() && created->Name() != name)
+            {
+                obj.RenameComponent(*created, name);
+            }
             created->SetEnabled(ComponentEntryEnabled(entry));
 
             const nlohmann::json::const_iterator fieldsIt = entry.find("fields");
@@ -133,7 +162,10 @@ namespace NS::Obj
             {
                 continue;
             }
-            data.components.push_back(MakeComponentEntry(info->typeName));
+            nlohmann::json entry = MakeComponentEntry(info->typeName);
+            // コンストラクタが付けた名前も写す。同じ型を 2 つ積むクラスで、どちらの件かが名前で決まる
+            SetComponentEntryName(entry, comp->Name());
+            data.components.push_back(std::move(entry));
         }
         SetObjectPosition(data, obj.Root().Position());
         SetObjectRotation(data, obj.Root().Rotation());
@@ -164,8 +196,9 @@ namespace NS::Obj
             }
 
             nlohmann::json entry = SerializeComponent(*comp);
-            // id は往復で保つ。落とすと保存のたびに振り直しになり、名指ししている参照が外れる
+            // id と名前は往復で保つ。id を落とすと保存のたびに振り直しになり、参照が外れる
             SetComponentEntryId(entry, comp->Id());
+            SetComponentEntryName(entry, comp->Name());
             // active はデータ側だけを写す。モード切替の一時的な休止 (SetActive) は保存に持ち込まない
             SetComponentEntryEnabled(entry, comp->IsEnabled());
             data.components.push_back(std::move(entry));

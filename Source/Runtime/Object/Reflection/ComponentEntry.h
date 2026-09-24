@@ -30,6 +30,12 @@ namespace NS::Obj
     //! コンポーネント 1 件へ永続 id を書く。0 は未採番の印なので消す
     void SetComponentEntryId(nlohmann::json& entry, std::uint32_t id);
 
+    //! コンポーネント 1 件の名前。持ち主の配置物の中で一意。無い古いデータと壊れた形は空文字
+    [[nodiscard]] std::string_view ComponentEntryName(const nlohmann::json& entry) noexcept;
+
+    //! コンポーネント 1 件へ名前を書く。空は未設定の印なので消す
+    void SetComponentEntryName(nlohmann::json& entry, std::string_view name);
+
     //! コンポーネント 1 件のデータ active が有効か。印が無ければ有効
     [[nodiscard]] bool ComponentEntryEnabled(const nlohmann::json& entry) noexcept;
 

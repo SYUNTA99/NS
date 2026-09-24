@@ -26,6 +26,7 @@
             ]
           },
           "id": 7,
+          "name": "TransformComponent",
           "type": "TransformComponent"
         },
         {
@@ -39,6 +40,7 @@
             ]
           },
           "id": 5,
+          "name": "MeshRenderer",
           "type": "MeshRenderer"
         },
         {
@@ -61,6 +63,7 @@
             ]
           },
           "id": 6,
+          "name": "BoxCollider",
           "type": "BoxCollider"
         }
       ],
@@ -72,11 +75,13 @@
         {
           "fields": {},
           "id": 10,
+          "name": "PlayerInput",
           "type": "PlayerInput"
         },
         {
           "fields": {},
           "id": 63,
+          "name": "PlayerInputRelay",
           "type": "PlayerInputRelay"
         },
         {
@@ -113,6 +118,7 @@
             }
           },
           "id": 59,
+          "name": "CollisionInput",
           "type": "CollisionInput"
         },
         {
@@ -135,6 +141,7 @@
             "食い込み距離": 0.05999999865889549
           },
           "id": 30,
+          "name": "ImpactResolver",
           "type": "ImpactResolver"
         },
         {
@@ -157,6 +164,7 @@
             ]
           },
           "id": 12,
+          "name": "TransformComponent",
           "type": "TransformComponent"
         },
         {
@@ -170,11 +178,13 @@
             ]
           },
           "id": 8,
+          "name": "MeshRenderer",
           "type": "MeshRenderer"
         },
         {
           "fields": {},
           "id": 62,
+          "name": "PlayerStateManager",
           "type": "PlayerStateManager"
         },
         {
@@ -203,6 +213,7 @@
             "頂点滞空倍率": 0.5
           },
           "id": 9,
+          "name": "PlayerComponent",
           "type": "PlayerComponent"
         },
         {
@@ -210,6 +221,7 @@
             "体力": 8
           },
           "id": 18,
+          "name": "Health",
           "type": "Health"
         },
         {
@@ -220,6 +232,7 @@
             "表面オフセット": 0.019999999552965164
           },
           "id": 11,
+          "name": "Shadow",
           "type": "Shadow"
         },
         {
@@ -238,21 +251,25 @@
             ]
           },
           "id": 60,
+          "name": "CapsuleCollider",
           "type": "CapsuleCollider"
         },
         {
           "fields": {},
           "id": 20,
+          "name": "ScreenFade",
           "type": "ScreenFade"
         },
         {
           "fields": {},
           "id": 21,
+          "name": "Respawner",
           "type": "Respawner"
         },
         {
           "fields": {},
           "id": 22,
+          "name": "Finisher",
           "type": "Finisher"
         }
       ],
@@ -280,6 +297,7 @@
             ]
           },
           "id": 14,
+          "name": "TransformComponent",
           "type": "TransformComponent"
         },
         {
@@ -307,11 +325,13 @@
             "頭の高さ": 1.2000000476837158
           },
           "id": 13,
+          "name": "ThirdPersonFollow",
           "type": "ThirdPersonFollow"
         },
         {
           "fields": {},
           "id": 69,
+          "name": "FollowCameraFeed",
           "type": "FollowCameraFeed"
         }
       ],
@@ -340,6 +360,7 @@
             ]
           },
           "id": 16,
+          "name": "TransformComponent",
           "type": "TransformComponent"
         },
         {
@@ -367,6 +388,7 @@
             "露出": 1.350000023841858
           },
           "id": 15,
+          "name": "DirectionalLight",
           "type": "DirectionalLight"
         }
       ],
@@ -394,6 +416,7 @@
             ]
           },
           "id": 28,
+          "name": "TransformComponent",
           "type": "TransformComponent"
         }
       ],
@@ -422,6 +445,7 @@
             ]
           },
           "id": 36,
+          "name": "TransformComponent",
           "type": "TransformComponent"
         },
         {
@@ -435,6 +459,7 @@
             ]
           },
           "id": 37,
+          "name": "MeshRenderer",
           "type": "MeshRenderer"
         },
         {
@@ -447,6 +472,7 @@
             "半径": 0.5
           },
           "id": 38,
+          "name": "SphereCollider",
           "type": "SphereCollider"
         },
         {
@@ -468,6 +494,7 @@
             "重力を使う": true
           },
           "id": 70,
+          "name": "RigidBody",
           "type": "RigidBody"
         },
         {
@@ -475,6 +502,7 @@
             "耐久": 0.5
           },
           "id": 39,
+          "name": "Breakable",
           "type": "Breakable"
         },
         {
@@ -486,6 +514,7 @@
             "破片の速さ": 6.0
           },
           "id": 40,
+          "name": "LaunchedBody",
           "type": "LaunchedBody"
         },
         {
@@ -496,6 +525,7 @@
             "表面オフセット": 0.019999999552965164
           },
           "id": 65,
+          "name": "Shadow",
           "type": "Shadow"
         }
       ],
@@ -523,6 +553,7 @@
             ]
           },
           "id": 42,
+          "name": "TransformComponent",
           "type": "TransformComponent"
         },
         {
@@ -536,6 +567,7 @@
             ]
           },
           "id": 43,
+          "name": "MeshRenderer",
           "type": "MeshRenderer"
         },
         {
@@ -548,6 +580,7 @@
             "半径": 0.5
           },
           "id": 44,
+          "name": "SphereCollider",
           "type": "SphereCollider"
         },
         {
@@ -569,6 +602,7 @@
             "重力を使う": true
           },
           "id": 71,
+          "name": "RigidBody",
           "type": "RigidBody"
         },
         {
@@ -576,6 +610,7 @@
             "耐久": 1.0
           },
           "id": 45,
+          "name": "Breakable",
           "type": "Breakable"
         },
         {
@@ -587,6 +622,7 @@
             "破片の速さ": 6.0
           },
           "id": 46,
+          "name": "LaunchedBody",
           "type": "LaunchedBody"
         },
         {
@@ -597,6 +633,7 @@
             "表面オフセット": 0.019999999552965164
           },
           "id": 66,
+          "name": "Shadow",
           "type": "Shadow"
         }
       ],
@@ -624,6 +661,7 @@
             ]
           },
           "id": 48,
+          "name": "TransformComponent",
           "type": "TransformComponent"
         },
         {
@@ -637,6 +675,7 @@
             ]
           },
           "id": 49,
+          "name": "MeshRenderer",
           "type": "MeshRenderer"
         },
         {
@@ -649,6 +688,7 @@
             "半径": 0.5
           },
           "id": 50,
+          "name": "SphereCollider",
           "type": "SphereCollider"
         },
         {
@@ -670,6 +710,7 @@
             "重力を使う": true
           },
           "id": 72,
+          "name": "RigidBody",
           "type": "RigidBody"
         },
         {
@@ -677,6 +718,7 @@
             "耐久": 2.0
           },
           "id": 51,
+          "name": "Breakable",
           "type": "Breakable"
         },
         {
@@ -688,6 +730,7 @@
             "破片の速さ": 6.0
           },
           "id": 52,
+          "name": "LaunchedBody",
           "type": "LaunchedBody"
         },
         {
@@ -698,6 +741,7 @@
             "表面オフセット": 0.019999999552965164
           },
           "id": 67,
+          "name": "Shadow",
           "type": "Shadow"
         }
       ],
@@ -725,6 +769,7 @@
             ]
           },
           "id": 54,
+          "name": "TransformComponent",
           "type": "TransformComponent"
         },
         {
@@ -738,6 +783,7 @@
             ]
           },
           "id": 55,
+          "name": "MeshRenderer",
           "type": "MeshRenderer"
         },
         {
@@ -750,6 +796,7 @@
             "半径": 0.5
           },
           "id": 56,
+          "name": "SphereCollider",
           "type": "SphereCollider"
         },
         {
@@ -771,6 +818,7 @@
             "重力を使う": true
           },
           "id": 73,
+          "name": "RigidBody",
           "type": "RigidBody"
         },
         {
@@ -778,6 +826,7 @@
             "耐久": 5.0
           },
           "id": 57,
+          "name": "Breakable",
           "type": "Breakable"
         },
         {
@@ -789,6 +838,7 @@
             "破片の速さ": 6.0
           },
           "id": 58,
+          "name": "LaunchedBody",
           "type": "LaunchedBody"
         },
         {
@@ -799,6 +849,7 @@
             "表面オフセット": 0.019999999552965164
           },
           "id": 68,
+          "name": "Shadow",
           "type": "Shadow"
         }
       ],

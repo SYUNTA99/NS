@@ -14,13 +14,17 @@
 #include <Runtime/Object/Components/SphereCollider.h>
 #include <Runtime/Object/Components/TransformComponent.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
+#include <Runtime/Object/Reflection/ObjectRef.h>
 #include <Runtime/Object/Reflection/ReflectionJson.h>
 #include <Runtime/Object/Reflection/TypeRegistry.h>
+#include <Runtime/Object/Scene/Scene.h>
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace
@@ -403,11 +407,13 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
 }
 
 // Player のデータはコンストラクタが積む型名の一覧なので、どの項目も既存の実体に当たり CreateComponent を通らない
-// ApplyObjectComponents が id を書かなくても component の数は合う。数を見る試しでは捕まらない
-// ComponentIdSurvivesBuildAndCapture が id を確かめるのは生成された MeshRenderer の分だけ
+// id を書くのは組み立てでなく配置物を積む ObjectList なので、本番と同じ Scene の読込を通して確かめる
+// 書き込みが組み立てと別の対応を引くと、コンストラクタが積んだ実体に id が載らないか入れ違う
 TEST_F(ObjectBuildTest, PlayerObjectAppliesDataIdsToConstructorComponents)
 {
     ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
+    const std::uint32_t objectId = 1234u;
+    data.objectId = objectId;
 
     nlohmann::json* entry = nullptr;
     for (nlohmann::json& candidate : data.components)
@@ -422,11 +428,22 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataIdsToConstructorComponents)
     const std::uint32_t dataId = 4321u;
     NS::Obj::SetComponentEntryId(*entry, dataId);
 
-    std::unique_ptr<NS::Obj::GameObject> obj = Build(data);
+    NS::Obj::SceneData level;
+    level.objects.push_back(std::move(data));
+    NS::Obj::Scene scene;
+    scene.LoadFromData(std::move(level));
+
+    NS::Obj::GameObject* obj = scene.Objects().FindObject(NS::Obj::ObjectRef{objectId});
     ASSERT_NE(obj, nullptr);
     NS::Game::Player::PlayerComponent* movement = obj->FindComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(movement, nullptr);
     EXPECT_EQ(movement->Id(), dataId);
+
+    // 実体から書き戻しても同じ番号のまま。落ちると保存のたびに振り直しになる
+    const ObjectData captured = NS::Obj::CaptureObjectData(*obj);
+    const nlohmann::json* capturedEntry = NS::Obj::FindComponentEntry(captured, "PlayerComponent");
+    ASSERT_NE(capturedEntry, nullptr);
+    EXPECT_EQ(NS::Obj::ComponentEntryId(*capturedEntry), dataId);
 }
 
 // 同型 component を重ねたデータは live でも同数立ち、2 件目が 1 件目へ上書きされない

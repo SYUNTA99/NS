@@ -2,8 +2,11 @@
 
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/TransformComponent.h"
+#include "Runtime/Object/ObjectName.h"
 
 #include <algorithm>
+#include <string>
+#include <unordered_set>
 
 namespace NS::Obj
 {
@@ -83,9 +86,63 @@ namespace NS::Obj
         m_parent = nullptr;
     }
 
-    void GameObject::AttachOwnedComponent(Component* comp) noexcept
+    Component* GameObject::FindComponentByName(std::string_view name) const noexcept
+    {
+        for (Component* comp : m_components)
+        {
+            if (comp != nullptr && comp->Name() == name)
+            {
+                return comp;
+            }
+        }
+        return nullptr;
+    }
+
+    Component* GameObject::FindComponentById(std::uint32_t id) const noexcept
+    {
+        if (id == 0)
+        {
+            return nullptr;
+        }
+        for (Component* comp : m_components)
+        {
+            if (comp != nullptr && comp->Id() == id)
+            {
+                return comp;
+            }
+        }
+        return nullptr;
+    }
+
+    void GameObject::RenameComponent(Component& comp, std::string_view name)
+    {
+        if (comp.Owner() != this)
+        {
+            return;
+        }
+        // 自分の今の名前は数えない。同じ名前へ付け直した時に _1 が付いてしまう
+        std::unordered_set<std::string> used;
+        used.reserve(m_components.size());
+        for (const Component* other : m_components)
+        {
+            if (other != nullptr && other != &comp)
+            {
+                used.insert(other->Name());
+            }
+        }
+        std::string_view base = name;
+        if (base.empty())
+        {
+            base = comp.ClassName();
+        }
+        comp.SetName(MakeUniqueObjectName(base, used));
+    }
+
+    void GameObject::AttachOwnedComponent(Component* comp)
     {
         comp->AttachOwner(this);
+        // 名前は作った時点で付ける。データから組む時は、組み立て側が後から保存された名前へ付け直す
+        RenameComponent(*comp, {});
         m_components.push_back(comp);
         std::stable_sort(m_components.begin(), m_components.end(), [](const Component* a, const Component* b) noexcept {
             return a->Priority() < b->Priority();

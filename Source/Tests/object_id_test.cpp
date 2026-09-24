@@ -248,45 +248,6 @@ TEST(ObjectIdTest, PruneInvalidParentsRejectsSelfParent)
     EXPECT_EQ(level.objects[0].parentId, SceneNs::k_NoObjectId);
 }
 
-TEST(ObjectIdTest, FindReferencesToCollectsPointingFieldsOnly)
-{
-    SceneNs::SceneData level;
-    level.objects.push_back(SceneNs::ObjectData{}); // [0] 参照先
-    level.objects.push_back(SceneNs::ObjectData{}); // [1] target を指す
-    level.objects.push_back(SceneNs::ObjectData{}); // [2] 別 id を指す
-    SceneNs::EnsureUniqueObjectIds(level);
-    const std::uint32_t targetId = level.objects[0].objectId;
-    const std::uint32_t otherId = level.objects[2].objectId;
-
-    nlohmann::json a = SceneNs::MakeComponentEntry("FakeFollowComponent");
-    SceneNs::SetField(a, "Idle", 1.0f); // ObjectRef でない欄は無視される
-    SceneNs::SetField(a, "Target", NS::Obj::ObjectRef{targetId});
-    level.objects[1].components.push_back(std::move(a));
-
-    nlohmann::json b = SceneNs::MakeComponentEntry("FakeFollowComponent");
-    SceneNs::SetField(b, "Target", NS::Obj::ObjectRef{otherId});
-    level.objects[2].components.push_back(std::move(b));
-
-    const std::vector<SceneNs::ObjectRefLocation> refs = SceneNs::FindReferencesTo(level, targetId);
-    ASSERT_EQ(refs.size(), 1u);
-    EXPECT_EQ(refs[0].objectId, level.objects[1].objectId);
-    EXPECT_EQ(refs[0].componentIndex, 0u);
-    EXPECT_EQ(refs[0].fieldName, "Target");
-}
-
-TEST(ObjectIdTest, FindReferencesToIsEmptyForNoReferrersOrUnsetTarget)
-{
-    SceneNs::SceneData level;
-    level.objects.push_back(SceneNs::ObjectData{});
-    level.objects.push_back(SceneNs::ObjectData{});
-    SceneNs::EnsureUniqueObjectIds(level);
-
-    // 誰も指していない object は空
-    EXPECT_TRUE(SceneNs::FindReferencesTo(level, level.objects[0].objectId).empty());
-    // 未設定 id (0) を指す参照は「参照」ではない
-    EXPECT_TRUE(SceneNs::FindReferencesTo(level, SceneNs::k_NoObjectId).empty());
-}
-
 // 付いている名前は保ち、空と重複にだけ UE と同じく番号付きの名前を振る
 TEST(ObjectNameTest, EnsureUniqueObjectNamesKeepsGivenNamesAndNumbersTheRest)
 {
@@ -301,4 +262,28 @@ TEST(ObjectNameTest, EnsureUniqueObjectNamesKeepsGivenNamesAndNumbersTheRest)
     EXPECT_EQ(level.objects[1].name, "Object");
     EXPECT_EQ(level.objects[2].name, "Object_2");
     EXPECT_EQ(level.objects[3].name, "Object_3");
+}
+
+// component の名前は配置物の中で一意。付いている名前を保ち、無い物は型名、重なった物は番号付きにする
+TEST(ObjectNameTest, EnsureUniqueObjectNamesNamesComponentsWithinTheirObject)
+{
+    SceneNs::SceneData level;
+    level.objects.resize(2);
+    nlohmann::json named = SceneNs::MakeComponentEntry("BoxCollider");
+    SceneNs::SetComponentEntryName(named, "Gate");
+    level.objects[0].components.push_back(named);
+    level.objects[0].components.push_back(SceneNs::MakeComponentEntry("BoxCollider"));
+    level.objects[0].components.push_back(SceneNs::MakeComponentEntry("BoxCollider"));
+    level.objects[0].components.push_back(named);
+    // 別の配置物の名前とは重なってよい
+    level.objects[1].components.push_back(SceneNs::MakeComponentEntry("BoxCollider"));
+
+    SceneNs::EnsureUniqueObjectNames(level);
+
+    const nlohmann::json& first = level.objects[0].components;
+    EXPECT_EQ(SceneNs::ComponentEntryName(first[0]), "Gate");
+    EXPECT_EQ(SceneNs::ComponentEntryName(first[1]), "BoxCollider");
+    EXPECT_EQ(SceneNs::ComponentEntryName(first[2]), "BoxCollider_1");
+    EXPECT_EQ(SceneNs::ComponentEntryName(first[3]), "Gate_1");
+    EXPECT_EQ(SceneNs::ComponentEntryName(level.objects[1].components[0]), "BoxCollider");
 }

@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 #include <type_traits>
+#include <vector>
 
 namespace NS::Obj
 {
@@ -19,8 +20,16 @@ namespace NS::Obj
     //! 資産解決など GameObject へ載せた後の仕上げは呼出側が担う
     using ComponentBuiltFn = std::function<void(Component&, const nlohmann::json&)>;
 
+    //! @brief コンポーネント 1 件に対応する obj の既存 Component を返す。無ければ nullptr
+    //! @details 名前を持つ件は同じ名前で同じ型の物を先に探す。名前の無い古いデータと、名前で見つからない件は、
+    //! taken に無い同じ型の最初の 1 個を返す。組み立てと id の書き込みが同じ対応を引くための唯一の規則
+    [[nodiscard]] Component* MatchComponentEntry(const GameObject& obj,
+                                                 const nlohmann::json& entry,
+                                                 const std::vector<Component*>& taken) noexcept;
+
     //! object.components を obj へ適用する。GameObject の既存同型には値だけを写し、無い型は登録一覧から生成する
     //! 同型を重ねたデータは上書きせず重ねた数だけ立て、許可リスト外の型は読み飛ばす。onBuilt は空でもよい
+    //! 名前を持つ件は Component の名前をそれに付け直す。id は書かない。書くのは配置物を積む ObjectList
     void ApplyObjectComponents(GameObject& obj, const ObjectData& object, const ComponentBuiltFn& onBuilt);
 
     //! object 1 件から配置物を組む唯一の汎用経路。GameObject の型は TypeRegistry の className で選び、

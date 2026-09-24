@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/Core/Math.h"
+#include "Runtime/Object/ObjectName.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
 
 #pragma warning(push, 0)
@@ -11,6 +12,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -96,34 +98,57 @@ namespace NS::Obj
     //! 全 object と全 component の永続 id を「非 0 かつ一意」へ整える。未割当と重複には新 id を振り、
     //! nextObjectId を既存最大 id より先へ進める。手編集のファイルを読込直後に通す整合処理
     //! 番号の空間は object と component で共通なので、id 1 個で世界の誰か 1 人が決まる
-    //! 続けて EnsureUniqueObjectNames で object の名前も一意にする
+    //! 続けて EnsureUniqueObjectNames で object と component の名前も一意にする
     void EnsureUniqueObjectIds(SceneData& scene);
 
-    //! used に無い名前を返す。空は Object とし、重複したら UE と同じく _1, _2 と番号を付ける
-    [[nodiscard]] std::string MakeUniqueObjectName(std::string_view base, const std::unordered_set<std::string>& used);
-
-    //! 全 object に一意な名前を付ける。先に付いていた名前を保ち、空と重複にだけ新しい名前を振る
-    //! ファイルの参照は名前で書くので、名前が 1 つの object に決まることを保存と読込が当てにする
+    //! 全 object に一意な名前を付け、各 object の component にも object の中で一意な名前を付ける
+    //! 先に付いていた名前を保ち、空と重複にだけ新しい名前を振る。名前の無い component は型名から付ける
+    //! ファイルの参照は名前で書くので、名前が 1 つに決まることを保存と読込が当てにする
     void EnsureUniqueObjectNames(SceneData& scene);
 
-    //! 存在しない object を指す ObjectRef フィールドを未設定 0 へ戻し、直した件数を返す
+    //! @brief components の fields にある参照の欄を 1 つずつ fn へ渡す
+    //! @details ObjectRef は {"ref": 持ち主}、ComponentRef は {"ref": 持ち主, "component": Component} の object で、
+    //! fn はその object を受け取る。値はメモリ上では id、ファイル上では名前
+    //! 参照の欄を辿る処理はここだけに置き、欄の形を知る場所を 1 つにする
+    template <class Fn> void ForEachRefValue(nlohmann::json& components, Fn&& fn)
+    {
+        if (!components.is_array())
+        {
+            return;
+        }
+        for (nlohmann::json& entry : components)
+        {
+            if (!entry.is_object())
+            {
+                continue;
+            }
+            const nlohmann::json::iterator fieldsIt = entry.find("fields");
+            if (fieldsIt == entry.end() || !fieldsIt->is_object())
+            {
+                continue;
+            }
+            for (nlohmann::json& value : *fieldsIt)
+            {
+                if (value.is_object() && value.contains("ref"))
+                {
+                    fn(value);
+                }
+            }
+        }
+    }
+
+    //! @brief 宙に浮いた参照を未設定へ戻し、直した件数を返す
+    //! @details ObjectRef は持ち主が居なければ 0 へ、ComponentRef は持ち主か Component が居なければ両方 0 へ戻す
     //! 手編集や参照先削除で宙に浮いた参照を読込直後に除去し、実行時の照合失敗を入口で断つ
     [[nodiscard]] std::size_t PruneDanglingObjectRefs(SceneData& scene);
+
+    //! @brief object の参照の欄のうち、idMap に載った id を指す物を載った先の id へ付け替える
+    //! @details 複製で使う。コピーした範囲の中を指す参照だけをコピー側へ向け、範囲の外を指す参照は元のまま残す
+    //! 配置物と Component の id は同じ空間なので、1 つの表で両方を付け替える
+    void RemapObjectRefs(ObjectData& object, const std::unordered_map<std::uint32_t, std::uint32_t>& idMap);
 
     //! 辿れない parentId を root の 0 へ戻し、直した件数を返す。自分自身・不在の親・循環が対象
     //! 循環したまま組むと world 変換の再帰が止まらないので、手編集のファイルを読込直後にここで断つ
     [[nodiscard]] std::size_t PruneInvalidParents(SceneData& scene);
-
-    //! ObjectRef フィールドが指す先を、参照元 object と component 添字・ フィールド名で特定する
-    struct ObjectRefLocation
-    {
-        std::uint32_t objectId;     // 参照元 object の永続 id
-        std::size_t componentIndex; // 参照元 component の添字
-        std::string fieldName;      // ObjectRef フィールド名
-    };
-
-    //! targetId を指す ObjectRef フィールドを全 object から集める。削除前に何が参照しているかを調べる関数
-    //! k_NoObjectId は未設定の印なので空を返す。自分自身を指す参照も含める
-    [[nodiscard]] std::vector<ObjectRefLocation> FindReferencesTo(const SceneData& scene, std::uint32_t targetId);
 
 } // namespace NS::Obj

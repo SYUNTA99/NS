@@ -1,8 +1,11 @@
 ﻿#include "Runtime/Object/ObjectList.h"
 
 #include "Runtime/Core/Assert.h"
+#include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/RigidBody.h"
+#include "Runtime/Object/Reflection/ComponentEntry.h"
+#include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Physics/PhysicsScene.h"
@@ -35,12 +38,24 @@ namespace NS::Obj
 
         // カウンタは 1 始まりでファイルの id を知らない。読込値まで上げないと次に置く 1 個目が既存とぶつかる
         m_nextObjectId = std::max(m_nextObjectId, data.nextObjectId);
-        // 手編集でカウンタが既存 id より小さいファイルもあるので object 側の最大も見る
+        // 手編集でカウンタが既存 id より小さいファイルもあるので object と component の最大も見る
         for (const ObjectData& entry : data.objects)
         {
             if (entry.objectId >= m_nextObjectId)
             {
                 m_nextObjectId = entry.objectId + 1;
+            }
+            if (!entry.components.is_array())
+            {
+                continue;
+            }
+            for (const nlohmann::json& component : entry.components)
+            {
+                const std::uint32_t componentId = ComponentEntryId(component);
+                if (componentId >= m_nextObjectId)
+                {
+                    m_nextObjectId = componentId + 1;
+                }
             }
         }
 
@@ -62,6 +77,7 @@ namespace NS::Obj
                 obj->AttachScene(&scene);
                 obj->SetId(entry.objectId);
                 obj->SetName(entry.name);
+                AssignComponentIds(*obj, entry);
                 obj->SetActive(entry.active);
 
                 m_objects.push_back(std::move(obj));
@@ -101,6 +117,7 @@ namespace NS::Obj
 
             // 開始中に参照を引く component がいる。積み終えた並びで索引を作り直させる
             MarkIndexDirty();
+            WarnMismatchedComponentRefs();
             for (std::unique_ptr<GameObject>& objPtr : m_objects)
                 objPtr->OnStart();
         }
@@ -136,6 +153,14 @@ namespace NS::Obj
             return nullptr;
         }
         obj->SetId(AllocateObjectId());
+        // component も同じ空間から採番する。参照できる相手として配置物と同じ扱いにする
+        for (Component* comp : obj->Components())
+        {
+            if (comp != nullptr)
+            {
+                comp->SetId(AllocateObjectId());
+            }
+        }
         // ファイルの参照は名前で書くので、プレイ中に足す物も既存と重ならない名前にする
         std::unordered_set<std::string> used;
         used.reserve(m_objects.size());
@@ -308,6 +333,77 @@ namespace NS::Obj
         m_updating = false;
     }
 
+    Component* ObjectList::FindComponent(ComponentRefValue ref) noexcept
+    {
+        if (!ref.IsSet())
+        {
+            return nullptr;
+        }
+        GameObject* owner = FindObject(ObjectRef{ref.object});
+        if (owner == nullptr)
+        {
+            return nullptr;
+        }
+        return owner->FindComponentById(ref.component);
+    }
+
+    void ObjectList::WarnMismatchedComponentRefs()
+    {
+        for (const std::unique_ptr<GameObject>& obj : m_objects)
+        {
+            for (const Component* comp : obj->Components())
+            {
+                const ReflectionInfo* info = comp->GetReflection();
+                if (info == nullptr)
+                {
+                    continue;
+                }
+                for (std::size_t i = 0; i < info->fieldCount; ++i)
+                {
+                    const FieldDesc& field = info->fields[i];
+                    if (field.type != FieldType::ComponentRef || field.refType == nullptr)
+                    {
+                        continue;
+                    }
+                    ComponentRefValue value{};
+                    field.get(comp, &value);
+                    const Component* target = FindComponent(value);
+                    if (target != nullptr && !target->IsA(field.refType()))
+                    {
+                        NS_LOG_WARN(Scene,
+                                    "'{}' の {} の欄 '{}' が {} でない '{}' を指している。引いても見つからない扱いになる",
+                                    obj->Name(),
+                                    comp->Name(),
+                                    field.name,
+                                    field.refType()->typeName,
+                                    target->Name());
+                    }
+                }
+            }
+        }
+    }
+
+    void ObjectList::AssignComponentIds(GameObject& obj, const ObjectData& entry)
+    {
+        if (!entry.components.is_array())
+        {
+            return;
+        }
+        // 組み立てと同じ規則で件と実体を対応させる。規則を別に書くと、同じ型が 2 つある時に id が入れ違う
+        std::vector<Component*> taken;
+        taken.reserve(entry.components.size());
+        for (const nlohmann::json& component : entry.components)
+        {
+            Component* comp = MatchComponentEntry(obj, component, taken);
+            if (comp == nullptr)
+            {
+                continue;
+            }
+            taken.push_back(comp);
+            comp->SetId(ComponentEntryId(component));
+        }
+    }
+
     void ObjectList::Clear()
     {
         // OnEndPlay は生成の逆順で呼ぶ。依存し合う component の後始末を生成と対称にする
@@ -317,48 +413,6 @@ namespace NS::Obj
         }
         MarkIndexDirty();
         m_objects.clear();
-    }
-
-    std::vector<ObjectRefLocation> FindReferencesTo(const ObjectList& objects, std::uint32_t targetId)
-    {
-        std::vector<ObjectRefLocation> result;
-        if (targetId == k_NoObjectId)
-        {
-            return result;
-        }
-        for (const GameObject* objPtr : objects)
-        {
-            const std::vector<Component*>& components = objPtr->Components();
-            for (std::size_t c = 0; c < components.size(); ++c)
-            {
-                const Component* comp = components[c];
-                if (comp == nullptr)
-                {
-                    continue;
-                }
-                const ReflectionInfo* info = comp->GetReflection();
-                if (info == nullptr)
-                {
-                    continue;
-                }
-                for (std::size_t f = 0; f < info->fieldCount; ++f)
-                {
-                    const FieldDesc& field = info->fields[f];
-                    if (field.type != FieldType::ObjectRef)
-                    {
-                        continue;
-                    }
-                    ObjectRef value{};
-                    field.get(comp, &value);
-                    if (value.id != targetId)
-                    {
-                        continue;
-                    }
-                    result.push_back(ObjectRefLocation{objPtr->Id(), c, field.name});
-                }
-            }
-        }
-        return result;
     }
 
 } // namespace NS::Obj

@@ -5,7 +5,9 @@
 #include "Runtime/Object/Transform.h"
 
 #include <concepts>
+#include <cstdint>
 #include <memory>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -22,6 +24,7 @@ namespace NS::Obj
     //! 毎フレームの更新は ObjectList が持つ。全配置物の Component を priority 昇順に集めて直接回すため、
     //! ここの OnUpdate は通らない
     //! FindComponent<T>() は自分の Component 列しか見ない
+    //! Component の名前はこの配置物の中で一意。積んだ時点で型名から付け、重なれば _1, _2 と番号を付ける
     class GameObject : public Object
     {
     public:
@@ -81,6 +84,18 @@ namespace NS::Obj
             return nullptr;
         }
 
+        //! @brief 名前が name の Component を返す。無ければ nullptr
+        //! @details 名前はこの配置物の中で一意なので、同じ型が複数あっても 1 個に決まる
+        [[nodiscard]] Component* FindComponentByName(std::string_view name) const noexcept;
+
+        //! 永続 id が id の Component を返す。0 と無い id は nullptr
+        [[nodiscard]] Component* FindComponentById(std::uint32_t id) const noexcept;
+
+        //! @brief comp の名前を name にする。この配置物の中で重なれば _1, _2 と番号を付ける
+        //! @details 空は型名にする。comp がこの配置物の物でなければ何もしない
+        //! 実行中の参照は id で持つので、改名しても参照は切れない
+        void RenameComponent(Component& comp, std::string_view name);
+
         //! Component を生成して寿命を所有し priority 昇順の tick 列へ登録する。戻り値は非所有の生ポインタ
         template <class T, class... Args> T* AddComponent(Args&&... args)
         {
@@ -112,8 +127,8 @@ namespace NS::Obj
         void SetActive(bool active) noexcept { m_activeSelf = active; }
 
     private:
-        //! Component に owner を注入し tick 列へ priority 昇順で挿入する
-        void AttachOwnedComponent(Component* comp) noexcept;
+        //! Component に owner と型名からの一意な名前を与え、tick 列へ priority 昇順で挿入する
+        void AttachOwnedComponent(Component* comp);
 
         //! 型を問わず積む本体。TransformComponent を積めるのはコンストラクタだけ
         template <class T, class... Args>

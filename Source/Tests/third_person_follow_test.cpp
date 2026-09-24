@@ -14,7 +14,6 @@
 namespace
 {
     using NS::Obj::GameObject;
-    using NS::Obj::ObjectIdAccess;
     using NS::Obj::Scene;
     using NS::Obj::ThirdPersonFollow;
 
@@ -25,16 +24,14 @@ namespace
     constexpr float k_JumpDistance = 12.0f;
     constexpr float k_RunSpeedThreshold = 4.0f;
 
-    constexpr std::uint32_t k_TargetId = 7u;
-
     //! 原点に居る追従対象と、それを参照で追う追従カメラを scene へ置く
     ThirdPersonFollow& AddFollowing(Scene& scene)
     {
-        GameObject* target = scene.SpawnTransient<GameObject>();
-        ObjectIdAccess::SetId(*target, k_TargetId);
+        // 参照で引く相手なので、id を振る SpawnObject で置く
+        GameObject* target = scene.SpawnObject(std::make_unique<GameObject>(), "Target");
         GameObject* rig = scene.SpawnTransient<GameObject>();
         ThirdPersonFollow& follow = *rig->AddComponent<ThirdPersonFollow>();
-        NsTest::WriteObjectRefField(follow, "追従対象", k_TargetId);
+        NsTest::WriteObjectRefField(follow, "追従対象", target->Id());
         return follow;
     }
 

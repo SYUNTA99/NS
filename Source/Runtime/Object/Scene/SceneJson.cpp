@@ -58,39 +58,6 @@ namespace NS::Obj
             return it->get<int>();
         }
 
-        //! component の fields 直下にある参照の欄 {"ref": ...} の値を訪ねる
-        template <class Fn> void ForEachRefValue(nlohmann::json& components, Fn&& fn)
-        {
-            if (!components.is_array())
-            {
-                return;
-            }
-            for (nlohmann::json& entry : components)
-            {
-                if (!entry.is_object())
-                {
-                    continue;
-                }
-                const nlohmann::json::iterator fieldsIt = entry.find("fields");
-                if (fieldsIt == entry.end() || !fieldsIt->is_object())
-                {
-                    continue;
-                }
-                for (nlohmann::json& value : *fieldsIt)
-                {
-                    if (!value.is_object())
-                    {
-                        continue;
-                    }
-                    const nlohmann::json::iterator refIt = value.find("ref");
-                    if (refIt != value.end())
-                    {
-                        fn(*refIt);
-                    }
-                }
-            }
-        }
-
         nlohmann::json SerializeObject(const ObjectData& object)
         {
             nlohmann::json out;
@@ -150,7 +117,7 @@ namespace NS::Obj
             const nlohmann::json::const_iterator componentsIt = json.find("components");
             if (componentsIt != json.end() && componentsIt->is_array())
             {
-                // {type, id, enabled, fields} の骨格だけ整えて受け取る。未知キーは捨て、fields の中身は素通し
+                // {type, id, name, enabled, fields} の骨格だけ整えて受け取る。未知キーは捨て、fields の中身は素通し
                 for (const nlohmann::json& componentJson : *componentsIt)
                 {
                     if (!componentJson.is_object())
@@ -166,6 +133,8 @@ namespace NS::Obj
                     nlohmann::json entry = MakeComponentEntry(ComponentEntryType(componentJson), std::move(fields));
                     // id を落とすと読むたびに振り直しになり、名指ししている参照が外れる
                     SetComponentEntryId(entry, ComponentEntryId(componentJson));
+                    // 名前はファイルの参照がコンポーネントを名指しするのに使う
+                    SetComponentEntryName(entry, ComponentEntryName(componentJson));
                     // 保存側は書き出すので、ここで落とすと切った component が開くたびに有効へ戻る
                     SetComponentEntryEnabled(entry, ComponentEntryEnabled(componentJson));
                     object.components.push_back(std::move(entry));
@@ -193,17 +162,31 @@ namespace NS::Obj
         }
 
         // ファイルの参照は相手の名前で書く。空と重複した名前は相手が 1 つに決まらないので id のまま残す
+        // Component は持ち主の中の名前で書く。読込は持ち主を決めてから、その中で名前を引く
         std::unordered_map<std::string, int> nameCounts;
         for (const ObjectData& object : scene.objects)
         {
             ++nameCounts[object.name];
         }
         std::unordered_map<std::uint32_t, const std::string*> namesById;
+        std::unordered_map<std::uint32_t, std::string> componentNamesById;
         for (const ObjectData& object : scene.objects)
         {
             if (!object.name.empty() && nameCounts[object.name] == 1)
             {
                 namesById.emplace(object.objectId, &object.name);
+            }
+            if (!object.components.is_array())
+            {
+                continue;
+            }
+            for (const nlohmann::json& entry : object.components)
+            {
+                const std::string_view componentName = ComponentEntryName(entry);
+                if (!componentName.empty())
+                {
+                    componentNamesById.emplace(ComponentEntryId(entry), std::string{componentName});
+                }
             }
         }
         for (nlohmann::json& objectJson : objects)
@@ -213,15 +196,26 @@ namespace NS::Obj
             {
                 continue;
             }
-            ForEachRefValue(*componentsIt, [&namesById](nlohmann::json& ref) {
-                if (!ref.is_number_unsigned())
+            ForEachRefValue(*componentsIt, [&namesById, &componentNamesById](nlohmann::json& value) {
+                nlohmann::json& ref = value["ref"];
+                if (ref.is_number_unsigned())
                 {
-                    return;
+                    const std::unordered_map<std::uint32_t, const std::string*>::iterator it =
+                        namesById.find(ref.get<std::uint32_t>());
+                    if (it != namesById.end())
+                    {
+                        ref = *it->second;
+                    }
                 }
-                const std::unordered_map<std::uint32_t, const std::string*>::iterator it = namesById.find(ref.get<std::uint32_t>());
-                if (it != namesById.end())
+                const nlohmann::json::iterator componentIt = value.find("component");
+                if (componentIt != value.end() && componentIt->is_number_unsigned())
                 {
-                    ref = *it->second;
+                    const std::unordered_map<std::uint32_t, std::string>::iterator it =
+                        componentNamesById.find(componentIt->get<std::uint32_t>());
+                    if (it != componentNamesById.end())
+                    {
+                        *componentIt = it->second;
+                    }
                 }
             });
         }
@@ -294,25 +288,61 @@ namespace NS::Obj
         EnsureUniqueObjectIds(outScene);
 
         // ファイルの参照は相手の名前で書かれている。名前を一意にした後で id へ直す。旧形式の数値はそのまま通す
+        // Component の名前は持ち主の中で一意なので、持ち主の id を決めてからその中で引く
         std::unordered_map<std::string, std::uint32_t> idsByName;
+        std::unordered_map<std::uint32_t, std::unordered_map<std::string, std::uint32_t>> componentIdsByObject;
         for (const ObjectData& object : outScene.objects)
         {
             idsByName.emplace(object.name, object.objectId);
+            std::unordered_map<std::string, std::uint32_t>& componentIds = componentIdsByObject[object.objectId];
+            for (const nlohmann::json& entry : object.components)
+            {
+                componentIds.emplace(std::string{ComponentEntryName(entry)}, ComponentEntryId(entry));
+            }
         }
         for (ObjectData& object : outScene.objects)
         {
-            ForEachRefValue(object.components, [&idsByName](nlohmann::json& ref) {
-                if (!ref.is_string())
+            ForEachRefValue(object.components, [&idsByName, &componentIdsByObject](nlohmann::json& value) {
+                nlohmann::json& ref = value["ref"];
+                if (ref.is_string())
+                {
+                    const std::unordered_map<std::string, std::uint32_t>::iterator it =
+                        idsByName.find(ref.get<std::string>());
+                    if (it == idsByName.end())
+                    {
+                        ref = k_NoObjectId; // 居ない名前は未設定へ戻す
+                    }
+                    else
+                    {
+                        ref = it->second;
+                    }
+                }
+                const nlohmann::json::iterator componentIt = value.find("component");
+                if (componentIt == value.end() || !componentIt->is_string())
                 {
                     return;
                 }
-                const std::unordered_map<std::string, std::uint32_t>::iterator it = idsByName.find(ref.get<std::string>());
-                if (it == idsByName.end())
+                std::uint32_t componentId = 0;
+                if (ref.is_number_unsigned())
                 {
-                    ref = k_NoObjectId; // 居ない名前は未設定へ戻す
-                    return;
+                    const std::unordered_map<std::uint32_t, std::unordered_map<std::string, std::uint32_t>>::iterator owner =
+                        componentIdsByObject.find(ref.get<std::uint32_t>());
+                    if (owner != componentIdsByObject.end())
+                    {
+                        const std::unordered_map<std::string, std::uint32_t>::iterator it =
+                            owner->second.find(componentIt->get<std::string>());
+                        if (it != owner->second.end())
+                        {
+                            componentId = it->second;
+                        }
+                    }
                 }
-                ref = it->second;
+                // 居ない名前は未設定。持ち主だけ残すと、どれも指していない参照が生きて見える
+                *componentIt = componentId;
+                if (componentId == 0)
+                {
+                    ref = k_NoObjectId;
+                }
             });
         }
 

@@ -707,13 +707,6 @@ bool LevelEditorController::SelectedIsPlayerObject() const noexcept
     return player != nullptr && m_selectedObjectId != NS::Obj::k_NoObjectId && m_selectedObjectId == player->Id();
 }
 
-std::vector<NS::Obj::ObjectRefLocation> LevelEditorController::ReferencesToSelected()
-{
-    if (m_selectedObjectId == NS::Obj::k_NoObjectId)
-        return {};
-    return NS::Obj::FindReferencesTo(m_scene->Objects(), m_selectedObjectId);
-}
-
 void LevelEditorController::RefreshGizmoSelectables()
 {
     m_selectablePtrs.clear();
@@ -1260,9 +1253,11 @@ void LevelEditorController::DuplicateSelectedObject()
 
     const NS::Obj::GameObject* player = FindPlayer(m_scene->Objects());
 
-    // 選択物の忠実コピーを新しい永続 id で増やす
+    // 選択物の忠実コピーを新しい永続 id で増やす。component の id も振り直す
+    // 元の id から新しい id への表を作り、コピーの中の親と参照を付け替えるのに使う
     std::vector<std::pair<std::uint32_t, NS::Obj::ObjectData>> copies;
     copies.reserve(m_selectionIds.size());
+    std::unordered_map<std::uint32_t, std::uint32_t> idMap;
     for (const std::uint32_t id : m_selectionIds)
     {
         // プレイヤーは必ず 1 体。複製で 2 体目を作らせない
@@ -1272,13 +1267,23 @@ void LevelEditorController::DuplicateSelectedObject()
         if (!source)
             continue;
         const std::uint32_t newId = m_scene->Objects().AllocateObjectId();
+        idMap.emplace(id, newId);
         source->objectId = newId;
+        for (nlohmann::json& component : source->components)
+        {
+            const std::uint32_t componentId = NS::Obj::ComponentEntryId(component);
+            const std::uint32_t freshId = m_scene->Objects().AllocateObjectId();
+            if (componentId != 0)
+                idMap.emplace(componentId, freshId);
+            NS::Obj::SetComponentEntryId(component, freshId);
+        }
         copies.emplace_back(id, std::move(*source));
     }
     if (copies.empty())
         return;
 
     // 親も一緒に複製したなら、コピーの親はコピー側へ向ける。親が選択外ならそのまま元の親へぶら下がる
+    // 参照も同じで、コピーした範囲の中を指す物だけコピー側へ向け、範囲の外を指す物は元の相手のまま残す
     std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
     std::vector<std::uint32_t> created;
     commands.reserve(copies.size());
@@ -1286,17 +1291,10 @@ void LevelEditorController::DuplicateSelectedObject()
     for (std::pair<std::uint32_t, NS::Obj::ObjectData>& entry : copies)
     {
         NS::Obj::ObjectData& copy = entry.second;
-        if (copy.parentId != NS::Obj::k_NoObjectId)
-        {
-            for (const std::pair<std::uint32_t, NS::Obj::ObjectData>& other : copies)
-            {
-                if (other.first == copy.parentId)
-                {
-                    copy.parentId = other.second.objectId;
-                    break;
-                }
-            }
-        }
+        const std::unordered_map<std::uint32_t, std::uint32_t>::const_iterator parent = idMap.find(copy.parentId);
+        if (copy.parentId != NS::Obj::k_NoObjectId && parent != idMap.end())
+            copy.parentId = parent->second;
+        NS::Obj::RemapObjectRefs(copy, idMap);
         created.push_back(copy.objectId);
         commands.push_back(
             std::make_unique<NS::Editor::ObjectSnapshotCommand>(copy.objectId, std::nullopt, std::move(copy)));
@@ -1494,8 +1492,46 @@ void LevelEditorController::PasteClipboardComponentToSelected()
         return;
 
     // 同型がすでにあっても末尾へ重ねて貼り、上書きはしない
+    // id は新しく振る。コピー元の id のまま貼ると、組み直しの一意化で元の側の id が振り直され、元を指す参照が貼った側へ移る
+    // 名前はそのまま貼り、配置物の中で重なれば組み直しの一意化が番号を付ける
     NS::Obj::ObjectData after = *before;
-    after.components.push_back(*m_componentClipboard);
+    nlohmann::json pasted = *m_componentClipboard;
+    NS::Obj::SetComponentEntryId(pasted, m_scene->Objects().AllocateObjectId());
+    after.components.push_back(std::move(pasted));
+
+    m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)),
+                         m_applier);
+
+    RefreshGizmoSelectables();
+    ResolveSelectionFromId();
+}
+
+void LevelEditorController::RenameComponentOnSelected(std::size_t componentIndex, std::string_view name)
+{
+    const std::uint32_t id = m_selectedObjectId;
+    if (id == NS::Obj::k_NoObjectId)
+        return;
+    std::optional<NS::Obj::ObjectData> before = m_applier.CaptureObject(id);
+    if (!before || componentIndex >= before->components.size())
+        return;
+
+    // 同じ配置物の他の component と重ならない名前にする。空は型名へ戻す
+    std::unordered_set<std::string> used;
+    for (std::size_t i = 0; i < before->components.size(); ++i)
+    {
+        if (i != componentIndex)
+            used.insert(std::string{NS::Obj::ComponentEntryName(before->components[i])});
+    }
+    const nlohmann::json& target = before->components[componentIndex];
+    std::string_view base = name;
+    if (base.empty())
+        base = NS::Obj::ComponentEntryType(target);
+    const std::string unique = NS::Obj::MakeUniqueObjectName(base, used);
+    if (unique == NS::Obj::ComponentEntryName(target))
+        return; // 同じ名前で履歴を汚さない
+
+    NS::Obj::ObjectData after = *before;
+    NS::Obj::SetComponentEntryName(after.components[componentIndex], unique);
 
     m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)),
                          m_applier);

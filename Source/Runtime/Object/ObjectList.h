@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Reflection/ComponentRef.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
 
 #include <cstddef>
@@ -22,7 +23,6 @@ namespace NS::Obj
 {
     class Scene;
     struct ObjectData;
-    struct ObjectRefLocation;
     struct SceneData;
 
     //! ObjectData 1 件から配置物を組むファクトリ。組めないデータには nullptr を返し、Rebuild が読み飛ばす
@@ -51,7 +51,8 @@ namespace NS::Obj
         void Clear();
 
         //! 型 T の配置物を作って加える。所有は ObjectList が持ち、呼出側へは生ポインタだけ返す
-        //! scene attach と objectId の書き込みは呼出側が返り値へ済ませる
+        //! id は振らない。未採番の配置物は参照で引けない。参照で引く相手は AppendWithNewId で加える
+        //! scene attach は呼出側が返り値へ済ませる
         template <class T, class... Args> T* Spawn(Args&&... args)
         {
             std::unique_ptr<T> obj = std::make_unique<T>(std::forward<Args>(args)...);
@@ -60,12 +61,12 @@ namespace NS::Obj
             return raw;
         }
 
-        //! 組み上がった配置物を 1 体加える。scene attach と objectId の書き込みは呼出側が済ませて渡す
-        //! 型が実行時にしか決まらないファクトリ経由の組み立て用。型が分かっているなら Spawn<T> を使う
+        //! 組み上がった配置物を id を振らずに 1 体加える。scene attach は呼出側が済ませて渡す
+        //! 実行時に湧く一時オブジェクト用。保存もされず、参照で引かれることも無い
         GameObject* Append(std::unique_ptr<GameObject> obj);
 
-        //! 組み上がった配置物に新しい永続 id と名前を振って 1 体加える。名前は既存と重なれば番号を付ける
-        //! scene attach は呼出側が済ませて渡す
+        //! 組み上がった配置物と、その全 component に新しい永続 id を振り、名前を付けて 1 体加える
+        //! 名前は既存と重なれば番号を付ける。scene attach は呼出側が済ませて渡す
         GameObject* AppendWithNewId(std::unique_ptr<GameObject> obj, std::string name);
 
         //! objectId 一致の配置物を破棄して所有リストから外す。居なければ何もしない
@@ -82,6 +83,16 @@ namespace NS::Obj
         //! 並びが変わるたびに索引を捨てるので、破棄した相手を指す参照は必ず nullptr になる
         //! 別の配置物への参照はポインタで控えず、ObjectRef で持って使うたびにここで引く
         [[nodiscard]] GameObject* FindObject(ObjectRef ref) noexcept;
+
+        //! @brief ComponentRef の指す Component を返す。未設定と該当なしは nullptr
+        //! @details 持ち主の配置物を索引で引き、その中から id で Component を探す。控えずに使うたびに引く
+        [[nodiscard]] Component* FindComponent(ComponentRefValue ref) noexcept;
+
+        //! ComponentRef<T> の指す T を返す。未設定・該当なし・型が合わない相手は nullptr
+        template <class T> [[nodiscard]] T* FindComponent(const ComponentRef<T>& ref) noexcept
+        {
+            return ComponentCast<T>(FindComponent(static_cast<const ComponentRefValue&>(ref)));
+        }
 
         //! 稼働中の collider を PhysicsScene へ body として入れ、broadphase を張り直す
         //! 稼働していない collider は body を外す。既存 body は同じ id のまま shape と姿勢を更新する
@@ -155,6 +166,12 @@ namespace NS::Obj
         //! 並びが変わったので索引を捨てる。並びを変える箇所は必ず呼び、破棄した配置物を索引に残さない
         void MarkIndexDirty() noexcept;
 
+        //! entry の component の id を obj の実体へ書く。id を書くのはシーンの配置物を持つここだけ
+        void AssignComponentIds(GameObject& obj, const ObjectData& entry);
+
+        //! 欄の型に合わない Component を指す ComponentRef を警告する。引けば nullptr になるだけなので値は変えない
+        void WarnMismatchedComponentRefs();
+
         std::vector<std::unique_ptr<GameObject>> m_objects; // 配置物の単一所有リスト
         std::vector<Component*> m_scheduled;                // UpdateObjects が priority 順に並べ直す作業用の並び
         std::unordered_map<std::uint32_t, GameObject*> m_index; // 永続 id から配置物への索引。汚れていれば次に引く時に作り直す
@@ -162,9 +179,5 @@ namespace NS::Obj
         std::uint32_t m_nextObjectId = 1;                   // 次に割り当てる永続 id。単調増加で欠番は再利用しない
         bool m_updating = false;                            // UpdateObjects の実行中か。入れ子の呼び出しの検知に使う
     };
-
-    //! targetId を指す ObjectRef フィールドを live の全配置物からリフレクションで集める
-    //! 削除前に何が参照しているかを調べる関数。k_NoObjectId 相当の 0 は未設定の印なので空を返す
-    [[nodiscard]] std::vector<ObjectRefLocation> FindReferencesTo(const ObjectList& objects, std::uint32_t targetId);
 
 } // namespace NS::Obj

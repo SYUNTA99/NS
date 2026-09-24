@@ -28,6 +28,16 @@ namespace NS::Editor
         std::string label;    // UI表示用のラベル
     };
 
+    //! @brief ComponentRef フィールドで参照可能な Component の選択肢
+    //! @details 描く側が欄の型で絞るので、候補には全配置物の Component を入れてよい
+    struct ComponentRefOption
+    {
+        std::uint32_t object = 0;                    // 持ち主の配置物の永続 ID
+        std::uint32_t component = 0;                 // Component の永続 ID
+        const NS::Obj::Component* target = nullptr;  // 型の照合に使う実体。そのフレームの間だけ有効
+        std::string label;                           // UI表示用のラベル
+    };
+
     //! @brief 型ごとの既定インスタンスを控える置き場
     //! @details リフレクション欄の「既定と違う」印と戻すボタンが、今の値と比べる相手として引く
     //! 控えは 1 体の GameObject へまとめて attach するだけで、world に入らないので更新も描画も走らない
@@ -80,9 +90,12 @@ namespace NS::Editor
     //! @param[in,out] comp 編集対象のコンポーネント
     //! @param[in] refOptions 参照先候補のリスト。指定しない場合は数値入力となる
     //! @param[in] defaults 既定インスタンス。渡すと既定と違う欄に印と戻すボタンが付く
+    //! @param[in] componentOptions ComponentRef の参照先候補。欄の型に合う物だけを出す
     //! @return 値の編集有無と、編集の開始・確定フレームを集約した結果
-    [[nodiscard]] ComponentEditResult DrawReflectedComponent(NS::Obj::Component& comp,
-                                                             std::span<const ObjectRefOption> refOptions = {},
-                                                             const NS::Obj::Component* defaults = nullptr) noexcept;
+    [[nodiscard]] ComponentEditResult DrawReflectedComponent(
+        NS::Obj::Component& comp,
+        std::span<const ObjectRefOption> refOptions = {},
+        const NS::Obj::Component* defaults = nullptr,
+        std::span<const ComponentRefOption> componentOptions = {}) noexcept;
 
 } // namespace NS::Editor

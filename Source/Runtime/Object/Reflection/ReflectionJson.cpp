@@ -61,6 +61,16 @@ namespace NS::Obj
                 out["ref"] = value.id;
                 return out;
             }
+            case FieldType::ComponentRef:
+            {
+                // ObjectRef と同じ "ref" に持ち主を、"component" に Component を書く。"component" の有無で見分ける
+                ComponentRefValue value{};
+                field.get(&comp, &value);
+                nlohmann::json out;
+                out["ref"] = value.object;
+                out["component"] = value.component;
+                return out;
+            }
             case FieldType::Curve:
             {
                 // 素の配列だと読み込み時に Vector3 と区別できないため {"curve": [[x,y], ...]} の単キー object で書く
@@ -180,6 +190,24 @@ namespace NS::Obj
                     return;
                 }
                 ObjectRef v{it->get<std::uint32_t>()};
+                field.set(&comp, &v);
+                return;
+            }
+            case FieldType::ComponentRef:
+            {
+                if (!value.is_object())
+                {
+                    return;
+                }
+                const nlohmann::json::const_iterator objectIt = value.find("ref");
+                const nlohmann::json::const_iterator componentIt = value.find("component");
+                // 片方でも壊れていれば既定の未設定のまま。持ち主と Component が食い違った参照を作らない
+                if (objectIt == value.end() || !objectIt->is_number_unsigned() || componentIt == value.end() ||
+                    !componentIt->is_number_unsigned())
+                {
+                    return;
+                }
+                ComponentRefValue v{objectIt->get<std::uint32_t>(), componentIt->get<std::uint32_t>()};
                 field.set(&comp, &v);
                 return;
             }
