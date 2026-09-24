@@ -20,14 +20,13 @@ namespace NS::Obj
     public:
         ThirdPersonFollow() noexcept;
 
-        void SetTarget(Transform* target) noexcept;
-        [[nodiscard]] Transform* Target() const noexcept { return m_target; }
+        //! 追従対象の Transform。参照から使うたびに引き、未設定と解決不可は nullptr
+        [[nodiscard]] Transform* Target() const noexcept;
 
-        //! 追従対象の永続参照。データ経由の構築がリフレクション set で書き、OnStart が live へ解決する
+        //! 追従対象の永続参照。データ経由の構築がリフレクション set で書く
         [[nodiscard]] ObjectRef TargetRef() const noexcept { return m_targetRef; }
 
-        //! 追従対象の参照を world の永続 id 解決で引き、その Transform を控える
-        //! 参照未設定 / 解決不可なら SetTarget 済みの直結線を保つ。直結線とデータ経由の両立の要
+        //! プレイ開始 / rebuild ごとに初期姿勢へ戻す
         void OnStart() override;
 
         //! 自動ズームの判定に使う接地と速度を値で受け取る。移動 Component の型を include せずに済む
@@ -73,7 +72,7 @@ namespace NS::Obj
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
         // 追従カメラの感触を Inspector へ公開する。毎フレーム読まれるのでライブで効く
-        // 追従対象は永続参照で、live への結線は次の rebuild すなわちプレイ突入時の OnStart で効く
+        // 追従対象は永続参照で、使うたびに引くので書き換えもその場で効く
         NS_REFLECT_BEGIN(ThirdPersonFollow, VirtualCamera)
         NS_REFLECT_FIELD(m_targetRef, "追従対象")
         NS_REFLECT_FIELD(m_initialYaw, "初期ヨー")
@@ -97,8 +96,7 @@ namespace NS::Obj
         NS_REFLECT_END()
 
     private:
-        Transform* m_target = nullptr; // 追従対象の Transform (非所有)
-        ObjectRef m_targetRef{};       // 追従対象の永続参照
+        ObjectRef m_targetRef{}; // 追従対象の永続参照。ポインタで控えないので、相手が先に消えても空を引くだけ
 
         // 値で受けた追従先の運動。届くまでは待機距離のまま
         bool m_followGrounded = false;

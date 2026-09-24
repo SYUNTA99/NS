@@ -9,6 +9,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -73,11 +74,12 @@ namespace NS::Obj
         void RemoveByObjectId(std::uint32_t objectId);
 
         //! objectId 一致の配置物を返す。居なければ nullptr。選択・編集の live 索引
-        //! 0 は未採番の印なので常に nullptr
+        //! 0 は未採番の印なので常に nullptr。索引から引くので、毎フレーム引いても全配置物を辿らない
         [[nodiscard]] GameObject* FindByObjectId(std::uint32_t objectId) noexcept;
 
         //! ObjectRef の指す配置物を返す。未設定と該当なしは nullptr
-        //! 索引は所有リストそのものなので、破棄した相手を指す参照は必ず nullptr になる
+        //! 並びが変わるたびに索引を捨てるので、破棄した相手を指す参照は必ず nullptr になる
+        //! 別の配置物への参照はポインタで控えず、ObjectRef で持って使うたびにここで引く
         [[nodiscard]] GameObject* FindObject(ObjectRef ref) noexcept;
 
         //! 稼働中の collider を PhysicsScene へ body として入れ、broadphase を張り直す
@@ -149,8 +151,13 @@ namespace NS::Obj
         }
 
     private:
+        //! 並びが変わったので索引を捨てる。並びを変える箇所は必ず呼び、破棄した配置物を索引に残さない
+        void MarkIndexDirty() noexcept;
+
         std::vector<std::unique_ptr<GameObject>> m_objects; // 配置物の単一所有リスト
         std::vector<Component*> m_scheduled;                // UpdateObjects が priority 順に並べ直す作業用の並び
+        std::unordered_map<std::uint32_t, GameObject*> m_index; // 永続 id から配置物への索引。汚れていれば次に引く時に作り直す
+        bool m_indexDirty = true;                               // 索引が所有リストと食い違っているか
         std::uint32_t m_nextObjectId = 1;                   // 次に割り当てる永続 id。単調増加で欠番は再利用しない
         bool m_updating = false;                            // UpdateObjects の実行中か。入れ子の呼び出しの検知に使う
     };

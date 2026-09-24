@@ -98,6 +98,8 @@ namespace NS::Obj
                 }
             }
 
+            // 開始中に参照を引く component がいる。積み終えた並びで索引を作り直させる
+            MarkIndexDirty();
             for (auto& objPtr : m_objects)
                 objPtr->OnStart();
         }
@@ -107,6 +109,7 @@ namespace NS::Obj
         {
             m_objects.push_back(std::move(obj));
         }
+        MarkIndexDirty();
 
         // 生成直後は previous PRS が原点/単位回転のため Snapshot で current に揃える
         // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全配置物が振れる
@@ -121,6 +124,7 @@ namespace NS::Obj
         }
         GameObject* raw = obj.get();
         m_objects.push_back(std::move(obj));
+        MarkIndexDirty();
         return raw;
     }
 
@@ -151,6 +155,7 @@ namespace NS::Obj
             }
 
             (*it)->OnEndPlay();
+            MarkIndexDirty();
             m_objects.erase(it);
             return;
         }
@@ -173,14 +178,41 @@ namespace NS::Obj
             return nullptr;
         }
 
+        if (m_indexDirty)
+        {
+            m_index.clear();
+            for (auto& obj : m_objects)
+            {
+                if (obj->Id() != k_NoObjectId)
+                {
+                    m_index.emplace(obj->Id(), obj.get());
+                }
+            }
+            m_indexDirty = false;
+        }
+
+        const auto it = m_index.find(objectId);
+        if (it != m_index.end() && it->second->Id() == objectId)
+        {
+            return it->second;
+        }
+
+        // 索引を作った後で id を書き換えた配置物は索引とずれる。全体を見て索引を直す
         for (auto& obj : m_objects)
         {
             if (obj->Id() == objectId)
             {
+                m_index[objectId] = obj.get();
                 return obj.get();
             }
         }
         return nullptr;
+    }
+
+    void ObjectList::MarkIndexDirty() noexcept
+    {
+        m_index.clear();
+        m_indexDirty = true;
     }
 
     GameObject* ObjectList::FindObject(ObjectRef ref) noexcept
@@ -275,6 +307,7 @@ namespace NS::Obj
         {
             (*it)->OnEndPlay();
         }
+        MarkIndexDirty();
         m_objects.clear();
     }
 

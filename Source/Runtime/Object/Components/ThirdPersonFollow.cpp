@@ -37,9 +37,19 @@ namespace NS::Obj
         SetFarPlane(100.0f);
     }
 
-    void ThirdPersonFollow::SetTarget(Transform* target) noexcept
+    Transform* ThirdPersonFollow::Target() const noexcept
     {
-        m_target = target;
+        // 追う相手は控えず使うたびに引く。控えると、消された相手を指したまま次のフレームへ持ち越す
+        if (!m_targetRef.IsSet() || Owner() == nullptr || Owner()->OwningScene() == nullptr)
+        {
+            return nullptr;
+        }
+        GameObject* target = Owner()->OwningScene()->Objects().FindObject(m_targetRef);
+        if (target == nullptr)
+        {
+            return nullptr;
+        }
+        return &target->Root();
     }
 
     void ThirdPersonFollow::SetFollowMotion(bool grounded, const NS::Core::Vector3& velocity) noexcept
@@ -71,18 +81,6 @@ namespace NS::Obj
             m_distance = m_idleDistance;
             m_desiredDistance = m_idleDistance;
         }
-
-        // 参照未設定はテスト / 直結線の構築なので触らない。解決不可も既存の結線を壊さず据え置く
-        if (!m_targetRef.IsSet() || Owner() == nullptr || Owner()->OwningScene() == nullptr)
-        {
-            return;
-        }
-        GameObject* target = Owner()->OwningScene()->Objects().FindObject(m_targetRef);
-        if (target == nullptr)
-        {
-            return;
-        }
-        m_target = &target->Root();
     }
 
     void ThirdPersonFollow::SetSensX(float radPerPixel) noexcept
@@ -137,12 +135,13 @@ namespace NS::Obj
 
     void ThirdPersonFollow::SetInitialPoseFromCameraPosition(const NS::Core::Vector3& cameraPosition) noexcept
     {
-        if (m_target == nullptr)
+        const Transform* target = Target();
+        if (target == nullptr)
         {
             return;
         }
 
-        const NS::Core::Vector3 tgtPos = m_target->Position();
+        const NS::Core::Vector3 tgtPos = target->Position();
         const NS::Core::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
         const NS::Core::Vector3 toHead = headPos - cameraPosition; // = forward * distance
         const float distance = toHead.Length();
@@ -171,7 +170,7 @@ namespace NS::Obj
     void ThirdPersonFollow::OnUpdate()
     {
         const float dt = NS::Platform::FrameTimer::FixedDelta();
-        if (!IsActive() || m_target == nullptr || dt <= 0.0f)
+        if (!IsActive() || Target() == nullptr || dt <= 0.0f)
         {
             return;
         }
@@ -228,7 +227,8 @@ namespace NS::Obj
 
     CameraPose ThirdPersonFollow::EvaluatePose(float alpha) const noexcept
     {
-        if (m_target == nullptr)
+        const Transform* target = Target();
+        if (target == nullptr)
         {
             return MakePose(NS::Core::Vector3{0.0f, 0.0f, -5.0f},
                             NS::Core::Vector3{0.0f, 0.0f, 0.0f},
@@ -242,7 +242,7 @@ namespace NS::Obj
         const NS::Core::Vector3 forward{sy * cp, sp, cy * cp};
 
         // Player Mesh の補間と整合させ、相対位置のガタつきを防ぐ
-        const NS::Core::Vector3 tgtPos = m_target->InterpolatedWorldMatrix(alpha).Translation();
+        const NS::Core::Vector3 tgtPos = target->InterpolatedWorldMatrix(alpha).Translation();
         const NS::Core::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
         const NS::Core::Vector3 camPos{
             headPos.x - forward.x * m_distance,

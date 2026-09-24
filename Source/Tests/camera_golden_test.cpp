@@ -12,6 +12,7 @@
 
 #include "entity_test_stage.h"
 #include "jolt_test_scene.h"
+#include "tuning_field_access.h"
 #include <bit>
 #include <cstdint>
 #include <gtest/gtest.h>
@@ -29,9 +30,11 @@ namespace
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManager;
     using NS::Obj::GameObject;
+    using NS::Obj::ObjectIdAccess;
     using NS::Obj::ThirdPersonFollow;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
+    constexpr std::uint32_t k_PlayerId = 1u;
 
     //! 1 step ごとのカメラ姿勢。見えはこの 3 つで決まる
     struct CameraStepRecord
@@ -107,10 +110,11 @@ namespace
         player.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
         physics.OptimizeBroadPhase();
         player.OnStart();
+        ObjectIdAccess::SetId(player, k_PlayerId);
 
-        GameObject rig;
+        GameObject& rig = *stage.scene.SpawnTransient<GameObject>();
         auto& follow = *rig.AddComponent<ThirdPersonFollow>();
-        follow.SetTarget(&player.Root());
+        NsTest::WriteObjectRefField(follow, "追従対象", k_PlayerId);
         // 生成直後は休止なのでテスト側で有効化する
         follow.SetActive(true);
 

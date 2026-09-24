@@ -7,6 +7,8 @@
 #include <Runtime/Object/Scene/Scene.h>
 #include <gtest/gtest.h>
 
+#include "tuning_field_access.h"
+
 namespace
 {
     using NS::Obj::GameObject;
@@ -14,22 +16,6 @@ namespace
     using NS::Obj::ObjectRef;
     using NS::Obj::Scene;
     using NS::Obj::ObjectList;
-
-    //! リフレクションフィールド名で ObjectRef を書き込む。データ経由の構築と同じ set 経路を通す
-    void SetTargetRef(NS::Obj::Component& comp, std::uint32_t id)
-    {
-        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
-        ASSERT_NE(info, nullptr);
-        for (std::size_t i = 0; i < info->fieldCount; ++i)
-        {
-            if (std::string_view{info->fields[i].name} != "追従対象")
-                continue;
-            const ObjectRef ref{id};
-            info->fields[i].set(&comp, &ref);
-            return;
-        }
-        FAIL() << "追従対象フィールドがリフレクションに無い";
-    }
 } // namespace
 
 TEST(ObjectRefTest, ResolvesByPersistentId)
@@ -58,54 +44,56 @@ TEST(ObjectRefTest, UnnumberedObjectIsNeverResolved)
     EXPECT_EQ(objects.FindObject(ObjectRef{9u}), nullptr);
 }
 
-TEST(ObjectRefTest, FollowResolvesTargetOnStart)
+TEST(ObjectRefTest, FollowResolvesTargetByRef)
 {
     Scene scene;
-
     GameObject* target = scene.Objects().Spawn<GameObject>();
     ObjectIdAccess::SetId(*target, 5u);
 
     GameObject rig;
     rig.AttachScene(&scene);
     auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
-    SetTargetRef(*follow, 5u);
-
-    rig.OnStart();
+    NsTest::WriteObjectRefField(*follow, "追従対象", 5u);
 
     EXPECT_EQ(follow->Target(), &target->Root());
     EXPECT_EQ(follow->TargetRef().id, 5u);
 }
 
-TEST(ObjectRefTest, FollowKeepsDirectWiringWhenRefUnset)
+TEST(ObjectRefTest, FollowHasNoTargetWhenRefUnset)
 {
     Scene scene;
-
-    // 参照未設定なら直結線を触らない。基準軌跡テスト等の直組みが従来どおり動く前提
-    GameObject player;
     GameObject rig;
     rig.AttachScene(&scene);
     auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
-    follow->SetTarget(&player.Root());
 
-    rig.OnStart();
-
-    EXPECT_EQ(follow->Target(), &player.Root());
-    EXPECT_FALSE(follow->TargetRef().IsSet());
+    EXPECT_EQ(follow->Target(), nullptr);
 }
 
-TEST(ObjectRefTest, FollowKeepsWiringWhenRefDangling)
+TEST(ObjectRefTest, FollowHasNoTargetWhenRefDangling)
 {
     Scene scene;
-
-    // 参照はあるが ObjectList に該当 id が居ない。解決失敗でも既存の結線を壊さない
-    GameObject player;
     GameObject rig;
     rig.AttachScene(&scene);
     auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
-    follow->SetTarget(&player.Root());
-    SetTargetRef(*follow, 123u);
+    NsTest::WriteObjectRefField(*follow, "追従対象", 123u);
 
-    rig.OnStart();
+    EXPECT_EQ(follow->Target(), nullptr);
+}
 
-    EXPECT_EQ(follow->Target(), &player.Root());
+// 追う相手をポインタで控えないので、相手だけが先に消えても消えた相手を指し続けない
+TEST(ObjectRefTest, FollowLosesTargetDestroyedLater)
+{
+    Scene scene;
+    GameObject* target = scene.Objects().Spawn<GameObject>();
+    ObjectIdAccess::SetId(*target, 5u);
+
+    GameObject rig;
+    rig.AttachScene(&scene);
+    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
+    NsTest::WriteObjectRefField(*follow, "追従対象", 5u);
+    ASSERT_EQ(follow->Target(), &target->Root());
+
+    scene.DestroyObject(5u);
+
+    EXPECT_EQ(follow->Target(), nullptr);
 }

@@ -1,14 +1,21 @@
 #include <Runtime/Platform/Clock.h>
 #include <Runtime/Object/Components/ThirdPersonFollow.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Object.h>
+#include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
 #include <gtest/gtest.h>
 
+#include "tuning_field_access.h"
+
+#include <cstdint>
 #include <limits>
 
 namespace
 {
     using NS::Obj::GameObject;
+    using NS::Obj::ObjectIdAccess;
+    using NS::Obj::Scene;
     using NS::Obj::ThirdPersonFollow;
 
     constexpr float k_Dt = 1.0f / 60.0f;
@@ -18,11 +25,23 @@ namespace
     constexpr float k_JumpDistance = 12.0f;
     constexpr float k_RunSpeedThreshold = 4.0f;
 
-    //! 3 段の距離を既定値から離して置く。どの段に寄ったかを距離 1 つで見分けられる
-    ThirdPersonFollow& MakeZoomProbe(GameObject& obj)
+    constexpr std::uint32_t k_TargetId = 7u;
+
+    //! 原点に居る追従対象と、それを参照で追う追従カメラを scene へ置く
+    ThirdPersonFollow& AddFollowing(Scene& scene)
     {
-        auto& follow = *obj.AddComponent<ThirdPersonFollow>();
-        follow.SetTarget(&obj.Root());
+        GameObject* target = scene.SpawnTransient<GameObject>();
+        ObjectIdAccess::SetId(*target, k_TargetId);
+        GameObject* rig = scene.SpawnTransient<GameObject>();
+        auto& follow = *rig->AddComponent<ThirdPersonFollow>();
+        NsTest::WriteObjectRefField(follow, "追従対象", k_TargetId);
+        return follow;
+    }
+
+    //! 3 段の距離を既定値から離して置く。どの段に寄ったかを距離 1 つで見分けられる
+    ThirdPersonFollow& MakeZoomProbe(Scene& scene)
+    {
+        auto& follow = AddFollowing(scene);
         follow.SetActive(true);
         follow.SetAutoDistances(k_IdleDistance, k_RunDistance, k_JumpDistance);
         follow.SetRunSpeedThreshold(k_RunSpeedThreshold);
@@ -53,9 +72,8 @@ TEST_F(ThirdPersonFollowTest, ConstructsWithNullTarget)
 
 TEST_F(ThirdPersonFollowTest, OnUpdateRunsWhenActive)
 {
-    GameObject obj;
-    auto& follow = *obj.AddComponent<ThirdPersonFollow>();
-    follow.SetTarget(&obj.Root());
+    Scene scene;
+    auto& follow = AddFollowing(scene);
     follow.OnUpdate();
     SUCCEED();
 }
@@ -71,11 +89,8 @@ TEST_F(ThirdPersonFollowTest, EvaluatePoseFallbackWhenTargetIsNull)
 
 TEST_F(ThirdPersonFollowTest, EvaluatePosePlacesCameraBehindTarget)
 {
-    GameObject obj;
-    obj.Root().SetPosition({0.0f, 0.0f, 0.0f});
-
-    auto& follow = *obj.AddComponent<ThirdPersonFollow>();
-    follow.SetTarget(&obj.Root());
+    Scene scene;
+    auto& follow = AddFollowing(scene);
     follow.SetDistance(5.0f);
 
     for (int i = 0; i < 60; ++i)
@@ -113,9 +128,8 @@ TEST_F(ThirdPersonFollowTest, SetDistanceSyncsCurrentAndDesired)
 
 TEST_F(ThirdPersonFollowTest, PitchIsClampedAfterUpdate)
 {
-    GameObject obj;
-    auto& follow = *obj.AddComponent<ThirdPersonFollow>();
-    follow.SetTarget(&obj.Root());
+    Scene scene;
+    auto& follow = AddFollowing(scene);
 
     for (int i = 0; i < 200; ++i)
         follow.OnUpdate();
@@ -126,8 +140,8 @@ TEST_F(ThirdPersonFollowTest, PitchIsClampedAfterUpdate)
 
 TEST_F(ThirdPersonFollowTest, FollowMotionAirborneZoomsToJumpDistance)
 {
-    GameObject obj;
-    auto& follow = MakeZoomProbe(obj);
+    Scene scene;
+    auto& follow = MakeZoomProbe(scene);
 
     follow.SetFollowMotion(false, {0.0f, 0.0f, 0.0f});
     SettleZoom(follow);
@@ -137,8 +151,8 @@ TEST_F(ThirdPersonFollowTest, FollowMotionAirborneZoomsToJumpDistance)
 
 TEST_F(ThirdPersonFollowTest, FollowMotionAboveRunThresholdZoomsToRunDistance)
 {
-    GameObject obj;
-    auto& follow = MakeZoomProbe(obj);
+    Scene scene;
+    auto& follow = MakeZoomProbe(scene);
 
     follow.SetFollowMotion(true, {10.0f, 0.0f, 0.0f});
     SettleZoom(follow);
@@ -148,8 +162,8 @@ TEST_F(ThirdPersonFollowTest, FollowMotionAboveRunThresholdZoomsToRunDistance)
 
 TEST_F(ThirdPersonFollowTest, FollowMotionStandingStillZoomsToIdleDistance)
 {
-    GameObject obj;
-    auto& follow = MakeZoomProbe(obj);
+    Scene scene;
+    auto& follow = MakeZoomProbe(scene);
 
     follow.SetFollowMotion(true, {0.0f, 0.0f, 0.0f});
     SettleZoom(follow);
@@ -159,8 +173,8 @@ TEST_F(ThirdPersonFollowTest, FollowMotionStandingStillZoomsToIdleDistance)
 
 TEST_F(ThirdPersonFollowTest, FollowMotionRejectsNonFiniteVelocity)
 {
-    GameObject obj;
-    auto& follow = MakeZoomProbe(obj);
+    Scene scene;
+    auto& follow = MakeZoomProbe(scene);
 
     follow.SetFollowMotion(true, {std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f});
     SettleZoom(follow);
@@ -170,8 +184,8 @@ TEST_F(ThirdPersonFollowTest, FollowMotionRejectsNonFiniteVelocity)
 
 TEST_F(ThirdPersonFollowTest, WithoutAnyFollowMotionTheDistanceStaysAtIdle)
 {
-    GameObject obj;
-    auto& follow = MakeZoomProbe(obj);
+    Scene scene;
+    auto& follow = MakeZoomProbe(scene);
 
     SettleZoom(follow);
 

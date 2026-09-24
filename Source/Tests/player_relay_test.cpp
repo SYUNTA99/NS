@@ -15,6 +15,8 @@
 #include <Runtime/Platform/Keyboard.h>
 #include <gtest/gtest.h>
 
+#include "tuning_field_access.h"
+
 #include <cstdint>
 #include <string_view>
 
@@ -63,22 +65,6 @@ namespace
         return *owner.FindComponent<PlayerComponent>();
     }
 
-    //! 追従先はリフレクション経由でしか書けない。データからの構築と同じ set を通す
-    void SetTargetRef(NS::Obj::Component& comp, std::uint32_t id)
-    {
-        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
-        ASSERT_NE(info, nullptr);
-        for (std::size_t i = 0; i < info->fieldCount; ++i)
-        {
-            if (std::string_view{info->fields[i].name} != "追従対象")
-                continue;
-            const ObjectRef ref{id};
-            info->fields[i].set(&comp, &ref);
-            return;
-        }
-        FAIL() << "追従対象フィールドがリフレクションに無い";
-    }
-
     //! 追従カメラと、それへ追う相手の運動を渡す部品を 1 組にして持つ
     struct FeedCamera
     {
@@ -94,7 +80,7 @@ namespace
         follow.SetActive(true);
         follow.SetAutoDistances(k_IdleDistance, k_RunDistance, k_JumpDistance);
         follow.SetRunSpeedThreshold(k_RunSpeedThreshold);
-        SetTargetRef(follow, targetId);
+        NsTest::WriteObjectRefField(follow, "追従対象", targetId);
         auto& feed = *rig->AddComponent<FollowCameraFeed>();
         // 開始は部品が揃ってから。SpawnTransient の開始は積む前に済んでいる
         rig->OnStart();
