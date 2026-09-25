@@ -4,6 +4,7 @@
 #include "Game/Level/Health.h"
 #include "Game/Level/Respawner.h"
 #include "Game/Level/ScreenFade.h"
+#include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerInputRelay.h"
 #include "Game/Player/PlayerStateManager.h"
@@ -25,11 +26,11 @@ Player::Player() noexcept
     // 構成と見た目のコード既定。値と追加分はファクトリが player object のデータから写す
     // 同居する部品の引き当ては OnStart なので生成順に縛りは無い
     NS::Obj::MeshRenderer* mesh = AddComponent<NS::Obj::MeshRenderer>();
-    // 参照はファクトリが cube mesh と共有 player 材質へ解決する
-    mesh->SetMeshRef("cube");
+    // mesh の参照は空のまま。立ち姿と玉の mesh は PlayerAppearance が差す
     mesh->SetMaterialRef("player");
-    // テクスチャが揃うまでプレイヤーを block と見分ける個体色
-    mesh->SetBaseColor(NS::Core::Vector3{0.85f, 0.20f, 0.20f});
+    // 差し替えのモデルが来るまでの仮の色。色味を持たない中間の灰色で、床の 0.7 より暗く床の上で輪郭が残る
+    mesh->SetBaseColor(NS::Core::Vector3{0.5f, 0.5f, 0.5f});
+    AddComponent<NS::Game::Player::PlayerAppearance>();
     // 2 つで 1 組。状態機械が欠けると遷移が 1 つも起きない
     AddComponent<NS::Game::Player::PlayerStateManager>();
     AddComponent<NS::Game::Player::PlayerComponent>();
@@ -112,8 +113,7 @@ nlohmann::json MakePlayerObject(const NS::Core::Vector3& position, const NS::Cor
     nlohmann::json object = NS::Obj::MakePrototypeJson<Player>();
     NS::Obj::SetObjectPosition(object, position);
     NS::Obj::SetObjectRotation(object, rotation);
-    // cube mesh の半サイズ 0.5 を capsule 当たり radius 0.4 / 半高 0.9 に合わせる倍率
-    NS::Obj::SetObjectScale(object, NS::Core::Vector3{0.8f, 1.8f, 0.8f});
+    // 根のスケールは既定の 1 のまま。1 でないと玉が楕円に伸び、差し替えたモデルも同じ比で伸びる
     return object;
 }
 

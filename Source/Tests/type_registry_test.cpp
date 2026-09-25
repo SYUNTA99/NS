@@ -51,33 +51,12 @@ namespace
 TEST(TypeRegistryTest, CreatesEachRegisteredType)
 {
     const char* k_Registered[] = {
-        "BoxCollider",
-        "Breakable",
-        "SphereCollider",
-        "CapsuleCollider",
-        "SlopeCollider",
-        "MeshCollider",
-        "CollisionInput",
-        "ImpactResolver",
-        "FollowCameraFeed",
-        "Health",
-        "ImpactMark",
-        "KillZone",
-        "LaunchedBody",
-        "MeshRenderer",
-        "Goal",
-        "CameraComponent",
-        "CameraBrain",
-        "ThirdPersonFollow",
-        "PlayerComponent",
-        "PlayerInput",
-        "PlayerStateManager",
-        "PlayerAnimator",
-        "Shadow",
-        "SkeletalAnimation",
-        "DirectionalLight",
-        "RigidBody",
-        "PhysicsSettings",
+        "BoxCollider",        "Breakable",      "SphereCollider",    "CapsuleCollider",  "SlopeCollider",
+        "MeshCollider",       "CollisionInput", "ImpactResolver",    "FollowCameraFeed", "Health",
+        "ImpactMark",         "KillZone",       "LaunchedBody",      "MeshRenderer",     "Goal",
+        "CameraComponent",    "CameraBrain",    "ThirdPersonFollow", "PlayerComponent",  "PlayerInput",
+        "PlayerStateManager", "PlayerAnimator", "PlayerAppearance",  "Shadow",           "SkeletalAnimation",
+        "DirectionalLight",   "RigidBody",      "PhysicsSettings",
     };
     for (const char* name : k_Registered)
     {
@@ -142,7 +121,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 27u);
+    EXPECT_EQ(names.size(), 28u);
     EXPECT_TRUE(Contains(names, "BoxCollider"));
     EXPECT_TRUE(Contains(names, "MeshRenderer"));
     EXPECT_TRUE(Contains(names, "PlayerComponent"));
@@ -216,13 +195,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "Y 回転を固定",
           "Z 回転を固定"}},
         {"LaunchedBody",
-         {"回転の強さ",
-          "止まってから消える秒",
-          "破片の数",
-          "破片の速さ",
-          "破片の寿命秒",
-          "破片の大きさ",
-          "破片の色"}},
+         {"回転の強さ", "止まってから消える秒", "破片の数", "破片の速さ", "破片の寿命秒", "破片の大きさ", "破片の色"}},
         {"MeshCollider", {}},
         {"MeshRenderer", {"基本色", "メッシュ", "マテリアル"}},
         {"Goal", {"半径"}},
@@ -268,6 +241,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "ぶら下がりのクリップ",
           "走りへ移る速さの比",
           "再生速度の下限"}},
+        {"PlayerAppearance", {"立ち姿のメッシュ", "玉のメッシュ"}},
         {"Shadow", {"基本直径", "最大投影距離", "表面オフセット", "基本不透明度"}},
         {"SkeletalAnimation", {"再生速度", "ループ再生", "モデル", "クリップ"}},
         {"SlopeCollider", {"角度 (度)", "半径"}},
@@ -342,6 +316,7 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"PlayerInput", {}},
         {"PlayerStateManager", {"EntityStateManager"}},
         {"PlayerAnimator", {}},
+        {"PlayerAppearance", {}},
         {"Shadow", {}},
         {"SkeletalAnimation", {}},
         {"SlopeCollider", {"Collider"}},

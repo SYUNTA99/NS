@@ -135,7 +135,8 @@ TEST_F(ObjectBuildTest, FreeBoxHasBoxColliderWithSavedHalfExtents)
 
 TEST_F(ObjectBuildTest, FreeSphereHasOnlySphereCollider)
 {
-    std::unique_ptr<NS::Obj::GameObject> obj = Build(MakeFreeObject(SphereColliderData(0.7f, Vector3{0.0f, 1.0f, 0.0f})));
+    std::unique_ptr<NS::Obj::GameObject> obj =
+        Build(MakeFreeObject(SphereColliderData(0.7f, Vector3{0.0f, 1.0f, 0.0f})));
     ASSERT_NE(obj, nullptr);
     EXPECT_FALSE(Has<NS::Obj::BoxCollider>(*obj));
     NS::Obj::SphereCollider* sphere = obj->FindComponent<NS::Obj::SphereCollider>();
@@ -149,7 +150,8 @@ TEST_F(ObjectBuildTest, FreeSphereHasOnlySphereCollider)
 
 TEST_F(ObjectBuildTest, SphereColliderWorldAabbEnclosesSphere)
 {
-    std::unique_ptr<NS::Obj::GameObject> obj = Build(MakeFreeObject(SphereColliderData(0.7f, Vector3{0.0f, 1.0f, 0.0f})));
+    std::unique_ptr<NS::Obj::GameObject> obj =
+        Build(MakeFreeObject(SphereColliderData(0.7f, Vector3{0.0f, 1.0f, 0.0f})));
     ASSERT_NE(obj, nullptr);
     NS::Obj::SphereCollider* sphere = obj->FindComponent<NS::Obj::SphereCollider>();
     ASSERT_NE(sphere, nullptr);
@@ -360,7 +362,8 @@ TEST_F(ObjectBuildTest, PlayerObjectJsonIsSparseTypeListFromClass)
     EXPECT_TRUE(IsPlayerObject(data));
 }
 
-// 疎なデータで組んでも、cube と共有 player 材質と赤の個体色はコンストラクタが与える
+// 疎なデータで組んでも、共有 player 材質と灰色の個体色はコンストラクタが与える
+// mesh は PlayerAppearance が立ち姿と玉から差すので、MeshRenderer の参照は空
 TEST_F(ObjectBuildTest, PlayerDefaultLookComesFromClassNotData)
 {
     std::unique_ptr<NS::Obj::GameObject> obj = Build(MakePlayerObject(Vector3{}, NS::Core::Quaternion{}));
@@ -368,7 +371,7 @@ TEST_F(ObjectBuildTest, PlayerDefaultLookComesFromClassNotData)
     NS::Obj::MeshRenderer* mesh = obj->FindComponent<NS::Obj::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
 
-    EXPECT_EQ(mesh->MeshRef(), "cube");
+    EXPECT_EQ(mesh->MeshRef(), "");
     EXPECT_EQ(mesh->MaterialRef(), "player");
 
     // 個体色は getter が無いのでリフレクションフィールド越しに読む
@@ -384,9 +387,9 @@ TEST_F(ObjectBuildTest, PlayerDefaultLookComesFromClassNotData)
         }
     }
     ASSERT_TRUE(found);
-    EXPECT_FLOAT_EQ(baseColor.x, 0.85f);
-    EXPECT_FLOAT_EQ(baseColor.y, 0.20f);
-    EXPECT_FLOAT_EQ(baseColor.z, 0.20f);
+    EXPECT_FLOAT_EQ(baseColor.x, 0.5f);
+    EXPECT_FLOAT_EQ(baseColor.y, 0.5f);
+    EXPECT_FLOAT_EQ(baseColor.z, 0.5f);
 }
 
 // data 側で書き込んだ値が既定構成の component へリフレクション適用される

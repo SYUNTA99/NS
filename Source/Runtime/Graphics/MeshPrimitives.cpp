@@ -174,4 +174,73 @@ namespace NS::Gfx
         return geom;
     }
 
+    MeshGeometry MakeCapsule(float radius, float halfHeight, std::uint32_t rings, std::uint32_t segments)
+    {
+        radius = std::max(radius, 0.0f);
+        halfHeight = std::max(halfHeight, 0.0f);
+        rings = std::max(rings, 1u);
+        segments = std::max(segments, 3u);
+
+        // v は経線に沿った長さの比。円柱部で模様が縦に伸びない
+        const float quarterArc = radius * NS::Core::k_Pi * 0.5f;
+        const float meridian = 2.0f * quarterArc + 2.0f * halfHeight;
+
+        // 上の半球を北極から赤道へ、続けて下の半球を赤道から南極へ置く。赤道は上下で 2 列あり、その間が円柱になる
+        const std::uint32_t rows = 2 * (rings + 1);
+        const std::uint32_t stride = segments + 1;
+        MeshGeometry geom;
+        geom.vertices.reserve(static_cast<std::size_t>(rows) * stride);
+        for (std::uint32_t row = 0; row < rows; ++row)
+        {
+            std::uint32_t step = row;
+            float centerY = halfHeight;
+            float phiStart = 0.0f;
+            float arcBefore = 0.0f;
+            if (row > rings)
+            {
+                step = row - (rings + 1);
+                centerY = -halfHeight;
+                phiStart = NS::Core::k_Pi * 0.5f;
+                arcBefore = quarterArc + 2.0f * halfHeight;
+            }
+            const float t = static_cast<float>(step) / static_cast<float>(rings);
+            const float phi = phiStart + t * NS::Core::k_Pi * 0.5f;
+            const float y = std::cos(phi);
+            const float ringRadius = std::sin(phi);
+            float v = 0.0f;
+            if (meridian > 0.0f)
+            {
+                v = (arcBefore + t * quarterArc) / meridian;
+            }
+
+            // 経線の継ぎ目で u が 0 と 1 に割れるよう、一周した先にもう 1 列重ねて置く
+            for (std::uint32_t segment = 0; segment <= segments; ++segment)
+            {
+                const float u = static_cast<float>(segment) / static_cast<float>(segments);
+                const float theta = u * NS::Core::k_Pi * 2.0f;
+                const NS::Core::Vector3 normal{ringRadius * std::sin(theta), y, ringRadius * std::cos(theta)};
+                geom.vertices.push_back(
+                    {{normal.x * radius, normal.y * radius + centerY, normal.z * radius}, {u, v}, normal});
+            }
+        }
+
+        // 並びは MakeSphere と同じで、各面が外側を向く。極の 1 段と、円柱の長さ 0 の赤道は面積 0 の三角形になる
+        geom.indices.reserve(static_cast<std::size_t>(rows - 1) * segments * 6);
+        for (std::uint32_t row = 0; row + 1 < rows; ++row)
+        {
+            for (std::uint32_t segment = 0; segment < segments; ++segment)
+            {
+                const std::uint32_t upper = row * stride + segment;
+                const std::uint32_t lower = upper + stride;
+                geom.indices.push_back(upper);
+                geom.indices.push_back(lower);
+                geom.indices.push_back(upper + 1);
+                geom.indices.push_back(upper + 1);
+                geom.indices.push_back(lower);
+                geom.indices.push_back(lower + 1);
+            }
+        }
+        return geom;
+    }
+
 } // namespace NS::Gfx

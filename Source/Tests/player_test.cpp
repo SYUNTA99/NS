@@ -17,7 +17,7 @@
 TEST(PlayerTest, ConstructsWithDefaultComposition)
 {
     Player player{};
-    EXPECT_EQ(player.Components().size(), 11u);
+    EXPECT_EQ(player.Components().size(), 12u);
 }
 
 TEST(PlayerTest, DefaultComponentsResolveByType)

@@ -6,11 +6,14 @@
 #include <Game/Level/Breakable.h>
 #include <Game/Level/ImpactResolver.h>
 #include <Game/Level/LaunchedBody.h>
+#include <Game/Player/PlayerAppearance.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManager.h>
 #include <Runtime/Core/AABB.h>
-#include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Object/AssetManager.h>
+#include <Runtime/Object/Components/MeshRenderer.h>
 #include <Runtime/Object/Components/PlayerInput.h>
 #include <Runtime/Object/Components/RigidBody.h>
 #include <Runtime/Object/GameObject.h>
@@ -19,6 +22,9 @@
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsScene.h>
+#include <Runtime/Platform/Clock.h>
+#include <Runtime/Platform/Filesystem.h>
+#include <Runtime/Platform/Window.h>
 
 #include "entity_test_stage.h"
 #include "jolt_test_scene.h"
@@ -27,6 +33,8 @@
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <limits>
+#include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -34,6 +42,7 @@ namespace
 {
     using NS::Core::AABB;
     using NS::Core::Vector3;
+    using NS::Game::Player::PlayerAppearance;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManager;
     using NS::Obj::GameObject;
@@ -114,20 +123,35 @@ namespace
     // 壊れない高さ。破壊が入っても反発と押し飛ばしの経路が変わらない
     constexpr float k_ImpactTargetToughness = 99.0f;
 
+    // 見た目の持ち替えを走行に重ねる設定。資産を差すと参照が引き当たり、MeshRenderer の mesh が実際に入れ替わる
+    struct LooksSwap
+    {
+        NS::Obj::AssetManager* assets = nullptr;
+        std::string standingMeshRef;
+        std::string ballMeshRef;
+        int period = 0; // 丸まる・戻るを切り替える間隔のフレーム数。0 なら切り替えない
+    };
+
+    // 突進の間隔 30 と割り切れない長さ。構え・凍結・潰れ・反発のどの最中にも切り替えが入る
+    constexpr int k_LooksSwapPeriod = 7;
+
     // 反発と押し飛ばしを含む経路。当たりを持つ配置物が要るのでシーンの JSON から組む
     class ImpactRig
     {
     public:
-        ImpactRig()
+        explicit ImpactRig(const LooksSwap& looks = LooksSwap{}) : m_swapPeriod(looks.period)
         {
             nlohmann::json data = NS::Obj::MakeSceneJson();
             for (std::int16_t z = 0; z < k_ImpactFloorCells; ++z)
                 NS::Obj::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(0, 0, z));
 
-            nlohmann::json player =
-                MakePlayerObject(Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{});
+            nlohmann::json player = MakePlayerObject(Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{});
             NS::Obj::ObjectJsonComponents(player).push_back(NS::Obj::MakeComponentEntry("ImpactResolver"));
             NS::Obj::ObjectJsonComponents(player).push_back(NS::Obj::MakeComponentEntry("CollisionInput"));
+            nlohmann::json appearance = NS::Obj::MakeComponentEntry("PlayerAppearance");
+            NS::Obj::SetField(appearance, "立ち姿のメッシュ", looks.standingMeshRef);
+            NS::Obj::SetField(appearance, "玉のメッシュ", looks.ballMeshRef);
+            NS::Obj::ObjectJsonComponents(player).push_back(std::move(appearance));
             NS::Obj::SceneJsonObjects(data).push_back(player);
 
             nlohmann::json target = NS::Editor::MakeCellObject(0, 1, k_ImpactTargetZ);
@@ -141,6 +165,7 @@ namespace
             NS::Obj::ObjectJsonComponents(target).push_back(NS::Obj::MakeComponentEntry("Breakable"));
             NS::Obj::SceneJsonObjects(data).push_back(target);
 
+            m_scene.SetAssets(looks.assets);
             m_scene.LoadJson(std::move(data));
 
             Player* live = FindPlayer(m_scene.Objects());
@@ -149,14 +174,14 @@ namespace
             {
                 m_player = live;
                 m_movement = live->FindComponent<PlayerComponent>();
+                m_appearance = live->FindComponent<PlayerAppearance>();
+                m_renderer = live->FindComponent<NS::Obj::MeshRenderer>();
                 // 入力の component は EarlyUpdate で実機の入力を書き込む。起こしたままだと走行入力が毎フレーム 0 になる
                 if (NS::Obj::PlayerInput* input = live->FindComponent<NS::Obj::PlayerInput>())
                     input->SetActive(false);
             }
             m_scene.Objects().ForEachComponent<NS::Game::Level::Breakable>(
-                [](NS::Game::Level::Breakable& breakable) {
-                    breakable.SetToughness(k_ImpactTargetToughness);
-                });
+                [](NS::Game::Level::Breakable& breakable) { breakable.SetToughness(k_ImpactTargetToughness); });
         }
 
         void Step(const Vector3& direction, float speedScale, int steps)
@@ -166,6 +191,10 @@ namespace
                 m_movement->SetDesiredMove(direction, speedScale);
                 if (m_stepIndex % k_ImpactSlamPeriod == 0)
                     m_movement->RequestBodySlam(k_ImpactSlamCharge);
+                if (m_swapPeriod > 0 && m_stepIndex % m_swapPeriod == 0)
+                {
+                    SwapLooks();
+                }
                 ++m_stepIndex;
                 // 岩は Jolt の剛体なので、帯だけ回しても動かない。物理の 1 フレームを LateUpdate 帯の手前へ挟む
                 // RigidBody の前後の処理も Scene::OnUpdate と同じ順で挟む。抜くと飛んだ岩の姿勢が書き戻らない
@@ -187,13 +216,40 @@ namespace
         }
 
         [[nodiscard]] const std::vector<StepRecord>& Trace() const noexcept { return m_trace; }
+        // 持ち替えで MeshRenderer の mesh が実際に変わった回数
+        [[nodiscard]] int ShownMeshChanges() const noexcept { return m_shownMeshChanges; }
 
     private:
+        void SwapLooks()
+        {
+            if (m_appearance == nullptr || m_renderer == nullptr)
+            {
+                return;
+            }
+            const NS::Gfx::Mesh* before = m_renderer->GetMesh();
+            if (m_appearance->IsCurled())
+            {
+                m_appearance->Uncurl();
+            }
+            else
+            {
+                m_appearance->Curl();
+            }
+            if (m_renderer->GetMesh() != before)
+            {
+                ++m_shownMeshChanges;
+            }
+        }
+
         NS::Obj::Scene m_scene;
         Player* m_player = nullptr;
         PlayerComponent* m_movement = nullptr;
+        PlayerAppearance* m_appearance = nullptr;
+        NS::Obj::MeshRenderer* m_renderer = nullptr;
         std::vector<StepRecord> m_trace;
         int m_stepIndex = 0;
+        int m_swapPeriod = 0;
+        int m_shownMeshChanges = 0;
     };
 
     // 壊せる物へ走り込み、反発しながら追いかけ直す。記録するのは自機だけで、飛ばされた物の位置は入れない
@@ -263,6 +319,48 @@ TEST_F(CollisionGolden, ImpactMatchesGoldenTrace)
     ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("collision_impact");
     const TraceDiff diff = CompareTraces(*baseline, trace, k_Exact);
     EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trace);
+}
+
+// 見た目を持ち替えても動きは変わらない。玉と立ち姿を走行の途中で何度も持ち替え、持ち替えない基準とビットまで比べる
+// 仮の形でも、見た目のファイルを本物のモデルへ差し替えた形でも、同じ基準に一致する
+TEST_F(CollisionGolden, ImpactMatchesGoldenTraceWhileSwappingLooks)
+{
+    NS::Platform::WindowDesc windowDesc{};
+    windowDesc.title = "ns_collision_golden_looks";
+    windowDesc.size = NS::Core::Size2D{320, 240};
+    windowDesc.visible = false;
+    NS::Platform::Window window(windowDesc);
+    ASSERT_TRUE(window.IsValid());
+    NS::Gfx::RendererDesc rendererDesc{};
+    rendererDesc.vsync = false;
+    rendererDesc.enableDebugLayer = false;
+    NS::Gfx::Renderer renderer(rendererDesc, window);
+    if (!renderer.IsValid())
+    {
+        GTEST_SKIP() << "Device 確立不可 (headless)。mesh を作れないので持ち替えが MeshRenderer に届かない";
+    }
+
+    const std::optional<std::vector<StepRecord>> baseline = LoadBaseline("collision_impact");
+    ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("collision_impact");
+
+    // 資産は Renderer より先に手放す。Renderer より後に宣言した物が先に破棄される
+    NS::Obj::AssetManager assets{NS::Platform::FileSystem::ContentRoot()};
+    assets.RegisterBuiltins();
+    assets.RegisterSharedMaterials();
+
+    const LooksSwap placeholder{&assets, "", "", k_LooksSwapPeriod};
+    const LooksSwap models{&assets, "Assets/Models/Soldier.glb", "Assets/Models/Xbot.glb", k_LooksSwapPeriod};
+    for (const LooksSwap& looks : {placeholder, models})
+    {
+        ImpactRig rig(looks);
+        rig.Step(k_Forward, 1.0f, k_ImpactSteps);
+
+        EXPECT_GT(rig.ShownMeshChanges(), 0) << "持ち替えが MeshRenderer に届いていない: " << looks.standingMeshRef;
+        const TraceDiff diff = CompareTraces(*baseline, rig.Trace(), k_Exact);
+        EXPECT_TRUE(diff.matched) << "立ち姿の参照 '" << looks.standingMeshRef << "'\n"
+                                  << DescribeDiff(diff, *baseline, rig.Trace());
+        EXPECT_EQ(FoldTrace(rig.Trace()), FoldTrace(*baseline));
+    }
 }
 
 TEST_F(CollisionGolden, DISABLED_SaveBaselines)

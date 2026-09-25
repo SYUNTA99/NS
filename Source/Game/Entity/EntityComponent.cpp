@@ -1,11 +1,11 @@
 ﻿#include "Game/Entity/EntityComponent.h"
 
-#include "Runtime/Platform/Clock.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/JoltCharacter.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <cmath>
 
@@ -58,12 +58,34 @@ namespace NS::Game::Entity
 
     float EntityComponent::CapsuleRadius() const noexcept
     {
-        return m_capsuleCollider != nullptr ? m_capsuleCollider->Radius() : 0.4f;
+        if (const NS::Obj::CapsuleCollider* capsule = SiblingCapsule())
+        {
+            return capsule->Radius();
+        }
+        return 0.4f;
     }
 
     float EntityComponent::CapsuleHalfHeight() const noexcept
     {
-        return m_capsuleCollider != nullptr ? m_capsuleCollider->HalfHeight() : 0.5f;
+        if (const NS::Obj::CapsuleCollider* capsule = SiblingCapsule())
+        {
+            return capsule->HalfHeight();
+        }
+        return 0.5f;
+    }
+
+    const NS::Obj::CapsuleCollider* EntityComponent::SiblingCapsule() const noexcept
+    {
+        if (m_capsuleCollider != nullptr)
+        {
+            return m_capsuleCollider;
+        }
+        // 資産の引き当ては OnStart より前に走る。PlayerAppearance がその時に聞いても移動と同じ当たりを返す
+        if (Owner() == nullptr)
+        {
+            return nullptr;
+        }
+        return Owner()->FindComponent<NS::Obj::CapsuleCollider>();
     }
 
     NS::Phys::PhysicsScene* EntityComponent::ScenePhysics() const noexcept

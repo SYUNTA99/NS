@@ -1,13 +1,17 @@
 #include "Editor/LevelFilePaths.h"
+#include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerStateManager.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Runtime/Object/Component.h"
+#include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/Reflection.h"
+#include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/SceneJson.h"
+#include "Runtime/Object/Transform.h"
 #include "tuning_field_access.h"
 
 #include <algorithm>
@@ -159,6 +163,37 @@ TEST_P(ShippedScene, LoadedPlayerKeepsTheTunedSlamValues)
     EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*player, "タップ距離"), 6.25f);
     EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*player, "ジャンプ初速"), 12.0f);
     EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*player, "コヨーテ時間"), 0.025f);
+}
+
+// 自機の見た目は根のスケール 1 で描く。1 でないと玉が楕円に伸び、差し替えたモデルも同じ比で伸びる
+// 色は灰色で、コードの既定とシーンの欄を揃える。保存済みの欄が既定を上書きするので、片方だけ直すと実機に出ない
+TEST_P(ShippedScene, PlayerLooksUseUnitScaleAndTheDefaultGray)
+{
+    nlohmann::json scene = SceneNs::MakeSceneJson();
+    ASSERT_TRUE(LoadShippedScene(scene, GetParam()));
+    const nlohmann::json* object = FindPlayerObject(scene);
+    ASSERT_NE(object, nullptr);
+
+    std::unique_ptr<SceneNs::GameObject> shipped = SceneNs::ObjectFromJson(*object, nullptr);
+    std::unique_ptr<SceneNs::GameObject> prototype =
+        SceneNs::ObjectFromJson(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}), nullptr);
+    ASSERT_NE(shipped, nullptr);
+    ASSERT_NE(prototype, nullptr);
+
+    const NS::Core::Vector3 unit{1.0f, 1.0f, 1.0f};
+    EXPECT_EQ(shipped->Root().Scale(), unit) << GetParam() << " の自機の根のスケールが 1 でない";
+    EXPECT_EQ(prototype->Root().Scale(), unit) << "MakePlayerObject の根のスケールが 1 でない";
+
+    const SceneNs::MeshRenderer* shippedMesh = shipped->FindComponent<SceneNs::MeshRenderer>();
+    const SceneNs::MeshRenderer* prototypeMesh = prototype->FindComponent<SceneNs::MeshRenderer>();
+    ASSERT_NE(shippedMesh, nullptr);
+    ASSERT_NE(prototypeMesh, nullptr);
+    const nlohmann::json shippedColor = SceneNs::SerializeComponent(*shippedMesh)["fields"]["基本色"];
+    const nlohmann::json defaultColor = SceneNs::SerializeComponent(*prototypeMesh)["fields"]["基本色"];
+    EXPECT_EQ(shippedColor, defaultColor) << GetParam() << " の自機の色がコードの既定と違う";
+    ASSERT_EQ(defaultColor.size(), 3u);
+    EXPECT_EQ(defaultColor[0], defaultColor[1]) << "既定の色が灰色でない";
+    EXPECT_EQ(defaultColor[1], defaultColor[2]) << "既定の色が灰色でない";
 }
 
 INSTANTIATE_TEST_SUITE_P(ScenePlayerLoad,

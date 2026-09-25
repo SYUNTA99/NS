@@ -1,12 +1,13 @@
 #include "scoped_fixture.h"
 
-#include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Graphics/StaticMesh.h>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Physics/MeshCollision.h>
 #include <Runtime/Physics/Triangle.h>
+#include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Platform/Window.h>
 #include <algorithm>
 #include <array>
@@ -14,6 +15,7 @@
 #include <cstring>
 #include <format>
 #include <gtest/gtest.h>
+#include <limits>
 #include <span>
 #include <string>
 #include <string_view>
@@ -48,19 +50,20 @@ namespace
 
     std::string ShaderPath(const char* name)
     {
-        return NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), std::string("Shaders/") + name);
+        return NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(),
+                                                 std::string("Shaders/") + name);
     }
 
     std::string TexturePath(const char* name)
     {
         return NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(),
-                                             std::string("Assets/Textures/") + name);
+                                                 std::string("Assets/Textures/") + name);
     }
 
     std::string MaterialPath(const char* name)
     {
         return NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(),
-                                             std::string("Assets/Materials/") + name);
+                                                 std::string("Assets/Materials/") + name);
     }
 
     std::string EncodeBase64(std::span<const std::uint8_t> bytes)
@@ -131,7 +134,8 @@ namespace
     // ContentRoot 相対の参照。ContentRoot の外なら空
     std::string ContentRelativeRef(std::string_view path)
     {
-        const std::string contentRootNorm = NS::Platform::FileSystem::Normalize(NS::Platform::FileSystem::ContentRoot());
+        const std::string contentRootNorm =
+            NS::Platform::FileSystem::Normalize(NS::Platform::FileSystem::ContentRoot());
         const std::string pathNorm = NS::Platform::FileSystem::Normalize(path);
         if (pathNorm.size() <= contentRootNorm.size() + 1 ||
             ::_strnicmp(pathNorm.c_str(), contentRootNorm.c_str(), contentRootNorm.size()) != 0 ||
@@ -220,6 +224,52 @@ TEST_F(AssetManagerTest, BuiltinCubeCollisionHasTwelveOutwardTriangles)
         const NS::Core::Vector3 centroid = (triangle.v0 + triangle.v1 + triangle.v2) / 3.0f;
         EXPECT_GT(FaceNormal(triangle).Dot(centroid), 0.0f);
     }
+}
+
+// 自機の見た目のカプセルは当たりの寸法の組ごとに 1 つ。同じ組は同じ mesh、半分の高さ 0 は同じ半径の球
+TEST_F(AssetManagerTest, CapsuleMeshIsSharedPerSizeAndMatchesTheSize)
+{
+    Window window(MakeWindowDesc("ns_am_capsule"));
+    ASSERT_TRUE(window.IsValid());
+    Renderer renderer(MakeRendererDesc(), window);
+    if (!renderer.IsValid())
+    {
+        GTEST_SKIP() << "Device 確立不可 (headless)";
+    }
+
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
+
+    NS::Gfx::StaticMesh* standing = am.GetOrMakeCapsuleMesh(0.65f, 0.5f);
+    NS::Gfx::StaticMesh* ball = am.GetOrMakeCapsuleMesh(0.65f, 0.0f);
+    ASSERT_NE(standing, nullptr);
+    ASSERT_NE(ball, nullptr);
+    EXPECT_NE(standing, ball);
+    EXPECT_EQ(am.GetOrMakeCapsuleMesh(0.65f, 0.5f), standing);
+
+    EXPECT_NEAR(standing->LocalBounds().Extents.x, 0.65f, 1e-5f);
+    EXPECT_NEAR(standing->LocalBounds().Extents.y, 1.15f, 1e-5f);
+    EXPECT_NEAR(standing->LocalBounds().Extents.z, 0.65f, 1e-5f);
+    EXPECT_NEAR(ball->LocalBounds().Extents.x, 0.65f, 1e-5f);
+    EXPECT_NEAR(ball->LocalBounds().Extents.y, 0.65f, 1e-5f);
+    EXPECT_NEAR(ball->LocalBounds().Extents.z, 0.65f, 1e-5f);
+}
+
+// 有限でない寸法は作らずに断る。非数は寸法の組を並べる比較を壊し、無限大は頂点の座標が無限大になる
+// device が無いと寸法によらず作れないので、断ったのが寸法のせいだと言えるよう device を立てる
+TEST_F(AssetManagerTest, CapsuleMeshRejectsNonFiniteSize)
+{
+    Window window(MakeWindowDesc("ns_am_capsule_nonfinite"));
+    ASSERT_TRUE(window.IsValid());
+    Renderer renderer(MakeRendererDesc(), window);
+    if (!renderer.IsValid())
+    {
+        GTEST_SKIP() << "Device 確立不可 (headless)";
+    }
+
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
+
+    EXPECT_EQ(am.GetOrMakeCapsuleMesh(std::numeric_limits<float>::quiet_NaN(), 0.5f), nullptr);
+    EXPECT_EQ(am.GetOrMakeCapsuleMesh(0.4f, std::numeric_limits<float>::infinity()), nullptr);
 }
 
 // 同じ参照には同じ当たりを返す。配置物ごとに読み直さない
@@ -410,7 +460,8 @@ TEST(AssetManagerParseTest, OptionalFieldsDefaultWhenAbsent)
 
 TEST(AssetManagerParseTest, BlendStringMapsToEnum)
 {
-    bool (*parseBlend)(const char*, NS::Gfx::BlendMode&) = [](const char* blendValue, NS::Gfx::BlendMode& outBlend) -> bool {
+    bool (*parseBlend)(const char*, NS::Gfx::BlendMode&) = [](const char* blendValue,
+                                                              NS::Gfx::BlendMode& outBlend) -> bool {
         const std::string json =
             std::string(R"({ "vs": "a.vs.hlsl", "ps": "b.ps.hlsl", "blend": ")") + blendValue + "\" }";
         MaterialFileDesc desc{};

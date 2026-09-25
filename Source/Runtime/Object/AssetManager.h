@@ -112,7 +112,7 @@ namespace NS::Obj
         //! 返し後で再試行できる。結合できるトラックが 1 本も無ければ空の一覧を非 null で返す
         //! 同じ組で呼ぶ全インスタンスが結果を共有する
         [[nodiscard]] const std::vector<NS::Gfx::AnimationClip>* GetOrLoadBoundClips(std::string_view clipPath,
-                                                                                          std::string_view modelPath);
+                                                                                     std::string_view modelPath);
 
         //! 手続き生成の組み込み cube / sphere / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
         //! device 確立後・最初の利用前に 1 度だけ呼ぶ。既登録名は上書きしない
@@ -121,6 +121,14 @@ namespace NS::Obj
         //! RegisterBuiltins を通っていない AssetManager では全部 nullptr になる
         //! 同じ名前の当たりは RegisterBuiltins 無しでも GetOrLoadMeshCollision が返す
         [[nodiscard]] NS::Gfx::StaticMesh* Builtin(std::string_view name) const noexcept;
+
+        //! @brief 半径と半分の高さの組ごとに 1 度だけカプセルの StaticMesh を作り、以後は同じ mesh を返す
+        //! @details 寸法の意味は NS::Gfx::MakeCapsule と同じ。半分の高さ 0 は同じ半径の球になる
+        //! 返す mesh は AssetManager 所有で Clear() まで有効。作れなかった寸法は覚えず、次に頼まれた時に作り直す
+        //! @param[in] radius 円柱と半球の半径
+        //! @param[in] halfHeight 円柱部の長さの半分
+        //! @return カプセルの mesh。寸法が有限でない・device が無い・GPU 生成に失敗した場合は nullptr
+        [[nodiscard]] NS::Gfx::StaticMesh* GetOrMakeCapsuleMesh(float radius, float halfHeight);
 
         //! matPath の .mat を読み込み composite Material を組んで返す。shader / texture は内部 leaf を借りて共有
         //! 既読なら cache を返す。読込 / 解析失敗時は material=nullptr の LoadedMaterial を返す
@@ -153,7 +161,7 @@ namespace NS::Obj
         // file の mesh 1 件。描画と当たりを 1 回の読込から両方作る。読込に失敗した path も両方 null で残す
         struct MeshRecord
         {
-            std::unique_ptr<NS::Gfx::Mesh> mesh;              // GPU 生成に失敗したら null
+            std::unique_ptr<NS::Gfx::Mesh> mesh;                // GPU 生成に失敗したら null
             std::unique_ptr<NS::Phys::MeshCollision> collision; // Jolt の形は当たりを頼まれた時に作る
         };
 
@@ -167,14 +175,15 @@ namespace NS::Obj
             std::vector<NS::Gfx::AnimationClip> clips;
         };
 
-        std::string m_baseDir;                                                    // 相対 path 解決の基準ディレクトリ
+        std::string m_baseDir;                                               // 相対 path 解決の基準ディレクトリ
         std::map<std::string, std::unique_ptr<NS::Gfx::Shader>> m_shaders;   // path キーの Shader キャッシュ
         std::map<std::string, std::unique_ptr<NS::Gfx::Texture>> m_textures; // path キーの Texture キャッシュ
-        std::map<std::string, MeshRecord> m_meshes;                               // path キーの file mesh
-        std::map<std::string, std::unique_ptr<NS::Phys::MeshCollision>>
-            m_builtinCollisions;                                                          // 組み込み名キーの当たり
-        std::map<std::string, std::unique_ptr<NS::Gfx::StaticMesh>> m_builtins;      // path 無し、leaf と別容器
-        std::map<std::string, MaterialRecord> m_materials;                                // .mat composite
+        std::map<std::string, MeshRecord> m_meshes;                          // path キーの file mesh
+        std::map<std::string, std::unique_ptr<NS::Phys::MeshCollision>> m_builtinCollisions; // 組み込み名キーの当たり
+        std::map<std::string, std::unique_ptr<NS::Gfx::StaticMesh>> m_builtins;              // path 無し、leaf と別容器
+        std::map<std::pair<float, float>, std::unique_ptr<NS::Gfx::StaticMesh>>
+            m_capsules;                                                              // 半径と半分の高さの組がキー
+        std::map<std::string, MaterialRecord> m_materials;                           // .mat composite
         std::map<std::string, std::unique_ptr<NS::Gfx::Material>> m_sharedMaterials; // 手続き共有マテリアル
         std::map<std::string, SkinnedModelRecord>
             m_skinnedModels; // skinned glTF。record は挿入後に書き換えず、配った参照を安定させる

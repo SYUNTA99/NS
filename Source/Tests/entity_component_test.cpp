@@ -1,10 +1,10 @@
 #include <Game/Entity/EntityComponent.h>
 #include <Runtime/Core/AABB.h>
-#include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CapsuleCollider.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
+#include <Runtime/Platform/Clock.h>
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -99,6 +99,17 @@ TEST_F(EntityComponentTest, AdoptsSiblingCapsuleColliderSize)
     BareEntity& entity = *obj.AddComponent<BareEntity>();
 
     entity.OnStart();
+
+    EXPECT_FLOAT_EQ(entity.CapsuleRadius(), 0.7f);
+    EXPECT_FLOAT_EQ(entity.CapsuleHalfHeight(), 0.9f);
+}
+
+// 資産の引き当ては OnStart より前に走る。見た目がその時に寸法を聞いても、移動と同じ当たりを返す
+TEST_F(EntityComponentTest, AdoptsSiblingCapsuleColliderSizeBeforeStart)
+{
+    GameObject obj;
+    obj.AddComponent<NS::Obj::CapsuleCollider>(0.7f, 0.9f);
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
 
     EXPECT_FLOAT_EQ(entity.CapsuleRadius(), 0.7f);
     EXPECT_FLOAT_EQ(entity.CapsuleHalfHeight(), 0.9f);

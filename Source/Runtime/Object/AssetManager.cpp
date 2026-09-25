@@ -17,6 +17,7 @@
 #include "Runtime/Platform/Filesystem.h"
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <string_view>
@@ -225,7 +226,8 @@ namespace NS::Obj
     {
         // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから重複をまとめる
         const std::string key = NS::Platform::FileSystem::Normalize(path);
-        if (const std::map<std::string, std::unique_ptr<NS::Gfx::Shader>>::iterator it = m_shaders.find(key); it != m_shaders.end())
+        if (const std::map<std::string, std::unique_ptr<NS::Gfx::Shader>>::iterator it = m_shaders.find(key);
+            it != m_shaders.end())
         {
             return it->second.get();
         }
@@ -243,7 +245,8 @@ namespace NS::Obj
     NS::Gfx::Texture* AssetManager::GetOrLoadTexture(std::string_view path)
     {
         const std::string key = NS::Platform::FileSystem::Normalize(path);
-        if (const std::map<std::string, std::unique_ptr<NS::Gfx::Texture>>::iterator it = m_textures.find(key); it != m_textures.end())
+        if (const std::map<std::string, std::unique_ptr<NS::Gfx::Texture>>::iterator it = m_textures.find(key);
+            it != m_textures.end())
         {
             return it->second.get();
         }
@@ -313,7 +316,8 @@ namespace NS::Obj
 
         if (const BuiltinShape* shape = FindBuiltinShape(meshRef))
         {
-            std::map<std::string, std::unique_ptr<NS::Phys::MeshCollision>>::iterator it = m_builtinCollisions.find(meshRef);
+            std::map<std::string, std::unique_ptr<NS::Phys::MeshCollision>>::iterator it =
+                m_builtinCollisions.find(meshRef);
             if (it == m_builtinCollisions.end())
             {
                 std::unique_ptr<NS::Phys::MeshCollision> collision = std::make_unique<NS::Phys::MeshCollision>();
@@ -385,7 +389,9 @@ namespace NS::Obj
     {
         const std::string key = NS::Platform::FileSystem::Normalize(path);
         // null エントリは負キャッシュした失敗 path を表す。get() が nullptr を返し再読込を短絡する
-        if (const std::map<std::string, std::unique_ptr<NS::Gfx::AnimationSource>>::iterator it = m_animationSources.find(key); it != m_animationSources.end())
+        if (const std::map<std::string, std::unique_ptr<NS::Gfx::AnimationSource>>::iterator it =
+                m_animationSources.find(key);
+            it != m_animationSources.end())
         {
             return it->second.get();
         }
@@ -410,8 +416,8 @@ namespace NS::Obj
     {
         const std::pair<std::string, std::string> key{NS::Platform::FileSystem::Normalize(clipPath),
                                                       NS::Platform::FileSystem::Normalize(modelPath)};
-        if (const std::map<std::pair<std::string, std::string>, std::unique_ptr<std::vector<NS::Gfx::AnimationClip>>>::iterator it =
-                m_boundClips.find(key);
+        if (const std::map<std::pair<std::string, std::string>,
+                           std::unique_ptr<std::vector<NS::Gfx::AnimationClip>>>::iterator it = m_boundClips.find(key);
             it != m_boundClips.end())
         {
             return it->second.get();
@@ -434,8 +440,9 @@ namespace NS::Obj
 
         // 結合で index を振り直した複製は避けられない派生データだが、所有はこちら側なので
         // 同じ組で解決する全インスタンスがこの 1 本を共有する
-        std::unique_ptr<std::vector<NS::Gfx::AnimationClip>> bound = std::make_unique<std::vector<NS::Gfx::AnimationClip>>(
-            NS::Gfx::BindClipsByName(source->animations, source->skeleton, *model.skeleton));
+        std::unique_ptr<std::vector<NS::Gfx::AnimationClip>> bound =
+            std::make_unique<std::vector<NS::Gfx::AnimationClip>>(
+                NS::Gfx::BindClipsByName(source->animations, source->skeleton, *model.skeleton));
         const std::vector<NS::Gfx::AnimationClip>* raw = bound.get();
         m_boundClips.emplace(key, std::move(bound));
         return raw;
@@ -451,7 +458,8 @@ namespace NS::Obj
 
     NS::Gfx::StaticMesh* AssetManager::Builtin(std::string_view name) const noexcept
     {
-        const std::map<std::string, std::unique_ptr<NS::Gfx::StaticMesh>>::const_iterator it = m_builtins.find(std::string(name));
+        const std::map<std::string, std::unique_ptr<NS::Gfx::StaticMesh>>::const_iterator it =
+            m_builtins.find(std::string(name));
         if (it != m_builtins.end())
         {
             return it->second.get();
@@ -459,10 +467,42 @@ namespace NS::Obj
         return nullptr;
     }
 
+    NS::Gfx::StaticMesh* AssetManager::GetOrMakeCapsuleMesh(float radius, float halfHeight)
+    {
+        // 非数を鍵にすると map の比較が順序にならず、引き当てが壊れる。無限大は頂点の座標が無限大になり描けない
+        if (!std::isfinite(radius) || !std::isfinite(halfHeight))
+        {
+            NS_LOG_WARN(
+                Graphics, "AssetManager: カプセルの寸法が有限でない (半径 {}, 半分の高さ {})", radius, halfHeight);
+            return nullptr;
+        }
+
+        const std::pair<float, float> key{radius, halfHeight};
+        if (const std::map<std::pair<float, float>, std::unique_ptr<NS::Gfx::StaticMesh>>::iterator it =
+                m_capsules.find(key);
+            it != m_capsules.end())
+        {
+            return it->second.get();
+        }
+
+        std::unique_ptr<NS::Gfx::StaticMesh> mesh = MakeStaticMesh(NS::Gfx::MakeCapsule(radius, halfHeight));
+        // device の無い間に作った空の mesh を覚えると、device ができた後も空のまま返し続ける
+        if (mesh == nullptr || !mesh->IsValid())
+        {
+            NS_LOG_ERROR(
+                Graphics, "AssetManager: カプセルの mesh の GPU 生成失敗 (半径 {}, 半分の高さ {})", radius, halfHeight);
+            return nullptr;
+        }
+        NS::Gfx::StaticMesh* raw = mesh.get();
+        m_capsules.emplace(key, std::move(mesh));
+        return raw;
+    }
+
     LoadedMaterial AssetManager::LoadMaterial(std::string_view matPath)
     {
         const std::string matKey = NS::Platform::FileSystem::Normalize(matPath);
-        if (const std::map<std::string, MaterialRecord>::iterator it = m_materials.find(matKey); it != m_materials.end())
+        if (const std::map<std::string, MaterialRecord>::iterator it = m_materials.find(matKey);
+            it != m_materials.end())
         {
             return LoadedMaterial{it->second.material.get(), it->second.baseColor};
         }
@@ -558,7 +598,8 @@ namespace NS::Obj
 
     NS::Gfx::Material* AssetManager::SharedMaterial(std::string_view name) const noexcept
     {
-        const std::map<std::string, std::unique_ptr<NS::Gfx::Material>>::const_iterator it = m_sharedMaterials.find(std::string(name));
+        const std::map<std::string, std::unique_ptr<NS::Gfx::Material>>::const_iterator it =
+            m_sharedMaterials.find(std::string(name));
         if (it != m_sharedMaterials.end())
         {
             return it->second.get();
@@ -569,7 +610,8 @@ namespace NS::Obj
     bool AssetManager::Reload(std::string_view path)
     {
         const std::string key = NS::Platform::FileSystem::Normalize(path);
-        if (const std::map<std::string, std::unique_ptr<NS::Gfx::Shader>>::iterator it = m_shaders.find(key); it != m_shaders.end())
+        if (const std::map<std::string, std::unique_ptr<NS::Gfx::Shader>>::iterator it = m_shaders.find(key);
+            it != m_shaders.end())
         {
             return it->second->Reload();
         }
@@ -604,5 +646,6 @@ namespace NS::Obj
         m_animationSources.clear();
         m_boundClips.clear();
         m_builtins.clear();
+        m_capsules.clear();
     }
 } // namespace NS::Obj

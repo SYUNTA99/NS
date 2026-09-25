@@ -37,4 +37,16 @@ namespace NS::Gfx
     //! @param[in] rings 上下方向の分割数。2 未満は 2 に切り上げる
     //! @param[in] segments 周方向の分割数。3 未満は 3 に切り上げる
     [[nodiscard]] MeshGeometry MakeSphere(float radius, std::uint32_t rings = 16, std::uint32_t segments = 32);
+
+    //! @brief 原点中心で Y 軸に沿って伸びるカプセルのジオメトリを生成する
+    //! @details 半径 radius の円柱の上下に同じ半径の半球を付けた形。上端は y = halfHeight + radius
+    //! halfHeight は NS::Phys::Capsule と同じく中心から端の半球の中心までの距離で、半球を含まない
+    //! @param[in] radius 円柱と半球の半径。負は 0 として扱う
+    //! @param[in] halfHeight 円柱部の長さの半分。0 なら同じ半径の球になる。負は 0 として扱う
+    //! @param[in] rings 半球 1 つあたりの上下方向の分割数。1 未満は 1 に切り上げる
+    //! @param[in] segments 周方向の分割数。3 未満は 3 に切り上げる
+    [[nodiscard]] MeshGeometry MakeCapsule(float radius,
+                                           float halfHeight,
+                                           std::uint32_t rings = 8,
+                                           std::uint32_t segments = 32);
 } // namespace NS::Gfx

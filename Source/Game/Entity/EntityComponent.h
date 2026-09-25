@@ -51,9 +51,9 @@ namespace NS::Game::Entity
         //! 掴まりのように移動を通さず位置を直に置く時、接地の控えも合わせて置く
         void SetGrounded(bool grounded) noexcept;
 
-        //! 同居する CapsuleCollider の半径。無ければ 0.4
+        //! 同居する CapsuleCollider の半径。無ければ 0.4。OnStart の前でも同じ答えを返す
         [[nodiscard]] float CapsuleRadius() const noexcept;
-        //! 同居する CapsuleCollider の半分の高さ。無ければ 0.5
+        //! 同居する CapsuleCollider の半分の高さ。無ければ 0.5。OnStart の前でも同じ答えを返す
         [[nodiscard]] float CapsuleHalfHeight() const noexcept;
 
         //! 持ち主の Scene の衝突の PhysicsScene。Scene に居なければ nullptr
@@ -112,5 +112,9 @@ namespace NS::Game::Entity
         NS::Obj::CapsuleCollider* m_capsuleCollider = nullptr;
         std::unique_ptr<NS::Phys::JoltCharacter> m_character;
         EntityEvents m_events;
+
+    private:
+        //! OnStart で控えた CapsuleCollider。控える前は同居する物を探し、無ければ nullptr
+        [[nodiscard]] const NS::Obj::CapsuleCollider* SiblingCapsule() const noexcept;
     };
 } // namespace NS::Game::Entity
