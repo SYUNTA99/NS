@@ -31,11 +31,14 @@ namespace NS::Game::Level
     namespace
     {
         // 相手の中心からの横ずれ 0..1。OnUpdate へ式を埋めると当たり判定の流れが読めなくなる
-        // 半径は AABB を突進方向に直交する軸へ投影した半幅。球と傾いた箱は外接箱で測るので実際の縁より広く出る
+        // 分母は AABB を突進方向に直交する軸へ投影した半幅に自機の半径を足した値
+        // 触れられる横ずれの上限が 1 になる。斜めの箱でも角をかすめる当たりが 1
+        // 球と傾いた箱は外接箱で測るので実際の縁より広く出る
         // 水平が 0 の枝は要らない。向かっていないフレームは内積の判定で先に返しており、水平が 0 のフレームもそこへ入る
         [[nodiscard]] float HitOffset01(const NS::Core::Vector3& position,
                                         const NS::Core::AABB& bounds,
-                                        const NS::Core::Vector3& velocity) noexcept
+                                        const NS::Core::Vector3& velocity,
+                                        float playerRadius) noexcept
         {
             const float toX = bounds.Center.x - position.x;
             const float toZ = bounds.Center.z - position.z;
@@ -46,13 +49,14 @@ namespace NS::Game::Level
             const float lateralX = toX - along * dirX;
             const float lateralZ = toZ - along * dirZ;
             const float lateral = std::sqrt(lateralX * lateralX + lateralZ * lateralZ);
-            const float radius = std::abs(dirZ) * bounds.Extents.x + std::abs(dirX) * bounds.Extents.z;
-            // 半幅 0 の相手では割れない。中心扱いへ倒す
-            if (!(radius > 0.0f))
+            const float halfWidth = std::abs(dirZ) * bounds.Extents.x + std::abs(dirX) * bounds.Extents.z;
+            const float reach = halfWidth + playerRadius;
+            // 半幅と半径の和が 0 以下では割れない。中心扱いへ倒す
+            if (!(reach > 0.0f))
             {
                 return 0.0f;
             }
-            return NS::Core::Clamp(lateral / radius, 0.0f, 1.0f);
+            return NS::Core::Clamp(lateral / reach, 0.0f, 1.0f);
         }
 
         [[nodiscard]] JPH::BodyID CurrentBodyOf(const NS::Obj::GameObject& object) noexcept
@@ -65,7 +69,7 @@ namespace NS::Game::Level
             return JPH::BodyID{};
         }
 
-        // 押し飛ばしの重さ。RigidBody が無い配置物は基準の 1 個として扱う
+        // 押し飛ばしの重さ。RigidBody が無い配置物は質量 1 として扱う
         [[nodiscard]] float MassOf(const NS::Obj::GameObject& object) noexcept
         {
             if (const NS::Obj::RigidBody* rigidBody = object.FindComponent<NS::Obj::RigidBody>())
@@ -245,16 +249,18 @@ namespace NS::Game::Level
         const float mass = MassOf(*hit->Owner());
         const float massFactor = mass / (mass + 1.0f);
 
-        // ボタン未搭載 (null) は係数 1.0 の素通し
-        const float offset01 = HitOffset01(position, bounds, velocity);
+        // ボタン未搭載は係数 1.0 の素通し。段は中心近くと記録するが、白の光と止めの倍率は掛けない
+        const float offset01 = HitOffset01(position, bounds, velocity, m_movement->CapsuleRadius());
         float chargeFactor = 1.0f;
         float positionFactor = 1.0f;
+        HitTier tier = HitTier::Center;
         bool centerHit = false;
         if (m_collisionInput != nullptr)
         {
             chargeFactor = m_collisionInput->ChargeFactorFor(charge01);
             positionFactor = m_collisionInput->PositionFactorFor(offset01);
-            centerHit = m_collisionInput->IsCenterHit(positionFactor);
+            tier = m_collisionInput->HitTierFor(offset01);
+            centerHit = tier == HitTier::Center;
         }
         // 最終威力 = チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
         const float power = chargeFactor * positionFactor;
@@ -335,6 +341,8 @@ namespace NS::Game::Level
         m_lastImpact.power = power;
         m_lastImpact.charge01 = charge01;
         m_lastImpact.positionFactor = positionFactor;
+        m_lastImpact.offset01 = offset01;
+        m_lastImpact.tier = tier;
         m_lastImpact.cameraShake = m_pendingShakeStrength;
         m_lastImpact.hitStopSteps = stopSteps;
         m_lastImpact.centerHit = centerHit;
@@ -413,7 +421,7 @@ namespace NS::Game::Level
         {
             return;
         }
-        // ScreenFade は黒の固定色と暗転の段階機械で、白の瞬間減衰には流用できないためここで直接描く
+        // ScreenFade は黒の固定色と暗転の状態機械で、白の瞬間減衰には流用できないためここで直接描く
         const float decay = static_cast<float>(m_centerHitFlashRemaining) / static_cast<float>(m_centerHitFlashSteps);
         ctx.renderer->DrawFullscreenColor(NS::Core::Color{1.0f, 1.0f, 1.0f, m_centerHitFlashAlpha * decay});
     }

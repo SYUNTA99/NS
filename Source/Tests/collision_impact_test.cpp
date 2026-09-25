@@ -4,6 +4,7 @@
 
 #include <Game/Level/Breakable.h>
 #include <Game/Level/CollisionInput.h>
+#include <Game/Level/HitTier.h>
 #include <Game/Level/ImpactInputJudge.h>
 #include <Game/Level/ImpactMark.h>
 #include <Game/Level/ImpactResolver.h>
@@ -54,7 +55,7 @@ namespace
     constexpr float k_LaunchSpeedCap = 120.0f;
     // 破壊は耐久 ≤ 最終威力なので、反発と押し飛ばしを見る台は壊れない高さを既定にする
     constexpr float k_UnbreakableToughness = 99.0f;
-    // 逆転を見る台の耐久。満溜め + 中心直撃の 2.0 と、素当て + 縁かすりの 0.73 の間に置く
+    // 逆転を見る台の耐久。満溜め + 中心直撃の 2.0 と、素当て + 縁寄りの 0.85 の間に置く
     constexpr float k_ReversalToughness = 1.7f;
 
     struct Rig
@@ -293,7 +294,7 @@ namespace
     // 助走の長さだけが k_NearCourse と違う
     constexpr SlamCourse k_FarCourse{.start = -0.5f, .targetCell = 6};
     constexpr SlamCourse k_NearCourse{.start = 0.0f, .targetCell = 1};
-    // 横ずれ 0.45 ÷ 的の半幅 0.5 = 0.9 で係数 0.73。中心近くの当たりのしきい値 0.95 に届かない
+    // 横ずれ 0.45 ÷ (的の半幅 0.5 + 自機の半径 0.4) = 0.5 で係数 0.85。段は惜しいで、中心近くの当たりにならない
     constexpr SlamCourse k_EdgeCourse{.start = 0.0f, .lateral = 0.45f, .targetCell = 1};
 
     // 飛んで着地して滑り切るまでの道。狭いと端から落ちて停止の検証にならない
@@ -665,6 +666,10 @@ TEST(CollisionImpact, WithoutCollisionInputPowerIsRatioOnly)
     ASSERT_TRUE(rig.impact->DidRebound());
     EXPECT_FLOAT_EQ(rig.impact->LastPower(), 1.0f);
     EXPECT_FALSE(rig.impact->WasCenterHit());
+    // 段と横ずれは記録する。段は中心近くでも、白の光と止めの倍率は掛けない
+    EXPECT_EQ(rig.impact->LastImpact().tier, LevelNs::HitTier::Center);
+    EXPECT_NEAR(rig.impact->LastImpact().offset01, 0.0f, 0.01f);
+    EXPECT_FALSE(rig.impact->LastImpact().centerHit);
 }
 
 TEST(CollisionImpact, IsCreatableFromTypeName)
@@ -1223,6 +1228,97 @@ TEST(CollisionImpact, PositionFactorIgnoresRushDistance)
     EXPECT_FLOAT_EQ(nearHit.impact->LastPositionFactor(), farHit.impact->LastPositionFactor());
 }
 
+// 分母が相手の半幅だけだと、自機の半径ぶん外で触れた当たりが全部 1 に張り付き、縁の近さが数に出ない
+// 縁の台は触れられる横ずれの上限 (的の半幅 0.5 + 自機の半径 0.4) の手前で当て、1 の手前に来ることを見る
+TEST(CollisionImpact, HitOffsetDividesByTheTargetHalfWidthPlusThePlayerRadius)
+{
+    SceneNs::Scene centerScene;
+    Rig center = BuildSlam(centerScene, k_NearCourse);
+    SetInstantImpact(center);
+    BeginSlam(centerScene, center, k_RunSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(centerScene, center, 30), 30);
+
+    // 0.9 は上限ちょうどで当たらないので、触れる所まで下げた
+    constexpr float k_WidestLateral = 0.88f;
+    SceneNs::Scene edgeScene;
+    Rig edge = BuildSlam(edgeScene, SlamCourse{.start = 0.0f, .lateral = k_WidestLateral, .targetCell = 1});
+    SetInstantImpact(edge);
+    BeginSlam(edgeScene, edge, k_RunSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(edgeScene, edge, 30), 30);
+
+    const float width = 0.5f + edge.movement->CapsuleRadius();
+    EXPECT_NEAR(center.impact->LastImpact().offset01, 0.0f, 0.01f);
+    EXPECT_NEAR(edge.impact->LastImpact().offset01, k_WidestLateral / width, 0.01f);
+}
+
+// 横ずれ 0.2 / 0.45 / 0.7 は、的の半幅 0.5 + 自機の半径 0.4 で割ると 0.22 / 0.5 / 0.78。既定の境目 0.35 と 0.7 で 3
+// 段に分かれる
+TEST(CollisionImpact, HitTierFollowsTheOffsetInThreeSteps)
+{
+    struct TierCase
+    {
+        float lateral = 0.0f;
+        LevelNs::HitTier tier = LevelNs::HitTier::Center;
+    };
+    const std::vector<TierCase> cases{
+        {0.2f, LevelNs::HitTier::Center},
+        {0.45f, LevelNs::HitTier::Near},
+        {0.7f, LevelNs::HitTier::Wide},
+    };
+
+    for (const TierCase& tierCase : cases)
+    {
+        SceneNs::Scene scene;
+        Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .lateral = tierCase.lateral, .targetCell = 1});
+        SetInstantImpact(rig);
+        BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+        ASSERT_LT(StepUntilImpact(scene, rig, 30), 30) << tierCase.lateral;
+
+        const LevelNs::ImpactRecord& hit = rig.impact->LastImpact();
+        EXPECT_EQ(hit.tier, tierCase.tier) << tierCase.lateral;
+        EXPECT_EQ(hit.centerHit, tierCase.tier == LevelNs::HitTier::Center) << tierCase.lateral;
+    }
+}
+
+// 境目ちょうどは外側の段。非有限の横ずれは中心近くの演出を出さない側へ倒す
+TEST(CollisionInput, HitTierForSplitsAtTheTwoEdges)
+{
+    SceneNs::GameObject owner;
+    LevelNs::CollisionInput* input = owner.AddComponent<LevelNs::CollisionInput>();
+    ASSERT_NE(input, nullptr);
+
+    EXPECT_EQ(input->HitTierFor(0.34f), LevelNs::HitTier::Center);
+    EXPECT_EQ(input->HitTierFor(0.35f), LevelNs::HitTier::Near);
+    EXPECT_EQ(input->HitTierFor(0.69f), LevelNs::HitTier::Near);
+    EXPECT_EQ(input->HitTierFor(0.7f), LevelNs::HitTier::Wide);
+    EXPECT_EQ(input->HitTierFor(std::numeric_limits<float>::quiet_NaN()), LevelNs::HitTier::Wide);
+    EXPECT_EQ(input->HitTierFor(std::numeric_limits<float>::infinity()), LevelNs::HitTier::Wide);
+
+    SetFloatField(*input, "中心近くの境目", 0.5f);
+    SetFloatField(*input, "惜しいの境目", 0.8f);
+    EXPECT_EQ(input->HitTierFor(0.45f), LevelNs::HitTier::Center);
+    EXPECT_EQ(input->HitTierFor(0.75f), LevelNs::HitTier::Near);
+}
+
+// 溜め中に最高速へ掛ける倍率は 1 − 減速率。0〜1 の外へ出る減速率は端へ寄せる
+TEST(CollisionInput, ChargingSpeedScaleIsWhatTheSlowRateLeaves)
+{
+    SceneNs::GameObject owner;
+    LevelNs::CollisionInput* input = owner.AddComponent<LevelNs::CollisionInput>();
+    ASSERT_NE(input, nullptr);
+
+    EXPECT_FLOAT_EQ(input->ChargingSpeedScale(), 0.3f);
+
+    SetFloatField(*input, "チャージ減速率", 0.3f);
+    EXPECT_FLOAT_EQ(input->ChargingSpeedScale(), 0.7f);
+
+    SetFloatField(*input, "チャージ減速率", 1.5f);
+    EXPECT_FLOAT_EQ(input->ChargingSpeedScale(), 0.0f);
+
+    SetFloatField(*input, "チャージ減速率", -0.5f);
+    EXPECT_FLOAT_EQ(input->ChargingSpeedScale(), 1.0f);
+}
+
 TEST(CollisionImpact, StoresChargeAndPositionForNextPhase)
 {
     SceneNs::Scene scene;
@@ -1411,6 +1507,29 @@ namespace
         void Release() noexcept { NS::Platform::Input::Get().Mouse().OnButtonUp(NS::Platform::MouseButton::Left); }
     };
 } // namespace
+
+// 溜め中は最高速が走行速度の 0.3 倍へ落ち、放すと 1 倍へ戻る。押しっぱなしで動き回るのを最適にしない
+TEST(CollisionImpact, ChargingSlowsTheMaxSpeedUntilTheRelease)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_FarCourse);
+    ASSERT_NE(rig.input, nullptr);
+    SettleOnFloor(scene, rig);
+    ASSERT_FLOAT_EQ(rig.movement->MaxSpeed(), rig.movement->RunSpeed());
+
+    MouseLeftPress press;
+    for (int i = 0; i < 16; ++i)
+    {
+        Step(scene, rig);
+    }
+    ASSERT_TRUE(rig.input->IsCharging());
+    EXPECT_FLOAT_EQ(rig.movement->MaxSpeed(), rig.movement->RunSpeed() * 0.3f);
+
+    press.Release();
+    Step(scene, rig);
+    ASSERT_FALSE(rig.input->IsCharging());
+    EXPECT_FLOAT_EQ(rig.movement->MaxSpeed(), rig.movement->RunSpeed());
+}
 
 // 押した瞬間に玉になり、当たり・凍結・反動の間は玉のまま、着地して初めて立ち姿へ戻る
 // 反動が明けたフレームは接地の印が残ったまま上向きの速度が入るので、そこで解けると宙で立ち姿に戻る

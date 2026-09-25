@@ -1,4 +1,6 @@
 #include "Editor/LevelFilePaths.h"
+#include "Game/Level/CollisionInput.h"
+#include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerStateManager.h"
@@ -25,6 +27,7 @@
 namespace SceneNs = NS::Obj;
 namespace EditorNs = NS::Editor;
 namespace PlayerNs = NS::Game::Player;
+namespace LevelNs = NS::Game::Level;
 
 namespace
 {
@@ -110,6 +113,8 @@ TEST_P(ShippedScene, EveryTuningFieldNameIsReflected)
     const std::vector<std::pair<const char*, const SceneNs::Component*>> targets{
         {"PlayerComponent", live->FindComponent<PlayerNs::PlayerComponent>()},
         {"PlayerStateManager", live->FindComponent<PlayerNs::PlayerStateManager>()},
+        {"CollisionInput", live->FindComponent<LevelNs::CollisionInput>()},
+        {"ImpactResolver", live->FindComponent<LevelNs::ImpactResolver>()},
     };
 
     for (const std::pair<const char*, const SceneNs::Component*>& target : targets)

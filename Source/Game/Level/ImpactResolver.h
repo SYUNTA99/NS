@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Level/HitTier.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
@@ -30,9 +31,11 @@ namespace NS::Game::Level
         float power = 0.0f;
         float charge01 = 0.0f;
         float positionFactor = 0.0f;
+        float offset01 = 0.0f;          //!< 相手の中心からの横ずれ。相手の半幅と自機の半径の和で割った 0..1
+        HitTier tier = HitTier::Center; //!< 当たりの段。CollisionInput が無い時は Center だが演出は掛けない
         float cameraShake = 0.0f;
         int hitStopSteps = 0;
-        bool centerHit = false;
+        bool centerHit = false; //!< 白の光と止めの倍率を掛けた場合 true。CollisionInput が無い時は false
         bool broke = false;
         NS::Core::Vector3 selfVelocity;
         NS::Core::Vector3 launchVelocity;
@@ -48,7 +51,7 @@ namespace NS::Game::Level
     //! body から持ち主を引く関数は無い
     //! 衝突の瞬間は自機を数固定ステップ止め、反発・発射・破壊を明けたフレームへ保留する
     //! 重さは相手の RigidBody の質量で、RigidBody が無ければ 1
-    //! 依存: NS::Game::Player::PlayerComponent, Breakable, LaunchedBody, NS::Obj::RigidBody, CollisionInput
+    //! 依存: NS::Game::Player::PlayerComponent, Breakable, LaunchedBody, NS::Obj::RigidBody, CollisionInput, HitTier
     class ImpactResolver : public NS::Obj::OverlayRenderer
     {
     public:
@@ -158,7 +161,8 @@ namespace NS::Game::Level
         float m_launchMaxSpeed = 120.0f;
         // 既定の固定ステップ (1/60 秒) の 4 フレームぶん
         float m_hitStopBaseSeconds = 4.0f / 60.0f; // 質量 1 へ通常速度で当てた時に止める秒
-        float m_centerHitStopScale = 2.0f;         // 威力の伸び (最大 2 倍) と掛けて、素と中心近くの当たりの止まりを 4 倍差にする
+        float m_centerHitStopScale =
+            2.0f; // 威力の伸び (最大 2 倍) と掛けて、素と中心近くの当たりの止まりを 4 倍差にする
         // 止める長さの上限。0.2 秒より長い停止は衝突の重さではなく処理落ちに見える
         float m_hitStopMaxSeconds = 12.0f / 60.0f;
         float m_pushInDistance = 0.06f;   // 凍結の頭で相手を発射方向へ食い込ませる距離

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactInputJudge.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
@@ -18,8 +19,8 @@ namespace NS::Game::Level
     //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
     //! どちらも離したフレームに、溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ
     //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる
-    //! 威力のチャージ倍率カーブと当たり位置係数カーブもここが持ち、ImpactResolver が参照する
-    //! 依存: NS::Game::Player::PlayerComponent, NS::Obj::Curve, ImpactInputJudge, ImpactResolver
+    //! 威力のチャージ倍率カーブと当たり位置係数カーブ、当たりの段の境目もここが持ち、ImpactResolver が参照する
+    //! 依存: NS::Game::Player::PlayerComponent, NS::Obj::Curve, ImpactInputJudge, ImpactResolver, HitTier
     class CollisionInput : public NS::Obj::Component
     {
     public:
@@ -41,8 +42,11 @@ namespace NS::Game::Level
         //! とみなす
         [[nodiscard]] float PositionFactorFor(float offset01) const noexcept;
 
-        //! 当たり位置係数が中心近くの当たりのしきい値以上の場合 true、それ以外の場合は false
-        [[nodiscard]] bool IsCenterHit(float positionFactor) const noexcept;
+        //! 相手の中心からの横ずれ 0..1 を段に分ける。境目ちょうどは外側の段とし、非有限の入力は大きな外れとみなす
+        [[nodiscard]] HitTier HitTierFor(float offset01) const noexcept;
+
+        //! 溜め中に最高速へ掛ける倍率を返す。1 − チャージ減速率を 0..1 に丸める
+        [[nodiscard]] float ChargingSpeedScale() const noexcept;
 
         //! チャージ中の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsCharging() const noexcept { return m_judge.IsCharging(); }
@@ -61,7 +65,8 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_chargeSlowRate, "チャージ減速率")
         NS_REFLECT_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
         NS_REFLECT_FIELD(m_positionFactorCurve, "突進位置係数カーブ")
-        NS_REFLECT_FIELD(m_centerHitThreshold, "中心近くの当たりのしきい値")
+        NS_REFLECT_FIELD(m_centerTierEdge, "中心近くの境目")
+        NS_REFLECT_FIELD(m_nearTierEdge, "惜しいの境目")
         NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
         NS_REFLECT_FIELD(m_pressSquashScale, "押しの構えの縮み")
         NS_REFLECT_END()
@@ -76,14 +81,17 @@ namespace NS::Game::Level
         // どれも検証で振って探る前提の初期値
         float m_chargeThresholdSeconds = 0.2f;
         float m_chargeFullSeconds = 1.0f;
-        float m_chargeSlowRate = 0.3f;
+        // 溜め中の最高速は 1 − 0.7 = 0.3 倍。押しっぱなしで動き回るのが最適にならないようにする
+        float m_chargeSlowRate = 0.7f;
         // 既定の形は使う側が持つのが Curve の決まりなので、既定の点はコンストラクタで入れる
         NS::Obj::Curve m_chargeFactorCurve{};
         // 既定は中心直撃で 1.0、縁かすりで 0.7。画面に見えている相手の中心が狙う対象になる
         // TODO: リフレクション欄は「突進位置係数カーブ」のまま。改名すると保存済みの値が読めなくなる
         NS::Obj::Curve m_positionFactorCurve{};
-        // 0.95 は既定カーブで横ずれ 0〜0.167 の区間だけが中心近くの当たりになる値
-        float m_centerHitThreshold = 0.95f;
+        // 段の境目は横ずれ 0..1 に対して置く。横ずれは相手の半幅と自機の半径の和で割った値で、単位は無い
+        // 惜しいの境目は中心近くの境目より大きく置く。逆だと惜しいが出ない
+        float m_centerTierEdge = 0.35f;    // これ未満が中心近く
+        float m_nearTierEdge = 0.7f;       // 中心近くの境目以上でこれ未満が惜しい。これ以上が大きな外れ
         float m_chargeSquashScale = 0.95f; // 構えと分かる最小の変化。深いと衝突の潰れ演出と紛れる
         float m_pressSquashScale = 0.97f;  // 押したフレームの反応。チャージ成立の 0.95 と見分けが付く浅さ
 
