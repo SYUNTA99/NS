@@ -29,7 +29,8 @@ namespace NS::Game::Level
         //! 同じ配置物の移動と裁定を引き当てる。見つからない相手に関わる処理は以後行わない
         void OnStart() override;
 
-        //! ボタンの保持を判定へ 1 フレーム進め、発動を控えたフレームに溜め量を添えて体当たりを要求する
+        //! @brief ボタンの保持を判定へ 1 フレーム進め、発動を控えたフレームに溜め量を添えて体当たりを要求する
+        //! @details 押している間と突進の間は、前方の近い相手へ突進の向きを寄せる
         void OnUpdate() override;
 
         //! 構えの縮みが残っていれば元の形へ戻し、自機へ渡した押しの印を戻して丸まりを解く
@@ -67,12 +68,16 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_positionFactorCurve, "突進位置係数カーブ")
         NS_REFLECT_FIELD(m_centerTierEdge, "中心近くの境目")
         NS_REFLECT_FIELD(m_nearTierEdge, "惜しいの境目")
+        NS_REFLECT_FIELD(m_homingSearchDegrees, "寄せる相手を探す角度")
+        NS_REFLECT_FIELD(m_homingSearchDistance, "寄せる相手を探す距離")
         NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
         NS_REFLECT_FIELD(m_pressSquashScale, "押しの構えの縮み")
         NS_REFLECT_END()
 
     private:
         void UpdateChargeStance();
+        //! 押している間と突進の間に、基準の向きの前方で一番近い相手を探して突進の向きを寄せる
+        void SteerTowardNearestTarget();
 
 #if !defined(NS_SHIPPING)
         void DrawChargeRing();
@@ -90,10 +95,12 @@ namespace NS::Game::Level
         NS::Obj::Curve m_positionFactorCurve{};
         // 段の境目は横ずれ 0..1 に対して置く。横ずれは相手の半幅と自機の半径の和で割った値で、単位は無い
         // 惜しいの境目は中心近くの境目より大きく置く。逆だと惜しいが出ない
-        float m_centerTierEdge = 0.35f;    // これ未満が中心近く
-        float m_nearTierEdge = 0.7f;       // 中心近くの境目以上でこれ未満が惜しい。これ以上が大きな外れ
-        float m_chargeSquashScale = 0.95f; // 構えと分かる最小の変化。深いと衝突の潰れ演出と紛れる
-        float m_pressSquashScale = 0.97f;  // 押したフレームの反応。チャージ成立の 0.95 と見分けが付く浅さ
+        float m_centerTierEdge = 0.35f;      // これ未満が中心近く
+        float m_nearTierEdge = 0.7f;         // 中心近くの境目以上でこれ未満が惜しい。これ以上が大きな外れ
+        float m_homingSearchDegrees = 30.0f; // 寄せる相手を探す角度 (度)。基準の向きから片側
+        float m_homingSearchDistance = 6.0f; // 寄せる相手を探す水平の距離 (m)
+        float m_chargeSquashScale = 0.95f;   // 構えと分かる最小の変化。深いと衝突の潰れ演出と紛れる
+        float m_pressSquashScale = 0.97f;    // 押したフレームの反応。チャージ成立の 0.95 と見分けが付く浅さ
 
         ImpactInputJudge m_judge{};
         NS::Core::Vector3 m_homeScale{1.0f, 1.0f, 1.0f};

@@ -129,11 +129,43 @@ namespace NS::Game::Level
             m_movement->SetVelocity(NS::Core::Vector3{0.0f, velocity.y, 0.0f});
         }
 
+        SteerTowardNearestTarget();
         UpdateChargeStance();
 
 #if !defined(NS_SHIPPING)
         DrawChargeRing();
 #endif
+    }
+
+    void CollisionInput::SteerTowardNearestTarget()
+    {
+        if (m_movement == nullptr || m_resolver == nullptr)
+        {
+            return;
+        }
+
+        // 突進中は今飛んでいる向き、溜めている間は今の狙いの向きの前方を探す
+        // 狙いの向きは放すフレームの入力で変わるので、自機は放す時に控えた相手を放す向きから測り直す
+        NS::Core::Vector3 forward{};
+        if (m_movement->IsBodySlamming())
+        {
+            const NS::Core::Vector3 velocity = m_movement->BodySlamVelocity();
+            forward = NS::Core::Vector3{velocity.x, 0.0f, velocity.z};
+        }
+        else if (m_judge.IsHeld())
+        {
+            forward = m_movement->AimDirection();
+        }
+        else
+        {
+            return;
+        }
+
+        NS::Core::Vector3 center{};
+        if (m_resolver->FindHomingTarget(forward, m_homingSearchDegrees, m_homingSearchDistance, center))
+        {
+            m_movement->SteerToward(center, m_homingSearchDegrees);
+        }
     }
 
     void CollisionInput::UpdateChargeStance()

@@ -3,6 +3,7 @@
 #include "tuning_field_access.h"
 
 #include <Game/Level/Breakable.h>
+#include <Game/Level/ColliderBounds.h>
 #include <Game/Level/CollisionInput.h>
 #include <Game/Level/HitTier.h>
 #include <Game/Level/ImpactInputJudge.h>
@@ -82,6 +83,8 @@ namespace
         bool sphereTarget = false;
         // 的を置く段。1 は床の上に接して置き、2 は床から 1 m 浮かせる
         std::int16_t targetLayer = 1;
+        // 0 以外なら、この列にもう 1 体の壊せる的を同じ段に置く
+        std::int16_t extraTargetCell = 0;
     };
 
     // 置かれた壊せる物と同じ RigidBody。飛ぶまではキネマティックで、面の手触りは押し飛ばしを調整した値
@@ -130,6 +133,14 @@ namespace
                 if (lateralCell != 0)
                     SceneNs::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(i, 0, lateralCell));
             }
+        }
+
+        if (course.extraTargetCell != 0)
+        {
+            nlohmann::json extra = NS::Editor::MakeCellObject(course.extraTargetCell, course.targetLayer, 0);
+            SceneNs::ObjectJsonComponents(extra).push_back(MakeLaunchableRigidBodyEntry());
+            SceneNs::ObjectJsonComponents(extra).push_back(SceneNs::MakeComponentEntry("Breakable"));
+            SceneNs::SceneJsonObjects(data).push_back(extra);
         }
 
         nlohmann::json target = NS::Editor::MakeCellObject(course.targetCell, course.targetLayer, 0);
@@ -1278,6 +1289,76 @@ TEST(CollisionImpact, HitTierFollowsTheOffsetInThreeSteps)
         EXPECT_EQ(hit.tier, tierCase.tier) << tierCase.lateral;
         EXPECT_EQ(hit.centerHit, tierCase.tier == LevelNs::HitTier::Center) << tierCase.lateral;
     }
+}
+
+// 寄せる相手は前方の角度と距離の内に居る物だけで、2 体居れば近い方。真横や後ろの相手へ曲がると狙った先から外れる
+TEST(CollisionImpact, HomingTargetIsTheNearestAheadWithinTheConeAndTheDistance)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, SlamCourse{.targetCell = 3, .extraTargetCell = 2});
+    ASSERT_NE(rig.impact, nullptr);
+
+    std::vector<NS::Core::AABB> targets;
+    scene.Objects().ForEachComponent<LevelNs::Breakable>([&targets](LevelNs::Breakable& breakable) {
+        NS::Core::AABB bounds{};
+        if (LevelNs::TryGetColliderBounds(*breakable.Owner(), bounds))
+        {
+            targets.push_back(bounds);
+        }
+    });
+    ASSERT_EQ(targets.size(), 2u);
+    const float nearestX = std::min(targets[0].Center.x, targets[1].Center.x);
+    const float farthestX = std::max(targets[0].Center.x, targets[1].Center.x);
+    ASSERT_LT(nearestX, farthestX);
+
+    Vector3 center{};
+    ASSERT_TRUE(rig.impact->FindHomingTarget(Vector3{1.0f, 0.0f, 0.0f}, 30.0f, 6.0f, center));
+    EXPECT_FLOAT_EQ(center.x, nearestX);
+
+    EXPECT_FALSE(rig.impact->FindHomingTarget(Vector3{0.0f, 0.0f, 1.0f}, 30.0f, 6.0f, center));
+    EXPECT_FALSE(rig.impact->FindHomingTarget(Vector3{-1.0f, 0.0f, 0.0f}, 30.0f, 6.0f, center));
+    EXPECT_FALSE(rig.impact->FindHomingTarget(Vector3{1.0f, 0.0f, 0.0f}, 30.0f, 1.0f, center));
+}
+
+// 同じ横ずれで放しても、寄せる角度の上限が 0 より 3 の方が相手の中心の近くに当たる。寄せた角度は上限を超えない
+TEST(CollisionImpact, HomingNarrowsTheHitOffsetWithinTheLimit)
+{
+    struct HomingCase
+    {
+        float limitDegrees = 0.0f;
+        float offset01 = 0.0f;
+        float largestHoming = 0.0f;
+    };
+    std::vector<HomingCase> cases{{0.0f}, {3.0f}};
+
+    for (HomingCase& homingCase : cases)
+    {
+        SceneNs::Scene scene;
+        Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .lateral = 0.45f, .targetCell = 4});
+        SetInstantImpact(rig);
+        SetFloatField(*rig.movement, "寄せる角度の上限", homingCase.limitDegrees);
+        BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+        ASSERT_TRUE(rig.movement->IsBodySlamming());
+
+        bool hit = false;
+        for (int i = 0; i < 30 && !hit; ++i)
+        {
+            StepWorld(scene);
+            hit = rig.impact->DidRebound() || rig.impact->DidBreak();
+            homingCase.largestHoming = std::max(homingCase.largestHoming, std::abs(rig.movement->HomingAngleDegrees()));
+            if (!hit)
+            {
+                rig.movement->OnUpdate();
+            }
+        }
+        ASSERT_TRUE(hit) << homingCase.limitDegrees;
+        homingCase.offset01 = rig.impact->LastImpact().offset01;
+    }
+
+    EXPECT_FLOAT_EQ(cases[0].largestHoming, 0.0f);
+    EXPECT_GT(cases[1].largestHoming, 0.0f);
+    EXPECT_LE(cases[1].largestHoming, 3.0f + 1e-4f);
+    EXPECT_LT(cases[1].offset01, cases[0].offset01);
 }
 
 // 境目ちょうどは外側の段。非有限の横ずれは中心近くの演出を出さない側へ倒す

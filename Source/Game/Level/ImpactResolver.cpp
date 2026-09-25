@@ -83,6 +83,24 @@ namespace NS::Game::Level
         {
             return std::find(touching.begin(), touching.end(), id) != touching.end();
         }
+
+        // 体当たりの相手になれる壊せる物なら外接箱を取って true。当たりの裁定と寄せる相手の探索が同じ絞りを通る
+        [[nodiscard]] bool TryGetTargetBounds(const Breakable& breakable, NS::Core::AABB& outBounds) noexcept
+        {
+            if (!breakable.IsActive())
+            {
+                return false;
+            }
+
+            // トリガの箱は通り抜ける体積なのでぶつかる相手にならない
+            const NS::Obj::BoxCollider* box = breakable.Owner()->FindComponent<NS::Obj::BoxCollider>();
+            if (box != nullptr && box->IsTrigger())
+            {
+                return false;
+            }
+
+            return TryGetColliderBounds(*breakable.Owner(), outBounds);
+        }
     } // namespace
 
     // PlayerComponent の 200 より前。書き込んだ速度が同じ固定ステップの移動に乗る
@@ -122,25 +140,13 @@ namespace NS::Game::Level
         Breakable* nearest = nullptr;
         float nearestDistanceSq = 0.0f;
         scene->Objects().ForEachComponent<Breakable>([&](Breakable& breakable) {
-            if (!breakable.IsActive())
-            {
-                return;
-            }
-
-            // トリガの箱は通り抜ける体積なのでぶつかる相手にならない
-            const NS::Obj::BoxCollider* box = breakable.Owner()->FindComponent<NS::Obj::BoxCollider>();
-            if (box != nullptr && box->IsTrigger())
+            NS::Core::AABB bounds{};
+            if (!TryGetTargetBounds(breakable, bounds))
             {
                 return;
             }
 
             if (!IsTouching(touching, CurrentBodyOf(*breakable.Owner())))
-            {
-                return;
-            }
-
-            NS::Core::AABB bounds{};
-            if (!TryGetColliderBounds(*breakable.Owner(), bounds))
             {
                 return;
             }
@@ -156,6 +162,65 @@ namespace NS::Game::Level
             }
         });
         return nearest;
+    }
+
+    bool ImpactResolver::FindHomingTarget(const NS::Core::Vector3& forward,
+                                          float coneDegrees,
+                                          float maxDistance,
+                                          NS::Core::Vector3& outCenter) const
+    {
+        NS::Core::Vector3 forwardDir{};
+        if (Owner() == nullptr || !NS::Core::TryNormalizeHorizontal(forward, forwardDir))
+        {
+            return false;
+        }
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+        {
+            return false;
+        }
+
+        // 角度は内積と余弦で比べる。非有限の角度は比較が偽になり、誰も拾わない
+        const float minCosine = std::cos(NS::Core::ToRadians(NS::Core::Degrees{coneDegrees}).value);
+        const NS::Core::Vector3 position = Owner()->Root().Position();
+
+        // TODO: 壊せる物を総当たりで見ている。数十個までを想定。増えたら格子で絞る
+        bool found = false;
+        float nearestDistance = 0.0f;
+        NS::Core::Vector3 nearestCenter{};
+        scene->Objects().ForEachComponent<Breakable>([&](Breakable& breakable) {
+            NS::Core::AABB bounds{};
+            if (!TryGetTargetBounds(breakable, bounds))
+            {
+                return;
+            }
+
+            const float dx = bounds.Center.x - position.x;
+            const float dz = bounds.Center.z - position.z;
+            const float distance = std::sqrt(dx * dx + dz * dz);
+            // 真上と真下の相手は向きが決まらない
+            if (!(distance >= NS::Core::k_Epsilon) || !(distance <= maxDistance))
+            {
+                return;
+            }
+            const float cosine = (dx * forwardDir.x + dz * forwardDir.z) / distance;
+            if (!(cosine >= minCosine))
+            {
+                return;
+            }
+            if (!found || distance < nearestDistance)
+            {
+                found = true;
+                nearestDistance = distance;
+                nearestCenter = bounds.Center;
+            }
+        });
+
+        if (found)
+        {
+            outCenter = nearestCenter;
+        }
+        return found;
     }
 
     void ImpactResolver::OnUpdate()

@@ -55,12 +55,26 @@ namespace
                p.z >= box.Center.z - box.Extents.z && p.z <= box.Center.z + box.Extents.z;
     }
 
+    // 水平の向き from を Y 軸まわりに radians だけ回す。正の角度は +X を -Z の側へ回す
+    [[nodiscard]] NS::Core::Vector3 RotateHorizontal(const NS::Core::Vector3& from, float radians) noexcept
+    {
+        const float c = std::cos(radians);
+        const float s = std::sin(radians);
+        return NS::Core::Vector3{from.x * c + from.z * s, 0.0f, -from.x * s + from.z * c};
+    }
+
+    // from を RotateHorizontal で回して to へ重ねる角度。-π..π
+    [[nodiscard]] float HorizontalAngleBetween(const NS::Core::Vector3& from, const NS::Core::Vector3& to) noexcept
+    {
+        return std::atan2(from.z * to.x - from.x * to.z, from.x * to.x + from.z * to.z);
+    }
+
     // from と to は正規化した水平の向き。Y 軸まわりに最大 maxRadians だけ to へ寄せる
     [[nodiscard]] NS::Core::Vector3 TurnHorizontalToward(const NS::Core::Vector3& from,
                                                          const NS::Core::Vector3& to,
                                                          float maxRadians) noexcept
     {
-        const float angle = std::atan2(from.z * to.x - from.x * to.z, from.x * to.x + from.z * to.z);
+        const float angle = HorizontalAngleBetween(from, to);
         if (std::abs(angle) <= maxRadians)
         {
             return to;
@@ -70,9 +84,7 @@ namespace
         {
             step = -maxRadians;
         }
-        const float c = std::cos(step);
-        const float s = std::sin(step);
-        return NS::Core::Vector3{from.x * c + from.z * s, 0.0f, -from.x * s + from.z * c};
+        return RotateHorizontal(from, step);
     }
 } // namespace
 
@@ -160,6 +172,8 @@ namespace NS::Game::Player
     {
         m_bodySlamTravelled = 0.0f;
         m_bodySlamDistanceTarget = 0.0f;
+        // 残すと、次の溜めが前の突進で寄せた分を累計に引き継ぎ、放す時に溜めていない分まで回る
+        ForgetHoming();
 
         // 加速は最高速を超えた速さを削らない。切らないと、倒している間は突進の速さのまま走り続ける
         const NS::Core::Vector3 lateral = LateralVelocity();
@@ -218,6 +232,100 @@ namespace NS::Game::Player
         m_bodySlamAimAge = 0.0f;
     }
 
+    void PlayerComponent::SteerToward(const NS::Core::Vector3& targetCenter, float coneDegrees) noexcept
+    {
+        if (Owner() == nullptr)
+        {
+            return;
+        }
+        const bool rushing = IsBodySlamming();
+        // タップは短い踏み込みの移動技なので、跳んでいる間の向きは変えない
+        if (rushing && m_bodySlamIsTap)
+        {
+            return;
+        }
+
+        // 溜めている間の基準は回していない狙いなので、基準からの角度がそのまま累計の目標になる。
+        // 突進の向きは累計だけ回した後の向きなので、基準からの角度に累計を足して目標にする
+        NS::Core::Vector3 base = AimDirection();
+        float baseAngle = 0.0f;
+        if (rushing)
+        {
+            base = m_bodySlamDir;
+            baseAngle = m_homingAngle;
+        }
+        NS::Core::Vector3 baseDir{};
+        NS::Core::Vector3 toTarget{};
+        if (!NS::Core::TryNormalizeHorizontal(base, baseDir) ||
+            !NS::Core::TryNormalizeHorizontal(targetCenter - RootTransform().Position(), toTarget))
+        {
+            return;
+        }
+
+        const float relative = NS::Core::ToDegrees(NS::Core::Radians{HorizontalAngleBetween(baseDir, toTarget)}).value;
+        // 非数の相手は正規化を通り抜ける。切りも比較も非数を止めないので、通すと累計と突進の向きが非数になる
+        if (!std::isfinite(relative))
+        {
+            return;
+        }
+        // 溜めた量は同じ相手を狙い続けた分だけ。持ち越すと、放す直前に移った相手へ溜めた分が一度に乗る
+        // TODO: 相手を中心で見分けている。動いている相手は毎フレーム中心が変わるので、溜めている間の寄せが溜まらない
+        // 動く的を置く時は、相手の番号を受け取って見分ける
+        if (!rushing && m_hasHomingTarget && !(m_homingTarget == targetCenter))
+        {
+            m_homingAngle = 0.0f;
+        }
+        const float limit = std::max(0.0f, m_homingMaxDegrees);
+        const float goal = NS::Core::Clamp(baseAngle + relative, -limit, limit);
+        const float step = std::max(0.0f, m_homingStepDegrees);
+        float next = std::max(goal, m_homingAngle - step);
+        if (goal > m_homingAngle)
+        {
+            next = std::min(goal, m_homingAngle + step);
+        }
+
+        const float change = next - m_homingAngle;
+        m_homingAngle = next;
+        if (!rushing)
+        {
+            m_homingTarget = targetCenter;
+            m_homingTargetConeDegrees = coneDegrees;
+            m_hasHomingTarget = true;
+            return;
+        }
+        // 速度は UpdateBodySlam が毎フレーム突進の向きから書き直すので、向きを回せば軌道が曲がる
+        m_bodySlamDir = RotateHorizontal(m_bodySlamDir, NS::Core::ToRadians(NS::Core::Degrees{change}).value);
+    }
+
+    void PlayerComponent::ForgetHoming() noexcept
+    {
+        m_homingAngle = 0.0f;
+        m_hasHomingTarget = false;
+    }
+
+    float PlayerComponent::HomingAngleForRelease(const NS::Core::Vector3& releaseDir) const noexcept
+    {
+        if (!m_hasHomingTarget || Owner() == nullptr)
+        {
+            return 0.0f;
+        }
+        NS::Core::Vector3 toTarget{};
+        if (!NS::Core::TryNormalizeHorizontal(m_homingTarget - RootTransform().Position(), toTarget))
+        {
+            return 0.0f;
+        }
+        const float relative =
+            NS::Core::ToDegrees(NS::Core::Radians{HorizontalAngleBetween(releaseDir, toTarget)}).value;
+        // 探した角度の外の相手へ回すと、狙っていない相手へ引かれる。放す向きが溜めていた狙いと違う時に起きる
+        if (!(std::abs(relative) <= m_homingTargetConeDegrees))
+        {
+            return 0.0f;
+        }
+        // 累計は溜めていた狙いから測った角度なので、符号は使わず大きさだけを溜めた量として使う
+        const float earned = std::abs(m_homingAngle);
+        return NS::Core::Clamp(relative, -earned, earned);
+    }
+
     void PlayerComponent::SetCurled(bool curled) noexcept
     {
         // 掴まりからは突進が出ない。玉のままぶら下がると、押しても突進が出ないのに玉の見た目だけが残る
@@ -238,6 +346,11 @@ namespace NS::Game::Player
             return;
         }
         m_curled = curled;
+        // 立ち姿へ戻った後まで寄せた角度を残すと、次の溜めへ持ち越す
+        if (!curled)
+        {
+            ForgetHoming();
+        }
         SetSphereShape(curled);
         // 立ち姿の下端は 中心 − 半長 − 半径、玉の下端は 中心 − 半径。中心を立ち姿の半長ぶん上げ下げすると下端が揃う
         // 下げずに玉にすると、当たりの下端が半長ぶん上がる
@@ -328,9 +441,18 @@ namespace NS::Game::Player
         if (std::sqrt(dir.x * dir.x + dir.z * dir.z) < NS::Core::k_Epsilon)
             return false;
 
+        // 溜めている間に寄せた分は、控えた相手を放す向きから測り直して乗せる。突進中の寄せはその続きから数える。
+        // タップは短い踏み込みの移動技なので、溜めた分も乗せない
+        const bool isTap = !(m_bodySlamRequestCharge01 > 0.0f);
+        float releaseHoming = 0.0f;
+        if (!isTap)
+        {
+            releaseHoming = HomingAngleForRelease(dir);
+        }
+        dir = RotateHorizontal(dir, NS::Core::ToRadians(NS::Core::Degrees{releaseHoming}).value);
         m_bodySlamDir = dir;
         m_bodySlamCharge01 = m_bodySlamRequestCharge01;
-        m_bodySlamIsTap = !(m_bodySlamRequestCharge01 > 0.0f);
+        m_bodySlamIsTap = isTap;
         m_bodySlamTravelled = 0.0f;
         m_bodySlamJustStarted = true;
 
@@ -349,6 +471,9 @@ namespace NS::Game::Player
         if (!(m_bodySlamDistanceTarget > 0.0f))
             return false;
 
+        // 控えた相手は放す時に使い切る。突進中は突進の向きから探し直した相手へ寄せる
+        ForgetHoming();
+        m_homingAngle = releaseHoming;
         m_bodySlamSpent = true;
         // 突進はどの経路で出ても玉で走らせる。掴まり中に放した押しは予約に残り、先行入力の秒の内に
         // 縁を離れれば出るが、その時の丸まりは掴まりで解けている
@@ -428,6 +553,7 @@ namespace NS::Game::Player
         m_bodySlamDistanceTarget = 0.0f;
         m_bodySlamJustStarted = false;
         m_bodySlamDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        ForgetHoming();
         // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
         // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
         m_curled = false;

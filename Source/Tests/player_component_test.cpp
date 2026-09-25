@@ -23,6 +23,7 @@
 #include "tuning_field_access.h"
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -75,7 +76,9 @@ namespace
                                                          "タップの上向き初速",
                                                          "タップ距離",
                                                          "狙いの巻き戻し秒",
-                                                         "狙いの巻き戻しが消える秒"};
+                                                         "狙いの巻き戻しが消える秒",
+                                                         "寄せる角度の上限",
+                                                         "1 フレームの向きの変化の上限"};
 
     using NsTest::ReadTuningField;
     using NsTest::WriteTuningField;
@@ -778,6 +781,275 @@ TEST_F(PlayerComponentTest, RushIgnoresDirectionInput)
     ASSERT_TRUE(player.IsBodySlamming());
     EXPECT_GT(player.Velocity().x, 15.0f);
     EXPECT_NEAR(player.Velocity().z, 0.0f, 1.0e-4f);
+}
+
+namespace
+{
+    // CollisionInput の「寄せる相手を探す角度」の既定。放す向きから測り直した相手をこの角度で振り分ける
+    constexpr float k_HomingConeDegrees = 30.0f;
+
+    //! 突進の水平の向きが +X から何度回っているか。+Z 側へ回ると正
+    [[nodiscard]] float SlamHeadingDegrees(const PlayerComponent& player)
+    {
+        const Vector3 velocity = player.BodySlamVelocity();
+        return NS::Core::ToDegrees(NS::Core::Radians{std::atan2(velocity.z, velocity.x)}).value;
+    }
+} // namespace
+
+// 溜めている間は 1 フレームに上限ずつ寄せ、寄せる角度の上限で止まる。放すと狙いをその分だけ回した向きへ飛ぶ
+// 寄せた角度は符号付きで、+X の狙いから +Z 側の相手へ寄せる向きが負になる
+TEST_F(PlayerComponentTest, SteeringWhileChargingTurnsTheReleaseTowardTheTarget)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Phys::PhysicsScene& physics = stage.physics;
+    PlayerComponent& player = MakeSlamReady(obj, physics);
+    WriteTuningField(player, "寄せる角度の上限", 3.0f);
+    WriteTuningField(player, "1 フレームの向きの変化の上限", 0.25f);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    const Vector3 target = obj.Root().Position() + Vector3{5.0f, 0.0f, 1.0f};
+
+    player.SteerToward(target, k_HomingConeDegrees);
+    EXPECT_NEAR(player.HomingAngleDegrees(), -0.25f, 1e-4f);
+    for (int i = 1; i < 20; ++i)
+    {
+        player.SteerToward(target, k_HomingConeDegrees);
+    }
+    EXPECT_NEAR(player.HomingAngleDegrees(), -3.0f, 1e-4f);
+
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    ASSERT_TRUE(player.IsBodySlamming());
+    EXPECT_GT(player.BodySlamVelocity().z, 0.0f);
+    EXPECT_NEAR(SlamHeadingDegrees(player), 3.0f, 1e-3f);
+}
+
+// 溜めた量は同じ相手を狙い続けた分だけ。別の相手へ移った時に持ち越すと、放す直前に狙いを移した相手へ一度に大きく寄る
+TEST_F(PlayerComponentTest, SteeringWhileChargingStartsOverForAnotherTarget)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    const Vector3 start = obj.Root().Position();
+    for (int i = 0; i < 20; ++i)
+    {
+        player.SteerToward(start + Vector3{5.0f, 0.0f, 1.0f}, k_HomingConeDegrees);
+    }
+    ASSERT_NEAR(player.HomingAngleDegrees(), -3.0f, 1e-4f);
+
+    player.SteerToward(start + Vector3{5.0f, 0.0f, -1.0f}, k_HomingConeDegrees);
+
+    EXPECT_NEAR(player.HomingAngleDegrees(), 0.25f, 1e-4f);
+}
+
+// 溜めている間の累計は溜めていた時の狙いから測った角度なので、放す向きが違う時にそのまま乗せると逆へ曲がる。
+// 放す時は控えた相手を放す向きから測り直し、探す角度の内ならその側へ溜めた量まで回し、外なら回さない
+TEST_F(PlayerComponentTest, ReleaseRemeasuresTheChargedTargetFromTheReleaseDirection)
+{
+    {
+        NsTest::EntityStage stage;
+        GameObject& obj = stage.owner;
+        PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+        player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+        const Vector3 target = obj.Root().Position() + Vector3{-5.0f, 0.0f, 1.0f};
+        for (int i = 0; i < 20; ++i)
+        {
+            player.SteerToward(target, k_HomingConeDegrees);
+        }
+        ASSERT_NEAR(player.HomingAngleDegrees(), -3.0f, 1e-4f);
+
+        player.SetDesiredMove(Vector3{-1.0f, 0.0f, 0.0f}, 1.0f);
+        player.RequestBodySlam(1.0f);
+        player.OnUpdate();
+
+        ASSERT_TRUE(player.IsBodySlamming());
+        EXPECT_GT(player.BodySlamVelocity().z, 0.0f);
+        EXPECT_NEAR(SlamHeadingDegrees(player), 177.0f, 1e-3f);
+        EXPECT_NEAR(player.HomingAngleDegrees(), 3.0f, 1e-4f);
+    }
+    {
+        NsTest::EntityStage stage;
+        GameObject& obj = stage.owner;
+        PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+        player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+        // 溜めていた狙い +Z からは 27 度で探す角度の内、放す向き -X からは 63 度で外
+        const Vector3 target = obj.Root().Position() + Vector3{-1.0f, 0.0f, 2.0f};
+        for (int i = 0; i < 20; ++i)
+        {
+            player.SteerToward(target, k_HomingConeDegrees);
+        }
+        ASSERT_NEAR(player.HomingAngleDegrees(), -3.0f, 1e-4f);
+
+        player.SetDesiredMove(Vector3{-1.0f, 0.0f, 0.0f}, 1.0f);
+        player.RequestBodySlam(1.0f);
+        player.OnUpdate();
+
+        ASSERT_TRUE(player.IsBodySlamming());
+        EXPECT_NEAR(player.BodySlamVelocity().z, 0.0f, 1e-4f);
+        EXPECT_FLOAT_EQ(player.HomingAngleDegrees(), 0.0f);
+    }
+}
+
+// 突進中は 1 フレームに上限までしか曲がらず、寄せる角度の上限で止まる。タップは溜めた分も突進中の分も曲がらない
+TEST_F(PlayerComponentTest, SteeringDuringTheRushTurnsByTheStepUpToTheLimit)
+{
+    {
+        NsTest::EntityStage stage;
+        GameObject& obj = stage.owner;
+        PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+        player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+        player.RequestBodySlam(1.0f);
+        player.OnUpdate();
+        ASSERT_TRUE(player.IsBodySlamming());
+        player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+
+        const Vector3 target = obj.Root().Position() + Vector3{50.0f, 0.0f, 10.0f};
+        float previous = SlamHeadingDegrees(player);
+        float largestStep = 0.0f;
+        for (int i = 0; i < 20 && player.IsBodySlamming(); ++i)
+        {
+            player.SteerToward(target, k_HomingConeDegrees);
+            const float heading = SlamHeadingDegrees(player);
+            largestStep = std::max(largestStep, std::abs(heading - previous));
+            previous = heading;
+            player.OnUpdate();
+        }
+
+        EXPECT_NEAR(largestStep, 0.25f, 1e-3f);
+        EXPECT_NEAR(previous, 3.0f, 1e-3f);
+    }
+    {
+        NsTest::EntityStage stage;
+        GameObject& obj = stage.owner;
+        PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+        player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+        const Vector3 target = obj.Root().Position() + Vector3{50.0f, 0.0f, 10.0f};
+        for (int i = 0; i < 4; ++i)
+        {
+            player.SteerToward(target, k_HomingConeDegrees);
+        }
+        player.RequestBodySlam(0.0f);
+        player.OnUpdate();
+        ASSERT_TRUE(player.IsBodySlamming());
+
+        for (int i = 0; i < 5; ++i)
+        {
+            player.SteerToward(target, k_HomingConeDegrees);
+        }
+
+        EXPECT_NEAR(player.BodySlamVelocity().z, 0.0f, 1e-4f);
+        EXPECT_FLOAT_EQ(player.HomingAngleDegrees(), 0.0f);
+    }
+}
+
+// 突進中の目標は、溜めで回した分に突進の向きからの角度を足した値。足さないと、溜めで回した向きの内側に居る相手を越えて逆へ戻る
+TEST_F(PlayerComponentTest, SteeringDuringTheRushContinuesFromTheChargedAngle)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    const Vector3 start = obj.Root().Position();
+    for (int i = 0; i < 20; ++i)
+    {
+        player.SteerToward(start + Vector3{5.0f, 0.0f, 1.0f}, k_HomingConeDegrees);
+    }
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+    ASSERT_NEAR(player.HomingAngleDegrees(), -3.0f, 1e-4f);
+
+    // 元の狙い +X から +Z 側へ 2 度。遠くに置き、突進で進んでも相手への角度がほとんど動かないようにする
+    const float twoDegrees = NS::Core::ToRadians(NS::Core::Degrees{2.0f}).value;
+    const Vector3 rushTarget = start + Vector3{1000.0f * std::cos(twoDegrees), 0.0f, 1000.0f * std::sin(twoDegrees)};
+    const float expected[] = {-2.75f, -2.5f, -2.25f, -2.0f, -2.0f};
+    for (const float angle : expected)
+    {
+        ASSERT_TRUE(player.IsBodySlamming());
+        player.SteerToward(rushTarget, k_HomingConeDegrees);
+        EXPECT_NEAR(player.HomingAngleDegrees(), angle, 1e-2f);
+        player.OnUpdate();
+    }
+}
+
+// 非数の相手を通すと、寄せた角度と突進の向きが非数になり、速度と位置まで伝わる
+TEST_F(PlayerComponentTest, SteeringIgnoresATargetThatIsNotFinite)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+    player.SteerToward(obj.Root().Position() + Vector3{50.0f, 0.0f, 10.0f}, k_HomingConeDegrees);
+    const float homing = player.HomingAngleDegrees();
+    const Vector3 velocity = player.BodySlamVelocity();
+    ASSERT_NE(homing, 0.0f);
+
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    player.SteerToward(Vector3{nan, nan, nan}, k_HomingConeDegrees);
+
+    EXPECT_FLOAT_EQ(player.HomingAngleDegrees(), homing);
+    EXPECT_EQ(player.BodySlamVelocity(), velocity);
+}
+
+// 寄せた角度を次の突進へ持ち越すと、相手の居ない所でも曲がって飛ぶ
+TEST_F(PlayerComponentTest, SteeringIsClearedWhenTheRushEndsAndOnReset)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    const Vector3 target = obj.Root().Position() + Vector3{5.0f, 0.0f, 1.0f};
+    for (int i = 0; i < 4; ++i)
+    {
+        player.SteerToward(target, k_HomingConeDegrees);
+    }
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+    ASSERT_GT(std::abs(player.HomingAngleDegrees()), 0.0f);
+
+    for (int i = 0; i < 120 && player.IsBodySlamming(); ++i)
+    {
+        player.OnUpdate();
+    }
+    ASSERT_FALSE(player.IsBodySlamming());
+    EXPECT_FLOAT_EQ(player.HomingAngleDegrees(), 0.0f);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SteerToward(obj.Root().Position() + Vector3{5.0f, 0.0f, 1.0f}, k_HomingConeDegrees);
+    ASSERT_GT(std::abs(player.HomingAngleDegrees()), 0.0f);
+    player.ResetState();
+    EXPECT_FLOAT_EQ(player.HomingAngleDegrees(), 0.0f);
+}
+
+// 溜めて突進を出さずに丸まりが解けた時も捨てる。残すと、次の溜めが前の相手へ寄せた所から始まる
+TEST_F(PlayerComponentTest, SteeringIsClearedWhenTheBallUncurls)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetCurled(true);
+    ASSERT_TRUE(player.IsCurled());
+    for (int i = 0; i < 4; ++i)
+    {
+        player.SteerToward(obj.Root().Position() + Vector3{5.0f, 0.0f, 1.0f}, k_HomingConeDegrees);
+    }
+    ASSERT_GT(std::abs(player.HomingAngleDegrees()), 0.0f);
+
+    player.SetCurled(false);
+    EXPECT_FLOAT_EQ(player.HomingAngleDegrees(), 0.0f);
+
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+    EXPECT_NEAR(player.BodySlamVelocity().z, 0.0f, 1e-4f);
 }
 
 TEST_F(PlayerComponentTest, RushEndsAfterTheRushDistance)

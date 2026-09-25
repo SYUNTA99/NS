@@ -146,6 +146,14 @@ namespace
                 NS::Obj::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(0, 0, z));
 
             nlohmann::json player = MakePlayerObject(Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{});
+            // 基準は衝突だけの軌跡を持つ。寄せは真正面の的へも物理の丸めで出る 1e-6 度ほどの角度で働き、
+            // 2 回目の突進から軌跡を動かす。寄せの確かめは衝突の試しと Replay の台本が持つ
+            nlohmann::json* movementEntry = NS::Obj::FindComponentEntry(player, "PlayerComponent");
+            EXPECT_NE(movementEntry, nullptr);
+            if (movementEntry != nullptr)
+            {
+                NS::Obj::SetField(*movementEntry, "寄せる角度の上限", 0.0f);
+            }
             NS::Obj::ObjectJsonComponents(player).push_back(NS::Obj::MakeComponentEntry("ImpactResolver"));
             NS::Obj::ObjectJsonComponents(player).push_back(NS::Obj::MakeComponentEntry("CollisionInput"));
             nlohmann::json appearance = NS::Obj::MakeComponentEntry("PlayerAppearance");

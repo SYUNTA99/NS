@@ -93,6 +93,20 @@ namespace NS::Game::Level
         //! 中心近くで当てた直後だけ、フレームごとに減衰する白を画面全体へ重ねる
         void OnRenderOverlay(const NS::Gfx::RenderContext& ctx) override;
 
+        //! @brief 突進の向きを寄せる相手を探す
+        //! @details 相手は壊せる物のうち、有効で、トリガの箱でなく、当たりの外接箱が取れる物。裁定と同じ絞り。
+        //! 自機の位置から外接箱の中心への水平の向きが forward から coneDegrees 以内で、
+        //! 水平の距離が maxDistance 以内の相手のうち、一番近い 1 体を選ぶ
+        //! @param[in] forward 基準の向き。水平の成分だけを見る
+        //! @param[in] coneDegrees 基準の向きから片側に見る角度。単位は度
+        //! @param[in] maxDistance 見る水平の距離。単位は m
+        //! @param[out] outCenter 見つけた相手の外接箱の中心。見つからない場合は書き換えない
+        //! @return 見つかった場合 true、それ以外の場合は false
+        [[nodiscard]] bool FindHomingTarget(const NS::Core::Vector3& forward,
+                                            float coneDegrees,
+                                            float maxDistance,
+                                            NS::Core::Vector3& outCenter) const;
+
         //! 潰した形で凍結中か、伸びから元の形へ戻している途中の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsScaleAnimating() const noexcept { return m_scaleHeld || m_recoverRemaining > 0; }
 

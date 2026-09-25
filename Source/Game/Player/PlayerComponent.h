@@ -74,7 +74,7 @@ namespace NS::Game::Player
         //! 突進の進み具合 0..1。突進中でなければ 0
         [[nodiscard]] float BodySlamProgress01() const noexcept;
         [[nodiscard]] float BodySlamCharge01() const noexcept { return m_bodySlamCharge01; } //!< 発動時の溜め量 0..1
-        //! 衝突の裁定が読む速度。突進中は向きと突進速度から作る
+        //! 衝突の裁定と玉の回転と寄せが読む速度。突進中は向きと突進速度から作る
         //! @details 実速度は壁へ押し付けられたフレームで 0 に潰れ、衝突の先読みが今の位置から動かなくなる
         [[nodiscard]] NS::Core::Vector3 BodySlamVelocity() const noexcept;
         //! 突進を打ち切って通常移動へ戻す。突進中でなければ何もしない
@@ -153,6 +153,22 @@ namespace NS::Game::Player
         //! 体当たりを出す水平の向きを返す。入力・カメラの前・速度の順に見て、どれも無ければゼロ
         [[nodiscard]] NS::Core::Vector3 AimDirection() const noexcept;
 
+        //! @brief 突進の向きを相手の中心へ 1 フレームぶん寄せる
+        //! @details 溜めている間は AimDirection
+        //! が返す狙いの向きを基準に、寄せた角度の累計を目標へ近づけ、相手を控える。
+        //! 控えた相手と中心が違う相手が来たら、累計を 0 から数え直す。
+        //! 放す時は控えた相手を放す向きから測り直し、coneDegrees の内なら累計の大きさまでその側へ回し、外なら回さない。
+        //! 溜めた突進の間は突進の向きを基準にし、累計の変化分だけ突進の向きを回す。タップの間は何もしない。
+        //! 目標は基準から相手の中心への水平の角度で、突進の間はそれに累計を足す。寄せる角度の上限で切る。
+        //! 累計は 1 フレームの向きの変化の上限ずつしか動かない。
+        //! 基準の向きか相手への水平の向きが決まらない場合と、相手への角度が有限でない場合は何もしない
+        //! @param[in] targetCenter 寄せる相手の中心。世界座標
+        //! @param[in] coneDegrees
+        //! 相手を探した角度。放す向きから測り直した相手を残すかどうかをこの角度で決める。単位は度
+        void SteerToward(const NS::Core::Vector3& targetCenter, float coneDegrees) noexcept;
+        //! 寄せた角度の累計を返す。単位は度で、正の角度は +X の向きを -Z の側へ回す
+        [[nodiscard]] float HomingAngleDegrees() const noexcept { return m_homingAngle; }
+
         //! @brief 丸まりを入れるか解く
         //! @details 押している間は毎フレーム true が入る。自分で解くので、false はプレイを終える時だけ渡す。
         //! 丸まると当たりを球にして根を立ち姿の半長ぶん下げ、解くと立ち姿へ戻して上げる。
@@ -198,6 +214,8 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_tapSlamDistance, "タップ距離")
         NS_REFLECT_FIELD(m_slamAimHoldTime, "狙いの巻き戻し秒")
         NS_REFLECT_FIELD(m_slamAimFadeTime, "狙いの巻き戻しが消える秒")
+        NS_REFLECT_FIELD(m_homingMaxDegrees, "寄せる角度の上限")
+        NS_REFLECT_FIELD(m_homingStepDegrees, "1 フレームの向きの変化の上限")
         NS_REFLECT_END()
 
     protected:
@@ -227,6 +245,14 @@ namespace NS::Game::Player
         void ChangeCurled(bool curled) noexcept;
         //! 突進を終える。水平の速さを MaxSpeed で切り、接地していれば走りへ、空中なら落下へ移す
         void EndBodySlam() noexcept;
+        //! 寄せた角度の累計を 0 にし、溜めている間に控えた相手を捨てる
+        void ForgetHoming() noexcept;
+        //! @brief 溜めている間に控えた相手を放す向きから測り直し、放す向きを回す角度を返す
+        //! @details 相手が放す向きから探した角度の内なら、返す角度はその側へ累計の大きさまで
+        //! @param[in] releaseDir 放す水平の向き。正規化済み
+        //! @return 放す向きを回す角度。単位は度で、正の角度は +X の向きを -Z の側へ回す。
+        //! 控えた相手が無いか、探した角度の外か、相手への水平の向きが決まらない場合は 0
+        [[nodiscard]] float HomingAngleForRelease(const NS::Core::Vector3& releaseDir) const noexcept;
 
         //! @brief 掴まり位置から掴める縁を探す
         //! @param[in] hangPos 手を伸ばす元になるカプセル中心の位置
@@ -269,6 +295,14 @@ namespace NS::Game::Player
         NS::Core::Vector3 m_bodySlamDir{0.0f, 0.0f, 0.0f};    // 突進の水平の向き。正規化済み
         NS::Core::Vector3 m_bodySlamAimDir{0.0f, 0.0f, 0.0f}; // 押したフレームに控えた狙いの向き。正規化済み
         float m_bodySlamAimAge = 0.0f;                        // 狙いを控えてからの経過秒
+        // 寄せた角度の累計 (度)。溜めている間は狙いの向きから、放した後は寄せる前の放す向きから測る。
+        // 正の角度は +X の向きを -Z
+        // の側へ回す。突進の終わり・ResetState・立ち姿へ戻る時と、溜めている間に相手が変わった時に 0
+        float m_homingAngle = 0.0f;
+        // 溜めている間に寄せた相手の中心と、その相手を探した角度 (度)。放す時に放す向きから測り直す
+        NS::Core::Vector3 m_homingTarget{0.0f, 0.0f, 0.0f};
+        float m_homingTargetConeDegrees = 0.0f;
+        bool m_hasHomingTarget = false;
 
         NS::Core::Vector3 m_facingDir{0.0f, 0.0f, 0.0f};       // 掴む向き。動こうとした水平の向きへ振り向きの速さで回る
         float m_lastMoveDistance = 0.0f;                       // 直前の Move で動いた距離。縁を探す帯の上の余白
@@ -331,6 +365,9 @@ namespace NS::Game::Player
         // NS では測っていない
         float m_slamAimHoldTime = 0.11f;
         float m_slamAimFadeTime = 0.19f;
+
+        float m_homingMaxDegrees = 3.0f;   // 狙いから相手へ寄せる角度の上限 (度)。溜めと突進の合計
+        float m_homingStepDegrees = 0.25f; // 寄せで向きが 1 フレームに変わる角度の上限 (度)
 
         PlayerStateManager* m_stateManager = nullptr; // 状態機械 (非所有)
 
