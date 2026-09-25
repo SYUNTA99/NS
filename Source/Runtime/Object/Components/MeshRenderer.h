@@ -20,8 +20,9 @@ namespace NS::Gfx
 namespace NS::Obj
 {
     //! @brief Mesh と Material を描く Component
-    //! @details Collect が Transform::InterpolatedWorldMatrix(context.alpha) を FrameCB へ詰めた DrawItem を積む
+    //! @details Collect が DrawWorldMatrix(context.alpha) を FrameCB へ詰めた DrawItem を積む
     //! 固定ステップの物理結果を、可変フレームレートでなめらかに補間して描く
+    //! 描く時だけの局所の回転を持ち、根の行列より先に掛ける。根の Transform は書き換えない
     class MeshRenderer : public Component, public IRenderable
     {
     public:
@@ -70,7 +71,26 @@ namespace NS::Obj
             m_hasLocalBoundsOverride = true;
         }
 
-        //! alpha 補間 world matrix を FrameCB に詰めた DrawItem を out に積む。IsActive()==false なら何も積まない
+        //! @brief 描く時だけの局所の回転を書く。根の行列より先に掛かるので、根のスケールは局所の回転と一緒に回らない
+        //! @details 今のフレームの値だけを書き、前のフレームの値は OnUpdate が控える。保存はしない
+        //! Update 帯の既定の優先度で回る OnUpdate より後に書くこと。先に書くと前のフレームの値と同じになり補間されない
+        void SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept { m_localRotation = rotation; }
+        //! @brief 今と前のフレームの局所の回転を同じ値にする
+        //! @details 補間せずにこの姿勢で描く。mesh を差し替えたフレームに、差し替える前の回転から補間されないようにする
+        void SnapLocalRotation(const NS::Core::Quaternion& rotation) noexcept
+        {
+            m_localRotation = rotation;
+            m_previousLocalRotation = rotation;
+        }
+        //! 今のフレームの局所の回転を返す。書かれていなければ単位回転
+        [[nodiscard]] const NS::Core::Quaternion& LocalRotation() const noexcept { return m_localRotation; }
+
+        //! @brief 描く world 行列を返す
+        //! @details 前と今の局所の回転を alpha で補間した行列を、根の補間 world 行列の前に掛ける
+        //! @param[in] alpha 前の固定フレームから今の固定フレームまでの補間の割合 0..1
+        [[nodiscard]] NS::Core::Matrix DrawWorldMatrix(float alpha) const noexcept;
+
+        //! DrawWorldMatrix(context.alpha) を詰めた DrawItem を out に積む。IsActive()==false なら何も積まない
         void Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out) override;
 
         //! Material の BlendMode から bucket を返し、Opaque 以外は Transparent。Material 不在は Opaque
@@ -87,6 +107,10 @@ namespace NS::Obj
         void OnStart() override;
         //! Owner の OwningScene から self を解除する。無効ポインタを残さないよう Scene 破棄前に呼ぶ
         void OnEndPlay() override;
+        //! @brief 今の局所の回転を前のフレームの値として控える
+        //! @details 局所の回転は、これより大きい優先度で書くこと。非活性の間は控えないので、活性に戻った
+        //! 最初のフレームは止める前の値から補間される
+        void OnUpdate() override;
 
         //! meshRef / matRef の参照文字列から実体の Mesh / Material を引き当てる
         //! 共有 material 名を先に引き、外れたら .mat 相対パスとして読む。解決不可は cube と既定 material にする
@@ -99,8 +123,8 @@ namespace NS::Obj
         NS_REFLECT_END()
 
     private:
-        NS::Gfx::Mesh* m_mesh = nullptr;            // 描画する Mesh (非所有)
-        NS::Gfx::Material* m_material = nullptr;    // 描画に使う Material (非所有)
+        NS::Gfx::Mesh* m_mesh = nullptr;                 // 描画する Mesh (非所有)
+        NS::Gfx::Material* m_material = nullptr;         // 描画に使う Material (非所有)
         NS::Core::Vector3 m_baseColor{1.0f, 1.0f, 1.0f}; // 個体色、lighting と別系統
         // 保存・編集される参照文字列。build 時に解決して m_mesh / m_material へ実体を当てる
         std::string m_meshRef{};
@@ -116,5 +140,9 @@ namespace NS::Obj
         // skinned の現在ポーズ境界。同じ object の SkeletalAnimation が毎フレーム差す
         NS::Core::AABB m_localBoundsOverride{};
         bool m_hasLocalBoundsOverride = false;
+
+        // 描く時だけの局所の回転。同居する component が毎フレーム書き直すので保存しない
+        NS::Core::Quaternion m_localRotation = NS::Core::Quaternion::Identity;
+        NS::Core::Quaternion m_previousLocalRotation = NS::Core::Quaternion::Identity; // 前のフレームの値。補間の始点
     };
 } // namespace NS::Obj

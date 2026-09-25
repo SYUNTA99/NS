@@ -150,6 +150,8 @@ namespace NS::Game::Player
 
         //! 押したフレームの狙いを控える。離すまでの遅れのぶん、発動はこの向きから始める
         void MarkBodySlamAim() noexcept;
+        //! 体当たりを出す水平の向きを返す。入力・カメラの前・速度の順に見て、どれも無ければゼロ
+        [[nodiscard]] NS::Core::Vector3 AimDirection() const noexcept;
 
         //! @brief 丸まりを入れるか解く
         //! @details 押している間は毎フレーム true が入る。自分で解くので、false はプレイを終える時だけ渡す。
@@ -232,8 +234,6 @@ namespace NS::Game::Player
         //! @return 手の高さ以下の帯に縁があり、登り先も塞がっていない場合 true、それ以外の場合は false
         [[nodiscard]] bool FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) const noexcept;
 
-        //! 体当たりを出す水平の向き。入力・カメラの前・速度の順に見て、どれも無ければゼロ
-        [[nodiscard]] NS::Core::Vector3 AimDirection() const noexcept;
         //! 控えた狙いを今の向きにどれだけ混ぜるか 0..1。巻き戻し秒までは 1、消える秒で 0
         [[nodiscard]] float BodySlamAimBlend01() const noexcept;
 

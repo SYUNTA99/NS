@@ -1,5 +1,5 @@
-﻿#include "Runtime/Core/AABB.h"
-#include "Runtime/Object/Components/MeshRenderer.h"
+﻿#include "Runtime/Object/Components/MeshRenderer.h"
+#include "Runtime/Core/AABB.h"
 
 #include "Runtime/Graphics/Material.h"
 #include "Runtime/Graphics/Mesh.h"
@@ -14,9 +14,9 @@
 namespace NS::Obj
 {
     void MeshRenderer::SetPerObjectVsConstant(const NS::Gfx::Buffer* cb,
-                                                       const void* cpuData,
-                                                       std::size_t cpuDataSize,
-                                                       unsigned slot) noexcept
+                                              const void* cpuData,
+                                              std::size_t cpuDataSize,
+                                              unsigned slot) noexcept
     {
         m_perObjectVsCb = cb;
         m_perObjectVsData = cpuData;
@@ -81,13 +81,31 @@ namespace NS::Obj
         Scene* scene = owner->OwningScene();
         if (scene == nullptr)
         {
-			return;
+            return;
         }
         scene->UnregisterRenderable(this);
     }
 
-    void MeshRenderer::Collect(const NS::Gfx::RenderContext& context,
-                                        std::vector<NS::Gfx::DrawItem>& out)
+    void MeshRenderer::OnUpdate()
+    {
+        // Update 帯の既定の優先度で回る。局所の回転はこれより後に書かれる前提で、書き直される前の値を控える
+        m_previousLocalRotation = m_localRotation;
+    }
+
+    NS::Core::Matrix MeshRenderer::DrawWorldMatrix(float alpha) const noexcept
+    {
+        const NS::Core::Quaternion local = NS::Core::Quaternion::Slerp(m_previousLocalRotation, m_localRotation, alpha);
+        const NS::Core::Matrix localMatrix = NS::Core::Matrix::CreateFromQuaternion(local);
+        const GameObject* owner = Owner();
+        if (owner == nullptr)
+        {
+            return localMatrix;
+        }
+        // 回転を先に掛ける。根のスケールは根の軸に残り、局所の回転と一緒に回らない
+        return localMatrix * owner->Root().InterpolatedWorldMatrix(alpha);
+    }
+
+    void MeshRenderer::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
     {
         GameObject* owner = Owner();
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
@@ -102,7 +120,7 @@ namespace NS::Obj
         item.mesh = m_mesh;
         item.material = m_material;
         item.blend = m_material->Blend();
-        item.constants.world = owner->Root().InterpolatedWorldMatrix(context.alpha);
+        item.constants.world = DrawWorldMatrix(context.alpha);
         item.constants.viewProj = context.viewProjection;
         item.constants.lightDir = settings.lightDir;
         item.constants.lightDir.Normalize();
@@ -137,7 +155,7 @@ namespace NS::Obj
         const GameObject* owner = Owner();
         if (owner == nullptr)
         {
-			return {};
+            return {};
         }
         const NS::Core::Matrix world = owner->Root().WorldMatrix();
         return NS::Core::Vector3{world._41, world._42, world._43};

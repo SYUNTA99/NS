@@ -1,6 +1,8 @@
 #include "Game/Player/PlayerAppearance.h"
 
+#include <Game/Level/CollisionInput.h>
 #include <Game/Player/PlayerComponent.h>
+#include <Game/Player/PlayerStateManager.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Graphics/Mesh.h>
 #include <Runtime/Graphics/Renderer.h>
@@ -12,10 +14,14 @@
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Transform.h>
+#include <Runtime/Platform/Clock.h>
 #include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Platform/Window.h>
 
+#include "entity_test_stage.h"
+#include "jolt_test_scene.h"
 #include <gtest/gtest.h>
+#include <limits>
 #include <memory>
 #include <string>
 
@@ -95,6 +101,71 @@ namespace
             return nullptr;
         }
         return renderer->GetMesh();
+    }
+
+    // 回転の試しは mesh を描かないので device が要らない。見た目・描画・移動・溜めの入力だけを積む
+    struct SpinRig
+    {
+        NS::Obj::GameObject object;
+        MeshRenderer& renderer = *object.AddComponent<MeshRenderer>();
+        PlayerAppearance& appearance = *object.AddComponent<PlayerAppearance>();
+        NS::Game::Player::PlayerComponent& player = *object.AddComponent<NS::Game::Player::PlayerComponent>();
+        NS::Game::Level::CollisionInput& input = *object.AddComponent<NS::Game::Level::CollisionInput>();
+
+        SpinRig()
+        {
+            input.OnStart();
+            appearance.OnStart();
+        }
+    };
+
+    // 突進の試しは床の上で本物の突進を出す。+X へ倒して押し、突進に入ったフレームで止める
+    struct SlamRig
+    {
+        NsTest::EntityStage stage;
+        MeshRenderer& renderer = *stage.owner.AddComponent<MeshRenderer>();
+        PlayerAppearance& appearance = *stage.owner.AddComponent<PlayerAppearance>();
+        NS::Game::Player::PlayerStateManager& manager =
+            *stage.owner.AddComponent<NS::Game::Player::PlayerStateManager>();
+        NS::Game::Player::PlayerComponent& player = *stage.owner.AddComponent<NS::Game::Player::PlayerComponent>();
+
+        SlamRig()
+        {
+            player.OnStart();
+            manager.OnStart();
+            appearance.OnStart();
+            NsTest::AddBox(stage.physics, NS::Core::AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 64.0f}});
+            stage.physics.OptimizeBroadPhase();
+            stage.owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
+            for (int i = 0; i < 30 && !player.IsGrounded(); ++i)
+            {
+                player.OnUpdate();
+            }
+            player.OnUpdate();
+
+            player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+            player.RequestBodySlam(1.0f);
+            player.OnUpdate();
+        }
+    };
+
+    // 1 フレームに回る角度 (度)。欄の速さは度/秒
+    [[nodiscard]] float DegreesPerFrame(float degreesPerSecond)
+    {
+        return degreesPerSecond * NS::Platform::FrameTimer::FixedDelta();
+    }
+
+    [[nodiscard]] NS::Core::Quaternion TurnDegrees(const Vector3& axis, float degrees)
+    {
+        return NS::Core::Quaternion::CreateFromAxisAngle(axis, NS::Core::ToRadians(NS::Core::Degrees{degrees}).value);
+    }
+
+    void ExpectSameRotation(const NS::Core::Quaternion& actual, const NS::Core::Quaternion& expected)
+    {
+        EXPECT_NEAR(actual.x, expected.x, 1e-5f);
+        EXPECT_NEAR(actual.y, expected.y, 1e-5f);
+        EXPECT_NEAR(actual.z, expected.z, 1e-5f);
+        EXPECT_NEAR(actual.w, expected.w, 1e-5f);
     }
 } // namespace
 
@@ -254,4 +325,179 @@ TEST_F(PlayerAppearanceTest, UnresolvableMeshRefFallsBackToThePlaceholderShape)
     ASSERT_NE(placeholder, nullptr);
 
     EXPECT_EQ(ShownMesh(*player), placeholder);
+}
+
+// 押した瞬間から回り、溜めきると欄の速さまで上がる。溜め量は溜めの判定を直接進めて作る
+TEST(PlayerAppearanceSpinTest, ChargeRaisesTheSpinFromTheEmptyToTheFullSpeed)
+{
+    SpinRig rig;
+    rig.player.SetCurled(true);
+
+    rig.input.Judge().Step(true);
+    ASSERT_FLOAT_EQ(rig.input.Judge().Charge01(), 0.0f);
+    rig.appearance.OnUpdate();
+    EXPECT_NEAR(rig.appearance.SpinDegreesThisFrame(), DegreesPerFrame(360.0f), 1e-4f);
+
+    for (int i = 1; i < rig.input.Judge().chargeMaxSteps; ++i)
+    {
+        rig.input.Judge().Step(true);
+    }
+    ASSERT_FLOAT_EQ(rig.input.Judge().Charge01(), 1.0f);
+    rig.appearance.OnUpdate();
+    EXPECT_NEAR(rig.appearance.SpinDegreesThisFrame(), DegreesPerFrame(1440.0f), 1e-4f);
+}
+
+// 既に回った姿勢の上に、今の軸まわりの回転を足す。軸が変わっても姿勢が跳ばない
+TEST(PlayerAppearanceSpinTest, ANewAxisTurnsOnTopOfThePoseAlreadyTurned)
+{
+    SpinRig rig;
+    rig.player.SetCurled(true);
+    for (int i = 0; i < rig.input.Judge().chargeMaxSteps; ++i)
+    {
+        rig.input.Judge().Step(true);
+    }
+    const float step = DegreesPerFrame(1440.0f);
+
+    // 狙いが +Z なら軸は +X、+X なら -Z
+    rig.player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    rig.appearance.OnUpdate();
+    rig.player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    rig.appearance.OnUpdate();
+
+    const Vector3 up{0.0f, 1.0f, 0.0f};
+    const Vector3 firstTurned = Vector3::Transform(up, TurnDegrees(Vector3{1.0f, 0.0f, 0.0f}, step));
+    const Vector3 expected = Vector3::Transform(firstTurned, TurnDegrees(Vector3{0.0f, 0.0f, -1.0f}, step));
+    const Vector3 actual = Vector3::Transform(up, rig.renderer.LocalRotation());
+    EXPECT_NEAR(actual.x, expected.x, 1e-5f);
+    EXPECT_NEAR(actual.y, expected.y, 1e-5f);
+    EXPECT_NEAR(actual.z, expected.z, 1e-5f);
+}
+
+// 狙いが採れないフレーム (ゼロ・非数・無限大) は、前の軸のまま回り続ける
+TEST(PlayerAppearanceSpinTest, AnAimThatCannotBeTakenKeepsThePreviousAxis)
+{
+    SpinRig rig;
+    rig.player.SetCurled(true);
+    rig.input.Judge().Step(true);
+    const float step = DegreesPerFrame(360.0f);
+
+    // 狙いが +X なら軸は -Z。始めの軸 (1, 0, 0) と違う軸にして、保ったのか始めへ戻ったのかを見分ける
+    rig.player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    rig.appearance.OnUpdate();
+    rig.player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    rig.appearance.OnUpdate();
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    rig.player.SetDesiredMove(Vector3{nan, 0.0f, nan}, 1.0f);
+    rig.appearance.OnUpdate();
+    const float infinity = std::numeric_limits<float>::infinity();
+    rig.player.SetDesiredMove(Vector3{infinity, 0.0f, 0.0f}, 1.0f);
+    rig.appearance.OnUpdate();
+
+    ExpectSameRotation(rig.renderer.LocalRotation(), TurnDegrees(Vector3{0.0f, 0.0f, -1.0f}, step * 4.0f));
+}
+
+// 突進中は進む向きに直交する水平の軸まわりに、転がる速さで前へ回る
+TEST(PlayerAppearanceSpinTest, BodySlamRollsForwardAboutTheHorizontalAxisAcrossTheTravel)
+{
+    SlamRig rig;
+    ASSERT_TRUE(rig.player.IsBodySlamming());
+    ASSERT_TRUE(rig.player.IsCurled());
+    rig.appearance.OnUpdate();
+
+    // 進む向き (1, 0, 0) から (forward.z, 0, -forward.x) = (0, 0, -1)
+    EXPECT_NEAR(rig.appearance.SpinDegreesThisFrame(), DegreesPerFrame(1800.0f), 1e-4f);
+    ExpectSameRotation(rig.renderer.LocalRotation(), TurnDegrees(Vector3{0.0f, 0.0f, -1.0f}, DegreesPerFrame(1800.0f)));
+    // 式を写しただけでは符号ごと逆でも通る。上面が進む向き (+X) の側へ倒れることを見る
+    const Vector3 top = Vector3::Transform(Vector3{0.0f, 1.0f, 0.0f}, rig.renderer.LocalRotation());
+    EXPECT_GT(top.x, 0.0f);
+}
+
+// 突進が終わっても丸まっている間は、突進の軸と速さのまま転がり続ける
+TEST(PlayerAppearanceSpinTest, AfterTheBodySlamEndsTheBallKeepsRollingTheSameWay)
+{
+    SlamRig rig;
+    ASSERT_TRUE(rig.player.IsBodySlamming());
+    rig.appearance.OnUpdate();
+
+    rig.player.CancelBodySlam();
+    ASSERT_FALSE(rig.player.IsBodySlamming());
+    ASSERT_TRUE(rig.player.IsCurled());
+    rig.appearance.OnUpdate();
+
+    EXPECT_NEAR(rig.appearance.SpinDegreesThisFrame(), DegreesPerFrame(1800.0f), 1e-4f);
+    ExpectSameRotation(rig.renderer.LocalRotation(),
+                       TurnDegrees(Vector3{0.0f, 0.0f, -1.0f}, DegreesPerFrame(1800.0f) * 2.0f));
+}
+
+// 立ち姿に戻ったフレームは、前のフレームの回転も捨てる。補間の途中でも立ち姿が傾いて描かれない
+TEST(PlayerAppearanceSpinTest, StandingUpDrawsTheStandingLookUpright)
+{
+    SpinRig rig;
+    rig.player.SetCurled(true);
+    rig.input.Judge().Step(true);
+    rig.renderer.OnUpdate();
+    rig.appearance.OnUpdate();
+    ASSERT_GT(rig.appearance.SpinDegreesThisFrame(), 0.0f);
+
+    // 1 フレームの中の並びと同じく、描く側が前の値を控えてから見た目が書く
+    rig.player.SetCurled(false);
+    rig.renderer.OnUpdate();
+    rig.appearance.OnUpdate();
+
+    EXPECT_FLOAT_EQ(rig.appearance.SpinDegreesThisFrame(), 0.0f);
+    const NS::Core::Matrix drawn = rig.renderer.DrawWorldMatrix(0.5f);
+    const NS::Core::Matrix root = rig.object.Root().InterpolatedWorldMatrix(0.5f);
+    for (int row = 0; row < 4; ++row)
+    {
+        for (int column = 0; column < 4; ++column)
+        {
+            EXPECT_NEAR(drawn.m[row][column], root.m[row][column], 1e-6f) << row << "," << column;
+        }
+    }
+}
+
+// 立ち姿は玉の軸と速さを捨てる。丸まり直すと、押すまでは回らず、押すと始めの軸から回る
+TEST(PlayerAppearanceSpinTest, CurlingAgainStartsStillAboutTheFirstAxis)
+{
+    SpinRig rig;
+    rig.player.SetCurled(true);
+    rig.player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    rig.input.Judge().Step(true);
+    rig.appearance.OnUpdate();
+    rig.player.SetCurled(false);
+    rig.input.Judge().Step(false);
+    rig.appearance.OnUpdate();
+
+    rig.player.SetCurled(true);
+    rig.player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    rig.appearance.OnUpdate();
+    EXPECT_FLOAT_EQ(rig.appearance.SpinDegreesThisFrame(), 0.0f);
+
+    rig.input.Judge().Step(true);
+    rig.appearance.OnUpdate();
+    ExpectSameRotation(rig.renderer.LocalRotation(), TurnDegrees(Vector3{1.0f, 0.0f, 0.0f}, DegreesPerFrame(360.0f)));
+}
+
+// 描く側が前のフレームの回転を控えてから、見た目が今の回転を書く。逆の並びでは前 = 今になり補間が消える
+TEST(PlayerAppearanceSpinTest, WritesTheRotationAfterTheRendererKeepsThePreviousOne)
+{
+    SpinRig rig;
+    EXPECT_LT(rig.renderer.Priority(), rig.appearance.Priority());
+}
+
+// 当たりの止めで移動が止まっている間は、絵も止まる
+TEST(PlayerAppearanceSpinTest, FreezeHoldsTheSpin)
+{
+    SpinRig rig;
+    rig.player.SetCurled(true);
+    rig.input.Judge().Step(true);
+    rig.appearance.OnUpdate();
+    const NS::Core::Quaternion before = rig.renderer.LocalRotation();
+
+    rig.player.SetActive(false);
+    rig.input.Judge().Step(true);
+    rig.appearance.OnUpdate();
+
+    EXPECT_FLOAT_EQ(rig.appearance.SpinDegreesThisFrame(), 0.0f);
+    ExpectSameRotation(rig.renderer.LocalRotation(), before);
 }

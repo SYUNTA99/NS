@@ -52,6 +52,8 @@ namespace NS::Game::Level
 
         //! 判定の実体。自動テストは実機入力を差し替えられないので、保持を直接入れる口として出す
         [[nodiscard]] ImpactInputJudge& Judge() noexcept { return m_judge; }
+        //! 判定の実体を読むだけの口。PlayerAppearance が溜め量を読む
+        [[nodiscard]] const ImpactInputJudge& Judge() const noexcept { return m_judge; }
 
         NS_REFLECT_BEGIN(CollisionInput, NS::Obj::Component)
         NS_REFLECT_FIELD(m_chargeThresholdSeconds, "チャージしきい値秒")
