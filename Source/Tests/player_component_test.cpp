@@ -323,9 +323,11 @@ TEST_F(PlayerComponentTest, ResetStateClearsMotion)
     player.SetVelocity(Vector3{3.0f, 9.0f, -2.0f});
     player.SetGrounded(true);
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetCurled(true);
 
     player.ResetState();
 
+    EXPECT_FALSE(player.IsCurled());
     EXPECT_FLOAT_EQ(player.Velocity().x, 0.0f);
     EXPECT_FLOAT_EQ(player.Velocity().y, 0.0f);
     EXPECT_FLOAT_EQ(player.Velocity().z, 0.0f);
@@ -896,6 +898,202 @@ TEST_F(PlayerComponentTest, TapSlamStaysAirborneUntilTheEndOfTheLunge)
     EXPECT_TRUE(groundedAtEnd);
     // ジャンプに見える高さまで上げると別の技になる
     EXPECT_LT(peakY - start.y, 0.7f);
+}
+
+// 押している間は接地していても解かない。溜めている最中に立ち姿へ戻ると、押しへの応答が途切れて見える
+TEST_F(PlayerComponentTest, StaysCurledWhileTheButtonIsHeld)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Phys::PhysicsScene& physics = stage.physics;
+    PlayerComponent& player = MakeSlamReady(obj, physics);
+    ASSERT_FALSE(player.IsCurled());
+
+    player.SetCurled(true);
+    player.SetBodySlamHeld(true);
+    EXPECT_TRUE(player.IsCurled());
+
+    player.OnUpdate();
+    EXPECT_TRUE(player.IsCurled());
+}
+
+// 溜めて放した突進の間は玉のまま。途中で立ち姿に戻ると、転がって当てる形にならない
+TEST_F(PlayerComponentTest, StaysCurledThroughTheChargedRush)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Phys::PhysicsScene& physics = stage.physics;
+    PlayerComponent& player = MakeSlamReady(obj, physics);
+
+    player.SetCurled(true);
+    player.SetBodySlamHeld(true);
+    for (int i = 0; i < 20; ++i)
+    {
+        player.OnUpdate();
+    }
+    ASSERT_TRUE(player.IsCurled());
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetBodySlamHeld(false);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    int steps = 0;
+    while (player.IsBodySlamming() && steps < 120)
+    {
+        EXPECT_TRUE(player.IsCurled()) << "突進の " << steps << " フレーム目";
+        player.OnUpdate();
+        ++steps;
+    }
+    EXPECT_LT(steps, 120);
+}
+
+// 当てずに走り切った地上の突進は、明けた次のフレームで立ち姿へ戻る
+TEST_F(PlayerComponentTest, UncurlsOnTheFrameAfterAGroundRushEnds)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Phys::PhysicsScene& physics = stage.physics;
+    PlayerComponent& player = MakeSlamReady(obj, physics);
+
+    player.SetCurled(true);
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    int steps = 0;
+    while (player.IsBodySlamming() && steps < 120)
+    {
+        player.OnUpdate();
+        ++steps;
+    }
+    ASSERT_LT(steps, 120);
+    ASSERT_TRUE(player.IsGrounded());
+    // 突進を終えるのは動かした後なので、終えたフレームはまだ玉のまま
+    EXPECT_TRUE(player.IsCurled());
+
+    player.OnUpdate();
+    EXPECT_TRUE(player.IsGrounded());
+    EXPECT_LE(player.VerticalVelocity(), 0.0f);
+    EXPECT_FALSE(player.IsCurled());
+}
+
+// 空中で放した突進は、明けても着地までは玉のまま。落ちる途中で立ち姿に戻ると、着地の手前で形が変わる
+TEST_F(PlayerComponentTest, AirRushStaysCurledUntilTheLanding)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Phys::PhysicsScene& physics = stage.physics;
+    PlayerComponent& player = MakeSlamReady(obj, physics);
+
+    player.SetJumpPressed();
+    player.OnUpdate();
+    ASSERT_FALSE(player.IsGrounded());
+
+    player.SetCurled(true);
+    player.SetBodySlamHeld(true);
+    player.OnUpdate();
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetBodySlamHeld(false);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    bool rushEndedInAir = false;
+    int steps = 0;
+    while (!player.IsGrounded() && steps < 240)
+    {
+        EXPECT_TRUE(player.IsCurled()) << "突進を出してから " << steps << " フレーム目";
+        if (!player.IsBodySlamming())
+        {
+            rushEndedInAir = true;
+        }
+        player.OnUpdate();
+        ++steps;
+    }
+    ASSERT_LT(steps, 240);
+    ASSERT_TRUE(rushEndedInAir) << "突進が空中で明けないと、明けてから着地までの間を確かめられない";
+    // 接地は動かした後に決まる。解くのは接地を見た次のフレーム
+    EXPECT_TRUE(player.IsCurled());
+
+    player.OnUpdate();
+    EXPECT_TRUE(player.IsGrounded());
+    EXPECT_LE(player.VerticalVelocity(), 0.0f);
+    EXPECT_FALSE(player.IsCurled());
+}
+
+// 放したフレームに出せない突進は予約に残る。予約から出るまでの間に立ち姿へ戻ると、玉・立ち姿・玉と形が揺れる
+// ブレーキは通常移動の外なので、ブレーキ中に短く押すと止まって立ちへ移るまで突進が出ない
+TEST_F(PlayerComponentTest, StaysCurledWhileTheRushWaitsInTheBuffer)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Phys::PhysicsScene& physics = stage.physics;
+    PlayerComponent& player = MakeSlamReady(obj, physics);
+    player.SetVelocity(Vector3{8.0f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    player.OnUpdate();
+    player.SetDesiredMove(Vector3{-1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(IsState<BrakePlayerState>(obj));
+
+    player.SetCurled(true);
+    player.SetBodySlamHeld(true);
+    player.OnUpdate();
+    player.SetBodySlamHeld(false);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+    ASSERT_FALSE(player.IsBodySlamming()) << "ブレーキ中に出てしまうと、予約を待つ間を確かめられない";
+
+    int steps = 0;
+    while (!player.IsBodySlamming() && steps < 30)
+    {
+        EXPECT_TRUE(player.IsCurled()) << "放してから " << steps << " フレーム目";
+        player.OnUpdate();
+        ++steps;
+    }
+    ASSERT_TRUE(player.IsBodySlamming());
+    EXPECT_TRUE(player.IsCurled());
+}
+
+// 突進はどの経路で出ても玉で走る。押しを経ずに出た突進も立ち姿のままにしない
+TEST_F(PlayerComponentTest, RushRunsCurledWithoutThePress)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Phys::PhysicsScene& physics = stage.physics;
+    PlayerComponent& player = MakeSlamReady(obj, physics);
+    ASSERT_FALSE(player.IsCurled());
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+    EXPECT_TRUE(player.IsCurled());
+}
+
+// 掴まりからは突進が出ない。押していても、縁に掴まっている間は立ち姿でぶら下がる
+TEST_F(PlayerComponentTest, LedgeHangUncurlsEvenWhileHeld)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Phys::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    PlayerComponent& player = MakeLedgeReady(obj);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetCurled(true);
+    player.SetBodySlamHeld(true);
+    player.OnUpdate();
+    player.OnUpdate();
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
+    EXPECT_FALSE(player.IsCurled());
 }
 
 TEST_F(PlayerComponentTest, ProgressRisesThenCancelResets)

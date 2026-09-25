@@ -17,7 +17,7 @@ namespace NS::Game::Level
     //! @brief 体当たりのボタン入力を読んで発動を要求する Component
     //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
     //! どちらも離したフレームに、溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ
-    //! チャージ中は最高速度へ減速を掛ける。構えの縮みは押したフレームから掛かる
+    //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる
     //! 威力のチャージ倍率カーブと当たり位置係数カーブもここが持ち、ImpactResolver が参照する
     //! 依存: NS::Game::Player::PlayerComponent, NS::Obj::Curve, ImpactInputJudge, ImpactResolver
     class CollisionInput : public NS::Obj::Component
@@ -31,7 +31,7 @@ namespace NS::Game::Level
         //! ボタンの保持を判定へ 1 フレーム進め、発動を控えたフレームに溜め量を添えて体当たりを要求する
         void OnUpdate() override;
 
-        //! 構えの縮みが残っていれば元の形へ戻す
+        //! 構えの縮みが残っていれば元の形へ戻し、自機へ渡した押しの印を戻して丸まりを解く
         void OnEndPlay() override;
 
         //! 溜め量 0..1 をチャージ倍率カーブで威力の倍率にする。非有限の入力とカーブの 0 以下の値は 1 とみなす

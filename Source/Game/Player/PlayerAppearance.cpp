@@ -54,6 +54,30 @@ namespace NS::Game::Player
         ShowCurrentLook();
     }
 
+    void PlayerAppearance::OnStart()
+    {
+        if (Owner() != nullptr)
+        {
+            m_player = Owner()->FindComponent<PlayerComponent>();
+        }
+    }
+
+    void PlayerAppearance::OnUpdate()
+    {
+        if (m_player == nullptr)
+        {
+            return;
+        }
+        if (m_player->IsCurled())
+        {
+            Curl();
+        }
+        else
+        {
+            Uncurl();
+        }
+    }
+
     void PlayerAppearance::ResolveAssets(NS::Obj::AssetManager& assets)
     {
         NS::Gfx::Mesh* standingPlaceholder = nullptr;

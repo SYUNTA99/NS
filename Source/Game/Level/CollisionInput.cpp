@@ -61,6 +61,13 @@ namespace NS::Game::Level
             RootTransform().SetScale(m_homeScale);
             m_stanceApplied = false;
         }
+        // 押しの印が真の間、自機は着地しても丸まりを解かない。外れた後は印を書く物が無いので、真のまま残すと
+        // 着地で解けなくなる。印を偽へ戻し、丸まりもここで解く。ResetState は速度と状態機械まで戻すので呼ばない
+        if (m_movement != nullptr)
+        {
+            m_movement->SetBodySlamHeld(false);
+            m_movement->SetCurled(false);
+        }
     }
 
     void CollisionInput::OnUpdate()
@@ -81,6 +88,16 @@ namespace NS::Game::Level
         if (m_judge.JustPressed() && m_movement != nullptr)
         {
             m_movement->MarkBodySlamAim();
+        }
+        if (m_movement != nullptr)
+        {
+            // 溜めに入るのを待たずに、押したフレームから丸まる。押したフレームだけ入れると、押したまま出直した後に
+            // 丸まりが戻らない
+            if (m_judge.IsHeld())
+            {
+                m_movement->SetCurled(true);
+            }
+            m_movement->SetBodySlamHeld(m_judge.IsHeld());
         }
 
         const SlamKind fired = m_judge.TakeFired();

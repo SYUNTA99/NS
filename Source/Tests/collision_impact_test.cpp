@@ -11,6 +11,8 @@
 #include <Game/Player/PlayerComponent.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Platform/Clock.h>
+#include <Runtime/Platform/Input.h>
+#include <Runtime/Platform/Mouse.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Core/Sphere.h>
 #include <Runtime/Object/Components/BoxCollider.h>
@@ -1392,6 +1394,132 @@ TEST(CollisionImpact, ButtonReleaseStartsBodySlam)
 
     EXPECT_TRUE(rig.movement->IsBodySlamming());
     EXPECT_GT(rig.movement->BodySlamCharge01(), 0.0f);
+}
+
+namespace
+{
+    // 押しの入口は CollisionInput が読む実機のマウスなので、試しの後に押したまま残すと他の試しが押しを拾う
+    struct MouseLeftPress
+    {
+        MouseLeftPress() noexcept { NS::Platform::Input::Get().Mouse().OnButtonDown(NS::Platform::MouseButton::Left); }
+        ~MouseLeftPress() noexcept { NS::Platform::Input::Get().Mouse().ClearState(); }
+        MouseLeftPress(const MouseLeftPress&) = delete;
+        MouseLeftPress& operator=(const MouseLeftPress&) = delete;
+
+        void Release() noexcept { NS::Platform::Input::Get().Mouse().OnButtonUp(NS::Platform::MouseButton::Left); }
+    };
+} // namespace
+
+// 押した瞬間に玉になり、当たり・凍結・反動の間は玉のまま、着地して初めて立ち姿へ戻る
+// 反動が明けたフレームは接地の印が残ったまま上向きの速度が入るので、そこで解けると宙で立ち姿に戻る
+TEST(CollisionImpact, StaysCurledFromThePressUntilTheLandingAfterTheRebound)
+{
+    {
+        SceneNs::Scene tapScene;
+        Rig tap = BuildSlam(tapScene, k_NearCourse);
+        ASSERT_NE(tap.input, nullptr);
+        SettleOnFloor(tapScene, tap);
+        tap.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
+        MouseLeftPress press;
+        Step(tapScene, tap);
+        EXPECT_TRUE(tap.movement->IsCurled()) << "短く押しても押したフレームから玉になる";
+        press.Release();
+        Step(tapScene, tap);
+        ASSERT_TRUE(tap.movement->IsBodySlamming());
+        EXPECT_TRUE(tap.movement->IsCurled());
+    }
+
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    ASSERT_NE(rig.input, nullptr);
+    SettleOnFloor(scene, rig);
+    rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
+
+    MouseLeftPress press;
+    Step(scene, rig);
+    EXPECT_TRUE(rig.movement->IsCurled()) << "押したフレームから玉になる";
+    for (int i = 0; i < 15; ++i)
+    {
+        Step(scene, rig);
+    }
+    ASSERT_TRUE(rig.input->IsCharging());
+    press.Release();
+    Step(scene, rig);
+    ASSERT_TRUE(rig.movement->IsBodySlamming());
+
+    // 当たって凍結に入るまで
+    int steps = 0;
+    while (rig.movement->IsActiveSelf() && steps < 30)
+    {
+        Step(scene, rig);
+        EXPECT_TRUE(rig.movement->IsCurled()) << "放してから " << steps << " フレーム目";
+        ++steps;
+    }
+    ASSERT_LT(steps, 30);
+
+    // 凍結が明けるまで
+    steps = 0;
+    while (steps < 60)
+    {
+        StepWorld(scene);
+        if (rig.movement->IsActiveSelf())
+        {
+            break;
+        }
+        rig.movement->OnUpdate();
+        EXPECT_TRUE(rig.movement->IsCurled()) << "凍結の " << steps << " フレーム目";
+        ++steps;
+    }
+    ASSERT_TRUE(rig.movement->IsActiveSelf());
+
+    // 明けたフレーム。移動が動く前は接地の印が残り、上向きの反動が入っている
+    ASSERT_TRUE(rig.movement->IsGrounded());
+    ASSERT_FLOAT_EQ(rig.movement->VerticalVelocity(), k_ReboundUpSpeed);
+    rig.movement->OnUpdate();
+    EXPECT_TRUE(rig.movement->IsCurled()) << "反動が明けたフレームに解けている";
+
+    bool sawAirborne = false;
+    bool groundedBeforeUncurl = false;
+    steps = 0;
+    while (rig.movement->IsCurled() && steps < 120)
+    {
+        groundedBeforeUncurl = rig.movement->IsGrounded();
+        if (!groundedBeforeUncurl)
+        {
+            sawAirborne = true;
+        }
+        Step(scene, rig);
+        ++steps;
+    }
+    ASSERT_LT(steps, 120);
+    EXPECT_TRUE(sawAirborne) << "反動で浮かないまま解けた";
+    EXPECT_TRUE(groundedBeforeUncurl) << "着地する前に解けた";
+}
+
+// 押したまま出直しても、押している間は玉に戻る。出直しは丸まりを解くが、ボタンの判定は押しの途中のまま続く
+// 出直しの Respawner::RestartRun が PlayerComponent に対して呼ぶのは ResetState なので、ここでは ResetState を直に呼ぶ
+TEST(CollisionImpact, HeldThroughARestartCurlsAgain)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    ASSERT_NE(rig.input, nullptr);
+    SettleOnFloor(scene, rig);
+
+    MouseLeftPress press;
+    Step(scene, rig);
+    ASSERT_TRUE(rig.movement->IsCurled());
+
+    rig.movement->ResetState();
+    ASSERT_FALSE(rig.movement->IsCurled());
+    SettleOnFloor(scene, rig);
+    Step(scene, rig);
+    EXPECT_TRUE(rig.movement->IsCurled()) << "押したまま出直した後に立ち姿のまま";
+
+    rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
+    press.Release();
+    Step(scene, rig);
+    ASSERT_TRUE(rig.movement->IsBodySlamming());
+    EXPECT_TRUE(rig.movement->IsCurled());
 }
 
 // 壊した物へもう一度向かっても何も起きない。印が寝ているので探索から外れる

@@ -218,6 +218,51 @@ namespace NS::Game::Player
         m_bodySlamAimAge = 0.0f;
     }
 
+    void PlayerComponent::SetCurled(bool curled) noexcept
+    {
+        m_curled = curled;
+    }
+
+    void PlayerComponent::SetBodySlamHeld(bool held) noexcept
+    {
+        m_bodySlamHeld = held;
+    }
+
+    void PlayerComponent::UncurlWhenSettled() noexcept
+    {
+        if (!m_curled)
+        {
+            return;
+        }
+        // 掴まりからは突進が出ない。玉のままぶら下がると、押しても何も起きない形を見せ続ける
+        if (m_stateManager != nullptr && (m_stateManager->IsCurrent<LedgeHangingPlayerState>() ||
+                                          m_stateManager->IsCurrent<LedgeClimbingPlayerState>()))
+        {
+            m_curled = false;
+            return;
+        }
+        if (m_bodySlamHeld || IsBodySlamming() || !IsGrounded())
+        {
+            return;
+        }
+        // 反動が明けたフレームは接地の印が残ったまま上向きの速度が入る。速度を見ないと宙へ出る前に解ける
+        if (VerticalVelocity() > 0.0f)
+        {
+            return;
+        }
+        // 当てたフレームは ImpactResolver が自分より先に突進を終える。今の状態だけを見ると、当てた瞬間に解ける
+        if (m_wasBodySlamming)
+        {
+            return;
+        }
+        // 放したフレームに出せなかった突進は予約に残る。解くと、予約から出るまでの間だけ立ち姿に戻る
+        if (m_bodySlamBufferRemaining > 0.0f)
+        {
+            return;
+        }
+        m_curled = false;
+    }
+
     float PlayerComponent::BodySlamAimBlend01() const noexcept
     {
         const float hold = m_slamAimHoldTime;
@@ -278,6 +323,9 @@ namespace NS::Game::Player
             return false;
 
         m_bodySlamSpent = true;
+        // 突進はどの経路で出ても玉で走らせる。掴まり中に放した押しは予約に残り、先行入力の秒の内に
+        // 縁を離れれば出るが、その時の丸まりは掴まりで解けている
+        m_curled = true;
 
         if (m_stateManager != nullptr)
         {
@@ -353,6 +401,9 @@ namespace NS::Game::Player
         m_bodySlamDistanceTarget = 0.0f;
         m_bodySlamJustStarted = false;
         m_bodySlamDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_curled = false;
+        m_bodySlamHeld = false;
+        m_wasBodySlamming = false;
 
         if (m_stateManager != nullptr)
             m_stateManager->ResetToFirst();
@@ -471,6 +522,7 @@ namespace NS::Game::Player
         m_lastMoveDistance = delta.Length();
         SyncGroundState();
         AdvanceBodySlamTravel(delta);
+        m_wasBodySlamming = IsBodySlamming();
     }
 
     void PlayerComponent::AdvanceBodySlamTravel(const NS::Core::Vector3& delta) noexcept
@@ -858,6 +910,10 @@ namespace NS::Game::Player
 
             m_stateManager->Step(*this, dt);
         }
+
+        // 状態機械の後で見る。縁を掴むのは状態機械の中なので、前で見ると掴んだフレームを玉のまま動かす
+        // 接地は動かした後に決まるので、着地で解けるのは着地した次のフレーム
+        UncurlWhenSettled();
 
         // 1 フレーム限りの入力は、どの状態でも通るここで落とす
         m_prevJumpHeld = m_jumpHeld;

@@ -176,6 +176,15 @@ namespace
                 m_movement = live->FindComponent<PlayerComponent>();
                 m_appearance = live->FindComponent<PlayerAppearance>();
                 m_renderer = live->FindComponent<NS::Obj::MeshRenderer>();
+                // 見た目は毎フレーム自機の丸まりを写す。写しを止めないと、持ち替えが同じフレームの中で上書きされる
+                if (m_swapPeriod > 0 && m_appearance != nullptr)
+                {
+                    m_appearance->SetActive(false);
+                }
+                if (m_renderer != nullptr)
+                {
+                    m_lastShownMesh = m_renderer->GetMesh();
+                }
                 // 入力の component は EarlyUpdate で実機の入力を書き込む。起こしたままだと走行入力が毎フレーム 0 になる
                 if (NS::Obj::PlayerInput* input = live->FindComponent<NS::Obj::PlayerInput>())
                     input->SetActive(false);
@@ -212,12 +221,15 @@ namespace
                 m_scene.Objects().SnapshotObjects();
                 m_trace.push_back(
                     StepRecord{m_player->Root().Position(), m_movement->Velocity(), m_movement->IsGrounded()});
+                CountShownMeshChange();
             }
         }
 
         [[nodiscard]] const std::vector<StepRecord>& Trace() const noexcept { return m_trace; }
-        // 持ち替えで MeshRenderer の mesh が実際に変わった回数
+        // 1 フレームを回し終えた時点で、MeshRenderer の mesh が前のフレームから変わっていた回数
         [[nodiscard]] int ShownMeshChanges() const noexcept { return m_shownMeshChanges; }
+        // 見た目を持ち替えた回数
+        [[nodiscard]] int Swaps() const noexcept { return m_swaps; }
 
     private:
         void SwapLooks()
@@ -226,7 +238,6 @@ namespace
             {
                 return;
             }
-            const NS::Gfx::Mesh* before = m_renderer->GetMesh();
             if (m_appearance->IsCurled())
             {
                 m_appearance->Uncurl();
@@ -235,9 +246,21 @@ namespace
             {
                 m_appearance->Curl();
             }
-            if (m_renderer->GetMesh() != before)
+            ++m_swaps;
+        }
+
+        // 持ち替えた直後でなく 1 フレームを回した後に数える。フレームの途中で上書きされた持ち替えは数えない
+        void CountShownMeshChange()
+        {
+            if (m_renderer == nullptr)
+            {
+                return;
+            }
+            const NS::Gfx::Mesh* shown = m_renderer->GetMesh();
+            if (shown != m_lastShownMesh)
             {
                 ++m_shownMeshChanges;
+                m_lastShownMesh = shown;
             }
         }
 
@@ -250,6 +273,8 @@ namespace
         int m_stepIndex = 0;
         int m_swapPeriod = 0;
         int m_shownMeshChanges = 0;
+        int m_swaps = 0;
+        const NS::Gfx::Mesh* m_lastShownMesh = nullptr;
     };
 
     // 壊せる物へ走り込み、反発しながら追いかけ直す。記録するのは自機だけで、飛ばされた物の位置は入れない
@@ -355,7 +380,9 @@ TEST_F(CollisionGolden, ImpactMatchesGoldenTraceWhileSwappingLooks)
         ImpactRig rig(looks);
         rig.Step(k_Forward, 1.0f, k_ImpactSteps);
 
-        EXPECT_GT(rig.ShownMeshChanges(), 0) << "持ち替えが MeshRenderer に届いていない: " << looks.standingMeshRef;
+        ASSERT_GT(rig.Swaps(), 0);
+        EXPECT_EQ(rig.ShownMeshChanges(), rig.Swaps())
+            << "持ち替えがフレームの終わりまで MeshRenderer に残っていない: " << looks.standingMeshRef;
         const TraceDiff diff = CompareTraces(*baseline, rig.Trace(), k_Exact);
         EXPECT_TRUE(diff.matched) << "立ち姿の参照 '" << looks.standingMeshRef << "'\n"
                                   << DescribeDiff(diff, *baseline, rig.Trace());

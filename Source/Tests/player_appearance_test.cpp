@@ -155,6 +155,30 @@ TEST_F(PlayerAppearanceTest, UncurlReturnsToTheStandingLook)
     EXPECT_FALSE(appearance->IsCurled());
 }
 
+// 丸まりの正は PlayerComponent が持つ。見た目は毎フレームそれを写す
+TEST_F(PlayerAppearanceTest, FollowsTheCurlOfThePlayerComponent)
+{
+    std::unique_ptr<NS::Obj::GameObject> player = BuildPlayer("", "");
+    ASSERT_NE(player, nullptr);
+    PlayerAppearance* appearance = player->FindComponent<PlayerAppearance>();
+    NS::Game::Player::PlayerComponent* movement = player->FindComponent<NS::Game::Player::PlayerComponent>();
+    ASSERT_NE(appearance, nullptr);
+    ASSERT_NE(movement, nullptr);
+    const NS::Gfx::Mesh* standing = ShownMesh(*player);
+    const NS::Gfx::Mesh* ball = m_assets->GetOrMakeCapsuleMesh(k_Radius, 0.0f);
+    ASSERT_NE(standing, nullptr);
+    ASSERT_NE(ball, nullptr);
+    appearance->OnStart();
+
+    movement->SetCurled(true);
+    appearance->OnUpdate();
+    EXPECT_EQ(ShownMesh(*player), ball);
+
+    movement->SetCurled(false);
+    appearance->OnUpdate();
+    EXPECT_EQ(ShownMesh(*player), standing);
+}
+
 // 根の位置とスケールは移動と潰れの持ち物。構えで縮んでいる最中に持ち替えても 1 ビットも動かさない
 TEST_F(PlayerAppearanceTest, SwappingLooksLeavesTheRootTransformUntouched)
 {
