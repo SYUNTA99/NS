@@ -352,7 +352,18 @@ namespace NS::Game::Level
 
         m_pendingTarget = NS::Obj::ObjectRef{hit->Owner()->Id()};
         m_pendingTargetHome = hit->Owner()->Root().Position();
-        m_pendingImpactDir = NS::Core::Vector3{-awayX, 0.0f, -awayZ};
+        // 飛んでいる相手の根は物理が毎フレーム書くので、食い込み・振動・元位置へ戻す書き込みは効かない。置かれた相手に絞る
+        const LaunchedBody* launched = hit->Owner()->FindComponent<LaunchedBody>();
+        m_pendingTargetPlaced = launched == nullptr || launched->Phase() == LaunchPhase::Resting;
+        // 相手は突進の向きへ飛ばす。中心の並びで飛ばすと、横ずれのある当たりが狙いと別の所へ飛ぶ
+        // 突進の水平の速さがほぼ 0 で向きが決まらない時だけ、中心の並びの向きへ飛ばす
+        NS::Core::Vector3 launchDir{-awayX, 0.0f, -awayZ};
+        NS::Core::Vector3 slamDir{};
+        if (NS::Core::TryNormalizeHorizontal(velocity, slamDir))
+        {
+            launchDir = slamDir;
+        }
+        m_pendingImpactDir = launchDir;
         // 反発の質量因子の残り。動きは軽い側が受け取るので、重い物ほど揺れない
         m_pendingShakeAmplitude = m_shakeAmplitude / (1.0f + mass);
         m_pendingShakeStrength = m_cameraShakeScale * power * massFactor;
@@ -362,6 +373,8 @@ namespace NS::Game::Level
         if (m_breakEnabled && hit->Toughness() <= power)
         {
             m_pendingBreak = true;
+            // 貫通は相手を飛ばさない。前の押し飛ばしの曲線を残すと、この当たりの記録に飛ばしていない曲線が載る
+            m_pendingLaunchArc = LaunchArc{};
             // 向きを保ったまま減速する。倍率は相手の質量に依らない
             m_pendingSelfVelocity = velocity * m_breakSpeedScale;
             m_didBreak = true;
@@ -383,19 +396,24 @@ namespace NS::Game::Level
             }
             massExponent = NS::Core::Clamp(massExponent, 0.0f, 1.0f);
 
-            // 質量で割ると重い物ほど飛ばない
-            float launch = m_launchSpeed * power / std::pow(mass, massExponent);
-            launch = NS::Core::Clamp(launch, 0.0f, std::max(m_launchMaxSpeed, 0.0f));
+            // 威力は距離に線形に効き、質量で割ると重い物ほど飛ばない。高さは距離と同じ比で伸ばし、打ち上げの角度を揃える
+            const float launchScale = power / std::pow(mass, massExponent);
+            m_pendingLaunchArc = LaunchArc{.direction = launchDir,
+                                           .distance = m_launchDistance * launchScale,
+                                           .apexHeight = m_launchApexHeight * launchScale,
+                                           .fallGravityScale = m_launchFallGravityScale,
+                                           .apexBandSpeed = m_launchApexBandSpeed,
+                                           .apexBandGravityScale = m_launchApexBandGravityScale};
 
             m_pendingSelfVelocity = NS::Core::Vector3{awayX * rebound, m_reboundUpSpeed, awayZ * rebound};
-            m_pendingLaunchVelocity = NS::Core::Vector3{-awayX * launch, launch * m_launchUpScale, -awayZ * launch};
             m_didRebound = true;
             NS_LOG_INFO(Game,
-                        "衝突: 質量 {} 耐久 {} 返り {} 押し飛ばし {} 中心近く {}",
+                        "衝突: 質量 {} 耐久 {} 返り {} 押し飛ばしの距離 {} 高さ {} 中心近く {}",
                         mass,
                         hit->Toughness(),
                         rebound,
-                        launch,
+                        m_pendingLaunchArc.distance,
+                        m_pendingLaunchArc.apexHeight,
                         centerHit);
             stopSteps = ComputeHitStopSteps(power, mass, hitStopScale);
         }
@@ -413,7 +431,9 @@ namespace NS::Game::Level
         m_lastImpact.centerHit = centerHit;
         m_lastImpact.broke = m_pendingBreak;
         m_lastImpact.selfVelocity = m_pendingSelfVelocity;
-        m_lastImpact.launchVelocity = m_pendingLaunchVelocity;
+        m_lastImpact.launchVelocity = LaunchArcInitialVelocity(m_pendingLaunchArc);
+        m_lastImpact.launchDistance = m_pendingLaunchArc.distance;
+        m_lastImpact.launchApexHeight = m_pendingLaunchArc.apexHeight;
         m_lastImpact.impactDir = m_pendingImpactDir;
         m_lastImpact.targetPos = m_pendingTargetHome;
 
@@ -455,8 +475,9 @@ namespace NS::Game::Level
             return;
         }
 
-        // 力が伝わった瞬間の絵。凍結の頭で相手を発射方向へ食い込ませて止める。当たりは動かさない
-        if (NS::Obj::GameObject* target = scene->Objects().FindObject(m_pendingTarget))
+        // 力が伝わった瞬間の絵。凍結の頭で置かれた相手を発射方向へ食い込ませて止める
+        NS::Obj::GameObject* target = scene->Objects().FindObject(m_pendingTarget);
+        if (m_pendingTargetPlaced && target != nullptr)
         {
             target->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * m_pushInDistance);
         }
@@ -541,15 +562,20 @@ namespace NS::Game::Level
             return;
         }
 
-        // 食い込みと振動は絵だけ。結果の起点がずれないよう元位置へ厳密に戻してから先へ進む
-        target->Root().SetPosition(m_pendingTargetHome);
+        // 食い込みと振動は見せるための動き。曲線の起点がずれないよう、置かれていた相手は元位置へ厳密に戻してから飛ばす
+        // 飛んでいる相手は戻さず、今の位置から曲線を引き直す
+        if (m_pendingTargetPlaced)
+        {
+            target->Root().SetPosition(m_pendingTargetHome);
+        }
 
         // 跡は破壊と押し飛ばしの両方で出す。片方だけ何も残らないと結果が非対称になる
         bool floorFound = false;
         NS::Core::Vector3 markPosition{0.0f, 0.0f, 0.0f};
         {
             // 起点は相手の底の下。中心から始めると相手自身の当たりに 0 距離で当たる
-            NS::Core::Vector3 probe = m_pendingTargetHome;
+            // 水平は明けのフレームの根の位置。飛んでいる相手は止めの間も進んでいて、検知のフレームの位置には居ない
+            NS::Core::Vector3 probe = target->Root().Position();
             NS::Core::AABB targetBounds{};
             if (TryGetColliderBounds(*target, targetBounds))
             {
@@ -562,7 +588,7 @@ namespace NS::Game::Level
             {
                 floorFound = true;
                 // 床の上面から 2cm 浮かせる。面がぴったり重なるとちらつく
-                markPosition = NS::Core::Vector3{m_pendingTargetHome.x, probe.y - dist + 0.02f, m_pendingTargetHome.z};
+                markPosition = NS::Core::Vector3{probe.x, probe.y - dist + 0.02f, probe.z};
             }
         }
 
@@ -583,7 +609,7 @@ namespace NS::Game::Level
             return;
         }
 
-        body->Launch(m_pendingLaunchVelocity);
+        body->Launch(m_pendingLaunchArc);
         if (floorFound)
         {
             (void)ImpactMark::SpawnAt(scene, markPosition);
@@ -592,6 +618,11 @@ namespace NS::Game::Level
 
     void ImpactResolver::ApplyFreezeVibration()
     {
+        // 飛んでいる相手は止めずに飛び続ける。根は物理が書くので、揺らしても絵に出ない
+        if (!m_pendingTargetPlaced)
+        {
+            return;
+        }
         NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
         {

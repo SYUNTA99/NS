@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game/Level/HitTier.h"
+#include "Game/Level/LaunchedBody.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
@@ -21,7 +22,6 @@ namespace NS::Game::Level
 {
     class Breakable;
     class CollisionInput;
-    class LaunchedBody;
 
     //! @brief 当たり 1 回の裁定の内訳
     struct ImpactRecord
@@ -38,8 +38,11 @@ namespace NS::Game::Level
         bool centerHit = false; //!< 白の光と止めの倍率を掛けた場合 true。CollisionInput が無い時は false
         bool broke = false;
         NS::Core::Vector3 selfVelocity;
-        NS::Core::Vector3 launchVelocity;
-        NS::Core::Vector3 impactDir;
+        // 飛ばす曲線の 3 つの欄は押し飛ばしの当たりだけが埋める。貫通の当たりは相手を飛ばさないので 0
+        NS::Core::Vector3 launchVelocity; //!< 相手の曲線の発射の瞬間の速度。単位は m/s
+        float launchDistance = 0.0f;      //!< 相手の曲線が発射の高さへ戻るまでに水平に進む距離。単位は m
+        float launchApexHeight = 0.0f;    //!< 相手の曲線の、発射の高さから頂点までの高さ。単位は m
+        NS::Core::Vector3 impactDir;      //!< 相手の飛ぶ水平の向き。食い込みと振動の向きも同じ
         NS::Core::Vector3 targetPos;
     };
 
@@ -114,10 +117,12 @@ namespace NS::Game::Level
         NS_REFLECT_BEGIN(ImpactResolver, NS::Obj::OverlayRenderer)
         NS_REFLECT_FIELD(m_reboundSpeed, "反発基準初速")
         NS_REFLECT_FIELD(m_reboundUpSpeed, "反発の上向き初速")
-        NS_REFLECT_FIELD(m_launchSpeed, "押し飛ばし基準初速")
+        NS_REFLECT_FIELD(m_launchDistance, "押し飛ばしの距離")
         NS_REFLECT_FIELD(m_launchMassExponent, "押し飛ばしの質量指数")
-        NS_REFLECT_FIELD(m_launchUpScale, "押し飛ばしの浮き上がり")
-        NS_REFLECT_FIELD(m_launchMaxSpeed, "押し飛ばしの最高速")
+        NS_REFLECT_FIELD(m_launchApexHeight, "押し飛ばしの高さ")
+        NS_REFLECT_FIELD(m_launchFallGravityScale, "下りの速さの倍率")
+        NS_REFLECT_FIELD(m_launchApexBandSpeed, "頂点の帯の縦速度")
+        NS_REFLECT_FIELD(m_launchApexBandGravityScale, "頂点の帯の重力倍率")
         NS_REFLECT_FIELD(m_hitStopBaseSeconds, "ヒットストップ基準秒")
         NS_REFLECT_FIELD(m_centerHitStopScale, "中心近くの当たりのヒットストップ倍率")
         NS_REFLECT_FIELD(m_hitStopMaxSeconds, "ヒットストップの上限秒")
@@ -141,7 +146,7 @@ namespace NS::Game::Level
         // 事前条件: m_movement が非 null
         [[nodiscard]] Breakable* FindOverlapped() const;
 
-        // 凍結を掛ける。自機を寝かせて潰し、相手を食い込ませ、カメラを揺らし始める
+        // 凍結を掛ける。自機を寝かせて潰し、置かれていた相手を食い込ませ、カメラを揺らし始める
         void BeginFreeze(int stopSteps);
 
         // 解放後のフレームで伸びた形から配置で決めた元の形へ滑らかに戻す。最後のフレームは控えた値を厳密に書く
@@ -159,7 +164,9 @@ namespace NS::Game::Level
         // 上限秒をフレーム数へ換算する。非有限と 0 以下は 0 で、止めない
         [[nodiscard]] int MaxHitStopSteps() const noexcept;
 
-        // 凍結中のフレームで、相手を発射軸に沿って食い込み位置の周りで往復させる。絵だけで当たりは動かさない
+        // 凍結中のフレームで、置かれていた相手を発射軸に沿って食い込み位置の周りで往復させる
+        // 見せるための動きで、明けたフレームに元位置へ戻す
+        // 飛んでいる相手は物理が根を書くので触らない
         void ApplyFreezeVibration();
 
         // 最終威力と質量から止めるフレーム数を出す。0 なら止めない
@@ -167,19 +174,20 @@ namespace NS::Game::Level
 
         float m_reboundSpeed = 9.0f;        // 動かない壁に通常速度で当たった時の返りの速さ
         float m_reboundUpSpeed = 3.0f;      // 反発の上向き初速
-        float m_launchSpeed = 32.0f;        // 通常速度で質量 1 の物に与える水平初速
-        float m_launchMassExponent = 0.35f; // 押し飛ばしの初速を割る質量の指数。1 で反比例、0 で質量を見ない
-        float m_launchUpScale = 0.35f;      // 水平初速に対する上向きの比
-        // 押し飛ばしの初速の上限。軽い物ほど初速が伸び、上限が無いと画面の外へ消える
-        // 120 は、60 だと質量 1 以下の物を溜め切って中心近くで当てた初速が 60 に揃い、軽いほど遠くへ飛ぶ差が消えるため
-        float m_launchMaxSpeed = 120.0f;
+        float m_launchDistance = 29.0f;     // 質量 1 の物に威力 1 で当てた時、発射の高さへ戻るまでに水平に飛ぶ距離 (m)
+        float m_launchMassExponent = 0.35f; // 押し飛ばしの距離と高さを割る質量の指数。1 で反比例、0 で質量を見ない
+        float m_launchApexHeight = 2.0f;    // 質量 1 の物に威力 1 で当てた時の、発射の高さから頂点までの高さ (m)
+        // 飛ばした物の曲線の形。上りは既定の重力で減速する
+        float m_launchFallGravityScale = 1.4f;     // 下りの重力 ÷ 上りの重力
+        float m_launchApexBandSpeed = 1.0f;        // 頂点の帯の縦速度 (m/s)
+        float m_launchApexBandGravityScale = 0.5f; // 頂点の帯の間に重力へ掛ける倍率
         // 既定の固定ステップ (1/60 秒) の 4 フレームぶん
         float m_hitStopBaseSeconds = 4.0f / 60.0f; // 質量 1 へ通常速度で当てた時に止める秒
         float m_centerHitStopScale =
             2.0f; // 威力の伸び (最大 2 倍) と掛けて、素と中心近くの当たりの止まりを 4 倍差にする
         // 止める長さの上限。0.2 秒より長い停止は衝突の重さではなく処理落ちに見える
         float m_hitStopMaxSeconds = 12.0f / 60.0f;
-        float m_pushInDistance = 0.06f;   // 凍結の頭で相手を発射方向へ食い込ませる距離
+        float m_pushInDistance = 0.06f;   // 凍結の頭で置かれていた相手を発射方向へ食い込ませる距離
         float m_shakeAmplitude = 0.05f;   // 凍結中の往復の振れ幅。質量 1 で半分になる
         float m_cameraShakeScale = 0.06f; // カメラ揺れの上下振れ幅の基準
         float m_squashThickness = 0.7f;   // 凍結中の進行方向の厚みの倍率
@@ -204,16 +212,19 @@ namespace NS::Game::Level
         int m_hitStopRemaining = 0;                                // 止まっている残りフレーム数。0 は止まっていない
         int m_hitStopTotal = 0;                                    // 止め始めのフレーム数。振動の減衰の分母
         NS::Core::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f}; // 明けたフレームに自機へ書く反発速度
-        NS::Core::Vector3 m_pendingLaunchVelocity{0.0f, 0.0f, 0.0f}; // 明けたフレームに相手へ渡す発射速度
-        NS::Core::Vector3 m_pendingTargetHome{0.0f, 0.0f, 0.0f};     // 相手の元位置。明けたフレームに厳密に戻す
-        NS::Core::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f};      // 発射の水平方向。食い込みと振動の軸
-        float m_pendingShakeAmplitude = 0.0f;                        // この衝突の往復の振れ幅
-        float m_pendingShakeStrength = 0.0f;                         // この衝突のカメラ揺れの振れ幅
-        NS::Core::Vector3 m_scaleHome{1.0f, 1.0f, 1.0f};             // 配置で決めた元の描画スケールの控え
-        NS::Core::Vector3 m_stretchScale{1.0f, 1.0f, 1.0f};          // 解放のフレームの伸びた形
-        int m_recoverRemaining = 0;                                  // 形を戻し切るまでの残りフレーム数
-        bool m_scaleHeld = false;                                    // 潰した形のまま凍結している最中か
-        NS::Obj::ObjectRef m_pendingTarget{};                        // 発射する相手。凍結をまたぐので使うたびに引く
+        LaunchArc m_pendingLaunchArc{};                            // 明けたフレームに相手を飛ばす曲線
+        // 検知のフレームの相手の位置。置かれていた相手は明けたフレームにここへ厳密に戻す
+        NS::Core::Vector3 m_pendingTargetHome{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f}; // 発射の水平方向。食い込みと振動の軸
+        float m_pendingShakeAmplitude = 0.0f;                   // この衝突の往復の振れ幅
+        float m_pendingShakeStrength = 0.0f;                    // この衝突のカメラ揺れの振れ幅
+        NS::Core::Vector3 m_scaleHome{1.0f, 1.0f, 1.0f};        // 配置で決めた元の描画スケールの控え
+        NS::Core::Vector3 m_stretchScale{1.0f, 1.0f, 1.0f};     // 解放のフレームの伸びた形
+        int m_recoverRemaining = 0;                             // 形を戻し切るまでの残りフレーム数
+        bool m_scaleHeld = false;                               // 潰した形のまま凍結している最中か
+        NS::Obj::ObjectRef m_pendingTarget{};                   // 発射する相手。凍結をまたぐので使うたびに引く
+        // 検知のフレームに相手が置かれていたか。食い込み・振動・元位置へ戻すのはこの時だけ
+        bool m_pendingTargetPlaced = false;
 
         bool m_didRebound = false;   // 直近の更新で反発を検知したか
         bool m_didBreak = false;     // 直近の更新で貫通を検知したか

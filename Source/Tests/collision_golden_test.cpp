@@ -169,6 +169,8 @@ namespace
             NS::Obj::SetField(body, "質量", k_ImpactTargetMass);
             NS::Obj::SetField(body, "摩擦", 0.6f);
             NS::Obj::SetField(body, "跳ね返り", 0.35f);
+            // 速い着地の接触を床の面で作る。偽だと床へ沈んだ次のフレームに剛体へ渡る
+            NS::Obj::SetField(body, "連続衝突判定", true);
             NS::Obj::ObjectJsonComponents(target).push_back(std::move(body));
             NS::Obj::ObjectJsonComponents(target).push_back(NS::Obj::MakeComponentEntry("Breakable"));
             NS::Obj::SceneJsonObjects(data).push_back(target);

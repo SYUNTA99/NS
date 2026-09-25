@@ -19,6 +19,7 @@
 #include <Runtime/Object/Components/MeshRenderer.h>
 #include <Runtime/Object/Components/PlayerInput.h>
 #include <Runtime/Object/Components/RigidBody.h>
+#include <Runtime/Object/Components/TransformComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
@@ -52,8 +53,9 @@ namespace
     constexpr float k_FastEntrySpeed = 16.0f;
     constexpr float k_SlamSpeed = 20.0f;
     constexpr float k_TapSlamSpeed = 10.0f;
-    constexpr float k_LaunchBaseSpeed = 32.0f;
-    constexpr float k_LaunchSpeedCap = 120.0f;
+    // 質量 1 に威力 1 で当てた時の曲線。欄「押し飛ばしの距離」「押し飛ばしの高さ」の既定
+    constexpr float k_LaunchDistance = 29.0f;
+    constexpr float k_LaunchApexHeight = 2.0f;
     // 破壊は耐久 ≤ 最終威力なので、反発と押し飛ばしを見る台は壊れない高さを既定にする
     constexpr float k_UnbreakableToughness = 99.0f;
     // 逆転を見る台の耐久。満溜め + 中心直撃の 2.0 と、素当て + 縁寄りの 0.85 の間に置く
@@ -94,6 +96,8 @@ namespace
         SceneNs::SetField(entry, "キネマティック", true);
         SceneNs::SetField(entry, "摩擦", 0.6f);
         SceneNs::SetField(entry, "跳ね返り", 0.35f);
+        // 速い着地の接触を床の面で作る。偽だと床へ沈んだ次のフレームに剛体へ渡る
+        SceneNs::SetField(entry, "連続衝突判定", true);
         return entry;
     }
 
@@ -311,10 +315,33 @@ namespace
     // 飛んで着地して滑り切るまでの道。狭いと端から落ちて停止の検証にならない
     constexpr std::int16_t k_FloorFirstX = -2;
     constexpr std::int16_t k_FloorLastX = 8;
+    // 曲線で飛ばす台の床の最後の列。距離 10 の着地と、箱が摩擦で滑る 9 m が収まる 30 マス
+    constexpr std::int16_t k_LongFloorLastX = 27;
     constexpr float k_BodyRestY = 1.0f; // 床の上面 0.5 に半分の高さ 0.5 を足した静止の高さ
+    // 球の的は同梱の球と同じ大きさ。半径 0.5 の球をスケール 1.5 で置き、世界の半径は 0.75
+    constexpr float k_SphereScale = 1.5f;
+    constexpr float k_SphereRestY = 1.25f; // 床の上面 0.5 に世界の半径 0.75 を足した静止の高さ
     constexpr std::int16_t k_WallX = 2;
     constexpr float k_LaunchGravity = -25.0f;
     constexpr int k_RestStepLimit = 600;
+
+    struct BodyCourse
+    {
+        bool withWall = false;
+        // 外すと RigidBody を積み忘れた配置物になる
+        bool withRigidBody = true;
+        std::int16_t floorLastX = k_FloorLastX;
+        // 真なら的を 1 m の箱でなく球にする。箱は回りながら着地すると角の接触で角速度が変わる
+        bool sphereTarget = false;
+    };
+
+    // 距離 10・高さ 2 の曲線。下りは上りの 1.4 倍の重力で、縦の速さが 1 m/s 未満の間は重力を半分にする
+    const LevelNs::LaunchArc k_TestArc{.direction = Vector3{1.0f, 0.0f, 0.0f},
+                                       .distance = 10.0f,
+                                       .apexHeight = 2.0f,
+                                       .fallGravityScale = 1.4f,
+                                       .apexBandSpeed = 1.0f,
+                                       .apexBandGravityScale = 0.5f};
 
     struct BodyRig
     {
@@ -325,20 +352,40 @@ namespace
         JPH::uint restingBodies = 0;
     };
 
-    // 床を 1 列並べ、その上へ飛ばされる物を 1 個置く検証台。自機は要らない
-    // withRigidBody を外すと、RigidBody を積み忘れた配置物になる
-    BodyRig BuildBody(SceneNs::Scene& scene, bool withWall = false, bool withRigidBody = true)
+    // 長さを合わせた 1 枚の床の上へ、飛ばされる物を 1 個置く検証台。自機は要らない
+    BodyRig BuildBody(SceneNs::Scene& scene, const BodyCourse& course = {})
     {
         NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
 
         nlohmann::json data = SceneNs::MakeSceneJson();
-        for (std::int16_t x = k_FloorFirstX; x <= k_FloorLastX; ++x)
-            SceneNs::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(x, 0, 0));
-        if (withWall)
+        // 床は 1 枚の箱。1 m の箱を並べると、着地で沈んだ球が継ぎ目の角に当たって斜めの法線で止められる
+        nlohmann::json floor = NS::Editor::MakeCellObject(0, 0, 0);
+        const float floorCells = static_cast<float>(course.floorLastX - k_FloorFirstX + 1);
+        const float floorCenterX = 0.5f * static_cast<float>(k_FloorFirstX + course.floorLastX);
+        SceneNs::SetObjectPosition(floor, Vector3{floorCenterX, 0.0f, 0.0f});
+        SceneNs::SetObjectScale(floor, Vector3{floorCells, 1.0f, 1.0f});
+        SceneNs::SceneJsonObjects(data).push_back(floor);
+        if (course.withWall)
+        {
             SceneNs::SceneJsonObjects(data).push_back(NS::Editor::MakeCellObject(k_WallX, 1, 0));
+        }
 
         nlohmann::json target = NS::Editor::MakeCellObject(0, 1, 0);
-        if (withRigidBody)
+        if (course.sphereTarget)
+        {
+            for (nlohmann::json& entry : SceneNs::ObjectJsonComponents(target))
+            {
+                if (SceneNs::ComponentEntryType(entry) != "BoxCollider")
+                {
+                    continue;
+                }
+                entry = SceneNs::MakeComponentEntry("SphereCollider");
+                SceneNs::SetField(entry, "半径", 0.5f);
+            }
+            SceneNs::SetObjectPosition(target, Vector3{0.0f, k_SphereRestY, 0.0f});
+            SceneNs::SetObjectScale(target, Vector3{k_SphereScale, k_SphereScale, k_SphereScale});
+        }
+        if (course.withRigidBody)
             SceneNs::ObjectJsonComponents(target).push_back(MakeLaunchableRigidBodyEntry());
         SceneNs::ObjectJsonComponents(target).push_back(SceneNs::MakeComponentEntry("LaunchedBody"));
         SceneNs::SceneJsonObjects(data).push_back(target);
@@ -372,6 +419,36 @@ namespace
                 body.PostPhysicsStep();
         });
         scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+    }
+
+    // 曲線で飛ばし、剛体へ渡るまでの毎フレームの根の位置と、そのフレームの物理が使った速度を控える
+    struct ArcFlight
+    {
+        Vector3 start{};
+        std::vector<Vector3> positions;
+        std::vector<Vector3> velocities;
+        int handFrame = 0; // 剛体へ渡ったフレーム。1 始まりで、渡らなければ 0
+    };
+
+    ArcFlight FlyArc(SceneNs::Scene& scene, const BodyRig& rig, const LevelNs::LaunchArc& arc, int maxSteps)
+    {
+        ArcFlight flight;
+        flight.start = rig.object->Root().Position();
+        rig.body->Launch(arc);
+        for (int i = 0; i < maxSteps; ++i)
+        {
+            // 渡したフレームの物理も曲線の速度で動いている。速度は渡す前に読む
+            const Vector3 used = rig.rigidBody->Velocity();
+            StepBody(scene);
+            flight.positions.push_back(rig.object->Root().Position());
+            flight.velocities.push_back(used);
+            if (rig.body->Phase() != LevelNs::LaunchPhase::Arc)
+            {
+                flight.handFrame = i + 1;
+                break;
+            }
+        }
+        return flight;
     }
 
     // 止まるまで回して掛かったフレーム数を返す。止まらなければ maxSteps を返す
@@ -629,24 +706,80 @@ TEST(CollisionImpact, NoReboundInEmptyCornerOfRotatedTarget)
     EXPECT_FALSE(rig.impact->DidRebound());
 }
 
-// 飛んでいる間も collider は RigidBody の body を返す。飛んでいる物に当てても置かれた物と同じく反発する
-TEST(CollisionImpact, ReboundsOffFlyingTarget)
+// 飛んでいる相手に当て直すと、明けのフレームの位置から新しい曲線が始まる。検知のフレームの位置へは戻さない
+// 跡もその位置の真下の床に出る
+// 飛んでいる間も collider は RigidBody の body を返すので、置かれた物と同じく反発する
+TEST(CollisionImpact, HitOnAFlyingTargetStartsTheNewArcFromWhereItIsAtRelease)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     ASSERT_NE(rig.target, nullptr);
     ASSERT_NE(rig.rigidBody, nullptr);
     LevelNs::LaunchedBody* body = rig.target->AddComponent<LevelNs::LaunchedBody>();
-    body->Launch(Vector3{0.0f, 0.0f, 0.0f});
+    body->LaunchRigid(Vector3{0.0f, 0.0f, 0.0f});
     ASSERT_TRUE(body->IsFlying());
     ASSERT_FALSE(rig.rigidBody->BodyId().IsInvalid());
     ASSERT_EQ(rig.targetBox->BodyId(), rig.rigidBody->BodyId());
 
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    ASSERT_TRUE(rig.impact->DidRebound());
+    ASSERT_GT(rig.impact->LastImpact().hitStopSteps, 0);
+    const Vector3 detected = rig.target->Root().Position();
+
+    // 止めの間も相手は飛び続ける。この台は物理を回さないので、物理が根へ書く位置の代わりに動かした位置を書く
+    // body は検知のフレームの位置に残る。跡の床探しがその body に当たらないよう、箱の幅より遠くへ動かす
+    Step(scene, rig);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    const Vector3 moved = detected + Vector3{1.0f, 0.3f, 0.0f};
+    rig.target->Root().SetPosition(moved);
+    ASSERT_LT(StepsUntilMovementActive(scene, rig, 60), 60);
+
+    const Vector3 released = rig.target->Root().Position();
+    EXPECT_FLOAT_EQ(released.x, moved.x);
+    EXPECT_FLOAT_EQ(released.y, moved.y);
+    EXPECT_FLOAT_EQ(released.z, moved.z);
+    EXPECT_EQ(body->Phase(), LevelNs::LaunchPhase::Arc);
+    const Vector3 bodyPosition = scene.Physics().BodyPosition(rig.rigidBody->BodyId());
+    EXPECT_NEAR(bodyPosition.x, moved.x, 1.0e-4f);
+    EXPECT_NEAR(bodyPosition.y, moved.y, 1.0e-4f);
+    EXPECT_NEAR(bodyPosition.z, moved.z, 1.0e-4f);
+
+    SceneNs::GameObject* mark = nullptr;
+    scene.Objects().ForEachComponent<LevelNs::ImpactMark>([&mark](LevelNs::ImpactMark& found) { mark = found.Owner(); });
+    ASSERT_NE(mark, nullptr);
+    // 床の上面 0.5 から 2cm 浮かせた高さ
+    EXPECT_NEAR(mark->Root().Position().x, moved.x, 1.0e-4f);
+    EXPECT_NEAR(mark->Root().Position().y, 0.52f, 1.0e-4f);
+    EXPECT_NEAR(mark->Root().Position().z, moved.z, 1.0e-4f);
+}
+
+// 貫通は相手を飛ばさないので、記録の飛ばす曲線の欄は 0。前の押し飛ばしの曲線を残さない
+TEST(CollisionImpact, BreakAfterAPushRecordsNoLaunch)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
     SetInstantImpact(rig);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
-
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
-    EXPECT_TRUE(rig.impact->DidRebound());
+    ASSERT_TRUE(rig.impact->DidRebound());
+    ASSERT_GT(rig.impact->LastImpact().launchDistance, 0.0f);
+
+    // 返りで下がった自機が、同じ相手へもう一度突進して壊す。この台は物理を回さないので相手はその場に居る
+    EnableBreak(rig);
+    SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    rig.breakable->SetToughness(0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 1.0f);
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    ASSERT_TRUE(rig.impact->DidBreak());
+
+    const LevelNs::ImpactRecord& hit = rig.impact->LastImpact();
+    EXPECT_TRUE(hit.broke);
+    EXPECT_FLOAT_EQ(hit.launchDistance, 0.0f);
+    EXPECT_FLOAT_EQ(hit.launchApexHeight, 0.0f);
+    EXPECT_FLOAT_EQ(hit.launchVelocity.x, 0.0f);
+    EXPECT_FLOAT_EQ(hit.launchVelocity.y, 0.0f);
+    EXPECT_FLOAT_EQ(hit.launchVelocity.z, 0.0f);
 }
 
 TEST(CollisionImpact, ReboundFieldsDriveVelocity)
@@ -732,6 +865,12 @@ TEST(CollisionImpact, KeepsTheNumbersOfTheLastHitForReading)
     // 反発と押し飛ばしは符号が逆に出る。取り違えても値の大きさでは気づけない
     EXPECT_LT(hit.selfVelocity.x, 0.0f);
     EXPECT_GT(hit.launchVelocity.x, 0.0f);
+    EXPECT_GT(hit.launchDistance, 0.0f);
+    EXPECT_GT(hit.launchApexHeight, 0.0f);
+    // 突進は +X へ向かう。食い込みと振動の向きも相手の飛ぶ向きも突進の向き
+    EXPECT_FLOAT_EQ(hit.impactDir.x, 1.0f);
+    EXPECT_FLOAT_EQ(hit.impactDir.y, 0.0f);
+    EXPECT_FLOAT_EQ(hit.impactDir.z, 0.0f);
 }
 
 TEST(CollisionImpact, ReboundsAgainstSphereTarget)
@@ -764,19 +903,41 @@ TEST(CollisionImpact, LaunchesSphereTarget)
     EXPECT_GT(body->Velocity().x, 0.0f);
 }
 
-TEST(CollisionImpact, LaunchDirectionFollowsApproach)
+// 横ずれのある当たりでも、相手は突進の向きへ飛ぶ。中心の並びの向きへ飛ばすと、狙った所と別の所へ落ちる
+TEST(CollisionImpact, OffCenterHitLaunchesAlongTheSlam)
 {
     SceneNs::Scene scene;
-    Rig rig = BuildSlam(scene, k_NearCourse);
+    Rig rig = BuildSlam(scene, k_EdgeCourse);
     SetInstantImpact(rig);
-    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+    // 寄せは裁定と同じフレームの先に突進の向きを曲げる。止めて、横ずれを当たりまで残す
+    SetFloatField(*rig.movement, "寄せる角度の上限", 0.0f);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
 
-    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    Vector3 slam{};
+    bool hitFound = false;
+    for (int i = 0; i < 30 && !hitFound; ++i)
+    {
+        slam = rig.movement->BodySlamVelocity();
+        StepWorld(scene);
+        hitFound = rig.impact->DidRebound();
+        if (!hitFound)
+        {
+            rig.movement->OnUpdate();
+        }
+    }
+    ASSERT_TRUE(hitFound);
 
-    LevelNs::LaunchedBody* body = HitBody(rig);
-    ASSERT_NE(body, nullptr);
-    EXPECT_GT(body->Velocity().x, 0.0f);
-    EXPECT_NEAR(body->Velocity().z, 0.0f, 1.0e-4f);
+    const LevelNs::ImpactRecord& hit = rig.impact->LastImpact();
+    ASSERT_GT(hit.offset01, 0.3f);
+    Vector3 slamDir{};
+    Vector3 launchDir{};
+    ASSERT_TRUE(NS::Core::TryNormalizeHorizontal(slam, slamDir));
+    ASSERT_TRUE(NS::Core::TryNormalizeHorizontal(hit.launchVelocity, launchDir));
+    EXPECT_NEAR(launchDir.x, slamDir.x, 1.0e-4f);
+    EXPECT_NEAR(launchDir.z, slamDir.z, 1.0e-4f);
+    EXPECT_NEAR(hit.impactDir.x, slamDir.x, 1.0e-4f);
+    EXPECT_NEAR(hit.impactDir.z, slamDir.z, 1.0e-4f);
+    EXPECT_FLOAT_EQ(hit.impactDir.y, 0.0f);
 }
 
 TEST(CollisionImpact, LaunchLiftsHitBody)
@@ -794,27 +955,34 @@ TEST(CollisionImpact, LaunchLiftsHitBody)
     EXPECT_LT(body->Velocity().y, HorizontalSpeed(body->Velocity()));
 }
 
-TEST(CollisionImpact, HeavierBodyLaunchesSlower)
+// 重い相手ほど相手の飛ぶ距離が縮み、自機の反発が強くなる。どの質量でも両方が動く
+TEST(CollisionImpact, HeavierBodyFliesShorterAndReboundsThePlayerHarder)
 {
-    SceneNs::Scene lightScene;
-    Rig light = BuildSlam(lightScene, k_NearCourse);
-    SetInstantImpact(light);
-    light.rigidBody->SetMass(1.0f);
-    BeginSlam(lightScene, light, k_RunSpeed, 0.0f);
-    ASSERT_LT(StepUntilImpact(lightScene, light, 30), 30);
+    const std::vector<float> masses{0.5f, 1.0f, 8.0f};
+    std::vector<float> distances;
+    std::vector<float> rebounds;
+    for (const float mass : masses)
+    {
+        SceneNs::Scene scene;
+        Rig rig = BuildSlam(scene, k_NearCourse);
+        SetInstantImpact(rig);
+        rig.rigidBody->SetMass(mass);
+        BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+        ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+        distances.push_back(rig.impact->LastImpact().launchDistance);
+        rebounds.push_back(HorizontalSpeed(rig.impact->LastImpact().selfVelocity));
+    }
 
-    SceneNs::Scene heavyScene;
-    Rig heavy = BuildSlam(heavyScene, k_NearCourse);
-    SetInstantImpact(heavy);
-    heavy.rigidBody->SetMass(4.0f);
-    BeginSlam(heavyScene, heavy, k_RunSpeed, 0.0f);
-    ASSERT_LT(StepUntilImpact(heavyScene, heavy, 30), 30);
-
-    LevelNs::LaunchedBody* lightBody = HitBody(light);
-    LevelNs::LaunchedBody* heavyBody = HitBody(heavy);
-    ASSERT_NE(lightBody, nullptr);
-    ASSERT_NE(heavyBody, nullptr);
-    EXPECT_LT(HorizontalSpeed(heavyBody->Velocity()), HorizontalSpeed(lightBody->Velocity()));
+    for (std::size_t i = 0; i < masses.size(); ++i)
+    {
+        EXPECT_GT(distances[i], 0.0f) << "質量 " << masses[i];
+        EXPECT_GT(rebounds[i], 0.0f) << "質量 " << masses[i];
+    }
+    for (std::size_t i = 1; i < masses.size(); ++i)
+    {
+        EXPECT_LT(distances[i], distances[i - 1]) << "質量 " << masses[i];
+        EXPECT_GT(rebounds[i], rebounds[i - 1]) << "質量 " << masses[i];
+    }
 }
 
 TEST(CollisionImpact, ChargedImpactLaunchesFarther)
@@ -831,32 +999,51 @@ TEST(CollisionImpact, ChargedImpactLaunchesFarther)
     BeginSlam(chargedScene, charged, k_RunSpeed, 1.0f);
     ASSERT_LT(StepUntilImpact(chargedScene, charged, 30), 30);
 
-    LevelNs::LaunchedBody* plainBody = HitBody(plain);
-    LevelNs::LaunchedBody* chargedBody = HitBody(charged);
-    ASSERT_NE(plainBody, nullptr);
-    ASSERT_NE(chargedBody, nullptr);
-    EXPECT_GT(HorizontalSpeed(chargedBody->Velocity()), HorizontalSpeed(plainBody->Velocity()));
+    EXPECT_GT(charged.impact->LastImpact().launchDistance, plain.impact->LastImpact().launchDistance);
 }
 
-TEST(CollisionImpact, LaunchFieldsDriveLaunchVelocity)
+// 欄から曲線を組む。距離は 押し飛ばしの距離 × 威力 ÷ 質量^指数 で、高さは距離と同じ比で伸びる
+TEST(CollisionImpact, LaunchFieldsDriveTheArc)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     SetInstantImpact(rig);
-    SetFloatField(*rig.impact, "押し飛ばし基準初速", 20.0f);
-    SetFloatField(*rig.impact, "押し飛ばしの浮き上がり", 0.5f);
-    // 指数は 1.0 に固定する。既定の 0.35 乗が混ざると、この 2 欄だけを見る式にならない
+    SetFloatField(*rig.impact, "押し飛ばしの距離", 20.0f);
+    SetFloatField(*rig.impact, "押し飛ばしの高さ", 1.5f);
+    SetFloatField(*rig.impact, "下りの速さの倍率", 2.0f);
+    SetFloatField(*rig.impact, "頂点の帯の縦速度", 1.5f);
+    SetFloatField(*rig.impact, "頂点の帯の重力倍率", 0.25f);
+    // 指数は 1.0 に固定する。既定の 0.35 乗が混ざると、この欄だけを見る式にならない
     SetFloatField(*rig.impact, "押し飛ばしの質量指数", 1.0f);
     rig.rigidBody->SetMass(2.0f);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
+    const LevelNs::ImpactRecord& hit = rig.impact->LastImpact();
+    const float distance = 20.0f * hit.power / 2.0f;
+    const float apexHeight = 1.5f * (distance / 20.0f);
+    EXPECT_FLOAT_EQ(hit.launchDistance, distance);
+    EXPECT_FLOAT_EQ(hit.launchApexHeight, apexHeight);
+    const Vector3 initial = LevelNs::LaunchArcInitialVelocity(LevelNs::LaunchArc{.direction = Vector3{1.0f, 0.0f, 0.0f},
+                                                                                 .distance = distance,
+                                                                                 .apexHeight = apexHeight,
+                                                                                 .fallGravityScale = 2.0f,
+                                                                                 .apexBandSpeed = 1.5f,
+                                                                                 .apexBandGravityScale = 0.25f});
+    ASSERT_GT(initial.x, 0.0f);
+    EXPECT_NEAR(hit.launchVelocity.x, initial.x, 1.0e-4f);
+    EXPECT_NEAR(hit.launchVelocity.y, initial.y, 1.0e-4f);
+    EXPECT_NEAR(hit.launchVelocity.z, initial.z, 1.0e-4f);
+
+    // 相手は曲線の最初の 1 フレームの変位 ÷ dt で動き出す。水平は初速のまま、縦は上りの重力の半フレームぶん低い
     LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
-    const float expected = 20.0f * rig.impact->LastPower() / 2.0f;
-    EXPECT_FLOAT_EQ(HorizontalSpeed(body->Velocity()), expected);
-    EXPECT_FLOAT_EQ(body->Velocity().y, expected * 0.5f);
+    EXPECT_EQ(body->Phase(), LevelNs::LaunchPhase::Arc);
+    const Vector3 moving = rig.rigidBody->Velocity();
+    EXPECT_NEAR(moving.x, initial.x, 1.0e-3f);
+    EXPECT_NEAR(moving.y, initial.y + 0.5f * k_LaunchGravity * k_FixedDt, 1.0e-3f);
+    EXPECT_NEAR(moving.z, initial.z, 1.0e-3f);
 }
 
 // 質量の効きは指数で曲げる。既定 0.35 は 4^0.35 = 約 1.62 で割る
@@ -878,16 +1065,14 @@ TEST(CollisionImpact, LaunchMassExponentBendsMassEffect)
     BeginSlam(rootScene, root, k_RunSpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(rootScene, root, 30), 30);
 
-    LevelNs::LaunchedBody* inverseBody = HitBody(inverse);
-    LevelNs::LaunchedBody* rootBody = HitBody(root);
-    ASSERT_NE(inverseBody, nullptr);
-    ASSERT_NE(rootBody, nullptr);
-    EXPECT_FLOAT_EQ(HorizontalSpeed(inverseBody->Velocity()), k_LaunchBaseSpeed * inverse.impact->LastPower() / 4.0f);
-    EXPECT_FLOAT_EQ(HorizontalSpeed(rootBody->Velocity()),
-                    k_LaunchBaseSpeed * root.impact->LastPower() / std::pow(4.0f, 0.35f));
+    EXPECT_FLOAT_EQ(inverse.impact->LastImpact().launchDistance, k_LaunchDistance * inverse.impact->LastPower() / 4.0f);
+    EXPECT_FLOAT_EQ(root.impact->LastImpact().launchDistance,
+                    k_LaunchDistance * root.impact->LastPower() / std::pow(4.0f, 0.35f));
+    EXPECT_FLOAT_EQ(root.impact->LastImpact().launchApexHeight,
+                    k_LaunchApexHeight * root.impact->LastPower() / std::pow(4.0f, 0.35f));
 }
 
-// 質量 0 は基準の 1 として扱う。0 で割ると押し飛ばしが無限へ飛び、画面の外へ消える
+// 質量 0 は基準の 1 として扱う。0 で割ると押し飛ばしの距離が無限になり、画面の外へ消える
 TEST(CollisionImpact, ZeroMassLaunchesLikeUnitMass)
 {
     SceneNs::Scene scene;
@@ -900,12 +1085,9 @@ TEST(CollisionImpact, ZeroMassLaunchesLikeUnitMass)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    LevelNs::LaunchedBody* body = HitBody(rig);
-    ASSERT_NE(body, nullptr);
-    const float speed = HorizontalSpeed(body->Velocity());
-    ASSERT_TRUE(std::isfinite(speed));
-    EXPECT_FLOAT_EQ(speed, k_LaunchBaseSpeed * rig.impact->LastPower());
-    EXPECT_LT(speed, k_LaunchSpeedCap);
+    const float distance = rig.impact->LastImpact().launchDistance;
+    ASSERT_TRUE(std::isfinite(distance));
+    EXPECT_FLOAT_EQ(distance, k_LaunchDistance * rig.impact->LastPower());
 }
 
 // 衝突の瞬間に自機が数フレーム止まる。止まっている間は反発も発射も適用されず、明けたフレームにまとめて掛かる
@@ -2336,9 +2518,9 @@ TEST(LaunchedBody, LaunchMakesRigidBodyDynamicAndKeepsCollider)
     ASSERT_TRUE(rig.box->IsActiveSelf());
     ASSERT_TRUE(rig.rigidBody->IsKinematic());
 
-    rig.body->Launch(Vector3{10.0f, 4.0f, 0.0f});
+    rig.body->Launch(k_TestArc);
 
-    EXPECT_TRUE(rig.body->IsFlying());
+    EXPECT_EQ(rig.body->Phase(), LevelNs::LaunchPhase::Arc);
     EXPECT_FALSE(rig.rigidBody->IsKinematic());
     // collider は RigidBody の形のまま残る。飛ぶのは RigidBody の body で、別の body は立たない
     EXPECT_TRUE(rig.box->IsActiveSelf());
@@ -2347,16 +2529,344 @@ TEST(LaunchedBody, LaunchMakesRigidBodyDynamicAndKeepsCollider)
     EXPECT_EQ(scene.Physics().BodyCount(), rig.restingBodies);
 }
 
+TEST(LaunchedBody, LaunchRigidMakesRigidBodyDynamicAndKeepsCollider)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    ASSERT_NE(rig.box, nullptr);
+    ASSERT_NE(rig.rigidBody, nullptr);
+    ASSERT_TRUE(rig.box->IsActiveSelf());
+    ASSERT_TRUE(rig.rigidBody->IsKinematic());
+
+    rig.body->LaunchRigid(Vector3{10.0f, 4.0f, 0.0f});
+
+    EXPECT_EQ(rig.body->Phase(), LevelNs::LaunchPhase::Rigid);
+    EXPECT_FALSE(rig.rigidBody->IsKinematic());
+    // collider は RigidBody の形のまま残る。飛ぶのは RigidBody の body で、別の body は立たない
+    EXPECT_TRUE(rig.box->IsActiveSelf());
+    EXPECT_FALSE(rig.rigidBody->BodyId().IsInvalid());
+    EXPECT_EQ(rig.box->BodyId(), rig.rigidBody->BodyId());
+    EXPECT_EQ(scene.Physics().BodyCount(), rig.restingBodies);
+}
+
+// 頂点で欄の高さまで上がり、発射の高さへ戻った所で欄の距離だけ進んでいる
+TEST(LaunchedBody, ArcReachesItsApexHeightAndLandsAtItsDistance)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX, .sphereTarget = true});
+    ASSERT_NE(rig.body, nullptr);
+
+    const ArcFlight flight = FlyArc(scene, rig, k_TestArc, 120);
+
+    ASSERT_GT(flight.handFrame, 0);
+    float top = 0.0f;
+    for (const Vector3& position : flight.positions)
+    {
+        top = std::max(top, position.y - flight.start.y);
+    }
+    EXPECT_NEAR(top, k_TestArc.apexHeight, 0.05f);
+    // この速さでは 1 フレームの移動が掃引の下限 (内接球の半径の 0.75 倍) に届かない
+    // 着地の接触は床へ沈んだ次のフレームに出るので、1 フレームぶんの水平の移動を足して許す
+    const float oneFrame = LevelNs::LaunchArcInitialVelocity(k_TestArc).x * k_FixedDt;
+    EXPECT_NEAR(flight.positions.back().x - flight.start.x, k_TestArc.distance, 0.3f + oneFrame);
+}
+
+// 下りは上りより短い
+TEST(LaunchedBody, ArcFallsInFewerFramesThanItRises)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX, .sphereTarget = true});
+    ASSERT_NE(rig.body, nullptr);
+
+    const ArcFlight flight = FlyArc(scene, rig, k_TestArc, 120);
+
+    ASSERT_GT(flight.handFrame, 0);
+    int rising = 0;
+    for (const Vector3& velocity : flight.velocities)
+    {
+        if (velocity.y > 0.0f)
+        {
+            ++rising;
+        }
+    }
+    const int falling = flight.handFrame - rising;
+    EXPECT_GT(rising, falling);
+}
+
+// 頂点の近くで縦の速さが帯の縦速度より小さいフレームが続き、一瞬止まって見える
+TEST(LaunchedBody, ArcLingersNearItsApex)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX, .sphereTarget = true});
+    ASSERT_NE(rig.body, nullptr);
+
+    const ArcFlight flight = FlyArc(scene, rig, k_TestArc, 120);
+
+    ASSERT_GT(flight.handFrame, 0);
+    int lingering = 0;
+    for (const Vector3& velocity : flight.velocities)
+    {
+        if (std::abs(velocity.y) < k_TestArc.apexBandSpeed)
+        {
+            ++lingering;
+        }
+    }
+    EXPECT_GE(lingering, 6);
+}
+
+// 飛び出しを緩めない。最初の 1 フレームから水平の速さ × dt 進む
+TEST(LaunchedBody, ArcMovesAtFullHorizontalSpeedFromTheFirstFrame)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX});
+    ASSERT_NE(rig.body, nullptr);
+    const Vector3 start = rig.object->Root().Position();
+    const Vector3 initial = LevelNs::LaunchArcInitialVelocity(k_TestArc);
+    ASSERT_GT(initial.x, 0.0f);
+
+    rig.body->Launch(k_TestArc);
+    StepBody(scene);
+
+    const Vector3 moved = rig.object->Root().Position();
+    EXPECT_NEAR(moved.x - start.x, initial.x * k_FixedDt, 1.0e-4f);
+    EXPECT_NEAR(moved.z, start.z, 1.0e-4f);
+}
+
+// 物理を回す前に、最初の 1 フレームの変位 ÷ dt が body の速度に入っている。縦は上りの重力の半フレームぶん低い
+TEST(LaunchedBody, LaunchWritesTheFirstFrameDisplacementAsVelocity)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX});
+    ASSERT_NE(rig.body, nullptr);
+    const Vector3 initial = LevelNs::LaunchArcInitialVelocity(k_TestArc);
+    ASSERT_GT(initial.y, 0.0f);
+
+    rig.body->Launch(k_TestArc);
+
+    const Vector3 velocity = rig.rigidBody->Velocity();
+    EXPECT_NEAR(velocity.x, initial.x, 1.0e-4f);
+    EXPECT_NEAR(velocity.z, 0.0f, 1.0e-4f);
+    EXPECT_NEAR(velocity.y, initial.y + 0.5f * k_LaunchGravity * k_FixedDt, 1.0e-3f);
+}
+
+// 床に接して置かれた物は、飛び出したフレームにも床との接触が出る。離れる向きの接触では渡さない
+TEST(LaunchedBody, LaunchFromTheFloorStaysOnTheArcToItsApex)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX});
+    ASSERT_NE(rig.body, nullptr);
+    const Vector3 start = rig.object->Root().Position();
+
+    rig.body->Launch(k_TestArc);
+    StepBody(scene);
+    EXPECT_EQ(rig.body->Phase(), LevelNs::LaunchPhase::Arc) << "発射のフレームの床との接触で渡った";
+
+    float top = 0.0f;
+    for (int i = 0; i < 60 && rig.body->Phase() == LevelNs::LaunchPhase::Arc; ++i)
+    {
+        top = std::max(top, rig.object->Root().Position().y - start.y);
+        StepBody(scene);
+    }
+    EXPECT_GT(top, k_TestArc.apexHeight - 0.05f);
+}
+
+// 曲線の間は重力と減衰を切り、床に触れたフレームに剛体へ渡して欄を戻す
+TEST(LaunchedBody, HandsOffOnTheFrameItTouchesTheFloorAndRestoresTheFields)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX});
+    ASSERT_NE(rig.body, nullptr);
+    const float linearDamping = rig.rigidBody->LinearDamping();
+    const float angularDamping = rig.rigidBody->AngularDamping();
+    ASSERT_GT(linearDamping, 0.0f);
+    ASSERT_GT(angularDamping, 0.0f);
+    ASSERT_TRUE(rig.rigidBody->UsesGravity());
+
+    rig.body->Launch(k_TestArc);
+    EXPECT_FALSE(rig.rigidBody->UsesGravity());
+    EXPECT_FLOAT_EQ(rig.rigidBody->LinearDamping(), 0.0f);
+    EXPECT_FLOAT_EQ(rig.rigidBody->AngularDamping(), 0.0f);
+
+    int touched = 0;
+    int handed = 0;
+    for (int i = 0; i < 120 && handed == 0; ++i)
+    {
+        StepBody(scene);
+        // 1 フレーム目は置かれていた床との接触が出る
+        if (i > 0 && touched == 0 && !rig.rigidBody->Contacts().empty())
+        {
+            touched = i + 1;
+        }
+        if (rig.body->Phase() != LevelNs::LaunchPhase::Arc)
+        {
+            handed = i + 1;
+        }
+    }
+
+    ASSERT_GT(touched, 0);
+    EXPECT_EQ(handed, touched);
+    EXPECT_EQ(rig.body->Phase(), LevelNs::LaunchPhase::Rigid);
+    EXPECT_TRUE(rig.rigidBody->UsesGravity());
+    EXPECT_FLOAT_EQ(rig.rigidBody->LinearDamping(), linearDamping);
+    EXPECT_FLOAT_EQ(rig.rigidBody->AngularDamping(), angularDamping);
+}
+
+// 連続衝突判定の掃引の命中も接触に出る。速く落ちる球が床へ食い込まず、床に触れたフレームに面の上で止まる
+// Jolt が掃引するのは 1 フレームの移動が内接球の半径の 0.75 倍 (この球で 0.56 m)
+// を超えた時だけなので、それより速く落とす
+TEST(LaunchedBody, ContinuousCollisionReportsTheSweptHitOnTheFloor)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene, {.sphereTarget = true});
+    ASSERT_NE(rig.body, nullptr);
+    ASSERT_TRUE(rig.rigidBody->IsContinuousCollision());
+    rig.rigidBody->Teleport(Vector3{0.0f, k_SphereRestY + 3.0f, 0.0f}, rig.object->Root().Rotation());
+
+    rig.body->LaunchRigid(Vector3{0.0f, -40.0f, 0.0f});
+    int touched = 0;
+    for (int i = 0; i < 60 && touched == 0; ++i)
+    {
+        StepBody(scene);
+        if (!rig.rigidBody->Contacts().empty())
+        {
+            touched = i + 1;
+        }
+    }
+
+    ASSERT_GT(touched, 0);
+    EXPECT_NEAR(rig.object->Root().Position().y, k_SphereRestY, 0.03f);
+}
+
+// 渡す瞬間に速度も回る速さも書き換えない。摩擦も跳ね返りも無い球なら、着地は縦の速さを消すだけ
+TEST(LaunchedBody, HandOffKeepsTheArcVelocityAndSpin)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX, .sphereTarget = true});
+    ASSERT_NE(rig.body, nullptr);
+    rig.rigidBody->SetFriction(0.0f);
+    rig.rigidBody->SetRestitution(0.0f);
+    const Vector3 initial = LevelNs::LaunchArcInitialVelocity(k_TestArc);
+
+    rig.body->Launch(k_TestArc);
+    Vector3 spin = rig.rigidBody->AngularVelocity();
+    ASSERT_GT(spin.Length(), 0.0f);
+    int handed = 0;
+    for (int i = 0; i < 120 && handed == 0; ++i)
+    {
+        StepBody(scene);
+        if (rig.body->Phase() != LevelNs::LaunchPhase::Arc)
+        {
+            handed = i + 1;
+            break;
+        }
+        spin = rig.rigidBody->AngularVelocity();
+    }
+
+    ASSERT_GT(handed, 0);
+    EXPECT_EQ(rig.body->Phase(), LevelNs::LaunchPhase::Rigid);
+    const Vector3 velocity = rig.rigidBody->Velocity();
+    EXPECT_NEAR(velocity.x, initial.x, 1.0e-3f);
+    EXPECT_NEAR(velocity.z, initial.z, 1.0e-3f);
+    EXPECT_NEAR(velocity.y, 0.0f, 1.0e-3f);
+    const Vector3 spinAfter = rig.rigidBody->AngularVelocity();
+    EXPECT_NEAR(spinAfter.x, spin.x, 1.0e-3f);
+    EXPECT_NEAR(spinAfter.y, spin.y, 1.0e-3f);
+    EXPECT_NEAR(spinAfter.z, spin.z, 1.0e-3f);
+}
+
+// 同じ曲線なら同じ所に止まる
+TEST(LaunchedBody, SameArcRestsAtTheSameSpot)
+{
+    SceneNs::Scene first;
+    BodyRig one = BuildBody(first, {.floorLastX = k_LongFloorLastX});
+    ASSERT_NE(one.body, nullptr);
+    SceneNs::Scene second;
+    BodyRig two = BuildBody(second, {.floorLastX = k_LongFloorLastX});
+    ASSERT_NE(two.body, nullptr);
+
+    one.body->Launch(k_TestArc);
+    two.body->Launch(k_TestArc);
+    ASSERT_LT(RunUntilRest(first, *one.body, k_RestStepLimit), k_RestStepLimit);
+    ASSERT_LT(RunUntilRest(second, *two.body, k_RestStepLimit), k_RestStepLimit);
+
+    const Vector3 a = one.object->Root().Position();
+    const Vector3 b = two.object->Root().Position();
+    EXPECT_EQ(a.x, b.x);
+    EXPECT_EQ(a.y, b.y);
+    EXPECT_EQ(a.z, b.z);
+}
+
+// 飛んでいる最中に飛ばし直すと、今の位置から新しい曲線が始まる。切る前の欄は最初の発射の時の値のまま戻る
+TEST(LaunchedBody, RelaunchWhileFlyingStartsTheNewArcFromWhereItIs)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX});
+    ASSERT_NE(rig.body, nullptr);
+    const float linearDamping = rig.rigidBody->LinearDamping();
+    rig.body->Launch(k_TestArc);
+    for (int i = 0; i < 10; ++i)
+    {
+        StepBody(scene);
+    }
+    ASSERT_EQ(rig.body->Phase(), LevelNs::LaunchPhase::Arc);
+    const Vector3 before = rig.object->Root().Position();
+    // 前の曲線と速さが違う曲線にし、前の曲線を辿り続けていれば落ちるようにする
+    LevelNs::LaunchArc again = k_TestArc;
+    again.distance = 6.0f;
+    const Vector3 initial = LevelNs::LaunchArcInitialVelocity(again);
+
+    rig.body->Launch(again);
+    StepBody(scene);
+
+    const Vector3 after = rig.object->Root().Position();
+    EXPECT_NEAR(after.x - before.x, initial.x * k_FixedDt, 1.0e-4f);
+    EXPECT_NEAR(after.y - before.y, (initial.y + 0.5f * k_LaunchGravity * k_FixedDt) * k_FixedDt, 1.0e-4f);
+    for (int i = 0; i < 120 && rig.body->Phase() == LevelNs::LaunchPhase::Arc; ++i)
+    {
+        StepBody(scene);
+    }
+    EXPECT_EQ(rig.body->Phase(), LevelNs::LaunchPhase::Rigid);
+    EXPECT_TRUE(rig.rigidBody->UsesGravity());
+    EXPECT_FLOAT_EQ(rig.rigidBody->LinearDamping(), linearDamping);
+}
+
+// 曲線の間の読み口は、そのフレームの物理が動かした速度を返す
+// body の速度は LateUpdate が次のフレームのために書いた後の値で、上りでは縦が重力の 1 フレームぶん低い
+TEST(LaunchedBody, VelocityDuringTheArcIsWhatTheLastFrameMovedBy)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene, {.sphereTarget = true});
+    ASSERT_NE(rig.body, nullptr);
+    rig.body->Launch(k_TestArc);
+    // 上りの途中で、縦の速さが頂点の帯より大きい間。帯の外なので 1 フレームの縦の変化は上りの重力 × dt
+    constexpr int k_RisingFrames = 10;
+    Vector3 before = rig.object->Root().Position();
+    for (int i = 0; i < k_RisingFrames; ++i)
+    {
+        before = rig.object->Root().Position();
+        StepBody(scene);
+    }
+    ASSERT_EQ(rig.body->Phase(), LevelNs::LaunchPhase::Arc);
+
+    const Vector3 moved = (rig.object->Root().Position() - before) / k_FixedDt;
+    const Vector3 velocity = rig.body->Velocity();
+    EXPECT_NEAR(velocity.x, moved.x, 1.0e-4f);
+    EXPECT_NEAR(velocity.y, moved.y, 1.0e-4f);
+    EXPECT_NEAR(velocity.z, moved.z, 1.0e-4f);
+    EXPECT_NEAR(velocity.y - rig.rigidBody->Velocity().y, -k_LaunchGravity * k_FixedDt, 1.0e-3f);
+}
+
 // RigidBody を積み忘れた配置物も飛ぶ。飛ばす時にキネマティックで足し、collider はその形になる
 TEST(LaunchedBody, LaunchAddsRigidBodyWhenMissing)
 {
     SceneNs::Scene scene;
-    BodyRig rig = BuildBody(scene, false, false);
+    BodyRig rig = BuildBody(scene, {.withRigidBody = false});
     ASSERT_NE(rig.body, nullptr);
     ASSERT_NE(rig.box, nullptr);
     ASSERT_EQ(rig.rigidBody, nullptr);
 
-    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+    rig.body->Launch(k_TestArc);
 
     SceneNs::RigidBody* added = rig.object->FindComponent<SceneNs::RigidBody>();
     ASSERT_NE(added, nullptr);
@@ -2376,7 +2886,7 @@ TEST(LaunchedBody, AdvancesHorizontallyByVelocityPerStep)
     BodyRig rig = BuildBody(scene);
     ASSERT_NE(rig.body, nullptr);
     const Vector3 start = rig.object->Root().Position();
-    rig.body->Launch(Vector3{10.0f, 4.0f, 0.0f});
+    rig.body->LaunchRigid(Vector3{10.0f, 4.0f, 0.0f});
 
     StepBody(scene);
 
@@ -2390,7 +2900,7 @@ TEST(LaunchedBody, GravityReducesVerticalSpeedEachStep)
     SceneNs::Scene scene;
     BodyRig rig = BuildBody(scene);
     ASSERT_NE(rig.body, nullptr);
-    rig.body->Launch(Vector3{0.0f, 6.0f, 0.0f});
+    rig.body->LaunchRigid(Vector3{0.0f, 6.0f, 0.0f});
 
     float expected = 6.0f;
     expected += k_LaunchGravity * k_FixedDt;
@@ -2406,14 +2916,15 @@ TEST(LaunchedBody, GravityReducesVerticalSpeedEachStep)
 TEST(LaunchedBody, LandsOnFloorTopAndZeroesVerticalSpeed)
 {
     SceneNs::Scene scene;
-    BodyRig rig = BuildBody(scene);
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX});
     ASSERT_NE(rig.body, nullptr);
-    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+    rig.body->Launch(k_TestArc);
     ASSERT_TRUE(rig.body->IsFlying());
 
     const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
 
-    EXPECT_GT(steps, 20);
+    // 高さ 2 の曲線は発射の高さへ戻るまで 48 フレーム。着地より前には止まらない
+    EXPECT_GT(steps, 48);
     EXPECT_LT(steps, k_RestStepLimit);
     EXPECT_NEAR(rig.object->Root().Position().y, k_BodyRestY, 1.0e-4f);
     EXPECT_FLOAT_EQ(rig.body->Velocity().y, 0.0f);
@@ -2424,7 +2935,7 @@ TEST(LaunchedBody, GroundFrictionSlowsHorizontalSpeed)
     SceneNs::Scene scene;
     BodyRig rig = BuildBody(scene);
     ASSERT_NE(rig.body, nullptr);
-    rig.body->Launch(Vector3{4.0f, 0.0f, 0.0f});
+    rig.body->LaunchRigid(Vector3{4.0f, 0.0f, 0.0f});
 
     StepBody(scene);
     const float first = rig.body->Velocity().x;
@@ -2440,10 +2951,10 @@ TEST(LaunchedBody, GroundFrictionSlowsHorizontalSpeed)
 TEST(LaunchedBody, RestReturnsRigidBodyToKinematic)
 {
     SceneNs::Scene scene;
-    BodyRig rig = BuildBody(scene);
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX});
     ASSERT_NE(rig.body, nullptr);
     ASSERT_NE(rig.rigidBody, nullptr);
-    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+    rig.body->Launch(k_TestArc);
     ASSERT_FALSE(rig.rigidBody->IsKinematic());
 
     const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
@@ -2462,20 +2973,21 @@ TEST(LaunchedBody, RestReturnsRigidBodyToKinematic)
     EXPECT_FLOAT_EQ(rig.body->Velocity().z, 0.0f);
 }
 
+// 曲線の距離より先で、床の端より手前に止まる
 TEST(LaunchedBody, RestsAwayFromLaunchPosition)
 {
     SceneNs::Scene scene;
-    BodyRig rig = BuildBody(scene);
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX});
     ASSERT_NE(rig.body, nullptr);
     const Vector3 start = rig.object->Root().Position();
-    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+    rig.body->Launch(k_TestArc);
 
     const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
     ASSERT_LT(steps, k_RestStepLimit);
 
     const float travelled = rig.object->Root().Position().x - start.x;
-    EXPECT_GT(travelled, 1.5f);
-    EXPECT_LT(travelled, 3.0f);
+    EXPECT_GT(travelled, k_TestArc.distance);
+    EXPECT_LT(rig.object->Root().Position().x, static_cast<float>(k_LongFloorLastX) + 0.5f);
 }
 
 // 飛んでいる間だけ回る。上面が進行方向へ倒れる前転
@@ -2484,7 +2996,7 @@ TEST(LaunchedBody, TumblesForwardWhileFlying)
     SceneNs::Scene scene;
     BodyRig rig = BuildBody(scene);
     ASSERT_NE(rig.body, nullptr);
-    rig.body->Launch(Vector3{10.0f, 6.0f, 0.0f});
+    rig.body->LaunchRigid(Vector3{10.0f, 6.0f, 0.0f});
 
     for (int i = 0; i < 10; ++i)
         StepBody(scene);
@@ -2500,12 +3012,12 @@ TEST(LaunchedBody, FasterFlightSpinsFaster)
     SceneNs::Scene slowScene;
     BodyRig slow = BuildBody(slowScene);
     ASSERT_NE(slow.body, nullptr);
-    slow.body->Launch(Vector3{4.0f, 6.0f, 0.0f});
+    slow.body->LaunchRigid(Vector3{4.0f, 6.0f, 0.0f});
 
     SceneNs::Scene fastScene;
     BodyRig fast = BuildBody(fastScene);
     ASSERT_NE(fast.body, nullptr);
-    fast.body->Launch(Vector3{12.0f, 6.0f, 0.0f});
+    fast.body->LaunchRigid(Vector3{12.0f, 6.0f, 0.0f});
 
     for (int i = 0; i < 5; ++i)
     {
@@ -2526,7 +3038,7 @@ TEST(LaunchedBody, KeepsTheRolledRotationAfterItStops)
     BodyRig rig = BuildBody(scene);
     ASSERT_NE(rig.body, nullptr);
     const NS::Core::Quaternion home = rig.object->Root().Rotation();
-    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+    rig.body->LaunchRigid(Vector3{4.0f, 4.0f, 0.0f});
 
     const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
     ASSERT_LT(steps, k_RestStepLimit);
@@ -2540,18 +3052,11 @@ TEST(LaunchedBody, KeepsTheRolledRotationAfterItStops)
 TEST(LaunchedBody, KeepsRollingAfterItLands)
 {
     SceneNs::Scene scene;
-    BodyRig rig = BuildBody(scene);
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX});
     ASSERT_NE(rig.body, nullptr);
-    rig.body->Launch(Vector3{9.0f, 3.0f, 0.0f});
-
-    float landedX = 0.0f;
-    for (int i = 0; i < k_RestStepLimit && landedX == 0.0f; ++i)
-    {
-        StepBody(scene);
-        if (rig.object->Root().Position().y < k_BodyRestY + 0.05f)
-            landedX = rig.object->Root().Position().x;
-    }
-    ASSERT_GT(landedX, 0.0f);
+    const ArcFlight flight = FlyArc(scene, rig, k_TestArc, k_RestStepLimit);
+    ASSERT_GT(flight.handFrame, 0);
+    const float landedX = flight.positions.back().x;
 
     const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
     ASSERT_LT(steps, k_RestStepLimit);
@@ -2565,7 +3070,7 @@ TEST(LaunchedBody, SpinStrengthFieldStopsRotation)
     BodyRig rig = BuildBody(scene);
     ASSERT_NE(rig.body, nullptr);
     SetFloatField(*rig.body, "回転の強さ", 0.0f);
-    rig.body->Launch(Vector3{10.0f, 6.0f, 0.0f});
+    rig.body->LaunchRigid(Vector3{10.0f, 6.0f, 0.0f});
 
     for (int i = 0; i < 10; ++i)
         StepBody(scene);
@@ -2594,15 +3099,31 @@ TEST(LaunchedBody, IdleStaysPutAndKeepsCollider)
     EXPECT_EQ(scene.Physics().BodyCount(), rig.restingBodies);
 }
 
-TEST(LaunchedBody, NonFiniteLaunchIsIgnored)
+TEST(LaunchedBody, NonFiniteOrNonPositiveArcIsIgnored)
 {
     SceneNs::Scene scene;
     BodyRig rig = BuildBody(scene);
     ASSERT_NE(rig.body, nullptr);
 
-    rig.body->Launch(Vector3{std::numeric_limits<float>::quiet_NaN(), 4.0f, 0.0f});
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    const float infinity = std::numeric_limits<float>::infinity();
+    std::vector<LevelNs::LaunchArc> broken;
+    for (const float bad : {nan, infinity, 0.0f, -1.0f})
+    {
+        LevelNs::LaunchArc arc = k_TestArc;
+        arc.distance = bad;
+        broken.push_back(arc);
+        arc = k_TestArc;
+        arc.apexHeight = bad;
+        broken.push_back(arc);
+    }
 
-    EXPECT_FALSE(rig.body->IsFlying());
+    for (const LevelNs::LaunchArc& arc : broken)
+    {
+        rig.body->Launch(arc);
+        EXPECT_FALSE(rig.body->IsFlying()) << "距離 " << arc.distance << "・高さ " << arc.apexHeight;
+    }
+    EXPECT_TRUE(rig.rigidBody->IsKinematic());
     EXPECT_TRUE(rig.box->IsActiveSelf());
     EXPECT_EQ(scene.Physics().BodyCount(), rig.restingBodies);
 }
@@ -2611,9 +3132,9 @@ TEST(LaunchedBody, NonFiniteLaunchIsIgnored)
 TEST(LaunchedBody, RestWithZeroLifeStaysVisible)
 {
     SceneNs::Scene scene;
-    BodyRig rig = BuildBody(scene);
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX});
     ASSERT_NE(rig.body, nullptr);
-    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+    rig.body->Launch(k_TestArc);
     const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
     ASSERT_LT(steps, k_RestStepLimit);
 
@@ -2631,10 +3152,10 @@ TEST(LaunchedBody, RestWithZeroLifeStaysVisible)
 TEST(LaunchedBody, SetRestLifeSecondsHidesAfterRest)
 {
     SceneNs::Scene scene;
-    BodyRig rig = BuildBody(scene);
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX});
     ASSERT_NE(rig.body, nullptr);
     rig.body->SetRestLifeSeconds(0.05f);
-    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+    rig.body->Launch(k_TestArc);
     const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
     ASSERT_LT(steps, k_RestStepLimit);
 
@@ -2653,11 +3174,11 @@ TEST(LaunchedBody, SetRestLifeSecondsHidesAfterRest)
 TEST(LaunchedBody, RestLifeRejectsNonFiniteAndNegative)
 {
     SceneNs::Scene scene;
-    BodyRig rig = BuildBody(scene);
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX});
     ASSERT_NE(rig.body, nullptr);
     rig.body->SetRestLifeSeconds(std::numeric_limits<float>::quiet_NaN());
     rig.body->SetRestLifeSeconds(-2.0f);
-    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+    rig.body->Launch(k_TestArc);
     const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
     ASSERT_LT(steps, k_RestStepLimit);
 
@@ -2765,30 +3286,41 @@ TEST(ImpactMark, HidesAfterLifeWithoutDestroy)
     EXPECT_EQ(scene.Objects().ObjectCount(), after);
 }
 
-TEST(LaunchedBody, ShattersAgainstWall)
+// 壁に当たっても割れず、そのフレームに剛体へ渡して跳ね返る
+TEST(LaunchedBody, WallHandsOffWithoutShattering)
 {
     SceneNs::Scene scene;
-    BodyRig rig = BuildBody(scene, true);
+    BodyRig rig = BuildBody(scene, {.withWall = true});
     ASSERT_NE(rig.body, nullptr);
     const std::size_t debrisBefore = DebrisBodies(scene).size();
+    // 回っている箱は角で当たり、跳ね返る向きが回転で変わる。回転は別の試しで見る
+    SetFloatField(*rig.body, "回転の強さ", 0.0f);
+    // 低く速い曲線。上がり切る前に 1 m 先の壁の面へ、箱の底が壁の上端より低いまま届く
+    LevelNs::LaunchArc low = k_TestArc;
+    low.apexHeight = 1.0f;
 
-    rig.body->Launch(Vector3{20.0f, 0.0f, 0.0f});
-    for (int i = 0; i < 60 && rig.body->IsFlying(); ++i)
+    const ArcFlight flight = FlyArc(scene, rig, low, 30);
+
+    ASSERT_GT(flight.handFrame, 0);
+    EXPECT_EQ(rig.body->Phase(), LevelNs::LaunchPhase::Rigid);
+    EXPECT_LT(rig.rigidBody->Velocity().x, 0.0f) << "壁で跳ね返っていない";
+    for (int i = 0; i < 60; ++i)
+    {
         StepBody(scene);
-
-    EXPECT_FALSE(rig.body->IsFlying());
-    EXPECT_GT(DebrisBodies(scene).size(), debrisBefore);
+    }
+    EXPECT_EQ(DebrisBodies(scene).size(), debrisBefore);
+    EXPECT_TRUE(rig.box->IsActiveSelf());
     EXPECT_LT(rig.object->Root().Position().x, static_cast<float>(k_WallX));
 }
 
 TEST(LaunchedBody, LandingOnFloorDoesNotShatter)
 {
     SceneNs::Scene scene;
-    BodyRig rig = BuildBody(scene);
+    BodyRig rig = BuildBody(scene, {.floorLastX = k_LongFloorLastX});
     ASSERT_NE(rig.body, nullptr);
     const std::size_t debrisBefore = DebrisBodies(scene).size();
 
-    rig.body->Launch(Vector3{3.0f, 6.0f, 0.0f});
+    rig.body->Launch(k_TestArc);
     const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
 
     EXPECT_LT(steps, k_RestStepLimit);
@@ -2813,7 +3345,7 @@ TEST(LaunchedBody, DoesNotFlyWithoutCollider)
     ASSERT_EQ(body->Owner()->FindComponent<SceneNs::Collider>(), nullptr);
     const JPH::uint bodiesBefore = scene.Physics().BodyCount();
 
-    body->Launch(Vector3{5.0f, 0.0f, 0.0f});
+    body->Launch(k_TestArc);
 
     EXPECT_FALSE(body->IsFlying());
     EXPECT_EQ(scene.Physics().BodyCount(), bodiesBefore);
