@@ -68,6 +68,11 @@ namespace NS::Obj
         m_hasFollowMotion = true;
     }
 
+    void ThirdPersonFollow::SetTargetHeightOffset(float offset) noexcept
+    {
+        m_targetHeightOffset = offset;
+    }
+
     void ThirdPersonFollow::OnStart()
     {
         // 基底が brain へ自分を登録する
@@ -243,7 +248,8 @@ namespace NS::Obj
 
         // Player Mesh の補間と整合させ、相対位置のガタつきを防ぐ
         const NS::Core::Vector3 tgtPos = target->InterpolatedWorldMatrix(alpha).Translation();
-        const NS::Core::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
+        // ずれは補間しない。根を ShiftPosition で上げ下げしていれば、補間の途中でも 根 + ずれ は動かない
+        const NS::Core::Vector3 headPos{tgtPos.x, tgtPos.y + m_targetHeightOffset + m_headHeight, tgtPos.z};
         const NS::Core::Vector3 camPos{
             headPos.x - forward.x * m_distance,
             headPos.y - forward.y * m_distance,

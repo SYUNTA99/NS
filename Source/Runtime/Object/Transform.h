@@ -25,6 +25,9 @@ namespace NS::Obj
         void SetRotation(const NS::Core::Quaternion& rotation) noexcept;
         //! Local scale。default は各軸 1
         void SetScale(const NS::Core::Vector3& scale) noexcept;
+        //! @brief 今の位置と前フレームの位置を同じだけずらす
+        //! @details 補間には動きとして映らない。前フレームから今までに動いた分はそのまま補間される
+        void ShiftPosition(const NS::Core::Vector3& delta) noexcept;
 
         [[nodiscard]] const NS::Core::Vector3& Position() const noexcept { return m_position; }
         [[nodiscard]] const NS::Core::Quaternion& Rotation() const noexcept { return m_rotation; }

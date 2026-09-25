@@ -57,6 +57,7 @@ namespace NS::Game::Player
         void SetMaxSpeedScale(float scale) noexcept;
 
         //! 奈落落ちの復活などで速度・接地・ジャンプまわりの記録と状態機械を初期状態へ戻す
+        //! 丸まりも解くが根は動かさない。呼び手は先に根を出現位置へ置いてから呼ぶ
         void ResetState() noexcept;
 
         //! 状態が次の状態へ移る時に呼ぶ状態管理。HandleStates はこれが無いと状態を進めないので、状態の中では非 null
@@ -151,7 +152,9 @@ namespace NS::Game::Player
         void MarkBodySlamAim() noexcept;
 
         //! @brief 丸まりを入れるか解く
-        //! @details 押している間は毎フレーム true が入る。解くのは自分で行うので、false はプレイを終える時だけ渡す
+        //! @details 押している間は毎フレーム true が入る。自分で解くので、false はプレイを終える時だけ渡す。
+        //! 丸まると当たりを球にして根を立ち姿の半長ぶん下げ、解くと立ち姿へ戻して上げる。
+        //! 縁に掴まっている間とよじ登っている間の true は受けない
         void SetCurled(bool curled) noexcept;
         //! 体当たりのボタンを押しているかを渡す。押している間は丸まりを解かない
         void SetBodySlamHeld(bool held) noexcept;
@@ -212,9 +215,14 @@ namespace NS::Game::Player
         //! 現在状態が通常移動 (立ち / 走り / 落下) の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsLocomotion() const noexcept;
         //! @brief 丸まりを解く
-        //! @details 掴まり中は押していても解く。それ以外は、押されていない・突進中でない・直前のフレームを突進中で
-        //! 終えていない・突進の予約が無い・接地している・上向きの速度が無い、が揃ったフレームに解く
+        //! @details 押されていない・突進中でない・直前のフレームを突進中で終えていない・突進の予約が無い・
+        //! 接地している・上向きの速度が無い、が揃ったフレームに解く。縁を掴んだ時に解くのは LedgeGrab
         void UncurlWhenSettled() noexcept;
+        //! @brief 丸まりを入れるか解き、当たりの形と根の高さを一緒に切り替える
+        //! @details 丸まると当たりを球にして根を立ち姿の半長ぶん下げる。
+        //! 解くと立ち姿へ戻して、その時の立ち姿の半長ぶん上げる。当たりの下端 (中心 − 半長 − 半径) は動かない。
+        //! 根は前フレームの位置と一緒にずらすので、描画の補間に動きとして映らない。今と同じ値なら何もしない
+        void ChangeCurled(bool curled) noexcept;
         //! 突進を終える。水平の速さを MaxSpeed で切り、接地していれば走りへ、空中なら落下へ移す
         void EndBodySlam() noexcept;
 
@@ -244,8 +252,8 @@ namespace NS::Game::Player
 
         float m_maxSpeedScale = 1.0f; // 走行速度に掛ける倍率。書くのは CollisionInput
 
-        // 丸まっているか。入れるのは CollisionInput と突進の発動、解くのは UncurlWhenSettled と ResetState と
-        // プレイを終える時の CollisionInput
+        // 丸まっているか。入れるのは CollisionInput と突進の発動、解くのは UncurlWhenSettled と縁を掴んだ時と
+        // ResetState とプレイを終える時の CollisionInput
         bool m_curled = false;
         bool m_bodySlamHeld = false;    // 体当たりのボタンを押しているか。書くのは CollisionInput と ResetState
         bool m_wasBodySlamming = false; // 直前のフレームを突進中で終えたか。書くのは HandleMovement と ResetState

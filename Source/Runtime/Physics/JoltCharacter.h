@@ -12,17 +12,19 @@ namespace NS::Phys
 {
     class PhysicsScene;
 
-    //! @brief カプセル 1 本を 1 フレームずつ動かす JPH::CharacterVirtual のラッパー
+    //! @brief 縦のカプセルか球 1 つを 1 フレームずつ動かす JPH::CharacterVirtual のラッパー
     //! @details 重力は掛けないので、縦の速度は呼出側が作って Step の引数で渡す
     //! @pre physics は JoltCharacter より長く生きる
-	class JoltCharacter : public NS::Core::NonCopyable
+    class JoltCharacter : public NS::Core::NonCopyable
     {
     public:
-        //! 半径 radius・半分の高さ halfHeight の縦カプセルで作る
+        //! 半径 radius・半分の高さ halfHeight の縦カプセルで作る。halfHeight が 0 なら半径 radius の球で作る
+        //! @pre halfHeight は 0 以上。負の値は球で作るが、Step の足元の検査は中心より上から測る
         JoltCharacter(PhysicsScene& physics, float radius, float halfHeight);
         ~JoltCharacter();
 
-        //! カプセルの寸法を変える。同じ値なら作り直さない
+        //! カプセルの寸法を変える。同じ値なら作り直さない。halfHeight が 0 なら半径 radius の球にする
+        //! @pre halfHeight は 0 以上
         void Resize(float radius, float halfHeight);
 
         //! @brief 開始位置と開始速度を渡して dt 秒ぶん進め、補正後の状態を内部へ保持する

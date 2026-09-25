@@ -1,9 +1,9 @@
-#include <Runtime/Platform/Clock.h>
 #include <Runtime/Object/Components/ThirdPersonFollow.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Object.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
+#include <Runtime/Platform/Clock.h>
 #include <gtest/gtest.h>
 
 #include "tuning_field_access.h"
@@ -100,6 +100,17 @@ TEST_F(ThirdPersonFollowTest, EvaluatePosePlacesCameraBehindTarget)
     EXPECT_GT(pose.position.y, 1.0f);
     EXPECT_LT(pose.position.z, -3.0f);
     EXPECT_NEAR(pose.target.y, 1.2f, 0.01f);
+}
+
+// 注視点は追う相手の根に、頭の高さと渡された縦のずれを足した所
+TEST_F(ThirdPersonFollowTest, TargetHeightOffsetRaisesTheLookTarget)
+{
+    Scene scene;
+    ThirdPersonFollow& follow = AddFollowing(scene);
+
+    follow.SetTargetHeightOffset(0.5f);
+
+    EXPECT_NEAR(follow.EvaluatePose(1.0f).target.y, 1.2f + 0.5f, 1e-5f);
 }
 
 TEST_F(ThirdPersonFollowTest, SensitivityAndInvertSettersPersist)

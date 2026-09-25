@@ -10,9 +10,6 @@
 #include <Game/Level/LaunchedBody.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Runtime/Core/AABB.h>
-#include <Runtime/Platform/Clock.h>
-#include <Runtime/Platform/Input.h>
-#include <Runtime/Platform/Mouse.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Core/Sphere.h>
 #include <Runtime/Object/Components/BoxCollider.h>
@@ -27,6 +24,9 @@
 #include <Runtime/Object/Reflection/TypeRegistry.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Physics/PhysicsScene.h>
+#include <Runtime/Platform/Clock.h>
+#include <Runtime/Platform/Input.h>
+#include <Runtime/Platform/Mouse.h>
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -79,6 +79,8 @@ namespace
         bool floorUnderTarget = true;
         bool alongZ = false;
         bool sphereTarget = false;
+        // 的を置く段。1 は床の上に接して置き、2 は床から 1 m 浮かせる
+        std::int16_t targetLayer = 1;
     };
 
     // 置かれた壊せる物と同じ RigidBody。飛ぶまではキネマティックで、面の手触りは押し飛ばしを調整した値
@@ -129,9 +131,9 @@ namespace
             }
         }
 
-        nlohmann::json target = NS::Editor::MakeCellObject(course.targetCell, 1, 0);
+        nlohmann::json target = NS::Editor::MakeCellObject(course.targetCell, course.targetLayer, 0);
         if (course.alongZ)
-            target = NS::Editor::MakeCellObject(0, 1, course.targetCell);
+            target = NS::Editor::MakeCellObject(0, course.targetLayer, course.targetCell);
         if (course.sphereTarget)
         {
             for (nlohmann::json& entry : SceneNs::ObjectJsonComponents(target))
@@ -386,8 +388,7 @@ namespace
     int MarkCount(SceneNs::Scene& scene)
     {
         int count = 0;
-        scene.Objects().ForEachComponent<LevelNs::ImpactMark>(
-            [&count](LevelNs::ImpactMark&) { ++count; });
+        scene.Objects().ForEachComponent<LevelNs::ImpactMark>([&count](LevelNs::ImpactMark&) { ++count; });
         return count;
     }
 } // namespace
@@ -924,7 +925,8 @@ TEST(CollisionImpact, HeavierTargetStopsLonger)
 {
     SceneNs::Scene lightScene;
     Rig light = BuildSlam(lightScene, k_NearCourse);
-    // 中心直撃は中心近くの当たりの倍率が乗る。既定の基準秒だと重い側が上限 12 フレームに張り付くので、下げて上限の外で比べる
+    // 中心直撃は中心近くの当たりの倍率が乗る。既定の基準秒だと重い側が上限 12
+    // フレームに張り付くので、下げて上限の外で比べる
     SetFloatField(*light.impact, "ヒットストップ基準秒", 1.0f / 60.0f);
     light.rigidBody->SetMass(1.0f);
     BeginSlam(lightScene, light, k_FastEntrySpeed, 0.0f);
@@ -1497,18 +1499,21 @@ TEST(CollisionImpact, StaysCurledFromThePressUntilTheLandingAfterTheRebound)
 }
 
 // 押したまま出直しても、押している間は玉に戻る。出直しは丸まりを解くが、ボタンの判定は押しの途中のまま続く
-// 出直しの Respawner::RestartRun が PlayerComponent に対して呼ぶのは ResetState なので、ここでは ResetState を直に呼ぶ
+// 出直しの Respawner::RestartRun は根を出現位置へ置いてから PlayerComponent の ResetState を呼ぶ
+// ここも同じ順に呼ぶ
 TEST(CollisionImpact, HeldThroughARestartCurlsAgain)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     ASSERT_NE(rig.input, nullptr);
     SettleOnFloor(scene, rig);
+    const Vector3 standing = rig.movement->Owner()->Root().Position();
 
     MouseLeftPress press;
     Step(scene, rig);
     ASSERT_TRUE(rig.movement->IsCurled());
 
+    rig.movement->Owner()->Root().SetPosition(standing);
     rig.movement->ResetState();
     ASSERT_FALSE(rig.movement->IsCurled());
     SettleOnFloor(scene, rig);
@@ -1520,6 +1525,26 @@ TEST(CollisionImpact, HeldThroughARestartCurlsAgain)
     Step(scene, rig);
     ASSERT_TRUE(rig.movement->IsBodySlamming());
     EXPECT_TRUE(rig.movement->IsCurled());
+}
+
+// 丸まった突進は玉の大きさで当たる。立ち姿のカプセルなら胴に掛かる高さに浮いた的でも、玉はその下をくぐる
+// 自機は当たりの component を積まないので既定の半径 0.4・半長 0.5
+// 玉の上端は床 0.5 + 直径 0.8 = 1.3 で、的の下面 1.5 に届かない
+TEST(CollisionImpact, CurledRushPassesUnderATargetAtChestHeight)
+{
+    SceneNs::Scene scene;
+    SlamCourse course = k_NearCourse;
+    course.targetLayer = 2;
+    Rig rig = BuildSlam(scene, course);
+    SetInstantImpact(rig);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+    ASSERT_TRUE(rig.movement->IsBodySlamming());
+    ASSERT_TRUE(rig.movement->IsCurled());
+
+    EXPECT_EQ(StepUntilImpact(scene, rig, 20), 20);
+    EXPECT_FALSE(rig.impact->DidRebound());
+    const float targetFarFaceX = rig.target->Root().Position().x + 0.5f;
+    EXPECT_GT(rig.movement->Owner()->Root().Position().x, targetFarFaceX + rig.movement->CapsuleRadius());
 }
 
 // 壊した物へもう一度向かっても何も起きない。印が寝ているので探索から外れる
@@ -2054,14 +2079,13 @@ TEST(CollisionImpact, DebrisRestsThenExpires)
     ASSERT_EQ(debris.size(), 5u);
     int guard = 0;
     while ([&debris]() {
-               for (LevelNs::LaunchedBody* body : debris)
-               {
-                   if (body->IsFlying())
-                       return true;
-               }
-               return false;
-           }() &&
-           guard < 300)
+        for (LevelNs::LaunchedBody* body : debris)
+        {
+            if (body->IsFlying())
+                return true;
+        }
+        return false;
+    }() && guard < 300)
     {
         StepBody(scene);
         ++guard;
@@ -2584,8 +2608,7 @@ TEST(LaunchedBody, DoesNotFlyWithoutCollider)
     scene.LoadJson(std::move(data));
 
     LevelNs::LaunchedBody* body = nullptr;
-    scene.Objects().ForEachComponent<LevelNs::LaunchedBody>(
-        [&body](LevelNs::LaunchedBody& found) { body = &found; });
+    scene.Objects().ForEachComponent<LevelNs::LaunchedBody>([&body](LevelNs::LaunchedBody& found) { body = &found; });
     ASSERT_NE(body, nullptr);
     ASSERT_EQ(body->Owner()->FindComponent<SceneNs::Collider>(), nullptr);
     const JPH::uint bodiesBefore = scene.Physics().BodyCount();

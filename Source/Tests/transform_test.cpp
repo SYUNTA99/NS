@@ -95,6 +95,21 @@ TEST(TransformTest, InterpolatedLocalMatrixAtAlphaOneEqualsCurrent)
     EXPECT_TRUE(MatricesNear(atOne, t.LocalMatrix()));
 }
 
+// ずらした分は補間に動きとして映らない。今のフレームで動いた分 (前 → 今) はそのまま補間する
+TEST(TransformTest, ShiftPositionMovesPreviousAndCurrentTogether)
+{
+    Transform t;
+    t.SetPosition({1.0f, 2.0f, 3.0f});
+    t.Snapshot();
+    t.SetPosition({3.0f, 2.0f, 3.0f});
+
+    t.ShiftPosition({0.0f, -0.5f, 0.0f});
+
+    EXPECT_TRUE(VectorsNear(t.PreviousPosition(), {1.0f, 1.5f, 3.0f}));
+    EXPECT_TRUE(VectorsNear(t.Position(), {3.0f, 1.5f, 3.0f}));
+    EXPECT_TRUE(VectorsNear(t.InterpolatedWorldMatrix(0.5f).Translation(), {2.0f, 1.5f, 3.0f}));
+}
+
 TEST(TransformTest, FreshTransformWithoutSnapshotInterpolatesFromOrigin)
 {
     // Snapshot 未実行の新規 Transform は previous が default(原点/単位回転)のまま

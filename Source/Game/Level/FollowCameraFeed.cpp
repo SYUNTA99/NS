@@ -46,6 +46,17 @@ namespace NS::Game::Level
             return;
         }
         m_follow->SetFollowMotion(entity->IsGrounded(), entity->Velocity());
+        // 当たりの足元に立ち姿のカプセルを立てた時の中心を見る。玉の間は根が立ち姿の半長ぶん下がっているので、
+        // 根を見ると押すたびに画面が 1 フレームで半長ぶん沈み、解けると跳ね上がる
+        m_follow->SetTargetHeightOffset(entity->StandingHalfHeight() - entity->CapsuleHalfHeight());
+    }
+
+    void FollowCameraFeed::OnEndPlay()
+    {
+        if (m_follow != nullptr)
+        {
+            m_follow->SetTargetHeightOffset(0.0f);
+        }
     }
 
     NS_CLASS(FollowCameraFeed)

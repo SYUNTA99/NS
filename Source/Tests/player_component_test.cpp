@@ -8,7 +8,6 @@
 #include <Game/Player/States/LedgeHangingPlayerState.h>
 #include <Game/Player/States/WalkPlayerState.h>
 #include <Runtime/Core/AABB.h>
-#include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CameraBrain.h>
 #include <Runtime/Object/Components/CapsuleCollider.h>
@@ -17,6 +16,7 @@
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsScene.h>
+#include <Runtime/Platform/Clock.h>
 
 #include "entity_test_stage.h"
 #include "jolt_test_scene.h"
@@ -1094,6 +1094,151 @@ TEST_F(PlayerComponentTest, LedgeHangUncurlsEvenWhileHeld)
     player.OnUpdate();
     ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
     EXPECT_FALSE(player.IsCurled());
+    // 縁は立ち姿で掴む。ぶら下がる中心は縁の上端 0.5 から立ち姿の半長ぶん下
+    EXPECT_NEAR(obj.Root().Position().y, 0.5f - player.CapsuleHalfHeight(), 1e-4f);
+}
+
+// 掴まっている間に押しても縁を放さない。押すたびに丸まると、手の高さを測る当たりが玉になって縁から手が離れる
+TEST_F(PlayerComponentTest, KeepsHangingWhenPressedOnTheLedge)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Phys::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    PlayerComponent& player = MakeLedgeReady(obj);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    player.OnUpdate();
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
+    const float hangY = obj.Root().Position().y;
+
+    for (int i = 0; i < 5; ++i)
+    {
+        player.SetCurled(true);
+        player.SetBodySlamHeld(true);
+        player.OnUpdate();
+        EXPECT_TRUE(IsState<LedgeHangingPlayerState>(obj)) << "押してから " << i << " フレーム目";
+        EXPECT_FALSE(player.IsCurled()) << "押してから " << i << " フレーム目";
+        EXPECT_NEAR(obj.Root().Position().y, hangY, 1e-5f) << "押してから " << i << " フレーム目";
+    }
+}
+
+// よじ登っている間に押しても丸まらない。玉になると、よじ登りが根を立ち姿の中心の高さへ書くので、
+// 登り切った所で玉の中心が半長ぶん高く残り、そこから落ちる
+TEST_F(PlayerComponentTest, StaysStandingWhenPressedWhileClimbing)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Phys::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    PlayerComponent& player = MakeLedgeReady(obj);
+    const float ledgeTopY = 0.5f;
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    player.OnUpdate();
+    ASSERT_TRUE(IsState<LedgeHangingPlayerState>(obj));
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(0.0f, 1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(IsState<LedgeClimbingPlayerState>(obj));
+
+    int frames = 0;
+    while (IsState<LedgeClimbingPlayerState>(obj) && frames < 60)
+    {
+        player.SetCurled(true);
+        player.SetBodySlamHeld(true);
+        EXPECT_FALSE(player.IsCurled()) << "よじ登って " << frames << " フレーム目";
+        player.OnUpdate();
+        ++frames;
+    }
+    ASSERT_TRUE(IsState<IdlePlayerState>(obj));
+    EXPECT_FALSE(player.IsCurled());
+    EXPECT_NEAR(obj.Root().Position().y, ledgeTopY + player.CapsuleHalfHeight() + player.CapsuleRadius(), 1e-4f);
+
+    player.SetCurled(true);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsCurled());
+    EXPECT_NEAR(obj.Root().Position().y - player.CapsuleHalfHeight() - player.CapsuleRadius(), ledgeTopY, 1e-3f);
+}
+
+// 丸まると根を円柱の半長ぶん下げ、戻すと上げる。当たりの下端 (中心 − 半長 − 半径) は床の上から動かない
+TEST_F(PlayerComponentTest, CurlingKeepsTheFeetOnTheFloor)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Phys::PhysicsScene& physics = stage.physics;
+    PlayerComponent& player = MakeSlamReady(obj, physics);
+    const float halfHeight = player.CapsuleHalfHeight();
+    const float standingY = obj.Root().Position().y;
+    const float feetY = standingY - halfHeight - player.CapsuleRadius();
+
+    player.SetCurled(true);
+    player.SetBodySlamHeld(true);
+    EXPECT_FLOAT_EQ(obj.Root().Position().y, standingY - halfHeight);
+    EXPECT_NEAR(obj.Root().Position().y - player.CapsuleHalfHeight() - player.CapsuleRadius(), feetY, 1e-5f);
+
+    player.OnUpdate();
+    EXPECT_TRUE(player.IsGrounded());
+    EXPECT_NEAR(obj.Root().Position().y, standingY - halfHeight, 1e-3f);
+
+    const float curledY = obj.Root().Position().y;
+    player.SetBodySlamHeld(false);
+    player.SetCurled(false);
+    EXPECT_FLOAT_EQ(obj.Root().Position().y, curledY + halfHeight);
+    EXPECT_NEAR(obj.Root().Position().y - player.CapsuleHalfHeight() - player.CapsuleRadius(), feetY, 1e-3f);
+}
+
+// 空中で丸まっても足元は同じ弧をたどる。中心を下げずに玉にすると、当たりの下端が半長ぶん跳ね上がる
+TEST_F(PlayerComponentTest, CurlingInTheAirKeepsTheFeetOnTheirArc)
+{
+    NsTest::EntityStage curledStage;
+    NsTest::EntityStage standingStage;
+    PlayerComponent& curled = MakeSlamReady(curledStage.owner, curledStage.physics);
+    PlayerComponent& standing = MakeSlamReady(standingStage.owner, standingStage.physics);
+    curled.SetJumpPressed();
+    curled.OnUpdate();
+    standing.SetJumpPressed();
+    standing.OnUpdate();
+    ASSERT_FALSE(curled.IsGrounded());
+
+    curled.SetCurled(true);
+    curled.SetBodySlamHeld(true);
+    for (int i = 0; i < 10; ++i)
+    {
+        curled.OnUpdate();
+        standing.OnUpdate();
+        const float curledFeet =
+            curledStage.owner.Root().Position().y - curled.CapsuleHalfHeight() - curled.CapsuleRadius();
+        const float standingFeet =
+            standingStage.owner.Root().Position().y - standing.CapsuleHalfHeight() - standing.CapsuleRadius();
+        EXPECT_NEAR(curledFeet, standingFeet, 1e-4f) << "丸まってから " << i << " フレーム目";
+    }
+    EXPECT_TRUE(curled.IsCurled());
+}
+
+// やり直しは呼び手が根を出現位置へ置いてから状態を戻す。丸まりを解く時に根を上げると、出現位置より半長ぶん高く湧く
+TEST_F(PlayerComponentTest, ResetStateUncurlsWithoutMovingTheRoot)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Phys::PhysicsScene& physics = stage.physics;
+    PlayerComponent& player = MakeSlamReady(obj, physics);
+    const float halfHeight = player.CapsuleHalfHeight();
+    player.SetCurled(true);
+
+    const Vector3 spawn{0.0f, 1.41f, 0.0f};
+    obj.Root().SetPosition(spawn);
+    player.ResetState();
+
+    EXPECT_FALSE(player.IsCurled());
+    EXPECT_FLOAT_EQ(player.CapsuleHalfHeight(), halfHeight);
+    EXPECT_FLOAT_EQ(obj.Root().Position().y, spawn.y);
 }
 
 TEST_F(PlayerComponentTest, ProgressRisesThenCancelResets)

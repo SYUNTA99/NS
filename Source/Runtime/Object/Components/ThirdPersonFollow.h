@@ -31,6 +31,11 @@ namespace NS::Obj
 
         //! 自動ズームの判定に使う接地と速度を値で受け取る。移動 Component の型を include せずに済む
         void SetFollowMotion(bool grounded, const NS::Core::Vector3& velocity) noexcept;
+        //! @brief 追う相手の根から、注視の高さを測り始める所までの縦のずれを受け取る
+        //! @details 注視点は 根 + ずれ + 頭の高さ。追う相手が形を変えて根だけを上げ下げする時に、見る高さを保つ。
+        //! 既定は 0。ずれには描画の補間を掛けないので、根を上げ下げする側は
+        //! Transform::ShiftPosition で前フレームの位置も一緒にずらす
+        void SetTargetHeightOffset(float offset) noexcept;
 
         //! 将来 Settings UI から繋ぐ
         void SetSensX(float radPerPixel) noexcept;
@@ -102,6 +107,7 @@ namespace NS::Obj
         bool m_followGrounded = false;
         float m_followHorizontalSpeed = 0.0f; // 速度の向きは使わないので水平の大きさへ畳んで持つ
         bool m_hasFollowMotion = false;
+        float m_targetHeightOffset = 0.0f; // 追う相手の根から注視の高さを測り始める所までの縦のずれ
 
         float m_yaw = 0.0f;       // 水平回転角
         float m_pitch = -0.2618f; // 仰俯角

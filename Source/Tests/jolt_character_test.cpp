@@ -129,6 +129,43 @@ TEST(JoltCharacterTest, LandsOnFloorAndReportsGrounded)
     EXPECT_NEAR(position.y, k_HalfHeight + k_Radius, 0.05f);
 }
 
+// 円柱の半長 0 は同じ半径の球。中心を半長ぶん下げて作り直すと、床から浮きも沈みもせずに立つ
+TEST(JoltCharacterTest, ResizesToASphereAndBackWithoutLeavingTheFloor)
+{
+    PhysicsScene physics;
+    AddFloor(physics);
+    physics.OptimizeBroadPhase();
+    JoltCharacter character{physics, k_PlayerRadius, k_HalfHeight};
+
+    Vector3 position{0.0f, k_HalfHeight + k_PlayerRadius, 0.0f};
+    for (int i = 0; i < 10; ++i)
+    {
+        StepCharacter(character, position, Vector3{0.0f, -1.0f, 0.0f});
+        position = character.Position();
+    }
+    ASSERT_TRUE(character.IsGrounded());
+
+    character.Resize(k_PlayerRadius, 0.0f);
+    position.y -= k_HalfHeight;
+    for (int i = 0; i < 10; ++i)
+    {
+        StepCharacter(character, position, Vector3{0.0f, -1.0f, 0.0f});
+        position = character.Position();
+        EXPECT_TRUE(character.IsGrounded()) << "球にしてから " << i << " フレーム目";
+    }
+    EXPECT_NEAR(position.y, k_PlayerRadius, 0.05f);
+
+    character.Resize(k_PlayerRadius, k_HalfHeight);
+    position.y += k_HalfHeight;
+    for (int i = 0; i < 10; ++i)
+    {
+        StepCharacter(character, position, Vector3{0.0f, -1.0f, 0.0f});
+        position = character.Position();
+        EXPECT_TRUE(character.IsGrounded()) << "カプセルへ戻してから " << i << " フレーム目";
+    }
+    EXPECT_NEAR(position.y, k_HalfHeight + k_PlayerRadius, 0.05f);
+}
+
 TEST(JoltCharacterTest, NoGroundedWhenAirborne)
 {
     PhysicsScene physics;
@@ -259,7 +296,8 @@ TEST(JoltCharacterTest, RunsFlatOverTiledFloor)
         PhysicsScene physics;
         for (int z = 0; z < k_TileCount; ++z)
         {
-            physics.AddBox(MakeBox(Vector3{0.0f, 0.0f, static_cast<float>(z)}, 0.5f, 0.5f, 0.5f), ObjectLayers::Terrain);
+            physics.AddBox(MakeBox(Vector3{0.0f, 0.0f, static_cast<float>(z)}, 0.5f, 0.5f, 0.5f),
+                           ObjectLayers::Terrain);
         }
         physics.OptimizeBroadPhase();
         JoltCharacter character{physics, k_Radius, k_HalfHeight};

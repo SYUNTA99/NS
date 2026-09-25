@@ -24,6 +24,7 @@ namespace
     public:
         [[nodiscard]] int HandledSteps() const noexcept { return m_handledSteps; }
         [[nodiscard]] int SkippedSteps() const noexcept { return m_skippedSteps; }
+        void UseSphereShape(bool sphere) noexcept { SetSphereShape(sphere); }
 
     protected:
         void HandleStates(float) override { ++m_handledSteps; }
@@ -111,6 +112,24 @@ TEST_F(EntityComponentTest, AdoptsSiblingCapsuleColliderSizeBeforeStart)
     obj.AddComponent<NS::Obj::CapsuleCollider>(0.7f, 0.9f);
     BareEntity& entity = *obj.AddComponent<BareEntity>();
 
+    EXPECT_FLOAT_EQ(entity.CapsuleRadius(), 0.7f);
+    EXPECT_FLOAT_EQ(entity.CapsuleHalfHeight(), 0.9f);
+}
+
+// 球にしている間は円柱の長さだけが 0 になる。半径まで変えると玉の見た目と当たりの大きさがずれる
+// 立ち姿の半長は欄の値のまま読める。立ち姿の見た目と縁の掴みは球の間もこれで測る
+TEST_F(EntityComponentTest, SphereShapeDropsOnlyTheHalfHeight)
+{
+    GameObject obj;
+    obj.AddComponent<NS::Obj::CapsuleCollider>(0.7f, 0.9f);
+    BareEntity& entity = *obj.AddComponent<BareEntity>();
+
+    entity.UseSphereShape(true);
+    EXPECT_FLOAT_EQ(entity.CapsuleRadius(), 0.7f);
+    EXPECT_FLOAT_EQ(entity.CapsuleHalfHeight(), 0.0f);
+    EXPECT_FLOAT_EQ(entity.StandingHalfHeight(), 0.9f);
+
+    entity.UseSphereShape(false);
     EXPECT_FLOAT_EQ(entity.CapsuleRadius(), 0.7f);
     EXPECT_FLOAT_EQ(entity.CapsuleHalfHeight(), 0.9f);
 }

@@ -89,8 +89,10 @@ namespace NS::Game::Player
         }
         if (player != nullptr)
         {
-            // 寸法の正は移動と当たりの裁定が読むカプセル。玉は円柱の長さ 0 のカプセルで、直径が当たりと揃う
-            standingPlaceholder = assets.GetOrMakeCapsuleMesh(player->CapsuleRadius(), player->CapsuleHalfHeight());
+            // 寸法の正は移動と当たりの裁定が読むカプセルの欄。玉は円柱の長さ 0 のカプセルで、直径が当たりと揃う
+            // 立ち姿は丸まりに依らない立ち姿の半長で作る。今の当たりの半長は玉の間 0 で、丸まっている間に引き直すと
+            // 立ち姿まで玉になる
+            standingPlaceholder = assets.GetOrMakeCapsuleMesh(player->CapsuleRadius(), player->StandingHalfHeight());
             ballPlaceholder = assets.GetOrMakeCapsuleMesh(player->CapsuleRadius(), 0.0f);
         }
         else

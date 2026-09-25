@@ -32,6 +32,12 @@ namespace NS::Obj
         m_scale = scale;
     }
 
+    void Transform::ShiftPosition(const NS::Core::Vector3& delta) noexcept
+    {
+        m_position += delta;
+        m_previousPosition += delta;
+    }
+
     void Transform::Snapshot() noexcept
     {
         m_previousPosition = m_position;

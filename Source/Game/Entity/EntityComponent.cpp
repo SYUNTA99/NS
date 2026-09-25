@@ -67,11 +67,26 @@ namespace NS::Game::Entity
 
     float EntityComponent::CapsuleHalfHeight() const noexcept
     {
+        // 移動と裁定はどちらもここから寸法を引くので、球にしている間は両方が同じ球で当たる
+        if (m_sphereShape)
+        {
+            return 0.0f;
+        }
+        return StandingHalfHeight();
+    }
+
+    float EntityComponent::StandingHalfHeight() const noexcept
+    {
         if (const NS::Obj::CapsuleCollider* capsule = SiblingCapsule())
         {
             return capsule->HalfHeight();
         }
         return 0.5f;
+    }
+
+    void EntityComponent::SetSphereShape(bool sphere) noexcept
+    {
+        m_sphereShape = sphere;
     }
 
     const NS::Obj::CapsuleCollider* EntityComponent::SiblingCapsule() const noexcept

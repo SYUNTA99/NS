@@ -220,7 +220,41 @@ namespace NS::Game::Player
 
     void PlayerComponent::SetCurled(bool curled) noexcept
     {
+        // 掴まりからは突進が出ない。玉のままぶら下がると、押しても突進が出ないのに玉の見た目だけが残る
+        // 掴まっている間に玉にすると縁を測り直す手の高さが下がり、押したフレームに縁を放して 0.5 m 落ちた
+        if (curled && m_stateManager != nullptr &&
+            (m_stateManager->IsCurrent<LedgeHangingPlayerState>() ||
+             m_stateManager->IsCurrent<LedgeClimbingPlayerState>()))
+        {
+            return;
+        }
+        ChangeCurled(curled);
+    }
+
+    void PlayerComponent::ChangeCurled(bool curled) noexcept
+    {
+        if (curled == m_curled)
+        {
+            return;
+        }
         m_curled = curled;
+        SetSphereShape(curled);
+        // 立ち姿の下端は 中心 − 半長 − 半径、玉の下端は 中心 − 半径。中心を立ち姿の半長ぶん上げ下げすると下端が揃う
+        // 下げずに玉にすると、当たりの下端が半長ぶん上がる
+        float rise = StandingHalfHeight();
+        if (curled)
+        {
+            rise = -rise;
+        }
+        // TODO: 低い天井の下で立ち姿へ戻す時の検査は無い。コースに低い天井が無いうちは、
+        // 作り直したキャラクターの食い込みは次の Step の接触の解決に任せる
+        if (Owner() == nullptr)
+        {
+            return;
+        }
+        // 形の持ち替えは動きではないので、前フレームの位置も一緒にずらす。今の位置だけを動かすと、持ち替えたフレームの
+        // 描画の補間で玉が床から浮き (立ち姿は床へ沈み)、立ち姿の中心を見る追従カメラの注視点も半長ぶん揺れる
+        RootTransform().ShiftPosition(NS::Core::Vector3{0.0f, rise, 0.0f});
     }
 
     void PlayerComponent::SetBodySlamHeld(bool held) noexcept
@@ -232,13 +266,6 @@ namespace NS::Game::Player
     {
         if (!m_curled)
         {
-            return;
-        }
-        // 掴まりからは突進が出ない。玉のままぶら下がると、押しても何も起きない形を見せ続ける
-        if (m_stateManager != nullptr && (m_stateManager->IsCurrent<LedgeHangingPlayerState>() ||
-                                          m_stateManager->IsCurrent<LedgeClimbingPlayerState>()))
-        {
-            m_curled = false;
             return;
         }
         if (m_bodySlamHeld || IsBodySlamming() || !IsGrounded())
@@ -260,7 +287,7 @@ namespace NS::Game::Player
         {
             return;
         }
-        m_curled = false;
+        ChangeCurled(false);
     }
 
     float PlayerComponent::BodySlamAimBlend01() const noexcept
@@ -325,7 +352,7 @@ namespace NS::Game::Player
         m_bodySlamSpent = true;
         // 突進はどの経路で出ても玉で走らせる。掴まり中に放した押しは予約に残り、先行入力の秒の内に
         // 縁を離れれば出るが、その時の丸まりは掴まりで解けている
-        m_curled = true;
+        ChangeCurled(true);
 
         if (m_stateManager != nullptr)
         {
@@ -401,7 +428,10 @@ namespace NS::Game::Player
         m_bodySlamDistanceTarget = 0.0f;
         m_bodySlamJustStarted = false;
         m_bodySlamDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
+        // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
         m_curled = false;
+        SetSphereShape(false);
         m_bodySlamHeld = false;
         m_wasBodySlamming = false;
 
@@ -577,8 +607,12 @@ namespace NS::Game::Player
 
         // 手の高さ = カプセルの円柱部の上端。そこから前方へ伸ばした probe 点がブロックの XZ 内に入り、
         // かつブロック上端が手の上下の帯に収まれば縁とみなす
-        const NS::Core::Vector3 pos = RootTransform().Position();
-        const float handY = pos.y + CapsuleHalfHeight();
+        // 縁は立ち姿で掴む。当たりの足元に立ち姿を立てた中心と、立ち姿の半長で測る。玉の間は根が半長ぶん下がっている
+        // 玉の寸法のまま測ると手が円柱の長さぶん低い所を探し、縁の横を玉で落ちている間は掴めなかった
+        const float halfHeight = StandingHalfHeight();
+        NS::Core::Vector3 pos = RootTransform().Position();
+        pos.y += halfHeight - CapsuleHalfHeight();
+        const float handY = pos.y + halfHeight;
         const NS::Core::Vector3 probe{
             pos.x + dir.x * (CapsuleRadius() + m_ledgeReach),
             handY,
@@ -622,13 +656,13 @@ namespace NS::Game::Player
                 hang.z = faceZ - sgn * CapsuleRadius();
                 hang.x = NS::Core::Clamp(pos.x, box.Center.x - box.Extents.x, box.Center.x + box.Extents.x);
             }
-            hang.y = top - CapsuleHalfHeight();
+            hang.y = top - halfHeight;
 
             // 上面手前の登り先が別ブロックで塞がっているなら縁ではない。掴まない
             const float mantleStep = 2.0f * CapsuleRadius();
             const NS::Core::Vector3 mantleCheck{
                 hang.x - faceNormal.x * mantleStep,
-                top + CapsuleHalfHeight(),
+                top + halfHeight,
                 hang.z - faceNormal.z * mantleStep,
             };
             bool blocked = false;
@@ -643,6 +677,9 @@ namespace NS::Game::Player
             if (blocked)
                 continue;
 
+            // 掴まりからは突進が出ないので、立ち姿でぶら下がる。ぶら下がる位置は立ち姿の中心なので、
+            // 置く前に解く。置いた後に解くと根が半長ぶん上がる
+            ChangeCurled(false);
             RootTransform().SetPosition(hang);
             SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
             m_ledgeTopY = top;
@@ -911,7 +948,6 @@ namespace NS::Game::Player
             m_stateManager->Step(*this, dt);
         }
 
-        // 状態機械の後で見る。縁を掴むのは状態機械の中なので、前で見ると掴んだフレームを玉のまま動かす
         // 接地は動かした後に決まるので、着地で解けるのは着地した次のフレーム
         UncurlWhenSettled();
 

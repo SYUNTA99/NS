@@ -179,6 +179,29 @@ TEST_F(PlayerAppearanceTest, FollowsTheCurlOfThePlayerComponent)
     EXPECT_EQ(ShownMesh(*player), standing);
 }
 
+// 丸まっている間に資産を引き直しても、立ち姿は立ち姿の寸法で作る。当たりの半長は玉の間 0 なので、
+// それで作ると解いた後の立ち姿が玉のまま残る
+TEST_F(PlayerAppearanceTest, ResolvingWhileCurledKeepsTheStandingLookFullHeight)
+{
+    std::unique_ptr<NS::Obj::GameObject> player = BuildPlayer("", "");
+    ASSERT_NE(player, nullptr);
+    PlayerAppearance* appearance = player->FindComponent<PlayerAppearance>();
+    NS::Game::Player::PlayerComponent* movement = player->FindComponent<NS::Game::Player::PlayerComponent>();
+    ASSERT_NE(appearance, nullptr);
+    ASSERT_NE(movement, nullptr);
+    appearance->OnStart();
+    movement->SetCurled(true);
+    appearance->OnUpdate();
+
+    appearance->ResolveAssets(*m_assets);
+    movement->SetCurled(false);
+    appearance->OnUpdate();
+
+    const NS::Gfx::Mesh* shown = ShownMesh(*player);
+    ASSERT_NE(shown, nullptr);
+    EXPECT_NEAR(shown->LocalBounds().Extents.y, k_HalfHeight + k_Radius, 1e-5f);
+}
+
 // 根の位置とスケールは移動と潰れの持ち物。構えで縮んでいる最中に持ち替えても 1 ビットも動かさない
 TEST_F(PlayerAppearanceTest, SwappingLooksLeavesTheRootTransformUntouched)
 {

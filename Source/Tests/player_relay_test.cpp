@@ -1,16 +1,16 @@
 #include <Game/Level/FollowCameraFeed.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerInputRelay.h>
-#include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/PlayerInput.h>
 #include <Runtime/Object/Components/ThirdPersonFollow.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Object.h>
+#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
-#include <Runtime/Object/ObjectList.h>
+#include <Runtime/Platform/Clock.h>
 #include <Runtime/Platform/Input.h>
 #include <Runtime/Platform/Keyboard.h>
 #include <gtest/gtest.h>
@@ -38,7 +38,6 @@ namespace
     constexpr float k_RunDistance = 8.0f;
     constexpr float k_JumpDistance = 12.0f;
     constexpr float k_RunSpeedThreshold = 4.0f;
-
 
     void BuildRelayRig(GameObject& owner)
     {
@@ -279,6 +278,26 @@ TEST_F(PlayerRelayTest, GroundedRunSpeedReachesTheCamera)
     SettleZoom(camera.follow);
 
     EXPECT_NEAR(camera.follow.Distance(), k_RunDistance, 0.01f);
+}
+
+// 丸まると根は円柱の半長ぶん下がるが、カメラは立ち姿の中心を見続ける。根を追うと押すたびに画面が 1 フレームで沈む
+// 描画の補間の途中 (0.5) でも注視点は動かない
+TEST_F(PlayerRelayTest, CurlingDoesNotSinkTheCamera)
+{
+    Scene scene;
+    GameObject& target = SpawnTarget(scene, true, true);
+    FeedCamera camera = AddFeedCamera(scene, target.Id());
+    target.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
+    target.Root().Snapshot();
+    camera.feed.OnUpdate();
+    const float standingLookY = camera.follow.EvaluatePose(1.0f).target.y;
+
+    Player(target).SetCurled(true);
+    camera.feed.OnUpdate();
+
+    ASSERT_LT(target.Root().Position().y, 1.0f);
+    EXPECT_NEAR(camera.follow.EvaluatePose(0.5f).target.y, standingLookY, 1e-5f);
+    EXPECT_NEAR(camera.follow.EvaluatePose(1.0f).target.y, standingLookY, 1e-5f);
 }
 
 // 未採番の 0 同士を突き合わせると、追従対象の無いカメラが未採番の配置物を追っている扱いになる

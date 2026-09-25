@@ -9,6 +9,7 @@
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/SphereShape.h>
 
 #include <algorithm>
 #include <cmath>
@@ -50,7 +51,8 @@ namespace NS::Phys
 
             const JPH::RRayCast ray{origin, JPH::Vec3{0.0f, -length, 0.0f}};
             JPH::RayCastResult hit;
-            if (!system.GetNarrowPhaseQuery().CastRay(ray, hit, JPH::BroadPhaseLayerFilter{}, JPH::ObjectLayerFilter{}, IgnoreSensorsBodyFilter{}))
+            if (!system.GetNarrowPhaseQuery().CastRay(
+                    ray, hit, JPH::BroadPhaseLayerFilter{}, JPH::ObjectLayerFilter{}, IgnoreSensorsBodyFilter{}))
             {
                 return false;
             }
@@ -62,10 +64,20 @@ namespace NS::Phys
         JPH::Ref<JPH::CharacterVirtual> MakeCharacter(JPH::PhysicsSystem& system, float radius, float halfHeight)
         {
             JPH::CharacterVirtualSettings settings;
-            settings.mShape = new JPH::CapsuleShape(halfHeight, radius);
+            // 半長 0 は同じ半径の球。JPH::CapsuleShape は半長 0 を assert で断るので球で作る
+            float supportHeight = halfHeight;
+            if (halfHeight <= 0.0f)
+            {
+                settings.mShape = new JPH::SphereShape(radius);
+                supportHeight = 0.0f;
+            }
+            else
+            {
+                settings.mShape = new JPH::CapsuleShape(halfHeight, radius);
+            }
             settings.mMaxSlopeAngle = k_MaxSlopeAngleRadians;
             settings.mCollisionTolerance = k_CollisionTolerance;
-            settings.mSupportingVolume = JPH::Plane{JPH::Vec3::sAxisY(), -halfHeight};
+            settings.mSupportingVolume = JPH::Plane{JPH::Vec3::sAxisY(), -supportHeight};
             return new JPH::CharacterVirtual(&settings, JPH::RVec3::sZero(), JPH::Quat::sIdentity(), &system);
         }
     } // namespace
@@ -145,7 +157,8 @@ namespace NS::Phys
             JPH::Vec3 cancelNormal = contact.mContactNormal;
             if (cancelNormal.GetY() > 0.0f)
             {
-                cancelNormal = JPH::Vec3{cancelNormal.GetX(), 0.0f, cancelNormal.GetZ()}.NormalizedOr(JPH::Vec3::sZero());
+                cancelNormal =
+                    JPH::Vec3{cancelNormal.GetX(), 0.0f, cancelNormal.GetZ()}.NormalizedOr(JPH::Vec3::sZero());
             }
             correctedVelocity = CancelInto(correctedVelocity, cancelNormal);
         }
@@ -162,7 +175,8 @@ namespace NS::Phys
             if (standingOnWalkable)
             {
                 // 速度と法線の内積が 0 になる縦の速度
-                const float horizontalDot = correctedVelocity.GetX() * groundNormal.GetX() + correctedVelocity.GetZ() * groundNormal.GetZ();
+                const float horizontalDot =
+                    correctedVelocity.GetX() * groundNormal.GetX() + correctedVelocity.GetZ() * groundNormal.GetZ();
                 alongGroundY = -horizontalDot / groundNormal.GetY();
             }
             correctedVelocity.SetY(std::min(correctedVelocity.GetY(), std::max(alongGroundY, 0.0f)));
@@ -174,7 +188,8 @@ namespace NS::Phys
             const float groundY = static_cast<float>(m_character->GetGroundPosition().GetY());
             const float rayLength = static_cast<float>(bottomSphereCenter.GetY()) - groundY + k_CollisionTolerance;
             float floorDistance = 0.0f;
-            const bool floorAtFootHeight = CastRayDown(m_physics.m_physicsSystem, bottomSphereCenter, rayLength, floorDistance);
+            const bool floorAtFootHeight =
+                CastRayDown(m_physics.m_physicsSystem, bottomSphereCenter, rayLength, floorDistance);
             const bool hoveringOverFloor = floorAtFootHeight && floorDistance - m_radius > k_CollisionTolerance;
             // 進む先の角へは真下に床が無くても戻す。1 フレームで角の接平面に沿って進むと角から浮く
             // 戻さないと、速さ 20 m/s で 19 cm の段を登ったフレームに段の上面より 1 cm 浮いた
