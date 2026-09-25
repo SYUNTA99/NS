@@ -98,7 +98,7 @@ namespace NS::Game::Level
             shape.bandSpeed = arc.apexBandSpeed;
             shape.bandScale = arc.apexBandGravityScale;
 
-            // 帯の中は重力が弱いぶん、同じ高さに要る初速が減る。帯より遅く飛び出すなら上りは全部帯の中
+            // 帯の中は重力に倍率が掛かるぶん、同じ高さに要る初速が変わる。帯より遅く飛び出すなら上りは全部帯の中
             const float bandSquared = shape.bandSpeed * shape.bandSpeed;
             const float bandRiseHeight = bandSquared / (2.0f * shape.riseGravity * shape.bandScale);
             if (arc.apexHeight <= bandRiseHeight)
@@ -282,12 +282,11 @@ namespace NS::Game::Level
         m_arcFrames = 0;
         m_restAge = 0.0f;
 
-        // 速度はダイナミックへ切り替えてから置く。次のフレームを待つとキネマティックの運びが速度を上書きする
+        // ダイナミックへの切り替えは次の PrePhysicsStep を待たずに body へ入れ、欄と body の運動の種類を飛ばしたフレームのうちに揃える
         rigidBody->SetKinematic(false);
         rigidBody->RefreshMotion();
         WriteArcVelocity(*rigidBody, NS::Platform::FrameTimer::FixedDelta());
         m_arcVelocityUsed = m_arcVelocity;
-        rigidBody->SetAngularVelocity(TumbleFrom(m_arcVelocity));
     }
 
     void LaunchedBody::LaunchRigid(const NS::Core::Vector3& velocity)
@@ -307,7 +306,7 @@ namespace NS::Game::Level
             RestoreArcFields(*rigidBody);
         }
 
-        // 速度はダイナミックへ切り替えてから置く。次のフレームを待つとキネマティックの運びが速度を上書きする
+        // ダイナミックへの切り替えは次の PrePhysicsStep を待たずに body へ入れ、欄と body の運動の種類を飛ばしたフレームのうちに揃える
         rigidBody->SetKinematic(false);
         rigidBody->RefreshMotion();
         rigidBody->SetVelocity(velocity);
@@ -328,6 +327,8 @@ namespace NS::Game::Level
         const NS::Core::Vector3 to = ArcOffsetAt(shape, static_cast<float>(m_arcFrames + 1) * dt);
         m_arcVelocity = (to - from) / dt;
         rigidBody.SetVelocity(m_arcVelocity);
+        // 回る速さも毎フレーム書き直す。近づく向きでない接触では曲線を続けるので、そこで変わった回り方を曲線の値へ戻す
+        rigidBody.SetAngularVelocity(TumbleFrom(m_arcVelocity));
         ++m_arcFrames;
     }
 

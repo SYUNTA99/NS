@@ -44,7 +44,8 @@ namespace NS::Game::Level
     //! @brief 押し飛ばされて転がり、止まるか壊れるまでを受け持つ Component
     //! @details body は自分で作らず、同じ配置物の RigidBody を動かす
     //! 置かれている間と止まった後は RigidBody をキネマティックにし、飛んでいる間だけダイナミックにする
-    //! 曲線の間は RigidBody の重力と減衰を切り、曲線の次の 1 フレームの変位 ÷ dt を毎フレーム速度として書く
+    //! 曲線の間は RigidBody の重力と減衰を切り、曲線の次の 1 フレームの変位 ÷ dt を速度として毎フレーム書く
+    //! 回る速さも同じフレームに、回転の強さ × 水平の速さの前転へ書き直す
     //! 近づく向きの接触が出たフレームに書くのをやめて欄を戻し、剛体の物理に任せる
     //! 質量・摩擦・跳ね返りは RigidBody が持ち、ここは回転の強さ・止まってから消えるまで・破片の設定だけを持つ
     //! RigidBody が無い配置物は、飛ばす時にキネマティックの RigidBody を足してから飛ばす
@@ -71,7 +72,7 @@ namespace NS::Game::Level
         //! 今の段階を返す
         [[nodiscard]] LaunchPhase Phase() const noexcept { return m_phase; }
 
-        //! 曲線か剛体で飛んでいる場合 true、それ以外の場合は false
+        //! 段階が Arc か Rigid の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsFlying() const noexcept { return m_phase != LaunchPhase::Resting; }
 
         //! 線速度 (m/s) を返す。曲線の間は直近の物理が使った速度、剛体の間は body の速度、置かれている間は 0
@@ -105,7 +106,7 @@ namespace NS::Game::Level
         // 持ち主が Scene に居なければ null
         [[nodiscard]] NS::Obj::RigidBody* EnsureRigidBody();
 
-        // 曲線の次の 1 フレームの変位 ÷ dt を body の速度に書き、進めたフレーム数を 1 つ増やす
+        // 曲線の次の 1 フレームの変位 ÷ dt を body の速度に、前転の角速度を回る速さに書き、進めたフレーム数を 1 増やす
         void WriteArcVelocity(NS::Obj::RigidBody& rigidBody, float dt);
 
         // 曲線の間に切った RigidBody の欄を、切る前の値へ戻す。body へ入るのは次の PrePhysicsStep
@@ -117,7 +118,7 @@ namespace NS::Game::Level
         // 当たりごと消す。RigidBody と collider の body を外し、描画と更新も止める
         void HideAndSleep();
 
-        float m_spinPerSpeed = 0.5f;
+        float m_spinPerSpeed = 0.2f; // 水平の速さ 1 m/s あたりの前転の角速度 (ラジアン/秒)
         float m_restLifeSeconds = 0.0f;
         float m_restAge = 0.0f;
         int m_debrisCount = 5;      // 壊れた時に出す破片の数
