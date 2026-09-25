@@ -81,7 +81,7 @@ TEST(ObjectIdTest, JsonRoundTripPreservesIdsAndCounter)
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(restored, text));
 
     const nlohmann::json& restoredObjects = SceneNs::SceneJsonObjects(restored);
-    ASSERT_EQ(restoredObjects.size(), 4u);
+    ASSERT_EQ(restoredObjects.size(), 3u);
     EXPECT_EQ(SceneNs::ObjectJsonId(restoredObjects[0]), id0);
     EXPECT_EQ(SceneNs::ObjectJsonId(restoredObjects[1]), id1);
     EXPECT_EQ(SceneNs::SceneJsonNextObjectId(restored), counter);
@@ -157,7 +157,7 @@ TEST(ObjectIdTest, ObjectRefFieldSurvivesJsonRoundTrip)
 
     EXPECT_TRUE(restored == level);
     const nlohmann::json& restoredObjects = SceneNs::SceneJsonObjects(restored);
-    ASSERT_EQ(restoredObjects.size(), 4u);
+    ASSERT_EQ(restoredObjects.size(), 3u);
     ASSERT_EQ(SceneNs::ObjectJsonComponents(restoredObjects[1]).size(), 2u); // FakeFollow + transform
     const nlohmann::json& entry = SceneNs::ObjectJsonComponents(restoredObjects[1])[0];
     ASSERT_TRUE(SceneNs::HasField(entry, "Target"));

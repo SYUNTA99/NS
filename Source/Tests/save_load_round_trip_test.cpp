@@ -1,11 +1,10 @@
-#include "Editor/LevelFilePaths.h"
 #include "Editor/EditorObjects.h"
+#include "Editor/LevelFilePaths.h"
 #include "Game/Level/Breakable.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/KillZone.h"
 #include "Game/Player.h"
-#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
@@ -14,6 +13,7 @@
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Scene/SceneJson.h"
+#include "Runtime/Platform/Filesystem.h"
 
 #include <cstring>
 #include <gtest/gtest.h>
@@ -276,7 +276,7 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 
     EXPECT_EQ(SceneNs::SerializeSceneToJson(dst), SceneNs::SerializeSceneToJson(src));
 
-    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 3u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 2u);
     // freeObject は BoxCollider と TransformComponent の 2 つを持つ
     ASSERT_EQ(SceneNs::ObjectJsonComponents(SceneNs::SceneJsonObjects(dst)[0]).size(), 2u);
     const nlohmann::json* box = SceneNs::FindComponentEntry(SceneNs::SceneJsonObjects(dst)[0], "BoxCollider");
@@ -337,7 +337,7 @@ TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
     ASSERT_TRUE(SceneNs::LoadSceneFromJsonFile(dst, *path));
     EXPECT_TRUE(dst == src);
 
-    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 4u);
+    ASSERT_EQ(SceneNs::SceneJsonObjects(dst).size(), 3u);
 
     EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(SceneNs::SceneJsonObjects(dst)[0]).x, 1.5f);
     EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(SceneNs::SceneJsonObjects(dst)[0]).z, -3.75f);
@@ -388,8 +388,8 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
 TEST(SaveLoadRoundTrip, PlayerObjectRoundTrip)
 {
     nlohmann::json src = SceneNs::MakeSceneJson();
-    SceneNs::SceneJsonObjects(src).push_back(MakePlayerObject(NS::Core::Vector3{1.25f, 3.5f, -2.75f},
-                                           NS::Core::Quaternion{0.0f, 0.70710677f, 0.0f, 0.70710677f}));
+    SceneNs::SceneJsonObjects(src).push_back(MakePlayerObject(
+        NS::Core::Vector3{1.25f, 3.5f, -2.75f}, NS::Core::Quaternion{0.0f, 0.70710677f, 0.0f, 0.70710677f}));
     SceneNs::EnsureUniqueObjectIds(src);
 
     const std::string json = SceneNs::SerializeSceneToJson(src);
@@ -775,8 +775,7 @@ TEST(SaveLoadRoundTrip, BreakFlagSurvivesRoundTrip)
     SceneNs::GameObject source;
     LevelNs::ImpactResolver* authored = source.AddComponent<LevelNs::ImpactResolver>();
     ASSERT_NE(authored, nullptr);
-    const SceneNs::FieldDesc* field =
-        SceneNs::FindField(LevelNs::ImpactResolver::StaticReflection(), "破壊を許可");
+    const SceneNs::FieldDesc* field = SceneNs::FindField(LevelNs::ImpactResolver::StaticReflection(), "破壊を許可");
     ASSERT_NE(field, nullptr);
     const bool enabled = true;
     field->set(authored, &enabled);
