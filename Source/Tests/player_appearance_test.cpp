@@ -3,6 +3,7 @@
 #include <Game/Level/CollisionInput.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManager.h>
+#include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Graphics/Mesh.h>
 #include <Runtime/Graphics/Renderer.h>
@@ -13,6 +14,7 @@
 #include <Runtime/Object/ObjectJson.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
+#include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Platform/Clock.h>
 #include <Runtime/Platform/Filesystem.h>
@@ -202,6 +204,69 @@ namespace
         }
         rig.player.OnUpdate();
         return rig.player.IsRebounding();
+    }
+
+    // 1 フレームを本番と同じ並びで回す。移動 (Update) → MeshRenderer が前の値を控える (Update) → 見た目 (Update + 50)
+    void StepFrame(SlamRig& rig)
+    {
+        rig.player.OnUpdate();
+        rig.renderer.OnUpdate();
+        rig.appearance.OnUpdate();
+    }
+
+    // 真正面の反動で弾き、反動のまま接地したフレームを回し終えるまで進める。空中の間は潰れていないことも見る
+    // 着地した場合 true
+    [[nodiscard]] bool FlyToTheReboundLanding(SlamRig& rig)
+    {
+        rig.appearance.OnUpdate();
+        HoldTheHitStop(rig);
+        if (!ReboundToward(rig, k_HeadOnRebound))
+        {
+            return false;
+        }
+        rig.renderer.OnUpdate();
+        rig.appearance.OnUpdate();
+        constexpr int k_FrameLimit = 300;
+        for (int i = 0; i < k_FrameLimit; ++i)
+        {
+            EXPECT_EQ(rig.renderer.DrawScale(), Vector3(1.0f, 1.0f, 1.0f)) << i;
+            StepFrame(rig);
+            if (rig.player.IsRebounding() && rig.player.IsGrounded())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 着地の潰れの縦の倍率。水平は体積を保つ 1 ÷ √縦
+    constexpr float k_LandingSquash = 0.8f;
+    // 着地の潰れから元の形へ戻すフレーム数
+    constexpr int k_RecoverFrames = 6;
+
+    // 着地の潰れから frame フレーム戻した所の縦の倍率
+    [[nodiscard]] float RecoveringVertical(int frame)
+    {
+        return k_LandingSquash +
+               (1.0f - k_LandingSquash) * static_cast<float>(frame) / static_cast<float>(k_RecoverFrames);
+    }
+
+    void ExpectLandingSquash(const Vector3& scale, float vertical)
+    {
+        const float horizontal = 1.0f / std::sqrt(vertical);
+        EXPECT_NEAR(scale.x, horizontal, 1e-5f);
+        EXPECT_NEAR(scale.y, vertical, 1e-5f);
+        EXPECT_NEAR(scale.z, horizontal, 1e-5f);
+    }
+
+    // 描く形の下端の高さ。玉は中心の周りで回すので縦の半分は変わらず、立ち姿は回さない
+    // どちらも縦の半分は境界の縦の半分 × 倍率
+    [[nodiscard]] float DrawnBottom(const MeshRenderer& renderer)
+    {
+        const NS::Core::AABB& bounds = renderer.GetMesh()->LocalBounds();
+        const Vector3 center{bounds.Center.x, bounds.Center.y, bounds.Center.z};
+        const Vector3 drawnCenter = Vector3::Transform(center, renderer.DrawWorldMatrix(1.0f));
+        return drawnCenter.y - bounds.Extents.y * renderer.DrawScale().y;
     }
 } // namespace
 
@@ -586,7 +651,7 @@ TEST(PlayerAppearanceSpinTest, StandingUpDrawsTheStandingLookUpright)
     rig.appearance.OnUpdate();
     ASSERT_GT(rig.appearance.SpinDegreesThisFrame(), 0.0f);
 
-    // 1 フレームの中の並びと同じく、描く側が前の値を控えてから見た目が書く
+    // 1 フレームの中の並びと同じく、MeshRenderer が前の値を控えてから見た目が書く
     rig.player.SetCurled(false);
     rig.renderer.OnUpdate();
     rig.appearance.OnUpdate();
@@ -625,7 +690,7 @@ TEST(PlayerAppearanceSpinTest, CurlingAgainStartsStillAboutTheFirstAxis)
     ExpectSameRotation(rig.renderer.LocalRotation(), TurnDegrees(Vector3{1.0f, 0.0f, 0.0f}, DegreesPerFrame(360.0f)));
 }
 
-// 描く側が前のフレームの回転を控えてから、見た目が今の回転を書く。逆の並びでは前 = 今になり補間が消える
+// MeshRenderer が前のフレームの回転を控えてから、見た目が今の回転を書く。逆の並びでは前 = 今になり補間が消える
 TEST(PlayerAppearanceSpinTest, WritesTheRotationAfterTheRendererKeepsThePreviousOne)
 {
     SpinRig rig;
@@ -647,4 +712,137 @@ TEST(PlayerAppearanceSpinTest, FreezeHoldsTheSpin)
 
     EXPECT_FLOAT_EQ(rig.appearance.SpinDegreesThisFrame(), 0.0f);
     ExpectSameRotation(rig.renderer.LocalRotation(), before);
+}
+
+// 反動のまま接地したフレームに、縦 0.8・水平 1 ÷ √0.8 へ潰れ、6 フレームで (1, 1, 1) ちょうどへ戻る
+// 次のフレームに反動が明けても潰れは続く。根のスケールは変えない
+TEST(PlayerAppearanceLandingTest, ReboundLandingSquashesThenRestoresInSixFrames)
+{
+    SlamRig rig;
+    ASSERT_TRUE(rig.player.IsBodySlamming());
+    const Vector3 rootScale = rig.stage.owner.Root().Scale();
+    ASSERT_TRUE(FlyToTheReboundLanding(rig));
+
+    ExpectLandingSquash(rig.renderer.DrawScale(), k_LandingSquash);
+    EXPECT_EQ(rig.stage.owner.Root().Scale(), rootScale);
+
+    for (int frame = 1; frame < k_RecoverFrames; ++frame)
+    {
+        StepFrame(rig);
+        ASSERT_FALSE(rig.player.IsRebounding());
+        ExpectLandingSquash(rig.renderer.DrawScale(), RecoveringVertical(frame));
+        EXPECT_EQ(rig.stage.owner.Root().Scale(), rootScale);
+    }
+    StepFrame(rig);
+    EXPECT_EQ(rig.renderer.DrawScale(), Vector3(1.0f, 1.0f, 1.0f));
+    StepFrame(rig);
+    EXPECT_EQ(rig.renderer.DrawScale(), Vector3(1.0f, 1.0f, 1.0f));
+}
+
+// 跳びの着地は潰さない。潰れは反動の着地だけの絵
+TEST(PlayerAppearanceLandingTest, JumpLandingDoesNotSquash)
+{
+    SlamRig rig;
+    rig.player.CancelBodySlam();
+    rig.player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    StepFrame(rig);
+    ASSERT_TRUE(rig.player.IsGrounded());
+
+    rig.player.SetJumpPressed();
+    rig.player.SetJumpHeld(true);
+    StepFrame(rig);
+    ASSERT_FALSE(rig.player.IsGrounded());
+
+    constexpr int k_FrameLimit = 300;
+    int landedAt = -1;
+    for (int i = 0; i < k_FrameLimit && landedAt < 0; ++i)
+    {
+        StepFrame(rig);
+        EXPECT_EQ(rig.renderer.DrawScale(), Vector3(1.0f, 1.0f, 1.0f)) << i;
+        if (rig.player.IsGrounded())
+        {
+            landedAt = i;
+        }
+    }
+    ASSERT_GE(landedAt, 0);
+    for (int i = 0; i < k_RecoverFrames; ++i)
+    {
+        StepFrame(rig);
+        EXPECT_EQ(rig.renderer.DrawScale(), Vector3(1.0f, 1.0f, 1.0f)) << i;
+    }
+}
+
+// 当たりの止めで移動が止まっている間は、着地の潰れの戻しも止まる。明ければ残りのフレーム数から続ける
+TEST(PlayerAppearanceLandingTest, FreezeHoldsTheLandingSquash)
+{
+    SlamRig rig;
+    ASSERT_TRUE(FlyToTheReboundLanding(rig));
+    constexpr int k_FramesBeforeTheFreeze = 2;
+    for (int frame = 1; frame <= k_FramesBeforeTheFreeze; ++frame)
+    {
+        StepFrame(rig);
+    }
+    const Vector3 held = rig.renderer.DrawScale();
+    ExpectLandingSquash(held, RecoveringVertical(k_FramesBeforeTheFreeze));
+
+    // 止めの間は移動が回らない。MeshRenderer と見た目だけが回る
+    rig.player.SetActive(false);
+    for (int i = 0; i < 4; ++i)
+    {
+        rig.renderer.OnUpdate();
+        rig.appearance.OnUpdate();
+        EXPECT_EQ(rig.renderer.DrawScale(), held) << i;
+    }
+    rig.player.SetActive(true);
+
+    for (int frame = k_FramesBeforeTheFreeze + 1; frame < k_RecoverFrames; ++frame)
+    {
+        StepFrame(rig);
+        ExpectLandingSquash(rig.renderer.DrawScale(), RecoveringVertical(frame));
+    }
+    StepFrame(rig);
+    EXPECT_EQ(rig.renderer.DrawScale(), Vector3(1.0f, 1.0f, 1.0f));
+}
+
+// 戻すフレーム数が 0 なら、反動の着地でも潰さない
+TEST(PlayerAppearanceLandingTest, ZeroRecoverFramesDoesNotSquash)
+{
+    SlamRig rig;
+    const NS::Obj::FieldDesc* recoverFrames =
+        NS::Obj::FindField(rig.appearance.GetReflection(), "着地の潰れを戻すフレーム数");
+    ASSERT_NE(recoverFrames, nullptr);
+    const int zero = 0;
+    recoverFrames->set(&rig.appearance, &zero);
+
+    ASSERT_TRUE(FlyToTheReboundLanding(rig));
+    EXPECT_EQ(rig.renderer.DrawScale(), Vector3(1.0f, 1.0f, 1.0f));
+    for (int i = 0; i < k_RecoverFrames; ++i)
+    {
+        StepFrame(rig);
+        EXPECT_EQ(rig.renderer.DrawScale(), Vector3(1.0f, 1.0f, 1.0f)) << i;
+    }
+}
+
+// 着地のフレームの玉も、次のフレームに持ち替えた立ち姿も、潰れた描く形の下端は潰れていない形の下端 (床) のまま
+TEST_F(PlayerAppearanceTest, ReboundLandingSquashKeepsTheDrawnBottomOnTheFloorAcrossTheLookSwap)
+{
+    SlamRig rig;
+    rig.appearance.ResolveAssets(*m_assets);
+    ASSERT_TRUE(FlyToTheReboundLanding(rig));
+    ASSERT_TRUE(rig.appearance.IsCurled());
+    ASSERT_NE(rig.renderer.GetMesh(), nullptr);
+    const NS::Core::AABB& ballBounds = rig.renderer.GetMesh()->LocalBounds();
+    const float ballBottom = rig.stage.owner.Root().Position().y + ballBounds.Center.y - ballBounds.Extents.y;
+    ASSERT_LT(rig.renderer.DrawScale().y, 1.0f);
+    EXPECT_NEAR(DrawnBottom(rig.renderer), ballBottom, 1e-4f);
+
+    StepFrame(rig);
+    ASSERT_FALSE(rig.appearance.IsCurled());
+    ASSERT_LT(rig.renderer.DrawScale().y, 1.0f);
+    const NS::Core::AABB& standingBounds = rig.renderer.GetMesh()->LocalBounds();
+    const float standingBottom =
+        rig.stage.owner.Root().Position().y + standingBounds.Center.y - standingBounds.Extents.y;
+    EXPECT_NEAR(DrawnBottom(rig.renderer), standingBottom, 1e-4f);
+    // 持ち替えても下端は同じ床の上
+    EXPECT_NEAR(standingBottom, ballBottom, 1e-3f);
 }

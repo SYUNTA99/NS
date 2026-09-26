@@ -23,6 +23,7 @@ namespace NS::Obj
     //! @details Collect が DrawWorldMatrix(context.alpha) を FrameCB へ詰めた DrawItem を積む
     //! 固定ステップの物理結果を、可変フレームレートでなめらかに補間して描く
     //! 描く時だけの局所の回転を持ち、根の行列より先に掛ける。根の Transform は書き換えない
+    //! 描く時だけの世界の軸の倍率も持ち、描く形の下端の真ん中を中心に最後に掛ける
     class MeshRenderer : public Component, public IRenderable
     {
     public:
@@ -85,8 +86,30 @@ namespace NS::Obj
         //! 今のフレームの局所の回転を返す。書かれていなければ単位回転
         [[nodiscard]] const NS::Core::Quaternion& LocalRotation() const noexcept { return m_localRotation; }
 
+        //! @brief 描く時だけ世界の x / y / z に掛ける倍率を書く
+        //! @details 局所の回転と根の行列を掛けた後に、世界の軸で掛ける。中心は描く形の下端の真ん中で、
+        //! 縦に潰しても下端の高さは変わらない。描く形は、差された局所の境界か mesh の局所の境界を
+        //! 根の補間 world 行列で包んだ箱で、局所の回転は含めない。どちらも無ければ根の原点を中心にする
+        //! 保存はせず、根の Transform と当たりは変えない
+        //! 今のフレームの値だけを書き、前のフレームの値は OnUpdate が控える
+        //! Update 帯の既定の優先度で回る OnUpdate より後に書くこと。先に書くと補間されない
+        //! 有限の正でない成分 (非数・無限大・0 以下) を含む倍率は何も変えない
+        //! @param[in] scale 世界の軸ごとの倍率。(1, 1, 1) で倍率の無い形
+        //! @return 成分が全部有限の正で書いた場合 true、それ以外の場合は false
+        [[nodiscard]] bool SetDrawScale(const NS::Core::Vector3& scale) noexcept;
+        //! @brief 今と前のフレームの描く時だけの倍率を同じ値にする
+        //! @details 補間せずにこの倍率で描く。書くのが OnUpdate の前でも後でも、OnUpdate が回らなくても変わらない
+        //! 有限の正でない成分 (非数・無限大・0 以下) を含む倍率は何も変えない
+        //! @param[in] scale 世界の軸ごとの倍率。(1, 1, 1) で倍率の無い形
+        //! @return 成分が全部有限の正で書いた場合 true、それ以外の場合は false
+        [[nodiscard]] bool SnapDrawScale(const NS::Core::Vector3& scale) noexcept;
+        //! 今のフレームの描く時だけの倍率を返す。書かれていなければ (1, 1, 1)
+        [[nodiscard]] const NS::Core::Vector3& DrawScale() const noexcept { return m_drawScale; }
+
         //! @brief 描く world 行列を返す
         //! @details 前と今の局所の回転を alpha で補間した行列を、根の補間 world 行列の前に掛ける
+        //! 前と今の描く時だけの倍率を alpha で補間し、描く形の下端の真ん中を中心に世界の軸で最後に掛ける。
+        //! 補間した倍率が (1, 1, 1) の時は掛けない。持ち主が無い時は局所の回転の行列だけを返す
         //! @param[in] alpha 前の固定フレームから今の固定フレームまでの補間の割合 0..1
         [[nodiscard]] NS::Core::Matrix DrawWorldMatrix(float alpha) const noexcept;
 
@@ -100,15 +123,18 @@ namespace NS::Obj
         //! Material の renderPriority で距離同値時のタイブレークに使う
         [[nodiscard]] int SortPriority() const noexcept override;
 
-        //! mesh の局所 AABB を owner の world 行列で包んだワールド AABB。mesh / owner 不在なら原点の点
+        //! @brief 描く形の局所の境界を owner の world 行列で包んだワールド AABB を返す
+        //! @details 局所の境界は差された境界を優先し、無ければ mesh の局所 AABB
+        //! mesh か owner が無い時は、中心が原点で半分の幅が 1 の AABB
+        //! 描く時だけの倍率がある間は、前と今の倍率の成分ごとの大きい方を、下端の真ん中を中心に掛ける
         [[nodiscard]] NS::Core::AABB WorldBounds() const noexcept override;
 
         //! OwningScene に self を IRenderable として登録する。Owner/Scene が null なら何もしない
         void OnStart() override;
         //! Owner の OwningScene から self を解除する。無効ポインタを残さないよう Scene 破棄前に呼ぶ
         void OnEndPlay() override;
-        //! @brief 今の局所の回転を前のフレームの値として控える
-        //! @details 局所の回転は、これより大きい優先度で書くこと。非活性の間は控えないので、活性に戻った
+        //! @brief 今の局所の回転と描く時だけの倍率を前のフレームの値として控える
+        //! @details 局所の回転と倍率は、これより大きい優先度で書くこと。非活性の間は控えないので、活性に戻った
         //! 最初のフレームは止める前の値から補間される
         void OnUpdate() override;
 
@@ -123,6 +149,9 @@ namespace NS::Obj
         NS_REFLECT_END()
 
     private:
+        // 描く形の局所の境界。差された境界を先に、無ければ mesh の境界。どちらも無ければ nullptr
+        [[nodiscard]] const NS::Core::AABB* DrawnLocalBounds() const noexcept;
+
         NS::Gfx::Mesh* m_mesh = nullptr;                 // 描画する Mesh (非所有)
         NS::Gfx::Material* m_material = nullptr;         // 描画に使う Material (非所有)
         NS::Core::Vector3 m_baseColor{1.0f, 1.0f, 1.0f}; // 個体色、lighting と別系統
@@ -144,5 +173,9 @@ namespace NS::Obj
         // 描く時だけの局所の回転。同居する component が毎フレーム書き直すので保存しない
         NS::Core::Quaternion m_localRotation = NS::Core::Quaternion::Identity;
         NS::Core::Quaternion m_previousLocalRotation = NS::Core::Quaternion::Identity; // 前のフレームの値。補間の始点
+
+        // 描く時だけの世界の軸の倍率。他の component が書き直すので保存しない
+        NS::Core::Vector3 m_drawScale{1.0f, 1.0f, 1.0f};
+        NS::Core::Vector3 m_previousDrawScale{1.0f, 1.0f, 1.0f}; // 前のフレームの値。補間の始点
     };
 } // namespace NS::Obj

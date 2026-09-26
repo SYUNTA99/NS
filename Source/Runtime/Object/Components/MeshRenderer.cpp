@@ -10,6 +10,20 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
+#include <cmath>
+
+namespace
+{
+    // 描く時だけの倍率の既定。この値の間は描く行列にも境界にも何も掛けない
+    const NS::Core::Vector3 k_NoDrawScale{1.0f, 1.0f, 1.0f};
+
+    // 0 以下と非数・無限大の成分を弾き、全部が有限の正の時だけ真を返す
+    [[nodiscard]] bool IsPositiveFiniteScale(const NS::Core::Vector3& scale) noexcept
+    {
+        return std::isfinite(scale.x) && std::isfinite(scale.y) && std::isfinite(scale.z) && scale.x > 0.0f &&
+               scale.y > 0.0f && scale.z > 0.0f;
+    }
+} // namespace
 
 namespace NS::Obj
 {
@@ -88,8 +102,43 @@ namespace NS::Obj
 
     void MeshRenderer::OnUpdate()
     {
-        // Update 帯の既定の優先度で回る。局所の回転はこれより後に書かれる前提で、書き直される前の値を控える
+        // Update 帯の既定の優先度で回る。局所の回転と倍率はこれより後に書かれる前提で、書き直される前の値を控える
         m_previousLocalRotation = m_localRotation;
+        m_previousDrawScale = m_drawScale;
+    }
+
+    bool MeshRenderer::SetDrawScale(const NS::Core::Vector3& scale) noexcept
+    {
+        if (!IsPositiveFiniteScale(scale))
+        {
+            return false;
+        }
+        m_drawScale = scale;
+        return true;
+    }
+
+    bool MeshRenderer::SnapDrawScale(const NS::Core::Vector3& scale) noexcept
+    {
+        if (!IsPositiveFiniteScale(scale))
+        {
+            return false;
+        }
+        m_drawScale = scale;
+        m_previousDrawScale = scale;
+        return true;
+    }
+
+    const NS::Core::AABB* MeshRenderer::DrawnLocalBounds() const noexcept
+    {
+        if (m_hasLocalBoundsOverride)
+        {
+            return &m_localBoundsOverride;
+        }
+        if (m_mesh != nullptr)
+        {
+            return &m_mesh->LocalBounds();
+        }
+        return nullptr;
     }
 
     NS::Core::Matrix MeshRenderer::DrawWorldMatrix(float alpha) const noexcept
@@ -102,7 +151,28 @@ namespace NS::Obj
             return localMatrix;
         }
         // 回転を先に掛ける。根のスケールは根の軸に残り、局所の回転と一緒に回らない
-        return localMatrix * owner->Root().InterpolatedWorldMatrix(alpha);
+        const NS::Core::Matrix root = owner->Root().InterpolatedWorldMatrix(alpha);
+        const NS::Core::Matrix drawn = localMatrix * root;
+        const NS::Core::Vector3 scale = NS::Core::Vector3::Lerp(m_previousDrawScale, m_drawScale, alpha);
+        // 倍率が 1 でも、下端の真ん中へ移して戻す足し引きが下の桁を丸めることがある。倍率の無い間は掛けずに返す
+        if (scale == k_NoDrawScale)
+        {
+            return drawn;
+        }
+
+        // 中心は描く形の下端の真ん中。局所の回転は含めない。回した箱を包む箱は玉の下端より下へ出るので、
+        // 中心が床より下に来て、潰すと玉が床へめり込む
+        NS::Core::Vector3 pivot{root._41, root._42, root._43};
+        if (const NS::Core::AABB* localBounds = DrawnLocalBounds())
+        {
+            NS::Core::AABB worldBounds{};
+            localBounds->Transform(worldBounds, root);
+            pivot = NS::Core::Vector3{
+                worldBounds.Center.x, worldBounds.Center.y - worldBounds.Extents.y, worldBounds.Center.z};
+        }
+        // 倍率は世界の軸で最後に掛ける。局所の回転と根の回転に依らず世界の縦に潰れる
+        return drawn * NS::Core::Matrix::CreateTranslation(-pivot) * NS::Core::Matrix::CreateScale(scale) *
+               NS::Core::Matrix::CreateTranslation(pivot);
     }
 
     void MeshRenderer::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
@@ -187,6 +257,18 @@ namespace NS::Obj
         {
             m_mesh->LocalBounds().Transform(out, owner->Root().WorldMatrix());
         }
+
+        // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま
+        const NS::Core::Vector3 scale = NS::Core::Vector3::Max(m_previousDrawScale, m_drawScale);
+        if (scale == k_NoDrawScale)
+        {
+            return out;
+        }
+        const float bottom = out.Center.y - out.Extents.y;
+        out.Extents.x *= scale.x;
+        out.Extents.y *= scale.y;
+        out.Extents.z *= scale.z;
+        out.Center.y = bottom + out.Extents.y;
         return out;
     }
 

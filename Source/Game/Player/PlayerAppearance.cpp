@@ -163,6 +163,60 @@ namespace NS::Game::Player
             Uncurl();
         }
         AdvanceSpin();
+        AdvanceLandingSquash();
+    }
+
+    void PlayerAppearance::AdvanceLandingSquash() noexcept
+    {
+        if (!m_player->IsActive())
+        {
+            // 当たりの止めで移動が止まっている間は、潰れの戻しも止める
+            return;
+        }
+        NS::Obj::MeshRenderer* renderer = nullptr;
+        if (Owner() != nullptr)
+        {
+            renderer = Owner()->FindComponent<NS::Obj::MeshRenderer>();
+        }
+        if (renderer == nullptr)
+        {
+            return;
+        }
+
+        // 反動の出口の条件が成り立ったフレームが着地。移動の後に回るので、このフレームの接地を見る
+        // 次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
+        // 戻すフレーム数が 0 以下では戻す手段が無く、潰れたまま残るので潰さない
+        float vertical = 1.0f;
+        if (m_player->IsRebounding() && m_player->ShouldLand() && m_landingSquashRecoverSteps > 0)
+        {
+            m_landingSquashRemaining = m_landingSquashRecoverSteps;
+            vertical = m_landingSquash;
+        }
+        else if (m_landingSquashRemaining > 0)
+        {
+            --m_landingSquashRemaining;
+            if (m_landingSquashRemaining == 0)
+            {
+                // 補間の残差を残さない。元の形をそのまま書く
+                (void)renderer->SetDrawScale(NS::Core::Vector3{1.0f, 1.0f, 1.0f});
+                return;
+            }
+            const float total = static_cast<float>(m_landingSquashRecoverSteps);
+            const float elapsed = total - static_cast<float>(m_landingSquashRemaining);
+            vertical = m_landingSquash + (1.0f - m_landingSquash) * (elapsed / total);
+        }
+        else
+        {
+            return;
+        }
+
+        // 水平は体積を保つ 1 ÷ √縦
+        const float horizontal = 1.0f / std::sqrt(vertical);
+        if (!renderer->SetDrawScale(NS::Core::Vector3{horizontal, vertical, horizontal}))
+        {
+            NS_LOG_WARN(Game, "PlayerAppearance: 着地の潰れが有限の正でなく、潰さなかった: {}", m_landingSquash);
+            m_landingSquashRemaining = 0;
+        }
     }
 
     void PlayerAppearance::ResolveAssets(NS::Obj::AssetManager& assets)

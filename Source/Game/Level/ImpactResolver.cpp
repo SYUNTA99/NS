@@ -14,6 +14,7 @@
 #include "Runtime/Object/Components/BoxCollider.h"
 #include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/Collider.h"
+#include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/ObjectList.h"
@@ -489,6 +490,11 @@ namespace NS::Game::Level
         if (m_pendingTargetPlaced && target != nullptr)
         {
             target->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * m_pushInDistance);
+            // 相手も自機と同じく、押し返されている反発の時だけ縮める
+            if (!m_pendingBreak)
+            {
+                ShrinkPlacedTarget(*target);
+            }
         }
 
         if (NS::Obj::CameraBrain* brain = scene->CameraBrain())
@@ -507,6 +513,7 @@ namespace NS::Game::Level
         {
             m_movement->SetActive(true);
         }
+        RestoreTargetShape();
         m_centerHitFlashRemaining = 0;
     }
 
@@ -575,6 +582,8 @@ namespace NS::Game::Level
             m_recoverRemaining = m_stretchRecoverSteps;
             m_scaleHeld = false;
         }
+        // 相手は元の形で飛ぶ
+        RestoreTargetShape();
 
         NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
@@ -693,12 +702,66 @@ namespace NS::Game::Level
 
     NS::Core::Vector3 ImpactResolver::ScaledAlongImpact(float along, float height) const noexcept
     {
+        const NS::Core::Vector3 factors = AlongImpactFactors(along, height);
+        return NS::Core::Vector3{m_scaleHome.x * factors.x, m_scaleHome.y * factors.y, m_scaleHome.z * factors.z};
+    }
+
+    NS::Core::Vector3 ImpactResolver::AlongImpactFactors(float along, float height) const noexcept
+    {
         // 衝突は水平でしか起きない。進行の軸成分の 2 乗で倍率を混ぜ、軸に載った衝突では素の倍率になる
         const float dx2 = m_pendingImpactDir.x * m_pendingImpactDir.x;
         const float dz2 = m_pendingImpactDir.z * m_pendingImpactDir.z;
-        return NS::Core::Vector3{m_scaleHome.x * (1.0f + (along - 1.0f) * dx2),
-                                 m_scaleHome.y * height,
-                                 m_scaleHome.z * (1.0f + (along - 1.0f) * dz2)};
+        return NS::Core::Vector3{1.0f + (along - 1.0f) * dx2, height, 1.0f + (along - 1.0f) * dz2};
+    }
+
+    void ImpactResolver::ShrinkPlacedTarget(NS::Obj::GameObject& target)
+    {
+        NS::Obj::MeshRenderer* look = target.FindComponent<NS::Obj::MeshRenderer>();
+        if (look == nullptr)
+        {
+            return;
+        }
+        // 当たりは根の世界のスケールから形を作るので、根は潰さず描く形だけを縮める
+        // 前と今を揃えて書く。MeshRenderer の OnUpdate の前後に依らず、元の形から補間せずに縮んだ形で描く
+        if (!look->SnapDrawScale(AlongImpactFactors(m_squashThickness, m_squashHeight)))
+        {
+            NS_LOG_WARN(Game,
+                        "潰れの厚みか伸び上がりが有限の正でなく、相手を縮めなかった: 厚み {} 伸び上がり {}",
+                        m_squashThickness,
+                        m_squashHeight);
+            return;
+        }
+        m_targetShapeHeld = true;
+    }
+
+    void ImpactResolver::RestoreTargetShape()
+    {
+        if (!m_targetShapeHeld)
+        {
+            return;
+        }
+        m_targetShapeHeld = false;
+        if (Owner() == nullptr)
+        {
+            return;
+        }
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+        {
+            return;
+        }
+        NS::Obj::GameObject* target = scene->Objects().FindObject(m_pendingTarget);
+        if (target == nullptr)
+        {
+            return;
+        }
+        NS::Obj::MeshRenderer* look = target->FindComponent<NS::Obj::MeshRenderer>();
+        if (look == nullptr)
+        {
+            return;
+        }
+        // 縮めた時と同じく前と今を揃えて書き、縮んだ形から補間しない
+        (void)look->SnapDrawScale(NS::Core::Vector3{1.0f, 1.0f, 1.0f});
     }
 
     int ImpactResolver::ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept

@@ -51,8 +51,10 @@ namespace NS::Game::Level
     //! Breakable の body と照合して決める。NS::Phys は NS::Obj を知らないので、
     //! body から持ち主を引く関数は無い
     //! 衝突の瞬間は自機を数固定ステップ止め、反発・発射・破壊を明けたフレームへ保留する
+    //! 反発の止めの間は、置かれていた相手の描く形を MeshRenderer の描く時だけの倍率で縮め、明けに戻す
     //! 重さは相手の RigidBody の質量で、RigidBody が無ければ 1
-    //! 依存: NS::Game::Player::PlayerComponent, Breakable, LaunchedBody, NS::Obj::RigidBody, CollisionInput, HitTier
+    //! 依存: NS::Game::Player::PlayerComponent, Breakable, LaunchedBody, NS::Obj::RigidBody, NS::Obj::MeshRenderer,
+    //! CollisionInput, HitTier
     class ImpactResolver : public NS::Obj::OverlayRenderer
     {
     public:
@@ -88,7 +90,7 @@ namespace NS::Game::Level
         //! 白フラッシュの残りフレーム数。出していない場合 0
         [[nodiscard]] int CenterHitFlashStepsRemaining() const noexcept { return m_centerHitFlashRemaining; }
 
-        //! 凍結の途中で外れても移動を止めたままにしない
+        //! 凍結の途中で外れても移動を止めたままにせず、縮めた相手の描く形も元へ戻す
         void OnEndPlay() override;
 
         //! 中心近くで当てた直後だけ、フレームごとに減衰する白を画面全体へ重ねる
@@ -145,7 +147,7 @@ namespace NS::Game::Level
         // 事前条件: m_movement が非 null
         [[nodiscard]] Breakable* FindOverlapped() const;
 
-        // 凍結を掛ける。自機を寝かせて潰し、置かれていた相手を食い込ませ、カメラを揺らし始める
+        // 凍結を掛ける。自機を寝かせて潰し、置かれていた相手を食い込ませて描く形を縮める。カメラを揺らし始める
         void BeginFreeze(int stopSteps);
 
         // 解放後のフレームで伸びた形から戻す。前半で縮む側へ行き過ぎ、後半で配置で決めた元の形へ戻る
@@ -154,6 +156,15 @@ namespace NS::Game::Level
 
         // 進行の軸だけ倍率を効かせた描画スケールを作る。縦は別の倍率で受ける
         [[nodiscard]] NS::Core::Vector3 ScaledAlongImpact(float along, float height) const noexcept;
+
+        // 元の形を 1 とした倍率。進行の軸の成分の 2 乗で along を x と z に混ぜ、縦は height
+        [[nodiscard]] NS::Core::Vector3 AlongImpactFactors(float along, float height) const noexcept;
+
+        // 置かれていた相手の描く形を、自機の潰れと同じ倍率で突進の向きに縮める。描く形の無い相手には何もしない
+        void ShrinkPlacedTarget(NS::Obj::GameObject& target);
+
+        // 縮めた相手の描く形を元の形へ戻す。縮めていない時と、相手が消えていた時は何もしない
+        void RestoreTargetShape();
 
         // 止めていた結果を適用する。反発は自機の反動を始めて相手を発射する。貫通は速度を書いて破壊する
         void ReleaseHitStop();
@@ -192,8 +203,8 @@ namespace NS::Game::Level
         float m_pushInDistance = 0.06f;   // 凍結の頭で置かれていた相手を発射方向へ食い込ませる距離
         float m_shakeAmplitude = 0.05f;   // 凍結中の往復の振れ幅。質量 1 で半分になる
         float m_cameraShakeScale = 0.06f; // カメラ揺れの上下振れ幅の基準
-        float m_squashThickness = 0.7f;   // 凍結中の進行方向の厚みの倍率
-        float m_squashHeight = 1.1f;      // 凍結中の高さの倍率
+        float m_squashThickness = 0.7f;   // 凍結中の自機と置かれていた相手の、進行方向の厚みの倍率
+        float m_squashHeight = 1.1f;      // 凍結中の自機と置かれていた相手の、高さの倍率
         float m_stretchAlong = 1.2f;      // 解放のフレームの伸びの倍率。反発は縦、貫通は進行の軸
         // 止めの潰れ → 明けの伸び → 行き過ぎ → 元の玉を、続けて 1 つの弾む動きに見せる
         // 0.5 は縦 0.9 まで縮む。0.25 (縦 0.95) では揺れに見え、1.0 (縦 0.8) は止めの潰れに近く 2 回目の衝突に見える
@@ -234,6 +245,7 @@ namespace NS::Game::Level
         NS::Obj::ObjectRef m_pendingTarget{};                   // 発射する相手。凍結をまたぐので使うたびに引く
         // 検知のフレームに相手が置かれていたか。食い込み・振動・元位置へ戻すのはこの時だけ
         bool m_pendingTargetPlaced = false;
+        bool m_targetShapeHeld = false; // 相手の描く形を縮めたまま止めている最中か
 
         bool m_didRebound = false;   // 直近の更新で反発を検知したか
         bool m_didBreak = false;     // 直近の更新で貫通を検知したか

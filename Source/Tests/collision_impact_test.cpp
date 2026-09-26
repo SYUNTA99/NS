@@ -19,6 +19,7 @@
 #include <Runtime/Object/Components/MeshRenderer.h>
 #include <Runtime/Object/Components/PlayerInput.h>
 #include <Runtime/Object/Components/RigidBody.h>
+#include <Runtime/Object/Components/SphereCollider.h>
 #include <Runtime/Object/Components/TransformComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/ObjectList.h>
@@ -89,6 +90,8 @@ namespace
         std::int16_t targetLayer = 1;
         // 0 以外なら、この列にもう 1 体の壊せる的を同じ段に置く
         std::int16_t extraTargetCell = 0;
+        // 偽なら的から MeshRenderer を外し、描く形の無い的にする
+        bool targetWithMeshRenderer = true;
     };
 
     // 置かれた壊せる物と同じ RigidBody。飛ぶまではキネマティックで、面の手触りは押し飛ばしを調整した値
@@ -169,6 +172,17 @@ namespace
         {
             SceneNs::ObjectJsonComponents(target).push_back(MakeLaunchableRigidBodyEntry());
             SceneNs::ObjectJsonComponents(target).push_back(SceneNs::MakeComponentEntry("Breakable"));
+        }
+        if (!course.targetWithMeshRenderer)
+        {
+            nlohmann::json& components = SceneNs::ObjectJsonComponents(target);
+            for (std::size_t i = components.size(); i > 0; --i)
+            {
+                if (SceneNs::ComponentEntryType(components[i - 1]) == "MeshRenderer")
+                {
+                    components.erase(i - 1);
+                }
+            }
         }
         SceneNs::SceneJsonObjects(data).push_back(target);
         scene.LoadJson(std::move(data));
@@ -2402,6 +2416,168 @@ TEST(CollisionImpact, ReleaseRestoresRockExactlyBeforeLaunch)
     ASSERT_NE(rig.rigidBody, nullptr);
     EXPECT_TRUE(rig.targetBox->IsActiveSelf());
     EXPECT_EQ(rig.targetBox->BodyId(), rig.rigidBody->BodyId());
+}
+
+// 止めの頭に、置かれていた相手の描く形を自機の潰れと同じ倍率で突進の向きに縮める。根のスケールと当たりの球は変えない
+// 突進は +X と +Z の 2 通り。厚みは進行の軸にだけ掛かる
+TEST(CollisionImpact, FreezeShrinksThePlacedTargetDrawnShapeAlongTheRush)
+{
+    for (const bool alongZ : {false, true})
+    {
+        SCOPED_TRACE(alongZ);
+        SceneNs::Scene scene;
+        SlamCourse course = k_NearCourse;
+        course.sphereTarget = true;
+        course.alongZ = alongZ;
+        Rig rig = BuildSlam(scene, course);
+        ASSERT_NE(rig.target, nullptr);
+        SceneNs::MeshRenderer* look = rig.target->FindComponent<SceneNs::MeshRenderer>();
+        ASSERT_NE(look, nullptr);
+        const SceneNs::SphereCollider* sphere = rig.target->FindComponent<SceneNs::SphereCollider>();
+        ASSERT_NE(sphere, nullptr);
+        const Vector3 rootScale = rig.target->Root().Scale();
+        const float radius = sphere->WorldSphere().radius;
+        BeginSlam(scene, rig, k_RunSpeed, 0.0f, alongZ);
+
+        // 進行の軸の成分の 2 乗は進行の軸で 1、もう一方の水平の軸で 0 なので、厚み 0.7 は進行の軸だけに掛かり、
+        // 縦は伸び上がり 1.1
+        Vector3 rush{1.0f, 0.0f, 0.0f};
+        Vector3 shrunk{0.7f, 1.1f, 1.0f};
+        if (alongZ)
+        {
+            rush = Vector3{0.0f, 0.0f, 1.0f};
+            shrunk = Vector3{1.0f, 1.1f, 0.7f};
+        }
+
+        ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+        ASSERT_TRUE(rig.impact->DidRebound());
+        ASSERT_GT(rig.impact->LastImpact().hitStopSteps, 0);
+        ASSERT_NEAR(rig.impact->LastImpact().impactDir.x, rush.x, 1e-6f);
+        ASSERT_NEAR(rig.impact->LastImpact().impactDir.z, rush.z, 1e-6f);
+        // 縮むのは止めの頭から。検知のフレームは元の形
+        EXPECT_EQ(look->DrawScale(), Vector3(1.0f, 1.0f, 1.0f));
+
+        Step(scene, rig);
+        ASSERT_FALSE(rig.movement->IsActiveSelf());
+        EXPECT_NEAR(look->DrawScale().x, shrunk.x, 1e-5f);
+        EXPECT_NEAR(look->DrawScale().y, shrunk.y, 1e-5f);
+        EXPECT_NEAR(look->DrawScale().z, shrunk.z, 1e-5f);
+        EXPECT_EQ(rig.target->Root().Scale(), rootScale);
+        EXPECT_FLOAT_EQ(sphere->WorldSphere().radius, radius);
+    }
+}
+
+// 明けのフレームに相手の描く形を元へ戻してから飛ばす。前のフレームの値も揃え、縮んだ形から補間しない
+TEST(CollisionImpact, ReleaseRestoresTheTargetDrawnShapeBeforeItFlies)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    ASSERT_NE(rig.target, nullptr);
+    SceneNs::MeshRenderer* look = rig.target->FindComponent<SceneNs::MeshRenderer>();
+    ASSERT_NE(look, nullptr);
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    Step(scene, rig);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    ASSERT_NE(look->DrawScale(), Vector3(1.0f, 1.0f, 1.0f));
+
+    ASSERT_LT(StepsUntilMovementActive(scene, rig, 60), 60);
+
+    EXPECT_EQ(look->DrawScale(), Vector3(1.0f, 1.0f, 1.0f));
+    const NS::Core::Matrix drawn = look->DrawWorldMatrix(0.0f);
+    const NS::Core::Matrix root = rig.target->Root().InterpolatedWorldMatrix(0.0f);
+    for (int row = 0; row < 4; ++row)
+    {
+        for (int column = 0; column < 4; ++column)
+        {
+            EXPECT_EQ(drawn.m[row][column], root.m[row][column]) << row << "," << column;
+        }
+    }
+    LevelNs::LaunchedBody* body = HitBody(rig);
+    ASSERT_NE(body, nullptr);
+    EXPECT_TRUE(body->IsFlying());
+}
+
+// 止めの途中で裁定が外れても、相手を縮んだ形のまま残さない
+TEST(CollisionImpact, OnEndPlayRestoresTheShrunkTarget)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    ASSERT_NE(rig.target, nullptr);
+    SceneNs::MeshRenderer* look = rig.target->FindComponent<SceneNs::MeshRenderer>();
+    ASSERT_NE(look, nullptr);
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    Step(scene, rig);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    ASSERT_NE(look->DrawScale(), Vector3(1.0f, 1.0f, 1.0f));
+
+    rig.impact->OnEndPlay();
+
+    EXPECT_EQ(look->DrawScale(), Vector3(1.0f, 1.0f, 1.0f));
+}
+
+// 飛んでいる相手は止めの間も飛び続けるので縮めない。食い込みと振動と同じく、置かれていた相手だけの絵
+TEST(CollisionImpact, FlyingTargetKeepsItsDrawnShapeThroughTheHitStop)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    ASSERT_NE(rig.target, nullptr);
+    SceneNs::MeshRenderer* look = rig.target->FindComponent<SceneNs::MeshRenderer>();
+    ASSERT_NE(look, nullptr);
+    LevelNs::LaunchedBody* body = rig.target->AddComponent<LevelNs::LaunchedBody>();
+    body->LaunchRigid(Vector3{0.0f, 0.0f, 0.0f});
+    ASSERT_TRUE(body->IsFlying());
+
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    ASSERT_TRUE(rig.impact->DidRebound());
+    ASSERT_GT(rig.impact->LastImpact().hitStopSteps, 0);
+    Step(scene, rig);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+
+    EXPECT_EQ(look->DrawScale(), Vector3(1.0f, 1.0f, 1.0f));
+}
+
+// 貫通は押し勝っている側なので、自機と同じく相手も縮めない
+TEST(CollisionImpact, BreakLeavesTheTargetDrawnShapeAlone)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
+    rig.breakable->SetToughness(1.0f);
+    ASSERT_NE(rig.target, nullptr);
+    SceneNs::MeshRenderer* look = rig.target->FindComponent<SceneNs::MeshRenderer>();
+    ASSERT_NE(look, nullptr);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    ASSERT_TRUE(rig.impact->DidBreak());
+    Step(scene, rig);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+
+    EXPECT_EQ(look->DrawScale(), Vector3(1.0f, 1.0f, 1.0f));
+}
+
+// 描く形の無い相手でも、止めて明けて飛ばすまでが通る
+TEST(CollisionImpact, TargetWithoutAMeshRendererStillStopsAndFlies)
+{
+    SceneNs::Scene scene;
+    SlamCourse course = k_NearCourse;
+    course.targetWithMeshRenderer = false;
+    Rig rig = BuildSlam(scene, course);
+    ASSERT_NE(rig.target, nullptr);
+    ASSERT_EQ(rig.target->FindComponent<SceneNs::MeshRenderer>(), nullptr);
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    ASSERT_TRUE(rig.impact->DidRebound());
+    Step(scene, rig);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+
+    ASSERT_LT(StepsUntilMovementActive(scene, rig, 60), 60);
+
+    LevelNs::LaunchedBody* body = HitBody(rig);
+    ASSERT_NE(body, nullptr);
+    EXPECT_TRUE(body->IsFlying());
 }
 
 // 凍結中だけカメラが揺れる。ImpactResolver がシーンの CameraBrain へ揺れを渡す
