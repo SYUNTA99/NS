@@ -271,6 +271,9 @@ namespace NS::App
             (*it)->OnDetach();
         }
 
+        // 終了の後は Update が来ないので、止めないと最後に送った振動が実機に残る
+        NS::Platform::Input::Get().Gamepad(0).StopVibration();
+
         m_quitGuard = nullptr;
 
         if (m_window)

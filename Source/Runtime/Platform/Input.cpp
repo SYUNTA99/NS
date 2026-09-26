@@ -72,6 +72,21 @@ namespace NS::Platform
             return static_cast<float>(raw) / 255.0f;
         }
 
+        // 0.0〜1.0 のモーターの速さを XInput の 0〜65535 へ写す
+        [[nodiscard]] std::uint16_t ToMotorSpeed(float speed01) noexcept
+        {
+            return static_cast<std::uint16_t>(std::lround(speed01 * 65535.0f));
+        }
+
+        // 送れた場合 true。繋がっていない番号は失敗で返る
+        [[nodiscard]] bool SendMotorSpeeds(int userIndex, std::uint16_t left, std::uint16_t right) noexcept
+        {
+            XINPUT_VIBRATION vibration{};
+            vibration.wLeftMotorSpeed = left;
+            vibration.wRightMotorSpeed = right;
+            return ::XInputSetState(static_cast<DWORD>(userIndex), &vibration) == ERROR_SUCCESS;
+        }
+
         // XINPUT_GAMEPAD::wButtons と GamepadButton の対応表
         constexpr std::array<unsigned short, static_cast<std::size_t>(GamepadButton::Count)> k_ButtonBits{
             XINPUT_GAMEPAD_A,
@@ -315,9 +330,48 @@ namespace NS::Platform
         return m_userIndex;
     }
 
+    bool Gamepad::SetVibration(float left, float right) noexcept
+    {
+        // 非数は比較が偽になり、範囲の内側の判定を通らない
+        if (!(left >= 0.0f && left <= 1.0f) || !(right >= 0.0f && right <= 1.0f))
+        {
+            return false;
+        }
+        m_vibration = GamepadVibration{left, right};
+        m_vibrationWritten = true;
+        return true;
+    }
+
+    GamepadVibration Gamepad::Vibration() const noexcept
+    {
+        return m_vibration;
+    }
+
+    void Gamepad::StopVibration() noexcept
+    {
+        m_vibration = GamepadVibration{};
+        m_vibrationWritten = false;
+        if (m_sentLeftMotor == 0 && m_sentRightMotor == 0)
+        {
+            return;
+        }
+        if (SendMotorSpeeds(m_userIndex, 0, 0))
+        {
+            m_sentLeftMotor = 0;
+            m_sentRightMotor = 0;
+        }
+    }
+
     void Gamepad::Update() noexcept
     {
         m_previous = m_current;
+
+        // 一時停止やプレイの終わりで書くのが止まると、ここで振動も止まる
+        if (!m_vibrationWritten)
+        {
+            m_vibration = GamepadVibration{};
+        }
+        m_vibrationWritten = false;
 
         XINPUT_STATE state{};
         const DWORD result = ::XInputGetState(static_cast<DWORD>(m_userIndex), &state);
@@ -329,6 +383,9 @@ namespace NS::Platform
             m_rightStick = Stick{};
             m_leftTrigger = 0.0f;
             m_rightTrigger = 0.0f;
+            // 繋がり直したパッドへは今の速さを送り直す
+            m_sentLeftMotor = 0;
+            m_sentRightMotor = 0;
             return;
         }
 
@@ -343,6 +400,19 @@ namespace NS::Platform
             NormalizeStick(state.Gamepad.sThumbRX, state.Gamepad.sThumbRY, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
         m_leftTrigger = NormalizeTrigger(state.Gamepad.bLeftTrigger);
         m_rightTrigger = NormalizeTrigger(state.Gamepad.bRightTrigger);
+
+        // 同じ速さを毎フレーム送り直さない
+        const std::uint16_t leftMotor = ToMotorSpeed(m_vibration.left);
+        const std::uint16_t rightMotor = ToMotorSpeed(m_vibration.right);
+        if (leftMotor == m_sentLeftMotor && rightMotor == m_sentRightMotor)
+        {
+            return;
+        }
+        if (SendMotorSpeeds(m_userIndex, leftMotor, rightMotor))
+        {
+            m_sentLeftMotor = leftMotor;
+            m_sentRightMotor = rightMotor;
+        }
     }
 
     Input::Input() noexcept
@@ -377,6 +447,8 @@ namespace NS::Platform
         {
             return false;
         }
+        // 向け直した後は前の番号の Update が来ないので、前の番号の振動をここで止める
+        m_gamepads[0].StopVibration();
         m_gamepads[0] = ::NS::Platform::Gamepad{userIndex};
         return true;
     }

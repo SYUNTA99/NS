@@ -22,6 +22,7 @@
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Physics/PhysicsScene.h"
 #include "Runtime/Platform/Clock.h"
+#include "Runtime/Platform/Input.h"
 
 #include <algorithm>
 #include <array>
@@ -278,6 +279,12 @@ namespace NS::Game::Level
         if (m_centerHitFlashRemaining > 0)
         {
             --m_centerHitFlashRemaining;
+        }
+        // 振動も早期 return より前で毎フレーム書く。書かれなかったフレームは Gamepad::Update が 0 にする
+        if (m_padRunning)
+        {
+            ++m_padElapsed;
+            WritePadVibration();
         }
         if (m_movement == nullptr)
         {
@@ -606,15 +613,42 @@ namespace NS::Game::Level
         {
             rollSign = scene->CameraBrain()->SideSignOf(m_pendingZoomRoll.rollDirection);
         }
+        // 振動は段ごとにモーターを分ける。強さは質量と威力で変えない。中心近くと惜しいの長さは止めで結ぶ
+        m_pendingPad = PadVibrationPlan{};
+        if (center)
+        {
+            m_pendingPad.start.left = m_centerHitPadStrength;
+            m_pendingPad.fadeFrames = stopSteps;
+            m_pendingPad.frames = stopSteps;
+        }
+        if (nearMiss)
+        {
+            // 減る傾きは中心近くと同じにし、寄りと同じフレームで切る
+            m_pendingPad.start.left = m_centerHitPadStrength * m_nearHitReturnRatio;
+            m_pendingPad.fadeFrames = stopSteps;
+            m_pendingPad.frames = PullBackFrames(stopSteps, m_nearHitPullBackRatio);
+        }
+        if (wide)
+        {
+            m_pendingPad.start.right = m_widePadStrength;
+            m_pendingPad.fadeFrames = m_wideShakeFrames;
+            m_pendingPad.frames = m_wideShakeFrames;
+        }
+
         m_lastImpact.cameraShake = NS::Core::Vector2{m_pendingShake.sideAmplitude, m_pendingShake.upAmplitude}.Length();
         m_lastImpact.flashStart = m_pendingFlashSteps;
         m_lastImpact.zoomStart = m_pendingZoomRoll.zoom;
         m_lastImpact.rollStart = m_pendingZoomRoll.rollDegrees * rollSign;
+        m_lastImpact.padStart = m_pendingPad.start;
     }
 
     void ImpactResolver::StartHitReturns()
     {
         m_centerHitFlashRemaining = m_pendingFlashSteps;
+        m_pad = m_pendingPad;
+        m_padElapsed = 0;
+        m_padRunning = true;
+        WritePadVibration();
 
         NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr || scene->CameraBrain() == nullptr)
@@ -649,6 +683,29 @@ namespace NS::Game::Level
         }
     }
 
+    void ImpactResolver::WritePadVibration()
+    {
+        NS::Platform::GamepadVibration speed{};
+        if (m_padElapsed < m_pad.frames)
+        {
+            const float fade =
+                static_cast<float>(m_pad.fadeFrames - m_padElapsed) / static_cast<float>(m_pad.fadeFrames);
+            speed.left = m_pad.start.left * fade;
+            speed.right = m_pad.start.right * fade;
+        }
+        else
+        {
+            // 終わりのフレームも 0 を書く。書かないと次の Input::Update までは前の値が読める
+            m_padRunning = false;
+        }
+        // 以後のフレームは始めの値から 0 へ減るだけなので、範囲の外になるのは始めの値が外の時だけ
+        if (!NS::Platform::Input::Get().Gamepad(0).SetVibration(speed.left, speed.right))
+        {
+            NS_LOG_WARN(Game, "パッドの振動の速さが 0〜1 の外で、震わせなかった: 左 {} 右 {}", speed.left, speed.right);
+            m_padRunning = false;
+        }
+    }
+
     void ImpactResolver::OnEndPlay()
     {
         // 基底が重ね描きの登録簿から自分を外す
@@ -661,6 +718,9 @@ namespace NS::Game::Level
         }
         RestoreTargetShape();
         m_centerHitFlashRemaining = 0;
+        // 書くフレーム数 0 の振動を書くと 0 が入り、プレイを終えたフレームの値が残らない
+        m_pad = PadVibrationPlan{};
+        WritePadVibration();
         // 揺れと寄りは CameraBrain が持つ。止めないとプレイを終えた後の視点にずれが残る
         if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
         {

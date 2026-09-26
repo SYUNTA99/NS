@@ -973,6 +973,9 @@ TEST(CollisionImpact, KeepsTheNumbersOfTheLastHitForReading)
     EXPECT_EQ(hit.flashStart, 2);
     EXPECT_FLOAT_EQ(hit.zoomStart, 1.15f);
     EXPECT_FLOAT_EQ(std::abs(hit.rollStart), 3.0f);
+    // 欄「中心近くの当たりのパッドの振動の強さ」の既定。中心近くは重いモーターだけ
+    EXPECT_FLOAT_EQ(hit.padStart.left, 1.0f);
+    EXPECT_EQ(hit.padStart.right, 0.0f);
 }
 
 TEST(CollisionImpact, ReboundsAgainstSphereTarget)
@@ -2632,6 +2635,23 @@ namespace
     constexpr float k_NearHitReturnRatio = 0.4f;
     constexpr float k_NearHitPullBackRatio = 0.5f;
     constexpr float k_ReturnTolerance = 1.0e-5f;
+    // 欄「中心近くの当たりのパッドの振動の強さ」「大きな外れのパッドの振動の強さ」の既定
+    constexpr float k_CenterHitPadStrength = 1.0f;
+    constexpr float k_WidePadStrength = 0.6f;
+
+    // 試しの前後でパッドの振動を 0 に戻す。この試しは Input::Update を回さないので、書いた振動は実機へ送られない
+    struct PadVibrationReset
+    {
+        PadVibrationReset() { NS::Platform::Input::Get().Gamepad(0).StopVibration(); }
+        ~PadVibrationReset() { NS::Platform::Input::Get().Gamepad(0).StopVibration(); }
+        PadVibrationReset(const PadVibrationReset&) = delete;
+        PadVibrationReset& operator=(const PadVibrationReset&) = delete;
+    };
+
+    NS::Platform::GamepadVibration PadVibration()
+    {
+        return NS::Platform::Input::Get().Gamepad(0).Vibration();
+    }
 
     // 横ずれ 0.2 と 0.7 は、的の半幅 0.5 + 自機の半径 0.4 で割ると 0.22 と 0.78。既定の境目で中心近くと大きな外れ
     constexpr SlamCourse k_CenterTierCourse{.start = 0.0f, .lateral = 0.2f, .targetCell = 1};
@@ -2893,9 +2913,10 @@ TEST(CollisionImpact, ShakeSeedComesFromTheHitItself)
     EXPECT_TRUE(first.side != shifted.side || first.up != shifted.up);
 }
 
-// CollisionInput の無い台は段を見ない。縦の揺れを倍率なしで出し、白と寄りと傾きは出さない
+// CollisionInput の無い台は段を見ない。縦の揺れを倍率なしで出し、白と寄りと傾きと振動は出さない
 TEST(CollisionImpact, HitWithoutCollisionInputShakesUpOnly)
 {
+    const PadVibrationReset reset;
     SceneNs::Scene scene;
     SlamCourse course = k_NearCourse;
     course.withCollisionInput = false;
@@ -2914,14 +2935,19 @@ TEST(CollisionImpact, HitWithoutCollisionInputShakesUpOnly)
     EXPECT_EQ(brain->ZoomRoll().zoom, 1.0f);
     EXPECT_EQ(brain->ZoomRoll().rollDegrees, 0.0f);
     EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 0);
+    EXPECT_EQ(PadVibration().left, 0.0f);
+    EXPECT_EQ(PadVibration().right, 0.0f);
     EXPECT_EQ(hit.flashStart, 0);
     EXPECT_EQ(hit.zoomStart, 1.0f);
     EXPECT_EQ(hit.rollStart, 0.0f);
+    EXPECT_EQ(hit.padStart.left, 0.0f);
+    EXPECT_EQ(hit.padStart.right, 0.0f);
 }
 
-// 1 回目の大きな外れの揺れが残っている所へ 2 回目を当てると、2 回目の止めの頭で 2 回目の返りから始め直す
+// 1 回目の大きな外れの揺れと振動が残っている所へ 2 回目を当てると、2 回目の止めの頭で 2 回目の返りから始め直す
 TEST(CollisionImpact, SecondHitRestartsTheReturnsOverTheFirstShake)
 {
+    const PadVibrationReset reset;
     SceneNs::Scene scene;
     // 反動で下がる側 (-X) にもう 1 体置き、明けに空中の 1 発で当てる
     Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .lateral = 0.7f, .targetCell = 1, .extraTargetCell = -2});
@@ -2966,8 +2992,9 @@ TEST(CollisionImpact, SecondHitRestartsTheReturnsOverTheFirstShake)
     const LevelNs::ImpactRecord second = rig.impact->LastImpact();
     ASSERT_EQ(second.sequence, 2u);
     ASSERT_EQ(second.tier, LevelNs::HitTier::Center);
-    // 2 回目の検知のフレームに 1 回目の揺れが残っている。残っていなければ重なった場面になっていない
+    // 2 回目の検知のフレームに 1 回目の揺れと軽いモーターが残っている。残っていなければ重なった場面になっていない
     ASSERT_GT(brain->ShakeOffset().Length(), 0.0f);
+    ASSERT_GT(PadVibration().right, 0.0f);
 
     StepWithCamera(scene, rig);
     EXPECT_NEAR(brain->ShakeOffset().Length(), second.cameraShake, k_ReturnTolerance);
@@ -2976,11 +3003,15 @@ TEST(CollisionImpact, SecondHitRestartsTheReturnsOverTheFirstShake)
     EXPECT_FLOAT_EQ(brain->ZoomRoll().zoom, second.zoomStart);
     EXPECT_FLOAT_EQ(brain->ZoomRoll().rollDegrees, second.rollStart);
     EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), second.flashStart);
+    EXPECT_FLOAT_EQ(PadVibration().left, second.padStart.left);
+    EXPECT_FLOAT_EQ(PadVibration().right, second.padStart.right);
+    EXPECT_GT(second.padStart.left, 0.0f);
 }
 
-// プレイを終えると、揺れと寄りと傾きと白が残らない
+// プレイを終えると、揺れと寄りと傾きと白と振動が残らない
 TEST(CollisionImpact, OnEndPlayStopsTheShakeAndTheZoom)
 {
+    const PadVibrationReset reset;
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_CenterTierCourse);
     SceneNs::CameraBrain* brain = scene.CameraBrain();
@@ -2991,6 +3022,7 @@ TEST(CollisionImpact, OnEndPlayStopsTheShakeAndTheZoom)
     ASSERT_GT(brain->ShakeOffset().Length(), 0.0f);
     ASSERT_GT(brain->ZoomRoll().zoom, 1.0f);
     ASSERT_GT(rig.impact->CenterHitFlashStepsRemaining(), 0);
+    ASSERT_GT(PadVibration().left, 0.0f);
 
     rig.impact->OnEndPlay();
 
@@ -2998,6 +3030,157 @@ TEST(CollisionImpact, OnEndPlayStopsTheShakeAndTheZoom)
     EXPECT_EQ(brain->ZoomRoll().zoom, 1.0f);
     EXPECT_EQ(brain->ZoomRoll().rollDegrees, 0.0f);
     EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 0);
+    EXPECT_EQ(PadVibration().left, 0.0f);
+    EXPECT_EQ(PadVibration().right, 0.0f);
+}
+
+// 中心近くは止めの頭から重いモーターを最大で始め、止めの間に直線に減らして明けで 0 にする
+TEST(CollisionImpact, CenterHitVibratesTheHeavyMotorThroughTheFreeze)
+{
+    const PadVibrationReset reset;
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_CenterTierCourse);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+
+    ASSERT_LT(StepUntilImpactWithCamera(scene, rig, 30), 30);
+    const LevelNs::ImpactRecord hit = rig.impact->LastImpact();
+    ASSERT_EQ(hit.tier, LevelNs::HitTier::Center);
+    const int stop = hit.hitStopSteps;
+    ASSERT_GE(stop, 2);
+    EXPECT_FLOAT_EQ(hit.padStart.left, k_CenterHitPadStrength);
+    EXPECT_EQ(hit.padStart.right, 0.0f);
+
+    for (int frame = 0; frame < stop; ++frame)
+    {
+        Step(scene, rig);
+        ASSERT_FALSE(rig.movement->IsActiveSelf()) << "frame " << frame;
+        const float fade = static_cast<float>(stop - frame) / static_cast<float>(stop);
+        EXPECT_NEAR(PadVibration().left, k_CenterHitPadStrength * fade, k_ReturnTolerance) << "frame " << frame;
+        EXPECT_EQ(PadVibration().right, 0.0f) << "frame " << frame;
+    }
+
+    Step(scene, rig);
+    ASSERT_TRUE(rig.movement->IsActiveSelf());
+    EXPECT_EQ(PadVibration().left, 0.0f);
+    EXPECT_EQ(PadVibration().right, 0.0f);
+}
+
+// 惜しいは中心近くの重いモーターを割合で小さく出し、同じ傾きで減らして止めの途中で 0 にする
+TEST(CollisionImpact, NearHitVibratesSmallerAndStopsBeforeTheRelease)
+{
+    const PadVibrationReset reset;
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_EdgeCourse);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+
+    ASSERT_LT(StepUntilImpactWithCamera(scene, rig, 30), 30);
+    const LevelNs::ImpactRecord hit = rig.impact->LastImpact();
+    ASSERT_EQ(hit.tier, LevelNs::HitTier::Near);
+    const int stop = hit.hitStopSteps;
+    const int hold = static_cast<int>(std::ceil(static_cast<float>(stop) * k_NearHitPullBackRatio));
+    ASSERT_LT(hold, stop);
+    const float strength = k_CenterHitPadStrength * k_NearHitReturnRatio;
+    EXPECT_FLOAT_EQ(hit.padStart.left, strength);
+    EXPECT_EQ(hit.padStart.right, 0.0f);
+
+    for (int frame = 0; frame < hold; ++frame)
+    {
+        Step(scene, rig);
+        const float fade = static_cast<float>(stop - frame) / static_cast<float>(stop);
+        EXPECT_NEAR(PadVibration().left, strength * fade, k_ReturnTolerance) << "frame " << frame;
+        EXPECT_EQ(PadVibration().right, 0.0f) << "frame " << frame;
+    }
+
+    Step(scene, rig);
+    // 明けより前に 0 になる
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    EXPECT_EQ(PadVibration().left, 0.0f);
+    EXPECT_EQ(PadVibration().right, 0.0f);
+}
+
+// 大きな外れは軽いモーターを揺れと同じフレーム数で減らし、明けの後も震わせる。重いモーターは使わない
+TEST(CollisionImpact, WideHitVibratesTheLightMotorPastTheRelease)
+{
+    const PadVibrationReset reset;
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_WideTierCourse);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+
+    ASSERT_LT(StepUntilImpactWithCamera(scene, rig, 30), 30);
+    const LevelNs::ImpactRecord hit = rig.impact->LastImpact();
+    ASSERT_EQ(hit.tier, LevelNs::HitTier::Wide);
+    const int stop = hit.hitStopSteps;
+    ASSERT_LT(stop, k_WideShakeFrames);
+    EXPECT_EQ(hit.padStart.left, 0.0f);
+    EXPECT_FLOAT_EQ(hit.padStart.right, k_WidePadStrength);
+
+    int framesAfterRelease = 0;
+    for (int frame = 0; frame < k_WideShakeFrames; ++frame)
+    {
+        Step(scene, rig);
+        const float fade = static_cast<float>(k_WideShakeFrames - frame) / static_cast<float>(k_WideShakeFrames);
+        EXPECT_EQ(PadVibration().left, 0.0f) << "frame " << frame;
+        EXPECT_NEAR(PadVibration().right, k_WidePadStrength * fade, k_ReturnTolerance) << "frame " << frame;
+        if (rig.movement->IsActiveSelf())
+        {
+            ++framesAfterRelease;
+        }
+    }
+    EXPECT_EQ(framesAfterRelease, k_WideShakeFrames - stop);
+
+    Step(scene, rig);
+    EXPECT_EQ(PadVibration().left, 0.0f);
+    EXPECT_EQ(PadVibration().right, 0.0f);
+}
+
+// 中心近くの当たりの返りは、検知のフレームに 1 つも無く、止めの頭に全部ある
+TEST(CollisionImpact, EveryReturnStartsOnTheFreezeFrame)
+{
+    const PadVibrationReset reset;
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_CenterTierCourse);
+    SceneNs::CameraBrain* brain = scene.CameraBrain();
+    ASSERT_NE(brain, nullptr);
+    ASSERT_NE(rig.target, nullptr);
+    const SceneNs::MeshRenderer* look = rig.target->FindComponent<SceneNs::MeshRenderer>();
+    ASSERT_NE(look, nullptr);
+    const Vector3 authored = rig.movement->Owner()->Root().Scale();
+    const Vector3 unshrunk{1.0f, 1.0f, 1.0f};
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+
+    ASSERT_LT(StepUntilImpactWithCamera(scene, rig, 30), 30);
+    const LevelNs::ImpactRecord hit = rig.impact->LastImpact();
+    ASSERT_EQ(hit.tier, LevelNs::HitTier::Center);
+    ASSERT_GT(hit.hitStopSteps, 0);
+    ASSERT_FALSE(hit.broke);
+
+    EXPECT_TRUE(rig.movement->IsActiveSelf());
+    EXPECT_EQ(rig.movement->Owner()->Root().Scale(), authored);
+    EXPECT_EQ(rig.target->Root().Position(), hit.targetPos);
+    EXPECT_EQ(look->DrawScale(), unshrunk);
+    EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 0);
+    EXPECT_EQ(brain->ShakeOffset().Length(), 0.0f);
+    EXPECT_EQ(brain->ZoomRoll().zoom, 1.0f);
+    EXPECT_EQ(brain->ZoomRoll().rollDegrees, 0.0f);
+    EXPECT_EQ(PadVibration().left, 0.0f);
+    EXPECT_EQ(PadVibration().right, 0.0f);
+
+    StepWithCamera(scene, rig);
+    EXPECT_FALSE(rig.movement->IsActiveSelf());
+    EXPECT_NE(rig.movement->Owner()->Root().Scale(), authored);
+    EXPECT_NE(rig.target->Root().Position(), hit.targetPos);
+    EXPECT_NE(look->DrawScale(), unshrunk);
+    EXPECT_GT(rig.impact->CenterHitFlashStepsRemaining(), 0);
+    EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), hit.flashStart);
+    EXPECT_GT(brain->ShakeOffset().Length(), 0.0f);
+    EXPECT_NEAR(brain->ShakeOffset().Length(), hit.cameraShake, k_ReturnTolerance);
+    EXPECT_GT(brain->ZoomRoll().zoom, 1.0f);
+    EXPECT_FLOAT_EQ(brain->ZoomRoll().zoom, hit.zoomStart);
+    EXPECT_NE(brain->ZoomRoll().rollDegrees, 0.0f);
+    EXPECT_FLOAT_EQ(brain->ZoomRoll().rollDegrees, hit.rollStart);
+    EXPECT_GT(PadVibration().left, 0.0f);
+    EXPECT_FLOAT_EQ(PadVibration().left, hit.padStart.left);
+    EXPECT_FLOAT_EQ(PadVibration().right, hit.padStart.right);
 }
 
 // 壊した瞬間に破片と跡が出る。破片は壊れた物の位置から飛び始める

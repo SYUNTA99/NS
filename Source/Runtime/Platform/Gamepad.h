@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 
 namespace NS::Platform
 {
@@ -31,6 +32,13 @@ namespace NS::Platform
     {
         float x = 0.0f; // -1.0〜1.0
         float y = 0.0f; // -1.0〜1.0
+    };
+
+    //! @brief パッドの 2 つのモーターの速さ
+    struct GamepadVibration
+    {
+        float left = 0.0f;  //!< 低い周波数のモーターの速さ。0.0〜1.0
+        float right = 0.0f; //!< 高い周波数のモーターの速さ。0.0〜1.0
     };
 
     //! @brief ゲームパッドの状態を管理するクラス
@@ -68,7 +76,24 @@ namespace NS::Platform
         //! @brief Update で状態を読む XInput のユーザー番号を返す
         [[nodiscard]] int UserIndex() const noexcept;
 
+        //! @brief 振動の速さを書く
+        //! @details 範囲の外か非数は何も変えない。実機へは次の Update で送る。振動を続ける間は Update ごとに書き直す
+        //! @param[in] left 低い周波数のモーターの速さ (0.0〜1.0)
+        //! @param[in] right 高い周波数のモーターの速さ (0.0〜1.0)
+        //! @return 書いた場合 true、それ以外の場合は false
+        [[nodiscard]] bool SetVibration(float left, float right) noexcept;
+
+        //! @brief 書かれている振動の速さを返す
+        //! @return 最後に書いた速さ。書かれずに Update を過ぎた後と、止めた後は 0
+        [[nodiscard]] GamepadVibration Vibration() const noexcept;
+
+        //! @brief 振動を止める
+        //! @details 速さを 0 にし、実機へ 0 でない速さを送っていた場合はその場で 0 を送る。Update が来ない時に使う
+        void StopVibration() noexcept;
+
         //! @brief 最新のハードウェア状態を同期する
+        //! @details 前の Update の後に書かれなかった振動は 0 にする。
+        //! 繋がっていて、送った速さと違う場合だけ実機へ送る
         void Update() noexcept;
 
     private:
@@ -82,6 +107,11 @@ namespace NS::Platform
         Stick m_rightStick{};
         float m_leftTrigger = 0.0f;
         float m_rightTrigger = 0.0f;
+        GamepadVibration m_vibration{};
+        bool m_vibrationWritten = false; // 前の Update の後に振動が書かれたか
+        // 実機へ最後に送った速さ。XInput の 0〜65535
+        std::uint16_t m_sentLeftMotor = 0;
+        std::uint16_t m_sentRightMotor = 0;
     };
 
 } // namespace NS::Platform

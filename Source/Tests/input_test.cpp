@@ -6,6 +6,8 @@
 #include <Runtime/Platform/Mouse.h>
 #include <Runtime/Platform/detail/InputWin32.h>
 
+#include <limits>
+
 #include <windows.h>
 
 namespace
@@ -372,6 +374,112 @@ TEST(NsPlatformGamepad, UpdateIsSafeToCall)
     pad.Update();
     pad.Update();
     EXPECT_FALSE(pad.IsHeld(static_cast<GamepadButton>(-1)));
+}
+
+namespace
+{
+    // 繋がっていない XInput のユーザー番号を探す。振動の試しで Update を回しても本物のパッドへ送らない
+    // 読むだけの Update なので、探す間も送らない
+    [[nodiscard]] bool FindDisconnectedUserIndex(int& outUserIndex)
+    {
+        constexpr int k_XInputUserCount = 4;
+        for (int userIndex = 0; userIndex < k_XInputUserCount; ++userIndex)
+        {
+            Gamepad probe{userIndex};
+            probe.Update();
+            if (!probe.IsConnected())
+            {
+                outUserIndex = userIndex;
+                return true;
+            }
+        }
+        return false;
+    }
+} // namespace
+
+TEST(NsPlatformGamepad, DefaultVibrationIsZero)
+{
+    Gamepad pad{3};
+    EXPECT_FLOAT_EQ(pad.Vibration().left, 0.0f);
+    EXPECT_FLOAT_EQ(pad.Vibration().right, 0.0f);
+}
+
+TEST(NsPlatformGamepad, SetVibrationIsReadBack)
+{
+    Gamepad pad{3};
+    ASSERT_TRUE(pad.SetVibration(0.25f, 0.75f));
+    EXPECT_FLOAT_EQ(pad.Vibration().left, 0.25f);
+    EXPECT_FLOAT_EQ(pad.Vibration().right, 0.75f);
+}
+
+TEST(NsPlatformGamepad, SetVibrationRejectsOutOfRangeAndNonNumber)
+{
+    Gamepad pad{3};
+    ASSERT_TRUE(pad.SetVibration(0.25f, 0.75f));
+    const float nonNumber = std::numeric_limits<float>::quiet_NaN();
+
+    EXPECT_FALSE(pad.SetVibration(-0.1f, 0.5f));
+    EXPECT_FALSE(pad.SetVibration(0.5f, 1.1f));
+    EXPECT_FALSE(pad.SetVibration(nonNumber, 0.5f));
+    EXPECT_FALSE(pad.SetVibration(0.5f, nonNumber));
+
+    EXPECT_FLOAT_EQ(pad.Vibration().left, 0.25f);
+    EXPECT_FLOAT_EQ(pad.Vibration().right, 0.75f);
+}
+
+TEST(NsPlatformGamepad, VibrationWrittenBeforeUpdateSurvivesThatUpdate)
+{
+    int userIndex = 0;
+    if (!FindDisconnectedUserIndex(userIndex))
+    {
+        GTEST_SKIP() << "繋がっていない XInput のユーザー番号が無い";
+    }
+    Gamepad pad{userIndex};
+    ASSERT_TRUE(pad.SetVibration(0.5f, 0.25f));
+
+    pad.Update();
+
+    EXPECT_FLOAT_EQ(pad.Vibration().left, 0.5f);
+    EXPECT_FLOAT_EQ(pad.Vibration().right, 0.25f);
+}
+
+TEST(NsPlatformGamepad, UpdateWithoutWritingStopsVibration)
+{
+    int userIndex = 0;
+    if (!FindDisconnectedUserIndex(userIndex))
+    {
+        GTEST_SKIP() << "繋がっていない XInput のユーザー番号が無い";
+    }
+    Gamepad pad{userIndex};
+    ASSERT_TRUE(pad.SetVibration(0.5f, 0.25f));
+    pad.Update();
+
+    pad.Update();
+
+    EXPECT_FLOAT_EQ(pad.Vibration().left, 0.0f);
+    EXPECT_FLOAT_EQ(pad.Vibration().right, 0.0f);
+}
+
+TEST(NsPlatformGamepad, StopVibrationZeroes)
+{
+    Gamepad pad{3};
+    ASSERT_TRUE(pad.SetVibration(0.5f, 0.25f));
+
+    pad.StopVibration();
+
+    EXPECT_FLOAT_EQ(pad.Vibration().left, 0.0f);
+    EXPECT_FLOAT_EQ(pad.Vibration().right, 0.0f);
+}
+
+TEST(NsPlatformInput, SetGamepadUserIndexLeavesNoVibration)
+{
+    Input input;
+    ASSERT_TRUE(input.Gamepad(0).SetVibration(0.5f, 0.25f));
+
+    ASSERT_TRUE(input.SetGamepadUserIndex(2));
+
+    EXPECT_FLOAT_EQ(input.Gamepad(0).Vibration().left, 0.0f);
+    EXPECT_FLOAT_EQ(input.Gamepad(0).Vibration().right, 0.0f);
 }
 
 TEST(NsPlatformInput, GamepadAccessorReturnsSameInstance)

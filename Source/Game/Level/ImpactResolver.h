@@ -7,6 +7,7 @@
 #include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
+#include "Runtime/Platform/Gamepad.h"
 
 #include <cstdint>
 
@@ -34,6 +35,7 @@ namespace NS::Game::Level
         int flashStart = 0;             //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
         float zoomStart = 1.0f;         //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
         float rollStart = 0.0f; //!< 傾きの始めの値 (度)。正は画面の上端をカメラの右へ倒す向き。傾きの無い当たりは 0
+        NS::Platform::GamepadVibration padStart; //!< パッドの振動の始めの値。振動の無い当たりは 0
         int hitStopSteps = 0;
         bool centerHit = false; //!< 白の光と止めの倍率を掛けた場合 true。CollisionInput が無い時は false
         bool broke = false;
@@ -58,7 +60,7 @@ namespace NS::Game::Level
     //! 反発の止めの間は、置かれていた相手の描く形を MeshRenderer の描く時だけの倍率で縮め、明けに戻す
     //! 重さは相手の RigidBody の質量で、RigidBody が無ければ 1
     //! 依存: NS::Game::Player::PlayerComponent, Breakable, LaunchedBody, NS::Obj::RigidBody, NS::Obj::MeshRenderer,
-    //! CollisionInput, HitTier
+    //! CollisionInput, HitTier, NS::Platform::Input
     class ImpactResolver : public NS::Obj::OverlayRenderer
     {
     public:
@@ -142,6 +144,8 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_zoomRollReturnFrames, "寄りと傾きを戻すフレーム数")
         NS_REFLECT_FIELD(m_nearHitReturnRatio, "惜しい当たりの返りの割合")
         NS_REFLECT_FIELD(m_nearHitPullBackRatio, "惜しい当たりの返りを引き始める割合")
+        NS_REFLECT_FIELD(m_centerHitPadStrength, "中心近くの当たりのパッドの振動の強さ")
+        NS_REFLECT_FIELD(m_widePadStrength, "大きな外れのパッドの振動の強さ")
         NS_REFLECT_FIELD(m_squashThickness, "潰れの厚み")
         NS_REFLECT_FIELD(m_squashHeight, "潰れの伸び上がり")
         NS_REFLECT_FIELD(m_stretchAlong, "弾け伸びの倍率")
@@ -163,12 +167,15 @@ namespace NS::Game::Level
         // 凍結を掛ける。自機を寝かせて潰し、当たりの返りを始め、置かれていた相手を食い込ませて描く形を縮める
         void BeginFreeze(int stopSteps);
 
-        // 当たりの返り (白・揺れ・寄りと傾き) を段から組んで控え、記録へ始めの値を書く。検知のフレームに呼ぶ
+        // 当たりの返り (白・揺れ・寄りと傾き・振動) を段から組んで控え、記録へ始めの値を書く。検知のフレームに呼ぶ
         // 事前条件: 反動の向き・相手の飛ぶ向き・相手の番号と位置を控え終えている
         void PrepareHitReturns(HitTier tier, bool tiered, float power, float massFactor, float offset01, int stopSteps);
 
         // 控えた当たりの返りを始める。前の当たりの返りが残っていても、控えた値で始め直す
         void StartHitReturns();
+
+        // 振動を始めてからのフレーム数に応じた速さをパッドへ書く。書くフレーム数に届いたフレームは 0 を書いて止める
+        void WritePadVibration();
 
         // 解放後のフレームで伸びた形から戻す。前半で縮む側へ行き過ぎ、後半で配置で決めた元の形へ戻る
         // 最後のフレームは控えた値を厳密に書く
@@ -232,6 +239,8 @@ namespace NS::Game::Level
         int m_zoomRollReturnFrames = 6;       // 寄りと傾きを元へ戻すフレーム数
         float m_nearHitReturnRatio = 0.4f;    // 惜しい当たりの寄りの倍率の 1 を超えた分と傾きに掛ける割合
         float m_nearHitPullBackRatio = 0.5f;  // 惜しい当たりの寄りと傾きを保つフレーム数 ÷ 止めのフレーム数
+        float m_centerHitPadStrength = 1.0f;  // 中心近くの当たりの低い周波数のモーターの始めの速さ。0〜1
+        float m_widePadStrength = 0.6f;       // 大きな外れの当たりの高い周波数のモーターの始めの速さ。0〜1
         float m_squashThickness = 0.7f;       // 凍結中の自機と置かれていた相手の、進行方向の厚みの倍率
         float m_squashHeight = 1.1f;          // 凍結中の自機と置かれていた相手の、高さの倍率
         float m_stretchAlong = 1.2f;          // 解放のフレームの伸びの倍率。反発は縦、貫通は進行の軸
@@ -277,6 +286,18 @@ namespace NS::Game::Level
         // 検知のフレームに相手が置かれていたか。食い込み・振動・元位置へ戻すのはこの時だけ
         bool m_pendingTargetPlaced = false;
         bool m_targetShapeHeld = false; // 相手の描く形を縮めたまま止めている最中か
+
+        // 1 回の当たりのパッドの振動。始めの値から直線に減らし、書くフレーム数で切る
+        struct PadVibrationPlan
+        {
+            NS::Platform::GamepadVibration start{};
+            int fadeFrames = 0; // 始めの値から 0 まで減るフレーム数
+            int frames = 0;     // 書くフレーム数。fadeFrames 以下
+        };
+        PadVibrationPlan m_pendingPad{}; // この衝突の振動。振動の無い段は書くフレーム数 0
+        PadVibrationPlan m_pad{};        // 書いている振動
+        int m_padElapsed = 0;            // 振動を始めた止めの頭から数えたフレーム数
+        bool m_padRunning = false;       // 振動を書いている最中か
 
         bool m_didRebound = false;   // 直近の更新で反発を検知したか
         bool m_didBreak = false;     // 直近の更新で貫通を検知したか
