@@ -84,6 +84,8 @@ namespace NS::Game::Player
         //! 突進の進み具合 0..1。突進中でなければ 0
         [[nodiscard]] float BodySlamProgress01() const noexcept;
         [[nodiscard]] float BodySlamCharge01() const noexcept { return m_bodySlamCharge01; } //!< 発動時の溜め量 0..1
+        //! 溜めた突進を終える水平の距離。欄「突進距離」の値で、単位は m
+        [[nodiscard]] float BodySlamDistance() const noexcept { return m_bodySlamDistance; }
         //! 衝突の裁定と玉の回転と寄せが読む速度。突進中は向きと突進速度から作る
         //! @details 実速度は壁へ押し付けられたフレームで 0 に潰れ、衝突の先読みが今の位置から動かなくなる
         [[nodiscard]] NS::Core::Vector3 BodySlamVelocity() const noexcept;

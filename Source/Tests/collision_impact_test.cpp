@@ -90,6 +90,8 @@ namespace
         std::int16_t targetLayer = 1;
         // 0 以外なら、この列にもう 1 体の壊せる的を同じ段に置く
         std::int16_t extraTargetCell = 0;
+        // 2 体目の的を置く行。0 は的と同じ行
+        std::int16_t extraTargetLane = 0;
         // 偽なら的から MeshRenderer を外し、描く形の無い的にする
         bool targetWithMeshRenderer = true;
     };
@@ -149,7 +151,8 @@ namespace
 
         if (course.extraTargetCell != 0)
         {
-            nlohmann::json extra = NS::Editor::MakeCellObject(course.extraTargetCell, course.targetLayer, 0);
+            nlohmann::json extra =
+                NS::Editor::MakeCellObject(course.extraTargetCell, course.targetLayer, course.extraTargetLane);
             SceneNs::ObjectJsonComponents(extra).push_back(MakeLaunchableRigidBodyEntry());
             SceneNs::ObjectJsonComponents(extra).push_back(SceneNs::MakeComponentEntry("Breakable"));
             SceneNs::SceneJsonObjects(data).push_back(extra);
@@ -1782,6 +1785,144 @@ TEST(CollisionImpact, HomingNarrowsTheHitOffsetWithinTheLimit)
     EXPECT_LT(cases[1].offset01, cases[0].offset01);
 }
 
+namespace
+{
+    // BuildSlam の rig.target でない方の壊せる物。2 体目を置いていなければ nullptr
+    NS::Obj::GameObject* OtherTarget(SceneNs::Scene& scene, const Rig& rig)
+    {
+        NS::Obj::GameObject* other = nullptr;
+        scene.Objects().ForEachComponent<LevelNs::Breakable>([&](LevelNs::Breakable& breakable) {
+            if (breakable.Owner() != rig.target)
+            {
+                other = breakable.Owner();
+            }
+        });
+        return other;
+    }
+
+    // 高さを保って水平の位置だけを置き直す。予測は外接箱だけを読むので、物理の body は動かさない
+    void PlaceHorizontally(NS::Obj::GameObject& object, float x, float z)
+    {
+        const Vector3 position = object.Root().Position();
+        object.Root().SetPosition(Vector3{x, position.y, z});
+    }
+} // namespace
+
+// 予測の横ずれの比は裁定と同じ式で出すので、同じ置き方で当てた時の横ずれと同じになる
+// 横ずれ 0 / 0.45 / 0.765 は、的の半幅 0.5 + 自機の半径 0.4 で割ると 0 / 0.5 / 0.85
+TEST(CollisionImpact, SlamLineTargetOffsetMatchesTheOffsetOfTheHit)
+{
+    for (const float lateral : {0.0f, 0.45f, 0.765f})
+    {
+        SceneNs::Scene scene;
+        Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .lateral = lateral, .targetCell = 1});
+        SetInstantImpact(rig);
+        SettleOnFloor(scene, rig);
+
+        LevelNs::SlamLineTarget predicted{};
+        ASSERT_TRUE(rig.impact->FindSlamLineTarget(Vector3{1.0f, 0.0f, 0.0f}, 10.0f, predicted)) << lateral;
+        NS::Core::AABB bounds{};
+        ASSERT_TRUE(LevelNs::TryGetColliderBounds(*rig.target, bounds));
+        const Vector3 position = rig.movement->Owner()->Root().Position();
+        EXPECT_EQ(predicted.target, SceneNs::ObjectRef{rig.target->Id()}) << lateral;
+        EXPECT_FLOAT_EQ(predicted.bounds.Center.x, bounds.Center.x) << lateral;
+        EXPECT_FLOAT_EQ(predicted.bounds.Center.z, bounds.Center.z) << lateral;
+        EXPECT_NEAR(predicted.along, bounds.Center.x - position.x, 1e-4f) << lateral;
+        EXPECT_NEAR(predicted.offset, lateral / (0.5f + rig.movement->CapsuleRadius()), 1e-3f) << lateral;
+
+        BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+        ASSERT_LT(StepUntilImpact(scene, rig, 30), 30) << lateral;
+        EXPECT_NEAR(predicted.offset, rig.impact->LastImpact().offset01, 1e-3f) << lateral;
+    }
+}
+
+// 線の外の近い相手より線の上の遠い相手を選ぶ。線の上に 2 体居れば、水平の距離でなく線に沿って手前の方
+TEST(CollisionImpact, SlamLineTargetIsTheFirstAlongTheLine)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .targetCell = 4, .extraTargetCell = 2});
+    SettleOnFloor(scene, rig);
+    NS::Obj::GameObject* other = OtherTarget(scene, rig);
+    ASSERT_NE(other, nullptr);
+    const Vector3 position = rig.movement->Owner()->Root().Position();
+
+    // 近い方を線から 2 m 横へ外す
+    PlaceHorizontally(*rig.target, position.x + 4.0f, position.z);
+    PlaceHorizontally(*other, position.x + 2.0f, position.z + 2.0f);
+    LevelNs::SlamLineTarget found{};
+    ASSERT_TRUE(rig.impact->FindSlamLineTarget(Vector3{1.0f, 0.0f, 0.0f}, 10.0f, found));
+    EXPECT_EQ(found.target, SceneNs::ObjectRef{rig.target->Id()});
+
+    // 横ずれ 0.85 で線に沿って 3 m の相手は、真正面 3.1 m の相手より水平には遠いが、線に沿っては手前
+    PlaceHorizontally(*rig.target, position.x + 3.1f, position.z);
+    PlaceHorizontally(*other, position.x + 3.0f, position.z + 0.85f);
+    ASSERT_TRUE(rig.impact->FindSlamLineTarget(Vector3{1.0f, 0.0f, 0.0f}, 10.0f, found));
+    EXPECT_EQ(found.target, SceneNs::ObjectRef{other->Id()});
+    EXPECT_NEAR(found.along, 3.0f, 1e-4f);
+}
+
+// 触れる横の幅の外で比が 1 を超える相手、線に沿って見る距離の外の相手、後ろの相手は返さない
+TEST(CollisionImpact, SlamLineTargetSkipsTargetsOffTheReachOutOfRangeAndBehind)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .targetCell = 3});
+    SettleOnFloor(scene, rig);
+    const Vector3 position = rig.movement->Owner()->Root().Position();
+    const Vector3 forward{1.0f, 0.0f, 0.0f};
+    LevelNs::SlamLineTarget found{};
+
+    // 横ずれ 1.0 は的の半幅 0.5 + 自機の半径 0.4 = 0.9 の外で、比は 1.11
+    PlaceHorizontally(*rig.target, position.x + 3.0f, position.z + 1.0f);
+    EXPECT_FALSE(rig.impact->FindSlamLineTarget(forward, 10.0f, found));
+
+    PlaceHorizontally(*rig.target, position.x + 3.0f, position.z);
+    EXPECT_FALSE(rig.impact->FindSlamLineTarget(forward, 2.9f, found));
+    EXPECT_FALSE(rig.impact->FindSlamLineTarget(Vector3{-1.0f, 0.0f, 0.0f}, 10.0f, found));
+    EXPECT_TRUE(rig.impact->FindSlamLineTarget(forward, 10.0f, found));
+}
+
+// 裁定と同じ絞り。有効でない相手とトリガの箱は、線の上に居ても返さない
+TEST(CollisionImpact, SlamLineTargetSkipsInactiveAndTriggerTargets)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .targetCell = 3});
+    SettleOnFloor(scene, rig);
+    ASSERT_NE(rig.targetBox, nullptr);
+    const Vector3 forward{1.0f, 0.0f, 0.0f};
+    LevelNs::SlamLineTarget found{};
+    ASSERT_TRUE(rig.impact->FindSlamLineTarget(forward, 10.0f, found));
+
+    rig.targetBox->SetTrigger(true);
+    EXPECT_FALSE(rig.impact->FindSlamLineTarget(forward, 10.0f, found));
+
+    rig.targetBox->SetTrigger(false);
+    rig.breakable->SetActive(false);
+    EXPECT_FALSE(rig.impact->FindSlamLineTarget(forward, 10.0f, found));
+}
+
+// 線の向きが決まらない時は探さず、結果を書き換えない
+TEST(CollisionImpact, SlamLineTargetRejectsAZeroOrNonFiniteDirection)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .targetCell = 3});
+    SettleOnFloor(scene, rig);
+
+    LevelNs::SlamLineTarget kept{};
+    kept.target = SceneNs::ObjectRef{9999};
+    kept.along = 123.0f;
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    const float infinity = std::numeric_limits<float>::infinity();
+    for (const Vector3& direction : {Vector3{0.0f, 0.0f, 0.0f},
+                                     Vector3{0.0f, 1.0f, 0.0f},
+                                     Vector3{nan, 0.0f, 0.0f},
+                                     Vector3{infinity, 0.0f, 0.0f}})
+    {
+        EXPECT_FALSE(rig.impact->FindSlamLineTarget(direction, 10.0f, kept));
+        EXPECT_EQ(kept.target, SceneNs::ObjectRef{9999});
+        EXPECT_FLOAT_EQ(kept.along, 123.0f);
+    }
+}
+
 // 境目ちょうどは外側の段。非有限の横ずれは中心近くの演出を出さない側へ倒す
 TEST(CollisionInput, HitTierForSplitsAtTheTwoEdges)
 {
@@ -2030,6 +2171,126 @@ TEST(CollisionImpact, ChargingSlowsTheMaxSpeedUntilTheRelease)
     Step(scene, rig);
     ASSERT_FALSE(rig.input->IsCharging());
     EXPECT_FLOAT_EQ(rig.movement->MaxSpeed(), rig.movement->RunSpeed());
+}
+
+// 狙う相手は押している間だけ控える。押す前は無く、溜めに入る前の押しでも控え、放したフレームから消える
+TEST(CollisionImpact, AimTargetIsKeptWhileHeldAndDroppedOnRelease)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .targetCell = 4});
+    ASSERT_NE(rig.input, nullptr);
+    SettleOnFloor(scene, rig);
+    rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
+    LevelNs::SlamLineTarget aim{};
+
+    Step(scene, rig);
+    EXPECT_FALSE(rig.input->TryGetAimTarget(aim));
+
+    MouseLeftPress press;
+    Step(scene, rig);
+    ASSERT_TRUE(rig.input->Judge().IsHeld());
+    ASSERT_FALSE(rig.input->IsCharging());
+    ASSERT_TRUE(rig.input->TryGetAimTarget(aim));
+    EXPECT_EQ(aim.target, SceneNs::ObjectRef{rig.target->Id()});
+
+    for (int i = 0; i < 15; ++i)
+    {
+        Step(scene, rig);
+    }
+    ASSERT_TRUE(rig.input->IsCharging());
+    EXPECT_TRUE(rig.input->TryGetAimTarget(aim));
+
+    press.Release();
+    Step(scene, rig);
+    EXPECT_FALSE(rig.input->TryGetAimTarget(aim));
+}
+
+// 寄せの角度の内に居ても、狙いの線の外の相手は狙う相手にならない
+TEST(CollisionImpact, AimTargetIsNotKeptForATargetOffTheLine)
+{
+    SceneNs::Scene scene;
+    // 横ずれ 1.2 は的の半幅 0.5 + 自機の半径 0.4 = 0.9 の外。狙いの +X から 17 度・4.2 m
+    Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .lateral = 1.2f, .targetCell = 4});
+    ASSERT_NE(rig.input, nullptr);
+    SettleOnFloor(scene, rig);
+    rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
+    Vector3 homingCenter{};
+    ASSERT_TRUE(rig.impact->FindHomingTarget(Vector3{1.0f, 0.0f, 0.0f}, 30.0f, 6.0f, homingCenter));
+
+    MouseLeftPress press;
+    Step(scene, rig);
+    Step(scene, rig);
+    ASSERT_TRUE(rig.input->Judge().IsHeld());
+    LevelNs::SlamLineTarget aim{};
+    EXPECT_FALSE(rig.input->TryGetAimTarget(aim));
+}
+
+namespace
+{
+    // 自機を 0.3 m 横へずらし、線の上の的を 5 m 先 (横ずれ 0.3) に、2 体目を 4 m 先の 1.7 m 横に置く
+    // 2 体目は寄せの角度 30 度と距離 6 m の内で線の上の的より近いが、線の外 (横ずれの比 1.9)
+    // 正の寄せは +X を -Z の側へ回すので線の上の的の側
+    constexpr SlamCourse k_NearerOffLineCourse{
+        .start = 0.0f, .lateral = 0.3f, .targetCell = 5, .extraTargetCell = 4, .extraTargetLane = 2};
+} // namespace
+
+// 押している間、線の上の相手が寄せの角度と距離の内に居れば、それより近い線の外の相手でなく線の上の相手へ寄せる
+TEST(CollisionImpact, HomingPrefersTheTargetOnTheLineOverANearerOneOffIt)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearerOffLineCourse);
+    ASSERT_NE(rig.input, nullptr);
+    SettleOnFloor(scene, rig);
+    rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
+    Vector3 nearest{};
+    ASSERT_TRUE(rig.impact->FindHomingTarget(Vector3{1.0f, 0.0f, 0.0f}, 30.0f, 6.0f, nearest));
+    ASSERT_NEAR(nearest.x, 4.0f, 1e-4f);
+
+    MouseLeftPress press;
+    for (int i = 0; i < 16; ++i)
+    {
+        Step(scene, rig);
+    }
+    ASSERT_TRUE(rig.input->IsCharging());
+    EXPECT_GT(rig.movement->HomingAngleDegrees(), 0.0f);
+}
+
+// 線の上に相手が居なければ、今までどおり寄せの角度と距離の内で一番近い相手へ寄せる
+TEST(CollisionImpact, HomingFallsBackToTheNearestWithoutATargetOnTheLine)
+{
+    SceneNs::Scene scene;
+    // 線の上の的は突進の距離 10 m の外
+    SlamCourse course = k_NearerOffLineCourse;
+    course.targetCell = 12;
+    Rig rig = BuildSlam(scene, course);
+    ASSERT_NE(rig.input, nullptr);
+    SettleOnFloor(scene, rig);
+    rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
+
+    MouseLeftPress press;
+    for (int i = 0; i < 16; ++i)
+    {
+        Step(scene, rig);
+    }
+    LevelNs::SlamLineTarget aim{};
+    ASSERT_FALSE(rig.input->TryGetAimTarget(aim));
+    EXPECT_LT(rig.movement->HomingAngleDegrees(), 0.0f);
+}
+
+// 突進中も突進の向きの線で同じ決まり。線の外の近い的の側へ回らない
+TEST(CollisionImpact, RushHomingPrefersTheTargetOnTheRushLine)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearerOffLineCourse);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+    ASSERT_TRUE(rig.movement->IsBodySlamming());
+
+    for (int i = 0; i < 3; ++i)
+    {
+        Step(scene, rig);
+    }
+    ASSERT_TRUE(rig.movement->IsBodySlamming());
+    EXPECT_GT(rig.movement->HomingAngleDegrees(), 0.0f);
 }
 
 // 押した瞬間に玉になり、当たり・凍結・反動の間は玉のまま、着地して初めて立ち姿へ戻る

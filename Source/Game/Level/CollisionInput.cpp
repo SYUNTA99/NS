@@ -129,7 +129,8 @@ namespace NS::Game::Level
             m_movement->SetVelocity(NS::Core::Vector3{0.0f, velocity.y, 0.0f});
         }
 
-        SteerTowardNearestTarget();
+        UpdateAimTarget();
+        SteerTowardTarget();
         UpdateChargeStance();
 
 #if !defined(NS_SHIPPING)
@@ -137,32 +138,63 @@ namespace NS::Game::Level
 #endif
     }
 
-    void CollisionInput::SteerTowardNearestTarget()
+    void CollisionInput::UpdateAimTarget()
+    {
+        m_hasAimTarget = false;
+        if (!m_judge.IsHeld() || m_movement == nullptr || m_resolver == nullptr)
+        {
+            return;
+        }
+        m_hasAimTarget =
+            m_resolver->FindSlamLineTarget(m_movement->AimDirection(), m_movement->BodySlamDistance(), m_aimTarget);
+    }
+
+    bool CollisionInput::TryGetAimTarget(SlamLineTarget& outTarget) const noexcept
+    {
+        if (!m_hasAimTarget)
+        {
+            return false;
+        }
+        outTarget = m_aimTarget;
+        return true;
+    }
+
+    void CollisionInput::SteerTowardTarget()
     {
         if (m_movement == nullptr || m_resolver == nullptr)
         {
             return;
         }
 
-        // 突進中は今飛んでいる向き、溜めている間は今の狙いの向きの前方を探す
+        // 突進中は今飛んでいる向き、押している間は今の狙いの向きの前方を探す
         // 狙いの向きは放すフレームの入力で変わるので、自機は放す時に控えた相手を放す向きから測り直す
+        // 線の上の相手を先に選ぶ。一番近い相手だけを見ると、狙う相手と違う近くの相手の側へ回る
         NS::Core::Vector3 forward{};
+        SlamLineTarget onLine{};
+        bool hasOnLine = false;
         if (m_movement->IsBodySlamming())
         {
             const NS::Core::Vector3 velocity = m_movement->BodySlamVelocity();
             forward = NS::Core::Vector3{velocity.x, 0.0f, velocity.z};
+            hasOnLine = m_resolver->FindSlamLineTarget(forward, m_movement->BodySlamDistance(), onLine);
         }
         else if (m_judge.IsHeld())
         {
             forward = m_movement->AimDirection();
+            hasOnLine = TryGetAimTarget(onLine);
         }
         else
         {
             return;
         }
 
+        NS::Obj::ObjectRef preferred{};
+        if (hasOnLine)
+        {
+            preferred = onLine.target;
+        }
         NS::Core::Vector3 center{};
-        if (m_resolver->FindHomingTarget(forward, m_homingSearchDegrees, m_homingSearchDistance, center))
+        if (m_resolver->FindHomingTarget(forward, m_homingSearchDegrees, m_homingSearchDistance, center, preferred))
         {
             m_movement->SteerToward(center, m_homingSearchDegrees);
         }

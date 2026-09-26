@@ -2,6 +2,7 @@
 
 #include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactInputJudge.h"
+#include "Game/Level/ImpactResolver.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Reflection/Curve.h"
@@ -13,8 +14,6 @@ namespace NS::Game::Player
 
 namespace NS::Game::Level
 {
-    class ImpactResolver;
-
     //! @brief 体当たりのボタン入力を読んで発動を要求する Component
     //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
     //! どちらも離したフレームに、溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ
@@ -30,7 +29,8 @@ namespace NS::Game::Level
         void OnStart() override;
 
         //! @brief ボタンの保持を判定へ 1 フレーム進め、発動を控えたフレームに溜め量を添えて体当たりを要求する
-        //! @details 押している間と突進の間は、前方の近い相手へ突進の向きを寄せる
+        //! @details 押している間は狙う相手を探して控える。押している間と突進の間は、基準の向きの線の上の相手か、
+        //! 前方の近い相手へ突進の向きを寄せる
         void OnUpdate() override;
 
         //! 構えの縮みが残っていれば元の形へ戻し、自機へ渡した押しの印を戻して丸まりを解く
@@ -55,6 +55,14 @@ namespace NS::Game::Level
         //! チャージが満タンの場合 true、それ以外の場合は false
         [[nodiscard]] bool IsChargeFull() const noexcept { return m_judge.IsChargeFull(); }
 
+        //! @brief 押している間に控えた狙う相手を読む
+        //! @details 押している間は毎フレーム、PlayerComponent::AimDirection の狙いの向きの線で
+        //! PlayerComponent::BodySlamDistance の内を ImpactResolver::FindSlamLineTarget で探して控える。
+        //! 押していないフレームは控えを消す
+        //! @param[out] outTarget 控えた狙う相手。控えが無い場合は書き換えない
+        //! @return 控えがある場合 true、それ以外の場合は false
+        [[nodiscard]] bool TryGetAimTarget(SlamLineTarget& outTarget) const noexcept;
+
         //! 判定の実体。自動テストは実機入力を差し替えられないので、保持を直接入れる口として出す
         [[nodiscard]] ImpactInputJudge& Judge() noexcept { return m_judge; }
         //! 判定の実体を読むだけの口。PlayerAppearance が溜め量を読む
@@ -76,8 +84,11 @@ namespace NS::Game::Level
 
     private:
         void UpdateChargeStance();
-        //! 押している間と突進の間に、基準の向きの前方で一番近い相手を探して突進の向きを寄せる
-        void SteerTowardNearestTarget();
+        // 押している間は狙いの向きの線で狙う相手を探して控え、押していなければ控えを消す
+        void UpdateAimTarget();
+        // 押している間と突進の間に、基準の向きの線の上の相手が寄せの角度と距離の内に居ればそれへ、
+        // 居なければ前方で一番近い相手へ突進の向きを寄せる
+        void SteerTowardTarget();
 
 #if !defined(NS_SHIPPING)
         void DrawChargeRing();
@@ -103,6 +114,8 @@ namespace NS::Game::Level
         float m_pressSquashScale = 0.97f;    // 押したフレームの反応。チャージ成立の 0.95 と見分けが付く浅さ
 
         ImpactInputJudge m_judge{};
+        SlamLineTarget m_aimTarget{}; // 押している間の狙う相手。m_hasAimTarget が偽の間は読まない
+        bool m_hasAimTarget = false;
         NS::Core::Vector3 m_homeScale{1.0f, 1.0f, 1.0f};
         bool m_stanceApplied = false;
         NS::Game::Player::PlayerComponent* m_movement = nullptr;

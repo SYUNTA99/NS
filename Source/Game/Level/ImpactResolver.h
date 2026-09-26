@@ -3,6 +3,7 @@
 #include "Game/Level/HitTier.h"
 #include "Game/Level/LaunchedBody.h"
 #include "Game/Player/PlayerComponent.h"
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
@@ -48,6 +49,17 @@ namespace NS::Game::Level
         float launchApexHeight = 0.0f;    //!< 相手の曲線の、発射の高さから頂点までの高さ。単位は m
         NS::Core::Vector3 impactDir;      //!< 相手の飛ぶ水平の向き。食い込みと振動の向きも同じ
         NS::Core::Vector3 targetPos;
+    };
+
+    //! @brief 突進の線で最初に触れる相手の予測
+    struct SlamLineTarget
+    {
+        NS::Obj::ObjectRef target{};  //!< 相手の配置物
+        NS::Core::AABB bounds{};      //!< 相手の当たりの外接箱。世界座標
+        NS::Core::Vector3 origin;     //!< 探した時の自機の位置。世界座標
+        NS::Core::Vector3 direction;  //!< 探した水平の向き。正規化済みで y は 0
+        float along = 0.0f;           //!< 自機の位置から相手の外接箱の中心までの、線に沿った水平の距離。単位は m
+        float offset = 0.0f; //!< 線から相手の中心までの横ずれ。相手の半幅と自機の半径の和で割った比で、0 以上 1 以下
     };
 
     //! @brief ぶつかった結果を自機側で決める Component
@@ -105,16 +117,32 @@ namespace NS::Game::Level
         //! @brief 突進の向きを寄せる相手を探す
         //! @details 相手は壊せる物のうち、有効で、トリガの箱でなく、当たりの外接箱が取れる物。裁定と同じ絞り。
         //! 自機の位置から外接箱の中心への水平の向きが forward から coneDegrees 以内で、
-        //! 水平の距離が maxDistance 以内の相手のうち、一番近い 1 体を選ぶ
+        //! 水平の距離が maxDistance 以内の相手のうち、preferred が居ればそれを、居なければ一番近い 1 体を選ぶ
         //! @param[in] forward 基準の向き。水平の成分だけを見る
         //! @param[in] coneDegrees 基準の向きから片側に見る角度。単位は度
         //! @param[in] maxDistance 見る水平の距離。単位は m
         //! @param[out] outCenter 見つけた相手の外接箱の中心。見つからない場合は書き換えない
+        //! @param[in] preferred 角度と距離の内に居れば、一番近い相手より先に選ぶ相手。未設定なら一番近い相手を選ぶ
         //! @return 見つかった場合 true、それ以外の場合は false
         [[nodiscard]] bool FindHomingTarget(const NS::Core::Vector3& forward,
                                             float coneDegrees,
                                             float maxDistance,
-                                            NS::Core::Vector3& outCenter) const;
+                                            NS::Core::Vector3& outCenter,
+                                            NS::Obj::ObjectRef preferred = NS::Obj::ObjectRef{}) const;
+
+        //! @brief 突進の線で最初に触れる相手を探す
+        //! @details 相手の絞りは FindHomingTarget と同じ。自機の位置から direction の水平の線を引き、
+        //! 線から相手の外接箱の中心までの横ずれが、外接箱を線に直交する軸へ投影した半幅と自機の半径の和以内で、
+        //! 線に沿った距離が 0 より大きく maxDistance 以内の相手のうち、線に沿って一番手前の 1 体を選ぶ。
+        //! 横ずれの比は当たりの裁定と同じ式で出し、裁定はそれを 0〜1 に丸めて使う。壁と地形と高さは見ない
+        //! @param[in] direction 線の向き。水平の成分だけを見る
+        //! @param[in] maxDistance 線に沿って見る距離。単位は m
+        //! @param[out] outTarget 見つけた相手の予測。見つからない場合は書き換えない
+        //! @return 見つかった場合 true。向きの水平の長さが 0 か有限でない場合、同じ配置物に移動が無い場合と、
+        //! 見つからない場合は false
+        [[nodiscard]] bool FindSlamLineTarget(const NS::Core::Vector3& direction,
+                                              float maxDistance,
+                                              SlamLineTarget& outTarget) const;
 
         //! 潰した形で凍結中か、伸びから元の形へ戻している途中の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsScaleAnimating() const noexcept { return m_scaleHeld || m_recoverRemaining > 0; }

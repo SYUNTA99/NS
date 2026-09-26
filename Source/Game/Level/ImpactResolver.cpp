@@ -78,21 +78,28 @@ namespace NS::Game::Level
             return static_cast<int>(std::ceil(static_cast<float>(stopSteps) * clamped));
         }
 
-        // 相手の中心からの横ずれ 0..1。OnUpdate へ式を埋めると当たり判定の流れが読めなくなる
-        // 分母は AABB を突進方向に直交する軸へ投影した半幅に自機の半径を足した値
-        // 触れられる横ずれの上限が 1 になる。斜めの箱でも角をかすめる当たりが 1
+        // 自機の位置から向きの線を引いた時の、相手の外接箱の中心の測り
+        struct LineOffset
+        {
+            float along = 0.0f; // 自機の位置から相手の中心までの、線に沿った水平の距離 (m)。後ろは負
+            float ratio = 0.0f; // 線から相手の中心までの横ずれ ÷ (相手の半幅 + 自機の半径)。0〜1 へ丸めない
+        };
+
+        // 当たりの裁定と突進の線の予測が同じ式を通る。式を 2 つ置くと、予測した横ずれと当たりの段が食い違う
+        // 分母は AABB を向きに直交する軸へ投影した半幅に自機の半径を足した値
+        // 触れられる横ずれの上限が比 1 になる。斜めの箱でも角をかすめる当たりが 1
         // 球と傾いた箱は外接箱で測るので実際の縁より広く出る
-        // 水平が 0 の枝は要らない。向かっていないフレームは内積の判定で先に返しており、水平が 0 のフレームもそこへ入る
-        [[nodiscard]] float HitOffset01(const NS::Core::Vector3& position,
-                                        const NS::Core::AABB& bounds,
-                                        const NS::Core::Vector3& velocity,
-                                        float playerRadius) noexcept
+        // 事前条件: direction の水平の長さが 0 でない
+        [[nodiscard]] LineOffset MeasureLineOffset(const NS::Core::Vector3& position,
+                                                   const NS::Core::AABB& bounds,
+                                                   const NS::Core::Vector3& direction,
+                                                   float playerRadius) noexcept
         {
             const float toX = bounds.Center.x - position.x;
             const float toZ = bounds.Center.z - position.z;
-            const float invSpeed = 1.0f / std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
-            const float dirX = velocity.x * invSpeed;
-            const float dirZ = velocity.z * invSpeed;
+            const float invSpeed = 1.0f / std::sqrt(direction.x * direction.x + direction.z * direction.z);
+            const float dirX = direction.x * invSpeed;
+            const float dirZ = direction.z * invSpeed;
             const float along = toX * dirX + toZ * dirZ;
             const float lateralX = toX - along * dirX;
             const float lateralZ = toZ - along * dirZ;
@@ -102,9 +109,19 @@ namespace NS::Game::Level
             // 半幅と半径の和が 0 以下では割れない。中心扱いへ倒す
             if (!(reach > 0.0f))
             {
-                return 0.0f;
+                return LineOffset{.along = along, .ratio = 0.0f};
             }
-            return NS::Core::Clamp(lateral / reach, 0.0f, 1.0f);
+            return LineOffset{.along = along, .ratio = lateral / reach};
+        }
+
+        // 相手の中心からの横ずれ 0..1。OnUpdate へ式を埋めると当たり判定の流れが読めなくなる
+        // 水平が 0 の枝は要らない。向かっていないフレームは内積の判定で先に返しており、水平が 0 のフレームもそこへ入る
+        [[nodiscard]] float HitOffset01(const NS::Core::Vector3& position,
+                                        const NS::Core::AABB& bounds,
+                                        const NS::Core::Vector3& velocity,
+                                        float playerRadius) noexcept
+        {
+            return NS::Core::Clamp(MeasureLineOffset(position, bounds, velocity, playerRadius).ratio, 0.0f, 1.0f);
         }
 
         [[nodiscard]] JPH::BodyID CurrentBodyOf(const NS::Obj::GameObject& object) noexcept
@@ -215,7 +232,8 @@ namespace NS::Game::Level
     bool ImpactResolver::FindHomingTarget(const NS::Core::Vector3& forward,
                                           float coneDegrees,
                                           float maxDistance,
-                                          NS::Core::Vector3& outCenter) const
+                                          NS::Core::Vector3& outCenter,
+                                          NS::Obj::ObjectRef preferred) const
     {
         NS::Core::Vector3 forwardDir{};
         if (Owner() == nullptr || !NS::Core::TryNormalizeHorizontal(forward, forwardDir))
@@ -236,6 +254,8 @@ namespace NS::Game::Level
         bool found = false;
         float nearestDistance = 0.0f;
         NS::Core::Vector3 nearestCenter{};
+        bool preferredFound = false;
+        NS::Core::Vector3 preferredCenter{};
         scene->Objects().ForEachComponent<Breakable>([&](Breakable& breakable) {
             NS::Core::AABB bounds{};
             if (!TryGetTargetBounds(breakable, bounds))
@@ -256,6 +276,11 @@ namespace NS::Game::Level
             {
                 return;
             }
+            if (preferred.IsSet() && breakable.Owner()->Id() == preferred.id)
+            {
+                preferredFound = true;
+                preferredCenter = bounds.Center;
+            }
             if (!found || distance < nearestDistance)
             {
                 found = true;
@@ -264,9 +289,77 @@ namespace NS::Game::Level
             }
         });
 
+        if (preferredFound)
+        {
+            outCenter = preferredCenter;
+            return true;
+        }
         if (found)
         {
             outCenter = nearestCenter;
+        }
+        return found;
+    }
+
+    bool ImpactResolver::FindSlamLineTarget(const NS::Core::Vector3& direction,
+                                            float maxDistance,
+                                            SlamLineTarget& outTarget) const
+    {
+        NS::Core::Vector3 lineDir{};
+        if (Owner() == nullptr || m_movement == nullptr || !NS::Core::TryNormalizeHorizontal(direction, lineDir))
+        {
+            return false;
+        }
+        // 非数と無限の向きは正規化を通り抜ける
+        if (!std::isfinite(lineDir.x) || !std::isfinite(lineDir.z))
+        {
+            return false;
+        }
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+        {
+            return false;
+        }
+
+        const NS::Core::Vector3 position = Owner()->Root().Position();
+        const float playerRadius = m_movement->CapsuleRadius();
+
+        // TODO: 壊せる物を総当たりで見ている。数十個までを想定。増えたら格子で絞る
+        bool found = false;
+        SlamLineTarget first{};
+        scene->Objects().ForEachComponent<Breakable>([&](Breakable& breakable) {
+            NS::Core::AABB bounds{};
+            if (!TryGetTargetBounds(breakable, bounds))
+            {
+                return;
+            }
+
+            const LineOffset line = MeasureLineOffset(position, bounds, lineDir, playerRadius);
+            // 真横と後ろの相手は線の先に居ない。見る距離が非数なら比較が偽になり、誰も拾わない
+            if (!(line.along > 0.0f) || !(line.along <= maxDistance))
+            {
+                return;
+            }
+            // 比が 1 を超える相手は、線を進む自機の縁が相手の外接箱の縁に届かない。丸めた値で見ると 1 に張り付いて拾う
+            if (!(line.ratio <= 1.0f))
+            {
+                return;
+            }
+            if (!found || line.along < first.along)
+            {
+                found = true;
+                first = SlamLineTarget{.target = NS::Obj::ObjectRef{breakable.Owner()->Id()},
+                                       .bounds = bounds,
+                                       .origin = position,
+                                       .direction = lineDir,
+                                       .along = line.along,
+                                       .offset = line.ratio};
+            }
+        });
+
+        if (found)
+        {
+            outTarget = first;
         }
         return found;
     }
