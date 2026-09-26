@@ -7,6 +7,7 @@
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
+#include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -70,7 +71,8 @@ namespace NS::Game::Player
                         LedgeHangingPlayerState,
                         LedgeClimbingPlayerState,
                         BodySlamPlayerState,
-                        BrakePlayerState>(player);
+                        BrakePlayerState,
+                        ReboundPlayerState>(player);
     }
 
     NS_CLASS(PlayerStateManager)

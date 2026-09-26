@@ -37,7 +37,7 @@ namespace NS::Game::Player
 
         [[nodiscard]] NS::Obj::StateId CurrentStateId() const noexcept override;
 
-        //! 自機の 7 状態を並べて状態機械を組む。並べた型がそのまま移れる状態の全部になる
+        //! 自機の 8 状態を並べて状態機械を組む。並べた型がそのまま移れる状態の全部になる
         void BuildStates(PlayerComponent& player);
 
         NS::Obj::StateMachine<PlayerComponent> m_machine;

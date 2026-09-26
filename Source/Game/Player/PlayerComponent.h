@@ -14,11 +14,21 @@ namespace NS::Game::Player
 {
     class PlayerStateManager;
 
+    //! @brief 反動の軌道のうち、当たりが決める向きと高さと距離
+    //! @details 指示付き初期化で組み、PlayerComponent::BeginRebound へ渡す。
+    //! 上りと下りの重力と頂点の帯は PlayerComponent が自分の欄で決める
+    struct ReboundArc
+    {
+        NS::Core::Vector3 direction{1.0f, 0.0f, 0.0f}; // 弾かれる向き。水平の成分だけを使う
+        float apexHeight = 0.0f;                       // 弾かれ始めの高さから頂点までの高さ (m)
+        float distance = 0.0f;                         // 弾かれ始めから同じ高さへ戻るまでの水平の距離 (m)
+    };
+
     //! @brief 自機の能力を持つ Component
     //! @details 移動と接地は EntityComponent が持ち、ここには自機だけの能力と条件判定を置く
     //! 調整値は自分の欄として持つ。Inspector とシーン JSON はこの欄をリフレクション越しに読み書きする
     //! 状態は能力呼びの列だけにするので、状態から呼ぶ動詞は public
-    //! 依存: NS::Game::Entity::EntityComponent / EntityStateManager
+    //! 依存: NS::Game::Entity::EntityComponent / EntityStateManager / NS::Game::Level::LaunchArc (.cpp だけが読む)
     class PlayerComponent : public NS::Game::Entity::EntityComponent
     {
     public:
@@ -87,6 +97,25 @@ namespace NS::Game::Player
         //! 突進の 1 フレームを進める。溜めた突進は水平を発動時の向きと速さで書き直し、重力を当てる
         void UpdateBodySlam(float dt) noexcept;
 
+        //! @brief 速度を ReboundVelocityFor の値にして反動の状態へ移す
+        //! @details 反動の間は上りの重力に反動の上りの重力倍率を掛け、下りは普段の重力のまま
+        //! 反動の間は跳べず、空中の操作は反動中の空中の加速度だけ効く
+        //! 接地していて上向きの速度が無くなったフレームに立ちへ移る
+        //! @param[in] arc 弾かれる向きと頂点の高さと横の距離
+        //! @return 反動を始めた場合 true、ReboundVelocityFor が 0 を返す arc で何も変えなかった場合は false
+        [[nodiscard]] bool BeginRebound(const ReboundArc& arc) noexcept;
+        //! @brief arc の反動を始める瞬間の速度 (m/s) を返す
+        //! @details 飛ばした物の曲線と同じ式 LaunchArcInitialVelocity で出す。
+        //! 上りの重力は上昇重力 × 反動の上りの重力倍率、下りは下降重力、頂点の帯は頂点滞空 Vy と頂点滞空倍率
+        //! @param[in] arc 弾かれる向きと頂点の高さと横の距離
+        //! @return 反動の初速。高さか距離が有限の正でない時、向きに水平の成分が無い時、
+        //! 重力の欄から曲線が組めない時は 0
+        [[nodiscard]] NS::Core::Vector3 ReboundVelocityFor(const ReboundArc& arc) const noexcept;
+        //! 反動の状態の場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsRebounding() const noexcept;
+        //! 最後に始めた反動の水平の向き。正規化済み。反動を始める前と ResetState の後はゼロ
+        [[nodiscard]] NS::Core::Vector3 ReboundDirection() const noexcept { return m_reboundDir; }
+
         // 移動の 1 フレームを作る動詞。呼ぶ順序がそのまま手触りになる
         //! 先行入力とコヨーテ猶予のタイマーを 1 フレーム進める
         void TickTimers(float dt) noexcept;
@@ -105,6 +134,13 @@ namespace NS::Game::Player
         void Gravity(float dt) noexcept;
         //! タップの飛び込みだけに当てる重力。滞空秒がタップ距離を進む秒と揃う強さにする
         void TapSlamGravity(float dt) noexcept;
+        //! @brief 反動の間の重力を当てる
+        //! @details 上向きの間は上昇重力に反動の上りの重力倍率を掛け、頂点の近くはさらに頂点滞空倍率を掛ける。
+        //! 上向きでなければ Gravity と同じ
+        void ReboundGravity(float dt) noexcept;
+        //! @brief 反動の間、入力の向きへ反動中の空中の加速度で加速する。入力が無ければ何もしない
+        //! @details 接地の印に依らずこの加速度を使い、入力の向きからずれた速度は減らさない
+        void AccelerateDuringRebound(float dt) noexcept;
         //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
         void SyncGroundState() noexcept;
         //! 縁を掴めるか試す。掴んだ場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
@@ -136,6 +172,8 @@ namespace NS::Game::Player
         [[nodiscard]] bool ShouldIdle() const noexcept;
         //! 接地を外れている場合 true、それ以外の場合は false
         [[nodiscard]] bool ShouldFall() const noexcept;
+        //! 接地していて上向きの速度が無い場合 true、それ以外の場合は false
+        [[nodiscard]] bool ShouldLand() const noexcept;
         //! 入力の向きと水平の速度の内積がブレーキのしきい値を下回る場合 true、それ以外の場合は false
         [[nodiscard]] bool ShouldBrake() const noexcept;
         //! スティックの倒し具合が遊び以上の場合 true、それ以外の場合は false
@@ -216,6 +254,8 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_slamAimFadeTime, "狙いの巻き戻しが消える秒")
         NS_REFLECT_FIELD(m_homingMaxDegrees, "寄せる角度の上限")
         NS_REFLECT_FIELD(m_homingStepDegrees, "1 フレームの向きの変化の上限")
+        NS_REFLECT_FIELD(m_reboundRiseGravityScale, "反動の上りの重力倍率")
+        NS_REFLECT_FIELD(m_reboundAirAcceleration, "反動中の空中の加速度")
         NS_REFLECT_END()
 
     protected:
@@ -232,7 +272,7 @@ namespace NS::Game::Player
         //! @details 進めた距離は動かした後にしか出ないので、打ち切りの判定は状態でなくここに置く
         //! 受け取るのは直前の Move で実際に動いた量
         void AdvanceBodySlamTravel(const NS::Core::Vector3& delta) noexcept;
-        //! 現在状態が通常移動 (立ち / 走り / 落下) の場合 true、それ以外の場合は false
+        //! 現在状態が通常移動 (立ち / 走り / 落下 / 反動) の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsLocomotion() const noexcept;
         //! @brief 丸まりを解く
         //! @details 押されていない・突進中でない・直前のフレームを突進中で終えていない・突進の予約が無い・
@@ -368,6 +408,10 @@ namespace NS::Game::Player
 
         float m_homingMaxDegrees = 3.0f;   // 狙いから相手へ寄せる角度の上限 (度)。溜めと突進の合計
         float m_homingStepDegrees = 0.25f; // 寄せで向きが 1 フレームに変わる角度の上限 (度)
+
+        float m_reboundRiseGravityScale = 0.5f;           // 反動の上りの重力 ÷ 上昇重力
+        float m_reboundAirAcceleration = 2.0f;            // 反動の間に入力の向きへ足す加速度 (m/s²)
+        NS::Core::Vector3 m_reboundDir{0.0f, 0.0f, 0.0f}; // 最後に始めた反動の水平の向き。正規化済み
 
         PlayerStateManager* m_stateManager = nullptr; // 状態機械 (非所有)
 

@@ -48,7 +48,6 @@ namespace
     using NS::Core::Vector3;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
-    constexpr float k_ReboundUpSpeed = 3.0f;
     constexpr float k_RunSpeed = 8.0f;
     constexpr float k_FastEntrySpeed = 16.0f;
     constexpr float k_SlamSpeed = 20.0f;
@@ -56,6 +55,9 @@ namespace
     // 質量 1 に威力 1 で当てた時の曲線。欄「押し飛ばしの距離」「押し飛ばしの高さ」の既定
     constexpr float k_LaunchDistance = 29.0f;
     constexpr float k_LaunchApexHeight = 2.0f;
+    // 質量 1 に威力 1 で当てた時の自機の反動。欄「反動の高さ」「反動の距離」の既定
+    constexpr float k_ReboundApexHeight = 1.15f;
+    constexpr float k_ReboundDistance = 0.575f;
     // 破壊は耐久 ≤ 最終威力なので、反発と押し飛ばしを見る台は壊れない高さを既定にする
     constexpr float k_UnbreakableToughness = 99.0f;
     // 逆転を見る台の耐久。満溜め + 中心直撃の 2.0 と、素当て + 縁寄りの 0.85 の間に置く
@@ -228,6 +230,11 @@ namespace
     [[nodiscard]] float HorizontalSpeed(const Vector3& v) noexcept
     {
         return std::sqrt(v.x * v.x + v.z * v.z);
+    }
+
+    [[nodiscard]] float Speed(const Vector3& v) noexcept
+    {
+        return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
     }
 
     void SetFloatField(SceneNs::Component& comp, std::string_view label, float value)
@@ -564,8 +571,8 @@ TEST(CollisionImpact, SlamFromRestingContactStillHits)
     EXPECT_TRUE(rig.impact->DidRebound());
 }
 
-// 溜めるほど返りも速い。溜めるほど損になると、溜めて放つ意味が消える
-TEST(CollisionImpact, ChargedImpactReboundsFaster)
+// 溜めるほど高く返る。溜めるほど損になると、溜めて放つ意味が消える
+TEST(CollisionImpact, ChargedImpactReboundsHigher)
 {
     SceneNs::Scene plainScene;
     Rig plain = BuildSlam(plainScene, k_NearCourse);
@@ -581,36 +588,15 @@ TEST(CollisionImpact, ChargedImpactReboundsFaster)
 
     ASSERT_TRUE(plain.impact->DidRebound());
     ASSERT_TRUE(charged.impact->DidRebound());
-    const float weak = HorizontalSpeed(plain.movement->Velocity());
-    const float strong = HorizontalSpeed(charged.movement->Velocity());
+    const float weak = plain.impact->LastImpact().reboundApexHeight;
+    const float strong = charged.impact->LastImpact().reboundApexHeight;
     EXPECT_GT(weak, 0.0f);
     EXPECT_GT(strong, weak);
+    EXPECT_GT(charged.movement->Velocity().y, plain.movement->Velocity().y);
 }
 
-// 重い物ほど壁として返す。軽い物は勢いを持っていくので返りが弱い
-TEST(CollisionImpact, HeavierTargetReboundsHarder)
-{
-    SceneNs::Scene lightScene;
-    Rig light = BuildSlam(lightScene, k_NearCourse);
-    SetInstantImpact(light);
-    light.rigidBody->SetMass(1.0f);
-    BeginSlam(lightScene, light, k_RunSpeed, 0.0f);
-    ASSERT_LT(StepUntilImpact(lightScene, light, 30), 30);
-
-    SceneNs::Scene heavyScene;
-    Rig heavy = BuildSlam(heavyScene, k_NearCourse);
-    SetInstantImpact(heavy);
-    heavy.rigidBody->SetMass(8.0f);
-    BeginSlam(heavyScene, heavy, k_RunSpeed, 0.0f);
-    ASSERT_LT(StepUntilImpact(heavyScene, heavy, 30), 30);
-
-    const float weak = HorizontalSpeed(light.movement->Velocity());
-    const float strong = HorizontalSpeed(heavy.movement->Velocity());
-    EXPECT_GT(weak, 0.0f);
-    EXPECT_GT(strong, weak);
-}
-
-TEST(CollisionImpact, ReboundAddsUpSpeed)
+// 反動は横でなく上へ大きく弾く。横へ流れると、押し返された感触より滑って離れた絵になる
+TEST(CollisionImpact, ReboundGoesUpMoreThanSideways)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
@@ -619,7 +605,9 @@ TEST(CollisionImpact, ReboundAddsUpSpeed)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    EXPECT_FLOAT_EQ(rig.movement->Velocity().y, k_ReboundUpSpeed);
+    const Vector3 self = rig.impact->LastImpact().selfVelocity;
+    EXPECT_GT(HorizontalSpeed(self), 0.0f);
+    EXPECT_GT(self.y, HorizontalSpeed(self));
 }
 
 TEST(CollisionImpact, ReboundDirectionFollowsBoxAxis)
@@ -789,7 +777,13 @@ TEST(CollisionImpact, BreakAfterAPushRecordsNoLaunch)
     ASSERT_TRUE(rig.impact->DidRebound());
     ASSERT_GT(rig.impact->LastImpact().launchDistance, 0.0f);
 
-    // 返りで下がった自機が、同じ相手へもう一度突進して壊す。この台は物理を回さないので相手はその場に居る
+    // 返りで下がった自機が、着地してから同じ相手へもう一度突進して壊す。この台は物理を回さないので相手はその場に居る
+    // この台の反動の空中は 0.8 秒ほどあり、床へ着くまで待つ手順 (最大 30 フレーム) より長い
+    for (int i = 0; i < 120 && rig.movement->IsRebounding(); ++i)
+    {
+        Step(scene, rig);
+    }
+    ASSERT_FALSE(rig.movement->IsRebounding());
     EnableBreak(rig);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(0.0f);
@@ -804,21 +798,82 @@ TEST(CollisionImpact, BreakAfterAPushRecordsNoLaunch)
     EXPECT_FLOAT_EQ(hit.launchVelocity.x, 0.0f);
     EXPECT_FLOAT_EQ(hit.launchVelocity.y, 0.0f);
     EXPECT_FLOAT_EQ(hit.launchVelocity.z, 0.0f);
+    // 貫通は自機も反動しない。前の押し飛ばしの反動の高さを残さない
+    EXPECT_FLOAT_EQ(hit.reboundApexHeight, 0.0f);
+    EXPECT_FALSE(rig.movement->IsRebounding());
 }
 
-TEST(CollisionImpact, ReboundFieldsDriveVelocity)
+// 反動の高さと距離の欄が、当たりの記録と自機の反動の軌道を決める。台の的は質量 1 なので質量の効きは 1
+TEST(CollisionImpact, ReboundFieldsDriveTheApexAndTheVelocity)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     SetInstantImpact(rig);
-    SetFloatField(*rig.impact, "反発基準初速", 5.0f);
-    SetFloatField(*rig.impact, "反発の上向き初速", 1.0f);
+    SetFloatField(*rig.impact, "反動の高さ", 2.0f);
+    SetFloatField(*rig.impact, "反動の距離", 0.8f);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    EXPECT_FLOAT_EQ(rig.movement->Velocity().x, -5.0f * rig.impact->LastPower() * 0.5f);
-    EXPECT_FLOAT_EQ(rig.movement->Velocity().y, 1.0f);
+    const float power = rig.impact->LastPower();
+    const LevelNs::ImpactRecord& hit = rig.impact->LastImpact();
+    EXPECT_FLOAT_EQ(hit.reboundApexHeight, 2.0f * power);
+    // 的は +X にあり、自機は的の中心から -X の向きへ弾かれる
+    const Vector3 expected = rig.movement->ReboundVelocityFor(NS::Game::Player::ReboundArc{
+        .direction = Vector3{-1.0f, 0.0f, 0.0f}, .apexHeight = 2.0f * power, .distance = 0.8f * power});
+    ASSERT_GT(expected.y, 0.0f);
+    EXPECT_FLOAT_EQ(hit.selfVelocity.x, expected.x);
+    EXPECT_FLOAT_EQ(hit.selfVelocity.y, expected.y);
+    EXPECT_FLOAT_EQ(hit.selfVelocity.z, expected.z);
+    EXPECT_FLOAT_EQ(rig.movement->Velocity().x, expected.x);
+    EXPECT_FLOAT_EQ(rig.movement->Velocity().y, expected.y);
+    EXPECT_TRUE(rig.movement->IsRebounding());
+}
+
+// 反動の欄が曲線にならない当たりは自機を弾けない。明けの自機の速度は記録と同じ 0 で、反動の状態へ移らない
+TEST(CollisionImpact, ReboundThatIsNotAnArcLeavesThePlayerAtTheRecordedVelocity)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    SetInstantImpact(rig);
+    SetFloatField(*rig.impact, "反動の高さ", 0.0f);
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+
+    const LevelNs::ImpactRecord& hit = rig.impact->LastImpact();
+    ASSERT_FALSE(hit.broke);
+    EXPECT_FLOAT_EQ(hit.reboundApexHeight, 0.0f);
+    EXPECT_FLOAT_EQ(hit.selfVelocity.x, 0.0f);
+    EXPECT_FLOAT_EQ(hit.selfVelocity.y, 0.0f);
+    EXPECT_FLOAT_EQ(hit.selfVelocity.z, 0.0f);
+    EXPECT_FLOAT_EQ(rig.movement->Velocity().x, hit.selfVelocity.x);
+    EXPECT_FLOAT_EQ(rig.movement->Velocity().y, hit.selfVelocity.y);
+    EXPECT_FLOAT_EQ(rig.movement->Velocity().z, hit.selfVelocity.z);
+    EXPECT_FALSE(rig.movement->IsRebounding());
+}
+
+// 同梱シーンに置く質量 (0.5 以上) で一番弱い当たり
+// 溜めないタップを大きく外して当てても、自機は 0.5 m 以上上がり、相手も飛ぶ
+TEST(CollisionImpact, WeakestHitInThePlacedRangeStillMovesBothSides)
+{
+    SceneNs::Scene scene;
+    // 横ずれ 0.8 ÷ (的の半幅 0.5 + 自機の半径 0.4) = 0.89 で大きな外れ
+    Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .lateral = 0.8f, .targetCell = 1});
+    SetInstantImpact(rig);
+    SetFloatField(*rig.movement, "寄せる角度の上限", 0.0f);
+    rig.rigidBody->SetMass(0.5f);
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+
+    const LevelNs::ImpactRecord& hit = rig.impact->LastImpact();
+    ASSERT_FLOAT_EQ(hit.charge01, 0.0f);
+    ASSERT_EQ(hit.tier, LevelNs::HitTier::Wide);
+    EXPECT_GE(hit.reboundApexHeight, 0.5f);
+    EXPECT_GT(hit.selfVelocity.y, 0.0f);
+    EXPECT_GT(HorizontalSpeed(hit.selfVelocity), 0.0f);
+    EXPECT_GT(HorizontalSpeed(hit.launchVelocity), 0.0f);
 }
 
 TEST(CollisionImpact, WithoutCollisionInputPowerIsRatioOnly)
@@ -891,6 +946,7 @@ TEST(CollisionImpact, KeepsTheNumbersOfTheLastHitForReading)
     EXPECT_GT(hit.launchVelocity.x, 0.0f);
     EXPECT_GT(hit.launchDistance, 0.0f);
     EXPECT_GT(hit.launchApexHeight, 0.0f);
+    EXPECT_GT(hit.reboundApexHeight, 0.0f);
     // 突進は +X へ向かう。食い込みと振動の向きも相手の飛ぶ向きも突進の向き
     EXPECT_FLOAT_EQ(hit.impactDir.x, 1.0f);
     EXPECT_FLOAT_EQ(hit.impactDir.y, 0.0f);
@@ -979,11 +1035,12 @@ TEST(CollisionImpact, LaunchLiftsHitBody)
     EXPECT_LT(body->Velocity().y, HorizontalSpeed(body->Velocity()));
 }
 
-// 重い相手ほど相手の飛ぶ距離が縮み、自機の反発が強くなる。どの質量でも両方が動く
+// 重い相手ほど相手の飛ぶ距離が縮み、自機が高く速く返る。どの質量でも両方が動く
 TEST(CollisionImpact, HeavierBodyFliesShorterAndReboundsThePlayerHarder)
 {
     const std::vector<float> masses{0.5f, 1.0f, 8.0f};
     std::vector<float> distances;
+    std::vector<float> apexes;
     std::vector<float> rebounds;
     for (const float mass : masses)
     {
@@ -993,18 +1050,33 @@ TEST(CollisionImpact, HeavierBodyFliesShorterAndReboundsThePlayerHarder)
         rig.rigidBody->SetMass(mass);
         BeginSlam(scene, rig, k_RunSpeed, 0.0f);
         ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
-        distances.push_back(rig.impact->LastImpact().launchDistance);
-        rebounds.push_back(HorizontalSpeed(rig.impact->LastImpact().selfVelocity));
+        const LevelNs::ImpactRecord& hit = rig.impact->LastImpact();
+        distances.push_back(hit.launchDistance);
+        apexes.push_back(hit.reboundApexHeight);
+        rebounds.push_back(Speed(hit.selfVelocity));
+
+        // 反動の高さと距離は 欄 × 威力 × 2 × 質量 ÷ (質量 + 1)。的は +X にあり、自機は -X へ弾かれる
+        const float scale = rig.impact->LastPower() * 2.0f * (mass / (mass + 1.0f));
+        EXPECT_FLOAT_EQ(hit.reboundApexHeight, k_ReboundApexHeight * scale) << "質量 " << mass;
+        const Vector3 expected = rig.movement->ReboundVelocityFor(
+            NS::Game::Player::ReboundArc{.direction = Vector3{-1.0f, 0.0f, 0.0f},
+                                         .apexHeight = k_ReboundApexHeight * scale,
+                                         .distance = k_ReboundDistance * scale});
+        EXPECT_FLOAT_EQ(hit.selfVelocity.x, expected.x) << "質量 " << mass;
+        EXPECT_FLOAT_EQ(hit.selfVelocity.y, expected.y) << "質量 " << mass;
+        EXPECT_FLOAT_EQ(hit.selfVelocity.z, expected.z) << "質量 " << mass;
     }
 
     for (std::size_t i = 0; i < masses.size(); ++i)
     {
         EXPECT_GT(distances[i], 0.0f) << "質量 " << masses[i];
+        EXPECT_GT(apexes[i], 0.0f) << "質量 " << masses[i];
         EXPECT_GT(rebounds[i], 0.0f) << "質量 " << masses[i];
     }
     for (std::size_t i = 1; i < masses.size(); ++i)
     {
         EXPECT_LT(distances[i], distances[i - 1]) << "質量 " << masses[i];
+        EXPECT_GT(apexes[i], apexes[i - 1]) << "質量 " << masses[i];
         EXPECT_GT(rebounds[i], rebounds[i - 1]) << "質量 " << masses[i];
     }
 }
@@ -1115,12 +1187,13 @@ TEST(CollisionImpact, ZeroMassLaunchesLikeUnitMass)
 }
 
 // 衝突の瞬間に自機が数フレーム止まる。止まっている間は反発も発射も適用されず、明けたフレームにまとめて掛かる
+// 溜めた突進は床を進んで当たるので、検知のフレームの接地の印が明けまで残る。明けのフレームに地上の摩擦を掛けない
 TEST(CollisionImpact, HitStopFreezesPlayerAndDefersLaunch)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     rig.rigidBody->SetMass(4.0f);
-    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
@@ -1140,6 +1213,40 @@ TEST(CollisionImpact, HitStopFreezesPlayerAndDefersLaunch)
     LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     EXPECT_TRUE(body->IsFlying());
+
+    ASSERT_TRUE(rig.movement->IsGrounded());
+    const float released = HorizontalSpeed(rig.impact->LastImpact().selfVelocity);
+    rig.movement->OnUpdate();
+    EXPECT_TRUE(rig.movement->IsRebounding());
+    EXPECT_NEAR(HorizontalSpeed(rig.movement->Velocity()), released, 1.0e-3f);
+}
+
+// 突進の最中の押しは当てたフレームに出さず、止めの明けへ持ち越す。止めの間の押しと同じく、明けに反動から出る
+// 当てたフレームに出すと、その突進が止めの間も残り、明けの反動に終わりの通知なしで上書きされる
+TEST(CollisionImpact, PressDuringTheRushCarriesOverTheHitStopIntoTheRebound)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    int started = 0;
+    int ended = 0;
+    rig.movement->PlayerEventsRef().onBodySlamStarted.Subscribe([&started]() { ++started; });
+    rig.movement->PlayerEventsRef().onBodySlamEnded.Subscribe([&ended]() { ++ended; });
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+    ASSERT_TRUE(rig.movement->IsBodySlamming());
+    rig.movement->RequestBodySlam(0.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    ASSERT_GT(rig.impact->LastImpact().hitStopSteps, 0);
+    ASSERT_TRUE(rig.movement->IsGrounded());
+    rig.movement->OnUpdate();
+    EXPECT_FALSE(rig.movement->IsBodySlamming()) << "当てたフレームに次の突進が出た";
+
+    ASSERT_LT(StepsUntilMovementActive(scene, rig, 60), 60);
+    EXPECT_TRUE(rig.movement->IsRebounding());
+    EXPECT_EQ(started, ended) << "終わりの通知が出ないまま反動へ移った突進がある";
+
+    rig.movement->OnUpdate();
+    EXPECT_TRUE(rig.movement->IsBodySlamming()) << "突進の最中の押しが明けに出ない";
 }
 
 // 重さは飛距離より止められた時間で出る。重い物ほど長く止まる
@@ -1882,14 +1989,14 @@ TEST(CollisionImpact, StaysCurledFromThePressUntilTheLandingAfterTheRebound)
 
     // 明けたフレーム。移動が動く前は接地の印が残り、上向きの反動が入っている
     ASSERT_TRUE(rig.movement->IsGrounded());
-    ASSERT_FLOAT_EQ(rig.movement->VerticalVelocity(), k_ReboundUpSpeed);
+    ASSERT_FLOAT_EQ(rig.movement->VerticalVelocity(), rig.impact->LastImpact().selfVelocity.y);
     rig.movement->OnUpdate();
     EXPECT_TRUE(rig.movement->IsCurled()) << "反動が明けたフレームに解けている";
 
     bool sawAirborne = false;
     bool groundedBeforeUncurl = false;
     steps = 0;
-    while (rig.movement->IsCurled() && steps < 120)
+    while (rig.movement->IsCurled() && steps < 180)
     {
         groundedBeforeUncurl = rig.movement->IsGrounded();
         if (!groundedBeforeUncurl)
@@ -1899,7 +2006,7 @@ TEST(CollisionImpact, StaysCurledFromThePressUntilTheLandingAfterTheRebound)
         Step(scene, rig);
         ++steps;
     }
-    ASSERT_LT(steps, 120);
+    ASSERT_LT(steps, 180);
     EXPECT_TRUE(sawAirborne) << "反動で浮かないまま解けた";
     EXPECT_TRUE(groundedBeforeUncurl) << "着地する前に解けた";
 }
@@ -2618,6 +2725,47 @@ TEST(LaunchedBody, ArcFallsInFewerFramesThanItRises)
     EXPECT_GT(rising, falling);
 }
 
+// 上りの重力を弱めると、同じ高さへ遅い初速で上がり、上りに長く掛かる
+TEST(LaunchedBody, WeakerRiseGravityRisesMoreSlowlyToTheSameHeight)
+{
+    LevelNs::LaunchArc weak = k_TestArc;
+    weak.riseGravity = 12.5f;
+    const float defaultRise = LevelNs::LaunchArcInitialVelocity(k_TestArc).y;
+    const float weakRise = LevelNs::LaunchArcInitialVelocity(weak).y;
+    ASSERT_GT(weakRise, 0.0f);
+    EXPECT_LT(weakRise, defaultRise);
+
+    SceneNs::Scene defaultScene;
+    BodyRig defaultRig = BuildBody(defaultScene, {.floorLastX = k_LongFloorLastX, .sphereTarget = true});
+    SceneNs::Scene weakScene;
+    BodyRig weakRig = BuildBody(weakScene, {.floorLastX = k_LongFloorLastX, .sphereTarget = true});
+    ASSERT_NE(defaultRig.body, nullptr);
+    ASSERT_NE(weakRig.body, nullptr);
+    const ArcFlight defaultFlight = FlyArc(defaultScene, defaultRig, k_TestArc, 240);
+    const ArcFlight weakFlight = FlyArc(weakScene, weakRig, weak, 240);
+
+    int defaultRising = 0;
+    for (const Vector3& velocity : defaultFlight.velocities)
+    {
+        if (velocity.y > 0.0f)
+        {
+            ++defaultRising;
+        }
+    }
+    int weakRising = 0;
+    float weakTop = 0.0f;
+    for (std::size_t i = 0; i < weakFlight.velocities.size(); ++i)
+    {
+        if (weakFlight.velocities[i].y > 0.0f)
+        {
+            ++weakRising;
+        }
+        weakTop = std::max(weakTop, weakFlight.positions[i].y - weakFlight.start.y);
+    }
+    EXPECT_GT(weakRising, defaultRising);
+    EXPECT_NEAR(weakTop, weak.apexHeight, 0.05f);
+}
+
 // 頂点の近くで縦の速さが帯の縦速度より小さいフレームが続き、一瞬止まって見える
 TEST(LaunchedBody, ArcLingersNearItsApex)
 {
@@ -3208,12 +3356,16 @@ TEST(LaunchedBody, NonFiniteOrNonPositiveArcIsIgnored)
         arc = k_TestArc;
         arc.apexHeight = bad;
         broken.push_back(arc);
+        arc = k_TestArc;
+        arc.riseGravity = bad;
+        broken.push_back(arc);
     }
 
     for (const LevelNs::LaunchArc& arc : broken)
     {
         rig.body->Launch(arc);
-        EXPECT_FALSE(rig.body->IsFlying()) << "距離 " << arc.distance << "・高さ " << arc.apexHeight;
+        EXPECT_FALSE(rig.body->IsFlying())
+            << "距離 " << arc.distance << "・高さ " << arc.apexHeight << "・上りの重力 " << arc.riseGravity;
     }
     EXPECT_TRUE(rig.rigidBody->IsKinematic());
     EXPECT_TRUE(rig.box->IsActiveSelf());

@@ -2,6 +2,7 @@
 
 #include "Game/Level/HitTier.h"
 #include "Game/Level/LaunchedBody.h"
+#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
@@ -12,11 +13,6 @@ namespace NS::Obj
 {
     class GameObject;
 } // namespace NS::Obj
-
-namespace NS::Game::Player
-{
-    class PlayerComponent;
-}
 
 namespace NS::Game::Level
 {
@@ -37,7 +33,9 @@ namespace NS::Game::Level
         int hitStopSteps = 0;
         bool centerHit = false; //!< 白の光と止めの倍率を掛けた場合 true。CollisionInput が無い時は false
         bool broke = false;
-        NS::Core::Vector3 selfVelocity;
+        NS::Core::Vector3 selfVelocity; //!< 明けに自機が持つ速度。反動は初速、貫通は減速した突進の速度。単位は m/s
+        // 反動の頂点の高さは押し飛ばしの当たりだけが埋める。貫通の当たりは反動しないので 0
+        float reboundApexHeight = 0.0f; //!< 自機の反動の、弾かれ始めの高さから頂点までの高さ。単位は m
         // 飛ばす曲線の 3 つの欄は押し飛ばしの当たりだけが埋める。貫通の当たりは相手を飛ばさないので 0
         NS::Core::Vector3 launchVelocity; //!< 相手の曲線の発射の瞬間の速度。単位は m/s
         float launchDistance = 0.0f;      //!< 相手の曲線が発射の高さへ戻るまでに水平に進む距離。単位は m
@@ -115,8 +113,8 @@ namespace NS::Game::Level
 
         // 返り方は当てた時の手触りそのもの。プレイ中に Inspector で触って詰められるよう公開する
         NS_REFLECT_BEGIN(ImpactResolver, NS::Obj::OverlayRenderer)
-        NS_REFLECT_FIELD(m_reboundSpeed, "反発基準初速")
-        NS_REFLECT_FIELD(m_reboundUpSpeed, "反発の上向き初速")
+        NS_REFLECT_FIELD(m_reboundApexHeight, "反動の高さ")
+        NS_REFLECT_FIELD(m_reboundDistance, "反動の距離")
         NS_REFLECT_FIELD(m_launchDistance, "押し飛ばしの距離")
         NS_REFLECT_FIELD(m_launchMassExponent, "押し飛ばしの質量指数")
         NS_REFLECT_FIELD(m_launchApexHeight, "押し飛ばしの高さ")
@@ -155,7 +153,7 @@ namespace NS::Game::Level
         // 進行の軸だけ倍率を効かせた描画スケールを作る。縦は別の倍率で受ける
         [[nodiscard]] NS::Core::Vector3 ScaledAlongImpact(float along, float height) const noexcept;
 
-        // 止めていた結果を適用する。自機を起こして速度を書き、反発なら発射、貫通なら破壊を行う
+        // 止めていた結果を適用する。反発は自機の反動を始めて相手を発射する。貫通は速度を書いて破壊する
         void ReleaseHitStop();
 
         // 秒をフレーム数へ換算して 0 から MaxHitStopSteps までに丸める
@@ -172,8 +170,10 @@ namespace NS::Game::Level
         // 最終威力と質量から止めるフレーム数を出す。0 なら止めない
         [[nodiscard]] int ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept;
 
-        float m_reboundSpeed = 9.0f;        // 動かない壁に通常速度で当たった時の返りの速さ
-        float m_reboundUpSpeed = 3.0f;      // 反発の上向き初速
+        // 質量 1 の物に威力 1 で当てた時、自機が弾かれ始めの高さから上がる頂点の高さ (m)
+        float m_reboundApexHeight = 1.15f;
+        // 質量 1 の物に威力 1 で当てた時、自機が弾かれ始めの高さへ戻るまでに水平に進む距離 (m)
+        float m_reboundDistance = 0.575f;
         float m_launchDistance = 29.0f;     // 質量 1 の物に威力 1 で当てた時、発射の高さへ戻るまでに水平に飛ぶ距離 (m)
         float m_launchMassExponent = 0.35f; // 押し飛ばしの距離と高さを割る質量の指数。1 で反比例、0 で質量を見ない
         float m_launchApexHeight = 2.0f;    // 質量 1 の物に威力 1 で当てた時の、発射の高さから頂点までの高さ (m)
@@ -208,11 +208,13 @@ namespace NS::Game::Level
         float m_breakStopSeconds = 4.0f / 60.0f; // 貫通の瞬間に止める秒。4 フレームぶん
         float m_markProbeDistance = 64.0f;       // 跡の床を真下へ探す上限。これより下に床が無ければ跡を出さない
 
-        int m_freezePendingSteps = 0;                              // 次のフレームに掛ける凍結のフレーム数。0 は予約なし
-        int m_hitStopRemaining = 0;                                // 止まっている残りフレーム数。0 は止まっていない
-        int m_hitStopTotal = 0;                                    // 止め始めのフレーム数。振動の減衰の分母
-        NS::Core::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f}; // 明けたフレームに自機へ書く反発速度
-        LaunchArc m_pendingLaunchArc{};                            // 明けたフレームに相手を飛ばす曲線
+        int m_freezePendingSteps = 0; // 次のフレームに掛ける凍結のフレーム数。0 は予約なし
+        int m_hitStopRemaining = 0;   // 止まっている残りフレーム数。0 は止まっていない
+        int m_hitStopTotal = 0;       // 止め始めのフレーム数。振動の減衰の分母
+        // 明けたフレームに自機が持つ速度。反動の当たりは、明けに BeginRebound が同じ m_pendingReboundArc から出し直す
+        NS::Core::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};
+        NS::Game::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離
+        LaunchArc m_pendingLaunchArc{};                     // 明けたフレームに相手を飛ばす曲線
         // 検知のフレームの相手の位置。置かれていた相手は明けたフレームにここへ厳密に戻す
         NS::Core::Vector3 m_pendingTargetHome{0.0f, 0.0f, 0.0f};
         NS::Core::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f}; // 発射の水平方向。食い込みと振動の軸

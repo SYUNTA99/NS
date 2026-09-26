@@ -1,3 +1,4 @@
+#include <Game/Level/LaunchedBody.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManager.h>
 #include <Game/Player/States/BodySlamPlayerState.h>
@@ -6,6 +7,7 @@
 #include <Game/Player/States/IdlePlayerState.h>
 #include <Game/Player/States/LedgeClimbingPlayerState.h>
 #include <Game/Player/States/LedgeHangingPlayerState.h>
+#include <Game/Player/States/ReboundPlayerState.h>
 #include <Game/Player/States/WalkPlayerState.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Math.h>
@@ -78,7 +80,9 @@ namespace
                                                          "狙いの巻き戻し秒",
                                                          "狙いの巻き戻しが消える秒",
                                                          "寄せる角度の上限",
-                                                         "1 フレームの向きの変化の上限"};
+                                                         "1 フレームの向きの変化の上限",
+                                                         "反動の上りの重力倍率",
+                                                         "反動中の空中の加速度"};
 
     using NsTest::ReadTuningField;
     using NsTest::WriteTuningField;
@@ -2365,4 +2369,396 @@ TEST_F(PlayerComponentTest, ShimmyStaysWithoutInput)
     }
 
     EXPECT_FLOAT_EQ(obj.Root().Position().z, zStart);
+}
+
+namespace
+{
+    // 高さ 2.3 m・横 1.15 m の反動。+X へ弾かれる
+    const NS::Game::Player::ReboundArc k_TestRebound{
+        .direction = Vector3{1.0f, 0.0f, 0.0f}, .apexHeight = 2.3f, .distance = 1.15f};
+
+    // 既定の欄の反動の上りの重力 (m/s²)。上昇重力 25 × 反動の上りの重力倍率 0.5
+    constexpr float k_ReboundRiseGravity = 12.5f;
+    // 既定の欄の反動中の空中の加速度 (m/s²)
+    constexpr float k_ReboundAirAcceleration = 2.0f;
+} // namespace
+
+TEST_F(PlayerComponentTest, BeginReboundMovesToTheReboundStateWithItsVelocity)
+{
+    NsTest::EntityStage stage;
+    PlayerComponent& player = MakeSlamReady(stage.owner, stage.physics);
+
+    ASSERT_TRUE(player.BeginRebound(k_TestRebound));
+
+    EXPECT_TRUE(IsState<NS::Game::Player::ReboundPlayerState>(stage.owner));
+    EXPECT_TRUE(player.IsRebounding());
+    const Vector3 expected = player.ReboundVelocityFor(k_TestRebound);
+    EXPECT_FLOAT_EQ(player.Velocity().x, expected.x);
+    EXPECT_FLOAT_EQ(player.Velocity().y, expected.y);
+    EXPECT_FLOAT_EQ(player.Velocity().z, expected.z);
+    EXPECT_FLOAT_EQ(player.ReboundDirection().x, 1.0f);
+    EXPECT_FLOAT_EQ(player.ReboundDirection().z, 0.0f);
+}
+
+// 初速は飛ばした物の曲線と同じ式で出す。落ち方は自分の重力の欄から組む
+TEST_F(PlayerComponentTest, ReboundVelocityIsTheLaunchArcOfItsOwnGravity)
+{
+    GameObject obj;
+    PlayerComponent& player = *obj.AddComponent<PlayerComponent>();
+
+    const Vector3 velocity = player.ReboundVelocityFor(k_TestRebound);
+
+    const Vector3 expected = NS::Game::Level::LaunchArcInitialVelocity(
+        NS::Game::Level::LaunchArc{.direction = k_TestRebound.direction,
+                                   .distance = k_TestRebound.distance,
+                                   .apexHeight = k_TestRebound.apexHeight,
+                                   .riseGravity = k_ReboundRiseGravity,
+                                   .fallGravityScale = 35.0f / k_ReboundRiseGravity,
+                                   .apexBandSpeed = 1.0f,
+                                   .apexBandGravityScale = 0.5f});
+    ASSERT_GT(expected.y, 0.0f);
+    EXPECT_NEAR(velocity.x, expected.x, 1e-5f);
+    EXPECT_NEAR(velocity.y, expected.y, 1e-5f);
+    EXPECT_NEAR(velocity.z, expected.z, 1e-5f);
+    EXPECT_GT(velocity.y, std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z));
+
+    // 上りの重力は反動の上りの重力倍率、下りは下降重力の欄から組む。欄を変えると初速の縦も横も変わる
+    WriteTuningField(player, "反動の上りの重力倍率", 0.25f);
+    WriteTuningField(player, "下降重力", -50.0f);
+    const Vector3 retuned = player.ReboundVelocityFor(k_TestRebound);
+    const Vector3 expectedRetuned =
+        NS::Game::Level::LaunchArcInitialVelocity(NS::Game::Level::LaunchArc{.direction = k_TestRebound.direction,
+                                                                             .distance = k_TestRebound.distance,
+                                                                             .apexHeight = k_TestRebound.apexHeight,
+                                                                             .riseGravity = 6.25f,
+                                                                             .fallGravityScale = 50.0f / 6.25f,
+                                                                             .apexBandSpeed = 1.0f,
+                                                                             .apexBandGravityScale = 0.5f});
+    EXPECT_NEAR(retuned.x, expectedRetuned.x, 1e-5f);
+    EXPECT_NEAR(retuned.y, expectedRetuned.y, 1e-5f);
+    EXPECT_NEAR(retuned.z, expectedRetuned.z, 1e-5f);
+}
+
+// 明けのフレームは止める前の接地の印が残っている。接地を見て立ちへ移ると反動が 1 フレームも出ない
+// 接地を見て地上の操作を使うと、摩擦と地上の加速度でそのフレームの横の速さが変わる
+TEST_F(PlayerComponentTest, FirstReboundFrameOnTheFloorLeavesWithoutGroundFrictionOrGroundAcceleration)
+{
+    NsTest::EntityStage stage;
+    PlayerComponent& player = MakeSlamReady(stage.owner, stage.physics);
+    ASSERT_TRUE(player.IsGrounded());
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    ASSERT_TRUE(player.BeginRebound(k_TestRebound));
+    const Vector3 start = player.Velocity();
+
+    player.OnUpdate();
+
+    EXPECT_TRUE(player.IsRebounding());
+    EXPECT_FALSE(player.IsGrounded());
+    EXPECT_NEAR(player.Velocity().x, start.x, 1e-4f);
+    EXPECT_NEAR(player.Velocity().z, k_ReboundAirAcceleration * k_FixedDt, 1e-4f);
+}
+
+TEST_F(PlayerComponentTest, ReboundGravityIsWeakerOnTheWayUpAndNormalOnTheWayDown)
+{
+    GameObject obj;
+    PlayerComponent& player = *obj.AddComponent<PlayerComponent>();
+
+    player.SetVelocity(Vector3{0.0f, 5.0f, 0.0f});
+    player.ReboundGravity(k_FixedDt);
+    EXPECT_NEAR(player.VerticalVelocity(), 5.0f - k_ReboundRiseGravity * k_FixedDt, 1e-5f);
+
+    player.SetVelocity(Vector3{0.0f, 0.5f, 0.0f});
+    player.ReboundGravity(k_FixedDt);
+    EXPECT_NEAR(player.VerticalVelocity(), 0.5f - k_ReboundRiseGravity * 0.5f * k_FixedDt, 1e-5f);
+
+    player.SetVelocity(Vector3{0.0f, -5.0f, 0.0f});
+    player.ReboundGravity(k_FixedDt);
+    EXPECT_NEAR(player.VerticalVelocity(), -5.0f + -35.0f * k_FixedDt, 1e-5f);
+
+    // 上りは反動の上りの重力倍率、下りは下降重力の欄を読む
+    WriteTuningField(player, "反動の上りの重力倍率", 0.25f);
+    WriteTuningField(player, "下降重力", -50.0f);
+    player.SetVelocity(Vector3{0.0f, 5.0f, 0.0f});
+    player.ReboundGravity(k_FixedDt);
+    EXPECT_NEAR(player.VerticalVelocity(), 5.0f - 25.0f * 0.25f * k_FixedDt, 1e-5f);
+    player.SetVelocity(Vector3{0.0f, -5.0f, 0.0f});
+    player.ReboundGravity(k_FixedDt);
+    EXPECT_NEAR(player.VerticalVelocity(), -5.0f + -50.0f * k_FixedDt, 1e-5f);
+}
+
+// 頂点は 1 フレームごとの積分なので式より少し低い。上りは下りより長く、着地は横の距離の所
+TEST_F(PlayerComponentTest, ReboundPeaksNearItsHeightRisesLongerAndLandsAtItsDistance)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+    const Vector3 start = obj.Root().Position();
+    ASSERT_TRUE(player.BeginRebound(k_TestRebound));
+
+    std::vector<Vector3> positions;
+    for (int i = 0; i < 240; ++i)
+    {
+        player.OnUpdate();
+        positions.push_back(obj.Root().Position());
+        if (player.IsGrounded())
+        {
+            break;
+        }
+    }
+    ASSERT_TRUE(player.IsGrounded());
+
+    std::size_t apexIndex = 0;
+    for (std::size_t i = 0; i < positions.size(); ++i)
+    {
+        if (positions[i].y > positions[apexIndex].y)
+        {
+            apexIndex = i;
+        }
+    }
+    const float apexShare = (positions[apexIndex].y - start.y) / k_TestRebound.apexHeight;
+    EXPECT_GE(apexShare, 0.95f);
+    EXPECT_LE(apexShare, 1.0f);
+    const std::size_t riseFrames = apexIndex + 1;
+    const std::size_t fallFrames = positions.size() - riseFrames;
+    EXPECT_GT(riseFrames, fallFrames);
+    EXPECT_NEAR(positions.back().x - start.x, k_TestRebound.distance, 0.1f);
+}
+
+TEST_F(PlayerComponentTest, ReboundKeepsItsHorizontalVelocityWithoutInput)
+{
+    NsTest::EntityStage stage;
+    PlayerComponent& player = MakeSlamReady(stage.owner, stage.physics);
+    ASSERT_TRUE(player.BeginRebound(k_TestRebound));
+    const Vector3 start = player.Velocity();
+
+    for (int i = 0; i < 240; ++i)
+    {
+        player.OnUpdate();
+        if (player.IsGrounded())
+        {
+            break;
+        }
+        EXPECT_NEAR(player.Velocity().x, start.x, 1e-4f) << "反動から " << i << " フレーム目";
+        EXPECT_NEAR(player.Velocity().z, start.z, 1e-4f) << "反動から " << i << " フレーム目";
+    }
+    EXPECT_TRUE(player.IsGrounded());
+}
+
+// 横へ倒しても少しずつしか曲がらず、相手から離れる流れは削られない
+TEST_F(PlayerComponentTest, SteeringDuringTheReboundAddsLittleAndKeepsTheFlow)
+{
+    NsTest::EntityStage stage;
+    PlayerComponent& player = MakeSlamReady(stage.owner, stage.physics);
+    ASSERT_TRUE(player.BeginRebound(k_TestRebound));
+    const Vector3 start = player.Velocity();
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+
+    for (int i = 0; i < 20; ++i)
+    {
+        player.OnUpdate();
+        ASSERT_TRUE(player.IsRebounding());
+        const float frames = static_cast<float>(i + 1);
+        EXPECT_NEAR(player.Velocity().z, k_ReboundAirAcceleration * k_FixedDt * frames, 1e-4f) << i;
+        EXPECT_NEAR(player.Velocity().x, start.x, 1e-4f) << i;
+    }
+}
+
+// 跳ぶと反動の縦速度が書き換わり、上りで離すと切られる。どちらも同じ当て方で違う軌道になる
+TEST_F(PlayerComponentTest, JumpNeitherFiresNorCutsDuringTheRebound)
+{
+    NsTest::EntityStage stage;
+    PlayerComponent& player = MakeSlamReady(stage.owner, stage.physics);
+    player.SetJumpHeld(true);
+    ASSERT_TRUE(player.BeginRebound(k_TestRebound));
+
+    const float before = player.VerticalVelocity();
+    player.SetJumpPressed();
+    player.OnUpdate();
+    EXPECT_NEAR(player.VerticalVelocity(), before - k_ReboundRiseGravity * k_FixedDt, 1e-4f);
+
+    const float held = player.VerticalVelocity();
+    player.SetJumpHeld(false);
+    player.OnUpdate();
+    EXPECT_NEAR(player.VerticalVelocity(), held - k_ReboundRiseGravity * k_FixedDt, 1e-4f);
+}
+
+// 地上で当てた反動は 1 発を残している。空中の 1 発は反動の間に出て、2 発目は着地まで出ない
+TEST_F(PlayerComponentTest, SlamFiresOnceDuringTheRebound)
+{
+    NsTest::EntityStage stage;
+    PlayerComponent& player = MakeSlamReady(stage.owner, stage.physics);
+    ASSERT_TRUE(player.BeginRebound(k_TestRebound));
+    for (int i = 0; i < 3; ++i)
+    {
+        player.OnUpdate();
+    }
+    ASSERT_TRUE(player.IsRebounding());
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+    EXPECT_TRUE(player.IsBodySlamming());
+
+    for (int i = 0; i < 120 && player.IsBodySlamming(); ++i)
+    {
+        player.OnUpdate();
+    }
+    ASSERT_FALSE(player.IsBodySlamming());
+    ASSERT_FALSE(player.IsGrounded());
+
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+    EXPECT_FALSE(player.IsBodySlamming());
+}
+
+// 空中で当てた反動は 1 発を使ったまま。反動の間は出ず、着地で戻る
+TEST_F(PlayerComponentTest, SpentSlamStaysSpentThroughTheReboundUntilTheLanding)
+{
+    NsTest::EntityStage stage;
+    PlayerComponent& player = MakeSlamReady(stage.owner, stage.physics);
+    player.SetJumpPressed();
+    player.OnUpdate();
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+    player.CancelBodySlam();
+    ASSERT_TRUE(player.BeginRebound(k_TestRebound));
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+
+    player.RequestBodySlam(0.0f);
+    for (int i = 0; i < 240 && !player.IsGrounded(); ++i)
+    {
+        player.OnUpdate();
+        EXPECT_FALSE(player.IsBodySlamming()) << "反動から " << i << " フレーム目";
+    }
+    ASSERT_TRUE(player.IsGrounded());
+
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+    EXPECT_TRUE(player.IsBodySlamming());
+}
+
+// 止めの最中の押しは捨てずに先行入力として残し、明けた最初のフレームに出す
+TEST_F(PlayerComponentTest, PressDuringTheHitStopFiresOnTheFirstReboundFrame)
+{
+    NsTest::EntityStage stage;
+    PlayerComponent& player = MakeSlamReady(stage.owner, stage.physics);
+    player.SetActive(false);
+    player.RequestBodySlam(0.0f);
+    for (int i = 0; i < 12; ++i)
+    {
+        player.OnUpdate();
+    }
+
+    player.SetActive(true);
+    ASSERT_TRUE(player.BeginRebound(k_TestRebound));
+    player.OnUpdate();
+
+    EXPECT_TRUE(player.IsBodySlamming());
+}
+
+TEST_F(PlayerComponentTest, ReboundLandsIntoIdleAndUncurlsOnTheNextFrame)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+    player.SetCurled(true);
+    ASSERT_TRUE(player.BeginRebound(k_TestRebound));
+
+    int steps = 0;
+    for (; steps < 240; ++steps)
+    {
+        player.OnUpdate();
+        if (player.IsGrounded())
+        {
+            break;
+        }
+        EXPECT_TRUE(player.IsRebounding()) << "反動から " << steps << " フレーム目";
+        EXPECT_TRUE(player.IsCurled()) << "反動から " << steps << " フレーム目";
+    }
+    ASSERT_LT(steps, 240);
+    // 接地は動かした後に決まる。立ちへ移って解くのは着地した次のフレーム
+    EXPECT_TRUE(player.IsRebounding());
+    EXPECT_TRUE(player.IsCurled());
+
+    player.OnUpdate();
+    EXPECT_TRUE(IsState<IdlePlayerState>(obj));
+    EXPECT_FALSE(player.IsCurled());
+}
+
+TEST_F(PlayerComponentTest, ReboundGrabsALedgeOnTheWayDown)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NsTest::AddBox(stage.physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    stage.physics.OptimizeBroadPhase();
+    PlayerComponent& player = MakeLedgeReady(obj);
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
+    ASSERT_TRUE(player.BeginRebound(
+        NS::Game::Player::ReboundArc{.direction = Vector3{1.0f, 0.0f, 0.0f}, .apexHeight = 0.3f, .distance = 0.2f}));
+
+    for (int i = 0; i < 120 && player.IsRebounding(); ++i)
+    {
+        player.OnUpdate();
+    }
+
+    EXPECT_TRUE(IsState<LedgeHangingPlayerState>(obj));
+}
+
+TEST_F(PlayerComponentTest, ResetStateEndsTheRebound)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+    ASSERT_TRUE(player.BeginRebound(k_TestRebound));
+    player.OnUpdate();
+
+    player.ResetState();
+
+    EXPECT_TRUE(IsState<IdlePlayerState>(obj));
+    EXPECT_FALSE(player.IsRebounding());
+    EXPECT_FLOAT_EQ(player.ReboundDirection().x, 0.0f);
+    EXPECT_FLOAT_EQ(player.ReboundDirection().z, 0.0f);
+}
+
+// 曲線にならない反動は偽を返し、状態・速度・反動の向きのどれも変えない
+TEST_F(PlayerComponentTest, ReboundThatIsNotAnArcChangesNothing)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+    ASSERT_TRUE(IsState<IdlePlayerState>(obj));
+    player.SetVelocity(Vector3{1.0f, 0.0f, 2.0f});
+
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    const float infinity = std::numeric_limits<float>::infinity();
+    std::vector<NS::Game::Player::ReboundArc> broken;
+    for (const float bad : {nan, infinity, 0.0f, -1.0f})
+    {
+        NS::Game::Player::ReboundArc arc = k_TestRebound;
+        arc.apexHeight = bad;
+        broken.push_back(arc);
+        arc = k_TestRebound;
+        arc.distance = bad;
+        broken.push_back(arc);
+    }
+    for (const Vector3& direction : {Vector3{0.0f, 1.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector3{nan, 0.0f, 0.0f}})
+    {
+        NS::Game::Player::ReboundArc arc = k_TestRebound;
+        arc.direction = direction;
+        broken.push_back(arc);
+    }
+
+    for (const NS::Game::Player::ReboundArc& arc : broken)
+    {
+        EXPECT_FALSE(player.BeginRebound(arc)) << "高さ " << arc.apexHeight << "・距離 " << arc.distance;
+    }
+    EXPECT_FALSE(player.IsRebounding());
+    EXPECT_TRUE(IsState<IdlePlayerState>(obj));
+    EXPECT_FLOAT_EQ(player.Velocity().x, 1.0f);
+    EXPECT_FLOAT_EQ(player.Velocity().y, 0.0f);
+    EXPECT_FLOAT_EQ(player.Velocity().z, 2.0f);
+    EXPECT_FLOAT_EQ(player.ReboundDirection().x, 0.0f);
+    EXPECT_FLOAT_EQ(player.ReboundDirection().z, 0.0f);
 }

@@ -295,13 +295,17 @@ namespace
         return rig.Trace();
     }
 
-    // 進行方向と逆へ弾かれたフレームがあるか。反発が消えた改修を軌跡の一致より先に知らせる
+    // 上へ大きく、進行方向と逆の水平へ弾かれたフレームがあるか。反動が消えた改修を軌跡の一致より先に知らせる
+    // 反動の水平は 1 m/s 前後。台の毎フレームの前向きの入力が、反動の空中の操作でこの水平を少しずつ打ち消す
+    // 水平は向きだけを見る
     bool HasReboundStep(const std::vector<StepRecord>& trace) noexcept
     {
         for (const StepRecord& s : trace)
         {
-            if (s.velocity.z < -1.0f)
+            if (s.velocity.y > 5.0f && s.velocity.z < 0.0f)
+            {
                 return true;
+            }
         }
         return false;
     }

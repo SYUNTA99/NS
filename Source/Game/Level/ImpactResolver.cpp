@@ -284,7 +284,7 @@ namespace NS::Game::Level
         // 箱へ押し付けられたフレームは実速度が 0 に潰されるため、突進の狙いの速度で向きと貫通後の速度を決める
         const NS::Core::Vector3 velocity = m_movement->BodySlamVelocity();
 
-        // 弾かれる向きは箱と自機の並びで決まる。水平だけを見て、上向きは別の値で足す
+        // 弾かれる向きは箱と自機の並びで決まる。水平だけを見て、上向きは反動の高さから出す
         float awayX = position.x - bounds.Center.x;
         float awayZ = position.z - bounds.Center.z;
         float lengthSq = awayX * awayX + awayZ * awayZ;
@@ -373,8 +373,10 @@ namespace NS::Game::Level
         if (m_breakEnabled && hit->Toughness() <= power)
         {
             m_pendingBreak = true;
-            // 貫通は相手を飛ばさない。前の押し飛ばしの曲線を残すと、この当たりの記録に飛ばしていない曲線が載る
+            // 貫通は相手を飛ばさず、自機も反動しない
+            // 前の当たりの曲線を残すと、この当たりの記録に使っていない曲線が載る
             m_pendingLaunchArc = LaunchArc{};
+            m_pendingReboundArc = NS::Game::Player::ReboundArc{};
             // 向きを保ったまま減速する。倍率は相手の質量に依らない
             m_pendingSelfVelocity = velocity * m_breakSpeedScale;
             m_didBreak = true;
@@ -385,8 +387,14 @@ namespace NS::Game::Level
         {
             m_pendingBreak = false;
             // 質量因子 mass/(mass+1) は質量が大きいほど 1 へ寄る。軽い物は勢いを持っていくのでほとんど返らない
-            float rebound = m_reboundSpeed * power * massFactor;
-            rebound = std::max(rebound, 0.0f);
+            // 2 倍して質量 1 で 1 にし、欄を質量 1・威力 1 の高さと距離で持つ
+            // 高さと距離に同じ倍率を掛け、弾かれ始めの角度を揃える
+            // TODO: 質量 0.5 より軽い物では自機の返りが 0 に近づく。軽い物を置く時は、先に高さと距離の下限を足す
+            const float reboundScale = power * 2.0f * massFactor;
+            m_pendingReboundArc = NS::Game::Player::ReboundArc{.direction = NS::Core::Vector3{awayX, 0.0f, awayZ},
+                                                               .apexHeight = m_reboundApexHeight * reboundScale,
+                                                               .distance = m_reboundDistance * reboundScale};
+            m_pendingSelfVelocity = m_movement->ReboundVelocityFor(m_pendingReboundArc);
 
             // 指数の範囲は 0〜1。負にすると重い物ほど飛ぶ逆転になる
             float massExponent = m_launchMassExponent;
@@ -405,13 +413,13 @@ namespace NS::Game::Level
                                            .apexBandSpeed = m_launchApexBandSpeed,
                                            .apexBandGravityScale = m_launchApexBandGravityScale};
 
-            m_pendingSelfVelocity = NS::Core::Vector3{awayX * rebound, m_reboundUpSpeed, awayZ * rebound};
             m_didRebound = true;
             NS_LOG_INFO(Game,
-                        "衝突: 質量 {} 耐久 {} 返り {} 押し飛ばしの距離 {} 高さ {} 中心近く {}",
+                        "衝突: 質量 {} 耐久 {} 反動の高さ {} 距離 {} 押し飛ばしの距離 {} 高さ {} 中心近く {}",
                         mass,
                         hit->Toughness(),
-                        rebound,
+                        m_pendingReboundArc.apexHeight,
+                        m_pendingReboundArc.distance,
                         m_pendingLaunchArc.distance,
                         m_pendingLaunchArc.apexHeight,
                         centerHit);
@@ -431,6 +439,7 @@ namespace NS::Game::Level
         m_lastImpact.centerHit = centerHit;
         m_lastImpact.broke = m_pendingBreak;
         m_lastImpact.selfVelocity = m_pendingSelfVelocity;
+        m_lastImpact.reboundApexHeight = m_pendingReboundArc.apexHeight;
         m_lastImpact.launchVelocity = LaunchArcInitialVelocity(m_pendingLaunchArc);
         m_lastImpact.launchDistance = m_pendingLaunchArc.distance;
         m_lastImpact.launchApexHeight = m_pendingLaunchArc.apexHeight;
@@ -536,7 +545,21 @@ namespace NS::Game::Level
     void ImpactResolver::ReleaseHitStop()
     {
         m_movement->SetActive(true);
-        m_movement->SetVelocity(m_pendingSelfVelocity);
+        const bool wasBreak = m_pendingBreak;
+        m_pendingBreak = false;
+        if (wasBreak)
+        {
+            m_movement->SetVelocity(m_pendingSelfVelocity);
+        }
+        else if (!m_movement->BeginRebound(m_pendingReboundArc))
+        {
+            // 欄が曲線にならない値の時だけ通る。書かないと、止める前の最後のフレームの速度のまま動き出す
+            m_movement->SetVelocity(m_pendingSelfVelocity);
+            NS_LOG_WARN(Game,
+                        "反動が曲線にならず、自機を弾けなかった: 高さ {} 距離 {}",
+                        m_pendingReboundArc.apexHeight,
+                        m_pendingReboundArc.distance);
+        }
         if (m_scaleHeld)
         {
             // 解放の伸びが衝突の後半。伸びる軸は進行の軸と同じで、高さは戻して横だけ伸ばす
@@ -545,9 +568,6 @@ namespace NS::Game::Level
             m_recoverRemaining = m_stretchRecoverSteps;
             m_scaleHeld = false;
         }
-
-        const bool wasBreak = m_pendingBreak;
-        m_pendingBreak = false;
 
         NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)

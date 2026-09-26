@@ -1,12 +1,14 @@
 #include "Game/Player/PlayerComponent.h"
 
 #include "Game/Entity/EntityStateManager.h"
+#include "Game/Level/LaunchedBody.h"
 #include "Game/Player/PlayerStateManager.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
+#include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/CameraBrain.h"
@@ -524,6 +526,87 @@ namespace NS::Game::Player
         }
     }
 
+    bool PlayerComponent::BeginRebound(const ReboundArc& arc) noexcept
+    {
+        // 曲線にならない反動で移すと、弾かれないまま速度が 0 に消える。移さずに偽を返し、速度は呼び手に任せる
+        const NS::Core::Vector3 velocity = ReboundVelocityFor(arc);
+        if (!(velocity.y > 0.0f))
+        {
+            return false;
+        }
+        NS::Core::Vector3 direction{};
+        if (!NS::Core::TryNormalizeHorizontal(arc.direction, direction))
+        {
+            return false;
+        }
+
+        m_reboundDir = direction;
+        SetVelocity(velocity);
+        if (m_stateManager != nullptr)
+        {
+            m_stateManager->Change<ReboundPlayerState>();
+        }
+        return true;
+    }
+
+    NS::Core::Vector3 PlayerComponent::ReboundVelocityFor(const ReboundArc& arc) const noexcept
+    {
+        // 下りは普段の落ち方のままにする
+        // 曲線は下りの重力を上りの重力に対する倍率で持つので、下降重力を上りの重力で割る
+        const float riseGravity = -m_gravityUp * m_reboundRiseGravityScale;
+        const NS::Game::Level::LaunchArc launchArc{.direction = arc.direction,
+                                                   .distance = arc.distance,
+                                                   .apexHeight = arc.apexHeight,
+                                                   .riseGravity = riseGravity,
+                                                   .fallGravityScale = -m_gravityDown / riseGravity,
+                                                   .apexBandSpeed = m_apexHangVy,
+                                                   .apexBandGravityScale = m_apexHangScale};
+        return NS::Game::Level::LaunchArcInitialVelocity(launchArc);
+    }
+
+    bool PlayerComponent::IsRebounding() const noexcept
+    {
+        return m_stateManager != nullptr && m_stateManager->IsCurrent<ReboundPlayerState>();
+    }
+
+    void PlayerComponent::ReboundGravity(float dt) noexcept
+    {
+        if (!(VerticalVelocity() > 0.0f))
+        {
+            Gravity(dt);
+            return;
+        }
+
+        float g = m_gravityUp * m_reboundRiseGravityScale;
+        if (std::abs(VerticalVelocity()) < m_apexHangVy)
+        {
+            g = g * m_apexHangScale;
+        }
+        NS::Game::Entity::EntityComponent::Gravity(g, dt);
+    }
+
+    void PlayerComponent::AccelerateDuringRebound(float dt) noexcept
+    {
+        NS::Core::Vector3 direction{};
+        if (!HasMoveInput() || !NS::Core::TryNormalizeHorizontal(m_desiredDir, direction))
+        {
+            return;
+        }
+
+        const float topSpeed = std::max(MaxSpeed() * m_desiredSpeedScale, m_walkSpeed);
+        // 入力の向きからずれた速度は削らない。削ると横へ倒しただけで相手から離れる流れが消え、
+        // 弾かれる向きが当て方でなくスティックで決まる。触って詰める値ではないので欄にしない
+        const float turningDrag = 0.0f;
+        // 明けのフレームは止める前の接地の印が残っている。接地を見て地上の加速度を選ぶと、そのフレームだけ大きく曲がる
+        Accelerate(direction, turningDrag, m_reboundAirAcceleration, topSpeed, dt);
+    }
+
+    bool PlayerComponent::ShouldLand() const noexcept
+    {
+        // 明けのフレームは止める前の接地の印が残ったまま上向きの速度が入る。接地だけを見ると宙へ出る前に立ちへ移る
+        return IsGrounded() && !(VerticalVelocity() > 0.0f);
+    }
+
     void PlayerComponent::ResetState() noexcept
     {
         SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
@@ -553,6 +636,7 @@ namespace NS::Game::Player
         m_bodySlamDistanceTarget = 0.0f;
         m_bodySlamJustStarted = false;
         m_bodySlamDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_reboundDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         ForgetHoming();
         // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
         // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
@@ -1008,7 +1092,7 @@ namespace NS::Game::Player
         if (m_stateManager == nullptr)
             return false;
         return m_stateManager->IsCurrent<IdlePlayerState>() || m_stateManager->IsCurrent<WalkPlayerState>() ||
-               m_stateManager->IsCurrent<FallPlayerState>();
+               m_stateManager->IsCurrent<FallPlayerState>() || m_stateManager->IsCurrent<ReboundPlayerState>();
     }
 
     bool PlayerComponent::ShouldWalk() const noexcept
@@ -1065,7 +1149,9 @@ namespace NS::Game::Player
             // 空中の押しを捨てると連打で出ないフレームができるため、接地は求めない
             // 突進を出すのは通常移動のフレームだけ。掴まり中に出せると縁から離れる操作が 1 つ増える
             // 空中で 2 発目まで出せると 1 発の重みが消える。接地するまで次は出さない
-            if (m_bodySlamBufferRemaining > 0.0f && !m_bodySlamSpent && IsLocomotion())
+            // 当てたフレームは ImpactResolver が自分より先に突進を終えている。ここで出すと突進のまま止められ、
+            // 明けの反動に終わりの通知なしで上書きされる。押しは先行入力に残し、明けに反動から出す
+            if (m_bodySlamBufferRemaining > 0.0f && !m_bodySlamSpent && !m_wasBodySlamming && IsLocomotion())
             {
                 if (BodySlam())
                     m_bodySlamBufferRemaining = 0.0f;

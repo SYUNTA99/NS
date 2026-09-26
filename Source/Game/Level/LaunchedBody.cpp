@@ -83,7 +83,8 @@ namespace NS::Game::Level
         [[nodiscard]] bool TryShapeOf(const LaunchArc& arc, ArcShape& outShape) noexcept
         {
             if (!IsFinitePositive(arc.distance) || !IsFinitePositive(arc.apexHeight) ||
-                !IsFinitePositive(arc.fallGravityScale) || !IsFinitePositive(arc.apexBandGravityScale) ||
+                !IsFinitePositive(arc.riseGravity) || !IsFinitePositive(arc.fallGravityScale) ||
+                !IsFinitePositive(arc.apexBandGravityScale) ||
                 !std::isfinite(arc.apexBandSpeed) || arc.apexBandSpeed < 0.0f || !IsFinite(arc.direction))
             {
                 return false;
@@ -93,7 +94,7 @@ namespace NS::Game::Level
             {
                 return false;
             }
-            shape.riseGravity = -NS::Phys::k_DefaultGravityY;
+            shape.riseGravity = arc.riseGravity;
             shape.fallGravity = shape.riseGravity * arc.fallGravityScale;
             shape.bandSpeed = arc.apexBandSpeed;
             shape.bandScale = arc.apexBandGravityScale;
