@@ -56,7 +56,7 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
         "ImpactMark",         "KillZone",       "LaunchedBody",      "MeshRenderer",     "Goal",
         "CameraComponent",    "CameraBrain",    "ThirdPersonFollow", "PlayerComponent",  "PlayerInput",
         "PlayerStateManager", "PlayerAnimator", "PlayerAppearance",  "Shadow",           "SkeletalAnimation",
-        "DirectionalLight",   "RigidBody",      "PhysicsSettings",
+        "DirectionalLight",   "RigidBody",      "PhysicsSettings",   "TargetMarker",
     };
     for (const char* name : k_Registered)
     {
@@ -121,7 +121,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 28u);
+    EXPECT_EQ(names.size(), 29u);
     EXPECT_TRUE(Contains(names, "BoxCollider"));
     EXPECT_TRUE(Contains(names, "MeshRenderer"));
     EXPECT_TRUE(Contains(names, "PlayerComponent"));
@@ -274,6 +274,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"SkeletalAnimation", {"再生速度", "ループ再生", "モデル", "クリップ"}},
         {"SlopeCollider", {"角度 (度)", "半径"}},
         {"SphereCollider", {"半径", "中心オフセット"}},
+        {"TargetMarker", {"印の色", "印の太さ", "印の腕の割合", "道筋の点の間隔", "道筋の点の大きさ"}},
         {"ThirdPersonFollow",
          {"追従対象",
           "初期ヨー",
@@ -292,6 +293,11 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "反転 Y",
           "ピッチ下限",
           "ピッチ上限",
+          "溜めで締める視野角",
+          "締めを戻すフレーム数",
+          "溜めの揺れの強さ",
+          "溜めの構図の枠",
+          "溜めの構図のバネ角速度",
           "ファークリップ",
           "優先度"}},
     };
@@ -349,6 +355,7 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"SkeletalAnimation", {}},
         {"SlopeCollider", {"Collider"}},
         {"SphereCollider", {"Collider"}},
+        {"TargetMarker", {"OverlayRenderer"}},
         {"ThirdPersonFollow", {"VirtualCamera"}},
     };
 

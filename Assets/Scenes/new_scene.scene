@@ -2,7 +2,7 @@
   "environment": {
     "skybox": "Assets/Skybox/kurt/"
   },
-  "nextObjectId": 75,
+  "nextObjectId": 76,
   "objects": [
     {
       "components": [
@@ -289,6 +289,22 @@
           "id": 22,
           "name": "Finisher",
           "type": "Finisher"
+        },
+        {
+          "fields": {
+            "印の太さ": 3.0,
+            "印の腕の割合": 0.25,
+            "印の色": [
+              1.0,
+              0.8500000238418579,
+              0.20000000298023224
+            ],
+            "道筋の点の大きさ": 6.0,
+            "道筋の点の間隔": 0.5
+          },
+          "id": 75,
+          "name": "TargetMarker",
+          "type": "TargetMarker"
         }
       ],
       "id": 2

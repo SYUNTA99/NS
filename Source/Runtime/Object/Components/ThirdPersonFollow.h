@@ -3,18 +3,29 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
-#include "Runtime/Object/Reflection/ObjectRef.h"
 
 namespace NS::Obj
 {
     class Transform;
     class GameObject;
 
+    //! @brief 追従カメラが 1 フレームぶん受ける溜めの状態
+    //! @details 溜め量は押している間だけ意味を持つ。押していない値は放したのと同じに扱う
+    struct FollowChargeDesc
+    {
+        float charge01 = 0.0f;               // 押している間の溜め量 (0〜1)
+        bool held = false;                   // 押しているか
+        bool hasAimTarget = false;           // 狙う相手がいるか
+        NS::Core::Vector3 aimTargetCenter{}; // 狙う相手の中心。世界座標
+    };
+
     //! @brief Mario 系ジャンプアクションの追従カメラ
     //! @details 実カメラは持たず、追従姿勢を pose として返す。CameraBrain が実カメラへ書く
     //! distance は臨界減衰バネでなめらかに寄せ、マウス / 右スティックで手動回転できる
     //! 感度・反転と idle / run / jump 3 段の自動ズーム距離は setter で調整できる
     //! FOV は基底 VirtualCamera が持つ
+    //! 受けた溜めから視野角の締め・縦の揺れ・構図のずらしを作って姿勢に足す
+    //! 構図のずらしは追う相手と狙う相手を枠に収めるよう、位置と注視点を同じだけ動かす
     class ThirdPersonFollow : public VirtualCamera
     {
     public:
@@ -36,6 +47,28 @@ namespace NS::Obj
         //! 既定は 0。ずれには描画の補間を掛けないので、根を上げ下げする側は
         //! Transform::ShiftPosition で前フレームの位置も一緒にずらす
         void SetTargetHeightOffset(float offset) noexcept;
+
+        //! @brief このフレームの溜めの状態を受け取る
+        //! @details 受けた値は次の OnUpdate だけで使う。渡されなかったフレームは押していないのと同じに扱う
+        //! 非数・0 未満・1 を超える溜め量と、狙う相手がいる時の非数の中心は壊れた値
+        //! @param[in] desc 溜めの状態
+        //! @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
+        bool SetFollowCharge(const FollowChargeDesc& desc) noexcept;
+
+        //! @brief 溜めで締めている視野角を返す
+        //! @return 基準の視野角から引いている角度 (度)。締めていない時は 0
+        [[nodiscard]] float ChargeNarrowDegrees() const noexcept { return m_chargeNarrowDegrees; }
+
+        //! @brief 溜めの揺れのずれを返す
+        //! @return カメラの上の向きのずれ (m)。負は下。揺れていない時は 0
+        [[nodiscard]] float ChargeShake() const noexcept { return m_chargeShake; }
+
+        //! @brief 溜めの構図のずらしを返す
+        //! @return x がカメラの右、y がカメラの上の向きのずれ (m)。ずらしていない時は 0
+        [[nodiscard]] NS::Core::Vector2 ChargeFrameOffset() const noexcept { return m_chargeFrameOffset; }
+
+        //! @brief 溜めの締め・揺れ・構図のずらしをその場で 0 にし、受けた溜めの状態を捨てる
+        void ClearCharge() noexcept;
 
         //! 将来 Settings UI から繋ぐ
         void SetSensX(float radPerPixel) noexcept;
@@ -96,11 +129,19 @@ namespace NS::Obj
         NS_REFLECT_FIELD(m_invertY, "反転 Y")
         NS_REFLECT_FIELD(m_pitchMin, "ピッチ下限")
         NS_REFLECT_FIELD(m_pitchMax, "ピッチ上限")
+        NS_REFLECT_FIELD(m_chargeNarrowMaxDegrees, "溜めで締める視野角")
+        NS_REFLECT_FIELD(m_chargeNarrowReturnFrames, "締めを戻すフレーム数")
+        NS_REFLECT_FIELD(m_chargeShakeStrength, "溜めの揺れの強さ")
+        NS_REFLECT_FIELD(m_chargeFrameRatio, "溜めの構図の枠")
+        NS_REFLECT_FIELD(m_chargeFrameOmega, "溜めの構図のバネ角速度")
         NS_REFLECT_ACCESSOR(float, "ファークリップ", FarPlane(), SetFarPlane)
         NS_REFLECT_ACCESSOR(int, "優先度", VcamPriority(), SetVcamPriority)
         NS_REFLECT_END()
 
     private:
+        // 受けた溜めの状態から締め・揺れ・構図のずらしを 1 フレーム進める
+        void UpdateCharge(const FollowChargeDesc& charge, const Transform& target, float dt) noexcept;
+
         ObjectRef m_targetRef{}; // 追従対象の永続参照。ポインタで控えないので、相手が先に消えても空を引くだけ
 
         // 値で受けた追従先の運動。届くまでは待機距離のまま
@@ -137,6 +178,21 @@ namespace NS::Obj
 
         float m_pitchMin = -1.396f;  // 仰俯角の下限
         float m_pitchMax = -0.0873f; // 仰俯角の上限
+
+        float m_chargeNarrowMaxDegrees = 15.0f; // 溜めきりで締める視野角 (度)
+        int m_chargeNarrowReturnFrames = 6;     // 放してから締めを 0 へ戻すフレーム数
+        float m_chargeShakeStrength = 0.02f;    // 溜めきりの溜めの揺れの振れ幅 (m)
+        float m_chargeFrameRatio = 0.7f;        // 構図の枠。視野の半分に対する割合
+        float m_chargeFrameOmega = 26.0f;       // 構図のずらしのバネ角速度 (1/秒)
+
+        FollowChargeDesc m_charge{};               // 次の OnUpdate で使う溜めの状態
+        float m_chargeHoldNarrowDegrees = 0.0f;    // 前のフレームの押している間の締め (度)
+        float m_chargeNarrowDegrees = 0.0f;        // 今の締め (度)
+        float m_chargeReturnFromDegrees = 0.0f;    // 戻し始めた時の締め (度)
+        int m_chargeReturnFrame = 0;               // 戻しの何フレーム目か。0 は戻していない
+        float m_chargeShake = 0.0f;                // 今の溜めの揺れ (m、カメラの上の向き)
+        NS::Core::Vector2 m_chargeFrameOffset{};   // 今の構図のずらし (m、カメラの右と上)
+        NS::Core::Vector2 m_chargeFrameVelocity{}; // 構図のずらしの速さ (m/秒)
     };
 
 } // namespace NS::Obj

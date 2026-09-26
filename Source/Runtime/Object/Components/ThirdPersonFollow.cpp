@@ -10,6 +10,7 @@
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Mouse.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace
@@ -22,6 +23,86 @@ namespace
         }
         const float a = 1.0f - std::exp(-omega * dt);
         return curr + (target - curr) * a;
+    }
+
+    // 構図の視野の縦横比。ThirdPersonFollow は窓の縦横比を知らないので 16 : 9 と決める
+    constexpr float k_ChargeFrameAspect = 16.0f / 9.0f;
+    // これより小さい構図のずらしは 0 にする (m)。画素の 1/100 未満
+    constexpr float k_ChargeFrameSnap = 0.0001f;
+
+    // 滑らかに始まって終わる補間の重み。t が 0 で 0、1 で 1 ちょうど
+    [[nodiscard]] float SmoothStep(float t) noexcept
+    {
+        return t * t * (3.0f - 2.0f * t);
+    }
+
+    // 臨界減衰のバネを dt 進める。止まった所から一定の目標へは、τ 秒で差の 1 − (1 + ωτ) e^(−ωτ) が詰まる
+    void CriticalSpringStep(float& value, float& velocity, float target, float omega, float dt) noexcept
+    {
+        if (omega <= 0.0f || dt <= 0.0f)
+        {
+            value = target;
+            velocity = 0.0f;
+            return;
+        }
+        const float decay = std::exp(-omega * dt);
+        const float gap = value - target;
+        const float push = (velocity + omega * gap) * dt;
+        velocity = (velocity - omega * push) * decay;
+        value = target + (gap + push) * decay;
+    }
+
+    // カメラから見た 1 点の、右と上の向きの位置と、枠の半分の幅
+    struct FramePoint
+    {
+        bool usable = false; // カメラの前にあるか。後ろの点は枠の決まりから外す
+        float right = 0.0f;
+        float up = 0.0f;
+        float halfWidth = 0.0f;
+        float halfHeight = 0.0f;
+    };
+
+    [[nodiscard]] FramePoint ToFramePoint(const NS::Core::Vector3& point,
+                                          const NS::Core::Vector3& cameraPosition,
+                                          const NS::Core::Vector3& forward,
+                                          const NS::Core::Vector3& right,
+                                          const NS::Core::Vector3& up,
+                                          float frameTanHalf) noexcept
+    {
+        const NS::Core::Vector3 offset = point - cameraPosition;
+        const float depth = NS::Core::Dot(offset, forward);
+        FramePoint framePoint{};
+        if (depth <= 0.0f)
+        {
+            return framePoint;
+        }
+        framePoint.usable = true;
+        framePoint.right = NS::Core::Dot(offset, right);
+        framePoint.up = NS::Core::Dot(offset, up);
+        framePoint.halfHeight = depth * frameTanHalf;
+        framePoint.halfWidth = framePoint.halfHeight * k_ChargeFrameAspect;
+        return framePoint;
+    }
+
+    // 1 つの軸で、自機と相手を枠の内に入れるずらし
+    // 相手を入れる範囲のうち 0 に一番近い値を、自機を入れる範囲へ丸める。両方は入らない時は自機を枠に残す
+    [[nodiscard]] float FrameAxisShift(bool selfUsable,
+                                       float self,
+                                       float selfHalf,
+                                       bool targetUsable,
+                                       float target,
+                                       float targetHalf) noexcept
+    {
+        float shift = 0.0f;
+        if (targetUsable)
+        {
+            shift = NS::Core::Clamp(0.0f, target - targetHalf, target + targetHalf);
+        }
+        if (selfUsable)
+        {
+            shift = NS::Core::Clamp(shift, self - selfHalf, self + selfHalf);
+        }
+        return shift;
     }
 } // namespace
 
@@ -73,6 +154,121 @@ namespace NS::Obj
         m_targetHeightOffset = offset;
     }
 
+    bool ThirdPersonFollow::SetFollowCharge(const FollowChargeDesc& desc) noexcept
+    {
+        if (!std::isfinite(desc.charge01) || desc.charge01 < 0.0f || desc.charge01 > 1.0f)
+        {
+            return false;
+        }
+        const NS::Core::Vector3& center = desc.aimTargetCenter;
+        const bool finiteCenter = std::isfinite(center.x) && std::isfinite(center.y) && std::isfinite(center.z);
+        if (desc.hasAimTarget && !finiteCenter)
+        {
+            return false;
+        }
+        m_charge = desc;
+        return true;
+    }
+
+    void ThirdPersonFollow::ClearCharge() noexcept
+    {
+        m_charge = FollowChargeDesc{};
+        m_chargeHoldNarrowDegrees = 0.0f;
+        m_chargeNarrowDegrees = 0.0f;
+        m_chargeReturnFromDegrees = 0.0f;
+        m_chargeReturnFrame = 0;
+        m_chargeShake = 0.0f;
+        m_chargeFrameOffset = NS::Core::Vector2{0.0f, 0.0f};
+        m_chargeFrameVelocity = NS::Core::Vector2{0.0f, 0.0f};
+    }
+
+    void ThirdPersonFollow::UpdateCharge(const FollowChargeDesc& charge, const Transform& target, float dt) noexcept
+    {
+        // 溜め量は放した後も残るので、押していないフレームは 0 として読む
+        float holdCharge = 0.0f;
+        if (charge.held)
+        {
+            holdCharge = charge.charge01;
+        }
+        const float holdNarrow = m_chargeNarrowMaxDegrees * holdCharge;
+
+        // 押している間の締めが下がったフレームを戻しの 1 フレーム目にする。放したフレームがこれに当たる
+        if (holdNarrow < m_chargeHoldNarrowDegrees)
+        {
+            m_chargeReturnFromDegrees = m_chargeNarrowDegrees;
+            m_chargeReturnFrame = 1;
+        }
+        else if (m_chargeReturnFrame > 0)
+        {
+            ++m_chargeReturnFrame;
+        }
+        m_chargeHoldNarrowDegrees = holdNarrow;
+
+        float returning = 0.0f;
+        if (m_chargeReturnFrame > 0)
+        {
+            if (m_chargeReturnFrame >= m_chargeNarrowReturnFrames)
+            {
+                m_chargeReturnFrame = 0;
+            }
+            else
+            {
+                const float t =
+                    static_cast<float>(m_chargeReturnFrame) / static_cast<float>(m_chargeNarrowReturnFrames);
+                returning = m_chargeReturnFromDegrees * (1.0f - SmoothStep(t));
+            }
+        }
+        m_chargeNarrowDegrees = std::max(holdNarrow, returning);
+
+        // 締めと同じ溜め量から作り、変わり始めと変わり終わりのフレームを締めと揃える
+        if (holdCharge > 0.0f)
+        {
+            float sign = -1.0f;
+            if (m_chargeShake < 0.0f)
+            {
+                sign = 1.0f;
+            }
+            m_chargeShake = sign * m_chargeShakeStrength * holdCharge;
+        }
+        else
+        {
+            m_chargeShake = 0.0f;
+        }
+
+        // 構図は押したフレームから動かし、溜めに入った時には相手を枠へ入れておく
+        NS::Core::Vector2 wanted{0.0f, 0.0f};
+        const float frameFov = FovY().value - NS::Core::DegreesToRadians(m_chargeNarrowDegrees);
+        const bool framing = charge.held && charge.hasAimTarget && m_chargeFrameRatio > 0.0f && frameFov > 0.0f;
+        if (framing)
+        {
+            const float cy = std::cos(m_yaw);
+            const float sy = std::sin(m_yaw);
+            const float cp = std::cos(m_pitch);
+            const float sp = std::sin(m_pitch);
+            const NS::Core::Vector3 forward{sy * cp, sp, cy * cp};
+            const NS::Core::Vector3 right{cy, 0.0f, -sy};
+            const NS::Core::Vector3 up{-sp * sy, cp, -sp * cy};
+            const NS::Core::Vector3 root = target.Position();
+            const NS::Core::Vector3 headPos{root.x, root.y + m_targetHeightOffset + m_headHeight, root.z};
+            const NS::Core::Vector3 camPos = headPos - forward * m_distance;
+            const float frameTanHalf = m_chargeFrameRatio * std::tan(frameFov * 0.5f);
+
+            const FramePoint self = ToFramePoint(root, camPos, forward, right, up, frameTanHalf);
+            const FramePoint aim = ToFramePoint(charge.aimTargetCenter, camPos, forward, right, up, frameTanHalf);
+            wanted.x = FrameAxisShift(self.usable, self.right, self.halfWidth, aim.usable, aim.right, aim.halfWidth);
+            wanted.y = FrameAxisShift(self.usable, self.up, self.halfHeight, aim.usable, aim.up, aim.halfHeight);
+        }
+
+        CriticalSpringStep(m_chargeFrameOffset.x, m_chargeFrameVelocity.x, wanted.x, m_chargeFrameOmega, dt);
+        CriticalSpringStep(m_chargeFrameOffset.y, m_chargeFrameVelocity.y, wanted.y, m_chargeFrameOmega, dt);
+        // 0 へは限りなく近づくだけなので、k_ChargeFrameSnap を切ったら 0 にして溜めを受けていない時の式へ戻す
+        if (!framing && m_chargeFrameOffset.Length() < k_ChargeFrameSnap)
+        {
+            m_chargeFrameOffset = NS::Core::Vector2{0.0f, 0.0f};
+            m_chargeFrameVelocity = NS::Core::Vector2{0.0f, 0.0f};
+        }
+    }
+
     void ThirdPersonFollow::OnStart()
     {
         // 基底が brain へ自分を登録する
@@ -86,6 +282,7 @@ namespace NS::Obj
             m_distance = m_idleDistance;
             m_desiredDistance = m_idleDistance;
         }
+        ClearCharge();
     }
 
     void ThirdPersonFollow::SetSensX(float radPerPixel) noexcept
@@ -174,8 +371,13 @@ namespace NS::Obj
 
     void ThirdPersonFollow::OnUpdate()
     {
+        // 受けた溜めはこのフレームだけ使う。渡されなかったフレームは押していないのと同じ
+        const FollowChargeDesc charge = m_charge;
+        m_charge = FollowChargeDesc{};
+
         const float dt = NS::Platform::FrameTimer::FixedDelta();
-        if (!IsActive() || Target() == nullptr || dt <= 0.0f)
+        const Transform* target = Target();
+        if (!IsActive() || target == nullptr || dt <= 0.0f)
         {
             return;
         }
@@ -228,6 +430,8 @@ namespace NS::Obj
             m_desiredDistance = desired;
         }
         m_distance = SpringApproach(m_distance, m_desiredDistance, m_springOmega, dt);
+
+        UpdateCharge(charge, *target, dt);
     }
 
     CameraPose ThirdPersonFollow::EvaluatePose(float alpha) const noexcept
@@ -249,14 +453,30 @@ namespace NS::Obj
         // Player Mesh の補間と整合させ、相対位置のガタつきを防ぐ
         const NS::Core::Vector3 tgtPos = target->InterpolatedWorldMatrix(alpha).Translation();
         // ずれは補間しない。根を ShiftPosition で上げ下げしていれば、補間の途中でも 根 + ずれ は動かない
-        const NS::Core::Vector3 headPos{tgtPos.x, tgtPos.y + m_targetHeightOffset + m_headHeight, tgtPos.z};
-        const NS::Core::Vector3 camPos{
+        NS::Core::Vector3 headPos{tgtPos.x, tgtPos.y + m_targetHeightOffset + m_headHeight, tgtPos.z};
+        NS::Core::Vector3 camPos{
             headPos.x - forward.x * m_distance,
             headPos.y - forward.y * m_distance,
             headPos.z - forward.z * m_distance,
         };
 
-        return MakePose(camPos, headPos, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+        // 構図のずらしと溜めの揺れは位置と注視点を同じだけ動かし、視線の向きを変えない。どちらも 0 なら足さない
+        const float upShift = m_chargeFrameOffset.y + m_chargeShake;
+        if (m_chargeFrameOffset.x != 0.0f || upShift != 0.0f)
+        {
+            const NS::Core::Vector3 right{cy, 0.0f, -sy};
+            const NS::Core::Vector3 up{-sp * sy, cp, -sp * cy};
+            const NS::Core::Vector3 shift = right * m_chargeFrameOffset.x + up * upShift;
+            camPos += shift;
+            headPos += shift;
+        }
+
+        CameraPose pose = MakePose(camPos, headPos, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+        if (m_chargeNarrowDegrees != 0.0f)
+        {
+            pose.fovY = NS::Core::Radians{pose.fovY.value - NS::Core::DegreesToRadians(m_chargeNarrowDegrees)};
+        }
+        return pose;
     }
 
     NS_CLASS(ThirdPersonFollow)

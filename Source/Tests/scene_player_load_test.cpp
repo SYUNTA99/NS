@@ -1,6 +1,7 @@
 #include "Editor/LevelFilePaths.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Level/TargetMarker.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerStateManager.h"
@@ -115,6 +116,7 @@ TEST_P(ShippedScene, EveryTuningFieldNameIsReflected)
         {"PlayerStateManager", live->FindComponent<PlayerNs::PlayerStateManager>()},
         {"CollisionInput", live->FindComponent<LevelNs::CollisionInput>()},
         {"ImpactResolver", live->FindComponent<LevelNs::ImpactResolver>()},
+        {"TargetMarker", live->FindComponent<LevelNs::TargetMarker>()},
     };
 
     for (const std::pair<const char*, const SceneNs::Component*>& target : targets)

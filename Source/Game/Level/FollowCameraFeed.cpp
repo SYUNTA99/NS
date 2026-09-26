@@ -1,6 +1,8 @@
 #include "Game/Level/FollowCameraFeed.h"
 
 #include "Game/Entity/EntityComponent.h"
+#include "Game/Level/CollisionInput.h"
+#include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/ObjectList.h"
@@ -9,6 +11,34 @@
 
 namespace NS::Game::Level
 {
+    namespace
+    {
+        // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す
+        [[nodiscard]] NS::Obj::FollowChargeDesc MakeFollowCharge(const CollisionInput& input) noexcept
+        {
+            const ImpactInputJudge& judge = input.Judge();
+            const bool held = judge.IsHeld();
+            float charge01 = 0.0f;
+            if (held)
+            {
+                charge01 = judge.Charge01();
+            }
+            SlamLineTarget aim{};
+            const bool hasAimTarget = input.TryGetAimTarget(aim);
+            NS::Core::Vector3 center{};
+            if (hasAimTarget)
+            {
+                center = NS::Core::Vector3{aim.bounds.Center.x, aim.bounds.Center.y, aim.bounds.Center.z};
+            }
+            return NS::Obj::FollowChargeDesc{
+                .charge01 = charge01,
+                .held = held,
+                .hasAimTarget = hasAimTarget,
+                .aimTargetCenter = center,
+            };
+        }
+    } // namespace
+
     // Respawner のやり直し (LateUpdate + 10) が済んだ後、
     // ThirdPersonFollow (LateUpdate + 50) が読む前に渡す
     FollowCameraFeed::FollowCameraFeed() noexcept
@@ -49,6 +79,16 @@ namespace NS::Game::Level
         // 当たりの足元に立ち姿のカプセルを立てた時の中心を見る。玉の間は根が立ち姿の半長ぶん下がっているので、
         // 根を見ると押すたびに画面が 1 フレームで半長ぶん沈み、解けると跳ね上がる
         m_follow->SetTargetHeightOffset(entity->StandingHalfHeight() - entity->CapsuleHalfHeight());
+
+        const CollisionInput* input = target->FindComponent<CollisionInput>();
+        if (input == nullptr)
+        {
+            return;
+        }
+        if (!m_follow->SetFollowCharge(MakeFollowCharge(*input)))
+        {
+            NS_LOG_WARN(Game, "溜めの状態が壊れていて、追従カメラへ渡さなかった: 溜め量 {}", input->Judge().Charge01());
+        }
     }
 
     void FollowCameraFeed::OnEndPlay()
@@ -56,6 +96,7 @@ namespace NS::Game::Level
         if (m_follow != nullptr)
         {
             m_follow->SetTargetHeightOffset(0.0f);
+            m_follow->ClearCharge();
         }
     }
 
