@@ -15,6 +15,7 @@ namespace NS::Game::Level
         void OnUpdate() override;
 
         //! 走行を最初からやり直す。出現位置は凍結スナップショットからその都度読む
+        //! 凍結にある LaunchedBody を持つ配置物も、凍結の位置と回転へ置かれた物として戻す。凍結に無い物は触らない
         //! クリアシーケンスの finisher も全黒の裏でこれを呼ぶ
         void RestartRun() noexcept;
 

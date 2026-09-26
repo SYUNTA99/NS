@@ -27,9 +27,9 @@ namespace NS::Game::Level
         float apexHeight = 0.0f;                       // 発射の高さから頂点までの高さ (m)
         // 上りの重力の大きさ (m/s²)
         float riseGravity = -NS::Phys::k_DefaultGravityY;
-        float fallGravityScale = 1.0f;                 // 下りの重力 ÷ 上りの重力
-        float apexBandSpeed = 0.0f;                    // 頂点の帯の縦速度 (m/s)。0 なら帯は無い
-        float apexBandGravityScale = 1.0f;             // 頂点の帯の間に重力へ掛ける倍率
+        float fallGravityScale = 1.0f;     // 下りの重力 ÷ 上りの重力
+        float apexBandSpeed = 0.0f;        // 頂点の帯の縦速度 (m/s)。0 なら帯は無い
+        float apexBandGravityScale = 1.0f; // 頂点の帯の間に重力へ掛ける倍率
     };
 
     //! @brief 曲線の発射の瞬間の速度 (m/s) を返す
@@ -73,6 +73,14 @@ namespace NS::Game::Level
         //! @details 前転の角速度も入れる。非有限の velocity は無視する。RigidBody が無ければ足す
         //! body の生成で確保が起きるので noexcept にしない
         void LaunchRigid(const NS::Core::Vector3& velocity);
+
+        //! @brief 根を position・rotation へ置き直し、置かれた物へ戻す
+        //! @details body も同じ所へ瞬間移動する。曲線の間なら切った「重力を使う」と減衰を切る前の値へ戻し、
+        //! 速度と角速度を 0 にしてキネマティックへ戻す。飛んでいない物も同じ所へ置き直す
+        //! RigidBody が無ければ根だけを置き直す。持ち主が居なければ何もしない
+        //! @param position 根の位置。親がいれば親から見た値で、場面の JSON の位置と同じ
+        //! @param rotation 根の回転。親がいれば親から見た値
+        void ResetTo(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation);
 
         //! 今の段階を返す
         [[nodiscard]] LaunchPhase Phase() const noexcept { return m_phase; }

@@ -84,8 +84,8 @@ namespace NS::Game::Level
         {
             if (!IsFinitePositive(arc.distance) || !IsFinitePositive(arc.apexHeight) ||
                 !IsFinitePositive(arc.riseGravity) || !IsFinitePositive(arc.fallGravityScale) ||
-                !IsFinitePositive(arc.apexBandGravityScale) ||
-                !std::isfinite(arc.apexBandSpeed) || arc.apexBandSpeed < 0.0f || !IsFinite(arc.direction))
+                !IsFinitePositive(arc.apexBandGravityScale) || !std::isfinite(arc.apexBandSpeed) ||
+                arc.apexBandSpeed < 0.0f || !IsFinite(arc.direction))
             {
                 return false;
             }
@@ -283,7 +283,8 @@ namespace NS::Game::Level
         m_arcFrames = 0;
         m_restAge = 0.0f;
 
-        // ダイナミックへの切り替えは次の PrePhysicsStep を待たずに body へ入れ、欄と body の運動の種類を飛ばしたフレームのうちに揃える
+        // ダイナミックへの切り替えは次の PrePhysicsStep を待たずに body へ入れ、
+        // 欄と body の運動の種類を飛ばしたフレームのうちに揃える
         rigidBody->SetKinematic(false);
         rigidBody->RefreshMotion();
         WriteArcVelocity(*rigidBody, NS::Platform::FrameTimer::FixedDelta());
@@ -307,13 +308,50 @@ namespace NS::Game::Level
             RestoreArcFields(*rigidBody);
         }
 
-        // ダイナミックへの切り替えは次の PrePhysicsStep を待たずに body へ入れ、欄と body の運動の種類を飛ばしたフレームのうちに揃える
+        // ダイナミックへの切り替えは次の PrePhysicsStep を待たずに body へ入れ、
+        // 欄と body の運動の種類を飛ばしたフレームのうちに揃える
         rigidBody->SetKinematic(false);
         rigidBody->RefreshMotion();
         rigidBody->SetVelocity(velocity);
         rigidBody->SetAngularVelocity(TumbleFrom(velocity));
         m_phase = LaunchPhase::Rigid;
         m_restAge = 0.0f;
+    }
+
+    void LaunchedBody::ResetTo(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation)
+    {
+        if (Owner() == nullptr)
+        {
+            return;
+        }
+        const LaunchPhase phase = m_phase;
+        m_phase = LaunchPhase::Resting;
+        m_restAge = 0.0f;
+        m_arcFrames = 0;
+        m_arcVelocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_arcVelocityUsed = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+
+        NS::Obj::Transform& root = RootTransform();
+        root.SetPosition(position);
+        root.SetRotation(rotation);
+        NS::Obj::RigidBody* rigidBody = Owner()->FindComponent<NS::Obj::RigidBody>();
+        if (rigidBody == nullptr)
+        {
+            return;
+        }
+        if (phase == LaunchPhase::Arc)
+        {
+            RestoreArcFields(*rigidBody);
+        }
+        // キネマティックの body は次の物理の前に Transform の姿勢へ運ばれ、途中で触れた相手を押す
+        // 先に body ごと瞬間移動させる
+        const NS::Core::AffineDecomposition pose = NS::Core::DecomposeAffine(root.WorldMatrix());
+        rigidBody->Teleport(pose.translation, pose.rotation);
+        // 残った速度はキネマティックの運びに混ざる。置いた所から動かさない
+        rigidBody->SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        rigidBody->SetAngularVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        rigidBody->SetKinematic(true);
+        rigidBody->RefreshMotion();
     }
 
     void LaunchedBody::WriteArcVelocity(NS::Obj::RigidBody& rigidBody, float dt)
