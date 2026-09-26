@@ -4,12 +4,47 @@
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
 
+#include <cstdint>
 #include <optional>
 #include <vector>
 
 namespace NS::Obj
 {
     class CameraComponent;
+
+    //! @brief 画面揺れの形の設定
+    //! @details ずれはカメラの右と上の向きへの平行移動
+    //! 大きさは始めたフレームが最大で、残りのフレーム数に比例して直線に減る
+    //! 横と縦の向きはそれぞれ 1〜longestFlipFrames フレームごとに入れ替わる
+    //! longestFlipFrames が 2 以上なら続けて同じ間隔にならない
+    //! 間隔は seed から選び、横と縦は別の並びになる。縦の最初の振れは下
+    struct CameraShakeDesc
+    {
+        float sideAmplitude = 0.0f; // 最初の振れの横の大きさ (m)
+        float upAmplitude = 0.0f;   // 最初の振れの縦の大きさ (m)
+        int frames = 0;             // 揺れを描くフレーム数。始めたフレームを含む
+        int longestFlipFrames = 1;  // 向きが入れ替わるまでの最長フレーム数。横と縦の両方に掛かる
+        NS::Core::Vector3 firstSideDirection{1.0f, 0.0f, 0.0f}; // 最初の横の振れを向ける世界の向き
+        std::uint32_t seed = 0;                                 // 入れ替わりの間隔を選ぶ種
+    };
+
+    //! @brief 寄りと傾きの設定
+    //! @details 始めたフレームから倍率と傾きを全部入れ、holdFrames の間保ち、returnFrames で滑らかに元へ戻す
+    struct CameraZoomRollDesc
+    {
+        float zoom = 1.0f;                                 // 画面に写る大きさの倍率。1 で寄らない
+        float rollDegrees = 0.0f;                          // 視線の軸まわりの傾き (度)
+        NS::Core::Vector3 rollDirection{1.0f, 0.0f, 0.0f}; // 画面の上端を倒す側を決める世界の向き
+        int holdFrames = 0;                                // 倍率と傾きを保つフレーム数。始めたフレームを含む
+        int returnFrames = 0;                              // 元へ戻すフレーム数
+    };
+
+    //! @brief 今のフレームの寄りと傾き
+    struct CameraZoomRoll
+    {
+        float zoom = 1.0f;        // 画面に写る大きさの倍率
+        float rollDegrees = 0.0f; // 視線の軸まわりの傾き (度)。正は画面の上端をカメラの右へ倒す向き
+    };
 
     //! @brief 仮想カメラ群を束ね、選ばれた 1 個の pose を実カメラへ流す
     //! @details 実 CameraComponent を 1 個参照する
@@ -55,9 +90,44 @@ namespace NS::Obj
         //! 直近 Evaluate が実カメラへ書いた pose。editor が編集復帰時のブレンド始点に読む
         [[nodiscard]] const CameraPose& LastPose() const noexcept { return m_lastPose; }
 
-        //! 画面揺れを始める。steps 固定ステップの間、最終 pose を上下へ平行移動して減衰し切る
-        //! 振れ幅が正でない・非有限・0 フレーム以下なら何もしない
-        void StartShake(float amplitude, int steps) noexcept;
+        //! @brief 画面揺れを始める。揺れの途中なら新しい設定の最初の振れから始め直す
+        //! @details StartShake の後に初めて来る OnUpdate ではフレームを進めない。始めたフレームに最初の振れを描く
+        //! 最初の横の振れは、始めた時のカメラの右と firstSideDirection の内積が負なら左、それ以外は右へ向く
+        //! 非数・負の振れ幅・フレーム数 0 以下・最長 1 未満は壊れた設定
+        //! @param[in] desc 揺れの形
+        //! @return 揺れを始めた場合 true、壊れた設定で何も変えなかった場合は false
+        bool StartShake(const CameraShakeDesc& desc) noexcept;
+
+        //! @brief 今のフレームの揺れのずれを返す
+        //! @return x がカメラの右、y がカメラの上の向きのずれ (m)。揺れていない時は 0
+        [[nodiscard]] NS::Core::Vector2 ShakeOffset() const noexcept;
+
+        //! @brief 寄りと傾きを始める。戻しの途中なら新しい倍率と傾きから始め直す
+        //! @details StartZoomRoll の後に初めて来る OnUpdate ではフレームを進めない
+        //! 傾きの向きは、始めた時のカメラの右と rollDirection の内積が負なら上端を左へ、それ以外は右へ倒す
+        //! 倍率 1 未満か非数・傾きか向きが非数・フレーム数が負は壊れた設定
+        //! @param[in] desc 寄りと傾き
+        //! @return 始めた場合 true、壊れた設定で何も変えなかった場合は false
+        bool StartZoomRoll(const CameraZoomRollDesc& desc) noexcept;
+
+        //! @brief 今のフレームの寄りと傾きを返す。始めていない時と戻し終えた後は倍率 1・傾き 0
+        [[nodiscard]] CameraZoomRoll ZoomRoll() const noexcept;
+
+        //! @brief 揺れと寄りと傾きを止める
+        void StopShakeAndZoomRoll() noexcept;
+
+        //! @brief 今のカメラの画面で direction が右と左のどちらの側かを返す
+        //! @details 実カメラの水平の前から作った右と direction
+        //! の内積で決める。揺れの最初の横の向きと傾きの向きもこの決まり
+        //! @param[in] direction 世界の向き
+        //! @return 内積が負の場合 -1、それ以外の場合は 1
+        [[nodiscard]] float SideSignOf(const NS::Core::Vector3& direction) const noexcept;
+
+        //! @brief Evaluate が実カメラへ書く姿勢を、書かずに返す
+        //! @details 仮想カメラ、ブレンド、揺れ、寄りと傾きの順に合成する
+        //! @param[in] alpha 補間の割合
+        //! @return 合成した姿勢。選べる仮想カメラが無い場合は nullopt
+        [[nodiscard]] std::optional<CameraPose> ComposePose(float alpha) const noexcept;
 
         //! @brief 登録済みから priority 最高の vcam の pose を返す。候補が無ければ nullopt
         //! @details active は問わず選ぶ。ゲーム視点を別ビューへ映す用で実カメラには触れない
@@ -76,7 +146,7 @@ namespace NS::Obj
     private:
         [[nodiscard]] VirtualCamera* SelectActive() const noexcept;
 
-        CameraComponent* m_camera = nullptr;          // 同じ GameObject に乗る実カメラ (非所有)
+        CameraComponent* m_camera = nullptr; // 同じ GameObject に乗る実カメラ (非所有)
         std::vector<VirtualCamera*> m_vcams; // 登録済み vcam 候補 (非所有)
         VirtualCamera* m_active = nullptr;   // 現在選ばれている vcam
 
@@ -86,8 +156,14 @@ namespace NS::Obj
         float m_blendElapsed = 0.0f;   // ブレンド開始からの経過秒
         bool m_blending = false;       // ブレンド進行中か
 
-        float m_shakeAmplitude = 0.0f; // 揺れの上下振れ幅
-        int m_shakeTotal = 0;          // 揺れ始めのフレーム数。減衰の分母
-        int m_shakeRemaining = 0;      // 揺れの残りフレーム数。0 は揺れていない
+        std::vector<NS::Core::Vector2> m_shakeOffsets; // 揺れのフレームごとのずれ (m)。x が右、y が上
+        int m_shakeFrame = 0;                          // m_shakeOffsets の今のフレームの番号
+        bool m_shakeStartedThisFrame = false;          // 次の OnUpdate でフレームを進めないか
+
+        CameraZoomRoll m_zoomRollFull{};         // 保つ間の倍率と向きを付けた傾き
+        int m_zoomRollHoldFrames = 0;            // 保つフレーム数
+        int m_zoomRollReturnFrames = 0;          // 戻すフレーム数
+        int m_zoomRollFrame = 0;                 // 始めたフレームからの番号。保つと戻すの和に達したら終わり
+        bool m_zoomRollStartedThisFrame = false; // 次の OnUpdate でフレームを進めないか
     };
 } // namespace NS::Obj

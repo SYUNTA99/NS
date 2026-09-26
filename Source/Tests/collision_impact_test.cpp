@@ -965,6 +965,14 @@ TEST(CollisionImpact, KeepsTheNumbersOfTheLastHitForReading)
     EXPECT_FLOAT_EQ(hit.impactDir.x, 1.0f);
     EXPECT_FLOAT_EQ(hit.impactDir.y, 0.0f);
     EXPECT_FLOAT_EQ(hit.impactDir.z, 0.0f);
+    // 中心近くの当たりの返りの始めの値。欄「中心近くの当たりの白のフレーム数」「中心近くの当たりの寄りの倍率」
+    // 「中心近くの当たりの傾き」の既定と、最初の振れの大きさ = カメラ揺れの強さ × 威力 × 質量因子 × 中心近くの倍率
+    ASSERT_EQ(hit.tier, LevelNs::HitTier::Center);
+    const float mass = rig.rigidBody->EffectiveMass();
+    EXPECT_NEAR(hit.cameraShake, 0.06f * hit.power * mass / (mass + 1.0f) * 1.25f, 1.0e-6f);
+    EXPECT_EQ(hit.flashStart, 2);
+    EXPECT_FLOAT_EQ(hit.zoomStart, 1.15f);
+    EXPECT_FLOAT_EQ(std::abs(hit.rollStart), 3.0f);
 }
 
 TEST(CollisionImpact, ReboundsAgainstSphereTarget)
@@ -1945,8 +1953,8 @@ TEST(CollisionImpact, CenterHitStretchesHitStop)
     EXPECT_EQ(StepsUntilMovementActive(scene, rig, 60), expected);
 }
 
-// 白が引いたフレームには、まだ潰れが残っている。白を長くすると落ちる
-TEST(CollisionImpact, CenterHitFlashClearsWhileTheSquashIsStillHeld)
+// 白は検知のフレームには出ず、潰れと同じ止めの頭から 2 フレーム出る。引いたフレームには、まだ潰れが残っている
+TEST(CollisionImpact, CenterHitFlashRunsFromTheFreezeFrameWhileTheSquashIsHeld)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_FarCourse);
@@ -1954,16 +1962,15 @@ TEST(CollisionImpact, CenterHitFlashClearsWhileTheSquashIsStillHeld)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     ASSERT_TRUE(rig.impact->WasCenterHit());
-    ASSERT_GT(rig.impact->CenterHitFlashStepsRemaining(), 0);
+    EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 0);
 
-    int steps = 0;
-    while (rig.impact->CenterHitFlashStepsRemaining() > 0 && steps < 60)
-    {
-        Step(scene, rig);
-        ++steps;
-    }
-
-    EXPECT_LE(steps, 3);
+    Step(scene, rig);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 2);
+    Step(scene, rig);
+    EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 1);
+    Step(scene, rig);
+    EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 0);
     EXPECT_TRUE(rig.impact->IsScaleAnimating());
 }
 
@@ -2607,6 +2614,390 @@ TEST(CollisionImpact, HitStopShakesCamera)
     brain->Evaluate(1.0f);
     const Vector3 during = brain->LastPose().position;
     EXPECT_GT(std::abs(during.y - before.y), 1.0e-4f);
+}
+
+namespace
+{
+    // 欄「カメラ揺れの強さ」「中心近くの当たりの揺れの倍率」の既定
+    constexpr float k_CameraShakeScale = 0.06f;
+    constexpr float k_CenterHitShakeScale = 1.25f;
+    // 欄「大きな外れの揺れのフレーム数」「大きな外れの揺れの縦と横の比」の既定
+    constexpr int k_WideShakeFrames = 16;
+    constexpr float k_WideShakeUpOverSide = 0.35f;
+    // 欄「中心近くの当たりの寄りの倍率」「中心近くの当たりの傾き」(度)「寄りと傾きを戻すフレーム数」の既定
+    constexpr float k_CenterHitZoom = 1.15f;
+    constexpr float k_CenterHitRollDegrees = 3.0f;
+    constexpr int k_ZoomRollReturnFrames = 6;
+    // 欄「惜しい当たりの返りの割合」「惜しい当たりの返りを引き始める割合」の既定
+    constexpr float k_NearHitReturnRatio = 0.4f;
+    constexpr float k_NearHitPullBackRatio = 0.5f;
+    constexpr float k_ReturnTolerance = 1.0e-5f;
+
+    // 横ずれ 0.2 と 0.7 は、的の半幅 0.5 + 自機の半径 0.4 で割ると 0.22 と 0.78。既定の境目で中心近くと大きな外れ
+    constexpr SlamCourse k_CenterTierCourse{.start = 0.0f, .lateral = 0.2f, .targetCell = 1};
+    constexpr SlamCourse k_WideTierCourse{.start = 0.0f, .lateral = 0.7f, .targetCell = 1};
+
+    // ゲームの帯と同じ順で、台の 1 フレームの後に CameraBrain の LateUpdate を回す
+    void StepWithCamera(SceneNs::Scene& scene, const Rig& rig)
+    {
+        Step(scene, rig);
+        scene.CameraBrain()->OnUpdate();
+    }
+
+    // 検知のフレームまで進める。検知のフレームも移動と CameraBrain を回し、次のフレームが止めの頭になる
+    int StepUntilImpactWithCamera(SceneNs::Scene& scene, const Rig& rig, int maxSteps)
+    {
+        for (int i = 0; i < maxSteps; ++i)
+        {
+            StepWorld(scene);
+            const bool detected = rig.impact->DidRebound() || rig.impact->DidBreak();
+            rig.movement->OnUpdate();
+            scene.CameraBrain()->OnUpdate();
+            if (detected)
+            {
+                return i + 1;
+            }
+        }
+        return maxSteps;
+    }
+
+    // カメラの水平の前から作った右と direction の内積が負なら -1、それ以外は 1
+    float ScreenSideSign(const SceneNs::CameraBrain& brain, const Vector3& direction)
+    {
+        const Vector3 forward = brain.ForwardHorizontal();
+        const Vector3 right{forward.z, 0.0f, -forward.x};
+        if (NS::Core::Dot(right, direction) < 0.0f)
+        {
+            return -1.0f;
+        }
+        return 1.0f;
+    }
+
+    float FirstSwing(const Rig& rig, float power)
+    {
+        const float mass = rig.rigidBody->EffectiveMass();
+        return k_CameraShakeScale * power * mass / (mass + 1.0f);
+    }
+
+    int SignOf(float value)
+    {
+        if (value > 0.0f)
+        {
+            return 1;
+        }
+        if (value < 0.0f)
+        {
+            return -1;
+        }
+        return 0;
+    }
+
+    // 大きな外れの当たりの止めの頭から、揺れのフレーム数ぶんの横と縦の向きの符号
+    struct ShakeSigns
+    {
+        std::vector<int> side;
+        std::vector<int> up;
+    };
+
+    ShakeSigns RecordWideShakeSigns(float lateral)
+    {
+        SceneNs::Scene scene;
+        Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .lateral = lateral, .targetCell = 1});
+        ShakeSigns signs;
+        BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+        EXPECT_LT(StepUntilImpactWithCamera(scene, rig, 30), 30) << lateral;
+        EXPECT_EQ(rig.impact->LastImpact().tier, LevelNs::HitTier::Wide) << lateral;
+        for (int frame = 0; frame < k_WideShakeFrames; ++frame)
+        {
+            StepWithCamera(scene, rig);
+            signs.side.push_back(SignOf(scene.CameraBrain()->ShakeOffset().x));
+            signs.up.push_back(SignOf(scene.CameraBrain()->ShakeOffset().y));
+        }
+        return signs;
+    }
+} // namespace
+
+// 中心近くは止めの頭から縦に 1.25 倍で揺れ、止めのフレーム数で収まる。寄りと傾きは止めの間保ち、明けから戻す
+TEST(CollisionImpact, CenterHitShakesZoomsAndTiltsThroughTheFreeze)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_CenterTierCourse);
+    SceneNs::CameraBrain* brain = scene.CameraBrain();
+    ASSERT_NE(brain, nullptr);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+
+    ASSERT_LT(StepUntilImpactWithCamera(scene, rig, 30), 30);
+    const LevelNs::ImpactRecord hit = rig.impact->LastImpact();
+    ASSERT_EQ(hit.tier, LevelNs::HitTier::Center);
+    const int stop = hit.hitStopSteps;
+    ASSERT_GE(stop, 2);
+    // 検知のフレームには揺れも寄りも無い
+    EXPECT_EQ(brain->ShakeOffset().x, 0.0f);
+    EXPECT_EQ(brain->ShakeOffset().y, 0.0f);
+    EXPECT_EQ(brain->ZoomRoll().zoom, 1.0f);
+    EXPECT_EQ(brain->ZoomRoll().rollDegrees, 0.0f);
+
+    const float swing = FirstSwing(rig, hit.power) * k_CenterHitShakeScale;
+    const float roll = k_CenterHitRollDegrees * ScreenSideSign(*brain, hit.impactDir);
+    for (int frame = 0; frame < stop; ++frame)
+    {
+        StepWithCamera(scene, rig);
+        const NS::Core::Vector2 offset = brain->ShakeOffset();
+        EXPECT_EQ(offset.x, 0.0f) << "frame " << frame;
+        EXPECT_NEAR(
+            std::abs(offset.y), swing * static_cast<float>(stop - frame) / static_cast<float>(stop), k_ReturnTolerance)
+            << "frame " << frame;
+        EXPECT_FLOAT_EQ(brain->ZoomRoll().zoom, k_CenterHitZoom) << "frame " << frame;
+        EXPECT_FLOAT_EQ(brain->ZoomRoll().rollDegrees, roll) << "frame " << frame;
+        if (frame == 0)
+        {
+            EXPECT_LT(offset.y, 0.0f);
+            EXPECT_NEAR(offset.Length(), hit.cameraShake, k_ReturnTolerance);
+            EXPECT_FLOAT_EQ(brain->ZoomRoll().zoom, hit.zoomStart);
+            EXPECT_FLOAT_EQ(brain->ZoomRoll().rollDegrees, hit.rollStart);
+            EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), hit.flashStart);
+        }
+    }
+
+    // 明けから戻す。揺れは止めの間で終わっている
+    float previousZoom = k_CenterHitZoom;
+    for (int frame = 0; frame < k_ZoomRollReturnFrames; ++frame)
+    {
+        StepWithCamera(scene, rig);
+        EXPECT_TRUE(rig.movement->IsActiveSelf()) << "frame " << frame;
+        EXPECT_EQ(brain->ShakeOffset().Length(), 0.0f) << "frame " << frame;
+        EXPECT_LT(brain->ZoomRoll().zoom, previousZoom) << "frame " << frame;
+        previousZoom = brain->ZoomRoll().zoom;
+    }
+    EXPECT_EQ(brain->ZoomRoll().zoom, 1.0f);
+    EXPECT_EQ(brain->ZoomRoll().rollDegrees, 0.0f);
+}
+
+// 惜しいは中心近くの寄りと傾きを割合で小さく出し、止めの途中で戻し始める。揺れは縦で倍率を掛けず、白は出ない
+TEST(CollisionImpact, NearHitZoomsSmallerAndPullsBackBeforeTheRelease)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_EdgeCourse);
+    SceneNs::CameraBrain* brain = scene.CameraBrain();
+    ASSERT_NE(brain, nullptr);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+
+    ASSERT_LT(StepUntilImpactWithCamera(scene, rig, 30), 30);
+    const LevelNs::ImpactRecord hit = rig.impact->LastImpact();
+    ASSERT_EQ(hit.tier, LevelNs::HitTier::Near);
+    const int stop = hit.hitStopSteps;
+    const int hold = static_cast<int>(std::ceil(static_cast<float>(stop) * k_NearHitPullBackRatio));
+    ASSERT_LT(hold, stop);
+
+    const float swing = FirstSwing(rig, hit.power);
+    const float zoom = 1.0f + (k_CenterHitZoom - 1.0f) * k_NearHitReturnRatio;
+    const float roll = k_CenterHitRollDegrees * k_NearHitReturnRatio * ScreenSideSign(*brain, hit.impactDir);
+    int shakeFrames = 0;
+    for (int frame = 0; frame < stop + 2; ++frame)
+    {
+        StepWithCamera(scene, rig);
+        const NS::Core::Vector2 offset = brain->ShakeOffset();
+        if (offset.Length() > 0.0f)
+        {
+            ++shakeFrames;
+        }
+        EXPECT_EQ(offset.x, 0.0f) << "frame " << frame;
+        EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 0) << "frame " << frame;
+        if (frame == 0)
+        {
+            EXPECT_NEAR(offset.y, -swing, k_ReturnTolerance);
+            EXPECT_NEAR(offset.Length(), hit.cameraShake, k_ReturnTolerance);
+            EXPECT_FLOAT_EQ(brain->ZoomRoll().zoom, hit.zoomStart);
+            EXPECT_FLOAT_EQ(brain->ZoomRoll().rollDegrees, hit.rollStart);
+            EXPECT_EQ(hit.flashStart, 0);
+        }
+        if (frame < hold)
+        {
+            EXPECT_FLOAT_EQ(brain->ZoomRoll().zoom, zoom) << "frame " << frame;
+            EXPECT_FLOAT_EQ(brain->ZoomRoll().rollDegrees, roll) << "frame " << frame;
+        }
+        if (frame == hold)
+        {
+            // 明けより前に戻し始める
+            EXPECT_FALSE(rig.movement->IsActiveSelf());
+            EXPECT_LT(brain->ZoomRoll().zoom, zoom);
+            EXPECT_GT(brain->ZoomRoll().zoom, 1.0f);
+        }
+    }
+    EXPECT_EQ(shakeFrames, stop);
+}
+
+// 大きな外れは横が主の揺れを止めから切り離した長さで続け、明けの後も揺れる。最初の横は自機の弾かれる側、縦は下。寄りと傾きは無い
+TEST(CollisionImpact, WideHitShakeRunsSidewaysPastTheRelease)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_WideTierCourse);
+    SceneNs::CameraBrain* brain = scene.CameraBrain();
+    ASSERT_NE(brain, nullptr);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+
+    ASSERT_LT(StepUntilImpactWithCamera(scene, rig, 30), 30);
+    const LevelNs::ImpactRecord hit = rig.impact->LastImpact();
+    ASSERT_EQ(hit.tier, LevelNs::HitTier::Wide);
+    const int stop = hit.hitStopSteps;
+    ASSERT_LT(stop, k_WideShakeFrames);
+    EXPECT_EQ(brain->ShakeOffset().Length(), 0.0f);
+
+    const float swing = FirstSwing(rig, hit.power);
+    const float side = swing / std::sqrt(1.0f + k_WideShakeUpOverSide * k_WideShakeUpOverSide);
+    Vector3 rebound{};
+    ASSERT_TRUE(NS::Core::TryNormalizeHorizontal(hit.selfVelocity, rebound));
+    const float firstSide = side * ScreenSideSign(*brain, rebound);
+
+    int shakeFrames = 0;
+    int shakeFramesAfterRelease = 0;
+    for (int frame = 0; frame < k_WideShakeFrames + 2; ++frame)
+    {
+        StepWithCamera(scene, rig);
+        const NS::Core::Vector2 offset = brain->ShakeOffset();
+        if (offset.Length() > 0.0f)
+        {
+            ++shakeFrames;
+            if (rig.movement->IsActiveSelf())
+            {
+                ++shakeFramesAfterRelease;
+            }
+        }
+        EXPECT_EQ(brain->ZoomRoll().zoom, 1.0f) << "frame " << frame;
+        EXPECT_EQ(brain->ZoomRoll().rollDegrees, 0.0f) << "frame " << frame;
+        EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 0) << "frame " << frame;
+        if (frame == 0)
+        {
+            EXPECT_NEAR(offset.x, firstSide, k_ReturnTolerance);
+            EXPECT_NEAR(offset.y, -side * k_WideShakeUpOverSide, k_ReturnTolerance);
+            EXPECT_NEAR(offset.Length(), swing, k_ReturnTolerance);
+            EXPECT_NEAR(offset.Length(), hit.cameraShake, k_ReturnTolerance);
+        }
+    }
+    EXPECT_EQ(shakeFrames, k_WideShakeFrames);
+    EXPECT_EQ(shakeFramesAfterRelease, k_WideShakeFrames - stop);
+    EXPECT_EQ(hit.flashStart, 0);
+    EXPECT_EQ(hit.zoomStart, 1.0f);
+    EXPECT_EQ(hit.rollStart, 0.0f);
+}
+
+// 揺れの並びは当たりの中身から決まる。作り直した台の同じ当たりは同じ並び、横ずれだけ違う当たりは違う並び
+TEST(CollisionImpact, ShakeSeedComesFromTheHitItself)
+{
+    const ShakeSigns first = RecordWideShakeSigns(0.7f);
+    const ShakeSigns again = RecordWideShakeSigns(0.7f);
+    const ShakeSigns shifted = RecordWideShakeSigns(0.75f);
+
+    EXPECT_EQ(first.side, again.side);
+    EXPECT_EQ(first.up, again.up);
+    EXPECT_TRUE(first.side != shifted.side || first.up != shifted.up);
+}
+
+// CollisionInput の無い台は段を見ない。縦の揺れを倍率なしで出し、白と寄りと傾きは出さない
+TEST(CollisionImpact, HitWithoutCollisionInputShakesUpOnly)
+{
+    SceneNs::Scene scene;
+    SlamCourse course = k_NearCourse;
+    course.withCollisionInput = false;
+    Rig rig = BuildSlam(scene, course);
+    SceneNs::CameraBrain* brain = scene.CameraBrain();
+    ASSERT_NE(brain, nullptr);
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+
+    ASSERT_LT(StepUntilImpactWithCamera(scene, rig, 30), 30);
+    const LevelNs::ImpactRecord hit = rig.impact->LastImpact();
+    ASSERT_FALSE(hit.centerHit);
+    StepWithCamera(scene, rig);
+
+    EXPECT_EQ(brain->ShakeOffset().x, 0.0f);
+    EXPECT_NEAR(brain->ShakeOffset().y, -FirstSwing(rig, hit.power), k_ReturnTolerance);
+    EXPECT_EQ(brain->ZoomRoll().zoom, 1.0f);
+    EXPECT_EQ(brain->ZoomRoll().rollDegrees, 0.0f);
+    EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 0);
+    EXPECT_EQ(hit.flashStart, 0);
+    EXPECT_EQ(hit.zoomStart, 1.0f);
+    EXPECT_EQ(hit.rollStart, 0.0f);
+}
+
+// 1 回目の大きな外れの揺れが残っている所へ 2 回目を当てると、2 回目の止めの頭で 2 回目の返りから始め直す
+TEST(CollisionImpact, SecondHitRestartsTheReturnsOverTheFirstShake)
+{
+    SceneNs::Scene scene;
+    // 反動で下がる側 (-X) にもう 1 体置き、明けに空中の 1 発で当てる
+    Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .lateral = 0.7f, .targetCell = 1, .extraTargetCell = -2});
+    SceneNs::CameraBrain* brain = scene.CameraBrain();
+    ASSERT_NE(brain, nullptr);
+    NS::Obj::GameObject* extra = nullptr;
+    scene.Objects().ForEachComponent<LevelNs::Breakable>([&](LevelNs::Breakable& breakable) {
+        if (breakable.Owner() != rig.target)
+        {
+            extra = breakable.Owner();
+        }
+    });
+    ASSERT_NE(extra, nullptr);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+
+    ASSERT_LT(StepUntilImpactWithCamera(scene, rig, 30), 30);
+    ASSERT_EQ(rig.impact->LastImpact().tier, LevelNs::HitTier::Wide);
+    int released = 0;
+    while (released < 60)
+    {
+        StepWorld(scene);
+        ++released;
+        if (rig.movement->IsActiveSelf())
+        {
+            break;
+        }
+        rig.movement->OnUpdate();
+        brain->OnUpdate();
+    }
+    ASSERT_LT(released, 60);
+    // 明けのフレームに 2 体目へ向けて空中の 1 発を出す
+    const Vector3 toExtra = extra->Root().Position() - rig.movement->Owner()->Root().Position();
+    Vector3 aim{};
+    ASSERT_TRUE(NS::Core::TryNormalizeHorizontal(toExtra, aim));
+    rig.movement->SetDesiredMove(aim, 0.0f);
+    rig.movement->RequestBodySlam(1.0f);
+    rig.movement->OnUpdate();
+    brain->OnUpdate();
+    ASSERT_TRUE(rig.movement->IsBodySlamming());
+
+    ASSERT_LT(StepUntilImpactWithCamera(scene, rig, 10), 10);
+    const LevelNs::ImpactRecord second = rig.impact->LastImpact();
+    ASSERT_EQ(second.sequence, 2u);
+    ASSERT_EQ(second.tier, LevelNs::HitTier::Center);
+    // 2 回目の検知のフレームに 1 回目の揺れが残っている。残っていなければ重なった場面になっていない
+    ASSERT_GT(brain->ShakeOffset().Length(), 0.0f);
+
+    StepWithCamera(scene, rig);
+    EXPECT_NEAR(brain->ShakeOffset().Length(), second.cameraShake, k_ReturnTolerance);
+    EXPECT_EQ(brain->ShakeOffset().x, 0.0f);
+    EXPECT_LT(brain->ShakeOffset().y, 0.0f);
+    EXPECT_FLOAT_EQ(brain->ZoomRoll().zoom, second.zoomStart);
+    EXPECT_FLOAT_EQ(brain->ZoomRoll().rollDegrees, second.rollStart);
+    EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), second.flashStart);
+}
+
+// プレイを終えると、揺れと寄りと傾きと白が残らない
+TEST(CollisionImpact, OnEndPlayStopsTheShakeAndTheZoom)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_CenterTierCourse);
+    SceneNs::CameraBrain* brain = scene.CameraBrain();
+    ASSERT_NE(brain, nullptr);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+    ASSERT_LT(StepUntilImpactWithCamera(scene, rig, 30), 30);
+    StepWithCamera(scene, rig);
+    ASSERT_GT(brain->ShakeOffset().Length(), 0.0f);
+    ASSERT_GT(brain->ZoomRoll().zoom, 1.0f);
+    ASSERT_GT(rig.impact->CenterHitFlashStepsRemaining(), 0);
+
+    rig.impact->OnEndPlay();
+
+    EXPECT_EQ(brain->ShakeOffset().Length(), 0.0f);
+    EXPECT_EQ(brain->ZoomRoll().zoom, 1.0f);
+    EXPECT_EQ(brain->ZoomRoll().rollDegrees, 0.0f);
+    EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 0);
 }
 
 // 壊した瞬間に破片と跡が出る。破片は壊れた物の位置から飛び始める

@@ -4,6 +4,7 @@
 #include "Game/Level/LaunchedBody.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
 
@@ -29,7 +30,10 @@ namespace NS::Game::Level
         float positionFactor = 0.0f;
         float offset01 = 0.0f;          //!< 相手の中心からの横ずれ。相手の半幅と自機の半径の和で割った 0..1
         HitTier tier = HitTier::Center; //!< 当たりの段。CollisionInput が無い時は Center だが演出は掛けない
-        float cameraShake = 0.0f;
+        float cameraShake = 0.0f;       //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
+        int flashStart = 0;             //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
+        float zoomStart = 1.0f;         //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
+        float rollStart = 0.0f; //!< 傾きの始めの値 (度)。正は画面の上端をカメラの右へ倒す向き。傾きの無い当たりは 0
         int hitStopSteps = 0;
         bool centerHit = false; //!< 白の光と止めの倍率を掛けた場合 true。CollisionInput が無い時は false
         bool broke = false;
@@ -93,7 +97,7 @@ namespace NS::Game::Level
         //! 凍結の途中で外れても移動を止めたままにせず、縮めた相手の描く形も元へ戻す
         void OnEndPlay() override;
 
-        //! 中心近くで当てた直後だけ、フレームごとに減衰する白を画面全体へ重ねる
+        //! 中心近くの当たりの止めの頭から、フレームごとに減衰する白を画面全体へ重ねる
         void OnRenderOverlay(const NS::Gfx::RenderContext& ctx) override;
 
         //! @brief 突進の向きを寄せる相手を探す
@@ -129,6 +133,15 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_pushInDistance, "食い込み距離")
         NS_REFLECT_FIELD(m_shakeAmplitude, "振動の振幅")
         NS_REFLECT_FIELD(m_cameraShakeScale, "カメラ揺れの強さ")
+        NS_REFLECT_FIELD(m_centerHitShakeScale, "中心近くの当たりの揺れの倍率")
+        NS_REFLECT_FIELD(m_wideShakeFrames, "大きな外れの揺れのフレーム数")
+        NS_REFLECT_FIELD(m_wideShakeUpOverSide, "大きな外れの揺れの縦と横の比")
+        NS_REFLECT_FIELD(m_wideShakeLongestFlipFrames, "大きな外れの揺れの入れ替わりの最長フレーム数")
+        NS_REFLECT_FIELD(m_centerHitZoom, "中心近くの当たりの寄りの倍率")
+        NS_REFLECT_FIELD(m_centerHitRollDegrees, "中心近くの当たりの傾き")
+        NS_REFLECT_FIELD(m_zoomRollReturnFrames, "寄りと傾きを戻すフレーム数")
+        NS_REFLECT_FIELD(m_nearHitReturnRatio, "惜しい当たりの返りの割合")
+        NS_REFLECT_FIELD(m_nearHitPullBackRatio, "惜しい当たりの返りを引き始める割合")
         NS_REFLECT_FIELD(m_squashThickness, "潰れの厚み")
         NS_REFLECT_FIELD(m_squashHeight, "潰れの伸び上がり")
         NS_REFLECT_FIELD(m_stretchAlong, "弾け伸びの倍率")
@@ -147,8 +160,15 @@ namespace NS::Game::Level
         // 事前条件: m_movement が非 null
         [[nodiscard]] Breakable* FindOverlapped() const;
 
-        // 凍結を掛ける。自機を寝かせて潰し、置かれていた相手を食い込ませて描く形を縮める。カメラを揺らし始める
+        // 凍結を掛ける。自機を寝かせて潰し、当たりの返りを始め、置かれていた相手を食い込ませて描く形を縮める
         void BeginFreeze(int stopSteps);
+
+        // 当たりの返り (白・揺れ・寄りと傾き) を段から組んで控え、記録へ始めの値を書く。検知のフレームに呼ぶ
+        // 事前条件: 反動の向き・相手の飛ぶ向き・相手の番号と位置を控え終えている
+        void PrepareHitReturns(HitTier tier, bool tiered, float power, float massFactor, float offset01, int stopSteps);
+
+        // 控えた当たりの返りを始める。前の当たりの返りが残っていても、控えた値で始め直す
+        void StartHitReturns();
 
         // 解放後のフレームで伸びた形から戻す。前半で縮む側へ行き過ぎ、後半で配置で決めた元の形へ戻る
         // 最後のフレームは控えた値を厳密に書く
@@ -200,12 +220,21 @@ namespace NS::Game::Level
             2.0f; // 威力の伸び (最大 2 倍) と掛けて、素と中心近くの当たりの止まりを 4 倍差にする
         // 止める長さの上限。0.2 秒より長い停止は衝突の重さではなく処理落ちに見える
         float m_hitStopMaxSeconds = 12.0f / 60.0f;
-        float m_pushInDistance = 0.06f;   // 凍結の頭で置かれていた相手を発射方向へ食い込ませる距離
-        float m_shakeAmplitude = 0.05f;   // 凍結中の往復の振れ幅。質量 1 で半分になる
-        float m_cameraShakeScale = 0.06f; // カメラ揺れの上下振れ幅の基準
-        float m_squashThickness = 0.7f;   // 凍結中の自機と置かれていた相手の、進行方向の厚みの倍率
-        float m_squashHeight = 1.1f;      // 凍結中の自機と置かれていた相手の、高さの倍率
-        float m_stretchAlong = 1.2f;      // 解放のフレームの伸びの倍率。反発は縦、貫通は進行の軸
+        float m_pushInDistance = 0.06f;       // 凍結の頭で置かれていた相手を発射方向へ食い込ませる距離
+        float m_shakeAmplitude = 0.05f;       // 凍結中の往復の振れ幅。質量 1 で半分になる
+        float m_cameraShakeScale = 0.06f;     // 威力 1・質量因子 1 の当たりのカメラ揺れの最初の振れの大きさ (m)
+        float m_centerHitShakeScale = 1.25f;  // 中心近くの当たりの最初の振れの大きさに掛ける倍率
+        int m_wideShakeFrames = 16;           // 大きな外れの揺れを描くフレーム数。止めの頭を含む
+        float m_wideShakeUpOverSide = 0.35f;  // 大きな外れの最初の振れの縦 ÷ 横
+        int m_wideShakeLongestFlipFrames = 3; // 大きな外れの揺れの向きが入れ替わるまでの最長フレーム数
+        float m_centerHitZoom = 1.15f;        // 中心近くの当たりで画面に写る大きさの倍率
+        float m_centerHitRollDegrees = 3.0f;  // 中心近くの当たりの視線の軸まわりの傾き (度)
+        int m_zoomRollReturnFrames = 6;       // 寄りと傾きを元へ戻すフレーム数
+        float m_nearHitReturnRatio = 0.4f;    // 惜しい当たりの寄りの倍率の 1 を超えた分と傾きに掛ける割合
+        float m_nearHitPullBackRatio = 0.5f;  // 惜しい当たりの寄りと傾きを保つフレーム数 ÷ 止めのフレーム数
+        float m_squashThickness = 0.7f;       // 凍結中の自機と置かれていた相手の、進行方向の厚みの倍率
+        float m_squashHeight = 1.1f;          // 凍結中の自機と置かれていた相手の、高さの倍率
+        float m_stretchAlong = 1.2f;          // 解放のフレームの伸びの倍率。反発は縦、貫通は進行の軸
         // 止めの潰れ → 明けの伸び → 行き過ぎ → 元の玉を、続けて 1 つの弾む動きに見せる
         // 0.5 は縦 0.9 まで縮む。0.25 (縦 0.95) では揺れに見え、1.0 (縦 0.8) は止めの潰れに近く 2 回目の衝突に見える
         float m_stretchOvershoot = 0.5f; // 伸びの量に対する、戻る途中で縮む側へ行き過ぎる量の割合
@@ -216,9 +245,9 @@ namespace NS::Game::Level
         // 中心近くで当てた時だけの白フラッシュ。端で当てた時と見間違えない強さにする
         // 0.5 は一瞬白と分かる濃さ。1.0 だと食い込みと潰れの絵が隠れる
         float m_centerHitFlashAlpha = 0.5f;
-        // 潰れは当たった次のフレームから始まる
-        // 2 フレームなら白が重なるのは潰れの最初の 1 フレームだけで、そこも濃さは半分
-        // 8 フレームでは潰れの最初の 7 フレームに重なり、形が読めなかった
+        // 白は潰れと同じ止めの頭から出る
+        // 2 フレームなら白が重なるのは潰れの最初の 2 フレームだけで、2 フレーム目の濃さは半分
+        // 8 フレームでは形が読めなかった
         int m_centerHitFlashSteps = 2;
         // 既定は壊さない。壊れて消えると重さが飛距離に出ず、押し飛ばしと反発だけを先に詰められない
         bool m_breakEnabled = false;
@@ -237,7 +266,9 @@ namespace NS::Game::Level
         NS::Core::Vector3 m_pendingTargetHome{0.0f, 0.0f, 0.0f};
         NS::Core::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f}; // 発射の水平方向。食い込みと振動の軸
         float m_pendingShakeAmplitude = 0.0f;                   // この衝突の往復の振れ幅
-        float m_pendingShakeStrength = 0.0f;                    // この衝突のカメラ揺れの振れ幅
+        int m_pendingFlashSteps = 0;                            // この衝突の白のフレーム数。白の無い段は 0
+        NS::Obj::CameraShakeDesc m_pendingShake{};              // この衝突のカメラの揺れ
+        NS::Obj::CameraZoomRollDesc m_pendingZoomRoll{};        // この衝突の寄りと傾き。寄りの無い段は倍率 1
         NS::Core::Vector3 m_scaleHome{1.0f, 1.0f, 1.0f};        // 配置で決めた元の描画スケールの控え
         NS::Core::Vector3 m_stretchScale{1.0f, 1.0f, 1.0f};     // 解放のフレームの伸びた形
         int m_recoverRemaining = 0;                             // 形を戻し切るまでの残りフレーム数

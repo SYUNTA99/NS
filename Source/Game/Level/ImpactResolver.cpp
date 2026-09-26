@@ -24,13 +24,59 @@
 #include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdint>
+#include <random>
 #include <vector>
 
 namespace NS::Game::Level
 {
     namespace
     {
+        // 揺れのフレーム数の上限。揺れの並びは始める時に全フレームぶんの領域を取るので、欄の打ち間違いの大きな値を止める
+        // 1 秒を超える揺れは当たりの返りではなく、画面が揺れ続けている状態
+        constexpr int k_MaxShakeFrames = 60;
+
+        // 丸めた整数を 32 ビットの符号なしへ写す。負の値も同じ値なら同じビットになる
+        [[nodiscard]] std::uint32_t RoundedBits(float value) noexcept
+        {
+            return static_cast<std::uint32_t>(static_cast<std::int32_t>(std::lround(value)));
+        }
+
+        // 揺れの並びの種。相手の番号・横ずれ (1/1000)・相手の飛ぶ水平の角度 (0.1 度)・相手の位置 (1 cm) を丸めて畳む
+        // 丸めた整数だけを混ぜるので、浮動小数の最後の桁の違いでは種が変わらない
+        // seed_seq の畳み方は規格で決まっていて、実装によらず同じ値から同じ種を出す
+        [[nodiscard]] std::uint32_t ShakeSeed(std::uint32_t targetId,
+                                              float offset01,
+                                              const NS::Core::Vector3& impactDir,
+                                              const NS::Core::Vector3& targetPos)
+        {
+            const float headingDegrees = NS::Core::RadiansToDegrees(std::atan2(impactDir.z, impactDir.x));
+            std::seed_seq values{
+                targetId,
+                RoundedBits(offset01 * 1000.0f),
+                RoundedBits(headingDegrees * 10.0f),
+                RoundedBits(targetPos.x * 100.0f),
+                RoundedBits(targetPos.y * 100.0f),
+                RoundedBits(targetPos.z * 100.0f),
+            };
+            std::array<std::uint32_t, 1> seed{};
+            values.generate(seed.begin(), seed.end());
+            return seed[0];
+        }
+
+        // 止めのフレーム数 × ratio を切り上げたフレーム数。ratio は 0〜1 に収め、非数は 0 として扱う
+        [[nodiscard]] int PullBackFrames(int stopSteps, float ratio) noexcept
+        {
+            if (!(ratio > 0.0f))
+            {
+                return 0;
+            }
+            const float clamped = std::min(ratio, 1.0f);
+            return static_cast<int>(std::ceil(static_cast<float>(stopSteps) * clamped));
+        }
+
         // 相手の中心からの横ずれ 0..1。OnUpdate へ式を埋めると当たり判定の流れが読めなくなる
         // 分母は AABB を突進方向に直交する軸へ投影した半幅に自機の半径を足した値
         // 触れられる横ずれの上限が 1 になる。斜めの箱でも角をかすめる当たりが 1
@@ -337,7 +383,6 @@ namespace NS::Game::Level
         float hitStopScale = 1.0f;
         if (centerHit)
         {
-            m_centerHitFlashRemaining = m_centerHitFlashSteps;
             hitStopScale = m_centerHitStopScale;
         }
         NS_LOG_INFO(Game,
@@ -367,7 +412,6 @@ namespace NS::Game::Level
         m_pendingImpactDir = launchDir;
         // 反発の質量因子の残り。動きは軽い側が受け取るので、重い物ほど揺れない
         m_pendingShakeAmplitude = m_shakeAmplitude / (1.0f + mass);
-        m_pendingShakeStrength = m_cameraShakeScale * power * massFactor;
 
         // 破壊を許可していない間は耐久を見ない。壊れる相手も押し飛ばしと反発へ回る
         int stopSteps = 0;
@@ -427,6 +471,8 @@ namespace NS::Game::Level
             stopSteps = ComputeHitStopSteps(power, mass, hitStopScale);
         }
 
+        PrepareHitReturns(tier, m_collisionInput != nullptr, power, massFactor, offset01, stopSteps);
+
         // 止めるフレーム数が決まってから控える。止めが 0 フレームの当たりも残すので、下の return より手前に置く
         m_lastImpact.sequence += 1;
         m_lastImpact.targetId = m_pendingTarget.id;
@@ -435,7 +481,6 @@ namespace NS::Game::Level
         m_lastImpact.positionFactor = positionFactor;
         m_lastImpact.offset01 = offset01;
         m_lastImpact.tier = tier;
-        m_lastImpact.cameraShake = m_pendingShakeStrength;
         m_lastImpact.hitStopSteps = stopSteps;
         m_lastImpact.centerHit = centerHit;
         m_lastImpact.broke = m_pendingBreak;
@@ -479,6 +524,8 @@ namespace NS::Game::Level
             RootTransform().SetScale(ScaledAlongImpact(m_squashThickness, m_squashHeight));
         }
 
+        StartHitReturns();
+
         NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
         {
@@ -496,10 +543,109 @@ namespace NS::Game::Level
                 ShrinkPlacedTarget(*target);
             }
         }
+    }
 
-        if (NS::Obj::CameraBrain* brain = scene->CameraBrain())
+    void ImpactResolver::PrepareHitReturns(
+        HitTier tier, bool tiered, float power, float massFactor, float offset01, int stopSteps)
+    {
+        // 段の無い台は白と寄りと傾きを出さず、揺れの倍率も掛けない
+        const bool center = tiered && tier == HitTier::Center;
+        const bool nearMiss = tiered && tier == HitTier::Near;
+        const bool wide = tiered && tier == HitTier::Wide;
+
+        // 最初の振れの大きさは全段で同じ式。反発と同じ質量因子を掛け、中心近くだけ段の倍率を掛ける
+        float swing = m_cameraShakeScale * power * massFactor;
+        m_pendingFlashSteps = 0;
+        if (center)
         {
-            brain->StartShake(m_pendingShakeStrength, stopSteps);
+            swing *= m_centerHitShakeScale;
+            m_pendingFlashSteps = m_centerHitFlashSteps;
+        }
+
+        // 中心近くと惜しいは縦だけを毎フレーム入れ替え、止めのフレーム数で収める
+        m_pendingShake = NS::Obj::CameraShakeDesc{
+            .sideAmplitude = 0.0f,
+            .upAmplitude = swing,
+            .frames = stopSteps,
+            .longestFlipFrames = 1,
+            .firstSideDirection = m_pendingReboundArc.direction,
+            .seed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, m_pendingTargetHome),
+        };
+        if (wide)
+        {
+            // 横と縦を合わせた長さが最初の振れの大きさになるよう、比で分ける
+            const float side = swing / std::sqrt(1.0f + m_wideShakeUpOverSide * m_wideShakeUpOverSide);
+            m_pendingShake.sideAmplitude = side;
+            m_pendingShake.upAmplitude = side * m_wideShakeUpOverSide;
+            m_pendingShake.frames = m_wideShakeFrames;
+            m_pendingShake.longestFlipFrames = m_wideShakeLongestFlipFrames;
+        }
+
+        // 寄りの無い段も倍率 1 の設定を渡し、前の当たりの寄りを残さない
+        m_pendingZoomRoll = NS::Obj::CameraZoomRollDesc{.rollDirection = m_pendingImpactDir};
+        if (center)
+        {
+            m_pendingZoomRoll.zoom = m_centerHitZoom;
+            m_pendingZoomRoll.rollDegrees = m_centerHitRollDegrees;
+            m_pendingZoomRoll.holdFrames = stopSteps;
+            m_pendingZoomRoll.returnFrames = m_zoomRollReturnFrames;
+        }
+        if (nearMiss)
+        {
+            // 寄りは 1 を超えた分に割合を掛ける。倍率そのものに掛けると 1 未満の引きになる
+            m_pendingZoomRoll.zoom = 1.0f + (m_centerHitZoom - 1.0f) * m_nearHitReturnRatio;
+            m_pendingZoomRoll.rollDegrees = m_centerHitRollDegrees * m_nearHitReturnRatio;
+            m_pendingZoomRoll.holdFrames = PullBackFrames(stopSteps, m_nearHitPullBackRatio);
+            m_pendingZoomRoll.returnFrames = m_zoomRollReturnFrames;
+        }
+
+        // 当たりの記録は検知のフレームに読まれるので、傾きの向きもここで今のカメラから決める
+        float rollSign = 1.0f;
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (scene != nullptr && scene->CameraBrain() != nullptr)
+        {
+            rollSign = scene->CameraBrain()->SideSignOf(m_pendingZoomRoll.rollDirection);
+        }
+        m_lastImpact.cameraShake = NS::Core::Vector2{m_pendingShake.sideAmplitude, m_pendingShake.upAmplitude}.Length();
+        m_lastImpact.flashStart = m_pendingFlashSteps;
+        m_lastImpact.zoomStart = m_pendingZoomRoll.zoom;
+        m_lastImpact.rollStart = m_pendingZoomRoll.rollDegrees * rollSign;
+    }
+
+    void ImpactResolver::StartHitReturns()
+    {
+        m_centerHitFlashRemaining = m_pendingFlashSteps;
+
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr || scene->CameraBrain() == nullptr)
+        {
+            return;
+        }
+        NS::Obj::CameraBrain& brain = *scene->CameraBrain();
+        if (m_pendingShake.frames > k_MaxShakeFrames)
+        {
+            NS_LOG_WARN(Game,
+                        "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった",
+                        m_pendingShake.frames,
+                        k_MaxShakeFrames);
+        }
+        else if (!brain.StartShake(m_pendingShake))
+        {
+            NS_LOG_WARN(Game,
+                        "揺れの設定が壊れていて、揺らさなかった: 横 {} 縦 {} フレーム数 {} 最長 {}",
+                        m_pendingShake.sideAmplitude,
+                        m_pendingShake.upAmplitude,
+                        m_pendingShake.frames,
+                        m_pendingShake.longestFlipFrames);
+        }
+        if (!brain.StartZoomRoll(m_pendingZoomRoll))
+        {
+            NS_LOG_WARN(Game,
+                        "寄りと傾きの設定が壊れていて、寄せなかった: 倍率 {} 傾き {} 保つ {} 戻す {}",
+                        m_pendingZoomRoll.zoom,
+                        m_pendingZoomRoll.rollDegrees,
+                        m_pendingZoomRoll.holdFrames,
+                        m_pendingZoomRoll.returnFrames);
         }
     }
 
@@ -515,6 +661,14 @@ namespace NS::Game::Level
         }
         RestoreTargetShape();
         m_centerHitFlashRemaining = 0;
+        // 揺れと寄りは CameraBrain が持つ。止めないとプレイを終えた後の視点にずれが残る
+        if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
+        {
+            if (NS::Obj::CameraBrain* brain = Owner()->OwningScene()->CameraBrain())
+            {
+                brain->StopShakeAndZoomRoll();
+            }
+        }
     }
 
     void ImpactResolver::OnRenderOverlay(const NS::Gfx::RenderContext& ctx)
