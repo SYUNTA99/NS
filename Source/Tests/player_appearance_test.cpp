@@ -20,6 +20,7 @@
 
 #include "entity_test_stage.h"
 #include "jolt_test_scene.h"
+#include <cmath>
 #include <gtest/gtest.h>
 #include <limits>
 #include <memory>
@@ -120,6 +121,7 @@ namespace
     };
 
     // 突進の試しは床の上で本物の突進を出す。+X へ倒して押し、突進に入ったフレームで止める
+    // 溜めの入力は押しているかを見せるだけで、発動は試しが PlayerComponent へ直に頼む
     struct SlamRig
     {
         NsTest::EntityStage stage;
@@ -128,11 +130,13 @@ namespace
         NS::Game::Player::PlayerStateManager& manager =
             *stage.owner.AddComponent<NS::Game::Player::PlayerStateManager>();
         NS::Game::Player::PlayerComponent& player = *stage.owner.AddComponent<NS::Game::Player::PlayerComponent>();
+        NS::Game::Level::CollisionInput& input = *stage.owner.AddComponent<NS::Game::Level::CollisionInput>();
 
         SlamRig()
         {
             player.OnStart();
             manager.OnStart();
+            input.OnStart();
             appearance.OnStart();
             NsTest::AddBox(stage.physics, NS::Core::AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 64.0f}});
             stage.physics.OptimizeBroadPhase();
@@ -166,6 +170,38 @@ namespace
         EXPECT_NEAR(actual.y, expected.y, 1e-5f);
         EXPECT_NEAR(actual.z, expected.z, 1e-5f);
         EXPECT_NEAR(actual.w, expected.w, 1e-5f);
+    }
+
+    void ExpectSameAxis(const Vector3& actual, const Vector3& expected)
+    {
+        EXPECT_NEAR(actual.x, expected.x, 1e-6f);
+        EXPECT_NEAR(actual.y, expected.y, 1e-6f);
+        EXPECT_NEAR(actual.z, expected.z, 1e-6f);
+    }
+
+    // 真正面の当たりの反動の向き。突進 (+X) と逆の水平
+    constexpr Vector3 k_HeadOnRebound{-1.0f, 0.0f, 0.0f};
+
+    // 当たりの検知の後、突進を終えて止めの 1 フレームを過ごす。見た目は止めのフレームを更新し終えている
+    void HoldTheHitStop(SlamRig& rig)
+    {
+        rig.player.CancelBodySlam();
+        rig.player.SetActive(false);
+        rig.appearance.OnUpdate();
+        rig.player.SetActive(true);
+    }
+
+    // 止めが明けたフレームに direction の水平へ弾き、自機を 1 フレーム動かす。見た目はこのフレームをまだ更新していない
+    // 反動に入れなかった場合 false
+    [[nodiscard]] bool ReboundToward(SlamRig& rig, const Vector3& direction)
+    {
+        const NS::Game::Player::ReboundArc arc{.direction = direction, .apexHeight = 2.15f, .distance = 1.1f};
+        if (!rig.player.BeginRebound(arc))
+        {
+            return false;
+        }
+        rig.player.OnUpdate();
+        return rig.player.IsRebounding();
     }
 } // namespace
 
@@ -412,7 +448,7 @@ TEST(PlayerAppearanceSpinTest, BodySlamRollsForwardAboutTheHorizontalAxisAcrossT
     EXPECT_GT(top.x, 0.0f);
 }
 
-// 突進が終わっても丸まっている間は、突進の軸と速さのまま転がり続ける
+// 反動に入らずに突進が終わった時は、丸まっている間、突進の軸と速さのまま転がり続ける
 TEST(PlayerAppearanceSpinTest, AfterTheBodySlamEndsTheBallKeepsRollingTheSameWay)
 {
     SlamRig rig;
@@ -427,6 +463,117 @@ TEST(PlayerAppearanceSpinTest, AfterTheBodySlamEndsTheBallKeepsRollingTheSameWay
     EXPECT_NEAR(rig.appearance.SpinDegreesThisFrame(), DegreesPerFrame(1800.0f), 1e-4f);
     ExpectSameRotation(rig.renderer.LocalRotation(),
                        TurnDegrees(Vector3{0.0f, 0.0f, -1.0f}, DegreesPerFrame(1800.0f) * 2.0f));
+}
+
+// 真正面の当たりでは、止めが明けたフレームに軸が突進の軸と逆を向き、そのフレームから突進と同じ速さで回る
+TEST(PlayerAppearanceSpinTest, TheBallTurnsTheOtherWayOnTheFrameTheHitStopEnds)
+{
+    SlamRig rig;
+    ASSERT_TRUE(rig.player.IsBodySlamming());
+    rig.appearance.OnUpdate();
+    const Vector3 rushAxis = rig.appearance.SpinAxis();
+    // 進む向き (1, 0, 0) から (forward.z, 0, -forward.x) = (0, 0, -1)
+    ExpectSameAxis(rushAxis, Vector3{0.0f, 0.0f, -1.0f});
+    const NS::Core::Quaternion before = rig.renderer.LocalRotation();
+
+    HoldTheHitStop(rig);
+    // 止めの間は突進の軸のまま。切り替わるのは明けのフレーム
+    ExpectSameAxis(rig.appearance.SpinAxis(), rushAxis);
+    ASSERT_TRUE(ReboundToward(rig, k_HeadOnRebound));
+    rig.appearance.OnUpdate();
+
+    EXPECT_LT(rig.appearance.SpinAxis().Dot(rushAxis), 0.0f);
+    EXPECT_NEAR(rig.appearance.SpinDegreesThisFrame(), DegreesPerFrame(1800.0f), 1e-4f);
+    // 弾かれる向き (-1, 0, 0) から (0, 0, 1)。止めの間は回らないので、突進の 1 フレームの上に明けの 1 フレームが乗る
+    ExpectSameRotation(rig.renderer.LocalRotation(),
+                       before * TurnDegrees(Vector3{0.0f, 0.0f, 1.0f}, DegreesPerFrame(1800.0f)));
+}
+
+// 横ずれのある当たりでは、弾かれた向きから軸を取る。突進の軸を裏返した軸とは違う
+TEST(PlayerAppearanceSpinTest, AnOffCenterHitTurnsTheBallAlongTheReboundNotAgainstTheRush)
+{
+    SlamRig rig;
+    ASSERT_TRUE(rig.player.IsBodySlamming());
+    rig.appearance.OnUpdate();
+    const Vector3 rushAxis = rig.appearance.SpinAxis();
+
+    HoldTheHitStop(rig);
+    ASSERT_TRUE(ReboundToward(rig, Vector3{-1.0f, 0.0f, 1.0f}));
+    rig.appearance.OnUpdate();
+
+    // 弾かれる向き (-1, 0, 1) / √2 から (forward.z, 0, -forward.x) = (1, 0, 1) / √2
+    const float half = 1.0f / std::sqrt(2.0f);
+    ExpectSameAxis(rig.appearance.SpinAxis(), Vector3{half, 0.0f, half});
+    // 突進の軸を裏返すだけなら (0, 0, 1) になる
+    EXPECT_LT(rig.appearance.SpinAxis().Dot(-rushAxis), 0.9f);
+}
+
+// 反動の間は空中で横へ倒して速度の向きが変わっても、弾かれた向きから取った軸のまま回る
+TEST(PlayerAppearanceSpinTest, TiltingDuringTheReboundKeepsTheAxis)
+{
+    SlamRig rig;
+    ASSERT_TRUE(rig.player.IsBodySlamming());
+    rig.appearance.OnUpdate();
+    HoldTheHitStop(rig);
+    ASSERT_TRUE(ReboundToward(rig, k_HeadOnRebound));
+    rig.appearance.OnUpdate();
+    const NS::Core::Quaternion start = rig.renderer.LocalRotation();
+
+    constexpr int k_Frames = 10;
+    rig.player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int i = 0; i < k_Frames; ++i)
+    {
+        rig.player.OnUpdate();
+        ASSERT_TRUE(rig.player.IsRebounding());
+        rig.appearance.OnUpdate();
+    }
+    // 倒した向きが速度に効いていることを先に見る。効いていなければ軸が変わらないのは当たり前になる
+    ASSERT_GT(rig.player.Velocity().z, 0.1f);
+
+    ExpectSameAxis(rig.appearance.SpinAxis(), Vector3{0.0f, 0.0f, 1.0f});
+    ExpectSameRotation(rig.renderer.LocalRotation(),
+                       start * TurnDegrees(Vector3{0.0f, 0.0f, 1.0f}, DegreesPerFrame(1800.0f) * k_Frames));
+}
+
+// 反動の空中で 1 発を出すと、その突進の進む向きへ前転する
+TEST(PlayerAppearanceSpinTest, AnAirShotFromTheReboundRollsAlongItsOwnTravel)
+{
+    SlamRig rig;
+    ASSERT_TRUE(rig.player.IsBodySlamming());
+    rig.appearance.OnUpdate();
+    HoldTheHitStop(rig);
+    ASSERT_TRUE(ReboundToward(rig, k_HeadOnRebound));
+    rig.appearance.OnUpdate();
+
+    // 突進の軸 (0, 0, -1) とも反動の軸 (0, 0, 1) とも違う向きへ出し、どちらの軸が残ったのでもないことを見分ける
+    rig.player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    rig.player.RequestBodySlam(0.0f);
+    rig.player.OnUpdate();
+    ASSERT_TRUE(rig.player.IsBodySlamming());
+    rig.appearance.OnUpdate();
+
+    // 進む向き (0, 0, 1) から (1, 0, 0)
+    ExpectSameAxis(rig.appearance.SpinAxis(), Vector3{1.0f, 0.0f, 0.0f});
+    EXPECT_NEAR(rig.appearance.SpinDegreesThisFrame(), DegreesPerFrame(1800.0f), 1e-4f);
+}
+
+// 反動の間に押している間は、弾かれた向きでなく狙いへ向けて溜めの速さで回る。溜め量の見え方は反動の中でも変わらない
+TEST(PlayerAppearanceSpinTest, HoldingDuringTheReboundSpinsTowardTheAim)
+{
+    SlamRig rig;
+    ASSERT_TRUE(rig.player.IsBodySlamming());
+    rig.appearance.OnUpdate();
+    HoldTheHitStop(rig);
+    ASSERT_TRUE(ReboundToward(rig, k_HeadOnRebound));
+
+    rig.player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    rig.input.Judge().Step(true);
+    ASSERT_FLOAT_EQ(rig.input.Judge().Charge01(), 0.0f);
+    rig.appearance.OnUpdate();
+
+    // 狙い (0, 0, 1) から (1, 0, 0)
+    ExpectSameAxis(rig.appearance.SpinAxis(), Vector3{1.0f, 0.0f, 0.0f});
+    EXPECT_NEAR(rig.appearance.SpinDegreesThisFrame(), DegreesPerFrame(360.0f), 1e-4f);
 }
 
 // 立ち姿に戻ったフレームは、前のフレームの回転も捨てる。補間の途中でも立ち姿が傾いて描かれない

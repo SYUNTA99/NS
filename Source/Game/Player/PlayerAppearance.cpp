@@ -125,7 +125,14 @@ namespace NS::Game::Player
             m_spinSpeed =
                 m_emptyChargeSpinSpeed + (m_fullChargeSpinSpeed - m_emptyChargeSpinSpeed) * m_input->Judge().Charge01();
         }
-        // 放した後の空中と飛ばされている間は、直前のフレームの軸と速さのまま回る
+        else if (m_player->IsRebounding())
+        {
+            // 弾かれた向きへ前転する。真正面の当たりでは突進と逆向きになる
+            // 反動の間は空中の操作で速度の向きが変わっても、弾かれた向きから取った軸のまま回す
+            SetRollAxisToward(m_player->ReboundDirection(), m_spinAxis);
+            m_spinSpeed = m_bodySlamSpinSpeed;
+        }
+        // 放した後の空中と、反動に入らずに突進が終わった後は、直前のフレームの軸と速さのまま回る
 
         const float degrees = m_spinSpeed * NS::Platform::FrameTimer::FixedDelta();
         const float radians = NS::Core::ToRadians(NS::Core::Degrees{degrees}).value;

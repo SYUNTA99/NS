@@ -562,8 +562,15 @@ namespace NS::Game::Level
         }
         if (m_scaleHeld)
         {
-            // 解放の伸びが衝突の後半。伸びる軸は進行の軸と同じで、高さは戻して横だけ伸ばす
-            m_stretchScale = ScaledAlongImpact(m_stretchAlong, 1.0f);
+            // 解放の伸びが衝突の後半。反発は自機が上へ大きく弾かれるので縦へ、貫通は突き抜ける進行の軸へ伸ばす
+            if (wasBreak)
+            {
+                m_stretchScale = ScaledAlongImpact(m_stretchAlong, 1.0f);
+            }
+            else
+            {
+                m_stretchScale = NS::Core::Vector3{m_scaleHome.x, m_scaleHome.y * m_stretchAlong, m_scaleHome.z};
+            }
             RootTransform().SetScale(m_stretchScale);
             m_recoverRemaining = m_stretchRecoverSteps;
             m_scaleHeld = false;
@@ -670,8 +677,18 @@ namespace NS::Game::Level
             RootTransform().SetScale(m_scaleHome);
             return;
         }
-        const float t = static_cast<float>(m_recoverRemaining) / static_cast<float>(m_stretchRecoverSteps);
-        RootTransform().SetScale(m_scaleHome + (m_stretchScale - m_scaleHome) * t);
+        // 前半は伸びた形から、元の形を伸びと反対の側へ 伸びの量 × 行き過ぎの割合 だけ越えた所まで進む
+        // 後半はそこから元の形へ戻る
+        const float total = static_cast<float>(m_stretchRecoverSteps);
+        const float half = total * 0.5f;
+        const float elapsed = total - static_cast<float>(m_recoverRemaining);
+        const NS::Core::Vector3 overshoot = m_scaleHome - (m_stretchScale - m_scaleHome) * m_stretchOvershoot;
+        if (elapsed <= half)
+        {
+            RootTransform().SetScale(m_stretchScale + (overshoot - m_stretchScale) * (elapsed / half));
+            return;
+        }
+        RootTransform().SetScale(overshoot + (m_scaleHome - overshoot) * ((elapsed - half) / (total - half)));
     }
 
     NS::Core::Vector3 ImpactResolver::ScaledAlongImpact(float along, float height) const noexcept

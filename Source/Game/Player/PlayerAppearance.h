@@ -26,7 +26,8 @@ namespace NS::Game::Player
     //! 欄に ContentRoot 相対の参照を書けば、そのファイルの mesh を使う。引き当てられない参照は仮の形へ戻す
     //! 根の Transform は書かない。位置は移動、スケールは構えと衝突の潰れが持つ
     //! 丸まっているかの正は同居する PlayerComponent が持ち、毎フレームそれを見た目へ写す
-    //! 玉の間は同居する MeshRenderer の局所の回転を回す。押している間は狙いへ、突進中は進む向きへ前転する
+    //! 玉の間は同居する MeshRenderer の局所の回転を回す。押している間は狙いへ、突進中は進む向きへ、
+    //! 反動の間は弾かれた向きへ前転する
     //! 溜め量の正は同居する CollisionInput の判定で、ここは読むだけ
     //! 優先度は Update 帯の +50。配置物を組む経路 (ObjectFromJson / StartSpawned) では参照の引き当てが
     //! component の並び順に回るので、MeshRenderer (Update) が自分の参照から mesh を差した後にこちらが差す
@@ -57,6 +58,10 @@ namespace NS::Game::Player
 
         //! 直前の OnUpdate で玉が回った角度を度で返す。立ち姿と止めの間は 0
         [[nodiscard]] float SpinDegreesThisFrame() const noexcept { return m_spinDegreesThisFrame; }
+        //! @brief 玉を回している軸を返す
+        //! @details 根の空間の水平の単位ベクトル。正の角度で、玉の上面が 軸 × 上 の向きへ倒れる前転になる
+        //! @return 直前の OnUpdate で回した軸。止めの間は止まる前の軸、立ち姿では (1, 0, 0)
+        [[nodiscard]] NS::Core::Vector3 SpinAxis() const noexcept { return m_spinAxis; }
 
         NS_REFLECT_BEGIN(PlayerAppearance, NS::Obj::Component)
         NS_REFLECT_FIELD(m_standingMeshRef, "立ち姿のメッシュ")
@@ -85,7 +90,7 @@ namespace NS::Game::Player
         // 補間が短い側を通り、逆回りに見える
         float m_emptyChargeSpinSpeed = 360.0f; // 押した直後 (溜め 0) に玉が回る速さ。度/秒
         float m_fullChargeSpinSpeed = 1440.0f; // 溜めきった時に玉が回る速さ。度/秒
-        float m_bodySlamSpinSpeed = 1800.0f;   // 突進中に玉が前へ転がる速さ。度/秒
+        float m_bodySlamSpinSpeed = 1800.0f;   // 突進中と反動の間に玉が転がる速さ。度/秒
 
         // 立ち姿の間の軸。丸まった直後に狙いが決まらなければこの軸で回る
         static constexpr NS::Core::Vector3 k_FirstSpinAxis{1.0f, 0.0f, 0.0f};

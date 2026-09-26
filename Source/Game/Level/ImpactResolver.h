@@ -130,6 +130,7 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_squashThickness, "潰れの厚み")
         NS_REFLECT_FIELD(m_squashHeight, "潰れの伸び上がり")
         NS_REFLECT_FIELD(m_stretchAlong, "弾け伸びの倍率")
+        NS_REFLECT_FIELD(m_stretchOvershoot, "弾け伸びの行き過ぎ")
         NS_REFLECT_FIELD(m_stretchRecoverSteps, "弾け伸びを戻すフレーム数")
         NS_REFLECT_FIELD(m_centerHitFlashAlpha, "中心近くの当たりの白の濃さ")
         NS_REFLECT_FIELD(m_centerHitFlashSteps, "中心近くの当たりの白のフレーム数")
@@ -147,7 +148,8 @@ namespace NS::Game::Level
         // 凍結を掛ける。自機を寝かせて潰し、置かれていた相手を食い込ませ、カメラを揺らし始める
         void BeginFreeze(int stopSteps);
 
-        // 解放後のフレームで伸びた形から配置で決めた元の形へ滑らかに戻す。最後のフレームは控えた値を厳密に書く
+        // 解放後のフレームで伸びた形から戻す。前半で縮む側へ行き過ぎ、後半で配置で決めた元の形へ戻る
+        // 最後のフレームは控えた値を厳密に書く
         void RecoverScale();
 
         // 進行の軸だけ倍率を効かせた描画スケールを作る。縦は別の倍率で受ける
@@ -192,8 +194,13 @@ namespace NS::Game::Level
         float m_cameraShakeScale = 0.06f; // カメラ揺れの上下振れ幅の基準
         float m_squashThickness = 0.7f;   // 凍結中の進行方向の厚みの倍率
         float m_squashHeight = 1.1f;      // 凍結中の高さの倍率
-        float m_stretchAlong = 1.2f;      // 解放のフレームの弾かれる方向の倍率
-        // 伸びから元の形へ戻すフレーム数。反発の滞空 0.3 秒の前半で戻し切り、着地の前に形を確定させる
+        float m_stretchAlong = 1.2f;      // 解放のフレームの伸びの倍率。反発は縦、貫通は進行の軸
+        // 止めの潰れ → 明けの伸び → 行き過ぎ → 元の玉を、続けて 1 つの弾む動きに見せる
+        // 0.5 は縦 0.9 まで縮む。0.25 (縦 0.95) では揺れに見え、1.0 (縦 0.8) は止めの潰れに近く 2 回目の衝突に見える
+        float m_stretchOvershoot = 0.5f; // 伸びの量に対する、戻る途中で縮む側へ行き過ぎる量の割合
+        // 伸びから行き過ぎを経て元の形へ戻すフレーム数。前半で縮む側へ行き過ぎ、後半で戻る
+        // 6 は溜めきり・質量 1 の反動の上り約 40 フレームの最初の 15%
+        // 弾け出しの間だけ形を動かし、残りの上りは元の玉で浮かせる
         int m_stretchRecoverSteps = 6;
         // 中心近くで当てた時だけの白フラッシュ。端で当てた時と見間違えない強さにする
         // 0.5 は一瞬白と分かる濃さ。1.0 だと食い込みと潰れの絵が隠れる

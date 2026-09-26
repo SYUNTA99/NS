@@ -1058,10 +1058,10 @@ TEST(CollisionImpact, HeavierBodyFliesShorterAndReboundsThePlayerHarder)
         // 反動の高さと距離は 欄 × 威力 × 2 × 質量 ÷ (質量 + 1)。的は +X にあり、自機は -X へ弾かれる
         const float scale = rig.impact->LastPower() * 2.0f * (mass / (mass + 1.0f));
         EXPECT_FLOAT_EQ(hit.reboundApexHeight, k_ReboundApexHeight * scale) << "質量 " << mass;
-        const Vector3 expected = rig.movement->ReboundVelocityFor(
-            NS::Game::Player::ReboundArc{.direction = Vector3{-1.0f, 0.0f, 0.0f},
-                                         .apexHeight = k_ReboundApexHeight * scale,
-                                         .distance = k_ReboundDistance * scale});
+        const Vector3 expected =
+            rig.movement->ReboundVelocityFor(NS::Game::Player::ReboundArc{.direction = Vector3{-1.0f, 0.0f, 0.0f},
+                                                                          .apexHeight = k_ReboundApexHeight * scale,
+                                                                          .distance = k_ReboundDistance * scale});
         EXPECT_FLOAT_EQ(hit.selfVelocity.x, expected.x) << "質量 " << mass;
         EXPECT_FLOAT_EQ(hit.selfVelocity.y, expected.y) << "質量 " << mass;
         EXPECT_FLOAT_EQ(hit.selfVelocity.z, expected.z) << "質量 " << mass;
@@ -1340,8 +1340,9 @@ TEST(CollisionImpact, FreezeSquashesPlayerShape)
     EXPECT_FLOAT_EQ(squashed.z, authored.z);
 }
 
-// 解放のフレームに弾かれる方向へ伸びた形で飛び出し、数フレームで配置で決めた元の形へ厳密に戻る
-TEST(CollisionImpact, ReleaseStretchesThenRestoresScaleExactly)
+// 反動は上へ弾かれるので、明けのフレームに縦へ伸びる。3 フレームで縮む側へ行き過ぎ、6 フレームで元の形へ厳密に戻る
+// 伸び 1.2 と行き過ぎ 0.5 は欄「弾け伸びの倍率」「弾け伸びの行き過ぎ」の既定
+TEST(CollisionImpact, ReleaseStretchesUpOvershootsThenRestoresScaleExactly)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
@@ -1356,17 +1357,99 @@ TEST(CollisionImpact, ReleaseStretchesThenRestoresScaleExactly)
     ASSERT_LT(rest, 60);
 
     const Vector3 stretched = rig.movement->Owner()->Root().Scale();
-    EXPECT_GT(stretched.x, authored.x);
-    EXPECT_FLOAT_EQ(stretched.y, authored.y);
+    EXPECT_FLOAT_EQ(stretched.x, authored.x);
+    EXPECT_NEAR(stretched.y, authored.y * 1.2f, 1e-5f);
     EXPECT_FLOAT_EQ(stretched.z, authored.z);
 
-    for (int i = 0; i < 10; ++i)
+    for (int i = 0; i < 3; ++i)
+    {
         Step(scene, rig);
+    }
+    const Vector3 overshot = rig.movement->Owner()->Root().Scale();
+    EXPECT_FLOAT_EQ(overshot.x, authored.x);
+    EXPECT_NEAR(overshot.y, authored.y * 0.9f, 1e-5f);
+    EXPECT_FLOAT_EQ(overshot.z, authored.z);
 
+    for (int i = 0; i < 3; ++i)
+    {
+        Step(scene, rig);
+    }
     const Vector3 restored = rig.movement->Owner()->Root().Scale();
-    EXPECT_FLOAT_EQ(restored.x, authored.x);
-    EXPECT_FLOAT_EQ(restored.y, authored.y);
-    EXPECT_FLOAT_EQ(restored.z, authored.z);
+    EXPECT_EQ(restored.x, authored.x);
+    EXPECT_EQ(restored.y, authored.y);
+    EXPECT_EQ(restored.z, authored.z);
+}
+
+// 行き過ぎ 0 では、明けの伸びた形から前半で元の形に着き、元より縮まない
+TEST(CollisionImpact, ZeroOvershootReachesTheRestShapeWithoutShrinking)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    rig.rigidBody->SetMass(4.0f);
+    SetFloatField(*rig.impact, "弾け伸びの行き過ぎ", 0.0f);
+    const Vector3 authored = rig.movement->Owner()->Root().Scale();
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    Step(scene, rig);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    ASSERT_LT(StepsUntilMovementActive(scene, rig, 60), 60);
+    // 伸びていなければ、元の形に着くのも縮まないのも当たり前になる
+    ASSERT_GT(rig.movement->Owner()->Root().Scale().y, authored.y);
+
+    float lowest = rig.movement->Owner()->Root().Scale().y;
+    float atHalf = lowest;
+    for (int i = 0; i < 6; ++i)
+    {
+        Step(scene, rig);
+        const float y = rig.movement->Owner()->Root().Scale().y;
+        lowest = std::min(lowest, y);
+        if (i == 2)
+        {
+            atHalf = y;
+        }
+    }
+    EXPECT_NEAR(atHalf, authored.y, 1e-5f);
+    EXPECT_GE(lowest, authored.y - 1e-5f);
+}
+
+// 形を戻している途中で次の当たりが来ても、戻す先は配置で決めた元の形のまま。途中の形を元の形として控えない
+TEST(CollisionImpact, HitDuringTheRecoveryStillRestoresTheAuthoredScale)
+{
+    SceneNs::Scene scene;
+    // 反動で下がる側 (-X) にもう 1 体置き、明けに空中の 1 発で当てる
+    Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .targetCell = 1, .extraTargetCell = -2});
+    rig.rigidBody->SetMass(4.0f);
+    const Vector3 authored = rig.movement->Owner()->Root().Scale();
+    // 溜めた突進は床を走るので、明けは接地から弾かれ、空中の 1 発がまだ使える
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+
+    // 検知のフレームの移動も走らせる。飛ばすと自機の控えが「直前のフレームは突進中」のまま残り、明けの 1 発が出ない
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    rig.movement->OnUpdate();
+    ASSERT_LT(StepsUntilMovementActive(scene, rig, 60), 60);
+    // 溜めた 1 発は踏み込みより速く、形を戻すフレーム数の内にもう 1 体へ届く
+    rig.movement->SetDesiredMove(Vector3{-1.0f, 0.0f, 0.0f}, 0.0f);
+    rig.movement->RequestBodySlam(1.0f);
+    rig.movement->OnUpdate();
+    ASSERT_TRUE(rig.movement->IsBodySlamming());
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 5), 5);
+    // 戻しの途中の、元と違う形で当たったことを先に見る。元の形で当たったなら控え直しても同じ値になる
+    ASSERT_TRUE(rig.impact->IsScaleAnimating());
+    ASSERT_NE(rig.movement->Owner()->Root().Scale().y, authored.y);
+    rig.movement->OnUpdate();
+    ASSERT_LT(StepsUntilMovementActive(scene, rig, 60), 60);
+    for (int i = 0; i < 6; ++i)
+    {
+        Step(scene, rig);
+    }
+
+    ASSERT_FALSE(rig.impact->IsScaleAnimating());
+    const Vector3 restored = rig.movement->Owner()->Root().Scale();
+    EXPECT_EQ(restored.x, authored.x);
+    EXPECT_EQ(restored.y, authored.y);
+    EXPECT_EQ(restored.z, authored.z);
 }
 
 // 潰れは絵だけ。凍結中も当たり判定と位置は変わらない
@@ -2132,7 +2215,7 @@ TEST(CollisionImpact, OnEndPlayWakesFrozenMovement)
     EXPECT_TRUE(rig.movement->IsActiveSelf());
 }
 
-// 貫通は潰れない。潰れは押し返されている反発だけの絵で、貫通は前へ伸びるだけ
+// 貫通は潰れない。潰れは押し返されている反発だけの絵。貫通は前へ伸びる
 TEST(CollisionImpact, BreakSkipsSquashButStretchesForward)
 {
     SceneNs::Scene scene;
