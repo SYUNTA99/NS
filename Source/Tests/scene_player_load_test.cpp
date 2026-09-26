@@ -205,5 +205,5 @@ TEST_P(ShippedScene, PlayerLooksUseUnitScaleAndTheDefaultGray)
 
 INSTANTIATE_TEST_SUITE_P(ScenePlayerLoad,
                          ShippedScene,
-                         ::testing::Values("new_scene"),
+                         ::testing::Values("new_scene", "course"),
                          [](const ::testing::TestParamInfo<const char*>& info) { return std::string{info.param}; });
