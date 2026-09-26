@@ -533,12 +533,18 @@ namespace NS::Game::Level
             m_pendingBreak = false;
             // 質量因子 mass/(mass+1) は質量が大きいほど 1 へ寄る。軽い物は勢いを持っていくのでほとんど返らない
             // 2 倍して質量 1 で 1 にし、欄を質量 1・威力 1 の高さと距離で持つ
-            // 高さと距離に同じ倍率を掛け、弾かれ始めの角度を揃える
+            // 高さと距離に同じ倍率を掛け、威力と質量が変わっても弾かれ始めの角度を揃える
             // TODO: 質量 0.5 より軽い物では自機の返りが 0 に近づく。軽い物を置く時は、先に高さと距離の下限を足す
             const float reboundScale = power * 2.0f * massFactor;
+            // 中心近くの当たりだけ距離を伸ばし、高さは変えない。真ん中に当てた時は後ろへ飛ぶ
+            float reboundDistance = m_reboundDistance * reboundScale;
+            if (centerHit)
+            {
+                reboundDistance *= m_centerHitReboundDistanceScale;
+            }
             m_pendingReboundArc = NS::Game::Player::ReboundArc{.direction = NS::Core::Vector3{awayX, 0.0f, awayZ},
                                                                .apexHeight = m_reboundApexHeight * reboundScale,
-                                                               .distance = m_reboundDistance * reboundScale};
+                                                               .distance = reboundDistance};
             m_pendingSelfVelocity = m_movement->ReboundVelocityFor(m_pendingReboundArc);
 
             // 指数の範囲は 0〜1。負にすると重い物ほど飛ぶ逆転になる

@@ -808,6 +808,12 @@ namespace NS::Game::Player
         {
             return false;
         }
+        // 当てたフレームは ImpactResolver が自分より先に突進を終え、落下の 1 フレームがここを通る
+        // 掴むと止めの前に立ち姿へ戻り、ぶら下がりの位置から反動に入る
+        if (m_wasBodySlamming)
+        {
+            return false;
+        }
 
         NS::Core::Vector3 dir{};
         if (!NS::Core::TryNormalizeHorizontal(m_facingDir, dir))

@@ -59,6 +59,8 @@ namespace
     // 質量 1 に威力 1 で当てた時の自機の反動。欄「反動の高さ」「反動の距離」の既定
     constexpr float k_ReboundApexHeight = 1.15f;
     constexpr float k_ReboundDistance = 0.575f;
+    // 欄「中心近くの当たりの反動の距離の倍率」の既定
+    constexpr float k_CenterHitReboundDistanceScale = 2.0f;
     // 破壊は耐久 ≤ 最終威力なので、反発と押し飛ばしを見る台は壊れない高さを既定にする
     constexpr float k_UnbreakableToughness = 99.0f;
     // 逆転を見る台の耐久。満溜め + 中心直撃の 2.0 と、素当て + 縁寄りの 0.85 の間に置く
@@ -821,6 +823,7 @@ TEST(CollisionImpact, BreakAfterAPushRecordsNoLaunch)
 }
 
 // 反動の高さと距離の欄が、当たりの記録と自機の反動の軌道を決める。台の的は質量 1 なので質量の効きは 1
+// 横ずれ 0 の当たりは中心近くなので、距離には中心近くの当たりの倍率が掛かる
 TEST(CollisionImpact, ReboundFieldsDriveTheApexAndTheVelocity)
 {
     SceneNs::Scene scene;
@@ -836,8 +839,10 @@ TEST(CollisionImpact, ReboundFieldsDriveTheApexAndTheVelocity)
     const LevelNs::ImpactRecord& hit = rig.impact->LastImpact();
     EXPECT_FLOAT_EQ(hit.reboundApexHeight, 2.0f * power);
     // 的は +X にあり、自機は的の中心から -X の向きへ弾かれる
-    const Vector3 expected = rig.movement->ReboundVelocityFor(NS::Game::Player::ReboundArc{
-        .direction = Vector3{-1.0f, 0.0f, 0.0f}, .apexHeight = 2.0f * power, .distance = 0.8f * power});
+    const Vector3 expected = rig.movement->ReboundVelocityFor(
+        NS::Game::Player::ReboundArc{.direction = Vector3{-1.0f, 0.0f, 0.0f},
+                                     .apexHeight = 2.0f * power,
+                                     .distance = 0.8f * power * k_CenterHitReboundDistanceScale});
     ASSERT_GT(expected.y, 0.0f);
     EXPECT_FLOAT_EQ(hit.selfVelocity.x, expected.x);
     EXPECT_FLOAT_EQ(hit.selfVelocity.y, expected.y);
@@ -845,6 +850,45 @@ TEST(CollisionImpact, ReboundFieldsDriveTheApexAndTheVelocity)
     EXPECT_FLOAT_EQ(rig.movement->Velocity().x, expected.x);
     EXPECT_FLOAT_EQ(rig.movement->Velocity().y, expected.y);
     EXPECT_TRUE(rig.movement->IsRebounding());
+}
+
+// 中心近くの当たりだけ反動の距離が倍率ぶん伸び、頂点の高さは変わらない。惜しい当たりは距離も高さも欄のまま
+// 台の的は質量 1 なので、反動の高さと距離に掛かるのは威力だけ
+TEST(CollisionImpact, CenterHitReboundGoesFartherBackAtTheSameHeight)
+{
+    struct TierCase
+    {
+        SlamCourse course;
+        LevelNs::HitTier tier = LevelNs::HitTier::Center;
+        float distanceScale = 1.0f;
+    };
+    const std::vector<TierCase> cases{
+        {k_NearCourse, LevelNs::HitTier::Center, k_CenterHitReboundDistanceScale},
+        {k_EdgeCourse, LevelNs::HitTier::Near, 1.0f},
+    };
+
+    for (const TierCase& tierCase : cases)
+    {
+        SceneNs::Scene scene;
+        Rig rig = BuildSlam(scene, tierCase.course);
+        SetInstantImpact(rig);
+        BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+        ASSERT_LT(StepUntilImpact(scene, rig, 30), 30) << tierCase.course.lateral;
+
+        const LevelNs::ImpactRecord& hit = rig.impact->LastImpact();
+        ASSERT_EQ(hit.tier, tierCase.tier) << tierCase.course.lateral;
+        ASSERT_FALSE(hit.broke) << tierCase.course.lateral;
+        EXPECT_FLOAT_EQ(hit.reboundApexHeight, k_ReboundApexHeight * hit.power) << tierCase.course.lateral;
+        // 横ずれのある当たりは向きが的の中心からの並びで斜めになる。向きは記録の速度から取り、速さと縦を見る
+        Vector3 direction{};
+        ASSERT_TRUE(NS::Core::TryNormalizeHorizontal(hit.selfVelocity, direction)) << tierCase.course.lateral;
+        const Vector3 expected = rig.movement->ReboundVelocityFor(
+            NS::Game::Player::ReboundArc{.direction = direction,
+                                         .apexHeight = k_ReboundApexHeight * hit.power,
+                                         .distance = k_ReboundDistance * hit.power * tierCase.distanceScale});
+        EXPECT_FLOAT_EQ(HorizontalSpeed(hit.selfVelocity), HorizontalSpeed(expected)) << tierCase.course.lateral;
+        EXPECT_FLOAT_EQ(hit.selfVelocity.y, expected.y) << tierCase.course.lateral;
+    }
 }
 
 // 反動の欄が曲線にならない当たりは自機を弾けない。明けの自機の速度は記録と同じ 0 で、反動の状態へ移らない
@@ -1084,12 +1128,13 @@ TEST(CollisionImpact, HeavierBodyFliesShorterAndReboundsThePlayerHarder)
         rebounds.push_back(Speed(hit.selfVelocity));
 
         // 反動の高さと距離は 欄 × 威力 × 2 × 質量 ÷ (質量 + 1)。的は +X にあり、自機は -X へ弾かれる
+        // 横ずれ 0 の当たりは中心近くなので、距離には中心近くの当たりの倍率も掛かる
         const float scale = rig.impact->LastPower() * 2.0f * (mass / (mass + 1.0f));
         EXPECT_FLOAT_EQ(hit.reboundApexHeight, k_ReboundApexHeight * scale) << "質量 " << mass;
-        const Vector3 expected =
-            rig.movement->ReboundVelocityFor(NS::Game::Player::ReboundArc{.direction = Vector3{-1.0f, 0.0f, 0.0f},
-                                                                          .apexHeight = k_ReboundApexHeight * scale,
-                                                                          .distance = k_ReboundDistance * scale});
+        const Vector3 expected = rig.movement->ReboundVelocityFor(
+            NS::Game::Player::ReboundArc{.direction = Vector3{-1.0f, 0.0f, 0.0f},
+                                         .apexHeight = k_ReboundApexHeight * scale,
+                                         .distance = k_ReboundDistance * scale * k_CenterHitReboundDistanceScale});
         EXPECT_FLOAT_EQ(hit.selfVelocity.x, expected.x) << "質量 " << mass;
         EXPECT_FLOAT_EQ(hit.selfVelocity.y, expected.y) << "質量 " << mass;
         EXPECT_FLOAT_EQ(hit.selfVelocity.z, expected.z) << "質量 " << mass;
@@ -2377,6 +2422,45 @@ TEST(CollisionImpact, StaysCurledFromThePressUntilTheLandingAfterTheRebound)
     ASSERT_LT(steps, 180);
     EXPECT_TRUE(sawAirborne) << "反動で浮かないまま解けた";
     EXPECT_TRUE(groundedBeforeUncurl) << "着地する前に解けた";
+}
+
+// 宙で下りながら当てても、当てたフレームから止めが明けるまで玉のまま。当てたフレームは突進が終わって落下の
+// 1 フレームを走るので、的の上面が手の高さの帯に入っていると、そのまま縁を掴めば立ち姿へ戻ってしまう
+// 的は床から 1 m 浮かせ、上面 2.5 m。自機の根を 1.9 m に置き、当たるまでの数フレームの落下で根が
+// 1.5〜2.0 m に居る。玉の手の高さは根 + 1.0 m なので、上面 2.5 m が掴める帯に入る
+TEST(CollisionImpact, HitInTheAirAtLedgeHeightStaysCurledThroughTheHitStop)
+{
+    SceneNs::Scene scene;
+    SlamCourse course = k_NearCourse;
+    course.targetLayer = 2;
+    Rig rig = BuildSlam(scene, course);
+    rig.movement->Owner()->Root().SetPosition(Vector3{-0.5f, 1.9f, 0.0f});
+    rig.movement->SetVelocity(Vector3{0.0f, 0.0f, 0.0f});
+    rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
+    rig.movement->RequestBodySlam(1.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 20), 20);
+    ASSERT_TRUE(rig.impact->DidRebound());
+    ASSERT_FALSE(rig.movement->IsGrounded()) << "宙で当たっていない";
+    ASSERT_TRUE(rig.movement->IsCurled());
+
+    rig.movement->OnUpdate();
+    EXPECT_TRUE(rig.movement->IsCurled()) << "当てたフレームに解けた";
+
+    int steps = 0;
+    while (steps < 60)
+    {
+        StepWorld(scene);
+        if (rig.movement->IsActiveSelf())
+        {
+            break;
+        }
+        rig.movement->OnUpdate();
+        EXPECT_TRUE(rig.movement->IsCurled()) << "止めの " << steps << " フレーム目";
+        ++steps;
+    }
+    ASSERT_TRUE(rig.movement->IsActiveSelf());
+    EXPECT_TRUE(rig.movement->IsCurled()) << "止めが明けたフレームに立ち姿で居る";
 }
 
 // 押したまま出直しても、押している間は玉に戻る。出直しは丸まりを解くが、ボタンの判定は押しの途中のまま続く

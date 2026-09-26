@@ -151,6 +151,7 @@ namespace NS::Game::Level
         NS_REFLECT_BEGIN(ImpactResolver, NS::Obj::OverlayRenderer)
         NS_REFLECT_FIELD(m_reboundApexHeight, "反動の高さ")
         NS_REFLECT_FIELD(m_reboundDistance, "反動の距離")
+        NS_REFLECT_FIELD(m_centerHitReboundDistanceScale, "中心近くの当たりの反動の距離の倍率")
         NS_REFLECT_FIELD(m_launchDistance, "押し飛ばしの距離")
         NS_REFLECT_FIELD(m_launchMassExponent, "押し飛ばしの質量指数")
         NS_REFLECT_FIELD(m_launchApexHeight, "押し飛ばしの高さ")
@@ -240,8 +241,10 @@ namespace NS::Game::Level
 
         // 質量 1 の物に威力 1 で当てた時、自機が弾かれ始めの高さから上がる頂点の高さ (m)
         float m_reboundApexHeight = 1.15f;
-        // 質量 1 の物に威力 1 で当てた時、自機が弾かれ始めの高さへ戻るまでに水平に進む距離 (m)
+        // 質量 1 の物に威力 1 で当てた時、自機が弾かれ始めの高さへ戻るまでに水平に進む距離 (m)。中心近くの当たりは倍率を掛ける
         float m_reboundDistance = 0.575f;
+        // 中心近くの当たりの反動の距離に掛ける倍率。高さには掛けないので、真ん中に当てた時は弾かれ始めが後ろへ倒れる
+        float m_centerHitReboundDistanceScale = 2.0f;
         float m_launchDistance = 29.0f;     // 質量 1 の物に威力 1 で当てた時、発射の高さへ戻るまでに水平に飛ぶ距離 (m)
         float m_launchMassExponent = 0.35f; // 押し飛ばしの距離と高さを割る質量の指数。1 で反比例、0 で質量を見ない
         float m_launchApexHeight = 2.0f;    // 質量 1 の物に威力 1 で当てた時の、発射の高さから頂点までの高さ (m)

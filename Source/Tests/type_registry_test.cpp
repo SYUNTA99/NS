@@ -159,6 +159,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"ImpactResolver",
          {"反動の高さ",
           "反動の距離",
+          "中心近くの当たりの反動の距離の倍率",
           "押し飛ばしの距離",
           "押し飛ばしの質量指数",
           "押し飛ばしの高さ",
