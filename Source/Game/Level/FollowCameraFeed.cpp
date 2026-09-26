@@ -9,6 +9,8 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 
+#include <algorithm>
+
 namespace NS::Game::Level
 {
     namespace
@@ -26,15 +28,18 @@ namespace NS::Game::Level
             SlamLineTarget aim{};
             const bool hasAimTarget = input.TryGetAimTarget(aim);
             NS::Core::Vector3 center{};
+            float radius = 0.0f;
             if (hasAimTarget)
             {
                 center = NS::Core::Vector3{aim.bounds.Center.x, aim.bounds.Center.y, aim.bounds.Center.z};
+                radius = std::max({aim.bounds.Extents.x, aim.bounds.Extents.y, aim.bounds.Extents.z});
             }
             return NS::Obj::FollowChargeDesc{
                 .charge01 = charge01,
                 .held = held,
                 .hasAimTarget = hasAimTarget,
                 .aimTargetCenter = center,
+                .aimTargetRadius = radius,
             };
         }
     } // namespace

@@ -17,6 +17,7 @@ namespace NS::Obj
         bool held = false;                   // 押しているか
         bool hasAimTarget = false;           // 狙う相手がいるか
         NS::Core::Vector3 aimTargetCenter{}; // 狙う相手の中心。世界座標
+        float aimTargetRadius = 0.0f;        // 狙う相手の半径 (m)。構図は中心でなく中心 ± 半径を枠に入れる
     };
 
     //! @brief Mario 系ジャンプアクションの追従カメラ
@@ -50,7 +51,7 @@ namespace NS::Obj
 
         //! @brief このフレームの溜めの状態を受け取る
         //! @details 受けた値は次の OnUpdate だけで使う。渡されなかったフレームは押していないのと同じに扱う
-        //! 非数・0 未満・1 を超える溜め量と、狙う相手がいる時の非数の中心は壊れた値
+        //! 非数・0 未満・1 を超える溜め量と、狙う相手がいる時の非数の中心・非数か負の半径は壊れた値
         //! @param[in] desc 溜めの状態
         //! @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
         bool SetFollowCharge(const FollowChargeDesc& desc) noexcept;

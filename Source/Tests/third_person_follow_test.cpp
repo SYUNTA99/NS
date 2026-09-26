@@ -6,6 +6,7 @@
 #include <Runtime/Platform/Clock.h>
 #include <gtest/gtest.h>
 
+#include "camera_screen.h"
 #include "tuning_field_access.h"
 
 #include <cmath>
@@ -57,6 +58,9 @@ namespace
     using NS::Core::Vector3;
     using NS::Obj::CameraPose;
     using NS::Obj::FollowChargeDesc;
+    using NsTest::CameraRight;
+    using NsTest::CameraUp;
+    using NsTest::ScreenOf;
 
     // 溜めの構図の試しで使う既定の値
     constexpr float k_ChargeDistance = 5.0f;
@@ -64,7 +68,6 @@ namespace
     constexpr int k_NarrowReturnFrames = 6;
     constexpr float k_ShakeStrength = 0.02f;
     constexpr float k_FrameRatio = 0.7f;
-    constexpr float k_ViewAspect = 16.0f / 9.0f;
 
     //! 原点の相手を距離 5 m・既定のピッチ (下向き 15 度) で追う、動いている追従カメラ
     ThirdPersonFollow& MakeChargeProbe(Scene& scene)
@@ -85,30 +88,11 @@ namespace
         return FollowChargeDesc{.charge01 = charge01, .held = true, .hasAimTarget = true, .aimTargetCenter = center};
     }
 
-    // 試しの側の物差し。視野の中心を 0、端を ±1 とした横と縦。横の幅は縦の幅に 16 : 9 を掛けた幅
-    [[nodiscard]] Vector2 ScreenOf(const CameraPose& pose, const Vector3& point)
+    [[nodiscard]] FollowChargeDesc HeldOnBall(float charge01, const Vector3& center, float radius) noexcept
     {
-        Vector3 forward = pose.target - pose.position;
-        forward.Normalize();
-        Vector3 right = NS::Core::Cross(Vector3{0.0f, 1.0f, 0.0f}, forward);
-        right.Normalize();
-        const Vector3 up = NS::Core::Cross(forward, right);
-        const Vector3 offset = point - pose.position;
-        const float halfHeight = NS::Core::Dot(offset, forward) * std::tan(pose.fovY.value * 0.5f);
-        return Vector2{NS::Core::Dot(offset, right) / (halfHeight * k_ViewAspect),
-                       NS::Core::Dot(offset, up) / halfHeight};
-    }
-
-    // ThirdPersonFollow と同じ決め方のカメラの右と上
-    [[nodiscard]] Vector3 CameraRight(const ThirdPersonFollow& follow)
-    {
-        return Vector3{std::cos(follow.Yaw()), 0.0f, -std::sin(follow.Yaw())};
-    }
-
-    [[nodiscard]] Vector3 CameraUp(const ThirdPersonFollow& follow)
-    {
-        const float sp = std::sin(follow.Pitch());
-        return Vector3{-sp * std::sin(follow.Yaw()), std::cos(follow.Pitch()), -sp * std::cos(follow.Yaw())};
+        FollowChargeDesc desc = HeldOnTarget(charge01, center);
+        desc.aimTargetRadius = radius;
+        return desc;
     }
 
     void ExpectVectorNear(const Vector3& actual, const Vector3& expected, float tolerance, int frame)
@@ -468,6 +452,33 @@ TEST_F(ThirdPersonFollowTest, FramingKeepsTheSelfWhenBothCannotFit)
     EXPECT_GT(ScreenOf(pose, farSide).x, k_FrameRatio);
 }
 
+// 半径 0.75 m の相手は、中心でなく玉の縁が枠 0.7 の端に来るまで寄せる。真横の相手は右の縁、下の相手は下の縁
+TEST_F(ThirdPersonFollowTest, FramingKeepsTheWholeTargetBallInsideTheFrame)
+{
+    constexpr float radius = 0.75f;
+    Scene scene;
+    ThirdPersonFollow& sideFollow = MakeChargeProbe(scene);
+    ThirdPersonFollow& belowFollow = MakeChargeProbe(scene);
+    const Vector3 self{0.0f, 0.0f, 0.0f};
+    const Vector3 side{6.0f, 0.0f, 0.0f};
+    const Vector3 below{0.0f, -4.0f, 2.0f};
+
+    for (int frame = 0; frame < 120; ++frame)
+    {
+        ASSERT_TRUE(sideFollow.SetFollowCharge(HeldOnBall(0.0f, side, radius)));
+        ASSERT_TRUE(belowFollow.SetFollowCharge(HeldOnBall(0.0f, below, radius)));
+        sideFollow.OnUpdate();
+        belowFollow.OnUpdate();
+    }
+
+    const CameraPose sidePose = sideFollow.EvaluatePose(1.0f);
+    EXPECT_NEAR(ScreenOf(sidePose, side + CameraRight(sideFollow) * radius).x, k_FrameRatio, 1e-3f);
+    EXPECT_LE(std::abs(ScreenOf(sidePose, self).x), k_FrameRatio);
+    const CameraPose belowPose = belowFollow.EvaluatePose(1.0f);
+    EXPECT_NEAR(ScreenOf(belowPose, below - CameraUp(belowFollow) * radius).y, -k_FrameRatio, 1e-3f);
+    EXPECT_LE(std::abs(ScreenOf(belowPose, self).y), k_FrameRatio);
+}
+
 // 締め・溜めの揺れ・構図のずらしの間も、注視点 − 位置 の水平の向きは受ける前と同じ
 TEST_F(ThirdPersonFollowTest, ChargeViewKeepsTheViewDirection)
 {
@@ -563,6 +574,8 @@ TEST_F(ThirdPersonFollowTest, BrokenChargeIsRejectedAndKeepsTheReceivedOne)
     EXPECT_FALSE(follow.SetFollowCharge(HeldCharge(-0.1f)));
     EXPECT_FALSE(follow.SetFollowCharge(HeldCharge(1.1f)));
     EXPECT_FALSE(follow.SetFollowCharge(HeldOnTarget(0.5f, Vector3{nan, 0.0f, 0.0f})));
+    EXPECT_FALSE(follow.SetFollowCharge(HeldOnBall(0.5f, Vector3{6.0f, 0.0f, 0.0f}, nan)));
+    EXPECT_FALSE(follow.SetFollowCharge(HeldOnBall(0.5f, Vector3{6.0f, 0.0f, 0.0f}, -0.1f)));
     follow.OnUpdate();
 
     EXPECT_NEAR(follow.ChargeNarrowDegrees(), k_NarrowMaxDegrees * 0.5f, 1e-5f);

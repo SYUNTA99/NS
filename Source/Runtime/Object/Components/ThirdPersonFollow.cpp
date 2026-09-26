@@ -166,6 +166,10 @@ namespace NS::Obj
         {
             return false;
         }
+        if (desc.hasAimTarget && !(std::isfinite(desc.aimTargetRadius) && desc.aimTargetRadius >= 0.0f))
+        {
+            return false;
+        }
         m_charge = desc;
         return true;
     }
@@ -255,8 +259,11 @@ namespace NS::Obj
 
             const FramePoint self = ToFramePoint(root, camPos, forward, right, up, frameTanHalf);
             const FramePoint aim = ToFramePoint(charge.aimTargetCenter, camPos, forward, right, up, frameTanHalf);
-            wanted.x = FrameAxisShift(self.usable, self.right, self.halfWidth, aim.usable, aim.right, aim.halfWidth);
-            wanted.y = FrameAxisShift(self.usable, self.up, self.halfHeight, aim.usable, aim.up, aim.halfHeight);
+            // 相手は中心でなく中心 ± 半径を枠に入れる。締めた視野では玉が大きく写り、中心だけ入れると縁が画面の端で切れる
+            const float aimHalfWidth = std::max(aim.halfWidth - charge.aimTargetRadius, 0.0f);
+            const float aimHalfHeight = std::max(aim.halfHeight - charge.aimTargetRadius, 0.0f);
+            wanted.x = FrameAxisShift(self.usable, self.right, self.halfWidth, aim.usable, aim.right, aimHalfWidth);
+            wanted.y = FrameAxisShift(self.usable, self.up, self.halfHeight, aim.usable, aim.up, aimHalfHeight);
         }
 
         CriticalSpringStep(m_chargeFrameOffset.x, m_chargeFrameVelocity.x, wanted.x, m_chargeFrameOmega, dt);

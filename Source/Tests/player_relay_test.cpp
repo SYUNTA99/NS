@@ -26,8 +26,10 @@
 #include <Runtime/Platform/Mouse.h>
 #include <gtest/gtest.h>
 
+#include "camera_screen.h"
 #include "tuning_field_access.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <string_view>
@@ -345,6 +347,7 @@ namespace
     namespace LevelNs = NS::Game::Level;
 
     constexpr float k_ChargeNarrowDegrees = 15.0f; // 欄「溜めで締める視野角」の既定 (度)
+    constexpr float k_ChargeFrameRatio = 0.7f;     // 欄「溜めの構図の枠」の既定
 
     // 押しの入口は CollisionInput が読む実機のマウスなので、試しの後に押したまま残すと他の試しが押しを拾う
     struct MouseLeftPress
@@ -518,6 +521,33 @@ TEST_F(PlayerRelayTest, AimTargetCenterReachesTheCameraOnlyWhileThereIsOne)
     }
     EXPECT_EQ(camera.follow.ChargeFrameOffset().x, 0.0f);
     EXPECT_EQ(camera.follow.ChargeFrameOffset().y, 0.0f);
+}
+
+// 狙う相手の外接箱の半分の長さの最大が半径として渡り、溜め切って収まった構図では相手の右の縁が枠 0.7 の端に来る
+TEST_F(PlayerRelayTest, AimTargetRadiusReachesTheCameraFraming)
+{
+    Scene scene;
+    ChargeRig rig = BuildChargeCourse(scene, true);
+    ASSERT_NE(rig.input, nullptr);
+    FeedCamera camera = AddFeedCamera(scene, rig.player->Id());
+    // 3 m からでは 5 m 横の相手と自機が一緒に枠へ入らず、自機を残す側に倒れる。止まっていても 8 m から見る
+    camera.follow.SetAutoDistances(k_RunDistance, k_RunDistance, k_JumpDistance);
+    SettleAndAim(scene, rig, camera, Vector3{1.0f, 0.0f, 0.0f});
+
+    MouseLeftPress press;
+    LevelNs::SlamLineTarget aim{};
+    for (int frame = 0; frame < 120; ++frame)
+    {
+        StepWithCamera(scene, rig, camera);
+        ASSERT_TRUE(rig.input->TryGetAimTarget(aim));
+    }
+    ASSERT_NEAR(camera.follow.ChargeNarrowDegrees(), k_ChargeNarrowDegrees, 1e-4f);
+
+    const float radius = std::max({aim.bounds.Extents.x, aim.bounds.Extents.y, aim.bounds.Extents.z});
+    const Vector3 center{aim.bounds.Center.x, aim.bounds.Center.y, aim.bounds.Center.z};
+    const NS::Obj::CameraPose pose = camera.follow.EvaluatePose(1.0f);
+    EXPECT_NEAR(NsTest::ScreenOf(pose, center + NsTest::CameraRight(camera.follow) * radius).x, k_ChargeFrameRatio,
+                1e-3f);
 }
 
 // CollisionInput の無い相手を追う時は、押し続けても締めも揺れもずらしも 0
