@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 注: 編集ソフトの読み込みは注釈で落ちる。efkbuild.py が注釈を外した写しを作って渡す
+     道の確かめ用の最小の絵: 火花 20 粒。1 フレーム目に全部出て放射状に飛び、重力で落ちる
+     色のカーブ (Gradient)・大きさのカーブ (寿命に対する割合の FCurve)・寿命のばらつきが入る形を通すのが目的
+     手触りの値ではない (S6a で核の絵を作る時に、体験から値を決め直す) -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Sparks</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>20</Value>
+          </MaxGeneration>
+          <!-- 寿命のばらつき: 12〜24 フレーム -->
+          <Life>
+            <Center>18</Center>
+            <Max>24</Max>
+            <Min>12</Min>
+          </Life>
+          <!-- 生成の間隔 0 と生成の開始 -1 で、20 粒を 1 フレーム目に出す
+               間隔 0 だけでは 1 フレーム目に 1 粒、残りは 2 フレーム目になる (実行側は間隔を 1e-05 に読む)
+               開始を 0 より前に置くと、0 より前の分は最初の更新でまとめて生まれる (Tools/effects/README.md) -->
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+        </CommonValues>
+        <!-- 1 = PVA。生成位置の回転 (EffectsRotation) で各粒の +Y が外を向くので、+Y の速度が放射になる -->
+        <LocationValues>
+          <Type>1</Type>
+          <PVA>
+            <Velocity>
+              <Y>
+                <Center>0.2</Center>
+                <Max>0.3</Max>
+                <Min>0.1</Min>
+              </Y>
+            </Velocity>
+          </PVA>
+        </LocationValues>
+        <!-- 重力は親の座標で掛ける (粒ごとに回った向きでなく、画面の下へ落とす) -->
+        <LocationAbsValues>
+          <LocalForceField1>
+            <Type>8</Type>
+            <Gravity>
+              <Gravity>
+                <Y>-0.01</Y>
+              </Gravity>
+            </Gravity>
+          </LocalForceField1>
+        </LocationAbsValues>
+        <!-- 6 = SingleFCurve。Frame は寿命に対する割合 (0〜100、Timeline の既定の Percent)
+             寿命がばらついても同じ形で縮む -->
+        <ScalingValues>
+          <Type>6</Type>
+          <SingleFCurve>
+            <Keys>
+              <S>
+                <Key0>
+                  <Frame>0</Frame>
+                  <Value>1</Value>
+                  <LeftX>0</LeftX>
+                  <LeftY>1</LeftY>
+                  <RightX>0</RightX>
+                  <RightY>1</RightY>
+                  <InterpolationType>1</InterpolationType>
+                </Key0>
+                <Key1>
+                  <Frame>100</Frame>
+                  <Value>0</Value>
+                  <LeftX>100</LeftX>
+                  <LeftY>0</LeftY>
+                  <RightX>100</RightX>
+                  <RightY>0</RightY>
+                  <InterpolationType>1</InterpolationType>
+                </Key1>
+              </S>
+            </Keys>
+          </SingleFCurve>
+        </ScalingValues>
+        <!-- 1 = Sphere。半径 0.05 の球の上に、全方向の回転で置く -->
+        <GenerationLocationValues>
+          <EffectsRotation>True</EffectsRotation>
+          <Type>1</Type>
+          <Sphere>
+            <Radius>
+              <Center>0.05</Center>
+              <Max>0.05</Max>
+              <Min>0.05</Min>
+            </Radius>
+            <RotationX>
+              <Max>180</Max>
+              <Min>-180</Min>
+            </RotationX>
+            <RotationY>
+              <Max>180</Max>
+              <Min>-180</Min>
+            </RotationY>
+          </Sphere>
+        </GenerationLocationValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/spark.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <!-- 4 = Gradient。寿命の割合で、白に近い黄 → 橙 → 暗い赤へ。最後の 3 割で消える -->
+          <ColorAll>
+            <Type>4</Type>
+            <Gradient>
+              <ColorMarkers>
+                <Key>
+                  <ColorR>1</ColorR>
+                  <ColorG>0.95</ColorG>
+                  <ColorB>0.7</ColorB>
+                  <Position>0</Position>
+                  <Intensity>1</Intensity>
+                </Key>
+                <Key>
+                  <ColorR>1</ColorR>
+                  <ColorG>0.55</ColorG>
+                  <ColorB>0.15</ColorB>
+                  <Position>0.4</Position>
+                  <Intensity>1</Intensity>
+                </Key>
+                <Key>
+                  <ColorR>0.6</ColorR>
+                  <ColorG>0.1</ColorG>
+                  <ColorB>0.05</ColorB>
+                  <Position>1</Position>
+                  <Intensity>1</Intensity>
+                </Key>
+              </ColorMarkers>
+              <AlphaMarkers>
+                <Key>
+                  <Position>0</Position>
+                  <Alpha>1</Alpha>
+                </Key>
+                <Key>
+                  <Position>0.7</Position>
+                  <Alpha>1</Alpha>
+                </Key>
+                <Key>
+                  <Position>1</Position>
+                  <Alpha>0</Alpha>
+                </Key>
+              </AlphaMarkers>
+            </Gradient>
+          </ColorAll>
+          <!-- 4 = DirectionalBillboard (進む向きに縦を合わせる)。板は幅 0.12・長さ 1 の縦長 -->
+          <Sprite>
+            <Billboard>4</Billboard>
+            <Position>1</Position>
+            <Position_Fixed_LL>
+              <X>-0.06</X>
+            </Position_Fixed_LL>
+            <Position_Fixed_LR>
+              <X>0.06</X>
+            </Position_Fixed_LR>
+            <Position_Fixed_UL>
+              <X>-0.06</X>
+            </Position_Fixed_UL>
+            <Position_Fixed_UR>
+              <X>0.06</X>
+            </Position_Fixed_UR>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <!-- 編集ソフトの再生の範囲。実行側には渡らないが、無いと編集ソフトの読み込みが落ちる -->
+  <StartFrame>0</StartFrame>
+  <EndFrame>40</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>

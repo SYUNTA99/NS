@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 注: 編集ソフトの読み込みは注釈で落ちる。efkbuild.py が注釈を外した写しを作って渡す
+     道の確かめ用の最小の絵: 白い閃光の丸 1 枚。加算で、大きさ 0 から広がり、8 フレームで消える
+     大きさの始点が 0 なので 1 フレーム目は何も写らない (efkprobe の描いた画素 0)。当たりの層はこの形で作らない
+     手触りの値ではない (S6a で核の絵を作る時に、体験から値を決め直す) -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Flash</Name>
+        <CommonValues>
+          <Life>
+            <Center>8</Center>
+            <Max>8</Max>
+            <Min>8</Min>
+          </Life>
+        </CommonValues>
+        <ScalingValues>
+          <!-- 4 = SingleEasing (縦横同じ倍率で始点から終点へ) -->
+          <Type>4</Type>
+          <SingleEasing>
+            <Start>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </Start>
+            <End>
+              <Center>2</Center>
+              <Max>2</Max>
+              <Min>2</Min>
+            </End>
+            <!-- 21 = EaseOutCubic (最初に一気に広がり、終わりは緩む) -->
+            <Type>21</Type>
+          </SingleEasing>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/flash.png</ColorTexture>
+          <!-- 2 = Add (加算) -->
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <!-- 2 = Easing (始点の色から終点の色へ)。始点は既定の白で不透明 -->
+            <Type>2</Type>
+            <Easing>
+              <End>
+                <A>
+                  <Center>0</Center>
+                  <Max>0</Max>
+                  <Min>0</Min>
+                </A>
+              </End>
+            </Easing>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <!-- 編集ソフトの再生の範囲。実行側には渡らないが、無いと編集ソフトの読み込みが落ちる -->
+  <StartFrame>0</StartFrame>
+  <EndFrame>30</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>

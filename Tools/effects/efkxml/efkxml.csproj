@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 編集ソフトの bin (EffekseerCore.dll の場所) は efkbuild.py が -p:EffekseerToolBin=... で渡す
+       ここに道を書かない -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="EffekseerCore">
+      <HintPath>$(EffekseerToolBin)/EffekseerCore.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <Target Name="RequireEffekseerToolBin" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="'$(EffekseerToolBin)' == ''"
+           Text="EffekseerToolBin が渡されていない。efkbuild.py から組む (Tools/@build_effects.cmd)" />
+    <Error Condition="'$(EffekseerToolBin)' != '' And !Exists('$(EffekseerToolBin)/EffekseerCore.dll')"
+           Text="EffekseerToolBin に EffekseerCore.dll が無い: $(EffekseerToolBin)" />
+  </Target>
+</Project>
