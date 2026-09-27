@@ -2403,6 +2403,35 @@ TEST_F(PlayerComponentTest, BeginReboundMovesToTheReboundStateWithItsVelocity)
     EXPECT_FLOAT_EQ(player.ReboundDirection().z, 0.0f);
 }
 
+// 突進を出したフレームの向きは、突進の間に寄せで曲がっても、
+// 突進が終わって反動になっても残る。出す前と ResetState の後はゼロ
+TEST_F(PlayerComponentTest, BodySlamStartDirectionKeepsTheDirectionOfTheReleaseFrame)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    PlayerComponent& player = MakeSlamReady(obj, stage.physics);
+    EXPECT_EQ(player.BodySlamStartDirection(), Vector3(0.0f, 0.0f, 0.0f));
+
+    player.RequestBodySlam(1.0f, Vector3{0.0f, 0.5f, 2.0f});
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+    const Vector3 target = obj.Root().Position() + Vector3{10.0f, 0.0f, 50.0f};
+    for (int i = 0; i < 8 && player.IsBodySlamming(); ++i)
+    {
+        player.SteerToward(target, k_HomingConeDegrees, k_AimPlusZ);
+        player.OnUpdate();
+    }
+    ASSERT_TRUE(player.IsBodySlamming());
+    ASSERT_GT(std::abs(player.BodySlamVelocity().x), 0.1f);
+
+    player.CancelBodySlam();
+    ASSERT_TRUE(player.BeginRebound(k_TestRebound));
+    EXPECT_EQ(player.BodySlamStartDirection(), Vector3(0.0f, 0.0f, 1.0f));
+
+    player.ResetState();
+    EXPECT_EQ(player.BodySlamStartDirection(), Vector3(0.0f, 0.0f, 0.0f));
+}
+
 // 初速は飛ばした物の曲線と同じ式で出す。落ち方は自分の重力の欄から組む
 TEST_F(PlayerComponentTest, ReboundVelocityIsTheLaunchArcOfItsOwnGravity)
 {

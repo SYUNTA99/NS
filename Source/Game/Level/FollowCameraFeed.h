@@ -10,7 +10,8 @@ namespace NS::Obj
 namespace NS::Game::Level
 {
     //! @brief 同じ配置物の追従カメラへ、追う相手の接地と速度と、
-    //! 根から立ち姿の中心までの高さと、反動の状態と、溜めの状態を渡す Component
+    //! 根から立ち姿の中心までの高さと、反動の状態と突進を出した向きと、
+    //! 溜めの状態を渡す Component
     //! @details ThirdPersonFollow は NS::Obj にあり、NS::Game の型を名指しできない
     //! 追う相手は ThirdPersonFollow の追従対象から引き、値だけを運ぶことで include の向きを保つ
     //! 帯は LateUpdate + 40 で、やり直しの後・カメラの追従の前
@@ -25,7 +26,8 @@ namespace NS::Game::Level
         void OnStart() override;
         //! @brief 追う相手の接地と速度と、根から立ち姿の中心までの高さを追従カメラへ渡す
         //! @details 追う相手が移動を持たなければ何もしない。
-        //! 追う相手が自機なら反動の状態かも渡す。
+        //! 追う相手が自機なら、反動の状態かと、
+        //! 最後に出した突進の出たフレームの向きも渡す。
         //! 追う相手が CollisionInput を持てば、押しているか・押している間の溜め量・
         //! 狙う相手の中心も渡す
         void OnUpdate() override;

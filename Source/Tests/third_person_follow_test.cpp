@@ -4,6 +4,8 @@
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Platform/Clock.h>
+#include <Runtime/Platform/Input.h>
+#include <Runtime/Platform/Mouse.h>
 #include <gtest/gtest.h>
 
 #include "camera_screen.h"
@@ -588,18 +590,44 @@ namespace
     constexpr float k_ReboundMaxLag = 1.5f;
     constexpr float k_ReboundScreenBand = 0.5f;
     constexpr int k_ReboundReturnFrames = 20;
+    constexpr int k_ReboundTurnFrames = 20;
+    constexpr float k_ReboundPullBack = 1.0f;
     constexpr float k_HeadHeight = 1.2f;
+    constexpr float k_SensX = 0.003f; // 既定のマウス水平感度 (ラジアン / 画素)
+
+    using NS::Core::k_Pi;
+    using NS::Obj::FollowReboundDesc;
 
     //! 追う相手を position へ動かし、接地と反動の状態を渡して 1 フレーム進める
     //! 前フレームの位置は Scene::OnUpdate の頭と同じく動かす前に控える
-    void StepFollow(ThirdPersonFollow& follow, const Vector3& position, bool rebounding, bool grounded)
+    //! slamDirection は反動を起こした突進を出した向き。
+    //! mouseDx と mouseDy はこのフレームにマウスを動かす画素数で、進めた後に差を 0 へ戻す
+    void StepFollow(ThirdPersonFollow& follow,
+                    const Vector3& position,
+                    bool rebounding,
+                    bool grounded,
+                    const Vector3& slamDirection = Vector3{0.0f, 0.0f, 0.0f},
+                    int mouseDx = 0,
+                    int mouseDy = 0)
     {
         NS::Obj::Transform& target = *follow.Target();
         target.Snapshot();
         target.SetPosition(position);
         follow.SetFollowMotion(grounded, Vector3{0.0f, 0.0f, 0.0f});
-        follow.SetFollowRebound(rebounding);
+        EXPECT_TRUE(
+            follow.SetFollowRebound(FollowReboundDesc{.rebounding = rebounding, .slamDirection = slamDirection}));
+        NS::Platform::Mouse& mouse = NS::Platform::Input::Get().Mouse();
+        mouse.Update();
+        if (mouse.IsRelativeMode())
+        {
+            mouse.OnRawMove(mouseDx, mouseDy);
+        }
+        else
+        {
+            mouse.OnMove(mouse.GetX() + mouseDx, mouse.GetY() + mouseDy);
+        }
         follow.OnUpdate();
+        mouse.Update();
     }
 
     //! 今の追う相手の位置から、反動を受けない時の追従の式で注視点を出す
@@ -749,8 +777,9 @@ TEST_F(ThirdPersonFollowTest, PlainJumpKeepsFollowingTheHead)
     }
 }
 
-// 反動の間は空中でもジャンプ時距離へ引かず、当たった瞬間の距離を保つ
-TEST_F(ThirdPersonFollowTest, ReboundKeepsTheDistanceOfTheHitFrame)
+// 反動の間は空中でもジャンプ時距離へ引かず、
+// 当たった瞬間の距離より欄の分だけ後ろへ下がる
+TEST_F(ThirdPersonFollowTest, ReboundPullsBackFromTheDistanceOfTheHitFrame)
 {
     Scene scene;
     ThirdPersonFollow& follow = MakeZoomProbe(scene);
@@ -760,11 +789,144 @@ TEST_F(ThirdPersonFollowTest, ReboundKeepsTheDistanceOfTheHitFrame)
     }
     ASSERT_NEAR(follow.Distance(), k_IdleDistance, 0.01f);
 
+    float previous = follow.Distance();
     for (int frame = 1; frame <= 60; ++frame)
     {
         StepFollow(follow, Vector3{0.0f, 0.5f, 0.0f}, true, false);
-        EXPECT_NEAR(follow.Distance(), k_IdleDistance, 0.01f) << "frame " << frame;
+        EXPECT_GT(follow.Distance(), previous) << "frame " << frame;
+        EXPECT_LT(follow.Distance(), k_IdleDistance + k_ReboundPullBack + 1e-4f) << "frame " << frame;
+        previous = follow.Distance();
     }
+    EXPECT_NEAR(follow.Distance(), k_IdleDistance + k_ReboundPullBack, 0.01f);
+}
+
+// 反動になったフレームから欄のフレーム数で、水平の向きを突進を出した向きへ回し、
+// 最後のフレームで揃う
+// 縦の角度は変えない。揃った後は反動の間も動かない
+TEST_F(ThirdPersonFollowTest, ReboundTurnsTheYawToTheSlamDirectionOverTheTurnFrames)
+{
+    Scene scene;
+    ThirdPersonFollow& follow = MakeChargeProbe(scene);
+    StepFollow(follow, Vector3{0.0f, 0.0f, 0.0f}, false, true);
+    ASSERT_EQ(follow.Yaw(), 0.0f);
+    const float pitch = follow.Pitch();
+
+    // 縦の成分と長さは使わない。-X を向くので、水平の向きは -90 度
+    const Vector3 slam{-2.0f, 0.5f, 0.0f};
+    float previous = follow.Yaw();
+    for (int frame = 1; frame <= k_ReboundTurnFrames; ++frame)
+    {
+        StepFollow(follow, Vector3{0.05f * static_cast<float>(frame), 0.5f, 0.0f}, true, false, slam);
+        EXPECT_LT(follow.Yaw(), previous) << "frame " << frame;
+        EXPECT_EQ(follow.Pitch(), pitch) << "frame " << frame;
+        if (frame < k_ReboundTurnFrames)
+        {
+            EXPECT_GT(follow.Yaw(), -0.5f * k_Pi + 1e-3f) << "frame " << frame;
+        }
+        previous = follow.Yaw();
+    }
+    EXPECT_NEAR(follow.Yaw(), -0.5f * k_Pi, 1e-5f);
+
+    StepFollow(follow, Vector3{1.1f, 0.5f, 0.0f}, true, false, slam);
+    EXPECT_NEAR(follow.Yaw(), -0.5f * k_Pi, 1e-5f);
+}
+
+// 向きの差が半周を越える時は、逆の側から近い方へ回る
+TEST_F(ThirdPersonFollowTest, ReboundTurnsTheShortWayAround)
+{
+    Scene scene;
+    ThirdPersonFollow& follow = MakeChargeProbe(scene);
+    // 水平の向き 3.0 から見る所へカメラを置く
+    const Vector3 head{0.0f, k_HeadHeight, 0.0f};
+    follow.SetInitialPoseFromCameraPosition(head - Vector3{std::sin(3.0f), 0.0f, std::cos(3.0f)} * 5.0f);
+    const float start = follow.Yaw();
+    ASSERT_NEAR(start, 3.0f, 1e-4f);
+
+    // 水平の向き -3.0 は、3.0 から +側へ 2π − 6 回った所
+    const Vector3 slam{std::sin(-3.0f), 0.0f, std::cos(-3.0f)};
+    for (int frame = 1; frame <= k_ReboundTurnFrames; ++frame)
+    {
+        StepFollow(follow, Vector3{0.0f, 0.5f, 0.0f}, true, false, slam);
+        EXPECT_GE(follow.Yaw(), start) << "frame " << frame;
+    }
+    EXPECT_NEAR(follow.Yaw(), 2.0f * k_Pi - 3.0f, 1e-4f);
+}
+
+// 反動になってから着地するまで、マウスで向きを回せない。
+// 反動の状態が外れても空中の間は回せず、着地したフレームから回せる。
+// 反動でない跳びは空中でも回せる
+TEST_F(ThirdPersonFollowTest, LookInputIsIgnoredFromTheReboundUntilLanding)
+{
+    Scene scene;
+    ThirdPersonFollow& follow = MakeChargeProbe(scene);
+    const Vector3 air{0.0f, 1.0f, 0.0f};
+    StepFollow(follow, air, false, false, Vector3{0.0f, 0.0f, 0.0f}, 100, 10);
+    const float yaw = follow.Yaw();
+    const float pitch = follow.Pitch();
+    ASSERT_NEAR(yaw, 100.0f * k_SensX, 1e-5f);
+
+    // 今の向きと同じ向きの突進で当てたので、揃える回りは無い
+    const Vector3 slam{std::sin(yaw), 0.0f, std::cos(yaw)};
+    for (int frame = 1; frame <= 30; ++frame)
+    {
+        StepFollow(follow, air, true, false, slam, 100, 10);
+        EXPECT_NEAR(follow.Yaw(), yaw, 1e-5f) << "frame " << frame;
+        EXPECT_EQ(follow.Pitch(), pitch) << "frame " << frame;
+    }
+    for (int frame = 1; frame <= 10; ++frame)
+    {
+        StepFollow(follow, air, false, false, Vector3{0.0f, 0.0f, 0.0f}, 100, 10);
+        EXPECT_NEAR(follow.Yaw(), yaw, 1e-5f) << "air frame " << frame;
+        EXPECT_EQ(follow.Pitch(), pitch) << "air frame " << frame;
+    }
+
+    StepFollow(follow, Vector3{0.0f, 0.0f, 0.0f}, false, true, Vector3{0.0f, 0.0f, 0.0f}, 100, 10);
+    EXPECT_NEAR(follow.Yaw(), yaw + 100.0f * k_SensX, 1e-5f);
+    EXPECT_NE(follow.Pitch(), pitch);
+}
+
+// 反動の状態が外れた空中で出した 1 発が当たって反動になり直したら、
+// その 1 発を出した向きへ揃え直す
+TEST_F(ThirdPersonFollowTest, AirShotReboundRealignsToItsSlamDirection)
+{
+    Scene scene;
+    ThirdPersonFollow& follow = MakeChargeProbe(scene);
+    const Vector3 air{0.0f, 1.0f, 0.0f};
+    for (int frame = 1; frame <= k_ReboundTurnFrames; ++frame)
+    {
+        StepFollow(follow, air, true, false, Vector3{1.0f, 0.0f, 0.0f});
+    }
+    ASSERT_NEAR(follow.Yaw(), 0.5f * k_Pi, 1e-5f);
+    for (int frame = 1; frame <= 5; ++frame)
+    {
+        StepFollow(follow, air, false, false);
+    }
+
+    for (int frame = 1; frame <= k_ReboundTurnFrames; ++frame)
+    {
+        StepFollow(follow, air, true, false, Vector3{0.0f, 0.0f, -1.0f});
+    }
+    EXPECT_NEAR(follow.Yaw(), k_Pi, 1e-5f);
+}
+
+// 壊れた反動の状態は受けず、先に受けた状態のまま次のフレームを進める
+TEST_F(ThirdPersonFollowTest, BrokenReboundIsRejectedAndKeepsTheReceivedOne)
+{
+    Scene scene;
+    ThirdPersonFollow& follow = MakeChargeProbe(scene);
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    const float inf = std::numeric_limits<float>::infinity();
+    for (int frame = 1; frame <= k_ReboundTurnFrames; ++frame)
+    {
+        ASSERT_TRUE(follow.SetFollowRebound(
+            FollowReboundDesc{.rebounding = true, .slamDirection = Vector3{1.0f, 0.0f, 0.0f}}));
+        EXPECT_FALSE(follow.SetFollowRebound(
+            FollowReboundDesc{.rebounding = false, .slamDirection = Vector3{nan, 0.0f, 0.0f}}));
+        EXPECT_FALSE(follow.SetFollowRebound(
+            FollowReboundDesc{.rebounding = false, .slamDirection = Vector3{0.0f, 0.0f, inf}}));
+        follow.OnUpdate();
+    }
+    EXPECT_NEAR(follow.Yaw(), 0.5f * k_Pi, 1e-5f);
 }
 
 // 0 にする関数の後は、次のフレームを待たずに普通の追い方の姿勢

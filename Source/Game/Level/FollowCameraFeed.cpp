@@ -86,7 +86,18 @@ namespace NS::Game::Level
         const NS::Game::Player::PlayerComponent* player = target->FindComponent<NS::Game::Player::PlayerComponent>();
         if (player != nullptr)
         {
-            m_follow->SetFollowRebound(player->IsRebounding());
+            const NS::Obj::FollowReboundDesc rebound{
+                .rebounding = player->IsRebounding(),
+                .slamDirection = player->BodySlamStartDirection(),
+            };
+            if (!m_follow->SetFollowRebound(rebound))
+            {
+                NS_LOG_WARN(Game,
+                            "突進の向きが壊れていて、反動をカメラへ渡さなかった: ({}, {}, {})",
+                            rebound.slamDirection.x,
+                            rebound.slamDirection.y,
+                            rebound.slamDirection.z);
+            }
         }
 
         const CollisionInput* input = target->FindComponent<CollisionInput>();

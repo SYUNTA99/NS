@@ -20,6 +20,16 @@ namespace NS::Obj
         float aimTargetRadius = 0.0f;        // 狙う相手の半径 (m)。構図は中心でなく中心 ± 半径を枠に入れる
     };
 
+    //! @brief 追従カメラが 1 フレームぶん受ける反動の状態
+    //! @details 突進の向きは反動になったフレームにだけ読む
+    struct FollowReboundDesc
+    {
+        bool rebounding = false; // 追う相手が反動の状態か
+        // 反動を起こした突進を出したフレームの向き。世界座標で、縦の成分は使わない
+        // 水平の長さが 0 なら回さない
+        NS::Core::Vector3 slamDirection{};
+    };
+
     //! @brief Mario 系ジャンプアクションの追従カメラ
     //! @details 実カメラは持たず、追従姿勢を pose として返す。CameraBrain が実カメラへ書く
     //! distance は臨界減衰バネでなめらかに寄せ、マウス / 右スティックで手動回転できる
@@ -30,6 +40,8 @@ namespace NS::Obj
     //! 反動の状態の間は、注視点の高さを反動の始まりに留め、横と前後は遅れて付いていく
     //! 追う相手が画面の上下の帯を越えそうな時だけ追い、
     //! 反動の状態が外れたら普通の追い方へ寄せ戻す
+    //! 反動になったフレームから、水平の向きを反動を起こした突進を出した向きへ回し、
+    //! 距離の目標を当たった瞬間の距離より伸ばす。接地するまで回す入力を受けない
     class ThirdPersonFollow : public VirtualCamera
     {
     public:
@@ -74,16 +86,26 @@ namespace NS::Obj
         //! @brief 溜めの締め・揺れ・構図のずらしをその場で 0 にし、受けた溜めの状態を捨てる
         void ClearCharge() noexcept;
 
-        //! @brief このフレームに追う相手が反動の状態かを受け取る
+        //! @brief このフレームに追う相手が反動の状態かと、
+        //! 反動を起こした突進を出した向きを受け取る
         //! @details 受けた値は次の OnUpdate だけで使う。
         //! 渡されなかったフレームは反動でないのと同じに扱う。
         //! 反動になったフレームから反動の状態が外れるまで反動の間の追い方で追い、
-        //! 外れたら普通の追い方へ寄せ戻す
-        //! @param[in] rebounding 反動の状態の場合 true
-        void SetFollowRebound(bool rebounding) noexcept;
+        //! 外れたら普通の追い方へ寄せ戻す。
+        //! 反動になったフレームから、水平の向きを突進の向きへ近い側から回し始める。
+        //! 反動になってから、反動の状態でなく接地したフレームまでは、
+        //! マウスと右スティックで回せない。
+        //! 接地は SetFollowMotion で受けた値で見て、
+        //! 一度も受けていなければ反動の状態が外れたフレームで回せるようにする。
+        //! 突進の向きに有限でない成分があれば壊れた値
+        //! @param[in] desc 反動の状態
+        //! @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
+        bool SetFollowRebound(const FollowReboundDesc& desc) noexcept;
 
-        //! @brief 反動の間の追い方と寄せ戻しをその場で止め、受けた反動の状態を捨てる
-        //! @details 次の姿勢から普通の追い方になる
+        //! @brief 反動の間の追い方と寄せ戻しと向きの回しをその場で止め、
+        //! 受けた反動の状態を捨てる
+        //! @details 次の姿勢から普通の追い方になり、次のフレームから回す入力が効く。
+        //! 回している途中の向きはそのまま残す
         void ClearRebound() noexcept;
 
         //! 将来 Settings UI から繋ぐ
@@ -154,6 +176,8 @@ namespace NS::Obj
         NS_REFLECT_FIELD(m_reboundMaxLag, "反動の間の横と前後の遅れの上限")
         NS_REFLECT_FIELD(m_reboundScreenBand, "反動の間の上下の帯")
         NS_REFLECT_FIELD(m_reboundReturnFrames, "反動の後に戻すフレーム数")
+        NS_REFLECT_FIELD(m_reboundTurnFrames, "反動の向きへ回すフレーム数")
+        NS_REFLECT_FIELD(m_reboundPullBack, "反動の間に下げる距離")
         NS_REFLECT_ACCESSOR(float, "ファークリップ", FarPlane(), SetFarPlane)
         NS_REFLECT_ACCESSOR(int, "優先度", VcamPriority(), SetVcamPriority)
         NS_REFLECT_END()
@@ -166,9 +190,15 @@ namespace NS::Obj
                           const NS::Core::Vector3& look,
                           float dt) noexcept;
 
-        // 反動の状態から、反動の間の追い方の段を進める。距離と注視点を決める前に呼ぶ
+        // 反動になったフレームかと反動の状態から、反動の間の追い方の段を進める
+        // 距離と注視点を決める前に呼ぶ
         // head は追う相手の頭
-        void UpdateReboundPhase(bool rebounding, const NS::Core::Vector3& head) noexcept;
+        void UpdateReboundPhase(bool began, bool rebounding, const NS::Core::Vector3& head) noexcept;
+
+        // 反動になったフレームかと受けた反動の状態から、回す入力を受けないかを決め、
+        // 水平の向きの回しを 1 フレーム進める
+        // 回す入力を足す前に呼ぶ
+        void UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept;
 
         // 今の段でこのフレームの注視点を決めて控える
         // 普通の追い方の時は head をそのまま返す
@@ -232,6 +262,8 @@ namespace NS::Obj
         float m_reboundMaxLag = 1.5f;      // 反動の間に注視点が横と前後へ遅れてよい上限 (m)
         float m_reboundScreenBand = 0.5f;  // 反動の間の上下の帯。視野の半分への割合
         int m_reboundReturnFrames = 20;    // 反動が外れてから普通の追い方へ寄せ戻すフレーム数
+        int m_reboundTurnFrames = 20;      // 反動になってから突進の向きへ回し終えるフレーム数
+        float m_reboundPullBack = 1.0f;    // 反動の間に当たった瞬間の距離より伸ばす距離 (m)
 
         FollowChargeDesc m_charge{};               // 次の OnUpdate で使う溜めの状態
         float m_chargeHoldNarrowDegrees = 0.0f;    // 前のフレームの押している間の締め (度)
@@ -242,8 +274,11 @@ namespace NS::Obj
         NS::Core::Vector2 m_chargeFrameOffset{};   // 今の構図のずらし (m、カメラの右と上)
         NS::Core::Vector2 m_chargeFrameVelocity{}; // 構図のずらしの速さ (m/秒)
 
-        bool m_rebounding = false;    // 次の OnUpdate で使う反動の状態
-        bool m_wasRebounding = false; // 前のフレームに反動の状態だったか
+        FollowReboundDesc m_rebound{}; // 次の OnUpdate で使う反動の状態
+        bool m_wasRebounding = false;  // 前のフレームに反動の状態だったか
+        bool m_reboundLookHeld = false; // 反動になってから接地するまで、回す入力を受けないか
+        float m_reboundTurnAngle = 0.0f; // 反動になったフレームに決めた、回す角度 (ラジアン)
+        int m_reboundTurnFrame = 0;      // 回しの何フレーム目か。欄のフレーム数で回し終える
         ReboundPhase m_reboundPhase = ReboundPhase::None; // 今の段
         NS::Core::Vector3 m_reboundAnchor{};         // 横と前後を遅らせて追う注視点。高さは留める
         NS::Core::Vector3 m_reboundAnchorVelocity{}; // 注視点の横と前後の速さ (m/秒)。縦は使わない

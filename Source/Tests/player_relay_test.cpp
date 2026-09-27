@@ -653,3 +653,26 @@ TEST_F(PlayerRelayTest, EndPlayClearsTheReboundFollow)
     EXPECT_NEAR(camera.follow.EvaluatePose(1.0f).target.x, root.x, 1e-5f);
     EXPECT_NEAR(camera.follow.EvaluatePose(1.0f).target.y, root.y + 1.2f, 1e-5f);
 }
+
+// 自機が突進を出した向きは反動と一緒にカメラへ届き、
+// カメラの水平の向きはその向きへ揃う
+TEST_F(PlayerRelayTest, ReboundTurnsTheCameraToTheSlamDirection)
+{
+    Scene scene;
+    ChargeRig rig = BuildChargeCourse(scene, false);
+    FeedCamera camera = AddFeedCamera(scene, rig.player->Id());
+    SettleAndAim(scene, rig, camera, Vector3{1.0f, 0.0f, 0.0f});
+    ASSERT_EQ(camera.follow.Yaw(), 0.0f);
+
+    rig.movement->RequestBodySlam(0.0f, Vector3{1.0f, 0.0f, 0.0f});
+    StepWithCamera(scene, rig, camera);
+    ASSERT_TRUE(rig.movement->IsBodySlamming());
+    ASSERT_TRUE(rig.movement->BeginRebound(k_RelayRebound));
+
+    for (int frame = 1; frame <= 20; ++frame)
+    {
+        StepWithCamera(scene, rig, camera);
+        ASSERT_TRUE(rig.movement->IsRebounding()) << "frame " << frame;
+    }
+    EXPECT_NEAR(camera.follow.Yaw(), 0.5f * NS::Core::k_Pi, 1e-4f);
+}

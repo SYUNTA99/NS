@@ -181,15 +181,25 @@ namespace NS::Obj
         m_chargeFrameVelocity = NS::Core::Vector2{0.0f, 0.0f};
     }
 
-    void ThirdPersonFollow::SetFollowRebound(bool rebounding) noexcept
+    bool ThirdPersonFollow::SetFollowRebound(const FollowReboundDesc& desc) noexcept
     {
-        m_rebounding = rebounding;
+        // 非数の向きを持つと、回す角度が非数になって向きごと壊れる
+        const NS::Core::Vector3& direction = desc.slamDirection;
+        if (!(std::isfinite(direction.x) && std::isfinite(direction.y) && std::isfinite(direction.z)))
+        {
+            return false;
+        }
+        m_rebound = desc;
+        return true;
     }
 
     void ThirdPersonFollow::ClearRebound() noexcept
     {
-        m_rebounding = false;
+        m_rebound = FollowReboundDesc{};
         m_wasRebounding = false;
+        m_reboundLookHeld = false;
+        m_reboundTurnAngle = 0.0f;
+        m_reboundTurnFrame = 0;
         m_reboundPhase = ReboundPhase::None;
         m_reboundAnchor = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_reboundAnchorVelocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
@@ -198,12 +208,52 @@ namespace NS::Obj
         m_hasLook = false;
     }
 
-    void ThirdPersonFollow::UpdateReboundPhase(bool rebounding, const NS::Core::Vector3& head) noexcept
+    void ThirdPersonFollow::UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept
+    {
+        // 空中の 1 発が当たって反動になり直した時も、その 1 発を出した向きで回し直す
+        if (began)
+        {
+            m_reboundLookHeld = true;
+            m_reboundTurnAngle = 0.0f;
+            m_reboundTurnFrame = 0;
+            NS::Core::Vector3 direction{};
+            if (NS::Core::TryNormalizeHorizontal(rebound.slamDirection, direction))
+            {
+                // 差を −π〜π へ丸めて近い側へ回す
+                // 丸めないと、向きの角度が積もった分だけ余計に回る
+                const float goal = std::atan2(direction.x, direction.z);
+                m_reboundTurnAngle = std::remainder(goal - m_yaw, 2.0f * NS::Core::k_Pi);
+            }
+            if (m_reboundTurnFrames <= 0)
+            {
+                m_yaw += m_reboundTurnAngle;
+                m_reboundTurnAngle = 0.0f;
+            }
+        }
+        else if (m_reboundLookHeld && !rebound.rebounding && (m_followGrounded || !m_hasFollowMotion))
+        {
+            // 反動の状態が外れても空中の間は受けない
+            // 空中の 1 発の後と縁を掴んだ後も、接地までは向きを変えない
+            m_reboundLookHeld = false;
+        }
+
+        // 回しは接地しても最後まで進める
+        // 途中で止めると、回る速さがそのフレームで 0 に落ちる
+        // 重みの差を足していくので、回す入力を受けるようになった後はその入力と重なる
+        if (m_reboundTurnAngle != 0.0f && m_reboundTurnFrame < m_reboundTurnFrames)
+        {
+            const float frames = static_cast<float>(m_reboundTurnFrames);
+            const float before = SmoothStep(static_cast<float>(m_reboundTurnFrame) / frames);
+            ++m_reboundTurnFrame;
+            const float after = SmoothStep(static_cast<float>(m_reboundTurnFrame) / frames);
+            m_yaw += m_reboundTurnAngle * (after - before);
+        }
+    }
+
+    void ThirdPersonFollow::UpdateReboundPhase(bool began, bool rebounding, const NS::Core::Vector3& head) noexcept
     {
         // 反動の状態になったフレームに、前のフレームに見ていた所から留める
         // 空中で続けて当てた時も留め直す
-        const bool began = rebounding && !m_wasRebounding;
-        m_wasRebounding = rebounding;
         if (began)
         {
             m_reboundPhase = ReboundPhase::Following;
@@ -517,8 +567,8 @@ namespace NS::Obj
         // 受けた溜めと反動の状態はこのフレームだけ使う。渡されなかったフレームは押していない・反動でないのと同じ
         const FollowChargeDesc charge = m_charge;
         m_charge = FollowChargeDesc{};
-        const bool rebounding = m_rebounding;
-        m_rebounding = false;
+        const FollowReboundDesc rebound = m_rebound;
+        m_rebound = FollowReboundDesc{};
 
         const float dt = NS::Platform::FrameTimer::FixedDelta();
         const Transform* target = Target();
@@ -530,36 +580,52 @@ namespace NS::Obj
             return;
         }
 
-        // マウスと右スティックの手動回転
-        NS::Platform::Input& input = NS::Platform::Input::Get();
-        const NS::Platform::Mouse& mouse = input.Mouse();
-        float mxSign = 1.0f;
-        if (m_invertX)
-        {
-            mxSign = -1.0f;
-        }
-        float mySign = 1.0f;
-        if (m_invertY)
-        {
-            mySign = -1.0f;
-        }
-        m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
-        m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
+        // 反動の状態になったフレーム
+        // 空中で続けて当てた時も、間に反動でないフレームを挟むのでここを通る
+        const bool reboundBegan = rebound.rebounding && !m_wasRebounding;
+        m_wasRebounding = rebound.rebounding;
+        UpdateReboundTurn(reboundBegan, rebound);
 
-        const NS::Platform::Gamepad& pad = input.Gamepad(0);
-        const NS::Platform::Stick rstick = pad.RightStick();
-        m_yaw += rstick.x * m_stickSensX * dt * mxSign;
-        m_pitch += rstick.y * m_stickSensY * dt * mySign;
+        // マウスと右スティックの手動回転。反動になってから接地するまでは受けない
+        if (!m_reboundLookHeld)
+        {
+            NS::Platform::Input& input = NS::Platform::Input::Get();
+            const NS::Platform::Mouse& mouse = input.Mouse();
+            float mxSign = 1.0f;
+            if (m_invertX)
+            {
+                mxSign = -1.0f;
+            }
+            float mySign = 1.0f;
+            if (m_invertY)
+            {
+                mySign = -1.0f;
+            }
+            m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
+            m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
+
+            const NS::Platform::Gamepad& pad = input.Gamepad(0);
+            const NS::Platform::Stick rstick = pad.RightStick();
+            m_yaw += rstick.x * m_stickSensX * dt * mxSign;
+            m_pitch += rstick.y * m_stickSensY * dt * mySign;
+        }
 
         m_pitch = NS::Core::Clamp(m_pitch, m_pitchMin, m_pitchMax);
 
         const NS::Core::Vector3 root = target->Position();
         const NS::Core::Vector3 head{root.x, root.y + m_targetHeightOffset + m_headHeight, root.z};
-        UpdateReboundPhase(rebounding, head);
+        UpdateReboundPhase(reboundBegan, rebound.rebounding, head);
 
         // 接地と速度で決める自動ズーム距離
-        // 反動の間は当たった瞬間の距離の目標のまま引かない
-        if (!m_manualDistance && m_reboundPhase != ReboundPhase::Following)
+        // 反動になったフレームに、目標を当たった瞬間の距離より欄の分だけ伸ばし、
+        // カメラを後ろへ下げる。反動の間は書き換えない
+        // 今の目標でなく今の距離から測る
+        // 目標へ寄っている途中に目標へ足すと、見えている距離より下がりすぎるか寄る
+        if (!m_manualDistance && reboundBegan)
+        {
+            m_desiredDistance = m_distance + std::max(m_reboundPullBack, 0.0f);
+        }
+        else if (!m_manualDistance && m_reboundPhase != ReboundPhase::Following)
         {
             float desired = m_idleDistance;
             if (m_hasFollowMotion)

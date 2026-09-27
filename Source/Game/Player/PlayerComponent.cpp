@@ -498,6 +498,10 @@ namespace NS::Game::Player
         if (!(m_bodySlamDistanceTarget > 0.0f))
             return false;
 
+        // 反動の後のカメラが当てた相手の方を向くのに使う
+        // 突進の間の寄せで曲がる前の向きを残す
+        m_bodySlamStartDir = dir;
+
         // 控えた相手は放す時に使い切る。突進中は突進の向きから探し直した相手へ寄せる
         ForgetHoming();
         m_homingAngle = releaseHoming;
@@ -664,6 +668,7 @@ namespace NS::Game::Player
         m_bodySlamDistanceTarget = 0.0f;
         m_bodySlamJustStarted = false;
         m_bodySlamDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_bodySlamStartDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_reboundDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         ForgetHoming();
         // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、

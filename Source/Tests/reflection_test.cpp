@@ -317,7 +317,7 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
     NS::Obj::ThirdPersonFollow follow;
     const ReflectionInfo* info = follow.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 28u);
+    EXPECT_EQ(info->fieldCount, 30u);
 
     const FieldDesc* jump = FindField(info, "ジャンプ時距離");
     ASSERT_NE(jump, nullptr);

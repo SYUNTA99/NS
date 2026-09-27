@@ -99,6 +99,11 @@ namespace NS::Game::Player
         [[nodiscard]] NS::Core::Vector3 BodySlamVelocity() const noexcept;
         //! 突進を打ち切って通常移動へ戻す。突進中でなければ何もしない
         void CancelBodySlam() noexcept;
+        //! @brief 最後に出した突進の、出たフレームの水平の向きを返す
+        //! @details 突進の間に寄せで曲がった分は入らない。
+        //! 突進が終わった後も、次の突進を出すまで残す
+        //! @return 正規化済みの向き。突進を出す前と ResetState の後はゼロ
+        [[nodiscard]] NS::Core::Vector3 BodySlamStartDirection() const noexcept { return m_bodySlamStartDir; }
 
         //! 向きを解決して突進を始める。向きが決まらないか距離が 0 以下の場合 false、それ以外の場合は true
         //! @details 向きは要求に添えた向き。添えていなければ AimDirection の向きに、押したフレームの控え
@@ -350,6 +355,8 @@ namespace NS::Game::Player
         float m_bodySlamDistanceTarget = 0.0f;                // 突進を終える水平距離
         bool m_bodySlamJustStarted = false;                   // 発動したフレームか
         NS::Core::Vector3 m_bodySlamDir{0.0f, 0.0f, 0.0f};    // 突進の水平の向き。正規化済み
+        // 最後に出した突進の、出たフレームの向き。正規化済み
+        NS::Core::Vector3 m_bodySlamStartDir{0.0f, 0.0f, 0.0f};
         NS::Core::Vector3 m_bodySlamAimDir{0.0f, 0.0f, 0.0f}; // 押したフレームに控えた狙いの向き。正規化済み
         float m_bodySlamAimAge = 0.0f;                        // 狙いを控えてからの経過秒
         // 寄せた角度の累計 (度)。溜めている間は狙いの向きから、放した後は寄せる前の放す向きから測る。
