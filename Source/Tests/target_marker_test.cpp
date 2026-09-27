@@ -41,6 +41,13 @@ static_assert(std::is_same_v<decltype(&LevelNs::BuildTargetMarkerShape),
                                       float,
                                       const LevelNs::TargetMarkerDesc&,
                                       LevelNs::TargetMarkerShape&)>);
+static_assert(std::is_same_v<decltype(&LevelNs::BuildAimPathShape),
+                             bool (*)(const NS::Core::Matrix&,
+                                      NS::Core::Size2D,
+                                      const LevelNs::AimLine&,
+                                      float,
+                                      const LevelNs::TargetMarkerDesc&,
+                                      LevelNs::TargetMarkerShape&)>);
 
 namespace
 {
@@ -344,6 +351,30 @@ TEST(TargetMarker, PathDotsRunFromTheBallToBesideTheTargetCenter)
     EXPECT_GT(std::abs(RectCenter(offsetShape.dots.back()).x - offsetCenterPixel.x), 10.0f);
 }
 
+// 相手の無い線の点は玉の半径の先から 0.5 m ごとに並び、突進が止まる所で終わる。印は組まない
+TEST(TargetMarker, AimPathDotsRunFromTheBallToTheEndOfTheSlam)
+{
+    const LevelNs::AimLine line{
+        .origin = Vector3{0.0f, 1.0f, 0.0f}, .direction = Vector3{1.0f, 0.0f, 0.0f}, .length = 10.0f};
+    LevelNs::TargetMarkerShape shape{};
+    ASSERT_TRUE(
+        LevelNs::BuildAimPathShape(ChaseView(), k_TargetSize, line, k_BallRadius, LevelNs::TargetMarkerDesc{}, shape));
+
+    EXPECT_TRUE(shape.corners.empty());
+    // 10 m から 0.5 m ずつ手前へ、玉の半径 0.65 m より先の 1.0 m まで
+    std::vector<float> expectedAlong;
+    for (int k = 18; k >= 0; --k)
+    {
+        expectedAlong.push_back(10.0f - 0.5f * static_cast<float>(k));
+    }
+    ASSERT_EQ(shape.dots.size(), expectedAlong.size());
+    for (std::size_t i = 0; i < expectedAlong.size(); ++i)
+    {
+        const NS::Core::Vector2 pixel = ToPixels(ChaseView(), Vector3{expectedAlong[i], 1.0f, 0.0f});
+        ExpectRectNear(shape.dots[i], LevelNs::MarkerRect{pixel.x - 3.0f, pixel.y - 3.0f, 6.0f, 6.0f}, i);
+    }
+}
+
 // カメラの後ろの相手には印を組まない。道筋の点もカメラの後ろなら組まない
 TEST(TargetMarker, NothingIsBuiltBehindTheCamera)
 {
@@ -412,6 +443,54 @@ TEST(TargetMarker, ShowsTheAimTargetOnlyWhileCharging)
     EXPECT_FALSE(rig.marker->ShownTargetRef().IsSet());
     LevelNs::TargetMarkerShape afterRelease{};
     EXPECT_FALSE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, afterRelease));
+}
+
+// 溜めている間は、狙いの線の上に相手がいない横と後ろへ倒しても、狙いの向きへ突進が止まる所まで点を出す
+TEST(TargetMarker, ShowsAimPathDotsWithoutATargetWhileCharging)
+{
+    // 自機の後ろの高い所から見下ろす。横と後ろの線がどちらもカメラの前に入る
+    const NS::Core::Matrix overhead = LookFrom(Vector3{-14.0f, 24.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f});
+    for (const Vector3& aim : {Vector3{0.0f, 0.0f, 1.0f}, Vector3{-1.0f, 0.0f, 0.0f}})
+    {
+        SceneNs::Scene scene;
+        MarkerRig rig = BuildMarkerCourse(scene, MarkerCourse{});
+        ASSERT_NE(rig.marker, nullptr);
+        ASSERT_NE(rig.input, nullptr);
+        SettleAndAimAhead(scene, rig);
+        rig.movement->SetDesiredMove(aim, 0.0f);
+
+        MouseLeftPress press;
+        for (int i = 0; i < 20 && !rig.input->IsCharging(); ++i)
+        {
+            Step(scene, rig);
+        }
+        ASSERT_TRUE(rig.input->IsCharging());
+        EXPECT_FALSE(rig.marker->ShownTargetRef().IsSet()) << aim.x;
+
+        LevelNs::AimLine line{};
+        ASSERT_TRUE(rig.input->TryGetAimLine(line)) << aim.x;
+        const Vector3 position = rig.movement->Owner()->Root().Position();
+        EXPECT_NEAR(line.origin.x, position.x, 1e-2f) << aim.x;
+        EXPECT_NEAR(line.origin.z, position.z, 1e-2f) << aim.x;
+        EXPECT_NEAR(line.direction.x, aim.x, 1e-5f) << aim.x;
+        EXPECT_NEAR(line.direction.z, aim.z, 1e-5f) << aim.x;
+        EXPECT_FLOAT_EQ(line.length, rig.movement->BodySlamDistance()) << aim.x;
+
+        LevelNs::TargetMarkerShape shape{};
+        ASSERT_TRUE(rig.marker->BuildShownShape(overhead, k_TargetSize, shape)) << aim.x;
+        EXPECT_TRUE(shape.corners.empty()) << aim.x;
+        ASSERT_FALSE(shape.dots.empty()) << aim.x;
+        const NS::Core::Vector2 lastExpected = ToPixels(overhead, line.origin + line.direction * line.length);
+        const NS::Core::Vector2 lastActual = RectCenter(shape.dots.back());
+        EXPECT_NEAR(lastActual.x, lastExpected.x, k_Tolerance) << aim.x;
+        EXPECT_NEAR(lastActual.y, lastExpected.y, k_Tolerance) << aim.x;
+        const float firstAlong =
+            line.length - 0.5f * std::floor((line.length - rig.movement->CapsuleRadius()) / 0.5f);
+        const NS::Core::Vector2 firstExpected = ToPixels(overhead, line.origin + line.direction * firstAlong);
+        const NS::Core::Vector2 firstActual = RectCenter(shape.dots.front());
+        EXPECT_NEAR(firstActual.x, firstExpected.x, k_Tolerance) << aim.x;
+        EXPECT_NEAR(firstActual.y, firstExpected.y, k_Tolerance) << aim.x;
+    }
 }
 
 // 同じ配置物に CollisionInput が無ければ、押し続けても何も示さない

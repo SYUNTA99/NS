@@ -83,11 +83,15 @@ namespace NS::Game::Level
         {
             float along = 0.0f; // 自機の位置から相手の中心までの、線に沿った水平の距離 (m)。後ろは負
             float ratio = 0.0f; // 線から相手の中心までの横ずれ ÷ (相手の半幅 + 自機の半径)。0〜1 へ丸めない
+            // 線を進む自機の縁が相手の外接箱に触れる所までの、線に沿った水平の距離 (m)。
+            // along − (相手の半分の奥行き + 自機の半径)。横にずれた相手の角をかすめる時は、実際に触れる所より手前に出る
+            float contact = 0.0f;
         };
 
         // 当たりの裁定と突進の線の予測が同じ式を通る。式を 2 つ置くと、予測した横ずれと当たりの段が食い違う
         // 分母は AABB を向きに直交する軸へ投影した半幅に自機の半径を足した値
         // 触れられる横ずれの上限が比 1 になる。斜めの箱でも角をかすめる当たりが 1
+        // 半分の奥行きは同じ AABB を向きの軸へ投影した値で、半幅と同じ書き方で出す
         // 球と傾いた箱は外接箱で測るので実際の縁より広く出る
         // 事前条件: direction の水平の長さが 0 でない
         [[nodiscard]] LineOffset MeasureLineOffset(const NS::Core::Vector3& position,
@@ -105,13 +109,15 @@ namespace NS::Game::Level
             const float lateralZ = toZ - along * dirZ;
             const float lateral = std::sqrt(lateralX * lateralX + lateralZ * lateralZ);
             const float halfWidth = std::abs(dirZ) * bounds.Extents.x + std::abs(dirX) * bounds.Extents.z;
+            const float halfDepth = std::abs(dirX) * bounds.Extents.x + std::abs(dirZ) * bounds.Extents.z;
+            const float contact = along - (halfDepth + playerRadius);
             const float reach = halfWidth + playerRadius;
             // 半幅と半径の和が 0 以下では割れない。中心扱いへ倒す
             if (!(reach > 0.0f))
             {
-                return LineOffset{.along = along, .ratio = 0.0f};
+                return LineOffset{.along = along, .ratio = 0.0f, .contact = contact};
             }
-            return LineOffset{.along = along, .ratio = lateral / reach};
+            return LineOffset{.along = along, .ratio = lateral / reach, .contact = contact};
         }
 
         // 相手の中心からの横ずれ 0..1。OnUpdate へ式を埋めると当たり判定の流れが読めなくなる
@@ -335,8 +341,9 @@ namespace NS::Game::Level
             }
 
             const LineOffset line = MeasureLineOffset(position, bounds, lineDir, playerRadius);
-            // 真横と後ろの相手は線の先に居ない。見る距離が非数なら比較が偽になり、誰も拾わない
-            if (!(line.along > 0.0f) || !(line.along <= maxDistance))
+            // 真横と後ろの相手は線の先に居ない。届くかは中心でなく、自機の縁が相手に触れる所で見る。
+            // 中心で見ると、大きい相手は突進が触れるのに見る距離の外へ落ちる。見る距離が非数なら比較が偽になり、誰も拾わない
+            if (!(line.along > 0.0f) || !(line.contact <= maxDistance))
             {
                 return;
             }

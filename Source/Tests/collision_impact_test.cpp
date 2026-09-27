@@ -1906,7 +1906,7 @@ TEST(CollisionImpact, SlamLineTargetIsTheFirstAlongTheLine)
     EXPECT_NEAR(found.along, 3.0f, 1e-4f);
 }
 
-// 触れる横の幅の外で比が 1 を超える相手、線に沿って見る距離の外の相手、後ろの相手は返さない
+// 触れる横の幅の外で比が 1 を超える相手、線に沿って見る距離の内で触れない相手、後ろの相手は返さない
 TEST(CollisionImpact, SlamLineTargetSkipsTargetsOffTheReachOutOfRangeAndBehind)
 {
     SceneNs::Scene scene;
@@ -1920,10 +1920,28 @@ TEST(CollisionImpact, SlamLineTargetSkipsTargetsOffTheReachOutOfRangeAndBehind)
     PlaceHorizontally(*rig.target, position.x + 3.0f, position.z + 1.0f);
     EXPECT_FALSE(rig.impact->FindSlamLineTarget(forward, 10.0f, found));
 
+    // 3.0 m 先の的に自機の縁が触れるのは 3.0 − 的の半分の奥行き 0.5 − 自機の半径 0.4 = 2.1 m 進んだ所
     PlaceHorizontally(*rig.target, position.x + 3.0f, position.z);
-    EXPECT_FALSE(rig.impact->FindSlamLineTarget(forward, 2.9f, found));
+    EXPECT_FALSE(rig.impact->FindSlamLineTarget(forward, 2.0f, found));
+    EXPECT_TRUE(rig.impact->FindSlamLineTarget(forward, 2.2f, found));
     EXPECT_FALSE(rig.impact->FindSlamLineTarget(Vector3{-1.0f, 0.0f, 0.0f}, 10.0f, found));
-    EXPECT_TRUE(rig.impact->FindSlamLineTarget(forward, 10.0f, found));
+}
+
+// 中心が見る距離の外でも、自機の縁が触れる所が内の大きい相手は返す。線に沿った距離は中心までのまま
+// 6 倍の的は半分の奥行き 3.0 で、10 m 先の中心に対して触れる所は 10 − 3.0 − 0.4 = 6.6 m
+TEST(CollisionImpact, SlamLineTargetReachesALargeTargetByItsNearFace)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .targetCell = 3});
+    SettleOnFloor(scene, rig);
+    const Vector3 position = rig.movement->Owner()->Root().Position();
+    rig.target->Root().SetScale(Vector3{6.0f, 6.0f, 6.0f});
+    PlaceHorizontally(*rig.target, position.x + 10.0f, position.z);
+
+    LevelNs::SlamLineTarget found{};
+    ASSERT_TRUE(rig.impact->FindSlamLineTarget(Vector3{1.0f, 0.0f, 0.0f}, 8.0f, found));
+    EXPECT_EQ(found.target, SceneNs::ObjectRef{rig.target->Id()});
+    EXPECT_NEAR(found.along, 10.0f, 1e-4f);
 }
 
 // 裁定と同じ絞り。有効でない相手とトリガの箱は、線の上に居ても返さない

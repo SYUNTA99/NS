@@ -141,12 +141,30 @@ namespace NS::Game::Level
     void CollisionInput::UpdateAimTarget()
     {
         m_hasAimTarget = false;
-        if (!m_judge.IsHeld() || m_movement == nullptr || m_resolver == nullptr)
+        m_hasAimLine = false;
+        if (!m_judge.IsHeld() || m_movement == nullptr)
         {
             return;
         }
-        m_hasAimTarget =
-            m_resolver->FindSlamLineTarget(m_movement->AimDirection(), m_movement->BodySlamDistance(), m_aimTarget);
+        NS::Core::Vector3 direction{};
+        if (!NS::Core::TryNormalizeHorizontal(m_movement->AimDirection(), direction))
+        {
+            return;
+        }
+        // 非数と無限の向きは正規化を通り抜ける
+        if (!std::isfinite(direction.x) || !std::isfinite(direction.z))
+        {
+            return;
+        }
+        m_aimLine = AimLine{.origin = RootTransform().Position(),
+                            .direction = direction,
+                            .length = m_movement->BodySlamDistance()};
+        m_hasAimLine = true;
+        if (m_resolver == nullptr)
+        {
+            return;
+        }
+        m_hasAimTarget = m_resolver->FindSlamLineTarget(m_aimLine.direction, m_aimLine.length, m_aimTarget);
     }
 
     bool CollisionInput::TryGetAimTarget(SlamLineTarget& outTarget) const noexcept
@@ -156,6 +174,16 @@ namespace NS::Game::Level
             return false;
         }
         outTarget = m_aimTarget;
+        return true;
+    }
+
+    bool CollisionInput::TryGetAimLine(AimLine& outLine) const noexcept
+    {
+        if (!m_hasAimLine)
+        {
+            return false;
+        }
+        outLine = m_aimLine;
         return true;
     }
 

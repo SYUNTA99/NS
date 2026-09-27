@@ -14,6 +14,14 @@ namespace NS::Game::Player
 
 namespace NS::Game::Level
 {
+    //! @brief 押している間の狙いの線。狙う相手を探す線で、溜めている間は道筋の点もこの線の上に並べる
+    struct AimLine
+    {
+        NS::Core::Vector3 origin;    //!< 線を引き始める自機の位置 (配置物の根)。世界座標
+        NS::Core::Vector3 direction; //!< 狙いの水平の向き。正規化済みで y は 0
+        float length = 0.0f;         //!< 線に沿って突進が止まる所までの距離。欄「突進距離」の値で、単位は m
+    };
+
     //! @brief 体当たりのボタン入力を読んで発動を要求する Component
     //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
     //! どちらも離したフレームに、溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ
@@ -56,12 +64,20 @@ namespace NS::Game::Level
         [[nodiscard]] bool IsChargeFull() const noexcept { return m_judge.IsChargeFull(); }
 
         //! @brief 押している間に控えた狙う相手を読む
-        //! @details 押している間は毎フレーム、PlayerComponent::AimDirection の狙いの向きの線で
-        //! PlayerComponent::BodySlamDistance の内を ImpactResolver::FindSlamLineTarget で探して控える。
-        //! 押していないフレームは控えを消す
+        //! @details 押している間は毎フレーム、TryGetAimLine の狙いの線の向きと長さで
+        //! ImpactResolver::FindSlamLineTarget を呼び、線を進む自機の縁が突進が止まる所までに触れる相手を探して控える。
+        //! 押していないフレームと、狙いの線が無いフレームは控えを消す
         //! @param[out] outTarget 控えた狙う相手。控えが無い場合は書き換えない
         //! @return 控えがある場合 true、それ以外の場合は false
         [[nodiscard]] bool TryGetAimTarget(SlamLineTarget& outTarget) const noexcept;
+
+        //! @brief 押している間に控えた狙いの線を読む
+        //! @details 押している間は毎フレーム、自機の位置から PlayerComponent::AimDirection の水平の向きへ、
+        //! PlayerComponent::BodySlamDistance の長さの線を控える。狙う相手がいなくても控える。
+        //! 押していないフレームと、狙いの向きが決まらない (水平の長さが 0 か有限でない) フレームは控えを消す
+        //! @param[out] outLine 控えた狙いの線。控えが無い場合は書き換えない
+        //! @return 控えがある場合 true、それ以外の場合は false
+        [[nodiscard]] bool TryGetAimLine(AimLine& outLine) const noexcept;
 
         //! 判定の実体。自動テストは実機入力を差し替えられないので、保持を直接入れる口として出す
         [[nodiscard]] ImpactInputJudge& Judge() noexcept { return m_judge; }
@@ -84,7 +100,7 @@ namespace NS::Game::Level
 
     private:
         void UpdateChargeStance();
-        // 押している間は狙いの向きの線で狙う相手を探して控え、押していなければ控えを消す
+        // 押している間は狙いの線を作って控え、その線で狙う相手を探して控える。押していなければ両方の控えを消す
         void UpdateAimTarget();
         // 押している間と突進の間に、基準の向きの線の上の相手が寄せの角度と距離の内に居ればそれへ、
         // 居なければ前方で一番近い相手へ突進の向きを寄せる
@@ -116,6 +132,8 @@ namespace NS::Game::Level
         ImpactInputJudge m_judge{};
         SlamLineTarget m_aimTarget{}; // 押している間の狙う相手。m_hasAimTarget が偽の間は読まない
         bool m_hasAimTarget = false;
+        AimLine m_aimLine{}; // 押している間の狙いの線。m_hasAimLine が偽の間は読まない
+        bool m_hasAimLine = false;
         NS::Core::Vector3 m_homeScale{1.0f, 1.0f, 1.0f};
         bool m_stanceApplied = false;
         NS::Game::Player::PlayerComponent* m_movement = nullptr;

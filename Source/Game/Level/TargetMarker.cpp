@@ -110,6 +110,64 @@ namespace NS::Game::Level
             outCorners.push_back(MarkerRect{right - arm, bottom - thickness, arm, thickness});
             outCorners.push_back(MarkerRect{right - thickness, bottom - arm, thickness, arm});
         }
+
+        // 欄の値と描画先の大きさが組める値か。印の欄は点だけを組む時も同じく見る
+        [[nodiscard]] bool CanBuild(NS::Core::Size2D targetSize, const TargetMarkerDesc& desc) noexcept
+        {
+            if (!IsPositiveFinite(desc.lineThickness) || !IsPositiveFinite(desc.armRatio) ||
+                !IsPositiveFinite(desc.dotSpacing) || !IsPositiveFinite(desc.dotSize))
+            {
+                return false;
+            }
+            return targetSize.width > 0 && targetSize.height > 0;
+        }
+
+        // 終わりの点を線に沿った距離 pathEnd に置き、間隔ずつ手前へ置き始める距離まで数える。
+        // 数が上限を超える場合は false
+        [[nodiscard]] bool TryCountPathDots(float pathEnd,
+                                            float pathStart,
+                                            float spacing,
+                                            std::size_t& outCount) noexcept
+        {
+            outCount = 0;
+            if (pathEnd >= pathStart)
+            {
+                const float steps = std::floor((pathEnd - pathStart) / spacing);
+                if (!(steps < static_cast<float>(k_MaxPathDots)))
+                {
+                    return false;
+                }
+                outCount = static_cast<std::size_t>(steps) + 1;
+            }
+            return true;
+        }
+
+        // 線の上に数えた点を、自機の側から並べて足す。i が 0 の点が自機に一番近い。カメラの後ろの点は足さない
+        void AppendPathDots(const NS::Core::Matrix& viewProjection,
+                            float width,
+                            float height,
+                            const NS::Core::Vector3& origin,
+                            const NS::Core::Vector3& direction,
+                            float pathEnd,
+                            std::size_t dotCount,
+                            float spacing,
+                            float dotSize,
+                            std::vector<MarkerRect>& outDots)
+        {
+            outDots.reserve(dotCount);
+            for (std::size_t i = 0; i < dotCount; ++i)
+            {
+                const std::size_t fromEnd = dotCount - 1 - i;
+                const float along = pathEnd - spacing * static_cast<float>(fromEnd);
+                const NS::Core::Vector3 point = origin + direction * along;
+                NS::Core::Vector2 pixel{};
+                if (!TryProjectToPixels(viewProjection, point, width, height, pixel))
+                {
+                    continue;
+                }
+                outDots.push_back(MarkerRect{pixel.x - dotSize * 0.5f, pixel.y - dotSize * 0.5f, dotSize, dotSize});
+            }
+        }
     } // namespace
 
     bool BuildTargetMarkerShape(const NS::Core::Matrix& viewProjection,
@@ -119,12 +177,7 @@ namespace NS::Game::Level
                                 const TargetMarkerDesc& desc,
                                 TargetMarkerShape& outShape)
     {
-        if (!IsPositiveFinite(desc.lineThickness) || !IsPositiveFinite(desc.armRatio) ||
-            !IsPositiveFinite(desc.dotSpacing) || !IsPositiveFinite(desc.dotSize))
-        {
-            return false;
-        }
-        if (targetSize.width <= 0 || targetSize.height <= 0)
+        if (!CanBuild(targetSize, desc))
         {
             return false;
         }
@@ -133,16 +186,11 @@ namespace NS::Game::Level
             return false;
         }
 
-        // 終わりの点を相手の中心の真横に置き、間隔ずつ手前へ置き始める距離まで数える
+        // 終わりの点を相手の中心の真横に置く
         std::size_t dotCount = 0;
-        if (target.along >= pathStart)
+        if (!TryCountPathDots(target.along, pathStart, desc.dotSpacing, dotCount))
         {
-            const float steps = std::floor((target.along - pathStart) / desc.dotSpacing);
-            if (!(steps < static_cast<float>(k_MaxPathDots)))
-            {
-                return false;
-            }
-            dotCount = static_cast<std::size_t>(steps) + 1;
+            return false;
         }
 
         const float width = static_cast<float>(targetSize.width);
@@ -158,21 +206,59 @@ namespace NS::Game::Level
                           desc.armRatio,
                           shape.corners);
 
-        const float dotSize = desc.dotSize * pixelScale;
-        shape.dots.reserve(dotCount);
-        // 自機の側から並べる。i が 0 の点が自機に一番近い
-        for (std::size_t i = 0; i < dotCount; ++i)
+        AppendPathDots(viewProjection,
+                       width,
+                       height,
+                       target.origin,
+                       target.direction,
+                       target.along,
+                       dotCount,
+                       desc.dotSpacing,
+                       desc.dotSize * pixelScale,
+                       shape.dots);
+
+        outShape = std::move(shape);
+        return true;
+    }
+
+    bool BuildAimPathShape(const NS::Core::Matrix& viewProjection,
+                           NS::Core::Size2D targetSize,
+                           const AimLine& line,
+                           float pathStart,
+                           const TargetMarkerDesc& desc,
+                           TargetMarkerShape& outShape)
+    {
+        if (!CanBuild(targetSize, desc))
         {
-            const std::size_t fromEnd = dotCount - 1 - i;
-            const float along = target.along - desc.dotSpacing * static_cast<float>(fromEnd);
-            const NS::Core::Vector3 point = target.origin + target.direction * along;
-            NS::Core::Vector2 pixel{};
-            if (!TryProjectToPixels(viewProjection, point, width, height, pixel))
-            {
-                continue;
-            }
-            shape.dots.push_back(MarkerRect{pixel.x - dotSize * 0.5f, pixel.y - dotSize * 0.5f, dotSize, dotSize});
+            return false;
         }
+        if (!std::isfinite(line.length) || !std::isfinite(pathStart))
+        {
+            return false;
+        }
+
+        // 終わりの点を突進が止まる所に置く
+        std::size_t dotCount = 0;
+        if (!TryCountPathDots(line.length, pathStart, desc.dotSpacing, dotCount))
+        {
+            return false;
+        }
+
+        const float width = static_cast<float>(targetSize.width);
+        const float height = static_cast<float>(targetSize.height);
+        const float pixelScale = height / k_ReferenceHeight;
+
+        TargetMarkerShape shape{};
+        AppendPathDots(viewProjection,
+                       width,
+                       height,
+                       line.origin,
+                       line.direction,
+                       line.length,
+                       dotCount,
+                       desc.dotSpacing,
+                       desc.dotSize * pixelScale,
+                       shape.dots);
 
         outShape = std::move(shape);
         return true;
@@ -193,11 +279,13 @@ namespace NS::Game::Level
     void TargetMarker::OnUpdate()
     {
         m_hasShown = false;
+        m_hasLine = false;
         // 溜め量は放した後も残るので、溜めているかで示すフレームを決める
         if (m_input == nullptr || !m_input->IsCharging())
         {
             return;
         }
+        m_hasLine = m_input->TryGetAimLine(m_line);
         m_hasShown = m_input->TryGetAimTarget(m_shown);
         m_pathStart = 0.0f;
         if (m_movement != nullptr)
@@ -241,11 +329,15 @@ namespace NS::Game::Level
                                        NS::Core::Size2D targetSize,
                                        TargetMarkerShape& outShape) const
     {
-        if (!m_hasShown)
+        if (m_hasShown)
         {
-            return false;
+            return BuildTargetMarkerShape(viewProjection, targetSize, m_shown, m_pathStart, m_desc, outShape);
         }
-        return BuildTargetMarkerShape(viewProjection, targetSize, m_shown, m_pathStart, m_desc, outShape);
+        if (m_hasLine)
+        {
+            return BuildAimPathShape(viewProjection, targetSize, m_line, m_pathStart, m_desc, outShape);
+        }
+        return false;
     }
 
     NS_CLASS(TargetMarker)
