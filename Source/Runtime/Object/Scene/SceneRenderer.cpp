@@ -1,6 +1,7 @@
 #include "Runtime/Object/Scene/SceneRenderer.h"
 
 #include "Runtime/Core/Logger.h"
+#include "Runtime/Graphics/Bloom.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Graphics/EffectScene.h"
 #include "Runtime/Graphics/RenderContext.h"
@@ -10,7 +11,6 @@
 #include "Runtime/Object/Components/DirectionalLight.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
 #include "Runtime/Object/IRenderable.h"
-#include "Runtime/Platform/Clock.h"
 #include "Runtime/Platform/Filesystem.h"
 
 #include <algorithm>
@@ -43,6 +43,8 @@ namespace NS::Obj
     void SceneRenderer::SetRenderer(NS::Gfx::Renderer* renderer) noexcept
     {
         m_renderer = renderer;
+        // 描画先は前のレンダラーの device で作った物なので、差し替えたら作り直す
+        m_blooms.clear();
         if (renderer == nullptr)
         {
             m_effects.reset();
@@ -254,7 +256,7 @@ namespace NS::Obj
         return resolved;
     }
 
-    void SceneRenderer::Render(CameraBrain& brain, CameraComponent& camera, std::string_view skyboxPath)
+    void SceneRenderer::Render(CameraBrain& brain, CameraComponent& camera, std::string_view skyboxPath, float alpha)
     {
         if (m_renderer == nullptr)
         {
@@ -264,23 +266,35 @@ namespace NS::Obj
         // ビュー列が空なら現描画先へ Brain の視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
         if (m_sceneViews.empty())
         {
-            RenderViewWithOverlays(brain, camera, skyboxPath, std::nullopt);
+            RenderViewWithOverlays(brain, camera, skyboxPath, std::nullopt, alpha, BloomForView(0));
             return;
         }
 
-        for (const SceneView& view : m_sceneViews)
+        for (std::size_t i = 0; i < m_sceneViews.size(); ++i)
         {
+            const SceneView& view = m_sceneViews[i];
             m_renderer->BeginSceneView(view.target);
-            RenderViewWithOverlays(brain, camera, skyboxPath, view.viewPose);
+            RenderViewWithOverlays(brain, camera, skyboxPath, view.viewPose, alpha, BloomForView(i));
         }
+    }
+
+    NS::Gfx::Bloom& SceneRenderer::BloomForView(std::size_t index)
+    {
+        while (m_blooms.size() <= index)
+        {
+            m_blooms.push_back(std::make_unique<NS::Gfx::Bloom>(NS::Gfx::BloomDesc{}));
+        }
+        return *m_blooms[index];
     }
 
     void SceneRenderer::RenderViewWithOverlays(CameraBrain& brain,
                                                CameraComponent& camera,
                                                std::string_view skyboxPath,
-                                               const std::optional<CameraPose>& viewOverride)
+                                               const std::optional<CameraPose>& viewOverride,
+                                               float alpha,
+                                               NS::Gfx::Bloom& bloom)
     {
-        const NS::Gfx::RenderContext ctx = RenderWorld(brain, camera, skyboxPath, viewOverride);
+        const NS::Gfx::RenderContext ctx = RenderWorld(brain, camera, skyboxPath, viewOverride, alpha, bloom);
 
 #if !defined(NS_SHIPPING)
         NS::Gfx::DebugDraw::Flush(*ctx.renderer, ctx.viewProjection);
@@ -292,14 +306,16 @@ namespace NS::Obj
     NS::Gfx::RenderContext SceneRenderer::RenderWorld(CameraBrain& brain,
                                                       CameraComponent& camera,
                                                       std::string_view skyboxPath,
-                                                      const std::optional<CameraPose>& viewOverride)
+                                                      const std::optional<CameraPose>& viewOverride,
+                                                      float alpha,
+                                                      NS::Gfx::Bloom& bloom)
     {
         // レンダラーの現在サイズから毎回取り直し、リサイズとビュー切替に追従する
         camera.SetAspectRatioFromRenderer(*m_renderer);
 
         NS::Gfx::RenderContext ctx{};
         ctx.renderer = m_renderer;
-        ctx.alpha = NS::Platform::FrameTimer::Alpha();
+        ctx.alpha = alpha;
 
         brain.Evaluate(ctx.alpha);
 
@@ -337,6 +353,9 @@ namespace NS::Obj
         }
         ctx.resolvedSettings = ResolveSceneSettings(m_renderer->Settings());
 
+        // 物の絵は S 字で 1 以下に書くので、にじむのは 1 を超えて書いたエフェクトだけ
+        // 深度は今の描画先の物を使うので、後で描くデバッグの線も世界の深度で隠れる
+        bloom.BeginWorld(m_renderer->Settings().clearColor);
         DrawOpaque(ctx);
         m_renderer->DrawSky(*viewCamera, skyboxPath);
         DrawTransparent(ctx);
@@ -345,6 +364,8 @@ namespace NS::Obj
         {
             m_effects->Draw(*viewCamera);
         }
+        // 重ね描きとデバッグの線はにじませないので、この後に今の描画先へ描く
+        bloom.EndWorld();
         return ctx;
     }
 } // namespace NS::Obj

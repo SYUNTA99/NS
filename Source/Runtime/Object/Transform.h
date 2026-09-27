@@ -11,7 +11,8 @@ namespace NS::Obj
     //! @brief 階層構造を持つ位置 / 回転 / スケール
     //! @details 親子関係を SetParent で構築し、WorldMatrix() で root から再計算した world 変換を返す
     //! 前フレーム値を保持し Snapshot() で現在値を一括退避する
-    //! 描画側は FrameTimer::Alpha() で previous-current を補間しガタつきのない軌道を再現する
+    //! 描画側は世界が回っている間 FrameTimer::Alpha() で previous-current を補間し、
+    //! ガタつきのない軌道を再現する
     //! 所有関係は持たず、Transform 間は生参照で寿命は GameObject が支配する
     class Transform : public NS::Core::NonCopyable
     {
@@ -47,6 +48,7 @@ namespace NS::Obj
         //! World 行列で Local * parent.World を row-major LH で合成する。親が無ければ Local と同値
         [[nodiscard]] NS::Core::Matrix WorldMatrix() const noexcept;
         //! Alpha 補間付き Local 行列。alpha=1 で現在 PRS、alpha=0 で previous PRS
+        //! 割合 1 以上は前の値を読まず LocalMatrix と同じ値を返す
         [[nodiscard]] NS::Core::Matrix InterpolatedLocalMatrix(float alpha) const noexcept;
         //! Alpha 補間付き World 行列。階層全体を補間値で再計算する
         [[nodiscard]] NS::Core::Matrix InterpolatedWorldMatrix(float alpha) const noexcept;

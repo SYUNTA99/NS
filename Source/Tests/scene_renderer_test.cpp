@@ -104,6 +104,43 @@ namespace
         int m_id;
         std::vector<int>* m_log;
     };
+
+    // 描く時に渡された補間の割合を控える。どこに置いても視錐台に入る
+    class AlphaRecorder : public IRenderable
+    {
+    public:
+        void Collect(const RenderContext& context, std::vector<NS::Gfx::DrawItem>&) override
+        {
+            alphas.push_back(context.alpha);
+        }
+        [[nodiscard]] NS::Core::AABB WorldBounds() const noexcept override
+        {
+            return NS::Core::AABB{NS::Core::Vector3{-1000.0f, -1000.0f, -1000.0f},
+                                  NS::Core::Vector3{1000.0f, 1000.0f, 1000.0f}};
+        }
+
+        std::vector<float> alphas;
+    };
+
+    // 不透明の描画の途中で、1 を超える色の画素を 1 つ今の描画先へ書く
+    // どこに置いても視錐台に入る
+    class BrightPixelWriter : public IRenderable
+    {
+    public:
+        void Collect(const RenderContext& context, std::vector<NS::Gfx::DrawItem>&) override
+        {
+            context.renderer->DrawScreenRect(static_cast<float>(k_Center.column),
+                                             static_cast<float>(k_Center.row),
+                                             1.0f,
+                                             1.0f,
+                                             NS::Core::Color{4.0f, 4.0f, 4.0f, 1.0f});
+        }
+        [[nodiscard]] NS::Core::AABB WorldBounds() const noexcept override
+        {
+            return NS::Core::AABB{NS::Core::Vector3{-1000.0f, -1000.0f, -1000.0f},
+                                  NS::Core::Vector3{1000.0f, 1000.0f, 1000.0f}};
+        }
+    };
 } // namespace
 
 TEST(SceneRendererTest, DrawsRegisteredRenderableWithoutAScene)
@@ -278,17 +315,114 @@ TEST_F(SceneRendererEffectTest, RenderDrawsThePlayedEffect)
     renderer.SetSceneViews(std::vector<SceneView>{view});
 
     const std::string_view skyboxPath{}; // 空は skybox を描かない
-    renderer.Render(*brain, *camera, skyboxPath);
+    const float alpha = 1.0f;            // 視点を渡すので補間は写らない
+    renderer.Render(*brain, *camera, skyboxPath, alpha);
     const std::array<std::uint8_t, 4> before = ReadPixel(*target, k_Center);
 
     const EffectHandle handle = renderer.Effects()->Play("square_r");
     ASSERT_TRUE(handle.IsValid());
     renderer.UpdateEffects(k_Frame);
 
-    renderer.Render(*brain, *camera, skyboxPath);
+    renderer.Render(*brain, *camera, skyboxPath, alpha);
     const std::array<std::uint8_t, 4> after = ReadPixel(*target, k_Center);
 
     EXPECT_GT(LargestChannelDifference(before, after), k_VisibleDifference);
 
+    m_renderer->SetSceneTarget(nullptr);
+}
+
+// 世界は 1 を超える明るさを持てる描画先へ描かれる
+// 超えた分が周りへにじんで、今の描画先へ書き戻される
+TEST_F(SceneRendererEffectTest, WorldBrighterThanOneBleedsIntoItsSurroundings)
+{
+    GameObject host;
+    CameraComponent* camera = host.AddComponent<CameraComponent>();
+    CameraBrain* brain = host.AddComponent<CameraBrain>();
+    host.OnStart();
+
+    std::unique_ptr<RenderTarget> target = RenderTarget::Create(NS::Core::Size2D{k_WindowSize, k_WindowSize});
+    ASSERT_TRUE(target != nullptr);
+    ASSERT_TRUE(target->IsValid());
+
+    SceneRenderer renderer;
+    renderer.SetRenderer(m_renderer.get());
+    SceneView view{};
+    view.target = target.get();
+    view.viewPose = CameraPose{};
+    renderer.SetSceneViews(std::vector<SceneView>{view});
+
+    const std::string_view skyboxPath{}; // 空は skybox を描かない
+    const float alpha = 1.0f;            // 視点を渡すので補間は写らない
+    const PixelPosition beside{k_Center.column + 1, k_Center.row};
+    renderer.Render(*brain, *camera, skyboxPath, alpha);
+    const std::array<std::uint8_t, 4> background = ReadPixel(*target, beside);
+
+    BrightPixelWriter writer;
+    renderer.RegisterRenderable(&writer);
+    renderer.SyncRenderBounds();
+    renderer.Render(*brain, *camera, skyboxPath, alpha);
+    const std::array<std::uint8_t, 4> bled = ReadPixel(*target, beside);
+
+    // 隣の画素は Bloom の既定の設定で背景より 6 明るくなる。8 ビットの丸めの揺れ (1) の 3
+    // 倍を超えれば、にじんだと言える
+    EXPECT_GT(LargestChannelDifference(background, bled), 3);
+
+    renderer.UnregisterRenderable(&writer);
+    m_renderer->SetSceneTarget(nullptr);
+}
+
+// 止めて 1 フレームずつ進める間は、描く度に割合が実時間で変わると
+// 同じフレームの絵が揺れる
+TEST_F(SceneRendererEffectTest, PausedSceneRendersTheLatestStepWithoutInterpolating)
+{
+    Scene scene;
+    scene.SetRenderer(m_renderer.get());
+    AlphaRecorder recorder;
+    scene.RegisterRenderable(&recorder);
+
+    std::unique_ptr<RenderTarget> target = RenderTarget::Create(NS::Core::Size2D{k_WindowSize, k_WindowSize});
+    ASSERT_TRUE(target != nullptr);
+    SceneView view{};
+    view.target = target.get();
+    scene.SetSceneViews(std::vector<SceneView>{view});
+
+    // 積み残しの時間を 0 にし、実時間の割合を 0 に置く
+    NS::Platform::FrameTimer::Reset();
+    scene.SetSimulationPaused(true);
+    scene.StepSimulation();
+    scene.OnUpdate();
+    scene.OnRender();
+
+    ASSERT_EQ(recorder.alphas.size(), 1u);
+    EXPECT_FLOAT_EQ(recorder.alphas[0], 1.0f);
+
+    scene.UnregisterRenderable(&recorder);
+    m_renderer->SetSceneTarget(nullptr);
+}
+
+// 上の試しは割合を常に 1 にする実装でも通る
+// 回っている間は実時間の割合のまま描くことを別に見る
+TEST_F(SceneRendererEffectTest, RunningSceneRendersWithTheFrameTimerAlpha)
+{
+    Scene scene;
+    scene.SetRenderer(m_renderer.get());
+    AlphaRecorder recorder;
+    scene.RegisterRenderable(&recorder);
+
+    std::unique_ptr<RenderTarget> target = RenderTarget::Create(NS::Core::Size2D{k_WindowSize, k_WindowSize});
+    ASSERT_TRUE(target != nullptr);
+    SceneView view{};
+    view.target = target.get();
+    scene.SetSceneViews(std::vector<SceneView>{view});
+
+    NS::Platform::FrameTimer::Reset();
+    scene.OnUpdate();
+    scene.OnRender();
+
+    ASSERT_EQ(recorder.alphas.size(), 1u);
+    EXPECT_FLOAT_EQ(recorder.alphas[0], NS::Platform::FrameTimer::Alpha());
+    EXPECT_LT(recorder.alphas[0], 1.0f);
+
+    scene.UnregisterRenderable(&recorder);
     m_renderer->SetSceneTarget(nullptr);
 }

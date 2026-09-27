@@ -3,6 +3,7 @@
 // Graphics 層の公開ヘッダをまとめて取り込む umbrella
 
 #include "Runtime/Graphics/Animation.h"
+#include "Runtime/Graphics/Bloom.h"
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/CommandList.h"
 #include "Runtime/Graphics/CommonStates.h"

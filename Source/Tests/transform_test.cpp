@@ -95,6 +95,28 @@ TEST(TransformTest, InterpolatedLocalMatrixAtAlphaOneEqualsCurrent)
     EXPECT_TRUE(MatricesNear(atOne, t.LocalMatrix()));
 }
 
+// 割合 1 は前の値に依らず今の値そのもの
+// 前 + (今 − 前) は丸めで今からずれ、前が違うと描いた絵が変わる
+TEST(TransformTest, InterpolatedLocalMatrixAtAlphaOneIgnoresPreviousExactly)
+{
+    Transform t;
+    t.SetPosition({1.0e8f, 0.0f, 0.0f});
+    t.SetRotation(Quaternion::CreateFromAxisAngle(Vector3{0.0f, 1.0f, 0.0f}, 2.0f));
+    t.Snapshot();
+    t.SetPosition({0.1f, 0.2f, 0.3f});
+    t.SetRotation(Quaternion::CreateFromAxisAngle(Vector3{0.0f, 1.0f, 0.0f}, 0.3f));
+
+    const Matrix atOne = t.InterpolatedLocalMatrix(1.0f);
+    const Matrix current = t.LocalMatrix();
+    for (int row = 0; row < 4; ++row)
+    {
+        for (int col = 0; col < 4; ++col)
+        {
+            EXPECT_EQ(atOne.m[row][col], current.m[row][col]) << row << "," << col;
+        }
+    }
+}
+
 // ずらした分は補間に動きとして映らない。今のフレームで動いた分 (前 → 今) はそのまま補間する
 TEST(TransformTest, ShiftPositionMovesPreviousAndCurrentTogether)
 {

@@ -77,7 +77,9 @@ namespace NS::Obj
         void OnUpdate() override;
 
         //! 現在の active vcam の EvaluatePose(alpha) を実カメラへ書く。ブレンド中なら旧 pose と補間する
-        //! fixed step は alpha=1、render は FrameTimer::Alpha() を渡す。タイマーは進めない
+        //! 呼ぶのは描画だけで、Scene が決めた割合を渡す
+        //! 固定ステップの間の実カメラは最後の描画の姿勢のまま
+        //! タイマーは進めない
         void Evaluate(float alpha) noexcept;
 
         //! Evaluate 後に有効。選ばれている vcam を返し、無ければ nullptr

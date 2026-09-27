@@ -136,7 +136,8 @@ namespace NS::Obj
         void SetSimulationEnabled(bool enabled) noexcept;
         [[nodiscard]] bool IsSimulationEnabled() const noexcept { return m_simulationEnabled; }
 
-        //! @brief 時間停止。snapshot だけ回して補間を凍らせ、動きの一瞬を止めて観察できるようにする
+        //! @brief 時間停止。snapshot だけ回し、描く補間の割合を 1 に留める
+        //! @details 動きの一瞬を止めて観察できるようにする
         void SetSimulationPaused(bool paused) noexcept { m_simulationPaused = paused; }
         [[nodiscard]] bool IsSimulationPaused() const noexcept { return m_simulationPaused; }
 

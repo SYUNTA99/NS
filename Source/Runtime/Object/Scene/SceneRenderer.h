@@ -14,6 +14,7 @@
 
 namespace NS::Gfx
 {
+    class Bloom;
     class EffectScene;
     class Renderer;
     class RenderTarget;
@@ -39,7 +40,8 @@ namespace NS::Obj
     //! @brief 描画物・重ね描き・平行光の登録簿を持ち、1 フレーム分のシーンを描く
     //! @details 登録は Component が OnStart / OnEndPlay で自分で行い、Scene の同名メソッドがここへ転送する
     //! 描画は Scene::OnRenderScene が Render を 1 回呼んで駆動する
-    //! 依存: NS::Gfx::Renderer, NS::Gfx::RenderProxyList, NS::Gfx::EffectScene, CameraBrain
+    //! 世界は NS::Gfx::Bloom の浮動小数の描画先へ描き、1 を超えた分をにじませて書き戻す
+    //! 依存: NS::Gfx::Renderer, NS::Gfx::RenderProxyList, NS::Gfx::EffectScene, NS::Gfx::Bloom, CameraBrain
     class SceneRenderer : public NS::Core::NonCopyable
     {
     public:
@@ -90,7 +92,9 @@ namespace NS::Obj
         //! @param[in,out] brain 描画の直前に Evaluate する CameraBrain
         //! @param[in,out] camera brain が駆動する実カメラ。アスペクト比をレンダラーの現在サイズへ揃える
         //! @param[in] skyboxPath 描く skybox の ContentRoot 配下相対パス。空なら skybox を描かない
-        void Render(CameraBrain& brain, CameraComponent& camera, std::string_view skyboxPath);
+        //! @param[in] alpha 前の固定フレームから今の固定フレームまでの補間の割合 0..1
+        //! 1 なら今の固定フレームの姿
+        void Render(CameraBrain& brain, CameraComponent& camera, std::string_view skyboxPath, float alpha);
 
         //! Opaque バケットを視錐台で絞り、並べ替えずに描画する
         void DrawOpaque(const NS::Gfx::RenderContext& context);
@@ -109,14 +113,23 @@ namespace NS::Obj
         void RenderViewWithOverlays(CameraBrain& brain,
                                     CameraComponent& camera,
                                     std::string_view skyboxPath,
-                                    const std::optional<CameraPose>& viewOverride);
+                                    const std::optional<CameraPose>& viewOverride,
+                                    float alpha,
+                                    NS::Gfx::Bloom& bloom);
 
-        //! 不透明→空→半透明→エフェクトの順に 1 ビュー分を描き、組んだ RenderContext を返す
-        //! viewOverride が空なら Brain の選ぶカメラで描く
+        //! 不透明→空→半透明→エフェクトの順に 1 ビュー分を bloom の描画先へ描く
+        //! にじみを足して今の描画先へ書き戻す
+        //! 組んだ RenderContext を返す。viewOverride が空なら Brain の選ぶカメラで描く
         [[nodiscard]] NS::Gfx::RenderContext RenderWorld(CameraBrain& brain,
                                                          CameraComponent& camera,
                                                          std::string_view skyboxPath,
-                                                         const std::optional<CameraPose>& viewOverride);
+                                                         const std::optional<CameraPose>& viewOverride,
+                                                         float alpha,
+                                                         NS::Gfx::Bloom& bloom);
+
+        //! ビュー列の index 番目に使う Bloom。無ければ作る
+        //! ビューごとに描画先の大きさが違うので分けて持つ
+        [[nodiscard]] NS::Gfx::Bloom& BloomForView(std::size_t index);
 
         //! IRenderable と RenderProxyList 登録ハンドルの対。renderable は非所有
         struct RenderEntry
@@ -138,6 +151,9 @@ namespace NS::Obj
         std::vector<SceneView> m_sceneViews; // 描くビュー列。空なら現描画先へ 1 回だけ描く
 
         std::unique_ptr<NS::Gfx::EffectScene> m_effects; // エフェクトの再生と描画。レンダラー未設定の間は空
+
+        // 光のにじみ。ビュー列と同じ並び。レンダラーを差し替えると畳み、描く時に作る
+        std::vector<std::unique_ptr<NS::Gfx::Bloom>> m_blooms;
 
         std::string m_effectRoot; // .efkefc を探すディレクトリ。空なら既定の Assets/Effects
     };

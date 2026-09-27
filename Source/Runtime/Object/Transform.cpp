@@ -64,6 +64,12 @@ namespace NS::Obj
 
     NS::Core::Matrix Transform::InterpolatedLocalMatrix(float alpha) const noexcept
     {
+        // 前 + (今 − 前) は丸めで今からずれる
+        // 止めた世界を描く割合 1 の絵が、前の値の違いで変わらないようにする
+        if (alpha >= 1.0f)
+        {
+            return LocalMatrix();
+        }
         const NS::Core::Vector3 position = NS::Core::Vector3::Lerp(m_previousPosition, m_position, alpha);
         const NS::Core::Quaternion rotation = NS::Core::Quaternion::Slerp(m_previousRotation, m_rotation, alpha);
         const NS::Core::Vector3 scale = NS::Core::Vector3::Lerp(m_previousScale, m_scale, alpha);
