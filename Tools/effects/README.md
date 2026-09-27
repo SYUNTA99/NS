@@ -16,10 +16,12 @@
 ## 使い方
 
 ```
-Tools\@build_effects.cmd                        # efkprobe を組み、defs/*.efkproj を全部通す
-Tools\@build_effects.cmd spark_min --frames 40  # 1 本だけ
+Tools\@build_effects.cmd                        # efkprobe を組み、defs/*.efkproj と defs/<組>/*.efkproj を全部通す
+Tools\@build_effects.cmd spark_min --frames 40  # 1 本だけ。組のフォルダの定義も名前だけで渡す
 Tools\@build_effects.cmd nobuild --install      # 組まずに通し、全部通ったら Assets\Effects へ置く
-python Tools/effects/defs/make_textures.py      # 素材の図形を描き直す (defs/Texture/)
+python Tools/effects/defs/make_textures.py      # 確かめ用の 2 本の素材を描き直す (defs/Texture/)
+python Tools/effects/defs/charge/make_textures.py  # 溜めの組の素材を描き直す (defs/charge/Texture/)
+python Tools/effects/defs/impact/make_textures.py  # 当たりの組の素材を描き直す (defs/impact/Texture/)
 
 # 試し用の絵 (test_defs/) を作り直し、試しの置き場へ置く
 Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effects_test --install --install-dir Source\Tests\data\effects
@@ -36,9 +38,11 @@ Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effe
 
 | 物 | 役目 |
 |---|---|
-| `defs/<名前>.efkproj` | 定義。編集ソフトの XML の形そのもの (後述の書き方) |
-| `defs/Texture/` | 定義が読む素材。`defs/` の下のフォルダは全部、書き出し先と `Assets/Effects/` の同じ場所へ写る |
+| `defs/<名前>.efkproj` | 定義。編集ソフトの XML の形そのもの (後述の書き方)。今は確かめ用の 2 本 |
+| `defs/Texture/` | 確かめ用の 2 本が読む素材。書き出し先と `Assets/Effects/` の同じ場所へ写る |
 | `defs/make_textures.py` | 白い閃光の丸 `flash.png` と火花の筋 `spark.png` を描く。同じ入力から同じ画素を描く |
+| `defs/charge/` | 溜めの組 (層の名前が `charge.`・`release.`・`slam.` で始まる) の定義と、素材を描く `make_textures.py`。素材は `defs/charge/Texture/` に描く |
+| `defs/impact/` | 当たりの組 (層の名前が `impact.`・`launch.`・`rebound.`・`land.` で始まる) の定義と `make_textures.py`。素材は `defs/impact/Texture/` に描く |
 | `test_defs/<名前>.efkproj` | 試し (`Source/Tests/effect_scene_test.cpp` など) が読む絵の定義。書き出した `.efkefc` は `Source/Tests/data/effects/` に置く。下の「試し用の 4 本」 |
 | `efkbuild.py` | 本体。下の 1〜7 を 1 本ずつ回す |
 | `efkxml/` | .NET 9 のコンソール。編集ソフトの中核 `EffekseerCore.dll` を画面なしで呼ぶ (`dump`・`check`) |
@@ -47,7 +51,7 @@ Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effe
 
 ## efkbuild.py が 1 本ごとにする事
 
-1. **写す。** 定義から XML の注釈を外した写しを `build/effects/<名前>.efkproj` に書き、`defs/` の下のフォルダを同じ所へ写す
+1. **写す。** 定義から XML の注釈を外した写しを `build/effects/<名前>.efkproj` に書き、素材のフォルダ (下の「組ごとの置き場」) を同じ所へ写す
 2. **書き出す。** `Effekseer.exe -cui -in <写し> -o build/effects/<名前>.efkefc`
 3. **利用者の跡を探す。** 書き出した `.efkefc` の塊 (INFO・EDIT を解いた中身・BIN_) に、この機械の利用者の名前・利用者のフォルダの道があれば失敗。INFO と EDIT はドライブから始まる道 (`C:/` など) も失敗にする
 4. **照合する。** `efkxml check <写し> <.efkefc>`
@@ -61,7 +65,17 @@ Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effe
    - Manager と Renderer の組み方は `EffectScene` のコンストラクタと同じ (左手系・最大 8000・描画 5 種・読み手 4 種)。描画先は `R8G8B8A8_UNORM`。カメラは原点を `--distance` (既定 6) の手前から見る、画角 60 度、背景は暗い灰 (`--bg`)
    - `--start-frame N` は `Manager::Play` の開始フレームに N を渡す (ゲームの `EffectScene::Play` は渡さない。比べる時だけ使う)
 6. **並べる。** PNG を 8 列に並べた一覧 `frames/<名前>_sheet.png`
-7. **置く (`--install` の時だけ)。** 全部通った後、`.efkefc` と `defs/` の下のフォルダを `Assets/Effects/` へ写す
+7. **置く (`--install` の時だけ)。** 全部通った後、`.efkefc` と素材のフォルダを `Assets/Effects/` へ写す
+
+## 組ごとの置き場
+
+溜めの組と当たりの組を別の作業ツリーで同時に作るので、定義と素材の描き方を組のフォルダに分ける。2 本が同じファイルを書かなければ、合わせる時にぶつからない。
+
+- 定義は `defs/*.efkproj` と `defs/<組>/*.efkproj`。組のフォルダは `defs/` の直下の、素材のフォルダでないフォルダ (`_` と `.` で始まる名前は見ない)
+- 素材のフォルダは `defs/` と各組のフォルダの直下の `Texture/`。どの組の素材も書き出し先と `Assets/Effects/Texture/` へ重ねて写す。定義の中の素材の道は `Texture/<ファイル名>` のまま書ける
+- 素材のファイル名は組の名前で始める (`charge_*.png`・`impact_*.png`)。同じ道の素材を 2 か所が違う中身で持つと、`efkbuild.py` はどの本も作らずに「素材の道 … を 2 か所が違う中身で持つ」で止まる
+- 定義の名前 (拡張子を除いた部分) は組をまたいで重ねない。重なると「定義の名前 … が 2 か所にある」で止まる。書き出した `.efkefc` は組に分けず `Assets/Effects/` の直下へ置くので、ゲームが読む名前は定義の名前そのもの
+- 組の `make_textures.py` は描く物を `DRAWERS` に並べる。描く物が無ければ何も書かない
 
 ## 定義の書き方
 
@@ -138,6 +152,8 @@ efkprobe の「フレーム 1」は Play → Update(1) → 描く。ゲームで
 | `NS_EFFEKSEER_TOOL` を消す・`Effekseer.exe` の無いフォルダにする | 始める前に「環境変数 NS_EFFEKSEER_TOOL が無い」・「Effekseer.exe が無い」 | ツリー |
 | `Assets/Effects/Texture/spark.png` を外す | 試し `ShippedEffects.EveryEffectPreloads`「spark_min.efkefc を読めないか、参照する素材が欠けている」 | ツリー |
 | 素材の道を無いファイルへ | efkprobe「読めなかった: テクスチャ Texture/nothere.png」、終了コード 1 | scratchpad |
+| 2 つの組の `Texture/` に同じ名前の違う絵を置く | 始める前に「素材の道 Texture/… を 2 か所が違う中身で持つ」、終了コード 1 | scratchpad (`defs/` の写し) |
+| 組のフォルダに `defs/` 直下と同じ名前の定義を置く | 始める前に「定義の名前 spark_min が 2 か所にある」、終了コード 1 | scratchpad (`defs/` の写し) |
 | 閃光の定義を火花の `.efkefc` と照合 | 照合 4 (b)「開いた XML が食い違う」 | scratchpad |
 | 既定と同じ値 (`Timeline` 1) を書いた | 照合 4 (a) | scratchpad |
 | 注釈つきの定義を直に渡す・`StartFrame` などを外す | 編集ソフトが書き出さず、2 で失敗 | scratchpad |

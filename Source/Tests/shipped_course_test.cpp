@@ -1,6 +1,10 @@
 #include "Editor/LevelFilePaths.h"
 #include "Game/Level/KillZone.h"
+#include "Game/Player.h"
+#include "Game/Player/ChargeEffects.h"
+#include "Game/Player/ImpactEffects.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
+#include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 
 #include <algorithm>
@@ -180,4 +184,27 @@ TEST(ShippedCourse, ToughnessHasBreakableTarget)
     ASSERT_FALSE(toughness.empty());
     const float minToughness = *std::min_element(toughness.begin(), toughness.end());
     EXPECT_LE(minToughness, k_PlainHitPower);
+}
+
+// 自機のエフェクトの層は ChargeEffects と ImpactEffects が出す。場面に載っていないと、遊んでも Replay でも
+// 層が 1 つも出ない
+// 載せ方は場面の自機の component の項目なので、組み上げた自機から引けることまで見る
+TEST(ShippedCourse, PlayerCarriesTheEffectComponents)
+{
+    for (const char* name : k_TargetSceneNames)
+    {
+        SCOPED_TRACE(name);
+        nlohmann::json data = SceneNs::MakeSceneJson();
+        if (!LoadShippedCourse(data, name))
+        {
+            ADD_FAILURE() << name << " の場面が読めない";
+            continue;
+        }
+        SceneNs::Scene scene;
+        scene.LoadJson(std::move(data));
+        Player* player = FindPlayer(scene.Objects());
+        ASSERT_NE(player, nullptr);
+        EXPECT_NE(player->FindComponent<NS::Game::Player::ChargeEffects>(), nullptr);
+        EXPECT_NE(player->FindComponent<NS::Game::Player::ImpactEffects>(), nullptr);
+    }
 }

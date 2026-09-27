@@ -6,19 +6,26 @@
   python Tools/effects/efkbuild.py [名前 ...] [--defs 定義のフォルダ] [--out 出力のフォルダ] [--frames N] [--no-probe]
                                    [--install] [--install-dir 置き場]
 
+定義は 定義のフォルダ/*.efkproj と、組のフォルダ 定義のフォルダ/<組>/*.efkproj に置く
+素材のフォルダは、定義のフォルダと組のフォルダの直下の Texture/
+定義のフォルダの直下のそれ以外のフォルダが組のフォルダ (_ と . で始まる名前は見ない)
+組ごとに分けると、2 つの作業が同じフォルダのファイルを書き合わない
+どの組の素材も 出力/ と置き場の同じ並びへ重ねて写す。同じ道の素材を 2 か所が違う中身で持つと、どの本も作らずに失敗
+
 編集ソフト (Effekseer 1.80.7) の場所は環境変数 NS_EFFEKSEER_TOOL で受ける。Effekseer.exe と bin/ が並ぶフォルダを渡す
 道具の場所を読むのはこのファイルだけで、efkxml には組む時と走らせる時に bin の場所を渡す
 
-名前を省くと、定義のフォルダの *.efkproj を全部作る。1 本ごとに次を順に行い、どこかで失敗したらその本は失敗
+名前を省くと、定義のフォルダと組のフォルダの *.efkproj を全部作る。名前は組をまたいで重ねない
+1 本ごとに次を順に行い、どこかで失敗したらその本は失敗
   1. 定義から注釈を外した写しを 出力/<名前>.efkproj に書く。編集ソフトの読み込みは注釈で落ちる
-     定義のフォルダの下のフォルダ、例えば Texture/ を 出力/ の同じ場所へ写す
+     素材のフォルダ、例えば Texture/ を 出力/ の同じ場所へ写す
      編集ソフトは素材の道を書き出し先から見た相対に書き換えるので、.efkefc の隣に同じ並びで置く
   2. 編集ソフト (Effekseer.exe -cui) で 出力/<名前>.efkefc を書き出す
   3. 書き出した .efkefc の塊 (INFO・EDIT・BIN_) に、この機械の利用者のフォルダや道が混ざっていないかを見る
   4. efkxml check: 定義の葉が全部読まれたか、.efkefc の編集用の中身が定義と一字一句同じか
   5. efkprobe: 実行側の Effect::Create が通るか、節の木と寿命、フレームごとのインスタンス数と PNG を 出力/frames/<名前>/
   6. PNG を 1 枚に並べた一覧を 出力/frames/<名前>_sheet.png
-  7. --install を渡した時だけ、全部通った後に .efkefc と定義の下のフォルダを Assets/Effects/ へ同じ並びで写す
+  7. --install を渡した時だけ、全部通った後に .efkefc と素材のフォルダを Assets/Effects/ へ同じ並びで写す
      --install-dir を渡すと Assets/Effects/ の代わりにそこへ写す
      出力のフォルダは作業場で、注釈を外した写しと PNG を含む。ゲームへ渡すのは .efkefc と素材だけ
 """
@@ -46,6 +53,8 @@ ABSOLUTE_PATH = re.compile(r"[A-Za-z]:[\\/]")
 # 絶対の道を探す塊。INFO は依存の道の一覧、EDIT は定義の文字。BIN_ は浮動小数の並びが偶然 "x:/" に読めうるので、
 # 利用者の名前だけを探す。BIN_ が持つ依存の道は INFO にも載る
 TEXT_CHUNKS = ("INFO", "EDIT")
+# 定義が読む素材の置き場の名前。今の定義が読む素材はテクスチャだけ
+ASSET_FOLDERS = ("Texture",)
 
 
 def run(arguments):
@@ -82,10 +91,52 @@ def build_efkxml(tool, out):
     return exe
 
 
-def stage(definition, defs, out):
-    for child in defs.iterdir():
-        if child.is_dir():
-            shutil.copytree(child, out / child.name, dirs_exist_ok=True)
+def group_folders(defs):
+    """組のフォルダを名前の順に返す"""
+    return sorted(child for child in defs.iterdir()
+                  if child.is_dir() and child.name not in ASSET_FOLDERS and child.name[0] not in "_.")
+
+
+def find_definitions(defs):
+    """定義の名前から道を引く表を返す。同じ名前が 2 か所にあれば、表の代わりに理由の文を返す"""
+    found = {}
+    for folder in [defs] + group_folders(defs):
+        for definition in sorted(folder.glob("*.efkproj")):
+            if definition.stem in found:
+                return None, f"定義の名前 {definition.stem} が 2 か所にある: {found[definition.stem]} と {definition}"
+            found[definition.stem] = definition
+    return found, None
+
+
+def collect_assets(defs):
+    """素材のフォルダの中のファイルを、写す先の相対の道から元の道を引く表で返す
+
+    同じ相対の道を 2 か所が違う中身で持てば、表の代わりに理由の文を返す。同じ中身なら 1 つに重ねる
+    """
+    asset_folders = []
+    for folder in [defs] + group_folders(defs):
+        for child in sorted(folder.iterdir()):
+            if child.is_dir() and child.name in ASSET_FOLDERS:
+                asset_folders.append((folder, child))
+    assets = {}
+    for base, folder in asset_folders:
+        for source in sorted(p for p in folder.rglob("*") if p.is_file()):
+            relative = source.relative_to(base)
+            if relative in assets and assets[relative].read_bytes() != source.read_bytes():
+                return None, f"素材の道 {relative.as_posix()} を 2 か所が違う中身で持つ: {assets[relative]} と {source}"
+            assets[relative] = source
+    return assets, None
+
+
+def copy_assets(assets, destination):
+    for relative, source in assets.items():
+        target = destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+
+
+def stage(definition, assets, out):
+    copy_assets(assets, out)
     staged = out / definition.name
     text = definition.read_text(encoding="utf-8")
     staged.write_text(COMMENT.sub("", text), encoding="utf-8", newline="\n")
@@ -154,13 +205,13 @@ def contact_sheet(frames_dir, sheet_path, columns=8, cell=160):
     return sheet_path
 
 
-def build_one(name, tool, efkxml, defs, out, frames, probe):
-    definition = defs / f"{name}.efkproj"
+def build_one(name, tool, efkxml, definitions, assets, out, frames, probe):
     print(f"==== {name}")
-    if not definition.exists():
-        print(f"失敗: 定義が無い {definition}")
+    definition = definitions.get(name)
+    if definition is None:
+        print(f"失敗: 定義 {name}.efkproj が定義のフォルダにも組のフォルダにも無い")
         return False
-    staged = stage(definition, defs, out)
+    staged = stage(definition, assets, out)
     target = out / f"{name}.efkefc"
     ok, text = compile_effect(tool, staged, target)
     if not ok:
@@ -196,12 +247,10 @@ def build_one(name, tool, efkxml, defs, out, frames, probe):
     return True
 
 
-def install(names, defs, out, destination):
+def install(names, assets, out, destination):
     """通った本だけを写す。1 本でも落ちたら main が先に返るので、ここへは全部通った時だけ来る"""
     destination.mkdir(parents=True, exist_ok=True)
-    for child in defs.iterdir():
-        if child.is_dir():
-            shutil.copytree(child, destination / child.name, dirs_exist_ok=True)
+    copy_assets(assets, destination)
     for name in names:
         shutil.copy2(out / f"{name}.efkefc", destination / f"{name}.efkefc")
         print(f"写した: {destination / (name + '.efkefc')}")
@@ -231,17 +280,26 @@ def main():
     if efkxml is None:
         return 1
 
-    names = args.names or sorted(p.stem for p in defs.glob("*.efkproj"))
-    if not names:
-        print(f"失敗: 定義のフォルダに .efkproj が 1 本も無い: {defs}")
+    definitions, problem = find_definitions(defs)
+    if definitions is None:
+        print(f"失敗: {problem}")
         return 1
-    failed = [n for n in names if not build_one(n, tool, efkxml, defs, out, args.frames, not args.no_probe)]
+    assets, problem = collect_assets(defs)
+    if assets is None:
+        print(f"失敗: {problem}")
+        return 1
+    names = args.names or sorted(definitions)
+    if not names:
+        print(f"失敗: 定義のフォルダと組のフォルダに .efkproj が 1 本も無い: {defs}")
+        return 1
+    failed = [n for n in names
+              if not build_one(n, tool, efkxml, definitions, assets, out, args.frames, not args.no_probe)]
     print(f"==== 結果: {len(names) - len(failed)} / {len(names)} 本が通った")
     if failed:
         print("通らなかった: " + ", ".join(failed))
         return 1
     if args.install:
-        install(names, defs, out, Path(args.install_dir).resolve())
+        install(names, assets, out, Path(args.install_dir).resolve())
     return 0
 
 

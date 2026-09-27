@@ -56,7 +56,8 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
         "ImpactMark",         "KillZone",       "LaunchedBody",      "MeshRenderer",     "Goal",
         "CameraComponent",    "CameraBrain",    "ThirdPersonFollow", "PlayerComponent",  "PlayerInput",
         "PlayerStateManager", "PlayerAnimator", "PlayerAppearance",  "Shadow",           "SkeletalAnimation",
-        "DirectionalLight",   "RigidBody",      "PhysicsSettings",   "TargetMarker",
+        "DirectionalLight",   "RigidBody",      "PhysicsSettings",   "TargetMarker",     "ChargeEffects",
+        "ImpactEffects",
     };
     for (const char* name : k_Registered)
     {
@@ -121,7 +122,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 30u);
+    EXPECT_EQ(names.size(), 32u);
     EXPECT_TRUE(Contains(names, "BoxCollider"));
     EXPECT_TRUE(Contains(names, "MeshRenderer"));
     EXPECT_TRUE(Contains(names, "PlayerComponent"));
@@ -140,6 +141,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"CameraBrain", {"ブレンド秒数"}},
         {"CameraComponent", {}},
         {"CapsuleCollider", {"半径", "半分の高さ", "中心オフセット", "回転 (度)"}},
+        {"ChargeEffects", {}},
         {"CollisionInput",
          {"チャージしきい値秒",
           "チャージ満タン秒",
@@ -155,6 +157,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"DirectionalLight", {"方向", "色", "環境光", "地面環境光", "露出"}},
         {"FollowCameraFeed", {}},
         {"Health", {"体力"}},
+        {"ImpactEffects", {}},
         {"ImpactMark", {"跡の直径", "跡の残る秒"}},
         {"ImpactResolver",
          {"反動の高さ",
@@ -380,10 +383,12 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"CameraBrain", {}},
         {"CameraComponent", {}},
         {"CapsuleCollider", {"Collider"}},
+        {"ChargeEffects", {}},
         {"CollisionInput", {}},
         {"DirectionalLight", {}},
         {"FollowCameraFeed", {}},
         {"Health", {}},
+        {"ImpactEffects", {}},
         {"ImpactMark", {}},
         {"ImpactResolver", {"OverlayRenderer"}},
         {"KillZone", {}},

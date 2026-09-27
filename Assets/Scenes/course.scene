@@ -2,7 +2,7 @@
   "environment": {
     "skybox": "Assets/Skybox/kurt/"
   },
-  "nextObjectId": 164,
+  "nextObjectId": 167,
   "objects": [
     {
       "class": "Player",
@@ -244,6 +244,18 @@
           "id": 164,
           "name": "SlamArrow",
           "type": "SlamArrow"
+        },
+        {
+          "fields": {},
+          "id": 165,
+          "name": "ChargeEffects",
+          "type": "ChargeEffects"
+        },
+        {
+          "fields": {},
+          "id": 166,
+          "name": "ImpactEffects",
+          "type": "ImpactEffects"
         }
       ],
       "id": 2

@@ -5,7 +5,8 @@
 ::
 :: Usage: Tools\@build_effects.cmd [nobuild] [names ...] [--frames N] [--no-probe] [--install]
 ::   nobuild    skip generation/build, use the existing efkprobe.exe as-is
-::   names      definitions in Tools\effects\defs (without .efkproj). All when omitted
+::   names      definitions in Tools\effects\defs or Tools\effects\defs\<group> (without .efkproj).
+::              All when omitted
 ::   --install  after every effect passes, copy the .efkefc files and Texture\ to Assets\Effects
 ::
 :: Needs the environment variable NS_EFFEKSEER_TOOL (the Effekseer 1.80.7 Tool folder),
