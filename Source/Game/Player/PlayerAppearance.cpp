@@ -120,8 +120,15 @@ namespace NS::Game::Player
         }
         else if (m_input != nullptr && m_input->Judge().IsHeld())
         {
+            // 放せば出る向きへ回す。溜めて放した突進は狙いの線の向きへ、タップと線の無い時は AimDirection の向きへ出る
             // 狙いが決まらないフレームは前の軸で回し続ける
-            SetRollAxisToward(m_player->AimDirection(), m_spinAxis);
+            NS::Core::Vector3 aim = m_player->AimDirection();
+            NS::Game::Level::AimLine line{};
+            if (m_input->IsCharging() && m_input->TryGetAimLine(line))
+            {
+                aim = line.direction;
+            }
+            SetRollAxisToward(aim, m_spinAxis);
             m_spinSpeed =
                 m_emptyChargeSpinSpeed + (m_fullChargeSpinSpeed - m_emptyChargeSpinSpeed) * m_input->Judge().Charge01();
         }

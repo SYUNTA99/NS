@@ -60,8 +60,8 @@ namespace NS::Game::Level
         NS::Core::Vector3 direction;  //!< 探した水平の向き。正規化済みで y は 0
         float along = 0.0f;           //!< 自機の位置から相手の外接箱の中心までの、線に沿った水平の距離。単位は m
         float offset = 0.0f; //!< 線から相手の中心までの横ずれ。相手の半幅と自機の半径の和で割った比で、0 以上 1 以下
-        //! 線を進む自機の縁が相手の外接箱に触れる所までの、線に沿った水平の距離。単位は m。
-        //! along − (相手の外接箱の線の向きの半分の奥行き + 自機の半径)
+        //! 線を進む自機の当たりの玉が相手の当たりの形に初めて触れるまでに、玉の中心が線に沿って進む距離。単位は m。
+        //! 1 mm の幅で、触れている側へ丸める
         float contact = 0.0f;
     };
 
@@ -134,17 +134,18 @@ namespace NS::Game::Level
                                             NS::Obj::ObjectRef preferred = NS::Obj::ObjectRef{}) const;
 
         //! @brief 突進の線で最初に触れる相手を探す
-        //! @details 相手の絞りは FindHomingTarget と同じ。自機の位置から direction の水平の線を引き、
+        //! @details 相手の絞りは FindHomingTarget と同じ。自機の当たりの玉 (丸まっていれば根の位置、立ち姿なら下の球の
+        //! 位置が中心で、半径は自機の半径) を direction の水平へ maxDistance 掃き、当たりの裁定と同じ
+        //! PhysicsScene::OverlapCapsule で相手の body の実物の形に触れるかを見る。
         //! 線から相手の外接箱の中心までの横ずれが、外接箱を線に直交する軸へ投影した半幅と自機の半径の和以内で、
-        //! 中心までの線に沿った距離が 0 より大きく、線を進む自機の縁が相手の外接箱に触れる所
-        //! (中心までの距離 − 外接箱を線の向きの軸へ投影した半分の奥行き − 自機の半径) が maxDistance 以内の相手のうち、
-        //! 中心までの線に沿った距離が一番手前の 1 体を選ぶ。
-        //! 横ずれの比は当たりの裁定と同じ式で出し、裁定はそれを 0〜1 に丸めて使う。壁と地形と高さは見ない
+        //! 中心までの線に沿った距離が 0 より大きく、掃いた玉が触れる相手のうち、玉が触れるまでに進む距離が一番短い
+        //! 1 体を選ぶ。横ずれの比は当たりの裁定と同じ式で出し、裁定はそれを 0〜1 に丸めて使う。
+        //! 壁と地形で突進が止まることは見ない
         //! @param[in] direction 線の向き。水平の成分だけを見る
-        //! @param[in] maxDistance 線に沿って、自機の縁が相手に触れる所まで見る距離。単位は m
+        //! @param[in] maxDistance 線に沿って玉を掃く距離。単位は m
         //! @param[out] outTarget 見つけた相手の予測。見つからない場合は書き換えない
-        //! @return 見つかった場合 true。向きの水平の長さが 0 か有限でない場合、同じ配置物に移動が無い場合と、
-        //! 見つからない場合は false
+        //! @return 見つかった場合 true。向きの水平の長さが 0 か有限でない場合、見る距離が負か有限でない場合、
+        //! 同じ配置物に移動が無い場合と、見つからない場合は false
         [[nodiscard]] bool FindSlamLineTarget(const NS::Core::Vector3& direction,
                                               float maxDistance,
                                               SlamLineTarget& outTarget) const;

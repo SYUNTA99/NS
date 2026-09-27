@@ -83,15 +83,11 @@ namespace NS::Game::Level
         {
             float along = 0.0f; // 自機の位置から相手の中心までの、線に沿った水平の距離 (m)。後ろは負
             float ratio = 0.0f; // 線から相手の中心までの横ずれ ÷ (相手の半幅 + 自機の半径)。0〜1 へ丸めない
-            // 線を進む自機の縁が相手の外接箱に触れる所までの、線に沿った水平の距離 (m)。
-            // along − (相手の半分の奥行き + 自機の半径)。横にずれた相手の角をかすめる時は、実際に触れる所より手前に出る
-            float contact = 0.0f;
         };
 
         // 当たりの裁定と突進の線の予測が同じ式を通る。式を 2 つ置くと、予測した横ずれと当たりの段が食い違う
         // 分母は AABB を向きに直交する軸へ投影した半幅に自機の半径を足した値
         // 触れられる横ずれの上限が比 1 になる。斜めの箱でも角をかすめる当たりが 1
-        // 半分の奥行きは同じ AABB を向きの軸へ投影した値で、半幅と同じ書き方で出す
         // 球と傾いた箱は外接箱で測るので実際の縁より広く出る
         // 事前条件: direction の水平の長さが 0 でない
         [[nodiscard]] LineOffset MeasureLineOffset(const NS::Core::Vector3& position,
@@ -109,15 +105,13 @@ namespace NS::Game::Level
             const float lateralZ = toZ - along * dirZ;
             const float lateral = std::sqrt(lateralX * lateralX + lateralZ * lateralZ);
             const float halfWidth = std::abs(dirZ) * bounds.Extents.x + std::abs(dirX) * bounds.Extents.z;
-            const float halfDepth = std::abs(dirX) * bounds.Extents.x + std::abs(dirZ) * bounds.Extents.z;
-            const float contact = along - (halfDepth + playerRadius);
             const float reach = halfWidth + playerRadius;
             // 半幅と半径の和が 0 以下では割れない。中心扱いへ倒す
             if (!(reach > 0.0f))
             {
-                return LineOffset{.along = along, .ratio = 0.0f, .contact = contact};
+                return LineOffset{.along = along, .ratio = 0.0f};
             }
-            return LineOffset{.along = along, .ratio = lateral / reach, .contact = contact};
+            return LineOffset{.along = along, .ratio = lateral / reach};
         }
 
         // 相手の中心からの横ずれ 0..1。OnUpdate へ式を埋めると当たり判定の流れが読めなくなる
@@ -153,6 +147,56 @@ namespace NS::Game::Level
         [[nodiscard]] bool IsTouching(const std::vector<JPH::BodyID>& touching, JPH::BodyID id)
         {
             return std::find(touching.begin(), touching.end(), id) != touching.end();
+        }
+
+        // 触れる所を詰める幅の下限 (m)。1 mm は地面の矢印の先の位置の違いとして見分けられない長さ
+        constexpr float k_ContactTolerance = 0.001f;
+        // 触れる所を詰める回数の上限。10 m の線を 1 mm まで詰めるのは 14 回。浮動小数の桁が尽きて幅が縮まない時に止める
+        constexpr int k_ContactSearchSteps = 32;
+
+        // 半径 radius の玉が origin から direction へ distance 進む間に通る所。玉を線分に沿って掃いた形はカプセル
+        // 事前条件: direction が正規化済み、distance が 0 以上で有限
+        [[nodiscard]] NS::Phys::Capsule SweptBall(const NS::Core::Vector3& origin,
+                                                  const NS::Core::Vector3& direction,
+                                                  float distance,
+                                                  float radius) noexcept
+        {
+            const float half = distance * 0.5f;
+            return NS::Phys::Capsule{.center = origin + direction * half,
+                                     .axis = direction,
+                                     .halfHeight = half,
+                                     .radius = radius};
+        }
+
+        // 玉が body に初めて触れるまでに線に沿って進む距離 (m)。k_ContactTolerance の幅で、触れている側の端を返す
+        // 掃く長さを伸ばすほど触れる body は増えるだけなので、触れない長さと触れる長さの間を半分ずつ詰める
+        // 事前条件: SweptBall(origin, direction, distance, radius) が body に触れている
+        [[nodiscard]] float FirstTouchDistance(const NS::Phys::PhysicsScene& physics,
+                                               const NS::Core::Vector3& origin,
+                                               const NS::Core::Vector3& direction,
+                                               float distance,
+                                               float radius,
+                                               JPH::BodyID body)
+        {
+            if (IsTouching(physics.OverlapCapsule(SweptBall(origin, direction, 0.0f, radius)), body))
+            {
+                return 0.0f;
+            }
+            float missed = 0.0f;
+            float touched = distance;
+            for (int i = 0; i < k_ContactSearchSteps && touched - missed > k_ContactTolerance; ++i)
+            {
+                const float middle = (missed + touched) * 0.5f;
+                if (IsTouching(physics.OverlapCapsule(SweptBall(origin, direction, middle, radius)), body))
+                {
+                    touched = middle;
+                }
+                else
+                {
+                    missed = middle;
+                }
+            }
+            return touched;
         }
 
         // 体当たりの相手になれる壊せる物なら外接箱を取って true。当たりの裁定と寄せる相手の探索が同じ絞りを通る
@@ -327,8 +371,22 @@ namespace NS::Game::Level
             return false;
         }
 
+        // 非数・負・無限の距離では玉を掃けない
+        if (!(maxDistance >= 0.0f) || !std::isfinite(maxDistance))
+        {
+            return false;
+        }
+
         const NS::Core::Vector3 position = Owner()->Root().Position();
         const float playerRadius = m_movement->CapsuleRadius();
+        // 突進は丸まった玉で進む。丸まっていれば玉の中心は根そのもの。立ち姿から丸まる時は下端を揃えて根を半長ぶん
+        // 下げるので、立ち姿の下の球の中心が丸まった後の玉の中心になる
+        const NS::Core::Vector3 ballCenter{position.x, position.y - m_movement->CapsuleHalfHeight(), position.z};
+        // 届くかは裁定と同じく、自機の当たりの玉と相手の body の実物の形で見る。外接箱を水平に見ると、中心の高い
+        // 大きな球の端では、玉が触れずに横を通るのに届くと出る
+        const NS::Phys::PhysicsScene& physics = scene->Physics();
+        const std::vector<JPH::BodyID> swept =
+            physics.OverlapCapsule(SweptBall(ballCenter, lineDir, maxDistance, playerRadius));
 
         // TODO: 壊せる物を総当たりで見ている。数十個までを想定。増えたら格子で絞る
         bool found = false;
@@ -341,9 +399,8 @@ namespace NS::Game::Level
             }
 
             const LineOffset line = MeasureLineOffset(position, bounds, lineDir, playerRadius);
-            // 真横と後ろの相手は線の先に居ない。届くかは中心でなく、自機の縁が相手に触れる所で見る。
-            // 中心で見ると、大きい相手は突進が触れるのに見る距離の外へ落ちる。見る距離が非数なら比較が偽になり、誰も拾わない
-            if (!(line.along > 0.0f) || !(line.contact <= maxDistance))
+            // 真横と後ろの相手は線の先に居ない
+            if (!(line.along > 0.0f))
             {
                 return;
             }
@@ -352,7 +409,14 @@ namespace NS::Game::Level
             {
                 return;
             }
-            if (!found || line.along < first.along)
+            const JPH::BodyID body = CurrentBodyOf(*breakable.Owner());
+            if (!IsTouching(swept, body))
+            {
+                return;
+            }
+            // 最初に触れる相手は、中心の近さでなく玉が触れるまでに進む距離で決める。突進はそこで止まって当たる
+            const float contact = FirstTouchDistance(physics, ballCenter, lineDir, maxDistance, playerRadius, body);
+            if (!found || contact < first.contact)
             {
                 found = true;
                 first = SlamLineTarget{.target = NS::Obj::ObjectRef{breakable.Owner()->Id()},
@@ -361,7 +425,7 @@ namespace NS::Game::Level
                                        .direction = lineDir,
                                        .along = line.along,
                                        .offset = line.ratio,
-                                       .contact = line.contact};
+                                       .contact = contact};
             }
         });
 

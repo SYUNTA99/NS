@@ -11,6 +11,7 @@
 #include <Game/Level/ImpactMark.h>
 #include <Game/Level/ImpactResolver.h>
 #include <Game/Level/LaunchedBody.h>
+#include <Game/Player/PlayerAppearance.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Math.h>
@@ -1846,11 +1847,22 @@ namespace
         return other;
     }
 
-    // 高さを保って水平の位置だけを置き直す。予測は外接箱だけを読むので、物理の body は動かさない
+    // 置いた姿勢と拡縮へ物理の body を置き直す。予測は玉を掃いて body に触れるかを見るので、Transform だけでは足りない
+    void SyncBodyToTransform(NS::Obj::GameObject& object)
+    {
+        SceneNs::RigidBody* rigidBody = object.FindComponent<SceneNs::RigidBody>();
+        SceneNs::Scene* scene = object.OwningScene();
+        ASSERT_NE(rigidBody, nullptr);
+        ASSERT_NE(scene, nullptr);
+        rigidBody->SyncToPhysics(scene->Physics());
+    }
+
+    // 高さを保って水平の位置だけを置き直し、物理の body も同じ所へ置き直す
     void PlaceHorizontally(NS::Obj::GameObject& object, float x, float z)
     {
         const Vector3 position = object.Root().Position();
         object.Root().SetPosition(Vector3{x, position.y, z});
+        SyncBodyToTransform(object);
     }
 } // namespace
 
@@ -1882,7 +1894,7 @@ TEST(CollisionImpact, SlamLineTargetOffsetMatchesTheOffsetOfTheHit)
     }
 }
 
-// 線の外の近い相手より線の上の遠い相手を選ぶ。線の上に 2 体居れば、水平の距離でなく線に沿って手前の方
+// 線の外の近い相手より線の上の遠い相手を選ぶ。線の上に 2 体居れば、中心の近さでなく玉が先に触れる方
 TEST(CollisionImpact, SlamLineTargetIsTheFirstAlongTheLine)
 {
     SceneNs::Scene scene;
@@ -1899,12 +1911,14 @@ TEST(CollisionImpact, SlamLineTargetIsTheFirstAlongTheLine)
     ASSERT_TRUE(rig.impact->FindSlamLineTarget(Vector3{1.0f, 0.0f, 0.0f}, 10.0f, found));
     EXPECT_EQ(found.target, SceneNs::ObjectRef{rig.target->Id()});
 
-    // 横ずれ 0.85 で線に沿って 3 m の相手は、真正面 3.1 m の相手より水平には遠いが、線に沿っては手前
+    // 横ずれ 0.85 で中心が線に沿って 3 m の相手は、真正面 3.1 m の相手より中心が手前だが、角をかすめるので奥で触れる
+    // 真正面は 3.1 − 0.5 − 0.4 = 2.2 m、横の相手は 3.0 − 0.5 − √(0.4² − 0.35²) = 2.31 m 進んだ所
     PlaceHorizontally(*rig.target, position.x + 3.1f, position.z);
     PlaceHorizontally(*other, position.x + 3.0f, position.z + 0.85f);
     ASSERT_TRUE(rig.impact->FindSlamLineTarget(Vector3{1.0f, 0.0f, 0.0f}, 10.0f, found));
-    EXPECT_EQ(found.target, SceneNs::ObjectRef{other->Id()});
-    EXPECT_NEAR(found.along, 3.0f, 1e-4f);
+    EXPECT_EQ(found.target, SceneNs::ObjectRef{rig.target->Id()});
+    EXPECT_NEAR(found.along, 3.1f, 1e-4f);
+    EXPECT_NEAR(found.contact, 2.2f, 1e-3f);
 }
 
 // 触れる横の幅の外で比が 1 を超える相手、線に沿って見る距離の内で触れない相手、後ろの相手は返さない
@@ -1943,6 +1957,47 @@ TEST(CollisionImpact, SlamLineTargetReachesALargeTargetByItsNearFace)
     ASSERT_TRUE(rig.impact->FindSlamLineTarget(Vector3{1.0f, 0.0f, 0.0f}, 8.0f, found));
     EXPECT_EQ(found.target, SceneNs::ObjectRef{rig.target->Id()});
     EXPECT_NEAR(found.along, 10.0f, 1e-4f);
+}
+
+// 高い所に中心がある大きな球は、線から横へ離れるほど玉が触れる所が奥へ下がる。見積もりが届くと言う時だけ
+// 本当の突進も当たり、触れる所は当たったフレームの玉の位置と 1 フレームの進みの内で合う。寄せを外して真っすぐ走らせる
+// 半径 2.75 の球を床の上面 0.5 に載せると中心の高さは 3.25 で、玉 (半径 0.4) の中心 0.9 との差は 2.35。中心は 11.5 m 先
+// 横 0.5 m は触れる所が 11.5 − √(3.15² − 0.5² − 2.35²) = 9.46 m で、突進距離 10 m の内
+// 横 2.05 m は 11.5 − √(3.15² − 2.05² − 2.35²) = 11.05 m で外。外接箱を水平に見ると 11.5 − 3.15 = 8.35 m で内に出る
+TEST(CollisionImpact, SlamLineTargetReachesATallLargeTargetOnlyWhereTheRushTouchesIt)
+{
+    for (const float lateral : {0.5f, 2.05f})
+    {
+        SceneNs::Scene scene;
+        Rig rig = BuildSlam(
+            scene, SlamCourse{.start = 0.0f, .targetCell = 12, .withCollisionInput = false, .sphereTarget = true});
+        SetInstantImpact(rig);
+        SettleOnFloor(scene, rig);
+        rig.movement->SetCurled(true);
+        const Vector3 origin = rig.movement->Owner()->Root().Position();
+        rig.target->Root().SetScale(Vector3{5.5f, 5.5f, 5.5f});
+        rig.target->Root().SetPosition(Vector3{origin.x + 11.5f, 3.25f, origin.z - lateral});
+        SyncBodyToTransform(*rig.target);
+
+        LevelNs::SlamLineTarget found{};
+        const bool predicted =
+            rig.impact->FindSlamLineTarget(Vector3{1.0f, 0.0f, 0.0f}, rig.movement->BodySlamDistance(), found);
+
+        BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+        ASSERT_TRUE(rig.movement->IsBodySlamming()) << lateral;
+        const bool hit = StepUntilImpact(scene, rig, 40) < 40;
+        EXPECT_EQ(predicted, hit) << lateral;
+        if (!predicted || !hit)
+        {
+            continue;
+        }
+        EXPECT_EQ(found.target, SceneNs::ObjectRef{rig.target->Id()}) << lateral;
+        EXPECT_EQ(rig.impact->LastImpact().targetId, rig.target->Id()) << lateral;
+        // 裁定は玉を 1 フレーム進めた所で重なりを見る。当たったフレームの位置からその先までの間で初めて触れている
+        const float travelled = rig.movement->Owner()->Root().Position().x - origin.x;
+        EXPECT_GT(found.contact, travelled - 1e-3f) << lateral;
+        EXPECT_LE(found.contact, travelled + k_SlamSpeed * k_FixedDt + 1e-3f) << lateral;
+    }
 }
 
 // 裁定と同じ絞り。有効でない相手とトリガの箱は、線の上に居ても返さない
@@ -2445,6 +2500,37 @@ TEST(CollisionImpact, ChargingHomingMeasuresFromTheCameraFrontNotTheStick)
     const float expected = NS::Core::ToDegrees(NS::Core::Radians{std::atan2(-toTarget.z, toTarget.x)}).value;
     ASSERT_GT(expected, 3.0f);
     EXPECT_NEAR(rig.movement->HomingAngleDegrees(), expected, 0.05f);
+}
+
+// 溜めている間の玉は、倒した向きでなく狙いの線の向き (カメラの正面) へ前転する。放せば出る向きへ回って見える
+TEST(CollisionImpact, ChargingSpinsTheBallTowardTheAimLineNotTheStick)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_FarCourse);
+    ASSERT_NE(rig.input, nullptr);
+    NS::Game::Player::PlayerAppearance* appearance =
+        rig.movement->Owner()->FindComponent<NS::Game::Player::PlayerAppearance>();
+    ASSERT_NE(appearance, nullptr);
+    SettleOnFloor(scene, rig);
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{1.0f, 0.0f, 0.0f}));
+    // 倒した向きは +Z。倒し具合を 0 にして歩かせない
+    rig.movement->SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 0.0f);
+
+    MouseLeftPress press;
+    for (int i = 0; i < 30; ++i)
+    {
+        Step(scene, rig);
+    }
+    ASSERT_TRUE(rig.input->IsCharging());
+    // 倒した向きが狙いの向きに効いていることを先に見る。効いていなければ軸が線に沿うのは当たり前になる
+    ASSERT_GT(rig.movement->AimDirection().z, 0.9f);
+    appearance->OnUpdate();
+
+    // 線の向き (1, 0, 0) から (forward.z, 0, -forward.x) = (0, 0, -1)
+    const Vector3 axis = appearance->SpinAxis();
+    EXPECT_NEAR(axis.x, 0.0f, 1e-5f);
+    EXPECT_NEAR(axis.y, 0.0f, 1e-5f);
+    EXPECT_NEAR(axis.z, -1.0f, 1e-5f);
 }
 
 // 突進中も突進の向きの線で同じ決まり。線の外の近い的の側へ回らない

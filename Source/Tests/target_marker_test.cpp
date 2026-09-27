@@ -671,7 +671,7 @@ TEST(SlamArrow, RunsFromTheBallEdgeAsWideAsTheBall)
     EXPECT_FLOAT_EQ(shape.tip, 10.0f);
 }
 
-// 狙う相手のいる線では、矢印の先は相手の手前の面 (玉の縁が相手の外接箱に触れる所 + 玉の半径)
+// 狙う相手のいる線では、矢印の先は相手の手前の面 (掃いた玉が相手の当たりの形に触れる所 + 玉の半径)
 // 狙う相手の予測の along は相手の中心までのまま
 TEST(SlamArrow, TipStopsAtTheNearFaceOfTheTarget)
 {
@@ -693,13 +693,14 @@ TEST(SlamArrow, TipStopsAtTheNearFaceOfTheTarget)
     const float radius = rig.movement->CapsuleRadius();
     // 1 m 立方の的の中心は x = 5。線の向きの半分の奥行きは 0.5
     EXPECT_NEAR(aim.origin.x + aim.along, 5.0f, 1e-4f);
-    EXPECT_NEAR(aim.contact, aim.along - 0.5f - radius, 1e-4f);
+    // 触れる所は 1 mm の幅まで詰めた値
+    EXPECT_NEAR(aim.contact, aim.along - 0.5f - radius, 1e-3f);
 
     LevelNs::SlamArrowShape shape{};
     ASSERT_TRUE(rig.arrow->TryGetShownArrow(shape));
     EXPECT_FLOAT_EQ(shape.tip, shape.fullTip);
-    // 的の手前の面は x = 4.5
-    EXPECT_NEAR(shape.origin.x + shape.direction.x * shape.tip, 4.5f, 1e-4f);
+    // 的の手前の面は x = 4.5。触れる所を 1 mm の幅まで詰めるので、先も同じ幅で合う
+    EXPECT_NEAR(shape.origin.x + shape.direction.x * shape.tip, 4.5f, 1e-3f);
 }
 
 // 矢じりの奥行きは、玉の中心から先までの距離の 0.28 倍を 1.3〜2.8 m に抑えた値
