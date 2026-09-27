@@ -141,7 +141,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"CameraBrain", {"ブレンド秒数"}},
         {"CameraComponent", {}},
         {"CapsuleCollider", {"半径", "半分の高さ", "中心オフセット", "回転 (度)"}},
-        {"ChargeEffects", {}},
+        {"ChargeEffects", {"タップの弾けの大きさ", "溜めきりで足す弾けの大きさ"}},
         {"CollisionInput",
          {"チャージしきい値秒",
           "チャージ満タン秒",

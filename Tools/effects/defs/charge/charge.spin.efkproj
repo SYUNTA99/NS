@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 注: 編集ソフトの読み込みは注釈で落ちる。efkbuild.py が注釈を外した写しを作って渡す
+     回転の弧 (C2)。押したフレーム p から放したフレーム u まで出し続け、ChargeEffects が u に消す
+     動的入力 0 番は溜め量 0..1 (ChargeEffects が毎フレーム渡す)。既定の 1 は efkprobe で溜めきりの姿を見るため -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <!-- 回転の弧。向かい合う 120 度の弧 2 本。どの視点からも正面に見える板 (Billboard 3 = 回るカメラ向き) にし、
+           板の回りの角度は ChargeEffects が根の回転 (世界の Z 軸まわり) で毎フレーム渡す (玉が回った角度の累計)
+           明るさは溜め量 (動的入力 0 番) で段に上げる。色を途中で変える口が無いので、
+           段ごとに板を重ねて大きさの式で出し入れする
+           下塗り 3 枚: 不透明度 0.25 / +0.35 (溜め量 0.5 から) / +0.5 (溜めきり) -->
+      <Node>
+        <Name>ArcPaint</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>2.05</X>
+              <Y>2.05</Y>
+              <Z>2.05</Z>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_arc.png</ColorTexture>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>30</R>
+              <G>110</G>
+              <B>220</B>
+              <A>64</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>3</Billboard>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>ArcPaintHalf</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>2.05</X>
+              <Y>2.05</Y>
+              <Z>2.05</Z>
+              <DynamicEquation>0</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_arc.png</ColorTexture>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>30</R>
+              <G>110</G>
+              <B>220</B>
+              <A>90</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>3</Billboard>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>ArcPaintFull</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>2.05</X>
+              <Y>2.05</Y>
+              <Z>2.05</Z>
+              <DynamicEquation>1</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_arc.png</ColorTexture>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>30</R>
+              <G>110</G>
+              <B>220</B>
+              <A>128</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>3</Billboard>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+      <!-- 弧の半径は 0.9 m。層の表の 0.75 m (玉の半径の 1.15 倍) は溜まる光の殻の縁 (0.8 m) と重なり、弧が殻に紛れた
+           光 4 枚: 水色 0.8 / +0.27 (溜め量 1/3 から) / +0.27 (2/3 から) / 白水色 +0.6 (溜めきり)
+           青の成分は 1/3 で 1.07 になり 1 を超えてにじむ -->
+      <Node>
+        <Name>ArcAdd</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>2.05</X>
+              <Y>2.05</Y>
+              <Z>2.05</Z>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_arc.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>90</R>
+              <G>200</G>
+              <A>204</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>3</Billboard>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>ArcAddThird</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>2.05</X>
+              <Y>2.05</Y>
+              <Z>2.05</Z>
+              <DynamicEquation>2</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_arc.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>90</R>
+              <G>200</G>
+              <A>69</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>3</Billboard>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>ArcAddTwoThirds</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>2.05</X>
+              <Y>2.05</Y>
+              <Z>2.05</Z>
+              <DynamicEquation>3</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_arc.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>90</R>
+              <G>200</G>
+              <A>69</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>3</Billboard>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+      <!-- 溜めきりの白い弧の明るさの倍率 1 (にじませない)。倍率 3 では弧が玉の上を横切るたびに白くにじんだ帯になり、
+           向かい合う 2 本の弧が 1 フレーム 24 度で回るので約 8 フレームおきに、
+           溜めきりの横の閃きと同じ形・同じ明るさの帯が
+           玉の上に写った (押し続けている間に合図が何度も出たように見えた) -->
+      <!-- 溜めきりの白い弧。水色の弧の外 (半径 1.15 m) に、白水色の不透明度 1 の弧を
+           濃い青の下塗りと重ねて足す。溜めきりの閃きの後、放すまで出たまま続く
+           (手本の Monster Hunter Rise は段のはじけの後、刀身の色が次の段まで続く)。
+           同じ半径の弧に白水色 0.6 を足すだけでは、溜めきりの前 (溜め量 2/3 から) の弧と見分けられなかった -->
+      <Node>
+        <Name>ArcPaintWide</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>2.6</X>
+              <Y>2.6</Y>
+              <Z>2.6</Z>
+              <DynamicEquation>4</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_arc.png</ColorTexture>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>30</R>
+              <G>110</G>
+              <B>220</B>
+              <A>150</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>3</Billboard>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>ArcAddFull</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>2.6</X>
+              <Y>2.6</Y>
+              <Z>2.6</Z>
+              <DynamicEquation>4</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_arc.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>200</R>
+              <G>240</G>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>3</Billboard>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+    </Children>
+  </Root>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>1</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations>
+      <DynamicEquation>
+        <Name>HalfCharge</Name>
+        <Code>@O.x = 2.05 * step(0.5, @In0)
+@O.y = 2.05 * step(0.5, @In0)
+@O.z = 2.05 * step(0.5, @In0)</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>FullCharge</Name>
+        <Code>@O.x = 2.05 * step(0.999, @In0)
+@O.y = 2.05 * step(0.999, @In0)
+@O.z = 2.05 * step(0.999, @In0)</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>ThirdCharge</Name>
+        <Code>@O.x = 2.05 * step(0.34, @In0)
+@O.y = 2.05 * step(0.34, @In0)
+@O.z = 2.05 * step(0.34, @In0)</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>TwoThirdsCharge</Name>
+        <Code>@O.x = 2.05 * step(0.67, @In0)
+@O.y = 2.05 * step(0.67, @In0)
+@O.z = 2.05 * step(0.67, @In0)</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>FullChargeWide</Name>
+        <Code>@O.x = 2.6 * step(0.999, @In0)
+@O.y = 2.6 * step(0.999, @In0)
+@O.z = 2.6 * step(0.999, @In0)</Code>
+      </DynamicEquation>
+    </Equations>
+  </Dynamic>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <!-- 編集ソフトの再生の範囲。実行側には渡らないが、無いと編集ソフトの読み込みが落ちる -->
+  <StartFrame>0</StartFrame>
+  <EndFrame>60</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>

@@ -1,14 +1,386 @@
 #include "Game/Player/ChargeEffects.h"
 
+#include "Game/Level/CollisionInput.h"
+#include "Game/Level/ImpactInputJudge.h"
+#include "Game/Level/ImpactResolver.h"
+#include "Game/Player/PlayerAppearance.h"
+#include "Game/Player/PlayerComponent.h"
+#include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "Runtime/Object/Transform.h"
+
+#include <algorithm>
+#include <cmath>
 
 namespace NS::Game::Player
 {
+    namespace
+    {
+        // 弧の板を回す軸。世界の Z 軸まわりの回転だけが、視点へ向く板の回りの角度として読まれる
+        constexpr NS::Core::Vector3 k_SpinBoardAxis{0.0f, 0.0f, 1.0f};
+        constexpr NS::Core::Vector3 k_Unit{1.0f, 1.0f, 1.0f};
+
+        // 溜め量を渡す動的入力の番号。溜めの組の絵は全部 0 番で読む
+        constexpr int k_ChargeInput = 0;
+        // 放しの弾けで、溜めた量で大きさを変える層の倍率を渡す動的入力の番号
+        constexpr int k_BurstScaleInput = 1;
+        // 溜まる光へ溜めきってからの数を渡す動的入力の番号
+        constexpr int k_FullFramesInput = 1;
+
+        [[nodiscard]] NS::Gfx::EffectPlayDesc PlayDesc(const NS::Core::Vector3& position,
+                                                       const NS::Core::Quaternion& rotation,
+                                                       float charge01) noexcept
+        {
+            NS::Gfx::EffectPlayDesc desc{};
+            desc.position = position;
+            desc.rotation = rotation;
+            desc.dynamicInputs[k_ChargeInput] = charge01;
+            return desc;
+        }
+    } // namespace
+
     ChargeEffects::ChargeEffects() noexcept : NS::Obj::Component(NS::Obj::TickPriority::Update + 60) {}
+
+    void ChargeEffects::OnStart()
+    {
+        m_input = Owner()->FindComponent<NS::Game::Level::CollisionInput>();
+        m_player = Owner()->FindComponent<PlayerComponent>();
+        m_appearance = Owner()->FindComponent<PlayerAppearance>();
+        m_resolver = Owner()->FindComponent<NS::Game::Level::ImpactResolver>();
+
+        NS::Gfx::EffectScene* effects = EffectsOf(*this);
+        if (effects == nullptr)
+        {
+            return;
+        }
+        // 読めない絵は EffectScene が警告を出し、その層は記録だけ残る。遊びは止めない
+        for (std::string_view name : {k_Curl, k_Spin, k_Grind, k_Gather, k_Full, k_Burst, k_Trail})
+        {
+            static_cast<void>(effects->Preload(name));
+        }
+    }
 
     void ChargeEffects::OnUpdate()
     {
-        m_layers.BeginStep(EffectsOf(*this));
+        NS::Gfx::EffectScene* effects = EffectsOf(*this);
+        m_layers.BeginStep(effects);
+        StopDueLayers(effects);
+        if (m_input == nullptr || m_player == nullptr)
+        {
+            return;
+        }
+
+        const NS::Game::Level::ImpactInputJudge& judge = m_input->Judge();
+        const NS::Core::Vector3 center = RootTransform().Position();
+        const bool held = judge.IsHeld();
+        if (judge.JustPressed())
+        {
+            StartPress(effects, center);
+        }
+        if (judge.JustStartedCharging())
+        {
+            StartCharging(effects, center);
+        }
+        if (held && judge.IsChargeFull() && !m_fullShown)
+        {
+            StartFullFlash(effects, center);
+        }
+        m_framesSinceFull = 0;
+        if (held && m_fullShown)
+        {
+            m_framesSinceFull = m_layers.Step() - m_fullStep + 1;
+        }
+        if (held)
+        {
+            FollowHeldLayers(effects, center, judge.Charge01());
+        }
+        else if (m_wasHeld)
+        {
+            ClearHeldLayers(effects);
+        }
+
+        const bool slamming = m_player->IsBodySlamming();
+        if (slamming && !m_wasSlamming)
+        {
+            StartRelease(effects, center);
+        }
+        UpdateTrail(effects, center, slamming);
+
+        m_wasHeld = held;
+        m_wasSlamming = slamming;
+    }
+
+    void ChargeEffects::OnEndPlay()
+    {
+        NS::Gfx::EffectScene* effects = EffectsOf(*this);
+        for (const EffectLayerRecord& record : m_layers.Records())
+        {
+            if (!record.endStep.has_value())
+            {
+                m_layers.Stop(effects, record.id);
+            }
+        }
+        m_scheduledStops.clear();
+        m_curl = 0;
+        m_spin = 0;
+        m_grind = 0;
+        m_gather = 0;
+        m_full = 0;
+        m_trail = 0;
+        m_wasHeld = false;
+        m_wasSlamming = false;
+        m_trailAwaitsFreeze = false;
+        m_framesSinceFull = 0;
+    }
+
+    float ChargeEffects::ReleaseBurstScale(float charge01) const noexcept
+    {
+        float charge = 0.0f;
+        if (std::isfinite(charge01))
+        {
+            charge = std::clamp(charge01, 0.0f, 1.0f);
+        }
+        return m_tapBurstScale + m_fullBurstScaleGain * charge;
+    }
+
+    NS::Core::Quaternion ChargeEffects::YawToward(const NS::Core::Vector3& direction) noexcept
+    {
+        const float length = std::sqrt(direction.x * direction.x + direction.z * direction.z);
+        if (!std::isfinite(length) || length <= 0.0f)
+        {
+            return NS::Core::Quaternion::Identity;
+        }
+        // Y 軸まわりに角度 a 回すと +Z は (sin a, 0, cos a) へ向く
+        const float yaw = std::atan2(direction.x, direction.z);
+        return NS::Core::Quaternion::CreateFromAxisAngle(NS::Core::Vector3{0.0f, 1.0f, 0.0f}, yaw);
+    }
+
+    void ChargeEffects::StopDueLayers(NS::Gfx::EffectScene* effects) noexcept
+    {
+        const int step = m_layers.Step();
+        for (const ScheduledStop& scheduled : m_scheduledStops)
+        {
+            if (scheduled.step <= step)
+            {
+                m_layers.Stop(effects, scheduled.id);
+            }
+        }
+        std::erase_if(m_scheduledStops, [step](const ScheduledStop& scheduled) { return scheduled.step <= step; });
+        if (m_curl != 0 && m_layers.Find(m_curl) != nullptr && m_layers.Find(m_curl)->endStep.has_value())
+        {
+            m_curl = 0;
+        }
+        if (m_trail != 0 && m_layers.Find(m_trail) != nullptr && m_layers.Find(m_trail)->endStep.has_value())
+        {
+            m_trail = 0;
+        }
+        if (m_full != 0 && m_layers.Find(m_full) != nullptr && m_layers.Find(m_full)->endStep.has_value())
+        {
+            m_full = 0;
+        }
+    }
+
+    void ChargeEffects::StartPress(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
+    {
+        // 前の押しの層が残っていれば、新しい押しの層と重ねない
+        StopLayer(effects, m_curl);
+        StopLayer(effects, m_spin);
+        m_fullShown = false;
+        m_spinDegrees = 0.0f;
+
+        m_curl = m_layers.Play(effects, k_Curl, PlayDesc(center, NS::Core::Quaternion::Identity, 0.0f));
+        m_scheduledStops.push_back(ScheduledStop{m_curl, m_layers.Step() + k_CurlSteps});
+        m_spin = m_layers.Play(effects, k_Spin, PlayDesc(center, NS::Core::Quaternion::Identity, 0.0f));
+        // 玉を包む光は押したフレームから出し、丸まりの殻が消えた後も放すまで途切れさせない
+        StopLayer(effects, m_gather);
+        m_gather = m_layers.Play(effects, k_Gather, PlayDesc(center, NS::Core::Quaternion::Identity, 0.0f));
+    }
+
+    void ChargeEffects::StartCharging(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
+    {
+        StopLayer(effects, m_grind);
+        const float charge01 = m_input->Judge().Charge01();
+        m_grind = m_layers.Play(effects, k_Grind, PlayDesc(center, YawToward(HeldAimDirection()), charge01));
+    }
+
+    void ChargeEffects::StartFullFlash(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
+    {
+        m_fullShown = true;
+        m_fullStep = m_layers.Step();
+        StopLayer(effects, m_full);
+        m_full = m_layers.Play(effects, k_Full, PlayDesc(center, NS::Core::Quaternion::Identity, 1.0f));
+        m_scheduledStops.push_back(ScheduledStop{m_full, m_layers.Step() + k_FullFlashSteps});
+    }
+
+    void ChargeEffects::FollowHeldLayers(NS::Gfx::EffectScene* effects,
+                                         const NS::Core::Vector3& center,
+                                         float charge01) noexcept
+    {
+        if (m_appearance != nullptr)
+        {
+            m_spinDegrees = std::fmod(m_spinDegrees + m_appearance->SpinDegreesThisFrame(), 360.0f);
+        }
+        const NS::Core::Quaternion spinBoard = NS::Core::Quaternion::CreateFromAxisAngle(
+            k_SpinBoardAxis, NS::Core::ToRadians(NS::Core::Degrees{m_spinDegrees}).value);
+        Place(effects, m_curl, center, NS::Core::Quaternion::Identity);
+        Place(effects, m_spin, center, spinBoard);
+        Place(effects, m_grind, center, YawToward(HeldAimDirection()));
+        Place(effects, m_gather, center, NS::Core::Quaternion::Identity);
+        Place(effects, m_full, center, NS::Core::Quaternion::Identity);
+        SetCharge(effects, m_spin, charge01);
+        SetCharge(effects, m_grind, charge01);
+        SetCharge(effects, m_gather, charge01);
+        // 溜まる光は溜めきりで玉を包む光を広がりきった大きさの光に替え、この数で F + 4 まで残す
+        SetInput(effects, m_gather, k_FullFramesInput, static_cast<float>(m_framesSinceFull));
+    }
+
+    void ChargeEffects::ClearHeldLayers(NS::Gfx::EffectScene* effects) noexcept
+    {
+        // 空中の粉も溜まる光の点も同じフレームに消す。放した後に溜めの層を残さない
+        // タップは押した次のフレームに放すので、丸まりの殻もまだ出ている。消さないと放した後に足元の輪が残る
+        // 溜めきりの次のフレームに放すと閃きもまだ出ている。残すと放した後の縦の柱が溜めの層として写る
+        StopLayer(effects, m_curl);
+        StopLayer(effects, m_spin);
+        StopLayer(effects, m_grind);
+        StopLayer(effects, m_gather);
+        StopLayer(effects, m_full);
+    }
+
+    void ChargeEffects::StartRelease(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
+    {
+        const float charge01 = m_player->BodySlamCharge01();
+        m_slamDirection = m_player->BodySlamStartDirection();
+        const NS::Core::Quaternion facing = YawToward(m_slamDirection);
+
+        // 効果の全体を縮めると、タップの散って残る筋は玉の輪郭の内側で生まれ、はじけの光も画面を明るくしない。
+        // 大きさを変えるのは輪・丸屋根・筋だけにする
+        NS::Gfx::EffectPlayDesc burst = PlayDesc(center, facing, charge01);
+        burst.dynamicInputs[k_BurstScaleInput] = ReleaseBurstScale(charge01);
+        const std::uint32_t burstId = m_layers.Play(effects, k_Burst, burst);
+        m_scheduledStops.push_back(ScheduledStop{burstId, m_layers.Step() + k_BurstSteps});
+
+        // 前の突進の尾がまだ伸びていれば止め、新しい尾と繋げない
+        if (m_trail != 0)
+        {
+            StopTrailRoot(effects);
+        }
+        m_trailAwaitsFreeze = false;
+        m_trail = m_layers.Play(effects, k_Trail, PlayDesc(center, facing, charge01));
+    }
+
+    void ChargeEffects::UpdateTrail(NS::Gfx::EffectScene* effects,
+                                    const NS::Core::Vector3& center,
+                                    bool slamming) noexcept
+    {
+        if (m_trail == 0)
+        {
+            return;
+        }
+        const EffectLayerRecord* record = m_layers.Find(m_trail);
+        if (record == nullptr || record->rootStopStep.has_value())
+        {
+            return;
+        }
+
+        bool stop = false;
+        if (m_resolver != nullptr && m_resolver->FreezeBeganThisStep())
+        {
+            stop = true;
+        }
+        else if (m_trailAwaitsFreeze)
+        {
+            // 当たりを検知した次のフレームに止めが始まらなかった (止めが 0 の当たり)
+            stop = true;
+        }
+        else if (!slamming)
+        {
+            // 当たりで突進が打ち切られたフレームは、次のフレームの止めの頭まで尾を残す
+            if (m_resolver != nullptr && (m_resolver->DidRebound() || m_resolver->DidBreak()))
+            {
+                m_trailAwaitsFreeze = true;
+            }
+            else
+            {
+                stop = true;
+            }
+        }
+        if (stop)
+        {
+            StopTrailRoot(effects);
+            return;
+        }
+        if (slamming)
+        {
+            m_slamDirection = m_player->BodySlamVelocity();
+        }
+        Place(effects, m_trail, center, YawToward(m_slamDirection));
+    }
+
+    void ChargeEffects::StopTrailRoot(NS::Gfx::EffectScene* effects) noexcept
+    {
+        m_layers.StopRoot(effects, m_trail);
+        m_scheduledStops.push_back(ScheduledStop{m_trail, m_layers.Step() + k_TrailFadeSteps});
+        m_trailAwaitsFreeze = false;
+    }
+
+    void ChargeEffects::Place(NS::Gfx::EffectScene* effects,
+                              std::uint32_t id,
+                              const NS::Core::Vector3& position,
+                              const NS::Core::Quaternion& rotation) const noexcept
+    {
+        if (effects == nullptr || id == 0)
+        {
+            return;
+        }
+        const EffectLayerRecord* record = m_layers.Find(id);
+        if (record == nullptr || record->endStep.has_value())
+        {
+            return;
+        }
+        effects->SetTransform(record->handle, position, rotation, k_Unit);
+    }
+
+    void ChargeEffects::SetCharge(NS::Gfx::EffectScene* effects, std::uint32_t id, float charge01) const noexcept
+    {
+        SetInput(effects, id, k_ChargeInput, charge01);
+    }
+
+    void ChargeEffects::SetInput(NS::Gfx::EffectScene* effects, std::uint32_t id, int index, float value) const noexcept
+    {
+        if (effects == nullptr || id == 0)
+        {
+            return;
+        }
+        const EffectLayerRecord* record = m_layers.Find(id);
+        if (record == nullptr || record->endStep.has_value())
+        {
+            return;
+        }
+        effects->SetDynamicInput(record->handle, index, value);
+    }
+
+    NS::Core::Vector3 ChargeEffects::HeldAimDirection() const noexcept
+    {
+        NS::Game::Level::AimLine line{};
+        if (m_input != nullptr && m_input->TryGetAimLine(line))
+        {
+            return line.direction;
+        }
+        if (m_player != nullptr)
+        {
+            return m_player->AimDirection();
+        }
+        return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+    }
+
+    void ChargeEffects::StopLayer(NS::Gfx::EffectScene* effects, std::uint32_t& id) noexcept
+    {
+        if (id == 0)
+        {
+            return;
+        }
+        m_layers.Stop(effects, id);
+        id = 0;
     }
 
     NS_CLASS(ChargeEffects)

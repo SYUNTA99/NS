@@ -1,0 +1,770 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 注: 編集ソフトの読み込みは注釈で落ちる。efkbuild.py が注釈を外した写しを作って渡す
+     溜まる光 (C4)。押したフレーム p から放したフレーム u まで出し続け、ChargeEffects が u に消す
+     動的入力 0 番は溜め量 0..1。既定の 1 は efkprobe で溜めきりの姿を見るため
+     動的入力 1 番は溜めきったフレーム F を 1 とした数 (溜めきる前は 0)。ChargeEffects が毎フレーム渡す -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <!-- 溜まる光の点。半径 1.5 m の球面に生まれ、玉の中心へ 12 フレームで吸い込まれる (内向きに 0.125 m/フレーム)
+           1 フレームに 1 + 3 × 溜め量 個。玉に付いていく。点の本体は下塗りの濃い青で、白い升の上でも読める
+           子の 2 枚が光: 水色 1.0 と、溜め量 0.5 から足す白水色 1.0 -->
+      <Node>
+        <Name>Point</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <Infinite>True</Infinite>
+          </MaxGeneration>
+          <Life>
+            <Center>12</Center>
+            <Max>12</Max>
+            <Min>12</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <DynamicEquationMax>0</DynamicEquationMax>
+              <DynamicEquationMin>0</DynamicEquationMin>
+            </GenerationTime>
+          </Generation>
+        </CommonValues>
+        <LocationValues>
+          <Type>1</Type>
+          <PVA>
+            <Velocity>
+              <Y>
+                <Center>-0.125</Center>
+                <Max>-0.125</Max>
+                <Min>-0.125</Min>
+              </Y>
+            </Velocity>
+          </PVA>
+        </LocationValues>
+        <ScalingValues>
+          <Type>4</Type>
+          <SingleEasing>
+            <Start>
+              <Center>0.3</Center>
+              <Max>0.3</Max>
+              <Min>0.3</Min>
+            </Start>
+            <End>
+              <Center>0.1</Center>
+              <Max>0.1</Max>
+              <Min>0.1</Min>
+            </End>
+            <Type>1</Type>
+          </SingleEasing>
+        </ScalingValues>
+        <GenerationLocationValues>
+          <EffectsRotation>True</EffectsRotation>
+          <Type>1</Type>
+          <Sphere>
+            <Radius>
+              <Center>1.5</Center>
+              <Max>1.5</Max>
+              <Min>1.5</Min>
+            </Radius>
+            <RotationX>
+              <Max>180</Max>
+              <Min>-180</Min>
+            </RotationX>
+            <RotationY>
+              <Max>180</Max>
+              <Min>-180</Min>
+            </RotationY>
+          </Sphere>
+        </GenerationLocationValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_dot.png</ColorTexture>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>30</R>
+              <G>110</G>
+              <B>220</B>
+              <A>200</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+        <Children>
+          <Node>
+            <Name>PointAdd</Name>
+            <CommonValues>
+              <Life>
+                <Center>12</Center>
+                <Max>12</Max>
+                <Min>12</Min>
+              </Life>
+            </CommonValues>
+            <ScalingValues>
+              <Fixed>
+                <Scale>
+                  <X>0.7</X>
+                  <Y>0.7</Y>
+                  <Z>0.7</Z>
+                </Scale>
+              </Fixed>
+            </ScalingValues>
+            <RendererCommonValues>
+              <ColorTexture>Texture/charge_dot.png</ColorTexture>
+              <AlphaBlend>2</AlphaBlend>
+            </RendererCommonValues>
+            <DrawingValues>
+              <ColorAll>
+                <Fixed>
+                  <R>90</R>
+                  <G>200</G>
+                </Fixed>
+              </ColorAll>
+            </DrawingValues>
+          </Node>
+          <Node>
+            <Name>PointHot</Name>
+            <CommonValues>
+              <Life>
+                <Center>12</Center>
+                <Max>12</Max>
+                <Min>12</Min>
+              </Life>
+            </CommonValues>
+            <ScalingValues>
+              <Fixed>
+                <Scale>
+                  <X>0.7</X>
+                  <Y>0.7</Y>
+                  <Z>0.7</Z>
+                  <DynamicEquation>2</DynamicEquation>
+                </Scale>
+              </Fixed>
+            </ScalingValues>
+            <RendererCommonValues>
+              <ColorTexture>Texture/charge_dot.png</ColorTexture>
+              <AlphaBlend>2</AlphaBlend>
+            </RendererCommonValues>
+            <DrawingValues>
+              <ColorAll>
+                <Fixed>
+                  <R>200</R>
+                  <G>240</G>
+                </Fixed>
+              </ColorAll>
+            </DrawingValues>
+          </Node>
+        </Children>
+      </Node>
+      <!-- 玉を包む光の殻。直径 1.6 m。押したフレーム p から出し、
+           丸まりの殻 (charge.curl) が縮んで薄れる 6 フレームで
+           光を 0.08 から 0.7 へ上げる。丸まりの殻が消えた p + 6 に玉を包む光が途切れない
+           (手本の Sonic Frontiers は押したフレームから放すまで玉を包む光が途切れず強まる)
+           下塗り 0.12 / +0.12 (溜め量 0.5 から)、光 水色 0.7 / +0.19 (0.5 から) / 白水色 (溜めきり、
+           明るさの倍率 2 で縁が 1 を超えてにじむ)。寿命の後も消さないので、立ち上げた後は寿命の終わりの値のまま -->
+      <Node>
+        <Name>ShellPaint</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>1.78</X>
+              <Y>1.78</Y>
+              <Z>1.78</Z>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_shell.png</ColorTexture>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>30</R>
+              <G>110</G>
+              <B>220</B>
+              <A>31</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>ShellPaintHalf</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>1.78</X>
+              <Y>1.78</Y>
+              <Z>1.78</Z>
+              <DynamicEquation>1</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_shell.png</ColorTexture>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>30</R>
+              <G>110</G>
+              <B>220</B>
+              <A>31</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>ShellAdd</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+          <Life>
+            <Center>6</Center>
+            <Max>6</Max>
+            <Min>6</Min>
+          </Life>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>1.78</X>
+              <Y>1.78</Y>
+              <Z>1.78</Z>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_shell.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Type>2</Type>
+            <Easing>
+              <Start>
+                <R>
+                  <Center>90</Center>
+                  <Max>90</Max>
+                  <Min>90</Min>
+                </R>
+                <G>
+                  <Center>200</Center>
+                  <Max>200</Max>
+                  <Min>200</Min>
+                </G>
+                <A>
+                  <Center>20</Center>
+                  <Max>20</Max>
+                  <Min>20</Min>
+                </A>
+              </Start>
+              <End>
+                <R>
+                  <Center>90</Center>
+                  <Max>90</Max>
+                  <Min>90</Min>
+                </R>
+                <G>
+                  <Center>200</Center>
+                  <Max>200</Max>
+                  <Min>200</Min>
+                </G>
+                <A>
+                  <Center>180</Center>
+                  <Max>180</Max>
+                  <Min>180</Min>
+                </A>
+              </End>
+            </Easing>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>ShellAddHalf</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>1.78</X>
+              <Y>1.78</Y>
+              <Z>1.78</Z>
+              <DynamicEquation>1</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_shell.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>90</R>
+              <G>200</G>
+              <A>48</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <!-- 溜めきりの殻の光は白水色 0.35 に明るさの倍率 2。溜めきりの後、放すまで縁が白く光ったまま続く。
+           溜めきりの姿は charge.spin の外の白い弧 (形が 1 重から 2 重になる) が見せる。
+           0.8 に倍率 3 では、後ろからのカメラで玉のすぐ上に見える床の狙いの矢印が白く飛び、色が読めなかった -->
+      <Node>
+        <Name>ShellAddFull</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>1.78</X>
+              <Y>1.78</Y>
+              <Z>1.78</Z>
+              <DynamicEquation>3</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_shell.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+          <EmissiveScaling>2</EmissiveScaling>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>200</R>
+              <G>240</G>
+              <A>90</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <!-- 玉を包む光。中が抜けた柔らかい円の上の ±45 度を抜いた形 (素材 charge_aura、直径 2.8 m、
+           最も明るいのは半径 0.77 m)。
+           押したフレーム p から 6 フレームで不透明度 0 から 1 へ上げ (明るさの倍率 2.4)、
+           溜めきりの直前まで出し続ける。
+           溜めに入った後は溜め量で強める: 大きさを 1 + 0.6 × 溜め量 倍に広げ、
+           溜め量 0.02 (溜めに入った次のフレーム) から
+           倍率 1.6 の板を足し、溜め量 1/3 と 2/3 で倍率 1 の板を 1 枚ずつ足す。溜めきり (0.999) で全部を 0 にし、
+           同じフレームから下の広がりきった光 (AuraHandoff) に替える。
+           手本の Sonic Frontiers は押したフレームから放す直前まで玉を包む光が強まり続ける。
+           溜めに入った次のフレームから足す板は、
+           削る粉の塊が光の左右に重なって隠す分を埋める (無いと層の足した明るさが 1.9 から 1.4 へ下がった)。
+           上を抜くのは、後ろからのカメラで玉のすぐ上に見える床の狙いの矢印に光を重ねないため
+           (抜かない円を出したままにすると矢印の赤・黄・緑が白く飛び、p + 21 に消すと溜めている間に光が弱まった)。
+           中が抜けているのは玉と玉に付いた弧を白く塗らないため -->
+      <Node>
+        <Name>Aura</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+          <Life>
+            <Center>6</Center>
+            <Max>6</Max>
+            <Min>6</Min>
+          </Life>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>2.8</X>
+              <Y>2.8</Y>
+              <Z>2.8</Z>
+              <DynamicEquation>4</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_aura.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+          <EmissiveScaling>2.4</EmissiveScaling>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Type>2</Type>
+            <Easing>
+              <Start>
+                <R>
+                  <Center>90</Center>
+                  <Max>90</Max>
+                  <Min>90</Min>
+                </R>
+                <G>
+                  <Center>200</Center>
+                  <Max>200</Max>
+                  <Min>200</Min>
+                </G>
+                <A>
+                  <Center>0</Center>
+                  <Max>0</Max>
+                  <Min>0</Min>
+                </A>
+              </Start>
+              <End>
+                <R>
+                  <Center>90</Center>
+                  <Max>90</Max>
+                  <Min>90</Min>
+                </R>
+                <G>
+                  <Center>200</Center>
+                  <Max>200</Max>
+                  <Min>200</Min>
+                </G>
+              </End>
+            </Easing>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>AuraCharge</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>2.8</X>
+              <Y>2.8</Y>
+              <Z>2.8</Z>
+              <DynamicEquation>7</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_aura.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+          <EmissiveScaling>1.6</EmissiveScaling>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>90</R>
+              <G>200</G>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>AuraThird</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>2.8</X>
+              <Y>2.8</Y>
+              <Z>2.8</Z>
+              <DynamicEquation>5</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_aura.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>90</R>
+              <G>200</G>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>AuraTwoThirds</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>2.8</X>
+              <Y>2.8</Y>
+              <Z>2.8</Z>
+              <DynamicEquation>6</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_aura.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>90</R>
+              <G>200</G>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <!-- 溜めきりで玉を包む光が替わる、同じ形・広がりきった大きさ (直径 4.48 m) の光。明るさの倍率 2。
+           動的入力 1 番 (ChargeEffects が渡す溜めきったフレーム F を 1 とした数) で出し入れし、
+           F〜F + 1 は不透明度 0.78、
+           F + 4 は 0.5、F + 5 に消える。
+           手本の Monster Hunter Rise は溜めきりのフレームに刀身の橙の光が白い閃きに替わり、
+           画面の明るさは上がらず (−1.2%)、+4 から下がり +6 で溜めている間より 6% 暗い。
+           溜めきりの閃き (charge.full) の中に置くと、閃きの絵が後から出るので削る粉の上に足され、F〜F + 4 に粉が白く
+           消えて見え、閃きの下塗りも白く飛んだ。この絵は押したフレームに出るので、粉と閃きより先に描かれる。
+           不透明度 0.78 で aim_pick_target の画面の明るさは F − 1 と F が同じ、F + 3 まで 0.5% 上、F + 4 に 5%、
+           F + 5 から 9% 下がる
+           (0.9 では F に 0.5 上がった)。F + 2〜F + 3 は白いはじけ (AuraBurst) に替え、この光は出さない -->
+      <Node>
+        <Name>AuraHandoff</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>4.48</X>
+              <Y>4.48</Y>
+              <Z>4.48</Z>
+              <DynamicEquation>8</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_aura.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+          <EmissiveScaling>2.0</EmissiveScaling>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>90</R>
+              <G>200</G>
+              <A>200</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <!-- 溜めきりの白いはじけ。F + 2〜F + 3 の 2 フレーム、F〜F + 1 の替わる光 (AuraHandoff) に替えて出す。
+           玉を包む光と同じ形 (上を抜いた中が抜けた円) の白水色の光を 2 枚重ねる: 直径 3.0 m・明るさの倍率 6 の芯と、
+           直径 9.0 m・不透明度 0.09 の広い淡い光。手本の Monster Hunter Rise は 199〜200 に横の閃き、
+           201〜202 に体を包む白い光が
+           はじけ、白に近い画素 (全成分 230 以上) が溜めきりの前の 1.6 倍に増える。
+           画面の平均は上がらない (99.8 → 99.9)。
+           白い床の升は 225〜229 で、少しの光で 230 を超える。
+           芯だけで白に近い画素を 1.6 倍にすると画面の平均が 5% 上がった
+           (直径 4.0 m・倍率 12)。広い淡い光は升を 230 の上へ押し上げるだけで平均をほとんど上げない。
+           aim_pick_target の白に近い画素は F − 1 の 7.5% から F + 2 12.7%・F + 3 13.3% (1.69・1.77 倍)、
+           画面の平均は 107.4 → 108.9・109.4 -->
+      <Node>
+        <Name>AuraBurst</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>3.0</X>
+              <Y>3.0</Y>
+              <Z>3.0</Z>
+              <DynamicEquation>10</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_aura.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+          <EmissiveScaling>6.0</EmissiveScaling>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>200</R>
+              <G>240</G>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>AuraBurstWide</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>9.0</X>
+              <Y>9.0</Y>
+              <Z>9.0</Z>
+              <DynamicEquation>11</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_aura.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>200</R>
+              <G>240</G>
+              <A>24</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>AuraHandoffFade</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>4.48</X>
+              <Y>4.48</Y>
+              <Z>4.48</Z>
+              <DynamicEquation>9</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_aura.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+          <EmissiveScaling>2.0</EmissiveScaling>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>90</R>
+              <G>200</G>
+              <A>128</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+    </Children>
+  </Root>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>1</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations>
+      <DynamicEquation>
+        <Name>PointInterval</Name>
+        <Code>@O.x = 1 / (1 + 3 * @In0)</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>HalfChargeShell</Name>
+        <Code>@O.x = 1.78 * step(0.5, @In0)
+@O.y = 1.78 * step(0.5, @In0)
+@O.z = 1.78 * step(0.5, @In0)</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>HalfChargeUnit</Name>
+        <Code>@O.x = 0.7 * step(0.5, @In0)
+@O.y = 0.7 * step(0.5, @In0)
+@O.z = 0.7 * step(0.5, @In0)</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>FullChargeShell</Name>
+        <Code>@O.x = 1.78 * step(0.999, @In0)
+@O.y = 1.78 * step(0.999, @In0)
+@O.z = 1.78 * step(0.999, @In0)</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>AuraGrow</Name>
+        <Code>@O.x = 2.8 * (1 + 0.6 * @In0) * (1 - step(0.999, @In0))
+@O.y = 2.8 * (1 + 0.6 * @In0) * (1 - step(0.999, @In0))
+@O.z = 2.8 * (1 + 0.6 * @In0) * (1 - step(0.999, @In0))</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>AuraThird</Name>
+        <Code>@O.x = 2.8 * (1 + 0.6 * @In0) * (1 - step(0.999, @In0)) * step(0.34, @In0)
+@O.y = 2.8 * (1 + 0.6 * @In0) * (1 - step(0.999, @In0)) * step(0.34, @In0)
+@O.z = 2.8 * (1 + 0.6 * @In0) * (1 - step(0.999, @In0)) * step(0.34, @In0)</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>AuraTwoThirds</Name>
+        <Code>@O.x = 2.8 * (1 + 0.6 * @In0) * (1 - step(0.999, @In0)) * step(0.67, @In0)
+@O.y = 2.8 * (1 + 0.6 * @In0) * (1 - step(0.999, @In0)) * step(0.67, @In0)
+@O.z = 2.8 * (1 + 0.6 * @In0) * (1 - step(0.999, @In0)) * step(0.67, @In0)</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>AuraCharge</Name>
+        <Code>@O.x = 2.8 * (1 + 0.6 * @In0) * (1 - step(0.999, @In0)) * step(0.02, @In0)
+@O.y = 2.8 * (1 + 0.6 * @In0) * (1 - step(0.999, @In0)) * step(0.02, @In0)
+@O.z = 2.8 * (1 + 0.6 * @In0) * (1 - step(0.999, @In0)) * step(0.02, @In0)</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>AuraHandoff</Name>
+        <Code>@O.x = 4.48 * step(1, @In1) * (1 - step(3, @In1))
+@O.y = 4.48 * step(1, @In1) * (1 - step(3, @In1))
+@O.z = 4.48 * step(1, @In1) * (1 - step(3, @In1))</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>AuraHandoffFade</Name>
+        <Code>@O.x = 4.48 * step(5, @In1) * (1 - step(6, @In1))
+@O.y = 4.48 * step(5, @In1) * (1 - step(6, @In1))
+@O.z = 4.48 * step(5, @In1) * (1 - step(6, @In1))</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>AuraBurst</Name>
+        <Code>@O.x = 3.0 * step(3, @In1) * (1 - step(5, @In1))
+@O.y = 3.0 * step(3, @In1) * (1 - step(5, @In1))
+@O.z = 3.0 * step(3, @In1) * (1 - step(5, @In1))</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>AuraBurstWide</Name>
+        <Code>@O.x = 9.0 * step(3, @In1) * (1 - step(5, @In1))
+@O.y = 9.0 * step(3, @In1) * (1 - step(5, @In1))
+@O.z = 9.0 * step(3, @In1) * (1 - step(5, @In1))</Code>
+      </DynamicEquation>
+    </Equations>
+  </Dynamic>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <!-- 編集ソフトの再生の範囲。実行側には渡らないが、無いと編集ソフトの読み込みが落ちる -->
+  <StartFrame>0</StartFrame>
+  <EndFrame>60</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>

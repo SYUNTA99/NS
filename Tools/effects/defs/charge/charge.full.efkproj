@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 注: 編集ソフトの読み込みは注釈で落ちる。efkbuild.py が注釈を外した写しを作って渡す
+     溜めきりの閃き (C5)。1 回の押しで 1 回。溜めきりのフレーム F に出し、ChargeEffects が F + 6 に消す
+     ChargeEffects が消すまで毎フレーム玉の中心へ置き直す。F + 6 より前に放したら放したフレームに消す
+     玉を包む光 (charge.gather) は溜めきりで同じ形の広がりきった光に替わり、F + 2〜F + 3 は白いはじけ、
+     F + 4 に薄れて消える -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <!-- 溜めきりの横の閃き。幅 3.0 m・高さ 0.75 m (芯の線は中心の 0.06 m)。
+           溜めきりのフレーム F から F + 3 までの 4 フレーム
+           (色が変わらない板は寿命 n で n + 1 フレーム写るので寿命 3)。下塗りの濃い青で白い升の上の輪郭を作り、
+           光は白水色に明るさの倍率 4 (強くにじむ) -->
+      <Node>
+        <Name>FlashPaint</Name>
+        <CommonValues>
+          <Life>
+            <Center>3</Center>
+            <Max>3</Max>
+            <Min>3</Min>
+          </Life>
+        </CommonValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_flash_h.png</ColorTexture>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>30</R>
+              <G>110</G>
+              <B>220</B>
+              <A>220</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Position>1</Position>
+            <Position_Fixed_LL>
+              <X>-1.6</X>
+            </Position_Fixed_LL>
+            <Position_Fixed_LR>
+              <X>1.6</X>
+            </Position_Fixed_LR>
+            <Position_Fixed_UL>
+              <X>-1.6</X>
+            </Position_Fixed_UL>
+            <Position_Fixed_UR>
+              <X>1.6</X>
+            </Position_Fixed_UR>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+      <!-- 横の閃きの光は深度で切らない (ZTest を切る)。玉の中心を通る板なので、
+           深度で切ると最も明るい芯と中央が玉の裏に隠れ、
+           玉の左右に細い先だけが残って、玉を包む光と見分けられなかった。
+           下塗りは深度で切ったまま (玉の上を暗く塗らない)。
+           手本の Monster Hunter Rise の閃きも刀身の上を横切って描かれる -->
+      <Node>
+        <Name>FlashAdd</Name>
+        <CommonValues>
+          <Life>
+            <Center>3</Center>
+            <Max>3</Max>
+            <Min>3</Min>
+          </Life>
+        </CommonValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_flash_h.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+          <ZTest>False</ZTest>
+          <EmissiveScaling>4</EmissiveScaling>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>200</R>
+              <G>240</G>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Position>1</Position>
+            <Position_Fixed_LL>
+              <X>-1.5</X>
+              <Y>-0.375</Y>
+            </Position_Fixed_LL>
+            <Position_Fixed_LR>
+              <X>1.5</X>
+              <Y>-0.375</Y>
+            </Position_Fixed_LR>
+            <Position_Fixed_UL>
+              <X>-1.5</X>
+              <Y>0.375</Y>
+            </Position_Fixed_UL>
+            <Position_Fixed_UR>
+              <X>1.5</X>
+              <Y>0.375</Y>
+            </Position_Fixed_UR>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+      <!-- 縦の光の柱。高さ 2.4 m・根元の幅 0.6 m。横の閃きが消えた次のフレームに替わって出る。
+           生成の遅れ 4 で F + 4 に生まれ、
+           寿命 1 で F + 5 まで (手本の Monster Hunter Rise 199〜204 は横 4 フレームの後に縦 2 フレーム)
+           根元を玉の中心に置き、玉の上へ 2.4 m 立てる。縦は世界の上に固定 (Billboard 1)
+           (玉の中心を柱の中心にすると下半分は玉の裏に隠れ、玉の上に出るのは 0.55 m だけで、柱が見分けられなかった。
+           手本の柱も体から頭の上へ伸びる) -->
+      <Node>
+        <Name>PillarPaint</Name>
+        <CommonValues>
+          <Life>
+            <Center>1</Center>
+            <Max>1</Max>
+            <Min>1</Min>
+          </Life>
+          <Generation>
+            <GenerationTimeOffset>
+              <Center>4</Center>
+              <Max>4</Max>
+              <Min>4</Min>
+            </GenerationTimeOffset>
+          </Generation>
+        </CommonValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_pillar_v.png</ColorTexture>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>30</R>
+              <G>110</G>
+              <B>220</B>
+              <A>220</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>1</Billboard>
+            <Position>1</Position>
+            <Position_Fixed_LL>
+              <X>-0.45</X>
+              <Y>0.0</Y>
+            </Position_Fixed_LL>
+            <Position_Fixed_LR>
+              <X>0.45</X>
+              <Y>0.0</Y>
+            </Position_Fixed_LR>
+            <Position_Fixed_UL>
+              <X>-0.45</X>
+              <Y>2.4</Y>
+            </Position_Fixed_UL>
+            <Position_Fixed_UR>
+              <X>0.45</X>
+              <Y>2.4</Y>
+            </Position_Fixed_UR>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>PillarAdd</Name>
+        <CommonValues>
+          <Life>
+            <Center>1</Center>
+            <Max>1</Max>
+            <Min>1</Min>
+          </Life>
+          <Generation>
+            <GenerationTimeOffset>
+              <Center>4</Center>
+              <Max>4</Max>
+              <Min>4</Min>
+            </GenerationTimeOffset>
+          </Generation>
+        </CommonValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_pillar_v.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+          <EmissiveScaling>4</EmissiveScaling>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>200</R>
+              <G>240</G>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>1</Billboard>
+            <Position>1</Position>
+            <Position_Fixed_LL>
+              <X>-0.3</X>
+              <Y>0.0</Y>
+            </Position_Fixed_LL>
+            <Position_Fixed_LR>
+              <X>0.3</X>
+              <Y>0.0</Y>
+            </Position_Fixed_LR>
+            <Position_Fixed_UL>
+              <X>-0.3</X>
+              <Y>2.4</Y>
+            </Position_Fixed_UL>
+            <Position_Fixed_UR>
+              <X>0.3</X>
+              <Y>2.4</Y>
+            </Position_Fixed_UR>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <!-- 編集ソフトの再生の範囲。実行側には渡らないが、無いと編集ソフトの読み込みが落ちる -->
+  <StartFrame>0</StartFrame>
+  <EndFrame>12</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
