@@ -1,8 +1,10 @@
 #pragma once
 
 #include <Runtime/Core/Math.h>
+#include <Runtime/Object/Components/CameraComponent.h>
 #include <Runtime/Object/Components/ThirdPersonFollow.h>
 #include <Runtime/Object/Components/VirtualCamera.h>
+#include <Runtime/Object/Scene/Scene.h>
 
 #include <cmath>
 
@@ -44,5 +46,24 @@ namespace NsTest
     {
         const float sp = std::sin(follow.Pitch());
         return NS::Core::Vector3{-sp * std::sin(follow.Yaw()), std::cos(follow.Pitch()), -sp * std::cos(follow.Yaw())};
+    }
+
+    //! @brief シーンの実カメラの水平の正面を direction の水平の向きにする
+    //! @details 注視点を原点から direction へ 1 m 先の高さ 1 m に、位置を原点から direction の逆へ 6 m の
+    //! 高さ 3 m に置く。
+    //! 水平の正面だけを決める置き方で、自機を画面に入れる置き方ではない。仮想カメラが実カメラへ書くまで保つ
+    //! @param[in,out] scene 実カメラを置き直すシーン
+    //! @param[in] direction 正面にする向き。水平で長さ 1
+    //! @return 実カメラがあって置き直した場合 true、それ以外の場合は false
+    [[nodiscard]] inline bool FaceSceneCamera(NS::Obj::Scene& scene, const NS::Core::Vector3& direction)
+    {
+        NS::Obj::CameraComponent* camera = scene.MainCamera();
+        if (camera == nullptr)
+        {
+            return false;
+        }
+        camera->SetPosition(NS::Core::Vector3{-direction.x * 6.0f, 3.0f, -direction.z * 6.0f});
+        camera->SetTarget(NS::Core::Vector3{direction.x, 1.0f, direction.z});
+        return true;
     }
 } // namespace NsTest

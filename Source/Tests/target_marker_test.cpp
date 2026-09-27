@@ -1,5 +1,6 @@
 #include "Editor/EditorObjects.h"
 #include "Game/Player.h"
+#include "camera_screen.h"
 
 #include <Game/Level/Breakable.h>
 #include <Game/Level/CollisionInput.h>
@@ -279,13 +280,14 @@ namespace
         }
     }
 
-    // 床へ着けてから +X を狙う。落下が混ざると狙う相手を探す位置がフレームごとに動く
+    // 床へ着けてから、カメラの正面と倒す向きを +X にする。落下が混ざると狙う相手を探す位置がフレームごとに動く
     void SettleAndAimAhead(SceneNs::Scene& scene, const MarkerRig& rig)
     {
         for (int i = 0; i < 30 && !rig.movement->IsGrounded(); ++i)
         {
             Step(scene, rig);
         }
+        ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{1.0f, 0.0f, 0.0f}));
         rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
     }
 
@@ -346,14 +348,16 @@ namespace
         return {part, full};
     }
 
-// +X を狙う、玉の中心 (0, 1.15, 0) からの突進 10 m の線。溜めに入って 20 フレームで伸びきった後
+// +X を狙う、玉の中心 (0, 1.15, 0) からの突進 10 m の線。狙う相手の手前の面は 10 m 先 (玉の縁が触れる所は
+// 10 − 玉の半径)。矢印を出して 20 フレームで伸びきった後
 [[nodiscard]] LevelNs::SlamArrowState GrownStateAhead(float charge01)
 {
     return LevelNs::SlamArrowState{.line = LevelNs::AimLine{.origin = Vector3{0.0f, 1.15f, 0.0f},
                                                             .direction = Vector3{1.0f, 0.0f, 0.0f},
                                                             .length = 10.0f},
                                    .ballRadius = k_BallRadius,
-                                   .framesSinceChargeStart = 20,
+                                   .targetContact = 10.0f - k_BallRadius,
+                                   .framesSinceShown = 20,
                                    .charge01 = charge01};
 }
 
@@ -560,10 +564,10 @@ TEST(TargetMarker, SwitchingTargetsMovesTheFrameWithoutShrinkingAgain)
     ChargeUntilTheFrameSettles(scene, rig);
     ASSERT_EQ(rig.marker->ShownTargetRef(), SceneNs::ObjectRef{rig.target->Id()});
 
-    // 横の的へ 1 フレームで向ける。間に相手のいないフレームを挟まない
+    // カメラの正面を横の的へ 1 フレームで向ける。間に相手のいないフレームを挟まない
     Vector3 toSide{5.0f, 0.0f, 3.0f};
     toSide.Normalize();
-    rig.movement->SetDesiredMove(toSide, 0.0f);
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, toSide));
     Step(scene, rig);
     ASSERT_EQ(rig.marker->ShownTargetRef(), SceneNs::ObjectRef{rig.sideTarget->Id()});
     LevelNs::LockOnFrameShape switched{};
@@ -598,7 +602,7 @@ TEST(TargetMarker, LostTargetLeavesTheFrameForTwoFramesWithoutAShownTarget)
     ASSERT_TRUE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, held));
     const FrameSquare heldSquare = ReadFrameSquare(held);
 
-    rig.movement->SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 0.0f);
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{0.0f, 0.0f, 1.0f}));
     for (int lost = 0; lost < 2; ++lost)
     {
         Step(scene, rig);
@@ -653,8 +657,8 @@ TEST(TargetMarker, ShapeDoesNotChangeWithChargeOrMass)
     ExpectFrameNear(heavy.second, light.first);
 }
 
-// 相手のいない線では、矢印は玉の縁から突進が止まる所まで。帯の幅は玉の通る幅
-TEST(SlamArrow, TipReachesTheSlamDistanceWithoutATarget)
+// 矢印は狙いの線の上に、玉の縁から相手の手前の面まで。帯の幅は玉の通る幅
+TEST(SlamArrow, RunsFromTheBallEdgeAsWideAsTheBall)
 {
     LevelNs::SlamArrowShape shape{};
     ASSERT_TRUE(LevelNs::BuildSlamArrow(GrownStateAhead(0.2f), LevelNs::SlamArrowDesc{}, shape));
@@ -706,8 +710,6 @@ TEST(SlamArrow, HeadDepthIsAShareOfTheTipDistanceWithinLimits)
     for (int i = 0; i < 3; ++i)
     {
         LevelNs::SlamArrowState state = GrownStateAhead(0.2f);
-        state.line.length = 30.0f;
-        state.hasTarget = true;
         state.targetContact = contacts[i];
         LevelNs::SlamArrowShape shape{};
         ASSERT_TRUE(LevelNs::BuildSlamArrow(state, LevelNs::SlamArrowDesc{}, shape)) << i;
@@ -716,28 +718,101 @@ TEST(SlamArrow, HeadDepthIsAShareOfTheTipDistanceWithinLimits)
     }
 }
 
-// 溜めに入ったフレームに伸びきった長さの 1/10 で出て、10 フレーム目に伸びきる。等速に伸びる
-// 相手のいない横へ向けても、狙いの向きへ突進が止まる所まで伸びる
-TEST(SlamArrow, GrowsOverTenFramesFromTheChargeStartFrame)
+namespace
+{
+    // 矢印が出たフレームを 0 とした 0〜11 フレーム目に、伸びきった長さの 1/10 ずつ等速に伸び、10 フレーム目に伸びきる
+    void ExpectGrowsOverTenFrames(SceneNs::Scene& scene, const MarkerRig& rig)
+    {
+        for (int k = 0; k < 12; ++k)
+        {
+            LevelNs::SlamArrowShape shape{};
+            ASSERT_TRUE(rig.arrow->TryGetShownArrow(shape)) << k;
+            const float grown = std::min(1.0f, static_cast<float>(k + 1) / 10.0f);
+            EXPECT_NEAR(shape.tip, shape.start + (shape.fullTip - shape.start) * grown, 1e-4f) << k;
+            Step(scene, rig);
+        }
+    }
+} // namespace
+
+// 矢印が出たフレームに伸びきった長さの 1/10 で出て、10 フレーム目に伸びきる。等速に伸びる
+// 溜めに入った時に正面に相手がいれば溜めに入ったフレームから。カメラを外して戻すと、戻したフレームから伸び直す
+TEST(SlamArrow, GrowsOverTenFramesFromTheFrameItAppears)
 {
     SceneNs::Scene scene;
     MarkerRig rig = BuildMarkerCourse(scene, MarkerCourse{});
     ASSERT_NE(rig.arrow, nullptr);
     ASSERT_NE(rig.input, nullptr);
     SettleAndAimAhead(scene, rig);
-    rig.movement->SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 0.0f);
 
     MouseLeftPress press;
     StepUntilCharging(scene, rig);
-    for (int k = 0; k < 12; ++k)
+    ExpectGrowsOverTenFrames(scene, rig);
+
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{0.0f, 0.0f, 1.0f}));
+    Step(scene, rig);
+    LevelNs::SlamArrowShape away{};
+    ASSERT_FALSE(rig.arrow->TryGetShownArrow(away));
+
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{1.0f, 0.0f, 0.0f}));
+    Step(scene, rig);
+    ASSERT_TRUE(rig.input->IsCharging());
+    ExpectGrowsOverTenFrames(scene, rig);
+}
+
+// 溜めている間にスティックを横と後ろへ倒しても、狙いの線と矢印はカメラの正面のまま、狙う相手と枠も正面の相手のまま
+TEST(SlamArrow, StaysOnTheCameraFrontWhateverTheStick)
+{
+    SceneNs::Scene scene;
+    MarkerRig rig = BuildMarkerCourse(scene, MarkerCourse{});
+    ASSERT_NE(rig.arrow, nullptr);
+    ASSERT_NE(rig.input, nullptr);
+    ASSERT_NE(rig.target, nullptr);
+    SettleAndAimAhead(scene, rig);
+
+    MouseLeftPress press;
+    StepUntilCharging(scene, rig);
+    const Vector3 sticks[] = {Vector3{0.0f, 0.0f, 1.0f}, Vector3{0.0f, 0.0f, -1.0f}, Vector3{-1.0f, 0.0f, 0.0f}};
+    for (const Vector3& stick : sticks)
     {
-        LevelNs::SlamArrowShape shape{};
-        ASSERT_TRUE(rig.arrow->TryGetShownArrow(shape)) << k;
-        ExpectVector3Near(shape.direction, Vector3{0.0f, 0.0f, 1.0f});
-        EXPECT_FLOAT_EQ(shape.fullTip, rig.movement->BodySlamDistance()) << k;
-        const float grown = std::min(1.0f, static_cast<float>(k + 1) / 10.0f);
-        EXPECT_NEAR(shape.tip, shape.start + (shape.fullTip - shape.start) * grown, 1e-4f) << k;
+        rig.movement->SetDesiredMove(stick, 0.0f);
         Step(scene, rig);
+        ASSERT_TRUE(rig.input->IsCharging());
+        LevelNs::AimLine line{};
+        ASSERT_TRUE(rig.input->TryGetAimLine(line)) << stick.z;
+        ExpectVector3Near(line.direction, Vector3{1.0f, 0.0f, 0.0f});
+        LevelNs::SlamLineTarget aim{};
+        ASSERT_TRUE(rig.input->TryGetAimTarget(aim)) << stick.z;
+        EXPECT_EQ(aim.target, SceneNs::ObjectRef{rig.target->Id()});
+        LevelNs::SlamArrowShape shape{};
+        ASSERT_TRUE(rig.arrow->TryGetShownArrow(shape)) << stick.z;
+        ExpectVector3Near(shape.direction, Vector3{1.0f, 0.0f, 0.0f});
+        EXPECT_EQ(rig.marker->ShownTargetRef(), SceneNs::ObjectRef{rig.target->Id()});
+    }
+}
+
+// カメラの正面に相手がいなければ、スティックを相手へ倒していても矢印を組まず、枠も出さない
+TEST(SlamArrow, BuildsNothingWithoutATargetInFrontOfTheCamera)
+{
+    SceneNs::Scene scene;
+    MarkerRig rig = BuildMarkerCourse(scene, MarkerCourse{});
+    ASSERT_NE(rig.arrow, nullptr);
+    ASSERT_NE(rig.input, nullptr);
+    SettleAndAimAhead(scene, rig);
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{0.0f, 0.0f, 1.0f}));
+
+    MouseLeftPress press;
+    StepUntilCharging(scene, rig);
+    for (int i = 0; i < 12; ++i)
+    {
+        Step(scene, rig);
+        ASSERT_TRUE(rig.input->IsCharging());
+        LevelNs::SlamLineTarget aim{};
+        EXPECT_FALSE(rig.input->TryGetAimTarget(aim)) << i;
+        LevelNs::SlamArrowShape shape{};
+        EXPECT_FALSE(rig.arrow->TryGetShownArrow(shape)) << i;
+        EXPECT_FALSE(rig.marker->ShownTargetRef().IsSet()) << i;
+        LevelNs::LockOnFrameShape frame{};
+        EXPECT_FALSE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, frame)) << i;
     }
 }
 
@@ -885,9 +960,8 @@ TEST(SlamArrow, BrokenValuesBuildNothing)
     LevelNs::SlamArrowState noDirection = GrownStateAhead(0.2f);
     noDirection.line.direction = Vector3{0.0f, 0.0f, 0.0f};
     LevelNs::SlamArrowState negativeFrames = GrownStateAhead(0.2f);
-    negativeFrames.framesSinceChargeStart = -1;
+    negativeFrames.framesSinceShown = -1;
     LevelNs::SlamArrowState nanContact = GrownStateAhead(0.2f);
-    nanContact.hasTarget = true;
     nanContact.targetContact = nan;
     for (const LevelNs::SlamArrowState& state : {noDirection, negativeFrames, nanContact})
     {

@@ -22,22 +22,21 @@ namespace NS::Game::Player
 
 namespace NS::Game::Level
 {
-    //! 地面の矢印を組む時点の、溜めと狙いの様子
+    //! 地面の矢印を組む時点の、溜めと狙いの様子。矢印は線の上に狙う相手がいる時だけ組む
     struct SlamArrowState
     {
-        AimLine line{};                 //!< 狙いの線。矢印はこの線の真下の床に貼る
-        float ballRadius = 0.0f;        //!< 自機の玉の半径。単位は m。帯の幅はこの 2 倍
-        bool hasTarget = false;         //!< 線の上に狙う相手が居る場合 true
-        float targetContact = 0.0f;     //!< 線を進む玉の縁が狙う相手に触れる所までの、線に沿った距離。単位は m
-        int framesSinceChargeStart = 0; //!< 溜めに入ったフレームを 0 として数えたフレーム数
-        float charge01 = 0.0f;          //!< 溜め量 0..1
-        bool chargeFull = false;        //!< 溜めきりの場合 true
+        AimLine line{};             //!< 狙いの線。矢印はこの線の真下の床に貼る
+        float ballRadius = 0.0f;    //!< 自機の玉の半径。単位は m。帯の幅はこの 2 倍
+        float targetContact = 0.0f; //!< 線を進む玉の縁が狙う相手に触れる所までの、線に沿った距離。単位は m
+        int framesSinceShown = 0;   //!< 矢印を出したフレームを 0 として数えたフレーム数
+        float charge01 = 0.0f;      //!< 溜め量 0..1
+        bool chargeFull = false;    //!< 溜めきりの場合 true
     };
 
     //! 地面の矢印の形と色を決める値
     struct SlamArrowDesc
     {
-        int growFrames = 10;               //!< 溜めに入ってから先まで伸びきるフレーム数
+        int growFrames = 10;               //!< 矢印を出してから先まで伸びきるフレーム数
         float groundLift = 0.03f;          //!< 床から浮かせる高さ。単位は m
         float headWidth = 1.75f;           //!< 矢じりの幅。単位は m
         float headDepthRatio = 0.28f;      //!< 矢じりの奥行きの、玉の中心から先までの距離に対する割合
@@ -95,18 +94,18 @@ namespace NS::Game::Level
     using SlamArrowGroundProbe = std::function<bool(const NS::Core::Vector3& from, float maxDepth, float& outGroundY)>;
 
     //! @brief 溜めと狙いの様子から、地面の矢印の長さ・色の付いた部分・色を組む。床の高さは置かない
-    //! @details 帯は玉の縁 (state.ballRadius) から始まる。伸びきった先は、狙う相手がいれば
-    //! state.targetContact + state.ballRadius (相手の手前の面)、いなければ state.line.length (突進が止まる所)。
-    //! このフレームの先は、溜めに入ったフレームを 1 フレーム目として、desc.growFrames フレームで伸びきった先まで
-    //! 等速に伸びる。矢じりの奥行きは、desc.headDepthRatio × 先の距離を desc.headDepthMin と desc.headDepthMax で
-    //! 抑えた値。色の付いた部分の先は、玉の縁 + (伸びきった先 − 玉の縁) × 溜め量。溜めきりなら全部に色を付ける。
+    //! @details 帯は玉の縁 (state.ballRadius) から始まる。伸びきった先は state.targetContact + state.ballRadius
+    //! (狙う相手の手前の面)。このフレームの先は、矢印を出したフレームを 1 フレーム目として、desc.growFrames フレームで
+    //! 伸びきった先まで等速に伸びる。矢じりの奥行きは、desc.headDepthRatio × 先の距離を desc.headDepthMin と
+    //! desc.headDepthMax で抑えた値。色の付いた部分の先は、玉の縁 + (伸びきった先 − 玉の縁) × 溜め量。
+    //! 溜めきりなら全部に色を付ける。
     //! 段の色は、溜めきりなら desc.fullColor、溜め量が desc.lateStageFrom 未満なら desc.earlyColor、
     //! それ以外は desc.lateColor。伸びきった先が玉の縁より手前なら、先を玉の縁に置き、描く物は無い
     //! @param[in] state 溜めと狙いの様子
     //! @param[in] desc 形と色を決める値
     //! @param[out] outShape 組んだ形。帯の板と矢じりの板は空。false の場合は書き換えない
     //! @return 組めた場合 true。desc の 0 以下にできない欄が 0 以下の場合、有限でない値がある場合、
-    //! 狙いの向きの水平の長さが 0 の場合と、フレーム数が負の場合は false
+    //! 狙いの線の向きの水平の長さが 0 の場合と、フレーム数が負の場合は false
     [[nodiscard]] bool BuildSlamArrow(const SlamArrowState& state, const SlamArrowDesc& desc, SlamArrowShape& outShape);
 
     //! @brief 組んだ矢印の真下の床を探し、帯の板と矢じりの板を置く
@@ -119,10 +118,11 @@ namespace NS::Game::Level
     //! @param[in,out] shape BuildSlamArrow が組んだ形。帯の板と矢じりの板を置き直す
     void PlaceSlamArrowOnGround(const SlamArrowGroundProbe& probe, float groundLift, SlamArrowShape& shape);
 
-    //! @brief 溜めている間、突進の線の真下の床に矢印を貼って描く Component
-    //! @details 溜めている間 (CollisionInput::IsCharging) だけ、同じ配置物の CollisionInput が控えた狙いの線と
-    //! 狙う相手と溜め量から BuildSlamArrow で形を組み、所属シーンの当たりへの光線で PlaceSlamArrowOnGround が
-    //! 床に置く。形は OnUpdate で組んで控え、描く時は板を積むだけ。放したフレームは何も組まない。
+    //! @brief 溜めている間、狙いの線の上に狙う相手がいれば、線の真下の床に矢印を貼って描く Component
+    //! @details 溜めている間 (CollisionInput::IsCharging) に、同じ配置物の CollisionInput が控えた狙う相手が
+    //! いる時だけ、控えた狙いの線と狙う相手と溜め量から BuildSlamArrow で形を組み、所属シーンの当たりへの光線で
+    //! PlaceSlamArrowOnGround が床に置く。形は OnUpdate で組んで控え、描く時は板を積むだけ。
+    //! 狙う相手がいないフレームと放したフレームは何も組まない。
     //! 板は組み込みの上向きの板 shadowQuad に、帯と矢じりのマテリアル (Shaders/ground_arrow.ps.hlsl) を貼った半透明
     //! 依存: CollisionInput, NS::Game::Player::PlayerComponent, NS::Obj::Scene, NS::Phys::PhysicsScene
     class SlamArrow : public NS::Obj::Component, public NS::Obj::IRenderable
@@ -140,8 +140,8 @@ namespace NS::Game::Level
         //! 組み込みの板と、帯と矢じりのマテリアルを引き当てる
         void ResolveAssets(NS::Obj::AssetManager& assets) override;
 
-        //! 溜めている間は溜めに入ってからのフレーム数を数え、矢印を組んで床に置いて控える。
-        //! 溜めていないフレームは控えを消す
+        //! 溜めていて狙う相手がいる間は矢印を出してからのフレーム数を数え、矢印を組んで床に置いて控える。
+        //! 溜めていないか狙う相手がいないフレームは控えを消し、フレーム数を戻す
         void OnUpdate() override;
 
         //! 控えた矢印の帯の板と矢じりの板を積む。控えが無いか、資材が引けていなければ何も積まない
@@ -197,7 +197,7 @@ namespace NS::Game::Level
         SlamArrowDesc m_desc{};
         SlamArrowShape m_shown{}; // 控えた矢印。m_hasShown が偽の間は読まない
         bool m_hasShown = false;
-        int m_framesSinceChargeStart = -1; // 溜めていない間は負
+        int m_framesSinceShown = -1; // 矢印を出していない間は負
         const CollisionInput* m_input = nullptr;
         const NS::Game::Player::PlayerComponent* m_movement = nullptr;
         NS::Gfx::StaticMesh* m_mesh = nullptr;       // 共有の上向きの板 (非所有)

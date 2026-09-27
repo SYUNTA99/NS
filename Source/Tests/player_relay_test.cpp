@@ -428,13 +428,15 @@ namespace
         camera.follow.OnUpdate();
     }
 
-    // 床へ着けてから +X を狙う。落下が混ざると狙う相手を探す位置がフレームごとに動く
+    // 床へ着けてから、シーンの実カメラの正面と倒す向きを aim にする。
+    // 落下が混ざると狙う相手を探す位置がフレームごとに動く
     void SettleAndAim(Scene& scene, const ChargeRig& rig, const FeedCamera& camera, const Vector3& aim)
     {
         for (int i = 0; i < 30 && !rig.movement->IsGrounded(); ++i)
         {
             StepWithCamera(scene, rig, camera);
         }
+        ASSERT_TRUE(NsTest::FaceSceneCamera(scene, aim));
         rig.movement->SetDesiredMove(aim, 0.0f);
     }
 } // namespace
@@ -494,7 +496,7 @@ TEST_F(PlayerRelayTest, ChargeNarrowReturnsFromTheReleaseFrame)
     EXPECT_EQ(camera.follow.ChargeNarrowDegrees(), 0.0f);
 }
 
-// 狙う相手がいる間はその中心が渡って構図がずれ、狙いを外して居なくなれば同じ押しの間でも 0 へ戻る
+// 狙う相手がいる間はその中心が渡って構図がずれ、カメラの正面を外して居なくなれば同じ押しの間でも 0 へ戻る
 TEST_F(PlayerRelayTest, AimTargetCenterReachesTheCameraOnlyWhileThereIsOne)
 {
     Scene scene;
@@ -512,7 +514,7 @@ TEST_F(PlayerRelayTest, AimTargetCenterReachesTheCameraOnlyWhileThereIsOne)
     }
     EXPECT_GT(camera.follow.ChargeFrameOffset().x, 0.0f);
 
-    rig.movement->SetDesiredMove(Vector3{-1.0f, 0.0f, 0.0f}, 0.0f);
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{-1.0f, 0.0f, 0.0f}));
     for (int frame = 0; frame < 60; ++frame)
     {
         StepWithCamera(scene, rig, camera);

@@ -1,5 +1,6 @@
 #include "Editor/EditorObjects.h"
 #include "Game/Player.h"
+#include "camera_screen.h"
 #include "tuning_field_access.h"
 
 #include <Game/Level/Breakable.h>
@@ -2243,6 +2244,7 @@ TEST(CollisionImpact, AimTargetIsKeptWhileHeldAndDroppedOnRelease)
     Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .targetCell = 4});
     ASSERT_NE(rig.input, nullptr);
     SettleOnFloor(scene, rig);
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{1.0f, 0.0f, 0.0f}));
     rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
     LevelNs::SlamLineTarget aim{};
 
@@ -2268,6 +2270,24 @@ TEST(CollisionImpact, AimTargetIsKeptWhileHeldAndDroppedOnRelease)
     EXPECT_FALSE(rig.input->TryGetAimTarget(aim));
 }
 
+// シーンの実カメラが無ければ、押している間も狙いの線を控えない。倒した向きへ線を引き直さない
+TEST(CollisionImpact, AimLineIsNotKeptWithoutACamera)
+{
+    NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
+    SceneNs::GameObject owner;
+    NS::Game::Player::PlayerComponent* movement = owner.AddComponent<NS::Game::Player::PlayerComponent>();
+    LevelNs::CollisionInput* input = owner.AddComponent<LevelNs::CollisionInput>();
+    movement->OnStart();
+    input->OnStart();
+    movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
+
+    MouseLeftPress press;
+    input->OnUpdate();
+    ASSERT_TRUE(input->Judge().IsHeld());
+    LevelNs::AimLine line{};
+    EXPECT_FALSE(input->TryGetAimLine(line));
+}
+
 // 寄せの角度の内に居ても、狙いの線の外の相手は狙う相手にならない
 TEST(CollisionImpact, AimTargetIsNotKeptForATargetOffTheLine)
 {
@@ -2276,6 +2296,7 @@ TEST(CollisionImpact, AimTargetIsNotKeptForATargetOffTheLine)
     Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .lateral = 1.2f, .targetCell = 4});
     ASSERT_NE(rig.input, nullptr);
     SettleOnFloor(scene, rig);
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{1.0f, 0.0f, 0.0f}));
     rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
     Vector3 homingCenter{};
     ASSERT_TRUE(rig.impact->FindHomingTarget(Vector3{1.0f, 0.0f, 0.0f}, 30.0f, 6.0f, homingCenter));
@@ -2304,6 +2325,7 @@ TEST(CollisionImpact, HomingPrefersTheTargetOnTheLineOverANearerOneOffIt)
     Rig rig = BuildSlam(scene, k_NearerOffLineCourse);
     ASSERT_NE(rig.input, nullptr);
     SettleOnFloor(scene, rig);
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{1.0f, 0.0f, 0.0f}));
     rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
     Vector3 nearest{};
     ASSERT_TRUE(rig.impact->FindHomingTarget(Vector3{1.0f, 0.0f, 0.0f}, 30.0f, 6.0f, nearest));
@@ -2328,6 +2350,7 @@ TEST(CollisionImpact, HomingFallsBackToTheNearestWithoutATargetOnTheLine)
     Rig rig = BuildSlam(scene, course);
     ASSERT_NE(rig.input, nullptr);
     SettleOnFloor(scene, rig);
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{1.0f, 0.0f, 0.0f}));
     rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
 
     MouseLeftPress press;

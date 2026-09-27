@@ -244,16 +244,12 @@ namespace NS::Game::Level
 
     bool BuildSlamArrow(const SlamArrowState& state, const SlamArrowDesc& desc, SlamArrowShape& outShape)
     {
-        if (!IsValidDesc(desc) || state.framesSinceChargeStart < 0)
+        if (!IsValidDesc(desc) || state.framesSinceShown < 0)
         {
             return false;
         }
         if (!IsPositiveFinite(state.ballRadius) || !IsFiniteVector(state.line.origin) ||
-            !std::isfinite(state.line.length) || !std::isfinite(state.charge01))
-        {
-            return false;
-        }
-        if (state.hasTarget && !std::isfinite(state.targetContact))
+            !std::isfinite(state.targetContact) || !std::isfinite(state.charge01))
         {
             return false;
         }
@@ -269,17 +265,12 @@ namespace NS::Game::Level
         shape.direction = direction;
         shape.bandWidth = state.ballRadius * 2.0f;
         shape.start = state.ballRadius;
-        // 相手がいれば、玉の縁が相手に触れる所で玉の中心が居る位置から玉の半径だけ先 (相手の手前の面)
-        float fullTip = state.line.length;
-        if (state.hasTarget)
-        {
-            fullTip = state.targetContact + state.ballRadius;
-        }
-        shape.fullTip = std::max(fullTip, shape.start);
+        // 玉の縁が相手に触れる所で玉の中心が居る位置から玉の半径だけ先 (相手の手前の面)
+        shape.fullTip = std::max(state.targetContact + state.ballRadius, shape.start);
 
-        // 溜めに入ったフレームを 1 フレーム目として等速に伸びる
-        const float grown = std::min(
-            1.0f, (static_cast<float>(state.framesSinceChargeStart) + 1.0f) / static_cast<float>(desc.growFrames));
+        // 矢印を出したフレームを 1 フレーム目として等速に伸びる
+        const float grown =
+            std::min(1.0f, (static_cast<float>(state.framesSinceShown) + 1.0f) / static_cast<float>(desc.growFrames));
         shape.tip = shape.start + (shape.fullTip - shape.start) * grown;
         shape.headDepth = NS::Core::Clamp(desc.headDepthRatio * shape.tip, desc.headDepthMin, desc.headDepthMax);
 
@@ -405,34 +396,28 @@ namespace NS::Game::Level
     void SlamArrow::OnUpdate()
     {
         m_hasShown = false;
-        // 溜め量は放した後も残るので、溜めているかで組むフレームを決める
-        if (m_input == nullptr || m_movement == nullptr || !m_input->IsCharging())
+        // 溜め量は放した後も残るので、溜めているかで組むフレームを決める。カメラの正面に相手がいなければ出さない
+        SlamArrowState state{};
+        SlamLineTarget target{};
+        if (m_input == nullptr || m_movement == nullptr || !m_input->IsCharging() ||
+            !m_input->TryGetAimLine(state.line) || !m_input->TryGetAimTarget(target))
         {
-            m_framesSinceChargeStart = -1;
+            m_framesSinceShown = -1;
             return;
         }
-        if (m_framesSinceChargeStart < 0)
+        // 前のフレームに出ていなければ 0 から数える。相手が替わっても数え直さない
+        if (m_framesSinceShown < 0)
         {
-            m_framesSinceChargeStart = 0;
+            m_framesSinceShown = 0;
         }
-        else if (m_framesSinceChargeStart < std::numeric_limits<int>::max())
+        else if (m_framesSinceShown < std::numeric_limits<int>::max())
         {
-            ++m_framesSinceChargeStart;
+            ++m_framesSinceShown;
         }
 
-        SlamArrowState state{};
-        if (!m_input->TryGetAimLine(state.line))
-        {
-            return;
-        }
         state.ballRadius = m_movement->CapsuleRadius();
-        SlamLineTarget target{};
-        state.hasTarget = m_input->TryGetAimTarget(target);
-        if (state.hasTarget)
-        {
-            state.targetContact = target.contact;
-        }
-        state.framesSinceChargeStart = m_framesSinceChargeStart;
+        state.targetContact = target.contact;
+        state.framesSinceShown = m_framesSinceShown;
         state.charge01 = m_input->Judge().Charge01();
         state.chargeFull = m_input->IsChargeFull();
 

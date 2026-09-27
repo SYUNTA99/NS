@@ -4,8 +4,10 @@
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
+#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Platform/Clock.h"
 #include "Runtime/Platform/Gamepad.h"
@@ -146,8 +148,19 @@ namespace NS::Game::Level
         {
             return;
         }
+        // 線はカメラの正面だけで引き、押したキーとスティックの向きは入れない。カメラが無ければ見ている正面が無い
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+        {
+            return;
+        }
+        const NS::Obj::CameraComponent* camera = scene->MainCamera();
+        if (camera == nullptr)
+        {
+            return;
+        }
         NS::Core::Vector3 direction{};
-        if (!NS::Core::TryNormalizeHorizontal(m_movement->AimDirection(), direction))
+        if (!NS::Core::TryNormalizeHorizontal(camera->ForwardHorizontal(), direction))
         {
             return;
         }
@@ -194,9 +207,10 @@ namespace NS::Game::Level
             return;
         }
 
-        // 突進中は今飛んでいる向き、押している間は今の狙いの向きの前方を探す
-        // 狙いの向きは放すフレームの入力で変わるので、自機は放す時に控えた相手を放す向きから測り直す
+        // 突進中は今飛んでいる向き、押している間は突進を出す向き (AimDirection) の前方を探す
+        // 突進を出す向きは放すフレームの入力で変わるので、自機は放す時に控えた相手を放す向きから測り直す
         // 線の上の相手を先に選ぶ。一番近い相手だけを見ると、狙う相手と違う近くの相手の側へ回る
+        // 押している間の線の上の相手は、カメラの正面の線で探した狙う相手
         NS::Core::Vector3 forward{};
         SlamLineTarget onLine{};
         bool hasOnLine = false;

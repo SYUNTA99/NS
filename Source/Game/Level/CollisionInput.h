@@ -14,11 +14,12 @@ namespace NS::Game::Player
 
 namespace NS::Game::Level
 {
-    //! @brief 押している間の狙いの線。狙う相手を探す線で、溜めている間は SlamArrow がこの線の真下の床に矢印を貼る
+    //! @brief 押している間の狙いの線。狙う相手を探す線で、溜めている間に相手がいれば SlamArrow がこの線の真下の床に
+    //! 矢印を貼る
     struct AimLine
     {
         NS::Core::Vector3 origin;    //!< 線を引き始める自機の位置 (配置物の根)。世界座標
-        NS::Core::Vector3 direction; //!< 狙いの水平の向き。正規化済みで y は 0
+        NS::Core::Vector3 direction; //!< シーンの実カメラの正面の水平の向き。正規化済みで y は 0
         float length = 0.0f;         //!< 線に沿って突進が止まる所までの距離。欄「突進距離」の値で、単位は m
     };
 
@@ -37,8 +38,8 @@ namespace NS::Game::Level
         void OnStart() override;
 
         //! @brief ボタンの保持を判定へ 1 フレーム進め、発動を控えたフレームに溜め量を添えて体当たりを要求する
-        //! @details 押している間は狙う相手を探して控える。押している間と突進の間は、基準の向きの線の上の相手か、
-        //! 前方の近い相手へ突進の向きを寄せる
+        //! @details 押している間はカメラの正面の線で狙う相手を探して控える。押している間と突進の間は、線の上の相手か、
+        //! 基準の向きの前方の近い相手へ突進の向きを寄せる
         void OnUpdate() override;
 
         //! 構えの縮みが残っていれば元の形へ戻し、自機へ渡した押しの印を戻して丸まりを解く
@@ -72,9 +73,11 @@ namespace NS::Game::Level
         [[nodiscard]] bool TryGetAimTarget(SlamLineTarget& outTarget) const noexcept;
 
         //! @brief 押している間に控えた狙いの線を読む
-        //! @details 押している間は毎フレーム、自機の位置から PlayerComponent::AimDirection の水平の向きへ、
-        //! PlayerComponent::BodySlamDistance の長さの線を控える。狙う相手がいなくても控える。
-        //! 押していないフレームと、狙いの向きが決まらない (水平の長さが 0 か有限でない) フレームは控えを消す
+        //! @details 押している間は毎フレーム、自機の位置からシーンの実カメラの正面の水平の向き
+        //! (NS::Obj::CameraComponent::ForwardHorizontal) へ、PlayerComponent::BodySlamDistance の長さの線を控える。
+        //! 押したキーとスティックの向きは使わない。狙う相手がいなくても控える。
+        //! 押していないフレーム、所属シーンか実カメラが無いフレーム、正面の向きが決まらない (水平の長さが 0 か
+        //! 有限でない) フレームは控えを消す
         //! @param[out] outLine 控えた狙いの線。控えが無い場合は書き換えない
         //! @return 控えがある場合 true、それ以外の場合は false
         [[nodiscard]] bool TryGetAimLine(AimLine& outLine) const noexcept;
@@ -100,10 +103,11 @@ namespace NS::Game::Level
 
     private:
         void UpdateChargeStance();
-        // 押している間は狙いの線を作って控え、その線で狙う相手を探して控える。押していなければ両方の控えを消す
+        // 押している間はカメラの正面へ狙いの線を作って控え、その線で狙う相手を探して控える。
+        // 押していなければ両方の控えを消す
         void UpdateAimTarget();
-        // 押している間と突進の間に、基準の向きの線の上の相手が寄せの角度と距離の内に居ればそれへ、
-        // 居なければ前方で一番近い相手へ突進の向きを寄せる
+        // 押している間は狙う相手、突進の間は突進の向きの線の上の相手が、寄せの角度と距離の内に居ればそれへ、
+        // 居なければ基準の向きの前方で一番近い相手へ突進の向きを寄せる
         void SteerTowardTarget();
 
 #if !defined(NS_SHIPPING)
