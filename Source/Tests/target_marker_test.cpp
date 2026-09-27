@@ -4,6 +4,7 @@
 #include <Game/Level/Breakable.h>
 #include <Game/Level/CollisionInput.h>
 #include <Game/Level/ImpactResolver.h>
+#include <Game/Level/SlamArrow.h>
 #include <Game/Level/TargetMarker.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Runtime/Core/AABB.h>
@@ -33,7 +34,7 @@
 namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Obj;
 
-// 形を組む関数は溜め量・威力・質量を受け取らない。受け取る口が無ければ、それらで形を変えられない
+// 枠を組む関数は溜め量・威力・質量を受け取らない。受け取る口が無ければ、それらで枠を変えられない
 // 受け取るフレーム数は捉えてから・外れてからの時間
 static_assert(std::is_same_v<decltype(&LevelNs::BuildLockOnFrame),
                              bool (*)(const NS::Core::Matrix&,
@@ -42,21 +43,6 @@ static_assert(std::is_same_v<decltype(&LevelNs::BuildLockOnFrame),
                                       LevelNs::LockOnFrames,
                                       const LevelNs::TargetMarkerDesc&,
                                       LevelNs::LockOnFrameShape&)>);
-static_assert(std::is_same_v<decltype(&LevelNs::BuildTargetMarkerShape),
-                             bool (*)(const NS::Core::Matrix&,
-                                      NS::Core::Size2D,
-                                      const LevelNs::SlamLineTarget&,
-                                      float,
-                                      int,
-                                      const LevelNs::TargetMarkerDesc&,
-                                      LevelNs::TargetMarkerShape&)>);
-static_assert(std::is_same_v<decltype(&LevelNs::BuildAimPathShape),
-                             bool (*)(const NS::Core::Matrix&,
-                                      NS::Core::Size2D,
-                                      const LevelNs::AimLine&,
-                                      float,
-                                      const LevelNs::TargetMarkerDesc&,
-                                      LevelNs::TargetMarkerShape&)>);
 
 namespace
 {
@@ -90,16 +76,14 @@ namespace
     }
 
     // +X の線の上、自機の玉の中心 (0, 1, 0) から 5 m 先の 1 m 立方の相手
-    [[nodiscard]] LevelNs::SlamLineTarget LineTargetAhead(float lateral, float offset)
+    [[nodiscard]] NS::Core::AABB BoxAhead()
     {
-        return LevelNs::SlamLineTarget{.target = SceneNs::ObjectRef{7},
-                                       .bounds =
-                                           NS::Core::AABB{Vector3{5.0f, 1.0f, lateral}, Vector3{0.5f, 0.5f, 0.5f}},
-                                       .origin = Vector3{0.0f, 1.0f, 0.0f},
-                                       .direction = Vector3{1.0f, 0.0f, 0.0f},
-                                       .along = 5.0f,
-                                       .offset = offset};
+        return NS::Core::AABB{Vector3{5.0f, 1.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}};
     }
+
+    // 枠が捉えている間の白。欄「印の色」の既定 (245, 247, 255) / 255
+    constexpr float k_WhiteR = 245.0f / 255.0f;
+    constexpr float k_WhiteG = 247.0f / 255.0f;
 
     void ExpectRectNear(const LevelNs::MarkerRect& actual, const LevelNs::MarkerRect& expected, std::size_t index)
     {
@@ -131,16 +115,6 @@ namespace
         }
         ExpectColorNear(actual.color, expected.color);
         ExpectColorNear(actual.outlineColor, expected.outlineColor);
-    }
-
-    void ExpectShapeNear(const LevelNs::TargetMarkerShape& actual, const LevelNs::TargetMarkerShape& expected)
-    {
-        ExpectFrameNear(actual.frame, expected.frame);
-        ASSERT_EQ(actual.dots.size(), expected.dots.size());
-        for (std::size_t i = 0; i < expected.dots.size(); ++i)
-        {
-            ExpectRectNear(actual.dots[i], expected.dots[i], i);
-        }
     }
 
     // 枠の明るい線から読んだ、囲む正方形の左上と一辺
@@ -201,11 +175,6 @@ namespace
         return 2.0f * ((centerY - topY) + 6.0f);
     }
 
-    [[nodiscard]] NS::Core::Vector2 RectCenter(const LevelNs::MarkerRect& rect) noexcept
-    {
-        return NS::Core::Vector2{rect.x + rect.width * 0.5f, rect.y + rect.height * 0.5f};
-    }
-
     // 押しの入口は CollisionInput が読む実機のマウスなので、試しの後に押したまま残すと他の試しが押しを拾う
     struct MouseLeftPress
     {
@@ -229,6 +198,7 @@ namespace
         NS::Game::Player::PlayerComponent* movement = nullptr;
         LevelNs::CollisionInput* input = nullptr;
         LevelNs::TargetMarker* marker = nullptr;
+        LevelNs::SlamArrow* arrow = nullptr;
         SceneNs::GameObject* target = nullptr;
         SceneNs::GameObject* sideTarget = nullptr;
     };
@@ -258,6 +228,7 @@ namespace
             SceneNs::ObjectJsonComponents(player).push_back(SceneNs::MakeComponentEntry("CollisionInput"));
         }
         SceneNs::ObjectJsonComponents(player).push_back(SceneNs::MakeComponentEntry("TargetMarker"));
+        SceneNs::ObjectJsonComponents(player).push_back(SceneNs::MakeComponentEntry("SlamArrow"));
         SceneNs::SceneJsonObjects(data).push_back(player);
 
         for (std::int16_t i = -3; i <= 8; ++i)
@@ -280,6 +251,7 @@ namespace
             rig.movement = live->FindComponent<NS::Game::Player::PlayerComponent>();
             rig.input = live->FindComponent<LevelNs::CollisionInput>();
             rig.marker = live->FindComponent<LevelNs::TargetMarker>();
+            rig.arrow = live->FindComponent<LevelNs::SlamArrow>();
             // 起こしたままだと実機の入力が毎フレーム 0 を書き込み、試しが置いた狙いの向きが消える
             if (SceneNs::PlayerInput* input = live->FindComponent<SceneNs::PlayerInput>())
             {
@@ -317,14 +289,20 @@ namespace
         rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
     }
 
-    // 押して溜めに入り、枠が縮み切るまで回す
-    void ChargeUntilTheFrameSettles(SceneNs::Scene& scene, const MarkerRig& rig)
+    // 押したまま溜めに入るフレームまで回す
+    void StepUntilCharging(SceneNs::Scene& scene, const MarkerRig& rig)
     {
         for (int i = 0; i < 20 && !rig.input->IsCharging(); ++i)
         {
             Step(scene, rig);
         }
         ASSERT_TRUE(rig.input->IsCharging());
+    }
+
+    // 押して溜めに入り、枠が縮み切るまで回す
+    void ChargeUntilTheFrameSettles(SceneNs::Scene& scene, const MarkerRig& rig)
+    {
+        StepUntilCharging(scene, rig);
         for (int i = 0; i < k_SettledFrames; ++i)
         {
             Step(scene, rig);
@@ -337,13 +315,13 @@ namespace
         return LookFrom(Vector3{-4.0f, 3.0f, 0.0f}, Vector3{5.0f, 1.0f, 0.0f});
     }
 
-    // 質量の違う的を置き、溜め量 0.3 と溜めきりで組んだ形を返す
-    std::pair<LevelNs::TargetMarkerShape, LevelNs::TargetMarkerShape> ShapesAtPartAndFullCharge(float targetMass)
+    // 質量の違う的を置き、溜め量 0.3 と溜めきりで組んだ枠を返す
+    std::pair<LevelNs::LockOnFrameShape, LevelNs::LockOnFrameShape> FramesAtPartAndFullCharge(float targetMass)
     {
         SceneNs::Scene scene;
         MarkerRig rig = BuildMarkerCourse(scene, MarkerCourse{.targetMass = targetMass});
-        LevelNs::TargetMarkerShape part{};
-        LevelNs::TargetMarkerShape full{};
+        LevelNs::LockOnFrameShape part{};
+        LevelNs::LockOnFrameShape full{};
         EXPECT_NE(rig.marker, nullptr);
         EXPECT_NE(rig.input, nullptr);
         if (rig.marker == nullptr || rig.input == nullptr)
@@ -367,25 +345,46 @@ namespace
         EXPECT_TRUE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, full));
         return {part, full};
     }
+
+// +X を狙う、玉の中心 (0, 1.15, 0) からの突進 10 m の線。溜めに入って 20 フレームで伸びきった後
+[[nodiscard]] LevelNs::SlamArrowState GrownStateAhead(float charge01)
+{
+    return LevelNs::SlamArrowState{.line = LevelNs::AimLine{.origin = Vector3{0.0f, 1.15f, 0.0f},
+                                                            .direction = Vector3{1.0f, 0.0f, 0.0f},
+                                                            .length = 10.0f},
+                                   .ballRadius = k_BallRadius,
+                                   .framesSinceChargeStart = 20,
+                                   .charge01 = charge01};
+}
+
+void ExpectVector3Near(const Vector3& actual, const Vector3& expected)
+{
+    EXPECT_NEAR(actual.x, expected.x, 1e-5f);
+    EXPECT_NEAR(actual.y, expected.y, 1e-5f);
+    EXPECT_NEAR(actual.z, expected.z, 1e-5f);
+}
 } // namespace
 
-// 枠は相手の中心を囲む正方形で、一辺は 2 × (外接箱の半分の長さの最大をその奥行きで投げた画素 + 6 画素)。
-// 四隅に横と縦の 2 本ずつが付き、腕は一辺の 0.25。暗い縁は明るい線の各四角を両側 1 画素ずつ広げる
+// 枠は相手の中心を囲む正方形で、一辺は 2 × (外接箱の半分の長さの最大をその奥行きで投げた画素 + 6 画素)
+// 四隅に横と縦の 2 本ずつが付き、腕は一辺の 0.25。暗い縁は明るい線の各四角を両側 1 画素ずつ広げる。色は白
 TEST(TargetMarker, FrameIsASquareAroundTheTargetRadius)
 {
-    LevelNs::SlamLineTarget target = LineTargetAhead(0.0f, 0.0f);
     // 半分の長さが軸ごとに違う箱。一番長い縦の 0.5 が半径になる
-    target.bounds = NS::Core::AABB{Vector3{5.0f, 1.0f, 0.0f}, Vector3{0.3f, 0.5f, 0.2f}};
+    const NS::Core::AABB box{Vector3{5.0f, 1.0f, 0.0f}, Vector3{0.3f, 0.5f, 0.2f}};
 
-    LevelNs::TargetMarkerShape shape{};
-    ASSERT_TRUE(LevelNs::BuildTargetMarkerShape(
-        LevelView(), k_TargetSize, target, k_BallRadius, k_SettledFrames, LevelNs::TargetMarkerDesc{}, shape));
+    LevelNs::LockOnFrameShape frame{};
+    ASSERT_TRUE(LevelNs::BuildLockOnFrame(LevelView(),
+                                          k_TargetSize,
+                                          box,
+                                          LevelNs::LockOnFrames{.sinceCapture = k_SettledFrames},
+                                          LevelNs::TargetMarkerDesc{},
+                                          frame));
 
-    const NS::Core::Vector2 center = ToPixels(LevelView(), target.bounds.Center);
+    const NS::Core::Vector2 center = ToPixels(LevelView(), box.Center);
     // 相手は画面の中央
     ASSERT_NEAR(center.x, 640.0f, 0.01f);
     ASSERT_NEAR(center.y, 360.0f, 0.01f);
-    const float side = SettledSideWithoutMinimum(target.bounds.Center, 0.5f);
+    const float side = SettledSideWithoutMinimum(box.Center, 0.5f);
     // 下限の 70 画素より大きい相手で見る
     ASSERT_GT(side, 100.0f);
 
@@ -398,9 +397,9 @@ TEST(TargetMarker, FrameIsASquareAroundTheTargetRadius)
         expected.outline.push_back(
             LevelNs::MarkerRect{rect.x - 1.0f, rect.y - 1.0f, rect.width + 2.0f, rect.height + 2.0f});
     }
-    expected.color = NS::Core::Color{1.0f, 0.85f, 0.2f, 0.9f};
-    expected.outlineColor = NS::Core::Color{0.1f, 0.08f, 0.02f, 0.6f};
-    ExpectFrameNear(shape.frame, expected);
+    expected.color = NS::Core::Color{k_WhiteR, k_WhiteG, 1.0f, 0.9f};
+    expected.outlineColor = NS::Core::Color{12.0f / 255.0f, 20.0f / 255.0f, 36.0f / 255.0f, 0.6f};
+    ExpectFrameNear(frame, expected);
 }
 
 // 遠くの小さな相手でも、枠の一辺は 70 画素を下回らない。中心は相手の中心のまま
@@ -423,11 +422,13 @@ TEST(TargetMarker, FrameSideDoesNotGoBelowTheMinimum)
     EXPECT_NEAR(measured.top + measured.side * 0.5f, center.y, k_Tolerance);
 }
 
-// 捉えたフレームは一辺の 5 倍 (465 画素が上限)・白・不透明度 0.35 で出て、6 フレームで一辺 1 倍・印の色・不透明度 0.9 へ縮む。
-// 進みは 0.12・0.38・0.70・1.0 を 6 フレームの 1/4 ずつに置いて直線でつないだ曲線。暗い縁の不透明度は枠の不透明度に比例する
+// 捉えたフレームは一辺の 5 倍 (465 画素が上限)・白・不透明度 0.35 で出て、
+// 6 フレームで一辺 1 倍・印の色・不透明度 0.9 へ縮む。
+// 進みは 0.12・0.38・0.70・1.0 を 6 フレームの 1/4 ずつに置いて直線でつないだ曲線
+// 暗い縁の不透明度は枠の不透明度に比例する
 TEST(TargetMarker, CapturedFrameShrinksFromFiveTimesWhiteOverSixFrames)
 {
-    const NS::Core::AABB nearBox{Vector3{5.0f, 1.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}};
+    const NS::Core::AABB nearBox = BoxAhead();
     const float settled = SettledSideWithoutMinimum(nearBox.Center, 0.5f);
     // 5 倍は上限の 465 画素を超える
     ASSERT_GT(settled * 5.0f, 465.0f);
@@ -452,7 +453,7 @@ TEST(TargetMarker, CapturedFrameShrinksFromFiveTimesWhiteOverSixFrames)
         EXPECT_NEAR(measured.top + measured.side * 0.5f, center.y, 1e-2f) << f;
         const float alpha = 0.35f + (0.9f - 0.35f) * p;
         ExpectColorNear(frame.color,
-                        NS::Core::Color{1.0f, 1.0f + (0.85f - 1.0f) * p, 1.0f + (0.2f - 1.0f) * p, alpha});
+                        NS::Core::Color{1.0f + (k_WhiteR - 1.0f) * p, 1.0f + (k_WhiteG - 1.0f) * p, 1.0f, alpha});
         EXPECT_NEAR(frame.outlineColor.A(), 0.6f * alpha / 0.9f, k_Tolerance) << f;
     }
 
@@ -468,80 +469,19 @@ TEST(TargetMarker, CapturedFrameShrinksFromFiveTimesWhiteOverSixFrames)
     EXPECT_NEAR(ReadFrameSquare(farFrame).side, 350.0f, 1e-2f);
 }
 
-// 道筋の点は玉の半径の先から 0.5 m ごとに並び、線の上で相手の中心に一番近い所で終わる。相手の先へ伸びない
-// 横ずれ 0 なら終わりの点は相手の中心に重なり、横ずれ 0.5 なら相手の中心から横へ開く
-TEST(TargetMarker, PathDotsRunFromTheBallToBesideTheTargetCenter)
-{
-    const LevelNs::SlamLineTarget centered = LineTargetAhead(0.0f, 0.0f);
-    LevelNs::TargetMarkerShape shape{};
-    ASSERT_TRUE(LevelNs::BuildTargetMarkerShape(
-        ChaseView(), k_TargetSize, centered, k_BallRadius, k_SettledFrames, LevelNs::TargetMarkerDesc{}, shape));
-
-    // 5 m から 0.5 m ずつ手前へ、玉の半径 0.65 m より先の 1.0 m まで
-    std::vector<float> expectedAlong;
-    for (int k = 8; k >= 0; --k)
-    {
-        expectedAlong.push_back(5.0f - 0.5f * static_cast<float>(k));
-    }
-    ASSERT_EQ(shape.dots.size(), expectedAlong.size());
-    for (std::size_t i = 0; i < expectedAlong.size(); ++i)
-    {
-        const NS::Core::Vector2 pixel = ToPixels(ChaseView(), Vector3{expectedAlong[i], 1.0f, 0.0f});
-        ExpectRectNear(shape.dots[i], LevelNs::MarkerRect{pixel.x - 3.0f, pixel.y - 3.0f, 6.0f, 6.0f}, i);
-    }
-    const NS::Core::Vector2 centerPixel = ToPixels(ChaseView(), centered.bounds.Center);
-    const NS::Core::Vector2 lastCentered = RectCenter(shape.dots.back());
-    EXPECT_NEAR(lastCentered.x, centerPixel.x, k_Tolerance);
-    EXPECT_NEAR(lastCentered.y, centerPixel.y, k_Tolerance);
-
-    // 横ずれ 0.5 は、相手の半幅 0.5 と玉の半径 0.65 の和 1.15 の半分だけ横へずらした相手
-    const LevelNs::SlamLineTarget offset = LineTargetAhead(0.575f, 0.5f);
-    LevelNs::TargetMarkerShape offsetShape{};
-    ASSERT_TRUE(LevelNs::BuildTargetMarkerShape(
-        ChaseView(), k_TargetSize, offset, k_BallRadius, k_SettledFrames, LevelNs::TargetMarkerDesc{}, offsetShape));
-    ASSERT_FALSE(offsetShape.dots.empty());
-    const NS::Core::Vector2 offsetCenterPixel = ToPixels(ChaseView(), offset.bounds.Center);
-    EXPECT_GT(std::abs(RectCenter(offsetShape.dots.back()).x - offsetCenterPixel.x), 10.0f);
-}
-
-// 相手の無い線の点は玉の半径の先から 0.5 m ごとに並び、突進が止まる所で終わる。枠は組まない
-TEST(TargetMarker, AimPathDotsRunFromTheBallToTheEndOfTheSlam)
-{
-    const LevelNs::AimLine line{
-        .origin = Vector3{0.0f, 1.0f, 0.0f}, .direction = Vector3{1.0f, 0.0f, 0.0f}, .length = 10.0f};
-    LevelNs::TargetMarkerShape shape{};
-    ASSERT_TRUE(
-        LevelNs::BuildAimPathShape(ChaseView(), k_TargetSize, line, k_BallRadius, LevelNs::TargetMarkerDesc{}, shape));
-
-    EXPECT_TRUE(shape.frame.corners.empty());
-    // 10 m から 0.5 m ずつ手前へ、玉の半径 0.65 m より先の 1.0 m まで
-    std::vector<float> expectedAlong;
-    for (int k = 18; k >= 0; --k)
-    {
-        expectedAlong.push_back(10.0f - 0.5f * static_cast<float>(k));
-    }
-    ASSERT_EQ(shape.dots.size(), expectedAlong.size());
-    for (std::size_t i = 0; i < expectedAlong.size(); ++i)
-    {
-        const NS::Core::Vector2 pixel = ToPixels(ChaseView(), Vector3{expectedAlong[i], 1.0f, 0.0f});
-        ExpectRectNear(shape.dots[i], LevelNs::MarkerRect{pixel.x - 3.0f, pixel.y - 3.0f, 6.0f, 6.0f}, i);
-    }
-}
-
-// カメラの後ろの相手には枠を組まない。道筋の点もカメラの後ろなら組まない
+// カメラの後ろの相手には枠を組まない
 TEST(TargetMarker, NothingIsBuiltBehindTheCamera)
 {
     const NS::Core::Matrix lookingAway = LookFrom(Vector3{0.0f, 1.0f, 0.0f}, Vector3{-5.0f, 1.0f, 0.0f});
-    LevelNs::TargetMarkerShape shape{};
-    ASSERT_TRUE(LevelNs::BuildTargetMarkerShape(lookingAway,
-                                                k_TargetSize,
-                                                LineTargetAhead(0.0f, 0.0f),
-                                                k_BallRadius,
-                                                k_SettledFrames,
-                                                LevelNs::TargetMarkerDesc{},
-                                                shape));
-    EXPECT_TRUE(shape.frame.corners.empty());
-    EXPECT_TRUE(shape.dots.empty());
+    LevelNs::LockOnFrameShape frame{};
+    ASSERT_TRUE(LevelNs::BuildLockOnFrame(lookingAway,
+                                          k_TargetSize,
+                                          BoxAhead(),
+                                          LevelNs::LockOnFrames{.sinceCapture = k_SettledFrames},
+                                          LevelNs::TargetMarkerDesc{},
+                                          frame));
+    EXPECT_TRUE(frame.corners.empty());
+    EXPECT_TRUE(frame.outline.empty());
 }
 
 // 欄の壊れた値 (0 以下・非数) では組まずに偽を返し、結果を書き換えない
@@ -551,8 +491,6 @@ TEST(TargetMarker, BrokenFieldsBuildNothing)
     const LevelNs::TargetMarkerDesc broken[] = {
         LevelNs::TargetMarkerDesc{.lineThickness = -1.0f},
         LevelNs::TargetMarkerDesc{.armRatio = nan},
-        LevelNs::TargetMarkerDesc{.dotSpacing = 0.0f},
-        LevelNs::TargetMarkerDesc{.dotSize = -6.0f},
         LevelNs::TargetMarkerDesc{.frameMinSide = -1.0f},
         LevelNs::TargetMarkerDesc{.frameAlpha = 0.0f},
         LevelNs::TargetMarkerDesc{.appearFrames = -1},
@@ -561,13 +499,15 @@ TEST(TargetMarker, BrokenFieldsBuildNothing)
     };
     for (const LevelNs::TargetMarkerDesc& desc : broken)
     {
-        LevelNs::TargetMarkerShape shape{.frame = {.corners = {LevelNs::MarkerRect{1.0f, 2.0f, 3.0f, 4.0f}}},
-                                         .dots = {}};
-        EXPECT_FALSE(LevelNs::BuildTargetMarkerShape(
-            ChaseView(), k_TargetSize, LineTargetAhead(0.0f, 0.0f), k_BallRadius, k_SettledFrames, desc, shape));
-        ASSERT_EQ(shape.frame.corners.size(), 1u);
-        EXPECT_FLOAT_EQ(shape.frame.corners[0].x, 1.0f);
-        EXPECT_TRUE(shape.dots.empty());
+        LevelNs::LockOnFrameShape frame{.corners = {LevelNs::MarkerRect{1.0f, 2.0f, 3.0f, 4.0f}}};
+        EXPECT_FALSE(LevelNs::BuildLockOnFrame(ChaseView(),
+                                               k_TargetSize,
+                                               BoxAhead(),
+                                               LevelNs::LockOnFrames{.sinceCapture = k_SettledFrames},
+                                               desc,
+                                               frame));
+        ASSERT_EQ(frame.corners.size(), 1u);
+        EXPECT_FLOAT_EQ(frame.corners[0].x, 1.0f);
     }
 }
 
@@ -580,7 +520,7 @@ TEST(TargetMarker, ShowsTheAimTargetOnlyWhileCharging)
     ASSERT_NE(rig.input, nullptr);
     ASSERT_NE(rig.target, nullptr);
     SettleAndAimAhead(scene, rig);
-    LevelNs::TargetMarkerShape shape{};
+    LevelNs::LockOnFrameShape frame{};
 
     Step(scene, rig);
     EXPECT_FALSE(rig.marker->ShownTargetRef().IsSet());
@@ -592,69 +532,17 @@ TEST(TargetMarker, ShowsTheAimTargetOnlyWhileCharging)
     ASSERT_FALSE(rig.input->IsCharging());
     ASSERT_TRUE(rig.input->TryGetAimTarget(aim));
     EXPECT_FALSE(rig.marker->ShownTargetRef().IsSet());
-    EXPECT_FALSE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, shape));
+    EXPECT_FALSE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, frame));
 
-    for (int i = 0; i < 20 && !rig.input->IsCharging(); ++i)
-    {
-        Step(scene, rig);
-    }
-    ASSERT_TRUE(rig.input->IsCharging());
+    StepUntilCharging(scene, rig);
     EXPECT_EQ(rig.marker->ShownTargetRef(), SceneNs::ObjectRef{rig.target->Id()});
-    EXPECT_TRUE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, shape));
+    EXPECT_TRUE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, frame));
 
     press.Release();
     Step(scene, rig);
     EXPECT_FALSE(rig.marker->ShownTargetRef().IsSet());
-    LevelNs::TargetMarkerShape afterRelease{};
+    LevelNs::LockOnFrameShape afterRelease{};
     EXPECT_FALSE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, afterRelease));
-}
-
-// 溜めている間は、狙いの線の上に相手がいない横と後ろへ倒しても、狙いの向きへ突進が止まる所まで点を出す
-TEST(TargetMarker, ShowsAimPathDotsWithoutATargetWhileCharging)
-{
-    // 自機の後ろの高い所から見下ろす。横と後ろの線がどちらもカメラの前に入る
-    const NS::Core::Matrix overhead = LookFrom(Vector3{-14.0f, 24.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f});
-    for (const Vector3& aim : {Vector3{0.0f, 0.0f, 1.0f}, Vector3{-1.0f, 0.0f, 0.0f}})
-    {
-        SceneNs::Scene scene;
-        MarkerRig rig = BuildMarkerCourse(scene, MarkerCourse{});
-        ASSERT_NE(rig.marker, nullptr);
-        ASSERT_NE(rig.input, nullptr);
-        SettleAndAimAhead(scene, rig);
-        rig.movement->SetDesiredMove(aim, 0.0f);
-
-        MouseLeftPress press;
-        for (int i = 0; i < 20 && !rig.input->IsCharging(); ++i)
-        {
-            Step(scene, rig);
-        }
-        ASSERT_TRUE(rig.input->IsCharging());
-        EXPECT_FALSE(rig.marker->ShownTargetRef().IsSet()) << aim.x;
-
-        LevelNs::AimLine line{};
-        ASSERT_TRUE(rig.input->TryGetAimLine(line)) << aim.x;
-        const Vector3 position = rig.movement->Owner()->Root().Position();
-        EXPECT_NEAR(line.origin.x, position.x, 1e-2f) << aim.x;
-        EXPECT_NEAR(line.origin.z, position.z, 1e-2f) << aim.x;
-        EXPECT_NEAR(line.direction.x, aim.x, 1e-5f) << aim.x;
-        EXPECT_NEAR(line.direction.z, aim.z, 1e-5f) << aim.x;
-        EXPECT_FLOAT_EQ(line.length, rig.movement->BodySlamDistance()) << aim.x;
-
-        LevelNs::TargetMarkerShape shape{};
-        ASSERT_TRUE(rig.marker->BuildShownShape(overhead, k_TargetSize, shape)) << aim.x;
-        EXPECT_TRUE(shape.frame.corners.empty()) << aim.x;
-        ASSERT_FALSE(shape.dots.empty()) << aim.x;
-        const NS::Core::Vector2 lastExpected = ToPixels(overhead, line.origin + line.direction * line.length);
-        const NS::Core::Vector2 lastActual = RectCenter(shape.dots.back());
-        EXPECT_NEAR(lastActual.x, lastExpected.x, k_Tolerance) << aim.x;
-        EXPECT_NEAR(lastActual.y, lastExpected.y, k_Tolerance) << aim.x;
-        const float firstAlong =
-            line.length - 0.5f * std::floor((line.length - rig.movement->CapsuleRadius()) / 0.5f);
-        const NS::Core::Vector2 firstExpected = ToPixels(overhead, line.origin + line.direction * firstAlong);
-        const NS::Core::Vector2 firstActual = RectCenter(shape.dots.front());
-        EXPECT_NEAR(firstActual.x, firstExpected.x, k_Tolerance) << aim.x;
-        EXPECT_NEAR(firstActual.y, firstExpected.y, k_Tolerance) << aim.x;
-    }
 }
 
 // 溜めている間に狙う相手が別の相手へ替わったフレームに、枠は新しい相手の上へ縮み切った形で移る。捉えた瞬間の縮みを繰り返さない
@@ -678,7 +566,7 @@ TEST(TargetMarker, SwitchingTargetsMovesTheFrameWithoutShrinkingAgain)
     rig.movement->SetDesiredMove(toSide, 0.0f);
     Step(scene, rig);
     ASSERT_EQ(rig.marker->ShownTargetRef(), SceneNs::ObjectRef{rig.sideTarget->Id()});
-    LevelNs::TargetMarkerShape switched{};
+    LevelNs::LockOnFrameShape switched{};
     ASSERT_TRUE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, switched));
 
     for (int i = 0; i < k_SettledFrames + 2; ++i)
@@ -686,14 +574,14 @@ TEST(TargetMarker, SwitchingTargetsMovesTheFrameWithoutShrinkingAgain)
         Step(scene, rig);
     }
     ASSERT_EQ(rig.marker->ShownTargetRef(), SceneNs::ObjectRef{rig.sideTarget->Id()});
-    LevelNs::TargetMarkerShape settled{};
+    LevelNs::LockOnFrameShape settled{};
     ASSERT_TRUE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, settled));
-    ASSERT_EQ(settled.frame.corners.size(), 8u);
-    ExpectFrameNear(switched.frame, settled.frame);
+    ASSERT_EQ(settled.corners.size(), 8u);
+    ExpectFrameNear(switched, settled);
 }
 
-// 溜めている間に狙う相手が外れると、外れたフレームから 2 フレーム、直前の枠を 0.9 倍の一辺で同じ色のまま出して消す。
-// その 2 フレームは示す相手を未設定にする。道筋の点は狙いの線の先まで出たまま
+// 溜めている間に狙う相手が外れると、外れたフレームから 2 フレーム、直前の枠を 0.9 倍の一辺で同じ色のまま出して消す
+// その 2 フレームは示す相手を未設定にする
 TEST(TargetMarker, LostTargetLeavesTheFrameForTwoFramesWithoutAShownTarget)
 {
     SceneNs::Scene scene;
@@ -706,9 +594,9 @@ TEST(TargetMarker, LostTargetLeavesTheFrameForTwoFramesWithoutAShownTarget)
     MouseLeftPress press;
     ChargeUntilTheFrameSettles(scene, rig);
     ASSERT_EQ(rig.marker->ShownTargetRef(), SceneNs::ObjectRef{rig.target->Id()});
-    LevelNs::TargetMarkerShape held{};
+    LevelNs::LockOnFrameShape held{};
     ASSERT_TRUE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, held));
-    const FrameSquare heldSquare = ReadFrameSquare(held.frame);
+    const FrameSquare heldSquare = ReadFrameSquare(held);
 
     rig.movement->SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 0.0f);
     for (int lost = 0; lost < 2; ++lost)
@@ -716,31 +604,28 @@ TEST(TargetMarker, LostTargetLeavesTheFrameForTwoFramesWithoutAShownTarget)
         Step(scene, rig);
         ASSERT_TRUE(rig.input->IsCharging());
         EXPECT_FALSE(rig.marker->ShownTargetRef().IsSet()) << lost;
-        LevelNs::TargetMarkerShape shape{};
-        ASSERT_TRUE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, shape)) << lost;
-        EXPECT_FALSE(shape.dots.empty()) << lost;
-        const FrameSquare measured = ReadFrameSquare(shape.frame);
+        LevelNs::LockOnFrameShape frame{};
+        ASSERT_TRUE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, frame)) << lost;
+        const FrameSquare measured = ReadFrameSquare(frame);
         EXPECT_NEAR(measured.side, heldSquare.side * 0.9f, 1e-2f) << lost;
         EXPECT_NEAR(measured.left + measured.side * 0.5f, heldSquare.left + heldSquare.side * 0.5f, 1e-2f) << lost;
         EXPECT_NEAR(measured.top + measured.side * 0.5f, heldSquare.top + heldSquare.side * 0.5f, 1e-2f) << lost;
-        ExpectColorNear(shape.frame.color, held.frame.color);
+        ExpectColorNear(frame.color, held.color);
     }
 
     Step(scene, rig);
     EXPECT_FALSE(rig.marker->ShownTargetRef().IsSet());
-    LevelNs::TargetMarkerShape after{};
-    ASSERT_TRUE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, after));
-    EXPECT_TRUE(after.frame.corners.empty());
-    EXPECT_TRUE(after.frame.outline.empty());
-    EXPECT_FALSE(after.dots.empty());
+    LevelNs::LockOnFrameShape after{};
+    EXPECT_FALSE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, after));
 }
 
-// 同じ配置物に CollisionInput が無ければ、押し続けても何も示さない
+// 同じ配置物に CollisionInput が無ければ、押し続けても何も示さない。地面の矢印も組まない
 TEST(TargetMarker, ShowsNothingWithoutCollisionInput)
 {
     SceneNs::Scene scene;
     MarkerRig rig = BuildMarkerCourse(scene, MarkerCourse{.withCollisionInput = false});
     ASSERT_NE(rig.marker, nullptr);
+    ASSERT_NE(rig.arrow, nullptr);
     ASSERT_EQ(rig.input, nullptr);
     SettleAndAimAhead(scene, rig);
 
@@ -750,19 +635,264 @@ TEST(TargetMarker, ShowsNothingWithoutCollisionInput)
         Step(scene, rig);
     }
     EXPECT_FALSE(rig.marker->ShownTargetRef().IsSet());
-    LevelNs::TargetMarkerShape shape{};
-    EXPECT_FALSE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, shape));
+    LevelNs::LockOnFrameShape frame{};
+    EXPECT_FALSE(rig.marker->BuildShownShape(ChaseView(), k_TargetSize, frame));
+    LevelNs::SlamArrowShape arrow{};
+    EXPECT_FALSE(rig.arrow->TryGetShownArrow(arrow));
 }
 
-// 枠と道筋の点の形は、溜め量 0.3 と溜めきり、質量 0.5 と 8 の相手で同じ
+// ロックオンの枠の形は、溜め量 0.3 と溜めきり、質量 0.5 と 8 の相手で同じ
 TEST(TargetMarker, ShapeDoesNotChangeWithChargeOrMass)
 {
-    const std::pair<LevelNs::TargetMarkerShape, LevelNs::TargetMarkerShape> light = ShapesAtPartAndFullCharge(0.5f);
-    const std::pair<LevelNs::TargetMarkerShape, LevelNs::TargetMarkerShape> heavy = ShapesAtPartAndFullCharge(8.0f);
+    const std::pair<LevelNs::LockOnFrameShape, LevelNs::LockOnFrameShape> light = FramesAtPartAndFullCharge(0.5f);
+    const std::pair<LevelNs::LockOnFrameShape, LevelNs::LockOnFrameShape> heavy = FramesAtPartAndFullCharge(8.0f);
 
-    ASSERT_EQ(light.first.frame.corners.size(), 8u);
-    ASSERT_FALSE(light.first.dots.empty());
-    ExpectShapeNear(light.second, light.first);
-    ExpectShapeNear(heavy.first, light.first);
-    ExpectShapeNear(heavy.second, light.first);
+    ASSERT_EQ(light.first.corners.size(), 8u);
+    ExpectFrameNear(light.second, light.first);
+    ExpectFrameNear(heavy.first, light.first);
+    ExpectFrameNear(heavy.second, light.first);
+}
+
+// 相手のいない線では、矢印は玉の縁から突進が止まる所まで。帯の幅は玉の通る幅
+TEST(SlamArrow, TipReachesTheSlamDistanceWithoutATarget)
+{
+    LevelNs::SlamArrowShape shape{};
+    ASSERT_TRUE(LevelNs::BuildSlamArrow(GrownStateAhead(0.2f), LevelNs::SlamArrowDesc{}, shape));
+
+    ExpectVector3Near(shape.origin, Vector3{0.0f, 1.15f, 0.0f});
+    ExpectVector3Near(shape.direction, Vector3{1.0f, 0.0f, 0.0f});
+    EXPECT_FLOAT_EQ(shape.start, k_BallRadius);
+    EXPECT_FLOAT_EQ(shape.bandWidth, 2.0f * k_BallRadius);
+    EXPECT_FLOAT_EQ(shape.fullTip, 10.0f);
+    EXPECT_FLOAT_EQ(shape.tip, 10.0f);
+}
+
+// 狙う相手のいる線では、矢印の先は相手の手前の面 (玉の縁が相手の外接箱に触れる所 + 玉の半径)
+// 狙う相手の予測の along は相手の中心までのまま
+TEST(SlamArrow, TipStopsAtTheNearFaceOfTheTarget)
+{
+    SceneNs::Scene scene;
+    MarkerRig rig = BuildMarkerCourse(scene, MarkerCourse{});
+    ASSERT_NE(rig.arrow, nullptr);
+    ASSERT_NE(rig.input, nullptr);
+    SettleAndAimAhead(scene, rig);
+
+    MouseLeftPress press;
+    StepUntilCharging(scene, rig);
+    for (int i = 0; i < 10; ++i)
+    {
+        Step(scene, rig);
+    }
+
+    LevelNs::SlamLineTarget aim{};
+    ASSERT_TRUE(rig.input->TryGetAimTarget(aim));
+    const float radius = rig.movement->CapsuleRadius();
+    // 1 m 立方の的の中心は x = 5。線の向きの半分の奥行きは 0.5
+    EXPECT_NEAR(aim.origin.x + aim.along, 5.0f, 1e-4f);
+    EXPECT_NEAR(aim.contact, aim.along - 0.5f - radius, 1e-4f);
+
+    LevelNs::SlamArrowShape shape{};
+    ASSERT_TRUE(rig.arrow->TryGetShownArrow(shape));
+    EXPECT_FLOAT_EQ(shape.tip, shape.fullTip);
+    // 的の手前の面は x = 4.5
+    EXPECT_NEAR(shape.origin.x + shape.direction.x * shape.tip, 4.5f, 1e-4f);
+}
+
+// 矢じりの奥行きは、玉の中心から先までの距離の 0.28 倍を 1.3〜2.8 m に抑えた値
+TEST(SlamArrow, HeadDepthIsAShareOfTheTipDistanceWithinLimits)
+{
+    const float contacts[] = {2.35f, 6.35f, 20.0f};
+    const float depths[] = {1.3f, 0.28f * 7.0f, 2.8f};
+    for (int i = 0; i < 3; ++i)
+    {
+        LevelNs::SlamArrowState state = GrownStateAhead(0.2f);
+        state.line.length = 30.0f;
+        state.hasTarget = true;
+        state.targetContact = contacts[i];
+        LevelNs::SlamArrowShape shape{};
+        ASSERT_TRUE(LevelNs::BuildSlamArrow(state, LevelNs::SlamArrowDesc{}, shape)) << i;
+        EXPECT_NEAR(shape.tip, contacts[i] + k_BallRadius, 1e-5f) << i;
+        EXPECT_NEAR(shape.headDepth, depths[i], 1e-5f) << i;
+    }
+}
+
+// 溜めに入ったフレームに伸びきった長さの 1/10 で出て、10 フレーム目に伸びきる。等速に伸びる
+// 相手のいない横へ向けても、狙いの向きへ突進が止まる所まで伸びる
+TEST(SlamArrow, GrowsOverTenFramesFromTheChargeStartFrame)
+{
+    SceneNs::Scene scene;
+    MarkerRig rig = BuildMarkerCourse(scene, MarkerCourse{});
+    ASSERT_NE(rig.arrow, nullptr);
+    ASSERT_NE(rig.input, nullptr);
+    SettleAndAimAhead(scene, rig);
+    rig.movement->SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 0.0f);
+
+    MouseLeftPress press;
+    StepUntilCharging(scene, rig);
+    for (int k = 0; k < 12; ++k)
+    {
+        LevelNs::SlamArrowShape shape{};
+        ASSERT_TRUE(rig.arrow->TryGetShownArrow(shape)) << k;
+        ExpectVector3Near(shape.direction, Vector3{0.0f, 0.0f, 1.0f});
+        EXPECT_FLOAT_EQ(shape.fullTip, rig.movement->BodySlamDistance()) << k;
+        const float grown = std::min(1.0f, static_cast<float>(k + 1) / 10.0f);
+        EXPECT_NEAR(shape.tip, shape.start + (shape.fullTip - shape.start) * grown, 1e-4f) << k;
+        Step(scene, rig);
+    }
+}
+
+// 矢印は溜めている間だけ組む。押しているが溜めに入る前と、放したフレームは組まない
+TEST(SlamArrow, ShowsTheArrowOnlyWhileCharging)
+{
+    SceneNs::Scene scene;
+    MarkerRig rig = BuildMarkerCourse(scene, MarkerCourse{});
+    ASSERT_NE(rig.arrow, nullptr);
+    ASSERT_NE(rig.input, nullptr);
+    SettleAndAimAhead(scene, rig);
+    LevelNs::SlamArrowShape shape{};
+
+    MouseLeftPress press;
+    Step(scene, rig);
+    ASSERT_TRUE(rig.input->Judge().IsHeld());
+    ASSERT_FALSE(rig.input->IsCharging());
+    EXPECT_FALSE(rig.arrow->TryGetShownArrow(shape));
+
+    StepUntilCharging(scene, rig);
+    for (int i = 0; i < 20; ++i)
+    {
+        Step(scene, rig);
+    }
+    EXPECT_TRUE(rig.arrow->TryGetShownArrow(shape));
+
+    press.Release();
+    Step(scene, rig);
+    ASSERT_FALSE(rig.input->IsCharging());
+    EXPECT_FALSE(rig.arrow->TryGetShownArrow(shape));
+}
+
+// 色の付いた部分は玉の縁から (届く所 − 玉の縁) × 溜め量まで。色は溜め 1/3 未満で前半の色、
+// 1/3 から溜めきりの前まで後半の色、溜めきりで溜めきりの色になり、矢じりの先まで全部に付く
+TEST(SlamArrow, ColoredPartGrowsWithChargeInThreeStages)
+{
+    const LevelNs::SlamArrowDesc desc{};
+    struct Case
+    {
+        float charge01;
+        bool full;
+        Vector3 color;
+    };
+    const Case cases[] = {
+        {0.0f, false, desc.earlyColor},
+        {0.2f, false, desc.earlyColor},
+        {1.0f / 3.0f, false, desc.lateColor},
+        {0.9f, false, desc.lateColor},
+        {1.0f, true, desc.fullColor},
+    };
+    for (const Case& c : cases)
+    {
+        LevelNs::SlamArrowState state = GrownStateAhead(c.charge01);
+        state.chargeFull = c.full;
+        LevelNs::SlamArrowShape shape{};
+        ASSERT_TRUE(LevelNs::BuildSlamArrow(state, desc, shape)) << c.charge01;
+        EXPECT_NEAR(shape.colorFront, k_BallRadius + (10.0f - k_BallRadius) * c.charge01, 1e-4f) << c.charge01;
+        EXPECT_EQ(shape.fullyColored, c.full) << c.charge01;
+        ExpectVector3Near(shape.stageColor, c.color);
+    }
+    // 前半と後半の色は緑と黄、溜めきりの色は赤
+    ExpectVector3Near(desc.earlyColor, Vector3{72.0f / 255.0f, 230.0f / 255.0f, 120.0f / 255.0f});
+    ExpectVector3Near(desc.lateColor, Vector3{1.0f, 208.0f / 255.0f, 48.0f / 255.0f});
+    ExpectVector3Near(desc.fullColor, Vector3{1.0f, 64.0f / 255.0f, 56.0f / 255.0f});
+}
+
+// 床の無い所には帯を置かない。同じ高さで続く区切りは 1 枚につなぎ、床の上 3 cm に置く
+// 玉の下の床より玉の半径より深い所の床 (落下死の体積の上面など) には置かない
+TEST(SlamArrow, LeavesOutPiecesWithoutAFloorBelow)
+{
+    LevelNs::SlamArrowShape built{};
+    ASSERT_TRUE(LevelNs::BuildSlamArrow(GrownStateAhead(0.2f), LevelNs::SlamArrowDesc{}, built));
+
+    // x が 4〜5 の間は穴で、その下 10 m に深い床がある。それ以外は高さ 0.5 の床
+    const LevelNs::SlamArrowGroundProbe holeProbe = [](const Vector3& from, float maxDepth, float& outGroundY) {
+        float ground = 0.5f;
+        if (from.x > 4.0f && from.x < 5.0f)
+        {
+            ground = -10.0f;
+        }
+        if (from.y - ground > maxDepth)
+        {
+            return false;
+        }
+        outGroundY = ground;
+        return true;
+    };
+    LevelNs::SlamArrowShape shape = built;
+    LevelNs::PlaceSlamArrowOnGround(holeProbe, 0.03f, shape);
+    ASSERT_EQ(shape.band.size(), 2u);
+    EXPECT_NEAR(shape.band[0].alongNear, k_BallRadius, 1e-4f);
+    EXPECT_NEAR(shape.band[0].alongFar, 4.0f, 0.1f);
+    EXPECT_NEAR(shape.band[1].alongNear, 5.0f, 0.1f);
+    EXPECT_NEAR(shape.band[1].alongFar, 10.0f, 1e-4f);
+    for (const LevelNs::SlamArrowPiece& piece : shape.band)
+    {
+        EXPECT_NEAR(piece.height, 0.53f, 1e-5f);
+        // 穴の上に帯を置かない
+        EXPECT_FALSE(piece.alongFar > 4.06f && piece.alongNear < 4.94f);
+    }
+    ASSERT_TRUE(shape.hasHead);
+    EXPECT_NEAR(shape.head.height, 0.53f, 1e-5f);
+
+    // 床が x = 3 で終わる線では、帯は床の端で切れ、矢じりは置かない
+    const LevelNs::SlamArrowGroundProbe ledgeProbe = [](const Vector3& from, float maxDepth, float& outGroundY) {
+        float ground = 0.5f;
+        if (from.x > 3.0f)
+        {
+            ground = -10.0f;
+        }
+        if (from.y - ground > maxDepth)
+        {
+            return false;
+        }
+        outGroundY = ground;
+        return true;
+    };
+    LevelNs::SlamArrowShape ledge = built;
+    LevelNs::PlaceSlamArrowOnGround(ledgeProbe, 0.03f, ledge);
+    ASSERT_EQ(ledge.band.size(), 1u);
+    EXPECT_NEAR(ledge.band[0].alongFar, 3.0f, 0.1f);
+    EXPECT_FALSE(ledge.hasHead);
+}
+
+// 欄の壊れた値と、壊れた様子では組まずに偽を返し、結果を書き換えない
+TEST(SlamArrow, BrokenValuesBuildNothing)
+{
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    const LevelNs::SlamArrowDesc brokenDescs[] = {
+        LevelNs::SlamArrowDesc{.growFrames = 0},
+        LevelNs::SlamArrowDesc{.headWidth = 0.0f},
+        LevelNs::SlamArrowDesc{.headDepthMin = -1.0f},
+        LevelNs::SlamArrowDesc{.headDepthMax = nan},
+        LevelNs::SlamArrowDesc{.startFade = 0.0f},
+        LevelNs::SlamArrowDesc{.frontSoftness = nan},
+        LevelNs::SlamArrowDesc{.bandFillAlpha = nan},
+    };
+    for (const LevelNs::SlamArrowDesc& desc : brokenDescs)
+    {
+        LevelNs::SlamArrowShape shape{.tip = 123.0f};
+        EXPECT_FALSE(LevelNs::BuildSlamArrow(GrownStateAhead(0.2f), desc, shape));
+        EXPECT_FLOAT_EQ(shape.tip, 123.0f);
+    }
+
+    LevelNs::SlamArrowState noDirection = GrownStateAhead(0.2f);
+    noDirection.line.direction = Vector3{0.0f, 0.0f, 0.0f};
+    LevelNs::SlamArrowState negativeFrames = GrownStateAhead(0.2f);
+    negativeFrames.framesSinceChargeStart = -1;
+    LevelNs::SlamArrowState nanContact = GrownStateAhead(0.2f);
+    nanContact.hasTarget = true;
+    nanContact.targetContact = nan;
+    for (const LevelNs::SlamArrowState& state : {noDirection, negativeFrames, nanContact})
+    {
+        LevelNs::SlamArrowShape shape{.tip = 123.0f};
+        EXPECT_FALSE(LevelNs::BuildSlamArrow(state, LevelNs::SlamArrowDesc{}, shape));
+        EXPECT_FLOAT_EQ(shape.tip, 123.0f);
+    }
 }

@@ -1,0 +1,7 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/ground_arrow.ps.hlsl",
+  "textures": ["Assets/Textures/ground_arrow_head.png"],
+  "baseColor": [1.0, 1.0, 1.0],
+  "blend": "Alpha"
+}

@@ -14,7 +14,7 @@ namespace NS::Game::Player
 
 namespace NS::Game::Level
 {
-    //! @brief 押している間の狙いの線。狙う相手を探す線で、溜めている間は道筋の点もこの線の上に並べる
+    //! @brief 押している間の狙いの線。狙う相手を探す線で、溜めている間は SlamArrow がこの線の真下の床に矢印を貼る
     struct AimLine
     {
         NS::Core::Vector3 origin;    //!< 線を引き始める自機の位置 (配置物の根)。世界座標

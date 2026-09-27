@@ -360,7 +360,8 @@ namespace NS::Game::Level
                                        .origin = position,
                                        .direction = lineDir,
                                        .along = line.along,
-                                       .offset = line.ratio};
+                                       .offset = line.ratio,
+                                       .contact = line.contact};
             }
         });
 

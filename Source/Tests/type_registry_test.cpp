@@ -121,7 +121,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 29u);
+    EXPECT_EQ(names.size(), 30u);
     EXPECT_TRUE(Contains(names, "BoxCollider"));
     EXPECT_TRUE(Contains(names, "MeshRenderer"));
     EXPECT_TRUE(Contains(names, "PlayerComponent"));
@@ -273,14 +273,36 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "着地の潰れを戻すフレーム数"}},
         {"Shadow", {"基本直径", "最大投影距離", "表面オフセット", "基本不透明度"}},
         {"SkeletalAnimation", {"再生速度", "ループ再生", "モデル", "クリップ"}},
+        {"SlamArrow",
+         {"矢印が伸びるフレーム数",
+          "矢印を浮かせる高さ",
+          "矢じりの幅",
+          "矢じりの奥行きの割合",
+          "矢じりの奥行きの下限",
+          "矢じりの奥行きの上限",
+          "帯の始まりのぼかし",
+          "色の境目のぼかし",
+          "後半の色へ変わる溜め量",
+          "溜めの前半の色",
+          "溜めの後半の色",
+          "溜めきりの色",
+          "色の付いていない部分の色",
+          "矢印の暗い縁の色",
+          "矢印の暗い縁の不透明度",
+          "帯の明るい縁の不透明度",
+          "帯の塗りの不透明度",
+          "矢じりの明るい縁の不透明度",
+          "矢じりの塗りの不透明度",
+          "色の無い帯の明るい縁の不透明度",
+          "色の無い帯の塗りの不透明度",
+          "色の無い矢じりの明るい縁の不透明度",
+          "色の無い矢じりの塗りの不透明度"}},
         {"SlopeCollider", {"角度 (度)", "半径"}},
         {"SphereCollider", {"半径", "中心オフセット"}},
         {"TargetMarker",
          {"印の色",
           "印の太さ",
           "印の腕の割合",
-          "道筋の点の間隔",
-          "道筋の点の大きさ",
           "枠と輪郭の間",
           "枠の一辺の下限",
           "枠の不透明度",
@@ -372,6 +394,7 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"PlayerAppearance", {}},
         {"Shadow", {}},
         {"SkeletalAnimation", {}},
+        {"SlamArrow", {}},
         {"SlopeCollider", {"Collider"}},
         {"SphereCollider", {"Collider"}},
         {"TargetMarker", {"OverlayRenderer"}},

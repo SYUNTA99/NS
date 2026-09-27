@@ -10,11 +10,6 @@
 
 #include <vector>
 
-namespace NS::Game::Player
-{
-    class PlayerComponent;
-}
-
 namespace NS::Game::Level
 {
     //! 画面へ重ねる四角 1 枚。座標は描画先の画素で、左上が原点
@@ -44,23 +39,13 @@ namespace NS::Game::Level
         NS::Core::Color outlineColor{}; //!< 暗い縁の色と不透明度
     };
 
-    //! ロックオンの枠と、突進の道筋の点を組んだ四角の並び。相手のいない線では枠が空
-    struct TargetMarkerShape
-    {
-        //! ロックオンの枠
-        LockOnFrameShape frame;
-        //! 道筋の点。自機の側から線の先へ並ぶ
-        std::vector<MarkerRect> dots;
-    };
-
-    //! ロックオンの枠と道筋の点の形を決める値。画素の欄は描画先の高さ 720 のときの画素
+    //! ロックオンの枠の形を決める値。画素の欄は描画先の高さ 720 のときの画素
     struct TargetMarkerDesc
     {
-        NS::Core::Vector3 color{1.0f, 0.85f, 0.2f}; //!< 捉えている間の枠と道筋の点の色。RGB で各 0〜1
+        //! 捉えている間の枠の色。RGB で各 0〜1。地面の矢印の黄と分けて白
+        NS::Core::Vector3 color{245.0f / 255.0f, 247.0f / 255.0f, 1.0f};
         float lineThickness = 3.0f;                 //!< 枠の線の太さ。画素
         float armRatio = 0.25f;                     //!< 枠の腕の長さ。枠の一辺に対する割合
-        float dotSpacing = 0.5f;                    //!< 道筋の点の間隔。単位は m
-        float dotSize = 6.0f;                       //!< 道筋の点の一辺。画素
         float frameGap = 6.0f;                      //!< 枠と相手の輪郭の間。画素
         float frameMinSide = 70.0f;                 //!< 枠の一辺の下限。画素
         float frameAlpha = 0.9f;                    //!< 捉えている間の枠の不透明度
@@ -78,7 +63,8 @@ namespace NS::Game::Level
         float appearAlpha = 0.35f;                          //!< 捉えた瞬間の枠の不透明度
         float lostScale = 0.9f;                             //!< 外れた後の枠の一辺の、直前の一辺に対する倍率
         int lostFrames = 2;                                 //!< 外れた後に枠を出すフレーム数
-        NS::Core::Vector3 outlineColor{0.1f, 0.08f, 0.02f}; //!< 暗い縁の色。RGB で各 0〜1
+        //! 暗い縁の色。RGB で各 0〜1。白い線の縁を地面の矢印の暗い縁と同じ紺にする
+        NS::Core::Vector3 outlineColor{12.0f / 255.0f, 20.0f / 255.0f, 36.0f / 255.0f};
         float outlineAlpha = 0.6f;                          //!< 枠の不透明度が frameAlpha のときの暗い縁の不透明度
     };
 
@@ -107,92 +93,46 @@ namespace NS::Game::Level
                                         const TargetMarkerDesc& desc,
                                         LockOnFrameShape& outFrame);
 
-    //! @brief 突進の線の予測から、当たる相手のロックオンの枠と道筋の点の四角を組む
-    //! @details 枠は target.bounds から BuildLockOnFrame で組む (外れていない枠)。
-    //! 道筋の点は target.origin から target.direction の線の上に置き、線に沿った距離 target.along の所を終わりにして、
-    //! desc.dotSpacing ずつ手前へ pathStart まで並べる。線の上で相手の中心に一番近い所より先には置かない。
-    //! カメラの後ろの点は組まない。画素の大きさの欄には描画先の高さ ÷ 720 を掛ける。
-    //! 相手のいない線は BuildAimPathShape が組む
-    //! @param[in] viewProjection 画面へ投げる行列。行ベクトルに右から掛ける
-    //! @param[in] targetSize 描画先の幅と高さ。単位は画素
-    //! @param[in] target 突進の線の予測
-    //! @param[in] pathStart 道筋の点を置き始める、線に沿った距離。単位は m
-    //! @param[in] framesSinceCapture 狙う相手なしからありへ移ったフレームを 0 として数えたフレーム数
-    //! @param[in] desc 枠と点の形を決める値
-    //! @param[out] outShape 組んだ四角の並び。false の場合は書き換えない
-    //! @return 組めた場合 true。desc の値が壊れている場合、描画先の大きさが 0 以下の場合、
-    //! 線に沿った距離か pathStart が有限でない場合と、点が 1024 を超える場合は false
-    [[nodiscard]] bool BuildTargetMarkerShape(const NS::Core::Matrix& viewProjection,
-                                              NS::Core::Size2D targetSize,
-                                              const SlamLineTarget& target,
-                                              float pathStart,
-                                              int framesSinceCapture,
-                                              const TargetMarkerDesc& desc,
-                                              TargetMarkerShape& outShape);
-
-    //! @brief 狙う相手のいない狙いの線から、突進の道筋の点の四角を組む。枠は組まない
-    //! @details 道筋の点は line.origin から line.direction の線の上に置き、
-    //! 突進が止まる所 (線に沿った距離 line.length) を終わりにして、desc.dotSpacing ずつ手前へ pathStart まで並べる。
-    //! 点の置き方・大きさ・カメラの後ろの扱いは BuildTargetMarkerShape の点と同じ
-    //! @param[in] viewProjection 画面へ投げる行列。行ベクトルに右から掛ける
-    //! @param[in] targetSize 描画先の幅と高さ。単位は画素
-    //! @param[in] line 狙いの線
-    //! @param[in] pathStart 道筋の点を置き始める、線に沿った距離。単位は m
-    //! @param[in] desc 点の形を決める値。枠の欄も BuildTargetMarkerShape と同じく確かめる
-    //! @param[out] outShape 組んだ四角の並び。枠は空。false の場合は書き換えない
-    //! @return 組めた場合 true。desc の値が壊れている場合、描画先の大きさが 0 以下の場合、
-    //! 線の長さか pathStart が有限でない場合と、点が 1024 を超える場合は false
-    [[nodiscard]] bool BuildAimPathShape(const NS::Core::Matrix& viewProjection,
-                                         NS::Core::Size2D targetSize,
-                                         const AimLine& line,
-                                         float pathStart,
-                                         const TargetMarkerDesc& desc,
-                                         TargetMarkerShape& outShape);
-
-    //! @brief 溜めている間、突進の道筋の点と、狙う相手のロックオンの枠を画面へ重ねて描く Component
-    //! @details 溜めている間 (CollisionInput::IsCharging) だけ、同じ配置物の CollisionInput が控えた狙いの線に
-    //! 道筋の点を出す。線の上に狙う相手がいれば点は相手の中心の真横で終わり、相手に枠を付ける。
-    //! いなければ点は突進が止まる所まで並ぶ。溜めている間に相手が外れたら、直前の枠を縮めて欄のフレーム数だけ出す。
+    //! @brief 溜めている間、狙う相手のロックオンの枠を画面へ重ねて描く Component
+    //! @details 溜めている間 (CollisionInput::IsCharging) だけ、同じ配置物の CollisionInput が控えた
+    //! 狙う相手に枠を付ける。
+    //! 溜めている間に相手が外れたら、直前の枠を縮めて欄のフレーム数だけ出す。
     //! 示す物と、捉えてから・外れてからのフレーム数は OnUpdate で決めて控え、描く時はそれを投げるだけ。
-    //! 溜め量・威力・質量は形に入れない
-    //! 依存: CollisionInput (AimLine), ImpactResolver (SlamLineTarget), NS::Game::Player::PlayerComponent,
-    //! NS::Gfx::Renderer
+    //! 溜め量・威力・質量は形に入れない。突進の道筋は SlamArrow が地面に描く
+    //! 依存: CollisionInput, ImpactResolver (SlamLineTarget), NS::Gfx::Renderer
     class TargetMarker : public NS::Obj::OverlayRenderer
     {
     public:
         TargetMarker() noexcept;
 
-        //! 重ね描きの登録簿へ入り、同じ配置物の CollisionInput と PlayerComponent を引き当てる。
+        //! 重ね描きの登録簿へ入り、同じ配置物の CollisionInput を引き当てる。
         //! CollisionInput が無ければ以後何も示さない
         void OnStart() override;
 
-        //! 溜めている間は狙いの線と、狙う相手が居ればその予測を控え、捉えてから・外れてからのフレーム数を数える。
+        //! 溜めている間は狙う相手が居ればその予測を控え、捉えてから・外れてからのフレーム数を数える。
         //! 溜めていないフレームは控えを全部消す
         void OnUpdate() override;
 
-        //! 控えた道筋の点とロックオンの枠を描く。狙いの線を控えていないフレームは何も描かない
+        //! 控えたロックオンの枠を描く。示す相手も外れた後の枠も無いフレームは何も描かない
         void OnRenderOverlay(const NS::Gfx::RenderContext& context) override;
 
         //! このフレームに示す相手。示さないフレームと、外れた後に枠だけを出すフレームは未設定の参照
         [[nodiscard]] NS::Obj::ObjectRef ShownTargetRef() const noexcept;
 
-        //! @brief 控えた道筋の点とロックオンの枠を、欄の値で組む
-        //! @details 示す相手が居れば BuildTargetMarkerShape、居なければ控えた狙いの線を BuildAimPathShape で組み、
-        //! 外れた後のフレームなら外れた相手の枠を BuildLockOnFrame で足す
+        //! @brief 控えたロックオンの枠を、欄の値で組む
+        //! @details 示す相手が居ればその枠を、外れた後のフレームなら外れた相手の枠を BuildLockOnFrame で組む
         //! @param[in] viewProjection 画面へ投げる行列
         //! @param[in] targetSize 描画先の幅と高さ。単位は画素
-        //! @param[out] outShape 組んだ四角の並び。false の場合は書き換えない
-        //! @return 狙いの線を控えていて組めた場合 true、それ以外の場合は false
+        //! @param[out] outFrame 組んだ枠。false の場合は書き換えない
+        //! @return 示す相手か外れた後の枠があって組めた場合 true、それ以外の場合は false
         [[nodiscard]] bool BuildShownShape(const NS::Core::Matrix& viewProjection,
                                            NS::Core::Size2D targetSize,
-                                           TargetMarkerShape& outShape) const;
+                                           LockOnFrameShape& outFrame) const;
 
         NS_REFLECT_BEGIN(TargetMarker, NS::Obj::OverlayRenderer)
         NS_REFLECT_FIELD(m_desc.color, "印の色")
         NS_REFLECT_FIELD(m_desc.lineThickness, "印の太さ")
         NS_REFLECT_FIELD(m_desc.armRatio, "印の腕の割合")
-        NS_REFLECT_FIELD(m_desc.dotSpacing, "道筋の点の間隔")
-        NS_REFLECT_FIELD(m_desc.dotSize, "道筋の点の大きさ")
         NS_REFLECT_FIELD(m_desc.frameGap, "枠と輪郭の間")
         NS_REFLECT_FIELD(m_desc.frameMinSide, "枠の一辺の下限")
         NS_REFLECT_FIELD(m_desc.frameAlpha, "枠の不透明度")
@@ -215,10 +155,6 @@ namespace NS::Game::Level
         int m_framesSinceCapture = 0;  // 外れた後は外れたフレームの値で止める
         NS::Core::AABB m_lostBounds{}; // 外れた相手の外接箱。m_framesSinceLost が負の間は読まない
         int m_framesSinceLost = -1;
-        AimLine m_line{}; // 点を並べる狙いの線。m_hasLine が偽の間は読まない
-        bool m_hasLine = false;
-        float m_pathStart = 0.0f; // 道筋の点を置き始める、線に沿った距離 (m)。自機の玉の半径
         const CollisionInput* m_input = nullptr;
-        const NS::Game::Player::PlayerComponent* m_movement = nullptr;
     };
 } // namespace NS::Game::Level

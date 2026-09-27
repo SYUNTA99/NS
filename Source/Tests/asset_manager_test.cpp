@@ -2,6 +2,7 @@
 
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Core/Math.h>
+#include <Runtime/Graphics/Material.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/StaticMesh.h>
 #include <Runtime/Object/AssetManager.h>
@@ -498,6 +499,24 @@ TEST_F(AssetManagerTest, LoadMaterialDedupReturnsSamePointer)
     NS::Obj::LoadedMaterial second = am.LoadMaterial(matPath);
     ASSERT_NE(first.material, nullptr);
     EXPECT_EQ(first.material, second.material);
+}
+
+// 地面の矢印の帯と矢じりのマテリアルは読めて、シェーダは代わりのピンクへ落ちずにコンパイルされる
+TEST_F(AssetManagerTest, GroundArrowMaterialsCompileWithoutFallback)
+{
+    Window window(MakeWindowDesc("ns_am_ground_arrow"));
+    ASSERT_TRUE(window.IsValid());
+    Renderer renderer(MakeRendererDesc(), window);
+    if (!renderer.IsValid())
+        GTEST_SKIP() << "Device 確立不可 (headless)";
+
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
+    for (const char* name : {"ground_arrow_band.mat", "ground_arrow_head.mat"})
+    {
+        const NS::Obj::LoadedMaterial loaded = am.LoadMaterial(MaterialPath(name));
+        ASSERT_NE(loaded.material, nullptr) << name;
+        EXPECT_FALSE(loaded.material->IsUsingFallback()) << name;
+    }
 }
 
 // RegisterSharedMaterials 後、player/water/shadow が非 null かつ同一アクセサが同一ポインタ
