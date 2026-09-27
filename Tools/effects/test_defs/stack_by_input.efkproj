@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 試し用の絵: 動的入力 0 番の数だけ、同じ所に加算の板を重ねる。1 枚の明るさは 32/255
+     出た数が描いた画素の明るさに出る (Source/Tests/effect_scene_test.cpp) -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Stack</Name>
+        <CommonValues>
+          <!-- 最大生成数を下の式 0 番 (動的入力 0 番そのもの) で決める -->
+          <MaxGeneration>
+            <DynamicEquation>0</DynamicEquation>
+          </MaxGeneration>
+          <!-- 生成の間隔 0 と生成の開始 -1 で、全部を最初の更新で出す (Tools/effects/README.md) -->
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+        </CommonValues>
+        <RendererCommonValues>
+          <!-- 2 = Add -->
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <A>32</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+    </Children>
+  </Root>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>1</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations>
+      <DynamicEquation>
+        <Name>Count</Name>
+        <Code>@O.x = @In0</Code>
+      </DynamicEquation>
+    </Equations>
+  </Dynamic>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>100</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>

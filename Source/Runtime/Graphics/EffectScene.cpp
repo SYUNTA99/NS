@@ -1,12 +1,14 @@
 ﻿#include "Runtime/Graphics/EffectScene.h"
 
-#include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Core/Logger.h"
-#include "Runtime/Platform/StringUtils.h"
 #include "Runtime/Core/CameraData.h"
+#include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/GraphicObject.h"
+#include "Runtime/Platform/Filesystem.h"
+#include "Runtime/Platform/StringUtils.h"
 
 #include <EffekseerRendererDX11.h>
+
+#include <cmath>
 
 namespace NS::Gfx
 {
@@ -32,6 +34,42 @@ namespace NS::Gfx
                 }
             }
             return result;
+        }
+
+        // Effekseer の Manager が持つ動的入力の数
+        constexpr int k_DynamicInputCount = 4;
+
+        // 大きさ・回転・位置の順に掛けた姿勢。行の並びは DirectXMath と同じで、平行移動は 4 行目
+        Effekseer::Matrix43 ToEffekseerTransform(const NS::Core::Vector3& position,
+                                                 const NS::Core::Quaternion& rotation,
+                                                 const NS::Core::Vector3& scale) noexcept
+        {
+            const NS::Core::Matrix world = NS::Core::Matrix::CreateScale(scale) *
+                                           NS::Core::Matrix::CreateFromQuaternion(rotation) *
+                                           NS::Core::Matrix::CreateTranslation(position);
+            Effekseer::Matrix43 result;
+            for (int row = 0; row < 4; ++row)
+            {
+                for (int column = 0; column < 3; ++column)
+                {
+                    result.Value[row][column] = world.m[row][column];
+                }
+            }
+            return result;
+        }
+
+        // 0〜1 の色の成分を 0〜255 にする。非数と 0 以下は 0、1 以上は 255
+        std::uint8_t ToColorByte(float value) noexcept
+        {
+            if (!(value > 0.0f))
+            {
+                return 0;
+            }
+            if (value >= 1.0f)
+            {
+                return 255;
+            }
+            return static_cast<std::uint8_t>(std::lround(value * 255.0f));
         }
 
         std::string ToUtf8(const char16_t* path)
@@ -197,6 +235,11 @@ namespace NS::Gfx
 
     EffectHandle EffectScene::Play(std::string_view name, NS::Core::Vector3 position) noexcept
     {
+        return Play(name, EffectPlayDesc{.position = position});
+    }
+
+    EffectHandle EffectScene::Play(std::string_view name, const EffectPlayDesc& desc) noexcept
+    {
         if (!IsValid())
         {
             return EffectHandle{};
@@ -214,8 +257,59 @@ namespace NS::Gfx
             return EffectHandle{};
         }
 
-        const Effekseer::Handle handle = m_manager->Play(found->second, position.x, position.y, position.z);
+        const Effekseer::Handle handle =
+            m_manager->Play(found->second, desc.position.x, desc.position.y, desc.position.z);
+        // Play は節を作らず、最初の Update で作る。ここで渡した姿勢・色・入力は生まれる時に読まれる
+        m_manager->SetMatrix(handle, ToEffekseerTransform(desc.position, desc.rotation, desc.scale));
+        m_manager->SetAllColor(handle,
+                               Effekseer::Color(ToColorByte(desc.color.R()),
+                                                ToColorByte(desc.color.G()),
+                                                ToColorByte(desc.color.B()),
+                                                ToColorByte(desc.color.A())));
+        for (std::size_t i = 0; i < desc.dynamicInputs.size(); ++i)
+        {
+            if (desc.dynamicInputs[i].has_value())
+            {
+                m_manager->SetDynamicInput(handle, static_cast<std::int32_t>(i), desc.dynamicInputs[i].value());
+            }
+        }
         return EffectHandle{handle};
+    }
+
+    void EffectScene::SetTransform(EffectHandle handle,
+                                   const NS::Core::Vector3& position,
+                                   const NS::Core::Quaternion& rotation,
+                                   const NS::Core::Vector3& scale) noexcept
+    {
+        if (!IsValid() || !handle.IsValid())
+        {
+            return;
+        }
+        m_manager->SetMatrix(handle.value, ToEffekseerTransform(position, rotation, scale));
+    }
+
+    void EffectScene::SetDynamicInput(EffectHandle handle, int index, float value) noexcept
+    {
+        if (!IsValid() || !handle.IsValid())
+        {
+            return;
+        }
+        // Effekseer は範囲の外を黙って捨てる。書いたつもりの値が効かない理由をログに残す
+        if (index < 0 || index >= k_DynamicInputCount)
+        {
+            NS_LOG_WARN(Graphics, "EffectScene::SetDynamicInput: 動的入力の番号 {} は 0〜3 の外", index);
+            return;
+        }
+        m_manager->SetDynamicInput(handle.value, index, value);
+    }
+
+    void EffectScene::StopRoot(EffectHandle handle) noexcept
+    {
+        if (!IsValid() || !handle.IsValid())
+        {
+            return;
+        }
+        m_manager->StopRoot(handle.value);
     }
 
     void EffectScene::Stop(EffectHandle handle) noexcept

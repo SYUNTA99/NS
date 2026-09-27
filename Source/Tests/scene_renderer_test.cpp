@@ -6,6 +6,7 @@
 #include <Runtime/Graphics/RenderContext.h>
 #include <Runtime/Graphics/RenderTarget.h>
 #include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/CameraBrain.h>
 #include <Runtime/Object/Components/CameraComponent.h>
 #include <Runtime/Object/GameObject.h>
@@ -140,6 +141,31 @@ namespace
             return NS::Core::AABB{NS::Core::Vector3{-1000.0f, -1000.0f, -1000.0f},
                                   NS::Core::Vector3{1000.0f, 1000.0f, 1000.0f}};
         }
+    };
+
+    // 最初の OnUpdate で mover_x を原点に 1 回だけ出す
+    class PlayOnFirstUpdate : public NS::Obj::Component
+    {
+    public:
+        void OnUpdate() override
+        {
+            if (m_played)
+            {
+                return;
+            }
+            m_played = true;
+            NS::Obj::Scene* scene = Owner()->OwningScene();
+            if (scene == nullptr || scene->Effects() == nullptr)
+            {
+                return;
+            }
+            handle = scene->Effects()->Play("mover_x", NS::Gfx::EffectPlayDesc{});
+        }
+
+        EffectHandle handle{};
+
+    private:
+        bool m_played = false;
     };
 } // namespace
 
@@ -327,6 +353,44 @@ TEST_F(SceneRendererEffectTest, RenderDrawsThePlayedEffect)
     const std::array<std::uint8_t, 4> after = ReadPixel(*target, k_Center);
 
     EXPECT_GT(LargestChannelDifference(before, after), k_VisibleDifference);
+
+    m_renderer->SetSceneTarget(nullptr);
+}
+
+// mover_x は生まれた所から +X へ 1 フレーム 0.5 m 進む縦横 0.4 m の板
+// 固定ステップの Update 帯で出した層は、同じステップの終わりの UpdateEffects で生まれ、そのステップの絵に
+// 生まれた瞬間の姿で写る。次のステップまで遅れる実装だと中央が描かれず、2 回進める実装だと 0.5 m 先に写る
+TEST_F(SceneRendererEffectTest, EffectPlayedInAStepIsDrawnAtItsBirthInThatStepsPicture)
+{
+    Scene scene;
+    scene.SetEffectRoot(TestEffectRoot());
+    scene.SetRenderer(m_renderer.get());
+    ASSERT_NE(scene.Effects(), nullptr);
+    ASSERT_TRUE(scene.Effects()->Preload("mover_x"));
+
+    std::unique_ptr<GameObject> object = std::make_unique<GameObject>();
+    PlayOnFirstUpdate* player = object->AddComponent<PlayOnFirstUpdate>();
+    ASSERT_NE(scene.SpawnObject(std::move(object), "Player"), nullptr);
+
+    std::unique_ptr<RenderTarget> target = RenderTarget::Create(NS::Core::Size2D{k_WindowSize, k_WindowSize});
+    ASSERT_TRUE(target != nullptr);
+    ASSERT_TRUE(target->IsValid());
+    SceneView view{};
+    view.target = target.get();
+    view.viewPose = CameraPose{};
+    scene.SetSceneViews(std::vector<SceneView>{view});
+
+    scene.OnRender();
+    const std::array<std::uint8_t, 4> background = ReadPixel(*target, k_Center);
+
+    scene.OnUpdate();
+    scene.OnRender();
+    ASSERT_TRUE(player->handle.IsValid());
+
+    // 既定の視点は 5 m 先を縦 60 度で見るので、1 m が約 11 画素。0.5 m 先は右へ 6 画素
+    const PixelPosition oneStepAhead{k_Center.column + 6, k_Center.row};
+    EXPECT_GT(LargestChannelDifference(background, ReadPixel(*target, k_Center)), k_VisibleDifference);
+    EXPECT_LE(LargestChannelDifference(background, ReadPixel(*target, oneStepAhead)), k_VisibleDifference);
 
     m_renderer->SetSceneTarget(nullptr);
 }

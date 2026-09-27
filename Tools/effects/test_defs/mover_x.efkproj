@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 試し用の絵: 縦横 0.4 の白い板 1 枚が、生まれた所から +X へ 1 フレーム 0.5 進む
+     描いた板の位置から、描かれた絵が層の何フレーム目かを読む (Source/Tests/effect_scene_test.cpp) -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Mover</Name>
+        <!-- 1 = PVA。速度の単位は 1 フレームあたり -->
+        <LocationValues>
+          <Type>1</Type>
+          <PVA>
+            <Velocity>
+              <X>
+                <Center>0.5</Center>
+                <Max>0.5</Max>
+                <Min>0.5</Min>
+              </X>
+            </Velocity>
+          </PVA>
+        </LocationValues>
+        <DrawingValues>
+          <Sprite>
+            <Position>1</Position>
+            <Position_Fixed_LL>
+              <X>-0.2</X>
+              <Y>-0.2</Y>
+            </Position_Fixed_LL>
+            <Position_Fixed_LR>
+              <X>0.2</X>
+              <Y>-0.2</Y>
+            </Position_Fixed_LR>
+            <Position_Fixed_UL>
+              <X>-0.2</X>
+              <Y>0.2</Y>
+            </Position_Fixed_UL>
+            <Position_Fixed_UR>
+              <X>0.2</X>
+              <Y>0.2</Y>
+            </Position_Fixed_UR>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>100</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>

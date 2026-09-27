@@ -4,7 +4,7 @@
 
 使い方:
   python Tools/effects/efkbuild.py [名前 ...] [--defs 定義のフォルダ] [--out 出力のフォルダ] [--frames N] [--no-probe]
-                                   [--install]
+                                   [--install] [--install-dir 置き場]
 
 編集ソフト (Effekseer 1.80.7) の場所は環境変数 NS_EFFEKSEER_TOOL で受ける。Effekseer.exe と bin/ が並ぶフォルダを渡す
 道具の場所を読むのはこのファイルだけで、efkxml には組む時と走らせる時に bin の場所を渡す
@@ -19,6 +19,7 @@
   5. efkprobe: 実行側の Effect::Create が通るか、節の木と寿命、フレームごとのインスタンス数と PNG を 出力/frames/<名前>/
   6. PNG を 1 枚に並べた一覧を 出力/frames/<名前>_sheet.png
   7. --install を渡した時だけ、全部通った後に .efkefc と定義の下のフォルダを Assets/Effects/ へ同じ並びで写す
+     --install-dir を渡すと Assets/Effects/ の代わりにそこへ写す
      出力のフォルダは作業場で、注釈を外した写しと PNG を含む。ゲームへ渡すのは .efkefc と素材だけ
 """
 import argparse
@@ -214,6 +215,8 @@ def main():
     parser.add_argument("--frames", type=int, default=32)
     parser.add_argument("--no-probe", action="store_true")
     parser.add_argument("--install", action="store_true")
+    # 試し用の絵 (test_defs/) は Source/Tests/data/effects/ へ置く。既定の Assets/Effects/ は出荷の絵だけ
+    parser.add_argument("--install-dir", default=str(INSTALL_DESTINATION))
     args = parser.parse_args()
 
     tool, problem = find_tool()
@@ -238,7 +241,7 @@ def main():
         print("通らなかった: " + ", ".join(failed))
         return 1
     if args.install:
-        install(names, defs, out, INSTALL_DESTINATION)
+        install(names, defs, out, Path(args.install_dir).resolve())
     return 0
 
 

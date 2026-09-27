@@ -20,11 +20,15 @@ Tools\@build_effects.cmd                        # efkprobe を組み、defs/*.ef
 Tools\@build_effects.cmd spark_min --frames 40  # 1 本だけ
 Tools\@build_effects.cmd nobuild --install      # 組まずに通し、全部通ったら Assets\Effects へ置く
 python Tools/effects/defs/make_textures.py      # 素材の図形を描き直す (defs/Texture/)
+
+# 試し用の絵 (test_defs/) を作り直し、試しの置き場へ置く
+Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effects_test --install --install-dir Source\Tests\data\effects
 ```
 
 - 失敗が 1 本でもあれば終了コード 1。`--install` は全部通った時だけ写す
 - 作業の出力は `build/effects/` (注釈を外した写し・`.efkefc`・`Texture/`・`frames/<名前>/frame_NNN.png`・`frames/<名前>_sheet.png`・組んだ `efkxml`)
 - ゲームへ渡るのは `--install` で写す `Assets/Effects/<名前>.efkefc` と `Assets/Effects/Texture/` だけ。定義を `Assets/` の下に置かないのは、`@package_release.cmd` が `Assets` を丸ごと配るため
+- `--install-dir` を渡すと `Assets/Effects/` の代わりにそこへ写す。試し用の絵を `Assets/` へ置くと出荷の絵に混ざり、試し `ShippedEffects` も読む
 - `efkprobe` は Debug で組む (premake の `EffectProbe`、`Tools/effects/premake.lua`)。出荷の構成では建たない
 - 置いた絵がゲームで読めるかは試し `ShippedEffects.EveryEffectPreloads` が縛る (`Assets/Effects/` の全 `.efkefc` を `EffectScene::Preload` し、素材の欠けで落ちる。1 本も無ければ「確かめられなかった」で落ちる)
 
@@ -35,6 +39,7 @@ python Tools/effects/defs/make_textures.py      # 素材の図形を描き直す
 | `defs/<名前>.efkproj` | 定義。編集ソフトの XML の形そのもの (後述の書き方) |
 | `defs/Texture/` | 定義が読む素材。`defs/` の下のフォルダは全部、書き出し先と `Assets/Effects/` の同じ場所へ写る |
 | `defs/make_textures.py` | 白い閃光の丸 `flash.png` と火花の筋 `spark.png` を描く。同じ入力から同じ画素を描く |
+| `test_defs/<名前>.efkproj` | 試し (`Source/Tests/effect_scene_test.cpp` など) が読む絵の定義。書き出した `.efkefc` は `Source/Tests/data/effects/` に置く。下の「試し用の 4 本」 |
 | `efkbuild.py` | 本体。下の 1〜7 を 1 本ずつ回す |
 | `efkxml/` | .NET 9 のコンソール。編集ソフトの中核 `EffekseerCore.dll` を画面なしで呼ぶ (`dump`・`check`) |
 | `efkprobe/` | C++ のコンソール。実行側で読んで節の木を出し、画面外に描いて PNG を書く |
@@ -102,6 +107,8 @@ efkprobe の「フレーム 1」は Play → Update(1) → 描く。ゲームで
 - 綴りを誤った要素は黙って捨てられ、既定の値に戻る (`AlphaBlend` を `AlphaBlnd` と書くと合成が半透明になった)。照合 4 (a) で捕まえる
 - テクスチャが無いまま書き出すと、照合は通り、efkprobe が「読めなかった: テクスチャ …」で落とす。素材の欠けを捕まえるのは 5 の段と試し `ShippedEffects`
 - 歪み (背景を渡していない) と GPU の粒の節 (`SetGpuParticleSystem` を呼んでいない) はゲームで何も言わずに出ない。使わない
+- 動的な式の `Code` は行末に `;` を付けない。`@O.x = @In0;` と書くと書き出しも照合も通り、実行側では式の答えが 0 になる (最大生成数を式にした絵がフレーム 1 から 1 粒も出ない)。`@O.x = @In0` なら出る (2026-09-27、`stack_by_input` を efkprobe で数えた)。入力は `@In0`〜`@In3`、答えは `@O.x`〜`@O.w`
+- 最大生成数を式にする書き方は `CommonValues/MaxGeneration/DynamicEquation` に式の番号 (0 から)。式と入力の既定の値は末尾の `Dynamic/Equations/DynamicEquation` (`Name`・`Code`) と `Dynamic/Inputs/DynamicInput` (`Input`) の 4 つ
 
 ## 確かめ用の 2 本 (道の確かめ用。手触りの値ではない)
 
@@ -109,6 +116,15 @@ efkprobe の「フレーム 1」は Play → Update(1) → 描く。ゲームで
 |---|---|---|
 | `hit_flash_min` | 白い閃光の丸 1 枚。加算。大きさ 0 → 2 を EaseOutCubic で、色は白の不透明 → 透明、寿命 8 | 節 2 (Root + 板)。最大生成数 1、寿命 8、合成 Add、テクスチャ `Texture/flash.png`。フレーム 1 は 0 画素、2〜8 に写り、10 で Root だけ、11 で消える |
 | `spark_min` | 火花 20 粒。球の上に全方向の回転で置き、各粒の +Y へ 0.1〜0.3 で飛ばす。親の座標の重力 -0.01。大きさは寿命の割合のカーブで 1 → 0、色はグラデーション。寿命 12〜24。板は進む向きに縦を合わせた縦長。生成間隔 0・開始 -1 | 節 2。最大生成数 20、寿命 12〜24、合成 Add、テクスチャ `Texture/spark.png`。フレーム 1 から 20 粒 |
+
+## 試し用の 4 本 (`test_defs/`。試しが画素と生存で数える形で、手触りの値ではない)
+
+| 名前 | 中身 | 縛る試し |
+|---|---|---|
+| `board_wide` | 横 2・縦 0.4 の白い板。向きは固定 (`Billboard` 2) で、再生の姿勢の XY 面に置く | 大きさ 2 で描いた幅が 2 倍、視線の軸まわりに 90 度回すと縦長、`SetTransform` で描く位置が動く、`Stop` が経過 0 の更新で消える、掛けた色 |
+| `mover_x` | 縦横 0.4 の白い板。生まれた所から +X へ 1 フレーム 0.5 進む | `Play` の後の最初の更新で生まれ、生まれた瞬間の位置で描かれる (固定ステップの中で出した層が同じステップの絵に写る) |
+| `stack_by_input` | 動的入力 0 番の枚数だけ、明るさ 32 の加算の板を同じ所に重ねる。既定の入力は 1 | 動的入力で出る数が変わる |
+| `stream_life10` | 1 フレームに 1 枚、寿命 10 の明るさ 20 の加算の板を出し続ける | 親だけ止めると新しい板が出ず、出ていた板は寿命まで残る |
 
 ## 壊して確かめた事
 

@@ -20,6 +20,7 @@ namespace
 {
     using NS::Core::CameraData;
     using NS::Gfx::EffectHandle;
+    using NS::Gfx::EffectPlayDesc;
     using NS::Gfx::EffectScene;
     using NS::Gfx::Renderer;
     using NS::Gfx::RendererDesc;
@@ -93,6 +94,16 @@ namespace
         return pixel;
     }
 
+    // 背景からどれかの色の成分がこれ以上離れた画素を、描いた画素と数える
+    constexpr int k_DrawnDifference = 16;
+
+    [[nodiscard]] int ChannelRise(const std::array<std::uint8_t, 4>& background,
+                                  const std::array<std::uint8_t, 4>& drawn,
+                                  std::size_t channel)
+    {
+        return static_cast<int>(drawn[channel]) - static_cast<int>(background[channel]);
+    }
+
 } // namespace
 
 class EffectSceneTest : public ::testing::Test
@@ -135,9 +146,44 @@ protected:
 
     std::array<std::uint8_t, 4> DrawAndRead(const CameraData& camera, PixelPosition at)
     {
+        Draw(camera);
+        return ReadPixel(*m_target, at);
+    }
+
+    void Draw(const CameraData& camera)
+    {
         m_renderer->BeginSceneView(m_target.get());
         m_world->Draw(camera);
-        return ReadPixel(*m_target, at);
+    }
+
+    // 最後に描いた絵の row 行目を左から右まで読み、描いた画素を数える
+    int CountDrawnInRow(int row, const std::array<std::uint8_t, 4>& background)
+    {
+        int count = 0;
+        for (int column = 0; column < k_TargetSize; ++column)
+        {
+            if (LargestChannelDifference(background, ReadPixel(*m_target, PixelPosition{column, row})) >=
+                k_DrawnDifference)
+            {
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    // 最後に描いた絵の column 列目を上から下まで読み、描いた画素を数える
+    int CountDrawnInColumn(int column, const std::array<std::uint8_t, 4>& background)
+    {
+        int count = 0;
+        for (int row = 0; row < k_TargetSize; ++row)
+        {
+            if (LargestChannelDifference(background, ReadPixel(*m_target, PixelPosition{column, row})) >=
+                k_DrawnDifference)
+            {
+                ++count;
+            }
+        }
+        return count;
     }
 
     std::unique_ptr<Window> m_window;
@@ -365,4 +411,205 @@ TEST_F(EffectSceneWithRendererTest, PreloadReturnsTrueForLoadedName)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
     EXPECT_TRUE(m_world->Preload("square_r"));
+}
+
+// 大きさは絵の形そのものに掛かる。位置だけを渡す実装だと幅が変わらずに落ちる
+TEST_F(EffectSceneWithRendererTest, PlayWithScaleTwoDrawsTheBoardTwiceAsWide)
+{
+    ASSERT_TRUE(m_world->Preload("board_wide"));
+    const CameraData camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
+    const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
+
+    const EffectHandle unit = m_world->Play("board_wide", EffectPlayDesc{});
+    ASSERT_TRUE(unit.IsValid());
+    Advance(*m_world, 1);
+    Draw(camera);
+    const int unitWidth = CountDrawnInRow(k_Center.row, cleared);
+
+    m_world->Stop(unit);
+    const EffectHandle doubled =
+        m_world->Play("board_wide", EffectPlayDesc{.scale = NS::Core::Vector3{2.0f, 2.0f, 2.0f}});
+    ASSERT_TRUE(doubled.IsValid());
+    Advance(*m_world, 1);
+    Draw(camera);
+    const int doubledWidth = CountDrawnInRow(k_Center.row, cleared);
+
+    // 横 2 m の板は 5 m 先で約 22 画素。両端の丸めで 1 画素ずつ揺れる
+    ASSERT_GE(unitWidth, 16);
+    EXPECT_NEAR(doubledWidth, 2 * unitWidth, 2);
+}
+
+// 向きの固定された横長の板を、視線の軸まわりに 90 度回すと縦長に描かれる
+TEST_F(EffectSceneWithRendererTest, PlayWithRotationTurnsTheFixedBoard)
+{
+    ASSERT_TRUE(m_world->Preload("board_wide"));
+    const CameraData camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
+    const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
+
+    const EffectHandle upright = m_world->Play("board_wide", EffectPlayDesc{});
+    ASSERT_TRUE(upright.IsValid());
+    Advance(*m_world, 1);
+    Draw(camera);
+    const int uprightWidth = CountDrawnInRow(k_Center.row, cleared);
+    const int uprightHeight = CountDrawnInColumn(k_Center.column, cleared);
+
+    m_world->Stop(upright);
+    const NS::Core::Quaternion quarterTurn =
+        NS::Core::Quaternion::CreateFromAxisAngle(NS::Core::Vector3{0.0f, 0.0f, 1.0f}, DirectX::XM_PIDIV2);
+    const EffectHandle turned = m_world->Play("board_wide", EffectPlayDesc{.rotation = quarterTurn});
+    ASSERT_TRUE(turned.IsValid());
+    Advance(*m_world, 1);
+    Draw(camera);
+    const int turnedWidth = CountDrawnInRow(k_Center.row, cleared);
+    const int turnedHeight = CountDrawnInColumn(k_Center.column, cleared);
+
+    ASSERT_GT(uprightWidth, 3 * uprightHeight);
+    EXPECT_NEAR(turnedHeight, uprightWidth, 2);
+    EXPECT_NEAR(turnedWidth, uprightHeight, 2);
+}
+
+// 付いていく層は毎フレーム姿勢を渡し直す。渡した後の更新で描く位置が動く
+TEST_F(EffectSceneWithRendererTest, SetTransformMovesWhereTheEffectIsDrawn)
+{
+    ASSERT_TRUE(m_world->Preload("board_wide"));
+    const CameraData camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
+    const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
+
+    const EffectHandle handle = m_world->Play("board_wide", EffectPlayDesc{});
+    ASSERT_TRUE(handle.IsValid());
+    Advance(*m_world, 1);
+    ASSERT_GE(LargestChannelDifference(cleared, DrawAndRead(camera, k_Center)), k_DrawnDifference);
+
+    // 縦 0.4 m の板を 1.5 m 上げると、中央の行から外れる
+    const NS::Core::Vector3 raised{0.0f, 1.5f, 0.0f};
+    m_world->SetTransform(handle, raised, NS::Core::Quaternion::Identity, NS::Core::Vector3{1.0f, 1.0f, 1.0f});
+    Advance(*m_world, 1);
+
+    EXPECT_LT(LargestChannelDifference(cleared, DrawAndRead(camera, k_Center)), k_DrawnDifference);
+    EXPECT_GE(LargestChannelDifference(cleared, DrawAndRead(camera, PixelOf(camera, raised))), k_DrawnDifference);
+}
+
+// stack_by_input は動的入力 0 番の枚数だけ加算の板を同じ所に重ねる。1 枚で明るさ 32
+TEST_F(EffectSceneWithRendererTest, DynamicInputChangesHowManyAreSpawned)
+{
+    ASSERT_TRUE(m_world->Preload("stack_by_input"));
+    const CameraData camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
+    const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
+
+    const EffectHandle one = m_world->Play("stack_by_input", EffectPlayDesc{.dynamicInputs = {1.0f}});
+    ASSERT_TRUE(one.IsValid());
+    Advance(*m_world, 1);
+    const int oneRise = LargestChannelDifference(cleared, DrawAndRead(camera, k_Center));
+
+    m_world->Stop(one);
+    const EffectHandle four = m_world->Play("stack_by_input", EffectPlayDesc{.dynamicInputs = {4.0f}});
+    ASSERT_TRUE(four.IsValid());
+    Advance(*m_world, 1);
+    const int fourRise = LargestChannelDifference(cleared, DrawAndRead(camera, k_Center));
+
+    // 再生した後、最初の更新の前に渡した値でも数が決まる
+    m_world->Stop(four);
+    const EffectHandle later = m_world->Play("stack_by_input", EffectPlayDesc{});
+    ASSERT_TRUE(later.IsValid());
+    m_world->SetDynamicInput(later, 0, 4.0f);
+    Advance(*m_world, 1);
+    const int laterRise = LargestChannelDifference(cleared, DrawAndRead(camera, k_Center));
+
+    ASSERT_GE(oneRise, k_DrawnDifference);
+    // 3 枚ぶんで 96。8 ビットの丸めを見込んで 80
+    EXPECT_GE(fourRise - oneRise, 80);
+    EXPECT_NEAR(laterRise, fourRise, 2);
+}
+
+// stream_life10 は 1 フレームに 1 枚、寿命 10 の加算の板を出し続ける。1 枚で明るさ 20
+// 親だけ止めると新しい板は出ないが、出ていた板は寿命まで残って描かれる
+TEST_F(EffectSceneWithRendererTest, StopRootSpawnsNoMoreButKeepsTheChildrenUntilTheirLifeEnds)
+{
+    ASSERT_TRUE(m_world->Preload("stream_life10"));
+    const CameraData camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
+    const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
+
+    const NS::Core::Vector3 keptAt{-1.5f, 0.0f, 0.0f};
+    const NS::Core::Vector3 stoppedAt{1.5f, 0.0f, 0.0f};
+    const EffectHandle kept = m_world->Play("stream_life10", EffectPlayDesc{.position = keptAt});
+    const EffectHandle stopped = m_world->Play("stream_life10", EffectPlayDesc{.position = stoppedAt});
+    ASSERT_TRUE(kept.IsValid());
+    ASSERT_TRUE(stopped.IsValid());
+    // 寿命の 2 倍進めて、生きている板を 10 枚に揃える
+    Advance(*m_world, 20);
+
+    m_world->StopRoot(stopped);
+    Advance(*m_world, 5);
+    Draw(camera);
+    const int keptRise = LargestChannelDifference(cleared, ReadPixel(*m_target, PixelOf(camera, keptAt)));
+    const int stoppedRise = LargestChannelDifference(cleared, ReadPixel(*m_target, PixelOf(camera, stoppedAt)));
+
+    // 止めた方は寿命の残る 5 枚ぶん、止めていない方より 100 暗い。丸めと飽和を見込んで 40
+    EXPECT_GE(stoppedRise, k_DrawnDifference);
+    EXPECT_LE(stoppedRise, keptRise - 40);
+    EXPECT_TRUE(m_world->Exists(stopped));
+
+    Advance(*m_world, 10);
+    EXPECT_FALSE(m_world->Exists(stopped));
+    EXPECT_TRUE(m_world->Exists(kept));
+}
+
+// 親だけ止めるのと違い、Stop は子も含めて経過 0 の更新で画面から消える
+TEST_F(EffectSceneWithRendererTest, StopRemovesTheEffectWithinTheSameFrame)
+{
+    ASSERT_TRUE(m_world->Preload("board_wide"));
+    const CameraData camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
+    const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
+
+    const EffectHandle handle = m_world->Play("board_wide", EffectPlayDesc{});
+    ASSERT_TRUE(handle.IsValid());
+    Advance(*m_world, 1);
+    ASSERT_GE(LargestChannelDifference(cleared, DrawAndRead(camera, k_Center)), k_DrawnDifference);
+
+    m_world->Stop(handle);
+    m_world->Update(0.0f);
+
+    EXPECT_FALSE(m_world->Exists(handle));
+    EXPECT_LT(LargestChannelDifference(cleared, DrawAndRead(camera, k_Center)), k_DrawnDifference);
+}
+
+// 全体に掛けた色で描く。白い板に赤を掛けると緑と青は背景のまま
+TEST_F(EffectSceneWithRendererTest, PlayWithColorTintsTheEffect)
+{
+    ASSERT_TRUE(m_world->Preload("board_wide"));
+    const CameraData camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
+    const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
+
+    const EffectHandle handle =
+        m_world->Play("board_wide", EffectPlayDesc{.color = NS::Core::Color{1.0f, 0.0f, 0.0f, 1.0f}});
+    ASSERT_TRUE(handle.IsValid());
+    Advance(*m_world, 1);
+    const std::array<std::uint8_t, 4> drawn = DrawAndRead(camera, k_Center);
+
+    EXPECT_GE(ChannelRise(cleared, drawn, 0), k_DrawnDifference);
+    EXPECT_LT(ChannelRise(cleared, drawn, 1), k_DrawnDifference);
+    EXPECT_LT(ChannelRise(cleared, drawn, 2), k_DrawnDifference);
+}
+
+// mover_x は生まれた所から +X へ 1 フレーム 0.5 m 進む縦横 0.4 m の板
+// Play した層は、その後の最初の更新で生まれ、生まれた瞬間の姿で描かれる。更新の前は何も描かない
+// 固定ステップの中で Play した層は、同じステップの終わりの UpdateEffects の後の絵に生まれた姿で写る
+TEST_F(EffectSceneWithRendererTest, PlayedEffectIsDrawnAtItsBirthAfterTheFirstUpdate)
+{
+    ASSERT_TRUE(m_world->Preload("mover_x"));
+    const CameraData camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
+    const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
+    const PixelPosition oneStepAhead = PixelOf(camera, NS::Core::Vector3{0.5f, 0.0f, 0.0f});
+
+    const EffectHandle handle = m_world->Play("mover_x", EffectPlayDesc{});
+    ASSERT_TRUE(handle.IsValid());
+    EXPECT_LT(LargestChannelDifference(cleared, DrawAndRead(camera, k_Center)), k_DrawnDifference);
+
+    Advance(*m_world, 1);
+    EXPECT_GE(LargestChannelDifference(cleared, DrawAndRead(camera, k_Center)), k_DrawnDifference);
+    EXPECT_LT(LargestChannelDifference(cleared, DrawAndRead(camera, oneStepAhead)), k_DrawnDifference);
+
+    Advance(*m_world, 1);
+    EXPECT_LT(LargestChannelDifference(cleared, DrawAndRead(camera, k_Center)), k_DrawnDifference);
+    EXPECT_GE(LargestChannelDifference(cleared, DrawAndRead(camera, oneStepAhead)), k_DrawnDifference);
 }

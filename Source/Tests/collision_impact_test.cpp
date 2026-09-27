@@ -2237,6 +2237,66 @@ TEST(CollisionImpact, CenterHitFlashRunsFromTheFreezeFrameWhileTheSquashIsHeld)
     EXPECT_TRUE(rig.impact->IsScaleAnimating());
 }
 
+// 止めの頭と明けは、そのフレームの 1 回だけ読める。応答の Component が止めのフレーム数を数え直さずに済む
+// charge_and_hit と同じく、溜めきりで中心近くに当てて止めを上限まで伸ばす
+TEST(CollisionImpact, FreezeBeganAndReleasedAreReadOnlyOnTheirOwnSteps)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_FarCourse);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+
+    int detected = -1;
+    std::vector<int> began;
+    std::vector<int> released;
+    for (int step = 0; step < 60; ++step)
+    {
+        Step(scene, rig);
+        if (detected < 0 && rig.impact->DidRebound())
+        {
+            detected = step;
+        }
+        if (rig.impact->FreezeBeganThisStep())
+        {
+            began.push_back(step);
+        }
+        if (rig.impact->ReleasedThisStep())
+        {
+            released.push_back(step);
+        }
+    }
+
+    ASSERT_GE(detected, 0);
+    ASSERT_TRUE(rig.impact->WasCenterHit());
+    const int stopSteps = rig.impact->LastImpact().hitStopSteps;
+    ASSERT_GT(stopSteps, 1);
+    ASSERT_EQ(began.size(), 1u);
+    EXPECT_EQ(began[0], detected + 1);
+    ASSERT_EQ(released.size(), 1u);
+    EXPECT_EQ(released[0], detected + 1 + stopSteps);
+}
+
+// 止めが 0 の当たりは検知のフレームのうちに明けを済ませ、返りを出さない (判断 143)。頭も明けも立てない
+TEST(CollisionImpact, HitWithoutAFreezeRaisesNeitherTheFreezeNorTheRelease)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    SetInstantImpact(rig);
+    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
+
+    bool detected = false;
+    for (int step = 0; step < 30; ++step)
+    {
+        Step(scene, rig);
+        if (rig.impact->DidRebound())
+        {
+            detected = true;
+        }
+        EXPECT_FALSE(rig.impact->FreezeBeganThisStep());
+        EXPECT_FALSE(rig.impact->ReleasedThisStep());
+    }
+    ASSERT_TRUE(detected);
+}
+
 TEST(CollisionImpact, ButtonReleaseStartsBodySlam)
 {
     SceneNs::Scene scene;

@@ -54,11 +54,11 @@ namespace NS::Game::Level
     //! @brief 突進の線で最初に触れる相手の予測
     struct SlamLineTarget
     {
-        NS::Obj::ObjectRef target{};  //!< 相手の配置物
-        NS::Core::AABB bounds{};      //!< 相手の当たりの外接箱。世界座標
-        NS::Core::Vector3 origin;     //!< 探した時の自機の位置。世界座標
-        NS::Core::Vector3 direction;  //!< 探した水平の向き。正規化済みで y は 0
-        float along = 0.0f;           //!< 自機の位置から相手の外接箱の中心までの、線に沿った水平の距離。単位は m
+        NS::Obj::ObjectRef target{}; //!< 相手の配置物
+        NS::Core::AABB bounds{};     //!< 相手の当たりの外接箱。世界座標
+        NS::Core::Vector3 origin;    //!< 探した時の自機の位置。世界座標
+        NS::Core::Vector3 direction; //!< 探した水平の向き。正規化済みで y は 0
+        float along = 0.0f;          //!< 自機の位置から相手の外接箱の中心までの、線に沿った水平の距離。単位は m
         float offset = 0.0f; //!< 線から相手の中心までの横ずれ。相手の半幅と自機の半径の和で割った比で、0 以上 1 以下
         //! 線を進む自機の当たりの玉が相手の当たりの形に初めて触れるまでに、玉の中心が線に沿って進む距離。単位は m。
         //! 1 mm の幅で、触れている側へ丸める
@@ -92,6 +92,14 @@ namespace NS::Game::Level
 
         //! 直近の更新で貫通を検知した場合 true、それ以外の場合は false
         [[nodiscard]] bool DidBreak() const noexcept { return m_didBreak; }
+
+        //! @brief 直近の更新で止めを始めた場合 true、それ以外の場合は false
+        //! @details 立つのは検知の次のフレーム (止めの頭) の 1 回だけ。止めが 0 の当たりは止めを通らないので立たない
+        [[nodiscard]] bool FreezeBeganThisStep() const noexcept { return m_freezeBeganThisStep; }
+
+        //! @brief 直近の更新で止めが明けた場合 true、それ以外の場合は false
+        //! @details 立つのは止めの頭から止めのフレーム数だけ後のフレームの 1 回だけ。止めが 0 の当たりでは立たない
+        [[nodiscard]] bool ReleasedThisStep() const noexcept { return m_releasedThisStep; }
 
         //! 直近の裁定が中心近くで当たった場合 true、それ以外の場合は false
         [[nodiscard]] bool WasCenterHit() const noexcept { return m_wasCenterHit; }
@@ -247,7 +255,8 @@ namespace NS::Game::Level
 
         // 質量 1 の物に威力 1 で当てた時、自機が弾かれ始めの高さから上がる頂点の高さ (m)
         float m_reboundApexHeight = 1.15f;
-        // 質量 1 の物に威力 1 で当てた時、自機が弾かれ始めの高さへ戻るまでに水平に進む距離 (m)。中心近くの当たりは倍率を掛ける
+        // 質量 1 の物に威力 1 で当てた時、自機が弾かれ始めの高さへ戻るまでに水平に進む距離 (m)
+        // 中心近くの当たりは倍率を掛ける
         float m_reboundDistance = 0.575f;
         // 中心近くの当たりの反動の距離に掛ける倍率。高さには掛けないので、真ん中に当てた時は弾かれ始めが後ろへ倒れる
         float m_centerHitReboundDistanceScale = 2.0f;
@@ -336,9 +345,11 @@ namespace NS::Game::Level
         int m_padElapsed = 0;            // 振動を始めた止めの頭から数えたフレーム数
         bool m_padRunning = false;       // 振動を書いている最中か
 
-        bool m_didRebound = false;   // 直近の更新で反発を検知したか
-        bool m_didBreak = false;     // 直近の更新で貫通を検知したか
-        bool m_pendingBreak = false; // 保留中の結果が貫通か
+        bool m_didRebound = false;          // 直近の更新で反発を検知したか
+        bool m_didBreak = false;            // 直近の更新で貫通を検知したか
+        bool m_freezeBeganThisStep = false; // 直近の更新で BeginFreeze を通ったか
+        bool m_releasedThisStep = false;    // 直近の更新で止めの数え下ろしが明けたか
+        bool m_pendingBreak = false;        // 保留中の結果が貫通か
         bool m_wasCenterHit = false;
         float m_lastCharge01 = 0.0f;
         float m_lastPositionFactor = 0.0f;

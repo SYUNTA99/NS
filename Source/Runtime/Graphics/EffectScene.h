@@ -8,7 +8,9 @@
 #include <EffekseerRendererCommon/EffekseerRenderer.Renderer.h>
 #pragma warning(pop)
 
+#include <array>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -30,6 +32,19 @@ namespace NS::Gfx
         //! value が 0 以上の場合 true、それ以外の場合は false
         //! @details エフェクトが今も残っているかは EffectScene::Exists で見る
         [[nodiscard]] bool IsValid() const noexcept { return value >= 0; }
+    };
+
+    //! @brief EffectScene::Play に渡す、再生の姿勢と見た目
+    //! @details 既定の値で渡すと、原点で絵の定義どおりに出す
+    struct EffectPlayDesc
+    {
+        NS::Core::Vector3 position{0.0f, 0.0f, 0.0f};                   //!< 再生位置のワールド座標
+        NS::Core::Quaternion rotation = NS::Core::Quaternion::Identity; //!< 絵の向き
+        NS::Core::Vector3 scale{1.0f, 1.0f, 1.0f};                      //!< 絵の大きさの倍率。軸ごとに掛ける
+        //! 絵の全体に掛ける色。各成分 0〜1 で、白は定義の色のまま
+        NS::Core::Color color{1.0f, 1.0f, 1.0f, 1.0f};
+        //! 動的入力 0〜3 番の値。書いた番号だけ、絵の定義が持つ既定の値を上書きする
+        std::array<std::optional<float>, 4> dynamicInputs{};
     };
 
     //! @brief Effekseer のエフェクトを読み込み、再生して描くクラス
@@ -61,9 +76,41 @@ namespace NS::Gfx
         //! @details Preload していない名前の警告は名前ごとに 1 回だけ出す
         [[nodiscard]] EffectHandle Play(std::string_view name, NS::Core::Vector3 position = {}) noexcept;
 
+        //! @brief Preload 済みのエフェクトを、姿勢と見た目を決めて 1 つ再生する
+        //! @param[in] name Preload に渡した名前
+        //! @param[in] desc 再生の姿勢・色・動的入力
+        //! @return 再生したエフェクトのハンドル。Preload していない名前なら IsValid が false のハンドル
+        //! @details 絵が生まれるのは次の Update で、生まれた瞬間の姿がその後の Draw に写る。
+        //! Preload していない名前の警告は名前ごとに 1 回だけ出す
+        [[nodiscard]] EffectHandle Play(std::string_view name, const EffectPlayDesc& desc) noexcept;
+
+        //! @brief handle のエフェクトの位置・向き・大きさを置き直す
+        //! @param[in] handle Play が返したハンドル。IsValid が false なら何もしない
+        //! @param[in] position ワールド座標の位置
+        //! @param[in] rotation 向き
+        //! @param[in] scale 大きさの倍率
+        //! @details 物に付いていく層は、物が動いたフレームごとに呼ぶ。描く位置が変わるのは次の Update の後
+        void SetTransform(EffectHandle handle,
+                          const NS::Core::Vector3& position,
+                          const NS::Core::Quaternion& rotation,
+                          const NS::Core::Vector3& scale) noexcept;
+
+        //! @brief handle のエフェクトの動的入力を 1 つ書き換える
+        //! @param[in] handle Play が返したハンドル。IsValid が false なら何もしない
+        //! @param[in] index 動的入力の番号。0〜3 の外なら警告を出して何もしない
+        //! @param[in] value 入れる値
+        //! @details 生成の数のように生まれる時に読む値は、最初の Update より前に書いた時だけ効く
+        void SetDynamicInput(EffectHandle handle, int index, float value) noexcept;
+
         //! @brief handle のエフェクトを止める
         //! @param[in] handle Play が返したハンドル。IsValid が false なら何もしない
+        //! @details 子も含めて次の Update で消える。経過 0 の Update でも消える
         void Stop(EffectHandle handle) noexcept;
+
+        //! @brief handle のエフェクトの親だけを止める
+        //! @param[in] handle Play が返したハンドル。IsValid が false なら何もしない
+        //! @details 新しい子は出なくなり、出ていた子は寿命まで残る。子が全部消えると Exists が false になる
+        void StopRoot(EffectHandle handle) noexcept;
 
         //! 再生中の全エフェクトを止める
         void StopAll() noexcept;

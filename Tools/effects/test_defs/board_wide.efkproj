@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 試し用の絵: 横 2・縦 0.4 の白い板 1 枚。向きは固定で、再生した姿勢の XY 面に置く
+     大きさと回転を渡した時の描いた画素の幅を試しで数える (Source/Tests/effect_scene_test.cpp) -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Board</Name>
+        <DrawingValues>
+          <!-- 2 = Fixed。カメラへ向けず、姿勢の回転がそのまま板の向きになる -->
+          <Sprite>
+            <Billboard>2</Billboard>
+            <Position>1</Position>
+            <Position_Fixed_LL>
+              <X>-1</X>
+              <Y>-0.2</Y>
+            </Position_Fixed_LL>
+            <Position_Fixed_LR>
+              <X>1</X>
+              <Y>-0.2</Y>
+            </Position_Fixed_LR>
+            <Position_Fixed_UL>
+              <X>-1</X>
+              <Y>0.2</Y>
+            </Position_Fixed_UL>
+            <Position_Fixed_UR>
+              <X>1</X>
+              <Y>0.2</Y>
+            </Position_Fixed_UR>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>100</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>

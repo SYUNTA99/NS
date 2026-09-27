@@ -162,10 +162,8 @@ namespace NS::Game::Level
                                                   float radius) noexcept
         {
             const float half = distance * 0.5f;
-            return NS::Phys::Capsule{.center = origin + direction * half,
-                                     .axis = direction,
-                                     .halfHeight = half,
-                                     .radius = radius};
+            return NS::Phys::Capsule{
+                .center = origin + direction * half, .axis = direction, .halfHeight = half, .radius = radius};
         }
 
         // 玉が body に初めて触れるまでに線に沿って進む距離 (m)。k_ContactTolerance の幅で、触れている側の端を返す
@@ -440,6 +438,8 @@ namespace NS::Game::Level
     {
         m_didRebound = false;
         m_didBreak = false;
+        m_freezeBeganThisStep = false;
+        m_releasedThisStep = false;
         // フラッシュの減衰は早期 return より前に置く。凍結中のフレームもここまでは来るので、止まっている間も白が薄れる
         if (m_centerHitFlashRemaining > 0)
         {
@@ -462,6 +462,8 @@ namespace NS::Game::Level
             --m_hitStopRemaining;
             if (m_hitStopRemaining == 0)
             {
+                // 止めが 0 の当たりが検知のフレームで呼ぶ ReleaseHitStop は明けに数えない。立てるのはこの道だけ
+                m_releasedThisStep = true;
                 ReleaseHitStop();
                 return;
             }
@@ -471,6 +473,7 @@ namespace NS::Game::Level
 
         if (m_freezePendingSteps > 0)
         {
+            m_freezeBeganThisStep = true;
             BeginFreeze(m_freezePendingSteps);
             m_freezePendingSteps = 0;
             return;
