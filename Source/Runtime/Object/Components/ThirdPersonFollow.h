@@ -27,6 +27,9 @@ namespace NS::Obj
     //! FOV は基底 VirtualCamera が持つ
     //! 受けた溜めから視野角の締め・縦の揺れ・構図のずらしを作って姿勢に足す
     //! 構図のずらしは追う相手と狙う相手を枠に収めるよう、位置と注視点を同じだけ動かす
+    //! 反動の状態の間は、注視点の高さを反動の始まりに留め、横と前後は遅れて付いていく
+    //! 追う相手が画面の上下の帯を越えそうな時だけ追い、
+    //! 反動の状態が外れたら普通の追い方へ寄せ戻す
     class ThirdPersonFollow : public VirtualCamera
     {
     public:
@@ -70,6 +73,18 @@ namespace NS::Obj
 
         //! @brief 溜めの締め・揺れ・構図のずらしをその場で 0 にし、受けた溜めの状態を捨てる
         void ClearCharge() noexcept;
+
+        //! @brief このフレームに追う相手が反動の状態かを受け取る
+        //! @details 受けた値は次の OnUpdate だけで使う。
+        //! 渡されなかったフレームは反動でないのと同じに扱う。
+        //! 反動になったフレームから反動の状態が外れるまで反動の間の追い方で追い、
+        //! 外れたら普通の追い方へ寄せ戻す
+        //! @param[in] rebounding 反動の状態の場合 true
+        void SetFollowRebound(bool rebounding) noexcept;
+
+        //! @brief 反動の間の追い方と寄せ戻しをその場で止め、受けた反動の状態を捨てる
+        //! @details 次の姿勢から普通の追い方になる
+        void ClearRebound() noexcept;
 
         //! 将来 Settings UI から繋ぐ
         void SetSensX(float radPerPixel) noexcept;
@@ -135,13 +150,40 @@ namespace NS::Obj
         NS_REFLECT_FIELD(m_chargeShakeStrength, "溜めの揺れの強さ")
         NS_REFLECT_FIELD(m_chargeFrameRatio, "溜めの構図の枠")
         NS_REFLECT_FIELD(m_chargeFrameOmega, "溜めの構図のバネ角速度")
+        NS_REFLECT_FIELD(m_reboundFollowOmega, "反動の間の横と前後のバネ角速度")
+        NS_REFLECT_FIELD(m_reboundMaxLag, "反動の間の横と前後の遅れの上限")
+        NS_REFLECT_FIELD(m_reboundScreenBand, "反動の間の上下の帯")
+        NS_REFLECT_FIELD(m_reboundReturnFrames, "反動の後に戻すフレーム数")
         NS_REFLECT_ACCESSOR(float, "ファークリップ", FarPlane(), SetFarPlane)
         NS_REFLECT_ACCESSOR(int, "優先度", VcamPriority(), SetVcamPriority)
         NS_REFLECT_END()
 
     private:
         // 受けた溜めの状態から締め・揺れ・構図のずらしを 1 フレーム進める
-        void UpdateCharge(const FollowChargeDesc& charge, const Transform& target, float dt) noexcept;
+        // look はこのフレームの注視点
+        void UpdateCharge(const FollowChargeDesc& charge,
+                          const Transform& target,
+                          const NS::Core::Vector3& look,
+                          float dt) noexcept;
+
+        // 反動の状態から、反動の間の追い方の段を進める。距離と注視点を決める前に呼ぶ
+        // head は追う相手の頭
+        void UpdateReboundPhase(bool rebounding, const NS::Core::Vector3& head) noexcept;
+
+        // 今の段でこのフレームの注視点を決めて控える
+        // 普通の追い方の時は head をそのまま返す
+        // ball は画面の上下の帯に入れておく追う相手の点
+        [[nodiscard]] NS::Core::Vector3 UpdateReboundLook(const NS::Core::Vector3& head,
+                                                          const NS::Core::Vector3& ball,
+                                                          float dt) noexcept;
+
+        // 反動の間の追い方の段
+        enum class ReboundPhase
+        {
+            None,      // 普通の追い方
+            Following, // 反動の状態の間
+            Returning, // 反動の状態が外れてから普通の追い方へ寄せ戻している
+        };
 
         ObjectRef m_targetRef{}; // 追従対象の永続参照。ポインタで控えないので、相手が先に消えても空を引くだけ
 
@@ -186,6 +228,11 @@ namespace NS::Obj
         float m_chargeFrameRatio = 0.7f;        // 構図の枠。視野の半分に対する割合
         float m_chargeFrameOmega = 26.0f;       // 構図のずらしのバネ角速度 (1/秒)
 
+        float m_reboundFollowOmega = 4.0f; // 反動の間に注視点の横と前後が寄るバネ角速度 (1/秒)
+        float m_reboundMaxLag = 1.5f;      // 反動の間に注視点が横と前後へ遅れてよい上限 (m)
+        float m_reboundScreenBand = 0.5f;  // 反動の間の上下の帯。視野の半分への割合
+        int m_reboundReturnFrames = 20;    // 反動が外れてから普通の追い方へ寄せ戻すフレーム数
+
         FollowChargeDesc m_charge{};               // 次の OnUpdate で使う溜めの状態
         float m_chargeHoldNarrowDegrees = 0.0f;    // 前のフレームの押している間の締め (度)
         float m_chargeNarrowDegrees = 0.0f;        // 今の締め (度)
@@ -194,6 +241,17 @@ namespace NS::Obj
         float m_chargeShake = 0.0f;                // 今の溜めの揺れ (m、カメラの上の向き)
         NS::Core::Vector2 m_chargeFrameOffset{};   // 今の構図のずらし (m、カメラの右と上)
         NS::Core::Vector2 m_chargeFrameVelocity{}; // 構図のずらしの速さ (m/秒)
+
+        bool m_rebounding = false;    // 次の OnUpdate で使う反動の状態
+        bool m_wasRebounding = false; // 前のフレームに反動の状態だったか
+        ReboundPhase m_reboundPhase = ReboundPhase::None; // 今の段
+        NS::Core::Vector3 m_reboundAnchor{};         // 横と前後を遅らせて追う注視点。高さは留める
+        NS::Core::Vector3 m_reboundAnchorVelocity{}; // 注視点の横と前後の速さ (m/秒)。縦は使わない
+        NS::Core::Vector3 m_reboundReturnOffset{};   // 寄せ戻し始めの、注視点 − 追う相手の頭 (m)
+        int m_reboundReturnFrame = 0;                // 寄せ戻しの何フレーム目か
+        NS::Core::Vector3 m_look{};                  // このフレームの注視点。反動と寄せ戻しで使う
+        NS::Core::Vector3 m_previousLook{};          // 前のフレームの注視点。描画の補間に使う
+        bool m_hasLook = false; // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
     };
 
 } // namespace NS::Obj

@@ -581,3 +581,208 @@ TEST_F(ThirdPersonFollowTest, BrokenChargeIsRejectedAndKeepsTheReceivedOne)
     EXPECT_NEAR(follow.ChargeNarrowDegrees(), k_NarrowMaxDegrees * 0.5f, 1e-5f);
     EXPECT_EQ(follow.ChargeFrameOffset().x, 0.0f);
 }
+
+namespace
+{
+    // 反動の間のカメラの試しで使う既定の値
+    constexpr float k_ReboundMaxLag = 1.5f;
+    constexpr float k_ReboundScreenBand = 0.5f;
+    constexpr int k_ReboundReturnFrames = 20;
+    constexpr float k_HeadHeight = 1.2f;
+
+    //! 追う相手を position へ動かし、接地と反動の状態を渡して 1 フレーム進める
+    //! 前フレームの位置は Scene::OnUpdate の頭と同じく動かす前に控える
+    void StepFollow(ThirdPersonFollow& follow, const Vector3& position, bool rebounding, bool grounded)
+    {
+        NS::Obj::Transform& target = *follow.Target();
+        target.Snapshot();
+        target.SetPosition(position);
+        follow.SetFollowMotion(grounded, Vector3{0.0f, 0.0f, 0.0f});
+        follow.SetFollowRebound(rebounding);
+        follow.OnUpdate();
+    }
+
+    //! 今の追う相手の位置から、反動を受けない時の追従の式で注視点を出す
+    [[nodiscard]] Vector3 PlainLookTarget(const ThirdPersonFollow& follow, float alpha)
+    {
+        const Vector3 root = follow.Target()->InterpolatedWorldMatrix(alpha).Translation();
+        return Vector3{root.x, root.y + k_HeadHeight, root.z};
+    }
+
+    //! 注視点が普通の追い方の注視点からどれだけ離れているか (m)
+    [[nodiscard]] float LookGap(const ThirdPersonFollow& follow)
+    {
+        return (follow.EvaluatePose(1.0f).target - PlainLookTarget(follow, 1.0f)).Length();
+    }
+} // namespace
+
+// 反動の間は、自機が上がっても注視点の高さは当たった瞬間のまま
+// 描画の補間の途中でも動かない
+TEST_F(ThirdPersonFollowTest, ReboundHoldsTheLookHeightOfTheHitFrame)
+{
+    Scene scene;
+    ThirdPersonFollow& follow = MakeChargeProbe(scene);
+    for (int frame = 0; frame < 3; ++frame)
+    {
+        StepFollow(follow, Vector3{0.0f, 0.0f, 0.0f}, false, true);
+    }
+    const float hitLookY = follow.EvaluatePose(1.0f).target.y;
+
+    for (int frame = 1; frame <= 40; ++frame)
+    {
+        const float rise = 1.5f * std::sin(3.14159265f * static_cast<float>(frame) / 40.0f);
+        StepFollow(follow, Vector3{0.0f, rise, 0.0f}, true, false);
+        EXPECT_NEAR(follow.EvaluatePose(1.0f).target.y, hitLookY, 1e-5f) << "frame " << frame;
+        EXPECT_NEAR(follow.EvaluatePose(0.5f).target.y, hitLookY, 1e-5f) << "frame " << frame;
+    }
+}
+
+// 反動の間、横と前後は普通の追い方より遅れて付いていき、遅れは欄の上限を超えない
+TEST_F(ThirdPersonFollowTest, ReboundFollowsSidewaysAndBackBehindTheBall)
+{
+    Scene scene;
+    ThirdPersonFollow& follow = MakeChargeProbe(scene);
+    const Vector3 direction{0.70710678f, 0.0f, -0.70710678f};
+    StepFollow(follow, Vector3{0.0f, 0.0f, 0.0f}, false, true);
+    float previousLookX = follow.EvaluatePose(1.0f).target.x;
+
+    for (int frame = 1; frame <= 60; ++frame)
+    {
+        const Vector3 root = direction * (4.0f * k_Dt * static_cast<float>(frame));
+        StepFollow(follow, root, true, false);
+        const Vector3 look = follow.EvaluatePose(1.0f).target;
+        const Vector3 lag{root.x - look.x, 0.0f, root.z - look.z};
+        EXPECT_GT(look.x, previousLookX) << "frame " << frame;
+        // 描画の補間の始まりは前のフレームの注視点
+        // 固定ステップの間で注視点が跳ばない
+        EXPECT_NEAR(follow.EvaluatePose(0.0f).target.x, previousLookX, 1e-5f) << "frame " << frame;
+        EXPECT_GT(NS::Core::Dot(lag, direction), 0.0f) << "frame " << frame;
+        EXPECT_LE(lag.Length(), k_ReboundMaxLag + 1e-4f) << "frame " << frame;
+        previousLookX = look.x;
+    }
+    EXPECT_GT(LookGap(follow), 0.5f);
+}
+
+// 反動の間に自機が画面の上か下の帯を越えそうになると、越えない所まで追う
+TEST_F(ThirdPersonFollowTest, ReboundTracksTheBallAtTheScreenBand)
+{
+    Scene scene;
+    ThirdPersonFollow& rising = MakeChargeProbe(scene);
+    ThirdPersonFollow& falling = MakeChargeProbe(scene);
+
+    for (int frame = 1; frame <= 60; ++frame)
+    {
+        const float height = 6.0f * static_cast<float>(frame) / 60.0f;
+        StepFollow(rising, Vector3{0.0f, height, 0.0f}, true, false);
+        StepFollow(falling, Vector3{0.0f, -height, 0.0f}, true, false);
+        EXPECT_LE(ScreenOf(rising.EvaluatePose(1.0f), rising.Target()->Position()).y, k_ReboundScreenBand + 1e-3f)
+            << "frame " << frame;
+        EXPECT_GE(ScreenOf(falling.EvaluatePose(1.0f), falling.Target()->Position()).y, -k_ReboundScreenBand - 1e-3f)
+            << "frame " << frame;
+    }
+    EXPECT_NEAR(ScreenOf(rising.EvaluatePose(1.0f), rising.Target()->Position()).y, k_ReboundScreenBand, 1e-3f);
+    EXPECT_NEAR(ScreenOf(falling.EvaluatePose(1.0f), falling.Target()->Position()).y, -k_ReboundScreenBand, 1e-3f);
+}
+
+// 反動の状態が外れたら欄のフレーム数で普通の追い方へ寄せ、
+// 最後のフレームで普通の式とビット単位で同じ姿勢になる
+// 空中の 1 発で外れた時も着地を待たないので、寄せ戻しの間は空中のまま渡す
+TEST_F(ThirdPersonFollowTest, ReboundEndEasesBackToTheNormalFollowOverTheReturnFrames)
+{
+    Scene scene;
+    ThirdPersonFollow& follow = MakeChargeProbe(scene);
+    for (int frame = 1; frame <= 40; ++frame)
+    {
+        const float t = static_cast<float>(frame) / 40.0f;
+        StepFollow(follow, Vector3{2.0f * t, 1.0f * std::sin(3.14159265f * t), 0.0f}, true, false);
+    }
+    const Vector3 released{2.0f, 0.0f, 0.0f};
+    StepFollow(follow, released, true, false);
+    const float heldGap = LookGap(follow);
+    ASSERT_GT(heldGap, 0.3f);
+
+    float previousGap = heldGap;
+    for (int frame = 1; frame < k_ReboundReturnFrames; ++frame)
+    {
+        StepFollow(follow, released, false, false);
+        const float gap = LookGap(follow);
+        EXPECT_GT(gap, 0.0f) << "frame " << frame;
+        EXPECT_LT(gap, previousGap) << "frame " << frame;
+        if (frame == 1)
+        {
+            EXPECT_GT(gap, 0.95f * heldGap);
+        }
+        previousGap = gap;
+    }
+    StepFollow(follow, released, false, false);
+
+    const float cy = std::cos(follow.Yaw());
+    const float sy = std::sin(follow.Yaw());
+    const float cp = std::cos(follow.Pitch());
+    const float sp = std::sin(follow.Pitch());
+    const Vector3 forward{sy * cp, sp, cy * cp};
+    const Vector3 head = PlainLookTarget(follow, 1.0f);
+    const CameraPose pose = follow.EvaluatePose(1.0f);
+    EXPECT_EQ(pose.target.x, head.x);
+    EXPECT_EQ(pose.target.y, head.y);
+    EXPECT_EQ(pose.target.z, head.z);
+    EXPECT_EQ(pose.position.x, head.x - forward.x * follow.Distance());
+    EXPECT_EQ(pose.position.y, head.y - forward.y * follow.Distance());
+    EXPECT_EQ(pose.position.z, head.z - forward.z * follow.Distance());
+}
+
+// 反動でない空中 (普通の跳び) は、上下も横も追う相手の頭をそのまま見る
+TEST_F(ThirdPersonFollowTest, PlainJumpKeepsFollowingTheHead)
+{
+    Scene scene;
+    ThirdPersonFollow& follow = MakeChargeProbe(scene);
+
+    for (int frame = 1; frame <= 40; ++frame)
+    {
+        const float t = static_cast<float>(frame) / 40.0f;
+        StepFollow(follow, Vector3{2.0f * t, 2.0f * std::sin(3.14159265f * t), 0.0f}, false, false);
+        const Vector3 look = follow.EvaluatePose(0.5f).target;
+        const Vector3 head = PlainLookTarget(follow, 0.5f);
+        EXPECT_EQ(look.x, head.x) << "frame " << frame;
+        EXPECT_EQ(look.y, head.y) << "frame " << frame;
+        EXPECT_EQ(look.z, head.z) << "frame " << frame;
+    }
+}
+
+// 反動の間は空中でもジャンプ時距離へ引かず、当たった瞬間の距離を保つ
+TEST_F(ThirdPersonFollowTest, ReboundKeepsTheDistanceOfTheHitFrame)
+{
+    Scene scene;
+    ThirdPersonFollow& follow = MakeZoomProbe(scene);
+    for (int frame = 0; frame < 200; ++frame)
+    {
+        StepFollow(follow, Vector3{0.0f, 0.0f, 0.0f}, false, true);
+    }
+    ASSERT_NEAR(follow.Distance(), k_IdleDistance, 0.01f);
+
+    for (int frame = 1; frame <= 60; ++frame)
+    {
+        StepFollow(follow, Vector3{0.0f, 0.5f, 0.0f}, true, false);
+        EXPECT_NEAR(follow.Distance(), k_IdleDistance, 0.01f) << "frame " << frame;
+    }
+}
+
+// 0 にする関数の後は、次のフレームを待たずに普通の追い方の姿勢
+TEST_F(ThirdPersonFollowTest, ClearReboundReturnsToTheNormalFollowAtOnce)
+{
+    Scene scene;
+    ThirdPersonFollow& follow = MakeChargeProbe(scene);
+    for (int frame = 1; frame <= 30; ++frame)
+    {
+        StepFollow(follow, Vector3{0.05f * static_cast<float>(frame), 1.0f, 0.0f}, true, false);
+    }
+    ASSERT_GT(LookGap(follow), 0.3f);
+
+    follow.ClearRebound();
+
+    const Vector3 look = follow.EvaluatePose(1.0f).target;
+    const Vector3 head = PlainLookTarget(follow, 1.0f);
+    EXPECT_EQ(look.x, head.x);
+    EXPECT_EQ(look.y, head.y);
+    EXPECT_EQ(look.z, head.z);
+}

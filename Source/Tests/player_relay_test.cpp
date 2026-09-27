@@ -596,3 +596,60 @@ TEST_F(PlayerRelayTest, EndPlayClearsTheChargeView)
     EXPECT_EQ(camera.follow.ChargeFrameOffset().x, 0.0f);
     EXPECT_EQ(camera.follow.ChargeFrameOffset().y, 0.0f);
 }
+
+namespace
+{
+    // 床の上で弾かれる反動。上がる間に自機が画面の帯を越えない高さにする
+    const NS::Game::Player::ReboundArc k_RelayRebound{
+        .direction = Vector3{-1.0f, 0.0f, 0.0f}, .apexHeight = 1.5f, .distance = 1.0f};
+
+    // 床へ着けてから反動を始め、反動の始まる前のフレームの注視点の高さを返す
+    [[nodiscard]] float BeginReboundOnTheFloor(Scene& scene, const ChargeRig& rig, const FeedCamera& camera)
+    {
+        SettleAndAim(scene, rig, camera, Vector3{1.0f, 0.0f, 0.0f});
+        const float hitLookY = camera.follow.EvaluatePose(1.0f).target.y;
+        EXPECT_TRUE(rig.movement->BeginRebound(k_RelayRebound));
+        return hitLookY;
+    }
+} // namespace
+
+// 自機の反動は同じフレームにカメラへ届き、
+// 上がっていく間も注視点の高さは反動の始まる前のまま
+TEST_F(PlayerRelayTest, ReboundReachesTheCameraAndHoldsTheLookHeight)
+{
+    Scene scene;
+    ChargeRig rig = BuildChargeCourse(scene, false);
+    FeedCamera camera = AddFeedCamera(scene, rig.player->Id());
+    const float hitLookY = BeginReboundOnTheFloor(scene, rig, camera);
+    const float startY = rig.player->Root().Position().y;
+
+    for (int frame = 1; frame <= 15; ++frame)
+    {
+        StepWithCamera(scene, rig, camera);
+        ASSERT_TRUE(rig.movement->IsRebounding()) << "frame " << frame;
+        EXPECT_NEAR(camera.follow.EvaluatePose(1.0f).target.y, hitLookY, 1e-4f) << "frame " << frame;
+    }
+    EXPECT_GT(rig.player->Root().Position().y - startY, 0.5f);
+}
+
+// プレイを終えると帯が回らず戻しが進まないので、
+// 反動の間の追い方はその場で普通の追い方へ戻る
+TEST_F(PlayerRelayTest, EndPlayClearsTheReboundFollow)
+{
+    Scene scene;
+    ChargeRig rig = BuildChargeCourse(scene, false);
+    FeedCamera camera = AddFeedCamera(scene, rig.player->Id());
+    const float hitLookY = BeginReboundOnTheFloor(scene, rig, camera);
+    for (int frame = 1; frame <= 15; ++frame)
+    {
+        StepWithCamera(scene, rig, camera);
+    }
+    ASSERT_NEAR(camera.follow.EvaluatePose(1.0f).target.y, hitLookY, 1e-4f);
+
+    camera.feed.OnEndPlay();
+
+    // 終えると高さのずれも 0 へ戻すので、注視点は根に頭の高さを足した所
+    const Vector3 root = rig.player->Root().Position();
+    EXPECT_NEAR(camera.follow.EvaluatePose(1.0f).target.x, root.x, 1e-5f);
+    EXPECT_NEAR(camera.follow.EvaluatePose(1.0f).target.y, root.y + 1.2f, 1e-5f);
+}

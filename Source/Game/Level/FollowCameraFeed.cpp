@@ -2,6 +2,7 @@
 
 #include "Game/Entity/EntityComponent.h"
 #include "Game/Level/CollisionInput.h"
+#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/GameObject.h"
@@ -46,9 +47,7 @@ namespace NS::Game::Level
 
     // Respawner のやり直し (LateUpdate + 10) が済んだ後、
     // ThirdPersonFollow (LateUpdate + 50) が読む前に渡す
-    FollowCameraFeed::FollowCameraFeed() noexcept
-        : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate + 40)
-    {}
+    FollowCameraFeed::FollowCameraFeed() noexcept : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate + 40) {}
 
     void FollowCameraFeed::OnStart()
     {
@@ -84,6 +83,11 @@ namespace NS::Game::Level
         // 当たりの足元に立ち姿のカプセルを立てた時の中心を見る。玉の間は根が立ち姿の半長ぶん下がっているので、
         // 根を見ると押すたびに画面が 1 フレームで半長ぶん沈み、解けると跳ね上がる
         m_follow->SetTargetHeightOffset(entity->StandingHalfHeight() - entity->CapsuleHalfHeight());
+        const NS::Game::Player::PlayerComponent* player = target->FindComponent<NS::Game::Player::PlayerComponent>();
+        if (player != nullptr)
+        {
+            m_follow->SetFollowRebound(player->IsRebounding());
+        }
 
         const CollisionInput* input = target->FindComponent<CollisionInput>();
         if (input == nullptr)
@@ -102,6 +106,7 @@ namespace NS::Game::Level
         {
             m_follow->SetTargetHeightOffset(0.0f);
             m_follow->ClearCharge();
+            m_follow->ClearRebound();
         }
     }
 
