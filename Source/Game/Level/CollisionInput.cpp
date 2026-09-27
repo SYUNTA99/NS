@@ -110,7 +110,16 @@ namespace NS::Game::Level
             {
                 charge01 = m_judge.Charge01();
             }
-            m_movement->RequestBodySlam(charge01);
+            // 放したフレームは線をまだ引き直していないので、控えた線は放す前のフレームに矢印を貼った線。
+            // 溜めて放した突進はスティックを見ずにその向きへ出す。タップは矢印が出ないので入力の向きへ出す
+            if (fired == SlamKind::Charged && m_hasAimLine)
+            {
+                m_movement->RequestBodySlam(charge01, m_aimLine.direction);
+            }
+            else
+            {
+                m_movement->RequestBodySlam(charge01);
+            }
             NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", SlamKindLabel(fired), charge01);
         }
 
@@ -207,8 +216,10 @@ namespace NS::Game::Level
             return;
         }
 
-        // 突進中は今飛んでいる向き、押している間は突進を出す向き (AimDirection) の前方を探す
-        // 突進を出す向きは放すフレームの入力で変わるので、自機は放す時に控えた相手を放す向きから測り直す
+        // 突進中は今飛んでいる向き、押している間は狙いの線の向き (カメラの正面) の前方を探す。
+        // 押している間は同じ向きを、寄せた角度を測る基準として自機へ渡す。線が無ければ AimDirection で代える
+        // 溜めて放した突進は線の向きへ出るが、放すまでに歩いた分だけ相手への角度が変わるので、
+        // 自機は放す時に控えた相手を放す向きから測り直す
         // 線の上の相手を先に選ぶ。一番近い相手だけを見ると、狙う相手と違う近くの相手の側へ回る
         // 押している間の線の上の相手は、カメラの正面の線で探した狙う相手
         NS::Core::Vector3 forward{};
@@ -223,6 +234,10 @@ namespace NS::Game::Level
         else if (m_judge.IsHeld())
         {
             forward = m_movement->AimDirection();
+            if (m_hasAimLine)
+            {
+                forward = m_aimLine.direction;
+            }
             hasOnLine = TryGetAimTarget(onLine);
         }
         else
@@ -238,7 +253,7 @@ namespace NS::Game::Level
         NS::Core::Vector3 center{};
         if (m_resolver->FindHomingTarget(forward, m_homingSearchDegrees, m_homingSearchDistance, center, preferred))
         {
-            m_movement->SteerToward(center, m_homingSearchDegrees);
+            m_movement->SteerToward(center, m_homingSearchDegrees, forward);
         }
     }
 

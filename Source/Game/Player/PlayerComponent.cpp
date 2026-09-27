@@ -138,6 +138,25 @@ namespace NS::Game::Player
             m_bodySlamRequestCharge01 = 0.0f;
         else
             m_bodySlamRequestCharge01 = NS::Core::Clamp(charge01, 0.0f, 1.0f);
+        // 残すと、先行入力のうちに来たタップが前の溜めた突進の向きへ出る
+        m_hasBodySlamRequestDir = false;
+    }
+
+    void PlayerComponent::RequestBodySlam(float charge01, const NS::Core::Vector3& aimDirection) noexcept
+    {
+        RequestBodySlam(charge01);
+        NS::Core::Vector3 dir{};
+        if (!NS::Core::TryNormalizeHorizontal(aimDirection, dir))
+        {
+            return;
+        }
+        // 非数と無限の向きは正規化を通り抜ける
+        if (!std::isfinite(dir.x) || !std::isfinite(dir.z))
+        {
+            return;
+        }
+        m_bodySlamRequestDir = dir;
+        m_hasBodySlamRequestDir = true;
     }
 
     bool PlayerComponent::IsBodySlamming() const noexcept
@@ -234,7 +253,8 @@ namespace NS::Game::Player
         m_bodySlamAimAge = 0.0f;
     }
 
-    void PlayerComponent::SteerToward(const NS::Core::Vector3& targetCenter, float coneDegrees) noexcept
+    void PlayerComponent::SteerToward(const NS::Core::Vector3& targetCenter, float coneDegrees,
+                                      const NS::Core::Vector3& chargeAim) noexcept
     {
         if (Owner() == nullptr)
         {
@@ -249,7 +269,7 @@ namespace NS::Game::Player
 
         // 溜めている間の基準は回していない狙いなので、基準からの角度がそのまま累計の目標になる。
         // 突進の向きは累計だけ回した後の向きなので、基準からの角度に累計を足して目標にする
-        NS::Core::Vector3 base = AimDirection();
+        NS::Core::Vector3 base = chargeAim;
         float baseAngle = 0.0f;
         if (rushing)
         {
@@ -423,7 +443,12 @@ namespace NS::Game::Player
 
         const float aimLength =
             std::sqrt(m_bodySlamAimDir.x * m_bodySlamAimDir.x + m_bodySlamAimDir.z * m_bodySlamAimDir.z);
-        if (aimLength >= NS::Core::k_Epsilon)
+        // 添えた向きは放す前に見せていた狙いなので、入力も押したフレームの控えも混ぜない
+        if (m_hasBodySlamRequestDir)
+        {
+            dir = m_bodySlamRequestDir;
+        }
+        else if (aimLength >= NS::Core::k_Epsilon)
         {
             const float blend = BodySlamAimBlend01();
             if (blend > 0.0f)
@@ -476,6 +501,7 @@ namespace NS::Game::Player
         // 控えた相手は放す時に使い切る。突進中は突進の向きから探し直した相手へ寄せる
         ForgetHoming();
         m_homingAngle = releaseHoming;
+        m_hasBodySlamRequestDir = false;
         m_bodySlamSpent = true;
         // 突進はどの経路で出ても玉で走らせる。掴まり中に放した押しは予約に残り、先行入力の秒の内に
         // 縁を離れれば出るが、その時の丸まりは掴まりで解けている
@@ -631,6 +657,8 @@ namespace NS::Game::Player
         m_bodySlamSpent = false;
         m_bodySlamIsTap = false;
         m_bodySlamRequestCharge01 = 0.0f;
+        m_bodySlamRequestDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_hasBodySlamRequestDir = false;
         m_bodySlamCharge01 = 0.0f;
         m_bodySlamTravelled = 0.0f;
         m_bodySlamDistanceTarget = 0.0f;

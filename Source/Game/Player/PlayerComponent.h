@@ -76,9 +76,17 @@ namespace NS::Game::Player
         //! 体当たりの発動を要求する
         //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
         //! そのフレームで出せない要求は先行入力時間だけ覚え、過ぎたら失効する。
-        //! 1 度出すと接地するまで次は出せない
+        //! 1 度出すと接地するまで次は出せない。
+        //! 出る向きは BodySlam が入力と押したフレームの控えから決める。前の要求に添えた向きは捨てる
         //! @param[in] charge01 溜め量 0..1
         void RequestBodySlam(float charge01) noexcept;
+        //! @brief 出す向きを添えて体当たりの発動を要求する
+        //! @details 溜め量と先行入力は 1 つ引数の RequestBodySlam と同じ。
+        //! 出る時は入力と押したフレームの控えを見ず、添えた向きの水平を正規化した向きへ出す。
+        //! 水平の長さが 0 の向きと有限でない向きは、添えなかったのと同じ
+        //! @param[in] charge01 溜め量 0..1
+        //! @param[in] aimDirection 出す向き。世界座標で、縦の成分は使わない
+        void RequestBodySlam(float charge01, const NS::Core::Vector3& aimDirection) noexcept;
         //! 突進中の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsBodySlamming() const noexcept;
         //! 突進の進み具合 0..1。突進中でなければ 0
@@ -93,7 +101,8 @@ namespace NS::Game::Player
         void CancelBodySlam() noexcept;
 
         //! 向きを解決して突進を始める。向きが決まらないか距離が 0 以下の場合 false、それ以外の場合は true
-        //! @details 向きは 入力の水平 → カメラの水平前方 → 現在速度の水平 の順で解決する
+        //! @details 向きは要求に添えた向き。添えていなければ AimDirection の向きに、押したフレームの控え
+        //! (MarkBodySlamAim) を控えてからの秒に応じて混ぜる
         [[nodiscard]] bool BodySlam() noexcept;
 
         //! 突進の 1 フレームを進める。溜めた突進は水平を発動時の向きと速さで書き直し、重力を当てる
@@ -188,14 +197,15 @@ namespace NS::Game::Player
 
         [[nodiscard]] float RunSpeed() const noexcept { return m_runSpeed; } //!< 走行の最高速度
 
-        //! 押したフレームの狙いを控える。離すまでの遅れのぶん、発動はこの向きから始める
+        //! 押したフレームの狙いを控える。離すまでの遅れのぶん、向きを添えない発動はこの向きから始める
         void MarkBodySlamAim() noexcept;
-        //! 体当たりを出す水平の向きを返す。入力・カメラの前・速度の順に見て、どれも無ければゼロ
+        //! @brief 向きを添えずに要求した体当たり (タップ) を出す水平の向きを返す
+        //! @details 入力・カメラの前・速度の順に見て、どれも無ければゼロ。
+        //! 溜めて放した突進は、CollisionInput が狙いの線を控えていればその向きを添えるので、この向きへは出ない
         [[nodiscard]] NS::Core::Vector3 AimDirection() const noexcept;
 
         //! @brief 突進の向きを相手の中心へ 1 フレームぶん寄せる
-        //! @details 溜めている間は AimDirection
-        //! が返す狙いの向きを基準に、寄せた角度の累計を目標へ近づけ、相手を控える。
+        //! @details 溜めている間は chargeAim を基準に、寄せた角度の累計を目標へ近づけ、相手を控える。
         //! 控えた相手と中心が違う相手が来たら、累計を 0 から数え直す。
         //! 放す時は控えた相手を放す向きから測り直し、coneDegrees の内なら累計の大きさまでその側へ回し、外なら回さない。
         //! 溜めた突進の間は突進の向きを基準にし、累計の変化分だけ突進の向きを回す。タップの間は何もしない。
@@ -205,7 +215,10 @@ namespace NS::Game::Player
         //! @param[in] targetCenter 寄せる相手の中心。世界座標
         //! @param[in] coneDegrees
         //! 相手を探した角度。放す向きから測り直した相手を残すかどうかをこの角度で決める。単位は度
-        void SteerToward(const NS::Core::Vector3& targetCenter, float coneDegrees) noexcept;
+        //! @param[in] chargeAim 溜めている間に寄せた角度を測る基準の向き。縦の成分は使わない。
+        //! 突進の間は突進の向きから測るので使わない
+        void SteerToward(const NS::Core::Vector3& targetCenter, float coneDegrees,
+                         const NS::Core::Vector3& chargeAim) noexcept;
         //! 寄せた角度の累計を返す。単位は度で、正の角度は +X の向きを -Z の側へ回す
         [[nodiscard]] float HomingAngleDegrees() const noexcept { return m_homingAngle; }
 
@@ -330,6 +343,8 @@ namespace NS::Game::Player
         bool m_bodySlamSpent = false;                         // 発動してから接地していないか
         bool m_bodySlamIsTap = false;                         // 溜め量 0 の飛び込みか
         float m_bodySlamRequestCharge01 = 0.0f;               // 要求された溜め量 0..1
+        NS::Core::Vector3 m_bodySlamRequestDir{0.0f, 0.0f, 0.0f}; // 要求に添えた出す向き。正規化済み
+        bool m_hasBodySlamRequestDir = false;                     // 要求に向きが添えてあるか
         float m_bodySlamCharge01 = 0.0f;                      // 発動時に確定した溜め量 0..1
         float m_bodySlamTravelled = 0.0f;                     // 突進で進んだ水平距離
         float m_bodySlamDistanceTarget = 0.0f;                // 突進を終える水平距離

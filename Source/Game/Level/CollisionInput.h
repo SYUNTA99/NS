@@ -15,7 +15,7 @@ namespace NS::Game::Player
 namespace NS::Game::Level
 {
     //! @brief 押している間の狙いの線。狙う相手を探す線で、溜めている間に相手がいれば SlamArrow がこの線の真下の床に
-    //! 矢印を貼る
+    //! 矢印を貼る。溜めて放した突進はこの線の向きへ出て、溜めている間の寄せもこの線の向きから測る
     struct AimLine
     {
         NS::Core::Vector3 origin;    //!< 線を引き始める自機の位置 (配置物の根)。世界座標
@@ -25,7 +25,8 @@ namespace NS::Game::Level
 
     //! @brief 体当たりのボタン入力を読んで発動を要求する Component
     //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
-    //! どちらも離したフレームに、溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ
+    //! どちらも離したフレームに、溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ。
+    //! 溜めて放した時は、放す前のフレームに控えた狙いの線の向きも添える
     //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる
     //! 威力のチャージ倍率カーブと当たり位置係数カーブ、当たりの段の境目もここが持ち、ImpactResolver が参照する
     //! 依存: NS::Game::Player::PlayerComponent, NS::Obj::Curve, ImpactInputJudge, ImpactResolver, HitTier
@@ -38,8 +39,9 @@ namespace NS::Game::Level
         void OnStart() override;
 
         //! @brief ボタンの保持を判定へ 1 フレーム進め、発動を控えたフレームに溜め量を添えて体当たりを要求する
-        //! @details 押している間はカメラの正面の線で狙う相手を探して控える。押している間と突進の間は、線の上の相手か、
-        //! 基準の向きの前方の近い相手へ突進の向きを寄せる
+        //! @details 溜めて放したフレームは、狙いの線を控えていればその向きも添える。
+        //! 押している間はカメラの正面の線で狙う相手を探して控える。押している間と突進の間は、線の上の相手か、
+        //! 基準の向き (押している間は狙いの線の向き、突進の間は突進の向き) の前方の近い相手へ突進の向きを寄せる
         void OnUpdate() override;
 
         //! 構えの縮みが残っていれば元の形へ戻し、自機へ渡した押しの印を戻して丸まりを解く
@@ -107,7 +109,8 @@ namespace NS::Game::Level
         // 押していなければ両方の控えを消す
         void UpdateAimTarget();
         // 押している間は狙う相手、突進の間は突進の向きの線の上の相手が、寄せの角度と距離の内に居ればそれへ、
-        // 居なければ基準の向きの前方で一番近い相手へ突進の向きを寄せる
+        // 居なければ基準の向きの前方で一番近い相手へ突進の向きを寄せる。
+        // 基準の向きは、押している間は狙いの線の向き (線が無ければ AimDirection)、突進の間は突進の向き
         void SteerTowardTarget();
 
 #if !defined(NS_SHIPPING)

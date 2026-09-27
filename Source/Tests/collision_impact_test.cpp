@@ -2363,6 +2363,90 @@ TEST(CollisionImpact, HomingFallsBackToTheNearestWithoutATargetOnTheLine)
     EXPECT_LT(rig.movement->HomingAngleDegrees(), 0.0f);
 }
 
+// 溜めて放した突進は、放す前のフレームに矢印を引いたカメラの正面へ出る。溜めている間に倒した横と後ろの向きは見ない
+TEST(CollisionImpact, ChargedReleaseRushesTowardTheCameraFrontWhateverTheStick)
+{
+    const Vector3 sticks[] = {Vector3{0.0f, 0.0f, 1.0f}, Vector3{-1.0f, 0.0f, 0.0f}};
+    for (const Vector3& stick : sticks)
+    {
+        SceneNs::Scene scene;
+        // 的は突進の距離 10 m と寄せる相手を探す距離 6 m の外に置き、寄せで向きが回らないようにする
+        Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .targetCell = 12});
+        ASSERT_NE(rig.input, nullptr);
+        SettleOnFloor(scene, rig);
+        ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{1.0f, 0.0f, 0.0f}));
+        rig.movement->SetDesiredMove(stick, 1.0f);
+
+        MouseLeftPress press;
+        for (int i = 0; i < 16; ++i)
+        {
+            Step(scene, rig);
+        }
+        ASSERT_TRUE(rig.input->IsCharging());
+        press.Release();
+        Step(scene, rig);
+
+        ASSERT_TRUE(rig.movement->IsBodySlamming());
+        const Vector3 velocity = rig.movement->BodySlamVelocity();
+        EXPECT_GT(velocity.x, 0.0f);
+        EXPECT_NEAR(velocity.z, 0.0f, 1e-3f);
+    }
+}
+
+// タップは矢印が出ないので、カメラの正面でなく倒した向きへ踏み込む
+TEST(CollisionImpact, TapRushesAlongTheStickNotTheCameraFront)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .targetCell = 12});
+    ASSERT_NE(rig.input, nullptr);
+    SettleOnFloor(scene, rig);
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{1.0f, 0.0f, 0.0f}));
+    rig.movement->SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+
+    MouseLeftPress press;
+    for (int i = 0; i < 3; ++i)
+    {
+        Step(scene, rig);
+    }
+    ASSERT_TRUE(rig.input->Judge().IsHeld());
+    ASSERT_FALSE(rig.input->IsCharging());
+    press.Release();
+    Step(scene, rig);
+
+    ASSERT_TRUE(rig.movement->IsBodySlamming());
+    const Vector3 velocity = rig.movement->BodySlamVelocity();
+    EXPECT_GT(velocity.z, 0.0f);
+    EXPECT_NEAR(velocity.x, 0.0f, 1e-3f);
+}
+
+// 溜めている間の寄せは、倒した向きでなくカメラの正面から相手を探し、正面から相手への角度まで寄せる
+TEST(CollisionImpact, ChargingHomingMeasuresFromTheCameraFrontNotTheStick)
+{
+    SceneNs::Scene scene;
+    // 自機を 0.3 m 横へずらし、的を 5 m 先に置く。正面 +X から的への角度は約 3.4 度
+    Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .lateral = 0.3f, .targetCell = 5});
+    ASSERT_NE(rig.input, nullptr);
+    // 上限の 3 度で頭打ちになると、どの向きから測っても同じ値になる
+    SetFloatField(*rig.movement, "寄せる角度の上限", 20.0f);
+    SettleOnFloor(scene, rig);
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{1.0f, 0.0f, 0.0f}));
+    // 倒した向きは +Z。倒し具合を 0 にして歩かせず、的への角度を変えない
+    rig.movement->SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 0.0f);
+
+    MouseLeftPress press;
+    for (int i = 0; i < 30; ++i)
+    {
+        Step(scene, rig);
+    }
+    ASSERT_TRUE(rig.input->IsCharging());
+
+    const Vector3 toTarget = rig.target->Root().Position() - rig.movement->Owner()->Root().Position();
+    // 正の角度は +X の向きを -Z の側へ回す
+    const float expected = NS::Core::ToDegrees(NS::Core::Radians{std::atan2(-toTarget.z, toTarget.x)}).value;
+    ASSERT_GT(expected, 3.0f);
+    EXPECT_NEAR(rig.movement->HomingAngleDegrees(), expected, 0.05f);
+}
+
 // 突進中も突進の向きの線で同じ決まり。線の外の近い的の側へ回らない
 TEST(CollisionImpact, RushHomingPrefersTheTargetOnTheRushLine)
 {
@@ -2402,6 +2486,8 @@ TEST(CollisionImpact, StaysCurledFromThePressUntilTheLandingAfterTheRebound)
     Rig rig = BuildSlam(scene, k_NearCourse);
     ASSERT_NE(rig.input, nullptr);
     SettleOnFloor(scene, rig);
+    // 溜めて放した突進はカメラの正面へ出るので、カメラを的の +X へ向ける
+    ASSERT_TRUE(NsTest::FaceSceneCamera(scene, Vector3{1.0f, 0.0f, 0.0f}));
     rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
 
     MouseLeftPress press;

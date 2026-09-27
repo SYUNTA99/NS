@@ -791,6 +791,9 @@ namespace
 {
     // CollisionInput の「寄せる相手を探す角度」の既定。放す向きから測り直した相手をこの角度で振り分ける
     constexpr float k_HomingConeDegrees = 30.0f;
+    // 溜めている間の寄せの基準の向き。CollisionInput は狙いの線の向きを渡す。突進の間の寄せは使わない
+    const Vector3 k_AimPlusX{1.0f, 0.0f, 0.0f};
+    const Vector3 k_AimPlusZ{0.0f, 0.0f, 1.0f};
 
     //! 突進の水平の向きが +X から何度回っているか。+Z 側へ回ると正
     [[nodiscard]] float SlamHeadingDegrees(const PlayerComponent& player)
@@ -814,11 +817,11 @@ TEST_F(PlayerComponentTest, SteeringWhileChargingTurnsTheReleaseTowardTheTarget)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     const Vector3 target = obj.Root().Position() + Vector3{5.0f, 0.0f, 1.0f};
 
-    player.SteerToward(target, k_HomingConeDegrees);
+    player.SteerToward(target, k_HomingConeDegrees, k_AimPlusX);
     EXPECT_NEAR(player.HomingAngleDegrees(), -0.25f, 1e-4f);
     for (int i = 1; i < 20; ++i)
     {
-        player.SteerToward(target, k_HomingConeDegrees);
+        player.SteerToward(target, k_HomingConeDegrees, k_AimPlusX);
     }
     EXPECT_NEAR(player.HomingAngleDegrees(), -3.0f, 1e-4f);
 
@@ -840,11 +843,11 @@ TEST_F(PlayerComponentTest, SteeringWhileChargingStartsOverForAnotherTarget)
     const Vector3 start = obj.Root().Position();
     for (int i = 0; i < 20; ++i)
     {
-        player.SteerToward(start + Vector3{5.0f, 0.0f, 1.0f}, k_HomingConeDegrees);
+        player.SteerToward(start + Vector3{5.0f, 0.0f, 1.0f}, k_HomingConeDegrees, k_AimPlusX);
     }
     ASSERT_NEAR(player.HomingAngleDegrees(), -3.0f, 1e-4f);
 
-    player.SteerToward(start + Vector3{5.0f, 0.0f, -1.0f}, k_HomingConeDegrees);
+    player.SteerToward(start + Vector3{5.0f, 0.0f, -1.0f}, k_HomingConeDegrees, k_AimPlusX);
 
     EXPECT_NEAR(player.HomingAngleDegrees(), 0.25f, 1e-4f);
 }
@@ -861,7 +864,7 @@ TEST_F(PlayerComponentTest, ReleaseRemeasuresTheChargedTargetFromTheReleaseDirec
         const Vector3 target = obj.Root().Position() + Vector3{-5.0f, 0.0f, 1.0f};
         for (int i = 0; i < 20; ++i)
         {
-            player.SteerToward(target, k_HomingConeDegrees);
+            player.SteerToward(target, k_HomingConeDegrees, k_AimPlusZ);
         }
         ASSERT_NEAR(player.HomingAngleDegrees(), -3.0f, 1e-4f);
 
@@ -883,7 +886,7 @@ TEST_F(PlayerComponentTest, ReleaseRemeasuresTheChargedTargetFromTheReleaseDirec
         const Vector3 target = obj.Root().Position() + Vector3{-1.0f, 0.0f, 2.0f};
         for (int i = 0; i < 20; ++i)
         {
-            player.SteerToward(target, k_HomingConeDegrees);
+            player.SteerToward(target, k_HomingConeDegrees, k_AimPlusZ);
         }
         ASSERT_NEAR(player.HomingAngleDegrees(), -3.0f, 1e-4f);
 
@@ -915,7 +918,7 @@ TEST_F(PlayerComponentTest, SteeringDuringTheRushTurnsByTheStepUpToTheLimit)
         float largestStep = 0.0f;
         for (int i = 0; i < 20 && player.IsBodySlamming(); ++i)
         {
-            player.SteerToward(target, k_HomingConeDegrees);
+            player.SteerToward(target, k_HomingConeDegrees, k_AimPlusX);
             const float heading = SlamHeadingDegrees(player);
             largestStep = std::max(largestStep, std::abs(heading - previous));
             previous = heading;
@@ -933,7 +936,7 @@ TEST_F(PlayerComponentTest, SteeringDuringTheRushTurnsByTheStepUpToTheLimit)
         const Vector3 target = obj.Root().Position() + Vector3{50.0f, 0.0f, 10.0f};
         for (int i = 0; i < 4; ++i)
         {
-            player.SteerToward(target, k_HomingConeDegrees);
+            player.SteerToward(target, k_HomingConeDegrees, k_AimPlusX);
         }
         player.RequestBodySlam(0.0f);
         player.OnUpdate();
@@ -941,7 +944,7 @@ TEST_F(PlayerComponentTest, SteeringDuringTheRushTurnsByTheStepUpToTheLimit)
 
         for (int i = 0; i < 5; ++i)
         {
-            player.SteerToward(target, k_HomingConeDegrees);
+            player.SteerToward(target, k_HomingConeDegrees, k_AimPlusX);
         }
 
         EXPECT_NEAR(player.BodySlamVelocity().z, 0.0f, 1e-4f);
@@ -959,7 +962,7 @@ TEST_F(PlayerComponentTest, SteeringDuringTheRushContinuesFromTheChargedAngle)
     const Vector3 start = obj.Root().Position();
     for (int i = 0; i < 20; ++i)
     {
-        player.SteerToward(start + Vector3{5.0f, 0.0f, 1.0f}, k_HomingConeDegrees);
+        player.SteerToward(start + Vector3{5.0f, 0.0f, 1.0f}, k_HomingConeDegrees, k_AimPlusX);
     }
     player.RequestBodySlam(1.0f);
     player.OnUpdate();
@@ -973,7 +976,7 @@ TEST_F(PlayerComponentTest, SteeringDuringTheRushContinuesFromTheChargedAngle)
     for (const float angle : expected)
     {
         ASSERT_TRUE(player.IsBodySlamming());
-        player.SteerToward(rushTarget, k_HomingConeDegrees);
+        player.SteerToward(rushTarget, k_HomingConeDegrees, k_AimPlusX);
         EXPECT_NEAR(player.HomingAngleDegrees(), angle, 1e-2f);
         player.OnUpdate();
     }
@@ -989,13 +992,13 @@ TEST_F(PlayerComponentTest, SteeringIgnoresATargetThatIsNotFinite)
     player.RequestBodySlam(1.0f);
     player.OnUpdate();
     ASSERT_TRUE(player.IsBodySlamming());
-    player.SteerToward(obj.Root().Position() + Vector3{50.0f, 0.0f, 10.0f}, k_HomingConeDegrees);
+    player.SteerToward(obj.Root().Position() + Vector3{50.0f, 0.0f, 10.0f}, k_HomingConeDegrees, k_AimPlusX);
     const float homing = player.HomingAngleDegrees();
     const Vector3 velocity = player.BodySlamVelocity();
     ASSERT_NE(homing, 0.0f);
 
     const float nan = std::numeric_limits<float>::quiet_NaN();
-    player.SteerToward(Vector3{nan, nan, nan}, k_HomingConeDegrees);
+    player.SteerToward(Vector3{nan, nan, nan}, k_HomingConeDegrees, k_AimPlusX);
 
     EXPECT_FLOAT_EQ(player.HomingAngleDegrees(), homing);
     EXPECT_EQ(player.BodySlamVelocity(), velocity);
@@ -1011,7 +1014,7 @@ TEST_F(PlayerComponentTest, SteeringIsClearedWhenTheRushEndsAndOnReset)
     const Vector3 target = obj.Root().Position() + Vector3{5.0f, 0.0f, 1.0f};
     for (int i = 0; i < 4; ++i)
     {
-        player.SteerToward(target, k_HomingConeDegrees);
+        player.SteerToward(target, k_HomingConeDegrees, k_AimPlusX);
     }
     player.RequestBodySlam(1.0f);
     player.OnUpdate();
@@ -1026,7 +1029,7 @@ TEST_F(PlayerComponentTest, SteeringIsClearedWhenTheRushEndsAndOnReset)
     EXPECT_FLOAT_EQ(player.HomingAngleDegrees(), 0.0f);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
-    player.SteerToward(obj.Root().Position() + Vector3{5.0f, 0.0f, 1.0f}, k_HomingConeDegrees);
+    player.SteerToward(obj.Root().Position() + Vector3{5.0f, 0.0f, 1.0f}, k_HomingConeDegrees, k_AimPlusX);
     ASSERT_GT(std::abs(player.HomingAngleDegrees()), 0.0f);
     player.ResetState();
     EXPECT_FLOAT_EQ(player.HomingAngleDegrees(), 0.0f);
@@ -1043,7 +1046,7 @@ TEST_F(PlayerComponentTest, SteeringIsClearedWhenTheBallUncurls)
     ASSERT_TRUE(player.IsCurled());
     for (int i = 0; i < 4; ++i)
     {
-        player.SteerToward(obj.Root().Position() + Vector3{5.0f, 0.0f, 1.0f}, k_HomingConeDegrees);
+        player.SteerToward(obj.Root().Position() + Vector3{5.0f, 0.0f, 1.0f}, k_HomingConeDegrees, k_AimPlusX);
     }
     ASSERT_GT(std::abs(player.HomingAngleDegrees()), 0.0f);
 
