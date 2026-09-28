@@ -119,19 +119,26 @@ namespace NS::Phys
         JPH::BodyID SyncBox(JPH::BodyID id, const NS::Core::OBB& box, JPH::ObjectLayer layer, bool sensor = false);
         //! 中心と半径をそのまま球 body にする
         JPH::BodyID AddSphere(const NS::Core::Sphere& sphere, JPH::ObjectLayer layer);
-        //! id の body を sphere の形と位置・layer へ書き換えて id を返す。id が無効なら新しく作る
-        JPH::BodyID SyncSphere(JPH::BodyID id, const NS::Core::Sphere& sphere, JPH::ObjectLayer layer);
+        //! id の body を sphere の形と位置・layer・sensor の有無へ書き換えて id を返す。id が無効なら新しく作る
+        JPH::BodyID SyncSphere(JPH::BodyID id,
+                               const NS::Core::Sphere& sphere,
+                               JPH::ObjectLayer layer,
+                               bool sensor = false);
         //! capsule body を capsule.axis の向きで入れる。軸が零ベクトルなら Y 軸
         JPH::BodyID AddCapsule(const Capsule& capsule, JPH::ObjectLayer layer);
-        //! id の body を capsule の形と姿勢・layer へ書き換えて id を返す。id が無効なら新しく作る
-        JPH::BodyID SyncCapsule(JPH::BodyID id, const Capsule& capsule, JPH::ObjectLayer layer);
+        //! id の body を capsule の形と姿勢・layer・sensor の有無へ書き換えて id を返す。id が無効なら新しく作る
+        JPH::BodyID SyncCapsule(JPH::BodyID id, const Capsule& capsule, JPH::ObjectLayer layer, bool sensor = false);
         //! @brief 三角形群をまとめて 1 つの mesh body にする。空なら作らない
         //! @details 呼出側が std::vector と std::array<Triangle, 8> のどちらでも写さずに渡せるよう span で受ける
         JPH::BodyID AddMesh(std::span<const Triangle> triangles, JPH::ObjectLayer layer);
-        //! id の body を三角形群の形と layer へ書き換えて id を返す。id が無効なら新しく作る
+        //! id の body を三角形群の形と layer・sensor の有無へ書き換えて id を返す。id が無効なら新しく作る
         //! 空か、形を作れなければ無効な BodyID を返し、id の body は外さない
-        JPH::BodyID SyncMesh(JPH::BodyID id, std::span<const Triangle> triangles, JPH::ObjectLayer layer);
-        //! @brief id の body を collision の形で、位置・回転・拡縮へ置いて id を返す。id が無効なら新しく作る
+        JPH::BodyID SyncMesh(JPH::BodyID id,
+                             std::span<const Triangle> triangles,
+                             JPH::ObjectLayer layer,
+                             bool sensor = false);
+        //! @brief id の body を collision の形で、位置・回転・拡縮・sensor の有無へ置いて id を返す。id
+        //! が無効なら新しく作る
         //! @details 形は作り直さずに共有する。拡縮が 1 でなければ、共有した形を拡縮つきの形で包む
         //! 位置・回転・拡縮で表せない歪みは受け取れない。歪みのある配置は SyncMesh に世界座標の三角形を渡す
         //! collision の形が null か、拡縮の 3 軸がどれも 0 に近ければ無効な BodyID を返す。id の body は外さない
@@ -140,7 +147,8 @@ namespace NS::Phys
                                   const NS::Core::Vector3& position,
                                   const NS::Core::Quaternion& rotation,
                                   const NS::Core::Vector3& scale,
-                                  JPH::ObjectLayer layer);
+                                  JPH::ObjectLayer layer,
+                                  bool sensor = false);
 
         //! @brief OBB を通り抜けられる sensor body にする
         //! @details layer は ObjectLayers::Trigger 固定で、2 つの ShouldCollide がどの layer とも組ませない
@@ -156,8 +164,8 @@ namespace NS::Phys
         //! @details id が無効なら新しく作る。id が静的な body なら作り直し、古い body は外さない
         //! 形は世界座標の置き場所ごと受け取り、body の原点から見た位置と向きへ直して入れる
         //! 形が 2 つ以上なら合成形状、1 つなら位置と向きをずらした形にする
-        //! 形が null か静的にしか使えない部品は飛ばす。1 つも残らないか形を作れなければ無効な BodyID を返し、id の body は外さない
-        //! 置き直しは瞬間移動で、速度はそのまま残る
+        //! 形が null か静的にしか使えない部品は飛ばす。1 つも残らないか形を作れなければ無効な BodyID を返し、id の body
+        //! は外さない 置き直しは瞬間移動で、速度はそのまま残る
         JPH::BodyID SyncMovingBody(JPH::BodyID id,
                                    std::span<const ShapePart> parts,
                                    const NS::Core::Vector3& position,

@@ -2,6 +2,7 @@
 #include <Runtime/Core/Math.h>
 #include <Runtime/Core/OBB.h>
 #include <Runtime/Core/Sphere.h>
+#include <Runtime/Physics/MeshCollision.h>
 #include <Runtime/Physics/PhysicsScene.h>
 
 #include <algorithm>
@@ -543,4 +544,81 @@ TEST(JoltDynamic, BoxCanBeMadeDynamicToo)
     Step(physics, 180);
 
     EXPECT_NEAR(physics.BodyPosition(rock).y, 0.5f, 0.05f);
+}
+
+// すり抜ける体は層でなく sensor で決まることを見る。層は固い地形と同じ Terrain に置く
+// 固い体なら、正面から 10 m/s で当たった玉は跳ね返って手前 (x < 0) に残る
+namespace
+{
+    // 床の上を +x へ転がした玉が、x = 0 に置いた体を抜けて向こうへ出た x を返す
+    float RolledBallX(PhysicsScene& physics)
+    {
+        const JPH::BodyID ball =
+            physics.AddDynamicSphere(MakeSphere(Vector3{-3.0f, 0.5f, 0.0f}, 0.5f), DynamicBodyDesc{});
+        physics.OptimizeBroadPhase();
+        physics.SetBodyVelocity(ball, Vector3{10.0f, 0.0f, 0.0f});
+        Step(physics, 60);
+        return physics.BodyPosition(ball).x;
+    }
+} // namespace
+
+TEST(JoltSensor, SensorSphereLetsABallThroughAndIsStillFoundByOverlap)
+{
+    PhysicsScene physics;
+    AddWideFloor(physics);
+    const JPH::BodyID sensor =
+        physics.SyncSphere(JPH::BodyID{}, MakeSphere(Vector3{0.0f, 0.5f, 0.0f}, 1.0f), ObjectLayers::Terrain, true);
+
+    EXPECT_GT(RolledBallX(physics), 1.0f);
+    EXPECT_TRUE(
+        Contains(physics.OverlapCapsule(Capsule{Vector3{0.0f, 0.5f, 0.0f}, Vector3::UnitY, 0.0f, 0.2f}), sensor));
+}
+
+TEST(JoltSensor, SensorCapsuleLetsABallThroughAndIsStillFoundByOverlap)
+{
+    PhysicsScene physics;
+    AddWideFloor(physics);
+    const JPH::BodyID sensor = physics.SyncCapsule(
+        JPH::BodyID{}, Capsule{Vector3{0.0f, 1.0f, 0.0f}, Vector3::UnitY, 1.0f, 0.5f}, ObjectLayers::Terrain, true);
+
+    EXPECT_GT(RolledBallX(physics), 1.0f);
+    EXPECT_TRUE(
+        Contains(physics.OverlapCapsule(Capsule{Vector3{0.0f, 1.0f, 0.0f}, Vector3::UnitY, 0.0f, 0.2f}), sensor));
+}
+
+// 固い三角の床なら、落とした玉は床の上 (y = 0.5) で止まる
+TEST(JoltSensor, SensorMeshLetsABallFallThrough)
+{
+    PhysicsScene physics;
+    const JPH::BodyID sensor = physics.SyncMesh(JPH::BodyID{}, MakeFloorQuad(), ObjectLayers::Terrain, true);
+    const JPH::BodyID ball = physics.AddDynamicSphere(MakeSphere(Vector3{0.0f, 1.0f, 0.0f}, 0.5f), DynamicBodyDesc{});
+    physics.OptimizeBroadPhase();
+
+    Step(physics, 60);
+
+    EXPECT_LT(physics.BodyPosition(ball).y, -1.0f);
+    EXPECT_FALSE(sensor.IsInvalid());
+}
+
+TEST(JoltSensor, SensorMeshShapeLetsABallFallThrough)
+{
+    NS::Phys::MeshCollision floor{MakeFloorQuad(), nullptr};
+    floor.shape = NS::Phys::CreateMeshShape(floor.triangles);
+    ASSERT_NE(floor.shape, nullptr);
+
+    PhysicsScene physics;
+    const JPH::BodyID sensor = physics.SyncMeshShape(JPH::BodyID{},
+                                                     floor,
+                                                     Vector3{0.0f, 0.0f, 0.0f},
+                                                     NS::Core::Quaternion::Identity,
+                                                     Vector3{1.0f, 1.0f, 1.0f},
+                                                     ObjectLayers::Terrain,
+                                                     true);
+    const JPH::BodyID ball = physics.AddDynamicSphere(MakeSphere(Vector3{0.0f, 1.0f, 0.0f}, 0.5f), DynamicBodyDesc{});
+    physics.OptimizeBroadPhase();
+
+    Step(physics, 60);
+
+    EXPECT_LT(physics.BodyPosition(ball).y, -1.0f);
+    EXPECT_FALSE(sensor.IsInvalid());
 }

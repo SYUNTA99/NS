@@ -312,10 +312,13 @@ namespace NS::Phys
         return SyncSphere(JPH::BodyID{}, sphere, layer);
     }
 
-    JPH::BodyID PhysicsScene::SyncSphere(JPH::BodyID id, const NS::Core::Sphere& sphere, JPH::ObjectLayer layer)
+    JPH::BodyID PhysicsScene::SyncSphere(JPH::BodyID id,
+                                         const NS::Core::Sphere& sphere,
+                                         JPH::ObjectLayer layer,
+                                         bool sensor)
     {
         const ShapePart part = MakeSpherePart(sphere);
-        return SyncStatic(id, part.shape, part.position, part.rotation, layer, false);
+        return SyncStatic(id, part.shape, part.position, part.rotation, layer, sensor);
     }
 
     JPH::BodyID PhysicsScene::AddCapsule(const Capsule& capsule, JPH::ObjectLayer layer)
@@ -323,10 +326,10 @@ namespace NS::Phys
         return SyncCapsule(JPH::BodyID{}, capsule, layer);
     }
 
-    JPH::BodyID PhysicsScene::SyncCapsule(JPH::BodyID id, const Capsule& capsule, JPH::ObjectLayer layer)
+    JPH::BodyID PhysicsScene::SyncCapsule(JPH::BodyID id, const Capsule& capsule, JPH::ObjectLayer layer, bool sensor)
     {
         const ShapePart part = MakeCapsulePart(capsule);
-        return SyncStatic(id, part.shape, part.position, part.rotation, layer, false);
+        return SyncStatic(id, part.shape, part.position, part.rotation, layer, sensor);
     }
 
     JPH::BodyID PhysicsScene::AddMesh(std::span<const Triangle> triangles, JPH::ObjectLayer layer)
@@ -334,14 +337,17 @@ namespace NS::Phys
         return SyncMesh(JPH::BodyID{}, triangles, layer);
     }
 
-    JPH::BodyID PhysicsScene::SyncMesh(JPH::BodyID id, std::span<const Triangle> triangles, JPH::ObjectLayer layer)
+    JPH::BodyID PhysicsScene::SyncMesh(JPH::BodyID id,
+                                       std::span<const Triangle> triangles,
+                                       JPH::ObjectLayer layer,
+                                       bool sensor)
     {
         return SyncStatic(id,
                           CreateMeshShape(triangles),
                           NS::Core::Vector3{0.0f, 0.0f, 0.0f},
                           NS::Core::Quaternion::Identity,
                           layer,
-                          false);
+                          sensor);
     }
 
     JPH::BodyID PhysicsScene::SyncMeshShape(JPH::BodyID id,
@@ -349,7 +355,8 @@ namespace NS::Phys
                                             const NS::Core::Vector3& position,
                                             const NS::Core::Quaternion& rotation,
                                             const NS::Core::Vector3& scale,
-                                            JPH::ObjectLayer layer)
+                                            JPH::ObjectLayer layer,
+                                            bool sensor)
     {
         if (collision.shape == nullptr)
         {
@@ -363,7 +370,7 @@ namespace NS::Phys
             return JPH::BodyID{};
         }
 
-        return SyncStatic(id, scaled.Get(), position, rotation, layer, false);
+        return SyncStatic(id, scaled.Get(), position, rotation, layer, sensor);
     }
 
     JPH::BodyID PhysicsScene::AddDynamic(const JPH::ShapeRefC& shape,
