@@ -710,6 +710,25 @@ TEST(CollisionImpact, NoReboundAgainstTriggerBox)
     EXPECT_FALSE(rig.impact->DidRebound());
 }
 
+// トリガーは箱だけでなく全ての形の当たり判定に付く。球でも通り抜ける体積として相手から外れる
+TEST(CollisionImpact, NoReboundAgainstTriggerSphere)
+{
+    SceneNs::Scene scene;
+    SlamCourse course = k_NearCourse;
+    course.sphereTarget = true;
+    Rig rig = BuildSlam(scene, course);
+    ASSERT_NE(rig.target, nullptr);
+    SceneNs::SphereCollider* sphere = rig.target->FindComponent<SceneNs::SphereCollider>();
+    ASSERT_NE(sphere, nullptr);
+    sphere->SetTrigger(true);
+    scene.SyncPhysics();
+    SetInstantImpact(rig);
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+
+    EXPECT_EQ(StepUntilImpact(scene, rig, 30), 30);
+    EXPECT_FALSE(rig.impact->DidRebound());
+}
+
 // 外接箱で見ると、回転した的の触れてもいない隅で弾かれる
 TEST(CollisionImpact, NoReboundInEmptyCornerOfRotatedTarget)
 {

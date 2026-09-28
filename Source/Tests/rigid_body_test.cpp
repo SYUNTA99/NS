@@ -62,7 +62,8 @@ namespace
     JPH::BodyID AddMovingBox(PhysicsScene& physics, const Vector3& position, const BodyMotion& motion = {})
     {
         const ShapePart part = NS::Phys::MakeBoxPart(MakeBox(position, 0.5f));
-        return physics.SyncMovingBody(JPH::BodyID{}, std::span<const ShapePart>{&part, 1}, position, Quaternion::Identity, motion);
+        return physics.SyncMovingBody(
+            JPH::BodyID{}, std::span<const ShapePart>{&part, 1}, position, Quaternion::Identity, motion);
     }
 
     void StepPhysics(PhysicsScene& physics, int steps)
@@ -180,8 +181,11 @@ TEST(PhysicsMovingBody, SkipsPartsThatMustBeStatic)
     const ShapePart mesh{NS::Phys::CreateMeshShape(MakeFloorQuad()), Vector3{0.0f, 0.0f, 0.0f}, Quaternion::Identity};
     ASSERT_NE(mesh.shape, nullptr);
 
-    const JPH::BodyID body = physics.SyncMovingBody(
-        JPH::BodyID{}, std::span<const ShapePart>{&mesh, 1}, Vector3{0.0f, 0.0f, 0.0f}, Quaternion::Identity, BodyMotion{});
+    const JPH::BodyID body = physics.SyncMovingBody(JPH::BodyID{},
+                                                    std::span<const ShapePart>{&mesh, 1},
+                                                    Vector3{0.0f, 0.0f, 0.0f},
+                                                    Quaternion::Identity,
+                                                    BodyMotion{});
 
     EXPECT_TRUE(body.IsInvalid());
 }
@@ -189,11 +193,15 @@ TEST(PhysicsMovingBody, SkipsPartsThatMustBeStatic)
 TEST(PhysicsMovingBody, ReplacesAStaticBodyWithoutRemovingIt)
 {
     PhysicsScene physics;
-    const JPH::BodyID stationary = physics.AddBox(MakeBox(Vector3{0.0f, 0.0f, 0.0f}, 0.5f), NS::Phys::ObjectLayers::Terrain);
+    const JPH::BodyID stationary =
+        physics.AddBox(MakeBox(Vector3{0.0f, 0.0f, 0.0f}, 0.5f), NS::Phys::ObjectLayers::Terrain);
     const ShapePart part = NS::Phys::MakeBoxPart(MakeBox(Vector3{0.0f, 0.0f, 0.0f}, 0.5f));
 
-    const JPH::BodyID moving = physics.SyncMovingBody(
-        stationary, std::span<const ShapePart>{&part, 1}, Vector3{0.0f, 0.0f, 0.0f}, Quaternion::Identity, BodyMotion{});
+    const JPH::BodyID moving = physics.SyncMovingBody(stationary,
+                                                      std::span<const ShapePart>{&part, 1},
+                                                      Vector3{0.0f, 0.0f, 0.0f},
+                                                      Quaternion::Identity,
+                                                      BodyMotion{});
 
     EXPECT_NE(moving, stationary);
     EXPECT_EQ(physics.BodyCount(), 2u);
@@ -518,6 +526,30 @@ TEST(RigidBody, TriggerBoxKeepsItsSensorAndFollows)
     EXPECT_LT(owner.Root().Position().y, 10.0f);
 }
 
+// 物理に入れない当たり判定は動く body の形にも、元の場所に残る静的な body にもならない
+TEST(RigidBody, ExcludedCollidersLeaveNoBody)
+{
+    NS::Phys::MeshCollision floor{MakeFloorQuad(), nullptr};
+    floor.shape = NS::Phys::CreateMeshShape(floor.triangles);
+    RigidStage stage;
+    std::unique_ptr<GameObject> obj = MakeObjectAt(Vector3{0.0f, 5.0f, 0.0f});
+    obj->AddComponent<SphereCollider>();
+    BoxCollider* box = obj->AddComponent<BoxCollider>();
+    box->SetExcludedFromPhysics(true);
+    MeshCollider* mesh = obj->AddComponent<MeshCollider>();
+    mesh->SetCollision(&floor);
+    mesh->SetExcludedFromPhysics(true);
+    RigidBody* body = obj->AddComponent<RigidBody>();
+    stage.Spawn(std::move(obj));
+
+    stage.scene.SyncPhysics();
+
+    ASSERT_FALSE(body->BodyId().IsInvalid());
+    EXPECT_TRUE(box->BodyId().IsInvalid());
+    EXPECT_TRUE(mesh->BodyId().IsInvalid());
+    EXPECT_EQ(stage.physics.BodyCount(), 1u);
+}
+
 TEST(RigidBody, MeshColliderStaysStatic)
 {
     NS::Phys::MeshCollision floor{MakeFloorQuad(), nullptr};
@@ -614,4 +646,3 @@ TEST(RigidBody, EffectiveMassTreatsInvalidAsOne)
     body.SetMass(std::numeric_limits<float>::quiet_NaN());
     EXPECT_FLOAT_EQ(body.EffectiveMass(), 1.0f);
 }
-

@@ -125,11 +125,6 @@ namespace NS::Obj
         return NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
     }
 
-    void CapsuleCollider::SetExcludedFromStaticWorld(bool excluded) noexcept
-    {
-        m_excludedFromStaticWorld = excluded;
-    }
-
     NS::Phys::ShapePart CapsuleCollider::RigidBodyPart() const
     {
         return NS::Phys::MakeCapsulePart(WorldCapsule());
@@ -140,10 +135,6 @@ namespace NS::Obj
                                           JPH::ObjectLayer layer,
                                           bool sensor)
     {
-        if (m_excludedFromStaticWorld)
-        {
-            return JPH::BodyID{};
-        }
         return physics.SyncCapsule(current, WorldCapsule(), layer, sensor);
     }
 

@@ -24,7 +24,8 @@ namespace NS::Obj
         for (Component* comp : Owner()->Components())
         {
             const Collider* collider = ComponentCast<Collider>(comp);
-            if (collider == nullptr || !collider->IsActive())
+            // 物理に入れない当たりは形にも静的な body にもならないので、残る物として数えない
+            if (collider == nullptr || !collider->IsActive() || collider->IsExcludedFromPhysics())
             {
                 continue;
             }
@@ -39,9 +40,10 @@ namespace NS::Obj
         }
         if (leftStatic)
         {
-            NS_LOG_WARN(Scene,
-                        "RigidBody: '{}' のメッシュ・スロープの当たりは動く body の形にできない。静的なまま元の場所に残る",
-                        Owner()->Name());
+            NS_LOG_WARN(
+                Scene,
+                "RigidBody: '{}' のメッシュ・スロープの当たりは動く body の形にできない。静的なまま元の場所に残る",
+                Owner()->Name());
         }
 
         NS::Core::Vector3 position;
@@ -360,8 +362,7 @@ namespace NS::Obj
         rotation = parts.rotation;
     }
 
-    void RigidBody::SetOwnerWorldPose(const NS::Core::Vector3& position,
-                                               const NS::Core::Quaternion& rotation) noexcept
+    void RigidBody::SetOwnerWorldPose(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation) noexcept
     {
         Transform& root = RootTransform();
         const Transform* parent = root.Parent();

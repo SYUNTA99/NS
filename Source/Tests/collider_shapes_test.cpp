@@ -86,7 +86,7 @@ TEST(CapsuleColliderTest, WorldPropertiesReflectOwnerScale)
 }
 
 // 自分で掃引して動く配置物の capsule を静的世界へ入れると、掃引が自分に当たって動けなくなる
-// 判定は型でなく SetExcludedFromStaticWorld の値で見る。EntityComponent の OnStart が同居の capsule へ設定する
+// 判定は型でなく「物理に入れない」の値で見る。EntityComponent の OnStart が同居の capsule へ入れる
 TEST(CapsuleColliderTest, SyncToPhysicsSkipsTheOwnerThatSweepsItself)
 {
     NS::Obj::GameObject obj;
@@ -109,8 +109,7 @@ TEST(CapsuleColliderTest, RotationEulerDegreesRoundTrips)
 TEST(MeshColliderTest, WorldTrianglesTransformByOwnerPosition)
 {
     const NS::Phys::MeshCollision collision{
-        {NS::Phys::Triangle{Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}}},
-        nullptr};
+        {NS::Phys::Triangle{Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}}}, nullptr};
 
     NS::Obj::GameObject obj;
     obj.Root().SetPosition(Vector3{10.0f, 0.0f, 0.0f});
@@ -128,8 +127,7 @@ TEST(MeshColliderTest, WorldTrianglesTransformByOwnerPosition)
 TEST(MeshColliderTest, WithoutOwnerReturnsLocalUnchanged)
 {
     const NS::Phys::MeshCollision collision{
-        {NS::Phys::Triangle{Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}}},
-        nullptr};
+        {NS::Phys::Triangle{Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}}}, nullptr};
     NS::Obj::MeshCollider cc;
     cc.SetCollision(&collision);
 

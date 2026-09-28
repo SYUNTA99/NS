@@ -121,7 +121,7 @@ namespace NS::Game::Entity
         // 自分の capsule は Move が掃引する。静的世界に居ると自分に当たって動けない
         if (m_capsuleCollider != nullptr)
         {
-            m_capsuleCollider->SetExcludedFromStaticWorld(true);
+            m_capsuleCollider->SetExcludedFromPhysics(true);
         }
     }
 

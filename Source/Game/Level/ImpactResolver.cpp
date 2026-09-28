@@ -11,7 +11,6 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/Renderer.h"
-#include "Runtime/Object/Components/BoxCollider.h"
 #include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
@@ -205,9 +204,9 @@ namespace NS::Game::Level
                 return false;
             }
 
-            // トリガの箱は通り抜ける体積なのでぶつかる相手にならない
-            const NS::Obj::BoxCollider* box = breakable.Owner()->FindComponent<NS::Obj::BoxCollider>();
-            if (box != nullptr && box->IsTrigger())
+            // トリガーの当たり判定は通り抜ける体積なのでぶつかる相手にならない。形は問わない
+            const NS::Obj::Collider* collider = breakable.Owner()->FindComponent<NS::Obj::Collider>();
+            if (collider != nullptr && collider->IsTrigger())
             {
                 return false;
             }

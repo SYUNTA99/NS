@@ -49,12 +49,6 @@ namespace NS::Obj
         //! owner の world 変換を反映した世界軸並行 AABB を返す。Owner 未登録時は local だけを反映する
         [[nodiscard]] NS::Core::AABB WorldAABB() const noexcept;
 
-        //! 静的世界へ入れないようにする
-        //! @details 自分で掃引して動く配置物の capsule に立てる。入れたままだと掃引が自分の capsule に
-        //! 当たり、持ち主がその場から動かない
-        //! @param[in] excluded 静的世界から外す場合 true
-        void SetExcludedFromStaticWorld(bool excluded) noexcept;
-
         //! WorldCapsule のカプセルの形
         [[nodiscard]] NS::Phys::ShapePart RigidBodyPart() const override;
 
@@ -68,9 +62,7 @@ namespace NS::Obj
         NS_REFLECT_END()
 
     private:
-        // 静的世界から外していなければ RigidBody の形になれる。外した capsule は形にもならない
-        [[nodiscard]] bool ShapeCanJoinRigidBody() const noexcept override { return !m_excludedFromStaticWorld; }
-        // 静的世界から外した capsule は body を作らない
+        [[nodiscard]] bool ShapeCanJoinRigidBody() const noexcept override { return true; }
         [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics,
                                            JPH::BodyID current,
                                            JPH::ObjectLayer layer,
@@ -81,6 +73,5 @@ namespace NS::Obj
         float m_halfHeight = 0.5f;                                             // 円柱部の半長、半球を除く
         NS::Core::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};                    // owner local 空間での中心オフセット
         NS::Core::Quaternion m_localRotation = NS::Core::Quaternion::Identity; // owner 回転に重ねる local 回転
-        bool m_excludedFromStaticWorld = false;
     };
 } // namespace NS::Obj

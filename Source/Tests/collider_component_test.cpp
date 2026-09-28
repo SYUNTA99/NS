@@ -103,7 +103,7 @@ TEST(ColliderJolt, ExcludedCapsuleCreatesNoBody)
     ColliderStage stage;
     BoxCollider* solid = stage.owner.AddComponent<BoxCollider>();
     CapsuleCollider* capsule = stage.owner.AddComponent<CapsuleCollider>();
-    capsule->SetExcludedFromStaticWorld(true);
+    capsule->SetExcludedFromPhysics(true);
 
     solid->SyncToPhysics(stage.physics);
     capsule->SyncToPhysics(stage.physics);
