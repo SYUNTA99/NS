@@ -269,7 +269,11 @@ namespace NS::Game::Level
                 m_homeScale = RootTransform().Scale();
                 m_stanceApplied = true;
             }
-            const float scale = m_judge.IsCharging() ? m_chargeSquashScale : m_pressSquashScale;
+            float scale = m_pressSquashScale;
+            if (m_judge.IsCharging())
+            {
+                scale = m_chargeSquashScale;
+            }
             RootTransform().SetScale(NS::Core::Vector3{m_homeScale.x, m_homeScale.y * scale, m_homeScale.z});
         }
         else if (m_stanceApplied && !resolverAnimating)

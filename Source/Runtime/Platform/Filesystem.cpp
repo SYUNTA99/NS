@@ -441,7 +441,11 @@ namespace NS::Platform
         {
             if (path.size() >= 2 && path[1] == ':')
             {
-                return (path.size() >= 3 && (path[2] == '/' || path[2] == '\\')) ? 3 : 2;
+                if (path.size() >= 3 && (path[2] == '/' || path[2] == '\\'))
+                {
+                    return 3;
+                }
+                return 2;
             }
             if (!path.empty() && (path.front() == '/' || path.front() == '\\'))
             {
@@ -471,7 +475,11 @@ namespace NS::Platform
         while (i <= body.size())
         {
             const std::size_t next = body.find('/', i);
-            const std::size_t end = (next == std::string_view::npos) ? body.size() : next;
+            std::size_t end = next;
+            if (next == std::string_view::npos)
+            {
+                end = body.size();
+            }
             const std::string_view part = body.substr(i, end - i);
 
             if (part == "..")

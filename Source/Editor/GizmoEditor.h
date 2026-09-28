@@ -84,7 +84,14 @@ namespace NS::Editor
         //! ギズモの座標系を Local / World で切り替える
         void ToggleSpace() noexcept
         {
-            m_space = (m_space == GizmoSpace::Local) ? GizmoSpace::World : GizmoSpace::Local;
+            if (m_space == GizmoSpace::Local)
+            {
+                m_space = GizmoSpace::World;
+            }
+            else
+            {
+                m_space = GizmoSpace::Local;
+            }
         }
 
         //! @brief 毎フレーム入力を見て、選択とドラッグによる変形を進める
@@ -186,11 +193,11 @@ namespace NS::Editor
         NS::UI::ImGuiContext* m_imgui = nullptr;
 
         std::span<NS::Obj::GameObject* const> m_objects{}; //!< 選択判定の対象となるオブジェクト
-        std::span<const std::uint8_t> m_pickable{};           //!< 選択の優先度。1 の配置物を先に選ぶ
+        std::span<const std::uint8_t> m_pickable{};        //!< 選択の優先度。1 の配置物を先に選ぶ
 
-        bool m_active = false;                       //!< ギズモ操作が有効かどうか
-        GizmoTool m_tool = GizmoTool::Move;          //!< 現在の変形ツール
-        GizmoSpace m_space = GizmoSpace::Local;      //!< 変形の座標系
+        bool m_active = false;                    //!< ギズモ操作が有効かどうか
+        GizmoTool m_tool = GizmoTool::Move;       //!< 現在の変形ツール
+        GizmoSpace m_space = GizmoSpace::Local;   //!< 変形の座標系
         NS::Obj::Transform* m_selected = nullptr; //!< 選択中の Transform
 
         bool m_dragging = false;                //!< ドラッグ中か

@@ -99,7 +99,11 @@ namespace NS::Obj
         const GameObject* owner = Owner();
         const NS::Core::Matrix local = NS::Core::Matrix::CreateFromQuaternion(m_localRotation) *
                                        NS::Core::Matrix::CreateTranslation(m_centerOffset);
-        return owner != nullptr ? local * owner->Root().WorldMatrix() : local;
+        if (owner != nullptr)
+        {
+            return local * owner->Root().WorldMatrix();
+        }
+        return local;
     }
 
     NS::Phys::Capsule CapsuleCollider::WorldCapsule() const noexcept

@@ -253,7 +253,8 @@ namespace NS::Game::Player
         m_bodySlamAimAge = 0.0f;
     }
 
-    void PlayerComponent::SteerToward(const NS::Core::Vector3& targetCenter, float coneDegrees,
+    void PlayerComponent::SteerToward(const NS::Core::Vector3& targetCenter,
+                                      float coneDegrees,
                                       const NS::Core::Vector3& chargeAim) noexcept
     {
         if (Owner() == nullptr)
@@ -523,7 +524,11 @@ namespace NS::Game::Player
     {
         // 進み切る前に着地すると残りを地面の上で滑り、走っていないのに動いて見える。
         // 滞空秒を踏み込みの秒へ合わせ、進み切った所で足が着くようにする
-        const float airSeconds = (m_tapSlamSpeed > 0.0f) ? m_tapSlamDistance / m_tapSlamSpeed : 0.0f;
+        float airSeconds = 0.0f;
+        if (m_tapSlamSpeed > 0.0f)
+        {
+            airSeconds = m_tapSlamDistance / m_tapSlamSpeed;
+        }
         // Inspector で 0 を置くと 0 除算で位置まで非有限値が伝わるため、距離か初速が 0 なら通常の重力へ戻す
         if (!(airSeconds > NS::Core::k_Epsilon))
         {

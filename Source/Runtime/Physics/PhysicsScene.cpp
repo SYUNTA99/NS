@@ -37,7 +37,11 @@ namespace NS::Phys
 
         [[nodiscard]] float FiniteOr(float value, float fallback) noexcept
         {
-            return std::isfinite(value) ? value : fallback;
+            if (std::isfinite(value))
+            {
+                return value;
+            }
+            return fallback;
         }
 
         // Jolt は負の減衰と 0 以下の質量で assert する。受け取る所で揃えて、呼出側に同じ確かめを書かせない
@@ -79,7 +83,11 @@ namespace NS::Phys
 
         [[nodiscard]] JPH::EMotionQuality MotionQualityOf(const BodyMotion& motion) noexcept
         {
-            return motion.continuousCollision ? JPH::EMotionQuality::LinearCast : JPH::EMotionQuality::Discrete;
+            if (motion.continuousCollision)
+            {
+                return JPH::EMotionQuality::LinearCast;
+            }
+            return JPH::EMotionQuality::Discrete;
         }
 
         // 形の組を body の原点から見た 1 つの形にする。部品が残らないか、作れなければ null
@@ -126,11 +134,19 @@ namespace NS::Phys
                 }
                 const JPH::RotatedTranslatedShapeSettings shifted{singlePosition, singleRotation, single.GetPtr()};
                 const JPH::ShapeSettings::ShapeResult result = shifted.Create();
-                return result.HasError() ? nullptr : result.Get();
+                if (result.HasError())
+                {
+                    return nullptr;
+                }
+                return result.Get();
             }
 
             const JPH::ShapeSettings::ShapeResult result = compound.Create();
-            return result.HasError() ? nullptr : result.Get();
+            if (result.HasError())
+            {
+                return nullptr;
+            }
+            return result.Get();
         }
     } // namespace
 
@@ -386,7 +402,11 @@ namespace NS::Phys
         JPH::BodyCreationSettings settings{
             shape, ToJolt(position), ToJolt(rotation), JPH::EMotionType::Dynamic, desc.layer};
         settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
-        settings.mMassPropertiesOverride.mMass = desc.mass > 0.0f ? desc.mass : 1.0f;
+        settings.mMassPropertiesOverride.mMass = 1.0f;
+        if (desc.mass > 0.0f)
+        {
+            settings.mMassPropertiesOverride.mMass = desc.mass;
+        }
         settings.mRestitution = desc.restitution;
         settings.mFriction = desc.friction;
         return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::Activate);

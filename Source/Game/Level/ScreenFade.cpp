@@ -1,8 +1,8 @@
 #include "Game/Level/ScreenFade.h"
 
-#include "Runtime/Platform/Clock.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/Renderer.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
 
@@ -61,7 +61,14 @@ namespace NS::Game::Level
         if (m_timer < m_duration)
             return;
 
-        m_stage = (m_stage == Stage::Out) ? Stage::Hold : Stage::None;
+        if (m_stage == Stage::Out)
+        {
+            m_stage = Stage::Hold;
+        }
+        else
+        {
+            m_stage = Stage::None;
+        }
     }
 
     float ScreenFade::Alpha() const noexcept

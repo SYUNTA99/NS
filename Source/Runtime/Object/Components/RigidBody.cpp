@@ -190,7 +190,11 @@ namespace NS::Obj
         motion.restitution = m_restitution;
         motion.linearDamping = m_linearDamping;
         motion.angularDamping = m_angularDamping;
-        motion.gravityFactor = m_useGravity ? m_gravityScale : 0.0f;
+        motion.gravityFactor = 0.0f;
+        if (m_useGravity)
+        {
+            motion.gravityFactor = m_gravityScale;
+        }
         motion.continuousCollision = m_continuousCollision;
 
         JPH::EAllowedDOFs allowed = JPH::EAllowedDOFs::All;

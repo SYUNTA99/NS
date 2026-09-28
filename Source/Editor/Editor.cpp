@@ -350,7 +350,12 @@ float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
         // 開始 / 停止トグル。編集中は ▶ で再生開始、再生中は ■ で実行から抜ける
         if (state.playActive)
             ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_ButtonActive]);
-        if (ImGui::Button(state.playActive ? "■" : "▶", ImVec2(buttonWidth, 0.0f)))
+        const char* playLabel = "▶";
+        if (state.playActive)
+        {
+            playLabel = "■";
+        }
+        if (ImGui::Button(playLabel, ImVec2(buttonWidth, 0.0f)))
         {
             if (state.playActive)
                 editor.EnterEdit();
