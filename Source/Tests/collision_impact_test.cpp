@@ -1019,7 +1019,7 @@ TEST(CollisionImpact, KeepsTheNumbersOfTheLastHitForReading)
     ASSERT_EQ(hit.tier, LevelNs::HitTier::Center);
     const float mass = rig.rigidBody->EffectiveMass();
     EXPECT_NEAR(hit.cameraShake, 0.06f * hit.power * mass / (mass + 1.0f) * 1.25f, 1.0e-6f);
-    EXPECT_EQ(hit.flashStart, 2);
+    EXPECT_EQ(hit.flashStart, 6);
     EXPECT_FLOAT_EQ(hit.zoomStart, 1.15f);
     EXPECT_FLOAT_EQ(std::abs(hit.rollStart), 3.0f);
     // 欄「中心近くの当たりのパッドの振動の強さ」の既定。中心近くは重いモーターだけ
@@ -2216,7 +2216,7 @@ TEST(CollisionImpact, CenterHitStretchesHitStop)
     EXPECT_EQ(StepsUntilMovementActive(scene, rig, 60), expected);
 }
 
-// 白は検知のフレームには出ず、潰れと同じ止めの頭から 2 フレーム出る。引いたフレームには、まだ潰れが残っている
+// 白は検知のフレームには出ず、潰れと同じ止めの頭から 6 フレーム出る。引いたフレームには、まだ潰れが残っている
 TEST(CollisionImpact, CenterHitFlashRunsFromTheFreezeFrameWhileTheSquashIsHeld)
 {
     SceneNs::Scene scene;
@@ -2229,10 +2229,11 @@ TEST(CollisionImpact, CenterHitFlashRunsFromTheFreezeFrameWhileTheSquashIsHeld)
 
     Step(scene, rig);
     ASSERT_FALSE(rig.movement->IsActiveSelf());
-    EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 2);
-    Step(scene, rig);
-    EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 1);
-    Step(scene, rig);
+    for (int remaining = 6; remaining > 0; --remaining)
+    {
+        EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), remaining);
+        Step(scene, rig);
+    }
     EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 0);
     EXPECT_TRUE(rig.impact->IsScaleAnimating());
 }
