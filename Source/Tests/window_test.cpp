@@ -1,4 +1,5 @@
 #include <Runtime/Core/Logger.h>
+#include <Runtime/Platform/Input.h>
 #include <Runtime/Platform/Window.h>
 #include <gtest/gtest.h>
 
@@ -98,4 +99,26 @@ TEST_F(WindowLoggerTest, IsValidAfterSuccessfulConstruction)
 {
     NS::Platform::Window window(MakeDesc("ns_test_is_valid"));
     EXPECT_TRUE(window.IsValid());
+}
+
+// エディタのプレイ中に Scene の画像の上で UI がマウスを持つ間も、左ボタンの押下だけはゲームの入力へ届く
+// 動きと右ボタンは届かない。ゲームのカメラが回らず、崖の手放しも起きない
+TEST_F(WindowLoggerTest, OnlyTheLeftButtonPassesWhileTheUiHoldsTheMouse)
+{
+    NS::Platform::Window window(MakeDesc("ns_test_left_pass"));
+    ASSERT_TRUE(window.IsValid());
+    NS::Platform::Input input;
+    window.AttachInput(&input);
+    input.SetUiCapture({.wantMouse = true, .leftButtonToGame = true});
+
+    HWND hwnd = static_cast<HWND>(window.NativeHandle());
+    ::SendMessageW(hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(50, 60));
+    ::SendMessageW(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(50, 60));
+    ::SendMessageW(hwnd, WM_RBUTTONDOWN, MK_RBUTTON, MAKELPARAM(50, 60));
+    window.AttachInput(nullptr);
+
+    EXPECT_TRUE(input.Mouse().IsHeld(NS::Platform::MouseButton::Left));
+    EXPECT_FALSE(input.Mouse().IsHeld(NS::Platform::MouseButton::Right));
+    EXPECT_EQ(input.Mouse().GetX(), 0);
+    EXPECT_EQ(input.Mouse().GetY(), 0);
 }

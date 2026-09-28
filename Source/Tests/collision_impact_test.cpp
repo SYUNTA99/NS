@@ -2403,6 +2403,44 @@ TEST(CollisionImpact, AimLineIsNotKeptWithoutACamera)
     EXPECT_FALSE(input->TryGetAimLine(line));
 }
 
+namespace
+{
+    // UI の取り分は実機の Input に残るので、試しの後に戻さないと他の試しが押しを読めなくなる
+    struct UiCaptureScope
+    {
+        explicit UiCaptureScope(const NS::Platform::UiCaptureDesc& desc) noexcept
+        {
+            NS::Platform::Input::Get().SetUiCapture(desc);
+        }
+        ~UiCaptureScope() noexcept { NS::Platform::Input::Get().SetUiCapture({}); }
+        UiCaptureScope(const UiCaptureScope&) = delete;
+        UiCaptureScope& operator=(const UiCaptureScope&) = delete;
+    };
+} // namespace
+
+// エディタのプレイ中に Scene のタブの画像で左を押すと、UI がマウスを持ったままでも溜めの押しになる
+TEST(CollisionImpact, LeftButtonPassedFromTheSceneTabIsReadAsTheSlamPress)
+{
+    NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
+    SceneNs::GameObject owner;
+    NS::Game::Player::PlayerComponent* movement = owner.AddComponent<NS::Game::Player::PlayerComponent>();
+    LevelNs::CollisionInput* input = owner.AddComponent<LevelNs::CollisionInput>();
+    movement->OnStart();
+    input->OnStart();
+
+    MouseLeftPress press;
+    {
+        const UiCaptureScope capture({.wantMouse = true});
+        input->OnUpdate();
+        EXPECT_FALSE(input->Judge().IsHeld());
+    }
+    {
+        const UiCaptureScope capture({.wantMouse = true, .leftButtonToGame = true});
+        input->OnUpdate();
+        EXPECT_TRUE(input->Judge().IsHeld());
+    }
+}
+
 // 寄せの角度の内に居ても、狙いの線の外の相手は狙う相手にならない
 TEST(CollisionImpact, AimTargetIsNotKeptForATargetOffTheLine)
 {

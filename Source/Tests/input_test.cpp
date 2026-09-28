@@ -328,6 +328,24 @@ TEST(NsPlatformInput, UpdatePropagatesToMouse)
     EXPECT_EQ(input.Mouse().GetWheelDelta(), 0);
 }
 
+// UI がマウスを持つ間はボタンをゲームへ渡さない。左の受け渡しを登録した間だけ、左だけを渡す
+TEST(NsPlatformInput, LeftButtonCanReachTheGameWhileTheUiHoldsTheMouse)
+{
+    Input input;
+    EXPECT_TRUE(input.GameReceivesMouseButton(MouseButton::Left));
+    EXPECT_TRUE(input.GameReceivesMouseButton(MouseButton::Right));
+
+    input.SetUiCapture({.wantMouse = true});
+    EXPECT_FALSE(input.GameReceivesMouseButton(MouseButton::Left));
+    EXPECT_FALSE(input.GameReceivesMouseButton(MouseButton::Right));
+
+    input.SetUiCapture({.wantMouse = true, .leftButtonToGame = true});
+    EXPECT_TRUE(input.UiWantsMouse());
+    EXPECT_TRUE(input.GameReceivesMouseButton(MouseButton::Left));
+    EXPECT_FALSE(input.GameReceivesMouseButton(MouseButton::Right));
+    EXPECT_FALSE(input.GameReceivesMouseButton(MouseButton::Middle));
+}
+
 TEST(NsPlatformGamepad, DefaultIsNotConnected)
 {
     Gamepad pad;

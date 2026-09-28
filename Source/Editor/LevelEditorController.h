@@ -4,6 +4,7 @@
 #include "Editor/EditorMode.h"
 #include "Editor/EditorObjects.h"
 #include "Editor/GizmoEditor.h"
+#include "Editor/PlayControls.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
@@ -107,6 +108,11 @@ public:
     //! プレイの時間停止。実体はシーンの時間停止スイッチで、ここはエディタ操作の入口
     [[nodiscard]] bool PlayPaused() const noexcept;
     void TogglePlayPause() noexcept;
+
+    //! @brief 出したカーソルを、Game の画像の左クリックで固定へ戻す
+    //! @details 止めている間と、カーソルを固定している間は何もしない
+    //! @param[in] gameImageClicked このフレームに Game の画像を左クリックしたか
+    void RecaptureCursorOnGameClick(bool gameImageClicked) noexcept;
 
     //! 編集対象の live な ObjectList。一覧 UI と参照候補は範囲 for か ObjectAt でここを直接読む
     [[nodiscard]] const NS::Obj::ObjectList& Objects() const noexcept;
@@ -229,6 +235,10 @@ public:
 
 private:
     void TickEdit();
+
+    //! @brief プレイ中のカーソルを置き直す
+    //! @details Captured は消して Game の画像の中心へ固定し、マウスを相対にする。Released はその逆
+    void ApplyPlayCursor(NS::Editor::PlayCursor cursor) noexcept;
 
     //! プレイを終えて編集の姿へ戻す。凍結スナップショットから世界を組み直し、操作系を休止させ、カーソルを出す
     //! 編集モードでしか要らない遷移なのでエディタが持つ。組み直しで確保が起きるため noexcept にしない

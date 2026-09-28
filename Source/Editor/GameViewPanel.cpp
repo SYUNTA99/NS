@@ -30,6 +30,8 @@ namespace NS::Editor
                                    static_cast<int>(rectMax.x - rectMin.x),
                                    static_cast<int>(rectMax.y - rectMin.y),
                                    hovered);
+                // Esc で出したカーソルは、画像の左クリックで視点の操作へ戻す
+                editor.RecaptureCursorOnGameClick(hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left));
             }
         }
         m_surface.EndView();

@@ -86,6 +86,25 @@ namespace NS::Platform
             }
         }
 
+        // UI が取っていてゲームへ流さない入力か
+        // 左ボタンの押下は、UI がマウスを持つ間も左の受け渡しが登録されていれば流す
+        [[nodiscard]] bool IsTakenByUi(const Input& input, UINT msg) noexcept
+        {
+            if (IsKeyboardMessage(msg))
+            {
+                return input.UiWantsKeyboard();
+            }
+            if (msg == WM_LBUTTONDOWN)
+            {
+                return !input.GameReceivesMouseButton(MouseButton::Left);
+            }
+            if (IsMouseMessage(msg))
+            {
+                return input.UiWantsMouse();
+            }
+            return false;
+        }
+
         LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
         {
             Window::Impl* impl = s_instance;
@@ -116,8 +135,7 @@ namespace NS::Platform
                 {
                     // UIがキャプチャ中の入力はゲーム側へ流さない
                     // 離しだけは流す。奪うと Input に押しっぱなしが残り、離した瞬間の入力が来なくなる
-                    if (!IsReleaseMessage(msg) && ((IsKeyboardMessage(msg) && impl->input->UiWantsKeyboard()) ||
-                                                   (IsMouseMessage(msg) && impl->input->UiWantsMouse())))
+                    if (!IsReleaseMessage(msg) && IsTakenByUi(*impl->input, msg))
                     {
                         return ::DefWindowProcW(hwnd, msg, wparam, lparam);
                     }

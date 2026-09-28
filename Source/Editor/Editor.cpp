@@ -78,6 +78,10 @@ void Editor::OnAttach()
     // 終了要求を握って保存確認を挟む。出荷には Editor が無いのでリリースは確認なしで終了する
     app->SetQuitGuard([this]() { return m_quitModal.RequestQuit(); });
 
+    // プレイ中の Esc はカーソルを出すだけにする。2 回目で落ちると、出したカーソルでタブを押しに行く途中で
+    // アプリごと終わる。プレイから抜けるのは Tab / Start / 帯の停止
+    game->SetSecondEscapeQuits(false);
+
     NS_LOG_INFO(App, "Editor attached (Debug/Dev/GameDebug only)");
 }
 
@@ -97,7 +101,7 @@ void Editor::OnDetach()
     {
         app->SetQuitGuard(nullptr);
         app->Window().SetMessageHook(nullptr);
-        app->Input().SetUiCapture(false, false);
+        app->Input().SetUiCapture({});
         // Renderer が非所有ポインタを宙吊りにしないよう、ターゲットを破棄する前に必ず外す
         app->Renderer().SetSceneTarget(nullptr);
     }
@@ -225,14 +229,32 @@ void Editor::OnRender()
     m_sceneView.UpdateMouseLatch();
 
     // 次フレームの gameplay / Window 入力ゲート用に UI キャプチャ状態を Input へ反映する
-    // 自由視点中はゲームへのマウスラッチをかけない。見回しドラッグ中だけキーボードも UI が持つ
-    // 入力を持つパネル (編集中= Scene / プレイ中= Game) のラッチで UI のマウス掴みを外す
-    const bool ownerLatched = playMode ? m_gameView.IsMouseLatched() : m_sceneView.IsMouseLatched();
-    // ImGui は項目を押している間 WantCaptureKeyboard も立てるため、Game ビューの長押しで WASD が UI に奪われる
-    // プレイ中にゲームがマウスを掴んでいる間はキーボードをゲームへ渡す
-    const bool keyboardOwnedByGame = playMode && ownerLatched;
-    app->Input().SetUiCapture(m_imgui->WantCaptureMouse() && !ownerLatched,
-                              (m_imgui->WantCaptureKeyboard() && !keyboardOwnedByGame) || m_sceneView.IsFreeFlying());
+    // F5 で UI を隠している間はパネルを描かないので、焦点は無い扱いにして前の振り分けのままにする
+    std::optional<NS::Editor::CenterTab> focusedPanel;
+    if (m_uiVisible)
+    {
+        if (m_sceneView.IsFocused())
+        {
+            focusedPanel = NS::Editor::CenterTab::Scene;
+        }
+        else if (m_gameView.IsFocused())
+        {
+            focusedPanel = NS::Editor::CenterTab::Game;
+        }
+    }
+    const NS::Editor::InputOwnership owner =
+        NS::Editor::ResolveInputOwnership({.playMode = playMode,
+                                           .uiWantsMouse = m_imgui->WantCaptureMouse(),
+                                           .uiWantsKeyboard = m_imgui->WantCaptureKeyboard(),
+                                           .textInput = ImGui::GetIO().WantTextInput,
+                                           .editSceneLatched = m_sceneView.IsMouseLatched(),
+                                           .gameLatched = m_gameView.IsMouseLatched(),
+                                           .cursorReleased = app->Window().IsCursorVisible(),
+                                           .sceneLatched = m_sceneView.IsFreeViewLatched(),
+                                           .sceneLooking = m_sceneView.IsFreeFlying(),
+                                           .focusedPanel = focusedPanel});
+    app->Input().SetUiCapture(
+        {.wantMouse = owner.uiMouse, .wantKeyboard = owner.uiKeyboard, .leftButtonToGame = owner.leftButtonToGame});
 
     // 見回しドラッグの立ち下がりで押しっぱなしのキーが残らないよう解除する。WM_KEYUP も UI 捕捉中は届かない
     if (m_sceneView.ConsumeFreeFlyReleased())

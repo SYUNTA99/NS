@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Core/NonCopyable.h"
 
 #include <memory>
 #include <optional>
@@ -39,8 +39,12 @@ namespace NS::Editor
         //! @details ゲーム画面はパネルの形で見え方が変わると手触りを詰める基準が動くので、出荷と同じ比率で固定する
         void SetFixedAspect(float aspect) noexcept { m_fixedAspect = aspect; }
 
-        //! フレーム先頭で可視状態を false にする。このフレームに BeginView されなければ不可視のままになる
-        void ResetVisibility() noexcept { m_visible = false; }
+        //! フレーム先頭で可視状態と焦点を false にする。このフレームに BeginView されなければ不可視のままになる
+        void ResetVisibility() noexcept
+        {
+            m_visible = false;
+            m_focused = false;
+        }
 
         //! @brief windowName のパネルを Begin し、content 領域があれば目標サイズを更新して RT を貼る
         //! @param[out] outMin,outMax,outHovered 貼った映像の矩形と hover。映像を貼れた時だけ埋まる
@@ -52,8 +56,7 @@ namespace NS::Editor
 
         //! @brief 目標サイズに追従して RT を用意し、pose とセットのビューを返す
         //! @return 可視だったフレームは {RT, pose}。不可視やサイズ不足なら nullopt
-        [[nodiscard]] std::optional<NS::Obj::SceneView> CollectView(
-            std::optional<NS::Obj::CameraPose> pose) noexcept;
+        [[nodiscard]] std::optional<NS::Obj::SceneView> CollectView(std::optional<NS::Obj::CameraPose> pose) noexcept;
 
         //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
         void Release() noexcept;
@@ -61,10 +64,14 @@ namespace NS::Editor
         //! このフレームにパネルが可視 (サイズを持つ) だったか
         [[nodiscard]] bool IsVisible() const noexcept { return m_visible; }
 
+        //! このフレームにパネルへ焦点があったか。プレイ中のキーボードをゲームへ渡す条件に使う
+        [[nodiscard]] bool IsFocused() const noexcept { return m_focused; }
+
     private:
         std::unique_ptr<NS::Gfx::RenderTarget> m_target;
         NS::Core::Size2D m_size{0, 0}; // content 領域。次フレームの描画先サイズ
         float m_fixedAspect = 0.0f;    // 固定する縦横比。0 以下はパネルの形に追従
         bool m_visible = false;        // このフレームにパネルが可視だったか
+        bool m_focused = false;        // このフレームにパネルへ焦点があったか
     };
 } // namespace NS::Editor

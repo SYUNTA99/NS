@@ -9,8 +9,6 @@
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/App/Application.h"
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Platform/Clock.h"
-#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Core/OBB.h"
@@ -27,10 +25,12 @@
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
-#include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/ObjectName.h"
+#include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
+#include "Runtime/Platform/Clock.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Keyboard.h"
 
@@ -206,17 +206,45 @@ void LevelEditorController::TogglePlayPause() noexcept
     {
         m_scene->SetSimulationPaused(!m_scene->IsSimulationPaused());
         // 固定したままだと Inspector を触れず、プレイ中に値を調整する動線が消える。止めている間は解く
+        // 再開は Game が映っている時だけ固定へ戻す。Scene を見ている時はタブを押せるよう出したまま
         if (m_mode == Mode::Play)
         {
-            if (NS::App::Application* app = NS::App::Application::Get())
-            {
-                const bool paused = m_scene->IsSimulationPaused();
-                app->Window().SetCursorVisible(paused);
-                app->Window().SetCursorLocked(!paused);
-                app->Input().Mouse().SetRelativeMode(!paused);
-            }
+            ApplyPlayCursor(NS::Editor::CursorAfterPauseToggle(
+                {.paused = m_scene->IsSimulationPaused(), .gameViewInFront = !m_gameViewHidden}));
         }
     }
+}
+
+void LevelEditorController::RecaptureCursorOnGameClick(bool gameImageClicked) noexcept
+{
+    NS::App::Application* app = NS::App::Application::Get();
+    if (app == nullptr)
+    {
+        return;
+    }
+    const bool recapture = NS::Editor::ShouldRecaptureCursor({.playMode = m_mode == Mode::Play,
+                                                              .paused = PlayPaused(),
+                                                              .cursorReleased = app->Window().IsCursorVisible(),
+                                                              .gameImageClicked = gameImageClicked});
+    if (recapture)
+    {
+        ApplyPlayCursor(NS::Editor::PlayCursor::Captured);
+    }
+}
+
+void LevelEditorController::ApplyPlayCursor(NS::Editor::PlayCursor cursor) noexcept
+{
+    NS::App::Application* app = NS::App::Application::Get();
+    if (app == nullptr)
+    {
+        return;
+    }
+    // 見えるカーソルと相対モードの併存は挙動が矛盾するので、3 つを必ず揃えて切り替える
+    const bool captured = cursor == NS::Editor::PlayCursor::Captured;
+    app->Window().SetCursorVisible(!captured);
+    // 固定しないとクリックが他のパネルへ落ち、押しっぱなしの体当たり入力が届かないフレームができる
+    app->Window().SetCursorLocked(captured);
+    app->Input().Mouse().SetRelativeMode(captured);
 }
 
 const NS::Obj::ObjectList& LevelEditorController::Objects() const noexcept
@@ -357,13 +385,7 @@ void LevelEditorController::EnterPlay() noexcept
     m_scene->SetSimulationEnabled(true);
 
     // プレイ突入はカーソルを消し、マウスを相対モードにして視点操作をカーソル位置から切り離す
-    if (NS::App::Application* app = NS::App::Application::Get())
-    {
-        app->Window().SetCursorVisible(false);
-        // 固定しないとクリックが他のパネルへ落ち、押しっぱなしの体当たり入力が届かないフレームができる
-        app->Window().SetCursorLocked(true);
-        app->Input().Mouse().SetRelativeMode(true);
-    }
+    ApplyPlayCursor(NS::Editor::PlayCursor::Captured);
 
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -890,8 +912,8 @@ void LevelEditorController::RenderCameraGizmos(const NS::Core::Matrix& viewProje
         const NS::Obj::CameraPose pose = vcam->EvaluatePose(1.0f);
         DrawCameraFrustum(pose, aspect, camColor);
         const float markerHalf = CameraMarkerHalf(pose.position, viewProjection);
-        NS::Gfx::DebugDraw::AABB(
-            NS::Core::AABB{pose.position, NS::Core::Vector3{markerHalf, markerHalf, markerHalf}}, camColor);
+        NS::Gfx::DebugDraw::AABB(NS::Core::AABB{pose.position, NS::Core::Vector3{markerHalf, markerHalf, markerHalf}},
+                                 camColor);
     }
 }
 
@@ -1068,9 +1090,9 @@ void LevelEditorController::AddObjectWithMesh(std::string_view meshPath)
     const NS::Core::Vector3 center = m_editorCamera.Center();
 
     // 描いた形と当たりをずらさない。MeshCollider が描画と同じ三角形から当たりを作る
-    nlohmann::json object = NS::Obj::MakeObjectJson(nlohmann::json::array(
-        {NS::Editor::MakeMeshRendererEntry(meshRef, "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}),
-         NS::Obj::MakeComponentEntry("MeshCollider")}));
+    nlohmann::json object = NS::Obj::MakeObjectJson(
+        nlohmann::json::array({NS::Editor::MakeMeshRendererEntry(meshRef, "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}),
+                               NS::Obj::MakeComponentEntry("MeshCollider")}));
     NS::Obj::SetObjectPosition(object, center);
     NS::Obj::SetObjectJsonName(object, NS::Platform::FileSystem::Stem(meshPath));
 
@@ -1112,7 +1134,8 @@ void LevelEditorController::RenameObject(std::uint32_t id, std::string_view name
 
     std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
     // 実体は既に after なので Do を呼ばず履歴だけ積む
-    m_editor.Undo().Record(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
+    m_editor.Undo().Record(
+        std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
 
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -1169,7 +1192,8 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
 
     std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
     // 実体は既に after なので Do を呼ばず履歴だけ積む
-    m_editor.Undo().Record(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
+    m_editor.Undo().Record(
+        std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
 
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -1249,7 +1273,8 @@ void LevelEditorController::SetComponentEnabledOnSelected(std::size_t componentI
     comp->SetEnabled(enabled);
     m_scene->SyncPhysics();
     std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
-    m_editor.Undo().Record(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
+    m_editor.Undo().Record(
+        std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
 
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -1458,8 +1483,7 @@ void LevelEditorController::CaptureDragFollowers() noexcept
 
         // 選択中の物にぶら下がっている分は親が動けば付いてくる。二重に動かさない
         bool underSelected = false;
-        for (const NS::Obj::GameObject* ancestor = object->Parent(); ancestor != nullptr;
-             ancestor = ancestor->Parent())
+        for (const NS::Obj::GameObject* ancestor = object->Parent(); ancestor != nullptr; ancestor = ancestor->Parent())
         {
             if (IsObjectSelected(ancestor->Id()))
             {
@@ -1529,7 +1553,8 @@ void LevelEditorController::PasteClipboardComponentToSelected()
         return;
 
     // 同型がすでにあっても末尾へ重ねて貼り、上書きはしない。足す時と同じく配置物を自分の JSON から作り直す
-    // id は新しく振る。コピー元の id のまま貼ると、組み直しの一意化で元の側の id が振り直され、元を指す参照が貼った側へ移る
+    // id は新しく振る。コピー元の id のまま貼ると、組み直しの一意化で元の側の id が振り直され、
+    // 元を指す参照が貼った側へ移る
     // 名前はそのまま貼り、配置物の中で重なれば組み直しの一意化が番号を付ける
     nlohmann::json after = *before;
     nlohmann::json pasted = *m_componentClipboard;
@@ -1572,7 +1597,8 @@ void LevelEditorController::RenameComponentOnSelected(std::size_t componentIndex
 
     // 実体は既に after なので Do を呼ばず履歴だけ積む
     std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
-    m_editor.Undo().Record(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
+    m_editor.Undo().Record(
+        std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
 
     RefreshGizmoSelectables();
     ResolveSelectionFromId();

@@ -80,11 +80,12 @@ namespace NS::Game::Level
 
         NS::Platform::Input& input = NS::Platform::Input::Get();
         // エディタの操作クリックが衝突入力へ漏れるため、UI がマウスを取っている間は読まない
-        const bool mouseFree = !input.UiWantsMouse();
+        // エディタがプレイ中の Scene のタブから左ボタンだけ渡している間は読む
+        const bool leftFree = input.GameReceivesMouseButton(NS::Platform::MouseButton::Left);
         const NS::Platform::Mouse& mouse = input.Mouse();
         const NS::Platform::Gamepad& pad = input.Gamepad(0);
         const bool held =
-            (mouseFree && mouse.IsHeld(NS::Platform::MouseButton::Left)) || pad.IsHeld(NS::Platform::GamepadButton::X);
+            (leftFree && mouse.IsHeld(NS::Platform::MouseButton::Left)) || pad.IsHeld(NS::Platform::GamepadButton::X);
         m_judge.Step(held);
 
         if (m_judge.JustPressed() && m_movement != nullptr)
@@ -178,9 +179,8 @@ namespace NS::Game::Level
         {
             return;
         }
-        m_aimLine = AimLine{.origin = RootTransform().Position(),
-                            .direction = direction,
-                            .length = m_movement->BodySlamDistance()};
+        m_aimLine = AimLine{
+            .origin = RootTransform().Position(), .direction = direction, .length = m_movement->BodySlamDistance()};
         m_hasAimLine = true;
         if (m_resolver == nullptr)
         {

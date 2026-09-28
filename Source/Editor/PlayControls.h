@@ -64,4 +64,60 @@ namespace NS::Editor
 
     //! 中央パネルの役割を決める。プレイ中の Scene は Game が裏のときだけ自由視点を映す
     [[nodiscard]] CenterPanelRole ResolveCenterPanelRole(CenterPanelQuery query) noexcept;
+
+    //! @brief 入力の持ち主を決める材料。フレームの終わりに集め、次のフレームのメッセージの振り分けに効く
+    struct InputOwnerQuery
+    {
+        bool playMode = false;                 // プレイモード中か
+        bool uiWantsMouse = false;             // ImGui がマウスを欲しがっているか
+        bool uiWantsKeyboard = false;          // ImGui がキーボードを欲しがっているか。項目を押している間も立つ
+        bool textInput = false;                // 文字の入力欄に居るか
+        bool editSceneLatched = false;         // 編集中の Scene の画像のラッチ
+        bool gameLatched = false;              // プレイ中の Game の画像のラッチ
+        bool cursorReleased = false;           // プレイ中にカーソルを出して固定を解いているか
+        bool sceneLatched = false;             // プレイ中の Scene の画像 (自由視点) のラッチ
+        bool sceneLooking = false;             // Scene の右ドラッグで見回している最中か
+        std::optional<CenterTab> focusedPanel; // 焦点のある中央パネル。他の窓に焦点があれば空
+    };
+
+    //! @brief UI とゲームの入力の取り分
+    struct InputOwnership
+    {
+        bool uiMouse = false;          // UI がマウスを持つか
+        bool uiKeyboard = false;       // UI がキーボードを持つか
+        bool leftButtonToGame = false; // UI がマウスを持つ間も、左ボタンだけゲームへ渡すか
+    };
+
+    //! @brief UI とゲームの入力の取り分を決める
+    //! @details プレイ中は Scene の画像の上でも左ボタンを溜めへ渡し、焦点が中央パネルならキーボードも渡す
+    [[nodiscard]] InputOwnership ResolveInputOwnership(InputOwnerQuery query) noexcept;
+
+    //! @brief プレイ中のカーソルの置き方
+    enum class PlayCursor : std::uint8_t
+    {
+        Captured, // 消して Game の画像の中心へ固定し、マウスを相対にする。視点を回せる
+        Released  // 出して固定と相対を解く。タブやパネルを押せる
+    };
+
+    //! @brief 一時停止を切り替えた後のカーソルを決める材料
+    struct PauseToggleQuery
+    {
+        bool paused = false;          // 切り替えた後に止まっているか
+        bool gameViewInFront = false; // Game のパネルが裏へ隠れずに映っているか
+    };
+
+    //! 一時停止を切り替えた後のカーソルを返す。再開は Game が映っている時だけ固定へ戻す
+    [[nodiscard]] PlayCursor CursorAfterPauseToggle(PauseToggleQuery query) noexcept;
+
+    //! @brief カーソルを固定へ戻すかを決める材料
+    struct RecaptureQuery
+    {
+        bool playMode = false;         // プレイモード中か
+        bool paused = false;           // 一時停止中か
+        bool cursorReleased = false;   // カーソルを出して固定を解いているか
+        bool gameImageClicked = false; // このフレームに Game の画像を左クリックしたか
+    };
+
+    //! 出したカーソルを固定へ戻す場合 true、それ以外の場合は false。止めている間は戻さない
+    [[nodiscard]] bool ShouldRecaptureCursor(RecaptureQuery query) noexcept;
 } // namespace NS::Editor

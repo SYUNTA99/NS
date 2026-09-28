@@ -21,6 +21,19 @@ namespace
 
 Game* Game::s_instance = nullptr;
 
+Game::EscapeResponse Game::ResolveEscape(EscapeQuery query) noexcept
+{
+    if (!query.cursorVisible)
+    {
+        return EscapeResponse::ReleaseCursor;
+    }
+    if (query.secondEscapeQuits)
+    {
+        return EscapeResponse::Quit;
+    }
+    return EscapeResponse::None;
+}
+
 Game::Game(std::string_view startScenePath) : NS::App::Layer("Game"), m_startScenePath(startScenePath)
 {
     s_instance = this;
@@ -84,6 +97,7 @@ void Game::OnUpdate()
 {
     // プレイ中の Esc は 2 段階。1 回目で隠したカーソルを出し、出ている状態の 2 回目で終了する
     // カーソルの状態がそのまま段階の記録になる。世界が止まっている編集モードの Esc はエディタが処理する
+    // エディタのプレイは 2 回目で終えない。プレイから抜けるのはエディタの操作
     const NS::Obj::Scene* scene = m_scenes.Current();
     if (scene != nullptr && scene->IsSimulationEnabled())
     {
@@ -91,18 +105,21 @@ void Game::OnUpdate()
         {
             if (app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
             {
-                if (!app->Window().IsCursorVisible())
+                const EscapeResponse response = ResolveEscape(
+                    {.cursorVisible = app->Window().IsCursorVisible(), .secondEscapeQuits = m_secondEscapeQuits});
+                if (response == EscapeResponse::ReleaseCursor)
                 {
                     // カーソルを出すなら相対モードも解く。見えるカーソルと相対モードの併存は挙動が矛盾する
                     app->Window().SetCursorVisible(true);
                     app->Window().SetCursorLocked(false);
                     app->Input().Mouse().SetRelativeMode(false);
+                    return;
                 }
-                else
+                if (response == EscapeResponse::Quit)
                 {
                     NS::App::Application::Quit();
+                    return;
                 }
-                return;
             }
         }
     }

@@ -49,6 +49,13 @@ namespace NS::Editor
         //! ボタン押下中は hover を凍結し、パネル発のドラッグを外まで続けさせる状態。編集中の入力ゲートに使う
         [[nodiscard]] bool IsMouseLatched() const noexcept { return m_mouseLatch; }
 
+        //! @brief プレイ中の自由視点の画像のラッチ
+        //! @details 真の間は左ボタンをゲームの溜めへ渡す。押す前の hover から立ち、押している間は外へ出ても保つ
+        [[nodiscard]] bool IsFreeViewLatched() const noexcept { return m_freeViewLatch; }
+
+        //! このフレームに Scene パネルへ焦点があったか
+        [[nodiscard]] bool IsFocused() const noexcept { return m_surface.IsFocused(); }
+
     private:
         //! プレイ中に自由視点を映すフレームで、ImGui 入力を集めて free-fly カメラへ渡す
         void TickFreeViewInput(LevelEditorController& editor) noexcept;

@@ -41,6 +41,9 @@ namespace NS::Editor
         //! ボタン押下中は hover を凍結し、パネル発のドラッグを外まで続けさせる状態
         [[nodiscard]] bool IsMouseLatched() const noexcept { return m_mouseLatch; }
 
+        //! このフレームに Game パネルへ焦点があったか
+        [[nodiscard]] bool IsFocused() const noexcept { return m_surface.IsFocused(); }
+
     private:
         ViewportSurface m_surface;
         bool m_hovered = false;    // マウスが Game パネルの画像上に居るか

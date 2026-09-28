@@ -27,8 +27,10 @@ namespace NS::Editor
 
         bool imaged = false;
         m_visible = false;
+        m_focused = false;
         if (open)
         {
+            m_focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
             const ImVec2 avail = ImGui::GetContentRegionAvail();
             if (avail.x >= 1.0f && avail.y >= 1.0f)
             {
@@ -79,8 +81,7 @@ namespace NS::Editor
 #endif
     }
 
-    std::optional<NS::Obj::SceneView> ViewportSurface::CollectView(
-        std::optional<NS::Obj::CameraPose> pose) noexcept
+    std::optional<NS::Obj::SceneView> ViewportSurface::CollectView(std::optional<NS::Obj::CameraPose> pose) noexcept
     {
         if (!m_visible || m_size.width < 8 || m_size.height < 8)
             return std::nullopt;
