@@ -448,8 +448,7 @@ namespace
     constexpr std::uint8_t k_NearWhite = 230;
 
     // 描画先の全画素を 1 回読み戻し、画素ごとに visit(赤, 緑, 青) を呼ぶ
-    template <typename Visit>
-    void VisitPixels(const NS::Gfx::RenderTarget& target, Visit visit)
+    template <typename Visit> void VisitPixels(const NS::Gfx::RenderTarget& target, Visit visit)
     {
         ID3D11Texture2D* source = target.Color()->Native();
         D3D11_TEXTURE2D_DESC desc{};
@@ -623,17 +622,22 @@ TEST_F(ChargeEffectsPictureTest, HeldLayersDrawMoreAsTheChargeGrows)
 }
 
 // 溜まる光は溜めきってからの数 (動的入力 1 番) が 1〜2 の間 (F〜F + 1) に広がりきった光を出し、3〜4 (F + 2〜F + 3) で
-// 白に近い画素の多い白いはじけに替え、5 (F + 4) で薄め、6 (F + 5) で消す
-TEST_F(ChargeEffectsPictureTest, GatherShowsTheFullChargeLightForFiveFramesAfterFullCharge)
+// 白に近い画素の多い白いはじけに替え、5 (F + 4) で薄め、6 (F + 5) から後は放すまで落ち着いた光で玉を包む
+// 落ち着いた光は広がりきった光と溜めきりの直前の玉を包む光より少なく、押し続けている長さで変わらない
+TEST_F(ChargeEffectsPictureTest, GatherShowsTheFullChargeLightsUntilRelease)
 {
+    constexpr float k_JustBeforeFull = 0.97f;
     ASSERT_TRUE(m_effects->Preload(ChargeEffects::k_Gather));
+    const double nearlyFull = DrawnAmount(ChargeEffects::k_Gather, k_JustBeforeFull, 20, 0.0f);
     const double before = DrawnAmount(ChargeEffects::k_Gather, 1.0f, 20, 0.0f);
     const double first = DrawnAmount(ChargeEffects::k_Gather, 1.0f, 20, 1.0f);
     const double second = DrawnAmount(ChargeEffects::k_Gather, 1.0f, 20, 2.0f);
     const double third = DrawnAmount(ChargeEffects::k_Gather, 1.0f, 20, 3.0f);
     const double fourth = DrawnAmount(ChargeEffects::k_Gather, 1.0f, 20, 4.0f);
     const double fading = DrawnAmount(ChargeEffects::k_Gather, 1.0f, 20, 5.0f);
-    const double after = DrawnAmount(ChargeEffects::k_Gather, 1.0f, 20, 6.0f);
+    const double settled = DrawnAmount(ChargeEffects::k_Gather, 1.0f, 20, 6.0f);
+    const double settledNext = DrawnAmount(ChargeEffects::k_Gather, 1.0f, 20, 7.0f);
+    const double settledLong = DrawnAmount(ChargeEffects::k_Gather, 1.0f, 20, 20.0f);
     const int secondWhite = DrawnNearWhitePixels(ChargeEffects::k_Gather, 1.0f, 20, 2.0f);
     const int thirdWhite = DrawnNearWhitePixels(ChargeEffects::k_Gather, 1.0f, 20, 3.0f);
     // 吸い込まれる点は出す位置が毎回変わるので、同じ姿の比べは 1% の幅で見る
@@ -643,5 +647,10 @@ TEST_F(ChargeEffectsPictureTest, GatherShowsTheFullChargeLightForFiveFramesAfter
     EXPECT_NEAR(third, fourth, third * 0.01);
     EXPECT_LT(fading, first);
     EXPECT_LT(before, fading);
-    EXPECT_NEAR(after, before, before * 0.01);
+    // 落ち着いた光が無いと settled は before と揺れの幅の中で並ぶので、1% を超えて多い事を見る
+    EXPECT_LT(before * 1.01, settled);
+    EXPECT_LT(settled, first);
+    EXPECT_LT(settled, nearlyFull);
+    EXPECT_NEAR(settledNext, settled, settled * 0.01);
+    EXPECT_NEAR(settledLong, settled, settled * 0.01);
 }

@@ -526,13 +526,12 @@
       <!-- 溜めきりで玉を包む光が替わる、同じ形・広がりきった大きさ (直径 4.48 m) の光。明るさの倍率 2。
            動的入力 1 番 (ChargeEffects が渡す溜めきったフレーム F を 1 とした数) で出し入れし、
            F〜F + 1 は不透明度 0.78、
-           F + 4 は 0.5、F + 5 に消える。
+           F + 4 は 0.5、F + 5 から後は落ち着いた光 (AuraSettled) に替える。
            手本の Monster Hunter Rise は溜めきりのフレームに刀身の橙の光が白い閃きに替わり、
            画面の明るさは上がらず (−1.2%)、+4 から下がり +6 で溜めている間より 6% 暗い。
            溜めきりの閃き (charge.full) の中に置くと、閃きの絵が後から出るので削る粉の上に足され、F〜F + 4 に粉が白く
            消えて見え、閃きの下塗りも白く飛んだ。この絵は押したフレームに出るので、粉と閃きより先に描かれる。
-           不透明度 0.78 で aim_pick_target の画面の明るさは F − 1 と F が同じ、F + 3 まで 0.5% 上、F + 4 に 5%、
-           F + 5 から 9% 下がる
+           不透明度 0.78 で aim_pick_target の画面の明るさは F − 1 と F が同じ、F + 3 まで 0.5% 上、F + 4 に 5% 下がる
            (0.9 では F に 0.5 上がった)。F + 2〜F + 3 は白いはじけ (AuraBurst) に替え、この光は出さない -->
       <Node>
         <Name>AuraHandoff</Name>
@@ -671,6 +670,56 @@
           </ColorAll>
         </DrawingValues>
       </Node>
+      <!-- 溜めきりの閃きが消えた F + 5 から放すまで玉を包む、落ち着いた光。動的入力 1 番が 6 以上で出す。
+           玉を包む光と同じ形 (上を抜いた中が抜けた円) の白水色 (溜めきりの色) の 1 枚。直径 4.0 m、
+           不透明度 0.78・明るさの倍率 2.55 (積 2.0)。
+           手本の Sonic Frontiers は放す 1 フレーム前まで玉を包む光が強まり続け、Monster Hunter Rise も刀身の色が
+           放すまで続く。この光が無いと F + 5 から後は細い弧と粒だけになり、aim_pick_target の白に近い画素
+           (全成分 230 以上) が溜め量 0.5 の 5.1% を下回る 1.8% に落ちた。
+           大きさは溜めきりの直前 (溜め量 0.97 で直径 4.43 m) より 1 割小さくする。
+           明るさは、溜めきりで替わる光 (AuraHandoff) を放すまで出し続けた時の層の足した明るさ (+8.1) を超えない所で
+           白に近い画素が最も多くなる積 2.0 にした。aim_pick_target の F + 6〜放す前は白に近い画素 5.8〜6.4%
+           (平均 6.1%、溜め量 0.5 の 1.2 倍)、層の足した明るさ +8.0 (溜めきりの直前は +12.8)。
+           積 2.2・2.4 は白に近い画素 6.3%・6.4% だが +8.3・+8.6 で替わる光より明るい。
+           積 1.6 は 5.7% で溜め量 0.5 と見分けにくかった。
+           直径 3.64 m・積 3.2 は光が玉と粉の上に寄り、+7.7 で白に近い画素が 5.8% に留まった。
+           直径 4.3 m は積 1.6 で 4.0 m・積 2.4 と同じ数になり、溜めきりの直前との大きさの差が 3% しか無い。
+           不透明度を替わる光と同じ 0.78 にして倍率で積を合わせるのは、8 ビットの描画先 (絵の試しが描く所) では
+           色と倍率の積が白に張り付き、描く量が不透明度と大きさだけで決まるため。同じ不透明度で小さいので、
+           そこでも替わる光より少なく描く。
+           F + 4 の薄めた光 (AuraHandoffFade) はこの光より少し暗い (層の足した明るさ +7.6) -->
+      <Node>
+        <Name>AuraSettled</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+          </Removal>
+        </CommonValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>4.0</X>
+              <Y>4.0</Y>
+              <Z>4.0</Z>
+              <DynamicEquation>12</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_aura.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+          <EmissiveScaling>2.55</EmissiveScaling>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>200</R>
+              <G>240</G>
+              <A>200</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
     </Children>
   </Root>
   <Dynamic>
@@ -758,6 +807,12 @@
         <Code>@O.x = 9.0 * step(3, @In1) * (1 - step(5, @In1))
 @O.y = 9.0 * step(3, @In1) * (1 - step(5, @In1))
 @O.z = 9.0 * step(3, @In1) * (1 - step(5, @In1))</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>AuraSettled</Name>
+        <Code>@O.x = 4.0 * step(6, @In1)
+@O.y = 4.0 * step(6, @In1)
+@O.z = 4.0 * step(6, @In1)</Code>
       </DynamicEquation>
     </Equations>
   </Dynamic>

@@ -230,7 +230,8 @@ namespace NS::Game::Player
         SetCharge(effects, m_spin, charge01);
         SetCharge(effects, m_grind, charge01);
         SetCharge(effects, m_gather, charge01);
-        // 溜まる光は溜めきりで玉を包む光を広がりきった大きさの光に替え、この数で F + 4 まで残す
+        // 溜まる光は溜めきりで玉を包む光を広がりきった大きさの光に替え、この数で F + 4 までの替わり方を選び、
+        // F + 5 から放すまで落ち着いた光を出す
         SetInput(effects, m_gather, k_FullFramesInput, static_cast<float>(m_framesSinceFull));
     }
 
