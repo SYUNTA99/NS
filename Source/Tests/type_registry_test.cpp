@@ -136,11 +136,11 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
     // リフレクションに載ったフィールドだけが Inspector 編集とシリアライズの対象になる
     // 増減が意図か事故かをこの一覧との突き合わせで判定する。抜けは気づけない保存漏れになる
     const std::map<std::string, std::vector<std::string>> k_Ledger = {
-        {"BoxCollider", {"半径", "中心オフセット", "回転 (度)", "トリガー"}},
+        {"BoxCollider", {"半径", "中心オフセット", "回転 (度)", "トリガー", "物理に入れない"}},
         {"Breakable", {"耐久"}},
         {"CameraBrain", {"ブレンド秒数"}},
         {"CameraComponent", {}},
-        {"CapsuleCollider", {"半径", "半分の高さ", "中心オフセット", "回転 (度)"}},
+        {"CapsuleCollider", {"半径", "半分の高さ", "中心オフセット", "回転 (度)", "トリガー", "物理に入れない"}},
         {"ChargeEffects", {"タップの弾けの大きさ", "溜めきりで足す弾けの大きさ"}},
         {"CollisionInput",
          {"チャージしきい値秒",
@@ -255,7 +255,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "Z 回転を固定"}},
         {"LaunchedBody",
          {"回転の強さ", "止まってから消える秒", "破片の数", "破片の速さ", "破片の寿命秒", "破片の大きさ", "破片の色"}},
-        {"MeshCollider", {}},
+        {"MeshCollider", {"トリガー", "物理に入れない"}},
         {"MeshRenderer", {"基本色", "メッシュ", "マテリアル"}},
         {"Goal", {"半径"}},
         {"PlayerComponent",
@@ -338,8 +338,8 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "色の無い帯の塗りの不透明度",
           "色の無い矢じりの明るい縁の不透明度",
           "色の無い矢じりの塗りの不透明度"}},
-        {"SlopeCollider", {"角度 (度)", "半径"}},
-        {"SphereCollider", {"半径", "中心オフセット"}},
+        {"SlopeCollider", {"角度 (度)", "半径", "トリガー", "物理に入れない"}},
+        {"SphereCollider", {"半径", "中心オフセット", "トリガー", "物理に入れない"}},
         {"TargetMarker",
          {"印の色",
           "印の太さ",

@@ -35,19 +35,24 @@ namespace NS::Obj
         //! owner の world 変換を反映した世界軸並行 AABB を返す。Owner 未登録時は local だけを反映する
         [[nodiscard]] NS::Core::AABB WorldAABB() const noexcept;
 
-        //! 球は常に RigidBody の形になれる
-        [[nodiscard]] bool CanJoinRigidBody() const noexcept override { return true; }
         //! WorldSphere の球の形
         [[nodiscard]] NS::Phys::ShapePart RigidBodyPart() const override;
 
         NS_REFLECT_BEGIN(SphereCollider, Collider)
         NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)
         NS_REFLECT_ACCESSOR(NS::Core::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
+        NS_REFLECT_ACCESSOR(bool, "トリガー", IsTrigger(), SetTrigger)
+        NS_REFLECT_ACCESSOR(bool, "物理に入れない", IsExcludedFromPhysics(), SetExcludedFromPhysics)
         NS_REFLECT_END()
 
     private:
+        // 球は RigidBody の形になれる
+        [[nodiscard]] bool ShapeCanJoinRigidBody() const noexcept override { return true; }
         // world 座標の球を body 1 個として入れる
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics,
+                                           JPH::BodyID current,
+                                           JPH::ObjectLayer layer,
+                                           bool sensor) override;
 
         float m_radius = 0.5f;                              // 球の半径 (owner scale 前)
         NS::Core::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f}; // owner local 空間での中心オフセット

@@ -118,7 +118,7 @@ TEST(ReflectionJsonTest, SlopeReflectsAngleAndRoundTrips)
     NS::Obj::SlopeCollider slope;
     const ReflectionInfo* info = slope.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 2u);
+    EXPECT_EQ(info->fieldCount, 4u);
 
     nlohmann::json j = SerializeComponent(slope);
     EXPECT_EQ(j["type"], "SlopeCollider");

@@ -55,8 +55,6 @@ namespace NS::Obj
         //! @param[in] excluded 静的世界から外す場合 true
         void SetExcludedFromStaticWorld(bool excluded) noexcept;
 
-        //! 静的世界から外していなければ RigidBody の形になれる。外した capsule は形にもならない
-        [[nodiscard]] bool CanJoinRigidBody() const noexcept override { return !m_excludedFromStaticWorld; }
         //! WorldCapsule のカプセルの形
         [[nodiscard]] NS::Phys::ShapePart RigidBodyPart() const override;
 
@@ -65,11 +63,18 @@ namespace NS::Obj
         NS_REFLECT_ACCESSOR(float, "半分の高さ", HalfHeight(), SetHalfHeight)
         NS_REFLECT_ACCESSOR(NS::Core::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
         NS_REFLECT_ACCESSOR(NS::Core::Vector3, "回転 (度)", RotationEulerDegrees(), SetRotationEulerDegrees)
+        NS_REFLECT_ACCESSOR(bool, "トリガー", IsTrigger(), SetTrigger)
+        NS_REFLECT_ACCESSOR(bool, "物理に入れない", IsExcludedFromPhysics(), SetExcludedFromPhysics)
         NS_REFLECT_END()
 
     private:
+        // 静的世界から外していなければ RigidBody の形になれる。外した capsule は形にもならない
+        [[nodiscard]] bool ShapeCanJoinRigidBody() const noexcept override { return !m_excludedFromStaticWorld; }
         // 静的世界から外した capsule は body を作らない
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics,
+                                           JPH::BodyID current,
+                                           JPH::ObjectLayer layer,
+                                           bool sensor) override;
         [[nodiscard]] NS::Core::Matrix CapsuleWorldMatrix() const noexcept;
 
         float m_radius = 0.4f;                                                 // capsule 半径

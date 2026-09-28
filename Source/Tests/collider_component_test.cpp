@@ -2,15 +2,20 @@
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/BoxCollider.h>
 #include <Runtime/Object/Components/CapsuleCollider.h>
+#include <Runtime/Object/Components/Collider.h>
 #include <Runtime/Object/Components/MeshCollider.h>
 #include <Runtime/Object/Components/SlopeCollider.h>
 #include <Runtime/Object/Components/SphereCollider.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Reflection/ReflectionJson.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
+#include <Runtime/Physics/JoltCharacter.h>
 #include <Runtime/Physics/MeshCollision.h>
 #include <Runtime/Physics/PhysicsScene.h>
 
+#include <algorithm>
+#include <cmath>
 #include <gtest/gtest.h>
 #include <memory>
 #include <vector>
@@ -318,4 +323,176 @@ TEST(ColliderJolt, SyncWithoutAnOwningSceneIsRefused)
 
     EXPECT_EQ(physics.BodyCount(), 0u);
     EXPECT_TRUE(box->BodyId().IsInvalid());
+}
+
+// 「トリガー」と「物理に入れない」は基底の Collider の欄。5 つの形のどれでも同じ意味で効く
+namespace
+{
+    enum class ShapeKind
+    {
+        Box,
+        Sphere,
+        Capsule,
+        Slope,
+        Mesh,
+    };
+
+    constexpr ShapeKind k_AllShapes[] = {
+        ShapeKind::Box, ShapeKind::Sphere, ShapeKind::Capsule, ShapeKind::Slope, ShapeKind::Mesh};
+
+    const char* ShapeName(ShapeKind kind)
+    {
+        switch (kind)
+        {
+        case ShapeKind::Box:
+            return "箱";
+        case ShapeKind::Sphere:
+            return "球";
+        case ShapeKind::Capsule:
+            return "カプセル";
+        case ShapeKind::Slope:
+            return "斜面";
+        case ShapeKind::Mesh:
+            return "三角の集まり";
+        }
+        return "";
+    }
+
+    // 箱・球・カプセルは RigidBody の形になれる。斜面と三角の集まりはなれない
+    bool ShapeCanJoin(ShapeKind kind)
+    {
+        return kind == ShapeKind::Box || kind == ShapeKind::Sphere || kind == ShapeKind::Capsule;
+    }
+
+    NS::Obj::Collider* AddShape(GameObject& owner, ShapeKind kind, const NS::Phys::MeshCollision& floor)
+    {
+        switch (kind)
+        {
+        case ShapeKind::Box:
+            return owner.AddComponent<BoxCollider>();
+        case ShapeKind::Sphere:
+            return owner.AddComponent<SphereCollider>();
+        case ShapeKind::Capsule:
+            return owner.AddComponent<CapsuleCollider>();
+        case ShapeKind::Slope:
+            return owner.AddComponent<SlopeCollider>();
+        case ShapeKind::Mesh:
+        {
+            MeshCollider* mesh = owner.AddComponent<MeshCollider>();
+            mesh->SetCollision(&floor);
+            return mesh;
+        }
+        }
+        return nullptr;
+    }
+
+    // 形の中心を通る短い縦のカプセルで重なりを見る。三角の集まりと斜面は原点の床なので原点で当たる
+    bool FoundByOverlap(const PhysicsScene& physics, JPH::BodyID id)
+    {
+        const std::vector<JPH::BodyID> found =
+            physics.OverlapCapsule(NS::Phys::Capsule{Vector3{0.0f, 0.0f, 0.0f}, Vector3::UnitY, 0.1f, 0.2f});
+        return std::find(found.begin(), found.end(), id) != found.end();
+    }
+
+    // 自機の足は sensor だけを避けて通る。layer が Trigger でも sensor でなければ上に乗る
+    // 形の真上から 1 秒落とし、横へずれずに形の下まで抜けたかを見る
+    // 横を見るのは、乗った斜面や球から滑り落ちても下まで行くため
+    bool CharacterFallsThrough(PhysicsScene& physics)
+    {
+        physics.OptimizeBroadPhase();
+        NS::Phys::JoltCharacter character{physics, 0.4f, 0.5f};
+        Vector3 position{0.0f, 3.0f, 0.0f};
+        for (int i = 0; i < 60; ++i)
+        {
+            character.Step(position, Vector3{0.0f, -8.0f, 0.0f}, 1.0f / 60.0f, 0.25f);
+            position = character.Position();
+        }
+        return position.y < -1.0f && std::abs(position.x) < 0.01f && std::abs(position.z) < 0.01f;
+    }
+} // namespace
+
+TEST(ColliderFlags, EachShapeFollowsTheTriggerAndExcludeTable)
+{
+    NS::Phys::MeshCollision floor{MakeFloorQuad(), nullptr};
+    floor.shape = NS::Phys::CreateMeshShape(floor.triangles);
+    ASSERT_NE(floor.shape, nullptr);
+
+    for (const ShapeKind kind : k_AllShapes)
+    {
+        SCOPED_TRACE(ShapeName(kind));
+        {
+            SCOPED_TRACE("どちらも無し");
+            ColliderStage stage;
+            NS::Obj::Collider* collider = AddShape(stage.owner, kind, floor);
+            collider->SyncToPhysics(stage.physics);
+            EXPECT_FALSE(collider->BodyId().IsInvalid());
+            EXPECT_EQ(collider->CanJoinRigidBody(), ShapeCanJoin(kind));
+            EXPECT_FALSE(collider->FollowsRigidBody());
+        }
+        {
+            SCOPED_TRACE("トリガー");
+            ColliderStage stage;
+            NS::Obj::Collider* collider = AddShape(stage.owner, kind, floor);
+            collider->SetTrigger(true);
+            collider->SyncToPhysics(stage.physics);
+            EXPECT_FALSE(collider->BodyId().IsInvalid());
+            EXPECT_TRUE(FoundByOverlap(stage.physics, collider->BodyId()));
+            EXPECT_TRUE(CharacterFallsThrough(stage.physics));
+            EXPECT_FALSE(collider->CanJoinRigidBody());
+            EXPECT_TRUE(collider->FollowsRigidBody());
+        }
+        {
+            SCOPED_TRACE("物理に入れない");
+            ColliderStage stage;
+            NS::Obj::Collider* collider = AddShape(stage.owner, kind, floor);
+            collider->SyncToPhysics(stage.physics);
+            ASSERT_FALSE(collider->BodyId().IsInvalid());
+            // 体を持っている所から物理に入れないにすると、次の張り直しで体を外す
+            collider->SetExcludedFromPhysics(true);
+            collider->SyncToPhysics(stage.physics);
+            EXPECT_TRUE(collider->BodyId().IsInvalid());
+            EXPECT_EQ(stage.physics.BodyCount(), 0u);
+            EXPECT_FALSE(collider->CanJoinRigidBody());
+            EXPECT_FALSE(collider->FollowsRigidBody());
+            // 物理に入れないを外せば体が戻る
+            collider->SetExcludedFromPhysics(false);
+            collider->SyncToPhysics(stage.physics);
+            EXPECT_FALSE(collider->BodyId().IsInvalid());
+        }
+        {
+            SCOPED_TRACE("両方");
+            ColliderStage stage;
+            NS::Obj::Collider* collider = AddShape(stage.owner, kind, floor);
+            collider->SetTrigger(true);
+            collider->SetExcludedFromPhysics(true);
+            collider->SyncToPhysics(stage.physics);
+            EXPECT_TRUE(collider->BodyId().IsInvalid());
+            EXPECT_FALSE(collider->CanJoinRigidBody());
+            EXPECT_FALSE(collider->FollowsRigidBody());
+        }
+    }
+}
+
+// 欄の名前は 5 つの形で同じ綴り。「トリガー」は今の箱の欄と同じ名前なので、保存済みの箱の値がそのまま読める
+TEST(ColliderFlags, EachShapeSavesAndLoadsBothFlags)
+{
+    NS::Phys::MeshCollision floor{MakeFloorQuad(), nullptr};
+    for (const ShapeKind kind : k_AllShapes)
+    {
+        SCOPED_TRACE(ShapeName(kind));
+        GameObject source;
+        NS::Obj::Collider* saved = AddShape(source, kind, floor);
+        saved->SetTrigger(true);
+        saved->SetExcludedFromPhysics(true);
+
+        const nlohmann::json fields = NS::Obj::SerializeComponent(*saved)["fields"];
+        ASSERT_TRUE(fields.contains("トリガー"));
+        ASSERT_TRUE(fields.contains("物理に入れない"));
+
+        GameObject target;
+        NS::Obj::Collider* loaded = AddShape(target, kind, floor);
+        EXPECT_EQ(NS::Obj::ApplyJsonFields(*loaded, fields), 0u);
+        EXPECT_TRUE(loaded->IsTrigger());
+        EXPECT_TRUE(loaded->IsExcludedFromPhysics());
+    }
 }

@@ -6,6 +6,7 @@
 #include <Jolt/Jolt.h>
 
 #include <Jolt/Physics/Body/BodyID.h>
+#include <Jolt/Physics/Collision/ObjectLayer.h>
 
 namespace NS::Phys
 {
@@ -20,6 +21,10 @@ namespace NS::Obj
     //! body は id でだけ持つ。どの PhysicsScene に居るかは持ち主の Scene が決め、PhysicsScene の控えは持たない
     //! 同じ object に稼働中の RigidBody があり、形が入れられる collider は自分の body を持たない
     //! 形は RigidBody が集めて 1 つの動く body にする
+    //! ぶつかり方は形によらず「トリガー」と「物理に入れない」の 2 つで選ぶ
+    //! トリガーはすり抜ける sensor の body、物理に入れない当たりは body を持たず形だけを読ませる
+    //! 両方にした時は物理に入れないが勝つ
+    //! 欄は保存と Inspector が基底を辿らないので、派生がそれぞれ「トリガー」「物理に入れない」の名前で並べる
     //! 抽象基底なので TypeRegistry には登録しない
     //! 依存: NS::Phys::PhysicsScene, JPH::BodyID, RigidBody
     class Collider : public Component
@@ -28,8 +33,19 @@ namespace NS::Obj
         //! world 座標の当たりを body 1 個として physics へ入れる。入れた body があれば置き直す
         //! 何も入れない形状もある。持ち主が Scene に居ない時と、持ち主の Scene 以外の PhysicsScene を
         //! 渡された時は、エラーを出して受け取らない
-        //! RigidBody の形になっている間は、自分の body を外すだけで何も入れない
+        //! RigidBody の形になっている間と、物理に入れない間は、自分の body を外すだけで何も入れない
         void SyncToPhysics(NS::Phys::PhysicsScene& physics);
+
+        //! すり抜ける sensor の body にするかを設定する。反映は次の SyncToPhysics
+        void SetTrigger(bool isTrigger) noexcept;
+        //! すり抜ける sensor の body にする場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsTrigger() const noexcept;
+
+        //! @brief 物理に body を作らないかを設定する。反映は次の SyncToPhysics
+        //! @details 形 (位置・大きさ・向き) は読めて、エディタにも描かれる。ぶつからず、問い合わせにも出ない
+        void SetExcludedFromPhysics(bool excluded) noexcept;
+        //! 物理に body を作らない場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsExcludedFromPhysics() const noexcept;
 
         //! 当たりの body の id。RigidBody の形になっている間はその body の id。何も入れなかった形状では無効
         [[nodiscard]] JPH::BodyID BodyId() const noexcept;
@@ -37,12 +53,15 @@ namespace NS::Obj
         //! 同じ object の稼働中の RigidBody の形になっている場合 true、それ以外の場合は false
         [[nodiscard]] bool JoinsRigidBody() const noexcept;
 
-        //! RigidBody の形になれる形状か。既定は false で、なれない形状は自分の body を持ち続ける
-        [[nodiscard]] virtual bool CanJoinRigidBody() const noexcept { return false; }
+        //! @brief RigidBody の形になれる場合 true、それ以外の場合は false
+        //! @details トリガーと物理に入れない当たりは常に false。それ以外は形ごとの答え (ShapeCanJoinRigidBody)
+        //! なれない形状は自分の body を持ち続ける
+        [[nodiscard]] bool CanJoinRigidBody() const noexcept;
 
-        //! @brief RigidBody の形になれない時に、自分の body を物体の動きへ追従させるか。既定は false
-        //! @details 追従する collider は、物体が動いたフレームに RigidBody が SyncToPhysics を呼び直す
-        [[nodiscard]] virtual bool FollowsRigidBody() const noexcept { return false; }
+        //! @brief RigidBody の形になれない時に、自分の body を物体の動きへ追従させる場合 true、それ以外の場合は false
+        //! @details トリガーなら true。物理に入れない当たりは body が無いので false
+        //! 追従する collider は、物体が動いたフレームに RigidBody が SyncToPhysics を呼び直す
+        [[nodiscard]] bool FollowsRigidBody() const noexcept;
 
         //! RigidBody の合成形状へ入れる形を、世界座標の置き場所つきで返す。既定は形が null
         [[nodiscard]] virtual NS::Phys::ShapePart RigidBodyPart() const { return {}; }
@@ -58,10 +77,15 @@ namespace NS::Obj
         NS_REFLECT_NONE(Collider, Component)
 
     private:
-        // current の body を自分の形と姿勢へ置き直した id を返す
-        // current が無効なら新しく作る。入れない形状は無効を返す
+        // 形として RigidBody の合成形状へ入れられるか。トリガーや物理に入れないを見る前の、形そのものの答え
+        [[nodiscard]] virtual bool ShapeCanJoinRigidBody() const noexcept { return false; }
+        // current の body を自分の形と姿勢・layer・sensor の有無へ置き直した id を返す
+        // current が無効なら新しく作る。入れない形状は無効を返す。layer と sensor は基底がトリガーかどうかで決めて渡す
         // 外から呼べると PhysicsScene の確かめを飛ばせるので private にし、SyncToPhysics だけが呼ぶ
-        [[nodiscard]] virtual JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) = 0;
+        [[nodiscard]] virtual JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics,
+                                                   JPH::BodyID current,
+                                                   JPH::ObjectLayer layer,
+                                                   bool sensor) = 0;
         // 持ち主の Scene の PhysicsScene。Scene に居なければ null
         [[nodiscard]] NS::Phys::PhysicsScene* ScenePhysics() const noexcept;
         // 受け取るのは持ち主の Scene の PhysicsScene だけ。Scene に居ない持ち主も断る
@@ -70,5 +94,7 @@ namespace NS::Obj
         [[nodiscard]] bool AcceptsScenePhysics(const NS::Phys::PhysicsScene& physics) const;
 
         JPH::BodyID m_bodyId;
+        bool m_isTrigger = false;           // すり抜ける sensor の body にするか
+        bool m_excludedFromPhysics = false; // body を作らず形だけを読ませるか。トリガーより強い
     };
 } // namespace NS::Obj

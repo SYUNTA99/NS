@@ -269,7 +269,7 @@ TEST(ReflectionTest, BoxColliderHalfExtentsAccessorClampsNegative)
     NS::Obj::BoxCollider collider;
     const ReflectionInfo* info = collider.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 4u);
+    EXPECT_EQ(info->fieldCount, 5u);
 
     const FieldDesc* he = FindField(info, "半径");
     ASSERT_NE(he, nullptr);

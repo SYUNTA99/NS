@@ -52,7 +52,7 @@ namespace NS::Obj
         const GameObject* owner = Owner();
         if (owner == nullptr)
         {
-            return NS::Core::Sphere{ m_centerOffset, m_radius };
+            return NS::Core::Sphere{m_centerOffset, m_radius};
         }
 
         const NS::Core::Matrix world = owner->Root().WorldMatrix();
@@ -73,9 +73,12 @@ namespace NS::Obj
         return NS::Phys::MakeSpherePart(WorldSphere());
     }
 
-    JPH::BodyID SphereCollider::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID SphereCollider::SyncBody(NS::Phys::PhysicsScene& physics,
+                                         JPH::BodyID current,
+                                         JPH::ObjectLayer layer,
+                                         bool sensor)
     {
-        return physics.SyncSphere(current, WorldSphere(), NS::Phys::ObjectLayers::Terrain);
+        return physics.SyncSphere(current, WorldSphere(), layer, sensor);
     }
 
     NS_CLASS(SphereCollider)

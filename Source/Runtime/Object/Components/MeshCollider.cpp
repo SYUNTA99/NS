@@ -76,7 +76,10 @@ namespace NS::Obj
         return result;
     }
 
-    JPH::BodyID MeshCollider::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID MeshCollider::SyncBody(NS::Phys::PhysicsScene& physics,
+                                       JPH::BodyID current,
+                                       JPH::ObjectLayer layer,
+                                       bool sensor)
     {
         if (m_collision == nullptr)
         {
@@ -92,12 +95,11 @@ namespace NS::Obj
         // 描画は 4x4 の行列で歪みまで出すので、形の共有をやめて世界座標の三角形から作り、描画と当たりを揃える
         if (HasShear(world, parts))
         {
-            return physics.SyncMesh(current, WorldTriangles(), NS::Phys::ObjectLayers::Terrain);
+            return physics.SyncMesh(current, WorldTriangles(), layer, sensor);
         }
 
         const NS::Phys::MeshCollision& shared = *m_collision;
-        return physics.SyncMeshShape(
-            current, shared, parts.translation, parts.rotation, parts.scale, NS::Phys::ObjectLayers::Terrain);
+        return physics.SyncMeshShape(current, shared, parts.translation, parts.rotation, parts.scale, layer, sensor);
     }
 
     void MeshCollider::ResolveAssets(AssetManager& assets)

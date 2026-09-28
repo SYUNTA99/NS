@@ -32,11 +32,16 @@ namespace NS::Obj
         NS_REFLECT_BEGIN(SlopeCollider, Collider)
         NS_REFLECT_FIELD(m_angleDegrees, "角度 (度)")
         NS_REFLECT_FIELD(m_halfExtents, "半径")
+        NS_REFLECT_ACCESSOR(bool, "トリガー", IsTrigger(), SetTrigger)
+        NS_REFLECT_ACCESSOR(bool, "物理に入れない", IsExcludedFromPhysics(), SetExcludedFromPhysics)
         NS_REFLECT_END()
 
     private:
         // wedge の 8 三角形をまとめて body 1 個にする
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics,
+                                           JPH::BodyID current,
+                                           JPH::ObjectLayer layer,
+                                           bool sensor) override;
 
         float m_angleDegrees = 45.0f;                      // 斜面の傾斜角
         NS::Core::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f}; // wedge の半サイズ

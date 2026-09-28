@@ -37,13 +37,20 @@ namespace NS::Obj
         //! MeshRenderer が無ければ警告を出して当たり無しのまま
         void ResolveAssets(AssetManager& assets) override;
 
-        // 当たりはリフレクションで運ばない。ResolveAssets が描画の参照から借りるので、型名だけ登録しておく
-        NS_REFLECT_NONE(MeshCollider, Collider)
+        // 当たりの形はリフレクションで運ばない。ResolveAssets が描画の参照から借りる
+        // 運ぶのはトリガーと物理に入れないの 2 つの欄だけ
+        NS_REFLECT_BEGIN(MeshCollider, Collider)
+        NS_REFLECT_ACCESSOR(bool, "トリガー", IsTrigger(), SetTrigger)
+        NS_REFLECT_ACCESSOR(bool, "物理に入れない", IsExcludedFromPhysics(), SetExcludedFromPhysics)
+        NS_REFLECT_END()
 
     private:
         // 資産の形を自分の位置・回転・拡縮で body 1 個として置く。当たりが無ければ何も入れない
         // 歪みのある変換だけは、WorldTriangles の三角形から自分専用の形を作る
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics,
+                                           JPH::BodyID current,
+                                           JPH::ObjectLayer layer,
+                                           bool sensor) override;
 
         const NS::Phys::MeshCollision* m_collision = nullptr; // 非所有。普段は AssetManager の持ち物
     };

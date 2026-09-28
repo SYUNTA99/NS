@@ -17,14 +17,14 @@ namespace NS::Obj
         : m_radius([&]() -> float {
               if (radius < 0.0f)
               {
-                 return 0.0f;
+                  return 0.0f;
               }
               return radius;
           }()),
           m_halfHeight([&]() -> float {
               if (halfHeight < 0.0f)
               {
-                    return 0.0f;
+                  return 0.0f;
               }
               return halfHeight;
           }())
@@ -55,7 +55,7 @@ namespace NS::Obj
         }
         else
         {
-			m_halfHeight = halfHeight;
+            m_halfHeight = halfHeight;
         }
     }
 
@@ -109,9 +109,9 @@ namespace NS::Obj
         const NS::Core::Quaternion& rotation = decomposed.rotation;
         const NS::Core::Vector3& translation = decomposed.translation;
         return NS::Phys::Capsule{translation,
-                                    NS::Core::Vector3::Transform(NS::Core::Vector3::UnitY, rotation),
-                                    m_halfHeight * std::abs(scale.y),
-                                    m_radius * std::max(std::abs(scale.x), std::abs(scale.z))};
+                                 NS::Core::Vector3::Transform(NS::Core::Vector3::UnitY, rotation),
+                                 m_halfHeight * std::abs(scale.y),
+                                 m_radius * std::max(std::abs(scale.x), std::abs(scale.z))};
     }
 
     NS::Core::AABB CapsuleCollider::WorldAABB() const noexcept
@@ -135,13 +135,16 @@ namespace NS::Obj
         return NS::Phys::MakeCapsulePart(WorldCapsule());
     }
 
-    JPH::BodyID CapsuleCollider::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID CapsuleCollider::SyncBody(NS::Phys::PhysicsScene& physics,
+                                          JPH::BodyID current,
+                                          JPH::ObjectLayer layer,
+                                          bool sensor)
     {
         if (m_excludedFromStaticWorld)
         {
             return JPH::BodyID{};
         }
-        return physics.SyncCapsule(current, WorldCapsule(), NS::Phys::ObjectLayers::Terrain);
+        return physics.SyncCapsule(current, WorldCapsule(), layer, sensor);
     }
 
     NS_CLASS(CapsuleCollider)
