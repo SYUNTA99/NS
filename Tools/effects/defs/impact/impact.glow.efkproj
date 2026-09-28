@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 照り impact.glow: 中心近くの当たりで、相手の足元の床が橙に照らされる
+     点の光源は無いので、床に寝かせた板で代える。再生の大きさが直径 (m)
+     照らす光は床を明るくするだけで暗くしないので加算で足す。足す量は中心で明るさ 0.8 (外の板 122 と真ん中の板 82
+       の和 204)。黒い升 (52) は橙 (255, 178, 110) に染まり、白い升 (225) は 1 を超えて白く飛び、超えた分がにじむ
+       白い升が 1 を超えない 30 に留めた時は、床のどこにも照りが見えなかった。0.8 の走行で、にじみが自機と相手の
+       輪郭を切らないのを撮った絵で見た。周回 4 までの半透明の橙は白い升を暗くし、画面の明るさを上げなかった
+     留まりと落ち始めはゲームが持つ。親を止めた次のフレームが最後で、落ちるフレーム数は既定の 1。
+     寿命の 120 フレームは打ち切り
+     手本の弾きは照らす光が 10 まで見え 11 で消える。3 では 12・13 に茶橙のにじみが残り、3 フレーム長かった
+     板は XY 面にある。床に寝かせる回転は再生の向きで渡す (板の +Z を上へ)
+     節を 2 つ持つ。親を止めた後に子のインスタンスが 1 つだけ残ると、実行側はそれを親と見なして絵ごと消し、
+     親を止めた次のフレームの落ちが出ない (Manager::StopStoppingEffects の数え方) -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Floor</Name>
+        <CommonValues>
+          <Life>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+          <Removal>
+            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+          </Removal>
+        </CommonValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_glow.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+          <!-- 2 = 取り除かれた後に消える。落ちるフレーム数は既定の 1 -->
+          <FadeOutType>2</FadeOutType>
+        </RendererCommonValues>
+        <DrawingValues>
+          <Sprite>
+            <!-- 2 = 向きを固定。床に寝かせたまま描く -->
+            <Billboard>2</Billboard>
+          </Sprite>
+          <!-- 橙 (255, 150, 60) を中心で 122 足す。真ん中の板と合わせて明るさ 0.8 -->
+          <ColorAll>
+            <Fixed>
+              <G>150</G>
+              <B>60</B>
+              <A>122</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>Hot</Name>
+        <CommonValues>
+          <Life>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+          <Removal>
+            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+          </Removal>
+        </CommonValues>
+        <!-- 真ん中の 4 割をもう一段濃く塗り、相手の真下ほど強く照らされて見える -->
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>0.4</X>
+              <Y>0.4</Y>
+              <Z>0.4</Z>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_glow.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+          <!-- 2 = 取り除かれた後に消える。落ちるフレーム数は既定の 1 -->
+          <FadeOutType>2</FadeOutType>
+        </RendererCommonValues>
+        <DrawingValues>
+          <Sprite>
+            <Billboard>2</Billboard>
+          </Sprite>
+          <ColorAll>
+            <Fixed>
+              <G>170</G>
+              <B>90</B>
+              <A>82</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>30</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>

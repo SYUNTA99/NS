@@ -26,6 +26,8 @@ namespace NS::Game::Player
         //! 消えたフレーム。残っていれば空。Stop で消したフレームか、Effekseer から消えた更新のあったフレーム
         std::optional<int> endStep;
         NS::Gfx::EffectHandle handle{}; //!< 再生したエフェクト。描画の無い世界と、絵を読めなかった層では無効
+        //! 層の大きさか量。何を入れるかは層ごとに出した部品が決める。入れていなければ空
+        std::optional<float> amount;
     };
 
     //! @brief 自機のエフェクトの部品が出すと決めた層を、出した順に持つ記録
@@ -73,6 +75,12 @@ namespace NS::Game::Player
         //! @param[in] id Play が返した番号
         void Stop(NS::Gfx::EffectScene* effects, std::uint32_t id) noexcept;
 
+        //! @brief 層の大きさか量を記録に書く
+        //! @details 無い番号なら何もしない。2 回書くと後の値が残る
+        //! @param[in] id Play が返した番号
+        //! @param[in] amount 層の大きさか量
+        void SetAmount(std::uint32_t id, float amount) noexcept;
+
         //! @brief 番号の記録を返す
         //! @param[in] id Play が返した番号
         //! @return 記録。無い番号か、捨てた後なら nullptr
@@ -84,6 +92,10 @@ namespace NS::Game::Player
         //! @brief 今のフレームに出した層の名前を、出した順に out の末尾へ足す
         //! @param[out] out 名前を足す先。中身は消さない
         void AppendStartedNames(std::vector<std::string>& out) const;
+
+        //! @brief 今のフレームに出した層の大きさか量を、AppendStartedNames と同じ順に out の末尾へ足す
+        //! @param[out] out 大きさか量を足す先。入れていない層は空を足す。中身は消さない
+        void AppendStartedAmounts(std::vector<std::optional<float>>& out) const;
 
         //! @brief 残っている層の名前を、出した順に out の末尾へ足す
         //! @details 同じ名前の層が 2 つ残っていれば 2 回足す。親を止めた層は子が残る間だけ残っている

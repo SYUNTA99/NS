@@ -589,6 +589,9 @@ namespace NS::Game::Level
         m_pendingShakeAmplitude = m_shakeAmplitude / (1.0f + mass);
 
         // 破壊を許可していない間は耐久を見ない。壊れる相手も押し飛ばしと反発へ回る
+        // 反動と飛ばしの比は押し飛ばしの当たりだけが埋める。貫通は反動も飛ばしもしないので 0
+        float reboundScale = 0.0f;
+        float launchScale = 0.0f;
         int stopSteps = 0;
         if (m_breakEnabled && hit->Toughness() <= power)
         {
@@ -610,7 +613,7 @@ namespace NS::Game::Level
             // 2 倍して質量 1 で 1 にし、欄を質量 1・威力 1 の高さと距離で持つ
             // 高さと距離に同じ倍率を掛け、威力と質量が変わっても弾かれ始めの角度を揃える
             // TODO: 質量 0.5 より軽い物では自機の返りが 0 に近づく。軽い物を置く時は、先に高さと距離の下限を足す
-            const float reboundScale = power * 2.0f * massFactor;
+            reboundScale = power * 2.0f * massFactor;
             // 中心近くの当たりだけ距離を伸ばし、高さは変えない。真ん中に当てた時は後ろへ飛ぶ
             float reboundDistance = m_reboundDistance * reboundScale;
             if (centerHit)
@@ -631,7 +634,7 @@ namespace NS::Game::Level
             massExponent = NS::Core::Clamp(massExponent, 0.0f, 1.0f);
 
             // 威力は距離に線形に効き、質量で割ると重い物ほど飛ばない。高さは距離と同じ比で伸ばし、打ち上げの角度を揃える
-            const float launchScale = power / std::pow(mass, massExponent);
+            launchScale = power / std::pow(mass, massExponent);
             m_pendingLaunchArc = LaunchArc{.direction = launchDir,
                                            .distance = m_launchDistance * launchScale,
                                            .apexHeight = m_launchApexHeight * launchScale,
@@ -672,6 +675,10 @@ namespace NS::Game::Level
         m_lastImpact.launchApexHeight = m_pendingLaunchArc.apexHeight;
         m_lastImpact.impactDir = m_pendingImpactDir;
         m_lastImpact.targetPos = m_pendingTargetHome;
+        m_lastImpact.targetMass = mass;
+        m_lastImpact.targetPlaced = m_pendingTargetPlaced;
+        m_lastImpact.launchScale = launchScale;
+        m_lastImpact.reboundScale = reboundScale;
 
         if (stopSteps <= 0)
         {
@@ -814,6 +821,11 @@ namespace NS::Game::Level
         m_lastImpact.zoomStart = m_pendingZoomRoll.zoom;
         m_lastImpact.rollStart = m_pendingZoomRoll.rollDegrees * rollSign;
         m_lastImpact.padStart = m_pendingPad.start;
+        m_lastImpact.pullBackFrames = 0;
+        if (nearMiss)
+        {
+            m_lastImpact.pullBackFrames = PullBackFrames(stopSteps, m_nearHitPullBackRatio);
+        }
     }
 
     void ImpactResolver::StartHitReturns()

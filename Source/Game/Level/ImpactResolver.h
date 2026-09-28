@@ -49,6 +49,12 @@ namespace NS::Game::Level
         float launchApexHeight = 0.0f;    //!< 相手の曲線の、発射の高さから頂点までの高さ。単位は m
         NS::Core::Vector3 impactDir;      //!< 相手の飛ぶ水平の向き。食い込みと振動の向きも同じ
         NS::Core::Vector3 targetPos;
+        float targetMass = 1.0f;   //!< 相手の質量。RigidBody が無ければ 1
+        bool targetPlaced = true;  //!< 相手が置かれていた (飛んでいなかった) 場合 true
+        float launchScale = 0.0f;  //!< 相手の曲線の距離と高さに掛けた比。威力 ÷ 質量の指数乗で、質量 1・威力 1 で 1
+        float reboundScale = 0.0f; //!< 自機の反動の高さと距離に掛けた比。威力 × 2 × 質量 ÷ (質量 + 1)
+        //! 惜しい当たりの寄りと振動を保つフレーム数。止めの頭から数え、このフレームから引き始める。他の段は 0
+        int pullBackFrames = 0;
     };
 
     //! @brief 突進の線で最初に触れる相手の予測

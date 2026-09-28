@@ -77,6 +77,16 @@ namespace NS::Game::Player
         }
     }
 
+    void EffectLayerList::SetAmount(std::uint32_t id, float amount) noexcept
+    {
+        EffectLayerRecord* record = FindMutable(id);
+        if (record == nullptr)
+        {
+            return;
+        }
+        record->amount = amount;
+    }
+
     const EffectLayerRecord* EffectLayerList::Find(std::uint32_t id) const noexcept
     {
         for (const EffectLayerRecord& record : m_records)
@@ -108,6 +118,17 @@ namespace NS::Game::Player
             if (record.startStep == m_step)
             {
                 out.push_back(record.name);
+            }
+        }
+    }
+
+    void EffectLayerList::AppendStartedAmounts(std::vector<std::optional<float>>& out) const
+    {
+        for (const EffectLayerRecord& record : m_records)
+        {
+            if (record.startStep == m_step)
+            {
+                out.push_back(record.amount);
             }
         }
     }

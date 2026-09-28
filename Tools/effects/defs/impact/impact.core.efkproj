@@ -1,0 +1,643 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 核の閃光 impact.core: 当たった瞬間に接触点を示す
+     段は動的入力で節を選ぶ。0 番が中心近く、1 番が惜しい、2 番が大きな外れで、出す段に 1、他に 0 を入れる
+     直径・留まり・落ち始めはゲームが持つ。再生の大きさが直径 (m)
+     動的入力 3 番は星形と芯の大きさに掛ける割合。止めの頭だけ放射の線より小さく出すため (ゲームが 1 フレーム目に 1 へ戻す)
+     段ごとに放射の線の節 (CenterRays・NearRays・WideRays) を持つ。真ん中を空けた細い 8 本の線で、核の直径の上限
+       (玉の直径の 54%) の外まで伸び、当たりの光が画面の上で広がって見える大きさを受け持つ。面は塗らない
+     星形の節の回る速さ (15 度/フレーム) は、efkprobe の絵では回らなかった (フレームごとの絵が同じ)。姿を変えるのは
+       ゲームが大きさを 1 フレームおきに縮める脈と、大きな外れの縮み
+     親を止めた後に落ちるフレーム数は段ごとに違う。中心近く 1・惜しい 7・大きな外れ 7。放射の線も同じ段の核と同じ
+     中心近く: 手本の弾きは塊が 1〜10 に留まり 11 で消える。3 では白い芯が 12・13 にも残り、手本より 3 フレーム長かった
+       放射の線を 2 で落とした時は、11 に消えた核の後の 12 に接触点から伸びる白い線が残り、手本より 2 フレーム長かった
+     惜しい: 手本のガードは接触点の光が 8 まではっきり見え、9 に薄く残る。引き始め n の 1 つ前で親を止め (止め 7 で 3)、
+       7 フレームで薄れる。落ち始めは引き始めのまま (出かけて途中で引く)。3 では 6 で消えた。5 では 7 に縁の小さな点が
+       残るだけで 8 に無く、手本より 2 フレーム早かった (外れの核と同じく、落ちの最後の方は濃さが低くて見えない)
+     大きな外れ: 4 で親を止め 7 フレームで落ちる。落ちの最後のフレームは濃さ 0 なので、見える最後は親を止めてから
+       落ちるフレーム数 - 1 後で、9 に 3 割・10 に 1.4 割で写る。手本のガードの橙の光は 9 まで明るく、10 は火花の群れに
+       照らされた薄い光。3 では 6 が最後で 2 フレーム早かった。5 では 7 まではっきり見え 8 に 2 割で薄く残るだけで、
+       手本より 1〜2 フレーム早かった (惜しいの核と同じく、落ちの最後の方は濃さが低くて見えない)
+     大きな外れの色は、にじまない (1 を超えない) 澄んだ橙。手本のガードの接触点は明るい橙の光で、灰橙 (230, 179, 128)
+       は白い床の上で床の色とほとんど変わらず、擦れる火花と同じ色で、核と見分けられなかった
+       芯の丸は星形の 6 割。星形の素材は真ん中の丸が直径の 2 割しか無く、3 割の芯と合わせても
+       見える光は直径の 2 割ほどで、ゲームの視点で火花の粒と同じ大きさだった
+     寿命の 120 フレームは打ち切り。ゲームは親を止めるので、寿命で消えるのは止め損ねた時だけ
+     塗りは半透明の合成に明るさの倍率を掛ける。白い床の上でも床の色を塗り替えて見え、1 を超えた分がにじむ
+     段ごとに節を 2 つ持つ。親を止めた後に子のインスタンスが 1 つだけ残ると、実行側はそれを親と見なして絵ごと消し、
+     3 フレームの落ちが出ない (Manager::StopStoppingEffects の数え方) -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>CenterRim</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <DynamicEquation>0</DynamicEquation>
+          </MaxGeneration>
+          <Life>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+          <Removal>
+            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+          </Removal>
+        </CommonValues>
+        <!-- 星形を 1 フレーム 15 度ずつ回す。止めの間 (最大近くに留まる間) も毎フレーム姿が変わる
+             長い放射は 90 度おきなので、15 度では 6 フレームで元の向きに戻るまで毎フレーム違う向きに見える -->
+        <RotationValues>
+          <Type>1</Type>
+          <PVA>
+            <Velocity>
+              <Z>
+                <Center>15</Center>
+                <Max>15</Max>
+                <Min>15</Min>
+              </Z>
+            </Velocity>
+          </PVA>
+        </RotationValues>
+        <!-- 相手の体の手前で深さに切られないよう、カメラへ 0.4 m 寄せて描く -->
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <DynamicEquation>3</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <DepthValues>
+          <DepthOffset>0.4</DepthOffset>
+        </DepthValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_star.png</ColorTexture>
+          <!-- 金橙 (255, 160, 60) のまま 1 を超えない。1 を超えた色は色ごとに 1 へ丸められ、橙が黄に化ける -->
+          <!-- 2 = 取り除かれた後に消える。落ちるフレーム数は既定の 1 -->
+          <FadeOutType>2</FadeOutType>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <G>160</G>
+              <B>60</B>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>CenterHot</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <DynamicEquation>0</DynamicEquation>
+          </MaxGeneration>
+          <Life>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+          <Removal>
+            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+          </Removal>
+        </CommonValues>
+        <!-- 芯は星形の直径の 3 割。星形の真ん中の丸と同じ大きさで、放射の筋は覆わない -->
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <DynamicEquation>4</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <DepthValues>
+          <DepthOffset>0.45</DepthOffset>
+        </DepthValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_core.png</ColorTexture>
+          <!-- 2 = 加算。塗った星形の上に暖かい白 (255, 210, 150) の 2.2 倍を足す
+               芯は白く飛び、1 を超えた分 (1.2, 0.8, 0.3) が橙寄りににじむ
+               3 倍だと 1 フレームの薄れでも 1 を超えたままで、落ちる所が見えない -->
+          <AlphaBlend>2</AlphaBlend>
+          <EmissiveScaling>2.2</EmissiveScaling>
+          <FadeOutType>2</FadeOutType>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <G>210</G>
+              <B>150</B>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>NearRim</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <DynamicEquation>1</DynamicEquation>
+          </MaxGeneration>
+          <Life>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+          <Removal>
+            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+          </Removal>
+        </CommonValues>
+        <!-- 星形を 1 フレーム 15 度ずつ回す。止めの間 (最大近くに留まる間) も毎フレーム姿が変わる
+             長い放射は 90 度おきなので、15 度では 6 フレームで元の向きに戻るまで毎フレーム違う向きに見える -->
+        <RotationValues>
+          <Type>1</Type>
+          <PVA>
+            <Velocity>
+              <Z>
+                <Center>15</Center>
+                <Max>15</Max>
+                <Min>15</Min>
+              </Z>
+            </Velocity>
+          </PVA>
+        </RotationValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <DynamicEquation>3</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <DepthValues>
+          <DepthOffset>0.4</DepthOffset>
+        </DepthValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_star.png</ColorTexture>
+          <!-- 金 (255, 190, 90) のまま 1 を超えない -->
+          <FadeOutType>2</FadeOutType>
+          <FadeOut>
+            <Frame>7</Frame>
+          </FadeOut>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <G>190</G>
+              <B>90</B>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>NearHot</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <DynamicEquation>1</DynamicEquation>
+          </MaxGeneration>
+          <Life>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+          <Removal>
+            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+          </Removal>
+        </CommonValues>
+        <!-- 惜しいの芯は中心近くより小さい 2.5 割で、白でなく金。1.6 倍で見える色は淡い黄に留まり、にじみは橙 -->
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <DynamicEquation>5</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <DepthValues>
+          <DepthOffset>0.45</DepthOffset>
+        </DepthValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_core.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+          <EmissiveScaling>1.6</EmissiveScaling>
+          <FadeOutType>2</FadeOutType>
+          <FadeOut>
+            <Frame>7</Frame>
+          </FadeOut>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <G>190</G>
+              <B>90</B>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>WideRim</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <DynamicEquation>2</DynamicEquation>
+          </MaxGeneration>
+          <Life>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+          <Removal>
+            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+          </Removal>
+        </CommonValues>
+        <!-- 星形を 1 フレーム 15 度ずつ回す。止めの間 (最大近くに留まる間) も毎フレーム姿が変わる
+             長い放射は 90 度おきなので、15 度では 6 フレームで元の向きに戻るまで毎フレーム違う向きに見える -->
+        <RotationValues>
+          <Type>1</Type>
+          <PVA>
+            <Velocity>
+              <Z>
+                <Center>15</Center>
+                <Max>15</Max>
+                <Min>15</Min>
+              </Z>
+            </Velocity>
+          </PVA>
+        </RotationValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <DynamicEquation>3</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <DepthValues>
+          <DepthOffset>0.4</DepthOffset>
+        </DepthValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_star.png</ColorTexture>
+          <FadeOutType>2</FadeOutType>
+          <FadeOut>
+            <Frame>7</Frame>
+          </FadeOut>
+        </RendererCommonValues>
+        <!-- 澄んだ橙 (240, 140, 50) で 1 を超えない。にじまず、白く飛ぶ芯も持たない -->
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>240</R>
+              <G>140</G>
+              <B>50</B>
+              <A>230</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>WideCore</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <DynamicEquation>2</DynamicEquation>
+          </MaxGeneration>
+          <Life>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+          <Removal>
+            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+          </Removal>
+        </CommonValues>
+        <!-- 外れの芯は星形の 6 割の丸。明るい橙 (250, 180, 100) で 1 を超えない -->
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <DynamicEquation>6</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <DepthValues>
+          <DepthOffset>0.45</DepthOffset>
+        </DepthValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_core.png</ColorTexture>
+          <FadeOutType>2</FadeOutType>
+          <FadeOut>
+            <Frame>7</Frame>
+          </FadeOut>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>250</R>
+              <G>180</G>
+              <B>100</B>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>CenterRays</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <DynamicEquation>0</DynamicEquation>
+          </MaxGeneration>
+          <Life>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+          <Removal>
+            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+          </Removal>
+        </CommonValues>
+        <!-- 放射の線。核の直径の 4.4 倍 (威力 2 の 0.7 m で先端が接触点から 1.54 m)。太さは根元で 0.05 m の線で、
+             真ん中の 3 割 (核の星形の所) は空けて面を塗らない。暖かい白の 1.6 倍を足してにじませる
+             核の留まりの最後で親を止めた後、核と同じ 1 フレームで落ちる (落ちるフレーム数は既定の 1 なので書かない) -->
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>4.4</X>
+              <Y>4.4</Y>
+              <Z>4.4</Z>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <DepthValues>
+          <DepthOffset>0.45</DepthOffset>
+        </DepthValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_rays.png</ColorTexture>
+          <!-- 深さで切らない。接触点は自機の玉の縁にあるので、自機の側へ伸びる線が玉に隠れ、横の広がりが半分になった
+               線は細く、玉に重なっても輪郭は途切れない -->
+          <ZTest>False</ZTest>
+          <AlphaBlend>2</AlphaBlend>
+          <EmissiveScaling>1.6</EmissiveScaling>
+          <FadeOutType>2</FadeOutType>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <G>225</G>
+              <B>170</B>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>NearRays</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <DynamicEquation>1</DynamicEquation>
+          </MaxGeneration>
+          <Life>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+          <Removal>
+            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+          </Removal>
+        </CommonValues>
+        <!-- 惜しいの放射の線。核の直径の 4.1 倍 (威力 1.72 の 0.64 m で先端が 1.32 m)。金の 1.1 倍を足す
+             核と同じく 7 フレームで薄れる -->
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>4.1</X>
+              <Y>4.1</Y>
+              <Z>4.1</Z>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <DepthValues>
+          <DepthOffset>0.45</DepthOffset>
+        </DepthValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_rays.png</ColorTexture>
+          <!-- 深さで切らない。接触点は自機の玉の縁にあるので、自機の側へ伸びる線が玉に隠れ、横の広がりが半分になった
+               線は細く、玉に重なっても輪郭は途切れない -->
+          <ZTest>False</ZTest>
+          <AlphaBlend>2</AlphaBlend>
+          <EmissiveScaling>1.1</EmissiveScaling>
+          <FadeOutType>2</FadeOutType>
+          <FadeOut>
+            <Frame>7</Frame>
+          </FadeOut>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <G>190</G>
+              <B>90</B>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>WideRays</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <DynamicEquation>2</DynamicEquation>
+          </MaxGeneration>
+          <Life>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+          <Removal>
+            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+          </Removal>
+        </CommonValues>
+        <!-- 大きな外れの放射の線。核の直径の 4.3 倍 (威力 1.51 の 0.6 m で先端が 1.29 m。惜しいの 1.32 m より短い)
+             白 (255, 255, 255) を半透明の合成で塗る。1 を超えないのでにじまない。核と同じく 7 フレームで薄れる
+             床の白い升 (明るさ 225) より明るい色なので、白い升・黒い升・玉のどの上でも画面を暗くせず、白い升の上でも
+             線が見える。橙 (240, 140, 50) や淡い橙 (250, 190, 120) では白い升の上で床より暗く、黒い升の上の明るさと
+             打ち消し合った。淡いクリーム色 (255, 235, 200) は白い升の上で床との差が明るさ 10 ほどで、線が玉の上にしか
+             見えず、横の広がりが 2 つの玉の幅で止まった -->
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>4.3</X>
+              <Y>4.3</Y>
+              <Z>4.3</Z>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <DepthValues>
+          <DepthOffset>0.45</DepthOffset>
+        </DepthValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_rays.png</ColorTexture>
+          <!-- 深さで切らない。接触点は自機の玉の縁にあるので、自機の側へ伸びる線が玉に隠れ、横の広がりが半分になった
+               線は細く、玉に重なっても輪郭は途切れない -->
+          <ZTest>False</ZTest>
+          <FadeOutType>2</FadeOutType>
+          <FadeOut>
+            <Frame>7</Frame>
+          </FadeOut>
+        </RendererCommonValues>
+      </Node>
+    </Children>
+  </Root>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>1</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>1</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations>
+      <DynamicEquation>
+        <Name>Center</Name>
+        <Code>@O.x = @In0</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>Near</Name>
+        <Code>@O.x = @In1</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>Wide</Name>
+        <Code>@O.x = @In2</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>Body</Name>
+        <Code>@O.x = @In3
+@O.y = @In3
+@O.z = @In3</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>CenterHotBody</Name>
+        <Code>@O.x = 0.3 * @In3
+@O.y = 0.3 * @In3
+@O.z = 0.3 * @In3</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>NearHotBody</Name>
+        <Code>@O.x = 0.25 * @In3
+@O.y = 0.25 * @In3
+@O.z = 0.25 * @In3</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>WideCoreBody</Name>
+        <Code>@O.x = 0.6 * @In3
+@O.y = 0.6 * @In3
+@O.z = 0.6 * @In3</Code>
+      </DynamicEquation>
+    </Equations>
+  </Dynamic>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>30</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>

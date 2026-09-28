@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 光条 impact.streak: 中心近くの当たりにだけ足す、画面を横切る一文字の細い線
+     板はカメラへ向け、横が画面の横になる。再生の大きさの X が長さ (m)、Y が太さの倍率
+     長さ・細り方・薄れ始めるフレームはゲームが持つ
+     (大きさを毎フレーム置き直し、親を止めて薄れさせ、薄れきったら子ごと消す)
+     寿命の 120 フレームは打ち切り -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Base</Name>
+        <CommonValues>
+          <Life>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+        </CommonValues>
+        <!-- 太さの倍率 1 で板の高さ 0.16 m。線の芯は板の高さの 4 分の 1 (0.04 m) -->
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <Y>0.16</Y>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <DepthValues>
+          <DepthOffset>0.4</DepthOffset>
+        </DepthValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_line.png</ColorTexture>
+          <!-- 金橙 (255, 160, 60) のまま 1 を超えない。白い床の上では床を塗り替えて橙に見える -->
+          <!-- 2 = 取り除かれた後に消える。3 フレームで落ち、親を止めた次のフレームに 7 割、その次に 3 割の濃さで写る
+               手本の弾きの横線は 13 の次の 14 で最大の 2〜4 割、15 で 1 割ほどになり 16 に消える。並べた絵で
+               見ると 15 まで線が残り、16 にも薄く見える所がある。2 フレームで落とした時は 14 が最後で、
+               手本より 1〜2 早かった -->
+          <FadeOutType>2</FadeOutType>
+          <FadeOut>
+            <Frame>3</Frame>
+          </FadeOut>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <G>160</G>
+              <B>60</B>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+      <Node>
+        <Name>Hot</Name>
+        <CommonValues>
+          <Life>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+        </CommonValues>
+        <!-- 芯の白は長さの 7 割、太さは下地の半分。橙の縁の中に白い芯が通る -->
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>0.7</X>
+              <Y>0.08</Y>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <DepthValues>
+          <DepthOffset>0.45</DepthOffset>
+        </DepthValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_line.png</ColorTexture>
+          <AlphaBlend>2</AlphaBlend>
+          <!-- 暖かい白 (255, 235, 200) の 2.5 倍。芯が白く飛び、1 を超えた分がにじむ -->
+          <EmissiveScaling>2.5</EmissiveScaling>
+          <!-- 下塗りと同じく 3 フレームで落ちる -->
+          <FadeOutType>2</FadeOutType>
+          <FadeOut>
+            <Frame>3</Frame>
+          </FadeOut>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <G>235</G>
+              <B>200</B>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>30</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>

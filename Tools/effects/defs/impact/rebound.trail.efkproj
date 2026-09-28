@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 反動の尾 rebound.trail: 押し返されて飛んでいる事を、自機の玉だけで読ませる
+     ImpactEffects が明け R に玉の中心へ出し、毎フレーム玉の中心と飛ぶ向きへ置き直す。反動の頂点 (縦の速さが 0 以下に
+     なったフレーム) で親を止め、筋は頂点の位置と向きのまま 8 フレームで薄れ、8 フレーム後にゲームが消す
+     着地まで付けていた時は、頂点の後の落ちる間も筋が写り、層の表の「頂点の後 8 フレームで消える」より 16 フレーム長かった
+     再生の向きの +Y が飛ぶ向き (視線に近い時は起こした向き)。再生の大きさは 1 (m のまま)
+     筋: 玉の輪郭の後ろの縁 (中心から飛ぶ向きの逆へ玉の半径 0.65 m) から、飛ぶ向きの逆へ玉の直径 1.3 m 伸びる板
+       玉に付いて回り、毎フレーム今の飛ぶ向きを指す。板の縦を飛ぶ向きに固定したままカメラへ向ける (Billboard 1)
+       白い床の上で白は見えないので、青 (80, 160, 255) の下塗りに白い芯を重ねる。どちらも半透明で、加算しない
+       通った道に点を残す帯だった時は、帯が今の飛ぶ向きより前の道の向きを指した。反動の道は頂点へ向けて曲がり続け、
+       玉の中心から半径 0.65 m は玉に隠れるので、見えるのは玉を抜けた古い点の側だけになる (頂点へ向かう 3.5 m/s では
+       11 フレーム前の道)。横からの絵で 53 度の右上へ飛ぶ玉の帯が、73 度 (上) の向きで真下へ伸びて見えた
+       長さは上がり始めの帯が玉の外へ出ていた 1.3 m と同じ。幅は帯の細りきった幅 0.3 m (芯 0.12 m)
+       飛ぶ向きが視線に近い時は、ゲームが再生の向きを視線から 38 度まで起こす (ImpactEffects::ReboundTrailHeading)
+       筋は深さで切らずに描く (ZTest を切る)。明けの玉は床の上から上へ飛び出し、筋 (飛ぶ向きの逆) は床の中へ
+       伸びるので、深さで切ると明けのフレームは筋が床に隠れて写らなかった。筋の太い真ん中は玉の輪郭の外に置くので、
+       深さで切らなくても玉に重なるのは細い頭の側だけ
+     飛び出しの輪: 明けに玉を囲むカメラへ向いた輪を 1 つ出し、筋が床から出て輪が玉の外へ出るまでの 8 フレームを受け持つ
+     輪: 3 フレームごとに、再生の +Y を法線にした細い輪を玉の中心に置き、その場に残す。半径は玉の半径の 1.3 倍から広がる
+       自機がカメラへ向かって飛ぶと輪は玉の周りの縁として見え、
+       横から見ると通った道に並ぶ短い線になる -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <!-- 筋の下塗り。頂点まで玉に付いて回るので、寿命で消さない。親を止めたら 8 フレームで薄れて消える -->
+      <Node>
+        <Name>Paint</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+          </Removal>
+        </CommonValues>
+        <!-- 板の真ん中を中心から飛ぶ向きの逆へ 1.3 m (玉の半径 0.65 m + 筋の長さの半分 0.65 m) に置く -->
+        <LocationValues>
+          <Fixed>
+            <Location>
+              <Y>-1.3</Y>
+            </Location>
+          </Fixed>
+        </LocationValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>0.3</X>
+              <Y>1.3</Y>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <!-- 縦長で両端へ細る筋。頭が玉の縁で細く始まり、尾へ細って消える -->
+          <ColorTexture>Texture/impact_spark.png</ColorTexture>
+          <!-- 床に切らせない。明けに床の中へ伸びる筋を床の上に描く -->
+          <ZTest>False</ZTest>
+          <!-- 2 = 取り除かれた後に消える。層の表の「頂点で親を止め、8 フレームで消える」 -->
+          <FadeOutType>2</FadeOutType>
+          <FadeOut>
+            <Frame>8</Frame>
+          </FadeOut>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>80</R>
+              <G>160</G>
+              <A>190</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>1</Billboard>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+      <!-- 筋の白い芯。暗い空の上で読める -->
+      <Node>
+        <Name>Core</Name>
+        <CommonValues>
+          <Removal>
+            <WhenLifeIsExtinct>False</WhenLifeIsExtinct>
+            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+          </Removal>
+        </CommonValues>
+        <LocationValues>
+          <Fixed>
+            <Location>
+              <Y>-1.3</Y>
+            </Location>
+          </Fixed>
+        </LocationValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>0.12</X>
+              <Y>1.3</Y>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_spark.png</ColorTexture>
+          <ZTest>False</ZTest>
+          <FadeOutType>2</FadeOutType>
+          <FadeOut>
+            <Frame>8</Frame>
+          </FadeOut>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <A>200</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>1</Billboard>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+      <!-- 飛び出しの輪。明けのフレームに玉を囲むカメラへ向いた輪を 1 つ出し、玉に付いていかせて 8 フレームで消す
+           明けの玉は床の上から上へ飛び出すので、玉の後ろは床の中で、筋は床から出た頭の側しか見えない
+           通った道に残す輪も玉の外へ出るまで玉に重なる。その間、この輪が飛んでいる事を見せる
+           半径は玉の半径 0.65 m の外 0.75 m から 1.1 m へ広がる。輪は玉の輪郭の外に居て玉を覆わない
+           色は輪と同じ薄い青 -->
+      <Node>
+        <Name>Kick</Name>
+        <CommonValues>
+          <Life>
+            <Center>8</Center>
+            <Max>8</Max>
+            <Min>8</Min>
+          </Life>
+        </CommonValues>
+        <ScalingValues>
+          <Type>2</Type>
+          <Easing>
+            <Start>
+              <X>
+                <Center>0.75</Center>
+                <Max>0.75</Max>
+                <Min>0.75</Min>
+              </X>
+              <Y>
+                <Center>0.75</Center>
+                <Max>0.75</Max>
+                <Min>0.75</Min>
+              </Y>
+              <Z>
+                <Center>0.75</Center>
+                <Max>0.75</Max>
+                <Min>0.75</Min>
+              </Z>
+            </Start>
+            <End>
+              <X>
+                <Center>1.1</Center>
+                <Max>1.1</Max>
+                <Min>1.1</Min>
+              </X>
+              <Y>
+                <Center>1.1</Center>
+                <Max>1.1</Max>
+                <Min>1.1</Min>
+              </Y>
+              <Z>
+                <Center>1.1</Center>
+                <Max>1.1</Max>
+                <Min>1.1</Min>
+              </Z>
+            </End>
+          </Easing>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_band.png</ColorTexture>
+          <FadeOutType>1</FadeOutType>
+          <FadeOut>
+            <Frame>4</Frame>
+          </FadeOut>
+        </RendererCommonValues>
+        <DrawingValues>
+          <Type>4</Type>
+          <Ring>
+            <!-- 0 = カメラへ向ける。横から見ても縁から見た線に潰れない -->
+            <Billboard>0</Billboard>
+            <VertexCount>48</VertexCount>
+            <Outer_Fixed>
+              <Location>
+                <X>1</X>
+              </Location>
+            </Outer_Fixed>
+            <!-- 太さは半径の 7% (広がりきって 0.077 m)。当たりの輪 impact.ring と同じ太さ -->
+            <Inner_Fixed>
+              <Location>
+                <X>0.93</X>
+              </Location>
+            </Inner_Fixed>
+            <OuterColor_Fixed>
+              <R>150</R>
+              <G>200</G>
+            </OuterColor_Fixed>
+            <CenterColor_Fixed>
+              <R>150</R>
+              <G>200</G>
+            </CenterColor_Fixed>
+            <InnerColor_Fixed>
+              <R>150</R>
+              <G>200</G>
+            </InnerColor_Fixed>
+          </Ring>
+        </DrawingValues>
+      </Node>
+      <!-- 輪。寿命 8 の最後の 4 フレームで薄れる。半径 0.85 m から 1.0 m へ広がる。帯の太さは半径の 4.5% -->
+      <Node>
+        <Name>Wake</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <Infinite>True</Infinite>
+          </MaxGeneration>
+          <LocationEffectType>1</LocationEffectType>
+          <RotationEffectType>1</RotationEffectType>
+          <Life>
+            <Center>8</Center>
+            <Max>8</Max>
+            <Min>8</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>3</Center>
+              <Max>3</Max>
+              <Min>3</Min>
+            </GenerationTime>
+          </Generation>
+        </CommonValues>
+        <!-- 輪は XY 面に置かれる (法線が +Z)。X まわりに 90 度回し、法線を再生の +Y へ向ける -->
+        <RotationValues>
+          <Fixed>
+            <Rotation>
+              <X>90</X>
+            </Rotation>
+          </Fixed>
+        </RotationValues>
+        <ScalingValues>
+          <Type>2</Type>
+          <Easing>
+            <Start>
+              <X>
+                <Center>0.85</Center>
+                <Max>0.85</Max>
+                <Min>0.85</Min>
+              </X>
+              <Y>
+                <Center>0.85</Center>
+                <Max>0.85</Max>
+                <Min>0.85</Min>
+              </Y>
+              <Z>
+                <Center>0.85</Center>
+                <Max>0.85</Max>
+                <Min>0.85</Min>
+              </Z>
+            </Start>
+          </Easing>
+        </ScalingValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_band.png</ColorTexture>
+          <FadeOutType>1</FadeOutType>
+          <FadeOut>
+            <Frame>4</Frame>
+          </FadeOut>
+        </RendererCommonValues>
+        <DrawingValues>
+          <Type>4</Type>
+          <Ring>
+            <VertexCount>48</VertexCount>
+            <Outer_Fixed>
+              <Location>
+                <X>1</X>
+              </Location>
+            </Outer_Fixed>
+            <Inner_Fixed>
+              <Location>
+                <X>0.955</X>
+              </Location>
+            </Inner_Fixed>
+            <!-- 薄い青 (150, 200, 255)。帯の真ん中だけ不透明で外と内は透明 (既定) -->
+            <OuterColor_Fixed>
+              <R>150</R>
+              <G>200</G>
+            </OuterColor_Fixed>
+            <CenterColor_Fixed>
+              <R>150</R>
+              <G>200</G>
+            </CenterColor_Fixed>
+            <InnerColor_Fixed>
+              <R>150</R>
+              <G>200</G>
+            </InnerColor_Fixed>
+          </Ring>
+        </DrawingValues>
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>30</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>

@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 火の粉 impact.embers: 中心近くの当たりで、光の塊が消えた後に力が弾けて散る
+     手本の弾きは光の塊が消える 11 に接触点から火の粉が新しく密に弾け、19〜20 まで四方へ散って落ちる。
+     放射の筋 (impact.sparks の Band) が 3〜10、この層が核の落ちるフレームから 20 ごろまでを受け持つ
+     再生の向きの +Y を相手の飛ぶ向きにする。生まれる所は接触点から 0.3 m の球面の全部で、各粒は外向きへ四方に散る。
+     +Y から 0〜100 度へ散らした時は、半分ほどの粒が相手の玉の中と裏へ入り、ゲームの視点で見えた粒は 30 ほど、
+     広がりは相手の玉の直径の 0.6〜0.8 倍だった (手本の弾きの火の粉は数百粒で人の背丈の約 2 倍)。
+     2 つの玉が触れ合う面に沿う 70〜110 度の帯にすると、ゲームの視点は 2 つの玉を横に並べて見るので帯が縁から写り、
+     接触点に縦の棒のように固まった。全部の向きへ散らすと、どの視点でも画面の上で四方へ開く。
+     相手の飛ぶ向きは火花の筋 (impact.sparks) と飛び出しの尾が形に出す
+     動的入力の 0 番が粒の数、1 番が速さの上限 (m/フレーム)。速さは上限の 0.3〜1.0 倍にばらし、
+     遅い粒が接触点の周りに密に残り、速い粒が外へ伸びる (手本の 12〜13 の、密な塊と外へ伸びる筋)
+     全部の粒を最初の更新で出す (生成の間隔 0 と開始 -1)。重力はワールドの下向きで、再生の向きに依らない -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Embers</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <DynamicEquation>0</DynamicEquation>
+          </MaxGeneration>
+          <!-- 8〜10 フレーム。11 に出て、薄れながら 18〜20 が最後 (手本は 19〜20 まで) -->
+          <Life>
+            <Center>9</Center>
+            <Max>10</Max>
+            <Min>8</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Center>0</Center>
+              <Max>0</Max>
+              <Min>0</Min>
+            </GenerationTime>
+            <GenerationTimeOffset>
+              <Center>-1</Center>
+              <Max>-1</Max>
+              <Min>-1</Min>
+            </GenerationTimeOffset>
+          </Generation>
+        </CommonValues>
+        <!-- 1 = PVA。生まれた所の回転で各粒の +Y が外を向き、+Y の速さが外へ散る速さ -->
+        <LocationValues>
+          <Type>1</Type>
+          <PVA>
+            <Velocity>
+              <DynamicEquationMin>1</DynamicEquationMin>
+              <DynamicEquationMax>2</DynamicEquationMax>
+            </Velocity>
+          </PVA>
+        </LocationValues>
+        <!-- 火花と同じ 15 m/s² を 1 フレームの 2 乗へ直した 0.0042。散った粒が弧を描いて落ちる -->
+        <LocationAbsValues>
+          <LocalForceField1>
+            <Type>8</Type>
+            <Gravity>
+              <Gravity>
+                <Y>-0.0042</Y>
+              </Gravity>
+            </Gravity>
+          </LocalForceField1>
+        </LocationAbsValues>
+        <!-- 幅 0.05 m・長さ 0.16 m。放射の筋 (0.05・0.35) より短い粒で、遅い粒は点、速い粒は短い筋に見える -->
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <X>0.05</X>
+              <Y>0.16</Y>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <GenerationLocationValues>
+          <EffectsRotation>True</EffectsRotation>
+          <Type>1</Type>
+          <Sphere>
+            <Radius>
+              <Center>0.3</Center>
+              <Max>0.3</Max>
+              <Min>0.3</Min>
+            </Radius>
+            <RotationX>
+              <Center>90</Center>
+              <Max>180</Max>
+            </RotationX>
+            <RotationY>
+              <Max>180</Max>
+              <Min>-180</Min>
+            </RotationY>
+          </Sphere>
+        </GenerationLocationValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/impact_spark.png</ColorTexture>
+          <!-- 橙黄から暗い赤へ落ち、1 を超えない。1.5 倍で出た直後の芯をにじませた時は、200 粒のにじみが接触点で 1 つの
+               黄白の塊になり、核が消えた後の 12 にも光の塊が残って見えた -->
+        </RendererCommonValues>
+        <DrawingValues>
+          <!-- 4 = 進む向きに縦を合わせる -->
+          <Sprite>
+            <Billboard>4</Billboard>
+          </Sprite>
+          <ColorAll>
+            <Type>4</Type>
+            <Gradient>
+              <ColorMarkers>
+                <Key>
+                  <ColorR>1</ColorR>
+                  <ColorG>0.72</ColorG>
+                  <ColorB>0.3</ColorB>
+                  <Position>0</Position>
+                  <Intensity>1</Intensity>
+                </Key>
+                <Key>
+                  <ColorR>1</ColorR>
+                  <ColorG>0.42</ColorG>
+                  <ColorB>0.08</ColorB>
+                  <Position>0.4</Position>
+                  <Intensity>1</Intensity>
+                </Key>
+                <Key>
+                  <ColorR>0.45</ColorR>
+                  <ColorG>0.06</ColorG>
+                  <ColorB>0.03</ColorB>
+                  <Position>1</Position>
+                  <Intensity>1</Intensity>
+                </Key>
+              </ColorMarkers>
+              <AlphaMarkers>
+                <Key>
+                  <Position>0</Position>
+                  <Alpha>1</Alpha>
+                </Key>
+                <Key>
+                  <Position>0.6</Position>
+                  <Alpha>1</Alpha>
+                </Key>
+                <Key>
+                  <Position>1</Position>
+                  <Alpha>0</Alpha>
+                </Key>
+              </AlphaMarkers>
+            </Gradient>
+          </ColorAll>
+        </DrawingValues>
+      </Node>
+    </Children>
+  </Root>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>40</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0.2</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations>
+      <DynamicEquation>
+        <Name>EmberCount</Name>
+        <Code>@O.x = @In0</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>SpeedMin</Name>
+        <Code>@O.y = @In1 * 0.3</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>SpeedMax</Name>
+        <Code>@O.y = @In1 * 1.0</Code>
+      </DynamicEquation>
+    </Equations>
+  </Dynamic>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>20</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
