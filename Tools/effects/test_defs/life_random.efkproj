@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 試し用の絵: 寿命が 5〜60 フレームの乱数で決まる、明るさ 20 の加算の板 1 枚 (生成の数は既定の 1)
+     他のエフェクトを先に出しても、同じ名前の同じ回数目の再生は同じ寿命になることを試しで見る (Source/Tests/effect_scene_test.cpp) -->
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Once</Name>
+        <CommonValues>
+          <Life>
+            <Center>32</Center>
+            <Max>60</Max>
+            <Min>5</Min>
+          </Life>
+        </CommonValues>
+        <RendererCommonValues>
+          <!-- 2 = Add -->
+          <AlphaBlend>2</AlphaBlend>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <A>20</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Position>1</Position>
+            <Position_Fixed_LL>
+              <X>-0.2</X>
+              <Y>-0.2</Y>
+            </Position_Fixed_LL>
+            <Position_Fixed_LR>
+              <X>0.2</X>
+              <Y>-0.2</Y>
+            </Position_Fixed_LR>
+            <Position_Fixed_UL>
+              <X>-0.2</X>
+              <Y>0.2</Y>
+            </Position_Fixed_UL>
+            <Position_Fixed_UR>
+              <X>0.2</X>
+              <Y>0.2</Y>
+            </Position_Fixed_UR>
+          </Sprite>
+        </DrawingValues>
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.7</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>100</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>

@@ -615,7 +615,9 @@ TEST_F(ChargeEffectsPictureTest, HeldLayersDrawMoreAsTheChargeGrows)
         }
         else
         {
-            EXPECT_LE(nearlyFull, full) << name;
+            // 削る粉は 0.97 と 1 で出る数がほとんど変わらず、粒の置き方の揺れの方が大きい
+            // 溜めきりで落ちない事を 1% の幅で見る
+            EXPECT_LE(nearlyFull, full * 1.01) << name;
         }
     }
 }

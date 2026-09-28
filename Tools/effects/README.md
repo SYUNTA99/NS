@@ -43,7 +43,7 @@ Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effe
 | `defs/make_textures.py` | 白い閃光の丸 `flash.png` と火花の筋 `spark.png` を描く。同じ入力から同じ画素を描く |
 | `defs/charge/` | 溜めの組 (層の名前が `charge.`・`release.`・`slam.` で始まる) の定義と、素材を描く `make_textures.py`。素材は `defs/charge/Texture/` に描く |
 | `defs/impact/` | 当たりの組 (層の名前が `impact.`・`launch.`・`rebound.`・`land.` で始まる) の定義と `make_textures.py`。素材は `defs/impact/Texture/` に描く |
-| `test_defs/<名前>.efkproj` | 試し (`Source/Tests/effect_scene_test.cpp` など) が読む絵の定義。書き出した `.efkefc` は `Source/Tests/data/effects/` に置く。下の「試し用の 4 本」 |
+| `test_defs/<名前>.efkproj` | 試し (`Source/Tests/effect_scene_test.cpp` など) が読む絵の定義。書き出した `.efkefc` は `Source/Tests/data/effects/` に置く。下の「試し用の 5 本」 |
 | `efkbuild.py` | 本体。下の 1〜7 を 1 本ずつ回す |
 | `efkxml/` | .NET 9 のコンソール。編集ソフトの中核 `EffekseerCore.dll` を画面なしで呼ぶ (`dump`・`check`) |
 | `efkprobe/` | C++ のコンソール。実行側で読んで節の木を出し、画面外に描いて PNG を書く |
@@ -131,7 +131,7 @@ efkprobe の「フレーム 1」は Play → Update(1) → 描く。ゲームで
 | `hit_flash_min` | 白い閃光の丸 1 枚。加算。大きさ 0 → 2 を EaseOutCubic で、色は白の不透明 → 透明、寿命 8 | 節 2 (Root + 板)。最大生成数 1、寿命 8、合成 Add、テクスチャ `Texture/flash.png`。フレーム 1 は 0 画素、2〜8 に写り、10 で Root だけ、11 で消える |
 | `spark_min` | 火花 20 粒。球の上に全方向の回転で置き、各粒の +Y へ 0.1〜0.3 で飛ばす。親の座標の重力 -0.01。大きさは寿命の割合のカーブで 1 → 0、色はグラデーション。寿命 12〜24。板は進む向きに縦を合わせた縦長。生成間隔 0・開始 -1 | 節 2。最大生成数 20、寿命 12〜24、合成 Add、テクスチャ `Texture/spark.png`。フレーム 1 から 20 粒 |
 
-## 試し用の 4 本 (`test_defs/`。試しが画素と生存で数える形で、手触りの値ではない)
+## 試し用の 5 本 (`test_defs/`。試しが画素と生存で数える形で、手触りの値ではない)
 
 | 名前 | 中身 | 縛る試し |
 |---|---|---|
@@ -139,6 +139,7 @@ efkprobe の「フレーム 1」は Play → Update(1) → 描く。ゲームで
 | `mover_x` | 縦横 0.4 の白い板。生まれた所から +X へ 1 フレーム 0.5 進む | `Play` の後の最初の更新で生まれ、生まれた瞬間の位置で描かれる (固定ステップの中で出した層が同じステップの絵に写る) |
 | `stack_by_input` | 動的入力 0 番の枚数だけ、明るさ 32 の加算の板を同じ所に重ねる。既定の入力は 1 | 動的入力で出る数が変わる |
 | `stream_life10` | 1 フレームに 1 枚、寿命 10 の明るさ 20 の加算の板を出し続ける | 親だけ止めると新しい板が出ず、出ていた板は寿命まで残る |
+| `life_random` | 寿命が 5〜60 フレームの乱数で決まる、明るさ 20 の加算の板 1 枚 | 先に別の絵を出したり `std::rand` を引いたりしても、同じ名前の同じ回数目の再生は同じ寿命になる (乱数の種は `EffectScene::Play` が名前と回数で決める) |
 
 ## 壊して確かめた事
 

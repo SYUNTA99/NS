@@ -81,7 +81,8 @@ namespace NS::Gfx
         //! @param[in] desc 再生の姿勢・色・動的入力
         //! @return 再生したエフェクトのハンドル。Preload していない名前なら IsValid が false のハンドル
         //! @details 絵が生まれるのは次の Update で、生まれた瞬間の姿がその後の Draw に写る。
-        //! Preload していない名前の警告は名前ごとに 1 回だけ出す
+        //! 乱数の種は name と、その name を何回目に再生したかで決まる。他のエフェクトの再生や std::rand の呼び出しに
+        //! 左右されない。Preload していない名前の警告は名前ごとに 1 回だけ出す
         [[nodiscard]] EffectHandle Play(std::string_view name, const EffectPlayDesc& desc) noexcept;
 
         //! @brief handle のエフェクトの位置・向き・大きさを置き直す
@@ -133,6 +134,8 @@ namespace NS::Gfx
         EffekseerRenderer::RendererRef m_renderer;
         std::unordered_map<std::string, Effekseer::EffectRef> m_effects;
         std::unordered_set<std::string> m_warnedMissing;
+        // 名前ごとに Play した回数。乱数の種に混ぜる
+        std::unordered_map<std::string, std::uint32_t> m_playCounts;
         std::string m_effectRoot;
         float m_elapsedSeconds = 0.0f;
     };

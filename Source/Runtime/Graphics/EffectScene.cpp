@@ -72,6 +72,21 @@ namespace NS::Gfx
             return static_cast<std::uint8_t>(std::lround(value * 255.0f));
         }
 
+        // 名前と、その名前を何回目に出したかから乱数の種を作る。名前を FNV-1a で 32 ビットに畳み、回数を混ぜる
+        // Effekseer は既定で std::rand から種を引くので、他の絵や std::rand の使い手が 1 つ増えるだけで
+        // 全部の絵の乱数がずれる
+        std::int32_t SeedOf(std::string_view name, std::uint32_t playIndex) noexcept
+        {
+            std::uint32_t hash = 2166136261u;
+            for (const char c : name)
+            {
+                hash ^= static_cast<std::uint8_t>(c);
+                hash *= 16777619u;
+            }
+            hash ^= playIndex * 2654435761u;
+            return static_cast<std::int32_t>(hash & 0x7FFFFFFFu);
+        }
+
         std::string ToUtf8(const char16_t* path)
         {
             if (path == nullptr)
@@ -259,6 +274,10 @@ namespace NS::Gfx
 
         const Effekseer::Handle handle =
             m_manager->Play(found->second, desc.position.x, desc.position.y, desc.position.z);
+        // Play が std::rand から引いた種を上書きする。節が生まれる最初の Update より前なので、この種で生まれる
+        std::uint32_t& playCount = m_playCounts[key];
+        m_manager->SetRandomSeed(handle, SeedOf(key, playCount));
+        ++playCount;
         // Play は節を作らず、最初の Update で作る。ここで渡した姿勢・色・入力は生まれる時に読まれる
         m_manager->SetMatrix(handle, ToEffekseerTransform(desc.position, desc.rotation, desc.scale));
         m_manager->SetAllColor(handle,

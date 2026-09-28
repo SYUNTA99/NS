@@ -83,6 +83,20 @@ namespace
         }
     }
 
+    // handle が Exists でなくなるまで 1 フレームずつ進め、進めた回数を返す。limit 回進めても残っていれば limit
+    int UpdatesUntilGone(EffectScene& world, EffectHandle handle, int limit)
+    {
+        for (int i = 0; i < limit; ++i)
+        {
+            if (!world.Exists(handle))
+            {
+                return i;
+            }
+            world.Update(k_Frame);
+        }
+        return limit;
+    }
+
     constexpr PixelPosition k_Center{k_TargetSize / 2, k_TargetSize / 2};
 
     PixelPosition PixelOf(const CameraData& camera, const NS::Core::Vector3& position)
@@ -612,4 +626,28 @@ TEST_F(EffectSceneWithRendererTest, PlayedEffectIsDrawnAtItsBirthAfterTheFirstUp
     Advance(*m_world, 1);
     EXPECT_LT(LargestChannelDifference(cleared, DrawAndRead(camera, k_Center)), k_DrawnDifference);
     EXPECT_GE(LargestChannelDifference(cleared, DrawAndRead(camera, oneStepAhead)), k_DrawnDifference);
+}
+
+// life_random は寿命が 5〜60 フレームの乱数で決まる板 1 枚
+// 同じ名前の同じ回数目の再生は、先に別の絵を出していても、他の所で std::rand を引いていても同じ寿命になる
+TEST_F(EffectSceneWithRendererTest, OtherEffectsPlayedBeforeDoNotChangeTheRandomLife)
+{
+    constexpr int k_Limit = 200;
+    ASSERT_TRUE(m_world->Preload("life_random"));
+    const int alone = UpdatesUntilGone(*m_world, m_world->Play("life_random"), k_Limit);
+
+    EffectScene other(TestEffectRoot());
+    ASSERT_TRUE(other.IsValid());
+    ASSERT_TRUE(other.Preload("life_random"));
+    ASSERT_TRUE(other.Preload("square_r"));
+    for (int i = 0; i < 3; ++i)
+    {
+        static_cast<void>(other.Play("square_r"));
+    }
+    static_cast<void>(std::rand());
+    const int afterOthers = UpdatesUntilGone(other, other.Play("life_random"), k_Limit);
+
+    EXPECT_GT(alone, 0);
+    EXPECT_LT(alone, k_Limit);
+    EXPECT_EQ(alone, afterOthers);
 }
