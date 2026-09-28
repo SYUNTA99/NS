@@ -162,6 +162,10 @@ public:
     //! 編集モードでは live が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
     void MirrorPlayEditToBaseline(const NS::Obj::Component& comp, std::string_view fieldName);
 
+    //! @brief Inspector で欄を変えた component が当たり判定なら、物理をその場で張り直す
+    //! @details 編集モードとプレイ中の両方で効く。欄を変えたフレームごとに呼ぶ
+    void SyncPhysicsAfterFieldEdit(const NS::Obj::Component& changed);
+
     //! 編集視点の中心あたりに新しい自由オブジェクトを 1 個追加して選択する。Undo 対応
     void AddObject();
 

@@ -32,10 +32,10 @@ namespace NS::Editor
     //! @details 描く側が欄の型で絞るので、候補には全配置物の Component を入れてよい
     struct ComponentRefOption
     {
-        std::uint32_t object = 0;                    // 持ち主の配置物の永続 ID
-        std::uint32_t component = 0;                 // Component の永続 ID
-        const NS::Obj::Component* target = nullptr;  // 型の照合に使う実体。そのフレームの間だけ有効
-        std::string label;                           // UI表示用のラベル
+        std::uint32_t object = 0;                   // 持ち主の配置物の永続 ID
+        std::uint32_t component = 0;                // Component の永続 ID
+        const NS::Obj::Component* target = nullptr; // 型の照合に使う実体。そのフレームの間だけ有効
+        std::string label;                          // UI表示用のラベル
     };
 
     //! @brief 型ごとの既定インスタンスを控える置き場
@@ -80,6 +80,11 @@ namespace NS::Editor
     [[nodiscard]] bool FieldDiffersFromDefault(const NS::Obj::Component& comp,
                                                const NS::Obj::Component* defaults,
                                                const NS::Obj::FieldDesc& field) noexcept;
+
+    //! @brief この component の欄を変えた後に物理の張り直しが要るか
+    //! @details 当たり判定の欄は live の component へ入るだけで、張り直すまで物理の body は古い形のまま残る
+    //! @return 当たり判定 (Collider の派生) の場合 true、それ以外の場合は false
+    [[nodiscard]] bool EditNeedsPhysicsSync(const NS::Obj::Component& comp) noexcept;
 
     //! @brief リフレクション欄 1 つを既定値へ戻す
     void RevertFieldToDefault(NS::Obj::Component& comp,

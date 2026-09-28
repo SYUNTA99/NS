@@ -2,6 +2,7 @@
 
 #include "Editor/EditorUi.h"
 #include "Runtime/Object/Component.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/Reflection.h"
@@ -22,9 +23,7 @@ namespace NS::Editor
     {
         // 同じ欄を 2 体から読んで見比べる
         template <class T>
-        bool SameValue(const NS::Obj::Component& a,
-                       const NS::Obj::Component& b,
-                       const NS::Obj::FieldDesc& field)
+        bool SameValue(const NS::Obj::Component& a, const NS::Obj::Component& b, const NS::Obj::FieldDesc& field)
         {
             T lhs{};
             T rhs{};
@@ -60,6 +59,11 @@ namespace NS::Editor
         NS::Obj::Component* created = NS::Obj::CreateComponent(typeName, *m_holder);
         m_byType.emplace_back(std::string(typeName), created);
         return created;
+    }
+
+    bool EditNeedsPhysicsSync(const NS::Obj::Component& comp) noexcept
+    {
+        return NS::Obj::ComponentCast<NS::Obj::Collider>(&comp) != nullptr;
     }
 
     bool FieldDiffersFromDefault(const NS::Obj::Component& comp,
@@ -848,7 +852,7 @@ namespace NS::Editor
                     else if (ImGui::MenuItem("点を追加", nullptr, false, value.count < NS::Obj::Curve::k_MaxKeys))
                     {
                         const NS::Obj::Curve::Key added{storage->GetFloat(menuXId, 0.0f),
-                                                           storage->GetFloat(menuYId, 0.0f)};
+                                                        storage->GetFloat(menuYId, 0.0f)};
                         value.keys[value.count] = added;
                         ++value.count;
                         const std::uint32_t inserted = MoveKey(value, value.count - 1, added);

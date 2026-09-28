@@ -281,7 +281,10 @@ namespace NS::Editor
                         }
                         // プレイ中の手編集は編集復帰の組み直しで消えるので、編集された欄だけ凍結側へも写す
                         if (r.changedTarget != nullptr && r.changedField != nullptr)
+                        {
                             editor.MirrorPlayEditToBaseline(*r.changedTarget, r.changedField->name);
+                            editor.SyncPhysicsAfterFieldEdit(*r.changedTarget);
+                        }
                     }
                     else
                         ImGui::TextDisabled("調整できるパラメータなし");
@@ -299,6 +302,7 @@ namespace NS::Editor
                         *componentEdit.revertTarget, *baseline, *componentEdit.revertField);
                     // 既定へ戻すのも手編集。プレイ中は凍結側へも写して残す
                     editor.MirrorPlayEditToBaseline(*componentEdit.revertTarget, componentEdit.revertField->name);
+                    editor.SyncPhysicsAfterFieldEdit(*componentEdit.revertTarget);
                     editor.CommitComponentEdit();
                 }
             }

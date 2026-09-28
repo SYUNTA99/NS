@@ -1,6 +1,7 @@
 #include "Editor/LevelEditorController.h"
 
 #include "Editor/EditorObjects.h"
+#include "Editor/InspectorReflection.h"
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
@@ -1064,6 +1065,14 @@ void LevelEditorController::MirrorPlayEditToBaseline(const NS::Obj::Component& c
     if (m_mode != Mode::Play || m_scene == nullptr)
         return;
     m_scene->WritePlayBaselineField(comp, fieldName);
+}
+
+void LevelEditorController::SyncPhysicsAfterFieldEdit(const NS::Obj::Component& changed)
+{
+    // 欄は live の component へ入るだけで、張り直すまで body は古い形のまま残る
+    if (m_scene == nullptr || !NS::Editor::EditNeedsPhysicsSync(changed))
+        return;
+    m_scene->SyncPhysics();
 }
 
 void LevelEditorController::AddObject()
