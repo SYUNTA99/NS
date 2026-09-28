@@ -164,6 +164,28 @@ TEST(ShippedCourse, CourseCarriesAKillZone)
     EXPECT_EQ(killZones, 1);
 }
 
+// 段の範囲 (HitZones) を持たない壊せる物は体当たりの相手にならない
+// 同梱の場面の相手は全部、足した直後の 3 段・真ん中 0.5 m・惜しい 1.0 m を持つ
+TEST(ShippedCourse, EveryBreakableCarriesHitZones)
+{
+    for (const char* name : k_TargetSceneNames)
+    {
+        SCOPED_TRACE(name);
+        nlohmann::json scene = SceneNs::MakeSceneJson();
+        ASSERT_TRUE(LoadShippedCourse(scene, name));
+        const std::vector<float> tierCounts = CollectBreakableField(scene, "HitZones", "段の数");
+        const std::vector<float> centerRanges = CollectBreakableField(scene, "HitZones", "真ん中の範囲");
+        const std::vector<float> nearRanges = CollectBreakableField(scene, "HitZones", "惜しいの範囲");
+        ASSERT_FALSE(tierCounts.empty());
+        for (std::size_t i = 0; i < tierCounts.size(); ++i)
+        {
+            EXPECT_FLOAT_EQ(tierCounts[i], 3.0f) << i;
+            EXPECT_FLOAT_EQ(centerRanges[i], 0.5f) << i;
+            EXPECT_FLOAT_EQ(nearRanges[i], 1.0f) << i;
+        }
+    }
+}
+
 // 破壊を許可した時、耐久の最大が威力の上限以下だと溜め切りで全部壊せ、跳ね返される壁が無くなる
 TEST(ShippedCourse, ToughnessHasUnbreakableWall)
 {

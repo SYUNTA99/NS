@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Runtime/Core/Math.h"
@@ -29,7 +28,7 @@ namespace NS::Game::Level
     //! 溜めて放した時は、放す前のフレームに控えた狙いの線の向きも添える
     //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる
     //! 威力のチャージ倍率カーブと当たり位置係数カーブ、当たりの段の境目もここが持ち、ImpactResolver が参照する
-    //! 依存: NS::Game::Player::PlayerComponent, NS::Obj::Curve, ImpactInputJudge, ImpactResolver, HitTier
+    //! 依存: NS::Game::Player::PlayerComponent, NS::Obj::Curve, ImpactInputJudge, ImpactResolver
     class CollisionInput : public NS::Obj::Component
     {
     public:
@@ -53,9 +52,6 @@ namespace NS::Game::Level
         //! 相手の中心からの横ずれ 0..1 を当たり位置係数カーブで威力の倍率にする。非有限の入力とカーブの 0 以下の値は 1
         //! とみなす
         [[nodiscard]] float PositionFactorFor(float offset01) const noexcept;
-
-        //! 相手の中心からの横ずれ 0..1 を段に分ける。境目ちょうどは外側の段とし、非有限の入力は大きな外れとみなす
-        [[nodiscard]] HitTier HitTierFor(float offset01) const noexcept;
 
         //! 溜め中に最高速へ掛ける倍率を返す。1 − チャージ減速率を 0..1 に丸める
         [[nodiscard]] float ChargingSpeedScale() const noexcept;
@@ -95,8 +91,6 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_chargeSlowRate, "チャージ減速率")
         NS_REFLECT_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
         NS_REFLECT_FIELD(m_positionFactorCurve, "突進位置係数カーブ")
-        NS_REFLECT_FIELD(m_centerTierEdge, "中心近くの境目")
-        NS_REFLECT_FIELD(m_nearTierEdge, "惜しいの境目")
         NS_REFLECT_FIELD(m_homingSearchDegrees, "寄せる相手を探す角度")
         NS_REFLECT_FIELD(m_homingSearchDistance, "寄せる相手を探す距離")
         NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
@@ -127,10 +121,6 @@ namespace NS::Game::Level
         // 既定は中心直撃で 1.0、縁かすりで 0.7。画面に見えている相手の中心が狙う対象になる
         // TODO: リフレクション欄は「突進位置係数カーブ」のまま。改名すると保存済みの値が読めなくなる
         NS::Obj::Curve m_positionFactorCurve{};
-        // 段の境目は横ずれ 0..1 に対して置く。横ずれは相手の半幅と自機の半径の和で割った値で、単位は無い
-        // 惜しいの境目は中心近くの境目より大きく置く。逆だと惜しいが出ない
-        float m_centerTierEdge = 0.35f;      // これ未満が中心近く
-        float m_nearTierEdge = 0.7f;         // 中心近くの境目以上でこれ未満が惜しい。これ以上が大きな外れ
         float m_homingSearchDegrees = 30.0f; // 寄せる相手を探す角度 (度)。基準の向きから片側
         float m_homingSearchDistance = 6.0f; // 寄せる相手を探す水平の距離 (m)
         float m_chargeSquashScale = 0.95f;   // 構えと分かる最小の変化。深いと衝突の潰れ演出と紛れる

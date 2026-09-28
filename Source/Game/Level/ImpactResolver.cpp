@@ -3,6 +3,7 @@
 #include "Game/Level/Breakable.h"
 #include "Game/Level/ColliderBounds.h"
 #include "Game/Level/CollisionInput.h"
+#include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactMark.h"
 #include "Game/Level/LaunchedBody.h"
 #include "Game/Player/PlayerComponent.h"
@@ -77,56 +78,10 @@ namespace NS::Game::Level
             return static_cast<int>(std::ceil(static_cast<float>(stopSteps) * clamped));
         }
 
-        // 自機の位置から向きの線を引いた時の、相手の外接箱の中心の測り
-        struct LineOffset
-        {
-            float along = 0.0f; // 自機の位置から相手の中心までの、線に沿った水平の距離 (m)。後ろは負
-            float ratio = 0.0f; // 線から相手の中心までの横ずれ ÷ (相手の半幅 + 自機の半径)。0〜1 へ丸めない
-        };
-
-        // 当たりの裁定と突進の線の予測が同じ式を通る。式を 2 つ置くと、予測した横ずれと当たりの段が食い違う
-        // 分母は AABB を向きに直交する軸へ投影した半幅に自機の半径を足した値
-        // 触れられる横ずれの上限が比 1 になる。斜めの箱でも角をかすめる当たりが 1
-        // 球と傾いた箱は外接箱で測るので実際の縁より広く出る
-        // 事前条件: direction の水平の長さが 0 でない
-        [[nodiscard]] LineOffset MeasureLineOffset(const NS::Core::Vector3& position,
-                                                   const NS::Core::AABB& bounds,
-                                                   const NS::Core::Vector3& direction,
-                                                   float playerRadius) noexcept
-        {
-            const float toX = bounds.Center.x - position.x;
-            const float toZ = bounds.Center.z - position.z;
-            const float invSpeed = 1.0f / std::sqrt(direction.x * direction.x + direction.z * direction.z);
-            const float dirX = direction.x * invSpeed;
-            const float dirZ = direction.z * invSpeed;
-            const float along = toX * dirX + toZ * dirZ;
-            const float lateralX = toX - along * dirX;
-            const float lateralZ = toZ - along * dirZ;
-            const float lateral = std::sqrt(lateralX * lateralX + lateralZ * lateralZ);
-            const float halfWidth = std::abs(dirZ) * bounds.Extents.x + std::abs(dirX) * bounds.Extents.z;
-            const float reach = halfWidth + playerRadius;
-            // 半幅と半径の和が 0 以下では割れない。中心扱いへ倒す
-            if (!(reach > 0.0f))
-            {
-                return LineOffset{.along = along, .ratio = 0.0f};
-            }
-            return LineOffset{.along = along, .ratio = lateral / reach};
-        }
-
-        // 相手の中心からの横ずれ 0..1。OnUpdate へ式を埋めると当たり判定の流れが読めなくなる
-        // 水平が 0 の枝は要らない。向かっていないフレームは内積の判定で先に返しており、水平が 0 のフレームもそこへ入る
-        [[nodiscard]] float HitOffset01(const NS::Core::Vector3& position,
-                                        const NS::Core::AABB& bounds,
-                                        const NS::Core::Vector3& velocity,
-                                        float playerRadius) noexcept
-        {
-            return NS::Core::Clamp(MeasureLineOffset(position, bounds, velocity, playerRadius).ratio, 0.0f, 1.0f);
-        }
-
         [[nodiscard]] JPH::BodyID CurrentBodyOf(const NS::Obj::GameObject& object) noexcept
         {
             // RigidBody の形になった collider は RigidBody の body を返す。飛んでいても置かれていても同じ口で引ける
-            if (const NS::Obj::Collider* collider = object.FindComponent<NS::Obj::Collider>())
+            if (const NS::Obj::Collider* collider = FindBodyCollider(object).body)
             {
                 return collider->BodyId();
             }
@@ -196,21 +151,14 @@ namespace NS::Game::Level
             return touched;
         }
 
-        // 体当たりの相手になれる壊せる物なら外接箱を取って true。当たりの裁定と寄せる相手の探索が同じ絞りを通る
+        // 体当たりの相手になれる壊せる物なら外接箱を取って true。当たりの裁定と寄せる相手の探索と予測が同じ絞りを通る
+        // 段の範囲 (HitZones) を持たない物は相手にならない。体はトリガーでも物理に入れないでもない当たり判定 1 つ
         [[nodiscard]] bool TryGetTargetBounds(const Breakable& breakable, NS::Core::AABB& outBounds) noexcept
         {
-            if (!breakable.IsActive())
+            if (!breakable.IsActive() || breakable.Owner()->FindComponent<HitZones>() == nullptr)
             {
                 return false;
             }
-
-            // トリガーの当たり判定は通り抜ける体積なのでぶつかる相手にならない。形は問わない
-            const NS::Obj::Collider* collider = breakable.Owner()->FindComponent<NS::Obj::Collider>();
-            if (collider != nullptr && collider->IsTrigger())
-            {
-                return false;
-            }
-
             return TryGetColliderBounds(*breakable.Owner(), outBounds);
         }
     } // namespace
@@ -226,6 +174,21 @@ namespace NS::Game::Level
         m_movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>();
         // 無ければ null のまま。ボタンを積んでいない配置物でも裁定は続ける
         m_collisionInput = Owner()->FindComponent<CollisionInput>();
+
+        // 段の範囲を持たない壊せる物は絞りで外れ、HitZones の関数が呼ばれない。付け忘れはここでしか気づけない
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+        {
+            return;
+        }
+        scene->Objects().ForEachComponent<Breakable>([](Breakable& breakable) {
+            if (breakable.Owner()->FindComponent<HitZones>() == nullptr)
+            {
+                NS_LOG_WARN(Game,
+                            "ImpactResolver: '{}' は段の範囲 (HitZones) を持たないので体当たりの相手にならない",
+                            breakable.Owner()->Name());
+            }
+        });
     }
 
     Breakable* ImpactResolver::FindOverlapped() const
@@ -395,13 +358,19 @@ namespace NS::Game::Level
                 return;
             }
 
-            const LineOffset line = MeasureLineOffset(position, bounds, lineDir, playerRadius);
+            // 当たりと同じ Judge を通す。式を 2 つ置くと、予測した段と当たりの段が食い違う
+            const HitZones* zones = breakable.Owner()->FindComponent<HitZones>();
+            HitZoneJudgement line;
+            if (zones == nullptr || !zones->Judge(position, lineDir, playerRadius, line))
+            {
+                return;
+            }
             // 真横と後ろの相手は線の先に居ない
             if (!(line.along > 0.0f))
             {
                 return;
             }
-            // 比が 1 を超える相手は、線を進む自機の縁が相手の外接箱の縁に届かない。丸めた値で見ると 1 に張り付いて拾う
+            // 比が 1 を超える相手は、線を進む自機の縁が相手の体の縁に届かない。丸めた値で見ると 1 に張り付いて拾う
             if (!(line.ratio <= 1.0f))
             {
                 return;
@@ -422,6 +391,7 @@ namespace NS::Game::Level
                                        .direction = lineDir,
                                        .along = line.along,
                                        .offset = line.ratio,
+                                       .tier = line.tier,
                                        .contact = contact};
             }
         });
@@ -535,17 +505,23 @@ namespace NS::Game::Level
         const float mass = MassOf(*hit->Owner());
         const float massFactor = mass / (mass + 1.0f);
 
-        // ボタン未搭載は係数 1.0 の素通し。段は中心近くと記録するが、白の光と止めの倍率は掛けない
-        const float offset01 = HitOffset01(position, bounds, velocity, m_movement->CapsuleRadius());
+        // 段と横ずれは相手の段の範囲で決める。予測と同じ Judge を通す
+        const HitZones* zones = hit->Owner()->FindComponent<HitZones>();
+        HitZoneJudgement judgement;
+        if (zones == nullptr || !zones->Judge(position, velocity, m_movement->CapsuleRadius(), judgement))
+        {
+            return;
+        }
+        const float offset01 = judgement.offset01;
+        const HitTier tier = judgement.tier;
+        // ボタン未搭載は係数 1.0 の素通し。段は記録するが、白の光と止めの倍率は掛けない
         float chargeFactor = 1.0f;
         float positionFactor = 1.0f;
-        HitTier tier = HitTier::Center;
         bool centerHit = false;
         if (m_collisionInput != nullptr)
         {
             chargeFactor = m_collisionInput->ChargeFactorFor(charge01);
             positionFactor = m_collisionInput->PositionFactorFor(offset01);
-            tier = m_collisionInput->HitTierFor(offset01);
             centerHit = tier == HitTier::Center;
         }
         // 最終威力 = チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
@@ -559,13 +535,18 @@ namespace NS::Game::Level
         {
             hitStopScale = m_centerHitStopScale;
         }
-        NS_LOG_INFO(Game,
-                    "威力の内訳: 溜め {} × 当たり位置 {} = {} 溜め量 {} 中心からの横ずれ {}",
-                    chargeFactor,
-                    positionFactor,
-                    power,
-                    charge01,
-                    offset01);
+        NS_LOG_INFO(
+            Game,
+            "威力の内訳: 溜め {} × 当たり位置 {} = {} 溜め量 {} 中心からの横ずれ {} 段 {} 線の通った点 ({}, {}, {})",
+            chargeFactor,
+            positionFactor,
+            power,
+            charge01,
+            offset01,
+            static_cast<int>(tier),
+            judgement.linePoint.x,
+            judgement.linePoint.y,
+            judgement.linePoint.z);
 
         // 明けたフレームの反発と貫通速度を通常移動に乗せるため、凍結より先に突進を打ち切る
         m_movement->CancelBodySlam();
@@ -664,6 +645,7 @@ namespace NS::Game::Level
         m_lastImpact.positionFactor = positionFactor;
         m_lastImpact.offset01 = offset01;
         m_lastImpact.tier = tier;
+        m_lastImpact.linePoint = judgement.linePoint;
         m_lastImpact.hitStopSteps = stopSteps;
         m_lastImpact.centerHit = centerHit;
         m_lastImpact.broke = m_pendingBreak;

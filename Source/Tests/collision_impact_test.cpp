@@ -3,6 +3,7 @@
 #include "camera_screen.h"
 #include "tuning_field_access.h"
 
+#include "hit_zones_entry.h"
 #include <Game/Level/Breakable.h>
 #include <Game/Level/ColliderBounds.h>
 #include <Game/Level/CollisionInput.h>
@@ -98,6 +99,8 @@ namespace
         std::int16_t extraTargetLane = 0;
         // 偽なら的から MeshRenderer を外し、描く形の無い的にする
         bool targetWithMeshRenderer = true;
+        // 偽なら的に段の範囲 (HitZones) を付けない。壊せる物でも体当たりの相手にならない
+        bool targetWithHitZones = true;
     };
 
     // 置かれた壊せる物と同じ RigidBody。飛ぶまではキネマティックで、面の手触りは押し飛ばしを調整した値
@@ -159,6 +162,7 @@ namespace
                 NS::Editor::MakeCellObject(course.extraTargetCell, course.targetLayer, course.extraTargetLane);
             SceneNs::ObjectJsonComponents(extra).push_back(MakeLaunchableRigidBodyEntry());
             SceneNs::ObjectJsonComponents(extra).push_back(SceneNs::MakeComponentEntry("Breakable"));
+            SceneNs::ObjectJsonComponents(extra).push_back(NsTest::MakeTestHitZonesEntry());
             SceneNs::SceneJsonObjects(data).push_back(extra);
         }
 
@@ -179,6 +183,10 @@ namespace
         {
             SceneNs::ObjectJsonComponents(target).push_back(MakeLaunchableRigidBodyEntry());
             SceneNs::ObjectJsonComponents(target).push_back(SceneNs::MakeComponentEntry("Breakable"));
+            if (course.targetWithHitZones)
+            {
+                SceneNs::ObjectJsonComponents(target).push_back(NsTest::MakeTestHitZonesEntry());
+            }
         }
         if (!course.targetWithMeshRenderer)
         {
@@ -1885,12 +1893,16 @@ namespace
     }
 } // namespace
 
-// 予測の横ずれの比は裁定と同じ式で出すので、同じ置き方で当てた時の横ずれと同じになる
+// 予測の横ずれの比と段は裁定と同じ HitZones::Judge で出すので、同じ置き方で当てた時の横ずれと段と同じになる
 // 横ずれ 0 / 0.45 / 0.765 は、的の半幅 0.5 + 自機の半径 0.4 で割ると 0 / 0.5 / 0.85
+// 試験の的の範囲 0.315 m / 0.63 m では真ん中 / 惜しい / 外れで、3 つの段を 1 回ずつ通る
 TEST(CollisionImpact, SlamLineTargetOffsetMatchesTheOffsetOfTheHit)
 {
-    for (const float lateral : {0.0f, 0.45f, 0.765f})
+    const LevelNs::HitTier expectedTiers[] = {LevelNs::HitTier::Center, LevelNs::HitTier::Near, LevelNs::HitTier::Wide};
+    const float laterals[] = {0.0f, 0.45f, 0.765f};
+    for (int i = 0; i < 3; ++i)
     {
+        const float lateral = laterals[i];
         SceneNs::Scene scene;
         Rig rig = BuildSlam(scene, SlamCourse{.start = 0.0f, .lateral = lateral, .targetCell = 1});
         SetInstantImpact(rig);
@@ -1906,11 +1918,34 @@ TEST(CollisionImpact, SlamLineTargetOffsetMatchesTheOffsetOfTheHit)
         EXPECT_FLOAT_EQ(predicted.bounds.Center.z, bounds.Center.z) << lateral;
         EXPECT_NEAR(predicted.along, bounds.Center.x - position.x, 1e-4f) << lateral;
         EXPECT_NEAR(predicted.offset, lateral / (0.5f + rig.movement->CapsuleRadius()), 1e-3f) << lateral;
+        EXPECT_EQ(predicted.tier, expectedTiers[i]) << lateral;
 
         BeginSlam(scene, rig, k_RunSpeed, 0.0f);
         ASSERT_LT(StepUntilImpact(scene, rig, 30), 30) << lateral;
         EXPECT_NEAR(predicted.offset, rig.impact->LastImpact().offset01, 1e-3f) << lateral;
+        EXPECT_EQ(predicted.tier, rig.impact->LastImpact().tier) << lateral;
     }
+}
+
+// 段の範囲を持たない壊せる物は、当たり・寄せる相手の探索・予測のどれにも出ない
+TEST(CollisionImpact, TargetWithoutHitZonesIsNotARushTarget)
+{
+    SceneNs::Scene scene;
+    SlamCourse course = k_NearCourse;
+    course.targetWithHitZones = false;
+    Rig rig = BuildSlam(scene, course);
+    ASSERT_NE(rig.breakable, nullptr);
+    SetInstantImpact(rig);
+    SettleOnFloor(scene, rig);
+
+    LevelNs::SlamLineTarget predicted{};
+    EXPECT_FALSE(rig.impact->FindSlamLineTarget(Vector3{1.0f, 0.0f, 0.0f}, 10.0f, predicted));
+    Vector3 center{};
+    EXPECT_FALSE(rig.impact->FindHomingTarget(Vector3{1.0f, 0.0f, 0.0f}, 90.0f, 10.0f, center));
+
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+    EXPECT_EQ(StepUntilImpact(scene, rig, 30), 30);
+    EXPECT_FALSE(rig.impact->DidRebound());
 }
 
 // 線の外の近い相手より線の上の遠い相手を選ぶ。線の上に 2 体居れば、中心の近さでなく玉が先に触れる方
@@ -2059,26 +2094,6 @@ TEST(CollisionImpact, SlamLineTargetRejectsAZeroOrNonFiniteDirection)
         EXPECT_EQ(kept.target, SceneNs::ObjectRef{9999});
         EXPECT_FLOAT_EQ(kept.along, 123.0f);
     }
-}
-
-// 境目ちょうどは外側の段。非有限の横ずれは中心近くの演出を出さない側へ倒す
-TEST(CollisionInput, HitTierForSplitsAtTheTwoEdges)
-{
-    SceneNs::GameObject owner;
-    LevelNs::CollisionInput* input = owner.AddComponent<LevelNs::CollisionInput>();
-    ASSERT_NE(input, nullptr);
-
-    EXPECT_EQ(input->HitTierFor(0.34f), LevelNs::HitTier::Center);
-    EXPECT_EQ(input->HitTierFor(0.35f), LevelNs::HitTier::Near);
-    EXPECT_EQ(input->HitTierFor(0.69f), LevelNs::HitTier::Near);
-    EXPECT_EQ(input->HitTierFor(0.7f), LevelNs::HitTier::Wide);
-    EXPECT_EQ(input->HitTierFor(std::numeric_limits<float>::quiet_NaN()), LevelNs::HitTier::Wide);
-    EXPECT_EQ(input->HitTierFor(std::numeric_limits<float>::infinity()), LevelNs::HitTier::Wide);
-
-    SetFloatField(*input, "中心近くの境目", 0.5f);
-    SetFloatField(*input, "惜しいの境目", 0.8f);
-    EXPECT_EQ(input->HitTierFor(0.45f), LevelNs::HitTier::Center);
-    EXPECT_EQ(input->HitTierFor(0.75f), LevelNs::HitTier::Near);
 }
 
 // 溜め中に最高速へ掛ける倍率は 1 − 減速率。0〜1 の外へ出る減速率は端へ寄せる

@@ -342,24 +342,6 @@ namespace NS::Game::Level
         return factor;
     }
 
-    HitTier CollisionInput::HitTierFor(float offset01) const noexcept
-    {
-        // 横ずれが測れない当たりに中心近くの白の光と長い止めを出さない
-        if (!std::isfinite(offset01))
-        {
-            return HitTier::Wide;
-        }
-        if (offset01 < m_centerTierEdge)
-        {
-            return HitTier::Center;
-        }
-        if (offset01 < m_nearTierEdge)
-        {
-            return HitTier::Near;
-        }
-        return HitTier::Wide;
-    }
-
     float CollisionInput::ChargingSpeedScale() const noexcept
     {
         // 減速率の欄は非有限の書き込みを捨てるので、ここへ来る値は有限。Clamp だけで 0..1 に収まる

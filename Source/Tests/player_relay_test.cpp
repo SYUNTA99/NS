@@ -1,5 +1,6 @@
 #include "Editor/EditorObjects.h"
 
+#include "hit_zones_entry.h"
 #include <Game/Level/CollisionInput.h>
 #include <Game/Level/FollowCameraFeed.h>
 #include <Game/Level/ImpactResolver.h>
@@ -398,6 +399,7 @@ namespace
         NS::Obj::SetField(rigidBody, "キネマティック", true);
         NS::Obj::ObjectJsonComponents(target).push_back(rigidBody);
         NS::Obj::ObjectJsonComponents(target).push_back(NS::Obj::MakeComponentEntry("Breakable"));
+        NS::Obj::ObjectJsonComponents(target).push_back(NsTest::MakeTestHitZonesEntry());
         NS::Obj::SceneJsonObjects(data).push_back(target);
         scene.LoadJson(std::move(data));
 

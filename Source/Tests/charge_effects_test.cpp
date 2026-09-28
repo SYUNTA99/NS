@@ -24,6 +24,7 @@
 #include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Platform/Window.h>
 
+#include "hit_zones_entry.h"
 #include <gtest/gtest.h>
 
 #include <array>
@@ -85,6 +86,7 @@ namespace
             nlohmann::json target = NS::Editor::MakeCellObject(6, 1, 0);
             NS::Obj::ObjectJsonComponents(target).push_back(MakeLaunchableRigidBodyEntry());
             NS::Obj::ObjectJsonComponents(target).push_back(NS::Obj::MakeComponentEntry("Breakable"));
+            NS::Obj::ObjectJsonComponents(target).push_back(NsTest::MakeTestHitZonesEntry());
             NS::Obj::SceneJsonObjects(data).push_back(target);
         }
         scene.LoadJson(std::move(data));

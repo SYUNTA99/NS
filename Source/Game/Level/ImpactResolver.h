@@ -30,8 +30,9 @@ namespace NS::Game::Level
         float power = 0.0f;
         float charge01 = 0.0f;
         float positionFactor = 0.0f;
-        float offset01 = 0.0f;          //!< 相手の中心からの横ずれ。相手の半幅と自機の半径の和で割った 0..1
-        HitTier tier = HitTier::Center; //!< 当たりの段。CollisionInput が無い時は Center だが演出は掛けない
+        float offset01 = 0.0f;          //!< 相手の体の中心からの横ずれ。相手の半幅と自機の半径の和で割った 0..1
+        HitTier tier = HitTier::Center; //!< 相手の HitZones で決めた段。CollisionInput が無い時は演出を掛けない
+        NS::Core::Vector3 linePoint;    //!< 線の通った点。相手の体の中心に一番近い線の上の点を中心の高さに置いた物
         float cameraShake = 0.0f;       //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
         int flashStart = 0;             //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
         float zoomStart = 1.0f;         //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
@@ -66,6 +67,7 @@ namespace NS::Game::Level
         NS::Core::Vector3 direction; //!< 探した水平の向き。正規化済みで y は 0
         float along = 0.0f;          //!< 自機の位置から相手の外接箱の中心までの、線に沿った水平の距離。単位は m
         float offset = 0.0f; //!< 線から相手の中心までの横ずれ。相手の半幅と自機の半径の和で割った比で、0 以上 1 以下
+        HitTier tier = HitTier::Wide; //!< 相手の HitZones で決めた、この線で当てた時の段
         //! 線を進む自機の当たりの玉が相手の当たりの形に初めて触れるまでに、玉の中心が線に沿って進む距離。単位は m。
         //! 1 mm の幅で、触れている側へ丸める
         float contact = 0.0f;
@@ -151,9 +153,9 @@ namespace NS::Game::Level
         //! @details 相手の絞りは FindHomingTarget と同じ。自機の当たりの玉 (丸まっていれば根の位置、立ち姿なら下の球の
         //! 位置が中心で、半径は自機の半径) を direction の水平へ maxDistance 掃き、当たりの裁定と同じ
         //! PhysicsScene::OverlapCapsule で相手の body の実物の形に触れるかを見る。
-        //! 線から相手の外接箱の中心までの横ずれが、外接箱を線に直交する軸へ投影した半幅と自機の半径の和以内で、
+        //! 線から相手の体の中心までの横ずれが、体を線に直交する軸へ投影した半幅と自機の半径の和以内で、
         //! 中心までの線に沿った距離が 0 より大きく、掃いた玉が触れる相手のうち、玉が触れるまでに進む距離が一番短い
-        //! 1 体を選ぶ。横ずれの比は当たりの裁定と同じ式で出し、裁定はそれを 0〜1 に丸めて使う。
+        //! 1 体を選ぶ。横ずれの比と段は当たりの裁定と同じ HitZones::Judge で出す。
         //! 壁と地形で突進が止まることは見ない
         //! @param[in] direction 線の向き。水平の成分だけを見る
         //! @param[in] maxDistance 線に沿って玉を掃く距離。単位は m

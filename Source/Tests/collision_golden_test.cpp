@@ -27,6 +27,7 @@
 #include <Runtime/Platform/Window.h>
 
 #include "entity_test_stage.h"
+#include "hit_zones_entry.h"
 #include "jolt_test_scene.h"
 #include <algorithm>
 #include <cstddef>
@@ -173,6 +174,7 @@ namespace
             NS::Obj::SetField(body, "連続衝突判定", true);
             NS::Obj::ObjectJsonComponents(target).push_back(std::move(body));
             NS::Obj::ObjectJsonComponents(target).push_back(NS::Obj::MakeComponentEntry("Breakable"));
+            NS::Obj::ObjectJsonComponents(target).push_back(NsTest::MakeTestHitZonesEntry());
             NS::Obj::SceneJsonObjects(data).push_back(target);
 
             m_scene.SetAssets(looks.assets);

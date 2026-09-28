@@ -20,6 +20,7 @@
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Platform/Clock.h>
 
+#include "hit_zones_entry.h"
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -124,6 +125,7 @@ namespace
         NS::Obj::SetField(body, "質量", course.mass);
         NS::Obj::ObjectJsonComponents(target).push_back(body);
         NS::Obj::ObjectJsonComponents(target).push_back(NS::Obj::MakeComponentEntry("Breakable"));
+        NS::Obj::ObjectJsonComponents(target).push_back(NsTest::MakeTestHitZonesEntry());
         NS::Obj::SceneJsonObjects(data).push_back(target);
         scene.LoadJson(std::move(data));
 

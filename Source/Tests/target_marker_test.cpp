@@ -2,6 +2,7 @@
 #include "Game/Player.h"
 #include "camera_screen.h"
 
+#include "hit_zones_entry.h"
 #include <Game/Level/Breakable.h>
 #include <Game/Level/CollisionInput.h>
 #include <Game/Level/ImpactResolver.h>
@@ -213,6 +214,7 @@ namespace
         SceneNs::SetField(rigidBody, "質量", mass);
         SceneNs::ObjectJsonComponents(target).push_back(rigidBody);
         SceneNs::ObjectJsonComponents(target).push_back(SceneNs::MakeComponentEntry("Breakable"));
+        SceneNs::ObjectJsonComponents(target).push_back(NsTest::MakeTestHitZonesEntry());
         return target;
     }
 
