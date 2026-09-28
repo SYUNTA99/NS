@@ -115,6 +115,45 @@ namespace
         }
     }
 
+    // 範囲の筒の分割数。半径 1 m で辺が約 0.2 m になり、近寄っても角張って見えない
+    constexpr int k_ZoneCylinderSegments = 32;
+    // 筒の壁の不透明度。真ん中と惜しいの 2 本と奥の壁が重なっても、中の相手が透けて読める薄さ
+    constexpr float k_ZoneWallAlpha = 0.18f;
+    // 縦の線を何分割ごとに引くか。4 本あれば筒の丸みが線で読める
+    constexpr int k_ZoneStrutEvery = 8;
+
+    // 段の範囲を、相手の体の高さぶんの半透明の筒で描く。上下の縁と縦の 4 本は線で締める
+    // 段は高さを見ずに決まるので、筒は「この縦の範囲を線が通れば」の形そのもの
+    void DrawZoneCylinder(
+        const NS::Core::Vector3& center, float radius, float bottomY, float topY, const NS::Core::Color& color) noexcept
+    {
+        const NS::Core::Color wallColor{color.R(), color.G(), color.B(), k_ZoneWallAlpha};
+        for (int i = 0; i < k_ZoneCylinderSegments; ++i)
+        {
+            const float angle0 =
+                2.0f * NS::Core::k_Pi * static_cast<float>(i) / static_cast<float>(k_ZoneCylinderSegments);
+            const float angle1 =
+                2.0f * NS::Core::k_Pi * static_cast<float>(i + 1) / static_cast<float>(k_ZoneCylinderSegments);
+            const float x0 = center.x + std::cos(angle0) * radius;
+            const float z0 = center.z + std::sin(angle0) * radius;
+            const float x1 = center.x + std::cos(angle1) * radius;
+            const float z1 = center.z + std::sin(angle1) * radius;
+            const NS::Core::Vector3 bottom0{x0, bottomY, z0};
+            const NS::Core::Vector3 bottom1{x1, bottomY, z1};
+            const NS::Core::Vector3 top0{x0, topY, z0};
+            const NS::Core::Vector3 top1{x1, topY, z1};
+
+            NS::Gfx::DebugDraw::Triangle(bottom0, bottom1, top1, wallColor);
+            NS::Gfx::DebugDraw::Triangle(bottom0, top1, top0, wallColor);
+            NS::Gfx::DebugDraw::Line(bottom0, bottom1, color);
+            NS::Gfx::DebugDraw::Line(top0, top1, color);
+            if (i % k_ZoneStrutEvery == 0)
+            {
+                NS::Gfx::DebugDraw::Line(bottom0, top0, color);
+            }
+        }
+    }
+
     // 壊せる物の物理に入れない当たり判定。段の形か、名指しすれば段の形になる物
     [[nodiscard]] bool IsTierShapeCandidate(const NS::Obj::Collider& collider) noexcept
     {
@@ -1049,9 +1088,9 @@ void LevelEditorController::RenderHitZones() noexcept
     constexpr float k_ImpactMarkerRadius = 0.08f;
     // 相手の飛ぶ向きの線。真ん中の範囲 0.5 m より長くして円の外まで出す
     constexpr float k_ImpactDirectionLength = 1.0f;
+    // 体の外接箱が取れない時の筒の半分の高さ。円は取れているので実際には通らない。同梱の玉の半径と同じ
+    constexpr float k_ZoneFallbackHalfHeight = 0.5f;
 
-    const NS::Core::Vector3 axisX{1.0f, 0.0f, 0.0f};
-    const NS::Core::Vector3 axisZ{0.0f, 0.0f, 1.0f};
     const NS::Core::Color warningColor = NS::Editor::HitZoneWarningColor();
 
     for (NS::Obj::GameObject* object : m_scene->Objects())
@@ -1065,22 +1104,31 @@ void LevelEditorController::RenderHitZones() noexcept
         RenderTierShapes(*object, zones);
         if (zones != nullptr && zones->TryGetRings(rings))
         {
+            // 筒の高さは体の上下の端。体は円と同じ当たり判定なので外接箱も取れる
+            float bottomY = rings.center.y - k_ZoneFallbackHalfHeight;
+            float topY = rings.center.y + k_ZoneFallbackHalfHeight;
+            NS::Core::AABB body{};
+            if (NS::Game::Level::TryGetColliderBounds(*object, body))
+            {
+                bottomY = body.Center.y - body.Extents.y;
+                topY = body.Center.y + body.Extents.y;
+            }
             // 半径 0 は形を名指しした段と、2 段の相手の惜しい。形は RenderTierShapes が描く
             if (rings.centerRadius > 0.0f)
             {
-                NS::Gfx::DebugDraw::Circle(
-                    rings.center,
-                    axisX * rings.centerRadius,
-                    axisZ * rings.centerRadius,
-                    NS::Editor::HitZoneRingColor(NS::Game::Level::HitTier::Center, rings.orderBroken));
+                DrawZoneCylinder(rings.center,
+                                 rings.centerRadius,
+                                 bottomY,
+                                 topY,
+                                 NS::Editor::HitZoneRingColor(NS::Game::Level::HitTier::Center, rings.orderBroken));
             }
             if (rings.nearRadius > 0.0f)
             {
-                NS::Gfx::DebugDraw::Circle(
-                    rings.center,
-                    axisX * rings.nearRadius,
-                    axisZ * rings.nearRadius,
-                    NS::Editor::HitZoneRingColor(NS::Game::Level::HitTier::Near, rings.orderBroken));
+                DrawZoneCylinder(rings.center,
+                                 rings.nearRadius,
+                                 bottomY,
+                                 topY,
+                                 NS::Editor::HitZoneRingColor(NS::Game::Level::HitTier::Near, rings.orderBroken));
             }
             continue;
         }

@@ -33,6 +33,15 @@ namespace
         return g_vertices;
     }
 
+    // 面の頂点の上限。32 分割の筒 1 本の側面が 192 頂点で、相手 10 体に 2 本ずつ置いても収まる
+    constexpr std::size_t k_MaxFaceVertices = 12288;
+
+    std::vector<DebugVertex>& FaceStorage() noexcept
+    {
+        static std::vector<DebugVertex> g_faceVertices;
+        return g_faceVertices;
+    }
+
     // 描画用のリソース一式
     struct LineBackend
     {
@@ -40,7 +49,10 @@ namespace
         std::unique_ptr<NS::Gfx::Shader> ps;
         NS::Gfx::ComPtr<ID3D11InputLayout> inputLayout;
         std::unique_ptr<NS::Gfx::Buffer> vb;
+        std::unique_ptr<NS::Gfx::Buffer> faceVb;
         std::unique_ptr<NS::Gfx::Buffer> cb;
+        // 面は筒の奥の壁も見せるので裏表とも描く。深度を書かないので、重なった面の奥も透ける
+        std::unique_ptr<NS::Gfx::Pipeline> facePipeline;
         bool initAttempted = false;
         bool valid = false;
     };
@@ -92,10 +104,21 @@ namespace
 
         b.vb = NS::Gfx::Buffer::Create(
             NS::Gfx::MakeVertexBufferDesc(nullptr, k_MaxVertices, sizeof(DebugVertex), D3D11_USAGE_DYNAMIC));
+        b.faceVb = NS::Gfx::Buffer::Create(
+            NS::Gfx::MakeVertexBufferDesc(nullptr, k_MaxFaceVertices, sizeof(DebugVertex), D3D11_USAGE_DYNAMIC));
         b.cb = NS::Gfx::Buffer::Create(NS::Gfx::MakeConstantBufferDesc(sizeof(NS::Core::Matrix)));
-        if (!b.vb->IsValid() || !b.cb->IsValid())
+        if (!b.vb->IsValid() || !b.faceVb->IsValid() || !b.cb->IsValid())
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: VB / CB 構築失敗");
+            return false;
+        }
+
+        b.facePipeline = NS::Gfx::Pipeline::Create(NS::Gfx::PipelineDesc{.cull = NS::Gfx::CullMode::None,
+                                                                         .blend = NS::Gfx::BlendMode::Alpha,
+                                                                         .depth = NS::Gfx::DepthMode::ReadOnly});
+        if (!b.facePipeline->IsValid())
+        {
+            NS_LOG_ERROR(Graphics, "DebugDraw: 面の Pipeline 構築失敗");
             return false;
         }
 
@@ -295,7 +318,8 @@ namespace NS::Gfx::DebugDraw
     void Flush(Renderer& renderer, const NS::Core::Matrix& viewProjection) noexcept
     {
         std::vector<DebugVertex>& store = Storage();
-        if (store.empty())
+        std::vector<DebugVertex>& faces = FaceStorage();
+        if (store.empty() && faces.empty())
         {
             return;
         }
@@ -314,20 +338,31 @@ namespace NS::Gfx::DebugDraw
         }
 
         LineBackend& b = Backend();
-        const std::size_t vertexCount = store.size();
-
         cmd.UpdateSubresource(*b.cb, &viewProjection, sizeof(viewProjection));
-        cmd.UpdateSubresource(*b.vb, store.data(), vertexCount * sizeof(DebugVertex));
-
-        // 蓄積された頂点データを一括で描画する
-        cmd.SetPipeline(renderer.CommonPipeline(BlendMode::Opaque));
         cmd.VSSetShader(*b.vs);
         cmd.PSSetShader(*b.ps);
         cmd.SetInputLayout(b.inputLayout.Get());
         cmd.VSSetConstantBuffer(*b.cb, 0u);
-        cmd.SetVertexBuffer(*b.vb, 0u);
-        cmd.SetTopology(Topology::LineList);
-        cmd.Draw(static_cast<unsigned>(vertexCount));
+
+        // 面を先に描く。線は深度を書くので、後に描かないと面が線の奥で途切れる
+        if (!faces.empty())
+        {
+            cmd.UpdateSubresource(*b.faceVb, faces.data(), faces.size() * sizeof(DebugVertex));
+            cmd.SetPipeline(*b.facePipeline);
+            cmd.SetVertexBuffer(*b.faceVb, 0u);
+            cmd.SetTopology(Topology::TriangleList);
+            cmd.Draw(static_cast<unsigned>(faces.size()));
+        }
+
+        // 蓄積された頂点データを一括で描画する
+        if (!store.empty())
+        {
+            cmd.UpdateSubresource(*b.vb, store.data(), store.size() * sizeof(DebugVertex));
+            cmd.SetPipeline(renderer.CommonPipeline(BlendMode::Opaque));
+            cmd.SetVertexBuffer(*b.vb, 0u);
+            cmd.SetTopology(Topology::LineList);
+            cmd.Draw(static_cast<unsigned>(store.size()));
+        }
 
         Clear();
     }
@@ -335,15 +370,38 @@ namespace NS::Gfx::DebugDraw
     void BeginStep() noexcept
     {
         Storage().clear();
+        FaceStorage().clear();
     }
 
     void Clear() noexcept
     {
         Storage().clear();
+        FaceStorage().clear();
     }
 
     std::size_t VertexCount() noexcept
     {
         return Storage().size();
+    }
+
+    void Triangle(const NS::Core::Vector3& a,
+                  const NS::Core::Vector3& b,
+                  const NS::Core::Vector3& c,
+                  const NS::Core::Color& color) noexcept
+    {
+        std::vector<DebugVertex>& faces = FaceStorage();
+        // 線と同じく、上限を超える時は最も古い面を捨てる
+        if (faces.size() + 3 > k_MaxFaceVertices)
+        {
+            faces.erase(faces.begin(), faces.begin() + 3);
+        }
+        faces.push_back({a, color});
+        faces.push_back({b, color});
+        faces.push_back({c, color});
+    }
+
+    std::size_t FaceVertexCount() noexcept
+    {
+        return FaceStorage().size();
     }
 } // namespace NS::Gfx::DebugDraw

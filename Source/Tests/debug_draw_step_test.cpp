@@ -40,6 +40,19 @@ TEST(NsDebugDrawStep, DropsTheLinesWhenAStepDrawsNothing)
     EXPECT_EQ(Debug::VertexCount(), 0u);
 }
 
+// 面も線と同じく、前の固定ステップの分を捨てる
+TEST(NsDebugDrawStep, DropsTheFacesOfThePreviousStep)
+{
+    Debug::Clear();
+    Debug::BeginStep();
+    Debug::Triangle(
+        Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}, Color{1.0f, 1.0f, 1.0f, 0.2f});
+
+    Debug::BeginStep();
+
+    EXPECT_EQ(Debug::FaceVertexCount(), 0u);
+}
+
 TEST(NsDebugDrawStep, StacksWhatOneStepDrawsSeveralTimes)
 {
     Debug::Clear();

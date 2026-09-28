@@ -78,6 +78,37 @@ TEST(DebugDrawTest, CapsuleAccumulatesNonZeroVertices)
     EXPECT_GT(DD::VertexCount(), std::size_t{0});
 }
 
+// 面は線と別に積む。線の数は変えない
+TEST(DebugDrawTest, TriangleAdds3FaceVerticesApartFromLines)
+{
+    Reset();
+    DD::Triangle({0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, Color{1.0f, 0.0f, 0.0f, 0.2f});
+    EXPECT_EQ(DD::FaceVertexCount(), std::size_t{3});
+    EXPECT_EQ(DD::VertexCount(), std::size_t{0});
+}
+
+TEST(DebugDrawTest, ClearDropsFacesToo)
+{
+    Reset();
+    DD::Triangle({0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, Color{1.0f, 0.0f, 0.0f, 0.2f});
+    DD::Clear();
+    EXPECT_EQ(DD::FaceVertexCount(), std::size_t{0});
+}
+
+// 面も上限を超えたら古い物から捨て、上限の 3 の倍数で止まる
+TEST(DebugDrawTest, FaceOverflowDropsOldestAndCapsAtMaximum)
+{
+    Reset();
+    const Color c{1.0f, 1.0f, 1.0f, 0.2f};
+    for (int i = 0; i < 5000; ++i)
+    {
+        const float x = static_cast<float>(i);
+        DD::Triangle({x, 0.0f, 0.0f}, {x + 1.0f, 0.0f, 0.0f}, {x, 1.0f, 0.0f}, c);
+    }
+    EXPECT_LE(DD::FaceVertexCount(), std::size_t{12288});
+    EXPECT_EQ(DD::FaceVertexCount() % 3, std::size_t{0});
+}
+
 TEST(DebugDrawTest, OverflowDropsOldestSilentlyAndCapsAtMaximum)
 {
     Reset();
