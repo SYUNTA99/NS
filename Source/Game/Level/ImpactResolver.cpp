@@ -209,7 +209,18 @@ namespace NS::Game::Level
             NS::Core::Vector3::UnitY,
             m_movement->CapsuleHalfHeight(),
             m_movement->CapsuleRadius()};
-        const std::vector<JPH::BodyID> touching = scene->Physics().OverlapCapsule(capsule);
+        std::vector<JPH::BodyID> touching = scene->Physics().OverlapCapsule(capsule);
+        // 前出しは、同じ先の玉を突進の向きへ前出しの長さだけ掃いた所も見る。0 なら今の問い合わせだけ
+        const float lead = HitLead();
+        NS::Core::Vector3 rushDir{};
+        if (lead > 0.0f && NS::Core::TryNormalizeHorizontal(velocity, rushDir))
+        {
+            const NS::Core::Vector3 ballCenter{
+                capsule.center.x, capsule.center.y - m_movement->CapsuleHalfHeight(), capsule.center.z};
+            const std::vector<JPH::BodyID> ahead =
+                scene->Physics().OverlapCapsule(SweptBall(ballCenter, rushDir, lead, m_movement->CapsuleRadius()));
+            touching.insert(touching.end(), ahead.begin(), ahead.end());
+        }
 
         // TODO: 壊せる物を総当たりで見ている。数十個までを想定。増えたら格子で絞る
         Breakable* nearest = nullptr;
@@ -345,8 +356,10 @@ namespace NS::Game::Level
         // 届くかは裁定と同じく、自機の当たりの玉と相手の body の実物の形で見る。外接箱を水平に見ると、中心の高い
         // 大きな球の端では、玉が触れずに横を通るのに届くと出る
         const NS::Phys::PhysicsScene& physics = scene->Physics();
+        // 前出しの分だけ先の相手にも当たりが出るので、予測も同じだけ先まで掃く
+        const float sweepDistance = maxDistance + HitLead();
         const std::vector<JPH::BodyID> swept =
-            physics.OverlapCapsule(SweptBall(ballCenter, lineDir, maxDistance, playerRadius));
+            physics.OverlapCapsule(SweptBall(ballCenter, lineDir, sweepDistance, playerRadius));
 
         // TODO: 壊せる物を総当たりで見ている。数十個までを想定。増えたら格子で絞る
         bool found = false;
@@ -381,7 +394,7 @@ namespace NS::Game::Level
                 return;
             }
             // 最初に触れる相手は、中心の近さでなく玉が触れるまでに進む距離で決める。突進はそこで止まって当たる
-            const float contact = FirstTouchDistance(physics, ballCenter, lineDir, maxDistance, playerRadius, body);
+            const float contact = FirstTouchDistance(physics, ballCenter, lineDir, sweepDistance, playerRadius, body);
             if (!found || contact < first.contact)
             {
                 found = true;
@@ -646,6 +659,8 @@ namespace NS::Game::Level
         m_lastImpact.offset01 = offset01;
         m_lastImpact.tier = tier;
         m_lastImpact.linePoint = judgement.linePoint;
+        // 寄せは止めの頭で埋める。止めの無い当たりは寄せない
+        m_lastImpact.snapDistance = 0.0f;
         m_lastImpact.hitStopSteps = stopSteps;
         m_lastImpact.centerHit = centerHit;
         m_lastImpact.broke = m_pendingBreak;
@@ -701,8 +716,14 @@ namespace NS::Game::Level
             return;
         }
 
-        // 力が伝わった瞬間の絵。凍結の頭で置かれた相手を発射方向へ食い込ませて止める
         NS::Obj::GameObject* target = scene->Objects().FindObject(m_pendingTarget);
+        // 前出しで体が触れる前に当たった時は、相手を食い込ませる前に自機を相手に接する所まで寄せる
+        if (target != nullptr)
+        {
+            SnapToTarget(scene->Physics(), *target);
+        }
+
+        // 力が伝わった瞬間の絵。凍結の頭で置かれた相手を発射方向へ食い込ませて止める
         if (m_pendingTargetPlaced && target != nullptr)
         {
             target->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * m_pushInDistance);
@@ -712,6 +733,37 @@ namespace NS::Game::Level
                 ShrinkPlacedTarget(*target);
             }
         }
+    }
+
+    float ImpactResolver::HitLead() const noexcept
+    {
+        // 負と非数は前へ出さない。非数のまま足すと掃く距離が非数になり、誰にも当たらなくなる
+        if (!std::isfinite(m_hitLead) || m_hitLead < 0.0f)
+        {
+            return 0.0f;
+        }
+        return m_hitLead;
+    }
+
+    void ImpactResolver::SnapToTarget(const NS::Phys::PhysicsScene& physics, const NS::Obj::GameObject& target)
+    {
+        const float lead = HitLead();
+        const JPH::BodyID body = CurrentBodyOf(target);
+        if (!(lead > 0.0f) || body.IsInvalid())
+        {
+            return;
+        }
+        const NS::Core::Vector3 root = RootTransform().Position();
+        const NS::Core::Vector3 ballCenter{root.x, root.y - m_movement->CapsuleHalfHeight(), root.z};
+        const float radius = m_movement->CapsuleRadius();
+        // 前出しの長さの内で触れない時は寄せない。FirstTouchDistance は触れる事が前提
+        if (!IsTouching(physics.OverlapCapsule(SweptBall(ballCenter, m_pendingImpactDir, lead, radius)), body))
+        {
+            return;
+        }
+        const float snap = FirstTouchDistance(physics, ballCenter, m_pendingImpactDir, lead, radius, body);
+        RootTransform().SetPosition(root + m_pendingImpactDir * snap);
+        m_lastImpact.snapDistance = snap;
     }
 
     void ImpactResolver::PrepareHitReturns(

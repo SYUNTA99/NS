@@ -17,6 +17,11 @@ namespace NS::Obj
     class GameObject;
 } // namespace NS::Obj
 
+namespace NS::Phys
+{
+    class PhysicsScene;
+} // namespace NS::Phys
+
 namespace NS::Game::Level
 {
     class Breakable;
@@ -33,6 +38,7 @@ namespace NS::Game::Level
         float offset01 = 0.0f;          //!< 相手の体の中心からの横ずれ。相手の半幅と自機の半径の和で割った 0..1
         HitTier tier = HitTier::Center; //!< 相手の HitZones で決めた段。CollisionInput が無い時は演出を掛けない
         NS::Core::Vector3 linePoint;    //!< 線の通った点。相手の体の中心に一番近い線の上の点を中心の高さに置いた物
+        float snapDistance = 0.0f;      //!< 止めの頭で自機を相手に接する所まで寄せた距離 (m)。前出しを超えない
         float cameraShake = 0.0f;       //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
         int flashStart = 0;             //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
         float zoomStart = 1.0f;         //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
@@ -208,6 +214,7 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_breakSpeedScale, "貫通時の減速倍率")
         NS_REFLECT_FIELD(m_breakStopSeconds, "貫通の止め秒")
         NS_REFLECT_FIELD(m_markProbeDistance, "跡の床探しの距離")
+        NS_REFLECT_FIELD(m_hitLead, "前出し")
         NS_REFLECT_END()
 
     private:
@@ -252,6 +259,10 @@ namespace NS::Game::Level
 
         // 上限秒をフレーム数へ換算する。非有限と 0 以下は 0 で、止めない
         [[nodiscard]] int MaxHitStopSteps() const noexcept;
+        // 前出しの長さ (m)。負と非数は 0
+        [[nodiscard]] float HitLead() const noexcept;
+        // 止めの頭で、自機の玉を突進の向きへ前出しの長さまで進めて相手の体に触れる所へ寄せる。触れなければ動かさない
+        void SnapToTarget(const NS::Phys::PhysicsScene& physics, const NS::Obj::GameObject& target);
 
         // 凍結中のフレームで、置かれていた相手を発射軸に沿って食い込み位置の周りで往復させる
         // 見せるための動きで、明けたフレームに元位置へ戻す
@@ -309,7 +320,8 @@ namespace NS::Game::Level
         // 0.5 は一瞬白と分かる濃さ。1.0 だと食い込みと潰れの絵が隠れる
         float m_centerHitFlashAlpha = 0.5f;
         // 白は潰れと同じ止めの頭から出て、濃さを直線で下げる
-        // 6 は中心近くの止めで一番短いタップの 6 フレームと同じ長さで、どの中心近くの当たりでも明けの弾け出しに白が残らない
+        // 6 は中心近くの止めで一番短いタップの 6 フレームと同じ長さ
+        // どの中心近くの当たりでも明けの弾け出しに白が残らない
         // 溜めきりの止め 12 フレームなら後半の 6 フレームは素の色で潰れが見える
         // 2 では溜めの青い光で明るくなった画面の上で白が目立たず、8 では潰れが白の下に隠れた
         int m_centerHitFlashSteps = 6;
@@ -318,6 +330,9 @@ namespace NS::Game::Level
         float m_breakSpeedScale = 0.75f;         // 貫通した直後に速度へ掛ける倍率
         float m_breakStopSeconds = 4.0f / 60.0f; // 貫通の瞬間に止める秒。4 フレームぶん
         float m_markProbeDistance = 64.0f;       // 跡の床を真下へ探す上限。これより下に床が無ければ跡を出さない
+        // 当たりを突進の向きへ前へ出す長さ (m)。体が触れる前に当たりが出る。段は変えない
+        // 既定の 0 は今の当たりのまま。触って早さを詰める値なので欄に置いた
+        float m_hitLead = 0.0f;
 
         int m_freezePendingSteps = 0; // 次のフレームに掛ける凍結のフレーム数。0 は予約なし
         int m_hitStopRemaining = 0;   // 止まっている残りフレーム数。0 は止まっていない

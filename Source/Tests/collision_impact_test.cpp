@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+﻿#include "Editor/EditorObjects.h"
 #include "Game/Player.h"
 #include "camera_screen.h"
 #include "tuning_field_access.h"
@@ -5135,4 +5135,111 @@ TEST(LaunchedBody, FallsAtThePlayersUpwardGravity)
     NS::Obj::GameObject probe;
     NS::Game::Player::PlayerComponent& player = *probe.AddComponent<NS::Game::Player::PlayerComponent>();
     EXPECT_NEAR(fallenSpeed / k_FixedDt, NsTest::ReadTuningField(player, "上昇重力"), 1.0f);
+}
+
+namespace
+{
+    // 的を 3 列先に置き、玉の縁から的の面まで 2.1 m 空ける。前出しで当たりが早まる間を取る
+    // 横ずれ 0.45 m は試験の的の範囲で惜しい
+    constexpr SlamCourse k_LeadCourse{.start = 0.0f, .lateral = 0.45f, .targetCell = 3};
+
+    // 前出しを入れて突進し、当たりが出たフレームまで進める
+    struct LeadRun
+    {
+        int steps = 0;
+        LevelNs::HitTier tier = LevelNs::HitTier::Wide;
+    };
+
+    LeadRun RunWithLead(float lead)
+    {
+        SceneNs::Scene scene;
+        Rig rig = BuildSlam(scene, k_LeadCourse);
+        SetInstantImpact(rig);
+        SetFloatField(*rig.impact, "前出し", lead);
+        BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+        LeadRun run;
+        run.steps = StepUntilImpact(scene, rig, 60);
+        run.tier = rig.impact->LastImpact().tier;
+        return run;
+    }
+} // namespace
+
+// 前出し 0 は今の当たりのまま。前出しを入れると体が触れる前のフレームで当たりが出て、段は変わらない
+TEST(CollisionImpact, LeadMakesTheHitComeEarlierWithTheSameTier)
+{
+    const LeadRun plain = RunWithLead(0.0f);
+    const LeadRun lead = RunWithLead(0.3f);
+    ASSERT_LT(plain.steps, 60);
+    EXPECT_LT(lead.steps, plain.steps);
+    EXPECT_EQ(plain.tier, LevelNs::HitTier::Near);
+    EXPECT_EQ(lead.tier, plain.tier);
+}
+
+// 止めの頭で、自機を相手に接する所まで寄せる。寄せた距離は前出しを超えない。前出し 0 では寄せない
+TEST(CollisionImpact, FreezeSnapsThePlayerUpToTheTarget)
+{
+    for (const float leadLength : {0.0f, 0.3f})
+    {
+        SCOPED_TRACE(leadLength);
+        SceneNs::Scene scene;
+        Rig rig = BuildSlam(scene, k_LeadCourse);
+        SetFloatField(*rig.impact, "前出し", leadLength);
+        BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+        ASSERT_LT(StepUntilImpact(scene, rig, 60), 60);
+        // 当たりのフレームの移動は本番では裁定の後に走る。StepUntilImpact は走らせずに返すので、ここで走らせる
+        rig.movement->OnUpdate();
+        // 当たりの次のフレームが止めの頭
+        StepWorld(scene);
+        ASSERT_TRUE(rig.impact->FreezeBeganThisStep());
+
+        const float snap = rig.impact->LastImpact().snapDistance;
+        const float ballFront = rig.movement->Owner()->Root().Position().x + rig.movement->CapsuleRadius();
+        // 食い込ませる前の的の面。止めの頭で的は突進の向きへ食い込むので、控えた元の位置から測る
+        const float face = rig.impact->LastImpact().targetPos.x - 0.5f;
+        // 前出し 0 の自機は的の 2 cm 手前で止まる (自機の足が壁の手前に空ける隙間、2026-09-29 に測った)
+        // 寄せた後は触れる所の 1 mm の幅の内
+        EXPECT_NEAR(ballFront, face, 0.03f);
+        EXPECT_LE(snap, leadLength + 1.0e-4f);
+        if (leadLength == 0.0f)
+        {
+            EXPECT_FLOAT_EQ(snap, 0.0f);
+        }
+        else
+        {
+            EXPECT_GT(snap, 0.0f);
+        }
+    }
+}
+
+// 予測は突進距離 + 前出しまで相手を拾う
+TEST(CollisionImpact, SlamLineTargetReachesTheRushDistancePlusTheLead)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_LeadCourse);
+    SettleOnFloor(scene, rig);
+    const Vector3 direction{1.0f, 0.0f, 0.0f};
+    LevelNs::SlamLineTarget found{};
+    ASSERT_TRUE(rig.impact->FindSlamLineTarget(direction, 10.0f, found));
+    const float shortOfContact = found.contact - 0.2f;
+
+    LevelNs::SlamLineTarget missed{};
+    EXPECT_FALSE(rig.impact->FindSlamLineTarget(direction, shortOfContact, missed));
+    SetFloatField(*rig.impact, "前出し", 0.3f);
+    LevelNs::SlamLineTarget reached{};
+    EXPECT_TRUE(rig.impact->FindSlamLineTarget(direction, shortOfContact, reached));
+}
+
+// 突進していない間は、前出しの範囲に相手がいても当たりにならない
+TEST(CollisionImpact, LeadDoesNothingWhileNotRushing)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    SetInstantImpact(rig);
+    SetFloatField(*rig.impact, "前出し", 0.5f);
+    SettleOnFloor(scene, rig);
+    for (int i = 0; i < 10; ++i)
+    {
+        Step(scene, rig);
+        EXPECT_FALSE(rig.impact->DidRebound()) << i;
+    }
 }
