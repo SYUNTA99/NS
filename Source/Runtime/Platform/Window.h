@@ -20,7 +20,7 @@ namespace NS::Platform
         std::string title = "NS";
 
         //! クライアント領域のサイズ
-        NS::Core::Size2D size{1280, 720};
+        NS::Core::Size2D size{1920, 1080};
 
         //! ウィンドウ生成時の初期表示フラグ
         bool visible = true;
