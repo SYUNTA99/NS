@@ -256,6 +256,11 @@ private:
     //! @param[in] all 真なら全配置物、偽なら選んでいる分だけ
     void RenderColliderWireframes(bool all) noexcept;
 
+    //! @brief 体当たりの相手の段の範囲と、直近の当たりの線の通った点を線で描く
+    //! @details 範囲は全部の相手に出す。段を詰める時は隣の相手と見比べるため
+    //! HitZones を持たない相手と、体が決まらず段を測れない相手には警告の色の球を出す
+    void RenderHitZones() noexcept;
+
     //! 主対象以外の選択物を枠で見せる。ギズモは 1 体にしか出ないので、選んだ範囲を目で追えるようにする
     void RenderSelectionOutlines() noexcept;
     void RefreshGizmoSelectables();

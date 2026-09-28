@@ -944,6 +944,7 @@ project "Tests"
         "Source/Editor/LevelFileBrowser.cpp",
         "Source/Editor/LevelFilePaths.cpp",
         "Source/Editor/PlayControls.cpp",
+        "Source/Editor/HitZoneColors.cpp",
         "Source/Editor/Theme/**.cpp",
         -- Editor / Game の各 .cpp は GamePch の /FI 前提で Runtime include を持たない。
         -- 同じソースを直接コンパイルする Tests でも同一 prelude を与えるため GamePch を共有する

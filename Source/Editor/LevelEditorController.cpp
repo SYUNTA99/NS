@@ -1,10 +1,15 @@
 #include "Editor/LevelEditorController.h"
 
 #include "Editor/EditorObjects.h"
+#include "Editor/HitZoneColors.h"
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
+#include "Game/Level/Breakable.h"
+#include "Game/Level/ColliderBounds.h"
+#include "Game/Level/HitZones.h"
+#include "Game/Level/ImpactResolver.h"
 #include "Game/Level/Respawner.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
@@ -670,7 +675,10 @@ void LevelEditorController::Render()
         // 線を積むのは Scene が映っているフレームだけ。ビュー列の先頭が Scene なので、
         // 溜めた線は Scene の描画で消え、ゲーム画面へは残らない
         if (m_sceneViewVisible)
+        {
             RenderColliderWireframes(true);
+            RenderHitZones();
+        }
         return;
     }
 
@@ -678,6 +686,7 @@ void LevelEditorController::Render()
     if (Brain())
         RenderCameraGizmos(Brain()->ViewProjection(), app->Window().Size());
     RenderColliderWireframes(false);
+    RenderHitZones();
     RenderSelectionOutlines();
     // 蓄積した DebugDraw 線をシーン描画後・ImGui 前にまとめて 1 描画する
     if (Brain())
@@ -969,6 +978,72 @@ void LevelEditorController::RenderColliderWireframes(bool all) noexcept
         if (NS::Obj::GameObject* objPtr = m_scene->Objects().FindByObjectId(id))
             DrawColliderWireframe(*objPtr, color);
     }
+}
+
+void LevelEditorController::RenderHitZones() noexcept
+{
+    // 相手の体より小さいと箱の線に埋もれる。1 m 前後の相手の角から見える大きさ
+    constexpr float k_WarningMarkerRadius = 0.2f;
+    // 線の通った点は範囲の円の近くに出る。円の線を隠さない小ささ
+    constexpr float k_ImpactMarkerRadius = 0.08f;
+    // 相手の飛ぶ向きの線。真ん中の範囲 0.5 m より長くして円の外まで出す
+    constexpr float k_ImpactDirectionLength = 1.0f;
+
+    const NS::Core::Vector3 axisX{1.0f, 0.0f, 0.0f};
+    const NS::Core::Vector3 axisZ{0.0f, 0.0f, 1.0f};
+    const NS::Core::Color warningColor = NS::Editor::HitZoneWarningColor();
+
+    for (NS::Obj::GameObject* object : m_scene->Objects())
+    {
+        if (object->FindComponent<NS::Game::Level::Breakable>() == nullptr)
+        {
+            continue;
+        }
+        NS::Game::Level::ZoneRings rings{};
+        const NS::Game::Level::HitZones* zones = object->FindComponent<NS::Game::Level::HitZones>();
+        if (zones != nullptr && zones->TryGetRings(rings))
+        {
+            NS::Gfx::DebugDraw::Circle(
+                rings.center,
+                axisX * rings.centerRadius,
+                axisZ * rings.centerRadius,
+                NS::Editor::HitZoneRingColor(NS::Game::Level::HitTier::Center, rings.orderBroken));
+            // 2 段の相手は惜しいの半径が 0
+            if (rings.nearRadius > 0.0f)
+            {
+                NS::Gfx::DebugDraw::Circle(
+                    rings.center,
+                    axisX * rings.nearRadius,
+                    axisZ * rings.nearRadius,
+                    NS::Editor::HitZoneRingColor(NS::Game::Level::HitTier::Near, rings.orderBroken));
+            }
+            continue;
+        }
+
+        // 段を測れない相手は体当たりの相手にならない。当たりの箱の中心、無ければ根の位置に出す
+        NS::Core::Vector3 markerCenter = object->Root().WorldMatrix().Translation();
+        NS::Core::AABB bounds{};
+        if (NS::Game::Level::TryGetColliderBounds(*object, bounds))
+        {
+            markerCenter = bounds.Center;
+        }
+        NS::Gfx::DebugDraw::Sphere(NS::Core::Sphere{markerCenter, k_WarningMarkerRadius}, warningColor);
+    }
+
+    // 直近の当たりで線がどこを通ったか。範囲の円と並べて、段の境目にどれだけ近かったかを見る
+    m_scene->Objects().ForEachComponent<NS::Game::Level::ImpactResolver>(
+        [&](NS::Game::Level::ImpactResolver& resolver) {
+            const NS::Game::Level::ImpactRecord& impact = resolver.LastImpact();
+            // まだ 1 度も当てていない
+            if (impact.sequence == 0)
+            {
+                return;
+            }
+            const NS::Core::Color color = NS::Editor::HitZoneColor(impact.tier);
+            NS::Gfx::DebugDraw::Sphere(NS::Core::Sphere{impact.linePoint, k_ImpactMarkerRadius}, color);
+            NS::Gfx::DebugDraw::Line(
+                impact.linePoint, impact.linePoint + impact.impactDir * k_ImpactDirectionLength, color);
+        });
 }
 
 void LevelEditorController::CaptureSelectionFromGizmo() noexcept
