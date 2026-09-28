@@ -5,15 +5,21 @@
 #include <Runtime/Core/OBB.h>
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/BoxCollider.h>
+#include <Runtime/Object/Components/CapsuleCollider.h>
+#include <Runtime/Object/Components/SlopeCollider.h>
 #include <Runtime/Object/Components/SphereCollider.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Reflection/ComponentRef.h>
 #include <Runtime/Object/Reflection/ReflectionJson.h>
 #include <Runtime/Object/Reflection/TypeRegistry.h>
+#include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
 
 #include <cmath>
 #include <gtest/gtest.h>
 #include <limits>
+#include <memory>
+#include <utility>
 
 namespace
 {
@@ -50,6 +56,43 @@ namespace
         HitZoneJudgement result;
         EXPECT_TRUE(zones.Judge(Vector3{-3.0f, 0.0f, lateral}, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius, result));
         return result;
+    }
+
+    // 場面に置いた半径 0.5 m の玉。名指しした形は場面の中でしか引けない
+    struct PlacedBallTarget
+    {
+        NS::Obj::Scene scene;
+        GameObject* object = nullptr;
+        HitZones* zones = nullptr;
+    };
+
+    // 玉の体と HitZones を持つ物を場面に置く。addShapes は置く前に段の形を足す。id は置いた時に振られる
+    template <class Fn> void PlaceBallTarget(PlacedBallTarget& target, Fn&& addShapes)
+    {
+        std::unique_ptr<GameObject> made = std::make_unique<GameObject>();
+        made->AddComponent<NS::Obj::SphereCollider>()->SetRadius(0.5f);
+        target.zones = made->AddComponent<HitZones>();
+        addShapes(*made);
+        target.object = target.scene.SpawnObject(std::move(made), "的");
+    }
+
+    // 置いた後の当たり判定を名指しする値
+    NS::Obj::ComponentRef<NS::Obj::Collider> RefTo(const NS::Obj::Collider& shape)
+    {
+        NS::Obj::ComponentRef<NS::Obj::Collider> ref;
+        ref.object = shape.Owner()->Id();
+        ref.component = shape.Id();
+        return ref;
+    }
+
+    // 段の形の球。物理に入れない
+    NS::Obj::SphereCollider* AddShapeSphere(GameObject& object, float radius, const Vector3& offset)
+    {
+        NS::Obj::SphereCollider* shape = object.AddComponent<NS::Obj::SphereCollider>();
+        shape->SetRadius(radius);
+        shape->SetCenterOffset(offset);
+        shape->SetExcludedFromPhysics(true);
+        return shape;
     }
 } // namespace
 
@@ -293,4 +336,220 @@ TEST(HitZonesTest, FieldsSurviveSaveAndLoad)
     EXPECT_EQ(restored->TierCount(), 2);
     EXPECT_FLOAT_EQ(restored->CenterRadius(), 0.3f);
     EXPECT_FLOAT_EQ(restored->NearRadius(), 0.8f);
+}
+
+// 真ん中の形に名指しした球が真ん中の範囲 (m) の代わりになる。縁ちょうどは外側。惜しいは空なので範囲 (m)
+TEST(HitZonesTest, NamedSphereReplacesTheCenterRange)
+{
+    PlacedBallTarget target;
+    NS::Obj::SphereCollider* shape = nullptr;
+    PlaceBallTarget(target, [&](GameObject& made) { shape = AddShapeSphere(made, 0.2f, Vector3{0.0f, 0.0f, 0.0f}); });
+    target.zones->SetCenterShape(RefTo(*shape));
+
+    EXPECT_EQ(JudgeAlongX(*target.zones, 0.1f).tier, HitTier::Center);
+    EXPECT_EQ(JudgeAlongX(*target.zones, 0.2f).tier, HitTier::Near);
+    // 範囲 0.5 m なら真ん中の線
+    EXPECT_EQ(JudgeAlongX(*target.zones, 0.3f).tier, HitTier::Near);
+    EXPECT_EQ(JudgeAlongX(*target.zones, 0.7f).tier, HitTier::Near);
+    EXPECT_EQ(JudgeAlongX(*target.zones, 1.0f).tier, HitTier::Wide);
+    EXPECT_EQ(target.zones->FindTierShape(HitTier::Center), shape);
+    EXPECT_EQ(target.zones->FindTierShape(HitTier::Near), nullptr);
+}
+
+// 名指しした形をずらすと、ずらした所を通る線が真ん中になる。威力の入力は体の中心から測ったまま
+TEST(HitZonesTest, NamedShapeCountsFromWhereItIsPlaced)
+{
+    PlacedBallTarget target;
+    NS::Obj::SphereCollider* shape = nullptr;
+    PlaceBallTarget(target, [&](GameObject& made) { shape = AddShapeSphere(made, 0.2f, Vector3{0.0f, 0.0f, 0.6f}); });
+    target.zones->SetCenterShape(RefTo(*shape));
+
+    const HitZoneJudgement shifted = JudgeAlongX(*target.zones, 0.6f);
+    EXPECT_EQ(shifted.tier, HitTier::Center);
+    EXPECT_NEAR(shifted.ratio, 0.6f / (0.5f + k_PlayerRadius), k_Tolerance);
+    EXPECT_EQ(JudgeAlongX(*target.zones, 0.0f).tier, HitTier::Near);
+}
+
+// 名指ししたカプセルは軸の線分を上から見た形で測る。立てたカプセルは点、寝かせたカプセルは線分
+TEST(HitZonesTest, NamedCapsuleUsesItsAxisSeenFromAbove)
+{
+    {
+        SCOPED_TRACE("立てたカプセル");
+        PlacedBallTarget target;
+        NS::Obj::CapsuleCollider* shape = nullptr;
+        PlaceBallTarget(target, [&](GameObject& made) {
+            shape = made.AddComponent<NS::Obj::CapsuleCollider>();
+            shape->SetRadius(0.1f);
+            shape->SetHalfHeight(0.5f);
+            shape->SetExcludedFromPhysics(true);
+        });
+        target.zones->SetCenterShape(RefTo(*shape));
+
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.05f).tier, HitTier::Center);
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.1f).tier, HitTier::Near);
+    }
+    {
+        SCOPED_TRACE("線に直交へ寝かせたカプセル");
+        PlacedBallTarget target;
+        NS::Obj::CapsuleCollider* shape = nullptr;
+        PlaceBallTarget(target, [&](GameObject& made) {
+            shape = made.AddComponent<NS::Obj::CapsuleCollider>();
+            shape->SetRadius(0.1f);
+            shape->SetHalfHeight(0.5f);
+            shape->SetRotationEulerDegrees(Vector3{90.0f, 0.0f, 0.0f});
+            shape->SetExcludedFromPhysics(true);
+        });
+        target.zones->SetCenterShape(RefTo(*shape));
+
+        // 軸の線分が線の両側にある
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.3f).tier, HitTier::Center);
+        // 線分の端から 0.05 m。範囲 0.5 m なら惜しいの線
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.55f).tier, HitTier::Center);
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.65f).tier, HitTier::Near);
+    }
+}
+
+// 名指しした箱は、上から見た 8 つの角が線の両側にあれば通る。縁ちょうどは外側。惜しいの形にも名指しできる
+TEST(HitZonesTest, NamedBoxPassesWhenItsCornersLieOnBothSides)
+{
+    {
+        SCOPED_TRACE("真ん中の箱");
+        PlacedBallTarget target;
+        NS::Obj::BoxCollider* shape = nullptr;
+        PlaceBallTarget(target, [&](GameObject& made) {
+            shape = made.AddComponent<NS::Obj::BoxCollider>();
+            shape->SetHalfExtents(Vector3{0.3f, 0.5f, 0.3f});
+            shape->SetExcludedFromPhysics(true);
+        });
+        target.zones->SetCenterShape(RefTo(*shape));
+
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.29f).tier, HitTier::Center);
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.3f).tier, HitTier::Near);
+    }
+    {
+        SCOPED_TRACE("45 度回した真ん中の箱");
+        PlacedBallTarget target;
+        NS::Obj::BoxCollider* shape = nullptr;
+        PlaceBallTarget(target, [&](GameObject& made) {
+            shape = made.AddComponent<NS::Obj::BoxCollider>();
+            shape->SetHalfExtents(Vector3{0.3f, 0.5f, 0.3f});
+            shape->SetRotationEulerDegrees(Vector3{0.0f, 45.0f, 0.0f});
+            shape->SetExcludedFromPhysics(true);
+        });
+        target.zones->SetCenterShape(RefTo(*shape));
+
+        // 角は線から 0.3 × √2 ≒ 0.424 m まで出る
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.4f).tier, HitTier::Center);
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.45f).tier, HitTier::Near);
+    }
+    {
+        SCOPED_TRACE("惜しいの箱");
+        PlacedBallTarget target;
+        NS::Obj::BoxCollider* shape = nullptr;
+        PlaceBallTarget(target, [&](GameObject& made) {
+            shape = made.AddComponent<NS::Obj::BoxCollider>();
+            shape->SetHalfExtents(Vector3{0.3f, 0.5f, 0.3f});
+            shape->SetExcludedFromPhysics(true);
+        });
+        target.zones->SetCenterRadius(0.1f);
+        target.zones->SetNearShape(RefTo(*shape));
+
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.05f).tier, HitTier::Center);
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.2f).tier, HitTier::Near);
+        // 範囲 1.0 m なら惜しいの線
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.3f).tier, HitTier::Wide);
+        EXPECT_EQ(target.zones->FindTierShape(HitTier::Near), shape);
+
+        // 段の数 2 では惜しいの形も見ない
+        target.zones->SetTierCount(2);
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.2f).tier, HitTier::Wide);
+        EXPECT_EQ(target.zones->FindTierShape(HitTier::Near), nullptr);
+    }
+}
+
+// 名指しが物理に入れないでない・形が球とカプセルと箱でない・引けない時は、範囲 (m) で決める
+TEST(HitZonesTest, UnusableNamedShapeFallsBackToTheRange)
+{
+    {
+        SCOPED_TRACE("トリガーの球");
+        PlacedBallTarget target;
+        NS::Obj::SphereCollider* shape = nullptr;
+        PlaceBallTarget(target, [&](GameObject& made) {
+            shape = made.AddComponent<NS::Obj::SphereCollider>();
+            shape->SetRadius(0.2f);
+            shape->SetTrigger(true);
+        });
+        target.zones->SetCenterShape(RefTo(*shape));
+
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.3f).tier, HitTier::Center);
+        EXPECT_EQ(target.zones->FindTierShape(HitTier::Center), nullptr);
+    }
+    {
+        SCOPED_TRACE("物理に入れない斜面");
+        PlacedBallTarget target;
+        NS::Obj::SlopeCollider* shape = nullptr;
+        PlaceBallTarget(target, [&](GameObject& made) {
+            shape = made.AddComponent<NS::Obj::SlopeCollider>();
+            shape->SetExcludedFromPhysics(true);
+        });
+        target.zones->SetCenterShape(RefTo(*shape));
+
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.3f).tier, HitTier::Center);
+        EXPECT_EQ(target.zones->FindTierShape(HitTier::Center), nullptr);
+    }
+    {
+        SCOPED_TRACE("居ない当たり判定");
+        PlacedBallTarget target;
+        PlaceBallTarget(target, [](GameObject&) {});
+        NS::Obj::ComponentRef<NS::Obj::Collider> missing;
+        missing.object = target.object->Id();
+        missing.component = 0xFFFFFFu;
+        target.zones->SetCenterShape(missing);
+
+        EXPECT_EQ(JudgeAlongX(*target.zones, 0.3f).tier, HitTier::Center);
+        EXPECT_EQ(target.zones->FindTierShape(HitTier::Center), nullptr);
+    }
+}
+
+// 段の形を足しても体は玉のままで、威力の入力も変わらない
+TEST(HitZonesTest, TierShapesDoNotChangeTheBodyOrTheOffset)
+{
+    PlacedBallTarget plain;
+    PlaceBallTarget(plain, [](GameObject&) {});
+    PlacedBallTarget shaped;
+    NS::Obj::SphereCollider* center = nullptr;
+    NS::Obj::BoxCollider* nearBox = nullptr;
+    PlaceBallTarget(shaped, [&](GameObject& made) {
+        center = AddShapeSphere(made, 0.2f, Vector3{0.0f, 0.0f, 0.0f});
+        nearBox = made.AddComponent<NS::Obj::BoxCollider>();
+        nearBox->SetHalfExtents(Vector3{2.0f, 2.0f, 2.0f});
+        nearBox->SetExcludedFromPhysics(true);
+    });
+    shaped.zones->SetCenterShape(RefTo(*center));
+    shaped.zones->SetNearShape(RefTo(*nearBox));
+
+    const NS::Game::Level::BodyColliderSearch search = NS::Game::Level::FindBodyCollider(*shaped.object);
+    EXPECT_EQ(search.count, 1);
+    ASSERT_NE(search.body, nullptr);
+    EXPECT_NE(search.body, center);
+    EXPECT_NE(search.body, nearBox);
+    EXPECT_NEAR(JudgeAlongX(*shaped.zones, 0.7f).ratio, JudgeAlongX(*plain.zones, 0.7f).ratio, k_Tolerance);
+}
+
+// 名指しした段は円で描かない。範囲 (m) の大きさの順も、どちらかを名指ししていれば崩れにしない
+TEST(HitZonesTest, RingsLeaveOutTheNamedTiers)
+{
+    PlacedBallTarget target;
+    NS::Obj::SphereCollider* shape = nullptr;
+    PlaceBallTarget(target, [&](GameObject& made) { shape = AddShapeSphere(made, 0.2f, Vector3{0.0f, 0.0f, 0.0f}); });
+    target.zones->SetCenterRadius(1.2f);
+    ASSERT_TRUE(target.zones->IsOrderBroken());
+
+    target.zones->SetCenterShape(RefTo(*shape));
+    ZoneRings rings;
+    ASSERT_TRUE(target.zones->TryGetRings(rings));
+    EXPECT_FLOAT_EQ(rings.centerRadius, 0.0f);
+    EXPECT_NEAR(rings.nearRadius, 1.0f, k_Tolerance);
+    EXPECT_FALSE(rings.orderBroken);
+    EXPECT_FALSE(target.zones->IsOrderBroken());
 }

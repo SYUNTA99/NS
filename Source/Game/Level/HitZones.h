@@ -3,6 +3,8 @@
 #include "Game/Level/HitTier.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
+#include "Runtime/Object/Components/Collider.h"
+#include "Runtime/Object/Reflection/ComponentRef.h"
 
 namespace NS::Game::Level
 {
@@ -28,9 +30,11 @@ namespace NS::Game::Level
     //! @brief 体当たりの相手の段の範囲
     //! @details 段は「相手のど真ん中へ突進の線を通したか」を表す。線と相手の体の中心の水平の距離を、
     //! 真ん中と惜しいの範囲 (m) と比べて決める。範囲は相手の水平の拡縮を掛けて使う
+    //! 段ごとに当たり判定を名指しすると、範囲の代わりに上から見た線がその形を通るかで決める
+    //! 名指しできるのは物理に入れない球・カプセル・箱。引けるのは持ち主が場面に居る間だけ
     //! 体は同じ物のぶつかる当たり判定 1 つ (FindBodyCollider)。箱か球だけを測る
     //! 持たない壊せる物は体当たりの相手にならない
-    //! 依存: NS::Obj::BoxCollider, NS::Obj::SphereCollider, FindBodyCollider
+    //! 依存: NS::Obj::BoxCollider, NS::Obj::SphereCollider, NS::Obj::CapsuleCollider, FindBodyCollider
     class HitZones : public NS::Obj::Component
     {
     public:
@@ -48,6 +52,7 @@ namespace NS::Game::Level
                                  HitZoneJudgement& out) const noexcept;
 
         //! @brief エディタが描く範囲を、体の中心まわりの水平の円で返す
+        //! @details 名指しした形を使っている段の半径は 0。その段はエディタが形そのものを描く
         //! @param[out] out 円の中心と半径。false の時は触らない
         //! @return 体の当たり判定が箱か球 1 つの場合 true、それ以外の場合は false
         [[nodiscard]] bool TryGetRings(ZoneRings& out) const noexcept;
@@ -65,14 +70,35 @@ namespace NS::Game::Level
         //! 惜しいの範囲を置く。負と非数は 0
         void SetNearRadius(float radius) noexcept;
 
-        //! 段の数が 3 で、真ん中の範囲が惜しいの範囲以上の場合 true。エディタが警告の色に使う
+        //! @brief 範囲の大きさの順が崩れているかを返す。エディタが警告の色に使う
+        //! @return 段の数が 3 で、どちらの段も名指しした形を使っておらず、真ん中の範囲が惜しいの範囲以上の場合 true、
+        //! それ以外の場合は false
         [[nodiscard]] bool IsOrderBroken() const noexcept;
+
+        //! 真ん中の形として名指しした当たり判定。空なら真ん中の範囲 (m) で決める
+        [[nodiscard]] const NS::Obj::ComponentRef<NS::Obj::Collider>& CenterShape() const noexcept
+        {
+            return m_centerShape;
+        }
+        //! 真ん中の形を名指しする
+        void SetCenterShape(const NS::Obj::ComponentRef<NS::Obj::Collider>& shape) noexcept;
+        //! 惜しいの形として名指しした当たり判定。空なら惜しいの範囲 (m) で決める
+        [[nodiscard]] const NS::Obj::ComponentRef<NS::Obj::Collider>& NearShape() const noexcept { return m_nearShape; }
+        //! 惜しいの形を名指しする
+        void SetNearShape(const NS::Obj::ComponentRef<NS::Obj::Collider>& shape) noexcept;
+
+        //! @brief 段を決めるのに使っている名指しの形を返す
+        //! @param[in] tier 真ん中か惜しい
+        //! @return 名指しした形を使っている場合はその当たり判定。空・使えない形・外れの段・段の数 2 の惜しいは nullptr
+        [[nodiscard]] const NS::Obj::Collider* FindTierShape(HitTier tier) const noexcept;
 
         // 相手ごとに Inspector で段の数と範囲を決める
         NS_REFLECT_BEGIN(HitZones, NS::Obj::Component)
         NS_REFLECT_ACCESSOR(int, "段の数", TierCount(), SetTierCount)
         NS_REFLECT_ACCESSOR(float, "真ん中の範囲", CenterRadius(), SetCenterRadius)
         NS_REFLECT_ACCESSOR(float, "惜しいの範囲", NearRadius(), SetNearRadius)
+        NS_REFLECT_FIELD(m_centerShape, "真ん中の形")
+        NS_REFLECT_FIELD(m_nearShape, "惜しいの形")
         NS_REFLECT_END()
 
     private:
@@ -83,12 +109,21 @@ namespace NS::Game::Level
                                       float& outHalfWidth) const noexcept;
         // 持ち主の水平の拡縮。x と z の大きい方
         [[nodiscard]] float HorizontalScale() const noexcept;
+        // 名指しを引き、段の形に使える時だけ返す。名指しがあるのに使えない時は段ごとに 1 回だけ警告する
+        [[nodiscard]] const NS::Obj::Collider* ResolveTierShape(const NS::Obj::ComponentRef<NS::Obj::Collider>& ref,
+                                                                const char* tierName,
+                                                                bool& warned) const noexcept;
 
         // 足した直後の 0.5 m は半径 0.5 m の玉で「線が玉の体を通る」と同じ。1.0 m はその倍 (2026-09-29 本人の指定)
         int m_tierCount = 3;         // 段の数
         float m_centerRadius = 0.5f; // 真ん中の範囲 (m)
         float m_nearRadius = 1.0f;   // 惜しいの範囲 (m)
 
+        NS::Obj::ComponentRef<NS::Obj::Collider> m_centerShape; // 真ん中の形
+        NS::Obj::ComponentRef<NS::Obj::Collider> m_nearShape;   // 惜しいの形
+
         mutable bool m_warnedAmbiguousBody = false; // ぶつかる当たり判定が 2 つ以上ある警告を出したか
+        mutable bool m_warnedCenterShape = false;   // 真ん中の形が使えない警告を出したか
+        mutable bool m_warnedNearShape = false;     // 惜しいの形が使えない警告を出したか
     };
 } // namespace NS::Game::Level

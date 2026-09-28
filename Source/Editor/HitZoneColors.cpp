@@ -22,6 +22,12 @@ namespace NS::Editor
         return NS::Core::Color{1.0f, 0.2f, 1.0f, 1.0f};
     }
 
+    // 当たり判定の緑 (0.35, 1, 0.45) の明るさを半分ほどに落とす。緑の仲間と読めて、ぶつかる物とは見分けられる
+    NS::Core::Color HitZoneCandidateColor() noexcept
+    {
+        return NS::Core::Color{0.18f, 0.5f, 0.22f, 1.0f};
+    }
+
     NS::Core::Color HitZoneRingColor(NS::Game::Level::HitTier tier, bool orderBroken) noexcept
     {
         if (orderBroken)

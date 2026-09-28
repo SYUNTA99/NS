@@ -21,6 +21,7 @@ TEST(HitZoneColorsTest, EachTierAndTheWarningHaveTheirOwnColor)
     const NS::Core::Color nearMiss = NS::Editor::HitZoneColor(HitTier::Near);
     const NS::Core::Color wide = NS::Editor::HitZoneColor(HitTier::Wide);
     const NS::Core::Color warning = NS::Editor::HitZoneWarningColor();
+    const NS::Core::Color candidate = NS::Editor::HitZoneCandidateColor();
 
     EXPECT_FALSE(SameColor(center, nearMiss));
     EXPECT_FALSE(SameColor(center, wide));
@@ -28,6 +29,10 @@ TEST(HitZoneColorsTest, EachTierAndTheWarningHaveTheirOwnColor)
     EXPECT_FALSE(SameColor(warning, center));
     EXPECT_FALSE(SameColor(warning, nearMiss));
     EXPECT_FALSE(SameColor(warning, wide));
+    EXPECT_FALSE(SameColor(candidate, center));
+    EXPECT_FALSE(SameColor(candidate, nearMiss));
+    EXPECT_FALSE(SameColor(candidate, wide));
+    EXPECT_FALSE(SameColor(candidate, warning));
 }
 
 // 範囲の円は段の色。大きさの順が崩れていれば警告の色

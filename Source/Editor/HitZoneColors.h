@@ -16,6 +16,11 @@ namespace NS::Editor
     //! @return 段のどの色とも違う紫
     [[nodiscard]] NS::Core::Color HitZoneWarningColor() noexcept;
 
+    //! @brief 段の形に名指しされていない、壊せる物の物理に入れない当たり判定を描く色を返す
+    //! @details 名指しすれば段の形になる候補。ぶつかる当たり判定の緑と見分ける
+    //! @return 当たり判定の緑を暗くした色
+    [[nodiscard]] NS::Core::Color HitZoneCandidateColor() noexcept;
+
     //! @brief 範囲の円を描く色を返す
     //! @param[in] tier 円が表す段
     //! @param[in] orderBroken 真ん中が惜しい以上に崩れている場合 true

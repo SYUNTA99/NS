@@ -79,25 +79,25 @@ namespace
     // 編集復帰の視点ブレンド秒。Brain の vcam 切替の既定 0.35 秒と揃え、モード切替の繋ぎを同じ感触にする
     constexpr float k_EditBlendSeconds = 0.35f;
 
-    // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状、slope は collider 由来の AABB
-    void DrawColliderWireframe(NS::Obj::GameObject& object, const NS::Core::Color& color) noexcept
+    // 当たり判定 1 つを線で描く。Box は回転込み OBB、球とカプセルは実形状、slope は collider 由来の AABB
+    void DrawColliderShape(const NS::Obj::Collider& collider, const NS::Core::Color& color) noexcept
     {
-        if (NS::Obj::BoxCollider* box = object.FindComponent<NS::Obj::BoxCollider>())
+        if (const NS::Obj::BoxCollider* box = NS::Obj::ComponentCast<NS::Obj::BoxCollider>(&collider))
         {
             NS::Gfx::DebugDraw::OBB(box->WorldOBB(), color);
         }
-        else if (NS::Obj::SphereCollider* sphere = object.FindComponent<NS::Obj::SphereCollider>())
+        else if (const NS::Obj::SphereCollider* sphere = NS::Obj::ComponentCast<NS::Obj::SphereCollider>(&collider))
         {
             NS::Gfx::DebugDraw::Sphere(sphere->WorldSphere(), color);
         }
-        else if (NS::Obj::CapsuleCollider* capsule = object.FindComponent<NS::Obj::CapsuleCollider>())
+        else if (const NS::Obj::CapsuleCollider* capsule = NS::Obj::ComponentCast<NS::Obj::CapsuleCollider>(&collider))
         {
             NS::Phys::Capsule worldCapsule = capsule->WorldCapsule();
             worldCapsule.axis.Normalize();
             NS::Gfx::DebugDraw::Capsule(
                 worldCapsule.center, worldCapsule.axis * worldCapsule.halfHeight, worldCapsule.radius, color);
         }
-        else if (NS::Obj::SlopeCollider* slope = object.FindComponent<NS::Obj::SlopeCollider>())
+        else if (const NS::Obj::SlopeCollider* slope = NS::Obj::ComponentCast<NS::Obj::SlopeCollider>(&collider))
         {
             // 斜面は三角の集まりなので、包む箱を出して面の広がりを見せる
             const std::array<NS::Phys::Triangle, 8> tris = slope->WorldTriangles();
@@ -112,6 +112,31 @@ namespace
                 }
             }
             NS::Gfx::DebugDraw::AABB(NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f}, color);
+        }
+    }
+
+    // 壊せる物の物理に入れない当たり判定。段の形か、名指しすれば段の形になる物
+    [[nodiscard]] bool IsTierShapeCandidate(const NS::Obj::Collider& collider) noexcept
+    {
+        if (!collider.IsExcludedFromPhysics())
+        {
+            return false;
+        }
+        const NS::Obj::GameObject* owner = collider.Owner();
+        return owner != nullptr && owner->FindComponent<NS::Game::Level::Breakable>() != nullptr;
+    }
+
+    // 配置物 1 体の当たり判定を全部描く。段の形の候補は RenderTierShapes が別の色で描くので、ここでは二重に描かない
+    void DrawColliderWireframe(const NS::Obj::GameObject& object, const NS::Core::Color& color) noexcept
+    {
+        for (const NS::Obj::Component* component : object.Components())
+        {
+            const NS::Obj::Collider* collider = NS::Obj::ComponentCast<NS::Obj::Collider>(component);
+            if (collider == nullptr || IsTierShapeCandidate(*collider))
+            {
+                continue;
+            }
+            DrawColliderShape(*collider, color);
         }
     }
 
@@ -980,6 +1005,42 @@ void LevelEditorController::RenderColliderWireframes(bool all) noexcept
     }
 }
 
+void LevelEditorController::RenderTierShapes(const NS::Obj::GameObject& object,
+                                             const NS::Game::Level::HitZones* zones) noexcept
+{
+    const NS::Obj::Collider* centerShape = nullptr;
+    const NS::Obj::Collider* nearShape = nullptr;
+    if (zones != nullptr)
+    {
+        centerShape = zones->FindTierShape(NS::Game::Level::HitTier::Center);
+        nearShape = zones->FindTierShape(NS::Game::Level::HitTier::Near);
+    }
+    // 名指しした形は別の物に置いてもよいので、持ち主を問わず段の色で描く
+    if (centerShape != nullptr)
+    {
+        DrawColliderShape(*centerShape, NS::Editor::HitZoneColor(NS::Game::Level::HitTier::Center));
+    }
+    if (nearShape != nullptr)
+    {
+        DrawColliderShape(*nearShape, NS::Editor::HitZoneColor(NS::Game::Level::HitTier::Near));
+    }
+
+    const NS::Core::Color candidateColor = NS::Editor::HitZoneCandidateColor();
+    for (const NS::Obj::Component* component : object.Components())
+    {
+        const NS::Obj::Collider* collider = NS::Obj::ComponentCast<NS::Obj::Collider>(component);
+        if (collider == nullptr || !IsTierShapeCandidate(*collider))
+        {
+            continue;
+        }
+        if (collider == centerShape || collider == nearShape)
+        {
+            continue;
+        }
+        DrawColliderShape(*collider, candidateColor);
+    }
+}
+
 void LevelEditorController::RenderHitZones() noexcept
 {
     // 相手の体より小さいと箱の線に埋もれる。1 m 前後の相手の角から見える大きさ
@@ -1001,14 +1062,18 @@ void LevelEditorController::RenderHitZones() noexcept
         }
         NS::Game::Level::ZoneRings rings{};
         const NS::Game::Level::HitZones* zones = object->FindComponent<NS::Game::Level::HitZones>();
+        RenderTierShapes(*object, zones);
         if (zones != nullptr && zones->TryGetRings(rings))
         {
-            NS::Gfx::DebugDraw::Circle(
-                rings.center,
-                axisX * rings.centerRadius,
-                axisZ * rings.centerRadius,
-                NS::Editor::HitZoneRingColor(NS::Game::Level::HitTier::Center, rings.orderBroken));
-            // 2 段の相手は惜しいの半径が 0
+            // 半径 0 は形を名指しした段と、2 段の相手の惜しい。形は RenderTierShapes が描く
+            if (rings.centerRadius > 0.0f)
+            {
+                NS::Gfx::DebugDraw::Circle(
+                    rings.center,
+                    axisX * rings.centerRadius,
+                    axisZ * rings.centerRadius,
+                    NS::Editor::HitZoneRingColor(NS::Game::Level::HitTier::Center, rings.orderBroken));
+            }
             if (rings.nearRadius > 0.0f)
             {
                 NS::Gfx::DebugDraw::Circle(

@@ -155,7 +155,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"DirectionalLight", {"方向", "色", "環境光", "地面環境光", "露出"}},
         {"FollowCameraFeed", {}},
         {"Health", {"体力"}},
-        {"HitZones", {"段の数", "真ん中の範囲", "惜しいの範囲"}},
+        {"HitZones", {"段の数", "真ん中の範囲", "惜しいの範囲", "真ん中の形", "惜しいの形"}},
         {"ImpactEffects",
          {"核の直径の基準",
           "核の直径の威力あたり",
