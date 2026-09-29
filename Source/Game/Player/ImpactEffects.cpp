@@ -47,7 +47,7 @@ namespace NS::Game::Player
         constexpr int k_WideCoreHoldLast = 4;
         // 中心近くの火花を出すフレーム。手本の弾きは塊の中の放射の筋が 3 から出る
         // 0 では接触点から上下へ伸びる筋が 1 フレーム目に見え、手本より 2 フレーム早かった
-        // 惜しいと大きな外れは手本のガードの火花と同じく止めの頭から
+        // 大きな外れは手本のガードの火花と同じく止めの頭から
         constexpr int k_CenterSparkStart = 3;
         // 大きな外れの火花の向きに入れる、相手の飛ぶ向きの重み。横ずれの側の重みは 1 で、真ん中の 45 度へ擦れる
         // 横ずれの側だけでは横からの絵で奥行きの向きに潰れ、相手の飛ぶ向きが形に出なかった
@@ -103,13 +103,13 @@ namespace NS::Game::Player
         // 大きな外れの核が留まる間の面積の移り。1 フレーム目の最大から、落ち着く割合へ 1 フレームごとに差を
         // この割合で詰める (2 で 84%、3 で 78%、4 で 76%)。手本のガードの層だけの明るさが +1 の最大から
         // +2〜+4 で 84・78・74% と、下がり幅を詰めながら 74% へ寄る形を写した。核と放射の線が画面に足す量は面積に沿う
-        // 中心近くと惜しいと同じ 1 フレームおきの脈では、1 と 3 が同じ最大になり、最大が 1 フレームに立たなかった
+        // 中心近くと同じ 1 フレームおきの脈では、1 と 3 が同じ最大になり、最大が 1 フレームに立たなかった
         constexpr float k_WideFlashFloor = 0.74f;
         constexpr float k_WideFlashDecay = 0.4f;
         // 当たりの粉の輪の真ん中を、相手が居た所から自機と逆の側へずらす距離の、粉の大きさへの割合
         // 粉は輪の半径 0.4〜0.6 と塊の半径 (出始め 0.3、明けの 3 フレーム後に 0.35) を大きさに掛けて広がるので、
         // ずらさないと明けの 3 フレーム後に塊の縁が相手の中心から自機の側へ大きさの 0.95 倍まで届き、
-        // 1.4 m 離れた自機の縁 (相手の中心から 0.75 m) を越えて自機の輪郭を覆った (惜しいと大きな外れの横からの絵)
+        // 1.4 m 離れた自機の縁 (相手の中心から 0.75 m) を越えて自機の輪郭を覆った (大きな外れの横からの絵)
         // 0.7 倍ずらすと届くのは大きさの 0.25 倍 (中心近くの 1.65 m で 0.41 m) で、自機の縁まで 0.3 m 以上空く
         constexpr float k_DustAwayShare = 0.7f;
         // 反動の尾の親を止めてから消すまでのフレーム数。絵の定義の筋の落ちるフレーム数と同じ
@@ -298,7 +298,6 @@ namespace NS::Game::Player
         shape.tier = impact.tier;
         const float power = std::max(impact.power, 0.0f);
         const bool center = impact.tier == HitTier::Center;
-        const bool nearMiss = impact.tier == HitTier::Near;
 
         // 核の留まりは止めと結ぶ。止めの短い当たりは明けの前に落ち始め、明けの後に光が残らない
         shape.holdLastFrame = k_WideCoreHoldLast;
@@ -312,32 +311,22 @@ namespace NS::Game::Player
             // 手本の弾きは光の塊が消える 11 に火の粉が接触点から新しく弾ける。核が落ちるフレームに揃える
             shape.emberStartFrame = shape.holdLastFrame + 1;
         }
-        if (nearMiss)
-        {
-            // 寄りと振動と同じフレームで引き始める。核はその 1 フレーム前まで留まる
-            shape.nearPullFrame = impact.pullBackFrames;
-            shape.holdLastFrame = std::max(1, impact.pullBackFrames - 1);
-        }
 
         shape.coreDiameter = std::min(m_coreDiameterMax, m_coreDiameterBase + m_coreDiameterPerPower * power);
         if (center)
         {
             shape.streakLength = m_streakLengthBase + m_streakLengthPerPower * power;
         }
-        if (center || nearMiss)
+        if (center)
         {
             shape.ringRadius = m_ringRadiusBase + m_ringRadiusPerPower * power;
         }
 
-        if (center || nearMiss)
+        if (center)
         {
             const float share = std::clamp((power - k_PowerMin) / (k_PowerMax - k_PowerMin), 0.0f, 1.0f);
             float count =
                 static_cast<float>(m_sparkCountMin) + static_cast<float>(m_sparkCountMax - m_sparkCountMin) * share;
-            if (nearMiss)
-            {
-                count *= m_nearSparkShare;
-            }
             shape.sparkCount = std::max(1, static_cast<int>(std::lround(count)));
             shape.sparkSpeed = m_sparkSpeedBase + m_sparkSpeedPerLaunch * std::max(impact.launchScale, 0.0f);
             if (center)
@@ -535,7 +524,7 @@ namespace NS::Game::Player
     void ImpactEffects::PlaySparks(NS::Gfx::EffectScene* effects)
     {
         const ImpactShape& shape = m_plan.shape;
-        // 粒の数は段ごとの節の入力に入れ、他の節は 0。0 番が中心近くの帯、1 番が大きな外れの擦れ、3 番が惜しいの帯
+        // 粒の数は段ごとの節の入力に入れ、他の節は 0。0 番が中心近くの帯、1 番が大きな外れの擦れ。3 番の節は使わない
         NS::Gfx::EffectPlayDesc sparks;
         std::size_t countInput = 0;
         if (shape.tier == HitTier::Wide)
@@ -546,10 +535,6 @@ namespace NS::Game::Player
         else
         {
             sparks = PlayAt(m_plan.contact, TurnUpTo(m_plan.launchDir), Uniform(1.0f));
-        }
-        if (shape.tier == HitTier::Near)
-        {
-            countInput = 3;
         }
         sparks.dynamicInputs[0] = 0.0f;
         sparks.dynamicInputs[1] = 0.0f;
@@ -580,7 +565,6 @@ namespace NS::Game::Player
         const int frame = step - m_plan.freezeStep;
         const ImpactShape& shape = m_plan.shape;
         const bool center = shape.tier == HitTier::Center;
-        const bool nearMiss = shape.tier == HitTier::Near;
 
         if (!m_plan.sparksPlayed && frame == shape.sparkStartFrame)
         {
@@ -695,44 +679,23 @@ namespace NS::Game::Player
             m_plan.glow = 0;
         }
 
-        // 惜しいの輪は引き始めのフレームで広がり止み、その 2 フレーム後に消える。消えるのが出る前なら出さない
-        int ringEnd = k_RingEnd;
-        if (nearMiss)
-        {
-            ringEnd = std::min(k_RingEnd, shape.nearPullFrame + 2);
-        }
-        if (shape.ringRadius > 0.0f && frame == k_RingStart && ringEnd > k_RingStart)
+        if (shape.ringRadius > 0.0f && frame == k_RingStart)
         {
             m_plan.ring = m_layers.Play(
                 effects, k_Ring, PlayAt(m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(m_ringStartRadius)));
-            float reach = shape.ringRadius;
-            if (nearMiss)
-            {
-                reach = shape.ringRadius * m_nearRingReach;
-            }
-            SetAmount(m_plan.ring, reach);
+            SetAmount(m_plan.ring, shape.ringRadius);
         }
         if (m_plan.ring != 0)
         {
-            if (frame >= ringEnd)
+            if (frame >= k_RingEnd)
             {
                 m_layers.Stop(effects, m_plan.ring);
                 m_plan.ring = 0;
             }
             else if (effects != nullptr)
             {
-                int grownFrame = frame;
-                if (nearMiss)
-                {
-                    grownFrame = std::min(frame, shape.nearPullFrame);
-                }
-                const float t =
-                    static_cast<float>(grownFrame - k_RingStart) / static_cast<float>(k_RingFull - k_RingStart);
-                float radius = m_ringStartRadius + (shape.ringRadius - m_ringStartRadius) * EaseOutCubic(t);
-                if (nearMiss)
-                {
-                    radius = std::min(radius, shape.ringRadius * m_nearRingReach);
-                }
+                const float t = static_cast<float>(frame - k_RingStart) / static_cast<float>(k_RingFull - k_RingStart);
+                const float radius = m_ringStartRadius + (shape.ringRadius - m_ringStartRadius) * EaseOutCubic(t);
                 const EffectLayerRecord* record = m_layers.Find(m_plan.ring);
                 if (record != nullptr)
                 {

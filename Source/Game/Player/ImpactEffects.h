@@ -26,7 +26,6 @@ namespace NS::Game::Player
     {
         NS::Game::Level::HitTier tier = NS::Game::Level::HitTier::Center; //!< 当たりの段
         int holdLastFrame = 1;     //!< 核が最大近くに留まる最後のフレーム。止めの頭を 0 と数える
-        int nearPullFrame = 0;     //!< 惜しいの輪が広がり止むフレーム。止めの頭を 0 と数え、他の段は 0
         int sparkStartFrame = 0;   //!< 火花を出すフレーム。止めの頭を 0 と数え、中心近くだけ 3
         int emberStartFrame = 0;   //!< 火の粉を出すフレーム。止めの頭を 0 と数え、核が落ちるフレーム。中心近くだけ
         float coreDiameter = 0.0f; //!< 核の直径。単位は m
@@ -122,13 +121,11 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_ringRadiusBase, "輪の半径の基準")
         NS_REFLECT_FIELD(m_ringRadiusPerPower, "輪の半径の威力あたり")
         NS_REFLECT_FIELD(m_ringStartRadius, "輪の出始めの半径")
-        NS_REFLECT_FIELD(m_nearRingReach, "惜しいの輪が届く割合")
         NS_REFLECT_FIELD(m_ringFaceCamera, "輪をカメラへ起こす割合")
         NS_REFLECT_FIELD(m_sparkCountMin, "火花の数の下限")
         NS_REFLECT_FIELD(m_sparkCountMax, "火花の数の上限")
         NS_REFLECT_FIELD(m_sparkSpeedBase, "火花の速さの基準")
         NS_REFLECT_FIELD(m_sparkSpeedPerLaunch, "火花の速さの飛ばしの比あたり")
-        NS_REFLECT_FIELD(m_nearSparkShare, "惜しいの火花の数の割合")
         NS_REFLECT_FIELD(m_wideSparkCount, "大きな外れの火花の数")
         NS_REFLECT_FIELD(m_wideSparkSpeed, "大きな外れの火花の速さ")
         NS_REFLECT_FIELD(m_emberShare, "火の粉の数の火花あたり")
@@ -239,13 +236,11 @@ namespace NS::Game::Player
         float m_ringRadiusBase = 0.5f;         // 威力 0 の輪の広がりきった半径 (m)
         float m_ringRadiusPerPower = 0.6f;     // 威力 1 あたり足す半径 (m)。溜めきりで 1.7 m、相手の玉の 2 倍強
         float m_ringStartRadius = 0.3f;        // 輪の出始めの半径 (m)。接触点の核より少し外
-        float m_nearRingReach = 0.5f;          // 惜しいの輪が届く、広がりきった半径への割合
         float m_ringFaceCamera = 1.0f;         // 輪の法線をカメラへ起こす重み。相手の飛ぶ向きの重みは 0.6
         int m_sparkCountMin = 10;              // 威力 0.7 の火花の数
         int m_sparkCountMax = 30;              // 威力 2 の火花の数。完璧の火花は不完全の数倍
         float m_sparkSpeedBase = 6.0f;         // 飛ばしの比 0 の火花の速さ (m/s)
         float m_sparkSpeedPerLaunch = 3.0f;    // 飛ばしの比 1 あたり足す速さ (m/s)。重い相手ほど遅い
-        float m_nearSparkShare = 0.5f;         // 惜しいの火花の数の、同じ威力の中心近くへの割合
         int m_wideSparkCount = 16;             // 大きな外れの火花の数。威力に依らない。手本のガードの 7〜10 の筋の数
         float m_wideSparkSpeed = 4.0f;         // 大きな外れの火花の速さ (m/s)。面に沿って擦れる
         float m_emberShare = 7.0f;             // 火の粉の粒の数の、同じ当たりの火花の数への倍率。威力 2 で 210 粒

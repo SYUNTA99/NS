@@ -1196,6 +1196,31 @@ TEST_F(PlayerComponentTest, StaysCurledWhileTheButtonIsHeld)
     EXPECT_TRUE(player.IsCurled());
 }
 
+// 今当たっている体は根を中心に立つカプセル。丸まっている間は同じ半径の球 (高さ 0) になる
+// エディタはこの形を描く。同居する CapsuleCollider の欄は立ち姿の寸法のまま
+TEST_F(PlayerComponentTest, BodyCapsuleBecomesTheBallWhileCurled)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Phys::PhysicsScene& physics = stage.physics;
+    PlayerComponent& player = MakeSlamReady(obj, physics);
+    obj.Root().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
+
+    const NS::Phys::Capsule standing = player.BodyCapsule();
+    EXPECT_FLOAT_EQ(standing.halfHeight, player.StandingHalfHeight());
+    EXPECT_GT(standing.halfHeight, 0.0f);
+    EXPECT_FLOAT_EQ(standing.radius, player.CapsuleRadius());
+    EXPECT_FLOAT_EQ(standing.center.y, 2.0f);
+
+    player.SetCurled(true);
+    const NS::Phys::Capsule ball = player.BodyCapsule();
+    EXPECT_FLOAT_EQ(ball.halfHeight, 0.0f);
+    EXPECT_FLOAT_EQ(ball.radius, standing.radius);
+    EXPECT_FLOAT_EQ(ball.center.x, obj.Root().Position().x);
+    EXPECT_FLOAT_EQ(ball.center.y, obj.Root().Position().y);
+    EXPECT_FLOAT_EQ(ball.center.z, obj.Root().Position().z);
+}
+
 // 溜めて放した突進の間は玉のまま。途中で立ち姿に戻ると、転がって当てる形にならない
 TEST_F(PlayerComponentTest, StaysCurledThroughTheChargedRush)
 {

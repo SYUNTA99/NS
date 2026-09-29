@@ -8,6 +8,7 @@
 #include <Game/Level/ColliderBounds.h>
 #include <Game/Level/CollisionInput.h>
 #include <Game/Level/HitTier.h>
+#include <Game/Level/HitZones.h>
 #include <Game/Level/ImpactInputJudge.h>
 #include <Game/Level/ImpactMark.h>
 #include <Game/Level/ImpactResolver.h>
@@ -99,7 +100,7 @@ namespace
         std::int16_t extraTargetLane = 0;
         // 偽なら的から MeshRenderer を外し、描く形の無い的にする
         bool targetWithMeshRenderer = true;
-        // 偽なら的に段の範囲 (HitZones) を付けない。壊せる物でも体当たりの相手にならない
+        // 偽なら的に段の面 (HitZones) を付けない。壊せる物でも体当たりの相手にならない
         bool targetWithHitZones = true;
     };
 
@@ -162,7 +163,7 @@ namespace
                 NS::Editor::MakeCellObject(course.extraTargetCell, course.targetLayer, course.extraTargetLane);
             SceneNs::ObjectJsonComponents(extra).push_back(MakeLaunchableRigidBodyEntry());
             SceneNs::ObjectJsonComponents(extra).push_back(SceneNs::MakeComponentEntry("Breakable"));
-            SceneNs::ObjectJsonComponents(extra).push_back(NsTest::MakeTestHitZonesEntry());
+            NsTest::AddTestHitZones(SceneNs::ObjectJsonComponents(extra));
             SceneNs::SceneJsonObjects(data).push_back(extra);
         }
 
@@ -185,7 +186,7 @@ namespace
             SceneNs::ObjectJsonComponents(target).push_back(SceneNs::MakeComponentEntry("Breakable"));
             if (course.targetWithHitZones)
             {
-                SceneNs::ObjectJsonComponents(target).push_back(NsTest::MakeTestHitZonesEntry());
+                NsTest::AddTestHitZones(SceneNs::ObjectJsonComponents(target));
             }
         }
         if (!course.targetWithMeshRenderer)
@@ -348,7 +349,7 @@ namespace
     // 助走の長さだけが k_NearCourse と違う
     constexpr SlamCourse k_FarCourse{.start = -0.5f, .targetCell = 6};
     constexpr SlamCourse k_NearCourse{.start = 0.0f, .targetCell = 1};
-    // 横ずれ 0.45 ÷ (的の半幅 0.5 + 自機の半径 0.4) = 0.5 で係数 0.85。段は惜しいで、中心近くの当たりにならない
+    // 横ずれ 0.45 ÷ (的の半幅 0.5 + 自機の半径 0.4) = 0.5 で係数 0.85。段は外れで、中心近くの当たりにならない
     constexpr SlamCourse k_EdgeCourse{.start = 0.0f, .lateral = 0.45f, .targetCell = 1};
 
     // 飛んで着地して滑り切るまでの道。狭いと端から落ちて停止の検証にならない
@@ -881,7 +882,7 @@ TEST(CollisionImpact, ReboundFieldsDriveTheApexAndTheVelocity)
     EXPECT_TRUE(rig.movement->IsRebounding());
 }
 
-// 中心近くの当たりだけ反動の距離が倍率ぶん伸び、頂点の高さは変わらない。惜しい当たりは距離も高さも欄のまま
+// 中心近くの当たりだけ反動の距離が倍率ぶん伸び、頂点の高さは変わらない。外れの当たりは距離も高さも欄のまま
 // 台の的は質量 1 なので、反動の高さと距離に掛かるのは威力だけ
 TEST(CollisionImpact, CenterHitReboundGoesFartherBackAtTheSameHeight)
 {
@@ -893,7 +894,7 @@ TEST(CollisionImpact, CenterHitReboundGoesFartherBackAtTheSameHeight)
     };
     const std::vector<TierCase> cases{
         {k_NearCourse, LevelNs::HitTier::Center, k_CenterHitReboundDistanceScale},
-        {k_EdgeCourse, LevelNs::HitTier::Near, 1.0f},
+        {k_EdgeCourse, LevelNs::HitTier::Wide, 1.0f},
     };
 
     for (const TierCase& tierCase : cases)
@@ -1760,9 +1761,9 @@ TEST(CollisionImpact, HitOffsetDividesByTheTargetHalfWidthPlusThePlayerRadius)
     EXPECT_NEAR(edge.impact->LastImpact().offset01, k_WidestLateral / width, 0.01f);
 }
 
-// 横ずれ 0.2 / 0.45 / 0.7 は、的の半幅 0.5 + 自機の半径 0.4 で割ると 0.22 / 0.5 / 0.78。既定の境目 0.35 と 0.7 で 3
-// 段に分かれる
-TEST(CollisionImpact, HitTierFollowsTheOffsetInThreeSteps)
+// 横ずれ 0.2 / 0.45 / 0.7 は、的の半幅 0.5 + 自機の半径 0.4 で割ると 0.22 / 0.5 / 0.78。試験の的の真ん中の縁 0.35 の
+// 内側だけが中心近く
+TEST(CollisionImpact, HitTierFollowsTheOffsetInTwoSteps)
 {
     struct TierCase
     {
@@ -1771,7 +1772,7 @@ TEST(CollisionImpact, HitTierFollowsTheOffsetInThreeSteps)
     };
     const std::vector<TierCase> cases{
         {0.2f, LevelNs::HitTier::Center},
-        {0.45f, LevelNs::HitTier::Near},
+        {0.45f, LevelNs::HitTier::Wide},
         {0.7f, LevelNs::HitTier::Wide},
     };
 
@@ -1895,10 +1896,10 @@ namespace
 
 // 予測の横ずれの比と段は裁定と同じ HitZones::Judge で出すので、同じ置き方で当てた時の横ずれと段と同じになる
 // 横ずれ 0 / 0.45 / 0.765 は、的の半幅 0.5 + 自機の半径 0.4 で割ると 0 / 0.5 / 0.85
-// 試験の的の範囲 0.315 m / 0.63 m では真ん中 / 惜しい / 外れで、3 つの段を 1 回ずつ通る
+// 試験の的の真ん中 0.315 m では真ん中 / 外れ / 外れ。真ん中の縁の内と外を通る
 TEST(CollisionImpact, SlamLineTargetOffsetMatchesTheOffsetOfTheHit)
 {
-    const LevelNs::HitTier expectedTiers[] = {LevelNs::HitTier::Center, LevelNs::HitTier::Near, LevelNs::HitTier::Wide};
+    const LevelNs::HitTier expectedTiers[] = {LevelNs::HitTier::Center, LevelNs::HitTier::Wide, LevelNs::HitTier::Wide};
     const float laterals[] = {0.0f, 0.45f, 0.765f};
     for (int i = 0; i < 3; ++i)
     {
@@ -3322,9 +3323,6 @@ namespace
     constexpr float k_CenterHitZoom = 1.15f;
     constexpr float k_CenterHitRollDegrees = 3.0f;
     constexpr int k_ZoomRollReturnFrames = 6;
-    // 欄「惜しい当たりの返りの割合」「惜しい当たりの返りを引き始める割合」の既定
-    constexpr float k_NearHitReturnRatio = 0.4f;
-    constexpr float k_NearHitPullBackRatio = 0.5f;
     constexpr float k_ReturnTolerance = 1.0e-5f;
     // 欄「中心近くの当たりのパッドの振動の強さ」「大きな外れのパッドの振動の強さ」の既定
     constexpr float k_CenterHitPadStrength = 1.0f;
@@ -3484,59 +3482,6 @@ TEST(CollisionImpact, CenterHitShakesZoomsAndTiltsThroughTheFreeze)
     EXPECT_EQ(brain->ZoomRoll().rollDegrees, 0.0f);
 }
 
-// 惜しいは中心近くの寄りと傾きを割合で小さく出し、止めの途中で戻し始める。揺れは縦で倍率を掛けず、白は出ない
-TEST(CollisionImpact, NearHitZoomsSmallerAndPullsBackBeforeTheRelease)
-{
-    SceneNs::Scene scene;
-    Rig rig = BuildSlam(scene, k_EdgeCourse);
-    SceneNs::CameraBrain* brain = scene.CameraBrain();
-    ASSERT_NE(brain, nullptr);
-    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
-
-    ASSERT_LT(StepUntilImpactWithCamera(scene, rig, 30), 30);
-    const LevelNs::ImpactRecord hit = rig.impact->LastImpact();
-    ASSERT_EQ(hit.tier, LevelNs::HitTier::Near);
-    const int stop = hit.hitStopSteps;
-    const int hold = static_cast<int>(std::ceil(static_cast<float>(stop) * k_NearHitPullBackRatio));
-    ASSERT_LT(hold, stop);
-
-    const float swing = FirstSwing(rig, hit.power);
-    const float zoom = 1.0f + (k_CenterHitZoom - 1.0f) * k_NearHitReturnRatio;
-    const float roll = k_CenterHitRollDegrees * k_NearHitReturnRatio * ScreenSideSign(*brain, hit.impactDir);
-    int shakeFrames = 0;
-    for (int frame = 0; frame < stop + 2; ++frame)
-    {
-        StepWithCamera(scene, rig);
-        const NS::Core::Vector2 offset = brain->ShakeOffset();
-        if (offset.Length() > 0.0f)
-        {
-            ++shakeFrames;
-        }
-        EXPECT_EQ(offset.x, 0.0f) << "frame " << frame;
-        EXPECT_EQ(rig.impact->CenterHitFlashStepsRemaining(), 0) << "frame " << frame;
-        if (frame == 0)
-        {
-            EXPECT_NEAR(offset.y, -swing, k_ReturnTolerance);
-            EXPECT_NEAR(offset.Length(), hit.cameraShake, k_ReturnTolerance);
-            EXPECT_FLOAT_EQ(brain->ZoomRoll().zoom, hit.zoomStart);
-            EXPECT_FLOAT_EQ(brain->ZoomRoll().rollDegrees, hit.rollStart);
-            EXPECT_EQ(hit.flashStart, 0);
-        }
-        if (frame < hold)
-        {
-            EXPECT_FLOAT_EQ(brain->ZoomRoll().zoom, zoom) << "frame " << frame;
-            EXPECT_FLOAT_EQ(brain->ZoomRoll().rollDegrees, roll) << "frame " << frame;
-        }
-        if (frame == hold)
-        {
-            // 明けより前に戻し始める
-            EXPECT_FALSE(rig.movement->IsActiveSelf());
-            EXPECT_LT(brain->ZoomRoll().zoom, zoom);
-            EXPECT_GT(brain->ZoomRoll().zoom, 1.0f);
-        }
-    }
-    EXPECT_EQ(shakeFrames, stop);
-}
 
 // 大きな外れは横が主の揺れを止めから切り離した長さで続け、明けの後も揺れる。最初の横は自機の弾かれる側、縦は下。寄りと傾きは無い
 TEST(CollisionImpact, WideHitShakeRunsSidewaysPastTheRelease)
@@ -3756,38 +3701,6 @@ TEST(CollisionImpact, CenterHitVibratesTheHeavyMotorThroughTheFreeze)
     EXPECT_EQ(PadVibration().right, 0.0f);
 }
 
-// 惜しいは中心近くの重いモーターを割合で小さく出し、同じ傾きで減らして止めの途中で 0 にする
-TEST(CollisionImpact, NearHitVibratesSmallerAndStopsBeforeTheRelease)
-{
-    const PadVibrationReset reset;
-    SceneNs::Scene scene;
-    Rig rig = BuildSlam(scene, k_EdgeCourse);
-    BeginSlam(scene, rig, k_RunSpeed, 1.0f);
-
-    ASSERT_LT(StepUntilImpactWithCamera(scene, rig, 30), 30);
-    const LevelNs::ImpactRecord hit = rig.impact->LastImpact();
-    ASSERT_EQ(hit.tier, LevelNs::HitTier::Near);
-    const int stop = hit.hitStopSteps;
-    const int hold = static_cast<int>(std::ceil(static_cast<float>(stop) * k_NearHitPullBackRatio));
-    ASSERT_LT(hold, stop);
-    const float strength = k_CenterHitPadStrength * k_NearHitReturnRatio;
-    EXPECT_FLOAT_EQ(hit.padStart.left, strength);
-    EXPECT_EQ(hit.padStart.right, 0.0f);
-
-    for (int frame = 0; frame < hold; ++frame)
-    {
-        Step(scene, rig);
-        const float fade = static_cast<float>(stop - frame) / static_cast<float>(stop);
-        EXPECT_NEAR(PadVibration().left, strength * fade, k_ReturnTolerance) << "frame " << frame;
-        EXPECT_EQ(PadVibration().right, 0.0f) << "frame " << frame;
-    }
-
-    Step(scene, rig);
-    // 明けより前に 0 になる
-    ASSERT_FALSE(rig.movement->IsActiveSelf());
-    EXPECT_EQ(PadVibration().left, 0.0f);
-    EXPECT_EQ(PadVibration().right, 0.0f);
-}
 
 // 大きな外れは軽いモーターを揺れと同じフレーム数で減らし、明けの後も震わせる。重いモーターは使わない
 TEST(CollisionImpact, WideHitVibratesTheLightMotorPastTheRelease)
@@ -5140,7 +5053,7 @@ TEST(LaunchedBody, FallsAtThePlayersUpwardGravity)
 namespace
 {
     // 的を 3 列先に置き、玉の縁から的の面まで 2.1 m 空ける。前出しで当たりが早まる間を取る
-    // 横ずれ 0.45 m は試験の的の範囲で惜しい
+    // 横ずれ 0.45 m は試験の的の範囲で外れ
     constexpr SlamCourse k_LeadCourse{.start = 0.0f, .lateral = 0.45f, .targetCell = 3};
 
     // 前出しを入れて突進し、当たりが出たフレームまで進める
@@ -5171,7 +5084,7 @@ TEST(CollisionImpact, LeadMakesTheHitComeEarlierWithTheSameTier)
     const LeadRun lead = RunWithLead(0.3f);
     ASSERT_LT(plain.steps, 60);
     EXPECT_LT(lead.steps, plain.steps);
-    EXPECT_EQ(plain.tier, LevelNs::HitTier::Near);
+    EXPECT_EQ(plain.tier, LevelNs::HitTier::Wide);
     EXPECT_EQ(lead.tier, plain.tier);
 }
 

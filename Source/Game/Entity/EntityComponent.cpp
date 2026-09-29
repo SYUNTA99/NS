@@ -75,6 +75,20 @@ namespace NS::Game::Entity
         return StandingHalfHeight();
     }
 
+    NS::Phys::Capsule EntityComponent::BodyCapsule() const noexcept
+    {
+        // 移動 (JoltCharacter) と当たりの裁定 (ImpactResolver) が使う寸法と同じ所から引く
+        NS::Core::Vector3 center{0.0f, 0.0f, 0.0f};
+        if (const NS::Obj::GameObject* owner = Owner())
+        {
+            center = owner->Root().Position();
+        }
+        return NS::Phys::Capsule{.center = center,
+                                 .axis = NS::Core::Vector3::UnitY,
+                                 .halfHeight = CapsuleHalfHeight(),
+                                 .radius = CapsuleRadius()};
+    }
+
     float EntityComponent::StandingHalfHeight() const noexcept
     {
         if (const NS::Obj::CapsuleCollider* capsule = SiblingCapsule())

@@ -22,7 +22,7 @@ namespace
     // チャージ倍率カーブの右端。溜め切った 1 回で威力が倍になる
     constexpr float k_MaxChargeScale = 2.0f;
 
-    // 威力は 溜め倍率 × 突進位置係数 で、位置係数は 1.0 を超えない
+    // 威力は 溜め倍率 × 当たった色の威力の倍率 で、同梱の場面の倍率は 1.0 を超えない (EveryBreakableCarriesHitZones)
     // 破壊を許可した時、耐久が威力の上限を超える物だけが必ず跳ね返す
     constexpr float k_MaxImpactPower = k_MaxChargeScale;
 
@@ -164,8 +164,9 @@ TEST(ShippedCourse, CourseCarriesAKillZone)
     EXPECT_EQ(killZones, 1);
 }
 
-// 段の範囲 (HitZones) を持たない壊せる物は体当たりの相手にならない
-// 同梱の場面の相手は全部、足した直後の 3 段・真ん中 0.5 m・惜しい 1.0 m を持つ
+// 段の面 (HitZones) を持たない壊せる物は体当たりの相手にならない
+// 同梱の場面の相手は全部、残りの威力の倍率 0.7 と、前の「真ん中 0.5 m」を割合に直した気持ちいいの色 0.43 を持つ
+// 色の威力の倍率は 1.0 を超えない。超えると溜めきりの威力が k_MaxImpactPower を超える
 TEST(ShippedCourse, EveryBreakableCarriesHitZones)
 {
     for (const char* name : k_TargetSceneNames)
@@ -173,15 +174,21 @@ TEST(ShippedCourse, EveryBreakableCarriesHitZones)
         SCOPED_TRACE(name);
         nlohmann::json scene = SceneNs::MakeSceneJson();
         ASSERT_TRUE(LoadShippedCourse(scene, name));
-        const std::vector<float> tierCounts = CollectBreakableField(scene, "HitZones", "段の数");
-        const std::vector<float> centerRanges = CollectBreakableField(scene, "HitZones", "真ん中の範囲");
-        const std::vector<float> nearRanges = CollectBreakableField(scene, "HitZones", "惜しいの範囲");
-        ASSERT_FALSE(tierCounts.empty());
-        for (std::size_t i = 0; i < tierCounts.size(); ++i)
+        const std::vector<float> remainders = CollectBreakableField(scene, "HitZones", "残りの威力の倍率");
+        const std::vector<float> widths = CollectBreakableField(scene, "HitZoneArea", "横幅");
+        const std::vector<float> heights = CollectBreakableField(scene, "HitZoneArea", "縦の幅");
+        const std::vector<float> powers = CollectBreakableField(scene, "HitZoneArea", "威力の倍率");
+        ASSERT_FALSE(remainders.empty());
+        ASSERT_EQ(widths.size(), remainders.size());
+        ASSERT_EQ(heights.size(), remainders.size());
+        ASSERT_EQ(powers.size(), remainders.size());
+        for (std::size_t i = 0; i < remainders.size(); ++i)
         {
-            EXPECT_FLOAT_EQ(tierCounts[i], 3.0f) << i;
-            EXPECT_FLOAT_EQ(centerRanges[i], 0.5f) << i;
-            EXPECT_FLOAT_EQ(nearRanges[i], 1.0f) << i;
+            EXPECT_FLOAT_EQ(remainders[i], 0.7f) << i;
+            EXPECT_FLOAT_EQ(widths[i], 0.43f) << i;
+            EXPECT_FLOAT_EQ(heights[i], 0.43f) << i;
+            EXPECT_GE(powers[i], 0.0f) << i;
+            EXPECT_LE(powers[i], 1.0f) << i;
         }
     }
 }

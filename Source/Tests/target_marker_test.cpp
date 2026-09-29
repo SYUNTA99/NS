@@ -214,7 +214,7 @@ namespace
         SceneNs::SetField(rigidBody, "質量", mass);
         SceneNs::ObjectJsonComponents(target).push_back(rigidBody);
         SceneNs::ObjectJsonComponents(target).push_back(SceneNs::MakeComponentEntry("Breakable"));
-        SceneNs::ObjectJsonComponents(target).push_back(NsTest::MakeTestHitZonesEntry());
+        NsTest::AddTestHitZones(SceneNs::ObjectJsonComponents(target));
         return target;
     }
 

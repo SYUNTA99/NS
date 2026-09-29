@@ -57,7 +57,7 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
         "CameraComponent",    "CameraBrain",    "ThirdPersonFollow", "PlayerComponent",  "PlayerInput",
         "PlayerStateManager", "PlayerAnimator", "PlayerAppearance",  "Shadow",           "SkeletalAnimation",
         "DirectionalLight",   "RigidBody",      "PhysicsSettings",   "TargetMarker",     "ChargeEffects",
-        "ImpactEffects",      "HitZones",
+        "ImpactEffects",      "HitZones",       "HitZoneArea",
     };
     for (const char* name : k_Registered)
     {
@@ -122,7 +122,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 33u);
+    EXPECT_EQ(names.size(), 34u);
     EXPECT_TRUE(Contains(names, "BoxCollider"));
     EXPECT_TRUE(Contains(names, "MeshRenderer"));
     EXPECT_TRUE(Contains(names, "PlayerComponent"));
@@ -147,7 +147,6 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "チャージ満タン秒",
           "チャージ減速率",
           "チャージ倍率カーブ",
-          "突進位置係数カーブ",
           "寄せる相手を探す角度",
           "寄せる相手を探す距離",
           "構えの縮み",
@@ -155,7 +154,8 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"DirectionalLight", {"方向", "色", "環境光", "地面環境光", "露出"}},
         {"FollowCameraFeed", {}},
         {"Health", {"体力"}},
-        {"HitZones", {"段の数", "真ん中の範囲", "惜しいの範囲", "真ん中の形", "惜しいの形"}},
+        {"HitZones", {"残りの威力の倍率"}},
+        {"HitZoneArea", {"気持ちいい", "丸", "横幅", "縦の幅", "左右の位置", "上下の位置", "威力の倍率"}},
         {"ImpactEffects",
          {"核の直径の基準",
           "核の直径の威力あたり",
@@ -167,13 +167,11 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "輪の半径の基準",
           "輪の半径の威力あたり",
           "輪の出始めの半径",
-          "惜しいの輪が届く割合",
           "輪をカメラへ起こす割合",
           "火花の数の下限",
           "火花の数の上限",
           "火花の速さの基準",
           "火花の速さの飛ばしの比あたり",
-          "惜しいの火花の数の割合",
           "大きな外れの火花の数",
           "大きな外れの火花の速さ",
           "火の粉の数の火花あたり",
@@ -219,8 +217,6 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "中心近くの当たりの寄りの倍率",
           "中心近くの当たりの傾き",
           "寄りと傾きを戻すフレーム数",
-          "惜しい当たりの返りの割合",
-          "惜しい当たりの返りを引き始める割合",
           "中心近くの当たりのパッドの振動の強さ",
           "大きな外れのパッドの振動の強さ",
           "潰れの厚み",
@@ -427,6 +423,7 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"FollowCameraFeed", {}},
         {"Health", {}},
         {"HitZones", {}},
+        {"HitZoneArea", {}},
         {"ImpactEffects", {}},
         {"ImpactMark", {}},
         {"ImpactResolver", {"OverlayRenderer"}},

@@ -37,7 +37,7 @@ namespace NS::Game::Level
         float positionFactor = 0.0f;
         float offset01 = 0.0f;          //!< 相手の体の中心からの横ずれ。相手の半幅と自機の半径の和で割った 0..1
         HitTier tier = HitTier::Center; //!< 相手の HitZones で決めた段。CollisionInput が無い時は演出を掛けない
-        NS::Core::Vector3 linePoint;    //!< 線の通った点。相手の体の中心に一番近い線の上の点を中心の高さに置いた物
+        NS::Core::Vector3 surfacePoint; //!< 自機の玉が相手の表面に触れた点。段はこの点が乗る面で決まる
         float snapDistance = 0.0f;      //!< 止めの頭で自機を相手に接する所まで寄せた距離 (m)。前出しを超えない
         float cameraShake = 0.0f;       //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
         int flashStart = 0;             //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
@@ -60,8 +60,6 @@ namespace NS::Game::Level
         bool targetPlaced = true;  //!< 相手が置かれていた (飛んでいなかった) 場合 true
         float launchScale = 0.0f;  //!< 相手の曲線の距離と高さに掛けた比。威力 ÷ 質量の指数乗で、質量 1・威力 1 で 1
         float reboundScale = 0.0f; //!< 自機の反動の高さと距離に掛けた比。威力 × 2 × 質量 ÷ (質量 + 1)
-        //! 惜しい当たりの寄りと振動を保つフレーム数。止めの頭から数え、このフレームから引き始める。他の段は 0
-        int pullBackFrames = 0;
     };
 
     //! @brief 突進の線で最初に触れる相手の予測
@@ -199,8 +197,6 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_centerHitZoom, "中心近くの当たりの寄りの倍率")
         NS_REFLECT_FIELD(m_centerHitRollDegrees, "中心近くの当たりの傾き")
         NS_REFLECT_FIELD(m_zoomRollReturnFrames, "寄りと傾きを戻すフレーム数")
-        NS_REFLECT_FIELD(m_nearHitReturnRatio, "惜しい当たりの返りの割合")
-        NS_REFLECT_FIELD(m_nearHitPullBackRatio, "惜しい当たりの返りを引き始める割合")
         NS_REFLECT_FIELD(m_centerHitPadStrength, "中心近くの当たりのパッドの振動の強さ")
         NS_REFLECT_FIELD(m_widePadStrength, "大きな外れのパッドの振動の強さ")
         NS_REFLECT_FIELD(m_squashThickness, "潰れの厚み")
@@ -302,8 +298,6 @@ namespace NS::Game::Level
         float m_centerHitZoom = 1.15f;        // 中心近くの当たりで画面に写る大きさの倍率
         float m_centerHitRollDegrees = 3.0f;  // 中心近くの当たりの視線の軸まわりの傾き (度)
         int m_zoomRollReturnFrames = 6;       // 寄りと傾きを元へ戻すフレーム数
-        float m_nearHitReturnRatio = 0.4f;    // 惜しい当たりの寄りの倍率の 1 を超えた分と傾きに掛ける割合
-        float m_nearHitPullBackRatio = 0.5f;  // 惜しい当たりの寄りと傾きを保つフレーム数 ÷ 止めのフレーム数
         float m_centerHitPadStrength = 1.0f;  // 中心近くの当たりの低い周波数のモーターの始めの速さ。0〜1
         float m_widePadStrength = 0.6f;       // 大きな外れの当たりの高い周波数のモーターの始めの速さ。0〜1
         float m_squashThickness = 0.7f;       // 凍結中の自機と置かれていた相手の、進行方向の厚みの倍率

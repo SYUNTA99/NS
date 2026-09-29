@@ -816,7 +816,6 @@ TEST(SaveLoadRoundTrip, ChargeFieldKeysAreTheLockedLabels)
     EXPECT_TRUE(fields.contains("チャージしきい値秒"));
     EXPECT_TRUE(fields.contains("チャージ満タン秒"));
     EXPECT_TRUE(fields.contains("チャージ倍率カーブ"));
-    EXPECT_TRUE(fields.contains("突進位置係数カーブ"));
 
     const nlohmann::json& points = fields.at("チャージ倍率カーブ").at("curve");
     ASSERT_TRUE(points.is_array());

@@ -33,8 +33,8 @@ namespace
         return g_vertices;
     }
 
-    // 面の頂点の上限。32 分割の筒 1 本の側面が 192 頂点で、相手 10 体に 2 本ずつ置いても収まる
-    constexpr std::size_t k_MaxFaceVertices = 12288;
+    // 面の頂点の上限。エディタの段の面は相手 1 体で最大 1296 枚 (3888 頂点) で、カメラの裏を省かなくても 10 体が収まる
+    constexpr std::size_t k_MaxFaceVertices = 38880;
 
     std::vector<DebugVertex>& FaceStorage() noexcept
     {
@@ -51,7 +51,7 @@ namespace
         std::unique_ptr<NS::Gfx::Buffer> vb;
         std::unique_ptr<NS::Gfx::Buffer> faceVb;
         std::unique_ptr<NS::Gfx::Buffer> cb;
-        // 面は筒の奥の壁も見せるので裏表とも描く。深度を書かないので、重なった面の奥も透ける
+        // 面は奥の側も見せるので裏表とも描く。深度を見ないので、物の表面と重なった面もちらつかずに透ける
         std::unique_ptr<NS::Gfx::Pipeline> facePipeline;
         bool initAttempted = false;
         bool valid = false;
@@ -115,7 +115,7 @@ namespace
 
         b.facePipeline = NS::Gfx::Pipeline::Create(NS::Gfx::PipelineDesc{.cull = NS::Gfx::CullMode::None,
                                                                          .blend = NS::Gfx::BlendMode::Alpha,
-                                                                         .depth = NS::Gfx::DepthMode::ReadOnly});
+                                                                         .depth = NS::Gfx::DepthMode::Disabled});
         if (!b.facePipeline->IsValid())
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: 面の Pipeline 構築失敗");
@@ -276,6 +276,11 @@ namespace NS::Gfx::DebugDraw
             axisN.y /= axisLen;
             axisN.z /= axisLen;
         }
+        else
+        {
+            // 長さ 0 のカプセルは球。向きが無いので上向きの軸で円と弧を描く
+            axisN = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
+        }
 
         NS::Core::Vector3 perpA;
         if (std::abs(axisN.y) < 0.99f)
@@ -312,6 +317,26 @@ namespace NS::Gfx::DebugDraw
         for (const NS::Core::Vector3& d : dirs)
         {
             PushLine(bottom + d, top + d, color);
+        }
+
+        // 両端の半球。軸を含む直交 2 面で、端の円から軸の先へ回る半円を描く
+        const NS::Core::Vector3 cap{axisN.x * radius, axisN.y * radius, axisN.z * radius};
+        const NS::Core::Vector3 endPoints[2] = {top, bottom};
+        const NS::Core::Vector3 outwards[2] = {cap, -cap};
+        constexpr int k_HemisphereSegments = k_CircleSegments / 2;
+        for (int end = 0; end < 2; ++end)
+        {
+            for (const NS::Core::Vector3& across : {uA, uB})
+            {
+                NS::Core::Vector3 prev = endPoints[end] + across;
+                for (int i = 1; i <= k_HemisphereSegments; ++i)
+                {
+                    const float t = NS::Core::k_Pi * static_cast<float>(i) / static_cast<float>(k_HemisphereSegments);
+                    const NS::Core::Vector3 point = endPoints[end] + across * std::cos(t) + outwards[end] * std::sin(t);
+                    PushLine(prev, point, color);
+                    prev = point;
+                }
+            }
         }
     }
 

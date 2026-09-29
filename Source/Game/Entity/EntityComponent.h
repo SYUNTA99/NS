@@ -3,6 +3,7 @@
 #include "Game/Entity/EntityEvents.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
+#include "Runtime/Physics/Capsule.h"
 #include "Runtime/Physics/JoltCharacter.h"
 
 #include <memory>
@@ -59,6 +60,13 @@ namespace NS::Game::Entity
         //! 同居する CapsuleCollider の半分の高さ。無ければ 0.5。OnStart の前でも同じ答えを返す。
         //! 球にしている間も変わらないので、立ち姿の寸法はここから引く
         [[nodiscard]] float StandingHalfHeight() const noexcept;
+
+        //! @brief 今当たっている体の形を世界座標で返す
+        //! @details 根の位置を中心に縦に立つ、半径 CapsuleRadius・半分の高さ CapsuleHalfHeight のカプセル
+        //! 球にしている間は半分の高さ 0 の球。同居する CapsuleCollider の欄は立ち姿の寸法のままなので、
+        //! 体の形を描く時はこちらを使う
+        //! @return 体のカプセル
+        [[nodiscard]] NS::Phys::Capsule BodyCapsule() const noexcept;
 
         //! 持ち主の Scene の衝突の PhysicsScene。Scene に居なければ nullptr
         [[nodiscard]] NS::Phys::PhysicsScene* ScenePhysics() const noexcept;

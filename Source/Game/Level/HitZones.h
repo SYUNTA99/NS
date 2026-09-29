@@ -3,46 +3,42 @@
 #include "Game/Level/HitTier.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Reflection/ComponentRef.h"
 
 namespace NS::Game::Level
 {
     //! @brief HitZones::Judge の結果
     struct HitZoneJudgement
     {
-        HitTier tier = HitTier::Wide; //!< 突進の線が通った段
-        float offset01 = 1.0f;        //!< 相手の体の中心から線までの水平の距離 ÷ 届く幅。0〜1 に丸めた威力の入力
+        HitTier tier = HitTier::Wide; //!< 当たった色の段。どの色にも入らなければ外れ
+        float powerScale = 1.0f;      //!< 当たった色の威力の倍率。どの色にも入らなければ残りの威力の倍率
+        float u = 0.0f;               //!< 面の上の左右の位置。自機から見て右が正。-1〜1 が触れられる幅
+        float v = 0.0f;               //!< 面の上の上下の位置。上が正。-1〜1 が触れられる高さ
+        float offset01 = 1.0f;        //!< 相手の体の中心から線までの水平の距離 ÷ 届く幅。0〜1 に丸めた値
         float ratio = 1.0f;           //!< 丸める前の同じ比。1 を超える相手は、線を進む自機の縁が届かない
         float along = 0.0f;           //!< 線の起点から相手の体の中心までの、線に沿った水平の距離 (m)。後ろは負
         NS::Core::Vector3 linePoint;  //!< 相手の体の中心に一番近い線の上の点を、中心の高さに置いた物
+        //! 自機の玉が相手の表面に触れる点。線が届かない時は、線に一番近い表面の点
+        NS::Core::Vector3 surfacePoint;
     };
 
-    //! @brief エディタが描く段の範囲の円
-    struct ZoneRings
-    {
-        NS::Core::Vector3 center;  //!< 相手の体の中心。世界座標
-        float centerRadius = 0.0f; //!< 真ん中の円の半径 (m)。拡縮込み
-        float nearRadius = 0.0f;   //!< 惜しいの円の半径 (m)。拡縮込み。段の数が 2 の時は 0
-        bool orderBroken = false;  //!< 真ん中が惜しい以上
-    };
-
-    //! @brief 体当たりの相手の段の範囲
-    //! @details 段は「相手のど真ん中へ突進の線を通したか」を表す。線と相手の体の中心の水平の距離を、
-    //! 真ん中と惜しいの範囲 (m) と比べて決める。範囲は相手の水平の拡縮を掛けて使う
-    //! 段ごとに当たり判定を名指しすると、範囲の代わりに上から見た線がその形を通るかで決める
-    //! 名指しできるのは物理に入れない球・カプセル・箱。引けるのは持ち主が場面に居る間だけ
+    //! @brief 体当たりの相手の段の面
+    //! @details 段は「相手のどこに当てたか」を表す。面は相手の前に立ち、いつも自機が来る向きを向く
+    //! 面の上の位置は、相手の体の中心から突進の線までの左右と上下のずれを、左右は「半幅 + 自機の半径」、上下は
+    //! 「半分の高さ + 自機の半径」で割った物。その位置を覆う色 (同じ物に積んだ HitZoneArea) で段と威力の倍率を決める
+    //! 気持ちいいの色が外れの色より先。どの色にも入らない所は外れ
     //! 体は同じ物のぶつかる当たり判定 1 つ (FindBodyCollider)。箱か球だけを測る
     //! 持たない壊せる物は体当たりの相手にならない
-    //! 依存: NS::Obj::BoxCollider, NS::Obj::SphereCollider, NS::Obj::CapsuleCollider, FindBodyCollider
+    //! 依存: HitZoneArea, NS::Obj::BoxCollider, NS::Obj::SphereCollider, FindBodyCollider
     class HitZones : public NS::Obj::Component
     {
     public:
-        //! @brief 突進の線から、段・横ずれ・線の通った点を出す
-        //! @details 線は origin を通り direction の水平の向きへ伸びる。高さは見ない
-        //! @param[in] origin 線の起点。自機の根
+        //! @brief 突進の線から、段・威力の倍率・面の上の位置・線の通った点・表面に触れる点を出す
+        //! @details 線は origin を通り、origin の高さのまま direction の水平の向きへ伸びる直線
+        //! 面の上の位置の上下は origin の高さで測る。表面に触れる点は、自機の玉の中心が相手の中心から
+        //! 「表面の半径 + playerRadius」の球に入る所の向きで出す
+        //! @param[in] origin 線の起点。自機の玉の中心 (丸まっている間は根と同じ)
         //! @param[in] direction 突進の向き。縦の成分は捨てる
-        //! @param[in] playerRadius 自機の半径 (m)。届く幅に足す
+        //! @param[in] playerRadius 自機の半径 (m)。届く幅と高さに足す
         //! @param[out] out 判定の結果。false の時は触らない
         //! @return 判定できた場合 true。体の当たり判定が箱か球 1 つでない場合、向きの水平の長さが 0 か有限でない場合は
         //! false
@@ -51,79 +47,29 @@ namespace NS::Game::Level
                                  float playerRadius,
                                  HitZoneJudgement& out) const noexcept;
 
-        //! @brief エディタが描く範囲を、体の中心まわりの水平の円で返す
-        //! @details 名指しした形を使っている段の半径は 0。その段はエディタが形そのものを描く
-        //! @param[out] out 円の中心と半径。false の時は触らない
-        //! @return 体の当たり判定が箱か球 1 つの場合 true、それ以外の場合は false
-        [[nodiscard]] bool TryGetRings(ZoneRings& out) const noexcept;
+        //! どの色にも入らない所 (外れ) の当たり位置の係数
+        [[nodiscard]] float RemainderPowerScale() const noexcept { return m_remainderPowerScale; }
+        //! どの色にも入らない所の当たり位置の係数を置く。負は 0。非数と無限は 0
+        void SetRemainderPowerScale(float scale) noexcept;
 
-        //! 段の数。2 は真ん中と外れ、3 は真ん中・惜しい・外れ
-        [[nodiscard]] int TierCount() const noexcept { return m_tierCount; }
-        //! 段の数を置く。2〜3 へ丸める
-        void SetTierCount(int count) noexcept;
-        //! 真ん中の範囲 (m)。拡縮を掛ける前
-        [[nodiscard]] float CenterRadius() const noexcept { return m_centerRadius; }
-        //! 真ん中の範囲を置く。負と非数は 0
-        void SetCenterRadius(float radius) noexcept;
-        //! 惜しいの範囲 (m)。拡縮を掛ける前。段の数が 2 の間も値は残す
-        [[nodiscard]] float NearRadius() const noexcept { return m_nearRadius; }
-        //! 惜しいの範囲を置く。負と非数は 0
-        void SetNearRadius(float radius) noexcept;
-
-        //! @brief 範囲の大きさの順が崩れているかを返す。エディタが警告の色に使う
-        //! @return 段の数が 3 で、どちらの段も名指しした形を使っておらず、真ん中の範囲が惜しいの範囲以上の場合 true、
-        //! それ以外の場合は false
-        [[nodiscard]] bool IsOrderBroken() const noexcept;
-
-        //! 真ん中の形として名指しした当たり判定。空なら真ん中の範囲 (m) で決める
-        [[nodiscard]] const NS::Obj::ComponentRef<NS::Obj::Collider>& CenterShape() const noexcept
-        {
-            return m_centerShape;
-        }
-        //! 真ん中の形を名指しする
-        void SetCenterShape(const NS::Obj::ComponentRef<NS::Obj::Collider>& shape) noexcept;
-        //! 惜しいの形として名指しした当たり判定。空なら惜しいの範囲 (m) で決める
-        [[nodiscard]] const NS::Obj::ComponentRef<NS::Obj::Collider>& NearShape() const noexcept { return m_nearShape; }
-        //! 惜しいの形を名指しする
-        void SetNearShape(const NS::Obj::ComponentRef<NS::Obj::Collider>& shape) noexcept;
-
-        //! @brief 段を決めるのに使っている名指しの形を返す
-        //! @param[in] tier 真ん中か惜しい
-        //! @return 名指しした形を使っている場合はその当たり判定。空・使えない形・外れの段・段の数 2 の惜しいは nullptr
-        [[nodiscard]] const NS::Obj::Collider* FindTierShape(HitTier tier) const noexcept;
-
-        // 相手ごとに Inspector で段の数と範囲を決める
+        // 相手ごとに Inspector で決める。色は HitZoneArea を足して決める
         NS_REFLECT_BEGIN(HitZones, NS::Obj::Component)
-        NS_REFLECT_ACCESSOR(int, "段の数", TierCount(), SetTierCount)
-        NS_REFLECT_ACCESSOR(float, "真ん中の範囲", CenterRadius(), SetCenterRadius)
-        NS_REFLECT_ACCESSOR(float, "惜しいの範囲", NearRadius(), SetNearRadius)
-        NS_REFLECT_FIELD(m_centerShape, "真ん中の形")
-        NS_REFLECT_FIELD(m_nearShape, "惜しいの形")
+        NS_REFLECT_ACCESSOR(float, "残りの威力の倍率", RemainderPowerScale(), SetRemainderPowerScale)
         NS_REFLECT_END()
 
     private:
-        // 体の中心と、線に直交する水平の軸への体の半幅を出す。体が箱か球 1 つでなければ false
+        // 体の中心、線に直交する水平の軸への体の半幅、縦の半分の高さ、表面の半径を出す。体が箱か球 1 つでなければ
+        // false。表面の半径は、球はその半径、箱は外接球の半径
         [[nodiscard]] bool TryGetBody(NS::Core::Vector3& outCenter,
                                       float normalX,
                                       float normalZ,
-                                      float& outHalfWidth) const noexcept;
-        // 持ち主の水平の拡縮。x と z の大きい方
-        [[nodiscard]] float HorizontalScale() const noexcept;
-        // 名指しを引き、段の形に使える時だけ返す。名指しがあるのに使えない時は段ごとに 1 回だけ警告する
-        [[nodiscard]] const NS::Obj::Collider* ResolveTierShape(const NS::Obj::ComponentRef<NS::Obj::Collider>& ref,
-                                                                const char* tierName,
-                                                                bool& warned) const noexcept;
+                                      float& outHalfWidth,
+                                      float& outHalfHeight,
+                                      float& outSurfaceRadius) const noexcept;
 
-        // 足した直後の 0.5 m は半径 0.5 m の玉で「線が玉の体を通る」と同じ。1.0 m はその倍 (2026-09-29 本人の指定)
-        int m_tierCount = 3;         // 段の数
-        float m_centerRadius = 0.5f; // 真ん中の範囲 (m)
-        float m_nearRadius = 1.0f;   // 惜しいの範囲 (m)
-
-        NS::Obj::ComponentRef<NS::Obj::Collider> m_centerShape; // 真ん中の形
-        NS::Obj::ComponentRef<NS::Obj::Collider> m_nearShape;   // 惜しいの形
+        // 今までの「突進位置係数カーブ」の端の値。かすめた当たりの威力を 3 割落とす
+        float m_remainderPowerScale = 0.7f; // 残りの当たり位置の係数
 
         mutable bool m_warnedAmbiguousBody = false; // ぶつかる当たり判定が 2 つ以上ある警告を出したか
-        mutable bool m_warnedCenterShape = false;   // 真ん中の形が使えない警告を出したか
-        mutable bool m_warnedNearShape = false;     // 惜しいの形が使えない警告を出したか
     };
 } // namespace NS::Game::Level

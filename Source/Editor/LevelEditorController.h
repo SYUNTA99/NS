@@ -261,17 +261,9 @@ private:
     //! @param[in] all 真なら全配置物、偽なら選んでいる分だけ
     void RenderColliderWireframes(bool all) noexcept;
 
-    //! @brief 体当たりの相手の段の範囲と、直近の当たりの線の通った点を線で描く
-    //! @details 範囲は全部の相手に出す。段を詰める時は隣の相手と見比べるため
-    //! 形を名指しした段は円の代わりに形を描く (RenderTierShapes)
-    //! HitZones を持たない相手と、体が決まらず段を測れない相手には警告の色の球を出す
+    //! @brief 直近の当たりで自機の玉が相手の表面に触れた点と、段を測れない相手の警告を描く
+    //! @details HitZones を持たない相手と、体が決まらず段を測れない相手には警告の色の球を出す
     void RenderHitZones() noexcept;
-
-    //! @brief 壊せる物 1 体の段の形を描く
-    //! @details 名指しした形は段の色、名指ししていない物理に入れない当たり判定は候補の色
-    //! @param[in] object 壊せる物
-    //! @param[in] zones object の HitZones。持たなければ nullptr
-    void RenderTierShapes(const NS::Obj::GameObject& object, const NS::Game::Level::HitZones* zones) noexcept;
 
     //! 主対象以外の選択物を枠で見せる。ギズモは 1 体にしか出ないので、選んだ範囲を目で追えるようにする
     void RenderSelectionOutlines() noexcept;

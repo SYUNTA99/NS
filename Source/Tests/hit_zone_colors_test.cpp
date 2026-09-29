@@ -18,29 +18,22 @@ namespace
 TEST(HitZoneColorsTest, EachTierAndTheWarningHaveTheirOwnColor)
 {
     const NS::Core::Color center = NS::Editor::HitZoneColor(HitTier::Center);
-    const NS::Core::Color nearMiss = NS::Editor::HitZoneColor(HitTier::Near);
     const NS::Core::Color wide = NS::Editor::HitZoneColor(HitTier::Wide);
     const NS::Core::Color warning = NS::Editor::HitZoneWarningColor();
-    const NS::Core::Color candidate = NS::Editor::HitZoneCandidateColor();
 
-    EXPECT_FALSE(SameColor(center, nearMiss));
     EXPECT_FALSE(SameColor(center, wide));
-    EXPECT_FALSE(SameColor(nearMiss, wide));
     EXPECT_FALSE(SameColor(warning, center));
-    EXPECT_FALSE(SameColor(warning, nearMiss));
     EXPECT_FALSE(SameColor(warning, wide));
-    EXPECT_FALSE(SameColor(candidate, center));
-    EXPECT_FALSE(SameColor(candidate, nearMiss));
-    EXPECT_FALSE(SameColor(candidate, wide));
-    EXPECT_FALSE(SameColor(candidate, warning));
 }
 
-// 範囲の円は段の色。大きさの順が崩れていれば警告の色
-TEST(HitZoneColorsTest, RingTurnsToTheWarningColorWhenTheOrderIsBroken)
+// 真ん中は赤、外れは青。本人の呼び方のまま
+TEST(HitZoneColorsTest, TiersAreRedAndBlue)
 {
-    EXPECT_TRUE(
-        SameColor(NS::Editor::HitZoneRingColor(HitTier::Center, false), NS::Editor::HitZoneColor(HitTier::Center)));
-    EXPECT_TRUE(SameColor(NS::Editor::HitZoneRingColor(HitTier::Near, false), NS::Editor::HitZoneColor(HitTier::Near)));
-    EXPECT_TRUE(SameColor(NS::Editor::HitZoneRingColor(HitTier::Center, true), NS::Editor::HitZoneWarningColor()));
-    EXPECT_TRUE(SameColor(NS::Editor::HitZoneRingColor(HitTier::Near, true), NS::Editor::HitZoneWarningColor()));
+    const NS::Core::Color center = NS::Editor::HitZoneColor(HitTier::Center);
+    const NS::Core::Color wide = NS::Editor::HitZoneColor(HitTier::Wide);
+
+    EXPECT_GT(center.R(), center.G() + 0.5f);
+    EXPECT_GT(center.R(), center.B() + 0.5f);
+    EXPECT_GT(wide.B(), wide.R() + 0.5f);
+    EXPECT_GT(wide.B(), wide.G() + 0.2f);
 }

@@ -47,7 +47,8 @@ namespace NS::Gfx::DebugDraw
                 const NS::Core::Color& color) noexcept;
 
     //! @brief カプセル形状の枠線を追加する
-    //! @details 円柱の両端の円 2 つと、軸に平行な側面の線 4 本を追加する。両端の半球の弧は描かない
+    //! @details 円柱の両端の円 2 つ、軸に平行な側面の線 4 本、両端の半球を直交 2 面で切った半円 4 本を追加する
+    //! 軸の長さが 0 なら球として、上向きの軸で描く
     //! @param[in] base カプセル中心の座標
     //! @param[in] axis 中心から端の半球中心へ向かうベクトル
     //! @param[in] radius カプセルの半径
@@ -73,7 +74,7 @@ namespace NS::Gfx::DebugDraw
     [[nodiscard]] std::size_t VertexCount() noexcept;
 
     //! @brief 半透明の三角形を追加する
-    //! @details 線より先に、裏表の両方を深度を書かずに描く。手前の物には隠れる。透け具合は色のアルファで決める
+    //! @details 線より先に、裏表の両方を深度を見ずに描く。手前の物にも隠れない。透け具合は色のアルファで決める
     //! @param[in] a 1 つ目の頂点の座標
     //! @param[in] b 2 つ目の頂点の座標
     //! @param[in] c 3 つ目の頂点の座標

@@ -69,10 +69,9 @@ namespace
     };
 
     // 中心近くは 6 マス先の的へ長く走って当て、止めを上限の 12 まで伸ばす
-    // 横ずれ 0.45・0.7 は、的の半幅 0.5 + 自機の半径 0.4 で割ると 0.5・0.78 で、既定の境目で惜しいと大きな外れ
-    // 長く走ると寄せで横ずれが縮むので、惜しいと大きな外れは 1 マス先の的に当てる
+    // 横ずれ 0.7 は、的の半幅 0.5 + 自機の半径 0.4 で割ると 0.78 で大きな外れ
+    // 長く走ると寄せで横ずれが縮むので、大きな外れは 1 マス先の的に当てる
     constexpr Course k_CenterCourse{.lateral = 0.0f};
-    constexpr Course k_NearCourse{.start = 0.0f, .lateral = 0.45f, .targetCell = 1};
     constexpr Course k_WideCourse{.start = 0.0f, .lateral = 0.7f, .targetCell = 1};
 
     Rig Build(NS::Obj::Scene& scene, const Course& course)
@@ -125,7 +124,7 @@ namespace
         NS::Obj::SetField(body, "質量", course.mass);
         NS::Obj::ObjectJsonComponents(target).push_back(body);
         NS::Obj::ObjectJsonComponents(target).push_back(NS::Obj::MakeComponentEntry("Breakable"));
-        NS::Obj::ObjectJsonComponents(target).push_back(NsTest::MakeTestHitZonesEntry());
+        NsTest::AddTestHitZones(NS::Obj::ObjectJsonComponents(target));
         NS::Obj::SceneJsonObjects(data).push_back(target);
         scene.LoadJson(std::move(data));
 
@@ -235,11 +234,6 @@ namespace
         // 押し飛ばしの質量指数 0.35 と反動の質量因子。ImpactResolver が書く比と同じ式
         record.launchScale = power / std::pow(mass, 0.35f);
         record.reboundScale = power * 2.0f * mass / (mass + 1.0f);
-        record.pullBackFrames = 0;
-        if (tier == HitTier::Near)
-        {
-            record.pullBackFrames = static_cast<int>(std::ceil(static_cast<float>(hitStopSteps) * 0.5f));
-        }
         return record;
     }
 } // namespace
@@ -298,45 +292,6 @@ TEST(ImpactEffects, CenterHitStartsEachLayerOnItsFrame)
     ASSERT_EQ(dust.size(), 1u);
     ASSERT_TRUE(dust[0].amount.has_value());
     EXPECT_FLOAT_EQ(dust[0].amount.value(), shape.dustScale);
-}
-
-// 惜しいは光条と照りを出さず、輪は引き始めで広がり止んで 2 フレーム後に消える。核は引き始めの前まで留まる
-TEST(ImpactEffects, NearMissLeavesOutTheStreakAndTheGlowAndStopsTheRingAtThePullBack)
-{
-    NS::Obj::Scene scene;
-    const Rig rig = Build(scene, k_NearCourse);
-    ASSERT_NE(rig.effects, nullptr);
-    BeginSlam(scene, rig, 1.0f);
-    const Beats beats = RunHit(scene, rig, 90);
-    ASSERT_TRUE(beats.freeze.has_value());
-    ASSERT_EQ(rig.impact->LastImpact().tier, HitTier::Near);
-    const int c = beats.freeze.value();
-    const int n = rig.impact->LastImpact().pullBackFrames;
-    ASSERT_GT(n, 1);
-
-    EXPECT_TRUE(Named(*rig.effects, "impact.streak").empty());
-    EXPECT_TRUE(Named(*rig.effects, "impact.glow").empty());
-    EXPECT_TRUE(Named(*rig.effects, "impact.embers").empty());
-    EXPECT_EQ(StartFrom(*rig.effects, "impact.core", c), 0);
-    EXPECT_EQ(StartFrom(*rig.effects, "impact.sparks", c), 0);
-    const std::vector<EffectLayerRecord> core = Named(*rig.effects, "impact.core");
-    ASSERT_EQ(core.size(), 1u);
-    ASSERT_TRUE(core[0].rootStopStep.has_value());
-    EXPECT_EQ(core[0].rootStopStep.value() - c, n - 1);
-    if (n + 2 > 3)
-    {
-        const std::vector<EffectLayerRecord> ring = Named(*rig.effects, "impact.ring");
-        ASSERT_EQ(ring.size(), 1u);
-        EXPECT_EQ(ring[0].startStep - c, 3);
-        ASSERT_TRUE(ring[0].endStep.has_value());
-        EXPECT_EQ(ring[0].endStep.value() - c, n + 2);
-    }
-    // 輪が届くのは広がりきった半径の 5 割
-    const ImpactShape shape = rig.effects->ShapeFor(rig.impact->LastImpact());
-    const std::vector<EffectLayerRecord> ring = Named(*rig.effects, "impact.ring");
-    ASSERT_FALSE(ring.empty());
-    ASSERT_TRUE(ring[0].amount.has_value());
-    EXPECT_FLOAT_EQ(ring[0].amount.value(), shape.ringRadius * 0.5f);
 }
 
 // 大きな外れは光条・輪・照りを出さず、火花は横ずれの側と相手の飛ぶ向きと上の間へ擦れる。核は 4 フレーム目まで留まる
@@ -487,11 +442,9 @@ TEST(ImpactEffects, LayersGrowWithThePower)
     EXPECT_LT(weakest.sparkCount, strongest.sparkCount);
     EXPECT_LT(weakest.sparkSpeed, strongest.sparkSpeed);
     EXPECT_LT(weakest.emberCount, strongest.emberCount);
-    // 粉の大きさは段の見分けの数表に並ぶ量。3 段の走行の威力 (1.5〜2.0) でも順に並ぶ
+    // 粉の大きさは段の見分けの数表に並ぶ量。走行の威力 (1.5〜2.0) でも外れが中心近くより小さい
     const float wideDust = effects.ShapeFor(MakeRecord(HitTier::Wide, 1.5f, 6, 1.0f)).dustScale;
-    const float nearDust = effects.ShapeFor(MakeRecord(HitTier::Near, 1.7f, 7, 1.0f)).dustScale;
-    EXPECT_LT(wideDust, nearDust);
-    EXPECT_LT(nearDust, strongest.dustScale);
+    EXPECT_LT(wideDust, strongest.dustScale);
     // 核は玉の直径 1.3 m の 54% (0.7 m) を超えない
     EXPECT_LE(strongest.coreDiameter, 0.7f);
     // 火花の量は威力の順に並ぶ。質量 8 に溜めきりで当てた火花は遅いが、質量 1 のタップより量が多い
@@ -803,11 +756,9 @@ TEST(ImpactEffects, LandingDustsGrowWithTheFallSpeedTheMassAndThePower)
     const float heavy = effects.ShapeFor(MakeRecord(HitTier::Center, 2.0f, 12, 8.0f)).launchLandDustScale;
     EXPECT_LT(light, middle);
     EXPECT_LT(middle, heavy);
-    // 中心近く・惜しい・大きな外れの台本の威力。同じ質量でも強く飛ばした物ほど大きい
+    // 中心近く・大きな外れの台本の威力。同じ質量でも強く飛ばした物ほど大きい
     const float wide = effects.ShapeFor(MakeRecord(HitTier::Wide, 1.507f, 6, 1.0f)).launchLandDustScale;
-    const float nearMiss = effects.ShapeFor(MakeRecord(HitTier::Near, 1.723f, 7, 1.0f)).launchLandDustScale;
-    EXPECT_LT(wide, nearMiss);
-    EXPECT_LT(nearMiss, middle);
+    EXPECT_LT(wide, middle);
 
     const int shortTrail = effects.ShapeFor(MakeRecord(HitTier::Center, 2.0f, 12, 8.0f)).launchTrailFrames;
     const int longTrail = effects.ShapeFor(MakeRecord(HitTier::Center, 2.0f, 12, 0.5f)).launchTrailFrames;

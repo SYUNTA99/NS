@@ -4,16 +4,17 @@
 
 namespace NsTest
 {
-    //! @brief 試験で組む壊せる物に足す段の範囲の項目を作る
-    //! @details 段の範囲を持たない壊せる物は体当たりの相手にならない
-    //! 範囲は、試験の自機 (半径 0.4 m) が半幅 0.5 m の相手へ軸に沿って当たった時に、前の自機の側の割合
-    //! 0.35 / 0.7 × 届く幅 0.9 m と同じ段になる値。前の段を前提にした試験の意味を保つ
-    //! @return HitZones の項目。3 段、真ん中 0.315 m、惜しい 0.63 m
-    [[nodiscard]] inline nlohmann::json MakeTestHitZonesEntry()
+    //! @brief 試験で組む壊せる物に、段の面 (HitZones) と気持ちいいの色 (HitZoneArea) の項目を足す
+    //! @details 段の面を持たない壊せる物は体当たりの相手にならない
+    //! 色は横幅 0.35・縦の幅 1 の箱。横ずれ比 0.35 の内側が中心近くで、高さは見ない。試験の自機 (半径 0.4 m) と
+    //! 半幅 0.5 m の箱なら横ずれ 0.315 m が縁。前の範囲 (m) の段を前提にした試験の意味を保つ
+    //! @param[in,out] components 壊せる物の部品の項目の並び
+    inline void AddTestHitZones(nlohmann::json& components)
     {
-        nlohmann::json entry = NS::Obj::MakeComponentEntry("HitZones");
-        NS::Obj::SetField(entry, "真ん中の範囲", 0.315f);
-        NS::Obj::SetField(entry, "惜しいの範囲", 0.63f);
-        return entry;
+        components.push_back(NS::Obj::MakeComponentEntry("HitZones"));
+        nlohmann::json area = NS::Obj::MakeComponentEntry("HitZoneArea");
+        NS::Obj::SetField(area, "横幅", 0.35f);
+        NS::Obj::SetField(area, "縦の幅", 1.0f);
+        components.push_back(area);
     }
 } // namespace NsTest

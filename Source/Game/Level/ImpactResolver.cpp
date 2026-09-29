@@ -67,17 +67,6 @@ namespace NS::Game::Level
             return seed[0];
         }
 
-        // 止めのフレーム数 × ratio を切り上げたフレーム数。ratio は 0〜1 に収め、非数は 0 として扱う
-        [[nodiscard]] int PullBackFrames(int stopSteps, float ratio) noexcept
-        {
-            if (!(ratio > 0.0f))
-            {
-                return 0;
-            }
-            const float clamped = std::min(ratio, 1.0f);
-            return static_cast<int>(std::ceil(static_cast<float>(stopSteps) * clamped));
-        }
-
         [[nodiscard]] JPH::BodyID CurrentBodyOf(const NS::Obj::GameObject& object) noexcept
         {
             // RigidBody の形になった collider は RigidBody の body を返す。飛んでいても置かれていても同じ口で引ける
@@ -372,9 +361,10 @@ namespace NS::Game::Level
             }
 
             // 当たりと同じ Judge を通す。式を 2 つ置くと、予測した段と当たりの段が食い違う
+            // 線の起点は掃いた玉の中心。段は玉が表面に触れる高さで決まるので、立ち姿の根を渡すと玉より高い線になる
             const HitZones* zones = breakable.Owner()->FindComponent<HitZones>();
             HitZoneJudgement line;
-            if (zones == nullptr || !zones->Judge(position, lineDir, playerRadius, line))
+            if (zones == nullptr || !zones->Judge(ballCenter, lineDir, playerRadius, line))
             {
                 return;
             }
@@ -518,10 +508,12 @@ namespace NS::Game::Level
         const float mass = MassOf(*hit->Owner());
         const float massFactor = mass / (mass + 1.0f);
 
-        // 段と横ずれは相手の段の範囲で決める。予測と同じ Judge を通す
+        // 段と当たり位置の係数は相手の段の面の色で決める。予測と同じく、線の起点は自機の玉の中心 (丸まっている間は根と
+        // 同じ)
         const HitZones* zones = hit->Owner()->FindComponent<HitZones>();
+        const NS::Core::Vector3 ballCenter{position.x, position.y - m_movement->CapsuleHalfHeight(), position.z};
         HitZoneJudgement judgement;
-        if (zones == nullptr || !zones->Judge(position, velocity, m_movement->CapsuleRadius(), judgement))
+        if (zones == nullptr || !zones->Judge(ballCenter, velocity, m_movement->CapsuleRadius(), judgement))
         {
             return;
         }
@@ -534,7 +526,7 @@ namespace NS::Game::Level
         if (m_collisionInput != nullptr)
         {
             chargeFactor = m_collisionInput->ChargeFactorFor(charge01);
-            positionFactor = m_collisionInput->PositionFactorFor(offset01);
+            positionFactor = judgement.powerScale;
             centerHit = tier == HitTier::Center;
         }
         // 最終威力 = チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
@@ -550,16 +542,16 @@ namespace NS::Game::Level
         }
         NS_LOG_INFO(
             Game,
-            "威力の内訳: 溜め {} × 当たり位置 {} = {} 溜め量 {} 中心からの横ずれ {} 段 {} 線の通った点 ({}, {}, {})",
+            "威力の内訳: 溜め {} × 当たり位置 {} = {} 溜め量 {} 中心からの横ずれ {} 段 {} 表面に触れた点 ({}, {}, {})",
             chargeFactor,
             positionFactor,
             power,
             charge01,
             offset01,
             static_cast<int>(tier),
-            judgement.linePoint.x,
-            judgement.linePoint.y,
-            judgement.linePoint.z);
+            judgement.surfacePoint.x,
+            judgement.surfacePoint.y,
+            judgement.surfacePoint.z);
 
         // 明けたフレームの反発と貫通速度を通常移動に乗せるため、凍結より先に突進を打ち切る
         m_movement->CancelBodySlam();
@@ -658,7 +650,7 @@ namespace NS::Game::Level
         m_lastImpact.positionFactor = positionFactor;
         m_lastImpact.offset01 = offset01;
         m_lastImpact.tier = tier;
-        m_lastImpact.linePoint = judgement.linePoint;
+        m_lastImpact.surfacePoint = judgement.surfacePoint;
         // 寄せは止めの頭で埋める。止めの無い当たりは寄せない
         m_lastImpact.snapDistance = 0.0f;
         m_lastImpact.hitStopSteps = stopSteps;
@@ -771,7 +763,6 @@ namespace NS::Game::Level
     {
         // 段の無い台は白と寄りと傾きを出さず、揺れの倍率も掛けない
         const bool center = tiered && tier == HitTier::Center;
-        const bool nearMiss = tiered && tier == HitTier::Near;
         const bool wide = tiered && tier == HitTier::Wide;
 
         // 最初の振れの大きさは全段で同じ式。反発と同じ質量因子を掛け、中心近くだけ段の倍率を掛ける
@@ -783,7 +774,7 @@ namespace NS::Game::Level
             m_pendingFlashSteps = m_centerHitFlashSteps;
         }
 
-        // 中心近くと惜しいは縦だけを毎フレーム入れ替え、止めのフレーム数で収める
+        // 中心近くは縦だけを毎フレーム入れ替え、止めのフレーム数で収める
         m_pendingShake = NS::Obj::CameraShakeDesc{
             .sideAmplitude = 0.0f,
             .upAmplitude = swing,
@@ -811,14 +802,6 @@ namespace NS::Game::Level
             m_pendingZoomRoll.holdFrames = stopSteps;
             m_pendingZoomRoll.returnFrames = m_zoomRollReturnFrames;
         }
-        if (nearMiss)
-        {
-            // 寄りは 1 を超えた分に割合を掛ける。倍率そのものに掛けると 1 未満の引きになる
-            m_pendingZoomRoll.zoom = 1.0f + (m_centerHitZoom - 1.0f) * m_nearHitReturnRatio;
-            m_pendingZoomRoll.rollDegrees = m_centerHitRollDegrees * m_nearHitReturnRatio;
-            m_pendingZoomRoll.holdFrames = PullBackFrames(stopSteps, m_nearHitPullBackRatio);
-            m_pendingZoomRoll.returnFrames = m_zoomRollReturnFrames;
-        }
 
         // 当たりの記録は検知のフレームに読まれるので、傾きの向きもここで今のカメラから決める
         float rollSign = 1.0f;
@@ -827,20 +810,13 @@ namespace NS::Game::Level
         {
             rollSign = scene->CameraBrain()->SideSignOf(m_pendingZoomRoll.rollDirection);
         }
-        // 振動は段ごとにモーターを分ける。強さは質量と威力で変えない。中心近くと惜しいの長さは止めで結ぶ
+        // 振動は段ごとにモーターを分ける。強さは質量と威力で変えない。中心近くの長さは止めで結ぶ
         m_pendingPad = PadVibrationPlan{};
         if (center)
         {
             m_pendingPad.start.left = m_centerHitPadStrength;
             m_pendingPad.fadeFrames = stopSteps;
             m_pendingPad.frames = stopSteps;
-        }
-        if (nearMiss)
-        {
-            // 減る傾きは中心近くと同じにし、寄りと同じフレームで切る
-            m_pendingPad.start.left = m_centerHitPadStrength * m_nearHitReturnRatio;
-            m_pendingPad.fadeFrames = stopSteps;
-            m_pendingPad.frames = PullBackFrames(stopSteps, m_nearHitPullBackRatio);
         }
         if (wide)
         {
@@ -854,11 +830,6 @@ namespace NS::Game::Level
         m_lastImpact.zoomStart = m_pendingZoomRoll.zoom;
         m_lastImpact.rollStart = m_pendingZoomRoll.rollDegrees * rollSign;
         m_lastImpact.padStart = m_pendingPad.start;
-        m_lastImpact.pullBackFrames = 0;
-        if (nearMiss)
-        {
-            m_lastImpact.pullBackFrames = PullBackFrames(stopSteps, m_nearHitPullBackRatio);
-        }
     }
 
     void ImpactResolver::StartHitReturns()

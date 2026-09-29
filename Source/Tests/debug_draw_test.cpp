@@ -71,6 +71,15 @@ TEST(DebugDrawTest, ClearResetsToZero)
     EXPECT_EQ(DD::VertexCount(), std::size_t{0});
 }
 
+// 両端の半球も弧で描く。上下の円と側面の線だけだと円柱に見える
+TEST(DebugDrawTest, CapsuleDrawsBothHemispheres)
+{
+    Reset();
+    DD::Capsule({0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 0.5f, Color{0.0f, 1.0f, 0.0f, 1.0f});
+    // 上下の円 2 本 × 12 分割 × 2 頂点 + 側面の線 4 本 × 2 頂点 + 半球の弧 4 本 × 6 分割 × 2 頂点
+    EXPECT_EQ(DD::VertexCount(), std::size_t{104});
+}
+
 TEST(DebugDrawTest, CapsuleAccumulatesNonZeroVertices)
 {
     Reset();
@@ -95,17 +104,31 @@ TEST(DebugDrawTest, ClearDropsFacesToo)
     EXPECT_EQ(DD::FaceVertexCount(), std::size_t{0});
 }
 
+// 面は上限の 12960 枚までは 1 枚も捨てない
+TEST(DebugDrawTest, FacesHoldUpToTheirCapacity)
+{
+    Reset();
+    const Color c{1.0f, 1.0f, 1.0f, 0.2f};
+    constexpr int k_Triangles = 10 * 27 * 24 * 2;
+    for (int i = 0; i < k_Triangles; ++i)
+    {
+        const float x = static_cast<float>(i);
+        DD::Triangle({x, 0.0f, 0.0f}, {x + 1.0f, 0.0f, 0.0f}, {x, 1.0f, 0.0f}, c);
+    }
+    EXPECT_EQ(DD::FaceVertexCount(), static_cast<std::size_t>(k_Triangles) * 3);
+}
+
 // 面も上限を超えたら古い物から捨て、上限の 3 の倍数で止まる
 TEST(DebugDrawTest, FaceOverflowDropsOldestAndCapsAtMaximum)
 {
     Reset();
     const Color c{1.0f, 1.0f, 1.0f, 0.2f};
-    for (int i = 0; i < 5000; ++i)
+    for (int i = 0; i < 15000; ++i)
     {
         const float x = static_cast<float>(i);
         DD::Triangle({x, 0.0f, 0.0f}, {x + 1.0f, 0.0f, 0.0f}, {x, 1.0f, 0.0f}, c);
     }
-    EXPECT_LE(DD::FaceVertexCount(), std::size_t{12288});
+    EXPECT_LE(DD::FaceVertexCount(), std::size_t{38880});
     EXPECT_EQ(DD::FaceVertexCount() % 3, std::size_t{0});
 }
 
