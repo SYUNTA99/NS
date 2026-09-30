@@ -2,7 +2,7 @@
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/OBB.h"
 
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsScene.h"
@@ -111,7 +111,7 @@ namespace NS::Obj
 
     NS::Core::Matrix BoxCollider::CombinedWorldMatrix() const noexcept
     {
-        const GameObject* owner = Owner();
+        const Actor* owner = Owner();
         if (owner != nullptr)
         {
             return LocalMatrix() * owner->Root().WorldMatrix();

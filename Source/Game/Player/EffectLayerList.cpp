@@ -1,7 +1,7 @@
 #include "Game/Player/EffectLayerList.h"
 
 #include "Runtime/Object/Component.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Scene/Scene.h"
 
 #include <utility>
@@ -152,7 +152,7 @@ namespace NS::Game::Player
 
     NS::Gfx::EffectScene* EffectsOf(const NS::Obj::Component& component) noexcept
     {
-        const NS::Obj::GameObject* owner = component.Owner();
+        const NS::Obj::Actor* owner = component.Owner();
         if (owner == nullptr || owner->OwningScene() == nullptr)
         {
             return nullptr;

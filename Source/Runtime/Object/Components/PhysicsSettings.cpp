@@ -1,6 +1,6 @@
 #include "Runtime/Object/Components/PhysicsSettings.h"
 
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 
@@ -26,7 +26,7 @@ namespace NS::Obj
 
     void PhysicsSettings::Apply(const NS::Core::Vector3& gravity) noexcept
     {
-        GameObject* owner = Owner();
+        Actor* owner = Owner();
         if (owner == nullptr || owner->OwningScene() == nullptr)
         {
             return;

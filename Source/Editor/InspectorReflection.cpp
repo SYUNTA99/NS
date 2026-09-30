@@ -2,7 +2,7 @@
 
 #include "Editor/EditorUi.h"
 #include "Runtime/Object/Component.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -54,7 +54,7 @@ namespace NS::Editor
                 return entry.second;
         }
         if (!m_holder)
-            m_holder = std::make_unique<NS::Obj::GameObject>();
+            m_holder = std::make_unique<NS::Obj::Actor>();
 
         // 既定コンストラクタで作っただけの 1 体。未登録の型は nullptr が返り、その答も控えて再試行しない
         NS::Obj::Component* created = NS::Obj::CreateComponent(typeName, *m_holder);

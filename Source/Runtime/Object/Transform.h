@@ -13,7 +13,7 @@ namespace NS::Obj
     //! 前フレーム値を保持し Snapshot() で現在値を一括退避する
     //! 描画側は世界が回っている間 FrameTimer::Alpha() で previous-current を補間し、
     //! ガタつきのない軌道を再現する
-    //! 所有関係は持たず、Transform 間は生参照で寿命は GameObject が支配する
+    //! 所有関係は持たず、Transform 間は生参照で寿命は Actor が支配する
     class Transform : public NS::Core::NonCopyable
     {
     public:

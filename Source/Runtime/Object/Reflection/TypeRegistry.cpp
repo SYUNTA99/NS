@@ -1,7 +1,7 @@
 ﻿#include "Runtime/Object/Reflection/TypeRegistry.h"
 
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/ObjectJson.h"
 
 #include <algorithm>
@@ -17,7 +17,10 @@ namespace NS::Obj
         return instance;
     }
 
-    void TypeRegistry::Register(const char* className, GameObjectCreateFn create, ComponentAttachFn attach)
+    void TypeRegistry::Register(const char* className,
+                                ActorCreateFn create,
+                                ComponentAttachFn attach,
+                                const char* label)
     {
         if (className == nullptr)
         {
@@ -36,7 +39,8 @@ namespace NS::Obj
         {
             return;
         }
-        m_entries.push_back(Entry{className, create, attach});
+        // 置けるのは Actor だけ。Component に表示名を付けても一覧には出さない
+        m_entries.push_back(Entry{className, create, attach, create != nullptr ? label : nullptr});
     }
 
     const std::vector<TypeRegistry::Entry>& TypeRegistry::Entries() const noexcept
@@ -56,7 +60,7 @@ namespace NS::Obj
         return nullptr;
     }
 
-    std::unique_ptr<GameObject> CreateRegisteredObject(const nlohmann::json& object)
+    std::unique_ptr<Actor> CreateRegisteredObject(const nlohmann::json& object)
     {
         // class が正。一致登録があればその型で作る
         const std::string_view className = ObjectJsonClass(object);
@@ -67,12 +71,12 @@ namespace NS::Obj
             {
                 return entry->create();
             }
-            NS_LOG_WARN(Scene, "CreateRegisteredObject: 未登録クラス {} を素の GameObject で組む", className);
+            NS_LOG_WARN(Scene, "CreateRegisteredObject: 未登録クラス {} を素の Actor で組む", className);
         }
-        return std::make_unique<GameObject>();
+        return std::make_unique<Actor>();
     }
 
-    Component* CreateComponent(std::string_view typeName, GameObject& obj)
+    Component* CreateComponent(std::string_view typeName, Actor& obj)
     {
         const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(typeName);
         if (entry != nullptr && entry->attach != nullptr)
@@ -84,28 +88,24 @@ namespace NS::Obj
         return nullptr;
     }
 
-    bool IsRegistered(std::string_view typeName) noexcept
-    {
-        const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(typeName);
-        return entry != nullptr && entry->attach != nullptr;
-    }
-
-    const std::vector<std::string>& RegisteredNames()
+    const std::vector<const TypeRegistry::Entry*>& PlaceableEntries()
     {
         // 登録は全て main 前の静的初期化で済むので、初回呼び出し時に確定した一覧を組める
-        // パレット表示が実行ごとに揺れないよう名前順へ揃える
-        static const std::vector<std::string> names = [] {
-            std::vector<std::string> result;
+        // 静的初期化の順は翻訳単位で揺れるので、メニューが実行ごとに並び替わらないよう表示名の順へ揃える
+        static const std::vector<const TypeRegistry::Entry*> entries = [] {
+            std::vector<const TypeRegistry::Entry*> result;
             for (const TypeRegistry::Entry& entry : TypeRegistry::Get().Entries())
             {
-                if (entry.attach != nullptr)
+                if (entry.label != nullptr)
                 {
-                    result.emplace_back(entry.className);
+                    result.push_back(&entry);
                 }
             }
-            std::sort(result.begin(), result.end());
+            std::sort(result.begin(), result.end(), [](const TypeRegistry::Entry* a, const TypeRegistry::Entry* b) {
+                return std::string_view{a->label} < std::string_view{b->label};
+            });
             return result;
         }();
-        return names;
+        return entries;
     }
 } // namespace NS::Obj

@@ -8,7 +8,7 @@
 namespace NS::Obj
 {
     class AssetManager;
-    class GameObject;
+    class Actor;
     class Transform;
 
     //! OnUpdate 実行順を制御する priority。値が小さいほど先、同 priority 内は登録順
@@ -25,8 +25,8 @@ namespace NS::Obj
     };
 
     //! @brief 振る舞いを表現する再利用ブロック。通常は派生して使う
-    //! @details GameObject::AddComponent<T>() で生成され、GameObject が unique_ptr で寿命を所有する
-    //! Component 自身は所有者 GameObject を生参照する。owner は生成後に GameObject が注入する
+    //! @details Actor::AddComponent<T>() で生成され、Actor が unique_ptr で寿命を所有する
+    //! Component 自身は所有者 Actor を生参照する。owner は生成後に Actor が注入する
     //! 同じ object 上の Component への参照は OnStart で Owner()->FindComponent<T>() により解決する
     //! scene が持つ物は OnStart で Owner()->OwningScene() 経由で借りる
     //! ライフサイクル:
@@ -46,11 +46,11 @@ namespace NS::Obj
         //! OnUpdate 実行順の priority。既定は TickPriority::Update の 200
         [[nodiscard]] int Priority() const noexcept { return m_priority; }
 
-        //! 所有 GameObject。Scene attach 後は non-null
-        [[nodiscard]] GameObject* Owner() noexcept { return m_owner; }
-        [[nodiscard]] const GameObject* Owner() const noexcept { return m_owner; }
+        //! 所有 Actor。Scene attach 後は non-null
+        [[nodiscard]] Actor* Owner() noexcept { return m_owner; }
+        [[nodiscard]] const Actor* Owner() const noexcept { return m_owner; }
 
-        //! 所有 GameObject の root Transform への近道。型名衝突回避のため RootTransform 命名
+        //! 所有 Actor の root Transform への近道。型名衝突回避のため RootTransform 命名
         [[nodiscard]] Transform& RootTransform() noexcept;
         [[nodiscard]] const Transform& RootTransform() const noexcept;
 
@@ -98,11 +98,11 @@ namespace NS::Obj
         [[nodiscard]] bool IsA(const ReflectionInfo* target) const noexcept;
 
     private:
-        // owner 注入は AddComponent 経由のみ。Component から GameObject の非公開メンバへはアクセスしない
-        friend class GameObject;
-        void AttachOwner(GameObject* owner) noexcept { m_owner = owner; }
+        // owner 注入は AddComponent 経由のみ。Component から Actor の非公開メンバへはアクセスしない
+        friend class Actor;
+        void AttachOwner(Actor* owner) noexcept { m_owner = owner; }
 
-        GameObject* m_owner = nullptr;         // 所有 GameObject、attach 前は nullptr
+        Actor* m_owner = nullptr;         // 所有 Actor、attach 前は nullptr
         int m_priority = TickPriority::Update; // OnUpdate 実行順
         bool m_active = true;                  // false なら OnUpdate を skip
         bool m_enabled = true;                 // データの active 値、false なら OnUpdate を飛ばす

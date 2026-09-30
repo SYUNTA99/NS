@@ -1,12 +1,12 @@
 #include "Game/Level/Respawner.h"
 
-#include "Game/Level/Goal.h"
+#include "Game/Level/GoalComponent.h"
 #include "Game/Level/Health.h"
 #include "Game/Level/LaunchedBody.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 
@@ -51,7 +51,7 @@ namespace NS::Game::Level
         // 作り直さずに値を戻す。更新の最中に配置物を消すと、集めた更新の並びに解放済みの位置が残る
         for (const nlohmann::json& placed : NS::Obj::SceneJsonObjects(level))
         {
-            NS::Obj::GameObject* live = scene->Objects().FindByObjectId(NS::Obj::ObjectJsonId(placed));
+            NS::Obj::Actor* live = scene->Objects().FindByObjectId(NS::Obj::ObjectJsonId(placed));
             if (live == nullptr)
             {
                 continue;
@@ -65,6 +65,6 @@ namespace NS::Game::Level
         }
 
         // ルール配置物のフラグも初期状態へ戻す。前のプレイのフラグが残ると開始直後に再クリアしてしまう
-        scene->Objects().ForEachComponent<Goal>([](Goal& goal) { goal.ResetReached(); });
+        scene->Objects().ForEachComponent<GoalComponent>([](GoalComponent& goal) { goal.ResetReached(); });
     }
 } // namespace NS::Game::Level

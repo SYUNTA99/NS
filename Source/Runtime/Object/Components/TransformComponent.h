@@ -17,14 +17,14 @@ namespace NS::Obj
     inline constexpr const char* k_ScaleFieldName = "スケール";
 
     //! @brief 位置・回転・スケールの実体を持ち、リフレクション経路 (Inspector / undo / 直列化) へ載せるコンポーネント
-    //! @details GameObject はコンストラクタでこれを 1 つ積み、Root() はここが持つ Transform を指す
+    //! @details Actor はコンストラクタでこれを 1 つ積み、Root() はここが持つ Transform を指す
     //! 依存: NS::Core
     class TransformComponent : public Component
     {
     public:
         TransformComponent() noexcept = default;
 
-        //! 実体の Transform。GameObject の Root() はこれを貸しているだけ
+        //! 実体の Transform。Actor の Root() はこれを貸しているだけ
         [[nodiscard]] Transform& Root() noexcept { return m_transform; }
         [[nodiscard]] const Transform& Root() const noexcept { return m_transform; }
 
@@ -44,7 +44,7 @@ namespace NS::Obj
         NS_REFLECT_END()
 
     private:
-        Transform m_transform; // GameObject の Root() が指す実体
+        Transform m_transform; // Actor の Root() が指す実体
     };
 
     // 配置物データに書かれた transform も同じ物を指すので、live クラスと同じ場所に置く

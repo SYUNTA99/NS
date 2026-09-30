@@ -1,6 +1,6 @@
 ﻿#include "Runtime/Object/Components/ThirdPersonFollow.h"
 
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -120,7 +120,7 @@ namespace NS::Obj
         {
             return nullptr;
         }
-        GameObject* target = Owner()->OwningScene()->Objects().FindObject(m_targetRef);
+        Actor* target = Owner()->OwningScene()->Objects().FindObject(m_targetRef);
         if (target == nullptr)
         {
             return nullptr;

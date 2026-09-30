@@ -1,13 +1,13 @@
 #include "Runtime/Object/Components/OverlayRenderer.h"
 
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Scene/Scene.h"
 
 namespace NS::Obj
 {
     void OverlayRenderer::OnStart()
     {
-        GameObject* owner = Owner();
+        Actor* owner = Owner();
         if (owner == nullptr)
         {
             return;
@@ -22,7 +22,7 @@ namespace NS::Obj
 
     void OverlayRenderer::OnEndPlay()
     {
-        GameObject* owner = Owner();
+        Actor* owner = Owner();
         if (owner == nullptr)
         {
             return;

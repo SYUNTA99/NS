@@ -47,7 +47,7 @@ namespace NS::Editor
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(k_MeshDragType))
                 {
                     const char* dropped = static_cast<const char*>(payload->Data);
-                    editor.AddObjectWithMesh(dropped);
+                    editor.AddMeshParts(dropped);
                 }
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(k_MaterialDragType))
                 {

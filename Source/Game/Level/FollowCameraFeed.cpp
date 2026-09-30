@@ -5,7 +5,7 @@
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -69,7 +69,7 @@ namespace NS::Game::Level
         }
 
         // 追う相手は控えず毎フレーム引き直す。控えると、消された相手を指したまま次のフレームへ持ち越す
-        NS::Obj::GameObject* target = Owner()->OwningScene()->Objects().FindObject(m_follow->TargetRef());
+        NS::Obj::Actor* target = Owner()->OwningScene()->Objects().FindObject(m_follow->TargetRef());
         if (target == nullptr)
         {
             return;

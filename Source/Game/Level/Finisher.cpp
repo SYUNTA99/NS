@@ -1,11 +1,11 @@
 ﻿#include "Game/Level/Finisher.h"
 
-#include "Game/Level/Goal.h"
+#include "Game/Level/GoalComponent.h"
 #include "Game/Level/Respawner.h"
 #include "Game/Level/ScreenFade.h"
 #include "Runtime/Platform/Clock.h"
 #include "Runtime/Object/Components/PlayerInput.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Scene/Scene.h"
 
@@ -35,7 +35,7 @@ namespace NS::Game::Level
         }
 
         bool goalReached = false;
-        scene->Objects().ForEachComponent<Goal>([&goalReached](Goal& goal) {
+        scene->Objects().ForEachComponent<GoalComponent>([&goalReached](GoalComponent& goal) {
             if (goal.Reached())
                 goalReached = true;
         });

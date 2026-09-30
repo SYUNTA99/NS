@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/RigidBody.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Physics/PhysicsScene.h"
 
@@ -43,7 +43,7 @@ namespace NS::Obj
 
     bool Collider::JoinsRigidBody() const noexcept
     {
-        const GameObject* owner = Owner();
+        const Actor* owner = Owner();
         if (owner == nullptr || !CanJoinRigidBody())
         {
             return false;
@@ -82,7 +82,7 @@ namespace NS::Obj
 
     NS::Phys::PhysicsScene* Collider::ScenePhysics() const noexcept
     {
-        const GameObject* owner = Owner();
+        const Actor* owner = Owner();
         if (owner == nullptr || owner->OwningScene() == nullptr)
         {
             return nullptr;

@@ -4,7 +4,8 @@
 #include "Editor/EditorUi.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
-#include "Runtime/Object/GameObject.h"
+#include "Editor/PlacementCatalog.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/ObjectList.h"
 
 #include <algorithm>
@@ -26,6 +27,16 @@ namespace NS::Editor
     {
         // ヒエラルキー内で配置物をドラッグする時の受け渡しデータ
         constexpr const char* k_HierarchyDragType = "NS_HIERARCHY_OBJECT";
+
+        // 置ける物の一覧をメニューに並べ、選んだ物を編集視点の中心あたりへ置く
+        void RenderPlacementMenu(LevelEditorController& editor)
+        {
+            for (const PlacementItem& item : PlacementItems())
+            {
+                if (ImGui::MenuItem(item.label.c_str()))
+                    editor.PlaceItem(item);
+            }
+        }
     } // namespace
 #endif
 
@@ -46,7 +57,7 @@ namespace NS::Editor
             ImGui::Separator();
 
             std::size_t shownCount = 0;
-            for (const NS::Obj::GameObject* obj : editor.Objects())
+            for (const NS::Obj::Actor* obj : editor.Objects())
                 if (!obj->IsTransient())
                     ++shownCount;
             ImGui::Text("オブジェクト %zu 個", shownCount);
@@ -67,14 +78,14 @@ namespace NS::Editor
 
             if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_F2))
             {
-                if (NS::Obj::GameObject* target = editor.SelectedObjectGameObject())
+                if (NS::Obj::Actor* target = editor.SelectedObjectActor())
                     BeginRename(*target);
             }
 
             // 検索中は木を畳んで、一致した物だけを親子に関係なく並べる
-            for (NS::Obj::GameObject* objPtr : editor.Objects())
+            for (NS::Obj::Actor* objPtr : editor.Objects())
             {
-                NS::Obj::GameObject& object = *objPtr;
+                NS::Obj::Actor& object = *objPtr;
                 // 一時オブジェクトは配置物でないので一覧に出さない
                 if (object.IsTransient())
                     continue;
@@ -92,8 +103,14 @@ namespace NS::Editor
             if (shownCount == 0)
                 ImGui::TextDisabled("(オブジェクトなし)");
 
-            if (ImGui::SmallButton("+ オブジェクトを追加"))
-                editor.AddObject();
+            // 置けるクラスの一覧から選んで置く。種類はクラスが決め、ここで部品を組むことはしない
+            if (ImGui::SmallButton("+ 追加"))
+                ImGui::OpenPopup("##placeActor");
+            if (ImGui::BeginPopup("##placeActor"))
+            {
+                RenderPlacementMenu(editor);
+                ImGui::EndPopup();
+            }
 
             // 余白へ落としたら root へ戻すドロップ先
             ImVec2 rest = ImGui::GetContentRegionAvail();
@@ -113,17 +130,10 @@ namespace NS::Editor
                 ImGui::EndDragDropTarget();
             }
 
-            // 余白の右クリックから基本形を足す。木を描き終えた後なので配置物を組み直しても崩れない
+            // 余白の右クリックからも同じ一覧で置く。木を描き終えた後なので配置物を組み直しても崩れない
             if (ImGui::BeginPopupContextItem("##hierarchyAdd"))
             {
-                if (ImGui::MenuItem("空のオブジェクト"))
-                    editor.AddPrimitive(NS::Editor::PrimitiveKind::Empty);
-                if (ImGui::MenuItem("立方体"))
-                    editor.AddPrimitive(NS::Editor::PrimitiveKind::Cube);
-                if (ImGui::MenuItem("球"))
-                    editor.AddPrimitive(NS::Editor::PrimitiveKind::Sphere);
-                if (ImGui::MenuItem("坂"))
-                    editor.AddPrimitive(NS::Editor::PrimitiveKind::Slope);
+                RenderPlacementMenu(editor);
                 ImGui::EndPopup();
             }
 
@@ -180,7 +190,7 @@ namespace NS::Editor
     }
 
     void HierarchyPanel::RenderNode(LevelEditorController& editor,
-                                    NS::Obj::GameObject& object,
+                                    NS::Obj::Actor& object,
                                     bool withChildren) noexcept
     {
 #if NS_EDITOR_ENABLED
@@ -189,7 +199,7 @@ namespace NS::Editor
         bool hasChildren = false;
         if (withChildren)
         {
-            for (const NS::Obj::GameObject* child : object.Children())
+            for (const NS::Obj::Actor* child : object.Children())
             {
                 if (child != nullptr && !child->IsTransient())
                 {
@@ -307,7 +317,7 @@ namespace NS::Editor
 
         if (open && hasChildren)
         {
-            for (NS::Obj::GameObject* child : object.Children())
+            for (NS::Obj::Actor* child : object.Children())
             {
                 if (child != nullptr && !child->IsTransient())
                     RenderNode(editor, *child, true);
@@ -322,7 +332,7 @@ namespace NS::Editor
 #endif
     }
 
-    void HierarchyPanel::BeginRename(NS::Obj::GameObject& object) noexcept
+    void HierarchyPanel::BeginRename(NS::Obj::Actor& object) noexcept
     {
 #if NS_EDITOR_ENABLED
         m_renamingObjectId = object.Id();

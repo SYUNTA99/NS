@@ -53,7 +53,7 @@ namespace
     }
 
     // index 番目のリフレクション付き component。添字は ObjectToJson の components と Inspector の並びに揃う
-    NS::Obj::Component* ReflectedComponentAt(NS::Obj::GameObject& object, std::size_t index) noexcept
+    NS::Obj::Component* ReflectedComponentAt(NS::Obj::Actor& object, std::size_t index) noexcept
     {
         std::size_t count = 0;
         for (NS::Obj::Component* comp : object.Components())
@@ -74,7 +74,7 @@ namespace
     constexpr float k_EditBlendSeconds = 0.35f;
 
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状、slope は collider 由来の AABB
-    void DrawColliderWireframe(NS::Obj::GameObject& object, const NS::Core::Color& color) noexcept
+    void DrawColliderWireframe(NS::Obj::Actor& object, const NS::Core::Color& color) noexcept
     {
         if (NS::Obj::BoxCollider* box = object.FindComponent<NS::Obj::BoxCollider>())
         {
@@ -172,9 +172,9 @@ namespace
     }
 
     // 子を先、自分を後の順で永続 id を集める。削除はこの順で流し、undo は逆順に親から戻る
-    void CollectSubtreeIds(const NS::Obj::GameObject& root, std::vector<std::uint32_t>& out)
+    void CollectSubtreeIds(const NS::Obj::Actor& root, std::vector<std::uint32_t>& out)
     {
-        for (const NS::Obj::GameObject* child : root.Children())
+        for (const NS::Obj::Actor* child : root.Children())
         {
             if (child != nullptr && !child->IsTransient())
                 CollectSubtreeIds(*child, out);
@@ -281,7 +281,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_editorCamera.SetFovY(NS::Core::ToRadians(NS::Core::Degrees{60.0f}));
 
     // 初期視点はプレイヤーの位置を中心に少し引いた位置から見下ろす。不在なら原点
-    NS::Obj::GameObject* bootPlayer = FindPlayer(m_scene->Objects());
+    NS::Obj::Actor* bootPlayer = FindPlayer(m_scene->Objects());
     NS::Core::Vector3 startCenter{0.0f, 0.0f, 0.0f};
     if (bootPlayer != nullptr)
         startCenter = bootPlayer->Root().Position();
@@ -300,9 +300,9 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_editor.SetCollectCellsFn([this]() {
         std::vector<NS::Editor::EditorMode::CellCoord> cells;
         cells.reserve(m_scene->Objects().ObjectCount());
-        for (NS::Obj::GameObject* objPtr : m_scene->Objects())
+        for (NS::Obj::Actor* objPtr : m_scene->Objects())
         {
-            NS::Obj::GameObject& object = *objPtr;
+            NS::Obj::Actor& object = *objPtr;
             if (!NS::Editor::IsCellBrushObject(object))
                 continue;
             cells.push_back(NS::Editor::EditorMode::CellCoord{
@@ -726,7 +726,7 @@ bool LevelEditorController::HasInspectableSelection() const noexcept
            m_scene->Objects().FindByObjectId(m_selectedObjectId) != nullptr;
 }
 
-NS::Obj::GameObject* LevelEditorController::SelectedObjectGameObject() noexcept
+NS::Obj::Actor* LevelEditorController::SelectedObjectActor() noexcept
 {
     // 選択の真実は永続 id。player も含め全配置物が ObjectList に居るので id で引く
     if (m_selectedObjectId == NS::Obj::k_NoObjectId)
@@ -736,7 +736,7 @@ NS::Obj::GameObject* LevelEditorController::SelectedObjectGameObject() noexcept
 
 bool LevelEditorController::SelectedIsPlayerObject() const noexcept
 {
-    NS::Obj::GameObject* player = FindPlayer(m_scene->Objects());
+    NS::Obj::Actor* player = FindPlayer(m_scene->Objects());
     return player != nullptr && m_selectedObjectId != NS::Obj::k_NoObjectId && m_selectedObjectId == player->Id();
 }
 
@@ -749,7 +749,7 @@ void LevelEditorController::RefreshGizmoSelectables()
 
     // 可視メッシュを持つ候補は 1、見えないカメラ等は 0。ギズモは 1 の候補を先に選ぶ
     // 全配置物をギズモ候補に積む。判定箱はギズモがクリックの時に配置物から引く
-    for (NS::Obj::GameObject* object : m_scene->Objects())
+    for (NS::Obj::Actor* object : m_scene->Objects())
     {
         if (object->IsTransient())
             continue;
@@ -766,7 +766,7 @@ void LevelEditorController::RefreshGizmoSelectables()
 
 NS::Obj::ThirdPersonFollow* LevelEditorController::SelectedFollowCamera() noexcept
 {
-    if (NS::Obj::GameObject* go = SelectedObjectGameObject())
+    if (NS::Obj::Actor* go = SelectedObjectActor())
         return go->FindComponent<NS::Obj::ThirdPersonFollow>();
     return nullptr;
 }
@@ -776,7 +776,7 @@ void LevelEditorController::SyncFollowCameraPoses()
     // 追従カメラは位置を持たないので、edit 中は実プレイの視点位置へ Root を寄せて frustum / pick / ギズモを出す
     // ドラッグ中の選択カメラだけは gizmo が Root を握るため触らず、その位置を初期姿勢へ逆算する側に任せる
     const NS::Obj::ObjectList& objects = m_scene->Objects();
-    for (NS::Obj::GameObject* object : objects)
+    for (NS::Obj::Actor* object : objects)
     {
         NS::Obj::ThirdPersonFollow* follow = object->FindComponent<NS::Obj::ThirdPersonFollow>();
         if (follow == nullptr)
@@ -796,7 +796,7 @@ void LevelEditorController::ApplyFollowCameraGizmoDrag()
     NS::Obj::ThirdPersonFollow* follow = SelectedFollowCamera();
     if (follow == nullptr)
         return;
-    NS::Obj::GameObject* go = SelectedObjectGameObject();
+    NS::Obj::Actor* go = SelectedObjectActor();
     if (go == nullptr)
         return;
     follow->SetInitialPoseFromCameraPosition(go->Root().Position());
@@ -805,7 +805,7 @@ void LevelEditorController::ApplyFollowCameraGizmoDrag()
 void LevelEditorController::SelectObjectByIndex(std::size_t index) noexcept
 {
     // 選択の真実は id。添字が動いても id から引き直せる
-    const NS::Obj::GameObject* object = m_scene->Objects().ObjectAt(index);
+    const NS::Obj::Actor* object = m_scene->Objects().ObjectAt(index);
     if (object == nullptr)
     {
         SelectObjectById(NS::Obj::k_NoObjectId);
@@ -875,7 +875,7 @@ void LevelEditorController::SetPrimarySelection(std::uint32_t id) noexcept
     SetObjectToolActive(true);
 
     // player も含め全配置物が ObjectList に居る。選択した Root を id で引いてギズモへ貼る
-    if (NS::Obj::GameObject* go = m_scene->Objects().FindByObjectId(id))
+    if (NS::Obj::Actor* go = m_scene->Objects().FindByObjectId(id))
     {
         m_gizmo.SetSelected(&go->Root());
         m_lastGizmoSelected = m_gizmo.Selected();
@@ -897,7 +897,7 @@ void LevelEditorController::RenderCameraGizmos(const NS::Core::Matrix& viewProje
             return static_cast<float>(viewport.width) / static_cast<float>(viewport.height);
         return 16.0f / 9.0f;
     }();
-    for (NS::Obj::GameObject* object : objects)
+    for (NS::Obj::Actor* object : objects)
     {
         NS::Obj::VirtualCamera* vcam = object->FindComponent<NS::Obj::VirtualCamera>();
         if (vcam == nullptr)
@@ -926,7 +926,7 @@ void LevelEditorController::RenderSelectionOutlines() noexcept
     const NS::Core::Color color{1.0f, 0.65f, 0.15f, 1.0f};
     for (const std::uint32_t id : m_selectionIds)
     {
-        NS::Obj::GameObject* object = m_scene->Objects().FindByObjectId(id);
+        NS::Obj::Actor* object = m_scene->Objects().FindByObjectId(id);
         if (object == nullptr)
             continue;
 
@@ -957,7 +957,7 @@ void LevelEditorController::RenderColliderWireframes(bool all) noexcept
     // プレイ中は動いている形を追えるよう全部出す
     if (all)
     {
-        for (NS::Obj::GameObject* objPtr : m_scene->Objects())
+        for (NS::Obj::Actor* objPtr : m_scene->Objects())
             DrawColliderWireframe(*objPtr, color);
         return;
     }
@@ -965,7 +965,7 @@ void LevelEditorController::RenderColliderWireframes(bool all) noexcept
     // 編集中は選んだ分だけ。全部出すと線が重なって、どれの形か読み取れない
     for (const std::uint32_t id : m_selectionIds)
     {
-        if (NS::Obj::GameObject* objPtr = m_scene->Objects().FindByObjectId(id))
+        if (NS::Obj::Actor* objPtr = m_scene->Objects().FindByObjectId(id))
             DrawColliderWireframe(*objPtr, color);
     }
 }
@@ -984,7 +984,7 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
         return;
     }
     // player も ObjectList に居るので、ビューポートのピックと同じ経路で引ける
-    for (NS::Obj::GameObject* object : m_scene->Objects())
+    for (NS::Obj::Actor* object : m_scene->Objects())
     {
         if (&object->Root() == selected)
         {
@@ -1008,7 +1008,7 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
     // player も ObjectList に居るので id で引ける。rebuild を跨いでも掴める状態を保つ
     if (m_selectedObjectId != NS::Obj::k_NoObjectId)
     {
-        if (NS::Obj::GameObject* go = m_scene->Objects().FindByObjectId(m_selectedObjectId))
+        if (NS::Obj::Actor* go = m_scene->Objects().FindByObjectId(m_selectedObjectId))
         {
             NS::Obj::Transform* root = &go->Root();
             if (m_gizmo.Selected() != root)
@@ -1025,7 +1025,7 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
 void LevelEditorController::SetSelectedFreePosition(NS::Core::Vector3 position)
 {
     // live の Root を直接動かす。undo の記録は CommitTransformEdit、当たりの追従は SyncPhysics が担う
-    if (NS::Obj::GameObject* go = SelectedObjectGameObject())
+    if (NS::Obj::Actor* go = SelectedObjectActor())
     {
         go->Root().SetPosition(position);
         if (NS::Obj::TransformComponent* transform = go->FindComponent<NS::Obj::TransformComponent>())
@@ -1035,7 +1035,7 @@ void LevelEditorController::SetSelectedFreePosition(NS::Core::Vector3 position)
 
 void LevelEditorController::SetSelectedFreeRotation(NS::Core::Quaternion rotation)
 {
-    if (NS::Obj::GameObject* go = SelectedObjectGameObject())
+    if (NS::Obj::Actor* go = SelectedObjectActor())
     {
         go->Root().SetRotation(rotation);
         if (NS::Obj::TransformComponent* transform = go->FindComponent<NS::Obj::TransformComponent>())
@@ -1050,7 +1050,7 @@ void LevelEditorController::SetSelectedFreeScale(NS::Core::Vector3 scale)
     scale.x = std::max(scale.x, k_MinScale);
     scale.y = std::max(scale.y, k_MinScale);
     scale.z = std::max(scale.z, k_MinScale);
-    if (NS::Obj::GameObject* go = SelectedObjectGameObject())
+    if (NS::Obj::Actor* go = SelectedObjectActor())
     {
         go->Root().SetScale(scale);
         if (NS::Obj::TransformComponent* transform = go->FindComponent<NS::Obj::TransformComponent>())
@@ -1066,36 +1066,22 @@ void LevelEditorController::MirrorPlayEditToBaseline(const NS::Obj::Component& c
     m_scene->WritePlayBaselineField(comp, fieldName);
 }
 
-void LevelEditorController::AddObject()
+void LevelEditorController::PlaceItem(const NS::Editor::PlacementItem& item)
 {
-    AddPrimitive(NS::Editor::PrimitiveKind::Cube);
-}
-
-void LevelEditorController::AddPrimitive(NS::Editor::PrimitiveKind kind)
-{
-    // 新規オブジェクトは編集視点の中心あたりへ置く
-    const NS::Core::Vector3 center = m_editorCamera.Center();
-
-    // 構成を先に確定してから transform を書き込む。採番・履歴・選択は PushCreateObject が担う
-    nlohmann::json object = NS::Obj::MakeObjectJson(NS::Editor::MakePrimitiveComponents(kind));
-    NS::Obj::SetObjectPosition(object, center);
+    // 新しい配置物は編集視点の中心あたりへ置く。採番・履歴・選択は PushCreateObject が担う
+    nlohmann::json object = item.prototype;
+    NS::Obj::SetObjectPosition(object, m_editorCamera.Center());
     PushCreateObject(std::move(object));
 }
 
-void LevelEditorController::AddObjectWithMesh(std::string_view meshPath)
+void LevelEditorController::AddMeshParts(std::string_view meshPath)
 {
     // 参照は ContentRoot 相対で持つ。build 時にこの文字列から実体を引く
     const std::string meshRef = RelativeToRoot(meshPath, NS::Platform::FileSystem::ContentRoot());
 
-    const NS::Core::Vector3 center = m_editorCamera.Center();
-
-    // 描いた形と当たりをずらさない。MeshCollider が描画と同じ三角形から当たりを作る
-    nlohmann::json object = NS::Obj::MakeObjectJson(
-        nlohmann::json::array({NS::Editor::MakeMeshRendererEntry(meshRef, "", NS::Core::Vector3{0.70f, 0.70f, 0.75f}),
-                               NS::Obj::MakeComponentEntry("MeshCollider")}));
-    NS::Obj::SetObjectPosition(object, center);
+    nlohmann::json object = NS::Editor::MakeMeshPartsPrototype(meshRef);
+    NS::Obj::SetObjectPosition(object, m_editorCamera.Center());
     NS::Obj::SetObjectJsonName(object, NS::Platform::FileSystem::Stem(meshPath));
-
     PushCreateObject(std::move(object));
 }
 
@@ -1121,7 +1107,7 @@ void LevelEditorController::RenameObject(std::uint32_t id, std::string_view name
 {
     if (id == NS::Obj::k_NoObjectId)
         return;
-    NS::Obj::GameObject* object = m_scene->Objects().FindByObjectId(id);
+    NS::Obj::Actor* object = m_scene->Objects().FindByObjectId(id);
     std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
     if (object == nullptr || !before)
         return;
@@ -1146,18 +1132,18 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
     if (id == NS::Obj::k_NoObjectId || id == parentId)
         return false;
 
-    NS::Obj::GameObject* child = m_scene->Objects().FindByObjectId(id);
+    NS::Obj::Actor* child = m_scene->Objects().FindByObjectId(id);
     if (child == nullptr)
         return false;
 
-    NS::Obj::GameObject* parent = nullptr;
+    NS::Obj::Actor* parent = nullptr;
     if (parentId != NS::Obj::k_NoObjectId)
     {
         parent = m_scene->Objects().FindByObjectId(parentId);
         if (parent == nullptr)
             return false;
         // 自分の子孫を親にすると輪になる
-        for (NS::Obj::GameObject* ancestor = parent; ancestor != nullptr; ancestor = ancestor->Parent())
+        for (NS::Obj::Actor* ancestor = parent; ancestor != nullptr; ancestor = ancestor->Parent())
         {
             if (ancestor == child)
                 return false;
@@ -1200,64 +1186,12 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
     return true;
 }
 
-void LevelEditorController::AddComponentToSelected(std::string_view typeName)
-{
-    const std::uint32_t id = m_selectedObjectId;
-    if (id == NS::Obj::k_NoObjectId)
-        return;
-    std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
-    if (!before)
-        return;
-
-    // component の増減は配置物を自分の JSON から作り直す。兄弟を OnStart で控える component がいるので、
-    // 実体へ直に足し引きせず、全員が新しい構成で開始し直す形にする (UE の作り直しと同じ)
-    // field 無しの雛形は作り直しで既定値のまま起きる
-    nlohmann::json after = *before;
-    NS::Obj::ObjectJsonComponents(after).push_back(NS::Obj::MakeComponentEntry(typeName));
-
-    m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)),
-                         m_applier);
-
-    RefreshGizmoSelectables();
-    ResolveSelectionFromId();
-}
-
-void LevelEditorController::RemoveComponentFromSelected(std::size_t componentIndex)
-{
-    const std::uint32_t id = m_selectedObjectId;
-    if (id == NS::Obj::k_NoObjectId)
-        return;
-    std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
-    if (!before)
-        return;
-
-    // component が 0 個の配置物は build で消えるので最後の 1 個 / 範囲外は消さない。履歴も汚さない
-    const nlohmann::json& components = NS::Obj::ObjectJsonComponents(*before);
-    if (componentIndex >= components.size() || components.size() <= 1)
-        return;
-    // 入力 component を消すと player を操作できなくなる。transform は root なので同様に守る
-    const std::string_view typeName = NS::Obj::ComponentEntryType(components[componentIndex]);
-    if (typeName == "PlayerInput" || typeName == "TransformComponent")
-        return;
-
-    // 足す時と同じく、配置物を自分の JSON から作り直す
-    nlohmann::json after = *before;
-    nlohmann::json& afterComponents = NS::Obj::ObjectJsonComponents(after);
-    afterComponents.erase(afterComponents.begin() + static_cast<std::ptrdiff_t>(componentIndex));
-
-    m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)),
-                         m_applier);
-
-    RefreshGizmoSelectables();
-    ResolveSelectionFromId();
-}
-
 void LevelEditorController::SetComponentEnabledOnSelected(std::size_t componentIndex, bool enabled)
 {
     const std::uint32_t id = m_selectedObjectId;
     if (id == NS::Obj::k_NoObjectId)
         return;
-    NS::Obj::GameObject* object = m_scene->Objects().FindByObjectId(id);
+    NS::Obj::Actor* object = m_scene->Objects().FindByObjectId(id);
     if (object == nullptr)
         return;
     NS::Obj::Component* comp = ReflectedComponentAt(*object, componentIndex);
@@ -1285,7 +1219,7 @@ void LevelEditorController::DuplicateSelectedObject()
     if (m_selectionIds.empty())
         return;
 
-    const NS::Obj::GameObject* player = FindPlayer(m_scene->Objects());
+    const NS::Obj::Actor* player = FindPlayer(m_scene->Objects());
 
     // 選択物の忠実コピーを新しい永続 id で増やす。component の id も振り直す
     // 元の id から新しい id への表を作り、コピーの中の親と参照を付け替えるのに使う
@@ -1379,7 +1313,7 @@ void LevelEditorController::DeleteSelectedObject()
     std::vector<std::uint32_t> victims;
     for (const std::uint32_t id : m_selectionIds)
     {
-        NS::Obj::GameObject* target = m_scene->Objects().FindByObjectId(id);
+        NS::Obj::Actor* target = m_scene->Objects().FindByObjectId(id);
         if (target != nullptr)
             CollectSubtreeIds(*target, victims);
     }
@@ -1394,7 +1328,7 @@ void LevelEditorController::DeleteSelectedObject()
     }
 
     // プレイヤーが消えるとレベルが遊べなくなる。子孫に紛れていても止める
-    const NS::Obj::GameObject* player = FindPlayer(m_scene->Objects());
+    const NS::Obj::Actor* player = FindPlayer(m_scene->Objects());
     if (player != nullptr && std::find(ordered.begin(), ordered.end(), player->Id()) != ordered.end())
     {
         NS_LOG_WARN(App, "プレイヤーを含むため削除しなかった");
@@ -1436,7 +1370,7 @@ void LevelEditorController::FocusSelectedInView() noexcept
     centers.reserve(m_selectionIds.size());
     for (const std::uint32_t id : m_selectionIds)
     {
-        NS::Obj::GameObject* object = m_scene->Objects().FindByObjectId(id);
+        NS::Obj::Actor* object = m_scene->Objects().FindByObjectId(id);
         if (object == nullptr)
             continue;
         const NS::Core::Matrix world = object->Root().WorldMatrix();
@@ -1468,7 +1402,7 @@ void LevelEditorController::CaptureDragFollowers() noexcept
     if (m_selectionIds.size() < 2)
         return;
 
-    NS::Obj::GameObject* primary = m_scene->Objects().FindByObjectId(m_selectedObjectId);
+    NS::Obj::Actor* primary = m_scene->Objects().FindByObjectId(m_selectedObjectId);
     if (primary == nullptr)
         return;
     m_dragPrimaryWorld = primary->Root().WorldMatrix();
@@ -1477,13 +1411,13 @@ void LevelEditorController::CaptureDragFollowers() noexcept
     {
         if (id == m_selectedObjectId)
             continue;
-        NS::Obj::GameObject* object = m_scene->Objects().FindByObjectId(id);
+        NS::Obj::Actor* object = m_scene->Objects().FindByObjectId(id);
         if (object == nullptr)
             continue;
 
         // 選択中の物にぶら下がっている分は親が動けば付いてくる。二重に動かさない
         bool underSelected = false;
-        for (const NS::Obj::GameObject* ancestor = object->Parent(); ancestor != nullptr; ancestor = ancestor->Parent())
+        for (const NS::Obj::Actor* ancestor = object->Parent(); ancestor != nullptr; ancestor = ancestor->Parent())
         {
             if (IsObjectSelected(ancestor->Id()))
             {
@@ -1502,7 +1436,7 @@ void LevelEditorController::ApplyDragToFollowers() noexcept
 {
     if (m_dragFollowers.empty())
         return;
-    NS::Obj::GameObject* primary = m_scene->Objects().FindByObjectId(m_selectedObjectId);
+    NS::Obj::Actor* primary = m_scene->Objects().FindByObjectId(m_selectedObjectId);
     if (primary == nullptr)
         return;
 
@@ -1510,12 +1444,12 @@ void LevelEditorController::ApplyDragToFollowers() noexcept
     const NS::Core::Matrix delta = m_dragPrimaryWorld.Invert() * primary->Root().WorldMatrix();
     for (const DragFollower& follower : m_dragFollowers)
     {
-        NS::Obj::GameObject* object = m_scene->Objects().FindByObjectId(follower.id);
+        NS::Obj::Actor* object = m_scene->Objects().FindByObjectId(follower.id);
         if (object == nullptr)
             continue;
 
         NS::Core::Matrix local = follower.world * delta;
-        if (const NS::Obj::GameObject* parent = object->Parent())
+        if (const NS::Obj::Actor* parent = object->Parent())
             local *= parent->Root().WorldMatrix().Invert();
 
         NS::Core::Vector3 scale{};
@@ -1527,81 +1461,6 @@ void LevelEditorController::ApplyDragToFollowers() noexcept
         object->Root().SetRotation(rotation);
         object->Root().SetScale(scale);
     }
-}
-
-void LevelEditorController::CopyComponentToClipboard(std::size_t componentIndex)
-{
-    const std::uint32_t id = m_selectedObjectId;
-    if (id == NS::Obj::k_NoObjectId)
-        return;
-    // live の忠実な写しから 1 component を控える。Inspector でライブ編集した値ごと入る
-    const std::optional<nlohmann::json> captured = m_applier.CaptureObject(id);
-    if (!captured || componentIndex >= NS::Obj::ObjectJsonComponents(*captured).size())
-        return;
-    m_componentClipboard = NS::Obj::ObjectJsonComponents(*captured)[componentIndex];
-}
-
-void LevelEditorController::PasteClipboardComponentToSelected()
-{
-    if (!m_componentClipboard)
-        return;
-    const std::uint32_t id = m_selectedObjectId;
-    if (id == NS::Obj::k_NoObjectId)
-        return;
-    std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
-    if (!before)
-        return;
-
-    // 同型がすでにあっても末尾へ重ねて貼り、上書きはしない。足す時と同じく配置物を自分の JSON から作り直す
-    // id は新しく振る。コピー元の id のまま貼ると、組み直しの一意化で元の側の id が振り直され、
-    // 元を指す参照が貼った側へ移る
-    // 名前はそのまま貼り、配置物の中で重なれば組み直しの一意化が番号を付ける
-    nlohmann::json after = *before;
-    nlohmann::json pasted = *m_componentClipboard;
-    NS::Obj::SetComponentEntryId(pasted, m_scene->Objects().AllocateObjectId());
-    // 名前は配置物の中で一意にする。同じ配置物へ貼ると元と同じ名前になる
-    std::unordered_set<std::string> usedNames;
-    for (const nlohmann::json& entry : NS::Obj::ObjectJsonComponents(after))
-        usedNames.insert(std::string{NS::Obj::ComponentEntryName(entry)});
-    std::string_view pastedBase = NS::Obj::ComponentEntryName(pasted);
-    if (pastedBase.empty())
-        pastedBase = NS::Obj::ComponentEntryType(pasted);
-    NS::Obj::SetComponentEntryName(pasted, NS::Obj::MakeUniqueObjectName(pastedBase, usedNames));
-    NS::Obj::ObjectJsonComponents(after).push_back(std::move(pasted));
-
-    m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)),
-                         m_applier);
-
-    RefreshGizmoSelectables();
-    ResolveSelectionFromId();
-}
-
-void LevelEditorController::RenameComponentOnSelected(std::size_t componentIndex, std::string_view name)
-{
-    const std::uint32_t id = m_selectedObjectId;
-    if (id == NS::Obj::k_NoObjectId)
-        return;
-    NS::Obj::GameObject* object = m_scene->Objects().FindByObjectId(id);
-    if (object == nullptr)
-        return;
-    NS::Obj::Component* comp = ReflectedComponentAt(*object, componentIndex);
-    if (comp == nullptr)
-        return;
-
-    // 実体の名前を直接変える。配置物の中で重なれば番号が付き、空は型名へ戻る。参照は id で持つので切れない
-    std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
-    const std::string previous = comp->Name();
-    object->RenameComponent(*comp, name);
-    if (comp->Name() == previous)
-        return; // 同じ名前で履歴を汚さない
-
-    // 実体は既に after なので Do を呼ばず履歴だけ積む
-    std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
-    m_editor.Undo().Record(
-        std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
-
-    RefreshGizmoSelectables();
-    ResolveSelectionFromId();
 }
 
 void LevelEditorController::BeginTransformEdit() noexcept
@@ -1682,7 +1541,7 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
 
     if (m_selectedObjectId == NS::Obj::k_NoObjectId)
         return false;
-    NS::Obj::GameObject* go = SelectedObjectGameObject();
+    NS::Obj::Actor* go = SelectedObjectActor();
     if (go == nullptr)
         return false;
 

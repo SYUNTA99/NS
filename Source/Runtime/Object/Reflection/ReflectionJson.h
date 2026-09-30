@@ -17,7 +17,7 @@ namespace NS::Obj
 
     //! obj の全 component を SerializeComponent で {type, fields} の配列へ並べる
     //! リフレクションの無い component は type 空文字で混ざる
-    [[nodiscard]] nlohmann::json SerializeGameObjectComponents(const GameObject& obj);
+    [[nodiscard]] nlohmann::json SerializeActorComponents(const Actor& obj);
 
     //! @brief fields object の各キーをリフレクション FieldDesc に照合し、一致する field を set で書き戻す
     //! @details 欠損キーは前方互換のため既定値のまま、型不一致は無視する

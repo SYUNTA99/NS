@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 
@@ -332,7 +332,7 @@ namespace NS::Obj
         return out;
     }
 
-    nlohmann::json SerializeGameObjectComponents(const GameObject& obj)
+    nlohmann::json SerializeActorComponents(const Actor& obj)
     {
         nlohmann::json components = nlohmann::json::array();
         for (const Component* comp : obj.Components())
@@ -340,7 +340,7 @@ namespace NS::Obj
             if (comp == nullptr)
             {
                 NS_LOG_WARN(Game,
-                            "GameObject に nullptr Component が混ざっている。AddComponent で nullptr "
+                            "Actor に nullptr Component が混ざっている。AddComponent で nullptr "
                             "を返す派生型があるか、 AddComponent 後に手動 delete したか");
                 continue;
             }

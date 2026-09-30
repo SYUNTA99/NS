@@ -6,7 +6,7 @@
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -71,7 +71,7 @@ namespace NS::Obj
 
     void MeshRenderer::OnStart()
     {
-        GameObject* owner = Owner();
+        Actor* owner = Owner();
         if (owner == nullptr)
         {
             return;
@@ -86,7 +86,7 @@ namespace NS::Obj
 
     void MeshRenderer::OnEndPlay()
     {
-        GameObject* owner = Owner();
+        Actor* owner = Owner();
         if (owner == nullptr)
         {
             return;
@@ -145,7 +145,7 @@ namespace NS::Obj
     {
         const NS::Core::Quaternion local = NS::Core::Quaternion::Slerp(m_previousLocalRotation, m_localRotation, alpha);
         const NS::Core::Matrix localMatrix = NS::Core::Matrix::CreateFromQuaternion(local);
-        const GameObject* owner = Owner();
+        const Actor* owner = Owner();
         if (owner == nullptr)
         {
             return localMatrix;
@@ -177,7 +177,7 @@ namespace NS::Obj
 
     void MeshRenderer::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
     {
-        GameObject* owner = Owner();
+        Actor* owner = Owner();
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
         {
             return;
@@ -222,7 +222,7 @@ namespace NS::Obj
 
     NS::Core::Vector3 MeshRenderer::SortCenter() const noexcept
     {
-        const GameObject* owner = Owner();
+        const Actor* owner = Owner();
         if (owner == nullptr)
         {
             return {};
@@ -242,7 +242,7 @@ namespace NS::Obj
 
     NS::Core::AABB MeshRenderer::WorldBounds() const noexcept
     {
-        const GameObject* owner = Owner();
+        const Actor* owner = Owner();
         if (m_mesh == nullptr || owner == nullptr)
         {
             return {}; // 描くものが無い。間引かれても Collect が何も積まず結果は変わらない

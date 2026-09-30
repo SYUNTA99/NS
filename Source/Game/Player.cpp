@@ -1,14 +1,21 @@
 #include "Game/Player.h"
 
+#include "Game/Level/CollisionInput.h"
 #include "Game/Level/Finisher.h"
 #include "Game/Level/Health.h"
+#include "Game/Level/ImpactResolver.h"
 #include "Game/Level/Respawner.h"
 #include "Game/Level/ScreenFade.h"
+#include "Game/Level/SlamArrow.h"
+#include "Game/Level/TargetMarker.h"
+#include "Game/Player/ChargeEffects.h"
+#include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerInputRelay.h"
 #include "Game/Player/PlayerStateManager.h"
 #include "Runtime/Core/Logger.h"
+#include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/Shadow.h"
@@ -23,7 +30,7 @@ NS_CLASS(Player)
 
 Player::Player() noexcept
 {
-    // 構成と見た目のコード既定。値と追加分はファクトリが player object のデータから写す
+    // 構成はここが全部決める。データは値だけを写す
     // 同居する部品の引き当ては OnStart なので生成順に縛りは無い
     NS::Obj::MeshRenderer* mesh = AddComponent<NS::Obj::MeshRenderer>();
     // mesh の参照は空のまま。立ち姿と玉の mesh は PlayerAppearance が差す
@@ -41,6 +48,16 @@ Player::Player() noexcept
     AddComponent<NS::Game::Level::Health>();
     // 接地シャドウ。mesh / material は後から注入される
     AddComponent<NS::Obj::Shadow>();
+    // 移動の当たりの形
+    AddComponent<NS::Obj::CapsuleCollider>();
+
+    // 体当たり。入力を読んで発動を求め、ぶつかった結果を決め、狙いの印と突進の線と当たりの演出を出す
+    AddComponent<NS::Game::Level::CollisionInput>();
+    AddComponent<NS::Game::Level::ImpactResolver>();
+    AddComponent<NS::Game::Level::TargetMarker>();
+    AddComponent<NS::Game::Level::SlamArrow>();
+    AddComponent<NS::Game::Player::ChargeEffects>();
+    AddComponent<NS::Game::Player::ImpactEffects>();
 
     // ルール判定への応答。死んだらやり直す・ゴールでクリアする、はどれもプレイヤーの振る舞いなのでここに積む
     // 暗転はクリアシーケンスが使う部品として隣に置く
@@ -83,7 +100,7 @@ int Player::Health() const noexcept
 
 Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept
 {
-    for (NS::Obj::GameObject* obj : objects)
+    for (NS::Obj::Actor* obj : objects)
     {
         if (std::strcmp(obj->ClassName(), "Player") == 0)
             return static_cast<Player*>(obj);

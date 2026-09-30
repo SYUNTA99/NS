@@ -3,7 +3,7 @@
 #include "Editor/EditorObjects.h"
 #include "Editor/GridMath.h"
 #include "Runtime/Core/Math.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Keyboard.h"
@@ -375,7 +375,7 @@ namespace NS::Editor
         };
     } // namespace
 
-    void GizmoEditor::SetSelectableObjects(std::span<NS::Obj::GameObject* const> objects,
+    void GizmoEditor::SetSelectableObjects(std::span<NS::Obj::Actor* const> objects,
                                            std::span<const std::uint8_t> pickable) noexcept
     {
         m_objects = objects;
@@ -495,7 +495,7 @@ namespace NS::Editor
         localBounds.reserve(m_objects.size());
         // 箱は Root のローカル空間のまま。WorldMatrix が拡縮を含むので、箱にも掛けると拡大した配置物の箱が
         // 拡縮の 2 乗に膨らみ、近くのクリックを先に取る
-        for (const NS::Obj::GameObject* obj : m_objects)
+        for (const NS::Obj::Actor* obj : m_objects)
         {
             worldMatrices.push_back(obj->Root().WorldMatrix());
             localBounds.push_back(PickLocalBounds(*obj));

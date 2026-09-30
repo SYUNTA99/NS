@@ -5,7 +5,7 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/Components/CameraComponent.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"

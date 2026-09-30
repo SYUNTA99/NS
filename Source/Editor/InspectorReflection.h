@@ -16,7 +16,7 @@
 namespace NS::Obj
 {
     class Component;
-    class GameObject;
+    class Actor;
 } // namespace NS::Obj
 
 namespace NS::Editor
@@ -40,7 +40,7 @@ namespace NS::Editor
 
     //! @brief 型ごとの既定インスタンスを控える置き場
     //! @details リフレクション欄の「既定と違う」印と戻すボタンが、今の値と比べる相手として引く
-    //! 控えは 1 体の GameObject へまとめて attach するだけで、world に入らないので更新も描画も走らない
+    //! 控えは 1 体の Actor へまとめて attach するだけで、world に入らないので更新も描画も走らない
     class ComponentDefaults : public NS::Core::NonCopyable
     {
     public:
@@ -52,7 +52,7 @@ namespace NS::Editor
         [[nodiscard]] const NS::Obj::Component* Find(std::string_view typeName);
 
     private:
-        std::unique_ptr<NS::Obj::GameObject> m_holder;                     // 既定インスタンスを持つ GameObject
+        std::unique_ptr<NS::Obj::Actor> m_holder;                     // 既定インスタンスを持つ Actor
         std::vector<std::pair<std::string, NS::Obj::Component*>> m_byType; // 型名から引く索引
     };
 

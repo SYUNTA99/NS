@@ -1,6 +1,6 @@
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -12,7 +12,7 @@ namespace NS::Editor
         if (m_scene == nullptr)
             return std::nullopt;
 
-        const NS::Obj::GameObject* obj = m_scene->Objects().FindByObjectId(objectId);
+        const NS::Obj::Actor* obj = m_scene->Objects().FindByObjectId(objectId);
         if (obj == nullptr)
             return std::nullopt;
         // undo は編集値ごと戻すため、配置物が自分を全 component 値まで忠実に書き出す

@@ -6,7 +6,7 @@
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Clock.h"
 #include <cmath>

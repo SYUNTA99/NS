@@ -1,7 +1,7 @@
 ﻿#include "Runtime/Object/Component.h"
 
 #include "Runtime/Core/Assert.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Transform.h"
 
 namespace NS::Obj

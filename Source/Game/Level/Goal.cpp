@@ -1,46 +1,24 @@
-﻿#include "Game/Level/Goal.h"
+#include "Game/Level/Goal.h"
 
-#include "Game/Player.h"
-#include "Runtime/Object/GameObject.h"
-#include "Runtime/Object/ObjectList.h"
-#include "Runtime/Object/Reflection/ComponentEntry.h"
+#include "Game/Level/GoalComponent.h"
+#include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
-#include "Runtime/Object/Scene/Scene.h"
 
 namespace NS::Game::Level
 {
-    Goal::Goal() noexcept : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate) {}
-
-    void Goal::OnUpdate()
+    Goal::Goal() noexcept
     {
-        if (m_reached)
-        {
-            return;
-        }
-
-        NS::Obj::Scene* scene = Owner()->OwningScene();
-        if (scene == nullptr)
-        {
-			return;
-        }
-        ::Player* player = FindPlayer(scene->Objects());
-        if (player == nullptr)
-        {
-            return;
-        }
-
-        // 中心間距離の単純比較。触れた事実はフラグとして保持し、離れても下ろさない
-        const NS::Core::Vector3 toPlayer = player->Root().Position() - RootTransform().Position();
-        if (toPlayer.LengthSquared() < m_radius * m_radius)
-        {
-            m_reached = true;
-        }
+        // 目印の金色の立方体
+        NS::Obj::MeshRenderer* mesh = AddComponent<NS::Obj::MeshRenderer>();
+        mesh->SetMeshRef("cube");
+        mesh->SetBaseColor(NS::Core::Vector3{1.0f, 0.84f, 0.0f});
+        AddComponent<GoalComponent>();
     }
 
     bool IsGoalObject(const nlohmann::json& object) noexcept
     {
-        return NS::Obj::FindComponentEntry(object, "Goal") != nullptr;
+        return NS::Obj::ObjectJsonClass(object) == "Goal";
     }
 
-    NS_CLASS(Goal)
+    NS_PLACEABLE(Goal, "ゴール")
 } // namespace NS::Game::Level

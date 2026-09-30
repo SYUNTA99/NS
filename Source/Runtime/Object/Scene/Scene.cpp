@@ -19,7 +19,7 @@ namespace NS::Obj
     namespace
     {
         // obj の component のうち JSON へ写る物 (リフレクションを持つ物) を並び順に集める
-        [[nodiscard]] std::vector<Component*> ReflectedComponents(const GameObject& obj)
+        [[nodiscard]] std::vector<Component*> ReflectedComponents(const Actor& obj)
         {
             std::vector<Component*> reflected;
             reflected.reserve(obj.Components().size());
@@ -35,7 +35,7 @@ namespace NS::Obj
 
         // 実体を残したまま値だけ写せるか。クラスと component の並び・型・id が JSON と一致する時だけ真
         // 一致しない姿は component の増減か入れ替えで、兄弟を開始時に掴む component があるため作り直す
-        [[nodiscard]] bool MatchesStructure(const GameObject& obj,
+        [[nodiscard]] bool MatchesStructure(const Actor& obj,
                                             const std::vector<Component*>& reflected,
                                             const nlohmann::json& object)
         {
@@ -66,7 +66,7 @@ namespace NS::Obj
         // 描くには実カメラが 1 個要る。配置物ではないがシーンには必ず居るので、ここで ObjectList へ入れる
         // 保存・凍結・編集 UI に出ない一時オブジェクトで、データからの組み直しも跨いで残る
         // 描画 component は積まない。RegisterRenderable は virtual で、基底コンストラクタからは派生へ落ちない
-        std::unique_ptr<GameObject> host = std::make_unique<GameObject>();
+        std::unique_ptr<Actor> host = std::make_unique<Actor>();
         CameraComponent* camera = host->AddComponent<CameraComponent>();
         camera->SetUp({0.0f, 1.0f, 0.0f});
         m_brain = host->AddComponent<NS::Obj::CameraBrain>();
@@ -89,7 +89,7 @@ namespace NS::Obj
         SetSceneJsonSkybox(scene, m_skyboxPath);
         SetSceneJsonNextObjectId(scene, m_objects.NextObjectId());
         nlohmann::json& objects = SceneJsonObjects(scene);
-        for (const GameObject* obj : m_objects)
+        for (const Actor* obj : m_objects)
         {
             // 一時オブジェクトは保存にも凍結にも写さない
             if (obj->IsTransient())
@@ -111,7 +111,7 @@ namespace NS::Obj
 
     void Scene::NotifyTransientsObjectsRebuilt()
     {
-        for (GameObject* obj : m_objects)
+        for (Actor* obj : m_objects)
         {
             if (obj->IsTransient())
             {
@@ -138,7 +138,7 @@ namespace NS::Obj
 
     void Scene::WritePlayBaselineField(const Component& comp, std::string_view fieldName)
     {
-        const GameObject* owner = comp.Owner();
+        const Actor* owner = comp.Owner();
         if (owner == nullptr)
         {
             return;
@@ -188,7 +188,7 @@ namespace NS::Obj
         m_simulationStepFrames += 1;
     }
 
-    GameObject* Scene::SpawnTransient(std::unique_ptr<GameObject> obj)
+    Actor* Scene::SpawnTransient(std::unique_ptr<Actor> obj)
     {
         if (!obj)
         {
@@ -197,7 +197,7 @@ namespace NS::Obj
 
         obj->SetTransient(true);
         obj->AttachScene(this);
-        GameObject* raw = m_objects.Append(std::move(obj));
+        Actor* raw = m_objects.Append(std::move(obj));
         if (raw == nullptr)
         {
             return nullptr;
@@ -206,7 +206,7 @@ namespace NS::Obj
         return raw;
     }
 
-    GameObject* Scene::SpawnObject(std::unique_ptr<GameObject> obj, std::string name)
+    Actor* Scene::SpawnObject(std::unique_ptr<Actor> obj, std::string name)
     {
         if (!obj)
         {
@@ -214,7 +214,7 @@ namespace NS::Obj
         }
 
         obj->AttachScene(this);
-        GameObject* raw = m_objects.AppendWithNewId(std::move(obj), std::move(name));
+        Actor* raw = m_objects.AppendWithNewId(std::move(obj), std::move(name));
         if (raw == nullptr)
         {
             return nullptr;
@@ -223,7 +223,7 @@ namespace NS::Obj
         return raw;
     }
 
-    void Scene::StartSpawned(GameObject& obj)
+    void Scene::StartSpawned(Actor& obj)
     {
         // データ由来の配置物は ObjectBuilder が引き当てる。後から入る物はここで引き当てる
         // AssetManager が無い間は跳ばす。テストは資産なしでシーンを立てる
@@ -241,21 +241,21 @@ namespace NS::Obj
         obj.OnStart();
     }
 
-    GameObject* Scene::SpawnFromJson(const nlohmann::json& object)
+    Actor* Scene::SpawnFromJson(const nlohmann::json& object)
     {
         // 資産の引き当ては開始の直前に StartSpawned がまとめて行う
-        std::unique_ptr<GameObject> built = ObjectFromJson(object, nullptr);
+        std::unique_ptr<Actor> built = ObjectFromJson(object, nullptr);
         if (!built)
         {
             return nullptr;
         }
         built->AttachScene(this);
-        GameObject* raw = m_objects.InsertFromJson(std::move(built), object, m_objects.ObjectCount());
+        Actor* raw = m_objects.InsertFromJson(std::move(built), object, m_objects.ObjectCount());
         if (raw == nullptr)
         {
             return nullptr;
         }
-        if (GameObject* parent = m_objects.FindByObjectId(ObjectJsonParent(object)); parent != nullptr && parent != raw)
+        if (Actor* parent = m_objects.FindByObjectId(ObjectJsonParent(object)); parent != nullptr && parent != raw)
         {
             raw->SetParent(parent);
         }
@@ -263,17 +263,17 @@ namespace NS::Obj
         return raw;
     }
 
-    GameObject* Scene::ReplaceFromJson(const nlohmann::json& object)
+    Actor* Scene::ReplaceFromJson(const nlohmann::json& object)
     {
         const std::uint32_t id = ObjectJsonId(object);
         const std::size_t index = m_objects.IndexOfObjectId(id);
-        GameObject* old = m_objects.FindByObjectId(id);
+        Actor* old = m_objects.FindByObjectId(id);
         if (old == nullptr)
         {
             return SpawnFromJson(object);
         }
 
-        std::unique_ptr<GameObject> built = ObjectFromJson(object, nullptr);
+        std::unique_ptr<Actor> built = ObjectFromJson(object, nullptr);
         if (!built)
         {
             // 組める component が無い姿は、居ない姿として扱う
@@ -284,25 +284,25 @@ namespace NS::Obj
         // 子は古い方の破棄で根に落ちるので、先に控えて新しい方へ付け直す。local の姿はそのまま残る
         std::vector<std::uint32_t> childIds;
         childIds.reserve(old->Children().size());
-        for (const GameObject* child : old->Children())
+        for (const Actor* child : old->Children())
         {
             childIds.push_back(child->Id());
         }
 
         DestroyObject(id);
         built->AttachScene(this);
-        GameObject* raw = m_objects.InsertFromJson(std::move(built), object, index);
+        Actor* raw = m_objects.InsertFromJson(std::move(built), object, index);
         if (raw == nullptr)
         {
             return nullptr;
         }
-        if (GameObject* parent = m_objects.FindByObjectId(ObjectJsonParent(object)); parent != nullptr && parent != raw)
+        if (Actor* parent = m_objects.FindByObjectId(ObjectJsonParent(object)); parent != nullptr && parent != raw)
         {
             raw->SetParent(parent);
         }
         for (const std::uint32_t childId : childIds)
         {
-            if (GameObject* child = m_objects.FindByObjectId(childId))
+            if (Actor* child = m_objects.FindByObjectId(childId))
             {
                 child->SetParent(raw);
             }
@@ -311,9 +311,9 @@ namespace NS::Obj
         return raw;
     }
 
-    GameObject* Scene::ApplyFromJson(const nlohmann::json& object)
+    Actor* Scene::ApplyFromJson(const nlohmann::json& object)
     {
-        GameObject* obj = m_objects.FindByObjectId(ObjectJsonId(object));
+        Actor* obj = m_objects.FindByObjectId(ObjectJsonId(object));
         if (obj == nullptr)
         {
             return SpawnFromJson(object);
@@ -333,7 +333,7 @@ namespace NS::Obj
         obj->SetActive(ObjectJsonActive(object));
 
         // 親の付け替えは local の値を保つ。transform は後で JSON の local を写すので、親を先に戻す
-        GameObject* parent = m_objects.FindByObjectId(ObjectJsonParent(object));
+        Actor* parent = m_objects.FindByObjectId(ObjectJsonParent(object));
         if (parent == obj)
         {
             parent = nullptr;
@@ -385,7 +385,7 @@ namespace NS::Obj
 
     void Scene::RebuildObjectsFrom(const nlohmann::json& scene)
     {
-        // GameObject の型選択は登録一覧、参照の実体化は各 component の ResolveAssets が行う
+        // Actor の型選択は登録一覧、参照の実体化は各 component の ResolveAssets が行う
         // vcam の brain への付け外しは VirtualCamera が OnStart / OnEndPlay で自分で行う
         m_objects.Rebuild(scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, m_assets); });
         m_objects.SyncPhysics(m_physicsScene);

@@ -14,7 +14,7 @@
 
 namespace NS::Obj
 {
-    class GameObject;
+    class Actor;
 } // namespace NS::Obj
 
 namespace NS::Game::Level
@@ -237,7 +237,7 @@ namespace NS::Game::Level
         [[nodiscard]] NS::Core::Vector3 AlongImpactFactors(float along, float height) const noexcept;
 
         // 置かれていた相手の描く形を、自機の潰れと同じ倍率で突進の向きに縮める。描く形の無い相手には何もしない
-        void ShrinkPlacedTarget(NS::Obj::GameObject& target);
+        void ShrinkPlacedTarget(NS::Obj::Actor& target);
 
         // 縮めた相手の描く形を元の形へ戻す。縮めていない時と、相手が消えていた時は何もしない
         void RestoreTargetShape();

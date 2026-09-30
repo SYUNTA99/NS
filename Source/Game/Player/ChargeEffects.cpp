@@ -5,7 +5,7 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerComponent.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 

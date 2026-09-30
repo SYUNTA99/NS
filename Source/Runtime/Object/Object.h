@@ -8,10 +8,10 @@
 
 namespace NS::Obj
 {
-    class GameObject;
+    class Actor;
     class ObjectList;
 
-    //! @brief GameObject と Component の共通基底。クラス名と永続 id と名前を持つ
+    //! @brief Actor と Component の共通基底。クラス名と永続 id と名前を持つ
     //! @details ClassName() は保存が配置物の JSON の class へ写し、読込は TypeRegistry の同名登録で型を選ぶ
     //! Id() は保存と参照解決で使う同一性。配置物と Component の両方に振られ、番号の空間は共通
     //! Name() は人が読む名前。配置物はシーンの中で、Component は持ち主の配置物の中で一意
@@ -22,7 +22,7 @@ namespace NS::Obj
         Object() noexcept = default;
         virtual ~Object() noexcept = default;
 
-        //! クラス名。素の GameObject と未リフレクション Component は空を返す
+        //! クラス名。素の Actor と未リフレクション Component は空を返す
         [[nodiscard]] virtual const char* ClassName() const noexcept { return ""; }
 
         //! 永続 id。0 は未採番
@@ -33,9 +33,9 @@ namespace NS::Obj
 
     private:
         // id はシーンの中で一意なので、シーンの配置物を持つ ObjectList だけが書く
-        // 名前は一意の範囲を持つ側が書く。配置物は ObjectList、Component は持ち主の GameObject
+        // 名前は一意の範囲を持つ側が書く。配置物は ObjectList、Component は持ち主の Actor
         friend class ObjectList;
-        friend class GameObject;
+        friend class Actor;
         void SetId(std::uint32_t id) noexcept { m_id = id; }
         void SetName(std::string name) noexcept { m_name = std::move(name); }
 

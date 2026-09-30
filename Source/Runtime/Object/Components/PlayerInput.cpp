@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/CameraBrain.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Gamepad.h"

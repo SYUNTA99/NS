@@ -19,7 +19,7 @@ namespace NS::UI
 namespace NS::Obj
 {
     class Transform;
-    class GameObject;
+    class Actor;
 } // namespace NS::Obj
 
 namespace NS::Editor
@@ -73,7 +73,7 @@ namespace NS::Editor
         //! @param[in] objects 選択対象となるオブジェクト
         //! @param[in] pickable objects と同じ添字の優先度。0 の配置物は 1 の配置物に当たらなかった時だけ選ぶ。
         //! 省略すると全部を同じに扱う
-        void SetSelectableObjects(std::span<NS::Obj::GameObject* const> objects,
+        void SetSelectableObjects(std::span<NS::Obj::Actor* const> objects,
                                   std::span<const std::uint8_t> pickable = {}) noexcept;
 
         void SetActive(bool active) noexcept { m_active = active; }
@@ -185,7 +185,7 @@ namespace NS::Editor
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
 
-        std::span<NS::Obj::GameObject* const> m_objects{}; //!< 選択判定の対象となるオブジェクト
+        std::span<NS::Obj::Actor* const> m_objects{}; //!< 選択判定の対象となるオブジェクト
         std::span<const std::uint8_t> m_pickable{};           //!< 選択の優先度。1 の配置物を先に選ぶ
 
         bool m_active = false;                       //!< ギズモ操作が有効かどうか

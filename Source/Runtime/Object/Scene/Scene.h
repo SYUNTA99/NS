@@ -36,7 +36,7 @@ namespace NS::Obj
     //! @details ObjectList と skybox を所有し、JSON 文書への書き出しと読み込み・プレイの凍結・標準のシーン描画パスを受け持つ
     //! Application から OnStart / OnUpdate / OnRender / OnShutdown を順に呼び戻される
     //! 固定ステップの更新と可変フレームの描画で駆動し、IRenderable と OverlayRenderer の自己登録先も兼ねる
-    //! live な GameObject/Component が唯一の表現で、JSON は実体でない姿 (ファイル・凍結・undo の控え) にだけ使う
+    //! live な Actor/Component が唯一の表現で、JSON は実体でない姿 (ファイル・凍結・undo の控え) にだけ使う
     //! 配置物は TypeRegistry と ResolveAssets で自力で組む。組み直し後の参照解決だけ派生が OnObjectsRebuilt で埋める
     //! 寿命は SceneManager が unique_ptr で所有する
     //! 依存: ObjectList / SceneJson / ObjectBuilder / TypeRegistry
@@ -154,34 +154,34 @@ namespace NS::Obj
         {
             std::unique_ptr<T> obj = std::make_unique<T>(std::forward<Args>(args)...);
             T* raw = obj.get();
-            SpawnTransient(std::unique_ptr<GameObject>{std::move(obj)});
+            SpawnTransient(std::unique_ptr<Actor>{std::move(obj)});
             return raw;
         }
 
         //! @brief 実行時の一時オブジェクトを ObjectList へ入れる。一時オブジェクトの印はここで立てる
         //! @details 保存・凍結に写らず、データからの組み直し後も残る。更新は配置物と同じ帯に乗る
         //! 型が実行時にしか決まらない時の受け口。型が分かっているなら SpawnTransient<T> を使う
-        GameObject* SpawnTransient(std::unique_ptr<GameObject> obj);
+        Actor* SpawnTransient(std::unique_ptr<Actor> obj);
 
         //! @brief 実行時に配置物を 1 体入れる。新しい永続 id と名前を振る。名前は既存と重なれば番号を付ける
         //! @details 一時オブジェクトと違い保存に写り、データからの組み直しで他の配置物と一緒に消える
-        GameObject* SpawnObject(std::unique_ptr<GameObject> obj, std::string name);
+        Actor* SpawnObject(std::unique_ptr<Actor> obj, std::string name);
 
         //! @brief 配置物の JSON から 1 体を組んで入れる。id と名前と component の id は JSON のまま使う
         //! @details 名前は既存と重なれば番号を付ける。親の id があれば親へぶら下げ、資産を引き当ててから開始する
         //! undo の作り直しと複製が通る。当たりは呼出側が SyncPhysics で張り直す
-        GameObject* SpawnFromJson(const nlohmann::json& object);
+        Actor* SpawnFromJson(const nlohmann::json& object);
 
         //! @brief 同じ id の配置物を JSON の姿へ作り直す。並びの位置と子の親子は保つ。居なければ SpawnFromJson と同じ
         //! @details component の増減も含めて姿を丸ごと入れ替える。当たりは呼出側が SyncPhysics で張り直す
-        GameObject* ReplaceFromJson(const nlohmann::json& object);
+        Actor* ReplaceFromJson(const nlohmann::json& object);
 
         //! @brief 同じ id の配置物へ JSON の姿を書き戻す。undo / redo が通る
         //! @details クラスと component の構成 (並び・型・id) が同じなら実体はそのまま残し、名前・有効・親・
         //! component の名前と有効と値だけを写す。値の変わった component だけ資産を引き直す
         //! 構成が違えば ReplaceFromJson で作り直し、居なければ SpawnFromJson で置く
         //! 当たりは呼出側が SyncPhysics で張り直す
-        GameObject* ApplyFromJson(const nlohmann::json& object);
+        Actor* ApplyFromJson(const nlohmann::json& object);
 
         //! @brief 配置物を 1 体消す。居なければ何もしない
         //! @details 当たり箱も揃うので、走っている世界を止めずに消せる
@@ -225,7 +225,7 @@ namespace NS::Obj
         void NotifyTransientsObjectsRebuilt();
 
         //! 実行時に入れた配置物の資産を引き当ててから開始する
-        void StartSpawned(GameObject& obj);
+        void StartSpawned(Actor& obj);
 
         SceneRenderer m_sceneRenderer;
 

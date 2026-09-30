@@ -1,33 +1,28 @@
 #pragma once
 
-#include "Runtime/Object/Component.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 
 namespace NS::Game::Level
 {
-    //! @brief 触れたプレイヤーを即死させる配置物の印
-    //! @details 奈落の下へ大きな体積で置き、落下死をレベルのデータとして表す
-    //! 当たり箱は Is Trigger にして置く。固形だと落ちてきたプレイヤーが上面に着地してしまう
-    //! 自分の BoxCollider とプレイヤーカプセルの重なりを LateUpdate 帯で自分で判定し、触れたら player の Kill を呼ぶ
-    //! 死んだ後どうするかは知らない。プレイ中しか帯更新が回らないため編集中は何もしない
-    class KillZone : public NS::Obj::Component
+    //! @brief 触れたプレイヤーを即死させる体積。奈落の下へ大きく置き、落下死をレベルのデータとして表す
+    //! @details 当たり箱はトリガーにする。固形だと落ちてきたプレイヤーが上面に着地してしまう
+    class KillZone : public NS::Obj::Actor
     {
     public:
         KillZone() noexcept;
 
-        void OnUpdate() override;
-
-        // 調整できるフィールドは無いが、リフレクション typeName を持たせて type と空 fields で直列化できるようにする
-        NS_REFLECT_NONE(KillZone, NS::Obj::Component)
+        //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
+        [[nodiscard]] const char* ClassName() const noexcept override { return "KillZone"; }
     };
 
-    //! 即死体積の印を持つ配置物か
+    //! 即死体積の配置物の JSON か
     [[nodiscard]] bool IsKillZoneObject(const nlohmann::json& object) noexcept;
 
-    //! 奈落用の即死体積のひな形の JSON を作る。落下死をレベルの配置物として持たせる
+    //! 奈落用の即死体積のひな形の JSON を作る
     [[nodiscard]] nlohmann::json MakeKillZoneObject();
 
     //! 即死体積が 1 つも無ければ既定の落下死体積を敷き、永続 id まで振る
-    //! 無いレベルは奈落で死ねず落ち続けてしまうので、読込のたびに通す
+    //! 無いレベルは奈落で死ねず落ち続けてしまうので、新しいレベルを作る時に通す
     [[nodiscard]] bool EnsureKillZoneObject(nlohmann::json& scene);
 } // namespace NS::Game::Level

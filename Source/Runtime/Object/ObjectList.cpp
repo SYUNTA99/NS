@@ -25,15 +25,15 @@ namespace NS::Obj
     void ObjectList::Rebuild(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory)
     {
         // 実行時の一時オブジェクトはデータ由来でないため、退避して組み直し後も残す
-        std::vector<std::unique_ptr<GameObject>> transients;
-        for (std::unique_ptr<GameObject>& obj : m_objects)
+        std::vector<std::unique_ptr<Actor>> transients;
+        for (std::unique_ptr<Actor>& obj : m_objects)
         {
             if (obj->IsTransient())
             {
                 transients.push_back(std::move(obj));
             }
         }
-        std::erase_if(m_objects, [](const std::unique_ptr<GameObject>& obj) { return obj == nullptr; });
+        std::erase_if(m_objects, [](const std::unique_ptr<Actor>& obj) { return obj == nullptr; });
 
         Clear();
 
@@ -66,7 +66,7 @@ namespace NS::Obj
             // OnStart で ObjectRef を解決する component が、自分より後ろの object も引けるようにするため
             for (const nlohmann::json& entry : objects)
             {
-                std::unique_ptr<GameObject> obj = factory(entry);
+                std::unique_ptr<Actor> obj = factory(entry);
                 if (!obj)
                 {
                     continue; // 組み立てる component が無いオブジェクトはファクトリが nullptr を返す
@@ -81,13 +81,13 @@ namespace NS::Obj
             // 循環は SetParent が輪を閉じる結び付けを拒むので、手編集のデータでも組み上がる
             // id 引きを線形で回すと体数の二乗に効くので、組み立ての間だけ使う対応表で引く
             // 索引として持ち越さないのは、所有リストと同期を保つ手間を抱え込まないため
-            std::unordered_map<std::uint32_t, GameObject*> byObjectId;
+            std::unordered_map<std::uint32_t, Actor*> byObjectId;
             byObjectId.reserve(m_objects.size());
-            for (std::unique_ptr<GameObject>& obj : m_objects)
+            for (std::unique_ptr<Actor>& obj : m_objects)
                 byObjectId.emplace(obj->Id(), obj.get());
 
-            const auto find = [&byObjectId](std::uint32_t id) -> GameObject* {
-                const std::unordered_map<std::uint32_t, GameObject*>::iterator it = byObjectId.find(id);
+            const auto find = [&byObjectId](std::uint32_t id) -> Actor* {
+                const std::unordered_map<std::uint32_t, Actor*>::iterator it = byObjectId.find(id);
                 if (it == byObjectId.end())
                 {
                     return nullptr;
@@ -101,8 +101,8 @@ namespace NS::Obj
                 {
                     continue;
                 }
-                GameObject* child = find(ObjectJsonId(entry));
-                GameObject* parent = find(ObjectJsonParent(entry));
+                Actor* child = find(ObjectJsonId(entry));
+                Actor* parent = find(ObjectJsonParent(entry));
                 if (child != nullptr && parent != nullptr && child != parent)
                 {
                     child->SetParent(parent);
@@ -112,12 +112,12 @@ namespace NS::Obj
             // 開始中に参照を引く component がいる。積み終えた並びで索引を作り直させる
             MarkIndexDirty();
             WarnMismatchedComponentRefs();
-            for (std::unique_ptr<GameObject>& objPtr : m_objects)
+            for (std::unique_ptr<Actor>& objPtr : m_objects)
                 objPtr->OnStart();
         }
 
         // 退避した一時オブジェクトを末尾へ戻す。開始済みなので OnStart は呼ばない
-        for (std::unique_ptr<GameObject>& obj : transients)
+        for (std::unique_ptr<Actor>& obj : transients)
         {
             m_objects.push_back(std::move(obj));
         }
@@ -128,19 +128,19 @@ namespace NS::Obj
         SnapshotObjects();
     }
 
-    GameObject* ObjectList::Append(std::unique_ptr<GameObject> obj)
+    Actor* ObjectList::Append(std::unique_ptr<Actor> obj)
     {
         if (!obj)
         {
             return nullptr;
         }
-        GameObject* raw = obj.get();
+        Actor* raw = obj.get();
         m_objects.push_back(std::move(obj));
         MarkIndexDirty();
         return raw;
     }
 
-    GameObject* ObjectList::AppendWithNewId(std::unique_ptr<GameObject> obj, std::string name)
+    Actor* ObjectList::AppendWithNewId(std::unique_ptr<Actor> obj, std::string name)
     {
         if (!obj)
         {
@@ -158,7 +158,7 @@ namespace NS::Obj
         // ファイルの参照は名前で書くので、プレイ中に足す物も既存と重ならない名前にする
         std::unordered_set<std::string> used;
         used.reserve(m_objects.size());
-        for (const std::unique_ptr<GameObject>& existing : m_objects)
+        for (const std::unique_ptr<Actor>& existing : m_objects)
         {
             used.insert(existing->Name());
         }
@@ -174,7 +174,7 @@ namespace NS::Obj
             return;
         }
 
-        for (std::vector<std::unique_ptr<GameObject>>::iterator it = m_objects.begin(); it != m_objects.end(); ++it)
+        for (std::vector<std::unique_ptr<Actor>>::iterator it = m_objects.begin(); it != m_objects.end(); ++it)
         {
             if ((*it)->Id() != objectId)
             {
@@ -188,7 +188,7 @@ namespace NS::Obj
         }
     }
 
-    GameObject* ObjectList::ObjectAt(std::size_t index) const noexcept
+    Actor* ObjectList::ObjectAt(std::size_t index) const noexcept
     {
         if (index >= m_objects.size())
         {
@@ -197,7 +197,7 @@ namespace NS::Obj
         return m_objects[index].get();
     }
 
-    GameObject* ObjectList::FindByObjectId(std::uint32_t objectId) noexcept
+    Actor* ObjectList::FindByObjectId(std::uint32_t objectId) noexcept
     {
         // 0 は未採番の印。一時オブジェクトは id を持たないので、素通しすると先頭の一時が引ける
         if (objectId == k_NoObjectId)
@@ -208,7 +208,7 @@ namespace NS::Obj
         if (m_indexDirty)
         {
             m_index.clear();
-            for (std::unique_ptr<GameObject>& obj : m_objects)
+            for (std::unique_ptr<Actor>& obj : m_objects)
             {
                 if (obj->Id() != k_NoObjectId)
                 {
@@ -218,14 +218,14 @@ namespace NS::Obj
             m_indexDirty = false;
         }
 
-        const std::unordered_map<std::uint32_t, GameObject*>::iterator it = m_index.find(objectId);
+        const std::unordered_map<std::uint32_t, Actor*>::iterator it = m_index.find(objectId);
         if (it != m_index.end() && it->second->Id() == objectId)
         {
             return it->second;
         }
 
         // 索引を作った後で id を書き換えた配置物は索引とずれる。全体を見て索引を直す
-        for (std::unique_ptr<GameObject>& obj : m_objects)
+        for (std::unique_ptr<Actor>& obj : m_objects)
         {
             if (obj->Id() == objectId)
             {
@@ -242,7 +242,7 @@ namespace NS::Obj
         m_indexDirty = true;
     }
 
-    GameObject* ObjectList::FindObject(ObjectRef ref) noexcept
+    Actor* ObjectList::FindObject(ObjectRef ref) noexcept
     {
         return FindByObjectId(ref.id);
     }
@@ -281,7 +281,7 @@ namespace NS::Obj
 
     void ObjectList::SnapshotObjects()
     {
-        for (std::unique_ptr<GameObject>& obj : m_objects)
+        for (std::unique_ptr<Actor>& obj : m_objects)
         {
             obj->Root().Snapshot();
         }
@@ -297,7 +297,7 @@ namespace NS::Obj
         // stable_sort なので同じ帯の中は配置物の並び順に落ちる
         // clear は容量を残すので毎フレームの確保が要らない
         m_scheduled.clear();
-        for (std::unique_ptr<GameObject>& obj : m_objects)
+        for (std::unique_ptr<Actor>& obj : m_objects)
         {
             for (Component* comp : obj->Components())
             {
@@ -333,7 +333,7 @@ namespace NS::Obj
         {
             return nullptr;
         }
-        GameObject* owner = FindObject(ObjectRef{ref.object});
+        Actor* owner = FindObject(ObjectRef{ref.object});
         if (owner == nullptr)
         {
             return nullptr;
@@ -343,7 +343,7 @@ namespace NS::Obj
 
     void ObjectList::WarnMismatchedComponentRefs()
     {
-        for (const std::unique_ptr<GameObject>& obj : m_objects)
+        for (const std::unique_ptr<Actor>& obj : m_objects)
         {
             for (const Component* comp : obj->Components())
             {
@@ -377,7 +377,7 @@ namespace NS::Obj
         }
     }
 
-    void ObjectList::ApplyIdentity(GameObject& obj, const nlohmann::json& entry)
+    void ObjectList::ApplyIdentity(Actor& obj, const nlohmann::json& entry)
     {
         obj.SetId(ObjectJsonId(entry));
         obj.SetName(std::string{ObjectJsonName(entry)});
@@ -385,7 +385,7 @@ namespace NS::Obj
         AssignComponentIds(obj, entry);
     }
 
-    GameObject* ObjectList::InsertFromJson(std::unique_ptr<GameObject> obj, const nlohmann::json& entry, std::size_t index)
+    Actor* ObjectList::InsertFromJson(std::unique_ptr<Actor> obj, const nlohmann::json& entry, std::size_t index)
     {
         if (!obj)
         {
@@ -395,7 +395,7 @@ namespace NS::Obj
         // 名前はシーンの中で一意に保つ。組み直さずに 1 体だけ入れるので、読込の一意化を通らない
         std::unordered_set<std::string> used;
         used.reserve(m_objects.size());
-        for (const std::unique_ptr<GameObject>& existing : m_objects)
+        for (const std::unique_ptr<Actor>& existing : m_objects)
         {
             used.insert(existing->Name());
         }
@@ -407,7 +407,7 @@ namespace NS::Obj
             m_nextObjectId = std::max(m_nextObjectId, comp->Id() + 1);
         }
 
-        GameObject* raw = obj.get();
+        Actor* raw = obj.get();
         index = std::min(index, m_objects.size());
         m_objects.insert(m_objects.begin() + static_cast<std::ptrdiff_t>(index), std::move(obj));
         MarkIndexDirty();
@@ -430,11 +430,11 @@ namespace NS::Obj
         return m_objects.size();
     }
 
-    void ObjectList::RenameObject(GameObject& obj, std::string_view name)
+    void ObjectList::RenameObject(Actor& obj, std::string_view name)
     {
         std::unordered_set<std::string> used;
         used.reserve(m_objects.size());
-        for (const std::unique_ptr<GameObject>& existing : m_objects)
+        for (const std::unique_ptr<Actor>& existing : m_objects)
         {
             if (existing.get() != &obj)
             {
@@ -444,7 +444,7 @@ namespace NS::Obj
         obj.SetName(MakeUniqueObjectName(name, used));
     }
 
-    void ObjectList::AssignComponentIds(GameObject& obj, const nlohmann::json& entry)
+    void ObjectList::AssignComponentIds(Actor& obj, const nlohmann::json& entry)
     {
         // 組み立てと同じ規則で件と実体を対応させる。規則を別に書くと、同じ型が 2 つある時に id が入れ違う
         const nlohmann::json& components = ObjectJsonComponents(entry);
@@ -465,7 +465,7 @@ namespace NS::Obj
     void ObjectList::Clear()
     {
         // OnEndPlay は生成の逆順で呼ぶ。依存し合う component の後始末を生成と対称にする
-        for (std::vector<std::unique_ptr<GameObject>>::reverse_iterator it = m_objects.rbegin(); it != m_objects.rend(); ++it)
+        for (std::vector<std::unique_ptr<Actor>>::reverse_iterator it = m_objects.rbegin(); it != m_objects.rend(); ++it)
         {
             (*it)->OnEndPlay();
         }

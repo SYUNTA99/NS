@@ -16,7 +16,7 @@
 #include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Components/RigidBody.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -124,7 +124,7 @@ namespace NS::Game::Level
             return NS::Core::Clamp(MeasureLineOffset(position, bounds, velocity, playerRadius).ratio, 0.0f, 1.0f);
         }
 
-        [[nodiscard]] JPH::BodyID CurrentBodyOf(const NS::Obj::GameObject& object) noexcept
+        [[nodiscard]] JPH::BodyID CurrentBodyOf(const NS::Obj::Actor& object) noexcept
         {
             // RigidBody の形になった collider は RigidBody の body を返す。飛んでいても置かれていても同じ口で引ける
             if (const NS::Obj::Collider* collider = object.FindComponent<NS::Obj::Collider>())
@@ -135,7 +135,7 @@ namespace NS::Game::Level
         }
 
         // 押し飛ばしの重さ。RigidBody が無い配置物は質量 1 として扱う
-        [[nodiscard]] float MassOf(const NS::Obj::GameObject& object) noexcept
+        [[nodiscard]] float MassOf(const NS::Obj::Actor& object) noexcept
         {
             if (const NS::Obj::RigidBody* rigidBody = object.FindComponent<NS::Obj::RigidBody>())
             {
@@ -721,7 +721,7 @@ namespace NS::Game::Level
         }
 
         // 力が伝わった瞬間の絵。凍結の頭で置かれた相手を発射方向へ食い込ませて止める
-        NS::Obj::GameObject* target = scene->Objects().FindObject(m_pendingTarget);
+        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
         if (m_pendingTargetPlaced && target != nullptr)
         {
             target->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * m_pushInDistance);
@@ -992,7 +992,7 @@ namespace NS::Game::Level
         }
 
         // 相手は id で引き直す。止まっている数フレームの間に消されていたら残りだけ諦める
-        NS::Obj::GameObject* target = scene->Objects().FindObject(m_pendingTarget);
+        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
         if (target == nullptr)
         {
             return;
@@ -1064,7 +1064,7 @@ namespace NS::Game::Level
         {
             return;
         }
-        NS::Obj::GameObject* target = scene->Objects().FindObject(m_pendingTarget);
+        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
         if (target == nullptr || m_hitStopTotal <= 0)
         {
             return;
@@ -1114,7 +1114,7 @@ namespace NS::Game::Level
         return NS::Core::Vector3{1.0f + (along - 1.0f) * dx2, height, 1.0f + (along - 1.0f) * dz2};
     }
 
-    void ImpactResolver::ShrinkPlacedTarget(NS::Obj::GameObject& target)
+    void ImpactResolver::ShrinkPlacedTarget(NS::Obj::Actor& target)
     {
         NS::Obj::MeshRenderer* look = target.FindComponent<NS::Obj::MeshRenderer>();
         if (look == nullptr)
@@ -1150,7 +1150,7 @@ namespace NS::Game::Level
         {
             return;
         }
-        NS::Obj::GameObject* target = scene->Objects().FindObject(m_pendingTarget);
+        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
         if (target == nullptr)
         {
             return;

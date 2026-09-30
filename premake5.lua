@@ -470,7 +470,7 @@ project "Audio"
 
 --============================================================================
 -- Object 層 (StaticLib)
---   GameObject / Component / Transform / IRenderable / RenderContext +
+--   Actor / Component / Transform / IRenderable / RenderContext +
 --   各種 Component (MeshRendererComponent / CharacterMovement / Camera / 他)
 --   UE5 風 OOP の合成主体。 Runtime Library として 7 層目に配置。
 --============================================================================
@@ -913,9 +913,9 @@ project "Tests"
     files {
         "Source/Tests/**.h",
         "Source/Tests/**.cpp",
-        -- Game 側 GameObject 派生 (Player) は Application 依存を持たないので
+        -- Game 側 Actor 派生 (Player) は Application 依存を持たないので
         -- Tests から直接コンパイルしてリンクする。
-        -- Source/Game/Player/ 配下とは別物。GameObject 派生の Player 本体
+        -- Source/Game/Player/ 配下とは別物。Actor 派生の Player 本体
         "Source/Game/Player.cpp",
         -- Game.cpp の Application と Window への依存は OnAttach / OnUpdate / OnRender の中だけなので、
         -- 開始シーンのパスの試験はそれらを呼ばずに済む。リンクは既に App を繋いでいる
@@ -941,6 +941,7 @@ project "Tests"
         "Source/Editor/GridMath.cpp",
         "Source/Editor/CategoryPalette.cpp",
         "Source/Editor/PaletteTemplates.cpp",
+        "Source/Editor/PlacementCatalog.cpp",
         "Source/Editor/LevelFileBrowser.cpp",
         "Source/Editor/LevelFilePaths.cpp",
         "Source/Editor/PlayControls.cpp",

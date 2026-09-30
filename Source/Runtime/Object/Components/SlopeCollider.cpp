@@ -1,6 +1,6 @@
 #include "Runtime/Object/Components/SlopeCollider.h"
 
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsScene.h"
@@ -13,7 +13,7 @@ namespace NS::Obj
         // local 生成では rotation を Owner transform に載せるので yaw=0。向き・位置は world matrix で反映
         std::array<NS::Phys::Triangle, 8> tris = NS::Phys::BuildWedgeTriangles({0.0f, 0.0f, 0.0f}, m_halfExtents, m_angleDegrees, 0.0f);
 
-        if (const GameObject* owner = Owner(); owner != nullptr)
+        if (const Actor* owner = Owner(); owner != nullptr)
         {
             const NS::Core::Matrix world = owner->Root().WorldMatrix();
             for (NS::Phys::Triangle& tri : tris)

@@ -2,7 +2,7 @@
 
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Clock.h"
 

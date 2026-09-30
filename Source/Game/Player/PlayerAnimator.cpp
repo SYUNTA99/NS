@@ -4,7 +4,7 @@
 #include "Game/Player/PlayerStateManager.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Runtime/Object/Components/SkeletalAnimation.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
 #include <algorithm>

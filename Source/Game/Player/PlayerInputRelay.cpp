@@ -2,7 +2,7 @@
 
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/Object/Components/PlayerInput.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 
 namespace NS::Game::Player
 {

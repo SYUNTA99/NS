@@ -3,7 +3,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
@@ -17,9 +17,9 @@ namespace NS::Obj
 {
     namespace
     {
-        // GameObject に既に載る同型 component をリフレクション型名で探す。適用済みの控えにある分は飛ばし、無ければ
+        // Actor に既に載る同型 component をリフレクション型名で探す。適用済みの控えにある分は飛ばし、無ければ
         // nullptr
-        Component* FindExistingComponent(const GameObject& obj,
+        Component* FindExistingComponent(const Actor& obj,
                                          std::string_view typeName,
                                          const std::vector<Component*>& applied) noexcept
         {
@@ -44,7 +44,7 @@ namespace NS::Obj
 
     } // namespace
 
-    Component* MatchComponentEntry(const GameObject& obj,
+    Component* MatchComponentEntry(const Actor& obj,
                                    const nlohmann::json& entry,
                                    const std::vector<Component*>& taken) noexcept
     {
@@ -69,9 +69,9 @@ namespace NS::Obj
         return FindExistingComponent(obj, typeName, taken);
     }
 
-    // データを唯一の正とする主経路。既定構成を積む GameObject では値だけが写り二重生成しない
+    // データを唯一の正とする主経路。既定構成を積む Actor では値だけが写り二重生成しない
     // データと live は 1 対 1 で対応させる
-    void ApplyObjectComponents(GameObject& obj, const nlohmann::json& object, const ComponentBuiltFn& onBuilt)
+    void ApplyObjectComponents(Actor& obj, const nlohmann::json& object, const ComponentBuiltFn& onBuilt)
     {
         std::vector<Component*> applied;
         for (const nlohmann::json& entry : ObjectJsonComponents(object))
@@ -114,14 +114,15 @@ namespace NS::Obj
         }
     }
 
-    std::unique_ptr<GameObject> ObjectFromJson(const nlohmann::json& object, AssetManager* assets)
+    std::unique_ptr<Actor> ObjectFromJson(const nlohmann::json& object, AssetManager* assets)
     {
-        if (ObjectJsonComponents(object).empty())
+        // クラスがあれば部品はコンストラクタが積む。クラスも部品も無い JSON は配置物でない
+        if (ObjectJsonComponents(object).empty() && ObjectJsonClass(object).empty())
         {
             return nullptr;
         }
 
-        std::unique_ptr<GameObject> obj = CreateRegisteredObject(object);
+        std::unique_ptr<Actor> obj = CreateRegisteredObject(object);
         ApplyObjectComponents(*obj, object, {});
 
         // 参照文字列の実体化は component 自身の仕事。AssetManager が無い間は文字列のまま持たせておく
@@ -138,13 +139,13 @@ namespace NS::Obj
         return obj;
     }
 
-    nlohmann::json MakePrototypeJson(const GameObject& obj)
+    nlohmann::json MakePrototypeJson(const Actor& obj)
     {
         nlohmann::json object = MakeObjectJson();
         SetObjectJsonClass(object, obj.ClassName());
         SetObjectJsonName(object, obj.Name());
         SetObjectJsonActive(object, obj.IsActiveSelf());
-        if (const GameObject* parent = obj.Parent())
+        if (const Actor* parent = obj.Parent())
         {
             SetObjectJsonParent(object, parent->Id());
         }
@@ -171,14 +172,14 @@ namespace NS::Obj
         return object;
     }
 
-    nlohmann::json ObjectToJson(const GameObject& obj)
+    nlohmann::json ObjectToJson(const Actor& obj)
     {
         nlohmann::json object = MakeObjectJson();
         SetObjectJsonId(object, obj.Id());
         SetObjectJsonClass(object, obj.ClassName());
         SetObjectJsonName(object, obj.Name());
         SetObjectJsonActive(object, obj.IsActiveSelf());
-        if (const GameObject* parent = obj.Parent())
+        if (const Actor* parent = obj.Parent())
         {
             SetObjectJsonParent(object, parent->Id());
         }

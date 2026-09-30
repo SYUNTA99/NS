@@ -2,7 +2,7 @@
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Sphere.h"
 
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsScene.h"
@@ -49,7 +49,7 @@ namespace NS::Obj
 
     NS::Core::Sphere SphereCollider::WorldSphere() const noexcept
     {
-        const GameObject* owner = Owner();
+        const Actor* owner = Owner();
         if (owner == nullptr)
         {
             return NS::Core::Sphere{ m_centerOffset, m_radius };

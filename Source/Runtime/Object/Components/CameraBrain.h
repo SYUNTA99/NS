@@ -59,7 +59,7 @@ namespace NS::Obj
     public:
         CameraBrain() noexcept;
 
-        //! 同じ GameObject に乗る実カメラをここで解決する。見つからなければ Evaluate は何もしない
+        //! 同じ Actor に乗る実カメラをここで解決する。見つからなければ Evaluate は何もしない
         void OnStart() override;
 
         //! 候補 vcam を登録する。null と重複は無視する。寿命は呼出側が支配する非所有参照
@@ -148,7 +148,7 @@ namespace NS::Obj
     private:
         [[nodiscard]] VirtualCamera* SelectActive() const noexcept;
 
-        CameraComponent* m_camera = nullptr; // 同じ GameObject に乗る実カメラ (非所有)
+        CameraComponent* m_camera = nullptr; // 同じ Actor に乗る実カメラ (非所有)
         std::vector<VirtualCamera*> m_vcams; // 登録済み vcam 候補 (非所有)
         VirtualCamera* m_active = nullptr;   // 現在選ばれている vcam
 

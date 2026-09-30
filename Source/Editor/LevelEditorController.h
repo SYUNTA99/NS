@@ -4,6 +4,7 @@
 #include "Editor/EditorMode.h"
 #include "Editor/EditorObjects.h"
 #include "Editor/GizmoEditor.h"
+#include "Editor/PlacementCatalog.h"
 #include "Editor/PlayControls.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "Runtime/Core/NonCopyable.h"
@@ -18,7 +19,7 @@
 
 namespace NS::Obj
 {
-    class GameObject;
+    class Actor;
     class Transform;
     class CameraBrain;
     class CameraComponent;
@@ -162,19 +163,16 @@ public:
     //! 編集モードでは live が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
     void MirrorPlayEditToBaseline(const NS::Obj::Component& comp, std::string_view fieldName);
 
-    //! 編集視点の中心あたりに新しい自由オブジェクトを 1 個追加して選択する。Undo 対応
-    void AddObject();
+    //! @brief 置ける物を 1 体、編集視点の中心あたりへ置いて選択する。Undo 対応
+    //! @param[in] item 置ける物の一覧 (PlacementItems) の 1 つ
+    void PlaceItem(const NS::Editor::PlacementItem& item);
 
-    //! @brief 基本形を 1 個、編集視点の中心あたりへ追加して選択する。Undo 対応
-    //! @param[in] kind 立方体 / 球 / 坂 / 空の GameObject
-    void AddPrimitive(NS::Editor::PrimitiveKind kind);
-
-    //! @brief メッシュ資産を 1 体として編集視点の中心あたりへ置く。Undo 対応
+    //! @brief メッシュ資産を地形の部品として編集視点の中心あたりへ置く。Undo 対応
     //! @param[in] meshPath 資産ファイルの絶対パス。参照は ContentRoot 相対へ直して持つ
-    void AddObjectWithMesh(std::string_view meshPath);
+    void AddMeshParts(std::string_view meshPath);
 
-    //! 選択中の配置物に対応する runtime GameObject。未選択 / 未構築は nullptr
-    [[nodiscard]] NS::Obj::GameObject* SelectedObjectGameObject() noexcept;
+    //! 選択中の配置物に対応する runtime Actor。未選択 / 未構築は nullptr
+    [[nodiscard]] NS::Obj::Actor* SelectedObjectActor() noexcept;
     //! 選択中の配置物がプレイヤー実体か
     [[nodiscard]] bool SelectedIsPlayerObject() const noexcept;
 
@@ -190,14 +188,6 @@ public:
     //! @details 見た目が動かないよう、今の world 変換を新しい親空間の local へ計算し直して持ち替える
     bool SetObjectParent(std::uint32_t id, std::uint32_t parentId);
 
-    //! @brief 選択中の配置物へコンポーネントを 1 個追加して undo へ積む
-    //! @param[in] typeName 追加するコンポーネントの型名
-    void AddComponentToSelected(std::string_view typeName);
-    //! @brief 選択中の配置物からコンポーネントを 1 個削除して undo へ積む
-    //! @details 残り 1 個になる削除・player の入力・transform は消さず何もしない
-    //! @param[in] componentIndex 削除するコンポーネントの添字
-    void RemoveComponentFromSelected(std::size_t componentIndex);
-
     //! @brief 選択中の配置物のコンポーネント 1 個について、データの active を切り替える
     //! @details false は保存に残り、読み直しても false のまま。player の入力と transform は守って何もしない
     void SetComponentEnabledOnSelected(std::size_t componentIndex, bool enabled);
@@ -211,19 +201,6 @@ public:
 
     //! 編集カメラの注視点を選択中の配置物へ寄せる。広がりに応じて距離も取り直す
     void FocusSelectedInView() noexcept;
-
-    //! @brief 選択中の配置物からコンポーネントを 1 個クリップボードへ控える
-    //! @param[in] componentIndex 控えるコンポーネントの添字
-    void CopyComponentToClipboard(std::size_t componentIndex);
-    //! クリップボードのコンポーネントを選択中の配置物の末尾へ追加する。上書きはしない
-    void PasteClipboardComponentToSelected();
-
-    //! @brief 選択中の配置物の componentIndex 番目の component の名前を変えて undo へ積む
-    //! @details 配置物の中で重なれば番号を付ける。空は型名に戻す。参照は id で持つので切れない
-    void RenameComponentOnSelected(std::size_t componentIndex, std::string_view name);
-
-    //! クリップボードにコンポーネントが控えられているか
-    [[nodiscard]] bool HasClipboardComponent() const noexcept { return m_componentClipboard.has_value(); }
 
     //! Object ツール中にギズモが配置物を選択しているか
     [[nodiscard]] bool HasGizmoSelection() const noexcept
@@ -303,7 +280,7 @@ private:
 
     NS::Editor::GizmoEditor m_gizmo{}; // 変形ギズモ管理
 
-    std::vector<NS::Obj::GameObject*> m_selectablePtrs; // 選択可能なオブジェクト
+    std::vector<NS::Obj::Actor*> m_selectablePtrs; // 選択可能なオブジェクト
     std::vector<std::uint8_t> m_selectablePickable;     // 1 は MeshRenderer を持つ配置物。ギズモが先に選ぶ
 
     std::uint32_t m_selectedObjectId = NS::Obj::k_NoObjectId; // 主対象の永続 id。選択の一次情報
@@ -319,7 +296,6 @@ private:
     std::vector<DragFollower> m_dragFollowers; // 主対象に付いて動く残りの選択
     NS::Core::Matrix m_dragPrimaryWorld{};     // ドラッグ開始時の主対象の world 変換
 
-    std::optional<nlohmann::json> m_componentClipboard; // コンポーネントのクリップボード ({type, fields} 1 件)
 
     bool m_gizmoWasDragging = false; // ドラッグ状態の保持
     bool m_transformEditing = false; // 変形編集の開始状態

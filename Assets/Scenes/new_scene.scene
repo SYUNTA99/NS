@@ -5,6 +5,7 @@
   "nextObjectId": 79,
   "objects": [
     {
+      "class": "MapParts",
       "components": [
         {
           "fields": {
@@ -493,6 +494,7 @@
       "name": "Object_1"
     },
     {
+      "class": "FollowCamera",
       "components": [
         {
           "fields": {
@@ -567,6 +569,7 @@
       "name": "Player Camera"
     },
     {
+      "class": "Light",
       "components": [
         {
           "fields": {
@@ -624,6 +627,7 @@
       "name": "Object_2"
     },
     {
+      "class": "MapObj",
       "components": [
         {
           "fields": {
@@ -739,6 +743,7 @@
       "name": "Object_3"
     },
     {
+      "class": "MapObj",
       "components": [
         {
           "fields": {
@@ -854,6 +859,7 @@
       "name": "Object_4"
     },
     {
+      "class": "MapObj",
       "components": [
         {
           "fields": {
@@ -969,6 +975,7 @@
       "name": "Object_5"
     },
     {
+      "class": "MapObj",
       "components": [
         {
           "fields": {

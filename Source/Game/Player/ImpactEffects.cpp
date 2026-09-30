@@ -8,7 +8,7 @@
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/RigidBody.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Clock.h"
@@ -186,7 +186,7 @@ namespace NS::Game::Player
         // 飛ばした相手の中心の、このステップの物理の後の位置。部品は物理の前に走るので、直近の物理が使った速度で
         // 1 フレーム先へ置く。曲線の間はその速度のまま進むので、ずれは 1 フレームぶんの重力の変化だけ
         // 今の位置に置くと、溜めきりの 50 m/s で帯の頭が相手の 0.8 m 後ろに離れて描かれる
-        [[nodiscard]] Vector3 LaunchTrailHead(const NS::Obj::GameObject& target,
+        [[nodiscard]] Vector3 LaunchTrailHead(const NS::Obj::Actor& target,
                                               const NS::Game::Level::LaunchedBody& body)
         {
             return target.Root().Position() + body.Velocity() * NS::Platform::FrameTimer::FixedDelta();
@@ -221,7 +221,7 @@ namespace NS::Game::Player
         }
 
         // 直近の物理の 1 歩で、床と見なせる面に触れていた場合 true
-        [[nodiscard]] bool TouchesFloor(const NS::Obj::GameObject& target)
+        [[nodiscard]] bool TouchesFloor(const NS::Obj::Actor& target)
         {
             const NS::Obj::RigidBody* rigidBody = target.FindComponent<NS::Obj::RigidBody>();
             if (rigidBody == nullptr)
@@ -490,7 +490,7 @@ namespace NS::Game::Player
         plan.floor = Vector3{impact.targetPos.x, impact.targetPos.y, impact.targetPos.z};
         if (scene != nullptr)
         {
-            const NS::Obj::GameObject* target = scene->Objects().FindObject(NS::Obj::ObjectRef{impact.targetId});
+            const NS::Obj::Actor* target = scene->Objects().FindObject(NS::Obj::ObjectRef{impact.targetId});
             NS::Core::AABB bounds{};
             if (target != nullptr && NS::Game::Level::TryGetColliderBounds(*target, bounds))
             {
@@ -822,7 +822,7 @@ namespace NS::Game::Player
         {
             return;
         }
-        const NS::Obj::GameObject* target = scene->Objects().FindObject(NS::Obj::ObjectRef{m_plan.targetId});
+        const NS::Obj::Actor* target = scene->Objects().FindObject(NS::Obj::ObjectRef{m_plan.targetId});
         if (target == nullptr)
         {
             return;
@@ -895,7 +895,7 @@ namespace NS::Game::Player
             return;
         }
         NS::Obj::Scene* scene = Owner()->OwningScene();
-        const NS::Obj::GameObject* target = nullptr;
+        const NS::Obj::Actor* target = nullptr;
         if (scene != nullptr)
         {
             target = scene->Objects().FindObject(NS::Obj::ObjectRef{m_flight.targetId});

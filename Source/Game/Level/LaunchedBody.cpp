@@ -6,7 +6,7 @@
 #include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Components/RigidBody.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -454,7 +454,7 @@ namespace NS::Game::Level
             const float angle = 2.0f * NS::Core::k_Pi * static_cast<float>(i) / static_cast<float>(m_debrisCount);
             // 浮きは交互に変える。全部同じ高さだと 1 つの輪に見えて壊れた量が伝わらない
             const float up = 0.5f + 0.5f * static_cast<float>(i % 2);
-            std::unique_ptr<NS::Obj::GameObject> owned = std::make_unique<NS::Obj::GameObject>();
+            std::unique_ptr<NS::Obj::Actor> owned = std::make_unique<NS::Obj::Actor>();
             owned->Root().SetPosition(origin);
             owned->Root().SetScale(NS::Core::Vector3{m_debrisScale, m_debrisScale, m_debrisScale});
             NS::Obj::MeshRenderer* mesh = owned->AddComponent<NS::Obj::MeshRenderer>();
@@ -472,7 +472,7 @@ namespace NS::Game::Level
                 debrisBody->SetRestitution(source->Restitution());
             }
             owned->AddComponent<LaunchedBody>();
-            NS::Obj::GameObject* spawned = scene->SpawnTransient(std::move(owned));
+            NS::Obj::Actor* spawned = scene->SpawnTransient(std::move(owned));
             if (spawned == nullptr)
                 continue;
             LaunchedBody* body = spawned->FindComponent<LaunchedBody>();

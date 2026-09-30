@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Runtime/Core/NonCopyable.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ComponentRef.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
@@ -25,17 +25,17 @@ namespace NS::Obj
 {
     class Scene;
     //! 配置物の JSON 1 件から配置物を組むファクトリ。組めない JSON には nullptr を返し、Rebuild が読み飛ばす
-    using ObjectFactoryFn = std::function<std::unique_ptr<GameObject>(const nlohmann::json&)>;
+    using ObjectFactoryFn = std::function<std::unique_ptr<Actor>(const nlohmann::json&)>;
 
-    //! @brief 配置物 GameObject の単一所有リスト
+    //! @brief 配置物 Actor の単一所有リスト
     //! @details シーンの JSON 文書から一括で組み直す。runtime も editor も同じ Rebuild 経路を通る
     //! 1 体だけ入れ替える InsertFromJson もあり、undo は組み直さずにこちらを通る
-    //! 配置物 1 件の組み立ては呼出側のファクトリに委ね、GameObject の型選択や資産解決は持たない
+    //! 配置物 1 件の組み立ては呼出側のファクトリに委ね、Actor の型選択や資産解決は持たない
     //! 機能別の型付き控えも持たず、欲しい component 型は ForEachComponent で問い合わせる
     //! 特定の 1 体は永続 id の解決で引く
     //! const の参照で受けても中身は守れない。ObjectAt と範囲 for と ForEachComponent が渡すのは
-    //! 非 const の GameObject* と Component* で、呼び出し側はそこから書き換えられる
-    //! 依存: NS::Obj::GameObject, ObjectJson, NS::Phys::PhysicsScene
+    //! 非 const の Actor* と Component* で、呼び出し側はそこから書き換えられる
+    //! 依存: NS::Obj::Actor, ObjectJson, NS::Phys::PhysicsScene
     class ObjectList : public NS::Core::NonCopyable
     {
     public:
@@ -50,13 +50,13 @@ namespace NS::Obj
         //! @brief 組み上がった配置物へ entry の id・名前・active・component の id を書き、index の位置へ入れる
         //! @details 組み直さずに 1 体だけ入れる経路。名前は既存と重なれば番号を付ける。index が末尾より先なら末尾
         //! scene attach と親子の結び付けと開始は呼出側が済ませる
-        GameObject* InsertFromJson(std::unique_ptr<GameObject> obj, const nlohmann::json& entry, std::size_t index);
+        Actor* InsertFromJson(std::unique_ptr<Actor> obj, const nlohmann::json& entry, std::size_t index);
 
         //! objectId の配置物の並びの位置。居なければ ObjectCount()
         [[nodiscard]] std::size_t IndexOfObjectId(std::uint32_t objectId) const noexcept;
 
         //! obj の名前を変える。他の配置物と重なれば番号を付ける。名前を書けるのはシーンの配置物を持つここだけ
-        void RenameObject(GameObject& obj, std::string_view name);
+        void RenameObject(Actor& obj, std::string_view name);
 
         //! 配置物の OnEndPlay を逆順に呼んでから所有物を空へ戻す。scene の OnShutdown と Rebuild 冒頭が呼ぶ
         void Clear();
@@ -74,26 +74,26 @@ namespace NS::Obj
 
         //! 組み上がった配置物を id を振らずに 1 体加える。scene attach は呼出側が済ませて渡す
         //! 実行時に湧く一時オブジェクト用。保存もされず、参照で引かれることも無い
-        GameObject* Append(std::unique_ptr<GameObject> obj);
+        Actor* Append(std::unique_ptr<Actor> obj);
 
         //! 組み上がった配置物と、その全 component に新しい永続 id を振り、名前を付けて 1 体加える
         //! 名前は既存と重なれば番号を付ける。scene attach は呼出側が済ませて渡す
-        GameObject* AppendWithNewId(std::unique_ptr<GameObject> obj, std::string name);
+        Actor* AppendWithNewId(std::unique_ptr<Actor> obj, std::string name);
 
         //! objectId 一致の配置物を破棄して所有リストから外す。居なければ何もしない
         //! 当たり箱もここで揃えるので、組み直さずに 1 体だけ消せる
-        //! 子は根として残る。親子の切り離しは GameObject の破棄が行う
+        //! 子は根として残る。親子の切り離しは Actor の破棄が行う
         //! 0 は未採番の印なので何もしない
         void RemoveByObjectId(std::uint32_t objectId);
 
         //! objectId 一致の配置物を返す。居なければ nullptr。選択・編集の live 索引
         //! 0 は未採番の印なので常に nullptr。索引から引くので、毎フレーム引いても全配置物を辿らない
-        [[nodiscard]] GameObject* FindByObjectId(std::uint32_t objectId) noexcept;
+        [[nodiscard]] Actor* FindByObjectId(std::uint32_t objectId) noexcept;
 
         //! ObjectRef の指す配置物を返す。未設定と該当なしは nullptr
         //! 並びが変わるたびに索引を捨てるので、破棄した相手を指す参照は必ず nullptr になる
         //! 別の配置物への参照はポインタで控えず、ObjectRef で持って使うたびにここで引く
-        [[nodiscard]] GameObject* FindObject(ObjectRef ref) noexcept;
+        [[nodiscard]] Actor* FindObject(ObjectRef ref) noexcept;
 
         //! @brief ComponentRef の指す Component を返す。未設定と該当なしは nullptr
         //! @details 持ち主の配置物を索引で引き、その中から id で Component を探す。控えずに使うたびに引く
@@ -131,16 +131,16 @@ namespace NS::Obj
         [[nodiscard]] std::size_t ObjectCount() const noexcept { return m_objects.size(); }
 
         //! index 番目の配置物。範囲外は nullptr。所有は ObjectList が持ったまま外へ出さない
-        [[nodiscard]] GameObject* ObjectAt(std::size_t index) const noexcept;
+        [[nodiscard]] Actor* ObjectAt(std::size_t index) const noexcept;
 
         //! 範囲 for 用の反復子。辿ると生ポインタが出るので、所有の入れ物を外へ見せずに全配置物を回せる
         //! 添字が要る呼び出し側は ObjectCount / ObjectAt を使う
-        //! std::vector<GameObject*> を返す関数は作らない。毎回確保になる
+        //! std::vector<Actor*> を返す関数は作らない。毎回確保になる
         //! 配置物の生ポインタの配列もメンバに持たない。m_objects と食い違う
         class Iterator
         {
         public:
-            [[nodiscard]] GameObject* operator*() const noexcept { return m_slot->get(); }
+            [[nodiscard]] Actor* operator*() const noexcept { return m_slot->get(); }
             Iterator& operator++() noexcept
             {
                 ++m_slot;
@@ -150,8 +150,8 @@ namespace NS::Obj
 
         private:
             friend class ObjectList;
-            explicit Iterator(const std::unique_ptr<GameObject>* slot) noexcept : m_slot(slot) {}
-            const std::unique_ptr<GameObject>* m_slot = nullptr;
+            explicit Iterator(const std::unique_ptr<Actor>* slot) noexcept : m_slot(slot) {}
+            const std::unique_ptr<Actor>* m_slot = nullptr;
         };
 
         [[nodiscard]] Iterator begin() const noexcept { return Iterator{m_objects.data()}; }
@@ -161,7 +161,7 @@ namespace NS::Obj
         //! 型付き控えの代わりの問い合わせ口で、寿命は ObjectList が持ったまま
         template <class T, class Fn> void ForEachComponent(Fn&& fn) const
         {
-            for (const std::unique_ptr<GameObject>& obj : m_objects)
+            for (const std::unique_ptr<Actor>& obj : m_objects)
             {
                 for (Component* comp : obj->Components())
                 {
@@ -178,17 +178,17 @@ namespace NS::Obj
         void MarkIndexDirty() noexcept;
 
         //! entry の component の id を obj の実体へ書く。id を書くのはシーンの配置物を持つここだけ
-        void AssignComponentIds(GameObject& obj, const nlohmann::json& entry);
+        void AssignComponentIds(Actor& obj, const nlohmann::json& entry);
 
         //! entry の id・名前・active・component の id を obj へ書く
-        void ApplyIdentity(GameObject& obj, const nlohmann::json& entry);
+        void ApplyIdentity(Actor& obj, const nlohmann::json& entry);
 
         //! 欄の型に合わない Component を指す ComponentRef を警告する。引けば nullptr になるだけなので値は変えない
         void WarnMismatchedComponentRefs();
 
-        std::vector<std::unique_ptr<GameObject>> m_objects; // 配置物の単一所有リスト
+        std::vector<std::unique_ptr<Actor>> m_objects; // 配置物の単一所有リスト
         std::vector<Component*> m_scheduled;                // UpdateObjects が priority 順に並べ直す作業用の並び
-        std::unordered_map<std::uint32_t, GameObject*> m_index; // 永続 id から配置物への索引。汚れていれば次に引く時に作り直す
+        std::unordered_map<std::uint32_t, Actor*> m_index; // 永続 id から配置物への索引。汚れていれば次に引く時に作り直す
         bool m_indexDirty = true;                               // 索引が所有リストと食い違っているか
         std::uint32_t m_nextObjectId = 1;                   // 次に割り当てる永続 id。単調増加で欠番は再利用しない
         bool m_updating = false;                            // UpdateObjects の実行中か。入れ子の呼び出しの検知に使う

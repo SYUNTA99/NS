@@ -41,7 +41,7 @@ private:
     //! エディタ UI 全体の表示・非表示を切り替える入力を見る
     void HandleUiVisibilityInput(LevelEditorController& editor) noexcept;
 
-    //! @brief 画面最上部に File / Edit / GameObject 等のメインメニューバーを描画する
+    //! @brief 画面最上部に File / Edit / Actor 等のメインメニューバーを描画する
     //! @details 帯の高さ分だけビューポート作業領域が下がるので、後続のツールバー / ドックは自動でずれる
     void RenderMainMenuBar(LevelEditorController& editor) noexcept;
 

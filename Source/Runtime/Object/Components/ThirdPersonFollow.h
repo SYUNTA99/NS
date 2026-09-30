@@ -7,7 +7,7 @@
 namespace NS::Obj
 {
     class Transform;
-    class GameObject;
+    class Actor;
 
     //! @brief 追従カメラが 1 フレームぶん受ける溜めの状態
     //! @details 溜め量は押している間だけ意味を持つ。押していない値は放したのと同じに扱う

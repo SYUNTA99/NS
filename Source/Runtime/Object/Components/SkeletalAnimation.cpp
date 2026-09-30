@@ -5,7 +5,7 @@
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Clock.h"
 
@@ -203,7 +203,7 @@ namespace NS::Obj
 
         // 参照解決は component の並び順で回るので、priority 200 の MeshRenderer は 300 のここより先に解決済み
         // ここで差し替えないと skinned mesh が見た目に反映されない
-        if (GameObject* owner = Owner())
+        if (Actor* owner = Owner())
         {
             if (MeshRenderer* renderer = owner->FindComponent<MeshRenderer>())
             {
@@ -244,7 +244,7 @@ namespace NS::Obj
         }
 
         // 描画する MeshRenderer にパレットを差す。現在ポーズ境界は ApplyPose が毎フレーム差す
-        if (GameObject* owner = Owner())
+        if (Actor* owner = Owner())
         {
             m_renderer = owner->FindComponent<MeshRenderer>();
         }

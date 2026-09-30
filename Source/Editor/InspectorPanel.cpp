@@ -6,10 +6,9 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 
 #include <cstdint>
@@ -31,7 +30,7 @@ namespace NS::Editor
         const NS::Core::Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
 
         // 添字は ObjectToJson の並びへそのまま渡る。絞り方を変えると編集操作が隣を掴む
-        std::vector<NS::Obj::Component*> ReflectedComponents(NS::Obj::GameObject& go)
+        std::vector<NS::Obj::Component*> ReflectedComponents(NS::Obj::Actor& go)
         {
             std::vector<NS::Obj::Component*> result;
             result.reserve(go.Components().size());
@@ -52,7 +51,6 @@ namespace NS::Editor
     {
 #if NS_EDITOR_ENABLED
         m_nameCommitId = 0;
-        m_componentRenameCommitted = false;
         if (ImGui::Begin(k_PanelInspector))
         {
             // ObjectRef フィールドの参照先候補。Hierarchy と同じ並びと表示名で全配置物を出す
@@ -60,7 +58,7 @@ namespace NS::Editor
             refOptions.reserve(editor.Objects().ObjectCount());
             for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
             {
-                NS::Obj::GameObject& candidate = *editor.Objects().ObjectAt(i);
+                NS::Obj::Actor& candidate = *editor.Objects().ObjectAt(i);
                 if (candidate.IsTransient())
                     continue;
                 char label[96];
@@ -77,7 +75,7 @@ namespace NS::Editor
             std::vector<NS::Editor::ComponentRefOption> componentOptions;
             for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
             {
-                NS::Obj::GameObject& candidate = *editor.Objects().ObjectAt(i);
+                NS::Obj::Actor& candidate = *editor.Objects().ObjectAt(i);
                 if (candidate.IsTransient())
                     continue;
                 for (const NS::Obj::Component* comp : candidate.Components())
@@ -100,7 +98,7 @@ namespace NS::Editor
             }
 
             // 直前の HasInspectableSelection が同じ id を引けているので非 null
-            NS::Obj::GameObject* go = editor.SelectedObjectGameObject();
+            NS::Obj::Actor* go = editor.SelectedObjectActor();
             const std::vector<NS::Obj::Component*> components = ReflectedComponents(*go);
 
             // 名前は直接ここで書き換えられる。選択が変わったら今の表示名を入れ直す
@@ -195,8 +193,7 @@ namespace NS::Editor
             // クリックから
             ImGui::Separator();
 
-            if (components.empty())
-                ImGui::TextDisabled("コンポーネント無し。 足すと表示・当たりが付く");
+            // 部品はクラスが決めるので、ここでは値だけを変える。足し引きはできない
 
             NS::Editor::ComponentEditResult componentEdit{};
             for (std::size_t k = 0; k < components.size(); ++k)
@@ -221,7 +218,6 @@ namespace NS::Editor
                 ImGui::PushStyleColor(ImGuiCol_Header, NS::Editor::k_ComponentHeaderColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderHovered, NS::Editor::k_ComponentHeaderHoveredColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderActive, NS::Editor::k_ComponentHeaderActiveColor);
-                // AllowOverlap 無しだとヘッダが全幅の当たりを取り、右端に重ねた「...」がクリックを拾えない
                 // 見出しは名前。型名と違う名前を付けた物だけ型名を添える
                 std::string header = components[k]->Name();
                 if (header != typeName)
@@ -231,37 +227,8 @@ namespace NS::Editor
                     header += ")";
                 }
                 header += "###component";
-                const bool open = ImGui::CollapsingHeader(
-                    header.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
+                const bool open = ImGui::CollapsingHeader(header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
                 ImGui::PopStyleColor(3);
-
-                // コピー / 削除はヘッダ右端の三点メニューへまとめる
-                const float menuWidth = ImGui::CalcTextSize("...").x + ImGui::GetStyle().FramePadding.x * 2.0f;
-                ImGui::SameLine(ImGui::GetContentRegionMax().x - menuWidth);
-                if (ImGui::SmallButton("..."))
-                    ImGui::OpenPopup("ComponentMenu");
-                if (ImGui::BeginPopup("ComponentMenu"))
-                {
-                    // 名前はメニューから変える。改名は配置物を組み直すので、このパネルを描き終えてから流す
-                    if (ImGui::IsWindowAppearing())
-                        std::snprintf(
-                            m_componentNameBuffer, sizeof(m_componentNameBuffer), "%s", components[k]->Name().c_str());
-                    ImGui::SetNextItemWidth(160.0f);
-                    ImGui::InputText("名前", m_componentNameBuffer, sizeof(m_componentNameBuffer));
-                    if (ImGui::IsItemDeactivatedAfterEdit())
-                    {
-                        m_componentRenameIndex = k;
-                        m_componentRenameCommitted = true;
-                    }
-                    ImGui::Separator();
-                    if (ImGui::MenuItem("コンポーネントをコピー"))
-                        editor.CopyComponentToClipboard(k);
-                    // 最後の 1 個は消すと空構成になる。プレイヤーの印の入力 component も消させない
-                    const bool canRemove = components.size() > 1 && typeName != "PlayerInput";
-                    if (ImGui::MenuItem("コンポーネントを削除", nullptr, false, canRemove))
-                        editor.RemoveComponentFromSelected(k);
-                    ImGui::EndPopup();
-                }
 
                 if (open)
                 {
@@ -307,47 +274,11 @@ namespace NS::Editor
             if (componentEdit.committed)
                 editor.CommitComponentEdit();
 
-            if (editor.HasClipboardComponent())
-            {
-                if (ImGui::Button("コンポーネントを貼り付け"))
-                    editor.PasteClipboardComponentToSelected();
-            }
-
-            // Add Component は一番下に置く
-            ImGui::Separator();
-            if (ImGui::Button("+ コンポーネントを追加"))
-            {
-                m_addComponentFilter[0] = '\0'; // 開くたびに検索欄を空へ戻す
-                ImGui::OpenPopup("AddComponentPopup");
-            }
-            if (ImGui::BeginPopup("AddComponentPopup"))
-            {
-                // 開いた最初のフレームだけ検索欄へフォーカスを当てる
-                if (ImGui::IsWindowAppearing())
-                    ImGui::SetKeyboardFocusHere();
-                ImGui::SetNextItemWidth(-1.0f);
-                ImGui::InputTextWithHint(
-                    "##addComponentFilter", "検索", m_addComponentFilter, sizeof(m_addComponentFilter));
-                ImGui::Separator();
-                for (const std::string& name : NS::Obj::RegisteredNames())
-                {
-                    // プレイヤーの印である入力 component は手で足させない
-                    if (name == "PlayerInput")
-                        continue;
-                    if (!NameMatches(name.c_str(), m_addComponentFilter))
-                        continue;
-                    if (ImGui::Selectable(name.c_str()))
-                        editor.AddComponentToSelected(name);
-                }
-                ImGui::EndPopup();
-            }
         }
         ImGui::End();
 
         if (m_nameCommitId != 0)
             editor.RenameObject(m_nameCommitId, m_nameBuffer);
-        if (m_componentRenameCommitted)
-            editor.RenameComponentOnSelected(m_componentRenameIndex, m_componentNameBuffer);
 #else
         (void)editor;
 #endif

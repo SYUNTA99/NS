@@ -29,7 +29,7 @@
 #include "Runtime/Object/Components/SphereCollider.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/IRenderable.h"
 #include "Runtime/Object/Object.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"

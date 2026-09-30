@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 
 namespace NS::Obj
@@ -12,7 +12,7 @@ namespace NS::Obj
 //! @details 値と追加の component はファクトリがプレイヤーの JSON から写す
 //! 移動やつかみ等の能力 API はここに置き、実装は各 Component が持つ
 //! KillZone 等のルール配置物は FindPlayer で得た Player* へ能力を呼ぶ。プレイヤーはルールを知らない
-class Player : public NS::Obj::GameObject
+class Player : public NS::Obj::Actor
 {
 public:
     //! 既定の構成と見た目で組む。Mesh / Material は後からファクトリが入れる
@@ -24,7 +24,7 @@ public:
     Player(Player&&) = delete;
     Player& operator=(Player&&) = delete;
 
-    //! 保存形式と TypeRegistry の登録名。読込はこの名前で GameObject の型を選ぶ
+    //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
     [[nodiscard]] const char* ClassName() const noexcept override { return "Player"; }
 
     //! 命を amount 削る。下限 0

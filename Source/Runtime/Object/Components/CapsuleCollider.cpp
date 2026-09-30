@@ -1,7 +1,7 @@
 ﻿#include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Core/AABB.h"
 
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsScene.h"
@@ -96,7 +96,7 @@ namespace NS::Obj
 
     NS::Core::Matrix CapsuleCollider::CapsuleWorldMatrix() const noexcept
     {
-        const GameObject* owner = Owner();
+        const Actor* owner = Owner();
         const NS::Core::Matrix local = NS::Core::Matrix::CreateFromQuaternion(m_localRotation) *
                                        NS::Core::Matrix::CreateTranslation(m_centerOffset);
         return owner != nullptr ? local * owner->Root().WorldMatrix() : local;

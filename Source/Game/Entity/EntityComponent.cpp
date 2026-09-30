@@ -1,7 +1,7 @@
 ﻿#include "Game/Entity/EntityComponent.h"
 
 #include "Runtime/Object/Components/CapsuleCollider.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/JoltCharacter.h"

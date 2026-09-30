@@ -1,17 +1,17 @@
 ﻿#include "Runtime/Object/Components/VirtualCamera.h"
 
 #include "Runtime/Object/Components/CameraBrain.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Scene/Scene.h"
 
 namespace NS::Obj
 {
     namespace
     {
-        // scene に着いていない裸の GameObject 上でも OnStart は走るので、経路の全段で不在を許す
+        // scene に着いていない裸の Actor 上でも OnStart は走るので、経路の全段で不在を許す
         [[nodiscard]] CameraBrain* FindBrain(Component& self) noexcept
         {
-            GameObject* owner = self.Owner();
+            Actor* owner = self.Owner();
             if (owner == nullptr)
             {
 				return nullptr;

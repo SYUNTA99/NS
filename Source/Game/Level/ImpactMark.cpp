@@ -2,7 +2,7 @@
 
 #include "Runtime/Platform/Clock.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -12,7 +12,7 @@
 
 namespace NS::Game::Level
 {
-    NS::Obj::GameObject* ImpactMark::SpawnAt(NS::Obj::Scene* scene, const NS::Core::Vector3& position)
+    NS::Obj::Actor* ImpactMark::SpawnAt(NS::Obj::Scene* scene, const NS::Core::Vector3& position)
     {
         if (scene == nullptr)
         {
@@ -20,7 +20,7 @@ namespace NS::Game::Level
         }
 
         // 組み立ててから渡す。SpawnTransient の資産の引き当ては渡した時に持っている Component にしか効かない
-        std::unique_ptr<NS::Obj::GameObject> owned = std::make_unique<NS::Obj::GameObject>();
+        std::unique_ptr<NS::Obj::Actor> owned = std::make_unique<NS::Obj::Actor>();
         owned->Root().SetPosition(position);
         NS::Obj::MeshRenderer* mesh = owned->AddComponent<NS::Obj::MeshRenderer>();
         mesh->SetMeshRef("shadowQuad");

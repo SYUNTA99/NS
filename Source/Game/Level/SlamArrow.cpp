@@ -9,7 +9,7 @@
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -360,7 +360,7 @@ namespace NS::Game::Level
 
     void SlamArrow::OnStart()
     {
-        NS::Obj::GameObject* owner = Owner();
+        NS::Obj::Actor* owner = Owner();
         if (owner == nullptr)
         {
             return;
@@ -375,7 +375,7 @@ namespace NS::Game::Level
 
     void SlamArrow::OnEndPlay()
     {
-        NS::Obj::GameObject* owner = Owner();
+        NS::Obj::Actor* owner = Owner();
         if (owner == nullptr)
         {
             return;
@@ -485,7 +485,7 @@ namespace NS::Game::Level
 
     NS::Core::Vector3 SlamArrow::SortCenter() const noexcept
     {
-        const NS::Obj::GameObject* owner = Owner();
+        const NS::Obj::Actor* owner = Owner();
         if (owner == nullptr)
         {
             return {};

@@ -1,6 +1,6 @@
 #include "Runtime/Object/Components/DirectionalLight.h"
 
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 
@@ -10,7 +10,7 @@ namespace NS::Obj
 
     void DirectionalLight::OnStart()
     {
-        GameObject* owner = Owner();
+        Actor* owner = Owner();
         if (owner == nullptr)
         {
             return;
@@ -25,7 +25,7 @@ namespace NS::Obj
 
     void DirectionalLight::OnEndPlay()
     {
-        GameObject* owner = Owner();
+        Actor* owner = Owner();
         if (owner == nullptr)
         {
             return;

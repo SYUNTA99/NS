@@ -3,7 +3,7 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/MeshCollision.h"
@@ -58,7 +58,7 @@ namespace NS::Obj
         {
             return {};
         }
-        const GameObject* owner = Owner();
+        const Actor* owner = Owner();
         if (owner == nullptr)
         {
             return m_collision->triangles;
@@ -84,7 +84,7 @@ namespace NS::Obj
         }
 
         NS::Core::Matrix world = NS::Core::Matrix::Identity;
-        if (const GameObject* owner = Owner())
+        if (const Actor* owner = Owner())
         {
             world = owner->Root().WorldMatrix();
         }
@@ -102,7 +102,7 @@ namespace NS::Obj
 
     void MeshCollider::ResolveAssets(AssetManager& assets)
     {
-        const GameObject* owner = Owner();
+        const Actor* owner = Owner();
         if (owner == nullptr)
         {
             return;

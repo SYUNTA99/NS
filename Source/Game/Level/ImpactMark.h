@@ -5,7 +5,7 @@
 
 namespace NS::Obj
 {
-    class GameObject;
+    class Actor;
     class Scene;
 } // namespace NS::Obj
 
@@ -19,7 +19,7 @@ namespace NS::Game::Level
     {
     public:
         //! 指定の位置へ跡の一時オブジェクトを出す。scene が nullptr なら nullptr を返す
-        [[nodiscard]] static NS::Obj::GameObject* SpawnAt(NS::Obj::Scene* scene,
+        [[nodiscard]] static NS::Obj::Actor* SpawnAt(NS::Obj::Scene* scene,
                                                              const NS::Core::Vector3& position);
 
         //! 出た直後の水平の大きさを跡の直径へ合わせる

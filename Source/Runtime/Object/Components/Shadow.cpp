@@ -5,7 +5,7 @@
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -26,7 +26,7 @@ namespace NS::Obj
 
     void Shadow::OnStart()
     {
-        GameObject* owner = Owner();
+        Actor* owner = Owner();
         if (owner == nullptr)
         {
             return;
@@ -41,7 +41,7 @@ namespace NS::Obj
 
     void Shadow::OnEndPlay()
     {
-        GameObject* owner = Owner();
+        Actor* owner = Owner();
         if (owner == nullptr)
         {
 			return;
@@ -56,7 +56,7 @@ namespace NS::Obj
 
     NS::Core::Vector3 Shadow::SortCenter() const noexcept
     {
-        const GameObject* owner = Owner();
+        const Actor* owner = Owner();
         if (owner == nullptr)
         {
 			return {};
@@ -67,7 +67,7 @@ namespace NS::Obj
 
     NS::Core::AABB Shadow::WorldBounds() const noexcept
     {
-        const GameObject* owner = Owner();
+        const Actor* owner = Owner();
         if (owner == nullptr)
         {
 			return {};
@@ -100,7 +100,7 @@ namespace NS::Obj
 
     void Shadow::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
     {
-        GameObject* owner = Owner();
+        Actor* owner = Owner();
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
         {
 			return;
