@@ -1,0 +1,13 @@
+{
+  "class": "FollowCamera",
+  "components": [
+    {
+      "fields": {
+        "ファークリップ": 100.0,
+        "優先度": 0
+      },
+      "name": "ThirdPersonFollow",
+      "type": "ThirdPersonFollow"
+    }
+  ]
+}

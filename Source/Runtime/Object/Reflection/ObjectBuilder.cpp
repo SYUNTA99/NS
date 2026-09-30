@@ -1,9 +1,11 @@
 ﻿#include "Runtime/Object/Reflection/ObjectBuilder.h"
 
+#include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
@@ -69,9 +71,7 @@ namespace NS::Obj
         return FindExistingComponent(obj, typeName, taken);
     }
 
-    // データを唯一の正とする主経路。既定構成を積む Actor では値だけが写り二重生成しない
-    // データと live は 1 対 1 で対応させる
-    void ApplyObjectComponents(Actor& obj, const nlohmann::json& object, const ComponentBuiltFn& onBuilt)
+    void ApplyObjectComponents(Actor& obj, const nlohmann::json& object, PartCreation creation)
     {
         std::vector<Component*> applied;
         for (const nlohmann::json& entry : ObjectJsonComponents(object))
@@ -82,48 +82,51 @@ namespace NS::Obj
                 continue;
             }
 
-            Component* created = MatchComponentEntry(obj, entry, applied);
-            if (created == nullptr)
+            Component* target = MatchComponentEntry(obj, entry, applied);
+            if (target == nullptr)
             {
-                created = CreateComponent(std::string(typeName), obj);
+                if (creation == PartCreation::Forbid)
+                {
+                    // どの部品を持つかはクラスと種類の既定値が決める。個体のデータは部品を足せない
+                    NS_LOG_WARN(Scene, "{} の個体のデータにある部品 {} はクラスに無いので読み飛ばす", obj.ClassName(), typeName);
+                    continue;
+                }
+                target = CreateComponent(std::string(typeName), obj);
             }
-            if (created == nullptr)
+            if (target == nullptr)
             {
                 continue; // 許可リスト外 / 未知の型は読み飛ばす
             }
-            applied.push_back(created);
+            applied.push_back(target);
 
-            // 保存された名前へ付け直す。名前の無い古いデータは作った時の型名のまま
+            // 保存された名前へ付け直す。名前の無い件は作った時の型名のまま
             const std::string_view name = ComponentEntryName(entry);
-            if (!name.empty() && created->Name() != name)
+            if (!name.empty() && target->Name() != name)
             {
-                obj.RenameComponent(*created, name);
+                obj.RenameComponent(*target, name);
             }
-            created->SetEnabled(ComponentEntryEnabled(entry));
+            target->SetEnabled(ComponentEntryEnabled(entry));
 
             const nlohmann::json::const_iterator fieldsIt = entry.find("fields");
             if (fieldsIt != entry.end())
             {
-                ApplyJsonFields(*created, *fieldsIt);
-            }
-
-            if (onBuilt)
-            {
-                onBuilt(*created, entry);
+                ApplyJsonFields(*target, *fieldsIt);
             }
         }
     }
 
     std::unique_ptr<Actor> ObjectFromJson(const nlohmann::json& object, AssetManager* assets)
     {
-        // クラスがあれば部品はコンストラクタが積む。クラスも部品も無い JSON は配置物でない
-        if (ObjectJsonComponents(object).empty() && ObjectJsonClass(object).empty())
+        // 部品はクラスのコンストラクタと種類の既定値が積む。クラスの無い JSON は配置物でない
+        if (ObjectJsonClass(object).empty())
         {
             return nullptr;
         }
 
+        // コードの既定値 < 種類の既定値 < 個体の上書き の順に重ねる
         std::unique_ptr<Actor> obj = CreateRegisteredObject(object);
-        ApplyObjectComponents(*obj, object, {});
+        ApplyArchetype(*obj);
+        ApplyObjectComponents(*obj, object, PartCreation::Forbid);
 
         // 参照文字列の実体化は component 自身の仕事。AssetManager が無い間は文字列のまま持たせておく
         if (assets != nullptr)
@@ -200,6 +203,7 @@ namespace NS::Obj
             SetComponentEntryEnabled(entry, comp->IsEnabled());
             components.push_back(std::move(entry));
         }
-        return object;
+        // 種類の既定値と同じ欄は書かない。種類の既定値を変えると、上書きしていない個体はみな新しい値になる
+        return DiffObjectJson(object);
     }
 } // namespace NS::Obj

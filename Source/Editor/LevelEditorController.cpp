@@ -18,6 +18,7 @@
 #include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
+#include "Runtime/Object/Components/MeshCollider.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/SlopeCollider.h"
@@ -26,7 +27,9 @@
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/ObjectName.h"
+#include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
+#include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Platform/Clock.h"
@@ -40,6 +43,19 @@
 
 namespace
 {
+    // 部品の欄 1 つの値を JSON で読む。無い欄は null
+    nlohmann::json FieldJson(const NS::Obj::Component& comp, std::string_view fieldName)
+    {
+        const nlohmann::json serialized = NS::Obj::SerializeComponent(comp);
+        const nlohmann::json* fields = NS::Obj::ComponentEntryFields(serialized);
+        if (fields == nullptr)
+            return nullptr;
+        const nlohmann::json::const_iterator it = fields->find(std::string{fieldName});
+        if (it == fields->end())
+            return nullptr;
+        return *it;
+    }
+
     std::string RelativeToRoot(std::string_view absPath, std::string_view root)
     {
         const std::string absNorm = NS::Platform::FileSystem::Normalize(absPath);
@@ -106,6 +122,21 @@ namespace
                 }
             }
             NS::Gfx::DebugDraw::AABB(NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f}, color);
+        }
+        else if (object.FindComponent<NS::Obj::MeshCollider>() != nullptr)
+        {
+            // メッシュの当たりは見た目の三角形そのもの。三角形は多いので、見た目のメッシュを包む箱を出す
+            const NS::Obj::MeshRenderer* renderer = object.FindComponent<NS::Obj::MeshRenderer>();
+            if (renderer == nullptr || renderer->GetMesh() == nullptr)
+                return;
+            const NS::Core::AABB& local = renderer->GetMesh()->LocalBounds();
+            const NS::Core::Matrix world = object.Root().WorldMatrix();
+            const NS::Core::AffineDecomposition parts = NS::Core::DecomposeAffine(world);
+            const NS::Core::Vector3 center = NS::Core::Vector3::Transform(NS::Core::Vector3{local.Center}, world);
+            const NS::Core::Vector3 half{local.Extents.x * std::abs(parts.scale.x),
+                                         local.Extents.y * std::abs(parts.scale.y),
+                                         local.Extents.z * std::abs(parts.scale.z)};
+            NS::Gfx::DebugDraw::OBB(NS::Core::MakeOBB(center, parts.rotation, half), color);
         }
     }
 
@@ -1064,6 +1095,53 @@ void LevelEditorController::MirrorPlayEditToBaseline(const NS::Obj::Component& c
     if (m_mode != Mode::Play || m_scene == nullptr)
         return;
     m_scene->WritePlayBaselineField(comp, fieldName);
+}
+
+bool LevelEditorController::PromoteFieldToArchetype(NS::Obj::Component& comp, std::string_view fieldName)
+{
+    NS::Obj::Actor* owner = comp.Owner();
+    const NS::Obj::ReflectionInfo* info = comp.GetReflection();
+    if (m_scene == nullptr || owner == nullptr || info == nullptr)
+        return false;
+    const std::string className{owner->ClassName()};
+    const std::string_view typeName{info->typeName};
+
+    // 上げる前の既定の値。これと同じ値の個体は上書きしていないので、新しい既定値へ付いて行く
+    const NS::Obj::Component* oldPart = NS::Obj::FindBaselinePart(comp);
+    if (oldPart == nullptr)
+        return false;
+    const nlohmann::json oldValue = FieldJson(*oldPart, fieldName);
+
+    std::vector<NS::Obj::Component*> followers;
+    for (NS::Obj::Actor* actor : m_scene->Objects())
+    {
+        if (actor == owner || actor->IsTransient() || className != actor->ClassName())
+            continue;
+        NS::Obj::Component* part = actor->FindComponentByName(comp.Name());
+        if (part == nullptr || part->GetReflection() == nullptr || typeName != part->GetReflection()->typeName)
+            continue;
+        if (FieldJson(*part, fieldName) == oldValue)
+            followers.push_back(part);
+    }
+
+    if (!NS::Obj::WriteFieldToArchetype(comp, fieldName))
+        return false;
+    if (!NS::Obj::ArchetypeLibrary::Get().Save(className))
+        NS_LOG_WARN(App, "種類の既定値 {} をファイルへ書けなかった。今の起動の間だけ効く", className);
+
+    // 付いて行く個体へ新しい値を写す。資産の参照の欄なら実体も引き直す
+    nlohmann::json fields = nlohmann::json::object();
+    fields[std::string{fieldName}] = FieldJson(comp, fieldName);
+    NS::App::Application* app = NS::App::Application::Get();
+    for (NS::Obj::Component* part : followers)
+    {
+        (void)NS::Obj::ApplyJsonFields(*part, fields);
+        if (app != nullptr)
+            part->ResolveAssets(app->Assets());
+    }
+    // 当たりの大きさの欄なら body を張り直す
+    m_scene->SyncPhysics();
+    return true;
 }
 
 void LevelEditorController::PlaceItem(const NS::Editor::PlacementItem& item)

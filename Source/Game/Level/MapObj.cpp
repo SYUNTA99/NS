@@ -4,7 +4,6 @@
 #include "Game/Level/LaunchedBody.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Components/RigidBody.h"
-#include "Runtime/Object/Components/Shadow.h"
 #include "Runtime/Object/Components/SphereCollider.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
@@ -21,7 +20,7 @@ namespace NS::Game::Level
         body->SetKinematic(true);
         AddComponent<Breakable>();
         AddComponent<LaunchedBody>();
-        AddComponent<NS::Obj::Shadow>();
+        // 影は種類の既定値 (Assets/Archetypes/MapObj.json) が足す。影を落とさない置物も同じクラスで作れる
     }
 
     NS_PLACEABLE(MapObj, "置物")

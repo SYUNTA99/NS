@@ -4,6 +4,7 @@
 #include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/RigidBody.h"
+#include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/Reflection.h"
@@ -311,17 +312,19 @@ namespace NS::Obj
         return raw;
     }
 
-    Actor* Scene::ApplyFromJson(const nlohmann::json& object)
+    Actor* Scene::ApplyFromJson(const nlohmann::json& snapshot)
     {
-        Actor* obj = m_objects.FindByObjectId(ObjectJsonId(object));
+        Actor* obj = m_objects.FindByObjectId(ObjectJsonId(snapshot));
         if (obj == nullptr)
         {
-            return SpawnFromJson(object);
+            return SpawnFromJson(snapshot);
         }
+        // 控えは個体の上書きだけを持つ。上書きの無い欄も種類の既定値へ戻すため、全欄の姿へ広げてから比べる
+        const nlohmann::json object = ExpandObjectJson(snapshot);
         const std::vector<Component*> reflected = ReflectedComponents(*obj);
         if (!MatchesStructure(*obj, reflected, object))
         {
-            return ReplaceFromJson(object);
+            return ReplaceFromJson(snapshot);
         }
 
         // 実体はそのまま。ポインタも実行時の状態も残し、JSON と違う値だけを書き戻す

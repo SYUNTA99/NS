@@ -1,5 +1,6 @@
 #include "Runtime/Object/Actors/MapParts.h"
 
+#include "Runtime/Object/Components/MeshCollider.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
@@ -11,6 +12,8 @@ namespace NS::Obj
         MeshRenderer* mesh = AddComponent<MeshRenderer>();
         mesh->SetMeshRef("cube");
         mesh->SetBaseColor(NS::Core::Vector3{0.70f, 0.70f, 0.75f});
+        // 当たりは見た目のメッシュの三角形そのもの。メッシュを差し替えると当たりも付いて来る
+        AddComponent<MeshCollider>();
     }
 
     NS_PLACEABLE(MapParts, "地形の部品")

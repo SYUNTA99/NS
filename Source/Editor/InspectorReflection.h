@@ -38,20 +38,25 @@ namespace NS::Editor
         std::string label;                           // UI表示用のラベル
     };
 
-    //! @brief 型ごとの既定インスタンスを控える置き場
-    //! @details リフレクション欄の「既定と違う」印と戻すボタンが、今の値と比べる相手として引く
-    //! 控えは 1 体の Actor へまとめて attach するだけで、world に入らないので更新も描画も走らない
+    //! @brief 部品ごとの既定の値を引く置き場
+    //! @details リフレクション欄の上書きの印と戻すボタンが、今の値と比べる相手として引く
+    //! 持ち主のクラスの既定の 1 体 (コードの既定値に種類の既定値を当てた物) の同じ部品が相手になる
+    //! 持ち主の無い部品だけは、型のコードの既定値と比べる。その控えは 1 体の Actor へまとめて attach するだけで、
+    //! world に入らないので更新も描画も走らない
     class ComponentDefaults : public NS::Core::NonCopyable
     {
     public:
         ComponentDefaults() noexcept;
         ~ComponentDefaults() noexcept;
 
-        //! @brief typeName の既定インスタンスを返す
-        //! @details 初回だけ作って以降は使い回す。未登録の型は nullptr
-        [[nodiscard]] const NS::Obj::Component* Find(std::string_view typeName);
+        //! @brief comp と比べる既定の部品を返す
+        //! @details 種類の既定値を変えると指す先が作り直されるので、そのフレームの間だけ使う。見つからなければ nullptr
+        [[nodiscard]] const NS::Obj::Component* Find(const NS::Obj::Component& comp);
 
     private:
+        // typeName のコードの既定値の 1 個。初回だけ作って以降は使い回す。未登録の型は nullptr
+        [[nodiscard]] const NS::Obj::Component* FindTypeDefault(std::string_view typeName);
+
         std::unique_ptr<NS::Obj::Actor> m_holder;                     // 既定インスタンスを持つ Actor
         std::vector<std::pair<std::string, NS::Obj::Component*>> m_byType; // 型名から引く索引
     };
@@ -68,6 +73,11 @@ namespace NS::Editor
         // 値をこの場で書くと undo の控えを取る前に live が動くので、適用は呼び出し側へ預ける
         NS::Obj::Component* revertTarget = nullptr;
         const NS::Obj::FieldDesc* revertField = nullptr;
+
+        // 種類の既定にする要求。選ばれたフレームだけ対象と欄が入る
+        // 同じ種類の他の個体とファイルも書き換えるので、適用は呼び出し側へ預ける
+        NS::Obj::Component* promoteTarget = nullptr;
+        const NS::Obj::FieldDesc* promoteField = nullptr;
 
         // 値が編集された対象と欄。編集が起きたフレームだけ入る
         // 凍結スナップショットへの写しが欄単位で要るので、changed の集約とは別に持つ
@@ -89,7 +99,7 @@ namespace NS::Editor
     //! @brief コンポーネントのフィールドをImGuiウィジェットとして描画する
     //! @param[in,out] comp 編集対象のコンポーネント
     //! @param[in] refOptions 参照先候補のリスト。指定しない場合は数値入力となる
-    //! @param[in] defaults 既定インスタンス。渡すと既定と違う欄に印と戻すボタンが付く
+    //! @param[in] defaults 既定の部品。渡すと既定と違う欄に上書きの印が付き、戻すか種類の既定にするかを選べる
     //! @param[in] componentOptions ComponentRef の参照先候補。欄の型に合う物だけを出す
     //! @return 値の編集有無と、編集の開始・確定フレームを集約した結果
     [[nodiscard]] ComponentEditResult DrawReflectedComponent(

@@ -1,8 +1,9 @@
 #include "Editor/InspectorReflection.h"
 
 #include "Editor/EditorUi.h"
-#include "Runtime/Object/Component.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Component.h"
+#include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -46,7 +47,18 @@ namespace NS::Editor
     ComponentDefaults::ComponentDefaults() noexcept = default;
     ComponentDefaults::~ComponentDefaults() noexcept = default;
 
-    const NS::Obj::Component* ComponentDefaults::Find(std::string_view typeName)
+    const NS::Obj::Component* ComponentDefaults::Find(const NS::Obj::Component& comp)
+    {
+        // 持ち主のクラスの既定の 1 体の同じ部品。値はコードの既定値に種類の既定値を当てた物
+        if (const NS::Obj::Component* part = NS::Obj::FindBaselinePart(comp))
+            return part;
+        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
+        if (info == nullptr)
+            return nullptr;
+        return FindTypeDefault(info->typeName);
+    }
+
+    const NS::Obj::Component* ComponentDefaults::FindTypeDefault(std::string_view typeName)
     {
         for (const std::pair<std::string, NS::Obj::Component*>& entry : m_byType)
         {
@@ -438,7 +450,7 @@ namespace NS::Editor
             const bool changed = FieldDiffersFromDefault(comp, defaults, field);
             const bool wasChanged = result.changed;
             ImGui::PushID(static_cast<int>(i));
-            FieldRow(field.name);
+            FieldRow(field.name, changed);
 
             switch (field.type)
             {
@@ -961,10 +973,20 @@ namespace NS::Editor
                 result.changedField = &field;
             }
 
-            if (RevertButton(changed) && defaults != nullptr)
+            // 種類の既定にできるのは、種類を持つ配置物の、個体の物でない欄だけ
+            const NS::Obj::Actor* owner = comp.Owner();
+            const bool promotable = owner != nullptr && owner->ClassName()[0] != '\0' &&
+                                    NS::Obj::IsArchetypeField(comp, field.name);
+            const OverrideAction action = OverrideButton(changed, promotable);
+            if (action == OverrideAction::Revert && defaults != nullptr)
             {
                 result.revertTarget = &comp;
                 result.revertField = &field;
+            }
+            else if (action == OverrideAction::Promote)
+            {
+                result.promoteTarget = &comp;
+                result.promoteField = &field;
             }
             ImGui::PopID();
         }

@@ -29,16 +29,14 @@ namespace NS::Editor
             }
         }
 
-        // 地形の部品に当たりの形を 1 つ足した物を並べる
+        // 地形の部品のメッシュ違いを並べる。当たりはメッシュに付いて来る
         [[nodiscard]] PlacementItem MakePartsItem(std::string_view label,
                                                   const nlohmann::json& partsPrototype,
                                                   std::string_view meshName,
-                                                  nlohmann::json collider,
                                                   bool rotatable)
         {
             PlacementItem item{std::string(label), partsPrototype, rotatable};
             SetPartsMesh(item.prototype, meshName);
-            NS::Obj::ObjectJsonComponents(item.prototype).push_back(std::move(collider));
             return item;
         }
 
@@ -53,21 +51,11 @@ namespace NS::Editor
                     continue;
                 }
 
-                // 地形の部品は当たりの形ごとに並べる。1m のセルに合わせた大きさ
+                // 地形の部品は形ごとに並べる。組み込みの形はどれも 1m のセルに合わせた大きさ
                 const nlohmann::json parts = PrototypeOf(*entry);
-
-                nlohmann::json box = NS::Obj::MakeComponentEntry("BoxCollider");
-                NS::Obj::SetField(box, "半径", NS::Core::Vector3{0.5f, 0.5f, 0.5f});
-                items.push_back(MakePartsItem(k_PartsCubeLabel, parts, "cube", std::move(box), true));
-
-                nlohmann::json sphere = NS::Obj::MakeComponentEntry("SphereCollider");
-                NS::Obj::SetField(sphere, "半径", 0.5f);
-                items.push_back(MakePartsItem("地形の部品 (球)", parts, "sphere", std::move(sphere), false));
-
-                nlohmann::json slope = NS::Obj::MakeComponentEntry("SlopeCollider");
-                NS::Obj::SetField(slope, "角度 (度)", 45.0f);
-                NS::Obj::SetField(slope, "半径", NS::Core::Vector3{0.5f, 0.5f, 0.5f});
-                items.push_back(MakePartsItem(k_PartsSlopeLabel, parts, "wedge45", std::move(slope), true));
+                items.push_back(MakePartsItem(k_PartsCubeLabel, parts, "cube", true));
+                items.push_back(MakePartsItem("地形の部品 (球)", parts, "sphere", false));
+                items.push_back(MakePartsItem(k_PartsSlopeLabel, parts, "wedge45", true));
             }
             return items;
         }
@@ -101,7 +89,26 @@ namespace NS::Editor
             prototype = PrototypeOf(*entry);
         }
         SetPartsMesh(prototype, meshRef);
-        NS::Obj::ObjectJsonComponents(prototype).push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
         return prototype;
+    }
+
+    float PartsSlopeAngleDegrees(const nlohmann::json& prototype) noexcept
+    {
+        const nlohmann::json* renderer = NS::Obj::FindComponentEntry(prototype, "MeshRenderer");
+        if (renderer == nullptr)
+        {
+            return -1.0f;
+        }
+        // 組み込みの坂のメッシュの名前と角度の対応。AssetManager の組み込みの形と揃える
+        const std::string mesh = NS::Obj::FieldString(*renderer, "メッシュ", "");
+        if (mesh == "wedge45")
+            return 45.0f;
+        if (mesh == "wedge30")
+            return 30.0f;
+        if (mesh == "wedge22")
+            return 22.5f;
+        if (mesh == "wedge15")
+            return 15.0f;
+        return -1.0f;
     }
 } // namespace NS::Editor

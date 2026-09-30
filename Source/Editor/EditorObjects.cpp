@@ -15,11 +15,6 @@ namespace NS::Editor
         // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す係数
         constexpr float k_QuarterTurnYaw = NS::Core::k_Pi * 0.5f;
 
-        bool HasComponentType(const nlohmann::json& object, const char* typeName) noexcept
-        {
-            return NS::Obj::FindComponentEntry(object, typeName) != nullptr;
-        }
-
         // クラス名から UI に出す名前を引く。置けるクラスは登録の表示名、置けないクラスはクラス名
         // 戻り値は登録か JSON の文字列を指すので、呼出側が持っている間は切れない
         const char* ClassDisplayName(std::string_view className) noexcept
@@ -122,8 +117,8 @@ namespace NS::Editor
 
     bool IsRotatableObject(const nlohmann::json& object)
     {
-        return IsCellBrushObject(object) &&
-               (HasComponentType(object, "BoxCollider") || HasComponentType(object, "SlopeCollider"));
+        // 地形の部品はどれも回せる。球は回しても見た目が変わらないだけ
+        return IsCellBrushObject(object);
     }
 
     const char* ObjectDisplayName(const nlohmann::json& object)

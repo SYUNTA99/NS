@@ -177,7 +177,8 @@ namespace NS::Obj
         //! 並びが変わったので索引を捨てる。並びを変える箇所は必ず呼び、破棄した配置物を索引に残さない
         void MarkIndexDirty() noexcept;
 
-        //! entry の component の id を obj の実体へ書く。id を書くのはシーンの配置物を持つここだけ
+        //! entry の component の id を obj の実体へ書く。件の無い部品 (種類の既定値が足した物) には新しい番号を振る
+        //! id を書くのはシーンの配置物を持つここだけ
         void AssignComponentIds(Actor& obj, const nlohmann::json& entry);
 
         //! entry の id・名前・active・component の id を obj へ書く

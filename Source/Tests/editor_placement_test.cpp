@@ -4,7 +4,6 @@
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/MeshCollider.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
-#include "Runtime/Object/Components/SlopeCollider.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Filesystem.h"
 
@@ -31,7 +30,7 @@ TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
     EXPECT_EQ(std::string_view{placed->ClassName()}, "MapObj");
 }
 
-TEST(EditorPlacement, PlacedPartsKeepTheItemsCollider)
+TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
 {
     NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
@@ -43,7 +42,11 @@ TEST(EditorPlacement, PlacedPartsKeepTheItemsCollider)
     NS::Obj::Actor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
     ASSERT_NE(placed, nullptr);
     EXPECT_EQ(std::string_view{placed->ClassName()}, "MapParts");
-    EXPECT_NE(placed->FindComponent<NS::Obj::SlopeCollider>(), nullptr);
+    const NS::Obj::MeshRenderer* renderer = placed->FindComponent<NS::Obj::MeshRenderer>();
+    ASSERT_NE(renderer, nullptr);
+    EXPECT_EQ(renderer->MeshRef(), "wedge45");
+    // 当たりは見た目のメッシュに付いて来る
+    EXPECT_NE(placed->FindComponent<NS::Obj::MeshCollider>(), nullptr);
 }
 
 TEST(EditorPlacement, UndoRemovesPlacedActor)

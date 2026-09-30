@@ -16,6 +16,7 @@
 #include "Runtime/Object/Components/BoxCollider.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/Components/DirectionalLight.h"
+#include "Runtime/Object/Components/MeshCollider.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/RigidBody.h"
@@ -28,14 +29,16 @@
 // 各 Actor のクラスが、自分の部品をコンストラクタで組み立てることを縛る
 // 部品の組み立てはクラスだけが決めるので、ここが種類ごとの構成の唯一の出所になる
 
-TEST(ActorClass, MapPartsHasMeshOnly)
+TEST(ActorClass, MapPartsCollidesWithItsMesh)
 {
     const NS::Obj::MapParts parts;
     const NS::Obj::MeshRenderer* mesh = parts.FindComponent<NS::Obj::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_EQ(mesh->MeshRef(), "cube");
-    // 当たりの形は置く種類のデータが足す
-    EXPECT_EQ(parts.FindComponent<NS::Obj::Collider>(), nullptr);
+    // 当たりは見た目のメッシュの三角形。箱や球の当たりは持たない
+    EXPECT_NE(parts.FindComponent<NS::Obj::MeshCollider>(), nullptr);
+    EXPECT_EQ(parts.FindComponent<NS::Obj::BoxCollider>(), nullptr);
+    EXPECT_EQ(parts.FindComponent<NS::Obj::SphereCollider>(), nullptr);
 }
 
 TEST(ActorClass, MapObjIsKinematicLaunchableBody)
@@ -45,7 +48,8 @@ TEST(ActorClass, MapObjIsKinematicLaunchableBody)
     EXPECT_NE(obj.FindComponent<NS::Obj::SphereCollider>(), nullptr);
     EXPECT_NE(obj.FindComponent<NS::Game::Level::Breakable>(), nullptr);
     EXPECT_NE(obj.FindComponent<NS::Game::Level::LaunchedBody>(), nullptr);
-    EXPECT_NE(obj.FindComponent<NS::Obj::Shadow>(), nullptr);
+    // 影は種類の既定値が足す部品。コンストラクタは積まない
+    EXPECT_EQ(obj.FindComponent<NS::Obj::Shadow>(), nullptr);
     const NS::Obj::RigidBody* body = obj.FindComponent<NS::Obj::RigidBody>();
     ASSERT_NE(body, nullptr);
     // 置かれている間は動かない

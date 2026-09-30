@@ -45,7 +45,7 @@ namespace NS::Editor
     //! object の回転を rotationStep に対応する Y 軸 yaw quaternion に設定する
     void SetCellRotationStep(nlohmann::json& object, std::uint8_t rotationStep) noexcept;
 
-    //! 90 度回転できる配置物か。箱か坂の当たりを持つ地形の部品
+    //! 90 度回転できる配置物か。地形の部品
     [[nodiscard]] bool IsRotatableObject(const nlohmann::json& object);
 
     //! @brief UI に出す名前。付けた名前があればそれ、無ければクラスの表示名

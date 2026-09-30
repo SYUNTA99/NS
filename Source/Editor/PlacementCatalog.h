@@ -20,7 +20,8 @@ namespace NS::Editor
     };
 
     //! @brief 置ける物の一覧
-    //! @details 置ける Actor のクラスごとに 1 つ並べる。地形の部品だけは当たりの形 (立方体・球・坂) ごとに並べる
+    //! @details 置ける Actor のクラスごとに 1 つ並べる。地形の部品だけは形 (立方体・球・坂) ごとに並べる
+    //! 地形の部品の当たりは見た目のメッシュに付いて来るので、形の違いはメッシュの参照の違いだけ
     [[nodiscard]] const std::vector<PlacementItem>& PlacementItems();
 
     //! label が一致する物。無ければ nullptr
@@ -35,4 +36,7 @@ namespace NS::Editor
     //! @details 当たりは MeshCollider が描画と同じ三角形から作るので、描いた形と当たりがずれない
     //! @param[in] meshRef ContentRoot 相対のメッシュの参照
     [[nodiscard]] nlohmann::json MakeMeshPartsPrototype(std::string_view meshRef);
+
+    //! ひな形の見た目が組み込みの坂なら、その角度 (度)。坂でなければ負の値
+    [[nodiscard]] float PartsSlopeAngleDegrees(const nlohmann::json& prototype) noexcept;
 } // namespace NS::Editor

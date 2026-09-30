@@ -163,6 +163,12 @@ public:
     //! 編集モードでは live が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
     void MirrorPlayEditToBaseline(const NS::Obj::Component& comp, std::string_view fieldName);
 
+    //! @brief 部品 comp の欄 fieldName の今の値を、持ち主のクラスの種類の既定値にしてファイルへ書く
+    //! @details 同じ種類の個体のうち、その欄を上書きしていなかった物にも新しい値を写す。上書きしている個体はそのまま
+    //! 種類の既定値はシーンの外のファイルなので undo の履歴には積まない。プレイ中も使え、編集へ戻っても残る
+    //! @return 書けた場合 true。種類を持たない配置物・参照の欄・位置は false
+    bool PromoteFieldToArchetype(NS::Obj::Component& comp, std::string_view fieldName);
+
     //! @brief 置ける物を 1 体、編集視点の中心あたりへ置いて選択する。Undo 対応
     //! @param[in] item 置ける物の一覧 (PlacementItems) の 1 つ
     void PlaceItem(const NS::Editor::PlacementItem& item);

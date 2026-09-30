@@ -235,7 +235,8 @@ namespace NS::Editor
                     NS::Obj::Component* live = components[k];
                     if (live->GetReflection() != nullptr)
                     {
-                        const NS::Obj::Component* baseline = m_defaults.Find(typeName);
+                        // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
+                        const NS::Obj::Component* baseline = m_defaults.Find(*live);
                         const NS::Editor::ComponentEditResult r =
                             NS::Editor::DrawReflectedComponent(*live, refOptions, baseline, componentOptions);
                         componentEdit.activated |= r.activated;
@@ -245,6 +246,11 @@ namespace NS::Editor
                         {
                             componentEdit.revertTarget = r.revertTarget;
                             componentEdit.revertField = r.revertField;
+                        }
+                        if (r.promoteField != nullptr)
+                        {
+                            componentEdit.promoteTarget = r.promoteTarget;
+                            componentEdit.promoteField = r.promoteField;
                         }
                         // プレイ中の手編集は編集復帰の組み直しで消えるので、編集された欄だけ凍結側へも写す
                         if (r.changedTarget != nullptr && r.changedField != nullptr)
@@ -258,7 +264,7 @@ namespace NS::Editor
             // 戻すは控えを取ってから live を書く。順を逆にすると変更後が控えになり履歴が空になる
             if (componentEdit.revertTarget != nullptr && componentEdit.revertField != nullptr)
             {
-                const NS::Obj::Component* baseline = m_defaults.Find(componentEdit.revertTarget->ClassName());
+                const NS::Obj::Component* baseline = m_defaults.Find(*componentEdit.revertTarget);
                 if (baseline != nullptr)
                 {
                     editor.BeginComponentEdit();
@@ -269,6 +275,9 @@ namespace NS::Editor
                     editor.CommitComponentEdit();
                 }
             }
+            // 種類の既定にするのは、同じ種類の全ての個体とファイルを書き換える。既定の部品を作り直すので描画の後で行う
+            if (componentEdit.promoteTarget != nullptr && componentEdit.promoteField != nullptr)
+                (void)editor.PromoteFieldToArchetype(*componentEdit.promoteTarget, componentEdit.promoteField->name);
             if (componentEdit.activated)
                 editor.BeginComponentEdit();
             if (componentEdit.committed)

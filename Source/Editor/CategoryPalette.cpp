@@ -1,6 +1,7 @@
 ﻿#include "Editor/CategoryPalette.h"
 
 #include "Editor/PaletteTemplates.h"
+#include "Editor/PlacementCatalog.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Platform/Gamepad.h"
 #include "Runtime/Platform/Input.h"
@@ -26,14 +27,8 @@ namespace NS::Editor
 
     float CategoryPalette::CurrentSlopeAngleDegrees() const noexcept
     {
-        // コンポーネントからスロープ角度を読み取る。角度を持たない場合は負値を返す
-        const nlohmann::json* slope =
-            NS::Obj::FindComponentEntry(PaletteTemplateSlots()[m_activeSlot].prototype, "SlopeCollider");
-        if (slope == nullptr)
-        {
-            return -1.0f;
-        }
-        return NS::Obj::FieldFloat(*slope, "角度 (度)", -1.0f);
+        // 坂かどうかと角度はブラシの見た目のメッシュが決める。当たりはメッシュに付いて来る
+        return PartsSlopeAngleDegrees(PaletteTemplateSlots()[m_activeSlot].prototype);
     }
 
     void CategoryPalette::TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept

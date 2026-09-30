@@ -460,6 +460,21 @@ namespace NS::Obj
             taken.push_back(comp);
             comp->SetId(ComponentEntryId(component));
         }
+
+        // 件の無い部品は、データを書いた後に種類の既定値が足した物。ここで番号を振り、id で名指しできるようにする
+        // 振る前にカウンタを件の id の先へ進める。進めないと同じ配置物の中で番号がぶつかる
+        for (const nlohmann::json& component : components)
+        {
+            m_nextObjectId = std::max(m_nextObjectId, ComponentEntryId(component) + 1);
+        }
+        m_nextObjectId = std::max(m_nextObjectId, obj.Id() + 1);
+        for (Component* comp : obj.Components())
+        {
+            if (comp != nullptr && comp->Id() == k_NoObjectId)
+            {
+                comp->SetId(m_nextObjectId++);
+            }
+        }
     }
 
     void ObjectList::Clear()
