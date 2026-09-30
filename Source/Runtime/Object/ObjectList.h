@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/ITickable.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ComponentRef.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
@@ -114,6 +115,13 @@ namespace NS::Obj
         //! 帯の一部だけ回したい呼び出し側が使う。一時オブジェクトも同じ帯に乗る
         void UpdateObjects(int firstPriority, int lastPriority = std::numeric_limits<int>::max());
 
+        //! @brief 配置物の部品でない物を、帯の priority の位置で毎フレーム動かす
+        //! @details 同じ帯の中では部品より先に、登録した順に動く。二重登録は帯を付け替える。寿命は呼出側が持つ
+        //! 更新の最中に足した物は次の UpdateObjects から動く
+        void AddTicker(ITickable* ticker, int priority);
+        //! 登録を外す。更新の最中に外した物は、そのフレームの残りでは呼ばれない
+        void RemoveTicker(ITickable* ticker) noexcept;
+
         //! 全配置物の Component を priority の昇順で一括で回す。補間用の前回値は呼ぶ側が更新の前に SnapshotObjects
         //! で揃える。並び順の登録簿は持たない。各 component がコンストラクタで指定する priority だけで並びが決まる
         void UpdateAllObjects();
@@ -188,7 +196,21 @@ namespace NS::Obj
         void WarnMismatchedComponentRefs();
 
         std::vector<std::unique_ptr<Actor>> m_objects; // 配置物の単一所有リスト
-        std::vector<Component*> m_scheduled;                // UpdateObjects が priority 順に並べ直す作業用の並び
+        // 更新の予定 1 件。部品か、部品でない物のどちらか片方を持つ
+        struct ScheduledTick
+        {
+            int priority = 0;
+            Component* component = nullptr;
+            ITickable* ticker = nullptr;
+        };
+        // 部品でない物の登録 1 件
+        struct TickerEntry
+        {
+            ITickable* ticker = nullptr;
+            int priority = 0;
+        };
+        std::vector<ScheduledTick> m_scheduled; // UpdateObjects が priority 順に並べ直す作業用の並び
+        std::vector<TickerEntry> m_tickers;     // 部品でない物の登録。登録順
         std::unordered_map<std::uint32_t, Actor*> m_index; // 永続 id から配置物への索引。汚れていれば次に引く時に作り直す
         bool m_indexDirty = true;                               // 索引が所有リストと食い違っているか
         std::uint32_t m_nextObjectId = 1;                   // 次に割り当てる永続 id。単調増加で欠番は再利用しない

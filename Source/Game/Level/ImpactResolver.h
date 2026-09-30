@@ -5,8 +5,8 @@
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
-#include "Runtime/Object/Components/CameraBrain.h"
-#include "Runtime/Object/Components/OverlayRenderer.h"
+#include "Runtime/Object/Component.h"
+#include "Runtime/Object/Components/HitReaction.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
 #include "Runtime/Platform/Gamepad.h"
 
@@ -15,11 +15,11 @@
 namespace NS::Obj
 {
     class Actor;
+    class HitSensor;
 } // namespace NS::Obj
 
 namespace NS::Game::Level
 {
-    class Breakable;
     class CollisionInput;
 
     //! @brief 当たり 1 回の裁定の内訳
@@ -49,7 +49,8 @@ namespace NS::Game::Level
         float launchApexHeight = 0.0f;    //!< 相手の曲線の、発射の高さから頂点までの高さ。単位は m
         NS::Core::Vector3 impactDir;      //!< 相手の飛ぶ水平の向き。食い込みと振動の向きも同じ
         NS::Core::Vector3 targetPos;
-        float targetMass = 1.0f;   //!< 相手の質量。RigidBody が無ければ 1
+        float targetBottom = 0.0f; //!< 相手の体の外接箱の底の高さ (m)。当たりの粉と照りを置く床
+        float targetMass = 1.0f;   //!< 相手の質量。相手が答えた重さ
         bool targetPlaced = true;  //!< 相手が置かれていた (飛んでいなかった) 場合 true
         float launchScale = 0.0f;  //!< 相手の曲線の距離と高さに掛けた比。威力 ÷ 質量の指数乗で、質量 1・威力 1 で 1
         float reboundScale = 0.0f; //!< 自機の反動の高さと距離に掛けた比。威力 × 2 × 質量 ÷ (質量 + 1)
@@ -74,20 +75,18 @@ namespace NS::Game::Level
     //! @brief ぶつかった結果を自機側で決める Component
     //! @details 帯は Update より前。PlayerComponent が動く前にその 1 固定ステップの結末を決めるので、
     //! 壁の手前で止められて速度を消された後から結果を推測し直さずに済む
-    //! 相手は PhysicsScene::OverlapCapsule で重なった body を集め、ObjectList::ForEachComponent で回した
-    //! Breakable の body と照合して決める。NS::Phys は NS::Obj を知らないので、
-    //! body から持ち主を引く関数は無い
-    //! 衝突の瞬間は自機を数固定ステップ止め、反発・発射・破壊を明けたフレームへ保留する
-    //! 反発の止めの間は、置かれていた相手の描く形を MeshRenderer の描く時だけの倍率で縮め、明けに戻す
-    //! 重さは相手の RigidBody の質量で、RigidBody が無ければ 1
-    //! 依存: NS::Game::Player::PlayerComponent, Breakable, LaunchedBody, NS::Obj::RigidBody, NS::Obj::MeshRenderer,
-    //! CollisionInput, HitTier, NS::Platform::Input
-    class ImpactResolver : public NS::Obj::OverlayRenderer
+    //! 相手は次の固定ステップの自機のカプセルに重なる物の体のセンサーから選ぶ。調べる種類はプレイヤーの体当たりの
+    //! 組み合わせの表に従う。選んだ相手には MsgAskTackleTarget で重さと置かれ方を問い、応じた物だけを相手にする
+    //! 衝突の瞬間は自機を数固定ステップ止め、止めの頭に MsgTackleFreeze、明けに MsgTackleRelease を相手へ送る
+    //! 相手が食い込み・縮み・飛ぶ・壊れるかは相手が決める。相手の部品は触らない
+    //! 白の光・カメラの揺れと寄り・パッドの振動は同居する HitReaction へ組んで渡す
+    //! 依存: NS::Game::Player::PlayerComponent, CollisionInput, HitTier, NS::Obj::HitSensor, NS::Obj::HitReaction
+    class ImpactResolver : public NS::Obj::Component
     {
     public:
         ImpactResolver() noexcept;
 
-        //! 同じ配置物の移動と体当たりの入力を引き当てる。移動が無ければ以後何もしない
+        //! 同じ配置物の移動と体当たりの入力と当たりの演出を引き当てる。移動が無ければ以後何もしない
         void OnStart() override;
 
         //! この固定ステップで重なる壊せる物を探し、向かっていれば止めてから破壊するか、反発と押し飛ばしを与える
@@ -123,16 +122,13 @@ namespace NS::Game::Level
         [[nodiscard]] const ImpactRecord& LastImpact() const noexcept { return m_lastImpact; }
 
         //! 白フラッシュの残りフレーム数。出していない場合 0
-        [[nodiscard]] int CenterHitFlashStepsRemaining() const noexcept { return m_centerHitFlashRemaining; }
+        [[nodiscard]] int CenterHitFlashStepsRemaining() const noexcept;
 
-        //! 凍結の途中で外れても移動を止めたままにせず、縮めた相手の描く形も元へ戻す
+        //! 凍結の途中で外れても移動を止めたままにしない
         void OnEndPlay() override;
 
-        //! 中心近くの当たりの止めの頭から、フレームごとに減衰する白を画面全体へ重ねる
-        void OnRenderOverlay(const NS::Gfx::RenderContext& ctx) override;
-
         //! @brief 突進の向きを寄せる相手を探す
-        //! @details 相手は壊せる物のうち、有効で、トリガの箱でなく、当たりの外接箱が取れる物。裁定と同じ絞り。
+        //! @details 相手はプレイヤーの体当たりが調べる種類の、有効な体のセンサーを持つ物。裁定と同じ絞り。
         //! 自機の位置から外接箱の中心への水平の向きが forward から coneDegrees 以内で、
         //! 水平の距離が maxDistance 以内の相手のうち、preferred が居ればそれを、居なければ一番近い 1 体を選ぶ
         //! @param[in] forward 基準の向き。水平の成分だけを見る
@@ -149,8 +145,8 @@ namespace NS::Game::Level
 
         //! @brief 突進の線で最初に触れる相手を探す
         //! @details 相手の絞りは FindHomingTarget と同じ。自機の当たりの玉 (丸まっていれば根の位置、立ち姿なら下の球の
-        //! 位置が中心で、半径は自機の半径) を direction の水平へ maxDistance 掃き、当たりの裁定と同じ
-        //! PhysicsScene::OverlapCapsule で相手の body の実物の形に触れるかを見る。
+        //! 位置が中心で、半径は自機の半径) を direction の水平へ maxDistance 掃き、当たりの裁定と同じく
+        //! 相手の体のセンサーの形に触れるかを見る。
         //! 線から相手の外接箱の中心までの横ずれが、外接箱を線に直交する軸へ投影した半幅と自機の半径の和以内で、
         //! 中心までの線に沿った距離が 0 より大きく、掃いた玉が触れる相手のうち、玉が触れるまでに進む距離が一番短い
         //! 1 体を選ぶ。横ずれの比は当たりの裁定と同じ式で出し、裁定はそれを 0〜1 に丸めて使う。
@@ -168,7 +164,7 @@ namespace NS::Game::Level
         [[nodiscard]] bool IsScaleAnimating() const noexcept { return m_scaleHeld || m_recoverRemaining > 0; }
 
         // 返り方は当てた時の手触りそのもの。プレイ中に Inspector で触って詰められるよう公開する
-        NS_REFLECT_BEGIN(ImpactResolver, NS::Obj::OverlayRenderer)
+        NS_REFLECT_BEGIN(ImpactResolver, NS::Obj::Component)
         NS_REFLECT_FIELD(m_reboundApexHeight, "反動の高さ")
         NS_REFLECT_FIELD(m_reboundDistance, "反動の距離")
         NS_REFLECT_FIELD(m_centerHitReboundDistanceScale, "中心近くの当たりの反動の距離の倍率")
@@ -205,26 +201,22 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_breakEnabled, "破壊を許可")
         NS_REFLECT_FIELD(m_breakSpeedScale, "貫通時の減速倍率")
         NS_REFLECT_FIELD(m_breakStopSeconds, "貫通の止め秒")
-        NS_REFLECT_FIELD(m_markProbeDistance, "跡の床探しの距離")
         NS_REFLECT_END()
 
     private:
-        // 重なっている壊せる物のうち中心が最も近い 1 体。無ければ nullptr
+        // 次の固定ステップの自機に重なる体のセンサーのうち中心が最も近い 1 つ。無ければ nullptr
         // 事前条件: m_movement が非 null
-        [[nodiscard]] Breakable* FindOverlapped() const;
+        [[nodiscard]] NS::Obj::HitSensor* FindOverlapped() const;
 
-        // 凍結を掛ける。自機を寝かせて潰し、当たりの返りを始め、置かれていた相手を食い込ませて描く形を縮める
+        // 凍結を掛ける。自機を寝かせて潰し、当たりの返りを始め、相手へ止めの頭を知らせる
         void BeginFreeze(int stopSteps);
 
         // 当たりの返り (白・揺れ・寄りと傾き・振動) を段から組んで控え、記録へ始めの値を書く。検知のフレームに呼ぶ
         // 事前条件: 反動の向き・相手の飛ぶ向き・相手の番号と位置を控え終えている
         void PrepareHitReturns(HitTier tier, bool tiered, float power, float massFactor, float offset01, int stopSteps);
 
-        // 控えた当たりの返りを始める。前の当たりの返りが残っていても、控えた値で始め直す
+        // 控えた当たりの返りを同居する HitReaction で始める。前の当たりの返りが残っていても、控えた値で始め直す
         void StartHitReturns();
-
-        // 振動を始めてからのフレーム数に応じた速さをパッドへ書く。書くフレーム数に届いたフレームは 0 を書いて止める
-        void WritePadVibration();
 
         // 解放後のフレームで伸びた形から戻す。前半で縮む側へ行き過ぎ、後半で配置で決めた元の形へ戻る
         // 最後のフレームは控えた値を厳密に書く
@@ -236,13 +228,7 @@ namespace NS::Game::Level
         // 元の形を 1 とした倍率。進行の軸の成分の 2 乗で along を x と z に混ぜ、縦は height
         [[nodiscard]] NS::Core::Vector3 AlongImpactFactors(float along, float height) const noexcept;
 
-        // 置かれていた相手の描く形を、自機の潰れと同じ倍率で突進の向きに縮める。描く形の無い相手には何もしない
-        void ShrinkPlacedTarget(NS::Obj::Actor& target);
-
-        // 縮めた相手の描く形を元の形へ戻す。縮めていない時と、相手が消えていた時は何もしない
-        void RestoreTargetShape();
-
-        // 止めていた結果を適用する。反発は自機の反動を始めて相手を発射する。貫通は速度を書いて破壊する
+        // 止めていた結果を適用する。反発は自機の反動を始め、貫通は速度を書く。相手へ明けを知らせて飛ばすか壊させる
         void ReleaseHitStop();
 
         // 秒をフレーム数へ換算して 0 から MaxHitStopSteps までに丸める
@@ -250,11 +236,6 @@ namespace NS::Game::Level
 
         // 上限秒をフレーム数へ換算する。非有限と 0 以下は 0 で、止めない
         [[nodiscard]] int MaxHitStopSteps() const noexcept;
-
-        // 凍結中のフレームで、置かれていた相手を発射軸に沿って食い込み位置の周りで往復させる
-        // 見せるための動きで、明けたフレームに元位置へ戻す
-        // 飛んでいる相手は物理が根を書くので触らない
-        void ApplyFreezeVibration();
 
         // 最終威力と質量から止めるフレーム数を出す。0 なら止めない
         [[nodiscard]] int ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept;
@@ -315,7 +296,6 @@ namespace NS::Game::Level
         bool m_breakEnabled = false;
         float m_breakSpeedScale = 0.75f;         // 貫通した直後に速度へ掛ける倍率
         float m_breakStopSeconds = 4.0f / 60.0f; // 貫通の瞬間に止める秒。4 フレームぶん
-        float m_markProbeDistance = 64.0f;       // 跡の床を真下へ探す上限。これより下に床が無ければ跡を出さない
 
         int m_freezePendingSteps = 0; // 次のフレームに掛ける凍結のフレーム数。0 は予約なし
         int m_hitStopRemaining = 0;   // 止まっている残りフレーム数。0 は止まっていない
@@ -326,6 +306,8 @@ namespace NS::Game::Level
         LaunchArc m_pendingLaunchArc{};                     // 明けたフレームに相手を飛ばす曲線
         // 検知のフレームの相手の位置。置かれていた相手は明けたフレームにここへ厳密に戻す
         NS::Core::Vector3 m_pendingTargetHome{0.0f, 0.0f, 0.0f};
+        float m_pendingLaunchScale = 0.0f; // この衝突の飛ばしの比。明けに相手の尾の長さへ渡す
+        HitTier m_pendingTier = HitTier::Center; // この衝突の段。明けに相手の尾の色へ渡す
         NS::Core::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f}; // 発射の水平方向。食い込みと振動の軸
         float m_pendingShakeAmplitude = 0.0f;                   // この衝突の往復の振れ幅
         int m_pendingFlashSteps = 0;                            // この衝突の白のフレーム数。白の無い段は 0
@@ -335,22 +317,10 @@ namespace NS::Game::Level
         NS::Core::Vector3 m_stretchScale{1.0f, 1.0f, 1.0f};     // 解放のフレームの伸びた形
         int m_recoverRemaining = 0;                             // 形を戻し切るまでの残りフレーム数
         bool m_scaleHeld = false;                               // 潰した形のまま凍結している最中か
-        NS::Obj::ObjectRef m_pendingTarget{};                   // 発射する相手。凍結をまたぐので使うたびに引く
-        // 検知のフレームに相手が置かれていたか。食い込み・振動・元位置へ戻すのはこの時だけ
+        NS::Obj::ObjectRef m_pendingTarget{};                   // 知らせる相手。凍結をまたぐので使うたびに引く
+        // 検知のフレームに相手が置かれていたか。記録と当たりの演出が読む
         bool m_pendingTargetPlaced = false;
-        bool m_targetShapeHeld = false; // 相手の描く形を縮めたまま止めている最中か
-
-        // 1 回の当たりのパッドの振動。始めの値から直線に減らし、書くフレーム数で切る
-        struct PadVibrationPlan
-        {
-            NS::Platform::GamepadVibration start{};
-            int fadeFrames = 0; // 始めの値から 0 まで減るフレーム数
-            int frames = 0;     // 書くフレーム数。fadeFrames 以下
-        };
-        PadVibrationPlan m_pendingPad{}; // この衝突の振動。振動の無い段は書くフレーム数 0
-        PadVibrationPlan m_pad{};        // 書いている振動
-        int m_padElapsed = 0;            // 振動を始めた止めの頭から数えたフレーム数
-        bool m_padRunning = false;       // 振動を書いている最中か
+        NS::Obj::HitPadVibration m_pendingPad{}; // この衝突の振動。振動の無い段は書くフレーム数 0
 
         bool m_didRebound = false;          // 直近の更新で反発を検知したか
         bool m_didBreak = false;            // 直近の更新で貫通を検知したか
@@ -362,8 +332,8 @@ namespace NS::Game::Level
         float m_lastPositionFactor = 0.0f;
         float m_lastPower = 0.0f;
         ImpactRecord m_lastImpact{};
-        int m_centerHitFlashRemaining = 0;
         NS::Game::Player::PlayerComponent* m_movement = nullptr; // 同じ配置物の移動。非所有
         CollisionInput* m_collisionInput = nullptr;
+        NS::Obj::HitReaction* m_hitReaction = nullptr; // 同じ配置物の当たりの演出。非所有
     };
 } // namespace NS::Game::Level

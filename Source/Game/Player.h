@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/CameraTarget.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 
 namespace NS::Obj
@@ -9,10 +10,10 @@ namespace NS::Obj
 } // namespace NS::Obj
 
 //! @brief プレイヤーキャラクタ。Mesh / Movement / Input / Health / Shadow の既定構成をコードで組む
-//! @details 値と追加の component はファクトリがプレイヤーの JSON から写す
+//! @details 値はプレイヤーの種類の既定値と個体の上書きから写す
 //! 移動やつかみ等の能力 API はここに置き、実装は各 Component が持つ
-//! KillZone 等のルール配置物は FindPlayer で得た Player* へ能力を呼ぶ。プレイヤーはルールを知らない
-class Player : public NS::Obj::Actor
+//! 落下死やゴールは体のセンサーへ届く知らせで受け取り、コースの流れは進行役へ伝えるだけにする
+class Player : public NS::Obj::Actor, public NS::Obj::ICameraTarget
 {
 public:
     //! 既定の構成と見た目で組む。Mesh / Material は後からファクトリが入れる
@@ -26,6 +27,22 @@ public:
 
     //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
     [[nodiscard]] const char* ClassName() const noexcept override { return "Player"; }
+
+    //! 追従カメラに追われる時の窓口。自分の状態を自分で答える
+    [[nodiscard]] const NS::Obj::ICameraTarget* GetCameraTarget() const noexcept override { return this; }
+
+    //! 接地・速度・見る高さ・反動・溜めの状態を自分の部品から組む
+    [[nodiscard]] NS::Obj::CameraTargetState GetCameraTargetState() const override;
+
+    //! コースの進行役を用意する。全ての配置物が揃った後に呼ばれる
+    void InitAfterPlacement() override;
+
+    //! 即死・ゴール・コースのやり直し・操作の停止の知らせに応じる
+    bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
+
+    //! @brief プレイ開始時の凍結 (baseline) の自分の位置へ戻り、動きと命を最初の状態へ戻す
+    //! @details 凍結に自分が居なければ、新規レベルで置く位置へ戻す
+    void RestartFrom(const nlohmann::json& baseline) noexcept;
 
     //! 命を amount 削る。下限 0
     void ApplyDamage(int amount) noexcept;

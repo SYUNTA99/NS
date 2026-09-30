@@ -6,10 +6,11 @@
 #include "Runtime/Graphics/EffectScene.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/Renderer.h"
-#include "Runtime/Object/Components/CameraBrain.h"
+#include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/DirectionalLight.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
+#include "Runtime/Object/UIActor.h"
 #include "Runtime/Object/IRenderable.h"
 #include "Runtime/Platform/Filesystem.h"
 
@@ -154,6 +155,24 @@ namespace NS::Obj
         }
     }
 
+    void SceneRenderer::RegisterUIActor(UIActor* actor)
+    {
+        if (actor == nullptr || std::find(m_uiActors.begin(), m_uiActors.end(), actor) != m_uiActors.end())
+        {
+            return;
+        }
+        const std::vector<UIActor*>::iterator at =
+            std::upper_bound(m_uiActors.begin(), m_uiActors.end(), actor, [](const UIActor* a, const UIActor* b) {
+                return a->DrawOrder() < b->DrawOrder();
+            });
+        m_uiActors.insert(at, actor);
+    }
+
+    void SceneRenderer::UnregisterUIActor(UIActor* actor) noexcept
+    {
+        std::erase(m_uiActors, actor);
+    }
+
     void SceneRenderer::RegisterLight(DirectionalLight* light)
     {
         if (light == nullptr)
@@ -226,6 +245,11 @@ namespace NS::Obj
                 overlay->OnRenderOverlay(context);
             }
         }
+        // 画面に出す物は世界の上の重ね描きよりさらに上。暗転は白の光も覆う
+        for (UIActor* actor : m_uiActors)
+        {
+            actor->OnRenderOverlay(context);
+        }
     }
 
     NS::Gfx::RenderSettings SceneRenderer::ResolveSceneSettings(const NS::Gfx::RenderSettings& projectDefaults)
@@ -256,17 +280,17 @@ namespace NS::Obj
         return resolved;
     }
 
-    void SceneRenderer::Render(CameraBrain& brain, CameraComponent& camera, std::string_view skyboxPath, float alpha)
+    void SceneRenderer::Render(CameraManager& cameras, CameraComponent& camera, std::string_view skyboxPath, float alpha)
     {
         if (m_renderer == nullptr)
         {
             return;
         }
 
-        // ビュー列が空なら現描画先へ Brain の視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
+        // ビュー列が空なら現描画先へ CameraManager の視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
         if (m_sceneViews.empty())
         {
-            RenderViewWithOverlays(brain, camera, skyboxPath, std::nullopt, alpha, BloomForView(0));
+            RenderViewWithOverlays(cameras, camera, skyboxPath, std::nullopt, alpha, BloomForView(0));
             return;
         }
 
@@ -274,7 +298,7 @@ namespace NS::Obj
         {
             const SceneView& view = m_sceneViews[i];
             m_renderer->BeginSceneView(view.target);
-            RenderViewWithOverlays(brain, camera, skyboxPath, view.viewPose, alpha, BloomForView(i));
+            RenderViewWithOverlays(cameras, camera, skyboxPath, view.viewPose, alpha, BloomForView(i));
         }
     }
 
@@ -287,14 +311,14 @@ namespace NS::Obj
         return *m_blooms[index];
     }
 
-    void SceneRenderer::RenderViewWithOverlays(CameraBrain& brain,
+    void SceneRenderer::RenderViewWithOverlays(CameraManager& cameras,
                                                CameraComponent& camera,
                                                std::string_view skyboxPath,
                                                const std::optional<CameraPose>& viewOverride,
                                                float alpha,
                                                NS::Gfx::Bloom& bloom)
     {
-        const NS::Gfx::RenderContext ctx = RenderWorld(brain, camera, skyboxPath, viewOverride, alpha, bloom);
+        const NS::Gfx::RenderContext ctx = RenderWorld(cameras, camera, skyboxPath, viewOverride, alpha, bloom);
 
 #if !defined(NS_SHIPPING)
         NS::Gfx::DebugDraw::Flush(*ctx.renderer, ctx.viewProjection);
@@ -303,7 +327,7 @@ namespace NS::Obj
         DrawOverlays(ctx);
     }
 
-    NS::Gfx::RenderContext SceneRenderer::RenderWorld(CameraBrain& brain,
+    NS::Gfx::RenderContext SceneRenderer::RenderWorld(CameraManager& cameras,
                                                       CameraComponent& camera,
                                                       std::string_view skyboxPath,
                                                       const std::optional<CameraPose>& viewOverride,
@@ -317,7 +341,7 @@ namespace NS::Obj
         ctx.renderer = m_renderer;
         ctx.alpha = alpha;
 
-        brain.Evaluate(ctx.alpha);
+        cameras.Evaluate(ctx.alpha);
 
         // 上書き視点は実カメラを経由せず、その場で行列を組む。実カメラの中身はゲーム視点のまま残す
         NS::Core::CameraData overrideCamera{};
@@ -348,7 +372,7 @@ namespace NS::Obj
         }
         else
         {
-            ctx.viewProjection = brain.ViewProjection();
+            ctx.viewProjection = cameras.ViewProjection();
             ctx.cameraPosition = camera.Position();
         }
         ctx.resolvedSettings = ResolveSceneSettings(m_renderer->Settings());

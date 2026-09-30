@@ -21,7 +21,7 @@ namespace NS::Obj
 {
     class Actor;
     class Transform;
-    class CameraBrain;
+    class CameraManager;
     class CameraComponent;
     class Component;
     class ObjectList;
@@ -94,9 +94,9 @@ public:
     //! 編集モード中は何もしない
     void TickPlaySceneView(const NS::Editor::EditorCameraInput& input) noexcept;
 
-    //! @brief Scene パネルに映す視点。プレイ中は自由視点を上書き、編集中は Brain 任せ (nullopt)
+    //! @brief Scene パネルに映す視点。プレイ中は自由視点を上書き、編集中は CameraManager 任せ (nullopt)
     [[nodiscard]] std::optional<NS::Obj::CameraPose> SceneViewPose() noexcept;
-    //! @brief Game パネルに映す視点。編集中はゲームカメラを上書き、プレイ中は Brain 任せ (nullopt)
+    //! @brief Game パネルに映す視点。編集中はゲームカメラを上書き、プレイ中は CameraManager 任せ (nullopt)
     [[nodiscard]] std::optional<NS::Obj::CameraPose> GameViewPose() noexcept;
     //! @brief 可視な中央ビュー列を Scene へ流す。空なら現描画先へ 1 回だけ描く
     void SetSceneViews(std::vector<NS::Obj::SceneView> views);
@@ -253,7 +253,7 @@ private:
     void ApplyFollowCameraGizmoDrag();
     void CaptureSelectionFromGizmo() noexcept;
 
-    [[nodiscard]] NS::Obj::CameraBrain* Brain() const noexcept;
+    [[nodiscard]] NS::Obj::CameraManager* Cameras() const noexcept;
     [[nodiscard]] NS::Obj::CameraComponent* MainCamera() const noexcept;
 
     NS::Obj::Scene* m_scene = nullptr;           // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ

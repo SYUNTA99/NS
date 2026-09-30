@@ -1,19 +1,19 @@
 #pragma once
 
-#include "Runtime/Object/Components/OverlayRenderer.h"
+#include "Runtime/Object/UIActor.h"
 
 #include <cstdint>
 
 namespace NS::Game::Level
 {
     //! @brief 画面の最前面へ黒を重ねる暗転と明転。何のための暗転かは知らない
-    //! @details 黒の全画面塗りはフェードのやり方の 1 つで、演出としてゲーム側に置く
-    //! 暗転しきったら BeginIn まで全黒を保持する。自分の OnUpdate が fixed step ぶん進み、
-    //! シーケンス側は全黒 (IsBlack) を見て次の手を打つ。描画は world 描画の後に scene が OnRenderOverlay で呼ぶ
-    class ScreenFade : public NS::Obj::OverlayRenderer
+    //! @details 最初の UIActor。コースの進行役が開いて持つ
+    //! 暗転しきったら BeginIn まで全黒を保持する。UI の段で fixed step ぶん進み、
+    //! 進行役は全黒 (IsBlack) を見て次の手を打つ。描画は世界と重ね描きの部品の後
+    class ScreenFade final : public NS::Obj::UIActor
     {
     public:
-        ScreenFade() noexcept;
+        ScreenFade() noexcept = default;
 
         //! 暗転を始める。seconds かけて透明から全黒へ。演出中の呼び直しは無視する
         void BeginOut(float seconds) noexcept;
@@ -27,7 +27,7 @@ namespace NS::Game::Level
         //! dt 秒だけ進める。透明時と全黒の保持中は何もしない
         void Advance(float dt) noexcept;
 
-        //! 帯の一括更新で fixed step ぶん進む。時間停止中は帯ごと止まるので凍る
+        //! UI の段で fixed step ぶん進む。時間停止中は段ごと止まるので凍る
         void OnUpdate() override;
 
         //! 暗転か明転が進行中か
@@ -42,8 +42,8 @@ namespace NS::Game::Level
         //! 現在の不透明度で黒を全画面へ重ねる。全透明フレームは描かない
         void OnRenderOverlay(const NS::Gfx::RenderContext& ctx) override;
 
-        // 状態は保存しない。型検索で引けるよう型名だけ登録する
-        NS_REFLECT_NONE(ScreenFade, NS::Obj::OverlayRenderer)
+        //! 暗転は他の画面の物より上に重ねる
+        [[nodiscard]] int DrawOrder() const noexcept override { return 1000; }
 
     private:
         // 演出の段階。None は透明、Hold は全黒の保持

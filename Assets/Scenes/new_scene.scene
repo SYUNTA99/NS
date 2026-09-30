@@ -2,7 +2,7 @@
   "environment": {
     "skybox": "Assets/Skybox/kurt/"
   },
-  "nextObjectId": 80,
+  "nextObjectId": 94,
   "objects": [
     {
       "class": "MapParts",
@@ -155,19 +155,14 @@
           "type": "ImpactEffects"
         },
         {
-          "id": 20,
-          "name": "ScreenFade",
-          "type": "ScreenFade"
+          "id": 80,
+          "name": "HitSensor",
+          "type": "HitSensor"
         },
         {
-          "id": 21,
-          "name": "Respawner",
-          "type": "Respawner"
-        },
-        {
-          "id": 22,
-          "name": "Finisher",
-          "type": "Finisher"
+          "id": 81,
+          "name": "HitReaction",
+          "type": "HitReaction"
         }
       ],
       "id": 2,
@@ -324,6 +319,21 @@
           "id": 40,
           "name": "LaunchedBody",
           "type": "LaunchedBody"
+        },
+        {
+          "id": 82,
+          "name": "TackleReaction",
+          "type": "TackleReaction"
+        },
+        {
+          "id": 83,
+          "name": "LaunchEffects",
+          "type": "LaunchEffects"
+        },
+        {
+          "id": 84,
+          "name": "HitSensor",
+          "type": "HitSensor"
         }
       ],
       "id": 35,
@@ -400,6 +410,21 @@
           "id": 46,
           "name": "LaunchedBody",
           "type": "LaunchedBody"
+        },
+        {
+          "id": 85,
+          "name": "TackleReaction",
+          "type": "TackleReaction"
+        },
+        {
+          "id": 86,
+          "name": "LaunchEffects",
+          "type": "LaunchEffects"
+        },
+        {
+          "id": 87,
+          "name": "HitSensor",
+          "type": "HitSensor"
         }
       ],
       "id": 41,
@@ -476,6 +501,21 @@
           "id": 52,
           "name": "LaunchedBody",
           "type": "LaunchedBody"
+        },
+        {
+          "id": 88,
+          "name": "TackleReaction",
+          "type": "TackleReaction"
+        },
+        {
+          "id": 89,
+          "name": "LaunchEffects",
+          "type": "LaunchEffects"
+        },
+        {
+          "id": 90,
+          "name": "HitSensor",
+          "type": "HitSensor"
         }
       ],
       "id": 47,
@@ -552,6 +592,21 @@
           "id": 58,
           "name": "LaunchedBody",
           "type": "LaunchedBody"
+        },
+        {
+          "id": 91,
+          "name": "TackleReaction",
+          "type": "TackleReaction"
+        },
+        {
+          "id": 92,
+          "name": "LaunchEffects",
+          "type": "LaunchEffects"
+        },
+        {
+          "id": 93,
+          "name": "HitSensor",
+          "type": "HitSensor"
         }
       ],
       "id": 53,

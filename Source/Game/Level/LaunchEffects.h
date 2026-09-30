@@ -1,0 +1,87 @@
+#pragma once
+
+#include "Game/Level/HitTier.h"
+#include "Game/Player/EffectLayerList.h"
+#include "Runtime/Core/Math.h"
+#include "Runtime/Object/Component.h"
+
+#include <cstdint>
+#include <vector>
+
+namespace NS::Game::Level
+{
+    class LaunchedBody;
+
+    //! @brief 押し飛ばされた物が自分で出す飛び出しの尾と、床に落ちた所の粉。置物に載せる
+    //! @details 受け持つ層の名前は launch. で始まる。飛んでいる自分の後ろへ尾を付けていき、曲線を離れたフレームで消す
+    //! 剛体へ渡って床に触れていれば、落ちた所へ粉を出す
+    //! 尾の色は当たりの段、残る長さは飛ばしの比、粉の大きさは威力と自分の重さで決める
+    //! 描画の無い世界でも記録は残し、試しは Layers を読む
+    //! 優先度は Update 帯の +60。物理の前に走るので、尾の頭は直近の物理が使った速度で 1 フレーム先へ置く
+    //! 依存: EffectLayerList, LaunchedBody, NS::Obj::RigidBody
+    class LaunchEffects : public NS::Obj::Component
+    {
+    public:
+        LaunchEffects() noexcept;
+
+        //! 同じ置物の飛び方を控え、描画のある世界なら層の絵を読み込む
+        void OnStart() override;
+
+        //! 記録のフレームを 1 つ進め、尾を付けていき、曲線を離れたら消して落ちた所へ粉を出す
+        void OnUpdate() override;
+
+        //! @brief 押し飛ばされた所から尾を出す。前の尾が残っていれば消してから出す
+        //! @param[in] tier 当たりの段。大きな外れは灰、他は橙
+        //! @param[in] power 最終威力。落ちた所の粉を大きくする
+        //! @param[in] launchScale 飛ばしの比。尾を長く残す
+        //! @param[in] launchDir 飛ぶ水平の向き。速さが 0 の時の尾の向き
+        void BeginTrail(HitTier tier, float power, float launchScale, const NS::Core::Vector3& launchDir);
+
+        //! 出すと決めた層の記録
+        [[nodiscard]] const NS::Game::Player::EffectLayerList& Layers() const noexcept { return m_layers; }
+
+        //! 出ている尾が残るフレーム数。尾が無ければ 0
+        [[nodiscard]] int TrailFrames() const noexcept { return m_trailFrames; }
+
+        //! 落ちた所の粉の大きさ (m)
+        [[nodiscard]] float LandDustScale() const noexcept { return m_landDustScale; }
+
+        // 飛んでいく物の尾と落ちた所の粉は、飛ばした手応えそのもの。Inspector で触って詰められるよう公開する
+        NS_REFLECT_BEGIN(LaunchEffects, NS::Obj::Component)
+        NS_REFLECT_FIELD(m_trailFramesBase, "飛び出しの尾が残るフレーム数の基準")
+        NS_REFLECT_FIELD(m_trailFramesPerLaunch, "飛び出しの尾が残るフレーム数の飛ばしの比あたり")
+        NS_REFLECT_FIELD(m_landDustBase, "着地の粉の大きさの基準")
+        NS_REFLECT_FIELD(m_landDustPerRootMass, "着地の粉の大きさの質量の平方根あたり")
+        NS_REFLECT_FIELD(m_landDustPerPower, "着地の粉の大きさの威力あたりの伸び")
+        NS_REFLECT_END()
+
+    private:
+        // 出した層を、決めたフレームに子ごと消す控え
+        struct ScheduledStop
+        {
+            std::uint32_t id = 0;
+            int step = 0;
+        };
+
+        // 直近の物理の 1 歩で、床と見なせる面に触れていた場合 true
+        [[nodiscard]] bool TouchesFloor() const;
+        // 尾を消し、床に落ちていればその場へ粉を出す
+        void EndTrail(NS::Gfx::EffectScene* effects);
+
+        NS::Game::Player::EffectLayerList m_layers;
+        std::vector<ScheduledStop> m_scheduledStops;
+        LaunchedBody* m_body = nullptr;                    // 同じ置物の飛び方。非所有
+        std::uint32_t m_trail = 0;                         // 飛び出しの尾。消したら 0
+        int m_trailStartStep = 0;                          // 尾を出したフレーム。このフレームは出した姿のまま
+        int m_trailFrames = 0;                             // 尾が残るフレーム数
+        float m_trailScale = 1.0f;                         // 尾の再生の大きさ。自分の直径 (m)
+        NS::Core::Vector3 m_launchDir{1.0f, 0.0f, 0.0f};   // 飛ぶ水平の向き
+        float m_landDustScale = 0.0f;                      // 落ちた所の粉の大きさ (m)
+
+        int m_trailFramesBase = 8;             // 飛ばしの比 0 の尾が残るフレーム数
+        float m_trailFramesPerLaunch = 4.0f;   // 飛ばしの比 1 あたり足すフレーム数。溜めきり中心近くで 15
+        float m_landDustBase = 0.8f;           // 質量 0 の落ちた所の粉の大きさ (m)
+        float m_landDustPerRootMass = 0.4f;    // 質量の平方根 1 あたり足す大きさ (m)。質量 1 で 1.2 m
+        float m_landDustPerPower = 0.5f;       // 威力 1 からの 1 あたりで大きさに掛ける伸び。威力 2 で 1.5 倍
+    };
+} // namespace NS::Game::Level

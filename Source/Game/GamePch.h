@@ -15,7 +15,7 @@
 #include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/BoxCollider.h"
-#include "Runtime/Object/Components/CameraBrain.h"
+#include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/Components/Collider.h"

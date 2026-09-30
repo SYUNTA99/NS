@@ -12,11 +12,10 @@ namespace NS::Game::Level
     //! @brief 同じ配置物の追従カメラへ、追う相手の接地と速度と、
     //! 根から立ち姿の中心までの高さと、反動の状態と突進を出した向きと、
     //! 溜めの状態を渡す Component
-    //! @details ThirdPersonFollow は NS::Obj にあり、NS::Game の型を名指しできない
-    //! 追う相手は ThirdPersonFollow の追従対象から引き、値だけを運ぶことで include の向きを保つ
+    //! @details 追う相手は ThirdPersonFollow の追従対象から引き、相手が ICameraTarget の窓口で答えた状態だけを運ぶ
+    //! 相手の部品は読まない。オデッセイでカメラが CameraTarget を通してだけプレイヤーを見るのと同じ
     //! 帯は LateUpdate + 40 で、やり直しの後・カメラの追従の前
-    //! 依存: NS::Game::Entity::EntityComponent, NS::Game::Player::PlayerComponent, CollisionInput,
-    //! NS::Obj::ThirdPersonFollow
+    //! 依存: NS::Obj::ICameraTarget, NS::Obj::ThirdPersonFollow
     class FollowCameraFeed : public NS::Obj::Component
     {
     public:

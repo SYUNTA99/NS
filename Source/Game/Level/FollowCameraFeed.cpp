@@ -1,51 +1,17 @@
 #include "Game/Level/FollowCameraFeed.h"
 
-#include "Game/Entity/EntityComponent.h"
-#include "Game/Level/CollisionInput.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/Logger.h"
+#include "Runtime/Object/CameraTarget.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 
-#include <algorithm>
 
 namespace NS::Game::Level
 {
-    namespace
-    {
-        // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す
-        [[nodiscard]] NS::Obj::FollowChargeDesc MakeFollowCharge(const CollisionInput& input) noexcept
-        {
-            const ImpactInputJudge& judge = input.Judge();
-            const bool held = judge.IsHeld();
-            float charge01 = 0.0f;
-            if (held)
-            {
-                charge01 = judge.Charge01();
-            }
-            SlamLineTarget aim{};
-            const bool hasAimTarget = input.TryGetAimTarget(aim);
-            NS::Core::Vector3 center{};
-            float radius = 0.0f;
-            if (hasAimTarget)
-            {
-                center = NS::Core::Vector3{aim.bounds.Center.x, aim.bounds.Center.y, aim.bounds.Center.z};
-                radius = std::max({aim.bounds.Extents.x, aim.bounds.Extents.y, aim.bounds.Extents.z});
-            }
-            return NS::Obj::FollowChargeDesc{
-                .charge01 = charge01,
-                .held = held,
-                .hasAimTarget = hasAimTarget,
-                .aimTargetCenter = center,
-                .aimTargetRadius = radius,
-            };
-        }
-    } // namespace
-
-    // Respawner のやり直し (LateUpdate + 10) が済んだ後、
+    // 進行役のやり直し (LateUpdate + 10) が済んだ後、
     // ThirdPersonFollow (LateUpdate + 50) が読む前に渡す
     FollowCameraFeed::FollowCameraFeed() noexcept : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate + 40) {}
 
@@ -74,40 +40,26 @@ namespace NS::Game::Level
         {
             return;
         }
-        const NS::Game::Entity::EntityComponent* entity = target->FindComponent<NS::Game::Entity::EntityComponent>();
-        if (entity == nullptr)
+        // 相手の部品は読まない。追われる側が窓口で答えた状態だけを使う
+        const NS::Obj::ICameraTarget* cameraTarget = target->GetCameraTarget();
+        if (cameraTarget == nullptr)
         {
             return;
         }
-        m_follow->SetFollowMotion(entity->IsGrounded(), entity->Velocity());
-        // 当たりの足元に立ち姿のカプセルを立てた時の中心を見る。玉の間は根が立ち姿の半長ぶん下がっているので、
-        // 根を見ると押すたびに画面が 1 フレームで半長ぶん沈み、解けると跳ね上がる
-        m_follow->SetTargetHeightOffset(entity->StandingHalfHeight() - entity->CapsuleHalfHeight());
-        const NS::Game::Player::PlayerComponent* player = target->FindComponent<NS::Game::Player::PlayerComponent>();
-        if (player != nullptr)
+        const NS::Obj::CameraTargetState state = cameraTarget->GetCameraTargetState();
+        m_follow->SetFollowMotion(state.grounded, state.velocity);
+        m_follow->SetTargetHeightOffset(state.heightOffset);
+        if (state.hasRebound && !m_follow->SetFollowRebound(state.rebound))
         {
-            const NS::Obj::FollowReboundDesc rebound{
-                .rebounding = player->IsRebounding(),
-                .slamDirection = player->BodySlamStartDirection(),
-            };
-            if (!m_follow->SetFollowRebound(rebound))
-            {
-                NS_LOG_WARN(Game,
-                            "突進の向きが壊れていて、反動をカメラへ渡さなかった: ({}, {}, {})",
-                            rebound.slamDirection.x,
-                            rebound.slamDirection.y,
-                            rebound.slamDirection.z);
-            }
+            NS_LOG_WARN(Game,
+                        "突進の向きが壊れていて、反動をカメラへ渡さなかった: ({}, {}, {})",
+                        state.rebound.slamDirection.x,
+                        state.rebound.slamDirection.y,
+                        state.rebound.slamDirection.z);
         }
-
-        const CollisionInput* input = target->FindComponent<CollisionInput>();
-        if (input == nullptr)
+        if (state.hasCharge && !m_follow->SetFollowCharge(state.charge))
         {
-            return;
-        }
-        if (!m_follow->SetFollowCharge(MakeFollowCharge(*input)))
-        {
-            NS_LOG_WARN(Game, "溜めの状態が壊れていて、追従カメラへ渡さなかった: 溜め量 {}", input->Judge().Charge01());
+            NS_LOG_WARN(Game, "溜めの状態が壊れていて、追従カメラへ渡さなかった: 溜め量 {}", state.charge.charge01);
         }
     }
 

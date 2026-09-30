@@ -1,28 +1,21 @@
 ﻿#include "Game/Level/ImpactResolver.h"
 
-#include "Game/Level/Breakable.h"
-#include "Game/Level/ColliderBounds.h"
 #include "Game/Level/CollisionInput.h"
-#include "Game/Level/ImpactMark.h"
 #include "Game/Level/LaunchedBody.h"
+#include "Game/Level/LevelMessages.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
-#include "Runtime/Graphics/RenderContext.h"
-#include "Runtime/Graphics/Renderer.h"
-#include "Runtime/Object/Components/BoxCollider.h"
-#include "Runtime/Object/Components/CameraBrain.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/MeshRenderer.h"
-#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Components/HitSensor.h"
+#include "Runtime/Object/IUseCamera.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "Runtime/Object/Scene/HitSensorDirector.h"
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Physics/PhysicsScene.h"
+#include "Runtime/Physics/Capsule.h"
 #include "Runtime/Platform/Clock.h"
-#include "Runtime/Platform/Input.h"
 
 #include <algorithm>
 #include <array>
@@ -35,10 +28,6 @@ namespace NS::Game::Level
 {
     namespace
     {
-        // 揺れのフレーム数の上限。揺れの並びは始める時に全フレームぶんの領域を取るので、欄の打ち間違いの大きな値を止める
-        // 1 秒を超える揺れは当たりの返りではなく、画面が揺れ続けている状態
-        constexpr int k_MaxShakeFrames = 60;
-
         // 丸めた整数を 32 ビットの符号なしへ写す。負の値も同じ値なら同じビットになる
         [[nodiscard]] std::uint32_t RoundedBits(float value) noexcept
         {
@@ -124,31 +113,6 @@ namespace NS::Game::Level
             return NS::Core::Clamp(MeasureLineOffset(position, bounds, velocity, playerRadius).ratio, 0.0f, 1.0f);
         }
 
-        [[nodiscard]] JPH::BodyID CurrentBodyOf(const NS::Obj::Actor& object) noexcept
-        {
-            // RigidBody の形になった collider は RigidBody の body を返す。飛んでいても置かれていても同じ口で引ける
-            if (const NS::Obj::Collider* collider = object.FindComponent<NS::Obj::Collider>())
-            {
-                return collider->BodyId();
-            }
-            return JPH::BodyID{};
-        }
-
-        // 押し飛ばしの重さ。RigidBody が無い配置物は質量 1 として扱う
-        [[nodiscard]] float MassOf(const NS::Obj::Actor& object) noexcept
-        {
-            if (const NS::Obj::RigidBody* rigidBody = object.FindComponent<NS::Obj::RigidBody>())
-            {
-                return rigidBody->EffectiveMass();
-            }
-            return 1.0f;
-        }
-
-        [[nodiscard]] bool IsTouching(const std::vector<JPH::BodyID>& touching, JPH::BodyID id)
-        {
-            return std::find(touching.begin(), touching.end(), id) != touching.end();
-        }
-
         // 触れる所を詰める幅の下限 (m)。1 mm は地面の矢印の先の位置の違いとして見分けられない長さ
         constexpr float k_ContactTolerance = 0.001f;
         // 触れる所を詰める回数の上限。10 m の線を 1 mm まで詰めるのは 14 回。浮動小数の桁が尽きて幅が縮まない時に止める
@@ -166,17 +130,20 @@ namespace NS::Game::Level
                 .center = origin + direction * half, .axis = direction, .halfHeight = half, .radius = radius};
         }
 
-        // 玉が body に初めて触れるまでに線に沿って進む距離 (m)。k_ContactTolerance の幅で、触れている側の端を返す
-        // 掃く長さを伸ばすほど触れる body は増えるだけなので、触れない長さと触れる長さの間を半分ずつ詰める
-        // 事前条件: SweptBall(origin, direction, distance, radius) が body に触れている
-        [[nodiscard]] float FirstTouchDistance(const NS::Phys::PhysicsScene& physics,
+        // 玉が相手の体に初めて触れるまでに線に沿って進む距離 (m)。k_ContactTolerance の幅で、触れている側の端を返す
+        // 掃く長さを伸ばすほど触れる形は増えるだけなので、触れない長さと触れる長さの間を半分ずつ詰める
+        // 事前条件: SweptBall(origin, direction, distance, radius) が target に触れている
+        [[nodiscard]] float FirstTouchDistance(const NS::Obj::SensorVolume& target,
                                                const NS::Core::Vector3& origin,
                                                const NS::Core::Vector3& direction,
                                                float distance,
-                                               float radius,
-                                               JPH::BodyID body)
+                                               float radius) noexcept
         {
-            if (IsTouching(physics.OverlapCapsule(SweptBall(origin, direction, 0.0f, radius)), body))
+            const auto touches = [&](float length) {
+                return NS::Obj::VolumesOverlap(NS::Obj::SensorVolume::Capsule(SweptBall(origin, direction, length, radius)),
+                                               target);
+            };
+            if (touches(0.0f))
             {
                 return 0.0f;
             }
@@ -185,7 +152,7 @@ namespace NS::Game::Level
             for (int i = 0; i < k_ContactSearchSteps && touched - missed > k_ContactTolerance; ++i)
             {
                 const float middle = (missed + touched) * 0.5f;
-                if (IsTouching(physics.OverlapCapsule(SweptBall(origin, direction, middle, radius)), body))
+                if (touches(middle))
                 {
                     touched = middle;
                 }
@@ -197,39 +164,31 @@ namespace NS::Game::Level
             return touched;
         }
 
-        // 体当たりの相手になれる壊せる物なら外接箱を取って true。当たりの裁定と寄せる相手の探索が同じ絞りを通る
-        [[nodiscard]] bool TryGetTargetBounds(const Breakable& breakable, NS::Core::AABB& outBounds) noexcept
+        // 体当たりが調べる種類の、有効な体のセンサーか。当たりの裁定と寄せる相手の探索が同じ絞りを通る
+        [[nodiscard]] bool IsTackleTarget(const NS::Obj::HitSensor& sensor, const NS::Obj::Actor* self) noexcept
         {
-            if (!breakable.IsActive())
-            {
-                return false;
-            }
-
-            // トリガの箱は通り抜ける体積なのでぶつかる相手にならない
-            const NS::Obj::BoxCollider* box = breakable.Owner()->FindComponent<NS::Obj::BoxCollider>();
-            if (box != nullptr && box->IsTrigger())
-            {
-                return false;
-            }
-
-            return TryGetColliderBounds(*breakable.Owner(), outBounds);
+            return sensor.IsValid() && sensor.Owner() != self &&
+                   NS::Obj::HitSensorDirector::Checks(NS::Obj::HitSensorType::PlayerAttack, sensor.Type());
         }
     } // namespace
 
     // PlayerComponent の 200 より前。書き込んだ速度が同じ固定ステップの移動に乗る
-    ImpactResolver::ImpactResolver() noexcept : NS::Obj::OverlayRenderer(NS::Obj::TickPriority::Update - 100) {}
+    ImpactResolver::ImpactResolver() noexcept : NS::Obj::Component(NS::Obj::TickPriority::Update - 100) {}
 
     void ImpactResolver::OnStart()
     {
-        // 基底が重ね描きの登録簿へ自分を入れる
-        NS::Obj::OverlayRenderer::OnStart();
-
         m_movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>();
-        // 無ければ null のまま。ボタンを積んでいない配置物でも裁定は続ける
+        // 無ければ null のまま。ボタンや演出を積んでいない配置物でも裁定は続ける
         m_collisionInput = Owner()->FindComponent<CollisionInput>();
+        m_hitReaction = Owner()->FindComponent<NS::Obj::HitReaction>();
     }
 
-    Breakable* ImpactResolver::FindOverlapped() const
+    int ImpactResolver::CenterHitFlashStepsRemaining() const noexcept
+    {
+        return m_hitReaction != nullptr ? m_hitReaction->FlashFramesRemaining() : 0;
+    }
+
+    NS::Obj::HitSensor* ImpactResolver::FindOverlapped() const
     {
         NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
@@ -247,33 +206,24 @@ namespace NS::Game::Level
             NS::Core::Vector3::UnitY,
             m_movement->CapsuleHalfHeight(),
             m_movement->CapsuleRadius()};
-        const std::vector<JPH::BodyID> touching = scene->Physics().OverlapCapsule(capsule);
+        const std::vector<NS::Obj::HitSensor*> touching = scene->HitSensors().FindOverlaps(
+            NS::Obj::SensorVolume::Capsule(capsule), NS::Obj::HitSensorType::PlayerAttack, Owner());
 
-        // TODO: 壊せる物を総当たりで見ている。数十個までを想定。増えたら格子で絞る
-        Breakable* nearest = nullptr;
+        NS::Obj::HitSensor* nearest = nullptr;
         float nearestDistanceSq = 0.0f;
-        scene->Objects().ForEachComponent<Breakable>([&](Breakable& breakable) {
-            NS::Core::AABB bounds{};
-            if (!TryGetTargetBounds(breakable, bounds))
-            {
-                return;
-            }
-
-            if (!IsTouching(touching, CurrentBodyOf(*breakable.Owner())))
-            {
-                return;
-            }
-
+        for (NS::Obj::HitSensor* sensor : touching)
+        {
+            const NS::Core::AABB bounds = sensor->WorldVolume().Bounds();
             const float dx = bounds.Center.x - position.x;
             const float dy = bounds.Center.y - position.y;
             const float dz = bounds.Center.z - position.z;
             const float distanceSq = dx * dx + dy * dy + dz * dz;
             if (nearest == nullptr || distanceSq < nearestDistanceSq)
             {
-                nearest = &breakable;
+                nearest = sensor;
                 nearestDistanceSq = distanceSq;
             }
-        });
+        }
         return nearest;
     }
 
@@ -298,18 +248,19 @@ namespace NS::Game::Level
         const float minCosine = std::cos(NS::Core::ToRadians(NS::Core::Degrees{coneDegrees}).value);
         const NS::Core::Vector3 position = Owner()->Root().Position();
 
-        // TODO: 壊せる物を総当たりで見ている。数十個までを想定。増えたら格子で絞る
+        // TODO: 体のセンサーを総当たりで見ている。数十個までを想定。増えたら格子で絞る
         bool found = false;
         float nearestDistance = 0.0f;
         NS::Core::Vector3 nearestCenter{};
         bool preferredFound = false;
         NS::Core::Vector3 preferredCenter{};
-        scene->Objects().ForEachComponent<Breakable>([&](Breakable& breakable) {
-            NS::Core::AABB bounds{};
-            if (!TryGetTargetBounds(breakable, bounds))
+        for (const NS::Obj::HitSensor* sensor : scene->HitSensors().Sensors())
+        {
+            if (!IsTackleTarget(*sensor, Owner()))
             {
-                return;
+                continue;
             }
+            const NS::Core::AABB bounds = sensor->WorldVolume().Bounds();
 
             const float dx = bounds.Center.x - position.x;
             const float dz = bounds.Center.z - position.z;
@@ -317,14 +268,14 @@ namespace NS::Game::Level
             // 真上と真下の相手は向きが決まらない
             if (!(distance >= NS::Core::k_Epsilon) || !(distance <= maxDistance))
             {
-                return;
+                continue;
             }
             const float cosine = (dx * forwardDir.x + dz * forwardDir.z) / distance;
             if (!(cosine >= minCosine))
             {
-                return;
+                continue;
             }
-            if (preferred.IsSet() && breakable.Owner()->Id() == preferred.id)
+            if (preferred.IsSet() && sensor->Owner()->Id() == preferred.id)
             {
                 preferredFound = true;
                 preferredCenter = bounds.Center;
@@ -335,7 +286,7 @@ namespace NS::Game::Level
                 nearestDistance = distance;
                 nearestCenter = bounds.Center;
             }
-        });
+        }
 
         if (preferredFound)
         {
@@ -380,44 +331,44 @@ namespace NS::Game::Level
         // 突進は丸まった玉で進む。丸まっていれば玉の中心は根そのもの。立ち姿から丸まる時は下端を揃えて根を半長ぶん
         // 下げるので、立ち姿の下の球の中心が丸まった後の玉の中心になる
         const NS::Core::Vector3 ballCenter{position.x, position.y - m_movement->CapsuleHalfHeight(), position.z};
-        // 届くかは裁定と同じく、自機の当たりの玉と相手の body の実物の形で見る。外接箱を水平に見ると、中心の高い
+        // 届くかは裁定と同じく、自機の当たりの玉と相手の体のセンサーの形で見る。外接箱を水平に見ると、中心の高い
         // 大きな球の端では、玉が触れずに横を通るのに届くと出る
-        const NS::Phys::PhysicsScene& physics = scene->Physics();
-        const std::vector<JPH::BodyID> swept =
-            physics.OverlapCapsule(SweptBall(ballCenter, lineDir, maxDistance, playerRadius));
+        const NS::Obj::SensorVolume swept =
+            NS::Obj::SensorVolume::Capsule(SweptBall(ballCenter, lineDir, maxDistance, playerRadius));
 
-        // TODO: 壊せる物を総当たりで見ている。数十個までを想定。増えたら格子で絞る
+        // TODO: 体のセンサーを総当たりで見ている。数十個までを想定。増えたら格子で絞る
         bool found = false;
         SlamLineTarget first{};
-        scene->Objects().ForEachComponent<Breakable>([&](Breakable& breakable) {
-            NS::Core::AABB bounds{};
-            if (!TryGetTargetBounds(breakable, bounds))
+        for (const NS::Obj::HitSensor* sensor : scene->HitSensors().Sensors())
+        {
+            if (!IsTackleTarget(*sensor, Owner()))
             {
-                return;
+                continue;
             }
+            const NS::Obj::SensorVolume volume = sensor->WorldVolume();
+            const NS::Core::AABB bounds = volume.Bounds();
 
             const LineOffset line = MeasureLineOffset(position, bounds, lineDir, playerRadius);
             // 真横と後ろの相手は線の先に居ない
             if (!(line.along > 0.0f))
             {
-                return;
+                continue;
             }
             // 比が 1 を超える相手は、線を進む自機の縁が相手の外接箱の縁に届かない。丸めた値で見ると 1 に張り付いて拾う
             if (!(line.ratio <= 1.0f))
             {
-                return;
+                continue;
             }
-            const JPH::BodyID body = CurrentBodyOf(*breakable.Owner());
-            if (!IsTouching(swept, body))
+            if (!NS::Obj::VolumesOverlap(swept, volume))
             {
-                return;
+                continue;
             }
             // 最初に触れる相手は、中心の近さでなく玉が触れるまでに進む距離で決める。突進はそこで止まって当たる
-            const float contact = FirstTouchDistance(physics, ballCenter, lineDir, maxDistance, playerRadius, body);
+            const float contact = FirstTouchDistance(volume, ballCenter, lineDir, maxDistance, playerRadius);
             if (!found || contact < first.contact)
             {
                 found = true;
-                first = SlamLineTarget{.target = NS::Obj::ObjectRef{breakable.Owner()->Id()},
+                first = SlamLineTarget{.target = NS::Obj::ObjectRef{sensor->Owner()->Id()},
                                        .bounds = bounds,
                                        .origin = position,
                                        .direction = lineDir,
@@ -425,7 +376,7 @@ namespace NS::Game::Level
                                        .offset = line.ratio,
                                        .contact = contact};
             }
-        });
+        }
 
         if (found)
         {
@@ -440,17 +391,7 @@ namespace NS::Game::Level
         m_didBreak = false;
         m_freezeBeganThisStep = false;
         m_releasedThisStep = false;
-        // フラッシュの減衰は早期 return より前に置く。凍結中のフレームもここまでは来るので、止まっている間も白が薄れる
-        if (m_centerHitFlashRemaining > 0)
-        {
-            --m_centerHitFlashRemaining;
-        }
-        // 振動も早期 return より前で毎フレーム書く。書かれなかったフレームは Gamepad::Update が 0 にする
-        if (m_padRunning)
-        {
-            ++m_padElapsed;
-            WritePadVibration();
-        }
+        // 白の光と振動の進みは HitReaction が持つ。止まっている間も薄れる
         if (m_movement == nullptr)
         {
             return;
@@ -467,7 +408,7 @@ namespace NS::Game::Level
                 ReleaseHitStop();
                 return;
             }
-            ApplyFreezeVibration();
+            // 置かれていた相手の往復は相手が自分で置く
             return;
         }
 
@@ -490,17 +431,18 @@ namespace NS::Game::Level
             return;
         }
 
-        Breakable* hit = FindOverlapped();
-        if (hit == nullptr)
+        NS::Obj::HitSensor* hit = FindOverlapped();
+        if (hit == nullptr || hit->Owner() == nullptr)
         {
             return;
         }
-
-        NS::Core::AABB bounds{};
-        if (!TryGetColliderBounds(*hit->Owner(), bounds))
+        // 相手に体当たりを受けるかを問い、重さと置かれ方を答えてもらう。応じない物は当たらなかった扱い
+        TackleTargetAnswer answer{};
+        if (!SendMsgAskTackleTarget(*hit, answer))
         {
             return;
         }
+        const NS::Core::AABB bounds = answer.bounds;
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
         // 箱へ押し付けられたフレームは実速度が 0 に潰されるため、突進の狙いの速度で向きと貫通後の速度を決める
@@ -533,7 +475,7 @@ namespace NS::Game::Level
 
         const float charge01 = m_movement->BodySlamCharge01();
 
-        const float mass = MassOf(*hit->Owner());
+        const float mass = answer.mass;
         const float massFactor = mass / (mass + 1.0f);
 
         // ボタン未搭載は係数 1.0 の素通し。段は中心近くと記録するが、白の光と止めの倍率は掛けない
@@ -572,10 +514,10 @@ namespace NS::Game::Level
         m_movement->CancelBodySlam();
 
         m_pendingTarget = NS::Obj::ObjectRef{hit->Owner()->Id()};
-        m_pendingTargetHome = hit->Owner()->Root().Position();
-        // 飛んでいる相手の根は物理が毎フレーム書くので、食い込み・振動・元位置へ戻す書き込みは効かない。置かれた相手に絞る
-        const LaunchedBody* launched = hit->Owner()->FindComponent<LaunchedBody>();
-        m_pendingTargetPlaced = launched == nullptr || launched->Phase() == LaunchPhase::Resting;
+        m_pendingTargetHome = answer.position;
+        // 飛んでいる相手は食い込まない。どう応じるかは相手が決めるが、演出の大きさを選ぶのに答えを控える
+        m_pendingTargetPlaced = answer.placed;
+        m_pendingTier = tier;
         // 相手は突進の向きへ飛ばす。中心の並びで飛ばすと、横ずれのある当たりが狙いと別の所へ飛ぶ
         // 突進の水平の速さがほぼ 0 で向きが決まらない時だけ、中心の並びの向きへ飛ばす
         NS::Core::Vector3 launchDir{-awayX, 0.0f, -awayZ};
@@ -593,7 +535,7 @@ namespace NS::Game::Level
         float reboundScale = 0.0f;
         float launchScale = 0.0f;
         int stopSteps = 0;
-        if (m_breakEnabled && hit->Toughness() <= power)
+        if (m_breakEnabled && answer.toughness <= power)
         {
             m_pendingBreak = true;
             // 貫通は相手を飛ばさず、自機も反動しない
@@ -603,7 +545,7 @@ namespace NS::Game::Level
             // 向きを保ったまま減速する。倍率は相手の質量に依らない
             m_pendingSelfVelocity = velocity * m_breakSpeedScale;
             m_didBreak = true;
-            NS_LOG_INFO(Game, "貫通: 耐久 {} 威力 {} 中心近く {}", hit->Toughness(), power, centerHit);
+            NS_LOG_INFO(Game, "貫通: 耐久 {} 威力 {} 中心近く {}", answer.toughness, power, centerHit);
             stopSteps = SecondsToSteps(m_breakStopSeconds * hitStopScale);
         }
         else
@@ -646,7 +588,7 @@ namespace NS::Game::Level
             NS_LOG_INFO(Game,
                         "衝突: 質量 {} 耐久 {} 反動の高さ {} 距離 {} 押し飛ばしの距離 {} 高さ {} 中心近く {}",
                         mass,
-                        hit->Toughness(),
+                        answer.toughness,
                         m_pendingReboundArc.apexHeight,
                         m_pendingReboundArc.distance,
                         m_pendingLaunchArc.distance,
@@ -675,9 +617,11 @@ namespace NS::Game::Level
         m_lastImpact.launchApexHeight = m_pendingLaunchArc.apexHeight;
         m_lastImpact.impactDir = m_pendingImpactDir;
         m_lastImpact.targetPos = m_pendingTargetHome;
+        m_lastImpact.targetBottom = bounds.Center.y - bounds.Extents.y;
         m_lastImpact.targetMass = mass;
         m_lastImpact.targetPlaced = m_pendingTargetPlaced;
         m_lastImpact.launchScale = launchScale;
+        m_pendingLaunchScale = launchScale;
         m_lastImpact.reboundScale = reboundScale;
 
         if (stopSteps <= 0)
@@ -720,16 +664,18 @@ namespace NS::Game::Level
             return;
         }
 
-        // 力が伝わった瞬間の絵。凍結の頭で置かれた相手を発射方向へ食い込ませて止める
-        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
-        if (m_pendingTargetPlaced && target != nullptr)
+        // 力が伝わった瞬間の絵。相手へ止めの頭を知らせ、置かれていれば食い込ませて止めさせる
+        // 相手も自機と同じく、押し返されている反発の時だけ縮める
+        if (NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget))
         {
-            target->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * m_pushInDistance);
-            // 相手も自機と同じく、押し返されている反発の時だけ縮める
-            if (!m_pendingBreak)
-            {
-                ShrinkPlacedTarget(*target);
-            }
+            const TackleFreezeDesc freeze{.impactDir = m_pendingImpactDir,
+                                          .pushInDistance = m_pushInDistance,
+                                          .shakeAmplitude = m_pendingShakeAmplitude,
+                                          .squashThickness = m_squashThickness,
+                                          .squashHeight = m_squashHeight,
+                                          .squash = !m_pendingBreak,
+                                          .stopSteps = stopSteps};
+            (void)SendMsgTackleFreeze(*target, freeze);
         }
     }
 
@@ -788,14 +734,9 @@ namespace NS::Game::Level
         }
 
         // 当たりの記録は検知のフレームに読まれるので、傾きの向きもここで今のカメラから決める
-        float rollSign = 1.0f;
-        NS::Obj::Scene* scene = Owner()->OwningScene();
-        if (scene != nullptr && scene->CameraBrain() != nullptr)
-        {
-            rollSign = scene->CameraBrain()->SideSignOf(m_pendingZoomRoll.rollDirection);
-        }
+        const float rollSign = NS::Obj::CameraSideSignOf(*Owner(), m_pendingZoomRoll.rollDirection);
         // 振動は段ごとにモーターを分ける。強さは質量と威力で変えない。中心近くと惜しいの長さは止めで結ぶ
-        m_pendingPad = PadVibrationPlan{};
+        m_pendingPad = NS::Obj::HitPadVibration{};
         if (center)
         {
             m_pendingPad.start.left = m_centerHitPadStrength;
@@ -830,102 +771,26 @@ namespace NS::Game::Level
 
     void ImpactResolver::StartHitReturns()
     {
-        m_centerHitFlashRemaining = m_pendingFlashSteps;
-        m_pad = m_pendingPad;
-        m_padElapsed = 0;
-        m_padRunning = true;
-        WritePadVibration();
-
-        NS::Obj::Scene* scene = Owner()->OwningScene();
-        if (scene == nullptr || scene->CameraBrain() == nullptr)
+        if (m_hitReaction == nullptr)
         {
             return;
         }
-        NS::Obj::CameraBrain& brain = *scene->CameraBrain();
-        if (m_pendingShake.frames > k_MaxShakeFrames)
-        {
-            NS_LOG_WARN(Game,
-                        "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった",
-                        m_pendingShake.frames,
-                        k_MaxShakeFrames);
-        }
-        else if (!brain.StartShake(m_pendingShake))
-        {
-            NS_LOG_WARN(Game,
-                        "揺れの設定が壊れていて、揺らさなかった: 横 {} 縦 {} フレーム数 {} 最長 {}",
-                        m_pendingShake.sideAmplitude,
-                        m_pendingShake.upAmplitude,
-                        m_pendingShake.frames,
-                        m_pendingShake.longestFlipFrames);
-        }
-        if (!brain.StartZoomRoll(m_pendingZoomRoll))
-        {
-            NS_LOG_WARN(Game,
-                        "寄りと傾きの設定が壊れていて、寄せなかった: 倍率 {} 傾き {} 保つ {} 戻す {}",
-                        m_pendingZoomRoll.zoom,
-                        m_pendingZoomRoll.rollDegrees,
-                        m_pendingZoomRoll.holdFrames,
-                        m_pendingZoomRoll.returnFrames);
-        }
-    }
-
-    void ImpactResolver::WritePadVibration()
-    {
-        NS::Platform::GamepadVibration speed{};
-        if (m_padElapsed < m_pad.frames)
-        {
-            const float fade =
-                static_cast<float>(m_pad.fadeFrames - m_padElapsed) / static_cast<float>(m_pad.fadeFrames);
-            speed.left = m_pad.start.left * fade;
-            speed.right = m_pad.start.right * fade;
-        }
-        else
-        {
-            // 終わりのフレームも 0 を書く。書かないと次の Input::Update までは前の値が読める
-            m_padRunning = false;
-        }
-        // 以後のフレームは始めの値から 0 へ減るだけなので、範囲の外になるのは始めの値が外の時だけ
-        if (!NS::Platform::Input::Get().Gamepad(0).SetVibration(speed.left, speed.right))
-        {
-            NS_LOG_WARN(Game, "パッドの振動の速さが 0〜1 の外で、震わせなかった: 左 {} 右 {}", speed.left, speed.right);
-            m_padRunning = false;
-        }
+        const NS::Obj::HitReactionDesc reaction{.flashFrames = m_pendingFlashSteps,
+                                                .flashAlpha = m_centerHitFlashAlpha,
+                                                .shake = m_pendingShake,
+                                                .zoomRoll = m_pendingZoomRoll,
+                                                .pad = m_pendingPad};
+        m_hitReaction->Play(reaction);
     }
 
     void ImpactResolver::OnEndPlay()
     {
-        // 基底が重ね描きの登録簿から自分を外す
-        NS::Obj::OverlayRenderer::OnEndPlay();
-
         // 凍結の途中で裁定が外れても、移動が止まったまま残らないようにする
+        // 白と振動とカメラの効果は HitReaction が自分の OnEndPlay で止める
         if (m_movement != nullptr)
         {
             m_movement->SetActive(true);
         }
-        RestoreTargetShape();
-        m_centerHitFlashRemaining = 0;
-        // 書くフレーム数 0 の振動を書くと 0 が入り、プレイを終えたフレームの値が残らない
-        m_pad = PadVibrationPlan{};
-        WritePadVibration();
-        // 揺れと寄りは CameraBrain が持つ。止めないとプレイを終えた後の視点にずれが残る
-        if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
-        {
-            if (NS::Obj::CameraBrain* brain = Owner()->OwningScene()->CameraBrain())
-            {
-                brain->StopShakeAndZoomRoll();
-            }
-        }
-    }
-
-    void ImpactResolver::OnRenderOverlay(const NS::Gfx::RenderContext& ctx)
-    {
-        if (m_centerHitFlashRemaining <= 0)
-        {
-            return;
-        }
-        // ScreenFade は黒の固定色と暗転の状態機械で、白の瞬間減衰には流用できないためここで直接描く
-        const float decay = static_cast<float>(m_centerHitFlashRemaining) / static_cast<float>(m_centerHitFlashSteps);
-        ctx.renderer->DrawFullscreenColor(NS::Core::Color{1.0f, 1.0f, 1.0f, m_centerHitFlashAlpha * decay});
     }
 
     int ImpactResolver::SecondsToSteps(float seconds) const noexcept
@@ -982,9 +847,6 @@ namespace NS::Game::Level
             m_recoverRemaining = m_stretchRecoverSteps;
             m_scaleHeld = false;
         }
-        // 相手は元の形で飛ぶ
-        RestoreTargetShape();
-
         NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
         {
@@ -992,89 +854,18 @@ namespace NS::Game::Level
         }
 
         // 相手は id で引き直す。止まっている数フレームの間に消されていたら残りだけ諦める
+        // 元の位置と形へ戻り、跡を残し、飛ぶか壊れるかは相手が決める
         NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
         if (target == nullptr)
         {
             return;
         }
-
-        // 食い込みと振動は見せるための動き。曲線の起点がずれないよう、置かれていた相手は元位置へ厳密に戻してから飛ばす
-        // 飛んでいる相手は戻さず、今の位置から曲線を引き直す
-        if (m_pendingTargetPlaced)
-        {
-            target->Root().SetPosition(m_pendingTargetHome);
-        }
-
-        // 跡は破壊と押し飛ばしの両方で出す。片方だけ何も残らないと結果が非対称になる
-        bool floorFound = false;
-        NS::Core::Vector3 markPosition{0.0f, 0.0f, 0.0f};
-        {
-            // 起点は相手の底の下。中心から始めると相手自身の当たりに 0 距離で当たる
-            // 水平は明けのフレームの根の位置。飛んでいる相手は止めの間も進んでいて、検知のフレームの位置には居ない
-            NS::Core::Vector3 probe = target->Root().Position();
-            NS::Core::AABB targetBounds{};
-            if (TryGetColliderBounds(*target, targetBounds))
-            {
-                // 底から 1cm 下げる。誤差で相手自身に当たらない最小の隙間
-                probe.y = targetBounds.Center.y - targetBounds.Extents.y - 0.01f;
-            }
-
-            float dist = 0.0f;
-            if (scene->Physics().Raycast(probe, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, m_markProbeDistance, dist))
-            {
-                floorFound = true;
-                // 床の上面から 2cm 浮かせる。面がぴったり重なるとちらつく
-                markPosition = NS::Core::Vector3{probe.x, probe.y - dist + 0.02f, probe.z};
-            }
-        }
-
-        // 積み忘れた配置物でも押し飛ばしと破壊が効くよう、無ければその場で足す
-        LaunchedBody* body = target->FindComponent<LaunchedBody>();
-        if (body == nullptr)
-        {
-            body = target->AddComponent<LaunchedBody>();
-        }
-
-        if (wasBreak)
-        {
-            body->Shatter();
-            if (floorFound)
-            {
-                (void)ImpactMark::SpawnAt(scene, markPosition);
-            }
-            return;
-        }
-
-        body->Launch(m_pendingLaunchArc);
-        if (floorFound)
-        {
-            (void)ImpactMark::SpawnAt(scene, markPosition);
-        }
-    }
-
-    void ImpactResolver::ApplyFreezeVibration()
-    {
-        // 飛んでいる相手は止めずに飛び続ける。根は物理が書くので、揺らしても絵に出ない
-        if (!m_pendingTargetPlaced)
-        {
-            return;
-        }
-        NS::Obj::Scene* scene = Owner()->OwningScene();
-        if (scene == nullptr)
-        {
-            return;
-        }
-        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
-        if (target == nullptr || m_hitStopTotal <= 0)
-        {
-            return;
-        }
-
-        // フレーム数の偶奇で往復し、残りフレーム数で減衰する。乱数を使わないので同じ入力は同じ絵になる
-        const float sign = 1.0f - 2.0f * static_cast<float>(m_hitStopRemaining % 2);
-        const float decay = static_cast<float>(m_hitStopRemaining) / static_cast<float>(m_hitStopTotal);
-        const float along = m_pushInDistance + m_pendingShakeAmplitude * sign * decay;
-        target->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * along);
+        const TackleReleaseDesc release{.arc = m_pendingLaunchArc,
+                                        .breaks = wasBreak,
+                                        .tier = m_pendingTier,
+                                        .power = m_lastPower,
+                                        .launchScale = m_pendingLaunchScale};
+        (void)SendMsgTackleRelease(*target, release);
     }
 
     void ImpactResolver::RecoverScale()
@@ -1112,56 +903,6 @@ namespace NS::Game::Level
         const float dx2 = m_pendingImpactDir.x * m_pendingImpactDir.x;
         const float dz2 = m_pendingImpactDir.z * m_pendingImpactDir.z;
         return NS::Core::Vector3{1.0f + (along - 1.0f) * dx2, height, 1.0f + (along - 1.0f) * dz2};
-    }
-
-    void ImpactResolver::ShrinkPlacedTarget(NS::Obj::Actor& target)
-    {
-        NS::Obj::MeshRenderer* look = target.FindComponent<NS::Obj::MeshRenderer>();
-        if (look == nullptr)
-        {
-            return;
-        }
-        // 当たりは根の世界のスケールから形を作るので、根は潰さず描く形だけを縮める
-        // 前と今を揃えて書く。MeshRenderer の OnUpdate の前後に依らず、元の形から補間せずに縮んだ形で描く
-        if (!look->SnapDrawScale(AlongImpactFactors(m_squashThickness, m_squashHeight)))
-        {
-            NS_LOG_WARN(Game,
-                        "潰れの厚みか伸び上がりが有限の正でなく、相手を縮めなかった: 厚み {} 伸び上がり {}",
-                        m_squashThickness,
-                        m_squashHeight);
-            return;
-        }
-        m_targetShapeHeld = true;
-    }
-
-    void ImpactResolver::RestoreTargetShape()
-    {
-        if (!m_targetShapeHeld)
-        {
-            return;
-        }
-        m_targetShapeHeld = false;
-        if (Owner() == nullptr)
-        {
-            return;
-        }
-        NS::Obj::Scene* scene = Owner()->OwningScene();
-        if (scene == nullptr)
-        {
-            return;
-        }
-        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
-        if (target == nullptr)
-        {
-            return;
-        }
-        NS::Obj::MeshRenderer* look = target->FindComponent<NS::Obj::MeshRenderer>();
-        if (look == nullptr)
-        {
-            return;
-        }
-        // 縮めた時と同じく前と今を揃えて書き、縮んだ形から補間しない
-        (void)look->SnapDrawScale(NS::Core::Vector3{1.0f, 1.0f, 1.0f});
     }
 
     int ImpactResolver::ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept

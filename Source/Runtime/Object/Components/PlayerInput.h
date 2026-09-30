@@ -8,7 +8,7 @@ namespace NS::Obj
     //! @brief Keyboard / Gamepad の入力を読んで値として持つ Component
     //! @details WASD + 左スティックを camera forward 相対の world 方向に変換し、Space / Gamepad A の
     //! 押した瞬間と押しっぱなし、マウス右ボタン / 左トリガーの手放しを合わせた 7 つの値を持つ。渡し先は知らない
-    //! 基準の forward は毎ステップ scene の CameraBrain から自分で読む
+    //! 基準の forward は毎ステップ scene の CameraManager から自分で読む
     //! 入力はプロセス全体で 1 個の Input::Get() を直接読む
     class PlayerInput : public Component
     {
@@ -16,7 +16,7 @@ namespace NS::Obj
         PlayerInput() noexcept;
 
         //! camera 相対移動用の水平 forward を注入し、XZ 平面で Y=0 とする。未注入時は world +Z
-        //! Brain の居る scene では OnUpdate が毎ステップ上書きする。Brain 不在 (テスト等) では直接設定に使う
+        //! CameraManager の居る scene では OnUpdate が毎ステップ上書きする。CameraManager 不在 (テスト等) では直接設定に使う
         void SetCameraForward(const NS::Core::Vector3& cameraForwardHorizontal) noexcept;
 
         // 読み取った値は自分で持つ。渡し先の型を include できない場所からも引ける

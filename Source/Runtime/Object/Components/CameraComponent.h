@@ -31,7 +31,7 @@ namespace NS::Obj
         void SetNearPlane(float nearPlane) noexcept;
         void SetFarPlane(float farPlane) noexcept;
 
-        //! pose の位置 / 注視点 / up と投影設定をまとめて書く。Brain の Evaluate とエディタの視点反映が使う
+        //! pose の位置 / 注視点 / up と投影設定をまとめて書く。CameraManager の Evaluate とエディタの視点反映が使う
         void ApplyPose(const CameraPose& pose) noexcept;
 
         [[nodiscard]] const NS::Core::Vector3& Position() const noexcept { return m_camera.Position(); }
@@ -48,7 +48,7 @@ namespace NS::Obj
         //! target - position を XZ 平面で正規化した前方向。距離 0 や Y 方向だけならワールドの +Z
         [[nodiscard]] NS::Core::Vector3 ForwardHorizontal() const noexcept;
 
-        // pose は CameraBrain が毎フレーム上書きするので保存する調整値は無い。型名だけ登録する
+        // pose は CameraManager が毎フレーム上書きするので保存する調整値は無い。型名だけ登録する
         NS_REFLECT_NONE(CameraComponent, Component)
 
     private:

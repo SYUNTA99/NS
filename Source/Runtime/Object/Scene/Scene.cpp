@@ -1,7 +1,7 @@
 ﻿#include "Runtime/Object/Scene/Scene.h"
 
 #include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Object/Components/CameraBrain.h"
+#include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Reflection/Archetype.h"
@@ -9,6 +9,7 @@
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
+#include "Runtime/Object/UIActor.h"
 #include "Runtime/Platform/Clock.h"
 
 #include <limits>
@@ -70,8 +71,10 @@ namespace NS::Obj
         std::unique_ptr<Actor> host = std::make_unique<Actor>();
         CameraComponent* camera = host->AddComponent<CameraComponent>();
         camera->SetUp({0.0f, 1.0f, 0.0f});
-        m_brain = host->AddComponent<NS::Obj::CameraBrain>();
+        m_cameraManager = host->AddComponent<NS::Obj::CameraManager>();
         SpawnTransient(std::move(host));
+        // 当たりの調べ役はセンサーの段 (物理の後、仕掛けとゴールの前) で回る
+        m_objects.AddTicker(&m_hitSensors, HitSensorDirector::k_TickPriority);
     }
 
     Scene::~Scene() = default;
@@ -240,6 +243,8 @@ namespace NS::Obj
         }
         // 開始は引き当ての後。OnStart の中で資産を読む Component が空の参照を掴まない
         obj.OnStart();
+        // 後から入る物は他の配置物が既に揃っている
+        obj.InitAfterPlacement();
     }
 
     Actor* Scene::SpawnFromJson(const nlohmann::json& object)
@@ -388,8 +393,10 @@ namespace NS::Obj
 
     void Scene::RebuildObjectsFrom(const nlohmann::json& scene)
     {
+        // シーンに 1 つの物 (進行役など) は最初の状態から作り直させる。組み直した配置物の開始が必要な物を作る
+        m_sceneObjs.Clear();
         // Actor の型選択は登録一覧、参照の実体化は各 component の ResolveAssets が行う
-        // vcam の brain への付け外しは VirtualCamera が OnStart / OnEndPlay で自分で行う
+        // vcam の cameras への付け外しは VirtualCamera が OnStart / OnEndPlay で自分で行う
         m_objects.Rebuild(scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, m_assets); });
         m_objects.SyncPhysics(m_physicsScene);
 
@@ -438,15 +445,26 @@ namespace NS::Obj
             }
         });
         m_objects.UpdateObjects(TickPriority::LateUpdate);
+        // 画面に出す物は世界とカメラの後。開いた側が同じフレームに閉じても良いよう、控えた並びを回す
+        const std::vector<UIActor*> uiActors = m_sceneRenderer.UIActors();
+        for (UIActor* actor : uiActors)
+        {
+            if (actor->IsOpen())
+            {
+                actor->OnUpdate();
+            }
+        }
         // 時間停止中は凍らせる。停止の判定より後ろ
         m_sceneRenderer.UpdateEffects(NS::Platform::FrameTimer::FixedDelta());
     }
 
     void Scene::OnShutdown()
     {
+        // シーンに 1 つの物は配置物と画面の一覧を借りるので先に捨てる
+        m_sceneObjs.Clear();
         m_objects.Clear();
         // host も ObjectList と一緒に消えた。控えを残すと破棄済みを指し続ける
-        m_brain = nullptr;
+        m_cameraManager = nullptr;
     }
 
     NS::Gfx::RenderSettings Scene::ResolveSceneSettings(const NS::Gfx::RenderSettings& projectDefaults)
@@ -506,25 +524,51 @@ namespace NS::Obj
         m_sceneRenderer.DrawOverlays(context);
     }
 
-    NS::Obj::CameraBrain* Scene::CameraBrain() noexcept
+    CameraManager* Scene::GetCameraManager() const noexcept
     {
-        return m_brain;
+        return m_cameraManager;
+    }
+
+    SceneObjHolder* Scene::GetSceneObjHolder() const noexcept
+    {
+        return &m_sceneObjs;
+    }
+
+    NS::Phys::PhysicsScene* Scene::GetPhysicsScene() const noexcept
+    {
+        // 窓口は問い合わせの口。当たりの body を書き換えるのは ObjectList::SyncPhysics だけ
+        return const_cast<NS::Phys::PhysicsScene*>(&m_physicsScene);
+    }
+
+    NS::Gfx::EffectScene* Scene::GetEffectScene() const noexcept
+    {
+        return const_cast<SceneRenderer&>(m_sceneRenderer).Effects();
+    }
+
+    void Scene::RegisterUIActor(UIActor* actor)
+    {
+        m_sceneRenderer.RegisterUIActor(actor);
+    }
+
+    void Scene::UnregisterUIActor(UIActor* actor) noexcept
+    {
+        m_sceneRenderer.UnregisterUIActor(actor);
     }
 
     CameraComponent* Scene::MainCamera() noexcept
     {
-        if (m_brain == nullptr)
+        if (m_cameraManager == nullptr)
         {
             return nullptr;
         }
-        return m_brain->Camera();
+        return m_cameraManager->Camera();
     }
 
     void Scene::OnRenderScene()
     {
-        NS::Obj::CameraBrain* brain = CameraBrain();
+        NS::Obj::CameraManager* cameras = GetCameraManager();
         CameraComponent* camera = MainCamera();
-        if (brain == nullptr || camera == nullptr)
+        if (cameras == nullptr || camera == nullptr)
         {
             return;
         }
@@ -537,6 +581,6 @@ namespace NS::Obj
         {
             alpha = 1.0f;
         }
-        m_sceneRenderer.Render(*brain, *camera, m_skyboxPath, alpha);
+        m_sceneRenderer.Render(*cameras, *camera, m_skyboxPath, alpha);
     }
 } // namespace NS::Obj

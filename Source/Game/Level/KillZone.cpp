@@ -1,7 +1,7 @@
 #include "Game/Level/KillZone.h"
 
-#include "Game/Level/KillZoneComponent.h"
-#include "Runtime/Object/Components/BoxCollider.h"
+#include "Game/Level/LevelMessages.h"
+#include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -11,10 +11,17 @@ namespace NS::Game::Level
     KillZone::KillZone() noexcept
     {
         // 厚み 10m と 2km 四方は、固定ステップの移動量では突き抜けられない
-        NS::Obj::BoxCollider* box = AddComponent<NS::Obj::BoxCollider>();
-        box->SetHalfExtents(NS::Core::Vector3{1000.0f, 5.0f, 1000.0f});
-        box->SetTrigger(true);
-        AddComponent<KillZoneComponent>();
+        NS::Obj::HitSensor* area = AddComponent<NS::Obj::HitSensor>();
+        area->SetType(NS::Obj::HitSensorType::Area);
+        area->SetBox(NS::Core::Vector3{1000.0f, 5.0f, 1000.0f});
+    }
+
+    void KillZone::AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other)
+    {
+        if (other.Type() == NS::Obj::HitSensorType::PlayerBody)
+        {
+            (void)SendMsgKill(other, self);
+        }
     }
 
     bool IsKillZoneObject(const nlohmann::json& object) noexcept

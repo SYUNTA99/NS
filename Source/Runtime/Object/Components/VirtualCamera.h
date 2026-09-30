@@ -5,7 +5,7 @@
 
 namespace NS::Obj
 {
-    //! 仮想カメラが返す 1 フレーム分のカメラ姿勢 + 投影設定。Brain が実 Camera へそのまま書く
+    //! 仮想カメラが返す 1 フレーム分のカメラ姿勢 + 投影設定。CameraManager が実 Camera へそのまま書く
     struct CameraPose
     {
         NS::Core::Vector3 position{0.0f, 0.0f, -5.0f};                         // カメラ位置
@@ -15,7 +15,7 @@ namespace NS::Obj
         float nearPlane = 0.1f;                                                // ニアクリップ距離
         float farPlane = 1000.0f;                                              // ファークリップ距離
 
-        //! t=0 で a、t=1 で b の線形補間。up は補間後に正規化する。Brain の vcam 切替ブレンドが使う
+        //! t=0 で a、t=1 で b の線形補間。up は補間後に正規化する。CameraManager の vcam 切替ブレンドが使う
         [[nodiscard]] static CameraPose Lerp(const CameraPose& a, const CameraPose& b, float t) noexcept
         {
             CameraPose pose{};
@@ -33,11 +33,11 @@ namespace NS::Obj
 
     //! @brief 実カメラを持たない「仮想カメラ」基底
     //! @details 描画も実 Camera 所有もせず、EvaluatePose(alpha) で位置 / 注視点 / up と
-    //! 投影設定をまとめた目標 pose を返すだけ。CameraBrain が登録済みの
+    //! 投影設定をまとめた目標 pose を返すだけ。CameraManager が登録済みの
     //! vcam から最高優先度の active なものを選び、その pose を 1 個の実 CameraComponent へ書く
     //! 状態は fixed step の OnUpdate で進め、最終姿勢は EvaluatePose で返す。follow 系は
     //! render 時に alpha で補間 target を追うため、姿勢決定を pose 返却へ分離する
-    //! 所属 scene の brain へ OnStart で自分を登録し、OnEndPlay で外す
+    //! カメラの窓口から管理役へ OnStart で自分を登録し、OnEndPlay で外す
     //! 依存: NS::Core, NS::Obj::Component
     class VirtualCamera : public Component
     {
@@ -47,16 +47,16 @@ namespace NS::Obj
         explicit VirtualCamera(int tickPriority) noexcept : Component(tickPriority) {}
         ~VirtualCamera() noexcept override;
 
-        //! 所属 scene の brain へ自分を登録する。派生で上書きするなら基底のこれを呼ぶ
+        //! カメラの窓口から管理役へ自分を登録する。派生で上書きするなら基底のこれを呼ぶ
         void OnStart() override;
 
-        //! 所属 scene の brain から自分を外す。派生で上書きするなら基底のこれを呼ぶ
+        //! 管理役から自分を外す。派生で上書きするなら基底のこれを呼ぶ
         void OnEndPlay() override;
 
         //! この vcam の最終姿勢を返す。alpha は補間係数で、follow 系が補間 target に使い free-fly は無視してよい
         [[nodiscard]] virtual CameraPose EvaluatePose(float alpha) const noexcept = 0;
 
-        //! Brain の選択優先度。大きいほど優先、同値は登録順。active な vcam の中から最大が選ばれる
+        //! CameraManager の選択優先度。大きいほど優先、同値は登録順。active な vcam の中から最大が選ばれる
         void SetVcamPriority(int priority) noexcept { m_vcamPriority = priority; }
         [[nodiscard]] int VcamPriority() const noexcept { return m_vcamPriority; }
 
@@ -68,7 +68,7 @@ namespace NS::Obj
         void SetFarPlane(float farPlane) noexcept { m_farPlane = farPlane; }
         [[nodiscard]] float FarPlane() const noexcept { return m_farPlane; }
 
-        // 姿勢は派生と Brain が決めるので保存する調整値は無い。派生のリフレクション鎖の中継点として型名だけ登録する
+        // 姿勢は派生と CameraManager が決めるので保存する調整値は無い。派生のリフレクション鎖の中継点として型名だけ登録する
         NS_REFLECT_NONE(VirtualCamera, Component)
 
     protected:
@@ -88,7 +88,7 @@ namespace NS::Obj
         }
 
     private:
-        int m_vcamPriority = 0;                                                  // Brain の選択優先度
+        int m_vcamPriority = 0;                                                  // CameraManager の選択優先度
         NS::Core::Radians m_fovY{NS::Core::ToRadians(NS::Core::Degrees{60.0f})}; // 垂直視野角
         float m_nearPlane = 0.1f;                                                // ニアクリップ距離
         float m_farPlane = 1000.0f;                                              // ファークリップ距離

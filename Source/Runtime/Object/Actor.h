@@ -1,7 +1,7 @@
 ﻿#pragma once
 
+#include "Runtime/Object/ActorBase.h"
 #include "Runtime/Object/Component.h"
-#include "Runtime/Object/Object.h"
 #include "Runtime/Object/Transform.h"
 
 #include <concepts>
@@ -14,18 +14,22 @@
 
 namespace NS::Obj
 {
+    class HitSensor;
+    class ICameraTarget;
+    class Message;
     class Scene;
     class TransformComponent;
 
-    //! @brief Transform を持つ継承可能基底。Player / Block / Enemy などの派生クラスの共通基底
-    //! @details 配下 Component は AddComponent<T>() で生成し、Actor が unique_ptr で寿命を所有する
+    //! @brief 世界に置く物の基底。Transform と部品を持ち、MapParts / MapObj / Player などが派生する
+    //! @details 所属シーンと窓口 (IUse〜) は土台の ActorBase が持つ
+    //! 配下 Component は AddComponent<T>() で生成し、Actor が unique_ptr で寿命を所有する
     //! 伝播の並びは m_components の priority 昇順、所有は m_ownedComponents が別に持つ
     //! OnStart / OnUpdate / OnEndPlay は配下 Component へ伝播するだけの補助で、派生の拡張点ではない
     //! 毎フレームの更新は ObjectList が持つ。全配置物の Component を priority 昇順に集めて直接回すため、
     //! ここの OnUpdate は通らない
     //! FindComponent<T>() は自分の Component 列しか見ない
     //! Component の名前はこの配置物の中で一意。積んだ時点で型名から付け、重なれば _1, _2 と番号を付ける
-    class Actor : public Object
+    class Actor : public ActorBase
     {
     public:
         Actor() noexcept;
@@ -44,6 +48,31 @@ namespace NS::Obj
 
         //! 配置物の組み直し・当たりの張り直しの後に scene が一時オブジェクトへ知らせる。データ由来の配置物には来ない
         virtual void OnObjectsRebuilt() {}
+
+        //! @brief 全ての配置物の開始が済んだ後に 1 回呼ばれる。オデッセイの initAfterPlacement に当たる
+        //! @details シーンに 1 つの物を作るなど、他の配置物が揃っている前提の用意を書く
+        virtual void InitAfterPlacement() {}
+
+        //! @brief 自分のセンサー self が、self の種類が調べる種類の相手のセンサー other に重なったフレームに呼ばれる
+        //! @details 重なっている間は毎フレーム呼ばれる。相手へ知らせを送るかはここで決める。オデッセイの attackSensor
+        virtual void AttackSensor(HitSensor& self, HitSensor& other)
+        {
+            (void)self;
+            (void)other;
+        }
+
+        //! 追従カメラに追われる時の窓口。追われない物は nullptr
+        [[nodiscard]] virtual const ICameraTarget* GetCameraTarget() const noexcept { return nullptr; }
+
+        //! @brief 知らせを受け取る。応じた場合 true、知らない知らせと応じなかった知らせは false
+        //! @details sender と receiver は知らせを運んだセンサー。センサーを介さない知らせでは nullptr
+        virtual bool ReceiveMsg(const Message& msg, HitSensor* sender, HitSensor* receiver)
+        {
+            (void)msg;
+            (void)sender;
+            (void)receiver;
+            return false;
+        }
 
         [[nodiscard]] Actor* Parent() const noexcept { return m_parent; }
         //! parent==nullptr で root 化。Transform の親子関係も同期更新する
@@ -104,11 +133,6 @@ namespace NS::Obj
             return AddComponentUnchecked<T>(std::forward<Args>(args)...);
         }
 
-        //! 所有 Scene。Scene attach 前 / 破棄後は nullptr
-        [[nodiscard]] Scene* OwningScene() const noexcept { return m_scene; }
-        //! Scene 側が attach 時に呼ぶ。Actor 派生から手動で呼ばない
-        void AttachScene(Scene* scene) noexcept { m_scene = scene; }
-
         //! 配下 Component の OnStart を伝播
         void OnStart();
         //! IsActive==true の Component にだけ OnUpdate() を伝播
@@ -147,7 +171,6 @@ namespace NS::Obj
         std::vector<std::unique_ptr<Component>> m_ownedComponents; // 所有権保持用。tick 順序は m_components が担う
         std::vector<Actor*> m_children;                       // 子 Actor、非所有
         Actor* m_parent = nullptr;                            // 親 Actor、root なら nullptr
-        Scene* m_scene = nullptr;                                  // 所有 Scene、attach 前後は nullptr
         bool m_activeSelf = true;                                  // false で配下 Component が全て止まる
         bool m_transient = false;                                  // 一時オブジェクトの印。保存・凍結に写らない
 

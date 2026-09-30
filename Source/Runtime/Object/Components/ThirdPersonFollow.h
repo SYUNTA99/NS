@@ -31,7 +31,7 @@ namespace NS::Obj
     };
 
     //! @brief Mario 系ジャンプアクションの追従カメラ
-    //! @details 実カメラは持たず、追従姿勢を pose として返す。CameraBrain が実カメラへ書く
+    //! @details 実カメラは持たず、追従姿勢を pose として返す。CameraManager が実カメラへ書く
     //! distance は臨界減衰バネでなめらかに寄せ、マウス / 右スティックで手動回転できる
     //! 感度・反転と idle / run / jump 3 段の自動ズーム距離は setter で調整できる
     //! FOV は基底 VirtualCamera が持つ
@@ -144,7 +144,7 @@ namespace NS::Obj
         //! fixed step で yaw/pitch・distance spring を更新。最終姿勢は EvaluatePose が返してガタつきを避ける
         void OnUpdate() override;
 
-        //! alpha で補間した target を追う最終姿勢を返す。Brain が選択時に実カメラへ書く
+        //! alpha で補間した target を追う最終姿勢を返す。CameraManager が選択時に実カメラへ書く
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
         // 追従カメラの感触を Inspector へ公開する。毎フレーム読まれるのでライブで効く

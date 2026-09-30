@@ -114,6 +114,9 @@ namespace NS::Obj
             WarnMismatchedComponentRefs();
             for (std::unique_ptr<Actor>& objPtr : m_objects)
                 objPtr->OnStart();
+            // 全ての配置物が開始してから、揃っている前提の用意をさせる
+            for (std::unique_ptr<Actor>& objPtr : m_objects)
+                objPtr->InitAfterPlacement();
         }
 
         // 退避した一時オブジェクトを末尾へ戻す。開始済みなので OnStart は呼ばない
@@ -296,7 +299,15 @@ namespace NS::Obj
         // 帯の昇順で配置物を横断して回すため、範囲内の component を一度集めて priority で並べ直す
         // stable_sort なので同じ帯の中は配置物の並び順に落ちる
         // clear は容量を残すので毎フレームの確保が要らない
+        // 部品でない物を先に積むので、同じ帯の中では部品より先に動く
         m_scheduled.clear();
+        for (const TickerEntry& entry : m_tickers)
+        {
+            if (entry.priority >= firstPriority && entry.priority < lastPriority)
+            {
+                m_scheduled.push_back(ScheduledTick{.priority = entry.priority, .ticker = entry.ticker});
+            }
+        }
         for (std::unique_ptr<Actor>& obj : m_objects)
         {
             for (Component* comp : obj->Components())
@@ -307,24 +318,59 @@ namespace NS::Obj
                 }
                 if (comp->Priority() >= firstPriority && comp->Priority() < lastPriority)
                 {
-                    m_scheduled.push_back(comp);
+                    m_scheduled.push_back(ScheduledTick{.priority = comp->Priority(), .component = comp});
                 }
             }
         }
-        std::stable_sort(m_scheduled.begin(), m_scheduled.end(), [](const Component* a, const Component* b) noexcept {
-            return a->Priority() < b->Priority();
-        });
+        std::stable_sort(m_scheduled.begin(),
+                         m_scheduled.end(),
+                         [](const ScheduledTick& a, const ScheduledTick& b) noexcept { return a.priority < b.priority; });
 
         // active はこの場で見る。先に回った component が後ろを SetActive(false) にしても効く
-        for (Component* comp : m_scheduled)
+        for (const ScheduledTick& tick : m_scheduled)
         {
-            if (comp->IsActive())
+            if (tick.component != nullptr)
             {
-                comp->OnUpdate();
+                if (tick.component->IsActive())
+                {
+                    tick.component->OnUpdate();
+                }
+                continue;
+            }
+            // 更新の最中に外された物は呼ばない。外した後に破棄されていても触らない
+            const bool stillRegistered =
+                std::any_of(m_tickers.begin(), m_tickers.end(), [&tick](const TickerEntry& entry) noexcept {
+                    return entry.ticker == tick.ticker;
+                });
+            if (stillRegistered)
+            {
+                tick.ticker->OnTick();
             }
         }
 
         m_updating = false;
+    }
+
+    void ObjectList::AddTicker(ITickable* ticker, int priority)
+    {
+        if (ticker == nullptr)
+        {
+            return;
+        }
+        for (TickerEntry& entry : m_tickers)
+        {
+            if (entry.ticker == ticker)
+            {
+                entry.priority = priority;
+                return;
+            }
+        }
+        m_tickers.push_back(TickerEntry{.ticker = ticker, .priority = priority});
+    }
+
+    void ObjectList::RemoveTicker(ITickable* ticker) noexcept
+    {
+        std::erase_if(m_tickers, [ticker](const TickerEntry& entry) noexcept { return entry.ticker == ticker; });
     }
 
     Component* ObjectList::FindComponent(ComponentRefValue ref) noexcept

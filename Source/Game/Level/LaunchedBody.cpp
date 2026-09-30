@@ -4,6 +4,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/BoxCollider.h"
 #include "Runtime/Object/Components/Collider.h"
+#include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Actor.h"
@@ -421,6 +422,9 @@ namespace NS::Game::Level
             if (scene != nullptr)
                 collider->RemoveFromPhysics(scene->Physics());
         }
+        // 体のセンサーも外し、壊れた後は体当たりに調べられない
+        if (NS::Obj::HitSensor* body = Owner()->FindComponent<NS::Obj::HitSensor>())
+            body->Invalidate();
         SetActive(false);
     }
 

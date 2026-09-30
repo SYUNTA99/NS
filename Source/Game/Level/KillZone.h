@@ -5,8 +5,9 @@
 
 namespace NS::Game::Level
 {
-    //! @brief 触れたプレイヤーを即死させる体積。奈落の下へ大きく置き、落下死をレベルのデータとして表す
-    //! @details 当たり箱はトリガーにする。固形だと落ちてきたプレイヤーが上面に着地してしまう
+    //! @brief 触れたプレイヤーを即死させる範囲。奈落の下へ大きく置き、落下死をレベルのデータとして表す
+    //! @details 箱の範囲のセンサーを持ち、プレイヤーの体に重なったら MsgKill を送る。死んだ後どうするかは受け手が決める
+    //! 地形の当たりは持たない。持つと落ちてきたプレイヤーが上面に着地してしまう
     class KillZone : public NS::Obj::Actor
     {
     public:
@@ -14,6 +15,9 @@ namespace NS::Game::Level
 
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         [[nodiscard]] const char* ClassName() const noexcept override { return "KillZone"; }
+
+        //! 範囲に入ったプレイヤーの体へ MsgKill を送る
+        void AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other) override;
     };
 
     //! 即死体積の配置物の JSON か

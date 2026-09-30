@@ -11,7 +11,6 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -226,14 +225,11 @@ namespace NS::Game::Player
         float length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
 
         // 反発後の滑りなど残った速度が向きに勝つと狙いと食い違う方へ飛ぶ。入力が無ければ速度よりカメラの前を先に見る
-        if (length < NS::Core::k_Epsilon && Owner() != nullptr && Owner()->OwningScene() != nullptr)
+        if (length < NS::Core::k_Epsilon && Owner() != nullptr && Owner()->GetCameraManager() != nullptr)
         {
-            if (NS::Obj::CameraBrain* brain = Owner()->OwningScene()->CameraBrain())
-            {
-                const NS::Core::Vector3 forward = brain->ForwardHorizontal();
-                dir = NS::Core::Vector3{forward.x, 0.0f, forward.z};
-                length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
-            }
+            const NS::Core::Vector3 forward = NS::Obj::CameraForwardHorizontal(*Owner());
+            dir = NS::Core::Vector3{forward.x, 0.0f, forward.z};
+            length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
         }
         if (length < NS::Core::k_Epsilon)
         {

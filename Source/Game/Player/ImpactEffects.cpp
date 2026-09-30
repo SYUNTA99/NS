@@ -1,13 +1,9 @@
 #include "Game/Player/ImpactEffects.h"
 
 #include "Game/Entity/EntityComponent.h"
-#include "Game/Level/ColliderBounds.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/LaunchedBody.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Object/Components/CameraBrain.h"
-#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -34,10 +30,8 @@ namespace NS::Game::Player
         constexpr std::string_view k_Glow = "impact.glow";
         constexpr std::string_view k_Recoil = "impact.recoil";
         constexpr std::string_view k_Dust = "impact.dust";
-        constexpr std::string_view k_LaunchTrail = "launch.trail";
         constexpr std::string_view k_ReboundTrail = "rebound.trail";
         constexpr std::string_view k_LandDust = "land.dust";
-        constexpr std::string_view k_LaunchLandDust = "launch.landDust";
 
         // 層のフレームの並びは弾きの手本のコマを写し、絵の寿命 (定義) と組で決まる。欄にすると絵とずれる
         // 中心近くの核が最大近くに留まる最後のフレームの上限。手本は 1〜10 に留まり 11 で落ちる
@@ -119,13 +113,10 @@ namespace NS::Game::Player
         // 着地の粉は、同じ素材の床の土ぼこりである当たりの粉の出てから消えるまでと同じ 30。手本の着地の煙は
         // 着地の +25 でもまだ写っている。20 の時は見える最後が +14 で、手本より 11 フレーム以上早く消えた
         constexpr int k_LandDustLife = 30;
-        constexpr int k_LaunchLandDustLife = 24;
         // 粉の輪が再生の大きさ 1 で広がりきる半径 (m)。絵の定義の出始め 0.4 m と外へ進む 0.8 m の和
         constexpr float k_DustRingRadiusAtUnitScale = 1.2f;
         // 粉の輪を置く床からの高さ (m)。塊の中心を浮かせ、カメラへ向く板の下半分が床に切られないようにする
         constexpr float k_DustRingLift = 0.3f;
-        // 床と見なす接触の法線の上向きの成分。自機が立てる斜面の上限 45 度 (JoltCharacter) と同じ
-        constexpr float k_FloorNormalY = 0.7071f;
         // 反動の尾の筋の形 (絵の定義 rebound.trail の Paint 節と同じ)。玉の見た目の半径 (m)、玉の中心から筋の
         // 真ん中までの長さ (m)、下塗りの幅の半分 (m)
         constexpr float k_BallVisualRadius = 0.65f;
@@ -183,23 +174,6 @@ namespace NS::Game::Player
             return Vector3{value, value, value};
         }
 
-        // 飛ばした相手の中心の、このステップの物理の後の位置。部品は物理の前に走るので、直近の物理が使った速度で
-        // 1 フレーム先へ置く。曲線の間はその速度のまま進むので、ずれは 1 フレームぶんの重力の変化だけ
-        // 今の位置に置くと、溜めきりの 50 m/s で帯の頭が相手の 0.8 m 後ろに離れて描かれる
-        [[nodiscard]] Vector3 LaunchTrailHead(const NS::Obj::Actor& target,
-                                              const NS::Game::Level::LaunchedBody& body)
-        {
-            return target.Root().Position() + body.Velocity() * NS::Platform::FrameTimer::FixedDelta();
-        }
-
-        // 帯の点の +Y を相手の飛ぶ向きへ回す。視点に依る帯は点の +Y と視線の両方に直角な向きへ幅を取るので、
-        // 飛ぶ向きに揃えないと、横から見た時に幅が道に沿って潰れる
-        [[nodiscard]] Quaternion LaunchTrailTurn(const NS::Game::Level::LaunchedBody& body,
-                                                 const Vector3& fallback) noexcept
-        {
-            return TurnUpTo(NormalizedOr(body.Velocity(), fallback));
-        }
-
         // 出ている層の姿勢を置き直す。描画の無い世界と、読めなかった絵では何もしない
         void PlaceLayer(NS::Gfx::EffectScene* effects,
                         const EffectLayerList& layers,
@@ -220,23 +194,6 @@ namespace NS::Game::Player
             effects->SetTransform(record->handle, position, rotation, scale);
         }
 
-        // 直近の物理の 1 歩で、床と見なせる面に触れていた場合 true
-        [[nodiscard]] bool TouchesFloor(const NS::Obj::Actor& target)
-        {
-            const NS::Obj::RigidBody* rigidBody = target.FindComponent<NS::Obj::RigidBody>();
-            if (rigidBody == nullptr)
-            {
-                return false;
-            }
-            for (const NS::Phys::BodyContact& contact : rigidBody->Contacts())
-            {
-                if (contact.normal.y >= k_FloorNormalY)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
     } // namespace
 
     ImpactEffects::ImpactEffects() noexcept : NS::Obj::Component(NS::Obj::TickPriority::Update + 60) {}
@@ -259,10 +216,8 @@ namespace NS::Game::Player
                                             k_Glow,
                                             k_Recoil,
                                             k_Dust,
-                                            k_LaunchTrail,
                                             k_ReboundTrail,
-                                            k_LandDust,
-                                            k_LaunchLandDust})
+                                            k_LandDust})
         {
             static_cast<void>(effects->Preload(name));
         }
@@ -377,16 +332,6 @@ namespace NS::Game::Player
             shape.dustScale = (m_dustScaleBase + m_dustScalePerRootMass * std::sqrt(mass)) * powerGrowth;
         }
 
-        // 軽い相手ほど遠くへ速く飛ぶので、尾も長く残す。重い相手は短い
-        const float trailFrames = static_cast<float>(m_launchTrailFramesBase) +
-                                  m_launchTrailFramesPerLaunch * std::max(impact.launchScale, 0.0f);
-        shape.launchTrailFrames = std::max(1, static_cast<int>(std::lround(trailFrames)));
-        // 威力 1 で質量だけの大きさ。強く飛ばした物ほど高く上がって強く落ちるので、当たりの粉と同じく威力でも伸ばす
-        // 質量だけでは、同じ質量の相手に当てた 3 段 (威力 2.000・1.723・1.507) がどれも 1.2 m だった
-        const float landPowerGrowth = std::max(0.0f, 1.0f + m_launchLandDustPerPower * (power - 1.0f));
-        shape.launchLandDustScale =
-            (m_launchLandDustBase + m_launchLandDustPerRootMass * std::sqrt(std::max(impact.targetMass, 0.0f))) *
-            landPowerGrowth;
         return shape;
     }
 
@@ -486,17 +431,8 @@ namespace NS::Game::Player
         plan.ringNormal =
             NormalizedOr(plan.launchDir * k_RingLaunchWeight + toCamera * m_ringFaceCamera, plan.launchDir);
 
-        // 床は相手の当たりの外接箱の底。置かれた相手は床に接している
-        plan.floor = Vector3{impact.targetPos.x, impact.targetPos.y, impact.targetPos.z};
-        if (scene != nullptr)
-        {
-            const NS::Obj::Actor* target = scene->Objects().FindObject(NS::Obj::ObjectRef{impact.targetId});
-            NS::Core::AABB bounds{};
-            if (target != nullptr && NS::Game::Level::TryGetColliderBounds(*target, bounds))
-            {
-                plan.floor.y = bounds.Center.y - bounds.Extents.y;
-            }
-        }
+        // 床は相手の体の外接箱の底。置かれた相手は床に接している。底は当てた時に相手が答えた値
+        plan.floor = Vector3{impact.targetPos.x, impact.targetBottom, impact.targetPos.z};
         plan.floor.y += k_FloorLift;
         m_plan = plan;
         m_aim.contact = plan.contact;
@@ -801,12 +737,6 @@ namespace NS::Game::Player
             m_layers.Stop(effects, m_flight.reboundTrail);
             m_flight.reboundTrail = 0;
         }
-        if (m_flight.launchTrail != 0)
-        {
-            m_layers.Stop(effects, m_flight.launchTrail);
-            m_flight.launchTrail = 0;
-        }
-
         // 貫通した時と反動の初速が 0 の時は反動に入らないので、尾は出さない
         if (m_player != nullptr && m_player->IsRebounding())
         {
@@ -816,51 +746,7 @@ namespace NS::Game::Player
                 m_layers.Play(effects, k_ReboundTrail, PlayAt(ball, TurnUpTo(heading), Uniform(1.0f)));
             m_flight.reboundStartStep = step;
         }
-
-        NS::Obj::Scene* scene = Owner()->OwningScene();
-        if (scene == nullptr)
-        {
-            return;
-        }
-        const NS::Obj::Actor* target = scene->Objects().FindObject(NS::Obj::ObjectRef{m_plan.targetId});
-        if (target == nullptr)
-        {
-            return;
-        }
-        const NS::Game::Level::LaunchedBody* body = target->FindComponent<NS::Game::Level::LaunchedBody>();
-        // 壊れた相手 (破片になって飛ばない) には付けない
-        if (body == nullptr || body->Phase() != NS::Game::Level::LaunchPhase::Arc)
-        {
-            return;
-        }
-
-        // 再生の大きさは相手の直径。帯の幅は絵の定義が直径への割合で持つ
-        float diameter = 1.0f;
-        NS::Core::AABB bounds{};
-        if (NS::Game::Level::TryGetColliderBounds(*target, bounds))
-        {
-            diameter = 2.0f * std::max(bounds.Extents.x, bounds.Extents.z);
-        }
-        const ImpactShape& shape = m_plan.shape;
-        NS::Gfx::EffectPlayDesc desc =
-            PlayAt(LaunchTrailHead(*target, *body), LaunchTrailTurn(*body, m_plan.launchDir), Uniform(diameter));
-        // 0 番が橙、1 番が大きな外れの灰。2 番が点の寿命
-        desc.dynamicInputs[0] = 1.0f;
-        desc.dynamicInputs[1] = 0.0f;
-        if (shape.tier == HitTier::Wide)
-        {
-            desc.dynamicInputs[0] = 0.0f;
-            desc.dynamicInputs[1] = 1.0f;
-        }
-        desc.dynamicInputs[2] = static_cast<float>(shape.launchTrailFrames);
-        desc.dynamicInputs[3] = 0.0f;
-        m_flight.launchTrail = m_layers.Play(effects, k_LaunchTrail, desc);
-        SetAmount(m_flight.launchTrail, static_cast<float>(shape.launchTrailFrames));
-        m_flight.launchStartStep = step;
-        m_flight.targetId = m_plan.targetId;
-        m_flight.launchTrailScale = diameter;
-        m_flight.launchDir = m_plan.launchDir;
-        m_flight.launchLandDustScale = shape.launchLandDustScale;
+        // 飛ばした相手の飛び出しの尾は、相手が自分で出す (LaunchEffects)
     }
 
     void ImpactEffects::AdvanceFlight(NS::Gfx::EffectScene* effects)
@@ -889,55 +775,6 @@ namespace NS::Game::Player
                 PlaceLayer(effects, m_layers, m_flight.reboundTrail, ball, TurnUpTo(heading), Uniform(1.0f));
             }
         }
-
-        if (m_flight.launchTrail == 0 || step == m_flight.launchStartStep)
-        {
-            return;
-        }
-        NS::Obj::Scene* scene = Owner()->OwningScene();
-        const NS::Obj::Actor* target = nullptr;
-        if (scene != nullptr)
-        {
-            target = scene->Objects().FindObject(NS::Obj::ObjectRef{m_flight.targetId});
-        }
-        const NS::Game::Level::LaunchedBody* body = nullptr;
-        if (target != nullptr)
-        {
-            body = target->FindComponent<NS::Game::Level::LaunchedBody>();
-        }
-        if (target != nullptr && body != nullptr && body->Phase() == NS::Game::Level::LaunchPhase::Arc)
-        {
-            PlaceLayer(effects,
-                       m_layers,
-                       m_flight.launchTrail,
-                       LaunchTrailHead(*target, *body),
-                       LaunchTrailTurn(*body, m_flight.launchDir),
-                       Uniform(m_flight.launchTrailScale));
-            return;
-        }
-
-        // 曲線を離れたのは前のフレームの LateUpdate。接触はその物理の 1 歩の物で、次の物理まで読める
-        // 帯と輪はここで消す。点は世界に残るので、落ちた相手の真上に通った道が柱のように残る。手本の尾も着地で消える
-        m_layers.Stop(effects, m_flight.launchTrail);
-        m_flight.launchTrail = 0;
-        if (target == nullptr || body == nullptr || body->Phase() != NS::Game::Level::LaunchPhase::Rigid ||
-            !TouchesFloor(*target))
-        {
-            return;
-        }
-        Vector3 at = target->Root().Position();
-        NS::Core::AABB bounds{};
-        if (NS::Game::Level::TryGetColliderBounds(*target, bounds))
-        {
-            at.y = bounds.Center.y - bounds.Extents.y;
-        }
-        at.y += k_DustRingLift;
-        const std::uint32_t dust = m_layers.Play(
-            effects,
-            k_LaunchLandDust,
-            PlayAt(at, Quaternion::Identity, Uniform(m_flight.launchLandDustScale / k_DustRingRadiusAtUnitScale)));
-        SetAmount(dust, m_flight.launchLandDustScale);
-        StopLater(dust, k_LaunchLandDustLife);
     }
 
     void ImpactEffects::AdvanceLanding(NS::Gfx::EffectScene* effects)
@@ -968,12 +805,7 @@ namespace NS::Game::Player
 
     std::optional<Vector3> ImpactEffects::CameraPosition() const
     {
-        NS::Obj::Scene* scene = Owner()->OwningScene();
-        if (scene == nullptr || scene->CameraBrain() == nullptr)
-        {
-            return std::nullopt;
-        }
-        const std::optional<NS::Obj::CameraPose> pose = scene->CameraBrain()->ComposePose(1.0f);
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::ComposeCameraPose(*Owner(), 1.0f);
         if (!pose.has_value())
         {
             return std::nullopt;

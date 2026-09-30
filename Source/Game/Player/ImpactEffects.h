@@ -41,8 +41,6 @@ namespace NS::Game::Player
         float recoilLength = 0.0f; //!< 弾かれ線の長さ。単位は m
         int dustCount = 0;         //!< 当たりの粉の塊の数。飛んでいた相手は 0
         float dustScale = 0.0f;    //!< 当たりの粉の塊の大きさ。単位は m
-        int launchTrailFrames = 0; //!< 飛び出しの尾の帯が残るフレーム数
-        float launchLandDustScale = 0.0f; //!< 飛ばした物が床に落ちた所の粉の大きさ。単位は m
     };
 
     //! @brief 当たり 1 回の層を置く所と向き
@@ -57,20 +55,19 @@ namespace NS::Game::Player
     };
 
     //! @brief 自機が当ててから着地するまでのエフェクトの層を出し、出すと決めた記録を持つ
-    //! @details 受け持つ層の名前は impact.・launch.・rebound.・land. で始まる
+    //! @details 受け持つ層の名前は impact.・rebound.・land. で始まる
     //! 同居する ImpactResolver の止めの頭と明けを読み、止めの頭に核と照り、次のフレームから光条、
     //! 3 フレーム目から輪、明けに粉、明けの 4 フレーム後に弾かれ線を出す。火花は中心近くが 3 フレーム目、他は止めの頭
     //! 中心近くは核が落ちるフレームに火の粉を出す
-    //! 明けに、飛ばした相手へ飛び出しの尾、反動に入った自機へ反動の尾を出し、毎フレーム付いていかせる。
-    //! 反動の尾は頂点で親を止めて 8 フレーム後に消し、飛び出しの尾は相手が曲線を離れたのを読んだフレームで消す。
-    //! 相手が床に落ちて剛体へ渡った時はそこへ粉を出す。反動の着地 (着地の潰れと同じフレーム) には足元へ粉を出す
+    //! 明けに、反動に入った自機へ反動の尾を出し、毎フレーム付いていかせる。反動の尾は頂点で親を止めて 8 フレーム後に消す
+    //! 反動の着地 (着地の潰れと同じフレーム) には足元へ粉を出す
+    //! 飛ばした相手の飛び出しの尾と落ちた所の粉は、相手が自分で出す (LaunchEffects)。相手の部品は読まない
     //! 止めが 0 の当たりでは何も出さない
     //! 層の時間 (留まり・広がり・消えるフレーム) はここが持ち、形と色は絵が持つ
     //! 描画の無い世界でも記録は残し、試しと Replay は Layers を読む
     //! 優先度は Update 帯の +60。同じフレームの ImpactResolver (-100) が決めた止めの頭と明けと、
     //! 自機の移動 (Update) の後に走る。物理と飛ばした相手の段階の切り替え (LateUpdate) よりは前に走る
-    //! 依存: EffectLayerList, NS::Game::Level::ImpactResolver, NS::Game::Level::LaunchedBody, PlayerComponent,
-    //! NS::Obj::CameraBrain, NS::Obj::RigidBody
+    //! 依存: EffectLayerList, NS::Game::Level::ImpactResolver, PlayerComponent, カメラの窓口
     class ImpactEffects : public NS::Obj::Component
     {
     public:
@@ -143,13 +140,8 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_dustScaleBase, "当たりの粉の大きさの基準")
         NS_REFLECT_FIELD(m_dustScalePerRootMass, "当たりの粉の大きさの質量の平方根あたり")
         NS_REFLECT_FIELD(m_dustScalePerPower, "当たりの粉の大きさの威力あたりの伸び")
-        NS_REFLECT_FIELD(m_launchTrailFramesBase, "飛び出しの尾が残るフレーム数の基準")
-        NS_REFLECT_FIELD(m_launchTrailFramesPerLaunch, "飛び出しの尾が残るフレーム数の飛ばしの比あたり")
         NS_REFLECT_FIELD(m_landDustRadiusBase, "着地の粉の半径の基準")
         NS_REFLECT_FIELD(m_landDustRadiusPerFallSpeed, "着地の粉の半径の落ちる速さあたり")
-        NS_REFLECT_FIELD(m_launchLandDustBase, "飛ばした物の着地の粉の大きさの基準")
-        NS_REFLECT_FIELD(m_launchLandDustPerRootMass, "飛ばした物の着地の粉の大きさの質量の平方根あたり")
-        NS_REFLECT_FIELD(m_launchLandDustPerPower, "飛ばした物の着地の粉の大きさの威力あたりの伸び")
         NS_REFLECT_END()
 
     private:
@@ -179,17 +171,11 @@ namespace NS::Game::Player
             bool dustPlayed = false;
         };
 
-        // 明けから、自機の反動と飛ばした相手の飛行が終わるまでの尾。当たりの段取りより長く残る。層の番号 0 は無い印
+        // 明けから、自機の反動が終わるまでの尾。当たりの段取りより長く残る。層の番号 0 は無い印
         struct Flight
         {
-            std::uint32_t reboundTrail = 0;   // 反動の尾。親を止めたか消したら 0
-            int reboundStartStep = 0;         // 反動の尾を出したフレーム。このフレームは出した姿のまま置き直さない
-            std::uint32_t launchTrail = 0;    // 飛び出しの尾。消したら 0
-            int launchStartStep = 0;          // 飛び出しの尾を出したフレーム
-            std::uint32_t targetId = 0;       // 飛ばした相手の配置物の id
-            float launchTrailScale = 1.0f;    // 飛び出しの尾の再生の大きさ。相手の直径 (m)
-            NS::Core::Vector3 launchDir;      // 相手の飛ぶ水平の向き。相手の速さが 0 の時の帯の向き
-            float launchLandDustScale = 0.0f; // 相手が床に落ちた所の粉の大きさ (m)
+            std::uint32_t reboundTrail = 0; // 反動の尾。親を止めたか消したら 0
+            int reboundStartStep = 0;       // 反動の尾を出したフレーム。このフレームは出した姿のまま置き直さない
         };
 
         // 出した層を、決めたフレームに子ごと消す控え
@@ -206,9 +192,9 @@ namespace NS::Game::Player
         // 前の当たりの層のうち、ここが消える時を持っている物を今のフレームで畳む
         void FinishHeldLayers(NS::Gfx::EffectScene* effects);
         void SetAmount(std::uint32_t id, float amount) noexcept;
-        // 明けに反動の尾と飛び出しの尾を出す
+        // 明けに反動の尾を出す
         void BeginFlight(NS::Gfx::EffectScene* effects);
-        // 尾を自機と相手へ付いていかせる。反動の尾は頂点で親を止め、飛び出しの尾は相手が曲線を離れたフレームで消す
+        // 反動の尾を自機へ付いていかせる。頂点で親を止める
         void AdvanceFlight(NS::Gfx::EffectScene* effects);
         // 反動の着地のフレームに足元へ粉を出し、次のフレームのために縦の速さを控える
         void AdvanceLanding(NS::Gfx::EffectScene* effects);
@@ -260,12 +246,7 @@ namespace NS::Game::Player
         float m_dustScaleBase = 0.8f;          // 質量 0 の塊の大きさ (m)
         float m_dustScalePerRootMass = 0.3f;   // 質量の平方根 1 あたり足す大きさ (m)
         float m_dustScalePerPower = 0.5f;      // 威力 1 からの 1 あたりで大きさに掛ける伸び。威力 2 で 1.5 倍
-        int m_launchTrailFramesBase = 8;       // 飛ばしの比 0 の飛び出しの尾が残るフレーム数
-        float m_launchTrailFramesPerLaunch = 4.0f;  // 飛ばしの比 1 あたり足すフレーム数。溜めきり中心近くで 15
         float m_landDustRadiusBase = 1.2f;          // 落ちる速さ 0 の着地の粉が広がりきる半径 (m)
         float m_landDustRadiusPerFallSpeed = 0.04f; // 落ちる速さ 1 m/s あたり足す半径 (m)。溜めきりの反動で 1.67 m
-        float m_launchLandDustBase = 0.8f;          // 質量 0 の飛ばした物の着地の粉の大きさ (m)
-        float m_launchLandDustPerRootMass = 0.4f;   // 質量の平方根 1 あたり足す大きさ (m)。質量 1 で 1.2 m
-        float m_launchLandDustPerPower = 0.5f;      // 威力 1 からの 1 あたりで大きさに掛ける伸び。威力 2 で 1.5 倍
     };
 } // namespace NS::Game::Player

@@ -1,7 +1,6 @@
 ﻿#include "Runtime/Object/Components/PlayerInput.h"
 
 #include "Runtime/Core/Math.h"
-#include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -42,13 +41,10 @@ namespace NS::Obj
             return;
         }
 
-        // camera 相対移動の基準 forward は Brain から自分で読む。Brain 不在 (テスト等) は注入値のまま
-        if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
+        // camera 相対移動の基準 forward は CameraManager から自分で読む。CameraManager 不在 (テスト等) は注入値のまま
+        if (Owner() != nullptr && Owner()->GetCameraManager() != nullptr)
         {
-            if (CameraBrain* brain = Owner()->OwningScene()->CameraBrain())
-            {
-                m_cameraForward = NormalizeHorizontal(brain->ForwardHorizontal());
-            }
+            m_cameraForward = NormalizeHorizontal(CameraForwardHorizontal(*Owner()));
         }
 
         NS::Platform::Input& input = NS::Platform::Input::Get();

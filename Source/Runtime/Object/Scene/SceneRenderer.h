@@ -23,25 +23,26 @@ namespace NS::Gfx
 
 namespace NS::Obj
 {
-    class CameraBrain;
+    class CameraManager;
     class CameraComponent;
     class DirectionalLight;
     class IRenderable;
     class OverlayRenderer;
+    class UIActor;
 
     //! @brief 指定の描画先へ指定の視点でシーンを描く単位
-    //! @details target が null なら backbuffer、viewPose が空なら Brain の選ぶカメラで描く
+    //! @details target が null なら backbuffer、viewPose が空なら CameraManager の選ぶカメラで描く
     struct SceneView
     {
         NS::Gfx::RenderTarget* target = nullptr; // 描画先、非所有。null は backbuffer
-        std::optional<CameraPose> viewPose;      // 描画視点。空なら Brain の選ぶカメラ
+        std::optional<CameraPose> viewPose;      // 描画視点。空なら CameraManager の選ぶカメラ
     };
 
     //! @brief 描画物・重ね描き・平行光の登録簿を持ち、1 フレーム分のシーンを描く
     //! @details 登録は Component が OnStart / OnEndPlay で自分で行い、Scene の同名メソッドがここへ転送する
     //! 描画は Scene::OnRenderScene が Render を 1 回呼んで駆動する
     //! 世界は NS::Gfx::Bloom の浮動小数の描画先へ描き、1 を超えた分をにじませて書き戻す
-    //! 依存: NS::Gfx::Renderer, NS::Gfx::RenderProxyList, NS::Gfx::EffectScene, NS::Gfx::Bloom, CameraBrain
+    //! 依存: NS::Gfx::Renderer, NS::Gfx::RenderProxyList, NS::Gfx::EffectScene, NS::Gfx::Bloom, CameraManager
     class SceneRenderer : public NS::Core::NonCopyable
     {
     public:
@@ -63,7 +64,7 @@ namespace NS::Obj
         //! 経過秒ぶんエフェクトを進める。EffectScene が無ければ何もしない
         void UpdateEffects(float deltaSeconds) noexcept;
 
-        //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ Brain の視点で 1 回だけ描く
+        //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ CameraManager の視点で 1 回だけ描く
         //! @details 空でない間は各ビューを順に bind して描き分ける。差すのは Editor だけで、出荷では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneViews = std::move(views); }
 
@@ -78,6 +79,13 @@ namespace NS::Obj
         //! OverlayRenderer の自己解除
         void UnregisterOverlay(OverlayRenderer* overlay);
 
+        //! 画面に出す物の登録。二重登録は無視する。並びは DrawOrder 昇順、同値なら後から入れた方が後ろ
+        void RegisterUIActor(UIActor* actor);
+        //! 画面に出す物の解除
+        void UnregisterUIActor(UIActor* actor) noexcept;
+        //! 画面に出す物の一覧。DrawOrder 昇順、非所有
+        [[nodiscard]] const std::vector<UIActor*>& UIActors() const noexcept { return m_uiActors; }
+
         //! 平行光の自己登録。二重登録は無視する
         //! 並びは登録順。ResolveSceneSettings はこの順に読む
         void RegisterLight(DirectionalLight* light);
@@ -89,19 +97,20 @@ namespace NS::Obj
 
         //! @brief ビュー列を順に描く。列が空なら現描画先へ 1 回だけ描く
         //! @details レンダラー未設定なら何も描かない。ビューごとに Renderer::BeginSceneView で描画先を差し替える
-        //! @param[in,out] brain 描画の直前に Evaluate する CameraBrain
-        //! @param[in,out] camera brain が駆動する実カメラ。アスペクト比をレンダラーの現在サイズへ揃える
+        //! @param[in,out] cameras 描画の直前に Evaluate する CameraManager
+        //! @param[in,out] camera cameras が駆動する実カメラ。アスペクト比をレンダラーの現在サイズへ揃える
         //! @param[in] skyboxPath 描く skybox の ContentRoot 配下相対パス。空なら skybox を描かない
         //! @param[in] alpha 前の固定フレームから今の固定フレームまでの補間の割合 0..1
         //! 1 なら今の固定フレームの姿
-        void Render(CameraBrain& brain, CameraComponent& camera, std::string_view skyboxPath, float alpha);
+        void Render(CameraManager& cameras, CameraComponent& camera, std::string_view skyboxPath, float alpha);
 
         //! Opaque バケットを視錐台で絞り、並べ替えずに描画する
         void DrawOpaque(const NS::Gfx::RenderContext& context);
         //! Transparent バケットを視錐台で絞り、context.cameraPosition から遠い順に描画する
         //! 距離が同じなら SortPriority 昇順
         void DrawTransparent(const NS::Gfx::RenderContext& context);
-        //! 登録中の OverlayRenderer を priority 昇順で描画する。IsActive が偽なら飛ばす
+        //! 登録中の OverlayRenderer を priority 昇順で描画し、その上へ画面に出す物を DrawOrder 昇順で描く
+        //! OverlayRenderer は IsActive が偽なら飛ばす
         void DrawOverlays(const NS::Gfx::RenderContext& context);
 
         //! @brief プロジェクト既定値からシーンの描画設定を作る。有効な平行光があれば照明を上書きする
@@ -110,7 +119,7 @@ namespace NS::Obj
 
     private:
         //! 1 ビュー分のシーンを描き、その上へデバッグ描画と OverlayRenderer の重ね描きを出す
-        void RenderViewWithOverlays(CameraBrain& brain,
+        void RenderViewWithOverlays(CameraManager& cameras,
                                     CameraComponent& camera,
                                     std::string_view skyboxPath,
                                     const std::optional<CameraPose>& viewOverride,
@@ -119,8 +128,8 @@ namespace NS::Obj
 
         //! 不透明→空→半透明→エフェクトの順に 1 ビュー分を bloom の描画先へ描く
         //! にじみを足して今の描画先へ書き戻す
-        //! 組んだ RenderContext を返す。viewOverride が空なら Brain の選ぶカメラで描く
-        [[nodiscard]] NS::Gfx::RenderContext RenderWorld(CameraBrain& brain,
+        //! 組んだ RenderContext を返す。viewOverride が空なら CameraManager の選ぶカメラで描く
+        [[nodiscard]] NS::Gfx::RenderContext RenderWorld(CameraManager& cameras,
                                                          CameraComponent& camera,
                                                          std::string_view skyboxPath,
                                                          const std::optional<CameraPose>& viewOverride,
@@ -140,6 +149,7 @@ namespace NS::Obj
         std::vector<RenderEntry> m_renderables;
 
         std::vector<OverlayRenderer*> m_overlays; // 重ね描きの登録簿。priority 昇順、非所有
+        std::vector<UIActor*> m_uiActors;         // 画面に出す物の登録簿。DrawOrder 昇順、非所有
 
         std::vector<DirectionalLight*> m_lights; // 平行光の登録簿。登録順、非所有
 

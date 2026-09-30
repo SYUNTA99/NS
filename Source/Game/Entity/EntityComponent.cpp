@@ -1,6 +1,7 @@
 ﻿#include "Game/Entity/EntityComponent.h"
 
 #include "Runtime/Object/Components/CapsuleCollider.h"
+#include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -87,6 +88,15 @@ namespace NS::Game::Entity
     void EntityComponent::SetSphereShape(bool sphere) noexcept
     {
         m_sphereShape = sphere;
+        SyncBodySensor();
+    }
+
+    void EntityComponent::SyncBodySensor() noexcept
+    {
+        if (m_bodySensor != nullptr)
+        {
+            m_bodySensor->SetCapsule(CapsuleRadius(), CapsuleHalfHeight());
+        }
     }
 
     const NS::Obj::CapsuleCollider* EntityComponent::SiblingCapsule() const noexcept
@@ -123,6 +133,21 @@ namespace NS::Game::Entity
         {
             m_capsuleCollider->SetExcludedFromStaticWorld(true);
         }
+        // 体のセンサーは根を中心にした、移動の当たりと同じカプセル
+        m_bodySensor = nullptr;
+        if (Owner() != nullptr)
+        {
+            for (NS::Obj::Component* comp : Owner()->Components())
+            {
+                NS::Obj::HitSensor* sensor = NS::Obj::ComponentCast<NS::Obj::HitSensor>(comp);
+                if (sensor != nullptr && sensor->Shape() == NS::Obj::HitSensorShape::Capsule)
+                {
+                    m_bodySensor = sensor;
+                    break;
+                }
+            }
+        }
+        SyncBodySensor();
     }
 
     void EntityComponent::OnUpdate()

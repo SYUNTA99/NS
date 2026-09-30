@@ -1,46 +1,26 @@
 ﻿#include "Runtime/Object/Components/VirtualCamera.h"
 
-#include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Scene/Scene.h"
 
 namespace NS::Obj
 {
-    namespace
-    {
-        // scene に着いていない裸の Actor 上でも OnStart は走るので、経路の全段で不在を許す
-        [[nodiscard]] CameraBrain* FindBrain(Component& self) noexcept
-        {
-            Actor* owner = self.Owner();
-            if (owner == nullptr)
-            {
-				return nullptr;
-            }
-            Scene* scene = owner->OwningScene();
-            if (scene == nullptr)
-            {
-				return nullptr;
-            }
-            return scene->CameraBrain();
-        }
-    } // namespace
-
     // 仮想デストラクタはヘッダでなくこの .cpp に置き、vtable の重複生成を避ける
     VirtualCamera::~VirtualCamera() noexcept = default;
 
     void VirtualCamera::OnStart()
     {
-        if (CameraBrain* brain = FindBrain(*this))
+        // scene に着いていない裸の Actor 上でも OnStart は走る。管理役が無ければ窓口が何もしない
+        if (Owner() != nullptr)
         {
-            brain->AddVirtualCamera(this);
+            RegisterVirtualCamera(*Owner(), this);
         }
     }
 
     void VirtualCamera::OnEndPlay()
     {
-        if (CameraBrain* brain = FindBrain(*this))
+        if (Owner() != nullptr)
         {
-			brain->RemoveVirtualCamera(this);
+            UnregisterVirtualCamera(*Owner(), this);
         }
     }
 } // namespace NS::Obj

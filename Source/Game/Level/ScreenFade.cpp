@@ -8,11 +8,6 @@
 
 namespace NS::Game::Level
 {
-    ScreenFade::ScreenFade() noexcept
-        // 応答より先の帯。やり直しが必ず全黒の裏に隠れる
-        : NS::Obj::OverlayRenderer(NS::Obj::TickPriority::LateUpdate + 5)
-    {}
-
     void ScreenFade::OnUpdate()
     {
         Advance(NS::Platform::FrameTimer::FixedDelta());

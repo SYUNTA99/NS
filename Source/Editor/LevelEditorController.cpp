@@ -4,7 +4,7 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
-#include "Game/Level/Respawner.h"
+#include "Game/Level/CourseDirector.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/App/Application.h"
@@ -15,9 +15,10 @@
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Components/BoxCollider.h"
-#include "Runtime/Object/Components/CameraBrain.h"
+#include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
+#include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/MeshCollider.h"
 #include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Components/PlayerInput.h"
@@ -86,7 +87,7 @@ namespace
     // カメラの視錐台を描く時の far。vcam の既定 1000 のままだと錐台が画面に収まらないので近くで切る
     constexpr float k_CameraGizmoFar = 8.0f;
 
-    // 編集復帰の視点ブレンド秒。Brain の vcam 切替の既定 0.35 秒と揃え、モード切替の繋ぎを同じ感触にする
+    // 編集復帰の視点ブレンド秒。CameraManager の vcam 切替の既定 0.35 秒と揃え、モード切替の繋ぎを同じ感触にする
     constexpr float k_EditBlendSeconds = 0.35f;
 
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状、slope は collider 由来の AABB
@@ -137,6 +138,29 @@ namespace
                                          local.Extents.y * std::abs(parts.scale.y),
                                          local.Extents.z * std::abs(parts.scale.z)};
             NS::Gfx::DebugDraw::OBB(NS::Core::MakeOBB(center, parts.rotation, half), color);
+        }
+    }
+
+    // 配置物 1 体のヒットセンサーの形を線で描く。範囲 (落下死・ゴール) は地形の当たりを持たないので、ここで見せる
+    void DrawSensorWireframe(NS::Obj::Actor& object, const NS::Core::Color& color) noexcept
+    {
+        for (NS::Obj::Component* comp : object.Components())
+        {
+            const NS::Obj::HitSensor* sensor = NS::Obj::ComponentCast<NS::Obj::HitSensor>(comp);
+            if (sensor == nullptr)
+                continue;
+            const NS::Obj::SensorVolume volume = sensor->WorldVolume();
+            if (volume.isBox)
+            {
+                NS::Gfx::DebugDraw::OBB(volume.box, color);
+                continue;
+            }
+            const NS::Core::Vector3 center = (volume.a + volume.b) * 0.5f;
+            const NS::Core::Vector3 axis = (volume.b - volume.a) * 0.5f;
+            if (axis.LengthSquared() > 0.0f)
+                NS::Gfx::DebugDraw::Capsule(center, axis, volume.radius, color);
+            else
+                NS::Gfx::DebugDraw::Sphere(NS::Core::Sphere{center, volume.radius}, color);
         }
     }
 
@@ -283,11 +307,11 @@ const NS::Obj::ObjectList& LevelEditorController::Objects() const noexcept
     return m_scene->Objects();
 }
 
-NS::Obj::CameraBrain* LevelEditorController::Brain() const noexcept
+NS::Obj::CameraManager* LevelEditorController::Cameras() const noexcept
 {
     if (m_scene == nullptr)
         return nullptr;
-    return m_scene->CameraBrain();
+    return m_scene->GetCameraManager();
 }
 
 NS::Obj::CameraComponent* LevelEditorController::MainCamera() const noexcept
@@ -403,15 +427,16 @@ void LevelEditorController::EnterPlay() noexcept
         if (NS::Obj::PlayerInput* input = player->FindComponent<NS::Obj::PlayerInput>())
             input->SetActive(true);
     }
-    // 走行を最初から。手順は出荷と同じ respawner の持ち物
-    m_scene->Objects().ForEachComponent<NS::Game::Level::Respawner>(
-        [](NS::Game::Level::Respawner& respawner) { respawner.RestartRun(); });
+    // 走行を最初から。手順は出荷と同じコースの進行役の持ち物
+    if (NS::Game::Level::CourseDirector* director =
+            NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(*m_scene))
+        director->RestartCourse();
     // 追従カメラも配置物の 1 体。プレイの間だけ有効化する
     m_scene->Objects().ForEachComponent<NS::Obj::ThirdPersonFollow>(
         [](NS::Obj::ThirdPersonFollow& follow) { follow.SetActive(true); });
     // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
-    if (NS::Obj::CameraBrain* brain = Brain())
-        brain->BeginBlendFrom(m_editorCamera.Pose());
+    if (NS::Obj::CameraManager* cameras = Cameras())
+        cameras->BeginBlendFrom(m_editorCamera.Pose());
     // 世界を回す。止まっているのは編集モードの間だけ
     m_scene->SetSimulationEnabled(true);
 
@@ -437,9 +462,9 @@ void LevelEditorController::EnterEdit() noexcept
     // プレイを終え、凍結スナップショットから編集の姿へ組み直す
     LeavePlayForEdit();
     // プレイ視点から自由視点へ繋ぐ。始点は直前まで実カメラに書かれていた pose
-    if (NS::Obj::CameraBrain* brain = Brain())
+    if (NS::Obj::CameraManager* cameras = Cameras())
     {
-        m_editBlendFrom = brain->LastPose();
+        m_editBlendFrom = cameras->LastPose();
         m_editBlendElapsed = 0.0f;
         m_editBlending = true;
     }
@@ -558,10 +583,10 @@ std::optional<NS::Obj::CameraPose> LevelEditorController::SceneViewPose() noexce
 
 std::optional<NS::Obj::CameraPose> LevelEditorController::GameViewPose() noexcept
 {
-    // プレイ中は Brain (follow・ブレンド維持) 任せ。編集中だけゲームカメラを上書きする
-    if (m_mode == Mode::Play || Brain() == nullptr)
+    // プレイ中は CameraManager (follow・ブレンド維持) 任せ。編集中だけゲームカメラを上書きする
+    if (m_mode == Mode::Play || Cameras() == nullptr)
         return std::nullopt;
-    return Brain()->EvaluateTopPose(1.0f);
+    return Cameras()->EvaluateTopPose(1.0f);
 }
 
 void LevelEditorController::SetSceneViews(std::vector<NS::Obj::SceneView> views)
@@ -604,7 +629,7 @@ void LevelEditorController::TickEdit()
     m_editorCamera.Tick();
 
     // free-fly 更新後に実カメラへ反映し、ギズモ / 編集の ray-pick が当フレームの視点を使えるようにする
-    // 編集中は active な vcam が無く Brain は実カメラに触れないので、この書き込みが上書きされずに残る
+    // 編集中は active な vcam が無く CameraManager は実カメラに触れないので、この書き込みが上書きされずに残る
     if (NS::Obj::CameraComponent* camera = MainCamera())
     {
         NS::Obj::CameraPose pose = m_editorCamera.Pose();
@@ -626,7 +651,7 @@ void LevelEditorController::TickEdit()
     m_gizmo.SetActive(objectMode);
     m_editor.SetInputSuppressed(objectMode);
 
-    if (objectMode && Brain())
+    if (objectMode && Cameras())
     {
         // 追従カメラの Root を実プレイ視点位置へ寄せてからギズモを回す。判定箱とギズモがその位置に出る
         SyncFollowCameraPoses();
@@ -636,7 +661,7 @@ void LevelEditorController::TickEdit()
         RefreshGizmoSelectables();
         ResolveSelectionFromId();
 
-        const NS::Core::Matrix vp = Brain()->ViewProjection();
+        const NS::Core::Matrix vp = Cameras()->ViewProjection();
         const bool wasDragging = m_gizmoWasDragging;
         m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered);
 
@@ -705,20 +730,20 @@ void LevelEditorController::Render()
     }
 
     m_editor.RenderCursorPreview();
-    if (Brain())
-        RenderCameraGizmos(Brain()->ViewProjection(), app->Window().Size());
+    if (Cameras())
+        RenderCameraGizmos(Cameras()->ViewProjection(), app->Window().Size());
     RenderColliderWireframes(false);
     RenderSelectionOutlines();
     // 蓄積した DebugDraw 線をシーン描画後・ImGui 前にまとめて 1 描画する
-    if (Brain())
-        NS::Gfx::DebugDraw::Flush(app->Renderer(), Brain()->ViewProjection());
+    if (Cameras())
+        NS::Gfx::DebugDraw::Flush(app->Renderer(), Cameras()->ViewProjection());
     // Object モードはブラシを置かないので Build モードの時だけ出す
     // Game ビュー前面などで編集ビューが隠れているフレームは、ゲーム画面へ被せないよう出さない
     if (!ObjectToolActive() && !m_gameViewHidden)
         m_editor.Palette().Render(CurrentViewRect());
     // Object モードのギズモは最前面の drawlist に重ねる
-    if (m_gizmo.IsActive() && Brain())
-        m_gizmo.Render(Brain()->ViewProjection(), CurrentViewRect());
+    if (m_gizmo.IsActive() && Cameras())
+        m_gizmo.Render(Cameras()->ViewProjection(), CurrentViewRect());
 }
 
 void LevelEditorController::SetObjectToolActive(bool active) noexcept
@@ -984,12 +1009,17 @@ void LevelEditorController::RenderSelectionOutlines() noexcept
 void LevelEditorController::RenderColliderWireframes(bool all) noexcept
 {
     const NS::Core::Color color{0.35f, 1.0f, 0.45f, 1.0f};
+    // センサーは当たりの緑と見分けが付く橙
+    const NS::Core::Color sensorColor{1.0f, 0.6f, 0.2f, 1.0f};
 
     // プレイ中は動いている形を追えるよう全部出す
     if (all)
     {
         for (NS::Obj::Actor* objPtr : m_scene->Objects())
+        {
             DrawColliderWireframe(*objPtr, color);
+            DrawSensorWireframe(*objPtr, sensorColor);
+        }
         return;
     }
 
@@ -997,7 +1027,10 @@ void LevelEditorController::RenderColliderWireframes(bool all) noexcept
     for (const std::uint32_t id : m_selectionIds)
     {
         if (NS::Obj::Actor* objPtr = m_scene->Objects().FindByObjectId(id))
+        {
             DrawColliderWireframe(*objPtr, color);
+            DrawSensorWireframe(*objPtr, sensorColor);
+        }
     }
 }
 

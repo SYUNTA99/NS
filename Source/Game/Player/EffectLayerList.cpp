@@ -152,11 +152,8 @@ namespace NS::Game::Player
 
     NS::Gfx::EffectScene* EffectsOf(const NS::Obj::Component& component) noexcept
     {
+        // エフェクトの窓口から引く。持ち主がシーンに居なければ窓口が nullptr を返す
         const NS::Obj::Actor* owner = component.Owner();
-        if (owner == nullptr || owner->OwningScene() == nullptr)
-        {
-            return nullptr;
-        }
-        return owner->OwningScene()->Effects();
+        return owner != nullptr ? owner->GetEffectScene() : nullptr;
     }
 } // namespace NS::Game::Player

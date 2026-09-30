@@ -10,6 +10,7 @@
 namespace NS::Obj
 {
     class CapsuleCollider;
+    class HitSensor;
 }
 
 namespace NS::Phys
@@ -125,6 +126,10 @@ namespace NS::Game::Entity
         //! OnStart で控えた CapsuleCollider。控える前は同居する物を探し、無ければ nullptr
         [[nodiscard]] const NS::Obj::CapsuleCollider* SiblingCapsule() const noexcept;
 
-        bool m_sphereShape = false; // 当たりを球にしているか。書くのは SetSphereShape だけ
+        //! 体のセンサーの寸法を今の当たりに合わせる。範囲が調べる体と、移動と裁定の当たりを同じ形にする
+        void SyncBodySensor() noexcept;
+
+        bool m_sphereShape = false;               // 当たりを球にしているか。書くのは SetSphereShape だけ
+        NS::Obj::HitSensor* m_bodySensor = nullptr; // 同居するカプセルのセンサー。無ければ nullptr
     };
 } // namespace NS::Game::Entity
