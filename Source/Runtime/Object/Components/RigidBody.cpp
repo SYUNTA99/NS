@@ -31,7 +31,7 @@ namespace NS::Obj
             {
                 parts.push_back(collider->RigidBodyPart());
             }
-            else if (!collider->FollowsRigidBody())
+            else
             {
                 leftStatic = true;
             }
@@ -63,8 +63,6 @@ namespace NS::Obj
                         Owner()->Name());
             return;
         }
-
-        m_followedWorld = RootTransform().WorldMatrix();
     }
 
     void RigidBody::RemoveFromPhysics(NS::Phys::PhysicsScene& physics)
@@ -127,7 +125,6 @@ namespace NS::Obj
         {
             SetOwnerWorldPose(physics->BodyPosition(m_bodyId), physics->BodyRotation(m_bodyId));
         }
-        SyncFollowers(*physics);
     }
 
     void RigidBody::OnStart()
@@ -327,7 +324,6 @@ namespace NS::Obj
         NS::Core::Quaternion worldRotation;
         OwnerWorldPose(worldPosition, worldRotation);
         physics->TeleportBody(m_bodyId, worldPosition, worldRotation);
-        SyncFollowers(*physics);
     }
 
     NS::Phys::PhysicsScene* RigidBody::ScenePhysics() const noexcept
@@ -380,26 +376,6 @@ namespace NS::Obj
         const NS::Core::AffineDecomposition local = NS::Core::DecomposeAffine(world * parent->WorldMatrix().Invert());
         root.SetPosition(local.translation);
         root.SetRotation(local.rotation);
-    }
-
-    void RigidBody::SyncFollowers(NS::Phys::PhysicsScene& physics)
-    {
-        // 止まっている間も毎歩置き直すと、トリガーの箱を毎歩作り直すことになる
-        const NS::Core::Matrix world = RootTransform().WorldMatrix();
-        if (world == m_followedWorld)
-        {
-            return;
-        }
-        m_followedWorld = world;
-
-        Owner()->ForEachPart([&physics](std::string_view, Component& part) {
-            Collider* collider = ComponentCast<Collider>(&part);
-            if (collider != nullptr && collider->IsActive() && !collider->CanJoinRigidBody() &&
-                collider->FollowsRigidBody())
-            {
-                collider->SyncToPhysics(physics);
-            }
-        });
     }
 
     NS_CLASS(RigidBody)

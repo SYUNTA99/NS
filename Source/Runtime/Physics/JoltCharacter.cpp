@@ -34,14 +34,6 @@ namespace NS::Phys
             return velocity - normal * into;
         }
 
-        // Jolt のキャラクタの掃引は sensor を素通りする。床を探すレイも揃える
-        // 揃えないと、ゴールやハザードの判定の箱の中で箱の内側を床と取り違える
-        class IgnoreSensorsBodyFilter final : public JPH::BodyFilter
-        {
-        public:
-            bool ShouldCollideLocked(const JPH::Body& body) const override { return !body.IsSensor(); }
-        };
-
         bool CastRayDown(const JPH::PhysicsSystem& system, JPH::RVec3Arg origin, float length, float& outDistance)
         {
             if (!(length > 0.0f))
@@ -51,8 +43,7 @@ namespace NS::Phys
 
             const JPH::RRayCast ray{origin, JPH::Vec3{0.0f, -length, 0.0f}};
             JPH::RayCastResult hit;
-            if (!system.GetNarrowPhaseQuery().CastRay(
-                    ray, hit, JPH::BroadPhaseLayerFilter{}, JPH::ObjectLayerFilter{}, IgnoreSensorsBodyFilter{}))
+            if (!system.GetNarrowPhaseQuery().CastRay(ray, hit))
             {
                 return false;
             }

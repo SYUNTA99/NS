@@ -181,10 +181,6 @@ namespace NS::Phys
         {
             return "Debris";
         }
-        if (layer == BroadPhaseLayers::Trigger)
-        {
-            return "Trigger";
-        }
         return "Unknown";
     }
 #endif
@@ -279,17 +275,15 @@ namespace NS::Phys
     JPH::BodyID PhysicsScene::AddStatic(const JPH::ShapeRefC& shape,
                                         const NS::Core::Vector3& position,
                                         const NS::Core::Quaternion& rotation,
-                                        JPH::ObjectLayer layer,
-                                        bool sensor)
+                                        JPH::ObjectLayer layer)
     {
         if (shape == nullptr)
         {
             return JPH::BodyID{};
         }
 
-        JPH::BodyCreationSettings settings{shape, ToJolt(position), ToJolt(rotation), JPH::EMotionType::Static, layer};
-        settings.mIsSensor = sensor;
-
+        const JPH::BodyCreationSettings settings{
+            shape, ToJolt(position), ToJolt(rotation), JPH::EMotionType::Static, layer};
         return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::DontActivate);
     }
 
@@ -297,8 +291,7 @@ namespace NS::Phys
                                          const JPH::ShapeRefC& shape,
                                          const NS::Core::Vector3& position,
                                          const NS::Core::Quaternion& rotation,
-                                         JPH::ObjectLayer layer,
-                                         bool sensor)
+                                         JPH::ObjectLayer layer)
     {
         if (shape == nullptr)
         {
@@ -307,7 +300,7 @@ namespace NS::Phys
 
         if (id.IsInvalid())
         {
-            return AddStatic(shape, position, rotation, layer, sensor);
+            return AddStatic(shape, position, rotation, layer);
         }
 
         JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
@@ -315,7 +308,6 @@ namespace NS::Phys
         bodies.SetPositionAndRotationWhenChanged(
             id, ToJolt(position), ToJolt(rotation), JPH::EActivation::DontActivate);
         bodies.SetObjectLayer(id, layer);
-        bodies.SetIsSensor(id, sensor);
 
         return id;
     }
@@ -325,10 +317,10 @@ namespace NS::Phys
         return SyncBox(JPH::BodyID{}, box, layer);
     }
 
-    JPH::BodyID PhysicsScene::SyncBox(JPH::BodyID id, const NS::Core::OBB& box, JPH::ObjectLayer layer, bool sensor)
+    JPH::BodyID PhysicsScene::SyncBox(JPH::BodyID id, const NS::Core::OBB& box, JPH::ObjectLayer layer)
     {
         const ShapePart part = MakeBoxPart(box);
-        return SyncStatic(id, part.shape, part.position, part.rotation, layer, sensor);
+        return SyncStatic(id, part.shape, part.position, part.rotation, layer);
     }
 
     JPH::BodyID PhysicsScene::AddSphere(const NS::Core::Sphere& sphere, JPH::ObjectLayer layer)
@@ -339,7 +331,7 @@ namespace NS::Phys
     JPH::BodyID PhysicsScene::SyncSphere(JPH::BodyID id, const NS::Core::Sphere& sphere, JPH::ObjectLayer layer)
     {
         const ShapePart part = MakeSpherePart(sphere);
-        return SyncStatic(id, part.shape, part.position, part.rotation, layer, false);
+        return SyncStatic(id, part.shape, part.position, part.rotation, layer);
     }
 
     JPH::BodyID PhysicsScene::AddCapsule(const Capsule& capsule, JPH::ObjectLayer layer)
@@ -350,7 +342,7 @@ namespace NS::Phys
     JPH::BodyID PhysicsScene::SyncCapsule(JPH::BodyID id, const Capsule& capsule, JPH::ObjectLayer layer)
     {
         const ShapePart part = MakeCapsulePart(capsule);
-        return SyncStatic(id, part.shape, part.position, part.rotation, layer, false);
+        return SyncStatic(id, part.shape, part.position, part.rotation, layer);
     }
 
     JPH::BodyID PhysicsScene::AddMesh(std::span<const Triangle> triangles, JPH::ObjectLayer layer)
@@ -360,12 +352,8 @@ namespace NS::Phys
 
     JPH::BodyID PhysicsScene::SyncMesh(JPH::BodyID id, std::span<const Triangle> triangles, JPH::ObjectLayer layer)
     {
-        return SyncStatic(id,
-                          CreateMeshShape(triangles),
-                          NS::Core::Vector3{0.0f, 0.0f, 0.0f},
-                          NS::Core::Quaternion::Identity,
-                          layer,
-                          false);
+        return SyncStatic(
+            id, CreateMeshShape(triangles), NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Quaternion::Identity, layer);
     }
 
     JPH::BodyID PhysicsScene::SyncMeshShape(JPH::BodyID id,
@@ -387,7 +375,7 @@ namespace NS::Phys
             return JPH::BodyID{};
         }
 
-        return SyncStatic(id, scaled.Get(), position, rotation, layer, false);
+        return SyncStatic(id, scaled.Get(), position, rotation, layer);
     }
 
     JPH::BodyID PhysicsScene::AddDynamic(const JPH::ShapeRefC& shape,
@@ -411,11 +399,6 @@ namespace NS::Phys
         settings.mRestitution = desc.restitution;
         settings.mFriction = desc.friction;
         return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::Activate);
-    }
-
-    JPH::BodyID PhysicsScene::AddSensorBox(const NS::Core::OBB& box)
-    {
-        return SyncBox(JPH::BodyID{}, box, ObjectLayers::Trigger, true);
     }
 
     JPH::BodyID PhysicsScene::AddDynamicBox(const NS::Core::OBB& box, const DynamicBodyDesc& desc)
@@ -697,12 +680,7 @@ namespace NS::Phys
         const JPH::RRayCast ray{ToJolt(origin), ToJolt(direction * (maxDistance / directionLength))};
         JPH::RayCastResult hit;
         const JPH::IgnoreSingleBodyFilter filter{ignoredBody};
-        class SolidLayerFilter final : public JPH::ObjectLayerFilter
-        {
-            bool ShouldCollide(JPH::ObjectLayer layer) const override { return layer != ObjectLayers::Trigger; }
-        };
-        const SolidLayerFilter solidFilter;
-        if (!m_physicsSystem.GetNarrowPhaseQuery().CastRay(ray, hit, {}, solidFilter, filter))
+        if (!m_physicsSystem.GetNarrowPhaseQuery().CastRay(ray, hit, {}, {}, filter))
         {
             return false;
         }

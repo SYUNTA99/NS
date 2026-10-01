@@ -163,26 +163,6 @@ TEST(MapObjMotion, RestartCancelsFlightAndRestoresPlacement)
     EXPECT_FLOAT_EQ(rock->Velocity().Length(), 0.0f);
 }
 
-TEST(MapObjMotion, TriggerVolumesDoNotReflectTheFlight)
-{
-    NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
-    ASSERT_NE(rock, nullptr);
-    NS::Core::OBB trigger;
-    trigger.center = NS::Core::Vector3{2.0f, 2.0f, 0.0f};
-    trigger.halfExtentX = 0.1f;
-    trigger.halfExtentY = 4.0f;
-    trigger.halfExtentZ = 4.0f;
-    scene.Physics().AddSensorBox(trigger);
-    ReleaseRock(*rock);
-    for (int step = 0; step < 20; ++step)
-    {
-        rock->UpdateMotion();
-    }
-    EXPECT_GT(rock->Root().Position().x, 2.0f);
-    EXPECT_GT(rock->Velocity().x, 0.0f);
-}
-
 TEST(MapObjMotion, ZeroLengthFreezeStillWaitsForReleaseGrace)
 {
     NS::Obj::Scene scene;

@@ -40,10 +40,6 @@ namespace NS::Obj
         //! RigidBody の形になれる形状か。既定は false で、なれない形状は自分の body を持ち続ける
         [[nodiscard]] virtual bool CanJoinRigidBody() const noexcept { return false; }
 
-        //! @brief RigidBody の形になれない時に、自分の body を物体の動きへ追従させるか。既定は false
-        //! @details 追従する collider は、物体が動いたフレームに RigidBody が SyncToPhysics を呼び直す
-        [[nodiscard]] virtual bool FollowsRigidBody() const noexcept { return false; }
-
         //! RigidBody の合成形状へ入れる形を、世界座標の置き場所つきで返す。既定は形が null
         [[nodiscard]] virtual NS::Phys::ShapePart RigidBodyPart() const { return {}; }
 

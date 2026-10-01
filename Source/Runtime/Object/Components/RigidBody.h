@@ -15,7 +15,6 @@ namespace NS::Obj
     //! @brief 同じ object の collider をまとめて 1 つの動く body にし、物理で動かす Component
     //! @details 形は同じ object の稼働中の collider から集める。子の object の collider は集めない
     //! 箱・球・カプセルは 1 つの body の合成形状の部品になり、その collider は自分の body を持たない
-    //! トリガーの箱は自分の sensor body のまま、物体が動いたフレームに追従する
     //! メッシュとスロープは動く body の形にできない。静的な body のまま元の場所に残り、同期のたびに警告を出す
     //! body の原点は持ち主の世界の位置と回転で、拡縮は形の寸法へ焼き込む
     //! 形と置き場所を作り直すのは SyncToPhysics だけ。拡縮や collider の寸法を変えたら ObjectList::SyncPhysics
@@ -156,8 +155,6 @@ namespace NS::Obj
         void OwnerWorldPose(NS::Core::Vector3& position, NS::Core::Quaternion& rotation) const noexcept;
         // 持ち主の世界の位置と回転を置く。親がいれば親から見た値へ直す。拡縮は変えない
         void SetOwnerWorldPose(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation) noexcept;
-        // 形にならず追従する collider の body を、持ち主の今の姿勢へ置き直す
-        void SyncFollowers(NS::Phys::PhysicsScene& physics);
 
         bool m_kinematic = false;           // 力を受けず Transform の姿勢へ運ばれるか
         float m_mass = 1.0f;                // 質量 (kg)
@@ -178,6 +175,5 @@ namespace NS::Obj
         JPH::ObjectLayer m_objectLayer = NS::Phys::ObjectLayers::Rock; // 当たる相手を決める種別。保存しない
         JPH::BodyID m_bodyId;                                          // 動く body。作っていなければ無効
         NS::Phys::BodyMotion m_appliedMotion; // 最後に body へ入れた動き方。欄の変化を見つけるのに使う
-        NS::Core::Matrix m_followedWorld;     // 追従する collider を最後に置き直した時の持ち主の世界行列
     };
 } // namespace NS::Obj

@@ -20,7 +20,8 @@ namespace NS::Obj
         [[nodiscard]] bool IsAxisAligned(const NS::Core::OBB& obb) noexcept
         {
             constexpr float k_AlignEpsilon = 1e-4f;
-            bool (*const alignedAxis)(const NS::Core::Vector3&) noexcept = [](const NS::Core::Vector3& axis) noexcept -> bool {
+            bool (*const alignedAxis)(const NS::Core::Vector3&) noexcept =
+                [](const NS::Core::Vector3& axis) noexcept -> bool {
                 const float maxComponent = std::max({std::abs(axis.x), std::abs(axis.y), std::abs(axis.z)});
                 return maxComponent >= 1.0f - k_AlignEpsilon;
             };
@@ -37,12 +38,12 @@ namespace NS::Obj
             float y = v.y;
             if (y < 0.0f)
             {
-				y = 0.0f;
+                y = 0.0f;
             }
             float z = v.z;
             if (z < 0.0f)
             {
-				z = 0.0f;
+                z = 0.0f;
             }
             return NS::Core::Vector3{x, y, z};
         }
@@ -94,19 +95,10 @@ namespace NS::Obj
         return NS::Core::QuaternionToEulerDegrees(m_localRotation);
     }
 
-    void BoxCollider::SetTrigger(bool isTrigger) noexcept
-    {
-        m_isTrigger = isTrigger;
-    }
-
-    bool BoxCollider::IsTrigger() const noexcept
-    {
-        return m_isTrigger;
-    }
-
     NS::Core::Matrix BoxCollider::LocalMatrix() const noexcept
     {
-        return NS::Core::Matrix::CreateFromQuaternion(m_localRotation) * NS::Core::Matrix::CreateTranslation(m_centerOffset);
+        return NS::Core::Matrix::CreateFromQuaternion(m_localRotation) *
+               NS::Core::Matrix::CreateTranslation(m_centerOffset);
     }
 
     NS::Core::Matrix BoxCollider::CombinedWorldMatrix() const noexcept
@@ -150,11 +142,6 @@ namespace NS::Obj
 
     JPH::BodyID BoxCollider::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
-        // 通り抜ける体積も body にする。入れないと重なりの問い合わせに出てこず、触れても判定できない
-        if (m_isTrigger)
-        {
-            return physics.SyncBox(current, WorldOBB(), NS::Phys::ObjectLayers::Trigger, true);
-        }
         return physics.SyncBox(current, WorldOBB(), NS::Phys::ObjectLayers::Terrain);
     }
 

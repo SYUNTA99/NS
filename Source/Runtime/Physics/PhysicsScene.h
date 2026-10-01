@@ -32,8 +32,7 @@ namespace NS::Phys
         inline constexpr JPH::ObjectLayer Terrain = 0;
         inline constexpr JPH::ObjectLayer Rock = 1;
         inline constexpr JPH::ObjectLayer Debris = 2;
-        inline constexpr JPH::ObjectLayer Trigger = 3;
-        inline constexpr JPH::uint Count = 4;
+        inline constexpr JPH::uint Count = 3;
     } // namespace ObjectLayers
 
     namespace BroadPhaseLayers
@@ -49,7 +48,6 @@ namespace NS::Phys
         inline constexpr JPH::BroadPhaseLayer Terrain = FromObjectLayer(ObjectLayers::Terrain);
         inline constexpr JPH::BroadPhaseLayer Rock = FromObjectLayer(ObjectLayers::Rock);
         inline constexpr JPH::BroadPhaseLayer Debris = FromObjectLayer(ObjectLayers::Debris);
-        inline constexpr JPH::BroadPhaseLayer Trigger = FromObjectLayer(ObjectLayers::Trigger);
         inline constexpr JPH::uint Count = ObjectLayers::Count;
     } // namespace BroadPhaseLayers
 
@@ -115,8 +113,8 @@ namespace NS::Phys
 
         //! OBB の中心と 3 軸をそのまま box body にする
         JPH::BodyID AddBox(const NS::Core::OBB& box, JPH::ObjectLayer layer);
-        //! id の body を box の形と姿勢・layer・sensor の有無へ書き換えて id を返す。id が無効なら新しく作る
-        JPH::BodyID SyncBox(JPH::BodyID id, const NS::Core::OBB& box, JPH::ObjectLayer layer, bool sensor = false);
+        //! id の body を box の形と姿勢・layer へ書き換えて id を返す。id が無効なら新しく作る
+        JPH::BodyID SyncBox(JPH::BodyID id, const NS::Core::OBB& box, JPH::ObjectLayer layer);
         //! 中心と半径をそのまま球 body にする
         JPH::BodyID AddSphere(const NS::Core::Sphere& sphere, JPH::ObjectLayer layer);
         //! id の body を sphere の形と位置・layer へ書き換えて id を返す。id が無効なら新しく作る
@@ -141,11 +139,6 @@ namespace NS::Phys
                                   const NS::Core::Quaternion& rotation,
                                   const NS::Core::Vector3& scale,
                                   JPH::ObjectLayer layer);
-
-        //! @brief OBB を通り抜けられる sensor body にする
-        //! @details layer は ObjectLayers::Trigger 固定で、2 つの ShouldCollide がどの layer とも組ませない
-        //! 押し戻しも接触の通知も起きず、出てくるのは layer で絞らない Raycast・OverlapCapsule・OverlapBox だけ
-        JPH::BodyID AddSensorBox(const NS::Core::OBB& box);
 
         //! OBB の中心と 3 軸をそのまま動的な box body にする
         JPH::BodyID AddDynamicBox(const NS::Core::OBB& box, const DynamicBodyDesc& desc);
@@ -221,7 +214,7 @@ namespace NS::Phys
                                    float maxDistance,
                                    float& outDistance) const;
 
-        //! @brief 上と同じ光線を、Trigger の層と ignoredBody を除いて飛ばし、最も近い命中の距離と面の法線を返す
+        //! @brief 上と同じ光線を、ignoredBody を除いて飛ばし、最も近い命中の距離と面の法線を返す
         //! @details 引数が有限でない時と、maxDistance か direction の長さが正でない時は false
         //! 命中が無い時と false を返す時は outDistance も outNormal も変えない
         //! @param[out] outNormal 命中した面の世界座標の法線
@@ -236,7 +229,7 @@ namespace NS::Phys
 
         //! @brief capsule に重なっている body の id を集めて返す
         //! @details 形の実物どうしで見るので、回転した box は外接箱ではなく本当の形で判定する
-        //! sensor も layer も問わない。同じ body は 1 度だけ返る
+        //! layer は問わない。同じ body は 1 度だけ返る
         [[nodiscard]] std::vector<JPH::BodyID> OverlapCapsule(const Capsule& capsule) const;
 
         //! @brief region に重なる body の世界座標の境界箱を集めて返す
@@ -264,15 +257,13 @@ namespace NS::Phys
         JPH::BodyID AddStatic(const JPH::ShapeRefC& shape,
                               const NS::Core::Vector3& position,
                               const NS::Core::Quaternion& rotation,
-                              JPH::ObjectLayer layer,
-                              bool sensor);
+                              JPH::ObjectLayer layer);
 
         JPH::BodyID SyncStatic(JPH::BodyID id,
                                const JPH::ShapeRefC& shape,
                                const NS::Core::Vector3& position,
                                const NS::Core::Quaternion& rotation,
-                               JPH::ObjectLayer layer,
-                               bool sensor);
+                               JPH::ObjectLayer layer);
 
         class RuntimeInit
         {

@@ -37,14 +37,8 @@ namespace NS::Obj
         void SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept;
         [[nodiscard]] NS::Core::Vector3 RotationEulerDegrees() const noexcept;
 
-        //! 通り抜けるトリガかを設定 / 取得する。真なら Jolt の sensor body にする
-        void SetTrigger(bool isTrigger) noexcept;
-        [[nodiscard]] bool IsTrigger() const noexcept;
-
-        //! トリガーでなければ RigidBody の形になれる
-        [[nodiscard]] bool CanJoinRigidBody() const noexcept override { return !m_isTrigger; }
-        //! トリガーは sensor の body のまま物体へ追従する
-        [[nodiscard]] bool FollowsRigidBody() const noexcept override { return m_isTrigger; }
+        //! RigidBody の形になれる
+        [[nodiscard]] bool CanJoinRigidBody() const noexcept override { return true; }
         //! WorldOBB の箱の形
         [[nodiscard]] NS::Phys::ShapePart RigidBodyPart() const override;
 
@@ -62,11 +56,10 @@ namespace NS::Obj
         NS_REFLECT_ACCESSOR(NS::Core::Vector3, "半径", HalfExtents(), SetHalfExtents)
         NS_REFLECT_ACCESSOR(NS::Core::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
         NS_REFLECT_ACCESSOR(NS::Core::Vector3, "回転 (度)", RotationEulerDegrees(), SetRotationEulerDegrees)
-        NS_REFLECT_FIELD(m_isTrigger, "トリガー")
         NS_REFLECT_END()
 
     private:
-        // トリガなら sensor、そうでなければ固形の body として OBB のまま入れる
+        // 固形の body として OBB のまま入れる
         [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
 
         // owner world 変換に重ねる当たり箱の local 変換を行列化する。offset と回転を合わせる
@@ -78,6 +71,5 @@ namespace NS::Obj
         NS::Core::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f};                     // 当たり箱の各軸半径
         NS::Core::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};                    // owner local 空間での中心オフセット
         NS::Core::Quaternion m_localRotation = NS::Core::Quaternion::Identity; // owner 回転に重ねる local 回転
-        bool m_isTrigger = false; // 通り抜ける体積か。真なら sensor body にする
     };
 } // namespace NS::Obj
