@@ -1,7 +1,7 @@
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/ITickable.h"
-#include "Runtime/Object/IUseSceneObj.h"
+#include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/UIActor.h"
 

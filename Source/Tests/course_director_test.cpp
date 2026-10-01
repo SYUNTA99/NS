@@ -7,7 +7,7 @@
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/IUseSceneObj.h"
+#include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"

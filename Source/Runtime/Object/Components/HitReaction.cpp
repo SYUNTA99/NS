@@ -4,7 +4,7 @@
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/IUseCamera.h"
+#include "Runtime/Object/IUse/IUseCamera.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Input.h"
 

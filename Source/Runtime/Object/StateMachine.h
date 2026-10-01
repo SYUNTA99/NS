@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Runtime/Core/Coroutine.h"
-#include "Runtime/Object/IUseState.h"
+#include "Runtime/Object/IUse/IUseState.h"
 
 #include <cstdint>
 #include <memory>

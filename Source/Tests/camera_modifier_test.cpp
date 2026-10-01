@@ -4,7 +4,7 @@
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/CameraModifier.h"
-#include "Runtime/Object/IUseCamera.h"
+#include "Runtime/Object/IUse/IUseCamera.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 

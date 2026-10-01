@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Runtime/Object/IUseCamera.h"
-#include "Runtime/Object/IUseCollision.h"
-#include "Runtime/Object/IUseEffect.h"
-#include "Runtime/Object/IUseSceneObj.h"
-#include "Runtime/Object/IUseState.h"
+#include "Runtime/Object/IUse/IUseCamera.h"
+#include "Runtime/Object/IUse/IUseCollision.h"
+#include "Runtime/Object/IUse/IUseEffect.h"
+#include "Runtime/Object/IUse/IUseSceneObj.h"
+#include "Runtime/Object/IUse/IUseState.h"
 #include "Runtime/Object/Object.h"
 #include "Runtime/Object/UpdatePhase.h"
 

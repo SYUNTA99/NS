@@ -23,7 +23,7 @@
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/Shadow.h"
 #include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/IUseSceneObj.h"
+#include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"

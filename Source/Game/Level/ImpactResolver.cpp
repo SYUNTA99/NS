@@ -11,7 +11,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/IUseCamera.h"
+#include "Runtime/Object/IUse/IUseCamera.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/HitSensorDirector.h"

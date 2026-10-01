@@ -1,4 +1,4 @@
-#include "Runtime/Object/IUseCollision.h"
+#include "Runtime/Object/IUse/IUseCollision.h"
 
 #include "Runtime/Physics/PhysicsScene.h"
 
