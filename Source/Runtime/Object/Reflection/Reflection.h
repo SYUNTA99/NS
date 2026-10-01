@@ -69,7 +69,7 @@ namespace NS::Obj
         {
             static_assert(std::is_same_v<T, NS::Core::Vector3>,
                           "FieldTypeOf の T は float / int / bool / NS::Core::Vector3 / NS::Core::Quaternion / "
-                          "std::string / ObjectRef / Curve / ComponentRef<T> のいずれか");
+                          "std::string / ActorRef / Curve / ComponentRef<T> のいずれか");
             return FieldType::Vector3;
         }
     }
