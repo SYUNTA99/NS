@@ -1,12 +1,14 @@
 #include "Game/Player/PlayerAppearance.h"
 
 #include "Game/Level/CollisionInput.h"
+#include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/StaticMesh.h"
-#include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/AssetManager.h"
+#include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Clock.h"
 #include <cmath>
@@ -51,9 +53,19 @@ namespace
 
 namespace NS::Game::Player
 {
-    // 配置物を組む経路では参照の引き当てが並び順に回る。MeshRenderer (Update) が自分の参照から mesh
+    // 配置物を組む経路では参照の引き当てが Player::ForEachPart の並びに回る。Model が自分の参照から mesh
     // を差した後に差し直す
-    PlayerAppearance::PlayerAppearance() noexcept : NS::Obj::Component(NS::Obj::TickPriority::Update + 50) {}
+    PlayerAppearance::PlayerAppearance() noexcept : NS::Obj::Component() {}
+
+    const PlayerParams& PlayerAppearance::Tuning() const noexcept
+    {
+        if (const ::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+        {
+            return ownerPlayer->Params();
+        }
+        static const PlayerParams defaults;
+        return defaults;
+    }
 
     void PlayerAppearance::Curl() noexcept
     {
@@ -77,20 +89,20 @@ namespace NS::Game::Player
 
     void PlayerAppearance::OnStart()
     {
-        if (Owner() != nullptr)
+        if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
         {
-            m_player = Owner()->FindComponent<PlayerComponent>();
-            m_input = Owner()->FindComponent<NS::Game::Level::CollisionInput>();
+            m_player = &ownerPlayer->Movement();
+            m_input = &ownerPlayer->ChargeControl();
         }
     }
 
     void PlayerAppearance::AdvanceSpin() noexcept
     {
         m_spinDegreesThisFrame = 0.0f;
-        NS::Obj::MeshRenderer* renderer = nullptr;
+        NS::Obj::Model* renderer = nullptr;
         if (Owner() != nullptr)
         {
-            renderer = Owner()->FindComponent<NS::Obj::MeshRenderer>();
+            renderer = Owner()->ModelPart();
         }
 
         if (!m_curled)
@@ -116,7 +128,7 @@ namespace NS::Game::Player
         if (m_player->IsBodySlamming())
         {
             SetRollAxisToward(m_player->BodySlamVelocity(), m_spinAxis);
-            m_spinSpeed = m_bodySlamSpinSpeed;
+            m_spinSpeed = Tuning().m_bodySlamSpinSpeed;
         }
         else if (m_input != nullptr && m_input->Judge().IsHeld())
         {
@@ -130,14 +142,15 @@ namespace NS::Game::Player
             }
             SetRollAxisToward(aim, m_spinAxis);
             m_spinSpeed =
-                m_emptyChargeSpinSpeed + (m_fullChargeSpinSpeed - m_emptyChargeSpinSpeed) * m_input->Judge().Charge01();
+                Tuning().m_emptyChargeSpinSpeed +
+                (Tuning().m_fullChargeSpinSpeed - Tuning().m_emptyChargeSpinSpeed) * m_input->Judge().Charge01();
         }
         else if (m_player->IsRebounding())
         {
             // 弾かれた向きへ前転する。真正面の当たりでは突進と逆向きになる
             // 反動の間は空中の操作で速度の向きが変わっても、弾かれた向きから取った軸のまま回す
             SetRollAxisToward(m_player->ReboundDirection(), m_spinAxis);
-            m_spinSpeed = m_bodySlamSpinSpeed;
+            m_spinSpeed = Tuning().m_bodySlamSpinSpeed;
         }
         // 放した後の空中と、反動に入らずに突進が終わった後は、直前のフレームの軸と速さのまま回る
 
@@ -180,10 +193,10 @@ namespace NS::Game::Player
             // 当たりの止めで移動が止まっている間は、潰れの戻しも止める
             return;
         }
-        NS::Obj::MeshRenderer* renderer = nullptr;
+        NS::Obj::Model* renderer = nullptr;
         if (Owner() != nullptr)
         {
-            renderer = Owner()->FindComponent<NS::Obj::MeshRenderer>();
+            renderer = Owner()->ModelPart();
         }
         if (renderer == nullptr)
         {
@@ -194,10 +207,10 @@ namespace NS::Game::Player
         // 次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
         // 戻すフレーム数が 0 以下では戻す手段が無く、潰れたまま残るので潰さない
         float vertical = 1.0f;
-        if (m_player->IsRebounding() && m_player->ShouldLand() && m_landingSquashRecoverSteps > 0)
+        if (m_player->IsRebounding() && m_player->ShouldLand() && Tuning().m_landingSquashRecoverSteps > 0)
         {
-            m_landingSquashRemaining = m_landingSquashRecoverSteps;
-            vertical = m_landingSquash;
+            m_landingSquashRemaining = Tuning().m_landingSquashRecoverSteps;
+            vertical = Tuning().m_landingSquash;
         }
         else if (m_landingSquashRemaining > 0)
         {
@@ -208,9 +221,9 @@ namespace NS::Game::Player
                 (void)renderer->SetDrawScale(NS::Core::Vector3{1.0f, 1.0f, 1.0f});
                 return;
             }
-            const float total = static_cast<float>(m_landingSquashRecoverSteps);
+            const float total = static_cast<float>(Tuning().m_landingSquashRecoverSteps);
             const float elapsed = total - static_cast<float>(m_landingSquashRemaining);
-            vertical = m_landingSquash + (1.0f - m_landingSquash) * (elapsed / total);
+            vertical = Tuning().m_landingSquash + (1.0f - Tuning().m_landingSquash) * (elapsed / total);
         }
         else
         {
@@ -221,7 +234,8 @@ namespace NS::Game::Player
         const float horizontal = 1.0f / std::sqrt(vertical);
         if (!renderer->SetDrawScale(NS::Core::Vector3{horizontal, vertical, horizontal}))
         {
-            NS_LOG_WARN(Game, "PlayerAppearance: 着地の潰れが有限の正でなく、潰さなかった: {}", m_landingSquash);
+            NS_LOG_WARN(
+                Game, "PlayerAppearance: 着地の潰れが有限の正でなく、潰さなかった: {}", Tuning().m_landingSquash);
             m_landingSquashRemaining = 0;
         }
     }
@@ -233,7 +247,10 @@ namespace NS::Game::Player
         const PlayerComponent* player = nullptr;
         if (Owner() != nullptr)
         {
-            player = Owner()->FindComponent<PlayerComponent>();
+            if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+            {
+                player = &ownerPlayer->Movement();
+            }
         }
         if (player != nullptr)
         {
@@ -248,8 +265,8 @@ namespace NS::Game::Player
             NS_LOG_WARN(Game, "PlayerAppearance: 同居する PlayerComponent が無く、仮の形の寸法を決められない");
         }
 
-        m_standingMesh = ResolveLook(assets, m_standingMeshRef, standingPlaceholder);
-        m_ballMesh = ResolveLook(assets, m_ballMeshRef, ballPlaceholder);
+        m_standingMesh = ResolveLook(assets, Tuning().m_standingMeshRef, standingPlaceholder);
+        m_ballMesh = ResolveLook(assets, Tuning().m_ballMeshRef, ballPlaceholder);
         ShowCurrentLook();
     }
 
@@ -259,7 +276,7 @@ namespace NS::Game::Player
         {
             return;
         }
-        NS::Obj::MeshRenderer* renderer = Owner()->FindComponent<NS::Obj::MeshRenderer>();
+        NS::Obj::Model* renderer = Owner()->ModelPart();
         if (renderer == nullptr)
         {
             return;
@@ -270,7 +287,7 @@ namespace NS::Game::Player
         {
             mesh = m_ballMesh;
         }
-        // 引き当て前は MeshRenderer が自分の参照から差した mesh を残す
+        // 引き当て前は Model が自分の参照から差した mesh を残す
         if (mesh == nullptr)
         {
             return;

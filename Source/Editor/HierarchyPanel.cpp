@@ -34,7 +34,9 @@ namespace NS::Editor
             for (const PlacementItem& item : PlacementItems())
             {
                 if (ImGui::MenuItem(item.label.c_str()))
+                {
                     editor.PlaceItem(item);
+                }
             }
         }
     } // namespace
@@ -49,17 +51,27 @@ namespace NS::Editor
             const std::string& sceneName = editor.Editor().CurrentLevelName();
             const char* shownName = "(名前なし)";
             if (!sceneName.empty())
+            {
                 shownName = sceneName.c_str();
+            }
             if (editor.Editor().HasUnsavedChanges())
+            {
                 ImGui::Text("%s *", shownName);
+            }
             else
+            {
                 ImGui::TextUnformatted(shownName);
+            }
             ImGui::Separator();
 
             std::size_t shownCount = 0;
             for (const NS::Obj::Actor* obj : editor.Objects())
+            {
                 if (!obj->IsTransient())
+                {
                     ++shownCount;
+                }
+            }
             ImGui::Text("オブジェクト %zu 個", shownCount);
 
             ImGui::SetNextItemWidth(-1.0f);
@@ -79,7 +91,9 @@ namespace NS::Editor
             if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_F2))
             {
                 if (NS::Obj::Actor* target = editor.SelectedObjectActor())
+                {
                     BeginRename(*target);
+                }
             }
 
             // 検索中は木を畳んで、一致した物だけを親子に関係なく並べる
@@ -88,24 +102,34 @@ namespace NS::Editor
                 NS::Obj::Actor& object = *objPtr;
                 // 一時オブジェクトは配置物でないので一覧に出さない
                 if (object.IsTransient())
+                {
                     continue;
+                }
                 if (filtering)
                 {
                     if (NameMatches(NS::Editor::ObjectDisplayName(object), m_hierarchyFilter))
+                    {
                         RenderNode(editor, object, false);
+                    }
                     continue;
                 }
                 // root から潜る。子は各ノードが自分で辿る
                 if (object.Parent() == nullptr)
+                {
                     RenderNode(editor, object, true);
+                }
             }
 
             if (shownCount == 0)
+            {
                 ImGui::TextDisabled("(オブジェクトなし)");
+            }
 
             // 置けるクラスの一覧から選んで置く。種類はクラスが決め、ここで部品を組むことはしない
             if (ImGui::SmallButton("+ 追加"))
+            {
                 ImGui::OpenPopup("##placeActor");
+            }
             if (ImGui::BeginPopup("##placeActor"))
             {
                 RenderPlacementMenu(editor);
@@ -151,27 +175,39 @@ namespace NS::Editor
                 for (std::size_t i = 0; i < m_visibleOrder.size(); ++i)
                 {
                     if (m_visibleOrder[i] == m_selectionAnchorId)
+                    {
                         from = i;
+                    }
                     if (m_visibleOrder[i] == m_rangeSelectToId)
+                    {
                         to = i;
+                    }
                 }
                 if (from < m_visibleOrder.size() && to < m_visibleOrder.size())
                 {
                     if (from > to)
+                    {
                         std::swap(from, to);
+                    }
                     std::vector<std::uint32_t> range;
                     range.reserve(to - from + 1);
                     for (std::size_t i = from; i <= to; ++i)
+                    {
                         range.push_back(m_visibleOrder[i]);
+                    }
                     editor.SelectObjects(std::move(range), m_rangeSelectToId);
                 }
             }
             // 選んだ物を見失わないよう視点を寄せる。範囲選択を流した後なので選択は確定している
             if (m_focusPending)
+            {
                 editor.FocusSelectedInView();
+            }
 
             if (m_reparentPending && editor.SetObjectParent(m_reparentChildId, m_reparentParentId))
+            {
                 m_expandParentId = m_reparentParentId;
+            }
             if (m_duplicateRequestId != 0)
             {
                 editor.SelectObjectById(m_duplicateRequestId);
@@ -221,11 +257,17 @@ namespace NS::Editor
             constexpr ImGuiInputTextFlags k_RenameFlags =
                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll;
             if (ImGui::InputText("##rename", m_renameBuffer, sizeof(m_renameBuffer), k_RenameFlags))
+            {
                 m_renameCommitId = id;
+            }
             else if (ImGui::IsItemDeactivatedAfterEdit())
+            {
                 m_renameCommitId = id; // 枠外クリックで抜けた分も書き込む
+            }
             else if (ImGui::IsItemDeactivated())
+            {
                 m_renamingObjectId = 0; // Esc は入力欄が値を戻すのでそのまま捨てる
+            }
 
             // 改名中は子を畳んでおく。入力欄に木の開閉を持たせない
             ImGui::PopID();
@@ -242,9 +284,13 @@ namespace NS::Editor
         // 開閉は矢印だけに任せる。行のクリックは選択、ダブルクリックは視点寄せに空けておく
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
         if (!hasChildren)
+        {
             flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        }
         if (editor.IsObjectSelected(id))
+        {
             flags |= ImGuiTreeNodeFlags_Selected;
+        }
 
         // 範囲選択は行の並びが要るので、描いた順を控えておく
         m_visibleOrder.push_back(id);
@@ -272,7 +318,9 @@ namespace NS::Editor
         }
         // ダブルクリックで視点を寄せる。改名は F2 と右クリックのメニューから
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+        {
             m_focusPending = true;
+        }
 
         if (ImGui::BeginDragDropSource())
         {
@@ -296,16 +344,22 @@ namespace NS::Editor
         if (ImGui::BeginPopupContextItem())
         {
             if (ImGui::MenuItem("名前を変更", "F2"))
+            {
                 BeginRename(object);
+            }
             if (ImGui::MenuItem("フォーカス", "F"))
             {
                 editor.SelectObjectById(id);
                 editor.FocusSelectedInView();
             }
             if (ImGui::MenuItem("複製", "Ctrl+D"))
+            {
                 m_duplicateRequestId = id;
+            }
             if (ImGui::MenuItem("削除", "Del"))
+            {
                 m_deleteRequestId = id;
+            }
             if (ImGui::MenuItem("親子を解除", nullptr, false, object.Parent() != nullptr))
             {
                 m_reparentChildId = id;
@@ -320,7 +374,9 @@ namespace NS::Editor
             for (NS::Obj::Actor* child : object.Children())
             {
                 if (child != nullptr && !child->IsTransient())
+                {
                     RenderNode(editor, *child, true);
+                }
             }
             ImGui::TreePop();
         }

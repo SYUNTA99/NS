@@ -1,11 +1,10 @@
 #include "Game/Level/LaunchEffects.h"
 
 #include "Game/Level/ColliderBounds.h"
-#include "Game/Level/LaunchedBody.h"
+#include "Game/Level/MapObj.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Graphics/EffectScene.h"
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Clock.h"
 
@@ -28,8 +27,6 @@ namespace NS::Game::Level
         constexpr float k_DustRingRadiusAtUnitScale = 1.2f;
         // 粉の輪を置く床からの高さ (m)。塊の中心を浮かせ、カメラへ向く板の下半分が床に切られないようにする
         constexpr float k_DustRingLift = 0.3f;
-        // 床と見なす接触の法線の上向きの成分。自機が立てる斜面の上限 45 度 (JoltCharacter) と同じ
-        constexpr float k_FloorNormalY = 0.7071f;
         constexpr float k_TinyLength = 1e-4f;
 
         [[nodiscard]] Vector3 NormalizedOr(const Vector3& v, const Vector3& fallback) noexcept
@@ -65,11 +62,24 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    LaunchEffects::LaunchEffects() noexcept : NS::Obj::Component(NS::Obj::TickPriority::Update + 60) {}
+    LaunchEffects::LaunchEffects() noexcept : NS::Obj::Component() {}
+
+    const MapObjParams& LaunchEffects::Tuning() const noexcept
+    {
+        if (const MapObj* owner = NS::Obj::Cast<MapObj>(Owner()))
+        {
+            return owner->Params();
+        }
+        static const MapObjParams defaults;
+        return defaults;
+    }
 
     void LaunchEffects::OnStart()
     {
-        m_body = Owner() != nullptr ? Owner()->FindComponent<LaunchedBody>() : nullptr;
+        if (Owner() != nullptr && std::string_view{Owner()->ClassName()} == "MapObj")
+        {
+            m_body = static_cast<MapObj*>(Owner());
+        }
         NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
         if (effects == nullptr)
         {
@@ -89,22 +99,20 @@ namespace NS::Game::Level
             m_layers.Stop(effects, m_trail);
             m_trail = 0;
         }
-        if (Owner() == nullptr || m_body == nullptr || m_body->Phase() != LaunchPhase::Arc)
+        if (Owner() == nullptr || m_body == nullptr || !m_body->IsArc())
         {
             return; // 壊れた物 (破片になって飛ばない) には付けない
         }
 
         // 軽い物ほど遠くへ速く飛ぶので、尾も長く残す。重い物は短い
-        const float trailFrames = static_cast<float>(m_trailFramesBase) + m_trailFramesPerLaunch * std::max(launchScale, 0.0f);
+        const float trailFrames = static_cast<float>(Tuning().m_trailFramesBase) +
+                                  Tuning().m_trailFramesPerLaunch * std::max(launchScale, 0.0f);
         m_trailFrames = std::max(1, static_cast<int>(std::lround(trailFrames)));
         // 威力 1 で質量だけの大きさ。強く飛ばした物ほど高く上がって強く落ちるので威力でも伸ばす
-        float mass = 1.0f;
-        if (const NS::Obj::RigidBody* rigidBody = Owner()->FindComponent<NS::Obj::RigidBody>())
-        {
-            mass = rigidBody->EffectiveMass();
-        }
-        const float powerGrowth = std::max(0.0f, 1.0f + m_landDustPerPower * (std::max(power, 0.0f) - 1.0f));
-        m_landDustScale = (m_landDustBase + m_landDustPerRootMass * std::sqrt(std::max(mass, 0.0f))) * powerGrowth;
+        const float mass = m_body->Params().Mass();
+        const float powerGrowth = std::max(0.0f, 1.0f + Tuning().m_landDustPerPower * (std::max(power, 0.0f) - 1.0f));
+        m_landDustScale =
+            (Tuning().m_landDustBase + Tuning().m_landDustPerRootMass * std::sqrt(std::max(mass, 0.0f))) * powerGrowth;
 
         // 再生の大きさは自分の直径。帯の幅は絵の定義が直径への割合で持つ
         m_trailScale = 1.0f;
@@ -115,10 +123,11 @@ namespace NS::Game::Level
         }
         m_launchDir = NormalizedOr(Vector3{launchDir.x, 0.0f, launchDir.z}, Vector3{1.0f, 0.0f, 0.0f});
 
-        // 物理の前に走るので、帯の頭は直近の物理が使った速度で 1 フレーム先へ置く
+        // 置物が自分を動かす Triggers の段より前に走るので、帯の頭は放した時の速度で 1 フレーム先へ置く
         // 帯の点の +Y を飛ぶ向きへ回す。揃えないと、横から見た時に幅が道に沿って潰れる
         const Vector3 head = Owner()->Root().Position() + m_body->Velocity() * NS::Platform::FrameTimer::FixedDelta();
-        NS::Gfx::EffectPlayDesc desc = PlayAt(head, TurnUpTo(NormalizedOr(m_body->Velocity(), m_launchDir)), Uniform(m_trailScale));
+        NS::Gfx::EffectPlayDesc desc =
+            PlayAt(head, TurnUpTo(NormalizedOr(m_body->Velocity(), m_launchDir)), Uniform(m_trailScale));
         // 0 番が橙、1 番が大きな外れの灰。2 番が点の寿命
         desc.dynamicInputs[0] = 1.0f;
         desc.dynamicInputs[1] = 0.0f;
@@ -134,7 +143,7 @@ namespace NS::Game::Level
         m_trailStartStep = m_layers.Step();
     }
 
-    void LaunchEffects::OnUpdate()
+    void LaunchEffects::BeginStep()
     {
         NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
         m_layers.BeginStep(effects);
@@ -147,19 +156,26 @@ namespace NS::Game::Level
             }
         }
         std::erase_if(m_scheduledStops, [step](const ScheduledStop& stop) { return step >= stop.step; });
+    }
 
+    void LaunchEffects::OnUpdate()
+    {
+        NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
+        const int step = m_layers.Step();
         if (m_trail == 0 || step == m_trailStartStep || Owner() == nullptr || m_body == nullptr)
         {
             return;
         }
-        if (m_body->Phase() == LaunchPhase::Arc)
+        if (m_body->IsArc())
         {
-            if (const NS::Game::Player::EffectLayerRecord* record = m_layers.Find(m_trail); record != nullptr && effects != nullptr)
+            if (const NS::Game::Player::EffectLayerRecord* record = m_layers.Find(m_trail);
+                record != nullptr && effects != nullptr)
             {
-                const Vector3 head =
-                    Owner()->Root().Position() + m_body->Velocity() * NS::Platform::FrameTimer::FixedDelta();
-                effects->SetTransform(
-                    record->handle, head, TurnUpTo(NormalizedOr(m_body->Velocity(), m_launchDir)), Uniform(m_trailScale));
+                const Vector3 head = Owner()->Root().Position();
+                effects->SetTransform(record->handle,
+                                      head,
+                                      TurnUpTo(NormalizedOr(m_body->Velocity(), m_launchDir)),
+                                      Uniform(m_trailScale));
             }
             return;
         }
@@ -168,44 +184,27 @@ namespace NS::Game::Level
 
     void LaunchEffects::EndTrail(NS::Gfx::EffectScene* effects)
     {
-        // 曲線を離れたのは前のフレームの LateUpdate。接触はその物理の 1 歩の物で、次の物理まで読める
         // 帯と輪はここで消す。点は世界に残るので、通った道が柱のように残る
         m_layers.Stop(effects, m_trail);
         m_trail = 0;
-        if (m_body == nullptr || m_body->Phase() != LaunchPhase::Rigid || !TouchesFloor())
-        {
-            return;
-        }
-        Vector3 at = Owner()->Root().Position();
-        NS::Core::AABB bounds{};
-        if (TryGetColliderBounds(*Owner(), bounds))
-        {
-            at.y = bounds.Center.y - bounds.Extents.y;
-        }
-        at.y += k_DustRingLift;
+    }
+
+    void LaunchEffects::CancelTrail()
+    {
+        EndTrail(NS::Game::Player::EffectsOf(*this));
+    }
+
+    void LaunchEffects::NotifyLanding(const Vector3& position, const Vector3& normal)
+    {
+        NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
+        EndTrail(effects);
+        const Vector3 at = position + normal * k_DustRingLift;
         const std::uint32_t dust =
             m_layers.Play(effects,
                           k_LaunchLandDust,
-                          PlayAt(at, Quaternion::Identity, Uniform(m_landDustScale / k_DustRingRadiusAtUnitScale)));
+                          PlayAt(at, TurnUpTo(normal), Uniform(m_landDustScale / k_DustRingRadiusAtUnitScale)));
         m_layers.SetAmount(dust, m_landDustScale);
         m_scheduledStops.push_back(ScheduledStop{.id = dust, .step = m_layers.Step() + k_LandDustLife});
-    }
-
-    bool LaunchEffects::TouchesFloor() const
-    {
-        const NS::Obj::RigidBody* rigidBody = Owner() != nullptr ? Owner()->FindComponent<NS::Obj::RigidBody>() : nullptr;
-        if (rigidBody == nullptr)
-        {
-            return false;
-        }
-        for (const NS::Phys::BodyContact& contact : rigidBody->Contacts())
-        {
-            if (contact.normal.y >= k_FloorNormalY)
-            {
-                return true;
-            }
-        }
-        return false;
     }
 
     NS_CLASS(LaunchEffects)

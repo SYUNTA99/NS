@@ -6,6 +6,7 @@
 
 #include <concepts>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string_view>
 #include <type_traits>
@@ -15,6 +16,13 @@
 namespace NS::Obj
 {
     class HitSensor;
+    class Model;
+    class Animation;
+    class Shadow;
+    class CapsuleCollider;
+    class Collider;
+    class StateMachineComponent;
+    class HitReaction;
     class ICameraTarget;
     class Message;
     class Scene;
@@ -22,22 +30,63 @@ namespace NS::Obj
 
     //! @brief 世界に置く物の基底。Transform と部品を持ち、MapParts / MapObj / Player などが派生する
     //! @details 所属シーンと窓口 (IUse〜) は土台の ActorBase が持つ
-    //! 配下 Component は AddComponent<T>() で生成し、Actor が unique_ptr で寿命を所有する
-    //! 伝播の並びは m_components の priority 昇順、所有は m_ownedComponents が別に持つ
-    //! OnStart / OnUpdate / OnEndPlay は配下 Component へ伝播するだけの補助で、派生の拡張点ではない
-    //! 毎フレームの更新は ObjectList が持つ。全配置物の Component を priority 昇順に集めて直接回すため、
-    //! ここの OnUpdate は通らない
-    //! FindComponent<T>() は自分の Component 列しか見ない
-    //! Component の名前はこの配置物の中で一意。積んだ時点で型名から付け、重なれば _1, _2 と番号を付ける
     class Actor : public ActorBase
     {
     public:
         Actor() noexcept;
         virtual ~Actor() noexcept;
+        [[nodiscard]] std::uint32_t Id() const noexcept { return m_id; }
+        NS_REFLECT_NONE(Actor, ActorBase)
 
         //! TransformComponent が持つ Root Transform。階層構築は SetParent で
         [[nodiscard]] Transform& Root() noexcept { return *m_transform; }
         [[nodiscard]] const Transform& Root() const noexcept { return *m_transform; }
+        [[nodiscard]] IStateMachine* GetStateMachine() noexcept override;
+        [[nodiscard]] const IStateMachine* GetStateMachine() const noexcept override;
+
+        //! ForEachPart が部品名と部品を渡す先
+        using PartVisitor = std::function<void(std::string_view, Component&)>;
+        //! @brief 部品名と部品の組を決まった並びで visitor へ渡す
+        //! @details 基底は Transform、Model、Animation、Shadow、Collider、Collision、BodySensor、AttackSensor、
+        //! StateMachine、HitReaction の順で、持たない部品は飛ばす。派生は基底を呼んでから自分の部品を足す
+        virtual void ForEachPart(const PartVisitor& visitor) const;
+        //! @brief 部品名 name の部品を返す
+        //! @return 持たなければ nullptr
+        [[nodiscard]] Component* Part(std::string_view name) const;
+        //! @brief part の部品名を返す
+        //! @return この Actor の部品でなければ空
+        [[nodiscard]] std::string_view PartName(const Component& part) const;
+        //! @brief 部品名 name の部品を作って付ける。既に持っていればそれを返す
+        //! @details 基底が作れるのは Model、Animation、Shadow、Collider、Collision、BodySensor、AttackSensor、
+        //! StateMachine、HitReaction
+        //! @return 付けた部品。作れない名前は nullptr
+        virtual Component* CreatePart(std::string_view name);
+        [[nodiscard]] Model* ModelPart() noexcept { return m_model.get(); }
+        [[nodiscard]] const Model* ModelPart() const noexcept { return m_model.get(); }
+        [[nodiscard]] Animation* AnimationPart() noexcept { return m_animation.get(); }
+        [[nodiscard]] const Animation* AnimationPart() const noexcept { return m_animation.get(); }
+        [[nodiscard]] Shadow* ShadowPart() noexcept { return m_shadow.get(); }
+        [[nodiscard]] const Shadow* ShadowPart() const noexcept { return m_shadow.get(); }
+        [[nodiscard]] CapsuleCollider* ColliderPart() noexcept { return m_collider.get(); }
+        [[nodiscard]] const CapsuleCollider* ColliderPart() const noexcept { return m_collider.get(); }
+        [[nodiscard]] Collider* CollisionPart() noexcept { return m_collision.get(); }
+        [[nodiscard]] const Collider* CollisionPart() const noexcept { return m_collision.get(); }
+        [[nodiscard]] HitSensor* BodySensorPart() noexcept { return m_bodySensor.get(); }
+        [[nodiscard]] const HitSensor* BodySensorPart() const noexcept { return m_bodySensor.get(); }
+        [[nodiscard]] HitSensor* AttackSensorPart() noexcept { return m_attackSensor.get(); }
+        [[nodiscard]] const HitSensor* AttackSensorPart() const noexcept { return m_attackSensor.get(); }
+        [[nodiscard]] HitReaction* HitReactionPart() noexcept { return m_hitReaction.get(); }
+        [[nodiscard]] const HitReaction* HitReactionPart() const noexcept { return m_hitReaction.get(); }
+
+        //! Model、StateMachine、HitReaction の順に進める
+        void Update() override;
+        //! Animation を進める
+        void PrepareRender() override;
+        //! @brief 物理を 1 歩進める直前に呼ばれる。既定は何もしない
+        //! @details 剛体の部品は Actor に付ける場所が無いので、基底は剛体を探さない
+        virtual void OnPrePhysicsStep();
+        //! @brief 物理を 1 歩進めた直後、物理の段に置いた物より先に呼ばれる。既定は何もしない
+        virtual void OnPostPhysicsStep();
 
         //! 実行時にコードが足す一時オブジェクトか。true は保存・凍結・作業データに写らず、
         //! データからの組み直し後も残る
@@ -79,100 +128,64 @@ namespace NS::Obj
         void SetParent(Actor* parent) noexcept;
         [[nodiscard]] const std::vector<Actor*>& Children() const noexcept { return m_children; }
 
-        [[nodiscard]] const std::vector<Component*>& Components() const noexcept { return m_components; }
-
-        //! Component 列から型 T の最初の一致を返す。無ければ nullptr
-        //! リフレクション鎖の照合で一致を見るため T はリフレクション宣言を持つこと。未宣言型はコンパイルエラーになる
-        //! 派生型は基底型の検索にも一致する
-        template <class T>
-            requires std::derived_from<T, Component>
-        [[nodiscard]] T* FindComponent() noexcept
-        {
-            const ReflectionInfo* target = T::StaticReflection();
-            for (Component* comp : m_components)
-            {
-                if (comp != nullptr && comp->IsA(target))
-                {
-                    return static_cast<T*>(comp);
-                }
-            }
-            return nullptr;
-        }
-        template <class T>
-            requires std::derived_from<T, Component>
-        [[nodiscard]] const T* FindComponent() const noexcept
-        {
-            const ReflectionInfo* target = T::StaticReflection();
-            for (const Component* comp : m_components)
-            {
-                if (comp != nullptr && comp->IsA(target))
-                {
-                    return static_cast<const T*>(comp);
-                }
-            }
-            return nullptr;
-        }
-
-        //! @brief 名前が name の Component を返す。無ければ nullptr
-        //! @details 名前はこの配置物の中で一意なので、同じ型が複数あっても 1 個に決まる
-        [[nodiscard]] Component* FindComponentByName(std::string_view name) const noexcept;
-
-        //! 永続 id が id の Component を返す。0 と無い id は nullptr
-        [[nodiscard]] Component* FindComponentById(std::uint32_t id) const noexcept;
-
-        //! @brief comp の名前を name にする。この配置物の中で重なれば _1, _2 と番号を付ける
-        //! @details 空は型名にする。comp がこの配置物の物でなければ何もしない
-        //! 実行中の参照は id で持つので、改名しても参照は切れない
-        void RenameComponent(Component& comp, std::string_view name);
-
-        //! Component を生成して寿命を所有し priority 昇順の tick 列へ登録する。戻り値は非所有の生ポインタ
-        template <class T, class... Args> T* AddComponent(Args&&... args)
-        {
-            static_assert(!std::is_same_v<T, TransformComponent>,
-                          "TransformComponent は器が必ず 1 つ持つ。Root() を使う");
-            return AddComponentUnchecked<T>(std::forward<Args>(args)...);
-        }
-
         //! 配下 Component の OnStart を伝播
         void OnStart();
-        //! IsActive==true の Component にだけ OnUpdate() を伝播
+        //! Update を呼ぶ
         void OnUpdate();
-        //! priority の降順で Component::OnEndPlay を呼ぶ
-        void OnEndPlay();
+        //! 世界から外し、全ての部品の OnEndPlay を呼ぶ
+        virtual void OnEndPlay();
 
         //! この配置物自身の active 値。親の状態は含まない
-        [[nodiscard]] bool IsActiveSelf() const noexcept { return m_activeSelf; }
+        [[nodiscard]] bool IsActiveSelf() const noexcept { return IsAlive(); }
 
         //! @brief 自分と全ての祖先が有効か
         //! @details Component::IsActive がこれを見るので、偽の間は配下 Component が更新も描画も当たりも止まる
         [[nodiscard]] bool IsActiveInHierarchy() const noexcept;
 
         //! active を切り替える。子の値は触らないので、親を戻せば子も一緒に戻る
-        void SetActive(bool active) noexcept { m_activeSelf = active; }
-
-    private:
-        //! Component に owner と型名からの一意な名前を与え、tick 列へ priority 昇順で挿入する
-        void AttachOwnedComponent(Component* comp);
-
-        //! 型を問わず積む本体。TransformComponent を積めるのはコンストラクタだけ
-        template <class T, class... Args>
-            requires std::derived_from<T, Component>
-        T* AddComponentUnchecked(Args&&... args)
+        void SetActive(bool active) noexcept
         {
-            std::unique_ptr<T> owned = std::make_unique<T>(std::forward<Args>(args)...);
-            T* raw = owned.get();
-            m_ownedComponents.push_back(std::move(owned));
-            AttachOwnedComponent(raw);
-            return raw;
+            if (active)
+            {
+                Appear();
+            }
+            else
+            {
+                Kill();
+            }
         }
 
-        Transform* m_transform = nullptr;     // TransformComponent が持つ実体、Actor が必ず 1 つ積む
-        std::vector<Component*> m_components; // priority 昇順の tick 列、非所有
-        std::vector<std::unique_ptr<Component>> m_ownedComponents; // 所有権保持用。tick 順序は m_components が担う
-        std::vector<Actor*> m_children;                       // 子 Actor、非所有
-        Actor* m_parent = nullptr;                            // 親 Actor、root なら nullptr
-        bool m_activeSelf = true;                                  // false で配下 Component が全て止まる
-        bool m_transient = false;                                  // 一時オブジェクトの印。保存・凍結に写らない
+    protected:
+        void OnAppear() override;
+        void OnKill() noexcept override;
+        static void TickPart(Component* component)
+        {
+            if (component != nullptr && component->IsActive())
+            {
+                component->OnUpdate();
+            }
+        }
+        void AttachFixedComponent(Component& component);
+        void SetCollisionPart(std::unique_ptr<Collider> collision);
+
+    private:
+        friend class ObjectList;
+        void SetId(std::uint32_t id) noexcept { m_id = id; }
+        std::uint32_t m_id = 0;
+        std::unique_ptr<TransformComponent> m_rootPart;
+        std::unique_ptr<Model> m_model;
+        std::unique_ptr<Animation> m_animation;
+        std::unique_ptr<Shadow> m_shadow;
+        std::unique_ptr<CapsuleCollider> m_collider;
+        std::unique_ptr<Collider> m_collision;
+        std::unique_ptr<HitSensor> m_bodySensor;
+        std::unique_ptr<HitSensor> m_attackSensor;
+        std::unique_ptr<StateMachineComponent> m_stateMachine;
+        std::unique_ptr<HitReaction> m_hitReaction;
+        Transform* m_transform = nullptr; // TransformComponent が持つ実体、Actor が必ず 1 つ積む
+        std::vector<Actor*> m_children;   // 子 Actor、非所有
+        Actor* m_parent = nullptr;        // 親 Actor、root なら nullptr
+        bool m_transient = false;         // 一時オブジェクトの印。保存・凍結に写らない
 
         void DetachFromParent() noexcept;
     };

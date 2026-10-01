@@ -16,7 +16,9 @@ TEST(PlacementCatalog, EveryPlaceableClassAppears)
     for (const NS::Obj::TypeRegistry::Entry* entry : NS::Obj::PlaceableEntries())
     {
         if (std::string_view{entry->className} == "MapParts")
+        {
             continue;
+        }
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem(entry->label);
         ASSERT_NE(item, nullptr) << entry->label;
         EXPECT_EQ(NS::Obj::ObjectJsonClass(item->prototype), std::string_view{entry->className});
@@ -41,12 +43,12 @@ TEST(PlacementCatalog, MapPartsIsSplitByMesh)
     {
         EXPECT_EQ(NS::Obj::ObjectJsonClass(item->prototype), "MapParts");
         // 個体のデータは部品を足せないので、ひな形も当たりの件を持たない
-        EXPECT_EQ(NS::Obj::FindComponentEntry(item->prototype, "BoxCollider"), nullptr);
-        EXPECT_EQ(NS::Obj::FindComponentEntry(item->prototype, "SlopeCollider"), nullptr);
+        EXPECT_EQ(NS::Obj::PartFields(item->prototype, "BoxCollider"), nullptr);
+        EXPECT_EQ(NS::Obj::PartFields(item->prototype, "SlopeCollider"), nullptr);
     }
-    const nlohmann::json* cubeMesh = NS::Obj::FindComponentEntry(cube->prototype, "MeshRenderer");
-    const nlohmann::json* sphereMesh = NS::Obj::FindComponentEntry(sphere->prototype, "MeshRenderer");
-    const nlohmann::json* slopeMesh = NS::Obj::FindComponentEntry(slope->prototype, "MeshRenderer");
+    const nlohmann::json* cubeMesh = NS::Obj::PartFields(cube->prototype, "Model");
+    const nlohmann::json* sphereMesh = NS::Obj::PartFields(sphere->prototype, "Model");
+    const nlohmann::json* slopeMesh = NS::Obj::PartFields(slope->prototype, "Model");
     ASSERT_NE(cubeMesh, nullptr);
     ASSERT_NE(sphereMesh, nullptr);
     ASSERT_NE(slopeMesh, nullptr);
@@ -93,9 +95,9 @@ TEST(PlacementCatalog, MeshPartsUsesTheDroppedMesh)
     // メッシュ資産から置く部品は、描いた三角形そのもので当たる
     const nlohmann::json prototype = NS::Editor::MakeMeshPartsPrototype("Assets/Models/terrain.glb");
     EXPECT_EQ(NS::Obj::ObjectJsonClass(prototype), "MapParts");
-    const nlohmann::json* renderer = NS::Obj::FindComponentEntry(prototype, "MeshRenderer");
+    const nlohmann::json* renderer = NS::Obj::PartFields(prototype, "Model");
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(NS::Obj::FieldString(*renderer, "メッシュ", ""), "Assets/Models/terrain.glb");
     // 当たりは地形の部品のクラスが持つ MeshCollider。ひな形は当たりの件を足さない
-    EXPECT_EQ(NS::Obj::FindComponentEntry(prototype, "BoxCollider"), nullptr);
+    EXPECT_EQ(NS::Obj::PartFields(prototype, "BoxCollider"), nullptr);
 }

@@ -1,5 +1,6 @@
 #include "Game/Game.h"
 
+#include "Game/Level/FollowCamera.h"
 #include "Runtime/App/Application.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -42,7 +43,9 @@ Game::Game(std::string_view startScenePath) : NS::App::Layer("Game"), m_startSce
 Game::~Game()
 {
     if (s_instance == this)
+    {
         s_instance = nullptr;
+    }
 }
 
 void Game::OnAttach()
@@ -78,8 +81,13 @@ void Game::OnAttach()
     (void)scene->BeginPlayBaseline();
 
     // 追従カメラは生成直後は休止している。出荷はプレイしかないので起動で有効化する
-    scene->Objects().ForEachComponent<NS::Obj::ThirdPersonFollow>(
-        [](NS::Obj::ThirdPersonFollow& follow) { follow.SetActive(true); });
+    for (NS::Obj::Actor* actor : scene->Objects())
+    {
+        if (NS::Game::Level::FollowCamera* camera = NS::Obj::Cast<NS::Game::Level::FollowCamera>(actor))
+        {
+            camera->Vcam().SetActive(true);
+        }
+    }
 
     // カーソルを消し、マウスを相対モードにして視点操作をカーソル位置から切り離す
     // Esc で出すまで非表示のまま。出し直しは OnUpdate の Esc 処理が行う
@@ -134,7 +142,9 @@ void Game::OnRender()
     // scene が最後に bind した描画先へ UI を重ねる。単体起動はバックバッファ、editor はビュー列の
     // 末尾にある Game ビューがそのまま残るので、どちらもゲームの絵の上に載る
     if (NS::App::Application* app = NS::App::Application::Get())
+    {
         m_ui.Render(app->Renderer());
+    }
 }
 
 bool Game::LoadStartScene()

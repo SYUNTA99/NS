@@ -1,5 +1,6 @@
 #include "Runtime/Object/UIActor.h"
 
+#include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Object/Scene/Scene.h"
 
 namespace NS::Obj
@@ -9,6 +10,14 @@ namespace NS::Obj
         Close();
     }
 
+    void UIActor::OnRenderOverlay(const NS::Gfx::RenderContext& context)
+    {
+        if (context.renderer != nullptr)
+        {
+            m_widgets.Render(*context.renderer);
+        }
+    }
+
     void UIActor::Open(Scene& scene)
     {
         if (IsOpen())
@@ -16,7 +25,23 @@ namespace NS::Obj
             return;
         }
         AttachScene(&scene);
-        scene.RegisterUIActor(this);
+        Appear();
+    }
+
+    void UIActor::OnAppear()
+    {
+        if (Scene* scene = OwningScene())
+        {
+            scene->RegisterUIActor(this);
+        }
+    }
+
+    void UIActor::OnKill() noexcept
+    {
+        if (Scene* scene = OwningScene())
+        {
+            scene->UnregisterUIActor(this);
+        }
     }
 
     void UIActor::Close() noexcept
@@ -26,7 +51,7 @@ namespace NS::Obj
         {
             return;
         }
-        scene->UnregisterUIActor(this);
+        Kill();
         AttachScene(nullptr);
     }
 } // namespace NS::Obj

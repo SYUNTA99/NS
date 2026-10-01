@@ -46,7 +46,9 @@ namespace NS::Platform
             }();
             const float fy = [&]() -> float {
                 if (rawY < 0)
+                {
                     return static_cast<float>(rawY) / 32768.0f;
+                }
                 return static_cast<float>(rawY) / 32767.0f;
             }();
             const float dz = static_cast<float>(deadzone) / 32767.0f;

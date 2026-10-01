@@ -2,8 +2,8 @@
 
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
-#include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/ObjectJson.h"
+#include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Transform.h"
 
 #include <string_view>
@@ -52,7 +52,7 @@ namespace NS::Obj
     //! TransformComponent のリフレクション型名。transform エントリの照合に使う共有定数
     inline constexpr std::string_view k_TransformTypeName = "TransformComponent";
 
-    //! 配置物の JSON の transform を読み書きする唯一の経路。実体は components 内の TransformComponent エントリ
+    //! 配置物の JSON の transform を読み書きする唯一の経路。実体は parts 内の "Transform" の欄
     //! Set は対象エントリが無ければ EnsureTransformComponent で 1 つ作る
     [[nodiscard]] NS::Core::Vector3 ObjectPosition(const nlohmann::json& object) noexcept;
     void SetObjectPosition(nlohmann::json& object, const NS::Core::Vector3& position) noexcept;

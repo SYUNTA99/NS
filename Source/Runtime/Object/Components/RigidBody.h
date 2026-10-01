@@ -18,12 +18,11 @@ namespace NS::Obj
     //! トリガーの箱は自分の sensor body のまま、物体が動いたフレームに追従する
     //! メッシュとスロープは動く body の形にできない。静的な body のまま元の場所に残り、同期のたびに警告を出す
     //! body の原点は持ち主の世界の位置と回転で、拡縮は形の寸法へ焼き込む
-    //! 形と置き場所を作り直すのは SyncToPhysics だけ。拡縮や collider の寸法を変えたら ObjectList::SyncPhysics で張り直す
-    //! ダイナミックは Scene が物理を 1 歩進めた後に、body の姿勢を持ち主の Transform へ書き戻す
-    //! Transform を直接書いても次の 1 歩で上書きされるので、置き直しは Teleport を使う
-    //! キネマティックは物理の 1 歩の前に Transform の姿勢へ body を運び、途中で触れた相手を押す
-    //! 重力の向きと強さは PhysicsScene が世界に 1 つ持ち、ここは受けるかと倍率だけを持つ
-    //! 依存: Collider, NS::Phys::PhysicsScene
+    //! 形と置き場所を作り直すのは SyncToPhysics だけ。拡縮や collider の寸法を変えたら ObjectList::SyncPhysics
+    //! で張り直す ダイナミックは Scene が物理を 1 歩進めた後に、body の姿勢を持ち主の Transform へ書き戻す Transform
+    //! を直接書いても次の 1 歩で上書きされるので、置き直しは Teleport を使う キネマティックは物理の 1 歩の前に
+    //! Transform の姿勢へ body を運び、途中で触れた相手を押す 重力の向きと強さは PhysicsScene が世界に 1
+    //! つ持ち、ここは受けるかと倍率だけを持つ 依存: Collider, NS::Phys::PhysicsScene
     class RigidBody : public Component
     {
     public:
@@ -44,14 +43,18 @@ namespace NS::Obj
         //! その 1 歩を待てない時に呼ぶ。body が無ければ何もしない
         void RefreshMotion();
 
-        //! @brief Scene が物理を 1 歩進める直前に呼ぶ
-        //! @details 欄の変化を body へ映し、キネマティックなら Transform の姿勢へ body を運ぶ
+        //! @brief 欄の変化を body へ映し、キネマティックなら Transform の姿勢へ body を運ぶ
+        //! @details Scene は直接呼ばない。持ち主のクラスが Actor::OnPrePhysicsStep の上書きから呼ぶ。
+        //! 今は剛体を持つクラスが無く、呼ぶ所も無い
         void PrePhysicsStep();
-        //! @brief Scene が物理を 1 歩進めた直後に呼ぶ
-        //! @details ダイナミックなら body の姿勢を Transform へ書き戻し、追従する collider を動かす
+        //! @brief ダイナミックなら body の姿勢を Transform へ書き戻し、追従する collider を動かす
+        //! @details Scene は直接呼ばない。持ち主のクラスが Actor::OnPostPhysicsStep の上書きから呼ぶ。
+        //! 今は剛体を持つクラスが無く、呼ぶ所も無い
         void PostPhysicsStep();
 
         //! Scene に入った時に body を作る。実行中に湧いた一時オブジェクトは ObjectList::SyncPhysics を通らない
+        void OnAppear() override { RigidBody::OnStart(); }
+        void OnKill() noexcept override { RigidBody::OnEndPlay(); }
         void OnStart() override;
         //! 配置物ごと消える前に、持ち主の Scene の PhysicsScene から body を外す
         void OnEndPlay() override;
@@ -156,25 +159,25 @@ namespace NS::Obj
         // 形にならず追従する collider の body を、持ち主の今の姿勢へ置き直す
         void SyncFollowers(NS::Phys::PhysicsScene& physics);
 
-        bool m_kinematic = false;            // 力を受けず Transform の姿勢へ運ばれるか
-        float m_mass = 1.0f;                 // 質量 (kg)
-        bool m_useGravity = true;            // 世界の重力を受けるか
-        float m_gravityScale = 1.0f;         // 世界の重力に掛ける倍率
-        float m_friction = 0.2f;             // 摩擦
-        float m_restitution = 0.0f;          // 跳ね返り
-        float m_linearDamping = 0.05f;       // 移動の減衰
-        float m_angularDamping = 0.05f;      // 回転の減衰
-        bool m_continuousCollision = false;  // 1 歩で動いた道を掃引して当てるか
-        bool m_lockPositionX = false;        // 世界の X に沿った移動を止める
-        bool m_lockPositionY = false;        // 世界の Y に沿った移動を止める
-        bool m_lockPositionZ = false;        // 世界の Z に沿った移動を止める
-        bool m_lockRotationX = false;        // 世界の X まわりの回転を止める
-        bool m_lockRotationY = false;        // 世界の Y まわりの回転を止める
-        bool m_lockRotationZ = false;        // 世界の Z まわりの回転を止める
+        bool m_kinematic = false;           // 力を受けず Transform の姿勢へ運ばれるか
+        float m_mass = 1.0f;                // 質量 (kg)
+        bool m_useGravity = true;           // 世界の重力を受けるか
+        float m_gravityScale = 1.0f;        // 世界の重力に掛ける倍率
+        float m_friction = 0.2f;            // 摩擦
+        float m_restitution = 0.0f;         // 跳ね返り
+        float m_linearDamping = 0.05f;      // 移動の減衰
+        float m_angularDamping = 0.05f;     // 回転の減衰
+        bool m_continuousCollision = false; // 1 歩で動いた道を掃引して当てるか
+        bool m_lockPositionX = false;       // 世界の X に沿った移動を止める
+        bool m_lockPositionY = false;       // 世界の Y に沿った移動を止める
+        bool m_lockPositionZ = false;       // 世界の Z に沿った移動を止める
+        bool m_lockRotationX = false;       // 世界の X まわりの回転を止める
+        bool m_lockRotationY = false;       // 世界の Y まわりの回転を止める
+        bool m_lockRotationZ = false;       // 世界の Z まわりの回転を止める
 
         JPH::ObjectLayer m_objectLayer = NS::Phys::ObjectLayers::Rock; // 当たる相手を決める種別。保存しない
-        JPH::BodyID m_bodyId;                       // 動く body。作っていなければ無効
-        NS::Phys::BodyMotion m_appliedMotion;    // 最後に body へ入れた動き方。欄の変化を見つけるのに使う
-        NS::Core::Matrix m_followedWorld;           // 追従する collider を最後に置き直した時の持ち主の世界行列
+        JPH::BodyID m_bodyId;                                          // 動く body。作っていなければ無効
+        NS::Phys::BodyMotion m_appliedMotion; // 最後に body へ入れた動き方。欄の変化を見つけるのに使う
+        NS::Core::Matrix m_followedWorld;     // 追従する collider を最後に置き直した時の持ち主の世界行列
     };
 } // namespace NS::Obj

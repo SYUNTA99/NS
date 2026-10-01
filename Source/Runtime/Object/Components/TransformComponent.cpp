@@ -46,7 +46,7 @@ namespace NS::Obj
                                             std::string_view fieldName,
                                             const NS::Core::Vector3& fallback) noexcept
         {
-            const nlohmann::json* transform = FindComponentEntry(object, k_TransformTypeName);
+            const nlohmann::json* transform = PartFields(object, "Transform");
             if (transform == nullptr)
             {
                 return fallback;
@@ -62,20 +62,15 @@ namespace NS::Obj
 
     nlohmann::json& EnsureTransformComponent(nlohmann::json& object)
     {
-        nlohmann::json& components = ObjectJsonComponents(object);
-        for (nlohmann::json& entry : components)
+        nlohmann::json& transform = ObjectJsonParts(object)["Transform"];
+        if (!transform.is_object())
         {
-            if (ComponentEntryType(entry) == k_TransformTypeName)
-            {
-                return entry;
-            }
+            transform = nlohmann::json::object();
+            SetField(transform, k_PositionFieldName, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+            SetField(transform, k_RotationFieldName, NS::Core::Quaternion::Identity);
+            SetField(transform, k_ScaleFieldName, NS::Core::Vector3{1.0f, 1.0f, 1.0f});
         }
-        nlohmann::json transform = MakeComponentEntry(k_TransformTypeName);
-        SetField(transform, k_PositionFieldName, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
-        SetField(transform, k_RotationFieldName, NS::Core::Quaternion::Identity);
-        SetField(transform, k_ScaleFieldName, NS::Core::Vector3{1.0f, 1.0f, 1.0f});
-        components.push_back(std::move(transform));
-        return components.back();
+        return transform;
     }
 
     NS::Core::Vector3 ObjectPosition(const nlohmann::json& object) noexcept
@@ -90,7 +85,7 @@ namespace NS::Obj
 
     NS::Core::Quaternion ObjectRotation(const nlohmann::json& object) noexcept
     {
-        const nlohmann::json* transform = FindComponentEntry(object, k_TransformTypeName);
+        const nlohmann::json* transform = PartFields(object, "Transform");
         if (transform == nullptr)
         {
             return NS::Core::Quaternion::Identity;

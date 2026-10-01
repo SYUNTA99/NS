@@ -3,12 +3,9 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
 
 namespace NS::Obj
 {
-    CameraComponent::CameraComponent() noexcept : Component(NS::Obj::TickPriority::LateUpdate + 50) {}
-
     void CameraComponent::SetPosition(const NS::Core::Vector3& position) noexcept
     {
         m_camera.SetPosition(position);
@@ -73,10 +70,9 @@ namespace NS::Obj
         NS::Core::Vector3 out{};
         if (!NS::Core::TryNormalizeHorizontal(d, out))
         {
-            return NS::Core::Vector3{ 0.0f, 0.0f, 1.0f };
+            return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
         }
         return out;
     }
 
-    NS_CLASS(CameraComponent)
 } // namespace NS::Obj

@@ -4,23 +4,59 @@
 
 namespace NS::Obj
 {
+    void ActorBase::Appear()
+    {
+        if (m_alive)
+        {
+            return;
+        }
+        m_alive = true;
+        OnAppear();
+    }
+
+    void ActorBase::Kill() noexcept
+    {
+        if (!m_alive)
+        {
+            return;
+        }
+        m_alive = false;
+        OnKill();
+    }
+
     CameraManager* ActorBase::GetCameraManager() const noexcept
     {
-        return m_scene != nullptr ? m_scene->GetCameraManager() : nullptr;
+        if (m_scene == nullptr)
+        {
+            return nullptr;
+        }
+        return m_scene->GetCameraManager();
     }
 
     SceneObjHolder* ActorBase::GetSceneObjHolder() const noexcept
     {
-        return m_scene != nullptr ? m_scene->GetSceneObjHolder() : nullptr;
+        if (m_scene == nullptr)
+        {
+            return nullptr;
+        }
+        return m_scene->GetSceneObjHolder();
     }
 
     NS::Phys::PhysicsScene* ActorBase::GetPhysicsScene() const noexcept
     {
-        return m_scene != nullptr ? m_scene->GetPhysicsScene() : nullptr;
+        if (m_scene == nullptr)
+        {
+            return nullptr;
+        }
+        return m_scene->GetPhysicsScene();
     }
 
     NS::Gfx::EffectScene* ActorBase::GetEffectScene() const noexcept
     {
-        return m_scene != nullptr ? m_scene->GetEffectScene() : nullptr;
+        if (m_scene == nullptr)
+        {
+            return nullptr;
+        }
+        return m_scene->GetEffectScene();
     }
 } // namespace NS::Obj

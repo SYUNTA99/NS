@@ -1,11 +1,12 @@
-﻿#include "Game/Level/CollisionInput.h"
+#include "Game/Level/CollisionInput.h"
 
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -37,26 +38,36 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    // -140 はチャージ減速を書いてから PlayerComponent (200) が動く並びにするため
-    CollisionInput::CollisionInput() noexcept : NS::Obj::Component(NS::Obj::TickPriority::Update - 140)
-    {
-        m_chargeFactorCurve.count = 2;
-        m_chargeFactorCurve.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
-        m_chargeFactorCurve.keys[1] = NS::Obj::Curve::Key{1.0f, 2.0f};
+    // Player::Update は溜めを PlayerComponent より前に進めるので、チャージ減速は同じフレームの移動に効く
+    CollisionInput::CollisionInput() noexcept : NS::Obj::Component() {}
 
-        m_positionFactorCurve.count = 2;
-        m_positionFactorCurve.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
-        m_positionFactorCurve.keys[1] = NS::Obj::Curve::Key{1.0f, 0.7f};
+    const NS::Game::Player::PlayerParams& CollisionInput::Tuning() const noexcept
+    {
+        if (m_params != nullptr)
+        {
+            return *m_params;
+        }
+        static const NS::Game::Player::PlayerParams defaults;
+        return defaults;
     }
 
     void CollisionInput::OnStart()
     {
-        m_movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>();
-        m_resolver = Owner()->FindComponent<ImpactResolver>();
+        if (m_player != nullptr)
+        {
+            m_movement = &m_player->Movement();
+            m_resolver = &m_player->Resolver();
+        }
     }
 
     void CollisionInput::OnEndPlay()
     {
+        m_stateReady = false;
+        m_controlReady = false;
+        if (m_player != nullptr)
+        {
+            m_player->m_charge.Finish();
+        }
         // 構えを掛けたまま外れると縮んだ形が残るため、必ず元の形へ戻す
         if (m_stanceApplied)
         {
@@ -72,20 +83,90 @@ namespace NS::Game::Level
         }
     }
 
-    void CollisionInput::OnUpdate()
+    bool CollisionInput::ReadHeld() const
     {
-        const float dt = NS::Platform::FrameTimer::FixedDelta();
-        m_judge.chargeThresholdSteps = SecondsToSteps(m_chargeThresholdSeconds, dt);
-        m_judge.chargeMaxSteps = SecondsToSteps(m_chargeFullSeconds, dt);
-
         NS::Platform::Input& input = NS::Platform::Input::Get();
-        // エディタの操作クリックが衝突入力へ漏れるため、UI がマウスを取っている間は読まない
-        // エディタがプレイ中の Scene のタブから左ボタンだけ渡している間は読む
         const bool leftFree = input.GameReceivesMouseButton(NS::Platform::MouseButton::Left);
         const NS::Platform::Mouse& mouse = input.Mouse();
         const NS::Platform::Gamepad& pad = input.Gamepad(0);
-        const bool held =
-            (leftFree && mouse.IsHeld(NS::Platform::MouseButton::Left)) || pad.IsHeld(NS::Platform::GamepadButton::X);
+        return (leftFree && mouse.IsHeld(NS::Platform::MouseButton::Left)) ||
+               pad.IsHeld(NS::Platform::GamepadButton::X);
+    }
+
+    void CollisionInput::OnUpdate()
+    {
+        Step(ReadHeld(), NS::Platform::FrameTimer::FixedDelta());
+    }
+
+    void CollisionInput::Observe(bool held)
+    {
+        m_observedHeld = held;
+        m_observedRushing = m_movement != nullptr && m_movement->IsBodySlamming();
+        m_stateReady = true;
+        m_controlReady = true;
+        UpdateAimTarget(held);
+        ObserveHomingTarget(held);
+    }
+
+    NS::Core::Vector3 CollisionInput::PredictedSlamVelocity() const noexcept
+    {
+        if (m_movement == nullptr)
+        {
+            return NS::Core::Vector3{};
+        }
+        if (m_observedRushing && m_observedHasHomingTarget)
+        {
+            return m_movement->PredictHomingVelocity(m_observedHomingCenter);
+        }
+        return m_movement->BodySlamVelocity();
+    }
+
+    void CollisionInput::AdvanceState(float dt)
+    {
+        if (!m_stateReady)
+        {
+            return;
+        }
+        m_stateReady = false;
+        if (m_player != nullptr)
+        {
+            m_player->StepCharge(m_observedHeld, dt);
+            return;
+        }
+        AdvanceCharge(m_observedHeld, dt);
+    }
+
+    void CollisionInput::ApplyControl(bool refreshVelocity)
+    {
+        if (m_stateReady || !m_controlReady)
+        {
+            return;
+        }
+        m_controlReady = false;
+        if (m_observedRushing && m_movement != nullptr && m_movement->IsBodySlamming())
+        {
+            SteerTowardTarget();
+            if (refreshVelocity && m_movement->IsActive())
+            {
+                m_movement->ApplyBodySlamHeading();
+            }
+        }
+#if !defined(NS_SHIPPING)
+        DrawChargeRing();
+#endif
+    }
+
+    void CollisionInput::Step(bool held, float dt)
+    {
+        Observe(held);
+        AdvanceState(dt);
+        ApplyControl(false);
+    }
+
+    void CollisionInput::AdvanceCharge(bool held, float dt)
+    {
+        m_judge.chargeThresholdSteps = SecondsToSteps(Tuning().m_chargeThresholdSeconds, dt);
+        m_judge.chargeMaxSteps = SecondsToSteps(Tuning().m_chargeFullSeconds, dt);
         m_judge.Step(held);
 
         if (m_judge.JustPressed() && m_movement != nullptr)
@@ -141,24 +222,33 @@ namespace NS::Game::Level
             m_movement->SetVelocity(NS::Core::Vector3{0.0f, velocity.y, 0.0f});
         }
 
-        UpdateAimTarget();
-        SteerTowardTarget();
+        m_hasAimLine = m_observedHasAimLine;
+        m_hasAimTarget = m_observedHasAimTarget;
+        m_aimLine = m_observedAimLine;
+        m_aimTarget = m_observedAimTarget;
+        if (m_hasAimLine)
+        {
+            m_aimLine.origin = RootTransform().Position();
+        }
+        if (m_hasAimTarget)
+        {
+            m_aimTarget.origin = RootTransform().Position();
+        }
+        if (!m_observedRushing)
+        {
+            SteerTowardTarget();
+        }
         UpdateChargeStance();
-
-#if !defined(NS_SHIPPING)
-        DrawChargeRing();
-#endif
     }
 
-    void CollisionInput::UpdateAimTarget()
+    void CollisionInput::UpdateAimTarget(bool held)
     {
-        m_hasAimTarget = false;
-        m_hasAimLine = false;
-        if (!m_judge.IsHeld() || m_movement == nullptr)
+        m_observedHasAimTarget = false;
+        m_observedHasAimLine = false;
+        if (!held || m_movement == nullptr)
         {
             return;
         }
-        // 線はカメラの正面だけで引き、押したキーとスティックの向きは入れない。カメラが無ければ見ている正面が無い
         NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
         {
@@ -174,19 +264,19 @@ namespace NS::Game::Level
         {
             return;
         }
-        // 非数と無限の向きは正規化を通り抜ける
         if (!std::isfinite(direction.x) || !std::isfinite(direction.z))
         {
             return;
         }
-        m_aimLine = AimLine{
+        m_observedAimLine = AimLine{
             .origin = RootTransform().Position(), .direction = direction, .length = m_movement->BodySlamDistance()};
-        m_hasAimLine = true;
+        m_observedHasAimLine = true;
         if (m_resolver == nullptr)
         {
             return;
         }
-        m_hasAimTarget = m_resolver->FindSlamLineTarget(m_aimLine.direction, m_aimLine.length, m_aimTarget);
+        m_observedHasAimTarget =
+            m_resolver->FindSlamLineTarget(m_observedAimLine.direction, m_observedAimLine.length, m_observedAimTarget);
     }
 
     bool CollisionInput::TryGetAimTarget(SlamLineTarget& outTarget) const noexcept
@@ -209,51 +299,61 @@ namespace NS::Game::Level
         return true;
     }
 
-    void CollisionInput::SteerTowardTarget()
+    void CollisionInput::ObserveHomingTarget(bool held)
     {
+        m_observedHasHomingTarget = false;
         if (m_movement == nullptr || m_resolver == nullptr)
         {
             return;
         }
 
-        // 突進中は今飛んでいる向き、押している間は狙いの線の向き (カメラの正面) の前方を探す。
-        // 押している間は同じ向きを、寄せた角度を測る基準として自機へ渡す。線が無ければ AimDirection で代える
-        // 溜めて放した突進は線の向きへ出るが、放すまでに歩いた分だけ相手への角度が変わるので、
-        // 自機は放す時に控えた相手を放す向きから測り直す
-        // 線の上の相手を先に選ぶ。一番近い相手だけを見ると、狙う相手と違う近くの相手の側へ回る
-        // 押している間の線の上の相手は、カメラの正面の線で探した狙う相手
         NS::Core::Vector3 forward{};
         SlamLineTarget onLine{};
         bool hasOnLine = false;
-        if (m_movement->IsBodySlamming())
+        if (m_observedRushing)
         {
             const NS::Core::Vector3 velocity = m_movement->BodySlamVelocity();
             forward = NS::Core::Vector3{velocity.x, 0.0f, velocity.z};
             hasOnLine = m_resolver->FindSlamLineTarget(forward, m_movement->BodySlamDistance(), onLine);
         }
-        else if (m_judge.IsHeld())
+        else if (held)
         {
             forward = m_movement->AimDirection();
-            if (m_hasAimLine)
+            if (m_observedHasAimLine)
             {
-                forward = m_aimLine.direction;
+                forward = m_observedAimLine.direction;
             }
-            hasOnLine = TryGetAimTarget(onLine);
+            hasOnLine = m_observedHasAimTarget;
+            if (hasOnLine)
+            {
+                onLine = m_observedAimTarget;
+            }
         }
         else
         {
             return;
         }
 
-        NS::Obj::ObjectRef preferred{};
+        NS::Obj::ActorRef preferred{};
         if (hasOnLine)
         {
             preferred = onLine.target;
         }
         NS::Core::Vector3 center{};
-        if (m_resolver->FindHomingTarget(forward, m_homingSearchDegrees, m_homingSearchDistance, center, preferred))
+        if (m_resolver->FindHomingTarget(
+                forward, Tuning().m_homingSearchDegrees, Tuning().m_homingSearchDistance, center, preferred))
         {
-            m_movement->SteerToward(center, m_homingSearchDegrees, forward);
+            m_observedHasHomingTarget = true;
+            m_observedHomingCenter = center;
+            m_observedHomingForward = forward;
+        }
+    }
+
+    void CollisionInput::SteerTowardTarget()
+    {
+        if (m_observedHasHomingTarget && m_movement != nullptr)
+        {
+            m_movement->SteerToward(m_observedHomingCenter, Tuning().m_homingSearchDegrees, m_observedHomingForward);
         }
     }
 
@@ -269,7 +369,11 @@ namespace NS::Game::Level
                 m_homeScale = RootTransform().Scale();
                 m_stanceApplied = true;
             }
-            const float scale = m_judge.IsCharging() ? m_chargeSquashScale : m_pressSquashScale;
+            float scale = Tuning().m_pressSquashScale;
+            if (m_judge.IsCharging())
+            {
+                scale = Tuning().m_chargeSquashScale;
+            }
             RootTransform().SetScale(NS::Core::Vector3{m_homeScale.x, m_homeScale.y * scale, m_homeScale.z});
         }
         else if (m_stanceApplied && !resolverAnimating)
@@ -311,7 +415,7 @@ namespace NS::Game::Level
             return 1.0f;
         }
         const float clamped = NS::Core::Clamp(charge01, 0.0f, 1.0f);
-        const float factor = m_chargeFactorCurve.Evaluate(clamped);
+        const float factor = Tuning().m_chargeFactorCurve.Evaluate(clamped);
         // Inspector で点を全部消すと Evaluate が 0 を返して威力が消えるため、0 以下は 1 とみなす
         if (!(factor > 0.0f))
         {
@@ -328,7 +432,7 @@ namespace NS::Game::Level
         }
 
         const float clamped = NS::Core::Clamp(offset01, 0.0f, 1.0f);
-        const float factor = m_positionFactorCurve.Evaluate(clamped);
+        const float factor = Tuning().m_positionFactorCurve.Evaluate(clamped);
         // 点を全部消すと威力が 0 になるため、チャージ倍率カーブと同じく 0 以下は 1 とみなす
         if (!(factor > 0.0f))
         {
@@ -345,11 +449,11 @@ namespace NS::Game::Level
         {
             return HitTier::Wide;
         }
-        if (offset01 < m_centerTierEdge)
+        if (offset01 < Tuning().m_centerTierEdge)
         {
             return HitTier::Center;
         }
-        if (offset01 < m_nearTierEdge)
+        if (offset01 < Tuning().m_nearTierEdge)
         {
             return HitTier::Near;
         }
@@ -359,7 +463,7 @@ namespace NS::Game::Level
     float CollisionInput::ChargingSpeedScale() const noexcept
     {
         // 減速率の欄は非有限の書き込みを捨てるので、ここへ来る値は有限。Clamp だけで 0..1 に収まる
-        return NS::Core::Clamp(1.0f - m_chargeSlowRate, 0.0f, 1.0f);
+        return NS::Core::Clamp(1.0f - Tuning().m_chargeSlowRate, 0.0f, 1.0f);
     }
 
     NS_CLASS(CollisionInput)

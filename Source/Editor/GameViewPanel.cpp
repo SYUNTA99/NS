@@ -38,7 +38,9 @@ namespace NS::Editor
 
         // 入力を持つべきプレイ中に自分が裏なら、編集入力とオーバーレイを止める
         if (playMode && !m_surface.IsVisible())
+        {
             editor.HideGameView();
+        }
 #else
         (void)editor;
 #endif
@@ -50,7 +52,9 @@ namespace NS::Editor
         m_hovered = false;
         m_surface.ResetVisibility();
         if (editor.CurrentMode() == LevelEditorController::Mode::Play)
+        {
             editor.HideGameView();
+        }
 #else
         (void)editor;
 #endif
@@ -66,7 +70,9 @@ namespace NS::Editor
 #if NS_EDITOR_ENABLED
         // 全マウスボタン解放中だけ hover に追従し、パネル発のドラッグ中は離すまで追従を維持する
         if (!ImGui::IsAnyMouseDown())
+        {
             m_mouseLatch = m_hovered;
+        }
 #endif
     }
 } // namespace NS::Editor

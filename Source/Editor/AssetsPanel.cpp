@@ -89,7 +89,9 @@ namespace NS::Editor
                     ImGui::EndDragDropSource();
                 }
                 if (ImGui::IsItemHovered())
+                {
                     ImGui::SetTooltip("Scene ビューへドラッグすると置ける");
+                }
                 ImGui::PopID();
                 continue;
             }
@@ -101,7 +103,9 @@ namespace NS::Editor
             }
             ImGui::PushID(name.c_str());
             if (ImGui::Selectable(name.c_str()) && hasSelection)
+            {
                 editor.ApplyMaterialToSelected(file);
+            }
             if (ImGui::BeginDragDropSource())
             {
                 const std::string& full = file;

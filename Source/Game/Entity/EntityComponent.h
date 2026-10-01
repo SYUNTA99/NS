@@ -11,7 +11,7 @@ namespace NS::Obj
 {
     class CapsuleCollider;
     class HitSensor;
-}
+} // namespace NS::Obj
 
 namespace NS::Phys
 {
@@ -23,7 +23,6 @@ namespace NS::Game::Entity
     //! @brief 登場人物に共通する移動と接地の抽象基底
     //! @details 敵も自機もここから派生する。速度の横縦分解・接地・カプセル寸法の参照・1 フレームの移動だけを持ち、
     //! 能力も調整値も持たない。状態機械は派生が具象の型で持つ。
-    //! 1 フレームは HandleStates で派生が能力を並べ、続く HandleMovement で 1 回動かす。
     //! TypeRegistry には登録しない。実体化できるのは派生だけ。
     //! 衝突の PhysicsScene は使う時に持ち主の Scene から引く。
     //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。
@@ -95,15 +94,12 @@ namespace NS::Game::Entity
 
         //! 同居する CapsuleCollider を控え、静的な当たりの世界から外す
         void OnStart() override;
-        //! 1 フレームぶん HandleStates を呼び、続けて HandleMovement で動かす
-        void OnUpdate() override;
+        void OnUpdate() override = 0;
 
         // 抽象基底なので TypeRegistry には登録せず、リフレクションの鎖だけ通す
         NS_REFLECT_NONE(EntityComponent, NS::Obj::Component)
 
     protected:
-        //! 1 フレームの中身。派生が状態機械を回すか能力を直に並べる
-        virtual void HandleStates(float dt) = 0;
         //! @brief 状態が決めた速度で 1 フレーム動かす。既定は段差を登らずに進む
         //! @details Move を呼ぶのは 1 フレームにここだけ。状態の側で動かすと、状態を足した時に呼び忘れても
         //! ビルドが通り、その状態の間だけ動かなくなる
@@ -129,7 +125,7 @@ namespace NS::Game::Entity
         //! 体のセンサーの寸法を今の当たりに合わせる。範囲が調べる体と、移動と裁定の当たりを同じ形にする
         void SyncBodySensor() noexcept;
 
-        bool m_sphereShape = false;               // 当たりを球にしているか。書くのは SetSphereShape だけ
+        bool m_sphereShape = false;                 // 当たりを球にしているか。書くのは SetSphereShape だけ
         NS::Obj::HitSensor* m_bodySensor = nullptr; // 同居するカプセルのセンサー。無ければ nullptr
     };
 } // namespace NS::Game::Entity

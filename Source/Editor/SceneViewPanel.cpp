@@ -64,7 +64,9 @@ namespace NS::Editor
 
         // 編集中に自分が裏なら編集オーバーレイと矩形を止める
         if (!playMode && !m_surface.IsVisible())
+        {
             editor.HideGameView();
+        }
 
         // 自由視点入力はプレイ中に可視なフレームだけ効かせる
         if (playMode && m_surface.IsVisible())
@@ -90,7 +92,9 @@ namespace NS::Editor
         m_freeFlying = false;
         editor.SetSceneViewVisible(false);
         if (editor.CurrentMode() == LevelEditorController::Mode::Edit)
+        {
             editor.HideGameView();
+        }
 #else
         (void)editor;
 #endif
@@ -124,7 +128,9 @@ namespace NS::Editor
 #if NS_EDITOR_ENABLED
         // 全マウスボタン解放中だけ hover に追従し、パネル発のドラッグ中は離すまで追従を維持する
         if (!ImGui::IsAnyMouseDown())
+        {
             m_mouseLatch = m_editHovered;
+        }
 #endif
     }
 
@@ -133,7 +139,9 @@ namespace NS::Editor
 #if NS_EDITOR_ENABLED
         const ImGuiIO& io = ImGui::GetIO();
         if (!ImGui::IsAnyMouseDown())
+        {
             m_freeViewLatch = m_freeViewHovered;
+        }
 
         const bool flying = m_freeViewLatch && ImGui::IsMouseDown(ImGuiMouseButton_Right);
         const bool panning = m_freeViewLatch && ImGui::IsMouseDown(ImGuiMouseButton_Middle);
@@ -152,24 +160,40 @@ namespace NS::Editor
             input.panYPixels = io.MouseDelta.y;
         }
         if (m_freeViewHovered)
+        {
             input.wheelNotches = io.MouseWheel;
+        }
 
         if (flying && !io.WantTextInput)
         {
             if (io.KeyShift)
+            {
                 input.speedScale = 4.0f;
+            }
             if (ImGui::IsKeyDown(ImGuiKey_W))
+            {
                 input.forwardAxis += 1.0f;
+            }
             if (ImGui::IsKeyDown(ImGuiKey_S))
+            {
                 input.forwardAxis -= 1.0f;
+            }
             if (ImGui::IsKeyDown(ImGuiKey_D))
+            {
                 input.strafeAxis += 1.0f;
+            }
             if (ImGui::IsKeyDown(ImGuiKey_A))
+            {
                 input.strafeAxis -= 1.0f;
+            }
             if (ImGui::IsKeyDown(ImGuiKey_E))
+            {
                 input.verticalAxis += 1.0f;
+            }
             if (ImGui::IsKeyDown(ImGuiKey_Q))
+            {
                 input.verticalAxis -= 1.0f;
+            }
         }
 
         m_freeFlying = flying;

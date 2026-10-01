@@ -156,8 +156,8 @@ namespace NS::Phys
         //! @details id が無効なら新しく作る。id が静的な body なら作り直し、古い body は外さない
         //! 形は世界座標の置き場所ごと受け取り、body の原点から見た位置と向きへ直して入れる
         //! 形が 2 つ以上なら合成形状、1 つなら位置と向きをずらした形にする
-        //! 形が null か静的にしか使えない部品は飛ばす。1 つも残らないか形を作れなければ無効な BodyID を返し、id の body は外さない
-        //! 置き直しは瞬間移動で、速度はそのまま残る
+        //! 形が null か静的にしか使えない部品は飛ばす。1 つも残らないか形を作れなければ無効な BodyID を返し、id の body
+        //! は外さない 置き直しは瞬間移動で、速度はそのまま残る
         JPH::BodyID SyncMovingBody(JPH::BodyID id,
                                    std::span<const ShapePart> parts,
                                    const NS::Core::Vector3& position,
@@ -220,6 +220,19 @@ namespace NS::Phys
                                    const NS::Core::Vector3& direction,
                                    float maxDistance,
                                    float& outDistance) const;
+
+        //! @brief 上と同じ光線を、Trigger の層と ignoredBody を除いて飛ばし、最も近い命中の距離と面の法線を返す
+        //! @details 引数が有限でない時と、maxDistance か direction の長さが正でない時は false
+        //! 命中が無い時と false を返す時は outDistance も outNormal も変えない
+        //! @param[out] outNormal 命中した面の世界座標の法線
+        //! @param[in] ignoredBody 当たりから除く body。自分の body を渡す
+        //! @return 命中した場合 true、それ以外の場合は false
+        [[nodiscard]] bool Raycast(const NS::Core::Vector3& origin,
+                                   const NS::Core::Vector3& direction,
+                                   float maxDistance,
+                                   float& outDistance,
+                                   NS::Core::Vector3& outNormal,
+                                   JPH::BodyID ignoredBody) const;
 
         //! @brief capsule に重なっている body の id を集めて返す
         //! @details 形の実物どうしで見るので、回転した box は外接箱ではなく本当の形で判定する

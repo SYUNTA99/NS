@@ -1,7 +1,7 @@
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/Goal.h"
 #include "Game/Level/KillZone.h"
-#include "Game/Level/LaunchedBody.h"
+#include "Game/Level/LaunchArc.h"
 #include "Game/Level/ScreenFade.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Actor.h"
@@ -86,7 +86,7 @@ TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
     director->OnTick();
     EXPECT_TRUE(director->IsClearing());
     EXPECT_TRUE(director->Fade().IsFading());
-    const NS::Obj::PlayerInput* input = player->FindComponent<NS::Obj::PlayerInput>();
+    const NS::Obj::PlayerInput* input = NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player->Part("Input"));
     ASSERT_NE(input, nullptr);
     EXPECT_FALSE(input->IsActiveSelf());
 
@@ -112,7 +112,9 @@ TEST(CourseDirector, RestartReturnsObjectsToBaseline)
     for (NS::Obj::Actor* actor : scene.Objects())
     {
         if (std::string_view{actor->ClassName()} == "MapObj")
+        {
             placed = actor;
+        }
     }
     ASSERT_NE(placed, nullptr);
     placed->Root().SetPosition(NS::Core::Vector3{9.0f, 1.0f, 0.0f});

@@ -11,40 +11,20 @@ namespace NS::Obj
     class Actor;
     class Transform;
 
-    //! OnUpdate 実行順を制御する priority。値が小さいほど先、同 priority 内は登録順
-    //! 1 体の中の並びに加え、ObjectList::UpdateObjects が配置物を帯ごとに横断して回す時の単位にも使う
-    //! どの段階を使うかは component を書く人が決める。段階の間の値 (+10 等) も自由に使える
-    struct TickPriority
-    {
-        //! Update より先に走らせたい物
-        static constexpr int EarlyUpdate = 0;
-        //! 世界を動かす。Component の既定
-        static constexpr int Update = 200;
-        //! 全ての更新が終わった後
-        static constexpr int LateUpdate = 400;
-    };
-
     //! @brief 振る舞いを表現する再利用ブロック。通常は派生して使う
-    //! @details Actor::AddComponent<T>() で生成され、Actor が unique_ptr で寿命を所有する
     //! Component 自身は所有者 Actor を生参照する。owner は生成後に Actor が注入する
-    //! 同じ object 上の Component への参照は OnStart で Owner()->FindComponent<T>() により解決する
     //! scene が持つ物は OnStart で Owner()->OwningScene() 経由で借りる
     //! ライフサイクル:
     //!   - OnStart() — Scene attach 直後に 1 回
-    //!   - OnUpdate() — fixed step 内で毎回。IsActive()==false なら skip する
+    //!   - OnUpdate() — 持ち主の Actor のクラスが自分の Update の中で呼んだ時だけ。IsActive()==false なら呼ばれない
     //!     dt は NS::Platform::FrameTimer::FixedDelta() で取得する。全て static なので Application 不要
     //!   - OnEndPlay() — Scene 破棄 / Component 廃棄前に 1 回
     class Component : public Object
     {
     public:
-        //! priority をコンストラクタ引数で確定する。基底コンストラクタ内は仮想関数テーブルが未確定なので
-        //! 仮想呼び出しを避ける
-        explicit Component(int priority = TickPriority::Update) noexcept;
+        Component() noexcept;
 
         virtual ~Component() noexcept;
-
-        //! OnUpdate 実行順の priority。既定は TickPriority::Update の 200
-        [[nodiscard]] int Priority() const noexcept { return m_priority; }
 
         //! 所有 Actor。Scene attach 後は non-null
         [[nodiscard]] Actor* Owner() noexcept { return m_owner; }
@@ -69,6 +49,10 @@ namespace NS::Obj
         //! データの active を切り替える。モード切替で使う SetActive とは別系統で、互いを上書きしない
         void SetEnabled(bool enabled) noexcept { m_enabled = enabled; }
 
+        //! 持ち主が世界へ出直した時に呼ばれる。自分が効いていない間は呼ばれない。既定は何もしない
+        virtual void OnAppear() {}
+        //! 持ち主が世界から外れた時に呼ばれる。既定は何もしない
+        virtual void OnKill() noexcept {}
         virtual void OnStart() {}
         virtual void OnUpdate() {}
         virtual void OnEndPlay() {}
@@ -77,35 +61,15 @@ namespace NS::Obj
         //! 配置物の組み立てが値の適用後に呼ぶ。AssetManager が無い間 (テスト等) は呼ばれない
         virtual void ResolveAssets(AssetManager&) {}
 
-        //! このコンポーネント型のリフレクション情報。未リフレクション型は nullptr。エディタが Component* 越しに field
-        //! を列挙する
-        [[nodiscard]] virtual const ReflectionInfo* GetReflection() const noexcept { return nullptr; }
-
-        //! リフレクションの typeName をクラス名として返す。名前の出所をリフレクション 1
-        //! 本に保つため派生で個別に返さない
-        [[nodiscard]] const char* ClassName() const noexcept override
-        {
-            const ReflectionInfo* info = GetReflection();
-            if (info != nullptr)
-            {
-                return info->typeName;
-            }
-            return "";
-        }
-
-        //! 自分のリフレクション鎖に target が現れるか。リフレクション照合による is-a 判定。target が nullptr なら常に
-        //! false
-        [[nodiscard]] bool IsA(const ReflectionInfo* target) const noexcept;
+        NS_REFLECT_NONE(Component, Object)
 
     private:
-        // owner 注入は AddComponent 経由のみ。Component から Actor の非公開メンバへはアクセスしない
         friend class Actor;
         void AttachOwner(Actor* owner) noexcept { m_owner = owner; }
 
-        Actor* m_owner = nullptr;         // 所有 Actor、attach 前は nullptr
-        int m_priority = TickPriority::Update; // OnUpdate 実行順
-        bool m_active = true;                  // false なら OnUpdate を skip
-        bool m_enabled = true;                 // データの active 値、false なら OnUpdate を飛ばす
+        Actor* m_owner = nullptr; // 所有 Actor、attach 前は nullptr
+        bool m_active = true;     // false なら OnUpdate を skip
+        bool m_enabled = true;    // データの active 値、false なら OnUpdate を飛ばす
     };
 
     //! リフレクション照合で通れば static_cast、外れれば nullptr を返す。comp が nullptr でも安全

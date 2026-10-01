@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game/Level/CollisionInput.h"
+#include "Game/Player/PlayerVisualParams.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
@@ -34,34 +35,6 @@ namespace NS::Game::Level
     };
 
     //! 地面の矢印の形と色を決める値
-    struct SlamArrowDesc
-    {
-        int growFrames = 10;               //!< 矢印を出してから先まで伸びきるフレーム数
-        float groundLift = 0.03f;          //!< 床から浮かせる高さ。単位は m
-        float headWidth = 1.75f;           //!< 矢じりの幅。単位は m
-        float headDepthRatio = 0.28f;      //!< 矢じりの奥行きの、玉の中心から先までの距離に対する割合
-        float headDepthMin = 1.3f;         //!< 矢じりの奥行きの下限。単位は m
-        float headDepthMax = 2.8f;         //!< 矢じりの奥行きの上限。単位は m
-        float startFade = 0.5f;            //!< 帯の始まりをぼかす長さ。単位は m
-        float frontSoftness = 0.3f;        //!< 色の付いた部分の先の境目をぼかす幅。単位は m
-        float lateStageFrom = 1.0f / 3.0f; //!< 溜めの後半の色へ変わる溜め量
-        NS::Core::Vector3 earlyColor{
-            72.0f / 255.0f, 230.0f / 255.0f, 120.0f / 255.0f};              //!< 溜めの前半の色。RGB で各 0〜1
-        NS::Core::Vector3 lateColor{1.0f, 208.0f / 255.0f, 48.0f / 255.0f}; //!< 溜めの後半の色。RGB で各 0〜1
-        NS::Core::Vector3 fullColor{1.0f, 64.0f / 255.0f, 56.0f / 255.0f};  //!< 溜めきりの色。RGB で各 0〜1
-        NS::Core::Vector3 plainColor{
-            224.0f / 255.0f, 232.0f / 255.0f, 242.0f / 255.0f}; //!< 色の付いていない部分の色。RGB で各 0〜1
-        NS::Core::Vector3 darkColor{12.0f / 255.0f, 20.0f / 255.0f, 36.0f / 255.0f}; //!< 暗い縁の色。RGB で各 0〜1
-        float darkAlpha = 1.0f;                                                      //!< 暗い縁の不透明度
-        float bandEdgeAlpha = 0.85f;      //!< 色の付いた部分の帯の明るい縁の不透明度
-        float bandFillAlpha = 0.30f;      //!< 色の付いた部分の帯の塗りの不透明度。塗り全体の平均
-        float headEdgeAlpha = 0.95f;      //!< 色の付いた部分の矢じりの明るい縁の不透明度
-        float headFillAlpha = 0.85f;      //!< 色の付いた部分の矢じりの塗りの不透明度
-        float plainBandEdgeAlpha = 0.30f; //!< 色の付いていない部分の帯の明るい縁の不透明度
-        float plainBandFillAlpha = 0.08f; //!< 色の付いていない部分の帯の塗りの不透明度。塗り全体の平均
-        float plainHeadEdgeAlpha = 0.35f; //!< 色の付いていない部分の矢じりの明るい縁の不透明度
-        float plainHeadFillAlpha = 0.18f; //!< 色の付いていない部分の矢じりの塗りの不透明度
-    };
 
     //! 床に貼る板 1 枚ぶんの、線に沿った範囲と高さ
     struct SlamArrowPiece
@@ -167,34 +140,10 @@ namespace NS::Game::Level
         //! @return 控えがある場合 true、それ以外の場合は false
         [[nodiscard]] bool TryGetShownArrow(SlamArrowShape& outShape) const;
 
-        NS_REFLECT_BEGIN(SlamArrow, NS::Obj::Component)
-        NS_REFLECT_FIELD(m_desc.growFrames, "矢印が伸びるフレーム数")
-        NS_REFLECT_FIELD(m_desc.groundLift, "矢印を浮かせる高さ")
-        NS_REFLECT_FIELD(m_desc.headWidth, "矢じりの幅")
-        NS_REFLECT_FIELD(m_desc.headDepthRatio, "矢じりの奥行きの割合")
-        NS_REFLECT_FIELD(m_desc.headDepthMin, "矢じりの奥行きの下限")
-        NS_REFLECT_FIELD(m_desc.headDepthMax, "矢じりの奥行きの上限")
-        NS_REFLECT_FIELD(m_desc.startFade, "帯の始まりのぼかし")
-        NS_REFLECT_FIELD(m_desc.frontSoftness, "色の境目のぼかし")
-        NS_REFLECT_FIELD(m_desc.lateStageFrom, "後半の色へ変わる溜め量")
-        NS_REFLECT_FIELD(m_desc.earlyColor, "溜めの前半の色")
-        NS_REFLECT_FIELD(m_desc.lateColor, "溜めの後半の色")
-        NS_REFLECT_FIELD(m_desc.fullColor, "溜めきりの色")
-        NS_REFLECT_FIELD(m_desc.plainColor, "色の付いていない部分の色")
-        NS_REFLECT_FIELD(m_desc.darkColor, "矢印の暗い縁の色")
-        NS_REFLECT_FIELD(m_desc.darkAlpha, "矢印の暗い縁の不透明度")
-        NS_REFLECT_FIELD(m_desc.bandEdgeAlpha, "帯の明るい縁の不透明度")
-        NS_REFLECT_FIELD(m_desc.bandFillAlpha, "帯の塗りの不透明度")
-        NS_REFLECT_FIELD(m_desc.headEdgeAlpha, "矢じりの明るい縁の不透明度")
-        NS_REFLECT_FIELD(m_desc.headFillAlpha, "矢じりの塗りの不透明度")
-        NS_REFLECT_FIELD(m_desc.plainBandEdgeAlpha, "色の無い帯の明るい縁の不透明度")
-        NS_REFLECT_FIELD(m_desc.plainBandFillAlpha, "色の無い帯の塗りの不透明度")
-        NS_REFLECT_FIELD(m_desc.plainHeadEdgeAlpha, "色の無い矢じりの明るい縁の不透明度")
-        NS_REFLECT_FIELD(m_desc.plainHeadFillAlpha, "色の無い矢じりの塗りの不透明度")
-        NS_REFLECT_END()
+        NS_REFLECT_NONE(SlamArrow, NS::Obj::Component)
 
     private:
-        SlamArrowDesc m_desc{};
+        [[nodiscard]] const SlamArrowDesc& Tuning() const noexcept;
         SlamArrowShape m_shown{}; // 控えた矢印。m_hasShown が偽の間は読まない
         bool m_hasShown = false;
         int m_framesSinceShown = -1; // 矢印を出していない間は負

@@ -12,7 +12,7 @@
 #include "Runtime/Graphics/SkeletalMesh.h"
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Graphics/Texture.h"
-#include "Runtime/Object/Components/MeshRenderer.h"
+#include "Runtime/Object/Components/Model.h"
 #include "Runtime/Physics/MeshCollision.h"
 #include "Runtime/Platform/Filesystem.h"
 
@@ -39,7 +39,9 @@ namespace NS::Obj
     NS::Gfx::Mesh* ResolveMeshFromRef(AssetManager& assets, const std::string& meshRef)
     {
         if (meshRef.empty())
+        {
             return nullptr;
+        }
 
         if (NS::Gfx::StaticMesh* builtin = assets.Builtin(meshRef))
         {
@@ -529,7 +531,7 @@ namespace NS::Obj
         NS::Gfx::Shader* vertexShader = GetOrLoadShader(resolve(fileDesc.vertexShader));
         NS::Gfx::Shader* pixelShader = GetOrLoadShader(resolve(fileDesc.pixelShader));
 
-        // CB は slot 0 で MeshRenderer が流す FrameCB に合わせる
+        // 定数バッファは slot 0 で Model が流す FrameCB に合わせる
         NS::Gfx::MaterialDesc matDesc{};
         matDesc.vertexShader = vertexShader;
         matDesc.pixelShader = pixelShader;
@@ -565,7 +567,7 @@ namespace NS::Obj
             NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(m_baseDir, "Assets"), "Textures"),
             "cube_test.png"));
 
-        // CB は slot 0 で MeshRenderer が流す FrameCB に合わせる
+        // 定数バッファは slot 0 で Model が流す FrameCB に合わせる
         NS::Gfx::MaterialDesc base{};
         base.vertexShader = standardVS;
         base.pixelShader = playerPS;

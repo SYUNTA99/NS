@@ -5,8 +5,8 @@
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
-#include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -29,19 +29,16 @@ namespace NS::Editor
         const NS::Core::Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
         const NS::Core::Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
 
-        // 添字は ObjectToJson の並びへそのまま渡る。絞り方を変えると編集操作が隣を掴む
+        // 添字は SetComponentEnabledOnSelected へそのまま渡る。絞り方を変えると編集操作が隣を掴む
         std::vector<NS::Obj::Component*> ReflectedComponents(NS::Obj::Actor& go)
         {
             std::vector<NS::Obj::Component*> result;
-            result.reserve(go.Components().size());
-            for (NS::Obj::Component* comp : go.Components())
-            {
-                if (comp == nullptr || comp->GetReflection() == nullptr)
+            go.ForEachPart([&result](std::string_view, NS::Obj::Component& part) {
+                if (part.GetReflection() != nullptr)
                 {
-                    continue;
+                    result.push_back(&part);
                 }
-                result.push_back(comp);
-            }
+            });
             return result;
         }
     } // namespace
@@ -53,14 +50,16 @@ namespace NS::Editor
         m_nameCommitId = 0;
         if (ImGui::Begin(k_PanelInspector))
         {
-            // ObjectRef フィールドの参照先候補。Hierarchy と同じ並びと表示名で全配置物を出す
+            // ActorRef の欄の参照先候補。Hierarchy と同じ並びと表示名で全配置物を出す
             std::vector<NS::Editor::ObjectRefOption> refOptions;
             refOptions.reserve(editor.Objects().ObjectCount());
             for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
             {
                 NS::Obj::Actor& candidate = *editor.Objects().ObjectAt(i);
                 if (candidate.IsTransient())
+                {
                     continue;
+                }
                 char label[96];
                 std::snprintf(label,
                               sizeof(label),
@@ -77,17 +76,17 @@ namespace NS::Editor
             {
                 NS::Obj::Actor& candidate = *editor.Objects().ObjectAt(i);
                 if (candidate.IsTransient())
-                    continue;
-                for (const NS::Obj::Component* comp : candidate.Components())
                 {
-                    if (comp == nullptr || comp->Id() == 0)
-                        continue;
+                    continue;
+                }
+                candidate.ForEachPart([&candidate, &componentOptions](std::string_view partName,
+                                                                      NS::Obj::Component& part) {
                     std::string label = NS::Editor::ObjectDisplayName(candidate);
                     label += " / ";
-                    label += comp->Name();
+                    label += partName;
                     componentOptions.push_back(
-                        NS::Editor::ComponentRefOption{candidate.Id(), comp->Id(), comp, std::move(label)});
-                }
+                        NS::Editor::ComponentRefOption{candidate.Id(), std::string{partName}, &part, std::move(label)});
+                });
             }
 
             if (!editor.HasInspectableSelection())
@@ -112,7 +111,9 @@ namespace NS::Editor
             ImGui::InputText("##objectName", m_nameBuffer, sizeof(m_nameBuffer));
             // 改名は配置物を組み直すので、このパネルを描き終えてから流す
             if (ImGui::IsItemDeactivatedAfterEdit())
+            {
                 m_nameCommitId = selectedId;
+            }
             ImGui::Text("[%zu] %s", editor.SelectedObjectIndex(), go->ClassName());
             ImGui::Separator();
 
@@ -127,11 +128,17 @@ namespace NS::Editor
                 ImGui::PushID("position");
                 NS::Editor::FieldRow("位置");
                 if (ImGui::DragFloat3("##value", pos, 0.05f))
+                {
                     editor.SetSelectedFreePosition(NS::Core::Vector3{pos[0], pos[1], pos[2]});
+                }
                 if (ImGui::IsItemActivated())
+                {
                     editor.BeginTransformEdit();
+                }
                 if (ImGui::IsItemDeactivatedAfterEdit())
+                {
                     editor.CommitTransformEdit();
+                }
                 if (NS::Editor::RevertButton(posMoved))
                 {
                     editor.BeginTransformEdit();
@@ -151,14 +158,20 @@ namespace NS::Editor
                 ImGui::PushID("rotation");
                 NS::Editor::FieldRow("回転");
                 if (ImGui::DragFloat3("##value", rot, 0.5f))
+                {
                     editor.SetSelectedFreeRotation(NS::Core::Quaternion::CreateFromYawPitchRoll(
                         NS::Core::Vector3{NS::Core::DegreesToRadians(rot[0]),
                                           NS::Core::DegreesToRadians(rot[1]),
                                           NS::Core::DegreesToRadians(rot[2])}));
+                }
                 if (ImGui::IsItemActivated())
+                {
                     editor.BeginTransformEdit();
+                }
                 if (ImGui::IsItemDeactivatedAfterEdit())
+                {
                     editor.CommitTransformEdit();
+                }
                 if (NS::Editor::RevertButton(turned))
                 {
                     editor.BeginTransformEdit();
@@ -173,11 +186,17 @@ namespace NS::Editor
                 ImGui::PushID("scale");
                 NS::Editor::FieldRow("スケール");
                 if (ImGui::DragFloat3("##value", scl, 0.05f))
+                {
                     editor.SetSelectedFreeScale(NS::Core::Vector3{scl[0], scl[1], scl[2]});
+                }
                 if (ImGui::IsItemActivated())
+                {
                     editor.BeginTransformEdit();
+                }
                 if (ImGui::IsItemDeactivatedAfterEdit())
+                {
                     editor.CommitTransformEdit();
+                }
                 if (NS::Editor::RevertButton(resized))
                 {
                     editor.BeginTransformEdit();
@@ -189,7 +208,7 @@ namespace NS::Editor
                 NS::Editor::EndFieldTable();
             }
 
-            // MeshRenderer の Material フィールドはリフレクション一覧に出る。適用は Assets パネルのドロップ /
+            // Model のマテリアルの欄はリフレクション一覧に出る。適用は Assets パネルのドロップ /
             // クリックから
             ImGui::Separator();
 
@@ -201,7 +220,9 @@ namespace NS::Editor
                 const std::string typeName{components[k]->ClassName()};
                 // Transform は上の専用パネルが編集するので一覧に出さない
                 if (typeName == "TransformComponent")
+                {
                     continue;
+                }
 
                 ImGui::PushID(static_cast<int>(k));
 
@@ -210,7 +231,9 @@ namespace NS::Editor
                 bool enabled = components[k]->IsEnabled();
                 ImGui::BeginDisabled(lockedComponent);
                 if (ImGui::Checkbox("##enabled", &enabled))
+                {
                     editor.SetComponentEnabledOnSelected(k, enabled);
+                }
                 ImGui::EndDisabled();
                 ImGui::SameLine();
 
@@ -218,8 +241,7 @@ namespace NS::Editor
                 ImGui::PushStyleColor(ImGuiCol_Header, NS::Editor::k_ComponentHeaderColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderHovered, NS::Editor::k_ComponentHeaderHoveredColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderActive, NS::Editor::k_ComponentHeaderActiveColor);
-                // 見出しは名前。型名と違う名前を付けた物だけ型名を添える
-                std::string header = components[k]->Name();
+                std::string header{go->PartName(*components[k])};
                 if (header != typeName)
                 {
                     header += " (";
@@ -254,10 +276,14 @@ namespace NS::Editor
                         }
                         // プレイ中の手編集は編集復帰の組み直しで消えるので、編集された欄だけ凍結側へも写す
                         if (r.changedTarget != nullptr && r.changedField != nullptr)
+                        {
                             editor.MirrorPlayEditToBaseline(*r.changedTarget, r.changedField->name);
+                        }
                     }
                     else
+                    {
                         ImGui::TextDisabled("調整できるパラメータなし");
+                    }
                 }
                 ImGui::PopID();
             }
@@ -277,17 +303,24 @@ namespace NS::Editor
             }
             // 種類の既定にするのは、同じ種類の全ての個体とファイルを書き換える。既定の部品を作り直すので描画の後で行う
             if (componentEdit.promoteTarget != nullptr && componentEdit.promoteField != nullptr)
+            {
                 (void)editor.PromoteFieldToArchetype(*componentEdit.promoteTarget, componentEdit.promoteField->name);
+            }
             if (componentEdit.activated)
+            {
                 editor.BeginComponentEdit();
+            }
             if (componentEdit.committed)
+            {
                 editor.CommitComponentEdit();
-
+            }
         }
         ImGui::End();
 
         if (m_nameCommitId != 0)
+        {
             editor.RenameObject(m_nameCommitId, m_nameBuffer);
+        }
 #else
         (void)editor;
 #endif

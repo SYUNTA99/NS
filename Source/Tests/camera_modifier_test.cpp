@@ -1,13 +1,28 @@
+#include "Game/Level/FollowCamera.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/CameraTarget.h"
+#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/CameraModifier.h"
 #include "Runtime/Object/IUseCamera.h"
+#include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <optional>
+#include <type_traits>
+
+static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Obj::CameraManager>);
+static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Obj::CameraComponent>);
+
+TEST(CameraManager, SceneOwnsCameraWithoutActorHost)
+{
+    NS::Obj::Scene scene;
+    ASSERT_NE(scene.MainCamera(), nullptr);
+    EXPECT_EQ(scene.Objects().ObjectCount(), 0u);
+}
 
 // カメラの効果をモディファイアの積み重ねで掛けることと、カメラの窓口からの積み方を縛る
 
@@ -15,23 +30,37 @@ namespace
 {
     NS::Obj::CameraShakeDesc ShakeOf(int frames)
     {
-        return NS::Obj::CameraShakeDesc{.sideAmplitude = 0.2f, .upAmplitude = 0.1f, .frames = frames, .longestFlipFrames = 1};
+        return NS::Obj::CameraShakeDesc{
+            .sideAmplitude = 0.2f, .upAmplitude = 0.1f, .frames = frames, .longestFlipFrames = 1};
     }
 
     // 決まった姿勢を返す仮想カメラ
     class FixedCamera final : public NS::Obj::VirtualCamera
     {
     public:
-        FixedCamera() noexcept : NS::Obj::VirtualCamera(NS::Obj::TickPriority::LateUpdate + 50) {}
+        FixedCamera() noexcept : NS::Obj::VirtualCamera() {}
         [[nodiscard]] NS::Obj::CameraPose EvaluatePose(float alpha) const noexcept override
         {
             (void)alpha;
-            return MakePose(NS::Core::Vector3{1.0f, 0.0f, -5.0f}, NS::Core::Vector3{1.0f, 0.0f, 0.0f}, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+            return MakePose(NS::Core::Vector3{1.0f, 0.0f, -5.0f},
+                            NS::Core::Vector3{1.0f, 0.0f, 0.0f},
+                            NS::Core::Vector3{0.0f, 1.0f, 0.0f});
         }
         NS_REFLECT_NONE(FixedCamera, NS::Obj::VirtualCamera)
     };
 
-    // 掛ける順を確かめる効果。Order だけを変えて並びを確かめる
+    class FixedCameraHost final : public NS::Obj::Actor
+    {
+    public:
+        FixedCameraHost() { AttachFixedComponent(vcam); }
+        void ForEachPart(const PartVisitor& visitor) const override
+        {
+            NS::Obj::Actor::ForEachPart(visitor);
+            visitor("Vcam", vcam);
+        }
+        mutable FixedCamera vcam;
+    };
+
     class OrderProbe final : public NS::Obj::CameraModifier
     {
     public:
@@ -124,8 +153,8 @@ TEST(CameraManager, FinishedModifiersAreRemovedOnUpdate)
 
 TEST(CameraManager, ModifiersApplyInOrder)
 {
-    NS::Obj::Actor host;
-    FixedCamera* vcam = host.AddComponent<FixedCamera>();
+    FixedCameraHost host;
+    FixedCamera* vcam = &host.vcam;
     NS::Obj::CameraManager cameras;
     cameras.AddVirtualCamera(vcam);
     // 積んだ順と逆でも Order の小さい方が先に掛かる
@@ -152,4 +181,41 @@ TEST(IUseCamera, ActorReachesSceneCameraManager)
     NS::Obj::Actor loose;
     EXPECT_EQ(loose.GetCameraManager(), nullptr);
     EXPECT_FALSE(NS::Obj::StartCameraShake(loose, ShakeOf(5)));
+}
+
+namespace
+{
+    class FollowTargetProbe final : public NS::Obj::Actor, public NS::Obj::ICameraTarget
+    {
+    public:
+        const NS::Obj::ICameraTarget* GetCameraTarget() const noexcept override { return this; }
+        NS::Obj::CameraTargetState GetCameraTargetState() const noexcept override
+        {
+            NS::Obj::CameraTargetState state;
+            state.grounded = true;
+            state.hasCharge = true;
+            state.charge.held = true;
+            state.charge.charge01 = 1.0f;
+            return state;
+        }
+    };
+} // namespace
+
+TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
+{
+    NS::Obj::Scene scene;
+    NS::Obj::Actor* target = scene.SpawnObject(std::make_unique<FollowTargetProbe>(), "target");
+    NS::Game::Level::FollowCamera* actor = scene.SpawnTransient<NS::Game::Level::FollowCamera>();
+    NS::Obj::ThirdPersonFollow& vcam = actor->Vcam();
+    vcam.SetActive(true);
+    NS::Obj::ApplyJsonFields(vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
+    actor->Update();
+    EXPECT_GT(vcam.ChargeNarrowDegrees(), 0.0f);
+    actor->Kill();
+    EXPECT_FLOAT_EQ(vcam.ChargeNarrowDegrees(), 0.0f);
+    actor->Appear();
+    actor->Update();
+    EXPECT_GT(vcam.ChargeNarrowDegrees(), 0.0f);
+    scene.DestroyObject(target->Id());
+    actor->Update();
 }

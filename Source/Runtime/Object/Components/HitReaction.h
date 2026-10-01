@@ -17,11 +17,11 @@ namespace NS::Obj
     //! @brief 当たりの演出 1 回。白の光・カメラの揺れ・寄りと傾き・パッドの振動
     struct HitReactionDesc
     {
-        int flashFrames = 0;       //!< 白の光のフレーム数。0 なら光らない
-        float flashAlpha = 0.0f;   //!< 白の光の始めの濃さ。残りのフレーム数に比例して薄くなる
-        CameraShakeDesc shake{};   //!< カメラの揺れ。フレーム数 0 なら揺らさない
+        int flashFrames = 0;           //!< 白の光のフレーム数。0 なら光らない
+        float flashAlpha = 0.0f;       //!< 白の光の始めの濃さ。残りのフレーム数に比例して薄くなる
+        CameraShakeDesc shake{};       //!< カメラの揺れ。フレーム数 0 なら揺らさない
         CameraZoomRollDesc zoomRoll{}; //!< 寄りと傾き。倍率 1 の設定も積み、前の当たりの寄りを残さない
-        HitPadVibration pad{};     //!< パッドの振動
+        HitPadVibration pad{};         //!< パッドの振動
     };
 
     //! @brief 当たりの演出を出す部品。オデッセイの HitReactionKeeper に当たる
@@ -33,6 +33,7 @@ namespace NS::Obj
     {
     public:
         HitReaction() noexcept;
+        [[nodiscard]] int OverlayOrder() const noexcept override { return 1; }
 
         //! 演出を始める。前の演出が残っていても、渡した設定で始め直す
         void Play(const HitReactionDesc& desc);
@@ -50,6 +51,7 @@ namespace NS::Obj
         void OnRenderOverlay(const NS::Gfx::RenderContext& context) override;
 
         //! 途中で外れても振動とカメラの効果を残さない
+        void OnKill() noexcept override { OnEndPlay(); }
         void OnEndPlay() override;
 
         // 状態は保存しない。型検索で引けるよう型名だけ登録する
@@ -59,12 +61,12 @@ namespace NS::Obj
         // 振動を始めてからのフレーム数に応じた速さをパッドへ書く。書くフレーム数に届いたフレームは 0 を書いて止める
         void WritePadVibration();
 
-        int m_flashRemaining = 0;     // 白の残りフレーム数
-        int m_flashFrames = 0;        // 白の始めのフレーム数。薄める割合の分母
-        float m_flashAlpha = 0.0f;    // 白の始めの濃さ
-        HitPadVibration m_pad{};      // 書いている振動
-        int m_padElapsed = 0;         // 振動を始めたフレームから数えたフレーム数
-        bool m_padRunning = false;    // 振動を書いている最中か
-        bool m_justPlayed = false;    // Play の後まだ更新を通っていないか
+        int m_flashRemaining = 0;  // 白の残りフレーム数
+        int m_flashFrames = 0;     // 白の始めのフレーム数。薄める割合の分母
+        float m_flashAlpha = 0.0f; // 白の始めの濃さ
+        HitPadVibration m_pad{};   // 書いている振動
+        int m_padElapsed = 0;      // 振動を始めたフレームから数えたフレーム数
+        bool m_padRunning = false; // 振動を書いている最中か
+        bool m_justPlayed = false; // Play の後まだ更新を通っていないか
     };
 } // namespace NS::Obj

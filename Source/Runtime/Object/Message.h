@@ -28,7 +28,11 @@ namespace NS::Obj
     //! msg が型 T ならその中身、違えば nullptr
     template <class T> [[nodiscard]] const T* MsgCast(const Message& msg) noexcept
     {
-        return IsMsg<T>(msg) ? static_cast<const T*>(&msg) : nullptr;
+        if (!IsMsg<T>(msg))
+        {
+            return nullptr;
+        }
+        return static_cast<const T*>(&msg);
     }
 
     //! @brief センサーからセンサーへ知らせを送る。受け手は receiver の持ち主の ReceiveMsg

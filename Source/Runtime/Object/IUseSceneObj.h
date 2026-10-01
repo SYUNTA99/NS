@@ -20,13 +20,21 @@ namespace NS::Obj
     template <class T> [[nodiscard]] T* FindSceneObj(const IUseSceneObj& user) noexcept
     {
         SceneObjHolder* holder = user.GetSceneObjHolder();
-        return holder != nullptr ? holder->Find<T>() : nullptr;
+        if (holder == nullptr)
+        {
+            return nullptr;
+        }
+        return holder->Find<T>();
     }
 
     //! 型 T のシーンに 1 つの物。まだ作っていなければ作る。シーンに居なければ nullptr
     template <class T> T* GetOrCreateSceneObj(const IUseSceneObj& user)
     {
         SceneObjHolder* holder = user.GetSceneObjHolder();
-        return holder != nullptr ? &holder->GetOrCreate<T>() : nullptr;
+        if (holder == nullptr)
+        {
+            return nullptr;
+        }
+        return &holder->GetOrCreate<T>();
     }
 } // namespace NS::Obj

@@ -1,27 +1,28 @@
 #include "Game/Player/States/BrakePlayerState.h"
 
-#include "Game/Entity/EntityStateManager.h"
+#include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerStateManager.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
 
 namespace NS::Game::Player
 {
-    void BrakePlayerState::OnStep(PlayerComponent& player, float dt)
+    void BrakePlayerState::OnStep(::Player& player, float dt)
     {
-        player.TickTimers(dt);
-        player.ApplyBrake(dt);
-        player.Jump(dt);
-        player.CutJumpRelease();
-        player.Gravity(dt);
+        player.Movement().TickTimers(dt);
+        player.Movement().ApplyBrake(dt);
+        player.Movement().Jump(dt);
+        player.Movement().CutJumpRelease();
+        player.Movement().Gravity(dt);
 
-        if (player.ShouldFall())
+        if (player.Movement().ShouldFall())
         {
-            player.States()->Change<FallPlayerState>();
+            player.StateManager().Change<FallPlayerState>();
         }
-        else if (player.IsStopped())
+        else if (player.Movement().IsStopped())
         {
-            player.States()->Change<IdlePlayerState>();
+            player.StateManager().Change<IdlePlayerState>();
         }
     }
 } // namespace NS::Game::Player

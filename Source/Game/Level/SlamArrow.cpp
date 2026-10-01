@@ -2,14 +2,16 @@
 
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerParams.h"
 #include "Runtime/Graphics/FrameConstants.h"
 #include "Runtime/Graphics/Material.h"
 #include "Runtime/Graphics/Pipeline.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/StaticMesh.h"
-#include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -355,8 +357,18 @@ namespace NS::Game::Level
         }
     }
 
-    // -130 は CollisionInput (-140) がこのフレームの狙いの線と狙う相手を控えた後に読むため
-    SlamArrow::SlamArrow() noexcept : NS::Obj::Component(NS::Obj::TickPriority::Update - 130) {}
+    // Player::Update が CollisionInput の後に呼ぶので、このフレームの狙いの線と狙う相手を控えた後に読む
+    SlamArrow::SlamArrow() noexcept : NS::Obj::Component() {}
+
+    const SlamArrowDesc& SlamArrow::Tuning() const noexcept
+    {
+        if (const ::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+        {
+            return ownerPlayer->Params().m_slamArrowDesc;
+        }
+        static const SlamArrowDesc defaults;
+        return defaults;
+    }
 
     void SlamArrow::OnStart()
     {
@@ -365,8 +377,11 @@ namespace NS::Game::Level
         {
             return;
         }
-        m_input = owner->FindComponent<CollisionInput>();
-        m_movement = owner->FindComponent<NS::Game::Player::PlayerComponent>();
+        if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(owner))
+        {
+            m_input = &ownerPlayer->ChargeControl();
+            m_movement = &ownerPlayer->Movement();
+        }
         if (NS::Obj::Scene* scene = owner->OwningScene())
         {
             scene->RegisterRenderable(this);
@@ -422,7 +437,7 @@ namespace NS::Game::Level
         state.chargeFull = m_input->IsChargeFull();
 
         SlamArrowShape shape{};
-        if (!BuildSlamArrow(state, m_desc, shape))
+        if (!BuildSlamArrow(state, Tuning(), shape))
         {
             return;
         }
@@ -439,7 +454,7 @@ namespace NS::Game::Level
                     outGroundY = from.y - distance;
                     return true;
                 };
-            PlaceSlamArrowOnGround(probe, m_desc.groundLift, shape);
+            PlaceSlamArrowOnGround(probe, Tuning().groundLift, shape);
         }
         m_shown = std::move(shape);
         m_hasShown = true;
@@ -453,15 +468,15 @@ namespace NS::Game::Level
         }
         // 帯の板は絵の横幅ぶん広く置き、明るい縁の外側を玉の通る幅の端に合わせる
         const float bandPlateWidth = m_shown.bandWidth / k_BandTextureSpan;
-        const PlateLook bandLook{.edgeAlpha = m_desc.bandEdgeAlpha,
-                                 .fillAlpha = m_desc.bandFillAlpha,
-                                 .plainEdgeAlpha = m_desc.plainBandEdgeAlpha,
-                                 .plainFillAlpha = m_desc.plainBandFillAlpha,
+        const PlateLook bandLook{.edgeAlpha = Tuning().bandEdgeAlpha,
+                                 .fillAlpha = Tuning().bandFillAlpha,
+                                 .plainEdgeAlpha = Tuning().plainBandEdgeAlpha,
+                                 .plainFillAlpha = Tuning().plainBandFillAlpha,
                                  .cutUnderHead = true};
         for (const SlamArrowPiece& piece : m_shown.band)
         {
             out.push_back(MakeDrawItem(
-                m_mesh, m_bandMaterial, MakeConstants(context, m_shown, m_desc, piece, bandPlateWidth, bandLook)));
+                m_mesh, m_bandMaterial, MakeConstants(context, m_shown, Tuning(), piece, bandPlateWidth, bandLook)));
         }
         if (!m_shown.hasHead)
         {
@@ -472,15 +487,15 @@ namespace NS::Game::Level
         const SlamArrowPiece headPlate{.alongNear = m_shown.head.alongNear - lengthMargin,
                                        .alongFar = m_shown.head.alongFar + lengthMargin,
                                        .height = m_shown.head.height};
-        const PlateLook headLook{.edgeAlpha = m_desc.headEdgeAlpha,
-                                 .fillAlpha = m_desc.headFillAlpha,
-                                 .plainEdgeAlpha = m_desc.plainHeadEdgeAlpha,
-                                 .plainFillAlpha = m_desc.plainHeadFillAlpha,
+        const PlateLook headLook{.edgeAlpha = Tuning().headEdgeAlpha,
+                                 .fillAlpha = Tuning().headFillAlpha,
+                                 .plainEdgeAlpha = Tuning().plainHeadEdgeAlpha,
+                                 .plainFillAlpha = Tuning().plainHeadFillAlpha,
                                  .cutUnderHead = false};
         out.push_back(MakeDrawItem(
             m_mesh,
             m_headMaterial,
-            MakeConstants(context, m_shown, m_desc, headPlate, m_desc.headWidth / k_HeadTextureSpan, headLook)));
+            MakeConstants(context, m_shown, Tuning(), headPlate, Tuning().headWidth / k_HeadTextureSpan, headLook)));
     }
 
     NS::Core::Vector3 SlamArrow::SortCenter() const noexcept
@@ -502,7 +517,7 @@ namespace NS::Game::Level
         // 線の始まりから矢じりの先 (余白込み) までを、板の幅の半分だけ横へ広げて覆う。高さは一番低い板から線の高さまで
         const float reach = m_shown.tip + m_shown.headDepth;
         const float halfWidth =
-            std::max(m_shown.bandWidth / k_BandTextureSpan, m_desc.headWidth / k_HeadTextureSpan) * 0.5f;
+            std::max(m_shown.bandWidth / k_BandTextureSpan, Tuning().headWidth / k_HeadTextureSpan) * 0.5f;
         const NS::Core::Vector3 reachEnd = m_shown.origin + m_shown.direction * reach;
         float lowest = m_shown.origin.y;
         for (const SlamArrowPiece& piece : m_shown.band)

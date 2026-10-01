@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/RenderSettings.h"
+#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/IUseCamera.h"
 #include "Runtime/Object/IUseCollision.h"
@@ -40,13 +41,13 @@ namespace NS::Obj
     class UIActor;
 
     //! @brief シーンの JSON 文書から組んだ ObjectList を駆動するシーン
-    //! @details ObjectList と skybox を所有し、JSON 文書への書き出しと読み込み・プレイの凍結・標準のシーン描画パスを受け持つ
-    //! Application から OnStart / OnUpdate / OnRender / OnShutdown を順に呼び戻される
-    //! 固定ステップの更新と可変フレームの描画で駆動し、IRenderable と OverlayRenderer の自己登録先も兼ねる
-    //! live な Actor/Component が唯一の表現で、JSON は実体でない姿 (ファイル・凍結・undo の控え) にだけ使う
-    //! 配置物は TypeRegistry と ResolveAssets で自力で組む。組み直し後の参照解決だけ派生が OnObjectsRebuilt で埋める
-    //! 寿命は SceneManager が unique_ptr で所有する
-    //! 窓口 (カメラ・シーンに 1 つの物・地形の当たり・エフェクト) の出所。Actor と UIActor はここへ繋ぐ
+    //! @details ObjectList と skybox を所有し、JSON
+    //! 文書への書き出しと読み込み・プレイの凍結・標準のシーン描画パスを受け持つ Application から OnStart / OnUpdate /
+    //! OnRender / OnShutdown を順に呼び戻される 固定ステップの更新と可変フレームの描画で駆動し、IRenderable と
+    //! OverlayRenderer の自己登録先も兼ねる live な Actor/Component が唯一の表現で、JSON は実体でない姿
+    //! (ファイル・凍結・undo の控え) にだけ使う 配置物は TypeRegistry と ResolveAssets
+    //! で自力で組む。組み直し後の参照解決だけ派生が OnObjectsRebuilt で埋める 寿命は SceneManager が unique_ptr
+    //! で所有する 窓口 (カメラ・シーンに 1 つの物・地形の当たり・エフェクト) の出所。Actor と UIActor はここへ繋ぐ
     //! 依存: ObjectList / SceneJson / ObjectBuilder / TypeRegistry
     class Scene : public NS::Core::NonCopyable,
                   public IUseCamera,
@@ -64,10 +65,10 @@ namespace NS::Obj
         //! 可変フレーム Render の入口。描画本体は OnRenderScene に書く
         void OnRender();
 
-        //! IRenderable Component の自己登録。MeshRenderer 等が OnStart で呼ぶ。二重登録は無視する
+        //! IRenderable Component の自己登録。Model 等が OnStart で呼ぶ。二重登録は無視する
         //! 登録簿は SceneRenderer が持つ。テスト等が差し替えて観測するため virtual だが、通常はオーバーライドしない
         virtual void RegisterRenderable(IRenderable* renderable);
-        //! IRenderable Component の自己解除。MeshRenderer 等が OnEndPlay で呼ぶ
+        //! IRenderable Component の自己解除。Model 等が OnEndPlay で呼ぶ
         virtual void UnregisterRenderable(IRenderable* renderable);
 
         //! OverlayRenderer の自己登録。基底の OnStart が呼ぶ。二重登録は無視する
@@ -109,6 +110,12 @@ namespace NS::Obj
         //! PhysicsScene への参照。Scene が値で持つので寿命は Scene と同じ
         [[nodiscard]] NS::Phys::PhysicsScene& Physics() noexcept { return m_physicsScene; }
         [[nodiscard]] const NS::Phys::PhysicsScene& Physics() const noexcept { return m_physicsScene; }
+
+        //! シーンに 1 つの重力の向き。長さ 1 で、既定は -Y
+        [[nodiscard]] const NS::Core::Vector3& GravityDirection() const noexcept { return m_gravityDirection; }
+        //! @brief 重力の向きを差し替え、物理の重力も同じ向きにする
+        //! @details NormalizeGravityDirection で長さ 1 に揃えてから使う
+        void SetGravityDirection(const NS::Core::Vector3& direction) noexcept;
 
         //! AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
         void SetAssets(AssetManager* assets) noexcept { m_assets = assets; }
@@ -188,7 +195,7 @@ namespace NS::Obj
         }
 
         //! @brief 実行時の一時オブジェクトを ObjectList へ入れる。一時オブジェクトの印はここで立てる
-        //! @details 保存・凍結に写らず、データからの組み直し後も残る。更新は配置物と同じ帯に乗る
+        //! @details 保存・凍結に写らず、データからの組み直し後も残る。更新は配置物と同じく自分の段で回る
         //! 型が実行時にしか決まらない時の受け口。型が分かっているなら SpawnTransient<T> を使う
         Actor* SpawnTransient(std::unique_ptr<Actor> obj);
 
@@ -217,9 +224,11 @@ namespace NS::Obj
         //! 子は根として残る。まとめて消したい呼び出し側が並びを決めて 1 体ずつ呼ぶ
         void DestroyObject(std::uint32_t objectId);
 
-        //! 補間スナップショット・帯の更新・LateUpdate 帯の手前で物理の 1 フレーム・最後にエフェクトの 1 フレーム
+        //! 補間スナップショットの後に、UpdatePhase の段を表の順に 1 つずつ回す
         //! 世界の駆動はここが持つ
-        //! 物理の 1 歩の直前と直後に、稼働中の RigidBody の PrePhysicsStep / PostPhysicsStep を呼ぶ
+        //! 物理の段では、活性の Actor の OnPrePhysicsStep、物理の 1 歩、OnPostPhysicsStep、その段に置いた物の順に呼ぶ
+        //! Camera の段の後に CameraManager、UI の段の後に開いている UIActor、
+        //! Effects の段の後にエフェクトの 1 フレームを進める
         //! 読み込んだら回り続けるのが既定で、止める口は SetSimulationEnabled / SetSimulationPaused
         virtual void OnUpdate();
 
@@ -261,20 +270,22 @@ namespace NS::Obj
         //! 衝突判定の PhysicsScene。当たりの有る scene だけ ObjectList::SyncPhysics が body を入れ、無ければ空のまま
         //! m_objects より前に宣言してあるので破棄は後になり、これを借りる移動の Component より長く生きる
         NS::Phys::PhysicsScene m_physicsScene;
+        NS::Core::Vector3 m_gravityDirection{0.0f, -1.0f, 0.0f};
 
         // ヒットセンサーの調べ役。配置物の部品が OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         HitSensorDirector m_hitSensors;
-        NS::Obj::ObjectList m_objects;                     // 配置物の一覧
-        NS::Obj::CameraManager* m_cameraManager = nullptr; // 常駐するカメラ一時オブジェクトの管理役。所有は m_objects、これは控え
+        CameraComponent m_mainCamera;
+        std::unique_ptr<NS::Obj::CameraManager> m_cameraManager;
+        NS::Obj::ObjectList m_objects; // 配置物の一覧
         // シーンに 1 つの物。配置物と画面の一覧を借りるので、それより後に宣言して先に破棄する
         // const の窓口からも作れるよう mutable にする。作っても見かけのシーンの状態は変わらない
         mutable SceneObjHolder m_sceneObjs{*this};
-        std::string m_skyboxPath;                // skybox のパス。実体側の唯一の出所
+        std::string m_skyboxPath; // skybox のパス。実体側の唯一の出所
 
         AssetManager* m_assets = nullptr; // AssetManager、非所有。未設定なら参照の実体化を跳ばす
 
         nlohmann::json m_playBaseline = MakeSceneJson(); // プレイ突入時の凍結
-        bool m_playBaselineInjected = false; // テスト注入の凍結を捕捉で潰さないための印
+        bool m_playBaselineInjected = false;             // テスト注入の凍結を捕捉で潰さないための印
 
         bool m_simulationEnabled = true;         // 世界を回すか。エディタの編集モードだけが下ろす
         bool m_simulationPaused = false;         // 時間停止中か

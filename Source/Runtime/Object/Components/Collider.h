@@ -53,6 +53,8 @@ namespace NS::Obj
 
         //! 配置物ごと消える前に、持ち主の Scene の PhysicsScene から自分の body を外す
         //! body を持ったまま Scene に居なければ外す先が分からないので、エラーを出して id だけ手放す
+        void OnAppear() override;
+        void OnKill() noexcept override { Collider::OnEndPlay(); }
         void OnEndPlay() override;
 
         NS_REFLECT_NONE(Collider, Component)

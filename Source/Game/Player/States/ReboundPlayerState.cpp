@@ -1,26 +1,36 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 
-#include "Game/Entity/EntityStateManager.h"
+#include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerStateManager.h"
 #include "Game/Player/States/IdlePlayerState.h"
 
 namespace NS::Game::Player
 {
-    void ReboundPlayerState::OnStep(PlayerComponent& player, float dt)
+    void ReboundPlayerState::OnEnter(::Player& player)
     {
-        // Jump と CutJumpRelease は呼ばない。跳ぶと反動の縦速度が書き換わる。上りで離すと切られる
-        // どちらも同じ当て方で違う軌道になる
-        player.TickTimers(dt);
-        player.AccelerateDuringRebound(dt);
-        player.ReboundGravity(dt);
-        if (player.LedgeGrab())
-        {
-            return;
-        }
+        StartCoroutine(Run(player));
+    }
 
-        if (player.ShouldLand())
+    NS::Core::Coroutine ReboundPlayerState::Run(::Player& player)
+    {
+        while (true)
         {
-            player.States()->Change<IdlePlayerState>();
+            co_await NS::Core::NextFrame{};
+            const float dt = StepDelta();
+            player.Movement().TickTimers(dt);
+            player.Movement().AccelerateDuringRebound(dt);
+            player.Movement().ReboundGravity(dt);
+            if (player.Movement().LedgeGrab())
+            {
+                co_return;
+            }
+
+            if (player.Movement().ShouldLand())
+            {
+                player.StateManager().Change<IdlePlayerState>();
+                co_return;
+            }
         }
     }
 } // namespace NS::Game::Player

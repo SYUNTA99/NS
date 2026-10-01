@@ -25,7 +25,9 @@ namespace NS::Editor
         {
             ImGuiDockNode* node = ImGui::DockBuilderGetNode(nodeId);
             if (node == nullptr)
+            {
                 return;
+            }
             node->SelectedTabId = ImHashStr("#TAB", 4, ImHashStr(windowName));
         }
 
@@ -76,7 +78,9 @@ namespace NS::Editor
             // タブバーのある枠はタブ行の高さに合わせたいので、ノードがあればノード上端・右端を使う
             ImVec2 topRight{panel->Pos.x + panel->Size.x, panel->Pos.y};
             if (panel->DockNode != nullptr)
+            {
                 topRight = ImVec2{panel->DockNode->Pos.x + panel->DockNode->Size.x, panel->DockNode->Pos.y};
+            }
             const ImVec2 anchor{topRight.x - k_Btn - k_PadX, topRight.y + k_PadY};
             ImGui::SetNextWindowPos(anchor, ImGuiCond_Always);
             // 浮いた小窓に見せないよう枠と余白を消し、アイコン 1 個分だけの当たりにする
@@ -93,9 +97,13 @@ namespace NS::Editor
                 // ドック内パネルの上に出す時、そのパネルへ焦点が移ると背後へ潜るので毎フレーム前面へ出す
                 ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
                 if (ImGui::Button("□", ImVec2{k_Btn, k_Btn}))
+                {
                     pressed = true;
+                }
                 if (ImGui::IsItemHovered())
+                {
                     ImGui::SetTooltip("このパネルを全面化");
+                }
             }
             ImGui::End();
             ImGui::PopStyleColor(3);
@@ -110,7 +118,9 @@ namespace NS::Editor
 #if NS_EDITOR_ENABLED
         const ImGuiViewport* vp = ImGui::GetMainViewport();
         if (vp == nullptr)
+        {
             return;
+        }
         const ImVec2 hostPos{vp->WorkPos.x, vp->WorkPos.y + topOffset};
         const ImVec2 hostSize{vp->WorkSize.x, vp->WorkSize.y - topOffset};
 
@@ -147,7 +157,9 @@ namespace NS::Editor
         std::size_t iniSize = 0;
         const char* ini = ImGui::SaveIniSettingsToMemory(&iniSize);
         if (ini != nullptr)
+        {
             m_savedImGuiIni.assign(ini, iniSize);
+        }
         m_maximizedPanel = name;
 #else
         (void)name;
@@ -175,7 +187,9 @@ namespace NS::Editor
         {
             ImGuiWindow* w = ImGui::FindWindowByName(m_maximizedPanel.c_str());
             if (w == nullptr || !w->WasActive)
+            {
                 return;
+            }
 
             constexpr float k_Btn = 24.0f;
             constexpr float k_Pad = 6.0f;
@@ -186,9 +200,13 @@ namespace NS::Editor
             if (ImGui::Begin("##PanelRestoreButton", nullptr, k_FloatingButtonFlags))
             {
                 if (ImGui::Button("戻", ImVec2{k_Btn, k_Btn}))
+                {
                     ExitMaximize();
+                }
                 if (ImGui::IsItemHovered())
+                {
                     ImGui::SetTooltip("元のレイアウトに戻す");
+                }
             }
             ImGui::End();
             ImGui::PopStyleVar();
@@ -208,15 +226,21 @@ namespace NS::Editor
             const char* name = k_Panels[i];
             ImGuiWindow* w = ImGui::FindWindowByName(name);
             if (w == nullptr || !w->WasActive)
+            {
                 continue;
+            }
             // ドック内で今表に出ている窓にだけ出す。裏に隠れたタブは飛ばす
             // 単独枠や浮き窓はタブが畳まれても表なので出す
             if (w->DockNode != nullptr && w->DockNode->VisibleWindow != w)
+            {
                 continue;
+            }
             char btnId[32];
             std::snprintf(btnId, sizeof(btnId), "##PanelMaxBtn%d", i);
             if (FloatingMaximizeButton(btnId, w))
+            {
                 EnterMaximize(name);
+            }
         }
 #endif
     }

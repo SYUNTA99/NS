@@ -2,11 +2,12 @@
 
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Player/PlayerVisualParams.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
+#include "Runtime/Object/Reflection/ActorRef.h"
 #include "Runtime/Object/Reflection/Curve.h"
-#include "Runtime/Object/Reflection/ObjectRef.h"
 
 #include <vector>
 
@@ -40,33 +41,6 @@ namespace NS::Game::Level
     };
 
     //! ロックオンの枠の形を決める値。画素の欄は描画先の高さ 720 のときの画素
-    struct TargetMarkerDesc
-    {
-        //! 捉えている間の枠の色。RGB で各 0〜1。地面の矢印の黄と分けて白
-        NS::Core::Vector3 color{245.0f / 255.0f, 247.0f / 255.0f, 1.0f};
-        float lineThickness = 3.0f;                 //!< 枠の線の太さ。画素
-        float armRatio = 0.25f;                     //!< 枠の腕の長さ。枠の一辺に対する割合
-        float frameGap = 6.0f;                      //!< 枠と相手の輪郭の間。画素
-        float frameMinSide = 70.0f;                 //!< 枠の一辺の下限。画素
-        float frameAlpha = 0.9f;                    //!< 捉えている間の枠の不透明度
-        float appearScale = 5.0f;                   //!< 捉えた瞬間の枠の一辺の、捉えている間の一辺に対する倍率
-        float appearMaxSide = 465.0f;               //!< 捉えた瞬間の枠の一辺の上限。画素
-        int appearFrames = 6;                       //!< 捉えた瞬間の大きさから捉えている間の大きさへ縮むフレーム数
-        //! 縮みの進み。横は捉えてからのフレーム数 ÷ appearFrames、縦は 0 が捉えた瞬間の形で 1 が捉えている間の形
-        NS::Obj::Curve appearCurve{.keys = {NS::Obj::Curve::Key{0.0f, 0.0f},
-                                            NS::Obj::Curve::Key{0.25f, 0.12f},
-                                            NS::Obj::Curve::Key{0.5f, 0.38f},
-                                            NS::Obj::Curve::Key{0.75f, 0.70f},
-                                            NS::Obj::Curve::Key{1.0f, 1.0f}},
-                                   .count = 5};
-        NS::Core::Vector3 appearColor{1.0f, 1.0f, 1.0f};    //!< 捉えた瞬間の枠の色。RGB で各 0〜1
-        float appearAlpha = 0.35f;                          //!< 捉えた瞬間の枠の不透明度
-        float lostScale = 0.9f;                             //!< 外れた後の枠の一辺の、直前の一辺に対する倍率
-        int lostFrames = 2;                                 //!< 外れた後に枠を出すフレーム数
-        //! 暗い縁の色。RGB で各 0〜1。白い線の縁を地面の矢印の暗い縁と同じ紺にする
-        NS::Core::Vector3 outlineColor{12.0f / 255.0f, 20.0f / 255.0f, 36.0f / 255.0f};
-        float outlineAlpha = 0.6f;                          //!< 枠の不透明度が frameAlpha のときの暗い縁の不透明度
-    };
 
     //! @brief 相手の外接箱と、捉えてから・外れてからのフレーム数から、ロックオンの枠の四角を組む
     //! @details 外接箱の中心を viewProjection で画面へ投げ、外接箱の半分の長さの最大を半径として、
@@ -117,7 +91,7 @@ namespace NS::Game::Level
         void OnRenderOverlay(const NS::Gfx::RenderContext& context) override;
 
         //! このフレームに示す相手。示さないフレームと、外れた後に枠だけを出すフレームは未設定の参照
-        [[nodiscard]] NS::Obj::ObjectRef ShownTargetRef() const noexcept;
+        [[nodiscard]] NS::Obj::ActorRef ShownTargetRef() const noexcept;
 
         //! @brief 控えたロックオンの枠を、欄の値で組む
         //! @details 示す相手が居ればその枠を、外れた後のフレームなら外れた相手の枠を BuildLockOnFrame で組む
@@ -129,27 +103,10 @@ namespace NS::Game::Level
                                            NS::Core::Size2D targetSize,
                                            LockOnFrameShape& outFrame) const;
 
-        NS_REFLECT_BEGIN(TargetMarker, NS::Obj::OverlayRenderer)
-        NS_REFLECT_FIELD(m_desc.color, "印の色")
-        NS_REFLECT_FIELD(m_desc.lineThickness, "印の太さ")
-        NS_REFLECT_FIELD(m_desc.armRatio, "印の腕の割合")
-        NS_REFLECT_FIELD(m_desc.frameGap, "枠と輪郭の間")
-        NS_REFLECT_FIELD(m_desc.frameMinSide, "枠の一辺の下限")
-        NS_REFLECT_FIELD(m_desc.frameAlpha, "枠の不透明度")
-        NS_REFLECT_FIELD(m_desc.appearScale, "枠が出る時の倍率")
-        NS_REFLECT_FIELD(m_desc.appearMaxSide, "枠が出る時の一辺の上限")
-        NS_REFLECT_FIELD(m_desc.appearFrames, "枠が縮むフレーム数")
-        NS_REFLECT_FIELD(m_desc.appearCurve, "枠が縮む進みの曲線")
-        NS_REFLECT_FIELD(m_desc.appearColor, "枠が出る時の色")
-        NS_REFLECT_FIELD(m_desc.appearAlpha, "枠が出る時の不透明度")
-        NS_REFLECT_FIELD(m_desc.lostScale, "外れた時の枠の倍率")
-        NS_REFLECT_FIELD(m_desc.lostFrames, "外れた時の枠のフレーム数")
-        NS_REFLECT_FIELD(m_desc.outlineColor, "枠の縁の色")
-        NS_REFLECT_FIELD(m_desc.outlineAlpha, "枠の縁の不透明度")
-        NS_REFLECT_END()
+        NS_REFLECT_NONE(TargetMarker, NS::Obj::OverlayRenderer)
 
     private:
-        TargetMarkerDesc m_desc{};
+        [[nodiscard]] const TargetMarkerDesc& Tuning() const noexcept;
         SlamLineTarget m_shown{}; // 示す相手の予測。m_hasShown が偽の間は読まない
         bool m_hasShown = false;
         int m_framesSinceCapture = 0;  // 外れた後は外れたフレームの値で止める

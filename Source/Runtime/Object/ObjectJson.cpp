@@ -4,10 +4,61 @@
 
 namespace NS::Obj
 {
+    const nlohmann::json& ObjectJsonParts(const nlohmann::json& object) noexcept
+    {
+        static const nlohmann::json empty = nlohmann::json::object();
+        if (!object.is_object())
+        {
+            return empty;
+        }
+        const nlohmann::json::const_iterator found = object.find("parts");
+        if (found == object.end() || !found->is_object())
+        {
+            return empty;
+        }
+        return *found;
+    }
+
+    nlohmann::json& ObjectJsonParts(nlohmann::json& object)
+    {
+        if (!object.is_object())
+        {
+            object = nlohmann::json::object();
+        }
+        nlohmann::json& parts = object["parts"];
+        if (!parts.is_object())
+        {
+            parts = nlohmann::json::object();
+        }
+        return parts;
+    }
+
+    const nlohmann::json* PartFields(const nlohmann::json& object, std::string_view partName) noexcept
+    {
+        const nlohmann::json& parts = ObjectJsonParts(object);
+        const nlohmann::json::const_iterator found = parts.find(std::string{partName});
+        if (found == parts.end() || !found->is_object())
+        {
+            return nullptr;
+        }
+        return &*found;
+    }
+
+    nlohmann::json* PartFields(nlohmann::json& object, std::string_view partName) noexcept
+    {
+        const nlohmann::json* found = PartFields(static_cast<const nlohmann::json&>(object), partName);
+        if (found == nullptr)
+        {
+            return nullptr;
+        }
+        return &ObjectJsonParts(object)[std::string{partName}];
+    }
     namespace
     {
         // object の key が unsigned の数値なら返す。無いか壊れていれば fallback
-        [[nodiscard]] std::uint32_t ReadUnsigned(const nlohmann::json& object, const char* key, std::uint32_t fallback) noexcept
+        [[nodiscard]] std::uint32_t ReadUnsigned(const nlohmann::json& object,
+                                                 const char* key,
+                                                 std::uint32_t fallback) noexcept
         {
             if (!object.is_object())
             {
@@ -56,11 +107,11 @@ namespace NS::Obj
     {
         nlohmann::json object = nlohmann::json::object();
         object["id"] = 0u;
-        if (!components.is_array())
+        if (!components.is_object())
         {
-            components = nlohmann::json::array();
+            components = nlohmann::json::object();
         }
-        object["components"] = std::move(components);
+        object["parts"] = std::move(components);
         return object;
     }
 
@@ -123,39 +174,10 @@ namespace NS::Obj
         WriteOrErase(object, "active", active, active);
     }
 
-    const nlohmann::json& ObjectJsonComponents(const nlohmann::json& object) noexcept
-    {
-        static const nlohmann::json k_Empty = nlohmann::json::array();
-        if (!object.is_object())
-        {
-            return k_Empty;
-        }
-        const nlohmann::json::const_iterator it = object.find("components");
-        if (it == object.end() || !it->is_array())
-        {
-            return k_Empty;
-        }
-        return *it;
-    }
-
-    nlohmann::json& ObjectJsonComponents(nlohmann::json& object)
-    {
-        if (!object.is_object())
-        {
-            object = nlohmann::json::object();
-        }
-        nlohmann::json& components = object["components"];
-        if (!components.is_array())
-        {
-            components = nlohmann::json::array();
-        }
-        return components;
-    }
-
     void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<std::uint32_t, std::uint32_t>& idMap)
     {
         ForEachRefValue(object, [&idMap](nlohmann::json& value) {
-            for (const char* key : {"ref", "component"})
+            for (const char* key : {"ref"})
             {
                 const nlohmann::json::iterator it = value.find(key);
                 if (it == value.end() || !it->is_number_unsigned())

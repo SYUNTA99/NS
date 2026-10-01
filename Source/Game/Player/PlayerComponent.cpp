@@ -1,7 +1,8 @@
 #include "Game/Player/PlayerComponent.h"
 
-#include "Game/Entity/EntityStateManager.h"
-#include "Game/Level/LaunchedBody.h"
+#include "Game/Level/LaunchArc.h"
+#include "Game/Player.h"
+#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerStateManager.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -15,9 +16,9 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-
 #include <algorithm>
 #include <cmath>
+#include <string_view>
 #include <vector>
 
 namespace
@@ -29,7 +30,9 @@ namespace
                                                                 float above)
     {
         if (physics == nullptr)
+        {
             return {};
+        }
 
         NS::Core::AABB region;
         region.Center = NS::Core::Vector3{probe.x, probe.y + 0.5f * (above - below), probe.z};
@@ -41,7 +44,9 @@ namespace
                                                            const NS::Core::Vector3& point)
     {
         if (physics == nullptr)
+        {
             return {};
+        }
 
         NS::Core::AABB region;
         region.Center = point;
@@ -91,31 +96,64 @@ namespace
 
 namespace NS::Game::Player
 {
+    const PlayerParams& PlayerComponent::Tuning() const noexcept
+    {
+        if (m_params != nullptr)
+        {
+            return *m_params;
+        }
+        static const PlayerParams defaults;
+        return defaults;
+    }
+
+    const NS::Obj::PlayerInput& PlayerComponent::Input() const noexcept
+    {
+        if (m_input != nullptr)
+        {
+            return *m_input;
+        }
+        static const NS::Obj::PlayerInput neutral;
+        return neutral;
+    }
+
     void PlayerComponent::SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept
     {
-        m_desiredDir = worldDir;
-        m_desiredSpeedScale = NS::Core::Clamp(speedScale01, 0.0f, 1.0f);
+        if (m_input != nullptr)
+        {
+            m_input->SetDesiredMove(worldDir, speedScale01);
+        }
     }
 
     void PlayerComponent::SetClimbMove(float localRight, float localForward) noexcept
     {
-        m_climbRight = NS::Core::Clamp(localRight, -1.0f, 1.0f);
-        m_climbForward = NS::Core::Clamp(localForward, -1.0f, 1.0f);
+        if (m_input != nullptr)
+        {
+            m_input->SetClimbMove(localRight, localForward);
+        }
     }
 
     void PlayerComponent::SetJumpPressed() noexcept
     {
-        m_jumpPressedThisFrame = true;
+        if (m_input != nullptr)
+        {
+            m_input->SetJumpPressed();
+        }
     }
 
     void PlayerComponent::SetReleaseLedgePressed() noexcept
     {
-        m_releaseLedgePressedThisFrame = true;
+        if (m_input != nullptr)
+        {
+            m_input->SetReleaseLedgePressed();
+        }
     }
 
     void PlayerComponent::SetJumpHeld(bool held) noexcept
     {
-        m_jumpHeld = held;
+        if (m_input != nullptr)
+        {
+            m_input->SetJumpHeld(held);
+        }
     }
 
     void PlayerComponent::SetMaxSpeedScale(float scale) noexcept
@@ -131,12 +169,16 @@ namespace NS::Game::Player
     void PlayerComponent::RequestBodySlam(float charge01) noexcept
     {
         // そのフレームで出せないと押しが無言で消える。ジャンプと同じ先行入力時間だけ覚える
-        m_bodySlamBufferRemaining = m_jumpBufferTime;
+        m_bodySlamBufferRemaining = Tuning().m_jumpBufferTime;
         // 非数は 0..1 への丸めを素通りして溜め量に残るため、入口で 0 へ倒す
         if (!std::isfinite(charge01))
+        {
             m_bodySlamRequestCharge01 = 0.0f;
+        }
         else
+        {
             m_bodySlamRequestCharge01 = NS::Core::Clamp(charge01, 0.0f, 1.0f);
+        }
         // 残すと、先行入力のうちに来たタップが前の溜めた突進の向きへ出る
         m_hasBodySlamRequestDir = false;
     }
@@ -166,25 +208,33 @@ namespace NS::Game::Player
     float PlayerComponent::BodySlamProgress01() const noexcept
     {
         if (!IsBodySlamming() || !(m_bodySlamDistanceTarget > 0.0f))
+        {
             return 0.0f;
+        }
         return NS::Core::Clamp(m_bodySlamTravelled / m_bodySlamDistanceTarget, 0.0f, 1.0f);
     }
 
     NS::Core::Vector3 PlayerComponent::BodySlamVelocity() const noexcept
     {
         if (!IsBodySlamming())
+        {
             return Velocity();
+        }
 
-        float speed = m_bodySlamSpeed;
+        float speed = Tuning().m_bodySlamSpeed;
         if (m_bodySlamIsTap)
-            speed = m_tapSlamSpeed;
+        {
+            speed = Tuning().m_tapSlamSpeed;
+        }
         return NS::Core::Vector3{m_bodySlamDir.x * speed, VerticalVelocity(), m_bodySlamDir.z * speed};
     }
 
     void PlayerComponent::CancelBodySlam() noexcept
     {
         if (!IsBodySlamming())
+        {
             return;
+        }
         EndBodySlam();
     }
 
@@ -221,7 +271,7 @@ namespace NS::Game::Player
 
     NS::Core::Vector3 PlayerComponent::AimDirection() const noexcept
     {
-        NS::Core::Vector3 dir{m_desiredDir.x, 0.0f, m_desiredDir.z};
+        NS::Core::Vector3 dir{DesiredDirection().x, 0.0f, DesiredDirection().z};
         float length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
 
         // 反発後の滑りなど残った速度が向きに勝つと狙いと食い違う方へ飛ぶ。入力が無ければ速度よりカメラの前を先に見る
@@ -238,7 +288,9 @@ namespace NS::Game::Player
             length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
         }
         if (length < NS::Core::k_Epsilon)
+        {
             return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        }
 
         return NS::Core::Vector3{dir.x / length, 0.0f, dir.z / length};
     }
@@ -249,24 +301,22 @@ namespace NS::Game::Player
         m_bodySlamAimAge = 0.0f;
     }
 
-    void PlayerComponent::SteerToward(const NS::Core::Vector3& targetCenter, float coneDegrees,
-                                      const NS::Core::Vector3& chargeAim) noexcept
+    bool PlayerComponent::ComputeHomingStep(const NS::Core::Vector3& targetCenter,
+                                            const NS::Core::Vector3& chargeAim,
+                                            float& nextAngle) const noexcept
     {
         if (Owner() == nullptr)
         {
-            return;
+            return false;
         }
         const bool rushing = IsBodySlamming();
-        // タップは短い踏み込みの移動技なので、跳んでいる間の向きは変えない
         if (rushing && m_bodySlamIsTap)
         {
-            return;
+            return false;
         }
-
-        // 溜めている間の基準は回していない狙いなので、基準からの角度がそのまま累計の目標になる。
-        // 突進の向きは累計だけ回した後の向きなので、基準からの角度に累計を足して目標にする
         NS::Core::Vector3 base = chargeAim;
         float baseAngle = 0.0f;
+        float currentAngle = m_homingAngle;
         if (rushing)
         {
             base = m_bodySlamDir;
@@ -277,42 +327,69 @@ namespace NS::Game::Player
         if (!NS::Core::TryNormalizeHorizontal(base, baseDir) ||
             !NS::Core::TryNormalizeHorizontal(targetCenter - RootTransform().Position(), toTarget))
         {
-            return;
+            return false;
         }
-
         const float relative = NS::Core::ToDegrees(NS::Core::Radians{HorizontalAngleBetween(baseDir, toTarget)}).value;
-        // 非数の相手は正規化を通り抜ける。切りも比較も非数を止めないので、通すと累計と突進の向きが非数になる
         if (!std::isfinite(relative))
         {
-            return;
+            return false;
         }
-        // 溜めた量は同じ相手を狙い続けた分だけ。持ち越すと、放す直前に移った相手へ溜めた分が一度に乗る
-        // TODO: 相手を中心で見分けている。動いている相手は毎フレーム中心が変わるので、溜めている間の寄せが溜まらない
-        // 動く的を置く時は、相手の番号を受け取って見分ける
         if (!rushing && m_hasHomingTarget && !(m_homingTarget == targetCenter))
         {
-            m_homingAngle = 0.0f;
+            currentAngle = 0.0f;
         }
-        const float limit = std::max(0.0f, m_homingMaxDegrees);
+        const float limit = std::max(0.0f, Tuning().m_homingMaxDegrees);
         const float goal = NS::Core::Clamp(baseAngle + relative, -limit, limit);
-        const float step = std::max(0.0f, m_homingStepDegrees);
-        float next = std::max(goal, m_homingAngle - step);
-        if (goal > m_homingAngle)
+        const float step = std::max(0.0f, Tuning().m_homingStepDegrees);
+        nextAngle = std::max(goal, currentAngle - step);
+        if (goal > currentAngle)
         {
-            next = std::min(goal, m_homingAngle + step);
+            nextAngle = std::min(goal, currentAngle + step);
         }
+        return true;
+    }
 
-        const float change = next - m_homingAngle;
-        m_homingAngle = next;
-        if (!rushing)
+    NS::Core::Vector3 PlayerComponent::PredictHomingVelocity(const NS::Core::Vector3& targetCenter) const noexcept
+    {
+        float nextAngle = 0.0f;
+        if (!IsBodySlamming() || !ComputeHomingStep(targetCenter, m_bodySlamDir, nextAngle))
+        {
+            return BodySlamVelocity();
+        }
+        const NS::Core::Vector3 direction =
+            RotateHorizontal(m_bodySlamDir, NS::Core::ToRadians(NS::Core::Degrees{nextAngle - m_homingAngle}).value);
+        return NS::Core::Vector3{
+            direction.x * Tuning().m_bodySlamSpeed, VerticalVelocity(), direction.z * Tuning().m_bodySlamSpeed};
+    }
+
+    void PlayerComponent::SteerToward(const NS::Core::Vector3& targetCenter,
+                                      float coneDegrees,
+                                      const NS::Core::Vector3& chargeAim) noexcept
+    {
+        float nextAngle = 0.0f;
+        if (!ComputeHomingStep(targetCenter, chargeAim, nextAngle))
+        {
+            return;
+        }
+        const float change = nextAngle - m_homingAngle;
+        m_homingAngle = nextAngle;
+        if (!IsBodySlamming())
         {
             m_homingTarget = targetCenter;
             m_homingTargetConeDegrees = coneDegrees;
             m_hasHomingTarget = true;
             return;
         }
-        // 速度は UpdateBodySlam が毎フレーム突進の向きから書き直すので、向きを回せば軌道が曲がる
         m_bodySlamDir = RotateHorizontal(m_bodySlamDir, NS::Core::ToRadians(NS::Core::Degrees{change}).value);
+    }
+
+    void PlayerComponent::ApplyBodySlamHeading() noexcept
+    {
+        if (IsBodySlamming() && !m_bodySlamIsTap)
+        {
+            SetLateralVelocity(NS::Core::Vector3{
+                m_bodySlamDir.x * Tuning().m_bodySlamSpeed, 0.0f, m_bodySlamDir.z * Tuning().m_bodySlamSpeed});
+        }
     }
 
     void PlayerComponent::ForgetHoming() noexcept
@@ -423,13 +500,17 @@ namespace NS::Game::Player
 
     float PlayerComponent::BodySlamAimBlend01() const noexcept
     {
-        const float hold = m_slamAimHoldTime;
-        const float fade = m_slamAimFadeTime;
+        const float hold = Tuning().m_slamAimHoldTime;
+        const float fade = Tuning().m_slamAimFadeTime;
         if (m_bodySlamAimAge <= hold)
+        {
             return 1.0f;
+        }
         // 巻き戻し秒を消える秒より後ろにできる。幅が 0 以下なら割らずに切る
         if (!(fade > hold) || m_bodySlamAimAge >= fade)
+        {
             return 0.0f;
+        }
         return (fade - m_bodySlamAimAge) / (fade - hold);
     }
 
@@ -455,14 +536,20 @@ namespace NS::Game::Player
                 const float mixedLength = std::sqrt(mixed.x * mixed.x + mixed.z * mixed.z);
                 // 正反対の向きを同じくらいの重みで混ぜると長さが 0 近くになる。その時は濃い側をそのまま採る
                 if (mixedLength >= NS::Core::k_Epsilon)
+                {
                     dir = NS::Core::Vector3{mixed.x / mixedLength, 0.0f, mixed.z / mixedLength};
+                }
                 else if (blend >= 0.5f)
+                {
                     dir = m_bodySlamAimDir;
+                }
             }
         }
 
         if (std::sqrt(dir.x * dir.x + dir.z * dir.z) < NS::Core::k_Epsilon)
+        {
             return false;
+        }
 
         // 溜めている間に寄せた分は、控えた相手を放す向きから測り直して乗せる。突進中の寄せはその続きから数える。
         // タップは短い踏み込みの移動技なので、溜めた分も乗せない
@@ -481,18 +568,22 @@ namespace NS::Game::Player
 
         if (m_bodySlamIsTap)
         {
-            m_bodySlamDistanceTarget = m_tapSlamDistance;
-            SetVelocity(NS::Core::Vector3{dir.x * m_tapSlamSpeed, m_tapSlamUpSpeed, dir.z * m_tapSlamSpeed});
+            m_bodySlamDistanceTarget = Tuning().m_tapSlamDistance;
+            SetVelocity(NS::Core::Vector3{
+                dir.x * Tuning().m_tapSlamSpeed, Tuning().m_tapSlamUpSpeed, dir.z * Tuning().m_tapSlamSpeed});
         }
         else
         {
-            m_bodySlamDistanceTarget = m_bodySlamDistance;
-            SetVelocity(NS::Core::Vector3{dir.x * m_bodySlamSpeed, VerticalVelocity(), dir.z * m_bodySlamSpeed});
+            m_bodySlamDistanceTarget = Tuning().m_bodySlamDistance;
+            SetVelocity(NS::Core::Vector3{
+                dir.x * Tuning().m_bodySlamSpeed, VerticalVelocity(), dir.z * Tuning().m_bodySlamSpeed});
         }
 
         // 距離が 0 以下だと 1 フレーム目で終わって発動が消えるため、出さずに通常移動のままにする
         if (!(m_bodySlamDistanceTarget > 0.0f))
+        {
             return false;
+        }
 
         // 反動の後のカメラが当てた相手の方を向くのに使う
         // 突進の間の寄せで曲がる前の向きを残す
@@ -519,7 +610,11 @@ namespace NS::Game::Player
     {
         // 進み切る前に着地すると残りを地面の上で滑り、走っていないのに動いて見える。
         // 滞空秒を踏み込みの秒へ合わせ、進み切った所で足が着くようにする
-        const float airSeconds = (m_tapSlamSpeed > 0.0f) ? m_tapSlamDistance / m_tapSlamSpeed : 0.0f;
+        float airSeconds = 0.0f;
+        if (Tuning().m_tapSlamSpeed > 0.0f)
+        {
+            airSeconds = Tuning().m_tapSlamDistance / Tuning().m_tapSlamSpeed;
+        }
         // Inspector で 0 を置くと 0 除算で位置まで非有限値が伝わるため、距離か初速が 0 なら通常の重力へ戻す
         if (!(airSeconds > NS::Core::k_Epsilon))
         {
@@ -529,7 +624,7 @@ namespace NS::Game::Player
 
         // 上下対称の弧なので、山の高さは tapSlamUpSpeed * airSeconds / 4 で決まる。
         // 高さを変えたい時に触るのは tapSlamUpSpeed で、ここは触らない
-        const float g = -2.0f * m_tapSlamUpSpeed / airSeconds;
+        const float g = -2.0f * Tuning().m_tapSlamUpSpeed / airSeconds;
         NS::Game::Entity::EntityComponent::Gravity(g, dt);
     }
 
@@ -538,8 +633,8 @@ namespace NS::Game::Player
         // 突進中に向きを変えられると当てる間合いを詰める意味が消えるので、水平は発動時の値で書き直す
         if (!m_bodySlamIsTap)
         {
-            SetLateralVelocity(
-                NS::Core::Vector3{m_bodySlamDir.x * m_bodySlamSpeed, 0.0f, m_bodySlamDir.z * m_bodySlamSpeed});
+            SetLateralVelocity(NS::Core::Vector3{
+                m_bodySlamDir.x * Tuning().m_bodySlamSpeed, 0.0f, m_bodySlamDir.z * Tuning().m_bodySlamSpeed});
         }
 
         if (m_bodySlamIsTap)
@@ -579,14 +674,14 @@ namespace NS::Game::Player
     {
         // 下りは普段の落ち方のままにする
         // 曲線は下りの重力を上りの重力に対する倍率で持つので、下降重力を上りの重力で割る
-        const float riseGravity = -m_gravityUp * m_reboundRiseGravityScale;
+        const float riseGravity = -Tuning().m_gravityUp * Tuning().m_reboundRiseGravityScale;
         const NS::Game::Level::LaunchArc launchArc{.direction = arc.direction,
                                                    .distance = arc.distance,
                                                    .apexHeight = arc.apexHeight,
                                                    .riseGravity = riseGravity,
-                                                   .fallGravityScale = -m_gravityDown / riseGravity,
-                                                   .apexBandSpeed = m_apexHangVy,
-                                                   .apexBandGravityScale = m_apexHangScale};
+                                                   .fallGravityScale = -Tuning().m_gravityDown / riseGravity,
+                                                   .apexBandSpeed = Tuning().m_apexHangVy,
+                                                   .apexBandGravityScale = Tuning().m_apexHangScale};
         return NS::Game::Level::LaunchArcInitialVelocity(launchArc);
     }
 
@@ -603,10 +698,10 @@ namespace NS::Game::Player
             return;
         }
 
-        float g = m_gravityUp * m_reboundRiseGravityScale;
-        if (std::abs(VerticalVelocity()) < m_apexHangVy)
+        float g = Tuning().m_gravityUp * Tuning().m_reboundRiseGravityScale;
+        if (std::abs(VerticalVelocity()) < Tuning().m_apexHangVy)
         {
-            g = g * m_apexHangScale;
+            g = g * Tuning().m_apexHangScale;
         }
         NS::Game::Entity::EntityComponent::Gravity(g, dt);
     }
@@ -614,36 +709,33 @@ namespace NS::Game::Player
     void PlayerComponent::AccelerateDuringRebound(float dt) noexcept
     {
         NS::Core::Vector3 direction{};
-        if (!HasMoveInput() || !NS::Core::TryNormalizeHorizontal(m_desiredDir, direction))
+        if (!HasMoveInput() || !NS::Core::TryNormalizeHorizontal(DesiredDirection(), direction))
         {
             return;
         }
 
-        const float topSpeed = std::max(MaxSpeed() * m_desiredSpeedScale, m_walkSpeed);
+        const float topSpeed = std::max(MaxSpeed() * DesiredSpeedScale(), Tuning().m_walkSpeed);
         // 入力の向きからずれた速度は削らない。削ると横へ倒しただけで相手から離れる流れが消え、
         // 弾かれる向きが当て方でなくスティックで決まる。触って詰める値ではないので欄にしない
         const float turningDrag = 0.0f;
         // 明けのフレームは止める前の接地の印が残っている。接地を見て地上の加速度を選ぶと、そのフレームだけ大きく曲がる
-        Accelerate(direction, turningDrag, m_reboundAirAcceleration, topSpeed, dt);
+        Accelerate(direction, turningDrag, Tuning().m_reboundAirAcceleration, topSpeed, dt);
     }
 
     bool PlayerComponent::ShouldLand() const noexcept
     {
         // 明けのフレームは止める前の接地の印が残ったまま上向きの速度が入る。接地だけを見ると宙へ出る前に立ちへ移る
-        return IsGrounded() && !(VerticalVelocity() > 0.0f);
+        return PlayerJudgeLand::Judge(IsGrounded(), VerticalVelocity());
     }
 
     void PlayerComponent::ResetState() noexcept
     {
         SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
-        m_desiredDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-        m_desiredSpeedScale = 0.0f;
-        m_climbRight = 0.0f;
-        m_climbForward = 0.0f;
-        m_jumpHeld = false;
+        if (m_input != nullptr)
+        {
+            m_input->ResetMovementInput();
+        }
         m_prevJumpHeld = false;
-        m_jumpPressedThisFrame = false;
-        m_releaseLedgePressedThisFrame = false;
         m_jumpsRemaining = 1;
         m_coyoteTimer = 0.0f;
         m_bufferTimer = 0.0f;
@@ -675,7 +767,9 @@ namespace NS::Game::Player
         m_wasBodySlamming = false;
 
         if (m_stateManager != nullptr)
+        {
             m_stateManager->ResetToFirst();
+        }
     }
 
     void PlayerComponent::OnStart()
@@ -683,12 +777,22 @@ namespace NS::Game::Player
         NS::Game::Entity::EntityComponent::OnStart();
 
         if (Owner() == nullptr)
+        {
             return;
+        }
 
-        m_stateManager = Owner()->FindComponent<PlayerStateManager>();
+        if (std::string_view(Owner()->ClassName()) == "Player")
+        {
+            m_stateManager = &static_cast<::Player*>(Owner())->StateManager();
+        }
     }
 
-    NS::Game::Entity::EntityStateManager* PlayerComponent::States() const noexcept
+    void PlayerComponent::OnUpdate()
+    {
+        NS::Game::Entity::EntityComponent::OnUpdate();
+    }
+
+    PlayerStateManager* PlayerComponent::States() const noexcept
     {
         return m_stateManager;
     }
@@ -696,48 +800,50 @@ namespace NS::Game::Player
     void PlayerComponent::TickTimers(float dt) noexcept
     {
         m_bufferTimer -= dt;
-        if (m_jumpPressedThisFrame)
-            m_bufferTimer = m_jumpBufferTime;
+        if (Input().JumpPressed())
+        {
+            m_bufferTimer = Tuning().m_jumpBufferTime;
+        }
 
         const bool inAir = !IsGrounded();
         if (inAir)
+        {
             m_coyoteTimer -= dt;
+        }
     }
 
     void PlayerComponent::AccelerateToInputDirection(float dt) noexcept
     {
         NS::Core::Vector3 direction{};
-        if (!HasMoveInput() || !NS::Core::TryNormalizeHorizontal(m_desiredDir, direction))
+        if (!HasMoveInput() || !NS::Core::TryNormalizeHorizontal(DesiredDirection(), direction))
         {
             return;
         }
 
-        const float topSpeed = std::max(MaxSpeed() * m_desiredSpeedScale, m_walkSpeed);
-        float acceleration = m_airAcceleration;
+        const float topSpeed = std::max(MaxSpeed() * DesiredSpeedScale(), Tuning().m_walkSpeed);
+        float acceleration = Tuning().m_airAcceleration;
         if (IsGrounded())
         {
-            acceleration = m_acceleration;
+            acceleration = Tuning().m_acceleration;
         }
-        Accelerate(direction, m_turningDrag, acceleration, topSpeed, dt);
+        Accelerate(direction, Tuning().m_turningDrag, acceleration, topSpeed, dt);
     }
 
     void PlayerComponent::ApplyFriction(float dt) noexcept
     {
-        Decelerate(m_friction, dt);
+        Decelerate(Tuning().m_friction, dt);
     }
 
     void PlayerComponent::ApplyBrake(float dt) noexcept
     {
-        Decelerate(m_deceleration, dt);
+        Decelerate(Tuning().m_deceleration, dt);
     }
 
     void PlayerComponent::Jump(float) noexcept
     {
-        const bool canGroundJump = (IsGrounded() || m_coyoteTimer > 0.0f) && m_jumpsRemaining > 0;
-        const bool wantJump = m_jumpPressedThisFrame || m_bufferTimer > 0.0f;
-        if (canGroundJump && wantJump)
+        if (PlayerJudgeJump::Judge(IsGrounded(), m_coyoteTimer, m_jumpsRemaining, Input().JumpPressed(), m_bufferTimer))
         {
-            SetVerticalVelocity(m_jumpImpulse);
+            SetVerticalVelocity(Tuning().m_jumpImpulse);
             --m_jumpsRemaining;
             m_bufferTimer = 0.0f;
             m_coyoteTimer = 0.0f;
@@ -747,21 +853,27 @@ namespace NS::Game::Player
 
     void PlayerComponent::CutJumpRelease() noexcept
     {
-        if (m_prevJumpHeld && !m_jumpHeld && VerticalVelocity() > 0.0f)
-            SetVerticalVelocity(VerticalVelocity() * m_jumpReleaseScale);
+        if (m_prevJumpHeld && !Input().JumpHeld() && VerticalVelocity() > 0.0f)
+        {
+            SetVerticalVelocity(VerticalVelocity() * Tuning().m_jumpReleaseScale);
+        }
     }
 
     void PlayerComponent::Gravity(float dt) noexcept
     {
-        const bool apex = std::abs(VerticalVelocity()) < m_apexHangVy;
+        const bool apex = std::abs(VerticalVelocity()) < Tuning().m_apexHangVy;
 
-        float baseG = m_gravityDown;
+        float baseG = Tuning().m_gravityDown;
         if (VerticalVelocity() > 0.0f)
-            baseG = m_gravityUp;
+        {
+            baseG = Tuning().m_gravityUp;
+        }
 
         float g = baseG;
         if (apex)
-            g = baseG * m_apexHangScale;
+        {
+            g = baseG * Tuning().m_apexHangScale;
+        }
 
         NS::Game::Entity::EntityComponent::Gravity(g, dt);
     }
@@ -774,9 +886,9 @@ namespace NS::Game::Player
         {
             // 一定の速さで回す。速さの理由は m_turnSpeed の欄
             NS::Core::Vector3 current{};
-            if (m_turnSpeed > 0.0f && NS::Core::TryNormalizeHorizontal(m_facingDir, current))
+            if (Tuning().m_turnSpeed > 0.0f && NS::Core::TryNormalizeHorizontal(m_facingDir, current))
             {
-                const float maxTurn = NS::Core::ToRadians(NS::Core::Degrees{m_turnSpeed * dt}).value;
+                const float maxTurn = NS::Core::ToRadians(NS::Core::Degrees{Tuning().m_turnSpeed * dt}).value;
                 m_facingDir = TurnHorizontalToward(current, target, maxTurn);
             }
             else
@@ -786,7 +898,7 @@ namespace NS::Game::Player
         }
 
         const NS::Core::Vector3 before = RootTransform().Position();
-        NS::Game::Entity::EntityComponent::Move(dt, m_maxStepHeight);
+        NS::Game::Entity::EntityComponent::Move(dt, Tuning().m_maxStepHeight);
         const NS::Core::Vector3 delta = RootTransform().Position() - before;
         m_lastMoveDistance = delta.Length();
         SyncGroundState();
@@ -820,11 +932,13 @@ namespace NS::Game::Player
     void PlayerComponent::SyncGroundState() noexcept
     {
         if (!WasGrounded() && IsGrounded())
+        {
             m_jumpsRemaining = 1;
+        }
 
         if (IsGrounded())
         {
-            m_coyoteTimer = m_coyoteTime;
+            m_coyoteTimer = Tuning().m_coyoteTime;
             // 着地のフレームだけで戻すと、接地したまま走り抜けた突進の後に次が出せない
             m_bodySlamSpent = false;
         }
@@ -832,14 +946,7 @@ namespace NS::Game::Player
 
     bool PlayerComponent::LedgeGrab() noexcept
     {
-        // 空中で下降中に、向いている方の縁を掴む
-        if (IsGrounded() || VerticalVelocity() > 0.0f)
-        {
-            return false;
-        }
-        // 当てたフレームは ImpactResolver が自分より先に突進を終え、落下の 1 フレームがここを通る
-        // 掴むと止めの前に立ち姿へ戻り、ぶら下がりの位置から反動に入る
-        if (m_wasBodySlamming)
+        if (!PlayerJudgeLedgeGrab::Judge(IsGrounded(), VerticalVelocity(), m_wasBodySlamming))
         {
             return false;
         }
@@ -859,24 +966,20 @@ namespace NS::Game::Player
         pos.y += halfHeight - CapsuleHalfHeight();
         const float handY = pos.y + halfHeight;
         const NS::Core::Vector3 probe{
-            pos.x + dir.x * (CapsuleRadius() + m_ledgeReach),
+            pos.x + dir.x * (CapsuleRadius() + Tuning().m_ledgeReach),
             handY,
-            pos.z + dir.z * (CapsuleRadius() + m_ledgeReach),
+            pos.z + dir.z * (CapsuleRadius() + Tuning().m_ledgeReach),
         };
 
         // 帯の上は今フレーム動いた距離まで。速く落ちると 1 フレームで縁の上端を通り過ぎて掴み損ねる
         const float above = m_lastMoveDistance;
-        for (const NS::Core::AABB& box : BoxesTouchingBand(ScenePhysics(), probe, m_ledgeGrabBelowHand, above))
+        for (const NS::Core::AABB& box : BoxesTouchingBand(ScenePhysics(), probe, Tuning().m_ledgeGrabBelowHand, above))
         {
             const float top = box.Center.y + box.Extents.y;
-            if (top < handY - m_ledgeGrabBelowHand || top > handY + above)
+            if (!PlayerJudgeLedgeGrab::InBand(probe, box, Tuning().m_ledgeGrabBelowHand, above))
             {
                 continue;
             }
-            if (probe.x < box.Center.x - box.Extents.x || probe.x > box.Center.x + box.Extents.x)
-                continue;
-            if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
-                continue;
 
             // 接近軸の優勢成分で掴む手前面を決め、その外側にカプセルを寄せた hang 位置を出す
             NS::Core::Vector3 faceNormal{0.0f, 0.0f, 0.0f};
@@ -885,7 +988,9 @@ namespace NS::Game::Player
             {
                 float sgn = -1.0f;
                 if (dir.x >= 0.0f)
+                {
                     sgn = 1.0f;
+                }
                 const float faceX = box.Center.x - sgn * box.Extents.x;
                 faceNormal = NS::Core::Vector3{-sgn, 0.0f, 0.0f};
                 hang.x = faceX - sgn * CapsuleRadius();
@@ -895,7 +1000,9 @@ namespace NS::Game::Player
             {
                 float sgn = -1.0f;
                 if (dir.z >= 0.0f)
+                {
                     sgn = 1.0f;
+                }
                 const float faceZ = box.Center.z - sgn * box.Extents.z;
                 faceNormal = NS::Core::Vector3{0.0f, 0.0f, -sgn};
                 hang.z = faceZ - sgn * CapsuleRadius();
@@ -920,7 +1027,9 @@ namespace NS::Game::Player
                 }
             }
             if (blocked)
+            {
                 continue;
+            }
 
             // 掴まりからは突進が出ないので、立ち姿でぶら下がる。ぶら下がる位置は立ち姿の中心なので、
             // 置く前に解く。置いた後に解くと根が半長ぶん上がる
@@ -958,17 +1067,17 @@ namespace NS::Game::Player
 
     bool PlayerComponent::ShouldClimbLedge() const noexcept
     {
-        return m_climbForward > 0.0f;
+        return ClimbForward() > 0.0f;
     }
 
     bool PlayerComponent::LedgeJump() noexcept
     {
-        if (!m_jumpPressedThisFrame)
+        if (!Input().JumpPressed())
         {
             return false;
         }
 
-        SetVerticalVelocity(m_jumpImpulse);
+        SetVerticalVelocity(Tuning().m_jumpImpulse);
         SetGrounded(false);
         if (m_stateManager != nullptr)
         {
@@ -980,7 +1089,7 @@ namespace NS::Game::Player
 
     bool PlayerComponent::ShouldDropLedge() const noexcept
     {
-        return m_releaseLedgePressedThisFrame;
+        return Input().ReleaseLedgePressed();
     }
 
     void PlayerComponent::ClimbLedge() noexcept
@@ -1017,14 +1126,14 @@ namespace NS::Game::Player
 
     void PlayerComponent::Shimmy(float dt) noexcept
     {
-        if (m_climbRight != 0.0f)
+        if (ClimbRight() != 0.0f)
         {
             // 面法線に水平直交する縁方向。動いても面からの距離は変わらない
             const NS::Core::Vector3 pos = RootTransform().Position();
             const NS::Core::Vector3 alongDir{-m_ledgeFaceNormal.z, 0.0f, m_ledgeFaceNormal.x};
             NS::Core::Vector3 shimmied = pos;
-            shimmied.x += alongDir.x * m_climbRight * m_ledgeShimmySpeed * dt;
-            shimmied.z += alongDir.z * m_climbRight * m_ledgeShimmySpeed * dt;
+            shimmied.x += alongDir.x * ClimbRight() * Tuning().m_ledgeShimmySpeed * dt;
+            shimmied.z += alongDir.z * ClimbRight() * Tuning().m_ledgeShimmySpeed * dt;
             // 移動先にも掴める縁が続いている時だけ動く。端なら止めて落とさない
             float top = 0.0f;
             if (FindLedgeTopAt(shimmied, top))
@@ -1038,9 +1147,9 @@ namespace NS::Game::Player
     {
         m_ledgeMantleTimer += dt;
         float t = 1.0f;
-        if (m_ledgeClimbDuration > 0.0f)
+        if (Tuning().m_ledgeClimbDuration > 0.0f)
         {
-            t = NS::Core::Clamp(m_ledgeMantleTimer / m_ledgeClimbDuration, 0.0f, 1.0f);
+            t = NS::Core::Clamp(m_ledgeMantleTimer / Tuning().m_ledgeClimbDuration, 0.0f, 1.0f);
         }
 
         // 2 段に割るのは角への食い込みを避けるため。前半は上昇だけで前へ進まない
@@ -1071,7 +1180,7 @@ namespace NS::Game::Player
             }
             SetGrounded(true);
             m_jumpsRemaining = 1;
-            m_coyoteTimer = m_coyoteTime;
+            m_coyoteTimer = Tuning().m_coyoteTime;
         }
     }
 
@@ -1080,22 +1189,26 @@ namespace NS::Game::Player
         const NS::Core::Vector3 inward{-m_ledgeFaceNormal.x, 0.0f, -m_ledgeFaceNormal.z};
         const float handY = hangPos.y + CapsuleHalfHeight();
         const NS::Core::Vector3 probe{
-            hangPos.x + inward.x * (CapsuleRadius() + m_ledgeReach),
+            hangPos.x + inward.x * (CapsuleRadius() + Tuning().m_ledgeReach),
             handY,
-            hangPos.z + inward.z * (CapsuleRadius() + m_ledgeReach),
+            hangPos.z + inward.z * (CapsuleRadius() + Tuning().m_ledgeReach),
         };
 
-        for (const NS::Core::AABB& box : BoxesTouchingBand(ScenePhysics(), probe, m_ledgeGrabBelowHand, 0.0f))
+        for (const NS::Core::AABB& box : BoxesTouchingBand(ScenePhysics(), probe, Tuning().m_ledgeGrabBelowHand, 0.0f))
         {
             const float top = box.Center.y + box.Extents.y;
-            if (top < handY - m_ledgeGrabBelowHand || top > handY)
+            if (top < handY - Tuning().m_ledgeGrabBelowHand || top > handY)
             {
                 continue;
             }
             if (probe.x < box.Center.x - box.Extents.x || probe.x > box.Center.x + box.Extents.x)
+            {
                 continue;
+            }
             if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
+            {
                 continue;
+            }
 
             // 乗り上がり先が別ブロックで塞がっていたら縁とみなさない。オーバーハングの下では掴めない
             const float mantleStep = 2.0f * CapsuleRadius();
@@ -1114,7 +1227,9 @@ namespace NS::Game::Player
                 }
             }
             if (blocked)
+            {
                 continue;
+            }
 
             outTop = top;
             return true;
@@ -1125,35 +1240,27 @@ namespace NS::Game::Player
     bool PlayerComponent::IsLocomotion() const noexcept
     {
         if (m_stateManager == nullptr)
+        {
             return false;
+        }
         return m_stateManager->IsCurrent<IdlePlayerState>() || m_stateManager->IsCurrent<WalkPlayerState>() ||
                m_stateManager->IsCurrent<FallPlayerState>() || m_stateManager->IsCurrent<ReboundPlayerState>();
     }
 
     bool PlayerComponent::ShouldWalk() const noexcept
     {
-        if (!IsGrounded())
-            return false;
-        if (m_desiredSpeedScale >= m_stickDeadzone)
-            return true;
-
-        return !IsStopped();
+        return PlayerJudgeWalk::Judge(IsGrounded(), HasMoveInput(), IsStopped());
     }
 
     bool PlayerComponent::ShouldBrake() const noexcept
     {
-        NS::Core::Vector3 direction{};
-        if (!HasMoveInput() || !NS::Core::TryNormalizeHorizontal(m_desiredDir, direction))
-        {
-            return false;
-        }
-        const NS::Core::Vector3 lateral = LateralVelocity();
-        return direction.x * lateral.x + direction.z * lateral.z < m_brakeThreshold;
+        return PlayerJudgeBrake::Judge(
+            HasMoveInput(), DesiredDirection(), LateralVelocity(), Tuning().m_brakeThreshold);
     }
 
     bool PlayerComponent::HasMoveInput() const noexcept
     {
-        return m_desiredSpeedScale >= m_stickDeadzone;
+        return DesiredSpeedScale() >= Tuning().m_stickDeadzone;
     }
 
     bool PlayerComponent::IsStopped() const noexcept
@@ -1164,7 +1271,7 @@ namespace NS::Game::Player
 
     bool PlayerComponent::ShouldIdle() const noexcept
     {
-        return IsGrounded() && !ShouldWalk();
+        return PlayerJudgeIdle::Judge(IsGrounded(), ShouldWalk());
     }
 
     bool PlayerComponent::ShouldFall() const noexcept
@@ -1172,50 +1279,42 @@ namespace NS::Game::Player
         return !IsGrounded();
     }
 
-    void PlayerComponent::HandleStates(float dt)
+    void PlayerComponent::PrepareStateStep()
     {
-        if (m_stateManager != nullptr)
+        if (PlayerJudgeBodySlam::Judge(m_bodySlamBufferRemaining, m_bodySlamSpent, m_wasBodySlamming, IsLocomotion()))
         {
-            // 発動の判定が現在状態を見るので、組むのは 1 フレームの頭。Step の初回に任せると
-            // 1 フレーム目だけ現在状態が空になり、そのフレームの押しが 1 フレーム遅れて出る
-            m_stateManager->EnsureBuilt(*this);
-
-            // 突進の中で見ると通常移動の 1 フレームを走ってから移ることになり、突進の初速がそのフレームに乗らない
-            // 空中の押しを捨てると連打で出ないフレームができるため、接地は求めない
-            // 突進を出すのは通常移動のフレームだけ。掴まり中に出せると縁から離れる操作が 1 つ増える
-            // 空中で 2 発目まで出せると 1 発の重みが消える。接地するまで次は出さない
-            // 当てたフレームは ImpactResolver が自分より先に突進を終えている。ここで出すと突進のまま止められ、
-            // 明けの反動に終わりの通知なしで上書きされる。押しは先行入力に残し、明けに反動から出す
-            if (m_bodySlamBufferRemaining > 0.0f && !m_bodySlamSpent && !m_wasBodySlamming && IsLocomotion())
+            if (BodySlam())
             {
-                if (BodySlam())
-                    m_bodySlamBufferRemaining = 0.0f;
+                m_bodySlamBufferRemaining = 0.0f;
             }
-
-            m_stateManager->Step(*this, dt);
         }
+    }
 
-        // 接地は動かした後に決まるので、着地で解けるのは着地した次のフレーム
+    void PlayerComponent::FinishStateStep(float dt)
+    {
         UncurlWhenSettled();
-
-        // 1 フレーム限りの入力は、どの状態でも通るここで落とす
-        m_prevJumpHeld = m_jumpHeld;
-        m_jumpPressedThisFrame = false;
-        m_releaseLedgePressedThisFrame = false;
-        // 突進中は期限を数えない。踏み込みが先行入力の秒より長いので、数えると明ける前に押しが消える
+        m_prevJumpHeld = Input().JumpHeld();
+        if (m_input != nullptr)
+        {
+            m_input->ConsumePressed();
+        }
         if (m_bodySlamBufferRemaining > 0.0f && !IsBodySlamming())
+        {
             m_bodySlamBufferRemaining = std::max(0.0f, m_bodySlamBufferRemaining - dt);
-
-        // 発動の判定より後で数える。前だと押した時の狙いが、同じフレームの中で 1 つ古い値になる
-        if (m_bodySlamAimAge < m_slamAimFadeTime)
+        }
+        if (m_bodySlamAimAge < Tuning().m_slamAimFadeTime)
+        {
             m_bodySlamAimAge += dt;
+        }
     }
 
     void PlayerComponent::OnStepSkipped()
     {
-        m_jumpPressedThisFrame = false;
-        m_releaseLedgePressedThisFrame = false;
-        m_prevJumpHeld = m_jumpHeld;
+        if (m_input != nullptr)
+        {
+            m_input->ConsumePressed();
+        }
+        m_prevJumpHeld = Input().JumpHeld();
     }
 
     NS_CLASS(PlayerComponent)

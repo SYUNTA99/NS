@@ -105,7 +105,7 @@ namespace
 namespace NS::Obj
 {
 
-    ThirdPersonFollow::ThirdPersonFollow() noexcept : VirtualCamera(NS::Obj::TickPriority::LateUpdate + 50)
+    ThirdPersonFollow::ThirdPersonFollow() noexcept : VirtualCamera()
     {
         // 生成直後は非 active でプレイ突入時に有効化される。編集中は free-fly が active のまま
         SetActive(false);

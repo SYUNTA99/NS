@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
-#include "Runtime/Object/Reflection/ObjectRef.h"
+#include "Runtime/Object/Reflection/ActorRef.h"
 
 namespace NS::Obj
 {
@@ -51,7 +51,7 @@ namespace NS::Obj
         [[nodiscard]] Transform* Target() const noexcept;
 
         //! 追従対象の永続参照。データ経由の構築がリフレクション set で書く
-        [[nodiscard]] ObjectRef TargetRef() const noexcept { return m_targetRef; }
+        [[nodiscard]] ActorRef TargetRef() const noexcept { return m_targetRef; }
 
         //! プレイ開始 / rebuild ごとに初期姿勢へ戻す
         void OnStart() override;
@@ -215,7 +215,7 @@ namespace NS::Obj
             Returning, // 反動の状態が外れてから普通の追い方へ寄せ戻している
         };
 
-        ObjectRef m_targetRef{}; // 追従対象の永続参照。ポインタで控えないので、相手が先に消えても空を引くだけ
+        ActorRef m_targetRef{}; // 追従対象の永続参照。ポインタで控えないので、相手が先に消えても空を引くだけ
 
         // 値で受けた追従先の運動。届くまでは待機距離のまま
         bool m_followGrounded = false;
@@ -274,19 +274,19 @@ namespace NS::Obj
         NS::Core::Vector2 m_chargeFrameOffset{};   // 今の構図のずらし (m、カメラの右と上)
         NS::Core::Vector2 m_chargeFrameVelocity{}; // 構図のずらしの速さ (m/秒)
 
-        FollowReboundDesc m_rebound{}; // 次の OnUpdate で使う反動の状態
-        bool m_wasRebounding = false;  // 前のフレームに反動の状態だったか
-        bool m_reboundLookHeld = false; // 反動になってから接地するまで、回す入力を受けないか
-        float m_reboundTurnAngle = 0.0f; // 反動になったフレームに決めた、回す角度 (ラジアン)
-        int m_reboundTurnFrame = 0;      // 回しの何フレーム目か。欄のフレーム数で回し終える
+        FollowReboundDesc m_rebound{};                    // 次の OnUpdate で使う反動の状態
+        bool m_wasRebounding = false;                     // 前のフレームに反動の状態だったか
+        bool m_reboundLookHeld = false;                   // 反動になってから接地するまで、回す入力を受けないか
+        float m_reboundTurnAngle = 0.0f;                  // 反動になったフレームに決めた、回す角度 (ラジアン)
+        int m_reboundTurnFrame = 0;                       // 回しの何フレーム目か。欄のフレーム数で回し終える
         ReboundPhase m_reboundPhase = ReboundPhase::None; // 今の段
-        NS::Core::Vector3 m_reboundAnchor{};         // 横と前後を遅らせて追う注視点。高さは留める
-        NS::Core::Vector3 m_reboundAnchorVelocity{}; // 注視点の横と前後の速さ (m/秒)。縦は使わない
-        NS::Core::Vector3 m_reboundReturnOffset{};   // 寄せ戻し始めの、注視点 − 追う相手の頭 (m)
-        int m_reboundReturnFrame = 0;                // 寄せ戻しの何フレーム目か
-        NS::Core::Vector3 m_look{};                  // このフレームの注視点。反動と寄せ戻しで使う
-        NS::Core::Vector3 m_previousLook{};          // 前のフレームの注視点。描画の補間に使う
-        bool m_hasLook = false; // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
+        NS::Core::Vector3 m_reboundAnchor{};              // 横と前後を遅らせて追う注視点。高さは留める
+        NS::Core::Vector3 m_reboundAnchorVelocity{};      // 注視点の横と前後の速さ (m/秒)。縦は使わない
+        NS::Core::Vector3 m_reboundReturnOffset{};        // 寄せ戻し始めの、注視点 − 追う相手の頭 (m)
+        int m_reboundReturnFrame = 0;                     // 寄せ戻しの何フレーム目か
+        NS::Core::Vector3 m_look{};                       // このフレームの注視点。反動と寄せ戻しで使う
+        NS::Core::Vector3 m_previousLook{};               // 前のフレームの注視点。描画の補間に使う
+        bool m_hasLook = false;                           // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
     };
 
 } // namespace NS::Obj

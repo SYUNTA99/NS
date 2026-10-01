@@ -17,12 +17,12 @@ namespace NS::Obj
         constexpr int k_MaxShakeFrames = 60;
     } // namespace
 
-    // 当たりを決める部品 (Update - 100) と同じ帯。決めたフレームに最初の姿を出す
-    HitReaction::HitReaction() noexcept : OverlayRenderer(TickPriority::Update - 100) {}
+    // 持ち主の Actor の Update が呼ぶ。自機では ImpactResolver の後に呼ばれ、決めたフレームに最初の姿を出す
+    HitReaction::HitReaction() noexcept : OverlayRenderer() {}
 
     void HitReaction::Play(const HitReactionDesc& desc)
     {
-        m_flashRemaining = desc.flashFrames > 0 ? desc.flashFrames : 0;
+        m_flashRemaining = std::max(desc.flashFrames, 0);
         m_flashFrames = m_flashRemaining;
         m_flashAlpha = desc.flashAlpha;
         m_pad = desc.pad;
@@ -37,7 +37,10 @@ namespace NS::Obj
         }
         if (desc.shake.frames > k_MaxShakeFrames)
         {
-            NS_LOG_WARN(Scene, "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった", desc.shake.frames, k_MaxShakeFrames);
+            NS_LOG_WARN(Scene,
+                        "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった",
+                        desc.shake.frames,
+                        k_MaxShakeFrames);
         }
         else if (desc.shake.frames > 0 && !StartCameraShake(*Owner(), desc.shake))
         {
@@ -111,7 +114,8 @@ namespace NS::Obj
         // 以後のフレームは始めの値から 0 へ減るだけなので、範囲の外になるのは始めの値が外の時だけ
         if (!NS::Platform::Input::Get().Gamepad(0).SetVibration(speed.left, speed.right))
         {
-            NS_LOG_WARN(Scene, "パッドの振動の速さが 0〜1 の外で、震わせなかった: 左 {} 右 {}", speed.left, speed.right);
+            NS_LOG_WARN(
+                Scene, "パッドの振動の速さが 0〜1 の外で、震わせなかった: 左 {} 右 {}", speed.left, speed.right);
             m_padRunning = false;
         }
     }

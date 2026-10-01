@@ -1,8 +1,8 @@
 #include "Runtime/Object/Components/RigidBody.h"
 
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -21,12 +21,11 @@ namespace NS::Obj
 
         std::vector<NS::Phys::ShapePart> parts;
         bool leftStatic = false;
-        for (Component* comp : Owner()->Components())
-        {
-            const Collider* collider = ComponentCast<Collider>(comp);
+        Owner()->ForEachPart([&parts, &leftStatic](std::string_view, Component& part) {
+            const Collider* collider = ComponentCast<Collider>(&part);
             if (collider == nullptr || !collider->IsActive())
             {
-                continue;
+                return;
             }
             if (collider->CanJoinRigidBody())
             {
@@ -36,12 +35,13 @@ namespace NS::Obj
             {
                 leftStatic = true;
             }
-        }
+        });
         if (leftStatic)
         {
-            NS_LOG_WARN(Scene,
-                        "RigidBody: '{}' のメッシュ・スロープの当たりは動く body の形にできない。静的なまま元の場所に残る",
-                        Owner()->Name());
+            NS_LOG_WARN(
+                Scene,
+                "RigidBody: '{}' のメッシュ・スロープの当たりは動く body の形にできない。静的なまま元の場所に残る",
+                Owner()->Name());
         }
 
         NS::Core::Vector3 position;
@@ -188,7 +188,11 @@ namespace NS::Obj
         motion.restitution = m_restitution;
         motion.linearDamping = m_linearDamping;
         motion.angularDamping = m_angularDamping;
-        motion.gravityFactor = m_useGravity ? m_gravityScale : 0.0f;
+        motion.gravityFactor = 0.0f;
+        if (m_useGravity)
+        {
+            motion.gravityFactor = m_gravityScale;
+        }
         motion.continuousCollision = m_continuousCollision;
 
         JPH::EAllowedDOFs allowed = JPH::EAllowedDOFs::All;
@@ -360,8 +364,7 @@ namespace NS::Obj
         rotation = parts.rotation;
     }
 
-    void RigidBody::SetOwnerWorldPose(const NS::Core::Vector3& position,
-                                               const NS::Core::Quaternion& rotation) noexcept
+    void RigidBody::SetOwnerWorldPose(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation) noexcept
     {
         Transform& root = RootTransform();
         const Transform* parent = root.Parent();
@@ -389,15 +392,14 @@ namespace NS::Obj
         }
         m_followedWorld = world;
 
-        for (Component* comp : Owner()->Components())
-        {
-            Collider* collider = ComponentCast<Collider>(comp);
+        Owner()->ForEachPart([&physics](std::string_view, Component& part) {
+            Collider* collider = ComponentCast<Collider>(&part);
             if (collider != nullptr && collider->IsActive() && !collider->CanJoinRigidBody() &&
                 collider->FollowsRigidBody())
             {
                 collider->SyncToPhysics(physics);
             }
-        }
+        });
     }
 
     NS_CLASS(RigidBody)

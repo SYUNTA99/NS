@@ -34,10 +34,14 @@ namespace NS::Editor
         outY = mouseY;
 #if NS_EDITOR_ENABLED
         if (ImGui::GetCurrentContext() == nullptr)
+        {
             return;
+        }
         const ImGuiViewport* main = ImGui::GetMainViewport();
         if (main == nullptr)
+        {
             return;
+        }
         // 別窓を出さない設定なら Pos は原点なので、この足し算は何も動かさない
         outX += static_cast<int>(main->Pos.x);
         outY += static_cast<int>(main->Pos.y);
@@ -62,12 +66,16 @@ namespace NS::Editor
 
         const float invWNear = [&]() -> float {
             if (std::abs(wNearH.w) > 1e-6f)
+            {
                 return 1.0f / wNearH.w;
+            }
             return 0.0f;
         }();
         const float invWFar = [&]() -> float {
             if (std::abs(wFarH.w) > 1e-6f)
+            {
                 return 1.0f / wFarH.w;
+            }
             return 0.0f;
         }();
 
@@ -91,10 +99,14 @@ namespace NS::Editor
     {
         // 水平または上向きのレイは交差対象外とする
         if (ray.direction.y > -1e-4f)
+        {
             return false;
+        }
         const float t = -ray.position.y / ray.direction.y;
         if (t < 0.0f)
+        {
             return false;
+        }
         const NS::Core::Vector3 hit{
             ray.position.x + ray.direction.x * t,
             0.0f,

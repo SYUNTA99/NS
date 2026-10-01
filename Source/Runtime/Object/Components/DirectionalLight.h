@@ -23,6 +23,8 @@ namespace NS::Obj
         [[nodiscard]] float Exposure() const noexcept { return m_exposure; }
 
         //! 所属 scene の平行光の登録簿へ自分を入れる
+        void OnAppear() override { DirectionalLight::OnStart(); }
+        void OnKill() noexcept override { DirectionalLight::OnEndPlay(); }
         void OnStart() override;
         //! 所属 scene の平行光の登録簿から自分を外す
         void OnEndPlay() override;

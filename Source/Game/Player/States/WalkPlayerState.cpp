@@ -1,40 +1,41 @@
 #include "Game/Player/States/WalkPlayerState.h"
 
-#include "Game/Entity/EntityStateManager.h"
+#include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerStateManager.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
 
 namespace NS::Game::Player
 {
-    void WalkPlayerState::OnStep(PlayerComponent& player, float dt)
+    void WalkPlayerState::OnStep(::Player& player, float dt)
     {
-        player.TickTimers(dt);
-        const bool brake = player.ShouldBrake();
-        if (!brake && player.HasMoveInput())
+        player.Movement().TickTimers(dt);
+        const bool brake = player.Movement().ShouldBrake();
+        if (!brake && player.Movement().HasMoveInput())
         {
-            player.AccelerateToInputDirection(dt);
+            player.Movement().AccelerateToInputDirection(dt);
         }
         else if (!brake)
         {
-            player.ApplyFriction(dt);
+            player.Movement().ApplyFriction(dt);
         }
-        player.Jump(dt);
-        player.CutJumpRelease();
-        player.Gravity(dt);
+        player.Movement().Jump(dt);
+        player.Movement().CutJumpRelease();
+        player.Movement().Gravity(dt);
 
-        if (player.ShouldFall())
+        if (player.Movement().ShouldFall())
         {
-            player.States()->Change<FallPlayerState>();
+            player.StateManager().Change<FallPlayerState>();
         }
         else if (brake)
         {
-            player.States()->Change<BrakePlayerState>();
+            player.StateManager().Change<BrakePlayerState>();
         }
-        else if (player.ShouldIdle())
+        else if (player.Movement().ShouldIdle())
         {
-            player.States()->Change<IdlePlayerState>();
+            player.StateManager().Change<IdlePlayerState>();
         }
     }
 } // namespace NS::Game::Player

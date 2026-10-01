@@ -300,7 +300,9 @@ namespace NS::Editor
                 {
                     const ImVec4 color = [this]() -> ImVec4 {
                         if (m_statusError)
+                        {
                             return k_MsgErrorColor;
+                        }
                         return k_MsgOkColor;
                     }();
                     ImGui::TextColored(color, "%s", m_statusMessage.c_str());

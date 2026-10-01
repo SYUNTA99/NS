@@ -350,7 +350,9 @@ namespace NS::Gfx
     {
         ID3D11Device* device = Gpu().device;
         if (device == nullptr)
+        {
             return false;
+        }
 
         ComPtr<ID3D11ShaderResourceView> newSrv;
         bool loaded = false;

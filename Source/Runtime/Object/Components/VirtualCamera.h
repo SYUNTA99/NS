@@ -42,12 +42,12 @@ namespace NS::Obj
     class VirtualCamera : public Component
     {
     public:
-        //! tick 順は LateUpdate 帯の後方で、派生が LateUpdate + 50 を渡す。vcam 選択用の優先度は別で SetVcamPriority
-        //! が設定する
-        explicit VirtualCamera(int tickPriority) noexcept : Component(tickPriority) {}
+        VirtualCamera() noexcept = default;
         ~VirtualCamera() noexcept override;
 
         //! カメラの窓口から管理役へ自分を登録する。派生で上書きするなら基底のこれを呼ぶ
+        void OnAppear() override { VirtualCamera::OnStart(); }
+        void OnKill() noexcept override { VirtualCamera::OnEndPlay(); }
         void OnStart() override;
 
         //! 管理役から自分を外す。派生で上書きするなら基底のこれを呼ぶ
@@ -68,7 +68,8 @@ namespace NS::Obj
         void SetFarPlane(float farPlane) noexcept { m_farPlane = farPlane; }
         [[nodiscard]] float FarPlane() const noexcept { return m_farPlane; }
 
-        // 姿勢は派生と CameraManager が決めるので保存する調整値は無い。派生のリフレクション鎖の中継点として型名だけ登録する
+        // 姿勢は派生と CameraManager
+        // が決めるので保存する調整値は無い。派生のリフレクション鎖の中継点として型名だけ登録する
         NS_REFLECT_NONE(VirtualCamera, Component)
 
     protected:

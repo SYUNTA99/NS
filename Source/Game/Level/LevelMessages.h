@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game/Level/HitTier.h"
-#include "Game/Level/LaunchedBody.h"
+#include "Game/Level/LaunchArc.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Message.h"
@@ -73,11 +73,12 @@ namespace NS::Game::Level
     //! @brief 体当たりの相手の答え。MsgAskTackleTarget の受け手が書く
     struct TackleTargetAnswer
     {
-        float mass = 1.0f;                           //!< 重さ。押し飛ばしの距離と止めの長さに効く
-        float toughness = 0.0f;                      //!< 耐久。破壊を許した時だけ、威力がこれ以下なら壊れる
-        bool placed = true;                          //!< 置かれているか。飛んでいる相手は食い込ませない
+        float mass = 1.0f;                            //!< 重さ。押し飛ばしの距離と止めの長さに効く
+        float toughness = 0.0f;                       //!< 耐久。破壊を許した時だけ、威力がこれ以下なら壊れる
+        bool breakable = false;                       //!< 壊れる動きを持つか。偽なら破壊を許しても押し飛ばしへ回る
+        bool placed = true;                           //!< 置かれているか。飛んでいる相手は食い込ませない
         NS::Core::Vector3 position{0.0f, 0.0f, 0.0f}; //!< 根の位置 (世界座標)
-        NS::Core::AABB bounds{};                     //!< 体の外接箱 (世界座標)
+        NS::Core::AABB bounds{};                      //!< 体の外接箱 (世界座標)
     };
 
     //! @brief 体当たりを受けるかを問う知らせ。体当たりの裁定が、重なった物の体のセンサーへ送る
@@ -129,11 +130,11 @@ namespace NS::Game::Level
     //! @brief 体当たりの止めが明けた時の、相手の飛び方
     struct TackleReleaseDesc
     {
-        LaunchArc arc{};                  //!< 飛ぶ曲線。壊れる時は使わない
-        bool breaks = false;              //!< 壊れるか。破壊を許した時だけ真になる
-        HitTier tier = HitTier::Center;   //!< 当たりの段。尾の色が変わる
-        float power = 0.0f;               //!< 最終威力
-        float launchScale = 0.0f;         //!< 曲線の距離と高さに掛けた比。尾の長さに効く
+        LaunchArc arc{};                //!< 飛ぶ曲線。壊れる時は使わない
+        bool breaks = false;            //!< 壊れるか。破壊を許した時だけ真になる
+        HitTier tier = HitTier::Center; //!< 当たりの段。尾の色が変わる
+        float power = 0.0f;             //!< 最終威力
+        float launchScale = 0.0f;       //!< 曲線の距離と高さに掛けた比。尾の長さに効く
     };
 
     //! @brief 体当たりの止めが明けたことを知らせる。受け手は元の位置と形へ戻ってから飛ぶか壊れ、床に跡を残す

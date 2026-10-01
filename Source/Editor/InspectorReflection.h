@@ -21,7 +21,7 @@ namespace NS::Obj
 
 namespace NS::Editor
 {
-    //! @brief ObjectRefフィールドで参照可能なオブジェクトの選択肢
+    //! @brief ActorRef の欄で参照可能なオブジェクトの選択肢
     struct ObjectRefOption
     {
         std::uint32_t id = 0; // 参照先の永続ID
@@ -32,17 +32,15 @@ namespace NS::Editor
     //! @details 描く側が欄の型で絞るので、候補には全配置物の Component を入れてよい
     struct ComponentRefOption
     {
-        std::uint32_t object = 0;                    // 持ち主の配置物の永続 ID
-        std::uint32_t component = 0;                 // Component の永続 ID
-        const NS::Obj::Component* target = nullptr;  // 型の照合に使う実体。そのフレームの間だけ有効
-        std::string label;                           // UI表示用のラベル
+        std::uint32_t object = 0; // 持ち主の配置物の永続 ID
+        std::string partName;
+        const NS::Obj::Component* target = nullptr; // 型の照合に使う実体。そのフレームの間だけ有効
+        std::string label;                          // UI表示用のラベル
     };
 
     //! @brief 部品ごとの既定の値を引く置き場
     //! @details リフレクション欄の上書きの印と戻すボタンが、今の値と比べる相手として引く
     //! 持ち主のクラスの既定の 1 体 (コードの既定値に種類の既定値を当てた物) の同じ部品が相手になる
-    //! 持ち主の無い部品だけは、型のコードの既定値と比べる。その控えは 1 体の Actor へまとめて attach するだけで、
-    //! world に入らないので更新も描画も走らない
     class ComponentDefaults : public NS::Core::NonCopyable
     {
     public:
@@ -57,8 +55,7 @@ namespace NS::Editor
         // typeName のコードの既定値の 1 個。初回だけ作って以降は使い回す。未登録の型は nullptr
         [[nodiscard]] const NS::Obj::Component* FindTypeDefault(std::string_view typeName);
 
-        std::unique_ptr<NS::Obj::Actor> m_holder;                     // 既定インスタンスを持つ Actor
-        std::vector<std::pair<std::string, NS::Obj::Component*>> m_byType; // 型名から引く索引
+        std::vector<std::pair<std::string, std::unique_ptr<NS::Obj::Component>>> m_byType;
     };
 
     //! @brief 1フレームのコンポーネント編集で起きた相互作用の集約

@@ -39,9 +39,13 @@ namespace NS::Editor
                 if (m_fixedAspect > 0.0f)
                 {
                     if (avail.x > avail.y * m_fixedAspect)
+                    {
                         draw = ImVec2{avail.y * m_fixedAspect, avail.y};
+                    }
                     else
+                    {
                         draw = ImVec2{avail.x, avail.x / m_fixedAspect};
+                    }
                 }
 
                 // 可視なら次フレームの描画先サイズを立てる。RT 未生成でも記録する
@@ -84,12 +88,18 @@ namespace NS::Editor
     std::optional<NS::Obj::SceneView> ViewportSurface::CollectView(std::optional<NS::Obj::CameraPose> pose) noexcept
     {
         if (!m_visible || m_size.width < 8 || m_size.height < 8)
+        {
             return std::nullopt;
+        }
 
         if (!m_target)
+        {
             m_target = NS::Gfx::RenderTarget::Create(m_size);
+        }
         else
+        {
             m_target->Resize(m_size);
+        }
 
         return NS::Obj::SceneView{m_target.get(), pose};
     }

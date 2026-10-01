@@ -1,13 +1,9 @@
 {
   "class": "FollowCamera",
-  "components": [
-    {
-      "fields": {
-        "ファークリップ": 100.0,
-        "優先度": 0
-      },
-      "name": "ThirdPersonFollow",
-      "type": "ThirdPersonFollow"
+  "parts": {
+    "Vcam": {
+      "ファークリップ": 100,
+      "優先度": 0
     }
-  ]
+  }
 }

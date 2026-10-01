@@ -5,6 +5,7 @@
 #include "Runtime/Graphics/SkeletalMesh.h"
 #include "Runtime/Graphics/Skeleton.h"
 #include "Runtime/Object/Component.h"
+#include "Runtime/Object/Components/Model.h"
 
 #include <cstddef>
 #include <span>
@@ -15,18 +16,17 @@
 
 namespace NS::Obj
 {
-    class MeshRenderer;
-
     //! @brief クリップを時間再生して SkeletalMesh のボーンパレットを更新する
     //! @details 毎フレーム再生時刻を進める。AnimationClip をサンプリングしたポーズを
     //! Skeleton でボーンパレット化し、SkeletalMesh に渡す。再生 / 停止 / 速度 / ループ / クリップ選択を制御できる
-    //! mesh / skeleton / clips は全て非所有で、AssetManager 等の所有側が寿命を保証する。priority は Update 帯の後方
-    //! (+100、移動の後に骨を追従させる)
-    class SkeletalAnimation : public Component
+    //! mesh / skeleton / clips は全て非所有で、AssetManager 等の所有側が寿命を保証する
+    //! OnUpdate は Actor::PrepareRender が RenderPrep の段で呼ぶ。
+    //! 移動と物理の段の後なので、骨は動いた後の姿に付いていく
+    class Animation : public Component
     {
     public:
-        SkeletalAnimation() noexcept;
-        ~SkeletalAnimation();
+        Animation() noexcept;
+        ~Animation();
 
         //! 更新先の SkeletalMesh を差し替える。非所有で null の間 ApplyPose は何もしない
         void SetMesh(NS::Gfx::SkeletalMesh* mesh) noexcept;
@@ -35,8 +35,8 @@ namespace NS::Obj
 
         //! この Component が表す skinned モデルの参照。ContentRoot 配下の glTF 相対パス
         [[nodiscard]] const std::string& ModelRef() const noexcept { return m_modelRef; }
-        //! build 時にこの文字列から mesh / skeleton / clips を解決する。同じ object の MeshRenderer の mesh
-        //! もこちらが差すので、skinned の配置物は MeshRenderer 側の Mesh 参照を空のままにする
+        //! build 時にこの文字列から mesh / skeleton / clips を解決する。同じ object の Model の mesh
+        //! もこちらが差すので、skinned の配置物は Model 側の Mesh 参照を空のままにする
         void SetModelRef(std::string ref) noexcept { m_modelRef = std::move(ref); }
 
         //! 追加で読むアニメーション glTF の参照一覧。セミコロン区切りの ContentRoot 相対パス
@@ -73,12 +73,12 @@ namespace NS::Obj
         void OnStart() override;
         void OnUpdate() override;
 
-        //! modelRef から skinned glTF を解決し mesh / skeleton / clips を差す。同じ object の MeshRenderer
+        //! modelRef から skinned glTF を解決し mesh / skeleton / clips を差す。同じ object の Model
         //! があれば同じ mesh を差す。空 / 解決不可はそのまま何もしない (SetMesh 等の手動配線を壊さない)
         void ResolveAssets(AssetManager& assets) override;
 
         // 再生速度 / ループを Inspector へ公開する。毎フレーム読まれるのでライブで効き、負速度なら逆再生になる
-        NS_REFLECT_BEGIN(SkeletalAnimation, Component)
+        NS_REFLECT_BEGIN(Animation, Component)
         NS_REFLECT_FIELD(m_speed, "再生速度")
         NS_REFLECT_FIELD(m_looping, "ループ再生")
         NS_REFLECT_FIELD(m_modelRef, "モデル")
@@ -93,19 +93,19 @@ namespace NS::Obj
         std::string m_clipsRef{}; // 追加アニメーションの参照一覧。セミコロン区切りで ResolveAssets が結合する
         const NS::Gfx::Skeleton* m_skeleton = nullptr;      // ボーンパレット計算用の骨格 (非所有)
         std::vector<const NS::Gfx::AnimationClip*> m_clips; // 再生できるクリップ一覧 (非所有)
-        std::size_t m_current = 0;                               // 選択中クリップの添字
-        float m_time = 0.0f;                                     // 現在の再生時刻
-        float m_speed = 1.0f;                                    // 再生速度
-        bool m_playing = true;                                   // 再生中か
-        bool m_looping = true;                                   // 末尾でループするか
+        std::size_t m_current = 0;                          // 選択中クリップの添字
+        float m_time = 0.0f;                                // 現在の再生時刻
+        float m_speed = 1.0f;                               // 再生速度
+        bool m_playing = true;                              // 再生中か
+        bool m_looping = true;                              // 末尾でループするか
         std::vector<NS::Gfx::BonePose> m_poseScratch;       // サンプリング結果の一時ポーズ
-        std::vector<NS::Core::Matrix> m_paletteScratch;          // ボーンパレットの一時バッファ
+        std::vector<NS::Core::Matrix> m_paletteScratch;     // ボーンパレットの一時バッファ
 
         // ボーンパレットはオブジェクト単位の状態なので mesh でなく本 component が所有する
         std::unique_ptr<NS::Gfx::Buffer> m_bonePaletteCB; // VS b1 用の定数バッファ
         NS::Gfx::BonePaletteCB m_palette;                 // CPU 側パレット、描画側が毎描画 GPU へ上げる
 
-        MeshRenderer* m_renderer = nullptr; // 同じ object の描画 component。パレットと境界の差し先 (非所有)
+        Model* m_renderer = nullptr; // 同じ object の描画 component。パレットと境界の差し先 (非所有)
     };
 
 } // namespace NS::Obj

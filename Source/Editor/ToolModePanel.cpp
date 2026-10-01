@@ -17,14 +17,22 @@ namespace NS::Editor
         {
             const bool objectActive = editor.ObjectToolActive();
             if (ImGui::RadioButton("Build (Grid place)", !objectActive))
+            {
                 editor.SetObjectToolActive(false);
+            }
             if (ImGui::RadioButton("Object (Gizmo)", objectActive))
+            {
                 editor.SetObjectToolActive(true);
+            }
             ImGui::Separator();
             if (objectActive)
+            {
                 ImGui::TextUnformatted("Click orange box to select. Q/W/E/R = Select/Move/Rotate/Scale");
+            }
             else
+            {
                 ImGui::TextUnformatted("Left click = place block");
+            }
 
             // 感度はこの場で効き、シーンには保存しない
             ImGui::SeparatorText("自由視点");

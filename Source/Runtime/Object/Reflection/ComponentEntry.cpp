@@ -31,6 +31,10 @@ namespace NS::Obj
             {
                 entry = nlohmann::json::object();
             }
+            if (!entry.contains("type"))
+            {
+                return entry;
+            }
             nlohmann::json& fields = entry["fields"];
             if (!fields.is_object())
             {
@@ -40,121 +44,15 @@ namespace NS::Obj
         }
     } // namespace
 
-    nlohmann::json MakeComponentEntry(std::string_view typeName, nlohmann::json fields)
-    {
-        nlohmann::json entry;
-        entry["type"] = std::string(typeName);
-        if (!fields.is_object())
-        {
-            fields = nlohmann::json::object();
-        }
-        entry["fields"] = std::move(fields);
-        return entry;
-    }
-
-    std::string_view ComponentEntryType(const nlohmann::json& entry) noexcept
-    {
-        if (!entry.is_object())
-        {
-            return {};
-        }
-        const nlohmann::json::const_iterator it = entry.find("type");
-        if (it == entry.end() || !it->is_string())
-        {
-            return {};
-        }
-        return it->get_ref<const std::string&>();
-    }
-
-    std::uint32_t ComponentEntryId(const nlohmann::json& entry) noexcept
-    {
-        if (!entry.is_object())
-        {
-            return 0;
-        }
-        const nlohmann::json::const_iterator it = entry.find("id");
-        if (it == entry.end() || !it->is_number_unsigned())
-        {
-            return 0;
-        }
-        return it->get<std::uint32_t>();
-    }
-
-    void SetComponentEntryId(nlohmann::json& entry, std::uint32_t id)
-    {
-        if (!entry.is_object())
-        {
-            return;
-        }
-        if (id == 0)
-        {
-            entry.erase("id");
-            return;
-        }
-        entry["id"] = id;
-    }
-
-    std::string_view ComponentEntryName(const nlohmann::json& entry) noexcept
-    {
-        if (!entry.is_object())
-        {
-            return {};
-        }
-        const nlohmann::json::const_iterator it = entry.find("name");
-        if (it == entry.end() || !it->is_string())
-        {
-            return {};
-        }
-        return it->get_ref<const std::string&>();
-    }
-
-    void SetComponentEntryName(nlohmann::json& entry, std::string_view name)
-    {
-        if (!entry.is_object())
-        {
-            return;
-        }
-        if (name.empty())
-        {
-            entry.erase("name");
-            return;
-        }
-        entry["name"] = std::string(name);
-    }
-
-    bool ComponentEntryEnabled(const nlohmann::json& entry) noexcept
-    {
-        if (!entry.is_object())
-        {
-            return true;
-        }
-        const nlohmann::json::const_iterator it = entry.find("enabled");
-        if (it == entry.end() || !it->is_boolean())
-        {
-            return true;
-        }
-        return it->get<bool>();
-    }
-
-    void SetComponentEntryEnabled(nlohmann::json& entry, bool enabled)
-    {
-        if (!entry.is_object())
-        {
-            return;
-        }
-        if (enabled)
-        {
-            entry.erase("enabled");
-            return;
-        }
-        entry["enabled"] = false;
-    }
-
     const nlohmann::json* ComponentEntryFields(const nlohmann::json& entry) noexcept
     {
         if (!entry.is_object())
         {
             return nullptr;
+        }
+        if (!entry.contains("type"))
+        {
+            return &entry;
         }
         const nlohmann::json::const_iterator it = entry.find("fields");
         if (it == entry.end() || !it->is_object())
@@ -162,34 +60,6 @@ namespace NS::Obj
             return nullptr;
         }
         return &*it;
-    }
-
-    const nlohmann::json* FindComponentEntry(const nlohmann::json& object, std::string_view typeName) noexcept
-    {
-        for (const nlohmann::json& entry : ObjectJsonComponents(object))
-        {
-            if (ComponentEntryType(entry) == typeName)
-            {
-                return &entry;
-            }
-        }
-        return nullptr;
-    }
-
-    nlohmann::json* FindComponentEntry(nlohmann::json& object, std::string_view typeName) noexcept
-    {
-        if (!object.is_object() || !ObjectJsonComponents(static_cast<const nlohmann::json&>(object)).is_array())
-        {
-            return nullptr;
-        }
-        for (nlohmann::json& entry : ObjectJsonComponents(object))
-        {
-            if (ComponentEntryType(entry) == typeName)
-            {
-                return &entry;
-            }
-        }
-        return nullptr;
     }
 
     float FieldFloat(const nlohmann::json& entry, std::string_view name, float fallback) noexcept
@@ -261,19 +131,19 @@ namespace NS::Obj
         return value->get<std::string>();
     }
 
-    ObjectRef FieldObjectRef(const nlohmann::json& entry, std::string_view name) noexcept
+    ActorRef FieldObjectRef(const nlohmann::json& entry, std::string_view name) noexcept
     {
         const nlohmann::json* value = FindFieldValue(entry, name);
         if (value == nullptr || !value->is_object())
         {
-            return ObjectRef{};
+            return ActorRef{};
         }
         const nlohmann::json::const_iterator refIt = value->find("ref");
         if (refIt == value->end() || !refIt->is_number_unsigned())
         {
-            return ObjectRef{};
+            return ActorRef{};
         }
-        return ObjectRef{refIt->get<std::uint32_t>()};
+        return ActorRef{refIt->get<std::uint32_t>()};
     }
 
     bool HasField(const nlohmann::json& entry, std::string_view name) noexcept
@@ -316,7 +186,7 @@ namespace NS::Obj
         SetField(entry, name, std::string_view{value});
     }
 
-    void SetField(nlohmann::json& entry, std::string_view name, ObjectRef value)
+    void SetField(nlohmann::json& entry, std::string_view name, ActorRef value)
     {
         // 素の数値だと読込時に Int と区別できないため {"ref": id} の単キー object で書く
         nlohmann::json ref;

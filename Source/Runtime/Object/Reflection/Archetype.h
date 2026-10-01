@@ -20,8 +20,8 @@ namespace NS::Obj
 
     //! @brief クラス名から種類の既定値を引く置き場
     //! @details 1 クラスにつき Directory()/<クラス名>.json を 1 つ持つ。形は配置物の JSON から id と位置を除いた物
-    //! {"class": クラス名, "components": [{"type": 型名, "name": 部品の名前, "fields": {欄の名前: 値}}...]}
-    //! 参照の欄 (ObjectRef / ComponentRef) はシーンの中の相手を指すので、読む時に落として種類の既定値には持たせない
+    //! {"class": クラス名, "parts": {部品名: {欄の名前: 値}, ...}}
+    //! 参照の欄 (ActorRef / ComponentRef) はシーンの中の相手を指すので、読む時に落として種類の既定値には持たせない
     //! 初めて引いた時に Directory() の *.json を全て読む
     class ArchetypeLibrary
     {
@@ -61,8 +61,8 @@ namespace NS::Obj
         // まだ読んでいなければ Directory() を読む
         void EnsureLoaded();
 
-        std::string m_directory;                                               // 空なら既定のディレクトリ
-        std::map<std::string, nlohmann::json, std::less<>> m_archetypes;       // クラス名から種類の既定値
+        std::string m_directory;                                                // 空なら既定のディレクトリ
+        std::map<std::string, nlohmann::json, std::less<>> m_archetypes;        // クラス名から種類の既定値
         std::map<std::string, std::unique_ptr<Actor>, std::less<>> m_baselines; // クラス名から既定の 1 体
         bool m_loaded = false;
     };

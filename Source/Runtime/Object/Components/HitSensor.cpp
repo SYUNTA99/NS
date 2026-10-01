@@ -115,7 +115,8 @@ namespace NS::Obj
                 }
             }
             const float t = (lo + hi) * 0.5f;
-            return std::min({PointBoxDistanceSq(a + (b - a) * t, box), PointBoxDistanceSq(a, box), PointBoxDistanceSq(b, box)});
+            return std::min(
+                {PointBoxDistanceSq(a + (b - a) * t, box), PointBoxDistanceSq(a, box), PointBoxDistanceSq(b, box)});
         }
 
         // 分離軸の定理で向きのある箱どうしの重なりを見る。15 本の軸のどれかで離れていれば重ならない
@@ -223,7 +224,11 @@ namespace NS::Obj
 
     NS::Core::Vector3 SensorVolume::Center() const noexcept
     {
-        return isBox ? box.center : (a + b) * 0.5f;
+        if (isBox)
+        {
+            return box.center;
+        }
+        return (a + b) * 0.5f;
     }
 
     bool VolumesOverlap(const SensorVolume& lhs, const SensorVolume& rhs) noexcept

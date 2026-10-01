@@ -17,14 +17,14 @@ namespace NS::Obj
         : m_radius([&]() -> float {
               if (radius < 0.0f)
               {
-                 return 0.0f;
+                  return 0.0f;
               }
               return radius;
           }()),
           m_halfHeight([&]() -> float {
               if (halfHeight < 0.0f)
               {
-                    return 0.0f;
+                  return 0.0f;
               }
               return halfHeight;
           }())
@@ -55,7 +55,7 @@ namespace NS::Obj
         }
         else
         {
-			m_halfHeight = halfHeight;
+            m_halfHeight = halfHeight;
         }
     }
 
@@ -99,7 +99,11 @@ namespace NS::Obj
         const Actor* owner = Owner();
         const NS::Core::Matrix local = NS::Core::Matrix::CreateFromQuaternion(m_localRotation) *
                                        NS::Core::Matrix::CreateTranslation(m_centerOffset);
-        return owner != nullptr ? local * owner->Root().WorldMatrix() : local;
+        if (owner == nullptr)
+        {
+            return local;
+        }
+        return local * owner->Root().WorldMatrix();
     }
 
     NS::Phys::Capsule CapsuleCollider::WorldCapsule() const noexcept
@@ -109,9 +113,9 @@ namespace NS::Obj
         const NS::Core::Quaternion& rotation = decomposed.rotation;
         const NS::Core::Vector3& translation = decomposed.translation;
         return NS::Phys::Capsule{translation,
-                                    NS::Core::Vector3::Transform(NS::Core::Vector3::UnitY, rotation),
-                                    m_halfHeight * std::abs(scale.y),
-                                    m_radius * std::max(std::abs(scale.x), std::abs(scale.z))};
+                                 NS::Core::Vector3::Transform(NS::Core::Vector3::UnitY, rotation),
+                                 m_halfHeight * std::abs(scale.y),
+                                 m_radius * std::max(std::abs(scale.x), std::abs(scale.z))};
     }
 
     NS::Core::AABB CapsuleCollider::WorldAABB() const noexcept

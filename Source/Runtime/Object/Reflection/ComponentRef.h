@@ -1,25 +1,26 @@
 #pragma once
 
-#include <cstdint>
+#include "Runtime/Object/Reflection/ActorRef.h"
+
+#include <string>
 
 namespace NS::Obj
 {
     struct ReflectionInfo;
 
     //! @brief 別の配置物の特定の Component を保存をまたいで指す参照の値。型を持たない共通部分
-    //! @details object は持ち主の配置物、component は Component の永続 id。component が 0 なら未設定
-    //! 実行中は id で持つので、配置物や Component を改名しても切れない。ファイルには両方の名前で書く
-    //! 引くのは使う時で、ポインタは控えない。ObjectList::FindComponent が引く
+    //! @details actor は持ち主の配置物、partName は持ち主の部品名。partName が空なら未設定
+    //! 実行中は持ち主を永続 id で持つので、配置物を改名しても切れない。ファイルには両方の名前で書く
     //! リフレクションと保存は型を問わずこの形で扱う
     struct ComponentRefValue
     {
-        std::uint32_t object = 0;    // 持ち主の配置物の永続 id
-        std::uint32_t component = 0; // Component の永続 id。0 は未設定
+        ActorRef actor;
+        std::string partName;
 
-        //! 参照先が設定されているか。component が 0 なら未設定
-        [[nodiscard]] constexpr bool IsSet() const noexcept { return component != 0; }
+        //! 持ち主と部品名の両方が設定されている場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsSet() const noexcept { return actor.IsSet() && !partName.empty(); }
 
-        [[nodiscard]] constexpr bool operator==(const ComponentRefValue&) const noexcept = default;
+        [[nodiscard]] bool operator==(const ComponentRefValue&) const noexcept = default;
     };
 
     //! @brief 型 T の Component を指す参照。欄の型が Inspector で選べる相手を決める

@@ -1,9 +1,9 @@
 ﻿#include "Runtime/Object/Components/MeshCollider.h"
 
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/AssetManager.h"
+#include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/MeshCollision.h"
@@ -108,7 +108,7 @@ namespace NS::Obj
             return;
         }
 
-        const MeshRenderer* renderer = owner->FindComponent<MeshRenderer>();
+        const Model* renderer = owner->ModelPart();
         if (renderer == nullptr)
         {
             NS_LOG_WARN(Scene, "MeshCollider: 同じ object に MeshRenderer が無く、 当たりは空のまま");

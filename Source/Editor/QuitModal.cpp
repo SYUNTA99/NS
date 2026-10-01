@@ -13,7 +13,9 @@ namespace NS::Editor
     bool QuitModal::RequestQuit() noexcept
     {
         if (m_confirmed)
+        {
             return true;
+        }
         // まだ確認していない終了要求は modal を開いて握りつぶす。取り下げを Application に返す
         m_open = true;
         m_saveFailed = false;
@@ -24,7 +26,9 @@ namespace NS::Editor
     {
 #if NS_EDITOR_ENABLED
         if (!m_open)
+        {
             return;
+        }
         ImGuiViewport* const vp = ImGui::GetMainViewport();
         if (vp != nullptr)
         {
@@ -44,7 +48,9 @@ namespace NS::Editor
             const bool saveClicked = ImGui::Button("保存して終了", ImVec2(180.0f, 0.0f));
             ImGui::EndDisabled();
             if (playing)
+            {
                 ImGui::TextColored(k_MsgErrorColor, "プレイ中は保存できません。編集へ戻ってから保存してください");
+            }
             if (saveClicked)
             {
                 // 保存成功でのみ終了する。失敗時は modal を残しデータ消失を防ぐ
@@ -66,9 +72,13 @@ namespace NS::Editor
                 NS::App::Application::Quit();
             }
             if (ImGui::Button("キャンセル", ImVec2(180.0f, 0.0f)))
+            {
                 m_open = false;
+            }
             if (m_saveFailed)
+            {
                 ImGui::TextColored(k_MsgErrorColor, "保存に失敗しました");
+            }
         }
         ImGui::End();
 #else

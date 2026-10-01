@@ -1,10 +1,18 @@
 ﻿#include "Game/Level/Health.h"
 
-#include "Runtime/Object/Reflection/TypeRegistry.h"
-
 namespace NS::Game::Level
 {
-    Health::Health() noexcept = default;
+    void Health::SetMaxHealth(int value) noexcept
+    {
+        if (value > 0)
+        {
+            m_maxHealth = value;
+            if (m_current > value)
+            {
+                m_current = value;
+            }
+        }
+    }
 
     void Health::ApplyDamage(int amount) noexcept
     {
@@ -13,7 +21,6 @@ namespace NS::Game::Level
             return;
         }
 
-
         m_current -= amount;
         if (m_current < 0)
         {
@@ -21,5 +28,4 @@ namespace NS::Game::Level
         }
     }
 
-    NS_CLASS(Health)
 } // namespace NS::Game::Level

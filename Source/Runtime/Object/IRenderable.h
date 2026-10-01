@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Runtime/Core/AABB.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/DrawItem.h"
-#include "Runtime/Core/Math.h"
 
 #include <cstdint>
 #include <vector>
@@ -23,7 +23,7 @@ namespace NS::Obj
     };
 
     //! @brief 描画機能を持つ Component が多重継承する基底インターフェース
-    //! @details MeshRenderer 等の描画責務を持つ Component は IRenderable を多重継承して
+    //! @details Model 等の描画責務を持つ Component は IRenderable を多重継承して
     //! Collect(...) で自分の DrawItem を積む。OnStart で
     //! Owner()->OwningScene()->RegisterRenderable(this) を呼んで自己登録し、OnEndPlay で解除する
     //! 描画発行は Scene が DrawItem を集めて 1 箇所で行うため、Component は GPU を触らない

@@ -4,10 +4,10 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/RigidBody.h"
+#include "Runtime/Object/ObjectName.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/Reflection.h"
-#include "Runtime/Object/ObjectName.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Physics/PhysicsScene.h"
 
@@ -20,7 +20,10 @@
 namespace NS::Obj
 {
     ObjectList::ObjectList() = default;
-    ObjectList::~ObjectList() = default;
+    ObjectList::~ObjectList()
+    {
+        Clear();
+    }
 
     void ObjectList::Rebuild(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory)
     {
@@ -47,14 +50,6 @@ namespace NS::Obj
             {
                 m_nextObjectId = ObjectJsonId(entry) + 1;
             }
-            for (const nlohmann::json& component : ObjectJsonComponents(entry))
-            {
-                const std::uint32_t componentId = ComponentEntryId(component);
-                if (componentId >= m_nextObjectId)
-                {
-                    m_nextObjectId = componentId + 1;
-                }
-            }
         }
 
         m_objects.reserve(objects.size() + transients.size());
@@ -63,7 +58,7 @@ namespace NS::Obj
         if (factory)
         {
             // 先に全 object を組んで、開始は後段でまとめて行う
-            // OnStart で ObjectRef を解決する component が、自分より後ろの object も引けるようにするため
+            // OnStart で ActorRef を解決する component が、自分より後ろの object も引けるようにするため
             for (const nlohmann::json& entry : objects)
             {
                 std::unique_ptr<Actor> obj = factory(entry);
@@ -84,7 +79,9 @@ namespace NS::Obj
             std::unordered_map<std::uint32_t, Actor*> byObjectId;
             byObjectId.reserve(m_objects.size());
             for (std::unique_ptr<Actor>& obj : m_objects)
+            {
                 byObjectId.emplace(obj->Id(), obj.get());
+            }
 
             const auto find = [&byObjectId](std::uint32_t id) -> Actor* {
                 const std::unordered_map<std::uint32_t, Actor*>::iterator it = byObjectId.find(id);
@@ -113,16 +110,25 @@ namespace NS::Obj
             MarkIndexDirty();
             WarnMismatchedComponentRefs();
             for (std::unique_ptr<Actor>& objPtr : m_objects)
+            {
                 objPtr->OnStart();
+            }
             // 全ての配置物が開始してから、揃っている前提の用意をさせる
             for (std::unique_ptr<Actor>& objPtr : m_objects)
+            {
                 objPtr->InitAfterPlacement();
+            }
         }
 
         // 退避した一時オブジェクトを末尾へ戻す。開始済みなので OnStart は呼ばない
         for (std::unique_ptr<Actor>& obj : transients)
         {
+            Actor* raw = obj.get();
             m_objects.push_back(std::move(obj));
+            if (raw->IsActiveInHierarchy())
+            {
+                RegisterActor(raw);
+            }
         }
         MarkIndexDirty();
 
@@ -140,6 +146,10 @@ namespace NS::Obj
         Actor* raw = obj.get();
         m_objects.push_back(std::move(obj));
         MarkIndexDirty();
+        if (raw->IsActiveInHierarchy())
+        {
+            RegisterActor(raw);
+        }
         return raw;
     }
 
@@ -151,13 +161,7 @@ namespace NS::Obj
         }
         obj->SetId(AllocateObjectId());
         // component も同じ空間から採番する。参照できる相手として配置物と同じ扱いにする
-        for (Component* comp : obj->Components())
-        {
-            if (comp != nullptr)
-            {
-                comp->SetId(AllocateObjectId());
-            }
-        }
+
         // ファイルの参照は名前で書くので、プレイ中に足す物も既存と重ならない名前にする
         std::unordered_set<std::string> used;
         used.reserve(m_objects.size());
@@ -188,6 +192,23 @@ namespace NS::Obj
             MarkIndexDirty();
             m_objects.erase(it);
             return;
+        }
+    }
+
+    void ObjectList::RemoveKilledTransients()
+    {
+        NS_ASSERT(Scene, !m_updating, "段の更新の最中に一時オブジェクトを捨てようとしている");
+        const std::size_t removed = std::erase_if(m_objects, [](const std::unique_ptr<Actor>& obj) {
+            if (!obj->IsTransient() || obj->IsAlive())
+            {
+                return false;
+            }
+            obj->OnEndPlay();
+            return true;
+        });
+        if (removed > 0)
+        {
+            MarkIndexDirty();
         }
     }
 
@@ -245,41 +266,52 @@ namespace NS::Obj
         m_indexDirty = true;
     }
 
-    Actor* ObjectList::FindObject(ObjectRef ref) noexcept
+    Actor* ObjectList::FindObject(ActorRef ref) noexcept
     {
         return FindByObjectId(ref.id);
     }
 
     void ObjectList::SyncPhysics(NS::Phys::PhysicsScene& physics)
     {
-        // PhysicsScene を作り直さず、collider ごとに既存 body の shape と姿勢を同期する
-        ForEachComponent<Collider>([&physics](Collider& collider) {
-            if (collider.IsActive())
+        for (const std::unique_ptr<Actor>& actor : m_objects)
+        {
+            actor->ForEachPart([&physics](std::string_view, Component& part) {
+                if (Collider* collider = ComponentCast<Collider>(&part))
+                {
+                    if (collider->IsActive())
+                    {
+                        collider->SyncToPhysics(physics);
+                    }
+                    else
+                    {
+                        collider->RemoveFromPhysics(physics);
+                    }
+                }
+            });
+        }
+        for (const std::unique_ptr<Actor>& actor : m_objects)
+        {
+            if (RigidBody* body = ComponentCast<RigidBody>(actor->Part("RigidBody")))
             {
-                collider.SyncToPhysics(physics);
+                if (body->IsActive())
+                {
+                    body->SyncToPhysics(physics);
+                }
+                else
+                {
+                    body->RemoveFromPhysics(physics);
+                }
             }
-            else
-            {
-                collider.RemoveFromPhysics(physics);
-            }
-        });
-        // collider の後に回す。RigidBody の形になった collider が自分の body を外し終えてから形を集める
-        ForEachComponent<RigidBody>([&physics](RigidBody& body) {
-            if (body.IsActive())
-            {
-                body.SyncToPhysics(physics);
-            }
-            else
-            {
-                body.RemoveFromPhysics(physics);
-            }
-        });
+        }
         physics.OptimizeBroadPhase();
     }
 
     void ObjectList::UpdateAllObjects()
     {
-        UpdateObjects(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+        for (UpdatePhase phase : k_UpdatePhases)
+        {
+            ExecutePhase(phase);
+        }
     }
 
     void ObjectList::SnapshotObjects()
@@ -290,68 +322,81 @@ namespace NS::Obj
         }
     }
 
-    void ObjectList::UpdateObjects(int firstPriority, int lastPriority)
+    void ObjectList::RegisterActor(Actor* actor)
     {
-        // 入れ子で呼ぶと内側の clear が外側の並びを消し、下の範囲 for が無効なイテレータを辿る
-        NS_ASSERT(Scene, !m_updating, "ObjectList::UpdateObjects を入れ子で呼んでいる");
-        m_updating = true;
+        if (actor != nullptr && std::find(m_liveActors.begin(), m_liveActors.end(), actor) == m_liveActors.end())
+        {
+            m_liveActors.push_back(actor);
+        }
+    }
 
-        // 帯の昇順で配置物を横断して回すため、範囲内の component を一度集めて priority で並べ直す
-        // stable_sort なので同じ帯の中は配置物の並び順に落ちる
-        // clear は容量を残すので毎フレームの確保が要らない
-        // 部品でない物を先に積むので、同じ帯の中では部品より先に動く
+    void ObjectList::UnregisterActor(Actor* actor) noexcept
+    {
+        std::erase(m_liveActors, actor);
+    }
+
+    void ObjectList::ExecutePhase(UpdatePhase phase)
+    {
+        NS_ASSERT(Scene, !m_updating, "段の更新を入れ子で呼んでいる");
+        m_updating = true;
         m_scheduled.clear();
         for (const TickerEntry& entry : m_tickers)
         {
-            if (entry.priority >= firstPriority && entry.priority < lastPriority)
+            if (entry.priority == phase)
             {
-                m_scheduled.push_back(ScheduledTick{.priority = entry.priority, .ticker = entry.ticker});
+                m_scheduled.push_back(ScheduledTick{.ticker = entry.ticker});
             }
         }
-        for (std::unique_ptr<Actor>& obj : m_objects)
+        for (const std::unique_ptr<Actor>& obj : m_objects)
         {
-            for (Component* comp : obj->Components())
+            if (std::find(m_liveActors.begin(), m_liveActors.end(), obj.get()) == m_liveActors.end())
             {
-                if (comp == nullptr)
+                continue;
+            }
+            if (phase == UpdatePhase::Input || phase == UpdatePhase::RenderPrep || obj->Phase() == phase)
+            {
+                m_scheduled.push_back(ScheduledTick{.actor = obj.get()});
+            }
+        }
+        for (const ScheduledTick& tick : m_scheduled)
+        {
+            if (tick.actor != nullptr)
+            {
+                if (std::find(m_liveActors.begin(), m_liveActors.end(), tick.actor) == m_liveActors.end())
                 {
                     continue;
                 }
-                if (comp->Priority() >= firstPriority && comp->Priority() < lastPriority)
+                if (!tick.actor->IsActiveInHierarchy())
                 {
-                    m_scheduled.push_back(ScheduledTick{.priority = comp->Priority(), .component = comp});
+                    continue;
                 }
-            }
-        }
-        std::stable_sort(m_scheduled.begin(),
-                         m_scheduled.end(),
-                         [](const ScheduledTick& a, const ScheduledTick& b) noexcept { return a.priority < b.priority; });
-
-        // active はこの場で見る。先に回った component が後ろを SetActive(false) にしても効く
-        for (const ScheduledTick& tick : m_scheduled)
-        {
-            if (tick.component != nullptr)
-            {
-                if (tick.component->IsActive())
+                if (phase == UpdatePhase::Input)
                 {
-                    tick.component->OnUpdate();
+                    tick.actor->ReadInput();
+                }
+                else if (phase == UpdatePhase::RenderPrep)
+                {
+                    tick.actor->PrepareRender();
+                }
+                else
+                {
+                    tick.actor->Update();
                 }
                 continue;
             }
-            // 更新の最中に外された物は呼ばない。外した後に破棄されていても触らない
             const bool stillRegistered =
-                std::any_of(m_tickers.begin(), m_tickers.end(), [&tick](const TickerEntry& entry) noexcept {
-                    return entry.ticker == tick.ticker;
+                std::any_of(m_tickers.begin(), m_tickers.end(), [&tick, phase](const TickerEntry& entry) noexcept {
+                    return entry.ticker == tick.ticker && entry.priority == phase;
                 });
             if (stillRegistered)
             {
                 tick.ticker->OnTick();
             }
         }
-
         m_updating = false;
     }
 
-    void ObjectList::AddTicker(ITickable* ticker, int priority)
+    void ObjectList::AddTicker(ITickable* ticker, UpdatePhase priority)
     {
         if (ticker == nullptr)
         {
@@ -373,30 +418,29 @@ namespace NS::Obj
         std::erase_if(m_tickers, [ticker](const TickerEntry& entry) noexcept { return entry.ticker == ticker; });
     }
 
-    Component* ObjectList::FindComponent(ComponentRefValue ref) noexcept
+    Component* ObjectList::ResolvePart(ComponentRefValue ref) noexcept
     {
         if (!ref.IsSet())
         {
             return nullptr;
         }
-        Actor* owner = FindObject(ObjectRef{ref.object});
+        Actor* owner = FindObject(ref.actor);
         if (owner == nullptr)
         {
             return nullptr;
         }
-        return owner->FindComponentById(ref.component);
+        return owner->Part(ref.partName);
     }
 
     void ObjectList::WarnMismatchedComponentRefs()
     {
         for (const std::unique_ptr<Actor>& obj : m_objects)
         {
-            for (const Component* comp : obj->Components())
-            {
-                const ReflectionInfo* info = comp->GetReflection();
+            obj->ForEachPart([this, &obj](std::string_view role, Component& part) {
+                const ReflectionInfo* info = part.GetReflection();
                 if (info == nullptr)
                 {
-                    continue;
+                    return;
                 }
                 for (std::size_t i = 0; i < info->fieldCount; ++i)
                 {
@@ -405,21 +449,21 @@ namespace NS::Obj
                     {
                         continue;
                     }
-                    ComponentRefValue value{};
-                    field.get(comp, &value);
-                    const Component* target = FindComponent(value);
+                    ComponentRefValue value;
+                    field.get(&part, &value);
+                    const Component* target = ResolvePart(value);
                     if (target != nullptr && !target->IsA(field.refType()))
                     {
                         NS_LOG_WARN(Scene,
-                                    "'{}' の {} の欄 '{}' が {} でない '{}' を指している。引いても見つからない扱いになる",
+                                    "'{}' の {} の欄 '{}' が {} でない部品 '{}' を指している",
                                     obj->Name(),
-                                    comp->Name(),
+                                    role,
                                     field.name,
                                     field.refType()->typeName,
-                                    target->Name());
+                                    value.partName);
                     }
                 }
-            }
+            });
         }
     }
 
@@ -428,7 +472,6 @@ namespace NS::Obj
         obj.SetId(ObjectJsonId(entry));
         obj.SetName(std::string{ObjectJsonName(entry)});
         obj.SetActive(ObjectJsonActive(entry));
-        AssignComponentIds(obj, entry);
     }
 
     Actor* ObjectList::InsertFromJson(std::unique_ptr<Actor> obj, const nlohmann::json& entry, std::size_t index)
@@ -448,10 +491,6 @@ namespace NS::Obj
         obj->SetName(MakeUniqueObjectName(obj->Name(), used));
         // 入れた物の id より先へカウンタを進める。進めないと次に置く 1 個目と重なる
         m_nextObjectId = std::max(m_nextObjectId, obj->Id() + 1);
-        for (const Component* comp : obj->Components())
-        {
-            m_nextObjectId = std::max(m_nextObjectId, comp->Id() + 1);
-        }
 
         Actor* raw = obj.get();
         index = std::min(index, m_objects.size());
@@ -490,48 +529,17 @@ namespace NS::Obj
         obj.SetName(MakeUniqueObjectName(name, used));
     }
 
-    void ObjectList::AssignComponentIds(Actor& obj, const nlohmann::json& entry)
-    {
-        // 組み立てと同じ規則で件と実体を対応させる。規則を別に書くと、同じ型が 2 つある時に id が入れ違う
-        const nlohmann::json& components = ObjectJsonComponents(entry);
-        std::vector<Component*> taken;
-        taken.reserve(components.size());
-        for (const nlohmann::json& component : components)
-        {
-            Component* comp = MatchComponentEntry(obj, component, taken);
-            if (comp == nullptr)
-            {
-                continue;
-            }
-            taken.push_back(comp);
-            comp->SetId(ComponentEntryId(component));
-        }
-
-        // 件の無い部品は、データを書いた後に種類の既定値が足した物。ここで番号を振り、id で名指しできるようにする
-        // 振る前にカウンタを件の id の先へ進める。進めないと同じ配置物の中で番号がぶつかる
-        for (const nlohmann::json& component : components)
-        {
-            m_nextObjectId = std::max(m_nextObjectId, ComponentEntryId(component) + 1);
-        }
-        m_nextObjectId = std::max(m_nextObjectId, obj.Id() + 1);
-        for (Component* comp : obj.Components())
-        {
-            if (comp != nullptr && comp->Id() == k_NoObjectId)
-            {
-                comp->SetId(m_nextObjectId++);
-            }
-        }
-    }
-
     void ObjectList::Clear()
     {
         // OnEndPlay は生成の逆順で呼ぶ。依存し合う component の後始末を生成と対称にする
-        for (std::vector<std::unique_ptr<Actor>>::reverse_iterator it = m_objects.rbegin(); it != m_objects.rend(); ++it)
+        for (std::vector<std::unique_ptr<Actor>>::reverse_iterator it = m_objects.rbegin(); it != m_objects.rend();
+             ++it)
         {
             (*it)->OnEndPlay();
         }
         MarkIndexDirty();
         m_objects.clear();
+        m_liveActors.clear();
     }
 
 } // namespace NS::Obj

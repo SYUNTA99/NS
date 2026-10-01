@@ -1,5 +1,7 @@
 #include "Game/Player/PlayerStateManager.h"
 
+#include "Game/Player.h"
+
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
@@ -10,7 +12,6 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
 
 namespace NS::Game::Player
 {
@@ -38,32 +39,24 @@ namespace NS::Game::Player
         m_machine.Reset();
     }
 
-    void PlayerStateManager::EnsureBuilt(PlayerComponent& player)
+    void PlayerStateManager::EnsureBuilt(::Player& player)
     {
         // 状態が呼ぶ遷移は 1 フレームの中で起きる。渡された所有者をここで控えると、
         // OnStart を通らない検証台でも遷移が false を返さない
         m_player = &player;
         if (!m_machine.IsBuilt())
+        {
             BuildStates(player);
+        }
     }
 
-    void PlayerStateManager::Step(PlayerComponent& player, float dt)
+    void PlayerStateManager::Step(::Player& player, float dt)
     {
         EnsureBuilt(player);
         m_machine.Step(player, dt);
     }
 
-    void PlayerStateManager::OnStart()
-    {
-        NS::Game::Entity::EntityStateManager::OnStart();
-
-        if (Owner() == nullptr)
-            return;
-
-        m_player = Owner()->FindComponent<PlayerComponent>();
-    }
-
-    void PlayerStateManager::BuildStates(PlayerComponent& player)
+    void PlayerStateManager::BuildStates(::Player& player)
     {
         m_machine.Build<IdlePlayerState,
                         WalkPlayerState,
@@ -75,5 +68,4 @@ namespace NS::Game::Player
                         ReboundPlayerState>(player);
     }
 
-    NS_CLASS(PlayerStateManager)
 } // namespace NS::Game::Player

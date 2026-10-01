@@ -12,7 +12,9 @@ namespace NS::Editor
         for (std::unique_ptr<ICommand>& command : m_commands)
         {
             if (command)
+            {
                 command->Do(target);
+            }
         }
     }
 
@@ -23,7 +25,9 @@ namespace NS::Editor
              ++it)
         {
             if (*it)
+            {
                 (*it)->Undo(target);
+            }
         }
     }
 
@@ -33,7 +37,9 @@ namespace NS::Editor
         for (const std::unique_ptr<ICommand>& command : m_commands)
         {
             if (command)
+            {
                 bytes += command->EstimatedBytes();
+            }
         }
         return bytes;
     }

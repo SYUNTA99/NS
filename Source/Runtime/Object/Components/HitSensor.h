@@ -64,6 +64,8 @@ namespace NS::Obj
         HitSensor() noexcept;
 
         //! シーンの調べ役へ入る
+        void OnAppear() override { HitSensor::OnStart(); }
+        void OnKill() noexcept override { HitSensor::OnEndPlay(); }
         void OnStart() override;
         //! シーンの調べ役から出る
         void OnEndPlay() override;
@@ -108,11 +110,11 @@ namespace NS::Obj
     private:
         HitSensorType m_type = HitSensorType::MapObjBody;
         HitSensorShape m_shape = HitSensorShape::Sphere;
-        float m_radius = 0.5f;                                 // 球とカプセルの半径 (スケール前)
-        float m_halfHeight = 0.5f;                             // カプセルの中心から端の半球の中心まで (スケール前)
-        NS::Core::Vector3 m_boxHalfExtents{0.5f, 0.5f, 0.5f};  // 箱の中心から各面まで (スケール前)
-        NS::Core::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};    // 根からの中心のずれ
-        bool m_valid = true;                                   // 調べる対象か
-        bool m_registered = false;                             // 調べ役へ入っているか
+        float m_radius = 0.5f;                                // 球とカプセルの半径 (スケール前)
+        float m_halfHeight = 0.5f;                            // カプセルの中心から端の半球の中心まで (スケール前)
+        NS::Core::Vector3 m_boxHalfExtents{0.5f, 0.5f, 0.5f}; // 箱の中心から各面まで (スケール前)
+        NS::Core::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};   // 根からの中心のずれ
+        bool m_valid = true;                                  // 調べる対象か
+        bool m_registered = false;                            // 調べ役へ入っているか
     };
 } // namespace NS::Obj

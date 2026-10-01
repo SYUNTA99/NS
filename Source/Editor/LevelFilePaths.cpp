@@ -23,11 +23,15 @@ namespace NS::Editor
             std::string upper;
             upper.reserve(name.size());
             for (char c : name)
+            {
                 upper.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(c))));
+            }
             for (const std::string_view& r : k_ReservedNames)
             {
                 if (upper == r)
+                {
                     return true;
+                }
             }
             return false;
         }
@@ -36,27 +40,39 @@ namespace NS::Editor
     std::string SanitizeLevelName(std::string_view name) noexcept
     {
         if (name.size() < k_MinNameLen || name.size() > k_MaxNameLen)
+        {
             return "";
+        }
         for (char c : name)
         {
             const bool isAlnum = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
             const bool isAllowedPunct = (c == '_' || c == '-' || c == ' ');
             if (!isAlnum && !isAllowedPunct)
+            {
                 return "";
+            }
         }
         if (name.find("..") != std::string_view::npos)
+        {
             return "";
+        }
         if (name.front() == ' ' || name.back() == ' ')
+        {
             return "";
+        }
         if (IsReservedName(name))
+        {
             return "";
+        }
         return std::string{name};
     }
 
     std::string SanitizeLevelPath(std::string_view relativePath) noexcept
     {
         if (relativePath.empty())
+        {
             return "";
+        }
 
         std::string result;
         std::size_t start = 0;
@@ -67,12 +83,18 @@ namespace NS::Editor
             const std::size_t end = std::min(slash, relativePath.size());
             const std::string_view segment = relativePath.substr(start, end - start);
             if (SanitizeLevelName(segment).empty())
+            {
                 return "";
+            }
             if (!result.empty())
+            {
                 result.push_back('/');
+            }
             result.append(segment);
             if (slash == std::string_view::npos)
+            {
                 break;
+            }
             start = slash + 1;
         }
         return result;
@@ -86,7 +108,9 @@ namespace NS::Editor
     std::string QualifyLevelPath(std::string_view sanitizedPath) noexcept
     {
         if (sanitizedPath.empty() || sanitizedPath.find('/') != std::string_view::npos)
+        {
             return std::string{sanitizedPath};
+        }
         return "Scenes/" + std::string{sanitizedPath};
     }
 
@@ -94,7 +118,9 @@ namespace NS::Editor
     {
         const std::string safe = SanitizeLevelPath(name);
         if (safe.empty())
+        {
             return std::nullopt;
+        }
         return NS::Platform::FileSystem::ResolveUnder(
             NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"),
             QualifyLevelPath(safe) + ".scene");
@@ -104,7 +130,9 @@ namespace NS::Editor
     {
         const std::string dir = GetScenesDirectory();
         if (NS::Platform::FileSystem::Exists(dir))
+        {
             return true;
+        }
         if (!NS::Platform::FileSystem::CreateDirectories(dir))
         {
             NS_LOG_ERROR(App, "Scenes/ ディレクトリ作成失敗");
@@ -118,7 +146,9 @@ namespace NS::Editor
         std::vector<std::string> result;
         const std::string assetsDir = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets");
         if (!NS::Platform::FileSystem::Exists(assetsDir))
+        {
             return result;
+        }
 
         for (const std::string& path : NS::Platform::FileSystem::ListFilesRecursive(assetsDir, ".scene"))
         {

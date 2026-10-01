@@ -2,6 +2,9 @@
 
 #include "Runtime/Core/Math.h"
 
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Body/BodyID.h>
+
 namespace NS::Phys
 {
     class PhysicsScene;
@@ -29,4 +32,12 @@ namespace NS::Obj
                                         const NS::Core::Vector3& direction,
                                         float maxDistance,
                                         float& outDistance);
+
+    [[nodiscard]] bool RaycastCollision(const IUseCollision& user,
+                                        const NS::Core::Vector3& origin,
+                                        const NS::Core::Vector3& direction,
+                                        float maxDistance,
+                                        float& outDistance,
+                                        NS::Core::Vector3& outNormal,
+                                        JPH::BodyID ignoredBody);
 } // namespace NS::Obj

@@ -1,11 +1,11 @@
-﻿#include "Runtime/Object/Components/SkeletalAnimation.h"
+﻿#include "Runtime/Object/Components/Animation.h"
 #include "Runtime/Core/AABB.h"
 
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"
-#include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/AssetManager.h"
+#include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Clock.h"
 
@@ -49,40 +49,40 @@ namespace NS::Obj
         }
     } // namespace
 
-    SkeletalAnimation::SkeletalAnimation() noexcept
+    Animation::Animation() noexcept
         // 移動が終わった後に骨を追従させる
-        : Component(TickPriority::Update + 100)
+        : Component()
     {}
 
-    SkeletalAnimation::~SkeletalAnimation() = default;
+    Animation::~Animation() = default;
 
-    void SkeletalAnimation::SetMesh(NS::Gfx::SkeletalMesh* mesh) noexcept
+    void Animation::SetMesh(NS::Gfx::SkeletalMesh* mesh) noexcept
     {
         m_mesh = mesh;
     }
 
-    void SkeletalAnimation::SetSkeleton(const NS::Gfx::Skeleton* skeleton) noexcept
+    void Animation::SetSkeleton(const NS::Gfx::Skeleton* skeleton) noexcept
     {
         m_skeleton = skeleton;
     }
 
-    void SkeletalAnimation::Play() noexcept
+    void Animation::Play() noexcept
     {
         m_playing = true;
     }
 
-    void SkeletalAnimation::Pause() noexcept
+    void Animation::Pause() noexcept
     {
         m_playing = false;
     }
 
-    void SkeletalAnimation::Stop() noexcept
+    void Animation::Stop() noexcept
     {
         m_playing = false;
         m_time = 0.0f;
     }
 
-    void SkeletalAnimation::SetSpeed(float speed) noexcept
+    void Animation::SetSpeed(float speed) noexcept
     {
         // 正の無限大は speed > 0.0f を通り、m_time の折り返しで std::fmod が非数を返す。非数は大小比較が
         // 全て偽になるので以後の補正に引っかからず、速度を戻しても再生時刻が戻らない
@@ -101,12 +101,12 @@ namespace NS::Obj
         }
     }
 
-    void SkeletalAnimation::SetLooping(bool looping) noexcept
+    void Animation::SetLooping(bool looping) noexcept
     {
         m_looping = looping;
     }
 
-    bool SkeletalAnimation::SelectClip(std::size_t index) noexcept
+    bool Animation::SelectClip(std::size_t index) noexcept
     {
         if (index >= m_clips.size())
         {
@@ -117,7 +117,7 @@ namespace NS::Obj
         return true;
     }
 
-    bool SkeletalAnimation::SelectClip(std::string_view name) noexcept
+    bool Animation::SelectClip(std::string_view name) noexcept
     {
         for (std::size_t i = 0; i < m_clips.size(); ++i)
         {
@@ -129,7 +129,7 @@ namespace NS::Obj
         return false;
     }
 
-    void SkeletalAnimation::AddClips(std::span<const NS::Gfx::AnimationClip> clips)
+    void Animation::AddClips(std::span<const NS::Gfx::AnimationClip> clips)
     {
         m_clips.reserve(m_clips.size() + clips.size());
         for (const NS::Gfx::AnimationClip& clip : clips)
@@ -138,22 +138,22 @@ namespace NS::Obj
         }
     }
 
-    std::size_t SkeletalAnimation::ClipCount() const noexcept
+    std::size_t Animation::ClipCount() const noexcept
     {
         return m_clips.size();
     }
 
-    std::size_t SkeletalAnimation::CurrentClip() const noexcept
+    std::size_t Animation::CurrentClip() const noexcept
     {
         return m_current;
     }
 
-    float SkeletalAnimation::Time() const noexcept
+    float Animation::Time() const noexcept
     {
         return m_time;
     }
 
-    float SkeletalAnimation::Duration() const noexcept
+    float Animation::Duration() const noexcept
     {
         if (m_current < m_clips.size() && m_clips[m_current] != nullptr)
         {
@@ -162,12 +162,12 @@ namespace NS::Obj
         return 0.0f;
     }
 
-    bool SkeletalAnimation::IsPlaying() const noexcept
+    bool Animation::IsPlaying() const noexcept
     {
         return m_playing;
     }
 
-    void SkeletalAnimation::ResolveAssets(AssetManager& assets)
+    void Animation::ResolveAssets(AssetManager& assets)
     {
         if (m_modelRef.empty())
         {
@@ -201,11 +201,11 @@ namespace NS::Obj
 
         SetMesh(loaded.mesh);
 
-        // 参照解決は component の並び順で回るので、priority 200 の MeshRenderer は 300 のここより先に解決済み
+        // 参照解決は Actor::ForEachPart の並びで回るので、Model はここより先に解決済み
         // ここで差し替えないと skinned mesh が見た目に反映されない
         if (Actor* owner = Owner())
         {
-            if (MeshRenderer* renderer = owner->FindComponent<MeshRenderer>())
+            if (Model* renderer = owner->ModelPart())
             {
                 renderer->SetMesh(loaded.mesh);
             }
@@ -234,7 +234,7 @@ namespace NS::Obj
         }
     }
 
-    void SkeletalAnimation::OnStart()
+    void Animation::OnStart()
     {
         NS::Gfx::BufferDesc cbDesc = NS::Gfx::MakeConstantBufferDesc(sizeof(NS::Gfx::BonePaletteCB));
         m_bonePaletteCB = NS::Gfx::Buffer::Create(cbDesc);
@@ -243,10 +243,10 @@ namespace NS::Obj
             m_palette.bones[i] = NS::Core::Matrix::Identity;
         }
 
-        // 描画する MeshRenderer にパレットを差す。現在ポーズ境界は ApplyPose が毎フレーム差す
+        // 描画する Model にパレットを差す。現在ポーズ境界は ApplyPose が毎フレーム差す
         if (Actor* owner = Owner())
         {
-            m_renderer = owner->FindComponent<MeshRenderer>();
+            m_renderer = owner->ModelPart();
         }
 
         if (m_renderer != nullptr && m_bonePaletteCB->IsValid())
@@ -257,7 +257,7 @@ namespace NS::Obj
         ApplyPose(m_time);
     }
 
-    void SkeletalAnimation::OnUpdate()
+    void Animation::OnUpdate()
     {
         const float duration = Duration();
         if (m_playing && duration > 0.0f)
@@ -280,7 +280,7 @@ namespace NS::Obj
         ApplyPose(m_time);
     }
 
-    void SkeletalAnimation::ApplyPose(float time)
+    void Animation::ApplyPose(float time)
     {
         if (m_mesh == nullptr)
         {
@@ -325,5 +325,5 @@ namespace NS::Obj
     }
 
     // mesh / skeleton / clips は asset 由来なので data からは空で作る。mesh 未注入の間 ApplyPose は何もしない
-    NS_CLASS(SkeletalAnimation)
+    NS_CLASS(Animation)
 } // namespace NS::Obj

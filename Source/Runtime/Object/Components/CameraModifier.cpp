@@ -95,7 +95,11 @@ namespace NS::Obj
         std::seed_seq seeds{desc.seed};
         std::mt19937 generator(seeds);
         shake->m_offsets.assign(static_cast<std::size_t>(desc.frames), NS::Core::Vector2{0.0f, 0.0f});
-        const float sideSign = firstSideSign < 0.0f ? -1.0f : 1.0f;
+        float sideSign = 1.0f;
+        if (firstSideSign < 0.0f)
+        {
+            sideSign = -1.0f;
+        }
         FillFlipSigns(generator, desc.longestFlipFrames, sideSign, &NS::Core::Vector2::x, shake->m_offsets);
         FillFlipSigns(generator, desc.longestFlipFrames, -1.0f, &NS::Core::Vector2::y, shake->m_offsets);
 
@@ -157,10 +161,15 @@ namespace NS::Obj
             return nullptr;
         }
 
+        float rollDirection = 1.0f;
+        if (rollSign < 0.0f)
+        {
+            rollDirection = -1.0f;
+        }
         std::unique_ptr<CameraZoomRollModifier> zoomRoll{new CameraZoomRollModifier()};
         zoomRoll->m_full = CameraZoomRoll{
             .zoom = desc.zoom,
-            .rollDegrees = desc.rollDegrees * (rollSign < 0.0f ? -1.0f : 1.0f),
+            .rollDegrees = desc.rollDegrees * rollDirection,
         };
         zoomRoll->m_holdFrames = desc.holdFrames;
         zoomRoll->m_returnFrames = desc.returnFrames;

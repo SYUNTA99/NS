@@ -219,7 +219,9 @@ namespace NS::Gfx
 
                 float uv[2] = {0.0f, 0.0f};
                 if (uvAcc != nullptr)
+                {
                     cgltf_accessor_read_float(uvAcc, i, uv, 2);
+                }
                 v.uv = NS::Core::Vector2{uv[0], uv[1]};
 
                 float n[3] = {0.0f, 0.0f, 1.0f};
@@ -388,10 +390,16 @@ namespace NS::Gfx
         int FindJointIndex(const cgltf_skin& skin, const cgltf_node* node)
         {
             if (node == nullptr)
+            {
                 return -1;
+            }
             for (cgltf_size i = 0; i < skin.joints_count; ++i)
+            {
                 if (skin.joints[i] == node)
+                {
                     return static_cast<int>(i);
+                }
+            }
             return -1;
         }
 
@@ -1080,7 +1088,9 @@ namespace NS::Gfx
             [&](const cgltf_node* node) -> int {
                 const std::unordered_map<const cgltf_node*, int>::iterator it = nodeToBone.find(node);
                 if (it == nodeToBone.end())
+                {
                     return -1;
+                }
                 return it->second;
             },
             path,

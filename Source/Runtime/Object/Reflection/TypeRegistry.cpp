@@ -19,7 +19,7 @@ namespace NS::Obj
 
     void TypeRegistry::Register(const char* className,
                                 ActorCreateFn create,
-                                ComponentAttachFn attach,
+                                ComponentDefaultFn attach,
                                 const char* label)
     {
         if (className == nullptr)
@@ -40,7 +40,12 @@ namespace NS::Obj
             return;
         }
         // 置けるのは Actor だけ。Component に表示名を付けても一覧には出さない
-        m_entries.push_back(Entry{className, create, attach, create != nullptr ? label : nullptr});
+        const char* placeableLabel = nullptr;
+        if (create != nullptr)
+        {
+            placeableLabel = label;
+        }
+        m_entries.push_back(Entry{className, create, attach, placeableLabel});
     }
 
     const std::vector<TypeRegistry::Entry>& TypeRegistry::Entries() const noexcept
@@ -76,15 +81,13 @@ namespace NS::Obj
         return std::make_unique<Actor>();
     }
 
-    Component* CreateComponent(std::string_view typeName, Actor& obj)
+    std::unique_ptr<Component> CreatePartDefault(std::string_view typeName)
     {
         const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(typeName);
-        if (entry != nullptr && entry->attach != nullptr)
+        if (entry != nullptr && entry->createDefault != nullptr)
         {
-            return entry->attach(obj);
+            return entry->createDefault();
         }
-        // 未登録の type 名は生成せず読み飛ばす。不正な型注入をここで止める
-        NS_LOG_WARN(Scene, "未登録のコンポーネント型 {} を読み飛ばす", typeName);
         return nullptr;
     }
 

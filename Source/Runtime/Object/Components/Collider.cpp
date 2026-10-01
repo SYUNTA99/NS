@@ -1,8 +1,8 @@
 ﻿#include "Runtime/Object/Components/Collider.h"
 
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Physics/PhysicsScene.h"
 
@@ -36,7 +36,7 @@ namespace NS::Obj
     {
         if (m_bodyId.IsInvalid() && JoinsRigidBody())
         {
-            return Owner()->FindComponent<RigidBody>()->BodyId();
+            return ComponentCast<RigidBody>(Owner()->Part("RigidBody"))->BodyId();
         }
         return m_bodyId;
     }
@@ -48,7 +48,7 @@ namespace NS::Obj
         {
             return false;
         }
-        const RigidBody* rigidBody = owner->FindComponent<RigidBody>();
+        const RigidBody* rigidBody = ComponentCast<RigidBody>(owner->Part("RigidBody"));
         return rigidBody != nullptr && rigidBody->IsActive();
     }
 
@@ -61,6 +61,14 @@ namespace NS::Obj
 
         physics.RemoveBody(m_bodyId);
         m_bodyId = JPH::BodyID{};
+    }
+
+    void Collider::OnAppear()
+    {
+        if (NS::Phys::PhysicsScene* physics = ScenePhysics())
+        {
+            SyncToPhysics(*physics);
+        }
     }
 
     void Collider::OnEndPlay()

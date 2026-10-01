@@ -139,7 +139,9 @@ namespace NS::UI
         ApplyEditorStyle();
         // 別 OS ウィンドウは半透明だと背景が透けるので、ビューポート有効時は確実に不透明へ
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
             ::ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 1.0f;
+        }
 
         // 既定フォントは ASCII のみで日本語が ??? になるため、システムの日本語フォントを読み込む
         // エディタは開発専用なので Windows のフォントパス直指定でよい。見つからなければ ASCII 既定で続行する
@@ -233,14 +235,20 @@ namespace NS::UI
     {
 #if NS_UI_IMGUI_ENABLED
         if (!IsValid())
+        {
             return;
+        }
         // カーソル非表示中は ImGui に OS カーソルを触らせず、Window の SetCursor(nullptr) を保つ
         // これをしないと backend が毎フレーム矢印へ戻し、プレイ中もカーソルが消えない
         ::ImGuiIO& io = ::ImGui::GetIO();
         if (m_pImpl->window != nullptr && !m_pImpl->window->IsCursorVisible())
+        {
             io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+        }
         else
+        {
             io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
+        }
         ::ImGui_ImplDX11_NewFrame();
         ::ImGui_ImplWin32_NewFrame();
         ::ImGui::NewFrame();
@@ -251,7 +259,9 @@ namespace NS::UI
     {
 #if NS_UI_IMGUI_ENABLED
         if (!IsValid())
+        {
             return;
+        }
         ::ImGui::Render();
         ::ImGui_ImplDX11_RenderDrawData(::ImGui::GetDrawData());
         // メインウィンドウの外へ出たパネルを、各 OS ウィンドウへ描画して表示する
@@ -270,7 +280,9 @@ namespace NS::UI
     {
 #if NS_UI_IMGUI_ENABLED
         if (!IsValid())
+        {
             return false;
+        }
         return ::ImGui_ImplWin32_WndProcHandler(reinterpret_cast<HWND>(hwnd),
                                                 static_cast<UINT>(msg),
                                                 static_cast<WPARAM>(wParam),
@@ -288,7 +300,9 @@ namespace NS::UI
     {
 #if NS_UI_IMGUI_ENABLED
         if (!IsValid())
+        {
             return false;
+        }
         return ::ImGui::GetIO().WantCaptureMouse;
 #else
         return false;
@@ -299,7 +313,9 @@ namespace NS::UI
     {
 #if NS_UI_IMGUI_ENABLED
         if (!IsValid())
+        {
             return false;
+        }
         return ::ImGui::GetIO().WantCaptureKeyboard;
 #else
         return false;

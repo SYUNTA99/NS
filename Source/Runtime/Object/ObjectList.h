@@ -4,8 +4,8 @@
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/ITickable.h"
 #include "Runtime/Object/ObjectJson.h"
+#include "Runtime/Object/Reflection/ActorRef.h"
 #include "Runtime/Object/Reflection/ComponentRef.h"
-#include "Runtime/Object/Reflection/ObjectRef.h"
 
 #include <cstddef>
 #include <functional>
@@ -32,9 +32,7 @@ namespace NS::Obj
     //! @details シーンの JSON 文書から一括で組み直す。runtime も editor も同じ Rebuild 経路を通る
     //! 1 体だけ入れ替える InsertFromJson もあり、undo は組み直さずにこちらを通る
     //! 配置物 1 件の組み立ては呼出側のファクトリに委ね、Actor の型選択や資産解決は持たない
-    //! 機能別の型付き控えも持たず、欲しい component 型は ForEachComponent で問い合わせる
     //! 特定の 1 体は永続 id の解決で引く
-    //! const の参照で受けても中身は守れない。ObjectAt と範囲 for と ForEachComponent が渡すのは
     //! 非 const の Actor* と Component* で、呼び出し側はそこから書き換えられる
     //! 依存: NS::Obj::Actor, ObjectJson, NS::Phys::PhysicsScene
     class ObjectList : public NS::Core::NonCopyable
@@ -48,7 +46,6 @@ namespace NS::Obj
         //! factory が空の起動前 / テストでは物を組まない
         void Rebuild(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory);
 
-        //! @brief 組み上がった配置物へ entry の id・名前・active・component の id を書き、index の位置へ入れる
         //! @details 組み直さずに 1 体だけ入れる経路。名前は既存と重なれば番号を付ける。index が末尾より先なら末尾
         //! scene attach と親子の結び付けと開始は呼出側が済ませる
         Actor* InsertFromJson(std::unique_ptr<Actor> obj, const nlohmann::json& entry, std::size_t index);
@@ -77,7 +74,6 @@ namespace NS::Obj
         //! 実行時に湧く一時オブジェクト用。保存もされず、参照で引かれることも無い
         Actor* Append(std::unique_ptr<Actor> obj);
 
-        //! 組み上がった配置物と、その全 component に新しい永続 id を振り、名前を付けて 1 体加える
         //! 名前は既存と重なれば番号を付ける。scene attach は呼出側が済ませて渡す
         Actor* AppendWithNewId(std::unique_ptr<Actor> obj, std::string name);
 
@@ -87,43 +83,49 @@ namespace NS::Obj
         //! 0 は未採番の印なので何もしない
         void RemoveByObjectId(std::uint32_t objectId);
 
+        //! @brief 世界から外れた一時オブジェクトを破棄して所有リストから外す
+        //! @details 一時オブジェクトは id を持たず、出し直す道も無い。残すと出すたびに並びが伸び続ける
+        //! 更新の段の最中に呼ぶと回している並びが変わるので、段を回し終えた後に呼ぶ
+        void RemoveKilledTransients();
+
         //! objectId 一致の配置物を返す。居なければ nullptr。選択・編集の live 索引
         //! 0 は未採番の印なので常に nullptr。索引から引くので、毎フレーム引いても全配置物を辿らない
         [[nodiscard]] Actor* FindByObjectId(std::uint32_t objectId) noexcept;
 
-        //! ObjectRef の指す配置物を返す。未設定と該当なしは nullptr
+        //! ActorRef の指す配置物を返す。未設定と該当なしは nullptr
         //! 並びが変わるたびに索引を捨てるので、破棄した相手を指す参照は必ず nullptr になる
-        //! 別の配置物への参照はポインタで控えず、ObjectRef で持って使うたびにここで引く
-        [[nodiscard]] Actor* FindObject(ObjectRef ref) noexcept;
+        //! 別の配置物への参照はポインタで控えず、ActorRef で持って使うたびにここで引く
+        [[nodiscard]] Actor* FindObject(ActorRef ref) noexcept;
 
         //! @brief ComponentRef の指す Component を返す。未設定と該当なしは nullptr
-        //! @details 持ち主の配置物を索引で引き、その中から id で Component を探す。控えずに使うたびに引く
-        [[nodiscard]] Component* FindComponent(ComponentRefValue ref) noexcept;
+        [[nodiscard]] Component* ResolvePart(ComponentRefValue ref) noexcept;
 
         //! ComponentRef<T> の指す T を返す。未設定・該当なし・型が合わない相手は nullptr
-        template <class T> [[nodiscard]] T* FindComponent(const ComponentRef<T>& ref) noexcept
+        template <class T> [[nodiscard]] T* ResolvePart(const ComponentRef<T>& ref) noexcept
         {
-            return ComponentCast<T>(FindComponent(static_cast<const ComponentRefValue&>(ref)));
+            return ComponentCast<T>(ResolvePart(static_cast<const ComponentRefValue&>(ref)));
         }
 
         //! 稼働中の collider を PhysicsScene へ body として入れ、broadphase を張り直す
         //! 稼働していない collider は body を外す。既存 body は同じ id のまま shape と姿勢を更新する
-        //! 続けて RigidBody が collider の形を集めて動く body を張り直す
         void SyncPhysics(NS::Phys::PhysicsScene& physics);
 
-        //! priority が [firstPriority, lastPriority) の Component を昇順で回す。同じ priority の中は配置物の並び順
-        //! 帯の一部だけ回したい呼び出し側が使う。一時オブジェクトも同じ帯に乗る
-        void UpdateObjects(int firstPriority, int lastPriority = std::numeric_limits<int>::max());
-
-        //! @brief 配置物の部品でない物を、帯の priority の位置で毎フレーム動かす
-        //! @details 同じ帯の中では部品より先に、登録した順に動く。二重登録は帯を付け替える。寿命は呼出側が持つ
-        //! 更新の最中に足した物は次の UpdateObjects から動く
-        void AddTicker(ITickable* ticker, int priority);
+        //! 世界に出ている Actor として登録する。nullptr と登録済みは無視する。Actor が出る時に自分で呼ぶ
+        void RegisterActor(Actor* actor);
+        //! 世界に出ている Actor の登録を外す。Actor が世界から外れる時に自分で呼ぶ
+        void UnregisterActor(Actor* actor) noexcept;
+        //! @brief 段 phase に属する物を 1 回ずつ呼ぶ
+        //! @details 先に AddTicker で登録した物を登録順に、続けて登録済みで活性の Actor を配置の並びに呼ぶ。
+        //! Input の段は全 Actor の ReadInput、RenderPrep の段は全 Actor の PrepareRender、他は Phase が一致する
+        //! Actor の Update。途中で外れた物はそのフレームの残りでは呼ばない。入れ子で呼ぶことはできない
+        void ExecutePhase(UpdatePhase phase);
+        //! @brief 部品でない物を段 priority に登録する
+        //! @details 登録済みなら段だけを差し替える。nullptr は無視する
+        void AddTicker(ITickable* ticker, UpdatePhase priority);
         //! 登録を外す。更新の最中に外した物は、そのフレームの残りでは呼ばれない
         void RemoveTicker(ITickable* ticker) noexcept;
 
-        //! 全配置物の Component を priority の昇順で一括で回す。補間用の前回値は呼ぶ側が更新の前に SnapshotObjects
-        //! で揃える。並び順の登録簿は持たない。各 component がコンストラクタで指定する priority だけで並びが決まる
+        //! 段の表 UpdatePhase の順に全段の ExecutePhase を回す。物理の 1 歩は含まない
         void UpdateAllObjects();
 
         //! 全配置物の Root を Snapshot する。previous を current へ揃える
@@ -165,31 +167,10 @@ namespace NS::Obj
         [[nodiscard]] Iterator begin() const noexcept { return Iterator{m_objects.data()}; }
         [[nodiscard]] Iterator end() const noexcept { return Iterator{m_objects.data() + m_objects.size()}; }
 
-        //! 全配置物から型 T の component を訪ねる。リフレクションの is-a 照合なので抽象基底型でも派生を引ける
-        //! 型付き控えの代わりの問い合わせ口で、寿命は ObjectList が持ったまま
-        template <class T, class Fn> void ForEachComponent(Fn&& fn) const
-        {
-            for (const std::unique_ptr<Actor>& obj : m_objects)
-            {
-                for (Component* comp : obj->Components())
-                {
-                    if (T* typed = ComponentCast<T>(comp))
-                    {
-                        fn(*typed);
-                    }
-                }
-            }
-        }
-
     private:
         //! 並びが変わったので索引を捨てる。並びを変える箇所は必ず呼び、破棄した配置物を索引に残さない
         void MarkIndexDirty() noexcept;
 
-        //! entry の component の id を obj の実体へ書く。件の無い部品 (種類の既定値が足した物) には新しい番号を振る
-        //! id を書くのはシーンの配置物を持つここだけ
-        void AssignComponentIds(Actor& obj, const nlohmann::json& entry);
-
-        //! entry の id・名前・active・component の id を obj へ書く
         void ApplyIdentity(Actor& obj, const nlohmann::json& entry);
 
         //! 欄の型に合わない Component を指す ComponentRef を警告する。引けば nullptr になるだけなので値は変えない
@@ -199,22 +180,23 @@ namespace NS::Obj
         // 更新の予定 1 件。部品か、部品でない物のどちらか片方を持つ
         struct ScheduledTick
         {
-            int priority = 0;
-            Component* component = nullptr;
+            Actor* actor = nullptr;
             ITickable* ticker = nullptr;
         };
         // 部品でない物の登録 1 件
         struct TickerEntry
         {
             ITickable* ticker = nullptr;
-            int priority = 0;
+            UpdatePhase priority = UpdatePhase::Triggers;
         };
-        std::vector<ScheduledTick> m_scheduled; // UpdateObjects が priority 順に並べ直す作業用の並び
+        std::vector<Actor*> m_liveActors;
+        std::vector<ScheduledTick> m_scheduled; // ExecutePhase がその段で呼ぶ物を登録順に積む作業用の並び
         std::vector<TickerEntry> m_tickers;     // 部品でない物の登録。登録順
-        std::unordered_map<std::uint32_t, Actor*> m_index; // 永続 id から配置物への索引。汚れていれば次に引く時に作り直す
-        bool m_indexDirty = true;                               // 索引が所有リストと食い違っているか
-        std::uint32_t m_nextObjectId = 1;                   // 次に割り当てる永続 id。単調増加で欠番は再利用しない
-        bool m_updating = false;                            // UpdateObjects の実行中か。入れ子の呼び出しの検知に使う
+        std::unordered_map<std::uint32_t, Actor*>
+            m_index;                      // 永続 id から配置物への索引。汚れていれば次に引く時に作り直す
+        bool m_indexDirty = true;         // 索引が所有リストと食い違っているか
+        std::uint32_t m_nextObjectId = 1; // 次に割り当てる永続 id。単調増加で欠番は再利用しない
+        bool m_updating = false;          // ExecutePhase の実行中か。入れ子の呼び出しの検知に使う
     };
 
 } // namespace NS::Obj

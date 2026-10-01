@@ -22,13 +22,9 @@ namespace NS::Game::Level
     //! 全黒の裏でやり直す → 明転 → 操作を戻す。世界は止めない
     //! やり直しは全ての配置物へ MsgCourseRestart を送り、戻り方は受け手が決める
     //! 暗転 (ScreenFade) は進行役が開いて持つ UIActor。進行役はシーンの組み直しで捨てられ、最初の状態から作り直される
-    //! 進行役の段は仕掛けとゴールの後、カメラの前 (TickPriority::LateUpdate + 10)
     class CourseDirector final : public NS::Obj::ISceneObj, public NS::Obj::ITickable
     {
     public:
-        //! 進行役の段の帯
-        static constexpr int k_TickPriority = NS::Obj::TickPriority::LateUpdate + 10;
-
         explicit CourseDirector(NS::Obj::Scene& scene);
         ~CourseDirector() noexcept override;
 

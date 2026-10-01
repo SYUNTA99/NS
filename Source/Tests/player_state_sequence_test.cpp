@@ -1,0 +1,182 @@
+#include "Game/Player.h"
+#include "Game/Player/PlayerComponent.h"
+#include "Game/Player/States/IdlePlayerState.h"
+#include "Game/Player/States/LedgeClimbingPlayerState.h"
+#include "Game/Player/States/ReboundPlayerState.h"
+#include "Runtime/Object/Components/HitReaction.h"
+#include "Runtime/Object/Scene/Scene.h"
+
+#include <gtest/gtest.h>
+
+#include <type_traits>
+#include <utility>
+
+static_assert(!std::is_polymorphic_v<NS::Game::Player::PlayerStateManager>);
+static_assert(std::is_same_v<decltype(std::declval<NS::Game::Player::PlayerComponent&>().States()),
+                             NS::Game::Player::PlayerStateManager*>);
+
+static_assert(std::is_base_of_v<NS::Obj::StateOf<NS::Game::Player::IdlePlayerState, ::Player>,
+                                NS::Game::Player::IdlePlayerState>);
+
+namespace
+{
+    class ObservePlayerEffectsState final : public NS::Obj::StateOf<ObservePlayerEffectsState, ::Player>
+    {
+    public:
+        void OnStep(::Player& player, float) override
+        {
+            EXPECT_EQ(player.HitReactionPart()->FlashFramesRemaining(), 3);
+        }
+    };
+
+    Player* PlaceSequencePlayer(NS::Obj::Scene& scene)
+    {
+        nlohmann::json doc = NS::Obj::MakeSceneJson();
+        nlohmann::json entry = NS::Obj::MakeObjectJson();
+        NS::Obj::SetObjectJsonClass(entry, "Player");
+        NS::Obj::SetObjectJsonId(entry, 1);
+        NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
+        scene.LoadJson(doc);
+        Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
+        if (player != nullptr)
+        {
+            player->StateManager().EnsureBuilt(*player);
+        }
+        return player;
+    }
+} // namespace
+
+TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSequencePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Player::PlayerComponent* movement =
+        NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player->Part("Movement"));
+    ASSERT_NE(movement, nullptr);
+    player->Root().SetPosition(NS::Core::Vector3{});
+    movement->ClimbLedge();
+    ASSERT_TRUE(player->StateManager().IsCurrent<NS::Game::Player::LedgeClimbingPlayerState>());
+    EXPECT_FLOAT_EQ(player->Root().Position().y, 0.0f);
+    const float top = movement->CapsuleHalfHeight() + movement->CapsuleRadius();
+    player->StateManager().Step(*player, 0.0625f);
+    EXPECT_NEAR(player->Root().Position().y, top * 0.5f, 0.00001f);
+    player->StateManager().Step(*player, 0.0625f);
+    EXPECT_NEAR(player->Root().Position().y, top, 0.00001f);
+    player->StateManager().Step(*player, 0.125f);
+    EXPECT_TRUE(player->StateManager().IsCurrent<NS::Game::Player::IdlePlayerState>());
+    EXPECT_TRUE(movement->IsGrounded());
+}
+
+TEST(PlayerStateSequence, LeavingClimbCannotResumeAnOldPositionWrite)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSequencePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Player::PlayerComponent* movement =
+        NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player->Part("Movement"));
+    ASSERT_NE(movement, nullptr);
+    movement->ClimbLedge();
+    player->StateManager().Step(*player, 0.0625f);
+    ASSERT_TRUE(player->StateManager().Change<NS::Game::Player::IdlePlayerState>());
+    player->Root().SetPosition(NS::Core::Vector3{0.0f, 3.0f, 0.0f});
+    player->StateManager().Step(*player, 0.0625f);
+    EXPECT_FLOAT_EQ(player->Root().Position().y, 3.0f);
+}
+
+TEST(PlayerStateSequence, OnlyActorUpdateAdvancesTheOwnedStateMachine)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSequencePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    player->Movement().SetGrounded(true);
+    ASSERT_TRUE(player->StateManager().IsCurrent<NS::Game::Player::IdlePlayerState>());
+    EXPECT_EQ(player->StateManager().Machine().StateStep(), 0u);
+    player->Movement().OnUpdate();
+    EXPECT_EQ(player->StateManager().Machine().StateStep(), 0u);
+    player->Movement().SetGrounded(true);
+    player->Update();
+    EXPECT_EQ(player->StateManager().Machine().StateStep(), 1u);
+}
+
+TEST(PlayerStateSequence, InactiveMovementStopsTheActorStateStep)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSequencePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    player->Movement().SetGrounded(true);
+    player->Movement().SetActive(false);
+    player->Update();
+    EXPECT_EQ(player->StateManager().Machine().StateStep(), 0u);
+}
+
+TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSequencePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    NS::Obj::HitReaction* reaction = player->HitReactionPart();
+    ASSERT_NE(reaction, nullptr);
+    reaction->Play(NS::Obj::HitReactionDesc{.flashFrames = 3, .flashAlpha = 1.0f});
+    reaction->OnUpdate();
+    ASSERT_EQ(reaction->FlashFramesRemaining(), 3);
+    player->StateManager().Machine().Build<ObservePlayerEffectsState>(*player);
+    player->Update();
+    EXPECT_EQ(player->StateManager().Machine().StateStep(), 1u);
+    EXPECT_EQ(reaction->FlashFramesRemaining(), 2);
+}
+
+TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSequencePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    NS::Obj::HitReaction* reaction = player->HitReactionPart();
+    ASSERT_NE(reaction, nullptr);
+    reaction->Play(NS::Obj::HitReactionDesc{.flashFrames = 3, .flashAlpha = 1.0f});
+    reaction->OnUpdate();
+    player->Movement().SetActive(false);
+    player->Update();
+    EXPECT_EQ(player->StateManager().Machine().StateStep(), 0u);
+    EXPECT_EQ(reaction->FlashFramesRemaining(), 2);
+}
+
+TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSequencePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Player::PlayerComponent* movement =
+        NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player->Part("Movement"));
+    ASSERT_NE(movement, nullptr);
+    movement->SetGrounded(true);
+    const NS::Game::Player::ReboundArc arc{.apexHeight = 1.0f, .distance = 5.0f};
+    const NS::Core::Vector3 initial = movement->ReboundVelocityFor(arc);
+    ASSERT_TRUE(movement->BeginRebound(arc));
+    EXPECT_FLOAT_EQ(movement->VerticalVelocity(), initial.y);
+    movement->SetJumpPressed();
+    player->StateManager().Step(*player, 0.01f);
+    EXPECT_NEAR(movement->VerticalVelocity(), initial.y - 0.125f, 0.00001f);
+    EXPECT_TRUE(player->StateManager().IsCurrent<NS::Game::Player::ReboundPlayerState>());
+    player->StateManager().Step(*player, 0.02f);
+    EXPECT_NEAR(movement->VerticalVelocity(), initial.y - 0.375f, 0.00001f);
+    movement->SetVerticalVelocity(0.0f);
+    player->StateManager().Step(*player, 0.01f);
+    EXPECT_TRUE(player->StateManager().IsCurrent<NS::Game::Player::IdlePlayerState>());
+}
+
+TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSequencePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Player::PlayerComponent* movement =
+        NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player->Part("Movement"));
+    ASSERT_NE(movement, nullptr);
+    movement->ClimbLedge();
+    player->StateManager().Step(*player, 0.0625f);
+    player->OnEndPlay();
+    player->Root().SetPosition(NS::Core::Vector3{0.0f, 3.0f, 0.0f});
+    player->StateManager().Step(*player, 0.0625f);
+    EXPECT_FLOAT_EQ(player->Root().Position().y, 3.0f);
+}

@@ -19,6 +19,7 @@ namespace NS::Game::Player
 {
     class PlayerAppearance;
     class PlayerComponent;
+    class PlayerParams;
 
     //! @brief 自機の溜めと放しのエフェクトの層を出し、出すと決めた記録を持つ
     //! @details 押した・溜めに入った・溜めきった・放した・突進が終わった・当たりの止めが始まった、を同居する部品から
@@ -37,7 +38,7 @@ namespace NS::Game::Player
     //!   止めた k_TrailFadeSteps フレーム後に消す
     //! 溜めている間の層には溜め量 (CollisionInput の判定) を動的入力 0 番で毎フレーム渡す。
     //! 描画の無い世界でも記録は残し、試しと Replay は Layers を読む
-    //! 優先度は Update 帯の +60。同じフレームの PlayerAppearance (+50) が回した玉の向きより後に走る
+    //! Player::Update が PlayerAppearance の後に呼ぶ。同じフレームに PlayerAppearance が回した玉の向きより後に走る
     //! 依存: EffectLayerList, PlayerComponent, PlayerAppearance, NS::Game::Level::CollisionInput,
     //! NS::Game::Level::ImpactResolver
     // TODO: エフェクトは固定ステップで進み、付いていく層は固定ステップの位置へ置く。60 を超える画面で付いていく層が
@@ -88,12 +89,10 @@ namespace NS::Game::Player
         //! @return 回転。水平の長さが 0 か有限でなければ回さない
         [[nodiscard]] static NS::Core::Quaternion YawToward(const NS::Core::Vector3& direction) noexcept;
 
-        NS_REFLECT_BEGIN(ChargeEffects, NS::Obj::Component)
-        NS_REFLECT_FIELD(m_tapBurstScale, "タップの弾けの大きさ")
-        NS_REFLECT_FIELD(m_fullBurstScaleGain, "溜めきりで足す弾けの大きさ")
-        NS_REFLECT_END()
+        NS_REFLECT_NONE(ChargeEffects, NS::Obj::Component)
 
     private:
+        [[nodiscard]] const PlayerParams& Tuning() const noexcept;
         // 決めたフレームに消す層
         struct ScheduledStop
         {
@@ -126,8 +125,6 @@ namespace NS::Game::Player
         // 放しの弾けの輪・丸屋根・筋の大きさ。溜めきりで輪が半径 3.2 m まで広がる
         // タップの 0.75 は輪が半径 2.4 m で、押した瞬間の丸まりの殻 (半径 1.2 m) の倍。0.4 (半径 1.3 m) は
         // 放した次のフレームの輪が殻と同じ大きさに見えた
-        float m_tapBurstScale = 0.75f;
-        float m_fullBurstScaleGain = 0.25f;
 
         EffectLayerList m_layers;
         std::vector<ScheduledStop> m_scheduledStops;

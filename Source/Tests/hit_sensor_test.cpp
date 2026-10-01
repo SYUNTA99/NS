@@ -23,7 +23,8 @@ namespace
     public:
         SensorProbe(NS::Obj::HitSensorType type, float radius)
         {
-            m_sensor = AddComponent<NS::Obj::HitSensor>();
+            CreatePart("BodySensor");
+            m_sensor = BodySensorPart();
             m_sensor->SetType(type);
             m_sensor->SetSphere(radius);
         }
@@ -69,8 +70,8 @@ TEST(SensorVolume, SpheresTouchAtSumOfRadii)
 TEST(SensorVolume, CapsuleUsesItsSegment)
 {
     // 縦に伸びたカプセルは、中心から離れた高さの球にも触れる
-    const NS::Obj::SensorVolume capsule = NS::Obj::SensorVolume::Capsule(
-        NS::Phys::Capsule{.center = Vector3{0.0f, 0.0f, 0.0f}, .axis = Vector3::UnitY, .halfHeight = 2.0f, .radius = 0.5f});
+    const NS::Obj::SensorVolume capsule = NS::Obj::SensorVolume::Capsule(NS::Phys::Capsule{
+        .center = Vector3{0.0f, 0.0f, 0.0f}, .axis = Vector3::UnitY, .halfHeight = 2.0f, .radius = 0.5f});
     EXPECT_TRUE(NS::Obj::VolumesOverlap(capsule, NS::Obj::SensorVolume::Sphere(Vector3{0.8f, 1.9f, 0.0f}, 0.4f)));
     EXPECT_FALSE(NS::Obj::VolumesOverlap(capsule, NS::Obj::SensorVolume::Sphere(Vector3{0.8f, 3.0f, 0.0f}, 0.2f)));
 }
@@ -81,8 +82,8 @@ TEST(SensorVolume, BoxAgainstSphereAndCapsule)
         NS::Core::MakeOBB(Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Quaternion::Identity, Vector3{10.0f, 1.0f, 10.0f}));
     EXPECT_TRUE(NS::Obj::VolumesOverlap(box, NS::Obj::SensorVolume::Sphere(Vector3{3.0f, 1.4f, 3.0f}, 0.5f)));
     EXPECT_FALSE(NS::Obj::VolumesOverlap(box, NS::Obj::SensorVolume::Sphere(Vector3{3.0f, 1.6f, 3.0f}, 0.5f)));
-    const NS::Obj::SensorVolume capsule = NS::Obj::SensorVolume::Capsule(
-        NS::Phys::Capsule{.center = Vector3{0.0f, 2.2f, 0.0f}, .axis = Vector3::UnitY, .halfHeight = 0.5f, .radius = 0.8f});
+    const NS::Obj::SensorVolume capsule = NS::Obj::SensorVolume::Capsule(NS::Phys::Capsule{
+        .center = Vector3{0.0f, 2.2f, 0.0f}, .axis = Vector3::UnitY, .halfHeight = 0.5f, .radius = 0.8f});
     EXPECT_TRUE(NS::Obj::VolumesOverlap(capsule, box));
 }
 
@@ -91,15 +92,21 @@ TEST(SensorVolume, BoxesUseSeparatingAxes)
     const NS::Obj::SensorVolume a = NS::Obj::SensorVolume::Box(
         NS::Core::MakeOBB(Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Quaternion::Identity, Vector3{1.0f, 1.0f, 1.0f}));
     // 45 度回した箱は、角が軸並行の外接箱より内側にある
-    const NS::Core::Quaternion turned = NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.25f, 0.0f, 0.0f);
-    EXPECT_TRUE(NS::Obj::VolumesOverlap(a, NS::Obj::SensorVolume::Box(NS::Core::MakeOBB(Vector3{2.3f, 0.0f, 0.0f}, turned, Vector3{1.0f, 1.0f, 1.0f}))));
-    EXPECT_FALSE(NS::Obj::VolumesOverlap(a, NS::Obj::SensorVolume::Box(NS::Core::MakeOBB(Vector3{2.5f, 0.0f, 0.0f}, turned, Vector3{1.0f, 1.0f, 1.0f}))));
+    const NS::Core::Quaternion turned =
+        NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.25f, 0.0f, 0.0f);
+    EXPECT_TRUE(NS::Obj::VolumesOverlap(
+        a,
+        NS::Obj::SensorVolume::Box(NS::Core::MakeOBB(Vector3{2.3f, 0.0f, 0.0f}, turned, Vector3{1.0f, 1.0f, 1.0f}))));
+    EXPECT_FALSE(NS::Obj::VolumesOverlap(
+        a,
+        NS::Obj::SensorVolume::Box(NS::Core::MakeOBB(Vector3{2.5f, 0.0f, 0.0f}, turned, Vector3{1.0f, 1.0f, 1.0f}))));
 }
 
 TEST(HitSensor, WorldVolumeFollowsRootScale)
 {
     NS::Obj::Actor actor;
-    NS::Obj::HitSensor* sensor = actor.AddComponent<NS::Obj::HitSensor>();
+    actor.CreatePart("BodySensor");
+    NS::Obj::HitSensor* sensor = actor.BodySensorPart();
     sensor->SetSphere(0.5f);
     actor.Root().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
     actor.Root().SetScale(Vector3{2.0f, 2.0f, 2.0f});

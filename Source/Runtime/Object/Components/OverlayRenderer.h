@@ -16,13 +16,17 @@ namespace NS::Obj
     class OverlayRenderer : public Component
     {
     public:
-        //! 中間基底を挟むと派生から Component の初期化子を書けないので priority をここで受けて渡す
-        explicit OverlayRenderer(int priority = TickPriority::Update) noexcept : Component(priority) {}
+        OverlayRenderer() noexcept = default;
+        //! @brief 重ね描きの順を返す
+        //! @return 小さい方から先に描く。同じ値は先に登録した方が先。既定は 0
+        [[nodiscard]] virtual int OverlayOrder() const noexcept { return 0; }
 
         //! 標準の world 描画パスの後に画面へ重ねて描く
         virtual void OnRenderOverlay(const NS::Gfx::RenderContext& context) = 0;
 
         //! 所属 scene の重ね描きの登録簿へ自分を入れる。派生で上書きするなら基底のこれを呼ぶ
+        void OnAppear() override { OverlayRenderer::OnStart(); }
+        void OnKill() noexcept override { OverlayRenderer::OnEndPlay(); }
         void OnStart() override;
         //! 所属 scene の重ね描きの登録簿から自分を外す。派生で上書きするなら基底のこれを呼ぶ
         void OnEndPlay() override;

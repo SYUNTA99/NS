@@ -1,9 +1,10 @@
 #pragma once
 
 #include "Runtime/Core/Math.h"
-#include "Runtime/Object/Component.h"
+#include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Object/Components/CameraModifier.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
+#include "Runtime/Object/ITickable.h"
 
 #include <cstdint>
 #include <memory>
@@ -15,21 +16,21 @@ namespace NS::Obj
     class CameraComponent;
 
     //! @brief シーンに 1 つのカメラの管理役。仮想カメラ群を束ね、選ばれた 1 個の pose に効果を掛けて実カメラへ流す
-    //! @details UE の PlayerCameraManager、オデッセイの CameraDirector に当たる。部品と Actor は IUseCamera の窓口から引く
-    //! 登録済み VirtualCamera のうち active かつ最高 VcamPriority のものを毎フレーム選ぶ
-    //! active 切替は SetBlendDuration 秒の ease-in-out で旧 pose から繋ぎ、0 で即時カット
-    //! 揺れや寄りのような効果はモディファイア (CameraModifier) として積み、ブレンドの後に Order の順で掛ける
-    //! 効果を足す側は管理役を触らずモディファイアを 1 つ積むだけでよい。描き終えたモディファイアは管理役が外す
-    //! 描画 / aspect 設定 / PlayerInput の forward 取得もこの管理役経由に集約する
-    //! 帯は LateUpdate + 60。vcam を供給する追従カメラの LateUpdate + 50 より後ろで選び直す
+    //! @details UE の PlayerCameraManager、オデッセイの CameraDirector に当たる。部品と Actor は IUseCamera
+    //! から引く。登録済み VirtualCamera のうち active かつ最高 VcamPriority のものを毎フレーム選ぶ。active 切替は
+    //! SetBlendDuration 秒の ease-in-out で旧 pose から繋ぎ、0 で即時カット。揺れや寄りのような効果はモディファイア
+    //! (CameraModifier) として積み、ブレンドの後に Order の順で掛ける。効果を足す側は管理役を触らずモディファイアを 1
+    //! つ積むだけでよい。描き終えたモディファイアは管理役が外す。描画 / aspect 設定 / PlayerInput の forward
+    //! 取得もこの管理役経由に集約する。シーンがカメラの段の Actor を回した直後に OnTick を呼ぶので、vcam を動かす
+    //! 追従カメラ (カメラの段) より後ろで選び直す
     //! 依存: NS::Core, NS::Obj::Component / CameraComponent / VirtualCamera / CameraModifier
-    class CameraManager : public Component
+    class CameraManager : public NS::Core::NonCopyable, public ITickable
     {
     public:
         CameraManager() noexcept;
 
-        //! 同じ Actor に乗る実カメラをここで解決する。見つからなければ Evaluate は何もしない
-        void OnStart() override;
+        //! 姿勢を書き込む実カメラを差し替える。非所有で、nullptr は書き込む先が無い状態
+        void SetCamera(CameraComponent* camera) noexcept { m_camera = camera; }
 
         //! 候補 vcam を登録する。null と重複は無視する。寿命は呼出側が支配する非所有参照
         void AddVirtualCamera(VirtualCamera* vcam);
@@ -43,7 +44,8 @@ namespace NS::Obj
         [[nodiscard]] float BlendDuration() const noexcept { return m_blendDuration; }
 
         //! fixed step で active 切替を検出しブレンドタイマーを進める。描画はしない
-        void OnUpdate() override;
+        void OnUpdate();
+        void OnTick() override { OnUpdate(); }
 
         //! 現在の active vcam の EvaluatePose(alpha) を実カメラへ書く。ブレンド中なら旧 pose と補間する
         //! 呼ぶのは描画だけで、Scene が決めた割合を渡す
@@ -126,15 +128,10 @@ namespace NS::Obj
         [[nodiscard]] NS::Core::Vector3 ForwardHorizontal() const noexcept;
         [[nodiscard]] CameraComponent* Camera() const noexcept { return m_camera; }
 
-        // vcam 切替ブレンド秒を Inspector へ公開する。負クランプを保つため setter 経由で書く
-        NS_REFLECT_BEGIN(CameraManager, Component)
-        NS_REFLECT_ACCESSOR(float, "ブレンド秒数", BlendDuration(), SetBlendDuration)
-        NS_REFLECT_END()
-
     private:
         [[nodiscard]] VirtualCamera* SelectActive() const noexcept;
 
-        CameraComponent* m_camera = nullptr; // 同じ Actor に乗る実カメラ (非所有)
+        CameraComponent* m_camera = nullptr; // Scene が持つ実カメラ (非所有)
         std::vector<VirtualCamera*> m_vcams; // 登録済み vcam 候補 (非所有)
         VirtualCamera* m_active = nullptr;   // 現在選ばれている vcam
 

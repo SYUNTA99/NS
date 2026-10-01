@@ -10,17 +10,23 @@ namespace NS::Editor
         std::size_t EstimatedJsonBytes(const nlohmann::json& value) noexcept
         {
             if (value.is_string())
+            {
                 return value.get_ref<const std::string&>().size();
+            }
             std::size_t bytes = 0;
             if (value.is_object())
             {
                 for (nlohmann::json::const_iterator it = value.begin(); it != value.end(); ++it)
+                {
                     bytes += sizeof(nlohmann::json) + it.key().size() + EstimatedJsonBytes(it.value());
+                }
             }
             else if (value.is_array())
             {
                 for (const nlohmann::json& element : value)
+                {
                     bytes += sizeof(nlohmann::json) + EstimatedJsonBytes(element);
+                }
             }
             return bytes;
         }
@@ -52,9 +58,13 @@ namespace NS::Editor
     {
         std::size_t bytes = sizeof(ObjectSnapshotCommand);
         if (m_before)
+        {
             bytes += EstimatedHeapBytes(*m_before);
+        }
         if (m_after)
+        {
             bytes += EstimatedHeapBytes(*m_after);
+        }
         return bytes;
     }
 

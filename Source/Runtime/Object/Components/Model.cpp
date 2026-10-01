@@ -1,12 +1,12 @@
-﻿#include "Runtime/Object/Components/MeshRenderer.h"
+﻿#include "Runtime/Object/Components/Model.h"
 #include "Runtime/Core/AABB.h"
 
 #include "Runtime/Graphics/Material.h"
 #include "Runtime/Graphics/Mesh.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/StaticMesh.h"
-#include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -27,10 +27,10 @@ namespace
 
 namespace NS::Obj
 {
-    void MeshRenderer::SetPerObjectVsConstant(const NS::Gfx::Buffer* cb,
-                                              const void* cpuData,
-                                              std::size_t cpuDataSize,
-                                              unsigned slot) noexcept
+    void Model::SetPerObjectVsConstant(const NS::Gfx::Buffer* cb,
+                                       const void* cpuData,
+                                       std::size_t cpuDataSize,
+                                       unsigned slot) noexcept
     {
         m_perObjectVsCb = cb;
         m_perObjectVsData = cpuData;
@@ -38,7 +38,7 @@ namespace NS::Obj
         m_perObjectVsSlot = slot;
     }
 
-    void MeshRenderer::ResolveAssets(AssetManager& assets)
+    void Model::ResolveAssets(AssetManager& assets)
     {
         // 共有 material 名 (player / water / shadow) を先に引き、外れたら .mat 相対パスとして読む
         // 空・トラバーサル・読込失敗は既定の共有 player material にして、描けない状態を作らない
@@ -69,7 +69,7 @@ namespace NS::Obj
         SetMesh(resolved);
     }
 
-    void MeshRenderer::OnStart()
+    void Model::OnStart()
     {
         Actor* owner = Owner();
         if (owner == nullptr)
@@ -84,7 +84,7 @@ namespace NS::Obj
         scene->RegisterRenderable(this);
     }
 
-    void MeshRenderer::OnEndPlay()
+    void Model::OnEndPlay()
     {
         Actor* owner = Owner();
         if (owner == nullptr)
@@ -100,14 +100,14 @@ namespace NS::Obj
         scene->UnregisterRenderable(this);
     }
 
-    void MeshRenderer::OnUpdate()
+    void Model::OnUpdate()
     {
-        // Update 帯の既定の優先度で回る。局所の回転と倍率はこれより後に書かれる前提で、書き直される前の値を控える
+        // 持ち主の Actor の Update が呼ぶ。局所の回転と倍率はこれより後に書かれる前提で、書き直される前の値を控える
         m_previousLocalRotation = m_localRotation;
         m_previousDrawScale = m_drawScale;
     }
 
-    bool MeshRenderer::SetDrawScale(const NS::Core::Vector3& scale) noexcept
+    bool Model::SetDrawScale(const NS::Core::Vector3& scale) noexcept
     {
         if (!IsPositiveFiniteScale(scale))
         {
@@ -117,7 +117,7 @@ namespace NS::Obj
         return true;
     }
 
-    bool MeshRenderer::SnapDrawScale(const NS::Core::Vector3& scale) noexcept
+    bool Model::SnapDrawScale(const NS::Core::Vector3& scale) noexcept
     {
         if (!IsPositiveFiniteScale(scale))
         {
@@ -128,7 +128,7 @@ namespace NS::Obj
         return true;
     }
 
-    const NS::Core::AABB* MeshRenderer::DrawnLocalBounds() const noexcept
+    const NS::Core::AABB* Model::DrawnLocalBounds() const noexcept
     {
         if (m_hasLocalBoundsOverride)
         {
@@ -141,7 +141,7 @@ namespace NS::Obj
         return nullptr;
     }
 
-    NS::Core::Matrix MeshRenderer::DrawWorldMatrix(float alpha) const noexcept
+    NS::Core::Matrix Model::DrawWorldMatrix(float alpha) const noexcept
     {
         const NS::Core::Quaternion local = NS::Core::Quaternion::Slerp(m_previousLocalRotation, m_localRotation, alpha);
         const NS::Core::Matrix localMatrix = NS::Core::Matrix::CreateFromQuaternion(local);
@@ -175,7 +175,7 @@ namespace NS::Obj
                NS::Core::Matrix::CreateTranslation(pivot);
     }
 
-    void MeshRenderer::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
+    void Model::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
     {
         Actor* owner = Owner();
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
@@ -206,7 +206,7 @@ namespace NS::Obj
         out.push_back(item);
     }
 
-    RenderBucket MeshRenderer::Bucket() const noexcept
+    RenderBucket Model::Bucket() const noexcept
     {
         if (m_material == nullptr)
         {
@@ -220,7 +220,7 @@ namespace NS::Obj
         return RenderBucket::Transparent;
     }
 
-    NS::Core::Vector3 MeshRenderer::SortCenter() const noexcept
+    NS::Core::Vector3 Model::SortCenter() const noexcept
     {
         const Actor* owner = Owner();
         if (owner == nullptr)
@@ -231,7 +231,7 @@ namespace NS::Obj
         return NS::Core::Vector3{world._41, world._42, world._43};
     }
 
-    int MeshRenderer::SortPriority() const noexcept
+    int Model::SortPriority() const noexcept
     {
         if (m_material != nullptr)
         {
@@ -240,7 +240,7 @@ namespace NS::Obj
         return 0;
     }
 
-    NS::Core::AABB MeshRenderer::WorldBounds() const noexcept
+    NS::Core::AABB Model::WorldBounds() const noexcept
     {
         const Actor* owner = Owner();
         if (m_mesh == nullptr || owner == nullptr)
@@ -273,5 +273,5 @@ namespace NS::Obj
     }
 
     // mesh / material は空で構築し、読み込み時にリフレクションと ResolveAssets が差し込む
-    NS_CLASS(MeshRenderer)
+    NS_CLASS(Model)
 } // namespace NS::Obj

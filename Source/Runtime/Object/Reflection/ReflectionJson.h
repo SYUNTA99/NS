@@ -11,13 +11,12 @@
 
 namespace NS::Obj
 {
+    //! @brief 部品の欄を、配置物の JSON の "parts" の 1 件の形で書き出す
+    //! @return {欄の名前: 値} に "enabled" を足した object
+    [[nodiscard]] nlohmann::json SerializePartFields(const Component& part);
     //! comp を {"type": リフレクション typeName, "fields": {名前: 値}} の JSON object へ書き出す
     //! GetReflection() が nullptr のリフレクションの無い component は type 空文字 + 空 fields を返す
     [[nodiscard]] nlohmann::json SerializeComponent(const Component& comp);
-
-    //! obj の全 component を SerializeComponent で {type, fields} の配列へ並べる
-    //! リフレクションの無い component は type 空文字で混ざる
-    [[nodiscard]] nlohmann::json SerializeActorComponents(const Actor& obj);
 
     //! @brief fields object の各キーをリフレクション FieldDesc に照合し、一致する field を set で書き戻す
     //! @details 欠損キーは前方互換のため既定値のまま、型不一致は無視する

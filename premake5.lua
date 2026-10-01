@@ -508,7 +508,8 @@ project "Object"
         "Platform",
         "Graphics",
         "Physics",
-        "Audio"
+        "Audio",
+        "UI"
     }
 
     applyRuntimeLayerDefaults("Object")

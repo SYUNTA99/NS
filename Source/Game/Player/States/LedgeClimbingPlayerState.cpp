@@ -1,11 +1,26 @@
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 
+#include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerStateManager.h"
 
 namespace NS::Game::Player
 {
-    void LedgeClimbingPlayerState::OnStep(PlayerComponent& player, float dt)
+    void LedgeClimbingPlayerState::OnEnter(::Player& player)
     {
-        player.UpdateLedgeClimb(dt);
+        StartCoroutine(Run(player));
+    }
+
+    NS::Core::Coroutine LedgeClimbingPlayerState::Run(::Player& player)
+    {
+        while (true)
+        {
+            co_await NS::Core::NextFrame{};
+            player.Movement().UpdateLedgeClimb(StepDelta());
+            if (!player.StateManager().IsCurrent<LedgeClimbingPlayerState>())
+            {
+                co_return;
+            }
+        }
     }
 } // namespace NS::Game::Player

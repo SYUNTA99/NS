@@ -14,6 +14,7 @@ namespace NS::Game::Level
 
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         [[nodiscard]] const char* ClassName() const noexcept override { return "Goal"; }
+        NS_REFLECT_NONE(Goal, NS::Obj::Actor)
 
         //! 範囲に入ったプレイヤーの体へ MsgGoal を送る
         void AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other) override;

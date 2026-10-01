@@ -32,9 +32,9 @@ namespace NS::Obj
         //! 当たりが無ければ空
         [[nodiscard]] std::vector<NS::Phys::Triangle> WorldTriangles() const;
 
-        //! 同じ object の MeshRenderer の参照から当たりを借りる
+        //! 同じ object の Model の参照から当たりを借りる
         //! 解決できない参照は描画と同じく cube にする
-        //! MeshRenderer が無ければ警告を出して当たり無しのまま
+        //! Model が無ければ警告を出して当たり無しのまま
         void ResolveAssets(AssetManager& assets) override;
 
         // 当たりはリフレクションで運ばない。ResolveAssets が描画の参照から借りるので、型名だけ登録しておく

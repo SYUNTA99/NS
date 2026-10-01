@@ -26,7 +26,11 @@ namespace NS::Core
 
         std::string LogsDirectory(const LoggerDesc& desc)
         {
-            return desc.logDirectory.empty() ? "logs" : desc.logDirectory + "/logs";
+            if (desc.logDirectory.empty())
+            {
+                return "logs";
+            }
+            return desc.logDirectory + "/logs";
         }
 
         // Core は Platform に依存できないので、StringUtils を使わずここで変換する
@@ -84,14 +88,16 @@ namespace NS::Core
         {
             std::vector<spdlog::sink_ptr> sinks;
 
-            std::shared_ptr<spdlog::sinks::stderr_color_sink_mt> console = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
+            std::shared_ptr<spdlog::sinks::stderr_color_sink_mt> console =
+                std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
             console->set_pattern("%H:%M:%S.%e [%^%l%$] [%n] %v");
             sinks.push_back(console);
 
             const std::string logsDir = LogsDirectory(desc);
             const std::string logFilePath = logsDir + "/" + desc.logName + ".log";
-            std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-                logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, desc.rotateOnOpen);
+            std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> file =
+                std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+                    logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, desc.rotateOnOpen);
             file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
             sinks.push_back(file);
 
@@ -132,7 +138,8 @@ namespace NS::Core
         CreateDirectoryRecursive(LogsDirectory(desc));
 
         std::vector<spdlog::sink_ptr> sinks = BuildSinks(desc);
-        std::shared_ptr<spdlog::logger> logger = std::make_shared<spdlog::logger>(k_LoggerName, sinks.begin(), sinks.end());
+        std::shared_ptr<spdlog::logger> logger =
+            std::make_shared<spdlog::logger>(k_LoggerName, sinks.begin(), sinks.end());
 
         logger->set_level(spdlog::level::trace);
         logger->flush_on(spdlog::level::warn);

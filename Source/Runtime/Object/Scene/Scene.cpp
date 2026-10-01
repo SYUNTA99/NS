@@ -1,8 +1,8 @@
 ﻿#include "Runtime/Object/Scene/Scene.h"
 
 #include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/CameraComponent.h"
+#include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -18,63 +18,12 @@
 
 namespace NS::Obj
 {
-    namespace
+    Scene::Scene() : m_cameraManager(std::make_unique<NS::Obj::CameraManager>())
     {
-        // obj の component のうち JSON へ写る物 (リフレクションを持つ物) を並び順に集める
-        [[nodiscard]] std::vector<Component*> ReflectedComponents(const Actor& obj)
-        {
-            std::vector<Component*> reflected;
-            reflected.reserve(obj.Components().size());
-            for (Component* comp : obj.Components())
-            {
-                if (comp != nullptr && comp->GetReflection() != nullptr)
-                {
-                    reflected.push_back(comp);
-                }
-            }
-            return reflected;
-        }
-
-        // 実体を残したまま値だけ写せるか。クラスと component の並び・型・id が JSON と一致する時だけ真
-        // 一致しない姿は component の増減か入れ替えで、兄弟を開始時に掴む component があるため作り直す
-        [[nodiscard]] bool MatchesStructure(const Actor& obj,
-                                            const std::vector<Component*>& reflected,
-                                            const nlohmann::json& object)
-        {
-            if (std::string_view(obj.ClassName()) != ObjectJsonClass(object))
-            {
-                return false;
-            }
-            const nlohmann::json& components = ObjectJsonComponents(object);
-            if (components.size() != reflected.size())
-            {
-                return false;
-            }
-            for (std::size_t i = 0; i < reflected.size(); ++i)
-            {
-                const nlohmann::json& entry = components[i];
-                if (ComponentEntryId(entry) != reflected[i]->Id() ||
-                    ComponentEntryType(entry) != std::string_view(reflected[i]->GetReflection()->typeName))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-    } // namespace
-
-    Scene::Scene()
-    {
-        // 描くには実カメラが 1 個要る。配置物ではないがシーンには必ず居るので、ここで ObjectList へ入れる
-        // 保存・凍結・編集 UI に出ない一時オブジェクトで、データからの組み直しも跨いで残る
-        // 描画 component は積まない。RegisterRenderable は virtual で、基底コンストラクタからは派生へ落ちない
-        std::unique_ptr<Actor> host = std::make_unique<Actor>();
-        CameraComponent* camera = host->AddComponent<CameraComponent>();
-        camera->SetUp({0.0f, 1.0f, 0.0f});
-        m_cameraManager = host->AddComponent<NS::Obj::CameraManager>();
-        SpawnTransient(std::move(host));
+        m_mainCamera.SetUp({0.0f, 1.0f, 0.0f});
+        m_cameraManager->SetCamera(&m_mainCamera);
         // 当たりの調べ役はセンサーの段 (物理の後、仕掛けとゴールの前) で回る
-        m_objects.AddTicker(&m_hitSensors, HitSensorDirector::k_TickPriority);
+        m_objects.AddTicker(&m_hitSensors, UpdatePhase::Sensors);
     }
 
     Scene::~Scene() = default;
@@ -82,6 +31,7 @@ namespace NS::Obj
     void Scene::LoadJson(nlohmann::json scene)
     {
         m_skyboxPath = std::string{SceneJsonSkybox(scene)};
+        SetGravityDirection(SceneJsonGravityDirection(scene));
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
         EnsureUniqueObjectIds(scene);
         RebuildObjectsFrom(scene);
@@ -91,6 +41,7 @@ namespace NS::Obj
     {
         nlohmann::json scene = MakeSceneJson();
         SetSceneJsonSkybox(scene, m_skyboxPath);
+        SetSceneJsonGravityDirection(scene, m_gravityDirection);
         SetSceneJsonNextObjectId(scene, m_objects.NextObjectId());
         nlohmann::json& objects = SceneJsonObjects(scene);
         for (const Actor* obj : m_objects)
@@ -103,6 +54,12 @@ namespace NS::Obj
             objects.push_back(ObjectToJson(*obj));
         }
         return scene;
+    }
+
+    void Scene::SetGravityDirection(const NS::Core::Vector3& direction) noexcept
+    {
+        m_gravityDirection = NormalizeGravityDirection(direction);
+        m_physicsScene.SetGravity(m_gravityDirection * -NS::Phys::k_DefaultGravityY);
     }
 
     void Scene::SyncPhysics()
@@ -147,36 +104,23 @@ namespace NS::Obj
         {
             return;
         }
-
-        const std::size_t objectIndex = FindObjectIndexById(m_playBaseline, owner->Id());
-        if (objectIndex == k_NoObjectIndex)
+        const std::size_t index = FindObjectIndexById(m_playBaseline, owner->Id());
+        if (index == k_NoObjectIndex)
         {
             return;
         }
-
-        nlohmann::json& object = SceneJsonObjects(m_playBaseline)[objectIndex];
-
-        for (nlohmann::json& entry : ObjectJsonComponents(object))
+        const std::string_view role = owner->PartName(comp);
+        if (role.empty())
         {
-            if (ComponentEntryId(entry) != comp.Id())
-            {
-                continue;
-            }
-            const nlohmann::json serialized = SerializeComponent(comp);
-            const nlohmann::json::const_iterator fieldsIt = serialized.find("fields");
-            if (fieldsIt == serialized.end())
-            {
-                return;
-            }
-            const nlohmann::json::const_iterator valueIt = fieldsIt->find(std::string(fieldName));
-            if (valueIt == fieldsIt->end())
-            {
-                return;
-            }
-
-            entry["fields"][std::string(fieldName)] = *valueIt;
             return;
         }
+        const nlohmann::json fields = SerializePartFields(comp);
+        const nlohmann::json::const_iterator value = fields.find(std::string{fieldName});
+        if (value == fields.end())
+        {
+            return;
+        }
+        ObjectJsonParts(SceneJsonObjects(m_playBaseline)[index])[std::string{role}][std::string{fieldName}] = *value;
     }
 
     void Scene::SetSimulationEnabled(bool enabled) noexcept
@@ -233,13 +177,7 @@ namespace NS::Obj
         // AssetManager が無い間は跳ばす。テストは資産なしでシーンを立てる
         if (m_assets != nullptr)
         {
-            for (Component* comp : obj.Components())
-            {
-                if (comp != nullptr)
-                {
-                    comp->ResolveAssets(*m_assets);
-                }
-            }
+            obj.ForEachPart([this](std::string_view, Component& part) { part.ResolveAssets(*m_assets); });
         }
         // 開始は引き当ての後。OnStart の中で資産を読む Component が空の参照を掴まない
         obj.OnStart();
@@ -326,63 +264,44 @@ namespace NS::Obj
         }
         // 控えは個体の上書きだけを持つ。上書きの無い欄も種類の既定値へ戻すため、全欄の姿へ広げてから比べる
         const nlohmann::json object = ExpandObjectJson(snapshot);
-        const std::vector<Component*> reflected = ReflectedComponents(*obj);
-        if (!MatchesStructure(*obj, reflected, object))
+        bool same = ObjectJsonClass(object) == std::string_view{obj->ClassName()};
+        std::size_t count = 0;
+        obj->ForEachPart([&same, &count, &object](std::string_view role, Component&) {
+            ++count;
+            if (PartFields(object, role) == nullptr)
+            {
+                same = false;
+            }
+        });
+        if (!same || count != ObjectJsonParts(object).size())
         {
             return ReplaceFromJson(snapshot);
         }
-
-        // 実体はそのまま。ポインタも実行時の状態も残し、JSON と違う値だけを書き戻す
         const std::string_view name = ObjectJsonName(object);
         if (!name.empty() && obj->Name() != name)
         {
             m_objects.RenameObject(*obj, name);
         }
         obj->SetActive(ObjectJsonActive(object));
-
-        // 親の付け替えは local の値を保つ。transform は後で JSON の local を写すので、親を先に戻す
         Actor* parent = m_objects.FindByObjectId(ObjectJsonParent(object));
         if (parent == obj)
         {
             parent = nullptr;
         }
-        if (obj->Parent() != parent)
-        {
-            obj->SetParent(parent);
-        }
-
-        const nlohmann::json& components = ObjectJsonComponents(object);
-        for (std::size_t i = 0; i < reflected.size(); ++i)
-        {
-            Component& comp = *reflected[i];
-            const nlohmann::json& entry = components[i];
-
-            const std::string_view compName = ComponentEntryName(entry);
-            if (!compName.empty() && comp.Name() != compName)
+        obj->SetParent(parent);
+        obj->ForEachPart([this, &object](std::string_view role, Component& part) {
+            const nlohmann::json* fields = PartFields(object, role);
+            if (fields == nullptr || SerializePartFields(part) == *fields)
             {
-                obj->RenameComponent(comp, compName);
+                return;
             }
-            comp.SetEnabled(ComponentEntryEnabled(entry));
-
-            const nlohmann::json::const_iterator fieldsIt = entry.find("fields");
-            if (fieldsIt == entry.end())
-            {
-                continue;
-            }
-            // 値の同じ component は触らない。資産の引き直しで実行時の状態 (再生位置など) を失わせない
-            const nlohmann::json current = SerializeComponent(comp);
-            const nlohmann::json::const_iterator currentIt = current.find("fields");
-            if (currentIt != current.end() && *currentIt == *fieldsIt)
-            {
-                continue;
-            }
-            (void)ApplyJsonFields(comp, *fieldsIt);
-            // 参照文字列が変わっていれば実体も差し替える。AssetManager が無い間 (テスト) は跳ばす
+            part.SetEnabled(fields->value("enabled", true));
+            (void)ApplyJsonFields(part, *fields);
             if (m_assets != nullptr)
             {
-                comp.ResolveAssets(*m_assets);
+                part.ResolveAssets(*m_assets);
             }
-        }
+        });
         return obj;
     }
 
@@ -397,7 +316,8 @@ namespace NS::Obj
         m_sceneObjs.Clear();
         // Actor の型選択は登録一覧、参照の実体化は各 component の ResolveAssets が行う
         // vcam の cameras への付け外しは VirtualCamera が OnStart / OnEndPlay で自分で行う
-        m_objects.Rebuild(scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, m_assets); });
+        m_objects.Rebuild(
+            scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, m_assets); });
         m_objects.SyncPhysics(m_physicsScene);
 
         OnObjectsRebuilt();
@@ -428,34 +348,51 @@ namespace NS::Obj
         // 描画 1 回ごとに捨てると、その間に進む固定ステップの回数で映る図形が変わる
         NS::Gfx::DebugDraw::BeginStep();
 #endif
-        // カメラが追う前に物理を進める。自機と衝突の裁定は Update 帯までに終わっている
-        m_objects.UpdateObjects(std::numeric_limits<int>::min(), TickPriority::LateUpdate);
-        // RigidBody は物理の前後に挟む。Update 帯が動かしたキネマティックを運び、動いた body をカメラが追う前に書き戻す
-        m_objects.ForEachComponent<RigidBody>([](RigidBody& body) {
-            if (body.IsActive())
-            {
-                body.PrePhysicsStep();
-            }
-        });
-        m_physicsScene.Update(NS::Platform::FrameTimer::FixedDelta());
-        m_objects.ForEachComponent<RigidBody>([](RigidBody& body) {
-            if (body.IsActive())
-            {
-                body.PostPhysicsStep();
-            }
-        });
-        m_objects.UpdateObjects(TickPriority::LateUpdate);
-        // 画面に出す物は世界とカメラの後。開いた側が同じフレームに閉じても良いよう、控えた並びを回す
-        const std::vector<UIActor*> uiActors = m_sceneRenderer.UIActors();
-        for (UIActor* actor : uiActors)
+        for (UpdatePhase phase : k_UpdatePhases)
         {
-            if (actor->IsOpen())
+            if (phase == UpdatePhase::Physics)
             {
-                actor->OnUpdate();
+                for (Actor* actor : m_objects)
+                {
+                    if (actor->IsActiveInHierarchy())
+                    {
+                        actor->OnPrePhysicsStep();
+                    }
+                }
+                m_physicsScene.Update(NS::Platform::FrameTimer::FixedDelta());
+                for (Actor* actor : m_objects)
+                {
+                    if (actor->IsActiveInHierarchy())
+                    {
+                        actor->OnPostPhysicsStep();
+                    }
+                }
+            }
+            // 物理の段に置いた物は、物理を進めた直後に呼ばれる
+            m_objects.ExecutePhase(phase);
+            if (phase == UpdatePhase::Camera)
+            {
+                m_cameraManager->OnTick();
+            }
+            else if (phase == UpdatePhase::UI)
+            {
+                const std::vector<UIActor*> uiActors = m_sceneRenderer.UIActors();
+                for (UIActor* actor : uiActors)
+                {
+                    if (std::find(m_sceneRenderer.UIActors().begin(), m_sceneRenderer.UIActors().end(), actor) !=
+                            m_sceneRenderer.UIActors().end() &&
+                        actor->IsOpen())
+                    {
+                        actor->Update();
+                    }
+                }
+            }
+            else if (phase == UpdatePhase::Effects)
+            {
+                m_sceneRenderer.UpdateEffects(NS::Platform::FrameTimer::FixedDelta());
             }
         }
-        // 時間停止中は凍らせる。停止の判定より後ろ
-        m_sceneRenderer.UpdateEffects(NS::Platform::FrameTimer::FixedDelta());
+        m_objects.RemoveKilledTransients();
     }
 
     void Scene::OnShutdown()
@@ -463,8 +400,7 @@ namespace NS::Obj
         // シーンに 1 つの物は配置物と画面の一覧を借りるので先に捨てる
         m_sceneObjs.Clear();
         m_objects.Clear();
-        // host も ObjectList と一緒に消えた。控えを残すと破棄済みを指し続ける
-        m_cameraManager = nullptr;
+        m_cameraManager->SetCamera(nullptr);
     }
 
     NS::Gfx::RenderSettings Scene::ResolveSceneSettings(const NS::Gfx::RenderSettings& projectDefaults)
@@ -526,7 +462,7 @@ namespace NS::Obj
 
     CameraManager* Scene::GetCameraManager() const noexcept
     {
-        return m_cameraManager;
+        return m_cameraManager.get();
     }
 
     SceneObjHolder* Scene::GetSceneObjHolder() const noexcept
@@ -557,11 +493,7 @@ namespace NS::Obj
 
     CameraComponent* Scene::MainCamera() noexcept
     {
-        if (m_cameraManager == nullptr)
-        {
-            return nullptr;
-        }
-        return m_cameraManager->Camera();
+        return &m_mainCamera;
     }
 
     void Scene::OnRenderScene()

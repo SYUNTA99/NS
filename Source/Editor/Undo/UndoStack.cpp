@@ -6,7 +6,9 @@ namespace NS::Editor
     void UndoStack::Push(std::unique_ptr<ICommand> cmd, IObjectSnapshotApplier& target) noexcept
     {
         if (!cmd)
+        {
             return;
+        }
 
         cmd->Do(target);
         PushRecorded(std::move(cmd));
@@ -15,7 +17,9 @@ namespace NS::Editor
     void UndoStack::Record(std::unique_ptr<ICommand> cmd) noexcept
     {
         if (!cmd)
+        {
             return;
+        }
 
         // live は呼出側が既に動かしている。Do を呼ぶと同じ姿を組み直す無駄が出るので履歴へ積むだけにする
         PushRecorded(std::move(cmd));
@@ -38,7 +42,9 @@ namespace NS::Editor
     bool UndoStack::Undo(IObjectSnapshotApplier& target) noexcept
     {
         if (m_undo.empty())
+        {
             return false;
+        }
         ++m_version;
         std::unique_ptr<ICommand>& back = m_undo.back();
         back->Undo(target);
@@ -53,7 +59,9 @@ namespace NS::Editor
     bool UndoStack::Redo(IObjectSnapshotApplier& target) noexcept
     {
         if (m_redo.empty())
+        {
             return false;
+        }
         ++m_version;
         std::unique_ptr<ICommand>& back = m_redo.back();
         back->Do(target);

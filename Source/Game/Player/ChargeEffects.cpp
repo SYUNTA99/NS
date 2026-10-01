@@ -1,4 +1,6 @@
 #include "Game/Player/ChargeEffects.h"
+#include "Game/Player.h"
+#include "Game/Player/PlayerParams.h"
 
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/ImpactInputJudge.h"
@@ -39,14 +41,27 @@ namespace NS::Game::Player
         }
     } // namespace
 
-    ChargeEffects::ChargeEffects() noexcept : NS::Obj::Component(NS::Obj::TickPriority::Update + 60) {}
+    ChargeEffects::ChargeEffects() noexcept : NS::Obj::Component() {}
+
+    const PlayerParams& ChargeEffects::Tuning() const noexcept
+    {
+        if (const ::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+        {
+            return ownerPlayer->Params();
+        }
+        static const PlayerParams defaults;
+        return defaults;
+    }
 
     void ChargeEffects::OnStart()
     {
-        m_input = Owner()->FindComponent<NS::Game::Level::CollisionInput>();
-        m_player = Owner()->FindComponent<PlayerComponent>();
-        m_appearance = Owner()->FindComponent<PlayerAppearance>();
-        m_resolver = Owner()->FindComponent<NS::Game::Level::ImpactResolver>();
+        if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+        {
+            m_input = &ownerPlayer->ChargeControl();
+            m_player = &ownerPlayer->Movement();
+            m_appearance = &ownerPlayer->Appearance();
+            m_resolver = &ownerPlayer->Resolver();
+        }
 
         NS::Gfx::EffectScene* effects = EffectsOf(*this);
         if (effects == nullptr)
@@ -140,7 +155,7 @@ namespace NS::Game::Player
         {
             charge = std::clamp(charge01, 0.0f, 1.0f);
         }
-        return m_tapBurstScale + m_fullBurstScaleGain * charge;
+        return Tuning().m_tapBurstScale + Tuning().m_fullBurstScaleGain * charge;
     }
 
     NS::Core::Quaternion ChargeEffects::YawToward(const NS::Core::Vector3& direction) noexcept

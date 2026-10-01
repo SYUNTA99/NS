@@ -52,10 +52,10 @@ namespace NS::Obj
                 field.get(&comp, &value);
                 return value;
             }
-            case FieldType::ObjectRef:
+            case FieldType::ActorRef:
             {
                 // 素の数値だと読み込み時に Int と区別できないため {"ref": id} の単キー object で書く
-                ObjectRef value{};
+                ActorRef value{};
                 field.get(&comp, &value);
                 nlohmann::json out;
                 out["ref"] = value.id;
@@ -63,12 +63,12 @@ namespace NS::Obj
             }
             case FieldType::ComponentRef:
             {
-                // ObjectRef と同じ "ref" に持ち主を、"component" に Component を書く。"component" の有無で見分ける
+                // ActorRef と同じ "ref" に持ち主を、"part" に部品名を書く。"part" の有無で見分ける
                 ComponentRefValue value{};
                 field.get(&comp, &value);
                 nlohmann::json out;
-                out["ref"] = value.object;
-                out["component"] = value.component;
+                out["ref"] = value.actor.id;
+                out["part"] = value.partName;
                 return out;
             }
             case FieldType::Curve:
@@ -177,7 +177,7 @@ namespace NS::Obj
                 field.set(&comp, &v);
                 return;
             }
-            case FieldType::ObjectRef:
+            case FieldType::ActorRef:
             {
                 if (!value.is_object())
                 {
@@ -189,7 +189,7 @@ namespace NS::Obj
                 {
                     return;
                 }
-                ObjectRef v{it->get<std::uint32_t>()};
+                ActorRef v{it->get<std::uint32_t>()};
                 field.set(&comp, &v);
                 return;
             }
@@ -200,14 +200,14 @@ namespace NS::Obj
                     return;
                 }
                 const nlohmann::json::const_iterator objectIt = value.find("ref");
-                const nlohmann::json::const_iterator componentIt = value.find("component");
+                const nlohmann::json::const_iterator componentIt = value.find("part");
                 // 片方でも壊れていれば既定の未設定のまま。持ち主と Component が食い違った参照を作らない
                 if (objectIt == value.end() || !objectIt->is_number_unsigned() || componentIt == value.end() ||
-                    !componentIt->is_number_unsigned())
+                    !componentIt->is_string())
                 {
                     return;
                 }
-                ComponentRefValue v{objectIt->get<std::uint32_t>(), componentIt->get<std::uint32_t>()};
+                ComponentRefValue v{ActorRef{objectIt->get<std::uint32_t>()}, componentIt->get<std::string>()};
                 field.set(&comp, &v);
                 return;
             }
@@ -308,6 +308,13 @@ namespace NS::Obj
         }
     } // namespace
 
+    nlohmann::json SerializePartFields(const Component& part)
+    {
+        nlohmann::json fields = SerializeComponent(part)["fields"];
+        fields["enabled"] = part.IsEnabled();
+        return fields;
+    }
+
     nlohmann::json SerializeComponent(const Component& comp)
     {
         nlohmann::json out;
@@ -332,29 +339,18 @@ namespace NS::Obj
         return out;
     }
 
-    nlohmann::json SerializeActorComponents(const Actor& obj)
-    {
-        nlohmann::json components = nlohmann::json::array();
-        for (const Component* comp : obj.Components())
-        {
-            if (comp == nullptr)
-            {
-                NS_LOG_WARN(Game,
-                            "Actor に nullptr Component が混ざっている。AddComponent で nullptr "
-                            "を返す派生型があるか、 AddComponent 後に手動 delete したか");
-                continue;
-            }
-            components.push_back(SerializeComponent(*comp));
-        }
-        return components;
-    }
-
     std::size_t ApplyJsonFields(Component& comp, const nlohmann::json& fields)
     {
         const ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr || !fields.is_object())
         {
             return 0;
+        }
+
+        const nlohmann::json::const_iterator enabled = fields.find("enabled");
+        if (enabled != fields.end() && enabled->is_boolean())
+        {
+            comp.SetEnabled(enabled->get<bool>());
         }
 
         for (std::size_t i = 0; i < info->fieldCount; ++i)
@@ -371,7 +367,7 @@ namespace NS::Obj
         std::size_t unreadCount = 0;
         for (nlohmann::json::const_iterator entry = fields.begin(); entry != fields.end(); ++entry)
         {
-            if (IsReflectedFieldName(*info, entry.key()))
+            if (entry.key() == "enabled" || IsReflectedFieldName(*info, entry.key()))
             {
                 continue;
             }

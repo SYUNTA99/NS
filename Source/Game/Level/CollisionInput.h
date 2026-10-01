@@ -3,9 +3,11 @@
 #include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
-#include "Runtime/Object/Reflection/Curve.h"
+
+class Player;
 
 namespace NS::Game::Player
 {
@@ -28,7 +30,6 @@ namespace NS::Game::Level
     //! どちらも離したフレームに、溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ。
     //! 溜めて放した時は、放す前のフレームに控えた狙いの線の向きも添える
     //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる
-    //! 威力のチャージ倍率カーブと当たり位置係数カーブ、当たりの段の境目もここが持ち、ImpactResolver が参照する
     //! 依存: NS::Game::Player::PlayerComponent, NS::Obj::Curve, ImpactInputJudge, ImpactResolver, HitTier
     class CollisionInput : public NS::Obj::Component
     {
@@ -43,6 +44,31 @@ namespace NS::Game::Level
         //! 押している間はカメラの正面の線で狙う相手を探して控える。押している間と突進の間は、線の上の相手か、
         //! 基準の向き (押している間は狙いの線の向き、突進の間は突進の向き) の前方の近い相手へ突進の向きを寄せる
         void OnUpdate() override;
+        //! @brief Observe・AdvanceState・ApplyControl を続けて呼び、判定を 1 フレーム進める
+        //! @details 突進の向きは寄せるが、移動の速度へは入れ直さない
+        //! @param[in] held ボタンを押しているか
+        //! @param[in] dt 進める秒
+        void Step(bool held, float dt);
+        //! @brief マウス左かゲームパッドの X を押しているかを読む
+        //! @details マウス左は、ゲームがマウスのボタンを受け取っている間だけ数える
+        //! @return どちらかを押している場合 true、それ以外の場合は false
+        [[nodiscard]] bool ReadHeld() const;
+        //! @brief このフレームの押しと突進中かを控え、狙う相手と寄せる相手を探す
+        //! @details 控えた値は AdvanceState と ApplyControl が 1 回ずつ使う
+        //! @param[in] held ボタンを押しているか
+        void Observe(bool held);
+        //! @brief Observe で控えた押しで溜めを 1 フレーム進める
+        //! @details 持ち主が Player なら Player の溜めを進める。Observe の後に 1 回だけ効き、2 回目は何もしない
+        //! @param[in] dt 進める秒
+        void AdvanceState(float dt);
+        //! @brief 突進中なら突進の向きを狙う相手へ寄せる
+        //! @details AdvanceState の後に 1 回だけ効き、AdvanceState より先に呼んだ時と 2 回目は何もしない
+        //! @param[in] refreshVelocity 寄せた向きを移動の速度へ入れ直すか。移動が休止中なら入れ直さない
+        void ApplyControl(bool refreshVelocity = true);
+        //! @brief 次の固定ステップの突進の速度を見込みで返す
+        //! @details Observe の時に突進中で寄せる相手がいれば、その相手へ寄せた速度を返す
+        //! @return 見込みの速度。同じ配置物に移動が無ければ 0
+        [[nodiscard]] NS::Core::Vector3 PredictedSlamVelocity() const noexcept;
 
         //! 構えの縮みが残っていれば元の形へ戻し、自機へ渡した押しの印を戻して丸まりを解く
         void OnEndPlay() override;
@@ -89,25 +115,14 @@ namespace NS::Game::Level
         //! 判定の実体を読むだけの口。PlayerAppearance が溜め量を読む
         [[nodiscard]] const ImpactInputJudge& Judge() const noexcept { return m_judge; }
 
-        NS_REFLECT_BEGIN(CollisionInput, NS::Obj::Component)
-        NS_REFLECT_FIELD(m_chargeThresholdSeconds, "チャージしきい値秒")
-        NS_REFLECT_FIELD(m_chargeFullSeconds, "チャージ満タン秒")
-        NS_REFLECT_FIELD(m_chargeSlowRate, "チャージ減速率")
-        NS_REFLECT_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
-        NS_REFLECT_FIELD(m_positionFactorCurve, "突進位置係数カーブ")
-        NS_REFLECT_FIELD(m_centerTierEdge, "中心近くの境目")
-        NS_REFLECT_FIELD(m_nearTierEdge, "惜しいの境目")
-        NS_REFLECT_FIELD(m_homingSearchDegrees, "寄せる相手を探す角度")
-        NS_REFLECT_FIELD(m_homingSearchDistance, "寄せる相手を探す距離")
-        NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
-        NS_REFLECT_FIELD(m_pressSquashScale, "押しの構えの縮み")
-        NS_REFLECT_END()
+        NS_REFLECT_NONE(CollisionInput, NS::Obj::Component)
 
     private:
         void UpdateChargeStance();
         // 押している間はカメラの正面へ狙いの線を作って控え、その線で狙う相手を探して控える。
         // 押していなければ両方の控えを消す
-        void UpdateAimTarget();
+        void UpdateAimTarget(bool held);
+        void ObserveHomingTarget(bool held);
         // 押している間は狙う相手、突進の間は突進の向きの線の上の相手が、寄せの角度と距離の内に居ればそれへ、
         // 居なければ基準の向きの前方で一番近い相手へ突進の向きを寄せる。
         // 基準の向きは、押している間は狙いの線の向き (線が無ければ AimDirection)、突進の間は突進の向き
@@ -117,26 +132,24 @@ namespace NS::Game::Level
         void DrawChargeRing();
 #endif
 
-        // どれも検証で振って探る前提の初期値
-        float m_chargeThresholdSeconds = 0.2f;
-        float m_chargeFullSeconds = 1.0f;
-        // 溜め中の最高速は 1 − 0.7 = 0.3 倍。押しっぱなしで動き回るのが最適にならないようにする
-        float m_chargeSlowRate = 0.7f;
-        // 既定の形は使う側が持つのが Curve の決まりなので、既定の点はコンストラクタで入れる
-        NS::Obj::Curve m_chargeFactorCurve{};
-        // 既定は中心直撃で 1.0、縁かすりで 0.7。画面に見えている相手の中心が狙う対象になる
-        // TODO: リフレクション欄は「突進位置係数カーブ」のまま。改名すると保存済みの値が読めなくなる
-        NS::Obj::Curve m_positionFactorCurve{};
-        // 段の境目は横ずれ 0..1 に対して置く。横ずれは相手の半幅と自機の半径の和で割った値で、単位は無い
-        // 惜しいの境目は中心近くの境目より大きく置く。逆だと惜しいが出ない
-        float m_centerTierEdge = 0.35f;      // これ未満が中心近く
-        float m_nearTierEdge = 0.7f;         // 中心近くの境目以上でこれ未満が惜しい。これ以上が大きな外れ
-        float m_homingSearchDegrees = 30.0f; // 寄せる相手を探す角度 (度)。基準の向きから片側
-        float m_homingSearchDistance = 6.0f; // 寄せる相手を探す水平の距離 (m)
-        float m_chargeSquashScale = 0.95f;   // 構えと分かる最小の変化。深いと衝突の潰れ演出と紛れる
-        float m_pressSquashScale = 0.97f;    // 押したフレームの反応。チャージ成立の 0.95 と見分けが付く浅さ
+        friend class ::Player;
+        void AdvanceCharge(bool held, float dt);
+        ::Player* m_player = nullptr;
+        [[nodiscard]] const NS::Game::Player::PlayerParams& Tuning() const noexcept;
+        const NS::Game::Player::PlayerParams* m_params = nullptr;
 
         ImpactInputJudge m_judge{};
+        AimLine m_observedAimLine{};
+        SlamLineTarget m_observedAimTarget{};
+        NS::Core::Vector3 m_observedHomingCenter{};
+        NS::Core::Vector3 m_observedHomingForward{};
+        bool m_observedHasAimLine = false;
+        bool m_observedHasAimTarget = false;
+        bool m_observedHasHomingTarget = false;
+        bool m_observedRushing = false;
+        bool m_observedHeld = false;
+        bool m_stateReady = false;
+        bool m_controlReady = false;
         SlamLineTarget m_aimTarget{}; // 押している間の狙う相手。m_hasAimTarget が偽の間は読まない
         bool m_hasAimTarget = false;
         AimLine m_aimLine{}; // 押している間の狙いの線。m_hasAimLine が偽の間は読まない

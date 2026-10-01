@@ -24,7 +24,9 @@ namespace NS::Editor
     inline bool BeginFieldTable(const char* id) noexcept
     {
         if (!ImGui::BeginTable(id, 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp))
+        {
             return false;
+        }
         ImGui::TableSetupColumn("##name", ImGuiTableColumnFlags_WidthStretch, k_FieldNameColumnRatio);
         ImGui::TableSetupColumn("##value", ImGuiTableColumnFlags_WidthStretch, 1.0f - k_FieldNameColumnRatio);
         return true;
@@ -52,9 +54,13 @@ namespace NS::Editor
         ImGui::TableSetColumnIndex(0);
         ImGui::AlignTextToFramePadding();
         if (overridden)
+        {
             ImGui::TextColored(k_OverriddenFieldColor, "%s", label);
+        }
         else
+        {
             ImGui::TextUnformatted(label);
+        }
         ImGui::TableSetColumnIndex(1);
         ImGui::SetNextItemWidth(-(RevertButtonWidth() + ImGui::GetStyle().ItemSpacing.x));
     }
@@ -90,16 +96,24 @@ namespace NS::Editor
             return OverrideAction::None;
         }
         if (ImGui::SmallButton("上書き"))
+        {
             ImGui::OpenPopup("##override");
+        }
         if (ImGui::IsItemHovered())
+        {
             ImGui::SetTooltip("種類の既定値と違う値");
+        }
         OverrideAction action = OverrideAction::None;
         if (ImGui::BeginPopup("##override"))
         {
             if (ImGui::MenuItem("既定に戻す"))
+            {
                 action = OverrideAction::Revert;
+            }
             if (ImGui::MenuItem("種類の既定にする", nullptr, false, promotable))
+            {
                 action = OverrideAction::Promote;
+            }
             ImGui::EndPopup();
         }
         return action;
@@ -109,7 +123,9 @@ namespace NS::Editor
     inline bool NameMatches(const char* name, const char* filter) noexcept
     {
         if (name == nullptr || filter == nullptr || filter[0] == '\0')
+        {
             return true;
+        }
         for (const char* start = name; *start != '\0'; ++start)
         {
             const char* a = start;
@@ -121,7 +137,9 @@ namespace NS::Editor
                 ++b;
             }
             if (*b == '\0')
+            {
                 return true;
+            }
         }
         return false;
     }

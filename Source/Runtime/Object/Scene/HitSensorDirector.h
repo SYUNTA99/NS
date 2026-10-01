@@ -12,15 +12,12 @@ namespace NS::Obj
 
     //! @brief シーンのヒットセンサーを束ね、1 フレームに 1 回重なりを調べる。オデッセイの HitSensorDirector に当たる
     //! @details 組み合わせの表に載った種類の組だけを調べ、重なった組の調べる側の持ち主の Actor::AttackSensor を呼ぶ
-    //! 同じ Actor のセンサーどうしは調べない。重なりは物理エンジンを使わずに形どうしで直に解くので、物理の層と関係なく、
-    //! 登録の順に決まった順番で呼ぶ。センサーの段は物理の後、仕掛けとゴールの前 (TickPriority::LateUpdate)
-    //! Scene が値で持ち、ObjectList の更新へ自分を登録する
+    //! 同じ Actor
+    //! のセンサーどうしは調べない。重なりは物理エンジンを使わずに形どうしで直に解くので、物理の層と関係なく、 Scene
+    //! が値で持ち、ObjectList の更新へ自分を登録する
     class HitSensorDirector final : public ITickable, public NS::Core::NonCopyable
     {
     public:
-        //! センサーの段の帯
-        static constexpr int k_TickPriority = TickPriority::LateUpdate;
-
         //! センサーを入れる。二重登録は無視する
         void Register(HitSensor* sensor);
         //! センサーを外す

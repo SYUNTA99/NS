@@ -37,7 +37,11 @@ namespace NS::Phys
 
         [[nodiscard]] float FiniteOr(float value, float fallback) noexcept
         {
-            return std::isfinite(value) ? value : fallback;
+            if (!std::isfinite(value))
+            {
+                return fallback;
+            }
+            return value;
         }
 
         // Jolt は負の減衰と 0 以下の質量で assert する。受け取る所で揃えて、呼出側に同じ確かめを書かせない
@@ -79,7 +83,11 @@ namespace NS::Phys
 
         [[nodiscard]] JPH::EMotionQuality MotionQualityOf(const BodyMotion& motion) noexcept
         {
-            return motion.continuousCollision ? JPH::EMotionQuality::LinearCast : JPH::EMotionQuality::Discrete;
+            if (motion.continuousCollision)
+            {
+                return JPH::EMotionQuality::LinearCast;
+            }
+            return JPH::EMotionQuality::Discrete;
         }
 
         // 形の組を body の原点から見た 1 つの形にする。部品が残らないか、作れなければ null
@@ -126,11 +134,19 @@ namespace NS::Phys
                 }
                 const JPH::RotatedTranslatedShapeSettings shifted{singlePosition, singleRotation, single.GetPtr()};
                 const JPH::ShapeSettings::ShapeResult result = shifted.Create();
-                return result.HasError() ? nullptr : result.Get();
+                if (result.HasError())
+                {
+                    return nullptr;
+                }
+                return result.Get();
             }
 
             const JPH::ShapeSettings::ShapeResult result = compound.Create();
-            return result.HasError() ? nullptr : result.Get();
+            if (result.HasError())
+            {
+                return nullptr;
+            }
+            return result.Get();
         }
     } // namespace
 
@@ -154,13 +170,21 @@ namespace NS::Phys
     const char* PhysicsScene::BroadPhaseLayerInterface::GetBroadPhaseLayerName(JPH::BroadPhaseLayer layer) const
     {
         if (layer == BroadPhaseLayers::Terrain)
+        {
             return "Terrain";
+        }
         if (layer == BroadPhaseLayers::Rock)
+        {
             return "Rock";
+        }
         if (layer == BroadPhaseLayers::Debris)
+        {
             return "Debris";
+        }
         if (layer == BroadPhaseLayers::Trigger)
+        {
             return "Trigger";
+        }
         return "Unknown";
     }
 #endif
@@ -379,7 +403,11 @@ namespace NS::Phys
         JPH::BodyCreationSettings settings{
             shape, ToJolt(position), ToJolt(rotation), JPH::EMotionType::Dynamic, desc.layer};
         settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
-        settings.mMassPropertiesOverride.mMass = desc.mass > 0.0f ? desc.mass : 1.0f;
+        settings.mMassPropertiesOverride.mMass = 1.0f;
+        if (desc.mass > 0.0f)
+        {
+            settings.mMassPropertiesOverride.mMass = desc.mass;
+        }
         settings.mRestitution = desc.restitution;
         settings.mFriction = desc.friction;
         return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::Activate);
@@ -637,19 +665,57 @@ namespace NS::Phys
                                float& outDistance) const
     {
         const float directionLength = direction.Length();
-        if (!(maxDistance > 0.0f) || !(directionLength > 0.0f))
+        if (!std::isfinite(maxDistance) || !std::isfinite(directionLength) || !std::isfinite(origin.x) ||
+            !std::isfinite(origin.y) || !std::isfinite(origin.z) || !(maxDistance > 0.0f) || !(directionLength > 0.0f))
         {
             return false;
         }
-
         const JPH::RRayCast ray{ToJolt(origin), ToJolt(direction * (maxDistance / directionLength))};
         JPH::RayCastResult hit;
         if (!m_physicsSystem.GetNarrowPhaseQuery().CastRay(ray, hit))
         {
             return false;
         }
+        outDistance = hit.mFraction * maxDistance;
+        return true;
+    }
+
+    bool PhysicsScene::Raycast(const NS::Core::Vector3& origin,
+                               const NS::Core::Vector3& direction,
+                               float maxDistance,
+                               float& outDistance,
+                               NS::Core::Vector3& outNormal,
+                               JPH::BodyID ignoredBody) const
+    {
+        const float directionLength = direction.Length();
+        if (!std::isfinite(maxDistance) || !std::isfinite(directionLength) || !std::isfinite(origin.x) ||
+            !std::isfinite(origin.y) || !std::isfinite(origin.z) || !(maxDistance > 0.0f) || !(directionLength > 0.0f))
+        {
+            return false;
+        }
+
+        const JPH::RRayCast ray{ToJolt(origin), ToJolt(direction * (maxDistance / directionLength))};
+        JPH::RayCastResult hit;
+        const JPH::IgnoreSingleBodyFilter filter{ignoredBody};
+        class SolidLayerFilter final : public JPH::ObjectLayerFilter
+        {
+            bool ShouldCollide(JPH::ObjectLayer layer) const override { return layer != ObjectLayers::Trigger; }
+        };
+        const SolidLayerFilter solidFilter;
+        if (!m_physicsSystem.GetNarrowPhaseQuery().CastRay(ray, hit, {}, solidFilter, filter))
+        {
+            return false;
+        }
+
+        const JPH::BodyLockRead lock{m_physicsSystem.GetBodyLockInterface(), hit.mBodyID};
+        if (!lock.Succeeded())
+        {
+            return false;
+        }
 
         outDistance = hit.mFraction * maxDistance;
+        outNormal =
+            FromJolt(lock.GetBody().GetWorldSpaceSurfaceNormal(hit.mSubShapeID2, ray.GetPointOnRay(hit.mFraction)));
         return true;
     }
 

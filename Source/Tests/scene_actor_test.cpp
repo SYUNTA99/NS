@@ -41,7 +41,7 @@ TEST(SceneActor, ClassOnlyObjectBuildsWholeComposition)
     NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(std::string_view{actor->ClassName()}, "MapObj");
-    EXPECT_NE(actor->FindComponent<NS::Obj::SphereCollider>(), nullptr);
+    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::SphereCollider>(actor->Part("Collision")), nullptr);
 }
 
 TEST(SceneActor, ToJsonKeepsClassAndValues)
@@ -53,7 +53,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     scene.LoadJson(doc);
     NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    NS::Obj::SphereCollider* sphere = actor->FindComponent<NS::Obj::SphereCollider>();
+    NS::Obj::SphereCollider* sphere = NS::Obj::ComponentCast<NS::Obj::SphereCollider>(actor->Part("Collision"));
     ASSERT_NE(sphere, nullptr);
     sphere->SetRadius(1.5f);
     actor->Root().SetPosition(NS::Core::Vector3{3.0f, 4.0f, 5.0f});
@@ -69,7 +69,8 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     NS::Obj::Actor* again = reloaded.Objects().FindByObjectId(1);
     ASSERT_NE(again, nullptr);
     EXPECT_EQ(std::string_view{again->ClassName()}, "MapObj");
-    const NS::Obj::SphereCollider* sphereAgain = again->FindComponent<NS::Obj::SphereCollider>();
+    const NS::Obj::SphereCollider* sphereAgain =
+        NS::Obj::ComponentCast<NS::Obj::SphereCollider>(again->Part("Collision"));
     ASSERT_NE(sphereAgain, nullptr);
     EXPECT_FLOAT_EQ(sphereAgain->Radius(), 1.5f);
     EXPECT_FLOAT_EQ(again->Root().Position().x, 3.0f);
@@ -93,11 +94,46 @@ TEST(SceneActor, FileTextRoundTripKeepsClass)
     EXPECT_EQ(NS::Obj::ObjectJsonClass(objects[NS::Obj::FindObjectIndexById(back, 2)]), "Goal");
 }
 
+TEST(SceneActor, GravityDirectionRoundTripsThroughFileAndScene)
+{
+    nlohmann::json doc = NS::Obj::MakeSceneJson();
+    NS::Obj::SetSceneJsonGravityDirection(doc, NS::Core::Vector3{3.0f, 0.0f, 0.0f});
+
+    const std::string text = NS::Obj::SerializeSceneToJson(doc);
+    nlohmann::json decoded;
+    ASSERT_TRUE(NS::Obj::DeserializeSceneFromJson(decoded, text));
+    EXPECT_EQ(NS::Obj::SceneJsonGravityDirection(decoded), (NS::Core::Vector3{1.0f, 0.0f, 0.0f}));
+
+    NS::Obj::Scene scene;
+    scene.LoadJson(decoded);
+    EXPECT_EQ(scene.GravityDirection(), (NS::Core::Vector3{1.0f, 0.0f, 0.0f}));
+    EXPECT_EQ(scene.Physics().Gravity(), (NS::Core::Vector3{25.0f, 0.0f, 0.0f}));
+    EXPECT_EQ(NS::Obj::SceneJsonGravityDirection(scene.ToJson()), (NS::Core::Vector3{1.0f, 0.0f, 0.0f}));
+}
+
+TEST(SceneActor, InvalidGravityDirectionFallsBackToDown)
+{
+    nlohmann::json doc = NS::Obj::MakeSceneJson();
+    doc["environment"]["gravityDirection"] = nlohmann::json::array({0.0f, 0.0f, 0.0f});
+    EXPECT_EQ(NS::Obj::SceneJsonGravityDirection(doc), (NS::Core::Vector3{0.0f, -1.0f, 0.0f}));
+
+    NS::Obj::Scene scene;
+    scene.SetGravityDirection(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+    EXPECT_EQ(scene.GravityDirection(), (NS::Core::Vector3{0.0f, -1.0f, 0.0f}));
+    EXPECT_EQ(scene.Physics().Gravity(), (NS::Core::Vector3{0.0f, -25.0f, 0.0f}));
+}
+
+TEST(SceneActor, PhysicsSettingsIsNotAPlaceableComponent)
+{
+    EXPECT_EQ(NS::Obj::TypeRegistry::Get().Find("PhysicsSettings"), nullptr);
+}
+
 TEST(SceneActor, ShippedSceneUsesRegisteredClasses)
 {
     // 出荷シーンの配置物はどれも登録済みのクラスを持つ。素の Actor で組まれる物が無い
     const std::string path = NS::Platform::FileSystem::Combine(
-        NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+        NS::Platform::FileSystem::Combine(
+            NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Scenes"),
         "new_scene.scene");
     nlohmann::json doc;
     ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path));
@@ -127,8 +163,14 @@ TEST(SceneActor, NewLevelGetsOnePlayerAndOneKillZone)
     int zones = 0;
     for (const nlohmann::json& object : NS::Obj::SceneJsonObjects(doc))
     {
-        players += (NS::Obj::ObjectJsonClass(object) == "Player") ? 1 : 0;
-        zones += (NS::Obj::ObjectJsonClass(object) == "KillZone") ? 1 : 0;
+        if (NS::Obj::ObjectJsonClass(object) == "Player")
+        {
+            ++players;
+        }
+        if (NS::Obj::ObjectJsonClass(object) == "KillZone")
+        {
+            ++zones;
+        }
         EXPECT_NE(NS::Obj::ObjectJsonId(object), NS::Obj::k_NoObjectId);
     }
     EXPECT_EQ(players, 1);

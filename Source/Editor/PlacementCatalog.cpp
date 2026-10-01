@@ -23,7 +23,7 @@ namespace NS::Editor
         // 地形の部品の見た目のメッシュを差し替える
         void SetPartsMesh(nlohmann::json& prototype, std::string_view meshName)
         {
-            if (nlohmann::json* renderer = NS::Obj::FindComponentEntry(prototype, "MeshRenderer"))
+            if (nlohmann::json* renderer = NS::Obj::PartFields(prototype, "Model"))
             {
                 NS::Obj::SetField(*renderer, "メッシュ", meshName);
             }
@@ -94,7 +94,7 @@ namespace NS::Editor
 
     float PartsSlopeAngleDegrees(const nlohmann::json& prototype) noexcept
     {
-        const nlohmann::json* renderer = NS::Obj::FindComponentEntry(prototype, "MeshRenderer");
+        const nlohmann::json* renderer = NS::Obj::PartFields(prototype, "Model");
         if (renderer == nullptr)
         {
             return -1.0f;
@@ -102,13 +102,21 @@ namespace NS::Editor
         // 組み込みの坂のメッシュの名前と角度の対応。AssetManager の組み込みの形と揃える
         const std::string mesh = NS::Obj::FieldString(*renderer, "メッシュ", "");
         if (mesh == "wedge45")
+        {
             return 45.0f;
+        }
         if (mesh == "wedge30")
+        {
             return 30.0f;
+        }
         if (mesh == "wedge22")
+        {
             return 22.5f;
+        }
         if (mesh == "wedge15")
+        {
             return 15.0f;
+        }
         return -1.0f;
     }
 } // namespace NS::Editor

@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Runtime/Core/Math.h"
-#include "Runtime/Object/Component.h"
+#include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Components/Model.h"
 
 namespace NS::Obj
 {
@@ -12,27 +13,29 @@ namespace NS::Obj
 namespace NS::Game::Level
 {
     //! @brief ぶつかった場所の床へ寝かせる跡
-    //! @details 半透明の板を置き、時間で縮めて消す。消える時は配置物を破棄せず描画と自身の更新を止める
-    //! 更新の最中の破棄は ObjectList::UpdateObjects が集めた並びに解放済みの位置を残すため使わない
-    //! 依存: NS::Obj::MeshRenderer, NS::Obj::Scene
-    class ImpactMark : public NS::Obj::Component
+    //! @details 半透明の板を置き、時間で縮めて消す。消えた跡はシーンが更新の終わりに破棄する
+    //! 依存: NS::Obj::Model, NS::Obj::Scene
+    class ImpactMark : public NS::Obj::Actor
     {
     public:
-        //! 指定の位置へ跡の一時オブジェクトを出す。scene が nullptr なら nullptr を返す
-        [[nodiscard]] static NS::Obj::Actor* SpawnAt(NS::Obj::Scene* scene,
-                                                             const NS::Core::Vector3& position);
+        ImpactMark() noexcept;
 
-        //! 出た直後の水平の大きさを跡の直径へ合わせる
-        void OnStart() override;
+        [[nodiscard]] const char* ClassName() const noexcept override { return "ImpactMark"; }
+        NS_REFLECT_NONE(ImpactMark, NS::Obj::Actor)
+
+        //! 指定の位置へ跡の一時オブジェクトを出す。scene が nullptr なら nullptr を返す
+        [[nodiscard]] static NS::Obj::Actor* SpawnAt(NS::Obj::Scene* scene, const NS::Core::Vector3& position);
 
         //! 経過秒を進めて縮め、寿命が尽きたら描画と自身の更新を止める
-        void OnUpdate() override;
+        [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Effects; }
+        void Update() override;
 
-        // 跡の残り方は衝突の余韻。プレイ中に Inspector で触って詰められるよう公開する
-        NS_REFLECT_BEGIN(ImpactMark, NS::Obj::Component)
-        NS_REFLECT_FIELD(m_diameter, "跡の直径")
-        NS_REFLECT_FIELD(m_lifeSeconds, "跡の残る秒")
-        NS_REFLECT_END()
+        //! @brief 出た直後の水平の大きさを差し替え、根の倍率へ写す
+        //! @param[in] diameter 水平の大きさ。単位は m。有限の正でなければ何も変えない
+        void SetDiameter(float diameter) noexcept;
+        //! @brief 消えるまでの秒を差し替える
+        //! @param[in] seconds 消えるまでの秒。有限の 0 以上でなければ何も変えない
+        void SetLifeSeconds(float seconds) noexcept;
 
     private:
         float m_diameter = 1.5f;    // 出た直後の水平の大きさ

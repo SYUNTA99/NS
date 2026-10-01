@@ -58,20 +58,17 @@ namespace
     };
 
     // 部品 1 つの種類の既定値を作る
-    nlohmann::json ArchetypeWith(std::string_view className, nlohmann::json entry)
+    nlohmann::json ArchetypeWith(std::string_view className, std::string_view role, nlohmann::json entry)
     {
         nlohmann::json archetype = nlohmann::json::object();
         NS::Obj::SetObjectJsonClass(archetype, className);
-        NS::Obj::ObjectJsonComponents(archetype).push_back(std::move(entry));
+        NS::Obj::ObjectJsonParts(archetype)[std::string{role}] = std::move(entry);
         return archetype;
     }
 
     nlohmann::json SphereEntry(float radius)
     {
-        nlohmann::json entry = NS::Obj::MakeComponentEntry("SphereCollider");
-        NS::Obj::SetComponentEntryName(entry, "SphereCollider");
-        NS::Obj::SetField(entry, "半径", radius);
-        return entry;
+        return nlohmann::json{{"半径", radius}};
     }
 
     nlohmann::json MapObjJson(std::uint32_t id)
@@ -84,15 +81,19 @@ namespace
 
     float RadiusOf(const NS::Obj::Actor& actor)
     {
-        const NS::Obj::SphereCollider* sphere = actor.FindComponent<NS::Obj::SphereCollider>();
-        return sphere != nullptr ? sphere->Radius() : -1.0f;
+        const NS::Obj::SphereCollider* sphere =
+            NS::Obj::ComponentCast<NS::Obj::SphereCollider>(actor.Part("Collision"));
+        if (sphere == nullptr)
+        {
+            return -1.0f;
+        }
+        return sphere->Radius();
     }
 
     // 保存した配置物の JSON から、部品の件の fields を引く。無ければ nullptr
     const nlohmann::json* SavedFields(const nlohmann::json& object, std::string_view typeName)
     {
-        const nlohmann::json* entry = NS::Obj::FindComponentEntry(object, typeName);
-        return entry != nullptr ? NS::Obj::ComponentEntryFields(*entry) : nullptr;
+        return NS::Obj::PartFields(object, typeName);
     }
 } // namespace
 
@@ -103,13 +104,13 @@ TEST(Archetype, CodeDefaultWithoutArchetype)
     ASSERT_NE(actor, nullptr);
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 0.5f);
     // 種類の既定値が無いので、種類が足す影も無い
-    EXPECT_EQ(actor->FindComponent<NS::Obj::Shadow>(), nullptr);
+    EXPECT_EQ(actor->ShadowPart(), nullptr);
 }
 
 TEST(Archetype, ArchetypeOverridesCodeDefault)
 {
     const ScopedArchetypeDirectory scope("OverridesCode");
-    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", SphereEntry(2.0f)));
+    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", "Collision", SphereEntry(2.0f)));
 
     const std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::ObjectFromJson(MapObjJson(1), nullptr);
     ASSERT_NE(actor, nullptr);
@@ -119,10 +120,10 @@ TEST(Archetype, ArchetypeOverridesCodeDefault)
 TEST(Archetype, InstanceOverridesArchetype)
 {
     const ScopedArchetypeDirectory scope("InstanceOverrides");
-    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", SphereEntry(2.0f)));
+    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", "Collision", SphereEntry(2.0f)));
 
     nlohmann::json object = MapObjJson(1);
-    NS::Obj::ObjectJsonComponents(object).push_back(SphereEntry(3.0f));
+    NS::Obj::ObjectJsonParts(object)["Collision"] = SphereEntry(3.0f);
     const std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::ObjectFromJson(object, nullptr);
     ASSERT_NE(actor, nullptr);
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 3.0f);
@@ -131,38 +132,37 @@ TEST(Archetype, InstanceOverridesArchetype)
 TEST(Archetype, ArchetypeDecidesOptionalParts)
 {
     const ScopedArchetypeDirectory scope("OptionalParts");
-    nlohmann::json shadow = NS::Obj::MakeComponentEntry("Shadow");
-    NS::Obj::SetComponentEntryName(shadow, "Shadow");
-    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", std::move(shadow)));
+    nlohmann::json shadow = nlohmann::json::object();
+    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", "Shadow", std::move(shadow)));
 
     const std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::ObjectFromJson(MapObjJson(1), nullptr);
     ASSERT_NE(actor, nullptr);
-    EXPECT_NE(actor->FindComponent<NS::Obj::Shadow>(), nullptr);
+    EXPECT_NE(actor->ShadowPart(), nullptr);
 }
 
 TEST(Archetype, InstanceCannotAddParts)
 {
     const ScopedArchetypeDirectory scope("InstanceParts");
     nlohmann::json object = MapObjJson(1);
-    NS::Obj::ObjectJsonComponents(object).push_back(NS::Obj::MakeComponentEntry("DirectionalLight"));
+    NS::Obj::ObjectJsonParts(object)["DirectionalLight"] = nlohmann::json::object();
 
     const std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::ObjectFromJson(object, nullptr);
     ASSERT_NE(actor, nullptr);
     // どの部品を持つかはクラスと種類の既定値が決める
-    EXPECT_EQ(actor->FindComponent<NS::Obj::DirectionalLight>(), nullptr);
+    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::DirectionalLight>(actor->Part("DirectionalLight")), nullptr);
 }
 
 TEST(Archetype, ObjectWithoutClassIsNotBuilt)
 {
     nlohmann::json object = NS::Obj::MakeObjectJson();
-    NS::Obj::ObjectJsonComponents(object).push_back(SphereEntry(1.0f));
+    NS::Obj::ObjectJsonParts(object)["Collision"] = SphereEntry(1.0f);
     EXPECT_EQ(NS::Obj::ObjectFromJson(object, nullptr), nullptr);
 }
 
 TEST(Archetype, SaveWritesOnlyOverrides)
 {
     const ScopedArchetypeDirectory scope("SaveOverrides");
-    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", SphereEntry(2.0f)));
+    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", "Collision", SphereEntry(2.0f)));
 
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     NS::Obj::SceneJsonObjects(doc).push_back(MapObjJson(1));
@@ -171,7 +171,7 @@ TEST(Archetype, SaveWritesOnlyOverrides)
     scene.LoadJson(doc);
     NS::Obj::Actor* changed = scene.Objects().FindByObjectId(2);
     ASSERT_NE(changed, nullptr);
-    changed->FindComponent<NS::Obj::SphereCollider>()->SetRadius(4.0f);
+    NS::Obj::ComponentCast<NS::Obj::SphereCollider>(changed->Part("Collision"))->SetRadius(4.0f);
 
     const nlohmann::json saved = scene.ToJson();
     const nlohmann::json& objects = NS::Obj::SceneJsonObjects(saved);
@@ -179,16 +179,16 @@ TEST(Archetype, SaveWritesOnlyOverrides)
     const nlohmann::json& overridden = objects[NS::Obj::FindObjectIndexById(saved, 2)];
 
     // 部品の件は id と名前を保つため残り、種類の既定値と同じ欄は書かれない
-    const nlohmann::json* plainSphere = NS::Obj::FindComponentEntry(plain, "SphereCollider");
+    const nlohmann::json* plainSphere = NS::Obj::PartFields(plain, "Collision");
     ASSERT_NE(plainSphere, nullptr);
-    EXPECT_NE(NS::Obj::ComponentEntryId(*plainSphere), 0u);
+    EXPECT_FALSE(plainSphere->contains("id"));
     EXPECT_FALSE(NS::Obj::HasField(*plainSphere, "半径"));
     // 上書きした欄だけが書かれる
-    const nlohmann::json* overriddenSphere = NS::Obj::FindComponentEntry(overridden, "SphereCollider");
+    const nlohmann::json* overriddenSphere = NS::Obj::PartFields(overridden, "Collision");
     ASSERT_NE(overriddenSphere, nullptr);
     EXPECT_FLOAT_EQ(NS::Obj::FieldFloat(*overriddenSphere, "半径", 0.0f), 4.0f);
     // 位置は個体の物なので、既定と同じでも書く
-    const nlohmann::json* transform = SavedFields(plain, "TransformComponent");
+    const nlohmann::json* transform = SavedFields(plain, "Transform");
     ASSERT_NE(transform, nullptr);
     EXPECT_TRUE(transform->contains("位置"));
 }
@@ -196,16 +196,16 @@ TEST(Archetype, SaveWritesOnlyOverrides)
 TEST(Archetype, ChangedArchetypeReachesInstancesWithoutOverride)
 {
     const ScopedArchetypeDirectory scope("ReachesInstances");
-    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", SphereEntry(2.0f)));
+    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", "Collision", SphereEntry(2.0f)));
 
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     NS::Obj::SceneJsonObjects(doc).push_back(MapObjJson(1));
     nlohmann::json overridden = MapObjJson(2);
-    NS::Obj::ObjectJsonComponents(overridden).push_back(SphereEntry(4.0f));
+    NS::Obj::ObjectJsonParts(overridden)["Collision"] = SphereEntry(4.0f);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(overridden));
 
     // 種類の既定値を変えてから読むと、上書きの無い個体だけが新しい値になる
-    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", SphereEntry(6.0f)));
+    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", "Collision", SphereEntry(6.0f)));
     NS::Obj::Scene scene;
     scene.LoadJson(doc);
     EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(1)), 6.0f);
@@ -216,7 +216,7 @@ TEST(Archetype, ApplyingSnapshotResetsFieldsWithoutOverride)
 {
     // undo の控えは上書きだけを持つ。控えを当てると、控えに無い欄も種類の既定値へ戻る
     const ScopedArchetypeDirectory scope("SnapshotReset");
-    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", SphereEntry(2.0f)));
+    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", "Collision", SphereEntry(2.0f)));
 
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     NS::Obj::SceneJsonObjects(doc).push_back(MapObjJson(1));
@@ -226,7 +226,7 @@ TEST(Archetype, ApplyingSnapshotResetsFieldsWithoutOverride)
     ASSERT_NE(actor, nullptr);
     const nlohmann::json snapshot = NS::Obj::ObjectToJson(*actor);
 
-    actor->FindComponent<NS::Obj::SphereCollider>()->SetRadius(9.0f);
+    NS::Obj::ComponentCast<NS::Obj::SphereCollider>(actor->Part("Collision"))->SetRadius(9.0f);
     NS::Obj::Actor* applied = scene.ApplyFromJson(snapshot);
     ASSERT_EQ(applied, actor); // 構成が同じなので作り直さない
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 2.0f);
@@ -235,24 +235,26 @@ TEST(Archetype, ApplyingSnapshotResetsFieldsWithoutOverride)
 TEST(Archetype, ExpandThenDiffGivesBackOverrides)
 {
     const ScopedArchetypeDirectory scope("ExpandDiff");
-    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", SphereEntry(2.0f)));
+    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", "Collision", SphereEntry(2.0f)));
 
     nlohmann::json object = MapObjJson(1);
     nlohmann::json sphere = SphereEntry(3.0f);
-    NS::Obj::SetComponentEntryId(sphere, 7);
-    NS::Obj::ObjectJsonComponents(object).push_back(std::move(sphere));
+    NS::Obj::SetObjectJsonId(object, 7u);
+    NS::Obj::ObjectJsonParts(object)["Collision"] = std::move(sphere);
 
     const nlohmann::json full = NS::Obj::ExpandObjectJson(object);
     // 広げた姿は全ての部品と欄を持ち、個体の上書きと id を重ねている
-    const nlohmann::json* fullSphere = NS::Obj::FindComponentEntry(full, "SphereCollider");
+    const nlohmann::json* fullSphere = NS::Obj::PartFields(full, "Collision");
     ASSERT_NE(fullSphere, nullptr);
-    EXPECT_EQ(NS::Obj::ComponentEntryId(*fullSphere), 7u);
+    EXPECT_EQ(NS::Obj::ObjectJsonId(full), 7u);
+    EXPECT_FALSE(fullSphere->contains("id"));
     EXPECT_FLOAT_EQ(NS::Obj::FieldFloat(*fullSphere, "半径", 0.0f), 3.0f);
     EXPECT_TRUE(NS::Obj::HasField(*fullSphere, "中心オフセット"));
-    EXPECT_NE(NS::Obj::FindComponentEntry(full, "RigidBody"), nullptr);
+    EXPECT_EQ(NS::Obj::PartFields(full, "RigidBody"), nullptr);
+    EXPECT_NE(NS::Obj::PartFields(full, "Params"), nullptr);
 
     const nlohmann::json back = NS::Obj::DiffObjectJson(full);
-    const nlohmann::json* backSphere = NS::Obj::FindComponentEntry(back, "SphereCollider");
+    const nlohmann::json* backSphere = NS::Obj::PartFields(back, "Collision");
     ASSERT_NE(backSphere, nullptr);
     EXPECT_FLOAT_EQ(NS::Obj::FieldFloat(*backSphere, "半径", 0.0f), 3.0f);
     EXPECT_FALSE(NS::Obj::HasField(*backSphere, "中心オフセット"));
@@ -262,20 +264,19 @@ TEST(Archetype, ReferenceFieldsAreNotArchetypeValues)
 {
     const ScopedArchetypeDirectory scope("References");
     // 参照はシーンの中の相手を指すので、種類の既定値に書いても落ちる
-    nlohmann::json follow = NS::Obj::MakeComponentEntry("ThirdPersonFollow");
-    NS::Obj::SetComponentEntryName(follow, "ThirdPersonFollow");
-    NS::Obj::SetField(follow, "追従対象", NS::Obj::ObjectRef{5});
-    NS::Obj::ArchetypeLibrary::Get().Set("FollowCamera", ArchetypeWith("FollowCamera", std::move(follow)));
+    nlohmann::json follow = nlohmann::json::object();
+    NS::Obj::SetField(follow, "追従対象", NS::Obj::ActorRef{5});
+    NS::Obj::ArchetypeLibrary::Get().Set("FollowCamera", ArchetypeWith("FollowCamera", "Vcam", std::move(follow)));
 
     const nlohmann::json* archetype = NS::Obj::ArchetypeLibrary::Get().Find("FollowCamera");
     ASSERT_NE(archetype, nullptr);
-    const nlohmann::json* entry = NS::Obj::FindComponentEntry(*archetype, "ThirdPersonFollow");
+    const nlohmann::json* entry = NS::Obj::PartFields(*archetype, "Vcam");
     ASSERT_NE(entry, nullptr);
     EXPECT_FALSE(NS::Obj::HasField(*entry, "追従対象"));
 
     // インスペクタでも種類の既定にできない
     const NS::Obj::Actor& baseline = NS::Obj::ArchetypeLibrary::Get().Baseline("FollowCamera");
-    const NS::Obj::ThirdPersonFollow* live = baseline.FindComponent<NS::Obj::ThirdPersonFollow>();
+    const NS::Obj::ThirdPersonFollow* live = NS::Obj::ComponentCast<NS::Obj::ThirdPersonFollow>(baseline.Part("Vcam"));
     ASSERT_NE(live, nullptr);
     EXPECT_FALSE(NS::Obj::IsArchetypeField(*live, "追従対象"));
 }
@@ -283,13 +284,14 @@ TEST(Archetype, ReferenceFieldsAreNotArchetypeValues)
 TEST(Archetype, OverrideIsDetectedAgainstBaseline)
 {
     const ScopedArchetypeDirectory scope("OverrideDetect");
-    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", SphereEntry(2.0f)));
+    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", "Collision", SphereEntry(2.0f)));
 
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     NS::Obj::SceneJsonObjects(doc).push_back(MapObjJson(1));
     NS::Obj::Scene scene;
     scene.LoadJson(doc);
-    NS::Obj::SphereCollider* sphere = scene.Objects().FindByObjectId(1)->FindComponent<NS::Obj::SphereCollider>();
+    NS::Obj::SphereCollider* sphere =
+        NS::Obj::ComponentCast<NS::Obj::SphereCollider>(scene.Objects().FindByObjectId(1)->Part("Collision"));
     ASSERT_NE(sphere, nullptr);
     EXPECT_FALSE(NS::Obj::IsFieldOverridden(*sphere, "半径"));
     sphere->SetRadius(2.5f);
@@ -301,7 +303,7 @@ TEST(Archetype, SavedArchetypeIsReadBack)
 {
     const ScopedArchetypeDirectory scope("SaveReload");
     NS::Obj::ArchetypeLibrary& library = NS::Obj::ArchetypeLibrary::Get();
-    library.Set("MapObj", ArchetypeWith("MapObj", SphereEntry(1.25f)));
+    library.Set("MapObj", ArchetypeWith("MapObj", "Collision", SphereEntry(1.25f)));
     ASSERT_TRUE(library.Save("MapObj"));
     EXPECT_TRUE(NS::Platform::FileSystem::Exists(NS::Platform::FileSystem::Combine(scope.Path(), "MapObj.json")));
 
@@ -320,13 +322,14 @@ TEST(Archetype, PromoteReachesOtherInstancesAndFile)
     NS::Obj::SceneJsonObjects(doc).push_back(MapObjJson(1));
     NS::Obj::SceneJsonObjects(doc).push_back(MapObjJson(2));
     nlohmann::json keeps = MapObjJson(3);
-    NS::Obj::ObjectJsonComponents(keeps).push_back(SphereEntry(4.0f));
+    NS::Obj::ObjectJsonParts(keeps)["Collision"] = SphereEntry(4.0f);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(keeps));
     NS::Obj::Scene scene;
     scene.LoadJson(doc);
     LevelEditorController editor(&scene);
 
-    NS::Obj::SphereCollider* sphere = scene.Objects().FindByObjectId(1)->FindComponent<NS::Obj::SphereCollider>();
+    NS::Obj::SphereCollider* sphere =
+        NS::Obj::ComponentCast<NS::Obj::SphereCollider>(scene.Objects().FindByObjectId(1)->Part("Collision"));
     sphere->SetRadius(1.75f);
     ASSERT_TRUE(editor.PromoteFieldToArchetype(*sphere, "半径"));
 
@@ -349,7 +352,8 @@ TEST(Archetype, PromoteRejectsReferenceField)
     scene.LoadJson(doc);
     LevelEditorController editor(&scene);
 
-    NS::Obj::ThirdPersonFollow* follow = scene.Objects().FindByObjectId(1)->FindComponent<NS::Obj::ThirdPersonFollow>();
+    NS::Obj::ThirdPersonFollow* follow =
+        NS::Obj::ComponentCast<NS::Obj::ThirdPersonFollow>(scene.Objects().FindByObjectId(1)->Part("Vcam"));
     ASSERT_NE(follow, nullptr);
     EXPECT_FALSE(editor.PromoteFieldToArchetype(*follow, "追従対象"));
     EXPECT_EQ(NS::Obj::ArchetypeLibrary::Get().Find("FollowCamera"), nullptr);
@@ -363,5 +367,5 @@ TEST(Archetype, ShippedArchetypesLoad)
     ASSERT_NE(library.Find("MapObj"), nullptr);
     ASSERT_NE(library.Find("Player"), nullptr);
     const NS::Obj::Actor& rock = library.Baseline("MapObj");
-    EXPECT_NE(rock.FindComponent<NS::Obj::Shadow>(), nullptr);
+    EXPECT_NE(rock.ShadowPart(), nullptr);
 }

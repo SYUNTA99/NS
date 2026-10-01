@@ -1,4 +1,4 @@
-﻿#include "Runtime/Object/Components/PlayerInput.h"
+#include "Runtime/Object/Components/PlayerInput.h"
 
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Actor.h"
@@ -19,7 +19,7 @@ namespace
         NS::Core::Vector3 out{};
         if (!NS::Core::TryNormalizeHorizontal(v, out))
         {
-            return NS::Core::Vector3{ 0.0f, 0.0f, 1.0f };
+            return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
         }
         return out;
     }
@@ -27,11 +27,39 @@ namespace
 
 namespace NS::Obj
 {
-    PlayerInput::PlayerInput() noexcept : Component(NS::Obj::TickPriority::EarlyUpdate) {}
+    PlayerInput::PlayerInput() noexcept : Component() {}
 
     void PlayerInput::SetCameraForward(const NS::Core::Vector3& cameraForwardHorizontal) noexcept
     {
         m_cameraForward = NormalizeHorizontal(cameraForwardHorizontal);
+    }
+
+    void PlayerInput::SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept
+    {
+        m_desiredDir = worldDir;
+        m_desiredSpeedScale = NS::Core::Clamp(speedScale01, 0.0f, 1.0f);
+    }
+
+    void PlayerInput::SetClimbMove(float localRight, float localForward) noexcept
+    {
+        m_climbRight = NS::Core::Clamp(localRight, -1.0f, 1.0f);
+        m_climbForward = NS::Core::Clamp(localForward, -1.0f, 1.0f);
+    }
+
+    void PlayerInput::ConsumePressed() noexcept
+    {
+        m_jumpPressed = false;
+        m_releaseLedgePressed = false;
+    }
+
+    void PlayerInput::ResetMovementInput() noexcept
+    {
+        m_desiredDir = NS::Core::Vector3{};
+        m_desiredSpeedScale = 0.0f;
+        m_climbRight = 0.0f;
+        m_climbForward = 0.0f;
+        m_jumpHeld = false;
+        ConsumePressed();
     }
 
     void PlayerInput::OnUpdate()
@@ -59,10 +87,22 @@ namespace NS::Obj
         float kbRight = 0.0f;
         if (!wantKb)
         {
-            if (kb.IsHeld(NS::Platform::Key::W)) kbForward += 1.0f;
-            if (kb.IsHeld(NS::Platform::Key::S)) kbForward -= 1.0f;
-            if (kb.IsHeld(NS::Platform::Key::A)) kbRight -= 1.0f;
-            if (kb.IsHeld(NS::Platform::Key::D)) kbRight += 1.0f;
+            if (kb.IsHeld(NS::Platform::Key::W))
+            {
+                kbForward += 1.0f;
+            }
+            if (kb.IsHeld(NS::Platform::Key::S))
+            {
+                kbForward -= 1.0f;
+            }
+            if (kb.IsHeld(NS::Platform::Key::A))
+            {
+                kbRight -= 1.0f;
+            }
+            if (kb.IsHeld(NS::Platform::Key::D))
+            {
+                kbRight += 1.0f;
+            }
         }
 
         // スティック合成と入力の大きさクランプ
@@ -95,21 +135,24 @@ namespace NS::Obj
         };
 
         // ジャンプの押下と長押し
-        const bool jumpPressed = (!wantKb && kb.IsPressed(NS::Platform::Key::Space)) || pad.IsPressed(NS::Platform::GamepadButton::A);
-        const bool jumpHeld =(!wantKb && kb.IsHeld(NS::Platform::Key::Space)) || pad.IsHeld(NS::Platform::GamepadButton::A);
+        const bool jumpPressed =
+            (!wantKb && kb.IsPressed(NS::Platform::Key::Space)) || pad.IsPressed(NS::Platform::GamepadButton::A);
+        const bool jumpHeld =
+            (!wantKb && kb.IsHeld(NS::Platform::Key::Space)) || pad.IsHeld(NS::Platform::GamepadButton::A);
 
         m_desiredDir = worldDir;
         m_desiredSpeedScale = speedScale;
         m_climbRight = localX;
         m_climbForward = localZ;
-        m_jumpPressed = jumpPressed;
+        m_jumpPressed = m_jumpPressed || jumpPressed;
         m_jumpHeld = jumpHeld;
 
         // 手放しは専用のマウス右ボタン / 左トリガー。後ろ入力と兼ねると、カメラ側の縁へ寄せた入力で手を放す
         // トリガーは XInput の既定のしきい値を NormalizeTrigger が先に切っているので、0 を超えたかだけ見る
         const bool releaseLedgeHeld = pad.LeftTrigger() > 0.0f;
         const bool mouseFree = !input.UiWantsMouse();
-        m_releaseLedgePressed = (mouseFree && input.Mouse().IsPressed(NS::Platform::MouseButton::Right)) ||
+        m_releaseLedgePressed = m_releaseLedgePressed ||
+                                (mouseFree && input.Mouse().IsPressed(NS::Platform::MouseButton::Right)) ||
                                 (releaseLedgeHeld && !m_prevReleaseLedgeHeld);
         m_prevReleaseLedgeHeld = releaseLedgeHeld;
     }

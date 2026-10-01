@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Components/DirectionalLight.h"
 
 namespace NS::Obj
 {
@@ -9,8 +10,12 @@ namespace NS::Obj
     {
     public:
         Light() noexcept;
+        void ForEachPart(const PartVisitor& visitor) const override;
 
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         [[nodiscard]] const char* ClassName() const noexcept override { return "Light"; }
+        NS_REFLECT_NONE(Light, NS::Obj::Actor)
+    private:
+        mutable DirectionalLight m_light;
     };
 } // namespace NS::Obj

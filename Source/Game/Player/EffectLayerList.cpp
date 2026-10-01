@@ -1,7 +1,7 @@
 #include "Game/Player/EffectLayerList.h"
 
-#include "Runtime/Object/Component.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Component.h"
 #include "Runtime/Object/Scene/Scene.h"
 
 #include <utility>
@@ -154,6 +154,10 @@ namespace NS::Game::Player
     {
         // エフェクトの窓口から引く。持ち主がシーンに居なければ窓口が nullptr を返す
         const NS::Obj::Actor* owner = component.Owner();
-        return owner != nullptr ? owner->GetEffectScene() : nullptr;
+        if (owner == nullptr)
+        {
+            return nullptr;
+        }
+        return owner->GetEffectScene();
     }
 } // namespace NS::Game::Player

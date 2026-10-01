@@ -13,7 +13,8 @@ namespace NS::Game::Level
     class ScreenFade final : public NS::Obj::UIActor
     {
     public:
-        ScreenFade() noexcept = default;
+        ScreenFade() noexcept;
+        NS_REFLECT_NONE(ScreenFade, NS::Obj::UIActor)
 
         //! 暗転を始める。seconds かけて透明から全黒へ。演出中の呼び直しは無視する
         void BeginOut(float seconds) noexcept;
@@ -40,12 +41,12 @@ namespace NS::Game::Level
         [[nodiscard]] float Alpha() const noexcept;
 
         //! 現在の不透明度で黒を全画面へ重ねる。全透明フレームは描かない
-        void OnRenderOverlay(const NS::Gfx::RenderContext& ctx) override;
 
         //! 暗転は他の画面の物より上に重ねる
         [[nodiscard]] int DrawOrder() const noexcept override { return 1000; }
 
     private:
+        void SyncWidget() noexcept;
         // 演出の段階。None は透明、Hold は全黒の保持
         enum class Stage : std::uint8_t
         {

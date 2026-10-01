@@ -17,7 +17,11 @@ namespace
     class CountedSceneObj final : public NS::Obj::ISceneObj
     {
     public:
-        explicit CountedSceneObj(NS::Obj::Scene& scene) noexcept { (void)scene; ++s_alive; }
+        explicit CountedSceneObj(NS::Obj::Scene& scene) noexcept
+        {
+            (void)scene;
+            ++s_alive;
+        }
         ~CountedSceneObj() noexcept override { --s_alive; }
         static inline int s_alive = 0;
     };
@@ -49,16 +53,42 @@ namespace
     class LoggingComponent final : public NS::Obj::Component
     {
     public:
-        explicit LoggingComponent(TickLog* log = nullptr) noexcept : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate), m_log(log) {}
+        explicit LoggingComponent(TickLog* log = nullptr) noexcept : NS::Obj::Component(), m_log(log) {}
         void OnUpdate() override
         {
             if (m_log != nullptr)
+            {
                 m_log->order.push_back("component");
+            }
         }
         NS_REFLECT_NONE(LoggingComponent, NS::Obj::Component)
 
     private:
         TickLog* m_log = nullptr;
+    };
+
+    class LoggingActor final : public NS::Obj::Actor
+    {
+    public:
+        explicit LoggingActor(TickLog& log) noexcept : m_log(log), m_part(&log) { AttachFixedComponent(m_part); }
+
+        void ForEachPart(const PartVisitor& visitor) const override
+        {
+            NS::Obj::Actor::ForEachPart(visitor);
+            visitor("Logging", m_part);
+        }
+
+        void Update() override
+        {
+            m_log.order.push_back("actor");
+            TickPart(&m_part);
+        }
+        void OnPrePhysicsStep() override { m_log.order.push_back("pre-physics"); }
+        void OnPostPhysicsStep() override { m_log.order.push_back("post-physics"); }
+
+    private:
+        TickLog& m_log;
+        mutable LoggingComponent m_part;
     };
 } // namespace
 
@@ -108,19 +138,34 @@ TEST(ObjectListTicker, TickerRunsBeforeComponentsOfSameBand)
 {
     NS::Obj::Scene scene;
     TickLog log;
-    NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
-    actor->AddComponent<LoggingComponent>(&log);
+    scene.SpawnTransient<LoggingActor>(log);
     LoggingTicker ticker(log);
-    scene.Objects().AddTicker(&ticker, NS::Obj::TickPriority::LateUpdate);
+    scene.Objects().AddTicker(&ticker, NS::Obj::UpdatePhase::Triggers);
 
-    scene.Objects().UpdateObjects(NS::Obj::TickPriority::LateUpdate, NS::Obj::TickPriority::LateUpdate + 1);
-    ASSERT_EQ(log.order.size(), 2u);
+    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    ASSERT_EQ(log.order.size(), 3u);
     EXPECT_EQ(log.order[0], "ticker");
-    EXPECT_EQ(log.order[1], "component");
+    EXPECT_EQ(log.order[1], "actor");
+    EXPECT_EQ(log.order[2], "component");
 
     scene.Objects().RemoveTicker(&ticker);
     log.order.clear();
-    scene.Objects().UpdateObjects(NS::Obj::TickPriority::LateUpdate, NS::Obj::TickPriority::LateUpdate + 1);
-    ASSERT_EQ(log.order.size(), 1u);
-    EXPECT_EQ(log.order[0], "component");
+    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    ASSERT_EQ(log.order.size(), 2u);
+    EXPECT_EQ(log.order[0], "actor");
+    EXPECT_EQ(log.order[1], "component");
+}
+
+TEST(ObjectListTicker, ActorTickAndPhysicsHooksFollowBands)
+{
+    NS::Obj::Scene scene;
+    TickLog log;
+    scene.SpawnTransient<LoggingActor>(log);
+
+    scene.OnUpdate();
+    ASSERT_EQ(log.order.size(), 4u);
+    EXPECT_EQ(log.order[0], "pre-physics");
+    EXPECT_EQ(log.order[1], "post-physics");
+    EXPECT_EQ(log.order[2], "actor");
+    EXPECT_EQ(log.order[3], "component");
 }

@@ -129,7 +129,15 @@ namespace NS::Core
             {
                 return;
             }
+            ++m_resumeDepth;
             handle.resume();
+            --m_resumeDepth;
+            if (m_cancelPending && m_resumeDepth == 0 && !m_ticking)
+            {
+                handle.destroy();
+                CancelAll();
+                return;
+            }
             if (handle.done())
             {
                 handle.destroy();
@@ -141,6 +149,7 @@ namespace NS::Core
         //! 待ちを dt だけ進め、明けたシーケンスを再開する。終わったシーケンスはここで捨てる
         void Tick(float dt)
         {
+            m_ticking = true;
             for (std::size_t i = 0; i < m_handles.size();)
             {
                 Coroutine::Handle handle = m_handles[i];
@@ -175,7 +184,13 @@ namespace NS::Core
                     ++i;
                     continue;
                 }
+                ++m_resumeDepth;
                 handle.resume();
+                --m_resumeDepth;
+                if (m_cancelPending)
+                {
+                    break;
+                }
                 if (handle.done())
                 {
                     handle.destroy();
@@ -184,17 +199,28 @@ namespace NS::Core
                 }
                 ++i;
             }
+            m_ticking = false;
+            if (m_cancelPending)
+            {
+                CancelAll();
+            }
         }
 
         //! 全シーケンスを途中のまま破棄する。モード離脱やレベル破棄の前に呼ぶ
         void CancelAll() noexcept
         {
+            if (m_ticking || m_resumeDepth > 0)
+            {
+                m_cancelPending = true;
+                return;
+            }
             for (Coroutine::Handle handle : m_handles)
             {
                 handle.destroy();
             }
 
             m_handles.clear();
+            m_cancelPending = false;
         }
 
         //! 進行中のシーケンスが 1 本でも残っている場合 true、それ以外の場合は false
@@ -202,6 +228,9 @@ namespace NS::Core
 
     private:
         std::vector<Coroutine::Handle> m_handles; // 進行中のシーケンス。done になったら即座に外す
+        int m_resumeDepth = 0;
+        bool m_ticking = false;
+        bool m_cancelPending = false;
     };
 
 } // namespace NS::Core

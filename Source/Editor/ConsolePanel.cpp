@@ -18,7 +18,9 @@ namespace NS::Editor
             const float fps = io.Framerate;
             const float ms = [fps]() -> float {
                 if (fps > 0.0f)
+                {
                     return 1000.0f / fps;
+                }
                 return 0.0f;
             }();
             ImGui::Text("%.1f FPS (%.2f ms)", static_cast<double>(fps), static_cast<double>(ms));

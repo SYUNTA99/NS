@@ -1,13 +1,25 @@
 #include "Game/Level/ScreenFade.h"
 
 #include "Runtime/Platform/Clock.h"
-#include "Runtime/Graphics/RenderContext.h"
-#include "Runtime/Graphics/Renderer.h"
+#include "Runtime/UI/ColorRect.h"
 
 #include <algorithm>
 
 namespace NS::Game::Level
 {
+    ScreenFade::ScreenFade() noexcept
+    {
+        NS::UI::ColorRect* black = Widgets().Root().AddChild<NS::UI::ColorRect>();
+        black->SetStretch(true);
+        black->SetColor(NS::Core::Color{0.0f, 0.0f, 0.0f, 1.0f});
+        SyncWidget();
+    }
+
+    void ScreenFade::SyncWidget() noexcept
+    {
+        Widgets().Root().SetAlpha(Alpha());
+    }
+
     void ScreenFade::OnUpdate()
     {
         Advance(NS::Platform::FrameTimer::FixedDelta());
@@ -16,47 +28,67 @@ namespace NS::Game::Level
     void ScreenFade::BeginOut(float seconds) noexcept
     {
         if (m_stage != Stage::None)
+        {
             return;
+        }
         if (seconds <= 0.0f)
         {
             m_stage = Stage::Hold;
+            SyncWidget();
             return;
         }
         m_stage = Stage::Out;
         m_duration = seconds;
         m_timer = 0.0f;
+        SyncWidget();
     }
 
     void ScreenFade::BeginIn(float seconds) noexcept
     {
         if (m_stage != Stage::Hold)
+        {
             return;
+        }
         if (seconds <= 0.0f)
         {
             m_stage = Stage::None;
+            SyncWidget();
             return;
         }
         m_stage = Stage::In;
         m_duration = seconds;
         m_timer = 0.0f;
+        SyncWidget();
     }
 
     void ScreenFade::Cancel() noexcept
     {
         m_stage = Stage::None;
         m_timer = 0.0f;
+        SyncWidget();
     }
 
     void ScreenFade::Advance(float dt) noexcept
     {
         if (!IsFading())
+        {
             return;
-
+        }
         m_timer += dt;
         if (m_timer < m_duration)
+        {
+            SyncWidget();
             return;
-
-        m_stage = (m_stage == Stage::Out) ? Stage::Hold : Stage::None;
+        }
+        if (m_stage == Stage::Out)
+        {
+            m_stage = Stage::Hold;
+        }
+        else
+        {
+            m_stage = Stage::None;
+        }
+        SyncWidget();
     }
 
     float ScreenFade::Alpha() const noexcept
@@ -73,13 +105,4 @@ namespace NS::Game::Level
             return 0.0f;
         }
     }
-
-    void ScreenFade::OnRenderOverlay(const NS::Gfx::RenderContext& ctx)
-    {
-        const float alpha = Alpha();
-        if (alpha <= 0.0f)
-            return;
-        ctx.renderer->DrawFullscreenColor(NS::Core::Color{0.0f, 0.0f, 0.0f, alpha});
-    }
-
 } // namespace NS::Game::Level

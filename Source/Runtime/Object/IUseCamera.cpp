@@ -33,13 +33,21 @@ namespace NS::Obj
     float CameraSideSignOf(const IUseCamera& user, const NS::Core::Vector3& direction) noexcept
     {
         const CameraManager* cameras = user.GetCameraManager();
-        return cameras != nullptr ? cameras->SideSignOf(direction) : 1.0f;
+        if (cameras == nullptr)
+        {
+            return 1.0f;
+        }
+        return cameras->SideSignOf(direction);
     }
 
     NS::Core::Vector3 CameraForwardHorizontal(const IUseCamera& user) noexcept
     {
         const CameraManager* cameras = user.GetCameraManager();
-        return cameras != nullptr ? cameras->ForwardHorizontal() : NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+        if (cameras == nullptr)
+        {
+            return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+        }
+        return cameras->ForwardHorizontal();
     }
 
     std::optional<CameraPose> ComposeCameraPose(const IUseCamera& user, float alpha) noexcept

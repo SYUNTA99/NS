@@ -15,7 +15,7 @@ namespace NS::Game::Level
     CourseDirector::CourseDirector(NS::Obj::Scene& scene) : m_scene(scene), m_fade(std::make_unique<ScreenFade>())
     {
         m_fade->Open(scene);
-        m_scene.Objects().AddTicker(this, k_TickPriority);
+        m_scene.Objects().AddTicker(this, NS::Obj::UpdatePhase::Course);
     }
 
     CourseDirector::~CourseDirector() noexcept

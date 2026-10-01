@@ -54,7 +54,7 @@ namespace NS::Obj
     //! vs / ps は必須、他は欠落時に既定値
     [[nodiscard]] bool ParseMaterialJson(std::string_view jsonText, MaterialFileDesc& out, std::string& outError);
 
-    //! 読み込んだ Material とその基準色。baseColor は MeshRenderer 側に適用するため別で返す
+    //! 読み込んだ Material とその基準色。baseColor は Model 側に適用するため別で返す
     struct LoadedMaterial
     {
         //! AssetManager 所有、キャッシュ寿命中のみ有効

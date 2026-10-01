@@ -23,9 +23,7 @@ namespace NS::Editor
     {
         // 同じ欄を 2 体から読んで見比べる
         template <class T>
-        bool SameValue(const NS::Obj::Component& a,
-                       const NS::Obj::Component& b,
-                       const NS::Obj::FieldDesc& field)
+        bool SameValue(const NS::Obj::Component& a, const NS::Obj::Component& b, const NS::Obj::FieldDesc& field)
         {
             T lhs{};
             T rhs{};
@@ -51,27 +49,30 @@ namespace NS::Editor
     {
         // 持ち主のクラスの既定の 1 体の同じ部品。値はコードの既定値に種類の既定値を当てた物
         if (const NS::Obj::Component* part = NS::Obj::FindBaselinePart(comp))
+        {
             return part;
+        }
         const NS::Obj::ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr)
+        {
             return nullptr;
+        }
         return FindTypeDefault(info->typeName);
     }
 
     const NS::Obj::Component* ComponentDefaults::FindTypeDefault(std::string_view typeName)
     {
-        for (const std::pair<std::string, NS::Obj::Component*>& entry : m_byType)
+        for (const std::pair<std::string, std::unique_ptr<NS::Obj::Component>>& entry : m_byType)
         {
             if (entry.first == typeName)
-                return entry.second;
+            {
+                return entry.second.get();
+            }
         }
-        if (!m_holder)
-            m_holder = std::make_unique<NS::Obj::Actor>();
-
-        // 既定コンストラクタで作っただけの 1 体。未登録の型は nullptr が返り、その答も控えて再試行しない
-        NS::Obj::Component* created = NS::Obj::CreateComponent(typeName, *m_holder);
-        m_byType.emplace_back(std::string(typeName), created);
-        return created;
+        std::unique_ptr<NS::Obj::Component> created = NS::Obj::CreatePartDefault(typeName);
+        const NS::Obj::Component* result = created.get();
+        m_byType.emplace_back(std::string(typeName), std::move(created));
+        return result;
     }
 
     bool FieldDiffersFromDefault(const NS::Obj::Component& comp,
@@ -79,7 +80,9 @@ namespace NS::Editor
                                  const NS::Obj::FieldDesc& field) noexcept
     {
         if (defaults == nullptr)
+        {
             return false;
+        }
         switch (field.type)
         {
         case NS::Obj::FieldType::Float:
@@ -94,8 +97,8 @@ namespace NS::Editor
             return !SameValue<NS::Core::Quaternion>(comp, *defaults, field);
         case NS::Obj::FieldType::String:
             return !SameValue<std::string>(comp, *defaults, field);
-        case NS::Obj::FieldType::ObjectRef:
-            return !SameValue<NS::Obj::ObjectRef>(comp, *defaults, field);
+        case NS::Obj::FieldType::ActorRef:
+            return !SameValue<NS::Obj::ActorRef>(comp, *defaults, field);
         case NS::Obj::FieldType::Curve:
             return !SameValue<NS::Obj::Curve>(comp, *defaults, field);
         case NS::Obj::FieldType::ComponentRef:
@@ -128,8 +131,8 @@ namespace NS::Editor
         case NS::Obj::FieldType::String:
             CopyValue<std::string>(comp, defaults, field);
             break;
-        case NS::Obj::FieldType::ObjectRef:
-            CopyValue<NS::Obj::ObjectRef>(comp, defaults, field);
+        case NS::Obj::FieldType::ActorRef:
+            CopyValue<NS::Obj::ActorRef>(comp, defaults, field);
             break;
         case NS::Obj::FieldType::Curve:
             CopyValue<NS::Obj::Curve>(comp, defaults, field);
@@ -530,9 +533,9 @@ namespace NS::Editor
                 }
                 break;
             }
-            case NS::Obj::FieldType::ObjectRef:
+            case NS::Obj::FieldType::ActorRef:
             {
-                NS::Obj::ObjectRef value{};
+                NS::Obj::ActorRef value{};
                 field.get(&comp, &value);
 
                 // 参照候補が無ければ id を直接打たせる
@@ -615,7 +618,7 @@ namespace NS::Editor
                 }
                 for (const ComponentRefOption& option : componentOptions)
                 {
-                    if (option.component == value.component && option.object == value.object)
+                    if (option.partName == value.partName && option.object == value.actor.id)
                     {
                         currentLabel = option.label.c_str();
                         break;
@@ -635,14 +638,16 @@ namespace NS::Editor
                         {
                             continue;
                         }
-                        ImGui::PushID(static_cast<int>(option.component));
-                        const bool selected = option.component == value.component && option.object == value.object;
+                        ImGui::PushID(static_cast<int>(option.object));
+                        ImGui::PushID(option.partName.c_str());
+                        const bool selected = option.partName == value.partName && option.object == value.actor.id;
                         if (ImGui::Selectable(option.label.c_str(), selected))
                         {
-                            value = NS::Obj::ComponentRefValue{option.object, option.component};
+                            value = NS::Obj::ComponentRefValue{NS::Obj::ActorRef{option.object}, option.partName};
                             field.set(&comp, &value);
                             result.changed = true;
                         }
+                        ImGui::PopID();
                         ImGui::PopID();
                     }
                     ImGui::EndCombo();
@@ -860,7 +865,7 @@ namespace NS::Editor
                     else if (ImGui::MenuItem("点を追加", nullptr, false, value.count < NS::Obj::Curve::k_MaxKeys))
                     {
                         const NS::Obj::Curve::Key added{storage->GetFloat(menuXId, 0.0f),
-                                                           storage->GetFloat(menuYId, 0.0f)};
+                                                        storage->GetFloat(menuYId, 0.0f)};
                         value.keys[value.count] = added;
                         ++value.count;
                         const std::uint32_t inserted = MoveKey(value, value.count - 1, added);
@@ -975,8 +980,8 @@ namespace NS::Editor
 
             // 種類の既定にできるのは、種類を持つ配置物の、個体の物でない欄だけ
             const NS::Obj::Actor* owner = comp.Owner();
-            const bool promotable = owner != nullptr && owner->ClassName()[0] != '\0' &&
-                                    NS::Obj::IsArchetypeField(comp, field.name);
+            const bool promotable =
+                owner != nullptr && owner->ClassName()[0] != '\0' && NS::Obj::IsArchetypeField(comp, field.name);
             const OverrideAction action = OverrideButton(changed, promotable);
             if (action == OverrideAction::Revert && defaults != nullptr)
             {

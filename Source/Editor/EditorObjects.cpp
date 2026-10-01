@@ -2,7 +2,7 @@
 
 #include "Runtime/Graphics/Mesh.h"
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/MeshRenderer.h"
+#include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -20,11 +20,19 @@ namespace NS::Editor
         const char* ClassDisplayName(std::string_view className) noexcept
         {
             if (className.empty())
+            {
                 return "Actor";
+            }
             const NS::Obj::TypeRegistry::Entry* entry = NS::Obj::TypeRegistry::Get().Find(className);
             if (entry == nullptr)
+            {
                 return "Actor";
-            return entry->label != nullptr ? entry->label : entry->className;
+            }
+            if (entry->label != nullptr)
+            {
+                return entry->label;
+            }
+            return entry->className;
         }
     } // namespace
 
@@ -126,22 +134,28 @@ namespace NS::Editor
         // 名前は JSON の中の文字列を指す。std::string の中身なので終端がある
         const std::string_view name = NS::Obj::ObjectJsonName(object);
         if (!name.empty())
+        {
             return name.data();
+        }
         return ClassDisplayName(NS::Obj::ObjectJsonClass(object));
     }
 
     const char* ObjectDisplayName(const NS::Obj::Actor& object)
     {
         if (!object.Name().empty())
+        {
             return object.Name().c_str();
+        }
         return ClassDisplayName(object.ClassName());
     }
 
     NS::Core::AABB PickLocalBounds(const NS::Obj::Actor& object) noexcept
     {
-        const NS::Obj::MeshRenderer* renderer = object.FindComponent<NS::Obj::MeshRenderer>();
+        const NS::Obj::Model* renderer = object.ModelPart();
         if (renderer != nullptr && renderer->GetMesh() != nullptr)
+        {
             return renderer->GetMesh()->LocalBounds();
+        }
         return NS::Core::AABB{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Vector3{0.5f, 0.5f, 0.5f}};
     }
 

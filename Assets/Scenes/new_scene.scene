@@ -6,612 +6,303 @@
   "objects": [
     {
       "class": "MapParts",
-      "components": [
-        {
-          "fields": {
-            "スケール": [
-              50.0,
-              1.0,
-              50.0
-            ],
-            "位置": [
-              16.999433517456055,
-              0.0,
-              0.0
-            ],
-            "回転": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ]
-          },
-          "id": 7,
-          "name": "TransformComponent",
-          "type": "TransformComponent"
-        },
-        {
-          "fields": {
-            "マテリアル": "",
-            "メッシュ": "cube",
-            "基本色": [
-              0.699999988079071,
-              0.699999988079071,
-              0.75
-            ]
-          },
-          "id": 5,
-          "name": "MeshRenderer",
-          "type": "MeshRenderer"
-        },
-        {
-          "id": 79,
-          "name": "MeshCollider",
-          "type": "MeshCollider"
-        }
-      ],
       "id": 1,
-      "name": "Object"
+      "name": "Object",
+      "parts": {
+        "Collision": {},
+        "Model": {
+          "マテリアル": "",
+          "メッシュ": "cube",
+          "基本色": [
+            0.699999988079071,
+            0.699999988079071,
+            0.75
+          ]
+        },
+        "Transform": {
+          "スケール": [
+            50,
+            1,
+            50
+          ],
+          "位置": [
+            16.999433517456055,
+            0,
+            0
+          ],
+          "回転": [
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      }
     },
     {
       "class": "Player",
-      "components": [
-        {
-          "id": 10,
-          "name": "PlayerInput",
-          "type": "PlayerInput"
-        },
-        {
-          "id": 63,
-          "name": "PlayerInputRelay",
-          "type": "PlayerInputRelay"
-        },
-        {
-          "id": 59,
-          "name": "CollisionInput",
-          "type": "CollisionInput"
-        },
-        {
-          "id": 75,
-          "name": "TargetMarker",
-          "type": "TargetMarker"
-        },
-        {
-          "id": 76,
-          "name": "SlamArrow",
-          "type": "SlamArrow"
-        },
-        {
-          "id": 30,
-          "name": "ImpactResolver",
-          "type": "ImpactResolver"
-        },
-        {
-          "fields": {
-            "スケール": [
-              1.0,
-              1.0,
-              1.0
-            ],
-            "位置": [
-              23.228139877319336,
-              1.649999976158142,
-              -2.528921604156494
-            ],
-            "回転": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ]
-          },
-          "id": 12,
-          "name": "TransformComponent",
-          "type": "TransformComponent"
-        },
-        {
-          "id": 8,
-          "name": "MeshRenderer",
-          "type": "MeshRenderer"
-        },
-        {
-          "id": 62,
-          "name": "PlayerStateManager",
-          "type": "PlayerStateManager"
-        },
-        {
-          "id": 9,
-          "name": "PlayerComponent",
-          "type": "PlayerComponent"
-        },
-        {
-          "id": 18,
-          "name": "Health",
-          "type": "Health"
-        },
-        {
-          "id": 11,
-          "name": "Shadow",
-          "type": "Shadow"
-        },
-        {
-          "id": 60,
-          "name": "CapsuleCollider",
-          "type": "CapsuleCollider"
-        },
-        {
-          "id": 74,
-          "name": "PlayerAppearance",
-          "type": "PlayerAppearance"
-        },
-        {
-          "id": 77,
-          "name": "ChargeEffects",
-          "type": "ChargeEffects"
-        },
-        {
-          "id": 78,
-          "name": "ImpactEffects",
-          "type": "ImpactEffects"
-        },
-        {
-          "id": 80,
-          "name": "HitSensor",
-          "type": "HitSensor"
-        },
-        {
-          "id": 81,
-          "name": "HitReaction",
-          "type": "HitReaction"
-        }
-      ],
       "id": 2,
-      "name": "Object_1"
+      "name": "Object_1",
+      "parts": {
+        "Appearance": {},
+        "BodySensor": {},
+        "ChargeControl": {},
+        "ChargeEffects": {},
+        "Collider": {},
+        "HitReaction": {},
+        "ImpactEffects": {},
+        "ImpactResolver": {},
+        "Input": {},
+        "Model": {},
+        "Movement": {},
+        "Params": {},
+        "Shadow": {},
+        "SlamArrow": {},
+        "TargetMarker": {},
+        "Transform": {
+          "スケール": [
+            1,
+            1,
+            1
+          ],
+          "位置": [
+            23.228139877319336,
+            1.649999976158142,
+            -2.528921604156494
+          ],
+          "回転": [
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      }
     },
     {
       "class": "FollowCamera",
-      "components": [
-        {
-          "fields": {
-            "スケール": [
-              1.0,
-              1.0,
-              1.0
-            ],
-            "位置": [
-              23.228139877319336,
-              4.144098281860352,
-              -7.358550071716309
-            ],
-            "回転": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ]
-          },
-          "id": 14,
-          "name": "TransformComponent",
-          "type": "TransformComponent"
-        },
-        {
-          "id": 69,
-          "name": "FollowCameraFeed",
-          "type": "FollowCameraFeed"
-        },
-        {
-          "fields": {
-            "追従対象": {
-              "ref": "Object_1"
-            }
-          },
-          "id": 13,
-          "name": "ThirdPersonFollow",
-          "type": "ThirdPersonFollow"
-        }
-      ],
       "id": 3,
-      "name": "Player Camera"
+      "name": "Player Camera",
+      "parts": {
+        "Transform": {
+          "スケール": [
+            1,
+            1,
+            1
+          ],
+          "位置": [
+            23.228139877319336,
+            4.144098281860352,
+            -7.358550071716309
+          ],
+          "回転": [
+            0,
+            0,
+            0,
+            1
+          ]
+        },
+        "Vcam": {
+          "追従対象": {
+            "ref": "Object_1"
+          }
+        }
+      }
     },
     {
       "class": "Light",
-      "components": [
-        {
-          "fields": {
-            "スケール": [
-              1.0,
-              1.0,
-              1.0
-            ],
-            "位置": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "回転": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ]
-          },
-          "id": 16,
-          "name": "TransformComponent",
-          "type": "TransformComponent"
-        },
-        {
-          "id": 15,
-          "name": "DirectionalLight",
-          "type": "DirectionalLight"
-        }
-      ],
       "id": 4,
-      "name": "Object_2"
+      "name": "Object_2",
+      "parts": {
+        "DirectionalLight": {},
+        "Transform": {
+          "スケール": [
+            1,
+            1,
+            1
+          ],
+          "位置": [
+            0,
+            0,
+            0
+          ],
+          "回転": [
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      }
     },
     {
       "class": "MapObj",
-      "components": [
-        {
-          "fields": {
-            "スケール": [
-              1.0,
-              1.0,
-              1.0
-            ],
-            "位置": [
-              18.0,
-              1.0,
-              -7.5
-            ],
-            "回転": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ]
-          },
-          "id": 36,
-          "name": "TransformComponent",
-          "type": "TransformComponent"
-        },
-        {
-          "fields": {
-            "基本色": [
-              0.7200000286102295,
-              0.699999988079071,
-              0.6600000262260437
-            ]
-          },
-          "id": 37,
-          "name": "MeshRenderer",
-          "type": "MeshRenderer"
-        },
-        {
-          "id": 38,
-          "name": "SphereCollider",
-          "type": "SphereCollider"
-        },
-        {
-          "fields": {
-            "質量": 0.5
-          },
-          "id": 70,
-          "name": "RigidBody",
-          "type": "RigidBody"
-        },
-        {
-          "fields": {
-            "耐久": 0.5
-          },
-          "id": 39,
-          "name": "Breakable",
-          "type": "Breakable"
-        },
-        {
-          "fields": {
-            "基本直径": 1.0
-          },
-          "id": 65,
-          "name": "Shadow",
-          "type": "Shadow"
-        },
-        {
-          "id": 40,
-          "name": "LaunchedBody",
-          "type": "LaunchedBody"
-        },
-        {
-          "id": 82,
-          "name": "TackleReaction",
-          "type": "TackleReaction"
-        },
-        {
-          "id": 83,
-          "name": "LaunchEffects",
-          "type": "LaunchEffects"
-        },
-        {
-          "id": 84,
-          "name": "HitSensor",
-          "type": "HitSensor"
-        }
-      ],
       "id": 35,
-      "name": "Object_3"
+      "name": "Object_3",
+      "parts": {
+        "BodySensor": {},
+        "Collision": {},
+        "LaunchEffects": {},
+        "Model": {
+          "基本色": [
+            0.7200000286102295,
+            0.699999988079071,
+            0.6600000262260437
+          ]
+        },
+        "Params": {
+          "耐久": 0.5,
+          "質量": 0.5
+        },
+        "Shadow": {
+          "基本直径": 1
+        },
+        "Transform": {
+          "スケール": [
+            1,
+            1,
+            1
+          ],
+          "位置": [
+            18,
+            1,
+            -7.5
+          ],
+          "回転": [
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      }
     },
     {
       "class": "MapObj",
-      "components": [
-        {
-          "fields": {
-            "スケール": [
-              1.5,
-              1.5,
-              1.5
-            ],
-            "位置": [
-              18.08530616760254,
-              1.25,
-              -2.7366538047790527
-            ],
-            "回転": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ]
-          },
-          "id": 42,
-          "name": "TransformComponent",
-          "type": "TransformComponent"
-        },
-        {
-          "fields": {
-            "基本色": [
-              0.6200000047683716,
-              0.6000000238418579,
-              0.5600000023841858
-            ]
-          },
-          "id": 43,
-          "name": "MeshRenderer",
-          "type": "MeshRenderer"
-        },
-        {
-          "id": 44,
-          "name": "SphereCollider",
-          "type": "SphereCollider"
-        },
-        {
-          "fields": {
-            "質量": 1.0
-          },
-          "id": 71,
-          "name": "RigidBody",
-          "type": "RigidBody"
-        },
-        {
-          "fields": {
-            "耐久": 1.0
-          },
-          "id": 45,
-          "name": "Breakable",
-          "type": "Breakable"
-        },
-        {
-          "fields": {
-            "基本直径": 1.5
-          },
-          "id": 66,
-          "name": "Shadow",
-          "type": "Shadow"
-        },
-        {
-          "id": 46,
-          "name": "LaunchedBody",
-          "type": "LaunchedBody"
-        },
-        {
-          "id": 85,
-          "name": "TackleReaction",
-          "type": "TackleReaction"
-        },
-        {
-          "id": 86,
-          "name": "LaunchEffects",
-          "type": "LaunchEffects"
-        },
-        {
-          "id": 87,
-          "name": "HitSensor",
-          "type": "HitSensor"
-        }
-      ],
       "id": 41,
-      "name": "Object_4"
+      "name": "Object_4",
+      "parts": {
+        "BodySensor": {},
+        "Collision": {},
+        "LaunchEffects": {},
+        "Model": {
+          "基本色": [
+            0.6200000047683716,
+            0.6000000238418579,
+            0.5600000023841858
+          ]
+        },
+        "Params": {
+          "耐久": 1,
+          "質量": 1
+        },
+        "Shadow": {
+          "基本直径": 1.5
+        },
+        "Transform": {
+          "スケール": [
+            1.5,
+            1.5,
+            1.5
+          ],
+          "位置": [
+            18.08530616760254,
+            1.25,
+            -2.7366538047790527
+          ],
+          "回転": [
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      }
     },
     {
       "class": "MapObj",
-      "components": [
-        {
-          "fields": {
-            "スケール": [
-              2.0,
-              2.0,
-              2.0
-            ],
-            "位置": [
-              18.0,
-              1.5,
-              2.5
-            ],
-            "回転": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ]
-          },
-          "id": 48,
-          "name": "TransformComponent",
-          "type": "TransformComponent"
-        },
-        {
-          "fields": {
-            "基本色": [
-              0.5,
-              0.47999998927116394,
-              0.44999998807907104
-            ]
-          },
-          "id": 49,
-          "name": "MeshRenderer",
-          "type": "MeshRenderer"
-        },
-        {
-          "id": 50,
-          "name": "SphereCollider",
-          "type": "SphereCollider"
-        },
-        {
-          "fields": {
-            "質量": 2.0
-          },
-          "id": 72,
-          "name": "RigidBody",
-          "type": "RigidBody"
-        },
-        {
-          "fields": {
-            "耐久": 2.0
-          },
-          "id": 51,
-          "name": "Breakable",
-          "type": "Breakable"
-        },
-        {
-          "fields": {
-            "基本直径": 2.0
-          },
-          "id": 67,
-          "name": "Shadow",
-          "type": "Shadow"
-        },
-        {
-          "id": 52,
-          "name": "LaunchedBody",
-          "type": "LaunchedBody"
-        },
-        {
-          "id": 88,
-          "name": "TackleReaction",
-          "type": "TackleReaction"
-        },
-        {
-          "id": 89,
-          "name": "LaunchEffects",
-          "type": "LaunchEffects"
-        },
-        {
-          "id": 90,
-          "name": "HitSensor",
-          "type": "HitSensor"
-        }
-      ],
       "id": 47,
-      "name": "Object_5"
+      "name": "Object_5",
+      "parts": {
+        "BodySensor": {},
+        "Collision": {},
+        "LaunchEffects": {},
+        "Model": {
+          "基本色": [
+            0.5,
+            0.47999998927116394,
+            0.44999998807907104
+          ]
+        },
+        "Params": {
+          "耐久": 2,
+          "質量": 2
+        },
+        "Shadow": {
+          "基本直径": 2
+        },
+        "Transform": {
+          "スケール": [
+            2,
+            2,
+            2
+          ],
+          "位置": [
+            18,
+            1.5,
+            2.5
+          ],
+          "回転": [
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      }
     },
     {
       "class": "MapObj",
-      "components": [
-        {
-          "fields": {
-            "スケール": [
-              3.0,
-              3.0,
-              3.0
-            ],
-            "位置": [
-              18.0,
-              2.0,
-              7.5
-            ],
-            "回転": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ]
-          },
-          "id": 54,
-          "name": "TransformComponent",
-          "type": "TransformComponent"
-        },
-        {
-          "fields": {
-            "基本色": [
-              0.36000001430511475,
-              0.3400000035762787,
-              0.3199999928474426
-            ]
-          },
-          "id": 55,
-          "name": "MeshRenderer",
-          "type": "MeshRenderer"
-        },
-        {
-          "id": 56,
-          "name": "SphereCollider",
-          "type": "SphereCollider"
-        },
-        {
-          "fields": {
-            "質量": 8.0
-          },
-          "id": 73,
-          "name": "RigidBody",
-          "type": "RigidBody"
-        },
-        {
-          "fields": {
-            "耐久": 5.0
-          },
-          "id": 57,
-          "name": "Breakable",
-          "type": "Breakable"
-        },
-        {
-          "fields": {
-            "基本直径": 3.0
-          },
-          "id": 68,
-          "name": "Shadow",
-          "type": "Shadow"
-        },
-        {
-          "id": 58,
-          "name": "LaunchedBody",
-          "type": "LaunchedBody"
-        },
-        {
-          "id": 91,
-          "name": "TackleReaction",
-          "type": "TackleReaction"
-        },
-        {
-          "id": 92,
-          "name": "LaunchEffects",
-          "type": "LaunchEffects"
-        },
-        {
-          "id": 93,
-          "name": "HitSensor",
-          "type": "HitSensor"
-        }
-      ],
       "id": 53,
-      "name": "Object_6"
+      "name": "Object_6",
+      "parts": {
+        "BodySensor": {},
+        "Collision": {},
+        "LaunchEffects": {},
+        "Model": {
+          "基本色": [
+            0.36000001430511475,
+            0.3400000035762787,
+            0.3199999928474426
+          ]
+        },
+        "Params": {
+          "耐久": 5,
+          "質量": 8
+        },
+        "Shadow": {
+          "基本直径": 3
+        },
+        "Transform": {
+          "スケール": [
+            3,
+            3,
+            3
+          ],
+          "位置": [
+            18,
+            2,
+            7.5
+          ],
+          "回転": [
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      }
     }
   ],
-  "version": 4
+  "version": 5
 }

@@ -1,9 +1,7 @@
 ﻿#include "Runtime/Object/Components/CameraManager.h"
 
-#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
@@ -55,20 +53,7 @@ namespace NS::Obj
 
     } // namespace
 
-    // vcam を供給する追従カメラが LateUpdate + 50 なので、選び直しはその後ろに置く
-    CameraManager::CameraManager() noexcept : Component(TickPriority::LateUpdate + 60) {}
-
-    void CameraManager::OnStart()
-    {
-        if (Owner() != nullptr)
-        {
-            m_camera = Owner()->FindComponent<CameraComponent>();
-        }
-        else
-        {
-            m_camera = nullptr;
-        }
-    }
+    CameraManager::CameraManager() noexcept = default;
 
     void CameraManager::AddVirtualCamera(VirtualCamera* vcam)
     {
@@ -322,5 +307,4 @@ namespace NS::Obj
         return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
     }
 
-    NS_CLASS(CameraManager)
 } // namespace NS::Obj

@@ -2,7 +2,6 @@
 
 #include "Runtime/Core/CameraData.h"
 #include "Runtime/Core/Math.h"
-#include "Runtime/Object/Component.h"
 
 namespace NS::Gfx
 {
@@ -13,14 +12,13 @@ namespace NS::Obj
 {
     struct CameraPose;
 
-    //! @brief NS::Core::CameraData を値で内包する Component
+    //! @brief Scene が直接持つ実カメラ。NS::Core::CameraData を値で内包する
     //! @details Getter / Setter は内包する CameraData への薄いラッパー
     //! 前方向の XZ 成分は PlayerInput がカメラ相対の移動入力に使う
-    class CameraComponent : public Component
+    class CameraComponent
     {
     public:
-        //! priority は LateUpdate 帯の後方 (+50)。全ての更新が終わった後に追う
-        CameraComponent() noexcept;
+        CameraComponent() noexcept = default;
 
         void SetPosition(const NS::Core::Vector3& position) noexcept;
         void SetTarget(const NS::Core::Vector3& target) noexcept;
@@ -47,9 +45,6 @@ namespace NS::Obj
 
         //! target - position を XZ 平面で正規化した前方向。距離 0 や Y 方向だけならワールドの +Z
         [[nodiscard]] NS::Core::Vector3 ForwardHorizontal() const noexcept;
-
-        // pose は CameraManager が毎フレーム上書きするので保存する調整値は無い。型名だけ登録する
-        NS_REFLECT_NONE(CameraComponent, Component)
 
     private:
         NS::Core::CameraData m_camera; // 内包する実カメラ

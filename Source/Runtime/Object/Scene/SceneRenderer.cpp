@@ -6,12 +6,12 @@
 #include "Runtime/Graphics/EffectScene.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/Renderer.h"
-#include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/CameraComponent.h"
+#include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/DirectionalLight.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
-#include "Runtime/Object/UIActor.h"
 #include "Runtime/Object/IRenderable.h"
+#include "Runtime/Object/UIActor.h"
 #include "Runtime/Platform/Filesystem.h"
 
 #include <algorithm>
@@ -133,7 +133,7 @@ namespace NS::Obj
         // 挿入の時点で priority 昇順を保つ。同値は後から来た方が後ろ
         const std::vector<OverlayRenderer*>::iterator at = std::upper_bound(
             m_overlays.begin(), m_overlays.end(), overlay, [](const OverlayRenderer* a, const OverlayRenderer* b) {
-                return a->Priority() < b->Priority();
+                return a->OverlayOrder() < b->OverlayOrder();
             });
         m_overlays.insert(at, overlay);
     }
@@ -280,7 +280,10 @@ namespace NS::Obj
         return resolved;
     }
 
-    void SceneRenderer::Render(CameraManager& cameras, CameraComponent& camera, std::string_view skyboxPath, float alpha)
+    void SceneRenderer::Render(CameraManager& cameras,
+                               CameraComponent& camera,
+                               std::string_view skyboxPath,
+                               float alpha)
     {
         if (m_renderer == nullptr)
         {

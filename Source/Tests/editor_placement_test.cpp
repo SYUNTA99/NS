@@ -3,7 +3,7 @@
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/MeshCollider.h"
-#include "Runtime/Object/Components/MeshRenderer.h"
+#include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Filesystem.h"
 
@@ -42,11 +42,11 @@ TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
     NS::Obj::Actor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
     ASSERT_NE(placed, nullptr);
     EXPECT_EQ(std::string_view{placed->ClassName()}, "MapParts");
-    const NS::Obj::MeshRenderer* renderer = placed->FindComponent<NS::Obj::MeshRenderer>();
+    const NS::Obj::Model* renderer = placed->ModelPart();
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(renderer->MeshRef(), "wedge45");
     // 当たりは見た目のメッシュに付いて来る
-    EXPECT_NE(placed->FindComponent<NS::Obj::MeshCollider>(), nullptr);
+    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::MeshCollider>(placed->Part("Collision")), nullptr);
 }
 
 TEST(EditorPlacement, UndoRemovesPlacedActor)
@@ -78,16 +78,17 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollider)
     LevelEditorController editor(&scene);
 
     editor.AddMeshParts(NS::Platform::FileSystem::Combine(
-        NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"),
+        NS::Platform::FileSystem::Combine(
+            NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"),
         "__ns_missing_terrain__.glb"));
 
     NS::Obj::Actor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
     ASSERT_NE(placed, nullptr);
     EXPECT_EQ(std::string_view{placed->ClassName()}, "MapParts");
-    const NS::Obj::MeshRenderer* renderer = placed->FindComponent<NS::Obj::MeshRenderer>();
+    const NS::Obj::Model* renderer = placed->ModelPart();
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(renderer->MeshRef(), "Assets/Models/__ns_missing_terrain__.glb");
-    EXPECT_NE(placed->FindComponent<NS::Obj::MeshCollider>(), nullptr);
+    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::MeshCollider>(placed->Part("Collision")), nullptr);
     // 名前はファイル名から付く
     EXPECT_EQ(placed->Name(), "__ns_missing_terrain__");
 }

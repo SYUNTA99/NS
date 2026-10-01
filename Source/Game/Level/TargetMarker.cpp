@@ -1,6 +1,8 @@
 #include "Game/Level/TargetMarker.h"
 
 #include "Game/Level/CollisionInput.h"
+#include "Game/Player.h"
+#include "Game/Player/PlayerParams.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Object/Actor.h"
@@ -216,15 +218,28 @@ namespace NS::Game::Level
         return true;
     }
 
-    // -130 は CollisionInput (-140) がこのフレームの狙う相手を控えた後に読むため
-    TargetMarker::TargetMarker() noexcept : NS::Obj::OverlayRenderer(NS::Obj::TickPriority::Update - 130) {}
+    // Player::Update が CollisionInput の後に呼ぶので、このフレームの狙う相手を控えた後に読む
+    TargetMarker::TargetMarker() noexcept : NS::Obj::OverlayRenderer() {}
+
+    const TargetMarkerDesc& TargetMarker::Tuning() const noexcept
+    {
+        if (const ::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+        {
+            return ownerPlayer->Params().m_targetMarkerDesc;
+        }
+        static const TargetMarkerDesc defaults;
+        return defaults;
+    }
 
     void TargetMarker::OnStart()
     {
         // 基底が重ね描きの登録簿へ自分を入れる
         NS::Obj::OverlayRenderer::OnStart();
 
-        m_input = Owner()->FindComponent<CollisionInput>();
+        if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+        {
+            m_input = &ownerPlayer->ChargeControl();
+        }
     }
 
     void TargetMarker::OnUpdate()
@@ -265,7 +280,7 @@ namespace NS::Game::Level
         if (m_framesSinceLost >= 0)
         {
             ++m_framesSinceLost;
-            if (m_framesSinceLost >= m_desc.lostFrames)
+            if (m_framesSinceLost >= Tuning().lostFrames)
             {
                 m_framesSinceLost = -1;
             }
@@ -294,11 +309,11 @@ namespace NS::Game::Level
         }
     }
 
-    NS::Obj::ObjectRef TargetMarker::ShownTargetRef() const noexcept
+    NS::Obj::ActorRef TargetMarker::ShownTargetRef() const noexcept
     {
         if (!m_hasShown)
         {
-            return NS::Obj::ObjectRef{};
+            return NS::Obj::ActorRef{};
         }
         return m_shown.target;
     }
@@ -309,15 +324,19 @@ namespace NS::Game::Level
     {
         if (m_hasShown)
         {
-            return BuildLockOnFrame(
-                viewProjection, targetSize, m_shown.bounds, LockOnFrames{.sinceCapture = m_framesSinceCapture}, m_desc, outFrame);
+            return BuildLockOnFrame(viewProjection,
+                                    targetSize,
+                                    m_shown.bounds,
+                                    LockOnFrames{.sinceCapture = m_framesSinceCapture},
+                                    Tuning(),
+                                    outFrame);
         }
         if (m_framesSinceLost < 0)
         {
             return false;
         }
         const LockOnFrames frames{.sinceCapture = m_framesSinceCapture, .sinceLost = m_framesSinceLost};
-        return BuildLockOnFrame(viewProjection, targetSize, m_lostBounds, frames, m_desc, outFrame);
+        return BuildLockOnFrame(viewProjection, targetSize, m_lostBounds, frames, Tuning(), outFrame);
     }
 
     NS_CLASS(TargetMarker)

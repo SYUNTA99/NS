@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/ObjectJson.h"
 
 #pragma warning(push, 0)
@@ -19,8 +20,8 @@
 namespace NS::Obj
 {
     //! @brief 空のシーン文書を作る
-    //! @details {"version": 形式, "environment": {"skybox": パス}, "objects": [配置物の JSON...], "nextObjectId": 次の id}
-    //! nextObjectId は単調増加で欠番は再利用しない。削除済み id が別物を指す事故を防ぐ
+    //! @details {"version": 形式, "environment": {"skybox": パス}, "objects": [配置物の JSON...], "nextObjectId": 次の
+    //! id} nextObjectId は単調増加で欠番は再利用しない。削除済み id が別物を指す事故を防ぐ
     [[nodiscard]] nlohmann::json MakeSceneJson();
 
     //! 配置物の JSON の配列。無いか壊れていれば空の配列
@@ -36,25 +37,28 @@ namespace NS::Obj
     [[nodiscard]] std::string_view SceneJsonSkybox(const nlohmann::json& scene) noexcept;
     void SetSceneJsonSkybox(nlohmann::json& scene, std::string_view path);
 
+    //! @brief 重力の向きを長さ 1 に揃えて返す
+    //! @return 有限でない成分を含むか長さがほぼ 0 なら (0, -1, 0)
+    [[nodiscard]] NS::Core::Vector3 NormalizeGravityDirection(const NS::Core::Vector3& direction) noexcept;
+    //! @brief environment.gravityDirection を長さ 1 に揃えて返す
+    //! @return 無いか 3 つの数でなければ (0, -1, 0)
+    [[nodiscard]] NS::Core::Vector3 SceneJsonGravityDirection(const nlohmann::json& scene) noexcept;
+    //! 長さ 1 に揃えた重力の向きを environment.gravityDirection へ書く。environment が無ければ作る
+    void SetSceneJsonGravityDirection(nlohmann::json& scene, const NS::Core::Vector3& direction);
+
     //! objects 配列で「該当無し」を表す添字
     inline constexpr std::size_t k_NoObjectIndex = static_cast<std::size_t>(-1);
 
     //! 永続 id が id の配置物の添字。無ければ k_NoObjectIndex、k_NoObjectId は常に該当無し
     [[nodiscard]] std::size_t FindObjectIndexById(const nlohmann::json& scene, std::uint32_t id) noexcept;
 
-    //! @brief 全配置物と全 component の永続 id を「非 0 かつ一意」へ整える
     //! @details 未割当と重複には新 id を振り、nextObjectId を既存最大 id より先へ進める。重複は先勝ち
-    //! 番号の空間は配置物と component で共通なので、id 1 個で世界の誰か 1 人が決まる
-    //! 続けて EnsureUniqueObjectNames で配置物と component の名前も一意にする
     void EnsureUniqueObjectIds(nlohmann::json& scene);
 
-    //! @brief 全配置物に一意な名前を付け、各配置物の component にも配置物の中で一意な名前を付ける
-    //! @details 先に付いていた名前を保ち、空と重複にだけ新しい名前を振る。名前の無い component は型名から付ける
     //! ファイルの参照は名前で書くので、名前が 1 つに決まることを保存と読込が当てにする
     void EnsureUniqueObjectNames(nlohmann::json& scene);
 
     //! @brief 宙に浮いた参照を未設定へ戻し、直した件数を返す
-    //! @details ObjectRef は持ち主が居なければ 0 へ、ComponentRef は持ち主か Component が居なければ両方 0 へ戻す
     [[nodiscard]] std::size_t PruneDanglingObjectRefs(nlohmann::json& scene);
 
     //! 辿れない親を root の 0 へ戻し、直した件数を返す。自分自身・不在の親・循環が対象

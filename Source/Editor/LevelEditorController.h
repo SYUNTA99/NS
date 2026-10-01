@@ -213,7 +213,7 @@ public:
     {
         return ObjectToolActive() && m_gizmo.Selected() != nullptr;
     }
-    //! 選択中の配置物の MeshRenderer に材質を割り当てて undo へ積む。対象外なら false
+    //! 選択中の配置物の Model に材質を割り当てて undo へ積む。対象外なら false
     bool ApplyMaterialToSelected(std::string_view matPath);
 
 private:
@@ -286,8 +286,8 @@ private:
 
     NS::Editor::GizmoEditor m_gizmo{}; // 変形ギズモ管理
 
-    std::vector<NS::Obj::Actor*> m_selectablePtrs; // 選択可能なオブジェクト
-    std::vector<std::uint8_t> m_selectablePickable;     // 1 は MeshRenderer を持つ配置物。ギズモが先に選ぶ
+    std::vector<NS::Obj::Actor*> m_selectablePtrs;  // 選択可能なオブジェクト
+    std::vector<std::uint8_t> m_selectablePickable; // 1 は Model を持つ配置物。ギズモが先に選ぶ
 
     std::uint32_t m_selectedObjectId = NS::Obj::k_NoObjectId; // 主対象の永続 id。選択の一次情報
     std::vector<std::uint32_t> m_selectionIds;                // 選択中の全配置物。主対象も含む
@@ -301,7 +301,6 @@ private:
     };
     std::vector<DragFollower> m_dragFollowers; // 主対象に付いて動く残りの選択
     NS::Core::Matrix m_dragPrimaryWorld{};     // ドラッグ開始時の主対象の world 変換
-
 
     bool m_gizmoWasDragging = false; // ドラッグ状態の保持
     bool m_transformEditing = false; // 変形編集の開始状態

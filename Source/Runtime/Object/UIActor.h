@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/Object/ActorBase.h"
+#include "Runtime/UI/UISystem.h"
 
 namespace NS::Gfx
 {
@@ -18,6 +19,11 @@ namespace NS::Obj
     public:
         UIActor() noexcept = default;
         ~UIActor() noexcept override;
+        //! OnUpdate を呼ぶ
+        void Update() override { OnUpdate(); }
+        //! この画面が持つ UI の部品の一覧
+        [[nodiscard]] NS::UI::UISystem& Widgets() noexcept { return m_widgets; }
+        NS_REFLECT_NONE(UIActor, ActorBase)
 
         //! scene の画面の一覧へ入る。開いていれば何もしない
         void Open(Scene& scene);
@@ -26,15 +32,22 @@ namespace NS::Obj
         void Close() noexcept;
 
         //! 画面の一覧に入っているか
-        [[nodiscard]] bool IsOpen() const noexcept { return OwningScene() != nullptr; }
+        [[nodiscard]] bool IsOpen() const noexcept { return IsAlive() && OwningScene() != nullptr; }
 
         //! UI の段で 1 固定ステップに 1 回呼ばれる。シミュレーションが止まっている間は呼ばれない
         virtual void OnUpdate() {}
 
         //! 世界と重ね描きの部品を描いた後の画面へ重ねて描く
-        virtual void OnRenderOverlay(const NS::Gfx::RenderContext& context) = 0;
+        virtual void OnRenderOverlay(const NS::Gfx::RenderContext& context);
 
         //! 描く順。小さいほど先に描き、後から描く物が上に重なる
         [[nodiscard]] virtual int DrawOrder() const noexcept { return 0; }
+
+    protected:
+        void OnAppear() override;
+        void OnKill() noexcept override;
+
+    private:
+        NS::UI::UISystem m_widgets;
     };
 } // namespace NS::Obj

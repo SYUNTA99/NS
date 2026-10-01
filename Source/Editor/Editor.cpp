@@ -48,7 +48,9 @@ void Editor::OnAttach()
     Game* game = Game::Get();
     decltype(game->CurrentScene()) scene = nullptr;
     if (game != nullptr)
+    {
         scene = game->CurrentScene();
+    }
     if (app == nullptr || scene == nullptr)
     {
         NS_LOG_ERROR(App, "Editor::OnAttach: app / play scene 不在のため編集を起動できない");
@@ -58,13 +60,17 @@ void Editor::OnAttach()
     // ImGui ライフサイクルを Layer が所有する。Application は UI を知らないので editor が立ち上げる
     m_imgui = std::make_unique<NS::UI::ImGuiContext>(app->Window(), app->Renderer());
     if (!m_imgui->IsValid())
+    {
         NS_LOG_ERROR(App, "ImGuiContext 構築失敗、 編集 UI は機能しない");
+    }
 
     // Platform は UI 実装を知らないので、転送は hook 経由にする
     app->Window().SetMessageHook(
         [imgui = m_imgui.get()](void* hwnd, std::uint32_t msg, std::uintptr_t wParam, std::intptr_t lParam) {
             if (imgui != nullptr)
+            {
                 (void)imgui->ForwardWndProc(hwnd, msg, wParam, lParam);
+            }
         });
 
     m_controller = std::make_unique<LevelEditorController>(scene);
@@ -115,7 +121,9 @@ void Editor::OnDetach()
 void Editor::OnUpdate()
 {
     if (!IsActive() || !m_controller)
+    {
         return;
+    }
 
     m_controller->Tick();
     HandleModeToggleInput(*m_controller);
@@ -126,11 +134,15 @@ void Editor::OnUpdate()
 void Editor::OnRender()
 {
     if (!IsActive() || !m_controller || !m_imgui)
+    {
         return;
+    }
     LevelEditorController& editor = *m_controller;
     NS::App::Application* app = NS::App::Application::Get();
     if (app == nullptr)
+    {
         return;
+    }
 
     // ImGui の 1 フレームを Layer が囲う。Renderer::BeginFrame 済の RT へ EndFrame の Render が描く
     m_imgui->BeginFrame();
@@ -181,9 +193,13 @@ void Editor::OnRender()
             if (tabFocus.has_value())
             {
                 if (*tabFocus == NS::Editor::CenterTab::Game)
+                {
                     ImGui::SetWindowFocus(k_PanelGame);
+                }
                 else
+                {
                     ImGui::SetWindowFocus(k_PanelScene);
+                }
             }
 
             m_dock.TickTabFocus();
@@ -214,14 +230,20 @@ void Editor::OnRender()
     {
         std::vector<NS::Obj::SceneView> views;
         if (std::optional<NS::Obj::SceneView> sceneView = m_sceneView.CollectView(editor))
+        {
             views.push_back(*sceneView);
+        }
         if (std::optional<NS::Obj::SceneView> gameView = m_gameView.CollectView(editor))
+        {
             views.push_back(*gameView);
+        }
         editor.SetSceneViews(std::move(views));
     }
     else
+    {
         // F5 全画面プレイ: ビュー列を空にし backbuffer へ Brain 視点で 1 回描く
         editor.SetSceneViews({});
+    }
     // ビュー列方式なので単一 sceneTarget は使わない。BeginFrame には backbuffer だけ clear させる
     app->Renderer().SetSceneTarget(nullptr);
 
@@ -258,14 +280,18 @@ void Editor::OnRender()
 
     // 見回しドラッグの立ち下がりで押しっぱなしのキーが残らないよう解除する。WM_KEYUP も UI 捕捉中は届かない
     if (m_sceneView.ConsumeFreeFlyReleased())
+    {
         app->Input().Keyboard().ClearState();
+    }
 }
 
 void Editor::HandleModeToggleInput(LevelEditorController& editor) noexcept
 {
     NS::App::Application* app = NS::App::Application::Get();
     if (app == nullptr)
+    {
         return;
+    }
     NS::Platform::Input& input = app->Input();
 
     // UI がキーボードを握っている間は mode flip させない
@@ -278,19 +304,27 @@ void Editor::HandleModeToggleInput(LevelEditorController& editor) noexcept
     if (tabPressed || startPressed)
     {
         if (editor.CurrentMode() == LevelEditorController::Mode::Edit)
+        {
             editor.EnterPlay();
+        }
         else
+        {
             editor.EnterEdit();
+        }
     }
 }
 
 void Editor::HandlePauseInput(LevelEditorController& editor) noexcept
 {
     if (editor.CurrentMode() != LevelEditorController::Mode::Play)
+    {
         return;
+    }
     NS::App::Application* app = NS::App::Application::Get();
     if (app == nullptr)
+    {
         return;
+    }
     NS::Platform::Input& input = app->Input();
 
     const bool wantKb = input.UiWantsKeyboard();
@@ -300,7 +334,9 @@ void Editor::HandlePauseInput(LevelEditorController& editor) noexcept
         input.Gamepad(0).IsConnected() && input.Gamepad(0).IsPressed(NS::Platform::GamepadButton::Back);
 
     if (pPressed || backPressed)
+    {
         editor.TogglePlayPause();
+    }
 }
 
 void Editor::HandleUiVisibilityInput(LevelEditorController& editor) noexcept
@@ -314,12 +350,16 @@ void Editor::HandleUiVisibilityInput(LevelEditorController& editor) noexcept
 
     NS::App::Application* app = NS::App::Application::Get();
     if (app == nullptr)
+    {
         return;
+    }
     NS::Platform::Input& input = app->Input();
 
     // 隠している間は ImGui がキーボードを掴まないので F5 で再表示できる
     if (!input.UiWantsKeyboard() && input.Keyboard().IsPressed(NS::Platform::Key::F5))
+    {
         m_uiVisible = !m_uiVisible;
+    }
 }
 
 float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
@@ -330,7 +370,9 @@ float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
 
     const ImGuiViewport* vp = ImGui::GetMainViewport();
     if (vp == nullptr)
+    {
         return height;
+    }
     ImGui::SetNextWindowPos(vp->WorkPos);
     ImGui::SetNextWindowSize(ImVec2{vp->WorkSize.x, height});
     constexpr ImGuiWindowFlags k_ToolbarFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
@@ -349,38 +391,67 @@ float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
 
         // 開始 / 停止トグル。編集中は ▶ で再生開始、再生中は ■ で実行から抜ける
         if (state.playActive)
+        {
             ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_ButtonActive]);
-        if (ImGui::Button(state.playActive ? "■" : "▶", ImVec2(buttonWidth, 0.0f)))
+        }
+        const char* playLabel = "▶";
+        if (state.playActive)
+        {
+            playLabel = "■";
+        }
+        if (ImGui::Button(playLabel, ImVec2(buttonWidth, 0.0f)))
         {
             if (state.playActive)
+            {
                 editor.EnterEdit();
+            }
             else
+            {
                 editor.EnterPlay();
+            }
         }
         if (state.playActive)
+        {
             ImGui::PopStyleColor();
+        }
 
         // 一時停止 / 再開。抜けずに時間だけ止める
         ImGui::SameLine();
         if (!state.pauseEnabled)
+        {
             ImGui::BeginDisabled();
+        }
         if (state.pauseDown)
+        {
             ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_ButtonActive]);
+        }
         if (ImGui::Button("||", ImVec2(buttonWidth, 0.0f)))
+        {
             editor.TogglePlayPause();
+        }
         if (state.pauseDown)
+        {
             ImGui::PopStyleColor();
+        }
         if (!state.pauseEnabled)
+        {
             ImGui::EndDisabled();
+        }
 
         // コマ送り。一時停止したまま 1 fixed step だけ進める
         ImGui::SameLine();
         if (!state.stepEnabled)
+        {
             ImGui::BeginDisabled();
+        }
         if (ImGui::Button("▶|", ImVec2(buttonWidth, 0.0f)))
+        {
             editor.RequestStepFrame();
+        }
         if (!state.stepEnabled)
+        {
             ImGui::EndDisabled();
+        }
     }
     ImGui::End();
     return height;
@@ -411,14 +482,22 @@ void Editor::RenderMainMenuBar(LevelEditorController& editor) noexcept
         {
             ImGui::PushStyleColor(ImGuiCol_Text, k_MenuBarText);
             if (ImGui::MenuItem("保存", "Ctrl+S", false, editEnabled))
+            {
                 ed.RequestSave();
+            }
             if (ImGui::MenuItem("名前を付けて保存...", "Ctrl+Shift+S", false, editEnabled))
+            {
                 ed.OpenSaveModal();
+            }
             if (ImGui::MenuItem("レベルを開く...", "Ctrl+O", false, editEnabled))
+            {
                 ed.OpenLoadModal();
+            }
             ImGui::Separator();
             if (ImGui::MenuItem("終了", "Alt+F4"))
+            {
                 NS::App::Application::Quit();
+            }
             ImGui::PopStyleColor();
             ImGui::EndMenu();
         }
@@ -427,9 +506,13 @@ void Editor::RenderMainMenuBar(LevelEditorController& editor) noexcept
         {
             ImGui::PushStyleColor(ImGuiCol_Text, k_MenuBarText);
             if (ImGui::MenuItem("元に戻す", "Ctrl+Z", false, editEnabled && ed.CanUndo()))
+            {
                 ed.PerformUndo();
+            }
             if (ImGui::MenuItem("やり直す", "Ctrl+Y", false, editEnabled && ed.CanRedo()))
+            {
                 ed.PerformRedo();
+            }
             ImGui::PopStyleColor();
             ImGui::EndMenu();
         }
@@ -449,7 +532,9 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
 #if NS_EDITOR_ENABLED
     const ImGuiViewport* vp = ImGui::GetMainViewport();
     if (vp == nullptr)
+    {
         return;
+    }
     const ImVec2 hostPos{vp->WorkPos.x, vp->WorkPos.y + topOffset};
     const ImVec2 hostSize{vp->WorkSize.x, vp->WorkSize.y - topOffset};
 
@@ -476,17 +561,29 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
     m_sceneView.Suppress(editor);
     m_gameView.Suppress(editor);
     if (name == k_PanelHierarchy)
+    {
         m_hierarchy.Render(editor);
+    }
     else if (name == k_PanelInspector)
+    {
         m_inspector.Render(editor);
+    }
     else if (name == k_PanelConsole)
+    {
         m_console.Render();
+    }
     else if (name == k_PanelAssets)
+    {
         m_assets.Render(editor);
+    }
     else if (name == k_PanelEditMode)
+    {
         m_toolMode.Render(editor);
+    }
     else
+    {
         m_dock.ClearMaximized(); // 未知名は保険で解除
+    }
 #else
     (void)editor;
     (void)topOffset;
@@ -498,19 +595,29 @@ void Editor::HandleEditShortcuts(LevelEditorController& editor) noexcept
 #if NS_EDITOR_ENABLED
     // プレイ中の配置物は live がそのまま保存対象なので、誤爆で消さないよう編集中だけ効かせる
     if (editor.CurrentMode() != LevelEditorController::Mode::Edit)
+    {
         return;
+    }
 
     const ImGuiIO& io = ImGui::GetIO();
     // 改名の入力欄に居る間は Delete も D も文字入力
     if (io.WantTextInput)
+    {
         return;
+    }
 
     if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
+    {
         editor.DeleteSelectedObject();
+    }
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false))
+    {
         editor.DuplicateSelectedObject();
+    }
     if (!io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_F, false))
+    {
         editor.FocusSelectedInView();
+    }
 #else
     (void)editor;
 #endif

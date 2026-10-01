@@ -599,11 +599,15 @@ namespace NS::Gfx
     {
         // cubemap を指定していないシーンは空を持たない。Skybox の構築もしない
         if (cubemapPath.empty())
+        {
             return;
+        }
 
         EnsureSkyboxResources();
         if (!m_skybox)
+        {
             return;
+        }
 
         // 毎フレーム LoadCubemap するとファイル読み込みが常時走る
         if (cubemapPath != m_loadedSkyboxPath)

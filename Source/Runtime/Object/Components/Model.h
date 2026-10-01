@@ -19,17 +19,18 @@ namespace NS::Gfx
 
 namespace NS::Obj
 {
+
     //! @brief Mesh と Material を描く Component
     //! @details Collect が DrawWorldMatrix(context.alpha) を FrameCB へ詰めた DrawItem を積む
     //! 固定ステップの物理結果を、可変フレームレートでなめらかに補間して描く
     //! 描く時だけの局所の回転を持ち、根の行列より先に掛ける。根の Transform は書き換えない
     //! 描く時だけの世界の軸の倍率も持ち、描く形の下端の真ん中を中心に最後に掛ける
-    class MeshRenderer : public Component, public IRenderable
+    class Model : public Component, public IRenderable
     {
     public:
         //! Mesh / Material は非所有の生ポインタ。空で作り、後から SetMesh / SetMaterial で入れる
         //! 寿命は AssetManager 等の所有側が保証する
-        MeshRenderer() noexcept = default;
+        Model() noexcept = default;
 
         //! Material を共有したまま配置物ごとに変える個体色。lighting とは別系統
         void SetBaseColor(const NS::Core::Vector3& color) noexcept { m_baseColor = color; }
@@ -74,7 +75,8 @@ namespace NS::Obj
 
         //! @brief 描く時だけの局所の回転を書く。根の行列より先に掛かるので、根のスケールは局所の回転と一緒に回らない
         //! @details 今のフレームの値だけを書き、前のフレームの値は OnUpdate が控える。保存はしない
-        //! Update 帯の既定の優先度で回る OnUpdate より後に書くこと。先に書くと前のフレームの値と同じになり補間されない
+        //! 持ち主の Actor の Update が呼ぶ OnUpdate より後に書くこと。
+        //! 先に書くと前のフレームの値と同じになり補間されない
         void SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept { m_localRotation = rotation; }
         //! @brief 今と前のフレームの局所の回転を同じ値にする
         //! @details 補間せずにこの姿勢で描く。mesh を差し替えたフレームに、差し替える前の回転から補間されないようにする
@@ -92,7 +94,7 @@ namespace NS::Obj
         //! 根の補間 world 行列で包んだ箱で、局所の回転は含めない。どちらも無ければ根の原点を中心にする
         //! 保存はせず、根の Transform と当たりは変えない
         //! 今のフレームの値だけを書き、前のフレームの値は OnUpdate が控える
-        //! Update 帯の既定の優先度で回る OnUpdate より後に書くこと。先に書くと補間されない
+        //! 持ち主の Actor の Update が呼ぶ OnUpdate より後に書くこと。先に書くと補間されない
         //! 有限の正でない成分 (非数・無限大・0 以下) を含む倍率は何も変えない
         //! @param[in] scale 世界の軸ごとの倍率。(1, 1, 1) で倍率の無い形
         //! @return 成分が全部有限の正で書いた場合 true、それ以外の場合は false
@@ -130,11 +132,14 @@ namespace NS::Obj
         [[nodiscard]] NS::Core::AABB WorldBounds() const noexcept override;
 
         //! OwningScene に self を IRenderable として登録する。Owner/Scene が null なら何もしない
+        void OnAppear() override { Model::OnStart(); }
+        void OnKill() noexcept override { Model::OnEndPlay(); }
         void OnStart() override;
         //! Owner の OwningScene から self を解除する。無効ポインタを残さないよう Scene 破棄前に呼ぶ
         void OnEndPlay() override;
         //! @brief 今の局所の回転と描く時だけの倍率を前のフレームの値として控える
-        //! @details 局所の回転と倍率は、これより大きい優先度で書くこと。非活性の間は控えないので、活性に戻った
+        //! @details 持ち主の Actor の Update が呼ぶ。局所の回転と倍率は同じフレームのこれより後に書くこと。
+        //! 非活性の間は控えないので、活性に戻った
         //! 最初のフレームは止める前の値から補間される
         void OnUpdate() override;
 
@@ -142,7 +147,7 @@ namespace NS::Obj
         //! 共有 material 名を先に引き、外れたら .mat 相対パスとして読む。解決不可は cube と既定 material にする
         void ResolveAssets(AssetManager& assets) override;
 
-        NS_REFLECT_BEGIN(MeshRenderer, Component)
+        NS_REFLECT_BEGIN(Model, Component)
         NS_REFLECT_FIELD(m_baseColor, "基本色")
         NS_REFLECT_FIELD(m_meshRef, "メッシュ")
         NS_REFLECT_FIELD(m_materialRef, "マテリアル")

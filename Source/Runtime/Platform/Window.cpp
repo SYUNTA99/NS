@@ -115,9 +115,13 @@ namespace NS::Platform
 
             // 焦点を失ったまま毎フレーム SetCursorPos すると他のアプリの操作を奪うため、焦点の有無を控える
             if (msg == WM_SETFOCUS)
+            {
                 impl->hasFocus = true;
+            }
             else if (msg == WM_KILLFOCUS)
+            {
                 impl->hasFocus = false;
+            }
 
             // OSからのメッセージを ImGui に送る
             if (impl->messageHook)
@@ -293,7 +297,9 @@ namespace NS::Platform
 
         int showCommand = SW_HIDE;
         if (desc.visible)
+        {
             showCommand = SW_SHOW;
+        }
         ::ShowWindow(m_pImpl->hwnd, showCommand);
         ::UpdateWindow(m_pImpl->hwnd);
 
@@ -384,7 +390,9 @@ namespace NS::Platform
         // 次の WM_SETCURSOR を待たず即時反映する。マウスが動かなくても切替わる
         HCURSOR cursor = nullptr;
         if (visible)
+        {
             cursor = ::LoadCursorW(nullptr, IDC_ARROW);
+        }
         ::SetCursor(cursor);
     }
 

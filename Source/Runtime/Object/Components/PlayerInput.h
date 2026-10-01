@@ -16,8 +16,26 @@ namespace NS::Obj
         PlayerInput() noexcept;
 
         //! camera 相対移動用の水平 forward を注入し、XZ 平面で Y=0 とする。未注入時は world +Z
-        //! CameraManager の居る scene では OnUpdate が毎ステップ上書きする。CameraManager 不在 (テスト等) では直接設定に使う
+        //! CameraManager の居る scene では OnUpdate が毎ステップ上書きする。CameraManager 不在 (テスト等)
+        //! では直接設定に使う
         void SetCameraForward(const NS::Core::Vector3& cameraForwardHorizontal) noexcept;
+
+        //! @brief 目標の移動方向と速度スケールを直接書く
+        //! @param[in] worldDir world 空間の目標移動方向。そのまま控える
+        //! @param[in] speedScale01 目標速度スケール。0..1 に丸める
+        void SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept;
+        //! @brief 掴まりで使うローカル入力を直接書く。どちらも -1..1 に丸める
+        void SetClimbMove(float localRight, float localForward) noexcept;
+        //! 跳びの押した瞬間を立てる。ConsumePressed が下ろす
+        void SetJumpPressed() noexcept { m_jumpPressed = true; }
+        //! 掴まりの手放しの押した瞬間を立てる。ConsumePressed が下ろす
+        void SetReleaseLedgePressed() noexcept { m_releaseLedgePressed = true; }
+        //! 跳びの押しっぱなしを書く
+        void SetJumpHeld(bool held) noexcept { m_jumpHeld = held; }
+        //! 跳びと掴まりの手放しの押した瞬間を下ろす
+        void ConsumePressed() noexcept;
+        //! 移動・掴まり・跳びの入力を全て 0 と false に戻す
+        void ResetMovementInput() noexcept;
 
         // 読み取った値は自分で持つ。渡し先の型を include できない場所からも引ける
         //! 直近のフレームで作った world 空間の目標移動方向。長さは入力の強さのまま
@@ -27,10 +45,8 @@ namespace NS::Obj
         //! 掴まりで使う、camera 回転をかける前のローカル入力
         [[nodiscard]] float ClimbRight() const noexcept { return m_climbRight; }
         [[nodiscard]] float ClimbForward() const noexcept { return m_climbForward; }
-        //! ジャンプの押下があったフレームだけ true
         [[nodiscard]] bool JumpPressed() const noexcept { return m_jumpPressed; }
         [[nodiscard]] bool JumpHeld() const noexcept { return m_jumpHeld; }
-        //! 掴まりの手放しの押下があったフレームだけ true
         [[nodiscard]] bool ReleaseLedgePressed() const noexcept { return m_releaseLedgePressed; }
 
         void OnUpdate() override;

@@ -1,8 +1,9 @@
 ﻿#include "Game/Entity/EntityComponent.h"
 
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Gravity.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/JoltCharacter.h"
@@ -32,7 +33,7 @@ namespace NS::Game::Entity
 {
     // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、
     // 天井に当たったフレームの上向き速度は Move を抜けた時点で 0 になっている
-    EntityComponent::EntityComponent() noexcept : NS::Obj::Component(NS::Obj::TickPriority::Update) {}
+    EntityComponent::EntityComponent() noexcept : NS::Obj::Component() {}
 
     NS::Core::Vector3 EntityComponent::LateralVelocity() const noexcept
     {
@@ -110,7 +111,7 @@ namespace NS::Game::Entity
         {
             return nullptr;
         }
-        return Owner()->FindComponent<NS::Obj::CapsuleCollider>();
+        return Owner()->ColliderPart();
     }
 
     NS::Phys::PhysicsScene* EntityComponent::ScenePhysics() const noexcept
@@ -126,7 +127,7 @@ namespace NS::Game::Entity
     {
         if (Owner() != nullptr)
         {
-            m_capsuleCollider = Owner()->FindComponent<NS::Obj::CapsuleCollider>();
+            m_capsuleCollider = Owner()->ColliderPart();
         }
         // 自分の capsule は Move が掃引する。静的世界に居ると自分に当たって動けない
         if (m_capsuleCollider != nullptr)
@@ -137,15 +138,7 @@ namespace NS::Game::Entity
         m_bodySensor = nullptr;
         if (Owner() != nullptr)
         {
-            for (NS::Obj::Component* comp : Owner()->Components())
-            {
-                NS::Obj::HitSensor* sensor = NS::Obj::ComponentCast<NS::Obj::HitSensor>(comp);
-                if (sensor != nullptr && sensor->Shape() == NS::Obj::HitSensorShape::Capsule)
-                {
-                    m_bodySensor = sensor;
-                    break;
-                }
-            }
+            m_bodySensor = Owner()->BodySensorPart();
         }
         SyncBodySensor();
     }
@@ -160,7 +153,6 @@ namespace NS::Game::Entity
             return;
         }
 
-        HandleStates(dt);
         HandleMovement(dt);
     }
 
@@ -198,7 +190,13 @@ namespace NS::Game::Entity
 
     void EntityComponent::Gravity(float gravity, float dt) noexcept
     {
-        m_velocity.y += gravity * dt;
+        const NS::Obj::Actor* owner = Owner();
+        if (owner == nullptr)
+        {
+            m_velocity.y += gravity * dt;
+            return;
+        }
+        NS::Obj::AddGravity(*owner, m_velocity, -gravity, dt);
     }
 
     void EntityComponent::Move(float dt, float maxStepHeight) noexcept

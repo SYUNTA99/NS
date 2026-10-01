@@ -17,7 +17,9 @@ namespace
         for (const NS::Obj::TypeRegistry::Entry* entry : NS::Obj::PlaceableEntries())
         {
             if (className == entry->className)
+            {
                 return entry;
+            }
         }
         return nullptr;
     }
@@ -41,7 +43,7 @@ TEST(ActorRegistry, PlayerAndComponentsAreNotPlaceable)
 {
     // プレイヤーは新しいレベルに自動で 1 体入るので置く一覧に出さない。部品も置く物ではない
     EXPECT_EQ(FindPlaceable("Player"), nullptr);
-    EXPECT_EQ(FindPlaceable("MeshRenderer"), nullptr);
+    EXPECT_EQ(FindPlaceable("Model"), nullptr);
     EXPECT_EQ(FindPlaceable("GoalComponent"), nullptr);
 }
 
@@ -81,5 +83,25 @@ TEST(ActorRegistry, UnknownClassFallsBackToPlainActor)
     NS::Obj::SetObjectJsonClass(object, "NoSuchActor");
     const std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::CreateRegisteredObject(object);
     ASSERT_NE(actor, nullptr);
-    EXPECT_TRUE(std::string_view{actor->ClassName()}.empty());
+    EXPECT_EQ(std::string_view{actor->ClassName()}, "Actor");
+}
+
+TEST(ActorRegistry, PartDefaultsAreOwnedWithoutAnActor)
+{
+    const std::unique_ptr<NS::Obj::Component> first = NS::Obj::CreatePartDefault("Model");
+    const std::unique_ptr<NS::Obj::Component> second = NS::Obj::CreatePartDefault("Model");
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    EXPECT_NE(first.get(), second.get());
+    EXPECT_EQ(first->Owner(), nullptr);
+    EXPECT_EQ(second->Owner(), nullptr);
+    EXPECT_EQ(NS::Obj::CreatePartDefault("Player"), nullptr);
+    EXPECT_EQ(NS::Obj::CreatePartDefault("NoSuchPart"), nullptr);
+}
+
+TEST(ActorRegistry, RetiredMapObjectAbilitiesCannotBeCreated)
+{
+    EXPECT_EQ(NS::Obj::TypeRegistry::Get().Find("LaunchedBody"), nullptr);
+    EXPECT_EQ(NS::Obj::TypeRegistry::Get().Find("Breakable"), nullptr);
+    EXPECT_EQ(NS::Obj::TypeRegistry::Get().Find("TackleReaction"), nullptr);
 }

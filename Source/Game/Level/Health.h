@@ -1,16 +1,17 @@
 #pragma once
 
-#include "Runtime/Object/Component.h"
-
 namespace NS::Game::Level
 {
     //! @brief プレイヤーの命。残量の所有と増減の能力だけ持ち、誰に削られるかは知らない
     //! @details KillZone 等のルール配置物が ApplyDamage / Kill を呼ぶ
-    //! 死んだ後どうするかは Respawner が IsDead を読んで決める。OnUpdate は持たない
-    class Health : public NS::Obj::Component
+    //! Player の値メンバーで、進行役は Player::IsDead を読む
+    class Health
     {
     public:
-        Health() noexcept;
+        Health() noexcept = default;
+        //! @brief 最大の命を差し替え、残量が上回っていれば最大まで削る
+        //! @param[in] value 新しい最大。0 以下なら何も変えない
+        void SetMaxHealth(int value) noexcept;
 
         //! amount だけ削る。下限 0。既に 0 か amount が 0 以下なら何もしない
         void ApplyDamage(int amount) noexcept;
@@ -21,12 +22,9 @@ namespace NS::Game::Level
         //! 満タンへ戻す。プレイ突入とリスタートで呼ぶ
         void Reset() noexcept { m_current = m_maxHealth; }
 
+        //! 残量が 0 以下の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsDead() const noexcept { return m_current <= 0; }
         [[nodiscard]] int Current() const noexcept { return m_current; }
-
-        NS_REFLECT_BEGIN(Health, NS::Obj::Component)
-        NS_REFLECT_FIELD(m_maxHealth, "体力")
-        NS_REFLECT_END()
 
     private:
         int m_maxHealth = 8; // 8 段階

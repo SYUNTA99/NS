@@ -50,7 +50,9 @@ namespace NS::Editor
     {
         // 加算でなく log scale にして、近距離・遠距離の体感変化量を揃える
         if (zoomDelta == 0.0f)
+        {
             return;
+        }
         const float factor = std::pow(0.9f, zoomDelta);
         m_desiredDistance = std::clamp(m_desiredDistance * factor, k_MinDistance, k_MaxDistance);
     }
@@ -71,7 +73,9 @@ namespace NS::Editor
         float forwardAxis, float strafeAxis, float verticalAxis, float dt, float speedScale) noexcept
     {
         if (forwardAxis == 0.0f && strafeAxis == 0.0f && verticalAxis == 0.0f)
+        {
             return;
+        }
 
         const float cosPitch = std::cos(m_pitch);
         const float sinPitch = std::sin(m_pitch);
@@ -157,17 +161,29 @@ namespace NS::Editor
         {
             NS::Platform::Keyboard& kb = input.Keyboard();
             if (kb.IsHeld(NS::Platform::Key::W))
+            {
                 frameInput.forwardAxis += 1.0f;
+            }
             if (kb.IsHeld(NS::Platform::Key::S))
+            {
                 frameInput.forwardAxis -= 1.0f;
+            }
             if (kb.IsHeld(NS::Platform::Key::D))
+            {
                 frameInput.strafeAxis += 1.0f;
+            }
             if (kb.IsHeld(NS::Platform::Key::A))
+            {
                 frameInput.strafeAxis -= 1.0f;
+            }
             if (kb.IsHeld(NS::Platform::Key::E))
+            {
                 frameInput.verticalAxis += 1.0f;
+            }
             if (kb.IsHeld(NS::Platform::Key::Q))
+            {
                 frameInput.verticalAxis -= 1.0f;
+            }
             // 微調整と広い地形移動を両立するため、Shift 押下時だけ 4 倍速にする
             if (kb.IsHeld(NS::Platform::Key::Shift))
             {
