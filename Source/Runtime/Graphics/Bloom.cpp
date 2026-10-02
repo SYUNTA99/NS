@@ -8,7 +8,6 @@
 #include "Runtime/Graphics/Pipeline.h"
 #include "Runtime/Graphics/Shader.h"
 #include "Runtime/Graphics/Texture.h"
-#include "Runtime/Platform/Filesystem.h"
 
 #include <algorithm>
 #include <string>
@@ -65,14 +64,12 @@ namespace NS::Gfx
             return;
         }
 
-        const std::string shaderDir =
-            NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Shaders");
         // 頂点バッファを使わない全画面三角形。暗転と同じ物
-        m_vs = Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "fade.vs.hlsl"));
-        m_thresholdPs = Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "bloom_threshold.ps.hlsl"));
-        m_downPs = Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "bloom_down.ps.hlsl"));
-        m_upPs = Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "bloom_up.ps.hlsl"));
-        m_compositePs = Shader::Create(NS::Platform::FileSystem::Combine(shaderDir, "bloom_composite.ps.hlsl"));
+        m_vs = Shader::CreateBuiltin("fade.vs.hlsl");
+        m_thresholdPs = Shader::CreateBuiltin("bloom_threshold.ps.hlsl");
+        m_downPs = Shader::CreateBuiltin("bloom_down.ps.hlsl");
+        m_upPs = Shader::CreateBuiltin("bloom_up.ps.hlsl");
+        m_compositePs = Shader::CreateBuiltin("bloom_composite.ps.hlsl");
         if (!m_vs->IsValid() || m_vs->IsUsingFallback() || !m_thresholdPs->IsValid() ||
             m_thresholdPs->IsUsingFallback() || !m_downPs->IsValid() || m_downPs->IsUsingFallback() ||
             !m_upPs->IsValid() || m_upPs->IsUsingFallback() || !m_compositePs->IsValid() ||

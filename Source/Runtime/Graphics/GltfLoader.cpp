@@ -19,8 +19,10 @@ namespace NS::Gfx
 {
     namespace
     {
+        // .glb の解析結果は読み込み元のバイト列を指すので、両方を同じ寿命で持つ
         struct CgltfGuard
         {
+            std::vector<std::byte> bytes;
             cgltf_data* data = nullptr;
             ~CgltfGuard()
             {
@@ -42,6 +44,38 @@ namespace NS::Gfx
                 }
             }
             return nullptr;
+        }
+
+        // .gltf / .glb はここで読んでメモリで渡す。ファイルの読み込みは Platform の FileSystem を通す決まり
+        // TODO: 外部 .bin の buffer は cgltf_load_buffers が cgltf 内部の fopen で読む
+        // options.file.read を FileSystem 経由に差し替えれば全部の読み込みが FileSystem を通る。release は read
+        // の確保の仕方に合わせる 失敗はログを出して false。caller はログの頭に出す読み込み関数の名前
+        bool OpenGltf(const std::string& path, std::string_view caller, CgltfGuard& outFile)
+        {
+            std::optional<std::vector<std::byte>> bytes = NS::Platform::FileSystem::ReadAllBytes(path);
+            if (!bytes)
+            {
+                return false; // ReadAllBytes 内で NS_LOG_ERROR 済
+            }
+            outFile.bytes = std::move(*bytes);
+
+            cgltf_options options{};
+            cgltf_result result = cgltf_parse(&options, outFile.bytes.data(), outFile.bytes.size(), &outFile.data);
+            if (result != cgltf_result_success)
+            {
+                NS_LOG_ERROR(
+                    Graphics, "{}: glTF parse 失敗 (path={}, code={})", caller, path, static_cast<int>(result));
+                return false;
+            }
+
+            result = cgltf_load_buffers(&options, outFile.data, path.c_str());
+            if (result != cgltf_result_success)
+            {
+                NS_LOG_ERROR(
+                    Graphics, "{}: buffer 読込失敗 (path={}, code={})", caller, path, static_cast<int>(result));
+                return false;
+            }
+            return true;
         }
 
         // KHR_draco_mesh_compression が必須拡張に含まれるか。cgltf_load_buffers は Draco を展開しないため、
@@ -99,34 +133,18 @@ namespace NS::Gfx
                 return vertexCount;
             }();
             // 三角形ごとに面法線を積算
+            const auto vertexAt = [&](cgltf_size corner) -> cgltf_size {
+                if (prim.indices != nullptr)
+                {
+                    return cgltf_accessor_read_index(prim.indices, corner);
+                }
+                return corner;
+            };
             for (cgltf_size t = 0; t + 2 < count; t += 3)
             {
-                const cgltf_size i0 = [&]() -> cgltf_size {
-                    if (prim.indices != nullptr)
-                    {
-                        return cgltf_accessor_read_index(prim.indices, t);
-                    }
-
-                    return t;
-                }();
-
-                const cgltf_size i1 = [&]() -> cgltf_size {
-                    if (prim.indices != nullptr)
-                    {
-                        return cgltf_accessor_read_index(prim.indices, t + 1);
-                    }
-
-                    return t + 1;
-                }();
-
-                const cgltf_size i2 = [&]() -> cgltf_size {
-                    if (prim.indices != nullptr)
-                    {
-                        return cgltf_accessor_read_index(prim.indices, t + 2);
-                    }
-
-                    return t + 2;
-                }();
+                const cgltf_size i0 = vertexAt(t);
+                const cgltf_size i1 = vertexAt(t + 1);
+                const cgltf_size i2 = vertexAt(t + 2);
 
                 if (i0 >= vertexCount || i1 >= vertexCount || i2 >= vertexCount)
                 {
@@ -160,6 +178,39 @@ namespace NS::Gfx
                 }
             }
             return normals;
+        }
+
+        // primitive の index を baseVertex offset 付きで積み、この primitive
+        // 分だけ三角形の巻き順を右手から左手へ反転する index を持たない primitive は頂点の並び順を index とみなす
+        void AppendIndicesLeftHanded(const cgltf_primitive& prim,
+                                     std::uint32_t baseVertex,
+                                     cgltf_size vertexCount,
+                                     std::vector<std::uint32_t>& outIndices)
+        {
+            const std::size_t indexStart = outIndices.size();
+            if (prim.indices != nullptr)
+            {
+                const cgltf_size indexCount = prim.indices->count;
+                outIndices.reserve(outIndices.size() + indexCount);
+                for (cgltf_size i = 0; i < indexCount; ++i)
+                {
+                    outIndices.push_back(baseVertex +
+                                         static_cast<std::uint32_t>(cgltf_accessor_read_index(prim.indices, i)));
+                }
+            }
+            else
+            {
+                outIndices.reserve(outIndices.size() + vertexCount);
+                for (cgltf_size i = 0; i < vertexCount; ++i)
+                {
+                    outIndices.push_back(baseVertex + static_cast<std::uint32_t>(i));
+                }
+            }
+
+            for (std::size_t t = indexStart; t + 2 < outIndices.size(); t += 3)
+            {
+                std::swap(outIndices[t + 1], outIndices[t + 2]);
+            }
         }
 
         // POSITION 必須、三角形以外は呼出元で弾き済み
@@ -261,32 +312,7 @@ namespace NS::Gfx
                 }
             }
 
-            // index を baseVertex offset 付きで積む
-            const std::size_t indexStart = geom.indices.size();
-            if (prim.indices != nullptr)
-            {
-                const cgltf_size indexCount = prim.indices->count;
-                geom.indices.reserve(geom.indices.size() + indexCount);
-                for (cgltf_size i = 0; i < indexCount; ++i)
-                {
-                    geom.indices.push_back(baseVertex +
-                                           static_cast<std::uint32_t>(cgltf_accessor_read_index(prim.indices, i)));
-                }
-            }
-            else
-            {
-                geom.indices.reserve(geom.indices.size() + vertexCount);
-                for (cgltf_size i = 0; i < vertexCount; ++i)
-                {
-                    geom.indices.push_back(baseVertex + static_cast<std::uint32_t>(i));
-                }
-            }
-
-            // この primitive 分だけ三角形の巻き順を右手から左手へ反転
-            for (std::size_t t = indexStart; t + 2 < geom.indices.size(); t += 3)
-            {
-                std::swap(geom.indices[t + 1], geom.indices[t + 2]);
-            }
+            AppendIndicesLeftHanded(prim, baseVertex, vertexCount, geom.indices);
         }
 
         // 三角形以外と Draco 圧縮の primitive は飛ばす
@@ -317,29 +343,9 @@ namespace NS::Gfx
     {
         MeshGeometry geom;
 
-        // .gltf / .glb はここで読んでメモリで渡す。ファイルの読み込みは Platform の FileSystem を通す決まり
-        // TODO: 外部 .bin の buffer は cgltf_load_buffers が cgltf 内部の fopen で読む
-        // LoadGltfSkinnedMesh と LoadGltfAnimationSource も同じ。options.file.read を FileSystem 経由に
-        // 差し替えれば全部の読み込みが FileSystem を通る。release は read の確保の仕方に合わせる
-        const std::optional<std::vector<std::byte>> bytes = NS::Platform::FileSystem::ReadAllBytes(path);
-        if (!bytes)
-        {
-            return geom; // ReadAllBytes 内で NS_LOG_ERROR 済
-        }
-
-        cgltf_options options{};
         CgltfGuard guard;
-        cgltf_result result = cgltf_parse(&options, bytes->data(), bytes->size(), &guard.data);
-        if (result != cgltf_result_success)
+        if (!OpenGltf(path, "LoadGltfMesh", guard))
         {
-            NS_LOG_ERROR(Graphics, "LoadGltfMesh: glTF parse 失敗 (path={}, code={})", path, static_cast<int>(result));
-            return geom;
-        }
-
-        result = cgltf_load_buffers(&options, guard.data, path.c_str());
-        if (result != cgltf_result_success)
-        {
-            NS_LOG_ERROR(Graphics, "LoadGltfMesh: buffer 読込失敗 (path={}, code={})", path, static_cast<int>(result));
             return geom;
         }
 
@@ -619,30 +625,7 @@ namespace NS::Gfx
                 vertices.push_back(v);
             }
 
-            // index を baseVertex offset 付きで積む
-            const std::size_t indexStart = indices.size();
-            if (prim.indices != nullptr)
-            {
-                const cgltf_size indexCount = prim.indices->count;
-                indices.reserve(indices.size() + indexCount);
-                for (cgltf_size i = 0; i < indexCount; ++i)
-                {
-                    indices.push_back(baseVertex +
-                                      static_cast<std::uint32_t>(cgltf_accessor_read_index(prim.indices, i)));
-                }
-            }
-            else
-            {
-                indices.reserve(indices.size() + vertexCount);
-                for (cgltf_size i = 0; i < vertexCount; ++i)
-                {
-                    indices.push_back(baseVertex + static_cast<std::uint32_t>(i));
-                }
-            }
-            for (std::size_t t = indexStart; t + 2 < indices.size(); t += 3)
-            {
-                std::swap(indices[t + 1], indices[t + 2]);
-            }
+            AppendIndicesLeftHanded(prim, baseVertex, vertexCount, indices);
             return true;
         }
 
@@ -909,26 +892,9 @@ namespace NS::Gfx
     {
         SkinnedMeshData data;
 
-        const std::optional<std::vector<std::byte>> bytes = NS::Platform::FileSystem::ReadAllBytes(path);
-        if (!bytes)
-        {
-            return data;
-        }
-
-        cgltf_options options{};
         CgltfGuard guard;
-        cgltf_result result = cgltf_parse(&options, bytes->data(), bytes->size(), &guard.data);
-        if (result != cgltf_result_success)
+        if (!OpenGltf(path, "LoadGltfSkinnedMesh", guard))
         {
-            NS_LOG_ERROR(
-                Graphics, "LoadGltfSkinnedMesh: glTF parse 失敗 (path={}, code={})", path, static_cast<int>(result));
-            return data;
-        }
-        result = cgltf_load_buffers(&options, guard.data, path.c_str());
-        if (result != cgltf_result_success)
-        {
-            NS_LOG_ERROR(
-                Graphics, "LoadGltfSkinnedMesh: buffer 読込失敗 (path={}, code={})", path, static_cast<int>(result));
             return data;
         }
 
@@ -1039,30 +1005,9 @@ namespace NS::Gfx
     {
         AnimationSource source;
 
-        const std::optional<std::vector<std::byte>> bytes = NS::Platform::FileSystem::ReadAllBytes(path);
-        if (!bytes)
-        {
-            return source;
-        }
-
-        cgltf_options options{};
         CgltfGuard guard;
-        cgltf_result result = cgltf_parse(&options, bytes->data(), bytes->size(), &guard.data);
-        if (result != cgltf_result_success)
+        if (!OpenGltf(path, "LoadGltfAnimationSource", guard))
         {
-            NS_LOG_ERROR(Graphics,
-                         "LoadGltfAnimationSource: glTF parse 失敗 (path={}, code={})",
-                         path,
-                         static_cast<int>(result));
-            return source;
-        }
-        result = cgltf_load_buffers(&options, guard.data, path.c_str());
-        if (result != cgltf_result_success)
-        {
-            NS_LOG_ERROR(Graphics,
-                         "LoadGltfAnimationSource: buffer 読込失敗 (path={}, code={})",
-                         path,
-                         static_cast<int>(result));
             return source;
         }
 

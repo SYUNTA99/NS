@@ -4,6 +4,31 @@
 
 namespace NS::Gfx
 {
+    namespace
+    {
+        // 1 行 segments + 1 頂点で rows 行並んだ格子を、隣り合う 2 行ずつ三角形 2 枚の帯で繋ぐ
+        // 行が下へ進むほど経線を南へ下る並びで、各面が外側を向く
+        void AppendLatticeIndices(std::uint32_t rows, std::uint32_t segments, std::vector<std::uint32_t>& outIndices)
+        {
+            const std::uint32_t stride = segments + 1;
+            outIndices.reserve(outIndices.size() + static_cast<std::size_t>(rows - 1) * segments * 6);
+            for (std::uint32_t row = 0; row + 1 < rows; ++row)
+            {
+                for (std::uint32_t segment = 0; segment < segments; ++segment)
+                {
+                    const std::uint32_t upper = row * stride + segment;
+                    const std::uint32_t lower = upper + stride;
+                    outIndices.push_back(upper);
+                    outIndices.push_back(lower);
+                    outIndices.push_back(upper + 1);
+                    outIndices.push_back(upper + 1);
+                    outIndices.push_back(lower);
+                    outIndices.push_back(lower + 1);
+                }
+            }
+        }
+    } // namespace
+
     MeshGeometry MakeCube(const NS::Core::Vector3& extents)
     {
         const float ex = extents.x;
@@ -155,22 +180,7 @@ namespace NS::Gfx
         }
 
         // 各面が「外側」を向くようにインデックスを配置する。極の 1 段は面積 0 の三角形になる
-        const std::uint32_t stride = segments + 1;
-        geom.indices.reserve(static_cast<std::size_t>(rings) * segments * 6);
-        for (std::uint32_t ring = 0; ring < rings; ++ring)
-        {
-            for (std::uint32_t segment = 0; segment < segments; ++segment)
-            {
-                const std::uint32_t upper = ring * stride + segment;
-                const std::uint32_t lower = upper + stride;
-                geom.indices.push_back(upper);
-                geom.indices.push_back(lower);
-                geom.indices.push_back(upper + 1);
-                geom.indices.push_back(upper + 1);
-                geom.indices.push_back(lower);
-                geom.indices.push_back(lower + 1);
-            }
-        }
+        AppendLatticeIndices(rings + 1, segments, geom.indices);
         return geom;
     }
 
@@ -224,22 +234,8 @@ namespace NS::Gfx
             }
         }
 
-        // 並びは MakeSphere と同じで、各面が外側を向く。極の 1 段と、円柱の長さ 0 の赤道は面積 0 の三角形になる
-        geom.indices.reserve(static_cast<std::size_t>(rows - 1) * segments * 6);
-        for (std::uint32_t row = 0; row + 1 < rows; ++row)
-        {
-            for (std::uint32_t segment = 0; segment < segments; ++segment)
-            {
-                const std::uint32_t upper = row * stride + segment;
-                const std::uint32_t lower = upper + stride;
-                geom.indices.push_back(upper);
-                geom.indices.push_back(lower);
-                geom.indices.push_back(upper + 1);
-                geom.indices.push_back(upper + 1);
-                geom.indices.push_back(lower);
-                geom.indices.push_back(lower + 1);
-            }
-        }
+        // 並びは MakeSphere と同じ。極の 1 段と、円柱の長さ 0 の赤道は面積 0 の三角形になる
+        AppendLatticeIndices(rows, segments, geom.indices);
         return geom;
     }
 

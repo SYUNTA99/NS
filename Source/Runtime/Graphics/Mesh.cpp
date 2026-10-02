@@ -95,6 +95,27 @@ namespace NS::Gfx
         m_valid = (m_vb != nullptr && m_ib != nullptr && Gpu().device != nullptr);
     }
 
+    bool Mesh::BuildGeometry(const void* vertices,
+                             std::size_t vertexCount,
+                             std::size_t stride,
+                             const std::uint32_t* indices,
+                             std::size_t indexCount,
+                             bool usingFallback) noexcept
+    {
+        std::unique_ptr<Buffer> vb = Buffer::Create(MakeVertexBufferDesc(vertices, vertexCount, stride));
+        if (!vb->IsValid())
+        {
+            return false;
+        }
+        std::unique_ptr<Buffer> ib = Buffer::Create(MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT));
+        if (!ib->IsValid())
+        {
+            return false;
+        }
+        SetGeometry(std::move(vb), std::move(ib), vertexCount, indexCount, usingFallback);
+        return true;
+    }
+
     void Mesh::SetVertexLayout(std::vector<InputElement> elements) noexcept
     {
         m_layoutElements = std::move(elements);

@@ -12,7 +12,6 @@
 #include "Runtime/Graphics/Pipeline.h"
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Graphics/Shader.h"
-#include "Runtime/Platform/Filesystem.h"
 
 namespace
 {
@@ -67,10 +66,8 @@ namespace
             return false;
         }
 
-        const std::string shaderDir =
-            ::NS::Platform::FileSystem::Combine(::NS::Platform::FileSystem::ContentRoot(), "Shaders");
-        b.vs = NS::Gfx::Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "debug_line.vs.hlsl"));
-        b.ps = NS::Gfx::Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "debug_line.ps.hlsl"));
+        b.vs = NS::Gfx::Shader::CreateBuiltin("debug_line.vs.hlsl");
+        b.ps = NS::Gfx::Shader::CreateBuiltin("debug_line.ps.hlsl");
         if (!b.vs->IsValid() || !b.ps->IsValid())
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: shader 構築失敗");
@@ -147,39 +144,12 @@ namespace NS::Gfx::DebugDraw
 
     void AABB(const NS::Core::AABB& box, const NS::Core::Color& color) noexcept
     {
-        const float cx = box.Center.x;
-        const float cy = box.Center.y;
-        const float cz = box.Center.z;
-        const float ex = box.Extents.x;
-        const float ey = box.Extents.y;
-        const float ez = box.Extents.z;
-
-        const NS::Core::Vector3 c000{cx - ex, cy - ey, cz - ez};
-        const NS::Core::Vector3 c100{cx + ex, cy - ey, cz - ez};
-        const NS::Core::Vector3 c110{cx + ex, cy + ey, cz - ez};
-        const NS::Core::Vector3 c010{cx - ex, cy + ey, cz - ez};
-        const NS::Core::Vector3 c001{cx - ex, cy - ey, cz + ez};
-        const NS::Core::Vector3 c101{cx + ex, cy - ey, cz + ez};
-        const NS::Core::Vector3 c111{cx + ex, cy + ey, cz + ez};
-        const NS::Core::Vector3 c011{cx - ex, cy + ey, cz + ez};
-
-        // 底面
-        PushLine(c000, c100, color);
-        PushLine(c100, c101, color);
-        PushLine(c101, c001, color);
-        PushLine(c001, c000, color);
-
-        // 上面
-        PushLine(c010, c110, color);
-        PushLine(c110, c111, color);
-        PushLine(c111, c011, color);
-        PushLine(c011, c010, color);
-
-        // 縦辺
-        PushLine(c000, c010, color);
-        PushLine(c100, c110, color);
-        PushLine(c101, c111, color);
-        PushLine(c001, c011, color);
+        NS::Core::OBB obb{};
+        obb.center = box.Center;
+        obb.halfExtentX = box.Extents.x;
+        obb.halfExtentY = box.Extents.y;
+        obb.halfExtentZ = box.Extents.z;
+        OBB(obb, color);
     }
 
     void OBB(const NS::Core::OBB& obb, const NS::Core::Color& color) noexcept
@@ -246,41 +216,27 @@ namespace NS::Gfx::DebugDraw
 
         // 軸に対して垂直な2つのベクトルを計算する
         NS::Core::Vector3 axisN = axis;
-        const float axisLen = std::sqrt(axisN.x * axisN.x + axisN.y * axisN.y + axisN.z * axisN.z);
-        if (axisLen > 1e-6f)
+        if (axisN.Length() > 1e-6f)
         {
-            axisN.x /= axisLen;
-            axisN.y /= axisLen;
-            axisN.z /= axisLen;
+            axisN.Normalize();
         }
 
-        NS::Core::Vector3 perpA;
+        NS::Core::Vector3 perpA{1.0f, 0.0f, 0.0f};
         if (std::abs(axisN.y) < 0.99f)
         {
             perpA = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
         }
-        else
-        {
-            perpA = NS::Core::Vector3{1.0f, 0.0f, 0.0f};
-        }
 
-        perpA = {perpA.y * axisN.z - perpA.z * axisN.y,
-                 perpA.z * axisN.x - perpA.x * axisN.z,
-                 perpA.x * axisN.y - perpA.y * axisN.x};
-        const float plen = std::sqrt(perpA.x * perpA.x + perpA.y * perpA.y + perpA.z * perpA.z);
-        if (plen > 1e-6f)
+        perpA = perpA.Cross(axisN);
+        if (perpA.Length() > 1e-6f)
         {
-            perpA.x /= plen;
-            perpA.y /= plen;
-            perpA.z /= plen;
+            perpA.Normalize();
         }
-        const NS::Core::Vector3 perpB{axisN.y * perpA.z - axisN.z * perpA.y,
-                                      axisN.z * perpA.x - axisN.x * perpA.z,
-                                      axisN.x * perpA.y - axisN.y * perpA.x};
+        const NS::Core::Vector3 perpB = axisN.Cross(perpA);
 
         // 上下端の円
-        const NS::Core::Vector3 uA{perpA.x * radius, perpA.y * radius, perpA.z * radius};
-        const NS::Core::Vector3 uB{perpB.x * radius, perpB.y * radius, perpB.z * radius};
+        const NS::Core::Vector3 uA = perpA * radius;
+        const NS::Core::Vector3 uB = perpB * radius;
         PushCircle(top, uA, uB, color);
         PushCircle(bottom, uA, uB, color);
 

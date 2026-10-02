@@ -9,8 +9,7 @@
 namespace NS::Gfx
 {
 
-    class Renderer;
-    class Mesh;
+    class CommandList;
     class StaticMesh;
     class Shader;
     class Buffer;
@@ -40,17 +39,12 @@ namespace NS::Gfx
         //! 画像が未読み込み、または直近の読み込みに失敗したか
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-        //! シェーダへ渡すキューブマップのリソースビューを取得する
-        [[nodiscard]] ID3D11ShaderResourceView* Srv() const noexcept;
-
-        //! スカイボックス描画用のパイプライン設定を取得する
-        [[nodiscard]] const Pipeline* RenderPipeline() const noexcept;
-
-        [[nodiscard]] const Buffer* ConstantBuffer() const noexcept; //!< 定数バッファを返す
-        [[nodiscard]] const Shader* VertexShader() const noexcept;   //!< 頂点シェーダを返す
-        [[nodiscard]] const Shader* PixelShader() const noexcept;    //!< ピクセルシェーダを返す
-        [[nodiscard]] ID3D11SamplerState* Sampler() const noexcept;  //!< キューブマップのサンプラを返す
-        [[nodiscard]] const Mesh* CubeMesh() const noexcept;         //!< 背景を貼る立方体メッシュを返す
+        //! @brief スカイボックスの描画コマンドを発行する
+        //! @details 描画前の深度・ラスタライザ・ブレンドのステートを退避し、描いた後に戻す。無効な状態では何もしない
+        //! @param[in,out] commands コマンドの発行先
+        //! @param[in] viewProjNoTranslate カメラの移動成分を排除したビュー・プロジェクション行列
+        //! @note 不透明なオブジェクトを描画した後、かつ半透明なオブジェクトを描画する前に呼び出すこと
+        void Draw(CommandList& commands, const NS::Core::Matrix& viewProjNoTranslate) const noexcept;
 
     private:
         Skybox();
@@ -65,12 +59,5 @@ namespace NS::Gfx
         bool m_usingFallback = true;
         bool m_valid = false;
     };
-
-    //! @brief 指定されたスカイボックスの描画コマンドを発行する
-    //! @param[in,out] renderer コマンドを発行する描画システム
-    //! @param[in] skybox 描画リソースを持つスカイボックス
-    //! @param[in] viewProjNoTranslate カメラの移動成分を排除したビュー・プロジェクション行列
-    //! @note 不透明なオブジェクトを描画した後、かつ半透明なオブジェクトを描画する前に呼び出すこと
-    void IssueSkybox(Renderer& renderer, const Skybox& skybox, const NS::Core::Matrix& viewProjNoTranslate) noexcept;
 
 } // namespace NS::Gfx

@@ -5,6 +5,7 @@
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/D3dCommon.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -93,6 +94,21 @@ namespace NS::Gfx
                          std::size_t vertexCount,
                          std::size_t indexCount,
                          bool usingFallback) noexcept;
+
+        //! @brief 頂点とインデックスから GPU のバッファを作り、成功した時だけ SetGeometry で登録する
+        //! @param[in] vertices 頂点データの先頭
+        //! @param[in] vertexCount 頂点数
+        //! @param[in] stride 頂点 1 個のバイト数
+        //! @param[in] indices インデックスデータの先頭
+        //! @param[in] indexCount インデックス数
+        //! @param[in] usingFallback 代替ジオメトリとして構築するか
+        //! @return 両方のバッファを作れた場合 true、それ以外の場合は false。false の時は何も登録しない
+        [[nodiscard]] bool BuildGeometry(const void* vertices,
+                                         std::size_t vertexCount,
+                                         std::size_t stride,
+                                         const std::uint32_t* indices,
+                                         std::size_t indexCount,
+                                         bool usingFallback) noexcept;
 
         //! @brief 派生クラスで定義した頂点フォーマットのレイアウト要素を登録する
         //! @param[in] elements 登録する入力レイアウトの要素配列

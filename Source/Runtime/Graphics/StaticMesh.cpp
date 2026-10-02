@@ -2,7 +2,6 @@
 
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/GraphicObject.h"
 #include "Runtime/Graphics/MeshPrimitives.h"
 #include "Runtime/Graphics/Renderer.h"
@@ -13,32 +12,6 @@ namespace NS::Gfx
     {
         // モデルの読み込みに失敗した場合に表示する、デバッグ用の代替モデル
         constexpr float k_FallbackCubeHalfExtent = 0.5f;
-
-        bool BuildBuffers(const StaticVertex* vertices,
-                          std::size_t vertexCount,
-                          const std::uint32_t* indices,
-                          std::size_t indexCount,
-                          std::unique_ptr<Buffer>& outVb,
-                          std::unique_ptr<Buffer>& outIb)
-        {
-            BufferDesc vbDesc = MakeVertexBufferDesc(vertices, vertexCount, sizeof(StaticVertex));
-            std::unique_ptr<Buffer> vb = Buffer::Create(vbDesc);
-            if (!vb->IsValid())
-            {
-                return false;
-            }
-
-            BufferDesc ibDesc = MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT);
-            std::unique_ptr<Buffer> ib = Buffer::Create(ibDesc);
-            if (!ib->IsValid())
-            {
-                return false;
-            }
-
-            outVb = std::move(vb);
-            outIb = std::move(ib);
-            return true;
-        }
 
         // 頂点位置データから、モデルのAABBを算出する
         NS::Core::AABB ComputeLocalBounds(const StaticVertex* vertices, std::size_t count)
@@ -68,14 +41,11 @@ namespace NS::Gfx
 
         SetVertexLayout(StandardInputLayout());
 
-        std::unique_ptr<Buffer> vb;
-        std::unique_ptr<Buffer> ib;
-
         const bool descValid =
             (desc.vertices != nullptr && desc.vertexCount != 0u && desc.indices != nullptr && desc.indexCount != 0u);
-        if (descValid && BuildBuffers(desc.vertices, desc.vertexCount, desc.indices, desc.indexCount, vb, ib))
+        if (descValid &&
+            BuildGeometry(desc.vertices, desc.vertexCount, sizeof(StaticVertex), desc.indices, desc.indexCount, false))
         {
-            SetGeometry(std::move(vb), std::move(ib), desc.vertexCount, desc.indexCount, false);
             // ローダーが構築時に境界を求めていればそれを使い、無ければ頂点から算出する
             if (desc.precomputedBounds != nullptr)
             {
@@ -108,9 +78,13 @@ namespace NS::Gfx
 
         const MeshGeometry geom =
             MakeCube(NS::Core::Vector3{k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent});
-        if (BuildBuffers(geom.vertices.data(), geom.vertices.size(), geom.indices.data(), geom.indices.size(), vb, ib))
+        if (BuildGeometry(geom.vertices.data(),
+                          geom.vertices.size(),
+                          sizeof(StaticVertex),
+                          geom.indices.data(),
+                          geom.indices.size(),
+                          true))
         {
-            SetGeometry(std::move(vb), std::move(ib), geom.vertices.size(), geom.indices.size(), true);
             SetLocalBounds(ComputeLocalBounds(geom.vertices.data(), geom.vertices.size()));
         }
         else

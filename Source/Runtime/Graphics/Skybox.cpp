@@ -7,7 +7,6 @@
 #include "Runtime/Graphics/GraphicObject.h"
 #include "Runtime/Graphics/MeshPrimitives.h"
 #include "Runtime/Graphics/Pipeline.h"
-#include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Graphics/Shader.h"
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Platform/Filesystem.h"
@@ -298,10 +297,8 @@ namespace NS::Gfx
         }
 
         // 専用シェーダを読み込む
-        const std::string exeDir = ::NS::Platform::FileSystem::ContentRoot();
-        const std::string shaderDir = ::NS::Platform::FileSystem::Combine(exeDir, "Shaders");
-        m_vs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "skybox.vs.hlsl"));
-        m_ps = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "skybox.ps.hlsl"));
+        m_vs = Shader::CreateBuiltin("skybox.vs.hlsl");
+        m_ps = Shader::CreateBuiltin("skybox.ps.hlsl");
         if (!m_vs->IsValid() || !m_ps->IsValid())
         {
             NS_LOG_ERROR(Graphics, "Skybox: shader 構築失敗");
@@ -387,56 +384,50 @@ namespace NS::Gfx
         return false;
     }
 
-    void IssueSkybox(Renderer& renderer, const Skybox& skybox, const NS::Core::Matrix& viewProjNoTranslate) noexcept
+    void Skybox::Draw(CommandList& commands, const NS::Core::Matrix& viewProjNoTranslate) const noexcept
     {
-        if (!skybox.IsValid())
-        {
-            return;
-        }
-
-        CommandList& cmd = renderer.Commands();
-        if (cmd.Native() == nullptr)
+        if (!IsValid() || commands.Native() == nullptr)
         {
             return;
         }
 
         SkyboxCB cbData{};
         cbData.viewProj = viewProjNoTranslate;
-        cmd.UpdateSubresource(*skybox.ConstantBuffer(), &cbData, sizeof(cbData));
+        commands.UpdateSubresource(*m_cb, &cbData, sizeof(cbData));
 
         // 他の描画処理に影響を与えないよう、現在のステートを退避する
         ComPtr<ID3D11DepthStencilState> prevDss;
         UINT prevStencilRef = 0;
-        cmd->OMGetDepthStencilState(prevDss.GetAddressOf(), &prevStencilRef);
+        commands->OMGetDepthStencilState(prevDss.GetAddressOf(), &prevStencilRef);
 
         ComPtr<ID3D11RasterizerState> prevRs;
-        cmd->RSGetState(prevRs.GetAddressOf());
+        commands->RSGetState(prevRs.GetAddressOf());
 
         ComPtr<ID3D11BlendState> prevBlend;
         float prevBlendFactor[4] = {};
         UINT prevSampleMask = 0xFFFFFFFFu;
-        cmd->OMGetBlendState(prevBlend.GetAddressOf(), prevBlendFactor, &prevSampleMask);
+        commands->OMGetBlendState(prevBlend.GetAddressOf(), prevBlendFactor, &prevSampleMask);
 
-        cmd.SetPipeline(*skybox.RenderPipeline());
+        commands.SetPipeline(*m_pipeline);
 
-        cmd.VSSetShader(*skybox.VertexShader());
-        cmd.PSSetShader(*skybox.PixelShader());
-        cmd.VSSetConstantBuffer(*skybox.ConstantBuffer(), 0);
+        commands.VSSetShader(*m_vs);
+        commands.PSSetShader(*m_ps);
+        commands.VSSetConstantBuffer(*m_cb, 0);
 
-        ID3D11ShaderResourceView* srvs[1] = {skybox.Srv()};
-        cmd->PSSetShaderResources(0, 1, srvs);
+        ID3D11ShaderResourceView* srvs[1] = {m_cubemapSrv.Get()};
+        commands->PSSetShaderResources(0, 1, srvs);
 
-        cmd.PSSetSampler(skybox.Sampler(), 0);
+        commands.PSSetSampler(m_sampler.Get(), 0);
 
-        DrawMesh(cmd, *skybox.CubeMesh());
+        DrawMesh(commands, *m_cubeMesh);
 
         // 警告やバグを防ぐため、使用したテクスチャのバインドを解除する
         ID3D11ShaderResourceView* nullSrv[1] = {nullptr};
-        cmd->PSSetShaderResources(0, 1, nullSrv);
+        commands->PSSetShaderResources(0, 1, nullSrv);
 
-        cmd->OMSetDepthStencilState(prevDss.Get(), prevStencilRef);
-        cmd->RSSetState(prevRs.Get());
-        cmd->OMSetBlendState(prevBlend.Get(), prevBlendFactor, prevSampleMask);
+        commands->OMSetDepthStencilState(prevDss.Get(), prevStencilRef);
+        commands->RSSetState(prevRs.Get());
+        commands->OMSetBlendState(prevBlend.Get(), prevBlendFactor, prevSampleMask);
     }
 
     bool Skybox::IsValid() const noexcept
@@ -447,41 +438,6 @@ namespace NS::Gfx
     bool Skybox::IsUsingFallback() const noexcept
     {
         return m_usingFallback;
-    }
-
-    ID3D11ShaderResourceView* Skybox::Srv() const noexcept
-    {
-        return m_cubemapSrv.Get();
-    }
-
-    const Pipeline* Skybox::RenderPipeline() const noexcept
-    {
-        return m_pipeline.get();
-    }
-
-    const Buffer* Skybox::ConstantBuffer() const noexcept
-    {
-        return m_cb.get();
-    }
-
-    const Shader* Skybox::VertexShader() const noexcept
-    {
-        return m_vs.get();
-    }
-
-    const Shader* Skybox::PixelShader() const noexcept
-    {
-        return m_ps.get();
-    }
-
-    ID3D11SamplerState* Skybox::Sampler() const noexcept
-    {
-        return m_sampler.Get();
-    }
-
-    const Mesh* Skybox::CubeMesh() const noexcept
-    {
-        return m_cubeMesh.get();
     }
 
 } // namespace NS::Gfx

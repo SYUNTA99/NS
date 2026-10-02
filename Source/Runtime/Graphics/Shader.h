@@ -3,8 +3,8 @@
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/D3dCommon.h"
 
-#include <string>
 #include <span>
+#include <string>
 
 namespace NS::Gfx
 {
@@ -37,6 +37,10 @@ namespace NS::Gfx
     public:
         //! HLSLファイルからシェーダを生成する
         [[nodiscard]] static std::unique_ptr<Shader> Create(std::string_view hlslPath);
+
+        //! @brief ContentRoot の Shaders ディレクトリにある HLSL ファイルからシェーダを生成する
+        //! @param[in] fileName Shaders ディレクトリ相対のファイル名 (例 "fade.vs.hlsl")
+        [[nodiscard]] static std::unique_ptr<Shader> CreateBuiltin(std::string_view fileName);
 
         [[nodiscard]] bool IsValid() const noexcept;
 

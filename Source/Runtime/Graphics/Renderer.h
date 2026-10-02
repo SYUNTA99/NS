@@ -143,11 +143,33 @@ namespace NS::Gfx
         void DrawSky(const NS::Core::CameraData& camera, std::string_view cubemapPath) noexcept;
 
     private:
-        // 全画面塗り資源を初回だけ構築する
-        void EnsureFullscreenResources() noexcept;
+        // 頂点を持たず SV_VertexID から形を作り、最前面へ半透明で重ねる描画の資源
+        struct OverlayResources
+        {
+            std::unique_ptr<Shader> vs;
+            std::unique_ptr<Shader> ps;
+            std::unique_ptr<Buffer> cb;
+            std::unique_ptr<Pipeline> pipeline;
+            bool tried = false; // 構築を試みたか
+            bool ready = false; // 構築成功
+        };
 
-        // UI 矩形資源を初回だけ構築する
-        void EnsureScreenRectResources() noexcept;
+        // 重ね描きの資源を初回だけ構築し、今描けるかを返す。label はログに出す名前
+        [[nodiscard]] bool EnsureOverlay(OverlayResources& overlay,
+                                         std::string_view vsFileName,
+                                         std::string_view psFileName,
+                                         std::size_t constantBytes,
+                                         std::string_view label) noexcept;
+
+        // 定数を流して重ね描きを 1 回出す。vsReadsConstants が false なら頂点シェーダへ定数を差さない
+        void DrawOverlay(const OverlayResources& overlay,
+                         const void* constants,
+                         std::size_t constantBytes,
+                         unsigned vertexCount,
+                         bool vsReadsConstants) noexcept;
+
+        // 描画先とビューポートを差す
+        void BindTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv, NS::Core::Size2D size) noexcept;
 
         // 空を描く Skybox を初回だけ構築する
         void EnsureSkyboxResources() noexcept;
@@ -160,20 +182,8 @@ namespace NS::Gfx
         std::unique_ptr<CommandList> m_commands;
         std::unique_ptr<CommonStates> m_states;
         std::unique_ptr<Pipeline> m_commonPipelines[3]; //!< 共通パイプライン
-        // 全画面塗り (暗転・フラッシュ) 用の共有資源。初回 DrawFullscreenColor で一度だけ構築する
-        std::unique_ptr<Shader> m_fullscreenVs;
-        std::unique_ptr<Shader> m_fullscreenPs;
-        std::unique_ptr<Buffer> m_fullscreenCb;
-        std::unique_ptr<Pipeline> m_fullscreenPipeline;
-        bool m_fullscreenTried = false; // 構築を試みたか
-        bool m_fullscreenReady = false; // 構築成功
-        // UI 矩形用の共有資源。初回 DrawScreenRect で一度だけ構築する
-        std::unique_ptr<Shader> m_screenRectVs;
-        std::unique_ptr<Shader> m_screenRectPs;
-        std::unique_ptr<Buffer> m_screenRectCb;
-        std::unique_ptr<Pipeline> m_screenRectPipeline;
-        bool m_screenRectTried = false; // 構築を試みたか
-        bool m_screenRectReady = false; // 構築成功
+        OverlayResources m_fullscreen; // 全画面塗り (暗転・フラッシュ)。初回 DrawFullscreenColor で構築
+        OverlayResources m_screenRect; // UI 矩形。初回 DrawScreenRect で構築
         // 空を描く Skybox。cubemap を指定した初回の DrawSky で一度だけ構築する
         std::unique_ptr<Skybox> m_skybox;
         std::string m_loadedSkyboxPath; // 前回判定した cubemap のパス。読めた物と拒否した物が入り、差分の時だけ読み直す

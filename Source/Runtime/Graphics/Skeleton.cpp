@@ -40,21 +40,11 @@ namespace NS::Gfx
             return;
         }
 
-        std::vector<NS::Core::Matrix> jointWorld(boneCount, NS::Core::Matrix::Identity);
+        // 根本となるボーンには、スケルトン全体の基準となる変換行列を適用する
+        ComputeGlobals(pose, out, true);
         for (std::size_t i = 0; i < boneCount; ++i)
         {
-            const NS::Core::Matrix local = LocalMatrix(pose[i]);
-            const int parent = m_bones[i].parentIndex;
-            if (parent >= 0 && static_cast<std::size_t>(parent) < i)
-            {
-                jointWorld[i] = local * jointWorld[parent];
-            }
-            else
-            {
-                // 根本となるボーンには、スケルトン全体の基準となる変換行列を適用する
-                jointWorld[i] = local * m_rootTransform;
-            }
-            out[i] = m_bones[i].inverseBind * jointWorld[i];
+            out[i] = m_bones[i].inverseBind * out[i];
         }
     }
 

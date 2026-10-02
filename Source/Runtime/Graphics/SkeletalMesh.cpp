@@ -2,7 +2,6 @@
 
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/GraphicObject.h"
 
 #include <algorithm>
@@ -12,35 +11,6 @@
 
 namespace NS::Gfx
 {
-    namespace
-    {
-        bool BuildBuffers(const SkinnedVertex* vertices,
-                          std::size_t vertexCount,
-                          const std::uint32_t* indices,
-                          std::size_t indexCount,
-                          std::unique_ptr<Buffer>& outVb,
-                          std::unique_ptr<Buffer>& outIb)
-        {
-            BufferDesc vbDesc = MakeVertexBufferDesc(vertices, vertexCount, sizeof(SkinnedVertex));
-            std::unique_ptr<Buffer> vb = Buffer::Create(vbDesc);
-            if (!vb->IsValid())
-            {
-                return false;
-            }
-
-            BufferDesc ibDesc = MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT);
-            std::unique_ptr<Buffer> ib = Buffer::Create(ibDesc);
-            if (!ib->IsValid())
-            {
-                return false;
-            }
-
-            outVb = std::move(vb);
-            outIb = std::move(ib);
-            return true;
-        }
-    } // namespace
-
     std::vector<BoneSphere> ComputeBoneSpheres(const SkinnedVertex* vertices,
                                                std::size_t vertexCount,
                                                std::size_t boneCount)
@@ -192,9 +162,8 @@ namespace NS::Gfx
             return;
         }
 
-        std::unique_ptr<Buffer> vb;
-        std::unique_ptr<Buffer> ib;
-        if (!BuildBuffers(desc.vertices, desc.vertexCount, desc.indices, desc.indexCount, vb, ib))
+        if (!BuildGeometry(
+                desc.vertices, desc.vertexCount, sizeof(SkinnedVertex), desc.indices, desc.indexCount, false))
         {
             NS_LOG_ERROR(Graphics,
                          "SkeletalMesh: VertexBuffer / IndexBuffer 構築失敗 — IsValid false (v={}, i={})",
@@ -202,7 +171,6 @@ namespace NS::Gfx
                          desc.indexCount);
             return;
         }
-        SetGeometry(std::move(vb), std::move(ib), desc.vertexCount, desc.indexCount, false);
 
         // バインドポーズ実測箱。アニメ非再生時のフォールバック境界に使う
         NS::Core::AABB bounds{};

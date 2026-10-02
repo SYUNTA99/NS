@@ -232,6 +232,13 @@ namespace NS::Gfx
         return std::unique_ptr<Shader>(new Shader(hlslPath));
     }
 
+    std::unique_ptr<Shader> Shader::CreateBuiltin(std::string_view fileName)
+    {
+        const std::string shaderDir =
+            ::NS::Platform::FileSystem::Combine(::NS::Platform::FileSystem::ContentRoot(), "Shaders");
+        return Create(::NS::Platform::FileSystem::Combine(shaderDir, fileName));
+    }
+
     Shader::Shader(std::string_view hlslPath) : m_sourcePath(hlslPath)
     {
         const ShaderTypeInfo* info = DetectStage(m_sourcePath);

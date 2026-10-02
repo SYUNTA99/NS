@@ -405,138 +405,91 @@ namespace NS::Gfx
         return *m_commonPipelines[index];
     }
 
-    void Renderer::EnsureFullscreenResources() noexcept
+    bool Renderer::EnsureOverlay(OverlayResources& overlay,
+                                 std::string_view vsFileName,
+                                 std::string_view psFileName,
+                                 std::size_t constantBytes,
+                                 std::string_view label) noexcept
     {
-        if (m_fullscreenTried)
+        if (!overlay.tried)
         {
-            return;
-        }
-        m_fullscreenTried = true;
+            overlay.tried = true;
+            if (m_device == nullptr)
+            {
+                return false;
+            }
+            overlay.vs = Shader::CreateBuiltin(vsFileName);
+            overlay.ps = Shader::CreateBuiltin(psFileName);
+            if (!overlay.vs->IsValid() || !overlay.ps->IsValid())
+            {
+                NS_LOG_ERROR(Graphics, "Renderer: {} shader 構築失敗", label);
+                return false;
+            }
 
-        if (m_device == nullptr)
+            overlay.cb = Buffer::Create(MakeConstantBufferDesc(constantBytes));
+            if (!overlay.cb->IsValid())
+            {
+                NS_LOG_ERROR(Graphics, "Renderer: {} ConstantBuffer 構築失敗", label);
+                return false;
+            }
+
+            // 描画済みの絵の上へ半透明で重ねる。常に最前面へ出すので深度は見ない
+            // 全画面三角形の 3 頂点はスクリーン空間で反時計回りになり、既定の背面カリングでは消える
+            PipelineDesc pipeDesc{};
+            pipeDesc.cull = CullMode::None;
+            pipeDesc.blend = BlendMode::Alpha;
+            pipeDesc.depth = DepthMode::Disabled;
+            overlay.pipeline = Pipeline::Create(pipeDesc);
+            if (!overlay.pipeline->IsValid())
+            {
+                NS_LOG_ERROR(Graphics, "Renderer: {} Pipeline 構築失敗", label);
+                return false;
+            }
+
+            overlay.ready = true;
+        }
+        return overlay.ready && m_commands && m_commands->Native() != nullptr;
+    }
+
+    void Renderer::DrawOverlay(const OverlayResources& overlay,
+                               const void* constants,
+                               std::size_t constantBytes,
+                               unsigned vertexCount,
+                               bool vsReadsConstants) noexcept
+    {
+        CommandList& cmd = *m_commands;
+        cmd.UpdateSubresource(*overlay.cb, constants, constantBytes);
+
+        cmd.SetPipeline(*overlay.pipeline);
+        cmd.VSSetShader(*overlay.vs);
+        cmd.PSSetShader(*overlay.ps);
+        if (vsReadsConstants)
         {
-            return;
+            cmd.VSSetConstantBuffer(*overlay.cb, 0);
         }
+        cmd.PSSetConstantBuffer(*overlay.cb, 0);
 
-        const std::string contentRoot = ::NS::Platform::FileSystem::ContentRoot();
-        const std::string shaderDir = ::NS::Platform::FileSystem::Combine(contentRoot, "Shaders");
-        m_fullscreenVs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "fade.vs.hlsl"));
-        m_fullscreenPs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "fade.ps.hlsl"));
-        if (!m_fullscreenVs->IsValid() || !m_fullscreenPs->IsValid())
-        {
-            NS_LOG_ERROR(Graphics, "Renderer: 全画面塗り shader 構築失敗");
-            return;
-        }
-
-        BufferDesc cbDesc = MakeConstantBufferDesc(sizeof(FullscreenColorCB));
-        m_fullscreenCb = Buffer::Create(cbDesc);
-        if (!m_fullscreenCb->IsValid())
-        {
-            NS_LOG_ERROR(Graphics, "Renderer: 全画面塗り ConstantBuffer 構築失敗");
-            return;
-        }
-
-        // 描画済みシーンの上へ半透明で重ねる。常に最前面へ出すので深度は見ない
-        // 全画面三角形の 3 頂点はスクリーン空間で反時計回りになり、既定の背面カリングでは消える
-        PipelineDesc pipeDesc{};
-        pipeDesc.cull = CullMode::None;
-        pipeDesc.blend = BlendMode::Alpha;
-        pipeDesc.depth = DepthMode::Disabled;
-        m_fullscreenPipeline = Pipeline::Create(pipeDesc);
-        if (!m_fullscreenPipeline->IsValid())
-        {
-            NS_LOG_ERROR(Graphics, "Renderer: 全画面塗り Pipeline 構築失敗");
-            return;
-        }
-
-        m_fullscreenReady = true;
+        // VS が SV_VertexID から形を作るので、InputLayout を外し頂点もインデックスもバインドしない
+        cmd->IASetInputLayout(nullptr);
+        cmd.SetTopology(Topology::TriangleList);
+        cmd.Draw(vertexCount);
     }
 
     void Renderer::DrawFullscreenColor(const NS::Core::Color& color) noexcept
     {
-        EnsureFullscreenResources();
-        if (!m_fullscreenReady || !m_commands)
-        {
-            return;
-        }
-
-        CommandList& cmd = *m_commands;
-        if (cmd.Native() == nullptr)
+        if (!EnsureOverlay(m_fullscreen, "fade.vs.hlsl", "fade.ps.hlsl", sizeof(FullscreenColorCB), "全画面塗り"))
         {
             return;
         }
 
         FullscreenColorCB cbData{};
         cbData.color = color;
-        cmd.UpdateSubresource(*m_fullscreenCb, &cbData, sizeof(cbData));
-
-        cmd.SetPipeline(*m_fullscreenPipeline);
-        cmd.VSSetShader(*m_fullscreenVs);
-        cmd.PSSetShader(*m_fullscreenPs);
-        cmd.PSSetConstantBuffer(*m_fullscreenCb, 0);
-
-        // VS が SV_VertexID から三角形を作るので、InputLayout を外し頂点もインデックスもバインドせず 3 頂点を投げる
-        cmd->IASetInputLayout(nullptr);
-        cmd.SetTopology(Topology::TriangleList);
-        cmd.Draw(3);
-    }
-
-    void Renderer::EnsureScreenRectResources() noexcept
-    {
-        if (m_screenRectTried)
-        {
-            return;
-        }
-        m_screenRectTried = true;
-
-        if (m_device == nullptr)
-        {
-            return;
-        }
-
-        const std::string contentRoot = ::NS::Platform::FileSystem::ContentRoot();
-        const std::string shaderDir = ::NS::Platform::FileSystem::Combine(contentRoot, "Shaders");
-        m_screenRectVs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "ui_rect.vs.hlsl"));
-        m_screenRectPs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "ui_rect.ps.hlsl"));
-        if (!m_screenRectVs->IsValid() || !m_screenRectPs->IsValid())
-        {
-            NS_LOG_ERROR(Graphics, "Renderer: UI 矩形 shader 構築失敗");
-            return;
-        }
-
-        BufferDesc cbDesc = MakeConstantBufferDesc(sizeof(ScreenRectCB));
-        m_screenRectCb = Buffer::Create(cbDesc);
-        if (!m_screenRectCb->IsValid())
-        {
-            NS_LOG_ERROR(Graphics, "Renderer: UI 矩形 ConstantBuffer 構築失敗");
-            return;
-        }
-
-        // 描画済みの絵の上へ半透明で重ねる。常に最前面へ出すので深度は見ない
-        PipelineDesc pipeDesc{};
-        pipeDesc.cull = CullMode::None;
-        pipeDesc.blend = BlendMode::Alpha;
-        pipeDesc.depth = DepthMode::Disabled;
-        m_screenRectPipeline = Pipeline::Create(pipeDesc);
-        if (!m_screenRectPipeline->IsValid())
-        {
-            NS_LOG_ERROR(Graphics, "Renderer: UI 矩形 Pipeline 構築失敗");
-            return;
-        }
-
-        m_screenRectReady = true;
+        DrawOverlay(m_fullscreen, &cbData, sizeof(cbData), 3, false);
     }
 
     void Renderer::DrawScreenRect(float x, float y, float width, float height, const NS::Core::Color& color) noexcept
     {
-        EnsureScreenRectResources();
-        if (!m_screenRectReady || !m_commands)
-        {
-            return;
-        }
-
-        CommandList& cmd = *m_commands;
-        if (cmd.Native() == nullptr)
+        if (!EnsureOverlay(m_screenRect, "ui_rect.vs.hlsl", "ui_rect.ps.hlsl", sizeof(ScreenRectCB), "UI 矩形"))
         {
             return;
         }
@@ -558,18 +511,7 @@ namespace NS::Gfx
         cbData.rect[2] = width / targetWidth * 2.0f;
         cbData.rect[3] = height / targetHeight * 2.0f;
         cbData.color = color;
-        cmd.UpdateSubresource(*m_screenRectCb, &cbData, sizeof(cbData));
-
-        cmd.SetPipeline(*m_screenRectPipeline);
-        cmd.VSSetShader(*m_screenRectVs);
-        cmd.PSSetShader(*m_screenRectPs);
-        cmd.VSSetConstantBuffer(*m_screenRectCb, 0);
-        cmd.PSSetConstantBuffer(*m_screenRectCb, 0);
-
-        // VS が SV_VertexID から矩形を作るので、InputLayout を外し頂点もインデックスもバインドせず 6 頂点を投げる
-        cmd->IASetInputLayout(nullptr);
-        cmd.SetTopology(Topology::TriangleList);
-        cmd.Draw(6);
+        DrawOverlay(m_screenRect, &cbData, sizeof(cbData), 6, true);
     }
 
     void Renderer::EnsureSkyboxResources() noexcept
@@ -604,7 +546,7 @@ namespace NS::Gfx
         }
 
         EnsureSkyboxResources();
-        if (!m_skybox)
+        if (!m_skybox || !m_commands)
         {
             return;
         }
@@ -638,7 +580,7 @@ namespace NS::Gfx
         viewNoTranslate._41 = 0.0f;
         viewNoTranslate._42 = 0.0f;
         viewNoTranslate._43 = 0.0f;
-        IssueSkybox(*this, *m_skybox, viewNoTranslate * camera.Projection());
+        m_skybox->Draw(*m_commands, viewNoTranslate * camera.Projection());
     }
 
     void Renderer::BeginFrame(float r, float g, float b, float a) noexcept
@@ -661,15 +603,11 @@ namespace NS::Gfx
             ID3D11DepthStencilView* sceneDsv = m_sceneTarget->Depth()->Dsv();
             cmd.ClearRenderTarget(sceneRtv, r, g, b, a);
             cmd.ClearDepth(sceneDsv, 1.0f);
-            cmd.SetRenderTarget(sceneRtv, sceneDsv);
-            const ::NS::Core::Size2D sceneSize = m_sceneTarget->Size();
-            cmd.SetViewport(static_cast<float>(sceneSize.width), static_cast<float>(sceneSize.height));
+            BindTarget(sceneRtv, sceneDsv, m_sceneTarget->Size());
             return;
         }
 
-        cmd.SetRenderTarget(rtv, dsv);
-        const ::NS::Core::Size2D size = m_backbuffer->Size();
-        cmd.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
+        BindTarget(rtv, dsv, m_backbuffer->Size());
     }
 
     void Renderer::BeginFrame() noexcept
@@ -757,26 +695,21 @@ namespace NS::Gfx
         }
         // Size() が今のビューを返すよう描画先を差し替える。RenderWorld のアスペクト比計算がこれを読む
         m_sceneTarget = target;
-        CommandList& cmd = *m_commands;
-        const ::NS::Core::Color& c = m_settings.clearColor;
         if (target != nullptr && target->IsValid())
         {
             ID3D11RenderTargetView* rtv = target->Color()->Rtv();
             ID3D11DepthStencilView* dsv = target->Depth()->Dsv();
-            cmd.ClearRenderTarget(rtv, c.R(), c.G(), c.B(), c.A());
-            cmd.ClearDepth(dsv, 1.0f);
-            cmd.SetRenderTarget(rtv, dsv);
-            const ::NS::Core::Size2D size = target->Size();
-            cmd.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
+            const ::NS::Core::Color& c = m_settings.clearColor;
+            m_commands->ClearRenderTarget(rtv, c.R(), c.G(), c.B(), c.A());
+            m_commands->ClearDepth(dsv, 1.0f);
+            BindTarget(rtv, dsv, target->Size());
             return;
         }
         if (!m_backbuffer || !m_depth)
         {
             return;
         }
-        cmd.SetRenderTarget(m_backbuffer->Rtv(), m_depth->Dsv());
-        const ::NS::Core::Size2D size = m_backbuffer->Size();
-        cmd.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
+        BindTarget(m_backbuffer->Rtv(), m_depth->Dsv(), m_backbuffer->Size());
     }
 
     void Renderer::BindBackbuffer() noexcept
@@ -785,10 +718,15 @@ namespace NS::Gfx
         {
             return;
         }
-        CommandList& cmd = *m_commands;
-        cmd.SetRenderTarget(m_backbuffer->Rtv(), m_depth->Dsv());
-        const ::NS::Core::Size2D size = m_backbuffer->Size();
-        cmd.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
+        BindTarget(m_backbuffer->Rtv(), m_depth->Dsv(), m_backbuffer->Size());
+    }
+
+    void Renderer::BindTarget(ID3D11RenderTargetView* rtv,
+                              ID3D11DepthStencilView* dsv,
+                              ::NS::Core::Size2D size) noexcept
+    {
+        m_commands->SetRenderTarget(rtv, dsv);
+        m_commands->SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
     }
 
     ::NS::Core::Size2D Renderer::Size() const noexcept
