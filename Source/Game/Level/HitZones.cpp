@@ -311,6 +311,25 @@ namespace NS::Game::Level
         return true;
     }
 
+    HitFaceJudgement JudgeHitFaceOrWide(const HitFace& face,
+                                        const NS::Obj::SensorVolume& body,
+                                        const NS::Core::Vector3& origin,
+                                        const NS::Core::Vector3& direction,
+                                        float playerRadius) noexcept
+    {
+        HitFaceJudgement result;
+        if (JudgeHitFace(face, body, origin, direction, playerRadius, result))
+        {
+            return result;
+        }
+        result = HitFaceJudgement{};
+        result.tier = HitTier::Wide;
+        result.powerScale = SanitizeScale(face.remainderPowerScale);
+        result.offset01 = 1.0f;
+        result.surfacePoint = body.Center();
+        return result;
+    }
+
 #if !defined(NS_SHIPPING)
     bool MakeHitFaceFrame(const NS::Obj::SensorVolume& body,
                           const NS::Core::Vector3& direction,

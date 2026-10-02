@@ -67,7 +67,7 @@ namespace NS::Game::Level
             float ratio = 0.0f; // 線から相手の中心までの横ずれ ÷ (相手の半幅 + 自機の半径)。0〜1 へ丸めない
         };
 
-        // 当たりの裁定と突進の線の予測が同じ式を通る。式を 2 つ置くと、予測した横ずれと当たりの段が食い違う
+        // 狙う相手の絞りだけが使う。段と横ずれの値は裁定と同じく JudgeHitFace で出す
         // 分母は AABB を向きに直交する軸へ投影した半幅に自機の半径を足した値
         // 触れられる横ずれの上限が比 1 になる。斜めの箱でも角をかすめる当たりが 1
         // 球と傾いた箱は外接箱で測るので実際の縁より広く出る
@@ -94,16 +94,6 @@ namespace NS::Game::Level
                 return LineOffset{.along = along, .ratio = 0.0f};
             }
             return LineOffset{.along = along, .ratio = lateral / reach};
-        }
-
-        // 相手の中心からの横ずれ 0..1。OnUpdate へ式を埋めると当たり判定の流れが読めなくなる
-        // 水平が 0 の枝は要らない。向かっていないフレームは内積の判定で先に返しており、水平が 0 のフレームもそこへ入る
-        [[nodiscard]] float HitOffset01(const NS::Core::Vector3& position,
-                                        const NS::Core::AABB& bounds,
-                                        const NS::Core::Vector3& velocity,
-                                        float playerRadius) noexcept
-        {
-            return NS::Core::Clamp(MeasureLineOffset(position, bounds, velocity, playerRadius).ratio, 0.0f, 1.0f);
         }
 
         // 触れる所を詰める幅の下限 (m)。1 mm は地面の矢印の先の位置の違いとして見分けられない長さ
@@ -276,7 +266,8 @@ namespace NS::Game::Level
         // TODO: 体のセンサーを総当たりで見ている。数十個までを想定。増えたら格子で絞る
         bool found = false;
         SlamLineTarget first{};
-        for (const NS::Obj::HitSensor* sensor : scene->HitSensors().Sensors())
+        NS::Obj::HitSensor* firstSensor = nullptr;
+        for (NS::Obj::HitSensor* sensor : scene->HitSensors().Sensors())
         {
             if (!IsTackleTarget(*sensor, Owner()))
             {
@@ -310,16 +301,27 @@ namespace NS::Game::Level
                                        .origin = position,
                                        .direction = lineDir,
                                        .along = line.along,
-                                       .offset = line.ratio,
                                        .contact = contact};
+                firstSensor = sensor;
             }
         }
-
-        if (found)
+        if (!found)
         {
-            outTarget = first;
+            return false;
         }
-        return found;
+
+        // 段と横ずれは裁定と同じく相手の答えの面で決める。玉の高さは今のまま線を進めた物
+        // 応じない相手は裁定でも当たらないので、外れの既定のまま
+        HitFaceJudgement judgement;
+        TackleTargetAnswer answer{};
+        if (SendMsgAskTackleTarget(*firstSensor, answer))
+        {
+            judgement = JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, lineDir, playerRadius);
+        }
+        first.offset = judgement.offset01;
+        first.tier = judgement.tier;
+        outTarget = first;
+        return true;
     }
 
     void ImpactResolver::OnUpdate()
@@ -457,9 +459,14 @@ namespace NS::Game::Level
 
         const float mass = answer.mass;
 
+        // 段と威力の当たり位置の係数は、相手の面で当てはまった同じ決まりから取る
+        // 玉の中心は今の高さ。丸まっていれば根、立ち姿なら下の球の中心で、狙う相手の探し方と同じ
+        const NS::Core::Vector3 ballCenter{position.x, position.y - m_body->CapsuleHalfHeight(), position.z};
+        const HitFaceJudgement judgement =
+            JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, m_body->CapsuleRadius());
+        const float offset01 = judgement.offset01;
         // ボタン未搭載は係数 1.0 の素通し。段は中心近くと記録するが、段の返りと止めと反動の距離の倍率は掛けない
         // 外し方は段の種類に混ぜず、下の tiered で分ける
-        const float offset01 = HitOffset01(position, bounds, velocity, m_body->CapsuleRadius());
         float chargeFactor = 1.0f;
         float positionFactor = 1.0f;
         HitTier tier = HitTier::Center;
@@ -467,8 +474,8 @@ namespace NS::Game::Level
         if (tiered)
         {
             chargeFactor = m_collisionInput->ChargeFactorFor(charge01);
-            positionFactor = m_collisionInput->PositionFactorFor(offset01);
-            tier = m_collisionInput->HitTierFor(offset01);
+            positionFactor = judgement.powerScale;
+            tier = judgement.tier;
         }
         // 読むのは記録と WasCenterHit とログだけ。配分と返りは段で分ける
         const bool centerHit = tiered && tier == HitTier::Center;
@@ -574,15 +581,8 @@ namespace NS::Game::Level
         m_lastImpact.launchDistance = m_pendingLaunchArc.distance;
         m_lastImpact.launchApexHeight = m_pendingLaunchArc.apexHeight;
         m_lastImpact.impactDir = m_pendingImpactDir;
-        // 触れた点は記録とエディタの印だけが読む。段と威力はまだ横ずれで決める
-        // TODO: 段と威力を JudgeHitFace で決めるようにしたら、その結果の触れる点を使い回して 2 回目の判定を消す
-        m_lastImpact.surfacePoint = answer.body.Center();
-        HitFaceJudgement touch;
-        const NS::Core::Vector3 ballCenter{position.x, position.y - m_body->CapsuleHalfHeight(), position.z};
-        if (JudgeHitFace(answer.face, answer.body, ballCenter, velocity, m_body->CapsuleRadius(), touch))
-        {
-            m_lastImpact.surfacePoint = touch.surfacePoint;
-        }
+        // 触れた点は記録とエディタの印だけが読む。段と威力を決めた判定の結果を使う
+        m_lastImpact.surfacePoint = judgement.surfacePoint;
         m_lastImpact.targetPos = m_pendingTargetHome;
         m_lastImpact.targetBottom = bounds.Center.y - bounds.Extents.y;
         m_lastImpact.targetMass = mass;

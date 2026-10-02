@@ -89,8 +89,6 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_chargeFullSeconds, "チャージ満タン秒")
         NS_REFLECT_FIELD(m_chargeSlowRate, "チャージ減速率")
         NS_REFLECT_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
-        NS_REFLECT_FIELD(m_positionFactorCurve, "突進位置係数カーブ")
-        NS_REFLECT_FIELD(m_centerTierEdge, "中心近くの境目")
         NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
         NS_REFLECT_FIELD(m_pressSquashScale, "押しの構えの縮み")
         NS_REFLECT_FIELD(m_standingMeshRef, "立ち姿のメッシュ")
@@ -300,8 +298,6 @@ namespace NS::Game::Player
         float m_chargeFullSeconds = 1.0f;
         float m_chargeSlowRate = 0.7f;
         NS::Obj::Curve m_chargeFactorCurve{};
-        NS::Obj::Curve m_positionFactorCurve{};
-        float m_centerTierEdge = 0.35f;
         float m_chargeSquashScale = 0.95f;
         float m_pressSquashScale = 0.97f;
         std::string m_idleClip = "idle";

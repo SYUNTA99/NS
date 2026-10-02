@@ -11,6 +11,7 @@
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
+#include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 
@@ -376,8 +377,10 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     nlohmann::json rock = NS::Obj::MakeObjectJson();
     NS::Obj::SetObjectJsonClass(rock, "MapObj");
     NS::Obj::SetObjectJsonId(rock, 2);
-    NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{0.0f, 1.0f, 1.0f});
-    rock["parts"] = {{"Params", {{"質量", 1.0f}}}};
+    // 自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さ。赤の真ん中に当たり、威力の倍率は 1
+    NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{0.0f, 0.5f, 1.0f});
+    // 位置は部品の件 Transform に入っているので、件ごと置き換えずに足す
+    NS::Obj::ObjectJsonParts(rock)["Params"] = {{"質量", 1.0f}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.LoadJson(doc);
     Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));

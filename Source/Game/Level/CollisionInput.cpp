@@ -354,38 +354,6 @@ namespace NS::Game::Level
         return factor;
     }
 
-    float CollisionInput::PositionFactorFor(float offset01) const noexcept
-    {
-        if (!std::isfinite(offset01))
-        {
-            return 1.0f;
-        }
-
-        const float clamped = NS::Core::Clamp(offset01, 0.0f, 1.0f);
-        const float factor = Tuning().m_positionFactorCurve.Evaluate(clamped);
-        // 点を全部消すと威力が 0 になるため、チャージ倍率カーブと同じく 0 以下は 1 とみなす
-        if (!(factor > 0.0f))
-        {
-            return 1.0f;
-        }
-
-        return factor;
-    }
-
-    HitTier CollisionInput::HitTierFor(float offset01) const noexcept
-    {
-        // 横ずれが測れない当たりに中心近くの白の光と長い止めを出さない
-        if (!std::isfinite(offset01))
-        {
-            return HitTier::Wide;
-        }
-        if (offset01 < Tuning().m_centerTierEdge)
-        {
-            return HitTier::Center;
-        }
-        return HitTier::Wide;
-    }
-
     float CollisionInput::ChargingSpeedScale() const noexcept
     {
         // 減速率の欄は非有限の書き込みを捨てるので、ここへ来る値は有限。Clamp だけで 0..1 に収まる

@@ -20,9 +20,9 @@ namespace NS::Game::Level
         float height = 0.43f; //!< 面全体に対する赤の上下の半分の幅の割合。0〜1
         float centerU = 0.0f; //!< 赤の中心の左右の位置。-1〜1、自機から見て右が正
         float centerV = 0.0f; //!< 赤の中心の上下の位置。-1〜1、上が正
-        // 赤の当たりは威力を減らさない。今までの「突進位置係数カーブ」の中心の値
+        // 赤の当たりは威力を減らさない
         float powerScale = 1.0f; //!< 赤で当たった時の当たり位置の係数
-        // かすめた当たりの威力を 3 割落とす。今までの「突進位置係数カーブ」の端の値
+        // かすめた当たりの威力を 3 割落とす
         float remainderPowerScale = 0.7f; //!< 赤の外 (外れ) の当たり位置の係数
     };
 
@@ -63,6 +63,23 @@ namespace NS::Game::Level
                                     const NS::Core::Vector3& direction,
                                     float playerRadius,
                                     HitFaceJudgement& out) noexcept;
+
+    //! @brief JudgeHitFace で判定し、判定できない時は外れの結果を返す
+    //! @details 体当たりの裁定と狙いの予測が同じ結果を出すよう、判定できない時の扱いをここ 1 か所で決める
+    //! 判定できない時は、段が外れ、威力の倍率が赤の外の威力の倍率 (JudgeHitFace と同じく丸めて読む)、横ずれが 1、
+    //! 表面に触れる点が相手の体の中心。他の欄は HitFaceJudgement の既定のまま
+    //! 判定できない体を中心近く・係数 1 にすると、形の分からない相手で一番強い当たりが出るため
+    //! @param[in] face 相手の赤の欄
+    //! @param[in] body 相手の体のセンサーの世界の形
+    //! @param[in] origin 線の起点。自機の玉の中心
+    //! @param[in] direction 突進の向き。縦の成分は捨てる
+    //! @param[in] playerRadius 自機の半径 (m)
+    //! @return 判定の結果。判定できない時は外れの結果
+    [[nodiscard]] HitFaceJudgement JudgeHitFaceOrWide(const HitFace& face,
+                                                      const NS::Obj::SensorVolume& body,
+                                                      const NS::Core::Vector3& origin,
+                                                      const NS::Core::Vector3& direction,
+                                                      float playerRadius) noexcept;
 
     //! @brief 面の上の 1 つの形。段の決まりが覆う範囲か、外れの面
     //! @details 位置と大きさは面の上の位置 (左右 u・上下 v) で表す。丸は楕円、箱は長方形で、縁ちょうどは外

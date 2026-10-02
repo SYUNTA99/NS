@@ -21,6 +21,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <utility>
 #include <vector>
 
 // 相手の面の上の位置と、段の決まりの並びと、赤の欄の置き場 (MapObj の部品 HitZones) を縛る
@@ -94,6 +95,38 @@ namespace
     const HitZones* HitZonesOf(const NS::Obj::Actor& actor)
     {
         return NS::Obj::ComponentCast<HitZones>(actor.Part("HitZones"));
+    }
+
+    // 自機を根 (0, 1, 0) に、半径 0.5 m の置物を 1 m 先の高さ rockHeight に置く
+    // 既定の 0.5 m は自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さで、+z へ進む線は面の真ん中を通る
+    Player* PlaceSlamTarget(NS::Obj::Scene& scene, const nlohmann::json& rockParts, float rockHeight = 0.5f)
+    {
+        nlohmann::json doc = NS::Obj::MakeSceneJson();
+        nlohmann::json entry = NS::Obj::MakeObjectJson();
+        NS::Obj::SetObjectJsonClass(entry, "Player");
+        NS::Obj::SetObjectJsonId(entry, 1);
+        NS::Obj::SetObjectPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
+        NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
+        nlohmann::json rock = NS::Obj::MakeObjectJson();
+        NS::Obj::SetObjectJsonClass(rock, "MapObj");
+        NS::Obj::SetObjectJsonId(rock, 2);
+        NS::Obj::SetObjectPosition(rock, Vector3{0.0f, rockHeight, 1.0f});
+        for (nlohmann::json::const_iterator it = rockParts.begin(); it != rockParts.end(); ++it)
+        {
+            NS::Obj::ObjectJsonParts(rock)[it.key()] = it.value();
+        }
+        NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+        scene.LoadJson(doc);
+        return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
+    }
+
+    // 溜め 0 で +z へ突進させ、裁定を 1 回回す。溜め 0 のチャージ倍率は 1
+    const NS::Game::Level::ImpactRecord& SlamOnce(Player& player)
+    {
+        player.RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
+        EXPECT_TRUE(player.BodySlam());
+        player.Resolver().OnUpdate();
+        return player.Resolver().LastImpact();
     }
 } // namespace
 
@@ -739,4 +772,100 @@ TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
     EXPECT_NEAR((impact.surfacePoint - center).Length(), body.radius, k_Tolerance);
     // 自機の来た側の表面
     EXPECT_LT(impact.surfacePoint.z, center.z);
+}
+
+// 体の形が判定できない時は、中心近く・係数 1 にせず外れと残りの威力の倍率にする。触れた点は体の中心
+TEST(HitZonesTest, BodyThatIsNoShapeFallsToWideWithTheRemainderPower)
+{
+    HitFace face;
+    face.powerScale = 1.2f;
+    face.remainderPowerScale = 0.6f;
+    const SensorVolume broken = SensorVolume::Sphere(Vector3{1.0f, 2.0f, 3.0f}, 0.0f);
+    const HitFaceJudgement fallen = NS::Game::Level::JudgeHitFaceOrWide(
+        face, broken, Vector3{-3.0f, 2.0f, 3.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius);
+    EXPECT_EQ(fallen.tier, HitTier::Wide);
+    EXPECT_FLOAT_EQ(fallen.powerScale, 0.6f);
+    EXPECT_FLOAT_EQ(fallen.offset01, 1.0f);
+    EXPECT_FLOAT_EQ(fallen.surfacePoint.x, 1.0f);
+    EXPECT_FLOAT_EQ(fallen.surfacePoint.y, 2.0f);
+    EXPECT_FLOAT_EQ(fallen.surfacePoint.z, 3.0f);
+
+    // 赤の外の倍率の非数は、判定と同じく 0 と読む
+    face.remainderPowerScale = std::numeric_limits<float>::quiet_NaN();
+    EXPECT_FLOAT_EQ(NS::Game::Level::JudgeHitFaceOrWide(
+                        face, broken, Vector3{-3.0f, 2.0f, 3.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius)
+                        .powerScale,
+                    0.0f);
+
+    // 判定できる体では JudgeHitFace の結果そのもの
+    const SensorVolume ball = SensorVolume::Sphere(Vector3{0.0f, 0.0f, 0.0f}, 0.5f);
+    HitFaceJudgement judged;
+    ASSERT_TRUE(
+        JudgeHitFace(face, ball, Vector3{-3.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius, judged));
+    const HitFaceJudgement passed = NS::Game::Level::JudgeHitFaceOrWide(
+        face, ball, Vector3{-3.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius);
+    EXPECT_EQ(passed.tier, HitTier::Center);
+    EXPECT_FLOAT_EQ(passed.powerScale, judged.powerScale);
+    EXPECT_FLOAT_EQ(passed.surfacePoint.x, judged.surfacePoint.x);
+}
+
+// 裁定の段と威力の当たり位置の係数は、相手の面の同じ決まりから出る
+// 赤の位置を個体で上書きすると、同じ線でもその相手だけ外れになる
+TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
+{
+    NS::Obj::Scene plainScene;
+    Player* plain = PlaceSlamTarget(plainScene, {{"HitZones", {{"威力の倍率", 1.1f}, {"残りの威力の倍率", 0.6f}}}});
+    ASSERT_NE(plain, nullptr);
+    const NS::Game::Level::ImpactRecord& centered = SlamOnce(*plain);
+    ASSERT_EQ(centered.sequence, 1u);
+    EXPECT_EQ(centered.tier, HitTier::Center);
+    EXPECT_FLOAT_EQ(centered.positionFactor, 1.1f);
+    EXPECT_FLOAT_EQ(centered.power, 1.1f);
+    EXPECT_TRUE(centered.centerHit);
+
+    NS::Obj::Scene movedScene;
+    Player* moved = PlaceSlamTarget(
+        movedScene, {{"HitZones", {{"上下の位置", 0.8f}, {"縦の幅", 0.15f}, {"残りの威力の倍率", 0.6f}}}});
+    ASSERT_NE(moved, nullptr);
+    const NS::Game::Level::ImpactRecord& missed = SlamOnce(*moved);
+    ASSERT_EQ(missed.sequence, 1u);
+    EXPECT_EQ(missed.tier, HitTier::Wide);
+    EXPECT_FLOAT_EQ(missed.positionFactor, 0.6f);
+    EXPECT_FLOAT_EQ(missed.power, 0.6f);
+    EXPECT_FALSE(missed.centerHit);
+}
+
+// 上下のずれも段に効く。赤の既定 0.43 に対し、玉の中心が相手の中心より 0.5 m 低い線は 0.5 ÷ 1.15 ≒ 0.435 で外
+TEST(HitZonesTest, VerdictMissesWhenTheLinePassesBelowTheRed)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSlamTarget(scene, nlohmann::json::object(), 1.0f);
+    ASSERT_NE(player, nullptr);
+    const NS::Game::Level::ImpactRecord& impact = SlamOnce(*player);
+    ASSERT_EQ(impact.sequence, 1u);
+    EXPECT_EQ(impact.tier, HitTier::Wide);
+    EXPECT_FLOAT_EQ(impact.positionFactor, 0.7f);
+    // 横にはずれていない
+    EXPECT_NEAR(impact.offset01, 0.0f, k_Tolerance);
+}
+
+// 押している間の狙いの予測は、裁定と同じ面の判定で段と横ずれを出す
+TEST(HitZonesTest, AimPredictionGivesTheSameTierAsTheVerdict)
+{
+    const nlohmann::json raised{{"HitZones", {{"上下の位置", 0.8f}, {"縦の幅", 0.15f}}}};
+    const std::vector<std::pair<nlohmann::json, HitTier>> cases{{nlohmann::json::object(), HitTier::Center},
+                                                                {raised, HitTier::Wide}};
+    for (const std::pair<nlohmann::json, HitTier>& entry : cases)
+    {
+        NS::Obj::Scene scene;
+        Player* player = PlaceSlamTarget(scene, entry.first);
+        ASSERT_NE(player, nullptr);
+        NS::Game::Level::SlamLineTarget predicted{};
+        ASSERT_TRUE(player->Resolver().FindSlamLineTarget(Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
+        EXPECT_EQ(predicted.tier, entry.second);
+        const NS::Game::Level::ImpactRecord& impact = SlamOnce(*player);
+        ASSERT_EQ(impact.sequence, 1u);
+        EXPECT_EQ(predicted.tier, impact.tier);
+        EXPECT_FLOAT_EQ(predicted.offset, impact.offset01);
+    }
 }

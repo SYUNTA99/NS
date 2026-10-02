@@ -45,7 +45,7 @@ namespace NS::Game::Level
         float power = 0.0f;
         float charge01 = 0.0f;
         float positionFactor = 0.0f;
-        float offset01 = 0.0f;          //!< 相手の中心からの横ずれ。相手の半幅と自機の半径の和で割った 0..1
+        float offset01 = 0.0f;          //!< 面の判定の横ずれ。相手の半幅と自機の半径の和で割った 0..1
         HitTier tier = HitTier::Center; //!< 当たりの段。CollisionInput が無い時は Center だが段の返りと倍率は掛けない
         float cameraShake = 0.0f;       //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
         int flashStart = 0;             //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
@@ -81,10 +81,11 @@ namespace NS::Game::Level
         NS::Core::Vector3 origin;    //!< 探した時の自機の位置。世界座標
         NS::Core::Vector3 direction; //!< 探した水平の向き。正規化済みで y は 0
         float along = 0.0f;          //!< 自機の位置から相手の外接箱の中心までの、線に沿った水平の距離。単位は m
-        float offset = 0.0f; //!< 線から相手の中心までの横ずれ。相手の半幅と自機の半径の和で割った比で、0 以上 1 以下
+        float offset = 0.0f;         //!< 面の判定の横ずれ。0 以上 1 以下で、裁定の当たりの横ずれと同じ式
         //! 線を進む自機の当たりの玉が相手の当たりの形に初めて触れるまでに、玉の中心が線に沿って進む距離。単位は m。
         //! 1 mm の幅で、触れている側へ丸める
         float contact = 0.0f;
+        HitTier tier = HitTier::Wide; //!< 今の玉の中心の高さで線を進めた時の段の予測。裁定と同じ面の判定で出す
     };
 
     //! @brief ぶつかった結果を自機側で決める Component
@@ -138,7 +139,7 @@ namespace NS::Game::Level
         //! 直近の裁定で読んだ溜め量 0..1
         [[nodiscard]] float LastCharge01() const noexcept { return m_lastCharge01; }
 
-        //! 直近の裁定の当たり位置係数
+        //! 直近の裁定の当たり位置係数。相手の面で当てはまった決まりの威力の倍率
         [[nodiscard]] float LastPositionFactor() const noexcept { return m_lastPositionFactor; }
 
         //! 直近の裁定の最終威力
@@ -159,7 +160,8 @@ namespace NS::Game::Level
         //! direction の水平へ maxDistance 掃き、当たりの裁定と同じく相手の体のセンサーの形に触れるかを見る。
         //! 線から相手の外接箱の中心までの横ずれが、外接箱を線に直交する軸へ投影した半幅と自機の半径の和以内で、
         //! 中心までの線に沿った距離が 0 より大きく、掃いた玉が触れる相手のうち、玉が触れるまでに進む距離が一番短い
-        //! 1 体を選ぶ。横ずれの比は当たりの裁定と同じ式で出し、裁定はそれを 0〜1 に丸めて使う。
+        //! 1 体を選ぶ。選んだ相手には MsgAskTackleTarget で面を問い、段と横ずれを裁定と同じ JudgeHitFaceOrWide で出す。
+        //! 玉の中心の高さは今のまま線を進めた物。応じない相手は外れ・横ずれ 1 とする。
         //! 壁と地形で突進が止まることは見ない
         //! @param[in] direction 線の向き。水平の成分だけを見る
         //! @param[in] maxDistance 線に沿って玉を掃く距離。単位は m

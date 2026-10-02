@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerParams.h"
@@ -30,7 +29,7 @@ namespace NS::Game::Level
     //! どちらも離したフレームに、溜め量を添えて Player::RequestBodySlam を呼ぶ。
     //! 溜めて放した時は、放す前のフレームに控えた狙いの線の向きも添える
     //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる
-    //! 依存: NS::Obj::Body, NS::Obj::Curve, ImpactInputJudge, ImpactResolver, HitTier
+    //! 依存: NS::Obj::Body, NS::Obj::Curve, ImpactInputJudge, ImpactResolver
     class CollisionInput : public NS::Obj::Component
     {
     public:
@@ -74,13 +73,6 @@ namespace NS::Game::Level
 
         //! 溜め量 0..1 をチャージ倍率カーブで威力の倍率にする。非有限の入力とカーブの 0 以下の値は 1 とみなす
         [[nodiscard]] float ChargeFactorFor(float charge01) const noexcept;
-
-        //! 相手の中心からの横ずれ 0..1 を当たり位置係数カーブで威力の倍率にする。非有限の入力とカーブの 0 以下の値は 1
-        //! とみなす
-        [[nodiscard]] float PositionFactorFor(float offset01) const noexcept;
-
-        //! 相手の中心からの横ずれ 0..1 を段に分ける。境目ちょうどは外側の段とし、非有限の入力は大きな外れとみなす
-        [[nodiscard]] HitTier HitTierFor(float offset01) const noexcept;
 
         //! 溜め中に最高速へ掛ける倍率を返す。1 − チャージ減速率を 0..1 に丸める
         [[nodiscard]] float ChargingSpeedScale() const noexcept;
