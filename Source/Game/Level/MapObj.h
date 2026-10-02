@@ -38,8 +38,6 @@ namespace NS::Game::Level
         //! @brief 状態機械を 1 固定ステップ進め、当たりの球が動いていれば物理へ置き直す
         void UpdateMotion();
         void OnEndPlay() override;
-        [[nodiscard]] NS::Obj::IStateMachine* GetStateMachine() noexcept override { return &m_states; }
-        [[nodiscard]] const NS::Obj::IStateMachine* GetStateMachine() const noexcept override { return &m_states; }
         //! 体当たりの止めの最中の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsFrozen() const noexcept;
         //! @brief 押し飛ばされて曲線か転がりの最中かを返す
@@ -84,7 +82,7 @@ namespace NS::Game::Level
         }
         MapObjParams m_params;
         LaunchEffects m_effects;
-        NS::Obj::StateMachine<MapObj> m_states;
+        NS::Obj::StateMachine<MapObj>* m_states = nullptr; // 基底が所有する。コンストラクタが預けた直後から有効
         NS::Obj::SubStateMachine<MapObj> m_motion;
         TackleFreezeDesc m_freeze;
         NS::Core::Vector3 m_freezeHome{};

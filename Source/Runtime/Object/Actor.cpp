@@ -8,9 +8,9 @@
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/Shadow.h"
-#include "Runtime/Object/Components/StateMachineComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
 
@@ -41,7 +41,6 @@ namespace NS::Obj
         visit("Collision", m_collision.get());
         visit("BodySensor", m_bodySensor.get());
         visit("AttackSensor", m_attackSensor.get());
-        visit("StateMachine", m_stateMachine.get());
         visit("HitReaction", m_hitReaction.get());
     }
 
@@ -111,11 +110,6 @@ namespace NS::Obj
             m_attackSensor = std::make_unique<HitSensor>();
             created = m_attackSensor.get();
         }
-        else if (name == "StateMachine")
-        {
-            m_stateMachine = std::make_unique<StateMachineComponent>();
-            created = m_stateMachine.get();
-        }
         else if (name == "HitReaction")
         {
             m_hitReaction = std::make_unique<HitReaction>();
@@ -140,22 +134,20 @@ namespace NS::Obj
 
     IStateMachine* Actor::GetStateMachine() noexcept
     {
-        StateMachineComponent* component = m_stateMachine.get();
-        if (component == nullptr)
-        {
-            return nullptr;
-        }
-        return &component->Machine();
+        return m_stateMachine.get();
     }
 
     const IStateMachine* Actor::GetStateMachine() const noexcept
     {
-        const StateMachineComponent* component = m_stateMachine.get();
-        if (component == nullptr)
+        return m_stateMachine.get();
+    }
+
+    void Actor::StepStateMachine()
+    {
+        if (m_stateMachine != nullptr)
         {
-            return nullptr;
+            m_stateMachine->Step(NS::Platform::FrameTimer::FixedDelta());
         }
-        return &component->Machine();
     }
 
     Actor::~Actor() noexcept
@@ -304,7 +296,7 @@ namespace NS::Obj
     void Actor::Update()
     {
         TickPart(m_model.get());
-        TickPart(m_stateMachine.get());
+        StepStateMachine();
         TickPart(m_hitReaction.get());
     }
 

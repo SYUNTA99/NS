@@ -182,6 +182,16 @@ namespace NS::Obj
             }
         }
 
+        //! @brief 組む時か Change で控えた所有者で 1 フレーム進める
+        //! @details 所有者を控えていなければ何もしない
+        void Step(float dt) override
+        {
+            if (m_owner != nullptr)
+            {
+                Step(*m_owner, dt);
+            }
+        }
+
         //! @brief 印 id の状態へ移る予約をする。確定は次の Step
         //! @details 予約を入れた時に今の状態の OnExit を呼び、コルーチンを捨てる。予約の上書きでは呼ばない
         //! @param[in] owner OnExit と、確定の時の OnEnter へ渡す所有者

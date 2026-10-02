@@ -2,6 +2,7 @@
 
 #include "Runtime/Object/ActorBase.h"
 #include "Runtime/Object/Component.h"
+#include "Runtime/Object/StateMachine.h"
 #include "Runtime/Object/Transform.h"
 
 #include <concepts>
@@ -21,7 +22,6 @@ namespace NS::Obj
     class Shadow;
     class CapsuleCollider;
     class Collider;
-    class StateMachineComponent;
     class HitReaction;
     class ICameraTarget;
     class Message;
@@ -48,7 +48,7 @@ namespace NS::Obj
         using PartVisitor = std::function<void(std::string_view, Component&)>;
         //! @brief 部品名と部品の組を決まった並びで visitor へ渡す
         //! @details 基底は Transform、Model、Animation、Shadow、Collider、Collision、BodySensor、AttackSensor、
-        //! StateMachine、HitReaction の順で、持たない部品は飛ばす。派生は基底を呼んでから自分の部品を足す
+        //! HitReaction の順で、持たない部品は飛ばす。派生は基底を呼んでから自分の部品を足す
         virtual void ForEachPart(const PartVisitor& visitor) const;
         //! @brief 部品名 name の部品を返す
         //! @return 持たなければ nullptr
@@ -58,7 +58,7 @@ namespace NS::Obj
         [[nodiscard]] std::string_view PartName(const Component& part) const;
         //! @brief 部品名 name の部品を作って付ける。既に持っていればそれを返す
         //! @details 基底が作れるのは Model、Animation、Shadow、Collider、Collision、BodySensor、AttackSensor、
-        //! StateMachine、HitReaction
+        //! HitReaction
         //! @return 付けた部品。作れない名前は nullptr
         virtual Component* CreatePart(std::string_view name);
         [[nodiscard]] Model* ModelPart() noexcept { return m_model.get(); }
@@ -78,7 +78,7 @@ namespace NS::Obj
         [[nodiscard]] HitReaction* HitReactionPart() noexcept { return m_hitReaction.get(); }
         [[nodiscard]] const HitReaction* HitReactionPart() const noexcept { return m_hitReaction.get(); }
 
-        //! Model、StateMachine、HitReaction の順に進める
+        //! Model、状態機械、HitReaction の順に進める。状態機械を持たなければ飛ばす
         void Update() override;
         //! Animation を進める
         void PrepareRender() override;
@@ -160,6 +160,23 @@ namespace NS::Obj
                 component->OnUpdate();
             }
         }
+        //! @brief 持ち主の型 TOwner の状態機械を TStates で組み、基底に預けて先頭の状態へ入る
+        //! @details 状態機械は 1 体に 1 つで、Update が 1 固定ステップ進める。組み直すと前の機械を捨てる。
+        //! 先頭の OnEnter が走るので、持ち主が OnEnter の触る所を作り終えてから呼ぶ
+        //! @tparam TOwner 呼ぶ派生の型。状態は StateOf<自分の型, TOwner> から派生する
+        //! @param[in] owner 状態へ渡す持ち主
+        //! @return 組んだ状態機械。基底が所有するので、呼び手は参照を持つだけ
+        template <typename TOwner, typename... TStates> StateMachine<TOwner>& BuildStateMachine(TOwner& owner)
+        {
+            static_assert(std::is_base_of_v<Actor, TOwner>, "持ち主は Actor の派生");
+            std::unique_ptr<StateMachine<TOwner>> machine = std::make_unique<StateMachine<TOwner>>();
+            StateMachine<TOwner>& built = *machine;
+            m_stateMachine = std::move(machine);
+            built.template Build<TStates...>(owner);
+            return built;
+        }
+        //! 状態機械を 1 固定ステップ進める。持たなければ何もしない。Update を上書きして順を変える派生が呼ぶ
+        void StepStateMachine();
         void AttachFixedComponent(Component& component);
         void SetCollisionPart(std::unique_ptr<Collider> collision);
 
@@ -175,7 +192,7 @@ namespace NS::Obj
         std::unique_ptr<Collider> m_collision;
         std::unique_ptr<HitSensor> m_bodySensor;
         std::unique_ptr<HitSensor> m_attackSensor;
-        std::unique_ptr<StateMachineComponent> m_stateMachine;
+        std::unique_ptr<IStateMachine> m_stateMachine; // 派生が BuildStateMachine で預ける。持たない種類は nullptr
         std::unique_ptr<HitReaction> m_hitReaction;
         Transform* m_transform = nullptr; // TransformComponent が持つ実体、Actor が必ず 1 つ積む
         std::vector<Actor*> m_children;   // 子 Actor、非所有
