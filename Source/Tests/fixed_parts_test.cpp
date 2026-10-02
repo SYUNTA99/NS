@@ -38,14 +38,6 @@ namespace
         mutable PassivePart passive;
     };
 
-    class PartReferenceProbe : public NS::Obj::Component
-    {
-    public:
-        NS::Obj::ComponentRef<NS::Obj::Model> target;
-        NS_REFLECT_BEGIN(PartReferenceProbe, NS::Obj::Component)
-        NS_REFLECT_FIELD(target, "target")
-        NS_REFLECT_END()
-    };
 } // namespace
 
 TEST(FixedParts, BaseActorDoesNotImplicitlyUpdateEveryEnumeratedPart)
@@ -105,31 +97,6 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
     EXPECT_NE(light.Part("DirectionalLight"), nullptr);
     EXPECT_NE(terrain.ModelPart(), nullptr);
     EXPECT_NE(terrain.CollisionPart(), nullptr);
-}
-
-TEST(FixedParts, ReferencesResolveActorAndRoleWithoutComponentIds)
-{
-    NS::Obj::ObjectList objects;
-    std::unique_ptr<NS::Obj::Actor> owned = std::make_unique<NS::Obj::Actor>();
-    NS::Obj::Component* model = owned->CreatePart("Model");
-    NS::Obj::Actor* actor = objects.AppendWithNewId(std::move(owned), "target");
-    PartReferenceProbe probe;
-    probe.target.actor = NS::Obj::ActorRef{actor->Id()};
-    probe.target.partName = "Model";
-    EXPECT_TRUE(probe.target.IsSet());
-    EXPECT_EQ(objects.ResolvePart(probe.target), model);
-    const nlohmann::json fields = NS::Obj::SerializeComponent(probe)["fields"];
-    EXPECT_EQ(fields["target"], (nlohmann::json{{"ref", actor->Id()}, {"part", "Model"}}));
-    PartReferenceProbe restored;
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(restored, fields), 0u);
-    EXPECT_EQ(restored.target, probe.target);
-    probe.target.partName = "Missing";
-    EXPECT_EQ(objects.ResolvePart(probe.target), nullptr);
-    probe.target.partName = "Transform";
-    EXPECT_EQ(objects.ResolvePart(probe.target), nullptr);
-    probe.target.partName = "Model";
-    objects.RemoveByObjectId(actor->Id());
-    EXPECT_EQ(objects.ResolvePart(probe.target), nullptr);
 }
 
 TEST(FixedParts, SavedObjectsUseRoleKeysAndDirectFields)

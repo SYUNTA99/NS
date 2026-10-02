@@ -61,16 +61,6 @@ namespace NS::Obj
                 out["ref"] = value.id;
                 return out;
             }
-            case FieldType::ComponentRef:
-            {
-                // ActorRef と同じ "ref" に持ち主を、"part" に部品名を書く。"part" の有無で見分ける
-                ComponentRefValue value{};
-                field.get(&comp, &value);
-                nlohmann::json out;
-                out["ref"] = value.actor.id;
-                out["part"] = value.partName;
-                return out;
-            }
             case FieldType::Curve:
             {
                 // 素の配列だと読み込み時に Vector3 と区別できないため {"curve": [[x,y], ...]} の単キー object で書く
@@ -193,24 +183,6 @@ namespace NS::Obj
                 field.set(&comp, &v);
                 return;
             }
-            case FieldType::ComponentRef:
-            {
-                if (!value.is_object())
-                {
-                    return;
-                }
-                const nlohmann::json::const_iterator objectIt = value.find("ref");
-                const nlohmann::json::const_iterator componentIt = value.find("part");
-                // 片方でも壊れていれば既定の未設定のまま。持ち主と Component が食い違った参照を作らない
-                if (objectIt == value.end() || !objectIt->is_number_unsigned() || componentIt == value.end() ||
-                    !componentIt->is_string())
-                {
-                    return;
-                }
-                ComponentRefValue v{ActorRef{objectIt->get<std::uint32_t>()}, componentIt->get<std::string>()};
-                field.set(&comp, &v);
-                return;
-            }
             case FieldType::Curve:
             {
                 if (!value.is_object())
@@ -294,18 +266,6 @@ namespace NS::Obj
             }
             }
         }
-
-        bool IsReflectedFieldName(const ReflectionInfo& info, std::string_view name) noexcept
-        {
-            for (std::size_t i = 0; i < info.fieldCount; ++i)
-            {
-                if (name == info.fields[i].name)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
     } // namespace
 
     nlohmann::json SerializePartFields(const Component& part)
@@ -367,7 +327,7 @@ namespace NS::Obj
         std::size_t unreadCount = 0;
         for (nlohmann::json::const_iterator entry = fields.begin(); entry != fields.end(); ++entry)
         {
-            if (entry.key() == "enabled" || IsReflectedFieldName(*info, entry.key()))
+            if (entry.key() == "enabled" || FindField(info, entry.key()) != nullptr)
             {
                 continue;
             }

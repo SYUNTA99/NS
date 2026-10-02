@@ -7,12 +7,6 @@ namespace NS::Obj
 {
     namespace
     {
-        // 滑らかに始まって終わる補間の重み。t が 0 で 0、1 で 1 ちょうど
-        [[nodiscard]] float SmoothStep(float t) noexcept
-        {
-            return t * t * (3.0f - 2.0f * t);
-        }
-
         [[nodiscard]] bool IsFiniteVector(const NS::Core::Vector3& v) noexcept
         {
             return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
@@ -195,7 +189,7 @@ namespace NS::Obj
 
         // 重みを 1 - weight と weight に分けて掛けるので、戻しの最後のフレームで倍率 1・傾き 0 ちょうどになる
         const float t = static_cast<float>(m_frame - m_holdFrames + 1) / static_cast<float>(m_returnFrames);
-        const float weight = SmoothStep(t);
+        const float weight = NS::Core::SmoothStep(t);
         return CameraZoomRoll{
             .zoom = m_full.zoom * (1.0f - weight) + weight,
             .rollDegrees = m_full.rollDegrees * (1.0f - weight),

@@ -3,7 +3,6 @@
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CameraManager.h"
-#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
@@ -66,7 +65,6 @@ namespace NS::Obj
     {
         // ギズモで動いた live の当たりを張り直す。object を作り直さないので選択・参照はそのまま保たれる
         m_objects.SyncPhysics(m_physicsScene);
-        OnObjectsRebuilt();
         NotifyTransientsObjectsRebuilt();
     }
 
@@ -84,17 +82,8 @@ namespace NS::Obj
     const nlohmann::json& Scene::BeginPlayBaseline()
     {
         // プレイ規則の判定と編集復帰の姿はこの凍結を読む。シミュレーションが動かした値は映らず、編集へ持ち込まれない
-        if (!m_playBaselineInjected)
-        {
-            m_playBaseline = ToJson();
-        }
+        m_playBaseline = ToJson();
         return m_playBaseline;
-    }
-
-    void Scene::SetPlayBaselineForTest(nlohmann::json scene)
-    {
-        m_playBaseline = std::move(scene);
-        m_playBaselineInjected = true;
     }
 
     void Scene::WritePlayBaselineField(const Component& comp, std::string_view fieldName)
@@ -320,7 +309,6 @@ namespace NS::Obj
             scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, m_assets); });
         m_objects.SyncPhysics(m_physicsScene);
 
-        OnObjectsRebuilt();
         NotifyTransientsObjectsRebuilt();
     }
 
@@ -352,23 +340,9 @@ namespace NS::Obj
         {
             if (phase == UpdatePhase::Physics)
             {
-                for (Actor* actor : m_objects)
-                {
-                    if (actor->IsActiveInHierarchy())
-                    {
-                        actor->OnPrePhysicsStep();
-                    }
-                }
                 m_physicsScene.Update(NS::Platform::FrameTimer::FixedDelta());
-                for (Actor* actor : m_objects)
-                {
-                    if (actor->IsActiveInHierarchy())
-                    {
-                        actor->OnPostPhysicsStep();
-                    }
-                }
             }
-            // 物理の段に置いた物は、物理を進めた直後に呼ばれる
+            // 物理の段に置いた物は、Jolt を 1 歩進めた直後に呼ばれる
             m_objects.ExecutePhase(phase);
             if (phase == UpdatePhase::Camera)
             {
@@ -403,16 +377,27 @@ namespace NS::Obj
         m_cameraManager->SetCamera(nullptr);
     }
 
-    NS::Gfx::RenderSettings Scene::ResolveSceneSettings(const NS::Gfx::RenderSettings& projectDefaults)
-    {
-        return m_sceneRenderer.ResolveSceneSettings(projectDefaults);
-    }
-
     void Scene::OnRender()
     {
         // 更新は終わっているので bounds は 1 フレームに 1 回で足りる。ビューを何枚描いても同じ値
         m_sceneRenderer.SyncRenderBounds();
-        OnRenderScene();
+
+        NS::Obj::CameraManager* cameras = GetCameraManager();
+        CameraComponent* camera = MainCamera();
+        if (cameras == nullptr || camera == nullptr)
+        {
+            return;
+        }
+        // 世界が実時間で進まない間は、前の固定フレームからの経過の割合に意味が無い
+        // 描く度に割合が変わると、同じフレームの絵が揺れる
+        // 実カメラの姿勢もここで決まり、次のフレームの狙いの向きが読む
+        // 1 フレームずつ進める走行が、走るたびに割れないようにする
+        float alpha = NS::Platform::FrameTimer::Alpha();
+        if (!m_simulationEnabled || m_simulationPaused)
+        {
+            alpha = 1.0f;
+        }
+        m_sceneRenderer.Render(*cameras, *camera, m_skyboxPath, alpha);
     }
 
     void Scene::RegisterRenderable(IRenderable* renderable)
@@ -443,21 +428,6 @@ namespace NS::Obj
     void Scene::UnregisterLight(DirectionalLight* light)
     {
         m_sceneRenderer.UnregisterLight(light);
-    }
-
-    void Scene::DrawOpaque(const NS::Gfx::RenderContext& context)
-    {
-        m_sceneRenderer.DrawOpaque(context);
-    }
-
-    void Scene::DrawTransparent(const NS::Gfx::RenderContext& context)
-    {
-        m_sceneRenderer.DrawTransparent(context);
-    }
-
-    void Scene::DrawOverlays(const NS::Gfx::RenderContext& context)
-    {
-        m_sceneRenderer.DrawOverlays(context);
     }
 
     CameraManager* Scene::GetCameraManager() const noexcept
@@ -494,25 +464,5 @@ namespace NS::Obj
     CameraComponent* Scene::MainCamera() noexcept
     {
         return &m_mainCamera;
-    }
-
-    void Scene::OnRenderScene()
-    {
-        NS::Obj::CameraManager* cameras = GetCameraManager();
-        CameraComponent* camera = MainCamera();
-        if (cameras == nullptr || camera == nullptr)
-        {
-            return;
-        }
-        // 世界が実時間で進まない間は、前の固定フレームからの経過の割合に意味が無い
-        // 描く度に割合が変わると、同じフレームの絵が揺れる
-        // 実カメラの姿勢もここで決まり、次のフレームの狙いの向きが読む
-        // 1 フレームずつ進める走行が、走るたびに割れないようにする
-        float alpha = NS::Platform::FrameTimer::Alpha();
-        if (!m_simulationEnabled || m_simulationPaused)
-        {
-            alpha = 1.0f;
-        }
-        m_sceneRenderer.Render(*cameras, *camera, m_skyboxPath, alpha);
     }
 } // namespace NS::Obj

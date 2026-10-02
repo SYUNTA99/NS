@@ -163,10 +163,6 @@ namespace NS::Obj
             return true;
         }
 
-        [[nodiscard]] float MaxAbs(const Vector3& v) noexcept
-        {
-            return std::max({std::abs(v.x), std::abs(v.y), std::abs(v.z)});
-        }
     } // namespace
 
     SensorVolume SensorVolume::Sphere(const NS::Core::Vector3& center, float radius) noexcept
@@ -320,7 +316,7 @@ namespace NS::Obj
         }
         case HitSensorShape::Sphere:
         default:
-            return SensorVolume::Sphere(center, m_radius * MaxAbs(parts.scale));
+            return SensorVolume::Sphere(center, m_radius * NS::Core::MaxAbsComponent(parts.scale));
         }
     }
 

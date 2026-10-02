@@ -80,12 +80,10 @@ namespace NS::Obj
         {
             return;
         }
-        for (const RenderEntry& entry : m_renderables)
+        const auto isSame = [renderable](const RenderEntry& entry) { return entry.renderable == renderable; };
+        if (std::any_of(m_renderables.begin(), m_renderables.end(), isSame))
         {
-            if (entry.renderable == renderable)
-            {
-                return;
-            }
+            return;
         }
 
         NS::Gfx::RenderProxyDesc desc{};
@@ -104,15 +102,14 @@ namespace NS::Obj
         {
             return;
         }
-        for (std::vector<RenderEntry>::iterator it = m_renderables.begin(); it != m_renderables.end(); ++it)
+        const std::vector<RenderEntry>::iterator it = std::find_if(
+            m_renderables.begin(), m_renderables.end(), [renderable](const RenderEntry& entry) {
+                return entry.renderable == renderable;
+            });
+        if (it != m_renderables.end())
         {
-            if (it->renderable != renderable)
-            {
-                continue;
-            }
             m_renderScene.Unregister(it->handle);
             m_renderables.erase(it);
-            return;
         }
     }
 
@@ -122,12 +119,9 @@ namespace NS::Obj
         {
             return;
         }
-        for (const OverlayRenderer* entry : m_overlays)
+        if (std::find(m_overlays.begin(), m_overlays.end(), overlay) != m_overlays.end())
         {
-            if (entry == overlay)
-            {
-                return;
-            }
+            return;
         }
 
         // 挿入の時点で priority 昇順を保つ。同値は後から来た方が後ろ
@@ -144,15 +138,7 @@ namespace NS::Obj
         {
             return;
         }
-        for (std::vector<OverlayRenderer*>::iterator it = m_overlays.begin(); it != m_overlays.end(); ++it)
-        {
-            if (*it != overlay)
-            {
-                continue;
-            }
-            m_overlays.erase(it);
-            return;
-        }
+        std::erase(m_overlays, overlay);
     }
 
     void SceneRenderer::RegisterUIActor(UIActor* actor)
@@ -180,12 +166,9 @@ namespace NS::Obj
             return;
         }
         // 二重に積むと UnregisterLight が片方しか消さず、外したはずの光が残る
-        for (const DirectionalLight* entry : m_lights)
+        if (std::find(m_lights.begin(), m_lights.end(), light) != m_lights.end())
         {
-            if (entry == light)
-            {
-                return;
-            }
+            return;
         }
         m_lights.push_back(light);
     }
@@ -196,15 +179,7 @@ namespace NS::Obj
         {
             return;
         }
-        for (std::vector<DirectionalLight*>::iterator it = m_lights.begin(); it != m_lights.end(); ++it)
-        {
-            if (*it != light)
-            {
-                continue;
-            }
-            m_lights.erase(it);
-            return;
-        }
+        std::erase(m_lights, light);
     }
 
     void SceneRenderer::SyncRenderBounds()

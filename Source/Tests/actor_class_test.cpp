@@ -18,7 +18,6 @@
 #include "Runtime/Object/Components/MeshCollider.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/PlayerInput.h"
-#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Components/Shadow.h"
 #include "Runtime/Object/Components/SphereCollider.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
@@ -55,7 +54,6 @@ TEST(ActorClass, MapObjOwnsMotionAndStaticCollider)
     EXPECT_EQ(sensor->Type(), NS::Obj::HitSensorType::MapObjBody);
     EXPECT_EQ(obj.Part("TackleReaction"), nullptr);
     EXPECT_NE(NS::Obj::ComponentCast<NS::Game::Level::LaunchEffects>(obj.Part("LaunchEffects")), nullptr);
-    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::RigidBody>(obj.Part("RigidBody")), nullptr);
     EXPECT_NE(obj.GetStateMachine(), nullptr);
     EXPECT_FALSE(obj.IsFlying());
 }

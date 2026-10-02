@@ -101,8 +101,6 @@ namespace NS::Editor
             return !SameValue<NS::Obj::ActorRef>(comp, *defaults, field);
         case NS::Obj::FieldType::Curve:
             return !SameValue<NS::Obj::Curve>(comp, *defaults, field);
-        case NS::Obj::FieldType::ComponentRef:
-            return !SameValue<NS::Obj::ComponentRefValue>(comp, *defaults, field);
         }
         return false;
     }
@@ -136,9 +134,6 @@ namespace NS::Editor
             break;
         case NS::Obj::FieldType::Curve:
             CopyValue<NS::Obj::Curve>(comp, defaults, field);
-            break;
-        case NS::Obj::FieldType::ComponentRef:
-            CopyValue<NS::Obj::ComponentRefValue>(comp, defaults, field);
             break;
         }
     }
@@ -432,8 +427,7 @@ namespace NS::Editor
 
     ComponentEditResult DrawReflectedComponent(NS::Obj::Component& comp,
                                                std::span<const ObjectRefOption> refOptions,
-                                               const NS::Obj::Component* defaults,
-                                               std::span<const ComponentRefOption> componentOptions) noexcept
+                                               const NS::Obj::Component* defaults) noexcept
     {
         const NS::Obj::ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr || info->fieldCount == 0)
@@ -594,60 +588,6 @@ namespace NS::Editor
                             field.set(&comp, &value);
                             result.changed = true;
                         }
-                        ImGui::PopID();
-                    }
-                    ImGui::EndCombo();
-                }
-                break;
-            }
-            case NS::Obj::FieldType::ComponentRef:
-            {
-                NS::Obj::ComponentRefValue value{};
-                field.get(&comp, &value);
-                const NS::Obj::ReflectionInfo* allowed = nullptr;
-                if (field.refType != nullptr)
-                {
-                    allowed = field.refType();
-                }
-
-                // 欄の型に合う候補だけを出す。型を問わない欄は全部出す
-                const char* currentLabel = "未設定";
-                if (value.IsSet())
-                {
-                    currentLabel = "(消えた参照)";
-                }
-                for (const ComponentRefOption& option : componentOptions)
-                {
-                    if (option.partName == value.partName && option.object == value.actor.id)
-                    {
-                        currentLabel = option.label.c_str();
-                        break;
-                    }
-                }
-                if (ImGui::BeginCombo("##value", currentLabel))
-                {
-                    if (ImGui::Selectable("未設定", !value.IsSet()))
-                    {
-                        value = NS::Obj::ComponentRefValue{};
-                        field.set(&comp, &value);
-                        result.changed = true;
-                    }
-                    for (const ComponentRefOption& option : componentOptions)
-                    {
-                        if (option.target == nullptr || (allowed != nullptr && !option.target->IsA(allowed)))
-                        {
-                            continue;
-                        }
-                        ImGui::PushID(static_cast<int>(option.object));
-                        ImGui::PushID(option.partName.c_str());
-                        const bool selected = option.partName == value.partName && option.object == value.actor.id;
-                        if (ImGui::Selectable(option.label.c_str(), selected))
-                        {
-                            value = NS::Obj::ComponentRefValue{NS::Obj::ActorRef{option.object}, option.partName};
-                            field.set(&comp, &value);
-                            result.changed = true;
-                        }
-                        ImGui::PopID();
                         ImGui::PopID();
                     }
                     ImGui::EndCombo();
@@ -1002,8 +942,7 @@ namespace NS::Editor
 #else
     ComponentEditResult DrawReflectedComponent(NS::Obj::Component&,
                                                std::span<const ObjectRefOption>,
-                                               const NS::Obj::Component*,
-                                               std::span<const ComponentRefOption>) noexcept
+                                               const NS::Obj::Component*) noexcept
     {
         return ComponentEditResult{};
     }

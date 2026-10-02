@@ -70,25 +70,6 @@ namespace NS::Editor
                 refOptions.push_back(NS::Editor::ObjectRefOption{candidate.Id(), label});
             }
 
-            // ComponentRef フィールドの参照先候補。「配置物の名前 / Component の名前」で出し、型の絞り込みは欄が行う
-            std::vector<NS::Editor::ComponentRefOption> componentOptions;
-            for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
-            {
-                NS::Obj::Actor& candidate = *editor.Objects().ObjectAt(i);
-                if (candidate.IsTransient())
-                {
-                    continue;
-                }
-                candidate.ForEachPart([&candidate, &componentOptions](std::string_view partName,
-                                                                      NS::Obj::Component& part) {
-                    std::string label = NS::Editor::ObjectDisplayName(candidate);
-                    label += " / ";
-                    label += partName;
-                    componentOptions.push_back(
-                        NS::Editor::ComponentRefOption{candidate.Id(), std::string{partName}, &part, std::move(label)});
-                });
-            }
-
             if (!editor.HasInspectableSelection())
             {
                 ImGui::TextDisabled("(選択なし)");
@@ -260,7 +241,7 @@ namespace NS::Editor
                         // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
                         const NS::Obj::Component* baseline = m_defaults.Find(*live);
                         const NS::Editor::ComponentEditResult r =
-                            NS::Editor::DrawReflectedComponent(*live, refOptions, baseline, componentOptions);
+                            NS::Editor::DrawReflectedComponent(*live, refOptions, baseline);
                         componentEdit.activated |= r.activated;
                         componentEdit.committed |= r.committed;
                         componentEdit.changed |= r.changed;

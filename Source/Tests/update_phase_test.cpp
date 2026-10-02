@@ -31,20 +31,6 @@ namespace
                 m_log.push_back("render-prep");
             }
         }
-        void OnPrePhysicsStep() override
-        {
-            if (m_phase == NS::Obj::UpdatePhase::Player)
-            {
-                m_log.push_back("pre-physics");
-            }
-        }
-        void OnPostPhysicsStep() override
-        {
-            if (m_phase == NS::Obj::UpdatePhase::Player)
-            {
-                m_log.push_back("post-physics");
-            }
-        }
 
     private:
         NS::Obj::UpdatePhase m_phase;
@@ -87,8 +73,6 @@ TEST(UpdatePhase, SceneRunsTheNamedTableAroundPhysics)
               (std::vector<std::string>{"input",
                                         "player",
                                         "enemy",
-                                        "pre-physics",
-                                        "post-physics",
                                         "physics",
                                         "sensors",
                                         "triggers",

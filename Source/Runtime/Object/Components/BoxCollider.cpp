@@ -135,11 +135,6 @@ namespace NS::Obj
         return NS::Core::MakeOBB(translation, rotation, half);
     }
 
-    NS::Phys::ShapePart BoxCollider::RigidBodyPart() const
-    {
-        return NS::Phys::MakeBoxPart(WorldOBB());
-    }
-
     JPH::BodyID BoxCollider::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
         return physics.SyncBox(current, WorldOBB(), NS::Phys::ObjectLayers::Terrain);

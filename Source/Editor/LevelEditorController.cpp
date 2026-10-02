@@ -23,7 +23,6 @@
 #include "Runtime/Object/Components/MeshCollider.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/PlayerInput.h"
-#include "Runtime/Object/Components/SlopeCollider.h"
 #include "Runtime/Object/Components/SphereCollider.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Components/TransformComponent.h"
@@ -98,7 +97,7 @@ namespace
     // 編集復帰の視点ブレンド秒。CameraManager の vcam 切替の既定 0.35 秒と揃え、モード切替の繋ぎを同じ感触にする
     constexpr float k_EditBlendSeconds = 0.35f;
 
-    // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状、slope は collider 由来の AABB
+    // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状
     void DrawColliderWireframe(NS::Obj::Actor& object, const NS::Core::Color& color) noexcept
     {
         if (NS::Obj::BoxCollider* box = NS::Obj::ComponentCast<NS::Obj::BoxCollider>(object.CollisionPart()))
@@ -116,22 +115,6 @@ namespace
             worldCapsule.axis.Normalize();
             NS::Gfx::DebugDraw::Capsule(
                 worldCapsule.center, worldCapsule.axis * worldCapsule.halfHeight, worldCapsule.radius, color);
-        }
-        else if (NS::Obj::SlopeCollider* slope = NS::Obj::ComponentCast<NS::Obj::SlopeCollider>(object.CollisionPart()))
-        {
-            // 斜面は三角の集まりなので、包む箱を出して面の広がりを見せる
-            const std::array<NS::Phys::Triangle, 8> tris = slope->WorldTriangles();
-            NS::Core::Vector3 lo = tris[0].v0;
-            NS::Core::Vector3 hi = lo;
-            for (const NS::Phys::Triangle& tri : tris)
-            {
-                for (const NS::Core::Vector3* vertex : {&tri.v0, &tri.v1, &tri.v2})
-                {
-                    lo = NS::Core::Vector3::Min(lo, *vertex);
-                    hi = NS::Core::Vector3::Max(hi, *vertex);
-                }
-            }
-            NS::Gfx::DebugDraw::AABB(NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f}, color);
         }
         else if (NS::Obj::ComponentCast<NS::Obj::MeshCollider>(object.CollisionPart()) != nullptr)
         {
@@ -706,7 +689,7 @@ void LevelEditorController::TickEdit()
         {
             m_editBlendElapsed += NS::Platform::FrameTimer::FixedDelta();
             const float t = std::min(m_editBlendElapsed / k_EditBlendSeconds, 1.0f);
-            const float eased = t * t * (3.0f - 2.0f * t); // smoothstep で ease-in-out
+            const float eased = NS::Core::SmoothStep(t); // ease-in-out
             pose = NS::Obj::CameraPose::Lerp(m_editBlendFrom, pose, eased);
             if (t >= 1.0f)
             {

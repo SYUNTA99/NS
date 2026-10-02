@@ -2,7 +2,6 @@
 
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Physics/PhysicsScene.h"
 
@@ -15,14 +14,6 @@ namespace NS::Obj
             return;
         }
 
-        // 形は RigidBody が body へまとめる。自分の body を残すと、同じ場所に静的な当たりが二重に立つ
-        if (JoinsRigidBody())
-        {
-            physics.RemoveBody(m_bodyId);
-            m_bodyId = JPH::BodyID{};
-            return;
-        }
-
         const JPH::BodyID body = SyncBody(physics, m_bodyId);
         // 置き直しは同じ id を返す。違うのは初めて作った時か、無効が返った時だけ
         if (m_bodyId != body)
@@ -30,26 +21,6 @@ namespace NS::Obj
             physics.RemoveBody(m_bodyId);
         }
         m_bodyId = body;
-    }
-
-    JPH::BodyID Collider::BodyId() const noexcept
-    {
-        if (m_bodyId.IsInvalid() && JoinsRigidBody())
-        {
-            return ComponentCast<RigidBody>(Owner()->Part("RigidBody"))->BodyId();
-        }
-        return m_bodyId;
-    }
-
-    bool Collider::JoinsRigidBody() const noexcept
-    {
-        const Actor* owner = Owner();
-        if (owner == nullptr || !CanJoinRigidBody())
-        {
-            return false;
-        }
-        const RigidBody* rigidBody = ComponentCast<RigidBody>(owner->Part("RigidBody"));
-        return rigidBody != nullptr && rigidBody->IsActive();
     }
 
     void Collider::RemoveFromPhysics(NS::Phys::PhysicsScene& physics)

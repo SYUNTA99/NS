@@ -30,12 +30,6 @@ namespace
     // これより小さい構図のずらしは 0 にする (m)。画素の 1/100 未満
     constexpr float k_ChargeFrameSnap = 0.0001f;
 
-    // 滑らかに始まって終わる補間の重み。t が 0 で 0、1 で 1 ちょうど
-    [[nodiscard]] float SmoothStep(float t) noexcept
-    {
-        return t * t * (3.0f - 2.0f * t);
-    }
-
     // 臨界減衰のバネを dt 進める。止まった所から一定の目標へは、τ 秒で差の 1 − (1 + ωτ) e^(−ωτ) が詰まる
     void CriticalSpringStep(float& value, float& velocity, float target, float omega, float dt) noexcept
     {
@@ -243,9 +237,9 @@ namespace NS::Obj
         if (m_reboundTurnAngle != 0.0f && m_reboundTurnFrame < m_reboundTurnFrames)
         {
             const float frames = static_cast<float>(m_reboundTurnFrames);
-            const float before = SmoothStep(static_cast<float>(m_reboundTurnFrame) / frames);
+            const float before = NS::Core::SmoothStep(static_cast<float>(m_reboundTurnFrame) / frames);
             ++m_reboundTurnFrame;
-            const float after = SmoothStep(static_cast<float>(m_reboundTurnFrame) / frames);
+            const float after = NS::Core::SmoothStep(static_cast<float>(m_reboundTurnFrame) / frames);
             m_yaw += m_reboundTurnAngle * (after - before);
         }
     }
@@ -316,7 +310,7 @@ namespace NS::Obj
             }
             else
             {
-                m_look = head + m_reboundReturnOffset * (1.0f - SmoothStep(t));
+                m_look = head + m_reboundReturnOffset * (1.0f - NS::Core::SmoothStep(t));
             }
             return m_look;
         }
@@ -404,7 +398,7 @@ namespace NS::Obj
             {
                 const float t =
                     static_cast<float>(m_chargeReturnFrame) / static_cast<float>(m_chargeNarrowReturnFrames);
-                returning = m_chargeReturnFromDegrees * (1.0f - SmoothStep(t));
+                returning = m_chargeReturnFromDegrees * (1.0f - NS::Core::SmoothStep(t));
             }
         }
         m_chargeNarrowDegrees = std::max(holdNarrow, returning);

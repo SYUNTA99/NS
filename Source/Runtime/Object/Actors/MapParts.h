@@ -14,7 +14,6 @@ namespace NS::Obj
         MapParts() noexcept;
 
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
-        [[nodiscard]] const char* ClassName() const noexcept override { return "MapParts"; }
         NS_REFLECT_NONE(MapParts, NS::Obj::Actor)
     };
 } // namespace NS::Obj

@@ -26,7 +26,6 @@
 #include "Runtime/Object/Components/OverlayRenderer.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/Shadow.h"
-#include "Runtime/Object/Components/SlopeCollider.h"
 #include "Runtime/Object/Components/SphereCollider.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Components/VirtualCamera.h"

@@ -2,7 +2,6 @@
 #include "Game/Level/MapObj.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -33,12 +32,11 @@ namespace
     }
 } // namespace
 
-TEST(MapObjMotion, ActorMovesWithoutRigidBodyAndUpdatesStaticCollider)
+TEST(MapObjMotion, ActorMovesAndUpdatesStaticCollider)
 {
     NS::Obj::Scene scene;
     NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::RigidBody>(rock->Part("RigidBody")), nullptr);
     ASSERT_NE(rock->GetStateMachine(), nullptr);
     ReleaseRock(*rock);
     for (int step = 0; step < 10; ++step)

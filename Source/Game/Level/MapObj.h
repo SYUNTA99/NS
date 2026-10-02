@@ -20,7 +20,6 @@ namespace NS::Game::Level
         void ForEachPart(const PartVisitor& visitor) const override;
 
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
-        [[nodiscard]] const char* ClassName() const noexcept override { return "MapObj"; }
         NS_REFLECT_NONE(MapObj, NS::Obj::Actor)
 
         //! 物の体のセンサーの形を、当たりの球に合わせる

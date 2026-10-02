@@ -11,12 +11,6 @@ namespace NS::Obj
 {
     namespace
     {
-        // 滑らかに始まって終わる補間の重み。t が 0 で 0、1 で 1 ちょうど
-        [[nodiscard]] float SmoothStep(float t) noexcept
-        {
-            return t * t * (3.0f - 2.0f * t);
-        }
-
         // 水平の前から作った右と direction の内積が負なら -1、それ以外は 1
         [[nodiscard]] float SideSign(const NS::Core::Vector3& forwardHorizontal,
                                      const NS::Core::Vector3& direction) noexcept
@@ -255,7 +249,7 @@ namespace NS::Obj
         if (m_blending && m_blendDuration > 0.0f)
         {
             const float t = NS::Core::Clamp(m_blendElapsed / m_blendDuration, 0.0f, 1.0f);
-            pose = CameraPose::Lerp(m_blendFrom, pose, SmoothStep(t));
+            pose = CameraPose::Lerp(m_blendFrom, pose, NS::Core::SmoothStep(t));
         }
 
         // 効果はブレンドの後に掛ける。どの vcam が選ばれていてもブレンド中でも一様に掛かる

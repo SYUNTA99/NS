@@ -3,7 +3,6 @@
 #include "Runtime/Core/Assert.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/ObjectName.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
@@ -108,7 +107,6 @@ namespace NS::Obj
 
             // 開始中に参照を引く component がいる。積み終えた並びで索引を作り直させる
             MarkIndexDirty();
-            WarnMismatchedComponentRefs();
             for (std::unique_ptr<Actor>& objPtr : m_objects)
             {
                 objPtr->OnStart();
@@ -289,29 +287,7 @@ namespace NS::Obj
                 }
             });
         }
-        for (const std::unique_ptr<Actor>& actor : m_objects)
-        {
-            if (RigidBody* body = ComponentCast<RigidBody>(actor->Part("RigidBody")))
-            {
-                if (body->IsActive())
-                {
-                    body->SyncToPhysics(physics);
-                }
-                else
-                {
-                    body->RemoveFromPhysics(physics);
-                }
-            }
-        }
         physics.OptimizeBroadPhase();
-    }
-
-    void ObjectList::UpdateAllObjects()
-    {
-        for (UpdatePhase phase : k_UpdatePhases)
-        {
-            ExecutePhase(phase);
-        }
     }
 
     void ObjectList::SnapshotObjects()
@@ -416,55 +392,6 @@ namespace NS::Obj
     void ObjectList::RemoveTicker(ITickable* ticker) noexcept
     {
         std::erase_if(m_tickers, [ticker](const TickerEntry& entry) noexcept { return entry.ticker == ticker; });
-    }
-
-    Component* ObjectList::ResolvePart(ComponentRefValue ref) noexcept
-    {
-        if (!ref.IsSet())
-        {
-            return nullptr;
-        }
-        Actor* owner = FindObject(ref.actor);
-        if (owner == nullptr)
-        {
-            return nullptr;
-        }
-        return owner->Part(ref.partName);
-    }
-
-    void ObjectList::WarnMismatchedComponentRefs()
-    {
-        for (const std::unique_ptr<Actor>& obj : m_objects)
-        {
-            obj->ForEachPart([this, &obj](std::string_view role, Component& part) {
-                const ReflectionInfo* info = part.GetReflection();
-                if (info == nullptr)
-                {
-                    return;
-                }
-                for (std::size_t i = 0; i < info->fieldCount; ++i)
-                {
-                    const FieldDesc& field = info->fields[i];
-                    if (field.type != FieldType::ComponentRef || field.refType == nullptr)
-                    {
-                        continue;
-                    }
-                    ComponentRefValue value;
-                    field.get(&part, &value);
-                    const Component* target = ResolvePart(value);
-                    if (target != nullptr && !target->IsA(field.refType()))
-                    {
-                        NS_LOG_WARN(Scene,
-                                    "'{}' の {} の欄 '{}' が {} でない部品 '{}' を指している",
-                                    obj->Name(),
-                                    role,
-                                    field.name,
-                                    field.refType()->typeName,
-                                    value.partName);
-                    }
-                }
-            });
-        }
     }
 
     void ObjectList::ApplyIdentity(Actor& obj, const nlohmann::json& entry)

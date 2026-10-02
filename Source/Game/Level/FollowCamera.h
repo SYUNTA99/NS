@@ -12,7 +12,6 @@ namespace NS::Game::Level
         void ForEachPart(const PartVisitor& visitor) const override;
 
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
-        [[nodiscard]] const char* ClassName() const noexcept override { return "FollowCamera"; }
         NS_REFLECT_NONE(FollowCamera, NS::Obj::Actor)
         [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Camera; }
         void Update() override;

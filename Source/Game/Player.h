@@ -50,7 +50,6 @@ public:
     Player& operator=(Player&&) = delete;
 
     //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
-    [[nodiscard]] const char* ClassName() const noexcept override { return "Player"; }
     NS_REFLECT_NONE(Player, NS::Obj::Actor)
     [[nodiscard]] NS::Obj::IStateMachine* GetStateMachine() noexcept override;
     [[nodiscard]] const NS::Obj::IStateMachine* GetStateMachine() const noexcept override;

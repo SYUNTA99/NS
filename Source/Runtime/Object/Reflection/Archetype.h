@@ -21,7 +21,7 @@ namespace NS::Obj
     //! @brief クラス名から種類の既定値を引く置き場
     //! @details 1 クラスにつき Directory()/<クラス名>.json を 1 つ持つ。形は配置物の JSON から id と位置を除いた物
     //! {"class": クラス名, "parts": {部品名: {欄の名前: 値}, ...}}
-    //! 参照の欄 (ActorRef / ComponentRef) はシーンの中の相手を指すので、読む時に落として種類の既定値には持たせない
+    //! 参照の欄 (ActorRef) はシーンの中の相手を指すので、読む時に落として種類の既定値には持たせない
     //! 初めて引いた時に Directory() の *.json を全て読む
     class ArchetypeLibrary
     {

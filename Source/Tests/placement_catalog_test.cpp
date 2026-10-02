@@ -44,7 +44,6 @@ TEST(PlacementCatalog, MapPartsIsSplitByMesh)
         EXPECT_EQ(NS::Obj::ObjectJsonClass(item->prototype), "MapParts");
         // 個体のデータは部品を足せないので、ひな形も当たりの件を持たない
         EXPECT_EQ(NS::Obj::PartFields(item->prototype, "BoxCollider"), nullptr);
-        EXPECT_EQ(NS::Obj::PartFields(item->prototype, "SlopeCollider"), nullptr);
     }
     const nlohmann::json* cubeMesh = NS::Obj::PartFields(cube->prototype, "Model");
     const nlohmann::json* sphereMesh = NS::Obj::PartFields(sphere->prototype, "Model");

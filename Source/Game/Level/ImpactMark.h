@@ -20,7 +20,6 @@ namespace NS::Game::Level
     public:
         ImpactMark() noexcept;
 
-        [[nodiscard]] const char* ClassName() const noexcept override { return "ImpactMark"; }
         NS_REFLECT_NONE(ImpactMark, NS::Obj::Actor)
 
         //! 指定の位置へ跡の一時オブジェクトを出す。scene が nullptr なら nullptr を返す
