@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Game/Level/HitTier.h"
+#include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
@@ -13,6 +13,8 @@
 
 #include <cstdint>
 
+class Player;
+
 namespace NS::Game::Player
 {
     class PlayerParams;
@@ -21,12 +23,19 @@ namespace NS::Game::Player
 namespace NS::Obj
 {
     class Actor;
+    class Body;
     class HitSensor;
 } // namespace NS::Obj
 
 namespace NS::Game::Level
 {
     class CollisionInput;
+
+    //! @brief 配分の計算 ComputeImpactOutcome へ渡す調整値を、params の欄から全部入れて作る
+    //! @details ImpactTuning の値の正は PlayerParams 1 つで、ここがその写し先の組み立てを 1 か所で持つ
+    //! @param[in] params 自機の調整値の欄
+    //! @return params の欄と今の固定ステップの秒を写した調整値
+    [[nodiscard]] ImpactTuning MakeImpactTuning(const NS::Game::Player::PlayerParams& params) noexcept;
 
     //! @brief 当たり 1 回の裁定の内訳
     struct ImpactRecord
@@ -79,15 +88,15 @@ namespace NS::Game::Level
     };
 
     //! @brief ぶつかった結果を自機側で決める Component
-    //! @details Player::Update が状態と移動より前に呼ぶ。
-    //! PlayerComponent が動く前にその 1 固定ステップの結末を決めるので、
+    //! @details Player の観測の段 (ObserveStep) と決定の段 (DecideStep) が、状態と移動の段より前に呼ぶ。
+    //! 身体が動く前にその 1 固定ステップの結末を決めるので、
     //! 壁の手前で止められて速度を消された後から結果を推測し直さずに済む
     //! 相手は次の固定ステップの自機のカプセルに重なる物の体のセンサーから選ぶ。調べる種類はプレイヤーの体当たりの
     //! 組み合わせの表に従う。選んだ相手には MsgAskTackleTarget で重さと置かれ方を問い、応じた物だけを相手にする
     //! 衝突の瞬間は自機を数固定ステップ止め、止めの頭に MsgTackleFreeze、明けに MsgTackleRelease を相手へ送る
     //! 相手が食い込み・縮み・飛ぶ・壊れるかは相手が決める。相手の部品は触らない
     //! 白の光・カメラの揺れと寄り・パッドの振動は同居する HitReaction へ組んで渡す
-    //! 依存: NS::Game::Player::PlayerComponent, CollisionInput, HitTier, NS::Obj::HitSensor, NS::Obj::HitReaction
+    //! 依存: NS::Obj::Body, CollisionInput, HitTier, NS::Obj::HitSensor, NS::Obj::HitReaction
     class ImpactResolver : public NS::Obj::Component
     {
     public:
@@ -212,17 +221,6 @@ namespace NS::Game::Level
         // 止めていた結果を適用する。反発は自機の反動を始め、貫通は速度を書く。相手へ明けを知らせて飛ばすか壊させる
         void ReleaseHitStop();
 
-        // 秒をフレーム数へ換算して 0 から MaxHitStopSteps までに丸める
-        [[nodiscard]] int SecondsToSteps(float seconds) const noexcept;
-
-        // 上限秒をフレーム数へ換算する。非有限と 0 以下は 0 で、止めない
-        [[nodiscard]] int MaxHitStopSteps() const noexcept;
-
-        // 最終威力と質量から止めるフレーム数を出す。0 なら止めない
-        [[nodiscard]] int ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept;
-
-        // 質量 1 の物に威力 1 で当てた時、自機が弾かれ始めの高さから上がる頂点の高さ (m)
-
         int m_freezePendingSteps = 0; // 次のフレームに掛ける凍結のフレーム数。0 は予約なし
         int m_hitStopRemaining = 0;   // 止まっている残りフレーム数。0 は止まっていない
         int m_hitStopTotal = 0;       // 止め始めのフレーム数。振動の減衰の分母
@@ -263,7 +261,8 @@ namespace NS::Game::Level
         NS::Core::Vector3 m_observedVelocity{};
         bool m_hasObservedTarget = false;
         bool m_stateReady = false;
-        NS::Game::Player::PlayerComponent* m_movement = nullptr; // 同じ配置物の移動。非所有
+        ::Player* m_player = nullptr;    // 突進と反動の技の呼び先。非所有
+        NS::Obj::Body* m_body = nullptr; // 同じ配置物の身体。非所有
         CollisionInput* m_collisionInput = nullptr;
         NS::Obj::HitReaction* m_hitReaction = nullptr; // 同じ配置物の当たりの演出。非所有
     };

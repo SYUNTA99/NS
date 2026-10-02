@@ -4,7 +4,7 @@
 
 namespace NS::Game::Level
 {
-    //! @details PlayerComponent::ReboundVelocityFor も自機の反動の初速をこの形の式で出す
+    //! @details Player::ReboundVelocityFor も自機の反動の初速をこの形の式で出す
     //! 上りは riseGravity で減速する。強さは飛ばす側の調整値から渡す
     //! 下りの重力は上りの重力の fallGravityScale 倍
     //! 縦の速さの大きさが頂点の帯の縦速度より小さい間は、その時の重力にさらに帯の重力倍率を掛ける

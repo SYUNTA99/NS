@@ -25,21 +25,9 @@ namespace NS::Game::Level
         //! 物の体のセンサーの形を、当たりの球に合わせる
         void InitAfterPlacement() override;
 
-        void Update() override
-        {
-            if (m_effects.IsActive())
-            {
-                m_effects.BeginStep();
-            }
-            UpdateMotion();
-            TickPart(ModelPart());
-            TickPart(&m_effects);
-        }
         //! @brief 状態機械を 1 固定ステップ進め、当たりの球が動いていれば物理へ置き直す
         void UpdateMotion();
         void OnEndPlay() override;
-        [[nodiscard]] NS::Obj::IStateMachine* GetStateMachine() noexcept override { return &m_states; }
-        [[nodiscard]] const NS::Obj::IStateMachine* GetStateMachine() const noexcept override { return &m_states; }
         //! 体当たりの止めの最中の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsFrozen() const noexcept;
         //! @brief 押し飛ばされて曲線か転がりの最中かを返す
@@ -55,6 +43,15 @@ namespace NS::Game::Level
         //! 体当たりの問い・止め・明けと、コースのやり直しに応じる
         //! やり直しでは、プレイ開始時の凍結の自分の位置と向きへ置かれた物として戻る
         bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
+
+    protected:
+        //! 発光の層の歩を始める。Model の控えは見た目の段で、状態の後に取る。
+        //! 更新を段に分ける前の順 (発光の歩、状態、Model、発光) を保つため。状態は Model の回転と倍率を書かない
+        void ObserveStep() override;
+        //! 状態機械を 1 歩進め、当たりの球が動いていれば物理へ置き直す
+        void StateStep() override { UpdateMotion(); }
+        //! Model の控えと発光の層を進める。HitReaction は進めない
+        void VisualStep() override;
 
     private:
         class RestingState;
@@ -84,7 +81,7 @@ namespace NS::Game::Level
         }
         MapObjParams m_params;
         LaunchEffects m_effects;
-        NS::Obj::StateMachine<MapObj> m_states;
+        NS::Obj::StateMachine<MapObj>* m_states = nullptr; // 基底が所有する。コンストラクタが預けた直後から有効
         NS::Obj::SubStateMachine<MapObj> m_motion;
         TackleFreezeDesc m_freeze;
         NS::Core::Vector3 m_freezeHome{};

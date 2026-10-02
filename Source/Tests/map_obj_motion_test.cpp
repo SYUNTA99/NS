@@ -268,3 +268,16 @@ TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
     }
     EXPECT_TRUE(landed);
 }
+
+TEST(MapObjMotion, StateAdvancesThroughTheBaseMachine)
+{
+    NS::Obj::Scene scene;
+    NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
+    ASSERT_NE(rock, nullptr);
+    NS::Obj::IStateMachine* machine = rock->GetStateMachine();
+    ASSERT_NE(machine, nullptr);
+    const std::uint32_t before = machine->StateStep();
+    rock->Update();
+    EXPECT_EQ(machine->StateStep(), before + 1);
+    EXPECT_EQ(rock->GetStateMachine(), machine);
+}

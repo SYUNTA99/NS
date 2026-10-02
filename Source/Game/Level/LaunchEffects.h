@@ -17,8 +17,9 @@ namespace NS::Game::Level
     //! @details 受け持つ層の名前は launch. で始まる。飛んでいる自分の後ろへ尾を付けていき、曲線を離れたフレームで消す
     //! 尾の色は当たりの段、残る長さは飛ばしの比、粉の大きさは威力と自分の重さで決める
     //! 描画の無い世界でも記録は残し、試しは Layers を読む
-    //! MapObj::Update が Triggers の段で呼ぶ。尾を出す BeginTrail は自機の段に届く放しの知らせの中で走り、
-    //! 置物が自分を動かす Triggers の段より前なので、尾の頭は放した時の速度で 1 フレーム先へ置く
+    //! MapObj の観測の段 (ObserveStep) が発光の歩を始め、見た目の段 (VisualStep) が進める。
+    //! 尾を出す BeginTrail は自機の段に届く放しの知らせの中で走り、置物が自分を動かす Triggers の段より前なので、
+    //! 尾の頭は放した時の速度で 1 フレーム先へ置く
     class LaunchEffects : public NS::Obj::Component
     {
     public:

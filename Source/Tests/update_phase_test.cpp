@@ -23,7 +23,6 @@ namespace
                 m_log.push_back("input");
             }
         }
-        void Update() override { m_log.push_back(m_label); }
         void PrepareRender() override
         {
             if (m_phase == NS::Obj::UpdatePhase::Player)
@@ -32,10 +31,30 @@ namespace
             }
         }
 
+    protected:
+        void StateStep() override { m_log.push_back(m_label); }
+
     private:
         NS::Obj::UpdatePhase m_phase;
         std::vector<std::string>& m_log;
         std::string m_label;
+    };
+
+    // 1 フレームの 5 つの段をどれも上書きして、呼ばれた順を控える
+    class StepOrderActor final : public NS::Obj::Actor
+    {
+    public:
+        explicit StepOrderActor(std::vector<std::string>& log) : m_log(log) {}
+
+    protected:
+        void ObserveStep() override { m_log.push_back("observe"); }
+        void DecideStep() override { m_log.push_back("decide"); }
+        void StateStep() override { m_log.push_back("state"); }
+        void BodyStep() override { m_log.push_back("body"); }
+        void VisualStep() override { m_log.push_back("visual"); }
+
+    private:
+        std::vector<std::string>& m_log;
     };
 
     class PhaseTicker final : public NS::Obj::ITickable
@@ -102,4 +121,15 @@ TEST(UpdatePhase, StableActorOrderAndRemovedTickerArePreserved)
     log.clear();
     scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     EXPECT_EQ(log, (std::vector<std::string>{"first", "second"}));
+}
+
+TEST(ActorStepOrder, UpdateCallsEachStepOnceInTheFixedOrder)
+{
+    std::vector<std::string> log;
+    StepOrderActor actor(log);
+    actor.Update();
+    EXPECT_EQ(log, (std::vector<std::string>{"observe", "decide", "state", "body", "visual"}));
+    log.clear();
+    actor.Update();
+    EXPECT_EQ(log, (std::vector<std::string>{"observe", "decide", "state", "body", "visual"}));
 }

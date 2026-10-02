@@ -6,7 +6,6 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
 #include <cmath>
@@ -89,7 +88,7 @@ namespace NS::Game::Level
         (void)CreatePart("BodySensor");
         BodySensorPart()->SetType(NS::Obj::HitSensorType::MapObjBody);
         BodySensorPart()->SetSphere(0.5f);
-        m_states.Build<RestingState, FreezeState, LaunchedState>(*this);
+        (void)BuildStateMachine<MapObj, RestingState, FreezeState, LaunchedState>(*this, m_states);
         m_motion.Finish();
     }
 
@@ -109,12 +108,12 @@ namespace NS::Game::Level
 
     bool MapObj::IsFrozen() const noexcept
     {
-        return m_states.IsCurrent<FreezeState>();
+        return m_states->IsCurrent<FreezeState>();
     }
 
     bool MapObj::IsFlying() const noexcept
     {
-        return m_states.IsCurrent<LaunchedState>() || (IsFrozen() && !m_freezePlaced && !m_motion.IsDead());
+        return m_states->IsCurrent<LaunchedState>() || (IsFrozen() && !m_freezePlaced && !m_motion.IsDead());
     }
 
     bool MapObj::IsArc() const noexcept
@@ -122,9 +121,23 @@ namespace NS::Game::Level
         return IsFlying() && m_motion.Machine().IsCurrent<ArcState>();
     }
 
+    void MapObj::ObserveStep()
+    {
+        if (m_effects.IsActive())
+        {
+            m_effects.BeginStep();
+        }
+    }
+
+    void MapObj::VisualStep()
+    {
+        TickPart(ModelPart());
+        TickPart(&m_effects);
+    }
+
     void MapObj::UpdateMotion()
     {
-        m_states.Step(*this, NS::Platform::FrameTimer::FixedDelta());
+        StepStateMachine();
         // 置き直すたびに形を作り直すので、球が変わらない間は置かない。止まっている置物の数だけ毎ステップ確保が走る
         const NS::Core::Sphere sphere = Sphere().WorldSphere();
         if (!m_hasSyncedSphere || sphere.center != m_syncedSphere.center || sphere.radius != m_syncedSphere.radius)
@@ -153,11 +166,11 @@ namespace NS::Game::Level
             EndFreeze();
             if (m_freezePlaced || m_motion.IsDead())
             {
-                (void)m_states.Change<RestingState>(*this);
+                (void)m_states->Change<RestingState>(*this);
             }
             else
             {
-                (void)m_states.Change<LaunchedState>(*this);
+                (void)m_states->Change<LaunchedState>(*this);
             }
         }
         m_freezePlaced = !IsFlying();
@@ -165,7 +178,7 @@ namespace NS::Game::Level
         m_freeze = desc;
         m_freeze.squash = false;
         m_freeze.stopSteps = std::max(desc.stopSteps, 0);
-        (void)m_states.Change<FreezeState>(*this);
+        (void)m_states->Change<FreezeState>(*this);
         if (m_freezePlaced)
         {
             Root().SetPosition(m_freezeHome + desc.impactDir * desc.pushInDistance);
@@ -197,7 +210,7 @@ namespace NS::Game::Level
 
     void MapObj::StepFreeze()
     {
-        const std::uint32_t step = m_states.StateStep();
+        const std::uint32_t step = m_states->StateStep();
         if (step == 0)
         {
             return;
@@ -210,11 +223,11 @@ namespace NS::Game::Level
                 EndFreeze();
                 if (m_freezePlaced || m_motion.IsDead())
                 {
-                    (void)m_states.Change<RestingState>(*this);
+                    (void)m_states->Change<RestingState>(*this);
                 }
                 else
                 {
-                    (void)m_states.Change<LaunchedState>(*this);
+                    (void)m_states->Change<LaunchedState>(*this);
                 }
             }
             return;
@@ -235,11 +248,11 @@ namespace NS::Game::Level
             EndFreeze();
             if (m_freezePlaced || m_motion.IsDead())
             {
-                (void)m_states.Change<RestingState>(*this);
+                (void)m_states->Change<RestingState>(*this);
             }
             else
             {
-                (void)m_states.Change<LaunchedState>(*this);
+                (void)m_states->Change<LaunchedState>(*this);
             }
         }
         SpawnMark();
@@ -265,7 +278,7 @@ namespace NS::Game::Level
         m_velocity = m_arcForward * initial.x + m_arcUp * initial.y;
         m_hasLaunched = true;
         m_motion.Build<ArcState, RollingState>(*this);
-        (void)m_states.Change<LaunchedState>(*this);
+        (void)m_states->Change<LaunchedState>(*this);
         m_effects.BeginTrail(desc.tier, desc.power, desc.launchScale, desc.arc.direction);
         SyncCollider();
     }
@@ -281,7 +294,7 @@ namespace NS::Game::Level
         m_motion.Step(*this, dt);
         if (m_motion.IsDead())
         {
-            (void)m_states.Change<RestingState>(*this);
+            (void)m_states->Change<RestingState>(*this);
         }
     }
 
@@ -453,8 +466,8 @@ namespace NS::Game::Level
         {
             EndFreeze();
         }
-        (void)m_states.Change<RestingState>(*this);
-        m_states.Reset();
+        (void)m_states->Change<RestingState>(*this);
+        m_states->Reset();
         m_motion.Finish();
         m_velocity = NS::Core::Vector3{};
         m_restAge = 0.0f;

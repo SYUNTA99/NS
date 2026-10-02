@@ -9,8 +9,10 @@ namespace
     class LifeProbe final : public NS::Obj::Actor
     {
     public:
-        void Update() override { ++updates; }
         int updates = 0;
+
+    protected:
+        void StateStep() override { ++updates; }
     };
 
     class LifeUI final : public NS::Obj::UIActor

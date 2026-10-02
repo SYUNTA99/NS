@@ -96,3 +96,32 @@ TEST(PlayerJudges, LedgeBandIncludesItsEdgesWithoutPhysicsOrState)
     EXPECT_FALSE(
         NS::Game::Player::PlayerJudgeLedgeGrab::InBand(NS::Core::Vector3{0.0f, 1.749f, 0.0f}, box, 0.5f, 0.25f));
 }
+
+TEST(PlayerJudges, MoveInputIncludesTheDeadzoneEdgeAndStoppedNeedsExactZero)
+{
+    EXPECT_TRUE(NS::Game::Player::PlayerJudgeMoveInput::Judge(0.2f, 0.2f));
+    EXPECT_FALSE(NS::Game::Player::PlayerJudgeMoveInput::Judge(0.199f, 0.2f));
+    EXPECT_FALSE(NS::Game::Player::PlayerJudgeMoveInput::Judge(std::numeric_limits<float>::quiet_NaN(), 0.2f));
+    EXPECT_TRUE(NS::Game::Player::PlayerJudgeStopped::Judge(NS::Core::Vector3{0.0f, 5.0f, -0.0f}));
+    EXPECT_FALSE(NS::Game::Player::PlayerJudgeStopped::Judge(NS::Core::Vector3{0.0001f, 0.0f, 0.0f}));
+}
+
+TEST(PlayerJudges, FallAndLedgeChoicesFollowTheirOneSignal)
+{
+    EXPECT_TRUE(NS::Game::Player::PlayerJudgeFall::Judge(false));
+    EXPECT_FALSE(NS::Game::Player::PlayerJudgeFall::Judge(true));
+    EXPECT_TRUE(NS::Game::Player::PlayerJudgeClimbLedge::Judge(0.001f));
+    EXPECT_FALSE(NS::Game::Player::PlayerJudgeClimbLedge::Judge(0.0f));
+    EXPECT_FALSE(NS::Game::Player::PlayerJudgeClimbLedge::Judge(std::numeric_limits<float>::quiet_NaN()));
+    EXPECT_TRUE(NS::Game::Player::PlayerJudgeDropLedge::Judge(true));
+    EXPECT_FALSE(NS::Game::Player::PlayerJudgeDropLedge::Judge(false));
+}
+
+TEST(PlayerJudges, LocomotionIsAnyOfIdleWalkFallRebound)
+{
+    EXPECT_FALSE(NS::Game::Player::PlayerJudgeLocomotion::Judge(false, false, false, false));
+    EXPECT_TRUE(NS::Game::Player::PlayerJudgeLocomotion::Judge(true, false, false, false));
+    EXPECT_TRUE(NS::Game::Player::PlayerJudgeLocomotion::Judge(false, true, false, false));
+    EXPECT_TRUE(NS::Game::Player::PlayerJudgeLocomotion::Judge(false, false, true, false));
+    EXPECT_TRUE(NS::Game::Player::PlayerJudgeLocomotion::Judge(false, false, false, true));
+}

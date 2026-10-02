@@ -78,7 +78,8 @@ namespace
             visitor("Logging", m_part);
         }
 
-        void Update() override
+    protected:
+        void StateStep() override
         {
             m_log.order.push_back("actor");
             TickPart(&m_part);

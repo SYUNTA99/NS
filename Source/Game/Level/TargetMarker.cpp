@@ -218,7 +218,8 @@ namespace NS::Game::Level
         return true;
     }
 
-    // Player::Update が CollisionInput の後に呼ぶので、このフレームの狙う相手を控えた後に読む
+    // Player の見た目の段 (VisualStep) が呼ぶ。CollisionInput を観測する観測の段より後なので、
+    // このフレームの狙う相手を控えた後に読む
     TargetMarker::TargetMarker() noexcept : NS::Obj::OverlayRenderer() {}
 
     const TargetMarkerDesc& TargetMarker::Tuning() const noexcept

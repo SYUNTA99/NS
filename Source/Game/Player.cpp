@@ -2,7 +2,6 @@
 
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/CourseDirector.h"
-#include "Game/Level/Health.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SlamArrow.h"
@@ -10,25 +9,32 @@
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
-#include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
-#include "Game/Player/PlayerStateManager.h"
+#include "Game/Player/States/BodySlamPlayerState.h"
+#include "Game/Player/States/BrakePlayerState.h"
+#include "Game/Player/States/FallPlayerState.h"
+#include "Game/Player/States/IdlePlayerState.h"
+#include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
+#include "Game/Player/States/ReboundPlayerState.h"
+#include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/Animation.h"
-#include "Runtime/Object/Components/CapsuleCollider.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/HitReaction.h"
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/PlayerInput.h"
-#include "Runtime/Object/Components/Shadow.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 
 NS_CLASS(Player)
@@ -59,7 +65,7 @@ Player::Player() noexcept
 {
     m_charge.Finish();
     m_appearance = std::make_unique<NS::Game::Player::PlayerAppearance>();
-    m_movement = std::make_unique<NS::Game::Player::PlayerComponent>();
+    m_body = std::make_unique<NS::Obj::Body>();
     m_input = std::make_unique<NS::Obj::PlayerInput>();
     m_params = std::make_unique<NS::Game::Player::PlayerParams>();
     m_collisionInput = std::make_unique<NS::Game::Level::CollisionInput>();
@@ -72,7 +78,7 @@ Player::Player() noexcept
     ModelPart()->SetMaterialRef("player");
     ModelPart()->SetBaseColor(NS::Core::Vector3{0.5f, 0.5f, 0.5f});
     AttachFixedComponent(*m_appearance);
-    AttachFixedComponent(*m_movement);
+    AttachFixedComponent(*m_body);
     AttachFixedComponent(*m_input);
     AttachFixedComponent(*m_params);
     (void)CreatePart("Shadow");
@@ -87,10 +93,18 @@ Player::Player() noexcept
     AttachFixedComponent(*m_slamArrow);
     AttachFixedComponent(*m_chargeEffects);
     AttachFixedComponent(*m_impactEffects);
-    m_movement->m_input = m_input.get();
-    m_movement->m_params = m_params.get();
     m_collisionInput->m_player = this;
     m_collisionInput->m_params = m_params.get();
+    // 部品を全部付けた後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
+    (void)BuildStateMachine<Player,
+                            NS::Game::Player::IdlePlayerState,
+                            NS::Game::Player::WalkPlayerState,
+                            NS::Game::Player::FallPlayerState,
+                            NS::Game::Player::LedgeHangingPlayerState,
+                            NS::Game::Player::LedgeClimbingPlayerState,
+                            NS::Game::Player::BodySlamPlayerState,
+                            NS::Game::Player::BrakePlayerState,
+                            NS::Game::Player::ReboundPlayerState>(*this, m_states);
 }
 
 Player::~Player() = default;
@@ -99,7 +113,7 @@ void Player::ForEachPart(const PartVisitor& visitor) const
 {
     NS::Obj::Actor::ForEachPart(visitor);
     visitor("Appearance", *m_appearance);
-    visitor("Movement", *m_movement);
+    visitor("Movement", *m_body);
     visitor("Input", *m_input);
     visitor("Params", *m_params);
     visitor("ChargeControl", *m_collisionInput);
@@ -110,32 +124,19 @@ void Player::ForEachPart(const PartVisitor& visitor) const
     visitor("ImpactEffects", *m_impactEffects);
 }
 
-NS::Obj::IStateMachine* Player::GetStateMachine() noexcept
-{
-    return &m_states.Machine();
-}
-
-const NS::Obj::IStateMachine* Player::GetStateMachine() const noexcept
-{
-    return &m_states.Machine();
-}
-
 NS::Obj::CameraTargetState Player::GetCameraTargetState() const
 {
     NS::Obj::CameraTargetState state{};
-    if (const NS::Game::Player::PlayerComponent* movement = m_movement.get())
-    {
-        state.grounded = movement->IsGrounded();
-        state.velocity = movement->Velocity();
-        // 当たりの足元に立ち姿のカプセルを立てた時の中心を見る。玉の間は根が立ち姿の半長ぶん下がっているので、
-        // 根を見ると押すたびに画面が 1 フレームで半長ぶん沈み、解けると跳ね上がる
-        state.heightOffset = movement->StandingHalfHeight() - movement->CapsuleHalfHeight();
-        state.hasRebound = true;
-        state.rebound = NS::Obj::FollowReboundDesc{
-            .rebounding = movement->IsRebounding(),
-            .slamDirection = movement->BodySlamStartDirection(),
-        };
-    }
+    state.grounded = m_body->IsGrounded();
+    state.velocity = m_body->Velocity();
+    // 当たりの足元に立ち姿のカプセルを立てた時の中心を見る。玉の間は根が立ち姿の半長ぶん下がっているので、
+    // 根を見ると押すたびに画面が 1 フレームで半長ぶん沈み、解けると跳ね上がる
+    state.heightOffset = m_body->StandingHalfHeight() - m_body->CapsuleHalfHeight();
+    state.hasRebound = true;
+    state.rebound = NS::Obj::FollowReboundDesc{
+        .rebounding = IsRebounding(),
+        .slamDirection = BodySlamStartDirection(),
+    };
     if (const NS::Game::Level::CollisionInput* input = m_collisionInput.get())
     {
         // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す
@@ -185,7 +186,7 @@ void Player::UpdateAnimation()
         return;
     }
 
-    const float lateralSpeed = m_movement->LateralVelocity().Length();
+    const float lateralSpeed = m_body->LateralVelocity().Length();
     const std::string_view clip = ChooseClip(lateralSpeed);
 
     if (clip != m_appliedClip)
@@ -208,52 +209,80 @@ void Player::ReadInput()
     TickPart(m_input.get());
 }
 
-void Player::Update()
-{
-    Update(m_collisionInput->ReadHeld());
-}
-
 void Player::Update(bool chargeHeld)
 {
-    const float dt = NS::Platform::FrameTimer::FixedDelta();
-    TickPart(ModelPart());
+    m_hasInjectedHeld = true;
+    m_injectedHeld = chargeHeld;
+    NS::Obj::Actor::Update();
+    m_hasInjectedHeld = false;
+}
+
+void Player::ObserveStep()
+{
+    NS::Obj::Actor::ObserveStep();
     if (m_collisionInput->IsActive())
     {
+        bool chargeHeld = m_injectedHeld;
+        if (!m_hasInjectedHeld)
+        {
+            chargeHeld = m_collisionInput->ReadHeld();
+        }
         m_collisionInput->Observe(chargeHeld);
     }
     if (m_resolver->IsActive())
     {
-        NS::Core::Vector3 predicted = m_movement->BodySlamVelocity();
+        NS::Core::Vector3 predicted = BodySlamVelocity();
         if (m_collisionInput->IsActive())
         {
             predicted = m_collisionInput->PredictedSlamVelocity();
         }
         m_resolver->ObserveImpact(predicted);
     }
+}
+
+void Player::DecideStep()
+{
     if (m_collisionInput->IsActive())
     {
-        m_collisionInput->AdvanceState(dt);
+        m_collisionInput->AdvanceState(NS::Platform::FrameTimer::FixedDelta());
     }
     if (m_resolver->IsActive())
     {
         m_resolver->StepState();
     }
-    if (m_movement->IsActive() && dt > 0.0f)
+}
+
+void Player::StateStep()
+{
+    const float dt = NS::Platform::FrameTimer::FixedDelta();
+    if (m_body->IsActive() && dt > 0.0f)
     {
-        m_states.EnsureBuilt(*this);
-        m_movement->PrepareStateStep();
-        m_states.Step(*this, dt);
-        m_movement->FinishStateStep(dt);
+        PrepareStateStep();
+        StepStateMachine();
+        FinishStateStep(dt);
     }
     else
     {
-        m_movement->OnStepSkipped();
+        // 身体の段にも止まっている時の押下の消費を置くと、dt が 0 以下の時に 2 回走る。消費は冪等なのでここ 1 回にする
+        SkipBodyStep();
     }
+}
+
+void Player::BodyStep()
+{
+    const float dt = NS::Platform::FrameTimer::FixedDelta();
     if (m_collisionInput->IsActive())
     {
         m_collisionInput->ApplyControl();
     }
-    TickPart(m_movement.get());
+    if (m_body->IsActive() && dt > 0.0f)
+    {
+        MoveBody(dt);
+    }
+}
+
+void Player::VisualStep()
+{
     UpdateAnimation();
     TickPart(m_targetMarker.get());
     TickPart(m_slamArrow.get());
@@ -265,7 +294,7 @@ void Player::Update(bool chargeHeld)
 
 std::string_view Player::ChooseClip(float lateralSpeed) const noexcept
 {
-    if (m_states.IsCurrent<NS::Game::Player::LedgeHangingPlayerState>())
+    if (m_states->IsCurrent<NS::Game::Player::LedgeHangingPlayerState>())
     {
         if (!m_params->m_ledgeHangClip.empty())
         {
@@ -274,13 +303,13 @@ std::string_view Player::ChooseClip(float lateralSpeed) const noexcept
         return m_params->m_idleClip;
     }
 
-    if (!m_movement->IsGrounded())
+    if (!m_body->IsGrounded())
     {
-        if (m_movement->VerticalVelocity() > 0.0f && !m_params->m_jumpClip.empty())
+        if (m_body->VerticalVelocity() > 0.0f && !m_params->m_jumpClip.empty())
         {
             return m_params->m_jumpClip;
         }
-        if (m_movement->VerticalVelocity() <= 0.0f && !m_params->m_fallClip.empty())
+        if (m_body->VerticalVelocity() <= 0.0f && !m_params->m_fallClip.empty())
         {
             return m_params->m_fallClip;
         }
@@ -292,7 +321,7 @@ std::string_view Player::ChooseClip(float lateralSpeed) const noexcept
         return m_params->m_idleClip;
     }
 
-    const float maxSpeed = m_movement->MaxSpeed();
+    const float maxSpeed = MaxSpeed();
     if (maxSpeed > 0.0f && lateralSpeed >= maxSpeed * m_params->m_runBlendRatio && !m_params->m_runClip.empty())
     {
         return m_params->m_runClip;
@@ -311,7 +340,7 @@ float Player::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) con
         return 1.0f;
     }
 
-    const float maxSpeed = m_movement->MaxSpeed();
+    const float maxSpeed = MaxSpeed();
     if (maxSpeed <= 0.0f)
     {
         return 1.0f;
@@ -322,7 +351,7 @@ float Player::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) con
 void Player::OnEndPlay()
 {
     m_charge.Finish();
-    m_states.ResetToFirst();
+    m_states->Reset();
     m_appliedClip.clear();
     NS::Obj::Actor::OnEndPlay();
 }
@@ -386,10 +415,7 @@ void Player::RestartFrom(const nlohmann::json& baseline) noexcept
     }
 
     Root().SetPosition(spawn);
-    if (NS::Game::Player::PlayerComponent* movement = m_movement.get())
-    {
-        movement->ResetState();
-    }
+    ResetState();
     ResetHealth();
     Appear();
 }
@@ -423,6 +449,176 @@ bool Player::IsDead() const noexcept
 int Player::Health() const noexcept
 {
     return m_health.Current();
+}
+
+void Player::SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept
+{
+    m_input->SetDesiredMove(worldDir, speedScale01);
+}
+
+float Player::DesiredSpeedScale() const noexcept
+{
+    return m_input->DesiredSpeedScale();
+}
+
+NS::Core::Vector3 Player::DesiredDirection() const noexcept
+{
+    return m_input->DesiredDirection();
+}
+
+void Player::SetClimbMove(float localRight, float localForward) noexcept
+{
+    m_input->SetClimbMove(localRight, localForward);
+}
+
+float Player::ClimbRight() const noexcept
+{
+    return m_input->ClimbRight();
+}
+
+float Player::ClimbForward() const noexcept
+{
+    return m_input->ClimbForward();
+}
+
+void Player::SetJumpPressed() noexcept
+{
+    m_input->SetJumpPressed();
+}
+
+void Player::SetReleaseLedgePressed() noexcept
+{
+    m_input->SetReleaseLedgePressed();
+}
+
+void Player::SetJumpHeld(bool held) noexcept
+{
+    m_input->SetJumpHeld(held);
+}
+
+float Player::MaxSpeed() const noexcept
+{
+    const float capped = m_params->m_runSpeed * m_maxSpeedScale;
+    if (capped < 0.0f)
+    {
+        return 0.0f;
+    }
+    return capped;
+}
+
+void Player::SetMaxSpeedScale(float scale) noexcept
+{
+    // 非数を入れると MaxSpeed() との比較が偽になり、突進明けに水平の速さが切られない
+    if (!std::isfinite(scale))
+    {
+        return;
+    }
+    m_maxSpeedScale = scale;
+}
+
+float Player::RunSpeed() const noexcept
+{
+    return m_params->m_runSpeed;
+}
+
+bool Player::IsBodySlamming() const noexcept
+{
+    // 状態機械を組んでいる最中 (先頭の OnEnter) はまだ預かっていないので nullptr を見る
+    return m_states != nullptr && m_states->IsCurrent<NS::Game::Player::BodySlamPlayerState>();
+}
+
+float Player::BodySlamProgress01() const noexcept
+{
+    if (!IsBodySlamming() || !(m_slam.distanceTarget > 0.0f))
+    {
+        return 0.0f;
+    }
+    return NS::Core::Clamp(m_slam.travelled / m_slam.distanceTarget, 0.0f, 1.0f);
+}
+
+float Player::BodySlamDistance() const noexcept
+{
+    return m_params->m_bodySlamDistance;
+}
+
+bool Player::IsRebounding() const noexcept
+{
+    return m_states != nullptr && m_states->IsCurrent<NS::Game::Player::ReboundPlayerState>();
+}
+
+void Player::ResetState() noexcept
+{
+    m_body->SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+    m_input->ResetMovementInput();
+    m_prevJumpHeld = false;
+    m_jumpsRemaining = 1;
+    m_coyoteTimer = 0.0f;
+    m_bufferTimer = 0.0f;
+    m_body->SetGrounded(false);
+    m_ledgeTopY = 0.0f;
+    m_ledgeFaceNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    m_ledgeMantleTimer = 0.0f;
+    m_facingDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    m_lastMoveDistance = 0.0f;
+    m_request.bufferRemaining = 0.0f;
+    m_request.spent = false;
+    m_slam.isTap = false;
+    m_request.charge01 = 0.0f;
+    m_request.dir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    m_request.hasDir = false;
+    m_slam.charge01 = 0.0f;
+    m_slam.travelled = 0.0f;
+    m_slam.distanceTarget = 0.0f;
+    m_slam.justStarted = false;
+    m_slam.dir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    m_slam.startDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    m_rebound.direction = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    ForgetHoming();
+    // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
+    // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
+    m_curled = false;
+    m_body->SetSphereShape(false);
+    m_bodySlamHeld = false;
+    m_slam.wasSlamming = false;
+    m_states->Reset();
+}
+
+void Player::SkipBodyStep() noexcept
+{
+    m_input->ConsumePressed();
+    m_prevJumpHeld = m_input->JumpHeld();
+}
+
+void Player::PrepareStateStep()
+{
+    const bool locomotion =
+        NS::Game::Player::PlayerJudgeLocomotion::Judge(m_states->IsCurrent<NS::Game::Player::IdlePlayerState>(),
+                                                       m_states->IsCurrent<NS::Game::Player::WalkPlayerState>(),
+                                                       m_states->IsCurrent<NS::Game::Player::FallPlayerState>(),
+                                                       m_states->IsCurrent<NS::Game::Player::ReboundPlayerState>());
+    if (NS::Game::Player::PlayerJudgeBodySlam::Judge(
+            m_request.bufferRemaining, m_request.spent, m_slam.wasSlamming, locomotion))
+    {
+        if (BodySlam())
+        {
+            m_request.bufferRemaining = 0.0f;
+        }
+    }
+}
+
+void Player::FinishStateStep(float dt)
+{
+    UncurlWhenSettled();
+    m_prevJumpHeld = m_input->JumpHeld();
+    m_input->ConsumePressed();
+    if (m_request.bufferRemaining > 0.0f && !IsBodySlamming())
+    {
+        m_request.bufferRemaining = std::max(0.0f, m_request.bufferRemaining - dt);
+    }
+    if (m_request.aimAge < m_params->m_slamAimFadeTime)
+    {
+        m_request.aimAge += dt;
+    }
 }
 
 Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept

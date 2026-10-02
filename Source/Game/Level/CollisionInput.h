@@ -9,9 +9,9 @@
 
 class Player;
 
-namespace NS::Game::Player
+namespace NS::Obj
 {
-    class PlayerComponent;
+    class Body;
 }
 
 namespace NS::Game::Level
@@ -27,10 +27,10 @@ namespace NS::Game::Level
 
     //! @brief 体当たりのボタン入力を読んで発動を要求する Component
     //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
-    //! どちらも離したフレームに、溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ。
+    //! どちらも離したフレームに、溜め量を添えて Player::RequestBodySlam を呼ぶ。
     //! 溜めて放した時は、放す前のフレームに控えた狙いの線の向きも添える
     //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる
-    //! 依存: NS::Game::Player::PlayerComponent, NS::Obj::Curve, ImpactInputJudge, ImpactResolver, HitTier
+    //! 依存: NS::Obj::Body, NS::Obj::Curve, ImpactInputJudge, ImpactResolver, HitTier
     class CollisionInput : public NS::Obj::Component
     {
     public:
@@ -102,7 +102,7 @@ namespace NS::Game::Level
 
         //! @brief 押している間に控えた狙いの線を読む
         //! @details 押している間は毎フレーム、自機の位置からシーンの実カメラの正面の水平の向き
-        //! (NS::Obj::CameraComponent::ForwardHorizontal) へ、PlayerComponent::BodySlamDistance の長さの線を控える。
+        //! (NS::Obj::CameraComponent::ForwardHorizontal) へ、Player::BodySlamDistance の長さの線を控える。
         //! 押したキーとスティックの向きは使わない。狙う相手がいなくても控える。
         //! 押していないフレーム、所属シーンか実カメラが無いフレーム、正面の向きが決まらない (水平の長さが 0 か
         //! 有限でない) フレームは控えを消す
@@ -156,7 +156,7 @@ namespace NS::Game::Level
         bool m_hasAimLine = false;
         NS::Core::Vector3 m_homeScale{1.0f, 1.0f, 1.0f};
         bool m_stanceApplied = false;
-        NS::Game::Player::PlayerComponent* m_movement = nullptr;
+        NS::Obj::Body* m_body = nullptr;
         ImpactResolver* m_resolver = nullptr;
     };
 } // namespace NS::Game::Level

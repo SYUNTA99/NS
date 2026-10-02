@@ -1,27 +1,26 @@
 #include "Game/Player/States/FallPlayerState.h"
 
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
-#include "Game/Player/PlayerStateManager.h"
 #include "Game/Player/States/IdlePlayerState.h"
+#include "Runtime/Object/Components/Body.h"
 
 namespace NS::Game::Player
 {
     void FallPlayerState::OnStep(::Player& player, float dt)
     {
-        player.Movement().TickTimers(dt);
-        player.Movement().AccelerateToInputDirection(dt);
-        player.Movement().Jump(dt);
-        player.Movement().CutJumpRelease();
-        player.Movement().Gravity(dt);
-        if (player.Movement().LedgeGrab())
+        player.TickTimers(dt);
+        player.AccelerateToInputDirection(dt);
+        player.Jump(dt);
+        player.CutJumpRelease();
+        player.Gravity(dt);
+        if (player.LedgeGrab())
         {
             return;
         }
 
-        if (player.Movement().IsGrounded())
+        if (player.Body().IsGrounded())
         {
-            player.StateManager().Change<IdlePlayerState>();
+            player.States().Change<IdlePlayerState>(player);
         }
     }
 } // namespace NS::Game::Player

@@ -5,12 +5,12 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Game::Entity
+namespace NS::Obj
 {
     //! @brief 引数の無い通知
     //! @details 購読は複数持てる。描画と音の部品が同じ通知を同時に受け取るため
     //! 呼ぶ順は購読を足した順
-    class EntityEvent
+    class BodyEvent
     {
     public:
         //! 購読を足す。空の関数は捨てる
@@ -41,9 +41,9 @@ namespace NS::Game::Entity
 
     //! @brief 登場人物に共通する通知
     //! @details 敵も同じ物を持つ。レールの乗り降りは持たない。レールが無い
-    struct EntityEvents
+    struct BodyEvents
     {
-        EntityEvent onGroundEnter; //!< 着地したフレーム
-        EntityEvent onGroundExit;  //!< 足場から離れたフレーム
+        BodyEvent onGroundEnter; //!< 着地したフレーム
+        BodyEvent onGroundExit;  //!< 足場から離れたフレーム
     };
-} // namespace NS::Game::Entity
+} // namespace NS::Obj

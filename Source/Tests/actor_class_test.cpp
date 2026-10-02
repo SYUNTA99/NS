@@ -7,9 +7,9 @@
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Object/Actors/Light.h"
 #include "Runtime/Object/Actors/MapParts.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/BoxCollider.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/Components/DirectionalLight.h"
@@ -96,14 +96,13 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInConstructor)
 {
     // 以前はシーンのデータが足していた体当たりと当たりの部品も、クラスが組み立てる
     const Player player;
-    EXPECT_NE(NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player.Part("Movement")), nullptr);
+    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::Body>(player.Part("Movement")), nullptr);
     EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input")), nullptr);
     EXPECT_EQ(player.Part("PlayerInputRelay"), nullptr);
-    EXPECT_EQ(player.Part("PlayerStateManager"), nullptr);
     EXPECT_NE(player.GetStateMachine(), nullptr);
     EXPECT_EQ(player.Phase(), NS::Obj::UpdatePhase::Player);
     EXPECT_EQ(&player.Input(), NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input")));
-    EXPECT_EQ(&player.Movement(), NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player.Part("Movement")));
+    EXPECT_EQ(&player.Body(), NS::Obj::ComponentCast<NS::Obj::Body>(player.Part("Movement")));
     EXPECT_NE(player.ColliderPart(), nullptr);
     EXPECT_NE(NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player.Part("ChargeControl")), nullptr);
     EXPECT_NE(NS::Obj::ComponentCast<NS::Game::Level::ImpactResolver>(player.Part("ImpactResolver")), nullptr);

@@ -1,28 +1,33 @@
 #include "Game/Player/States/IdlePlayerState.h"
 
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
-#include "Game/Player/PlayerStateManager.h"
+#include "Game/Player/PlayerJudges.h"
+#include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
+#include "Runtime/Object/Components/Body.h"
 
 namespace NS::Game::Player
 {
     void IdlePlayerState::OnStep(::Player& player, float dt)
     {
-        player.Movement().TickTimers(dt);
-        player.Movement().ApplyFriction(dt);
-        player.Movement().Jump(dt);
-        player.Movement().CutJumpRelease();
-        player.Movement().Gravity(dt);
+        player.TickTimers(dt);
+        player.ApplyFriction(dt);
+        player.Jump(dt);
+        player.CutJumpRelease();
+        player.Gravity(dt);
 
-        if (player.Movement().ShouldFall())
+        const NS::Obj::Body& body = player.Body();
+        if (PlayerJudgeFall::Judge(body.IsGrounded()))
         {
-            player.StateManager().Change<FallPlayerState>();
+            player.States().Change<FallPlayerState>(player);
         }
-        else if (player.Movement().ShouldWalk())
+        else if (PlayerJudgeWalk::Judge(
+                     body.IsGrounded(),
+                     PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), player.Params().StickDeadzone()),
+                     PlayerJudgeStopped::Judge(body.LateralVelocity())))
         {
-            player.StateManager().Change<WalkPlayerState>();
+            player.States().Change<WalkPlayerState>(player);
         }
     }
 } // namespace NS::Game::Player

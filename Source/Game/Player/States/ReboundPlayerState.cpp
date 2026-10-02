@@ -1,9 +1,9 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
-#include "Game/Player/PlayerStateManager.h"
+#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/States/IdlePlayerState.h"
+#include "Runtime/Object/Components/Body.h"
 
 namespace NS::Game::Player
 {
@@ -18,17 +18,17 @@ namespace NS::Game::Player
         {
             co_await NS::Core::NextFrame{};
             const float dt = StepDelta();
-            player.Movement().TickTimers(dt);
-            player.Movement().AccelerateDuringRebound(dt);
-            player.Movement().ReboundGravity(dt);
-            if (player.Movement().LedgeGrab())
+            player.TickTimers(dt);
+            player.AccelerateDuringRebound(dt);
+            player.ReboundGravity(dt);
+            if (player.LedgeGrab())
             {
                 co_return;
             }
 
-            if (player.Movement().ShouldLand())
+            if (PlayerJudgeLand::Judge(player.Body().IsGrounded(), player.Body().VerticalVelocity()))
             {
-                player.StateManager().Change<IdlePlayerState>();
+                player.States().Change<IdlePlayerState>(player);
                 co_return;
             }
         }

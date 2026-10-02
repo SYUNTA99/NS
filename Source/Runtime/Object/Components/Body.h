@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Game/Entity/EntityEvents.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
+#include "Runtime/Object/Components/BodyEvents.h"
 #include "Runtime/Physics/JoltCharacter.h"
 
 #include <memory>
@@ -18,21 +18,21 @@ namespace NS::Phys
     class PhysicsScene;
 }
 
-namespace NS::Game::Entity
+namespace NS::Obj
 {
-    //! @brief 登場人物に共通する移動と接地の抽象基底
-    //! @details 敵も自機もここから派生する。速度の横縦分解・接地・カプセル寸法の参照・1 フレームの移動だけを持ち、
-    //! 能力も調整値も持たない。状態機械は派生が具象の型で持つ。
-    //! TypeRegistry には登録しない。実体化できるのは派生だけ。
+    //! @brief 登場人物の身体。移動と接地の部品
+    //! @details 自機も敵も同じ身体を固定の部品として持ち、自分の状態から呼ぶ。派生させない。
+    //! 速度の横縦分解・接地・カプセル寸法の参照・1 フレームの移動だけを持ち、
+    //! 能力も調整値も持たない。いつ何を呼ぶかは持ち主の Actor が決める。更新の入口 (OnUpdate) は持たない。
+    //! TypeRegistry には登録しない。部品名は持ち主が ForEachPart で付ける。
     //! 衝突の PhysicsScene は使う時に持ち主の Scene から引く。
     //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。
-    //! dt は NS::Platform::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
-    //! 依存: NS::Core, NS::Platform::FrameTimer, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Scene /
-    //! CapsuleCollider
-    class EntityComponent : public NS::Obj::Component
+    //! dt は呼び手が引数で渡す。呼び手は固定ステップの秒を渡し、描画フレームの秒は渡さない
+    //! 依存: NS::Core, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Scene / CapsuleCollider
+    class Body : public NS::Obj::Component
     {
     public:
-        EntityComponent() noexcept;
+        Body() noexcept;
 
         [[nodiscard]] NS::Core::Vector3 Velocity() const noexcept { return m_velocity; }
         void SetVelocity(const NS::Core::Vector3& v) noexcept { m_velocity = v; }
@@ -90,35 +90,27 @@ namespace NS::Game::Entity
         void Move(float dt, float maxStepHeight) noexcept;
 
         //! 接地の通知の受け口。購読は後から足せる
-        [[nodiscard]] EntityEvents& Events() noexcept { return m_events; }
+        [[nodiscard]] BodyEvents& Events() noexcept { return m_events; }
 
         //! 同居する CapsuleCollider を控え、静的な当たりの世界から外す
         void OnStart() override;
-        void OnUpdate() override = 0;
 
-        // 抽象基底なので TypeRegistry には登録せず、リフレクションの鎖だけ通す
-        NS_REFLECT_NONE(EntityComponent, NS::Obj::Component)
+        // TypeRegistry には登録せず、リフレクションの鎖だけ通す
+        NS_REFLECT_NONE(Body, NS::Obj::Component)
 
-    protected:
-        //! @brief 状態が決めた速度で 1 フレーム動かす。既定は段差を登らずに進む
-        //! @details Move を呼ぶのは 1 フレームにここだけ。状態の側で動かすと、状態を足した時に呼び忘れても
-        //! ビルドが通り、その状態の間だけ動かなくなる
-        virtual void HandleMovement(float dt) noexcept;
-        //! 稼働していないフレームでも 1 フレーム限りの入力を派生が落とせるようにする。既定は何もしない
-        virtual void OnStepSkipped() {}
         //! @brief 当たりを円柱の長さ 0 のカプセル (半径が同じ球) にするかを切り替える
         //! @details 真の間は CapsuleHalfHeight が 0 を返し、移動と裁定が同じ球で当たる。半径は変えない。
         //! 根の位置は動かさないので、足元を揃えるのは呼び手の仕事
         void SetSphereShape(bool sphere) noexcept;
 
+    private:
         NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f};
         bool m_isGrounded = false;
         bool m_wasGrounded = false; // 直前の Move より前の接地
         NS::Obj::CapsuleCollider* m_capsuleCollider = nullptr;
         std::unique_ptr<NS::Phys::JoltCharacter> m_character;
-        EntityEvents m_events;
+        BodyEvents m_events;
 
-    private:
         //! OnStart で控えた CapsuleCollider。控える前は同居する物を探し、無ければ nullptr
         [[nodiscard]] const NS::Obj::CapsuleCollider* SiblingCapsule() const noexcept;
 
@@ -128,4 +120,4 @@ namespace NS::Game::Entity
         bool m_sphereShape = false;                 // 当たりを球にしているか。書くのは SetSphereShape だけ
         NS::Obj::HitSensor* m_bodySensor = nullptr; // 同居するカプセルのセンサー。無ければ nullptr
     };
-} // namespace NS::Game::Entity
+} // namespace NS::Obj

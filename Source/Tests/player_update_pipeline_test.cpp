@@ -2,8 +2,8 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/OBB.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectJson.h"
@@ -36,12 +36,7 @@ namespace
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         scene.MainCamera()->SetPosition(NS::Core::Vector3{});
         scene.MainCamera()->SetTarget(NS::Core::Vector3{0.0f, 0.0f, 1.0f});
-        Player* placed = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
-        if (placed != nullptr)
-        {
-            placed->StateManager().EnsureBuilt(*placed);
-        }
-        return placed;
+        return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
     void LegacyPipeline(Player& player, bool held)
@@ -68,19 +63,19 @@ TEST(PlayerUpdatePipeline, ObservationDoesNotAdvanceChargeOrMoveThePlayer)
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene);
     ASSERT_NE(player, nullptr);
-    player->Movement().SetVelocity(NS::Core::Vector3{2.0f, 4.0f, 3.0f});
+    player->Body().SetVelocity(NS::Core::Vector3{2.0f, 4.0f, 3.0f});
     const NS::Core::Vector3 position = player->Root().Position();
-    const NS::Core::Vector3 velocity = player->Movement().Velocity();
+    const NS::Core::Vector3 velocity = player->Body().Velocity();
     player->ChargeControl().Observe(true);
     player->Resolver().ObserveImpact(player->ChargeControl().PredictedSlamVelocity());
     EXPECT_FALSE(player->ChargeControl().Judge().IsHeld());
-    EXPECT_FALSE(player->Movement().IsCurled());
+    EXPECT_FALSE(player->IsCurled());
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
     ExpectSameVector(player->Root().Position(), position);
-    ExpectSameVector(player->Movement().Velocity(), velocity);
+    ExpectSameVector(player->Body().Velocity(), velocity);
     player->ChargeControl().AdvanceState(NS::Platform::FrameTimer::FixedDelta());
     EXPECT_TRUE(player->ChargeControl().Judge().JustPressed());
-    EXPECT_TRUE(player->Movement().IsCurled());
+    EXPECT_TRUE(player->IsCurled());
 }
 
 TEST(PlayerUpdatePipeline, OneObservationCannotAdvanceChargeTwice)
@@ -102,24 +97,24 @@ TEST(PlayerUpdatePipeline, PredictedHeadingMatchesControlWithoutChangingVertical
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
     ASSERT_NE(player, nullptr);
-    player->Movement().RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->Movement().BodySlam());
-    const NS::Core::Vector3 before = player->Movement().BodySlamVelocity();
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    const NS::Core::Vector3 before = player->BodySlamVelocity();
     player->ChargeControl().Observe(false);
     const NS::Core::Vector3 predicted = player->ChargeControl().PredictedSlamVelocity();
     EXPECT_GT(predicted.x, before.x);
-    ExpectSameVector(player->Movement().BodySlamVelocity(), before);
+    ExpectSameVector(player->BodySlamVelocity(), before);
     player->ChargeControl().AdvanceState(NS::Platform::FrameTimer::FixedDelta());
-    player->StateManager().Step(*player, NS::Platform::FrameTimer::FixedDelta());
-    EXPECT_FLOAT_EQ(player->Movement().BodySlamVelocity().x, before.x);
-    const float vertical = player->Movement().VerticalVelocity();
+    player->States().Step(*player, NS::Platform::FrameTimer::FixedDelta());
+    EXPECT_FLOAT_EQ(player->BodySlamVelocity().x, before.x);
+    const float vertical = player->Body().VerticalVelocity();
     player->ChargeControl().ApplyControl();
-    EXPECT_NEAR(player->Movement().Velocity().x, predicted.x, 0.00001f);
-    EXPECT_NEAR(player->Movement().Velocity().z, predicted.z, 0.00001f);
-    EXPECT_FLOAT_EQ(player->Movement().VerticalVelocity(), vertical);
-    const NS::Core::Vector3 once = player->Movement().BodySlamVelocity();
+    EXPECT_NEAR(player->Body().Velocity().x, predicted.x, 0.00001f);
+    EXPECT_NEAR(player->Body().Velocity().z, predicted.z, 0.00001f);
+    EXPECT_FLOAT_EQ(player->Body().VerticalVelocity(), vertical);
+    const NS::Core::Vector3 once = player->BodySlamVelocity();
     player->ChargeControl().ApplyControl();
-    ExpectSameVector(player->Movement().BodySlamVelocity(), once);
+    ExpectSameVector(player->BodySlamVelocity(), once);
 }
 
 TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyChargeImpactFreezeAndReleaseFrames)
@@ -139,8 +134,8 @@ TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyChargeImpactFreezeAndReleas
         const bool held = frame < 90;
         if (held)
         {
-            reference->Movement().SetGrounded(true);
-            actual->Movement().SetGrounded(true);
+            reference->Body().SetGrounded(true);
+            actual->Body().SetGrounded(true);
         }
         if (frame == 92)
         {
@@ -150,10 +145,10 @@ TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyChargeImpactFreezeAndReleas
         LegacyPipeline(*reference, held);
         actual->Update(held);
         ExpectSameVector(actual->Root().Position(), reference->Root().Position());
-        ExpectSameVector(actual->Movement().Velocity(), reference->Movement().Velocity());
+        ExpectSameVector(actual->Body().Velocity(), reference->Body().Velocity());
         ExpectSameVector(actual->Root().Scale(), reference->Root().Scale());
-        EXPECT_EQ(actual->StateManager().Machine().CurrentId(), reference->StateManager().Machine().CurrentId());
-        EXPECT_EQ(actual->Movement().IsActive(), reference->Movement().IsActive());
+        EXPECT_EQ(actual->States().CurrentId(), reference->States().CurrentId());
+        EXPECT_EQ(actual->Body().IsActive(), reference->Body().IsActive());
         EXPECT_EQ(actual->Resolver().LastImpact().sequence, reference->Resolver().LastImpact().sequence);
         EXPECT_EQ(actual->Resolver().FreezeBeganThisStep(), reference->Resolver().FreezeBeganThisStep());
         EXPECT_EQ(actual->Resolver().ReleasedThisStep(), reference->Resolver().ReleasedThisStep());
@@ -180,19 +175,19 @@ TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    player->Movement().RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->Movement().BodySlam());
-    player->Resolver().ObserveImpact(player->Movement().BodySlamVelocity());
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    player->Resolver().ObserveImpact(player->BodySlamVelocity());
     player->Resolver().StepState();
     ASSERT_EQ(player->Resolver().LastImpact().sequence, 1u);
     ASSERT_FALSE(player->Resolver().FreezeBeganThisStep());
     player->Resolver().StepState();
     EXPECT_FALSE(player->Resolver().FreezeBeganThisStep());
-    EXPECT_TRUE(player->Movement().IsActive());
-    player->Resolver().ObserveImpact(player->Movement().BodySlamVelocity());
+    EXPECT_TRUE(player->Body().IsActive());
+    player->Resolver().ObserveImpact(player->BodySlamVelocity());
     player->Resolver().StepState();
     EXPECT_TRUE(player->Resolver().FreezeBeganThisStep());
-    EXPECT_FALSE(player->Movement().IsActive());
+    EXPECT_FALSE(player->Body().IsActive());
 }
 
 TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
@@ -200,14 +195,14 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    player->Movement().RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->Movement().BodySlam());
-    player->Resolver().ObserveImpact(player->Movement().BodySlamVelocity());
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    player->Resolver().ObserveImpact(player->BodySlamVelocity());
     scene.Objects().RemoveByObjectId(2);
     player->Resolver().StepState();
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
-    EXPECT_TRUE(player->Movement().IsBodySlamming());
-    EXPECT_TRUE(player->Movement().IsActive());
+    EXPECT_TRUE(player->IsBodySlamming());
+    EXPECT_TRUE(player->Body().IsActive());
 }
 
 TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringHomingControl)
@@ -215,17 +210,17 @@ TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringHomingContr
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
     ASSERT_NE(player, nullptr);
-    player->Movement().RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->Movement().BodySlam());
-    player->Movement().SetVelocity(NS::Core::Vector3{0.0f, 2.0f, 0.0f});
-    player->Movement().SetActive(false);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    player->Body().SetVelocity(NS::Core::Vector3{0.0f, 2.0f, 0.0f});
+    player->Body().SetActive(false);
     const NS::Core::Vector3 position = player->Root().Position();
-    const NS::Core::Vector3 velocity = player->Movement().Velocity();
-    const std::uint32_t stateStep = player->StateManager().Machine().StateStep();
+    const NS::Core::Vector3 velocity = player->Body().Velocity();
+    const std::uint32_t stateStep = player->States().StateStep();
     player->Update(false);
     ExpectSameVector(player->Root().Position(), position);
-    ExpectSameVector(player->Movement().Velocity(), velocity);
-    EXPECT_EQ(player->StateManager().Machine().StateStep(), stateStep);
+    ExpectSameVector(player->Body().Velocity(), velocity);
+    EXPECT_EQ(player->States().StateStep(), stateStep);
 }
 
 TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyTapFrames)
@@ -244,15 +239,15 @@ TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyTapFrames)
         LegacyPipeline(*reference, held);
         actual->Update(held);
         ExpectSameVector(actual->Root().Position(), reference->Root().Position());
-        ExpectSameVector(actual->Movement().Velocity(), reference->Movement().Velocity());
-        EXPECT_EQ(actual->StateManager().Machine().CurrentId(), reference->StateManager().Machine().CurrentId());
+        ExpectSameVector(actual->Body().Velocity(), reference->Body().Velocity());
+        EXPECT_EQ(actual->States().CurrentId(), reference->States().CurrentId());
         EXPECT_EQ(actual->Resolver().LastImpact().sequence, reference->Resolver().LastImpact().sequence);
         EXPECT_EQ(actual->Resolver().FreezeBeganThisStep(), reference->Resolver().FreezeBeganThisStep());
         EXPECT_EQ(actual->Resolver().ReleasedThisStep(), reference->Resolver().ReleasedThisStep());
-        if (actual->Movement().IsBodySlamming())
+        if (actual->IsBodySlamming())
         {
             sawTap = true;
-            EXPECT_FLOAT_EQ(actual->Movement().BodySlamCharge01(), 0.0f);
+            EXPECT_FLOAT_EQ(actual->BodySlamCharge01(), 0.0f);
         }
     }
     EXPECT_TRUE(sawTap);
@@ -310,7 +305,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             const bool held = frame < holdFrames;
             if (held)
             {
-                player->Movement().SetGrounded(true);
+                player->Body().SetGrounded(true);
             }
             if (charge && frame == 92)
             {
@@ -342,7 +337,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                     player->Root().Position(),
                     NS::Core::Vector3{sample[1].get<float>(), sample[2].get<float>(), sample[3].get<float>()});
                 ExpectSameVector(
-                    player->Movement().Velocity(),
+                    player->Body().Velocity(),
                     NS::Core::Vector3{sample[4].get<float>(), sample[5].get<float>(), sample[6].get<float>()});
                 ExpectSameVector(
                     rock->Root().Position(),

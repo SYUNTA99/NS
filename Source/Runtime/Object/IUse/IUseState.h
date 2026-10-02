@@ -36,6 +36,10 @@ namespace NS::Obj
         //! @param[in] id 移る先の状態の印
         //! @return 予約できたか既にその状態の場合 true、それ以外の場合は false
         virtual bool Change(StateId id) = 0;
+        //! @brief 今の状態を 1 フレーム進める
+        //! @details 組む時に控えた所有者で進めるので、所有者の型を知らない基底から呼べる。組んでいなければ何もしない
+        //! @param[in] dt 進める秒数
+        virtual void Step(float dt) = 0;
     };
 
     //! @brief 自分の状態機械を返す口。状態機械を持つ物が実装する

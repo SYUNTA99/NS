@@ -2,12 +2,13 @@
 
 #include "Game/Level/CollisionInput.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/AssetManager.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Clock.h"
@@ -91,7 +92,8 @@ namespace NS::Game::Player
     {
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
         {
-            m_player = &ownerPlayer->Movement();
+            m_body = &ownerPlayer->Body();
+            m_actor = ownerPlayer;
             m_input = &ownerPlayer->ChargeControl();
         }
     }
@@ -119,22 +121,22 @@ namespace NS::Game::Player
             }
             return;
         }
-        if (!m_player->IsActive())
+        if (!m_body->IsActive())
         {
             // 当たりの止めで移動が止まっている間は、絵も止める
             return;
         }
 
-        if (m_player->IsBodySlamming())
+        if (m_actor->IsBodySlamming())
         {
-            SetRollAxisToward(m_player->BodySlamVelocity(), m_spinAxis);
+            SetRollAxisToward(m_actor->BodySlamVelocity(), m_spinAxis);
             m_spinSpeed = Tuning().m_bodySlamSpinSpeed;
         }
         else if (m_input != nullptr && m_input->Judge().IsHeld())
         {
             // 放せば出る向きへ回す。溜めて放した突進は狙いの線の向きへ、タップと線の無い時は AimDirection の向きへ出る
             // 狙いが決まらないフレームは前の軸で回し続ける
-            NS::Core::Vector3 aim = m_player->AimDirection();
+            NS::Core::Vector3 aim = m_actor->AimDirection();
             NS::Game::Level::AimLine line{};
             if (m_input->IsCharging() && m_input->TryGetAimLine(line))
             {
@@ -145,11 +147,11 @@ namespace NS::Game::Player
                 Tuning().m_emptyChargeSpinSpeed +
                 (Tuning().m_fullChargeSpinSpeed - Tuning().m_emptyChargeSpinSpeed) * m_input->Judge().Charge01();
         }
-        else if (m_player->IsRebounding())
+        else if (m_actor->IsRebounding())
         {
             // 弾かれた向きへ前転する。真正面の当たりでは突進と逆向きになる
             // 反動の間は空中の操作で速度の向きが変わっても、弾かれた向きから取った軸のまま回す
-            SetRollAxisToward(m_player->ReboundDirection(), m_spinAxis);
+            SetRollAxisToward(m_actor->ReboundDirection(), m_spinAxis);
             m_spinSpeed = Tuning().m_bodySlamSpinSpeed;
         }
         // 放した後の空中と、反動に入らずに突進が終わった後は、直前のフレームの軸と速さのまま回る
@@ -170,11 +172,11 @@ namespace NS::Game::Player
 
     void PlayerAppearance::OnUpdate()
     {
-        if (m_player == nullptr)
+        if (m_body == nullptr)
         {
             return;
         }
-        if (m_player->IsCurled())
+        if (m_actor->IsCurled())
         {
             Curl();
         }
@@ -188,7 +190,7 @@ namespace NS::Game::Player
 
     void PlayerAppearance::AdvanceLandingSquash() noexcept
     {
-        if (!m_player->IsActive())
+        if (!m_body->IsActive())
         {
             // 当たりの止めで移動が止まっている間は、潰れの戻しも止める
             return;
@@ -207,7 +209,8 @@ namespace NS::Game::Player
         // 次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
         // 戻すフレーム数が 0 以下では戻す手段が無く、潰れたまま残るので潰さない
         float vertical = 1.0f;
-        if (m_player->IsRebounding() && m_player->ShouldLand() && Tuning().m_landingSquashRecoverSteps > 0)
+        if (m_actor->IsRebounding() && PlayerJudgeLand::Judge(m_body->IsGrounded(), m_body->VerticalVelocity()) &&
+            Tuning().m_landingSquashRecoverSteps > 0)
         {
             m_landingSquashRemaining = Tuning().m_landingSquashRecoverSteps;
             vertical = Tuning().m_landingSquash;
@@ -244,12 +247,12 @@ namespace NS::Game::Player
     {
         NS::Gfx::Mesh* standingPlaceholder = nullptr;
         NS::Gfx::Mesh* ballPlaceholder = nullptr;
-        const PlayerComponent* player = nullptr;
+        const NS::Obj::Body* player = nullptr;
         if (Owner() != nullptr)
         {
             if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
             {
-                player = &ownerPlayer->Movement();
+                player = &ownerPlayer->Body();
             }
         }
         if (player != nullptr)
@@ -262,7 +265,7 @@ namespace NS::Game::Player
         }
         else
         {
-            NS_LOG_WARN(Game, "PlayerAppearance: 同居する PlayerComponent が無く、仮の形の寸法を決められない");
+            NS_LOG_WARN(Game, "PlayerAppearance: 同居する身体の部品が無く、仮の形の寸法を決められない");
         }
 
         m_standingMesh = ResolveLook(assets, Tuning().m_standingMeshRef, standingPlaceholder);

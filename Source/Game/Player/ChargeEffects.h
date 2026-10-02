@@ -9,6 +9,8 @@
 #include <string_view>
 #include <vector>
 
+class Player;
+
 namespace NS::Game::Level
 {
     class CollisionInput;
@@ -18,7 +20,6 @@ namespace NS::Game::Level
 namespace NS::Game::Player
 {
     class PlayerAppearance;
-    class PlayerComponent;
     class PlayerParams;
 
     //! @brief 自機の溜めと放しのエフェクトの層を出し、出すと決めた記録を持つ
@@ -38,8 +39,9 @@ namespace NS::Game::Player
     //!   止めた k_TrailFadeSteps フレーム後に消す
     //! 溜めている間の層には溜め量 (CollisionInput の判定) を動的入力 0 番で毎フレーム渡す。
     //! 描画の無い世界でも記録は残し、試しと Replay は Layers を読む
-    //! Player::Update が PlayerAppearance の後に呼ぶ。同じフレームに PlayerAppearance が回した玉の向きより後に走る
-    //! 依存: EffectLayerList, PlayerComponent, PlayerAppearance, NS::Game::Level::CollisionInput,
+    //! Player の見た目の段 (VisualStep) が PlayerAppearance の後に呼ぶ。
+    //! 同じフレームに PlayerAppearance が回した玉の向きより後に走る
+    //! 依存: EffectLayerList, PlayerAppearance, NS::Game::Level::CollisionInput,
     //! NS::Game::Level::ImpactResolver
     // TODO: エフェクトは固定ステップで進み、付いていく層は固定ステップの位置へ置く。60 を超える画面で付いていく層が
     // 段々に見えたら、描画フレームごとに描く時の補間の位置で渡す形へ移す
@@ -118,7 +120,7 @@ namespace NS::Game::Player
         void SetCharge(NS::Gfx::EffectScene* effects, std::uint32_t id, float charge01) const noexcept;
         // 動的入力 index 番に value を入れる。描画の無い世界か、再生できなかった層なら何もしない
         void SetInput(NS::Gfx::EffectScene* effects, std::uint32_t id, int index, float value) const noexcept;
-        // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ PlayerComponent::AimDirection
+        // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ Player::AimDirection
         [[nodiscard]] NS::Core::Vector3 HeldAimDirection() const noexcept;
         void StopLayer(NS::Gfx::EffectScene* effects, std::uint32_t& id) noexcept;
 
@@ -147,7 +149,7 @@ namespace NS::Game::Player
         NS::Core::Vector3 m_slamDirection; // 突進の尾を向ける水平の向き
 
         const NS::Game::Level::CollisionInput* m_input = nullptr;    // 押し・溜め量の正。非所有
-        const PlayerComponent* m_player = nullptr;                   // 突進の正。非所有
+        const ::Player* m_actor = nullptr;                           // 突進の速度と狙いの向きを答える自機。非所有
         const PlayerAppearance* m_appearance = nullptr;              // 玉の回転の正。非所有
         const NS::Game::Level::ImpactResolver* m_resolver = nullptr; // 止めの頭の正。非所有
     };

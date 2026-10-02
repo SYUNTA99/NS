@@ -3,7 +3,6 @@
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Graphics/FrameConstants.h"
 #include "Runtime/Graphics/Material.h"
@@ -12,6 +11,7 @@
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/AssetManager.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -357,7 +357,8 @@ namespace NS::Game::Level
         }
     }
 
-    // Player::Update が CollisionInput の後に呼ぶので、このフレームの狙いの線と狙う相手を控えた後に読む
+    // Player の見た目の段 (VisualStep) が呼ぶ。CollisionInput を観測する観測の段より後なので、
+    // このフレームの狙いの線と狙う相手を控えた後に読む
     SlamArrow::SlamArrow() noexcept : NS::Obj::Component() {}
 
     const SlamArrowDesc& SlamArrow::Tuning() const noexcept
@@ -380,7 +381,7 @@ namespace NS::Game::Level
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(owner))
         {
             m_input = &ownerPlayer->ChargeControl();
-            m_movement = &ownerPlayer->Movement();
+            m_body = &ownerPlayer->Body();
         }
         if (NS::Obj::Scene* scene = owner->OwningScene())
         {
@@ -414,8 +415,8 @@ namespace NS::Game::Level
         // 溜め量は放した後も残るので、溜めているかで組むフレームを決める。カメラの正面に相手がいなければ出さない
         SlamArrowState state{};
         SlamLineTarget target{};
-        if (m_input == nullptr || m_movement == nullptr || !m_input->IsCharging() ||
-            !m_input->TryGetAimLine(state.line) || !m_input->TryGetAimTarget(target))
+        if (m_input == nullptr || m_body == nullptr || !m_input->IsCharging() || !m_input->TryGetAimLine(state.line) ||
+            !m_input->TryGetAimTarget(target))
         {
             m_framesSinceShown = -1;
             return;
@@ -430,7 +431,7 @@ namespace NS::Game::Level
             ++m_framesSinceShown;
         }
 
-        state.ballRadius = m_movement->CapsuleRadius();
+        state.ballRadius = m_body->CapsuleRadius();
         state.targetContact = target.contact;
         state.framesSinceShown = m_framesSinceShown;
         state.charge01 = m_input->Judge().Charge01();

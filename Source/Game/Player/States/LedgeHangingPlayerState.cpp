@@ -1,30 +1,32 @@
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerJudges.h"
+#include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/PlayerInput.h"
 
 namespace NS::Game::Player
 {
     void LedgeHangingPlayerState::OnStep(::Player& player, float dt)
     {
-        if (!player.Movement().HoldLedge())
+        if (!player.HoldLedge())
         {
             return;
         }
-        if (player.Movement().LedgeJump())
+        if (player.LedgeJump())
         {
             return;
         }
-        if (player.Movement().ShouldClimbLedge())
+        if (PlayerJudgeClimbLedge::Judge(player.ClimbForward()))
         {
-            player.Movement().ClimbLedge();
+            player.ClimbLedge();
             return;
         }
-        if (player.Movement().ShouldDropLedge())
+        if (PlayerJudgeDropLedge::Judge(player.Input().ReleaseLedgePressed()))
         {
-            player.Movement().DropLedge();
+            player.DropLedge();
             return;
         }
-        player.Movement().Shimmy(dt);
+        player.Shimmy(dt);
     }
 } // namespace NS::Game::Player

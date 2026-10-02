@@ -1,5 +1,6 @@
 ﻿#include "Runtime/Object/Actor.h"
 
+#include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/Animation.h"
 #include "Runtime/Object/Components/BoxCollider.h"
@@ -8,9 +9,9 @@
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/Shadow.h"
-#include "Runtime/Object/Components/StateMachineComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
 
@@ -41,7 +42,6 @@ namespace NS::Obj
         visit("Collision", m_collision.get());
         visit("BodySensor", m_bodySensor.get());
         visit("AttackSensor", m_attackSensor.get());
-        visit("StateMachine", m_stateMachine.get());
         visit("HitReaction", m_hitReaction.get());
     }
 
@@ -111,11 +111,6 @@ namespace NS::Obj
             m_attackSensor = std::make_unique<HitSensor>();
             created = m_attackSensor.get();
         }
-        else if (name == "StateMachine")
-        {
-            m_stateMachine = std::make_unique<StateMachineComponent>();
-            created = m_stateMachine.get();
-        }
         else if (name == "HitReaction")
         {
             m_hitReaction = std::make_unique<HitReaction>();
@@ -140,22 +135,31 @@ namespace NS::Obj
 
     IStateMachine* Actor::GetStateMachine() noexcept
     {
-        StateMachineComponent* component = m_stateMachine.get();
-        if (component == nullptr)
-        {
-            return nullptr;
-        }
-        return &component->Machine();
+        return m_stateMachine.get();
     }
 
     const IStateMachine* Actor::GetStateMachine() const noexcept
     {
-        const StateMachineComponent* component = m_stateMachine.get();
-        if (component == nullptr)
+        return m_stateMachine.get();
+    }
+
+    bool Actor::AdoptStateMachine(std::unique_ptr<IStateMachine> machine)
+    {
+        if (m_stateMachine != nullptr)
         {
-            return nullptr;
+            NS_LOG_ERROR(Scene, "Actor::BuildStateMachine: 状態機械は 1 体に 1 つ。2 回目は組まずに今の機械を残す");
+            return false;
         }
-        return &component->Machine();
+        m_stateMachine = std::move(machine);
+        return true;
+    }
+
+    void Actor::StepStateMachine()
+    {
+        if (m_stateMachine != nullptr)
+        {
+            m_stateMachine->Step(NS::Platform::FrameTimer::FixedDelta());
+        }
     }
 
     Actor::~Actor() noexcept
@@ -303,12 +307,27 @@ namespace NS::Obj
 
     void Actor::Update()
     {
-        TickPart(m_model.get());
-        TickPart(m_stateMachine.get());
-        TickPart(m_hitReaction.get());
+        ObserveStep();
+        DecideStep();
+        StateStep();
+        BodyStep();
+        VisualStep();
     }
 
+    void Actor::ObserveStep()
+    {
+        TickPart(m_model.get());
+    }
 
+    void Actor::StateStep()
+    {
+        StepStateMachine();
+    }
+
+    void Actor::VisualStep()
+    {
+        TickPart(m_hitReaction.get());
+    }
 
     void Actor::PrepareRender()
     {

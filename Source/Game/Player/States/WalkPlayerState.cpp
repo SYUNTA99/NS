@@ -1,41 +1,49 @@
 #include "Game/Player/States/WalkPlayerState.h"
 
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
-#include "Game/Player/PlayerStateManager.h"
+#include "Game/Player/PlayerJudges.h"
+#include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
+#include "Runtime/Object/Components/Body.h"
 
 namespace NS::Game::Player
 {
     void WalkPlayerState::OnStep(::Player& player, float dt)
     {
-        player.Movement().TickTimers(dt);
-        const bool brake = player.Movement().ShouldBrake();
-        if (!brake && player.Movement().HasMoveInput())
+        player.TickTimers(dt);
+        const NS::Obj::Body& body = player.Body();
+        const PlayerParams& params = player.Params();
+        const bool hasInput = PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), params.StickDeadzone());
+        const bool brake = PlayerJudgeBrake::Judge(
+            hasInput, player.DesiredDirection(), body.LateralVelocity(), params.BrakeThreshold());
+        if (!brake && hasInput)
         {
-            player.Movement().AccelerateToInputDirection(dt);
+            player.AccelerateToInputDirection(dt);
         }
         else if (!brake)
         {
-            player.Movement().ApplyFriction(dt);
+            player.ApplyFriction(dt);
         }
-        player.Movement().Jump(dt);
-        player.Movement().CutJumpRelease();
-        player.Movement().Gravity(dt);
+        player.Jump(dt);
+        player.CutJumpRelease();
+        player.Gravity(dt);
 
-        if (player.Movement().ShouldFall())
+        if (PlayerJudgeFall::Judge(body.IsGrounded()))
         {
-            player.StateManager().Change<FallPlayerState>();
+            player.States().Change<FallPlayerState>(player);
         }
         else if (brake)
         {
-            player.StateManager().Change<BrakePlayerState>();
+            player.States().Change<BrakePlayerState>(player);
         }
-        else if (player.Movement().ShouldIdle())
+        else if (PlayerJudgeIdle::Judge(body.IsGrounded(),
+                                        PlayerJudgeWalk::Judge(body.IsGrounded(),
+                                                               hasInput,
+                                                               PlayerJudgeStopped::Judge(body.LateralVelocity()))))
         {
-            player.StateManager().Change<IdlePlayerState>();
+            player.States().Change<IdlePlayerState>(player);
         }
     }
 } // namespace NS::Game::Player
