@@ -207,17 +207,24 @@ void Player::ReadInput()
     TickPart(m_input.get());
 }
 
-void Player::Update()
-{
-    Update(m_collisionInput->ReadHeld());
-}
-
 void Player::Update(bool chargeHeld)
 {
-    const float dt = NS::Platform::FrameTimer::FixedDelta();
-    TickPart(ModelPart());
+    m_hasInjectedHeld = true;
+    m_injectedHeld = chargeHeld;
+    NS::Obj::Actor::Update();
+    m_hasInjectedHeld = false;
+}
+
+void Player::ObserveStep()
+{
+    NS::Obj::Actor::ObserveStep();
     if (m_collisionInput->IsActive())
     {
+        bool chargeHeld = m_injectedHeld;
+        if (!m_hasInjectedHeld)
+        {
+            chargeHeld = m_collisionInput->ReadHeld();
+        }
         m_collisionInput->Observe(chargeHeld);
     }
     if (m_resolver->IsActive())
@@ -229,14 +236,23 @@ void Player::Update(bool chargeHeld)
         }
         m_resolver->ObserveImpact(predicted);
     }
+}
+
+void Player::DecideStep()
+{
     if (m_collisionInput->IsActive())
     {
-        m_collisionInput->AdvanceState(dt);
+        m_collisionInput->AdvanceState(NS::Platform::FrameTimer::FixedDelta());
     }
     if (m_resolver->IsActive())
     {
         m_resolver->StepState();
     }
+}
+
+void Player::StateStep()
+{
+    const float dt = NS::Platform::FrameTimer::FixedDelta();
     if (m_body->IsActive() && dt > 0.0f)
     {
         PrepareStateStep();
@@ -245,23 +261,26 @@ void Player::Update(bool chargeHeld)
     }
     else
     {
+        // 身体の段にも止まっている時の押下の消費を置くと、dt が 0 以下の時に 2 回走る。消費は冪等なのでここ 1 回にする
         SkipBodyStep();
     }
+}
+
+void Player::BodyStep()
+{
+    const float dt = NS::Platform::FrameTimer::FixedDelta();
     if (m_collisionInput->IsActive())
     {
         m_collisionInput->ApplyControl();
     }
-    if (m_body->IsActive())
+    if (m_body->IsActive() && dt > 0.0f)
     {
-        if (dt > 0.0f)
-        {
-            MoveBody(dt);
-        }
-        else
-        {
-            SkipBodyStep();
-        }
+        MoveBody(dt);
     }
+}
+
+void Player::VisualStep()
+{
     UpdateAnimation();
     TickPart(m_targetMarker.get());
     TickPart(m_slamArrow.get());

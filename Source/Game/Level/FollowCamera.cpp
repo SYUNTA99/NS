@@ -20,7 +20,7 @@ namespace NS::Game::Level
         visitor("Vcam", const_cast<NS::Obj::ThirdPersonFollow&>(m_vcam));
     }
 
-    void FollowCamera::Update()
+    void FollowCamera::StateStep()
     {
         if (!m_vcam.IsActive())
         {

@@ -295,12 +295,29 @@ namespace NS::Obj
 
     void Actor::Update()
     {
-        TickPart(m_model.get());
-        StepStateMachine();
-        TickPart(m_hitReaction.get());
+        ObserveStep();
+        DecideStep();
+        StateStep();
+        BodyStep();
+        VisualStep();
     }
 
 
+
+    void Actor::ObserveStep()
+    {
+        TickPart(m_model.get());
+    }
+
+    void Actor::StateStep()
+    {
+        StepStateMachine();
+    }
+
+    void Actor::VisualStep()
+    {
+        TickPart(m_hitReaction.get());
+    }
 
     void Actor::PrepareRender()
     {

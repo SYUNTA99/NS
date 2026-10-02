@@ -14,11 +14,13 @@ namespace NS::Game::Level
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         NS_REFLECT_NONE(FollowCamera, NS::Obj::Actor)
         [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Camera; }
-        void Update() override;
+
         [[nodiscard]] NS::Obj::ThirdPersonFollow& Vcam() noexcept { return m_vcam; }
         [[nodiscard]] const NS::Obj::ThirdPersonFollow& Vcam() const noexcept { return m_vcam; }
 
     protected:
+        //! 追う相手の状態を仮想カメラへ渡し、仮想カメラを 1 歩進める
+        void StateStep() override;
         void OnKill() noexcept override;
 
     private:

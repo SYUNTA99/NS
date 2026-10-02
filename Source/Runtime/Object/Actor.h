@@ -78,8 +78,9 @@ namespace NS::Obj
         [[nodiscard]] HitReaction* HitReactionPart() noexcept { return m_hitReaction.get(); }
         [[nodiscard]] const HitReaction* HitReactionPart() const noexcept { return m_hitReaction.get(); }
 
-        //! Model、状態機械、HitReaction の順に進める。状態機械を持たなければ飛ばす
-        void Update() override;
+        //! @brief 1 固定ステップを観測、決定、状態、身体、見た目の順に 1 回ずつ進める
+        //! @details 順は基底のここ 1 か所で決まり、派生は上書きできない。派生は段の中身だけを ObserveStep などで書く
+        void Update() final;
         //! Animation を進める
         void PrepareRender() override;
 
@@ -153,6 +154,20 @@ namespace NS::Obj
     protected:
         void OnAppear() override;
         void OnKill() noexcept override;
+        //! @brief 1 フレームの最初の段。世界を読んで控えるだけで、状態も身体も動かさない
+        //! @details 既定は Model の前フレーム値の控え
+        virtual void ObserveStep();
+        //! @brief 観測の結果から、この歩に使う値を決める段。知らせを送る裁定はここに置き、観測の段へ入れない
+        //! @details 既定は何もしない
+        virtual void DecideStep() {}
+        //! @brief 状態機械を 1 歩進める段
+        //! @details 既定は状態機械を 1 歩進める。持たなければ何もしない
+        virtual void StateStep();
+        //! @brief 状態が決めた操作を身体へ当て、身体を動かす段。既定は何もしない
+        virtual void BodyStep() {}
+        //! @brief 動いた後の姿から見た目と演出を進める段
+        //! @details 既定は HitReaction を進める
+        virtual void VisualStep();
         static void TickPart(Component* component)
         {
             if (component != nullptr && component->IsActive())
@@ -175,7 +190,7 @@ namespace NS::Obj
             built.template Build<TStates...>(owner);
             return built;
         }
-        //! 状態機械を 1 固定ステップ進める。持たなければ何もしない。Update を上書きして順を変える派生が呼ぶ
+        //! 状態機械を 1 固定ステップ進める。持たなければ何もしない
         void StepStateMachine();
         void AttachFixedComponent(Component& component);
         void SetCollisionPart(std::unique_ptr<Collider> collision);

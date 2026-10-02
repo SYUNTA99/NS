@@ -25,9 +25,8 @@ namespace NS::Game::Level
         //! 指定の位置へ跡の一時オブジェクトを出す。scene が nullptr なら nullptr を返す
         [[nodiscard]] static NS::Obj::Actor* SpawnAt(NS::Obj::Scene* scene, const NS::Core::Vector3& position);
 
-        //! 経過秒を進めて縮め、寿命が尽きたら描画と自身の更新を止める
+        //! 跡は効果の段で進む
         [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Effects; }
-        void Update() override;
 
         //! @brief 出た直後の水平の大きさを差し替え、根の倍率へ写す
         //! @param[in] diameter 水平の大きさ。単位は m。有限の正でなければ何も変えない
@@ -35,6 +34,10 @@ namespace NS::Game::Level
         //! @brief 消えるまでの秒を差し替える
         //! @param[in] seconds 消えるまでの秒。有限の 0 以上でなければ何も変えない
         void SetLifeSeconds(float seconds) noexcept;
+
+    protected:
+        //! 経過秒を進めて縮め、寿命が尽きたら退場する
+        void StateStep() override;
 
     private:
         float m_diameter = 1.5f;    // 出た直後の水平の大きさ

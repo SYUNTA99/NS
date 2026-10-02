@@ -47,7 +47,7 @@ namespace NS::Game::Level
         }
     }
 
-    void ImpactMark::Update()
+    void ImpactMark::StateStep()
     {
         if (m_age >= m_lifeSeconds)
         {

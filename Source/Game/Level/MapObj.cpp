@@ -121,6 +121,20 @@ namespace NS::Game::Level
         return IsFlying() && m_motion.Machine().IsCurrent<ArcState>();
     }
 
+    void MapObj::ObserveStep()
+    {
+        if (m_effects.IsActive())
+        {
+            m_effects.BeginStep();
+        }
+    }
+
+    void MapObj::VisualStep()
+    {
+        TickPart(ModelPart());
+        TickPart(&m_effects);
+    }
+
     void MapObj::UpdateMotion()
     {
         StepStateMachine();

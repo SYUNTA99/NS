@@ -91,10 +91,9 @@ public:
 
     [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Player; }
     void ReadInput() override;
-    void Update() override;
-    //! @brief 自機の部品を決めた順に 1 固定ステップ進める
-    //! @details Model の控え、溜めの判定と衝突の裁定、状態機械の 1 歩、突進の向きの寄せ、身体の移動、
-    //! クリップの選択、TargetMarker、SlamArrow、HitReaction、PlayerAppearance、ChargeEffects、ImpactEffects の順に呼ぶ
+    using NS::Obj::Actor::Update;
+    //! @brief 体当たりのボタンの押下を差し込んで 1 固定ステップ進める。試しが入力を作る口
+    //! @details 順は基底の Update と同じで、観測の段が入力の読み取りの代わりに chargeHeld を使う
     //! @param[in] chargeHeld 体当たりのボタンを押しているか
     void Update(bool chargeHeld);
     //! @brief 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
@@ -309,6 +308,18 @@ public:
     [[nodiscard]] bool IsDead() const noexcept;
     [[nodiscard]] int Health() const noexcept;
 
+protected:
+    //! Model の控え、溜めの判定 (CollisionInput::Observe)、体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
+    void ObserveStep() override;
+    //! 溜めを進め (CollisionInput::AdvanceState)、衝突の裁定を出して知らせを送る (ImpactResolver::StepState)
+    void DecideStep() override;
+    //! 突進の発動、状態機械の 1 歩、丸まりの解除と押下の消費。身体が止まっている間は押下の消費だけ
+    void StateStep() override;
+    //! 突進の向きの寄せ (CollisionInput::ApplyControl) の後に身体を動かす
+    void BodyStep() override;
+    //! クリップの選択、TargetMarker、SlamArrow、HitReaction、PlayerAppearance、ChargeEffects、ImpactEffects の順
+    void VisualStep() override;
+
 private:
     friend class NS::Game::Level::CollisionInput;
     //! 突進の記録。発動で書き、突進の間と後で読む
@@ -408,6 +419,8 @@ private:
     NS::Obj::SubStateMachine<Player> m_charge;
     std::unique_ptr<NS::Game::Level::CollisionInput> m_collisionInput;
     bool m_chargeHeld = false;
+    bool m_hasInjectedHeld = false; // Update(bool) の間だけ立つ。観測が入力の代わりに m_injectedHeld を使う
+    bool m_injectedHeld = false;
     float m_chargeDelta = 0.0f;
     [[nodiscard]] std::string_view ChooseClip(float lateralSpeed) const noexcept;
     [[nodiscard]] float ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept;
