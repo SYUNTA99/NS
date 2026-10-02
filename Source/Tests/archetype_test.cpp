@@ -250,7 +250,6 @@ TEST(Archetype, ExpandThenDiffGivesBackOverrides)
     EXPECT_FALSE(fullSphere->contains("id"));
     EXPECT_FLOAT_EQ(NS::Obj::FieldFloat(*fullSphere, "半径", 0.0f), 3.0f);
     EXPECT_TRUE(NS::Obj::HasField(*fullSphere, "中心オフセット"));
-    EXPECT_EQ(NS::Obj::PartFields(full, "RigidBody"), nullptr);
     EXPECT_NE(NS::Obj::PartFields(full, "Params"), nullptr);
 
     const nlohmann::json back = NS::Obj::DiffObjectJson(full);

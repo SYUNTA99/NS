@@ -3,7 +3,6 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
 #include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -31,7 +30,6 @@ TEST(MapObjParams, SceneOverrideControlsMassAndToughness)
     ASSERT_NE(params, nullptr);
     EXPECT_FLOAT_EQ(params->Mass(), 2.0f);
     EXPECT_FLOAT_EQ(params->Toughness(), 3.0f);
-    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::RigidBody>(actor->Part("RigidBody")), nullptr);
     EXPECT_EQ(actor->Part("Breakable"), nullptr);
     NS::Game::Level::TackleTargetAnswer answer;
     ASSERT_TRUE(NS::Game::Level::SendMsgAskTackleTarget(*actor->BodySensorPart(), answer));

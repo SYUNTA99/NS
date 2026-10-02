@@ -37,11 +37,6 @@ namespace NS::Obj
         void SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept;
         [[nodiscard]] NS::Core::Vector3 RotationEulerDegrees() const noexcept;
 
-        //! RigidBody の形になれる
-        [[nodiscard]] bool CanJoinRigidBody() const noexcept override { return true; }
-        //! WorldOBB の箱の形
-        [[nodiscard]] NS::Phys::ShapePart RigidBodyPart() const override;
-
         //! Owner の world 変換に当たり箱の local offset / 回転を重ねた AABB を返す。回転時は内包する軸並行にする
         //! Owner が未登録の場合は local offset / 回転だけを反映した AABB を返す。例外は投げない
         [[nodiscard]] NS::Core::AABB WorldAABB() const noexcept;

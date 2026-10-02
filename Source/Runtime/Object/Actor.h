@@ -82,11 +82,6 @@ namespace NS::Obj
         void Update() override;
         //! Animation を進める
         void PrepareRender() override;
-        //! @brief 物理を 1 歩進める直前に呼ばれる。既定は何もしない
-        //! @details 剛体の部品は Actor に付ける場所が無いので、基底は剛体を探さない
-        virtual void OnPrePhysicsStep();
-        //! @brief 物理を 1 歩進めた直後、物理の段に置いた物より先に呼ばれる。既定は何もしない
-        virtual void OnPostPhysicsStep();
 
         //! 実行時にコードが足す一時オブジェクトか。true は保存・凍結・作業データに写らず、
         //! データからの組み直し後も残る

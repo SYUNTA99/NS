@@ -83,8 +83,6 @@ namespace
             m_log.order.push_back("actor");
             TickPart(&m_part);
         }
-        void OnPrePhysicsStep() override { m_log.order.push_back("pre-physics"); }
-        void OnPostPhysicsStep() override { m_log.order.push_back("post-physics"); }
 
     private:
         TickLog& m_log;
@@ -156,16 +154,14 @@ TEST(ObjectListTicker, TickerRunsBeforeComponentsOfSameBand)
     EXPECT_EQ(log.order[1], "component");
 }
 
-TEST(ObjectListTicker, ActorTickAndPhysicsHooksFollowBands)
+TEST(ObjectListTicker, ActorTickFollowsBands)
 {
     NS::Obj::Scene scene;
     TickLog log;
     scene.SpawnTransient<LoggingActor>(log);
 
     scene.OnUpdate();
-    ASSERT_EQ(log.order.size(), 4u);
-    EXPECT_EQ(log.order[0], "pre-physics");
-    EXPECT_EQ(log.order[1], "post-physics");
-    EXPECT_EQ(log.order[2], "actor");
-    EXPECT_EQ(log.order[3], "component");
+    ASSERT_EQ(log.order.size(), 2u);
+    EXPECT_EQ(log.order[0], "actor");
+    EXPECT_EQ(log.order[1], "component");
 }

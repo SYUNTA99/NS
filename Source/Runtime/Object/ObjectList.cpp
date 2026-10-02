@@ -3,7 +3,6 @@
 #include "Runtime/Core/Assert.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/ObjectName.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
@@ -288,20 +287,6 @@ namespace NS::Obj
                     }
                 }
             });
-        }
-        for (const std::unique_ptr<Actor>& actor : m_objects)
-        {
-            if (RigidBody* body = ComponentCast<RigidBody>(actor->Part("RigidBody")))
-            {
-                if (body->IsActive())
-                {
-                    body->SyncToPhysics(physics);
-                }
-                else
-                {
-                    body->RemoveFromPhysics(physics);
-                }
-            }
         }
         physics.OptimizeBroadPhase();
     }

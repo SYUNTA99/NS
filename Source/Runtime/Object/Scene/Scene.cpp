@@ -3,7 +3,6 @@
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CameraManager.h"
-#include "Runtime/Object/Components/RigidBody.h"
 #include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
@@ -341,23 +340,9 @@ namespace NS::Obj
         {
             if (phase == UpdatePhase::Physics)
             {
-                for (Actor* actor : m_objects)
-                {
-                    if (actor->IsActiveInHierarchy())
-                    {
-                        actor->OnPrePhysicsStep();
-                    }
-                }
                 m_physicsScene.Update(NS::Platform::FrameTimer::FixedDelta());
-                for (Actor* actor : m_objects)
-                {
-                    if (actor->IsActiveInHierarchy())
-                    {
-                        actor->OnPostPhysicsStep();
-                    }
-                }
             }
-            // 物理の段に置いた物は、物理を進めた直後に呼ばれる
+            // 物理の段に置いた物は、Jolt を 1 歩進めた直後に呼ばれる
             m_objects.ExecutePhase(phase);
             if (phase == UpdatePhase::Camera)
             {

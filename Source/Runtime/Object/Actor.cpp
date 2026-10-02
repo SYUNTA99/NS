@@ -308,9 +308,7 @@ namespace NS::Obj
         TickPart(m_hitReaction.get());
     }
 
-    void Actor::OnPrePhysicsStep() {}
 
-    void Actor::OnPostPhysicsStep() {}
 
     void Actor::PrepareRender()
     {
