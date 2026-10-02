@@ -1,5 +1,6 @@
 ﻿#include "Runtime/Object/Actor.h"
 
+#include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/Animation.h"
 #include "Runtime/Object/Components/BoxCollider.h"
@@ -140,6 +141,17 @@ namespace NS::Obj
     const IStateMachine* Actor::GetStateMachine() const noexcept
     {
         return m_stateMachine.get();
+    }
+
+    bool Actor::AdoptStateMachine(std::unique_ptr<IStateMachine> machine)
+    {
+        if (m_stateMachine != nullptr)
+        {
+            NS_LOG_ERROR(Scene, "Actor::BuildStateMachine: 状態機械は 1 体に 1 つ。2 回目は組まずに今の機械を残す");
+            return false;
+        }
+        m_stateMachine = std::move(machine);
+        return true;
     }
 
     void Actor::StepStateMachine()
@@ -301,8 +313,6 @@ namespace NS::Obj
         BodyStep();
         VisualStep();
     }
-
-
 
     void Actor::ObserveStep()
     {

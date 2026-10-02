@@ -22,6 +22,8 @@ namespace NS::Game::Level
 
     void FollowCamera::StateStep()
     {
+        // 基底の状態機械の歩を先に呼ぶ。今は持たないので何もしないが、後で持たせた時に黙って進まなくならない
+        NS::Obj::Actor::StateStep();
         if (!m_vcam.IsActive())
         {
             return;

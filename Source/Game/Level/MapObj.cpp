@@ -88,7 +88,7 @@ namespace NS::Game::Level
         (void)CreatePart("BodySensor");
         BodySensorPart()->SetType(NS::Obj::HitSensorType::MapObjBody);
         BodySensorPart()->SetSphere(0.5f);
-        m_states = &BuildStateMachine<MapObj, RestingState, FreezeState, LaunchedState>(*this);
+        (void)BuildStateMachine<MapObj, RestingState, FreezeState, LaunchedState>(*this, m_states);
         m_motion.Finish();
     }
 

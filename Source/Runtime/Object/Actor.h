@@ -176,19 +176,28 @@ namespace NS::Obj
             }
         }
         //! @brief 持ち主の型 TOwner の状態機械を TStates で組み、基底に預けて先頭の状態へ入る
-        //! @details 状態機械は 1 体に 1 つで、Update が 1 固定ステップ進める。組み直すと前の機械を捨てる。
-        //! 先頭の OnEnter が走るので、持ち主が OnEnter の触る所を作り終えてから呼ぶ
+        //! @details 状態機械は 1 体に 1 つで、Update が 1 固定ステップ進める。既に持っている時は組まずに
+        //! NS_LOG_ERROR で知らせて false を返し、今の機械をそのまま残す (動いている機械は状態の中から呼ばれて
+        //! いることがあり、捨てると呼び出し中の状態が消える)。型付きのポインタは先頭の OnEnter より前に
+        //! outMachine へ書くので、OnEnter の中からも引ける。持ち主は OnEnter の触る所を作り終えてから呼ぶ
         //! @tparam TOwner 呼ぶ派生の型。状態は StateOf<自分の型, TOwner> から派生する
+        //! @tparam TStates 状態の型の並び。先頭が初期状態で、並べた型が移れる状態の全部になる
         //! @param[in] owner 状態へ渡す持ち主
-        //! @return 組んだ状態機械。基底が所有するので、呼び手は参照を持つだけ
-        template <typename TOwner, typename... TStates> StateMachine<TOwner>& BuildStateMachine(TOwner& owner)
+        //! @param[out] outMachine 組んだ状態機械の置き場。基底が所有するので持ち主は参照を持つだけ。失敗時は触らない
+        //! @return 組めた場合 true、既に状態機械を持っていて組まなかった場合 false
+        template <typename TOwner, typename... TStates>
+        bool BuildStateMachine(TOwner& owner, StateMachine<TOwner>*& outMachine)
         {
             static_assert(std::is_base_of_v<Actor, TOwner>, "持ち主は Actor の派生");
             std::unique_ptr<StateMachine<TOwner>> machine = std::make_unique<StateMachine<TOwner>>();
-            StateMachine<TOwner>& built = *machine;
-            m_stateMachine = std::move(machine);
-            built.template Build<TStates...>(owner);
-            return built;
+            StateMachine<TOwner>* built = machine.get();
+            if (!AdoptStateMachine(std::move(machine)))
+            {
+                return false;
+            }
+            outMachine = built;
+            built->template Build<TStates...>(owner);
+            return true;
         }
         //! 状態機械を 1 固定ステップ進める。持たなければ何もしない
         void StepStateMachine();
@@ -197,6 +206,8 @@ namespace NS::Obj
 
     private:
         friend class ObjectList;
+        //! 状態機械を預かる。既に持っていれば NS_LOG_ERROR を出して machine を捨て、false を返す
+        [[nodiscard]] bool AdoptStateMachine(std::unique_ptr<IStateMachine> machine);
         void SetId(std::uint32_t id) noexcept { m_id = id; }
         std::uint32_t m_id = 0;
         std::unique_ptr<TransformComponent> m_rootPart;
@@ -207,7 +218,7 @@ namespace NS::Obj
         std::unique_ptr<Collider> m_collision;
         std::unique_ptr<HitSensor> m_bodySensor;
         std::unique_ptr<HitSensor> m_attackSensor;
-        std::unique_ptr<IStateMachine> m_stateMachine; // 派生が BuildStateMachine で預ける。持たない種類は nullptr
+        std::unique_ptr<IStateMachine> m_stateMachine; // BuildStateMachine が 1 回だけ預かる。持たない種類は nullptr
         std::unique_ptr<HitReaction> m_hitReaction;
         Transform* m_transform = nullptr; // TransformComponent が持つ実体、Actor が必ず 1 つ積む
         std::vector<Actor*> m_children;   // 子 Actor、非所有

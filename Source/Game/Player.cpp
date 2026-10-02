@@ -1,6 +1,5 @@
 #include "Game/Player.h"
 
-#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
@@ -21,6 +20,7 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Object/Components/Animation.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/HitReaction.h"
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/Model.h"
@@ -94,15 +94,15 @@ Player::Player() noexcept
     m_collisionInput->m_player = this;
     m_collisionInput->m_params = m_params.get();
     // 部品を全部付けた後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
-    m_states = &BuildStateMachine<Player,
-                                  NS::Game::Player::IdlePlayerState,
-                                  NS::Game::Player::WalkPlayerState,
-                                  NS::Game::Player::FallPlayerState,
-                                  NS::Game::Player::LedgeHangingPlayerState,
-                                  NS::Game::Player::LedgeClimbingPlayerState,
-                                  NS::Game::Player::BodySlamPlayerState,
-                                  NS::Game::Player::BrakePlayerState,
-                                  NS::Game::Player::ReboundPlayerState>(*this);
+    (void)BuildStateMachine<Player,
+                            NS::Game::Player::IdlePlayerState,
+                            NS::Game::Player::WalkPlayerState,
+                            NS::Game::Player::FallPlayerState,
+                            NS::Game::Player::LedgeHangingPlayerState,
+                            NS::Game::Player::LedgeClimbingPlayerState,
+                            NS::Game::Player::BodySlamPlayerState,
+                            NS::Game::Player::BrakePlayerState,
+                            NS::Game::Player::ReboundPlayerState>(*this, m_states);
 }
 
 Player::~Player() = default;
