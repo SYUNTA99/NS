@@ -33,9 +33,10 @@ void Player::RequestBodySlam(float charge01) noexcept
     }
     // 残すと、先行入力のうちに来たタップが前の溜めた突進の向きへ出る
     m_request.hasDir = false;
+    m_request.verticalSpeed = 0.0f;
 }
 
-void Player::RequestBodySlam(float charge01, const NS::Core::Vector3& aimDirection) noexcept
+void Player::RequestBodySlam(float charge01, const NS::Core::Vector3& aimDirection, float launchVerticalSpeed) noexcept
 {
     RequestBodySlam(charge01);
     NS::Core::Vector3 dir{};
@@ -50,6 +51,10 @@ void Player::RequestBodySlam(float charge01, const NS::Core::Vector3& aimDirecti
     }
     m_request.dir = dir;
     m_request.hasDir = true;
+    if (std::isfinite(launchVerticalSpeed))
+    {
+        m_request.verticalSpeed = launchVerticalSpeed;
+    }
 }
 
 NS::Core::Vector3 Player::BodySlamVelocity() const noexcept
@@ -229,8 +234,15 @@ bool Player::BodySlam() noexcept
     else
     {
         m_slam.distanceTarget = m_params->m_bodySlamDistance;
-        body.SetVelocity(NS::Core::Vector3{
-            dir.x * m_params->m_bodySlamSpeed, body.VerticalVelocity(), dir.z * m_params->m_bodySlamSpeed});
+        // 縦はジャンプのどこで放ったかでなく狙いで決める。同じ狙いならいつも矢印と同じ道筋で出て、ジャンプの上向きの
+        // 勢いに乗って放つ角度の上限と別の道で高く上がることも無い。届く相手が無ければ 0 で水平に出て重力で落ちる
+        float vertical = 0.0f;
+        if (m_request.hasDir)
+        {
+            vertical = m_request.verticalSpeed;
+        }
+        body.SetVelocity(
+            NS::Core::Vector3{dir.x * m_params->m_bodySlamSpeed, vertical, dir.z * m_params->m_bodySlamSpeed});
     }
 
     // 距離が 0 以下だと 1 フレーム目で終わって発動が消えるため、出さずに通常移動のままにする

@@ -188,7 +188,7 @@ namespace NS::Game::Level
             // 溜めて放した突進はスティックを見ずにその向きへ出す。タップは矢印が出ないので入力の向きへ出す
             if (fired == SlamKind::Charged && m_hasAimLine)
             {
-                m_player->RequestBodySlam(charge01, m_aimLine.direction);
+                m_player->RequestBodySlam(charge01, m_aimLine.direction, m_aimLine.launchVerticalSpeed);
             }
             else
             {
@@ -256,8 +256,11 @@ namespace NS::Game::Level
         {
             return;
         }
-        m_observedAimLine = AimLine{
-            .origin = RootTransform().Position(), .direction = direction, .length = m_player->BodySlamDistance()};
+        m_observedAimLine = AimLine{.origin = RootTransform().Position(),
+                                    .direction = direction,
+                                    .length = m_player->BodySlamDistance(),
+                                    .launchVerticalSpeed = 0.0f,
+                                    .grounded = m_body->IsGrounded()};
         m_observedHasAimLine = true;
         if (m_resolver == nullptr)
         {
@@ -265,6 +268,11 @@ namespace NS::Game::Level
         }
         m_observedHasAimTarget =
             m_resolver->FindSlamLineTarget(m_observedAimLine.direction, m_observedAimLine.length, m_observedAimTarget);
+        // 放す時に添える縦の速さ。届かない相手と相手が無い時は 0 で水平に放つ
+        if (m_observedHasAimTarget)
+        {
+            m_observedAimLine.launchVerticalSpeed = m_observedAimTarget.launchVerticalSpeed;
+        }
     }
 
     bool CollisionInput::TryGetAimTarget(SlamLineTarget& outTarget) const noexcept

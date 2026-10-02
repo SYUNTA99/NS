@@ -869,3 +869,33 @@ TEST(HitZonesTest, AimPredictionGivesTheSameTierAsTheVerdict)
         EXPECT_FLOAT_EQ(predicted.offset, impact.offset01);
     }
 }
+
+// 放つ角度の自動が狙う高さは、相手の体の中心の高さ + 赤の上下の位置 × (半分の高さ + 自機の半径)
+// 赤がどこも覆わない時は相手の中心の高さ
+TEST(HitZonesTest, AimHeightIsTheRedCenterOnTheFace)
+{
+    const SensorVolume ball = SensorVolume::Sphere(Vector3{0.0f, 1.0f, 3.0f}, 0.5f);
+    const Vector3 forward{0.0f, 0.0f, 1.0f};
+    HitFace face;
+    face.centerV = 0.5f;
+    float height = 0.0f;
+    ASSERT_TRUE(NS::Game::Level::HitFaceAimHeight(face, ball, forward, k_PlayerRadius, height));
+    EXPECT_NEAR(height, 1.0f + 0.5f * k_BallReach, k_Tolerance);
+
+    face.width = 0.0f;
+    ASSERT_TRUE(NS::Game::Level::HitFaceAimHeight(face, ball, forward, k_PlayerRadius, height));
+    EXPECT_NEAR(height, 1.0f, k_Tolerance);
+
+    // 丸めて読む。上下の位置の 2 は 1
+    HitFace beyond;
+    beyond.centerV = 2.0f;
+    ASSERT_TRUE(NS::Game::Level::HitFaceAimHeight(beyond, ball, forward, k_PlayerRadius, height));
+    EXPECT_NEAR(height, 1.0f + k_BallReach, k_Tolerance);
+
+    // 判定できない体と向きは false で、書き換えない
+    height = 7.0f;
+    EXPECT_FALSE(NS::Game::Level::HitFaceAimHeight(
+        face, SensorVolume::Sphere(Vector3{}, 0.0f), forward, k_PlayerRadius, height));
+    EXPECT_FALSE(NS::Game::Level::HitFaceAimHeight(face, ball, Vector3{0.0f, 1.0f, 0.0f}, k_PlayerRadius, height));
+    EXPECT_FLOAT_EQ(height, 7.0f);
+}

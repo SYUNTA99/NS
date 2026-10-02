@@ -16,6 +16,7 @@
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsScene.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
 #include <cmath>
@@ -141,10 +142,14 @@ namespace NS::Game::Level
                    IsFiniteVector(desc.fullColor) && IsFiniteVector(desc.plainColor) && IsFiniteVector(desc.darkColor);
         }
 
-        // 上向きの板 (shadowQuad。1 × 1 m で、+z の端が v = 0) を、線に沿った範囲と横の幅へ伸ばし、線の向きへ回して高さ
-        // height に置く
-        [[nodiscard]] NS::Core::Matrix PlateWorld(
-            const SlamArrowShape& shape, float alongNear, float alongFar, float width, float height) noexcept
+        // 上向きの板 (shadowQuad。1 × 1 m で、+z の端が v = 0) を、線に沿った範囲と横の幅へ伸ばし、線の向きへ回して
+        // 近い端を高さ height、遠い端を height + rise に置く。傾けても横の軸は水平のまま
+        [[nodiscard]] NS::Core::Matrix PlateWorld(const SlamArrowShape& shape,
+                                                  float alongNear,
+                                                  float alongFar,
+                                                  float width,
+                                                  float height,
+                                                  float rise) noexcept
         {
             const NS::Core::Vector3& forward = shape.direction;
             // 左手系で y が上。前が +z の時に右が +x になる向き
@@ -160,11 +165,11 @@ namespace NS::Game::Level
                                     0.0f,
                                     0.0f,
                                     forward.x * length,
-                                    0.0f,
+                                    rise,
                                     forward.z * length,
                                     0.0f,
                                     center.x,
-                                    height,
+                                    height + rise * 0.5f,
                                     center.z,
                                     1.0f};
         }
@@ -187,7 +192,7 @@ namespace NS::Game::Level
                                                          const PlateLook& look) noexcept
         {
             GroundArrowConstants constants{};
-            constants.world = PlateWorld(shape, plate.alongNear, plate.alongFar, width, plate.height);
+            constants.world = PlateWorld(shape, plate.alongNear, plate.alongFar, width, plate.height, plate.rise);
             constants.viewProj = context.viewProjection;
             constants.chargedColor =
                 NS::Core::Vector4{shape.stageColor.x, shape.stageColor.y, shape.stageColor.z, look.edgeAlpha};
@@ -250,8 +255,7 @@ namespace NS::Game::Level
         {
             return false;
         }
-        if (!IsPositiveFinite(state.ballRadius) || !IsFiniteVector(state.line.origin) ||
-            !std::isfinite(state.targetContact) || !std::isfinite(state.charge01))
+        if (!IsPositiveFinite(state.ballRadius) || !IsFiniteVector(state.line.origin) || !std::isfinite(state.charge01))
         {
             return false;
         }
@@ -267,8 +271,18 @@ namespace NS::Game::Level
         shape.direction = direction;
         shape.bandWidth = state.ballRadius * 2.0f;
         shape.start = state.ballRadius;
-        // 玉の縁が相手に触れる所で玉の中心が居る位置から玉の半径だけ先 (相手の手前の面)
-        shape.fullTip = std::max(state.targetContact + state.ballRadius, shape.start);
+        // 玉の縁が相手に触れる所で玉の中心が居る位置から玉の半径だけ先 (相手の手前の面)。相手がいなければ突進が
+        // 止まる所の玉の縁
+        float reach = state.line.length;
+        if (state.hasTarget)
+        {
+            reach = state.targetContact;
+        }
+        if (!std::isfinite(reach))
+        {
+            return false;
+        }
+        shape.fullTip = std::max(reach + state.ballRadius, shape.start);
 
         // 矢印を出したフレームを 1 フレーム目として等速に伸びる
         const float grown =
@@ -357,6 +371,66 @@ namespace NS::Game::Level
         }
     }
 
+    void PlaceSlamArrowOnPath(const SlamArrowGroundProbe& probe,
+                              const NS::Game::Player::LaunchPath& path,
+                              float ballCenterHeight,
+                              float groundLift,
+                              SlamArrowShape& shape)
+    {
+        shape.band.clear();
+        shape.hasHead = false;
+        if (!(shape.tip > shape.start) || !std::isfinite(groundLift) || !std::isfinite(ballCenterHeight))
+        {
+            return;
+        }
+        const float radius = shape.bandWidth * 0.5f;
+        // 線に沿った距離 along で玉の一番下の点が居る高さ + 浮かせる高さ
+        const auto surfaceAt = [&](float along) {
+            const float center = ballCenterHeight + NS::Game::Player::LaunchHeightAt(path, along);
+            float bottom = center - radius;
+            if (probe)
+            {
+                // 玉の中心と放った高さの高い方から一番下の点までに床があれば、玉はそこへ着いて床の上を転がる
+                // 床を見るのは玉の中心が止まる所、相手に触れる所まで。その先の矢じりの下は相手の体で、床ではない
+                const float top = std::max(center, ballCenterHeight);
+                const float probeAlong = std::min(along, shape.fullTip - radius);
+                const NS::Core::Vector3 from = shape.origin + shape.direction * probeAlong;
+                float ground = 0.0f;
+                if (probe(NS::Core::Vector3{from.x, top, from.z}, top - bottom, ground) && ground > bottom)
+                {
+                    bottom = ground;
+                }
+            }
+            return bottom + groundLift;
+        };
+
+        const float pieceCount = std::ceil((shape.tip - shape.start) / k_GroundProbeSpacing);
+        if (!(pieceCount <= k_MaxBandPieces))
+        {
+            return;
+        }
+        const int count = static_cast<int>(pieceCount);
+        shape.band.reserve(static_cast<std::size_t>(count));
+        float nearHeight = surfaceAt(shape.start);
+        for (int i = 0; i < count; ++i)
+        {
+            const float alongNear = shape.start + k_GroundProbeSpacing * static_cast<float>(i);
+            const float alongFar = std::min(alongNear + k_GroundProbeSpacing, shape.tip);
+            const float farHeight = surfaceAt(alongFar);
+            shape.band.push_back(SlamArrowPiece{
+                .alongNear = alongNear, .alongFar = alongFar, .height = nearHeight, .rise = farHeight - nearHeight});
+            nearHeight = farHeight;
+        }
+
+        const float headNear = shape.tip - shape.headDepth;
+        const float headHeight = surfaceAt(headNear);
+        shape.hasHead = true;
+        shape.head = SlamArrowPiece{.alongNear = headNear,
+                                    .alongFar = shape.tip,
+                                    .height = headHeight,
+                                    .rise = surfaceAt(shape.tip) - headHeight};
+    }
+
     // Player の見た目の段 (VisualStep) が呼ぶ。CollisionInput を観測する観測の段より後なので、
     // このフレームの狙いの線と狙う相手を控えた後に読む
     SlamArrow::SlamArrow() noexcept : NS::Obj::Component() {}
@@ -412,15 +486,15 @@ namespace NS::Game::Level
     void SlamArrow::OnUpdate()
     {
         m_hasShown = false;
-        // 溜め量は放した後も残るので、溜めているかで組むフレームを決める。カメラの正面に相手がいなければ出さない
+        // 溜め量は放した後も残るので、溜めているかで組むフレームを決める。相手がいなくても放った玉の道筋は出す
         SlamArrowState state{};
-        SlamLineTarget target{};
-        if (m_input == nullptr || m_body == nullptr || !m_input->IsCharging() || !m_input->TryGetAimLine(state.line) ||
-            !m_input->TryGetAimTarget(target))
+        if (m_input == nullptr || m_body == nullptr || !m_input->IsCharging() || !m_input->TryGetAimLine(state.line))
         {
             m_framesSinceShown = -1;
             return;
         }
+        SlamLineTarget target{};
+        state.hasTarget = m_input->TryGetAimTarget(target);
         // 前のフレームに出ていなければ 0 から数える。相手が替わっても数え直さない
         if (m_framesSinceShown < 0)
         {
@@ -432,7 +506,7 @@ namespace NS::Game::Level
         }
 
         state.ballRadius = m_body->CapsuleRadius();
-        state.targetContact = target.contact;
+        state.targetContact = target.launchContact;
         state.framesSinceShown = m_framesSinceShown;
         state.charge01 = m_input->Judge().Charge01();
         state.chargeFull = m_input->IsChargeFull();
@@ -442,20 +516,37 @@ namespace NS::Game::Level
         {
             return;
         }
+        SlamArrowGroundProbe probe;
         if (const NS::Obj::Scene* scene = Owner()->OwningScene())
         {
             const NS::Phys::PhysicsScene& physics = scene->Physics();
-            const SlamArrowGroundProbe probe =
-                [&physics](const NS::Core::Vector3& from, float maxDepth, float& outGroundY) {
-                    float distance = 0.0f;
-                    if (!physics.Raycast(from, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
-                    {
-                        return false;
-                    }
-                    outGroundY = from.y - distance;
-                    return true;
-                };
+            probe = [&physics](const NS::Core::Vector3& from, float maxDepth, float& outGroundY) {
+                float distance = 0.0f;
+                if (!physics.Raycast(from, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
+                {
+                    return false;
+                }
+                outGroundY = from.y - distance;
+                return true;
+            };
+        }
+        // 接地して水平に放つ玉は床の上を転がる。段を下りた先と落ちる所には今までどおり貼らない
+        if (state.line.grounded && !(state.line.launchVerticalSpeed > 0.0f))
+        {
             PlaceSlamArrowOnGround(probe, Tuning().groundLift, shape);
+        }
+        else if (const ::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+        {
+            // 道筋は放つ縦の速さを決めた LaunchPitch と同じ重力の計算。矢印と実際の飛び方をずらさない
+            const NS::Game::Player::PlayerParams& params = ownerPlayer->Params();
+            const NS::Game::Player::LaunchPath path{.horizontalSpeed = params.m_bodySlamSpeed,
+                                                    .verticalSpeed = state.line.launchVerticalSpeed,
+                                                    .gravity = params.Gravity(),
+                                                    .dt = NS::Platform::FrameTimer::FixedDelta(),
+                                                    .grounded = state.line.grounded};
+            // 線の始まりは根。玉の中心は根から当たりの円柱の半分の高さだけ下で、丸まっていれば根そのもの
+            const float ballCenterHeight = state.line.origin.y - m_body->CapsuleHalfHeight();
+            PlaceSlamArrowOnPath(probe, path, ballCenterHeight, Tuning().groundLift, shape);
         }
         m_shown = std::move(shape);
         m_hasShown = true;
@@ -485,9 +576,17 @@ namespace NS::Game::Level
         }
         // 矢じりの板は絵の余白ぶん広く長く置き、不透明な範囲を幅と奥行きに合わせる
         const float lengthMargin = m_shown.headDepth * (1.0f / k_HeadTextureSpan - 1.0f) * 0.5f;
+        // 傾いた矢じりは同じ傾きのまま両端へ伸ばす
+        float slope = 0.0f;
+        const float headLength = m_shown.head.alongFar - m_shown.head.alongNear;
+        if (headLength > 0.0f)
+        {
+            slope = m_shown.head.rise / headLength;
+        }
         const SlamArrowPiece headPlate{.alongNear = m_shown.head.alongNear - lengthMargin,
                                        .alongFar = m_shown.head.alongFar + lengthMargin,
-                                       .height = m_shown.head.height};
+                                       .height = m_shown.head.height - slope * lengthMargin,
+                                       .rise = m_shown.head.rise + slope * lengthMargin * 2.0f};
         const PlateLook headLook{.edgeAlpha = Tuning().headEdgeAlpha,
                                  .fillAlpha = Tuning().headFillAlpha,
                                  .plainEdgeAlpha = Tuning().plainHeadEdgeAlpha,
@@ -515,25 +614,30 @@ namespace NS::Game::Level
         {
             return NS::Core::AABB{SortCenter(), NS::Core::Vector3{0.0f, 0.0f, 0.0f}};
         }
-        // 線の始まりから矢じりの先 (余白込み) までを、板の幅の半分だけ横へ広げて覆う。高さは一番低い板から線の高さまで
+        // 線の始まりから矢じりの先 (余白込み) までを、板の幅の半分だけ横へ広げて覆う。高さは板の一番低い端から、
+        // 線の高さと板の一番高い端の高い方まで。矢じりは描く時に余白ぶん傾きのまま伸びるので、傾きの差ぶん広げる
         const float reach = m_shown.tip + m_shown.headDepth;
         const float halfWidth =
             std::max(m_shown.bandWidth / k_BandTextureSpan, Tuning().headWidth / k_HeadTextureSpan) * 0.5f;
         const NS::Core::Vector3 reachEnd = m_shown.origin + m_shown.direction * reach;
         float lowest = m_shown.origin.y;
+        float highest = m_shown.origin.y;
         for (const SlamArrowPiece& piece : m_shown.band)
         {
-            lowest = std::min(lowest, piece.height);
+            lowest = std::min({lowest, piece.height, piece.height + piece.rise});
+            highest = std::max({highest, piece.height, piece.height + piece.rise});
         }
         if (m_shown.hasHead)
         {
-            lowest = std::min(lowest, m_shown.head.height);
+            const float spread = std::abs(m_shown.head.rise);
+            lowest = std::min({lowest, m_shown.head.height, m_shown.head.height + m_shown.head.rise}) - spread;
+            highest = std::max({highest, m_shown.head.height, m_shown.head.height + m_shown.head.rise}) + spread;
         }
         const NS::Core::Vector3 low{std::min(m_shown.origin.x, reachEnd.x) - halfWidth,
                                     lowest,
                                     std::min(m_shown.origin.z, reachEnd.z) - halfWidth};
         const NS::Core::Vector3 high{std::max(m_shown.origin.x, reachEnd.x) + halfWidth,
-                                     m_shown.origin.y,
+                                     highest,
                                      std::max(m_shown.origin.z, reachEnd.z) + halfWidth};
         return NS::Core::AABB{(low + high) * 0.5f, (high - low) * 0.5f};
     }

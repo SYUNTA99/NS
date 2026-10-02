@@ -330,6 +330,38 @@ namespace NS::Game::Level
         return result;
     }
 
+    bool HitFaceAimHeight(const HitFace& face,
+                          const NS::Obj::SensorVolume& body,
+                          const NS::Core::Vector3& direction,
+                          float playerRadius,
+                          float& outHeight) noexcept
+    {
+        if (!std::isfinite(playerRadius))
+        {
+            return false;
+        }
+        // 向きの読み方は JudgeHitFace と揃える。半分の高さは向きに依らないが、箱の測りが右の軸を読む
+        const float horizontal = std::sqrt(direction.x * direction.x + direction.z * direction.z);
+        if (!std::isfinite(horizontal) || !(horizontal > NS::Core::k_Epsilon))
+        {
+            return false;
+        }
+        BodyMeasure measure;
+        if (!MeasureBody(body, direction.z / horizontal, -direction.x / horizontal, measure))
+        {
+            return false;
+        }
+        // 狙うのは並びの先頭の決まりである赤の中心。覆わない赤は狙う所が無いので相手の中心
+        HitFaceShape red;
+        if (!RedShape(SanitizeFace(face), red))
+        {
+            outHeight = measure.center.y;
+            return true;
+        }
+        outHeight = measure.center.y + red.centerV * (measure.halfHeight + playerRadius);
+        return true;
+    }
+
 #if !defined(NS_SHIPPING)
     bool MakeHitFaceFrame(const NS::Obj::SensorVolume& body,
                           const NS::Core::Vector3& direction,

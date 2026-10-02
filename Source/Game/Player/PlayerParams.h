@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerVisualParams.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Reflection/Curve.h"
@@ -42,6 +43,12 @@ namespace NS::Game::Player
         [[nodiscard]] float StickDeadzone() const noexcept { return m_stickDeadzone; }
         //! 欄「ブレーキのしきい値」の値。進行方向と入力方向の内積がこれ以下ならブレーキに入る
         [[nodiscard]] float BrakeThreshold() const noexcept { return m_brakeThreshold; }
+        //! 欄「上昇重力」「下降重力」「頂点滞空 Vy」「頂点滞空倍率」の写し。重力の強さを選ぶ ChooseGravity へ渡す
+        [[nodiscard]] PlayerGravity Gravity() const noexcept
+        {
+            return PlayerGravity{
+                .rise = m_gravityUp, .fall = m_gravityDown, .apexSpeed = m_apexHangVy, .apexScale = m_apexHangScale};
+        }
 
         NS_REFLECT_BEGIN(PlayerParams, NS::Obj::Component)
         NS_REFLECT_FIELD(m_maxHealth, "体力")
@@ -70,6 +77,7 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_turnSpeed, "振り向きの速さ")
         NS_REFLECT_FIELD(m_bodySlamSpeed, "突進速度")
         NS_REFLECT_FIELD(m_bodySlamDistance, "突進距離")
+        NS_REFLECT_FIELD(m_launchPitchLimitDegrees, "放つ角度の上限")
         NS_REFLECT_FIELD(m_tapSlamSpeed, "タップ初速")
         NS_REFLECT_FIELD(m_tapSlamUpSpeed, "タップの上向き初速")
         NS_REFLECT_FIELD(m_tapSlamDistance, "タップ距離")
@@ -334,6 +342,10 @@ namespace NS::Game::Player
         float m_turnSpeed = 970.0f;
         float m_bodySlamSpeed = 20.0f;
         float m_bodySlamDistance = 10.0f;
+        // 溜めて放つ突進を相手の赤の高さへ向ける角度の上限 (度)。上向きも下向きもこの角度で切る
+        // 突進が高い所へ登る手段にならない所で止める。水平 20 m/s・上りの重力 -25 で上がれる高さは 45 度で約 8 m、
+        // 40 度で約 5.6 m、30 度で約 2.6 m。2026-10-03 本人の指定で 40
+        float m_launchPitchLimitDegrees = 40.0f;
         float m_tapSlamSpeed = 10.0f;
         float m_tapSlamUpSpeed = 3.0f;
         float m_tapSlamDistance = 6.25f;

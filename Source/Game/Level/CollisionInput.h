@@ -15,19 +15,22 @@ namespace NS::Obj
 
 namespace NS::Game::Level
 {
-    //! @brief 押している間の狙いの線。狙う相手を探す線で、溜めている間に相手がいれば SlamArrow がこの線の真下の床に
-    //! 矢印を貼る。溜めて放した突進はこの線の向きへ出て、突進の間も向きを曲げない
+    //! @brief 押している間の狙いの線。狙う相手を探す線で、溜めている間は SlamArrow がこの線の向きへ放った玉の道筋に
+    //! 矢印を描く。溜めて放した突進はこの線の向きと縦の速さで出て、突進の間も向きを曲げない
     struct AimLine
     {
         NS::Core::Vector3 origin;    //!< 線を引き始める自機の位置 (配置物の根)。世界座標
         NS::Core::Vector3 direction; //!< シーンの実カメラの正面の水平の向き。正規化済みで y は 0
         float length = 0.0f;         //!< 線に沿って突進が止まる所までの距離。欄「突進距離」の値で、単位は m
+        //! 溜めて放つ瞬間の縦の速さ (m/s)。上が正。狙う相手の SlamLineTarget::launchVerticalSpeed で、相手が無ければ 0
+        float launchVerticalSpeed = 0.0f;
+        bool grounded = false; //!< 線を控えた時に接地していたか。真なら道筋は放った高さより下へ行かない
     };
 
     //! @brief 体当たりのボタン入力を読んで発動を要求する Component
     //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
     //! どちらも離したフレームに、溜め量を添えて Player::RequestBodySlam を呼ぶ。
-    //! 溜めて放した時は、放す前のフレームに控えた狙いの線の向きも添える
+    //! 溜めて放した時は、放す前のフレームに控えた狙いの線の向きと縦の速さも添える
     //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる
     //! 依存: NS::Obj::Body, NS::Obj::Curve, ImpactInputJudge, ImpactResolver
     class CollisionInput : public NS::Obj::Component
@@ -95,6 +98,7 @@ namespace NS::Game::Level
         //! @details 押している間は毎フレーム、自機の位置からシーンの実カメラの正面の水平の向き
         //! (NS::Obj::CameraComponent::ForwardHorizontal) へ、Player::BodySlamDistance の長さの線を控える。
         //! 押したキーとスティックの向きは使わない。狙う相手がいなくても控える。
+        //! 縦の速さは狙う相手の予測の値で、相手が無ければ 0。接地はその時の身体の値。
         //! 押していないフレーム、所属シーンか実カメラが無いフレーム、正面の向きが決まらない (水平の長さが 0 か
         //! 有限でない) フレームは控えを消す
         //! @param[out] outLine 控えた狙いの線。控えが無い場合は書き換えない

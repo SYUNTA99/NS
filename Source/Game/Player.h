@@ -156,7 +156,7 @@ public:
     void Jump(float dt) noexcept;
     //! 上昇中にボタンを離したフレームだけ縦速度を縮める
     void CutJumpRelease() noexcept;
-    //! 上昇と下降で非対称な重力を当てる。頂点の近くは弱める
+    //! 上昇と下降で非対称な重力を当てる。頂点の近くは弱める。強さは ChooseGravity が PlayerParams::Gravity から選ぶ
     void Gravity(float dt) noexcept;
     //! タップの飛び込みだけに当てる重力。滞空秒がタップ距離を進む秒と揃う強さにする
     void TapSlamGravity(float dt) noexcept;
@@ -203,7 +203,11 @@ public:
     //! 水平の長さが 0 の向きと有限でない向きは、添えなかったのと同じ
     //! @param[in] charge01 溜め量 0..1
     //! @param[in] aimDirection 出す向き。世界座標で、縦の成分は使わない
-    void RequestBodySlam(float charge01, const NS::Core::Vector3& aimDirection) noexcept;
+    //! @param[in] launchVerticalSpeed 溜めた突進を放つ瞬間の縦の速さ (m/s)。上が正。CollisionInput が狙いの段で
+    //! LaunchPitch から控えた値で、届く相手が無ければ 0。タップには効かない。有限でなければ 0
+    void RequestBodySlam(float charge01,
+                         const NS::Core::Vector3& aimDirection,
+                         float launchVerticalSpeed = 0.0f) noexcept;
     //! @brief 衝突の裁定と玉の回転が読む速度。突進中は向きと突進速度から作る
     //! @details 実速度は壁へ押し付けられたフレームで 0 に潰れ、衝突の先読みが今の位置から動かなくなる
     [[nodiscard]] NS::Core::Vector3 BodySlamVelocity() const noexcept;
@@ -213,7 +217,9 @@ public:
     void CancelBodySlam() noexcept;
     //! @brief 向きを解決して突進を始める
     //! @details 向きは要求に添えた向き。添えていなければ AimDirection の向きに、押したフレームの控え
-    //! (MarkBodySlamAim) を控えてからの秒に応じて混ぜる
+    //! (MarkBodySlamAim) を控えてからの秒に応じて混ぜる。
+    //! 溜めた突進の縦の速さは要求に添えた値で、向きを添えていなければ 0。ジャンプの途中の縦の速さは持ち越さない。
+    //! タップは欄「タップの上向き初速」
     //! @return 向きが決まらないか距離が 0 以下の場合 false、それ以外の場合は true
     [[nodiscard]] bool BodySlam() noexcept;
     //! 押したフレームの狙いを控える。離すまでの遅れのぶん、向きを添えない発動はこの向きから始める
@@ -311,6 +317,7 @@ private:
         float charge01 = 0.0f;        // 要求された溜め量 0..1
         NS::Core::Vector3 dir{};      // 要求に添えた出す向き。正規化済み
         bool hasDir = false;          // 要求に向きが添えてあるか
+        float verticalSpeed = 0.0f;   // 溜めた突進を放つ瞬間の縦の速さ。hasDir が偽の間は読まない
         NS::Core::Vector3 aimDir{};   // 押したフレームに控えた狙いの向き。正規化済み
         float aimAge = 0.0f;          // 狙いを控えてからの経過秒
     };

@@ -81,6 +81,23 @@ namespace NS::Game::Level
                                                       const NS::Core::Vector3& direction,
                                                       float playerRadius) noexcept;
 
+    //! @brief 溜めて放つ突進が狙う高さ (世界の y) を出す
+    //! @details 段の決まりの並びの先頭にある赤の中心の高さ。相手の体の中心の高さ + 赤の上下の位置 ×
+    //! (半分の高さ + 自機の半径)。半分の高さは JudgeHitFace と同じく体の形から出す。
+    //! 赤がどこも覆わない (横幅か縦の幅が 0) 時は相手の体の中心の高さ。赤の欄は JudgeHitFace と同じく丸めて読む
+    //! @param[in] face 相手の赤の欄
+    //! @param[in] body 相手の体のセンサーの世界の形
+    //! @param[in] direction 突進の向き。縦の成分は捨てる
+    //! @param[in] playerRadius 自機の半径 (m)
+    //! @param[out] outHeight 狙う高さ。false の時は触らない
+    //! @return 出せた場合 true。体の形が球・カプセル・箱のどれでもない場合、向きの水平の長さが 0 か有限でない
+    //! 場合、自機の半径が有限でない場合は false
+    [[nodiscard]] bool HitFaceAimHeight(const HitFace& face,
+                                        const NS::Obj::SensorVolume& body,
+                                        const NS::Core::Vector3& direction,
+                                        float playerRadius,
+                                        float& outHeight) noexcept;
+
     //! @brief 面の上の 1 つの形。段の決まりが覆う範囲か、外れの面
     //! @details 位置と大きさは面の上の位置 (左右 u・上下 v) で表す。丸は楕円、箱は長方形で、縁ちょうどは外
     struct HitFaceShape

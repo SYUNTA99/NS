@@ -101,6 +101,7 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
                                      {"振り向きの速さ", 970.0f},
                                      {"突進速度", 20.0f},
                                      {"突進距離", 10.0f},
+                                     {"放つ角度の上限", 40.0f},
                                      {"タップ初速", 10.0f},
                                      {"タップの上向き初速", 3.0f},
                                      {"タップ距離", 6.25f},

@@ -6,6 +6,7 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player.h"
+#include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Logger.h"
@@ -310,13 +311,53 @@ namespace NS::Game::Level
             return false;
         }
 
-        // 段と横ずれは裁定と同じく相手の答えの面で決める。玉の高さは今のまま線を進めた物
-        // 応じない相手は裁定でも当たらないので、外れの既定のまま
+        // 応じない相手は裁定でも当たらないので、外れの既定のまま水平に放つ
+        first.launchContact = first.contact;
         HitFaceJudgement judgement;
         TackleTargetAnswer answer{};
         if (SendMsgAskTackleTarget(*firstSensor, answer))
         {
-            judgement = JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, lineDir, playerRadius);
+            const NS::Game::Player::PlayerParams& params = Tuning();
+            float aimHeight = ballCenter.y;
+            if (!HitFaceAimHeight(answer.face, answer.body, lineDir, playerRadius, aimHeight))
+            {
+                aimHeight = ballCenter.y;
+            }
+            // 触れる所は、着きたい高さで線を進めた玉が触れる所。今の高さで測ると、高さの違う相手の上の縁をかすめる
+            // 所まで寄ってしまい、弧の着く所と実際に触れる所がずれる。その高さで触れない時は今の高さの値のまま
+            const NS::Core::Vector3 aimedCenter{ballCenter.x, aimHeight, ballCenter.z};
+            float aimedContact = first.contact;
+            if (NS::Obj::VolumesOverlap(
+                    NS::Obj::SensorVolume::Capsule(SweptBall(aimedCenter, lineDir, maxDistance, playerRadius)),
+                    firstSensor->WorldVolume()))
+            {
+                aimedContact =
+                    FirstTouchDistance(firstSensor->WorldVolume(), aimedCenter, lineDir, maxDistance, playerRadius);
+            }
+            const float dt = NS::Platform::FrameTimer::FixedDelta();
+            const NS::Game::Player::LaunchPitchResult pitch = NS::Game::Player::LaunchPitch(
+                NS::Game::Player::LaunchPitchDesc{.ballHeight = ballCenter.y,
+                                                  .targetHeight = aimHeight,
+                                                  .contactDistance = aimedContact,
+                                                  .horizontalSpeed = params.m_bodySlamSpeed,
+                                                  .gravity = params.Gravity(),
+                                                  .maxAngleDegrees = params.m_launchPitchLimitDegrees,
+                                                  .grounded = m_body->IsGrounded(),
+                                                  .dt = dt});
+            first.launchVerticalSpeed = pitch.verticalSpeed;
+            if (pitch.reachable)
+            {
+                first.launchContact = aimedContact;
+            }
+            // 段と横ずれは裁定と同じく相手の答えの面で決める。玉の高さは放つ縦の速さの道筋が触れる所で居る高さ
+            const NS::Game::Player::LaunchPath path{.horizontalSpeed = params.m_bodySlamSpeed,
+                                                    .verticalSpeed = pitch.verticalSpeed,
+                                                    .gravity = params.Gravity(),
+                                                    .dt = dt,
+                                                    .grounded = m_body->IsGrounded()};
+            const NS::Core::Vector3 arrival{
+                ballCenter.x, ballCenter.y + NS::Game::Player::LaunchHeightAt(path, first.launchContact), ballCenter.z};
+            judgement = JudgeHitFaceOrWide(answer.face, answer.body, arrival, lineDir, playerRadius);
         }
         first.offset = judgement.offset01;
         first.tier = judgement.tier;
