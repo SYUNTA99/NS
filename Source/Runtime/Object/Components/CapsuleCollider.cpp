@@ -13,23 +13,6 @@ namespace NS::Obj
 {
     CapsuleCollider::CapsuleCollider() noexcept {}
 
-    CapsuleCollider::CapsuleCollider(float radius, float halfHeight) noexcept
-        : m_radius([&]() -> float {
-              if (radius < 0.0f)
-              {
-                  return 0.0f;
-              }
-              return radius;
-          }()),
-          m_halfHeight([&]() -> float {
-              if (halfHeight < 0.0f)
-              {
-                  return 0.0f;
-              }
-              return halfHeight;
-          }())
-    {}
-
     void CapsuleCollider::SetRadius(float radius) noexcept
     {
         if (radius < 0.0f)
@@ -72,16 +55,6 @@ namespace NS::Obj
     NS::Core::Vector3 CapsuleCollider::CenterOffset() const noexcept
     {
         return m_centerOffset;
-    }
-
-    void CapsuleCollider::SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept
-    {
-        m_localRotation = rotation;
-    }
-
-    NS::Core::Quaternion CapsuleCollider::LocalRotation() const noexcept
-    {
-        return m_localRotation;
     }
 
     void CapsuleCollider::SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept

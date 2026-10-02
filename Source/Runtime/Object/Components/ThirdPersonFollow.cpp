@@ -30,12 +30,6 @@ namespace
     // これより小さい構図のずらしは 0 にする (m)。画素の 1/100 未満
     constexpr float k_ChargeFrameSnap = 0.0001f;
 
-    // 滑らかに始まって終わる補間の重み。t が 0 で 0、1 で 1 ちょうど
-    [[nodiscard]] float SmoothStep(float t) noexcept
-    {
-        return t * t * (3.0f - 2.0f * t);
-    }
-
     // 臨界減衰のバネを dt 進める。止まった所から一定の目標へは、τ 秒で差の 1 − (1 + ωτ) e^(−ωτ) が詰まる
     void CriticalSpringStep(float& value, float& velocity, float target, float omega, float dt) noexcept
     {
@@ -243,9 +237,9 @@ namespace NS::Obj
         if (m_reboundTurnAngle != 0.0f && m_reboundTurnFrame < m_reboundTurnFrames)
         {
             const float frames = static_cast<float>(m_reboundTurnFrames);
-            const float before = SmoothStep(static_cast<float>(m_reboundTurnFrame) / frames);
+            const float before = NS::Core::SmoothStep(static_cast<float>(m_reboundTurnFrame) / frames);
             ++m_reboundTurnFrame;
-            const float after = SmoothStep(static_cast<float>(m_reboundTurnFrame) / frames);
+            const float after = NS::Core::SmoothStep(static_cast<float>(m_reboundTurnFrame) / frames);
             m_yaw += m_reboundTurnAngle * (after - before);
         }
     }
@@ -316,7 +310,7 @@ namespace NS::Obj
             }
             else
             {
-                m_look = head + m_reboundReturnOffset * (1.0f - SmoothStep(t));
+                m_look = head + m_reboundReturnOffset * (1.0f - NS::Core::SmoothStep(t));
             }
             return m_look;
         }
@@ -404,7 +398,7 @@ namespace NS::Obj
             {
                 const float t =
                     static_cast<float>(m_chargeReturnFrame) / static_cast<float>(m_chargeNarrowReturnFrames);
-                returning = m_chargeReturnFromDegrees * (1.0f - SmoothStep(t));
+                returning = m_chargeReturnFromDegrees * (1.0f - NS::Core::SmoothStep(t));
             }
         }
         m_chargeNarrowDegrees = std::max(holdNarrow, returning);
@@ -469,63 +463,10 @@ namespace NS::Obj
         // プレイ開始 / rebuild ごとに初期姿勢へ戻す。editor で置いた向きからプレイを始め、手動回転はここから積む
         m_yaw = m_initialYaw;
         m_pitch = m_initialPitch;
-        if (!m_manualDistance)
-        {
-            m_distance = m_idleDistance;
-            m_desiredDistance = m_idleDistance;
-        }
+        m_distance = m_idleDistance;
+        m_desiredDistance = m_idleDistance;
         ClearCharge();
         ClearRebound();
-    }
-
-    void ThirdPersonFollow::SetSensX(float radPerPixel) noexcept
-    {
-        m_sensX = radPerPixel;
-    }
-    void ThirdPersonFollow::SetSensY(float radPerPixel) noexcept
-    {
-        m_sensY = radPerPixel;
-    }
-    void ThirdPersonFollow::SetInvertX(bool invert) noexcept
-    {
-        m_invertX = invert;
-    }
-    void ThirdPersonFollow::SetInvertY(bool invert) noexcept
-    {
-        m_invertY = invert;
-    }
-
-    void ThirdPersonFollow::SetAutoDistances(float idle, float run, float jump) noexcept
-    {
-        if (idle > 0.0f)
-        {
-            m_idleDistance = idle;
-        }
-        if (run > 0.0f)
-        {
-            m_runDistance = run;
-        }
-        if (jump > 0.0f)
-        {
-            m_jumpDistance = jump;
-        }
-    }
-
-    void ThirdPersonFollow::SetRunSpeedThreshold(float speed) noexcept
-    {
-        m_runSpeedThreshold = speed;
-    }
-
-    void ThirdPersonFollow::SetDistance(float distance) noexcept
-    {
-        m_distance = distance;
-        m_desiredDistance = distance;
-        m_manualDistance = true;
-    }
-
-    void ThirdPersonFollow::ClearManualDistance() noexcept
-    {
-        m_manualDistance = false;
     }
 
     void ThirdPersonFollow::SetInitialPoseFromCameraPosition(const NS::Core::Vector3& cameraPosition) noexcept
@@ -621,11 +562,11 @@ namespace NS::Obj
         // カメラを後ろへ下げる。反動の間は書き換えない
         // 今の目標でなく今の距離から測る
         // 目標へ寄っている途中に目標へ足すと、見えている距離より下がりすぎるか寄る
-        if (!m_manualDistance && reboundBegan)
+        if (reboundBegan)
         {
             m_desiredDistance = m_distance + std::max(m_reboundPullBack, 0.0f);
         }
-        else if (!m_manualDistance && m_reboundPhase != ReboundPhase::Following)
+        else if (m_reboundPhase != ReboundPhase::Following)
         {
             float desired = m_idleDistance;
             if (m_hasFollowMotion)

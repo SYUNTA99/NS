@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <SimpleMath.h>
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -183,6 +184,20 @@ namespace NS::Core
     [[nodiscard]] constexpr float Lerp(float a, float b, float t) noexcept
     {
         return a + (b - a) * t;
+    }
+
+    //! @brief 滑らかに始まって滑らかに終わる補間の重み
+    //! @param[in] t 0〜1 の進み具合。範囲の外は丸めない
+    //! @return t が 0 で 0、1 で 1 ちょうど。3t^2 - 2t^3
+    [[nodiscard]] constexpr float SmoothStep(float t) noexcept
+    {
+        return t * t * (3.0f - 2.0f * t);
+    }
+
+    //! @brief 3 成分の絶対値のうち最大のもの。非一様な拡縮から球の半径を決める時に使う
+    [[nodiscard]] inline float MaxAbsComponent(const Vector3& v) noexcept
+    {
+        return std::max({std::abs(v.x), std::abs(v.y), std::abs(v.z)});
     }
 
     //! @brief 0 除算よけの下限

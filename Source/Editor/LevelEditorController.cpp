@@ -706,7 +706,7 @@ void LevelEditorController::TickEdit()
         {
             m_editBlendElapsed += NS::Platform::FrameTimer::FixedDelta();
             const float t = std::min(m_editBlendElapsed / k_EditBlendSeconds, 1.0f);
-            const float eased = t * t * (3.0f - 2.0f * t); // smoothstep で ease-in-out
+            const float eased = NS::Core::SmoothStep(t); // ease-in-out
             pose = NS::Obj::CameraPose::Lerp(m_editBlendFrom, pose, eased);
             if (t >= 1.0f)
             {

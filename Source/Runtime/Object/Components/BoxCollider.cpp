@@ -14,20 +14,6 @@ namespace NS::Obj
 {
     namespace
     {
-        // OBB の 3 軸が座標軸に十分沿っていれば軸並行とみなす。90° 刻みの回転はここに落ちる
-        // 各軸は単位ベクトルなので最大成分が 1 に届けば残り 2 成分はほぼ 0 になる
-        // しきい 1e-4 は 90° を quaternion 経由で組んだ時の float 誤差を確実に飲み込み、1° 以上の傾きは OBB へ回す
-        [[nodiscard]] bool IsAxisAligned(const NS::Core::OBB& obb) noexcept
-        {
-            constexpr float k_AlignEpsilon = 1e-4f;
-            bool (*const alignedAxis)(const NS::Core::Vector3&) noexcept =
-                [](const NS::Core::Vector3& axis) noexcept -> bool {
-                const float maxComponent = std::max({std::abs(axis.x), std::abs(axis.y), std::abs(axis.z)});
-                return maxComponent >= 1.0f - k_AlignEpsilon;
-            };
-            return alignedAxis(obb.axisX) && alignedAxis(obb.axisY) && alignedAxis(obb.axisZ);
-        }
-
         [[nodiscard]] NS::Core::Vector3 ClampNonNegative(const NS::Core::Vector3& v) noexcept
         {
             float x = v.x;
@@ -51,10 +37,6 @@ namespace NS::Obj
 
     BoxCollider::BoxCollider() noexcept {}
 
-    BoxCollider::BoxCollider(const NS::Core::Vector3& halfExtents) noexcept
-        : m_halfExtents(ClampNonNegative(halfExtents))
-    {}
-
     void BoxCollider::SetHalfExtents(const NS::Core::Vector3& halfExtents) noexcept
     {
         m_halfExtents = ClampNonNegative(halfExtents);
@@ -73,16 +55,6 @@ namespace NS::Obj
     NS::Core::Vector3 BoxCollider::CenterOffset() const noexcept
     {
         return m_centerOffset;
-    }
-
-    void BoxCollider::SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept
-    {
-        m_localRotation = rotation;
-    }
-
-    NS::Core::Quaternion BoxCollider::LocalRotation() const noexcept
-    {
-        return m_localRotation;
     }
 
     void BoxCollider::SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept

@@ -12,20 +12,7 @@
 
 namespace NS::Obj
 {
-    namespace
-    {
-        [[nodiscard]] float MaxAbsComponent(const NS::Core::Vector3& v) noexcept
-        {
-            const float ax = std::abs(v.x);
-            const float ay = std::abs(v.y);
-            const float az = std::abs(v.z);
-            return std::max(ax, std::max(ay, az));
-        }
-    } // namespace
-
     SphereCollider::SphereCollider() noexcept {}
-
-    SphereCollider::SphereCollider(float radius) noexcept : m_radius(std::max(radius, 0.0f)) {}
 
     void SphereCollider::SetRadius(float radius) noexcept
     {
@@ -59,7 +46,7 @@ namespace NS::Obj
         const NS::Core::Vector3 center = NS::Core::Vector3::Transform(m_centerOffset, world);
 
         const NS::Core::Vector3 scale = NS::Core::DecomposeAffine(world).scale;
-        return NS::Core::Sphere{center, m_radius * MaxAbsComponent(scale)};
+        return NS::Core::Sphere{center, m_radius * NS::Core::MaxAbsComponent(scale)};
     }
 
     NS::Core::AABB SphereCollider::WorldAABB() const noexcept

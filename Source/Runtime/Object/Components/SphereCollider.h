@@ -16,8 +16,6 @@ namespace NS::Obj
     public:
         //! 既定半径 0.5 で構築する
         SphereCollider() noexcept;
-        //! 半径を指定して構築する。負は 0 にクランプ
-        explicit SphereCollider(float radius) noexcept;
 
         //! 負は 0 にクランプ
         void SetRadius(float radius) noexcept;
