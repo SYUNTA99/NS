@@ -1,11 +1,11 @@
 #include "Game/Level/CollisionInput.h"
 
-#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -76,7 +76,7 @@ namespace NS::Game::Level
         }
         // 押しの印が真の間、自機は着地しても丸まりを解かない。外れた後は印を書く物が無いので、真のまま残すと
         // 着地で解けなくなる。印を偽へ戻し、丸まりもここで解く。ResetState は速度と状態機械まで戻すので呼ばない
-        if (m_body != nullptr)
+        if (m_player != nullptr && m_body != nullptr)
         {
             m_player->SetBodySlamHeld(false);
             m_player->SetCurled(false);

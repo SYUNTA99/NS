@@ -1,8 +1,9 @@
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 
-#include "Runtime/Object/Components/Body.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
+#include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/PlayerInput.h"
 
 namespace NS::Game::Player
 {
