@@ -57,6 +57,8 @@ namespace NS::Game::Player
 //! 自身が持ち、入力の窓口・移動の組み立て・崖つかまり・突進と反発とそれらの記録はここが持つ。
 //! 速度と接地の計算だけは身体の部品 (EntityComponent) へ任せる。状態の遷移の条件は PlayerJudges の判定を状態が呼ぶ
 //! 落下死やゴールは体のセンサーへ届く知らせで受け取り、コースの流れは進行役へ伝えるだけにする
+//! 実装は 3 つに分ける。Player.cpp (生成・部品・更新の流れ・入力・記録)、PlayerMovement.cpp (移動の組み立てと崖つかまり)、
+//! PlayerBodySlam.cpp (突進・寄せ・反動・丸まり)
 class Player : public NS::Obj::Actor, public NS::Obj::ICameraTarget
 {
 public:
