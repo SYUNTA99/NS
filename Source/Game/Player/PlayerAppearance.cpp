@@ -1,8 +1,8 @@
 #include "Game/Player/PlayerAppearance.h"
 
+#include "Game/Entity/EntityComponent.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/Logger.h"
@@ -92,7 +92,7 @@ namespace NS::Game::Player
     {
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
         {
-            m_player = &ownerPlayer->Movement();
+            m_body = &ownerPlayer->Body();
             m_actor = ownerPlayer;
             m_input = &ownerPlayer->ChargeControl();
         }
@@ -121,13 +121,13 @@ namespace NS::Game::Player
             }
             return;
         }
-        if (!m_player->IsActive())
+        if (!m_body->IsActive())
         {
             // 当たりの止めで移動が止まっている間は、絵も止める
             return;
         }
 
-        if (m_player->IsBodySlamming())
+        if (m_actor->IsBodySlamming())
         {
             SetRollAxisToward(m_actor->BodySlamVelocity(), m_spinAxis);
             m_spinSpeed = Tuning().m_bodySlamSpinSpeed;
@@ -147,11 +147,11 @@ namespace NS::Game::Player
                 Tuning().m_emptyChargeSpinSpeed +
                 (Tuning().m_fullChargeSpinSpeed - Tuning().m_emptyChargeSpinSpeed) * m_input->Judge().Charge01();
         }
-        else if (m_player->IsRebounding())
+        else if (m_actor->IsRebounding())
         {
             // 弾かれた向きへ前転する。真正面の当たりでは突進と逆向きになる
             // 反動の間は空中の操作で速度の向きが変わっても、弾かれた向きから取った軸のまま回す
-            SetRollAxisToward(m_player->ReboundDirection(), m_spinAxis);
+            SetRollAxisToward(m_actor->ReboundDirection(), m_spinAxis);
             m_spinSpeed = Tuning().m_bodySlamSpinSpeed;
         }
         // 放した後の空中と、反動に入らずに突進が終わった後は、直前のフレームの軸と速さのまま回る
@@ -172,11 +172,11 @@ namespace NS::Game::Player
 
     void PlayerAppearance::OnUpdate()
     {
-        if (m_player == nullptr)
+        if (m_body == nullptr)
         {
             return;
         }
-        if (m_player->IsCurled())
+        if (m_actor->IsCurled())
         {
             Curl();
         }
@@ -190,7 +190,7 @@ namespace NS::Game::Player
 
     void PlayerAppearance::AdvanceLandingSquash() noexcept
     {
-        if (!m_player->IsActive())
+        if (!m_body->IsActive())
         {
             // 当たりの止めで移動が止まっている間は、潰れの戻しも止める
             return;
@@ -209,7 +209,7 @@ namespace NS::Game::Player
         // 次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
         // 戻すフレーム数が 0 以下では戻す手段が無く、潰れたまま残るので潰さない
         float vertical = 1.0f;
-        if (m_player->IsRebounding() && PlayerJudgeLand::Judge(m_player->IsGrounded(), m_player->VerticalVelocity()) &&
+        if (m_actor->IsRebounding() && PlayerJudgeLand::Judge(m_body->IsGrounded(), m_body->VerticalVelocity()) &&
             Tuning().m_landingSquashRecoverSteps > 0)
         {
             m_landingSquashRemaining = Tuning().m_landingSquashRecoverSteps;
@@ -247,12 +247,12 @@ namespace NS::Game::Player
     {
         NS::Gfx::Mesh* standingPlaceholder = nullptr;
         NS::Gfx::Mesh* ballPlaceholder = nullptr;
-        const PlayerComponent* player = nullptr;
+        const NS::Game::Entity::EntityComponent* player = nullptr;
         if (Owner() != nullptr)
         {
             if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
             {
-                player = &ownerPlayer->Movement();
+                player = &ownerPlayer->Body();
             }
         }
         if (player != nullptr)
@@ -265,7 +265,7 @@ namespace NS::Game::Player
         }
         else
         {
-            NS_LOG_WARN(Game, "PlayerAppearance: 同居する PlayerComponent が無く、仮の形の寸法を決められない");
+            NS_LOG_WARN(Game, "PlayerAppearance: 同居する身体の部品が無く、仮の形の寸法を決められない");
         }
 
         m_standingMesh = ResolveLook(assets, Tuning().m_standingMeshRef, standingPlaceholder);

@@ -1,3 +1,4 @@
+#include "Game/Entity/EntityComponent.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactResolver.h"
@@ -7,7 +8,6 @@
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
@@ -35,9 +35,7 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
     ASSERT_NE(player, nullptr);
     ASSERT_NE(NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player->Part("Params")), nullptr);
     EXPECT_EQ(player->Health(), 5);
-    ASSERT_NE(NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player->Part("Movement")), nullptr);
-    EXPECT_EQ(NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player->Part("Movement"))->States(),
-              &player->States());
+    ASSERT_NE(NS::Obj::ComponentCast<NS::Game::Entity::EntityComponent>(player->Part("Movement")), nullptr);
     player->ApplyDamage(2);
     EXPECT_EQ(player->Health(), 3);
     player->ResetHealth();
@@ -116,8 +114,8 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
     }
-    const NS::Game::Player::PlayerComponent* movement =
-        NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player.Part("Movement"));
+    const NS::Game::Entity::EntityComponent* movement =
+        NS::Obj::ComponentCast<NS::Game::Entity::EntityComponent>(player.Part("Movement"));
     ASSERT_NE(movement, nullptr);
     EXPECT_TRUE(NS::Obj::SerializeComponent(*movement)["fields"].empty());
 }
@@ -127,21 +125,21 @@ TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
     Player player;
     NS::Game::Player::PlayerParams* params =
         NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
-    NS::Game::Player::PlayerComponent* movement =
-        NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player.Part("Movement"));
+    NS::Game::Entity::EntityComponent* movement =
+        NS::Obj::ComponentCast<NS::Game::Entity::EntityComponent>(player.Part("Movement"));
     ASSERT_NE(params, nullptr);
     ASSERT_NE(movement, nullptr);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(*params, {{"走行速度", 10.0f}, {"加速度", 7.0f}, {"上昇重力", -15.0f}}), 0u);
-    EXPECT_FLOAT_EQ(movement->RunSpeed(), 10.0f);
+    EXPECT_FLOAT_EQ(player.RunSpeed(), 10.0f);
     movement->SetGrounded(true);
-    movement->SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.AccelerateToInputDirection(0.1f);
     EXPECT_NEAR(movement->LateralVelocity().x, 0.7f, 0.00001f);
     movement->SetVerticalVelocity(2.0f);
     player.Gravity(0.1f);
     EXPECT_NEAR(movement->VerticalVelocity(), 0.5f, 0.00001f);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(*params, {{"走行速度", 11.0f}}), 0u);
-    EXPECT_FLOAT_EQ(movement->RunSpeed(), 11.0f);
+    EXPECT_FLOAT_EQ(player.RunSpeed(), 11.0f);
 }
 
 TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
@@ -159,11 +157,11 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
     scene.LoadJson(saved);
     const Player* player = static_cast<const Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    const NS::Game::Player::PlayerComponent* movement =
-        NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player->Part("Movement"));
+    const NS::Game::Entity::EntityComponent* movement =
+        NS::Obj::ComponentCast<NS::Game::Entity::EntityComponent>(player->Part("Movement"));
     ASSERT_NE(movement, nullptr);
-    EXPECT_FLOAT_EQ(movement->RunSpeed(), 9.0f);
-    EXPECT_FLOAT_EQ(movement->BodySlamDistance(), 14.0f);
+    EXPECT_FLOAT_EQ(player->RunSpeed(), 9.0f);
+    EXPECT_FLOAT_EQ(player->BodySlamDistance(), 14.0f);
     EXPECT_EQ(player->Health(), 6);
     const NS::Game::Player::PlayerParams* params =
         NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player->Part("Params"));

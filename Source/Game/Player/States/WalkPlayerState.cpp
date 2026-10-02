@@ -1,8 +1,9 @@
 #include "Game/Player/States/WalkPlayerState.h"
 
+#include "Game/Entity/EntityComponent.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerJudges.h"
+#include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
@@ -12,11 +13,11 @@ namespace NS::Game::Player
     void WalkPlayerState::OnStep(::Player& player, float dt)
     {
         player.TickTimers(dt);
-        const PlayerComponent& body = player.Movement();
+        const NS::Game::Entity::EntityComponent& body = player.Body();
         const PlayerParams& params = player.Params();
-        const bool hasInput = PlayerJudgeMoveInput::Judge(body.DesiredSpeedScale(), params.m_stickDeadzone);
-        const bool brake =
-            PlayerJudgeBrake::Judge(hasInput, body.DesiredDirection(), body.LateralVelocity(), params.m_brakeThreshold);
+        const bool hasInput = PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), params.m_stickDeadzone);
+        const bool brake = PlayerJudgeBrake::Judge(
+            hasInput, player.DesiredDirection(), body.LateralVelocity(), params.m_brakeThreshold);
         if (!brake && hasInput)
         {
             player.AccelerateToInputDirection(dt);

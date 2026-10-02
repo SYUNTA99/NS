@@ -16,9 +16,9 @@ namespace NS::Gfx
     class StaticMesh;
 } // namespace NS::Gfx
 
-namespace NS::Game::Player
+namespace NS::Game::Entity
 {
-    class PlayerComponent;
+    class EntityComponent;
 }
 
 namespace NS::Game::Level
@@ -97,13 +97,13 @@ namespace NS::Game::Level
     //! PlaceSlamArrowOnGround が床に置く。形は OnUpdate で組んで控え、描く時は板を積むだけ。
     //! 狙う相手がいないフレームと放したフレームは何も組まない。
     //! 板は組み込みの上向きの板 shadowQuad に、帯と矢じりのマテリアル (Shaders/ground_arrow.ps.hlsl) を貼った半透明
-    //! 依存: CollisionInput, NS::Game::Player::PlayerComponent, NS::Obj::Scene, NS::Phys::PhysicsScene
+    //! 依存: CollisionInput, NS::Game::Entity::EntityComponent, NS::Obj::Scene, NS::Phys::PhysicsScene
     class SlamArrow : public NS::Obj::Component, public NS::Obj::IRenderable
     {
     public:
         SlamArrow() noexcept;
 
-        //! 描く物の登録簿へ入り、同じ配置物の CollisionInput と PlayerComponent を引き当てる。
+        //! 描く物の登録簿へ入り、同じ配置物の CollisionInput と身体を引き当てる。
         //! どちらかが無ければ以後何も組まない
         void OnStart() override;
 
@@ -148,7 +148,7 @@ namespace NS::Game::Level
         bool m_hasShown = false;
         int m_framesSinceShown = -1; // 矢印を出していない間は負
         const CollisionInput* m_input = nullptr;
-        const NS::Game::Player::PlayerComponent* m_movement = nullptr;
+        const NS::Game::Entity::EntityComponent* m_body = nullptr;
         NS::Gfx::StaticMesh* m_mesh = nullptr;       // 共有の上向きの板 (非所有)
         NS::Gfx::Material* m_bandMaterial = nullptr; // 帯のマテリアル (非所有)
         NS::Gfx::Material* m_headMaterial = nullptr; // 矢じりのマテリアル (非所有)

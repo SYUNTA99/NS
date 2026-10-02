@@ -10,6 +10,8 @@
 #include <optional>
 #include <vector>
 
+class Player;
+
 namespace NS::Game::Level
 {
     class ImpactResolver;
@@ -18,7 +20,6 @@ namespace NS::Game::Level
 
 namespace NS::Game::Player
 {
-    class PlayerComponent;
     class PlayerParams;
 
     //! @brief 当たり 1 回の層の大きさと量
@@ -68,7 +69,7 @@ namespace NS::Game::Player
     //! 描画の無い世界でも記録は残し、試しと Replay は Layers を読む
     //! Player::Update が最後に呼ぶ。同じフレームの ImpactResolver が決めた止めの頭と明けと、自機の移動の後に走る。
     //! 物理の段と、飛ばした相手が自分の段階を切り替える Triggers の段よりは前に走る
-    //! 依存: EffectLayerList, NS::Game::Level::ImpactResolver, PlayerComponent, カメラの窓口
+    //! 依存: EffectLayerList, NS::Game::Level::ImpactResolver, Player, カメラの窓口
     class ImpactEffects : public NS::Obj::Component
     {
     public:
@@ -174,7 +175,7 @@ namespace NS::Game::Player
 
         EffectLayerList m_layers;
         NS::Game::Level::ImpactResolver* m_resolver = nullptr;
-        PlayerComponent* m_player = nullptr;
+        ::Player* m_player = nullptr;
         HitPlan m_plan;
         Flight m_flight;
         std::vector<ScheduledStop> m_scheduledStops;

@@ -6,7 +6,6 @@
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerAppearance.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
@@ -58,7 +57,6 @@ namespace NS::Game::Player
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
         {
             m_input = &ownerPlayer->ChargeControl();
-            m_player = &ownerPlayer->Movement();
             m_actor = ownerPlayer;
             m_appearance = &ownerPlayer->Appearance();
             m_resolver = &ownerPlayer->Resolver();
@@ -81,7 +79,7 @@ namespace NS::Game::Player
         NS::Gfx::EffectScene* effects = EffectsOf(*this);
         m_layers.BeginStep(effects);
         StopDueLayers(effects);
-        if (m_input == nullptr || m_player == nullptr)
+        if (m_input == nullptr || m_actor == nullptr)
         {
             return;
         }
@@ -115,7 +113,7 @@ namespace NS::Game::Player
             ClearHeldLayers(effects);
         }
 
-        const bool slamming = m_player->IsBodySlamming();
+        const bool slamming = m_actor->IsBodySlamming();
         if (slamming && !m_wasSlamming)
         {
             StartRelease(effects, center);
@@ -265,8 +263,8 @@ namespace NS::Game::Player
 
     void ChargeEffects::StartRelease(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
     {
-        const float charge01 = m_player->BodySlamCharge01();
-        m_slamDirection = m_player->BodySlamStartDirection();
+        const float charge01 = m_actor->BodySlamCharge01();
+        m_slamDirection = m_actor->BodySlamStartDirection();
         const NS::Core::Quaternion facing = YawToward(m_slamDirection);
 
         // 効果の全体を縮めると、タップの散って残る筋は玉の輪郭の内側で生まれ、はじけの光も画面を明るくしない。
@@ -383,7 +381,7 @@ namespace NS::Game::Player
         {
             return line.direction;
         }
-        if (m_player != nullptr)
+        if (m_actor != nullptr)
         {
             return m_actor->AimDirection();
         }

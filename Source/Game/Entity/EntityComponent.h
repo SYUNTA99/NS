@@ -20,10 +20,11 @@ namespace NS::Phys
 
 namespace NS::Game::Entity
 {
-    //! @brief 登場人物に共通する移動と接地の抽象基底
-    //! @details 敵も自機もここから派生する。速度の横縦分解・接地・カプセル寸法の参照・1 フレームの移動だけを持ち、
-    //! 能力も調整値も持たない。状態機械は派生が具象の型で持つ。
-    //! TypeRegistry には登録しない。実体化できるのは派生だけ。
+    //! @brief 登場人物の身体。移動と接地の部品
+    //! @details 自機も敵も同じ身体を固定の部品として持ち、自分の状態から呼ぶ。派生させない。
+    //! 速度の横縦分解・接地・カプセル寸法の参照・1 フレームの移動だけを持ち、
+    //! 能力も調整値も持たない。いつ何を呼ぶかは持ち主の Actor が決める。更新の入口 (OnUpdate) は持たない。
+    //! TypeRegistry には登録しない。部品名は持ち主が ForEachPart で付ける。
     //! 衝突の PhysicsScene は使う時に持ち主の Scene から引く。
     //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。
     //! dt は NS::Platform::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
@@ -94,23 +95,16 @@ namespace NS::Game::Entity
 
         //! 同居する CapsuleCollider を控え、静的な当たりの世界から外す
         void OnStart() override;
-        void OnUpdate() override = 0;
 
-        // 抽象基底なので TypeRegistry には登録せず、リフレクションの鎖だけ通す
+        // TypeRegistry には登録せず、リフレクションの鎖だけ通す
         NS_REFLECT_NONE(EntityComponent, NS::Obj::Component)
 
-    protected:
-        //! @brief 状態が決めた速度で 1 フレーム動かす。既定は段差を登らずに進む
-        //! @details Move を呼ぶのは 1 フレームにここだけ。状態の側で動かすと、状態を足した時に呼び忘れても
-        //! ビルドが通り、その状態の間だけ動かなくなる
-        virtual void HandleMovement(float dt) noexcept;
-        //! 稼働していないフレームでも 1 フレーム限りの入力を派生が落とせるようにする。既定は何もしない
-        virtual void OnStepSkipped() {}
         //! @brief 当たりを円柱の長さ 0 のカプセル (半径が同じ球) にするかを切り替える
         //! @details 真の間は CapsuleHalfHeight が 0 を返し、移動と裁定が同じ球で当たる。半径は変えない。
         //! 根の位置は動かさないので、足元を揃えるのは呼び手の仕事
         void SetSphereShape(bool sphere) noexcept;
 
+    private:
         NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f};
         bool m_isGrounded = false;
         bool m_wasGrounded = false; // 直前の Move より前の接地
@@ -118,7 +112,6 @@ namespace NS::Game::Entity
         std::unique_ptr<NS::Phys::JoltCharacter> m_character;
         EntityEvents m_events;
 
-    private:
         //! OnStart で控えた CapsuleCollider。控える前は同居する物を探し、無ければ nullptr
         [[nodiscard]] const NS::Obj::CapsuleCollider* SiblingCapsule() const noexcept;
 

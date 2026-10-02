@@ -1,7 +1,7 @@
+#include "Game/Entity/EntityComponent.h"
 #include "Game/Level/FollowCamera.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Actors/Light.h"
 #include "Runtime/Object/Actors/MapParts.h"
@@ -84,7 +84,7 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
     NS::Obj::Light light;
     NS::Obj::MapParts terrain;
     EXPECT_EQ(player.Part("Input"), &player.Input());
-    EXPECT_EQ(player.Part("Movement"), &player.Movement());
+    EXPECT_EQ(player.Part("Movement"), &player.Body());
     EXPECT_NE(player.Part("Params"), nullptr);
     EXPECT_NE(player.Part("ChargeControl"), nullptr);
     EXPECT_NE(player.ModelPart(), nullptr);

@@ -207,7 +207,6 @@ namespace NS::Game::Player
         NS_REFLECT_END()
 
     private:
-        friend class PlayerComponent;
         friend class PlayerAppearance;
         friend class ChargeEffects;
         friend class ImpactEffects;

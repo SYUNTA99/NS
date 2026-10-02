@@ -1,7 +1,7 @@
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 
+#include "Game/Entity/EntityComponent.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerJudges.h"
 
 namespace NS::Game::Player
@@ -16,7 +16,7 @@ namespace NS::Game::Player
         {
             return;
         }
-        if (PlayerJudgeClimbLedge::Judge(player.Movement().ClimbForward()))
+        if (PlayerJudgeClimbLedge::Judge(player.ClimbForward()))
         {
             player.ClimbLedge();
             return;

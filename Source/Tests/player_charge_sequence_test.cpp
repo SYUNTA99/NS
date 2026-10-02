@@ -1,6 +1,6 @@
+#include "Game/Entity/EntityComponent.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
@@ -15,21 +15,21 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
         NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player.Part("ChargeControl"));
     ASSERT_NE(input, nullptr);
     input->OnStart();
-    NS::Game::Player::PlayerComponent& movement = player.Movement();
+    NS::Game::Entity::EntityComponent& movement = player.Body();
     movement.SetVelocity(NS::Core::Vector3{3.0f, 5.0f, 4.0f});
-    const float maxSpeed = movement.MaxSpeed();
+    const float maxSpeed = player.MaxSpeed();
 
     input->Step(true, 0.1f);
     EXPECT_TRUE(input->Judge().JustPressed());
     EXPECT_FALSE(input->IsCharging());
-    EXPECT_TRUE(movement.IsCurled());
-    EXPECT_FLOAT_EQ(movement.MaxSpeed(), maxSpeed);
+    EXPECT_TRUE(player.IsCurled());
+    EXPECT_FLOAT_EQ(player.MaxSpeed(), maxSpeed);
     EXPECT_FLOAT_EQ(movement.Velocity().x, 3.0f);
     EXPECT_FLOAT_EQ(player.Root().Scale().y, 0.97f);
 
     input->Step(true, 0.1f);
     EXPECT_TRUE(input->Judge().JustStartedCharging());
-    EXPECT_NEAR(movement.MaxSpeed(), maxSpeed * 0.3f, 0.00001f);
+    EXPECT_NEAR(player.MaxSpeed(), maxSpeed * 0.3f, 0.00001f);
     EXPECT_FLOAT_EQ(movement.Velocity().x, 0.0f);
     EXPECT_FLOAT_EQ(movement.Velocity().y, 5.0f);
     EXPECT_FLOAT_EQ(movement.Velocity().z, 0.0f);
@@ -44,10 +44,10 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
     EXPECT_FLOAT_EQ(input->Judge().Charge01(), 0.5f);
     input->Step(false, 0.1f);
     EXPECT_FALSE(input->Judge().IsHeld());
-    EXPECT_FLOAT_EQ(movement.MaxSpeed(), maxSpeed);
+    EXPECT_FLOAT_EQ(player.MaxSpeed(), maxSpeed);
     EXPECT_FLOAT_EQ(player.Root().Scale().y, 1.0f);
     EXPECT_TRUE(player.BodySlam());
-    EXPECT_FLOAT_EQ(movement.BodySlamCharge01(), 0.5f);
+    EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 0.5f);
 }
 
 TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
@@ -58,11 +58,11 @@ TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
     ASSERT_NE(input, nullptr);
     input->OnStart();
     input->Step(true, 0.1f);
-    player.Movement().SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     input->Step(false, 0.1f);
     EXPECT_TRUE(player.BodySlam());
-    EXPECT_FLOAT_EQ(player.Movement().BodySlamCharge01(), 0.0f);
-    player.Movement().ResetState();
+    EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 0.0f);
+    player.ResetState();
     input->Step(false, 0.1f);
     EXPECT_EQ(input->Judge().TakeFired(), NS::Game::Level::SlamKind::None);
     input->Step(true, 0.1f);
@@ -84,16 +84,16 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
     input->OnStart();
     input->Step(true, 0.1f);
     player.RestartFrom(NS::Obj::MakeSceneJson());
-    EXPECT_FALSE(player.Movement().IsCurled());
+    EXPECT_FALSE(player.IsCurled());
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 0.3f}}), 0u);
     input->Step(true, 0.1f);
-    EXPECT_TRUE(player.Movement().IsCurled());
+    EXPECT_TRUE(player.IsCurled());
     EXPECT_TRUE(input->IsCharging());
     EXPECT_FLOAT_EQ(input->Judge().Charge01(), 0.5f);
-    player.Movement().SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     input->Step(false, 0.1f);
     EXPECT_TRUE(player.BodySlam());
-    EXPECT_FLOAT_EQ(player.Movement().BodySlamCharge01(), 0.5f);
+    EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 0.5f);
 }
 
 TEST(PlayerChargeSequence, EndPlayRestoresStanceBeforeThePlayerPartsLeave)
@@ -108,7 +108,7 @@ TEST(PlayerChargeSequence, EndPlayRestoresStanceBeforeThePlayerPartsLeave)
     EXPECT_FLOAT_EQ(player.Root().Scale().y, 0.95f);
     player.OnEndPlay();
     EXPECT_FLOAT_EQ(player.Root().Scale().y, 1.0f);
-    EXPECT_FALSE(player.Movement().IsCurled());
+    EXPECT_FALSE(player.IsCurled());
 }
 
 TEST(PlayerChargeSequence, ChargedReleaseUsesTheLastHeldAimBeforeClearingIt)
@@ -141,6 +141,6 @@ TEST(PlayerChargeSequence, ChargedReleaseUsesTheLastHeldAimBeforeClearingIt)
     input->Step(false, 0.1f);
     EXPECT_FALSE(input->TryGetAimLine(aim));
     EXPECT_TRUE(player->BodySlam());
-    EXPECT_FLOAT_EQ(player->Movement().BodySlamStartDirection().x, 0.0f);
-    EXPECT_FLOAT_EQ(player->Movement().BodySlamStartDirection().z, 1.0f);
+    EXPECT_FLOAT_EQ(player->BodySlamStartDirection().x, 0.0f);
+    EXPECT_FLOAT_EQ(player->BodySlamStartDirection().z, 1.0f);
 }

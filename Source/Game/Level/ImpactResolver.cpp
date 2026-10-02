@@ -1,10 +1,10 @@
 ﻿#include "Game/Level/ImpactResolver.h"
 
+#include "Game/Entity/EntityComponent.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Logger.h"
@@ -174,7 +174,7 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    // PlayerComponent の 200 より前。書き込んだ速度が同じ固定ステップの移動に乗る
+    // 身体の移動より前。書き込んだ速度が同じ固定ステップの移動に乗る
     ImpactResolver::ImpactResolver() noexcept : NS::Obj::Component() {}
 
     const NS::Game::Player::PlayerParams& ImpactResolver::Tuning() const noexcept
@@ -192,7 +192,7 @@ namespace NS::Game::Level
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
         {
             m_player = ownerPlayer;
-            m_movement = &ownerPlayer->Movement();
+            m_body = &ownerPlayer->Body();
             m_collisionInput = &ownerPlayer->ChargeControl();
             m_hitReaction = ownerPlayer->HitReactionPart();
         }
@@ -223,8 +223,8 @@ namespace NS::Game::Level
                                                           position.y + predictedVelocity.y * dt,
                                                           position.z + predictedVelocity.z * dt},
                                         NS::Core::Vector3::UnitY,
-                                        m_movement->CapsuleHalfHeight(),
-                                        m_movement->CapsuleRadius()};
+                                        m_body->CapsuleHalfHeight(),
+                                        m_body->CapsuleRadius()};
         const std::vector<NS::Obj::HitSensor*> touching = scene->HitSensors().FindOverlaps(
             NS::Obj::SensorVolume::Capsule(capsule), NS::Obj::HitSensorType::PlayerAttack, Owner());
 
@@ -324,7 +324,7 @@ namespace NS::Game::Level
                                             SlamLineTarget& outTarget) const
     {
         NS::Core::Vector3 lineDir{};
-        if (Owner() == nullptr || m_movement == nullptr || !NS::Core::TryNormalizeHorizontal(direction, lineDir))
+        if (Owner() == nullptr || m_body == nullptr || !NS::Core::TryNormalizeHorizontal(direction, lineDir))
         {
             return false;
         }
@@ -346,10 +346,10 @@ namespace NS::Game::Level
         }
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
-        const float playerRadius = m_movement->CapsuleRadius();
+        const float playerRadius = m_body->CapsuleRadius();
         // 突進は丸まった玉で進む。丸まっていれば玉の中心は根そのもの。立ち姿から丸まる時は下端を揃えて根を半長ぶん
         // 下げるので、立ち姿の下の球の中心が丸まった後の玉の中心になる
-        const NS::Core::Vector3 ballCenter{position.x, position.y - m_movement->CapsuleHalfHeight(), position.z};
+        const NS::Core::Vector3 ballCenter{position.x, position.y - m_body->CapsuleHalfHeight(), position.z};
         // 届くかは裁定と同じく、自機の当たりの玉と相手の体のセンサーの形で見る。外接箱を水平に見ると、中心の高い
         // 大きな球の端では、玉が触れずに横を通るのに届くと出る
         const NS::Obj::SensorVolume swept =
@@ -407,7 +407,7 @@ namespace NS::Game::Level
     void ImpactResolver::OnUpdate()
     {
         NS::Core::Vector3 velocity{};
-        if (m_movement != nullptr)
+        if (m_body != nullptr)
         {
             velocity = m_player->BodySlamVelocity();
         }
@@ -419,8 +419,7 @@ namespace NS::Game::Level
     {
         m_stateReady = true;
         m_hasObservedTarget = false;
-        if (m_movement == nullptr || !m_movement->IsBodySlamming() || m_hitStopRemaining > 0 ||
-            m_freezePendingSteps > 0)
+        if (m_body == nullptr || !m_player->IsBodySlamming() || m_hitStopRemaining > 0 || m_freezePendingSteps > 0)
         {
             return;
         }
@@ -455,7 +454,7 @@ namespace NS::Game::Level
         m_freezeBeganThisStep = false;
         m_releasedThisStep = false;
         // 白の光と振動の進みは HitReaction が持つ。止まっている間も薄れる
-        if (m_movement == nullptr)
+        if (m_body == nullptr)
         {
             return;
         }
@@ -489,7 +488,7 @@ namespace NS::Game::Level
         }
 
         // 押していない接触は物理の停止だけで済ませるため、体当たり中でないフレームは裁定しない
-        if (!m_movement->IsBodySlamming())
+        if (!m_player->IsBodySlamming())
         {
             return;
         }
@@ -536,13 +535,13 @@ namespace NS::Game::Level
             return;
         }
 
-        const float charge01 = m_movement->BodySlamCharge01();
+        const float charge01 = m_player->BodySlamCharge01();
 
         const float mass = answer.mass;
         const float massFactor = mass / (mass + 1.0f);
 
         // ボタン未搭載は係数 1.0 の素通し。段は中心近くと記録するが、白の光と止めの倍率は掛けない
-        const float offset01 = HitOffset01(position, bounds, velocity, m_movement->CapsuleRadius());
+        const float offset01 = HitOffset01(position, bounds, velocity, m_body->CapsuleRadius());
         float chargeFactor = 1.0f;
         float positionFactor = 1.0f;
         HitTier tier = HitTier::Center;
@@ -705,7 +704,7 @@ namespace NS::Game::Level
         // 自機を寝かせて凍らせる。Player::Update はこの後に移動の active を見るので同じフレームから効く
         m_hitStopRemaining = stopSteps;
         m_hitStopTotal = stopSteps;
-        m_movement->SetActive(false);
+        m_body->SetActive(false);
         NS_LOG_INFO(Game, "ヒットストップ: {} フレーム", stopSteps);
 
         // 潰れは反発の前半。進行方向の厚みを潰し、代わりに高さを伸ばす
@@ -856,9 +855,9 @@ namespace NS::Game::Level
         m_hasObservedTarget = false;
         // 凍結の途中で裁定が外れても、移動が止まったまま残らないようにする
         // 白と振動とカメラの効果は HitReaction が自分の OnEndPlay で止める
-        if (m_movement != nullptr)
+        if (m_body != nullptr)
         {
-            m_movement->SetActive(true);
+            m_body->SetActive(true);
         }
     }
 
@@ -885,17 +884,17 @@ namespace NS::Game::Level
 
     void ImpactResolver::ReleaseHitStop()
     {
-        m_movement->SetActive(true);
+        m_body->SetActive(true);
         const bool wasBreak = m_pendingBreak;
         m_pendingBreak = false;
         if (wasBreak)
         {
-            m_movement->SetVelocity(m_pendingSelfVelocity);
+            m_body->SetVelocity(m_pendingSelfVelocity);
         }
         else if (!m_player->BeginRebound(m_pendingReboundArc))
         {
             // 欄が曲線にならない値の時だけ通る。書かないと、止める前の最後のフレームの速度のまま動き出す
-            m_movement->SetVelocity(m_pendingSelfVelocity);
+            m_body->SetVelocity(m_pendingSelfVelocity);
             NS_LOG_WARN(Game,
                         "反動が曲線にならず、自機を弾けなかった: 高さ {} 距離 {}",
                         m_pendingReboundArc.apexHeight,

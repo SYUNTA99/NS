@@ -7,7 +7,6 @@
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/JoltCharacter.h"
-#include "Runtime/Platform/Clock.h"
 
 #include <cmath>
 
@@ -141,24 +140,6 @@ namespace NS::Game::Entity
             m_bodySensor = Owner()->BodySensorPart();
         }
         SyncBodySensor();
-    }
-
-    void EntityComponent::OnUpdate()
-    {
-        const float dt = NS::Platform::FrameTimer::FixedDelta();
-
-        if (!IsActive() || dt <= 0.0f)
-        {
-            OnStepSkipped();
-            return;
-        }
-
-        HandleMovement(dt);
-    }
-
-    void EntityComponent::HandleMovement(float dt) noexcept
-    {
-        Move(dt, 0.0f);
     }
 
     void EntityComponent::Accelerate(

@@ -4,10 +4,10 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
+#include "Game/Entity/EntityComponent.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/FollowCamera.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Runtime/App/Application.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Logger.h"
@@ -445,7 +445,7 @@ void LevelEditorController::EnterPlay() noexcept
     if (Player* player = FindPlayer(m_scene->Objects()))
     {
         // 編集で休止させた自機と入力を起こす。休止させる側は LeavePlayForEdit
-        player->Movement().SetActive(true);
+        player->Body().SetActive(true);
         player->Input().SetActive(true);
     }
     // 走行を最初から。手順は出荷と同じコースの進行役の持ち物
@@ -535,7 +535,7 @@ void LevelEditorController::LeavePlayForEdit()
     {
         // 操作系は生成時 active のまま組み上がるので、編集中だけ休止させる。起こす側は EnterPlay
         // follow と vcam はコンストラクタが休止で作るので、ここで寝かせる行は要らない
-        player->Movement().SetActive(false);
+        player->Body().SetActive(false);
         player->Input().SetActive(false);
     }
 

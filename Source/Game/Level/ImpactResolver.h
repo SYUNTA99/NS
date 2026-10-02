@@ -3,7 +3,7 @@
 #include "Game/Level/HitTier.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
-#include "Game/Player/PlayerComponent.h"
+#include "Game/Player.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
@@ -82,14 +82,14 @@ namespace NS::Game::Level
 
     //! @brief ぶつかった結果を自機側で決める Component
     //! @details Player::Update が状態と移動より前に呼ぶ。
-    //! PlayerComponent が動く前にその 1 固定ステップの結末を決めるので、
+    //! 身体が動く前にその 1 固定ステップの結末を決めるので、
     //! 壁の手前で止められて速度を消された後から結果を推測し直さずに済む
     //! 相手は次の固定ステップの自機のカプセルに重なる物の体のセンサーから選ぶ。調べる種類はプレイヤーの体当たりの
     //! 組み合わせの表に従う。選んだ相手には MsgAskTackleTarget で重さと置かれ方を問い、応じた物だけを相手にする
     //! 衝突の瞬間は自機を数固定ステップ止め、止めの頭に MsgTackleFreeze、明けに MsgTackleRelease を相手へ送る
     //! 相手が食い込み・縮み・飛ぶ・壊れるかは相手が決める。相手の部品は触らない
     //! 白の光・カメラの揺れと寄り・パッドの振動は同居する HitReaction へ組んで渡す
-    //! 依存: NS::Game::Player::PlayerComponent, CollisionInput, HitTier, NS::Obj::HitSensor, NS::Obj::HitReaction
+    //! 依存: NS::Game::Entity::EntityComponent, CollisionInput, HitTier, NS::Obj::HitSensor, NS::Obj::HitReaction
     class ImpactResolver : public NS::Obj::Component
     {
     public:
@@ -265,8 +265,8 @@ namespace NS::Game::Level
         NS::Core::Vector3 m_observedVelocity{};
         bool m_hasObservedTarget = false;
         bool m_stateReady = false;
-        ::Player* m_player = nullptr;                            // 突進と反動の技の呼び先。非所有
-        NS::Game::Player::PlayerComponent* m_movement = nullptr; // 同じ配置物の移動。非所有
+        ::Player* m_player = nullptr;                        // 突進と反動の技の呼び先。非所有
+        NS::Game::Entity::EntityComponent* m_body = nullptr; // 同じ配置物の身体。非所有
         CollisionInput* m_collisionInput = nullptr;
         NS::Obj::HitReaction* m_hitReaction = nullptr; // 同じ配置物の当たりの演出。非所有
     };

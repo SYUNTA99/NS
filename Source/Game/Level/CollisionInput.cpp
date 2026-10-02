@@ -1,8 +1,8 @@
 #include "Game/Level/CollisionInput.h"
 
+#include "Game/Entity/EntityComponent.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/Actor.h"
@@ -38,7 +38,7 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    // Player::Update は溜めを PlayerComponent より前に進めるので、チャージ減速は同じフレームの移動に効く
+    // Player::Update は溜めを 身体の移動より前に進めるので、チャージ減速は同じフレームの移動に効く
     CollisionInput::CollisionInput() noexcept : NS::Obj::Component() {}
 
     const NS::Game::Player::PlayerParams& CollisionInput::Tuning() const noexcept
@@ -55,7 +55,7 @@ namespace NS::Game::Level
     {
         if (m_player != nullptr)
         {
-            m_movement = &m_player->Movement();
+            m_body = &m_player->Body();
             m_resolver = &m_player->Resolver();
         }
     }
@@ -76,7 +76,7 @@ namespace NS::Game::Level
         }
         // 押しの印が真の間、自機は着地しても丸まりを解かない。外れた後は印を書く物が無いので、真のまま残すと
         // 着地で解けなくなる。印を偽へ戻し、丸まりもここで解く。ResetState は速度と状態機械まで戻すので呼ばない
-        if (m_movement != nullptr)
+        if (m_body != nullptr)
         {
             m_player->SetBodySlamHeld(false);
             m_player->SetCurled(false);
@@ -101,7 +101,7 @@ namespace NS::Game::Level
     void CollisionInput::Observe(bool held)
     {
         m_observedHeld = held;
-        m_observedRushing = m_movement != nullptr && m_movement->IsBodySlamming();
+        m_observedRushing = m_body != nullptr && m_player->IsBodySlamming();
         m_stateReady = true;
         m_controlReady = true;
         UpdateAimTarget(held);
@@ -110,7 +110,7 @@ namespace NS::Game::Level
 
     NS::Core::Vector3 CollisionInput::PredictedSlamVelocity() const noexcept
     {
-        if (m_movement == nullptr)
+        if (m_body == nullptr)
         {
             return NS::Core::Vector3{};
         }
@@ -143,10 +143,10 @@ namespace NS::Game::Level
             return;
         }
         m_controlReady = false;
-        if (m_observedRushing && m_movement != nullptr && m_movement->IsBodySlamming())
+        if (m_observedRushing && m_body != nullptr && m_player->IsBodySlamming())
         {
             SteerTowardTarget();
-            if (refreshVelocity && m_movement->IsActive())
+            if (refreshVelocity && m_body->IsActive())
             {
                 m_player->ApplyBodySlamHeading();
             }
@@ -169,11 +169,11 @@ namespace NS::Game::Level
         m_judge.chargeMaxSteps = SecondsToSteps(Tuning().m_chargeFullSeconds, dt);
         m_judge.Step(held);
 
-        if (m_judge.JustPressed() && m_movement != nullptr)
+        if (m_judge.JustPressed() && m_body != nullptr)
         {
             m_player->MarkBodySlamAim();
         }
-        if (m_movement != nullptr)
+        if (m_body != nullptr)
         {
             // 溜めに入るのを待たずに、押したフレームから丸まる。押したフレームだけ入れると、押したまま出直した後に
             // 丸まりが戻らない
@@ -185,7 +185,7 @@ namespace NS::Game::Level
         }
 
         const SlamKind fired = m_judge.TakeFired();
-        if (fired != SlamKind::None && m_movement != nullptr)
+        if (fired != SlamKind::None && m_body != nullptr)
         {
             float charge01 = 0.0f;
             if (fired == SlamKind::Charged)
@@ -205,21 +205,21 @@ namespace NS::Game::Level
             NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", SlamKindLabel(fired), charge01);
         }
 
-        if (m_movement != nullptr)
+        if (m_body != nullptr)
         {
             float scale = 1.0f;
             if (m_judge.IsCharging())
             {
                 scale = ChargingSpeedScale();
             }
-            m_movement->SetMaxSpeedScale(scale);
+            m_player->SetMaxSpeedScale(scale);
         }
 
-        if (m_judge.JustStartedCharging() && m_movement != nullptr)
+        if (m_judge.JustStartedCharging() && m_body != nullptr)
         {
             // 縦は残す。空中で溜めたフレームに 0 を書くと落下が一瞬止まって引っかかる
-            const NS::Core::Vector3 velocity = m_movement->Velocity();
-            m_movement->SetVelocity(NS::Core::Vector3{0.0f, velocity.y, 0.0f});
+            const NS::Core::Vector3 velocity = m_body->Velocity();
+            m_body->SetVelocity(NS::Core::Vector3{0.0f, velocity.y, 0.0f});
         }
 
         m_hasAimLine = m_observedHasAimLine;
@@ -245,7 +245,7 @@ namespace NS::Game::Level
     {
         m_observedHasAimTarget = false;
         m_observedHasAimLine = false;
-        if (!held || m_movement == nullptr)
+        if (!held || m_body == nullptr)
         {
             return;
         }
@@ -269,7 +269,7 @@ namespace NS::Game::Level
             return;
         }
         m_observedAimLine = AimLine{
-            .origin = RootTransform().Position(), .direction = direction, .length = m_movement->BodySlamDistance()};
+            .origin = RootTransform().Position(), .direction = direction, .length = m_player->BodySlamDistance()};
         m_observedHasAimLine = true;
         if (m_resolver == nullptr)
         {
@@ -302,7 +302,7 @@ namespace NS::Game::Level
     void CollisionInput::ObserveHomingTarget(bool held)
     {
         m_observedHasHomingTarget = false;
-        if (m_movement == nullptr || m_resolver == nullptr)
+        if (m_body == nullptr || m_resolver == nullptr)
         {
             return;
         }
@@ -314,7 +314,7 @@ namespace NS::Game::Level
         {
             const NS::Core::Vector3 velocity = m_player->BodySlamVelocity();
             forward = NS::Core::Vector3{velocity.x, 0.0f, velocity.z};
-            hasOnLine = m_resolver->FindSlamLineTarget(forward, m_movement->BodySlamDistance(), onLine);
+            hasOnLine = m_resolver->FindSlamLineTarget(forward, m_player->BodySlamDistance(), onLine);
         }
         else if (held)
         {
@@ -351,7 +351,7 @@ namespace NS::Game::Level
 
     void CollisionInput::SteerTowardTarget()
     {
-        if (m_observedHasHomingTarget && m_movement != nullptr)
+        if (m_observedHasHomingTarget && m_body != nullptr)
         {
             m_player->SteerToward(m_observedHomingCenter, Tuning().m_homingSearchDegrees, m_observedHomingForward);
         }
@@ -361,7 +361,7 @@ namespace NS::Game::Level
     {
         // 凍結と潰れ・伸びの最中は触らない。書くと控えた元の形と衝突演出が壊れる
         const bool resolverAnimating = m_resolver != nullptr && m_resolver->IsScaleAnimating();
-        const bool movementFrozen = m_movement != nullptr && !m_movement->IsActiveSelf();
+        const bool movementFrozen = m_body != nullptr && !m_body->IsActiveSelf();
         if (m_judge.IsHeld() && !resolverAnimating && !movementFrozen)
         {
             if (!m_stanceApplied)
@@ -386,16 +386,16 @@ namespace NS::Game::Level
 #if !defined(NS_SHIPPING)
     void CollisionInput::DrawChargeRing()
     {
-        if (!m_judge.IsCharging() || m_movement == nullptr)
+        if (!m_judge.IsCharging() || m_body == nullptr)
         {
             return;
         }
 
         const float charge01 = m_judge.Charge01();
         const NS::Core::Vector3 center = Owner()->Root().Position();
-        const float footY = center.y - m_movement->CapsuleHalfHeight() - m_movement->CapsuleRadius() + 0.05f;
+        const float footY = center.y - m_body->CapsuleHalfHeight() - m_body->CapsuleRadius() + 0.05f;
         // 溜め量が輪の広がりに出ないと、満タンまでの途中が読めない
-        const float radius = m_movement->CapsuleRadius() + 0.25f + charge01 * 0.75f;
+        const float radius = m_body->CapsuleRadius() + 0.25f + charge01 * 0.75f;
         NS::Core::Color color{1.0f, 0.85f, 0.2f, 1.0f};
         if (m_judge.IsChargeFull())
         {

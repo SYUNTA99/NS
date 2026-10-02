@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Game/Level/Health.h"
+#include "Game/Player/PlayerEvents.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/CameraTarget.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -15,11 +17,14 @@ namespace NS::Obj
     class PlayerInput;
 } // namespace NS::Obj
 
+namespace NS::Game::Entity
+{
+    class EntityComponent;
+}
+
 namespace NS::Game::Player
 {
-    class PlayerComponent;
     class PlayerParams;
-    struct ReboundArc;
     class PlayerAppearance;
     class ChargeEffects;
     class ImpactEffects;
@@ -33,11 +38,24 @@ namespace NS::Game::Level
     class SlamArrow;
 } // namespace NS::Game::Level
 
+namespace NS::Game::Player
+{
+    //! @brief 反動の軌道のうち、当たりが決める向きと高さと距離
+    //! @details 指示付き初期化で組み、Player::BeginRebound へ渡す。
+    //! 上りと下りの重力と頂点の帯は Player が調整値の欄から決める
+    struct ReboundArc
+    {
+        NS::Core::Vector3 direction{1.0f, 0.0f, 0.0f}; // 弾かれる向き。水平の成分だけを使う
+        float apexHeight = 0.0f;                       // 弾かれ始めの高さから頂点までの高さ (m)
+        float distance = 0.0f;                         // 弾かれ始めから同じ高さへ戻るまでの水平の距離 (m)
+    };
+} // namespace NS::Game::Player
+
 //! @brief プレイヤーキャラクタ。Mesh / Movement / Input / Shadow の既定構成をコードで組む
 //! @details 値はプレイヤーの種類の既定値と個体の上書きから写す
 //! 状態機械と命は Actor
-//! 自身が持ち、移動の組み立てと崖つかまりと突進と反発はここが持つ。それらの記録は移行中の Component
-//! が持つ。状態の遷移の条件は PlayerJudges の判定を状態が呼ぶ
+//! 自身が持ち、入力の窓口・移動の組み立て・崖つかまり・突進と反発とそれらの記録はここが持つ。
+//! 速度と接地の計算だけは身体の部品 (EntityComponent) へ任せる。状態の遷移の条件は PlayerJudges の判定を状態が呼ぶ
 //! 落下死やゴールは体のセンサーへ届く知らせで受け取り、コースの流れは進行役へ伝えるだけにする
 class Player : public NS::Obj::Actor, public NS::Obj::ICameraTarget
 {
@@ -59,8 +77,9 @@ public:
     [[nodiscard]] const NS::Obj::StateMachine<Player>& States() const noexcept { return *m_states; }
     [[nodiscard]] NS::Obj::PlayerInput& Input() noexcept { return *m_input; }
     [[nodiscard]] const NS::Obj::PlayerInput& Input() const noexcept { return *m_input; }
-    [[nodiscard]] NS::Game::Player::PlayerComponent& Movement() noexcept { return *m_movement; }
-    [[nodiscard]] const NS::Game::Player::PlayerComponent& Movement() const noexcept { return *m_movement; }
+    //! 速度・接地・カプセル寸法・移動を持つ身体の部品。部品名は保存の鍵なので "Movement" のまま
+    [[nodiscard]] NS::Game::Entity::EntityComponent& Body() noexcept { return *m_body; }
+    [[nodiscard]] const NS::Game::Entity::EntityComponent& Body() const noexcept { return *m_body; }
     [[nodiscard]] NS::Game::Player::PlayerParams& Params() noexcept { return *m_params; }
     [[nodiscard]] const NS::Game::Player::PlayerParams& Params() const noexcept { return *m_params; }
     [[nodiscard]] NS::Game::Level::CollisionInput& ChargeControl() noexcept { return *m_collisionInput; }
@@ -76,7 +95,7 @@ public:
     void ReadInput() override;
     void Update() override;
     //! @brief 自機の部品を決めた順に 1 固定ステップ進める
-    //! @details Model の控え、溜めの判定と衝突の裁定、状態機械の 1 歩、突進の向きの寄せ、PlayerComponent、
+    //! @details Model の控え、溜めの判定と衝突の裁定、状態機械の 1 歩、突進の向きの寄せ、身体の移動、
     //! クリップの選択、TargetMarker、SlamArrow、HitReaction、PlayerAppearance、ChargeEffects、ImpactEffects の順に呼ぶ
     //! @param[in] chargeHeld 体当たりのボタンを押しているか
     void Update(bool chargeHeld);
@@ -85,7 +104,62 @@ public:
     void UpdateAnimation();
     void OnEndPlay() override;
 
-    // 移動の組み立て。状態が呼ぶ順序がそのまま手触りになる。速度・接地・重力の計算は PlayerComponent (身体) が持ち、
+    // 入力の窓口。値は PlayerInput が持つ
+    //! world 空間の目標移動方向と速度スケールを渡す。スケールは 0..1 に丸める
+    void SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept;
+    //! 直近に渡された目標速度スケール 0..1
+    [[nodiscard]] float DesiredSpeedScale() const noexcept;
+    //! 直近に渡された world 空間の目標移動方向。長さは入力の強さのままで正規化されていない
+    [[nodiscard]] NS::Core::Vector3 DesiredDirection() const noexcept;
+    //! 掴まり中の生ローカル入力で各成分は -1..1。SetDesiredMove とは別に持つ
+    void SetClimbMove(float localRight, float localForward) noexcept;
+    [[nodiscard]] float ClimbRight() const noexcept;
+    [[nodiscard]] float ClimbForward() const noexcept;
+    //! ジャンプの押下を 1 回ぶん立てる。更新の終わりに落ちるので次のフレームには残らない
+    void SetJumpPressed() noexcept;
+    //! 手放しの押下を 1 回ぶん立てる。更新の終わりに落ちるので次のフレームには残らない
+    void SetReleaseLedgePressed() noexcept;
+    //! ジャンプボタンの長押し状態を渡す。上昇中に離すと縦速度を縮める
+    void SetJumpHeld(bool held) noexcept;
+
+    // 移動の記録と読み取り
+    [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; } //!< 残りジャンプ回数
+    //! @brief 走行速度に SetMaxSpeedScale の倍率を掛けた最高速度。負になる場合は 0
+    //! @details 負のまま返すと EndBodySlam の頭打ちが cap / speed で負の倍率になり、突進明けに水平の向きが反転する
+    [[nodiscard]] float MaxSpeed() const noexcept;
+    //! 走行速度に掛ける倍率を渡す。非有限値は無視して直前の値を残す
+    void SetMaxSpeedScale(float scale) noexcept;
+    [[nodiscard]] float RunSpeed() const noexcept;
+    //! 奈落落ちの復活などで速度・接地・ジャンプまわりの記録と状態機械を初期状態へ戻す。
+    //! 丸まりも解くが根は動かさない。呼び手は先に根を出現位置へ置いてから呼ぶ
+    void ResetState() noexcept;
+    //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
+    void SyncGroundState() noexcept;
+    //! 自機だけの通知の受け口。身体の Events() は接地の 2 件を返すので名前を分ける
+    [[nodiscard]] NS::Game::Player::PlayerEvents& PlayerEventsRef() noexcept { return m_playerEvents; }
+
+    // 突進・反発・丸まりの読み取り
+    //! 突進中の場合 true、それ以外の場合は false
+    [[nodiscard]] bool IsBodySlamming() const noexcept;
+    //! 突進の進み具合 0..1。突進中でなければ 0
+    [[nodiscard]] float BodySlamProgress01() const noexcept;
+    [[nodiscard]] float BodySlamCharge01() const noexcept { return m_slam.charge01; } //!< 発動時の溜め量 0..1
+    //! 溜めた突進を終える水平の距離。欄「突進距離」の値で、単位は m
+    [[nodiscard]] float BodySlamDistance() const noexcept;
+    //! @brief 最後に出した突進の、出たフレームの水平の向きを返す
+    //! @details 突進の間に寄せで曲がった分は入らない。突進が終わった後も、次の突進を出すまで残す
+    //! @return 正規化済みの向き。突進を出す前と ResetState の後はゼロ
+    [[nodiscard]] NS::Core::Vector3 BodySlamStartDirection() const noexcept { return m_slam.startDir; }
+    //! 反動の状態の場合 true、それ以外の場合は false
+    [[nodiscard]] bool IsRebounding() const noexcept;
+    //! 最後に始めた反動の水平の向き。正規化済み。反動を始める前と ResetState の後はゼロ
+    [[nodiscard]] NS::Core::Vector3 ReboundDirection() const noexcept { return m_rebound.direction; }
+    //! 寄せた角度の累計を返す。単位は度で、正の角度は +X の向きを -Z の側へ回す
+    [[nodiscard]] float HomingAngleDegrees() const noexcept { return m_homing.angle; }
+    //! 丸まっている場合 true、それ以外の場合は false
+    [[nodiscard]] bool IsCurled() const noexcept { return m_curled; }
+
+    // 移動の組み立て。状態が呼ぶ順序がそのまま手触りになる。速度・接地・重力の計算は身体 (EntityComponent) が持ち、
     // どの状態でどの値をどの順に掛けるかをここが決める。調整値は PlayerParams から読む
     //! 先行入力とコヨーテ猶予のタイマーを 1 フレーム進める
     void TickTimers(float dt) noexcept;
@@ -114,7 +188,7 @@ public:
     //! 突進の 1 フレームを進める。溜めた突進は水平を発動時の向きと速さで書き直し、重力を当てる
     void UpdateBodySlam(float dt) noexcept;
 
-    // 崖つかまり。縁の検出・つかまり・登り。つかまりの位置と向きの記録は PlayerComponent に置いたまま読み書きする
+    // 崖つかまり。縁の検出・つかまり・登り
     //! 縁を掴めるか試す。掴んだ場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
     [[nodiscard]] bool LedgeGrab() noexcept;
     //! @brief 掴んでいる縁を取り直し、その高さへ位置を合わせ直す
@@ -133,7 +207,7 @@ public:
     //! 手を放し、その場から落下させる
     void DropLedge() noexcept;
 
-    // 突進と反発。突進・反動・丸まり・寄せの記録は PlayerComponent に置いたまま読み書きする。速度と接地は身体が持つ
+    // 突進と反発。速度と接地は身体が持つ
     //! @brief 体当たりの発動を要求する
     //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
     //! そのフレームで出せない要求は先行入力時間だけ覚え、過ぎたら失効する。
@@ -239,7 +313,58 @@ public:
 
 private:
     friend class NS::Game::Level::CollisionInput;
-    friend class NS::Game::Player::PlayerComponent;
+    //! 突進の記録。発動で書き、突進の間と後で読む
+    //! @details 突進の状態へは持たせない。startDir と charge01 は突進が終わった後も読まれる。ResetState
+    //! で全部を初期値へ戻す
+    struct BodySlamRecord
+    {
+        float travelled = 0.0f;       // 突進で進んだ水平距離
+        float distanceTarget = 0.0f;  // 突進を終える水平距離
+        bool isTap = false;           // 溜め量 0 の飛び込みか
+        bool justStarted = false;     // 発動したフレームか
+        NS::Core::Vector3 dir{};      // 突進の水平の向き。正規化済み
+        NS::Core::Vector3 startDir{}; // 最後に出した突進の、出たフレームの向き。正規化済み
+        float charge01 = 0.0f;        // 発動時に確定した溜め量 0..1
+        bool wasSlamming = false;     // 直前のフレームを突進中で終えたか。書くのは MoveBody と ResetState
+    };
+
+    //! 体当たりの要求と、押したフレームの狙いの控え
+    struct BodySlamRequest
+    {
+        float bufferRemaining = 0.0f; // 出せないフレームの押しを覚える残り秒
+        bool spent = false;           // 発動してから接地していないか
+        float charge01 = 0.0f;        // 要求された溜め量 0..1
+        NS::Core::Vector3 dir{};      // 要求に添えた出す向き。正規化済み
+        bool hasDir = false;          // 要求に向きが添えてあるか
+        NS::Core::Vector3 aimDir{};   // 押したフレームに控えた狙いの向き。正規化済み
+        float aimAge = 0.0f;          // 狙いを控えてからの経過秒
+    };
+
+    //! 突進の向きの寄せの記録
+    struct HomingRecord
+    {
+        // 寄せた角度の累計 (度)。溜めている間は狙いの向きから、放した後は寄せる前の放す向きから測る。
+        // 正の角度は +X の向きを -Z の側へ回す。突進の終わり・ResetState・立ち姿へ戻る時と、
+        // 溜めている間に相手が変わった時に 0
+        float angle = 0.0f;
+        // 溜めている間に寄せた相手の中心と、その相手を探した角度 (度)。放す時に放す向きから測り直す
+        NS::Core::Vector3 target{};
+        float coneDegrees = 0.0f;
+        bool hasTarget = false;
+    };
+
+    //! 反動の記録
+    struct ReboundRecord
+    {
+        NS::Core::Vector3 direction{}; // 最後に始めた反動の水平の向き。正規化済み
+    };
+
+    //! @brief 身体を 1 フレーム動かす。更新の中で 1 回だけ呼ぶ
+    //! @details 向きを回すのは動かす前で、接地の反映と突進の距離はその後。
+    //! 状態の側で動かすと、状態を足した時に呼び忘れてもビルドが通り、その状態の間だけ動かなくなる
+    void MoveBody(float dt) noexcept;
+    //! 稼働していないフレームでも、そのフレーム限りの入力は落とす。残すと再開した時に古い押下が効く
+    void SkipBodyStep() noexcept;
     //! 突進の進んだ距離を足し、距離を使い切るか進めなくなったら突進を終える
     //! @details 進めた距離は動かした後にしか出ないので、打ち切りの判定は状態でなくここに置く
     //! 受け取るのは直前の Move で実際に動いた量
@@ -291,7 +416,7 @@ private:
     std::unique_ptr<NS::Game::Player::PlayerParams> m_params;
     std::string m_appliedClip{};
     std::unique_ptr<NS::Obj::PlayerInput> m_input;
-    std::unique_ptr<NS::Game::Player::PlayerComponent> m_movement;
+    std::unique_ptr<NS::Game::Entity::EntityComponent> m_body;
     std::unique_ptr<NS::Game::Player::PlayerAppearance> m_appearance;
     std::unique_ptr<NS::Game::Level::ImpactResolver> m_resolver;
     std::unique_ptr<NS::Game::Level::TargetMarker> m_targetMarker;
@@ -300,6 +425,33 @@ private:
     std::unique_ptr<NS::Game::Player::ImpactEffects> m_impactEffects;
     NS::Obj::StateMachine<Player>* m_states = nullptr; // 基底が所有する。コンストラクタが預けた直後から有効
     NS::Game::Level::Health m_health;
+
+    bool m_prevJumpHeld = false; // 前のフレームの長押し状態
+    int m_jumpsRemaining = 1;    // 残りジャンプ回数
+    float m_coyoteTimer = 0.0f;  // コヨーテ猶予の残り秒
+    float m_bufferTimer = 0.0f;  // 先行ジャンプ入力の残り秒
+
+    float m_maxSpeedScale = 1.0f; // 走行速度に掛ける倍率。書くのは CollisionInput
+
+    // 丸まっているか。入れるのは CollisionInput と突進の発動、解くのは UncurlWhenSettled と縁を掴んだ時と
+    // ResetState とプレイを終える時の CollisionInput
+    bool m_curled = false;
+    bool m_bodySlamHeld = false; // 体当たりのボタンを押しているか。書くのは CollisionInput と ResetState
+
+    BodySlamRecord m_slam;
+    BodySlamRequest m_request;
+    HomingRecord m_homing;
+    ReboundRecord m_rebound;
+
+    NS::Core::Vector3 m_facingDir{0.0f, 0.0f, 0.0f};       // 掴む向き。動こうとした水平の向きへ振り向きの速さで回る
+    float m_lastMoveDistance = 0.0f;                       // 直前の Move で動いた距離。縁を探す帯の上の余白
+    float m_ledgeTopY = 0.0f;                              // 掴んでいる縁の上端の y
+    NS::Core::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f}; // 掴んでいる面の外向き法線
+    NS::Core::Vector3 m_ledgeMantleStart{0.0f, 0.0f, 0.0f};
+    NS::Core::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};
+    float m_ledgeMantleTimer = 0.0f; // よじ登りの経過秒
+
+    NS::Game::Player::PlayerEvents m_playerEvents;
 };
 
 //! live の配置物からプレイヤーを引く。無ければ nullptr

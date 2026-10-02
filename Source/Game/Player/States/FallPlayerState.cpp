@@ -1,7 +1,7 @@
 #include "Game/Player/States/FallPlayerState.h"
 
+#include "Game/Entity/EntityComponent.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Game/Player/States/IdlePlayerState.h"
 
 namespace NS::Game::Player
@@ -18,7 +18,7 @@ namespace NS::Game::Player
             return;
         }
 
-        if (player.Movement().IsGrounded())
+        if (player.Body().IsGrounded())
         {
             player.States().Change<IdlePlayerState>(player);
         }

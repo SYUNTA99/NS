@@ -4,7 +4,7 @@
 
 #include "Game/Entity/EntityComponent.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Player/PlayerComponent.h"
+#include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Actor.h"
@@ -216,7 +216,7 @@ namespace NS::Game::Player
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
         {
             m_resolver = &ownerPlayer->Resolver();
-            m_player = &ownerPlayer->Movement();
+            m_player = ownerPlayer;
         }
         NS::Gfx::EffectScene* effects = EffectsOf(*this);
         if (effects == nullptr)
@@ -411,9 +411,9 @@ namespace NS::Game::Player
 
         const Vector3 self = Owner()->Root().Position();
         float radius = 0.0f;
-        if (const NS::Game::Entity::EntityComponent* entity = m_player)
+        if (m_player != nullptr)
         {
-            radius = entity->CapsuleRadius();
+            radius = m_player->Body().CapsuleRadius();
         }
         const Vector3 horizontalForward{impact.impactDir.x, 0.0f, impact.impactDir.z};
         plan.launchDir = NormalizedOr(horizontalForward, Vector3{1.0f, 0.0f, 0.0f});
@@ -715,9 +715,9 @@ namespace NS::Game::Player
                 // 玉の縁のうち反動の向きの逆の点から、反動の向きへ開く扇にする。接触点 (玉の相手の側) から出すと、
                 // 線の出た側を玉の後ろと読まれ、上へ弾かれた玉が横へ動いて見えた
                 float radius = 0.0f;
-                if (const NS::Game::Entity::EntityComponent* entity = m_player)
+                if (m_player != nullptr)
                 {
-                    radius = entity->CapsuleRadius();
+                    radius = m_player->Body().CapsuleRadius();
                 }
                 m_aim.recoilOrigin = Owner()->Root().Position() - m_plan.selfDir * radius;
                 NS::Gfx::EffectPlayDesc recoil = PlayAt(m_aim.recoilOrigin, TurnUpTo(m_plan.selfDir), Uniform(1.0f));
@@ -754,7 +754,7 @@ namespace NS::Game::Player
         if (m_player != nullptr && m_player->IsRebounding())
         {
             const Vector3 ball = Owner()->Root().Position();
-            const Vector3 heading = ReboundTrailHeading(m_player->Velocity(), ball, CameraPosition());
+            const Vector3 heading = ReboundTrailHeading(m_player->Body().Velocity(), ball, CameraPosition());
             m_flight.reboundTrail =
                 m_layers.Play(effects, k_ReboundTrail, PlayAt(ball, TurnUpTo(heading), Uniform(1.0f)));
             m_flight.reboundStartStep = step;
@@ -769,12 +769,12 @@ namespace NS::Game::Player
         {
             // 頂点の前に反動を抜けた時 (縁を掴んだ時など) は、そこで輪ごと消す
             if (m_player == nullptr || !m_player->IsRebounding() ||
-                PlayerJudgeLand::Judge(m_player->IsGrounded(), m_player->VerticalVelocity()))
+                PlayerJudgeLand::Judge(m_player->Body().IsGrounded(), m_player->Body().VerticalVelocity()))
             {
                 m_layers.Stop(effects, m_flight.reboundTrail);
                 m_flight.reboundTrail = 0;
             }
-            else if (!(m_player->VerticalVelocity() > 0.0f))
+            else if (!(m_player->Body().VerticalVelocity() > 0.0f))
             {
                 // 頂点は縦の速さが 0 以下になったフレーム。親を止め、筋は頂点の位置と向きのまま薄れる
                 // 親を止めた後の筋は置き直しても動かない (Effekseer は親の最後の姿で子を描く)
@@ -785,7 +785,7 @@ namespace NS::Game::Player
             else
             {
                 const Vector3 ball = Owner()->Root().Position();
-                const Vector3 heading = ReboundTrailHeading(m_player->Velocity(), ball, CameraPosition());
+                const Vector3 heading = ReboundTrailHeading(m_player->Body().Velocity(), ball, CameraPosition());
                 PlaceLayer(effects, m_layers, m_flight.reboundTrail, ball, TurnUpTo(heading), Uniform(1.0f));
             }
         }
@@ -801,20 +801,21 @@ namespace NS::Game::Player
         {
             m_landingDustPlayed = false;
         }
-        else if (!m_landingDustPlayed && PlayerJudgeLand::Judge(m_player->IsGrounded(), m_player->VerticalVelocity()))
+        else if (!m_landingDustPlayed &&
+                 PlayerJudgeLand::Judge(m_player->Body().IsGrounded(), m_player->Body().VerticalVelocity()))
         {
             // 着地の潰れ (PlayerAppearance) と同じ条件。このフレームの縦の速さは既に 0 なので、前のフレームの控えで測る
             m_landingDustPlayed = true;
             const float radius = LandDustRadiusFor(-m_lastVerticalVelocity);
             Vector3 at = Owner()->Root().Position();
-            at.y -= m_player->CapsuleHalfHeight() + m_player->CapsuleRadius();
+            at.y -= m_player->Body().CapsuleHalfHeight() + m_player->Body().CapsuleRadius();
             at.y += k_DustRingLift;
             const std::uint32_t dust = m_layers.Play(
                 effects, k_LandDust, PlayAt(at, Quaternion::Identity, Uniform(radius / k_DustRingRadiusAtUnitScale)));
             SetAmount(dust, radius);
             StopLater(dust, k_LandDustLife);
         }
-        m_lastVerticalVelocity = m_player->VerticalVelocity();
+        m_lastVerticalVelocity = m_player->Body().VerticalVelocity();
     }
 
     std::optional<Vector3> ImpactEffects::CameraPosition() const

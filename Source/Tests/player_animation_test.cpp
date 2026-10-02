@@ -1,5 +1,5 @@
+#include "Game/Entity/EntityComponent.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Runtime/Graphics/Animation.h"
@@ -18,8 +18,8 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
     Player player;
     NS::Obj::Animation* animation = NS::Obj::ComponentCast<NS::Obj::Animation>(player.CreatePart("Animation"));
     animation->AddClips(clips);
-    player.Movement().SetGrounded(true);
-    player.Movement().SetLateralVelocity(NS::Core::Vector3{4.0f, 0.0f, 0.0f});
+    player.Body().SetGrounded(true);
+    player.Body().SetLateralVelocity(NS::Core::Vector3{4.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
     ASSERT_EQ(animation->CurrentClip(), 1u);
     animation->OnUpdate();
@@ -28,10 +28,10 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
     player.UpdateAnimation();
     animation->OnUpdate();
     EXPECT_NEAR(animation->Time(), first * 2.0f, 0.00001f);
-    player.Movement().SetLateralVelocity(NS::Core::Vector3{2.0f, 0.0f, 0.0f});
+    player.Body().SetLateralVelocity(NS::Core::Vector3{2.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 2u);
-    player.Movement().SetLateralVelocity(NS::Core::Vector3{});
+    player.Body().SetLateralVelocity(NS::Core::Vector3{});
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 0u);
 }
@@ -74,11 +74,11 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
     ASSERT_EQ(NS::Obj::ApplyJsonFields(
                   *params, {{"跳ぶクリップ", "jump"}, {"落ちるクリップ", "fall"}, {"ぶら下がりのクリップ", "hang"}}),
               0u);
-    player.Movement().SetGrounded(false);
-    player.Movement().SetVerticalVelocity(2.0f);
+    player.Body().SetGrounded(false);
+    player.Body().SetVerticalVelocity(2.0f);
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 1u);
-    player.Movement().SetVerticalVelocity(-2.0f);
+    player.Body().SetVerticalVelocity(-2.0f);
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 2u);
     ASSERT_TRUE(player.States().Change<NS::Game::Player::LedgeHangingPlayerState>(player));
@@ -96,11 +96,11 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
     NS::Game::Player::PlayerParams* params =
         NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
     ASSERT_NE(params, nullptr);
-    player.Movement().SetGrounded(true);
-    player.Movement().SetLateralVelocity(NS::Core::Vector3{4.0f, 0.0f, 0.0f});
+    player.Body().SetGrounded(true);
+    player.Body().SetLateralVelocity(NS::Core::Vector3{4.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 0u);
-    player.Movement().SetLateralVelocity(NS::Core::Vector3{1.0f, 0.0f, 0.0f});
+    player.Body().SetLateralVelocity(NS::Core::Vector3{1.0f, 0.0f, 0.0f});
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"再生速度の下限", 0.75f}}), 0u);
     player.UpdateAnimation();
     ASSERT_EQ(animation->CurrentClip(), 1u);
