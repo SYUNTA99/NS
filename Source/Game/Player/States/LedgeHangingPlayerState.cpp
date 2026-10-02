@@ -2,6 +2,7 @@
 
 #include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerJudges.h"
 
 namespace NS::Game::Player
 {
@@ -15,12 +16,12 @@ namespace NS::Game::Player
         {
             return;
         }
-        if (player.Movement().ShouldClimbLedge())
+        if (PlayerJudgeClimbLedge::Judge(player.Movement().ClimbForward()))
         {
             player.ClimbLedge();
             return;
         }
-        if (player.Movement().ShouldDropLedge())
+        if (PlayerJudgeDropLedge::Judge(player.Input().ReleaseLedgePressed()))
         {
             player.DropLedge();
             return;

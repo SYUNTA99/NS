@@ -2,7 +2,6 @@
 
 #include "Game/Player.h"
 #include "Game/Player/HorizontalTurn.h"
-#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Runtime/Core/AABB.h"
@@ -200,54 +199,6 @@ namespace NS::Game::Player
             // 着地のフレームだけで戻すと、接地したまま走り抜けた突進の後に次が出せない
             m_request.spent = false;
         }
-    }
-
-    bool PlayerComponent::ShouldLand() const noexcept
-    {
-        // 明けのフレームは止める前の接地の印が残ったまま上向きの速度が入る。接地だけを見ると宙へ出る前に立ちへ移る
-        return PlayerJudgeLand::Judge(IsGrounded(), VerticalVelocity());
-    }
-
-    bool PlayerComponent::ShouldClimbLedge() const noexcept
-    {
-        return ClimbForward() > 0.0f;
-    }
-
-    bool PlayerComponent::ShouldDropLedge() const noexcept
-    {
-        return Input().ReleaseLedgePressed();
-    }
-
-    bool PlayerComponent::ShouldWalk() const noexcept
-    {
-        return PlayerJudgeWalk::Judge(IsGrounded(), HasMoveInput(), IsStopped());
-    }
-
-    bool PlayerComponent::ShouldBrake() const noexcept
-    {
-        return PlayerJudgeBrake::Judge(
-            HasMoveInput(), DesiredDirection(), LateralVelocity(), Tuning().m_brakeThreshold);
-    }
-
-    bool PlayerComponent::HasMoveInput() const noexcept
-    {
-        return DesiredSpeedScale() >= Tuning().m_stickDeadzone;
-    }
-
-    bool PlayerComponent::IsStopped() const noexcept
-    {
-        const NS::Core::Vector3 lateral = LateralVelocity();
-        return lateral.x == 0.0f && lateral.z == 0.0f;
-    }
-
-    bool PlayerComponent::ShouldIdle() const noexcept
-    {
-        return PlayerJudgeIdle::Judge(IsGrounded(), ShouldWalk());
-    }
-
-    bool PlayerComponent::ShouldFall() const noexcept
-    {
-        return !IsGrounded();
     }
 
     void PlayerComponent::OnStepSkipped()

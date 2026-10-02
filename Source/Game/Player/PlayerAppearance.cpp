@@ -3,6 +3,7 @@
 #include "Game/Level/CollisionInput.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/StaticMesh.h"
@@ -208,7 +209,8 @@ namespace NS::Game::Player
         // 次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
         // 戻すフレーム数が 0 以下では戻す手段が無く、潰れたまま残るので潰さない
         float vertical = 1.0f;
-        if (m_player->IsRebounding() && m_player->ShouldLand() && Tuning().m_landingSquashRecoverSteps > 0)
+        if (m_player->IsRebounding() && PlayerJudgeLand::Judge(m_player->IsGrounded(), m_player->VerticalVelocity()) &&
+            Tuning().m_landingSquashRecoverSteps > 0)
         {
             m_landingSquashRemaining = Tuning().m_landingSquashRecoverSteps;
             vertical = Tuning().m_landingSquash;

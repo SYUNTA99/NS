@@ -462,7 +462,8 @@ void Player::AccelerateToInputDirection(float dt) noexcept
 {
     NS::Game::Player::PlayerComponent& body = *m_movement;
     NS::Core::Vector3 direction{};
-    if (!body.HasMoveInput() || !NS::Core::TryNormalizeHorizontal(body.DesiredDirection(), direction))
+    if (!NS::Game::Player::PlayerJudgeMoveInput::Judge(body.DesiredSpeedScale(), m_params->m_stickDeadzone) ||
+        !NS::Core::TryNormalizeHorizontal(body.DesiredDirection(), direction))
     {
         return;
     }
@@ -572,7 +573,8 @@ void Player::AccelerateDuringRebound(float dt) noexcept
 {
     NS::Game::Player::PlayerComponent& body = *m_movement;
     NS::Core::Vector3 direction{};
-    if (!body.HasMoveInput() || !NS::Core::TryNormalizeHorizontal(body.DesiredDirection(), direction))
+    if (!NS::Game::Player::PlayerJudgeMoveInput::Judge(body.DesiredSpeedScale(), m_params->m_stickDeadzone) ||
+        !NS::Core::TryNormalizeHorizontal(body.DesiredDirection(), direction))
     {
         return;
     }
@@ -1093,19 +1095,16 @@ void Player::UncurlWhenSettled() noexcept
     ChangeCurled(false);
 }
 
-bool Player::IsLocomotion() const noexcept
-{
-    return m_states->IsCurrent<NS::Game::Player::IdlePlayerState>() ||
-           m_states->IsCurrent<NS::Game::Player::WalkPlayerState>() ||
-           m_states->IsCurrent<NS::Game::Player::FallPlayerState>() ||
-           m_states->IsCurrent<NS::Game::Player::ReboundPlayerState>();
-}
-
 void Player::PrepareStateStep()
 {
     NS::Game::Player::PlayerComponent& body = *m_movement;
+    const bool locomotion =
+        NS::Game::Player::PlayerJudgeLocomotion::Judge(m_states->IsCurrent<NS::Game::Player::IdlePlayerState>(),
+                                                       m_states->IsCurrent<NS::Game::Player::WalkPlayerState>(),
+                                                       m_states->IsCurrent<NS::Game::Player::FallPlayerState>(),
+                                                       m_states->IsCurrent<NS::Game::Player::ReboundPlayerState>());
     if (NS::Game::Player::PlayerJudgeBodySlam::Judge(
-            body.m_request.bufferRemaining, body.m_request.spent, body.m_slam.wasSlamming, IsLocomotion()))
+            body.m_request.bufferRemaining, body.m_request.spent, body.m_slam.wasSlamming, locomotion))
     {
         if (BodySlam())
         {

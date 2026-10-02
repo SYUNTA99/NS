@@ -102,10 +102,69 @@ namespace NS::Game::Player
     class PlayerJudgeLand
     {
     public:
-        //! 接地していて上昇していない場合 true、それ以外の場合は false
+        //! @brief 接地していて上昇していない場合 true、それ以外の場合は false
+        //! @details 反動の明けのフレームは止める前の接地の印が残ったまま上向きの速度が入る。
+        //! 接地だけを見ると宙へ出る前に立ちへ移る
         [[nodiscard]] static bool Judge(bool grounded, float verticalVelocity) noexcept
         {
             return grounded && !(verticalVelocity > 0.0f);
+        }
+    };
+
+    //! 落下の判定
+    class PlayerJudgeFall
+    {
+    public:
+        //! 接地を外れている場合 true、それ以外の場合は false
+        [[nodiscard]] static bool Judge(bool grounded) noexcept { return !grounded; }
+    };
+
+    //! スティックを倒しているかの判定
+    class PlayerJudgeMoveInput
+    {
+    public:
+        //! 倒し具合が遊び以上の場合 true、それ以外の場合は false
+        [[nodiscard]] static bool Judge(float speedScale01, float deadzone) noexcept
+        {
+            return speedScale01 >= deadzone;
+        }
+    };
+
+    //! 水平に止まっているかの判定
+    class PlayerJudgeStopped
+    {
+    public:
+        //! 水平の速度の x と z がどちらもちょうど 0 の場合 true、それ以外の場合は false
+        [[nodiscard]] static bool Judge(const NS::Core::Vector3& lateralVelocity) noexcept
+        {
+            return lateralVelocity.x == 0.0f && lateralVelocity.z == 0.0f;
+        }
+    };
+
+    //! 縁をよじ登るかの判定
+    class PlayerJudgeClimbLedge
+    {
+    public:
+        //! 前入力が出ている場合 true、それ以外の場合は false
+        [[nodiscard]] static bool Judge(float climbForward) noexcept { return climbForward > 0.0f; }
+    };
+
+    //! 縁を手放すかの判定
+    class PlayerJudgeDropLedge
+    {
+    public:
+        //! 手放しのボタンが押された場合 true、それ以外の場合は false
+        [[nodiscard]] static bool Judge(bool releasePressed) noexcept { return releasePressed; }
+    };
+
+    //! 通常移動の状態かの判定
+    class PlayerJudgeLocomotion
+    {
+    public:
+        //! 立ち・走り・落下・反動のどれかの状態の場合 true、それ以外の場合は false
+        [[nodiscard]] static bool Judge(bool idle, bool walk, bool fall, bool rebound) noexcept
+        {
+            return idle || walk || fall || rebound;
         }
     };
 } // namespace NS::Game::Player

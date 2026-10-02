@@ -5,6 +5,7 @@
 #include "Game/Entity/EntityComponent.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerJudges.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -767,7 +768,8 @@ namespace NS::Game::Player
         if (m_flight.reboundTrail != 0 && step != m_flight.reboundStartStep)
         {
             // 頂点の前に反動を抜けた時 (縁を掴んだ時など) は、そこで輪ごと消す
-            if (m_player == nullptr || !m_player->IsRebounding() || m_player->ShouldLand())
+            if (m_player == nullptr || !m_player->IsRebounding() ||
+                PlayerJudgeLand::Judge(m_player->IsGrounded(), m_player->VerticalVelocity()))
             {
                 m_layers.Stop(effects, m_flight.reboundTrail);
                 m_flight.reboundTrail = 0;
@@ -799,7 +801,7 @@ namespace NS::Game::Player
         {
             m_landingDustPlayed = false;
         }
-        else if (!m_landingDustPlayed && m_player->ShouldLand())
+        else if (!m_landingDustPlayed && PlayerJudgeLand::Judge(m_player->IsGrounded(), m_player->VerticalVelocity()))
         {
             // 着地の潰れ (PlayerAppearance) と同じ条件。このフレームの縦の速さは既に 0 なので、前のフレームの控えで測る
             m_landingDustPlayed = true;

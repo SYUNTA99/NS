@@ -2,6 +2,7 @@
 
 #include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/States/IdlePlayerState.h"
 
 namespace NS::Game::Player
@@ -25,7 +26,7 @@ namespace NS::Game::Player
                 co_return;
             }
 
-            if (player.Movement().ShouldLand())
+            if (PlayerJudgeLand::Judge(player.Movement().IsGrounded(), player.Movement().VerticalVelocity()))
             {
                 player.States().Change<IdlePlayerState>(player);
                 co_return;

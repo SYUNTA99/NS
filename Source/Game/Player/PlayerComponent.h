@@ -74,7 +74,7 @@ namespace NS::Game::Player
     };
 
     //! @brief 自機の能力を持つ Component
-    //! @details 移動と接地は EntityComponent が持ち、ここには自機だけの記録と条件判定を置く
+    //! @details 移動と接地は EntityComponent が持ち、ここには自機だけの記録を置く
     //! 移動の組み立て・崖つかまり・突進と反発の技は Player が持ち、ここの記録を friend 経由で読み書きする
     class PlayerComponent : public NS::Game::Entity::EntityComponent
     {
@@ -140,26 +140,6 @@ namespace NS::Game::Player
 
         //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
         void SyncGroundState() noexcept;
-
-        //! 前入力が出ている場合 true、それ以外の場合は false
-        [[nodiscard]] bool ShouldClimbLedge() const noexcept;
-        //! 手放しのボタンが押された場合 true、それ以外の場合は false
-        [[nodiscard]] bool ShouldDropLedge() const noexcept;
-
-        //! 接地していて、走行入力が出ているか動いている場合 true、それ以外の場合は false
-        [[nodiscard]] bool ShouldWalk() const noexcept;
-        //! 接地していて走行も動きも無い場合 true、それ以外の場合は false
-        [[nodiscard]] bool ShouldIdle() const noexcept;
-        //! 接地を外れている場合 true、それ以外の場合は false
-        [[nodiscard]] bool ShouldFall() const noexcept;
-        //! 接地していて上向きの速度が無い場合 true、それ以外の場合は false
-        [[nodiscard]] bool ShouldLand() const noexcept;
-        //! 入力の向きと水平の速度の内積がブレーキのしきい値を下回る場合 true、それ以外の場合は false
-        [[nodiscard]] bool ShouldBrake() const noexcept;
-        //! スティックの倒し具合が遊び以上の場合 true、それ以外の場合は false
-        [[nodiscard]] bool HasMoveInput() const noexcept;
-        //! 水平の速さが k_Epsilon 未満の場合 true、それ以外の場合は false
-        [[nodiscard]] bool IsStopped() const noexcept;
 
         //! 自機だけの通知の受け口。基底の Events() は接地の 2 件を返すので名前を分ける
         [[nodiscard]] PlayerEvents& PlayerEventsRef() noexcept { return m_playerEvents; }

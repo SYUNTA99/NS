@@ -36,7 +36,8 @@ namespace NS::Game::Level
 //! @brief プレイヤーキャラクタ。Mesh / Movement / Input / Shadow の既定構成をコードで組む
 //! @details 値はプレイヤーの種類の既定値と個体の上書きから写す
 //! 状態機械と命は Actor
-//! 自身が持ち、移動の組み立てと崖つかまりと突進と反発はここが持つ。それらの記録と条件判定は移行中の Component が持つ
+//! 自身が持ち、移動の組み立てと崖つかまりと突進と反発はここが持つ。それらの記録は移行中の Component
+//! が持つ。状態の遷移の条件は PlayerJudges の判定を状態が呼ぶ
 //! 落下死やゴールは体のセンサーへ届く知らせで受け取り、コースの流れは進行役へ伝えるだけにする
 class Player : public NS::Obj::Actor, public NS::Obj::ICameraTarget
 {
@@ -270,8 +271,6 @@ private:
     //! @details 押されていない・突進中でない・直前のフレームを突進中で終えていない・突進の予約が無い・
     //! 接地している・上向きの速度が無い、が揃ったフレームに解く。縁を掴んだ時に解くのは Player::LedgeGrab
     void UncurlWhenSettled() noexcept;
-    //! 現在状態が通常移動 (立ち / 走り / 落下 / 反動) の場合 true、それ以外の場合は false
-    [[nodiscard]] bool IsLocomotion() const noexcept;
     //! 突進の発動の判定を通れば突進を出す。状態機械を進める前に呼ぶ
     void PrepareStateStep();
     //! 状態機械を進めた後の控えの更新。丸まりを解く判定・長押しの控え・押下の消費・要求と狙いの経過を進める

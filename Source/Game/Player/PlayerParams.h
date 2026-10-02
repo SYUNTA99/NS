@@ -296,6 +296,8 @@ namespace NS::Game::Player
         float m_tapBurstScale = 0.75f;
         float m_fullBurstScaleGain = 0.25f;
         friend class ::Player;
+        friend class IdlePlayerState;
+        friend class WalkPlayerState;
         friend class NS::Game::Level::CollisionInput;
         float m_chargeThresholdSeconds = 0.2f;
         float m_chargeFullSeconds = 1.0f;
