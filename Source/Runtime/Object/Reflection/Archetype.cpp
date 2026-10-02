@@ -356,7 +356,7 @@ namespace NS::Obj
         {
             return false;
         }
-        return field->type != FieldType::ActorRef && field->type != FieldType::ComponentRef;
+        return field->type != FieldType::ActorRef;
     }
 
     bool WriteFieldToArchetype(const Component& comp, std::string_view fieldName)

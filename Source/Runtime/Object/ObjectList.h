@@ -5,7 +5,6 @@
 #include "Runtime/Object/ITickable.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ActorRef.h"
-#include "Runtime/Object/Reflection/ComponentRef.h"
 
 #include <cstddef>
 #include <functional>
@@ -97,15 +96,6 @@ namespace NS::Obj
         //! 別の配置物への参照はポインタで控えず、ActorRef で持って使うたびにここで引く
         [[nodiscard]] Actor* FindObject(ActorRef ref) noexcept;
 
-        //! @brief ComponentRef の指す Component を返す。未設定と該当なしは nullptr
-        [[nodiscard]] Component* ResolvePart(ComponentRefValue ref) noexcept;
-
-        //! ComponentRef<T> の指す T を返す。未設定・該当なし・型が合わない相手は nullptr
-        template <class T> [[nodiscard]] T* ResolvePart(const ComponentRef<T>& ref) noexcept
-        {
-            return ComponentCast<T>(ResolvePart(static_cast<const ComponentRefValue&>(ref)));
-        }
-
         //! 稼働中の collider を PhysicsScene へ body として入れ、broadphase を張り直す
         //! 稼働していない collider は body を外す。既存 body は同じ id のまま shape と姿勢を更新する
         void SyncPhysics(NS::Phys::PhysicsScene& physics);
@@ -169,9 +159,6 @@ namespace NS::Obj
         void MarkIndexDirty() noexcept;
 
         void ApplyIdentity(Actor& obj, const nlohmann::json& entry);
-
-        //! 欄の型に合わない Component を指す ComponentRef を警告する。引けば nullptr になるだけなので値は変えない
-        void WarnMismatchedComponentRefs();
 
         std::vector<std::unique_ptr<Actor>> m_objects; // 配置物の単一所有リスト
         // 更新の予定 1 件。部品か、部品でない物のどちらか片方を持つ

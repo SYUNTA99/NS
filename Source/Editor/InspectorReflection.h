@@ -28,16 +28,6 @@ namespace NS::Editor
         std::string label;    // UI表示用のラベル
     };
 
-    //! @brief ComponentRef フィールドで参照可能な Component の選択肢
-    //! @details 描く側が欄の型で絞るので、候補には全配置物の Component を入れてよい
-    struct ComponentRefOption
-    {
-        std::uint32_t object = 0; // 持ち主の配置物の永続 ID
-        std::string partName;
-        const NS::Obj::Component* target = nullptr; // 型の照合に使う実体。そのフレームの間だけ有効
-        std::string label;                          // UI表示用のラベル
-    };
-
     //! @brief 部品ごとの既定の値を引く置き場
     //! @details リフレクション欄の上書きの印と戻すボタンが、今の値と比べる相手として引く
     //! 持ち主のクラスの既定の 1 体 (コードの既定値に種類の既定値を当てた物) の同じ部品が相手になる
@@ -97,12 +87,10 @@ namespace NS::Editor
     //! @param[in,out] comp 編集対象のコンポーネント
     //! @param[in] refOptions 参照先候補のリスト。指定しない場合は数値入力となる
     //! @param[in] defaults 既定の部品。渡すと既定と違う欄に上書きの印が付き、戻すか種類の既定にするかを選べる
-    //! @param[in] componentOptions ComponentRef の参照先候補。欄の型に合う物だけを出す
     //! @return 値の編集有無と、編集の開始・確定フレームを集約した結果
     [[nodiscard]] ComponentEditResult DrawReflectedComponent(
         NS::Obj::Component& comp,
         std::span<const ObjectRefOption> refOptions = {},
-        const NS::Obj::Component* defaults = nullptr,
-        std::span<const ComponentRefOption> componentOptions = {}) noexcept;
+        const NS::Obj::Component* defaults = nullptr) noexcept;
 
 } // namespace NS::Editor
