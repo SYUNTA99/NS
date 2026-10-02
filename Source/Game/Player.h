@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Game/Level/Health.h"
-#include "Game/Player/PlayerStateManager.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/CameraTarget.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -18,6 +17,7 @@ namespace NS::Obj
 
 namespace NS::Game::Player
 {
+    class PlayerComponent;
     class PlayerParams;
     class PlayerAppearance;
     class ChargeEffects;
@@ -51,10 +51,9 @@ public:
 
     //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
     NS_REFLECT_NONE(Player, NS::Obj::Actor)
-    [[nodiscard]] NS::Obj::IStateMachine* GetStateMachine() noexcept override;
-    [[nodiscard]] const NS::Obj::IStateMachine* GetStateMachine() const noexcept override;
-    [[nodiscard]] NS::Game::Player::PlayerStateManager& StateManager() noexcept { return m_states; }
-    [[nodiscard]] const NS::Game::Player::PlayerStateManager& StateManager() const noexcept { return m_states; }
+    //! 基底が所有する自機の状態機械。コンストラクタが組むので、作った直後から立ちの状態に居る
+    [[nodiscard]] NS::Obj::StateMachine<Player>& States() noexcept { return *m_states; }
+    [[nodiscard]] const NS::Obj::StateMachine<Player>& States() const noexcept { return *m_states; }
     [[nodiscard]] NS::Obj::PlayerInput& Input() noexcept { return *m_input; }
     [[nodiscard]] const NS::Obj::PlayerInput& Input() const noexcept { return *m_input; }
     [[nodiscard]] NS::Game::Player::PlayerComponent& Movement() noexcept { return *m_movement; }
@@ -133,7 +132,7 @@ private:
     std::unique_ptr<NS::Game::Level::SlamArrow> m_slamArrow;
     std::unique_ptr<NS::Game::Player::ChargeEffects> m_chargeEffects;
     std::unique_ptr<NS::Game::Player::ImpactEffects> m_impactEffects;
-    NS::Game::Player::PlayerStateManager m_states;
+    NS::Obj::StateMachine<Player>* m_states = nullptr; // 基底が所有する。コンストラクタが預けた直後から有効
     NS::Game::Level::Health m_health;
 };
 

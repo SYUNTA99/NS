@@ -2,7 +2,6 @@
 
 #include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
-#include "Game/Player/PlayerStateManager.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
 
@@ -18,11 +17,11 @@ namespace NS::Game::Player
 
         if (player.Movement().ShouldFall())
         {
-            player.StateManager().Change<FallPlayerState>();
+            player.States().Change<FallPlayerState>(player);
         }
         else if (player.Movement().IsStopped())
         {
-            player.StateManager().Change<IdlePlayerState>();
+            player.States().Change<IdlePlayerState>(player);
         }
     }
 } // namespace NS::Game::Player

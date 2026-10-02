@@ -36,12 +36,7 @@ namespace
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         scene.MainCamera()->SetPosition(NS::Core::Vector3{});
         scene.MainCamera()->SetTarget(NS::Core::Vector3{0.0f, 0.0f, 1.0f});
-        Player* placed = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
-        if (placed != nullptr)
-        {
-            placed->StateManager().EnsureBuilt(*placed);
-        }
-        return placed;
+        return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
     void LegacyPipeline(Player& player, bool held)
@@ -110,7 +105,7 @@ TEST(PlayerUpdatePipeline, PredictedHeadingMatchesControlWithoutChangingVertical
     EXPECT_GT(predicted.x, before.x);
     ExpectSameVector(player->Movement().BodySlamVelocity(), before);
     player->ChargeControl().AdvanceState(NS::Platform::FrameTimer::FixedDelta());
-    player->StateManager().Step(*player, NS::Platform::FrameTimer::FixedDelta());
+    player->States().Step(*player, NS::Platform::FrameTimer::FixedDelta());
     EXPECT_FLOAT_EQ(player->Movement().BodySlamVelocity().x, before.x);
     const float vertical = player->Movement().VerticalVelocity();
     player->ChargeControl().ApplyControl();
@@ -152,7 +147,7 @@ TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyChargeImpactFreezeAndReleas
         ExpectSameVector(actual->Root().Position(), reference->Root().Position());
         ExpectSameVector(actual->Movement().Velocity(), reference->Movement().Velocity());
         ExpectSameVector(actual->Root().Scale(), reference->Root().Scale());
-        EXPECT_EQ(actual->StateManager().Machine().CurrentId(), reference->StateManager().Machine().CurrentId());
+        EXPECT_EQ(actual->States().CurrentId(), reference->States().CurrentId());
         EXPECT_EQ(actual->Movement().IsActive(), reference->Movement().IsActive());
         EXPECT_EQ(actual->Resolver().LastImpact().sequence, reference->Resolver().LastImpact().sequence);
         EXPECT_EQ(actual->Resolver().FreezeBeganThisStep(), reference->Resolver().FreezeBeganThisStep());
@@ -221,11 +216,11 @@ TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringHomingContr
     player->Movement().SetActive(false);
     const NS::Core::Vector3 position = player->Root().Position();
     const NS::Core::Vector3 velocity = player->Movement().Velocity();
-    const std::uint32_t stateStep = player->StateManager().Machine().StateStep();
+    const std::uint32_t stateStep = player->States().StateStep();
     player->Update(false);
     ExpectSameVector(player->Root().Position(), position);
     ExpectSameVector(player->Movement().Velocity(), velocity);
-    EXPECT_EQ(player->StateManager().Machine().StateStep(), stateStep);
+    EXPECT_EQ(player->States().StateStep(), stateStep);
 }
 
 TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyTapFrames)
@@ -245,7 +240,7 @@ TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyTapFrames)
         actual->Update(held);
         ExpectSameVector(actual->Root().Position(), reference->Root().Position());
         ExpectSameVector(actual->Movement().Velocity(), reference->Movement().Velocity());
-        EXPECT_EQ(actual->StateManager().Machine().CurrentId(), reference->StateManager().Machine().CurrentId());
+        EXPECT_EQ(actual->States().CurrentId(), reference->States().CurrentId());
         EXPECT_EQ(actual->Resolver().LastImpact().sequence, reference->Resolver().LastImpact().sequence);
         EXPECT_EQ(actual->Resolver().FreezeBeganThisStep(), reference->Resolver().FreezeBeganThisStep());
         EXPECT_EQ(actual->Resolver().ReleasedThisStep(), reference->Resolver().ReleasedThisStep());

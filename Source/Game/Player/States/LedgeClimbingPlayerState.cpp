@@ -2,7 +2,6 @@
 
 #include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
-#include "Game/Player/PlayerStateManager.h"
 
 namespace NS::Game::Player
 {
@@ -17,7 +16,7 @@ namespace NS::Game::Player
         {
             co_await NS::Core::NextFrame{};
             player.Movement().UpdateLedgeClimb(StepDelta());
-            if (!player.StateManager().IsCurrent<LedgeClimbingPlayerState>())
+            if (!player.States().IsCurrent<LedgeClimbingPlayerState>())
             {
                 co_return;
             }

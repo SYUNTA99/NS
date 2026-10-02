@@ -57,7 +57,6 @@ TEST(PlayerInputOwnership, RestartClearsSharedInputAndHeldJumpCutsOnlyOnce)
     NS::Game::Player::PlayerComponent& movement = player.Movement();
     movement.OnStart();
     input->SetJumpHeld(true);
-    player.StateManager().EnsureBuilt(player);
     player.Update();
     movement.SetVerticalVelocity(10.0f);
     input->SetJumpHeld(false);

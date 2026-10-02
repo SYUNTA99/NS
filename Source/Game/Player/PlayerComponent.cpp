@@ -3,7 +3,6 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
-#include "Game/Player/PlayerStateManager.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
@@ -91,6 +90,15 @@ namespace
             step = -maxRadians;
         }
         return RotateHorizontal(from, step);
+    }
+
+    // 自機の状態機械を TState へ移す予約をする。持ち主が自機でない Component では機械が無く、何もしない
+    template <typename TState> void ChangeState(NS::Obj::StateMachine<::Player>* states)
+    {
+        if (states != nullptr)
+        {
+            (void)states->Change(NS::Obj::StateIdOf<TState>());
+        }
     }
 } // namespace
 
@@ -202,7 +210,7 @@ namespace NS::Game::Player
 
     bool PlayerComponent::IsBodySlamming() const noexcept
     {
-        return m_stateManager != nullptr && m_stateManager->IsCurrent<BodySlamPlayerState>();
+        return m_states != nullptr && m_states->IsCurrent<BodySlamPlayerState>();
     }
 
     float PlayerComponent::BodySlamProgress01() const noexcept
@@ -255,16 +263,13 @@ namespace NS::Game::Player
             SetLateralVelocity(NS::Core::Vector3{lateral.x * scale, 0.0f, lateral.z * scale});
         }
 
-        if (m_stateManager != nullptr)
+        if (IsGrounded())
         {
-            if (IsGrounded())
-            {
-                m_stateManager->Change<WalkPlayerState>();
-            }
-            else
-            {
-                m_stateManager->Change<FallPlayerState>();
-            }
+            ChangeState<WalkPlayerState>(m_states);
+        }
+        else
+        {
+            ChangeState<FallPlayerState>(m_states);
         }
         m_playerEvents.onBodySlamEnded.Invoke();
     }
@@ -425,9 +430,8 @@ namespace NS::Game::Player
     {
         // 掴まりからは突進が出ない。玉のままぶら下がると、押しても突進が出ないのに玉の見た目だけが残る
         // 掴まっている間に玉にすると縁を測り直す手の高さが下がり、押したフレームに縁を放して 0.5 m 落ちた
-        if (curled && m_stateManager != nullptr &&
-            (m_stateManager->IsCurrent<LedgeHangingPlayerState>() ||
-             m_stateManager->IsCurrent<LedgeClimbingPlayerState>()))
+        if (curled && m_states != nullptr &&
+            (m_states->IsCurrent<LedgeHangingPlayerState>() || m_states->IsCurrent<LedgeClimbingPlayerState>()))
         {
             return;
         }
@@ -598,10 +602,7 @@ namespace NS::Game::Player
         // 縁を離れれば出るが、その時の丸まりは掴まりで解けている
         ChangeCurled(true);
 
-        if (m_stateManager != nullptr)
-        {
-            m_stateManager->Change<BodySlamPlayerState>();
-        }
+        ChangeState<BodySlamPlayerState>(m_states);
         m_playerEvents.onBodySlamStarted.Invoke();
         return true;
     }
@@ -663,10 +664,7 @@ namespace NS::Game::Player
 
         m_reboundDir = direction;
         SetVelocity(velocity);
-        if (m_stateManager != nullptr)
-        {
-            m_stateManager->Change<ReboundPlayerState>();
-        }
+        ChangeState<ReboundPlayerState>(m_states);
         return true;
     }
 
@@ -687,7 +685,7 @@ namespace NS::Game::Player
 
     bool PlayerComponent::IsRebounding() const noexcept
     {
-        return m_stateManager != nullptr && m_stateManager->IsCurrent<ReboundPlayerState>();
+        return m_states != nullptr && m_states->IsCurrent<ReboundPlayerState>();
     }
 
     void PlayerComponent::ReboundGravity(float dt) noexcept
@@ -766,24 +764,9 @@ namespace NS::Game::Player
         m_bodySlamHeld = false;
         m_wasBodySlamming = false;
 
-        if (m_stateManager != nullptr)
+        if (m_states != nullptr)
         {
-            m_stateManager->ResetToFirst();
-        }
-    }
-
-    void PlayerComponent::OnStart()
-    {
-        NS::Game::Entity::EntityComponent::OnStart();
-
-        if (Owner() == nullptr)
-        {
-            return;
-        }
-
-        if (std::string_view(Owner()->ClassName()) == "Player")
-        {
-            m_stateManager = &static_cast<::Player*>(Owner())->StateManager();
+            m_states->Reset();
         }
     }
 
@@ -792,9 +775,9 @@ namespace NS::Game::Player
         NS::Game::Entity::EntityComponent::OnUpdate();
     }
 
-    PlayerStateManager* PlayerComponent::States() const noexcept
+    NS::Obj::StateMachine<::Player>* PlayerComponent::States() const noexcept
     {
-        return m_stateManager;
+        return m_states;
     }
 
     void PlayerComponent::TickTimers(float dt) noexcept
@@ -1038,10 +1021,7 @@ namespace NS::Game::Player
             SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
             m_ledgeTopY = top;
             m_ledgeFaceNormal = faceNormal;
-            if (m_stateManager != nullptr)
-            {
-                m_stateManager->Change<LedgeHangingPlayerState>();
-            }
+            ChangeState<LedgeHangingPlayerState>(m_states);
             m_playerEvents.onLedgeGrabbed.Invoke();
             return true;
         }
@@ -1079,10 +1059,7 @@ namespace NS::Game::Player
 
         SetVerticalVelocity(Tuning().m_jumpImpulse);
         SetGrounded(false);
-        if (m_stateManager != nullptr)
-        {
-            m_stateManager->Change<FallPlayerState>();
-        }
+        ChangeState<FallPlayerState>(m_states);
         m_playerEvents.onJump.Invoke();
         return true;
     }
@@ -1104,20 +1081,14 @@ namespace NS::Game::Player
             pos.z - m_ledgeFaceNormal.z * mantleStep,
         };
         m_ledgeMantleTimer = 0.0f;
-        if (m_stateManager != nullptr)
-        {
-            m_stateManager->Change<LedgeClimbingPlayerState>();
-        }
+        ChangeState<LedgeClimbingPlayerState>(m_states);
         SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         m_playerEvents.onLedgeClimbing.Invoke();
     }
 
     void PlayerComponent::DropLedge() noexcept
     {
-        if (m_stateManager != nullptr)
-        {
-            m_stateManager->Change<FallPlayerState>();
-        }
+        ChangeState<FallPlayerState>(m_states);
         SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         SetGrounded(false);
         // 壁と逆を向いて落ちる。壁を向いたままだと、帯の上の余白に縁が入って次のフレームで掴み直す
@@ -1174,10 +1145,7 @@ namespace NS::Game::Player
         if (t >= 1.0f)
         {
             RootTransform().SetPosition(m_ledgeMantleEnd);
-            if (m_stateManager != nullptr)
-            {
-                m_stateManager->Change<IdlePlayerState>();
-            }
+            ChangeState<IdlePlayerState>(m_states);
             SetGrounded(true);
             m_jumpsRemaining = 1;
             m_coyoteTimer = Tuning().m_coyoteTime;
@@ -1239,12 +1207,12 @@ namespace NS::Game::Player
 
     bool PlayerComponent::IsLocomotion() const noexcept
     {
-        if (m_stateManager == nullptr)
+        if (m_states == nullptr)
         {
             return false;
         }
-        return m_stateManager->IsCurrent<IdlePlayerState>() || m_stateManager->IsCurrent<WalkPlayerState>() ||
-               m_stateManager->IsCurrent<FallPlayerState>() || m_stateManager->IsCurrent<ReboundPlayerState>();
+        return m_states->IsCurrent<IdlePlayerState>() || m_states->IsCurrent<WalkPlayerState>() ||
+               m_states->IsCurrent<FallPlayerState>() || m_states->IsCurrent<ReboundPlayerState>();
     }
 
     bool PlayerComponent::ShouldWalk() const noexcept

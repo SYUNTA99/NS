@@ -99,7 +99,6 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInConstructor)
     EXPECT_NE(NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player.Part("Movement")), nullptr);
     EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input")), nullptr);
     EXPECT_EQ(player.Part("PlayerInputRelay"), nullptr);
-    EXPECT_EQ(player.Part("PlayerStateManager"), nullptr);
     EXPECT_NE(player.GetStateMachine(), nullptr);
     EXPECT_EQ(player.Phase(), NS::Obj::UpdatePhase::Player);
     EXPECT_EQ(&player.Input(), NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input")));

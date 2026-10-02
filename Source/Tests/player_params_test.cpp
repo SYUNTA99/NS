@@ -20,7 +20,6 @@
 #include <type_traits>
 
 static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Game::Level::Health>);
-static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Game::Player::PlayerStateManager>);
 
 TEST(PlayerParams, MaxHealthBelongsToPlayer)
 {
@@ -38,7 +37,7 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
     EXPECT_EQ(player->Health(), 5);
     ASSERT_NE(NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player->Part("Movement")), nullptr);
     EXPECT_EQ(NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player->Part("Movement"))->States(),
-              &player->StateManager());
+              &player->States());
     player->ApplyDamage(2);
     EXPECT_EQ(player->Health(), 3);
     player->ResetHealth();
@@ -332,7 +331,6 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     scene.LoadJson(doc);
     Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    player->StateManager().EnsureBuilt(*player);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
                                        {{"押し飛ばしの距離", 8.0f},
                                         {"押し飛ばしの高さ", 3.0f},

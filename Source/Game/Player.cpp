@@ -12,8 +12,14 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerParams.h"
-#include "Game/Player/PlayerStateManager.h"
+#include "Game/Player/States/BodySlamPlayerState.h"
+#include "Game/Player/States/BrakePlayerState.h"
+#include "Game/Player/States/FallPlayerState.h"
+#include "Game/Player/States/IdlePlayerState.h"
+#include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
+#include "Game/Player/States/ReboundPlayerState.h"
+#include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/Animation.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
@@ -91,6 +97,17 @@ Player::Player() noexcept
     m_movement->m_params = m_params.get();
     m_collisionInput->m_player = this;
     m_collisionInput->m_params = m_params.get();
+    // 部品を全部付けた後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
+    m_states = &BuildStateMachine<Player,
+                                  NS::Game::Player::IdlePlayerState,
+                                  NS::Game::Player::WalkPlayerState,
+                                  NS::Game::Player::FallPlayerState,
+                                  NS::Game::Player::LedgeHangingPlayerState,
+                                  NS::Game::Player::LedgeClimbingPlayerState,
+                                  NS::Game::Player::BodySlamPlayerState,
+                                  NS::Game::Player::BrakePlayerState,
+                                  NS::Game::Player::ReboundPlayerState>(*this);
+    m_movement->m_states = m_states;
 }
 
 Player::~Player() = default;
@@ -108,16 +125,6 @@ void Player::ForEachPart(const PartVisitor& visitor) const
     visitor("SlamArrow", *m_slamArrow);
     visitor("ChargeEffects", *m_chargeEffects);
     visitor("ImpactEffects", *m_impactEffects);
-}
-
-NS::Obj::IStateMachine* Player::GetStateMachine() noexcept
-{
-    return &m_states.Machine();
-}
-
-const NS::Obj::IStateMachine* Player::GetStateMachine() const noexcept
-{
-    return &m_states.Machine();
 }
 
 NS::Obj::CameraTargetState Player::GetCameraTargetState() const
@@ -240,9 +247,8 @@ void Player::Update(bool chargeHeld)
     }
     if (m_movement->IsActive() && dt > 0.0f)
     {
-        m_states.EnsureBuilt(*this);
         m_movement->PrepareStateStep();
-        m_states.Step(*this, dt);
+        StepStateMachine();
         m_movement->FinishStateStep(dt);
     }
     else
@@ -265,7 +271,7 @@ void Player::Update(bool chargeHeld)
 
 std::string_view Player::ChooseClip(float lateralSpeed) const noexcept
 {
-    if (m_states.IsCurrent<NS::Game::Player::LedgeHangingPlayerState>())
+    if (m_states->IsCurrent<NS::Game::Player::LedgeHangingPlayerState>())
     {
         if (!m_params->m_ledgeHangClip.empty())
         {
@@ -322,7 +328,7 @@ float Player::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) con
 void Player::OnEndPlay()
 {
     m_charge.Finish();
-    m_states.ResetToFirst();
+    m_states->Reset();
     m_appliedClip.clear();
     NS::Obj::Actor::OnEndPlay();
 }

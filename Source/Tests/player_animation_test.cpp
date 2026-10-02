@@ -81,8 +81,7 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
     player.Movement().SetVerticalVelocity(-2.0f);
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 2u);
-    player.StateManager().EnsureBuilt(player);
-    ASSERT_TRUE(player.StateManager().Change<NS::Game::Player::LedgeHangingPlayerState>());
+    ASSERT_TRUE(player.States().Change<NS::Game::Player::LedgeHangingPlayerState>(player));
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 3u);
 }

@@ -9,9 +9,13 @@
 
 class Player;
 
+namespace NS::Obj
+{
+    template <typename TOwner> class StateMachine;
+}
+
 namespace NS::Game::Player
 {
-    class PlayerStateManager;
 
     //! @brief 反動の軌道のうち、当たりが決める向きと高さと距離
     //! @details 指示付き初期化で組み、PlayerComponent::BeginRebound へ渡す。
@@ -67,8 +71,8 @@ namespace NS::Game::Player
         //! 丸まりも解くが根は動かさない。呼び手は先に根を出現位置へ置いてから呼ぶ
         void ResetState() noexcept;
 
-        //! 状態が次の状態へ移る時に呼ぶ状態管理。HandleStates はこれが無いと状態を進めないので、状態の中では非 null
-        [[nodiscard]] PlayerStateManager* States() const noexcept;
+        //! 持ち主の自機が基底へ預けた状態機械。持ち主が自機でなければ nullptr
+        [[nodiscard]] NS::Obj::StateMachine<::Player>* States() const noexcept;
 
         //! 体当たりの発動を要求する
         //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
@@ -237,8 +241,6 @@ namespace NS::Game::Player
         //! 丸まっている場合 true、それ以外の場合は false
         [[nodiscard]] bool IsCurled() const noexcept { return m_curled; }
 
-        //! 基底の OnStart に続けて、同居する状態機械を控える
-        void OnStart() override;
         void OnUpdate() override;
 
         NS_REFLECT_NONE(PlayerComponent, NS::Game::Entity::EntityComponent)
@@ -343,7 +345,7 @@ namespace NS::Game::Player
         const PlayerParams* m_params = nullptr;
         NS::Core::Vector3 m_reboundDir{0.0f, 0.0f, 0.0f}; // 最後に始めた反動の水平の向き。正規化済み
 
-        PlayerStateManager* m_stateManager = nullptr; // Player Actor が所有する状態機械 (非所有)
+        NS::Obj::StateMachine<::Player>* m_states = nullptr; // 基底 Actor が所有する自機の状態機械 (非所有)。Player のコンストラクタが渡す
 
         PlayerEvents m_playerEvents;
     };
