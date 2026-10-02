@@ -42,11 +42,11 @@ namespace NS::Obj
 
     //! @brief シーンの JSON 文書から組んだ ObjectList を駆動するシーン
     //! @details ObjectList と skybox を所有し、JSON
-    //! 文書への書き出しと読み込み・プレイの凍結・標準のシーン描画パスを受け持つ Application から OnStart / OnUpdate /
+    //! 文書への書き出しと読み込み・プレイの凍結・標準のシーン描画パスを受け持つ Application から OnUpdate /
     //! OnRender / OnShutdown を順に呼び戻される 固定ステップの更新と可変フレームの描画で駆動し、IRenderable と
     //! OverlayRenderer の自己登録先も兼ねる live な Actor/Component が唯一の表現で、JSON は実体でない姿
     //! (ファイル・凍結・undo の控え) にだけ使う 配置物は TypeRegistry と ResolveAssets
-    //! で自力で組む。組み直し後の参照解決だけ派生が OnObjectsRebuilt で埋める 寿命は SceneManager が unique_ptr
+    //! で自力で組む。寿命は SceneManager が unique_ptr
     //! で所有する 窓口 (カメラ・シーンに 1 つの物・地形の当たり・エフェクト) の出所。Actor と UIActor はここへ繋ぐ
     //! 依存: ObjectList / SceneJson / ObjectBuilder / TypeRegistry
     class Scene : public NS::Core::NonCopyable,
@@ -59,29 +59,26 @@ namespace NS::Obj
         Scene();
         virtual ~Scene();
 
-        //! SceneManager::LoadScene がシーンを立てた直後に 1 回呼ぶ。Window/Renderer/Input は既に有効
-        virtual void OnStart() {}
-
-        //! 可変フレーム Render の入口。描画本体は OnRenderScene に書く
+        //! @brief 可変フレーム Render の入口。標準のシーン描画パスを 1 回回す
         void OnRender();
 
         //! IRenderable Component の自己登録。Model 等が OnStart で呼ぶ。二重登録は無視する
-        //! 登録簿は SceneRenderer が持つ。テスト等が差し替えて観測するため virtual だが、通常はオーバーライドしない
-        virtual void RegisterRenderable(IRenderable* renderable);
+        //! 登録簿は SceneRenderer が持つ
+        void RegisterRenderable(IRenderable* renderable);
         //! IRenderable Component の自己解除。Model 等が OnEndPlay で呼ぶ
-        virtual void UnregisterRenderable(IRenderable* renderable);
+        void UnregisterRenderable(IRenderable* renderable);
 
         //! OverlayRenderer の自己登録。基底の OnStart が呼ぶ。二重登録は無視する
         //! 並びは priority 昇順に保たれ、同値なら後から登録した方が後ろになる
-        virtual void RegisterOverlay(OverlayRenderer* overlay);
+        void RegisterOverlay(OverlayRenderer* overlay);
         //! OverlayRenderer の自己解除。基底の OnEndPlay が呼ぶ
-        virtual void UnregisterOverlay(OverlayRenderer* overlay);
+        void UnregisterOverlay(OverlayRenderer* overlay);
 
         //! 平行光の自己登録。DirectionalLight が OnStart で呼ぶ。二重登録は無視する
         //! 並びは登録順。ResolveSceneSettings はこの順に読む
-        virtual void RegisterLight(DirectionalLight* light);
+        void RegisterLight(DirectionalLight* light);
         //! 平行光の自己解除。DirectionalLight が OnEndPlay で呼ぶ
-        virtual void UnregisterLight(DirectionalLight* light);
+        void UnregisterLight(DirectionalLight* light);
 
         //! シーンに 1 つのカメラの管理役。シーンの破棄後は nullptr
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
@@ -120,7 +117,7 @@ namespace NS::Obj
         //! AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
         void SetAssets(AssetManager* assets) noexcept { m_assets = assets; }
 
-        //! レンダラーを非所有で差す。標準の OnRenderScene が使う。未設定 (テスト等) は描かない
+        //! レンダラーを非所有で差す。OnRender が使う。未設定 (テスト等) は描かない
         void SetRenderer(NS::Gfx::Renderer* renderer) noexcept { m_sceneRenderer.SetRenderer(renderer); }
 
         //! エフェクトを探すディレクトリを SceneRenderer へ渡す。空のままなら ContentRoot の Assets/Effects
@@ -147,7 +144,7 @@ namespace NS::Obj
         //! @details 一時オブジェクトを除く全配置物を、全 component 値まで忠実に写す
         [[nodiscard]] nlohmann::json ToJson() const;
 
-        //! @brief 編集で動いた live の当たりを張り直し、OnObjectsRebuilt を呼ぶ。object は作り直さない
+        //! @brief 編集で動いた live の当たりを張り直し、一時オブジェクトへ知らせる。object は作り直さない
         void SyncPhysics();
 
         //! @brief プレイ突入時に live を JSON 文書へ凍結して返す。プレイ規則の判定と編集復帰の姿はこの凍結を読む
@@ -155,9 +152,6 @@ namespace NS::Obj
 
         //! @brief 直近の凍結。プレイ中に限り意味を持つ
         [[nodiscard]] const nlohmann::json& PlayBaseline() const noexcept { return m_playBaseline; }
-
-        //! @brief テスト用に凍結を外から与える。以降の BeginPlayBaseline は捕捉せず据え置く
-        void SetPlayBaselineForTest(nlohmann::json scene);
 
         //! @brief live component の欄 1 つを凍結スナップショットの同じ欄へ写す
         //! @details プレイ中の手編集を、凍結から組み直す編集復帰の後へ残すための口
@@ -230,35 +224,15 @@ namespace NS::Obj
         //! Camera の段の後に CameraManager、UI の段の後に開いている UIActor、
         //! Effects の段の後にエフェクトの 1 フレームを進める
         //! 読み込んだら回り続けるのが既定で、止める口は SetSimulationEnabled / SetSimulationPaused
-        virtual void OnUpdate();
+        void OnUpdate();
 
-        //! 配置物の破棄。派生の OnShutdown はここを呼ぶ
-        virtual void OnShutdown();
+        //! 配置物と、配置物から借りている物を捨てる
+        void OnShutdown();
 
-    protected:
-        //! Opaque バケットの Renderable を並べ替えずに描画する
-        void DrawOpaque(const NS::Gfx::RenderContext& context);
-        //! Transparent バケットを context.cameraPosition から遠い順にソートして描画する
-        //! 距離が同じなら SortPriority 昇順、それも同じなら stable_sort が元の並びを保つ
-        void DrawTransparent(const NS::Gfx::RenderContext& context);
-
-        //! 登録中の OverlayRenderer を priority 昇順で描画する。IsActive が偽なら飛ばす
-        void DrawOverlays(const NS::Gfx::RenderContext& context);
-
-        //! @brief 標準の描画。シーン描画パス→デバッグ描画の吐き出し→OverlayRenderer の重ね描き
-        virtual void OnRenderScene();
-
-        //! @brief プロジェクト既定値からシーンの描画設定を作る。登録された平行光があれば照明を上書きする
-        //! 登録が無ければプロジェクト既定値がそのまま残る
-        [[nodiscard]] NS::Gfx::RenderSettings ResolveSceneSettings(const NS::Gfx::RenderSettings& projectDefaults);
-
-        //! @brief 配置物の組み直し・当たりの張り直しの後に呼ばれる。派生は live への参照をここで取り直す
-        virtual void OnObjectsRebuilt() {}
-
+    private:
         //! @brief 渡されたシーンの JSON 文書から配置物と当たりの body を組み直す
         void RebuildObjectsFrom(const nlohmann::json& scene);
 
-    private:
         //! 配置物の変化を一時オブジェクトへ知らせる。組み直しと当たりの張り直しの後に呼ぶ
         void NotifyTransientsObjectsRebuilt();
 
@@ -285,7 +259,6 @@ namespace NS::Obj
         AssetManager* m_assets = nullptr; // AssetManager、非所有。未設定なら参照の実体化を跳ばす
 
         nlohmann::json m_playBaseline = MakeSceneJson(); // プレイ突入時の凍結
-        bool m_playBaselineInjected = false;             // テスト注入の凍結を捕捉で潰さないための印
 
         bool m_simulationEnabled = true;         // 世界を回すか。エディタの編集モードだけが下ろす
         bool m_simulationPaused = false;         // 時間停止中か

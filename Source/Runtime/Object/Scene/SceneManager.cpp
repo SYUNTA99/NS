@@ -33,7 +33,6 @@ namespace NS::Obj
         m_current->SetAssets(m_assets);
         m_current->SetRenderer(m_renderer);
 
-        m_current->OnStart();
         m_current->LoadJson(std::move(scene));
         return *m_current;
     }

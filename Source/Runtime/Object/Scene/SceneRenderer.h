@@ -40,7 +40,7 @@ namespace NS::Obj
 
     //! @brief 描画物・重ね描き・平行光の登録簿を持ち、1 フレーム分のシーンを描く
     //! @details 登録は Component が OnStart / OnEndPlay で自分で行い、Scene の同名メソッドがここへ転送する
-    //! 描画は Scene::OnRenderScene が Render を 1 回呼んで駆動する
+    //! 描画は Scene::OnRender が Render を 1 回呼んで駆動する
     //! 世界は NS::Gfx::Bloom の浮動小数の描画先へ描き、1 を超えた分をにじませて書き戻す
     //! 依存: NS::Gfx::Renderer, NS::Gfx::RenderProxyList, NS::Gfx::EffectScene, NS::Gfx::Bloom, CameraManager
     class SceneRenderer : public NS::Core::NonCopyable

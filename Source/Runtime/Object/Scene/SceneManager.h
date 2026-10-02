@@ -17,7 +17,7 @@ namespace NS::Obj
     class Scene;
 
     //! @brief シーンデータから scene を立てて寿命を握る単一 scene ホルダ
-    //! @details ロード中の scene 1 つを保持し、OnStart / OnUpdate / OnRender / OnShutdown を
+    //! @details ロード中の scene 1 つを保持し、OnUpdate / OnRender / OnShutdown を
     //! Application から現 scene へ取り次ぐ
     //! 受け取るのは型でなくデータで、立てる実体は常に Scene
     //! scene を重ねる要件が出たら stack へ広げる
@@ -34,7 +34,6 @@ namespace NS::Obj
         void SetRenderer(NS::Gfx::Renderer* renderer) noexcept;
 
         //! シーンの JSON 文書から scene を立てる。現 scene は破棄してから作り直す
-        //! サブシステムの生成は OnStart より先、world の組み立ては OnStart より後に行う
         //! 文書は取込後に用済みで、以降の出所は live 実体になる
         Scene& LoadScene(nlohmann::json&& scene);
 
