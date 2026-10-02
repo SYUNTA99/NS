@@ -7,24 +7,24 @@ namespace NS::Game::Player
 {
     void LedgeHangingPlayerState::OnStep(::Player& player, float dt)
     {
-        if (!player.Movement().HoldLedge())
+        if (!player.HoldLedge())
         {
             return;
         }
-        if (player.Movement().LedgeJump())
+        if (player.LedgeJump())
         {
             return;
         }
         if (player.Movement().ShouldClimbLedge())
         {
-            player.Movement().ClimbLedge();
+            player.ClimbLedge();
             return;
         }
         if (player.Movement().ShouldDropLedge())
         {
-            player.Movement().DropLedge();
+            player.DropLedge();
             return;
         }
-        player.Movement().Shimmy(dt);
+        player.Shimmy(dt);
     }
 } // namespace NS::Game::Player

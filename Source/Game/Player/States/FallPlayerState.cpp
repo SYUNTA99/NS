@@ -13,7 +13,7 @@ namespace NS::Game::Player
         player.Jump(dt);
         player.CutJumpRelease();
         player.Gravity(dt);
-        if (player.Movement().LedgeGrab())
+        if (player.LedgeGrab())
         {
             return;
         }

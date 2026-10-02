@@ -20,7 +20,7 @@ namespace NS::Game::Player
             player.TickTimers(dt);
             player.AccelerateDuringRebound(dt);
             player.ReboundGravity(dt);
-            if (player.Movement().LedgeGrab())
+            if (player.LedgeGrab())
             {
                 co_return;
             }

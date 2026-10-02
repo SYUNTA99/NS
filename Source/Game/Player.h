@@ -34,7 +34,7 @@ namespace NS::Game::Level
 
 //! @brief プレイヤーキャラクタ。Mesh / Movement / Input / Shadow の既定構成をコードで組む
 //! @details 値はプレイヤーの種類の既定値と個体の上書きから写す
-//! 状態機械と命は Actor 自身が持ち、移動やつかみ等の実装は移行中の Component が持つ
+//! 状態機械と命は Actor 自身が持ち、移動の組み立てと崖つかまりはここが持ち、突進・反発・条件判定は移行中の Component が持つ
 //! 落下死やゴールは体のセンサーへ届く知らせで受け取り、コースの流れは進行役へ伝えるだけにする
 class Player : public NS::Obj::Actor, public NS::Obj::ICameraTarget
 {
@@ -111,6 +111,25 @@ public:
     //! 突進の 1 フレームを進める。溜めた突進は水平を発動時の向きと速さで書き直し、重力を当てる
     void UpdateBodySlam(float dt) noexcept;
 
+    // 崖つかまり。縁の検出・つかまり・登り。つかまりの位置と向きの記録は PlayerComponent に置いたまま読み書きする
+    //! 縁を掴めるか試す。掴んだ場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
+    [[nodiscard]] bool LedgeGrab() noexcept;
+    //! @brief 掴んでいる縁を取り直し、その高さへ位置を合わせ直す
+    //! @details 重力は当てない。縁の高さが変われば追い、失ったら手を放す
+    //! @return 縁が続いている場合 true、それ以外の場合は false。false なら呼び出し側は即 return する
+    [[nodiscard]] bool HoldLedge() noexcept;
+    //! @brief 掴まりからジャンプの縦の初速を与えて落下へ移る
+    //! @return ジャンプが押された場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
+    [[nodiscard]] bool LedgeJump() noexcept;
+    //! 左右入力で縁に沿って動く。続いていない方向へは動かない
+    void Shimmy(float dt) noexcept;
+    //! よじ登りを始める。2 段補間の始点と終点を決めて登りの状態へ移る
+    void ClimbLedge() noexcept;
+    //! よじ登りの 1 フレーム。終われば通常移動へ戻す
+    void UpdateLedgeClimb(float dt) noexcept;
+    //! 手を放し、その場から落下させる
+    void DropLedge() noexcept;
+
     //! 追従カメラに追われる時の窓口。自分の状態を自分で答える
     [[nodiscard]] const NS::Obj::ICameraTarget* GetCameraTarget() const noexcept override { return this; }
 
@@ -145,6 +164,11 @@ private:
     friend class NS::Game::Level::CollisionInput;
     class ChargeState;
     void StepCharge(bool held, float dt);
+    //! @brief 掴まり位置から掴める縁を探す
+    //! @param[in] hangPos 手を伸ばす元になるカプセル中心の位置
+    //! @param[out] outTop 見つけた縁の上端の y。見つからない場合は書き換えない
+    //! @return 手の高さ以下の帯に縁があり、登り先も塞がっていない場合 true、それ以外の場合は false
+    [[nodiscard]] bool FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) const noexcept;
     NS::Obj::SubStateMachine<Player> m_charge;
     std::unique_ptr<NS::Game::Level::CollisionInput> m_collisionInput;
     bool m_chargeHeld = false;

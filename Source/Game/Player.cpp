@@ -21,6 +21,7 @@
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/Animation.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
@@ -34,10 +35,12 @@
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <vector>
 
 NS_CLASS(Player)
 
@@ -597,6 +600,329 @@ void Player::UpdateBodySlam(float dt) noexcept
     {
         Gravity(dt);
     }
+}
+
+// ---- 崖つかまり ----
+// 縁の検出・つかまり・登り。つかまりの位置と向きの記録は PlayerComponent に置いたまま、friend 経由で読み書きする
+
+namespace
+{
+    // 掴まりの走査で見る AABB 群。physics 未設定なら空を返し、掴めないだけにする
+    [[nodiscard]] std::vector<NS::Core::AABB> BoxesTouchingBand(const NS::Phys::PhysicsScene* physics,
+                                                                const NS::Core::Vector3& probe,
+                                                                float below,
+                                                                float above)
+    {
+        if (physics == nullptr)
+        {
+            return {};
+        }
+
+        NS::Core::AABB region;
+        region.Center = NS::Core::Vector3{probe.x, probe.y + 0.5f * (above - below), probe.z};
+        region.Extents = NS::Core::Vector3{0.0f, 0.5f * (above + below), 0.0f};
+        return physics->OverlapBox(region);
+    }
+
+    [[nodiscard]] std::vector<NS::Core::AABB> BoxesAtPoint(const NS::Phys::PhysicsScene* physics,
+                                                           const NS::Core::Vector3& point)
+    {
+        if (physics == nullptr)
+        {
+            return {};
+        }
+
+        NS::Core::AABB region;
+        region.Center = point;
+        region.Extents = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        return physics->OverlapBox(region);
+    }
+
+    [[nodiscard]] bool AABBContainsPoint(const NS::Core::AABB& box, const NS::Core::Vector3& p) noexcept
+    {
+        return p.x >= box.Center.x - box.Extents.x && p.x <= box.Center.x + box.Extents.x &&
+               p.y >= box.Center.y - box.Extents.y && p.y <= box.Center.y + box.Extents.y &&
+               p.z >= box.Center.z - box.Extents.z && p.z <= box.Center.z + box.Extents.z;
+    }
+} // namespace
+
+bool Player::LedgeGrab() noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    if (!NS::Game::Player::PlayerJudgeLedgeGrab::Judge(
+            body.IsGrounded(), body.VerticalVelocity(), body.m_wasBodySlamming))
+    {
+        return false;
+    }
+
+    NS::Core::Vector3 dir{};
+    if (!NS::Core::TryNormalizeHorizontal(body.m_facingDir, dir))
+    {
+        return false;
+    }
+
+    // 手の高さ = カプセルの円柱部の上端。そこから前方へ伸ばした probe 点がブロックの XZ 内に入り、
+    // かつブロック上端が手の上下の帯に収まれば縁とみなす
+    // 縁は立ち姿で掴む。当たりの足元に立ち姿を立てた中心と、立ち姿の半長で測る。玉の間は根が半長ぶん下がっている
+    // 玉の寸法のまま測ると手が円柱の長さぶん低い所を探し、縁の横を玉で落ちている間は掴めなかった
+    const float halfHeight = body.StandingHalfHeight();
+    NS::Core::Vector3 pos = Root().Position();
+    pos.y += halfHeight - body.CapsuleHalfHeight();
+    const float handY = pos.y + halfHeight;
+    const NS::Core::Vector3 probe{
+        pos.x + dir.x * (body.CapsuleRadius() + m_params->m_ledgeReach),
+        handY,
+        pos.z + dir.z * (body.CapsuleRadius() + m_params->m_ledgeReach),
+    };
+
+    // 帯の上は今フレーム動いた距離まで。速く落ちると 1 フレームで縁の上端を通り過ぎて掴み損ねる
+    const float above = body.m_lastMoveDistance;
+    for (const NS::Core::AABB& box :
+         BoxesTouchingBand(body.ScenePhysics(), probe, m_params->m_ledgeGrabBelowHand, above))
+    {
+        const float top = box.Center.y + box.Extents.y;
+        if (!NS::Game::Player::PlayerJudgeLedgeGrab::InBand(probe, box, m_params->m_ledgeGrabBelowHand, above))
+        {
+            continue;
+        }
+
+        // 接近軸の優勢成分で掴む手前面を決め、その外側にカプセルを寄せた hang 位置を出す
+        NS::Core::Vector3 faceNormal{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 hang = pos;
+        if (std::abs(dir.x) >= std::abs(dir.z))
+        {
+            float sgn = -1.0f;
+            if (dir.x >= 0.0f)
+            {
+                sgn = 1.0f;
+            }
+            const float faceX = box.Center.x - sgn * box.Extents.x;
+            faceNormal = NS::Core::Vector3{-sgn, 0.0f, 0.0f};
+            hang.x = faceX - sgn * body.CapsuleRadius();
+            hang.z = NS::Core::Clamp(pos.z, box.Center.z - box.Extents.z, box.Center.z + box.Extents.z);
+        }
+        else
+        {
+            float sgn = -1.0f;
+            if (dir.z >= 0.0f)
+            {
+                sgn = 1.0f;
+            }
+            const float faceZ = box.Center.z - sgn * box.Extents.z;
+            faceNormal = NS::Core::Vector3{0.0f, 0.0f, -sgn};
+            hang.z = faceZ - sgn * body.CapsuleRadius();
+            hang.x = NS::Core::Clamp(pos.x, box.Center.x - box.Extents.x, box.Center.x + box.Extents.x);
+        }
+        hang.y = top - halfHeight;
+
+        // 上面手前の登り先が別ブロックで塞がっているなら縁ではない。掴まない
+        const float mantleStep = 2.0f * body.CapsuleRadius();
+        const NS::Core::Vector3 mantleCheck{
+            hang.x - faceNormal.x * mantleStep,
+            top + halfHeight,
+            hang.z - faceNormal.z * mantleStep,
+        };
+        bool blocked = false;
+        for (const NS::Core::AABB& other : BoxesAtPoint(body.ScenePhysics(), mantleCheck))
+        {
+            if (AABBContainsPoint(other, mantleCheck))
+            {
+                blocked = true;
+                break;
+            }
+        }
+        if (blocked)
+        {
+            continue;
+        }
+
+        // 掴まりからは突進が出ないので、立ち姿でぶら下がる。ぶら下がる位置は立ち姿の中心なので、
+        // 置く前に解く。置いた後に解くと根が半長ぶん上がる
+        body.ChangeCurled(false);
+        Root().SetPosition(hang);
+        body.SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        body.m_ledgeTopY = top;
+        body.m_ledgeFaceNormal = faceNormal;
+        (void)m_states->Change<NS::Game::Player::LedgeHangingPlayerState>(*this);
+        body.m_playerEvents.onLedgeGrabbed.Invoke();
+        return true;
+    }
+    return false;
+}
+
+bool Player::HoldLedge() noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    float top = 0.0f;
+    if (!FindLedgeTopAt(Root().Position(), top))
+    {
+        DropLedge();
+        return false;
+    }
+
+    body.m_ledgeTopY = top;
+    NS::Core::Vector3 pos = Root().Position();
+    pos.y = body.m_ledgeTopY - body.CapsuleHalfHeight();
+    Root().SetPosition(pos);
+    body.SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+    return true;
+}
+
+bool Player::LedgeJump() noexcept
+{
+    if (!m_input->JumpPressed())
+    {
+        return false;
+    }
+
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    body.SetVerticalVelocity(m_params->m_jumpImpulse);
+    body.SetGrounded(false);
+    (void)m_states->Change<NS::Game::Player::FallPlayerState>(*this);
+    body.m_playerEvents.onJump.Invoke();
+    return true;
+}
+
+void Player::ClimbLedge() noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    const NS::Core::Vector3 pos = Root().Position();
+    // ぶら下がりの中心は面から半径ぶん外。直径ぶん奥へ進めると中心が縁から半径ぶん内側に入り、体が上面に乗る
+    const float mantleStep = 2.0f * body.CapsuleRadius();
+    body.m_ledgeMantleStart = pos;
+    body.m_ledgeMantleEnd = NS::Core::Vector3{
+        pos.x - body.m_ledgeFaceNormal.x * mantleStep,
+        body.m_ledgeTopY + body.CapsuleHalfHeight() + body.CapsuleRadius(),
+        pos.z - body.m_ledgeFaceNormal.z * mantleStep,
+    };
+    body.m_ledgeMantleTimer = 0.0f;
+    (void)m_states->Change<NS::Game::Player::LedgeClimbingPlayerState>(*this);
+    body.SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+    body.m_playerEvents.onLedgeClimbing.Invoke();
+}
+
+void Player::DropLedge() noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    (void)m_states->Change<NS::Game::Player::FallPlayerState>(*this);
+    body.SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+    body.SetGrounded(false);
+    // 壁と逆を向いて落ちる。壁を向いたままだと、帯の上の余白に縁が入って次のフレームで掴み直す
+    body.m_facingDir = body.m_ledgeFaceNormal;
+}
+
+void Player::Shimmy(float dt) noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    if (body.ClimbRight() != 0.0f)
+    {
+        // 面法線に水平直交する縁方向。動いても面からの距離は変わらない
+        const NS::Core::Vector3 pos = Root().Position();
+        const NS::Core::Vector3 alongDir{-body.m_ledgeFaceNormal.z, 0.0f, body.m_ledgeFaceNormal.x};
+        NS::Core::Vector3 shimmied = pos;
+        shimmied.x += alongDir.x * body.ClimbRight() * m_params->m_ledgeShimmySpeed * dt;
+        shimmied.z += alongDir.z * body.ClimbRight() * m_params->m_ledgeShimmySpeed * dt;
+        // 移動先にも掴める縁が続いている時だけ動く。端なら止めて落とさない
+        float top = 0.0f;
+        if (FindLedgeTopAt(shimmied, top))
+        {
+            Root().SetPosition(shimmied);
+        }
+    }
+}
+
+void Player::UpdateLedgeClimb(float dt) noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    body.m_ledgeMantleTimer += dt;
+    float t = 1.0f;
+    if (m_params->m_ledgeClimbDuration > 0.0f)
+    {
+        t = NS::Core::Clamp(body.m_ledgeMantleTimer / m_params->m_ledgeClimbDuration, 0.0f, 1.0f);
+    }
+
+    // 2 段に割るのは角への食い込みを避けるため。前半は上昇だけで前へ進まない
+    NS::Core::Vector3 pos{0.0f, 0.0f, 0.0f};
+    if (t < 0.5f)
+    {
+        const float u = t / 0.5f;
+        pos.x = body.m_ledgeMantleStart.x;
+        pos.z = body.m_ledgeMantleStart.z;
+        pos.y = body.m_ledgeMantleStart.y + (body.m_ledgeMantleEnd.y - body.m_ledgeMantleStart.y) * u;
+    }
+    else
+    {
+        const float u = (t - 0.5f) / 0.5f;
+        pos.x = body.m_ledgeMantleStart.x + (body.m_ledgeMantleEnd.x - body.m_ledgeMantleStart.x) * u;
+        pos.z = body.m_ledgeMantleStart.z + (body.m_ledgeMantleEnd.z - body.m_ledgeMantleStart.z) * u;
+        pos.y = body.m_ledgeMantleEnd.y;
+    }
+    Root().SetPosition(pos);
+    body.SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+
+    if (t >= 1.0f)
+    {
+        Root().SetPosition(body.m_ledgeMantleEnd);
+        (void)m_states->Change<NS::Game::Player::IdlePlayerState>(*this);
+        body.SetGrounded(true);
+        body.m_jumpsRemaining = 1;
+        body.m_coyoteTimer = m_params->m_coyoteTime;
+    }
+}
+
+bool Player::FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) const noexcept
+{
+    const NS::Game::Player::PlayerComponent& body = *m_movement;
+    const NS::Core::Vector3 inward{-body.m_ledgeFaceNormal.x, 0.0f, -body.m_ledgeFaceNormal.z};
+    const float handY = hangPos.y + body.CapsuleHalfHeight();
+    const NS::Core::Vector3 probe{
+        hangPos.x + inward.x * (body.CapsuleRadius() + m_params->m_ledgeReach),
+        handY,
+        hangPos.z + inward.z * (body.CapsuleRadius() + m_params->m_ledgeReach),
+    };
+
+    for (const NS::Core::AABB& box :
+         BoxesTouchingBand(body.ScenePhysics(), probe, m_params->m_ledgeGrabBelowHand, 0.0f))
+    {
+        const float top = box.Center.y + box.Extents.y;
+        if (top < handY - m_params->m_ledgeGrabBelowHand || top > handY)
+        {
+            continue;
+        }
+        if (probe.x < box.Center.x - box.Extents.x || probe.x > box.Center.x + box.Extents.x)
+        {
+            continue;
+        }
+        if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
+        {
+            continue;
+        }
+
+        // 乗り上がり先が別ブロックで塞がっていたら縁とみなさない。オーバーハングの下では掴めない
+        const float mantleStep = 2.0f * body.CapsuleRadius();
+        const NS::Core::Vector3 mantleCheck{
+            hangPos.x - body.m_ledgeFaceNormal.x * mantleStep,
+            top + body.CapsuleHalfHeight(),
+            hangPos.z - body.m_ledgeFaceNormal.z * mantleStep,
+        };
+        bool blocked = false;
+        for (const NS::Core::AABB& other : BoxesAtPoint(body.ScenePhysics(), mantleCheck))
+        {
+            if (AABBContainsPoint(other, mantleCheck))
+            {
+                blocked = true;
+                break;
+            }
+        }
+        if (blocked)
+        {
+            continue;
+        }
+
+        outTop = top;
+        return true;
+    }
+    return false;
 }
 
 Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept

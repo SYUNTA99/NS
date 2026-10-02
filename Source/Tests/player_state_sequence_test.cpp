@@ -49,7 +49,7 @@ TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
         NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player->Part("Movement"));
     ASSERT_NE(movement, nullptr);
     player->Root().SetPosition(NS::Core::Vector3{});
-    movement->ClimbLedge();
+    player->ClimbLedge();
     ASSERT_TRUE(player->States().IsCurrent<NS::Game::Player::LedgeClimbingPlayerState>());
     EXPECT_FLOAT_EQ(player->Root().Position().y, 0.0f);
     const float top = movement->CapsuleHalfHeight() + movement->CapsuleRadius();
@@ -70,7 +70,7 @@ TEST(PlayerStateSequence, LeavingClimbCannotResumeAnOldPositionWrite)
     NS::Game::Player::PlayerComponent* movement =
         NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player->Part("Movement"));
     ASSERT_NE(movement, nullptr);
-    movement->ClimbLedge();
+    player->ClimbLedge();
     player->States().Step(*player, 0.0625f);
     ASSERT_TRUE(player->States().Change<NS::Game::Player::IdlePlayerState>(*player));
     player->Root().SetPosition(NS::Core::Vector3{0.0f, 3.0f, 0.0f});
@@ -167,7 +167,7 @@ TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
     NS::Game::Player::PlayerComponent* movement =
         NS::Obj::ComponentCast<NS::Game::Player::PlayerComponent>(player->Part("Movement"));
     ASSERT_NE(movement, nullptr);
-    movement->ClimbLedge();
+    player->ClimbLedge();
     player->States().Step(*player, 0.0625f);
     player->OnEndPlay();
     player->Root().SetPosition(NS::Core::Vector3{0.0f, 3.0f, 0.0f});

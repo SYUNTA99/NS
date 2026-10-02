@@ -134,24 +134,6 @@ namespace NS::Game::Player
 
         //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
         void SyncGroundState() noexcept;
-        //! 縁を掴めるか試す。掴んだ場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
-        [[nodiscard]] bool LedgeGrab() noexcept;
-
-        //! @brief 掴んでいる縁を取り直し、その高さへ位置を合わせ直す
-        //! @details 重力は当てない。縁の高さが変われば追い、失ったら手を放す
-        //! @return 縁が続いている場合 true、それ以外の場合は false。false なら呼び出し側は即 return する
-        [[nodiscard]] bool HoldLedge() noexcept;
-        //! @brief 掴まりからジャンプの縦の初速を与えて落下へ移る
-        //! @return ジャンプが押された場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
-        [[nodiscard]] bool LedgeJump() noexcept;
-        //! 左右入力で縁に沿って動く。続いていない方向へは動かない
-        void Shimmy(float dt) noexcept;
-        //! よじ登りを始める。2 段補間の始点と終点を決めて登りの状態へ移る
-        void ClimbLedge() noexcept;
-        //! よじ登りの 1 フレーム。終われば通常移動へ戻す
-        void UpdateLedgeClimb(float dt) noexcept;
-        //! 手を放し、その場から落下させる
-        void DropLedge() noexcept;
         //! 前入力が出ている場合 true、それ以外の場合は false
         [[nodiscard]] bool ShouldClimbLedge() const noexcept;
         //! 手放しのボタンが押された場合 true、それ以外の場合は false
@@ -238,7 +220,7 @@ namespace NS::Game::Player
         [[nodiscard]] bool IsLocomotion() const noexcept;
         //! @brief 丸まりを解く
         //! @details 押されていない・突進中でない・直前のフレームを突進中で終えていない・突進の予約が無い・
-        //! 接地している・上向きの速度が無い、が揃ったフレームに解く。縁を掴んだ時に解くのは LedgeGrab
+        //! 接地している・上向きの速度が無い、が揃ったフレームに解く。縁を掴んだ時に解くのは Player::LedgeGrab
         void UncurlWhenSettled() noexcept;
         //! @brief 丸まりを入れるか解き、当たりの形と根の高さを一緒に切り替える
         //! @details 丸まると当たりを球にして根を立ち姿の半長ぶん下げる。
@@ -255,12 +237,6 @@ namespace NS::Game::Player
         //! @return 放す向きを回す角度。単位は度で、正の角度は +X の向きを -Z の側へ回す。
         //! 控えた相手が無いか、探した角度の外か、相手への水平の向きが決まらない場合は 0
         [[nodiscard]] float HomingAngleForRelease(const NS::Core::Vector3& releaseDir) const noexcept;
-
-        //! @brief 掴まり位置から掴める縁を探す
-        //! @param[in] hangPos 手を伸ばす元になるカプセル中心の位置
-        //! @param[out] outTop 見つけた縁の上端の y。見つからない場合は書き換えない
-        //! @return 手の高さ以下の帯に縁があり、登り先も塞がっていない場合 true、それ以外の場合は false
-        [[nodiscard]] bool FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) const noexcept;
 
         //! 控えた狙いを今の向きにどれだけ混ぜるか 0..1。巻き戻し秒までは 1、消える秒で 0
         [[nodiscard]] float BodySlamAimBlend01() const noexcept;
