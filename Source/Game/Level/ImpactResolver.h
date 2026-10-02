@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game/Level/HitTier.h"
+#include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player.h"
@@ -214,16 +215,8 @@ namespace NS::Game::Level
         // 止めていた結果を適用する。反発は自機の反動を始め、貫通は速度を書く。相手へ明けを知らせて飛ばすか壊させる
         void ReleaseHitStop();
 
-        // 秒をフレーム数へ換算して 0 から MaxHitStopSteps までに丸める
-        [[nodiscard]] int SecondsToSteps(float seconds) const noexcept;
-
-        // 上限秒をフレーム数へ換算する。非有限と 0 以下は 0 で、止めない
-        [[nodiscard]] int MaxHitStopSteps() const noexcept;
-
-        // 最終威力と質量から止めるフレーム数を出す。0 なら止めない
-        [[nodiscard]] int ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept;
-
-        // 質量 1 の物に威力 1 で当てた時、自機が弾かれ始めの高さから上がる頂点の高さ (m)
+        // 配分の計算 ComputeImpactOutcome へ渡す調整値を、PlayerParams の欄から全部入れて返す
+        [[nodiscard]] ImpactTuning MakeImpactTuning() const noexcept;
 
         int m_freezePendingSteps = 0; // 次のフレームに掛ける凍結のフレーム数。0 は予約なし
         int m_hitStopRemaining = 0;   // 止まっている残りフレーム数。0 は止まっていない

@@ -2,6 +2,7 @@
 
 #include "Runtime/Object/Components/Body.h"
 #include "Game/Level/CollisionInput.h"
+#include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player.h"
@@ -538,7 +539,6 @@ namespace NS::Game::Level
         const float charge01 = m_player->BodySlamCharge01();
 
         const float mass = answer.mass;
-        const float massFactor = mass / (mass + 1.0f);
 
         // ボタン未搭載は係数 1.0 の素通し。段は中心近くと記録するが、白の光と止めの倍率は掛けない
         const float offset01 = HitOffset01(position, bounds, velocity, m_body->CapsuleRadius());
@@ -559,11 +559,6 @@ namespace NS::Game::Level
         m_lastPositionFactor = positionFactor;
         m_lastPower = power;
         m_wasCenterHit = centerHit;
-        float hitStopScale = 1.0f;
-        if (centerHit)
-        {
-            hitStopScale = Tuning().m_centerHitStopScale;
-        }
         NS_LOG_INFO(Game,
                     "威力の内訳: 溜め {} × 当たり位置 {} = {} 溜め量 {} 中心からの横ずれ {}",
                     chargeFactor,
@@ -589,65 +584,38 @@ namespace NS::Game::Level
             launchDir = slamDir;
         }
         m_pendingImpactDir = launchDir;
-        // 反発の質量因子の残り。動きは軽い側が受け取るので、重い物ほど揺れない
-        m_pendingShakeAmplitude = Tuning().m_shakeAmplitude / (1.0f + mass);
+        // TODO: 敵が自機に当たる場面が出たら、裁定をシーンに 1 つの物へ移す。今は自機だけが検知する
+        ImpactInput impactInput;
+        impactInput.power = power;
+        impactInput.centerHit = centerHit;
+        impactInput.mass = mass;
+        impactInput.toughness = answer.toughness;
+        impactInput.breakable = answer.breakable;
+        impactInput.awayDirection = NS::Core::Vector3{awayX, 0.0f, awayZ};
+        impactInput.launchDirection = launchDir;
+        impactInput.slamVelocity = velocity;
+        const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, MakeImpactTuning());
+        m_pendingShakeAmplitude = outcome.shakeAmplitude;
 
-        // 破壊を許可していない間は耐久を見ない。壊れる相手も押し飛ばしと反発へ回る
-        // 壊れる動きを持たない相手も同じ。貫通させると、残った相手の当たりへ自機がめり込んで止まる
-        // 反動と飛ばしの比は押し飛ばしの当たりだけが埋める。貫通は反動も飛ばしもしないので 0
-        float reboundScale = 0.0f;
-        float launchScale = 0.0f;
-        int stopSteps = 0;
-        if (Tuning().m_breakEnabled && answer.breakable && answer.toughness <= power)
+        const float reboundScale = outcome.reboundScale;
+        const float launchScale = outcome.launchScale;
+        const int stopSteps = outcome.stopSteps;
+        if (outcome.broke)
         {
             m_pendingBreak = true;
-            // 貫通は相手を飛ばさず、自機も反動しない
             // 前の当たりの曲線を残すと、この当たりの記録に使っていない曲線が載る
-            m_pendingLaunchArc = LaunchArc{};
-            m_pendingReboundArc = NS::Game::Player::ReboundArc{};
-            // 向きを保ったまま減速する。倍率は相手の質量に依らない
-            m_pendingSelfVelocity = velocity * Tuning().m_breakSpeedScale;
+            m_pendingLaunchArc = outcome.launchArc;
+            m_pendingReboundArc = outcome.reboundArc;
+            m_pendingSelfVelocity = outcome.breakSelfVelocity;
             m_didBreak = true;
             NS_LOG_INFO(Game, "貫通: 耐久 {} 威力 {} 中心近く {}", answer.toughness, power, centerHit);
-            stopSteps = SecondsToSteps(Tuning().m_breakStopSeconds * hitStopScale);
         }
         else
         {
             m_pendingBreak = false;
-            // 質量因子 mass/(mass+1) は質量が大きいほど 1 へ寄る。軽い物は勢いを持っていくのでほとんど返らない
-            // 2 倍して質量 1 で 1 にし、欄を質量 1・威力 1 の高さと距離で持つ
-            // 高さと距離に同じ倍率を掛け、威力と質量が変わっても弾かれ始めの角度を揃える
-            // TODO: 質量 0.5 より軽い物では自機の返りが 0 に近づく。軽い物を置く時は、先に高さと距離の下限を足す
-            reboundScale = power * 2.0f * massFactor;
-            // 中心近くの当たりだけ距離を伸ばし、高さは変えない。真ん中に当てた時は後ろへ飛ぶ
-            float reboundDistance = Tuning().m_reboundDistance * reboundScale;
-            if (centerHit)
-            {
-                reboundDistance *= Tuning().m_centerHitReboundDistanceScale;
-            }
-            m_pendingReboundArc =
-                NS::Game::Player::ReboundArc{.direction = NS::Core::Vector3{awayX, 0.0f, awayZ},
-                                             .apexHeight = Tuning().m_reboundApexHeight * reboundScale,
-                                             .distance = reboundDistance};
+            m_pendingReboundArc = outcome.reboundArc;
             m_pendingSelfVelocity = m_player->ReboundVelocityFor(m_pendingReboundArc);
-
-            // 指数の範囲は 0〜1。負にすると重い物ほど飛ぶ逆転になる
-            float massExponent = Tuning().m_launchMassExponent;
-            if (!std::isfinite(massExponent))
-            {
-                massExponent = 1.0f;
-            }
-            massExponent = NS::Core::Clamp(massExponent, 0.0f, 1.0f);
-
-            // 威力は距離に線形に効き、質量で割ると重い物ほど飛ばない。高さは距離と同じ比で伸ばし、打ち上げの角度を揃える
-            launchScale = power / std::pow(mass, massExponent);
-            m_pendingLaunchArc = LaunchArc{.direction = launchDir,
-                                           .distance = Tuning().m_launchDistance * launchScale,
-                                           .apexHeight = Tuning().m_launchApexHeight * launchScale,
-                                           .riseGravity = Tuning().m_launchRiseGravity,
-                                           .fallGravityScale = Tuning().m_launchFallGravityScale,
-                                           .apexBandSpeed = Tuning().m_launchApexBandSpeed,
-                                           .apexBandGravityScale = Tuning().m_launchApexBandGravityScale};
+            m_pendingLaunchArc = outcome.launchArc;
 
             m_didRebound = true;
             NS_LOG_INFO(Game,
@@ -659,10 +627,9 @@ namespace NS::Game::Level
                         m_pendingLaunchArc.distance,
                         m_pendingLaunchArc.apexHeight,
                         centerHit);
-            stopSteps = ComputeHitStopSteps(power, mass, hitStopScale);
         }
 
-        PrepareHitReturns(tier, m_collisionInput != nullptr, power, massFactor, offset01, stopSteps);
+        PrepareHitReturns(tier, m_collisionInput != nullptr, power, outcome.massFactor, offset01, stopSteps);
 
         // 止めるフレーム数が決まってから控える。止めが 0 フレームの当たりも残すので、下の return より手前に置く
         m_lastImpact.sequence += 1;
@@ -861,25 +828,27 @@ namespace NS::Game::Level
         }
     }
 
-    int ImpactResolver::SecondsToSteps(float seconds) const noexcept
+    ImpactTuning ImpactResolver::MakeImpactTuning() const noexcept
     {
-        // 整数のフレームへ丸めるので、同じ秒の指定は毎回同じ長さ止まる
-        const float raw = seconds / NS::Platform::FrameTimer::FixedDelta();
-        if (!std::isfinite(raw))
-        {
-            return 0;
-        }
-        return NS::Core::Clamp(static_cast<int>(std::lround(raw)), 0, MaxHitStopSteps());
-    }
-
-    int ImpactResolver::MaxHitStopSteps() const noexcept
-    {
-        const float raw = Tuning().m_hitStopMaxSeconds / NS::Platform::FrameTimer::FixedDelta();
-        if (!std::isfinite(raw) || raw <= 0.0f)
-        {
-            return 0;
-        }
-        return static_cast<int>(std::lround(raw));
+        const NS::Game::Player::PlayerParams& params = Tuning();
+        return ImpactTuning{.centerHitStopScale = params.m_centerHitStopScale,
+                            .shakeAmplitude = params.m_shakeAmplitude,
+                            .breakEnabled = params.m_breakEnabled,
+                            .breakSpeedScale = params.m_breakSpeedScale,
+                            .breakStopSeconds = params.m_breakStopSeconds,
+                            .reboundDistance = params.m_reboundDistance,
+                            .reboundApexHeight = params.m_reboundApexHeight,
+                            .centerHitReboundDistanceScale = params.m_centerHitReboundDistanceScale,
+                            .launchDistance = params.m_launchDistance,
+                            .launchMassExponent = params.m_launchMassExponent,
+                            .launchApexHeight = params.m_launchApexHeight,
+                            .launchRiseGravity = params.m_launchRiseGravity,
+                            .launchFallGravityScale = params.m_launchFallGravityScale,
+                            .launchApexBandSpeed = params.m_launchApexBandSpeed,
+                            .launchApexBandGravityScale = params.m_launchApexBandGravityScale,
+                            .hitStopBaseSeconds = params.m_hitStopBaseSeconds,
+                            .hitStopMaxSeconds = params.m_hitStopMaxSeconds,
+                            .fixedDelta = NS::Platform::FrameTimer::FixedDelta()};
     }
 
     void ImpactResolver::ReleaseHitStop()
@@ -972,19 +941,6 @@ namespace NS::Game::Level
         const float dx2 = m_pendingImpactDir.x * m_pendingImpactDir.x;
         const float dz2 = m_pendingImpactDir.z * m_pendingImpactDir.z;
         return NS::Core::Vector3{1.0f + (along - 1.0f) * dx2, height, 1.0f + (along - 1.0f) * dz2};
-    }
-
-    int ImpactResolver::ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept
-    {
-        // 質量差をそのままフレーム数に出すと停止が伸びすぎるので平方根で圧縮する
-        const float raw = Tuning().m_hitStopBaseSeconds * power * std::sqrt(mass) /
-                          NS::Platform::FrameTimer::FixedDelta() * hitStopScale;
-        if (!std::isfinite(raw))
-        {
-            return 0;
-        }
-        const int steps = static_cast<int>(std::lround(raw));
-        return NS::Core::Clamp(steps, 0, MaxHitStopSteps());
     }
 
     NS_CLASS(ImpactResolver)
