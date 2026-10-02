@@ -93,7 +93,6 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
         NS_REFLECT_FIELD(m_positionFactorCurve, "突進位置係数カーブ")
         NS_REFLECT_FIELD(m_centerTierEdge, "中心近くの境目")
-        NS_REFLECT_FIELD(m_nearTierEdge, "惜しいの境目")
         NS_REFLECT_FIELD(m_homingSearchDegrees, "寄せる相手を探す角度")
         NS_REFLECT_FIELD(m_homingSearchDistance, "寄せる相手を探す距離")
         NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
@@ -130,8 +129,6 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_centerHitZoom, "中心近くの当たりの寄りの倍率")
         NS_REFLECT_FIELD(m_centerHitRollDegrees, "中心近くの当たりの傾き")
         NS_REFLECT_FIELD(m_zoomRollReturnFrames, "寄りと傾きを戻すフレーム数")
-        NS_REFLECT_FIELD(m_nearHitReturnRatio, "惜しい当たりの返りの割合")
-        NS_REFLECT_FIELD(m_nearHitPullBackRatio, "惜しい当たりの返りを引き始める割合")
         NS_REFLECT_FIELD(m_centerHitPadStrength, "中心近くの当たりのパッドの振動の強さ")
         NS_REFLECT_FIELD(m_widePadStrength, "大きな外れのパッドの振動の強さ")
         NS_REFLECT_FIELD(m_squashThickness, "潰れの厚み")
@@ -154,13 +151,11 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_ringRadiusBase, "輪の半径の基準")
         NS_REFLECT_FIELD(m_ringRadiusPerPower, "輪の半径の威力あたり")
         NS_REFLECT_FIELD(m_ringStartRadius, "輪の出始めの半径")
-        NS_REFLECT_FIELD(m_nearRingReach, "惜しいの輪が届く割合")
         NS_REFLECT_FIELD(m_ringFaceCamera, "輪をカメラへ起こす割合")
         NS_REFLECT_FIELD(m_sparkCountMin, "火花の数の下限")
         NS_REFLECT_FIELD(m_sparkCountMax, "火花の数の上限")
         NS_REFLECT_FIELD(m_sparkSpeedBase, "火花の速さの基準")
         NS_REFLECT_FIELD(m_sparkSpeedPerLaunch, "火花の速さの飛ばしの比あたり")
-        NS_REFLECT_FIELD(m_nearSparkShare, "惜しいの火花の数の割合")
         NS_REFLECT_FIELD(m_wideSparkCount, "大きな外れの火花の数")
         NS_REFLECT_FIELD(m_wideSparkSpeed, "大きな外れの火花の速さ")
         NS_REFLECT_FIELD(m_emberShare, "火の粉の数の火花あたり")
@@ -251,8 +246,6 @@ namespace NS::Game::Player
         float m_centerHitZoom = 1.15f;
         float m_centerHitRollDegrees = 3.0f;
         int m_zoomRollReturnFrames = 6;
-        float m_nearHitReturnRatio = 0.4f;
-        float m_nearHitPullBackRatio = 0.5f;
         float m_centerHitPadStrength = 1.0f;
         float m_widePadStrength = 0.6f;
         float m_squashThickness = 0.7f;
@@ -275,13 +268,11 @@ namespace NS::Game::Player
         float m_ringRadiusBase = 0.5f;
         float m_ringRadiusPerPower = 0.6f;
         float m_ringStartRadius = 0.3f;
-        float m_nearRingReach = 0.5f;
         float m_ringFaceCamera = 1.0f;
         int m_sparkCountMin = 10;
         int m_sparkCountMax = 30;
         float m_sparkSpeedBase = 6.0f;
         float m_sparkSpeedPerLaunch = 3.0f;
-        float m_nearSparkShare = 0.5f;
         int m_wideSparkCount = 16;
         float m_wideSparkSpeed = 4.0f;
         float m_emberShare = 7.0f;
@@ -315,7 +306,6 @@ namespace NS::Game::Player
         NS::Obj::Curve m_chargeFactorCurve{};
         NS::Obj::Curve m_positionFactorCurve{};
         float m_centerTierEdge = 0.35f;
-        float m_nearTierEdge = 0.7f;
         float m_homingSearchDegrees = 30.0f;
         float m_homingSearchDistance = 6.0f;
         float m_chargeSquashScale = 0.95f;

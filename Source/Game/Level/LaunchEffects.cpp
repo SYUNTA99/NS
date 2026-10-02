@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <string_view>
 
 namespace NS::Game::Level
@@ -28,6 +29,20 @@ namespace NS::Game::Level
         // 粉の輪を置く床からの高さ (m)。塊の中心を浮かせ、カメラへ向く板の下半分が床に切られないようにする
         constexpr float k_DustRingLift = 0.3f;
         constexpr float k_TinyLength = 1e-4f;
+
+        // 尾の絵 launch.trail の、段の色の節を出す動的入力の番号。段ごとに 1 行の表で、段を足したら行を足す
+        [[nodiscard]] std::size_t TrailColorInputFor(HitTier tier) noexcept
+        {
+            switch (tier)
+            {
+            case HitTier::Center:
+                return 0;
+            case HitTier::Wide:
+                return 1;
+            }
+            // 番号から作った段の外の値は、中心近くの色を出さない
+            return 1;
+        }
 
         [[nodiscard]] Vector3 NormalizedOr(const Vector3& v, const Vector3& fallback) noexcept
         {
@@ -129,13 +144,9 @@ namespace NS::Game::Level
         NS::Gfx::EffectPlayDesc desc =
             PlayAt(head, TurnUpTo(NormalizedOr(m_body->Velocity(), m_launchDir)), Uniform(m_trailScale));
         // 0 番が橙、1 番が大きな外れの灰。2 番が点の寿命
-        desc.dynamicInputs[0] = 1.0f;
+        desc.dynamicInputs[0] = 0.0f;
         desc.dynamicInputs[1] = 0.0f;
-        if (tier == HitTier::Wide)
-        {
-            desc.dynamicInputs[0] = 0.0f;
-            desc.dynamicInputs[1] = 1.0f;
-        }
+        desc.dynamicInputs[TrailColorInputFor(tier)] = 1.0f;
         desc.dynamicInputs[2] = static_cast<float>(m_trailFrames);
         desc.dynamicInputs[3] = 0.0f;
         m_trail = m_layers.Play(effects, k_LaunchTrail, desc);

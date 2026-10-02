@@ -23,7 +23,6 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
                                      {"チャージ満タン秒", 1.0f},
                                      {"チャージ減速率", 0.7f},
                                      {"中心近くの境目", 0.35f},
-                                     {"惜しいの境目", 0.7f},
                                      {"寄せる相手を探す角度", 30.0f},
                                      {"寄せる相手を探す距離", 6.0f},
                                      {"構えの縮み", 0.95f},
@@ -35,6 +34,8 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
     }
     ASSERT_TRUE(fields.contains("チャージ倍率カーブ"));
     ASSERT_TRUE(fields.contains("突進位置係数カーブ"));
+    // 惜しいの段は消した。鍵が戻ると、保存した場面に段の無い境目が載る
+    EXPECT_FALSE(fields.contains("惜しいの境目"));
     EXPECT_FLOAT_EQ(input->ChargeFactorFor(0.5f), 1.5f);
     EXPECT_NEAR(input->PositionFactorFor(0.5f), 0.85f, 0.00001f);
     EXPECT_TRUE(NS::Obj::SerializeComponent(*input)["fields"].empty());
@@ -52,7 +53,6 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurvesAndTierBoundaries)
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params,
                                        {{"チャージ減速率", 0.4f},
                                         {"中心近くの境目", 0.1f},
-                                        {"惜しいの境目", 0.8f},
                                         {"チャージしきい値秒", 0.1f},
                                         {"チャージ満タン秒", 0.5f},
                                         {"チャージ倍率カーブ", {{"curve", {{0.0f, 2.0f}, {1.0f, 4.0f}}}}},
@@ -60,7 +60,9 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurvesAndTierBoundaries)
               0u);
     EXPECT_NEAR(input->ChargingSpeedScale(), 0.6f, 0.00001f);
     EXPECT_EQ(input->HitTierFor(0.099f), NS::Game::Level::HitTier::Center);
-    EXPECT_EQ(input->HitTierFor(0.1f), NS::Game::Level::HitTier::Near);
+    // 段は中心近くと大きな外れの 2 つ。中心近くの境目ちょうどから外は全部大きな外れ
+    EXPECT_EQ(input->HitTierFor(0.1f), NS::Game::Level::HitTier::Wide);
+    EXPECT_EQ(input->HitTierFor(0.5f), NS::Game::Level::HitTier::Wide);
     EXPECT_EQ(input->HitTierFor(0.8f), NS::Game::Level::HitTier::Wide);
     EXPECT_FLOAT_EQ(input->ChargeFactorFor(0.5f), 3.0f);
     EXPECT_FLOAT_EQ(input->PositionFactorFor(0.5f), 0.75f);
@@ -93,5 +95,6 @@ TEST(PlayerChargeParams, SceneOverridesKeepTheirCurvesAfterReload)
     ASSERT_NE(input, nullptr);
     EXPECT_FLOAT_EQ(input->ChargingSpeedScale(), 0.75f);
     EXPECT_FLOAT_EQ(input->ChargeFactorFor(0.5f), 2.0f);
-    EXPECT_EQ(input->HitTierFor(0.2f), NS::Game::Level::HitTier::Near);
+    EXPECT_EQ(input->HitTierFor(0.19f), NS::Game::Level::HitTier::Center);
+    EXPECT_EQ(input->HitTierFor(0.2f), NS::Game::Level::HitTier::Wide);
 }

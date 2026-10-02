@@ -6,6 +6,7 @@
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -22,14 +23,33 @@ namespace NS::Game::Player
 {
     class PlayerParams;
 
+    //! @brief 核が最大近くに留まる間の大きさの動かし方
+    enum class CoreHoldMotion
+    {
+        Pulse,  //!< 偶数のフレームだけ縮める
+        Settle, //!< 1 フレーム目の最大から、落ち着く割合へ少しずつ縮める
+    };
+
+    //! @brief 火花を飛ばす向き
+    enum class SparkHeading
+    {
+        Launch, //!< 相手の飛ぶ向き
+        Scrape, //!< 横ずれの側と飛ぶ向きと上の間
+    };
+
     //! @brief 当たり 1 回の層の大きさと量
     //! @details ImpactEffects::ShapeFor が当たりの内訳と欄から決める。0 の層は出さない
+    //! 段で変わる物は ShapeFor が段ごとの 1 行から埋め、層を出す側は段を比べずにこの欄を読む
     struct ImpactShape
     {
         NS::Game::Level::HitTier tier = NS::Game::Level::HitTier::Center; //!< 当たりの段
-        int holdLastFrame = 1;     //!< 核が最大近くに留まる最後のフレーム。止めの頭を 0 と数える
-        int nearPullFrame = 0;     //!< 惜しいの輪が広がり止むフレーム。止めの頭を 0 と数え、他の段は 0
-        int sparkStartFrame = 0;   //!< 火花を出すフレーム。止めの頭を 0 と数え、中心近くだけ 3
+        std::size_t coreInput = 0;                        //!< 核の絵 impact.core の、段の色の節を出す動的入力の番号
+        CoreHoldMotion coreHold = CoreHoldMotion::Pulse;  //!< 核が最大近くに留まる間の大きさの動かし方
+        SparkHeading sparkHeading = SparkHeading::Launch; //!< 火花の向き
+        std::size_t sparkCountInput = 0;                  //!< 火花の絵 impact.sparks の、粒の数を入れる動的入力の番号
+        std::size_t recoilCountInput = 0;                 //!< 弾かれ線の絵 impact.recoil の、本数を入れる動的入力の番号
+        int holdLastFrame = 1;                            //!< 核が最大近くに留まる最後のフレーム。止めの頭を 0 と数える
+        int sparkStartFrame = 0;                          //!< 火花を出すフレーム。止めの頭を 0 と数え、中心近くだけ 3
         int emberStartFrame = 0;   //!< 火の粉を出すフレーム。止めの頭を 0 と数え、核が落ちるフレーム。中心近くだけ
         float coreDiameter = 0.0f; //!< 核の直径。単位は m
         float streakLength = 0.0f; //!< 光条の長さ。単位は m。中心近くだけ
@@ -115,6 +135,11 @@ namespace NS::Game::Player
 
     private:
         [[nodiscard]] const PlayerParams& Tuning() const noexcept;
+        // 段で変わる層の形を段ごとの 1 行から埋める。段を足したら行を足す
+        static void ApplyTierRow(ImpactShape& shape,
+                                 const NS::Game::Level::ImpactRecord& impact,
+                                 float power,
+                                 const PlayerParams& tuning) noexcept;
         // 止めの頭から数えた当たり 1 回の段取り。層の番号 0 はまだ出していない印
         struct HitPlan
         {

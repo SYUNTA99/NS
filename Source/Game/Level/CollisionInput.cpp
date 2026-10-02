@@ -453,10 +453,6 @@ namespace NS::Game::Level
         {
             return HitTier::Center;
         }
-        if (offset01 < Tuning().m_nearTierEdge)
-        {
-            return HitTier::Near;
-        }
         return HitTier::Wide;
     }
 

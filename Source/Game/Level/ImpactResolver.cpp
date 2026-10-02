@@ -59,17 +59,6 @@ namespace NS::Game::Level
             return seed[0];
         }
 
-        // 止めのフレーム数 × ratio を切り上げたフレーム数。ratio は 0〜1 に収め、非数は 0 として扱う
-        [[nodiscard]] int PullBackFrames(int stopSteps, float ratio) noexcept
-        {
-            if (!(ratio > 0.0f))
-            {
-                return 0;
-            }
-            const float clamped = std::min(ratio, 1.0f);
-            return static_cast<int>(std::ceil(static_cast<float>(stopSteps) * clamped));
-        }
-
         // 自機の位置から向きの線を引いた時の、相手の外接箱の中心の測り
         struct LineOffset
         {
@@ -540,19 +529,21 @@ namespace NS::Game::Level
 
         const float mass = answer.mass;
 
-        // ボタン未搭載は係数 1.0 の素通し。段は中心近くと記録するが、白の光と止めの倍率は掛けない
+        // ボタン未搭載は係数 1.0 の素通し。段は中心近くと記録するが、段の返りと止めと反動の距離の倍率は掛けない
+        // 外し方は段の種類に混ぜず、下の tiered で分ける
         const float offset01 = HitOffset01(position, bounds, velocity, m_body->CapsuleRadius());
         float chargeFactor = 1.0f;
         float positionFactor = 1.0f;
         HitTier tier = HitTier::Center;
-        bool centerHit = false;
-        if (m_collisionInput != nullptr)
+        const bool tiered = m_collisionInput != nullptr;
+        if (tiered)
         {
             chargeFactor = m_collisionInput->ChargeFactorFor(charge01);
             positionFactor = m_collisionInput->PositionFactorFor(offset01);
             tier = m_collisionInput->HitTierFor(offset01);
-            centerHit = tier == HitTier::Center;
         }
+        // 読むのは記録と WasCenterHit とログだけ。配分と返りは段で分ける
+        const bool centerHit = tiered && tier == HitTier::Center;
         // 最終威力 = チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
         const float power = chargeFactor * positionFactor;
         m_lastCharge01 = charge01;
@@ -587,14 +578,20 @@ namespace NS::Game::Level
         // TODO: 敵が自機に当たる場面が出たら、裁定をシーンに 1 つの物へ移す。今は自機だけが検知する
         ImpactInput impactInput;
         impactInput.power = power;
-        impactInput.centerHit = centerHit;
+        impactInput.tier = tier;
         impactInput.mass = mass;
         impactInput.toughness = answer.toughness;
         impactInput.breakable = answer.breakable;
         impactInput.awayDirection = NS::Core::Vector3{awayX, 0.0f, awayZ};
         impactInput.launchDirection = launchDir;
         impactInput.slamVelocity = velocity;
-        const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, MakeImpactTuning(Tuning()));
+        ImpactTuning impactTuning = MakeImpactTuning(Tuning());
+        if (!tiered)
+        {
+            impactTuning.centerHitStopScale = 1.0f;
+            impactTuning.centerHitReboundDistanceScale = 1.0f;
+        }
+        const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, impactTuning);
         m_pendingShakeAmplitude = outcome.shakeAmplitude;
 
         const float reboundScale = outcome.reboundScale;
@@ -630,7 +627,7 @@ namespace NS::Game::Level
                         centerHit);
         }
 
-        PrepareHitReturns(tier, m_collisionInput != nullptr, power, outcome.massFactor, offset01, stopSteps);
+        PrepareHitReturns(tier, tiered, power, outcome.massFactor, offset01, stopSteps);
 
         // 止めるフレーム数が決まってから控える。止めが 0 フレームの当たりも残すので、下の return より手前に置く
         m_lastImpact.sequence += 1;
@@ -713,95 +710,82 @@ namespace NS::Game::Level
         }
     }
 
+    ImpactResolver::TierReturns ImpactResolver::PlainReturns(float swing, int stopSteps) noexcept
+    {
+        TierReturns returns;
+        returns.shake.upAmplitude = swing;
+        returns.shake.frames = stopSteps;
+        returns.shake.longestFlipFrames = 1;
+        return returns;
+    }
+
+    ImpactResolver::TierReturns ImpactResolver::TierReturnsFor(HitTier tier, float swing, int stopSteps) const noexcept
+    {
+        // 振動は段ごとにモーターを分ける。強さは質量と威力で変えない
+        switch (tier)
+        {
+        case HitTier::Center:
+        {
+            // 縦だけを毎フレーム入れ替え、寄り・傾き・振動の長さを止めで結ぶ
+            TierReturns returns = PlainReturns(swing * Tuning().m_centerHitShakeScale, stopSteps);
+            returns.flashSteps = Tuning().m_centerHitFlashSteps;
+            returns.zoomRoll.zoom = Tuning().m_centerHitZoom;
+            returns.zoomRoll.rollDegrees = Tuning().m_centerHitRollDegrees;
+            returns.zoomRoll.holdFrames = stopSteps;
+            returns.zoomRoll.returnFrames = Tuning().m_zoomRollReturnFrames;
+            returns.pad.start.left = Tuning().m_centerHitPadStrength;
+            returns.pad.fadeFrames = stopSteps;
+            returns.pad.frames = stopSteps;
+            return returns;
+        }
+        case HitTier::Wide:
+        {
+            TierReturns returns;
+            // 横と縦を合わせた長さが最初の振れの大きさになるよう、比で分ける
+            const float upOverSide = Tuning().m_wideShakeUpOverSide;
+            const float side = swing / std::sqrt(1.0f + upOverSide * upOverSide);
+            returns.shake.sideAmplitude = side;
+            returns.shake.upAmplitude = side * upOverSide;
+            returns.shake.frames = Tuning().m_wideShakeFrames;
+            returns.shake.longestFlipFrames = Tuning().m_wideShakeLongestFlipFrames;
+            returns.pad.start.right = Tuning().m_widePadStrength;
+            returns.pad.fadeFrames = Tuning().m_wideShakeFrames;
+            returns.pad.frames = Tuning().m_wideShakeFrames;
+            return returns;
+        }
+        }
+        // 番号から作った段の外の値は段の返りを掛けない
+        return PlainReturns(swing, stopSteps);
+    }
+
     void ImpactResolver::PrepareHitReturns(
         HitTier tier, bool tiered, float power, float massFactor, float offset01, int stopSteps)
     {
-        // 段の無い台は白と寄りと傾きを出さず、揺れの倍率も掛けない
-        const bool center = tiered && tier == HitTier::Center;
-        const bool nearMiss = tiered && tier == HitTier::Near;
-        const bool wide = tiered && tier == HitTier::Wide;
-
-        // 最初の振れの大きさは全段で同じ式。反発と同じ質量因子を掛け、中心近くだけ段の倍率を掛ける
-        float swing = Tuning().m_cameraShakeScale * power * massFactor;
-        m_pendingFlashSteps = 0;
-        if (center)
+        // 最初の振れの大きさは全段で同じ式。反発と同じ質量因子を掛け、段の倍率は表の行が掛ける
+        const float swing = Tuning().m_cameraShakeScale * power * massFactor;
+        // 段の無い台は段の表を引かず、白と寄りと傾きと振動を出さない
+        TierReturns returns = PlainReturns(swing, stopSteps);
+        if (tiered)
         {
-            swing *= Tuning().m_centerHitShakeScale;
-            m_pendingFlashSteps = Tuning().m_centerHitFlashSteps;
+            returns = TierReturnsFor(tier, swing, stopSteps);
         }
 
-        // 中心近くと惜しいは縦だけを毎フレーム入れ替え、止めのフレーム数で収める
-        m_pendingShake = NS::Obj::CameraShakeDesc{
-            .sideAmplitude = 0.0f,
-            .upAmplitude = swing,
-            .frames = stopSteps,
-            .longestFlipFrames = 1,
-            .firstSideDirection = m_pendingReboundArc.direction,
-            .seed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, m_pendingTargetHome),
-        };
-        if (wide)
-        {
-            // 横と縦を合わせた長さが最初の振れの大きさになるよう、比で分ける
-            const float side =
-                swing / std::sqrt(1.0f + Tuning().m_wideShakeUpOverSide * Tuning().m_wideShakeUpOverSide);
-            m_pendingShake.sideAmplitude = side;
-            m_pendingShake.upAmplitude = side * Tuning().m_wideShakeUpOverSide;
-            m_pendingShake.frames = Tuning().m_wideShakeFrames;
-            m_pendingShake.longestFlipFrames = Tuning().m_wideShakeLongestFlipFrames;
-        }
-
+        m_pendingFlashSteps = returns.flashSteps;
+        m_pendingShake = returns.shake;
+        m_pendingShake.firstSideDirection = m_pendingReboundArc.direction;
+        m_pendingShake.seed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, m_pendingTargetHome);
         // 寄りの無い段も倍率 1 の設定を渡し、前の当たりの寄りを残さない
-        m_pendingZoomRoll = NS::Obj::CameraZoomRollDesc{.rollDirection = m_pendingImpactDir};
-        if (center)
-        {
-            m_pendingZoomRoll.zoom = Tuning().m_centerHitZoom;
-            m_pendingZoomRoll.rollDegrees = Tuning().m_centerHitRollDegrees;
-            m_pendingZoomRoll.holdFrames = stopSteps;
-            m_pendingZoomRoll.returnFrames = Tuning().m_zoomRollReturnFrames;
-        }
-        if (nearMiss)
-        {
-            // 寄りは 1 を超えた分に割合を掛ける。倍率そのものに掛けると 1 未満の引きになる
-            m_pendingZoomRoll.zoom = 1.0f + (Tuning().m_centerHitZoom - 1.0f) * Tuning().m_nearHitReturnRatio;
-            m_pendingZoomRoll.rollDegrees = Tuning().m_centerHitRollDegrees * Tuning().m_nearHitReturnRatio;
-            m_pendingZoomRoll.holdFrames = PullBackFrames(stopSteps, Tuning().m_nearHitPullBackRatio);
-            m_pendingZoomRoll.returnFrames = Tuning().m_zoomRollReturnFrames;
-        }
+        m_pendingZoomRoll = returns.zoomRoll;
+        m_pendingZoomRoll.rollDirection = m_pendingImpactDir;
+        m_pendingPad = returns.pad;
 
         // 当たりの記録は検知のフレームに読まれるので、傾きの向きもここで今のカメラから決める
         const float rollSign = NS::Obj::CameraSideSignOf(*Owner(), m_pendingZoomRoll.rollDirection);
-        // 振動は段ごとにモーターを分ける。強さは質量と威力で変えない。中心近くと惜しいの長さは止めで結ぶ
-        m_pendingPad = NS::Obj::HitPadVibration{};
-        if (center)
-        {
-            m_pendingPad.start.left = Tuning().m_centerHitPadStrength;
-            m_pendingPad.fadeFrames = stopSteps;
-            m_pendingPad.frames = stopSteps;
-        }
-        if (nearMiss)
-        {
-            // 減る傾きは中心近くと同じにし、寄りと同じフレームで切る
-            m_pendingPad.start.left = Tuning().m_centerHitPadStrength * Tuning().m_nearHitReturnRatio;
-            m_pendingPad.fadeFrames = stopSteps;
-            m_pendingPad.frames = PullBackFrames(stopSteps, Tuning().m_nearHitPullBackRatio);
-        }
-        if (wide)
-        {
-            m_pendingPad.start.right = Tuning().m_widePadStrength;
-            m_pendingPad.fadeFrames = Tuning().m_wideShakeFrames;
-            m_pendingPad.frames = Tuning().m_wideShakeFrames;
-        }
-
         m_lastImpact.cameraShake = NS::Core::Vector2{m_pendingShake.sideAmplitude, m_pendingShake.upAmplitude}.Length();
         m_lastImpact.flashStart = m_pendingFlashSteps;
         m_lastImpact.zoomStart = m_pendingZoomRoll.zoom;
         m_lastImpact.rollStart = m_pendingZoomRoll.rollDegrees * rollSign;
         m_lastImpact.padStart = m_pendingPad.start;
-        m_lastImpact.pullBackFrames = 0;
-        if (nearMiss)
-        {
-            m_lastImpact.pullBackFrames = PullBackFrames(stopSteps, Tuning().m_nearHitPullBackRatio);
-        }
     }
 
     void ImpactResolver::StartHitReturns()

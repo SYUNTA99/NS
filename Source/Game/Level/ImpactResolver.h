@@ -46,14 +46,14 @@ namespace NS::Game::Level
         float charge01 = 0.0f;
         float positionFactor = 0.0f;
         float offset01 = 0.0f;          //!< 相手の中心からの横ずれ。相手の半幅と自機の半径の和で割った 0..1
-        HitTier tier = HitTier::Center; //!< 当たりの段。CollisionInput が無い時は Center だが演出は掛けない
+        HitTier tier = HitTier::Center; //!< 当たりの段。CollisionInput が無い時は Center だが段の返りと倍率は掛けない
         float cameraShake = 0.0f;       //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
         int flashStart = 0;             //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
         float zoomStart = 1.0f;         //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
         float rollStart = 0.0f; //!< 傾きの始めの値 (度)。正は画面の上端をカメラの右へ倒す向き。傾きの無い当たりは 0
         NS::Platform::GamepadVibration padStart; //!< パッドの振動の始めの値。振動の無い当たりは 0
         int hitStopSteps = 0;
-        bool centerHit = false; //!< 白の光と止めの倍率を掛けた場合 true。CollisionInput が無い時は false
+        bool centerHit = false; //!< 段が Center で段の返りを掛けた場合 true。CollisionInput が無い時は false
         bool broke = false;
         NS::Core::Vector3 selfVelocity; //!< 明けに自機が持つ速度。反動は初速、貫通は減速した突進の速度。単位は m/s
         // 反動の頂点の高さは押し飛ばしの当たりだけが埋める。貫通の当たりは反動しないので 0
@@ -69,8 +69,6 @@ namespace NS::Game::Level
         bool targetPlaced = true;  //!< 相手が置かれていた (飛んでいなかった) 場合 true
         float launchScale = 0.0f;  //!< 相手の曲線の距離と高さに掛けた比。威力 ÷ 質量の指数乗で、質量 1・威力 1 で 1
         float reboundScale = 0.0f; //!< 自機の反動の高さと距離に掛けた比。威力 × 2 × 質量 ÷ (質量 + 1)
-        //! 惜しい当たりの寄りと振動を保つフレーム数。止めの頭から数え、このフレームから引き始める。他の段は 0
-        int pullBackFrames = 0;
     };
 
     //! @brief 突進の線で最初に触れる相手の予測
@@ -200,6 +198,22 @@ namespace NS::Game::Level
 
         // 凍結を掛ける。自機を寝かせて潰し、当たりの返りを始め、相手へ止めの頭を知らせる
         void BeginFreeze(int stopSteps);
+
+        // 当たり 1 回の返り。揺れの向きと種、寄りと傾きの向きは呼び手が入れる
+        struct TierReturns
+        {
+            int flashSteps = 0; // 白の光のフレーム数
+            NS::Obj::CameraShakeDesc shake;
+            NS::Obj::CameraZoomRollDesc zoomRoll;
+            NS::Obj::HitPadVibration pad;
+        };
+
+        // 段の返りを掛けない当たりの返り。縦だけの揺れを止めのフレーム数で収め、白・寄り・傾き・振動は無い
+        [[nodiscard]] static TierReturns PlainReturns(float swing, int stopSteps) noexcept;
+
+        // 段ごとに 1 行の表から返りを組む。段を足したら行を足す
+        // swing は全段で同じ式の最初の振れの大きさで、段の倍率は行が掛ける
+        [[nodiscard]] TierReturns TierReturnsFor(HitTier tier, float swing, int stopSteps) const noexcept;
 
         // 当たりの返り (白・揺れ・寄りと傾き・振動) を段から組んで控え、記録へ始めの値を書く。検知のフレームに呼ぶ
         // 事前条件: 反動の向き・相手の飛ぶ向き・相手の番号と位置を控え終えている

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Level/HitTier.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Player/ReboundArc.h"
 #include "Runtime/Core/Math.h"
@@ -34,12 +35,12 @@ namespace NS::Game::Level
     //! @brief 衝突の配分の計算へ渡す、検知で決まった値
     struct ImpactInput
     {
-        float power = 0.0f;     //!< 最終威力。CollisionInput が溜めと当たり位置から出した値
-        bool centerHit = false; //!< 中心近くの当たりの場合 true。段の演出を掛けない当たりは false
-        float mass = 1.0f;      //!< 相手の質量
-        float toughness = 0.0f; //!< 相手の耐久
-        bool breakable = false; //!< 相手が壊れる動きを持つ場合 true
-        NS::Core::Vector3 awayDirection{1.0f, 0.0f, 0.0f};   //!< 自機が弾かれる水平の向き。正規化済み
+        float power = 0.0f;                                //!< 最終威力。CollisionInput が溜めと当たり位置から出した値
+        HitTier tier = HitTier::Wide;                      //!< 当たりの段。止めと反動の距離の倍率を段で引く
+        float mass = 1.0f;                                 //!< 相手の質量
+        float toughness = 0.0f;                            //!< 相手の耐久
+        bool breakable = false;                            //!< 相手が壊れる動きを持つ場合 true
+        NS::Core::Vector3 awayDirection{1.0f, 0.0f, 0.0f}; //!< 自機が弾かれる水平の向き。正規化済み
         NS::Core::Vector3 launchDirection{1.0f, 0.0f, 0.0f}; //!< 相手を飛ばす水平の向き。正規化済み
         NS::Core::Vector3 slamVelocity{0.0f, 0.0f, 0.0f};    //!< 突進の狙いの速度
     };
