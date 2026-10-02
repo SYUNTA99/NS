@@ -4,6 +4,7 @@
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/FallPlayerState.h"
+#include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Runtime/Object/Components/Body.h"
@@ -36,7 +37,8 @@ namespace
 } // namespace
 
 // ---- 移動の組み立て ----
-// 状態の OnStep がこの順で呼ぶ。身体 (Body) の速度・接地・重力の計算を呼ぶだけで、値は PlayerParams から読む
+// 状態の OnStep と、身体の段 (BodyStep) から呼ぶ MoveBody が、ここの関数を呼ぶ。
+// 身体 (Body) の速度・接地・重力の計算を呼ぶだけで、値は PlayerParams から読む
 
 void Player::MoveBody(float dt) noexcept
 {
@@ -101,7 +103,7 @@ void Player::AccelerateToInputDirection(float dt) noexcept
 {
     NS::Obj::Body& body = *m_body;
     NS::Core::Vector3 direction{};
-    if (!NS::Game::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->m_stickDeadzone) ||
+    if (!NS::Game::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->StickDeadzone()) ||
         !NS::Core::TryNormalizeHorizontal(DesiredDirection(), direction))
     {
         return;
@@ -212,7 +214,7 @@ void Player::AccelerateDuringRebound(float dt) noexcept
 {
     NS::Obj::Body& body = *m_body;
     NS::Core::Vector3 direction{};
-    if (!NS::Game::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->m_stickDeadzone) ||
+    if (!NS::Game::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->StickDeadzone()) ||
         !NS::Core::TryNormalizeHorizontal(DesiredDirection(), direction))
     {
         return;

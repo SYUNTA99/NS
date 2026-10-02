@@ -1,4 +1,3 @@
-#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/FollowCamera.h"
 #include "Game/Level/Goal.h"
@@ -10,6 +9,7 @@
 #include "Game/Player.h"
 #include "Runtime/Object/Actors/Light.h"
 #include "Runtime/Object/Actors/MapParts.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/BoxCollider.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/Components/DirectionalLight.h"

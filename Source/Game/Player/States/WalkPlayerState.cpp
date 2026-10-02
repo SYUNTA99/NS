@@ -1,12 +1,12 @@
 #include "Game/Player/States/WalkPlayerState.h"
 
-#include "Runtime/Object/Components/Body.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
+#include "Runtime/Object/Components/Body.h"
 
 namespace NS::Game::Player
 {
@@ -15,9 +15,9 @@ namespace NS::Game::Player
         player.TickTimers(dt);
         const NS::Obj::Body& body = player.Body();
         const PlayerParams& params = player.Params();
-        const bool hasInput = PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), params.m_stickDeadzone);
+        const bool hasInput = PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), params.StickDeadzone());
         const bool brake = PlayerJudgeBrake::Judge(
-            hasInput, player.DesiredDirection(), body.LateralVelocity(), params.m_brakeThreshold);
+            hasInput, player.DesiredDirection(), body.LateralVelocity(), params.BrakeThreshold());
         if (!brake && hasInput)
         {
             player.AccelerateToInputDirection(dt);

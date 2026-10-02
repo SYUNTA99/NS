@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Runtime/Object/Components/BodyEvents.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
+#include "Runtime/Object/Components/BodyEvents.h"
 #include "Runtime/Physics/JoltCharacter.h"
 
 #include <memory>
@@ -27,9 +27,8 @@ namespace NS::Obj
     //! TypeRegistry には登録しない。部品名は持ち主が ForEachPart で付ける。
     //! 衝突の PhysicsScene は使う時に持ち主の Scene から引く。
     //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。
-    //! dt は NS::Platform::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
-    //! 依存: NS::Core, NS::Platform::FrameTimer, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Scene /
-    //! CapsuleCollider
+    //! dt は呼び手が引数で渡す。呼び手は固定ステップの秒を渡し、描画フレームの秒は渡さない
+    //! 依存: NS::Core, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Scene / CapsuleCollider
     class Body : public NS::Obj::Component
     {
     public:

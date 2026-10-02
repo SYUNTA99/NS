@@ -4,7 +4,6 @@
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
-#include "Game/Player.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
@@ -24,12 +23,19 @@ namespace NS::Game::Player
 namespace NS::Obj
 {
     class Actor;
+    class Body;
     class HitSensor;
 } // namespace NS::Obj
 
 namespace NS::Game::Level
 {
     class CollisionInput;
+
+    //! @brief 配分の計算 ComputeImpactOutcome へ渡す調整値を、params の欄から全部入れて作る
+    //! @details ImpactTuning の値の正は PlayerParams 1 つで、ここがその写し先の組み立てを 1 か所で持つ
+    //! @param[in] params 自機の調整値の欄
+    //! @return params の欄と今の固定ステップの秒を写した調整値
+    [[nodiscard]] ImpactTuning MakeImpactTuning(const NS::Game::Player::PlayerParams& params) noexcept;
 
     //! @brief 当たり 1 回の裁定の内訳
     struct ImpactRecord
@@ -82,7 +88,7 @@ namespace NS::Game::Level
     };
 
     //! @brief ぶつかった結果を自機側で決める Component
-    //! @details Player::Update が状態と移動より前に呼ぶ。
+    //! @details Player の観測の段 (ObserveStep) と決定の段 (DecideStep) が、状態と移動の段より前に呼ぶ。
     //! 身体が動く前にその 1 固定ステップの結末を決めるので、
     //! 壁の手前で止められて速度を消された後から結果を推測し直さずに済む
     //! 相手は次の固定ステップの自機のカプセルに重なる物の体のセンサーから選ぶ。調べる種類はプレイヤーの体当たりの
@@ -215,9 +221,6 @@ namespace NS::Game::Level
         // 止めていた結果を適用する。反発は自機の反動を始め、貫通は速度を書く。相手へ明けを知らせて飛ばすか壊させる
         void ReleaseHitStop();
 
-        // 配分の計算 ComputeImpactOutcome へ渡す調整値を、PlayerParams の欄から全部入れて返す
-        [[nodiscard]] ImpactTuning MakeImpactTuning() const noexcept;
-
         int m_freezePendingSteps = 0; // 次のフレームに掛ける凍結のフレーム数。0 は予約なし
         int m_hitStopRemaining = 0;   // 止まっている残りフレーム数。0 は止まっていない
         int m_hitStopTotal = 0;       // 止め始めのフレーム数。振動の減衰の分母
@@ -258,7 +261,7 @@ namespace NS::Game::Level
         NS::Core::Vector3 m_observedVelocity{};
         bool m_hasObservedTarget = false;
         bool m_stateReady = false;
-        ::Player* m_player = nullptr;                        // 突進と反動の技の呼び先。非所有
+        ::Player* m_player = nullptr;    // 突進と反動の技の呼び先。非所有
         NS::Obj::Body* m_body = nullptr; // 同じ配置物の身体。非所有
         CollisionInput* m_collisionInput = nullptr;
         NS::Obj::HitReaction* m_hitReaction = nullptr; // 同じ配置物の当たりの演出。非所有

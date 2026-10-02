@@ -1,6 +1,5 @@
 #include "Game/Player/PlayerAppearance.h"
 
-#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
@@ -9,6 +8,7 @@
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/AssetManager.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Clock.h"

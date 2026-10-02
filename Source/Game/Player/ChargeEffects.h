@@ -39,7 +39,8 @@ namespace NS::Game::Player
     //!   止めた k_TrailFadeSteps フレーム後に消す
     //! 溜めている間の層には溜め量 (CollisionInput の判定) を動的入力 0 番で毎フレーム渡す。
     //! 描画の無い世界でも記録は残し、試しと Replay は Layers を読む
-    //! Player::Update が PlayerAppearance の後に呼ぶ。同じフレームに PlayerAppearance が回した玉の向きより後に走る
+    //! Player の見た目の段 (VisualStep) が PlayerAppearance の後に呼ぶ。
+    //! 同じフレームに PlayerAppearance が回した玉の向きより後に走る
     //! 依存: EffectLayerList, PlayerAppearance, NS::Game::Level::CollisionInput,
     //! NS::Game::Level::ImpactResolver
     // TODO: エフェクトは固定ステップで進み、付いていく層は固定ステップの位置へ置く。60 を超える画面で付いていく層が

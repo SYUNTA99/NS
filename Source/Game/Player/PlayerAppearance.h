@@ -39,7 +39,8 @@ namespace NS::Game::Player
     //! 反動のまま着地したフレームに、同居する Model の描く時だけの倍率で縦に潰し、決めたフレーム数で戻す。
     //! 跳びの着地は潰さない
     //! 溜め量の正は同居する CollisionInput の判定で、ここは読むだけ
-    //! Player::Update が移動と当たりの演出の後に呼ぶ。配置物を組む経路 (ObjectFromJson / StartSpawned) では
+    //! Player の見た目の段 (VisualStep) が移動の段と HitReaction の後に呼ぶ。
+    //! 配置物を組む経路 (ObjectFromJson / StartSpawned) では
     //! 参照の引き当てが Player::ForEachPart の並びに回るので、Model が自分の参照から mesh を差した後にこちらが差す
     //! 依存: Player, NS::Obj::Body, NS::Game::Level::CollisionInput, NS::Obj::Model,
     //! NS::Obj::AssetManager

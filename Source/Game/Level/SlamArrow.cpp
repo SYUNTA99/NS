@@ -1,6 +1,5 @@
 #include "Game/Level/SlamArrow.h"
 
-#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
@@ -12,6 +11,7 @@
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/AssetManager.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -357,7 +357,8 @@ namespace NS::Game::Level
         }
     }
 
-    // Player::Update が CollisionInput の後に呼ぶので、このフレームの狙いの線と狙う相手を控えた後に読む
+    // Player の見た目の段 (VisualStep) が呼ぶ。CollisionInput を観測する観測の段より後なので、
+    // このフレームの狙いの線と狙う相手を控えた後に読む
     SlamArrow::SlamArrow() noexcept : NS::Obj::Component() {}
 
     const SlamArrowDesc& SlamArrow::Tuning() const noexcept

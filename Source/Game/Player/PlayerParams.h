@@ -9,12 +9,20 @@
 
 class Player;
 
+namespace NS::Game::Player
+{
+    class PlayerParams;
+} // namespace NS::Game::Player
+
 namespace NS::Game::Level
 {
     class CollisionInput;
     class ImpactResolver;
     class TargetMarker;
     class SlamArrow;
+    struct ImpactTuning;
+    // ImpactResolver.h が宣言して ImpactResolver.cpp が定義する。friend に書くために先に宣言しておく
+    ImpactTuning MakeImpactTuning(const NS::Game::Player::PlayerParams& params) noexcept;
 } // namespace NS::Game::Level
 
 namespace NS::Game::Player
@@ -30,6 +38,10 @@ namespace NS::Game::Player
 
         //! 欄「体力」の値。1 未満は 1 として返す
         [[nodiscard]] int MaxHealth() const noexcept { return std::max(m_maxHealth, 1); }
+        //! 欄「スティック遊び」の値。スティックの倒しがこれ以下なら入力なしとして扱う
+        [[nodiscard]] float StickDeadzone() const noexcept { return m_stickDeadzone; }
+        //! 欄「ブレーキのしきい値」の値。進行方向と入力方向の内積がこれ以下ならブレーキに入る
+        [[nodiscard]] float BrakeThreshold() const noexcept { return m_brakeThreshold; }
 
         NS_REFLECT_BEGIN(PlayerParams, NS::Obj::Component)
         NS_REFLECT_FIELD(m_maxHealth, "体力")
@@ -213,6 +225,7 @@ namespace NS::Game::Player
         friend class NS::Game::Level::ImpactResolver;
         friend class NS::Game::Level::TargetMarker;
         friend class NS::Game::Level::SlamArrow;
+        friend NS::Game::Level::ImpactTuning NS::Game::Level::MakeImpactTuning(const PlayerParams& params) noexcept;
         NS::Game::Level::TargetMarkerDesc m_targetMarkerDesc{};
         NS::Game::Level::SlamArrowDesc m_slamArrowDesc{};
         float m_reboundApexHeight = 1.15f;
@@ -295,8 +308,6 @@ namespace NS::Game::Player
         float m_tapBurstScale = 0.75f;
         float m_fullBurstScaleGain = 0.25f;
         friend class ::Player;
-        friend class IdlePlayerState;
-        friend class WalkPlayerState;
         friend class NS::Game::Level::CollisionInput;
         float m_chargeThresholdSeconds = 0.2f;
         float m_chargeFullSeconds = 1.0f;

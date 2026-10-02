@@ -2,6 +2,7 @@
 
 #include "Game/Level/Health.h"
 #include "Game/Player/PlayerEvents.h"
+#include "Game/Player/ReboundArc.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/CameraTarget.h"
@@ -34,23 +35,9 @@ namespace NS::Game::Level
     class SlamArrow;
 } // namespace NS::Game::Level
 
-namespace NS::Game::Player
-{
-    //! @brief 反動の軌道のうち、当たりが決める向きと高さと距離
-    //! @details 指示付き初期化で組み、Player::BeginRebound へ渡す。
-    //! 上りと下りの重力と頂点の帯は Player が調整値の欄から決める
-    struct ReboundArc
-    {
-        NS::Core::Vector3 direction{1.0f, 0.0f, 0.0f}; // 弾かれる向き。水平の成分だけを使う
-        float apexHeight = 0.0f;                       // 弾かれ始めの高さから頂点までの高さ (m)
-        float distance = 0.0f;                         // 弾かれ始めから同じ高さへ戻るまでの水平の距離 (m)
-    };
-} // namespace NS::Game::Player
-
-//! @brief プレイヤーキャラクタ。Mesh / Movement / Input / Shadow の既定構成をコードで組む
-//! @details 値はプレイヤーの種類の既定値と個体の上書きから写す
-//! 状態機械と命は Actor
-//! 自身が持ち、入力の窓口・移動の組み立て・崖つかまり・突進と反発とそれらの記録はここが持つ。
+//! @brief プレイヤーキャラクタ。Model / Body / PlayerInput / Shadow の既定構成をコードで組む
+//! @details 部品名は Body が Movement、PlayerInput が Input。値はプレイヤーの種類の既定値と個体の上書きから写す。
+//! 状態機械と命は Actor 自身が持ち、入力の窓口・移動の組み立て・崖つかまり・突進と反発とそれらの記録はここが持つ。
 //! 速度と接地の計算だけは身体の部品 (Body) へ任せる。状態の遷移の条件は PlayerJudges の判定を状態が呼ぶ
 //! 落下死やゴールは体のセンサーへ届く知らせで受け取り、コースの流れは進行役へ伝えるだけにする
 //! 実装は 3 つに分ける。Player.cpp (生成・部品・更新の流れ・入力・記録)、PlayerMovement.cpp (移動の組み立てと崖つかまり)、

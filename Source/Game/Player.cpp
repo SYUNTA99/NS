@@ -19,6 +19,7 @@
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
+#include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/Animation.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/HitReaction.h"
@@ -30,6 +31,7 @@
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
 #include <cmath>

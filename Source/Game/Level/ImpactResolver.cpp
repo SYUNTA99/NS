@@ -1,6 +1,5 @@
 ﻿#include "Game/Level/ImpactResolver.h"
 
-#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/LaunchArc.h"
@@ -11,6 +10,7 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/IUse/IUseCamera.h"
 #include "Runtime/Object/ObjectList.h"
@@ -594,7 +594,7 @@ namespace NS::Game::Level
         impactInput.awayDirection = NS::Core::Vector3{awayX, 0.0f, awayZ};
         impactInput.launchDirection = launchDir;
         impactInput.slamVelocity = velocity;
-        const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, MakeImpactTuning());
+        const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, MakeImpactTuning(Tuning()));
         m_pendingShakeAmplitude = outcome.shakeAmplitude;
 
         const float reboundScale = outcome.reboundScale;
@@ -603,6 +603,7 @@ namespace NS::Game::Level
         if (outcome.broke)
         {
             m_pendingBreak = true;
+            // 貫通は相手を飛ばさず、自機も反動しない
             // 前の当たりの曲線を残すと、この当たりの記録に使っていない曲線が載る
             m_pendingLaunchArc = outcome.launchArc;
             m_pendingReboundArc = outcome.reboundArc;
@@ -668,7 +669,8 @@ namespace NS::Game::Level
 
     void ImpactResolver::BeginFreeze(int stopSteps)
     {
-        // 自機を寝かせて凍らせる。Player::Update はこの後に移動の active を見るので同じフレームから効く
+        // 自機を寝かせて凍らせる。Player の StateStep と BodyStep はこの後に身体の active を見るので、
+        // 同じフレームから効く
         m_hitStopRemaining = stopSteps;
         m_hitStopTotal = stopSteps;
         m_body->SetActive(false);
@@ -828,9 +830,8 @@ namespace NS::Game::Level
         }
     }
 
-    ImpactTuning ImpactResolver::MakeImpactTuning() const noexcept
+    ImpactTuning MakeImpactTuning(const NS::Game::Player::PlayerParams& params) noexcept
     {
-        const NS::Game::Player::PlayerParams& params = Tuning();
         return ImpactTuning{.centerHitStopScale = params.m_centerHitStopScale,
                             .shakeAmplitude = params.m_shakeAmplitude,
                             .breakEnabled = params.m_breakEnabled,

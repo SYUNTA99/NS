@@ -1,11 +1,11 @@
 #include "Game/Player/States/IdlePlayerState.h"
 
-#include "Runtime/Object/Components/Body.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
+#include "Runtime/Object/Components/Body.h"
 
 namespace NS::Game::Player
 {
@@ -24,7 +24,7 @@ namespace NS::Game::Player
         }
         else if (PlayerJudgeWalk::Judge(
                      body.IsGrounded(),
-                     PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), player.Params().m_stickDeadzone),
+                     PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), player.Params().StickDeadzone()),
                      PlayerJudgeStopped::Judge(body.LateralVelocity())))
         {
             player.States().Change<WalkPlayerState>(player);

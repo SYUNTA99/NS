@@ -1,4 +1,3 @@
-#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactResolver.h"
@@ -9,6 +8,7 @@
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
@@ -114,8 +114,7 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
     }
-    const NS::Obj::Body* movement =
-        NS::Obj::ComponentCast<NS::Obj::Body>(player.Part("Movement"));
+    const NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player.Part("Movement"));
     ASSERT_NE(movement, nullptr);
     EXPECT_TRUE(NS::Obj::SerializeComponent(*movement)["fields"].empty());
 }
@@ -125,8 +124,7 @@ TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
     Player player;
     NS::Game::Player::PlayerParams* params =
         NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
-    NS::Obj::Body* movement =
-        NS::Obj::ComponentCast<NS::Obj::Body>(player.Part("Movement"));
+    NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player.Part("Movement"));
     ASSERT_NE(params, nullptr);
     ASSERT_NE(movement, nullptr);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(*params, {{"走行速度", 10.0f}, {"加速度", 7.0f}, {"上昇重力", -15.0f}}), 0u);
@@ -157,8 +155,7 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
     scene.LoadJson(saved);
     const Player* player = static_cast<const Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    const NS::Obj::Body* movement =
-        NS::Obj::ComponentCast<NS::Obj::Body>(player->Part("Movement"));
+    const NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player->Part("Movement"));
     ASSERT_NE(movement, nullptr);
     EXPECT_FLOAT_EQ(player->RunSpeed(), 9.0f);
     EXPECT_FLOAT_EQ(player->BodySlamDistance(), 14.0f);

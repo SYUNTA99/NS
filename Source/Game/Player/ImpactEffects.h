@@ -67,7 +67,8 @@ namespace NS::Game::Player
     //! 止めが 0 の当たりでは何も出さない
     //! 層の時間 (留まり・広がり・消えるフレーム) はここが持ち、形と色は絵が持つ
     //! 描画の無い世界でも記録は残し、試しと Replay は Layers を読む
-    //! Player::Update が最後に呼ぶ。同じフレームの ImpactResolver が決めた止めの頭と明けと、自機の移動の後に走る。
+    //! Player の見た目の段 (VisualStep) が最後に呼ぶ。
+    //! 同じフレームの ImpactResolver が決めた止めの頭と明けと、自機の移動の段の後に走る。
     //! 物理の段と、飛ばした相手が自分の段階を切り替える Triggers の段よりは前に走る
     //! 依存: EffectLayerList, NS::Game::Level::ImpactResolver, Player, カメラの窓口
     class ImpactEffects : public NS::Obj::Component

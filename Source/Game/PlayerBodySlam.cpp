@@ -1,6 +1,5 @@
 #include "Game/Player.h"
 
-#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Player/HorizontalTurn.h"
 #include "Game/Player/PlayerJudges.h"
@@ -13,6 +12,7 @@
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 
 #include <algorithm>

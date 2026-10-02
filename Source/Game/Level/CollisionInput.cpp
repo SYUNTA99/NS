@@ -38,7 +38,7 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    // Player::Update は溜めを 身体の移動より前に進めるので、チャージ減速は同じフレームの移動に効く
+    // Player の観測の段と決定の段は溜めを身体の段 (BodyStep) より前に進めるので、チャージ減速は同じフレームの移動に効く
     CollisionInput::CollisionInput() noexcept : NS::Obj::Component() {}
 
     const NS::Game::Player::PlayerParams& CollisionInput::Tuning() const noexcept

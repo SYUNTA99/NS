@@ -45,7 +45,8 @@ namespace NS::Game::Level
         bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
     protected:
-        //! 発光の層の歩を始める。Model の控えは見た目の段で、状態の後に取る
+        //! 発光の層の歩を始める。Model の控えは見た目の段で、状態の後に取る。
+        //! 更新を段に分ける前の順 (発光の歩、状態、Model、発光) を保つため。状態は Model の回転と倍率を書かない
         void ObserveStep() override;
         //! 状態機械を 1 歩進め、当たりの球が動いていれば物理へ置き直す
         void StateStep() override { UpdateMotion(); }
