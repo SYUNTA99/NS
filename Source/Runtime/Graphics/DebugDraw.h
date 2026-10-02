@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-// 線分と AABB / OBB / 球 / カプセルの枠線を溜めて、まとめて描くデバッグ描画
+// 線分と AABB / OBB / 球 / カプセルの枠線、半透明の三角形を溜めて、まとめて描くデバッグ描画
 
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
@@ -71,4 +71,19 @@ namespace NS::Gfx::DebugDraw
 
     //! 現在バッファに蓄積されている頂点の総数を返す
     [[nodiscard]] std::size_t VertexCount() noexcept;
+
+    //! @brief 半透明の三角形を追加する
+    //! @details 線より先に、裏表の両方を深度を見ずに描く。手前の物にも隠れない。透け具合は色のアルファで決める
+    //! 上限の 12960 枚を超える時は最も古い三角形を捨てる
+    //! @param[in] a 1 つ目の頂点の座標
+    //! @param[in] b 2 つ目の頂点の座標
+    //! @param[in] c 3 つ目の頂点の座標
+    //! @param[in] color 描画色。アルファが不透明度
+    void Triangle(const NS::Core::Vector3& a,
+                  const NS::Core::Vector3& b,
+                  const NS::Core::Vector3& c,
+                  const NS::Core::Color& color) noexcept;
+
+    //! 現在バッファに蓄積されている三角形の頂点の総数を返す
+    [[nodiscard]] std::size_t FaceVertexCount() noexcept;
 } // namespace NS::Gfx::DebugDraw

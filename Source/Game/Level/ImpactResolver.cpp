@@ -1,6 +1,7 @@
 ﻿#include "Game/Level/ImpactResolver.h"
 
 #include "Game/Level/CollisionInput.h"
+#include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
@@ -573,6 +574,15 @@ namespace NS::Game::Level
         m_lastImpact.launchDistance = m_pendingLaunchArc.distance;
         m_lastImpact.launchApexHeight = m_pendingLaunchArc.apexHeight;
         m_lastImpact.impactDir = m_pendingImpactDir;
+        // 触れた点は記録とエディタの印だけが読む。段と威力はまだ横ずれで決める
+        // TODO: 段と威力を JudgeHitFace で決めるようにしたら、その結果の触れる点を使い回して 2 回目の判定を消す
+        m_lastImpact.surfacePoint = answer.body.Center();
+        HitFaceJudgement touch;
+        const NS::Core::Vector3 ballCenter{position.x, position.y - m_body->CapsuleHalfHeight(), position.z};
+        if (JudgeHitFace(answer.face, answer.body, ballCenter, velocity, m_body->CapsuleRadius(), touch))
+        {
+            m_lastImpact.surfacePoint = touch.surfacePoint;
+        }
         m_lastImpact.targetPos = m_pendingTargetHome;
         m_lastImpact.targetBottom = bounds.Center.y - bounds.Extents.y;
         m_lastImpact.targetMass = mass;

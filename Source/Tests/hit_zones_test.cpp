@@ -1,6 +1,8 @@
 #include "Game/Level/HitTier.h"
 #include "Game/Level/HitZones.h"
+#include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
+#include "Game/Player.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Actor.h"
@@ -19,6 +21,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <vector>
 
 // 相手の面の上の位置と、段の決まりの並びと、赤の欄の置き場 (MapObj の部品 HitZones) を縛る
 
@@ -565,4 +568,175 @@ TEST(HitZonesTest, InstanceOverrideSurvivesSaveAndLoad)
     ASSERT_NE(HitZonesOf(*plain), nullptr);
     EXPECT_TRUE(HitZonesOf(*plain)->Face().round);
     EXPECT_FLOAT_EQ(HitZonesOf(*plain)->Face().centerV, 0.0f);
+}
+
+// 面は相手の正面に接する平面に立ち、自機の方を向く。横と縦の半分の幅は判定と同じ「半幅 + 自機の半径」
+TEST(HitZonesTest, FaceFrameStandsOnTheFrontOfTheBodyFacingThePlayer)
+{
+    NS::Game::Level::HitFaceFrame frame;
+    ASSERT_TRUE(NS::Game::Level::MakeHitFaceFrame(
+        SensorVolume::Sphere(Vector3{0.0f, 0.0f, 0.0f}, 0.5f), Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius, frame));
+    EXPECT_NEAR(frame.center.x, -0.5f, k_Tolerance);
+    EXPECT_NEAR(frame.center.y, 0.0f, k_Tolerance);
+    EXPECT_NEAR(frame.center.z, 0.0f, k_Tolerance);
+    // +x へ進む時の右は -z
+    EXPECT_NEAR(frame.right.z, -1.0f, k_Tolerance);
+    EXPECT_NEAR(frame.up.y, 1.0f, k_Tolerance);
+    EXPECT_NEAR(frame.normal.x, -1.0f, k_Tolerance);
+    EXPECT_NEAR(frame.reachU, k_BallReach, k_Tolerance);
+    EXPECT_NEAR(frame.reachV, k_BallReach, k_Tolerance);
+    EXPECT_EQ(frame.bodyShape, HitSensorShape::Sphere);
+
+    const SensorVolume capsule = SensorVolume::Capsule(NS::Phys::Capsule{
+        .center = Vector3{0.0f, 1.0f, 0.0f}, .axis = Vector3{0.0f, 1.0f, 0.0f}, .halfHeight = 0.8f, .radius = 0.4f});
+    ASSERT_TRUE(NS::Game::Level::MakeHitFaceFrame(capsule, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius, frame));
+    EXPECT_NEAR(frame.center.x, -0.4f, k_Tolerance);
+    EXPECT_NEAR(frame.center.y, 1.0f, k_Tolerance);
+    EXPECT_NEAR(frame.reachU, 0.4f + k_PlayerRadius, k_Tolerance);
+    EXPECT_NEAR(frame.reachV, 0.4f + 0.8f + k_PlayerRadius, k_Tolerance);
+
+    // 箱は奥行きの軸を線の向きへ写した長さだけ手前に立つ
+    NS::Core::OBB box{};
+    box.center = Vector3{0.0f, 1.0f, 0.0f};
+    box.halfExtentX = 1.0f;
+    box.halfExtentY = 0.5f;
+    box.halfExtentZ = 2.0f;
+    ASSERT_TRUE(
+        NS::Game::Level::MakeHitFaceFrame(SensorVolume::Box(box), Vector3{0.0f, 0.0f, 1.0f}, k_PlayerRadius, frame));
+    EXPECT_NEAR(frame.center.z, -2.0f, k_Tolerance);
+    EXPECT_NEAR(frame.reachU, 1.0f + k_PlayerRadius, k_Tolerance);
+    EXPECT_NEAR(frame.reachV, 0.5f + k_PlayerRadius, k_Tolerance);
+    EXPECT_EQ(frame.bodyShape, HitSensorShape::Box);
+
+    EXPECT_FALSE(NS::Game::Level::MakeHitFaceFrame(
+        SensorVolume::Sphere(Vector3{0.0f, 0.0f, 0.0f}, 0.5f), Vector3{0.0f, 1.0f, 0.0f}, k_PlayerRadius, frame));
+}
+
+// 描く形は、外れの面を先に、段の決まりを優先の低い順に並べる。当てはまる段の色が上に見える
+TEST(HitZonesTest, ShapesStackFromTheRemainderUpToTheHighestPriority)
+{
+    const std::vector<NS::Game::Level::HitFaceShape> onBall =
+        NS::Game::Level::HitFaceShapes(HitFace{}, HitSensorShape::Sphere);
+    ASSERT_EQ(onBall.size(), 2u);
+    EXPECT_EQ(onBall.front().tier, HitTier::Wide);
+    // 球の相手は触れられる丸の中だけが外れ
+    EXPECT_TRUE(onBall.front().round);
+    EXPECT_FLOAT_EQ(onBall.front().halfU, 1.0f);
+    EXPECT_FLOAT_EQ(onBall.front().halfV, 1.0f);
+    EXPECT_EQ(onBall.back().tier, HitTier::Center);
+    EXPECT_TRUE(onBall.back().round);
+    EXPECT_FLOAT_EQ(onBall.back().halfU, 0.43f);
+    EXPECT_FLOAT_EQ(onBall.back().halfV, 0.43f);
+
+    HitFace boxRed;
+    boxRed.round = false;
+    boxRed.centerU = 0.25f;
+    boxRed.centerV = -0.5f;
+    const std::vector<NS::Game::Level::HitFaceShape> onBox =
+        NS::Game::Level::HitFaceShapes(boxRed, HitSensorShape::Box);
+    ASSERT_EQ(onBox.size(), 2u);
+    EXPECT_FALSE(onBox.front().round);
+    EXPECT_FALSE(onBox.back().round);
+    EXPECT_FLOAT_EQ(onBox.back().centerU, 0.25f);
+    EXPECT_FLOAT_EQ(onBox.back().centerV, -0.5f);
+
+    // 幅 0 の赤はどこも覆わないので描かない
+    HitFace noRed;
+    noRed.width = 0.0f;
+    EXPECT_EQ(NS::Game::Level::HitFaceShapes(noRed, HitSensorShape::Sphere).size(), 1u);
+}
+
+// 描いた赤の縁の少し内側は判定でも赤、少し外側は外れ。描く形と判定が同じ値から出ている
+TEST(HitZonesTest, RedOutlineAgreesWithTheJudgement)
+{
+    HitFace roundRed;
+    roundRed.width = 0.43f;
+    roundRed.height = 0.3f;
+    roundRed.centerU = 0.2f;
+    roundRed.centerV = -0.1f;
+    HitFace boxRed;
+    boxRed.round = false;
+    boxRed.width = 0.5f;
+    boxRed.height = 0.25f;
+    boxRed.centerU = -0.3f;
+    boxRed.centerV = 0.4f;
+    const SensorVolume ball = SensorVolume::Sphere(Vector3{2.0f, 1.0f, -1.0f}, 0.5f);
+    const SensorVolume capsule = SensorVolume::Capsule(NS::Phys::Capsule{
+        .center = Vector3{-1.0f, 1.2f, 3.0f}, .axis = Vector3{0.0f, 1.0f, 0.0f}, .halfHeight = 0.6f, .radius = 0.4f});
+    // 斜めの向きで、面の横の軸が世界の軸と揃わない場合も見る
+    const Vector3 direction{0.6f, 0.0f, 0.8f};
+
+    int checked = 0;
+    for (const HitFace& face : {roundRed, boxRed})
+    {
+        for (const SensorVolume& body : {ball, capsule})
+        {
+            NS::Game::Level::HitFaceFrame frame;
+            ASSERT_TRUE(NS::Game::Level::MakeHitFaceFrame(body, direction, k_PlayerRadius, frame));
+            const std::vector<NS::Game::Level::HitFaceShape> shapes =
+                NS::Game::Level::HitFaceShapes(face, frame.bodyShape);
+            ASSERT_FALSE(shapes.empty());
+            const NS::Game::Level::HitFaceShape& red = shapes.back();
+            ASSERT_EQ(red.tier, HitTier::Center);
+            const std::vector<NS::Core::Vector2> outline = NS::Game::Level::HitFaceShapeOutline(red);
+            ASSERT_GE(outline.size(), 4u);
+            for (const NS::Core::Vector2& edge : outline)
+            {
+                const NS::Core::Vector2 center{red.centerU, red.centerV};
+                for (const float scale : {0.98f, 1.02f})
+                {
+                    const NS::Core::Vector2 at = center + (edge - center) * scale;
+                    const Vector3 onFace = NS::Game::Level::HitFacePoint(frame, at.x, at.y);
+                    HitFaceJudgement result;
+                    ASSERT_TRUE(JudgeHitFace(face, body, onFace - direction * 4.0f, direction, k_PlayerRadius, result));
+                    EXPECT_NEAR(result.u, at.x, k_Tolerance);
+                    EXPECT_NEAR(result.v, at.y, k_Tolerance);
+                    if (scale < 1.0f)
+                    {
+                        EXPECT_EQ(result.tier, HitTier::Center);
+                    }
+                    else
+                    {
+                        EXPECT_EQ(result.tier, HitTier::Wide);
+                    }
+                    ++checked;
+                }
+            }
+        }
+    }
+    EXPECT_GT(checked, 0);
+}
+
+// 直近の当たりの記録に、自機の玉が相手の表面に触れた点が載る。エディタはこの点に印を描く
+TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
+{
+    NS::Obj::Scene scene;
+    nlohmann::json doc = NS::Obj::MakeSceneJson();
+    nlohmann::json entry = NS::Obj::MakeObjectJson();
+    NS::Obj::SetObjectJsonClass(entry, "Player");
+    NS::Obj::SetObjectJsonId(entry, 1);
+    NS::Obj::SetObjectPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
+    NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
+    nlohmann::json rock = NS::Obj::MakeObjectJson();
+    NS::Obj::SetObjectJsonClass(rock, "MapObj");
+    NS::Obj::SetObjectJsonId(rock, 2);
+    NS::Obj::SetObjectPosition(rock, Vector3{0.0f, 1.0f, 1.0f});
+    NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+    scene.LoadJson(doc);
+    Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
+    ASSERT_NE(player, nullptr);
+    const NS::Obj::Actor* target = scene.Objects().FindByObjectId(2);
+    ASSERT_NE(target, nullptr);
+    const SensorVolume body = target->BodySensorPart()->WorldVolume();
+
+    player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    player->Resolver().OnUpdate();
+    const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
+    ASSERT_EQ(impact.sequence, 1u);
+
+    const Vector3 center = body.Center();
+    EXPECT_NEAR((impact.surfacePoint - center).Length(), body.radius, k_Tolerance);
+    // 自機の来た側の表面
+    EXPECT_LT(impact.surfacePoint.z, center.z);
 }
