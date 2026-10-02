@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game/Level/HitTier.h"
+#include "Game/Level/HitZones.h"
 #include "Game/Level/LaunchArc.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
@@ -79,6 +80,8 @@ namespace NS::Game::Level
         bool placed = true;                           //!< 置かれているか。飛んでいる相手は食い込ませない
         NS::Core::Vector3 position{0.0f, 0.0f, 0.0f}; //!< 根の位置 (世界座標)
         NS::Core::AABB bounds{};                      //!< 体の外接箱 (世界座標)
+        HitFace face{};                               //!< 面の赤の欄の写し。段と威力の倍率を JudgeHitFace で決める
+        NS::Obj::SensorVolume body{};                 //!< 体のセンサーの世界の形。面の大きさを出す
     };
 
     //! @brief 体当たりを受けるかを問う知らせ。体当たりの裁定が、重なった物の体のセンサーへ送る
