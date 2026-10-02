@@ -17,9 +17,9 @@ namespace NS::Game::Player
         {
             co_await NS::Core::NextFrame{};
             const float dt = StepDelta();
-            player.Movement().TickTimers(dt);
-            player.Movement().AccelerateDuringRebound(dt);
-            player.Movement().ReboundGravity(dt);
+            player.TickTimers(dt);
+            player.AccelerateDuringRebound(dt);
+            player.ReboundGravity(dt);
             if (player.Movement().LedgeGrab())
             {
                 co_return;

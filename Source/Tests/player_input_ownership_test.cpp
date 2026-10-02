@@ -12,7 +12,7 @@ TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
     NS::Game::Player::PlayerComponent& movement = player.Movement();
     input->SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     movement.SetGrounded(true);
-    movement.AccelerateToInputDirection(0.1f);
+    player.AccelerateToInputDirection(0.1f);
     EXPECT_FLOAT_EQ(movement.DesiredDirection().x, 1.0f);
     EXPECT_NEAR(movement.LateralVelocity().x, 4.0f, 0.00001f);
     input->SetDesiredMove(NS::Core::Vector3{-1.0f, 0.0f, 0.0f}, 0.5f);

@@ -9,11 +9,11 @@ namespace NS::Game::Player
 {
     void BrakePlayerState::OnStep(::Player& player, float dt)
     {
-        player.Movement().TickTimers(dt);
-        player.Movement().ApplyBrake(dt);
-        player.Movement().Jump(dt);
-        player.Movement().CutJumpRelease();
-        player.Movement().Gravity(dt);
+        player.TickTimers(dt);
+        player.ApplyBrake(dt);
+        player.Jump(dt);
+        player.CutJumpRelease();
+        player.Gravity(dt);
 
         if (player.Movement().ShouldFall())
         {

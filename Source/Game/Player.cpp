@@ -11,6 +11,7 @@
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
@@ -35,6 +36,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 
 NS_CLASS(Player)
@@ -429,6 +431,172 @@ bool Player::IsDead() const noexcept
 int Player::Health() const noexcept
 {
     return m_health.Current();
+}
+
+// ---- 移動の組み立て ----
+// 状態の OnStep がこの順で呼ぶ。身体 (PlayerComponent) の速度・接地・重力の計算を呼ぶだけで、値は PlayerParams から読む
+
+void Player::TickTimers(float dt) noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    body.m_bufferTimer -= dt;
+    if (m_input->JumpPressed())
+    {
+        body.m_bufferTimer = m_params->m_jumpBufferTime;
+    }
+
+    const bool inAir = !body.IsGrounded();
+    if (inAir)
+    {
+        body.m_coyoteTimer -= dt;
+    }
+}
+
+void Player::AccelerateToInputDirection(float dt) noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    NS::Core::Vector3 direction{};
+    if (!body.HasMoveInput() || !NS::Core::TryNormalizeHorizontal(body.DesiredDirection(), direction))
+    {
+        return;
+    }
+
+    const float topSpeed = std::max(body.MaxSpeed() * body.DesiredSpeedScale(), m_params->m_walkSpeed);
+    float acceleration = m_params->m_airAcceleration;
+    if (body.IsGrounded())
+    {
+        acceleration = m_params->m_acceleration;
+    }
+    body.Accelerate(direction, m_params->m_turningDrag, acceleration, topSpeed, dt);
+}
+
+void Player::ApplyFriction(float dt) noexcept
+{
+    m_movement->Decelerate(m_params->m_friction, dt);
+}
+
+void Player::ApplyBrake(float dt) noexcept
+{
+    m_movement->Decelerate(m_params->m_deceleration, dt);
+}
+
+void Player::Jump(float) noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    if (NS::Game::Player::PlayerJudgeJump::Judge(
+            body.IsGrounded(), body.m_coyoteTimer, body.m_jumpsRemaining, m_input->JumpPressed(), body.m_bufferTimer))
+    {
+        body.SetVerticalVelocity(m_params->m_jumpImpulse);
+        --body.m_jumpsRemaining;
+        body.m_bufferTimer = 0.0f;
+        body.m_coyoteTimer = 0.0f;
+        body.m_playerEvents.onJump.Invoke();
+    }
+}
+
+void Player::CutJumpRelease() noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    if (body.m_prevJumpHeld && !m_input->JumpHeld() && body.VerticalVelocity() > 0.0f)
+    {
+        body.SetVerticalVelocity(body.VerticalVelocity() * m_params->m_jumpReleaseScale);
+    }
+}
+
+void Player::Gravity(float dt) noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    const bool apex = std::abs(body.VerticalVelocity()) < m_params->m_apexHangVy;
+
+    float baseG = m_params->m_gravityDown;
+    if (body.VerticalVelocity() > 0.0f)
+    {
+        baseG = m_params->m_gravityUp;
+    }
+
+    float g = baseG;
+    if (apex)
+    {
+        g = baseG * m_params->m_apexHangScale;
+    }
+
+    body.Gravity(g, dt);
+}
+
+void Player::TapSlamGravity(float dt) noexcept
+{
+    // 進み切る前に着地すると残りを地面の上で滑り、走っていないのに動いて見える
+    // 滞空秒を踏み込みの秒へ合わせ、進み切った所で足が着くようにする
+    float airSeconds = 0.0f;
+    if (m_params->m_tapSlamSpeed > 0.0f)
+    {
+        airSeconds = m_params->m_tapSlamDistance / m_params->m_tapSlamSpeed;
+    }
+    // Inspector で 0 を置くと 0 除算で位置まで非有限値が伝わるため、距離か初速が 0 なら通常の重力へ戻す
+    if (!(airSeconds > NS::Core::k_Epsilon))
+    {
+        Gravity(dt);
+        return;
+    }
+
+    // 上下対称の弧なので、山の高さは tapSlamUpSpeed * airSeconds / 4 で決まる
+    // 高さを変えたい時に触るのは tapSlamUpSpeed で、ここは触らない
+    const float g = -2.0f * m_params->m_tapSlamUpSpeed / airSeconds;
+    m_movement->Gravity(g, dt);
+}
+
+void Player::ReboundGravity(float dt) noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    if (!(body.VerticalVelocity() > 0.0f))
+    {
+        Gravity(dt);
+        return;
+    }
+
+    float g = m_params->m_gravityUp * m_params->m_reboundRiseGravityScale;
+    if (std::abs(body.VerticalVelocity()) < m_params->m_apexHangVy)
+    {
+        g = g * m_params->m_apexHangScale;
+    }
+    body.Gravity(g, dt);
+}
+
+void Player::AccelerateDuringRebound(float dt) noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    NS::Core::Vector3 direction{};
+    if (!body.HasMoveInput() || !NS::Core::TryNormalizeHorizontal(body.DesiredDirection(), direction))
+    {
+        return;
+    }
+
+    const float topSpeed = std::max(body.MaxSpeed() * body.DesiredSpeedScale(), m_params->m_walkSpeed);
+    // 入力の向きからずれた速度は削らない。削ると横へ倒しただけで相手から離れる流れが消え、
+    // 弾かれる向きが当て方でなくスティックで決まる。触って詰める値ではないので欄にしない
+    const float turningDrag = 0.0f;
+    // 明けのフレームは止める前の接地の印が残っている。接地を見て地上の加速度を選ぶと、そのフレームだけ大きく曲がる
+    body.Accelerate(direction, turningDrag, m_params->m_reboundAirAcceleration, topSpeed, dt);
+}
+
+void Player::UpdateBodySlam(float dt) noexcept
+{
+    NS::Game::Player::PlayerComponent& body = *m_movement;
+    // 突進中に向きを変えられると当てる間合いを詰める意味が消えるので、水平は発動時の値で書き直す
+    if (!body.m_bodySlamIsTap)
+    {
+        body.SetLateralVelocity(NS::Core::Vector3{
+            body.m_bodySlamDir.x * m_params->m_bodySlamSpeed, 0.0f, body.m_bodySlamDir.z * m_params->m_bodySlamSpeed});
+    }
+
+    if (body.m_bodySlamIsTap)
+    {
+        TapSlamGravity(dt);
+    }
+    else
+    {
+        Gravity(dt);
+    }
 }
 
 Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept

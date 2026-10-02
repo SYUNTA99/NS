@@ -8,11 +8,11 @@ namespace NS::Game::Player
 {
     void FallPlayerState::OnStep(::Player& player, float dt)
     {
-        player.Movement().TickTimers(dt);
-        player.Movement().AccelerateToInputDirection(dt);
-        player.Movement().Jump(dt);
-        player.Movement().CutJumpRelease();
-        player.Movement().Gravity(dt);
+        player.TickTimers(dt);
+        player.AccelerateToInputDirection(dt);
+        player.Jump(dt);
+        player.CutJumpRelease();
+        player.Gravity(dt);
         if (player.Movement().LedgeGrab())
         {
             return;

@@ -135,10 +135,10 @@ TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
     EXPECT_FLOAT_EQ(movement->RunSpeed(), 10.0f);
     movement->SetGrounded(true);
     movement->SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
-    movement->AccelerateToInputDirection(0.1f);
+    player.AccelerateToInputDirection(0.1f);
     EXPECT_NEAR(movement->LateralVelocity().x, 0.7f, 0.00001f);
     movement->SetVerticalVelocity(2.0f);
-    movement->Gravity(0.1f);
+    player.Gravity(0.1f);
     EXPECT_NEAR(movement->VerticalVelocity(), 0.5f, 0.00001f);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(*params, {{"走行速度", 11.0f}}), 0u);
     EXPECT_FLOAT_EQ(movement->RunSpeed(), 11.0f);

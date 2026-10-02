@@ -10,19 +10,19 @@ namespace NS::Game::Player
 {
     void WalkPlayerState::OnStep(::Player& player, float dt)
     {
-        player.Movement().TickTimers(dt);
+        player.TickTimers(dt);
         const bool brake = player.Movement().ShouldBrake();
         if (!brake && player.Movement().HasMoveInput())
         {
-            player.Movement().AccelerateToInputDirection(dt);
+            player.AccelerateToInputDirection(dt);
         }
         else if (!brake)
         {
-            player.Movement().ApplyFriction(dt);
+            player.ApplyFriction(dt);
         }
-        player.Movement().Jump(dt);
-        player.Movement().CutJumpRelease();
-        player.Movement().Gravity(dt);
+        player.Jump(dt);
+        player.CutJumpRelease();
+        player.Gravity(dt);
 
         if (player.Movement().ShouldFall())
         {

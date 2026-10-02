@@ -9,11 +9,11 @@ namespace NS::Game::Player
 {
     void IdlePlayerState::OnStep(::Player& player, float dt)
     {
-        player.Movement().TickTimers(dt);
-        player.Movement().ApplyFriction(dt);
-        player.Movement().Jump(dt);
-        player.Movement().CutJumpRelease();
-        player.Movement().Gravity(dt);
+        player.TickTimers(dt);
+        player.ApplyFriction(dt);
+        player.Jump(dt);
+        player.CutJumpRelease();
+        player.Gravity(dt);
 
         if (player.Movement().ShouldFall())
         {
