@@ -85,23 +85,6 @@ namespace NS::Obj
             }
             return std::optional<nlohmann::json>{std::in_place, *it};
         }
-
-        [[nodiscard]] const FieldDesc* FindField(const Component& comp, std::string_view fieldName) noexcept
-        {
-            const ReflectionInfo* info = comp.GetReflection();
-            if (info == nullptr)
-            {
-                return nullptr;
-            }
-            for (std::size_t i = 0; i < info->fieldCount; ++i)
-            {
-                if (fieldName == info->fields[i].name)
-                {
-                    return &info->fields[i];
-                }
-            }
-            return nullptr;
-        }
     } // namespace
 
     ArchetypeLibrary& ArchetypeLibrary::Get()
@@ -368,7 +351,7 @@ namespace NS::Obj
         {
             return false;
         }
-        const FieldDesc* field = FindField(comp, fieldName);
+        const FieldDesc* field = FindField(comp.GetReflection(), fieldName);
         if (field == nullptr)
         {
             return false;

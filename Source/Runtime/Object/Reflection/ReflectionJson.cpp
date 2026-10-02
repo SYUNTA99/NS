@@ -294,18 +294,6 @@ namespace NS::Obj
             }
             }
         }
-
-        bool IsReflectedFieldName(const ReflectionInfo& info, std::string_view name) noexcept
-        {
-            for (std::size_t i = 0; i < info.fieldCount; ++i)
-            {
-                if (name == info.fields[i].name)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
     } // namespace
 
     nlohmann::json SerializePartFields(const Component& part)
@@ -367,7 +355,7 @@ namespace NS::Obj
         std::size_t unreadCount = 0;
         for (nlohmann::json::const_iterator entry = fields.begin(); entry != fields.end(); ++entry)
         {
-            if (entry.key() == "enabled" || IsReflectedFieldName(*info, entry.key()))
+            if (entry.key() == "enabled" || FindField(info, entry.key()) != nullptr)
             {
                 continue;
             }

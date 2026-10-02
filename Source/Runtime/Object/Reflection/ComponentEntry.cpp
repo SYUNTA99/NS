@@ -72,16 +72,6 @@ namespace NS::Obj
         return value->get<float>();
     }
 
-    int FieldInt(const nlohmann::json& entry, std::string_view name, int fallback) noexcept
-    {
-        const nlohmann::json* value = FindFieldValue(entry, name);
-        if (value == nullptr || !value->is_number())
-        {
-            return fallback;
-        }
-        return value->get<int>();
-    }
-
     NS::Core::Vector3 FieldVector3(const nlohmann::json& entry,
                                    std::string_view name,
                                    const NS::Core::Vector3& fallback) noexcept
@@ -131,39 +121,9 @@ namespace NS::Obj
         return value->get<std::string>();
     }
 
-    ActorRef FieldObjectRef(const nlohmann::json& entry, std::string_view name) noexcept
-    {
-        const nlohmann::json* value = FindFieldValue(entry, name);
-        if (value == nullptr || !value->is_object())
-        {
-            return ActorRef{};
-        }
-        const nlohmann::json::const_iterator refIt = value->find("ref");
-        if (refIt == value->end() || !refIt->is_number_unsigned())
-        {
-            return ActorRef{};
-        }
-        return ActorRef{refIt->get<std::uint32_t>()};
-    }
-
     bool HasField(const nlohmann::json& entry, std::string_view name) noexcept
     {
         return FindFieldValue(entry, name) != nullptr;
-    }
-
-    void SetField(nlohmann::json& entry, std::string_view name, float value)
-    {
-        EnsureFields(entry)[std::string(name)] = value;
-    }
-
-    void SetField(nlohmann::json& entry, std::string_view name, int value)
-    {
-        EnsureFields(entry)[std::string(name)] = value;
-    }
-
-    void SetField(nlohmann::json& entry, std::string_view name, bool value)
-    {
-        EnsureFields(entry)[std::string(name)] = value;
     }
 
     void SetField(nlohmann::json& entry, std::string_view name, const NS::Core::Vector3& value)
@@ -179,11 +139,6 @@ namespace NS::Obj
     void SetField(nlohmann::json& entry, std::string_view name, std::string_view value)
     {
         EnsureFields(entry)[std::string(name)] = std::string(value);
-    }
-
-    void SetField(nlohmann::json& entry, std::string_view name, const char* value)
-    {
-        SetField(entry, name, std::string_view{value});
     }
 
     void SetField(nlohmann::json& entry, std::string_view name, ActorRef value)
