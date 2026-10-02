@@ -1,4 +1,4 @@
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Player.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
@@ -42,8 +42,8 @@ TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Game::Entity::EntityComponent* movement =
-        NS::Obj::ComponentCast<NS::Game::Entity::EntityComponent>(player->Part("Movement"));
+    NS::Obj::Body* movement =
+        NS::Obj::ComponentCast<NS::Obj::Body>(player->Part("Movement"));
     ASSERT_NE(movement, nullptr);
     player->Root().SetPosition(NS::Core::Vector3{});
     player->ClimbLedge();
@@ -64,8 +64,8 @@ TEST(PlayerStateSequence, LeavingClimbCannotResumeAnOldPositionWrite)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Game::Entity::EntityComponent* movement =
-        NS::Obj::ComponentCast<NS::Game::Entity::EntityComponent>(player->Part("Movement"));
+    NS::Obj::Body* movement =
+        NS::Obj::ComponentCast<NS::Obj::Body>(player->Part("Movement"));
     ASSERT_NE(movement, nullptr);
     player->ClimbLedge();
     player->States().Step(*player, 0.0625f);
@@ -135,8 +135,8 @@ TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Game::Entity::EntityComponent* movement =
-        NS::Obj::ComponentCast<NS::Game::Entity::EntityComponent>(player->Part("Movement"));
+    NS::Obj::Body* movement =
+        NS::Obj::ComponentCast<NS::Obj::Body>(player->Part("Movement"));
     ASSERT_NE(movement, nullptr);
     movement->SetGrounded(true);
     const NS::Game::Player::ReboundArc arc{.apexHeight = 1.0f, .distance = 5.0f};
@@ -159,8 +159,8 @@ TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Game::Entity::EntityComponent* movement =
-        NS::Obj::ComponentCast<NS::Game::Entity::EntityComponent>(player->Part("Movement"));
+    NS::Obj::Body* movement =
+        NS::Obj::ComponentCast<NS::Obj::Body>(player->Part("Movement"));
     ASSERT_NE(movement, nullptr);
     player->ClimbLedge();
     player->States().Step(*player, 0.0625f);
@@ -183,7 +183,7 @@ TEST(PlayerStateSequence, ReboundAndBodySlamAreNeverBothTrue)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Game::Entity::EntityComponent& movement = player->Body();
+    NS::Obj::Body& movement = player->Body();
     movement.SetGrounded(true);
     ASSERT_TRUE(player->BeginRebound(NS::Game::Player::ReboundArc{.apexHeight = 1.0f, .distance = 5.0f}));
     EXPECT_TRUE(player->IsRebounding());

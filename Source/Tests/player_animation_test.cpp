@@ -1,4 +1,4 @@
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"

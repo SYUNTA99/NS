@@ -9,9 +9,9 @@
 
 class Player;
 
-namespace NS::Game::Entity
+namespace NS::Obj
 {
-    class EntityComponent;
+    class Body;
 }
 
 namespace NS::Game::Level
@@ -30,7 +30,7 @@ namespace NS::Game::Level
     //! どちらも離したフレームに、溜め量を添えて Player::RequestBodySlam を呼ぶ。
     //! 溜めて放した時は、放す前のフレームに控えた狙いの線の向きも添える
     //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる
-    //! 依存: NS::Game::Entity::EntityComponent, NS::Obj::Curve, ImpactInputJudge, ImpactResolver, HitTier
+    //! 依存: NS::Obj::Body, NS::Obj::Curve, ImpactInputJudge, ImpactResolver, HitTier
     class CollisionInput : public NS::Obj::Component
     {
     public:
@@ -156,7 +156,7 @@ namespace NS::Game::Level
         bool m_hasAimLine = false;
         NS::Core::Vector3 m_homeScale{1.0f, 1.0f, 1.0f};
         bool m_stanceApplied = false;
-        NS::Game::Entity::EntityComponent* m_body = nullptr;
+        NS::Obj::Body* m_body = nullptr;
         ImpactResolver* m_resolver = nullptr;
     };
 } // namespace NS::Game::Level

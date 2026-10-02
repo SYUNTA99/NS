@@ -1,4 +1,4 @@
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/FollowCamera.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"

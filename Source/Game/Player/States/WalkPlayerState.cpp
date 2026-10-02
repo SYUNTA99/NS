@@ -1,6 +1,6 @@
 #include "Game/Player/States/WalkPlayerState.h"
 
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
@@ -13,7 +13,7 @@ namespace NS::Game::Player
     void WalkPlayerState::OnStep(::Player& player, float dt)
     {
         player.TickTimers(dt);
-        const NS::Game::Entity::EntityComponent& body = player.Body();
+        const NS::Obj::Body& body = player.Body();
         const PlayerParams& params = player.Params();
         const bool hasInput = PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), params.m_stickDeadzone);
         const bool brake = PlayerJudgeBrake::Judge(

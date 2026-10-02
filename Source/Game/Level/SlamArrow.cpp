@@ -1,6 +1,6 @@
 #include "Game/Level/SlamArrow.h"
 
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"

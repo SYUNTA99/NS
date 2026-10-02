@@ -1,6 +1,6 @@
 #include "Game/Player/States/BrakePlayerState.h"
 
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -16,7 +16,7 @@ namespace NS::Game::Player
         player.CutJumpRelease();
         player.Gravity(dt);
 
-        const NS::Game::Entity::EntityComponent& body = player.Body();
+        const NS::Obj::Body& body = player.Body();
         if (PlayerJudgeFall::Judge(body.IsGrounded()))
         {
             player.States().Change<FallPlayerState>(player);

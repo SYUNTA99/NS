@@ -1,4 +1,4 @@
-﻿#include "Game/Entity/EntityComponent.h"
+﻿#include "Runtime/Object/Components/Body.h"
 
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
@@ -28,13 +28,13 @@ namespace
     }
 } // namespace
 
-namespace NS::Game::Entity
+namespace NS::Obj
 {
     // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、
     // 天井に当たったフレームの上向き速度は Move を抜けた時点で 0 になっている
-    EntityComponent::EntityComponent() noexcept : NS::Obj::Component() {}
+    Body::Body() noexcept : NS::Obj::Component() {}
 
-    NS::Core::Vector3 EntityComponent::LateralVelocity() const noexcept
+    NS::Core::Vector3 Body::LateralVelocity() const noexcept
     {
         // 8 m/s を減速度 40 で止めると、最後のフレームに 6×10⁻⁷ m/s の端数が残る
         // 0 と読まないと、止まったかの判定が 1 フレーム遅れる
@@ -45,19 +45,19 @@ namespace NS::Game::Entity
         return NS::Core::Vector3{m_velocity.x, 0.0f, m_velocity.z};
     }
 
-    void EntityComponent::SetLateralVelocity(const NS::Core::Vector3& v) noexcept
+    void Body::SetLateralVelocity(const NS::Core::Vector3& v) noexcept
     {
         m_velocity.x = v.x;
         m_velocity.z = v.z;
     }
 
-    void EntityComponent::SetGrounded(bool grounded) noexcept
+    void Body::SetGrounded(bool grounded) noexcept
     {
         m_wasGrounded = grounded;
         m_isGrounded = grounded;
     }
 
-    float EntityComponent::CapsuleRadius() const noexcept
+    float Body::CapsuleRadius() const noexcept
     {
         if (const NS::Obj::CapsuleCollider* capsule = SiblingCapsule())
         {
@@ -66,7 +66,7 @@ namespace NS::Game::Entity
         return 0.4f;
     }
 
-    float EntityComponent::CapsuleHalfHeight() const noexcept
+    float Body::CapsuleHalfHeight() const noexcept
     {
         // 移動と裁定はどちらもここから寸法を引くので、球にしている間は両方が同じ球で当たる
         if (m_sphereShape)
@@ -76,7 +76,7 @@ namespace NS::Game::Entity
         return StandingHalfHeight();
     }
 
-    float EntityComponent::StandingHalfHeight() const noexcept
+    float Body::StandingHalfHeight() const noexcept
     {
         if (const NS::Obj::CapsuleCollider* capsule = SiblingCapsule())
         {
@@ -85,13 +85,13 @@ namespace NS::Game::Entity
         return 0.5f;
     }
 
-    void EntityComponent::SetSphereShape(bool sphere) noexcept
+    void Body::SetSphereShape(bool sphere) noexcept
     {
         m_sphereShape = sphere;
         SyncBodySensor();
     }
 
-    void EntityComponent::SyncBodySensor() noexcept
+    void Body::SyncBodySensor() noexcept
     {
         if (m_bodySensor != nullptr)
         {
@@ -99,7 +99,7 @@ namespace NS::Game::Entity
         }
     }
 
-    const NS::Obj::CapsuleCollider* EntityComponent::SiblingCapsule() const noexcept
+    const NS::Obj::CapsuleCollider* Body::SiblingCapsule() const noexcept
     {
         if (m_capsuleCollider != nullptr)
         {
@@ -113,7 +113,7 @@ namespace NS::Game::Entity
         return Owner()->ColliderPart();
     }
 
-    NS::Phys::PhysicsScene* EntityComponent::ScenePhysics() const noexcept
+    NS::Phys::PhysicsScene* Body::ScenePhysics() const noexcept
     {
         if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
         {
@@ -122,7 +122,7 @@ namespace NS::Game::Entity
         return &Owner()->OwningScene()->Physics();
     }
 
-    void EntityComponent::OnStart()
+    void Body::OnStart()
     {
         if (Owner() != nullptr)
         {
@@ -142,7 +142,7 @@ namespace NS::Game::Entity
         SyncBodySensor();
     }
 
-    void EntityComponent::Accelerate(
+    void Body::Accelerate(
         const NS::Core::Vector3& direction, float turningDrag, float acceleration, float topSpeed, float dt) noexcept
     {
         const NS::Core::Vector3 lateral = LateralVelocity();
@@ -161,7 +161,7 @@ namespace NS::Game::Entity
         m_velocity.z = direction.z * speed + turningZ;
     }
 
-    void EntityComponent::Decelerate(float deceleration, float dt) noexcept
+    void Body::Decelerate(float deceleration, float dt) noexcept
     {
         NS::Core::Vector3 lateral = LateralVelocity();
         ShrinkHorizontal(lateral.x, lateral.z, deceleration * dt);
@@ -169,7 +169,7 @@ namespace NS::Game::Entity
         m_velocity.z = lateral.z;
     }
 
-    void EntityComponent::Gravity(float gravity, float dt) noexcept
+    void Body::Gravity(float gravity, float dt) noexcept
     {
         const NS::Obj::Actor* owner = Owner();
         if (owner == nullptr)
@@ -180,7 +180,7 @@ namespace NS::Game::Entity
         NS::Obj::AddGravity(*owner, m_velocity, -gravity, dt);
     }
 
-    void EntityComponent::Move(float dt, float maxStepHeight) noexcept
+    void Body::Move(float dt, float maxStepHeight) noexcept
     {
         const NS::Core::Vector3 before = RootTransform().Position();
         NS::Phys::PhysicsScene* physics = ScenePhysics();
@@ -218,4 +218,4 @@ namespace NS::Game::Entity
             m_events.onGroundExit.Invoke();
         }
     }
-} // namespace NS::Game::Entity
+} // namespace NS::Obj

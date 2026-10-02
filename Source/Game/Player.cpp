@@ -1,6 +1,6 @@
 #include "Game/Player.h"
 
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
@@ -63,7 +63,7 @@ Player::Player() noexcept
 {
     m_charge.Finish();
     m_appearance = std::make_unique<NS::Game::Player::PlayerAppearance>();
-    m_body = std::make_unique<NS::Game::Entity::EntityComponent>();
+    m_body = std::make_unique<NS::Obj::Body>();
     m_input = std::make_unique<NS::Obj::PlayerInput>();
     m_params = std::make_unique<NS::Game::Player::PlayerParams>();
     m_collisionInput = std::make_unique<NS::Game::Level::CollisionInput>();

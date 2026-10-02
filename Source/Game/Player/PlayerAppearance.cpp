@@ -1,6 +1,6 @@
 #include "Game/Player/PlayerAppearance.h"
 
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
@@ -247,7 +247,7 @@ namespace NS::Game::Player
     {
         NS::Gfx::Mesh* standingPlaceholder = nullptr;
         NS::Gfx::Mesh* ballPlaceholder = nullptr;
-        const NS::Game::Entity::EntityComponent* player = nullptr;
+        const NS::Obj::Body* player = nullptr;
         if (Owner() != nullptr)
         {
             if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))

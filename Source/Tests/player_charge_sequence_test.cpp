@@ -1,4 +1,4 @@
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/CollisionInput.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerParams.h"
@@ -15,7 +15,7 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
         NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player.Part("ChargeControl"));
     ASSERT_NE(input, nullptr);
     input->OnStart();
-    NS::Game::Entity::EntityComponent& movement = player.Body();
+    NS::Obj::Body& movement = player.Body();
     movement.SetVelocity(NS::Core::Vector3{3.0f, 5.0f, 4.0f});
     const float maxSpeed = player.MaxSpeed();
 

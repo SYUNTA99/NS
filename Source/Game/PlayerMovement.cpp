@@ -1,6 +1,6 @@
 #include "Game/Player.h"
 
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Player/HorizontalTurn.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
@@ -35,7 +35,7 @@ namespace
 } // namespace
 
 // ---- 移動の組み立て ----
-// 状態の OnStep がこの順で呼ぶ。身体 (EntityComponent) の速度・接地・重力の計算を呼ぶだけで、値は PlayerParams から読む
+// 状態の OnStep がこの順で呼ぶ。身体 (Body) の速度・接地・重力の計算を呼ぶだけで、値は PlayerParams から読む
 
 void Player::MoveBody(float dt) noexcept
 {
@@ -82,7 +82,7 @@ void Player::SyncGroundState() noexcept
 
 void Player::TickTimers(float dt) noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     m_bufferTimer -= dt;
     if (m_input->JumpPressed())
     {
@@ -98,7 +98,7 @@ void Player::TickTimers(float dt) noexcept
 
 void Player::AccelerateToInputDirection(float dt) noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     NS::Core::Vector3 direction{};
     if (!NS::Game::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->m_stickDeadzone) ||
         !NS::Core::TryNormalizeHorizontal(DesiredDirection(), direction))
@@ -127,7 +127,7 @@ void Player::ApplyBrake(float dt) noexcept
 
 void Player::Jump(float) noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     if (NS::Game::Player::PlayerJudgeJump::Judge(
             body.IsGrounded(), m_coyoteTimer, m_jumpsRemaining, m_input->JumpPressed(), m_bufferTimer))
     {
@@ -141,7 +141,7 @@ void Player::Jump(float) noexcept
 
 void Player::CutJumpRelease() noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     if (m_prevJumpHeld && !m_input->JumpHeld() && body.VerticalVelocity() > 0.0f)
     {
         body.SetVerticalVelocity(body.VerticalVelocity() * m_params->m_jumpReleaseScale);
@@ -150,7 +150,7 @@ void Player::CutJumpRelease() noexcept
 
 void Player::Gravity(float dt) noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     const bool apex = std::abs(body.VerticalVelocity()) < m_params->m_apexHangVy;
 
     float baseG = m_params->m_gravityDown;
@@ -192,7 +192,7 @@ void Player::TapSlamGravity(float dt) noexcept
 
 void Player::ReboundGravity(float dt) noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     if (!(body.VerticalVelocity() > 0.0f))
     {
         Gravity(dt);
@@ -209,7 +209,7 @@ void Player::ReboundGravity(float dt) noexcept
 
 void Player::AccelerateDuringRebound(float dt) noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     NS::Core::Vector3 direction{};
     if (!NS::Game::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->m_stickDeadzone) ||
         !NS::Core::TryNormalizeHorizontal(DesiredDirection(), direction))
@@ -227,7 +227,7 @@ void Player::AccelerateDuringRebound(float dt) noexcept
 
 void Player::UpdateBodySlam(float dt) noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     // 突進中に向きを変えられると当てる間合いを詰める意味が消えるので、水平は発動時の値で書き直す
     if (!m_slam.isTap)
     {
@@ -291,7 +291,7 @@ namespace
 
 bool Player::LedgeGrab() noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     if (!NS::Game::Player::PlayerJudgeLedgeGrab::Judge(body.IsGrounded(), body.VerticalVelocity(), m_slam.wasSlamming))
     {
         return false;
@@ -394,7 +394,7 @@ bool Player::LedgeGrab() noexcept
 
 bool Player::HoldLedge() noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     float top = 0.0f;
     if (!FindLedgeTopAt(Root().Position(), top))
     {
@@ -417,7 +417,7 @@ bool Player::LedgeJump() noexcept
         return false;
     }
 
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     body.SetVerticalVelocity(m_params->m_jumpImpulse);
     body.SetGrounded(false);
     (void)m_states->Change<NS::Game::Player::FallPlayerState>(*this);
@@ -427,7 +427,7 @@ bool Player::LedgeJump() noexcept
 
 void Player::ClimbLedge() noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     const NS::Core::Vector3 pos = Root().Position();
     // ぶら下がりの中心は面から半径ぶん外。直径ぶん奥へ進めると中心が縁から半径ぶん内側に入り、体が上面に乗る
     const float mantleStep = 2.0f * body.CapsuleRadius();
@@ -445,7 +445,7 @@ void Player::ClimbLedge() noexcept
 
 void Player::DropLedge() noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     (void)m_states->Change<NS::Game::Player::FallPlayerState>(*this);
     body.SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
     body.SetGrounded(false);
@@ -474,7 +474,7 @@ void Player::Shimmy(float dt) noexcept
 
 void Player::UpdateLedgeClimb(float dt) noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     m_ledgeMantleTimer += dt;
     float t = 1.0f;
     if (m_params->m_ledgeClimbDuration > 0.0f)
@@ -513,7 +513,7 @@ void Player::UpdateLedgeClimb(float dt) noexcept
 
 bool Player::FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) const noexcept
 {
-    const NS::Game::Entity::EntityComponent& body = *m_body;
+    const NS::Obj::Body& body = *m_body;
     const NS::Core::Vector3 inward{-m_ledgeFaceNormal.x, 0.0f, -m_ledgeFaceNormal.z};
     const float handY = hangPos.y + body.CapsuleHalfHeight();
     const NS::Core::Vector3 probe{

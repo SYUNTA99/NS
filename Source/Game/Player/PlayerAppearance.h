@@ -13,9 +13,9 @@ namespace NS::Gfx
     class Mesh;
 }
 
-namespace NS::Game::Entity
+namespace NS::Obj
 {
-    class EntityComponent;
+    class Body;
 }
 
 namespace NS::Game::Level
@@ -41,7 +41,7 @@ namespace NS::Game::Player
     //! 溜め量の正は同居する CollisionInput の判定で、ここは読むだけ
     //! Player::Update が移動と当たりの演出の後に呼ぶ。配置物を組む経路 (ObjectFromJson / StartSpawned) では
     //! 参照の引き当てが Player::ForEachPart の並びに回るので、Model が自分の参照から mesh を差した後にこちらが差す
-    //! 依存: Player, NS::Game::Entity::EntityComponent, NS::Game::Level::CollisionInput, NS::Obj::Model,
+    //! 依存: Player, NS::Obj::Body, NS::Game::Level::CollisionInput, NS::Obj::Model,
     //! NS::Obj::AssetManager
     // TODO: Scene::ApplyFromJson は値の変わった部品だけ引き直す。Model の値の undo で mesh が
     // 組み込みの cube に戻り、CapsuleCollider の寸法の変更に見た目が付いてこない。編集へ戻る時の LoadJson で直る
@@ -89,7 +89,7 @@ namespace NS::Game::Player
         NS::Gfx::Mesh* m_standingMesh = nullptr; // AssetManager 所有
         NS::Gfx::Mesh* m_ballMesh = nullptr;     // AssetManager 所有
         bool m_curled = false;
-        const NS::Game::Entity::EntityComponent* m_body = nullptr; // 寸法と接地の問い先。非所有
+        const NS::Obj::Body* m_body = nullptr; // 寸法と接地の問い先。非所有
         const ::Player* m_actor = nullptr;                         // 突進の速度と狙いの向きの問い先。非所有
         const NS::Game::Level::CollisionInput* m_input = nullptr;  // 溜め量の正。無い配置物もある。非所有
 

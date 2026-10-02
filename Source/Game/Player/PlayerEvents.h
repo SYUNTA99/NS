@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Game/Entity/EntityEvents.h"
+#include "Runtime/Object/Components/BodyEvents.h"
 
 namespace NS::Game::Player
 {
@@ -10,10 +10,10 @@ namespace NS::Game::Player
     //! 体当たりの 2 つはこの作品だけの通知
     struct PlayerEvents
     {
-        NS::Game::Entity::EntityEvent onJump;            //!< 跳んだフレーム
-        NS::Game::Entity::EntityEvent onLedgeGrabbed;    //!< 縁を掴んだフレーム
-        NS::Game::Entity::EntityEvent onLedgeClimbing;   //!< よじ登りを始めたフレーム
-        NS::Game::Entity::EntityEvent onBodySlamStarted; //!< 体当たりが出たフレーム
-        NS::Game::Entity::EntityEvent onBodySlamEnded;   //!< 体当たりが終わったフレーム
+        NS::Obj::BodyEvent onJump;            //!< 跳んだフレーム
+        NS::Obj::BodyEvent onLedgeGrabbed;    //!< 縁を掴んだフレーム
+        NS::Obj::BodyEvent onLedgeClimbing;   //!< よじ登りを始めたフレーム
+        NS::Obj::BodyEvent onBodySlamStarted; //!< 体当たりが出たフレーム
+        NS::Obj::BodyEvent onBodySlamEnded;   //!< 体当たりが終わったフレーム
     };
 } // namespace NS::Game::Player

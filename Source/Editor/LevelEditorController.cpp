@@ -4,7 +4,7 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/FollowCamera.h"
 #include "Game/Player.h"

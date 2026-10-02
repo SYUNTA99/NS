@@ -1,6 +1,6 @@
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
 

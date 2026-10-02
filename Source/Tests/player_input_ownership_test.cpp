@@ -1,4 +1,4 @@
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 
@@ -9,7 +9,7 @@ TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
     Player player;
     NS::Obj::PlayerInput* input = NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input"));
     ASSERT_NE(input, nullptr);
-    NS::Game::Entity::EntityComponent& movement = player.Body();
+    NS::Obj::Body& movement = player.Body();
     input->SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     movement.SetGrounded(true);
     player.AccelerateToInputDirection(0.1f);
@@ -29,7 +29,7 @@ TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
     Player player;
     NS::Obj::PlayerInput* input = NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input"));
     ASSERT_NE(input, nullptr);
-    NS::Game::Entity::EntityComponent& movement = player.Body();
+    NS::Obj::Body& movement = player.Body();
     movement.OnStart();
     movement.SetGrounded(true);
     player.SyncGroundState();
@@ -54,7 +54,7 @@ TEST(PlayerInputOwnership, RestartClearsSharedInputAndHeldJumpCutsOnlyOnce)
     Player player;
     NS::Obj::PlayerInput* input = NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input"));
     ASSERT_NE(input, nullptr);
-    NS::Game::Entity::EntityComponent& movement = player.Body();
+    NS::Obj::Body& movement = player.Body();
     movement.OnStart();
     input->SetJumpHeld(true);
     player.Update();

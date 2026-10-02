@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Game/Entity/EntityEvents.h"
+#include "Runtime/Object/Components/BodyEvents.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Physics/JoltCharacter.h"
@@ -18,7 +18,7 @@ namespace NS::Phys
     class PhysicsScene;
 }
 
-namespace NS::Game::Entity
+namespace NS::Obj
 {
     //! @brief 登場人物の身体。移動と接地の部品
     //! @details 自機も敵も同じ身体を固定の部品として持ち、自分の状態から呼ぶ。派生させない。
@@ -30,10 +30,10 @@ namespace NS::Game::Entity
     //! dt は NS::Platform::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
     //! 依存: NS::Core, NS::Platform::FrameTimer, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Scene /
     //! CapsuleCollider
-    class EntityComponent : public NS::Obj::Component
+    class Body : public NS::Obj::Component
     {
     public:
-        EntityComponent() noexcept;
+        Body() noexcept;
 
         [[nodiscard]] NS::Core::Vector3 Velocity() const noexcept { return m_velocity; }
         void SetVelocity(const NS::Core::Vector3& v) noexcept { m_velocity = v; }
@@ -91,13 +91,13 @@ namespace NS::Game::Entity
         void Move(float dt, float maxStepHeight) noexcept;
 
         //! 接地の通知の受け口。購読は後から足せる
-        [[nodiscard]] EntityEvents& Events() noexcept { return m_events; }
+        [[nodiscard]] BodyEvents& Events() noexcept { return m_events; }
 
         //! 同居する CapsuleCollider を控え、静的な当たりの世界から外す
         void OnStart() override;
 
         // TypeRegistry には登録せず、リフレクションの鎖だけ通す
-        NS_REFLECT_NONE(EntityComponent, NS::Obj::Component)
+        NS_REFLECT_NONE(Body, NS::Obj::Component)
 
         //! @brief 当たりを円柱の長さ 0 のカプセル (半径が同じ球) にするかを切り替える
         //! @details 真の間は CapsuleHalfHeight が 0 を返し、移動と裁定が同じ球で当たる。半径は変えない。
@@ -110,7 +110,7 @@ namespace NS::Game::Entity
         bool m_wasGrounded = false; // 直前の Move より前の接地
         NS::Obj::CapsuleCollider* m_capsuleCollider = nullptr;
         std::unique_ptr<NS::Phys::JoltCharacter> m_character;
-        EntityEvents m_events;
+        BodyEvents m_events;
 
         //! OnStart で控えた CapsuleCollider。控える前は同居する物を探し、無ければ nullptr
         [[nodiscard]] const NS::Obj::CapsuleCollider* SiblingCapsule() const noexcept;
@@ -121,4 +121,4 @@ namespace NS::Game::Entity
         bool m_sphereShape = false;                 // 当たりを球にしているか。書くのは SetSphereShape だけ
         NS::Obj::HitSensor* m_bodySensor = nullptr; // 同居するカプセルのセンサー。無ければ nullptr
     };
-} // namespace NS::Game::Entity
+} // namespace NS::Obj

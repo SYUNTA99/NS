@@ -1,6 +1,6 @@
 #include "Game/Player.h"
 
-#include "Game/Entity/EntityComponent.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Player/HorizontalTurn.h"
 #include "Game/Player/PlayerJudges.h"
@@ -56,7 +56,7 @@ void Player::RequestBodySlam(float charge01, const NS::Core::Vector3& aimDirecti
 
 NS::Core::Vector3 Player::BodySlamVelocity() const noexcept
 {
-    const NS::Game::Entity::EntityComponent& body = *m_body;
+    const NS::Obj::Body& body = *m_body;
     if (!IsBodySlamming())
     {
         return body.Velocity();
@@ -81,7 +81,7 @@ void Player::CancelBodySlam() noexcept
 
 void Player::EndBodySlam() noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     m_slam.travelled = 0.0f;
     m_slam.distanceTarget = 0.0f;
     // 残すと、次の溜めが前の突進で寄せた分を累計に引き継ぎ、放す時に溜めていない分まで回る
@@ -133,7 +133,7 @@ void Player::AdvanceBodySlamTravel(const NS::Core::Vector3& delta) noexcept
 
 NS::Core::Vector3 Player::AimDirection() const noexcept
 {
-    const NS::Game::Entity::EntityComponent& body = *m_body;
+    const NS::Obj::Body& body = *m_body;
     NS::Core::Vector3 dir{DesiredDirection().x, 0.0f, DesiredDirection().z};
     float length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
 
@@ -183,7 +183,7 @@ float Player::BodySlamAimBlend01() const noexcept
 
 bool Player::BodySlam() noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     NS::Core::Vector3 dir = AimDirection();
 
     const float aimLength =
@@ -318,7 +318,7 @@ bool Player::ComputeHomingStep(const NS::Core::Vector3& targetCenter,
 
 NS::Core::Vector3 Player::PredictHomingVelocity(const NS::Core::Vector3& targetCenter) const noexcept
 {
-    const NS::Game::Entity::EntityComponent& body = *m_body;
+    const NS::Obj::Body& body = *m_body;
     float nextAngle = 0.0f;
     if (!IsBodySlamming() || !ComputeHomingStep(targetCenter, m_slam.dir, nextAngle))
     {
@@ -353,7 +353,7 @@ void Player::SteerToward(const NS::Core::Vector3& targetCenter,
 
 void Player::ApplyBodySlamHeading() noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     if (IsBodySlamming() && !m_slam.isTap)
     {
         body.SetLateralVelocity(NS::Core::Vector3{
@@ -439,7 +439,7 @@ void Player::SetCurled(bool curled) noexcept
 
 void Player::ChangeCurled(bool curled) noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     if (curled == m_curled)
     {
         return;
@@ -472,7 +472,7 @@ void Player::SetBodySlamHeld(bool held) noexcept
 
 void Player::UncurlWhenSettled() noexcept
 {
-    NS::Game::Entity::EntityComponent& body = *m_body;
+    NS::Obj::Body& body = *m_body;
     if (!m_curled)
     {
         return;
