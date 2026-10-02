@@ -306,14 +306,6 @@ namespace NS::Obj
         physics.OptimizeBroadPhase();
     }
 
-    void ObjectList::UpdateAllObjects()
-    {
-        for (UpdatePhase phase : k_UpdatePhases)
-        {
-            ExecutePhase(phase);
-        }
-    }
-
     void ObjectList::SnapshotObjects()
     {
         for (std::unique_ptr<Actor>& obj : m_objects)

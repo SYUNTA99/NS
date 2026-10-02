@@ -125,9 +125,6 @@ namespace NS::Obj
         //! 登録を外す。更新の最中に外した物は、そのフレームの残りでは呼ばれない
         void RemoveTicker(ITickable* ticker) noexcept;
 
-        //! 段の表 UpdatePhase の順に全段の ExecutePhase を回す。物理の 1 歩は含まない
-        void UpdateAllObjects();
-
         //! 全配置物の Root を Snapshot する。previous を current へ揃える
         void SnapshotObjects();
 

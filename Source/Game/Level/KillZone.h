@@ -14,7 +14,6 @@ namespace NS::Game::Level
         KillZone() noexcept;
 
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
-        [[nodiscard]] const char* ClassName() const noexcept override { return "KillZone"; }
         NS_REFLECT_NONE(KillZone, NS::Obj::Actor)
 
         //! 範囲に入ったプレイヤーの体へ MsgKill を送る
