@@ -33,7 +33,7 @@ namespace NS::Obj
     //! @brief Mario 系ジャンプアクションの追従カメラ
     //! @details 実カメラは持たず、追従姿勢を pose として返す。CameraManager が実カメラへ書く
     //! distance は臨界減衰バネでなめらかに寄せ、マウス / 右スティックで手動回転できる
-    //! 感度・反転と idle / run / jump 3 段の自動ズーム距離は欄で調整する
+    //! 感度・反転と idle / run / jump 3 段の自動ズーム距離は setter で調整できる
     //! FOV は基底 VirtualCamera が持つ
     //! 受けた溜めから視野角の締め・縦の揺れ・構図のずらしを作って姿勢に足す
     //! 構図のずらしは追う相手と狙う相手を枠に収めるよう、位置と注視点を同じだけ動かす
@@ -107,6 +107,34 @@ namespace NS::Obj
         //! @details 次の姿勢から普通の追い方になり、次のフレームから回す入力が効く。
         //! 回している途中の向きはそのまま残す
         void ClearRebound() noexcept;
+
+        //! 将来 Settings UI から繋ぐ
+        void SetSensX(float radPerPixel) noexcept;
+        [[nodiscard]] float SensX() const noexcept { return m_sensX; }
+        void SetSensY(float radPerPixel) noexcept;
+        [[nodiscard]] float SensY() const noexcept { return m_sensY; }
+        void SetInvertX(bool invert) noexcept;
+        [[nodiscard]] bool IsInvertX() const noexcept { return m_invertX; }
+        void SetInvertY(bool invert) noexcept;
+        [[nodiscard]] bool IsInvertY() const noexcept { return m_invertY; }
+
+        //! 自動ズームの距離 3 段を idle / run / jump で設定する。非正値は無視する
+        void SetAutoDistances(float idle, float run, float jump) noexcept;
+        //! 自動ズームで run 距離へ切替える水平速度しきい値
+        void SetRunSpeedThreshold(float speed) noexcept;
+
+        //! 距離を手動固定。自動ズームを止め、ClearManualDistance() で戻す
+        void SetDistance(float distance) noexcept;
+        void ClearManualDistance() noexcept;
+        [[nodiscard]] float Distance() const noexcept { return m_distance; }
+        [[nodiscard]] bool IsManualDistance() const noexcept { return m_manualDistance; }
+
+        [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
+        [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
+
+        //! プレイ開始時の向き。OnStart で現在 yaw/pitch へ写し、以降はプレイ中の手動回転で動く
+        [[nodiscard]] float InitialYaw() const noexcept { return m_initialYaw; }
+        [[nodiscard]] float InitialPitch() const noexcept { return m_initialPitch; }
 
         //! editor のギズモで置いたカメラ world 位置から、target 頭を基準に yaw/pitch/距離を逆算し初期姿勢へ書く
         //! target 未解決や距離ほぼ 0 なら何もしない。初期姿勢は data 保存され、プレイ開始時の向きになる
@@ -205,6 +233,7 @@ namespace NS::Obj
         float m_distance = 6.0f;        // 現在のカメラ距離
         float m_desiredDistance = 6.0f; // 目標カメラ距離
         float m_springOmega = 6.0f;     // 距離バネの追従の速さ
+        bool m_manualDistance = false;  // 距離を手動固定中か
 
         float m_idleDistance = 5.0f;      // 静止時の距離
         float m_runDistance = 6.0f;       // 走行時の距離

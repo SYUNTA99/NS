@@ -14,6 +14,8 @@ namespace NS::Obj
 {
     SphereCollider::SphereCollider() noexcept {}
 
+    SphereCollider::SphereCollider(float radius) noexcept : m_radius(std::max(radius, 0.0f)) {}
+
     void SphereCollider::SetRadius(float radius) noexcept
     {
         m_radius = std::max(radius, 0.0f);

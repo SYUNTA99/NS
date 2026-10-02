@@ -21,6 +21,16 @@ namespace NS::Obj
         m_camera.SetUp(up);
     }
 
+    void CameraComponent::SetFovY(NS::Core::Radians fov) noexcept
+    {
+        m_camera.SetFovY(fov);
+    }
+
+    void CameraComponent::SetAspectRatio(float aspect) noexcept
+    {
+        m_camera.SetAspectRatio(aspect);
+    }
+
     void CameraComponent::SetAspectRatioFromRenderer(const NS::Gfx::Renderer& renderer) noexcept
     {
         const NS::Core::Size2D size = renderer.Size();
@@ -32,6 +42,16 @@ namespace NS::Obj
             return NS::Core::AspectRatio(size);
         }();
         m_camera.SetAspectRatio(aspect);
+    }
+
+    void CameraComponent::SetNearPlane(float nearPlane) noexcept
+    {
+        m_camera.SetNearPlane(nearPlane);
+    }
+
+    void CameraComponent::SetFarPlane(float farPlane) noexcept
+    {
+        m_camera.SetFarPlane(farPlane);
     }
 
     void CameraComponent::ApplyPose(const CameraPose& pose) noexcept

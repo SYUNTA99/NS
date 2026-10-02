@@ -18,7 +18,7 @@ namespace NS::Obj
 {
     //! @brief クリップを時間再生して SkeletalMesh のボーンパレットを更新する
     //! @details 毎フレーム再生時刻を進める。AnimationClip をサンプリングしたポーズを
-    //! Skeleton でボーンパレット化し、SkeletalMesh に渡す。速度 / ループ / クリップ選択を制御できる
+    //! Skeleton でボーンパレット化し、SkeletalMesh に渡す。再生 / 停止 / 速度 / ループ / クリップ選択を制御できる
     //! mesh / skeleton / clips は全て非所有で、AssetManager 等の所有側が寿命を保証する
     //! OnUpdate は Actor::PrepareRender が RenderPrep の段で呼ぶ。
     //! 移動と物理の段の後なので、骨は動いた後の姿に付いていく
@@ -33,10 +33,27 @@ namespace NS::Obj
         //! ボーンパレット計算用の骨格を差し替える。非所有で呼出側が寿命を保証する。null の間 ApplyPose は何もしない
         void SetSkeleton(const NS::Gfx::Skeleton* skeleton) noexcept;
 
+        //! この Component が表す skinned モデルの参照。ContentRoot 配下の glTF 相対パス
+        [[nodiscard]] const std::string& ModelRef() const noexcept { return m_modelRef; }
+        //! build 時にこの文字列から mesh / skeleton / clips を解決する。同じ object の Model の mesh
+        //! もこちらが差すので、skinned の配置物は Model 側の Mesh 参照を空のままにする
+        void SetModelRef(std::string ref) noexcept { m_modelRef = std::move(ref); }
+
+        //! 追加で読むアニメーション glTF の参照一覧。セミコロン区切りの ContentRoot 相対パス
+        [[nodiscard]] const std::string& ClipsRef() const noexcept { return m_clipsRef; }
+        //! 各エントリのクリップを骨名で model の骨格へ結合して後ろに足す。空エントリと前後の空白は無視し、
+        //! 解決できないエントリは読み飛ばして残りを続ける
+        void SetClipsRef(std::string ref) noexcept { m_clipsRef = std::move(ref); }
+
+        void Play() noexcept;
+        void Pause() noexcept;
+        //! 再生時刻を 0 に戻して停止する
+        void Stop() noexcept;
         //! @brief 再生速度を差し替える
         //! @details 非有限値は無視して直前の値を残す。有限の負値は 0 にクランプする
         //! @param[in] speed 再生速度。1.0 が等倍
         void SetSpeed(float speed) noexcept;
+        void SetLooping(bool looping) noexcept;
         //! 添字でクリップを選び再生時刻を 0 へ戻す。範囲外は false で選択を変えない
         bool SelectClip(std::size_t index) noexcept;
         //! 名前一致のクリップを選ぶ。一致が無ければ false で選択を変えない
@@ -51,6 +68,7 @@ namespace NS::Obj
         [[nodiscard]] float Time() const noexcept;
         //! 現在クリップの尺。無ければ 0
         [[nodiscard]] float Duration() const noexcept;
+        [[nodiscard]] bool IsPlaying() const noexcept;
 
         void OnStart() override;
         void OnUpdate() override;

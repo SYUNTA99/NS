@@ -224,6 +224,15 @@ namespace NS::Obj
         return StaticReflection();                                                                                     \
     }
 
+//! 値型用のフィールド宣言終了。Component を継承しない型向けに、仮想の GetReflection を出さず静的関数だけ定義する
+#define NS_REFLECT_END_VALUE()                                                                                         \
+    }                                                                                                                  \
+    ;                                                                                                                  \
+    static const NS::Obj::ReflectionInfo k_Info{                                                                       \
+        k_TypeName, k_Fields, sizeof(k_Fields) / sizeof(k_Fields[0]), NS::Obj::ReflectionBaseOf<ReflectBase>()};       \
+    return &k_Info;                                                                                                    \
+    }
+
 //! 調整フィールドを持たない型用。typeName と基底だけのリフレクション情報を返す。空配列は宣言できないため fields は
 //! nullptr
 #define NS_REFLECT_NONE(ThisType, BaseType)                                                                            \

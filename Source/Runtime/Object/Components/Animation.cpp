@@ -66,6 +66,22 @@ namespace NS::Obj
         m_skeleton = skeleton;
     }
 
+    void Animation::Play() noexcept
+    {
+        m_playing = true;
+    }
+
+    void Animation::Pause() noexcept
+    {
+        m_playing = false;
+    }
+
+    void Animation::Stop() noexcept
+    {
+        m_playing = false;
+        m_time = 0.0f;
+    }
+
     void Animation::SetSpeed(float speed) noexcept
     {
         // 正の無限大は speed > 0.0f を通り、m_time の折り返しで std::fmod が非数を返す。非数は大小比較が
@@ -83,6 +99,11 @@ namespace NS::Obj
         {
             m_speed = 0.0f;
         }
+    }
+
+    void Animation::SetLooping(bool looping) noexcept
+    {
+        m_looping = looping;
     }
 
     bool Animation::SelectClip(std::size_t index) noexcept
@@ -139,6 +160,11 @@ namespace NS::Obj
             return m_clips[m_current]->duration;
         }
         return 0.0f;
+    }
+
+    bool Animation::IsPlaying() const noexcept
+    {
+        return m_playing;
     }
 
     void Animation::ResolveAssets(AssetManager& assets)

@@ -61,7 +61,10 @@ namespace NS::Obj
         [[nodiscard]] int VcamPriority() const noexcept { return m_vcamPriority; }
 
         //! 投影設定。vcam ごとに保持し EvaluatePose の pose へ載せる。play=far100 / editor=far200 等の差を吸収する
+        void SetFovY(NS::Core::Radians fov) noexcept { m_fovY = fov; }
         [[nodiscard]] NS::Core::Radians FovY() const noexcept { return m_fovY; }
+        void SetNearPlane(float nearPlane) noexcept { m_nearPlane = nearPlane; }
+        [[nodiscard]] float NearPlane() const noexcept { return m_nearPlane; }
         void SetFarPlane(float farPlane) noexcept { m_farPlane = farPlane; }
         [[nodiscard]] float FarPlane() const noexcept { return m_farPlane; }
 

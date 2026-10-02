@@ -16,6 +16,8 @@ namespace NS::Obj
     public:
         //! 既定 halfExtents {0.5,0.5,0.5} で構築する
         BoxCollider() noexcept;
+        //! halfExtents を指定して構築する。負の成分は 0 にクランプ
+        explicit BoxCollider(const NS::Core::Vector3& halfExtents) noexcept;
 
         //! 当たり箱の各軸の半径を設定する。負の成分は 0 にクランプ
         void SetHalfExtents(const NS::Core::Vector3& halfExtents) noexcept;
@@ -26,6 +28,10 @@ namespace NS::Obj
         //! owner local 空間での中心オフセットを設定 / 取得する。当たり箱を視覚と独立にずらすのに使う
         void SetCenterOffset(const NS::Core::Vector3& offset) noexcept;
         [[nodiscard]] NS::Core::Vector3 CenterOffset() const noexcept;
+
+        //! owner local 空間での回転を quaternion で設定 / 取得する。owner 回転にこれを重ねて当たり箱を回す
+        void SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept;
+        [[nodiscard]] NS::Core::Quaternion LocalRotation() const noexcept;
 
         //! local 回転を pitch/yaw/roll の Euler 角 (度) で読み書きする Inspector 用アクセサ。内部は quaternion 保持
         void SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept;

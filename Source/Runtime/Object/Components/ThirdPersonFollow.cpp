@@ -463,10 +463,63 @@ namespace NS::Obj
         // プレイ開始 / rebuild ごとに初期姿勢へ戻す。editor で置いた向きからプレイを始め、手動回転はここから積む
         m_yaw = m_initialYaw;
         m_pitch = m_initialPitch;
-        m_distance = m_idleDistance;
-        m_desiredDistance = m_idleDistance;
+        if (!m_manualDistance)
+        {
+            m_distance = m_idleDistance;
+            m_desiredDistance = m_idleDistance;
+        }
         ClearCharge();
         ClearRebound();
+    }
+
+    void ThirdPersonFollow::SetSensX(float radPerPixel) noexcept
+    {
+        m_sensX = radPerPixel;
+    }
+    void ThirdPersonFollow::SetSensY(float radPerPixel) noexcept
+    {
+        m_sensY = radPerPixel;
+    }
+    void ThirdPersonFollow::SetInvertX(bool invert) noexcept
+    {
+        m_invertX = invert;
+    }
+    void ThirdPersonFollow::SetInvertY(bool invert) noexcept
+    {
+        m_invertY = invert;
+    }
+
+    void ThirdPersonFollow::SetAutoDistances(float idle, float run, float jump) noexcept
+    {
+        if (idle > 0.0f)
+        {
+            m_idleDistance = idle;
+        }
+        if (run > 0.0f)
+        {
+            m_runDistance = run;
+        }
+        if (jump > 0.0f)
+        {
+            m_jumpDistance = jump;
+        }
+    }
+
+    void ThirdPersonFollow::SetRunSpeedThreshold(float speed) noexcept
+    {
+        m_runSpeedThreshold = speed;
+    }
+
+    void ThirdPersonFollow::SetDistance(float distance) noexcept
+    {
+        m_distance = distance;
+        m_desiredDistance = distance;
+        m_manualDistance = true;
+    }
+
+    void ThirdPersonFollow::ClearManualDistance() noexcept
+    {
+        m_manualDistance = false;
     }
 
     void ThirdPersonFollow::SetInitialPoseFromCameraPosition(const NS::Core::Vector3& cameraPosition) noexcept
@@ -562,11 +615,11 @@ namespace NS::Obj
         // カメラを後ろへ下げる。反動の間は書き換えない
         // 今の目標でなく今の距離から測る
         // 目標へ寄っている途中に目標へ足すと、見えている距離より下がりすぎるか寄る
-        if (reboundBegan)
+        if (!m_manualDistance && reboundBegan)
         {
             m_desiredDistance = m_distance + std::max(m_reboundPullBack, 0.0f);
         }
-        else if (m_reboundPhase != ReboundPhase::Following)
+        else if (!m_manualDistance && m_reboundPhase != ReboundPhase::Following)
         {
             float desired = m_idleDistance;
             if (m_hasFollowMotion)

@@ -16,6 +16,8 @@ namespace NS::Obj
     public:
         //! 既定 半径 0.4 / 半高 0.5 の縦 capsule で構築する
         CapsuleCollider() noexcept;
+        //! 半径 / 半高を指定して構築する。負は 0 にクランプ
+        CapsuleCollider(float radius, float halfHeight) noexcept;
 
         //! 負は 0 にクランプ
         void SetRadius(float radius) noexcept;
@@ -30,6 +32,10 @@ namespace NS::Obj
         //! owner local 空間での中心オフセット
         void SetCenterOffset(const NS::Core::Vector3& offset) noexcept;
         [[nodiscard]] NS::Core::Vector3 CenterOffset() const noexcept;
+
+        //! local 回転を quaternion で直接設定 / 取得する
+        void SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept;
+        [[nodiscard]] NS::Core::Quaternion LocalRotation() const noexcept;
 
         //! local 回転を pitch/yaw/roll の Euler 角 (度) で読み書きする。寝かせ用に内部は quaternion 保持
         void SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept;

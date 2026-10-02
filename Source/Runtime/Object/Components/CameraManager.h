@@ -18,7 +18,7 @@ namespace NS::Obj
     //! @brief シーンに 1 つのカメラの管理役。仮想カメラ群を束ね、選ばれた 1 個の pose に効果を掛けて実カメラへ流す
     //! @details UE の PlayerCameraManager、オデッセイの CameraDirector に当たる。部品と Actor は IUseCamera
     //! から引く。登録済み VirtualCamera のうち active かつ最高 VcamPriority のものを毎フレーム選ぶ。active 切替は
-    //! m_blendDuration 秒の ease-in-out で旧 pose から繋ぐ。揺れや寄りのような効果はモディファイア
+    //! SetBlendDuration 秒の ease-in-out で旧 pose から繋ぎ、0 で即時カット。揺れや寄りのような効果はモディファイア
     //! (CameraModifier) として積み、ブレンドの後に Order の順で掛ける。効果を足す側は管理役を触らずモディファイアを 1
     //! つ積むだけでよい。描き終えたモディファイアは管理役が外す。描画 / aspect 設定 / PlayerInput の forward
     //! 取得もこの管理役経由に集約する。シーンがカメラの段の Actor を回した直後に OnTick を呼ぶので、vcam を動かす
@@ -38,6 +38,10 @@ namespace NS::Obj
         //! 登録済み vcam を外す。未登録と null は無視する。外した vcam が active 中なら選び直す
         //! 寿命を呼出側が握る vcam を破棄する前に呼んで無効参照を防ぐ
         void RemoveVirtualCamera(VirtualCamera* vcam) noexcept;
+
+        //! active 切替時のブレンド秒数。0 以下で即時カット。負値は 0 に丸める
+        void SetBlendDuration(float seconds) noexcept;
+        [[nodiscard]] float BlendDuration() const noexcept { return m_blendDuration; }
 
         //! fixed step で active 切替を検出しブレンドタイマーを進める。描画はしない
         void OnUpdate();
