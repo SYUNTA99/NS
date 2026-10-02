@@ -135,7 +135,7 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
     state.hasRebound = true;
     state.rebound = NS::Obj::FollowReboundDesc{
         .rebounding = IsRebounding(),
-        .slamDirection = BodySlamStartDirection(),
+        .slamDirection = BodySlamDirection(),
     };
     if (const NS::Game::Level::CollisionInput* input = m_collisionInput.get())
     {
@@ -571,9 +571,7 @@ void Player::ResetState() noexcept
     m_slam.distanceTarget = 0.0f;
     m_slam.justStarted = false;
     m_slam.dir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-    m_slam.startDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
     m_rebound.direction = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-    ForgetHoming();
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_curled = false;

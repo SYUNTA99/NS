@@ -156,7 +156,7 @@ namespace NS::Game::Level
             return touched;
         }
 
-        // 体当たりが調べる種類の、有効な体のセンサーか。当たりの裁定と寄せる相手の探索が同じ絞りを通る
+        // 体当たりが調べる種類の、有効な体のセンサーか。当たりの裁定と狙う相手の探索が同じ絞りを通る
         [[nodiscard]] bool IsTackleTarget(const NS::Obj::HitSensor& sensor, const NS::Obj::Actor* self) noexcept
         {
             return sensor.IsValid() && sensor.Owner() != self &&
@@ -234,79 +234,6 @@ namespace NS::Game::Level
             }
         }
         return nearest;
-    }
-
-    bool ImpactResolver::FindHomingTarget(const NS::Core::Vector3& forward,
-                                          float coneDegrees,
-                                          float maxDistance,
-                                          NS::Core::Vector3& outCenter,
-                                          NS::Obj::ActorRef preferred) const
-    {
-        NS::Core::Vector3 forwardDir{};
-        if (Owner() == nullptr || !NS::Core::TryNormalizeHorizontal(forward, forwardDir))
-        {
-            return false;
-        }
-        NS::Obj::Scene* scene = Owner()->OwningScene();
-        if (scene == nullptr)
-        {
-            return false;
-        }
-
-        // 角度は内積と余弦で比べる。非有限の角度は比較が偽になり、誰も拾わない
-        const float minCosine = std::cos(NS::Core::ToRadians(NS::Core::Degrees{coneDegrees}).value);
-        const NS::Core::Vector3 position = Owner()->Root().Position();
-
-        // TODO: 体のセンサーを総当たりで見ている。数十個までを想定。増えたら格子で絞る
-        bool found = false;
-        float nearestDistance = 0.0f;
-        NS::Core::Vector3 nearestCenter{};
-        bool preferredFound = false;
-        NS::Core::Vector3 preferredCenter{};
-        for (const NS::Obj::HitSensor* sensor : scene->HitSensors().Sensors())
-        {
-            if (!IsTackleTarget(*sensor, Owner()))
-            {
-                continue;
-            }
-            const NS::Core::AABB bounds = sensor->WorldVolume().Bounds();
-
-            const float dx = bounds.Center.x - position.x;
-            const float dz = bounds.Center.z - position.z;
-            const float distance = std::sqrt(dx * dx + dz * dz);
-            // 真上と真下の相手は向きが決まらない
-            if (!(distance >= NS::Core::k_Epsilon) || !(distance <= maxDistance))
-            {
-                continue;
-            }
-            const float cosine = (dx * forwardDir.x + dz * forwardDir.z) / distance;
-            if (!(cosine >= minCosine))
-            {
-                continue;
-            }
-            if (preferred.IsSet() && sensor->Owner()->Id() == preferred.id)
-            {
-                preferredFound = true;
-                preferredCenter = bounds.Center;
-            }
-            if (!found || distance < nearestDistance)
-            {
-                found = true;
-                nearestDistance = distance;
-                nearestCenter = bounds.Center;
-            }
-        }
-
-        if (preferredFound)
-        {
-            outCenter = preferredCenter;
-            return true;
-        }
-        if (found)
-        {
-            outCenter = nearestCenter;
-        }
-        return found;
     }
 
     bool ImpactResolver::FindSlamLineTarget(const NS::Core::Vector3& direction,

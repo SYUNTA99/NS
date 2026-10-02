@@ -105,8 +105,6 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
                                      {"タップ距離", 6.25f},
                                      {"狙いの巻き戻し秒", 0.11f},
                                      {"狙いの巻き戻しが消える秒", 0.19f},
-                                     {"寄せる角度の上限", 3.0f},
-                                     {"1 フレームの向きの変化の上限", 0.25f},
                                      {"反動の上りの重力倍率", 0.5f},
                                      {"反動中の空中の加速度", 2.0f}};
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
@@ -114,6 +112,9 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
     }
+    // 左右の寄せは消した。鍵が戻ると、保存した場面に効かない角度が載る
+    EXPECT_FALSE(fields.contains("寄せる角度の上限"));
+    EXPECT_FALSE(fields.contains("1 フレームの向きの変化の上限"));
     const NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player.Part("Movement"));
     ASSERT_NE(movement, nullptr);
     EXPECT_TRUE(NS::Obj::SerializeComponent(*movement)["fields"].empty());

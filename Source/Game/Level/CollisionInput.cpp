@@ -105,7 +105,6 @@ namespace NS::Game::Level
         m_stateReady = true;
         m_controlReady = true;
         UpdateAimTarget(held);
-        ObserveHomingTarget(held);
     }
 
     NS::Core::Vector3 CollisionInput::PredictedSlamVelocity() const noexcept
@@ -113,10 +112,6 @@ namespace NS::Game::Level
         if (m_body == nullptr)
         {
             return NS::Core::Vector3{};
-        }
-        if (m_observedRushing && m_observedHasHomingTarget)
-        {
-            return m_player->PredictHomingVelocity(m_observedHomingCenter);
         }
         return m_player->BodySlamVelocity();
     }
@@ -143,13 +138,10 @@ namespace NS::Game::Level
             return;
         }
         m_controlReady = false;
-        if (m_observedRushing && m_body != nullptr && m_player->IsBodySlamming())
+        if (refreshVelocity && m_observedRushing && m_body != nullptr && m_body->IsActive() &&
+            m_player->IsBodySlamming())
         {
-            SteerTowardTarget();
-            if (refreshVelocity && m_body->IsActive())
-            {
-                m_player->ApplyBodySlamHeading();
-            }
+            m_player->ApplyBodySlamHeading();
         }
 #if !defined(NS_SHIPPING)
         DrawChargeRing();
@@ -234,10 +226,6 @@ namespace NS::Game::Level
         {
             m_aimTarget.origin = RootTransform().Position();
         }
-        if (!m_observedRushing)
-        {
-            SteerTowardTarget();
-        }
         UpdateChargeStance();
     }
 
@@ -297,64 +285,6 @@ namespace NS::Game::Level
         }
         outLine = m_aimLine;
         return true;
-    }
-
-    void CollisionInput::ObserveHomingTarget(bool held)
-    {
-        m_observedHasHomingTarget = false;
-        if (m_body == nullptr || m_resolver == nullptr)
-        {
-            return;
-        }
-
-        NS::Core::Vector3 forward{};
-        SlamLineTarget onLine{};
-        bool hasOnLine = false;
-        if (m_observedRushing)
-        {
-            const NS::Core::Vector3 velocity = m_player->BodySlamVelocity();
-            forward = NS::Core::Vector3{velocity.x, 0.0f, velocity.z};
-            hasOnLine = m_resolver->FindSlamLineTarget(forward, m_player->BodySlamDistance(), onLine);
-        }
-        else if (held)
-        {
-            forward = m_player->AimDirection();
-            if (m_observedHasAimLine)
-            {
-                forward = m_observedAimLine.direction;
-            }
-            hasOnLine = m_observedHasAimTarget;
-            if (hasOnLine)
-            {
-                onLine = m_observedAimTarget;
-            }
-        }
-        else
-        {
-            return;
-        }
-
-        NS::Obj::ActorRef preferred{};
-        if (hasOnLine)
-        {
-            preferred = onLine.target;
-        }
-        NS::Core::Vector3 center{};
-        if (m_resolver->FindHomingTarget(
-                forward, Tuning().m_homingSearchDegrees, Tuning().m_homingSearchDistance, center, preferred))
-        {
-            m_observedHasHomingTarget = true;
-            m_observedHomingCenter = center;
-            m_observedHomingForward = forward;
-        }
-    }
-
-    void CollisionInput::SteerTowardTarget()
-    {
-        if (m_observedHasHomingTarget && m_body != nullptr)
-        {
-            m_player->SteerToward(m_observedHomingCenter, Tuning().m_homingSearchDegrees, m_observedHomingForward);
-        }
     }
 
     void CollisionInput::UpdateChargeStance()

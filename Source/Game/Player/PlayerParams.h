@@ -75,8 +75,6 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_tapSlamDistance, "タップ距離")
         NS_REFLECT_FIELD(m_slamAimHoldTime, "狙いの巻き戻し秒")
         NS_REFLECT_FIELD(m_slamAimFadeTime, "狙いの巻き戻しが消える秒")
-        NS_REFLECT_FIELD(m_homingMaxDegrees, "寄せる角度の上限")
-        NS_REFLECT_FIELD(m_homingStepDegrees, "1 フレームの向きの変化の上限")
         NS_REFLECT_FIELD(m_reboundRiseGravityScale, "反動の上りの重力倍率")
         NS_REFLECT_FIELD(m_reboundAirAcceleration, "反動中の空中の加速度")
         NS_REFLECT_FIELD(m_idleClip, "立ちのクリップ")
@@ -93,8 +91,6 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
         NS_REFLECT_FIELD(m_positionFactorCurve, "突進位置係数カーブ")
         NS_REFLECT_FIELD(m_centerTierEdge, "中心近くの境目")
-        NS_REFLECT_FIELD(m_homingSearchDegrees, "寄せる相手を探す角度")
-        NS_REFLECT_FIELD(m_homingSearchDistance, "寄せる相手を探す距離")
         NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
         NS_REFLECT_FIELD(m_pressSquashScale, "押しの構えの縮み")
         NS_REFLECT_FIELD(m_standingMeshRef, "立ち姿のメッシュ")
@@ -306,8 +302,6 @@ namespace NS::Game::Player
         NS::Obj::Curve m_chargeFactorCurve{};
         NS::Obj::Curve m_positionFactorCurve{};
         float m_centerTierEdge = 0.35f;
-        float m_homingSearchDegrees = 30.0f;
-        float m_homingSearchDistance = 6.0f;
         float m_chargeSquashScale = 0.95f;
         float m_pressSquashScale = 0.97f;
         std::string m_idleClip = "idle";
@@ -349,8 +343,6 @@ namespace NS::Game::Player
         float m_tapSlamDistance = 6.25f;
         float m_slamAimHoldTime = 0.11f;
         float m_slamAimFadeTime = 0.19f;
-        float m_homingMaxDegrees = 3.0f;
-        float m_homingStepDegrees = 0.25f;
         float m_reboundRiseGravityScale = 0.5f;
         float m_reboundAirAcceleration = 2.0f;
     };

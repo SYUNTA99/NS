@@ -92,7 +92,8 @@ TEST(PlayerUpdatePipeline, OneObservationCannotAdvanceChargeTwice)
     EXPECT_TRUE(player.ChargeControl().Judge().JustStartedCharging());
 }
 
-TEST(PlayerUpdatePipeline, PredictedHeadingMatchesControlWithoutChangingVerticalVelocity)
+// 左右の寄せは消した。脇の相手へ向きを曲げると、放った後に矢印とずれて当て所が見えない所で動く
+TEST(PlayerUpdatePipeline, SlamHeadingStaysOnTheAimBesideAnOffAxisTarget)
 {
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
@@ -102,7 +103,7 @@ TEST(PlayerUpdatePipeline, PredictedHeadingMatchesControlWithoutChangingVertical
     const NS::Core::Vector3 before = player->BodySlamVelocity();
     player->ChargeControl().Observe(false);
     const NS::Core::Vector3 predicted = player->ChargeControl().PredictedSlamVelocity();
-    EXPECT_GT(predicted.x, before.x);
+    ExpectSameVector(predicted, before);
     ExpectSameVector(player->BodySlamVelocity(), before);
     player->ChargeControl().AdvanceState(NS::Platform::FrameTimer::FixedDelta());
     player->States().Step(*player, NS::Platform::FrameTimer::FixedDelta());
@@ -205,7 +206,7 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
     EXPECT_TRUE(player->Body().IsActive());
 }
 
-TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringHomingControl)
+TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl)
 {
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
@@ -259,13 +260,13 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
         R"([
         [0, 94, 95, 107, [
             [0, 0, 0.649999976, 0, 0, 0, 0, 0.04, 0.5, 2.5],
-            [90, 0.0053326515, 0.6500000358, 0.3332906961, 0.3199590743, 0, 19.997440338, 0.04, 0.5, 2.5],
-            [92, 0.0174521543, 0.6499999762, 0.999845624, 0.4072110355, 0, 19.995853424, 0.14, 0.5, 2.5],
-            [93, 0.0256930776, 0.6499999166, 1.333077073, 0.4944552481, 0, 19.993886948, 0.14, 0.5, 2.5],
-            [100, 0.0182858333, 0.6500000954, 1.348796487, -0.5317211151, 1.67509e-7, 0.0520853996, 0.141320929, 0.5, 2.54539752],
-            [110, 0.0044905245, 1.111082792, 1.20796454, -0.2069296092, 6.603737831, -2.112478495, 0.240193799, 1.375061989, 5.943464279],
-            [140, -0.098974295, 2.808784485, 0.151724979, -0.2069296092, 0.6662364602, -2.112478495, 0.99164772, 4.410938263, 31.769449234],
-            [189, -0.209735185, 1.149999738, -0.978997231, 0, 0, 0, 2.200480461, 0.501000941, 73.314628601]
+            [90, 0, 0.6500000358, 0.3333333433, 0, 0, 20, 0.04, 0.5, 2.5],
+            [92, 0, 0.6499999762, 1.0, 0, 0, 20, 0.14, 0.5, 2.5],
+            [93, 0, 0.6499999166, 1.3333333731, 0, 0, 20, 0.14, 0.5, 2.5],
+            [100, -0.0123793595, 0.6500000954, 1.3523943424, -0.8675079346, 1.67509e-7, 0.104101181, 0.14, 0.5, 2.5454165936],
+            [110, -0.0290900283, 1.1069868803, 1.2131388187, -0.2506600022, 6.5423016548, -2.0888333321, 0.14, 1.3674725294, 5.915345192],
+            [140, -0.1544199884, 2.7739706039, 0.1687223465, -0.2506600022, 0.6048001647, -2.0888333321, 0.14, 4.3493065834, 31.5304336548],
+            [189, -0.2843397856, 1.149999738, -0.9139441252, 0, 0, 0, 0.14, 0.501000941, 72.7308883667]
         ]],
         [1, 14, 15, 23, [
             [0, 0, 0.649999976, 0, 0, 0, 0, 0, 0.5, 3],

@@ -151,26 +151,10 @@ namespace NS::Game::Level
         //! 凍結の途中で外れても移動を止めたままにしない
         void OnEndPlay() override;
 
-        //! @brief 突進の向きを寄せる相手を探す
-        //! @details 相手はプレイヤーの体当たりが調べる種類の、有効な体のセンサーを持つ物。裁定と同じ絞り。
-        //! 自機の位置から外接箱の中心への水平の向きが forward から coneDegrees 以内で、
-        //! 水平の距離が maxDistance 以内の相手のうち、preferred が居ればそれを、居なければ一番近い 1 体を選ぶ
-        //! @param[in] forward 基準の向き。水平の成分だけを見る
-        //! @param[in] coneDegrees 基準の向きから片側に見る角度。単位は度
-        //! @param[in] maxDistance 見る水平の距離。単位は m
-        //! @param[out] outCenter 見つけた相手の外接箱の中心。見つからない場合は書き換えない
-        //! @param[in] preferred 角度と距離の内に居れば、一番近い相手より先に選ぶ相手。未設定なら一番近い相手を選ぶ
-        //! @return 見つかった場合 true、それ以外の場合は false
-        [[nodiscard]] bool FindHomingTarget(const NS::Core::Vector3& forward,
-                                            float coneDegrees,
-                                            float maxDistance,
-                                            NS::Core::Vector3& outCenter,
-                                            NS::Obj::ActorRef preferred = NS::Obj::ActorRef{}) const;
-
         //! @brief 突進の線で最初に触れる相手を探す
-        //! @details 相手の絞りは FindHomingTarget と同じ。自機の当たりの玉 (丸まっていれば根の位置、立ち姿なら下の球の
-        //! 位置が中心で、半径は自機の半径) を direction の水平へ maxDistance 掃き、当たりの裁定と同じく
-        //! 相手の体のセンサーの形に触れるかを見る。
+        //! @details 相手はプレイヤーの体当たりが調べる種類の、有効な体のセンサーを持つ物で、裁定と同じ絞り。
+        //! 自機の当たりの玉 (丸まっていれば根の位置、立ち姿なら下の球の位置が中心で、半径は自機の半径) を
+        //! direction の水平へ maxDistance 掃き、当たりの裁定と同じく相手の体のセンサーの形に触れるかを見る。
         //! 線から相手の外接箱の中心までの横ずれが、外接箱を線に直交する軸へ投影した半幅と自機の半径の和以内で、
         //! 中心までの線に沿った距離が 0 より大きく、掃いた玉が触れる相手のうち、玉が触れるまでに進む距離が一番短い
         //! 1 体を選ぶ。横ずれの比は当たりの裁定と同じ式で出し、裁定はそれを 0〜1 に丸めて使う。

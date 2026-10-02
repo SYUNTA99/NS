@@ -23,8 +23,6 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
                                      {"チャージ満タン秒", 1.0f},
                                      {"チャージ減速率", 0.7f},
                                      {"中心近くの境目", 0.35f},
-                                     {"寄せる相手を探す角度", 30.0f},
-                                     {"寄せる相手を探す距離", 6.0f},
                                      {"構えの縮み", 0.95f},
                                      {"押しの構えの縮み", 0.97f}};
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
@@ -36,6 +34,9 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
     ASSERT_TRUE(fields.contains("突進位置係数カーブ"));
     // 惜しいの段は消した。鍵が戻ると、保存した場面に段の無い境目が載る
     EXPECT_FALSE(fields.contains("惜しいの境目"));
+    // 左右の寄せは消した。鍵が戻ると、保存した場面に効かない探す範囲が載る
+    EXPECT_FALSE(fields.contains("寄せる相手を探す角度"));
+    EXPECT_FALSE(fields.contains("寄せる相手を探す距離"));
     EXPECT_FLOAT_EQ(input->ChargeFactorFor(0.5f), 1.5f);
     EXPECT_NEAR(input->PositionFactorFor(0.5f), 0.85f, 0.00001f);
     EXPECT_TRUE(NS::Obj::SerializeComponent(*input)["fields"].empty());

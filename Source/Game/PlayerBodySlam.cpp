@@ -1,7 +1,6 @@
 #include "Game/Player.h"
 
 #include "Game/Level/LaunchArc.h"
-#include "Game/Player/HorizontalTurn.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
@@ -15,7 +14,6 @@
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 
-#include <algorithm>
 #include <cmath>
 
 // ---- 突進と反発 ----
@@ -84,8 +82,6 @@ void Player::EndBodySlam() noexcept
     NS::Obj::Body& body = *m_body;
     m_slam.travelled = 0.0f;
     m_slam.distanceTarget = 0.0f;
-    // 残すと、次の溜めが前の突進で寄せた分を累計に引き継ぎ、放す時に溜めていない分まで回る
-    ForgetHoming();
 
     // 加速は最高速を超えた速さを削らない。切らないと、倒している間は突進の速さのまま走り続ける
     const NS::Core::Vector3 lateral = body.LateralVelocity();
@@ -219,18 +215,8 @@ bool Player::BodySlam() noexcept
         return false;
     }
 
-    // 溜めている間に寄せた分は、控えた相手を放す向きから測り直して乗せる。突進中の寄せはその続きから数える。
-    // タップは短い踏み込みの移動技なので、溜めた分も乗せない
-    const bool isTap = !(m_request.charge01 > 0.0f);
-    float releaseHoming = 0.0f;
-    if (!isTap)
-    {
-        releaseHoming = HomingAngleForRelease(dir);
-    }
-    dir = NS::Game::Player::RotateHorizontal(dir, NS::Core::ToRadians(NS::Core::Degrees{releaseHoming}).value);
-    m_slam.dir = dir;
     m_slam.charge01 = m_request.charge01;
-    m_slam.isTap = isTap;
+    m_slam.isTap = !(m_request.charge01 > 0.0f);
     m_slam.travelled = 0.0f;
     m_slam.justStarted = true;
 
@@ -253,13 +239,8 @@ bool Player::BodySlam() noexcept
         return false;
     }
 
-    // 反動の後のカメラが当てた相手の方を向くのに使う
-    // 突進の間の寄せで曲がる前の向きを残す
-    m_slam.startDir = dir;
-
-    // 控えた相手は放す時に使い切る。突進中は突進の向きから探し直した相手へ寄せる
-    ForgetHoming();
-    m_homing.angle = releaseHoming;
+    // 出せた時だけ書く。反動の後のカメラと放した瞬間の絵が、突進の後も最後に出た突進の向きとして読む
+    m_slam.dir = dir;
     m_request.hasDir = false;
     m_request.spent = true;
     // 突進はどの経路で出ても玉で走らせる。掴まり中に放した押しは予約に残り、先行入力の秒の内に
@@ -271,86 +252,6 @@ bool Player::BodySlam() noexcept
     return true;
 }
 
-bool Player::ComputeHomingStep(const NS::Core::Vector3& targetCenter,
-                               const NS::Core::Vector3& chargeAim,
-                               float& nextAngle) const noexcept
-{
-    const bool rushing = IsBodySlamming();
-    if (rushing && m_slam.isTap)
-    {
-        return false;
-    }
-    NS::Core::Vector3 base = chargeAim;
-    float baseAngle = 0.0f;
-    float currentAngle = m_homing.angle;
-    if (rushing)
-    {
-        base = m_slam.dir;
-        baseAngle = m_homing.angle;
-    }
-    NS::Core::Vector3 baseDir{};
-    NS::Core::Vector3 toTarget{};
-    if (!NS::Core::TryNormalizeHorizontal(base, baseDir) ||
-        !NS::Core::TryNormalizeHorizontal(targetCenter - Root().Position(), toTarget))
-    {
-        return false;
-    }
-    const float relative =
-        NS::Core::ToDegrees(NS::Core::Radians{NS::Game::Player::HorizontalAngleBetween(baseDir, toTarget)}).value;
-    if (!std::isfinite(relative))
-    {
-        return false;
-    }
-    if (!rushing && m_homing.hasTarget && !(m_homing.target == targetCenter))
-    {
-        currentAngle = 0.0f;
-    }
-    const float limit = std::max(0.0f, m_params->m_homingMaxDegrees);
-    const float goal = NS::Core::Clamp(baseAngle + relative, -limit, limit);
-    const float step = std::max(0.0f, m_params->m_homingStepDegrees);
-    nextAngle = std::max(goal, currentAngle - step);
-    if (goal > currentAngle)
-    {
-        nextAngle = std::min(goal, currentAngle + step);
-    }
-    return true;
-}
-
-NS::Core::Vector3 Player::PredictHomingVelocity(const NS::Core::Vector3& targetCenter) const noexcept
-{
-    const NS::Obj::Body& body = *m_body;
-    float nextAngle = 0.0f;
-    if (!IsBodySlamming() || !ComputeHomingStep(targetCenter, m_slam.dir, nextAngle))
-    {
-        return BodySlamVelocity();
-    }
-    const NS::Core::Vector3 direction = NS::Game::Player::RotateHorizontal(
-        m_slam.dir, NS::Core::ToRadians(NS::Core::Degrees{nextAngle - m_homing.angle}).value);
-    return NS::Core::Vector3{
-        direction.x * m_params->m_bodySlamSpeed, body.VerticalVelocity(), direction.z * m_params->m_bodySlamSpeed};
-}
-
-void Player::SteerToward(const NS::Core::Vector3& targetCenter,
-                         float coneDegrees,
-                         const NS::Core::Vector3& chargeAim) noexcept
-{
-    float nextAngle = 0.0f;
-    if (!ComputeHomingStep(targetCenter, chargeAim, nextAngle))
-    {
-        return;
-    }
-    const float change = nextAngle - m_homing.angle;
-    m_homing.angle = nextAngle;
-    if (!IsBodySlamming())
-    {
-        m_homing.target = targetCenter;
-        m_homing.coneDegrees = coneDegrees;
-        m_homing.hasTarget = true;
-        return;
-    }
-    m_slam.dir = NS::Game::Player::RotateHorizontal(m_slam.dir, NS::Core::ToRadians(NS::Core::Degrees{change}).value);
-}
-
 void Player::ApplyBodySlamHeading() noexcept
 {
     NS::Obj::Body& body = *m_body;
@@ -359,35 +260,6 @@ void Player::ApplyBodySlamHeading() noexcept
         body.SetLateralVelocity(NS::Core::Vector3{
             m_slam.dir.x * m_params->m_bodySlamSpeed, 0.0f, m_slam.dir.z * m_params->m_bodySlamSpeed});
     }
-}
-
-void Player::ForgetHoming() noexcept
-{
-    m_homing.angle = 0.0f;
-    m_homing.hasTarget = false;
-}
-
-float Player::HomingAngleForRelease(const NS::Core::Vector3& releaseDir) const noexcept
-{
-    if (!m_homing.hasTarget)
-    {
-        return 0.0f;
-    }
-    NS::Core::Vector3 toTarget{};
-    if (!NS::Core::TryNormalizeHorizontal(m_homing.target - Root().Position(), toTarget))
-    {
-        return 0.0f;
-    }
-    const float relative =
-        NS::Core::ToDegrees(NS::Core::Radians{NS::Game::Player::HorizontalAngleBetween(releaseDir, toTarget)}).value;
-    // 探した角度の外の相手へ回すと、狙っていない相手へ引かれる。放す向きが溜めていた狙いと違う時に起きる
-    if (!(std::abs(relative) <= m_homing.coneDegrees))
-    {
-        return 0.0f;
-    }
-    // 累計は溜めていた狙いから測った角度なので、符号は使わず大きさだけを溜めた量として使う
-    const float earned = std::abs(m_homing.angle);
-    return NS::Core::Clamp(relative, -earned, earned);
 }
 
 bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept
@@ -445,11 +317,6 @@ void Player::ChangeCurled(bool curled) noexcept
         return;
     }
     m_curled = curled;
-    // 立ち姿へ戻った後まで寄せた角度を残すと、次の溜めへ持ち越す
-    if (!curled)
-    {
-        ForgetHoming();
-    }
     body.SetSphereShape(curled);
     // 立ち姿の下端は 中心 − 半長 − 半径、玉の下端は 中心 − 半径。中心を立ち姿の半長ぶん上げ下げすると下端が揃う
     // 下げずに玉にすると、当たりの下端が半長ぶん上がる
