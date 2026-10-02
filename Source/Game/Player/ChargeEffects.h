@@ -9,6 +9,8 @@
 #include <string_view>
 #include <vector>
 
+class Player;
+
 namespace NS::Game::Level
 {
     class CollisionInput;
@@ -118,7 +120,7 @@ namespace NS::Game::Player
         void SetCharge(NS::Gfx::EffectScene* effects, std::uint32_t id, float charge01) const noexcept;
         // 動的入力 index 番に value を入れる。描画の無い世界か、再生できなかった層なら何もしない
         void SetInput(NS::Gfx::EffectScene* effects, std::uint32_t id, int index, float value) const noexcept;
-        // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ PlayerComponent::AimDirection
+        // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ Player::AimDirection
         [[nodiscard]] NS::Core::Vector3 HeldAimDirection() const noexcept;
         void StopLayer(NS::Gfx::EffectScene* effects, std::uint32_t& id) noexcept;
 
@@ -147,7 +149,8 @@ namespace NS::Game::Player
         NS::Core::Vector3 m_slamDirection; // 突進の尾を向ける水平の向き
 
         const NS::Game::Level::CollisionInput* m_input = nullptr;    // 押し・溜め量の正。非所有
-        const PlayerComponent* m_player = nullptr;                   // 突進の正。非所有
+        const PlayerComponent* m_player = nullptr;                   // 突進中かの問いと記録の読み。非所有
+        const ::Player* m_actor = nullptr;                           // 突進の速度と狙いの向きを答える自機。非所有
         const PlayerAppearance* m_appearance = nullptr;              // 玉の回転の正。非所有
         const NS::Game::Level::ImpactResolver* m_resolver = nullptr; // 止めの頭の正。非所有
     };

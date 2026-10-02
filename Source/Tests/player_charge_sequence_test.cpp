@@ -46,7 +46,7 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
     EXPECT_FALSE(input->Judge().IsHeld());
     EXPECT_FLOAT_EQ(movement.MaxSpeed(), maxSpeed);
     EXPECT_FLOAT_EQ(player.Root().Scale().y, 1.0f);
-    EXPECT_TRUE(movement.BodySlam());
+    EXPECT_TRUE(player.BodySlam());
     EXPECT_FLOAT_EQ(movement.BodySlamCharge01(), 0.5f);
 }
 
@@ -60,7 +60,7 @@ TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
     input->Step(true, 0.1f);
     player.Movement().SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     input->Step(false, 0.1f);
-    EXPECT_TRUE(player.Movement().BodySlam());
+    EXPECT_TRUE(player.BodySlam());
     EXPECT_FLOAT_EQ(player.Movement().BodySlamCharge01(), 0.0f);
     player.Movement().ResetState();
     input->Step(false, 0.1f);
@@ -92,7 +92,7 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
     EXPECT_FLOAT_EQ(input->Judge().Charge01(), 0.5f);
     player.Movement().SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     input->Step(false, 0.1f);
-    EXPECT_TRUE(player.Movement().BodySlam());
+    EXPECT_TRUE(player.BodySlam());
     EXPECT_FLOAT_EQ(player.Movement().BodySlamCharge01(), 0.5f);
 }
 
@@ -140,7 +140,7 @@ TEST(PlayerChargeSequence, ChargedReleaseUsesTheLastHeldAimBeforeClearingIt)
     camera->SetTarget(NS::Core::Vector3{1.0f, 0.0f, 0.0f});
     input->Step(false, 0.1f);
     EXPECT_FALSE(input->TryGetAimLine(aim));
-    EXPECT_TRUE(player->Movement().BodySlam());
+    EXPECT_TRUE(player->BodySlam());
     EXPECT_FLOAT_EQ(player->Movement().BodySlamStartDirection().x, 0.0f);
     EXPECT_FLOAT_EQ(player->Movement().BodySlamStartDirection().z, 1.0f);
 }

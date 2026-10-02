@@ -6,6 +6,8 @@
 
 #include <string>
 
+class Player;
+
 namespace NS::Gfx
 {
     class Mesh;
@@ -28,7 +30,7 @@ namespace NS::Game::Player
     //! 根の Transform は書かない。位置は移動、スケールは構えと衝突の潰れが持つ。着地の潰れは描く形だけを変える
     //! 丸まっているかの正は同居する PlayerComponent が持ち、毎フレームそれを見た目へ写す
     //! 玉の間は同居する Model の局所の回転を回す。溜めている間は狙いの線の向きへ、溜めに入る前に
-    //! 押している間と線の無い時は PlayerComponent::AimDirection へ、突進中は進む向きへ、
+    //! 押している間と線の無い時は Player::AimDirection へ、突進中は進む向きへ、
     //! 反動の間は弾かれた向きへ前転する
     //! 反動のまま着地したフレームに、同居する Model の描く時だけの倍率で縦に潰し、決めたフレーム数で戻す。
     //! 跳びの着地は潰さない
@@ -83,6 +85,7 @@ namespace NS::Game::Player
         NS::Gfx::Mesh* m_ballMesh = nullptr;     // AssetManager 所有
         bool m_curled = false;
         const PlayerComponent* m_player = nullptr;                // 丸まりの正。非所有
+        const ::Player* m_actor = nullptr;                        // 突進の速度と狙いの向きの問い先。非所有
         const NS::Game::Level::CollisionInput* m_input = nullptr; // 溜め量の正。無い配置物もある。非所有
 
         // 回る速さは 3 つとも 1 フレーム 180 度未満 (1/60 秒のフレームで 10800 度/秒未満) で使う。超えると描く時の

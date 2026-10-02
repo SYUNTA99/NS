@@ -92,6 +92,7 @@ namespace NS::Game::Player
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
         {
             m_player = &ownerPlayer->Movement();
+            m_actor = ownerPlayer;
             m_input = &ownerPlayer->ChargeControl();
         }
     }
@@ -127,14 +128,14 @@ namespace NS::Game::Player
 
         if (m_player->IsBodySlamming())
         {
-            SetRollAxisToward(m_player->BodySlamVelocity(), m_spinAxis);
+            SetRollAxisToward(m_actor->BodySlamVelocity(), m_spinAxis);
             m_spinSpeed = Tuning().m_bodySlamSpinSpeed;
         }
         else if (m_input != nullptr && m_input->Judge().IsHeld())
         {
             // 放せば出る向きへ回す。溜めて放した突進は狙いの線の向きへ、タップと線の無い時は AimDirection の向きへ出る
             // 狙いが決まらないフレームは前の軸で回し続ける
-            NS::Core::Vector3 aim = m_player->AimDirection();
+            NS::Core::Vector3 aim = m_actor->AimDirection();
             NS::Game::Level::AimLine line{};
             if (m_input->IsCharging() && m_input->TryGetAimLine(line))
             {

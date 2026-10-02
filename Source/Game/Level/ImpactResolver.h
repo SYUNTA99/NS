@@ -13,6 +13,8 @@
 
 #include <cstdint>
 
+class Player;
+
 namespace NS::Game::Player
 {
     class PlayerParams;
@@ -263,6 +265,7 @@ namespace NS::Game::Level
         NS::Core::Vector3 m_observedVelocity{};
         bool m_hasObservedTarget = false;
         bool m_stateReady = false;
+        ::Player* m_player = nullptr;                            // 突進と反動の技の呼び先。非所有
         NS::Game::Player::PlayerComponent* m_movement = nullptr; // 同じ配置物の移動。非所有
         CollisionInput* m_collisionInput = nullptr;
         NS::Obj::HitReaction* m_hitReaction = nullptr; // 同じ配置物の当たりの演出。非所有

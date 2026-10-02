@@ -337,8 +337,8 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
                                         {"反動の高さ", 2.0f},
                                         {"ヒットストップ基準秒", 0.0f}}),
               0u);
-    player->Movement().RequestBodySlam(0.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->Movement().BodySlam());
+    player->RequestBodySlam(0.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
     player->Resolver().OnUpdate();
     ASSERT_TRUE(player->Resolver().DidRebound());
     const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();

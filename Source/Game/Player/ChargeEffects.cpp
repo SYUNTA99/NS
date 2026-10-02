@@ -59,6 +59,7 @@ namespace NS::Game::Player
         {
             m_input = &ownerPlayer->ChargeControl();
             m_player = &ownerPlayer->Movement();
+            m_actor = ownerPlayer;
             m_appearance = &ownerPlayer->Appearance();
             m_resolver = &ownerPlayer->Resolver();
         }
@@ -327,7 +328,7 @@ namespace NS::Game::Player
         }
         if (slamming)
         {
-            m_slamDirection = m_player->BodySlamVelocity();
+            m_slamDirection = m_actor->BodySlamVelocity();
         }
         Place(effects, m_trail, center, YawToward(m_slamDirection));
     }
@@ -384,7 +385,7 @@ namespace NS::Game::Player
         }
         if (m_player != nullptr)
         {
-            return m_player->AimDirection();
+            return m_actor->AimDirection();
         }
         return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
     }

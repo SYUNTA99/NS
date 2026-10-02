@@ -19,6 +19,7 @@ namespace NS::Game::Player
 {
     class PlayerComponent;
     class PlayerParams;
+    struct ReboundArc;
     class PlayerAppearance;
     class ChargeEffects;
     class ImpactEffects;
@@ -34,7 +35,8 @@ namespace NS::Game::Level
 
 //! @brief プレイヤーキャラクタ。Mesh / Movement / Input / Shadow の既定構成をコードで組む
 //! @details 値はプレイヤーの種類の既定値と個体の上書きから写す
-//! 状態機械と命は Actor 自身が持ち、移動の組み立てと崖つかまりはここが持ち、突進・反発・条件判定は移行中の Component が持つ
+//! 状態機械と命は Actor
+//! 自身が持ち、移動の組み立てと崖つかまりと突進と反発はここが持つ。それらの記録と条件判定は移行中の Component が持つ
 //! 落下死やゴールは体のセンサーへ届く知らせで受け取り、コースの流れは進行役へ伝えるだけにする
 class Player : public NS::Obj::Actor, public NS::Obj::ICameraTarget
 {
@@ -130,6 +132,80 @@ public:
     //! 手を放し、その場から落下させる
     void DropLedge() noexcept;
 
+    // 突進と反発。突進・反動・丸まり・寄せの記録は PlayerComponent に置いたまま読み書きする。速度と接地は身体が持つ
+    //! @brief 体当たりの発動を要求する
+    //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
+    //! そのフレームで出せない要求は先行入力時間だけ覚え、過ぎたら失効する。
+    //! 1 度出すと接地するまで次は出せない。
+    //! 出る向きは BodySlam が入力と押したフレームの控えから決める。前の要求に添えた向きは捨てる
+    //! @param[in] charge01 溜め量 0..1
+    void RequestBodySlam(float charge01) noexcept;
+    //! @brief 出す向きを添えて体当たりの発動を要求する
+    //! @details 溜め量と先行入力は 1 つ引数の RequestBodySlam と同じ。
+    //! 出る時は入力と押したフレームの控えを見ず、添えた向きの水平を正規化した向きへ出す。
+    //! 水平の長さが 0 の向きと有限でない向きは、添えなかったのと同じ
+    //! @param[in] charge01 溜め量 0..1
+    //! @param[in] aimDirection 出す向き。世界座標で、縦の成分は使わない
+    void RequestBodySlam(float charge01, const NS::Core::Vector3& aimDirection) noexcept;
+    //! @brief 衝突の裁定と玉の回転と寄せが読む速度。突進中は向きと突進速度から作る
+    //! @details 実速度は壁へ押し付けられたフレームで 0 に潰れ、衝突の先読みが今の位置から動かなくなる
+    [[nodiscard]] NS::Core::Vector3 BodySlamVelocity() const noexcept;
+    //! 突進中に寄せを 1 フレーム進めた後の突進の速度を返す。突進中でないか寄せが決まらない場合は BodySlamVelocity
+    //! と同じ
+    [[nodiscard]] NS::Core::Vector3 PredictHomingVelocity(const NS::Core::Vector3& targetCenter) const noexcept;
+    //! 寄せた後の突進の向きと突進速度で、水平の速度を書き直す。溜めた突進の間だけ効く
+    void ApplyBodySlamHeading() noexcept;
+    //! 突進を打ち切って通常移動へ戻す。突進中でなければ何もしない
+    void CancelBodySlam() noexcept;
+    //! @brief 向きを解決して突進を始める
+    //! @details 向きは要求に添えた向き。添えていなければ AimDirection の向きに、押したフレームの控え
+    //! (MarkBodySlamAim) を控えてからの秒に応じて混ぜる
+    //! @return 向きが決まらないか距離が 0 以下の場合 false、それ以外の場合は true
+    [[nodiscard]] bool BodySlam() noexcept;
+    //! 押したフレームの狙いを控える。離すまでの遅れのぶん、向きを添えない発動はこの向きから始める
+    void MarkBodySlamAim() noexcept;
+    //! @brief 向きを添えずに要求した体当たり (タップ) を出す水平の向きを返す
+    //! @details 入力・カメラの前・速度の順に見て、どれも無ければゼロ。
+    //! 溜めて放した突進は、CollisionInput が狙いの線を控えていればその向きを添えるので、この向きへは出ない
+    [[nodiscard]] NS::Core::Vector3 AimDirection() const noexcept;
+    //! @brief 突進の向きを相手の中心へ 1 フレームぶん寄せる
+    //! @details 溜めている間は chargeAim を基準に、寄せた角度の累計を目標へ近づけ、相手を控える。
+    //! 控えた相手と中心が違う相手が来たら、累計を 0 から数え直す。
+    //! 放す時は控えた相手を放す向きから測り直し、coneDegrees の内なら累計の大きさまでその側へ回し、外なら回さない。
+    //! 溜めた突進の間は突進の向きを基準にし、累計の変化分だけ突進の向きを回す。タップの間は何もしない。
+    //! 目標は基準から相手の中心への水平の角度で、突進の間はそれに累計を足す。寄せる角度の上限で切る。
+    //! 累計は 1 フレームの向きの変化の上限ずつしか動かない。
+    //! 基準の向きか相手への水平の向きが決まらない場合と、相手への角度が有限でない場合は何もしない
+    //! @param[in] targetCenter 寄せる相手の中心。世界座標
+    //! @param[in] coneDegrees
+    //! 相手を探した角度。放す向きから測り直した相手を残すかどうかをこの角度で決める。単位は度
+    //! @param[in] chargeAim 溜めている間に寄せた角度を測る基準の向き。縦の成分は使わない。
+    //! 突進の間は突進の向きから測るので使わない
+    void SteerToward(const NS::Core::Vector3& targetCenter,
+                     float coneDegrees,
+                     const NS::Core::Vector3& chargeAim) noexcept;
+    //! @brief 速度を ReboundVelocityFor の値にして反動の状態へ移す
+    //! @details 反動の間は上りの重力に反動の上りの重力倍率を掛け、下りは普段の重力のまま
+    //! 反動の間は跳べず、空中の操作は反動中の空中の加速度だけ効く
+    //! 接地していて上向きの速度が無くなったフレームに立ちへ移る
+    //! @param[in] arc 弾かれる向きと頂点の高さと横の距離
+    //! @return 反動を始めた場合 true、ReboundVelocityFor が 0 を返す arc で何も変えなかった場合は false
+    [[nodiscard]] bool BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept;
+    //! @brief arc の反動を始める瞬間の速度 (m/s) を返す
+    //! @details 飛ばした物の曲線と同じ式 LaunchArcInitialVelocity で出す。
+    //! 上りの重力は上昇重力 × 反動の上りの重力倍率、下りは下降重力、頂点の帯は頂点滞空 Vy と頂点滞空倍率
+    //! @param[in] arc 弾かれる向きと頂点の高さと横の距離
+    //! @return 反動の初速。高さか距離が有限の正でない時、向きに水平の成分が無い時、
+    //! 重力の欄から曲線が組めない時は 0
+    [[nodiscard]] NS::Core::Vector3 ReboundVelocityFor(const NS::Game::Player::ReboundArc& arc) const noexcept;
+    //! @brief 丸まりを入れるか解く
+    //! @details 押している間は毎フレーム true が入る。自分で解くので、false はプレイを終える時だけ渡す。
+    //! 丸まると当たりを球にして根を立ち姿の半長ぶん下げ、解くと立ち姿へ戻して上げる。
+    //! 縁に掴まっている間とよじ登っている間の true は受けない
+    void SetCurled(bool curled) noexcept;
+    //! 体当たりのボタンを押しているかを渡す。押している間は丸まりを解かない
+    void SetBodySlamHeld(bool held) noexcept;
+
     //! 追従カメラに追われる時の窓口。自分の状態を自分で答える
     [[nodiscard]] const NS::Obj::ICameraTarget* GetCameraTarget() const noexcept override { return this; }
 
@@ -162,6 +238,44 @@ public:
 
 private:
     friend class NS::Game::Level::CollisionInput;
+    friend class NS::Game::Player::PlayerComponent;
+    //! 突進の進んだ距離を足し、距離を使い切るか進めなくなったら突進を終える
+    //! @details 進めた距離は動かした後にしか出ないので、打ち切りの判定は状態でなくここに置く
+    //! 受け取るのは直前の Move で実際に動いた量
+    void AdvanceBodySlamTravel(const NS::Core::Vector3& delta) noexcept;
+    //! 寄せた角度の累計を 0 にし、溜めている間に控えた相手を捨てる
+    void ForgetHoming() noexcept;
+    //! 突進を終える。水平の速さを MaxSpeed で切り、接地していれば走りへ、空中なら落下へ移す
+    void EndBodySlam() noexcept;
+    //! @brief 寄せた角度の累計の次の値を計算する。記録は書かない
+    //! @param[out] nextAngle 次の値。計算できない場合は書き換えない
+    //! @return 計算できた場合 true、それ以外の場合は false
+    [[nodiscard]] bool ComputeHomingStep(const NS::Core::Vector3& targetCenter,
+                                         const NS::Core::Vector3& chargeAim,
+                                         float& nextAngle) const noexcept;
+    //! @brief 溜めている間に控えた相手を放す向きから測り直し、放す向きを回す角度を返す
+    //! @details 相手が放す向きから探した角度の内なら、返す角度はその側へ累計の大きさまで
+    //! @param[in] releaseDir 放す水平の向き。正規化済み
+    //! @return 放す向きを回す角度。単位は度で、正の角度は +X の向きを -Z の側へ回す。
+    //! 控えた相手が無いか、探した角度の外か、相手への水平の向きが決まらない場合は 0
+    [[nodiscard]] float HomingAngleForRelease(const NS::Core::Vector3& releaseDir) const noexcept;
+    //! 控えた狙いを今の向きにどれだけ混ぜるか 0..1。巻き戻し秒までは 1、消える秒で 0
+    [[nodiscard]] float BodySlamAimBlend01() const noexcept;
+    //! @brief 丸まりを入れるか解き、当たりの形と根の高さを一緒に切り替える
+    //! @details 丸まると当たりを球にして根を立ち姿の半長ぶん下げる。
+    //! 解くと立ち姿へ戻して、その時の立ち姿の半長ぶん上げる。当たりの下端 (中心 − 半長 − 半径) は動かない。
+    //! 根は前フレームの位置と一緒にずらすので、描画の補間に動きとして映らない。今と同じ値なら何もしない
+    void ChangeCurled(bool curled) noexcept;
+    //! @brief 丸まりを解く
+    //! @details 押されていない・突進中でない・直前のフレームを突進中で終えていない・突進の予約が無い・
+    //! 接地している・上向きの速度が無い、が揃ったフレームに解く。縁を掴んだ時に解くのは Player::LedgeGrab
+    void UncurlWhenSettled() noexcept;
+    //! 現在状態が通常移動 (立ち / 走り / 落下 / 反動) の場合 true、それ以外の場合は false
+    [[nodiscard]] bool IsLocomotion() const noexcept;
+    //! 突進の発動の判定を通れば突進を出す。状態機械を進める前に呼ぶ
+    void PrepareStateStep();
+    //! 状態機械を進めた後の控えの更新。丸まりを解く判定・長押しの控え・押下の消費・要求と狙いの経過を進める
+    void FinishStateStep(float dt);
     class ChargeState;
     void StepCharge(bool held, float dt);
     //! @brief 掴まり位置から掴める縁を探す

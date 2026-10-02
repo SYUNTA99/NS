@@ -191,6 +191,7 @@ namespace NS::Game::Level
     {
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
         {
+            m_player = ownerPlayer;
             m_movement = &ownerPlayer->Movement();
             m_collisionInput = &ownerPlayer->ChargeControl();
             m_hitReaction = ownerPlayer->HitReactionPart();
@@ -408,7 +409,7 @@ namespace NS::Game::Level
         NS::Core::Vector3 velocity{};
         if (m_movement != nullptr)
         {
-            velocity = m_movement->BodySlamVelocity();
+            velocity = m_player->BodySlamVelocity();
         }
         ObserveImpact(velocity);
         StepState();
@@ -573,7 +574,7 @@ namespace NS::Game::Level
                     offset01);
 
         // 明けたフレームの反発と貫通速度を通常移動に乗せるため、凍結より先に突進を打ち切る
-        m_movement->CancelBodySlam();
+        m_player->CancelBodySlam();
 
         m_pendingTarget = m_observedTarget;
         m_pendingTargetHome = answer.position;
@@ -629,7 +630,7 @@ namespace NS::Game::Level
                 NS::Game::Player::ReboundArc{.direction = NS::Core::Vector3{awayX, 0.0f, awayZ},
                                              .apexHeight = Tuning().m_reboundApexHeight * reboundScale,
                                              .distance = reboundDistance};
-            m_pendingSelfVelocity = m_movement->ReboundVelocityFor(m_pendingReboundArc);
+            m_pendingSelfVelocity = m_player->ReboundVelocityFor(m_pendingReboundArc);
 
             // 指数の範囲は 0〜1。負にすると重い物ほど飛ぶ逆転になる
             float massExponent = Tuning().m_launchMassExponent;
@@ -891,7 +892,7 @@ namespace NS::Game::Level
         {
             m_movement->SetVelocity(m_pendingSelfVelocity);
         }
-        else if (!m_movement->BeginRebound(m_pendingReboundArc))
+        else if (!m_player->BeginRebound(m_pendingReboundArc))
         {
             // 欄が曲線にならない値の時だけ通る。書かないと、止める前の最後のフレームの速度のまま動き出す
             m_movement->SetVelocity(m_pendingSelfVelocity);

@@ -97,24 +97,24 @@ TEST(PlayerUpdatePipeline, PredictedHeadingMatchesControlWithoutChangingVertical
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
     ASSERT_NE(player, nullptr);
-    player->Movement().RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->Movement().BodySlam());
-    const NS::Core::Vector3 before = player->Movement().BodySlamVelocity();
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    const NS::Core::Vector3 before = player->BodySlamVelocity();
     player->ChargeControl().Observe(false);
     const NS::Core::Vector3 predicted = player->ChargeControl().PredictedSlamVelocity();
     EXPECT_GT(predicted.x, before.x);
-    ExpectSameVector(player->Movement().BodySlamVelocity(), before);
+    ExpectSameVector(player->BodySlamVelocity(), before);
     player->ChargeControl().AdvanceState(NS::Platform::FrameTimer::FixedDelta());
     player->States().Step(*player, NS::Platform::FrameTimer::FixedDelta());
-    EXPECT_FLOAT_EQ(player->Movement().BodySlamVelocity().x, before.x);
+    EXPECT_FLOAT_EQ(player->BodySlamVelocity().x, before.x);
     const float vertical = player->Movement().VerticalVelocity();
     player->ChargeControl().ApplyControl();
     EXPECT_NEAR(player->Movement().Velocity().x, predicted.x, 0.00001f);
     EXPECT_NEAR(player->Movement().Velocity().z, predicted.z, 0.00001f);
     EXPECT_FLOAT_EQ(player->Movement().VerticalVelocity(), vertical);
-    const NS::Core::Vector3 once = player->Movement().BodySlamVelocity();
+    const NS::Core::Vector3 once = player->BodySlamVelocity();
     player->ChargeControl().ApplyControl();
-    ExpectSameVector(player->Movement().BodySlamVelocity(), once);
+    ExpectSameVector(player->BodySlamVelocity(), once);
 }
 
 TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyChargeImpactFreezeAndReleaseFrames)
@@ -175,16 +175,16 @@ TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    player->Movement().RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->Movement().BodySlam());
-    player->Resolver().ObserveImpact(player->Movement().BodySlamVelocity());
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    player->Resolver().ObserveImpact(player->BodySlamVelocity());
     player->Resolver().StepState();
     ASSERT_EQ(player->Resolver().LastImpact().sequence, 1u);
     ASSERT_FALSE(player->Resolver().FreezeBeganThisStep());
     player->Resolver().StepState();
     EXPECT_FALSE(player->Resolver().FreezeBeganThisStep());
     EXPECT_TRUE(player->Movement().IsActive());
-    player->Resolver().ObserveImpact(player->Movement().BodySlamVelocity());
+    player->Resolver().ObserveImpact(player->BodySlamVelocity());
     player->Resolver().StepState();
     EXPECT_TRUE(player->Resolver().FreezeBeganThisStep());
     EXPECT_FALSE(player->Movement().IsActive());
@@ -195,9 +195,9 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    player->Movement().RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->Movement().BodySlam());
-    player->Resolver().ObserveImpact(player->Movement().BodySlamVelocity());
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    player->Resolver().ObserveImpact(player->BodySlamVelocity());
     scene.Objects().RemoveByObjectId(2);
     player->Resolver().StepState();
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
@@ -210,8 +210,8 @@ TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringHomingContr
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
     ASSERT_NE(player, nullptr);
-    player->Movement().RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->Movement().BodySlam());
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
     player->Movement().SetVelocity(NS::Core::Vector3{0.0f, 2.0f, 0.0f});
     player->Movement().SetActive(false);
     const NS::Core::Vector3 position = player->Root().Position();

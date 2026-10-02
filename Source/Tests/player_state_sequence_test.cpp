@@ -145,8 +145,8 @@ TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)
     ASSERT_NE(movement, nullptr);
     movement->SetGrounded(true);
     const NS::Game::Player::ReboundArc arc{.apexHeight = 1.0f, .distance = 5.0f};
-    const NS::Core::Vector3 initial = movement->ReboundVelocityFor(arc);
-    ASSERT_TRUE(movement->BeginRebound(arc));
+    const NS::Core::Vector3 initial = player->ReboundVelocityFor(arc);
+    ASSERT_TRUE(player->BeginRebound(arc));
     EXPECT_FLOAT_EQ(movement->VerticalVelocity(), initial.y);
     movement->SetJumpPressed();
     player->States().Step(*player, 0.01f);
@@ -190,16 +190,16 @@ TEST(PlayerStateSequence, ReboundAndBodySlamAreNeverBothTrue)
     ASSERT_NE(player, nullptr);
     NS::Game::Player::PlayerComponent& movement = player->Movement();
     movement.SetGrounded(true);
-    ASSERT_TRUE(movement.BeginRebound(NS::Game::Player::ReboundArc{.apexHeight = 1.0f, .distance = 5.0f}));
+    ASSERT_TRUE(player->BeginRebound(NS::Game::Player::ReboundArc{.apexHeight = 1.0f, .distance = 5.0f}));
     EXPECT_TRUE(movement.IsRebounding());
     EXPECT_FALSE(movement.IsBodySlamming());
 
-    movement.RequestBodySlam(0.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(movement.BodySlam());
+    player->RequestBodySlam(0.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
     EXPECT_TRUE(movement.IsBodySlamming());
     EXPECT_FALSE(movement.IsRebounding());
 
-    ASSERT_TRUE(movement.BeginRebound(NS::Game::Player::ReboundArc{.apexHeight = 1.0f, .distance = 5.0f}));
+    ASSERT_TRUE(player->BeginRebound(NS::Game::Player::ReboundArc{.apexHeight = 1.0f, .distance = 5.0f}));
     EXPECT_TRUE(movement.IsRebounding());
     EXPECT_FALSE(movement.IsBodySlamming());
 }

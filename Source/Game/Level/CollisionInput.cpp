@@ -78,8 +78,8 @@ namespace NS::Game::Level
         // 着地で解けなくなる。印を偽へ戻し、丸まりもここで解く。ResetState は速度と状態機械まで戻すので呼ばない
         if (m_movement != nullptr)
         {
-            m_movement->SetBodySlamHeld(false);
-            m_movement->SetCurled(false);
+            m_player->SetBodySlamHeld(false);
+            m_player->SetCurled(false);
         }
     }
 
@@ -116,9 +116,9 @@ namespace NS::Game::Level
         }
         if (m_observedRushing && m_observedHasHomingTarget)
         {
-            return m_movement->PredictHomingVelocity(m_observedHomingCenter);
+            return m_player->PredictHomingVelocity(m_observedHomingCenter);
         }
-        return m_movement->BodySlamVelocity();
+        return m_player->BodySlamVelocity();
     }
 
     void CollisionInput::AdvanceState(float dt)
@@ -148,7 +148,7 @@ namespace NS::Game::Level
             SteerTowardTarget();
             if (refreshVelocity && m_movement->IsActive())
             {
-                m_movement->ApplyBodySlamHeading();
+                m_player->ApplyBodySlamHeading();
             }
         }
 #if !defined(NS_SHIPPING)
@@ -171,7 +171,7 @@ namespace NS::Game::Level
 
         if (m_judge.JustPressed() && m_movement != nullptr)
         {
-            m_movement->MarkBodySlamAim();
+            m_player->MarkBodySlamAim();
         }
         if (m_movement != nullptr)
         {
@@ -179,9 +179,9 @@ namespace NS::Game::Level
             // 丸まりが戻らない
             if (m_judge.IsHeld())
             {
-                m_movement->SetCurled(true);
+                m_player->SetCurled(true);
             }
-            m_movement->SetBodySlamHeld(m_judge.IsHeld());
+            m_player->SetBodySlamHeld(m_judge.IsHeld());
         }
 
         const SlamKind fired = m_judge.TakeFired();
@@ -196,11 +196,11 @@ namespace NS::Game::Level
             // 溜めて放した突進はスティックを見ずにその向きへ出す。タップは矢印が出ないので入力の向きへ出す
             if (fired == SlamKind::Charged && m_hasAimLine)
             {
-                m_movement->RequestBodySlam(charge01, m_aimLine.direction);
+                m_player->RequestBodySlam(charge01, m_aimLine.direction);
             }
             else
             {
-                m_movement->RequestBodySlam(charge01);
+                m_player->RequestBodySlam(charge01);
             }
             NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", SlamKindLabel(fired), charge01);
         }
@@ -312,13 +312,13 @@ namespace NS::Game::Level
         bool hasOnLine = false;
         if (m_observedRushing)
         {
-            const NS::Core::Vector3 velocity = m_movement->BodySlamVelocity();
+            const NS::Core::Vector3 velocity = m_player->BodySlamVelocity();
             forward = NS::Core::Vector3{velocity.x, 0.0f, velocity.z};
             hasOnLine = m_resolver->FindSlamLineTarget(forward, m_movement->BodySlamDistance(), onLine);
         }
         else if (held)
         {
-            forward = m_movement->AimDirection();
+            forward = m_player->AimDirection();
             if (m_observedHasAimLine)
             {
                 forward = m_observedAimLine.direction;
@@ -353,7 +353,7 @@ namespace NS::Game::Level
     {
         if (m_observedHasHomingTarget && m_movement != nullptr)
         {
-            m_movement->SteerToward(m_observedHomingCenter, Tuning().m_homingSearchDegrees, m_observedHomingForward);
+            m_player->SteerToward(m_observedHomingCenter, Tuning().m_homingSearchDegrees, m_observedHomingForward);
         }
     }
 
