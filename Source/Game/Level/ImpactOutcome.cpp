@@ -88,6 +88,21 @@ namespace NS::Game::Level
         return normal;
     }
 
+    float MissSkidSpeedScale(int elapsedSteps, int totalSteps, float exponent) noexcept
+    {
+        if (totalSteps <= 0 || elapsedSteps >= totalSteps)
+        {
+            return 0.0f;
+        }
+        float c = exponent;
+        if (!std::isfinite(c) || !(c > 0.0f))
+        {
+            c = 1.0f;
+        }
+        const float left = 1.0f - static_cast<float>(std::max(elapsedSteps, 0)) / static_cast<float>(totalSteps);
+        return std::pow(left, c);
+    }
+
     ImpactOutcome ComputeImpactOutcome(const ImpactInput& input, const ImpactTuning& tuning) noexcept
     {
         ImpactOutcome outcome{};
@@ -135,8 +150,7 @@ namespace NS::Game::Level
             {
                 sharpness = tuning.missBoxEdgeSharpness;
             }
-            const NS::Core::Vector3 normal =
-                MissSurfaceNormal(input.faceU, input.faceV, sharpness, input.slamVelocity);
+            const NS::Core::Vector3 normal = MissSurfaceNormal(input.faceU, input.faceV, sharpness, input.slamVelocity);
             NS::Core::Vector3 forward{};
             NS::Core::Vector3 flatNormal{};
             if (NS::Core::TryNormalizeHorizontal(input.slamVelocity, forward))
@@ -157,6 +171,15 @@ namespace NS::Game::Level
                 }
                 launchDirection = -flatNormal;
             }
+            // ねじれる軸はかすった所の摩擦から出す。滑る成分 = 来た向き − 押し込む成分、軸 = n × 滑る成分
+            // 右の縁では相手の側が引きずられ、相手の方へ巻き込まれる向きに回る
+            NS::Core::Vector3 slide{};
+            if (NS::Core::TryNormalizeHorizontal(input.slamVelocity, slide))
+            {
+                slide = slide - normal * slide.Dot(normal);
+            }
+            outcome.reboundArc.missTumble =
+                NS::Game::Player::MissTumble{.twist = normal.Cross(slide), .power = input.power};
             // 浮く感じは真ん中だけの物にする。下を向いた面は地面へ叩きつけられ、さらに低く跳ねる
             const float downward = NS::Core::Clamp(-normal.y, 0.0f, 1.0f);
             const float slam = 1.0f - (1.0f - tuning.missSlamBounce) * downward;

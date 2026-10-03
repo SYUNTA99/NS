@@ -4,6 +4,7 @@
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 
+#include <cstdint>
 #include <string>
 
 class Player;
@@ -26,6 +27,7 @@ namespace NS::Game::Level
 namespace NS::Game::Player
 {
     class PlayerParams;
+    struct MissTumble;
 
     //! @brief 自機の立ち姿と玉の 2 つの見た目を持ち、丸まる時に同居する Model の mesh を持ち替える
     //! @details 見た目の欄が空なら仮の形を使う。立ち姿は当たりのカプセルと同じ寸法のカプセル、玉は同じ半径の球
@@ -38,7 +40,8 @@ namespace NS::Game::Player
     //! 丸まっているかの正は持ち主の Player が持ち、毎フレームそれを見た目へ写す
     //! 玉の間は同居する Model の局所の回転を回す。溜めている間は狙いの線の向きへ、溜めに入る前に
     //! 押している間と線の無い時は Player::AimDirection へ、突進中は進む向きへ、
-    //! 反動の間は弾かれた向きへ前転する
+    //! 反動の間は弾かれた向きへ前転する。外れの反動と着地からこすって止まる間は、突進の回転から当たりが決めた
+    //! ねじれへ寄せ、軸をぶらして回る
     //! 反動のまま着地したフレームに、同居する Model の描く時だけの倍率で縦に潰し、決めたフレーム数で戻す。
     //! 跳びの着地は潰さない
     //! 溜め量の正は持ち主の Player::ChargeJudge で、ここは読むだけ
@@ -80,7 +83,8 @@ namespace NS::Game::Player
         //! 直前の OnUpdate で玉が回った角度を度で返す。立ち姿と止めの間は 0
         [[nodiscard]] float SpinDegreesThisFrame() const noexcept { return m_spinDegreesThisFrame; }
         //! @brief 玉を回している軸を返す
-        //! @details 根の空間の水平の単位ベクトル。正の角度で、玉の上面が 軸 × 上 の向きへ倒れる前転になる
+        //! @details 根の空間の単位ベクトル。正の角度で、玉の上面が 軸 × 上 の向きへ倒れる前転になる。
+        //! 外れの反動の間は水平とは限らない
         //! @return 直前の OnUpdate で回した軸。止めの間は止まる前の軸、立ち姿では (1, 0, 0)
         [[nodiscard]] NS::Core::Vector3 SpinAxis() const noexcept { return m_spinAxis; }
 
@@ -92,6 +96,8 @@ namespace NS::Game::Player
         void ShowCurrentLook() noexcept;
         // 玉の回転を 1 フレーム進め、同居する Model の局所の回転へ書く
         void AdvanceSpin() noexcept;
+        // 外れの回り方で、このフレームに回す軸と速さを m_spinAxis と m_spinSpeed へ書く
+        void AdvanceMissTumble(const MissTumble& tumble) noexcept;
         // 反動の着地で縦の潰れを始めるか、潰れを 1 フレーム戻す。書くのは WriteDrawScale
         void AdvanceLandingSquash() noexcept;
         // 当たりの形か構えの縮みに着地の潰れを掛け、同居する Model の描く時だけの倍率へ書く
@@ -115,8 +121,12 @@ namespace NS::Game::Player
         NS::Core::Vector3 m_spinAxis = k_FirstSpinAxis;               // 直前のフレームに回した軸
         float m_spinSpeed = 0.0f;                                     // 直前のフレームに回した速さ。度/秒
         float m_spinDegreesThisFrame = 0.0f;                          // 直前の OnUpdate で回った角度。度
-        int m_landingSquashRemaining = 0;     // 着地の潰れを戻し切るまでの残りフレーム数。0 は潰れていない
-        float m_landingSquashVertical = 1.0f; // 着地の潰れの今の縦の倍率。潰れていない間は 1
-        bool m_drawScaleRejected = false;     // 直前に組んだ倍率を Model が断ったか。知らせを 1 回に絞る
+        std::uint32_t m_tumbleReboundCount = 0; // 外れの回り方を始めた反動の回数。変わったら新しい反動
+        NS::Core::Vector3 m_tumbleStartSpin{};  // 外れの反動の始まりの回転。軸 × 度/秒
+        int m_tumbleSteps = 0;                  // 外れの反動を始めてからのフレーム数
+        float m_tumbleWobblePhase = 0.0f;       // 軸のぶれの始まりの向き。ラジアン
+        int m_landingSquashRemaining = 0;       // 着地の潰れを戻し切るまでの残りフレーム数。0 は潰れていない
+        float m_landingSquashVertical = 1.0f;   // 着地の潰れの今の縦の倍率。潰れていない間は 1
+        bool m_drawScaleRejected = false;       // 直前に組んだ倍率を Model が断ったか。知らせを 1 回に絞る
     };
 } // namespace NS::Game::Player

@@ -1,5 +1,6 @@
 #include "Game/Player.h"
 
+#include "Game/Level/ImpactOutcome.h"
 #include "Game/Player/HorizontalTurn.h"
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerJudges.h"
@@ -205,6 +206,22 @@ void Player::AccelerateDuringRebound(float dt) noexcept
     const float turningDrag = 0.0f;
     // 明けのフレームは止める前の接地の印が残っている。接地を見て地上の加速度を選ぶと、そのフレームだけ大きく曲がる
     body.Accelerate(direction, turningDrag, m_params->m_reboundAirAcceleration, topSpeed, dt);
+}
+
+void Player::BeginSkid() noexcept
+{
+    m_skid.landingVelocity = m_body->LateralVelocity();
+    m_skid.elapsedSteps = 0;
+}
+
+bool Player::AdvanceSkid() noexcept
+{
+    ++m_skid.elapsedSteps;
+    // 着いた速さに依らず同じフレーム数で止まりきり、操作が戻る
+    const float scale = NS::Game::Level::MissSkidSpeedScale(
+        m_skid.elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
+    m_body->SetLateralVelocity(m_skid.landingVelocity * scale);
+    return m_skid.elapsedSteps >= m_params->m_missSkidSteps;
 }
 
 void Player::UpdateBodySlam(float dt) noexcept

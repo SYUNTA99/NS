@@ -12,6 +12,8 @@
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Object/StateMachine.h"
 
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -187,6 +189,12 @@ public:
     [[nodiscard]] NS::Core::Vector3 BodySlamDirection() const noexcept { return m_slam.dir; }
     //! 反動の状態の場合 true、それ以外の場合は false
     [[nodiscard]] bool IsRebounding() const noexcept;
+    //! 外れの反動の着地からこすって止まる状態の場合 true、それ以外の場合は false
+    [[nodiscard]] bool IsSkidding() const noexcept;
+    //! @brief 今の反動が着いた後にこすって止まる場合 true、それ以外の場合は false
+    //! @details 外れの反動で、欄「外れのこすって止まるまでのフレーム数」が 1
+    //! 以上の時に真。偽なら着いたフレームに立ちへ戻る
+    [[nodiscard]] bool SkidsOnLanding() const noexcept;
     //! @brief 身体を今動かしてよい場合 true、それ以外の場合は false
     //! @details 身体の部品が外されておらず、当たりの止め (ImpactResolver::IsHitStopping) の最中でも、
     //! 止めの明けの後に反動の事象を待つ間 (ImpactResolver::IsAwaitingRebound) でもない時に真。
@@ -206,6 +214,18 @@ public:
     //! タップで当てた反動が欄「タップで当てた反動の回転数」。書くのは BeginRebound
     //! @return 回る速さ。反動を始める前と ResetState の後は 0
     [[nodiscard]] float ReboundSpinSpeed() const noexcept { return m_rebound.spinSpeed; }
+    //! @brief 最後に始めた反動の外れの回り方を返す
+    //! @details 外れの反動の時だけ値を持つ。書くのは BeginRebound
+    [[nodiscard]] const std::optional<NS::Game::Player::MissTumble>& ReboundMissTumble() const noexcept
+    {
+        return m_rebound.missTumble;
+    }
+    //! @brief 反動を始めた回数を返す
+    //! @details 見た目が新しい反動の始まりを知るために読む。ResetState では戻さない
+    [[nodiscard]] std::uint32_t ReboundCount() const noexcept { return m_rebound.count; }
+    //! @brief こすって止まる間の、着いた水平の速さに掛けている今の倍率を返す
+    //! @return 0〜1。こすって止まる状態でない間は 1
+    [[nodiscard]] float SkidSpeedScale() const noexcept;
     //! 丸まっている場合 true、それ以外の場合は false
     [[nodiscard]] bool IsCurled() const noexcept { return m_curled; }
     //! @brief 根を rootPosition に置いた時の突進の玉を返す
@@ -241,6 +261,13 @@ public:
     //! @brief 反動の間、入力の向きへ反動中の空中の加速度で加速する。入力が無ければ何もしない
     //! @details 接地の印に依らずこの加速度を使い、入力の向きからずれた速度は減らさない
     void AccelerateDuringRebound(float dt) noexcept;
+    //! 外れの着地からこすって止まり始める。今の水平の速度を着いた速度として控え、経過を 0 にする
+    void BeginSkid() noexcept;
+    //! @brief こすって止まる 1 フレームを進める
+    //! @details 経過を 1 進め、水平の速度を 着いた速度 × MissSkidSpeedScale (経過, 欄「外れのこすって止まるまでの
+    //! フレーム数」, 欄「外れのこすって止まる減り方」) に書く
+    //! @return 止まりきった場合 true、それ以外の場合は false
+    [[nodiscard]] bool AdvanceSkid() noexcept;
     //! @brief 突進の 1 フレームを進める。溜めた突進は水平を BodySlamVelocity で書き直し、重力を当てる
     //! @details 突進の間の水平の書き手はここだけ
     void UpdateBodySlam(float dt) noexcept;
@@ -405,8 +432,17 @@ private:
     //! 反動の記録
     struct ReboundRecord
     {
-        NS::Core::Vector3 direction{}; // 最後に始めた反動の水平の向き。正規化済み
-        float spinSpeed = 0.0f;        // 最後に始めた反動の玉の回る速さ (度/秒)
+        NS::Core::Vector3 direction{};                            // 最後に始めた反動の水平の向き。正規化済み
+        float spinSpeed = 0.0f;                                   // 最後に始めた反動の玉の回る速さ (度/秒)
+        std::optional<NS::Game::Player::MissTumble> missTumble{}; // 最後に始めた反動の外れの回り方
+        std::uint32_t count = 0;                                  // 反動を始めた回数
+    };
+
+    //! 外れの着地からこすって止まる間の記録。書くのは BeginSkid と AdvanceSkid
+    struct SkidRecord
+    {
+        NS::Core::Vector3 landingVelocity{}; // 着いたフレームの水平の速度
+        int elapsedSteps = 0;                // 着いてからのフレーム数
     };
 
     //! @brief 溜めと狙いの記録。観測の段 (ObserveCharge) が observed の側を書き、決定の段 (AdvanceCharge) が確定する
@@ -537,6 +573,7 @@ private:
     BodySlamRecord m_slam;
     BodySlamRequest m_request;
     ReboundRecord m_rebound;
+    SkidRecord m_skid;
     ChargeRecord m_charge;
     // 紫に入った回数。紫になりきった時に揺れが来る端を毎回入れ替える。溜めを捨てても戻さない
     int m_overchargeCount = 0;

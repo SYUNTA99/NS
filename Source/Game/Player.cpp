@@ -1,6 +1,7 @@
 #include "Game/Player.h"
 
 #include "Game/Level/CourseDirector.h"
+#include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
@@ -18,6 +19,7 @@
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
+#include "Game/Player/States/SkidPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Object/Components/Animation.h"
 #include "Runtime/Object/Components/Body.h"
@@ -77,7 +79,8 @@ Player::Player() noexcept
                             NS::Game::Player::LedgeClimbingPlayerState,
                             NS::Game::Player::BodySlamPlayerState,
                             NS::Game::Player::BrakePlayerState,
-                            NS::Game::Player::ReboundPlayerState>(*this, m_states);
+                            NS::Game::Player::ReboundPlayerState,
+                            NS::Game::Player::SkidPlayerState>(*this, m_states);
 }
 
 Player::~Player() = default;
@@ -485,6 +488,26 @@ bool Player::IsRebounding() const noexcept
     return m_states != nullptr && m_states->IsCurrent<NS::Game::Player::ReboundPlayerState>();
 }
 
+bool Player::IsSkidding() const noexcept
+{
+    return m_states != nullptr && m_states->IsCurrent<NS::Game::Player::SkidPlayerState>();
+}
+
+bool Player::SkidsOnLanding() const noexcept
+{
+    return m_rebound.missTumble.has_value() && m_params->m_missSkidSteps > 0;
+}
+
+float Player::SkidSpeedScale() const noexcept
+{
+    if (!IsSkidding())
+    {
+        return 1.0f;
+    }
+    return NS::Game::Level::MissSkidSpeedScale(
+        m_skid.elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
+}
+
 bool Player::CanMoveBody() const noexcept
 {
     // 当たりの止めの正は裁定役の時計。身体の active へ写すと、やり直しが写しを戻し忘れた時に正と食い違う
@@ -522,6 +545,8 @@ void Player::ResetState() noexcept
     m_slam.dir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
     m_rebound.direction = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
     m_rebound.spinSpeed = 0.0f;
+    m_rebound.missTumble.reset();
+    m_skid = SkidRecord{};
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_curled = false;

@@ -361,6 +361,8 @@ bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept
         turns = m_params->m_tapReboundTurns;
     }
     m_rebound.direction = direction;
+    m_rebound.missTumble = arc.missTumble;
+    ++m_rebound.count;
     m_rebound.spinSpeed =
         SpinSpeedFor(turns, NS::Game::Level::LaunchArcFlightSeconds(ReboundLaunchArc(*m_params, arc)));
     m_body->SetVelocity(velocity);
@@ -429,6 +431,11 @@ void Player::UncurlWhenSettled() noexcept
         return;
     }
     if (m_bodySlamHeld || IsBodySlamming() || !body.IsGrounded())
+    {
+        return;
+    }
+    // 外れの着地からこすって止まる間は玉のまま地面をこする
+    if (IsSkidding())
     {
         return;
     }

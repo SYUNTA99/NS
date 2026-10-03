@@ -153,6 +153,13 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_missReboundHeightRatio, "外れの反動の高さの割合")
         NS_REFLECT_FIELD(m_missSlamBounce, "叩きつけた時の跳ね")
         NS_REFLECT_FIELD(m_missBoxEdgeSharpness, "四角の角の鋭さ")
+        NS_REFLECT_FIELD(m_missTwistTurnsPerSecond, "外れの縁でのねじれの回転数")
+        NS_REFLECT_FIELD(m_missSpinCarryRatio, "外れで当たる前の回転を引き継ぐ割合")
+        NS_REFLECT_FIELD(m_missSpinBlendSteps, "外れの回転を寄せるフレーム数")
+        NS_REFLECT_FIELD(m_missWobbleDegrees, "外れの軸のぶれの角度")
+        NS_REFLECT_FIELD(m_missWobbleTurnsPerSecond, "外れの軸のぶれの速さ")
+        NS_REFLECT_FIELD(m_missSkidSteps, "外れのこすって止まるまでのフレーム数")
+        NS_REFLECT_FIELD(m_missSkidExponent, "外れのこすって止まる減り方")
         NS_REFLECT_FIELD(m_launchDistance, "押し飛ばしの距離")
         NS_REFLECT_FIELD(m_launchMassExponent, "押し飛ばしの質量指数")
         NS_REFLECT_FIELD(m_launchApexHeight, "押し飛ばしの高さ")
@@ -257,6 +264,21 @@ namespace NS::Game::Player
         float m_missSlamBounce = 0.4f;
         // 箱の相手の面の読み方。見本の出発点 6 で、縁に沿った所は縁の向きへ真っすぐ、角の近くだけ斜めに逸れる
         float m_missBoxEdgeSharpness = 6.0f;
+        // 外れの玉は止まりかけのコマのように、かすった所の摩擦の軸でねじれ、その軸自体が傾いてぐらぐら回る
+        // ねじれは縁で威力 1 の時の毎秒の回転数。威力と端の近さを掛ける
+        float m_missTwistTurnsPerSecond = 2.0f;
+        // 溜めて外したほど大きく振り回される。突進の回転をこの割合だけ残してねじれに足す
+        float m_missSpinCarryRatio = 0.4f;
+        // 突進の回転からこのフレーム数で寄せる。急に変えると絵が飛ぶ
+        int m_missSpinBlendSteps = 6;
+        // 軸がねじれの軸から傾く角度 (度) と、傾いた軸が回る速さ (回/秒)
+        float m_missWobbleDegrees = 25.0f;
+        float m_missWobbleTurnsPerSecond = 1.5f;
+        // 外れの着地からこすって止まり、操作が戻るまで。着いた速さに依らず同じフレーム数で戻り、身体で覚えられる
+        // 0 はこすらずに、着いたフレームに立ちへ戻る
+        int m_missSkidSteps = 18;
+        // 速さ = 着いた速さ × (1 − 経過 ÷ フレーム数)^減り方。2 で、すぐ落ちて最後に少し擦れが残る
+        float m_missSkidExponent = 2.0f;
         float m_launchDistance = 29.0f;
         float m_launchMassExponent = 0.35f;
         float m_launchApexHeight = 2.0f;

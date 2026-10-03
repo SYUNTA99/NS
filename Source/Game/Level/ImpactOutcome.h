@@ -91,4 +91,12 @@ namespace NS::Game::Level
                                                       float v,
                                                       float sharpness,
                                                       const NS::Core::Vector3& slamDirection) noexcept;
+
+    //! @brief 外れの着地からこすって止まる間の、着いた水平の速さに掛ける倍率を返す
+    //! @details (1 − elapsedSteps ÷ totalSteps)^exponent。着いた速さに依らず totalSteps フレームで 0 になる
+    //! @param[in] elapsedSteps 着いてからのフレーム数。着いたフレームが 0
+    //! @param[in] totalSteps 止まるまでのフレーム数。0 以下は着いたフレームから 0
+    //! @param[in] exponent 減り方。大きいほど早く落ちて長く残る。有限の正でない値は 1 (直線)
+    //! @return 0〜1 の倍率
+    [[nodiscard]] float MissSkidSpeedScale(int elapsedSteps, int totalSteps, float exponent) noexcept;
 } // namespace NS::Game::Level

@@ -572,15 +572,16 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
         }
         Player* player = PlacePipelinePlayer(scene, targetX, targetZ);
         ASSERT_NE(player, nullptr);
-        // 基準はタップ初速 10 で、紫の揺れと紫の威力が無く、外れの反動が真ん中と同じ高さの時に採った
-        // 溜めは 1.5 秒押して紫に入ってから放す
-        // 見るのは状態の移り方なので、欄の既定を触っても基準を取り直さずに済むよう留める
+        // 基準はタップ初速 10
+        // で、紫の揺れと紫の威力が無く、外れの反動が真ん中と同じ高さで着いた後にこすらない時に採った 溜めは 1.5
+        // 秒押して紫に入ってから放す 見るのは状態の移り方なので、欄の既定を触っても基準を取り直さずに済むよう留める
         NS::Obj::ApplyJsonFields(player->Params(),
                                  nlohmann::json{{"タップ初速", 10.0f},
                                                 {"紫の揺れの最大のずれ", 0.0f},
                                                 {"紫の威力の上限", 1.0f},
                                                 {"外れの反動の高さの割合", 1.0f},
-                                                {"叩きつけた時の跳ね", 1.0f}});
+                                                {"叩きつけた時の跳ね", 1.0f},
+                                                {"外れのこすって止まるまでのフレーム数", 0}});
         NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
         int impact = -1;

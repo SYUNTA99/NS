@@ -244,13 +244,49 @@ TEST(ImpactOutcome, MissDeflectsTowardTheSideItSlidesOff)
 TEST(ImpactOutcome, MissOffTheBottomBouncesLowerAndTheTopDoesNotFloat)
 {
     const ImpactTuning tuning = DefaultTuning();
-    const float plain = ComputeImpactOutcome(MissAlongZ(0.0f, 0.0f, NS::Obj::HitSensorShape::Sphere), tuning)
-                            .reboundArc.apexHeight;
-    const float bottom = ComputeImpactOutcome(MissAlongZ(0.0f, -0.8f, NS::Obj::HitSensorShape::Sphere), tuning)
-                             .reboundArc.apexHeight;
+    const float plain =
+        ComputeImpactOutcome(MissAlongZ(0.0f, 0.0f, NS::Obj::HitSensorShape::Sphere), tuning).reboundArc.apexHeight;
+    const float bottom =
+        ComputeImpactOutcome(MissAlongZ(0.0f, -0.8f, NS::Obj::HitSensorShape::Sphere), tuning).reboundArc.apexHeight;
     const float top =
         ComputeImpactOutcome(MissAlongZ(0.0f, 0.8f, NS::Obj::HitSensorShape::Sphere), tuning).reboundArc.apexHeight;
     // 真下を向く分 0.8 だけ、跳ねの割合 0.4 へ寄せる
     EXPECT_NEAR(bottom, plain * (1.0f - (1.0f - tuning.missSlamBounce) * 0.8f), 0.0001f);
     EXPECT_FLOAT_EQ(top, plain);
+}
+
+// 外れはかすった所の摩擦でねじれる。軸は 触れた面の向き × 滑る向き で、長さは端の近さ。真ん中の段はねじれない
+TEST(ImpactOutcome, MissTwistsAroundTheSurfaceNormalCrossTheSlide)
+{
+    const ImpactTuning tuning = DefaultTuning();
+    // 右の縁は相手の側が引きずられ、上から見て反時計回り (下向きの軸) に相手の方へ巻き込まれる
+    const ImpactOutcome right = ComputeImpactOutcome(MissAlongZ(0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere), tuning);
+    ASSERT_TRUE(right.reboundArc.missTumble.has_value());
+    EXPECT_NEAR(right.reboundArc.missTumble->twist.y, -0.8f, 0.001f);
+    EXPECT_NEAR(right.reboundArc.missTumble->twist.x, 0.0f, 0.001f);
+    EXPECT_NEAR(right.reboundArc.missTumble->twist.z, 0.0f, 0.001f);
+    EXPECT_FLOAT_EQ(right.reboundArc.missTumble->power, BaseInput().power);
+    // 上の縁は前へつんのめる回転 (上面が進む向きへ倒れる +X の軸)、下の縁は逆回転
+    const ImpactOutcome top = ComputeImpactOutcome(MissAlongZ(0.0f, 0.8f, NS::Obj::HitSensorShape::Sphere), tuning);
+    ASSERT_TRUE(top.reboundArc.missTumble.has_value());
+    EXPECT_NEAR(top.reboundArc.missTumble->twist.x, 0.8f, 0.001f);
+    const ImpactOutcome bottom = ComputeImpactOutcome(MissAlongZ(0.0f, -0.8f, NS::Obj::HitSensorShape::Sphere), tuning);
+    ASSERT_TRUE(bottom.reboundArc.missTumble.has_value());
+    EXPECT_NEAR(bottom.reboundArc.missTumble->twist.x, -0.8f, 0.001f);
+
+    ImpactInput center = MissAlongZ(0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere);
+    center.tier = HitTier::Center;
+    EXPECT_FALSE(ComputeImpactOutcome(center, tuning).reboundArc.missTumble.has_value());
+}
+
+// こすって止まる速さの倍率は (1 − 経過 ÷ N)^c。着いた速さに依らず N フレームで 0 になる
+TEST(ImpactOutcome, MissSkidSpeedScaleFallsToZeroInTheSkidFrames)
+{
+    EXPECT_FLOAT_EQ(NS::Game::Level::MissSkidSpeedScale(0, 18, 2.0f), 1.0f);
+    EXPECT_FLOAT_EQ(NS::Game::Level::MissSkidSpeedScale(9, 18, 2.0f), 0.25f);
+    EXPECT_FLOAT_EQ(NS::Game::Level::MissSkidSpeedScale(18, 18, 2.0f), 0.0f);
+    EXPECT_FLOAT_EQ(NS::Game::Level::MissSkidSpeedScale(30, 18, 2.0f), 0.0f);
+    EXPECT_FLOAT_EQ(NS::Game::Level::MissSkidSpeedScale(0, 0, 2.0f), 0.0f);
+    // 減り方が有限の正でない時は直線
+    EXPECT_FLOAT_EQ(NS::Game::Level::MissSkidSpeedScale(9, 18, -1.0f), 0.5f);
 }
