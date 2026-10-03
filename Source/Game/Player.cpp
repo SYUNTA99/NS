@@ -39,31 +39,8 @@
 
 NS_CLASS(Player)
 
-class Player::ChargeState final : public NS::Obj::StateOf<ChargeState, Player>
-{
-public:
-    void OnEnter(Player& player) override { StartCoroutine(Run(player)); }
-    void OnStep(Player&, float) override {}
-
-private:
-    NS::Core::Coroutine Run(Player& player)
-    {
-        while (true)
-        {
-            player.m_collisionInput->AdvanceCharge(player.m_chargeHeld, player.m_chargeDelta);
-            if (!player.m_chargeHeld)
-            {
-                player.m_charge.Finish();
-                co_return;
-            }
-            co_await NS::Core::NextFrame{};
-        }
-    }
-};
-
 Player::Player() noexcept
 {
-    m_charge.Finish();
     m_appearance = std::make_unique<NS::Game::Player::PlayerAppearance>();
     m_body = std::make_unique<NS::Obj::Body>();
     m_input = std::make_unique<NS::Obj::PlayerInput>();
@@ -156,25 +133,6 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
         }
     }
     return state;
-}
-
-void Player::StepCharge(bool held, float dt)
-{
-    m_chargeHeld = held;
-    m_chargeDelta = dt;
-    if (m_charge.IsDead())
-    {
-        if (held)
-        {
-            m_charge.Build<ChargeState>(*this);
-        }
-        else
-        {
-            m_collisionInput->AdvanceCharge(false, dt);
-        }
-        return;
-    }
-    m_charge.Step(*this, dt);
 }
 
 void Player::UpdateAnimation()
@@ -349,7 +307,6 @@ float Player::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) con
 
 void Player::OnEndPlay()
 {
-    m_charge.Finish();
     m_states->Reset();
     m_appliedClip.clear();
     NS::Obj::Actor::OnEndPlay();
@@ -403,7 +360,6 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
 
 void Player::RestartFrom(const nlohmann::json& baseline) noexcept
 {
-    m_charge.Finish();
     // 出現位置はエディタで配置したプレイヤーの capsule 中心の world 位置そのもの
     // 凍結に既にある値なので写しは持たず、その都度読む。居なければ新規レベルで置く位置へ戻す
     NS::Core::Vector3 spawn{0.0f, 1.41f, 0.0f};
@@ -426,7 +382,6 @@ void Player::ApplyDamage(int amount) noexcept
 
 void Player::Die() noexcept
 {
-    m_charge.Finish();
     m_health.Kill();
     Kill();
 }

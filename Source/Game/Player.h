@@ -269,7 +269,7 @@ public:
     //! 命を amount 削る。下限 0
     void ApplyDamage(int amount) noexcept;
 
-    //! @brief 即死する。命を 0 にし、溜めを終えて世界から消える
+    //! @brief 即死する。命を 0 にして世界から消える
     //! @details 配置を止めるだけの Kill / SetActive(false) は命に触らない。死は落下死などの知らせだけが起こす
     void Die() noexcept;
 
@@ -355,19 +355,14 @@ private:
     void PrepareStateStep();
     //! 状態機械を進めた後の控えの更新。丸まりを解く判定・長押しの控え・押下の消費・要求と狙いの経過を進める
     void FinishStateStep(float dt);
-    class ChargeState;
-    void StepCharge(bool held, float dt);
     //! @brief 掴まり位置から掴める縁を探す
     //! @param[in] hangPos 手を伸ばす元になるカプセル中心の位置
     //! @param[out] outTop 見つけた縁の上端の y。見つからない場合は書き換えない
     //! @return 手の高さ以下の帯に縁があり、登り先も塞がっていない場合 true、それ以外の場合は false
     [[nodiscard]] bool FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) const noexcept;
-    NS::Obj::SubStateMachine<Player> m_charge;
     std::unique_ptr<NS::Game::Level::CollisionInput> m_collisionInput;
-    bool m_chargeHeld = false;
     bool m_hasInjectedHeld = false; // Update(bool) の間だけ立つ。観測が入力の代わりに m_injectedHeld を使う
     bool m_injectedHeld = false;
-    float m_chargeDelta = 0.0f;
     [[nodiscard]] std::string_view ChooseClip(float lateralSpeed) const noexcept;
     [[nodiscard]] float ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept;
     std::unique_ptr<NS::Game::Player::PlayerParams> m_params;

@@ -64,10 +64,6 @@ namespace NS::Game::Level
     {
         m_stateReady = false;
         m_controlReady = false;
-        if (m_player != nullptr)
-        {
-            m_player->m_charge.Finish();
-        }
         // 構えを掛けたまま外れると縮んだ形が残るため、必ず元の形へ戻す
         if (m_stanceApplied)
         {
@@ -123,11 +119,6 @@ namespace NS::Game::Level
             return;
         }
         m_stateReady = false;
-        if (m_player != nullptr)
-        {
-            m_player->StepCharge(m_observedHeld, dt);
-            return;
-        }
         AdvanceCharge(m_observedHeld, dt);
     }
 

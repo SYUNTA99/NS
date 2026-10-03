@@ -96,6 +96,38 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
     EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 0.5f);
 }
 
+TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
+{
+    Player player;
+    NS::Game::Level::CollisionInput* input =
+        NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player.Part("ChargeControl"));
+    NS::Game::Player::PlayerParams* params =
+        NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
+    ASSERT_NE(input, nullptr);
+    ASSERT_NE(params, nullptr);
+    // 0.1 秒の刻みで、しきい値 1 フレーム・満タン 10 フレーム。溜め量は (押したフレーム数 − 1) / 9
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 1.0f}}), 0u);
+    input->OnStart();
+    for (int step = 0; step < 3; ++step)
+    {
+        input->Step(true, 0.1f);
+    }
+    player.RestartFrom(NS::Obj::MakeSceneJson());
+    for (int step = 0; step < 2; ++step)
+    {
+        input->Step(true, 0.1f);
+    }
+    EXPECT_FLOAT_EQ(input->Judge().Charge01(), 4.0f / 9.0f);
+    player.Die();
+    player.Appear();
+    for (int step = 0; step < 2; ++step)
+    {
+        input->Step(true, 0.1f);
+    }
+    EXPECT_TRUE(input->Judge().IsHeld());
+    EXPECT_FLOAT_EQ(input->Judge().Charge01(), 6.0f / 9.0f);
+}
+
 TEST(PlayerChargeSequence, EndPlayRestoresStanceBeforeThePlayerPartsLeave)
 {
     Player player;

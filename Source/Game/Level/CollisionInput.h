@@ -59,7 +59,7 @@ namespace NS::Game::Level
         //! @param[in] held ボタンを押しているか
         void Observe(bool held);
         //! @brief Observe で控えた押しで溜めを 1 フレーム進める
-        //! @details 持ち主が Player なら Player の溜めを進める。Observe の後に 1 回だけ効き、2 回目は何もしない
+        //! @details 溜めを進める呼び手はこの 1 か所。Observe の後に 1 回だけ効き、2 回目は何もしない
         //! @param[in] dt 進める秒
         void AdvanceState(float dt);
         //! @brief 突進中なら突進の向きと突進速度で移動の水平の速度を書き直し、溜めの輪を描く
