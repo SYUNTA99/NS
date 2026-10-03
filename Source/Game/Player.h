@@ -249,12 +249,13 @@ public:
     //! @brief 体当たりの発動を要求する
     //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
     //! そのフレームで出せない要求は先行入力時間だけ覚え、過ぎたら失効する。
-    //! 1 度出すと接地するまで次は出せない。
+    //! 突進中と、身体を動かせない間 (当たりの止めと、止めの明けの後に反動を待つ間) の要求は覚えずに捨てる。
+    //! 空中で出すと接地するまで次は出せない。地面から出した突進は数えないので、その後の空中で 1 回出せる。
     //! 出る向きは BodySlam が入力と押したフレームの控えから決める。前の要求に添えた向きは捨てる
     //! @param[in] charge01 溜め量 0..1
     void RequestBodySlam(float charge01) noexcept;
     //! @brief 出す向きを添えて体当たりの発動を要求する
-    //! @details 溜め量と先行入力は 1 つ引数の RequestBodySlam と同じ。
+    //! @details 溜め量と先行入力と捨てる時は 1 つ引数の RequestBodySlam と同じ。捨てた時は向きも覚えない。
     //! 出る時は入力と押したフレームの控えを見ず、添えた向きの水平を正規化した向きへ出す。
     //! 水平の長さが 0 の向きと有限でない向きは、添えなかったのと同じ
     //! @param[in] charge01 溜め量 0..1
@@ -367,7 +368,7 @@ private:
     struct BodySlamRequest
     {
         float bufferRemaining = 0.0f; // 出せないフレームの押しを覚える残り秒
-        bool spent = false;           // 発動してから接地していないか
+        bool spent = false;           // 空中で発動してから接地していないか
         float charge01 = 0.0f;        // 要求された溜め量 0..1
         NS::Core::Vector3 dir{};      // 要求に添えた出す向き。正規化済み
         bool hasDir = false;          // 要求に向きが添えてあるか
@@ -419,6 +420,9 @@ private:
     //! @details 発動の初速 (BodySlam) と突進の速度 (BodySlamVelocity) がこれを読む。速さの式はここ 1 か所
     //! @return タップの飛び込みは欄「タップ初速」、溜めた突進は欄「突進速度」
     [[nodiscard]] float BodySlamSpeed() const noexcept;
+    //! @brief 体当たりの要求を覚えてよい場合 true、それ以外の場合は false
+    //! @details 突進中と CanMoveBody が偽の間は偽。ここで覚えた押しは止めの間に減らず、明けや空振りの後に 2 本目になる
+    [[nodiscard]] bool AcceptsBodySlamRequest() const noexcept;
     //! @brief 丸まりを入れるか解き、当たりの形と根の高さを一緒に切り替える
     //! @details 丸まると当たりを球にして根を立ち姿の半長ぶん下げる。
     //! 解くと立ち姿へ戻して、その時の立ち姿の半長ぶん上げる。当たりの下端 (中心 − 半長 − 半径) は動かない。

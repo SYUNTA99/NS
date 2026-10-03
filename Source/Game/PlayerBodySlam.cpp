@@ -49,8 +49,17 @@ namespace
 
 // ---- 突進と反発 ----
 
+bool Player::AcceptsBodySlamRequest() const noexcept
+{
+    return !IsBodySlamming() && CanMoveBody();
+}
+
 void Player::RequestBodySlam(float charge01) noexcept
 {
+    if (!AcceptsBodySlamRequest())
+    {
+        return;
+    }
     // そのフレームで出せないと押しが無言で消える。ジャンプと同じ先行入力時間だけ覚える
     m_request.bufferRemaining = m_params->m_jumpBufferTime;
     // 非数は 0..1 への丸めを素通りして溜め量に残るため、入口で 0 へ倒す
@@ -69,6 +78,10 @@ void Player::RequestBodySlam(float charge01) noexcept
 
 void Player::RequestBodySlam(float charge01, const NS::Core::Vector3& aimDirection, float launchVerticalSpeed) noexcept
 {
+    if (!AcceptsBodySlamRequest())
+    {
+        return;
+    }
     RequestBodySlam(charge01);
     NS::Core::Vector3 dir{};
     if (!NS::Core::TryNormalizeHorizontal(aimDirection, dir))
@@ -231,6 +244,8 @@ float Player::BodySlamAimBlend01() const noexcept
 bool Player::BodySlam() noexcept
 {
     NS::Obj::Body& body = *m_body;
+    // 速度を書く前に読む。発動のフレームはまだ前のフレームの接地のまま
+    const bool launchedInAir = !body.IsGrounded();
     NS::Core::Vector3 dir = AimDirection();
 
     const float aimLength =
@@ -299,7 +314,11 @@ bool Player::BodySlam() noexcept
     // 出せた時だけ書く。反動の後のカメラと放した瞬間の絵が、突進の後も最後に出た突進の向きとして読む
     m_slam.dir = dir;
     m_request.hasDir = false;
-    m_request.spent = true;
+    // 地面から出した突進は数えない。数えると、浮いて当てたタップや上向きに放った突進の反動で空中の 1 発が出ない
+    if (launchedInAir)
+    {
+        m_request.spent = true;
+    }
     // 突進はどの経路で出ても玉で走らせる。掴まり中に放した押しは予約に残り、先行入力の秒の内に
     // 縁を離れれば出るが、その時の丸まりは掴まりで解けている
     ChangeCurled(true);
