@@ -67,8 +67,7 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
               0u);
     EXPECT_NEAR(input->ChargingSpeedScale(), 0.6f, 0.00001f);
     EXPECT_FLOAT_EQ(input->ChargeFactorFor(0.5f), 3.0f);
-    input->OnStart();
-    input->OnUpdate();
+    player.Update(false);
     EXPECT_EQ(input->Judge().chargeThresholdSteps,
               static_cast<int>(std::lround(0.1f / NS::Platform::FrameTimer::FixedDelta())));
     EXPECT_EQ(input->Judge().chargeMaxSteps,

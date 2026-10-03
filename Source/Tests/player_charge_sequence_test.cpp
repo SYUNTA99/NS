@@ -5,9 +5,22 @@
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <gtest/gtest.h>
 
+#include <cmath>
+
+namespace
+{
+    // 欄の秒を固定ステップのフレーム数にする。CollisionInput と同じ丸め
+    int FramesFor(float seconds)
+    {
+        return static_cast<int>(std::lround(seconds / NS::Platform::FrameTimer::FixedDelta()));
+    }
+} // namespace
+
+// 押したフレームに丸まり、しきい値のフレームに減速して横を止め、放したフレームに発動する
 TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
 {
     Player player;
@@ -15,38 +28,56 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
         NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player.Part("ChargeControl"));
     ASSERT_NE(input, nullptr);
     input->OnStart();
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}),
+              0u);
+    const int threshold = FramesFor(0.2f);
+    const int full = FramesFor(1.0f);
     NS::Obj::Body& movement = player.Body();
     movement.SetVelocity(NS::Core::Vector3{3.0f, 5.0f, 4.0f});
     const float maxSpeed = player.MaxSpeed();
 
-    input->Step(true, 0.1f);
+    player.Update(true);
+    int held = 1;
     EXPECT_TRUE(input->Judge().JustPressed());
     EXPECT_FALSE(input->IsCharging());
     EXPECT_TRUE(player.IsCurled());
     EXPECT_FLOAT_EQ(player.MaxSpeed(), maxSpeed);
-    EXPECT_FLOAT_EQ(movement.Velocity().x, 3.0f);
+    EXPECT_GT(movement.Velocity().x, 0.0f);
     EXPECT_FLOAT_EQ(player.Root().Scale().y, 0.97f);
 
-    input->Step(true, 0.1f);
+    while (held < threshold - 1)
+    {
+        player.Update(true);
+        ++held;
+        EXPECT_FALSE(input->IsCharging());
+    }
+    movement.SetVelocity(NS::Core::Vector3{3.0f, 5.0f, 4.0f});
+    player.Update(true);
+    ++held;
     EXPECT_TRUE(input->Judge().JustStartedCharging());
     EXPECT_NEAR(player.MaxSpeed(), maxSpeed * 0.3f, 0.00001f);
     EXPECT_FLOAT_EQ(movement.Velocity().x, 0.0f);
-    EXPECT_FLOAT_EQ(movement.Velocity().y, 5.0f);
     EXPECT_FLOAT_EQ(movement.Velocity().z, 0.0f);
+    // 縦は残す。0 を書くと同じフレームの重力で下向きになる
+    EXPECT_GT(movement.Velocity().y, 0.0f);
     EXPECT_FLOAT_EQ(player.Root().Scale().y, 0.95f);
 
+    // 横を止めるのはしきい値のフレームだけ
     movement.SetVelocity(NS::Core::Vector3{2.0f, 5.0f, 1.0f});
-    for (int step = 2; step < 6; ++step)
+    player.Update(true);
+    ++held;
+    EXPECT_GT(movement.Velocity().x, 0.0f);
+    while (held < (threshold + full) / 2)
     {
-        input->Step(true, 0.1f);
+        player.Update(true);
+        ++held;
     }
-    EXPECT_FLOAT_EQ(movement.Velocity().x, 2.0f);
     EXPECT_FLOAT_EQ(input->Judge().Charge01(), 0.5f);
-    input->Step(false, 0.1f);
+    player.Update(false);
     EXPECT_FALSE(input->Judge().IsHeld());
     EXPECT_FLOAT_EQ(player.MaxSpeed(), maxSpeed);
     EXPECT_FLOAT_EQ(player.Root().Scale().y, 1.0f);
-    EXPECT_TRUE(player.BodySlam());
+    EXPECT_TRUE(player.IsBodySlamming());
     EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 0.5f);
 }
 
@@ -57,18 +88,25 @@ TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
         NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player.Part("ChargeControl"));
     ASSERT_NE(input, nullptr);
     input->OnStart();
-    input->Step(true, 0.1f);
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
+    const int threshold = FramesFor(0.2f);
+    player.Update(true);
     player.SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
-    input->Step(false, 0.1f);
-    EXPECT_TRUE(player.BodySlam());
+    player.Update(false);
+    EXPECT_TRUE(player.IsBodySlamming());
     EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 0.0f);
     player.ResetState();
-    input->Step(false, 0.1f);
-    EXPECT_EQ(input->Judge().TakeFired(), NS::Game::Level::SlamKind::None);
-    input->Step(true, 0.1f);
+    player.Update(false);
+    EXPECT_FALSE(player.IsBodySlamming());
+    player.Update(true);
     EXPECT_TRUE(input->Judge().JustPressed());
     EXPECT_FALSE(input->IsCharging());
-    input->Step(true, 0.1f);
+    for (int held = 2; held < threshold; ++held)
+    {
+        player.Update(true);
+        EXPECT_FALSE(input->IsCharging());
+    }
+    player.Update(true);
     EXPECT_TRUE(input->Judge().JustStartedCharging());
 }
 
@@ -82,17 +120,23 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
     ASSERT_NE(input, nullptr);
     ASSERT_NE(params, nullptr);
     input->OnStart();
-    input->Step(true, 0.1f);
+    player.Update(true);
     player.RestartFrom(NS::Obj::MakeSceneJson());
     EXPECT_FALSE(player.IsCurled());
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 0.3f}}), 0u);
-    input->Step(true, 0.1f);
+    // 出直しの前に押した 1 フレームも数え、しきい値と満タンの真ん中まで押す
+    const int threshold = FramesFor(0.1f);
+    const int full = FramesFor(0.3f);
+    for (int held = 1; held < (threshold + full) / 2; ++held)
+    {
+        player.Update(true);
+    }
     EXPECT_TRUE(player.IsCurled());
     EXPECT_TRUE(input->IsCharging());
     EXPECT_FLOAT_EQ(input->Judge().Charge01(), 0.5f);
     player.SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
-    input->Step(false, 0.1f);
-    EXPECT_TRUE(player.BodySlam());
+    player.Update(false);
+    EXPECT_TRUE(player.IsBodySlamming());
     EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 0.5f);
 }
 
@@ -105,27 +149,30 @@ TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
         NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
     ASSERT_NE(input, nullptr);
     ASSERT_NE(params, nullptr);
-    // 0.1 秒の刻みで、しきい値 1 フレーム・満タン 10 フレーム。溜め量は (押したフレーム数 − 1) / 9
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 1.0f}}), 0u);
+    // 溜め量は (押したフレーム数 − しきい値) / (満タン − しきい値)
+    const int threshold = FramesFor(0.1f);
+    const int full = FramesFor(1.0f);
+    const float span = static_cast<float>(full - threshold);
     input->OnStart();
-    for (int step = 0; step < 3; ++step)
+    for (int frame = 0; frame < threshold * 3; ++frame)
     {
-        input->Step(true, 0.1f);
+        player.Update(true);
     }
     player.RestartFrom(NS::Obj::MakeSceneJson());
-    for (int step = 0; step < 2; ++step)
+    for (int frame = 0; frame < threshold * 2; ++frame)
     {
-        input->Step(true, 0.1f);
+        player.Update(true);
     }
-    EXPECT_FLOAT_EQ(input->Judge().Charge01(), 4.0f / 9.0f);
+    EXPECT_FLOAT_EQ(input->Judge().Charge01(), static_cast<float>(threshold * 4) / span);
     player.Die();
     player.Appear();
-    for (int step = 0; step < 2; ++step)
+    for (int frame = 0; frame < threshold * 2; ++frame)
     {
-        input->Step(true, 0.1f);
+        player.Update(true);
     }
     EXPECT_TRUE(input->Judge().IsHeld());
-    EXPECT_FLOAT_EQ(input->Judge().Charge01(), 6.0f / 9.0f);
+    EXPECT_FLOAT_EQ(input->Judge().Charge01(), static_cast<float>(threshold * 6) / span);
 }
 
 TEST(PlayerChargeSequence, EndPlayRestoresStanceBeforeThePlayerPartsLeave)
@@ -135,8 +182,11 @@ TEST(PlayerChargeSequence, EndPlayRestoresStanceBeforeThePlayerPartsLeave)
         NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player.Part("ChargeControl"));
     ASSERT_NE(input, nullptr);
     input->OnStart();
-    input->Step(true, 0.1f);
-    input->Step(true, 0.1f);
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
+    for (int frame = 0; frame < FramesFor(0.2f); ++frame)
+    {
+        player.Update(true);
+    }
     EXPECT_FLOAT_EQ(player.Root().Scale().y, 0.95f);
     player.OnEndPlay();
     EXPECT_FLOAT_EQ(player.Root().Scale().y, 1.0f);
@@ -157,22 +207,23 @@ TEST(PlayerChargeSequence, ChargedReleaseUsesTheLastHeldAimBeforeClearingIt)
     NS::Game::Level::CollisionInput* input =
         NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player->Part("ChargeControl"));
     ASSERT_NE(input, nullptr);
-    input->OnStart();
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     NS::Obj::CameraComponent* camera = scene.MainCamera();
     ASSERT_NE(camera, nullptr);
     camera->SetPosition(NS::Core::Vector3{});
     camera->SetTarget(NS::Core::Vector3{0.0f, 0.0f, 1.0f});
-    for (int step = 0; step < 6; ++step)
+    for (int frame = 0; frame < FramesFor(0.2f); ++frame)
     {
-        input->Step(true, 0.1f);
+        player->Update(true);
     }
+    ASSERT_TRUE(input->IsCharging());
     NS::Game::Level::AimLine aim{};
     ASSERT_TRUE(input->TryGetAimLine(aim));
     EXPECT_FLOAT_EQ(aim.direction.z, 1.0f);
     camera->SetTarget(NS::Core::Vector3{1.0f, 0.0f, 0.0f});
-    input->Step(false, 0.1f);
+    player->Update(false);
     EXPECT_FALSE(input->TryGetAimLine(aim));
-    EXPECT_TRUE(player->BodySlam());
+    EXPECT_TRUE(player->IsBodySlamming());
     EXPECT_FLOAT_EQ(player->BodySlamDirection().x, 0.0f);
     EXPECT_FLOAT_EQ(player->BodySlamDirection().z, 1.0f);
 }

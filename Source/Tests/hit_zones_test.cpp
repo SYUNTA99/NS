@@ -121,12 +121,13 @@ namespace
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
-    // 溜め 0 で +z へ突進させ、裁定を 1 回回す。溜め 0 のチャージ倍率は 1
+    // 溜め 0 で +z へ突進させ、本番の 1 フレームを 1 回回す。裁定は決定の段で身体が動く前に記録される
+    // 溜め 0 のチャージ倍率は 1
     const NS::Game::Level::ImpactRecord& SlamOnce(Player& player)
     {
         player.RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
         EXPECT_TRUE(player.BodySlam());
-        player.Resolver().OnUpdate();
+        player.Update(false);
         return player.Resolver().LastImpact();
     }
 } // namespace
@@ -765,7 +766,7 @@ TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
 
     player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    player->Resolver().OnUpdate();
+    player->Update(false);
     const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
     ASSERT_EQ(impact.sequence, 1u);
 

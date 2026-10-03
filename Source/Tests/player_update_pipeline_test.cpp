@@ -2,6 +2,12 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
+#include "Game/Player/States/BodySlamPlayerState.h"
+#include "Game/Player/States/BrakePlayerState.h"
+#include "Game/Player/States/FallPlayerState.h"
+#include "Game/Player/States/IdlePlayerState.h"
+#include "Game/Player/States/ReboundPlayerState.h"
+#include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/CameraComponent.h"
@@ -11,6 +17,9 @@
 #include "Runtime/Platform/Clock.h"
 
 #include <gtest/gtest.h>
+
+#include <string>
+#include <string_view>
 
 namespace
 {
@@ -39,15 +48,34 @@ namespace
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
-    void LegacyPipeline(Player& player, bool held)
+    // 見本の列に書く状態の綴り。表に無い状態は Other
+    std::string_view StateName(const Player& player)
     {
-        player.ChargeControl().Step(held, NS::Platform::FrameTimer::FixedDelta());
-        player.Resolver().OnUpdate();
-        player.ChargeControl().SetActive(false);
-        player.Resolver().SetActive(false);
-        player.Update(false);
-        player.ChargeControl().SetActive(true);
-        player.Resolver().SetActive(true);
+        if (player.States().IsCurrent<NS::Game::Player::IdlePlayerState>())
+        {
+            return "Idle";
+        }
+        if (player.States().IsCurrent<NS::Game::Player::WalkPlayerState>())
+        {
+            return "Walk";
+        }
+        if (player.States().IsCurrent<NS::Game::Player::BrakePlayerState>())
+        {
+            return "Brake";
+        }
+        if (player.States().IsCurrent<NS::Game::Player::FallPlayerState>())
+        {
+            return "Fall";
+        }
+        if (player.States().IsCurrent<NS::Game::Player::BodySlamPlayerState>())
+        {
+            return "BodySlam";
+        }
+        if (player.States().IsCurrent<NS::Game::Player::ReboundPlayerState>())
+        {
+            return "Rebound";
+        }
+        return "Other";
     }
 
     void ExpectSameVector(const NS::Core::Vector3& actual, const NS::Core::Vector3& expected)
@@ -129,59 +157,6 @@ TEST(PlayerUpdatePipeline, SquashedSlamRegainsItsHeadingFromTheState)
     EXPECT_NEAR(player->Body().Velocity().z, expected.z, 0.00001f);
 }
 
-TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyChargeImpactFreezeAndReleaseFrames)
-{
-    NS::Obj::Scene referenceScene;
-    NS::Obj::Scene actualScene;
-    Player* reference = PlacePipelinePlayer(referenceScene, 0.04f, 2.5f);
-    Player* actual = PlacePipelinePlayer(actualScene, 0.04f, 2.5f);
-    ASSERT_NE(reference, nullptr);
-    ASSERT_NE(actual, nullptr);
-    bool sawImpact = false;
-    bool sawFreeze = false;
-    bool sawRelease = false;
-    for (int frame = 0; frame < 190; ++frame)
-    {
-        SCOPED_TRACE(frame);
-        const bool held = frame < 90;
-        if (held)
-        {
-            reference->Body().SetGrounded(true);
-            actual->Body().SetGrounded(true);
-        }
-        if (frame == 92)
-        {
-            referenceScene.Objects().FindByObjectId(2)->Root().ShiftPosition(NS::Core::Vector3{0.1f, 0.0f, 0.0f});
-            actualScene.Objects().FindByObjectId(2)->Root().ShiftPosition(NS::Core::Vector3{0.1f, 0.0f, 0.0f});
-        }
-        LegacyPipeline(*reference, held);
-        actual->Update(held);
-        ExpectSameVector(actual->Root().Position(), reference->Root().Position());
-        ExpectSameVector(actual->Body().Velocity(), reference->Body().Velocity());
-        ExpectSameVector(actual->Root().Scale(), reference->Root().Scale());
-        EXPECT_EQ(actual->States().CurrentId(), reference->States().CurrentId());
-        EXPECT_EQ(actual->Body().IsActive(), reference->Body().IsActive());
-        EXPECT_EQ(actual->Resolver().LastImpact().sequence, reference->Resolver().LastImpact().sequence);
-        EXPECT_EQ(actual->Resolver().FreezeBeganThisStep(), reference->Resolver().FreezeBeganThisStep());
-        EXPECT_EQ(actual->Resolver().ReleasedThisStep(), reference->Resolver().ReleasedThisStep());
-        sawImpact = sawImpact || actual->Resolver().LastImpact().sequence > 0;
-        sawFreeze = sawFreeze || actual->Resolver().FreezeBeganThisStep();
-        sawRelease = sawRelease || actual->Resolver().ReleasedThisStep();
-        NS::Game::Level::MapObj* referenceRock =
-            NS::Obj::Cast<NS::Game::Level::MapObj>(referenceScene.Objects().FindByObjectId(2));
-        NS::Game::Level::MapObj* actualRock =
-            NS::Obj::Cast<NS::Game::Level::MapObj>(actualScene.Objects().FindByObjectId(2));
-        ASSERT_NE(referenceRock, nullptr);
-        ASSERT_NE(actualRock, nullptr);
-        referenceRock->Update();
-        actualRock->Update();
-        ExpectSameVector(actualRock->Root().Position(), referenceRock->Root().Position());
-    }
-    EXPECT_TRUE(sawImpact);
-    EXPECT_TRUE(sawFreeze);
-    EXPECT_TRUE(sawRelease);
-}
-
 TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
 {
     NS::Obj::Scene scene;
@@ -235,36 +210,8 @@ TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl
     EXPECT_EQ(player->States().StepsInState(), stateStep);
 }
 
-TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyTapFrames)
-{
-    NS::Obj::Scene referenceScene;
-    NS::Obj::Scene actualScene;
-    Player* reference = PlacePipelinePlayer(referenceScene);
-    Player* actual = PlacePipelinePlayer(actualScene);
-    ASSERT_NE(reference, nullptr);
-    ASSERT_NE(actual, nullptr);
-    bool sawTap = false;
-    for (int frame = 0; frame < 90; ++frame)
-    {
-        SCOPED_TRACE(frame);
-        const bool held = frame < 3;
-        LegacyPipeline(*reference, held);
-        actual->Update(held);
-        ExpectSameVector(actual->Root().Position(), reference->Root().Position());
-        ExpectSameVector(actual->Body().Velocity(), reference->Body().Velocity());
-        EXPECT_EQ(actual->States().CurrentId(), reference->States().CurrentId());
-        EXPECT_EQ(actual->Resolver().LastImpact().sequence, reference->Resolver().LastImpact().sequence);
-        EXPECT_EQ(actual->Resolver().FreezeBeganThisStep(), reference->Resolver().FreezeBeganThisStep());
-        EXPECT_EQ(actual->Resolver().ReleasedThisStep(), reference->Resolver().ReleasedThisStep());
-        if (actual->IsBodySlamming())
-        {
-            sawTap = true;
-            EXPECT_FLOAT_EQ(actual->BodySlamCharge01(), 0.0f);
-        }
-    }
-    EXPECT_TRUE(sawTap);
-}
-
+// 溜めて当てる組とタップの組を、本番の 1 フレームの入口で回した数字の基準
+// 末尾の列は、状態・根のスケール・身体が動いているかが変わったフレームだけを並べた物。間のフレームは直前の行と同じ
 TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
 {
     const nlohmann::json baseline = nlohmann::json::parse(
@@ -278,6 +225,22 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             [110, -0.02943230793, 1.116387725, 1.210286379, -0.2557942271, 6.683314323, -2.131618738, 0.14, 1.384893417, 5.983239174],
             [140, -0.1573294252, 2.848669291, 0.1444766968, -0.2557942271, 0.641646266, -2.131618738, 0.14, 4.491162777, 32.10754395],
             [189, -0.294336319, 1.149999738, -0.9972489476, 0, 0, 0, 0.14, 0.501000941, 74.210495]
+        ], [
+            [0, "Idle", 1, 0.9700000286, 1, true],
+            [11, "Idle", 1, 0.9499999881, 1, true],
+            [90, "BodySlam", 1, 1, 1, true],
+            [94, "Walk", 1, 1, 1, true],
+            [95, "Walk", 1, 1.100000024, 0.6999999881, false],
+            [107, "Rebound", 1, 1.200000048, 1, true],
+            [108, "Rebound", 1, 1.100000024, 1, true],
+            [109, "Rebound", 1, 1, 1, true],
+            [110, "Rebound", 1, 0.8999999762, 1, true],
+            [111, "Rebound", 1, 0.9333333373, 1, true],
+            [112, "Rebound", 1, 0.9666666389, 1, true],
+            [113, "Rebound", 1, 1, 1, true],
+            [171, "Idle", 1, 1, 1, true],
+            [172, "Walk", 1, 1, 1, true],
+            [175, "Idle", 1, 1, 1, true]
         ]],
         [1, 14, 15, 18, [
             [0, 0, 0.649999976, 0, 0, 0, 0, 0, 0.5, 3],
@@ -287,6 +250,19 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             [30, 0, 1.669279456, 1.836697578, 0, 1.664880991, -0.5998571515, 0, 1.712962747, 9.446973801],
             [60, 0, 1.149999976, 1.53676939, 0, 0, -0.5998571515, 0, 0.5009999871, 24.31210518],
             [89, 0, 1.149999738, 1.53676939, 0, 0, 0, 0, 0.500999987, 36.63962555]
+        ], [
+            [0, "Idle", 1, 0.9700000286, 1, true],
+            [3, "BodySlam", 1, 1, 1, true],
+            [14, "Fall", 1, 1, 1, true],
+            [15, "Fall", 1, 1.100000024, 0.6999999881, false],
+            [18, "Rebound", 1, 1.200000048, 1, true],
+            [19, "Rebound", 1, 1.100000024, 1, true],
+            [20, "Rebound", 1, 1, 1, true],
+            [21, "Rebound", 1, 0.8999999762, 1, true],
+            [22, "Rebound", 1, 0.9333333373, 1, true],
+            [23, "Rebound", 1, 0.9666666389, 1, true],
+            [24, "Rebound", 1, 1, 1, true],
+            [60, "Idle", 1, 1, 1, true]
         ]]
     ])");
     for (int scenario = 0; scenario < 2; ++scenario)
@@ -337,6 +313,24 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                 release = frame;
             }
             rock->Update();
+            const nlohmann::json* pose = nullptr;
+            for (const nlohmann::json& change : expected[5])
+            {
+                if (change[0].get<int>() <= frame)
+                {
+                    pose = &change;
+                }
+            }
+            ASSERT_NE(pose, nullptr);
+            {
+                SCOPED_TRACE(scenario);
+                SCOPED_TRACE(frame);
+                EXPECT_EQ(StateName(*player), (*pose)[1].get<std::string>());
+                ExpectSameVector(
+                    player->Root().Scale(),
+                    NS::Core::Vector3{(*pose)[2].get<float>(), (*pose)[3].get<float>(), (*pose)[4].get<float>()});
+                EXPECT_EQ(player->Body().IsActive(), (*pose)[5].get<bool>());
+            }
             for (const nlohmann::json& sample : expected[4])
             {
                 if (sample[0].get<int>() != frame)
