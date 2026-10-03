@@ -614,7 +614,7 @@
             }
         },
         {
-            "class": "KillZone",
+            "class": "DeathZone",
             "id": 160,
             "name": "落下死の体積",
             "parts": {

@@ -1,7 +1,7 @@
+#include "Game/Level/DeathZone.h"
 #include "Game/Level/FollowCamera.h"
 #include "Game/Level/Goal.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/KillZone.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/MapObj.h"
@@ -66,9 +66,9 @@ TEST(ActorClass, GoalHasMarkerAndArea)
     EXPECT_TRUE(NS::Game::Level::IsSensorKind(*area, NS::Game::Level::SensorKind::Area));
 }
 
-TEST(ActorClass, KillZoneIsBoxAreaWithoutTerrainCollision)
+TEST(ActorClass, DeathZoneIsBoxAreaWithoutTerrainCollision)
 {
-    const NS::Game::Level::KillZone zone;
+    const NS::Game::Level::DeathZone zone;
     const NS::Obj::ShapeHitSensor* area = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(zone.BodySensorPart());
     ASSERT_NE(area, nullptr);
     EXPECT_TRUE(NS::Game::Level::IsSensorKind(*area, NS::Game::Level::SensorKind::Area));

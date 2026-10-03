@@ -1,4 +1,4 @@
-#include "Game/Level/KillZone.h"
+#include "Game/Level/DeathZone.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/SphereCollider.h"
@@ -177,14 +177,14 @@ TEST(SceneActor, ShippedSceneUsesRegisteredClasses)
     }
 }
 
-TEST(SceneActor, NewLevelGetsOnePlayerAndOneKillZone)
+TEST(SceneActor, NewLevelGetsOnePlayerAndOneDeathZone)
 {
     // 新しいレベルにはプレイヤーと落下死の範囲が 1 つずつ入り、2 度呼んでも増えない
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     EXPECT_TRUE(EnsurePlayerObject(doc));
-    EXPECT_TRUE(NS::Game::Level::EnsureKillZoneObject(doc));
+    EXPECT_TRUE(NS::Game::Level::EnsureDeathZoneObject(doc));
     EXPECT_FALSE(EnsurePlayerObject(doc));
-    EXPECT_FALSE(NS::Game::Level::EnsureKillZoneObject(doc));
+    EXPECT_FALSE(NS::Game::Level::EnsureDeathZoneObject(doc));
 
     int players = 0;
     int zones = 0;
@@ -194,7 +194,7 @@ TEST(SceneActor, NewLevelGetsOnePlayerAndOneKillZone)
         {
             ++players;
         }
-        if (NS::Obj::ObjectJsonClass(object) == "KillZone")
+        if (NS::Obj::ObjectJsonClass(object) == "DeathZone")
         {
             ++zones;
         }
@@ -202,4 +202,28 @@ TEST(SceneActor, NewLevelGetsOnePlayerAndOneKillZone)
     }
     EXPECT_EQ(players, 1);
     EXPECT_EQ(zones, 1);
+}
+
+TEST(SceneLoad, CourseSceneHasOneDeathZoneAndNoUnregisteredActor)
+{
+    // 同梱の course.scene は落下死の範囲 (DeathZone) をちょうど 1 体持ち、未登録のクラスで素の Actor へ落ちる物が無い
+    // クラス名は保存の鍵なので、クラスを改名してこのシーンを書き換え忘れるとここが赤になる
+    const std::string path = NS::Platform::FileSystem::Combine(
+        NS::Platform::FileSystem::Combine(
+            NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+        "course.scene");
+    nlohmann::json doc;
+    ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path));
+
+    int deathZones = 0;
+    for (const nlohmann::json& object : NS::Obj::SceneJsonObjects(doc))
+    {
+        const std::string_view className = NS::Obj::ObjectJsonClass(object);
+        EXPECT_NE(NS::Obj::TypeRegistry::Get().Find(className), nullptr) << className;
+        if (className == "DeathZone")
+        {
+            ++deathZones;
+        }
+    }
+    EXPECT_EQ(deathZones, 1);
 }

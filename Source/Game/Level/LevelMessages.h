@@ -20,12 +20,12 @@ namespace NS::Obj
 namespace NS::Game::Level
 {
     //! 受け手を即死させる知らせ。落下死の範囲がプレイヤーの体へ送る
-    class MsgKill final : public NS::Obj::Message
+    class MsgInstantDeath final : public NS::Obj::Message
     {
-        NS_MESSAGE(MsgKill)
+        NS_MESSAGE(MsgInstantDeath)
     };
-    bool SendMsgKill(NS::Obj::HitSensor& receiver, NS::Obj::HitSensor& sender);
-    [[nodiscard]] bool IsMsgKill(const NS::Obj::Message& msg) noexcept;
+    bool SendMsgInstantDeath(NS::Obj::HitSensor& receiver, NS::Obj::HitSensor& sender);
+    [[nodiscard]] bool IsMsgInstantDeath(const NS::Obj::Message& msg) noexcept;
 
     //! ゴールに着いた知らせ。ゴールの範囲がプレイヤーの体へ送る
     class MsgGoal final : public NS::Obj::Message

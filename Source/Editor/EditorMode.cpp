@@ -6,7 +6,7 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/IObjectSnapshotApplier.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
-#include "Game/Level/KillZone.h"
+#include "Game/Level/DeathZone.h"
 #include "Game/Player.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
@@ -258,7 +258,7 @@ namespace NS::Editor
             {
                 // プレイヤー / 落下死体積が欠けたレベルには既定の 1 体を補う
                 (void)EnsurePlayerObject(fresh);
-                (void)NS::Game::Level::EnsureKillZoneObject(fresh);
+                (void)NS::Game::Level::EnsureDeathZoneObject(fresh);
 
                 // 読込済みデータを実体側へ取り込み world を組み直す。新レベルなので Undo 履歴もクリアする
                 m_loadLevel(std::move(fresh));

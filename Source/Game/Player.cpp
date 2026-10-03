@@ -303,7 +303,7 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
 {
     (void)sender;
     (void)receiver;
-    if (NS::Game::Level::IsMsgKill(msg))
+    if (NS::Game::Level::IsMsgInstantDeath(msg))
     {
         Die();
         if (NS::Game::Level::CourseDirector* director =
@@ -364,7 +364,7 @@ void Player::ApplyDamage(int amount) noexcept
 
 void Player::Die() noexcept
 {
-    m_health.Kill();
+    m_health.Deplete();
     Kill();
 }
 

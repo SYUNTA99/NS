@@ -1,5 +1,5 @@
+#include "Game/Level/DeathZone.h"
 #include "Game/Level/Goal.h"
-#include "Game/Level/KillZone.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Components/Body.h"
@@ -187,7 +187,7 @@ TEST(BodyShape, AreaSensorsKeepTheirSavedFieldNames)
 {
     // ゴールと落下死の範囲は形を自分で持つ。保存済みの欄の表示名がそのまま読める
     NS::Game::Level::Goal goal;
-    NS::Game::Level::KillZone zone;
+    NS::Game::Level::DeathZone zone;
     ASSERT_NE(goal.BodySensorPart(), nullptr);
     ASSERT_NE(zone.BodySensorPart(), nullptr);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(*goal.BodySensorPart(), {{"半径", 0.9f}}), 0u);

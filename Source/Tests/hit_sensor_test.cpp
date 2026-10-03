@@ -1,5 +1,5 @@
+#include "Game/Level/DeathZone.h"
 #include "Game/Level/Goal.h"
-#include "Game/Level/KillZone.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
 #include "Runtime/Core/OBB.h"
@@ -214,10 +214,10 @@ TEST(Goal, IgnoresARockBody)
 }
 
 // 落下死の範囲も自機の体にだけ知らせる
-TEST(KillZone, IgnoresARockBody)
+TEST(DeathZone, IgnoresARockBody)
 {
     NS::Obj::Scene scene;
-    (void)scene.SpawnTransient<NS::Game::Level::KillZone>();
+    (void)scene.SpawnTransient<NS::Game::Level::DeathZone>();
     SensorProbe* rock = scene.SpawnTransient<SensorProbe>(SensorKind::MapObjBody, 0.5f);
     SensorProbe* body = scene.SpawnTransient<SensorProbe>(SensorKind::PlayerBody, 0.5f);
 
@@ -225,7 +225,7 @@ TEST(KillZone, IgnoresARockBody)
 
     EXPECT_TRUE(rock->received.empty());
     ASSERT_EQ(body->received.size(), 1u);
-    EXPECT_EQ(body->received[0], NS::Game::Level::MsgKill::StaticKind());
+    EXPECT_EQ(body->received[0], NS::Game::Level::MsgInstantDeath::StaticKind());
 }
 
 // 先読みの問いは仕組みの条件だけで絞る。種類は問う側が見る

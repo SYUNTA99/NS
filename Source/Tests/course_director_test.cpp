@@ -1,8 +1,8 @@
 #include "Game/Game.h"
 #include "Game/Level/CourseDirector.h"
+#include "Game/Level/DeathZone.h"
 #include "Game/Level/Goal.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/KillZone.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player.h"
@@ -45,7 +45,7 @@ namespace
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         (void)EnsurePlayerObject(doc);
-        (void)NS::Game::Level::EnsureKillZoneObject(doc);
+        (void)NS::Game::Level::EnsureDeathZoneObject(doc);
         return doc;
     }
 
@@ -77,7 +77,7 @@ TEST(CourseDirector, PlayerCreatesDirectorAfterPlacement)
     EXPECT_EQ(NS::Obj::FindSceneObj<NS::Game::Level::CourseDirector>(scene), nullptr);
 }
 
-TEST(CourseDirector, KillZoneKillsPlayerAndDirectorRestartsCourse)
+TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
 {
     const nlohmann::json doc = CourseWithPlayer();
     NS::Obj::Scene scene;

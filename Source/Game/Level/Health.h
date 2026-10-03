@@ -3,7 +3,7 @@
 namespace NS::Game::Level
 {
     //! @brief プレイヤーの命。残量の所有と増減の能力だけ持ち、誰に削られるかは知らない
-    //! @details KillZone 等のルール配置物が ApplyDamage / Kill を呼ぶ
+    //! @details 命を動かすのは持ち主の Player だけで、Player::Die が Deplete を、Player::ApplyDamage が ApplyDamage を呼ぶ
     //! Player の値メンバーで、進行役は Player::IsDead を読む
     class Health
     {
@@ -16,8 +16,8 @@ namespace NS::Game::Level
         //! amount だけ削る。下限 0。既に 0 か amount が 0 以下なら何もしない
         void ApplyDamage(int amount) noexcept;
 
-        //! 即死。残量を 0 にする
-        void Kill() noexcept { m_current = 0; }
+        //! 残量を 0 にする。死の知らせを受けた Player::Die が呼ぶ
+        void Deplete() noexcept { m_current = 0; }
 
         //! 満タンへ戻す。プレイ突入とリスタートで呼ぶ
         void Reset() noexcept { m_current = m_maxHealth; }
