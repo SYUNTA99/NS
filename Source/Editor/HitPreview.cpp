@@ -7,6 +7,7 @@
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Platform/Input.h"
 
 #include <algorithm>
 #include <cmath>
@@ -26,6 +27,11 @@ namespace NS::Editor
         constexpr float k_FaceTolerance = 0.02f;
         // 1 回目の置き直しで、玉の表面から面までに空ける距離 (m)。2 回目からは 1 歩の長さを測って決め直す
         constexpr float k_FirstLeadDistance = 2.0f;
+
+        [[nodiscard]] nlohmann::ordered_json Vec3Json(const NS::Core::Vector3& v)
+        {
+            return nlohmann::ordered_json{v.x, v.y, v.z};
+        }
 
         // 写しから場面を組む。描かない下見では資産と描き手は空
         std::unique_ptr<NS::Obj::Scene> MakeScene(const nlohmann::json& scene, const HitPreviewWorld& world)
@@ -73,6 +79,9 @@ namespace NS::Editor
             result.error.clear();
             result.impact = NS::Game::Level::ImpactRecord{};
             result.detectionIndex = -1;
+            // 手元の機器を読まず、振動を手元のパッドへ送らない。組む前から入れる (配置物が組む時に機器を読んでも中立)
+            const NS::Platform::ScopedNeutralInput neutral;
+            NS::Platform::Gamepad& pad = NS::Platform::Input::Get().Gamepad();
             Player* player = nullptr;
             std::unique_ptr<NS::Obj::Scene> scene = StartRun(snapshot, result, world, player);
             if (player == nullptr)
@@ -84,8 +93,12 @@ namespace NS::Editor
             int afterRebound = -1;
             for (int step = 0; step < result.desc.maxFrames; ++step)
             {
+                // ゲームでは書かれなかったフレームの振動を Input::Update が 0 に戻す。中立のパッドは Update
+                // を受けないので ここで戻す。送った速さが 0 のままなので機器へは書かない
+                pad.StopVibration();
                 scene->OnUpdate();
                 HitPreviewFrame frame;
+                frame.pad = pad.Vibration();
                 frame.playerPosition = player->Root().Position();
                 frame.shape = player->Resolver().ShapeFactors();
                 frame.hitStopping = player->Resolver().IsHitStopping();
@@ -151,6 +164,8 @@ namespace NS::Editor
     {
         HitPreviewResult result;
         result.desc = desc;
+        // 写しの場面を組む・進める・壊す間は、手元の機器を読まず振動を送らない
+        const NS::Platform::ScopedNeutralInput neutral;
         // 置き直しの前の自機と相手を、写しをそのまま組んだ場面から読む
         std::unique_ptr<NS::Obj::Scene> original = MakeScene(snapshot, world);
         Player* player = FindPlayer(original->Objects());
@@ -227,11 +242,49 @@ namespace NS::Editor
         return best;
     }
 
+    std::string HitPreviewHitLine(const HitPreviewResult& result)
+    {
+        if (!result.hit)
+        {
+            return std::string{};
+        }
+        // 鍵と並びは Replay の hits.jsonl (Tools/replay の HitRecord.cpp の ToJsonLine) に合わせる
+        using Json = nlohmann::ordered_json;
+        const NS::Game::Level::ImpactRecord& impact = result.impact;
+        const NS::Core::Vector3& launch = impact.launchVelocity;
+        Json root;
+        root["f"] = result.detectionIndex;
+        root["victim"] = impact.targetId;
+        root["power"] = impact.power;
+        root["charge"] = impact.charge01;
+        root["centerCoef"] = impact.positionFactor;
+        root["offset"] = impact.offset01;
+        root["tier"] = static_cast<int>(impact.tier);
+        root["centerHit"] = impact.centerHit;
+        root["broke"] = impact.broke;
+        root["hitstop"] = impact.hitStopSteps;
+        root["launchSpeed"] = std::sqrt(launch.x * launch.x + launch.y * launch.y + launch.z * launch.z);
+        root["launchVel"] = Vec3Json(launch);
+        root["launchDist"] = impact.launchDistance;
+        root["launchApex"] = impact.launchApexHeight;
+        root["selfKnockback"] = Vec3Json(impact.selfVelocity);
+        root["selfApex"] = impact.reboundApexHeight;
+        root["dir"] = Vec3Json(impact.impactDir);
+        root["targetPos"] = Vec3Json(impact.targetPos);
+        root["cameraShake"] = impact.cameraShake;
+        root["flashStart"] = impact.flashStart;
+        root["zoomStart"] = impact.zoomStart;
+        root["rollStart"] = impact.rollStart;
+        root["padStart"] = Json{impact.padStart.left, impact.padStart.right};
+        return root.dump(-1, ' ', false, Json::error_handler_t::replace);
+    }
+
     std::unique_ptr<NS::Obj::Scene> BuildHitPreviewSceneAt(const nlohmann::json& snapshot,
                                                            const HitPreviewResult& result,
                                                            int frameIndex,
                                                            const HitPreviewWorld& world)
     {
+        const NS::Platform::ScopedNeutralInput neutral;
         Player* player = nullptr;
         std::unique_ptr<NS::Obj::Scene> scene = StartRun(snapshot, result, world, player);
         if (player == nullptr)

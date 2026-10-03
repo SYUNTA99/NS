@@ -6,6 +6,7 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Scene/SceneJson.h"
+#include "Runtime/Platform/Gamepad.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -46,6 +47,7 @@ namespace NS::Editor
         bool hitStopping = false;                  //!< 止めの事象の最中
         bool awaitingRebound = false;              //!< 止めが明けて反動を待っている
         bool rebounding = false;                   //!< 自機が反動で弾かれている
+        NS::Platform::GamepadVibration pad{};      //!< 下見が控えたパッドの振動。手元のパッドへは送らない
         std::vector<std::size_t> startedRows;      //!< このフレームに始まった事象の、段のタイムラインの行の番号
     };
 
@@ -72,8 +74,10 @@ namespace NS::Editor
     //! @brief 編集中の場面の写しで、選んだ条件の当たりを 1 回下見する
     //! @details 自機を、突進の線が相手の面の (faceU, faceV) を通り、leadFrames の後に検知する所へ置き直し、入力を止めて
     //! 突進を直接頼む。向きは編集中の自機の玉から相手の体の中心への水平。置き直しは実際に当てた面の位置と検知のフレームを
-    //! 見て最大 6 回まで詰め、合った回を返す。合わなければ選んだ位置に一番近く当てた回を返す。届かない位置
-    //! (床に乗った玉より下など) は詰め切れず、impact の faceU・faceV に実際に当たった位置が残る。snapshot は書き換えない
+    //! 見て最大 6 回まで詰め、合った回を返す。組む・進める・壊す間は入力を中立にする
+    //! (NS::Platform::ScopedNeutralInput)。合わなければ選んだ位置に一番近く当てた回を返す。届かない位置
+    //! (床に乗った玉より下など) は詰め切れず、impact の faceU・faceV に実際に当たった位置が残る。snapshot
+    //! は書き換えない
     //! @param[in] snapshot 編集中の場面の写し (Scene::ToJson)
     //! @param[in] desc 当たりの条件
     //! @param[in] world 写しの場面に渡す資産と描き手
@@ -83,8 +87,17 @@ namespace NS::Editor
                                                  const HitPreviewDesc& desc,
                                                  const HitPreviewWorld& world = {});
 
+    //! @brief 下見の当たりを、Replay の hits.jsonl と同じ鍵と並びの 1 行の JSON にする
+    //! @details f は検知のフレームの frames の添字。Replay と記録のコードは共有しない (Replay
+    //! は公開リポジトリの外にある)
+    //! @param[in] result RunHitPreview の結果
+    //! @return 改行を含まない 1 行。当たらなかった結果は空の文字列
+    [[nodiscard]] std::string HitPreviewHitLine(const HitPreviewResult& result);
+
     //! @brief 下見の選んだフレームの場面を、写しから組み直して進める
-    //! @details 描くために 1 枚ぶんの場面を作る。RunHitPreview と同じ置き直しと頼みから frameIndex + 1 歩進める
+    //! @details 描くために 1 枚ぶんの場面を作る。RunHitPreview と同じ置き直しと頼みから frameIndex + 1 歩進める。
+    //! 組む・進める間は入力を中立にする。返した場面を壊す時、自機の HitReaction が片付けでパッドへ 0 を書くので、
+    //! 手元のパッドへ書かせないなら NS::Platform::ScopedNeutralInput の中で壊す
     //! @param[in] snapshot RunHitPreview に渡した写し
     //! @param[in] result RunHitPreview の結果
     //! @param[in] frameIndex result.frames の添字。範囲の外は端へ寄せる

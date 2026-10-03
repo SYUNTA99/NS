@@ -1,17 +1,23 @@
+#include "Editor/EditorObjects.h"
 #include "Editor/HitPreview.h"
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Player.h"
 #include "Runtime/Object/AssetManager.h"
+#include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/FileSystem.h"
+#include "Runtime/Platform/Input.h"
 #include "Tests/TestHitTimelines.h"
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
+#include <string>
 #include <vector>
 
 // エディタの下見が、編集中の場面の写しの中で選んだ面の位置へ当て、当たりの前後を記録する事を縛る
@@ -176,4 +182,95 @@ TEST(EditorHitPreview, MissingTargetIsAnError)
     EXPECT_FALSE(result.hit);
     EXPECT_FALSE(result.error.empty());
     EXPECT_TRUE(result.frames.empty());
+}
+
+// R-10: 下見の振動は手元のパッドへ送らず、フレームごとの記録に残す
+TEST(EditorHitPreview, HoldsPadVibrationInTheRecord)
+{
+    const ScopedHitTimelineDirectory directory("EditorHitPreviewPad");
+    HitTimeline timeline = MakePreviewTimeline();
+    PadVibrationEvent pad;
+    pad.left.count = 1;
+    pad.left.keys[0] = NS::Obj::Curve::Key{0.0f, 0.7f};
+    timeline.events.push_back({pad, 0, 4, HitDirection::Any});
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Platform::Input& input = NS::Platform::Input::Get();
+    ASSERT_TRUE(input.Gamepad().SetVibration(0.1f, 0.0f));
+    PreviewAssets assets;
+
+    const NS::Editor::HitPreviewResult result =
+        NS::Editor::RunHitPreview(MakePreviewSceneJson(), MakeDesc(0.0f, 0.0f), assets.World());
+    ASSERT_TRUE(result.hit) << result.error;
+    EXPECT_FLOAT_EQ(result.frames[static_cast<std::size_t>(result.detectionIndex)].pad.left, 0.7f);
+    EXPECT_FLOAT_EQ(input.Gamepad().Vibration().left, 0.1f);
+    EXPECT_FALSE(input.IsNeutral());
+    input.Gamepad().StopVibration();
+}
+
+// 記録の 1 行は Replay の hits.jsonl と同じ鍵を同じ並びで持ち、f は検知のフレーム
+TEST(EditorHitPreview, HitLineHasTheReplayKeys)
+{
+    const ScopedHitTimelineDirectory directory("EditorHitPreviewLine");
+    ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
+    PreviewAssets assets;
+    const NS::Editor::HitPreviewResult result =
+        NS::Editor::RunHitPreview(MakePreviewSceneJson(), MakeDesc(0.0f, 0.0f), assets.World());
+    ASSERT_TRUE(result.hit) << result.error;
+
+    const nlohmann::ordered_json line = nlohmann::ordered_json::parse(NS::Editor::HitPreviewHitLine(result));
+    std::vector<std::string> keys;
+    for (nlohmann::ordered_json::const_iterator it = line.begin(); it != line.end(); ++it)
+    {
+        keys.push_back(it.key());
+    }
+    const std::vector<std::string> expected = {
+        "f",     "victim",    "power",       "charge",     "centerCoef", "offset",     "tier",          "centerHit",
+        "broke", "hitstop",   "launchSpeed", "launchVel",  "launchDist", "launchApex", "selfKnockback", "selfApex",
+        "dir",   "targetPos", "cameraShake", "flashStart", "zoomStart",  "rollStart",  "padStart"};
+    EXPECT_EQ(keys, expected);
+    EXPECT_EQ(line["f"].get<int>(), result.detectionIndex);
+    EXPECT_EQ(line["victim"].get<std::uint32_t>(), k_RockId);
+}
+
+// R-7: 下見は試しの道 (入力を止めて突進を直接頼み、場面の 1 歩で進める) と同じ記録を出す
+TEST(EditorHitPreview, MatchesADirectRunFromTheSamePlacement)
+{
+    const ScopedHitTimelineDirectory directory("EditorHitPreviewDirect");
+    ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
+    PreviewAssets assets;
+    const nlohmann::json snapshot = MakePreviewSceneJson();
+    const NS::Editor::HitPreviewResult preview =
+        NS::Editor::RunHitPreview(snapshot, MakeDesc(-0.4f, 0.1f), assets.World());
+    ASSERT_TRUE(preview.hit) << preview.error;
+
+    nlohmann::json placed = snapshot;
+    const std::size_t playerIndex = NS::Editor::FindPlayerObjectIndex(placed);
+    ASSERT_NE(playerIndex, NS::Obj::k_NoObjectIndex);
+    NS::Obj::SetObjectPosition(NS::Obj::SceneJsonObjects(placed)[playerIndex], preview.playerStart);
+    NS::Obj::Scene scene;
+    scene.SetAssets(&assets.assets);
+    scene.LoadJson(placed);
+    Player* player = FindPlayer(scene.Objects());
+    ASSERT_NE(player, nullptr);
+    player->Input().SetLocked(true);
+    player->RequestBodySlam(preview.desc.charge01, preview.direction);
+    int detection = -1;
+    for (int step = 0; step < static_cast<int>(preview.frames.size()); ++step)
+    {
+        scene.OnUpdate();
+        SCOPED_TRACE(step);
+        EXPECT_TRUE(player->Root().Position() == preview.frames[static_cast<std::size_t>(step)].playerPosition);
+        if (detection < 0 && player->Resolver().LastImpact().sequence != 0)
+        {
+            detection = step;
+        }
+    }
+    EXPECT_EQ(detection, preview.detectionIndex);
+    const ImpactRecord& direct = player->Resolver().LastImpact();
+    EXPECT_EQ(direct.tier, preview.impact.tier);
+    EXPECT_FLOAT_EQ(direct.power, preview.impact.power);
+    EXPECT_FLOAT_EQ(direct.faceU, preview.impact.faceU);
+    EXPECT_FLOAT_EQ(direct.faceV, preview.impact.faceV);
+    EXPECT_TRUE(direct.selfVelocity == preview.impact.selfVelocity);
+    EXPECT_TRUE(direct.launchVelocity == preview.impact.launchVelocity);
 }
