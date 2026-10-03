@@ -1,6 +1,6 @@
 #include "Game/Level/TargetMarker.h"
 
-#include "Game/Level/CollisionInput.h"
+#include "Game/Level/ImpactInputJudge.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Graphics/RenderContext.h"
@@ -218,7 +218,7 @@ namespace NS::Game::Level
         return true;
     }
 
-    // Player の見た目の段 (VisualStep) が呼ぶ。CollisionInput を観測する観測の段より後なので、
+    // Player の見た目の段 (VisualStep) が呼ぶ。溜めを観測する観測の段より後なので、
     // このフレームの狙う相手を控えた後に読む
     TargetMarker::TargetMarker() noexcept : NS::Obj::OverlayRenderer() {}
 
@@ -239,7 +239,7 @@ namespace NS::Game::Level
 
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
         {
-            m_input = &ownerPlayer->ChargeControl();
+            m_player = ownerPlayer;
         }
     }
 
@@ -249,13 +249,13 @@ namespace NS::Game::Level
         const NS::Core::AABB previousBounds = m_shown.bounds;
         m_hasShown = false;
         // 溜め量は放した後も残るので、溜めているかで示すフレームを決める
-        if (m_input == nullptr || !m_input->IsCharging())
+        if (m_player == nullptr || !m_player->ChargeJudge().IsCharging())
         {
             // 放したフレームは外れた後の枠も出さない
             m_framesSinceLost = -1;
             return;
         }
-        m_hasShown = m_input->TryGetAimTarget(m_shown);
+        m_hasShown = m_player->TryGetAimTarget(m_shown);
 
         if (m_hasShown)
         {

@@ -20,7 +20,6 @@ namespace NS::Obj
 
 namespace NS::Game::Level
 {
-    class CollisionInput;
     class ImpactResolver;
 } // namespace NS::Game::Level
 
@@ -34,7 +33,7 @@ namespace NS::Game::Player
     //! 欄に ContentRoot 相対の参照を書けば、そのファイルの mesh を使う。引き当てられない参照は仮の形へ戻す
     //! 根の Transform は書かない。位置は移動が持ち、スケールは配置の値のまま
     //! 自機の描く形の倍率を書くのはここだけで、OnUpdate で 1 回組んで同居する Model の描く時だけの倍率へ書く。
-    //! 当たりの形が動いている間は ImpactResolver::ShapeFactors、それ以外は縦を CollisionInput::StanceHeight に
+    //! 当たりの形が動いている間は ImpactResolver::ShapeFactors、それ以外は縦を Player::StanceHeight に
     //! した倍率を元にし、着地の潰れを成分ごとに掛ける
     //! 丸まっているかの正は持ち主の Player が持ち、毎フレームそれを見た目へ写す
     //! 玉の間は同居する Model の局所の回転を回す。溜めている間は狙いの線の向きへ、溜めに入る前に
@@ -42,11 +41,11 @@ namespace NS::Game::Player
     //! 反動の間は弾かれた向きへ前転する
     //! 反動のまま着地したフレームに、同居する Model の描く時だけの倍率で縦に潰し、決めたフレーム数で戻す。
     //! 跳びの着地は潰さない
-    //! 溜め量の正は同居する CollisionInput の判定で、ここは読むだけ
+    //! 溜め量の正は持ち主の Player::ChargeJudge で、ここは読むだけ
     //! Player の見た目の段 (VisualStep) が移動の段と HitReaction の後に呼ぶ。
     //! 配置物を組む経路 (ObjectFromJson / StartSpawned) では
     //! 参照の引き当てが Player::ForEachPart の並びに回るので、Model が自分の参照から mesh を差した後にこちらが差す
-    //! 依存: Player, NS::Obj::Body, NS::Game::Level::CollisionInput, NS::Game::Level::ImpactResolver,
+    //! 依存: Player, NS::Obj::Body, NS::Game::Level::ImpactResolver,
     //! NS::Obj::Model, NS::Obj::AssetManager
     // TODO: Scene::ApplyFromJson は値の変わった部品だけ引き直す。Model の値の undo で mesh が
     // 組み込みの cube に戻り、身体 (Body) の寸法の変更に見た目が付いてこない。編集へ戻る時の LoadJson で直る
@@ -67,7 +66,7 @@ namespace NS::Game::Player
         //! 2 つの見た目を引き当て、今の姿の mesh を同居する Model へ差す
         void ResolveAssets(NS::Obj::AssetManager& assets) override;
 
-        //! 同居する身体の部品と CollisionInput と ImpactResolver を控える。身体の部品が無ければ以後は丸まりを写さない
+        //! 同居する身体の部品と ImpactResolver を控える。身体の部品が無ければ以後は丸まりを写さない
         void OnStart() override;
         //! Player の丸まりを見た目へ写し、玉の回転と着地の潰れを 1 フレーム進め、描く形の倍率を組んで書く
         void OnUpdate() override;
@@ -103,8 +102,7 @@ namespace NS::Game::Player
         NS::Gfx::Mesh* m_ballMesh = nullptr;     // AssetManager 所有
         bool m_curled = false;
         const NS::Obj::Body* m_body = nullptr;                       // 寸法と接地の問い先。非所有
-        const ::Player* m_actor = nullptr;                           // 突進の速度と狙いの向きの問い先。非所有
-        const NS::Game::Level::CollisionInput* m_input = nullptr;    // 溜め量と構えの縮みの問い先。非所有
+        const ::Player* m_actor = nullptr;                           // 突進の速度と狙いの向きと溜めと構えの縮みの問い先。非所有
         const NS::Game::Level::ImpactResolver* m_resolver = nullptr; // 当たりの潰れと伸びの問い先。非所有
 
         // 回る速さは 3 つとも 1 フレーム 180 度未満 (1/60 秒のフレームで 10800 度/秒未満) で使う。超えると描く時の

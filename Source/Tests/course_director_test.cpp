@@ -142,11 +142,11 @@ TEST(CourseDirector, ClearLockStopsTheHeldSlamButton)
     ASSERT_NE(director, nullptr);
 
     MouseLeftPress press;
-    for (int i = 0; i < 60 && !player->ChargeControl().IsCharging(); ++i)
+    for (int i = 0; i < 60 && !player->ChargeJudge().IsCharging(); ++i)
     {
         StepPlayer(*player);
     }
-    ASSERT_TRUE(player->ChargeControl().IsCharging());
+    ASSERT_TRUE(player->ChargeJudge().IsCharging());
 
     // 溜めている間に落ちた分を戻してゴールに重ねる
     player->Root().SetPosition(SpawnOf(doc));
@@ -157,7 +157,7 @@ TEST(CourseDirector, ClearLockStopsTheHeldSlamButton)
     for (int i = 0; i < 10; ++i)
     {
         StepPlayer(*player);
-        EXPECT_FALSE(player->ChargeControl().IsCharging()) << "歩 " << i;
+        EXPECT_FALSE(player->ChargeJudge().IsCharging()) << "歩 " << i;
         EXPECT_FALSE(player->IsBodySlamming()) << "歩 " << i;
     }
 }
@@ -206,16 +206,16 @@ TEST(CourseDirector, InputLockDropsTheChargeInsteadOfReleasingIt)
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
 
-    for (int i = 0; i < 60 && !player->ChargeControl().IsCharging(); ++i)
+    for (int i = 0; i < 60 && !player->ChargeJudge().IsCharging(); ++i)
     {
         player->Update(true);
     }
-    ASSERT_TRUE(player->ChargeControl().IsCharging());
+    ASSERT_TRUE(player->ChargeJudge().IsCharging());
     const std::uint32_t impacts = player->Resolver().LastImpact().sequence;
 
     EXPECT_TRUE(NS::Game::Level::SendMsgInputLock(*player, true));
-    EXPECT_FALSE(player->ChargeControl().IsCharging());
-    EXPECT_FLOAT_EQ(player->ChargeControl().StanceHeight(), 1.0f);
+    EXPECT_FALSE(player->ChargeJudge().IsCharging());
+    EXPECT_FLOAT_EQ(player->StanceHeight(), 1.0f);
 
     player->Update(false);
     EXPECT_FALSE(player->IsBodySlamming());

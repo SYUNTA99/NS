@@ -34,6 +34,9 @@ namespace NS::Game::Level
     class ImpactResolver;
     class TargetMarker;
     class SlamArrow;
+    struct ImpactInputJudge;
+    struct AimLine;
+    struct SlamLineTarget;
 } // namespace NS::Game::Level
 
 //! @brief プレイヤーキャラクタ。Model / Body / PlayerInput / Shadow の既定構成をコードで組む
@@ -70,6 +73,23 @@ public:
     [[nodiscard]] const NS::Game::Player::PlayerParams& Params() const noexcept { return *m_params; }
     [[nodiscard]] NS::Game::Level::CollisionInput& ChargeControl() noexcept { return *m_collisionInput; }
     [[nodiscard]] const NS::Game::Level::CollisionInput& ChargeControl() const noexcept { return *m_collisionInput; }
+    //! 溜めの判定を読むだけの口。溜め量・押しているか・溜めている間かは、見た目の部品と追従カメラがここから読む
+    [[nodiscard]] const NS::Game::Level::ImpactInputJudge& ChargeJudge() const noexcept;
+    //! @brief 押している間に控えた狙いの線を読む
+    //! @details 押していないフレーム、所属シーンか実カメラが無いフレーム、正面の向きが決まらないフレームは控えが無い
+    //! @param[out] outLine 控えた狙いの線。控えが無い場合は書き換えない
+    //! @return 控えがある場合 true、それ以外の場合は false
+    [[nodiscard]] bool TryGetAimLine(NS::Game::Level::AimLine& outLine) const noexcept;
+    //! @brief 押している間に控えた狙う相手を読む
+    //! @details 押していないフレームと、狙いの線が無いフレームは控えが無い
+    //! @param[out] outTarget 控えた狙う相手。控えが無い場合は書き換えない
+    //! @return 控えがある場合 true、それ以外の場合は false
+    [[nodiscard]] bool TryGetAimTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept;
+    //! @brief 構えで縦に縮める倍率を読む
+    //! @details 溜めている間は欄「構えの縮み」、溜めに入る前に押している間は欄「押しの構えの縮み」、それ以外は 1。
+    //! 描く形へ書くのは PlayerAppearance で、ここは問いに答えるだけ
+    //! @return 元の形を 1 とした縦の倍率
+    [[nodiscard]] float StanceHeight() const noexcept;
     [[nodiscard]] NS::Game::Level::ImpactResolver& Resolver() noexcept { return *m_resolver; }
     [[nodiscard]] NS::Game::Player::PlayerAppearance& Appearance() noexcept { return *m_appearance; }
     [[nodiscard]] NS::Game::Level::TargetMarker& TargetIndicator() noexcept { return *m_targetMarker; }

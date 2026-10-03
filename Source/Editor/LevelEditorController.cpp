@@ -5,11 +5,11 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/FollowCamera.h"
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Level/SlamAim.h"
 #include "Game/Player.h"
 #include "Runtime/App/Application.h"
 #include "Runtime/Core/AABB.h"
@@ -1254,7 +1254,7 @@ void LevelEditorController::RenderHitFaces() noexcept
         const NS::Core::Sphere ball = player->SlamBallAt(player->Root().Position());
         ballCenter = ball.center;
         playerRadius = ball.radius;
-        aiming = player->ChargeControl().TryGetAimTarget(aim);
+        aiming = player->TryGetAimTarget(aim);
     }
     const NS::Core::Vector3 cameraPosition = m_editorCamera.Pose().position;
 

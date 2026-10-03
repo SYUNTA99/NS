@@ -115,26 +115,42 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
         .rebounding = IsRebounding(),
         .slamDirection = BodySlamDirection(),
     };
-    if (const NS::Game::Level::CollisionInput* input = m_collisionInput.get())
+    // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す
+    const NS::Game::Level::ImpactInputJudge& judge = ChargeJudge();
+    state.hasCharge = true;
+    state.charge.held = judge.IsHeld();
+    if (state.charge.held)
     {
-        // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す
-        const NS::Game::Level::ImpactInputJudge& judge = input->Judge();
-        state.hasCharge = true;
-        state.charge.held = judge.IsHeld();
-        if (state.charge.held)
-        {
-            state.charge.charge01 = judge.Charge01();
-        }
-        NS::Game::Level::SlamLineTarget aim{};
-        state.charge.hasAimTarget = input->TryGetAimTarget(aim);
-        if (state.charge.hasAimTarget)
-        {
-            state.charge.aimTargetCenter =
-                NS::Core::Vector3{aim.bounds.Center.x, aim.bounds.Center.y, aim.bounds.Center.z};
-            state.charge.aimTargetRadius = std::max({aim.bounds.Extents.x, aim.bounds.Extents.y, aim.bounds.Extents.z});
-        }
+        state.charge.charge01 = judge.Charge01();
+    }
+    NS::Game::Level::SlamLineTarget aim{};
+    state.charge.hasAimTarget = TryGetAimTarget(aim);
+    if (state.charge.hasAimTarget)
+    {
+        state.charge.aimTargetCenter = NS::Core::Vector3{aim.bounds.Center.x, aim.bounds.Center.y, aim.bounds.Center.z};
+        state.charge.aimTargetRadius = std::max({aim.bounds.Extents.x, aim.bounds.Extents.y, aim.bounds.Extents.z});
     }
     return state;
+}
+
+const NS::Game::Level::ImpactInputJudge& Player::ChargeJudge() const noexcept
+{
+    return m_collisionInput->Judge();
+}
+
+bool Player::TryGetAimLine(NS::Game::Level::AimLine& outLine) const noexcept
+{
+    return m_collisionInput->TryGetAimLine(outLine);
+}
+
+bool Player::TryGetAimTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept
+{
+    return m_collisionInput->TryGetAimTarget(outTarget);
+}
+
+float Player::StanceHeight() const noexcept
+{
+    return m_collisionInput->StanceHeight();
 }
 
 void Player::UpdateAnimation()

@@ -1,6 +1,6 @@
 #include "Game/Level/SlamArrow.h"
 
-#include "Game/Level/CollisionInput.h"
+#include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerParams.h"
@@ -430,7 +430,7 @@ namespace NS::Game::Level
                                     .rise = surfaceAt(shape.tip) - headHeight};
     }
 
-    // Player の見た目の段 (VisualStep) が呼ぶ。CollisionInput を観測する観測の段より後なので、
+    // Player の見た目の段 (VisualStep) が呼ぶ。溜めを観測する観測の段より後なので、
     // このフレームの狙いの線と狙う相手を控えた後に読む
     SlamArrow::SlamArrow() noexcept : NS::Obj::Component() {}
 
@@ -453,7 +453,7 @@ namespace NS::Game::Level
         }
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(owner))
         {
-            m_input = &ownerPlayer->ChargeControl();
+            m_player = ownerPlayer;
             m_body = &ownerPlayer->Body();
         }
         if (NS::Obj::Scene* scene = owner->OwningScene())
@@ -487,13 +487,14 @@ namespace NS::Game::Level
         m_hasShown = false;
         // 溜め量は放した後も残るので、溜めているかで組むフレームを決める。相手がいなくても放った玉の道筋は出す
         SlamArrowState state{};
-        if (m_input == nullptr || m_body == nullptr || !m_input->IsCharging() || !m_input->TryGetAimLine(state.line))
+        if (m_player == nullptr || m_body == nullptr || !m_player->ChargeJudge().IsCharging() ||
+            !m_player->TryGetAimLine(state.line))
         {
             m_framesSinceShown = -1;
             return;
         }
         SlamLineTarget target{};
-        state.hasTarget = m_input->TryGetAimTarget(target);
+        state.hasTarget = m_player->TryGetAimTarget(target);
         // 前のフレームに出ていなければ 0 から数える。相手が替わっても数え直さない
         if (m_framesSinceShown < 0)
         {
@@ -507,8 +508,8 @@ namespace NS::Game::Level
         state.ballRadius = m_body->CapsuleRadius();
         state.targetContact = target.launchContact;
         state.framesSinceShown = m_framesSinceShown;
-        state.charge01 = m_input->Judge().Charge01();
-        state.chargeFull = m_input->IsChargeFull();
+        state.charge01 = m_player->ChargeJudge().Charge01();
+        state.chargeFull = m_player->ChargeJudge().IsChargeFull();
 
         SlamArrowShape shape{};
         if (!BuildSlamArrow(state, Tuning(), shape))

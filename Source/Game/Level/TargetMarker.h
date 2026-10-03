@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Level/SlamAim.h"
 #include "Game/Player/PlayerVisualParams.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
@@ -10,6 +10,8 @@
 #include "Runtime/Object/Reflection/Curve.h"
 
 #include <vector>
+
+class Player;
 
 namespace NS::Game::Level
 {
@@ -68,19 +70,19 @@ namespace NS::Game::Level
                                         LockOnFrameShape& outFrame);
 
     //! @brief 溜めている間、狙う相手のロックオンの枠を画面へ重ねて描く Component
-    //! @details 溜めている間 (CollisionInput::IsCharging) だけ、同じ配置物の CollisionInput が控えた
+    //! @details 溜めている間 (Player::ChargeJudge の IsCharging) だけ、同じ配置物の Player が控えた
     //! 狙う相手に枠を付ける。
     //! 溜めている間に相手が外れたら、直前の枠を縮めて欄のフレーム数だけ出す。
     //! 示す物と、捉えてから・外れてからのフレーム数は OnUpdate で決めて控え、描く時はそれを投げるだけ。
     //! 溜め量・威力・質量は形に入れない。突進の道筋は SlamArrow が地面に描く
-    //! 依存: CollisionInput, SlamAim (SlamLineTarget), NS::Gfx::Renderer
+    //! 依存: Player, SlamAim (SlamLineTarget), NS::Gfx::Renderer
     class TargetMarker : public NS::Obj::OverlayRenderer
     {
     public:
         TargetMarker() noexcept;
 
-        //! 重ね描きの登録簿へ入り、同じ配置物の CollisionInput を引き当てる。
-        //! CollisionInput が無ければ以後何も示さない
+        //! 重ね描きの登録簿へ入り、同じ配置物の Player を引き当てる。
+        //! Player が無ければ以後何も示さない
         void OnStart() override;
 
         //! 溜めている間は狙う相手が居ればその予測を控え、捉えてから・外れてからのフレーム数を数える。
@@ -112,6 +114,6 @@ namespace NS::Game::Level
         int m_framesSinceCapture = 0;  // 外れた後は外れたフレームの値で止める
         NS::Core::AABB m_lostBounds{}; // 外れた相手の外接箱。m_framesSinceLost が負の間は読まない
         int m_framesSinceLost = -1;
-        const CollisionInput* m_input = nullptr;
+        const ::Player* m_player = nullptr; // 溜めと狙う相手の問い先。非所有
     };
 } // namespace NS::Game::Level

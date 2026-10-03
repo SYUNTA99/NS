@@ -13,7 +13,6 @@ class Player;
 
 namespace NS::Game::Level
 {
-    class CollisionInput;
     class ImpactResolver;
 } // namespace NS::Game::Level
 
@@ -37,12 +36,11 @@ namespace NS::Game::Player
     //!   動的入力 1 番で渡す。はじけの光と散って残る筋は大きさを変えない。放した所に置いたまま
     //! - slam.trail 突進の尾: u に出す。当たったら c で、当たらずに突進が終わったら終わったフレームで親を止め、
     //!   止めた k_TrailFadeSteps フレーム後に消す
-    //! 溜めている間の層には溜め量 (CollisionInput の判定) を動的入力 0 番で毎フレーム渡す。
+    //! 溜めている間の層には溜め量 (Player::ChargeJudge) を動的入力 0 番で毎フレーム渡す。
     //! 描画の無い世界でも記録は残し、試しと Replay は Layers を読む
     //! Player の見た目の段 (VisualStep) が PlayerAppearance の後に呼ぶ。
     //! 同じフレームに PlayerAppearance が回した玉の向きより後に走る
-    //! 依存: EffectLayerList, PlayerAppearance, NS::Game::Level::CollisionInput,
-    //! NS::Game::Level::ImpactResolver
+    //! 依存: EffectLayerList, PlayerAppearance, Player, NS::Game::Level::ImpactResolver
     // TODO: エフェクトは固定ステップで進み、付いていく層は固定ステップの位置へ置く。60 を超える画面で付いていく層が
     // 段々に見えたら、描画フレームごとに描く時の補間の位置で渡す形へ移す
     class ChargeEffects : public NS::Obj::Component
@@ -148,8 +146,7 @@ namespace NS::Game::Player
         float m_spinDegrees = 0.0f;        // 押してから玉が回った角度の累計。回転の弧の板の回りの角度
         NS::Core::Vector3 m_slamDirection; // 突進の尾を向ける水平の向き
 
-        const NS::Game::Level::CollisionInput* m_input = nullptr;    // 押し・溜め量の正。非所有
-        const ::Player* m_actor = nullptr;                           // 突進の速度と狙いの向きを答える自機。非所有
+        const ::Player* m_actor = nullptr;                           // 押し・溜め量・突進の速度・狙いの向きを答える自機。非所有
         const PlayerAppearance* m_appearance = nullptr;              // 玉の回転の正。非所有
         const NS::Game::Level::ImpactResolver* m_resolver = nullptr; // 止めの頭の正。非所有
     };

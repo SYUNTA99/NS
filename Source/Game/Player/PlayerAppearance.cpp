@@ -1,7 +1,8 @@
 #include "Game/Player/PlayerAppearance.h"
 
-#include "Game/Level/CollisionInput.h"
+#include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Level/SlamAim.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
@@ -95,7 +96,6 @@ namespace NS::Game::Player
         {
             m_body = &ownerPlayer->Body();
             m_actor = ownerPlayer;
-            m_input = &ownerPlayer->ChargeControl();
             m_resolver = &ownerPlayer->Resolver();
         }
     }
@@ -153,20 +153,20 @@ namespace NS::Game::Player
             SetRollAxisToward(m_actor->BodySlamVelocity(), m_spinAxis);
             m_spinSpeed = Tuning().m_bodySlamSpinSpeed;
         }
-        else if (m_input != nullptr && m_input->Judge().IsHeld())
+        else if (m_actor->ChargeJudge().IsHeld())
         {
             // 放せば出る向きへ回す。溜めて放した突進は狙いの線の向きへ、タップと線の無い時は AimDirection の向きへ出る
             // 狙いが決まらないフレームは前の軸で回し続ける
             NS::Core::Vector3 aim = m_actor->AimDirection();
             NS::Game::Level::AimLine line{};
-            if (m_input->IsCharging() && m_input->TryGetAimLine(line))
+            if (m_actor->ChargeJudge().IsCharging() && m_actor->TryGetAimLine(line))
             {
                 aim = line.direction;
             }
             SetRollAxisToward(aim, m_spinAxis);
             m_spinSpeed =
                 Tuning().m_emptyChargeSpinSpeed +
-                (Tuning().m_fullChargeSpinSpeed - Tuning().m_emptyChargeSpinSpeed) * m_input->Judge().Charge01();
+                (Tuning().m_fullChargeSpinSpeed - Tuning().m_emptyChargeSpinSpeed) * m_actor->ChargeJudge().Charge01();
         }
         else if (m_actor->IsRebounding())
         {
@@ -267,9 +267,9 @@ namespace NS::Game::Player
         {
             shape = m_resolver->ShapeFactors();
         }
-        else if (m_input != nullptr)
+        else if (m_actor != nullptr)
         {
-            shape.y = m_input->StanceHeight();
+            shape.y = m_actor->StanceHeight();
         }
         // 着地の潰れの水平は体積を保つ 1 ÷ √縦
         const float vertical = m_landingSquashVertical;
