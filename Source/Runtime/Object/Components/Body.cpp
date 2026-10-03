@@ -1,7 +1,6 @@
 ﻿#include "Runtime/Object/Components/Body.h"
 
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Gravity.h"
 #include "Runtime/Object/Transform.h"
@@ -24,6 +23,20 @@ namespace
         const float scale = (length - drop) / length;
         x *= scale;
         z *= scale;
+    }
+
+    // 寸法の欄へ書く値。負は 0、有限でなければ書く前の値
+    float NonNegativeLength(float value, float current) noexcept
+    {
+        if (!std::isfinite(value))
+        {
+            return current;
+        }
+        if (value < 0.0f)
+        {
+            return 0.0f;
+        }
+        return value;
     }
 } // namespace
 
@@ -56,13 +69,14 @@ namespace NS::Obj
         m_isGrounded = grounded;
     }
 
-    float Body::CapsuleRadius() const noexcept
+    void Body::SetCapsuleRadius(float radius) noexcept
     {
-        if (const NS::Obj::CapsuleCollider* capsule = SiblingCapsule())
-        {
-            return capsule->Radius();
-        }
-        return 0.4f;
+        m_radius = NonNegativeLength(radius, m_radius);
+    }
+
+    void Body::SetStandingHalfHeight(float halfHeight) noexcept
+    {
+        m_standingHalfHeight = NonNegativeLength(halfHeight, m_standingHalfHeight);
     }
 
     float Body::CapsuleHalfHeight() const noexcept
@@ -73,15 +87,6 @@ namespace NS::Obj
             return 0.0f;
         }
         return StandingHalfHeight();
-    }
-
-    float Body::StandingHalfHeight() const noexcept
-    {
-        if (const NS::Obj::CapsuleCollider* capsule = SiblingCapsule())
-        {
-            return capsule->HalfHeight();
-        }
-        return 0.5f;
     }
 
     void Body::SetSphereShape(bool sphere) noexcept
@@ -98,20 +103,6 @@ namespace NS::Obj
         }
     }
 
-    const NS::Obj::CapsuleCollider* Body::SiblingCapsule() const noexcept
-    {
-        if (m_capsuleCollider != nullptr)
-        {
-            return m_capsuleCollider;
-        }
-        // 資産の引き当ては OnStart より前に走る。PlayerAppearance がその時に聞いても移動と同じ当たりを返す
-        if (Owner() == nullptr)
-        {
-            return nullptr;
-        }
-        return Owner()->ColliderPart();
-    }
-
     NS::Phys::PhysicsScene* Body::GetPhysicsScene() const noexcept
     {
         if (Owner() == nullptr)
@@ -123,15 +114,6 @@ namespace NS::Obj
 
     void Body::OnStart()
     {
-        if (Owner() != nullptr)
-        {
-            m_capsuleCollider = Owner()->ColliderPart();
-        }
-        // 自分の capsule は Move が掃引する。静的世界に居ると自分に当たって動けない
-        if (m_capsuleCollider != nullptr)
-        {
-            m_capsuleCollider->SetExcludedFromStaticWorld(true);
-        }
         // 体のセンサーは根を中心にした、移動の当たりと同じカプセル
         m_bodySensor = nullptr;
         if (Owner() != nullptr)

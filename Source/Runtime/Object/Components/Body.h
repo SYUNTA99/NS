@@ -10,7 +10,6 @@
 
 namespace NS::Obj
 {
-    class CapsuleCollider;
     class HitSensor;
 } // namespace NS::Obj
 
@@ -23,14 +22,16 @@ namespace NS::Obj
 {
     //! @brief 登場人物の身体。移動と接地の部品
     //! @details 自機も敵も同じ身体を固定の部品として持ち、自分の状態から呼ぶ。派生させない。
-    //! 速度の横縦分解・接地・カプセル寸法の参照・1 フレームの移動だけを持ち、
+    //! 速度の横縦分解・接地・自分の当たりのカプセルの寸法・1 フレームの移動だけを持ち、
     //! 能力も調整値も持たない。いつ何を呼ぶかは持ち主の Actor が決める。更新の入口 (OnUpdate) は持たない。
+    //! カプセルは根を中心にした縦向きで、寸法 (半径・半分の高さ) はリフレクションの欄として自分が持つ。
+    //! 同じ Actor の他の部品から借りないので、持ち主が無くても OnStart の前でも欄の値を返す。
     //! TypeRegistry には登録しない。部品名は持ち主が ForEachPart で付ける。
     //! IUseCollision を継ぎ、PhysicsScene は使う時に持ち主の Scene から引く。
     //! 体の周りの地形は、この部品を渡して RaycastCollision・OverlapBoxCollision で問う。
     //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。
     //! dt は呼び手が引数で渡す。呼び手は固定ステップの秒を渡し、描画フレームの秒は渡さない
-    //! 依存: NS::Core, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Actor / CapsuleCollider / IUseCollision
+    //! 依存: NS::Core, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Actor / HitSensor / IUseCollision
     class Body : public NS::Obj::Component, public NS::Obj::IUseCollision
     {
     public:
@@ -53,14 +54,24 @@ namespace NS::Obj
         //! 掴まりのように移動を通さず位置を直に置く時、接地の控えも合わせて置く
         void SetGrounded(bool grounded) noexcept;
 
-        //! 同居する CapsuleCollider の半径。無ければ 0.4。OnStart の前でも同じ答えを返す
-        [[nodiscard]] float CapsuleRadius() const noexcept;
+        //! 当たりのカプセルの半径 (m)。欄「半径」の値で、球にしている間も変わらない
+        [[nodiscard]] float CapsuleRadius() const noexcept { return m_radius; }
+        //! @brief 当たりのカプセルの半径を置く
+        //! @details 負は 0 にし、有限でない値は捨てて元の値を残す。体のセンサーの寸法は次の
+        //! OnStart か SetSphereShape で揃う
+        //! @param[in] radius 半径 (m)
+        void SetCapsuleRadius(float radius) noexcept;
         //! 今の当たりの円柱の半分の高さ。球にしていなければ StandingHalfHeight と同じ。
         //! SetSphereShape で球にしている間は 0
         [[nodiscard]] float CapsuleHalfHeight() const noexcept;
-        //! 同居する CapsuleCollider の半分の高さ。無ければ 0.5。OnStart の前でも同じ答えを返す。
+        //! 立ち姿の円柱の半分の高さ (m)。欄「半分の高さ」の値。
         //! 球にしている間も変わらないので、立ち姿の寸法はここから引く
-        [[nodiscard]] float StandingHalfHeight() const noexcept;
+        [[nodiscard]] float StandingHalfHeight() const noexcept { return m_standingHalfHeight; }
+        //! @brief 立ち姿の円柱の半分の高さを置く
+        //! @details 負は 0 にし、有限でない値は捨てて元の値を残す。体のセンサーの寸法は次の
+        //! OnStart か SetSphereShape で揃う
+        //! @param[in] halfHeight 半分の高さ (m)
+        void SetStandingHalfHeight(float halfHeight) noexcept;
 
         //! 持ち主の Scene の衝突の PhysicsScene。持ち主が無いか Scene に居なければ nullptr
         [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
@@ -94,11 +105,14 @@ namespace NS::Obj
         //! 接地の通知の受け口。購読は後から足せる
         [[nodiscard]] BodyEvents& Events() noexcept { return m_events; }
 
-        //! 同居する CapsuleCollider を控え、静的な当たりの世界から外す
+        //! 同居する体のセンサーを控え、寸法を今の当たりに合わせる
         void OnStart() override;
 
-        // TypeRegistry には登録せず、リフレクションの鎖だけ通す
-        NS_REFLECT_NONE(Body, NS::Obj::Component)
+        // TypeRegistry には登録しない。欄の表示名は保存の鍵
+        NS_REFLECT_BEGIN(Body, NS::Obj::Component)
+        NS_REFLECT_ACCESSOR(float, "半径", CapsuleRadius(), SetCapsuleRadius)
+        NS_REFLECT_ACCESSOR(float, "半分の高さ", StandingHalfHeight(), SetStandingHalfHeight)
+        NS_REFLECT_END()
 
         //! @brief 当たりを円柱の長さ 0 のカプセル (半径が同じ球) にするかを切り替える
         //! @details 真の間は CapsuleHalfHeight が 0 を返し、移動と裁定が同じ球で当たる。半径は変えない。
@@ -108,13 +122,11 @@ namespace NS::Obj
     private:
         NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f};
         bool m_isGrounded = false;
-        bool m_wasGrounded = false; // 直前の Move より前の接地
-        NS::Obj::CapsuleCollider* m_capsuleCollider = nullptr;
+        bool m_wasGrounded = false;        // 直前の Move より前の接地
+        float m_radius = 0.4f;             // 当たりのカプセルの半径 (m)
+        float m_standingHalfHeight = 0.5f; // 立ち姿の円柱の半分の高さ (m)。半球を除く
         std::unique_ptr<NS::Phys::JoltCharacter> m_character;
         BodyEvents m_events;
-
-        //! OnStart で控えた CapsuleCollider。控える前は同居する物を探し、無ければ nullptr
-        [[nodiscard]] const NS::Obj::CapsuleCollider* SiblingCapsule() const noexcept;
 
         //! 体のセンサーの寸法を今の当たりに合わせる。範囲が調べる体と、移動と裁定の当たりを同じ形にする
         void SyncBodySensor() noexcept;

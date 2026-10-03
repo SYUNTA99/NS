@@ -45,7 +45,7 @@ namespace NS::Game::Player
     //! 依存: Player, NS::Obj::Body, NS::Game::Level::CollisionInput, NS::Obj::Model,
     //! NS::Obj::AssetManager
     // TODO: Scene::ApplyFromJson は値の変わった部品だけ引き直す。Model の値の undo で mesh が
-    // 組み込みの cube に戻り、CapsuleCollider の寸法の変更に見た目が付いてこない。編集へ戻る時の LoadJson で直る
+    // 組み込みの cube に戻り、身体 (Body) の寸法の変更に見た目が付いてこない。編集へ戻る時の LoadJson で直る
     class PlayerAppearance : public NS::Obj::Component
     {
     public:
@@ -90,9 +90,9 @@ namespace NS::Game::Player
         NS::Gfx::Mesh* m_standingMesh = nullptr; // AssetManager 所有
         NS::Gfx::Mesh* m_ballMesh = nullptr;     // AssetManager 所有
         bool m_curled = false;
-        const NS::Obj::Body* m_body = nullptr; // 寸法と接地の問い先。非所有
-        const ::Player* m_actor = nullptr;                         // 突進の速度と狙いの向きの問い先。非所有
-        const NS::Game::Level::CollisionInput* m_input = nullptr;  // 溜め量の正。無い配置物もある。非所有
+        const NS::Obj::Body* m_body = nullptr;                    // 寸法と接地の問い先。非所有
+        const ::Player* m_actor = nullptr;                        // 突進の速度と狙いの向きの問い先。非所有
+        const NS::Game::Level::CollisionInput* m_input = nullptr; // 溜め量の正。無い配置物もある。非所有
 
         // 回る速さは 3 つとも 1 フレーム 180 度未満 (1/60 秒のフレームで 10800 度/秒未満) で使う。超えると描く時の
         // 補間が短い側を通り、逆回りに見える

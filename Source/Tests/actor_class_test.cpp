@@ -11,7 +11,6 @@
 #include "Runtime/Object/Actors/MapParts.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/BoxCollider.h"
-#include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/Components/DirectionalLight.h"
 #include "Runtime/Object/Components/HitReaction.h"
 #include "Runtime/Object/Components/HitSensor.h"
@@ -103,7 +102,6 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInConstructor)
     EXPECT_EQ(player.Phase(), NS::Obj::UpdatePhase::Player);
     EXPECT_EQ(&player.Input(), NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input")));
     EXPECT_EQ(&player.Body(), NS::Obj::ComponentCast<NS::Obj::Body>(player.Part("Movement")));
-    EXPECT_NE(player.ColliderPart(), nullptr);
     EXPECT_NE(NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player.Part("ChargeControl")), nullptr);
     EXPECT_NE(NS::Obj::ComponentCast<NS::Game::Level::ImpactResolver>(player.Part("ImpactResolver")), nullptr);
     EXPECT_NE(player.HitReactionPart(), nullptr);
