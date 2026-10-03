@@ -228,19 +228,22 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
     EXPECT_FALSE(player->CanMoveBody());
     const NS::Core::Vector3 position = player->Root().Position();
     const std::uint32_t stateStep = player->States().StepsInState();
+    // 真ん中は止めが明けた後、伸びきって反動の事象が来るまでも止まったまま
     for (int frame = 0; frame < 30; ++frame)
     {
         player->Update(false);
         rock->Update();
-        if (!player->Resolver().IsHitStopping())
+        if (!player->Resolver().IsHitStopping() && !player->Resolver().IsAwaitingRebound())
         {
             break;
         }
         SCOPED_TRACE(frame);
+        EXPECT_TRUE(player->Body().IsActive());
         ExpectSameVector(player->Root().Position(), position);
         EXPECT_EQ(player->States().StepsInState(), stateStep);
     }
     EXPECT_FALSE(player->Resolver().IsHitStopping());
+    EXPECT_FALSE(player->Resolver().IsAwaitingRebound());
     EXPECT_TRUE(player->CanMoveBody());
 }
 
@@ -357,8 +360,12 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
         released = player->Resolver().ReleasedThisStep();
     }
     ASSERT_TRUE(released);
-    // 反発の明けは縦へ欄「弾け伸びの倍率」1.2
-    ExpectSameVector(player->ModelPart()->DrawScale(), NS::Core::Vector3{1.0f, 1.2f, 1.0f});
+    // 明けは潰れ 0.7 から 3 フレームで突進の向きへ 1.25 まで伸び、縦は 1.1 から 0.9 へ細る。明けはその 1 フレーム目
+    const float along = 0.7f + 0.55f / 3.0f;
+    const float height = 1.1f - 0.2f / 3.0f;
+    ExpectSameVector(
+        player->ModelPart()->DrawScale(),
+        NS::Core::Vector3{1.0f - (1.0f - along) * dir.x * dir.x, height, 1.0f - (1.0f - along) * dir.z * dir.z});
     for (int frame = 0; frame < 30 && player->Resolver().IsShapeAnimating(); ++frame)
     {
         SCOPED_TRACE(frame);
