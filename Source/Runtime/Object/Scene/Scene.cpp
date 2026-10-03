@@ -449,7 +449,7 @@ namespace NS::Obj
 
     NS::Gfx::EffectScene* Scene::GetEffectScene() const noexcept
     {
-        return const_cast<SceneRenderer&>(m_sceneRenderer).Effects();
+        return m_sceneRenderer.Effects();
     }
 
     void Scene::RegisterUIActor(UIActor* actor)

@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "Runtime/Core/Assert.h"
 #include "Runtime/Object/ActorBase.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/StateMachine.h"
@@ -57,6 +58,7 @@ namespace NS::Obj
         [[nodiscard]] std::string_view PartName(const Component& part) const;
         //! @brief 部品名 name の部品を作って付ける。既に持っていればそれを返す
         //! @details 基底が作れるのは Model、Animation、Shadow、Collision、BodySensor、AttackSensor、HitReaction
+        //! BodySensor と AttackSensor は形を自分で持つ ShapeHitSensor を作る
         //! @return 付けた部品。作れない名前は nullptr
         virtual Component* CreatePart(std::string_view name);
         [[nodiscard]] Model* ModelPart() noexcept { return m_model.get(); }
@@ -67,8 +69,11 @@ namespace NS::Obj
         [[nodiscard]] const Shadow* ShadowPart() const noexcept { return m_shadow.get(); }
         [[nodiscard]] Collider* CollisionPart() noexcept { return m_collision.get(); }
         [[nodiscard]] const Collider* CollisionPart() const noexcept { return m_collision.get(); }
+        //! その物の体の広がりのセンサー。持たなければ nullptr
         [[nodiscard]] HitSensor* BodySensorPart() noexcept { return m_bodySensor.get(); }
         [[nodiscard]] const HitSensor* BodySensorPart() const noexcept { return m_bodySensor.get(); }
+        //! @brief 体と別の広がりを持つ 2 つ目のセンサー。持たなければ nullptr
+        //! @details 調べ役は体のセンサーと区別せずに扱う。今はこの枠を作る種類が無い
         [[nodiscard]] HitSensor* AttackSensorPart() noexcept { return m_attackSensor.get(); }
         [[nodiscard]] const HitSensor* AttackSensorPart() const noexcept { return m_attackSensor.get(); }
         [[nodiscard]] HitReaction* HitReactionPart() noexcept { return m_hitReaction.get(); }
@@ -94,8 +99,9 @@ namespace NS::Obj
         //! @details シーンに 1 つの物を作るなど、他の配置物が揃っている前提の用意を書く
         virtual void InitAfterPlacement() {}
 
-        //! @brief 自分のセンサー self が、self の種類が調べる種類の相手のセンサー other に重なったフレームに呼ばれる
-        //! @details 重なっている間は毎フレーム呼ばれる。相手へ知らせを送るかはここで決める。オデッセイの attackSensor
+        //! @brief 自分のセンサー self が、持ち主の違うセンサー other に重なったフレームに呼ばれる
+        //! @details 重なっている間は毎フレーム呼ばれ、相手の持ち主にも向きを入れ替えて同じフレームに呼ばれる。
+        //! 調べ役は種類を見ないので、相手の種類を見て知らせを送るかはここで決める。オデッセイの attackSensor
         virtual void AttackSensor(HitSensor& self, HitSensor& other)
         {
             (void)self;
@@ -122,8 +128,6 @@ namespace NS::Obj
 
         //! 配下 Component の OnStart を伝播
         void OnStart();
-        //! Update を呼ぶ
-        void OnUpdate();
         //! 世界から外し、全ての部品の OnEndPlay を呼ぶ
         virtual void OnEndPlay();
 
@@ -175,16 +179,20 @@ namespace NS::Obj
         //! @details 状態機械は 1 体に 1 つで、Update が 1 固定ステップ進める。既に持っている時は組まずに
         //! NS_LOG_ERROR で知らせて false を返し、今の機械をそのまま残す (動いている機械は状態の中から呼ばれて
         //! いることがあり、捨てると呼び出し中の状態が消える)。型付きのポインタは先頭の OnEnter より前に
-        //! outMachine へ書くので、OnEnter の中からも引ける。持ち主は OnEnter の触る所を作り終えてから呼ぶ
+        //! outMachine へ書くので、OnEnter の中からも引ける。持ち主は OnEnter の触る所を作り終えてから呼ぶ。
+        //! 持ち主を受けるのはここだけで、機械は生涯この持ち主を状態へ渡す
         //! @tparam TOwner 呼ぶ派生の型。状態は StateOf<自分の型, TOwner> から派生する
         //! @tparam TStates 状態の型の並び。先頭が初期状態で、並べた型が移れる状態の全部になる
-        //! @param[in] owner 状態へ渡す持ち主
+        //! @param[in] owner 状態へ渡す持ち主。自分自身を渡す
         //! @param[out] outMachine 組んだ状態機械の置き場。基底が所有するので持ち主は参照を持つだけ。失敗時は触らない
         //! @return 組めた場合 true、既に状態機械を持っていて組まなかった場合 false
         template <typename TOwner, typename... TStates>
         bool BuildStateMachine(TOwner& owner, StateMachine<TOwner>*& outMachine)
         {
             static_assert(std::is_base_of_v<Actor, TOwner>, "持ち主は Actor の派生");
+            NS_ASSERT(Scene,
+                      static_cast<const Actor*>(&owner) == this,
+                      "Actor::BuildStateMachine: 持ち主に自分以外の Actor を渡している");
             std::unique_ptr<StateMachine<TOwner>> machine = std::make_unique<StateMachine<TOwner>>();
             StateMachine<TOwner>* built = machine.get();
             if (!AdoptStateMachine(std::move(machine)))
@@ -199,6 +207,11 @@ namespace NS::Obj
         void StepStateMachine();
         void AttachFixedComponent(Component& component);
         void SetCollisionPart(std::unique_ptr<Collider> collision);
+        //! @brief 体のセンサーの部品 BodySensor を派生の型で差す。持ち主の形を映すセンサーを付ける口
+        //! @details 既に持っているか sensor が nullptr なら何もしない。差した後の CreatePart("BodySensor") は
+        //! 差した部品を返す
+        //! @param[in] sensor 差す体のセンサー
+        void SetBodySensorPart(std::unique_ptr<HitSensor> sensor);
 
     private:
         friend class ObjectList;

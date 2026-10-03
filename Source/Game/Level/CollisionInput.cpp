@@ -10,10 +10,6 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Platform/Clock.h"
-#include "Runtime/Platform/Gamepad.h"
-#include "Runtime/Platform/Input.h"
-#include "Runtime/Platform/Mouse.h"
 
 #include <algorithm>
 #include <cmath>
@@ -60,60 +56,40 @@ namespace NS::Game::Level
         }
     }
 
-    void CollisionInput::OnEndPlay()
+    void CollisionInput::CancelCharge() noexcept
     {
         m_stateReady = false;
         m_controlReady = false;
-        if (m_player != nullptr)
-        {
-            m_player->m_charge.Finish();
-        }
-        // 構えを掛けたまま外れると縮んだ形が残るため、必ず元の形へ戻す
-        if (m_stanceApplied)
-        {
-            RootTransform().SetScale(m_homeScale);
-            m_stanceApplied = false;
-        }
-        // 押しの印が真の間、自機は着地しても丸まりを解かない。外れた後は印を書く物が無いので、真のまま残すと
-        // 着地で解けなくなる。印を偽へ戻し、丸まりもここで解く。ResetState は速度と状態機械まで戻すので呼ばない
+        // 判定のしきい値の歩数は AdvanceCharge が毎回入れ直すので失われない
+        m_judge = ImpactInputJudge{};
+        m_observedHasAimLine = false;
+        m_observedHasAimTarget = false;
+        m_hasAimLine = false;
+        m_hasAimTarget = false;
+        // 押しの印が真の間、自機は着地しても丸まりを解かない。印を書くのは押しを裁いた歩だけなので、ここで偽へ戻す
         if (m_player != nullptr && m_body != nullptr)
         {
             m_player->SetBodySlamHeld(false);
-            m_player->SetCurled(false);
+            m_player->SetMaxSpeedScale(1.0f);
         }
     }
 
-    bool CollisionInput::ReadHeld() const
+    void CollisionInput::OnEndPlay()
     {
-        NS::Platform::Input& input = NS::Platform::Input::Get();
-        const bool leftFree = input.GameReceivesMouseButton(NS::Platform::MouseButton::Left);
-        const NS::Platform::Mouse& mouse = input.Mouse();
-        const NS::Platform::Gamepad& pad = input.Gamepad(0);
-        return (leftFree && mouse.IsHeld(NS::Platform::MouseButton::Left)) ||
-               pad.IsHeld(NS::Platform::GamepadButton::X);
-    }
-
-    void CollisionInput::OnUpdate()
-    {
-        Step(ReadHeld(), NS::Platform::FrameTimer::FixedDelta());
+        CancelCharge();
+        // 外れた後は着地で丸まりを解く歩が来ないので、ここで解く。ResetState は速度と状態機械まで戻すので呼ばない
+        if (m_player != nullptr && m_body != nullptr)
+        {
+            m_player->SetCurled(false);
+        }
     }
 
     void CollisionInput::Observe(bool held)
     {
         m_observedHeld = held;
-        m_observedRushing = m_body != nullptr && m_player->IsBodySlamming();
         m_stateReady = true;
         m_controlReady = true;
         UpdateAimTarget(held);
-    }
-
-    NS::Core::Vector3 CollisionInput::PredictedSlamVelocity() const noexcept
-    {
-        if (m_body == nullptr)
-        {
-            return NS::Core::Vector3{};
-        }
-        return m_player->BodySlamVelocity();
     }
 
     void CollisionInput::AdvanceState(float dt)
@@ -123,36 +99,19 @@ namespace NS::Game::Level
             return;
         }
         m_stateReady = false;
-        if (m_player != nullptr)
-        {
-            m_player->StepCharge(m_observedHeld, dt);
-            return;
-        }
         AdvanceCharge(m_observedHeld, dt);
     }
 
-    void CollisionInput::ApplyControl(bool refreshVelocity)
+    void CollisionInput::ApplyControl()
     {
         if (m_stateReady || !m_controlReady)
         {
             return;
         }
         m_controlReady = false;
-        if (refreshVelocity && m_observedRushing && m_body != nullptr && m_body->IsActive() &&
-            m_player->IsBodySlamming())
-        {
-            m_player->ApplyBodySlamHeading();
-        }
 #if !defined(NS_SHIPPING)
         DrawChargeRing();
 #endif
-    }
-
-    void CollisionInput::Step(bool held, float dt)
-    {
-        Observe(held);
-        AdvanceState(dt);
-        ApplyControl(false);
     }
 
     void CollisionInput::AdvanceCharge(bool held, float dt)
@@ -202,7 +161,7 @@ namespace NS::Game::Level
             float scale = 1.0f;
             if (m_judge.IsCharging())
             {
-                scale = ChargingSpeedScale();
+                scale = Tuning().ChargingSpeedScale();
             }
             m_player->SetMaxSpeedScale(scale);
         }
@@ -226,7 +185,6 @@ namespace NS::Game::Level
         {
             m_aimTarget.origin = RootTransform().Position();
         }
-        UpdateChargeStance();
     }
 
     void CollisionInput::UpdateAimTarget(bool held)
@@ -295,30 +253,17 @@ namespace NS::Game::Level
         return true;
     }
 
-    void CollisionInput::UpdateChargeStance()
+    float CollisionInput::StanceHeight() const noexcept
     {
-        // 凍結と潰れ・伸びの最中は触らない。書くと控えた元の形と衝突演出が壊れる
-        const bool resolverAnimating = m_resolver != nullptr && m_resolver->IsScaleAnimating();
-        const bool movementFrozen = m_body != nullptr && !m_body->IsActiveSelf();
-        if (m_judge.IsHeld() && !resolverAnimating && !movementFrozen)
+        if (!m_judge.IsHeld())
         {
-            if (!m_stanceApplied)
-            {
-                m_homeScale = RootTransform().Scale();
-                m_stanceApplied = true;
-            }
-            float scale = Tuning().m_pressSquashScale;
-            if (m_judge.IsCharging())
-            {
-                scale = Tuning().m_chargeSquashScale;
-            }
-            RootTransform().SetScale(NS::Core::Vector3{m_homeScale.x, m_homeScale.y * scale, m_homeScale.z});
+            return 1.0f;
         }
-        else if (m_stanceApplied && !resolverAnimating)
+        if (m_judge.IsCharging())
         {
-            RootTransform().SetScale(m_homeScale);
-            m_stanceApplied = false;
+            return Tuning().m_chargeSquashScale;
         }
+        return Tuning().m_pressSquashScale;
     }
 
 #if !defined(NS_SHIPPING)
@@ -330,8 +275,9 @@ namespace NS::Game::Level
         }
 
         const float charge01 = m_judge.Charge01();
-        const NS::Core::Vector3 center = Owner()->Root().Position();
-        const float footY = center.y - m_body->CapsuleHalfHeight() - m_body->CapsuleRadius() + 0.05f;
+        // 輪は当たりのカプセルの下端 (中心 − 軸 × (半分の高さ + 半径)) に置く
+        const NS::Phys::Capsule capsule = m_body->CapsuleAt(Owner()->Root().Position());
+        const NS::Core::Vector3 foot = capsule.center - capsule.axis * (capsule.halfHeight + capsule.radius);
         // 溜め量が輪の広がりに出ないと、満タンまでの途中が読めない
         const float radius = m_body->CapsuleRadius() + 0.25f + charge01 * 0.75f;
         NS::Core::Color color{1.0f, 0.85f, 0.2f, 1.0f};
@@ -339,34 +285,12 @@ namespace NS::Game::Level
         {
             color = NS::Core::Color{1.0f, 1.0f, 1.0f, 1.0f};
         }
-        NS::Gfx::DebugDraw::Circle(NS::Core::Vector3{center.x, footY, center.z},
+        NS::Gfx::DebugDraw::Circle(NS::Core::Vector3{foot.x, foot.y + 0.05f, foot.z},
                                    NS::Core::Vector3{radius, 0.0f, 0.0f},
                                    NS::Core::Vector3{0.0f, 0.0f, radius},
                                    color);
     }
 #endif
-
-    float CollisionInput::ChargeFactorFor(float charge01) const noexcept
-    {
-        if (!std::isfinite(charge01))
-        {
-            return 1.0f;
-        }
-        const float clamped = NS::Core::Clamp(charge01, 0.0f, 1.0f);
-        const float factor = Tuning().m_chargeFactorCurve.Evaluate(clamped);
-        // Inspector で点を全部消すと Evaluate が 0 を返して威力が消えるため、0 以下は 1 とみなす
-        if (!(factor > 0.0f))
-        {
-            return 1.0f;
-        }
-        return factor;
-    }
-
-    float CollisionInput::ChargingSpeedScale() const noexcept
-    {
-        // 減速率の欄は非有限の書き込みを捨てるので、ここへ来る値は有限。Clamp だけで 0..1 に収まる
-        return NS::Core::Clamp(1.0f - Tuning().m_chargeSlowRate, 0.0f, 1.0f);
-    }
 
     NS_CLASS(CollisionInput)
 } // namespace NS::Game::Level

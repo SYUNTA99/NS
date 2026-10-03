@@ -49,10 +49,10 @@ namespace NS::Obj
 
     // 配置物データに書かれた transform も同じ物を指すので、live クラスと同じ場所に置く
 
-    //! TransformComponent のリフレクション型名。transform エントリの照合に使う共有定数
-    inline constexpr std::string_view k_TransformTypeName = "TransformComponent";
+    //! 根の部品 TransformComponent の部品名。保存の鍵そのもので、名指す所は全てこれを使う
+    inline constexpr std::string_view k_TransformPartName = "Transform";
 
-    //! 配置物の JSON の transform を読み書きする唯一の経路。実体は parts 内の "Transform" の欄
+    //! 配置物の JSON の transform を読み書きする唯一の経路。実体は parts 内の k_TransformPartName の欄
     //! Set は対象エントリが無ければ EnsureTransformComponent で 1 つ作る
     [[nodiscard]] NS::Core::Vector3 ObjectPosition(const nlohmann::json& object) noexcept;
     void SetObjectPosition(nlohmann::json& object, const NS::Core::Vector3& position) noexcept;

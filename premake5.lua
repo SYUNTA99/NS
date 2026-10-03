@@ -559,7 +559,7 @@ project "UI"
     filter {}
 
     -- ゲーム UI (Widget / UISystem) は出荷対象なので全構成でビルドする。
-    -- ImGui まわり (ImGuiContext / Panel) は NS_EDITOR_ENABLED ガードで GameRelease では空になる
+    -- ImGui まわり (ImGuiContext) は NS_EDITOR_ENABLED ガードで GameRelease では空になる
 
     applyRuntimeLayerDefaults("UI")
     applyCommonBuildOptions()

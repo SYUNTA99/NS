@@ -23,7 +23,7 @@ namespace NS::Game::Level
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         NS_REFLECT_NONE(MapObj, NS::Obj::Actor)
 
-        //! 物の体のセンサーの形を、当たりの球に合わせる
+        //! 配置が揃った後に、当たりの球を物理へ入れる
         void InitAfterPlacement() override;
 
         //! @brief 状態機械を 1 固定ステップ進め、当たりの球が動いていれば物理へ置き直す

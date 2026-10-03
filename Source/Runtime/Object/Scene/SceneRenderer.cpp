@@ -102,8 +102,8 @@ namespace NS::Obj
         {
             return;
         }
-        const std::vector<RenderEntry>::iterator it = std::find_if(
-            m_renderables.begin(), m_renderables.end(), [renderable](const RenderEntry& entry) {
+        const std::vector<RenderEntry>::iterator it =
+            std::find_if(m_renderables.begin(), m_renderables.end(), [renderable](const RenderEntry& entry) {
                 return entry.renderable == renderable;
             });
         if (it != m_renderables.end())
@@ -357,7 +357,7 @@ namespace NS::Obj
 
         // 物の絵は S 字で 1 以下に書くので、にじむのは 1 を超えて書いたエフェクトだけ
         // 深度は今の描画先の物を使うので、後で描くデバッグの線も世界の深度で隠れる
-        bloom.BeginWorld(m_renderer->Settings().clearColor);
+        bloom.BeginWorld(*m_renderer, m_renderer->Settings().clearColor);
         DrawOpaque(ctx);
         m_renderer->DrawSky(*viewCamera, skyboxPath);
         DrawTransparent(ctx);
@@ -367,7 +367,7 @@ namespace NS::Obj
             m_effects->Draw(*viewCamera);
         }
         // 重ね描きとデバッグの線はにじませないので、この後に今の描画先へ描く
-        bloom.EndWorld();
+        bloom.EndWorld(*m_renderer);
         return ctx;
     }
 } // namespace NS::Obj

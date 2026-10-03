@@ -4,14 +4,10 @@
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/BodyEvents.h"
 #include "Runtime/Object/IUse/IUseCollision.h"
+#include "Runtime/Physics/Capsule.h"
 #include "Runtime/Physics/JoltCharacter.h"
 
 #include <memory>
-
-namespace NS::Obj
-{
-    class HitSensor;
-} // namespace NS::Obj
 
 namespace NS::Phys
 {
@@ -31,7 +27,7 @@ namespace NS::Obj
     //! 体の周りの地形は、この部品を渡して RaycastCollision・OverlapBoxCollision で問う。
     //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。
     //! dt は呼び手が引数で渡す。呼び手は固定ステップの秒を渡し、描画フレームの秒は渡さない
-    //! 依存: NS::Core, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Actor / HitSensor / IUseCollision
+    //! 依存: NS::Core, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Actor / IUseCollision
     class Body : public NS::Obj::Component, public NS::Obj::IUseCollision
     {
     public:
@@ -57,19 +53,27 @@ namespace NS::Obj
         //! 当たりのカプセルの半径 (m)。欄「半径」の値で、球にしている間も変わらない
         [[nodiscard]] float CapsuleRadius() const noexcept { return m_radius; }
         //! @brief 当たりのカプセルの半径を置く
-        //! @details 負は 0 にし、有限でない値は捨てて元の値を残す。OnStart の後なら体のセンサーの寸法も
-        //! その場で揃える
+        //! @details 負は 0 にし、有限でない値は捨てて元の値を残す
         //! @param[in] radius 半径 (m)
         void SetCapsuleRadius(float radius) noexcept;
         //! 今の当たりの円柱の半分の高さ。球にしていなければ StandingHalfHeight と同じ。
         //! SetSphereShape で球にしている間は 0
         [[nodiscard]] float CapsuleHalfHeight() const noexcept;
+        //! @brief 根を rootPosition に置いた時の、今の当たりの形を返す
+        //! @details 中心は根、軸は +Y、半分の高さは CapsuleHalfHeight()、半径は CapsuleRadius()。
+        //! JoltCharacter を作る Move と同じ形で、球にしている間は半分の高さが 0。判定・矢印・エディタの線は
+        //! 当たりの形をここから引き、軸や中心の決まりを自分で組み直さない
+        //! @param[in] rootPosition 根の位置 (ワールド)
+        [[nodiscard]] NS::Phys::Capsule CapsuleAt(const NS::Core::Vector3& rootPosition) const noexcept;
+        //! @brief 根の今の位置での当たりの形を返す。CapsuleAt(根の位置) と同じ
+        //! @details 自機の体のセンサーが毎回これを読むので、寸法の欄を変えたその場で範囲の照合に効く。
+        //! 持ち主が無ければ原点に置く
+        [[nodiscard]] NS::Phys::Capsule WorldCapsule() const noexcept;
         //! 立ち姿の円柱の半分の高さ (m)。欄「半分の高さ」の値。
         //! 球にしている間も変わらないので、立ち姿の寸法はここから引く
         [[nodiscard]] float StandingHalfHeight() const noexcept { return m_standingHalfHeight; }
         //! @brief 立ち姿の円柱の半分の高さを置く
-        //! @details 負は 0 にし、有限でない値は捨てて元の値を残す。OnStart の後なら体のセンサーの寸法も
-        //! その場で揃える
+        //! @details 負は 0 にし、有限でない値は捨てて元の値を残す
         //! @param[in] halfHeight 半分の高さ (m)
         void SetStandingHalfHeight(float halfHeight) noexcept;
 
@@ -105,9 +109,6 @@ namespace NS::Obj
         //! 接地の通知の受け口。購読は後から足せる
         [[nodiscard]] BodyEvents& Events() noexcept { return m_events; }
 
-        //! 同居する体のセンサーを控え、寸法を今の当たりに合わせる
-        void OnStart() override;
-
         // TypeRegistry には登録しない。欄の表示名は保存の鍵
         NS_REFLECT_BEGIN(Body, NS::Obj::Component)
         NS_REFLECT_ACCESSOR(float, "半径", CapsuleRadius(), SetCapsuleRadius)
@@ -127,11 +128,6 @@ namespace NS::Obj
         float m_standingHalfHeight = 0.5f; // 立ち姿の円柱の半分の高さ (m)。半球を除く
         std::unique_ptr<NS::Phys::JoltCharacter> m_character;
         BodyEvents m_events;
-
-        //! 体のセンサーの寸法を今の当たりに合わせる。範囲が調べる体と、移動と裁定の当たりを同じ形にする
-        void SyncBodySensor() noexcept;
-
-        bool m_sphereShape = false;                 // 当たりを球にしているか。書くのは SetSphereShape だけ
-        NS::Obj::HitSensor* m_bodySensor = nullptr; // 同居するカプセルのセンサー。無ければ nullptr
+        bool m_sphereShape = false; // 当たりを球にしているか。書くのは SetSphereShape だけ
     };
 } // namespace NS::Obj

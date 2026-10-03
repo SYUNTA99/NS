@@ -54,7 +54,8 @@ namespace NS::Game::Level
     [[nodiscard]] bool IsMsgCourseRestart(const NS::Obj::Message& msg) noexcept;
 
     //! @brief 操作を止めるか戻す知らせ。進行役がクリアの演出の間だけプレイヤーの操作を止める
-    //! @details 世界は止めない。止めている間も重力とカメラは動いたまま
+    //! @details 世界は止めない。止めている間も重力とカメラは動いたまま。
+    //! 受け手は入力を中立にし、止める時は溜めを放させずに捨てる
     class MsgInputLock final : public NS::Obj::Message
     {
         NS_MESSAGE(MsgInputLock)

@@ -1,6 +1,7 @@
 #include "Game/Level/MapObj.h"
 
 #include "Game/Level/ImpactMark.h"
+#include "Game/Level/SensorKinds.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Gravity.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -53,7 +54,7 @@ namespace NS::Game::Level
         {
             if (!owner.m_freezePlaced)
             {
-                owner.m_motion.Step(owner, dt);
+                owner.m_motion.Step(dt);
             }
             owner.StepFreeze();
         }
@@ -83,9 +84,12 @@ namespace NS::Game::Level
         AttachFixedComponent(m_params);
         AttachFixedComponent(m_hitZones);
         AttachFixedComponent(m_effects);
-        (void)CreatePart("BodySensor");
-        BodySensorPart()->SetType(NS::Obj::HitSensorType::MapObjBody);
-        BodySensorPart()->SetSphere(0.5f);
+        // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
+        SetBodySensorPart(std::make_unique<NS::Obj::FollowHitSensor>([collision = &Sphere()] {
+            const NS::Core::Sphere sphere = collision->WorldSphere();
+            return NS::Obj::SensorVolume::Sphere(sphere.center, sphere.radius);
+        }));
+        SetSensorKind(*BodySensorPart(), SensorKind::MapObjBody);
         (void)BuildStateMachine<MapObj, RestingState, FreezeState, LaunchedState>(*this, m_states);
         m_motion.Finish();
     }
@@ -100,8 +104,6 @@ namespace NS::Game::Level
 
     void MapObj::InitAfterPlacement()
     {
-        BodySensorPart()->SetSphere(Sphere().Radius());
-        BodySensorPart()->SetCenterOffset(Sphere().CenterOffset());
         SyncCollider();
     }
 
@@ -163,11 +165,11 @@ namespace NS::Game::Level
             EndFreeze();
             if (m_freezePlaced || m_motion.IsDead())
             {
-                (void)m_states->Change<RestingState>(*this);
+                (void)m_states->Change<RestingState>();
             }
             else
             {
-                (void)m_states->Change<LaunchedState>(*this);
+                (void)m_states->Change<LaunchedState>();
             }
         }
         m_freezePlaced = !IsFlying();
@@ -175,7 +177,7 @@ namespace NS::Game::Level
         m_freeze = desc;
         m_freeze.squash = false;
         m_freeze.stopSteps = std::max(desc.stopSteps, 0);
-        (void)m_states->Change<FreezeState>(*this);
+        (void)m_states->Change<FreezeState>();
         if (m_freezePlaced)
         {
             Root().SetPosition(m_freezeHome + desc.impactDir * desc.pushInDistance);
@@ -207,7 +209,7 @@ namespace NS::Game::Level
 
     void MapObj::StepFreeze()
     {
-        const std::uint32_t step = m_states->StateStep();
+        const std::uint32_t step = m_states->StepsInState();
         if (step == 0)
         {
             return;
@@ -220,11 +222,11 @@ namespace NS::Game::Level
                 EndFreeze();
                 if (m_freezePlaced || m_motion.IsDead())
                 {
-                    (void)m_states->Change<RestingState>(*this);
+                    (void)m_states->Change<RestingState>();
                 }
                 else
                 {
-                    (void)m_states->Change<LaunchedState>(*this);
+                    (void)m_states->Change<LaunchedState>();
                 }
             }
             return;
@@ -245,11 +247,11 @@ namespace NS::Game::Level
             EndFreeze();
             if (m_freezePlaced || m_motion.IsDead())
             {
-                (void)m_states->Change<RestingState>(*this);
+                (void)m_states->Change<RestingState>();
             }
             else
             {
-                (void)m_states->Change<LaunchedState>(*this);
+                (void)m_states->Change<LaunchedState>();
             }
         }
         SpawnMark();
@@ -275,7 +277,7 @@ namespace NS::Game::Level
         m_velocity = m_arcForward * initial.x + m_arcUp * initial.y;
         m_hasLaunched = true;
         m_motion.Build<ArcState, RollingState>(*this);
-        (void)m_states->Change<LaunchedState>(*this);
+        (void)m_states->Change<LaunchedState>();
         m_effects.BeginTrail(desc.tier, desc.power, desc.launchScale, desc.arc.direction);
         SyncCollider();
     }
@@ -288,10 +290,10 @@ namespace NS::Game::Level
 
     void MapObj::StepLaunched(float dt)
     {
-        m_motion.Step(*this, dt);
+        m_motion.Step(dt);
         if (m_motion.IsDead())
         {
-            (void)m_states->Change<RestingState>(*this);
+            (void)m_states->Change<RestingState>();
         }
     }
 
@@ -357,7 +359,7 @@ namespace NS::Game::Level
     void MapObj::Land(const NS::Core::Vector3& normal)
     {
         m_velocity -= normal * NS::Core::Dot(m_velocity, normal);
-        (void)m_motion.Machine().Change<RollingState>(*this);
+        (void)m_motion.Machine().Change<RollingState>();
         m_effects.NotifyLanding(Sphere().WorldSphere().center - normal * Sphere().WorldSphere().radius, normal);
     }
 
@@ -367,7 +369,7 @@ namespace NS::Game::Level
         if (!ProbeFloor(Sphere().WorldSphere().radius / k_FloorDot + 0.01f, normal))
         {
             m_arcDeflected = true;
-            (void)m_motion.Machine().Change<ArcState>(*this);
+            (void)m_motion.Machine().Change<ArcState>();
             return;
         }
         m_velocity -= normal * NS::Core::Dot(m_velocity, normal);
@@ -463,7 +465,7 @@ namespace NS::Game::Level
         {
             EndFreeze();
         }
-        (void)m_states->Change<RestingState>(*this);
+        (void)m_states->Change<RestingState>();
         m_states->Reset();
         m_motion.Finish();
         m_velocity = NS::Core::Vector3{};

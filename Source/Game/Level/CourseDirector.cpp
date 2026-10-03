@@ -1,18 +1,19 @@
 #include "Game/Level/CourseDirector.h"
 
 #include "Game/Level/LevelMessages.h"
-#include "Game/Level/ScreenFade.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Object/ScreenFade.h"
 #include "Runtime/Platform/Clock.h"
 
 #include <vector>
 
 namespace NS::Game::Level
 {
-    CourseDirector::CourseDirector(NS::Obj::Scene& scene) : m_scene(scene), m_fade(std::make_unique<ScreenFade>())
+    CourseDirector::CourseDirector(NS::Obj::Scene& scene)
+        : m_scene(scene), m_fade(std::make_unique<NS::Obj::ScreenFade>())
     {
         m_fade->Open(scene);
         m_scene.Objects().AddTicker(this, NS::Obj::UpdatePhase::Course);

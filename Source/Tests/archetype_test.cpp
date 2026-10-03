@@ -4,6 +4,7 @@
 #include "Runtime/Object/Components/Shadow.h"
 #include "Runtime/Object/Components/SphereCollider.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
+#include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
@@ -178,7 +179,7 @@ TEST(Archetype, SaveWritesOnlyOverrides)
     const nlohmann::json& plain = objects[NS::Obj::FindObjectIndexById(saved, 1)];
     const nlohmann::json& overridden = objects[NS::Obj::FindObjectIndexById(saved, 2)];
 
-    // 部品の件は id と名前を保つため残り、種類の既定値と同じ欄は書かれない
+    // 欄が全部既定と同じ部品も空の件として残り、種類の既定値と同じ欄は書かれない
     const nlohmann::json* plainSphere = NS::Obj::PartFields(plain, "Collision");
     ASSERT_NE(plainSphere, nullptr);
     EXPECT_FALSE(plainSphere->contains("id"));
@@ -296,6 +297,31 @@ TEST(Archetype, OverrideIsDetectedAgainstBaseline)
     sphere->SetRadius(2.5f);
     EXPECT_TRUE(NS::Obj::IsFieldOverridden(*sphere, "半径"));
     EXPECT_TRUE(NS::Obj::IsArchetypeField(*sphere, "半径"));
+}
+
+TEST(Archetype, TransformPartIsInstanceOnlyOnEveryPath)
+{
+    // 位置・回転・拡縮は個体の物。種類の既定値の読込・保存の差分・インスペクタの 3 つの道が同じ判断を通る
+    const ScopedArchetypeDirectory scope("TransformInstanceOnly");
+    nlohmann::json written = nlohmann::json::object();
+    NS::Obj::SetField(written, NS::Obj::k_PositionFieldName, NS::Core::Vector3{5.0f, 6.0f, 7.0f});
+    NS::Obj::ArchetypeLibrary::Get().Set("MapObj",
+                                         ArchetypeWith("MapObj", NS::Obj::k_TransformPartName, std::move(written)));
+    const NS::Obj::Actor& baseline = NS::Obj::ArchetypeLibrary::Get().Baseline("MapObj");
+    const NS::Core::Vector3 position = baseline.Root().Position();
+    EXPECT_FLOAT_EQ(position.x, 0.0f);
+    EXPECT_FLOAT_EQ(position.y, 0.0f);
+    EXPECT_FLOAT_EQ(position.z, 0.0f);
+
+    // 既定と同じ位置でも保存の差分から落とさない
+    const nlohmann::json back = NS::Obj::DiffObjectJson(NS::Obj::ExpandObjectJson(MapObjJson(1)));
+    const nlohmann::json* transform = NS::Obj::PartFields(back, NS::Obj::k_TransformPartName);
+    ASSERT_NE(transform, nullptr);
+    EXPECT_TRUE(NS::Obj::HasField(*transform, NS::Obj::k_PositionFieldName));
+
+    const NS::Obj::Component* root = baseline.Part(NS::Obj::k_TransformPartName);
+    ASSERT_NE(root, nullptr);
+    EXPECT_FALSE(NS::Obj::IsArchetypeField(*root, NS::Obj::k_PositionFieldName));
 }
 
 TEST(Archetype, SavedArchetypeIsReadBack)

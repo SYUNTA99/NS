@@ -61,13 +61,14 @@ namespace NS::Obj
     };
 
     //! @brief 型の並びから組む状態機械。先頭が初期状態で、Build 時に OnEnter する
+    //! @details 所有者は Build で 1 回だけ受けて控え、Step と Change はその控えを状態へ渡す。
     //! OnStep の中で Change しても呼び出し元の OnStep は続くので、遷移したら即 return する
     template <typename TOwner> class StateMachine : public IStateMachine
     {
     public:
         //! @brief 状態の型の並びから状態列を組み、先頭へ入る
         //! @details 並びに書いた型が、この機械の持てる状態の全部になる
-        //! @param[in] owner 先頭の OnEnter へ渡す所有者
+        //! @param[in] owner 状態へ渡す所有者。控えて Step と Change でも使う
         template <typename... TStates> void Build(TOwner& owner)
         {
             static_assert(sizeof...(TStates) > 0, "状態を 1 つ以上並べる");
@@ -126,7 +127,7 @@ namespace NS::Obj
 
         //! @brief 今の状態に入ってから進めたフレーム数を返す
         //! @return 入った最初のフレームは 0。移る予約があれば std::uint32_t の最大値
-        [[nodiscard]] std::uint32_t StateStep() const noexcept override
+        [[nodiscard]] std::uint32_t StepsInState() const noexcept override
         {
             if (m_next != nullptr)
             {
@@ -158,18 +159,23 @@ namespace NS::Obj
             return CurrentId() == StateIdOf<TState>();
         }
 
-        //! 現在状態の OnStep を 1 回呼ぶ。未組立は何もしない
-        void Step(TOwner& owner, float dt)
+        //! @brief Build で控えた所有者で、現在状態の OnStep を 1 回呼ぶ
+        //! @details 未組立は何もしない
+        void Step(float dt) override
         {
+            if (m_owner == nullptr)
+            {
+                return;
+            }
             m_stepCancelled = false;
-            CommitChange(owner);
+            CommitChange();
             if (m_current != nullptr && m_next == nullptr && !m_stepCancelled)
             {
                 State<TOwner>* stepped = m_current;
                 stepped->TickCoroutines(dt);
                 if (m_current == stepped && m_next == nullptr && !m_stepCancelled)
                 {
-                    stepped->OnStep(owner, dt);
+                    stepped->OnStep(*m_owner, dt);
                     if (m_current == stepped && m_next == nullptr && !m_stepCancelled)
                     {
                         ++m_step;
@@ -178,26 +184,16 @@ namespace NS::Obj
             }
             if (!m_stepCancelled)
             {
-                CommitChange(owner);
-            }
-        }
-
-        //! @brief 組む時か Change で控えた所有者で 1 フレーム進める
-        //! @details 所有者を控えていなければ何もしない
-        void Step(float dt) override
-        {
-            if (m_owner != nullptr)
-            {
-                Step(*m_owner, dt);
+                CommitChange();
             }
         }
 
         //! @brief 印 id の状態へ移る予約をする。確定は次の Step
-        //! @details 予約を入れた時に今の状態の OnExit を呼び、コルーチンを捨てる。予約の上書きでは呼ばない
-        //! @param[in] owner OnExit と、確定の時の OnEnter へ渡す所有者
+        //! @details 予約を入れた時に今の状態の OnExit を呼び、コルーチンを捨てる。予約の上書きでは呼ばない。
+        //! OnExit と確定の時の OnEnter へは Build で控えた所有者を渡す
         //! @param[in] id 移る先の状態の印
-        //! @return 予約できたか既にその状態の場合 true、Build に並べていない状態の場合 false
-        bool Change(TOwner& owner, StateId id)
+        //! @return 予約できたか既にその状態の場合 true、未組立か Build に並べていない状態の場合 false
+        bool Change(StateId id) override
         {
             State<TOwner>* next = Find(id);
             if (next == nullptr)
@@ -211,31 +207,19 @@ namespace NS::Obj
 
             const bool alreadyPending = m_next != nullptr;
             m_next = next;
-            m_owner = &owner;
             if (!alreadyPending && m_current != nullptr)
             {
-                m_current->OnExit(owner);
+                m_current->OnExit(*m_owner);
                 m_current->CancelCoroutines();
             }
             return true;
         }
 
-        //! 状態 TState へ移る
-        template <typename TState> bool Change(TOwner& owner) { return Change(owner, StateIdOf<TState>()); }
-
-        //! @brief 最後に控えた所有者で、印 id の状態へ移る予約をする
-        //! @return 予約できたか既にその状態の場合 true、所有者を控えていないか並べていない状態の場合 false
-        bool Change(StateId id) override
-        {
-            if (m_owner == nullptr)
-            {
-                return false;
-            }
-            return Change(*m_owner, id);
-        }
+        //! 状態 TState へ移る予約をする。返す値は Change(StateId) と同じ
+        template <typename TState> bool Change() { return Change(StateIdOf<TState>()); }
 
     private:
-        void CommitChange(TOwner& owner)
+        void CommitChange()
         {
             if (m_next == nullptr)
             {
@@ -243,9 +227,8 @@ namespace NS::Obj
             }
             m_current = m_next;
             m_next = nullptr;
-            m_owner = &owner;
             m_step = 0;
-            m_current->OnEnter(owner);
+            m_current->OnEnter(*m_owner);
         }
 
         [[nodiscard]] State<TOwner>* Find(StateId id) noexcept
@@ -263,7 +246,7 @@ namespace NS::Obj
         std::vector<std::unique_ptr<State<TOwner>>> m_states; // 並びは Build に並べた順。先頭が初期状態
         State<TOwner>* m_current = nullptr;
         State<TOwner>* m_next = nullptr;
-        TOwner* m_owner = nullptr;
+        TOwner* m_owner = nullptr; // 書くのは Build だけ。未組立は nullptr
         std::uint32_t m_step = 0;
         bool m_stepCancelled = false;
     };
@@ -280,12 +263,12 @@ namespace NS::Obj
             m_machine.template Build<TStates...>(owner);
         }
 
-        //! 終わっていなければ今の状態で 1 フレーム進める
-        void Step(TOwner& owner, float dt)
+        //! 終わっていなければ、Build で控えた所有者と今の状態で 1 フレーム進める
+        void Step(float dt)
         {
             if (!m_dead)
             {
-                m_machine.Step(owner, dt);
+                m_machine.Step(dt);
             }
         }
 

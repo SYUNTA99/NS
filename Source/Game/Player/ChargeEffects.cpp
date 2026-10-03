@@ -2,7 +2,6 @@
 #include "Game/Player.h"
 #include "Game/Player/PlayerParams.h"
 
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerAppearance.h"
@@ -56,7 +55,6 @@ namespace NS::Game::Player
     {
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
         {
-            m_input = &ownerPlayer->ChargeControl();
             m_actor = ownerPlayer;
             m_appearance = &ownerPlayer->Appearance();
             m_resolver = &ownerPlayer->Resolver();
@@ -79,12 +77,12 @@ namespace NS::Game::Player
         NS::Gfx::EffectScene* effects = EffectsOf(*this);
         m_layers.BeginStep(effects);
         StopDueLayers(effects);
-        if (m_input == nullptr || m_actor == nullptr)
+        if (m_actor == nullptr)
         {
             return;
         }
 
-        const NS::Game::Level::ImpactInputJudge& judge = m_input->Judge();
+        const NS::Game::Level::ImpactInputJudge& judge = m_actor->ChargeJudge();
         const NS::Core::Vector3 center = RootTransform().Position();
         const bool held = judge.IsHeld();
         if (judge.JustPressed())
@@ -213,7 +211,7 @@ namespace NS::Game::Player
     void ChargeEffects::StartCharging(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
     {
         StopLayer(effects, m_grind);
-        const float charge01 = m_input->Judge().Charge01();
+        const float charge01 = m_actor->ChargeJudge().Charge01();
         m_grind = m_layers.Play(effects, k_Grind, PlayDesc(center, YawToward(HeldAimDirection()), charge01));
     }
 
@@ -377,12 +375,12 @@ namespace NS::Game::Player
     NS::Core::Vector3 ChargeEffects::HeldAimDirection() const noexcept
     {
         NS::Game::Level::AimLine line{};
-        if (m_input != nullptr && m_input->TryGetAimLine(line))
-        {
-            return line.direction;
-        }
         if (m_actor != nullptr)
         {
+            if (m_actor->TryGetAimLine(line))
+            {
+                return line.direction;
+            }
             return m_actor->AimDirection();
         }
         return NS::Core::Vector3{0.0f, 0.0f, 1.0f};

@@ -26,6 +26,13 @@ namespace NS::Obj
 
     void ObjectList::Rebuild(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory)
     {
+        // 一時オブジェクトの退避は Clear より前に並びを動かすので、Clear の断りを待たずにここで断る
+        if (m_updating)
+        {
+            NS_LOG_ERROR(Scene, "ObjectList::Rebuild: 段の更新の最中に呼ばれたので組み直しを断った");
+            return;
+        }
+
         // 実行時の一時オブジェクトはデータ由来でないため、退避して組み直し後も残す
         std::vector<std::unique_ptr<Actor>> transients;
         for (std::unique_ptr<Actor>& obj : m_objects)
@@ -42,7 +49,7 @@ namespace NS::Obj
         // カウンタは 1 始まりでファイルの id を知らない。読込値まで上げないと次に置く 1 個目が既存とぶつかる
         const nlohmann::json& objects = SceneJsonObjects(scene);
         m_nextObjectId = std::max(m_nextObjectId, SceneJsonNextObjectId(scene));
-        // 手編集でカウンタが既存 id より小さいファイルもあるので object と component の最大も見る
+        // 手編集でカウンタが既存 id より小さいファイルもあるので配置物の id の最大を見る
         for (const nlohmann::json& entry : objects)
         {
             if (ObjectJsonId(entry) >= m_nextObjectId)
@@ -121,12 +128,7 @@ namespace NS::Obj
         // 退避した一時オブジェクトを末尾へ戻す。開始済みなので OnStart は呼ばない
         for (std::unique_ptr<Actor>& obj : transients)
         {
-            Actor* raw = obj.get();
             m_objects.push_back(std::move(obj));
-            if (raw->IsActiveInHierarchy())
-            {
-                RegisterActor(raw);
-            }
         }
         MarkIndexDirty();
 
@@ -144,10 +146,6 @@ namespace NS::Obj
         Actor* raw = obj.get();
         m_objects.push_back(std::move(obj));
         MarkIndexDirty();
-        if (raw->IsActiveInHierarchy())
-        {
-            RegisterActor(raw);
-        }
         return raw;
     }
 
@@ -158,7 +156,6 @@ namespace NS::Obj
             return nullptr;
         }
         obj->SetId(AllocateObjectId());
-        // component も同じ空間から採番する。参照できる相手として配置物と同じ扱いにする
 
         // ファイルの参照は名前で書くので、プレイ中に足す物も既存と重ならない名前にする
         std::unordered_set<std::string> used;
@@ -173,6 +170,14 @@ namespace NS::Obj
 
     void ObjectList::RemoveByObjectId(std::uint32_t objectId)
     {
+        // 段の最中に解放すると、その段で後に呼ぶ予定の生ポインタが破棄済みになる
+        if (m_updating)
+        {
+            NS_LOG_ERROR(
+                Scene, "ObjectList::RemoveByObjectId: 段の更新の最中に呼ばれたので id {} の解放を断った", objectId);
+            return;
+        }
+
         // 0 は未採番の印。一時オブジェクトは id を持たないので、素通しすると先頭の一時が消える
         if (objectId == k_NoObjectId)
         {
@@ -195,7 +200,13 @@ namespace NS::Obj
 
     void ObjectList::RemoveKilledTransients()
     {
-        NS_ASSERT(Scene, !m_updating, "段の更新の最中に一時オブジェクトを捨てようとしている");
+        if (m_updating)
+        {
+            NS_LOG_ERROR(
+                Scene,
+                "ObjectList::RemoveKilledTransients: 段の更新の最中に呼ばれたので一時オブジェクトの解放を断った");
+            return;
+        }
         const std::size_t removed = std::erase_if(m_objects, [](const std::unique_ptr<Actor>& obj) {
             if (!obj->IsTransient() || obj->IsAlive())
             {
@@ -298,19 +309,6 @@ namespace NS::Obj
         }
     }
 
-    void ObjectList::RegisterActor(Actor* actor)
-    {
-        if (actor != nullptr && std::find(m_liveActors.begin(), m_liveActors.end(), actor) == m_liveActors.end())
-        {
-            m_liveActors.push_back(actor);
-        }
-    }
-
-    void ObjectList::UnregisterActor(Actor* actor) noexcept
-    {
-        std::erase(m_liveActors, actor);
-    }
-
     void ObjectList::ExecutePhase(UpdatePhase phase)
     {
         NS_ASSERT(Scene, !m_updating, "段の更新を入れ子で呼んでいる");
@@ -325,7 +323,7 @@ namespace NS::Obj
         }
         for (const std::unique_ptr<Actor>& obj : m_objects)
         {
-            if (std::find(m_liveActors.begin(), m_liveActors.end(), obj.get()) == m_liveActors.end())
+            if (!obj->IsActiveInHierarchy())
             {
                 continue;
             }
@@ -338,10 +336,7 @@ namespace NS::Obj
         {
             if (tick.actor != nullptr)
             {
-                if (std::find(m_liveActors.begin(), m_liveActors.end(), tick.actor) == m_liveActors.end())
-                {
-                    continue;
-                }
+                // 解放の口は段の間は断るので、積んだ生ポインタは生きている。途中で消えた物だけ飛ばす
                 if (!tick.actor->IsActiveInHierarchy())
                 {
                     continue;
@@ -458,6 +453,12 @@ namespace NS::Obj
 
     void ObjectList::Clear()
     {
+        if (m_updating)
+        {
+            NS_LOG_ERROR(Scene, "ObjectList::Clear: 段の更新の最中に呼ばれたので配置物の解放を断った");
+            return;
+        }
+
         // OnEndPlay は生成の逆順で呼ぶ。依存し合う component の後始末を生成と対称にする
         for (std::vector<std::unique_ptr<Actor>>::reverse_iterator it = m_objects.rbegin(); it != m_objects.rend();
              ++it)
@@ -466,7 +467,6 @@ namespace NS::Obj
         }
         MarkIndexDirty();
         m_objects.clear();
-        m_liveActors.clear();
     }
 
 } // namespace NS::Obj

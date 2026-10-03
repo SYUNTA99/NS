@@ -57,6 +57,15 @@ void Player::RequestBodySlam(float charge01, const NS::Core::Vector3& aimDirecti
     }
 }
 
+float Player::BodySlamSpeed() const noexcept
+{
+    if (m_slam.isTap)
+    {
+        return m_params->m_tapSlamSpeed;
+    }
+    return m_params->m_bodySlamSpeed;
+}
+
 NS::Core::Vector3 Player::BodySlamVelocity() const noexcept
 {
     const NS::Obj::Body& body = *m_body;
@@ -65,11 +74,7 @@ NS::Core::Vector3 Player::BodySlamVelocity() const noexcept
         return body.Velocity();
     }
 
-    float speed = m_params->m_bodySlamSpeed;
-    if (m_slam.isTap)
-    {
-        speed = m_params->m_tapSlamSpeed;
-    }
+    const float speed = BodySlamSpeed();
     return NS::Core::Vector3{m_slam.dir.x * speed, body.VerticalVelocity(), m_slam.dir.z * speed};
 }
 
@@ -100,11 +105,11 @@ void Player::EndBodySlam() noexcept
 
     if (body.IsGrounded())
     {
-        (void)m_states->Change<NS::Game::Player::WalkPlayerState>(*this);
+        (void)m_states->Change<NS::Game::Player::WalkPlayerState>();
     }
     else
     {
-        (void)m_states->Change<NS::Game::Player::FallPlayerState>(*this);
+        (void)m_states->Change<NS::Game::Player::FallPlayerState>();
     }
     m_playerEvents.onBodySlamEnded.Invoke();
 }
@@ -224,12 +229,12 @@ bool Player::BodySlam() noexcept
     m_slam.isTap = !(m_request.charge01 > 0.0f);
     m_slam.travelled = 0.0f;
     m_slam.justStarted = true;
+    const float speed = BodySlamSpeed();
 
     if (m_slam.isTap)
     {
         m_slam.distanceTarget = m_params->m_tapSlamDistance;
-        body.SetVelocity(NS::Core::Vector3{
-            dir.x * m_params->m_tapSlamSpeed, m_params->m_tapSlamUpSpeed, dir.z * m_params->m_tapSlamSpeed});
+        body.SetVelocity(NS::Core::Vector3{dir.x * speed, m_params->m_tapSlamUpSpeed, dir.z * speed});
     }
     else
     {
@@ -241,8 +246,7 @@ bool Player::BodySlam() noexcept
         {
             vertical = m_request.verticalSpeed;
         }
-        body.SetVelocity(
-            NS::Core::Vector3{dir.x * m_params->m_bodySlamSpeed, vertical, dir.z * m_params->m_bodySlamSpeed});
+        body.SetVelocity(NS::Core::Vector3{dir.x * speed, vertical, dir.z * speed});
     }
 
     // 距離が 0 以下だと 1 フレーム目で終わって発動が消えるため、出さずに通常移動のままにする
@@ -259,19 +263,9 @@ bool Player::BodySlam() noexcept
     // 縁を離れれば出るが、その時の丸まりは掴まりで解けている
     ChangeCurled(true);
 
-    (void)m_states->Change<NS::Game::Player::BodySlamPlayerState>(*this);
+    (void)m_states->Change<NS::Game::Player::BodySlamPlayerState>();
     m_playerEvents.onBodySlamStarted.Invoke();
     return true;
-}
-
-void Player::ApplyBodySlamHeading() noexcept
-{
-    NS::Obj::Body& body = *m_body;
-    if (IsBodySlamming() && !m_slam.isTap)
-    {
-        body.SetLateralVelocity(NS::Core::Vector3{
-            m_slam.dir.x * m_params->m_bodySlamSpeed, 0.0f, m_slam.dir.z * m_params->m_bodySlamSpeed});
-    }
 }
 
 bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept
@@ -290,22 +284,23 @@ bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept
 
     m_rebound.direction = direction;
     m_body->SetVelocity(velocity);
-    (void)m_states->Change<NS::Game::Player::ReboundPlayerState>(*this);
+    (void)m_states->Change<NS::Game::Player::ReboundPlayerState>();
     return true;
 }
 
 NS::Core::Vector3 Player::ReboundVelocityFor(const NS::Game::Player::ReboundArc& arc) const noexcept
 {
-    // 下りは普段の落ち方のままにする
-    // 曲線は下りの重力を上りの重力に対する倍率で持つので、下降重力を上りの重力で割る
-    const float riseGravity = -m_params->m_gravityUp * m_params->m_reboundRiseGravityScale;
+    // 下りは普段の落ち方のままにする。組は実際に当てる重力 (ReboundGravity) と同じ PlayerParams::ReboundGravity
+    // 曲線は上りの重力を正の大きさで、下りの重力を上りに対する倍率で持つので、符号を反転して下降重力を上りの重力で割る
+    const NS::Game::Player::PlayerGravity gravity = m_params->ReboundGravity();
+    const float riseGravity = -gravity.rise;
     const NS::Game::Level::LaunchArc launchArc{.direction = arc.direction,
                                                .distance = arc.distance,
                                                .apexHeight = arc.apexHeight,
                                                .riseGravity = riseGravity,
-                                               .fallGravityScale = -m_params->m_gravityDown / riseGravity,
-                                               .apexBandSpeed = m_params->m_apexHangVy,
-                                               .apexBandGravityScale = m_params->m_apexHangScale};
+                                               .fallGravityScale = -gravity.fall / riseGravity,
+                                               .apexBandSpeed = gravity.apexSpeed,
+                                               .apexBandGravityScale = gravity.apexScale};
     return NS::Game::Level::LaunchArcInitialVelocity(launchArc);
 }
 
@@ -342,6 +337,13 @@ void Player::ChangeCurled(bool curled) noexcept
     // 形の持ち替えは動きではないので、前フレームの位置も一緒にずらす。今の位置だけを動かすと、持ち替えたフレームの
     // 描画の補間で玉が床から浮き (立ち姿は床へ沈み)、立ち姿の中心を見る追従カメラの注視点も半長ぶん揺れる
     Root().ShiftPosition(NS::Core::Vector3{0.0f, rise, 0.0f});
+}
+
+NS::Core::Sphere Player::SlamBallAt(const NS::Core::Vector3& rootPosition) const noexcept
+{
+    // 立ち姿の下の球が、丸まった後の玉の中心。ChangeCurled が下端を揃えて根を下げるので、この式が成り立つ
+    const NS::Phys::Capsule capsule = m_body->CapsuleAt(rootPosition);
+    return NS::Core::Sphere{capsule.center - capsule.axis * capsule.halfHeight, capsule.radius};
 }
 
 void Player::SetBodySlamHeld(bool held) noexcept

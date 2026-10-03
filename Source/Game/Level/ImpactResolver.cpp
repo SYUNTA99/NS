@@ -1,10 +1,10 @@
 ﻿#include "Game/Level/ImpactResolver.h"
 
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
+#include "Game/Level/SensorKinds.h"
 #include "Game/Player.h"
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerParams.h"
@@ -157,11 +157,11 @@ namespace NS::Game::Level
                 position.x + velocity.x * dt, position.y + velocity.y * dt, position.z + velocity.z * dt};
         }
 
-        // 体当たりが調べる種類の、有効な体のセンサーか。当たりの裁定と狙う相手の探索が同じ絞りを通る
-        [[nodiscard]] bool IsTackleTarget(const NS::Obj::HitSensor& sensor, const NS::Obj::Actor* self) noexcept
+        // 体当たりの相手を決める唯一の所。置物の体だけを相手にする
+        // 有効か・自分かの絞りは FindOverlaps が持つ。当たりの裁定と狙う相手の探索が同じ絞りを通る
+        [[nodiscard]] bool IsTackleTarget(const NS::Obj::HitSensor& sensor) noexcept
         {
-            return sensor.IsValid() && sensor.Owner() != self &&
-                   NS::Obj::HitSensorDirector::Checks(NS::Obj::HitSensorType::PlayerAttack, sensor.Type());
+            return IsSensorKind(sensor, SensorKind::MapObjBody);
         }
     } // namespace
 
@@ -184,7 +184,6 @@ namespace NS::Game::Level
         {
             m_player = ownerPlayer;
             m_body = &ownerPlayer->Body();
-            m_collisionInput = &ownerPlayer->ChargeControl();
             m_hitReaction = ownerPlayer->HitReactionPart();
         }
     }
@@ -209,17 +208,18 @@ namespace NS::Game::Level
         const NS::Core::Vector3 position = Owner()->Root().Position();
 
         // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
-        const NS::Phys::Capsule capsule{PositionAfterStep(position, predictedVelocity),
-                                        NS::Core::Vector3::UnitY,
-                                        m_body->CapsuleHalfHeight(),
-                                        m_body->CapsuleRadius()};
-        const std::vector<NS::Obj::HitSensor*> touching = scene->HitSensors().FindOverlaps(
-            NS::Obj::SensorVolume::Capsule(capsule), NS::Obj::HitSensorType::PlayerAttack, Owner());
+        const NS::Phys::Capsule capsule = m_body->CapsuleAt(PositionAfterStep(position, predictedVelocity));
+        const std::vector<NS::Obj::HitSensor*> touching =
+            scene->HitSensors().FindOverlaps(NS::Obj::SensorVolume::Capsule(capsule), Owner());
 
         NS::Obj::HitSensor* nearest = nullptr;
         float nearestDistanceSq = 0.0f;
         for (NS::Obj::HitSensor* sensor : touching)
         {
+            if (!IsTackleTarget(*sensor))
+            {
+                continue;
+            }
             const NS::Core::AABB bounds = sensor->WorldVolume().Bounds();
             const float dx = bounds.Center.x - position.x;
             const float dy = bounds.Center.y - position.y;
@@ -262,21 +262,20 @@ namespace NS::Game::Level
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
         const float playerRadius = m_body->CapsuleRadius();
-        // 突進は丸まった玉で進む。丸まっていれば玉の中心は根そのもの。立ち姿から丸まる時は下端を揃えて根を半長ぶん
-        // 下げるので、立ち姿の下の球の中心が丸まった後の玉の中心になる
-        const NS::Core::Vector3 ballCenter{position.x, position.y - m_body->CapsuleHalfHeight(), position.z};
+        // 突進は丸まった玉で進む。玉の決まりは Player::SlamBallAt が持つ
+        const NS::Core::Vector3 ballCenter = m_player->SlamBallAt(position).center;
         // 届くかは裁定と同じく、自機の当たりの玉と相手の体のセンサーの形で見る。外接箱を水平に見ると、中心の高い
         // 大きな球の端では、玉が触れずに横を通るのに届くと出る
         const NS::Obj::SensorVolume swept =
             NS::Obj::SensorVolume::Capsule(SweptBall(ballCenter, lineDir, maxDistance, playerRadius));
 
-        // TODO: 体のセンサーを総当たりで見ている。数十個までを想定。増えたら格子で絞る
         bool found = false;
         SlamLineTarget first{};
         NS::Obj::HitSensor* firstSensor = nullptr;
-        for (NS::Obj::HitSensor* sensor : scene->HitSensors().Sensors())
+        // 掃いた玉に触れる相手だけを先に問う。下の線の条件はどれも順に依らないので、選ぶ相手は絞る順で変わらない
+        for (NS::Obj::HitSensor* sensor : scene->HitSensors().FindOverlaps(swept, Owner()))
         {
-            if (!IsTackleTarget(*sensor, Owner()))
+            if (!IsTackleTarget(*sensor))
             {
                 continue;
             }
@@ -371,18 +370,7 @@ namespace NS::Game::Level
         return true;
     }
 
-    void ImpactResolver::OnUpdate()
-    {
-        NS::Core::Vector3 velocity{};
-        if (m_body != nullptr)
-        {
-            velocity = m_player->BodySlamVelocity();
-        }
-        ObserveImpact(velocity);
-        StepState();
-    }
-
-    void ImpactResolver::ObserveImpact(const NS::Core::Vector3& predictedVelocity)
+    void ImpactResolver::ObserveImpact()
     {
         m_stateReady = true;
         m_hasObservedTarget = false;
@@ -390,6 +378,7 @@ namespace NS::Game::Level
         {
             return;
         }
+        const NS::Core::Vector3 predictedVelocity = m_player->BodySlamVelocity();
         NS::Obj::HitSensor* hit = FindOverlapped(predictedVelocity);
         if (hit == nullptr || hit->Owner() == nullptr)
         {
@@ -451,7 +440,7 @@ namespace NS::Game::Level
 
         if (m_recoverRemaining > 0)
         {
-            RecoverScale();
+            AdvanceShapeRecovery();
         }
 
         // 押していない接触は物理の停止だけで済ませるため、体当たり中でないフレームは裁定しない
@@ -508,26 +497,17 @@ namespace NS::Game::Level
 
         // 段と威力の当たり位置の係数は、相手の面で当てはまった同じ決まりから取る
         // 玉の中心は重なりを見た所と同じく、この固定ステップで進んだ先。今の位置で見ると、縦に動く突進は 1 ステップ
-        // ぶん違う高さで段が決まる。丸まっていれば根、立ち姿なら下の球の中心で、狙う相手の探し方と同じ
+        // ぶん違う高さで段が決まる。玉は狙う相手の探し方と同じ Player::SlamBallAt から引く
         const NS::Core::Vector3 stepped = PositionAfterStep(position, velocity);
-        const NS::Core::Vector3 ballCenter{stepped.x, stepped.y - m_body->CapsuleHalfHeight(), stepped.z};
+        const NS::Core::Vector3 ballCenter = m_player->SlamBallAt(stepped).center;
         const HitFaceJudgement judgement =
             JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, m_body->CapsuleRadius());
         const float offset01 = judgement.offset01;
-        // ボタン未搭載は係数 1.0 の素通し。段は中心近くと記録するが、段の返りと止めと反動の距離の倍率は掛けない
-        // 外し方は段の種類に混ぜず、下の tiered で分ける
-        float chargeFactor = 1.0f;
-        float positionFactor = 1.0f;
-        HitTier tier = HitTier::Center;
-        const bool tiered = m_collisionInput != nullptr;
-        if (tiered)
-        {
-            chargeFactor = m_collisionInput->ChargeFactorFor(charge01);
-            positionFactor = judgement.powerScale;
-            tier = judgement.tier;
-        }
+        const float chargeFactor = Tuning().ChargeFactorFor(charge01);
+        const float positionFactor = judgement.powerScale;
+        const HitTier tier = judgement.tier;
         // 読むのは記録と WasCenterHit とログだけ。配分と返りは段で分ける
-        const bool centerHit = tiered && tier == HitTier::Center;
+        const bool centerHit = tier == HitTier::Center;
         // 最終威力 = チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
         const float power = chargeFactor * positionFactor;
         m_lastCharge01 = charge01;
@@ -569,13 +549,7 @@ namespace NS::Game::Level
         impactInput.awayDirection = NS::Core::Vector3{awayX, 0.0f, awayZ};
         impactInput.launchDirection = launchDir;
         impactInput.slamVelocity = velocity;
-        ImpactTuning impactTuning = MakeImpactTuning(Tuning());
-        if (!tiered)
-        {
-            impactTuning.centerHitStopScale = 1.0f;
-            impactTuning.centerHitReboundDistanceScale = 1.0f;
-        }
-        const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, impactTuning);
+        const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, MakeImpactTuning(Tuning()));
         m_pendingShakeAmplitude = outcome.shakeAmplitude;
 
         const float reboundScale = outcome.reboundScale;
@@ -611,7 +585,7 @@ namespace NS::Game::Level
                         centerHit);
         }
 
-        PrepareHitReturns(tier, tiered, power, outcome.massFactor, offset01, stopSteps);
+        PrepareHitReturns(tier, power, outcome.massFactor, offset01, stopSteps);
 
         // 止めるフレーム数が決まってから控える。止めが 0 フレームの当たりも残すので、下の return より手前に置く
         m_lastImpact.sequence += 1;
@@ -652,26 +626,15 @@ namespace NS::Game::Level
 
     void ImpactResolver::BeginFreeze(int stopSteps)
     {
-        // 自機を寝かせて凍らせる。Player の StateStep と BodyStep はこの後に身体の active を見るので、
+        // 数えを立てて凍らせる。Player の StateStep と BodyStep はこの後に CanMoveBody で数えを見るので、
         // 同じフレームから効く
         m_hitStopRemaining = stopSteps;
         m_hitStopTotal = stopSteps;
-        m_body->SetActive(false);
         NS_LOG_INFO(Game, "ヒットストップ: {} フレーム", stopSteps);
 
-        // 潰れは反発の前半。進行方向の厚みを潰し、代わりに高さを伸ばす
-        // 戻りの最中に次の衝突が来たら、控え済みの元の形をそのまま使い続ける
-        if (m_recoverRemaining == 0)
-        {
-            m_scaleHome = RootTransform().Scale();
-        }
+        // 潰れは反発の前半。形は ShapeFactors が答え、戻しの途中に来た衝突は戻しを捨てて潰れから始める
         m_recoverRemaining = 0;
         m_scaleHeld = true;
-        // 貫通は押し勝っている側なので潰さない。潰れは押し返されている反発だけの絵
-        if (!m_pendingBreak)
-        {
-            RootTransform().SetScale(ScaledAlongImpact(Tuning().m_squashThickness, Tuning().m_squashHeight));
-        }
 
         StartHitReturns();
 
@@ -744,17 +707,11 @@ namespace NS::Game::Level
         return PlainReturns(swing, stopSteps);
     }
 
-    void ImpactResolver::PrepareHitReturns(
-        HitTier tier, bool tiered, float power, float massFactor, float offset01, int stopSteps)
+    void ImpactResolver::PrepareHitReturns(HitTier tier, float power, float massFactor, float offset01, int stopSteps)
     {
         // 最初の振れの大きさは全段で同じ式。反発と同じ質量因子を掛け、段の倍率は表の行が掛ける
         const float swing = Tuning().m_cameraShakeScale * power * massFactor;
-        // 段の無い台は段の表を引かず、白と寄りと傾きと振動を出さない
-        TierReturns returns = PlainReturns(swing, stopSteps);
-        if (tiered)
-        {
-            returns = TierReturnsFor(tier, swing, stopSteps);
-        }
+        const TierReturns returns = TierReturnsFor(tier, swing, stopSteps);
 
         m_pendingFlashSteps = returns.flashSteps;
         m_pendingShake = returns.shake;
@@ -790,13 +747,31 @@ namespace NS::Game::Level
 
     void ImpactResolver::OnEndPlay()
     {
-        m_stateReady = false;
+        CancelImpact();
+    }
+
+    void ImpactResolver::CancelImpact() noexcept
+    {
+        // 白・揺れ・振動を始めたのは裁定役なので止めるのも裁定役。止めも予約も無い時は前の当たりの薄れを残す
+        const bool hadStop = m_hitStopRemaining > 0 || m_freezePendingSteps > 0;
+        m_hitStopRemaining = 0;
+        m_hitStopTotal = 0;
+        m_freezePendingSteps = 0;
+        m_pendingBreak = false;
         m_hasObservedTarget = false;
-        // 凍結の途中で裁定が外れても、移動が止まったまま残らないようにする
-        // 白と振動とカメラの効果は HitReaction が自分の OnEndPlay で止める
-        if (m_body != nullptr)
+        m_stateReady = false;
+        m_didRebound = false;
+        m_didBreak = false;
+        m_freezeBeganThisStep = false;
+        m_releasedThisStep = false;
+        // 相手へは明けを送らない。相手はやり直しの知らせで自分の位置へ戻り、凍結は相手の数えで明ける
+        m_pendingTarget = NS::Obj::ActorRef{};
+        m_scaleHeld = false;
+        m_recoverRemaining = 0;
+        m_stretchFactors = NS::Core::Vector3{1.0f, 1.0f, 1.0f};
+        if (hadStop && m_hitReaction != nullptr)
         {
-            m_body->SetActive(true);
+            m_hitReaction->Stop();
         }
     }
 
@@ -824,7 +799,6 @@ namespace NS::Game::Level
 
     void ImpactResolver::ReleaseHitStop()
     {
-        m_body->SetActive(true);
         const bool wasBreak = m_pendingBreak;
         m_pendingBreak = false;
         if (wasBreak)
@@ -843,16 +817,15 @@ namespace NS::Game::Level
         if (m_scaleHeld)
         {
             // 解放の伸びが衝突の後半。反発は自機が上へ大きく弾かれるので縦へ、貫通は突き抜ける進行の軸へ伸ばす
+            // 戻しの途中に次の当たりの向きが控えに入っても形がぶれないよう、伸びはこのフレームに決めて控える
             if (wasBreak)
             {
-                m_stretchScale = ScaledAlongImpact(Tuning().m_stretchAlong, 1.0f);
+                m_stretchFactors = AlongImpactFactors(Tuning().m_stretchAlong, 1.0f);
             }
             else
             {
-                m_stretchScale =
-                    NS::Core::Vector3{m_scaleHome.x, m_scaleHome.y * Tuning().m_stretchAlong, m_scaleHome.z};
+                m_stretchFactors = NS::Core::Vector3{1.0f, Tuning().m_stretchAlong, 1.0f};
             }
-            RootTransform().SetScale(m_stretchScale);
             m_recoverRemaining = Tuning().m_stretchRecoverSteps;
             m_scaleHeld = false;
         }
@@ -877,33 +850,39 @@ namespace NS::Game::Level
         (void)SendMsgTackleRelease(*target, release);
     }
 
-    void ImpactResolver::RecoverScale()
+    void ImpactResolver::AdvanceShapeRecovery() noexcept
     {
         --m_recoverRemaining;
-        if (m_recoverRemaining <= 0)
+    }
+
+    NS::Core::Vector3 ImpactResolver::ShapeFactors() const noexcept
+    {
+        const NS::Core::Vector3 home{1.0f, 1.0f, 1.0f};
+        if (m_scaleHeld)
         {
-            // 補間の残差を残さない。控えた元の値をそのまま書いて形を確定させる
-            RootTransform().SetScale(m_scaleHome);
-            return;
+            // 貫通は押し勝っている側なので潰さない。潰れは押し返されている反発だけの絵
+            if (m_pendingBreak)
+            {
+                return home;
+            }
+            return AlongImpactFactors(Tuning().m_squashThickness, Tuning().m_squashHeight);
+        }
+        // 戻し切ったフレームは補間の残差を残さず、ちょうど 1 を返す
+        const float total = static_cast<float>(Tuning().m_stretchRecoverSteps);
+        if (m_recoverRemaining <= 0 || !(total > 0.0f))
+        {
+            return home;
         }
         // 前半は伸びた形から、元の形を伸びと反対の側へ 伸びの量 × 行き過ぎの割合 だけ越えた所まで進む
         // 後半はそこから元の形へ戻る
-        const float total = static_cast<float>(Tuning().m_stretchRecoverSteps);
         const float half = total * 0.5f;
         const float elapsed = total - static_cast<float>(m_recoverRemaining);
-        const NS::Core::Vector3 overshoot = m_scaleHome - (m_stretchScale - m_scaleHome) * Tuning().m_stretchOvershoot;
+        const NS::Core::Vector3 overshoot = home - (m_stretchFactors - home) * Tuning().m_stretchOvershoot;
         if (elapsed <= half)
         {
-            RootTransform().SetScale(m_stretchScale + (overshoot - m_stretchScale) * (elapsed / half));
-            return;
+            return m_stretchFactors + (overshoot - m_stretchFactors) * (elapsed / half);
         }
-        RootTransform().SetScale(overshoot + (m_scaleHome - overshoot) * ((elapsed - half) / (total - half)));
-    }
-
-    NS::Core::Vector3 ImpactResolver::ScaledAlongImpact(float along, float height) const noexcept
-    {
-        const NS::Core::Vector3 factors = AlongImpactFactors(along, height);
-        return NS::Core::Vector3{m_scaleHome.x * factors.x, m_scaleHome.y * factors.y, m_scaleHome.z * factors.z};
+        return overshoot + (home - overshoot) * ((elapsed - half) / (total - half));
     }
 
     NS::Core::Vector3 ImpactResolver::AlongImpactFactors(float along, float height) const noexcept

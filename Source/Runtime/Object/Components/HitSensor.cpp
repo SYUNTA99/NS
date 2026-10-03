@@ -1,5 +1,6 @@
 #include "Runtime/Object/Components/HitSensor.h"
 
+#include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/HitSensorDirector.h"
@@ -9,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <utility>
 
 namespace NS::Obj
 {
@@ -267,27 +269,29 @@ namespace NS::Obj
         m_registered = false;
     }
 
-    void HitSensor::SetSphere(float radius) noexcept
+    ShapeHitSensor::ShapeHitSensor() noexcept = default;
+
+    void ShapeHitSensor::SetSphere(float radius) noexcept
     {
         m_shape = HitSensorShape::Sphere;
         m_radius = std::max(radius, 0.0f);
     }
 
-    void HitSensor::SetCapsule(float radius, float halfHeight) noexcept
+    void ShapeHitSensor::SetCapsule(float radius, float halfHeight) noexcept
     {
         m_shape = HitSensorShape::Capsule;
         m_radius = std::max(radius, 0.0f);
         m_halfHeight = std::max(halfHeight, 0.0f);
     }
 
-    void HitSensor::SetBox(const NS::Core::Vector3& halfExtents) noexcept
+    void ShapeHitSensor::SetBox(const NS::Core::Vector3& halfExtents) noexcept
     {
         m_shape = HitSensorShape::Box;
         m_boxHalfExtents = NS::Core::Vector3{
             std::max(halfExtents.x, 0.0f), std::max(halfExtents.y, 0.0f), std::max(halfExtents.z, 0.0f)};
     }
 
-    SensorVolume HitSensor::WorldVolume() const noexcept
+    SensorVolume ShapeHitSensor::WorldVolume() const noexcept
     {
         NS::Core::Matrix world = NS::Core::Matrix::Identity;
         if (const Actor* owner = Owner())
@@ -320,5 +324,22 @@ namespace NS::Obj
         }
     }
 
-    NS_CLASS(HitSensor)
+    FollowHitSensor::FollowHitSensor(std::function<SensorVolume()> volume) noexcept : m_volume(std::move(volume)) {}
+
+    SensorVolume FollowHitSensor::WorldVolume() const noexcept
+    {
+        if (m_volume)
+        {
+            return m_volume();
+        }
+        NS_LOG_ERROR(Scene, "FollowHitSensor: 形を答える関数が空。根に長さ 0 の球を返す");
+        NS::Core::Vector3 root{0.0f, 0.0f, 0.0f};
+        if (const Actor* owner = Owner())
+        {
+            root = owner->Root().Position();
+        }
+        return SensorVolume::Sphere(root, 0.0f);
+    }
+
+    NS_CLASS(ShapeHitSensor)
 } // namespace NS::Obj

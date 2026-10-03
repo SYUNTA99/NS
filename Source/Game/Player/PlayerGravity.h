@@ -6,7 +6,8 @@ namespace NS::Game::Player
 {
     //! @brief 自機の重力の強さを選ぶ欄の写し
     //! @details 値の正は PlayerParams の欄で、PlayerParams::Gravity が写して渡す。
-    //! Player::Gravity と、放つ角度を決める LaunchPitch が同じ写しで強さを選ぶ
+    //! Player::Gravity と、放つ角度を決める LaunchPitch が同じ写しで強さを選ぶ。
+    //! 反動の間は上りだけ倍率付きの PlayerParams::ReboundGravity を同じ選び方へ渡す
     struct PlayerGravity
     {
         float rise = -25.0f;    //!< 上向きの間の重力 (m/s²)。下向きが負。欄「上昇重力」

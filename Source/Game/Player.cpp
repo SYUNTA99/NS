@@ -4,6 +4,7 @@
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
+#include "Game/Level/SensorKinds.h"
 #include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
 #include "Game/Player/ChargeEffects.h"
@@ -39,31 +40,8 @@
 
 NS_CLASS(Player)
 
-class Player::ChargeState final : public NS::Obj::StateOf<ChargeState, Player>
-{
-public:
-    void OnEnter(Player& player) override { StartCoroutine(Run(player)); }
-    void OnStep(Player&, float) override {}
-
-private:
-    NS::Core::Coroutine Run(Player& player)
-    {
-        while (true)
-        {
-            player.m_collisionInput->AdvanceCharge(player.m_chargeHeld, player.m_chargeDelta);
-            if (!player.m_chargeHeld)
-            {
-                player.m_charge.Finish();
-                co_return;
-            }
-            co_await NS::Core::NextFrame{};
-        }
-    }
-};
-
 Player::Player() noexcept
 {
-    m_charge.Finish();
     m_appearance = std::make_unique<NS::Game::Player::PlayerAppearance>();
     m_body = std::make_unique<NS::Obj::Body>();
     m_input = std::make_unique<NS::Obj::PlayerInput>();
@@ -82,9 +60,10 @@ Player::Player() noexcept
     AttachFixedComponent(*m_input);
     AttachFixedComponent(*m_params);
     (void)CreatePart("Shadow");
-    (void)CreatePart("BodySensor");
-    BodySensorPart()->SetType(NS::Obj::HitSensorType::PlayerBody);
-    BodySensorPart()->SetCapsule(m_body->CapsuleRadius(), m_body->CapsuleHalfHeight());
+    // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Body の欄で、センサーは毎回それを読む
+    SetBodySensorPart(std::make_unique<NS::Obj::FollowHitSensor>(
+        [body = m_body.get()] { return NS::Obj::SensorVolume::Capsule(body->WorldCapsule()); }));
+    NS::Game::Level::SetSensorKind(*BodySensorPart(), NS::Game::Level::SensorKind::PlayerBody);
     AttachFixedComponent(*m_collisionInput);
     AttachFixedComponent(*m_resolver);
     (void)CreatePart("HitReaction");
@@ -136,45 +115,42 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
         .rebounding = IsRebounding(),
         .slamDirection = BodySlamDirection(),
     };
-    if (const NS::Game::Level::CollisionInput* input = m_collisionInput.get())
+    // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す
+    const NS::Game::Level::ImpactInputJudge& judge = ChargeJudge();
+    state.hasCharge = true;
+    state.charge.held = judge.IsHeld();
+    if (state.charge.held)
     {
-        // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す
-        const NS::Game::Level::ImpactInputJudge& judge = input->Judge();
-        state.hasCharge = true;
-        state.charge.held = judge.IsHeld();
-        if (state.charge.held)
-        {
-            state.charge.charge01 = judge.Charge01();
-        }
-        NS::Game::Level::SlamLineTarget aim{};
-        state.charge.hasAimTarget = input->TryGetAimTarget(aim);
-        if (state.charge.hasAimTarget)
-        {
-            state.charge.aimTargetCenter =
-                NS::Core::Vector3{aim.bounds.Center.x, aim.bounds.Center.y, aim.bounds.Center.z};
-            state.charge.aimTargetRadius = std::max({aim.bounds.Extents.x, aim.bounds.Extents.y, aim.bounds.Extents.z});
-        }
+        state.charge.charge01 = judge.Charge01();
+    }
+    NS::Game::Level::SlamLineTarget aim{};
+    state.charge.hasAimTarget = TryGetAimTarget(aim);
+    if (state.charge.hasAimTarget)
+    {
+        state.charge.aimTargetCenter = NS::Core::Vector3{aim.bounds.Center.x, aim.bounds.Center.y, aim.bounds.Center.z};
+        state.charge.aimTargetRadius = std::max({aim.bounds.Extents.x, aim.bounds.Extents.y, aim.bounds.Extents.z});
     }
     return state;
 }
 
-void Player::StepCharge(bool held, float dt)
+const NS::Game::Level::ImpactInputJudge& Player::ChargeJudge() const noexcept
 {
-    m_chargeHeld = held;
-    m_chargeDelta = dt;
-    if (m_charge.IsDead())
-    {
-        if (held)
-        {
-            m_charge.Build<ChargeState>(*this);
-        }
-        else
-        {
-            m_collisionInput->AdvanceCharge(false, dt);
-        }
-        return;
-    }
-    m_charge.Step(*this, dt);
+    return m_collisionInput->Judge();
+}
+
+bool Player::TryGetAimLine(NS::Game::Level::AimLine& outLine) const noexcept
+{
+    return m_collisionInput->TryGetAimLine(outLine);
+}
+
+bool Player::TryGetAimTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept
+{
+    return m_collisionInput->TryGetAimTarget(outTarget);
+}
+
+float Player::StanceHeight() const noexcept
+{
+    return m_collisionInput->StanceHeight();
 }
 
 void Player::UpdateAnimation()
@@ -210,10 +186,8 @@ void Player::ReadInput()
 
 void Player::Update(bool chargeHeld)
 {
-    m_hasInjectedHeld = true;
-    m_injectedHeld = chargeHeld;
+    m_input->SetSlamHeld(chargeHeld);
     NS::Obj::Actor::Update();
-    m_hasInjectedHeld = false;
 }
 
 void Player::ObserveStep()
@@ -221,21 +195,11 @@ void Player::ObserveStep()
     NS::Obj::Actor::ObserveStep();
     if (m_collisionInput->IsActive())
     {
-        bool chargeHeld = m_injectedHeld;
-        if (!m_hasInjectedHeld)
-        {
-            chargeHeld = m_collisionInput->ReadHeld();
-        }
-        m_collisionInput->Observe(chargeHeld);
+        m_collisionInput->Observe(m_input->SlamHeld());
     }
     if (m_resolver->IsActive())
     {
-        NS::Core::Vector3 predicted = BodySlamVelocity();
-        if (m_collisionInput->IsActive())
-        {
-            predicted = m_collisionInput->PredictedSlamVelocity();
-        }
-        m_resolver->ObserveImpact(predicted);
+        m_resolver->ObserveImpact();
     }
 }
 
@@ -249,12 +213,17 @@ void Player::DecideStep()
     {
         m_resolver->StepState();
     }
+    else
+    {
+        // 外された裁定役は止めも予約も捨てる。持ち越すと入れ直した時に残りの止めが明け、遅れて弾かれる
+        m_resolver->CancelImpact();
+    }
 }
 
 void Player::StateStep()
 {
     const float dt = NS::Platform::FrameTimer::FixedDelta();
-    if (m_body->IsActive() && dt > 0.0f)
+    if (CanMoveBody() && dt > 0.0f)
     {
         PrepareStateStep();
         StepStateMachine();
@@ -274,7 +243,7 @@ void Player::BodyStep()
     {
         m_collisionInput->ApplyControl();
     }
-    if (m_body->IsActive() && dt > 0.0f)
+    if (CanMoveBody() && dt > 0.0f)
     {
         MoveBody(dt);
     }
@@ -349,7 +318,6 @@ float Player::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) con
 
 void Player::OnEndPlay()
 {
-    m_charge.Finish();
     m_states->Reset();
     m_appliedClip.clear();
     NS::Obj::Actor::OnEndPlay();
@@ -392,9 +360,11 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
     }
     if (const NS::Game::Level::MsgInputLock* lock = NS::Obj::MsgCast<NS::Game::Level::MsgInputLock>(msg))
     {
-        if (NS::Obj::PlayerInput* input = m_input.get())
+        m_input->SetLocked(lock->Locked());
+        // 押しが偽になった歩を放したと読むと、溜めた突進が出る。止める時は放させずに溜めを捨てる
+        if (lock->Locked())
         {
-            input->SetActive(!lock->Locked());
+            m_collisionInput->CancelCharge();
         }
         return true;
     }
@@ -403,7 +373,6 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
 
 void Player::RestartFrom(const nlohmann::json& baseline) noexcept
 {
-    m_charge.Finish();
     // 出現位置はエディタで配置したプレイヤーの capsule 中心の world 位置そのもの
     // 凍結に既にある値なので写しは持たず、その都度読む。居なければ新規レベルで置く位置へ戻す
     NS::Core::Vector3 spawn{0.0f, 1.41f, 0.0f};
@@ -426,7 +395,6 @@ void Player::ApplyDamage(int amount) noexcept
 
 void Player::Die() noexcept
 {
-    m_charge.Finish();
     m_health.Kill();
     Kill();
 }
@@ -545,6 +513,12 @@ bool Player::IsRebounding() const noexcept
     return m_states != nullptr && m_states->IsCurrent<NS::Game::Player::ReboundPlayerState>();
 }
 
+bool Player::CanMoveBody() const noexcept
+{
+    // 当たりの止めの正は裁定役の数え。身体の active へ写すと、やり直しが写しを戻し忘れた時に正と食い違う
+    return m_body->IsActive() && !m_resolver->IsHitStopping();
+}
+
 void Player::ResetState() noexcept
 {
     m_body->SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
@@ -579,6 +553,10 @@ void Player::ResetState() noexcept
     m_bodySlamHeld = false;
     m_slam.wasSlamming = false;
     m_states->Reset();
+    // 止めの最中か予約の残るやり直しで、出現位置で明けて弾かれないよう止めを持ち主に捨てさせる
+    m_resolver->CancelImpact();
+    // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
+    m_appearance->ResetDrawScale();
 }
 
 void Player::SkipBodyStep() noexcept

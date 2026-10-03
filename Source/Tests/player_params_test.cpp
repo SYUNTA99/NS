@@ -14,9 +14,11 @@
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <limits>
 #include <type_traits>
 
@@ -398,7 +400,7 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
               0u);
     player->RequestBodySlam(0.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    player->Resolver().OnUpdate();
+    player->Update(false);
     ASSERT_TRUE(player->Resolver().DidRebound());
     const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
     EXPECT_FLOAT_EQ(impact.launchDistance, 8.0f);
@@ -483,14 +485,19 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     ASSERT_NE(camera, nullptr);
     camera->SetPosition(NS::Core::Vector3{0.0f, 0.0f, -6.0f});
     camera->SetTarget(NS::Core::Vector3{0.0f, 0.0f, 4.0f});
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(
-                  player->Params(),
-                  {{"印の太さ", 7.0f}, {"溜めの前半の色", {0.2f, 0.3f, 0.4f}}, {"矢印が伸びるフレーム数", 1}}),
+    EXPECT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
+                                       {{"印の太さ", 7.0f},
+                                        {"溜めの前半の色", {0.2f, 0.3f, 0.4f}},
+                                        {"矢印が伸びるフレーム数", 1},
+                                        {"チャージしきい値秒", 0.2f}}),
               0u);
-    player->ChargeControl().Step(true, 0.1f);
-    player->ChargeControl().Step(true, 0.1f);
-    player->TargetIndicator().OnUpdate();
-    player->SlamIndicator().OnUpdate();
+    // しきい値のフレームまで押して溜めに入れる
+    const int threshold = static_cast<int>(std::lround(0.2f / NS::Platform::FrameTimer::FixedDelta()));
+    for (int frame = 0; frame < threshold; ++frame)
+    {
+        player->Update(true);
+    }
+    ASSERT_TRUE(player->ChargeControl().IsCharging());
     NS::Game::Level::LockOnFrameShape frame{};
     const NS::Core::Matrix view =
         NS::Core::Matrix::CreateLookAt(camera->Position(), camera->Target(), NS::Core::Vector3::UnitY);

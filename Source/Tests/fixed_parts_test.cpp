@@ -5,6 +5,7 @@
 #include "Runtime/Object/Actors/Light.h"
 #include "Runtime/Object/Actors/MapParts.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/ObjectList.h"
@@ -74,6 +75,9 @@ TEST(FixedParts, SensorsHaveDistinctRoleNames)
     EXPECT_EQ(actor.Part("BodySensor"), body);
     EXPECT_EQ(actor.Part("AttackSensor"), attack);
     EXPECT_EQ(actor.Part("Missing"), nullptr);
+    // どちらも形を自分で持つセンサー
+    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(body), nullptr);
+    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(attack), nullptr);
 }
 
 TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)

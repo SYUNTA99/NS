@@ -1,11 +1,11 @@
-#include "Game/Level/ScreenFade.h"
+#include "Runtime/Object/ScreenFade.h"
 
 #include "Runtime/Platform/Clock.h"
 #include "Runtime/UI/ColorRect.h"
 
 #include <algorithm>
 
-namespace NS::Game::Level
+namespace NS::Obj
 {
     ScreenFade::ScreenFade() noexcept
     {
@@ -105,4 +105,4 @@ namespace NS::Game::Level
             return 0.0f;
         }
     }
-} // namespace NS::Game::Level
+} // namespace NS::Obj

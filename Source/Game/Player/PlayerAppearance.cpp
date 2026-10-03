@@ -1,6 +1,8 @@
 #include "Game/Player/PlayerAppearance.h"
 
-#include "Game/Level/CollisionInput.h"
+#include "Game/Level/ImpactInputJudge.h"
+#include "Game/Level/ImpactResolver.h"
+#include "Game/Level/SlamAim.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
@@ -94,7 +96,26 @@ namespace NS::Game::Player
         {
             m_body = &ownerPlayer->Body();
             m_actor = ownerPlayer;
-            m_input = &ownerPlayer->ChargeControl();
+            m_resolver = &ownerPlayer->Resolver();
+        }
+    }
+
+    void PlayerAppearance::OnEndPlay()
+    {
+        ResetDrawScale();
+    }
+
+    void PlayerAppearance::ResetDrawScale() noexcept
+    {
+        m_landingSquashRemaining = 0;
+        m_landingSquashVertical = 1.0f;
+        if (Owner() == nullptr)
+        {
+            return;
+        }
+        if (NS::Obj::Model* renderer = Owner()->ModelPart())
+        {
+            (void)renderer->SnapDrawScale(NS::Core::Vector3{1.0f, 1.0f, 1.0f});
         }
     }
 
@@ -121,9 +142,9 @@ namespace NS::Game::Player
             }
             return;
         }
-        if (!m_body->IsActive())
+        if (!m_actor->CanMoveBody())
         {
-            // 当たりの止めで移動が止まっている間は、絵も止める
+            // 当たりの止めで身体を動かせない間は、絵も止める
             return;
         }
 
@@ -132,20 +153,20 @@ namespace NS::Game::Player
             SetRollAxisToward(m_actor->BodySlamVelocity(), m_spinAxis);
             m_spinSpeed = Tuning().m_bodySlamSpinSpeed;
         }
-        else if (m_input != nullptr && m_input->Judge().IsHeld())
+        else if (m_actor->ChargeJudge().IsHeld())
         {
             // 放せば出る向きへ回す。溜めて放した突進は狙いの線の向きへ、タップと線の無い時は AimDirection の向きへ出る
             // 狙いが決まらないフレームは前の軸で回し続ける
             NS::Core::Vector3 aim = m_actor->AimDirection();
             NS::Game::Level::AimLine line{};
-            if (m_input->IsCharging() && m_input->TryGetAimLine(line))
+            if (m_actor->ChargeJudge().IsCharging() && m_actor->TryGetAimLine(line))
             {
                 aim = line.direction;
             }
             SetRollAxisToward(aim, m_spinAxis);
             m_spinSpeed =
                 Tuning().m_emptyChargeSpinSpeed +
-                (Tuning().m_fullChargeSpinSpeed - Tuning().m_emptyChargeSpinSpeed) * m_input->Judge().Charge01();
+                (Tuning().m_fullChargeSpinSpeed - Tuning().m_emptyChargeSpinSpeed) * m_actor->ChargeJudge().Charge01();
         }
         else if (m_actor->IsRebounding())
         {
@@ -186,61 +207,89 @@ namespace NS::Game::Player
         }
         AdvanceSpin();
         AdvanceLandingSquash();
+        WriteDrawScale();
     }
 
     void PlayerAppearance::AdvanceLandingSquash() noexcept
     {
-        if (!m_body->IsActive())
+        if (!m_actor->CanMoveBody())
         {
-            // 当たりの止めで移動が止まっている間は、潰れの戻しも止める
-            return;
-        }
-        NS::Obj::Model* renderer = nullptr;
-        if (Owner() != nullptr)
-        {
-            renderer = Owner()->ModelPart();
-        }
-        if (renderer == nullptr)
-        {
+            // 当たりの止めで身体を動かせない間は、潰れの戻しも止める
             return;
         }
 
         // 反動の出口の条件が成り立ったフレームが着地。移動の後に回るので、このフレームの接地を見る
         // 次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
         // 戻すフレーム数が 0 以下では戻す手段が無く、潰れたまま残るので潰さない
-        float vertical = 1.0f;
         if (m_actor->IsRebounding() && PlayerJudgeLand::Judge(m_body->IsGrounded(), m_body->VerticalVelocity()) &&
             Tuning().m_landingSquashRecoverSteps > 0)
         {
             m_landingSquashRemaining = Tuning().m_landingSquashRecoverSteps;
-            vertical = Tuning().m_landingSquash;
+            m_landingSquashVertical = Tuning().m_landingSquash;
         }
         else if (m_landingSquashRemaining > 0)
         {
             --m_landingSquashRemaining;
             if (m_landingSquashRemaining == 0)
             {
-                // 補間の残差を残さない。元の形をそのまま書く
-                (void)renderer->SetDrawScale(NS::Core::Vector3{1.0f, 1.0f, 1.0f});
+                // 補間の残差を残さない。元の形をそのまま使う
+                m_landingSquashVertical = 1.0f;
                 return;
             }
             const float total = static_cast<float>(Tuning().m_landingSquashRecoverSteps);
             const float elapsed = total - static_cast<float>(m_landingSquashRemaining);
-            vertical = Tuning().m_landingSquash + (1.0f - Tuning().m_landingSquash) * (elapsed / total);
+            m_landingSquashVertical = Tuning().m_landingSquash + (1.0f - Tuning().m_landingSquash) * (elapsed / total);
         }
         else
         {
             return;
         }
 
-        // 水平は体積を保つ 1 ÷ √縦
-        const float horizontal = 1.0f / std::sqrt(vertical);
-        if (!renderer->SetDrawScale(NS::Core::Vector3{horizontal, vertical, horizontal}))
+        if (!std::isfinite(m_landingSquashVertical) || !(m_landingSquashVertical > 0.0f))
         {
             NS_LOG_WARN(
                 Game, "PlayerAppearance: 着地の潰れが有限の正でなく、潰さなかった: {}", Tuning().m_landingSquash);
             m_landingSquashRemaining = 0;
+            m_landingSquashVertical = 1.0f;
         }
+    }
+
+    void PlayerAppearance::WriteDrawScale() noexcept
+    {
+        NS::Obj::Model* renderer = Owner()->ModelPart();
+        if (renderer == nullptr)
+        {
+            return;
+        }
+        // 当たりの潰れと伸びの間は構えを混ぜない。構えの最中に来た止めも元の形から潰す
+        NS::Core::Vector3 shape{1.0f, 1.0f, 1.0f};
+        if (m_resolver != nullptr && m_resolver->IsShapeAnimating())
+        {
+            shape = m_resolver->ShapeFactors();
+        }
+        else if (m_actor != nullptr)
+        {
+            shape.y = m_actor->StanceHeight();
+        }
+        // 着地の潰れの水平は体積を保つ 1 ÷ √縦
+        const float vertical = m_landingSquashVertical;
+        const float horizontal = 1.0f / std::sqrt(vertical);
+        const NS::Core::Vector3 scale{shape.x * horizontal, shape.y * vertical, shape.z * horizontal};
+        if (renderer->SetDrawScale(scale))
+        {
+            m_drawScaleRejected = false;
+            return;
+        }
+        // 欄が有限の正でない間は毎フレーム断られるので、知らせるのは断られ始めたフレームだけ
+        if (!m_drawScaleRejected)
+        {
+            NS_LOG_WARN(Game,
+                        "PlayerAppearance: 描く形の倍率が有限の正でなく、書かなかった: ({}, {}, {})",
+                        scale.x,
+                        scale.y,
+                        scale.z);
+        }
+        m_drawScaleRejected = true;
     }
 
     void PlayerAppearance::ResolveAssets(NS::Obj::AssetManager& assets)

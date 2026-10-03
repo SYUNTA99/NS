@@ -41,12 +41,15 @@ namespace NS::Obj
 
         //! この Component 自身の active 値。owner の状態は含まない
         [[nodiscard]] bool IsActiveSelf() const noexcept { return m_active; }
-        //! 自分の active を切り替える。設定できるのは自分の分だけで、階層は見ない
+        //! @brief 自分の active を切り替える
+        //! @details 設定できるのは自分の分だけで、階層は見ない。実行中に部品を外す口で、カメラの切り替えと
+        //! エディタのプレイの出入りに使う。当たりの止めと操作の停止の印には使わない。
+        //! 当たりの止めの正は ImpactResolver の数え、操作の停止の正は PlayerInput の止め
         void SetActive(bool active) noexcept { m_active = active; }
 
         //! データに書かれた active 値。false は保存にも残り、読み直しても false のまま
         [[nodiscard]] bool IsEnabled() const noexcept { return m_enabled; }
-        //! データの active を切り替える。モード切替で使う SetActive とは別系統で、互いを上書きしない
+        //! データの active を切り替える。実行中に部品を外す SetActive とは別系統で、互いを上書きしない
         void SetEnabled(bool enabled) noexcept { m_enabled = enabled; }
 
         //! 持ち主が世界へ出直した時に呼ばれる。自分が効いていない間は呼ばれない。既定は何もしない

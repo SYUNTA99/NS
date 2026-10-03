@@ -183,19 +183,9 @@ void Player::TapSlamGravity(float dt) noexcept
 
 void Player::ReboundGravity(float dt) noexcept
 {
+    // 上りだけ倍率付きの組を PlayerParams が持つ。選び方は普段の重力と同じ ChooseGravity 1 つ
     NS::Obj::Body& body = *m_body;
-    if (!(body.VerticalVelocity() > 0.0f))
-    {
-        Gravity(dt);
-        return;
-    }
-
-    float g = m_params->m_gravityUp * m_params->m_reboundRiseGravityScale;
-    if (std::abs(body.VerticalVelocity()) < m_params->m_apexHangVy)
-    {
-        g = g * m_params->m_apexHangScale;
-    }
-    body.Gravity(g, dt);
+    body.Gravity(NS::Game::Player::ChooseGravity(m_params->ReboundGravity(), body.VerticalVelocity()), dt);
 }
 
 void Player::AccelerateDuringRebound(float dt) noexcept
@@ -220,10 +210,10 @@ void Player::UpdateBodySlam(float dt) noexcept
 {
     NS::Obj::Body& body = *m_body;
     // 突進中に向きを変えられると当てる間合いを詰める意味が消えるので、水平は発動時の値で書き直す
+    // 書き手はここだけで、壁に押し付けられて潰れた水平も次のフレームで戻る
     if (!m_slam.isTap)
     {
-        body.SetLateralVelocity(NS::Core::Vector3{
-            m_slam.dir.x * m_params->m_bodySlamSpeed, 0.0f, m_slam.dir.z * m_params->m_bodySlamSpeed});
+        body.SetLateralVelocity(BodySlamVelocity());
     }
 
     if (m_slam.isTap)
@@ -300,8 +290,7 @@ bool Player::LedgeGrab() noexcept
 
     // 帯の上は今フレーム動いた距離まで。速く落ちると 1 フレームで縁の上端を通り過ぎて掴み損ねる
     const float above = m_lastMoveDistance;
-    for (const NS::Core::AABB& box :
-         BoxesTouchingBand(body, probe, m_params->m_ledgeGrabBelowHand, above))
+    for (const NS::Core::AABB& box : BoxesTouchingBand(body, probe, m_params->m_ledgeGrabBelowHand, above))
     {
         const float top = box.Center.y + box.Extents.y;
         if (!NS::Game::Player::PlayerJudgeLedgeGrab::InBand(probe, box, m_params->m_ledgeGrabBelowHand, above))
@@ -366,7 +355,7 @@ bool Player::LedgeGrab() noexcept
         body.SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         m_ledgeTopY = top;
         m_ledgeFaceNormal = faceNormal;
-        (void)m_states->Change<NS::Game::Player::LedgeHangingPlayerState>(*this);
+        (void)m_states->Change<NS::Game::Player::LedgeHangingPlayerState>();
         m_playerEvents.onLedgeGrabbed.Invoke();
         return true;
     }
@@ -401,7 +390,7 @@ bool Player::LedgeJump() noexcept
     NS::Obj::Body& body = *m_body;
     body.SetVerticalVelocity(m_params->m_jumpImpulse);
     body.SetGrounded(false);
-    (void)m_states->Change<NS::Game::Player::FallPlayerState>(*this);
+    (void)m_states->Change<NS::Game::Player::FallPlayerState>();
     m_playerEvents.onJump.Invoke();
     return true;
 }
@@ -419,7 +408,7 @@ void Player::ClimbLedge() noexcept
         pos.z - m_ledgeFaceNormal.z * mantleStep,
     };
     m_ledgeMantleTimer = 0.0f;
-    (void)m_states->Change<NS::Game::Player::LedgeClimbingPlayerState>(*this);
+    (void)m_states->Change<NS::Game::Player::LedgeClimbingPlayerState>();
     body.SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
     m_playerEvents.onLedgeClimbing.Invoke();
 }
@@ -427,7 +416,7 @@ void Player::ClimbLedge() noexcept
 void Player::DropLedge() noexcept
 {
     NS::Obj::Body& body = *m_body;
-    (void)m_states->Change<NS::Game::Player::FallPlayerState>(*this);
+    (void)m_states->Change<NS::Game::Player::FallPlayerState>();
     body.SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
     body.SetGrounded(false);
     // 壁と逆を向いて落ちる。壁を向いたままだと、帯の上の余白に縁が入って次のフレームで掴み直す
@@ -485,7 +474,7 @@ void Player::UpdateLedgeClimb(float dt) noexcept
     if (t >= 1.0f)
     {
         Root().SetPosition(m_ledgeMantleEnd);
-        (void)m_states->Change<NS::Game::Player::IdlePlayerState>(*this);
+        (void)m_states->Change<NS::Game::Player::IdlePlayerState>();
         body.SetGrounded(true);
         m_jumpsRemaining = 1;
         m_coyoteTimer = m_params->m_coyoteTime;
@@ -503,8 +492,7 @@ bool Player::FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) con
         hangPos.z + inward.z * (body.CapsuleRadius() + m_params->m_ledgeReach),
     };
 
-    for (const NS::Core::AABB& box :
-         BoxesTouchingBand(body, probe, m_params->m_ledgeGrabBelowHand, 0.0f))
+    for (const NS::Core::AABB& box : BoxesTouchingBand(body, probe, m_params->m_ledgeGrabBelowHand, 0.0f))
     {
         const float top = box.Center.y + box.Extents.y;
         if (top < handY - m_params->m_ledgeGrabBelowHand || top > handY)

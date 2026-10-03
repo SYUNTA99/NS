@@ -32,18 +32,18 @@ namespace NS::Game::Player
 
         if (PlayerJudgeFall::Judge(body.IsGrounded()))
         {
-            player.States().Change<FallPlayerState>(player);
+            player.States().Change<FallPlayerState>();
         }
         else if (brake)
         {
-            player.States().Change<BrakePlayerState>(player);
+            player.States().Change<BrakePlayerState>();
         }
         else if (PlayerJudgeIdle::Judge(body.IsGrounded(),
                                         PlayerJudgeWalk::Judge(body.IsGrounded(),
                                                                hasInput,
                                                                PlayerJudgeStopped::Judge(body.LateralVelocity()))))
         {
-            player.States().Change<IdlePlayerState>(player);
+            player.States().Change<IdlePlayerState>();
         }
     }
 } // namespace NS::Game::Player

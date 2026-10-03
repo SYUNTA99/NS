@@ -4,6 +4,7 @@
 #include "Game/Player/PlayerEvents.h"
 #include "Game/Player/ReboundArc.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Core/Sphere.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/CameraTarget.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -33,6 +34,9 @@ namespace NS::Game::Level
     class ImpactResolver;
     class TargetMarker;
     class SlamArrow;
+    struct ImpactInputJudge;
+    struct AimLine;
+    struct SlamLineTarget;
 } // namespace NS::Game::Level
 
 //! @brief プレイヤーキャラクタ。Model / Body / PlayerInput / Shadow の既定構成をコードで組む
@@ -69,6 +73,23 @@ public:
     [[nodiscard]] const NS::Game::Player::PlayerParams& Params() const noexcept { return *m_params; }
     [[nodiscard]] NS::Game::Level::CollisionInput& ChargeControl() noexcept { return *m_collisionInput; }
     [[nodiscard]] const NS::Game::Level::CollisionInput& ChargeControl() const noexcept { return *m_collisionInput; }
+    //! 溜めの判定を読むだけの口。溜め量・押しているか・溜めている間かは、見た目の部品と追従カメラがここから読む
+    [[nodiscard]] const NS::Game::Level::ImpactInputJudge& ChargeJudge() const noexcept;
+    //! @brief 押している間に控えた狙いの線を読む
+    //! @details 押していないフレーム、所属シーンか実カメラが無いフレーム、正面の向きが決まらないフレームは控えが無い
+    //! @param[out] outLine 控えた狙いの線。控えが無い場合は書き換えない
+    //! @return 控えがある場合 true、それ以外の場合は false
+    [[nodiscard]] bool TryGetAimLine(NS::Game::Level::AimLine& outLine) const noexcept;
+    //! @brief 押している間に控えた狙う相手を読む
+    //! @details 押していないフレームと、狙いの線が無いフレームは控えが無い
+    //! @param[out] outTarget 控えた狙う相手。控えが無い場合は書き換えない
+    //! @return 控えがある場合 true、それ以外の場合は false
+    [[nodiscard]] bool TryGetAimTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept;
+    //! @brief 構えで縦に縮める倍率を読む
+    //! @details 溜めている間は欄「構えの縮み」、溜めに入る前に押している間は欄「押しの構えの縮み」、それ以外は 1。
+    //! 描く形へ書くのは PlayerAppearance で、ここは問いに答えるだけ
+    //! @return 元の形を 1 とした縦の倍率
+    [[nodiscard]] float StanceHeight() const noexcept;
     [[nodiscard]] NS::Game::Level::ImpactResolver& Resolver() noexcept { return *m_resolver; }
     [[nodiscard]] NS::Game::Player::PlayerAppearance& Appearance() noexcept { return *m_appearance; }
     [[nodiscard]] NS::Game::Level::TargetMarker& TargetIndicator() noexcept { return *m_targetMarker; }
@@ -80,7 +101,8 @@ public:
     void ReadInput() override;
     using NS::Obj::Actor::Update;
     //! @brief 体当たりのボタンの押下を差し込んで 1 固定ステップ進める。試しが入力を作る口
-    //! @details 順は基底の Update と同じで、観測の段が入力の読み取りの代わりに chargeHeld を使う
+    //! @details chargeHeld を PlayerInput::SetSlamHeld で書いてから基底の Update を回す。
+    //! 入力の段は回さないので、書いた押しがそのまま観測の段に届く
     //! @param[in] chargeHeld 体当たりのボタンを押しているか
     void Update(bool chargeHeld);
     //! @brief 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
@@ -115,7 +137,9 @@ public:
     void SetMaxSpeedScale(float scale) noexcept;
     [[nodiscard]] float RunSpeed() const noexcept;
     //! 奈落落ちの復活などで速度・接地・ジャンプまわりの記録と状態機械を初期状態へ戻す。
-    //! 丸まりも解くが根は動かさない。呼び手は先に根を出現位置へ置いてから呼ぶ
+    //! 丸まりも解くが根は動かさない。当たりの止めと止めの予約は ImpactResolver::CancelImpact で捨て、
+    //! 描く形の倍率は PlayerAppearance::ResetDrawScale で補間なしに 1 へ戻す。
+    //! 呼び手は先に根を出現位置へ置いてから呼ぶ
     void ResetState() noexcept;
     //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
     void SyncGroundState() noexcept;
@@ -136,10 +160,20 @@ public:
     [[nodiscard]] NS::Core::Vector3 BodySlamDirection() const noexcept { return m_slam.dir; }
     //! 反動の状態の場合 true、それ以外の場合は false
     [[nodiscard]] bool IsRebounding() const noexcept;
+    //! @brief 身体を今動かしてよい場合 true、それ以外の場合は false
+    //! @details 身体の部品が外されておらず、当たりの止め (ImpactResolver::IsHitStopping) の最中でない時に真。
+    //! 状態機械の 1 歩・身体の移動・玉の回転と着地の潰れの戻しがこの問いを読む
+    [[nodiscard]] bool CanMoveBody() const noexcept;
     //! 最後に始めた反動の水平の向き。正規化済み。反動を始める前と ResetState の後はゼロ
     [[nodiscard]] NS::Core::Vector3 ReboundDirection() const noexcept { return m_rebound.direction; }
     //! 丸まっている場合 true、それ以外の場合は false
     [[nodiscard]] bool IsCurled() const noexcept { return m_curled; }
+    //! @brief 根を rootPosition に置いた時の突進の玉を返す
+    //! @details 玉は今の当たりのカプセルの下の球 (中心は根から半分の高さだけ下、半径は同じ)。丸まる時は下端を
+    //! 揃えて根を下げるので、立ち姿の下の球が丸まった後の玉になる。丸まっていれば半分の高さが 0 で、玉の中心は根
+    //! そのもの。判定・矢印・エディタの面は玉をここから引く。丸まりの揃え方を変える時は ChangeCurled と一緒に直す
+    //! @param[in] rootPosition 根の位置 (ワールド)
+    [[nodiscard]] NS::Core::Sphere SlamBallAt(const NS::Core::Vector3& rootPosition) const noexcept;
 
     // 移動の組み立て。状態が呼ぶ順序がそのまま手触りになる。速度・接地・重力の計算は身体 (Body) が持ち、
     // どの状態でどの値をどの順に掛けるかをここが決める。調整値は PlayerParams から読む
@@ -162,12 +196,13 @@ public:
     void TapSlamGravity(float dt) noexcept;
     //! @brief 反動の間の重力を当てる
     //! @details 上向きの間は上昇重力に反動の上りの重力倍率を掛け、頂点の近くはさらに頂点滞空倍率を掛ける。
-    //! 上向きでなければ Gravity と同じ
+    //! 上向きでなければ Gravity と同じ。組は PlayerParams::ReboundGravity、選び方は Gravity と同じ ChooseGravity
     void ReboundGravity(float dt) noexcept;
     //! @brief 反動の間、入力の向きへ反動中の空中の加速度で加速する。入力が無ければ何もしない
     //! @details 接地の印に依らずこの加速度を使い、入力の向きからずれた速度は減らさない
     void AccelerateDuringRebound(float dt) noexcept;
-    //! 突進の 1 フレームを進める。溜めた突進は水平を発動時の向きと速さで書き直し、重力を当てる
+    //! @brief 突進の 1 フレームを進める。溜めた突進は水平を BodySlamVelocity で書き直し、重力を当てる
+    //! @details 突進の間の水平の書き手はここだけ
     void UpdateBodySlam(float dt) noexcept;
 
     // 崖つかまり。縁の検出・つかまり・登り
@@ -208,11 +243,11 @@ public:
     void RequestBodySlam(float charge01,
                          const NS::Core::Vector3& aimDirection,
                          float launchVerticalSpeed = 0.0f) noexcept;
-    //! @brief 衝突の裁定と玉の回転が読む速度。突進中は向きと突進速度から作る
-    //! @details 実速度は壁へ押し付けられたフレームで 0 に潰れ、衝突の先読みが今の位置から動かなくなる
+    //! @brief 突進の速度を返す。突進中は発動時の向きと BodySlamSpeed から作り、縦は身体の今の値
+    //! @details 衝突の裁定と玉の回転が読み、溜めた突進の間は UpdateBodySlam がこの水平で身体を書き直す。
+    //! 実速度は壁へ押し付けられたフレームで 0 に潰れ、衝突の先読みが今の位置から動かなくなる
+    //! @return 突進中は突進の速度、それ以外は身体の速度
     [[nodiscard]] NS::Core::Vector3 BodySlamVelocity() const noexcept;
-    //! 突進の向きと突進速度で、水平の速度を書き直す。溜めた突進の間だけ効く
-    void ApplyBodySlamHeading() noexcept;
     //! 突進を打ち切って通常移動へ戻す。突進中でなければ何もしない
     void CancelBodySlam() noexcept;
     //! @brief 向きを解決して突進を始める
@@ -259,7 +294,9 @@ public:
     //! コースの進行役を用意する。全ての配置物が揃った後に呼ばれる
     void InitAfterPlacement() override;
 
-    //! 即死・ゴール・コースのやり直し・操作の停止の知らせに応じる
+    //! @brief 即死・ゴール・コースのやり直し・操作の停止の知らせに応じる
+    //! @details 操作の停止は PlayerInput の止め (SetLocked) へ写し、止める時は
+    //! CollisionInput::CancelCharge で溜めを捨てる
     bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
     //! @brief プレイ開始時の凍結 (baseline) の自分の位置へ戻り、動きと命を最初の状態へ戻す
@@ -269,7 +306,7 @@ public:
     //! 命を amount 削る。下限 0
     void ApplyDamage(int amount) noexcept;
 
-    //! @brief 即死する。命を 0 にし、溜めを終えて世界から消える
+    //! @brief 即死する。命を 0 にして世界から消える
     //! @details 配置を止めるだけの Kill / SetActive(false) は命に触らない。死は落下死などの知らせだけが起こす
     void Die() noexcept;
 
@@ -281,14 +318,15 @@ public:
     [[nodiscard]] int Health() const noexcept;
 
 protected:
-    //! Model の控え、溜めの判定 (CollisionInput::Observe)、体当たりの衝突の観測
-    //! (ImpactResolver::ObserveImpact)。副作用は無い
+    //! Model の控え、PlayerInput の体当たりの押しでの溜めの判定 (CollisionInput::Observe)、
+    //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
     void ObserveStep() override;
-    //! 溜めを進め (CollisionInput::AdvanceState)、衝突の裁定を出して知らせを送る (ImpactResolver::StepState)
+    //! @brief 溜めを進め (CollisionInput::AdvanceState)、衝突の裁定を出して知らせを送る (ImpactResolver::StepState)
+    //! @details 裁定役が外されていれば、止めと止めの予約を捨てる (ImpactResolver::CancelImpact)
     void DecideStep() override;
-    //! 突進の発動、状態機械の 1 歩、丸まりの解除と押下の消費。身体が止まっている間は押下の消費だけ
+    //! 突進の発動、状態機械の 1 歩、丸まりの解除と押下の消費。CanMoveBody が偽の間は押下の消費だけ
     void StateStep() override;
-    //! 突進の水平の速度の書き直し (CollisionInput::ApplyControl) の後に身体を動かす
+    //! 溜めの輪を描き (CollisionInput::ApplyControl)、CanMoveBody が真なら身体を動かす
     void BodyStep() override;
     //! クリップの選択、TargetMarker、SlamArrow、HitReaction、PlayerAppearance、ChargeEffects、ImpactEffects の順
     void VisualStep() override;
@@ -342,10 +380,15 @@ private:
     void EndBodySlam() noexcept;
     //! 控えた狙いを今の向きにどれだけ混ぜるか 0..1。巻き戻し秒までは 1、消える秒で 0
     [[nodiscard]] float BodySlamAimBlend01() const noexcept;
+    //! @brief 突進の水平の速さ (m/s) を返す
+    //! @details 発動の初速 (BodySlam) と突進の速度 (BodySlamVelocity) がこれを読む。速さの式はここ 1 か所
+    //! @return タップの飛び込みは欄「タップ初速」、溜めた突進は欄「突進速度」
+    [[nodiscard]] float BodySlamSpeed() const noexcept;
     //! @brief 丸まりを入れるか解き、当たりの形と根の高さを一緒に切り替える
     //! @details 丸まると当たりを球にして根を立ち姿の半長ぶん下げる。
     //! 解くと立ち姿へ戻して、その時の立ち姿の半長ぶん上げる。当たりの下端 (中心 − 半長 − 半径) は動かない。
-    //! 根は前フレームの位置と一緒にずらすので、描画の補間に動きとして映らない。今と同じ値なら何もしない
+    //! 根は前フレームの位置と一緒にずらすので、描画の補間に動きとして映らない。今と同じ値なら何もしない。
+    //! この揃え方が突進の玉の中心の決まり (SlamBallAt) を成り立たせている
     void ChangeCurled(bool curled) noexcept;
     //! @brief 丸まりを解く
     //! @details 押されていない・突進中でない・直前のフレームを突進中で終えていない・突進の予約が無い・
@@ -355,19 +398,12 @@ private:
     void PrepareStateStep();
     //! 状態機械を進めた後の控えの更新。丸まりを解く判定・長押しの控え・押下の消費・要求と狙いの経過を進める
     void FinishStateStep(float dt);
-    class ChargeState;
-    void StepCharge(bool held, float dt);
     //! @brief 掴まり位置から掴める縁を探す
     //! @param[in] hangPos 手を伸ばす元になるカプセル中心の位置
     //! @param[out] outTop 見つけた縁の上端の y。見つからない場合は書き換えない
     //! @return 手の高さ以下の帯に縁があり、登り先も塞がっていない場合 true、それ以外の場合は false
     [[nodiscard]] bool FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) const noexcept;
-    NS::Obj::SubStateMachine<Player> m_charge;
     std::unique_ptr<NS::Game::Level::CollisionInput> m_collisionInput;
-    bool m_chargeHeld = false;
-    bool m_hasInjectedHeld = false; // Update(bool) の間だけ立つ。観測が入力の代わりに m_injectedHeld を使う
-    bool m_injectedHeld = false;
-    float m_chargeDelta = 0.0f;
     [[nodiscard]] std::string_view ChooseClip(float lateralSpeed) const noexcept;
     [[nodiscard]] float ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept;
     std::unique_ptr<NS::Game::Player::PlayerParams> m_params;

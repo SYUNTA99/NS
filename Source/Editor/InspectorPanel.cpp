@@ -199,8 +199,8 @@ namespace NS::Editor
             for (std::size_t k = 0; k < components.size(); ++k)
             {
                 const std::string typeName{components[k]->ClassName()};
-                // Transform は上の専用パネルが編集するので一覧に出さない
-                if (typeName == "TransformComponent")
+                // 根の部品は上の専用パネルが編集するので一覧に出さない
+                if (go->PartName(*components[k]) == NS::Obj::k_TransformPartName)
                 {
                     continue;
                 }

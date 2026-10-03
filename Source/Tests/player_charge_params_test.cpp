@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -46,8 +47,38 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
     // 左右の寄せは消した。鍵が戻ると、保存した場面に効かない探す範囲が載る
     EXPECT_FALSE(fields.contains("寄せる相手を探す角度"));
     EXPECT_FALSE(fields.contains("寄せる相手を探す距離"));
-    EXPECT_FLOAT_EQ(input->ChargeFactorFor(0.5f), 1.5f);
     EXPECT_TRUE(NS::Obj::SerializeComponent(*input)["fields"].empty());
+}
+
+// 溜めの倍率と溜め中の減速は欄の持ち主 PlayerParams が答える。裁定役と溜めの部品は同じ答えを読む
+TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
+{
+    Player player;
+    NS::Game::Player::PlayerParams* params =
+        NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
+    ASSERT_NE(params, nullptr);
+    EXPECT_FLOAT_EQ(params->ChargeFactorFor(0.5f), 1.5f);
+
+    ASSERT_EQ(
+        NS::Obj::ApplyJsonFields(
+            *params, {{"チャージ減速率", 0.4f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}),
+        0u);
+    EXPECT_FLOAT_EQ(params->ChargeFactorFor(0.5f), 2.0f);
+    EXPECT_FLOAT_EQ(params->ChargeFactorFor(-1.0f), 1.0f);
+    EXPECT_FLOAT_EQ(params->ChargeFactorFor(2.0f), 3.0f);
+    EXPECT_FLOAT_EQ(params->ChargeFactorFor(std::numeric_limits<float>::quiet_NaN()), 1.0f);
+    EXPECT_FLOAT_EQ(params->ChargeFactorFor(std::numeric_limits<float>::infinity()), 1.0f);
+    EXPECT_NEAR(params->ChargingSpeedScale(), 0.6f, 0.00001f);
+
+    // 減速率は 0..1 の外でも倍率が 0..1 に収まる
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"チャージ減速率", 1.5f}}), 0u);
+    EXPECT_FLOAT_EQ(params->ChargingSpeedScale(), 0.0f);
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"チャージ減速率", -0.5f}}), 0u);
+    EXPECT_FLOAT_EQ(params->ChargingSpeedScale(), 1.0f);
+
+    // Inspector で点を全部消すとカーブは 0 を返す。威力が消えないよう 1 とみなす
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"チャージ倍率カーブ", {{"curve", nlohmann::json::array()}}}}), 0u);
+    EXPECT_FLOAT_EQ(params->ChargeFactorFor(0.5f), 1.0f);
 }
 
 TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
@@ -65,10 +96,7 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
                                         {"チャージ満タン秒", 0.5f},
                                         {"チャージ倍率カーブ", {{"curve", {{0.0f, 2.0f}, {1.0f, 4.0f}}}}}}),
               0u);
-    EXPECT_NEAR(input->ChargingSpeedScale(), 0.6f, 0.00001f);
-    EXPECT_FLOAT_EQ(input->ChargeFactorFor(0.5f), 3.0f);
-    input->OnStart();
-    input->OnUpdate();
+    player.Update(false);
     EXPECT_EQ(input->Judge().chargeThresholdSteps,
               static_cast<int>(std::lround(0.1f / NS::Platform::FrameTimer::FixedDelta())));
     EXPECT_EQ(input->Judge().chargeMaxSteps,
@@ -89,11 +117,8 @@ TEST(PlayerChargeParams, SceneOverridesKeepTheirCurvesAfterReload)
     scene.LoadJson(scene.ToJson());
     const Player* player = static_cast<const Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    const NS::Game::Level::CollisionInput* input =
-        NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player->Part("ChargeControl"));
-    ASSERT_NE(input, nullptr);
-    EXPECT_FLOAT_EQ(input->ChargingSpeedScale(), 0.75f);
-    EXPECT_FLOAT_EQ(input->ChargeFactorFor(0.5f), 2.0f);
+    EXPECT_FLOAT_EQ(player->Params().ChargingSpeedScale(), 0.75f);
+    EXPECT_FLOAT_EQ(player->Params().ChargeFactorFor(0.5f), 2.0f);
 }
 
 // 消した欄の鍵が同梱の種類の既定値と場面に残ると、読むたびに知らない鍵として捨てられる

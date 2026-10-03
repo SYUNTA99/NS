@@ -1,16 +1,28 @@
 #include "Game/Level/CollisionInput.h"
+#include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
+#include "Game/Player/States/BodySlamPlayerState.h"
+#include "Game/Player/States/BrakePlayerState.h"
+#include "Game/Player/States/FallPlayerState.h"
+#include "Game/Player/States/IdlePlayerState.h"
+#include "Game/Player/States/ReboundPlayerState.h"
+#include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/CameraComponent.h"
+#include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/TransformComponent.h"
+#include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Clock.h"
 
 #include <gtest/gtest.h>
+
+#include <string>
+#include <string_view>
 
 namespace
 {
@@ -39,15 +51,34 @@ namespace
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
-    void LegacyPipeline(Player& player, bool held)
+    // 見本の列に書く状態の綴り。表に無い状態は Other
+    std::string_view StateName(const Player& player)
     {
-        player.ChargeControl().Step(held, NS::Platform::FrameTimer::FixedDelta());
-        player.Resolver().OnUpdate();
-        player.ChargeControl().SetActive(false);
-        player.Resolver().SetActive(false);
-        player.Update(false);
-        player.ChargeControl().SetActive(true);
-        player.Resolver().SetActive(true);
+        if (player.States().IsCurrent<NS::Game::Player::IdlePlayerState>())
+        {
+            return "Idle";
+        }
+        if (player.States().IsCurrent<NS::Game::Player::WalkPlayerState>())
+        {
+            return "Walk";
+        }
+        if (player.States().IsCurrent<NS::Game::Player::BrakePlayerState>())
+        {
+            return "Brake";
+        }
+        if (player.States().IsCurrent<NS::Game::Player::FallPlayerState>())
+        {
+            return "Fall";
+        }
+        if (player.States().IsCurrent<NS::Game::Player::BodySlamPlayerState>())
+        {
+            return "BodySlam";
+        }
+        if (player.States().IsCurrent<NS::Game::Player::ReboundPlayerState>())
+        {
+            return "Rebound";
+        }
+        return "Other";
     }
 
     void ExpectSameVector(const NS::Core::Vector3& actual, const NS::Core::Vector3& expected)
@@ -55,6 +86,28 @@ namespace
         EXPECT_NEAR(actual.x, expected.x, 0.00001f);
         EXPECT_NEAR(actual.y, expected.y, 0.00001f);
         EXPECT_NEAR(actual.z, expected.z, 0.00001f);
+    }
+
+    // 手前の置物へ溜めた突進を出し、止めの頭まで回す。届いた場合 true
+    // waitForFreeze が偽なら、止めの予約だけが残る検知のフレームで止める
+    // 突進は 1 フレームの入口から出す。BodySlam を直に呼ぶと先行入力が残り、止めが明けた後にもう 1 度出る
+    bool SlamIntoTheRock(Player& player, NS::Game::Level::MapObj& rock, bool waitForFreeze)
+    {
+        player.RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        for (int frame = 0; frame < 10; ++frame)
+        {
+            player.Update(false);
+            rock.Update();
+            if (waitForFreeze && player.Resolver().FreezeBeganThisStep())
+            {
+                return true;
+            }
+            if (!waitForFreeze && player.Resolver().LastImpact().sequence > 0)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 } // namespace
 
@@ -67,7 +120,7 @@ TEST(PlayerUpdatePipeline, ObservationDoesNotAdvanceChargeOrMoveThePlayer)
     const NS::Core::Vector3 position = player->Root().Position();
     const NS::Core::Vector3 velocity = player->Body().Velocity();
     player->ChargeControl().Observe(true);
-    player->Resolver().ObserveImpact(player->ChargeControl().PredictedSlamVelocity());
+    player->Resolver().ObserveImpact();
     EXPECT_FALSE(player->ChargeControl().Judge().IsHeld());
     EXPECT_FALSE(player->IsCurled());
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
@@ -101,74 +154,32 @@ TEST(PlayerUpdatePipeline, SlamHeadingStaysOnTheAimBesideAnOffAxisTarget)
     player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
     const NS::Core::Vector3 before = player->BodySlamVelocity();
-    player->ChargeControl().Observe(false);
-    const NS::Core::Vector3 predicted = player->ChargeControl().PredictedSlamVelocity();
-    ExpectSameVector(predicted, before);
-    ExpectSameVector(player->BodySlamVelocity(), before);
-    player->ChargeControl().AdvanceState(NS::Platform::FrameTimer::FixedDelta());
-    player->States().Step(*player, NS::Platform::FrameTimer::FixedDelta());
-    EXPECT_FLOAT_EQ(player->BodySlamVelocity().x, before.x);
-    const float vertical = player->Body().VerticalVelocity();
-    player->ChargeControl().ApplyControl();
-    EXPECT_NEAR(player->Body().Velocity().x, predicted.x, 0.00001f);
-    EXPECT_NEAR(player->Body().Velocity().z, predicted.z, 0.00001f);
-    EXPECT_FLOAT_EQ(player->Body().VerticalVelocity(), vertical);
-    const NS::Core::Vector3 once = player->BodySlamVelocity();
-    player->ChargeControl().ApplyControl();
-    ExpectSameVector(player->BodySlamVelocity(), once);
-}
-
-TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyChargeImpactFreezeAndReleaseFrames)
-{
-    NS::Obj::Scene referenceScene;
-    NS::Obj::Scene actualScene;
-    Player* reference = PlacePipelinePlayer(referenceScene, 0.04f, 2.5f);
-    Player* actual = PlacePipelinePlayer(actualScene, 0.04f, 2.5f);
-    ASSERT_NE(reference, nullptr);
-    ASSERT_NE(actual, nullptr);
-    bool sawImpact = false;
-    bool sawFreeze = false;
-    bool sawRelease = false;
-    for (int frame = 0; frame < 190; ++frame)
+    for (int frame = 0; frame < 2; ++frame)
     {
         SCOPED_TRACE(frame);
-        const bool held = frame < 90;
-        if (held)
-        {
-            reference->Body().SetGrounded(true);
-            actual->Body().SetGrounded(true);
-        }
-        if (frame == 92)
-        {
-            referenceScene.Objects().FindByObjectId(2)->Root().ShiftPosition(NS::Core::Vector3{0.1f, 0.0f, 0.0f});
-            actualScene.Objects().FindByObjectId(2)->Root().ShiftPosition(NS::Core::Vector3{0.1f, 0.0f, 0.0f});
-        }
-        LegacyPipeline(*reference, held);
-        actual->Update(held);
-        ExpectSameVector(actual->Root().Position(), reference->Root().Position());
-        ExpectSameVector(actual->Body().Velocity(), reference->Body().Velocity());
-        ExpectSameVector(actual->Root().Scale(), reference->Root().Scale());
-        EXPECT_EQ(actual->States().CurrentId(), reference->States().CurrentId());
-        EXPECT_EQ(actual->Body().IsActive(), reference->Body().IsActive());
-        EXPECT_EQ(actual->Resolver().LastImpact().sequence, reference->Resolver().LastImpact().sequence);
-        EXPECT_EQ(actual->Resolver().FreezeBeganThisStep(), reference->Resolver().FreezeBeganThisStep());
-        EXPECT_EQ(actual->Resolver().ReleasedThisStep(), reference->Resolver().ReleasedThisStep());
-        sawImpact = sawImpact || actual->Resolver().LastImpact().sequence > 0;
-        sawFreeze = sawFreeze || actual->Resolver().FreezeBeganThisStep();
-        sawRelease = sawRelease || actual->Resolver().ReleasedThisStep();
-        NS::Game::Level::MapObj* referenceRock =
-            NS::Obj::Cast<NS::Game::Level::MapObj>(referenceScene.Objects().FindByObjectId(2));
-        NS::Game::Level::MapObj* actualRock =
-            NS::Obj::Cast<NS::Game::Level::MapObj>(actualScene.Objects().FindByObjectId(2));
-        ASSERT_NE(referenceRock, nullptr);
-        ASSERT_NE(actualRock, nullptr);
-        referenceRock->Update();
-        actualRock->Update();
-        ExpectSameVector(actualRock->Root().Position(), referenceRock->Root().Position());
+        player->Update(false);
+        ASSERT_TRUE(player->IsBodySlamming());
+        EXPECT_NEAR(player->Body().Velocity().x, before.x, 0.00001f);
+        EXPECT_NEAR(player->Body().Velocity().z, before.z, 0.00001f);
     }
-    EXPECT_TRUE(sawImpact);
-    EXPECT_TRUE(sawFreeze);
-    EXPECT_TRUE(sawRelease);
+}
+
+// 溜めた突進の水平の書き手は突進の状態 1 つ。壁に押し付けられて水平が 0
+// に潰れても、次のフレームに発動時の向きと速さへ戻る
+TEST(PlayerUpdatePipeline, SquashedSlamRegainsItsHeadingFromTheState)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 40.0f);
+    ASSERT_NE(player, nullptr);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    player->Body().SetLateralVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+    player->Update(false);
+    ASSERT_TRUE(player->IsBodySlamming());
+    const NS::Core::Vector3 expected = player->BodySlamVelocity();
+    EXPECT_GT(expected.z, 0.0f);
+    EXPECT_NEAR(player->Body().Velocity().x, expected.x, 0.00001f);
+    EXPECT_NEAR(player->Body().Velocity().z, expected.z, 0.00001f);
 }
 
 TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
@@ -178,17 +189,31 @@ TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    player->Resolver().ObserveImpact(player->BodySlamVelocity());
+    player->Resolver().ObserveImpact();
     player->Resolver().StepState();
     ASSERT_EQ(player->Resolver().LastImpact().sequence, 1u);
     ASSERT_FALSE(player->Resolver().FreezeBeganThisStep());
     player->Resolver().StepState();
     EXPECT_FALSE(player->Resolver().FreezeBeganThisStep());
-    EXPECT_TRUE(player->Body().IsActive());
-    player->Resolver().ObserveImpact(player->BodySlamVelocity());
+    EXPECT_FALSE(player->Resolver().IsHitStopping());
+    player->Resolver().ObserveImpact();
     player->Resolver().StepState();
     EXPECT_TRUE(player->Resolver().FreezeBeganThisStep());
-    EXPECT_FALSE(player->Body().IsActive());
+    EXPECT_TRUE(player->Resolver().IsHitStopping());
+}
+
+// 1 フレームを進める入口は Player::Update だけ。裁定の部品を単独で回しても、観測も裁定も走らない
+TEST(PlayerUpdatePipeline, TickingTheResolverPartAloneDoesNotJudge)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    ASSERT_NE(player, nullptr);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    player->Resolver().OnUpdate();
+    EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
+    EXPECT_TRUE(player->IsBodySlamming());
+    EXPECT_FALSE(player->Resolver().IsHitStopping());
 }
 
 TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
@@ -198,12 +223,233 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    player->Resolver().ObserveImpact(player->BodySlamVelocity());
+    player->Resolver().ObserveImpact();
     scene.Objects().RemoveByObjectId(2);
     player->Resolver().StepState();
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
     EXPECT_TRUE(player->IsBodySlamming());
+    EXPECT_FALSE(player->Resolver().IsHitStopping());
+}
+
+// 止めの持ち主は裁定役の数え。身体の部品は外さず、止めの間は位置も状態の歩も進まない
+TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    ASSERT_NE(rock, nullptr);
+    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     EXPECT_TRUE(player->Body().IsActive());
+    EXPECT_TRUE(player->Resolver().IsHitStopping());
+    EXPECT_FALSE(player->CanMoveBody());
+    const NS::Core::Vector3 position = player->Root().Position();
+    const std::uint32_t stateStep = player->States().StepsInState();
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        if (!player->Resolver().IsHitStopping())
+        {
+            break;
+        }
+        SCOPED_TRACE(frame);
+        ExpectSameVector(player->Root().Position(), position);
+        EXPECT_EQ(player->States().StepsInState(), stateStep);
+    }
+    EXPECT_FALSE(player->Resolver().IsHitStopping());
+    EXPECT_TRUE(player->CanMoveBody());
+}
+
+// 身体の部品を外したのは試しで、止めの明けはそれを上書きしない
+TEST(PlayerUpdatePipeline, ReleasingTheHitStopLeavesASwitchedOffBodyAlone)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    ASSERT_NE(rock, nullptr);
+    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
+    player->Body().SetActive(false);
+    bool released = false;
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        if (player->Resolver().ReleasedThisStep())
+        {
+            released = true;
+        }
+    }
+    EXPECT_TRUE(released);
+    EXPECT_FALSE(player->Body().IsActiveSelf());
+}
+
+// やり直しは止めと止めの予約を捨てる。出現位置で弾かれず、元の位置へ戻った置物へ明けも止めの頭も届かない
+TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
+{
+    for (const bool waitForFreeze : {true, false})
+    {
+        SCOPED_TRACE(waitForFreeze);
+        NS::Obj::Scene scene;
+        Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+        ASSERT_NE(player, nullptr);
+        (void)scene.BeginPlayBaseline();
+        NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+        ASSERT_NE(rock, nullptr);
+        const NS::Core::Vector3 rockHome = rock->Root().Position();
+        ASSERT_TRUE(SlamIntoTheRock(*player, *rock, waitForFreeze));
+        NS::Game::Level::CourseDirector* director =
+            NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(scene);
+        ASSERT_NE(director, nullptr);
+        director->RestartCourse();
+        for (int frame = 0; frame < 20; ++frame)
+        {
+            player->Update(false);
+            rock->Update();
+            SCOPED_TRACE(frame);
+            EXPECT_FALSE(player->IsRebounding());
+            EXPECT_FALSE(player->Resolver().FreezeBeganThisStep());
+            EXPECT_FALSE(player->Resolver().ReleasedThisStep());
+            EXPECT_FALSE(player->Resolver().IsHitStopping());
+            ExpectSameVector(rock->Root().Position(), rockHome);
+            ExpectSameVector(player->ModelPart()->DrawScale(), NS::Core::Vector3{1.0f, 1.0f, 1.0f});
+        }
+    }
+}
+
+// 止めの途中でプレイを終えると、潰れた形のまま残らず止めも消える
+TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    ASSERT_NE(rock, nullptr);
+    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
+    ASSERT_TRUE(player->Resolver().IsShapeAnimating());
+    ASSERT_LT(player->ModelPart()->DrawScale().z, 1.0f);
+    player->OnEndPlay();
+    EXPECT_TRUE(player->ModelPart()->DrawScale() == (NS::Core::Vector3{1.0f, 1.0f, 1.0f}));
+    EXPECT_FALSE(player->Resolver().IsHitStopping());
+    EXPECT_FALSE(player->Resolver().IsShapeAnimating());
+}
+
+// 溜めの構えは描く形の倍率に出る
+TEST(PlayerAppearance, ComposesTheStanceIntoTheDrawScale)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    for (int frame = 0; frame < 120 && !player->ChargeControl().IsCharging(); ++frame)
+    {
+        player->Update(true);
+    }
+    ASSERT_TRUE(player->ChargeControl().IsCharging());
+    EXPECT_FLOAT_EQ(player->ModelPart()->DrawScale().y, 0.95f);
+}
+
+// 当てた瞬間の潰れと明けの伸びは描く形の倍率に出て、根のスケールは 1 のまま。戻しの最後のフレームでちょうど 1
+TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    ASSERT_NE(rock, nullptr);
+    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
+    ASSERT_FALSE(player->Resolver().LastImpact().broke);
+    // 欄「潰れの厚み」0.7 を進む向きの成分の 2 乗で混ぜ、縦は欄「潰れの伸び上がり」1.1
+    const NS::Core::Vector3 dir = player->Resolver().LastImpact().impactDir;
+    const NS::Core::Vector3 squash{1.0f - 0.3f * dir.x * dir.x, 1.1f, 1.0f - 0.3f * dir.z * dir.z};
+    const NS::Core::Vector3 one{1.0f, 1.0f, 1.0f};
+    bool released = false;
+    for (int frame = 0; frame < 30 && !released; ++frame)
+    {
+        SCOPED_TRACE(frame);
+        ExpectSameVector(player->Root().Scale(), one);
+        ExpectSameVector(player->ModelPart()->DrawScale(), squash);
+        player->Update(false);
+        rock->Update();
+        released = player->Resolver().ReleasedThisStep();
+    }
+    ASSERT_TRUE(released);
+    // 反発の明けは縦へ欄「弾け伸びの倍率」1.2
+    ExpectSameVector(player->ModelPart()->DrawScale(), NS::Core::Vector3{1.0f, 1.2f, 1.0f});
+    for (int frame = 0; frame < 30 && player->Resolver().IsShapeAnimating(); ++frame)
+    {
+        SCOPED_TRACE(frame);
+        ExpectSameVector(player->Root().Scale(), one);
+        player->Update(false);
+        rock->Update();
+    }
+    ASSERT_FALSE(player->Resolver().IsShapeAnimating());
+    EXPECT_TRUE(player->ModelPart()->DrawScale() == one);
+    EXPECT_TRUE(player->Root().Scale() == one);
+}
+
+// 接地して当てた明けの伸びは描く形の下端の真ん中を中心に掛かり、玉の下端が床の下へ出ない
+TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 2.5f);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    ASSERT_NE(rock, nullptr);
+    for (int frame = 0; frame < 60; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+    }
+    ASSERT_TRUE(player->Body().IsGrounded());
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    bool released = false;
+    for (int frame = 0; frame < 30 && !released; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        released = player->Resolver().ReleasedThisStep();
+    }
+    ASSERT_TRUE(released);
+    ASSERT_FALSE(player->Resolver().LastImpact().broke);
+    ASSERT_TRUE(player->Resolver().IsShapeAnimating());
+    NS::Obj::Model* model = player->ModelPart();
+    // 試しには mesh が無いので、玉の局所の境界を差し、回転を外して形の伸びだけを測る
+    const float radius = player->Body().CapsuleRadius();
+    NS::Core::AABB local{};
+    local.Center = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    local.Extents = NS::Core::Vector3{radius, radius, radius};
+    model->SetLocalBoundsOverride(local);
+    model->SnapLocalRotation(NS::Core::Quaternion::Identity);
+    NS::Core::AABB drawn{};
+    local.Transform(drawn, model->DrawWorldMatrix(1.0f));
+    const float bottom = drawn.Center.y - drawn.Extents.y;
+    EXPECT_NEAR(bottom, player->Root().Position().y - radius, 0.001f);
+    EXPECT_GE(bottom, -0.001f);
+}
+
+// Inspector で裁定役を外すと、持っていた止めと予約を捨てる。入れ直しても遅れて弾かれない
+TEST(PlayerUpdatePipeline, SwitchingTheResolverOffDropsItsHitStop)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    ASSERT_NE(rock, nullptr);
+    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
+    player->Resolver().SetEnabled(false);
+    player->Update(false);
+    rock->Update();
+    EXPECT_TRUE(player->CanMoveBody());
+    player->Resolver().SetEnabled(true);
+    for (int frame = 0; frame < 20; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        SCOPED_TRACE(frame);
+        EXPECT_FALSE(player->Resolver().ReleasedThisStep());
+        EXPECT_FALSE(player->IsRebounding());
+    }
 }
 
 TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl)
@@ -217,43 +463,15 @@ TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl
     player->Body().SetActive(false);
     const NS::Core::Vector3 position = player->Root().Position();
     const NS::Core::Vector3 velocity = player->Body().Velocity();
-    const std::uint32_t stateStep = player->States().StateStep();
+    const std::uint32_t stateStep = player->States().StepsInState();
     player->Update(false);
     ExpectSameVector(player->Root().Position(), position);
     ExpectSameVector(player->Body().Velocity(), velocity);
-    EXPECT_EQ(player->States().StateStep(), stateStep);
+    EXPECT_EQ(player->States().StepsInState(), stateStep);
 }
 
-TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyTapFrames)
-{
-    NS::Obj::Scene referenceScene;
-    NS::Obj::Scene actualScene;
-    Player* reference = PlacePipelinePlayer(referenceScene);
-    Player* actual = PlacePipelinePlayer(actualScene);
-    ASSERT_NE(reference, nullptr);
-    ASSERT_NE(actual, nullptr);
-    bool sawTap = false;
-    for (int frame = 0; frame < 90; ++frame)
-    {
-        SCOPED_TRACE(frame);
-        const bool held = frame < 3;
-        LegacyPipeline(*reference, held);
-        actual->Update(held);
-        ExpectSameVector(actual->Root().Position(), reference->Root().Position());
-        ExpectSameVector(actual->Body().Velocity(), reference->Body().Velocity());
-        EXPECT_EQ(actual->States().CurrentId(), reference->States().CurrentId());
-        EXPECT_EQ(actual->Resolver().LastImpact().sequence, reference->Resolver().LastImpact().sequence);
-        EXPECT_EQ(actual->Resolver().FreezeBeganThisStep(), reference->Resolver().FreezeBeganThisStep());
-        EXPECT_EQ(actual->Resolver().ReleasedThisStep(), reference->Resolver().ReleasedThisStep());
-        if (actual->IsBodySlamming())
-        {
-            sawTap = true;
-            EXPECT_FLOAT_EQ(actual->BodySlamCharge01(), 0.0f);
-        }
-    }
-    EXPECT_TRUE(sawTap);
-}
-
+// 溜めて当てる組とタップの組を、本番の 1 フレームの入口で回した数字の基準
+// 末尾の列は、状態・描く形の倍率・身体が動いているかが変わったフレームだけを並べた物。間のフレームは直前の行と同じ
 TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
 {
     const nlohmann::json baseline = nlohmann::json::parse(
@@ -267,6 +485,26 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             [110, -0.02943230793, 1.116387725, 1.210286379, -0.2557942271, 6.683314323, -2.131618738, 0.14, 1.384893417, 5.983239174],
             [140, -0.1573294252, 2.848669291, 0.1444766968, -0.2557942271, 0.641646266, -2.131618738, 0.14, 4.491162777, 32.10754395],
             [189, -0.294336319, 1.149999738, -0.9972489476, 0, 0, 0, 0.14, 0.501000941, 74.210495]
+        ], [
+            [0, "Idle", 1, 0.9700000286, 1, true],
+            [11, "Idle", 1, 0.9499999881, 1, true],
+            [90, "BodySlam", 1, 1, 1, true],
+            [94, "Walk", 1, 1, 1, true],
+            [95, "Walk", 1, 1.100000024, 0.6999999881, false],
+            [107, "Rebound", 1, 1.200000048, 1, true],
+            [108, "Rebound", 1, 1.100000024, 1, true],
+            [109, "Rebound", 1, 1, 1, true],
+            [110, "Rebound", 1, 0.8999999762, 1, true],
+            [111, "Rebound", 1, 0.9333333373, 1, true],
+            [112, "Rebound", 1, 0.9666666389, 1, true],
+            [113, "Rebound", 1, 1, 1, true],
+            [170, "Rebound", 1.118034005, 0.8000000119, 1.118034005, true],
+            [171, "Idle", 1.095445156, 0.8333333731, 1.095445156, true],
+            [172, "Walk", 1.074172258, 0.8666666746, 1.074172258, true],
+            [173, "Walk", 1.054092646, 0.8999999762, 1.054092646, true],
+            [174, "Walk", 1.035098314, 0.9333333373, 1.035098314, true],
+            [175, "Idle", 1.017095208, 0.9666666985, 1.017095208, true],
+            [176, "Idle", 1, 1, 1, true]
         ]],
         [1, 14, 15, 18, [
             [0, 0, 0.649999976, 0, 0, 0, 0, 0, 0.5, 3],
@@ -276,6 +514,25 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             [30, 0, 1.669279456, 1.836697578, 0, 1.664880991, -0.5998571515, 0, 1.712962747, 9.446973801],
             [60, 0, 1.149999976, 1.53676939, 0, 0, -0.5998571515, 0, 0.5009999871, 24.31210518],
             [89, 0, 1.149999738, 1.53676939, 0, 0, 0, 0, 0.500999987, 36.63962555]
+        ], [
+            [0, "Idle", 1, 0.9700000286, 1, true],
+            [3, "BodySlam", 1, 1, 1, true],
+            [14, "Fall", 1, 1, 1, true],
+            [15, "Fall", 1, 1.100000024, 0.6999999881, false],
+            [18, "Rebound", 1, 1.200000048, 1, true],
+            [19, "Rebound", 1, 1.100000024, 1, true],
+            [20, "Rebound", 1, 1, 1, true],
+            [21, "Rebound", 1, 0.8999999762, 1, true],
+            [22, "Rebound", 1, 0.9333333373, 1, true],
+            [23, "Rebound", 1, 0.9666666389, 1, true],
+            [24, "Rebound", 1, 1, 1, true],
+            [59, "Rebound", 1.118034005, 0.8000000119, 1.118034005, true],
+            [60, "Idle", 1.095445156, 0.8333333731, 1.095445156, true],
+            [61, "Idle", 1.074172258, 0.8666666746, 1.074172258, true],
+            [62, "Idle", 1.054092646, 0.8999999762, 1.054092646, true],
+            [63, "Idle", 1.035098314, 0.9333333373, 1.035098314, true],
+            [64, "Idle", 1.017095208, 0.9666666985, 1.017095208, true],
+            [65, "Idle", 1, 1, 1, true]
         ]]
     ])");
     for (int scenario = 0; scenario < 2; ++scenario)
@@ -326,6 +583,26 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                 release = frame;
             }
             rock->Update();
+            const nlohmann::json* pose = nullptr;
+            for (const nlohmann::json& change : expected[5])
+            {
+                if (change[0].get<int>() <= frame)
+                {
+                    pose = &change;
+                }
+            }
+            ASSERT_NE(pose, nullptr);
+            {
+                SCOPED_TRACE(scenario);
+                SCOPED_TRACE(frame);
+                EXPECT_EQ(StateName(*player), (*pose)[1].get<std::string>());
+                ExpectSameVector(
+                    player->ModelPart()->DrawScale(),
+                    NS::Core::Vector3{(*pose)[2].get<float>(), (*pose)[3].get<float>(), (*pose)[4].get<float>()});
+                // 構え・潰れ・伸び・着地の潰れのどれの間も、根のスケールは配置の値のまま
+                EXPECT_TRUE(player->Root().Scale() == (NS::Core::Vector3{1.0f, 1.0f, 1.0f}));
+                EXPECT_EQ(player->CanMoveBody(), (*pose)[5].get<bool>());
+            }
             for (const nlohmann::json& sample : expected[4])
             {
                 if (sample[0].get<int>() != frame)

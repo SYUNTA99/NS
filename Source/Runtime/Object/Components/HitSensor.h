@@ -5,6 +5,9 @@
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Component.h"
 
+#include <cstdint>
+#include <functional>
+
 namespace NS::Phys
 {
     struct Capsule;
@@ -12,16 +15,6 @@ namespace NS::Phys
 
 namespace NS::Obj
 {
-    //! @brief センサーの種類。どの種類がどの種類を調べるかは HitSensorDirector の組み合わせの表が決める
-    enum class HitSensorType : int
-    {
-        PlayerBody = 0,   //!< プレイヤーの体。範囲に調べられる
-        PlayerAttack = 1, //!< プレイヤーの体当たり。物の体を調べる
-        MapObjBody = 2,   //!< 物の体。体当たりに調べられる
-        Area = 3,         //!< 範囲 (落下死・ゴール)。プレイヤーの体を調べる
-        Count
-    };
-
     //! センサーの形
     enum class HitSensorShape : int
     {
@@ -53,11 +46,12 @@ namespace NS::Obj
     //! 2 つの形が重なるか。触れているだけも重なりに数える
     [[nodiscard]] bool VolumesOverlap(const SensorVolume& lhs, const SensorVolume& rhs) noexcept;
 
-    //! @brief Actor に付く当たりの調べ役。オデッセイの HitSensor に当たる
-    //! @details 形 (球・カプセル・箱) と種類を持ち、シーンの HitSensorDirector へ OnStart で入り OnEndPlay で出る
-    //! 調べ役は 1 フレームに 1 回、センサーの段で組み合わせの表に載った種類同士の重なりを調べ、
-    //! 調べる側の持ち主の Actor::AttackSensor を呼ぶ。相手へ知らせを送るかは持ち主が決める
-    //! 形の大きさは根の世界のスケールに付いて来る。種類と形はクラスがコンストラクタで決め、大きさは値で調整する
+    //! @brief Actor に付く当たりの調べ役の基底。オデッセイの HitSensor に当たる
+    //! @details 種類と、シーンの HitSensorDirector へ OnStart で入り OnEndPlay で出る登録だけを持つ
+    //! 調べ役は 1 フレームに 1 回、センサーの段で持ち主の違うセンサーの重なりを調べ、重なった組の両方の持ち主の
+    //! Actor::AttackSensor を呼ぶ。相手の種類を見て応じるかは持ち主が決める
+    //! 形は派生が決める。欄は持たず、派生ごとに持つ (Collider の一族と同じ形)
+    //! 抽象基底なので TypeRegistry には登録しない
     class HitSensor : public Component
     {
     public:
@@ -70,8 +64,38 @@ namespace NS::Obj
         //! シーンの調べ役から出る
         void OnEndPlay() override;
 
-        void SetType(HitSensorType type) noexcept { m_type = type; }
-        [[nodiscard]] HitSensorType Type() const noexcept { return m_type; }
+        //! @brief 種類を書く
+        //! @details 値に名前は付けない。名前と、どの種類に応じるかは Game の SensorKinds.h が持つ
+        //! @param[in] kind 種類の値。0 は未設定
+        void SetKind(std::uint8_t kind) noexcept { m_kind = kind; }
+        //! 種類の値。0 は未設定
+        [[nodiscard]] std::uint8_t Kind() const noexcept { return m_kind; }
+
+        //! 調べる対象か。部品が効いていて、無効にされていない時だけ真
+        [[nodiscard]] bool IsValid() const noexcept { return m_valid && IsActive(); }
+        //! 調べる対象へ戻す
+        void Validate() noexcept { m_valid = true; }
+        //! 調べる対象から外す。飛んでいる間だけ当たらない物などに使う
+        void Invalidate() noexcept { m_valid = false; }
+
+        //! 世界座標の形。調べ役と問う側が毎回これを読む
+        [[nodiscard]] virtual SensorVolume WorldVolume() const noexcept = 0;
+
+        NS_REFLECT_NONE(HitSensor, Component)
+
+    private:
+        std::uint8_t m_kind = 0;   // 種類の値。0 は未設定で、どの受け手も応じない
+        bool m_valid = true;       // 調べる対象か
+        bool m_registered = false; // 調べ役へ入っているか
+    };
+
+    //! @brief 形を自分で持つ調べ役。ゴールと落下死の範囲と、2 つ目のセンサーの枠 AttackSensor が使う
+    //! @details 形 (球・カプセル・箱) と大きさを欄に持ち、大きさは根の世界のスケールに付いて来る
+    //! 種類と形はクラスがコンストラクタで決め、大きさは値で調整する
+    class ShapeHitSensor final : public HitSensor
+    {
+    public:
+        ShapeHitSensor() noexcept;
 
         //! 球にする。半径は根のスケール前
         void SetSphere(float radius) noexcept;
@@ -89,18 +113,11 @@ namespace NS::Obj
         void SetCenterOffset(const NS::Core::Vector3& offset) noexcept { m_centerOffset = offset; }
         [[nodiscard]] const NS::Core::Vector3& CenterOffset() const noexcept { return m_centerOffset; }
 
-        //! 調べる対象か。部品が効いていて、無効にされていない時だけ真
-        [[nodiscard]] bool IsValid() const noexcept { return m_valid && IsActive(); }
-        //! 調べる対象へ戻す
-        void Validate() noexcept { m_valid = true; }
-        //! 調べる対象から外す。飛んでいる間だけ当たらない物などに使う
-        void Invalidate() noexcept { m_valid = false; }
-
-        //! 世界座標の形
-        [[nodiscard]] SensorVolume WorldVolume() const noexcept;
+        //! 世界座標の形。大きさに根の世界のスケールを掛ける
+        [[nodiscard]] SensorVolume WorldVolume() const noexcept override;
 
         // 形の大きさは種類の既定値と個体の上書きで調整できる。種類と形はクラスが決めるので出さない
-        NS_REFLECT_BEGIN(HitSensor, Component)
+        NS_REFLECT_BEGIN(ShapeHitSensor, HitSensor)
         NS_REFLECT_FIELD(m_radius, "半径")
         NS_REFLECT_FIELD(m_halfHeight, "半分の高さ")
         NS_REFLECT_FIELD(m_boxHalfExtents, "箱の半径")
@@ -108,13 +125,31 @@ namespace NS::Obj
         NS_REFLECT_END()
 
     private:
-        HitSensorType m_type = HitSensorType::MapObjBody;
         HitSensorShape m_shape = HitSensorShape::Sphere;
         float m_radius = 0.5f;                                // 球とカプセルの半径 (スケール前)
         float m_halfHeight = 0.5f;                            // カプセルの中心から端の半球の中心まで (スケール前)
         NS::Core::Vector3 m_boxHalfExtents{0.5f, 0.5f, 0.5f}; // 箱の中心から各面まで (スケール前)
         NS::Core::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};   // 根からの中心のずれ
-        bool m_valid = true;                                  // 調べる対象か
-        bool m_registered = false;                            // 調べ役へ入っているか
+    };
+
+    //! @brief 持ち主の体の形をそのまま映す調べ役。自機と置物の体のセンサーが使う
+    //! @details 形の正は持ち主の当たりの部品 (Body・SphereCollider) で、ここは毎回それを読むだけ。
+    //! 写しを持たないので、寸法の欄を変えたその場で範囲の照合とエディタの線に効く。欄は持たない
+    //! 関数は持ち主のクラスがコンストラクタで渡す。既定コンストラクタが無いので TypeRegistry には登録しない
+    class FollowHitSensor final : public HitSensor
+    {
+    public:
+        //! @brief 形を答える関数を受けて作る
+        //! @param[in] volume 世界座標の形を返す関数。事前条件: 空でない。空なら WorldVolume は根に長さ 0 の球を返し
+        //! NS_LOG_ERROR で知らせる
+        explicit FollowHitSensor(std::function<SensorVolume()> volume) noexcept;
+
+        //! 世界座標の形。受けた関数の答えをそのまま返す
+        [[nodiscard]] SensorVolume WorldVolume() const noexcept override;
+
+        NS_REFLECT_NONE(FollowHitSensor, HitSensor)
+
+    private:
+        std::function<SensorVolume()> m_volume; // 持ち主の当たりの形を世界座標で返す関数
     };
 } // namespace NS::Obj

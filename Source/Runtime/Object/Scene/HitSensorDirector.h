@@ -4,6 +4,7 @@
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/ITickable.h"
 
+#include <utility>
 #include <vector>
 
 namespace NS::Obj
@@ -11,10 +12,10 @@ namespace NS::Obj
     class Actor;
 
     //! @brief シーンのヒットセンサーを束ね、1 フレームに 1 回重なりを調べる。オデッセイの HitSensorDirector に当たる
-    //! @details 組み合わせの表に載った種類の組だけを調べ、重なった組の調べる側の持ち主の Actor::AttackSensor を呼ぶ
-    //! 同じ Actor
-    //! のセンサーどうしは調べない。重なりは物理エンジンを使わずに形どうしで直に解くので、物理の層と関係なく、 Scene
-    //! が値で持ち、ObjectList の更新へ自分を登録する
+    //! @details 持ち主の違う有効なセンサーの組を全部調べ、重なった組は両方の持ち主の Actor::AttackSensor を
+    //! 自分と相手を入れ替えて 1 回ずつ呼ぶ。種類は見ない。相手の種類を見て応じるかは受け手の持ち主が決める
+    //! 重なりは物理エンジンを使わずに形どうしで直に解くので、物理の層と関係ない。
+    //! Scene が値で持ち、ObjectList の更新へ自分を登録する
     class HitSensorDirector final : public ITickable, public NS::Core::NonCopyable
     {
     public:
@@ -23,31 +24,17 @@ namespace NS::Obj
         //! センサーを外す
         void Unregister(HitSensor* sensor) noexcept;
 
-        //! @brief attacker の種類のセンサーが target の種類のセンサーを調べるか。組み合わせの表
-        //! @details 体当たりは物の体を、範囲はプレイヤーの体を調べる。それ以外の組は調べない
-        [[nodiscard]] static bool Checks(HitSensorType attacker, HitSensorType target) noexcept;
-
-        //! 重なった組を集め、調べる側の持ち主の AttackSensor を呼ぶ。呼ぶ間に外れたセンサーは飛ばす
+        //! 重なった組を集め、両方の持ち主の AttackSensor を呼ぶ。呼ぶ間に外れたセンサーは飛ばす
         void OnTick() override;
 
-        //! @brief volume に重なり、attackerType が調べる種類の有効なセンサーを登録順に返す
-        //! @details 自分のセンサーを持たずに重なりを問う口。体当たりはこれで次の固定ステップの位置を先に調べる
-        //! ignore の持ち主のセンサーは返さない
-        [[nodiscard]] std::vector<HitSensor*> FindOverlaps(const SensorVolume& volume,
-                                                           HitSensorType attackerType,
-                                                           const Actor* ignore) const;
-
-        //! 種類が type の有効なセンサーを登録順に fn へ渡す
-        template <class Fn> void ForEachSensor(HitSensorType type, Fn&& fn) const
-        {
-            for (HitSensor* sensor : m_sensors)
-            {
-                if (sensor->Type() == type && sensor->IsValid())
-                {
-                    fn(*sensor);
-                }
-            }
-        }
+        //! @brief volume に重なる有効なセンサーを登録順に返す。先読みの問いの口
+        //! @details 自分のセンサーを持たずに、まだ動いていない形で重なりを問う。体当たりはこれで、この固定ステップで
+        //! 進んだ先の形を身体が動く前に問う。絞るのは仕組みの条件だけで、有効か、ignore の持ち主でないかを見る。
+        //! どの種類を相手にするかは問う側が決める
+        //! @param[in] volume 問う形。世界座標
+        //! @param[in] ignore このセンサーの持ち主は返さない。nullptr なら誰も除かない
+        //! @return 重なった有効なセンサー。登録順、非所有
+        [[nodiscard]] std::vector<HitSensor*> FindOverlaps(const SensorVolume& volume, const Actor* ignore) const;
 
         //! 登録中のセンサー。登録順、非所有
         [[nodiscard]] const std::vector<HitSensor*>& Sensors() const noexcept { return m_sensors; }
@@ -56,7 +43,7 @@ namespace NS::Obj
         [[nodiscard]] bool IsRegistered(const HitSensor* sensor) const noexcept;
 
         std::vector<HitSensor*> m_sensors; // 登録順、非所有
-        // OnTick の作業用。重なった組 (調べる側, 調べられる側)
+        // OnTick の作業用。知らせる向きに並べた自分と相手の組
         std::vector<std::pair<HitSensor*, HitSensor*>> m_pairs;
     };
 } // namespace NS::Obj

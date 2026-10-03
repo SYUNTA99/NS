@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
+
 namespace
 {
     class OwnedState final : public NS::Obj::StateOf<OwnedState, NS::Obj::Actor>
@@ -53,6 +55,25 @@ namespace
     {
         owner.machineSeenInEnter = owner.machine;
     }
+
+    // 段のメンバーの中から、歩数の問いを修飾なしで呼ぶ
+    class StepReadingActor final : public NS::Obj::Actor
+    {
+    public:
+        void BuildOwned()
+        {
+            NS::Obj::StateMachine<NS::Obj::Actor>* machine = nullptr;
+            (void)BuildStateMachine<NS::Obj::Actor, OwnedState>(*this, machine);
+        }
+        std::uint32_t stepsSeenInVisual = 0;
+
+    protected:
+        void VisualStep() override
+        {
+            NS::Obj::Actor::VisualStep();
+            stepsSeenInVisual = StepsInState(*this);
+        }
+    };
 } // namespace
 
 TEST(ActorStateMachine, ActorWithoutMachineUpdatesQuietly)
@@ -74,10 +95,21 @@ TEST(ActorStateMachine, BaseOwnsTheMachineAndUpdateStepsIt)
     EXPECT_TRUE(NS::Obj::IsState<OwnedState>(actor));
     EXPECT_TRUE(NS::Obj::IsFirstStep(actor));
     actor.Update();
-    EXPECT_EQ(NS::Obj::StateStep(actor), 1u);
+    EXPECT_EQ(NS::Obj::StepsInState(actor), 1u);
     actor.Update();
-    EXPECT_EQ(NS::Obj::StateStep(actor), 2u);
+    EXPECT_EQ(NS::Obj::StepsInState(actor), 2u);
     EXPECT_TRUE(NS::Obj::SetState<OwnedState>(actor));
+}
+
+TEST(ActorStateMachine, StepsInStateIsReachableUnqualifiedInsideAnActor)
+{
+    StepReadingActor actor;
+    actor.BuildOwned();
+
+    actor.Update();
+    EXPECT_EQ(actor.stepsSeenInVisual, 1u);
+    actor.Update();
+    EXPECT_EQ(actor.stepsSeenInVisual, 2u);
 }
 
 TEST(ActorStateMachine, TypedPointerIsReadableFromFirstStateOnEnter)

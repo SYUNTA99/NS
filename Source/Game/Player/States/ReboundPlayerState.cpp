@@ -28,7 +28,7 @@ namespace NS::Game::Player
 
             if (PlayerJudgeLand::Judge(player.Body().IsGrounded(), player.Body().VerticalVelocity()))
             {
-                player.States().Change<IdlePlayerState>(player);
+                player.States().Change<IdlePlayerState>();
                 co_return;
             }
         }

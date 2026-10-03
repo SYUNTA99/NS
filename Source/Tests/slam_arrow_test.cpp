@@ -94,7 +94,7 @@ TEST(SlamArrowTest, ArcArrowFollowsTheBallThatIsActuallyLaunched)
     }
     ASSERT_TRUE(player->Body().IsGrounded());
     NS::Game::Level::SlamLineTarget target{};
-    ASSERT_TRUE(player->ChargeControl().TryGetAimTarget(target));
+    ASSERT_TRUE(player->TryGetAimTarget(target));
     EXPECT_GT(target.launchVerticalSpeed, 0.0f);
     NS::Game::Level::SlamArrowShape arrow{};
     ASSERT_TRUE(player->SlamIndicator().TryGetShownArrow(arrow));
@@ -155,7 +155,7 @@ TEST(SlamArrowTest, PredictedTierUsesTheArcHeightAtContact)
     }
     ASSERT_TRUE(player->Body().IsGrounded());
     NS::Game::Level::SlamLineTarget target{};
-    ASSERT_TRUE(player->ChargeControl().TryGetAimTarget(target));
+    ASSERT_TRUE(player->TryGetAimTarget(target));
     EXPECT_GT(target.launchVerticalSpeed, 0.0f);
     EXPECT_EQ(target.tier, NS::Game::Level::HitTier::Center);
 }

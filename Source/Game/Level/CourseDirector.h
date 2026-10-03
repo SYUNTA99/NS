@@ -10,18 +10,18 @@
 namespace NS::Obj
 {
     class Scene;
-}
+    class ScreenFade;
+} // namespace NS::Obj
 
 namespace NS::Game::Level
 {
-    class ScreenFade;
-
     //! @brief コースの進行役。シーンに 1 つの物で、プレイヤーの死とゴールに応じてコースの流れを進める
     //! @details プレイヤーは知らせを受けて進行役へ伝えるだけで、流れは知らない
     //! 死んだら同じ段でコースを最初からやり直す。ゴールに着いたらクリアの流れを流す: 操作を止める → 暗転 →
     //! 全黒の裏でやり直す → 明転 → 操作を戻す。世界は止めない
     //! やり直しは全ての配置物へ MsgCourseRestart を送り、戻り方は受け手が決める
-    //! 暗転 (ScreenFade) は進行役が開いて持つ UIActor。進行役はシーンの組み直しで捨てられ、最初の状態から作り直される
+    //! 暗転は Object 層の ScreenFade を開いて持つ。クリアで暗転する理由を知るのは CourseDirector だけ
+    //! シーンの組み直しで捨てられ、最初の状態から作り直される
     class CourseDirector final : public NS::Obj::ISceneObj, public NS::Obj::ITickable
     {
     public:
@@ -38,7 +38,7 @@ namespace NS::Game::Level
         [[nodiscard]] bool IsClearing() const noexcept { return m_sequences.IsRunning(); }
 
         //! 暗転。テストと演出の確認が読む
-        [[nodiscard]] const ScreenFade& Fade() const noexcept { return *m_fade; }
+        [[nodiscard]] const NS::Obj::ScreenFade& Fade() const noexcept { return *m_fade; }
 
         //! @brief コースを最初からやり直す。全ての配置物へ MsgCourseRestart を送る
         //! @details 凍結 (プレイ開始時のシーンの JSON 文書) にある姿へ、受け手が自分で戻る
@@ -59,9 +59,9 @@ namespace NS::Game::Level
         static constexpr float k_FadeInSeconds = 0.4f;  // やり直した後に明けるまでの秒
 
         NS::Obj::Scene& m_scene;
-        std::unique_ptr<ScreenFade> m_fade;    // 開いて持つ暗転
-        NS::Core::CoroutineRunner m_sequences; // クリアの流れ
-        bool m_playerDead = false;             // 次の段でやり直すか
-        bool m_goalReached = false;            // 次の段でクリアの流れを始めるか
+        std::unique_ptr<NS::Obj::ScreenFade> m_fade; // 開いて持つ暗転
+        NS::Core::CoroutineRunner m_sequences;       // クリアの流れ
+        bool m_playerDead = false;                   // 次の段でやり直すか
+        bool m_goalReached = false;                  // 次の段でクリアの流れを始めるか
     };
 } // namespace NS::Game::Level

@@ -14,19 +14,12 @@ namespace NS::Gfx
     enum class Topology;
 
     //! @brief ID3D11DeviceContext を包むラッパー
-    //! @details Renderer が 1 つだけ所有し、外は Renderer::Commands から借りて使う
+    //! @details 作れるのは Renderer だけ。描く命令は Renderer::Commands から借りる
+    //! 問い合わせ・転送・外部ライブラリのような CommandList を通さない継ぎ目は、層内部から Gpu().context を直に使う
     //! 変換や一括設定が要る処理だけをラップし、その他は operator-> で元の API を直接呼ぶ
     class CommandList : public NS::Core::NonCopyable
     {
     public:
-        //--------------------------------------------------------
-        //! @name 初期化
-        //--------------------------------------------------------
-        //!@{
-
-        explicit CommandList(ID3D11DeviceContext* context) noexcept;
-
-        //!@}
         //--------------------------------------------------------
         //! @name 描画先とクリア
         //--------------------------------------------------------
@@ -124,6 +117,12 @@ namespace NS::Gfx
 
         //!@}
     private:
+        friend class Renderer;
+
+        //! @brief Renderer が自分の immediate context を包んで作る
+        //! @param[in] context 非所有の ID3D11DeviceContext
+        explicit CommandList(ID3D11DeviceContext* context) noexcept;
+
         ID3D11DeviceContext* m_context; //!< 非所有。所有は Renderer
     };
 

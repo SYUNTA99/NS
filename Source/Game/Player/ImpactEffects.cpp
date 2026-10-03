@@ -766,8 +766,9 @@ namespace NS::Game::Player
             // 着地の潰れ (PlayerAppearance) と同じ条件。このフレームの縦の速さは既に 0 なので、前のフレームの控えで測る
             m_landingDustPlayed = true;
             const float radius = LandDustRadiusFor(-m_lastVerticalVelocity);
-            Vector3 at = Owner()->Root().Position();
-            at.y -= m_player->Body().CapsuleHalfHeight() + m_player->Body().CapsuleRadius();
+            // 足元は当たりのカプセルの下端 (中心 − 軸 × (半分の高さ + 半径))
+            const NS::Phys::Capsule capsule = m_player->Body().CapsuleAt(Owner()->Root().Position());
+            Vector3 at = capsule.center - capsule.axis * (capsule.halfHeight + capsule.radius);
             at.y += k_DustRingLift;
             const std::uint32_t dust = m_layers.Play(
                 effects, k_LandDust, PlayAt(at, Quaternion::Identity, Uniform(radius / k_DustRingRadiusAtUnitScale)));

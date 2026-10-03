@@ -5,11 +5,11 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/FollowCamera.h"
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Level/SlamAim.h"
 #include "Game/Player.h"
 #include "Runtime/App/Application.h"
 #include "Runtime/Core/AABB.h"
@@ -138,9 +138,9 @@ namespace
         else if (const NS::Obj::Body* body = BodyOf(object))
         {
             // 移動が掃引するのと同じ、根を中心にした縦のカプセル。根の拡縮は掛けない
-            const float halfHeight = body->CapsuleHalfHeight();
+            const NS::Phys::Capsule bodyCapsule = body->CapsuleAt(object.Root().Position());
             NS::Gfx::DebugDraw::Capsule(
-                object.Root().Position(), NS::Core::Vector3{0.0f, halfHeight, 0.0f}, body->CapsuleRadius(), color);
+                bodyCapsule.center, bodyCapsule.axis * bodyCapsule.halfHeight, bodyCapsule.radius, color);
         }
         else if (NS::Obj::ComponentCast<NS::Obj::MeshCollider>(object.CollisionPart()) != nullptr)
         {
@@ -1250,11 +1250,11 @@ void LevelEditorController::RenderHitFaces() noexcept
     bool aiming = false;
     if (player != nullptr)
     {
-        // 突進の玉の中心。丸まっていれば根、立ち姿なら下の球の中心で、狙う相手の探し方と同じ
-        const NS::Core::Vector3 root = player->Root().Position();
-        ballCenter = NS::Core::Vector3{root.x, root.y - player->Body().CapsuleHalfHeight(), root.z};
-        playerRadius = player->Body().CapsuleRadius();
-        aiming = player->ChargeControl().TryGetAimTarget(aim);
+        // 突進の玉は、狙う相手の探し方と同じ Player::SlamBallAt から引く
+        const NS::Core::Sphere ball = player->SlamBallAt(player->Root().Position());
+        ballCenter = ball.center;
+        playerRadius = ball.radius;
+        aiming = player->TryGetAimTarget(aim);
     }
     const NS::Core::Vector3 cameraPosition = m_editorCamera.Pose().position;
 
@@ -1380,7 +1380,7 @@ void LevelEditorController::SetSelectedFreePosition(NS::Core::Vector3 position)
     {
         go->Root().SetPosition(position);
         if (NS::Obj::TransformComponent* transform =
-                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part("Transform")))
+                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part(NS::Obj::k_TransformPartName)))
         {
             MirrorPlayEditToBaseline(*transform, NS::Obj::k_PositionFieldName);
         }
@@ -1393,7 +1393,7 @@ void LevelEditorController::SetSelectedFreeRotation(NS::Core::Quaternion rotatio
     {
         go->Root().SetRotation(rotation);
         if (NS::Obj::TransformComponent* transform =
-                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part("Transform")))
+                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part(NS::Obj::k_TransformPartName)))
         {
             MirrorPlayEditToBaseline(*transform, NS::Obj::k_RotationFieldName);
         }
@@ -1411,7 +1411,7 @@ void LevelEditorController::SetSelectedFreeScale(NS::Core::Vector3 scale)
     {
         go->Root().SetScale(scale);
         if (NS::Obj::TransformComponent* transform =
-                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part("Transform")))
+                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part(NS::Obj::k_TransformPartName)))
         {
             MirrorPlayEditToBaseline(*transform, NS::Obj::k_ScaleFieldName);
         }
@@ -1646,9 +1646,9 @@ void LevelEditorController::SetComponentEnabledOnSelected(std::size_t componentI
     {
         return;
     }
-    // 入力 component を休止させると player が動かなくなる。transform は root なので同様に守る
+    // 入力 component を休止させると player が動かなくなる。根の部品も同様に守る
     const std::string_view typeName = comp->ClassName();
-    if (typeName == "PlayerInput" || typeName == "TransformComponent")
+    if (typeName == "PlayerInput" || object->PartName(*comp) == NS::Obj::k_TransformPartName)
     {
         return;
     }
@@ -1674,7 +1674,7 @@ void LevelEditorController::DuplicateSelectedObject()
 
     const NS::Obj::Actor* player = FindPlayer(m_scene->Objects());
 
-    // 選択物の忠実コピーを新しい永続 id で増やす。component の id も振り直す
+    // 選択物の忠実コピーを新しい永続 id で増やす
     // 元の id から新しい id への表を作り、コピーの中の親と参照を付け替えるのに使う
     std::vector<nlohmann::json> copies;
     copies.reserve(m_selectionIds.size());

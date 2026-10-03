@@ -1,3 +1,4 @@
+#include "Game/Level/Goal.h"
 #include "Game/Level/HitTier.h"
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactResolver.h"
@@ -22,6 +23,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -121,12 +123,13 @@ namespace
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
-    // 溜め 0 で +z へ突進させ、裁定を 1 回回す。溜め 0 のチャージ倍率は 1
+    // 溜め 0 で +z へ突進させ、本番の 1 フレームを 1 回回す。裁定は決定の段で身体が動く前に記録される
+    // 溜め 0 のチャージ倍率は 1
     const NS::Game::Level::ImpactRecord& SlamOnce(Player& player)
     {
         player.RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
         EXPECT_TRUE(player.BodySlam());
-        player.Resolver().OnUpdate();
+        player.Update(false);
         return player.Resolver().LastImpact();
     }
 } // namespace
@@ -765,7 +768,7 @@ TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
 
     player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    player->Resolver().OnUpdate();
+    player->Update(false);
     const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
     ASSERT_EQ(impact.sequence, 1u);
 
@@ -837,15 +840,15 @@ TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
 }
 
 // 上下のずれも段に効く。赤の既定 0.43 に対し、玉の中心が相手の中心より 0.5 m 低い線は 0.5 ÷ 1.15 ≒ 0.435 で外
-// 溜め 0 のタップは上向きの初速で 1 ステップぶん上がって赤へ入るので、縦の速さの無い突進で見る
+// 溜め 0 のタップは上向きの初速で 1 ステップぶん上がって赤へ入るので、縦の速さ 0 を添えた溜めた突進で見る
 TEST(HitZonesTest, VerdictMissesWhenTheLinePassesBelowTheRed)
 {
     NS::Obj::Scene scene;
     Player* player = PlaceSlamTarget(scene, nlohmann::json::object(), 1.0f);
     ASSERT_NE(player, nullptr);
-    player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, Vector3{0.0f, 0.0f, 1.0f}, 0.0f);
     ASSERT_TRUE(player->BodySlam());
-    player->Resolver().ObserveImpact(Vector3{0.0f, 0.0f, 6.0f});
+    player->Resolver().ObserveImpact();
     player->Resolver().StepState();
     const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
     ASSERT_EQ(impact.sequence, 1u);
@@ -862,11 +865,11 @@ TEST(HitZonesTest, VerdictJudgesTheBallWhereThisStepMovesIt)
     NS::Obj::Scene scene;
     Player* player = PlaceSlamTarget(scene, nlohmann::json::object(), 1.0f);
     ASSERT_NE(player, nullptr);
-    player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->BodySlam());
-
     const float riseSpeed = 0.15f / NS::Platform::FrameTimer::FixedDelta();
-    player->Resolver().ObserveImpact(Vector3{0.0f, riseSpeed, 6.0f});
+    player->RequestBodySlam(1.0f, Vector3{0.0f, 0.0f, 1.0f}, riseSpeed);
+    ASSERT_TRUE(player->BodySlam());
+    ASSERT_FLOAT_EQ(player->BodySlamVelocity().y, riseSpeed);
+    player->Resolver().ObserveImpact();
     player->Resolver().StepState();
     const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
     ASSERT_EQ(impact.sequence, 1u);
@@ -922,4 +925,56 @@ TEST(HitZonesTest, AimHeightIsTheRedCenterOnTheFace)
         face, SensorVolume::Sphere(Vector3{}, 0.0f), forward, k_PlayerRadius, height));
     EXPECT_FALSE(NS::Game::Level::HitFaceAimHeight(face, ball, Vector3{0.0f, 1.0f, 0.0f}, k_PlayerRadius, height));
     EXPECT_FLOAT_EQ(height, 7.0f);
+}
+
+// 体当たりの相手は置物の体だけ。1 ステップ先の自機に岩より近く重なるゴールの範囲は相手にしない
+TEST(ImpactResolver, TackleSkipsANearerAreaSensor)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSlamTarget(scene, nlohmann::json::object());
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::Goal* goal = scene.SpawnTransient<NS::Game::Level::Goal>();
+    goal->Root().SetPosition(Vector3{0.0f, 1.0f, 0.3f});
+
+    const NS::Game::Level::ImpactRecord& impact = SlamOnce(*player);
+    ASSERT_EQ(impact.sequence, 1u);
+    EXPECT_EQ(impact.targetId, 2u);
+}
+
+// 狙いの線も同じ相手を選ぶ。岩より手前の線の上にゴールの範囲があっても、最初に触れる相手は岩
+TEST(ImpactResolver, SlamLineSkipsAnAreaSensorOnTheLine)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSlamTarget(scene, nlohmann::json::object());
+    ASSERT_NE(player, nullptr);
+    NS::Obj::Actor* rock = scene.Objects().FindByObjectId(2);
+    ASSERT_NE(rock, nullptr);
+    rock->Root().SetPosition(Vector3{0.0f, 0.5f, 3.0f});
+    NS::Game::Level::Goal* goal = scene.SpawnTransient<NS::Game::Level::Goal>();
+    goal->Root().SetPosition(Vector3{0.0f, 0.5f, 1.5f});
+
+    NS::Game::Level::SlamLineTarget predicted{};
+    ASSERT_TRUE(player->Resolver().FindSlamLineTarget(Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
+    EXPECT_EQ(predicted.target.id, 2u);
+}
+
+// 種類を付けていないセンサーは体当たりの相手にならない。付け忘れが黙って相手になる道は無い
+TEST(HitSensor, UnsetKindIsNotATackleTarget)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSlamTarget(scene, nlohmann::json::object());
+    ASSERT_NE(player, nullptr);
+    // 岩は線の後ろへ退ける
+    NS::Obj::Actor* rock = scene.Objects().FindByObjectId(2);
+    ASSERT_NE(rock, nullptr);
+    rock->Root().SetPosition(Vector3{0.0f, 0.5f, -5.0f});
+    std::unique_ptr<NS::Obj::Actor> bare = std::make_unique<NS::Obj::Actor>();
+    NS::Obj::ShapeHitSensor* sensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(bare->CreatePart("BodySensor"));
+    ASSERT_NE(sensor, nullptr);
+    sensor->SetSphere(0.5f);
+    bare->Root().SetPosition(Vector3{0.0f, 0.5f, 2.0f});
+    ASSERT_NE(scene.SpawnTransient(std::move(bare)), nullptr);
+
+    NS::Game::Level::SlamLineTarget predicted{};
+    EXPECT_FALSE(player->Resolver().FindSlamLineTarget(Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
 }

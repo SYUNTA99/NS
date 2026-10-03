@@ -7,7 +7,6 @@
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Keyboard.h"
 #include "Runtime/UI/ImGuiContext.h"
-#include "Runtime/UI/Panel.h"
 
 #include <algorithm>
 
@@ -99,68 +98,66 @@ namespace NS::Editor
         ImGui::SetNextWindowSize(ImVec2(width, k_Height), ImGuiCond_Always);
 
         // NoMove。移動は下の余白ドラッグで自前に行う。ドックへ吸われると枠が外へ出るため NoDocking
-        NS::UI::Panel panel("Toolbar",
-                            nullptr,
-                            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                                ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar |
-                                ImGuiWindowFlags_NoScrollWithMouse);
-        if (!panel.IsOpen())
+        constexpr ImGuiWindowFlags k_ToolbarFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                                                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking |
+                                                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+        // End は Begin の戻り値に依らず必ず呼ぶ。中身を描くのは開いている間だけ
+        if (ImGui::Begin("Toolbar", nullptr, k_ToolbarFlags))
         {
-            return;
+            // ボタンの無い余白を掴んでいる間だけ自前でドラッグ移動する。移動量は次フレームの位置へ反映され、
+            // 常にクランプ済みなので枠が Scene ビューの外へ出ることはない
+            if (!m_toolbarDragging && ImGui::IsWindowHovered() && !ImGui::IsAnyItemHovered() &&
+                ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            {
+                m_toolbarDragging = true;
+            }
+            if (m_toolbarDragging)
+            {
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+                {
+                    const ImVec2 delta = ImGui::GetIO().MouseDelta;
+                    m_toolbarX = std::clamp(m_toolbarX + delta.x, minX, maxX);
+                    m_toolbarY = std::clamp(m_toolbarY + delta.y, minY, maxY);
+                }
+                else
+                {
+                    m_toolbarDragging = false;
+                }
+            }
+
+            // 各ブラシのスロットボタンを横並びで描画する
+            for (std::size_t i = 0; i < k_SlotCount; ++i)
+            {
+                if (i > 0)
+                {
+                    ImGui::SameLine();
+                }
+
+                ImGui::PushID(static_cast<int>(i));
+
+                const char* label = PaletteTemplateSlots()[i].name;
+                const bool isActive = (i == m_activeSlot);
+
+                // アクティブなスロットは色を変えてハイライトする
+                if (isActive)
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.80f, 0.50f, 0.30f, 1.0f));
+                }
+
+                if (ImGui::Button(label, ImVec2(64.0f, 32.0f)))
+                {
+                    SetActiveSlot(i);
+                }
+
+                if (isActive)
+                {
+                    ImGui::PopStyleColor();
+                }
+
+                ImGui::PopID();
+            }
         }
-
-        // ボタンの無い余白を掴んでいる間だけ自前でドラッグ移動する。移動量は次フレームの位置へ反映され、
-        // 常にクランプ済みなので枠が Scene ビューの外へ出ることはない
-        if (!m_toolbarDragging && ImGui::IsWindowHovered() && !ImGui::IsAnyItemHovered() &&
-            ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-        {
-            m_toolbarDragging = true;
-        }
-        if (m_toolbarDragging)
-        {
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
-            {
-                const ImVec2 delta = ImGui::GetIO().MouseDelta;
-                m_toolbarX = std::clamp(m_toolbarX + delta.x, minX, maxX);
-                m_toolbarY = std::clamp(m_toolbarY + delta.y, minY, maxY);
-            }
-            else
-            {
-                m_toolbarDragging = false;
-            }
-        }
-
-        // 各ブラシのスロットボタンを横並びで描画する
-        for (std::size_t i = 0; i < k_SlotCount; ++i)
-        {
-            if (i > 0)
-            {
-                ImGui::SameLine();
-            }
-
-            ImGui::PushID(static_cast<int>(i));
-
-            const char* label = PaletteTemplateSlots()[i].name;
-            const bool isActive = (i == m_activeSlot);
-
-            // アクティブなスロットは色を変えてハイライトする
-            if (isActive)
-            {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.80f, 0.50f, 0.30f, 1.0f));
-            }
-
-            if (ImGui::Button(label, ImVec2(64.0f, 32.0f)))
-            {
-                SetActiveSlot(i);
-            }
-
-            if (isActive)
-            {
-                ImGui::PopStyleColor();
-            }
-
-            ImGui::PopID();
-        }
+        ImGui::End();
 #endif
     }
 } // namespace NS::Editor

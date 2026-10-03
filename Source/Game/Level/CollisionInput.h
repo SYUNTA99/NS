@@ -2,6 +2,7 @@
 
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Level/SlamAim.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
@@ -15,23 +16,12 @@ namespace NS::Obj
 
 namespace NS::Game::Level
 {
-    //! @brief 押している間の狙いの線。狙う相手を探す線で、溜めている間は SlamArrow がこの線の向きへ放った玉の道筋に
-    //! 矢印を描く。溜めて放した突進はこの線の向きと縦の速さで出て、突進の間も向きを曲げない
-    struct AimLine
-    {
-        NS::Core::Vector3 origin;    //!< 線を引き始める自機の位置 (配置物の根)。世界座標
-        NS::Core::Vector3 direction; //!< シーンの実カメラの正面の水平の向き。正規化済みで y は 0
-        float length = 0.0f;         //!< 線に沿って突進が止まる所までの距離。欄「突進距離」の値で、単位は m
-        //! 溜めて放つ瞬間の縦の速さ (m/s)。上が正。狙う相手の SlamLineTarget::launchVerticalSpeed で、相手が無ければ 0
-        float launchVerticalSpeed = 0.0f;
-        bool grounded = false; //!< 線を控えた時に接地していたか。真なら道筋は放った高さより下へ行かない
-    };
-
     //! @brief 体当たりのボタン入力を読んで発動を要求する Component
-    //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
+    //! @details 押しは Player が PlayerInput から渡す。ImpactInputJudge がタップ / チャージを裁く
     //! どちらも離したフレームに、溜め量を添えて Player::RequestBodySlam を呼ぶ。
     //! 溜めて放した時は、放す前のフレームに控えた狙いの線の向きと縦の速さも添える
-    //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる
+    //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる。
+    //! 構えの縮みは StanceHeight が答えるだけで、描く形へ書くのは PlayerAppearance
     //! 依存: NS::Obj::Body, NS::Obj::Curve, ImpactInputJudge, ImpactResolver
     class CollisionInput : public NS::Obj::Component
     {
@@ -41,50 +31,38 @@ namespace NS::Game::Level
         //! 同じ配置物の移動と裁定を引き当てる。見つからない相手に関わる処理は以後行わない
         void OnStart() override;
 
-        //! @brief ボタンの保持を判定へ 1 フレーム進め、発動を控えたフレームに溜め量を添えて体当たりを要求する
-        //! @details 溜めて放したフレームは、狙いの線を控えていればその向きも添える。
-        //! 押している間はカメラの正面の線で狙う相手を探して控える
-        void OnUpdate() override;
-        //! @brief Observe・AdvanceState・ApplyControl を続けて呼び、判定を 1 フレーム進める
-        //! @details 突進の向きで移動の速度を書き直さない
-        //! @param[in] held ボタンを押しているか
-        //! @param[in] dt 進める秒
-        void Step(bool held, float dt);
-        //! @brief マウス左かゲームパッドの X を押しているかを読む
-        //! @details マウス左は、ゲームがマウスのボタンを受け取っている間だけ数える
-        //! @return どちらかを押している場合 true、それ以外の場合は false
-        [[nodiscard]] bool ReadHeld() const;
-        //! @brief このフレームの押しと突進中かを控え、狙う相手を探す
-        //! @details 控えた値は AdvanceState と ApplyControl が 1 回ずつ使う
+        //! @brief このフレームの押しを控え、狙う相手を探す
+        //! @details 控えた押しは AdvanceState が 1 回使う。AdvanceState と ApplyControl は Observe ごとに 1 回ずつ効く
         //! @param[in] held ボタンを押しているか
         void Observe(bool held);
         //! @brief Observe で控えた押しで溜めを 1 フレーム進める
-        //! @details 持ち主が Player なら Player の溜めを進める。Observe の後に 1 回だけ効き、2 回目は何もしない
+        //! @details 溜めを進める呼び手はこの 1 か所。Observe の後に 1 回だけ効き、2 回目は何もしない
         //! @param[in] dt 進める秒
         void AdvanceState(float dt);
-        //! @brief 突進中なら突進の向きと突進速度で移動の水平の速度を書き直し、溜めの輪を描く
-        //! @details AdvanceState の後に 1 回だけ効き、AdvanceState より先に呼んだ時と 2 回目は何もしない
-        //! @param[in] refreshVelocity 突進の向きを移動の速度へ入れ直すか。移動が休止中なら入れ直さない
-        void ApplyControl(bool refreshVelocity = true);
-        //! @brief 次の固定ステップの突進の速度を見込みで返す
-        //! @details Player::BodySlamVelocity と同じ。突進の向きは放した後に変わらない
-        //! @return 見込みの速度。同じ配置物に移動が無ければ 0
-        [[nodiscard]] NS::Core::Vector3 PredictedSlamVelocity() const noexcept;
+        //! @brief 溜めている間の輪を描く
+        //! @details AdvanceState の後に 1 回だけ効き、AdvanceState より先に呼んだ時と 2 回目は何もしない。
+        //! 速度は書かない。突進の水平の書き手は Player::UpdateBodySlam
+        void ApplyControl();
 
-        //! 構えの縮みが残っていれば元の形へ戻し、自機へ渡した押しの印を戻して丸まりを解く
+        //! @brief 溜めを捨てる。放した扱いにはしないので、タップも溜めた突進も出ない
+        //! @details 判定を初めの値へ戻して控えた押しと狙いの線・狙う相手を消す。自機へ渡した押しの印は偽、
+        //! 最高速度の倍率は 1 へ戻す。構えは判定から答えるので 1 に戻る。丸まりは解かず、着地で解ける
+        void CancelCharge() noexcept;
+
+        //! 溜めを捨て (CancelCharge)、丸まりを解く
         void OnEndPlay() override;
-
-        //! 溜め量 0..1 をチャージ倍率カーブで威力の倍率にする。非有限の入力とカーブの 0 以下の値は 1 とみなす
-        [[nodiscard]] float ChargeFactorFor(float charge01) const noexcept;
-
-        //! 溜め中に最高速へ掛ける倍率を返す。1 − チャージ減速率を 0..1 に丸める
-        [[nodiscard]] float ChargingSpeedScale() const noexcept;
 
         //! チャージ中の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsCharging() const noexcept { return m_judge.IsCharging(); }
 
         //! チャージが満タンの場合 true、それ以外の場合は false
         [[nodiscard]] bool IsChargeFull() const noexcept { return m_judge.IsChargeFull(); }
+
+        //! @brief 構えで縦に縮める倍率を返す
+        //! @details 溜めている間は欄「構えの縮み」、溜めに入る前に押している間は欄「押しの構えの縮み」、
+        //! それ以外は 1。当たりの止めは見ない。描く形へ書くのは PlayerAppearance で、ここは何も書かない
+        //! @return 元の形を 1 とした縦の倍率
+        [[nodiscard]] float StanceHeight() const noexcept;
 
         //! @brief 押している間に控えた狙う相手を読む
         //! @details 押している間は毎フレーム、TryGetAimLine の狙いの線の向きと長さで
@@ -113,7 +91,6 @@ namespace NS::Game::Level
         NS_REFLECT_NONE(CollisionInput, NS::Obj::Component)
 
     private:
-        void UpdateChargeStance();
         // 押している間はカメラの正面へ狙いの線を作って控え、その線で狙う相手を探して控える。
         // 押していなければ両方の控えを消す
         void UpdateAimTarget(bool held);
@@ -133,7 +110,6 @@ namespace NS::Game::Level
         SlamLineTarget m_observedAimTarget{};
         bool m_observedHasAimLine = false;
         bool m_observedHasAimTarget = false;
-        bool m_observedRushing = false;
         bool m_observedHeld = false;
         bool m_stateReady = false;
         bool m_controlReady = false;
@@ -141,8 +117,6 @@ namespace NS::Game::Level
         bool m_hasAimTarget = false;
         AimLine m_aimLine{}; // 押している間の狙いの線。m_hasAimLine が偽の間は読まない
         bool m_hasAimLine = false;
-        NS::Core::Vector3 m_homeScale{1.0f, 1.0f, 1.0f};
-        bool m_stanceApplied = false;
         NS::Obj::Body* m_body = nullptr;
         ImpactResolver* m_resolver = nullptr;
     };

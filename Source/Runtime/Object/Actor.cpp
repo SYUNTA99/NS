@@ -27,7 +27,7 @@ namespace NS::Obj
 
     void Actor::ForEachPart(const PartVisitor& visitor) const
     {
-        visitor("Transform", *m_rootPart);
+        visitor(k_TransformPartName, *m_rootPart);
         const auto visit = [&visitor](std::string_view name, Component* part) {
             if (part != nullptr)
             {
@@ -96,12 +96,12 @@ namespace NS::Obj
         }
         else if (name == "BodySensor")
         {
-            m_bodySensor = std::make_unique<HitSensor>();
+            m_bodySensor = std::make_unique<ShapeHitSensor>();
             created = m_bodySensor.get();
         }
         else if (name == "AttackSensor")
         {
-            m_attackSensor = std::make_unique<HitSensor>();
+            m_attackSensor = std::make_unique<ShapeHitSensor>();
             created = m_attackSensor.get();
         }
         else if (name == "HitReaction")
@@ -124,6 +124,16 @@ namespace NS::Obj
         }
         m_collision = std::move(collision);
         AttachFixedComponent(*m_collision);
+    }
+
+    void Actor::SetBodySensorPart(std::unique_ptr<HitSensor> sensor)
+    {
+        if (m_bodySensor != nullptr || sensor == nullptr)
+        {
+            return;
+        }
+        m_bodySensor = std::move(sensor);
+        AttachFixedComponent(*m_bodySensor);
     }
 
     IStateMachine* Actor::GetStateMachine() noexcept
@@ -255,22 +265,16 @@ namespace NS::Obj
         if (!IsActiveInHierarchy())
         {
             OnKill();
-            return;
-        }
-        if (Scene* scene = OwningScene())
-        {
-            scene->Objects().RegisterActor(this);
         }
     }
 
     void Actor::OnAppear()
     {
-        Scene* scene = OwningScene();
-        if (scene == nullptr || !IsActiveInHierarchy())
+        // 部品が描画・当たり・センサーのシーンの仕組みへ登録するので、シーンに付いていない間は何もしない
+        if (OwningScene() == nullptr || !IsActiveInHierarchy())
         {
             return;
         }
-        scene->Objects().RegisterActor(this);
         ForEachPart([](std::string_view, Component& part) {
             if (part.IsActive())
             {
@@ -285,12 +289,10 @@ namespace NS::Obj
 
     void Actor::OnKill() noexcept
     {
-        Scene* scene = OwningScene();
-        if (scene == nullptr)
+        if (OwningScene() == nullptr)
         {
             return;
         }
-        scene->Objects().UnregisterActor(this);
         ForEachPart([](std::string_view, Component& part) { part.OnKill(); });
         for (Actor* child : m_children)
         {
@@ -325,11 +327,6 @@ namespace NS::Obj
     void Actor::PrepareRender()
     {
         TickPart(m_animation.get());
-    }
-
-    void Actor::OnUpdate()
-    {
-        Update();
     }
 
     void Actor::OnEndPlay()

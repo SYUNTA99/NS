@@ -49,6 +49,25 @@ namespace NS::Game::Player
             return PlayerGravity{
                 .rise = m_gravityUp, .fall = m_gravityDown, .apexSpeed = m_apexHangVy, .apexScale = m_apexHangScale};
         }
+        //! @brief 反動の間の重力の組。上りだけ欄「反動の上りの重力倍率」を掛け、下りと頂点の帯は Gravity() と同じ
+        //! @details Player::ReboundGravity が ChooseGravity へ渡す組と、Player::ReboundVelocityFor が初速の曲線を組む
+        //! 元の組は同じ。どちらかだけ欄の選び方を変える道を残さない
+        [[nodiscard]] PlayerGravity ReboundGravity() const noexcept
+        {
+            return PlayerGravity{.rise = m_gravityUp * m_reboundRiseGravityScale,
+                                 .fall = m_gravityDown,
+                                 .apexSpeed = m_apexHangVy,
+                                 .apexScale = m_apexHangScale};
+        }
+        //! @brief 溜め量 0..1 を欄「チャージ倍率カーブ」で威力の倍率にする
+        //! @details 非有限の入力とカーブの 0 以下の値は 1 とみなす。ImpactResolver が当たりの威力を作る時に読む
+        //! @param[in] charge01 溜め量。0..1 の外は丸める
+        //! @return 威力の倍率
+        [[nodiscard]] float ChargeFactorFor(float charge01) const noexcept;
+        //! @brief 溜め中に最高速へ掛ける倍率を返す
+        //! @details 1 − 欄「チャージ減速率」を 0..1 に丸める。CollisionInput が溜めの間に自機へ渡す
+        //! @return 最高速へ掛ける倍率
+        [[nodiscard]] float ChargingSpeedScale() const noexcept;
 
         NS_REFLECT_BEGIN(PlayerParams, NS::Obj::Component)
         NS_REFLECT_FIELD(m_maxHealth, "体力")
