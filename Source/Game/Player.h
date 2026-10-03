@@ -296,7 +296,7 @@ public:
     bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
     //! @brief プレイ開始時の凍結 (baseline) の自分の位置へ戻り、動きと命を最初の状態へ戻す
-    //! @details 凍結に自分が居なければ、新規レベルで置く位置へ戻す
+    //! @details 凍結に自分が居なければ、DefaultSpawnPosition の位置へ戻す
     void RestartFrom(const nlohmann::json& baseline) noexcept;
 
     //! 命を amount 削る。下限 0
@@ -490,19 +490,9 @@ private:
 //! @param[in,out] objects 探す先の配置物。返した Player* から中身が書き換わる
 [[nodiscard]] Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept;
 
-//! プレイヤーの配置物か。live の FindPlayer と同じく型名で照合する
-[[nodiscard]] bool IsPlayerObject(const nlohmann::json& object) noexcept;
-
-//! シーンの JSON 文書からプレイヤーを探す。最初の 1 件の添字、無ければ k_NoObjectIndex
-//! 複数居ても先頭を正とする。2 体以上の警告は EnsurePlayerObject を通した時だけ出る
-[[nodiscard]] std::size_t FindPlayerObjectIndex(const nlohmann::json& scene) noexcept;
-
-//! scale は capsule 当たり 0.4/0.9/0.4 に cube mesh の見た目を合わせる値
-[[nodiscard]] nlohmann::json MakePlayerObject(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation);
-
-//! プレイヤーの永続 id。居なければ k_NoObjectId。追従カメラの追従先を結ぶのに使う
-[[nodiscard]] std::uint32_t PlayerObjectId(const nlohmann::json& scene) noexcept;
-
-//! プレイヤーが 1 体も居なければ既定構成で足し、永続 id まで振る。2 体以上なら警告して先頭を正とする
-//! @retresult 足したなら true
-[[nodiscard]] bool EnsurePlayerObject(nlohmann::json& scene);
+//! @brief プレイヤーの居ないレベルへ補う時と、凍結に自機が居ないやり直しで使う出現位置の既定
+//! @details 水平は原点。高さは仮定した床の上面にカプセルの半分の高さと半径と余白を足した中心の高さで、寸法は body の欄から引く
+//! 補う側 (エディタの EnsurePlayerObject) とやり直しの落ち先 (RestartFrom) が同じこの関数を読む
+//! @param[in] body 立たせる自機の身体。カプセルの寸法の持ち主
+//! @return カプセルの中心の world 位置
+[[nodiscard]] NS::Core::Vector3 DefaultSpawnPosition(const NS::Obj::Body& body) noexcept;

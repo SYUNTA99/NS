@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Game.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/DeathZone.h"
@@ -44,14 +45,14 @@ namespace
     nlohmann::json CourseWithPlayer()
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
-        (void)EnsurePlayerObject(doc);
-        (void)NS::Game::Level::EnsureDeathZoneObject(doc);
+        (void)NS::Editor::EnsurePlayerObject(doc);
+        (void)NS::Editor::EnsureDeathZoneObject(doc);
         return doc;
     }
 
     NS::Core::Vector3 SpawnOf(const nlohmann::json& doc)
     {
-        return NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(doc)[FindPlayerObjectIndex(doc)]);
+        return NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(doc)[NS::Editor::FindPlayerObjectIndex(doc)]);
     }
 
     // ゴールを自機の出現位置に重ねたシーン文書

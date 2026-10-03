@@ -1,8 +1,10 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/DeathZone.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/SphereCollider.h"
 #include "Runtime/Object/Components/TransformComponent.h"
+#include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -13,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -181,10 +184,10 @@ TEST(SceneActor, NewLevelGetsOnePlayerAndOneDeathZone)
 {
     // 新しいレベルにはプレイヤーと落下死の範囲が 1 つずつ入り、2 度呼んでも増えない
     nlohmann::json doc = NS::Obj::MakeSceneJson();
-    EXPECT_TRUE(EnsurePlayerObject(doc));
-    EXPECT_TRUE(NS::Game::Level::EnsureDeathZoneObject(doc));
-    EXPECT_FALSE(EnsurePlayerObject(doc));
-    EXPECT_FALSE(NS::Game::Level::EnsureDeathZoneObject(doc));
+    EXPECT_TRUE(NS::Editor::EnsurePlayerObject(doc));
+    EXPECT_TRUE(NS::Editor::EnsureDeathZoneObject(doc));
+    EXPECT_FALSE(NS::Editor::EnsurePlayerObject(doc));
+    EXPECT_FALSE(NS::Editor::EnsureDeathZoneObject(doc));
 
     int players = 0;
     int zones = 0;
@@ -202,6 +205,80 @@ TEST(SceneActor, NewLevelGetsOnePlayerAndOneDeathZone)
     }
     EXPECT_EQ(players, 1);
     EXPECT_EQ(zones, 1);
+}
+
+namespace
+{
+    // Player の種類の既定を試しの間だけ差し替え、終わったら元へ戻す
+    class ScopedPlayerArchetype
+    {
+    public:
+        explicit ScopedPlayerArchetype(nlohmann::json archetype)
+        {
+            const nlohmann::json* current = NS::Obj::ArchetypeLibrary::Get().Find("Player");
+            if (current != nullptr)
+            {
+                m_previous = *current;
+            }
+            NS::Obj::ArchetypeLibrary::Get().Set("Player", std::move(archetype));
+        }
+
+        ~ScopedPlayerArchetype()
+        {
+            if (m_previous.has_value())
+            {
+                NS::Obj::ArchetypeLibrary::Get().Set("Player", std::move(*m_previous));
+            }
+            else
+            {
+                NS::Obj::ArchetypeLibrary::Get().Erase("Player");
+            }
+        }
+
+        ScopedPlayerArchetype(const ScopedPlayerArchetype&) = delete;
+        ScopedPlayerArchetype& operator=(const ScopedPlayerArchetype&) = delete;
+
+    private:
+        std::optional<nlohmann::json> m_previous;
+    };
+} // namespace
+
+TEST(SceneActor, EnsuredPlayerStandsOnTheAssumedFloorForItsCapsule)
+{
+    // 補う自機の高さはカプセルの寸法から出す。床の上面 0.5 + 半分の高さ + 半径 + 余白 1cm
+    // 種類の既定の半径を変えても、足元が床の 1cm 上に出る
+    const ScopedPlayerArchetype archetype{
+        nlohmann::json{{"class", "Player"}, {"parts", {{"Movement", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
+    nlohmann::json doc = NS::Obj::MakeSceneJson();
+    EXPECT_TRUE(NS::Editor::EnsurePlayerObject(doc));
+
+    const nlohmann::json& objects = NS::Obj::SceneJsonObjects(doc);
+    ASSERT_EQ(objects.size(), std::size_t{1});
+    EXPECT_NEAR(NS::Obj::ObjectPosition(objects[0]).y, 0.5f + 0.5f + 0.65f + 0.01f, 1e-5f);
+}
+
+TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosition)
+{
+    // 補う位置とやり直しの落ち先は同じ DefaultSpawnPosition から出る。数字の写しが戻ると片方だけずれる
+    const ScopedPlayerArchetype archetype{
+        nlohmann::json{{"class", "Player"}, {"parts", {{"Movement", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
+    nlohmann::json doc = NS::Obj::MakeSceneJson();
+    ASSERT_TRUE(NS::Editor::EnsurePlayerObject(doc));
+    const NS::Core::Vector3 ensured = NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(doc)[0]);
+
+    NS::Obj::Scene scene;
+    scene.LoadJson(doc);
+    Player* player = FindPlayer(scene.Objects());
+    ASSERT_NE(player, nullptr);
+    const NS::Core::Vector3 fallback = DefaultSpawnPosition(player->Body());
+    EXPECT_FLOAT_EQ(ensured.y, fallback.y);
+
+    // 凍結に自機が居ないやり直しは、補う位置と同じ高さへ戻る
+    player->Root().SetPosition(NS::Core::Vector3{3.0f, 40.0f, 3.0f});
+    player->RestartFrom(NS::Obj::MakeSceneJson());
+    EXPECT_FLOAT_EQ(player->Root().Position().x, fallback.x);
+    EXPECT_FLOAT_EQ(player->Root().Position().y, fallback.y);
+    EXPECT_FLOAT_EQ(player->Root().Position().z, fallback.z);
 }
 
 TEST(SceneLoad, CourseSceneHasOneDeathZoneAndNoUnregisteredActor)

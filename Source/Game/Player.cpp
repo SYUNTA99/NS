@@ -19,7 +19,6 @@
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
-#include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/Animation.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/HitReaction.h"
@@ -29,13 +28,11 @@
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectList.h"
-#include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
 #include <cmath>
-#include <cstring>
 
 NS_CLASS(Player)
 
@@ -343,8 +340,8 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
 void Player::RestartFrom(const nlohmann::json& baseline) noexcept
 {
     // 出現位置はエディタで配置したプレイヤーの capsule 中心の world 位置そのもの
-    // 凍結に既にある値なので写しは持たず、その都度読む。居なければ新規レベルで置く位置へ戻す
-    NS::Core::Vector3 spawn{0.0f, 1.41f, 0.0f};
+    // 凍結に既にある値なので写しは持たず、その都度読む。居なければ新規レベルで補う位置へ戻す
+    NS::Core::Vector3 spawn = DefaultSpawnPosition(Body());
     const std::size_t index = NS::Obj::FindObjectIndexById(baseline, Id());
     if (index != NS::Obj::k_NoObjectIndex)
     {
@@ -570,77 +567,28 @@ Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept
 {
     for (NS::Obj::Actor* obj : objects)
     {
-        if (std::strcmp(obj->ClassName(), "Player") == 0)
+        if (Player* player = NS::Obj::Cast<Player>(obj))
         {
-            return static_cast<Player*>(obj);
+            return player;
         }
     }
     return nullptr;
 }
 
-bool IsPlayerObject(const nlohmann::json& object) noexcept
+namespace
 {
-    return NS::Obj::ObjectJsonClass(object) == "Player";
-}
+    // 補う自機が立つと仮定する床の上面 (m)
+    // 感じてほしい体験: 新しいレベルを開いた瞬間、自機が床に立っている
+    // してほしい挙動: 補った自機の足元が仮定の床の少し上に出て、置いた瞬間に床と重ならない
+    // 用意した変数: k_DefaultFloorTop = 0.5 (エディタの立方体の床の上面)、k_SpawnClearance = 0.01 (床と重ならない余白)
+    // 実装: DefaultSpawnPosition が、この 2 つにカプセルの寸法 (Body の欄) を足して中心の高さを出す
+    // TODO: 床の上面を仮定している。補う時に下向きに引いて置く
+    constexpr float k_DefaultFloorTop = 0.5f;
+    constexpr float k_SpawnClearance = 0.01f;
+} // namespace
 
-std::size_t FindPlayerObjectIndex(const nlohmann::json& scene) noexcept
+NS::Core::Vector3 DefaultSpawnPosition(const NS::Obj::Body& body) noexcept
 {
-    const nlohmann::json& objects = NS::Obj::SceneJsonObjects(scene);
-    for (std::size_t i = 0; i < objects.size(); ++i)
-    {
-        if (IsPlayerObject(objects[i]))
-        {
-            return i;
-        }
-    }
-    return NS::Obj::k_NoObjectIndex;
-}
-
-nlohmann::json MakePlayerObject(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation)
-{
-    // 構成は Player のコンストラクタが決める。ひな形は型名だけ持ち、値はコード既定を使う
-    nlohmann::json object = NS::Obj::MakePrototypeJson<Player>();
-    NS::Obj::SetObjectPosition(object, position);
-    NS::Obj::SetObjectRotation(object, rotation);
-    // 根のスケールは既定の 1 のまま。1 でないと玉が楕円に伸び、差し替えたモデルも同じ比で伸びる
-    return object;
-}
-
-std::uint32_t PlayerObjectId(const nlohmann::json& scene) noexcept
-{
-    const std::size_t index = FindPlayerObjectIndex(scene);
-    if (index == NS::Obj::k_NoObjectIndex)
-    {
-        return NS::Obj::k_NoObjectId;
-    }
-    return NS::Obj::ObjectJsonId(NS::Obj::SceneJsonObjects(scene)[index]);
-}
-
-bool EnsurePlayerObject(nlohmann::json& scene)
-{
-    bool created = false;
-    if (FindPlayerObjectIndex(scene) == NS::Obj::k_NoObjectIndex)
-    {
-        // capsule 中心の高さは、床 block 上面 0.5 + capsule 半高 0.9 + 1cm
-        NS::Obj::SceneJsonObjects(scene).push_back(
-            MakePlayerObject(NS::Core::Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{}));
-        created = true;
-    }
-
-    std::size_t count = 0;
-    for (const nlohmann::json& object : NS::Obj::SceneJsonObjects(scene))
-    {
-        if (IsPlayerObject(object))
-        {
-            ++count;
-        }
-    }
-    if (count > 1)
-    {
-        NS_LOG_WARN(Game, "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う", count);
-    }
-
-    // 追従カメラが Target へ書き込む id が要るので、ここで採番まで済ませる
-    NS::Obj::EnsureUniqueObjectIds(scene);
-    return created;
+    return NS::Core::Vector3{
+        0.0f, k_DefaultFloorTop + body.StandingHalfHeight() + body.CapsuleRadius() + k_SpawnClearance, 0.0f};
 }

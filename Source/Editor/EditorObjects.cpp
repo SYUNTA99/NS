@@ -1,11 +1,17 @@
 #include "Editor/EditorObjects.h"
 
+#include "Game/Level/DeathZone.h"
+#include "Game/Player.h"
+#include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Mesh.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectList.h"
+#include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
+#include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
 namespace NS::Editor
@@ -159,4 +165,94 @@ namespace NS::Editor
         return NS::Core::AABB{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Vector3{0.5f, 0.5f, 0.5f}};
     }
 
+    bool IsPlayerObject(const nlohmann::json& object) noexcept
+    {
+        return NS::Obj::ObjectJsonClass(object) == ::Player::StaticReflection()->typeName;
+    }
+
+    std::size_t FindPlayerObjectIndex(const nlohmann::json& scene) noexcept
+    {
+        const nlohmann::json& objects = NS::Obj::SceneJsonObjects(scene);
+        for (std::size_t i = 0; i < objects.size(); ++i)
+        {
+            if (IsPlayerObject(objects[i]))
+            {
+                return i;
+            }
+        }
+        return NS::Obj::k_NoObjectIndex;
+    }
+
+    nlohmann::json MakePlayerObject(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation)
+    {
+        // 構成は Player のコンストラクタが決める。ひな形は型名だけ持ち、値はコード既定を使う
+        nlohmann::json object = NS::Obj::MakePrototypeJson<::Player>();
+        NS::Obj::SetObjectPosition(object, position);
+        NS::Obj::SetObjectRotation(object, rotation);
+        return object;
+    }
+
+    bool EnsurePlayerObject(nlohmann::json& scene)
+    {
+        bool created = false;
+        if (FindPlayerObjectIndex(scene) == NS::Obj::k_NoObjectIndex)
+        {
+            // 高さはカプセルの寸法の持ち主 Body から引く。種類の既定でカプセルを変えても足元が床の上に出る
+            const NS::Obj::Actor& baseline =
+                NS::Obj::ArchetypeLibrary::Get().Baseline(::Player::StaticReflection()->typeName);
+            const ::Player* player = NS::Obj::Cast<::Player>(&baseline);
+            if (player == nullptr)
+            {
+                NS_LOG_ERROR(Game, "プレイヤーの種類の既定を Player として引けず、プレイヤーを補えない");
+                return false;
+            }
+            NS::Obj::SceneJsonObjects(scene).push_back(
+                MakePlayerObject(DefaultSpawnPosition(player->Body()), NS::Core::Quaternion{}));
+            created = true;
+        }
+
+        std::size_t count = 0;
+        for (const nlohmann::json& object : NS::Obj::SceneJsonObjects(scene))
+        {
+            if (IsPlayerObject(object))
+            {
+                ++count;
+            }
+        }
+        if (count > 1)
+        {
+            NS_LOG_WARN(Game, "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う", count);
+        }
+
+        // 追従カメラの追従先の欄が id で結ぶので、ここで採番まで済ませる
+        NS::Obj::EnsureUniqueObjectIds(scene);
+        return created;
+    }
+
+    bool IsDeathZoneObject(const nlohmann::json& object) noexcept
+    {
+        return NS::Obj::ObjectJsonClass(object) == NS::Game::Level::DeathZone::StaticReflection()->typeName;
+    }
+
+    nlohmann::json MakeDeathZoneObject()
+    {
+        nlohmann::json object = NS::Obj::MakePrototypeJson<NS::Game::Level::DeathZone>();
+        // 上面 y=-50 は従来の落下死の高さ
+        NS::Obj::SetObjectPosition(object, NS::Core::Vector3{0.0f, -55.0f, 0.0f});
+        return object;
+    }
+
+    bool EnsureDeathZoneObject(nlohmann::json& scene)
+    {
+        for (const nlohmann::json& object : NS::Obj::SceneJsonObjects(scene))
+        {
+            if (IsDeathZoneObject(object))
+            {
+                return false;
+            }
+        }
+        NS::Obj::SceneJsonObjects(scene).push_back(MakeDeathZoneObject());
+        NS::Obj::EnsureUniqueObjectIds(scene);
+        return true;
+    }
 } // namespace NS::Editor

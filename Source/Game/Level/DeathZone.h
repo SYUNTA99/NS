@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Scene/SceneJson.h"
 
 namespace NS::Game::Level
 {
@@ -19,14 +18,4 @@ namespace NS::Game::Level
         //! 範囲に入ったプレイヤーの体へ MsgInstantDeath を送る
         void AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other) override;
     };
-
-    //! 即死体積の配置物の JSON か
-    [[nodiscard]] bool IsDeathZoneObject(const nlohmann::json& object) noexcept;
-
-    //! 奈落用の即死体積のひな形の JSON を作る
-    [[nodiscard]] nlohmann::json MakeDeathZoneObject();
-
-    //! 即死体積が 1 つも無ければ既定の落下死体積を敷き、永続 id まで振る
-    //! 無いレベルは奈落で死ねず落ち続けてしまうので、新しいレベルを作る時に通す
-    [[nodiscard]] bool EnsureDeathZoneObject(nlohmann::json& scene);
 } // namespace NS::Game::Level
