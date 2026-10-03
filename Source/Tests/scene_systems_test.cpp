@@ -1,13 +1,15 @@
+#include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/ITickable.h"
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Object/UIActor.h"
 
 #include <gtest/gtest.h>
 
-#include <cstdint>
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -168,26 +170,39 @@ TEST(ObjectListTicker, ActorTickFollowsBands)
     EXPECT_EQ(log.order[1], "component");
 }
 
-// 数えるのは世界が実際に進んだ固定ステップだけ。止めている間に回った更新は数えない
-TEST(SceneSimulation, StepCountAdvancesOnlyWhenTheWorldSteps)
+// ステップの図形は世界の物なので、世界を組み直したら前の世界の線と面を残さない
+TEST(SceneStepShapes, RebuildingTheWorldDropsTheStepShapes)
 {
+    namespace DD = NS::Gfx::DebugDraw;
     NS::Obj::Scene scene;
-    const std::uint64_t start = scene.SimulationStepCount();
-    scene.OnUpdate();
-    EXPECT_EQ(scene.SimulationStepCount(), start + 1);
+    DD::Clear();
+    DD::Line(NS::Core::Vector3{0.0f, 0.0f, 0.0f},
+             NS::Core::Vector3{1.0f, 0.0f, 0.0f},
+             NS::Core::Color{1.0f, 1.0f, 1.0f, 1.0f});
+    DD::Triangle(NS::Core::Vector3{0.0f, 0.0f, 0.0f},
+                 NS::Core::Vector3{1.0f, 0.0f, 0.0f},
+                 NS::Core::Vector3{0.0f, 1.0f, 0.0f},
+                 NS::Core::Color{1.0f, 1.0f, 1.0f, 0.5f});
 
-    scene.SetSimulationPaused(true);
-    scene.OnUpdate();
-    scene.OnUpdate();
-    EXPECT_EQ(scene.SimulationStepCount(), start + 1);
+    scene.LoadJson(NS::Obj::MakeSceneJson());
 
-    // コマ送りは 1 歩だけ進める
-    scene.StepSimulation();
-    scene.OnUpdate();
-    scene.OnUpdate();
-    EXPECT_EQ(scene.SimulationStepCount(), start + 2);
+    EXPECT_EQ(DD::VertexCount(), std::size_t{0});
+    EXPECT_EQ(DD::FaceVertexCount(), std::size_t{0});
+    DD::Clear();
+}
 
-    scene.SetSimulationEnabled(false);
-    scene.OnUpdate();
-    EXPECT_EQ(scene.SimulationStepCount(), start + 2);
+// シーンを畳んだ後に、畳んだ世界の線が次のシーンの最初の描画へ残らない
+TEST(SceneStepShapes, ShutdownDropsTheStepShapes)
+{
+    namespace DD = NS::Gfx::DebugDraw;
+    NS::Obj::Scene scene;
+    DD::Clear();
+    DD::Line(NS::Core::Vector3{0.0f, 0.0f, 0.0f},
+             NS::Core::Vector3{1.0f, 0.0f, 0.0f},
+             NS::Core::Color{1.0f, 1.0f, 1.0f, 1.0f});
+
+    scene.OnShutdown();
+
+    EXPECT_EQ(DD::VertexCount(), std::size_t{0});
+    DD::Clear();
 }

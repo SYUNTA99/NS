@@ -96,6 +96,7 @@ namespace NS::Gfx
 } // namespace NS::Gfx
 
 //! この固定ステップの図形を積む自由関数。積み先は 1 つの静的な DebugShapes
+//! 捨てるのは Scene で、段を回す歩の頭・世界の組み直し・終わりの 3 か所。描いても捨てないので次の歩まで描かれ続ける
 namespace NS::Gfx::DebugDraw
 {
     //! @brief 2点間に線分を追加する
@@ -145,10 +146,11 @@ namespace NS::Gfx::DebugDraw
     //! @details 固定ステップの頭で呼ぶ。描画までに固定ステップが複数進んでも、最後の 1 回で積んだ図形だけが残る
     void BeginStep() noexcept;
 
-    //! @brief 蓄積された図形群を一括で描画し、内部のバッファをクリアする
+    //! @brief この固定ステップの図形を描く。溜めた図形は残る
+    //! @details ビューを何枚描いても、歩の無いフレームでも同じ図形が出る
     //! @param[in,out] renderer 描画コマンドの発行先
     //! @param[in] viewProjection ビュー・プロジェクション行列
-    void Flush(Renderer& renderer, const NS::Core::Matrix& viewProjection) noexcept;
+    void Draw(Renderer& renderer, const NS::Core::Matrix& viewProjection) noexcept;
 
     //! 蓄積した頂点を全て捨てる
     void Clear() noexcept;

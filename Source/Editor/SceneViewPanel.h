@@ -30,7 +30,7 @@ namespace NS::Editor
         //! F5 全画面直描き中は中央矩形と自由視点の上書きを外す
         void ClearForHiddenUi(LevelEditorController& editor) noexcept;
 
-        //! @return 可視なら {RT, 編集 / 自由視点} のビュー。不可視なら nullopt
+        //! @return 可視なら {RT, 編集 / 自由視点, エディタの図形を積む口} のビュー。不可視なら nullopt
         [[nodiscard]] std::optional<NS::Obj::SceneView> CollectView(LevelEditorController& editor) noexcept;
 
         //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ

@@ -305,6 +305,10 @@ namespace NS::Obj
 
     void Scene::RebuildObjectsFrom(const nlohmann::json& scene)
     {
+#if !defined(NS_SHIPPING)
+        // ステップの図形は前の世界の姿。組み直した世界へ残すと、次の歩が来るまで消えた物の線が出る
+        NS::Gfx::DebugDraw::Clear();
+#endif
         // シーンに 1 つの物 (進行役など) は最初の状態から作り直させる。組み直した配置物の開始が必要な物を作る
         m_sceneObjs.Clear();
         // Actor の型選択は登録一覧、参照の実体化は各 component の ResolveAssets が行う
@@ -336,7 +340,6 @@ namespace NS::Obj
             }
             m_simulationStepFrames -= 1;
         }
-        m_simulationStepCount += 1;
 #if !defined(NS_SHIPPING)
         // 描画 1 回ごとに捨てると、その間に進む固定ステップの回数で映る図形が変わる
         NS::Gfx::DebugDraw::BeginStep();
@@ -359,6 +362,10 @@ namespace NS::Obj
         m_sceneObjs.Clear();
         m_objects.Clear();
         m_cameraManager->SetCamera(nullptr);
+#if !defined(NS_SHIPPING)
+        // 溜め場は静的な 1 つなので、畳んだ世界の線が次のシーンの描画へ残る
+        NS::Gfx::DebugDraw::Clear();
+#endif
     }
 
     void Scene::OnRender()

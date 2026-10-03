@@ -115,30 +115,30 @@ namespace
     }
 
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状
-    void DrawColliderWireframe(NS::Obj::Actor& object, const NS::Core::Color& color) noexcept
+    void DrawColliderWireframe(NS::Gfx::DebugShapes& shapes, NS::Obj::Actor& object, const NS::Core::Color& color) noexcept
     {
         if (NS::Obj::BoxCollider* box = NS::Obj::ComponentCast<NS::Obj::BoxCollider>(object.CollisionPart()))
         {
-            NS::Gfx::DebugDraw::OBB(box->WorldOBB(), color);
+            shapes.OBB(box->WorldOBB(), color);
         }
         else if (NS::Obj::SphereCollider* sphere =
                      NS::Obj::ComponentCast<NS::Obj::SphereCollider>(object.CollisionPart()))
         {
-            NS::Gfx::DebugDraw::Sphere(sphere->WorldSphere(), color);
+            shapes.Sphere(sphere->WorldSphere(), color);
         }
         else if (NS::Obj::CapsuleCollider* capsule =
                      NS::Obj::ComponentCast<NS::Obj::CapsuleCollider>(object.CollisionPart()))
         {
             NS::Phys::Capsule worldCapsule = capsule->WorldCapsule();
             worldCapsule.axis.Normalize();
-            NS::Gfx::DebugDraw::Capsule(
+            shapes.Capsule(
                 worldCapsule.center, worldCapsule.axis * worldCapsule.halfHeight, worldCapsule.radius, color);
         }
         else if (const NS::Obj::Body* body = BodyOf(object))
         {
             // 移動が掃引するのと同じ、根を中心にした縦のカプセル。根の拡縮は掛けない
             const NS::Phys::Capsule bodyCapsule = body->CapsuleAt(object.Root().Position());
-            NS::Gfx::DebugDraw::Capsule(
+            shapes.Capsule(
                 bodyCapsule.center, bodyCapsule.axis * bodyCapsule.halfHeight, bodyCapsule.radius, color);
         }
         else if (NS::Obj::ComponentCast<NS::Obj::MeshCollider>(object.CollisionPart()) != nullptr)
@@ -156,12 +156,12 @@ namespace
             const NS::Core::Vector3 half{local.Extents.x * std::abs(parts.scale.x),
                                          local.Extents.y * std::abs(parts.scale.y),
                                          local.Extents.z * std::abs(parts.scale.z)};
-            NS::Gfx::DebugDraw::OBB(NS::Core::MakeOBB(center, parts.rotation, half), color);
+            shapes.OBB(NS::Core::MakeOBB(center, parts.rotation, half), color);
         }
     }
 
     // 配置物 1 体のヒットセンサーの形を線で描く。範囲 (落下死・ゴール) は地形の当たりを持たないので、ここで見せる
-    void DrawSensorWireframe(NS::Obj::Actor& object, const NS::Core::Color& color) noexcept
+    void DrawSensorWireframe(NS::Gfx::DebugShapes& shapes, NS::Obj::Actor& object, const NS::Core::Color& color) noexcept
     {
         for (const NS::Obj::HitSensor* sensor : {object.BodySensorPart(), object.AttackSensorPart()})
         {
@@ -172,18 +172,18 @@ namespace
             const NS::Obj::SensorVolume volume = sensor->WorldVolume();
             if (volume.isBox)
             {
-                NS::Gfx::DebugDraw::OBB(volume.box, color);
+                shapes.OBB(volume.box, color);
                 continue;
             }
             const NS::Core::Vector3 center = (volume.a + volume.b) * 0.5f;
             const NS::Core::Vector3 axis = (volume.b - volume.a) * 0.5f;
             if (axis.LengthSquared() > 0.0f)
             {
-                NS::Gfx::DebugDraw::Capsule(center, axis, volume.radius, color);
+                shapes.Capsule(center, axis, volume.radius, color);
             }
             else
             {
-                NS::Gfx::DebugDraw::Sphere(NS::Core::Sphere{center, volume.radius}, color);
+                shapes.Sphere(NS::Core::Sphere{center, volume.radius}, color);
             }
         }
     }
@@ -195,7 +195,8 @@ namespace
 
     // 面の上の形を 1 つ描く。中心から縁の点へ扇に塗り、縁の点を線で結ぶ
     // 形と縁の点と面の置き方は HitZones の関数が出す。判定と同じ値から描くので、色の境目が判定とずれない
-    void DrawHitFaceShape(const NS::Game::Level::HitFaceFrame& frame,
+    void DrawHitFaceShape(NS::Gfx::DebugShapes& shapes,
+                          const NS::Game::Level::HitFaceFrame& frame,
                           const NS::Game::Level::HitFaceShape& shape) noexcept
     {
         const std::vector<NS::Core::Vector2> outline = NS::Game::Level::HitFaceShapeOutline(shape);
@@ -209,14 +210,17 @@ namespace
             const NS::Core::Vector2& to = outline[(i + 1) % outline.size()];
             const NS::Core::Vector3 a = NS::Game::Level::HitFacePoint(frame, from.x, from.y);
             const NS::Core::Vector3 b = NS::Game::Level::HitFacePoint(frame, to.x, to.y);
-            NS::Gfx::DebugDraw::Triangle(center, a, b, fillColor);
-            NS::Gfx::DebugDraw::Line(a, b, edgeColor);
+            shapes.Triangle(center, a, b, fillColor);
+            shapes.Line(a, b, edgeColor);
         }
     }
 
-    // a→b を 0.5m を目安に等分し 1 区間おきに線を引いて点線にする。DebugDraw に破線が無いので描画側で
+    // a→b を 0.5m を目安に等分し 1 区間おきに線を引いて点線にする。DebugShapes に破線が無いので描画側で
     // 間引く。辺長からセグメント数を出すので、長い辺でも刻みが粗くならない
-    void DrawDashedLine(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept
+    void DrawDashedLine(NS::Gfx::DebugShapes& shapes,
+                        const NS::Core::Vector3& a,
+                        const NS::Core::Vector3& b,
+                        const NS::Core::Color& color) noexcept
     {
         const float length = (b - a).Length();
         const int rawSegments = static_cast<int>(length / 0.5f);
@@ -225,13 +229,16 @@ namespace
         {
             const float t0 = static_cast<float>(i) / static_cast<float>(segments);
             const float t1 = static_cast<float>(i + 1) / static_cast<float>(segments);
-            NS::Gfx::DebugDraw::Line(NS::Core::Vector3::Lerp(a, b, t0), NS::Core::Vector3::Lerp(a, b, t1), color);
+            shapes.Line(NS::Core::Vector3::Lerp(a, b, t0), NS::Core::Vector3::Lerp(a, b, t1), color);
         }
     }
 
     // カメラ pose の視錐台を四角錐の点線で描く。視点から far 面 4 隅へ 4 本 + far 面の 4 辺で、向きと画角を見せる
     // target==position や up と視線が平行な縮退では基底が作れないので何も描かない
-    void DrawCameraFrustum(const NS::Obj::CameraPose& pose, float aspect, const NS::Core::Color& color) noexcept
+    void DrawCameraFrustum(NS::Gfx::DebugShapes& shapes,
+                           const NS::Obj::CameraPose& pose,
+                           float aspect,
+                           const NS::Core::Color& color) noexcept
     {
         NS::Core::Vector3 forward = pose.target - pose.position;
         if (forward.LengthSquared() < 1e-6f)
@@ -255,14 +262,14 @@ namespace
         const NS::Core::Vector3 bottomLeft = farCenter - up * halfHeight - right * halfWidth;
         const NS::Core::Vector3 bottomRight = farCenter - up * halfHeight + right * halfWidth;
 
-        DrawDashedLine(pose.position, topLeft, color);
-        DrawDashedLine(pose.position, topRight, color);
-        DrawDashedLine(pose.position, bottomLeft, color);
-        DrawDashedLine(pose.position, bottomRight, color);
-        DrawDashedLine(topLeft, topRight, color);
-        DrawDashedLine(topRight, bottomRight, color);
-        DrawDashedLine(bottomRight, bottomLeft, color);
-        DrawDashedLine(bottomLeft, topLeft, color);
+        DrawDashedLine(shapes, pose.position, topLeft, color);
+        DrawDashedLine(shapes, pose.position, topRight, color);
+        DrawDashedLine(shapes, pose.position, bottomLeft, color);
+        DrawDashedLine(shapes, pose.position, bottomRight, color);
+        DrawDashedLine(shapes, topLeft, topRight, color);
+        DrawDashedLine(shapes, topRight, bottomRight, color);
+        DrawDashedLine(shapes, bottomRight, bottomLeft, color);
+        DrawDashedLine(shapes, bottomLeft, topLeft, color);
     }
 
     // 視点マーカーのワールド空間での半径。カメラから遠いほど半径を伸ばし、画面上の見かけサイズを一定に近づける
@@ -797,35 +804,33 @@ void LevelEditorController::TickEdit()
     }
 }
 
-void LevelEditorController::QueuePlayOverlaysAfterStep() noexcept
+void LevelEditorController::DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes,
+                                                const NS::Core::Matrix& viewProjection) noexcept
 {
     if (m_scene == nullptr)
     {
         return;
     }
-    // 溜めるかに依らず控える。Scene タブが隠れていた間に進んだ分を、後のステップで溜めない
-    const std::uint64_t stepCount = m_scene->SimulationStepCount();
-    const bool stepped = stepCount != m_lastQueuedStepCount;
-    m_lastQueuedStepCount = stepCount;
-    // 進まなかったステップでは頭の BeginStep が走らず、溜めた分が捨てられずに重なる
-    if (!stepped || m_mode == Mode::Edit)
-    {
-        return;
-    }
-    QueuePlayOverlays();
-}
 
-void LevelEditorController::QueuePlayOverlays() noexcept
-{
-    // 線を積むのは Scene が映っているフレームだけ。ビュー列の先頭が Scene なので、
-    // 溜めた線は Scene の描画で消え、ゲーム画面へは残らない
-    if (!m_sceneViewVisible)
+    if (m_mode != Mode::Edit)
     {
+        // 動いている形をそのまま追えるよう選択に関わらず全部出す
+        RenderColliderWireframes(shapes, true);
+        RenderHitFaces(shapes);
         return;
     }
-    // 動いている形をそのまま追えるよう選択に関わらず全部出す
-    RenderColliderWireframes(true);
-    RenderHitFaces();
+
+    m_editor.DrawCursorShapes(shapes);
+    // 錐台の横幅はゲーム画面の比で出す。窓が無い時は RenderCameraGizmos が 16:9 で代える
+    NS::Core::Size2D viewport{};
+    if (const NS::App::Application* app = NS::App::Application::Get())
+    {
+        viewport = app->Window().Size();
+    }
+    RenderCameraGizmos(shapes, viewProjection, viewport);
+    RenderColliderWireframes(shapes, false);
+    RenderHitFaces(shapes);
+    RenderSelectionOutlines(shapes);
 }
 
 void LevelEditorController::Render()
@@ -836,28 +841,13 @@ void LevelEditorController::Render()
         return;
     }
 
+    // プレイ中に Scene タブへ出す図形は DrawSceneViewShapes が積む。ImGui へ重ねる物は無い
     if (m_mode != Mode::Edit)
     {
-        // 描画の時に溜めた分は次のフレームの Scene タブで描かれる。固定ステップが入るフレームでは
-        // その頭で捨てられ、更新の後に QueuePlayOverlaysAfterStep が溜め直した分が代わりに描かれる
-        // 固定ステップが入らないフレームと一時停止中は、ここで溜めた分が映る
-        QueuePlayOverlays();
         return;
     }
 
     m_editor.RenderCursorPreview();
-    if (Cameras())
-    {
-        RenderCameraGizmos(Cameras()->ViewProjection(), app->Window().Size());
-    }
-    RenderColliderWireframes(false);
-    RenderHitFaces();
-    RenderSelectionOutlines();
-    // 蓄積した DebugDraw 線をシーン描画後・ImGui 前にまとめて 1 描画する
-    if (Cameras())
-    {
-        NS::Gfx::DebugDraw::Flush(app->Renderer(), Cameras()->ViewProjection());
-    }
     // Object モードはブラシを置かないので Build モードの時だけ出す
     // Game ビュー前面などで編集ビューが隠れているフレームは、ゲーム画面へ被せないよう出さない
     if (!ObjectToolActive() && !m_gameViewHidden)
@@ -1107,7 +1097,8 @@ void LevelEditorController::SetPrimarySelection(std::uint32_t id) noexcept
     m_lastGizmoSelected = nullptr;
 }
 
-void LevelEditorController::RenderCameraGizmos(const NS::Core::Matrix& viewProjection,
+void LevelEditorController::RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
+                                               const NS::Core::Matrix& viewProjection,
                                                NS::Core::Size2D viewport) noexcept
 {
     // edit 中、各カメラの視錐台を点線の四角錐で、視点位置を小箱で可視化する
@@ -1139,14 +1130,14 @@ void LevelEditorController::RenderCameraGizmos(const NS::Core::Matrix& viewProje
         }();
 
         const NS::Obj::CameraPose pose = vcam->EvaluatePose(1.0f);
-        DrawCameraFrustum(pose, aspect, camColor);
+        DrawCameraFrustum(shapes, pose, aspect, camColor);
         const float markerHalf = CameraMarkerHalf(pose.position, viewProjection);
-        NS::Gfx::DebugDraw::AABB(NS::Core::AABB{pose.position, NS::Core::Vector3{markerHalf, markerHalf, markerHalf}},
+        shapes.AABB(NS::Core::AABB{pose.position, NS::Core::Vector3{markerHalf, markerHalf, markerHalf}},
                                  camColor);
     }
 }
 
-void LevelEditorController::RenderSelectionOutlines() noexcept
+void LevelEditorController::RenderSelectionOutlines(NS::Gfx::DebugShapes& shapes) noexcept
 {
     // ギズモが出るのは主対象だけなので、一緒に選んでいる分は枠で見せる
     if (m_selectionIds.size() < 2)
@@ -1179,11 +1170,11 @@ void LevelEditorController::RenderSelectionOutlines() noexcept
         obb.halfExtentX = std::abs(scale.x) * 0.5f;
         obb.halfExtentY = std::abs(scale.y) * 0.5f;
         obb.halfExtentZ = std::abs(scale.z) * 0.5f;
-        NS::Gfx::DebugDraw::OBB(obb, color);
+        shapes.OBB(obb, color);
     }
 }
 
-void LevelEditorController::RenderColliderWireframes(bool all) noexcept
+void LevelEditorController::RenderColliderWireframes(NS::Gfx::DebugShapes& shapes, bool all) noexcept
 {
     const NS::Core::Color color{0.35f, 1.0f, 0.45f, 1.0f};
     // センサーは当たりの緑と見分けが付く橙
@@ -1194,8 +1185,8 @@ void LevelEditorController::RenderColliderWireframes(bool all) noexcept
     {
         for (NS::Obj::Actor* objPtr : m_scene->Objects())
         {
-            DrawColliderWireframe(*objPtr, color);
-            DrawSensorWireframe(*objPtr, sensorColor);
+            DrawColliderWireframe(shapes, *objPtr, color);
+            DrawSensorWireframe(shapes, *objPtr, sensorColor);
         }
         return;
     }
@@ -1205,13 +1196,13 @@ void LevelEditorController::RenderColliderWireframes(bool all) noexcept
     {
         if (NS::Obj::Actor* objPtr = m_scene->Objects().FindByObjectId(id))
         {
-            DrawColliderWireframe(*objPtr, color);
-            DrawSensorWireframe(*objPtr, sensorColor);
+            DrawColliderWireframe(shapes, *objPtr, color);
+            DrawSensorWireframe(shapes, *objPtr, sensorColor);
         }
     }
 }
 
-void LevelEditorController::RenderHitFaces() noexcept
+void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcept
 {
     if (m_scene == nullptr)
     {
@@ -1271,7 +1262,7 @@ void LevelEditorController::RenderHitFaces() noexcept
         for (const NS::Game::Level::HitFaceShape& shape :
              NS::Game::Level::HitFaceShapes(zones->Face(), frame.bodyShape))
         {
-            DrawHitFaceShape(frame, shape);
+            DrawHitFaceShape(shapes, frame, shape);
         }
     }
 
@@ -1285,7 +1276,7 @@ void LevelEditorController::RenderHitFaces() noexcept
     {
         return;
     }
-    NS::Gfx::DebugDraw::Sphere(NS::Core::Sphere{impact.surfacePoint, k_HitTouchMarkerRadius},
+    shapes.Sphere(NS::Core::Sphere{impact.surfacePoint, k_HitTouchMarkerRadius},
                                NS::Editor::HitZoneColor(impact.tier));
 }
 

@@ -297,7 +297,7 @@ namespace NS::Obj
         const NS::Gfx::RenderContext ctx = RenderWorld(cameras, camera, skyboxPath, view.viewPose, alpha, bloom);
 
 #if !defined(NS_SHIPPING)
-        NS::Gfx::DebugDraw::Flush(*ctx.renderer, ctx.viewProjection);
+        NS::Gfx::DebugDraw::Draw(*ctx.renderer, ctx.viewProjection);
 
         // ビューの図形は、このビューの行列で積んで描いたらすぐ捨てる。次のビューや次のフレームへ持ち越さない
         if (view.drawShapes)

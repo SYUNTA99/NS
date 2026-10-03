@@ -135,7 +135,7 @@ namespace NS::Obj
         [[nodiscard]] const NS::Obj::ObjectList& Objects() const noexcept { return m_objects; }
 
         //! @brief シーンの JSON 文書を取り込み配置物を組み直す。文書は取込後に用済みになる
-        //! @details 組む前に id と名前を一意に揃える
+        //! @details 組む前に id と名前を一意に揃える。前の世界の固定ステップで積んだ開発用の図形は捨てる
         void LoadJson(nlohmann::json scene);
 
         //! @brief シーンが自分を JSON 文書へ書き出す。保存と凍結の出所を実体に一本化する
@@ -172,12 +172,6 @@ namespace NS::Obj
 
         //! @brief 止めたまま次の fixed step を 1 コマだけ進める。動いていればまず止める
         void StepSimulation() noexcept;
-
-        //! @brief 世界が実際に進んだ固定ステップの数を返す
-        //! @details OnUpdate が段を回した回数。編集モードと一時停止で段を回さずに戻った回は数えない
-        //! 単調に増え、組み直しでも戻らない。前に読んだ値と比べて、その間に世界が進んだかを知る口
-        //! @return 段を回した固定ステップの累計
-        [[nodiscard]] std::uint64_t SimulationStepCount() const noexcept { return m_simulationStepCount; }
 
         //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ CameraManager の視点で 1 回だけ描く
         //! @details 空でない間は各ビューを順に bind して描き分ける。出荷 (Editor 無し) では常に空
@@ -231,7 +225,7 @@ namespace NS::Obj
         //! 読み込んだら回り続けるのが既定で、止める口は SetSimulationEnabled / SetSimulationPaused
         void OnUpdate();
 
-        //! 配置物と、配置物から借りている物を捨てる
+        //! 配置物と、配置物から借りている物と、固定ステップで積んだ開発用の図形を捨てる
         void OnShutdown();
 
     private:
@@ -268,6 +262,5 @@ namespace NS::Obj
         bool m_simulationEnabled = true;         // 世界を回すか。エディタの編集モードだけが下ろす
         bool m_simulationPaused = false;         // 時間停止中か
         std::int32_t m_simulationStepFrames = 0; // コマ送り残り fixed step 数。止めたままこの数だけ進める
-        std::uint64_t m_simulationStepCount = 0; // 段を回した固定ステップの累計
     };
 } // namespace NS::Obj

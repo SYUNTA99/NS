@@ -355,10 +355,9 @@ namespace NS::Gfx::DebugDraw
         StepShapes().Capsule(base, axis, radius, color);
     }
 
-    void Flush(Renderer& renderer, const NS::Core::Matrix& viewProjection) noexcept
+    void Draw(Renderer& renderer, const NS::Core::Matrix& viewProjection) noexcept
     {
         StepShapes().Draw(renderer, viewProjection);
-        StepShapes().Clear();
     }
 
     void BeginStep() noexcept

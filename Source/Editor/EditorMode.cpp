@@ -313,7 +313,7 @@ namespace NS::Editor
 #endif
     }
 
-    void EditorMode::RenderCursorPreview() noexcept
+    void EditorMode::DrawCursorShapes(NS::Gfx::DebugShapes& shapes) const noexcept
     {
         if (!m_active || !m_cursor.valid)
         {
@@ -329,7 +329,15 @@ namespace NS::Editor
             cursorColor = k_CursorBlockedColor;
         }
 
-        NS::Gfx::DebugDraw::AABB(placeBox, cursorColor);
+        shapes.AABB(placeBox, cursorColor);
+    }
+
+    void EditorMode::RenderCursorPreview() noexcept
+    {
+        if (!m_active || !m_cursor.valid)
+        {
+            return;
+        }
 
 #if NS_EDITOR_ENABLED
         if (m_camera == nullptr)

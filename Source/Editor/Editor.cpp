@@ -129,9 +129,6 @@ void Editor::OnUpdate()
     HandleModeToggleInput(*m_controller);
     HandlePauseInput(*m_controller);
     HandleUiVisibilityInput(*m_controller);
-    // Game の更新の後に呼ばれるので、固定ステップの頭で捨てた線と面をここで溜め直せる
-    // プレイと編集の切替の後に置き、編集へ戻ったステップでプレイの線を溜めない
-    m_controller->QueuePlayOverlaysAfterStep();
 }
 
 void Editor::OnRender()
@@ -150,7 +147,7 @@ void Editor::OnRender()
     // ImGui の 1 フレームを Layer が囲う。Renderer::BeginFrame 済の RT へ EndFrame の Render が描く
     m_imgui->BeginFrame();
 
-    // 編集用の上乗せ描画。カーソルプレビュー / カメラギズモ / 当たり線 / 選択枠 / ツールバー / ギズモ
+    // 編集用の ImGui の上乗せ。カーソルの枠 / パレット / ギズモ。立体の図形は Scene タブを描く時に積む
     editor.Render();
 
     // 終了確認は UI 非表示やプレイ中でも必ず出すため m_uiVisible のゲート外で描く
