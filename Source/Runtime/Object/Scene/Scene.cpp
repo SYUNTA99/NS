@@ -332,6 +332,7 @@ namespace NS::Obj
             }
             m_simulationStepFrames -= 1;
         }
+        m_simulationStepCount += 1;
 #if !defined(NS_SHIPPING)
         // 描画 1 回ごとに捨てると、その間に進む固定ステップの回数で映る図形が変わる
         NS::Gfx::DebugDraw::BeginStep();

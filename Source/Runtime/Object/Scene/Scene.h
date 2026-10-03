@@ -174,6 +174,12 @@ namespace NS::Obj
         //! @brief 止めたまま次の fixed step を 1 コマだけ進める。動いていればまず止める
         void StepSimulation() noexcept;
 
+        //! @brief 世界が実際に進んだ固定ステップの数を返す
+        //! @details OnUpdate が段を回した回数。編集モードと一時停止で段を回さずに戻った回は数えない
+        //! 単調に増え、組み直しでも戻らない。前に読んだ値と比べて、その間に世界が進んだかを知る口
+        //! @return 段を回した固定ステップの累計
+        [[nodiscard]] std::uint64_t SimulationStepCount() const noexcept { return m_simulationStepCount; }
+
         //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ CameraManager の視点で 1 回だけ描く
         //! @details 空でない間は各ビューを順に bind して描き分ける。出荷 (Editor 無し) では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneRenderer.SetSceneViews(std::move(views)); }
@@ -263,5 +269,6 @@ namespace NS::Obj
         bool m_simulationEnabled = true;         // 世界を回すか。エディタの編集モードだけが下ろす
         bool m_simulationPaused = false;         // 時間停止中か
         std::int32_t m_simulationStepFrames = 0; // コマ送り残り fixed step 数。止めたままこの数だけ進める
+        std::uint64_t m_simulationStepCount = 0; // 段を回した固定ステップの累計
     };
 } // namespace NS::Obj
