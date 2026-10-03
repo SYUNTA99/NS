@@ -15,8 +15,7 @@ namespace NS::Game::Level
         mesh->SetMeshRef("cube");
         mesh->SetBaseColor(NS::Core::Vector3{1.0f, 0.84f, 0.0f});
         // 「触れた」とみなすプレイヤー中心からの距離 0.9m の球。プレイヤーの体の寸法ぶん手前で触れる
-        (void)CreatePart("BodySensor");
-        NS::Obj::HitSensor* area = BodySensorPart();
+        NS::Obj::ShapeHitSensor* area = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(CreatePart("BodySensor"));
         area->SetType(NS::Obj::HitSensorType::Area);
         area->SetSphere(0.9f);
     }

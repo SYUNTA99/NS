@@ -11,8 +11,7 @@ namespace NS::Game::Level
     KillZone::KillZone() noexcept
     {
         // 厚み 10m と 2km 四方は、固定ステップの移動量では突き抜けられない
-        (void)CreatePart("BodySensor");
-        NS::Obj::HitSensor* area = BodySensorPart();
+        NS::Obj::ShapeHitSensor* area = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(CreatePart("BodySensor"));
         area->SetType(NS::Obj::HitSensorType::Area);
         area->SetBox(NS::Core::Vector3{1000.0f, 5.0f, 1000.0f});
     }

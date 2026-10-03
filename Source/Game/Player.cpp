@@ -59,9 +59,9 @@ Player::Player() noexcept
     AttachFixedComponent(*m_input);
     AttachFixedComponent(*m_params);
     (void)CreatePart("Shadow");
-    (void)CreatePart("BodySensor");
-    BodySensorPart()->SetType(NS::Obj::HitSensorType::PlayerBody);
-    BodySensorPart()->SetCapsule(m_body->CapsuleRadius(), m_body->CapsuleHalfHeight());
+    NS::Obj::ShapeHitSensor* bodySensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(CreatePart("BodySensor"));
+    bodySensor->SetType(NS::Obj::HitSensorType::PlayerBody);
+    bodySensor->SetCapsule(m_body->CapsuleRadius(), m_body->CapsuleHalfHeight());
     AttachFixedComponent(*m_collisionInput);
     AttachFixedComponent(*m_resolver);
     (void)CreatePart("HitReaction");

@@ -114,7 +114,7 @@ TEST(BodyShape, BodySensorFollowsShapeEdits)
     LoadPlayerScene(scene, nlohmann::json::object());
     Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    const NS::Obj::HitSensor* sensor = player->BodySensorPart();
+    const NS::Obj::ShapeHitSensor* sensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(player->BodySensorPart());
     ASSERT_NE(sensor, nullptr);
 
     player->Body().SetCapsuleRadius(0.3f);

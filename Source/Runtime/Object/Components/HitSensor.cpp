@@ -267,27 +267,29 @@ namespace NS::Obj
         m_registered = false;
     }
 
-    void HitSensor::SetSphere(float radius) noexcept
+    ShapeHitSensor::ShapeHitSensor() noexcept = default;
+
+    void ShapeHitSensor::SetSphere(float radius) noexcept
     {
         m_shape = HitSensorShape::Sphere;
         m_radius = std::max(radius, 0.0f);
     }
 
-    void HitSensor::SetCapsule(float radius, float halfHeight) noexcept
+    void ShapeHitSensor::SetCapsule(float radius, float halfHeight) noexcept
     {
         m_shape = HitSensorShape::Capsule;
         m_radius = std::max(radius, 0.0f);
         m_halfHeight = std::max(halfHeight, 0.0f);
     }
 
-    void HitSensor::SetBox(const NS::Core::Vector3& halfExtents) noexcept
+    void ShapeHitSensor::SetBox(const NS::Core::Vector3& halfExtents) noexcept
     {
         m_shape = HitSensorShape::Box;
         m_boxHalfExtents = NS::Core::Vector3{
             std::max(halfExtents.x, 0.0f), std::max(halfExtents.y, 0.0f), std::max(halfExtents.z, 0.0f)};
     }
 
-    SensorVolume HitSensor::WorldVolume() const noexcept
+    SensorVolume ShapeHitSensor::WorldVolume() const noexcept
     {
         NS::Core::Matrix world = NS::Core::Matrix::Identity;
         if (const Actor* owner = Owner())
@@ -320,5 +322,5 @@ namespace NS::Obj
         }
     }
 
-    NS_CLASS(HitSensor)
+    NS_CLASS(ShapeHitSensor)
 } // namespace NS::Obj

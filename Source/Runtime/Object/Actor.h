@@ -58,6 +58,7 @@ namespace NS::Obj
         [[nodiscard]] std::string_view PartName(const Component& part) const;
         //! @brief 部品名 name の部品を作って付ける。既に持っていればそれを返す
         //! @details 基底が作れるのは Model、Animation、Shadow、Collision、BodySensor、AttackSensor、HitReaction
+        //! BodySensor と AttackSensor は形を自分で持つ ShapeHitSensor を作る
         //! @return 付けた部品。作れない名前は nullptr
         virtual Component* CreatePart(std::string_view name);
         [[nodiscard]] Model* ModelPart() noexcept { return m_model.get(); }

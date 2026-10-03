@@ -69,7 +69,7 @@ TEST(ActorClass, GoalHasMarkerAndArea)
 TEST(ActorClass, KillZoneIsBoxAreaWithoutTerrainCollision)
 {
     const NS::Game::Level::KillZone zone;
-    const NS::Obj::HitSensor* area = zone.BodySensorPart();
+    const NS::Obj::ShapeHitSensor* area = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(zone.BodySensorPart());
     ASSERT_NE(area, nullptr);
     EXPECT_EQ(area->Type(), NS::Obj::HitSensorType::Area);
     EXPECT_EQ(area->Shape(), NS::Obj::HitSensorShape::Box);

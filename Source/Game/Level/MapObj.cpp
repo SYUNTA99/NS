@@ -83,9 +83,9 @@ namespace NS::Game::Level
         AttachFixedComponent(m_params);
         AttachFixedComponent(m_hitZones);
         AttachFixedComponent(m_effects);
-        (void)CreatePart("BodySensor");
-        BodySensorPart()->SetType(NS::Obj::HitSensorType::MapObjBody);
-        BodySensorPart()->SetSphere(0.5f);
+        NS::Obj::ShapeHitSensor* bodySensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(CreatePart("BodySensor"));
+        bodySensor->SetType(NS::Obj::HitSensorType::MapObjBody);
+        bodySensor->SetSphere(0.5f);
         (void)BuildStateMachine<MapObj, RestingState, FreezeState, LaunchedState>(*this, m_states);
         m_motion.Finish();
     }
@@ -100,8 +100,9 @@ namespace NS::Game::Level
 
     void MapObj::InitAfterPlacement()
     {
-        BodySensorPart()->SetSphere(Sphere().Radius());
-        BodySensorPart()->SetCenterOffset(Sphere().CenterOffset());
+        NS::Obj::ShapeHitSensor* bodySensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(BodySensorPart());
+        bodySensor->SetSphere(Sphere().Radius());
+        bodySensor->SetCenterOffset(Sphere().CenterOffset());
         SyncCollider();
     }
 

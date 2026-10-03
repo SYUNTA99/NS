@@ -126,7 +126,7 @@ namespace NS::Obj
         m_bodySensor = nullptr;
         if (Owner() != nullptr)
         {
-            m_bodySensor = Owner()->BodySensorPart();
+            m_bodySensor = ComponentCast<ShapeHitSensor>(Owner()->BodySensorPart());
         }
         SyncBodySensor();
     }

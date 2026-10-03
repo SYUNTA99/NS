@@ -96,12 +96,12 @@ namespace NS::Obj
         }
         else if (name == "BodySensor")
         {
-            m_bodySensor = std::make_unique<HitSensor>();
+            m_bodySensor = std::make_unique<ShapeHitSensor>();
             created = m_bodySensor.get();
         }
         else if (name == "AttackSensor")
         {
-            m_attackSensor = std::make_unique<HitSensor>();
+            m_attackSensor = std::make_unique<ShapeHitSensor>();
             created = m_attackSensor.get();
         }
         else if (name == "HitReaction")

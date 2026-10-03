@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 
+#include <string>
 #include <vector>
 
 // ヒットセンサーの形の重なり・組み合わせの表・調べ役の呼び出しと、知らせの送り方を縛る
@@ -23,8 +24,7 @@ namespace
     public:
         SensorProbe(NS::Obj::HitSensorType type, float radius)
         {
-            CreatePart("BodySensor");
-            m_sensor = BodySensorPart();
+            m_sensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(CreatePart("BodySensor"));
             m_sensor->SetType(type);
             m_sensor->SetSphere(radius);
         }
@@ -43,7 +43,7 @@ namespace
             return acceptMessages;
         }
 
-        NS::Obj::HitSensor* m_sensor = nullptr;
+        NS::Obj::ShapeHitSensor* m_sensor = nullptr;
         std::vector<NS::Obj::HitSensor*> touched;
         std::vector<const void*> received;
         bool acceptMessages = true;
@@ -105,14 +105,34 @@ TEST(SensorVolume, BoxesUseSeparatingAxes)
 TEST(HitSensor, WorldVolumeFollowsRootScale)
 {
     NS::Obj::Actor actor;
-    actor.CreatePart("BodySensor");
-    NS::Obj::HitSensor* sensor = actor.BodySensorPart();
+    NS::Obj::ShapeHitSensor* sensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(actor.CreatePart("BodySensor"));
+    ASSERT_NE(sensor, nullptr);
     sensor->SetSphere(0.5f);
     actor.Root().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
     actor.Root().SetScale(Vector3{2.0f, 2.0f, 2.0f});
     const NS::Obj::SensorVolume volume = sensor->WorldVolume();
     EXPECT_FLOAT_EQ(volume.radius, 1.0f);
     EXPECT_FLOAT_EQ(volume.Center().y, 2.0f);
+}
+
+TEST(HitSensor, ShapeSensorKeepsItsFourSavedFieldLabels)
+{
+    // 欄の表示名は保存の鍵。ゴールと落下死の範囲の保存済みの値がこの 4 つで読まれる
+    NS::Obj::Actor actor;
+    NS::Obj::Component* sensor = actor.CreatePart("BodySensor");
+    ASSERT_NE(sensor, nullptr);
+    const NS::Obj::ReflectionInfo* info = sensor->GetReflection();
+    std::vector<std::string> labels;
+    for (std::size_t i = 0; i < info->fieldCount; ++i)
+    {
+        labels.emplace_back(info->fields[i].name);
+    }
+    EXPECT_EQ(labels, (std::vector<std::string>{"半径", "半分の高さ", "箱の半径", "中心オフセット"}));
+}
+
+TEST(HitSensor, BaseSensorHoldsNoFields)
+{
+    EXPECT_EQ(NS::Obj::HitSensor::StaticReflection()->fieldCount, 0u);
 }
 
 TEST(HitSensorDirector, PairTableMatchesThePlan)

@@ -11,7 +11,7 @@
 
 namespace NS::Obj
 {
-    class HitSensor;
+    class ShapeHitSensor;
 } // namespace NS::Obj
 
 namespace NS::Phys
@@ -32,7 +32,7 @@ namespace NS::Obj
     //! 体の周りの地形は、この部品を渡して RaycastCollision・OverlapBoxCollision で問う。
     //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。
     //! dt は呼び手が引数で渡す。呼び手は固定ステップの秒を渡し、描画フレームの秒は渡さない
-    //! 依存: NS::Core, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Actor / HitSensor / IUseCollision
+    //! 依存: NS::Core, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Actor / ShapeHitSensor / IUseCollision
     class Body : public NS::Obj::Component, public NS::Obj::IUseCollision
     {
     public:
@@ -138,7 +138,7 @@ namespace NS::Obj
         //! 体のセンサーの寸法を今の当たりに合わせる。範囲が調べる体と、移動と裁定の当たりを同じ形にする
         void SyncBodySensor() noexcept;
 
-        bool m_sphereShape = false;                 // 当たりを球にしているか。書くのは SetSphereShape だけ
-        NS::Obj::HitSensor* m_bodySensor = nullptr; // 同居するカプセルのセンサー。無ければ nullptr
+        bool m_sphereShape = false;                      // 当たりを球にしているか。書くのは SetSphereShape だけ
+        NS::Obj::ShapeHitSensor* m_bodySensor = nullptr; // 同居するカプセルのセンサー。無ければ nullptr
     };
 } // namespace NS::Obj
