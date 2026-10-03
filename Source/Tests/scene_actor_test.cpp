@@ -10,7 +10,9 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -27,7 +29,32 @@ namespace
         NS::Obj::SetObjectJsonId(object, id);
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(object));
     }
+
+    // 開始の手前で止まる ObjectList の口を外から呼べるか。テンプレートにして、呼べない時を偽として受ける
+    template <class List>
+    concept CanAppendFromOutside =
+        requires(List& list, std::unique_ptr<NS::Obj::Actor> obj) { list.Append(std::move(obj)); };
+    template <class List>
+    concept CanAppendWithNewIdFromOutside = requires(List& list, std::unique_ptr<NS::Obj::Actor> obj) {
+        list.AppendWithNewId(std::move(obj), std::string{});
+    };
+    template <class List>
+    concept CanInsertFromJsonFromOutside =
+        requires(List& list, std::unique_ptr<NS::Obj::Actor> obj, const nlohmann::json& entry) {
+            list.InsertFromJson(std::move(obj), entry, std::size_t{0});
+        };
+    template <class List>
+    concept CanSpawnFromOutside = requires(List& list) { list.template Spawn<NS::Obj::Actor>(); };
 } // namespace
+
+TEST(SceneActor, SpawningGoesThroughTheSceneOnly)
+{
+    // 配置物を湧かすのは開始まで済ませる Scene の口だけ。開始を飛ばして並びへ入れる道を外へ開けない
+    static_assert(!CanAppendFromOutside<NS::Obj::ObjectList>);
+    static_assert(!CanAppendWithNewIdFromOutside<NS::Obj::ObjectList>);
+    static_assert(!CanInsertFromJsonFromOutside<NS::Obj::ObjectList>);
+    static_assert(!CanSpawnFromOutside<NS::Obj::ObjectList>);
+}
 
 TEST(SceneActor, ClassOnlyObjectBuildsWholeComposition)
 {

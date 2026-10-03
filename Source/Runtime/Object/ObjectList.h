@@ -29,7 +29,7 @@ namespace NS::Obj
 
     //! @brief 配置物 Actor の単一所有リスト
     //! @details シーンの JSON 文書から一括で組み直す。runtime も editor も同じ Rebuild 経路を通る
-    //! 1 体だけ入れ替える InsertFromJson もあり、undo は組み直さずにこちらを通る
+    //! 1 体ずつ入れる口は Scene の湧かす口だけに開き、undo は組み直さずにそちらを通る
     //! 配置物 1 件の組み立ては呼出側のファクトリに委ね、Actor の型選択や資産解決は持たない
     //! 特定の 1 体は永続 id の解決で引く
     //! 非 const の Actor* と Component* で、呼び出し側はそこから書き換えられる
@@ -42,12 +42,8 @@ namespace NS::Obj
 
         //! scene の objects から配置物を組み直す。既存の配置物は先に空へ戻し、一時オブジェクトだけ残す
         //! 当たりの同期は含まない。呼出側が続けて SyncPhysics を呼ぶ
-        //! factory が空の起動前 / テストでは物を組まない
+        //! factory が空の起動前 / テストでは物を組まない。段の更新の最中は断る
         void Rebuild(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory);
-
-        //! @details 組み直さずに 1 体だけ入れる経路。名前は既存と重なれば番号を付ける。index が末尾より先なら末尾
-        //! scene attach と親子の結び付けと開始は呼出側が済ませる
-        Actor* InsertFromJson(std::unique_ptr<Actor> obj, const nlohmann::json& entry, std::size_t index);
 
         //! objectId の配置物の並びの位置。居なければ ObjectCount()
         [[nodiscard]] std::size_t IndexOfObjectId(std::uint32_t objectId) const noexcept;
@@ -56,35 +52,18 @@ namespace NS::Obj
         void RenameObject(Actor& obj, std::string_view name);
 
         //! 配置物の OnEndPlay を逆順に呼んでから所有物を空へ戻す。scene の OnShutdown と Rebuild 冒頭が呼ぶ
+        //! 段の更新の最中は断る。その段で後に呼ぶ予定の配置物を解放しない
         void Clear();
-
-        //! 型 T の配置物を作って加える。所有は ObjectList が持ち、呼出側へは生ポインタだけ返す
-        //! id は振らない。未採番の配置物は参照で引けない。参照で引く相手は AppendWithNewId で加える
-        //! scene attach は呼出側が返り値へ済ませる
-        template <class T, class... Args> T* Spawn(Args&&... args)
-        {
-            std::unique_ptr<T> obj = std::make_unique<T>(std::forward<Args>(args)...);
-            T* raw = obj.get();
-            Append(std::move(obj));
-            return raw;
-        }
-
-        //! 組み上がった配置物を id を振らずに 1 体加える。scene attach は呼出側が済ませて渡す
-        //! 実行時に湧く一時オブジェクト用。保存もされず、参照で引かれることも無い
-        Actor* Append(std::unique_ptr<Actor> obj);
-
-        //! 名前は既存と重なれば番号を付ける。scene attach は呼出側が済ませて渡す
-        Actor* AppendWithNewId(std::unique_ptr<Actor> obj, std::string name);
 
         //! objectId 一致の配置物を破棄して所有リストから外す。居なければ何もしない
         //! 当たり箱もここで揃えるので、組み直さずに 1 体だけ消せる
         //! 子は根として残る。親子の切り離しは Actor の破棄が行う
-        //! 0 は未採番の印なので何もしない
+        //! 0 は未採番の印なので何もしない。段の更新の最中は断る
         void RemoveByObjectId(std::uint32_t objectId);
 
         //! @brief 世界から外れた一時オブジェクトを破棄して所有リストから外す
         //! @details 一時オブジェクトは id を持たず、出し直す道も無い。残すと出すたびに並びが伸び続ける
-        //! 更新の段の最中に呼ぶと回している並びが変わるので、段を回し終えた後に呼ぶ
+        //! 段の更新の最中は断るので、段を回し終えた後に呼ぶ
         void RemoveKilledTransients();
 
         //! objectId 一致の配置物を返す。居なければ nullptr。選択・編集の live 索引
@@ -101,14 +80,11 @@ namespace NS::Obj
         //! physics はこの並びを持つ Scene の物。collider は渡した物でなく、自分の持ち主の Scene へ入れる
         void SyncPhysics(NS::Phys::PhysicsScene& physics);
 
-        //! 世界に出ている Actor として登録する。nullptr と登録済みは無視する。Actor が出る時に自分で呼ぶ
-        void RegisterActor(Actor* actor);
-        //! 世界に出ている Actor の登録を外す。Actor が世界から外れる時に自分で呼ぶ
-        void UnregisterActor(Actor* actor) noexcept;
         //! @brief 段 phase に属する物を 1 回ずつ呼ぶ
-        //! @details 先に AddTicker で登録した物を登録順に、続けて登録済みで活性の Actor を配置の並びに呼ぶ。
-        //! Input の段は全 Actor の ReadInput、RenderPrep の段は全 Actor の PrepareRender、他は Phase が一致する
-        //! Actor の Update。途中で外れた物はそのフレームの残りでは呼ばない。入れ子で呼ぶことはできない
+        //! @details 先に AddTicker で登録した物を登録順に、続けて出ている Actor を配置の並びに呼ぶ
+        //! 出ているかは IsActiveInHierarchy で見る。Input の段は全 Actor の ReadInput
+        //! RenderPrep の段は全 Actor の PrepareRender、他は Phase が一致する Actor の Update
+        //! 途中で外れた物はそのフレームの残りでは呼ばない。入れ子で呼ぶことはできない
         void ExecutePhase(UpdatePhase phase);
         //! @brief 部品でない物を段 priority に登録する
         //! @details 登録済みなら段だけを差し替える。nullptr は無視する
@@ -156,6 +132,21 @@ namespace NS::Obj
         [[nodiscard]] Iterator end() const noexcept { return Iterator{m_objects.data() + m_objects.size()}; }
 
     private:
+        // 1 体ずつ入れる口は開始の手前で止まる。開始まで済ませる Scene の湧かす口だけに開く
+        friend class Scene;
+
+        //! 組み上がった配置物を id を振らずに 1 体加える。実行時に湧く一時オブジェクト用で、保存も参照もされない
+        //! Scene の湧かす口だけが呼ぶ。シーンへの付けと開始は呼び手の Scene が済ませる
+        Actor* Append(std::unique_ptr<Actor> obj);
+
+        //! 永続 id を振り、名前が既存と重なれば番号を付けて 1 体加える
+        //! Scene の湧かす口だけが呼ぶ。シーンへの付けと開始は呼び手の Scene が済ませる
+        Actor* AppendWithNewId(std::unique_ptr<Actor> obj, std::string name);
+
+        //! 組み直さずに 1 体だけ入れる。名前は既存と重なれば番号を付ける。index が末尾より先なら末尾
+        //! Scene の湧かす口だけが呼ぶ。シーンへの付けと親子の結び付けと開始は呼び手の Scene が済ませる
+        Actor* InsertFromJson(std::unique_ptr<Actor> obj, const nlohmann::json& entry, std::size_t index);
+
         //! 並びが変わったので索引を捨てる。並びを変える箇所は必ず呼び、破棄した配置物を索引に残さない
         void MarkIndexDirty() noexcept;
 
@@ -174,14 +165,13 @@ namespace NS::Obj
             ITickable* ticker = nullptr;
             UpdatePhase priority = UpdatePhase::Triggers;
         };
-        std::vector<Actor*> m_liveActors;
         std::vector<ScheduledTick> m_scheduled; // ExecutePhase がその段で呼ぶ物を登録順に積む作業用の並び
         std::vector<TickerEntry> m_tickers;     // 部品でない物の登録。登録順
         std::unordered_map<std::uint32_t, Actor*>
             m_index;                      // 永続 id から配置物への索引。汚れていれば次に引く時に作り直す
         bool m_indexDirty = true;         // 索引が所有リストと食い違っているか
         std::uint32_t m_nextObjectId = 1; // 次に割り当てる永続 id。単調増加で欠番は再利用しない
-        bool m_updating = false;          // ExecutePhase の実行中か。入れ子の呼び出しの検知に使う
+        bool m_updating = false; // ExecutePhase の実行中か。入れ子の呼び出しの検知と、段の最中の解放を断るのに使う
     };
 
 } // namespace NS::Obj

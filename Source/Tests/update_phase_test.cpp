@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -55,6 +57,32 @@ namespace
 
     private:
         std::vector<std::string>& m_log;
+    };
+
+    // 自分の段の中で、控えた id の配置物をシーンから消しに行く
+    class DestroyerActor final : public NS::Obj::Actor
+    {
+    public:
+        explicit DestroyerActor(NS::Obj::Scene& scene) : m_scene(scene) {}
+        NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Triggers; }
+        void SetTarget(std::uint32_t objectId) noexcept { m_target = objectId; }
+
+    protected:
+        void StateStep() override { m_scene.DestroyObject(m_target); }
+
+    private:
+        NS::Obj::Scene& m_scene;
+        std::uint32_t m_target = NS::Obj::k_NoObjectId;
+    };
+
+    class CountingActor final : public NS::Obj::Actor
+    {
+    public:
+        NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Triggers; }
+        int updates = 0;
+
+    protected:
+        void StateStep() override { ++updates; }
     };
 
     class PhaseTicker final : public NS::Obj::ITickable
@@ -121,6 +149,25 @@ TEST(UpdatePhase, StableActorOrderAndRemovedTickerArePreserved)
     log.clear();
     scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     EXPECT_EQ(log, (std::vector<std::string>{"first", "second"}));
+}
+
+TEST(UpdatePhase, DestroyingDuringAPhaseIsRefused)
+{
+    // 段の最中に配置物を解放すると、その段で後に呼ぶ予定の生ポインタが破棄済みになる。解放の口は段の間は断る
+    NS::Obj::Scene scene;
+    std::unique_ptr<DestroyerActor> destroyerOwned = std::make_unique<DestroyerActor>(scene);
+    std::unique_ptr<CountingActor> victimOwned = std::make_unique<CountingActor>();
+    DestroyerActor* destroyer = destroyerOwned.get();
+    CountingActor* victim = victimOwned.get();
+    ASSERT_NE(scene.SpawnObject(std::move(destroyerOwned), "Destroyer"), nullptr);
+    ASSERT_NE(scene.SpawnObject(std::move(victimOwned), "Victim"), nullptr);
+    const std::uint32_t victimId = victim->Id();
+    destroyer->SetTarget(victimId);
+
+    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+
+    ASSERT_EQ(scene.Objects().FindByObjectId(victimId), victim);
+    EXPECT_EQ(victim->updates, 1);
 }
 
 TEST(ActorStepOrder, UpdateCallsEachStepOnceInTheFixedOrder)

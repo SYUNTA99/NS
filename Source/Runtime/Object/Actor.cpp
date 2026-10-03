@@ -255,22 +255,16 @@ namespace NS::Obj
         if (!IsActiveInHierarchy())
         {
             OnKill();
-            return;
-        }
-        if (Scene* scene = OwningScene())
-        {
-            scene->Objects().RegisterActor(this);
         }
     }
 
     void Actor::OnAppear()
     {
-        Scene* scene = OwningScene();
-        if (scene == nullptr || !IsActiveInHierarchy())
+        // 部品が描画・当たり・センサーのシーンの仕組みへ登録するので、シーンに付いていない間は何もしない
+        if (OwningScene() == nullptr || !IsActiveInHierarchy())
         {
             return;
         }
-        scene->Objects().RegisterActor(this);
         ForEachPart([](std::string_view, Component& part) {
             if (part.IsActive())
             {
@@ -285,12 +279,10 @@ namespace NS::Obj
 
     void Actor::OnKill() noexcept
     {
-        Scene* scene = OwningScene();
-        if (scene == nullptr)
+        if (OwningScene() == nullptr)
         {
             return;
         }
-        scene->Objects().UnregisterActor(this);
         ForEachPart([](std::string_view, Component& part) { part.OnKill(); });
         for (Actor* child : m_children)
         {

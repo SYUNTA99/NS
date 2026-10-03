@@ -72,7 +72,7 @@ TEST(ActorLifecycle, ReparentingKeepsRegistrationWhileActivityIsUnchanged)
     EXPECT_EQ(child->part.registers, 2);
 }
 
-TEST(ActorLifecycle, KillUnregistersAndAppearRegistersOnce)
+TEST(ActorLifecycle, KillStopsUpdatesAndAppearResumesOnce)
 {
     NS::Obj::Scene scene;
     LifeProbe* actor = scene.SpawnTransient<LifeProbe>();
