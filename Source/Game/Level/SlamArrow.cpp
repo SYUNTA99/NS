@@ -544,8 +544,8 @@ namespace NS::Game::Level
                                                     .gravity = params.Gravity(),
                                                     .dt = NS::Platform::FrameTimer::FixedDelta(),
                                                     .grounded = state.line.grounded};
-            // 線の始まりは根。玉の中心は根から当たりの円柱の半分の高さだけ下で、丸まっていれば根そのもの
-            const float ballCenterHeight = state.line.origin.y - m_body->CapsuleHalfHeight();
+            // 線の始まりは根。玉の中心は持ち主の SlamBallAt が決める
+            const float ballCenterHeight = ownerPlayer->SlamBallAt(state.line.origin).center.y;
             PlaceSlamArrowOnPath(probe, path, ballCenterHeight, Tuning().groundLift, shape);
         }
         m_shown = std::move(shape);

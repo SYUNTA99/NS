@@ -209,10 +209,7 @@ namespace NS::Game::Level
         const NS::Core::Vector3 position = Owner()->Root().Position();
 
         // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
-        const NS::Phys::Capsule capsule{PositionAfterStep(position, predictedVelocity),
-                                        NS::Core::Vector3::UnitY,
-                                        m_body->CapsuleHalfHeight(),
-                                        m_body->CapsuleRadius()};
+        const NS::Phys::Capsule capsule = m_body->CapsuleAt(PositionAfterStep(position, predictedVelocity));
         const std::vector<NS::Obj::HitSensor*> touching = scene->HitSensors().FindOverlaps(
             NS::Obj::SensorVolume::Capsule(capsule), NS::Obj::HitSensorType::PlayerAttack, Owner());
 
@@ -262,9 +259,8 @@ namespace NS::Game::Level
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
         const float playerRadius = m_body->CapsuleRadius();
-        // 突進は丸まった玉で進む。丸まっていれば玉の中心は根そのもの。立ち姿から丸まる時は下端を揃えて根を半長ぶん
-        // 下げるので、立ち姿の下の球の中心が丸まった後の玉の中心になる
-        const NS::Core::Vector3 ballCenter{position.x, position.y - m_body->CapsuleHalfHeight(), position.z};
+        // 突進は丸まった玉で進む。玉の決まりは Player::SlamBallAt が持つ
+        const NS::Core::Vector3 ballCenter = m_player->SlamBallAt(position).center;
         // 届くかは裁定と同じく、自機の当たりの玉と相手の体のセンサーの形で見る。外接箱を水平に見ると、中心の高い
         // 大きな球の端では、玉が触れずに横を通るのに届くと出る
         const NS::Obj::SensorVolume swept =
@@ -508,9 +504,9 @@ namespace NS::Game::Level
 
         // 段と威力の当たり位置の係数は、相手の面で当てはまった同じ決まりから取る
         // 玉の中心は重なりを見た所と同じく、この固定ステップで進んだ先。今の位置で見ると、縦に動く突進は 1 ステップ
-        // ぶん違う高さで段が決まる。丸まっていれば根、立ち姿なら下の球の中心で、狙う相手の探し方と同じ
+        // ぶん違う高さで段が決まる。玉は狙う相手の探し方と同じ Player::SlamBallAt から引く
         const NS::Core::Vector3 stepped = PositionAfterStep(position, velocity);
-        const NS::Core::Vector3 ballCenter{stepped.x, stepped.y - m_body->CapsuleHalfHeight(), stepped.z};
+        const NS::Core::Vector3 ballCenter = m_player->SlamBallAt(stepped).center;
         const HitFaceJudgement judgement =
             JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, m_body->CapsuleRadius());
         const float offset01 = judgement.offset01;

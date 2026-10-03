@@ -4,6 +4,7 @@
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/BodyEvents.h"
 #include "Runtime/Object/IUse/IUseCollision.h"
+#include "Runtime/Physics/Capsule.h"
 #include "Runtime/Physics/JoltCharacter.h"
 
 #include <memory>
@@ -64,6 +65,12 @@ namespace NS::Obj
         //! 今の当たりの円柱の半分の高さ。球にしていなければ StandingHalfHeight と同じ。
         //! SetSphereShape で球にしている間は 0
         [[nodiscard]] float CapsuleHalfHeight() const noexcept;
+        //! @brief 根を rootPosition に置いた時の、今の当たりの形を返す
+        //! @details 中心は根、軸は +Y、半分の高さは CapsuleHalfHeight()、半径は CapsuleRadius()。
+        //! JoltCharacter を作る Move と同じ形で、球にしている間は半分の高さが 0。判定・矢印・エディタの線は
+        //! 当たりの形をここから引き、軸や中心の決まりを自分で組み直さない
+        //! @param[in] rootPosition 根の位置 (ワールド)
+        [[nodiscard]] NS::Phys::Capsule CapsuleAt(const NS::Core::Vector3& rootPosition) const noexcept;
         //! 立ち姿の円柱の半分の高さ (m)。欄「半分の高さ」の値。
         //! 球にしている間も変わらないので、立ち姿の寸法はここから引く
         [[nodiscard]] float StandingHalfHeight() const noexcept { return m_standingHalfHeight; }

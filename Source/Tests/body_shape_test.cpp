@@ -50,6 +50,28 @@ TEST(BodyShape, AnswersFromItsOwnFieldsWithoutOwner)
     EXPECT_FLOAT_EQ(body.CapsuleHalfHeight(), 0.7f);
 }
 
+// 当たりの形は根を中心にした縦のカプセル。球にしている間は円柱の半分の高さが 0 になる
+TEST(BodyShape, CapsuleAtPutsTheCurrentShapeAroundTheRoot)
+{
+    NS::Obj::Body body;
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(body, {{"半径", 0.3f}, {"半分の高さ", 0.7f}}), 0u);
+    const NS::Core::Vector3 root{1.0f, 2.0f, 3.0f};
+    NS::Phys::Capsule capsule = body.CapsuleAt(root);
+    EXPECT_FLOAT_EQ(capsule.center.x, 1.0f);
+    EXPECT_FLOAT_EQ(capsule.center.y, 2.0f);
+    EXPECT_FLOAT_EQ(capsule.center.z, 3.0f);
+    EXPECT_FLOAT_EQ(capsule.axis.x, 0.0f);
+    EXPECT_FLOAT_EQ(capsule.axis.y, 1.0f);
+    EXPECT_FLOAT_EQ(capsule.axis.z, 0.0f);
+    EXPECT_FLOAT_EQ(capsule.halfHeight, 0.7f);
+    EXPECT_FLOAT_EQ(capsule.radius, 0.3f);
+
+    body.SetSphereShape(true);
+    capsule = body.CapsuleAt(root);
+    EXPECT_FLOAT_EQ(capsule.halfHeight, 0.0f);
+    EXPECT_FLOAT_EQ(capsule.radius, 0.3f);
+}
+
 TEST(BodyShape, ShapeFieldsRejectNegativeAndNonFinite)
 {
     // 負は 0 にし、有限でない値は書く前の寸法を残す

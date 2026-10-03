@@ -174,6 +174,29 @@ TEST(PlayerStateSequence, ReboundGravityIsTheChoiceWithTheReboundRise)
     }
 }
 
+// 突進の玉は、丸まる前の立ち姿の下の球がそのまま玉になる。丸まる時の根の下げ幅 (ChangeCurled) と玉の中心の決まりが結ばれている
+// 下げ幅を変えると、判定・矢印・エディタの面が読む玉だけが黙ってずれる
+TEST(PlayerStateSequence, SlamBallStaysPutWhenCurling)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSequencePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    player->Root().SetPosition(NS::Core::Vector3{1.0f, 2.0f, 3.0f});
+    ASSERT_FALSE(player->IsCurled());
+    const NS::Core::Vector3 standingRoot = player->Root().Position();
+    const NS::Core::Sphere standing = player->SlamBallAt(standingRoot);
+    EXPECT_FLOAT_EQ(standing.center.y, standingRoot.y - player->Body().StandingHalfHeight());
+    EXPECT_FLOAT_EQ(standing.radius, player->Body().CapsuleRadius());
+
+    player->SetCurled(true);
+    ASSERT_TRUE(player->IsCurled());
+    const NS::Core::Sphere curled = player->SlamBallAt(player->Root().Position());
+    EXPECT_FLOAT_EQ(curled.center.x, standing.center.x);
+    EXPECT_FLOAT_EQ(curled.center.y, standing.center.y);
+    EXPECT_FLOAT_EQ(curled.center.z, standing.center.z);
+    EXPECT_FLOAT_EQ(curled.radius, standing.radius);
+}
+
 TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
 {
     NS::Obj::Scene scene;

@@ -91,6 +91,12 @@ namespace NS::Obj
         return StandingHalfHeight();
     }
 
+    NS::Phys::Capsule Body::CapsuleAt(const NS::Core::Vector3& rootPosition) const noexcept
+    {
+        // 軸は +Y 固定、中心は根。Move が JoltCharacter へ渡す (半径, 半分の高さ) と同じ 2 つの値から組む
+        return NS::Phys::Capsule{rootPosition, NS::Core::Vector3::UnitY, CapsuleHalfHeight(), CapsuleRadius()};
+    }
+
     void Body::SetSphereShape(bool sphere) noexcept
     {
         m_sphereShape = sphere;

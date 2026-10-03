@@ -321,8 +321,9 @@ namespace NS::Game::Level
         }
 
         const float charge01 = m_judge.Charge01();
-        const NS::Core::Vector3 center = Owner()->Root().Position();
-        const float footY = center.y - m_body->CapsuleHalfHeight() - m_body->CapsuleRadius() + 0.05f;
+        // 輪は当たりのカプセルの下端 (中心 − 軸 × (半分の高さ + 半径)) に置く
+        const NS::Phys::Capsule capsule = m_body->CapsuleAt(Owner()->Root().Position());
+        const NS::Core::Vector3 foot = capsule.center - capsule.axis * (capsule.halfHeight + capsule.radius);
         // 溜め量が輪の広がりに出ないと、満タンまでの途中が読めない
         const float radius = m_body->CapsuleRadius() + 0.25f + charge01 * 0.75f;
         NS::Core::Color color{1.0f, 0.85f, 0.2f, 1.0f};
@@ -330,7 +331,7 @@ namespace NS::Game::Level
         {
             color = NS::Core::Color{1.0f, 1.0f, 1.0f, 1.0f};
         }
-        NS::Gfx::DebugDraw::Circle(NS::Core::Vector3{center.x, footY, center.z},
+        NS::Gfx::DebugDraw::Circle(NS::Core::Vector3{foot.x, foot.y + 0.05f, foot.z},
                                    NS::Core::Vector3{radius, 0.0f, 0.0f},
                                    NS::Core::Vector3{0.0f, 0.0f, radius},
                                    color);

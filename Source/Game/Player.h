@@ -4,6 +4,7 @@
 #include "Game/Player/PlayerEvents.h"
 #include "Game/Player/ReboundArc.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Core/Sphere.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/CameraTarget.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -140,6 +141,12 @@ public:
     [[nodiscard]] NS::Core::Vector3 ReboundDirection() const noexcept { return m_rebound.direction; }
     //! 丸まっている場合 true、それ以外の場合は false
     [[nodiscard]] bool IsCurled() const noexcept { return m_curled; }
+    //! @brief 根を rootPosition に置いた時の突進の玉を返す
+    //! @details 玉は今の当たりのカプセルの下の球 (中心は根から半分の高さだけ下、半径は同じ)。丸まる時は下端を
+    //! 揃えて根を下げるので、立ち姿の下の球が丸まった後の玉になる。丸まっていれば半分の高さが 0 で、玉の中心は根
+    //! そのもの。判定・矢印・エディタの面は玉をここから引く。丸まりの揃え方を変える時は ChangeCurled と一緒に直す
+    //! @param[in] rootPosition 根の位置 (ワールド)
+    [[nodiscard]] NS::Core::Sphere SlamBallAt(const NS::Core::Vector3& rootPosition) const noexcept;
 
     // 移動の組み立て。状態が呼ぶ順序がそのまま手触りになる。速度・接地・重力の計算は身体 (Body) が持ち、
     // どの状態でどの値をどの順に掛けるかをここが決める。調整値は PlayerParams から読む
@@ -345,7 +352,8 @@ private:
     //! @brief 丸まりを入れるか解き、当たりの形と根の高さを一緒に切り替える
     //! @details 丸まると当たりを球にして根を立ち姿の半長ぶん下げる。
     //! 解くと立ち姿へ戻して、その時の立ち姿の半長ぶん上げる。当たりの下端 (中心 − 半長 − 半径) は動かない。
-    //! 根は前フレームの位置と一緒にずらすので、描画の補間に動きとして映らない。今と同じ値なら何もしない
+    //! 根は前フレームの位置と一緒にずらすので、描画の補間に動きとして映らない。今と同じ値なら何もしない。
+    //! この揃え方が突進の玉の中心の決まり (SlamBallAt) を成り立たせている
     void ChangeCurled(bool curled) noexcept;
     //! @brief 丸まりを解く
     //! @details 押されていない・突進中でない・直前のフレームを突進中で終えていない・突進の予約が無い・
