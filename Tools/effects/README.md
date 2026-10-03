@@ -82,6 +82,7 @@ Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effe
 - 形は編集ソフトの `.efkproj` の XML そのもの。**既定から動かす値だけを書く**。公式サンプルを `efkxml dump` で開けば書き方の手本になる
 - 末尾に `<ToolVersion>1.80.7</ToolVersion>`・`<Version>3</Version>`・`<StartFrame>`・`<EndFrame>`・`<IsLoop>` を書く。`Version` が無いと古い形として読み替えられる。後ろの 3 つは実行側に渡らないが、**無いと編集ソフトの読み込みが落ちる**
 - 理由は注釈 (`<!-- -->`) で定義に書いてよい。編集ソフトは注釈で落ちるので、`efkbuild.py` が外してから渡す
+- 定義の前後は読み込みで反転されるので、定義のプラスはゲームでは狙いの向きの後ろ、マイナスは前。ゲームは左手系で読み込み (`EffectScene`)、実行側が前後の符号を反転した後で、溜めの組は `ChargeEffects::YawToward` が前を狙いの向きへ回す
 - 数の意味 (EffekseerCore.dll の列挙から引いた物のうち使う物)
   - 描画 `DrawingValues/Type`: 0 無し・2 板 (既定)・3 リボン・4 輪・5 モデル・6 軌跡
   - 合成 `RendererCommonValues/AlphaBlend`: 0 不透明・1 半透明 (既定)・2 加算・3 減算・4 乗算
