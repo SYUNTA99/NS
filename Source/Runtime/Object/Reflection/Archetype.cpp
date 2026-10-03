@@ -3,6 +3,7 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Component.h"
+#include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/Reflection.h"
@@ -20,9 +21,6 @@ namespace NS::Obj
 {
     namespace
     {
-        // 位置・回転・拡縮は個体の物。種類の既定値に持たせず、保存の差分でも落とさない
-        constexpr std::string_view k_TransformTypeName = "TransformComponent";
-
         // 種類の既定値 1 つの上限。部品の値だけなので、シーンのファイルよりずっと小さい
         constexpr std::size_t k_MaxArchetypeFileBytes = 1024u * 1024u;
 
@@ -42,6 +40,13 @@ namespace NS::Obj
             return {};
         }
 
+        // 位置・回転・拡縮は個体の物。種類の既定値に持たせず、保存の差分でも落とさない
+        // 保存側は JSON の件しか持たないので、型でなく保存の鍵の部品名で見分ける
+        [[nodiscard]] bool IsInstanceOnlyPart(std::string_view partName) noexcept
+        {
+            return partName == k_TransformPartName;
+        }
+
         // 種類の既定値に持たせない物を落とした写し。参照の欄・id・位置と回転と拡縮は個体の物
         [[nodiscard]] nlohmann::json Sanitize(std::string_view className, const nlohmann::json& archetype)
         {
@@ -51,7 +56,7 @@ namespace NS::Obj
             const nlohmann::json& source = ObjectJsonParts(archetype);
             for (nlohmann::json::const_iterator entry = source.begin(); entry != source.end(); ++entry)
             {
-                if (entry.key() == "Transform" || !entry.value().is_object())
+                if (IsInstanceOnlyPart(entry.key()) || !entry.value().is_object())
                 {
                     continue;
                 }
@@ -292,7 +297,7 @@ namespace NS::Obj
         const Actor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json out = object;
         baseline.ForEachPart([&out](std::string_view name, Component& part) {
-            if (name == "Transform")
+            if (IsInstanceOnlyPart(name))
             {
                 return;
             }
@@ -347,7 +352,9 @@ namespace NS::Obj
 
     bool IsArchetypeField(const Component& comp, std::string_view fieldName)
     {
-        if (PartTypeName(comp) == k_TransformTypeName)
+        // どの部品かは持ち主の部品名で決まる。持ち主の無い部品は種類を持たない
+        const Actor* owner = comp.Owner();
+        if (owner == nullptr || IsInstanceOnlyPart(owner->PartName(comp)))
         {
             return false;
         }

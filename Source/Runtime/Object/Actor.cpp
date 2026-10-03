@@ -27,7 +27,7 @@ namespace NS::Obj
 
     void Actor::ForEachPart(const PartVisitor& visitor) const
     {
-        visitor("Transform", *m_rootPart);
+        visitor(k_TransformPartName, *m_rootPart);
         const auto visit = [&visitor](std::string_view name, Component* part) {
             if (part != nullptr)
             {

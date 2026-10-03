@@ -1380,7 +1380,7 @@ void LevelEditorController::SetSelectedFreePosition(NS::Core::Vector3 position)
     {
         go->Root().SetPosition(position);
         if (NS::Obj::TransformComponent* transform =
-                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part("Transform")))
+                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part(NS::Obj::k_TransformPartName)))
         {
             MirrorPlayEditToBaseline(*transform, NS::Obj::k_PositionFieldName);
         }
@@ -1393,7 +1393,7 @@ void LevelEditorController::SetSelectedFreeRotation(NS::Core::Quaternion rotatio
     {
         go->Root().SetRotation(rotation);
         if (NS::Obj::TransformComponent* transform =
-                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part("Transform")))
+                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part(NS::Obj::k_TransformPartName)))
         {
             MirrorPlayEditToBaseline(*transform, NS::Obj::k_RotationFieldName);
         }
@@ -1411,7 +1411,7 @@ void LevelEditorController::SetSelectedFreeScale(NS::Core::Vector3 scale)
     {
         go->Root().SetScale(scale);
         if (NS::Obj::TransformComponent* transform =
-                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part("Transform")))
+                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part(NS::Obj::k_TransformPartName)))
         {
             MirrorPlayEditToBaseline(*transform, NS::Obj::k_ScaleFieldName);
         }
@@ -1646,9 +1646,9 @@ void LevelEditorController::SetComponentEnabledOnSelected(std::size_t componentI
     {
         return;
     }
-    // 入力 component を休止させると player が動かなくなる。transform は root なので同様に守る
+    // 入力 component を休止させると player が動かなくなる。根の部品も同様に守る
     const std::string_view typeName = comp->ClassName();
-    if (typeName == "PlayerInput" || typeName == "TransformComponent")
+    if (typeName == "PlayerInput" || object->PartName(*comp) == NS::Obj::k_TransformPartName)
     {
         return;
     }
@@ -1674,7 +1674,7 @@ void LevelEditorController::DuplicateSelectedObject()
 
     const NS::Obj::Actor* player = FindPlayer(m_scene->Objects());
 
-    // 選択物の忠実コピーを新しい永続 id で増やす。component の id も振り直す
+    // 選択物の忠実コピーを新しい永続 id で増やす
     // 元の id から新しい id への表を作り、コピーの中の親と参照を付け替えるのに使う
     std::vector<nlohmann::json> copies;
     copies.reserve(m_selectionIds.size());

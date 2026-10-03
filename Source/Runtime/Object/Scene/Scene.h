@@ -200,18 +200,18 @@ namespace NS::Obj
         //! @details 一時オブジェクトと違い保存に写り、データからの組み直しで他の配置物と一緒に消える
         Actor* SpawnObject(std::unique_ptr<Actor> obj, std::string name);
 
-        //! @brief 配置物の JSON から 1 体を組んで入れる。id と名前と component の id は JSON のまま使う
+        //! @brief 配置物の JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
         //! @details 名前は既存と重なれば番号を付ける。親の id があれば親へぶら下げ、資産を引き当ててから開始する
         //! undo の作り直しと複製が通る。当たりは呼出側が SyncPhysics で張り直す
         Actor* SpawnFromJson(const nlohmann::json& object);
 
         //! @brief 同じ id の配置物を JSON の姿へ作り直す。並びの位置と子の親子は保つ。居なければ SpawnFromJson と同じ
-        //! @details component の増減も含めて姿を丸ごと入れ替える。当たりは呼出側が SyncPhysics で張り直す
+        //! @details 部品の増減も含めて姿を丸ごと入れ替える。当たりは呼出側が SyncPhysics で張り直す
         Actor* ReplaceFromJson(const nlohmann::json& object);
 
         //! @brief 同じ id の配置物へ JSON の姿を書き戻す。undo / redo が通る
-        //! @details クラスと component の構成 (並び・型・id) が同じなら実体はそのまま残し、名前・有効・親・
-        //! component の名前と有効と値だけを写す。値の変わった component だけ資産を引き直す
+        //! @details クラス名と部品名の組が同じなら実体を残し、名前・有効・親と、部品の有効と値だけを写す
+        //! 部品の型はクラスと部品名で決まるので比べない。値の変わった部品だけ資産を引き直す
         //! 構成が違えば ReplaceFromJson で作り直し、居なければ SpawnFromJson で置く
         //! 当たりは呼出側が SyncPhysics で張り直す
         Actor* ApplyFromJson(const nlohmann::json& object);

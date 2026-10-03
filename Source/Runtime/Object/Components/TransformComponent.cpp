@@ -4,6 +4,7 @@
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 
 #include <algorithm>
+#include <string>
 
 namespace NS::Obj
 {
@@ -46,7 +47,7 @@ namespace NS::Obj
                                             std::string_view fieldName,
                                             const NS::Core::Vector3& fallback) noexcept
         {
-            const nlohmann::json* transform = PartFields(object, "Transform");
+            const nlohmann::json* transform = PartFields(object, k_TransformPartName);
             if (transform == nullptr)
             {
                 return fallback;
@@ -62,7 +63,7 @@ namespace NS::Obj
 
     nlohmann::json& EnsureTransformComponent(nlohmann::json& object)
     {
-        nlohmann::json& transform = ObjectJsonParts(object)["Transform"];
+        nlohmann::json& transform = ObjectJsonParts(object)[std::string{k_TransformPartName}];
         if (!transform.is_object())
         {
             transform = nlohmann::json::object();
@@ -85,7 +86,7 @@ namespace NS::Obj
 
     NS::Core::Quaternion ObjectRotation(const nlohmann::json& object) noexcept
     {
-        const nlohmann::json* transform = PartFields(object, "Transform");
+        const nlohmann::json* transform = PartFields(object, k_TransformPartName);
         if (transform == nullptr)
         {
             return NS::Core::Quaternion::Identity;

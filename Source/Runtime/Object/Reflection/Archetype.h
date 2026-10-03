@@ -79,7 +79,7 @@ namespace NS::Obj
     [[nodiscard]] nlohmann::json ExpandObjectJson(const nlohmann::json& object);
 
     //! @brief 全欄を持つ配置物の JSON から、種類の既定値と同じ欄を除く
-    //! @details 部品の件は id と名前を保つため全て残す。位置・回転・拡縮 (TransformComponent) は個体の物なので除かない
+    //! @details 欄が全部既定と同じ部品も、空の件として残す。位置・回転・拡縮の部品 Transform は個体の物なので除かない
     [[nodiscard]] nlohmann::json DiffObjectJson(const nlohmann::json& object);
 
     //! comp に対応する、持ち主のクラスの Baseline の部品。持ち主が無いか対応が無ければ nullptr
@@ -90,6 +90,7 @@ namespace NS::Obj
     [[nodiscard]] bool IsFieldOverridden(const Component& comp, std::string_view fieldName);
 
     //! 種類の既定値へ上げてよい欄か。参照の欄と位置・回転・拡縮は個体の物なので上げられない
+    //! 持ち主の無い部品も、部品名が引けないので上げられない
     [[nodiscard]] bool IsArchetypeField(const Component& comp, std::string_view fieldName);
 
     //! @brief 部品 comp の欄 fieldName の今の値を、持ち主のクラスの種類の既定値へ書く

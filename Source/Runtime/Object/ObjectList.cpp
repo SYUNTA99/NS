@@ -42,7 +42,7 @@ namespace NS::Obj
         // カウンタは 1 始まりでファイルの id を知らない。読込値まで上げないと次に置く 1 個目が既存とぶつかる
         const nlohmann::json& objects = SceneJsonObjects(scene);
         m_nextObjectId = std::max(m_nextObjectId, SceneJsonNextObjectId(scene));
-        // 手編集でカウンタが既存 id より小さいファイルもあるので object と component の最大も見る
+        // 手編集でカウンタが既存 id より小さいファイルもあるので配置物の id の最大を見る
         for (const nlohmann::json& entry : objects)
         {
             if (ObjectJsonId(entry) >= m_nextObjectId)
@@ -158,7 +158,6 @@ namespace NS::Obj
             return nullptr;
         }
         obj->SetId(AllocateObjectId());
-        // component も同じ空間から採番する。参照できる相手として配置物と同じ扱いにする
 
         // ファイルの参照は名前で書くので、プレイ中に足す物も既存と重ならない名前にする
         std::unordered_set<std::string> used;
