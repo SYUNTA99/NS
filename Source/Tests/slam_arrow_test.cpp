@@ -1,4 +1,3 @@
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamArrow.h"

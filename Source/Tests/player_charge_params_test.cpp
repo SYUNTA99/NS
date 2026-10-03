@@ -1,4 +1,3 @@
-#include "Game/Level/CollisionInput.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Object/ObjectJson.h"
@@ -23,10 +22,7 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
     Player player;
     NS::Game::Player::PlayerParams* params =
         NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
-    NS::Game::Level::CollisionInput* input =
-        NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player.Part("ChargeControl"));
     ASSERT_NE(params, nullptr);
-    ASSERT_NE(input, nullptr);
     const nlohmann::json fields = NS::Obj::SerializeComponent(*params)["fields"];
     const nlohmann::json expected = {{"チャージしきい値秒", 0.2f},
                                      {"チャージ満タン秒", 1.0f},
@@ -47,10 +43,9 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
     // 左右の寄せは消した。鍵が戻ると、保存した場面に効かない探す範囲が載る
     EXPECT_FALSE(fields.contains("寄せる相手を探す角度"));
     EXPECT_FALSE(fields.contains("寄せる相手を探す距離"));
-    EXPECT_TRUE(NS::Obj::SerializeComponent(*input)["fields"].empty());
 }
 
-// 溜めの倍率と溜め中の減速は欄の持ち主 PlayerParams が答える。裁定役と溜めの部品は同じ答えを読む
+// 溜めの倍率と溜め中の減速は欄の持ち主 PlayerParams が答える。裁定役と自機の溜めは同じ答えを読む
 TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
 {
     Player player;
@@ -86,10 +81,7 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
     Player player;
     NS::Game::Player::PlayerParams* params =
         NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
-    NS::Game::Level::CollisionInput* input =
-        NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player.Part("ChargeControl"));
     ASSERT_NE(params, nullptr);
-    ASSERT_NE(input, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params,
                                        {{"チャージ減速率", 0.4f},
                                         {"チャージしきい値秒", 0.1f},
@@ -97,9 +89,9 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
                                         {"チャージ倍率カーブ", {{"curve", {{0.0f, 2.0f}, {1.0f, 4.0f}}}}}}),
               0u);
     player.Update(false);
-    EXPECT_EQ(input->Judge().chargeThresholdSteps,
+    EXPECT_EQ(player.ChargeJudge().chargeThresholdSteps,
               static_cast<int>(std::lround(0.1f / NS::Platform::FrameTimer::FixedDelta())));
-    EXPECT_EQ(input->Judge().chargeMaxSteps,
+    EXPECT_EQ(player.ChargeJudge().chargeMaxSteps,
               static_cast<int>(std::lround(0.5f / NS::Platform::FrameTimer::FixedDelta())));
 }
 
@@ -152,6 +144,42 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
             for (const std::string_view key : removed)
             {
                 EXPECT_FALSE(NS::Obj::HasField(*fields, key)) << sceneName << " " << key;
+            }
+        }
+    }
+}
+
+// クラスに無い部品の鍵が同梱の種類の既定値と場面に残ると、読むたびに読み飛ばしの警告が出る
+TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
+{
+    const Player player;
+    const nlohmann::json* archetype = NS::Obj::ArchetypeLibrary::Get().Find("Player");
+    ASSERT_NE(archetype, nullptr);
+    for (nlohmann::json::const_iterator it = NS::Obj::ObjectJsonParts(*archetype).begin();
+         it != NS::Obj::ObjectJsonParts(*archetype).end();
+         ++it)
+    {
+        EXPECT_NE(player.Part(it.key()), nullptr) << "Player.json " << it.key();
+    }
+
+    for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
+    {
+        const std::string path = NS::Platform::FileSystem::Combine(
+            NS::Platform::FileSystem::Combine(
+                NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+            sceneName);
+        nlohmann::json doc;
+        ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path)) << sceneName;
+        for (const nlohmann::json& entry : NS::Obj::SceneJsonObjects(doc))
+        {
+            if (NS::Obj::ObjectJsonClass(entry) != "Player")
+            {
+                continue;
+            }
+            const nlohmann::json& parts = NS::Obj::ObjectJsonParts(entry);
+            for (nlohmann::json::const_iterator it = parts.begin(); it != parts.end(); ++it)
+            {
+                EXPECT_NE(player.Part(it.key()), nullptr) << sceneName << " " << it.key();
             }
         }
     }

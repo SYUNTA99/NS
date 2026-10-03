@@ -9,7 +9,6 @@
             "id": 2,
             "parts": {
                 "Appearance": {},
-                "ChargeControl": {},
                 "ChargeEffects": {},
                 "ImpactEffects": {},
                 "ImpactResolver": {},

@@ -1,4 +1,3 @@
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
@@ -111,7 +110,7 @@ namespace
     }
 } // namespace
 
-TEST(PlayerUpdatePipeline, ObservationDoesNotAdvanceChargeOrMoveThePlayer)
+TEST(PlayerUpdatePipeline, ImpactObservationDoesNotJudgeOrMoveThePlayer)
 {
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene);
@@ -119,30 +118,10 @@ TEST(PlayerUpdatePipeline, ObservationDoesNotAdvanceChargeOrMoveThePlayer)
     player->Body().SetVelocity(NS::Core::Vector3{2.0f, 4.0f, 3.0f});
     const NS::Core::Vector3 position = player->Root().Position();
     const NS::Core::Vector3 velocity = player->Body().Velocity();
-    player->ChargeControl().Observe(true);
     player->Resolver().ObserveImpact();
-    EXPECT_FALSE(player->ChargeControl().Judge().IsHeld());
-    EXPECT_FALSE(player->IsCurled());
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
     ExpectSameVector(player->Root().Position(), position);
     ExpectSameVector(player->Body().Velocity(), velocity);
-    player->ChargeControl().AdvanceState(NS::Platform::FrameTimer::FixedDelta());
-    EXPECT_TRUE(player->ChargeControl().Judge().JustPressed());
-    EXPECT_TRUE(player->IsCurled());
-}
-
-TEST(PlayerUpdatePipeline, OneObservationCannotAdvanceChargeTwice)
-{
-    Player player;
-    player.ChargeControl().OnStart();
-    player.ChargeControl().Observe(true);
-    player.ChargeControl().AdvanceState(0.1f);
-    player.ChargeControl().AdvanceState(0.1f);
-    EXPECT_TRUE(player.ChargeControl().Judge().JustPressed());
-    EXPECT_FALSE(player.ChargeControl().IsCharging());
-    player.ChargeControl().Observe(true);
-    player.ChargeControl().AdvanceState(0.1f);
-    EXPECT_TRUE(player.ChargeControl().Judge().JustStartedCharging());
 }
 
 // 左右の寄せは消した。脇の相手へ向きを曲げると、放った後に矢印とずれて当て所が見えない所で動く
@@ -341,11 +320,11 @@ TEST(PlayerAppearance, ComposesTheStanceIntoTheDrawScale)
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene);
     ASSERT_NE(player, nullptr);
-    for (int frame = 0; frame < 120 && !player->ChargeControl().IsCharging(); ++frame)
+    for (int frame = 0; frame < 120 && !player->ChargeJudge().IsCharging(); ++frame)
     {
         player->Update(true);
     }
-    ASSERT_TRUE(player->ChargeControl().IsCharging());
+    ASSERT_TRUE(player->ChargeJudge().IsCharging());
     EXPECT_FLOAT_EQ(player->ModelPart()->DrawScale().y, 0.95f);
 }
 

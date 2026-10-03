@@ -1,4 +1,3 @@
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamArrow.h"
@@ -497,7 +496,7 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     {
         player->Update(true);
     }
-    ASSERT_TRUE(player->ChargeControl().IsCharging());
+    ASSERT_TRUE(player->ChargeJudge().IsCharging());
     NS::Game::Level::LockOnFrameShape frame{};
     const NS::Core::Matrix view =
         NS::Core::Matrix::CreateLookAt(camera->Position(), camera->Target(), NS::Core::Vector3::UnitY);

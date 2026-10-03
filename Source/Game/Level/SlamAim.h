@@ -6,7 +6,7 @@
 #include "Runtime/Object/Reflection/ActorRef.h"
 
 // 突進の狙いの予測の型
-// CollisionInput と ImpactResolver の両方が使うので、どちらのヘッダにも置かない
+// Player と ImpactResolver の両方が使うので、どちらのヘッダにも置かない
 
 namespace NS::Game::Level
 {

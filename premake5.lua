@@ -920,6 +920,7 @@ project "Tests"
         "Source/Game/Player.cpp",
         "Source/Game/PlayerMovement.cpp",
         "Source/Game/PlayerBodySlam.cpp",
+        "Source/Game/PlayerCharge.cpp",
         -- Game.cpp の Application と Window への依存は OnAttach / OnUpdate / OnRender の中だけなので、
         -- 開始シーンのパスの試験はそれらを呼ばずに済む。リンクは既に App を繋いでいる
         "Source/Game/Game.cpp",

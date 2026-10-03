@@ -1,6 +1,6 @@
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/Goal.h"
+#include "Game/Level/ImpactResolver.h"
 #include "Game/Level/KillZone.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"

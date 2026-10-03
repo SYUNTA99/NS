@@ -87,7 +87,7 @@ namespace NS::Game::Level
     public:
         ImpactResolver() noexcept;
 
-        //! 同じ配置物の移動と体当たりの入力と当たりの演出を引き当てる。移動が無ければ以後何もしない
+        //! 持ち主の Player と移動と当たりの演出を引き当てる。持ち主が Player でなければ以後何もしない
         void OnStart() override;
 
         //! @brief 次の固定ステップで重なる相手を探し、MsgAskTackleTarget に応じた相手と答えを控える

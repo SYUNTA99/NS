@@ -17,7 +17,6 @@ namespace NS::Game::Player
 
 namespace NS::Game::Level
 {
-    class CollisionInput;
     class ImpactResolver;
     class TargetMarker;
     class SlamArrow;
@@ -65,7 +64,8 @@ namespace NS::Game::Player
         //! @return 威力の倍率
         [[nodiscard]] float ChargeFactorFor(float charge01) const noexcept;
         //! @brief 溜め中に最高速へ掛ける倍率を返す
-        //! @details 1 − 欄「チャージ減速率」を 0..1 に丸める。CollisionInput が溜めの間に自機へ渡す
+        //! @details 1 − 欄「チャージ減速率」を 0..1 に丸める。
+        //! 溜めている間に Player::AdvanceCharge が自機の最高速度へ掛ける
         //! @return 最高速へ掛ける倍率
         [[nodiscard]] float ChargingSpeedScale() const noexcept;
 
@@ -320,7 +320,6 @@ namespace NS::Game::Player
         float m_tapBurstScale = 0.75f;
         float m_fullBurstScaleGain = 0.25f;
         friend class ::Player;
-        friend class NS::Game::Level::CollisionInput;
         float m_chargeThresholdSeconds = 0.2f;
         float m_chargeFullSeconds = 1.0f;
         float m_chargeSlowRate = 0.7f;

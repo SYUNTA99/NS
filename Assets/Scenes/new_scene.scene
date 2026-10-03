@@ -46,7 +46,6 @@
       "parts": {
         "Appearance": {},
         "BodySensor": {},
-        "ChargeControl": {},
         "ChargeEffects": {},
         "HitReaction": {},
         "ImpactEffects": {},

@@ -1,6 +1,5 @@
 #include "Game/Player.h"
 
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
@@ -46,7 +45,6 @@ Player::Player() noexcept
     m_body = std::make_unique<NS::Obj::Body>();
     m_input = std::make_unique<NS::Obj::PlayerInput>();
     m_params = std::make_unique<NS::Game::Player::PlayerParams>();
-    m_collisionInput = std::make_unique<NS::Game::Level::CollisionInput>();
     m_resolver = std::make_unique<NS::Game::Level::ImpactResolver>();
     m_targetMarker = std::make_unique<NS::Game::Level::TargetMarker>();
     m_slamArrow = std::make_unique<NS::Game::Level::SlamArrow>();
@@ -64,15 +62,12 @@ Player::Player() noexcept
     SetBodySensorPart(std::make_unique<NS::Obj::FollowHitSensor>(
         [body = m_body.get()] { return NS::Obj::SensorVolume::Capsule(body->WorldCapsule()); }));
     NS::Game::Level::SetSensorKind(*BodySensorPart(), NS::Game::Level::SensorKind::PlayerBody);
-    AttachFixedComponent(*m_collisionInput);
     AttachFixedComponent(*m_resolver);
     (void)CreatePart("HitReaction");
     AttachFixedComponent(*m_targetMarker);
     AttachFixedComponent(*m_slamArrow);
     AttachFixedComponent(*m_chargeEffects);
     AttachFixedComponent(*m_impactEffects);
-    m_collisionInput->m_player = this;
-    m_collisionInput->m_params = m_params.get();
     // 部品を全部付けた後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
     (void)BuildStateMachine<Player,
                             NS::Game::Player::IdlePlayerState,
@@ -94,7 +89,6 @@ void Player::ForEachPart(const PartVisitor& visitor) const
     visitor("Movement", *m_body);
     visitor("Input", *m_input);
     visitor("Params", *m_params);
-    visitor("ChargeControl", *m_collisionInput);
     visitor("ImpactResolver", *m_resolver);
     visitor("TargetMarker", *m_targetMarker);
     visitor("SlamArrow", *m_slamArrow);
@@ -131,26 +125,6 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
         state.charge.aimTargetRadius = std::max({aim.bounds.Extents.x, aim.bounds.Extents.y, aim.bounds.Extents.z});
     }
     return state;
-}
-
-const NS::Game::Level::ImpactInputJudge& Player::ChargeJudge() const noexcept
-{
-    return m_collisionInput->Judge();
-}
-
-bool Player::TryGetAimLine(NS::Game::Level::AimLine& outLine) const noexcept
-{
-    return m_collisionInput->TryGetAimLine(outLine);
-}
-
-bool Player::TryGetAimTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept
-{
-    return m_collisionInput->TryGetAimTarget(outTarget);
-}
-
-float Player::StanceHeight() const noexcept
-{
-    return m_collisionInput->StanceHeight();
 }
 
 void Player::UpdateAnimation()
@@ -193,10 +167,7 @@ void Player::Update(bool chargeHeld)
 void Player::ObserveStep()
 {
     NS::Obj::Actor::ObserveStep();
-    if (m_collisionInput->IsActive())
-    {
-        m_collisionInput->Observe(m_input->SlamHeld());
-    }
+    ObserveCharge(m_input->SlamHeld());
     if (m_resolver->IsActive())
     {
         m_resolver->ObserveImpact();
@@ -205,10 +176,7 @@ void Player::ObserveStep()
 
 void Player::DecideStep()
 {
-    if (m_collisionInput->IsActive())
-    {
-        m_collisionInput->AdvanceState(NS::Platform::FrameTimer::FixedDelta());
-    }
+    AdvanceCharge(NS::Platform::FrameTimer::FixedDelta());
     if (m_resolver->IsActive())
     {
         m_resolver->StepState();
@@ -239,10 +207,6 @@ void Player::StateStep()
 void Player::BodyStep()
 {
     const float dt = NS::Platform::FrameTimer::FixedDelta();
-    if (m_collisionInput->IsActive())
-    {
-        m_collisionInput->ApplyControl();
-    }
     if (CanMoveBody() && dt > 0.0f)
     {
         MoveBody(dt);
@@ -258,6 +222,9 @@ void Player::VisualStep()
     TickPart(m_appearance.get());
     TickPart(m_chargeEffects.get());
     TickPart(m_impactEffects.get());
+#if !defined(NS_SHIPPING)
+    DrawChargeRing();
+#endif
 }
 
 std::string_view Player::ChooseClip(float lateralSpeed) const noexcept
@@ -321,6 +288,8 @@ void Player::OnEndPlay()
     m_states->Reset();
     m_appliedClip.clear();
     NS::Obj::Actor::OnEndPlay();
+    // 部品の OnEndPlay の後に置く。後ろの部品は丸まりも構えも読まないので、捨てる時機はここで足りる
+    EndCharge();
 }
 
 void Player::InitAfterPlacement()
@@ -364,7 +333,7 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
         // 押しが偽になった歩を放したと読むと、溜めた突進が出る。止める時は放させずに溜めを捨てる
         if (lock->Locked())
         {
-            m_collisionInput->CancelCharge();
+            CancelCharge();
         }
         return true;
     }
