@@ -39,6 +39,9 @@ namespace NS::Obj
     //! トラウマを足す。管理役が無いか壊れた量なら false
     bool AddCameraTrauma(const IUseCamera& user, const CameraTraumaDesc& desc);
 
+    //! このフレームのトラウマを少なくとも level に保つ。管理役が無いか壊れた量なら false
+    bool HoldCameraTrauma(const IUseCamera& user, float level, const CameraTraumaShape& shape);
+
     //! @brief 当たりで始めた揺れと寄りを止める。トラウマは残す
     //! @details 次の当たりは前の当たりの揺れと寄りを止めてから始めるが、トラウマは続けて当てると足される
     void StopCameraHitEffects(const IUseCamera& user) noexcept;

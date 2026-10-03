@@ -1,6 +1,7 @@
 ﻿#include "Runtime/Object/Components/ThirdPersonFollow.h"
 
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/IUse/IUseCamera.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -168,7 +169,6 @@ namespace NS::Obj
         m_chargeNarrowDegrees = 0.0f;
         m_chargeReturnFromDegrees = 0.0f;
         m_chargeReturnFrame = 0;
-        m_chargeShake = 0.0f;
         m_chargeFrameOffset = NS::Core::Vector2{0.0f, 0.0f};
         m_chargeFrameVelocity = NS::Core::Vector2{0.0f, 0.0f};
     }
@@ -401,19 +401,16 @@ namespace NS::Obj
         }
         m_chargeNarrowDegrees = std::max(holdNarrow, returning);
 
-        // 締めと同じ溜め量から作り、変わり始めと変わり終わりのフレームを締めと揃える
-        if (holdCharge > 0.0f)
+        // 溜めの揺れはカメラの管理役のトラウマに保たせる。揺れの持ち主を当たりの揺れと 1 つにする
+        // 締めと同じ溜め量から作り、変わり始めのフレームを締めと揃える。トラウマの 2 乗で、溜めきりに近いほど強まる
+        if (holdCharge > 0.0f && Owner() != nullptr)
         {
-            float sign = -1.0f;
-            if (m_chargeShake < 0.0f)
-            {
-                sign = 1.0f;
-            }
-            m_chargeShake = sign * m_chargeShakeStrength * holdCharge;
-        }
-        else
-        {
-            m_chargeShake = 0.0f;
+            NS::Obj::CameraTraumaShape shape;
+            shape.yawDegrees = m_chargeShakeYawDegrees;
+            shape.pitchDegrees = m_chargeShakePitchDegrees;
+            shape.frequency = m_chargeShakeFrequency;
+            shape.decayPerSecond = m_chargeShakeDecayPerSecond;
+            (void)HoldCameraTrauma(*Owner(), holdCharge, shape);
         }
 
         // 構図は押したフレームから動かし、溜めに入った時には相手を枠へ入れておく
@@ -679,8 +676,8 @@ namespace NS::Obj
             headPos.z - forward.z * m_distance,
         };
 
-        // 構図のずらしと溜めの揺れは位置と注視点を同じだけ動かし、視線の向きを変えない。どちらも 0 なら足さない
-        const float upShift = m_chargeFrameOffset.y + m_chargeShake;
+        // 構図のずらしは位置と注視点を同じだけ動かし、視線の向きを変えない。0 なら足さない
+        const float upShift = m_chargeFrameOffset.y;
         if (m_chargeFrameOffset.x != 0.0f || upShift != 0.0f)
         {
             const NS::Core::Vector3 right{cy, 0.0f, -sy};

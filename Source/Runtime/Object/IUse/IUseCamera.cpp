@@ -40,6 +40,16 @@ namespace NS::Obj
         return cameras->AddTrauma(desc);
     }
 
+    bool HoldCameraTrauma(const IUseCamera& user, float level, const CameraTraumaShape& shape)
+    {
+        CameraManager* cameras = user.GetCameraManager();
+        if (cameras == nullptr)
+        {
+            return false;
+        }
+        return cameras->HoldTrauma(level, shape);
+    }
+
     void StopCameraHitEffects(const IUseCamera& user) noexcept
     {
         if (CameraManager* cameras = user.GetCameraManager())

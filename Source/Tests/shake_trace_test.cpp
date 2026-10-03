@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdio>
 #include <memory>
 #include <span>
 #include <string>
@@ -125,10 +126,10 @@ namespace
         int frame = 0;
     };
 
-    // 溜めの揺れのずれ (m、カメラの上の向き) を k_ChargeFrames フレームぶん並べる
-    std::vector<float> RecordChargeShake()
+    // 溜めの揺れの角度 (横・縦・傾き、度) を k_ChargeFrames フレームぶん並べる
+    std::vector<NS::Core::Vector3> RecordChargeShake()
     {
-        std::vector<float> offsets;
+        std::vector<NS::Core::Vector3> offsets;
         NS::Obj::Scene scene;
         ChargingTarget* target =
             NS::Obj::Cast<ChargingTarget>(scene.SpawnObject(std::make_unique<ChargingTarget>(), "target"));
@@ -142,8 +143,18 @@ namespace
         for (int frame = 0; frame < k_ChargeFrames; ++frame)
         {
             target->frame = frame;
-            actor->Update();
-            offsets.push_back(vcam.ChargeShake());
+            scene.OnUpdate();
+            NS::Core::Vector3 angles{};
+            const NS::Obj::CameraManager* cameras = scene.GetCameraManager();
+            if (cameras != nullptr)
+            {
+                const NS::Obj::CameraTraumaModifier* trauma = cameras->FindModifier<NS::Obj::CameraTraumaModifier>();
+                if (trauma != nullptr)
+                {
+                    angles = trauma->Angles();
+                }
+            }
+            offsets.push_back(angles);
         }
         return offsets;
     }
@@ -195,27 +206,24 @@ TEST(ShakeTrace, WritesTheShakeOfTheSameHitsAndCharge)
 {
     const HitShakeTrace center = RecordHitShake(0.0f);
     const HitShakeTrace miss = RecordHitShake(0.75f);
-    const std::vector<float> charge = RecordChargeShake();
+    const std::vector<NS::Core::Vector3> charge = RecordChargeShake();
     ASSERT_EQ(center.offsets.size(), static_cast<std::size_t>(k_HitFrames));
     ASSERT_EQ(miss.offsets.size(), static_cast<std::size_t>(k_HitFrames));
     ASSERT_EQ(charge.size(), static_cast<std::size_t>(k_ChargeFrames));
     EXPECT_EQ(center.tier, HitTier::Center);
     EXPECT_EQ(miss.tier, HitTier::Wide);
 
-    std::vector<NS::Core::Vector3> chargeOffsets;
-    for (const float up : charge)
-    {
-        chargeOffsets.push_back(NS::Core::Vector3{0.0f, up, 0.0f});
-    }
     const float centerRatio = HitStepRatio(center);
     const float missRatio = HitStepRatio(miss);
-    const float chargeRatio = MaxStepRatio(chargeOffsets);
+    const float chargeRatio = MaxStepRatio(charge);
     // 揺れが書き出されていなければ基準にならない
     EXPECT_GT(centerRatio, 0.0f);
     EXPECT_GT(missRatio, 0.0f);
     EXPECT_GT(chargeRatio, 0.0f);
-    // R-3-1: 外れはトラウマの揺れ。方形の波 (直す前 1.71) のように振れ幅の倍近くを 1 フレームで跳ばない
+    // R-3-1: 外れと溜めはトラウマの揺れ。方形の波 (直す前 外れ 1.71・溜め 1.98) のように振れ幅の倍近くを 1
+    // フレームで跳ばない
     EXPECT_LT(missRatio, 0.6f);
+    EXPECT_LT(chargeRatio, 0.6f);
 
     nlohmann::ordered_json root;
     root["frameSeconds"] = 1.0f / 60.0f;
@@ -227,7 +235,7 @@ TEST(ShakeTrace, WritesTheShakeOfTheSameHitsAndCharge)
     root["centerAngles"] = SeriesJson(center.angles);
     root["miss"] = SeriesJson(miss.offsets);
     root["missAngles"] = SeriesJson(miss.angles);
-    root["charge"] = SeriesJson(chargeOffsets);
+    root["chargeAngles"] = SeriesJson(charge);
     const std::string text = root.dump(1);
     using NS::Platform::FileSystem;
     const std::string directory =

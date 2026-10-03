@@ -211,3 +211,16 @@ TEST(CameraTrauma, HitEffectsStopKeepsTheTrauma)
     NS::Obj::StopCameraEffects(scene);
     EXPECT_FLOAT_EQ(cameras->Trauma(), 0.0f);
 }
+
+// 弱い保ちは強い揺れの形を奪わない。外れの揺れの途中に溜め始めても、外れの揺れのまま減る
+TEST(CameraTrauma, WeakerHoldKeepsTheStrongerShape)
+{
+    NS::Obj::CameraTraumaModifier trauma;
+    trauma.AddTrauma(TraumaOf(0.9f));
+    NS::Obj::CameraTraumaShape charge = ShapeOf(20.0f, 4.0f);
+    charge.exponent = 3.0f;
+    trauma.HoldTrauma(0.2f, charge);
+    EXPECT_FLOAT_EQ(trauma.ShakeAmount(), 0.81f);
+    trauma.HoldTrauma(0.95f, charge);
+    EXPECT_NEAR(trauma.ShakeAmount(), 0.95f * 0.95f * 0.95f, 1.0e-5f);
+}

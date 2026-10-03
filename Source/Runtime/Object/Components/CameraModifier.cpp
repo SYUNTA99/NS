@@ -251,9 +251,13 @@ namespace NS::Obj
     void CameraTraumaModifier::HoldTrauma(float level, const CameraTraumaShape& shape) noexcept
     {
         const float clamped = NS::Core::Clamp(level, 0.0f, 1.0f);
+        // 弱い保ちは強い揺れの形を奪わない。外れの揺れの途中に溜め始めても、外れの揺れのまま減る
+        if (clamped >= m_trauma)
+        {
+            m_shape = shape;
+        }
         m_trauma = std::max(m_trauma, clamped);
         m_held = std::max(m_held, clamped);
-        m_shape = shape;
     }
 
     float CameraTraumaModifier::ShakeAmount() const noexcept

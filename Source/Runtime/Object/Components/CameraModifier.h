@@ -208,7 +208,8 @@ namespace NS::Obj
         void AddTrauma(const CameraTraumaDesc& desc) noexcept;
 
         //! @brief このフレームのトラウマを少なくとも level に保つ
-        //! @details 毎フレーム呼ぶ。呼ばなかったフレームからは減り始める。形も置き換える
+        //! @details 毎フレーム呼ぶ。呼ばなかったフレームからは減り始める。level
+        //! が今のトラウマ以上の時だけ形を置き換える
         //! @param[in] level 保つトラウマ 0〜1
         //! @param[in] shape 揺れの形
         void HoldTrauma(float level, const CameraTraumaShape& shape) noexcept;
