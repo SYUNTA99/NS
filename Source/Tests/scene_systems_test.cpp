@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -165,4 +166,28 @@ TEST(ObjectListTicker, ActorTickFollowsBands)
     ASSERT_EQ(log.order.size(), 2u);
     EXPECT_EQ(log.order[0], "actor");
     EXPECT_EQ(log.order[1], "component");
+}
+
+// 数えるのは世界が実際に進んだ固定ステップだけ。止めている間に回った更新は数えない
+TEST(SceneSimulation, StepCountAdvancesOnlyWhenTheWorldSteps)
+{
+    NS::Obj::Scene scene;
+    const std::uint64_t start = scene.SimulationStepCount();
+    scene.OnUpdate();
+    EXPECT_EQ(scene.SimulationStepCount(), start + 1);
+
+    scene.SetSimulationPaused(true);
+    scene.OnUpdate();
+    scene.OnUpdate();
+    EXPECT_EQ(scene.SimulationStepCount(), start + 1);
+
+    // コマ送りは 1 歩だけ進める
+    scene.StepSimulation();
+    scene.OnUpdate();
+    scene.OnUpdate();
+    EXPECT_EQ(scene.SimulationStepCount(), start + 2);
+
+    scene.SetSimulationEnabled(false);
+    scene.OnUpdate();
+    EXPECT_EQ(scene.SimulationStepCount(), start + 2);
 }

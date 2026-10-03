@@ -90,6 +90,11 @@ public:
     //! @details プレイ中の当たり表示の条件。Scene が映っていない間は線を積まず、ゲーム画面へ出さない
     void SetSceneViewVisible(bool visible) noexcept { m_sceneViewVisible = visible; }
 
+    //! @brief 固定ステップの更新の後に呼ぶ。そのステップで世界が進んでいれば、プレイ中の当たり線と面を溜め直す
+    //! @details 世界が進んだステップの頭で前の図形が捨てられるので、描画の時に溜めた分は Scene タブまで残らない
+    //! 世界が進まなかったステップでは溜めない。捨てられずに重なり、面の半透明が濃くなるため
+    void QueuePlayOverlaysAfterStep() noexcept;
+
     //! プレイ中に Scene タブへ自由視点を映すフレームで毎回呼ぶ。入力を free-fly カメラへ流す
     //! 編集モード中は何もしない
     void TickPlaySceneView(const NS::Editor::EditorCameraInput& input) noexcept;
@@ -235,6 +240,10 @@ private:
     //! @param[in] all 真なら全配置物、偽なら選んでいる分だけ
     void RenderColliderWireframes(bool all) noexcept;
 
+    //! @brief Scene パネルが映っていれば、プレイ中の当たり線と相手の正面の面を全配置物ぶん溜める
+    //! @details 描画の時と固定ステップの更新の後の両方から呼ぶ
+    void QueuePlayOverlays() noexcept;
+
     //! @brief 赤の欄 (部品 HitZones) を持つ相手ごとに、自機の方を向いた正面の面と、直近の当たりの触れた点を描く
     //! @details 面の向きは、溜めて狙っている相手には狙いの線、それ以外は自機の玉の中心から相手の中心への水平の向き。
     //! 自機が居なければエディタのカメラから相手への水平の向き。外れの面に段の形を色の表の色で重ね、縁を線で描く
@@ -268,8 +277,9 @@ private:
     NS::Editor::ViewRect m_gameViewRect{};
     bool m_gameViewRectValid = false;
     bool m_gameViewHovered = false;
-    bool m_gameViewHidden = false;   // UI 表示中に前面のパネルが裏へ隠れているか
-    bool m_sceneViewVisible = false; // Scene パネルが映っているか。プレイ中の当たり表示の条件
+    bool m_gameViewHidden = false;           // UI 表示中に前面のパネルが裏へ隠れているか
+    bool m_sceneViewVisible = false;         // Scene パネルが映っているか。プレイ中の当たり表示の条件
+    std::uint64_t m_lastQueuedStepCount = 0; // 前の固定ステップの更新の後に見た Scene の進んだステップの累計
 
     NS::UI::ImGuiContext* m_imgui = nullptr; // UI描画用コンテキスト、非所有
     NS::Editor::EditorCamera m_editorCamera; // 編集用自由視点カメラ

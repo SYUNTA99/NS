@@ -129,6 +129,9 @@ void Editor::OnUpdate()
     HandleModeToggleInput(*m_controller);
     HandlePauseInput(*m_controller);
     HandleUiVisibilityInput(*m_controller);
+    // Game の更新の後に呼ばれるので、固定ステップの頭で捨てた線と面をここで溜め直せる
+    // プレイと編集の切替の後に置き、編集へ戻ったステップでプレイの線を溜めない
+    m_controller->QueuePlayOverlaysAfterStep();
 }
 
 void Editor::OnRender()

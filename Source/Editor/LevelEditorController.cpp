@@ -800,6 +800,37 @@ void LevelEditorController::TickEdit()
     }
 }
 
+void LevelEditorController::QueuePlayOverlaysAfterStep() noexcept
+{
+    if (m_scene == nullptr)
+    {
+        return;
+    }
+    // 溜めるかに依らず控える。Scene タブが隠れていた間に進んだ分を、後のステップで溜めない
+    const std::uint64_t stepCount = m_scene->SimulationStepCount();
+    const bool stepped = stepCount != m_lastQueuedStepCount;
+    m_lastQueuedStepCount = stepCount;
+    // 進まなかったステップでは頭の BeginStep が走らず、溜めた分が捨てられずに重なる
+    if (!stepped || m_mode == Mode::Edit)
+    {
+        return;
+    }
+    QueuePlayOverlays();
+}
+
+void LevelEditorController::QueuePlayOverlays() noexcept
+{
+    // 線を積むのは Scene が映っているフレームだけ。ビュー列の先頭が Scene なので、
+    // 溜めた線は Scene の描画で消え、ゲーム画面へは残らない
+    if (!m_sceneViewVisible)
+    {
+        return;
+    }
+    // 動いている形をそのまま追えるよう選択に関わらず全部出す
+    RenderColliderWireframes(true);
+    RenderHitFaces();
+}
+
 void LevelEditorController::Render()
 {
     NS::App::Application* app = NS::App::Application::Get();
@@ -810,14 +841,10 @@ void LevelEditorController::Render()
 
     if (m_mode != Mode::Edit)
     {
-        // プレイ中も Scene には当たりを見せる。動いている形をそのまま追えるよう選択に関わらず全部出す
-        // 線を積むのは Scene が映っているフレームだけ。ビュー列の先頭が Scene なので、
-        // 溜めた線は Scene の描画で消え、ゲーム画面へは残らない
-        if (m_sceneViewVisible)
-        {
-            RenderColliderWireframes(true);
-            RenderHitFaces();
-        }
+        // 描画の時に溜めた分は次のフレームの Scene タブで描かれる。固定ステップが入るフレームでは
+        // その頭で捨てられ、更新の後に QueuePlayOverlaysAfterStep が溜め直した分が代わりに描かれる
+        // 固定ステップが入らないフレームと一時停止中は、ここで溜めた分が映る
+        QueuePlayOverlays();
         return;
     }
 
