@@ -1,7 +1,7 @@
+#include "Game/Level/DeathZone.h"
 #include "Game/Level/FollowCamera.h"
 #include "Game/Level/Goal.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/KillZone.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/MapObj.h"
@@ -10,15 +10,15 @@
 #include "Runtime/Object/Actors/Light.h"
 #include "Runtime/Object/Actors/MapParts.h"
 #include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/BoxCollider.h"
+#include "Runtime/Object/Components/BoxCollision.h"
 #include "Runtime/Object/Components/DirectionalLight.h"
 #include "Runtime/Object/Components/HitReaction.h"
 #include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/MeshCollider.h"
+#include "Runtime/Object/Components/MeshCollision.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/Shadow.h"
-#include "Runtime/Object/Components/SphereCollider.h"
+#include "Runtime/Object/Components/SphereCollision.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 
 #include <gtest/gtest.h>
@@ -33,16 +33,16 @@ TEST(ActorClass, MapPartsCollidesWithItsMesh)
     ASSERT_NE(mesh, nullptr);
     EXPECT_EQ(mesh->MeshRef(), "cube");
     // 当たりは見た目のメッシュの三角形。箱や球の当たりは持たない
-    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::MeshCollider>(parts.Part("Collision")), nullptr);
-    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::BoxCollider>(parts.Part("Collision")), nullptr);
-    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::SphereCollider>(parts.Part("Collision")), nullptr);
+    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::MeshCollision>(parts.Part("Collision")), nullptr);
+    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::BoxCollision>(parts.Part("Collision")), nullptr);
+    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::SphereCollision>(parts.Part("Collision")), nullptr);
 }
 
-TEST(ActorClass, MapObjOwnsMotionAndStaticCollider)
+TEST(ActorClass, MapObjOwnsMotionAndStaticCollision)
 {
     const NS::Game::Level::MapObj obj;
     EXPECT_NE(obj.ModelPart(), nullptr);
-    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::SphereCollider>(obj.Part("Collision")), nullptr);
+    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::SphereCollision>(obj.Part("Collision")), nullptr);
     EXPECT_EQ(obj.Part("Breakable"), nullptr);
     EXPECT_EQ(obj.Part("LaunchedBody"), nullptr);
     // 影は種類の既定値が足す部品。コンストラクタは積まない
@@ -66,16 +66,16 @@ TEST(ActorClass, GoalHasMarkerAndArea)
     EXPECT_TRUE(NS::Game::Level::IsSensorKind(*area, NS::Game::Level::SensorKind::Area));
 }
 
-TEST(ActorClass, KillZoneIsBoxAreaWithoutTerrainCollision)
+TEST(ActorClass, DeathZoneIsBoxAreaWithoutTerrainCollision)
 {
-    const NS::Game::Level::KillZone zone;
+    const NS::Game::Level::DeathZone zone;
     const NS::Obj::ShapeHitSensor* area = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(zone.BodySensorPart());
     ASSERT_NE(area, nullptr);
     EXPECT_TRUE(NS::Game::Level::IsSensorKind(*area, NS::Game::Level::SensorKind::Area));
     EXPECT_EQ(area->Shape(), NS::Obj::HitSensorShape::Box);
     EXPECT_GE(area->BoxHalfExtents().x, 100.0f);
     // 地形の当たりを持つと、落ちてきたプレイヤーが上面に着地してしまう
-    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::BoxCollider>(zone.Part("Collision")), nullptr);
+    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::BoxCollision>(zone.Part("Collision")), nullptr);
 }
 
 TEST(ActorClass, FollowCameraHasFollowAndFeed)

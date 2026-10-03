@@ -1,4 +1,4 @@
-﻿#include "Runtime/Object/Components/BoxCollider.h"
+﻿#include "Runtime/Object/Components/BoxCollision.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/OBB.h"
 
@@ -49,59 +49,59 @@ namespace NS::Obj
         }
     } // namespace
 
-    BoxCollider::BoxCollider() noexcept {}
+    BoxCollision::BoxCollision() noexcept {}
 
-    BoxCollider::BoxCollider(const NS::Core::Vector3& halfExtents) noexcept
+    BoxCollision::BoxCollision(const NS::Core::Vector3& halfExtents) noexcept
         : m_halfExtents(ClampNonNegative(halfExtents))
     {}
 
-    void BoxCollider::SetHalfExtents(const NS::Core::Vector3& halfExtents) noexcept
+    void BoxCollision::SetHalfExtents(const NS::Core::Vector3& halfExtents) noexcept
     {
         m_halfExtents = ClampNonNegative(halfExtents);
     }
 
-    NS::Core::Vector3 BoxCollider::HalfExtents() const noexcept
+    NS::Core::Vector3 BoxCollision::HalfExtents() const noexcept
     {
         return m_halfExtents;
     }
 
-    void BoxCollider::SetCenterOffset(const NS::Core::Vector3& offset) noexcept
+    void BoxCollision::SetCenterOffset(const NS::Core::Vector3& offset) noexcept
     {
         m_centerOffset = offset;
     }
 
-    NS::Core::Vector3 BoxCollider::CenterOffset() const noexcept
+    NS::Core::Vector3 BoxCollision::CenterOffset() const noexcept
     {
         return m_centerOffset;
     }
 
-    void BoxCollider::SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept
+    void BoxCollision::SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept
     {
         m_localRotation = rotation;
     }
 
-    NS::Core::Quaternion BoxCollider::LocalRotation() const noexcept
+    NS::Core::Quaternion BoxCollision::LocalRotation() const noexcept
     {
         return m_localRotation;
     }
 
-    void BoxCollider::SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept
+    void BoxCollision::SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept
     {
         m_localRotation = NS::Core::EulerDegreesToQuaternion(eulerDegrees);
     }
 
-    NS::Core::Vector3 BoxCollider::RotationEulerDegrees() const noexcept
+    NS::Core::Vector3 BoxCollision::RotationEulerDegrees() const noexcept
     {
         return NS::Core::QuaternionToEulerDegrees(m_localRotation);
     }
 
-    NS::Core::Matrix BoxCollider::LocalMatrix() const noexcept
+    NS::Core::Matrix BoxCollision::LocalMatrix() const noexcept
     {
         return NS::Core::Matrix::CreateFromQuaternion(m_localRotation) *
                NS::Core::Matrix::CreateTranslation(m_centerOffset);
     }
 
-    NS::Core::Matrix BoxCollider::CombinedWorldMatrix() const noexcept
+    NS::Core::Matrix BoxCollision::CombinedWorldMatrix() const noexcept
     {
         const Actor* owner = Owner();
         if (owner != nullptr)
@@ -111,7 +111,7 @@ namespace NS::Obj
         return LocalMatrix();
     }
 
-    NS::Core::AABB BoxCollider::WorldAABB() const noexcept
+    NS::Core::AABB BoxCollision::WorldAABB() const noexcept
     {
         // 原点中心 + 半径の local box に、当たり箱の local offset / 回転 → owner の world 変換の順で重ねる
         // 回転時は内包する軸並行 AABB になる
@@ -122,7 +122,7 @@ namespace NS::Obj
         return world;
     }
 
-    NS::Core::OBB BoxCollider::WorldOBB() const noexcept
+    NS::Core::OBB BoxCollision::WorldOBB() const noexcept
     {
         const NS::Core::AffineDecomposition decomposed = NS::Core::DecomposeAffine(CombinedWorldMatrix());
         const NS::Core::Vector3& scale = decomposed.scale;
@@ -135,10 +135,10 @@ namespace NS::Obj
         return NS::Core::MakeOBB(translation, rotation, half);
     }
 
-    JPH::BodyID BoxCollider::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID BoxCollision::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
         return physics.SyncBox(current, WorldOBB(), NS::Phys::ObjectLayers::Terrain);
     }
 
-    NS_CLASS(BoxCollider)
+    NS_CLASS(BoxCollision)
 } // namespace NS::Obj

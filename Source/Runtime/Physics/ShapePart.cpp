@@ -24,7 +24,7 @@ namespace NS::Phys
 
     ShapePart MakeBoxPart(const NS::Core::OBB& box)
     {
-        // collider は PhysicsScene より先に形を作ることがある。形の確保は allocator の登録が済んでいないと落ちる
+        // collision は PhysicsScene より先に形を作ることがある。形の確保は allocator の登録が済んでいないと落ちる
         detail::InitJoltRuntime();
         const JPH::BoxShapeSettings settings{JPH::Vec3{box.halfExtentX, box.halfExtentY, box.halfExtentZ}};
 

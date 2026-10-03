@@ -80,7 +80,7 @@ namespace NS::Game::Level
         (void)CreatePart("Model");
         ModelPart()->SetMeshRef("sphere");
         ModelPart()->SetBaseColor(NS::Core::Vector3{0.72f, 0.70f, 0.66f});
-        SetCollisionPart(std::make_unique<NS::Obj::SphereCollider>());
+        SetCollisionPart(std::make_unique<NS::Obj::SphereCollision>());
         AttachFixedComponent(m_params);
         AttachFixedComponent(m_hitZones);
         AttachFixedComponent(m_effects);
@@ -104,7 +104,7 @@ namespace NS::Game::Level
 
     void MapObj::InitAfterPlacement()
     {
-        SyncCollider();
+        SyncCollision();
     }
 
     bool MapObj::IsFrozen() const noexcept
@@ -136,7 +136,7 @@ namespace NS::Game::Level
         const NS::Core::Sphere sphere = Sphere().WorldSphere();
         if (!m_hasSyncedSphere || sphere.center != m_syncedSphere.center || sphere.radius != m_syncedSphere.radius)
         {
-            SyncCollider();
+            SyncCollision();
         }
     }
 
@@ -151,7 +151,7 @@ namespace NS::Game::Level
         BodyStep();
     }
 
-    void MapObj::SyncCollider()
+    void MapObj::SyncCollision()
     {
         // Scene に居ない間は入れる先が無い。入れたと控えると、球が変わるまで入れ直さない
         if (IsActiveInHierarchy() && OwningScene() != nullptr)
@@ -195,7 +195,7 @@ namespace NS::Game::Level
                                                                  1.0f + (desc.squashThickness - 1.0f) * z2});
             }
         }
-        SyncCollider();
+        SyncCollision();
     }
 
     void MapObj::EndFreeze()
@@ -283,7 +283,7 @@ namespace NS::Game::Level
         m_motion.Build<ArcState, RollingState>(*this);
         (void)m_states->Change<LaunchedState>();
         m_effects.BeginTrail(desc.tier, desc.power, desc.launchScale, desc.arc.direction);
-        SyncCollider();
+        SyncCollision();
     }
 
     NS::Core::Vector3 MapObj::ArcOffset(float seconds) const noexcept
@@ -480,7 +480,7 @@ namespace NS::Game::Level
         Appear();
         BodySensorPart()->Validate();
         m_effects.CancelTrail();
-        SyncCollider();
+        SyncCollision();
     }
 
     void MapObj::OnEndPlay()

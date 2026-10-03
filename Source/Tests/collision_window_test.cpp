@@ -1,8 +1,8 @@
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/SphereCollider.h"
+#include "Runtime/Object/Components/Collider.h"
+#include "Runtime/Object/Components/SphereCollision.h"
 #include "Runtime/Object/IUse/IUseCollision.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Physics/PhysicsScene.h"
@@ -13,23 +13,23 @@
 
 namespace
 {
-    // 動く体と出す当たりを 1 つずつ持つ Actor。根は原点で、球の半径は 0.5
+    // 動く体の当たりと置く当たりを 1 つずつ持つ Actor。根は原点で、球の半径は 0.5
     class CollisionProbe final : public NS::Obj::Actor
     {
     public:
         CollisionProbe()
         {
-            AttachFixedComponent(body);
+            AttachFixedComponent(collider);
             AttachFixedComponent(sphere);
         }
         void ForEachPart(const PartVisitor& visitor) const override
         {
             NS::Obj::Actor::ForEachPart(visitor);
-            visitor("Body", body);
+            visitor("Collider", collider);
             visitor("Sphere", sphere);
         }
-        mutable NS::Obj::Body body;
-        mutable NS::Obj::SphereCollider sphere;
+        mutable NS::Obj::Collider collider;
+        mutable NS::Obj::SphereCollision sphere;
     };
 
     // 上面が y = 0 の床
@@ -86,23 +86,23 @@ TEST(CollisionWindow, OverlapBoxAnswersLikeThePhysicsScene)
     }
 }
 
-TEST(CollisionWindow, BodyAnswersWithItsOwnersPhysicsScene)
+TEST(CollisionWindow, ColliderAnswersWithItsOwnersPhysicsScene)
 {
-    NS::Obj::Body bare;
+    NS::Obj::Collider bare;
     const NS::Obj::IUseCollision& bareWindow = bare;
     EXPECT_EQ(bareWindow.GetPhysicsScene(), nullptr);
 
     CollisionProbe loose;
-    const NS::Obj::IUseCollision& looseWindow = loose.body;
+    const NS::Obj::IUseCollision& looseWindow = loose.collider;
     EXPECT_EQ(looseWindow.GetPhysicsScene(), nullptr);
 
     NS::Obj::Scene scene;
     CollisionProbe* placed = scene.SpawnTransient<CollisionProbe>();
-    const NS::Obj::IUseCollision& placedWindow = placed->body;
+    const NS::Obj::IUseCollision& placedWindow = placed->collider;
     EXPECT_EQ(placedWindow.GetPhysicsScene(), &scene.Physics());
 }
 
-TEST(CollisionWindow, ColliderSyncsIntoItsOwnersPhysicsScene)
+TEST(CollisionWindow, CollisionSyncsIntoItsOwnersPhysicsScene)
 {
     CollisionProbe loose;
     loose.sphere.SyncToPhysics();

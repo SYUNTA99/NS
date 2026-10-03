@@ -22,7 +22,7 @@ namespace NS::Obj
     class Model;
     class Animation;
     class Shadow;
-    class Collider;
+    class Collision;
     class HitReaction;
     class ICameraTarget;
     class Message;
@@ -68,8 +68,8 @@ namespace NS::Obj
         [[nodiscard]] const Animation* AnimationPart() const noexcept { return m_animation.get(); }
         [[nodiscard]] Shadow* ShadowPart() noexcept { return m_shadow.get(); }
         [[nodiscard]] const Shadow* ShadowPart() const noexcept { return m_shadow.get(); }
-        [[nodiscard]] Collider* CollisionPart() noexcept { return m_collision.get(); }
-        [[nodiscard]] const Collider* CollisionPart() const noexcept { return m_collision.get(); }
+        [[nodiscard]] Collision* CollisionPart() noexcept { return m_collision.get(); }
+        [[nodiscard]] const Collision* CollisionPart() const noexcept { return m_collision.get(); }
         //! その物の体の広がりのセンサー。持たなければ nullptr
         [[nodiscard]] HitSensor* BodySensorPart() noexcept { return m_bodySensor.get(); }
         [[nodiscard]] const HitSensor* BodySensorPart() const noexcept { return m_bodySensor.get(); }
@@ -217,7 +217,7 @@ namespace NS::Obj
         //! 状態機械を 1 固定ステップ進める。持たなければ何もしない
         void StepStateMachine();
         void AttachFixedComponent(Component& component);
-        void SetCollisionPart(std::unique_ptr<Collider> collision);
+        void SetCollisionPart(std::unique_ptr<Collision> collision);
         //! @brief 体のセンサーの部品 BodySensor を派生の型で差す。持ち主の形を映すセンサーを付ける口
         //! @details 既に持っているか sensor が nullptr なら何もしない。差した後の CreatePart("BodySensor") は
         //! 差した部品を返す
@@ -237,7 +237,7 @@ namespace NS::Obj
         std::unique_ptr<Model> m_model;
         std::unique_ptr<Animation> m_animation;
         std::unique_ptr<Shadow> m_shadow;
-        std::unique_ptr<Collider> m_collision;
+        std::unique_ptr<Collision> m_collision;
         std::unique_ptr<HitSensor> m_bodySensor;
         std::unique_ptr<HitSensor> m_attackSensor;
         std::unique_ptr<IStateMachine> m_stateMachine; // BuildStateMachine が 1 回だけ預かる。持たない種類は nullptr

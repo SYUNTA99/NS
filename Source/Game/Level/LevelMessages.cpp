@@ -5,14 +5,14 @@
 
 namespace NS::Game::Level
 {
-    bool SendMsgKill(NS::Obj::HitSensor& receiver, NS::Obj::HitSensor& sender)
+    bool SendMsgInstantDeath(NS::Obj::HitSensor& receiver, NS::Obj::HitSensor& sender)
     {
-        return NS::Obj::SendMsg(MsgKill{}, receiver, &sender);
+        return NS::Obj::SendMsg(MsgInstantDeath{}, receiver, &sender);
     }
 
-    bool IsMsgKill(const NS::Obj::Message& msg) noexcept
+    bool IsMsgInstantDeath(const NS::Obj::Message& msg) noexcept
     {
-        return NS::Obj::IsMsg<MsgKill>(msg);
+        return NS::Obj::IsMsg<MsgInstantDeath>(msg);
     }
 
     bool SendMsgGoal(NS::Obj::HitSensor& receiver, NS::Obj::HitSensor& sender)

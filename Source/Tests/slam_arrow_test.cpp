@@ -6,6 +6,7 @@
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -98,7 +99,7 @@ TEST(SlamArrowTest, ArcArrowFollowsTheBallThatIsActuallyLaunched)
     ASSERT_TRUE(player->SlamIndicator().TryGetShownArrow(arrow));
     ASSERT_FALSE(arrow.band.empty());
 
-    const float radius = player->Body().CapsuleRadius();
+    const float radius = player->Collider().CapsuleRadius();
     const float lift = NS::Game::Level::SlamArrowDesc{}.groundLift;
     const float startHeight = player->Root().Position().y;
     float highest = startHeight;
@@ -172,7 +173,7 @@ TEST(SlamArrowTest, GroundArrowWithoutTargetLiesOnTheFloor)
     NS::Game::Level::SlamArrowShape arrow{};
     ASSERT_TRUE(player->SlamIndicator().TryGetShownArrow(arrow));
     ASSERT_FALSE(arrow.band.empty());
-    EXPECT_NEAR(arrow.fullTip, player->BodySlamDistance() + player->Body().CapsuleRadius(), 0.0001f);
+    EXPECT_NEAR(arrow.fullTip, player->BodySlamDistance() + player->Collider().CapsuleRadius(), 0.0001f);
     const float lift = NS::Game::Level::SlamArrowDesc{}.groundLift;
     for (const NS::Game::Level::SlamArrowPiece& piece : arrow.band)
     {

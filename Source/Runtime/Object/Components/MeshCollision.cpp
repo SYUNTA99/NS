@@ -1,4 +1,4 @@
-﻿#include "Runtime/Object/Components/MeshCollider.h"
+﻿#include "Runtime/Object/Components/MeshCollision.h"
 
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Actor.h"
@@ -6,7 +6,7 @@
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/MeshCollision.h"
+#include "Runtime/Physics/MeshShape.h"
 #include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
@@ -40,34 +40,34 @@ namespace NS::Obj
         }
     } // namespace
 
-    MeshCollider::MeshCollider() noexcept {}
+    MeshCollision::MeshCollision() noexcept {}
 
-    void MeshCollider::SetCollision(const NS::Phys::MeshCollision* collision) noexcept
+    void MeshCollision::SetShape(const NS::Phys::MeshShape* shape) noexcept
     {
-        m_collision = collision;
+        m_shape = shape;
     }
 
-    const NS::Phys::MeshCollision* MeshCollider::Collision() const noexcept
+    const NS::Phys::MeshShape* MeshCollision::Shape() const noexcept
     {
-        return m_collision;
+        return m_shape;
     }
 
-    std::vector<NS::Phys::Triangle> MeshCollider::WorldTriangles() const
+    std::vector<NS::Phys::Triangle> MeshCollision::WorldTriangles() const
     {
-        if (m_collision == nullptr)
+        if (m_shape == nullptr)
         {
             return {};
         }
         const Actor* owner = Owner();
         if (owner == nullptr)
         {
-            return m_collision->triangles;
+            return m_shape->triangles;
         }
 
         const NS::Core::Matrix world = owner->Root().WorldMatrix();
         std::vector<NS::Phys::Triangle> result;
-        result.reserve(m_collision->triangles.size());
-        for (const NS::Phys::Triangle& tri : m_collision->triangles)
+        result.reserve(m_shape->triangles.size());
+        for (const NS::Phys::Triangle& tri : m_shape->triangles)
         {
             result.push_back(NS::Phys::Triangle{NS::Core::Vector3::Transform(tri.v0, world),
                                                 NS::Core::Vector3::Transform(tri.v1, world),
@@ -76,9 +76,9 @@ namespace NS::Obj
         return result;
     }
 
-    JPH::BodyID MeshCollider::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID MeshCollision::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
-        if (m_collision == nullptr)
+        if (m_shape == nullptr)
         {
             return JPH::BodyID{};
         }
@@ -95,12 +95,12 @@ namespace NS::Obj
             return physics.SyncMesh(current, WorldTriangles(), NS::Phys::ObjectLayers::Terrain);
         }
 
-        const NS::Phys::MeshCollision& shared = *m_collision;
+        const NS::Phys::MeshShape& shared = *m_shape;
         return physics.SyncMeshShape(
             current, shared, parts.translation, parts.rotation, parts.scale, NS::Phys::ObjectLayers::Terrain);
     }
 
-    void MeshCollider::ResolveAssets(AssetManager& assets)
+    void MeshCollision::ResolveAssets(AssetManager& assets)
     {
         const Actor* owner = Owner();
         if (owner == nullptr)
@@ -111,19 +111,19 @@ namespace NS::Obj
         const Model* renderer = owner->ModelPart();
         if (renderer == nullptr)
         {
-            NS_LOG_WARN(Scene, "MeshCollider: 同じ object に MeshRenderer が無く、 当たりは空のまま");
+            NS_LOG_WARN(Scene, "MeshCollision: 同じ object に MeshRenderer が無く、 当たりは空のまま");
             return;
         }
 
-        const NS::Phys::MeshCollision* collision = assets.GetOrLoadMeshCollision(renderer->MeshRef());
-        if (collision == nullptr)
+        const NS::Phys::MeshShape* shape = assets.GetOrLoadMeshShape(renderer->MeshRef());
+        if (shape == nullptr)
         {
-            collision = assets.GetOrLoadMeshCollision("cube");
+            shape = assets.GetOrLoadMeshShape("cube");
         }
 
-        SetCollision(collision);
+        SetShape(shape);
     }
 
     // data からは当たり無しで作る
-    NS_CLASS(MeshCollider)
+    NS_CLASS(MeshCollision)
 } // namespace NS::Obj

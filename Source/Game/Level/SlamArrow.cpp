@@ -11,7 +11,7 @@
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -454,7 +454,7 @@ namespace NS::Game::Level
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(owner))
         {
             m_player = ownerPlayer;
-            m_body = &ownerPlayer->Body();
+            m_collider = &ownerPlayer->Collider();
         }
         if (NS::Obj::Scene* scene = owner->OwningScene())
         {
@@ -487,7 +487,7 @@ namespace NS::Game::Level
         m_hasShown = false;
         // 溜め量は放した後も残るので、溜めているかで組むフレームを決める。相手がいなくても放った玉の道筋は出す
         SlamArrowState state{};
-        if (m_player == nullptr || m_body == nullptr || !m_player->ChargeJudge().IsCharging() ||
+        if (m_player == nullptr || m_collider == nullptr || !m_player->ChargeJudge().IsCharging() ||
             !m_player->TryGetAimLine(state.line))
         {
             m_framesSinceShown = -1;
@@ -505,7 +505,7 @@ namespace NS::Game::Level
             ++m_framesSinceShown;
         }
 
-        state.ballRadius = m_body->CapsuleRadius();
+        state.ballRadius = m_collider->CapsuleRadius();
         state.targetContact = target.launchContact;
         state.framesSinceShown = m_framesSinceShown;
         state.charge01 = m_player->ChargeJudge().Charge01();
@@ -517,13 +517,14 @@ namespace NS::Game::Level
             return;
         }
         SlamArrowGroundProbe probe;
-        const NS::Obj::Actor* owner = Owner();
+        const NS::Obj::Collider* collider = m_collider;
         // Scene に居なければ probe は空のまま。空の probe は床を見ない合図
-        if (owner->OwningScene() != nullptr)
+        if (Owner()->OwningScene() != nullptr)
         {
-            probe = [owner](const NS::Core::Vector3& from, float maxDepth, float& outGroundY) {
+            probe = [collider](const NS::Core::Vector3& from, float maxDepth, float& outGroundY) {
                 float distance = 0.0f;
-                if (!NS::Obj::RaycastCollision(*owner, from, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
+                if (!NS::Obj::RaycastCollision(
+                        *collider, from, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
                 {
                     return false;
                 }

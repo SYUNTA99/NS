@@ -11,11 +11,11 @@
 
 namespace NS::Phys
 {
-    //! @brief メッシュ 1 つ分の当たり。資産の座標の三角形と、そこから作った形
+    //! @brief メッシュ 1 つ分の三角形と、そこから作った Jolt の形
     //! @details 形は参照数つきで、置いた body がそれぞれ参照を持つ
     //! 同じ資産を置いた配置物は、歪みが無ければ形を作り直さずに共有する
     //! Jolt の三角形の形は動かない body 専用
-    struct MeshCollision
+    struct MeshShape
     {
         std::vector<Triangle> triangles; // 資産の座標。法線 (v1 - v0) × (v2 - v0) が外を向く並び
         JPH::ShapeRefC shape;            // triangles から作った形。まだ作っていないか、作れなければ null

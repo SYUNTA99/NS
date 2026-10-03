@@ -16,7 +16,7 @@ namespace NS::Phys
 namespace NS::Obj
 {
     //! @brief 地形の当たりの窓口。シーンの PhysicsScene を引ける物が持つ
-    //! @details Actor・UIActor・シーンと、動く体の部品 Body が持つ。他の部品は持ち主の Actor から引く
+    //! @details Actor・UIActor・シーンと、動く体の当たりの部品 Collider が持つ。他の部品は持ち主の Actor から引く
     //! Actor 同士の当たりはヒットセンサーとメッセージで見る。ここは床や壁との当たりを問う口
     class IUseCollision
     {

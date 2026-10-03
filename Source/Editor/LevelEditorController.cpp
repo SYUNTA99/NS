@@ -19,14 +19,14 @@
 #include "Runtime/Core/Sphere.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/BoxCollider.h"
+#include "Runtime/Object/Components/BoxCollision.h"
 #include "Runtime/Object/Components/CameraManager.h"
-#include "Runtime/Object/Components/CapsuleCollider.h"
+#include "Runtime/Object/Components/CapsuleCollision.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/MeshCollider.h"
+#include "Runtime/Object/Components/MeshCollision.h"
 #include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Components/SphereCollider.h"
+#include "Runtime/Object/Components/SphereCollision.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
@@ -101,48 +101,48 @@ namespace
     // 編集復帰の視点ブレンド秒。CameraManager の vcam 切替の既定 0.35 秒と揃え、モード切替の繋ぎを同じ感触にする
     constexpr float k_EditBlendSeconds = 0.35f;
 
-    // 部品のうち動く体 (Body) を返す。持たなければ nullptr
-    const NS::Obj::Body* BodyOf(const NS::Obj::Actor& object) noexcept
+    // 部品のうち動く体の当たり (Collider) を返す。持たなければ nullptr
+    const NS::Obj::Collider* ColliderOf(const NS::Obj::Actor& object) noexcept
     {
-        const NS::Obj::Body* found = nullptr;
+        const NS::Obj::Collider* found = nullptr;
         object.ForEachPart([&found](std::string_view, NS::Obj::Component& part) {
             if (found == nullptr)
             {
-                found = NS::Obj::ComponentCast<NS::Obj::Body>(&part);
+                found = NS::Obj::ComponentCast<NS::Obj::Collider>(&part);
             }
         });
         return found;
     }
 
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状
-    void DrawColliderWireframe(NS::Gfx::DebugShapes& shapes,
-                               NS::Obj::Actor& object,
-                               const NS::Core::Color& color) noexcept
+    void DrawCollisionWireframe(NS::Gfx::DebugShapes& shapes,
+                                NS::Obj::Actor& object,
+                                const NS::Core::Color& color) noexcept
     {
-        if (NS::Obj::BoxCollider* box = NS::Obj::ComponentCast<NS::Obj::BoxCollider>(object.CollisionPart()))
+        if (NS::Obj::BoxCollision* box = NS::Obj::ComponentCast<NS::Obj::BoxCollision>(object.CollisionPart()))
         {
             shapes.OBB(box->WorldOBB(), color);
         }
-        else if (NS::Obj::SphereCollider* sphere =
-                     NS::Obj::ComponentCast<NS::Obj::SphereCollider>(object.CollisionPart()))
+        else if (NS::Obj::SphereCollision* sphere =
+                     NS::Obj::ComponentCast<NS::Obj::SphereCollision>(object.CollisionPart()))
         {
             shapes.Sphere(sphere->WorldSphere(), color);
         }
-        else if (NS::Obj::CapsuleCollider* capsule =
-                     NS::Obj::ComponentCast<NS::Obj::CapsuleCollider>(object.CollisionPart()))
+        else if (NS::Obj::CapsuleCollision* capsule =
+                     NS::Obj::ComponentCast<NS::Obj::CapsuleCollision>(object.CollisionPart()))
         {
             NS::Phys::Capsule worldCapsule = capsule->WorldCapsule();
             worldCapsule.axis.Normalize();
             shapes.Capsule(
                 worldCapsule.center, worldCapsule.axis * worldCapsule.halfHeight, worldCapsule.radius, color);
         }
-        else if (const NS::Obj::Body* body = BodyOf(object))
+        else if (const NS::Obj::Collider* collider = ColliderOf(object))
         {
             // 移動が掃引するのと同じ、根を中心にした縦のカプセル。根の拡縮は掛けない
-            const NS::Phys::Capsule bodyCapsule = body->CapsuleAt(object.Root().Position());
+            const NS::Phys::Capsule bodyCapsule = collider->CapsuleAt(object.Root().Position());
             shapes.Capsule(bodyCapsule.center, bodyCapsule.axis * bodyCapsule.halfHeight, bodyCapsule.radius, color);
         }
-        else if (NS::Obj::ComponentCast<NS::Obj::MeshCollider>(object.CollisionPart()) != nullptr)
+        else if (NS::Obj::ComponentCast<NS::Obj::MeshCollision>(object.CollisionPart()) != nullptr)
         {
             // メッシュの当たりは見た目の三角形そのもの。三角形は多いので、見た目のメッシュを包む箱を出す
             const NS::Obj::Model* renderer = object.ModelPart();
@@ -824,7 +824,7 @@ void LevelEditorController::DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes,
     if (m_mode != Mode::Edit)
     {
         // 動いている形をそのまま追えるよう選択に関わらず全部出す
-        RenderColliderWireframes(shapes, true);
+        RenderCollisionWireframes(shapes, true);
         RenderHitFaces(shapes);
         return;
     }
@@ -837,7 +837,7 @@ void LevelEditorController::DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes,
         viewport = app->Window().Size();
     }
     RenderCameraGizmos(shapes, viewProjection, viewport);
-    RenderColliderWireframes(shapes, false);
+    RenderCollisionWireframes(shapes, false);
     RenderHitFaces(shapes);
     RenderSelectionOutlines(shapes);
 }
@@ -1182,7 +1182,7 @@ void LevelEditorController::RenderSelectionOutlines(NS::Gfx::DebugShapes& shapes
     }
 }
 
-void LevelEditorController::RenderColliderWireframes(NS::Gfx::DebugShapes& shapes, bool all) noexcept
+void LevelEditorController::RenderCollisionWireframes(NS::Gfx::DebugShapes& shapes, bool all) noexcept
 {
     const NS::Core::Color color{0.35f, 1.0f, 0.45f, 1.0f};
     // センサーは当たりの緑と見分けが付く橙
@@ -1193,7 +1193,7 @@ void LevelEditorController::RenderColliderWireframes(NS::Gfx::DebugShapes& shape
     {
         for (NS::Obj::Actor* objPtr : m_scene->Objects())
         {
-            DrawColliderWireframe(shapes, *objPtr, color);
+            DrawCollisionWireframe(shapes, *objPtr, color);
             DrawSensorWireframe(shapes, *objPtr, sensorColor);
         }
         return;
@@ -1204,7 +1204,7 @@ void LevelEditorController::RenderColliderWireframes(NS::Gfx::DebugShapes& shape
     {
         if (NS::Obj::Actor* objPtr = m_scene->Objects().FindByObjectId(id))
         {
-            DrawColliderWireframe(shapes, *objPtr, color);
+            DrawCollisionWireframe(shapes, *objPtr, color);
             DrawSensorWireframe(shapes, *objPtr, sensorColor);
         }
     }

@@ -2,7 +2,7 @@
 #include "Editor/PlacementCatalog.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/MeshCollider.h"
+#include "Runtime/Object/Components/MeshCollision.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Filesystem.h"
@@ -46,7 +46,7 @@ TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(renderer->MeshRef(), "wedge45");
     // 当たりは見た目のメッシュに付いて来る
-    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::MeshCollider>(placed->Part("Collision")), nullptr);
+    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::MeshCollision>(placed->Part("Collision")), nullptr);
 }
 
 TEST(EditorPlacement, UndoRemovesPlacedActor)
@@ -72,7 +72,7 @@ TEST(EditorPlacement, UndoRemovesPlacedActor)
 }
 
 // 参照の実体化は AssetManager を差した Scene だけが行う。この試しは差していないので実在しない file で足りる
-TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollider)
+TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
 {
     NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
@@ -88,7 +88,7 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollider)
     const NS::Obj::Model* renderer = placed->ModelPart();
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(renderer->MeshRef(), "Assets/Models/__ns_missing_terrain__.glb");
-    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::MeshCollider>(placed->Part("Collision")), nullptr);
+    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::MeshCollision>(placed->Part("Collision")), nullptr);
     // 名前はファイル名から付く
     EXPECT_EQ(placed->Name(), "__ns_missing_terrain__");
 }

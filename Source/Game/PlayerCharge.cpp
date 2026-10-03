@@ -5,6 +5,7 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/IUse/IUseCamera.h"
 
 #include <algorithm>
@@ -196,10 +197,10 @@ void Player::DrawChargeRing() const
 
     const float charge01 = m_charge.judge.Charge01();
     // 輪は当たりのカプセルの下端 (中心 − 軸 × (半分の高さ + 半径)) に置く
-    const NS::Phys::Capsule capsule = m_body->CapsuleAt(Root().Position());
+    const NS::Phys::Capsule capsule = m_collider->CapsuleAt(Root().Position());
     const NS::Core::Vector3 foot = capsule.center - capsule.axis * (capsule.halfHeight + capsule.radius);
     // 溜め量が輪の広がりに出ないと、満タンまでの途中が読めない
-    const float radius = m_body->CapsuleRadius() + 0.25f + charge01 * 0.75f;
+    const float radius = m_collider->CapsuleRadius() + 0.25f + charge01 * 0.75f;
     NS::Core::Color color{1.0f, 0.85f, 0.2f, 1.0f};
     if (m_charge.judge.IsChargeFull())
     {

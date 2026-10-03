@@ -50,7 +50,7 @@ namespace NS::Obj
     //! @details 種類と、シーンの HitSensorDirector へ OnStart で入り OnEndPlay で出る登録だけを持つ
     //! 調べ役は 1 フレームに 1 回、センサーの段で持ち主の違うセンサーの重なりを調べ、重なった組の両方の持ち主の
     //! Actor::AttackSensor を呼ぶ。相手の種類を見て応じるかは持ち主が決める
-    //! 形は派生が決める。欄は持たず、派生ごとに持つ (Collider の一族と同じ形)
+    //! 形は派生が決める。欄は持たず、派生ごとに持つ (Collision の一族と同じ形)
     //! 抽象基底なので TypeRegistry には登録しない
     class HitSensor : public Component
     {
@@ -133,7 +133,7 @@ namespace NS::Obj
     };
 
     //! @brief 持ち主の体の形をそのまま映す調べ役。自機と置物の体のセンサーが使う
-    //! @details 形の正は持ち主の当たりの部品 (Body・SphereCollider) で、ここは毎回それを読むだけ。
+    //! @details 形の正は持ち主の当たりの部品 (Collider・SphereCollision) で、ここは毎回それを読むだけ。
     //! 写しを持たないので、寸法の欄を変えたその場で範囲の照合とエディタの線に効く。欄は持たない
     //! 関数は持ち主のクラスがコンストラクタで渡す。既定コンストラクタが無いので TypeRegistry には登録しない
     class FollowHitSensor final : public HitSensor

@@ -2,6 +2,10 @@
     "class": "Player",
     "parts": {
         "Appearance": {},
+        "Collider": {
+            "半分の高さ": 0.5,
+            "半径": 0.6499999761581421
+        },
         "ImpactResolver": {},
         "Model": {
             "マテリアル": "player",
@@ -12,10 +16,7 @@
                 0.5
             ]
         },
-        "Movement": {
-            "半分の高さ": 0.5,
-            "半径": 0.6499999761581421
-        },
+        "Movement": {},
         "Params": {
             "チャージ倍率カーブ": {
                 "curve": [

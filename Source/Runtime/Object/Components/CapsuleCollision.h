@@ -2,23 +2,23 @@
 
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
-#include "Runtime/Object/Components/Collider.h"
+#include "Runtime/Object/Components/Collision.h"
 #include "Runtime/Physics/Capsule.h"
 
 namespace NS::Obj
 {
-    //! @brief カプセル collider を Scene に登録する Component
-    //! @details 地形として出す形で、持ち主のクラスが部品 Collision に入れる。動く体の形は Body が自分で持つ。
+    //! @brief カプセル collision を Scene に登録する Component
+    //! @details 地形として出す形で、持ち主のクラスが部品 Collision に入れる。動く体の形は Collider が自分で持つ。
     //! owner の world 変換から中心・軸・半径・半高を個別に返す
     //! 既定は縦向き Y 軸の capsule。local 回転で寝かせられる。半径は X/Z scale の最大、半高は Y scale で拡縮する
     //! 回転と非一様 scale を併用すると近似になる
-    class CapsuleCollider : public Collider
+    class CapsuleCollision : public Collision
     {
     public:
         //! 既定 半径 0.4 / 半高 0.5 の縦 capsule で構築する
-        CapsuleCollider() noexcept;
+        CapsuleCollision() noexcept;
         //! 半径 / 半高を指定して構築する。負は 0 にクランプ
-        CapsuleCollider(float radius, float halfHeight) noexcept;
+        CapsuleCollision(float radius, float halfHeight) noexcept;
 
         //! 負は 0 にクランプ
         void SetRadius(float radius) noexcept;
@@ -50,7 +50,7 @@ namespace NS::Obj
         //! owner の world 変換を反映した世界軸並行 AABB を返す。Owner 未登録時は local だけを反映する
         [[nodiscard]] NS::Core::AABB WorldAABB() const noexcept;
 
-        NS_REFLECT_BEGIN(CapsuleCollider, Collider)
+        NS_REFLECT_BEGIN(CapsuleCollision, Collision)
         NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)
         NS_REFLECT_ACCESSOR(float, "半分の高さ", HalfHeight(), SetHalfHeight)
         NS_REFLECT_ACCESSOR(NS::Core::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)

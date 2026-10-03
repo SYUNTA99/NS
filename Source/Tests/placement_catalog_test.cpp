@@ -43,7 +43,7 @@ TEST(PlacementCatalog, MapPartsIsSplitByMesh)
     {
         EXPECT_EQ(NS::Obj::ObjectJsonClass(item->prototype), "MapParts");
         // 個体のデータは部品を足せないので、ひな形も当たりの件を持たない
-        EXPECT_EQ(NS::Obj::PartFields(item->prototype, "BoxCollider"), nullptr);
+        EXPECT_EQ(NS::Obj::PartFields(item->prototype, "BoxCollision"), nullptr);
     }
     const nlohmann::json* cubeMesh = NS::Obj::PartFields(cube->prototype, "Model");
     const nlohmann::json* sphereMesh = NS::Obj::PartFields(sphere->prototype, "Model");
@@ -97,6 +97,6 @@ TEST(PlacementCatalog, MeshPartsUsesTheDroppedMesh)
     const nlohmann::json* renderer = NS::Obj::PartFields(prototype, "Model");
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(NS::Obj::FieldString(*renderer, "メッシュ", ""), "Assets/Models/terrain.glb");
-    // 当たりは地形の部品のクラスが持つ MeshCollider。ひな形は当たりの件を足さない
-    EXPECT_EQ(NS::Obj::PartFields(prototype, "BoxCollider"), nullptr);
+    // 当たりは地形の部品のクラスが持つ MeshCollision。ひな形は当たりの件を足さない
+    EXPECT_EQ(NS::Obj::PartFields(prototype, "BoxCollision"), nullptr);
 }

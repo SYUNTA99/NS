@@ -1,10 +1,12 @@
 #pragma once
 
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
+#include "Runtime/Object/IUse/IUseCollision.h"
+#include "Runtime/Physics/Capsule.h"
+#include "Runtime/Physics/JoltCharacter.h"
 
-#include <Jolt/Jolt.h>
-
-#include <Jolt/Physics/Body/BodyID.h>
+#include <memory>
 
 namespace NS::Phys
 {
@@ -13,42 +15,88 @@ namespace NS::Phys
 
 namespace NS::Obj
 {
-    //! @brief 当たり形状 Component の共通基底
-    //! @details どの形の body として PhysicsScene へ入れるかは派生が決める
-    //! ObjectList::SyncPhysics はこの型だけを見て回るので、形状を足しても同期側は変わらない
-    //! body は id でだけ持つ。どの PhysicsScene に居るかは持ち主の Scene が決め、PhysicsScene の控えは持たない
-    //! 抽象基底なので TypeRegistry には登録しない
-    //! 依存: NS::Phys::PhysicsScene, JPH::BodyID
-    class Collider : public Component
+    //! @brief Collider::Move が返す 1 フレームの移動の結果
+    struct ColliderMove
+    {
+        NS::Core::Vector3 position{0.0f, 0.0f, 0.0f}; //!< 地形に当てて押し返した後の根の位置
+        NS::Core::Vector3 velocity{0.0f, 0.0f, 0.0f}; //!< 接触面へ射影した後の速度
+        bool grounded = false;                        //!< 移動の後に足場に立っているか
+        bool inWorld = false;                         //!< 地形を見たか。持ち主が Scene に居なければ偽
+    };
+
+    //! @brief 動く体の当たり。カプセルの寸法と、地形に当てて押し返す 1 フレームの移動の部品
+    //! @details 世界に問う側で、自分は静的な世界 (PhysicsScene の body) に登録しない。
+    //! 登録すると自分の掃引が自分に当たる。
+    //! 置く当たりの一族 (Collision) とは別の型で、部品名は持ち主が ForEachPart で付ける (自機は "Collider")。
+    //! カプセルは根を中心にした縦向きで、寸法 (半径・半分の高さ) はリフレクションの欄として自分が持つ。
+    //! 持ち主が無くても OnStart の前でも欄の値を返す。速度と接地は持たず、Body が Move の結果を書く。
+    //! IUseCollision を継ぎ、PhysicsScene は使う時に持ち主の Scene から引く。
+    //! 体の周りの地形は、この部品を渡して RaycastCollision・OverlapBoxCollision で問う。
+    //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。TypeRegistry には登録しない
+    //! 依存: NS::Core, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Actor / IUseCollision
+    class Collider : public NS::Obj::Component, public NS::Obj::IUseCollision
     {
     public:
-        //! world 座標の当たりを body 1 個として持ち主の Scene の PhysicsScene へ入れる。入れた body があれば置き直す
-        //! 何も入れない形状もある。持ち主が Scene に居なければ何もしない
-        void SyncToPhysics();
+        Collider() noexcept;
 
-        //! 当たりの body の id。何も入れなかった形状では無効
-        [[nodiscard]] JPH::BodyID BodyId() const noexcept { return m_bodyId; }
+        //! 当たりのカプセルの半径 (m)。欄「半径」の値で、球にしている間も変わらない
+        [[nodiscard]] float CapsuleRadius() const noexcept { return m_radius; }
+        //! @brief 当たりのカプセルの半径を置く
+        //! @details 負は 0 にし、有限でない値は捨てて元の値を残す
+        //! @param[in] radius 半径 (m)
+        void SetCapsuleRadius(float radius) noexcept;
+        //! 今の当たりの円柱の半分の高さ。球にしていなければ StandingHalfHeight と同じ。
+        //! SetSphereShape で球にしている間は 0
+        [[nodiscard]] float CapsuleHalfHeight() const noexcept;
+        //! @brief 根を rootPosition に置いた時の、今の当たりの形を返す
+        //! @details 中心は根、軸は +Y、半分の高さは CapsuleHalfHeight()、半径は CapsuleRadius()。
+        //! JoltCharacter を作る Move と同じ形で、球にしている間は半分の高さが 0。判定・矢印・エディタの線は
+        //! 当たりの形をここから引き、軸や中心の決まりを自分で組み直さない
+        //! @param[in] rootPosition 根の位置 (ワールド)
+        [[nodiscard]] NS::Phys::Capsule CapsuleAt(const NS::Core::Vector3& rootPosition) const noexcept;
+        //! @brief 根の今の位置での当たりの形を返す。CapsuleAt(根の位置) と同じ
+        //! @details 自機の体のセンサーが毎回これを読むので、寸法の欄を変えたその場で範囲の照合に効く。
+        //! 持ち主が無ければ原点に置く
+        [[nodiscard]] NS::Phys::Capsule WorldCapsule() const noexcept;
+        //! 立ち姿の円柱の半分の高さ (m)。欄「半分の高さ」の値。
+        //! 球にしている間も変わらないので、立ち姿の寸法はここから引く
+        [[nodiscard]] float StandingHalfHeight() const noexcept { return m_standingHalfHeight; }
+        //! @brief 立ち姿の円柱の半分の高さを置く
+        //! @details 負は 0 にし、有限でない値は捨てて元の値を残す
+        //! @param[in] halfHeight 半分の高さ (m)
+        void SetStandingHalfHeight(float halfHeight) noexcept;
 
-        //! 自分が入れた body を持ち主の Scene の PhysicsScene から外す。入れていなければ何もしない
-        //! 持ち主が Scene に居なければ何もせず、id も持ったまま
-        void RemoveFromPhysics();
+        //! @brief 当たりを円柱の長さ 0 のカプセル (半径が同じ球) にするかを切り替える
+        //! @details 真の間は CapsuleHalfHeight が 0 を返し、移動と裁定が同じ球で当たる。半径は変えない。
+        //! 根の位置は動かさないので、足元を揃えるのは呼び手の仕事
+        void SetSphereShape(bool sphere) noexcept;
 
-        //! 配置物ごと消える前に、持ち主の Scene の PhysicsScene から自分の body を外す
-        //! body を持ったまま Scene に居なければ外す先が分からないので、エラーを出して id だけ手放す
-        void OnAppear() override;
-        void OnKill() noexcept override { Collider::OnEndPlay(); }
-        void OnEndPlay() override;
+        //! 持ち主の Scene の衝突の PhysicsScene。持ち主が無いか Scene に居なければ nullptr
+        [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
 
-        NS_REFLECT_NONE(Collider, Component)
+        //! @brief 今の当たりの形を from から velocity × dt だけ動かし、地形に当てて押し返した結果を返す
+        //! @details 根の位置も速度も書かない。書くのは結果を受けた Body。
+        //! 持ち主が Scene に居なければ当たりを見ずに速度ぶん進め、接地は偽、inWorld も偽で返す
+        //! @param[in] from 動かす前の根の位置 (ワールド)
+        //! @param[in] velocity 動かす前の速度 (m/s)
+        //! @param[in] dt 1 フレームの秒数。呼び手は固定ステップの秒を渡す
+        //! @param[in] maxStepHeight 走ったまま登れる段の高さ (m)。JoltCharacter::Step へそのまま渡す
+        //! @return 押し返した後の根の位置・速度・接地
+        [[nodiscard]] ColliderMove Move(const NS::Core::Vector3& from,
+                                        const NS::Core::Vector3& velocity,
+                                        float dt,
+                                        float maxStepHeight) noexcept;
+
+        // TypeRegistry には登録しない。欄の表示名は保存の鍵
+        NS_REFLECT_BEGIN(Collider, NS::Obj::Component)
+        NS_REFLECT_ACCESSOR(float, "半径", CapsuleRadius(), SetCapsuleRadius)
+        NS_REFLECT_ACCESSOR(float, "半分の高さ", StandingHalfHeight(), SetStandingHalfHeight)
+        NS_REFLECT_END()
 
     private:
-        // current の body を自分の形と姿勢へ置き直した id を返す
-        // current が無効なら新しく作る。入れない形状は無効を返す
-        // 外から別の PhysicsScene を渡されると、覚えている id がどの PhysicsScene の物か言えなくなる
-        // 別の PhysicsScene は同じ index と使い回し回数を配るので、無関係の body を作り変える
-        // private にし、持ち主の Scene の PhysicsScene を引いた SyncToPhysics だけが呼ぶ
-        [[nodiscard]] virtual JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) = 0;
-
-        JPH::BodyID m_bodyId;
+        float m_radius = 0.4f;             // 当たりのカプセルの半径 (m)
+        float m_standingHalfHeight = 0.5f; // 立ち姿の円柱の半分の高さ (m)。半球を除く
+        bool m_sphereShape = false;        // 当たりを球にしているか。書くのは SetSphereShape だけ
+        std::unique_ptr<NS::Phys::JoltCharacter> m_character;
     };
 } // namespace NS::Obj

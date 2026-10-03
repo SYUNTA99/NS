@@ -11,6 +11,7 @@
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Clock.h"
@@ -256,6 +257,10 @@ namespace NS::Game::Player
 
     void PlayerAppearance::WriteDrawScale() noexcept
     {
+        if (Owner() == nullptr)
+        {
+            return;
+        }
         NS::Obj::Model* renderer = Owner()->ModelPart();
         if (renderer == nullptr)
         {
@@ -296,25 +301,26 @@ namespace NS::Game::Player
     {
         NS::Gfx::Mesh* standingPlaceholder = nullptr;
         NS::Gfx::Mesh* ballPlaceholder = nullptr;
-        const NS::Obj::Body* player = nullptr;
+        const NS::Obj::Collider* collider = nullptr;
         if (Owner() != nullptr)
         {
             if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
             {
-                player = &ownerPlayer->Body();
+                collider = &ownerPlayer->Collider();
             }
         }
-        if (player != nullptr)
+        if (collider != nullptr)
         {
             // 寸法の正は移動と当たりの裁定が読むカプセルの欄。玉は円柱の長さ 0 のカプセルで、直径が当たりと揃う
             // 立ち姿は丸まりに依らない立ち姿の半長で作る。今の当たりの半長は玉の間 0 で、丸まっている間に引き直すと
             // 立ち姿まで玉になる
-            standingPlaceholder = assets.GetOrMakeCapsuleMesh(player->CapsuleRadius(), player->StandingHalfHeight());
-            ballPlaceholder = assets.GetOrMakeCapsuleMesh(player->CapsuleRadius(), 0.0f);
+            standingPlaceholder =
+                assets.GetOrMakeCapsuleMesh(collider->CapsuleRadius(), collider->StandingHalfHeight());
+            ballPlaceholder = assets.GetOrMakeCapsuleMesh(collider->CapsuleRadius(), 0.0f);
         }
         else
         {
-            NS_LOG_WARN(Game, "PlayerAppearance: 同居する身体の部品が無く、仮の形の寸法を決められない");
+            NS_LOG_WARN(Game, "PlayerAppearance: 同居する当たりの部品 Collider が無く、仮の形の寸法を決められない");
         }
 
         m_standingMesh = ResolveLook(assets, Tuning().m_standingMeshRef, standingPlaceholder);

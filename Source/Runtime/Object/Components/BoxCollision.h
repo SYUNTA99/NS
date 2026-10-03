@@ -3,21 +3,21 @@
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Components/Collider.h"
+#include "Runtime/Object/Components/Collision.h"
 
 namespace NS::Obj
 {
-    //! @brief 箱型 collider を Scene に登録する Component
+    //! @brief 箱型 collision を Scene に登録する Component
     //! @details owner の world 変換を重ねた当たり箱を返す。body は WorldOBB の形と姿勢で入れる
     //! WorldAABB は回転時に内包する軸並行ボックスにするが、WorldOBB は回転・非一様 scale を厳密に保持する
     //! Mesh と分離し、視覚と衝突を独立に調整できるようにする
-    class BoxCollider : public Collider
+    class BoxCollision : public Collision
     {
     public:
         //! 既定 halfExtents {0.5,0.5,0.5} で構築する
-        BoxCollider() noexcept;
+        BoxCollision() noexcept;
         //! halfExtents を指定して構築する。負の成分は 0 にクランプ
-        explicit BoxCollider(const NS::Core::Vector3& halfExtents) noexcept;
+        explicit BoxCollision(const NS::Core::Vector3& halfExtents) noexcept;
 
         //! 当たり箱の各軸の半径を設定する。負の成分は 0 にクランプ
         void SetHalfExtents(const NS::Core::Vector3& halfExtents) noexcept;
@@ -47,7 +47,7 @@ namespace NS::Obj
 
         // 当たり箱の形状の半径と Transform からの独立オフセット / 回転を Inspector へ公開する
         // 半径は負を 0 にクランプし、回転は Euler 度で受けるため setter 経由で書く
-        NS_REFLECT_BEGIN(BoxCollider, Collider)
+        NS_REFLECT_BEGIN(BoxCollision, Collision)
         NS_REFLECT_ACCESSOR(NS::Core::Vector3, "半径", HalfExtents(), SetHalfExtents)
         NS_REFLECT_ACCESSOR(NS::Core::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
         NS_REFLECT_ACCESSOR(NS::Core::Vector3, "回転 (度)", RotationEulerDegrees(), SetRotationEulerDegrees)

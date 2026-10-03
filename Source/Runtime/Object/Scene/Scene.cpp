@@ -436,7 +436,7 @@ namespace NS::Obj
 
     NS::Phys::PhysicsScene* Scene::GetPhysicsScene() const noexcept
     {
-        // 地形を問う関数のほか、Collider も持ち主の Scene の body を出し入れする時にここから引く
+        // 地形を問う関数のほか、Collision も持ち主の Scene の body を出し入れする時にここから引く
         return const_cast<NS::Phys::PhysicsScene*>(&m_physicsScene);
     }
 

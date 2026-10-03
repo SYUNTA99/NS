@@ -28,7 +28,7 @@ namespace
 TEST(ActorRegistry, PlaceableClassesHaveLabels)
 {
     // 置ける Actor はどれも表示名を持つ
-    const std::vector<std::string_view> expected{"MapParts", "MapObj", "Goal", "KillZone", "FollowCamera", "Light"};
+    const std::vector<std::string_view> expected{"MapParts", "MapObj", "Goal", "DeathZone", "FollowCamera", "Light"};
     for (const std::string_view className : expected)
     {
         const NS::Obj::TypeRegistry::Entry* entry = FindPlaceable(className);

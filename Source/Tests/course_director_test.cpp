@@ -1,8 +1,9 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Game.h"
 #include "Game/Level/CourseDirector.h"
+#include "Game/Level/DeathZone.h"
 #include "Game/Level/Goal.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/KillZone.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player.h"
@@ -44,14 +45,14 @@ namespace
     nlohmann::json CourseWithPlayer()
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
-        (void)EnsurePlayerObject(doc);
-        (void)NS::Game::Level::EnsureKillZoneObject(doc);
+        (void)NS::Editor::EnsurePlayerObject(doc);
+        (void)NS::Editor::EnsureDeathZoneObject(doc);
         return doc;
     }
 
     NS::Core::Vector3 SpawnOf(const nlohmann::json& doc)
     {
-        return NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(doc)[FindPlayerObjectIndex(doc)]);
+        return NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(doc)[NS::Editor::FindPlayerObjectIndex(doc)]);
     }
 
     // ゴールを自機の出現位置に重ねたシーン文書
@@ -77,7 +78,7 @@ TEST(CourseDirector, PlayerCreatesDirectorAfterPlacement)
     EXPECT_EQ(NS::Obj::FindSceneObj<NS::Game::Level::CourseDirector>(scene), nullptr);
 }
 
-TEST(CourseDirector, KillZoneKillsPlayerAndDirectorRestartsCourse)
+TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
 {
     const nlohmann::json doc = CourseWithPlayer();
     NS::Obj::Scene scene;

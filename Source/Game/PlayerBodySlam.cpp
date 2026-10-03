@@ -12,6 +12,7 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 
 #include <cmath>
@@ -318,16 +319,16 @@ void Player::SetCurled(bool curled) noexcept
 
 void Player::ChangeCurled(bool curled) noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Obj::Collider& collider = *m_collider;
     if (curled == m_curled)
     {
         return;
     }
     m_curled = curled;
-    body.SetSphereShape(curled);
+    collider.SetSphereShape(curled);
     // 立ち姿の下端は 中心 − 半長 − 半径、玉の下端は 中心 − 半径。中心を立ち姿の半長ぶん上げ下げすると下端が揃う
     // 下げずに玉にすると、当たりの下端が半長ぶん上がる
-    float rise = body.StandingHalfHeight();
+    float rise = collider.StandingHalfHeight();
     if (curled)
     {
         rise = -rise;
@@ -342,7 +343,7 @@ void Player::ChangeCurled(bool curled) noexcept
 NS::Core::Sphere Player::SlamBallAt(const NS::Core::Vector3& rootPosition) const noexcept
 {
     // 立ち姿の下の球が、丸まった後の玉の中心。ChangeCurled が下端を揃えて根を下げるので、この式が成り立つ
-    const NS::Phys::Capsule capsule = m_body->CapsuleAt(rootPosition);
+    const NS::Phys::Capsule capsule = m_collider->CapsuleAt(rootPosition);
     return NS::Core::Sphere{capsule.center - capsule.axis * capsule.halfHeight, capsule.radius};
 }
 

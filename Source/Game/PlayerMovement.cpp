@@ -9,6 +9,7 @@
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Scene/Scene.h"
 
@@ -61,7 +62,7 @@ void Player::MoveBody(float dt) noexcept
     }
 
     const NS::Core::Vector3 before = Root().Position();
-    m_body->Move(dt, m_params->m_maxStepHeight);
+    m_body->Move(*m_collider, dt, m_params->m_maxStepHeight);
     const NS::Core::Vector3 delta = Root().Position() - before;
     m_lastMoveDistance = delta.Length();
     SyncGroundState();
@@ -232,7 +233,7 @@ void Player::UpdateBodySlam(float dt) noexcept
 namespace
 {
     // 掴まりの走査で見る AABB 群。体が Scene に居なければ空で、掴めないだけ
-    [[nodiscard]] std::vector<NS::Core::AABB> BoxesTouchingBand(const NS::Obj::IUseCollision& body,
+    [[nodiscard]] std::vector<NS::Core::AABB> BoxesTouchingBand(const NS::Obj::IUseCollision& collider,
                                                                 const NS::Core::Vector3& probe,
                                                                 float below,
                                                                 float above)
@@ -240,16 +241,16 @@ namespace
         NS::Core::AABB region;
         region.Center = NS::Core::Vector3{probe.x, probe.y + 0.5f * (above - below), probe.z};
         region.Extents = NS::Core::Vector3{0.0f, 0.5f * (above + below), 0.0f};
-        return NS::Obj::OverlapBoxCollision(body, region);
+        return NS::Obj::OverlapBoxCollision(collider, region);
     }
 
-    [[nodiscard]] std::vector<NS::Core::AABB> BoxesAtPoint(const NS::Obj::IUseCollision& body,
+    [[nodiscard]] std::vector<NS::Core::AABB> BoxesAtPoint(const NS::Obj::IUseCollision& collider,
                                                            const NS::Core::Vector3& point)
     {
         NS::Core::AABB region;
         region.Center = point;
         region.Extents = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-        return NS::Obj::OverlapBoxCollision(body, region);
+        return NS::Obj::OverlapBoxCollision(collider, region);
     }
 
     [[nodiscard]] bool AABBContainsPoint(const NS::Core::AABB& box, const NS::Core::Vector3& p) noexcept
@@ -278,19 +279,20 @@ bool Player::LedgeGrab() noexcept
     // かつブロック上端が手の上下の帯に収まれば縁とみなす
     // 縁は立ち姿で掴む。当たりの足元に立ち姿を立てた中心と、立ち姿の半長で測る。玉の間は根が半長ぶん下がっている
     // 玉の寸法のまま測ると手が円柱の長さぶん低い所を探し、縁の横を玉で落ちている間は掴めなかった
-    const float halfHeight = body.StandingHalfHeight();
+    const NS::Obj::Collider& collider = *m_collider;
+    const float halfHeight = collider.StandingHalfHeight();
     NS::Core::Vector3 pos = Root().Position();
-    pos.y += halfHeight - body.CapsuleHalfHeight();
+    pos.y += halfHeight - collider.CapsuleHalfHeight();
     const float handY = pos.y + halfHeight;
     const NS::Core::Vector3 probe{
-        pos.x + dir.x * (body.CapsuleRadius() + m_params->m_ledgeReach),
+        pos.x + dir.x * (collider.CapsuleRadius() + m_params->m_ledgeReach),
         handY,
-        pos.z + dir.z * (body.CapsuleRadius() + m_params->m_ledgeReach),
+        pos.z + dir.z * (collider.CapsuleRadius() + m_params->m_ledgeReach),
     };
 
     // 帯の上は今フレーム動いた距離まで。速く落ちると 1 フレームで縁の上端を通り過ぎて掴み損ねる
     const float above = m_lastMoveDistance;
-    for (const NS::Core::AABB& box : BoxesTouchingBand(body, probe, m_params->m_ledgeGrabBelowHand, above))
+    for (const NS::Core::AABB& box : BoxesTouchingBand(collider, probe, m_params->m_ledgeGrabBelowHand, above))
     {
         const float top = box.Center.y + box.Extents.y;
         if (!NS::Game::Player::PlayerJudgeLedgeGrab::InBand(probe, box, m_params->m_ledgeGrabBelowHand, above))
@@ -310,7 +312,7 @@ bool Player::LedgeGrab() noexcept
             }
             const float faceX = box.Center.x - sgn * box.Extents.x;
             faceNormal = NS::Core::Vector3{-sgn, 0.0f, 0.0f};
-            hang.x = faceX - sgn * body.CapsuleRadius();
+            hang.x = faceX - sgn * collider.CapsuleRadius();
             hang.z = NS::Core::Clamp(pos.z, box.Center.z - box.Extents.z, box.Center.z + box.Extents.z);
         }
         else
@@ -322,20 +324,20 @@ bool Player::LedgeGrab() noexcept
             }
             const float faceZ = box.Center.z - sgn * box.Extents.z;
             faceNormal = NS::Core::Vector3{0.0f, 0.0f, -sgn};
-            hang.z = faceZ - sgn * body.CapsuleRadius();
+            hang.z = faceZ - sgn * collider.CapsuleRadius();
             hang.x = NS::Core::Clamp(pos.x, box.Center.x - box.Extents.x, box.Center.x + box.Extents.x);
         }
         hang.y = top - halfHeight;
 
         // 上面手前の登り先が別ブロックで塞がっているなら縁ではない。掴まない
-        const float mantleStep = 2.0f * body.CapsuleRadius();
+        const float mantleStep = 2.0f * collider.CapsuleRadius();
         const NS::Core::Vector3 mantleCheck{
             hang.x - faceNormal.x * mantleStep,
             top + halfHeight,
             hang.z - faceNormal.z * mantleStep,
         };
         bool blocked = false;
-        for (const NS::Core::AABB& other : BoxesAtPoint(body, mantleCheck))
+        for (const NS::Core::AABB& other : BoxesAtPoint(collider, mantleCheck))
         {
             if (AABBContainsPoint(other, mantleCheck))
             {
@@ -374,7 +376,7 @@ bool Player::HoldLedge() noexcept
 
     m_ledgeTopY = top;
     NS::Core::Vector3 pos = Root().Position();
-    pos.y = m_ledgeTopY - body.CapsuleHalfHeight();
+    pos.y = m_ledgeTopY - m_collider->CapsuleHalfHeight();
     Root().SetPosition(pos);
     body.SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
     return true;
@@ -398,13 +400,14 @@ bool Player::LedgeJump() noexcept
 void Player::ClimbLedge() noexcept
 {
     NS::Obj::Body& body = *m_body;
+    const NS::Obj::Collider& collider = *m_collider;
     const NS::Core::Vector3 pos = Root().Position();
     // ぶら下がりの中心は面から半径ぶん外。直径ぶん奥へ進めると中心が縁から半径ぶん内側に入り、体が上面に乗る
-    const float mantleStep = 2.0f * body.CapsuleRadius();
+    const float mantleStep = 2.0f * collider.CapsuleRadius();
     m_ledgeMantleStart = pos;
     m_ledgeMantleEnd = NS::Core::Vector3{
         pos.x - m_ledgeFaceNormal.x * mantleStep,
-        m_ledgeTopY + body.CapsuleHalfHeight() + body.CapsuleRadius(),
+        m_ledgeTopY + collider.CapsuleHalfHeight() + collider.CapsuleRadius(),
         pos.z - m_ledgeFaceNormal.z * mantleStep,
     };
     m_ledgeMantleTimer = 0.0f;
@@ -483,16 +486,16 @@ void Player::UpdateLedgeClimb(float dt) noexcept
 
 bool Player::FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) const noexcept
 {
-    const NS::Obj::Body& body = *m_body;
+    const NS::Obj::Collider& collider = *m_collider;
     const NS::Core::Vector3 inward{-m_ledgeFaceNormal.x, 0.0f, -m_ledgeFaceNormal.z};
-    const float handY = hangPos.y + body.CapsuleHalfHeight();
+    const float handY = hangPos.y + collider.CapsuleHalfHeight();
     const NS::Core::Vector3 probe{
-        hangPos.x + inward.x * (body.CapsuleRadius() + m_params->m_ledgeReach),
+        hangPos.x + inward.x * (collider.CapsuleRadius() + m_params->m_ledgeReach),
         handY,
-        hangPos.z + inward.z * (body.CapsuleRadius() + m_params->m_ledgeReach),
+        hangPos.z + inward.z * (collider.CapsuleRadius() + m_params->m_ledgeReach),
     };
 
-    for (const NS::Core::AABB& box : BoxesTouchingBand(body, probe, m_params->m_ledgeGrabBelowHand, 0.0f))
+    for (const NS::Core::AABB& box : BoxesTouchingBand(collider, probe, m_params->m_ledgeGrabBelowHand, 0.0f))
     {
         const float top = box.Center.y + box.Extents.y;
         if (top < handY - m_params->m_ledgeGrabBelowHand || top > handY)
@@ -509,14 +512,14 @@ bool Player::FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) con
         }
 
         // 乗り上がり先が別ブロックで塞がっていたら縁とみなさない。オーバーハングの下では掴めない
-        const float mantleStep = 2.0f * body.CapsuleRadius();
+        const float mantleStep = 2.0f * collider.CapsuleRadius();
         const NS::Core::Vector3 mantleCheck{
             hangPos.x - m_ledgeFaceNormal.x * mantleStep,
-            top + body.CapsuleHalfHeight(),
+            top + collider.CapsuleHalfHeight(),
             hangPos.z - m_ledgeFaceNormal.z * mantleStep,
         };
         bool blocked = false;
-        for (const NS::Core::AABB& other : BoxesAtPoint(body, mantleCheck))
+        for (const NS::Core::AABB& other : BoxesAtPoint(collider, mantleCheck))
         {
             if (AABBContainsPoint(other, mantleCheck))
             {

@@ -10,6 +10,10 @@
             "parts": {
                 "Appearance": {},
                 "ChargeEffects": {},
+                "Collider": {
+                    "半分の高さ": 0.5,
+                    "半径": 0.6499999761581421
+                },
                 "ImpactEffects": {},
                 "ImpactResolver": {},
                 "Input": {},
@@ -22,10 +26,7 @@
                         0.5
                     ]
                 },
-                "Movement": {
-                    "半分の高さ": 0.5,
-                    "半径": 0.6499999761581421
-                },
+                "Movement": {},
                 "Params": {
                     "カメラ揺れの強さ": 0.05999999865889549,
                     "コヨーテ時間": 0.02500000037252903,
@@ -614,7 +615,7 @@
             }
         },
         {
-            "class": "KillZone",
+            "class": "DeathZone",
             "id": 160,
             "name": "落下死の体積",
             "parts": {

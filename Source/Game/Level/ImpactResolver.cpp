@@ -13,6 +13,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/IUse/IUseCamera.h"
 #include "Runtime/Object/ObjectList.h"
@@ -208,7 +209,8 @@ namespace NS::Game::Level
         const NS::Core::Vector3 position = Owner()->Root().Position();
 
         // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
-        const NS::Phys::Capsule capsule = m_body->CapsuleAt(PositionAfterStep(position, predictedVelocity));
+        const NS::Phys::Capsule capsule =
+            m_player->Collider().CapsuleAt(PositionAfterStep(position, predictedVelocity));
         const std::vector<NS::Obj::HitSensor*> touching =
             scene->HitSensors().FindOverlaps(NS::Obj::SensorVolume::Capsule(capsule), Owner());
 
@@ -261,7 +263,7 @@ namespace NS::Game::Level
         }
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
-        const float playerRadius = m_body->CapsuleRadius();
+        const float playerRadius = m_player->Collider().CapsuleRadius();
         // 突進は丸まった玉で進む。玉の決まりは Player::SlamBallAt が持つ
         const NS::Core::Vector3 ballCenter = m_player->SlamBallAt(position).center;
         // 届くかは裁定と同じく、自機の当たりの玉と相手の体のセンサーの形で見る。外接箱を水平に見ると、中心の高い
@@ -501,7 +503,7 @@ namespace NS::Game::Level
         const NS::Core::Vector3 stepped = PositionAfterStep(position, velocity);
         const NS::Core::Vector3 ballCenter = m_player->SlamBallAt(stepped).center;
         const HitFaceJudgement judgement =
-            JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, m_body->CapsuleRadius());
+            JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, m_player->Collider().CapsuleRadius());
         const float offset01 = judgement.offset01;
         const float chargeFactor = Tuning().ChargeFactorFor(charge01);
         const float positionFactor = judgement.powerScale;
@@ -526,7 +528,7 @@ namespace NS::Game::Level
         m_player->CancelBodySlam();
 
         m_pendingTarget = m_observedTarget;
-        m_pendingTargetHome = answer.position;
+        m_pendingTargetPosition = answer.position;
         // 飛んでいる相手は食い込まない。どう応じるかは相手が決めるが、演出の大きさを選ぶのに答えを控える
         m_pendingTargetPlaced = answer.placed;
         m_pendingTier = tier;
@@ -606,7 +608,7 @@ namespace NS::Game::Level
         m_lastImpact.impactDir = m_pendingImpactDir;
         // 触れた点は記録とエディタの印だけが読む。段と威力を決めた判定の結果を使う
         m_lastImpact.surfacePoint = judgement.surfacePoint;
-        m_lastImpact.targetPos = m_pendingTargetHome;
+        m_lastImpact.targetPos = m_pendingTargetPosition;
         m_lastImpact.targetBottom = bounds.Center.y - bounds.Extents.y;
         m_lastImpact.targetMass = mass;
         m_lastImpact.targetPlaced = m_pendingTargetPlaced;
@@ -716,7 +718,7 @@ namespace NS::Game::Level
         m_pendingFlashSteps = returns.flashSteps;
         m_pendingShake = returns.shake;
         m_pendingShake.firstSideDirection = m_pendingReboundArc.direction;
-        m_pendingShake.seed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, m_pendingTargetHome);
+        m_pendingShake.seed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, m_pendingTargetPosition);
         // 寄りの無い段も倍率 1 の設定を渡し、前の当たりの寄りを残さない
         m_pendingZoomRoll = returns.zoomRoll;
         m_pendingZoomRoll.rollDirection = m_pendingImpactDir;

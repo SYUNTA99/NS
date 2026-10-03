@@ -357,7 +357,7 @@ namespace NS::Phys
     }
 
     JPH::BodyID PhysicsScene::SyncMeshShape(JPH::BodyID id,
-                                            const MeshCollision& collision,
+                                            const MeshShape& collision,
                                             const NS::Core::Vector3& position,
                                             const NS::Core::Quaternion& rotation,
                                             const NS::Core::Vector3& scale,

@@ -1,9 +1,9 @@
 ﻿#include "Runtime/Object/Components/Body.h"
 
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Gravity.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/JoltCharacter.h"
 
 #include <cmath>
 
@@ -22,20 +22,6 @@ namespace
         const float scale = (length - drop) / length;
         x *= scale;
         z *= scale;
-    }
-
-    // 寸法の欄へ書く値。負は 0、有限でなければ書く前の値
-    float NonNegativeLength(float value, float current) noexcept
-    {
-        if (!std::isfinite(value))
-        {
-            return current;
-        }
-        if (value < 0.0f)
-        {
-            return 0.0f;
-        }
-        return value;
     }
 } // namespace
 
@@ -66,55 +52,6 @@ namespace NS::Obj
     {
         m_wasGrounded = grounded;
         m_isGrounded = grounded;
-    }
-
-    void Body::SetCapsuleRadius(float radius) noexcept
-    {
-        m_radius = NonNegativeLength(radius, m_radius);
-    }
-
-    void Body::SetStandingHalfHeight(float halfHeight) noexcept
-    {
-        m_standingHalfHeight = NonNegativeLength(halfHeight, m_standingHalfHeight);
-    }
-
-    float Body::CapsuleHalfHeight() const noexcept
-    {
-        // 移動と裁定はどちらもここから寸法を引くので、球にしている間は両方が同じ球で当たる
-        if (m_sphereShape)
-        {
-            return 0.0f;
-        }
-        return StandingHalfHeight();
-    }
-
-    NS::Phys::Capsule Body::CapsuleAt(const NS::Core::Vector3& rootPosition) const noexcept
-    {
-        // 軸は +Y 固定、中心は根。Move が JoltCharacter へ渡す (半径, 半分の高さ) と同じ 2 つの値から組む
-        return NS::Phys::Capsule{rootPosition, NS::Core::Vector3::UnitY, CapsuleHalfHeight(), CapsuleRadius()};
-    }
-
-    NS::Phys::Capsule Body::WorldCapsule() const noexcept
-    {
-        if (Owner() == nullptr)
-        {
-            return CapsuleAt(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
-        }
-        return CapsuleAt(RootTransform().Position());
-    }
-
-    void Body::SetSphereShape(bool sphere) noexcept
-    {
-        m_sphereShape = sphere;
-    }
-
-    NS::Phys::PhysicsScene* Body::GetPhysicsScene() const noexcept
-    {
-        if (Owner() == nullptr)
-        {
-            return nullptr;
-        }
-        return Owner()->GetPhysicsScene();
     }
 
     void Body::Accelerate(
@@ -155,33 +92,18 @@ namespace NS::Obj
         NS::Obj::AddGravity(*owner, m_velocity, -gravity, dt);
     }
 
-    void Body::Move(float dt, float maxStepHeight) noexcept
+    void Body::Move(NS::Obj::Collider& collider, float dt, float maxStepHeight) noexcept
     {
-        const NS::Core::Vector3 before = RootTransform().Position();
-        NS::Phys::PhysicsScene* physics = GetPhysicsScene();
-        if (physics == nullptr)
+        const NS::Obj::ColliderMove moved = collider.Move(RootTransform().Position(), m_velocity, dt, maxStepHeight);
+        RootTransform().SetPosition(moved.position);
+        m_velocity = moved.velocity;
+        m_wasGrounded = m_isGrounded;
+        m_isGrounded = moved.grounded;
+        // Scene に居ない間は知らせを出さない
+        if (!moved.inWorld)
         {
-            RootTransform().SetPosition(before + m_velocity * dt);
-            m_wasGrounded = m_isGrounded;
-            m_isGrounded = false;
             return;
         }
-
-        const float radius = CapsuleRadius();
-        const float halfHeight = CapsuleHalfHeight();
-        // AttachScene は新しく組んだ配置物にしか呼ばれない。Scene が変わらないので m_character を作り直さない
-        if (m_character == nullptr)
-        {
-            m_character = std::make_unique<NS::Phys::JoltCharacter>(*physics, radius, halfHeight);
-        }
-        m_character->Resize(radius, halfHeight);
-
-        m_character->Step(before, m_velocity, dt, maxStepHeight);
-
-        RootTransform().SetPosition(m_character->Position());
-        m_velocity = m_character->Velocity();
-        m_wasGrounded = m_isGrounded;
-        m_isGrounded = m_character->IsGrounded();
 
         // 発火は位置・速度・接地を書き終えた後。途中で呼ぶと購読側がそのフレームだけ古い値を読む
         if (!m_wasGrounded && m_isGrounded)

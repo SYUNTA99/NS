@@ -6,7 +6,7 @@
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Core/Sphere.h"
 #include "Runtime/Physics/Capsule.h"
-#include "Runtime/Physics/MeshCollision.h"
+#include "Runtime/Physics/MeshShape.h"
 #include "Runtime/Physics/ShapePart.h"
 #include "Runtime/Physics/Triangle.h"
 
@@ -134,7 +134,7 @@ namespace NS::Phys
         //! 位置・回転・拡縮で表せない歪みは受け取れない。歪みのある配置は SyncMesh に世界座標の三角形を渡す
         //! collision の形が null か、拡縮の 3 軸がどれも 0 に近ければ無効な BodyID を返す。id の body は外さない
         JPH::BodyID SyncMeshShape(JPH::BodyID id,
-                                  const MeshCollision& collision,
+                                  const MeshShape& collision,
                                   const NS::Core::Vector3& position,
                                   const NS::Core::Quaternion& rotation,
                                   const NS::Core::Vector3& scale,

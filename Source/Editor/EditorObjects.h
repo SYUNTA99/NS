@@ -1,7 +1,8 @@
 #pragma once
 
 // 配置物をエディタ側から扱うヘルパ
-// cell ブラシの照合・90° 回転・Hierarchy の表示名・クリックで選ぶ判定箱。出荷ビルドには載らない
+// cell ブラシの照合・90° 回転・Hierarchy の表示名・クリックで選ぶ判定箱・レベルの JSON へ既定の物を補う手順。出荷ビルドには載らない
+// エディタだけが使う関数の置き場はここ。例外は、ゲームの判定の決まりを写さないと書けない物だけで、判定の隣に置いて NS_SHIPPING で囲む
 
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
@@ -61,4 +62,30 @@ namespace NS::Editor
     //! @param[in] object 判定箱を求める配置物
     //! @return Root のローカル空間の軸並行境界ボックス
     [[nodiscard]] NS::Core::AABB PickLocalBounds(const NS::Obj::Actor& object) noexcept;
+
+    //! プレイヤーの配置物か。live の FindPlayer と同じく、反映の型名で照合する
+    [[nodiscard]] bool IsPlayerObject(const nlohmann::json& object) noexcept;
+
+    //! シーンの JSON 文書からプレイヤーを探す。最初の 1 件の添字、無ければ k_NoObjectIndex
+    //! 複数居ても先頭を正とする。2 体以上の警告は EnsurePlayerObject を通した時だけ出る
+    [[nodiscard]] std::size_t FindPlayerObjectIndex(const nlohmann::json& scene) noexcept;
+
+    //! プレイヤーのひな形の JSON を作る。構成は Player のコンストラクタが決め、値はコードの既定を使う
+    [[nodiscard]] nlohmann::json MakePlayerObject(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation);
+
+    //! @brief プレイヤーが 1 体も居なければ既定構成で足し、永続 id まで振る。2 体以上なら警告して先頭を正とする
+    //! @details 足す位置は DefaultSpawnPosition に、プレイヤーの種類の既定のカプセルを当てて求める
+    //! @param[in,out] scene 補う先のシーンの JSON 文書
+    //! @return 足した場合 true、それ以外の場合は false
+    [[nodiscard]] bool EnsurePlayerObject(nlohmann::json& scene);
+
+    //! 落下死の範囲の配置物か。反映の型名で照合する
+    [[nodiscard]] bool IsDeathZoneObject(const nlohmann::json& object) noexcept;
+
+    //! 奈落用の落下死の範囲のひな形の JSON を作る
+    [[nodiscard]] nlohmann::json MakeDeathZoneObject();
+
+    //! 落下死の範囲が 1 つも無ければ既定の物を敷き、永続 id まで振る
+    //! 無いレベルは奈落で死ねず落ち続けてしまうので、新しいレベルを作る時に通す
+    [[nodiscard]] bool EnsureDeathZoneObject(nlohmann::json& scene);
 } // namespace NS::Editor

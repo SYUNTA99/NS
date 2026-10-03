@@ -1,71 +1,110 @@
-﻿#include "Runtime/Object/Components/Collider.h"
+#include "Runtime/Object/Components/Collider.h"
 
-#include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Physics/PhysicsScene.h"
+#include "Runtime/Object/Transform.h"
+#include "Runtime/Physics/JoltCharacter.h"
+
+#include <cmath>
 
 namespace
 {
-    // 持ち主の Scene の PhysicsScene。持ち主が無いか Scene に居なければ nullptr
-    [[nodiscard]] NS::Phys::PhysicsScene* OwnerPhysics(const NS::Obj::Actor* owner) noexcept
+    // 寸法の欄へ書く値。負は 0、有限でなければ書く前の値
+    float NonNegativeLength(float value, float current) noexcept
     {
-        if (owner == nullptr)
+        if (!std::isfinite(value))
         {
-            return nullptr;
+            return current;
         }
-        return owner->GetPhysicsScene();
+        if (value < 0.0f)
+        {
+            return 0.0f;
+        }
+        return value;
     }
 } // namespace
 
 namespace NS::Obj
 {
-    void Collider::SyncToPhysics()
+    Collider::Collider() noexcept : NS::Obj::Component() {}
+
+    void Collider::SetCapsuleRadius(float radius) noexcept
     {
-        NS::Phys::PhysicsScene* physics = OwnerPhysics(Owner());
+        m_radius = NonNegativeLength(radius, m_radius);
+    }
+
+    void Collider::SetStandingHalfHeight(float halfHeight) noexcept
+    {
+        m_standingHalfHeight = NonNegativeLength(halfHeight, m_standingHalfHeight);
+    }
+
+    float Collider::CapsuleHalfHeight() const noexcept
+    {
+        // 移動と裁定はどちらもここから寸法を引くので、球にしている間は両方が同じ球で当たる
+        if (m_sphereShape)
+        {
+            return 0.0f;
+        }
+        return StandingHalfHeight();
+    }
+
+    NS::Phys::Capsule Collider::CapsuleAt(const NS::Core::Vector3& rootPosition) const noexcept
+    {
+        // 軸は +Y 固定、中心は根。Move が JoltCharacter へ渡す (半径, 半分の高さ) と同じ 2 つの値から組む
+        return NS::Phys::Capsule{rootPosition, NS::Core::Vector3::UnitY, CapsuleHalfHeight(), CapsuleRadius()};
+    }
+
+    NS::Phys::Capsule Collider::WorldCapsule() const noexcept
+    {
+        if (Owner() == nullptr)
+        {
+            return CapsuleAt(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        }
+        return CapsuleAt(RootTransform().Position());
+    }
+
+    void Collider::SetSphereShape(bool sphere) noexcept
+    {
+        m_sphereShape = sphere;
+    }
+
+    NS::Phys::PhysicsScene* Collider::GetPhysicsScene() const noexcept
+    {
+        if (Owner() == nullptr)
+        {
+            return nullptr;
+        }
+        return Owner()->GetPhysicsScene();
+    }
+
+    ColliderMove Collider::Move(const NS::Core::Vector3& from,
+                                const NS::Core::Vector3& velocity,
+                                float dt,
+                                float maxStepHeight) noexcept
+    {
+        ColliderMove moved;
+        NS::Phys::PhysicsScene* physics = GetPhysicsScene();
         if (physics == nullptr)
         {
-            return;
+            moved.position = from + velocity * dt;
+            moved.velocity = velocity;
+            return moved;
         }
 
-        const JPH::BodyID body = SyncBody(*physics, m_bodyId);
-        // 置き直しは同じ id を返す。違うのは初めて作った時か、無効が返った時だけ
-        if (m_bodyId != body)
+        const float radius = CapsuleRadius();
+        const float halfHeight = CapsuleHalfHeight();
+        // AttachScene は新しく組んだ配置物にしか呼ばれない。Scene が変わらないので m_character を作り直さない
+        if (m_character == nullptr)
         {
-            physics->RemoveBody(m_bodyId);
+            m_character = std::make_unique<NS::Phys::JoltCharacter>(*physics, radius, halfHeight);
         }
-        m_bodyId = body;
-    }
+        m_character->Resize(radius, halfHeight);
 
-    void Collider::RemoveFromPhysics()
-    {
-        NS::Phys::PhysicsScene* physics = OwnerPhysics(Owner());
-        if (physics == nullptr)
-        {
-            return;
-        }
+        m_character->Step(from, velocity, dt, maxStepHeight);
 
-        physics->RemoveBody(m_bodyId);
-        m_bodyId = JPH::BodyID{};
-    }
-
-    void Collider::OnAppear()
-    {
-        SyncToPhysics();
-    }
-
-    void Collider::OnEndPlay()
-    {
-        if (m_bodyId.IsInvalid())
-        {
-            return;
-        }
-
-        if (OwnerPhysics(Owner()) == nullptr)
-        {
-            NS_LOG_ERROR(Scene, "Collider: Scene に居ないので body を外せない。 body は PhysicsScene を壊すまで残る");
-            m_bodyId = JPH::BodyID{};
-            return;
-        }
-        RemoveFromPhysics();
+        moved.position = m_character->Position();
+        moved.velocity = m_character->Velocity();
+        moved.grounded = m_character->IsGrounded();
+        moved.inWorld = true;
+        return moved;
     }
 } // namespace NS::Obj
