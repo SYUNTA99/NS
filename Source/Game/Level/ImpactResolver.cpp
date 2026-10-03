@@ -148,6 +148,15 @@ namespace NS::Game::Level
             return touched;
         }
 
+        // この固定ステップで進んだ先の根の位置。重なりと段を同じ所で見るため、裁定はどちらもここを通る
+        [[nodiscard]] NS::Core::Vector3 PositionAfterStep(const NS::Core::Vector3& position,
+                                                          const NS::Core::Vector3& velocity) noexcept
+        {
+            const float dt = NS::Platform::FrameTimer::FixedDelta();
+            return NS::Core::Vector3{
+                position.x + velocity.x * dt, position.y + velocity.y * dt, position.z + velocity.z * dt};
+        }
+
         // 体当たりが調べる種類の、有効な体のセンサーか。当たりの裁定と狙う相手の探索が同じ絞りを通る
         [[nodiscard]] bool IsTackleTarget(const NS::Obj::HitSensor& sensor, const NS::Obj::Actor* self) noexcept
         {
@@ -198,12 +207,9 @@ namespace NS::Game::Level
         }
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
-        const float dt = NS::Platform::FrameTimer::FixedDelta();
 
         // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
-        const NS::Phys::Capsule capsule{NS::Core::Vector3{position.x + predictedVelocity.x * dt,
-                                                          position.y + predictedVelocity.y * dt,
-                                                          position.z + predictedVelocity.z * dt},
+        const NS::Phys::Capsule capsule{PositionAfterStep(position, predictedVelocity),
                                         NS::Core::Vector3::UnitY,
                                         m_body->CapsuleHalfHeight(),
                                         m_body->CapsuleRadius()};
@@ -501,8 +507,10 @@ namespace NS::Game::Level
         const float mass = answer.mass;
 
         // 段と威力の当たり位置の係数は、相手の面で当てはまった同じ決まりから取る
-        // 玉の中心は今の高さ。丸まっていれば根、立ち姿なら下の球の中心で、狙う相手の探し方と同じ
-        const NS::Core::Vector3 ballCenter{position.x, position.y - m_body->CapsuleHalfHeight(), position.z};
+        // 玉の中心は重なりを見た所と同じく、この固定ステップで進んだ先。今の位置で見ると、縦に動く突進は 1 ステップ
+        // ぶん違う高さで段が決まる。丸まっていれば根、立ち姿なら下の球の中心で、狙う相手の探し方と同じ
+        const NS::Core::Vector3 stepped = PositionAfterStep(position, velocity);
+        const NS::Core::Vector3 ballCenter{stepped.x, stepped.y - m_body->CapsuleHalfHeight(), stepped.z};
         const HitFaceJudgement judgement =
             JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, m_body->CapsuleRadius());
         const float offset01 = judgement.offset01;

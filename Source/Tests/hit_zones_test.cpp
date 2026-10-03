@@ -15,6 +15,7 @@
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Physics/Capsule.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <gtest/gtest.h>
 
@@ -836,17 +837,40 @@ TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
 }
 
 // 上下のずれも段に効く。赤の既定 0.43 に対し、玉の中心が相手の中心より 0.5 m 低い線は 0.5 ÷ 1.15 ≒ 0.435 で外
+// 溜め 0 のタップは上向きの初速で 1 ステップぶん上がって赤へ入るので、縦の速さの無い突進で見る
 TEST(HitZonesTest, VerdictMissesWhenTheLinePassesBelowTheRed)
 {
     NS::Obj::Scene scene;
     Player* player = PlaceSlamTarget(scene, nlohmann::json::object(), 1.0f);
     ASSERT_NE(player, nullptr);
-    const NS::Game::Level::ImpactRecord& impact = SlamOnce(*player);
+    player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    player->Resolver().ObserveImpact(Vector3{0.0f, 0.0f, 6.0f});
+    player->Resolver().StepState();
+    const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
     ASSERT_EQ(impact.sequence, 1u);
     EXPECT_EQ(impact.tier, HitTier::Wide);
     EXPECT_FLOAT_EQ(impact.positionFactor, 0.7f);
     // 横にはずれていない
     EXPECT_NEAR(impact.offset01, 0.0f, k_Tolerance);
+}
+
+// 段は重なりを見たのと同じ、この固定ステップで進んだ先の玉の高さで決める
+// 今の玉の中心は相手より 0.5 m 低く赤の外。1 ステップで 0.15 m 上がる速さなら 0.35 ÷ 1.15 ≒ 0.30 で赤の中
+TEST(HitZonesTest, VerdictJudgesTheBallWhereThisStepMovesIt)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSlamTarget(scene, nlohmann::json::object(), 1.0f);
+    ASSERT_NE(player, nullptr);
+    player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+
+    const float riseSpeed = 0.15f / NS::Platform::FrameTimer::FixedDelta();
+    player->Resolver().ObserveImpact(Vector3{0.0f, riseSpeed, 6.0f});
+    player->Resolver().StepState();
+    const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
+    ASSERT_EQ(impact.sequence, 1u);
+    EXPECT_EQ(impact.tier, HitTier::Center);
 }
 
 // 押している間の狙いの予測は、裁定と同じ面の判定で段と横ずれを出す

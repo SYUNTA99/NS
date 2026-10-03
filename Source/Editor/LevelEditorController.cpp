@@ -1223,6 +1223,11 @@ void LevelEditorController::RenderHitFaces() noexcept
         {
             continue;
         }
+        // 調べる対象から外した体は、突進が当たらないので面も出さない
+        if (!bodySensor->IsValid())
+        {
+            continue;
+        }
         const NS::Obj::SensorVolume body = bodySensor->WorldVolume();
         NS::Core::Vector3 direction = body.Center() - cameraPosition;
         if (player != nullptr)
