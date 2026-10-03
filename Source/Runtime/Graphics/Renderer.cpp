@@ -217,7 +217,8 @@ namespace NS::Gfx
 
         SuppressAltEnter(m_swapchain.Get(), hwnd);
 
-        m_commands = std::make_unique<CommandList>(m_context.Get());
+        // コンストラクタは friend の Renderer にだけ開いているので、make_unique では呼べない
+        m_commands.reset(new CommandList(m_context.Get()));
 
         if (!BuildBackbufferTargets(m_swapchain.Get(), m_backbuffer, m_depth))
         {

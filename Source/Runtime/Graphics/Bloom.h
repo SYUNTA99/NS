@@ -11,7 +11,9 @@ namespace NS::Gfx
 {
 
     class Buffer;
+    class CommandList;
     class Pipeline;
+    class Renderer;
     class Shader;
     class Texture;
 
@@ -35,6 +37,7 @@ namespace NS::Gfx
     //! 深度は控えた描画先の物をそのまま使うので、EndWorld の後に描く線も世界の深度で隠れる
     //! 縮めは 13 点で拾い、戻しは 3×3 の山形で拾って 1 段ずつ足す
     //! 構築時に Gpu() の device を使う。Renderer が未構築なら無効な状態になり、何もしない
+    //! 描く命令は BeginWorld と EndWorld に渡された Renderer の Commands() から出す
     //! @warning Renderer より先に破棄すること
     class Bloom : public NS::Core::NonCopyable
     {
@@ -50,19 +53,22 @@ namespace NS::Gfx
         //! @brief 今の描画先を控え、同じ大きさの浮動小数の描画先を clearColor で塗って描画先にする
         //! @details 深度は控えた描画先の物をそのまま差す。大きさが前と違えば浮動小数の描画先を作り直す
         //! 無効な状態・描画先が無い・作り直しに失敗した時は何もせず、世界は今の描画先へそのまま描かれる
+        //! @param[in,out] renderer 描く命令を借りる先。今の描画先とビューポートもここから読む
         //! @param[in] clearColor 今の描画先を塗った色。空を描かない所に残る
-        void BeginWorld(const NS::Core::Color& clearColor) noexcept;
+        void BeginWorld(Renderer& renderer, const NS::Core::Color& clearColor) noexcept;
 
         //! @brief 浮動小数の絵ににじみを足し、1 へ丸めて BeginWorld で控えた描画先へ書く
         //! @details 描画先とビューポートを BeginWorld の前へ戻す。BeginWorld が差し替えなかった時は何もしない
-        void EndWorld() noexcept;
+        //! @param[in,out] renderer 描く命令を借りる先。BeginWorld に渡した物と同じ Renderer
+        void EndWorld(Renderer& renderer) noexcept;
 
     private:
         // 描画先の大きさと段の数に合わせて浮動小数の描画先を揃える。作れなければ false
         [[nodiscard]] bool EnsureTargets(NS::Core::Size2D size) noexcept;
 
         // 全画面を 1 回描く。source を t0、scene を t1 に差して destination へ書く。scene は無ければ差さない
-        void DrawPass(const Shader& pixelShader,
+        void DrawPass(CommandList& cmd,
+                      const Shader& pixelShader,
                       const Pipeline& pipeline,
                       const Texture& source,
                       const Texture* scene,

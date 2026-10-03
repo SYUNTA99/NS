@@ -6,6 +6,7 @@
 #include "Runtime/Graphics/GraphicObject.h"
 #include "Runtime/Graphics/Mesh.h"
 #include "Runtime/Graphics/Pipeline.h"
+#include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Graphics/Shader.h"
 #include "Runtime/Graphics/Texture.h"
 
@@ -47,11 +48,11 @@ namespace NS::Gfx
             return NS::Core::Size2D{std::max(1, size.width >> shift), std::max(1, size.height >> shift)};
         }
 
-        void UnbindShaderResources(ID3D11DeviceContext* context)
+        void UnbindShaderResources(CommandList& cmd)
         {
             // 次の段で描画先にする絵が読む側に残っていると、描画装置は書き込みを捨てる
             ID3D11ShaderResourceView* none[2] = {nullptr, nullptr};
-            context->PSSetShaderResources(0, 2, none);
+            cmd->PSSetShaderResources(0, 2, none);
         }
     } // namespace
 
@@ -126,17 +127,17 @@ namespace NS::Gfx
         return m_valid;
     }
 
-    void Bloom::BeginWorld(const NS::Core::Color& clearColor) noexcept
+    void Bloom::BeginWorld(Renderer& renderer, const NS::Core::Color& clearColor) noexcept
     {
         if (!m_valid || m_active)
         {
             return;
         }
 
-        ID3D11DeviceContext* context = Gpu().context;
+        CommandList& cmd = renderer.Commands();
         ComPtr<ID3D11RenderTargetView> target;
         ComPtr<ID3D11DepthStencilView> depth;
-        context->OMGetRenderTargets(1, target.GetAddressOf(), depth.GetAddressOf());
+        cmd->OMGetRenderTargets(1, target.GetAddressOf(), depth.GetAddressOf());
         if (target == nullptr)
         {
             return;
@@ -158,14 +159,13 @@ namespace NS::Gfx
         }
 
         UINT viewportCount = 1;
-        context->RSGetViewports(&viewportCount, &m_savedViewport);
+        cmd->RSGetViewports(&viewportCount, &m_savedViewport);
         if (viewportCount == 0)
         {
             m_savedViewport =
                 D3D11_VIEWPORT{0.0f, 0.0f, static_cast<float>(size.width), static_cast<float>(size.height), 0.0f, 1.0f};
         }
 
-        CommandList cmd(context);
         cmd.ClearRenderTarget(m_scene->Rtv(), clearColor.R(), clearColor.G(), clearColor.B(), clearColor.A());
         cmd.SetRenderTarget(m_scene->Rtv(), depth.Get());
         cmd.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
@@ -175,7 +175,7 @@ namespace NS::Gfx
         m_active = true;
     }
 
-    void Bloom::EndWorld() noexcept
+    void Bloom::EndWorld(Renderer& renderer) noexcept
     {
         if (!m_active)
         {
@@ -183,16 +183,16 @@ namespace NS::Gfx
         }
         m_active = false;
 
-        ID3D11DeviceContext* context = Gpu().context;
+        CommandList& cmd = renderer.Commands();
         if (m_desc.intensity > 0.0f)
         {
-            DrawPass(*m_thresholdPs, *m_writePipeline, *m_scene, nullptr, m_bright->Rtv(), m_size);
+            DrawPass(cmd, *m_thresholdPs, *m_writePipeline, *m_scene, nullptr, m_bright->Rtv(), m_size);
 
             // TODO: 細かい火花のにじみが明滅したら、最初の縮めで 5 つの四角を 1 / (1 + 明るさ) で重み付けする
             const Texture* source = m_bright.get();
             for (std::unique_ptr<Texture>& level : m_levels)
             {
-                DrawPass(*m_downPs, *m_writePipeline, *source, nullptr, level->Rtv(), level->Size());
+                DrawPass(cmd, *m_downPs, *m_writePipeline, *source, nullptr, level->Rtv(), level->Size());
                 source = level.get();
             }
             // 小さい段から順に 1 段大きい方へ足す。先頭の段が全部の段を持つ
@@ -200,16 +200,15 @@ namespace NS::Gfx
             {
                 Texture& smaller = *m_levels[i];
                 Texture& larger = *m_levels[i - 1];
-                DrawPass(*m_upPs, *m_addPipeline, smaller, nullptr, larger.Rtv(), larger.Size());
+                DrawPass(cmd, *m_upPs, *m_addPipeline, smaller, nullptr, larger.Rtv(), larger.Size());
             }
         }
 
-        DrawPass(*m_compositePs, *m_writePipeline, *m_levels.front(), m_scene.get(), m_savedTarget.Get(), m_size);
-        UnbindShaderResources(context);
+        DrawPass(cmd, *m_compositePs, *m_writePipeline, *m_levels.front(), m_scene.get(), m_savedTarget.Get(), m_size);
+        UnbindShaderResources(cmd);
 
-        CommandList cmd(context);
         cmd.SetRenderTarget(m_savedTarget.Get(), m_savedDepth.Get());
-        context->RSSetViewports(1, &m_savedViewport);
+        cmd->RSSetViewports(1, &m_savedViewport);
         m_savedTarget.Reset();
         m_savedDepth.Reset();
     }
@@ -242,16 +241,15 @@ namespace NS::Gfx
         return true;
     }
 
-    void Bloom::DrawPass(const Shader& pixelShader,
+    void Bloom::DrawPass(CommandList& cmd,
+                         const Shader& pixelShader,
                          const Pipeline& pipeline,
                          const Texture& source,
                          const Texture* scene,
                          ID3D11RenderTargetView* destination,
                          NS::Core::Size2D destinationSize) noexcept
     {
-        ID3D11DeviceContext* context = Gpu().context;
-        CommandList cmd(context);
-        UnbindShaderResources(context);
+        UnbindShaderResources(cmd);
         cmd.SetRenderTarget(destination, nullptr);
         cmd.SetViewport(static_cast<float>(destinationSize.width), static_cast<float>(destinationSize.height));
 
