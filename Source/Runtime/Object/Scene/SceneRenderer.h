@@ -59,7 +59,7 @@ namespace NS::Obj
         void SetEffectRoot(std::string root) noexcept;
 
         //! 所有している EffectScene。レンダラー未設定の間は nullptr
-        [[nodiscard]] NS::Gfx::EffectScene* Effects() noexcept { return m_effects.get(); }
+        [[nodiscard]] NS::Gfx::EffectScene* Effects() const noexcept { return m_effects.get(); }
 
         //! 経過秒ぶんエフェクトを進める。EffectScene が無ければ何もしない
         void UpdateEffects(float deltaSeconds) noexcept;

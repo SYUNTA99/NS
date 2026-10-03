@@ -124,9 +124,6 @@ namespace NS::Obj
         //! effectRoot は EffectScene の構築時に固まる。SetRenderer より前に差す
         void SetEffectRoot(std::string root) noexcept { m_sceneRenderer.SetEffectRoot(std::move(root)); }
 
-        //! SceneRenderer が所有する EffectScene。SetRenderer より前は nullptr
-        [[nodiscard]] NS::Gfx::EffectScene* Effects() noexcept { return m_sceneRenderer.Effects(); }
-
         //! @brief skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空なら skybox を描かない
         //! @details 描画が毎フレーム読む。保存は ToJson がここから写す
         [[nodiscard]] const std::string& SkyboxPath() const noexcept { return m_skyboxPath; }
