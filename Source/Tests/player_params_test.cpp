@@ -337,7 +337,9 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     using NS::Game::Player::SparkHeading;
     Player player;
     // 中心近くと大きな外れで本数が違えば、どちらの行から来たかが分かる
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"弾かれ線の本数", 9}, {"大きな外れの弾かれ線の本数", 4}}),
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(
+                  player.Params(),
+                  {{"弾かれ線の本数", 9}, {"大きな外れの弾かれ線の本数", 4}, {"大きな外れの火花の大きさ", 2.5f}}),
               0u);
     NS::Game::Level::ImpactRecord impact{};
     impact.power = 1.0f;
@@ -354,6 +356,8 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     EXPECT_EQ(center.sparkCountInput, 0u);
     EXPECT_EQ(center.recoilCount, 9);
     EXPECT_EQ(center.recoilCountInput, 0u);
+    EXPECT_FALSE(center.coreCut);
+    EXPECT_FLOAT_EQ(center.sparkScale, 1.0f);
 
     EXPECT_EQ(wide.coreInput, 2u);
     EXPECT_EQ(wide.coreHold, CoreHoldMotion::Settle);
@@ -361,6 +365,8 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     EXPECT_EQ(wide.sparkCountInput, 1u);
     EXPECT_EQ(wide.recoilCount, 4);
     EXPECT_EQ(wide.recoilCountInput, 2u);
+    EXPECT_TRUE(wide.coreCut);
+    EXPECT_FLOAT_EQ(wide.sparkScale, 2.5f);
 
     // 番号から作った段の外の値は、行を混ぜずに大きな外れの行で出す。中心近くの層は 1 つも足さない
     impact.tier = static_cast<HitTier>(3);

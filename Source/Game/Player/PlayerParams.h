@@ -189,6 +189,7 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_sparkSpeedPerLaunch, "火花の速さの飛ばしの比あたり")
         NS_REFLECT_FIELD(m_wideSparkCount, "大きな外れの火花の数")
         NS_REFLECT_FIELD(m_wideSparkSpeed, "大きな外れの火花の速さ")
+        NS_REFLECT_FIELD(m_wideSparkScale, "大きな外れの火花の大きさ")
         NS_REFLECT_FIELD(m_emberShare, "火の粉の数の火花あたり")
         NS_REFLECT_FIELD(m_glowDiameterBase, "照りの直径の基準")
         NS_REFLECT_FIELD(m_glowDiameterPerPower, "照りの直径の威力あたり")
@@ -308,6 +309,9 @@ namespace NS::Game::Player
         float m_sparkSpeedPerLaunch = 3.0f;
         int m_wideSparkCount = 16;
         float m_wideSparkSpeed = 4.0f;
+        // 外れの火花の絵の全体に掛ける大きさ。粒の大きさ・散る範囲・速さが一緒に伸びる
+        // 本人「HTML のやつの 3 倍ぐらい大きくしてほしい」から 3。1 では後ろからのカメラで自機の玉の陰に入った
+        float m_wideSparkScale = 3.0f;
         float m_emberShare = 7.0f;
         float m_glowDiameterBase = 2.0f;
         float m_glowDiameterPerPower = 1.6f;

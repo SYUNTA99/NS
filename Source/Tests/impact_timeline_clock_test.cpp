@@ -603,6 +603,67 @@ TEST(ImpactTimelineClock, ReturnsStartOnTheirOwnFrames)
     EXPECT_GT(impact.cameraShake, 0.0f);
 }
 
+// 外れの火花は外した側へ 7 割、相手の表面に沿って滑る向きへ 3 割で流す。面の真ん中は向きが決まらない
+TEST(ImpactTimelineClock, MissSparksFlowTowardTheSideThatWasMissed)
+{
+    const NS::Core::Vector3 forward{0.0f, 0.0f, 1.0f};
+    // 右の縁: 外した側 +X、滑る向き (0.6, 0, 0.8)。0.7 × (1, 0, 0) + 0.3 × (0.6, 0, 0.8) を正規化
+    const NS::Core::Vector3 right = NS::Game::Player::ImpactEffects::MissSparkHeading(0.8f, 0.0f, forward);
+    EXPECT_NEAR(right.x, 0.9648f, 0.0005f);
+    EXPECT_NEAR(right.y, 0.0f, 0.0005f);
+    EXPECT_NEAR(right.z, 0.2631f, 0.0005f);
+    const NS::Core::Vector3 top = NS::Game::Player::ImpactEffects::MissSparkHeading(0.0f, 0.8f, forward);
+    EXPECT_NEAR(top.y, 0.9648f, 0.0005f);
+    EXPECT_NEAR(top.z, 0.2631f, 0.0005f);
+    const NS::Core::Vector3 middle = NS::Game::Player::ImpactEffects::MissSparkHeading(0.0f, 0.0f, forward);
+    EXPECT_FLOAT_EQ(middle.Length(), 0.0f);
+}
+
+// 外れの核は当たりの絵の頭と次のフレームだけ写り、その次のフレームに薄れずに消える。火花は外した側へ流す
+TEST(ImpactTimelineClock, MissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
+{
+    HitTimeline timeline;
+    timeline.events = {{HitStopEvent{}, 1, 4, HitDirection::Any},
+                       {HitEffectEvent{}, 1, 1, HitDirection::Any},
+                       {TargetLaunchEvent{}, 5, 1, HitDirection::Any},
+                       {ReboundEvent{}, 5, 1, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("MissCore");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    ASSERT_EQ(RunHit(*player, *RockOf(scene), 1.0f, 8).size(), 8u);
+    const ImpactRecord& impact = player->Resolver().LastImpact();
+    ASSERT_EQ(impact.tier, HitTier::Wide);
+
+    const NS::Game::Player::EffectLayerRecord* core = nullptr;
+    const NS::Game::Player::EffectLayerRecord* sparks = nullptr;
+    for (const NS::Game::Player::EffectLayerRecord& record : player->ImpactVisuals().Layers().Records())
+    {
+        if (record.name == "impact.core")
+        {
+            core = &record;
+        }
+        if (record.name == "impact.sparks")
+        {
+            sparks = &record;
+        }
+    }
+    ASSERT_NE(core, nullptr);
+    ASSERT_TRUE(core->endStep.has_value());
+    EXPECT_EQ(core->endStep.value() - core->startStep, 2);
+    EXPECT_FALSE(core->rootStopStep.has_value());
+
+    ASSERT_NE(sparks, nullptr);
+    ASSERT_TRUE(sparks->rotation.has_value());
+    const NS::Core::Vector3 heading =
+        NS::Core::Vector3::Transform(NS::Core::Vector3{0.0f, 1.0f, 0.0f}, sparks->rotation.value());
+    const NS::Core::Vector3 expected =
+        NS::Game::Player::ImpactEffects::MissSparkHeading(impact.faceU, impact.faceV, player->BodySlamDirection());
+    ASSERT_GT(expected.Length(), 0.5f);
+    EXPECT_NEAR(heading.Dot(expected), 1.0f, 1.0e-4f);
+}
+
 // 揺れの最初の振れは 強さ × 威力 × 質量の効き。横と縦の重みは向きだけを決める
 TEST(ImpactTimelineClock, TheShakeIsItsStrengthScaledByTheHit)
 {

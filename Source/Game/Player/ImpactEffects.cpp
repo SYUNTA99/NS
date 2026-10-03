@@ -1,5 +1,6 @@
 #include "Game/Player/ImpactEffects.h"
 
+#include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
@@ -40,9 +41,13 @@ namespace NS::Game::Player
         // TODO: 層ごとの時間を当たりのタイムラインの帯で見たくなったら、ここの定数を事象に分ける
         // 中心近くの核が最大近くに留まる最後のフレームの上限。手本は 1〜10 に留まり 11 で落ちる
         constexpr int k_CoreHoldMax = 10;
-        // 大きな外れの核が留まる最後のフレーム。落ちる 5 フレーム (絵の定義) と合わせて 0〜8 に見える
-        // 手本のガードは接触点の橙の光が 8 まで見える。1 では 5 で薄れ 6 に消え、2〜3 フレーム早かった
-        constexpr int k_WideCoreHoldLast = 4;
+        // 大きな外れの核が留まる最後のフレーム。次のフレームに薄れさせずに消し、0〜1 の 2 フレームだけ写る
+        // 止めの間ずっと光を残すと「当たった」と読まれ、外れの軽さが消える (2 節「外れのエフェクト」の 1〜2 フレーム)
+        // 前は手本のガードに合わせて 4 で、落ちる 5 フレームと合わせて 0〜8 に見えていた
+        constexpr int k_WideCoreHoldLast = 1;
+        // 外れの火花の向きのうち、外した側の割合。残りは表面に沿って滑る向き
+        // 表面に沿わせきると、端の近くでは接する面が奥へ傾き、火花が相手の奥へ回り込んで自機と相手の陰に入った
+        constexpr float k_MissSparkSideShare = 0.7f;
         // 中心近くの火花を出すフレーム。手本の弾きは塊の中の放射の筋が 3 から出る
         // 0 では接触点から上下へ伸びる筋が 1 フレーム目に見え、手本より 2 フレーム早かった
         // 大きな外れは手本のガードの火花と同じく当たりの絵の頭から
@@ -309,8 +314,10 @@ namespace NS::Game::Player
         shape.coreInput = 2;
         shape.coreHold = CoreHoldMotion::Settle;
         shape.holdLastFrame = k_WideCoreHoldLast;
+        shape.coreCut = true;
         shape.sparkCount = tuning.m_wideSparkCount;
         shape.sparkSpeed = tuning.m_wideSparkSpeed;
+        shape.sparkScale = tuning.m_wideSparkScale;
         shape.sparkHeading = SparkHeading::Scrape;
         shape.sparkCountInput = 1;
         shape.recoilCount = tuning.m_wideRecoilCount;
@@ -346,6 +353,24 @@ namespace NS::Game::Player
         }
 
         return shape;
+    }
+
+    Vector3 ImpactEffects::MissSparkHeading(float u, float v, const Vector3& slamDirection) noexcept
+    {
+        Vector3 forward{};
+        if (!NS::Core::TryNormalizeHorizontal(slamDirection, forward))
+        {
+            return Vector3{};
+        }
+        const Vector3 right{forward.z, 0.0f, -forward.x};
+        const Vector3 side = NormalizedOr(right * u + Vector3{0.0f, v, 0.0f}, Vector3{});
+        if (!(side.Length() > 0.5f))
+        {
+            return Vector3{};
+        }
+        const Vector3 normal = NS::Game::Level::MissSurfaceNormal(u, v, 2.0f, forward);
+        const Vector3 slide = NormalizedOr(forward - normal * NS::Core::Dot(forward, normal), side);
+        return NormalizedOr(side * k_MissSparkSideShare + slide * (1.0f - k_MissSparkSideShare), side);
     }
 
     float ImpactEffects::LandDustRadiusFor(float fallSpeed) const noexcept
@@ -430,6 +455,16 @@ namespace NS::Game::Player
         plan.scrapeDir =
             NormalizedOr(plan.sideDir + plan.launchDir * k_ScrapeLaunchWeight + Vector3{0.0f, k_ScrapeLiftWeight, 0.0f},
                          plan.sideDir);
+        // 外れは、どこで、どっちへ力がそれたかを読ませる。面の上の位置から外した側を取り、段と逸れ方と向きを揃える
+        // 位置の無い当たり (面で判定できない体) は前の擦れの向きのまま
+        if (m_player != nullptr)
+        {
+            const Vector3 missHeading = MissSparkHeading(impact.faceU, impact.faceV, m_player->BodySlamDirection());
+            if (missHeading.Length() > 0.5f)
+            {
+                plan.scrapeDir = missHeading;
+            }
+        }
         plan.selfDir = NormalizedOr(impact.selfVelocity, Vector3{0.0f, 1.0f, 0.0f});
 
         // 輪の法線は相手の飛ぶ向きを残しつつカメラへ起こす。真横から見て縦の線に潰れない
@@ -484,22 +519,21 @@ namespace NS::Game::Player
     {
         const ImpactShape& shape = m_plan.shape;
         // 粒の数は段ごとの節の入力に入れ、他の節は 0。3 番の節はどの段も使わない
-        NS::Gfx::EffectPlayDesc sparks;
+        Quaternion heading = TurnUpTo(m_plan.launchDir);
         if (shape.sparkHeading == SparkHeading::Scrape)
         {
-            sparks = PlayAt(m_plan.contact, TurnUpTo(m_plan.scrapeDir), Uniform(1.0f));
+            heading = TurnUpTo(m_plan.scrapeDir);
         }
-        else
-        {
-            sparks = PlayAt(m_plan.contact, TurnUpTo(m_plan.launchDir), Uniform(1.0f));
-        }
+        NS::Gfx::EffectPlayDesc sparks = PlayAt(m_plan.contact, heading, Uniform(shape.sparkScale));
         sparks.dynamicInputs[0] = 0.0f;
         sparks.dynamicInputs[1] = 0.0f;
         sparks.dynamicInputs[3] = 0.0f;
         sparks.dynamicInputs[shape.sparkCountInput] = static_cast<float>(shape.sparkCount);
         // 秒の速さを 1 フレームの距離にして絵へ渡す
         sparks.dynamicInputs[2] = shape.sparkSpeed / 60.0f;
-        SetAmount(m_layers.Play(effects, k_Sparks, sparks), shape.sparkAmount);
+        const std::uint32_t id = m_layers.Play(effects, k_Sparks, sparks);
+        SetAmount(id, shape.sparkAmount);
+        m_layers.SetRotation(id, heading);
     }
 
     void ImpactEffects::PlayEmbers(NS::Gfx::EffectScene* effects)
@@ -562,7 +596,15 @@ namespace NS::Game::Player
                     }
                 }
             }
-            if (frame >= shape.holdLastFrame)
+            if (shape.coreCut)
+            {
+                if (frame > shape.holdLastFrame)
+                {
+                    m_layers.Stop(effects, m_plan.core);
+                    m_plan.core = 0;
+                }
+            }
+            else if (frame >= shape.holdLastFrame)
             {
                 m_layers.StopRoot(effects, m_plan.core);
                 m_plan.core = 0;
