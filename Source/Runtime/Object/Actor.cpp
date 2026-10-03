@@ -309,9 +309,13 @@ namespace NS::Obj
         VisualStep();
     }
 
-    void Actor::ObserveStep()
+    void Actor::SnapshotForInterpolation() noexcept
     {
-        TickPart(m_model.get());
+        m_transform->Snapshot();
+        if (m_model != nullptr)
+        {
+            m_model->Snapshot();
+        }
     }
 
     void Actor::StateStep()

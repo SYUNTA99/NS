@@ -318,7 +318,7 @@ namespace NS::Obj
 
     void Scene::OnUpdate()
     {
-        // 補間描画用。全配置物の Root を Snapshot する
+        // 補間描画用。全配置物の根の Transform と Model の前の値を控える
         m_objects.SnapshotObjects();
 
         // 世界の駆動。読み込んだら回り続けるのが既定で、編集モードのエディタだけが止める

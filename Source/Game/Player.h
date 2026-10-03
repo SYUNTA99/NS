@@ -314,7 +314,7 @@ public:
     [[nodiscard]] int Health() const noexcept;
 
 protected:
-    //! Model の控え、PlayerInput の体当たりの押しと狙いの観測 (ObserveCharge)、
+    //! PlayerInput の体当たりの押しと狙いの観測 (ObserveCharge)、
     //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
     void ObserveStep() override;
     //! @brief 溜めを進め (AdvanceCharge)、衝突の裁定を出して知らせを送る (ImpactResolver::StepState)

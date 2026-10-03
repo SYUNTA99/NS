@@ -93,7 +93,7 @@ namespace NS::Obj
         //! 登録を外す。更新の最中に外した物は、そのフレームの残りでは呼ばれない
         void RemoveTicker(ITickable* ticker) noexcept;
 
-        //! 全配置物の Root を Snapshot する。previous を current へ揃える
+        //! 全配置物の補間の前の値を控える。根の Transform と Model の previous を current へ揃える
         void SnapshotObjects();
 
         //! 永続 object id を 1 個割り当ててカウンタを進める

@@ -37,7 +37,7 @@ namespace NS::Game::Level
 
     protected:
         //! 経過秒を進めて縮め、寿命が尽きたら退場する
-        void StateStep() override;
+        void VisualStep() override;
 
     private:
         float m_diameter = 1.5f;    // 出た直後の水平の大きさ

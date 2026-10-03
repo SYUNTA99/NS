@@ -161,19 +161,23 @@ namespace NS::Obj
     protected:
         void OnAppear() override;
         void OnKill() noexcept override;
-        //! @brief 1 フレームの最初の段。世界を読んで控えるだけで、状態も身体も動かさない
-        //! @details 既定は Model の前フレーム値の控え
-        virtual void ObserveStep();
-        //! @brief 観測の結果から、この歩に使う値を決める段。知らせを送る裁定はここに置き、観測の段へ入れない
-        //! @details 既定は何もしない
+        //! @brief 観測の段。この歩の始まり
+        //! @details 世界と相手を読んで控え、歩ごとの記録の時計を進める。状態・身体・見た目を書かない。
+        //! 既定は何もしない。補間の前の値は段でなく固定ステップの頭で控える
+        virtual void ObserveStep() {}
+        //! @brief 裁定の段
+        //! @details 観測から、この歩に使う値を決め、知らせを送る。既定は何もしない
         virtual void DecideStep() {}
-        //! @brief 状態機械を 1 歩進める段
-        //! @details 既定は状態機械を 1 歩進める。持たなければ何もしない
+        //! @brief 状態機械の段
+        //! @details 状態機械を 1 歩進める。上書きするのは状態機械の前後に持ち主の処理を挟む時だけで、
+        //! 状態機械を持たない物は上書きしない。既定は状態機械を 1 歩進め、持たなければ何もしない
         virtual void StateStep();
-        //! @brief 状態が決めた操作を身体へ当て、身体を動かす段。既定は何もしない
+        //! @brief 身体の段
+        //! @details 身体を動かし、物理と当たりの置き場を今の姿へ揃える。カメラは仮想カメラをここで 1 歩進める。
+        //! 既定は何もしない
         virtual void BodyStep() {}
-        //! @brief 動いた後の姿から見た目と演出を進める段
-        //! @details 既定は HitReaction を進める
+        //! @brief 見た目の段
+        //! @details 動いた後の姿から見た目・演出・寿命の減りを進める。既定は HitReaction を進める
         virtual void VisualStep();
         static void TickPart(Component* component)
         {
@@ -222,6 +226,9 @@ namespace NS::Obj
 
     private:
         friend class ObjectList;
+        //! @brief 補間の前の値として、根の Transform と Model の今の値を控える
+        //! @details ObjectList::SnapshotObjects が固定ステップの頭で全ての Actor に呼ぶ。世界を止めている間も呼ばれる
+        void SnapshotForInterpolation() noexcept;
         //! 状態機械を預かる。既に持っていれば NS_LOG_ERROR を出して machine を捨て、false を返す
         [[nodiscard]] bool AdoptStateMachine(std::unique_ptr<IStateMachine> machine);
         void SetId(std::uint32_t id) noexcept { m_id = id; }

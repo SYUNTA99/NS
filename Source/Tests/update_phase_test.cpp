@@ -1,4 +1,5 @@
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/UpdatePhase.h"
 
@@ -85,6 +86,20 @@ namespace
         void StateStep() override { ++updates; }
     };
 
+    // Player の段で、別の Actor の Model の描く倍率を書く
+    class DrawScaleWriterActor final : public NS::Obj::Actor
+    {
+    public:
+        explicit DrawScaleWriterActor(NS::Obj::Model& target) : m_target(target) {}
+        NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Player; }
+
+    protected:
+        void StateStep() override { (void)m_target.SetDrawScale(NS::Core::Vector3{2.0f, 2.0f, 2.0f}); }
+
+    private:
+        NS::Obj::Model& m_target;
+    };
+
     class PhaseTicker final : public NS::Obj::ITickable
     {
     public:
@@ -169,6 +184,36 @@ TEST(UpdatePhase, DestroyingDuringAPhaseIsRefused)
 
     ASSERT_EQ(scene.Objects().FindByObjectId(victimId), victim);
     EXPECT_EQ(victim->updates, 1);
+}
+
+TEST(InterpolationSnapshot, ModelWrittenByAnEarlierPhaseStartsFromTheValueBeforeTheStep)
+{
+    // 前の値を書き手より後の段で控えると、先の段で書いた倍率が始点にもなり補間されずに飛ぶ
+    NS::Obj::Scene scene;
+    NS::Obj::Actor* drawn = scene.SpawnTransient<NS::Obj::Actor>();
+    ASSERT_NE(drawn->CreatePart("Model"), nullptr);
+    NS::Obj::Model* model = drawn->ModelPart();
+    scene.SpawnTransient<DrawScaleWriterActor>(*model);
+
+    scene.OnUpdate();
+
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._11, 2.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 1.0f);
+}
+
+TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
+{
+    // 止めている間は段が回らない。前の値の控えも段に置くと、止める前に書いた倍率から補間し続けて絵が揺れる
+    NS::Obj::Scene scene;
+    NS::Obj::Actor* drawn = scene.SpawnTransient<NS::Obj::Actor>();
+    ASSERT_NE(drawn->CreatePart("Model"), nullptr);
+    NS::Obj::Model* model = drawn->ModelPart();
+    scene.SetSimulationPaused(true);
+    ASSERT_TRUE(model->SetDrawScale(NS::Core::Vector3{2.0f, 2.0f, 2.0f}));
+
+    scene.OnUpdate();
+
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 2.0f);
 }
 
 TEST(ActorStepOrder, UpdateCallsEachStepOnceInTheFixedOrder)

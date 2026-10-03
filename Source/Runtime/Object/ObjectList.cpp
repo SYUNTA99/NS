@@ -305,7 +305,7 @@ namespace NS::Obj
     {
         for (std::unique_ptr<Actor>& obj : m_objects)
         {
-            obj->Root().Snapshot();
+            obj->SnapshotForInterpolation();
         }
     }
 

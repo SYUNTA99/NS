@@ -47,10 +47,9 @@ namespace NS::Game::Level
         }
     }
 
-    void ImpactMark::StateStep()
+    void ImpactMark::VisualStep()
     {
-        // 基底の状態機械の歩を先に呼ぶ。今は持たないので何もしないが、後で持たせた時に黙って進まなくならない
-        NS::Obj::Actor::StateStep();
+        NS::Obj::Actor::VisualStep();
         if (m_age >= m_lifeSeconds)
         {
             return;

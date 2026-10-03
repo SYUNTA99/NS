@@ -100,9 +100,8 @@ namespace NS::Obj
         scene->UnregisterRenderable(this);
     }
 
-    void Model::OnUpdate()
+    void Model::Snapshot() noexcept
     {
-        // 持ち主の Actor の Update が呼ぶ。局所の回転と倍率はこれより後に書かれる前提で、書き直される前の値を控える
         m_previousLocalRotation = m_localRotation;
         m_previousDrawScale = m_drawScale;
     }
