@@ -443,7 +443,7 @@ namespace NS::Obj
 
     NS::Phys::PhysicsScene* Scene::GetPhysicsScene() const noexcept
     {
-        // 窓口は問い合わせの口。当たりの body を書き換えるのは ObjectList::SyncPhysics だけ
+        // 地形を問う関数のほか、Collider も持ち主の Scene の body を出し入れする時にここから引く
         return const_cast<NS::Phys::PhysicsScene*>(&m_physicsScene);
     }
 

@@ -8,7 +8,8 @@
 namespace NS::Obj
 {
     //! @brief カプセル collider を Scene に登録する Component
-    //! @details owner の world 変換から中心・軸・半径・半高を個別に返す
+    //! @details 地形として出す形で、持ち主のクラスが部品 Collision に入れる。動く体の形は Body が自分で持つ。
+    //! owner の world 変換から中心・軸・半径・半高を個別に返す
     //! 既定は縦向き Y 軸の capsule。local 回転で寝かせられる。半径は X/Z scale の最大、半高は Y scale で拡縮する
     //! 回転と非一様 scale を併用すると近似になる
     class CapsuleCollider : public Collider
@@ -49,12 +50,6 @@ namespace NS::Obj
         //! owner の world 変換を反映した世界軸並行 AABB を返す。Owner 未登録時は local だけを反映する
         [[nodiscard]] NS::Core::AABB WorldAABB() const noexcept;
 
-        //! 静的世界へ入れないようにする
-        //! @details 自分で掃引して動く配置物の capsule に立てる。入れたままだと掃引が自分の capsule に
-        //! 当たり、持ち主がその場から動かない
-        //! @param[in] excluded 静的世界から外す場合 true
-        void SetExcludedFromStaticWorld(bool excluded) noexcept;
-
         NS_REFLECT_BEGIN(CapsuleCollider, Collider)
         NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)
         NS_REFLECT_ACCESSOR(float, "半分の高さ", HalfHeight(), SetHalfHeight)
@@ -63,7 +58,6 @@ namespace NS::Obj
         NS_REFLECT_END()
 
     private:
-        // 静的世界から外した capsule は body を作らない
         [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
         [[nodiscard]] NS::Core::Matrix CapsuleWorldMatrix() const noexcept;
 
@@ -71,6 +65,5 @@ namespace NS::Obj
         float m_halfHeight = 0.5f;                                             // 円柱部の半長、半球を除く
         NS::Core::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};                    // owner local 空間での中心オフセット
         NS::Core::Quaternion m_localRotation = NS::Core::Quaternion::Identity; // owner 回転に重ねる local 回転
-        bool m_excludedFromStaticWorld = false;
     };
 } // namespace NS::Obj

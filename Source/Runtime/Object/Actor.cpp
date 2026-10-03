@@ -4,7 +4,6 @@
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/Animation.h"
 #include "Runtime/Object/Components/BoxCollider.h"
-#include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/Components/HitReaction.h"
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/Model.h"
@@ -38,7 +37,6 @@ namespace NS::Obj
         visit("Model", m_model.get());
         visit("Animation", m_animation.get());
         visit("Shadow", m_shadow.get());
-        visit("Collider", m_collider.get());
         visit("Collision", m_collision.get());
         visit("BodySensor", m_bodySensor.get());
         visit("AttackSensor", m_attackSensor.get());
@@ -90,11 +88,6 @@ namespace NS::Obj
         {
             m_shadow = std::make_unique<Shadow>();
             created = m_shadow.get();
-        }
-        else if (name == "Collider")
-        {
-            m_collider = std::make_unique<CapsuleCollider>();
-            created = m_collider.get();
         }
         else if (name == "Collision")
         {

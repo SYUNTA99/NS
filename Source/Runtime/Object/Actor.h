@@ -20,7 +20,6 @@ namespace NS::Obj
     class Model;
     class Animation;
     class Shadow;
-    class CapsuleCollider;
     class Collider;
     class HitReaction;
     class ICameraTarget;
@@ -47,7 +46,7 @@ namespace NS::Obj
         //! ForEachPart が部品名と部品を渡す先
         using PartVisitor = std::function<void(std::string_view, Component&)>;
         //! @brief 部品名と部品の組を決まった並びで visitor へ渡す
-        //! @details 基底は Transform、Model、Animation、Shadow、Collider、Collision、BodySensor、AttackSensor、
+        //! @details 基底は Transform、Model、Animation、Shadow、Collision、BodySensor、AttackSensor、
         //! HitReaction の順で、持たない部品は飛ばす。派生は基底を呼んでから自分の部品を足す
         virtual void ForEachPart(const PartVisitor& visitor) const;
         //! @brief 部品名 name の部品を返す
@@ -57,8 +56,7 @@ namespace NS::Obj
         //! @return この Actor の部品でなければ空
         [[nodiscard]] std::string_view PartName(const Component& part) const;
         //! @brief 部品名 name の部品を作って付ける。既に持っていればそれを返す
-        //! @details 基底が作れるのは Model、Animation、Shadow、Collider、Collision、BodySensor、AttackSensor、
-        //! HitReaction
+        //! @details 基底が作れるのは Model、Animation、Shadow、Collision、BodySensor、AttackSensor、HitReaction
         //! @return 付けた部品。作れない名前は nullptr
         virtual Component* CreatePart(std::string_view name);
         [[nodiscard]] Model* ModelPart() noexcept { return m_model.get(); }
@@ -67,8 +65,6 @@ namespace NS::Obj
         [[nodiscard]] const Animation* AnimationPart() const noexcept { return m_animation.get(); }
         [[nodiscard]] Shadow* ShadowPart() noexcept { return m_shadow.get(); }
         [[nodiscard]] const Shadow* ShadowPart() const noexcept { return m_shadow.get(); }
-        [[nodiscard]] CapsuleCollider* ColliderPart() noexcept { return m_collider.get(); }
-        [[nodiscard]] const CapsuleCollider* ColliderPart() const noexcept { return m_collider.get(); }
         [[nodiscard]] Collider* CollisionPart() noexcept { return m_collision.get(); }
         [[nodiscard]] const Collider* CollisionPart() const noexcept { return m_collision.get(); }
         [[nodiscard]] HitSensor* BodySensorPart() noexcept { return m_bodySensor.get(); }
@@ -214,7 +210,6 @@ namespace NS::Obj
         std::unique_ptr<Model> m_model;
         std::unique_ptr<Animation> m_animation;
         std::unique_ptr<Shadow> m_shadow;
-        std::unique_ptr<CapsuleCollider> m_collider;
         std::unique_ptr<Collider> m_collision;
         std::unique_ptr<HitSensor> m_bodySensor;
         std::unique_ptr<HitSensor> m_attackSensor;

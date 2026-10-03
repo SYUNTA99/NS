@@ -26,4 +26,14 @@ namespace NS::Obj
         return physics != nullptr &&
                physics->Raycast(origin, direction, maxDistance, outDistance, outNormal, ignoredBody);
     }
+
+    std::vector<NS::Core::AABB> OverlapBoxCollision(const IUseCollision& user, const NS::Core::AABB& region)
+    {
+        const NS::Phys::PhysicsScene* physics = user.GetPhysicsScene();
+        if (physics == nullptr)
+        {
+            return {};
+        }
+        return physics->OverlapBox(region);
+    }
 } // namespace NS::Obj

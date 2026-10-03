@@ -129,17 +129,8 @@ namespace NS::Obj
         return NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
     }
 
-    void CapsuleCollider::SetExcludedFromStaticWorld(bool excluded) noexcept
-    {
-        m_excludedFromStaticWorld = excluded;
-    }
-
     JPH::BodyID CapsuleCollider::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
-        if (m_excludedFromStaticWorld)
-        {
-            return JPH::BodyID{};
-        }
         return physics.SyncCapsule(current, WorldCapsule(), NS::Phys::ObjectLayers::Terrain);
     }
 

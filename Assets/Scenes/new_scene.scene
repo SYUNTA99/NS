@@ -48,7 +48,6 @@
         "BodySensor": {},
         "ChargeControl": {},
         "ChargeEffects": {},
-        "Collider": {},
         "HitReaction": {},
         "ImpactEffects": {},
         "ImpactResolver": {},

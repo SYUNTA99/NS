@@ -2,44 +2,55 @@
 
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Physics/PhysicsScene.h"
+
+namespace
+{
+    // 持ち主の Scene の PhysicsScene。持ち主が無いか Scene に居なければ nullptr
+    [[nodiscard]] NS::Phys::PhysicsScene* OwnerPhysics(const NS::Obj::Actor* owner) noexcept
+    {
+        if (owner == nullptr)
+        {
+            return nullptr;
+        }
+        return owner->GetPhysicsScene();
+    }
+} // namespace
 
 namespace NS::Obj
 {
-    void Collider::SyncToPhysics(NS::Phys::PhysicsScene& physics)
+    void Collider::SyncToPhysics()
     {
-        if (!AcceptsScenePhysics(physics))
+        NS::Phys::PhysicsScene* physics = OwnerPhysics(Owner());
+        if (physics == nullptr)
         {
             return;
         }
 
-        const JPH::BodyID body = SyncBody(physics, m_bodyId);
+        const JPH::BodyID body = SyncBody(*physics, m_bodyId);
         // 置き直しは同じ id を返す。違うのは初めて作った時か、無効が返った時だけ
         if (m_bodyId != body)
         {
-            physics.RemoveBody(m_bodyId);
+            physics->RemoveBody(m_bodyId);
         }
         m_bodyId = body;
     }
 
-    void Collider::RemoveFromPhysics(NS::Phys::PhysicsScene& physics)
+    void Collider::RemoveFromPhysics()
     {
-        if (!AcceptsScenePhysics(physics))
+        NS::Phys::PhysicsScene* physics = OwnerPhysics(Owner());
+        if (physics == nullptr)
         {
             return;
         }
 
-        physics.RemoveBody(m_bodyId);
+        physics->RemoveBody(m_bodyId);
         m_bodyId = JPH::BodyID{};
     }
 
     void Collider::OnAppear()
     {
-        if (NS::Phys::PhysicsScene* physics = ScenePhysics())
-        {
-            SyncToPhysics(*physics);
-        }
+        SyncToPhysics();
     }
 
     void Collider::OnEndPlay()
@@ -49,40 +60,12 @@ namespace NS::Obj
             return;
         }
 
-        NS::Phys::PhysicsScene* scenePhysics = ScenePhysics();
-        if (scenePhysics == nullptr)
+        if (OwnerPhysics(Owner()) == nullptr)
         {
             NS_LOG_ERROR(Scene, "Collider: Scene に居ないので body を外せない。 body は PhysicsScene を壊すまで残る");
             m_bodyId = JPH::BodyID{};
             return;
         }
-        RemoveFromPhysics(*scenePhysics);
-    }
-
-    NS::Phys::PhysicsScene* Collider::ScenePhysics() const noexcept
-    {
-        const Actor* owner = Owner();
-        if (owner == nullptr || owner->OwningScene() == nullptr)
-        {
-            return nullptr;
-        }
-        return &owner->OwningScene()->Physics();
-    }
-
-    bool Collider::AcceptsScenePhysics(const NS::Phys::PhysicsScene& physics) const
-    {
-        const NS::Phys::PhysicsScene* scenePhysics = ScenePhysics();
-        if (scenePhysics == nullptr)
-        {
-            NS_LOG_ERROR(Scene, "Collider: 持ち主が Scene に居ないので body を出し入れしない");
-            return false;
-        }
-        if (scenePhysics == &physics)
-        {
-            return true;
-        }
-
-        NS_LOG_ERROR(Scene, "Collider: 持ち主の Scene と違う PhysicsScene を渡された。 body を出し入れしない");
-        return false;
+        RemoveFromPhysics();
     }
 } // namespace NS::Obj

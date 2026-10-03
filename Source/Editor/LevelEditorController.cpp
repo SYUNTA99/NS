@@ -102,6 +102,19 @@ namespace
     // 編集復帰の視点ブレンド秒。CameraManager の vcam 切替の既定 0.35 秒と揃え、モード切替の繋ぎを同じ感触にする
     constexpr float k_EditBlendSeconds = 0.35f;
 
+    // 部品のうち動く体 (Body) を返す。持たなければ nullptr
+    const NS::Obj::Body* BodyOf(const NS::Obj::Actor& object) noexcept
+    {
+        const NS::Obj::Body* found = nullptr;
+        object.ForEachPart([&found](std::string_view, NS::Obj::Component& part) {
+            if (found == nullptr)
+            {
+                found = NS::Obj::ComponentCast<NS::Obj::Body>(&part);
+            }
+        });
+        return found;
+    }
+
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状
     void DrawColliderWireframe(NS::Obj::Actor& object, const NS::Core::Color& color) noexcept
     {
@@ -114,12 +127,20 @@ namespace
         {
             NS::Gfx::DebugDraw::Sphere(sphere->WorldSphere(), color);
         }
-        else if (NS::Obj::CapsuleCollider* capsule = object.ColliderPart())
+        else if (NS::Obj::CapsuleCollider* capsule =
+                     NS::Obj::ComponentCast<NS::Obj::CapsuleCollider>(object.CollisionPart()))
         {
             NS::Phys::Capsule worldCapsule = capsule->WorldCapsule();
             worldCapsule.axis.Normalize();
             NS::Gfx::DebugDraw::Capsule(
                 worldCapsule.center, worldCapsule.axis * worldCapsule.halfHeight, worldCapsule.radius, color);
+        }
+        else if (const NS::Obj::Body* body = BodyOf(object))
+        {
+            // 移動が掃引するのと同じ、根を中心にした縦のカプセル。根の拡縮は掛けない
+            const float halfHeight = body->CapsuleHalfHeight();
+            NS::Gfx::DebugDraw::Capsule(
+                object.Root().Position(), NS::Core::Vector3{0.0f, halfHeight, 0.0f}, body->CapsuleRadius(), color);
         }
         else if (NS::Obj::ComponentCast<NS::Obj::MeshCollider>(object.CollisionPart()) != nullptr)
         {

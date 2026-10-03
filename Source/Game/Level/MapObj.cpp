@@ -40,10 +40,7 @@ namespace NS::Game::Level
                 if (owner.m_restAge >= owner.m_params.RestLifeSeconds())
                 {
                     owner.BodySensorPart()->Invalidate();
-                    if (NS::Phys::PhysicsScene* physics = owner.GetPhysicsScene())
-                    {
-                        owner.Sphere().RemoveFromPhysics(*physics);
-                    }
+                    owner.Sphere().RemoveFromPhysics();
                     owner.Kill();
                 }
             }
@@ -150,14 +147,12 @@ namespace NS::Game::Level
 
     void MapObj::SyncCollider()
     {
-        if (IsActiveInHierarchy())
+        // Scene に居ない間は入れる先が無い。入れたと控えると、球が変わるまで入れ直さない
+        if (IsActiveInHierarchy() && OwningScene() != nullptr)
         {
-            if (NS::Phys::PhysicsScene* physics = GetPhysicsScene())
-            {
-                Sphere().SyncToPhysics(*physics);
-                m_syncedSphere = Sphere().WorldSphere();
-                m_hasSyncedSphere = true;
-            }
+            Sphere().SyncToPhysics();
+            m_syncedSphere = Sphere().WorldSphere();
+            m_hasSyncedSphere = true;
         }
     }
 

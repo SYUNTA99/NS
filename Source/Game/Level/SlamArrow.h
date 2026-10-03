@@ -122,7 +122,7 @@ namespace NS::Game::Level
     //! 形は OnUpdate で組んで控え、描く時は板を積むだけ。
     //! 狙いの線が無いフレームと放したフレームは何も組まない。
     //! 板は組み込みの上向きの板 shadowQuad に、帯と矢じりのマテリアル (Shaders/ground_arrow.ps.hlsl) を貼った半透明
-    //! 依存: CollisionInput, NS::Obj::Body, NS::Obj::Scene, NS::Phys::PhysicsScene
+    //! 依存: CollisionInput, NS::Obj::Body, NS::Obj::Scene, NS::Obj::IUseCollision
     class SlamArrow : public NS::Obj::Component, public NS::Obj::IRenderable
     {
     public:

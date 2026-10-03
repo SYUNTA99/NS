@@ -119,7 +119,11 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
     EXPECT_FALSE(fields.contains("1 フレームの向きの変化の上限"));
     const NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player.Part("Movement"));
     ASSERT_NE(movement, nullptr);
-    EXPECT_TRUE(NS::Obj::SerializeComponent(*movement)["fields"].empty());
+    // 身体の欄は自分の当たりの寸法だけ。動きの調整値は Params に居る
+    const nlohmann::json movementFields = NS::Obj::SerializeComponent(*movement)["fields"];
+    EXPECT_EQ(movementFields.size(), 2u);
+    EXPECT_TRUE(movementFields.contains("半径"));
+    EXPECT_TRUE(movementFields.contains("半分の高さ"));
 }
 
 TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
