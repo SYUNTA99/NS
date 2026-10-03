@@ -5,6 +5,8 @@
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Component.h"
 
+#include <functional>
+
 namespace NS::Phys
 {
     struct Capsule;
@@ -133,5 +135,26 @@ namespace NS::Obj
         float m_halfHeight = 0.5f;                            // カプセルの中心から端の半球の中心まで (スケール前)
         NS::Core::Vector3 m_boxHalfExtents{0.5f, 0.5f, 0.5f}; // 箱の中心から各面まで (スケール前)
         NS::Core::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};   // 根からの中心のずれ
+    };
+
+    //! @brief 持ち主の体の形をそのまま映す調べ役。自機と置物の体のセンサーが使う
+    //! @details 形の正は持ち主の当たりの部品 (Body・SphereCollider) で、ここは毎回それを読むだけ。
+    //! 写しを持たないので、寸法の欄を変えたその場で範囲の照合とエディタの線に効く。欄は持たない
+    //! 関数は持ち主のクラスがコンストラクタで渡す。既定コンストラクタが無いので TypeRegistry には登録しない
+    class FollowHitSensor final : public HitSensor
+    {
+    public:
+        //! @brief 形を答える関数を受けて作る
+        //! @param[in] volume 世界座標の形を返す関数。事前条件: 空でない。空なら WorldVolume は根に長さ 0 の球を返し
+        //! NS_LOG_ERROR で知らせる
+        explicit FollowHitSensor(std::function<SensorVolume()> volume) noexcept;
+
+        //! 世界座標の形。受けた関数の答えをそのまま返す
+        [[nodiscard]] SensorVolume WorldVolume() const noexcept override;
+
+        NS_REFLECT_NONE(FollowHitSensor, HitSensor)
+
+    private:
+        std::function<SensorVolume()> m_volume; // 持ち主の当たりの形を世界座標で返す関数
     };
 } // namespace NS::Obj

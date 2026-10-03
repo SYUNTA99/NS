@@ -1,5 +1,6 @@
 #include "Runtime/Object/Components/HitSensor.h"
 
+#include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/HitSensorDirector.h"
@@ -9,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <utility>
 
 namespace NS::Obj
 {
@@ -320,6 +322,23 @@ namespace NS::Obj
         default:
             return SensorVolume::Sphere(center, m_radius * NS::Core::MaxAbsComponent(parts.scale));
         }
+    }
+
+    FollowHitSensor::FollowHitSensor(std::function<SensorVolume()> volume) noexcept : m_volume(std::move(volume)) {}
+
+    SensorVolume FollowHitSensor::WorldVolume() const noexcept
+    {
+        if (m_volume)
+        {
+            return m_volume();
+        }
+        NS_LOG_ERROR(Scene, "FollowHitSensor: 形を答える関数が空。根に長さ 0 の球を返す");
+        NS::Core::Vector3 root{0.0f, 0.0f, 0.0f};
+        if (const Actor* owner = Owner())
+        {
+            root = owner->Root().Position();
+        }
+        return SensorVolume::Sphere(root, 0.0f);
     }
 
     NS_CLASS(ShapeHitSensor)

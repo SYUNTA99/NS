@@ -1,7 +1,6 @@
 ﻿#include "Runtime/Object/Components/Body.h"
 
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Gravity.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/JoltCharacter.h"
@@ -72,13 +71,11 @@ namespace NS::Obj
     void Body::SetCapsuleRadius(float radius) noexcept
     {
         m_radius = NonNegativeLength(radius, m_radius);
-        SyncBodySensor();
     }
 
     void Body::SetStandingHalfHeight(float halfHeight) noexcept
     {
         m_standingHalfHeight = NonNegativeLength(halfHeight, m_standingHalfHeight);
-        SyncBodySensor();
     }
 
     float Body::CapsuleHalfHeight() const noexcept
@@ -97,18 +94,18 @@ namespace NS::Obj
         return NS::Phys::Capsule{rootPosition, NS::Core::Vector3::UnitY, CapsuleHalfHeight(), CapsuleRadius()};
     }
 
+    NS::Phys::Capsule Body::WorldCapsule() const noexcept
+    {
+        if (Owner() == nullptr)
+        {
+            return CapsuleAt(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        }
+        return CapsuleAt(RootTransform().Position());
+    }
+
     void Body::SetSphereShape(bool sphere) noexcept
     {
         m_sphereShape = sphere;
-        SyncBodySensor();
-    }
-
-    void Body::SyncBodySensor() noexcept
-    {
-        if (m_bodySensor != nullptr)
-        {
-            m_bodySensor->SetCapsule(CapsuleRadius(), CapsuleHalfHeight());
-        }
     }
 
     NS::Phys::PhysicsScene* Body::GetPhysicsScene() const noexcept
@@ -118,17 +115,6 @@ namespace NS::Obj
             return nullptr;
         }
         return Owner()->GetPhysicsScene();
-    }
-
-    void Body::OnStart()
-    {
-        // 体のセンサーは根を中心にした、移動の当たりと同じカプセル
-        m_bodySensor = nullptr;
-        if (Owner() != nullptr)
-        {
-            m_bodySensor = ComponentCast<ShapeHitSensor>(Owner()->BodySensorPart());
-        }
-        SyncBodySensor();
     }
 
     void Body::Accelerate(

@@ -1,6 +1,11 @@
+#include "Game/Level/Goal.h"
+#include "Game/Level/KillZone.h"
+#include "Game/Level/MapObj.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/HitSensor.h"
+#include "Runtime/Object/Components/SphereCollider.h"
+#include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -107,20 +112,89 @@ TEST(BodyShape, PlayerArchetypeShapeLandsOnBody)
     EXPECT_FLOAT_EQ(body->StandingHalfHeight(), 0.5f);
 }
 
-TEST(BodyShape, BodySensorFollowsShapeEdits)
+TEST(BodyShape, PlayerBodySensorFollowsARadiusEditWithoutRestart)
 {
-    // インスペクタで寸法を変えた時も、体のセンサーは移動と同じ形のまま
+    // インスペクタで寸法を変えたその場で、体のセンサーは移動と同じ形を返す。開始し直しを待たない
     NS::Obj::Scene scene;
     LoadPlayerScene(scene, nlohmann::json::object());
     Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    const NS::Obj::ShapeHitSensor* sensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(player->BodySensorPart());
-    ASSERT_NE(sensor, nullptr);
+    NS::Obj::Component* movement = player->Part("Movement");
+    ASSERT_NE(movement, nullptr);
 
-    player->Body().SetCapsuleRadius(0.3f);
-    player->Body().SetStandingHalfHeight(0.8f);
-    EXPECT_FLOAT_EQ(sensor->Radius(), 0.3f);
-    EXPECT_FLOAT_EQ(sensor->HalfHeight(), 0.8f);
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(*movement, {{"半径", 0.8f}}), 0u);
+    const NS::Obj::SensorVolume volume = player->BodySensorPart()->WorldVolume();
+    EXPECT_FLOAT_EQ(volume.radius, 0.8f);
+}
+
+TEST(BodyShape, ScaledPlayerRootDoesNotScaleTheBodySensor)
+{
+    // 移動の当たりは根のスケールに依らない。範囲が照合する体も同じ寸法のまま
+    NS::Obj::Scene scene;
+    LoadPlayerScene(scene, nlohmann::json::object());
+    Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
+    ASSERT_NE(player, nullptr);
+
+    player->Root().SetScale(NS::Core::Vector3{1.2f, 1.2f, 1.2f});
+    const NS::Obj::SensorVolume volume = player->BodySensorPart()->WorldVolume();
+    const NS::Phys::Capsule capsule = player->Body().CapsuleAt(player->Root().Position());
+    EXPECT_FLOAT_EQ(volume.radius, capsule.radius);
+    EXPECT_FLOAT_EQ((volume.b - volume.a).Length(), capsule.halfHeight * 2.0f);
+    EXPECT_FLOAT_EQ(volume.Center().y, player->Root().Position().y);
+}
+
+TEST(BodyShape, MapObjBodySensorFollowsACollisionRadiusEdit)
+{
+    // 置物の体のセンサーは当たりの球をその場で映す。配置の後に半径を変えても割れない
+    NS::Obj::Scene scene;
+    nlohmann::json doc = NS::Obj::MakeSceneJson();
+    nlohmann::json rock = NS::Obj::MakeObjectJson();
+    NS::Obj::SetObjectJsonClass(rock, "MapObj");
+    NS::Obj::SetObjectJsonId(rock, 1);
+    NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{2.0f, 1.0f, 0.0f});
+    NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+    scene.LoadJson(doc);
+    NS::Obj::Actor* placed = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(placed, nullptr);
+    const NS::Obj::SphereCollider* collision =
+        NS::Obj::ComponentCast<NS::Obj::SphereCollider>(placed->Part("Collision"));
+    ASSERT_NE(collision, nullptr);
+
+    ASSERT_EQ(
+        NS::Obj::ApplyJsonFields(*placed->Part("Collision"), {{"半径", 0.8f}, {"中心オフセット", {0.0f, 0.25f, 0.0f}}}),
+        0u);
+    const NS::Core::Sphere sphere = collision->WorldSphere();
+    const NS::Obj::SensorVolume volume = placed->BodySensorPart()->WorldVolume();
+    EXPECT_FLOAT_EQ(sphere.radius, 0.8f);
+    EXPECT_FLOAT_EQ(volume.radius, sphere.radius);
+    EXPECT_FLOAT_EQ(volume.Center().x, sphere.center.x);
+    EXPECT_FLOAT_EQ(volume.Center().y, sphere.center.y);
+    EXPECT_FLOAT_EQ(volume.Center().z, sphere.center.z);
+}
+
+TEST(BodyShape, FollowingBodySensorsShowNoFields)
+{
+    // 形の正は Movement と Collision。映すだけのセンサーに効かない欄を出さない
+    const Player player;
+    const NS::Game::Level::MapObj obj;
+    ASSERT_NE(player.BodySensorPart(), nullptr);
+    ASSERT_NE(obj.BodySensorPart(), nullptr);
+    EXPECT_EQ(player.BodySensorPart()->GetReflection()->fieldCount, 0u);
+    EXPECT_EQ(obj.BodySensorPart()->GetReflection()->fieldCount, 0u);
+}
+
+TEST(BodyShape, AreaSensorsKeepTheirSavedFieldNames)
+{
+    // ゴールと落下死の範囲は形を自分で持つ。保存済みの欄の表示名がそのまま読める
+    NS::Game::Level::Goal goal;
+    NS::Game::Level::KillZone zone;
+    ASSERT_NE(goal.BodySensorPart(), nullptr);
+    ASSERT_NE(zone.BodySensorPart(), nullptr);
+    EXPECT_EQ(NS::Obj::ApplyJsonFields(*goal.BodySensorPart(), {{"半径", 0.9f}}), 0u);
+    EXPECT_EQ(
+        NS::Obj::ApplyJsonFields(*zone.BodySensorPart(),
+                                 {{"箱の半径", {1000.0f, 5.0f, 1000.0f}}, {"中心オフセット", {0.0f, 0.0f, 0.0f}}}),
+        0u);
 }
 
 TEST(BodyShape, ShapeSurvivesSaveAndReload)

@@ -59,9 +59,10 @@ Player::Player() noexcept
     AttachFixedComponent(*m_input);
     AttachFixedComponent(*m_params);
     (void)CreatePart("Shadow");
-    NS::Obj::ShapeHitSensor* bodySensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(CreatePart("BodySensor"));
-    bodySensor->SetType(NS::Obj::HitSensorType::PlayerBody);
-    bodySensor->SetCapsule(m_body->CapsuleRadius(), m_body->CapsuleHalfHeight());
+    // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Body の欄で、センサーは毎回それを読む
+    SetBodySensorPart(std::make_unique<NS::Obj::FollowHitSensor>(
+        [body = m_body.get()] { return NS::Obj::SensorVolume::Capsule(body->WorldCapsule()); }));
+    BodySensorPart()->SetType(NS::Obj::HitSensorType::PlayerBody);
     AttachFixedComponent(*m_collisionInput);
     AttachFixedComponent(*m_resolver);
     (void)CreatePart("HitReaction");

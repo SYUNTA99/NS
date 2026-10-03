@@ -203,6 +203,11 @@ namespace NS::Obj
         void StepStateMachine();
         void AttachFixedComponent(Component& component);
         void SetCollisionPart(std::unique_ptr<Collider> collision);
+        //! @brief 体のセンサーの部品 BodySensor を派生の型で差す。持ち主の形を映すセンサーを付ける口
+        //! @details 既に持っているか sensor が nullptr なら何もしない。差した後の CreatePart("BodySensor") は
+        //! 差した部品を返す
+        //! @param[in] sensor 差す体のセンサー
+        void SetBodySensorPart(std::unique_ptr<HitSensor> sensor);
 
     private:
         friend class ObjectList;

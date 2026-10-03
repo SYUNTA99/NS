@@ -126,6 +126,16 @@ namespace NS::Obj
         AttachFixedComponent(*m_collision);
     }
 
+    void Actor::SetBodySensorPart(std::unique_ptr<HitSensor> sensor)
+    {
+        if (m_bodySensor != nullptr || sensor == nullptr)
+        {
+            return;
+        }
+        m_bodySensor = std::move(sensor);
+        AttachFixedComponent(*m_bodySensor);
+    }
+
     IStateMachine* Actor::GetStateMachine() noexcept
     {
         return m_stateMachine.get();

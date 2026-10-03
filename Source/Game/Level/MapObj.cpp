@@ -83,9 +83,12 @@ namespace NS::Game::Level
         AttachFixedComponent(m_params);
         AttachFixedComponent(m_hitZones);
         AttachFixedComponent(m_effects);
-        NS::Obj::ShapeHitSensor* bodySensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(CreatePart("BodySensor"));
-        bodySensor->SetType(NS::Obj::HitSensorType::MapObjBody);
-        bodySensor->SetSphere(0.5f);
+        // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
+        SetBodySensorPart(std::make_unique<NS::Obj::FollowHitSensor>([collision = &Sphere()] {
+            const NS::Core::Sphere sphere = collision->WorldSphere();
+            return NS::Obj::SensorVolume::Sphere(sphere.center, sphere.radius);
+        }));
+        BodySensorPart()->SetType(NS::Obj::HitSensorType::MapObjBody);
         (void)BuildStateMachine<MapObj, RestingState, FreezeState, LaunchedState>(*this, m_states);
         m_motion.Finish();
     }
@@ -100,9 +103,6 @@ namespace NS::Game::Level
 
     void MapObj::InitAfterPlacement()
     {
-        NS::Obj::ShapeHitSensor* bodySensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(BodySensorPart());
-        bodySensor->SetSphere(Sphere().Radius());
-        bodySensor->SetCenterOffset(Sphere().CenterOffset());
         SyncCollider();
     }
 
