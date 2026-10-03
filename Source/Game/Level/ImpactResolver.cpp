@@ -195,15 +195,21 @@ namespace NS::Game::Level
         }
 
         // timeline のうち、向き direction の当たりで起きる事象。並びの順は保つ
-        [[nodiscard]] std::vector<HitEvent> EventsFor(const HitTimeline& timeline, HitDirection direction)
+        // outRows に、選んだ事象のそれぞれのファイルの並びでの番号を同じ並びで入れる
+        [[nodiscard]] std::vector<HitEvent> EventsFor(const HitTimeline& timeline,
+                                                      HitDirection direction,
+                                                      std::vector<std::size_t>& outRows)
         {
             std::vector<HitEvent> events;
             events.reserve(timeline.events.size());
-            for (const HitEvent& event : timeline.events)
+            outRows.clear();
+            for (std::size_t row = 0; row < timeline.events.size(); ++row)
             {
+                const HitEvent& event = timeline.events[row];
                 if (event.direction == HitDirection::Any || event.direction == direction)
                 {
                     events.push_back(event);
+                    outRows.push_back(row);
                 }
             }
             return events;
@@ -462,6 +468,7 @@ namespace NS::Game::Level
         m_didBreak = false;
         m_freezeBeganThisStep = false;
         m_releasedThisStep = false;
+        m_rowsStartedThisStep.clear();
         // 白の光と振動の進みは HitReaction が持つ。止まっている間も薄れる
         if (m_body == nullptr)
         {
@@ -651,9 +658,10 @@ namespace NS::Game::Level
         }
         m_beforeContact = false;
         std::vector<HitEvent> events;
+        std::vector<std::size_t> rows;
         if (timeline != nullptr)
         {
-            events = EventsFor(*timeline, direction);
+            events = EventsFor(*timeline, direction, rows);
         }
         // 貫通の止めはタイムラインへ移さず、欄「貫通の止め秒」の長さのまま
         int breakStopSteps = -1;
@@ -677,6 +685,8 @@ namespace NS::Game::Level
         m_lastImpact.offset01 = offset01;
         m_lastImpact.tier = tier;
         m_lastImpact.direction = direction;
+        m_lastImpact.faceU = judgement.u;
+        m_lastImpact.faceV = judgement.v;
         m_lastImpact.hitStopSteps = stopSteps;
         m_lastImpact.centerHit = centerHit;
         m_lastImpact.broke = m_pendingBreak;
@@ -703,7 +713,7 @@ namespace NS::Game::Level
             LaunchTarget();
             return true;
         }
-        StartTimeline(std::move(events), breakStopSteps);
+        StartTimeline(std::move(events), std::move(rows), breakStopSteps);
         return true;
     }
 
@@ -823,9 +833,10 @@ namespace NS::Game::Level
         }
     };
 
-    void ImpactResolver::StartTimeline(std::vector<HitEvent> events, int breakStopSteps)
+    void ImpactResolver::StartTimeline(std::vector<HitEvent> events, std::vector<std::size_t> rows, int breakStopSteps)
     {
         m_events = std::move(events);
+        m_eventRows = std::move(rows);
         m_breakStopSteps = breakStopSteps;
         m_clock = 0;
         m_clockEnd = 0;
@@ -896,7 +907,8 @@ namespace NS::Game::Level
             return;
         }
         // 触れる前は外れの向きが決まらないので、向きの付いた行は起こさない
-        std::vector<HitEvent> events = EventsFor(*timeline, HitDirection::Any);
+        std::vector<std::size_t> rows;
+        std::vector<HitEvent> events = EventsFor(*timeline, HitDirection::Any, rows);
         int first = 0;
         for (const HitEvent& event : events)
         {
@@ -917,6 +929,7 @@ namespace NS::Game::Level
         }
         AbortTimeline();
         m_events = std::move(events);
+        m_eventRows = std::move(rows);
         m_clock = -untilDetect;
         for (const HitEvent& event : m_events)
         {
@@ -931,11 +944,13 @@ namespace NS::Game::Level
         m_pendingBreak = false;
         // 予測が遅れて今のフレームより前に始まるはずだった事象は、置いたフレームを始まりにして今起こす
         const int now = m_clock;
-        for (const HitEvent& event : m_events)
+        for (std::size_t i = 0; i < m_events.size(); ++i)
         {
+            const HitEvent& event = m_events[i];
             if (event.start <= now && event.start < 0 && CanStartBeforeContact(event.value))
             {
                 m_clock = event.start;
+                m_rowsStartedThisStep.push_back(m_eventRows[i]);
                 std::visit(EventRunner{.resolver = *this, .event = event}, event.value);
             }
         }
@@ -954,6 +969,7 @@ namespace NS::Game::Level
     {
         m_beforeContact = false;
         m_events.clear();
+        m_eventRows.clear();
         m_clock = 0;
         m_clockEnd = 0;
         m_clockRunning = false;
@@ -968,11 +984,13 @@ namespace NS::Game::Level
 
     void ImpactResolver::AdvanceTimeline()
     {
-        for (const HitEvent& event : m_events)
+        for (std::size_t i = 0; i < m_events.size(); ++i)
         {
+            const HitEvent& event = m_events[i];
             // 触れる前に置けない種類は、ファイルの読み込みで弾いている。手で組んだ並びでもマイナスでは起こさない
             if (event.start == m_clock && (m_clock >= 0 || CanStartBeforeContact(event.value)))
             {
+                m_rowsStartedThisStep.push_back(m_eventRows[i]);
                 std::visit(EventRunner{.resolver = *this, .event = event}, event.value);
             }
         }

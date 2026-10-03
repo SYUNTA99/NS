@@ -12,6 +12,7 @@
 #include "Runtime/Object/Reflection/ActorRef.h"
 #include "Runtime/Platform/Gamepad.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -49,6 +50,8 @@ namespace NS::Game::Level
         HitTier tier = HitTier::Center; //!< 当たりの段。相手の面の判定で決まる
         //! 面の上の位置から決めた外れの向き。タイムラインの向きの付いた行を選ぶ
         HitDirection direction = HitDirection::Any;
+        float faceU = 0.0f;       //!< 段を決めた面の上の左右の位置。自機から見て右が正。判定できない体は 0
+        float faceV = 0.0f;       //!< 段を決めた面の上の上下の位置。上が正。判定できない体は 0
         float cameraShake = 0.0f; //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
         int flashStart = 0;       //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
         float zoomStart = 1.0f;   //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
@@ -125,6 +128,13 @@ namespace NS::Game::Level
         //! @brief 直近の更新で止めが明けた場合 true、それ以外の場合は false
         //! @details 立つのは止めの事象が終わった次のフレームの 1 回だけ。止めの事象の無い当たりでは立たない
         [[nodiscard]] bool ReleasedThisStep() const noexcept { return m_releasedThisStep; }
+
+        //! @brief 直近の更新で始まった事象の、段のタイムラインのファイルの並びでの番号
+        //! @details 始まった順に並ぶ。エディタの下見が、置いた事象と実際に起きたフレームを重ねるのに読む
+        [[nodiscard]] const std::vector<std::size_t>& RowsStartedThisStep() const noexcept
+        {
+            return m_rowsStartedThisStep;
+        }
 
         //! 直近の裁定が中心近くで当たった場合 true、それ以外の場合は false
         [[nodiscard]] bool WasCenterHit() const noexcept { return m_wasCenterHit; }
@@ -206,7 +216,8 @@ namespace NS::Game::Level
         // 当たりの向きで起きる事象の並びを控え、時計を 0 にして 0 フレームの事象を起こす
         // breakStopSteps は貫通の当たりの止めのフレーム数で、0 以上なら止めの事象の長さの代わりに使う
         // 事前条件: 相手・反動と飛ばしの曲線を控え終えている
-        void StartTimeline(std::vector<HitEvent> events, int breakStopSteps);
+        // rows は events のそれぞれの、段のタイムラインのファイルの並びでの番号
+        void StartTimeline(std::vector<HitEvent> events, std::vector<std::size_t> rows, int breakStopSteps);
 
         // 事象の種類ごとの受け持ち。std::visit で事象の値の種類から呼ぶ
         struct EventRunner;
@@ -254,24 +265,26 @@ namespace NS::Game::Level
         // 相手へ明けを知らせて飛ばすか壊させる
         void LaunchTarget();
 
-        std::vector<HitEvent> m_events;                // 走っているタイムラインのうち、当たりの向きで起きる事象
-        int m_clock = 0;                               // 検知のフレームを 0 にした今のフレーム
-        int m_clockEnd = 0;                            // 最後の事象が終わる時計の値。ここまで進めたら時計を止める
-        bool m_clockRunning = false;                   // 時計が走っているか
-        bool m_holdArmed = false;                      // この当たりで自機を止めるか。止めの事象のある当たりで立つ
-        bool m_holdReleased = false;                   // 止めた自機を動かし直したか
-        bool m_hasReboundEvent = false;                // 走っているタイムラインに反動の事象があるか
-        bool m_stopStarted = false;                    // 止めの事象が始まったか
-        int m_stopEnd = 0;                             // 止めの事象の最後のフレーム
-        int m_breakStopSteps = -1;                     // 貫通の当たりの止めのフレーム数。負なら止めの事象の長さのまま
-        ShapeEvent m_shape{};                          // 走っている形の事象
-        int m_shapeStart = 0;                          // 形の事象の始まりのフレーム
-        int m_shapeLength = 0;                         // 形の事象の長さ
-        bool m_shapeActive = false;                    // 形の事象が始まったか
-        bool m_beforeContact = false;                  // 時計が触れる前 (マイナスのフレーム) を進めているか
-        NS::Obj::ActorRef m_beforeContactTarget{};     // 触れる前の時計を始めた予測の相手
-        HitTier m_beforeContactTier = HitTier::Center; // 触れる前の時計を始めた予測の段
-        float m_pendingTargetMass = 1.0f;              // 検知のフレームに相手が答えた質量。往復の振れ幅を割る
+        std::vector<HitEvent> m_events;                 // 走っているタイムラインのうち、当たりの向きで起きる事象
+        std::vector<std::size_t> m_eventRows;           // m_events と同じ並びで、ファイルの並びでの番号
+        std::vector<std::size_t> m_rowsStartedThisStep; // 直近の更新で始まった事象のファイルの並びでの番号
+        int m_clock = 0;                                // 検知のフレームを 0 にした今のフレーム
+        int m_clockEnd = 0;                             // 最後の事象が終わる時計の値。ここまで進めたら時計を止める
+        bool m_clockRunning = false;                    // 時計が走っているか
+        bool m_holdArmed = false;                       // この当たりで自機を止めるか。止めの事象のある当たりで立つ
+        bool m_holdReleased = false;                    // 止めた自機を動かし直したか
+        bool m_hasReboundEvent = false;                 // 走っているタイムラインに反動の事象があるか
+        bool m_stopStarted = false;                     // 止めの事象が始まったか
+        int m_stopEnd = 0;                              // 止めの事象の最後のフレーム
+        int m_breakStopSteps = -1;                      // 貫通の当たりの止めのフレーム数。負なら止めの事象の長さのまま
+        ShapeEvent m_shape{};                           // 走っている形の事象
+        int m_shapeStart = 0;                           // 形の事象の始まりのフレーム
+        int m_shapeLength = 0;                          // 形の事象の長さ
+        bool m_shapeActive = false;                     // 形の事象が始まったか
+        bool m_beforeContact = false;                   // 時計が触れる前 (マイナスのフレーム) を進めているか
+        NS::Obj::ActorRef m_beforeContactTarget{};      // 触れる前の時計を始めた予測の相手
+        HitTier m_beforeContactTier = HitTier::Center;  // 触れる前の時計を始めた予測の段
+        float m_pendingTargetMass = 1.0f;               // 検知のフレームに相手が答えた質量。往復の振れ幅を割る
         // 明けたフレームに自機が持つ速度。反動の当たりは、明けに BeginRebound が同じ m_pendingReboundArc から出し直す
         NS::Core::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};
         NS::Game::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離
