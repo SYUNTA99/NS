@@ -54,8 +54,8 @@ TEST(ImpactOutcome, HeavierTargetBouncesSelfMoreAndLaunchesTargetLess)
     EXPECT_FALSE(heavyOutcome.broke);
 }
 
-// 中心近くの当たりだけ反動の距離を伸ばし、高さと向きは変えない。止めも長くなる
-TEST(ImpactOutcome, CenterHitStretchesReboundDistanceAndHitStopButNotHeight)
+// 中心近くの当たりだけ反動の距離を伸ばし、高さと向きは変えない
+TEST(ImpactOutcome, CenterHitStretchesReboundDistanceButNotHeight)
 {
     const ImpactTuning tuning = DefaultTuning();
     ImpactInput wide = BaseInput();
@@ -68,15 +68,13 @@ TEST(ImpactOutcome, CenterHitStretchesReboundDistanceAndHitStopButNotHeight)
     EXPECT_FLOAT_EQ(centerOutcome.reboundArc.distance,
                     wideOutcome.reboundArc.distance * tuning.centerHitReboundDistanceScale);
     EXPECT_FLOAT_EQ(centerOutcome.reboundArc.apexHeight, wideOutcome.reboundArc.apexHeight);
-    EXPECT_GT(centerOutcome.stopSteps, wideOutcome.stopSteps);
 }
 
-// 段が配分に効くのは中心近くの止めと反動の距離の倍率だけ。呼び手が 2 つの倍率を 1 にすれば、
+// 段が押し飛ばしの配分に効くのは中心近くの反動の距離の倍率だけ。呼び手が倍率を 1 にすれば、
 // 中心近くと記録する当たりも大きな外れと同じ配分になる
 TEST(ImpactOutcome, TiersDifferOnlyByTheCenterScales)
 {
     ImpactTuning tuning = DefaultTuning();
-    tuning.centerHitStopScale = 1.0f;
     tuning.centerHitReboundDistanceScale = 1.0f;
     ImpactInput wide = BaseInput();
     ImpactInput center = BaseInput();
@@ -88,11 +86,10 @@ TEST(ImpactOutcome, TiersDifferOnlyByTheCenterScales)
     EXPECT_FLOAT_EQ(centerOutcome.reboundArc.distance, wideOutcome.reboundArc.distance);
     EXPECT_FLOAT_EQ(centerOutcome.reboundArc.apexHeight, wideOutcome.reboundArc.apexHeight);
     EXPECT_FLOAT_EQ(centerOutcome.launchArc.distance, wideOutcome.launchArc.distance);
-    EXPECT_EQ(centerOutcome.stopSteps, wideOutcome.stopSteps);
 }
 
-// 威力が 0 の当たりは止めず、動かさない。質量が極端に重くても止めは上限で頭打ち
-TEST(ImpactOutcome, HitStopStepsAreZeroWithoutPowerAndCappedByMax)
+// 押し飛ばしの当たりの止めの長さはタイムラインが持ち、配分は決めない。威力が 0 の当たりは動かさない
+TEST(ImpactOutcome, PushHitsLeaveTheStopToTheTimeline)
 {
     const ImpactTuning tuning = DefaultTuning();
     ImpactInput weak = BaseInput();
@@ -106,7 +103,24 @@ TEST(ImpactOutcome, HitStopStepsAreZeroWithoutPowerAndCappedByMax)
     EXPECT_EQ(weakOutcome.stopSteps, 0);
     EXPECT_FLOAT_EQ(weakOutcome.reboundScale, 0.0f);
     EXPECT_FLOAT_EQ(weakOutcome.launchScale, 0.0f);
-    EXPECT_EQ(hugeOutcome.stopSteps, 12);
+    EXPECT_EQ(hugeOutcome.stopSteps, 0);
+}
+
+// 貫通の止めだけは欄「貫通の止め秒」のまま。中心近くは段の止めの倍率を掛け、上限で頭打ち
+TEST(ImpactOutcome, BreakStopIsTheBreakSecondsScaledByTheTier)
+{
+    ImpactTuning tuning = DefaultTuning();
+    tuning.breakEnabled = true;
+    ImpactInput wide = BaseInput();
+    wide.breakable = true;
+    wide.toughness = 1.0f;
+    ImpactInput center = wide;
+    center.tier = HitTier::Center;
+
+    EXPECT_EQ(ComputeImpactOutcome(wide, tuning).stopSteps, 4);
+    EXPECT_EQ(ComputeImpactOutcome(center, tuning).stopSteps, 8);
+    tuning.breakStopSeconds = 1.0f;
+    EXPECT_EQ(ComputeImpactOutcome(wide, tuning).stopSteps, 12);
 }
 
 // 破壊を許し、壊れる相手で威力が耐久に届くと貫通する。貫通は相手を飛ばさず自機も反動しない
@@ -153,6 +167,5 @@ TEST(ImpactOutcome, DefaultTuningAtMassOneAndPowerOne)
     EXPECT_FLOAT_EQ(outcome.launchArc.distance, 29.0f);
     EXPECT_FLOAT_EQ(outcome.launchArc.apexHeight, 2.0f);
     EXPECT_FLOAT_EQ(outcome.launchArc.direction.z, 1.0f);
-    EXPECT_FLOAT_EQ(outcome.shakeAmplitude, 0.025f);
-    EXPECT_EQ(outcome.stopSteps, 4);
+    EXPECT_EQ(outcome.stopSteps, 0);
 }

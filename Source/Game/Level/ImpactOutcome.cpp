@@ -6,7 +6,7 @@ namespace NS::Game::Level
 {
     namespace
     {
-        // 上限秒をフレーム数へ換算する。非有限と 0 以下は 0 で、止めない
+        // 貫通の止めの上限秒をフレーム数へ換算する。非有限と 0 以下は 0 で、止めない
         [[nodiscard]] int MaxHitStopSteps(const ImpactTuning& tuning) noexcept
         {
             const float raw = tuning.hitStopMaxSeconds / tuning.fixedDelta;
@@ -29,26 +29,10 @@ namespace NS::Game::Level
             return NS::Core::Clamp(static_cast<int>(std::lround(raw)), 0, MaxHitStopSteps(tuning));
         }
 
-        // 最終威力と質量から止めるフレーム数を出す。0 なら止めない
-        [[nodiscard]] int ComputeHitStopSteps(const ImpactTuning& tuning,
-                                              float power,
-                                              float mass,
-                                              float hitStopScale) noexcept
-        {
-            // 質量差をそのままフレーム数に出すと停止が伸びすぎるので平方根で圧縮する
-            const float raw = tuning.hitStopBaseSeconds * power * std::sqrt(mass) / tuning.fixedDelta * hitStopScale;
-            if (!std::isfinite(raw))
-            {
-                return 0;
-            }
-            const int steps = static_cast<int>(std::lround(raw));
-            return NS::Core::Clamp(steps, 0, MaxHitStopSteps(tuning));
-        }
-
         // 段が配分に掛ける倍率
         struct TierScales
         {
-            float hitStop = 1.0f;         // 止めの倍率
+            float hitStop = 1.0f;         // 貫通の止めの倍率
             float reboundDistance = 1.0f; // 反動の距離の倍率。高さは段で変えない
         };
 
@@ -77,8 +61,6 @@ namespace NS::Game::Level
 
         const TierScales tierScales = TierScalesFor(input.tier, tuning);
         const float hitStopScale = tierScales.hitStop;
-        // 反発の質量因子の残り。動きは軽い側が受け取るので、重い物ほど揺れない
-        outcome.shakeAmplitude = tuning.shakeAmplitude / (1.0f + mass);
 
         // 破壊を許可していない間は耐久を見ない。壊れる相手も押し飛ばしと反発へ回る
         // 壊れる動きを持たない相手も同じ。貫通させると、残った相手の当たりへ自機がめり込んで止まる
@@ -121,8 +103,6 @@ namespace NS::Game::Level
                                       .fallGravityScale = tuning.launchFallGravityScale,
                                       .apexBandSpeed = tuning.launchApexBandSpeed,
                                       .apexBandGravityScale = tuning.launchApexBandGravityScale};
-
-        outcome.stopSteps = ComputeHitStopSteps(tuning, power, mass, hitStopScale);
         return outcome;
     }
 } // namespace NS::Game::Level

@@ -3,7 +3,7 @@
     {
       "direction": "any",
       "fields": {},
-      "length": 6,
+      "length": 4,
       "start": 1,
       "type": "HitStop"
     },
@@ -17,11 +17,11 @@
               0.7
             ],
             [
-              5.0,
+              3.0,
               0.7
             ],
             [
-              6.0,
+              4.0,
               1.0
             ]
           ]
@@ -33,25 +33,25 @@
               1.1
             ],
             [
-              5.0,
+              3.0,
               1.1
             ],
             [
-              6.0,
+              4.0,
               1.2
             ],
             [
-              9.0,
+              7.0,
               0.9
             ],
             [
-              12.0,
+              10.0,
               1.0
             ]
           ]
         }
       },
-      "length": 12,
+      "length": 10,
       "start": 1,
       "type": "Shape"
     },
@@ -63,7 +63,7 @@
         "潰れの厚み": 0.7,
         "食い込み距離": 0.06
       },
-      "length": 6,
+      "length": 4,
       "start": 1,
       "type": "TargetFreeze"
     },
@@ -110,21 +110,21 @@
       "direction": "any",
       "fields": {},
       "length": 1,
-      "start": 7,
+      "start": 5,
       "type": "Rebound"
     },
     {
       "direction": "any",
       "fields": {},
       "length": 1,
-      "start": 7,
+      "start": 5,
       "type": "TargetLaunch"
     },
     {
       "direction": "any",
       "fields": {},
       "length": 1,
-      "start": 7,
+      "start": 5,
       "type": "FlightEffect"
     }
   ],

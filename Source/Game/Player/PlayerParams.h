@@ -137,28 +137,8 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_launchFallGravityScale, "下りの速さの倍率")
         NS_REFLECT_FIELD(m_launchApexBandSpeed, "頂点の帯の縦速度")
         NS_REFLECT_FIELD(m_launchApexBandGravityScale, "頂点の帯の重力倍率")
-        NS_REFLECT_FIELD(m_hitStopBaseSeconds, "ヒットストップ基準秒")
         NS_REFLECT_FIELD(m_centerHitStopScale, "中心近くの当たりのヒットストップ倍率")
         NS_REFLECT_FIELD(m_hitStopMaxSeconds, "ヒットストップの上限秒")
-        NS_REFLECT_FIELD(m_pushInDistance, "食い込み距離")
-        NS_REFLECT_FIELD(m_shakeAmplitude, "振動の振幅")
-        NS_REFLECT_FIELD(m_cameraShakeScale, "カメラ揺れの強さ")
-        NS_REFLECT_FIELD(m_centerHitShakeScale, "中心近くの当たりの揺れの倍率")
-        NS_REFLECT_FIELD(m_wideShakeFrames, "大きな外れの揺れのフレーム数")
-        NS_REFLECT_FIELD(m_wideShakeUpOverSide, "大きな外れの揺れの縦と横の比")
-        NS_REFLECT_FIELD(m_wideShakeLongestFlipFrames, "大きな外れの揺れの入れ替わりの最長フレーム数")
-        NS_REFLECT_FIELD(m_centerHitZoom, "中心近くの当たりの寄りの倍率")
-        NS_REFLECT_FIELD(m_centerHitRollDegrees, "中心近くの当たりの傾き")
-        NS_REFLECT_FIELD(m_zoomRollReturnFrames, "寄りと傾きを戻すフレーム数")
-        NS_REFLECT_FIELD(m_centerHitPadStrength, "中心近くの当たりのパッドの振動の強さ")
-        NS_REFLECT_FIELD(m_widePadStrength, "大きな外れのパッドの振動の強さ")
-        NS_REFLECT_FIELD(m_squashThickness, "潰れの厚み")
-        NS_REFLECT_FIELD(m_squashHeight, "潰れの伸び上がり")
-        NS_REFLECT_FIELD(m_stretchAlong, "弾け伸びの倍率")
-        NS_REFLECT_FIELD(m_stretchOvershoot, "弾け伸びの行き過ぎ")
-        NS_REFLECT_FIELD(m_stretchRecoverSteps, "弾け伸びを戻すフレーム数")
-        NS_REFLECT_FIELD(m_centerHitFlashAlpha, "中心近くの当たりの白の濃さ")
-        NS_REFLECT_FIELD(m_centerHitFlashSteps, "中心近くの当たりの白のフレーム数")
         NS_REFLECT_FIELD(m_breakEnabled, "破壊を許可")
         NS_REFLECT_FIELD(m_breakSpeedScale, "貫通時の減速倍率")
         NS_REFLECT_FIELD(m_breakStopSeconds, "貫通の止め秒")
@@ -254,28 +234,8 @@ namespace NS::Game::Player
         float m_launchFallGravityScale = 1.4f;
         float m_launchApexBandSpeed = 1.0f;
         float m_launchApexBandGravityScale = 0.5f;
-        float m_hitStopBaseSeconds = 4.0f / 60.0f;
         float m_centerHitStopScale = 2.0f;
         float m_hitStopMaxSeconds = 12.0f / 60.0f;
-        float m_pushInDistance = 0.06f;
-        float m_shakeAmplitude = 0.05f;
-        float m_cameraShakeScale = 0.06f;
-        float m_centerHitShakeScale = 1.25f;
-        int m_wideShakeFrames = 16;
-        float m_wideShakeUpOverSide = 0.35f;
-        int m_wideShakeLongestFlipFrames = 3;
-        float m_centerHitZoom = 1.15f;
-        float m_centerHitRollDegrees = 3.0f;
-        int m_zoomRollReturnFrames = 6;
-        float m_centerHitPadStrength = 1.0f;
-        float m_widePadStrength = 0.6f;
-        float m_squashThickness = 0.7f;
-        float m_squashHeight = 1.1f;
-        float m_stretchAlong = 1.2f;
-        float m_stretchOvershoot = 0.5f;
-        int m_stretchRecoverSteps = 6;
-        float m_centerHitFlashAlpha = 0.5f;
-        int m_centerHitFlashSteps = 6;
         bool m_breakEnabled = false;
         float m_breakSpeedScale = 0.75f;
         float m_breakStopSeconds = 4.0f / 60.0f;

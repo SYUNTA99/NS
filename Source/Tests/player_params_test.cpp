@@ -215,7 +215,7 @@ TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
     EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(std::numeric_limits<float>::infinity()), 0.5f);
 }
 
-TEST(PlayerParams, ImpactDefaultsKeepAllSixtySixDisplayNamesAndValues)
+TEST(PlayerParams, ImpactDefaultsKeepAllFortySixDisplayNamesAndValues)
 {
     Player player;
     const nlohmann::json fields = NS::Obj::SerializeComponent(player.Params())["fields"];
@@ -229,28 +229,8 @@ TEST(PlayerParams, ImpactDefaultsKeepAllSixtySixDisplayNamesAndValues)
                                      {"下りの速さの倍率", 1.4f},
                                      {"頂点の帯の縦速度", 1.0f},
                                      {"頂点の帯の重力倍率", 0.5f},
-                                     {"ヒットストップ基準秒", 4.0f / 60.0f},
                                      {"中心近くの当たりのヒットストップ倍率", 2.0f},
                                      {"ヒットストップの上限秒", 12.0f / 60.0f},
-                                     {"食い込み距離", 0.06f},
-                                     {"振動の振幅", 0.05f},
-                                     {"カメラ揺れの強さ", 0.06f},
-                                     {"中心近くの当たりの揺れの倍率", 1.25f},
-                                     {"大きな外れの揺れのフレーム数", 16},
-                                     {"大きな外れの揺れの縦と横の比", 0.35f},
-                                     {"大きな外れの揺れの入れ替わりの最長フレーム数", 3},
-                                     {"中心近くの当たりの寄りの倍率", 1.15f},
-                                     {"中心近くの当たりの傾き", 3.0f},
-                                     {"寄りと傾きを戻すフレーム数", 6},
-                                     {"中心近くの当たりのパッドの振動の強さ", 1.0f},
-                                     {"大きな外れのパッドの振動の強さ", 0.6f},
-                                     {"潰れの厚み", 0.7f},
-                                     {"潰れの伸び上がり", 1.1f},
-                                     {"弾け伸びの倍率", 1.2f},
-                                     {"弾け伸びの行き過ぎ", 0.5f},
-                                     {"弾け伸びを戻すフレーム数", 6},
-                                     {"中心近くの当たりの白の濃さ", 0.5f},
-                                     {"中心近くの当たりの白のフレーム数", 6},
                                      {"破壊を許可", false},
                                      {"貫通時の減速倍率", 0.75f},
                                      {"貫通の止め秒", 4.0f / 60.0f},
@@ -291,10 +271,31 @@ TEST(PlayerParams, ImpactDefaultsKeepAllSixtySixDisplayNamesAndValues)
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
     }
     // 惜しいの段は消した。惜しいだけの演出の欄が戻ると、段の無い当たりの調整値が保存に載る
+    // 当たりの返りの時間と形はタイムラインへ移した。欄が戻ると、同じ返りの値の出所が 2 つになる
     for (const char* removed : {"惜しい当たりの返りの割合",
                                 "惜しい当たりの返りを引き始める割合",
                                 "惜しいの輪が届く割合",
-                                "惜しいの火花の数の割合"})
+                                "惜しいの火花の数の割合",
+                                "ヒットストップ基準秒",
+                                "食い込み距離",
+                                "振動の振幅",
+                                "カメラ揺れの強さ",
+                                "中心近くの当たりの揺れの倍率",
+                                "大きな外れの揺れのフレーム数",
+                                "大きな外れの揺れの縦と横の比",
+                                "大きな外れの揺れの入れ替わりの最長フレーム数",
+                                "中心近くの当たりの寄りの倍率",
+                                "中心近くの当たりの傾き",
+                                "寄りと傾きを戻すフレーム数",
+                                "中心近くの当たりのパッドの振動の強さ",
+                                "大きな外れのパッドの振動の強さ",
+                                "潰れの厚み",
+                                "潰れの伸び上がり",
+                                "弾け伸びの倍率",
+                                "弾け伸びの行き過ぎ",
+                                "弾け伸びを戻すフレーム数",
+                                "中心近くの当たりの白の濃さ",
+                                "中心近くの当たりの白のフレーム数"})
     {
         EXPECT_FALSE(fields.contains(removed)) << removed;
     }

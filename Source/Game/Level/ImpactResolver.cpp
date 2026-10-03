@@ -993,7 +993,6 @@ namespace NS::Game::Level
     ImpactTuning MakeImpactTuning(const NS::Game::Player::PlayerParams& params) noexcept
     {
         return ImpactTuning{.centerHitStopScale = params.m_centerHitStopScale,
-                            .shakeAmplitude = params.m_shakeAmplitude,
                             .breakEnabled = params.m_breakEnabled,
                             .breakSpeedScale = params.m_breakSpeedScale,
                             .breakStopSeconds = params.m_breakStopSeconds,
@@ -1007,7 +1006,6 @@ namespace NS::Game::Level
                             .launchFallGravityScale = params.m_launchFallGravityScale,
                             .launchApexBandSpeed = params.m_launchApexBandSpeed,
                             .launchApexBandGravityScale = params.m_launchApexBandGravityScale,
-                            .hitStopBaseSeconds = params.m_hitStopBaseSeconds,
                             .hitStopMaxSeconds = params.m_hitStopMaxSeconds,
                             .fixedDelta = NS::Platform::FrameTimer::FixedDelta()};
     }

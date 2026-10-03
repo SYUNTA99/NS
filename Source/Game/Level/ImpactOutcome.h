@@ -12,8 +12,7 @@ namespace NS::Game::Level
     //! ここには既定を持たない (既定の写しを持つと、PlayerParams の既定を変えた時に静かに食い違う)
     struct ImpactTuning
     {
-        float centerHitStopScale{};            //!< 中心近くの当たりの止めの倍率
-        float shakeAmplitude{};                //!< 相手の往復の振れ幅の基準
+        float centerHitStopScale{};            //!< 中心近くの当たりの貫通の止めの倍率
         bool breakEnabled{};                   //!< 破壊を許すか
         float breakSpeedScale{};               //!< 貫通で自機が持つ速度の倍率
         float breakStopSeconds{};              //!< 貫通の止めの秒
@@ -27,8 +26,7 @@ namespace NS::Game::Level
         float launchFallGravityScale{};        //!< 相手の下りの重力の倍率
         float launchApexBandSpeed{};           //!< 頂点の帯の縦速度 (m/s)
         float launchApexBandGravityScale{};    //!< 頂点の帯の重力倍率
-        float hitStopBaseSeconds{};            //!< 質量 1・威力 1 の止めの秒
-        float hitStopMaxSeconds{};             //!< 止めの上限秒
+        float hitStopMaxSeconds{};             //!< 貫通の止めの上限秒
         float fixedDelta{};                    //!< 固定ステップの秒
     };
 
@@ -36,7 +34,7 @@ namespace NS::Game::Level
     struct ImpactInput
     {
         float power = 0.0f;           //!< 最終威力。溜めの倍率と、相手の正面の面で当てはまった決まりの威力の倍率の積
-        HitTier tier = HitTier::Wide; //!< 当たりの段。止めと反動の距離の倍率を段で引く
+        HitTier tier = HitTier::Wide; //!< 当たりの段。反動の距離と貫通の止めの倍率を段で引く
         float mass = 1.0f;            //!< 相手の質量
         float toughness = 0.0f;       //!< 相手の耐久
         bool breakable = false;       //!< 相手が壊れる動きを持つ場合 true
@@ -56,8 +54,8 @@ namespace NS::Game::Level
         NS::Game::Player::ReboundArc reboundArc{};             //!< 自機の反動の向きと高さと距離
         LaunchArc launchArc{};                                 //!< 相手の飛ぶ曲線
         NS::Core::Vector3 breakSelfVelocity{0.0f, 0.0f, 0.0f}; //!< 貫通で明けに自機が持つ速度。貫通しない当たりは 0
-        int stopSteps = 0;                                     //!< 止めるフレーム数。0 は止めない
-        float shakeAmplitude = 0.0f;                           //!< 相手の往復の振れ幅
+        //! 貫通の当たりの止めるフレーム数。押し飛ばしの当たりの止めはタイムラインが持つので 0
+        int stopSteps = 0;
     };
 
     //! @brief 威力と質量と調整値から、衝突の配分を決める
