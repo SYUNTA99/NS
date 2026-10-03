@@ -17,6 +17,7 @@ namespace NS::Obj
 {
     class Component;
     class Actor;
+    struct Curve;
 } // namespace NS::Obj
 
 namespace NS::Editor
@@ -112,6 +113,14 @@ namespace NS::Editor
     [[nodiscard]] ValueEditResult DrawReflectedValue(void* value,
                                                      const NS::Obj::ReflectionInfo& info,
                                                      std::span<const ObjectRefOption> refOptions = {}) noexcept;
+
+    //! @brief 曲線のグラフの横軸の範囲を決める
+    //! @details 点の x が 0〜1 に収まる曲線は 0〜1 のまま (部品の欄の曲線は割合を横軸にする)。外へ出る曲線
+    //! (横軸がフレーム数のタイムラインの事象の曲線) は点を全部含め、右へ 1 割の余白を足して点を右へ引き伸ばせるようにする
+    //! @param[in] curve 描く曲線
+    //! @param[out] outMin 左端の x
+    //! @param[out] outMax 右端の x。outMin より大きい
+    void CurveGraphXRange(const NS::Obj::Curve& curve, float& outMin, float& outMax) noexcept;
 
     //! @brief DrawReflectedValue を型から呼ぶ
     //! @param[in,out] value 編集する値。T は NS_REFLECT_END_VALUE で欄を宣言した型

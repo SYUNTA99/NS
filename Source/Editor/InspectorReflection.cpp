@@ -138,6 +138,24 @@ namespace NS::Editor
         }
     }
 
+    void CurveGraphXRange(const NS::Obj::Curve& curve, float& outMin, float& outMax) noexcept
+    {
+        float low = 0.0f;
+        float high = 1.0f;
+        for (std::uint32_t i = 0; i < curve.count; ++i)
+        {
+            low = std::min(low, curve.keys[i].x);
+            high = std::max(high, curve.keys[i].x);
+        }
+        // 0〜1 の曲線は余白を足さない。部品の欄の曲線の見た目を変えないため
+        if (low < 0.0f || high > 1.0f)
+        {
+            high += (high - low) * 0.1f;
+        }
+        outMin = low;
+        outMax = high;
+    }
+
 #if NS_EDITOR_ENABLED
     namespace
     {
@@ -170,6 +188,8 @@ namespace NS::Editor
         {
             ImVec2 origin{};
             ImVec2 size{};
+            float xMin = 0.0f;
+            float xMax = 1.0f;
             float yMin = 0.0f;
             float yMax = 1.0f;
         };
@@ -193,15 +213,17 @@ namespace NS::Editor
         ImVec2 CurveToScreen(const CurveGraphView& view, float x, float y) noexcept
         {
             const float ratioY = (y - view.yMin) / (view.yMax - view.yMin);
-            return ImVec2{view.origin.x + x * view.size.x, view.origin.y + (1.0f - ratioY) * view.size.y};
+            const float ratioX = (x - view.xMin) / (view.xMax - view.xMin);
+            return ImVec2{view.origin.x + ratioX * view.size.x, view.origin.y + (1.0f - ratioY) * view.size.y};
         }
 
         // 画面ピクセルをカーブ座標へ戻す。今の使い手の入力域が 0..1 のため x はそこへ収める
         NS::Obj::Curve::Key ScreenToCurve(const CurveGraphView& view, ImVec2 pos) noexcept
         {
-            const float x = std::clamp((pos.x - view.origin.x) / view.size.x, 0.0f, 1.0f);
+            const float ratioX = std::clamp((pos.x - view.origin.x) / view.size.x, 0.0f, 1.0f);
             const float ratioY = 1.0f - (pos.y - view.origin.y) / view.size.y;
-            return NS::Obj::Curve::Key{x, view.yMin + ratioY * (view.yMax - view.yMin)};
+            return NS::Obj::Curve::Key{view.xMin + ratioX * (view.xMax - view.xMin),
+                                       view.yMin + ratioY * (view.yMax - view.yMin)};
         }
 
         // 昇格の初期値も表示も実際に効いている傾きから作る。ずれると掴んだ瞬間に形が飛ぶため
@@ -248,7 +270,7 @@ namespace NS::Editor
         // 接線の向きを画面座標へ写して一定の画面距離に置く。カーブ座標の距離だと棒の長さが暴れるため
         ImVec2 TangentHandleTip(const CurveGraphView& view, ImVec2 center, float slope, bool leftSide) noexcept
         {
-            float directionX = view.size.x;
+            float directionX = view.size.x / (view.xMax - view.xMin);
             float directionY = -slope * view.size.y / (view.yMax - view.yMin);
             if (leftSide)
             {
@@ -266,10 +288,11 @@ namespace NS::Editor
 
         float ScreenToTangent(const CurveGraphView& view, ImVec2 center, ImVec2 pos, bool leftSide) noexcept
         {
-            float deltaX = (pos.x - center.x) / view.size.x;
+            const float rangeX = view.xMax - view.xMin;
+            float deltaX = (pos.x - center.x) / view.size.x * rangeX;
             const float deltaY = (center.y - pos.y) / view.size.y * (view.yMax - view.yMin);
             // x の幅が 0 に近づくと傾きが発散するので、点の反対側へ回り込んでも符号ごと最小幅で止める
-            constexpr float k_MinDeltaX = 0.02f;
+            const float k_MinDeltaX = 0.02f * rangeX;
             if (leftSide)
             {
                 deltaX = std::min(deltaX, -k_MinDeltaX);
@@ -359,7 +382,7 @@ namespace NS::Editor
             {
                 // Evaluate は範囲の外を端の値で止めるので、見た目も両端まで水平に延ばす
                 const ImVec2 firstPoint = CurveToScreen(view, curve.keys[0].x, curve.keys[0].y);
-                drawList.AddLine(CurveToScreen(view, 0.0f, curve.keys[0].y), firstPoint, k_CurveLineColor, 2.0f);
+                drawList.AddLine(CurveToScreen(view, view.xMin, curve.keys[0].y), firstPoint, k_CurveLineColor, 2.0f);
                 for (std::uint32_t i = 0; i + 1 < curve.count; ++i)
                 {
                     const NS::Obj::Curve::Key& left = curve.keys[i];
@@ -387,7 +410,7 @@ namespace NS::Editor
                 }
                 const NS::Obj::Curve::Key& lastKey = curve.keys[curve.count - 1];
                 const ImVec2 lastPoint = CurveToScreen(view, lastKey.x, lastKey.y);
-                drawList.AddLine(lastPoint, CurveToScreen(view, 1.0f, lastKey.y), k_CurveLineColor, 2.0f);
+                drawList.AddLine(lastPoint, CurveToScreen(view, view.xMax, lastKey.y), k_CurveLineColor, 2.0f);
             }
 
             if (selected >= 0 && static_cast<std::uint32_t>(selected) < curve.count)
@@ -592,6 +615,7 @@ namespace NS::Editor
                 view.size = ImVec2{ImGui::CalcItemWidth(), k_CurveGraphHeight};
                 view.origin = ImGui::GetCursorScreenPos();
                 ComputeCurveYRange(value, view.yMin, view.yMax);
+                CurveGraphXRange(value, view.xMin, view.xMax);
 
                 // 右クリックのメニュー操作でも活性化と確定を拾うため、右ボタンも受ける
                 ImGui::InvisibleButton(
@@ -877,7 +901,10 @@ namespace NS::Editor
                             lastX = value.keys[value.count - 1].x;
                             lastY = value.keys[value.count - 1].y;
                         }
-                        value.keys[value.count] = NS::Obj::Curve::Key{lastX + 0.1f, lastY};
+                        float rangeMin = 0.0f;
+                        float rangeMax = 1.0f;
+                        CurveGraphXRange(value, rangeMin, rangeMax);
+                        value.keys[value.count] = NS::Obj::Curve::Key{lastX + 0.1f * (rangeMax - rangeMin), lastY};
                         ++value.count;
                         edited = true;
                     }

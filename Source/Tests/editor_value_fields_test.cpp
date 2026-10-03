@@ -1,5 +1,6 @@
 #include "Editor/InspectorReflection.h"
 #include "Game/Level/HitTimeline.h"
+#include "Runtime/Object/Reflection/Curve.h"
 
 #include <gtest/gtest.h>
 
@@ -89,4 +90,27 @@ TEST(EditorValueFields, DrawingAloneLeavesTheValue)
     EXPECT_FALSE(result.changed);
     EXPECT_EQ(result.changedField, nullptr);
     EXPECT_FLOAT_EQ(flash.alpha, 0.5f);
+}
+
+// 曲線のグラフの横軸。点が 0〜1 に収まる曲線は 0〜1 のまま、横軸がフレーム数の事象の曲線は点を全部含める
+TEST(EditorValueFields, CurveGraphCoversFrameCurves)
+{
+    NS::Obj::Curve unit;
+    unit.count = 2;
+    unit.keys[0] = NS::Obj::Curve::Key{0.0f, 0.0f};
+    unit.keys[1] = NS::Obj::Curve::Key{1.0f, 1.0f};
+    float low = -1.0f;
+    float high = -1.0f;
+    NS::Editor::CurveGraphXRange(unit, low, high);
+    EXPECT_FLOAT_EQ(low, 0.0f);
+    EXPECT_FLOAT_EQ(high, 1.0f);
+
+    NS::Obj::Curve frames;
+    frames.count = 3;
+    frames.keys[0] = NS::Obj::Curve::Key{-3.0f, 1.0f};
+    frames.keys[1] = NS::Obj::Curve::Key{0.0f, 0.7f};
+    frames.keys[2] = NS::Obj::Curve::Key{12.0f, 1.0f};
+    NS::Editor::CurveGraphXRange(frames, low, high);
+    EXPECT_LE(low, -3.0f);
+    EXPECT_GE(high, 12.0f);
 }
