@@ -98,7 +98,8 @@ namespace NS::Obj
         //! 水平の速さを 1 フレームに deceleration × dt ずつ減らし、ちょうど 0 で止める。縦は触らない
         void Decelerate(float deceleration, float dt) noexcept;
 
-        //! 縦速度へ重力を 1 フレームぶん当てる。値の選び分け (上昇 / 下降 / 頂点) は派生の仕事
+        //! 縦速度へ重力を 1 フレームぶん当てる。上り・下り・頂点の値を選ぶのは持ち主の Player
+        //! (PlayerParams::Gravity / ReboundGravity と ChooseGravity)
         void Gravity(float gravity, float dt) noexcept;
 
         //! JoltCharacter を 1 フレーム進め、位置・速度・接地を更新する

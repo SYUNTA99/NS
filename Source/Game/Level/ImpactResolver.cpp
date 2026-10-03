@@ -526,7 +526,7 @@ namespace NS::Game::Level
         m_player->CancelBodySlam();
 
         m_pendingTarget = m_observedTarget;
-        m_pendingTargetHome = answer.position;
+        m_pendingTargetPosition = answer.position;
         // 飛んでいる相手は食い込まない。どう応じるかは相手が決めるが、演出の大きさを選ぶのに答えを控える
         m_pendingTargetPlaced = answer.placed;
         m_pendingTier = tier;
@@ -606,7 +606,7 @@ namespace NS::Game::Level
         m_lastImpact.impactDir = m_pendingImpactDir;
         // 触れた点は記録とエディタの印だけが読む。段と威力を決めた判定の結果を使う
         m_lastImpact.surfacePoint = judgement.surfacePoint;
-        m_lastImpact.targetPos = m_pendingTargetHome;
+        m_lastImpact.targetPos = m_pendingTargetPosition;
         m_lastImpact.targetBottom = bounds.Center.y - bounds.Extents.y;
         m_lastImpact.targetMass = mass;
         m_lastImpact.targetPlaced = m_pendingTargetPlaced;
@@ -716,7 +716,7 @@ namespace NS::Game::Level
         m_pendingFlashSteps = returns.flashSteps;
         m_pendingShake = returns.shake;
         m_pendingShake.firstSideDirection = m_pendingReboundArc.direction;
-        m_pendingShake.seed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, m_pendingTargetHome);
+        m_pendingShake.seed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, m_pendingTargetPosition);
         // 寄りの無い段も倍率 1 の設定を渡し、前の当たりの寄りを残さない
         m_pendingZoomRoll = returns.zoomRoll;
         m_pendingZoomRoll.rollDirection = m_pendingImpactDir;

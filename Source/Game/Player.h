@@ -37,8 +37,9 @@ namespace NS::Game::Level
     class SlamArrow;
 } // namespace NS::Game::Level
 
-//! @brief プレイヤーキャラクタ。Model / Body / PlayerInput / Shadow の既定構成をコードで組む
-//! @details 部品名は Body が Movement、PlayerInput が Input。値はプレイヤーの種類の既定値と個体の上書きから写す。
+//! @brief プレイヤーキャラクタ。固定の部品をコードで組む
+//! @details 部品と部品名は ForEachPart が正。Body が Movement、PlayerInput が Input を名乗る。
+//! 値はプレイヤーの種類の既定値と個体の上書きから写す。
 //! 状態機械と命は Actor 自身が持ち、入力の窓口・移動の組み立て・崖つかまり・突進と反発とそれらの記録はここが持つ。
 //! 速度と接地の計算だけは身体の部品 (Body) へ任せる。状態の遷移の条件は PlayerJudges の判定を状態が呼ぶ
 //! 落下死やゴールは体のセンサーへ届く知らせで受け取り、コースの流れは進行役へ伝えるだけにする
@@ -491,8 +492,8 @@ private:
 [[nodiscard]] Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept;
 
 //! @brief プレイヤーの居ないレベルへ補う時と、凍結に自機が居ないやり直しで使う出現位置の既定
-//! @details 水平は原点。高さは仮定した床の上面にカプセルの半分の高さと半径と余白を足した中心の高さで、寸法は body の欄から引く
-//! 補う側 (エディタの EnsurePlayerObject) とやり直しの落ち先 (RestartFrom) が同じこの関数を読む
+//! @details 水平は原点。高さは仮定した床の上面にカプセルの半分の高さと半径と余白を足した中心の高さで、寸法は body
+//! の欄から引く 補う側 (エディタの EnsurePlayerObject) とやり直しの落ち先 (RestartFrom) が同じこの関数を読む
 //! @param[in] body 立たせる自機の身体。カプセルの寸法の持ち主
 //! @return カプセルの中心の world 位置
 [[nodiscard]] NS::Core::Vector3 DefaultSpawnPosition(const NS::Obj::Body& body) noexcept;
