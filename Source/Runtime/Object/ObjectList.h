@@ -96,8 +96,9 @@ namespace NS::Obj
         //! 別の配置物への参照はポインタで控えず、ActorRef で持って使うたびにここで引く
         [[nodiscard]] Actor* FindObject(ActorRef ref) noexcept;
 
-        //! 稼働中の collider を PhysicsScene へ body として入れ、broadphase を張り直す
+        //! 稼働中の collider に持ち主の Scene の PhysicsScene へ body を入れさせ、physics の broadphase を張り直す
         //! 稼働していない collider は body を外す。既存 body は同じ id のまま shape と姿勢を更新する
+        //! physics はこの並びを持つ Scene の物。collider は渡した物でなく、自分の持ち主の Scene へ入れる
         void SyncPhysics(NS::Phys::PhysicsScene& physics);
 
         //! 世界に出ている Actor として登録する。nullptr と登録済みは無視する。Actor が出る時に自分で呼ぶ

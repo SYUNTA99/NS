@@ -273,16 +273,16 @@ namespace NS::Obj
     {
         for (const std::unique_ptr<Actor>& actor : m_objects)
         {
-            actor->ForEachPart([&physics](std::string_view, Component& part) {
+            actor->ForEachPart([](std::string_view, Component& part) {
                 if (Collider* collider = ComponentCast<Collider>(&part))
                 {
                     if (collider->IsActive())
                     {
-                        collider->SyncToPhysics(physics);
+                        collider->SyncToPhysics();
                     }
                     else
                     {
-                        collider->RemoveFromPhysics(physics);
+                        collider->RemoveFromPhysics();
                     }
                 }
             });

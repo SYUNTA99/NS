@@ -3,6 +3,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/BodyEvents.h"
+#include "Runtime/Object/IUse/IUseCollision.h"
 #include "Runtime/Physics/JoltCharacter.h"
 
 #include <memory>
@@ -25,11 +26,12 @@ namespace NS::Obj
     //! 速度の横縦分解・接地・カプセル寸法の参照・1 フレームの移動だけを持ち、
     //! 能力も調整値も持たない。いつ何を呼ぶかは持ち主の Actor が決める。更新の入口 (OnUpdate) は持たない。
     //! TypeRegistry には登録しない。部品名は持ち主が ForEachPart で付ける。
-    //! 衝突の PhysicsScene は使う時に持ち主の Scene から引く。
+    //! IUseCollision を継ぎ、PhysicsScene は使う時に持ち主の Scene から引く。
+    //! 体の周りの地形は、この部品を渡して RaycastCollision・OverlapBoxCollision で問う。
     //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。
     //! dt は呼び手が引数で渡す。呼び手は固定ステップの秒を渡し、描画フレームの秒は渡さない
-    //! 依存: NS::Core, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Scene / CapsuleCollider
-    class Body : public NS::Obj::Component
+    //! 依存: NS::Core, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Actor / CapsuleCollider / IUseCollision
+    class Body : public NS::Obj::Component, public NS::Obj::IUseCollision
     {
     public:
         Body() noexcept;
@@ -60,8 +62,8 @@ namespace NS::Obj
         //! 球にしている間も変わらないので、立ち姿の寸法はここから引く
         [[nodiscard]] float StandingHalfHeight() const noexcept;
 
-        //! 持ち主の Scene の衝突の PhysicsScene。Scene に居なければ nullptr
-        [[nodiscard]] NS::Phys::PhysicsScene* ScenePhysics() const noexcept;
+        //! 持ち主の Scene の衝突の PhysicsScene。持ち主が無いか Scene に居なければ nullptr
+        [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
 
         //! @brief 水平の速度を direction へ加速し、向きからずれた成分を turningDrag で減らす。縦は触らない
         //! @details 向きの成分に acceleration × dt を足すのは、水平の速さが topSpeed

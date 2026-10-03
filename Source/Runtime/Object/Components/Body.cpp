@@ -4,7 +4,6 @@
 #include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Gravity.h"
-#include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/JoltCharacter.h"
 
@@ -113,13 +112,13 @@ namespace NS::Obj
         return Owner()->ColliderPart();
     }
 
-    NS::Phys::PhysicsScene* Body::ScenePhysics() const noexcept
+    NS::Phys::PhysicsScene* Body::GetPhysicsScene() const noexcept
     {
-        if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
+        if (Owner() == nullptr)
         {
             return nullptr;
         }
-        return &Owner()->OwningScene()->Physics();
+        return Owner()->GetPhysicsScene();
     }
 
     void Body::OnStart()
@@ -183,7 +182,7 @@ namespace NS::Obj
     void Body::Move(float dt, float maxStepHeight) noexcept
     {
         const NS::Core::Vector3 before = RootTransform().Position();
-        NS::Phys::PhysicsScene* physics = ScenePhysics();
+        NS::Phys::PhysicsScene* physics = GetPhysicsScene();
         if (physics == nullptr)
         {
             RootTransform().SetPosition(before + m_velocity * dt);

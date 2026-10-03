@@ -9,7 +9,6 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsScene.h"
 
 namespace NS::Obj
 {
@@ -105,17 +104,11 @@ namespace NS::Obj
         {
 			return;
         }
-        Scene* scene = owner->OwningScene();
-        if (scene == nullptr)
-        {
-			return;
-        }
-
         const NS::Core::Matrix ownerWorld = owner->Root().InterpolatedWorldMatrix(context.alpha);
         const NS::Core::Vector3 origin{ownerWorld._41, ownerWorld._42, ownerWorld._43};
 
         float dist = 0.0f;
-        if (!scene->Physics().Raycast(origin, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, m_maxDrop, dist))
+        if (!RaycastCollision(*owner, origin, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, m_maxDrop, dist))
         {
             return; // 真下 maxDrop 以内に地面が無ければ描かない
         }

@@ -241,35 +241,25 @@ void Player::UpdateBodySlam(float dt) noexcept
 
 namespace
 {
-    // 掴まりの走査で見る AABB 群。physics 未設定なら空を返し、掴めないだけにする
-    [[nodiscard]] std::vector<NS::Core::AABB> BoxesTouchingBand(const NS::Phys::PhysicsScene* physics,
+    // 掴まりの走査で見る AABB 群。体が Scene に居なければ空で、掴めないだけ
+    [[nodiscard]] std::vector<NS::Core::AABB> BoxesTouchingBand(const NS::Obj::IUseCollision& body,
                                                                 const NS::Core::Vector3& probe,
                                                                 float below,
                                                                 float above)
     {
-        if (physics == nullptr)
-        {
-            return {};
-        }
-
         NS::Core::AABB region;
         region.Center = NS::Core::Vector3{probe.x, probe.y + 0.5f * (above - below), probe.z};
         region.Extents = NS::Core::Vector3{0.0f, 0.5f * (above + below), 0.0f};
-        return physics->OverlapBox(region);
+        return NS::Obj::OverlapBoxCollision(body, region);
     }
 
-    [[nodiscard]] std::vector<NS::Core::AABB> BoxesAtPoint(const NS::Phys::PhysicsScene* physics,
+    [[nodiscard]] std::vector<NS::Core::AABB> BoxesAtPoint(const NS::Obj::IUseCollision& body,
                                                            const NS::Core::Vector3& point)
     {
-        if (physics == nullptr)
-        {
-            return {};
-        }
-
         NS::Core::AABB region;
         region.Center = point;
         region.Extents = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-        return physics->OverlapBox(region);
+        return NS::Obj::OverlapBoxCollision(body, region);
     }
 
     [[nodiscard]] bool AABBContainsPoint(const NS::Core::AABB& box, const NS::Core::Vector3& p) noexcept
@@ -311,7 +301,7 @@ bool Player::LedgeGrab() noexcept
     // 帯の上は今フレーム動いた距離まで。速く落ちると 1 フレームで縁の上端を通り過ぎて掴み損ねる
     const float above = m_lastMoveDistance;
     for (const NS::Core::AABB& box :
-         BoxesTouchingBand(body.ScenePhysics(), probe, m_params->m_ledgeGrabBelowHand, above))
+         BoxesTouchingBand(body, probe, m_params->m_ledgeGrabBelowHand, above))
     {
         const float top = box.Center.y + box.Extents.y;
         if (!NS::Game::Player::PlayerJudgeLedgeGrab::InBand(probe, box, m_params->m_ledgeGrabBelowHand, above))
@@ -356,7 +346,7 @@ bool Player::LedgeGrab() noexcept
             hang.z - faceNormal.z * mantleStep,
         };
         bool blocked = false;
-        for (const NS::Core::AABB& other : BoxesAtPoint(body.ScenePhysics(), mantleCheck))
+        for (const NS::Core::AABB& other : BoxesAtPoint(body, mantleCheck))
         {
             if (AABBContainsPoint(other, mantleCheck))
             {
@@ -514,7 +504,7 @@ bool Player::FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) con
     };
 
     for (const NS::Core::AABB& box :
-         BoxesTouchingBand(body.ScenePhysics(), probe, m_params->m_ledgeGrabBelowHand, 0.0f))
+         BoxesTouchingBand(body, probe, m_params->m_ledgeGrabBelowHand, 0.0f))
     {
         const float top = box.Center.y + box.Extents.y;
         if (top < handY - m_params->m_ledgeGrabBelowHand || top > handY)
@@ -538,7 +528,7 @@ bool Player::FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) con
             hangPos.z - m_ledgeFaceNormal.z * mantleStep,
         };
         bool blocked = false;
-        for (const NS::Core::AABB& other : BoxesAtPoint(body.ScenePhysics(), mantleCheck))
+        for (const NS::Core::AABB& other : BoxesAtPoint(body, mantleCheck))
         {
             if (AABBContainsPoint(other, mantleCheck))
             {

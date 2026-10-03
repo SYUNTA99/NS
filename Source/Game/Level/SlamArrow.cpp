@@ -15,7 +15,6 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsScene.h"
 #include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
@@ -517,12 +516,13 @@ namespace NS::Game::Level
             return;
         }
         SlamArrowGroundProbe probe;
-        if (const NS::Obj::Scene* scene = Owner()->OwningScene())
+        const NS::Obj::Actor* owner = Owner();
+        // Scene に居なければ probe は空のまま。空の probe は床を見ない合図
+        if (owner->OwningScene() != nullptr)
         {
-            const NS::Phys::PhysicsScene& physics = scene->Physics();
-            probe = [&physics](const NS::Core::Vector3& from, float maxDepth, float& outGroundY) {
+            probe = [owner](const NS::Core::Vector3& from, float maxDepth, float& outGroundY) {
                 float distance = 0.0f;
-                if (!physics.Raycast(from, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
+                if (!NS::Obj::RaycastCollision(*owner, from, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
                 {
                     return false;
                 }

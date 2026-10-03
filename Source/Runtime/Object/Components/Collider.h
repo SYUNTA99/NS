@@ -22,17 +22,16 @@ namespace NS::Obj
     class Collider : public Component
     {
     public:
-        //! world 座標の当たりを body 1 個として physics へ入れる。入れた body があれば置き直す
-        //! 何も入れない形状もある。持ち主が Scene に居ない時と、持ち主の Scene 以外の PhysicsScene を
-        //! 渡された時は、エラーを出して受け取らない
-        void SyncToPhysics(NS::Phys::PhysicsScene& physics);
+        //! world 座標の当たりを body 1 個として持ち主の Scene の PhysicsScene へ入れる。入れた body があれば置き直す
+        //! 何も入れない形状もある。持ち主が Scene に居なければ何もしない
+        void SyncToPhysics();
 
         //! 当たりの body の id。何も入れなかった形状では無効
         [[nodiscard]] JPH::BodyID BodyId() const noexcept { return m_bodyId; }
 
-        //! 自分が入れた body を physics から外す。入れていなければ何もしない
-        //! 受け取る条件は SyncToPhysics と同じ
-        void RemoveFromPhysics(NS::Phys::PhysicsScene& physics);
+        //! 自分が入れた body を持ち主の Scene の PhysicsScene から外す。入れていなければ何もしない
+        //! 持ち主が Scene に居なければ何もせず、id も持ったまま
+        void RemoveFromPhysics();
 
         //! 配置物ごと消える前に、持ち主の Scene の PhysicsScene から自分の body を外す
         //! body を持ったまま Scene に居なければ外す先が分からないので、エラーを出して id だけ手放す
@@ -45,14 +44,10 @@ namespace NS::Obj
     private:
         // current の body を自分の形と姿勢へ置き直した id を返す
         // current が無効なら新しく作る。入れない形状は無効を返す
-        // 外から呼べると PhysicsScene の確かめを飛ばせるので private にし、SyncToPhysics だけが呼ぶ
+        // 外から別の PhysicsScene を渡されると、覚えている id がどの PhysicsScene の物か言えなくなる
+        // 別の PhysicsScene は同じ index と使い回し回数を配るので、無関係の body を作り変える
+        // private にし、持ち主の Scene の PhysicsScene を引いた SyncToPhysics だけが呼ぶ
         [[nodiscard]] virtual JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) = 0;
-        // 持ち主の Scene の PhysicsScene。Scene に居なければ null
-        [[nodiscard]] NS::Phys::PhysicsScene* ScenePhysics() const noexcept;
-        // 受け取るのは持ち主の Scene の PhysicsScene だけ。Scene に居ない持ち主も断る
-        // 断らないと、覚えている id がどの PhysicsScene の物か言えなくなる。別の PhysicsScene は
-        // 同じ index と使い回し回数を配るので、無関係の body を作り変える
-        [[nodiscard]] bool AcceptsScenePhysics(const NS::Phys::PhysicsScene& physics) const;
 
         JPH::BodyID m_bodyId;
     };
