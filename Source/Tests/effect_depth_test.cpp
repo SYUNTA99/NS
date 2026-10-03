@@ -2,14 +2,13 @@
 #include "Runtime/Graphics/EffectScene.h"
 #include "Runtime/Graphics/GraphicObject.h"
 #include "Runtime/Graphics/Texture.h"
+#include "TestEffectFiles.h"
 
 #include <gtest/gtest.h>
 
 #include <d3d11.h>
 #include <wrl/client.h>
 
-#include <fstream>
-#include <iterator>
 #include <memory>
 #include <vector>
 
@@ -169,44 +168,32 @@ TEST(EffectDepth, UnreadableDepthFallsBackToDrawingWithoutIt)
 
 namespace
 {
-    // 絵の節を深さ優先で回り、柔らかい粒の Far の距離が 0 でない節を数える
-    int CountSoftNodes(Effekseer::EffectNode* node)
-    {
-        int count = 0;
-        if (node->GetBasicRenderParameter().SoftParticleDistanceFar > 0.0f)
-        {
-            ++count;
-        }
-        for (int i = 0; i < node->GetChildrenCount(); ++i)
-        {
-            count += CountSoftNodes(node->GetChild(i));
-        }
-        return count;
-    }
-
+    // 柔らかい粒の Far の距離が 0 でない節を数える
     int CountSoftNodesIn(const char* path)
     {
-        std::ifstream file(path, std::ios::binary);
-        const std::vector<char> bytes{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
-        if (bytes.empty())
-        {
-            return -1;
-        }
-        const Effekseer::SettingRef setting = Effekseer::Setting::Create();
-        const Effekseer::EffectRef effect =
-            Effekseer::Effect::Create(setting, bytes.data(), static_cast<int32_t>(bytes.size()));
+        const Effekseer::EffectRef effect = LoadEffectFile(path);
         if (effect == nullptr)
         {
             return -1;
         }
-        return CountSoftNodes(effect->GetRoot());
+        std::vector<Effekseer::EffectNode*> nodes;
+        CollectEffectNodesInDrawOrder(effect->GetRoot(), nodes);
+        int count = 0;
+        for (Effekseer::EffectNode* node : nodes)
+        {
+            if (node->GetBasicRenderParameter().SoftParticleDistanceFar > 0.0f)
+            {
+                ++count;
+            }
+        }
+        return count;
     }
 } // namespace
 
 // 柔らかく消す欄を入れた節は、書き出した絵でも Far の距離が 0 でない。綴りを誤ると黙って 0 のまま組まれる
 TEST(EffectDepth, ShippedChargeLayersCarryTheSoftParticleDistance)
 {
-    EXPECT_EQ(CountSoftNodesIn("Assets/Effects/charge.gather.efkefc"), 14);
+    EXPECT_EQ(CountSoftNodesIn("Assets/Effects/charge.gather.efkefc"), 21);
     EXPECT_EQ(CountSoftNodesIn("Assets/Effects/charge.curl.efkefc"), 2);
     EXPECT_EQ(CountSoftNodesIn("Assets/Effects/charge.full.efkefc"), 2);
     // 床に寝かせた照りには入れない。全面が床と同じ面で丸ごと消える

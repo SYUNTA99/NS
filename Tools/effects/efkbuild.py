@@ -205,7 +205,7 @@ def contact_sheet(frames_dir, sheet_path, columns=8, cell=160):
     return sheet_path
 
 
-def build_one(name, tool, efkxml, definitions, assets, out, frames, probe):
+def build_one(name, tool, efkxml, definitions, assets, out, frames, probe, probe_options=()):
     print(f"==== {name}")
     definition = definitions.get(name)
     if definition is None:
@@ -237,7 +237,7 @@ def build_one(name, tool, efkxml, definitions, assets, out, frames, probe):
         print(f"失敗: efkprobe が無い ({EFKPROBE})。Tools/@build_effects.cmd で組む")
         return False
     frames_dir = out / "frames" / name
-    code, text = run([EFKPROBE, target, frames_dir, "--frames", str(frames)])
+    code, text = run([EFKPROBE, target, frames_dir, "--frames", str(frames), *probe_options])
     print(text.rstrip())
     if code != 0:
         return False
@@ -266,7 +266,15 @@ def main():
     parser.add_argument("--install", action="store_true")
     # 試し用の絵 (test_defs/) は Source/Tests/data/effects/ へ置く。既定の Assets/Effects/ は出荷の絵だけ
     parser.add_argument("--install-dir", default=str(INSTALL_DESTINATION))
+    # efkprobe へそのまま渡す。背景は 0..1 の r,g,b、動的入力は 番号=値 で何度でも書ける
+    parser.add_argument("--bg")
+    parser.add_argument("--input", action="append", default=[])
     args = parser.parse_args()
+    probe_options = []
+    if args.bg:
+        probe_options += ["--bg", args.bg]
+    for value in args.input:
+        probe_options += ["--input", value]
 
     tool, problem = find_tool()
     if tool is None:
@@ -293,7 +301,7 @@ def main():
         print(f"失敗: 定義のフォルダと組のフォルダに .efkproj が 1 本も無い: {defs}")
         return 1
     failed = [n for n in names
-              if not build_one(n, tool, efkxml, definitions, assets, out, args.frames, not args.no_probe)]
+              if not build_one(n, tool, efkxml, definitions, assets, out, args.frames, not args.no_probe, probe_options)]
     print(f"==== 結果: {len(names) - len(failed)} / {len(names)} 本が通った")
     if failed:
         print("通らなかった: " + ", ".join(failed))
