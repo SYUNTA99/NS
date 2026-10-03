@@ -837,15 +837,15 @@ TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
 }
 
 // 上下のずれも段に効く。赤の既定 0.43 に対し、玉の中心が相手の中心より 0.5 m 低い線は 0.5 ÷ 1.15 ≒ 0.435 で外
-// 溜め 0 のタップは上向きの初速で 1 ステップぶん上がって赤へ入るので、縦の速さの無い突進で見る
+// 溜め 0 のタップは上向きの初速で 1 ステップぶん上がって赤へ入るので、縦の速さ 0 を添えた溜めた突進で見る
 TEST(HitZonesTest, VerdictMissesWhenTheLinePassesBelowTheRed)
 {
     NS::Obj::Scene scene;
     Player* player = PlaceSlamTarget(scene, nlohmann::json::object(), 1.0f);
     ASSERT_NE(player, nullptr);
-    player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, Vector3{0.0f, 0.0f, 1.0f}, 0.0f);
     ASSERT_TRUE(player->BodySlam());
-    player->Resolver().ObserveImpact(Vector3{0.0f, 0.0f, 6.0f});
+    player->Resolver().ObserveImpact();
     player->Resolver().StepState();
     const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
     ASSERT_EQ(impact.sequence, 1u);
@@ -862,11 +862,11 @@ TEST(HitZonesTest, VerdictJudgesTheBallWhereThisStepMovesIt)
     NS::Obj::Scene scene;
     Player* player = PlaceSlamTarget(scene, nlohmann::json::object(), 1.0f);
     ASSERT_NE(player, nullptr);
-    player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->BodySlam());
-
     const float riseSpeed = 0.15f / NS::Platform::FrameTimer::FixedDelta();
-    player->Resolver().ObserveImpact(Vector3{0.0f, riseSpeed, 6.0f});
+    player->RequestBodySlam(1.0f, Vector3{0.0f, 0.0f, 1.0f}, riseSpeed);
+    ASSERT_TRUE(player->BodySlam());
+    ASSERT_FLOAT_EQ(player->BodySlamVelocity().y, riseSpeed);
+    player->Resolver().ObserveImpact();
     player->Resolver().StepState();
     const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
     ASSERT_EQ(impact.sequence, 1u);

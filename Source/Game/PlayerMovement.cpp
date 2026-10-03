@@ -210,10 +210,10 @@ void Player::UpdateBodySlam(float dt) noexcept
 {
     NS::Obj::Body& body = *m_body;
     // 突進中に向きを変えられると当てる間合いを詰める意味が消えるので、水平は発動時の値で書き直す
+    // 書き手はここだけで、壁に押し付けられて潰れた水平も次のフレームで戻る
     if (!m_slam.isTap)
     {
-        body.SetLateralVelocity(NS::Core::Vector3{
-            m_slam.dir.x * m_params->m_bodySlamSpeed, 0.0f, m_slam.dir.z * m_params->m_bodySlamSpeed});
+        body.SetLateralVelocity(BodySlamVelocity());
     }
 
     if (m_slam.isTap)
@@ -290,8 +290,7 @@ bool Player::LedgeGrab() noexcept
 
     // 帯の上は今フレーム動いた距離まで。速く落ちると 1 フレームで縁の上端を通り過ぎて掴み損ねる
     const float above = m_lastMoveDistance;
-    for (const NS::Core::AABB& box :
-         BoxesTouchingBand(body, probe, m_params->m_ledgeGrabBelowHand, above))
+    for (const NS::Core::AABB& box : BoxesTouchingBand(body, probe, m_params->m_ledgeGrabBelowHand, above))
     {
         const float top = box.Center.y + box.Extents.y;
         if (!NS::Game::Player::PlayerJudgeLedgeGrab::InBand(probe, box, m_params->m_ledgeGrabBelowHand, above))
@@ -493,8 +492,7 @@ bool Player::FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) con
         hangPos.z + inward.z * (body.CapsuleRadius() + m_params->m_ledgeReach),
     };
 
-    for (const NS::Core::AABB& box :
-         BoxesTouchingBand(body, probe, m_params->m_ledgeGrabBelowHand, 0.0f))
+    for (const NS::Core::AABB& box : BoxesTouchingBand(body, probe, m_params->m_ledgeGrabBelowHand, 0.0f))
     {
         const float top = box.Center.y + box.Extents.y;
         if (top < handY - m_params->m_ledgeGrabBelowHand || top > handY)

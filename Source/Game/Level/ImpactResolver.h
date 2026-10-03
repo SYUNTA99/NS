@@ -116,10 +116,11 @@ namespace NS::Game::Level
         void OnUpdate() override;
         //! @brief 次の固定ステップで重なる相手を探し、MsgAskTackleTarget に応じた相手と答えを控える
         //! @details 突進中でない時、止めの最中と止めの頭を待つ間は探さない。
-        //! 控えた相手は StepState が 1 回だけ使う
-        //! @param[in] predictedVelocity 次の固定ステップの自機の速度の見込み。
-        //! 重なりを探す位置と、向かっているかの判定に使う
-        void ObserveImpact(const NS::Core::Vector3& predictedVelocity);
+        //! 控えた相手は StepState が 1 回だけ使う。
+        //! 重なりを探す位置と向かっているかの判定は、次の固定ステップの自機の速度の見込みで見る。
+        //! 見込みは持ち主の Player::BodySlamVelocity を読む。身体の実速度は壁へ押し付けられたフレームで 0 に潰れ、
+        //! 今の位置から先を探せなくなるので使わない
+        void ObserveImpact();
         //! @brief 止めと戻りを 1 フレーム進め、ObserveImpact が控えた相手へ向かっていれば衝突の結果を決める
         //! @details ObserveImpact の後に 1 回だけ効き、2 回目は何もしない。
         //! 止めの最中は止めを数え、明けで相手へ放しを送る
@@ -162,8 +163,9 @@ namespace NS::Game::Level
 
         //! @brief 突進の線で最初に触れる相手を探す
         //! @details 相手はプレイヤーの体当たりが調べる種類の、有効な体のセンサーを持つ物で、裁定と同じ絞り。
-        //! 自機の当たりの玉 (Player::SlamBallAt。丸まっていれば根の位置、立ち姿なら下の球の位置が中心で、半径は自機の半径) を
-        //! direction の水平へ maxDistance 掃き、当たりの裁定と同じく相手の体のセンサーの形に触れるかを見る。
+        //! 自機の当たりの玉
+        //! (Player::SlamBallAt。丸まっていれば根の位置、立ち姿なら下の球の位置が中心で、半径は自機の半径) を direction
+        //! の水平へ maxDistance 掃き、当たりの裁定と同じく相手の体のセンサーの形に触れるかを見る。
         //! 線から相手の外接箱の中心までの横ずれが、外接箱を線に直交する軸へ投影した半幅と自機の半径の和以内で、
         //! 中心までの線に沿った距離が 0 より大きく、掃いた玉が触れる相手のうち、玉が触れるまでに進む距離が一番短い
         //! 1 体を選ぶ。選んだ相手には MsgAskTackleTarget で面を問い、段と横ずれを裁定と同じ JudgeHitFaceOrWide で出す。

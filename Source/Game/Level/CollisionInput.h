@@ -46,7 +46,6 @@ namespace NS::Game::Level
         //! 押している間はカメラの正面の線で狙う相手を探して控える
         void OnUpdate() override;
         //! @brief Observe・AdvanceState・ApplyControl を続けて呼び、判定を 1 フレーム進める
-        //! @details 突進の向きで移動の速度を書き直さない
         //! @param[in] held ボタンを押しているか
         //! @param[in] dt 進める秒
         void Step(bool held, float dt);
@@ -54,22 +53,18 @@ namespace NS::Game::Level
         //! @details マウス左は、ゲームがマウスのボタンを受け取っている間だけ数える
         //! @return どちらかを押している場合 true、それ以外の場合は false
         [[nodiscard]] bool ReadHeld() const;
-        //! @brief このフレームの押しと突進中かを控え、狙う相手を探す
-        //! @details 控えた値は AdvanceState と ApplyControl が 1 回ずつ使う
+        //! @brief このフレームの押しを控え、狙う相手を探す
+        //! @details 控えた押しは AdvanceState が 1 回使う。AdvanceState と ApplyControl は Observe ごとに 1 回ずつ効く
         //! @param[in] held ボタンを押しているか
         void Observe(bool held);
         //! @brief Observe で控えた押しで溜めを 1 フレーム進める
         //! @details 溜めを進める呼び手はこの 1 か所。Observe の後に 1 回だけ効き、2 回目は何もしない
         //! @param[in] dt 進める秒
         void AdvanceState(float dt);
-        //! @brief 突進中なら突進の向きと突進速度で移動の水平の速度を書き直し、溜めの輪を描く
-        //! @details AdvanceState の後に 1 回だけ効き、AdvanceState より先に呼んだ時と 2 回目は何もしない
-        //! @param[in] refreshVelocity 突進の向きを移動の速度へ入れ直すか。移動が休止中なら入れ直さない
-        void ApplyControl(bool refreshVelocity = true);
-        //! @brief 次の固定ステップの突進の速度を見込みで返す
-        //! @details Player::BodySlamVelocity と同じ。突進の向きは放した後に変わらない
-        //! @return 見込みの速度。同じ配置物に移動が無ければ 0
-        [[nodiscard]] NS::Core::Vector3 PredictedSlamVelocity() const noexcept;
+        //! @brief 溜めている間の輪を描く
+        //! @details AdvanceState の後に 1 回だけ効き、AdvanceState より先に呼んだ時と 2 回目は何もしない。
+        //! 速度は書かない。突進の水平の書き手は Player::UpdateBodySlam
+        void ApplyControl();
 
         //! 構えの縮みが残っていれば元の形へ戻し、自機へ渡した押しの印を戻して丸まりを解く
         void OnEndPlay() override;
@@ -133,7 +128,6 @@ namespace NS::Game::Level
         SlamLineTarget m_observedAimTarget{};
         bool m_observedHasAimLine = false;
         bool m_observedHasAimTarget = false;
-        bool m_observedRushing = false;
         bool m_observedHeld = false;
         bool m_stateReady = false;
         bool m_controlReady = false;

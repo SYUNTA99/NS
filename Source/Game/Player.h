@@ -174,7 +174,8 @@ public:
     //! @brief 反動の間、入力の向きへ反動中の空中の加速度で加速する。入力が無ければ何もしない
     //! @details 接地の印に依らずこの加速度を使い、入力の向きからずれた速度は減らさない
     void AccelerateDuringRebound(float dt) noexcept;
-    //! 突進の 1 フレームを進める。溜めた突進は水平を発動時の向きと速さで書き直し、重力を当てる
+    //! @brief 突進の 1 フレームを進める。溜めた突進は水平を BodySlamVelocity で書き直し、重力を当てる
+    //! @details 突進の間の水平の書き手はここだけ
     void UpdateBodySlam(float dt) noexcept;
 
     // 崖つかまり。縁の検出・つかまり・登り
@@ -215,11 +216,11 @@ public:
     void RequestBodySlam(float charge01,
                          const NS::Core::Vector3& aimDirection,
                          float launchVerticalSpeed = 0.0f) noexcept;
-    //! @brief 衝突の裁定と玉の回転が読む速度。突進中は向きと突進速度から作る
-    //! @details 実速度は壁へ押し付けられたフレームで 0 に潰れ、衝突の先読みが今の位置から動かなくなる
+    //! @brief 突進の速度を返す。突進中は発動時の向きと BodySlamSpeed から作り、縦は身体の今の値
+    //! @details 衝突の裁定と玉の回転が読み、溜めた突進の間は UpdateBodySlam がこの水平で身体を書き直す。
+    //! 実速度は壁へ押し付けられたフレームで 0 に潰れ、衝突の先読みが今の位置から動かなくなる
+    //! @return 突進中は突進の速度、それ以外は身体の速度
     [[nodiscard]] NS::Core::Vector3 BodySlamVelocity() const noexcept;
-    //! 突進の向きと突進速度で、水平の速度を書き直す。溜めた突進の間だけ効く
-    void ApplyBodySlamHeading() noexcept;
     //! 突進を打ち切って通常移動へ戻す。突進中でなければ何もしない
     void CancelBodySlam() noexcept;
     //! @brief 向きを解決して突進を始める
@@ -295,7 +296,7 @@ protected:
     void DecideStep() override;
     //! 突進の発動、状態機械の 1 歩、丸まりの解除と押下の消費。身体が止まっている間は押下の消費だけ
     void StateStep() override;
-    //! 突進の水平の速度の書き直し (CollisionInput::ApplyControl) の後に身体を動かす
+    //! 溜めの輪を描き (CollisionInput::ApplyControl)、身体を動かす
     void BodyStep() override;
     //! クリップの選択、TargetMarker、SlamArrow、HitReaction、PlayerAppearance、ChargeEffects、ImpactEffects の順
     void VisualStep() override;
@@ -349,6 +350,10 @@ private:
     void EndBodySlam() noexcept;
     //! 控えた狙いを今の向きにどれだけ混ぜるか 0..1。巻き戻し秒までは 1、消える秒で 0
     [[nodiscard]] float BodySlamAimBlend01() const noexcept;
+    //! @brief 突進の水平の速さ (m/s) を返す
+    //! @details 発動の初速 (BodySlam) と突進の速度 (BodySlamVelocity) がこれを読む。速さの式はここ 1 か所
+    //! @return タップの飛び込みは欄「タップ初速」、溜めた突進は欄「突進速度」
+    [[nodiscard]] float BodySlamSpeed() const noexcept;
     //! @brief 丸まりを入れるか解き、当たりの形と根の高さを一緒に切り替える
     //! @details 丸まると当たりを球にして根を立ち姿の半長ぶん下げる。
     //! 解くと立ち姿へ戻して、その時の立ち姿の半長ぶん上げる。当たりの下端 (中心 − 半長 − 半径) は動かない。

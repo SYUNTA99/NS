@@ -188,12 +188,7 @@ void Player::ObserveStep()
     }
     if (m_resolver->IsActive())
     {
-        NS::Core::Vector3 predicted = BodySlamVelocity();
-        if (m_collisionInput->IsActive())
-        {
-            predicted = m_collisionInput->PredictedSlamVelocity();
-        }
-        m_resolver->ObserveImpact(predicted);
+        m_resolver->ObserveImpact();
     }
 }
 

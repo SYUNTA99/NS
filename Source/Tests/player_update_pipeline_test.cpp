@@ -67,7 +67,7 @@ TEST(PlayerUpdatePipeline, ObservationDoesNotAdvanceChargeOrMoveThePlayer)
     const NS::Core::Vector3 position = player->Root().Position();
     const NS::Core::Vector3 velocity = player->Body().Velocity();
     player->ChargeControl().Observe(true);
-    player->Resolver().ObserveImpact(player->ChargeControl().PredictedSlamVelocity());
+    player->Resolver().ObserveImpact();
     EXPECT_FALSE(player->ChargeControl().Judge().IsHeld());
     EXPECT_FALSE(player->IsCurled());
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
@@ -101,21 +101,32 @@ TEST(PlayerUpdatePipeline, SlamHeadingStaysOnTheAimBesideAnOffAxisTarget)
     player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
     const NS::Core::Vector3 before = player->BodySlamVelocity();
-    player->ChargeControl().Observe(false);
-    const NS::Core::Vector3 predicted = player->ChargeControl().PredictedSlamVelocity();
-    ExpectSameVector(predicted, before);
-    ExpectSameVector(player->BodySlamVelocity(), before);
-    player->ChargeControl().AdvanceState(NS::Platform::FrameTimer::FixedDelta());
-    player->States().Step(NS::Platform::FrameTimer::FixedDelta());
-    EXPECT_FLOAT_EQ(player->BodySlamVelocity().x, before.x);
-    const float vertical = player->Body().VerticalVelocity();
-    player->ChargeControl().ApplyControl();
-    EXPECT_NEAR(player->Body().Velocity().x, predicted.x, 0.00001f);
-    EXPECT_NEAR(player->Body().Velocity().z, predicted.z, 0.00001f);
-    EXPECT_FLOAT_EQ(player->Body().VerticalVelocity(), vertical);
-    const NS::Core::Vector3 once = player->BodySlamVelocity();
-    player->ChargeControl().ApplyControl();
-    ExpectSameVector(player->BodySlamVelocity(), once);
+    for (int frame = 0; frame < 2; ++frame)
+    {
+        SCOPED_TRACE(frame);
+        player->Update(false);
+        ASSERT_TRUE(player->IsBodySlamming());
+        EXPECT_NEAR(player->Body().Velocity().x, before.x, 0.00001f);
+        EXPECT_NEAR(player->Body().Velocity().z, before.z, 0.00001f);
+    }
+}
+
+// 溜めた突進の水平の書き手は突進の状態 1 つ。壁に押し付けられて水平が 0
+// に潰れても、次のフレームに発動時の向きと速さへ戻る
+TEST(PlayerUpdatePipeline, SquashedSlamRegainsItsHeadingFromTheState)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 40.0f);
+    ASSERT_NE(player, nullptr);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    player->Body().SetLateralVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+    player->Update(false);
+    ASSERT_TRUE(player->IsBodySlamming());
+    const NS::Core::Vector3 expected = player->BodySlamVelocity();
+    EXPECT_GT(expected.z, 0.0f);
+    EXPECT_NEAR(player->Body().Velocity().x, expected.x, 0.00001f);
+    EXPECT_NEAR(player->Body().Velocity().z, expected.z, 0.00001f);
 }
 
 TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyChargeImpactFreezeAndReleaseFrames)
@@ -178,14 +189,14 @@ TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    player->Resolver().ObserveImpact(player->BodySlamVelocity());
+    player->Resolver().ObserveImpact();
     player->Resolver().StepState();
     ASSERT_EQ(player->Resolver().LastImpact().sequence, 1u);
     ASSERT_FALSE(player->Resolver().FreezeBeganThisStep());
     player->Resolver().StepState();
     EXPECT_FALSE(player->Resolver().FreezeBeganThisStep());
     EXPECT_TRUE(player->Body().IsActive());
-    player->Resolver().ObserveImpact(player->BodySlamVelocity());
+    player->Resolver().ObserveImpact();
     player->Resolver().StepState();
     EXPECT_TRUE(player->Resolver().FreezeBeganThisStep());
     EXPECT_FALSE(player->Body().IsActive());
@@ -198,7 +209,7 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    player->Resolver().ObserveImpact(player->BodySlamVelocity());
+    player->Resolver().ObserveImpact();
     scene.Objects().RemoveByObjectId(2);
     player->Resolver().StepState();
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);

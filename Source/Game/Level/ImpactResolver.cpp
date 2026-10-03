@@ -369,16 +369,11 @@ namespace NS::Game::Level
 
     void ImpactResolver::OnUpdate()
     {
-        NS::Core::Vector3 velocity{};
-        if (m_body != nullptr)
-        {
-            velocity = m_player->BodySlamVelocity();
-        }
-        ObserveImpact(velocity);
+        ObserveImpact();
         StepState();
     }
 
-    void ImpactResolver::ObserveImpact(const NS::Core::Vector3& predictedVelocity)
+    void ImpactResolver::ObserveImpact()
     {
         m_stateReady = true;
         m_hasObservedTarget = false;
@@ -386,6 +381,7 @@ namespace NS::Game::Level
         {
             return;
         }
+        const NS::Core::Vector3 predictedVelocity = m_player->BodySlamVelocity();
         NS::Obj::HitSensor* hit = FindOverlapped(predictedVelocity);
         if (hit == nullptr || hit->Owner() == nullptr)
         {

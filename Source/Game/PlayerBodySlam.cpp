@@ -57,6 +57,15 @@ void Player::RequestBodySlam(float charge01, const NS::Core::Vector3& aimDirecti
     }
 }
 
+float Player::BodySlamSpeed() const noexcept
+{
+    if (m_slam.isTap)
+    {
+        return m_params->m_tapSlamSpeed;
+    }
+    return m_params->m_bodySlamSpeed;
+}
+
 NS::Core::Vector3 Player::BodySlamVelocity() const noexcept
 {
     const NS::Obj::Body& body = *m_body;
@@ -65,11 +74,7 @@ NS::Core::Vector3 Player::BodySlamVelocity() const noexcept
         return body.Velocity();
     }
 
-    float speed = m_params->m_bodySlamSpeed;
-    if (m_slam.isTap)
-    {
-        speed = m_params->m_tapSlamSpeed;
-    }
+    const float speed = BodySlamSpeed();
     return NS::Core::Vector3{m_slam.dir.x * speed, body.VerticalVelocity(), m_slam.dir.z * speed};
 }
 
@@ -224,12 +229,12 @@ bool Player::BodySlam() noexcept
     m_slam.isTap = !(m_request.charge01 > 0.0f);
     m_slam.travelled = 0.0f;
     m_slam.justStarted = true;
+    const float speed = BodySlamSpeed();
 
     if (m_slam.isTap)
     {
         m_slam.distanceTarget = m_params->m_tapSlamDistance;
-        body.SetVelocity(NS::Core::Vector3{
-            dir.x * m_params->m_tapSlamSpeed, m_params->m_tapSlamUpSpeed, dir.z * m_params->m_tapSlamSpeed});
+        body.SetVelocity(NS::Core::Vector3{dir.x * speed, m_params->m_tapSlamUpSpeed, dir.z * speed});
     }
     else
     {
@@ -241,8 +246,7 @@ bool Player::BodySlam() noexcept
         {
             vertical = m_request.verticalSpeed;
         }
-        body.SetVelocity(
-            NS::Core::Vector3{dir.x * m_params->m_bodySlamSpeed, vertical, dir.z * m_params->m_bodySlamSpeed});
+        body.SetVelocity(NS::Core::Vector3{dir.x * speed, vertical, dir.z * speed});
     }
 
     // 距離が 0 以下だと 1 フレーム目で終わって発動が消えるため、出さずに通常移動のままにする
@@ -262,16 +266,6 @@ bool Player::BodySlam() noexcept
     (void)m_states->Change<NS::Game::Player::BodySlamPlayerState>();
     m_playerEvents.onBodySlamStarted.Invoke();
     return true;
-}
-
-void Player::ApplyBodySlamHeading() noexcept
-{
-    NS::Obj::Body& body = *m_body;
-    if (IsBodySlamming() && !m_slam.isTap)
-    {
-        body.SetLateralVelocity(NS::Core::Vector3{
-            m_slam.dir.x * m_params->m_bodySlamSpeed, 0.0f, m_slam.dir.z * m_params->m_bodySlamSpeed});
-    }
 }
 
 bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept

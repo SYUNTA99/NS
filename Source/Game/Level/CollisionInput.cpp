@@ -97,19 +97,9 @@ namespace NS::Game::Level
     void CollisionInput::Observe(bool held)
     {
         m_observedHeld = held;
-        m_observedRushing = m_body != nullptr && m_player->IsBodySlamming();
         m_stateReady = true;
         m_controlReady = true;
         UpdateAimTarget(held);
-    }
-
-    NS::Core::Vector3 CollisionInput::PredictedSlamVelocity() const noexcept
-    {
-        if (m_body == nullptr)
-        {
-            return NS::Core::Vector3{};
-        }
-        return m_player->BodySlamVelocity();
     }
 
     void CollisionInput::AdvanceState(float dt)
@@ -122,18 +112,13 @@ namespace NS::Game::Level
         AdvanceCharge(m_observedHeld, dt);
     }
 
-    void CollisionInput::ApplyControl(bool refreshVelocity)
+    void CollisionInput::ApplyControl()
     {
         if (m_stateReady || !m_controlReady)
         {
             return;
         }
         m_controlReady = false;
-        if (refreshVelocity && m_observedRushing && m_body != nullptr && m_body->IsActive() &&
-            m_player->IsBodySlamming())
-        {
-            m_player->ApplyBodySlamHeading();
-        }
 #if !defined(NS_SHIPPING)
         DrawChargeRing();
 #endif
@@ -143,7 +128,7 @@ namespace NS::Game::Level
     {
         Observe(held);
         AdvanceState(dt);
-        ApplyControl(false);
+        ApplyControl();
     }
 
     void CollisionInput::AdvanceCharge(bool held, float dt)
