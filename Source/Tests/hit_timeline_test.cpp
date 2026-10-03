@@ -287,3 +287,40 @@ TEST(HitTimeline, ShippedCenterSinksAndDoesNotZoom)
     }
     EXPECT_EQ(sinks, 1);
 }
+
+// 外れの振動は向きごとに 1 行ずつ。頭に重い方 (左) の一打を 2〜3 フレーム鳴らしてすぐ切り、軽い方 (右) の擦れが抜ける
+// 下の外れだけ、擦れの頭にもう 1 度重い一打が来る。向きの付かない振動の行は置かない
+TEST(HitTimeline, ShippedMissVibratesHeavyHeadThenLightTailPerDirection)
+{
+    using NS::Game::Level::HitDirection;
+    const std::optional<HitTimeline> miss = ReadShippedTimeline("miss");
+    ASSERT_TRUE(miss.has_value());
+    int rows[5] = {};
+    for (const NS::Game::Level::HitEvent& event : miss->events)
+    {
+        const NS::Game::Level::PadVibrationEvent* pad = std::get_if<NS::Game::Level::PadVibrationEvent>(&event.value);
+        if (pad == nullptr)
+        {
+            continue;
+        }
+        ++rows[static_cast<int>(event.direction)];
+        SCOPED_TRACE(static_cast<int>(event.direction));
+        // 頭の一打: 重い方が鳴り、軽い方は鳴らない
+        EXPECT_GT(pad->left.Evaluate(0.0f), 0.5f);
+        EXPECT_FLOAT_EQ(pad->right.Evaluate(0.0f), 0.0f);
+        // 一打は 3 フレーム目までに切れ、擦れは軽い方
+        EXPECT_GT(pad->right.Evaluate(4.0f), pad->left.Evaluate(5.0f));
+        EXPECT_FLOAT_EQ(pad->left.Evaluate(8.0f), 0.0f);
+        // 長さで 0 へ抜ける
+        EXPECT_FLOAT_EQ(pad->right.Evaluate(static_cast<float>(event.length)), 0.0f);
+        if (event.direction == HitDirection::Down)
+        {
+            EXPECT_GT(pad->left.Evaluate(4.0f), pad->left.Evaluate(3.0f));
+        }
+    }
+    EXPECT_EQ(rows[static_cast<int>(HitDirection::Any)], 0);
+    EXPECT_EQ(rows[static_cast<int>(HitDirection::Right)], 1);
+    EXPECT_EQ(rows[static_cast<int>(HitDirection::Left)], 1);
+    EXPECT_EQ(rows[static_cast<int>(HitDirection::Up)], 1);
+    EXPECT_EQ(rows[static_cast<int>(HitDirection::Down)], 1);
+}

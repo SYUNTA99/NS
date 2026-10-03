@@ -14,6 +14,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 class Player;
@@ -286,6 +287,7 @@ namespace NS::Game::Level
         std::vector<std::size_t> m_eventRows;           // m_events と同じ並びで、ファイルの並びでの番号
         std::vector<std::size_t> m_rowsStartedThisStep; // 直近の更新で始まった事象のファイルの並びでの番号
         int m_clock = 0;                                // 検知のフレームを 0 にした今のフレーム
+        std::optional<int> m_padStartClock;             // 振動を始めた時計の値。同じ値に始まる振動は重ねる
         int m_clockEnd = 0;                             // 最後の事象が終わる時計の値。ここまで進めたら時計を止める
         bool m_clockRunning = false;                    // 時計が走っているか
         bool m_holdArmed = false;                       // この当たりで自機を止めるか。止めの事象のある当たりで立つ

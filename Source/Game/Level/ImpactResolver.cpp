@@ -194,10 +194,25 @@ namespace NS::Game::Level
             return 0;
         }
 
-        // timeline のうち、向き direction の当たりで起きる事象。並びの順は保つ
+        // 曲線の値を scale 倍にする。点の値と傾きを同じ倍率で掛けるので、補間の形は変わらない
+        [[nodiscard]] NS::Obj::Curve ScaledCurve(const NS::Obj::Curve& curve, float scale) noexcept
+        {
+            NS::Obj::Curve scaled = curve;
+            for (std::uint32_t i = 0; i < scaled.count; ++i)
+            {
+                scaled.keys[i].y *= scale;
+                scaled.keys[i].inTangent *= scale;
+                scaled.keys[i].outTangent *= scale;
+            }
+            return scaled;
+        }
+
+        // timeline のうち、面の上の位置 face の当たりで起きる事象。並びの順は保つ
+        // 向きの付いた振動は、位置の角度で隣り合う 2 つの向きを混ぜるので、重みが 0 でない行を重みを掛けて残す
+        // 他の種類の向きの付いた行は、HitDirectionOf の向きの行だけ残す。face が無ければ向きの付いた行は起こさない
         // outRows に、選んだ事象のそれぞれのファイルの並びでの番号を同じ並びで入れる
         [[nodiscard]] std::vector<HitEvent> EventsFor(const HitTimeline& timeline,
-                                                      HitDirection direction,
+                                                      const std::optional<NS::Core::Vector2>& face,
                                                       std::vector<std::size_t>& outRows)
         {
             std::vector<HitEvent> events;
@@ -206,11 +221,36 @@ namespace NS::Game::Level
             for (std::size_t row = 0; row < timeline.events.size(); ++row)
             {
                 const HitEvent& event = timeline.events[row];
-                if (event.direction == HitDirection::Any || event.direction == direction)
+                if (event.direction == HitDirection::Any)
                 {
                     events.push_back(event);
                     outRows.push_back(row);
+                    continue;
                 }
+                if (!face.has_value())
+                {
+                    continue;
+                }
+                const PadVibrationEvent* pad = std::get_if<PadVibrationEvent>(&event.value);
+                if (pad == nullptr)
+                {
+                    if (event.direction == HitDirectionOf(face->x, face->y))
+                    {
+                        events.push_back(event);
+                        outRows.push_back(row);
+                    }
+                    continue;
+                }
+                const float weight = HitDirectionWeight(event.direction, face->x, face->y);
+                if (weight <= 0.0f)
+                {
+                    continue;
+                }
+                HitEvent weighted = event;
+                weighted.value =
+                    PadVibrationEvent{.left = ScaledCurve(pad->left, weight), .right = ScaledCurve(pad->right, weight)};
+                events.push_back(weighted);
+                outRows.push_back(row);
             }
             return events;
         }
@@ -661,7 +701,7 @@ namespace NS::Game::Level
         std::vector<std::size_t> rows;
         if (timeline != nullptr)
         {
-            events = EventsFor(*timeline, direction, rows);
+            events = EventsFor(*timeline, NS::Core::Vector2{judgement.u, judgement.v}, rows);
         }
         // 貫通の止めはタイムラインへ移さず、欄「貫通の止め秒」の長さのまま
         int breakStopSteps = -1;
@@ -816,11 +856,19 @@ namespace NS::Game::Level
 
         void operator()(const PadVibrationEvent& pad) const
         {
-            if (resolver.m_hitReaction != nullptr)
+            if (resolver.m_hitReaction == nullptr)
             {
-                resolver.m_hitReaction->StartPadVibration(
-                    NS::Obj::HitPadVibration{.left = pad.left, .right = pad.right, .frames = event.length});
+                return;
             }
+            const NS::Obj::HitPadVibration vibration{.left = pad.left, .right = pad.right, .frames = event.length};
+            // 同じフレームに始まる振動 (向きごとに重みを掛けた行) は重ねて鳴らす
+            if (resolver.m_padStartClock == resolver.m_clock)
+            {
+                resolver.m_hitReaction->BlendPadVibration(vibration);
+                return;
+            }
+            resolver.m_hitReaction->StartPadVibration(vibration);
+            resolver.m_padStartClock = resolver.m_clock;
         }
 
         void operator()(const FlashEvent& flash) const
@@ -895,6 +943,7 @@ namespace NS::Game::Level
         m_eventRows = std::move(rows);
         m_breakStopSteps = breakStopSteps;
         m_clock = 0;
+        m_padStartClock.reset();
         m_clockEnd = 0;
         m_holdArmed = false;
         m_holdReleased = false;
@@ -981,7 +1030,7 @@ namespace NS::Game::Level
         }
         // 触れる前は外れの向きが決まらないので、向きの付いた行は起こさない
         std::vector<std::size_t> rows;
-        std::vector<HitEvent> events = EventsFor(*timeline, HitDirection::Any, rows);
+        std::vector<HitEvent> events = EventsFor(*timeline, std::nullopt, rows);
         int first = 0;
         for (const HitEvent& event : events)
         {
@@ -1061,6 +1110,7 @@ namespace NS::Game::Level
         m_beforeContact = false;
         m_events.clear();
         m_eventRows.clear();
+        m_padStartClock.reset();
         m_clock = 0;
         m_clockEnd = 0;
         m_clockRunning = false;
@@ -1218,6 +1268,7 @@ namespace NS::Game::Level
         bool flashRecorded = false;
         bool zoomRollRecorded = false;
         bool padRecorded = false;
+        int padStartFrame = 0;
         for (const HitEvent& event : events)
         {
             const CameraShakeEvent* shake = std::get_if<CameraShakeEvent>(&event.value);
@@ -1248,11 +1299,13 @@ namespace NS::Game::Level
                 m_lastImpact.rollStart = zoomRoll->rollDegrees * rollSign;
                 zoomRollRecorded = true;
             }
+            // 最初の振動と同じフレームに始まる振動は重ねて鳴らすので、始めの値も足す
             const PadVibrationEvent* pad = std::get_if<PadVibrationEvent>(&event.value);
-            if (pad != nullptr && !padRecorded)
+            if (pad != nullptr && (!padRecorded || event.start == padStartFrame))
             {
-                m_lastImpact.padStart.left = pad->left.Evaluate(0.0f);
-                m_lastImpact.padStart.right = pad->right.Evaluate(0.0f);
+                m_lastImpact.padStart.left += pad->left.Evaluate(0.0f);
+                m_lastImpact.padStart.right += pad->right.Evaluate(0.0f);
+                padStartFrame = event.start;
                 padRecorded = true;
             }
         }

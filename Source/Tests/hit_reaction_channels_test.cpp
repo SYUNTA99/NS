@@ -89,3 +89,34 @@ TEST(HitReactionChannels, ShakeAndZoomStartSeparately)
     EXPECT_TRUE(reaction->StartZoomRoll(NS::Obj::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 2, .returnFrames = 2}));
     EXPECT_FALSE(reaction->StartShake(NS::Obj::CameraShakeDesc{.upAmplitude = 0.1f, .frames = 61}));
 }
+
+// 重ねた振動は足し、それぞれの長さで終わる。始め直すと重ねた分も消える
+TEST(HitReactionChannels, BlendedPadVibrationsAddAndEndOnTheirOwnLength)
+{
+    NS::Obj::Scene scene;
+    NS::Obj::HitReaction* reaction = PlaceReaction(scene);
+    ASSERT_NE(reaction, nullptr);
+
+    const NS::Obj::HitPadVibration first = FadingLeft(0.5f, 4);
+    const NS::Obj::HitPadVibration second = FadingLeft(0.25f, 2);
+    reaction->StartPadVibration(first);
+    reaction->BlendPadVibration(second);
+    EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
+    // 始めたフレームの更新は最初の姿のまま
+    reaction->OnUpdate();
+    EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
+    reaction->OnUpdate();
+    EXPECT_FLOAT_EQ(PadLeft(), 0.5f);
+    reaction->OnUpdate();
+    // 後の振動は 2 フレームで終わり、前の振動だけが残る
+    EXPECT_FLOAT_EQ(PadLeft(), 0.25f);
+    reaction->OnUpdate();
+    EXPECT_FLOAT_EQ(PadLeft(), 0.125f);
+    reaction->OnUpdate();
+    EXPECT_FLOAT_EQ(PadLeft(), 0.0f);
+
+    reaction->StartPadVibration(first);
+    reaction->BlendPadVibration(second);
+    reaction->StartPadVibration(FadingLeft(0.2f, 4));
+    EXPECT_FLOAT_EQ(PadLeft(), 0.2f);
+}

@@ -4,6 +4,7 @@
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Platform/FileSystem.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <format>
@@ -288,6 +289,50 @@ namespace NS::Game::Level
             return HitDirection::Up;
         }
         return HitDirection::Down;
+    }
+
+    float HitDirectionWeight(HitDirection direction, float u, float v) noexcept
+    {
+        if (direction == HitDirection::Any)
+        {
+            return 1.0f;
+        }
+        // 真ん中は角度が決まらない。帯の行を引く向きと同じ 1 つに全部を渡す
+        if (u == 0.0f && v == 0.0f)
+        {
+            if (direction == HitDirectionOf(u, v))
+            {
+                return 1.0f;
+            }
+            return 0.0f;
+        }
+        float center = 0.0f;
+        switch (direction)
+        {
+        case HitDirection::Up:
+            center = 90.0f;
+            break;
+        case HitDirection::Left:
+            center = 180.0f;
+            break;
+        case HitDirection::Down:
+            center = 270.0f;
+            break;
+        default:
+            break;
+        }
+        const float angle = NS::Core::ToDegrees(NS::Core::Radians{std::atan2(v, u)}).value;
+        // 向きの角度からのずれを -180〜180 へ畳む。90 度離れると 0
+        float difference = std::fmod(angle - center, 360.0f);
+        if (difference > 180.0f)
+        {
+            difference -= 360.0f;
+        }
+        if (difference < -180.0f)
+        {
+            difference += 360.0f;
+        }
+        return std::max(1.0f - std::abs(difference) / 90.0f, 0.0f);
     }
 
     std::string_view HitDirectionName(HitDirection direction) noexcept

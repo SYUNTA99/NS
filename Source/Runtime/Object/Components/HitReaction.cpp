@@ -109,10 +109,22 @@ namespace NS::Obj
 
     void HitReaction::StartPadVibration(const HitPadVibration& pad)
     {
-        m_pad = pad;
+        m_pads.clear();
+        m_pads.push_back(PadLayer{.pad = pad, .startElapsed = 0});
         m_padElapsed = 0;
         m_padRunning = true;
         m_padJustStarted = true;
+        WritePadVibration();
+    }
+
+    void HitReaction::BlendPadVibration(const HitPadVibration& pad)
+    {
+        if (!m_padRunning)
+        {
+            StartPadVibration(pad);
+            return;
+        }
+        m_pads.push_back(PadLayer{.pad = pad, .startElapsed = m_padElapsed});
         WritePadVibration();
     }
 
@@ -121,8 +133,8 @@ namespace NS::Obj
         m_flashRemaining = 0;
         m_flashJustStarted = false;
         m_padJustStarted = false;
-        // 書くフレーム数 0 の振動を書くと 0 が入り、止めたフレームの値が残らない
-        m_pad = HitPadVibration{};
+        // 振動の無い状態を書くと 0 が入り、止めたフレームの値が残らない
+        m_pads.clear();
         m_padElapsed = 0;
         m_padRunning = false;
         WritePadVibration();
@@ -173,13 +185,18 @@ namespace NS::Obj
     void HitReaction::WritePadVibration()
     {
         NS::Platform::GamepadVibration speed{};
-        if (m_padElapsed < m_pad.frames)
+        bool anyRunning = false;
+        for (const PadLayer& layer : m_pads)
         {
-            const float elapsed = static_cast<float>(m_padElapsed);
-            speed.left = m_pad.left.Evaluate(elapsed);
-            speed.right = m_pad.right.Evaluate(elapsed);
+            const int elapsed = m_padElapsed - layer.startElapsed;
+            if (elapsed < layer.pad.frames)
+            {
+                speed.left += layer.pad.left.Evaluate(static_cast<float>(elapsed));
+                speed.right += layer.pad.right.Evaluate(static_cast<float>(elapsed));
+                anyRunning = true;
+            }
         }
-        else
+        if (!anyRunning)
         {
             // 終わりのフレームも 0 を書く。書かないと次の Input::Update までは前の値が読める
             m_padRunning = false;

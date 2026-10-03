@@ -20,7 +20,8 @@
 namespace NS::Game::Level
 {
     //! @brief 事象が起きる外れの向き。面の上の位置 (u, v) の絶対値の大きい方の軸と符号で決まる
-    //! @details 番号はファイルに書かず、名前 (HitDirectionName) で書く
+    //! @details 番号はファイルに書かず、名前 (HitDirectionName) で書く。
+    //! パッドの振動だけは、隣り合う 2 つの向きの行を位置の角度で混ぜて鳴らす (HitDirectionWeight)
     enum class HitDirection
     {
         Any,   //!< どの向きの当たりでも起きる
@@ -331,6 +332,15 @@ namespace NS::Game::Level
     //! @param[in] v 面の上の上下の位置。上が正
     //! @return 右・左・上・下のどれか
     [[nodiscard]] HitDirection HitDirectionOf(float u, float v) noexcept;
+
+    //! @brief 向きの付いた事象を、面の上の位置の当たりでどれだけ効かせるか
+    //! @details 位置の角度 (右 0 度・上 90 度・左 180 度・下 270 度) で、隣り合う 2 つの向きを直線に混ぜる。
+    //! 4 つの向きの重みを足すと 1。位置が真ん中 (0, 0) の時は HitDirectionOf の向きだけ 1
+    //! @param[in] direction 事象の向き
+    //! @param[in] u 面の上の左右の位置。自機から見て右が正
+    //! @param[in] v 面の上の上下の位置。上が正
+    //! @return 重み 0〜1。Any は常に 1
+    [[nodiscard]] float HitDirectionWeight(HitDirection direction, float u, float v) noexcept;
 
     //! direction のファイルに書く名前
     [[nodiscard]] std::string_view HitDirectionName(HitDirection direction) noexcept;

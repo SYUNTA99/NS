@@ -965,3 +965,82 @@ TEST(ImpactTimelineClock, ShippedCenterStretchesBeforeTheReboundAndMissReboundsO
         }
     }
 }
+
+// 外れの向きの重みは、面の上の位置の角度で隣り合う 2 つの向きを直線に混ぜる。足すと 1 で、境目で急に変わらない
+TEST(ImpactTimelineClock, DirectionWeightsBlendTheTwoNeighborsByAngle)
+{
+    const HitDirection directions[] = {HitDirection::Right, HitDirection::Left, HitDirection::Up, HitDirection::Down};
+    EXPECT_FLOAT_EQ(HitDirectionWeight(HitDirection::Right, 1.0f, 0.0f), 1.0f);
+    EXPECT_FLOAT_EQ(HitDirectionWeight(HitDirection::Up, 1.0f, 0.0f), 0.0f);
+    EXPECT_NEAR(HitDirectionWeight(HitDirection::Right, 0.5f, 0.5f), 0.5f, 0.0001f);
+    EXPECT_NEAR(HitDirectionWeight(HitDirection::Up, 0.5f, 0.5f), 0.5f, 0.0001f);
+    EXPECT_NEAR(HitDirectionWeight(HitDirection::Left, -0.3f, -0.3f), 0.5f, 0.0001f);
+    EXPECT_NEAR(HitDirectionWeight(HitDirection::Down, -0.3f, -0.3f), 0.5f, 0.0001f);
+    EXPECT_FLOAT_EQ(HitDirectionWeight(HitDirection::Down, 0.0f, -0.4f), 1.0f);
+    EXPECT_FLOAT_EQ(HitDirectionWeight(HitDirection::Any, 0.3f, -0.4f), 1.0f);
+    // 真ん中は向きが決まらないので、外れの向きの決まり (HitDirectionOf) の向きだけ
+    EXPECT_FLOAT_EQ(HitDirectionWeight(HitDirectionOf(0.0f, 0.0f), 0.0f, 0.0f), 1.0f);
+    // 円を回って、重みの和が 1 で、隣の角度との差が小さい
+    float previous[4] = {};
+    for (int step = 0; step <= 720; ++step)
+    {
+        const float angle = static_cast<float>(step) * 0.5f * NS::Core::k_Pi / 180.0f;
+        const float u = 0.7f * std::cos(angle);
+        const float v = 0.7f * std::sin(angle);
+        float sum = 0.0f;
+        for (int i = 0; i < 4; ++i)
+        {
+            const float weight = HitDirectionWeight(directions[i], u, v);
+            EXPECT_GE(weight, 0.0f);
+            sum += weight;
+            if (step > 0)
+            {
+                EXPECT_LT(std::abs(weight - previous[i]), 0.02f) << "角度 " << step * 0.5f;
+            }
+            previous[i] = weight;
+        }
+        EXPECT_NEAR(sum, 1.0f, 0.0001f);
+    }
+}
+
+// 向きの付いた振動は、面の上の位置の重みで混ぜて鳴らす。他の種類は今までどおり 1 つの向きだけ
+TEST(ImpactTimelineClock, DirectedPadVibrationsAreBlendedByTheFacePosition)
+{
+    // 左のモーターを一定の値で鳴らす振動
+    const auto constantLeft = [](float value) {
+        PadVibrationEvent pad;
+        pad.left.count = 1;
+        pad.left.keys[0] = NS::Obj::Curve::Key{0.0f, value};
+        return pad;
+    };
+    HitTimeline timeline;
+    timeline.events = {{HitStopEvent{}, 1, 4, HitDirection::Any},
+                       {constantLeft(1.0f), 1, 8, HitDirection::Right},
+                       {constantLeft(0.6f), 1, 8, HitDirection::Left},
+                       {constantLeft(0.3f), 1, 8, HitDirection::Up},
+                       {constantLeft(0.1f), 1, 8, HitDirection::Down},
+                       {ReboundEvent{}, 5, 1, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("BlendedPad");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    // 横と上へずらした相手。面の上の位置が斜めになる
+    Player* player = PlaceClockScene(scene, 0.6f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    ASSERT_NE(rock, nullptr);
+    rock->Root().SetPosition(NS::Core::Vector3{0.5f, 0.85f, 0.6f});
+    const std::vector<ClockFrame> trace = RunHit(*player, *rock, 1.0f, 4);
+    ASSERT_EQ(trace.size(), 4u);
+    const ImpactRecord& record = player->Resolver().LastImpact();
+    const float u = record.faceU;
+    const float v = record.faceV;
+    // 斜めに当たり、2 つの向きに重みが分かれている
+    ASSERT_GT(std::abs(u), 0.05f);
+    ASSERT_GT(std::abs(v), 0.05f);
+    const float expected =
+        HitDirectionWeight(HitDirection::Right, u, v) * 1.0f + HitDirectionWeight(HitDirection::Left, u, v) * 0.6f +
+        HitDirectionWeight(HitDirection::Up, u, v) * 0.3f + HitDirectionWeight(HitDirection::Down, u, v) * 0.1f;
+    EXPECT_NEAR(trace[1].padLeft, expected, 0.0001f);
+    EXPECT_NEAR(trace[3].padLeft, expected, 0.0001f);
+    EXPECT_NEAR(record.padStart.left, expected, 0.0001f);
+}

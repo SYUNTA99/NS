@@ -5,6 +5,8 @@
 #include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Platform/Gamepad.h"
 
+#include <vector>
+
 namespace NS::Obj
 {
     //! @brief パッドの振動 1 回。左右のモーターの速さを始めてからのフレーム数の曲線で決め、書くフレーム数で切る
@@ -56,6 +58,11 @@ namespace NS::Obj
         //! @brief パッドの振動を始める。前の振動が残っていても始め直す
         //! @param[in] pad 振動の設定
         void StartPadVibration(const HitPadVibration& pad);
+        //! @brief 書いている振動に pad を重ねる
+        //! @details 重ねたフレームを 0 として pad を進め、値を足す。pad の長さを過ぎたら 0 を足す。
+        //! 何も書いていなければ StartPadVibration と同じ
+        //! @param[in] pad 重ねる振動
+        void BlendPadVibration(const HitPadVibration& pad);
 
         //! @brief 当たりの演出を止める。白を消し、振動を 0 にし、揺れと寄りを外す
         //! @details トラウマは残す。次の当たりが止めてから始め直しても、続けて当てたトラウマは足される
@@ -84,7 +91,13 @@ namespace NS::Obj
         int m_flashRemaining = 0;        // 白の残りフレーム数
         int m_flashFrames = 0;           // 白の始めのフレーム数。薄める割合の分母
         float m_flashAlpha = 0.0f;       // 白の始めの濃さ
-        HitPadVibration m_pad{};         // 書いている振動
+        // 重ねた振動 1 つ。重ねたフレームの m_padElapsed から進める
+        struct PadLayer
+        {
+            HitPadVibration pad;
+            int startElapsed = 0;
+        };
+        std::vector<PadLayer> m_pads;    // 書いている振動。始めた振動と、重ねた振動
         int m_padElapsed = 0;            // 振動を始めたフレームから数えたフレーム数
         bool m_padRunning = false;       // 振動を書いている最中か
         bool m_flashJustStarted = false; // 白を始めた後まだ更新を通っていないか
