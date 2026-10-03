@@ -72,7 +72,7 @@ namespace NS::Game::Level
         NS::Core::Vector3 launchVelocity; //!< 相手の曲線の発射の瞬間の速度。単位は m/s
         float launchDistance = 0.0f;      //!< 相手の曲線が発射の高さへ戻るまでに水平に進む距離。単位は m
         float launchApexHeight = 0.0f;    //!< 相手の曲線の、発射の高さから頂点までの高さ。単位は m
-        NS::Core::Vector3 impactDir;      //!< 相手の飛ぶ水平の向き。食い込みと振動の向きも同じ
+        NS::Core::Vector3 impactDir;      //!< 相手の飛ぶ水平の向き。食い込みの向きも同じ
         //! 自機の玉が相手の表面に触れた点。JudgeHitFace の触れる点で、判定できない体の時は相手の体の中心
         NS::Core::Vector3 surfacePoint;
         NS::Core::Vector3 targetPos;
@@ -177,6 +177,11 @@ namespace NS::Game::Level
         //! 走っているタイムラインを捨てる。プレイの途中で外れても止めが次のプレイへ残らない
         void OnEndPlay() override;
 
+        //! @brief 自機の衝撃の震えを、今の根の位置とカメラで描く所へ書く
+        //! @details 震えの経過は StepState が数える。振れ幅はカメラとの距離で決まるので、体を動かした後に呼ぶ
+        //! 震えの長さの終わりのフレームに振れ幅 0 を書いて止める。震えていない間は何もしない
+        void WriteTremor();
+
         //! @brief 突進の線で最初に触れる相手を探す
         //! @details 相手は置物の体の種類だけで、有効な体のセンサーを持つ物。裁定と同じ絞り。
         //! 自機の当たりの玉
@@ -267,6 +272,12 @@ namespace NS::Game::Level
         void AdvanceBodyShake();
         // 自機の横揺れを止め、描く時だけのずれを 0 へ戻す
         void StopBodyShake() noexcept;
+        // 衝撃の震えを始める。自機の震えを控え、相手へ同じ衝突点からの震えを知らせる
+        void StartTremor(const ImpactTremorEvent& tremor, int length);
+        // 自機の震えの経過を今の時計で数え直す。描く所へ書くのは WriteTremor
+        void AdvanceTremor() noexcept;
+        // 自機の震えを止め、振れ幅 0 を書く
+        void StopTremor() noexcept;
         // 沈む揺れの事象から 4 拍の形を作る。深さは威力の頭打ちの曲線、跳ね返りは反動の事象の始まりから
         [[nodiscard]] NS::Obj::CameraSinkDesc SinkDescFor(const CameraSinkEvent& sink,
                                                           const HitEvent& event) const noexcept;
@@ -335,6 +346,15 @@ namespace NS::Game::Level
             bool active = false;
         };
         BodyShakeRun m_bodyShake;
+        // 自機の衝撃の震え。始めた時計の値から数え、長さの終わりで止める
+        struct TremorRun
+        {
+            TackleTremorDesc desc{};
+            int startClock = 0;
+            int elapsed = 0; // 始めたフレームを 0 にした経過のフレーム数
+            bool active = false;
+        };
+        TremorRun m_tremor;
 
         bool m_didRebound = false;          // 直近の更新で反発を検知したか
         bool m_didBreak = false;            // 直近の更新で貫通を検知したか

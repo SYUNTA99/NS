@@ -155,6 +155,30 @@ namespace NS::Game::Level
     bool SendMsgTackleShake(NS::Obj::Actor& receiver, const TackleShakeDesc& desc);
     [[nodiscard]] bool IsMsgTackleShake(const NS::Obj::Message& msg) noexcept;
 
+    //! @brief 衝撃の震え。受け手は長さの間、描く所の震えを毎フレーム MakeTremor で書き直す
+    struct TackleTremorDesc
+    {
+        NS::Core::Vector3 contactOffset{}; //!< 衝突点の、受け手の根の位置からのずれ (m)。体と一緒に動く
+        float amplitudePixels = 0.0f;      //!< 振れ幅。高さ 720 画素の画面の上の画素数
+        int reachFrames = 0;               //!< 衝突点から体の一番遠い所へ届くまでのフレーム数
+        int length = 0;                    //!< 震えのフレーム数
+    };
+
+    //! @brief 衝撃の震えを知らせる。受け手は知らせを受けたフレームを 0 フレーム目として震える
+    class MsgTackleTremor final : public NS::Obj::Message
+    {
+        NS_MESSAGE(MsgTackleTremor)
+
+    public:
+        explicit MsgTackleTremor(const TackleTremorDesc& desc) noexcept : m_desc(desc) {}
+        [[nodiscard]] const TackleTremorDesc& Desc() const noexcept { return m_desc; }
+
+    private:
+        const TackleTremorDesc& m_desc;
+    };
+    bool SendMsgTackleTremor(NS::Obj::Actor& receiver, const TackleTremorDesc& desc);
+    [[nodiscard]] bool IsMsgTackleTremor(const NS::Obj::Message& msg) noexcept;
+
     //! @brief 体当たりの止めが明けた時の、相手の飛び方
     struct TackleReleaseDesc
     {

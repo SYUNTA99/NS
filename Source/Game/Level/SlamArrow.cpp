@@ -64,12 +64,16 @@ namespace NS::Game::Level
             // xy は帯の切れ目を測る、矢じりの先からの距離 ÷ 矢じりの奥行き (板の v の 1 次式)
             // z と w は色の付いた部分と付いていない部分の塗りの平均の不透明度
             NS::Core::Vector4 rearAndFill{};
+            // standard.vs.hlsl が読む震えの欄。振れ幅 0 のまま送り、矢印は震わせない
+            NS::Gfx::TremorCB tremor{};
         };
         static_assert(sizeof(GroundArrowConstants) == sizeof(NS::Gfx::FrameCB), "FrameCB と同じ大きさで送る");
         static_assert(offsetof(GroundArrowConstants, world) == offsetof(NS::Gfx::FrameCB, world),
                       "頂点シェーダが読む world の位置");
         static_assert(offsetof(GroundArrowConstants, viewProj) == offsetof(NS::Gfx::FrameCB, viewProj),
                       "頂点シェーダが読む viewProj の位置");
+        static_assert(offsetof(GroundArrowConstants, tremor) == offsetof(NS::Gfx::FrameCB, tremor),
+                      "頂点シェーダが読む震えの位置");
         static_assert(std::is_trivially_copyable_v<GroundArrowConstants>, "FrameCB へバイトで写す");
 
         // 板の v (0 が遠い端、1 が近い端) の 1 次式。v での値は value + slope × v

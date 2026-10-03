@@ -2,6 +2,7 @@
 
 #include "Game/Level/ImpactMark.h"
 #include "Game/Level/ImpactOutcome.h"
+#include "Game/Level/ImpactTremor.h"
 #include "Game/Level/SensorKinds.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Gravity.h"
@@ -144,6 +145,8 @@ namespace NS::Game::Level
     void MapObj::VisualStep()
     {
         TickPart(&m_effects);
+        // 震えは止めが明けて飛んでいく間に通り抜けるので、状態に依らず根を動かした後で進める
+        AdvanceTremor();
     }
 
     void MapObj::UpdateMotion()
@@ -221,6 +224,37 @@ namespace NS::Game::Level
         if (ModelPart() != nullptr)
         {
             (void)ModelPart()->SetDrawOffset(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        }
+    }
+
+    void MapObj::AdvanceTremor()
+    {
+        if (!m_tremor.active || ModelPart() == nullptr)
+        {
+            return;
+        }
+        ++m_tremor.elapsed;
+        NS::Gfx::TremorCB tremor{};
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*this);
+        if (pose.has_value())
+        {
+            // 球の差し渡しで裏まで届く
+            tremor = MakeTremor(
+                m_tremor.desc, m_tremor.elapsed, Root().Position(), 2.0f * Sphere().WorldSphere().radius, *pose);
+        }
+        (void)ModelPart()->SetTremor(tremor);
+        if (m_tremor.elapsed >= m_tremor.desc.length)
+        {
+            m_tremor.active = false;
+        }
+    }
+
+    void MapObj::StopTremor()
+    {
+        m_tremor.active = false;
+        if (ModelPart() != nullptr)
+        {
+            (void)ModelPart()->SetTremor(NS::Gfx::TremorCB{});
         }
     }
 
@@ -492,6 +526,7 @@ namespace NS::Game::Level
             EndFreeze();
         }
         StopShake();
+        StopTremor();
         (void)m_states->Change<RestingState>();
         m_states->Reset();
         m_motion.Finish();
@@ -547,6 +582,11 @@ namespace NS::Game::Level
         if (const MsgTackleShake* shake = NS::Obj::MsgCast<MsgTackleShake>(msg))
         {
             m_shake = ShakeRun{.desc = shake->Desc(), .frame = 0, .active = true};
+            return true;
+        }
+        if (const MsgTackleTremor* tremor = NS::Obj::MsgCast<MsgTackleTremor>(msg))
+        {
+            m_tremor = TremorRun{.desc = tremor->Desc(), .elapsed = -1, .active = true};
             return true;
         }
         if (const MsgTackleRelease* release = NS::Obj::MsgCast<MsgTackleRelease>(msg))

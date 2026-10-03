@@ -7,9 +7,12 @@
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/CameraModifier.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/HitReaction.h"
+#include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ITickable.h"
+#include "Runtime/Object/IUse/IUseCamera.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/UpdatePhase.h"
@@ -22,6 +25,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -662,6 +666,113 @@ TEST(ImpactTimelineClock, MissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
         NS::Game::Player::ImpactEffects::MissSparkHeading(impact.faceU, impact.faceV, player->BodySlamDirection());
     ASSERT_GT(expected.Length(), 0.5f);
     EXPECT_NEAR(heading.Dot(expected), 1.0f, 1.0e-4f);
+}
+
+namespace
+{
+    // 高さ 720 画素の画面の上の pixels 画素を、カメラから見た at の奥行きでの世界の長さへ直す
+    float MetersForPixels(const NS::Obj::CameraPose& pose, const NS::Core::Vector3& at, float pixels)
+    {
+        NS::Core::Vector3 forward = pose.target - pose.position;
+        forward.Normalize();
+        float depth = (at - pose.position).Dot(forward);
+        // カメラより後ろの物は、奥行きの代わりにカメラとの距離で測る
+        if (depth <= 0.0f)
+        {
+            depth = (at - pose.position).Length();
+        }
+        return pixels * 2.0f * depth * std::tan(pose.fovY.value * 0.5f) / 720.0f;
+    }
+
+    // 置物の当たりの球の半径。置物の当たりは球で作る
+    float RockRadius(const MapObj& rock)
+    {
+        return static_cast<const NS::Obj::SphereCollision*>(rock.CollisionPart())->WorldSphere().radius;
+    }
+} // namespace
+
+// 衝撃の震えは、事象の始まり (止めの明け) から長さの間だけ、自機と相手の描く所へ震えを渡す
+// 経過はゲームのフレーム数で数え、振れ幅は画素の欄を毎フレームその物とカメラの距離で世界の長さへ直す
+TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
+{
+    ImpactTremorEvent tremor;
+    tremor.amplitudePixels = 3.0f;
+    tremor.reachFrames = 4;
+    HitTimeline timeline;
+    timeline.events = {{HitStopEvent{}, 1, 6, HitDirection::Any},
+                       {TargetFreezeEvent{}, 1, 6, HitDirection::Any},
+                       {TargetLaunchEvent{}, 7, 1, HitDirection::Any},
+                       {ReboundEvent{}, 7, 1, HitDirection::Any},
+                       {tremor, 7, 10, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("Tremor");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    ASSERT_NE(rock, nullptr);
+
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    int clock = -1;
+    NS::Core::Vector3 otherContact{};
+    NS::Core::Vector3 previousSelfRoot = player->Root().Position();
+    for (int frame = 0; frame < 120 && clock < 20; ++frame)
+    {
+        const NS::Core::Vector3 selfRootBefore = player->Root().Position();
+        player->Update(false);
+        rock->Update();
+        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        {
+            continue;
+        }
+        ++clock;
+        SCOPED_TRACE(clock);
+        previousSelfRoot = selfRootBefore;
+        const NS::Gfx::TremorCB& self = player->ModelPart()->Tremor();
+        const NS::Gfx::TremorCB& other = rock->ModelPart()->Tremor();
+        if (clock < 7 || clock >= 17)
+        {
+            EXPECT_FLOAT_EQ(self.amplitude, 0.0f);
+            EXPECT_FLOAT_EQ(other.amplitude, 0.0f);
+            continue;
+        }
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*player);
+        ASSERT_TRUE(pose.has_value());
+        NS::Core::Vector3 forward = pose->target - pose->position;
+        forward.Normalize();
+        const NS::Core::Vector3 selfRoot = player->Root().Position();
+        const NS::Core::Vector3 otherRoot = rock->Root().Position();
+        for (const NS::Gfx::TremorCB* each : {&self, &other})
+        {
+            // 経過は始まりのフレームを 0 にしたゲームのフレーム数。1 か所は 長さ − 届くフレーム数 で止まる
+            EXPECT_FLOAT_EQ(each->elapsedFrames, static_cast<float>(clock - 7));
+            EXPECT_FLOAT_EQ(each->ringFrames, 6.0f);
+            // 揺らす向きは画面の平面の中
+            EXPECT_NEAR(each->right.Length(), 1.0f, 1.0e-5f);
+            EXPECT_NEAR(each->up.Length(), 1.0f, 1.0e-5f);
+            EXPECT_NEAR(each->right.Dot(forward), 0.0f, 1.0e-5f);
+            EXPECT_NEAR(each->up.Dot(forward), 0.0f, 1.0e-5f);
+            EXPECT_NEAR(each->right.Dot(each->up), 0.0f, 1.0e-5f);
+        }
+        // 一番遠い所 (体の差し渡し) へ届くフレーム数で遅れを決める
+        EXPECT_NEAR(self.framesPerMeter, 4.0f / (2.0f * player->Collider().CapsuleRadius()), 1.0e-4f);
+        EXPECT_NEAR(other.framesPerMeter, 4.0f / (2.0f * RockRadius(*rock)), 1.0e-4f);
+        EXPECT_NEAR(self.amplitude, MetersForPixels(*pose, selfRoot, 3.0f), 1.0e-5f);
+        EXPECT_NEAR(other.amplitude, MetersForPixels(*pose, otherRoot, 3.0f), 1.0e-5f);
+        // 衝突点は根からのずれで渡し、体と一緒に動かす。始まりは自機の玉が相手の表面に触れた点
+        if (clock == 7)
+        {
+            otherContact = other.contactOffset;
+            EXPECT_GT(otherContact.Length(), 0.0f);
+            const NS::Core::Vector3 surface = player->Resolver().LastImpact().surfacePoint;
+            EXPECT_NEAR((previousSelfRoot + self.contactOffset - surface).Length(), 0.0f, 1.0e-4f);
+        }
+        else
+        {
+            EXPECT_TRUE(other.contactOffset == otherContact);
+        }
+    }
+    EXPECT_GE(clock, 20);
 }
 
 // 止めの間の横揺れは、自機と相手を画面の横 (床に沿う向き) へ逆向きに揺らし、横揺れの長さの終わりで 0 にする

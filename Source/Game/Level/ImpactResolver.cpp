@@ -2,6 +2,7 @@
 
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactOutcome.h"
+#include "Game/Level/ImpactTremor.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
@@ -525,6 +526,7 @@ namespace NS::Game::Level
             }
         }
         AdvanceBodyShake();
+        AdvanceTremor();
         // 止めた自機を動かし直すまでは新しい衝突を見ない。止まった自機は重なったままなので、見ると毎フレーム検知し直す
         if (IsHoldingPlayer())
         {
@@ -831,6 +833,8 @@ namespace NS::Game::Level
 
         void operator()(const BodyShakeEvent& shake) const { resolver.StartBodyShake(shake, event.length); }
 
+        void operator()(const ImpactTremorEvent& tremor) const { resolver.StartTremor(tremor, event.length); }
+
         void operator()(const ReboundEvent&) const { resolver.ApplyRebound(); }
 
         void operator()(const CameraShakeEvent& shake) const
@@ -945,8 +949,9 @@ namespace NS::Game::Level
         m_events = std::move(events);
         m_eventRows = std::move(rows);
         m_breakStopSteps = breakStopSteps;
-        // 前の当たりの横揺れは、新しい時計で数えると長さの終わりが来ない
+        // 前の当たりの横揺れと震えは、新しい時計で数えると長さの終わりが来ない
         StopBodyShake();
+        StopTremor();
         m_clock = 0;
         m_padStartClock.reset();
         m_clockEnd = 0;
@@ -1114,6 +1119,7 @@ namespace NS::Game::Level
         }
         m_beforeContact = false;
         StopBodyShake();
+        StopTremor();
         m_events.clear();
         m_eventRows.clear();
         m_padStartClock.reset();
@@ -1322,31 +1328,6 @@ namespace NS::Game::Level
         CancelImpact();
     }
 
-    namespace
-    {
-        // 横揺れの振れ幅を画面の画素で持つ時の、画面の高さの画素数。Replay の撮る画面と同じ 720
-        constexpr float k_ShakeReferenceScreenHeight = 720.0f;
-
-        // 画面の上の画素数を、カメラから見た body の奥行きでの世界の長さ (m) へ直す
-        [[nodiscard]] float PixelsToMetersAt(float pixels,
-                                             const NS::Obj::CameraPose& pose,
-                                             const NS::Core::Vector3& body) noexcept
-        {
-            NS::Core::Vector3 forward = pose.target - pose.position;
-            if (!(forward.Length() > NS::Core::k_Epsilon))
-            {
-                return 0.0f;
-            }
-            forward.Normalize();
-            float depth = NS::Core::Dot(body - pose.position, forward);
-            if (!(depth > 0.0f))
-            {
-                depth = (body - pose.position).Length();
-            }
-            return pixels * 2.0f * depth * std::tan(pose.fovY.value * 0.5f) / k_ShakeReferenceScreenHeight;
-        }
-    } // namespace
-
     void ImpactResolver::StartBodyShake(const BodyShakeEvent& shake, int length)
     {
         StopBodyShake();
@@ -1377,15 +1358,15 @@ namespace NS::Game::Level
         }
         // 種は何回目の当たりか。毎回少し違い、Replay では同じ
         const std::uint32_t seed = m_lastImpact.sequence;
-        m_bodyShake = BodyShakeRun{
-            .desc =
-                TackleShakeDesc{.axis = axis,
-                                .amplitude = PixelsToMetersAt(shake.amplitudePixels, *pose, Owner()->Root().Position()),
-                                .length = length,
-                                .seed = seed,
-                                .firstSign = firstSign},
-            .startClock = m_clock,
-            .active = true};
+        m_bodyShake =
+            BodyShakeRun{.desc = TackleShakeDesc{.axis = axis,
+                                                 .amplitude = ScreenPixelsToMeters(
+                                                     shake.amplitudePixels, *pose, Owner()->Root().Position()),
+                                                 .length = length,
+                                                 .seed = seed,
+                                                 .firstSign = firstSign},
+                         .startClock = m_clock,
+                         .active = true};
         // 始めたフレームから描く。時計の 0 の事象は時計を進めた後に起きるので、ここで書かないと 1 フレーム遅れる
         AdvanceBodyShake();
 
@@ -1402,7 +1383,7 @@ namespace NS::Game::Level
         }
         const TackleShakeDesc other{.axis = axis,
                                     .amplitude =
-                                        PixelsToMetersAt(shake.amplitudePixels, *pose, target->Root().Position()),
+                                        ScreenPixelsToMeters(shake.amplitudePixels, *pose, target->Root().Position()),
                                     .length = length,
                                     .seed = seed,
                                     .firstSign = -firstSign};
@@ -1431,6 +1412,77 @@ namespace NS::Game::Level
         if (m_player != nullptr && m_player->ModelPart() != nullptr)
         {
             (void)m_player->ModelPart()->SetDrawOffset(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        }
+    }
+
+    void ImpactResolver::StartTremor(const ImpactTremorEvent& tremor, int length)
+    {
+        StopTremor();
+        if (Owner() == nullptr || length <= 0)
+        {
+            return;
+        }
+        // 震えは自機の玉が相手の表面に触れた点から両方の体へ伝わる
+        const NS::Core::Vector3 contact = m_lastImpact.surfacePoint;
+        m_tremor = TremorRun{.desc = TackleTremorDesc{.contactOffset = contact - Owner()->Root().Position(),
+                                                      .amplitudePixels = tremor.amplitudePixels,
+                                                      .reachFrames = tremor.reachFrames,
+                                                      .length = length},
+                             .startClock = m_clock,
+                             .elapsed = 0,
+                             .active = true};
+
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+        {
+            return;
+        }
+        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
+        if (target == nullptr)
+        {
+            return;
+        }
+        TackleTremorDesc other = m_tremor.desc;
+        other.contactOffset = contact - target->Root().Position();
+        (void)SendMsgTackleTremor(*target, other);
+    }
+
+    void ImpactResolver::AdvanceTremor() noexcept
+    {
+        if (m_tremor.active)
+        {
+            m_tremor.elapsed = m_clock - m_tremor.startClock;
+        }
+    }
+
+    void ImpactResolver::WriteTremor()
+    {
+        if (!m_tremor.active || Owner() == nullptr || m_player->ModelPart() == nullptr)
+        {
+            return;
+        }
+        const int elapsed = m_tremor.elapsed;
+        NS::Gfx::TremorCB tremor{};
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*Owner());
+        if (pose.has_value())
+        {
+            // 自機の玉の差し渡しで裏まで届く
+            tremor = MakeTremor(
+                m_tremor.desc, elapsed, Owner()->Root().Position(), 2.0f * m_player->Collider().CapsuleRadius(), *pose);
+        }
+        (void)m_player->ModelPart()->SetTremor(tremor);
+        if (elapsed >= m_tremor.desc.length)
+        {
+            m_tremor.active = false;
+        }
+    }
+
+    void ImpactResolver::StopTremor() noexcept
+    {
+        m_tremor.active = false;
+        if (m_player != nullptr && m_player->ModelPart() != nullptr)
+        {
+            (void)m_player->ModelPart()->SetTremor(NS::Gfx::TremorCB{});
         }
     }
 

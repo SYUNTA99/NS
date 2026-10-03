@@ -289,6 +289,25 @@ namespace NS::Game::Level
         NS_REFLECT_END_VALUE()
     };
 
+    //! @brief 衝撃の震え。自機と相手の体を、衝突点から裏へ数画素の震えが遅れて伝わる
+    //! @details 長さが震えのフレーム数。衝突点から体の一番遠い所へ届くフレーム数で裏まで伝わり、1 か所は
+    //! 長さ − 届くフレーム数 で弱まって止まる。揺らすのは描く形だけで、当たりと根の位置は動かさない
+    struct ImpactTremorEvent
+    {
+        static constexpr std::string_view k_Name = "ImpactTremor";
+        static constexpr std::string_view k_Label = "衝撃の震え";
+        static constexpr bool k_BeforeContact = false;
+
+        //! 振れ幅。高さ 720 画素の画面の上の画素数で持ち、毎フレームその物とカメラの距離から世界の長さへ直す
+        float amplitudePixels = 3.0f;
+        int reachFrames = 6; //!< 衝突点から体の一番遠い所へ届くまでのフレーム数
+
+        NS_REFLECT_BEGIN(ImpactTremorEvent, void)
+        NS_REFLECT_FIELD(amplitudePixels, "振れ幅の画素")
+        NS_REFLECT_FIELD(reachFrames, "裏まで届くフレーム数")
+        NS_REFLECT_END_VALUE()
+    };
+
     //! @brief 事象の種類ごとの値。種類を足す時はここへ型を足す
     using HitEventValue = std::variant<HitStopEvent,
                                        ShapeEvent,
@@ -305,7 +324,8 @@ namespace NS::Game::Level
                                        CameraTraumaEvent,
                                        OthersStopEvent,
                                        CameraSinkEvent,
-                                       BodyShakeEvent>;
+                                       BodyShakeEvent,
+                                       ImpactTremorEvent>;
 
     //! @brief タイムラインの 1 行。触れたフレームを 0 にしたフレーム数で、始まりと長さを持つ
     struct HitEvent

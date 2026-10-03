@@ -137,6 +137,32 @@ namespace NS::Obj
         return true;
     }
 
+    bool Model::SetTremor(const NS::Gfx::TremorCB& tremor) noexcept
+    {
+        const float values[] = {tremor.contactOffset.x,
+                                tremor.contactOffset.y,
+                                tremor.contactOffset.z,
+                                tremor.amplitude,
+                                tremor.right.x,
+                                tremor.right.y,
+                                tremor.right.z,
+                                tremor.elapsedFrames,
+                                tremor.up.x,
+                                tremor.up.y,
+                                tremor.up.z,
+                                tremor.framesPerMeter,
+                                tremor.ringFrames};
+        for (const float value : values)
+        {
+            if (!std::isfinite(value))
+            {
+                return false;
+            }
+        }
+        m_tremor = tremor;
+        return true;
+    }
+
     const NS::Core::AABB* Model::DrawnLocalBounds() const noexcept
     {
         if (m_hasLocalBoundsOverride)
@@ -225,6 +251,7 @@ namespace NS::Obj
         item.constants.ambientColor = settings.ambientColor;
         item.constants.groundColor = settings.groundColor;
         item.constants.exposure = settings.exposure;
+        item.constants.tremor = m_tremor;
         item.extraVsCb = m_perObjectVsCb;
         item.extraVsData = m_perObjectVsData;
         item.extraVsSize = m_perObjectVsSize;

@@ -77,6 +77,16 @@
     },
     {
       "direction": "any",
+      "fields": {
+        "振れ幅の画素": 1.5,
+        "裏まで届くフレーム数": 6
+      },
+      "length": 14,
+      "start": 5,
+      "type": "ImpactTremor"
+    },
+    {
+      "direction": "any",
       "fields": {},
       "length": 1,
       "start": 1,

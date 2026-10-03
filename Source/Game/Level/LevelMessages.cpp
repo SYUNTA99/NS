@@ -75,6 +75,16 @@ namespace NS::Game::Level
         return NS::Obj::IsMsg<MsgTackleShake>(msg);
     }
 
+    bool SendMsgTackleTremor(NS::Obj::Actor& receiver, const TackleTremorDesc& desc)
+    {
+        return NS::Obj::SendMsgToActor(MsgTackleTremor{desc}, receiver);
+    }
+
+    bool IsMsgTackleTremor(const NS::Obj::Message& msg) noexcept
+    {
+        return NS::Obj::IsMsg<MsgTackleTremor>(msg);
+    }
+
     bool SendMsgTackleRelease(NS::Obj::Actor& receiver, const TackleReleaseDesc& desc)
     {
         return NS::Obj::SendMsgToActor(MsgTackleRelease{desc}, receiver);

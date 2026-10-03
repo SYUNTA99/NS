@@ -234,6 +234,8 @@ void Player::VisualStep()
     TickPart(m_targetMarker.get());
     TickPart(m_slamArrow.get());
     TickPart(HitReactionPart());
+    // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
+    m_resolver->WriteTremor();
     TickPart(m_appearance.get());
     TickPart(m_chargeEffects.get());
     TickPart(m_impactEffects.get());
