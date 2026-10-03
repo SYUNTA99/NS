@@ -1,6 +1,7 @@
 #include "Game/Level/MapObj.h"
 
 #include "Game/Level/ImpactMark.h"
+#include "Game/Level/SensorKinds.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Gravity.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -88,7 +89,7 @@ namespace NS::Game::Level
             const NS::Core::Sphere sphere = collision->WorldSphere();
             return NS::Obj::SensorVolume::Sphere(sphere.center, sphere.radius);
         }));
-        BodySensorPart()->SetType(NS::Obj::HitSensorType::MapObjBody);
+        SetSensorKind(*BodySensorPart(), SensorKind::MapObjBody);
         (void)BuildStateMachine<MapObj, RestingState, FreezeState, LaunchedState>(*this, m_states);
         m_motion.Finish();
     }

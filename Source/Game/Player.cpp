@@ -4,6 +4,7 @@
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
+#include "Game/Level/SensorKinds.h"
 #include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
 #include "Game/Player/ChargeEffects.h"
@@ -62,7 +63,7 @@ Player::Player() noexcept
     // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Body の欄で、センサーは毎回それを読む
     SetBodySensorPart(std::make_unique<NS::Obj::FollowHitSensor>(
         [body = m_body.get()] { return NS::Obj::SensorVolume::Capsule(body->WorldCapsule()); }));
-    BodySensorPart()->SetType(NS::Obj::HitSensorType::PlayerBody);
+    NS::Game::Level::SetSensorKind(*BodySensorPart(), NS::Game::Level::SensorKind::PlayerBody);
     AttachFixedComponent(*m_collisionInput);
     AttachFixedComponent(*m_resolver);
     (void)CreatePart("HitReaction");

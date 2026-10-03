@@ -4,6 +4,7 @@
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
+#include "Game/Level/SensorKinds.h"
 #include "Game/Player.h"
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerParams.h"
@@ -156,11 +157,10 @@ namespace NS::Game::Level
                 position.x + velocity.x * dt, position.y + velocity.y * dt, position.z + velocity.z * dt};
         }
 
-        // 体当たりが調べる種類の、有効な体のセンサーか。当たりの裁定と狙う相手の探索が同じ絞りを通る
+        // 体当たりが調べる種類 (置物の体) の、有効なセンサーか。当たりの裁定と狙う相手の探索が同じ絞りを通る
         [[nodiscard]] bool IsTackleTarget(const NS::Obj::HitSensor& sensor, const NS::Obj::Actor* self) noexcept
         {
-            return sensor.IsValid() && sensor.Owner() != self &&
-                   NS::Obj::HitSensorDirector::Checks(NS::Obj::HitSensorType::PlayerAttack, sensor.Type());
+            return sensor.IsValid() && sensor.Owner() != self && IsSensorKind(sensor, SensorKind::MapObjBody);
         }
     } // namespace
 
