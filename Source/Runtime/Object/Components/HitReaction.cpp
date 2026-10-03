@@ -20,51 +20,79 @@ namespace NS::Obj
     // 持ち主の Actor の Update が呼ぶ。自機では ImpactResolver の後に呼ばれ、決めたフレームに最初の姿を出す
     HitReaction::HitReaction() noexcept : OverlayRenderer() {}
 
-    void HitReaction::Play(const HitReactionDesc& desc)
+    void HitReaction::StartFlash(int frames, float alpha) noexcept
     {
-        m_flashRemaining = std::max(desc.flashFrames, 0);
+        m_flashRemaining = std::max(frames, 0);
         m_flashFrames = m_flashRemaining;
-        m_flashAlpha = desc.flashAlpha;
-        m_pad = desc.pad;
-        m_padElapsed = 0;
-        m_padRunning = true;
-        m_justPlayed = true;
-        WritePadVibration();
+        m_flashAlpha = alpha;
+        m_flashJustStarted = true;
+    }
 
-        if (Owner() == nullptr || Owner()->GetCameraManager() == nullptr)
+    bool HitReaction::StartShake(const CameraShakeDesc& desc)
+    {
+        if (desc.frames <= 0)
         {
-            return;
+            return true;
         }
-        if (desc.shake.frames > k_MaxShakeFrames)
+        if (desc.frames > k_MaxShakeFrames)
         {
             NS_LOG_WARN(Scene,
                         "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった",
-                        desc.shake.frames,
+                        desc.frames,
                         k_MaxShakeFrames);
+            return false;
         }
-        else if (desc.shake.frames > 0 && !StartCameraShake(*Owner(), desc.shake))
+        // カメラの無い場面 (試しの台) では揺らす先が無い。設定の誤りではないので黙って返す
+        if (Owner() == nullptr || Owner()->GetCameraManager() == nullptr)
+        {
+            return false;
+        }
+        if (!StartCameraShake(*Owner(), desc))
         {
             NS_LOG_WARN(Scene,
                         "揺れの設定が壊れていて、揺らさなかった: 横 {} 縦 {} フレーム数 {} 最長 {}",
-                        desc.shake.sideAmplitude,
-                        desc.shake.upAmplitude,
-                        desc.shake.frames,
-                        desc.shake.longestFlipFrames);
+                        desc.sideAmplitude,
+                        desc.upAmplitude,
+                        desc.frames,
+                        desc.longestFlipFrames);
+            return false;
         }
-        if (!StartCameraZoomRoll(*Owner(), desc.zoomRoll))
+        return true;
+    }
+
+    bool HitReaction::StartZoomRoll(const CameraZoomRollDesc& desc)
+    {
+        if (Owner() == nullptr || Owner()->GetCameraManager() == nullptr)
+        {
+            return false;
+        }
+        if (!StartCameraZoomRoll(*Owner(), desc))
         {
             NS_LOG_WARN(Scene,
                         "寄りと傾きの設定が壊れていて、寄せなかった: 倍率 {} 傾き {} 保つ {} 戻す {}",
-                        desc.zoomRoll.zoom,
-                        desc.zoomRoll.rollDegrees,
-                        desc.zoomRoll.holdFrames,
-                        desc.zoomRoll.returnFrames);
+                        desc.zoom,
+                        desc.rollDegrees,
+                        desc.holdFrames,
+                        desc.returnFrames);
+            return false;
         }
+        return true;
+    }
+
+    void HitReaction::StartPadVibration(const HitPadVibration& pad)
+    {
+        m_pad = pad;
+        m_padElapsed = 0;
+        m_padRunning = true;
+        m_padJustStarted = true;
+        WritePadVibration();
     }
 
     void HitReaction::Stop()
     {
         m_flashRemaining = 0;
+        m_flashJustStarted = false;
+        m_padJustStarted = false;
         // 書くフレーム数 0 の振動を書くと 0 が入り、止めたフレームの値が残らない
         m_pad = HitPadVibration{};
         m_padElapsed = 0;
@@ -78,18 +106,21 @@ namespace NS::Obj
 
     void HitReaction::OnUpdate()
     {
-        // Play したフレームは最初の姿のまま。次の更新から薄め、振動を進める
-        if (m_justPlayed)
+        // 始めたフレームは最初の姿のまま。次の更新から薄め、振動を進める
+        if (m_flashJustStarted)
         {
-            m_justPlayed = false;
-            return;
+            m_flashJustStarted = false;
         }
-        if (m_flashRemaining > 0)
+        else if (m_flashRemaining > 0)
         {
             --m_flashRemaining;
         }
         // 書かれなかったフレームは Gamepad::Update が 0 にするので、振動の間は毎フレーム書く
-        if (m_padRunning)
+        if (m_padJustStarted)
+        {
+            m_padJustStarted = false;
+        }
+        else if (m_padRunning)
         {
             ++m_padElapsed;
             WritePadVibration();

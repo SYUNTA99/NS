@@ -112,7 +112,7 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
     ASSERT_NE(player, nullptr);
     NS::Obj::HitReaction* reaction = player->HitReactionPart();
     ASSERT_NE(reaction, nullptr);
-    reaction->Play(NS::Obj::HitReactionDesc{.flashFrames = 3, .flashAlpha = 1.0f});
+    reaction->StartFlash(3, 1.0f);
     reaction->OnUpdate();
     ASSERT_EQ(reaction->FlashFramesRemaining(), 3);
     player->States().Build<ObservePlayerEffectsState>(*player);
@@ -154,7 +154,7 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
     ASSERT_TRUE(player->Resolver().FreezeBeganThisStep());
     NS::Obj::HitReaction* reaction = player->HitReactionPart();
     ASSERT_NE(reaction, nullptr);
-    reaction->Play(NS::Obj::HitReactionDesc{.flashFrames = 3, .flashAlpha = 1.0f});
+    reaction->StartFlash(3, 1.0f);
     reaction->OnUpdate();
     const std::uint32_t stateStep = player->States().StepsInState();
     player->Update();

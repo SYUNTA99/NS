@@ -913,12 +913,11 @@ namespace NS::Game::Level
         {
             return;
         }
-        const NS::Obj::HitReactionDesc reaction{.flashFrames = m_pendingFlashSteps,
-                                                .flashAlpha = Tuning().m_centerHitFlashAlpha,
-                                                .shake = m_pendingShake,
-                                                .zoomRoll = m_pendingZoomRoll,
-                                                .pad = m_pendingPad};
-        m_hitReaction->Play(reaction);
+        m_hitReaction->StartFlash(m_pendingFlashSteps, Tuning().m_centerHitFlashAlpha);
+        m_hitReaction->StartPadVibration(m_pendingPad);
+        (void)m_hitReaction->StartShake(m_pendingShake);
+        // 寄りの無い段も倍率 1 の設定を積み、前の当たりの寄りを残さない
+        (void)m_hitReaction->StartZoomRoll(m_pendingZoomRoll);
     }
 
     void ImpactResolver::OnEndPlay()
