@@ -1,4 +1,5 @@
 #include "Game/Level/CollisionInput.h"
+#include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
@@ -12,6 +13,7 @@
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
+#include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Clock.h"
@@ -83,6 +85,28 @@ namespace
         EXPECT_NEAR(actual.x, expected.x, 0.00001f);
         EXPECT_NEAR(actual.y, expected.y, 0.00001f);
         EXPECT_NEAR(actual.z, expected.z, 0.00001f);
+    }
+
+    // 手前の置物へ溜めた突進を出し、止めの頭まで回す。届いた場合 true
+    // waitForFreeze が偽なら、止めの予約だけが残る検知のフレームで止める
+    // 突進は 1 フレームの入口から出す。BodySlam を直に呼ぶと先行入力が残り、止めが明けた後にもう 1 度出る
+    bool SlamIntoTheRock(Player& player, NS::Game::Level::MapObj& rock, bool waitForFreeze)
+    {
+        player.RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        for (int frame = 0; frame < 10; ++frame)
+        {
+            player.Update(false);
+            rock.Update();
+            if (waitForFreeze && player.Resolver().FreezeBeganThisStep())
+            {
+                return true;
+            }
+            if (!waitForFreeze && player.Resolver().LastImpact().sequence > 0)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 } // namespace
 
@@ -170,11 +194,11 @@ TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
     ASSERT_FALSE(player->Resolver().FreezeBeganThisStep());
     player->Resolver().StepState();
     EXPECT_FALSE(player->Resolver().FreezeBeganThisStep());
-    EXPECT_TRUE(player->Body().IsActive());
+    EXPECT_FALSE(player->Resolver().IsHitStopping());
     player->Resolver().ObserveImpact();
     player->Resolver().StepState();
     EXPECT_TRUE(player->Resolver().FreezeBeganThisStep());
-    EXPECT_FALSE(player->Body().IsActive());
+    EXPECT_TRUE(player->Resolver().IsHitStopping());
 }
 
 // 1 フレームを進める入口は Player::Update だけ。裁定の部品を単独で回しても、観測も裁定も走らない
@@ -188,7 +212,7 @@ TEST(PlayerUpdatePipeline, TickingTheResolverPartAloneDoesNotJudge)
     player->Resolver().OnUpdate();
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
     EXPECT_TRUE(player->IsBodySlamming());
-    EXPECT_TRUE(player->Body().IsActive());
+    EXPECT_FALSE(player->Resolver().IsHitStopping());
 }
 
 TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
@@ -203,7 +227,135 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
     player->Resolver().StepState();
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
     EXPECT_TRUE(player->IsBodySlamming());
+    EXPECT_FALSE(player->Resolver().IsHitStopping());
+}
+
+// 止めの持ち主は裁定役の数え。身体の部品は外さず、止めの間は位置も状態の歩も進まない
+TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    ASSERT_NE(rock, nullptr);
+    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     EXPECT_TRUE(player->Body().IsActive());
+    EXPECT_TRUE(player->Resolver().IsHitStopping());
+    EXPECT_FALSE(player->CanMoveBody());
+    const NS::Core::Vector3 position = player->Root().Position();
+    const std::uint32_t stateStep = player->States().StepsInState();
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        if (!player->Resolver().IsHitStopping())
+        {
+            break;
+        }
+        SCOPED_TRACE(frame);
+        ExpectSameVector(player->Root().Position(), position);
+        EXPECT_EQ(player->States().StepsInState(), stateStep);
+    }
+    EXPECT_FALSE(player->Resolver().IsHitStopping());
+    EXPECT_TRUE(player->CanMoveBody());
+}
+
+// 身体の部品を外したのは試しで、止めの明けはそれを上書きしない
+TEST(PlayerUpdatePipeline, ReleasingTheHitStopLeavesASwitchedOffBodyAlone)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    ASSERT_NE(rock, nullptr);
+    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
+    player->Body().SetActive(false);
+    bool released = false;
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        if (player->Resolver().ReleasedThisStep())
+        {
+            released = true;
+        }
+    }
+    EXPECT_TRUE(released);
+    EXPECT_FALSE(player->Body().IsActiveSelf());
+}
+
+// やり直しは止めと止めの予約を捨てる。出現位置で弾かれず、元の位置へ戻った置物へ明けも止めの頭も届かない
+TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
+{
+    for (const bool waitForFreeze : {true, false})
+    {
+        SCOPED_TRACE(waitForFreeze);
+        NS::Obj::Scene scene;
+        Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+        ASSERT_NE(player, nullptr);
+        (void)scene.BeginPlayBaseline();
+        NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+        ASSERT_NE(rock, nullptr);
+        const NS::Core::Vector3 rockHome = rock->Root().Position();
+        ASSERT_TRUE(SlamIntoTheRock(*player, *rock, waitForFreeze));
+        NS::Game::Level::CourseDirector* director =
+            NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(scene);
+        ASSERT_NE(director, nullptr);
+        director->RestartCourse();
+        for (int frame = 0; frame < 20; ++frame)
+        {
+            player->Update(false);
+            rock->Update();
+            SCOPED_TRACE(frame);
+            EXPECT_FALSE(player->IsRebounding());
+            EXPECT_FALSE(player->Resolver().FreezeBeganThisStep());
+            EXPECT_FALSE(player->Resolver().ReleasedThisStep());
+            EXPECT_FALSE(player->Resolver().IsHitStopping());
+            ExpectSameVector(rock->Root().Position(), rockHome);
+            ExpectSameVector(player->Root().Scale(), NS::Core::Vector3{1.0f, 1.0f, 1.0f});
+        }
+    }
+}
+
+// 止めの途中でプレイを終えると、潰れた形のまま残らず止めも消える
+TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    ASSERT_NE(rock, nullptr);
+    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
+    ASSERT_TRUE(player->Resolver().IsScaleAnimating());
+    ASSERT_LT(player->Root().Scale().z, 1.0f);
+    player->Resolver().OnEndPlay();
+    ExpectSameVector(player->Root().Scale(), NS::Core::Vector3{1.0f, 1.0f, 1.0f});
+    EXPECT_FALSE(player->Resolver().IsHitStopping());
+    EXPECT_FALSE(player->Resolver().IsScaleAnimating());
+}
+
+// Inspector で裁定役を外すと、持っていた止めと予約を捨てる。入れ直しても遅れて弾かれない
+TEST(PlayerUpdatePipeline, SwitchingTheResolverOffDropsItsHitStop)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    ASSERT_NE(rock, nullptr);
+    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
+    player->Resolver().SetEnabled(false);
+    player->Update(false);
+    rock->Update();
+    EXPECT_TRUE(player->CanMoveBody());
+    player->Resolver().SetEnabled(true);
+    for (int frame = 0; frame < 20; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        SCOPED_TRACE(frame);
+        EXPECT_FALSE(player->Resolver().ReleasedThisStep());
+        EXPECT_FALSE(player->IsRebounding());
+    }
 }
 
 TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl)
@@ -343,7 +495,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                 ExpectSameVector(
                     player->Root().Scale(),
                     NS::Core::Vector3{(*pose)[2].get<float>(), (*pose)[3].get<float>(), (*pose)[4].get<float>()});
-                EXPECT_EQ(player->Body().IsActive(), (*pose)[5].get<bool>());
+                EXPECT_EQ(player->CanMoveBody(), (*pose)[5].get<bool>());
             }
             for (const nlohmann::json& sample : expected[4])
             {

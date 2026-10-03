@@ -121,9 +121,9 @@ namespace NS::Game::Player
             }
             return;
         }
-        if (!m_body->IsActive())
+        if (!m_actor->CanMoveBody())
         {
-            // 当たりの止めで移動が止まっている間は、絵も止める
+            // 当たりの止めで身体を動かせない間は、絵も止める
             return;
         }
 
@@ -190,9 +190,9 @@ namespace NS::Game::Player
 
     void PlayerAppearance::AdvanceLandingSquash() noexcept
     {
-        if (!m_body->IsActive())
+        if (!m_actor->CanMoveBody())
         {
-            // 当たりの止めで移動が止まっている間は、潰れの戻しも止める
+            // 当たりの止めで身体を動かせない間は、潰れの戻しも止める
             return;
         }
         NS::Obj::Model* renderer = nullptr;

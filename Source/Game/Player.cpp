@@ -202,12 +202,17 @@ void Player::DecideStep()
     {
         m_resolver->StepState();
     }
+    else
+    {
+        // 外された裁定役は止めも予約も捨てる。持ち越すと入れ直した時に残りの止めが明け、遅れて弾かれる
+        m_resolver->CancelImpact();
+    }
 }
 
 void Player::StateStep()
 {
     const float dt = NS::Platform::FrameTimer::FixedDelta();
-    if (m_body->IsActive() && dt > 0.0f)
+    if (CanMoveBody() && dt > 0.0f)
     {
         PrepareStateStep();
         StepStateMachine();
@@ -227,7 +232,7 @@ void Player::BodyStep()
     {
         m_collisionInput->ApplyControl();
     }
-    if (m_body->IsActive() && dt > 0.0f)
+    if (CanMoveBody() && dt > 0.0f)
     {
         MoveBody(dt);
     }
@@ -495,6 +500,12 @@ bool Player::IsRebounding() const noexcept
     return m_states != nullptr && m_states->IsCurrent<NS::Game::Player::ReboundPlayerState>();
 }
 
+bool Player::CanMoveBody() const noexcept
+{
+    // 当たりの止めの正は裁定役の数え。身体の active へ写すと、やり直しが写しを戻し忘れた時に正と食い違う
+    return m_body->IsActive() && !m_resolver->IsHitStopping();
+}
+
 void Player::ResetState() noexcept
 {
     m_body->SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
@@ -529,6 +540,8 @@ void Player::ResetState() noexcept
     m_bodySlamHeld = false;
     m_slam.wasSlamming = false;
     m_states->Reset();
+    // 止めの最中か予約の残るやり直しで、出現位置で明けて弾かれないよう止めを持ち主に捨てさせる
+    m_resolver->CancelImpact();
 }
 
 void Player::SkipBodyStep() noexcept

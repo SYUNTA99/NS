@@ -1,11 +1,15 @@
+#include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
+#include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/HitReaction.h"
+#include "Runtime/Object/Components/TransformComponent.h"
+#include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 
@@ -116,18 +120,45 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
     EXPECT_EQ(reaction->FlashFramesRemaining(), 2);
 }
 
+// 止めは本物の当たりで作る。止めの間は状態の歩が進まず、当たりの演出は薄れていく
 TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
 {
+    nlohmann::json doc = NS::Obj::MakeSceneJson();
+    nlohmann::json entry = NS::Obj::MakeObjectJson();
+    NS::Obj::SetObjectJsonClass(entry, "Player");
+    NS::Obj::SetObjectJsonId(entry, 1);
+    NS::Obj::SetObjectPosition(entry, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+    NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
+    nlohmann::json rock = NS::Obj::MakeObjectJson();
+    NS::Obj::SetObjectJsonClass(rock, "MapObj");
+    NS::Obj::SetObjectJsonId(rock, 2);
+    NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{0.0f, 0.5f, 0.6f});
+    NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     NS::Obj::Scene scene;
-    Player* player = PlaceSequencePlayer(scene);
+    scene.LoadJson(doc);
+    NS::Core::OBB floor{};
+    floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+    floor.halfExtentX = 100.0f;
+    floor.halfExtentY = 0.5f;
+    floor.halfExtentZ = 100.0f;
+    scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
+    Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    for (int frame = 0; frame < 10 && !player->Resolver().FreezeBeganThisStep(); ++frame)
+    {
+        player->Update();
+    }
+    ASSERT_TRUE(player->Resolver().FreezeBeganThisStep());
     NS::Obj::HitReaction* reaction = player->HitReactionPart();
     ASSERT_NE(reaction, nullptr);
     reaction->Play(NS::Obj::HitReactionDesc{.flashFrames = 3, .flashAlpha = 1.0f});
     reaction->OnUpdate();
-    player->Body().SetActive(false);
+    const std::uint32_t stateStep = player->States().StepsInState();
     player->Update();
-    EXPECT_EQ(player->States().StepsInState(), 0u);
+    ASSERT_TRUE(player->Resolver().IsHitStopping());
+    EXPECT_EQ(player->States().StepsInState(), stateStep);
     EXPECT_EQ(reaction->FlashFramesRemaining(), 2);
 }
 
@@ -174,8 +205,8 @@ TEST(PlayerStateSequence, ReboundGravityIsTheChoiceWithTheReboundRise)
     }
 }
 
-// 突進の玉は、丸まる前の立ち姿の下の球がそのまま玉になる。丸まる時の根の下げ幅 (ChangeCurled) と玉の中心の決まりが結ばれている
-// 下げ幅を変えると、判定・矢印・エディタの面が読む玉だけが黙ってずれる
+// 突進の玉は、丸まる前の立ち姿の下の球がそのまま玉になる。丸まる時の根の下げ幅 (ChangeCurled)
+// と玉の中心の決まりが結ばれている 下げ幅を変えると、判定・矢印・エディタの面が読む玉だけが黙ってずれる
 TEST(PlayerStateSequence, SlamBallStaysPutWhenCurling)
 {
     NS::Obj::Scene scene;

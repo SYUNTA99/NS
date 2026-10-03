@@ -154,7 +154,18 @@ namespace NS::Game::Level
         //! 白フラッシュの残りフレーム数。出していない場合 0
         [[nodiscard]] int CenterHitFlashStepsRemaining() const noexcept;
 
-        //! 凍結の途中で外れても移動を止めたままにしない
+        //! @brief 当たりの止めの最中の場合 true、それ以外の場合は false
+        //! @details 止めの正はこの部品の数え 1 つ。止めの頭のフレームから明けの 1 つ前のフレームまで真で、
+        //! 止めの予約だけが残る検知のフレームは偽。身体を動かしてよいかは Player::CanMoveBody が答える
+        [[nodiscard]] bool IsHitStopping() const noexcept { return m_hitStopRemaining > 0; }
+
+        //! @brief 持っている止めと止めの予約と、控えた相手を捨てる
+        //! @details 相手へ明けを送らない。止めか予約が残っていた時だけ、同居の HitReaction の白・揺れ・振動を止める。
+        //! 潰した形か戻しの途中なら根のスケールを控えた元の形へ戻す。最後の当たりの記録は残す。
+        //! 何度呼んでも同じ結果になる
+        void CancelImpact() noexcept;
+
+        //! 止めと予約を捨てる。プレイの途中で外れても止めが次のプレイへ残らない
         void OnEndPlay() override;
 
         //! @brief 突進の線で最初に触れる相手を探す
@@ -191,7 +202,7 @@ namespace NS::Game::Level
         // 事前条件: m_movement が非 null
         [[nodiscard]] NS::Obj::HitSensor* FindOverlapped(const NS::Core::Vector3& predictedVelocity) const;
 
-        // 凍結を掛ける。自機を寝かせて潰し、当たりの返りを始め、相手へ止めの頭を知らせる
+        // 凍結を掛ける。止めの数えを立てて自機を潰し、当たりの返りを始め、相手へ止めの頭を知らせる
         void BeginFreeze(int stopSteps);
 
         // 当たり 1 回の返り。揺れの向きと種、寄りと傾きの向きは呼び手が入れる

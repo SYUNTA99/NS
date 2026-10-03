@@ -621,11 +621,10 @@ namespace NS::Game::Level
 
     void ImpactResolver::BeginFreeze(int stopSteps)
     {
-        // 自機を寝かせて凍らせる。Player の StateStep と BodyStep はこの後に身体の active を見るので、
+        // 数えを立てて凍らせる。Player の StateStep と BodyStep はこの後に CanMoveBody で数えを見るので、
         // 同じフレームから効く
         m_hitStopRemaining = stopSteps;
         m_hitStopTotal = stopSteps;
-        m_body->SetActive(false);
         NS_LOG_INFO(Game, "ヒットストップ: {} フレーム", stopSteps);
 
         // 潰れは反発の前半。進行方向の厚みを潰し、代わりに高さを伸ばす
@@ -753,13 +752,34 @@ namespace NS::Game::Level
 
     void ImpactResolver::OnEndPlay()
     {
-        m_stateReady = false;
+        CancelImpact();
+    }
+
+    void ImpactResolver::CancelImpact() noexcept
+    {
+        // 白・揺れ・振動を始めたのは裁定役なので止めるのも裁定役。止めも予約も無い時は前の当たりの薄れを残す
+        const bool hadStop = m_hitStopRemaining > 0 || m_freezePendingSteps > 0;
+        m_hitStopRemaining = 0;
+        m_hitStopTotal = 0;
+        m_freezePendingSteps = 0;
+        m_pendingBreak = false;
         m_hasObservedTarget = false;
-        // 凍結の途中で裁定が外れても、移動が止まったまま残らないようにする
-        // 白と振動とカメラの効果は HitReaction が自分の OnEndPlay で止める
-        if (m_body != nullptr)
+        m_stateReady = false;
+        m_didRebound = false;
+        m_didBreak = false;
+        m_freezeBeganThisStep = false;
+        m_releasedThisStep = false;
+        // 相手へは明けを送らない。相手はやり直しの知らせで自分の位置へ戻り、凍結は相手の数えで明ける
+        m_pendingTarget = NS::Obj::ActorRef{};
+        if ((m_scaleHeld || m_recoverRemaining > 0) && Owner() != nullptr)
         {
-            m_body->SetActive(true);
+            RootTransform().SetScale(m_scaleHome);
+        }
+        m_scaleHeld = false;
+        m_recoverRemaining = 0;
+        if (hadStop && m_hitReaction != nullptr)
+        {
+            m_hitReaction->Stop();
         }
     }
 
@@ -787,7 +807,6 @@ namespace NS::Game::Level
 
     void ImpactResolver::ReleaseHitStop()
     {
-        m_body->SetActive(true);
         const bool wasBreak = m_pendingBreak;
         m_pendingBreak = false;
         if (wasBreak)
