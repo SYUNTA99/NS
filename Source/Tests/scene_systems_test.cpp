@@ -30,7 +30,7 @@ namespace
     class CountingUI final : public NS::Obj::UIActor
     {
     public:
-        void OnUpdate() override { ++updates; }
+        void OnTick() override { ++updates; }
         void OnRenderOverlay(const NS::Gfx::RenderContext&) override {}
         int updates = 0;
     };

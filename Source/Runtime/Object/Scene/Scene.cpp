@@ -349,19 +349,6 @@ namespace NS::Obj
             }
             // 物理の段に置いた物は、Jolt を 1 歩進めた直後に呼ばれる
             m_objects.ExecutePhase(phase);
-            if (phase == UpdatePhase::UI)
-            {
-                const std::vector<UIActor*> uiActors = m_sceneRenderer.UIActors();
-                for (UIActor* actor : uiActors)
-                {
-                    if (std::find(m_sceneRenderer.UIActors().begin(), m_sceneRenderer.UIActors().end(), actor) !=
-                            m_sceneRenderer.UIActors().end() &&
-                        actor->IsOpen())
-                    {
-                        actor->Update();
-                    }
-                }
-            }
         }
         m_objects.RemoveKilledTransients();
     }
@@ -449,11 +436,14 @@ namespace NS::Obj
     void Scene::RegisterUIActor(UIActor* actor)
     {
         m_sceneRenderer.RegisterUIActor(actor);
+        // 進む順は DrawOrder でなく開いた順
+        m_objects.AddTicker(actor, UpdatePhase::UI);
     }
 
     void Scene::UnregisterUIActor(UIActor* actor) noexcept
     {
         m_sceneRenderer.UnregisterUIActor(actor);
+        m_objects.RemoveTicker(actor);
     }
 
     SceneCamera* Scene::MainCamera() noexcept

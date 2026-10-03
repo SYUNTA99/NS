@@ -5,6 +5,7 @@
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/StateMachine.h"
 #include "Runtime/Object/Transform.h"
+#include "Runtime/Object/UpdatePhase.h"
 
 #include <concepts>
 #include <cstdint>
@@ -79,11 +80,17 @@ namespace NS::Obj
         [[nodiscard]] HitReaction* HitReactionPart() noexcept { return m_hitReaction.get(); }
         [[nodiscard]] const HitReaction* HitReactionPart() const noexcept { return m_hitReaction.get(); }
 
-        //! @brief 1 固定ステップを観測、決定、状態、身体、見た目の順に 1 回ずつ進める
-        //! @details 順は基底のここ 1 か所で決まり、派生は上書きできない。派生は段の中身だけを ObserveStep などで書く
-        void Update() final;
-        //! Animation を進める
-        void PrepareRender() override;
+        //! @brief Update を呼ばれる段を返す
+        //! @return 既定は Triggers
+        [[nodiscard]] virtual UpdatePhase Phase() const noexcept { return UpdatePhase::Triggers; }
+        //! Input の段で、出ている全ての Actor に呼ばれる。既定は何もしない
+        virtual void ReadInput() {}
+        //! @brief Phase が返す段で、1 固定ステップを観測、決定、状態、身体、見た目の順に 1 回ずつ進める
+        //! @details 順は基底のここ 1 か所で決まり、派生は上書きできない。派生は段の中身だけを ObserveStep などで書く。
+        //! 部品は自分では回らないので、各段で順に呼ぶ
+        void Update();
+        //! RenderPrep の段で、出ている全ての Actor に呼ばれる。既定は Animation を進める
+        virtual void PrepareRender();
 
         //! 実行時にコードが足す一時オブジェクトか。true は保存・凍結・作業データに写らず、
         //! データからの組み直し後も残る

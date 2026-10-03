@@ -99,9 +99,9 @@ namespace NS::Obj
         [[nodiscard]] HitSensorDirector& HitSensors() noexcept { return m_hitSensors; }
         [[nodiscard]] const HitSensorDirector& HitSensors() const noexcept { return m_hitSensors; }
 
-        //! 画面に出す物を一覧へ入れる。UIActor::Open が呼ぶ。二重登録は無視する
+        //! 画面に出す物を描画の一覧と UI の段の登録物へ入れる。UIActor::Open が呼ぶ。二重登録は無視する
         void RegisterUIActor(UIActor* actor);
-        //! 画面に出す物を一覧から外す。UIActor::Close が呼ぶ
+        //! 画面に出す物を描画の一覧と UI の段の登録物から外す。UIActor::Close が呼ぶ
         void UnregisterUIActor(UIActor* actor) noexcept;
 
         //! PhysicsScene への参照。Scene が値で持つので寿命は Scene と同じ
@@ -224,8 +224,8 @@ namespace NS::Obj
         //! 補間スナップショットの後に、UpdatePhase の段を表の順に 1 つずつ回す
         //! 世界の駆動はここが持つ
         //! 物理の段では、Jolt の 1 歩、その段に置いた物の順に呼ぶ
-        //! 段の中は Actor、登録物の順に呼ぶ。CameraManager は Camera の段、エフェクトの世界は Effects の段の登録物
-        //! UI の段の後に開いている UIActor を進める
+        //! 段の中は Actor、登録物の順に呼ぶ。CameraManager は Camera の段、エフェクトの世界は Effects の段、
+        //! 開いている UIActor は UI の段の登録物
         //! 読み込んだら回り続けるのが既定で、止める口は SetSimulationEnabled / SetSimulationPaused
         void OnUpdate();
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/Object/ActorBase.h"
+#include "Runtime/Object/ITickable.h"
 #include "Runtime/UI/UISystem.h"
 
 namespace NS::Gfx
@@ -12,15 +13,14 @@ namespace NS::Obj
 {
     //! @brief 画面に出す物の基底。暗転・体力の表示・メニューなど
     //! @details 世界の座標と当たりを持たず、世界を描いた後の画面へ重ねて描く。オデッセイの LayoutActor に当たる
-    //! 寿命は開いた側が持つ。Open でシーンの画面の一覧へ入り、Close か破棄で外れる
-    //! 更新は世界の更新とカメラの後、UI の段で 1 固定ステップに 1 回。描画は世界と重ね描きの部品の後
-    class UIActor : public ActorBase
+    //! 寿命は開いた側が持つ。Open でシーンの画面の一覧と UI の段の登録物へ入り、Close か破棄で外れる
+    //! 更新は UI の段の Actor の後で、開いた順に OnTick が呼ばれる。描画は世界と重ね描きの部品の後で、
+    //! 描く順は開いた順でなく DrawOrder が決める
+    class UIActor : public ActorBase, public ITickable
     {
     public:
         UIActor() noexcept = default;
         ~UIActor() noexcept override;
-        //! OnUpdate を呼ぶ
-        void Update() override { OnUpdate(); }
         //! この画面が持つ UI の部品の一覧
         [[nodiscard]] NS::UI::UISystem& Widgets() noexcept { return m_widgets; }
         NS_REFLECT_NONE(UIActor, ActorBase)
@@ -34,8 +34,8 @@ namespace NS::Obj
         //! 画面の一覧に入っているか
         [[nodiscard]] bool IsOpen() const noexcept { return IsAlive() && OwningScene() != nullptr; }
 
-        //! UI の段で 1 固定ステップに 1 回呼ばれる。シミュレーションが止まっている間は呼ばれない
-        virtual void OnUpdate() {}
+        //! UI の段で 1 固定ステップに 1 回呼ばれる。シミュレーションが止まっている間は呼ばれない。既定は何もしない
+        void OnTick() override {}
 
         //! 世界と重ね描きの部品を描いた後の画面へ重ねて描く
         virtual void OnRenderOverlay(const NS::Gfx::RenderContext& context);

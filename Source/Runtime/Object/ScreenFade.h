@@ -29,7 +29,7 @@ namespace NS::Obj
         void Advance(float dt) noexcept;
 
         //! UI の段で fixed step ぶん進む。時間停止中は段ごと止まるので凍る
-        void OnUpdate() override;
+        void OnTick() override;
 
         //! 暗転か明転が進行中か
         [[nodiscard]] bool IsFading() const noexcept { return m_stage == Stage::Out || m_stage == Stage::In; }

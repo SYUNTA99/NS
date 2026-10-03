@@ -20,7 +20,7 @@ namespace NS::Obj
         Widgets().Root().SetAlpha(Alpha());
     }
 
-    void ScreenFade::OnUpdate()
+    void ScreenFade::OnTick()
     {
         Advance(NS::Platform::FrameTimer::FixedDelta());
     }

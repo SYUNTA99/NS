@@ -5,7 +5,7 @@
 namespace NS::Obj
 {
     //! @brief 1 固定ステップの更新の段。Scene::OnUpdate が k_UpdatePhases の順に回す
-    //! @details Actor は ActorBase::Phase で自分の段を答え、部品でない物は ObjectList::AddTicker で段を決める
+    //! @details Actor は Actor::Phase で自分の段を答え、部品でない物は ObjectList::AddTicker で段を決める
     enum class UpdatePhase
     {
         Input,
