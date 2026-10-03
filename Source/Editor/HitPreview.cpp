@@ -5,6 +5,8 @@
 #include "Game/Level/HitZones.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/Components/CameraManager.h"
+#include "Runtime/Object/Components/CameraModifier.h"
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
@@ -122,6 +124,17 @@ namespace NS::Editor
                 frame.awaitingRebound = player->Resolver().IsAwaitingRebound();
                 frame.rebounding = player->IsRebounding();
                 frame.startedRows = player->Resolver().RowsStartedThisStep();
+                frame.worldSpeed = scene->WorldSpeed();
+                if (const NS::Obj::CameraManager* cameras = scene->GetCameraManager())
+                {
+                    frame.trauma = cameras->Trauma();
+                    frame.shakeOffset = cameras->ShakeOffset();
+                    if (const NS::Obj::CameraTraumaModifier* shake =
+                            cameras->FindModifier<NS::Obj::CameraTraumaModifier>())
+                    {
+                        frame.shakeAngles = shake->Angles();
+                    }
+                }
                 result.frames.push_back(std::move(frame));
                 if (result.detectionIndex < 0 && player->Resolver().LastImpact().sequence != 0)
                 {

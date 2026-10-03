@@ -111,6 +111,33 @@ TEST(EditorHitPreview, HitsThePickedPointOnTheFace)
     EXPECT_NEAR(edge.impact.faceU, 0.85f, 0.05f);
 }
 
+// hitstop-and-shake R-4-2: 帯に重ねるため、揺れ・トラウマ・世界の速さをフレームごとに記録する
+TEST(EditorHitPreview, RecordsTheShakeAndTheWorldSpeedEachFrame)
+{
+    HitTimeline timeline = MakePreviewTimeline();
+    CameraTraumaEvent trauma;
+    trauma.trauma = 0.8f;
+    GradualReleaseEvent release;
+    release.startSpeed = 0.25f;
+    timeline.events.push_back({trauma, 1, 1, HitDirection::Any});
+    timeline.events.push_back({release, 3, 1, HitDirection::Any});
+    const ScopedHitTimelineDirectory directory("EditorHitPreviewShake");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    PreviewAssets assets;
+    const NS::Editor::HitPreviewResult result =
+        NS::Editor::RunHitPreview(MakePreviewSceneJson(), MakeDesc(0.6f, 0.0f), assets.World());
+    ASSERT_TRUE(result.hit) << result.error;
+    ASSERT_GE(result.detectionIndex, 0);
+    const std::size_t traumaFrame = static_cast<std::size_t>(result.detectionIndex + 1);
+    const std::size_t releaseFrame = static_cast<std::size_t>(result.detectionIndex + 3);
+    ASSERT_GT(result.frames.size(), releaseFrame);
+    EXPECT_FLOAT_EQ(result.frames[traumaFrame - 1].trauma, 0.0f);
+    EXPECT_GT(result.frames[traumaFrame].trauma, 0.0f);
+    EXPECT_GT(result.frames[traumaFrame].shakeAngles.Length(), 0.0f);
+    EXPECT_FLOAT_EQ(result.frames[releaseFrame - 1].worldSpeed, 1.0f);
+    EXPECT_LT(result.frames[releaseFrame].worldSpeed, 1.0f);
+}
+
 // R-8 の下地: 帯へ重ねるため、事象が実際に始まったフレームを行の番号で記録する
 TEST(EditorHitPreview, RecordsTheFrameEachRowStarted)
 {

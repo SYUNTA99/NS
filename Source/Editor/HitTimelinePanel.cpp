@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <format>
+#include <functional>
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -105,6 +106,13 @@ namespace NS::Editor
         constexpr ImU32 k_PlayheadColor = IM_COL32(255, 80, 80, 255);
         constexpr ImU32 k_DetectionColor = IM_COL32(200, 200, 200, 120);
         constexpr ImU32 k_RulerTextColor = IM_COL32(200, 200, 200, 255);
+        constexpr int k_PreviewGraphCount = 4; // 帯の下の折れ線の行の数
+        constexpr ImU32 k_GraphBackColor = IM_COL32(40, 40, 46, 255);
+        constexpr ImU32 k_GraphTraumaColor = IM_COL32(255, 170, 60, 255);
+        constexpr ImU32 k_GraphXColor = IM_COL32(240, 90, 90, 255);
+        constexpr ImU32 k_GraphYColor = IM_COL32(110, 220, 110, 255);
+        constexpr ImU32 k_GraphZColor = IM_COL32(110, 150, 255, 255);
+        constexpr ImU32 k_GraphSpeedColor = IM_COL32(200, 120, 255, 255);
 #endif
     } // namespace
 
@@ -514,10 +522,19 @@ namespace NS::Editor
         const float frameWidth = std::max(bandsWidth / static_cast<float>(frameCount), k_MinFrameWidth);
         const float totalWidth = frameWidth * static_cast<float>(frameCount);
         // 帯は横に流れる区画へ入れ、フレームが多い時は横に送れるようにする
-        const float regionHeight = rowHeight * static_cast<float>(m_working.events.size() + 1) +
-                                   ImGui::GetStyle().ScrollbarSize + ImGui::GetStyle().ItemSpacing.y * 2.0f;
+        // 帯の行は 360 で頭打ちにして縦に送る。下見の折れ線の 4 行はその下へいつも見える高さを足す
+        float graphsHeight = 0.0f;
+        if (m_result.hit && !m_result.frames.empty())
+        {
+            graphsHeight =
+                static_cast<float>(k_PreviewGraphCount) * (rowHeight * 2.0f + ImGui::GetStyle().ItemSpacing.y);
+        }
+        // 行ごとに行の間の空きが入る
+        const float regionHeight =
+            (rowHeight + ImGui::GetStyle().ItemSpacing.y) * static_cast<float>(m_working.events.size() + 1) +
+            graphsHeight + ImGui::GetStyle().ScrollbarSize + ImGui::GetStyle().ItemSpacing.y * 2.0f;
         if (!ImGui::BeginChild("##bands",
-                               ImVec2{0.0f, std::min(regionHeight, 360.0f)},
+                               ImVec2{0.0f, std::min(regionHeight, 360.0f + graphsHeight)},
                                ImGuiChildFlags_Borders,
                                ImGuiWindowFlags_HorizontalScrollbar))
         {
@@ -597,6 +614,12 @@ namespace NS::Editor
             ImGui::PopID();
         }
 
+        // 下見の揺れ・トラウマ・世界の速さを、帯と同じフレームの並びで折れ線に重ねる。段が違っても下見そのものの値
+        if (m_result.hit && !m_result.frames.empty())
+        {
+            RenderPreviewGraphs(*draw, range.first, frameWidth, totalWidth, rowHeight);
+        }
+
         // 検知のフレームと再生の位置の縦線
         const float bottom = ImGui::GetCursorScreenPos().y;
         const float detectionX = bandsLeft + static_cast<float>(0 - range.first) * frameWidth;
@@ -608,6 +631,105 @@ namespace NS::Editor
             draw->AddLine(ImVec2{x, top.y}, ImVec2{x, bottom}, k_PlayheadColor, 2.0f);
         }
         ImGui::EndChild();
+#endif
+    }
+
+    void HitTimelinePanel::RenderPreviewGraphs(
+        ImDrawList& draw, int firstClock, float frameWidth, float totalWidth, float rowHeight) noexcept
+    {
+#if NS_EDITOR_ENABLED
+        const std::vector<HitPreviewFrame>& frames = m_result.frames;
+        // 揺れの角度とずれは一番大きい所で縦を合わせる。0 しか無ければ 1 で割る
+        float largestAngle = 0.0f;
+        float largestOffset = 0.0f;
+        for (const HitPreviewFrame& frame : frames)
+        {
+            largestAngle = std::max({largestAngle,
+                                     std::fabs(frame.shakeAngles.x),
+                                     std::fabs(frame.shakeAngles.y),
+                                     std::fabs(frame.shakeAngles.z)});
+            largestOffset = std::max({largestOffset, std::fabs(frame.shakeOffset.x), std::fabs(frame.shakeOffset.y)});
+        }
+        if (largestAngle <= 0.0f)
+        {
+            largestAngle = 1.0f;
+        }
+        if (largestOffset <= 0.0f)
+        {
+            largestOffset = 1.0f;
+        }
+        const float graphHeight = rowHeight * 2.0f;
+        const int detection = m_result.detectionIndex;
+        // 1 本の折れ線。value は 0〜1 (center が真なら -1〜1) に写した値を返す
+        const auto drawLine = [&](const ImVec2& origin,
+                                  ImU32 color,
+                                  bool centered,
+                                  const std::function<float(const HitPreviewFrame&)>& value) {
+            ImVec2 previous{};
+            for (std::size_t i = 0; i < frames.size(); ++i)
+            {
+                const int clock = static_cast<int>(i) - detection;
+                const float x = origin.x + (static_cast<float>(clock - firstClock) + 0.5f) * frameWidth;
+                float ratio = value(frames[i]);
+                if (centered)
+                {
+                    ratio = ratio * 0.5f + 0.5f;
+                }
+                const float y = origin.y + graphHeight - 2.0f - std::clamp(ratio, 0.0f, 1.0f) * (graphHeight - 4.0f);
+                const ImVec2 point{x, y};
+                if (i > 0)
+                {
+                    draw.AddLine(previous, point, color, 1.5f);
+                }
+                previous = point;
+            }
+        };
+        const auto graphRow =
+            [&](const char* label, const char* tooltip, const std::function<void(const ImVec2&)>& body) {
+                ImGui::TextUnformatted(label);
+                ImGui::SetItemTooltip("%s", tooltip);
+                ImGui::SameLine(k_BandLabelWidth, 0.0f);
+                const ImVec2 origin = ImGui::GetCursorScreenPos();
+                ImGui::Dummy(ImVec2{totalWidth, graphHeight});
+                draw.AddRectFilled(origin, ImVec2{origin.x + totalWidth, origin.y + graphHeight}, k_GraphBackColor);
+                body(origin);
+            };
+        graphRow("トラウマ", "カメラのトラウマ。下が 0、上が 1", [&](const ImVec2& origin) {
+            drawLine(origin, k_GraphTraumaColor, false, [](const HitPreviewFrame& frame) { return frame.trauma; });
+        });
+        graphRow(
+            "揺れの角度",
+            "トラウマの揺れの角度。赤が横の首振り、緑が縦の首振り、青が傾き。真ん中が 0 で、一番大きい所で縦を合わせる",
+            [&](const ImVec2& origin) {
+                drawLine(origin, k_GraphXColor, true, [largestAngle](const HitPreviewFrame& frame) {
+                    return frame.shakeAngles.x / largestAngle;
+                });
+                drawLine(origin, k_GraphYColor, true, [largestAngle](const HitPreviewFrame& frame) {
+                    return frame.shakeAngles.y / largestAngle;
+                });
+                drawLine(origin, k_GraphZColor, true, [largestAngle](const HitPreviewFrame& frame) {
+                    return frame.shakeAngles.z / largestAngle;
+                });
+            });
+        graphRow("揺れのずれ",
+                 "平行移動の揺れのずれ。赤が右、緑が上。真ん中が 0 で、一番大きい所で縦を合わせる",
+                 [&](const ImVec2& origin) {
+                     drawLine(origin, k_GraphXColor, true, [largestOffset](const HitPreviewFrame& frame) {
+                         return frame.shakeOffset.x / largestOffset;
+                     });
+                     drawLine(origin, k_GraphYColor, true, [largestOffset](const HitPreviewFrame& frame) {
+                         return frame.shakeOffset.y / largestOffset;
+                     });
+                 });
+        graphRow("世界の速さ", "世界の速さ。下が 0、上が普段の速さ 1", [&](const ImVec2& origin) {
+            drawLine(origin, k_GraphSpeedColor, false, [](const HitPreviewFrame& frame) { return frame.worldSpeed; });
+        });
+#else
+        (void)draw;
+        (void)firstClock;
+        (void)frameWidth;
+        (void)totalWidth;
+        (void)rowHeight;
 #endif
     }
 

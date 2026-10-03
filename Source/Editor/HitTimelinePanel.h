@@ -16,6 +16,7 @@
 #include <string>
 
 class LevelEditorController;
+struct ImDrawList;
 
 namespace NS::Obj
 {
@@ -55,6 +56,9 @@ namespace NS::Editor
         void RenderFileButtons() noexcept;
         // 事象ごとの帯と、下見で実際に始まったフレームの印と、再生の位置
         void RenderBands() noexcept;
+        // 下見の揺れ・トラウマ・世界の速さを帯の下に折れ線で描く。横は帯と同じフレームの並び
+        void RenderPreviewGraphs(
+            ImDrawList& draw, int firstClock, float frameWidth, float totalWidth, float rowHeight) noexcept;
         // 選んだ行の始まり・長さ・向きと、事象の欄
         void RenderSelectedRow() noexcept;
         // 再生・止め・コマ送り・速さ
