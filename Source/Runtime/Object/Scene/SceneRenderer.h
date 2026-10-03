@@ -1,11 +1,14 @@
 #pragma once
 
+#include "Runtime/Core/Math.h"
 #include "Runtime/Core/NonCopyable.h"
+#include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Graphics/RenderProxyList.h"
 #include "Runtime/Graphics/RenderSettings.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/ITickable.h"
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -33,10 +36,15 @@ namespace NS::Obj
 
     //! @brief 指定の描画先へ指定の視点でシーンを描く単位
     //! @details target が null なら backbuffer、viewPose が空なら CameraManager の選ぶカメラで描く
+    //! drawShapes を持つビューだけ、描く直前に使い捨ての DebugShapes へ図形を積ませて描く
     struct SceneView
     {
         NS::Gfx::RenderTarget* target = nullptr; // 描画先、非所有。null は backbuffer
         std::optional<CameraPose> viewPose;      // 描画視点。空なら CameraManager の選ぶカメラ
+
+        //! そのビューを描く間だけ要る開発用の図形を積む口。空なら積まない
+        //! 渡される DebugShapes は空で、描いた後に捨てられる。行列はそのビューのビュー射影
+        std::function<void(NS::Gfx::DebugShapes&, const NS::Core::Matrix&)> drawShapes;
     };
 
     //! @brief 描画物・重ね描き・平行光の登録簿を持ち、1 フレーム分のシーンを描く
@@ -120,11 +128,13 @@ namespace NS::Obj
         [[nodiscard]] NS::Gfx::RenderSettings ResolveSceneSettings(const NS::Gfx::RenderSettings& projectDefaults);
 
     private:
-        //! 1 ビュー分のシーンを描き、その上へデバッグ描画と OverlayRenderer の重ね描きを出す
+        //! @brief 1 ビュー分のシーンを描き、その上へデバッグ描画と OverlayRenderer の重ね描きを出す
+        //! @details デバッグ描画は、この固定ステップの図形、view.drawShapes が積んだ図形の順に描く
+        //! view.viewPose が空なら実カメラで描く
         void RenderViewWithOverlays(CameraManager& cameras,
                                     SceneCamera& camera,
                                     std::string_view skyboxPath,
-                                    const std::optional<CameraPose>& viewOverride,
+                                    const SceneView& view,
                                     float alpha,
                                     NS::Gfx::Bloom& bloom);
 
@@ -161,6 +171,8 @@ namespace NS::Obj
         NS::Gfx::Renderer* m_renderer = nullptr; // レンダラー、非所有。未設定なら描かない
 
         std::vector<SceneView> m_sceneViews; // 描くビュー列。空なら現描画先へ 1 回だけ描く
+
+        NS::Gfx::DebugShapes m_viewShapes; // ビューの図形の使い捨ての溜め場。1 ビューを描く間だけ中身がある
 
         std::unique_ptr<NS::Gfx::EffectScene> m_effects; // エフェクトの再生と描画。レンダラー未設定の間は空
 

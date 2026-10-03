@@ -266,7 +266,7 @@ namespace NS::Obj
         // ビュー列が空なら現描画先へ CameraManager の視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
         if (m_sceneViews.empty())
         {
-            RenderViewWithOverlays(cameras, camera, skyboxPath, std::nullopt, alpha, BloomForView(0));
+            RenderViewWithOverlays(cameras, camera, skyboxPath, SceneView{}, alpha, BloomForView(0));
             return;
         }
 
@@ -274,7 +274,7 @@ namespace NS::Obj
         {
             const SceneView& view = m_sceneViews[i];
             m_renderer->BeginSceneView(view.target);
-            RenderViewWithOverlays(cameras, camera, skyboxPath, view.viewPose, alpha, BloomForView(i));
+            RenderViewWithOverlays(cameras, camera, skyboxPath, view, alpha, BloomForView(i));
         }
     }
 
@@ -290,14 +290,23 @@ namespace NS::Obj
     void SceneRenderer::RenderViewWithOverlays(CameraManager& cameras,
                                                SceneCamera& camera,
                                                std::string_view skyboxPath,
-                                               const std::optional<CameraPose>& viewOverride,
+                                               const SceneView& view,
                                                float alpha,
                                                NS::Gfx::Bloom& bloom)
     {
-        const NS::Gfx::RenderContext ctx = RenderWorld(cameras, camera, skyboxPath, viewOverride, alpha, bloom);
+        const NS::Gfx::RenderContext ctx = RenderWorld(cameras, camera, skyboxPath, view.viewPose, alpha, bloom);
 
 #if !defined(NS_SHIPPING)
         NS::Gfx::DebugDraw::Flush(*ctx.renderer, ctx.viewProjection);
+
+        // ビューの図形は、このビューの行列で積んで描いたらすぐ捨てる。次のビューや次のフレームへ持ち越さない
+        if (view.drawShapes)
+        {
+            m_viewShapes.Clear();
+            view.drawShapes(m_viewShapes, ctx.viewProjection);
+            m_viewShapes.Draw(*ctx.renderer, ctx.viewProjection);
+            m_viewShapes.Clear();
+        }
 #endif
 
         DrawOverlays(ctx);
