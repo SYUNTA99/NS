@@ -3,6 +3,7 @@
 #include <SimpleMath.h>
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 
 namespace NS::Core
@@ -192,6 +193,44 @@ namespace NS::Core
     [[nodiscard]] constexpr float SmoothStep(float t) noexcept
     {
         return t * t * (3.0f - 2.0f * t);
+    }
+
+    //! @brief 整数の位置と種から 32 ビットの値を返す
+    //! @details 状態を持たない混ぜ合わせ。同じ位置と種からはいつも同じ値で、隣の位置の値とは相関しない
+    //! @param[in] position 整数の位置
+    //! @param[in] seed 種
+    [[nodiscard]] constexpr std::uint32_t NoiseHash(std::int32_t position, std::uint32_t seed) noexcept
+    {
+        // 掛ける数は上位と下位のビットがよく混ざる奇数。足して右へずらして排他的論理和を取り、位置の近さを壊す
+        constexpr std::uint32_t k_Mix1 = 0xB5297A4Du;
+        constexpr std::uint32_t k_Mix2 = 0x68E31DA4u;
+        constexpr std::uint32_t k_Mix3 = 0x1B56C4E9u;
+        std::uint32_t mixed = static_cast<std::uint32_t>(position);
+        mixed *= k_Mix1;
+        mixed += seed;
+        mixed ^= mixed >> 8;
+        mixed += k_Mix2;
+        mixed ^= mixed << 8;
+        mixed *= k_Mix3;
+        mixed ^= mixed >> 8;
+        return mixed;
+    }
+
+    //! @brief 1 次元の値ノイズを返す
+    //! @details 整数の格子に NoiseHash から -1〜1 の値を置き、間を SmoothStep で補間する。状態を持たないので、
+    //! 種と位置だけで好きな時刻の値を引ける。値は位置について連続で、格子の上で傾きが 0
+    //! @param[in] x 格子 1 つを 1 とする位置 (時刻 × 周波数)
+    //! @param[in] seed 種。違う種は違う並び
+    //! @return -1〜1 の値
+    [[nodiscard]] inline float ValueNoise1D(float x, std::uint32_t seed) noexcept
+    {
+        const float cell = std::floor(x);
+        const std::int32_t index = static_cast<std::int32_t>(cell);
+        const float t = x - cell;
+        constexpr float k_HashToUnit = 1.0f / 4294967295.0f;
+        const float a = static_cast<float>(NoiseHash(index, seed)) * k_HashToUnit * 2.0f - 1.0f;
+        const float b = static_cast<float>(NoiseHash(index + 1, seed)) * k_HashToUnit * 2.0f - 1.0f;
+        return Clamp(Lerp(a, b, SmoothStep(t)), -1.0f, 1.0f);
     }
 
     //! @brief 3 成分の絶対値のうち最大のもの。非一様な拡縮から球の半径を決める時に使う
