@@ -1,6 +1,6 @@
 #include "Runtime/Object/Actors/MapParts.h"
 
-#include "Runtime/Object/Components/MeshCollider.h"
+#include "Runtime/Object/Components/MeshCollision.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
@@ -14,7 +14,7 @@ namespace NS::Obj
         mesh->SetMeshRef("cube");
         mesh->SetBaseColor(NS::Core::Vector3{0.70f, 0.70f, 0.75f});
         // 当たりは見た目のメッシュの三角形そのもの。メッシュを差し替えると当たりも付いて来る
-        SetCollisionPart(std::make_unique<MeshCollider>());
+        SetCollisionPart(std::make_unique<MeshCollision>());
     }
 
     NS_PLACEABLE(MapParts, "地形の部品")

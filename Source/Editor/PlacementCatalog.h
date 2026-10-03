@@ -33,7 +33,7 @@ namespace NS::Editor
     inline constexpr std::string_view k_PartsSlopeLabel = "地形の部品 (坂)";
 
     //! @brief メッシュ資産から置く地形の部品のひな形を作る
-    //! @details 当たりは MeshCollider が描画と同じ三角形から作るので、描いた形と当たりがずれない
+    //! @details 当たりは MeshCollision が描画と同じ三角形から作るので、描いた形と当たりがずれない
     //! @param[in] meshRef ContentRoot 相対のメッシュの参照
     [[nodiscard]] nlohmann::json MakeMeshPartsPrototype(std::string_view meshRef);
 

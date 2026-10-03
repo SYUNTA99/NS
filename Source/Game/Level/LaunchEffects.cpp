@@ -1,6 +1,6 @@
 #include "Game/Level/LaunchEffects.h"
 
-#include "Game/Level/ColliderBounds.h"
+#include "Game/Level/CollisionBounds.h"
 #include "Game/Level/MapObj.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Graphics/EffectScene.h"
@@ -132,7 +132,7 @@ namespace NS::Game::Level
         // 再生の大きさは自分の直径。帯の幅は絵の定義が直径への割合で持つ
         m_trailScale = 1.0f;
         NS::Core::AABB bounds{};
-        if (TryGetColliderBounds(*Owner(), bounds))
+        if (TryGetCollisionBounds(*Owner(), bounds))
         {
             m_trailScale = 2.0f * std::max(bounds.Extents.x, bounds.Extents.z);
         }

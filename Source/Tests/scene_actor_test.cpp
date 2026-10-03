@@ -2,7 +2,7 @@
 #include "Game/Level/DeathZone.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/SphereCollider.h"
+#include "Runtime/Object/Components/SphereCollision.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -71,7 +71,7 @@ TEST(SceneActor, ClassOnlyObjectBuildsWholeComposition)
     NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(std::string_view{actor->ClassName()}, "MapObj");
-    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::SphereCollider>(actor->Part("Collision")), nullptr);
+    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::SphereCollision>(actor->Part("Collision")), nullptr);
 }
 
 TEST(SceneActor, ToJsonKeepsClassAndValues)
@@ -83,7 +83,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     scene.LoadJson(doc);
     NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    NS::Obj::SphereCollider* sphere = NS::Obj::ComponentCast<NS::Obj::SphereCollider>(actor->Part("Collision"));
+    NS::Obj::SphereCollision* sphere = NS::Obj::ComponentCast<NS::Obj::SphereCollision>(actor->Part("Collision"));
     ASSERT_NE(sphere, nullptr);
     sphere->SetRadius(1.5f);
     actor->Root().SetPosition(NS::Core::Vector3{3.0f, 4.0f, 5.0f});
@@ -99,8 +99,8 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     NS::Obj::Actor* again = reloaded.Objects().FindByObjectId(1);
     ASSERT_NE(again, nullptr);
     EXPECT_EQ(std::string_view{again->ClassName()}, "MapObj");
-    const NS::Obj::SphereCollider* sphereAgain =
-        NS::Obj::ComponentCast<NS::Obj::SphereCollider>(again->Part("Collision"));
+    const NS::Obj::SphereCollision* sphereAgain =
+        NS::Obj::ComponentCast<NS::Obj::SphereCollision>(again->Part("Collision"));
     ASSERT_NE(sphereAgain, nullptr);
     EXPECT_FLOAT_EQ(sphereAgain->Radius(), 1.5f);
     EXPECT_FLOAT_EQ(again->Root().Position().x, 3.0f);

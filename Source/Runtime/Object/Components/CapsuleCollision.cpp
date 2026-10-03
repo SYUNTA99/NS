@@ -1,4 +1,4 @@
-﻿#include "Runtime/Object/Components/CapsuleCollider.h"
+﻿#include "Runtime/Object/Components/CapsuleCollision.h"
 #include "Runtime/Core/AABB.h"
 
 #include "Runtime/Object/Actor.h"
@@ -11,9 +11,9 @@
 
 namespace NS::Obj
 {
-    CapsuleCollider::CapsuleCollider() noexcept {}
+    CapsuleCollision::CapsuleCollision() noexcept {}
 
-    CapsuleCollider::CapsuleCollider(float radius, float halfHeight) noexcept
+    CapsuleCollision::CapsuleCollision(float radius, float halfHeight) noexcept
         : m_radius([&]() -> float {
               if (radius < 0.0f)
               {
@@ -30,7 +30,7 @@ namespace NS::Obj
           }())
     {}
 
-    void CapsuleCollider::SetRadius(float radius) noexcept
+    void CapsuleCollision::SetRadius(float radius) noexcept
     {
         if (radius < 0.0f)
         {
@@ -42,12 +42,12 @@ namespace NS::Obj
         }
     }
 
-    float CapsuleCollider::Radius() const noexcept
+    float CapsuleCollision::Radius() const noexcept
     {
         return m_radius;
     }
 
-    void CapsuleCollider::SetHalfHeight(float halfHeight) noexcept
+    void CapsuleCollision::SetHalfHeight(float halfHeight) noexcept
     {
         if (halfHeight < 0.0f)
         {
@@ -59,42 +59,42 @@ namespace NS::Obj
         }
     }
 
-    float CapsuleCollider::HalfHeight() const noexcept
+    float CapsuleCollision::HalfHeight() const noexcept
     {
         return m_halfHeight;
     }
 
-    void CapsuleCollider::SetCenterOffset(const NS::Core::Vector3& offset) noexcept
+    void CapsuleCollision::SetCenterOffset(const NS::Core::Vector3& offset) noexcept
     {
         m_centerOffset = offset;
     }
 
-    NS::Core::Vector3 CapsuleCollider::CenterOffset() const noexcept
+    NS::Core::Vector3 CapsuleCollision::CenterOffset() const noexcept
     {
         return m_centerOffset;
     }
 
-    void CapsuleCollider::SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept
+    void CapsuleCollision::SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept
     {
         m_localRotation = rotation;
     }
 
-    NS::Core::Quaternion CapsuleCollider::LocalRotation() const noexcept
+    NS::Core::Quaternion CapsuleCollision::LocalRotation() const noexcept
     {
         return m_localRotation;
     }
 
-    void CapsuleCollider::SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept
+    void CapsuleCollision::SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept
     {
         m_localRotation = NS::Core::EulerDegreesToQuaternion(eulerDegrees);
     }
 
-    NS::Core::Vector3 CapsuleCollider::RotationEulerDegrees() const noexcept
+    NS::Core::Vector3 CapsuleCollision::RotationEulerDegrees() const noexcept
     {
         return NS::Core::QuaternionToEulerDegrees(m_localRotation);
     }
 
-    NS::Core::Matrix CapsuleCollider::CapsuleWorldMatrix() const noexcept
+    NS::Core::Matrix CapsuleCollision::CapsuleWorldMatrix() const noexcept
     {
         const Actor* owner = Owner();
         const NS::Core::Matrix local = NS::Core::Matrix::CreateFromQuaternion(m_localRotation) *
@@ -106,7 +106,7 @@ namespace NS::Obj
         return local * owner->Root().WorldMatrix();
     }
 
-    NS::Phys::Capsule CapsuleCollider::WorldCapsule() const noexcept
+    NS::Phys::Capsule CapsuleCollision::WorldCapsule() const noexcept
     {
         const NS::Core::AffineDecomposition decomposed = NS::Core::DecomposeAffine(CapsuleWorldMatrix());
         const NS::Core::Vector3& scale = decomposed.scale;
@@ -118,7 +118,7 @@ namespace NS::Obj
                                  m_radius * std::max(std::abs(scale.x), std::abs(scale.z))};
     }
 
-    NS::Core::AABB CapsuleCollider::WorldAABB() const noexcept
+    NS::Core::AABB CapsuleCollision::WorldAABB() const noexcept
     {
         const NS::Phys::Capsule capsule = WorldCapsule();
         const NS::Core::Vector3 tip = capsule.center + capsule.axis * capsule.halfHeight;
@@ -129,10 +129,10 @@ namespace NS::Obj
         return NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
     }
 
-    JPH::BodyID CapsuleCollider::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID CapsuleCollision::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
     {
         return physics.SyncCapsule(current, WorldCapsule(), NS::Phys::ObjectLayers::Terrain);
     }
 
-    NS_CLASS(CapsuleCollider)
+    NS_CLASS(CapsuleCollision)
 } // namespace NS::Obj

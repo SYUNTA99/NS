@@ -4,7 +4,7 @@
 #include "Game/Player.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/SphereCollider.h"
+#include "Runtime/Object/Components/SphereCollision.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
@@ -156,8 +156,8 @@ TEST(BodyShape, MapObjBodySensorFollowsACollisionRadiusEdit)
     scene.LoadJson(doc);
     NS::Obj::Actor* placed = scene.Objects().FindByObjectId(1);
     ASSERT_NE(placed, nullptr);
-    const NS::Obj::SphereCollider* collision =
-        NS::Obj::ComponentCast<NS::Obj::SphereCollider>(placed->Part("Collision"));
+    const NS::Obj::SphereCollision* collision =
+        NS::Obj::ComponentCast<NS::Obj::SphereCollision>(placed->Part("Collision"));
     ASSERT_NE(collision, nullptr);
 
     ASSERT_EQ(

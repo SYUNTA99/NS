@@ -108,7 +108,7 @@ TEST(FixedParts, SavedObjectsUseRoleKeysAndDirectFields)
     std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::ObjectFromJson(source, nullptr);
     ASSERT_NE(actor, nullptr);
     ASSERT_NE(actor->CollisionPart(), nullptr);
-    const NS::Obj::SphereCollider* sphere = NS::Obj::ComponentCast<NS::Obj::SphereCollider>(actor->CollisionPart());
+    const NS::Obj::SphereCollision* sphere = NS::Obj::ComponentCast<NS::Obj::SphereCollision>(actor->CollisionPart());
     ASSERT_NE(sphere, nullptr);
     EXPECT_FLOAT_EQ(sphere->Radius(), 2.0f);
     const nlohmann::json saved = NS::Obj::ObjectToJson(*actor);

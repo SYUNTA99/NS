@@ -13,7 +13,7 @@
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Graphics/Texture.h"
 #include "Runtime/Object/Components/Model.h"
-#include "Runtime/Physics/MeshCollision.h"
+#include "Runtime/Physics/MeshShape.h"
 #include "Runtime/Platform/Filesystem.h"
 
 #include <array>
@@ -70,7 +70,7 @@ namespace NS::Obj
         constexpr const char* k_SharedWater = "water";
         constexpr const char* k_SharedShadow = "shadow";
 
-        // 描画の RegisterBuiltins と当たりの GetOrLoadMeshCollision が同じ表から形を作る
+        // 描画の RegisterBuiltins と当たりの GetOrLoadMeshShape が同じ表から形を作る
         // 組み込みの形は両者で食い違わない
         struct BuiltinShape
         {
@@ -125,7 +125,7 @@ namespace NS::Obj
         }
 
         // Jolt の形は当たりを頼まれた時に 1 度だけ作る。描画だけの mesh には作らない
-        NS::Phys::MeshCollision* WithShape(NS::Phys::MeshCollision* collision)
+        NS::Phys::MeshShape* WithShape(NS::Phys::MeshShape* collision)
         {
             if (collision != nullptr && collision->shape == nullptr)
             {
@@ -267,7 +267,7 @@ namespace NS::Obj
         }
 
         // 描画と当たりのどちらを先に頼まれても両方ここで作る
-        // 当たりは MeshCollider が描画と同じ参照で頼む。当たりが先でも GPU mesh は描画に使われる
+        // 当たりは MeshCollision が描画と同じ参照で頼む。当たりが先でも GPU mesh は描画に使われる
         MeshRecord record;
         const NS::Gfx::MeshGeometry geom = NS::Gfx::LoadGltfMesh(key);
         if (geom.vertices.empty() || geom.indices.empty())
@@ -292,7 +292,7 @@ namespace NS::Obj
             // 当たりだけ頼まれた時も GPU 生成を通るので、device の無いテストでは上のエラーが出る
             // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
             // 大きな mesh を飾りに多く置いてメモリが効いてきたら、当たりを頼まれた時に作る形へ移す
-            record.collision = std::make_unique<NS::Phys::MeshCollision>();
+            record.collision = std::make_unique<NS::Phys::MeshShape>();
             record.collision->triangles = MakeTriangles(geom);
         }
         // 失敗した記録も残し、同じ参照を持つ配置物が毎回ディスクを読むのを防ぐ。修正後の再試行は Clear() で解いてから
@@ -309,7 +309,7 @@ namespace NS::Obj
         return m_meshes.size();
     }
 
-    const NS::Phys::MeshCollision* AssetManager::GetOrLoadMeshCollision(const std::string& meshRef)
+    const NS::Phys::MeshShape* AssetManager::GetOrLoadMeshShape(const std::string& meshRef)
     {
         if (meshRef.empty())
         {
@@ -318,11 +318,11 @@ namespace NS::Obj
 
         if (const BuiltinShape* shape = FindBuiltinShape(meshRef))
         {
-            std::map<std::string, std::unique_ptr<NS::Phys::MeshCollision>>::iterator it =
+            std::map<std::string, std::unique_ptr<NS::Phys::MeshShape>>::iterator it =
                 m_builtinCollisions.find(meshRef);
             if (it == m_builtinCollisions.end())
             {
-                std::unique_ptr<NS::Phys::MeshCollision> collision = std::make_unique<NS::Phys::MeshCollision>();
+                std::unique_ptr<NS::Phys::MeshShape> collision = std::make_unique<NS::Phys::MeshShape>();
                 collision->triangles = MakeTriangles(shape->make());
                 it = m_builtinCollisions.emplace(meshRef, std::move(collision)).first;
             }

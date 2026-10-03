@@ -3,7 +3,7 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/Animation.h"
-#include "Runtime/Object/Components/BoxCollider.h"
+#include "Runtime/Object/Components/BoxCollision.h"
 #include "Runtime/Object/Components/HitReaction.h"
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/Model.h"
@@ -91,7 +91,7 @@ namespace NS::Obj
         }
         else if (name == "Collision")
         {
-            m_collision = std::make_unique<BoxCollider>();
+            m_collision = std::make_unique<BoxCollision>();
             created = m_collision.get();
         }
         else if (name == "BodySensor")
@@ -116,7 +116,7 @@ namespace NS::Obj
         return created;
     }
 
-    void Actor::SetCollisionPart(std::unique_ptr<Collider> collision)
+    void Actor::SetCollisionPart(std::unique_ptr<Collision> collision)
     {
         if (m_collision != nullptr || collision == nullptr)
         {

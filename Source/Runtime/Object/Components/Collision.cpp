@@ -1,4 +1,4 @@
-﻿#include "Runtime/Object/Components/Collider.h"
+﻿#include "Runtime/Object/Components/Collision.h"
 
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Actor.h"
@@ -19,7 +19,7 @@ namespace
 
 namespace NS::Obj
 {
-    void Collider::SyncToPhysics()
+    void Collision::SyncToPhysics()
     {
         NS::Phys::PhysicsScene* physics = OwnerPhysics(Owner());
         if (physics == nullptr)
@@ -36,7 +36,7 @@ namespace NS::Obj
         m_bodyId = body;
     }
 
-    void Collider::RemoveFromPhysics()
+    void Collision::RemoveFromPhysics()
     {
         NS::Phys::PhysicsScene* physics = OwnerPhysics(Owner());
         if (physics == nullptr)
@@ -48,12 +48,12 @@ namespace NS::Obj
         m_bodyId = JPH::BodyID{};
     }
 
-    void Collider::OnAppear()
+    void Collision::OnAppear()
     {
         SyncToPhysics();
     }
 
-    void Collider::OnEndPlay()
+    void Collision::OnEndPlay()
     {
         if (m_bodyId.IsInvalid())
         {
@@ -62,7 +62,7 @@ namespace NS::Obj
 
         if (OwnerPhysics(Owner()) == nullptr)
         {
-            NS_LOG_ERROR(Scene, "Collider: Scene に居ないので body を外せない。 body は PhysicsScene を壊すまで残る");
+            NS_LOG_ERROR(Scene, "Collision: Scene に居ないので body を外せない。 body は PhysicsScene を壊すまで残る");
             m_bodyId = JPH::BodyID{};
             return;
         }

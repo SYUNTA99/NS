@@ -246,7 +246,7 @@ private:
     //! @brief 当たり形状を線で積む
     //! @param[in,out] shapes 積む先
     //! @param[in] all 真なら全配置物、偽なら選んでいる分だけ
-    void RenderColliderWireframes(NS::Gfx::DebugShapes& shapes, bool all) noexcept;
+    void RenderCollisionWireframes(NS::Gfx::DebugShapes& shapes, bool all) noexcept;
 
     //! @brief 赤の欄 (部品 HitZones) を持つ相手ごとに、自機の方を向いた正面の面と、直近の当たりの触れた点を描く
     //! @details 面の向きは、溜めて狙っている相手には狙いの線、それ以外は自機の玉の中心から相手の中心への水平の向き。

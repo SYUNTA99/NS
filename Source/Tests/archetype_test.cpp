@@ -2,7 +2,7 @@
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/DirectionalLight.h"
 #include "Runtime/Object/Components/Shadow.h"
-#include "Runtime/Object/Components/SphereCollider.h"
+#include "Runtime/Object/Components/SphereCollision.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/Archetype.h"
@@ -82,8 +82,8 @@ namespace
 
     float RadiusOf(const NS::Obj::Actor& actor)
     {
-        const NS::Obj::SphereCollider* sphere =
-            NS::Obj::ComponentCast<NS::Obj::SphereCollider>(actor.Part("Collision"));
+        const NS::Obj::SphereCollision* sphere =
+            NS::Obj::ComponentCast<NS::Obj::SphereCollision>(actor.Part("Collision"));
         if (sphere == nullptr)
         {
             return -1.0f;
@@ -172,7 +172,7 @@ TEST(Archetype, SaveWritesOnlyOverrides)
     scene.LoadJson(doc);
     NS::Obj::Actor* changed = scene.Objects().FindByObjectId(2);
     ASSERT_NE(changed, nullptr);
-    NS::Obj::ComponentCast<NS::Obj::SphereCollider>(changed->Part("Collision"))->SetRadius(4.0f);
+    NS::Obj::ComponentCast<NS::Obj::SphereCollision>(changed->Part("Collision"))->SetRadius(4.0f);
 
     const nlohmann::json saved = scene.ToJson();
     const nlohmann::json& objects = NS::Obj::SceneJsonObjects(saved);
@@ -227,7 +227,7 @@ TEST(Archetype, ApplyingSnapshotResetsFieldsWithoutOverride)
     ASSERT_NE(actor, nullptr);
     const nlohmann::json snapshot = NS::Obj::ObjectToJson(*actor);
 
-    NS::Obj::ComponentCast<NS::Obj::SphereCollider>(actor->Part("Collision"))->SetRadius(9.0f);
+    NS::Obj::ComponentCast<NS::Obj::SphereCollision>(actor->Part("Collision"))->SetRadius(9.0f);
     NS::Obj::Actor* applied = scene.ApplyFromJson(snapshot);
     ASSERT_EQ(applied, actor); // 構成が同じなので作り直さない
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 2.0f);
@@ -290,8 +290,8 @@ TEST(Archetype, OverrideIsDetectedAgainstBaseline)
     NS::Obj::SceneJsonObjects(doc).push_back(MapObjJson(1));
     NS::Obj::Scene scene;
     scene.LoadJson(doc);
-    NS::Obj::SphereCollider* sphere =
-        NS::Obj::ComponentCast<NS::Obj::SphereCollider>(scene.Objects().FindByObjectId(1)->Part("Collision"));
+    NS::Obj::SphereCollision* sphere =
+        NS::Obj::ComponentCast<NS::Obj::SphereCollision>(scene.Objects().FindByObjectId(1)->Part("Collision"));
     ASSERT_NE(sphere, nullptr);
     EXPECT_FALSE(NS::Obj::IsFieldOverridden(*sphere, "半径"));
     sphere->SetRadius(2.5f);
@@ -353,8 +353,8 @@ TEST(Archetype, PromoteReachesOtherInstancesAndFile)
     scene.LoadJson(doc);
     LevelEditorController editor(&scene);
 
-    NS::Obj::SphereCollider* sphere =
-        NS::Obj::ComponentCast<NS::Obj::SphereCollider>(scene.Objects().FindByObjectId(1)->Part("Collision"));
+    NS::Obj::SphereCollision* sphere =
+        NS::Obj::ComponentCast<NS::Obj::SphereCollision>(scene.Objects().FindByObjectId(1)->Part("Collision"));
     sphere->SetRadius(1.75f);
     ASSERT_TRUE(editor.PromoteFieldToArchetype(*sphere, "半径"));
 

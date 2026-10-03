@@ -25,7 +25,7 @@ namespace NS::Gfx
 
 namespace NS::Phys
 {
-    struct MeshCollision;
+    struct MeshShape;
 }
 
 namespace NS::Obj
@@ -97,7 +97,7 @@ namespace NS::Obj
         //! file は GetOrLoadMesh と同じ読込を通るので、glTF を読むのは描画と合わせて 1 回
         //! device が無くても当たりは作れる。読めなかった参照も負キャッシュする
         //! 空文字・トラバーサル・読込失敗は nullptr。返す当たりは AssetManager 所有で Clear() まで有効
-        [[nodiscard]] const NS::Phys::MeshCollision* GetOrLoadMeshCollision(const std::string& meshRef);
+        [[nodiscard]] const NS::Phys::MeshShape* GetOrLoadMeshShape(const std::string& meshRef);
 
         //! skinned glTF を読み SkeletalMesh を path キーで重複なく所有して返す。skeleton / clips は
         //! キャッシュ record への参照で返し、再生状態だけをインスタンス側が持つ。失敗時は valid=false
@@ -119,7 +119,7 @@ namespace NS::Obj
         void RegisterBuiltins();
         //! 名前キーで組み込み StaticMesh を引く。未登録は nullptr
         //! RegisterBuiltins を通っていない AssetManager では全部 nullptr になる
-        //! 同じ名前の当たりは RegisterBuiltins 無しでも GetOrLoadMeshCollision が返す
+        //! 同じ名前の当たりは RegisterBuiltins 無しでも GetOrLoadMeshShape が返す
         [[nodiscard]] NS::Gfx::StaticMesh* Builtin(std::string_view name) const noexcept;
 
         //! @brief 半径と半分の高さの組ごとに 1 度だけカプセルの StaticMesh を作り、以後は同じ mesh を返す
@@ -161,8 +161,8 @@ namespace NS::Obj
         // file の mesh 1 件。描画と当たりを 1 回の読込から両方作る。読込に失敗した path も両方 null で残す
         struct MeshRecord
         {
-            std::unique_ptr<NS::Gfx::Mesh> mesh;                // GPU 生成に失敗したら null
-            std::unique_ptr<NS::Phys::MeshCollision> collision; // Jolt の形は当たりを頼まれた時に作る
+            std::unique_ptr<NS::Gfx::Mesh> mesh;            // GPU 生成に失敗したら null
+            std::unique_ptr<NS::Phys::MeshShape> collision; // Jolt の形は当たりを頼まれた時に作る
         };
 
         // 正規化した path で記録を引き、無ければ glTF を読んで作る
@@ -179,8 +179,8 @@ namespace NS::Obj
         std::map<std::string, std::unique_ptr<NS::Gfx::Shader>> m_shaders;   // path キーの Shader キャッシュ
         std::map<std::string, std::unique_ptr<NS::Gfx::Texture>> m_textures; // path キーの Texture キャッシュ
         std::map<std::string, MeshRecord> m_meshes;                          // path キーの file mesh
-        std::map<std::string, std::unique_ptr<NS::Phys::MeshCollision>> m_builtinCollisions; // 組み込み名キーの当たり
-        std::map<std::string, std::unique_ptr<NS::Gfx::StaticMesh>> m_builtins;              // path 無し、leaf と別容器
+        std::map<std::string, std::unique_ptr<NS::Phys::MeshShape>> m_builtinCollisions; // 組み込み名キーの当たり
+        std::map<std::string, std::unique_ptr<NS::Gfx::StaticMesh>> m_builtins;          // path 無し、leaf と別容器
         std::map<std::pair<float, float>, std::unique_ptr<NS::Gfx::StaticMesh>>
             m_capsules;                                                              // 半径と半分の高さの組がキー
         std::map<std::string, MaterialRecord> m_materials;                           // .mat composite

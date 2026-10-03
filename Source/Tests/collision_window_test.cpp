@@ -2,7 +2,7 @@
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/SphereCollider.h"
+#include "Runtime/Object/Components/SphereCollision.h"
 #include "Runtime/Object/IUse/IUseCollision.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Physics/PhysicsScene.h"
@@ -29,7 +29,7 @@ namespace
             visitor("Sphere", sphere);
         }
         mutable NS::Obj::Body body;
-        mutable NS::Obj::SphereCollider sphere;
+        mutable NS::Obj::SphereCollision sphere;
     };
 
     // 上面が y = 0 の床
@@ -102,7 +102,7 @@ TEST(CollisionWindow, BodyAnswersWithItsOwnersPhysicsScene)
     EXPECT_EQ(placedWindow.GetPhysicsScene(), &scene.Physics());
 }
 
-TEST(CollisionWindow, ColliderSyncsIntoItsOwnersPhysicsScene)
+TEST(CollisionWindow, CollisionSyncsIntoItsOwnersPhysicsScene)
 {
     CollisionProbe loose;
     loose.sphere.SyncToPhysics();

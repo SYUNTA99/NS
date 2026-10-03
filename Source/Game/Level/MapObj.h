@@ -7,7 +7,7 @@
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Components/SphereCollider.h"
+#include "Runtime/Object/Components/SphereCollision.h"
 #include "Runtime/Object/StateMachine.h"
 
 namespace NS::Game::Level
@@ -72,13 +72,13 @@ namespace NS::Game::Level
         void MoveLaunched(float dt);
         bool ProbeFloor(float distance, NS::Core::Vector3& outNormal);
         void Land(const NS::Core::Vector3& normal);
-        void SyncCollider();
+        void SyncCollision();
         void SpawnMark();
         [[nodiscard]] NS::Core::Vector3 ArcOffset(float seconds) const noexcept;
 
-        [[nodiscard]] NS::Obj::SphereCollider& Sphere() noexcept
+        [[nodiscard]] NS::Obj::SphereCollision& Sphere() noexcept
         {
-            return *static_cast<NS::Obj::SphereCollider*>(CollisionPart());
+            return *static_cast<NS::Obj::SphereCollision*>(CollisionPart());
         }
         MapObjParams m_params;
         HitZones m_hitZones;

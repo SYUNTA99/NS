@@ -17,6 +17,6 @@ namespace NS::Game::Level
     //! @param[in] object 当たりを持つ配置物
     //! @param[out] outBounds 世界座標の外接箱
     //! @return 取り出せた場合 true、それ以外の場合は false
-    //! 依存: NS::Obj::Actor, NS::Obj::BoxCollider, NS::Obj::SphereCollider
-    [[nodiscard]] bool TryGetColliderBounds(const NS::Obj::Actor& object, NS::Core::AABB& outBounds) noexcept;
+    //! 依存: NS::Obj::Actor, NS::Obj::BoxCollision, NS::Obj::SphereCollision
+    [[nodiscard]] bool TryGetCollisionBounds(const NS::Obj::Actor& object, NS::Core::AABB& outBounds) noexcept;
 } // namespace NS::Game::Level

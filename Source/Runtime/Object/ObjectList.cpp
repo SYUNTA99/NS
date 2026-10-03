@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/Assert.h"
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Object/Components/Collider.h"
+#include "Runtime/Object/Components/Collision.h"
 #include "Runtime/Object/ObjectName.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
@@ -285,15 +285,15 @@ namespace NS::Obj
         for (const std::unique_ptr<Actor>& actor : m_objects)
         {
             actor->ForEachPart([](std::string_view, Component& part) {
-                if (Collider* collider = ComponentCast<Collider>(&part))
+                if (Collision* collision = ComponentCast<Collision>(&part))
                 {
-                    if (collider->IsActive())
+                    if (collision->IsActive())
                     {
-                        collider->SyncToPhysics();
+                        collision->SyncToPhysics();
                     }
                     else
                     {
-                        collider->RemoveFromPhysics();
+                        collision->RemoveFromPhysics();
                     }
                 }
             });

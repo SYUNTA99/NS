@@ -32,7 +32,7 @@ namespace
     }
 } // namespace
 
-TEST(MapObjMotion, ActorMovesAndUpdatesStaticCollider)
+TEST(MapObjMotion, ActorMovesAndUpdatesStaticCollision)
 {
     NS::Obj::Scene scene;
     NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);

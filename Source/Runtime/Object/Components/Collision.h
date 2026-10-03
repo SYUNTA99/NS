@@ -19,7 +19,7 @@ namespace NS::Obj
     //! body は id でだけ持つ。どの PhysicsScene に居るかは持ち主の Scene が決め、PhysicsScene の控えは持たない
     //! 抽象基底なので TypeRegistry には登録しない
     //! 依存: NS::Phys::PhysicsScene, JPH::BodyID
-    class Collider : public Component
+    class Collision : public Component
     {
     public:
         //! world 座標の当たりを body 1 個として持ち主の Scene の PhysicsScene へ入れる。入れた body があれば置き直す
@@ -36,10 +36,10 @@ namespace NS::Obj
         //! 配置物ごと消える前に、持ち主の Scene の PhysicsScene から自分の body を外す
         //! body を持ったまま Scene に居なければ外す先が分からないので、エラーを出して id だけ手放す
         void OnAppear() override;
-        void OnKill() noexcept override { Collider::OnEndPlay(); }
+        void OnKill() noexcept override { Collision::OnEndPlay(); }
         void OnEndPlay() override;
 
-        NS_REFLECT_NONE(Collider, Component)
+        NS_REFLECT_NONE(Collision, Component)
 
     private:
         // current の body を自分の形と姿勢へ置き直した id を返す
