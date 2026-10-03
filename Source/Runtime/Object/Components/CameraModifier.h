@@ -156,6 +156,64 @@ namespace NS::Obj
         int m_frame = 0;         // 始めたフレームからの番号。保つと戻すの和に達したら終わり
     };
 
+    //! @brief 沈む揺れ (真ん中) の 4 拍の形
+    //! @details 画面の縦のずれを、高さ 1080 の画面の画素で持つ。下が負。
+    //! 沈む: 始めたフレームから sinkFrames で底へ (sin の 4 分の 1 周)。
+    //! 震える: 続く trembleFrames の間、底を中心に tremblePixels から直線に弱まる cos で揺れる。
+    //! こらえる: 跳ね返りの頭まで底のまま。
+    //! 跳ね返る: bounceStartFrame から、1 往復 bouncePeriodFrames・行き過ぎの割合 overshootRatio の減衰振動で 0 へ戻る
+    struct CameraSinkDesc
+    {
+        float bottomPixels = 0.0f;   // 底の深さ (画素)。0 以上
+        int sinkFrames = 2;          // 底へ届くまでのフレーム数。始めたフレームを含む
+        float tremblePixels = 0.0f;  // 震えの最初の大きさ (画素)
+        int trembleFrames = 6;       // 震えるフレーム数
+        int tremblePeriodFrames = 2; // 震えの 1 往復のフレーム数
+        int bounceStartFrame = 0;    // 跳ね返りが始まるフレーム。始めたフレームを 0 と数える
+        float overshootRatio = 0.5f; // 跳ね返りで 0 を越えて上へ出る量の、底の深さに対する割合。0 より大きく 1 未満
+        int bouncePeriodFrames = 8;  // 跳ね返りの 1 往復のフレーム数
+        int frames = 0;              // 描くフレーム数。始めたフレームを含む
+    };
+
+    //! @brief 沈む揺れの frame フレーム目の縦のずれを返す
+    //! @param[in] desc 4 拍の形
+    //! @param[in] frame 始めたフレームを 0 とした番号
+    //! @return 縦のずれ (画素、下が負)。0 未満か frames 以上のフレームは 0
+    [[nodiscard]] float CameraSinkPixelsAt(const CameraSinkDesc& desc, int frame) noexcept;
+
+    //! @brief 沈む揺れ (真ん中)。射影の後の画面をずらすので、カメラの位置と向きは変えない
+    //! @details 姿の画面のずれ (CameraPose::screenOffset) の縦に足す。カメラとの距離で揺れの画素数が変わらず、
+    //! 遊びが読む前の向きも変わらない
+    class CameraSinkModifier final : public CameraModifier
+    {
+    public:
+        //! @brief 沈む揺れを作る
+        //! @details 非数・負の深さか震え・フレーム数 0 以下・1 往復 1 未満・行き過ぎの割合が 0〜1 の外は壊れた設定で
+        //! nullptr
+        [[nodiscard]] static std::unique_ptr<CameraSinkModifier> Create(const CameraSinkDesc& desc);
+
+        //! 沈む揺れの種類の印
+        [[nodiscard]] static const void* StaticKind() noexcept;
+        [[nodiscard]] const void* Kind() const noexcept override { return StaticKind(); }
+
+        //! 揺れはブレンドの直後、寄りと傾きより先に掛ける
+        [[nodiscard]] int Order() const noexcept override { return 100; }
+
+        void Modify(CameraPose& pose, const CameraAxes& axes) const noexcept override;
+        [[nodiscard]] bool IsFinished() const noexcept override;
+        [[nodiscard]] bool IsShake() const noexcept override { return true; }
+
+        //! 今のフレームの縦のずれ (画素、下が負)。描き終えたら 0
+        [[nodiscard]] float Pixels() const noexcept;
+
+    private:
+        CameraSinkModifier() noexcept = default;
+        void Advance() noexcept override;
+
+        CameraSinkDesc m_desc{}; // 4 拍の形
+        int m_frame = 0;         // 始めたフレームからの番号
+    };
+
     //! @brief トラウマの揺れの形。場面ごとに持つ (外れ・溜め)
     //! @details 振れ幅は トラウマ^exponent × 最大の角度。トラウマは時間で直線に減る
     struct CameraTraumaShape

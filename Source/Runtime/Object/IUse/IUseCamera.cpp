@@ -55,6 +55,7 @@ namespace NS::Obj
         if (CameraManager* cameras = user.GetCameraManager())
         {
             cameras->RemoveModifiers(CameraShakeModifier::StaticKind());
+            cameras->RemoveModifiers(CameraSinkModifier::StaticKind());
             cameras->RemoveModifiers(CameraZoomRollModifier::StaticKind());
         }
     }

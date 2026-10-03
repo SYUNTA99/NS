@@ -129,6 +129,10 @@ namespace NS::Editor
                 {
                     frame.trauma = cameras->Trauma();
                     frame.shakeOffset = cameras->ShakeOffset();
+                    if (const NS::Obj::CameraSinkModifier* sink = cameras->FindModifier<NS::Obj::CameraSinkModifier>())
+                    {
+                        frame.sinkPixels = sink->Pixels();
+                    }
                     if (const NS::Obj::CameraTraumaModifier* shake =
                             cameras->FindModifier<NS::Obj::CameraTraumaModifier>())
                     {

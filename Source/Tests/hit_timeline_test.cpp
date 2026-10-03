@@ -233,3 +233,24 @@ TEST(HitTimeline, ShippedCenterShrinksBeforeContactAndMissDoesNot)
         EXPECT_GE(event.start, 0) << NS::Game::Level::HitEventTypeName(event.value);
     }
 }
+
+// impact-feel-pass 3 節: 真ん中の揺れは止めの頭から沈む揺れ 1 つ。平行移動の揺れと寄りは外した
+TEST(HitTimeline, ShippedCenterSinksAndDoesNotZoom)
+{
+    const std::optional<HitTimeline> center = ReadShippedTimeline("center");
+    ASSERT_TRUE(center.has_value());
+    int sinks = 0;
+    for (const NS::Game::Level::HitEvent& event : center->events)
+    {
+        EXPECT_FALSE(std::holds_alternative<NS::Game::Level::CameraShakeEvent>(event.value));
+        EXPECT_FALSE(std::holds_alternative<NS::Game::Level::ZoomRollEvent>(event.value));
+        if (std::holds_alternative<NS::Game::Level::CameraSinkEvent>(event.value))
+        {
+            ++sinks;
+            EXPECT_EQ(event.start, 1);
+            // 揺れのフレーム数の上限 60 に収める
+            EXPECT_LE(event.length, 60);
+        }
+    }
+    EXPECT_EQ(sinks, 1);
+}

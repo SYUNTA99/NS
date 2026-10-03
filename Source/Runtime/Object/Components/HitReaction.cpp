@@ -58,6 +58,36 @@ namespace NS::Obj
         return true;
     }
 
+    bool HitReaction::StartSink(const CameraSinkDesc& desc)
+    {
+        if (desc.frames <= 0)
+        {
+            return true;
+        }
+        if (desc.frames > k_MaxShakeFrames)
+        {
+            NS_LOG_WARN(
+                Scene, "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった", desc.frames, k_MaxShakeFrames);
+            return false;
+        }
+        // カメラの無い場面 (試しの台) では揺らす先が無い。設定の誤りではないので黙って返す
+        if (Owner() == nullptr || Owner()->GetCameraManager() == nullptr)
+        {
+            return false;
+        }
+        if (!AddCameraModifier(*Owner(), CameraSinkModifier::Create(desc)))
+        {
+            NS_LOG_WARN(Scene,
+                        "沈む揺れの設定が壊れていて、揺らさなかった: 深さ {} 震え {} 行き過ぎ {} フレーム数 {}",
+                        desc.bottomPixels,
+                        desc.tremblePixels,
+                        desc.overshootRatio,
+                        desc.frames);
+            return false;
+        }
+        return true;
+    }
+
     bool HitReaction::StartZoomRoll(const CameraZoomRollDesc& desc)
     {
         if (Owner() == nullptr || Owner()->GetCameraManager() == nullptr)

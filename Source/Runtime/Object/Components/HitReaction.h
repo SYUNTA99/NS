@@ -37,6 +37,12 @@ namespace NS::Obj
         //! 設定が壊れている・上限を超える・カメラの管理役が無い場合 false
         bool StartShake(const CameraShakeDesc& desc);
 
+        //! @brief カメラの沈む揺れを始める
+        //! @param[in] desc 4 拍の形。フレーム数 0 以下なら揺らさない
+        //! @return 揺れを積んだか、フレーム数 0 以下で揺らさなかった場合 true。
+        //! 設定が壊れている・上限を超える・カメラの管理役が無い場合 false
+        bool StartSink(const CameraSinkDesc& desc);
+
         //! @brief カメラのトラウマを足す。揺れの途中なら前のトラウマに足す
         //! @param[in] desc 足す量と揺れの形
         //! @return 足した場合 true。量が壊れている・カメラの管理役が無い場合 false

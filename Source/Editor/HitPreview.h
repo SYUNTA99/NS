@@ -52,6 +52,7 @@ namespace NS::Editor
         float trauma = 0.0f;                       //!< カメラのトラウマ 0〜1
         NS::Core::Vector3 shakeAngles{};           //!< トラウマの揺れの角度 (度)。横・縦・傾き
         NS::Core::Vector2 shakeOffset{};           //!< 平行移動の揺れのずれ (m)。カメラの右と上
+        float sinkPixels = 0.0f;                   //!< 沈む揺れの縦のずれ (高さ 1080 の画面の画素、下が負)
         float worldSpeed = 1.0f;                   //!< 世界の速さ 0〜1
         std::vector<std::size_t> startedRows;      //!< このフレームに始まった事象の、段のタイムラインの行の番号
     };

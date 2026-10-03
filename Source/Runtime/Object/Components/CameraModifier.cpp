@@ -4,12 +4,15 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 #include <random>
 
 namespace
 {
     // 一撃を終えるフレームを、山のフレームの何倍にするか
     constexpr int k_KickEndPeakMultiple = 8;
+    // 沈む揺れの画素を測る画面の高さ。画面の座標 (縦 -1〜1) へ直す時の割る数で、解像度が違っても同じ割合だけ動く
+    constexpr float k_SinkReferenceHeightPixels = 1080.0f;
 } // namespace
 
 namespace NS::Obj
@@ -150,6 +153,84 @@ namespace NS::Obj
     }
 
     void CameraShakeModifier::Advance() noexcept
+    {
+        ++m_frame;
+    }
+
+    float CameraSinkPixelsAt(const CameraSinkDesc& desc, int frame) noexcept
+    {
+        if (frame < 0 || frame >= desc.frames)
+        {
+            return 0.0f;
+        }
+        const float pi = std::numbers::pi_v<float>;
+        const float bottom = -desc.bottomPixels;
+        if (frame >= desc.bounceStartFrame)
+        {
+            // 行き過ぎの割合 r から減衰比 z を出し、底から 0 へ戻る減衰振動にする。半周期で -r × 底まで出る
+            const float logRatio = std::log(desc.overshootRatio);
+            const float damping = -logRatio / std::sqrt(pi * pi + logRatio * logRatio);
+            const float dampedOmega = 2.0f * pi / static_cast<float>(desc.bouncePeriodFrames);
+            const float omega = dampedOmega / std::sqrt(1.0f - damping * damping);
+            const float u = static_cast<float>(frame - desc.bounceStartFrame);
+            return bottom * std::exp(-damping * omega * u) *
+                   (std::cos(dampedOmega * u) +
+                    damping / std::sqrt(1.0f - damping * damping) * std::sin(dampedOmega * u));
+        }
+        if (frame < desc.sinkFrames)
+        {
+            return bottom * std::sin(pi * 0.5f * static_cast<float>(frame + 1) / static_cast<float>(desc.sinkFrames));
+        }
+        const int trembleFrame = frame - desc.sinkFrames;
+        if (trembleFrame < desc.trembleFrames)
+        {
+            const float t = static_cast<float>(trembleFrame);
+            const float fade = 1.0f - t / static_cast<float>(desc.trembleFrames);
+            return bottom +
+                   desc.tremblePixels * fade * std::cos(2.0f * pi * t / static_cast<float>(desc.tremblePeriodFrames));
+        }
+        return bottom;
+    }
+
+    std::unique_ptr<CameraSinkModifier> CameraSinkModifier::Create(const CameraSinkDesc& desc)
+    {
+        // 壊れた値が姿へ流れると画面が消える。入口で捨てる
+        const bool finite =
+            std::isfinite(desc.bottomPixels) && std::isfinite(desc.tremblePixels) && std::isfinite(desc.overshootRatio);
+        if (!finite || desc.bottomPixels < 0.0f || desc.tremblePixels < 0.0f || desc.frames <= 0 ||
+            desc.sinkFrames < 1 || desc.trembleFrames < 0 || desc.tremblePeriodFrames < 1 ||
+            desc.bouncePeriodFrames < 1 || !(desc.overshootRatio > 0.0f) || !(desc.overshootRatio < 1.0f))
+        {
+            return nullptr;
+        }
+        std::unique_ptr<CameraSinkModifier> sink{new CameraSinkModifier()};
+        sink->m_desc = desc;
+        return sink;
+    }
+
+    const void* CameraSinkModifier::StaticKind() noexcept
+    {
+        static const char kind = 0;
+        return &kind;
+    }
+
+    float CameraSinkModifier::Pixels() const noexcept
+    {
+        return CameraSinkPixelsAt(m_desc, m_frame);
+    }
+
+    void CameraSinkModifier::Modify(CameraPose& pose, const CameraAxes& axes) const noexcept
+    {
+        (void)axes;
+        pose.screenOffset.y += Pixels() * 2.0f / k_SinkReferenceHeightPixels;
+    }
+
+    bool CameraSinkModifier::IsFinished() const noexcept
+    {
+        return m_frame >= m_desc.frames;
+    }
+
+    void CameraSinkModifier::Advance() noexcept
     {
         ++m_frame;
     }

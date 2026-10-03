@@ -322,3 +322,22 @@ TEST(EditorHitPreview, PicksTheNearestTargetWhenNoneIsChosen)
     EXPECT_EQ(result.desc.targetId, k_RockId);
     EXPECT_EQ(result.impact.targetId, k_RockId);
 }
+
+// 沈む揺れも下見の記録に載る。帯の下の折れ線が読む
+TEST(EditorHitPreview, RecordsTheSinkShakeEachFrame)
+{
+    HitTimeline timeline = MakePreviewTimeline();
+    timeline.events.push_back({CameraSinkEvent{}, 1, 20, HitDirection::Any});
+    const ScopedHitTimelineDirectory directory("EditorHitPreviewSink");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    PreviewAssets assets;
+    const NS::Editor::HitPreviewResult result =
+        NS::Editor::RunHitPreview(MakePreviewSceneJson(), MakeDesc(0.0f, 0.0f), assets.World());
+    ASSERT_TRUE(result.hit) << result.error;
+    ASSERT_GE(result.detectionIndex, 0);
+    const std::size_t sinkFrame = static_cast<std::size_t>(result.detectionIndex + 1);
+    ASSERT_GT(result.frames.size(), sinkFrame + 1);
+    EXPECT_FLOAT_EQ(result.frames[sinkFrame - 1].sinkPixels, 0.0f);
+    EXPECT_LT(result.frames[sinkFrame].sinkPixels, 0.0f);
+    EXPECT_LT(result.frames[sinkFrame + 1].sinkPixels, result.frames[sinkFrame].sinkPixels);
+}

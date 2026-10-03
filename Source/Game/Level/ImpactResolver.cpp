@@ -794,6 +794,14 @@ namespace NS::Game::Level
             }
         }
 
+        void operator()(const CameraSinkEvent& sink) const
+        {
+            if (resolver.m_hitReaction != nullptr)
+            {
+                (void)resolver.m_hitReaction->StartSink(resolver.SinkDescFor(sink, event));
+            }
+        }
+
         void operator()(const ZoomRollEvent& zoomRoll) const
         {
             if (resolver.m_hitReaction != nullptr)
@@ -1099,6 +1107,35 @@ namespace NS::Game::Level
     {
         const int frame = m_clock - m_shapeStart;
         return m_shapeActive && frame >= 0 && frame < m_shapeLength;
+    }
+
+    NS::Obj::CameraSinkDesc ImpactResolver::SinkDescFor(const CameraSinkEvent& sink,
+                                                        const HitEvent& event) const noexcept
+    {
+        // 頭打ちの曲線。威力の基準が 0 以下か非数なら、どの威力でも頭打ちの深さにする
+        float scale = 1.0f;
+        if (sink.powerBase > 0.0f && std::isfinite(m_pendingPower))
+        {
+            scale = 1.0f - std::exp(-m_pendingPower / sink.powerBase);
+        }
+        // 跳ね返りは同じタイムラインの反動の事象の始まりから。無ければ跳ね返らずに底のまま終わる
+        int bounceStart = event.length;
+        for (const HitEvent& other : m_events)
+        {
+            if (std::holds_alternative<ReboundEvent>(other.value) && other.start >= event.start)
+            {
+                bounceStart = std::min(bounceStart, other.start - event.start);
+            }
+        }
+        return NS::Obj::CameraSinkDesc{.bottomPixels = sink.maxPixels * scale,
+                                       .sinkFrames = sink.sinkFrames,
+                                       .tremblePixels = sink.tremblePixels * scale,
+                                       .trembleFrames = sink.trembleFrames,
+                                       .tremblePeriodFrames = sink.tremblePeriodFrames,
+                                       .bounceStartFrame = bounceStart,
+                                       .overshootRatio = sink.overshootRatio,
+                                       .bouncePeriodFrames = sink.bouncePeriodFrames,
+                                       .frames = event.length};
     }
 
     NS::Obj::CameraShakeDesc ImpactResolver::ShakeDescFor(const CameraShakeEvent& shake, int length) const noexcept

@@ -229,6 +229,37 @@ namespace NS::Game::Level
         NS_REFLECT_END_VALUE()
     };
 
+    //! @brief 沈む揺れ (真ん中)。画面ごと下へ沈み、底で震え、反動の頭までこらえ、反動の頭で跳ね返る
+    //! @details 長さが揺れのフレーム数。跳ね返りは同じタイムラインの反動の事象の始まりから。
+    //! 底の深さと震えは 最大 × (1 − e^(−威力 ÷ 基準)) で、威力が上がるほど頭打ちに増える。
+    //! 画素は高さ 1080 の画面の画素で、射影の後の画面をずらすのでカメラの位置と向きは変えない
+    struct CameraSinkEvent
+    {
+        static constexpr std::string_view k_Name = "CameraSink";
+        static constexpr std::string_view k_Label = "沈む揺れ";
+        static constexpr bool k_BeforeContact = false; //!< 深さは威力で決まる
+
+        float maxPixels = 9.0f;      //!< 底の深さの頭打ち (画素)
+        float powerBase = 1.0f;      //!< 頭打ちへ近づく速さを決める威力の基準。威力がこの値で頭打ちの約 63%
+        int sinkFrames = 2;          //!< 底へ届くまでのフレーム数
+        float tremblePixels = 5.0f;  //!< 底での震えの最初の大きさの頭打ち (画素)
+        int trembleFrames = 6;       //!< 震えるフレーム数
+        int tremblePeriodFrames = 2; //!< 震えの 1 往復のフレーム数
+        float overshootRatio = 0.5f; //!< 跳ね返りで 0 を越えて上へ出る量の、底の深さに対する割合
+        int bouncePeriodFrames = 8;  //!< 跳ね返りの 1 往復のフレーム数
+
+        NS_REFLECT_BEGIN(CameraSinkEvent, void)
+        NS_REFLECT_FIELD(maxPixels, "沈みの最大")
+        NS_REFLECT_FIELD(powerBase, "威力の基準")
+        NS_REFLECT_FIELD(sinkFrames, "沈むフレーム数")
+        NS_REFLECT_FIELD(tremblePixels, "震えの大きさ")
+        NS_REFLECT_FIELD(trembleFrames, "震えのフレーム数")
+        NS_REFLECT_FIELD(tremblePeriodFrames, "震えの 1 往復")
+        NS_REFLECT_FIELD(overshootRatio, "行き過ぎの割合")
+        NS_REFLECT_FIELD(bouncePeriodFrames, "跳ね返りの 1 往復")
+        NS_REFLECT_END_VALUE()
+    };
+
     //! @brief 自機以外の止め。始まりから長さのフレームの間、自機以外の世界 (置物・物理・エフェクトなど) を止める
     //! @details 止める段は RunsWhileOthersHeld の表で決まる。自機・入力・カメラ・画面は回る。
     //! 真ん中の触れる前に置き、世界が止まった中で自機だけが縮みながら突っ込む対比で当たりを予感させる
@@ -253,7 +284,8 @@ namespace NS::Game::Level
                                        FlightEffectEvent,
                                        GradualReleaseEvent,
                                        CameraTraumaEvent,
-                                       OthersStopEvent>;
+                                       OthersStopEvent,
+                                       CameraSinkEvent>;
 
     //! @brief タイムラインの 1 行。触れたフレームを 0 にしたフレーム数で、始まりと長さを持つ
     struct HitEvent

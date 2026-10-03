@@ -14,6 +14,9 @@ namespace NS::Obj
         NS::Core::Radians fovY{NS::Core::ToRadians(NS::Core::Degrees{60.0f})}; // 垂直視野角
         float nearPlane = 0.1f;                                                // ニアクリップ距離
         float farPlane = 1000.0f;                                              // ファークリップ距離
+        // 射影の後の画面のずれ。縦横とも画面の幅を 2
+        // とした座標で、右と上が正。位置と向きを変えずに画面ごと動かす揺れが書く
+        NS::Core::Vector2 screenOffset{0.0f, 0.0f};
 
         //! t=0 で a、t=1 で b の線形補間。up は補間後に正規化する。CameraManager の vcam 切替ブレンドが使う
         [[nodiscard]] static CameraPose Lerp(const CameraPose& a, const CameraPose& b, float t) noexcept
@@ -27,6 +30,7 @@ namespace NS::Obj
             pose.fovY = NS::Core::Radians{NS::Core::Lerp(a.fovY.value, b.fovY.value, t)};
             pose.nearPlane = NS::Core::Lerp(a.nearPlane, b.nearPlane, t);
             pose.farPlane = NS::Core::Lerp(a.farPlane, b.farPlane, t);
+            pose.screenOffset = NS::Core::Vector2::Lerp(a.screenOffset, b.screenOffset, t);
             return pose;
         }
     };

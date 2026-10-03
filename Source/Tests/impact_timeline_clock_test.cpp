@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <string_view>
 #include <vector>
 
@@ -809,4 +810,61 @@ TEST(ImpactTimelineClock, AMissedPredictionReleasesTheOthers)
     scene.OnUpdate();
     EXPECT_FALSE(scene.IsHoldingOthers());
     EXPECT_FALSE(player->Resolver().IsShapeAnimating());
+}
+
+// impact-feel-pass 3 節:
+// 沈む揺れは止めの頭に始まり、底で反動の頭までこらえ、反動の頭から跳ね返る。底の深さは威力で頭打ちに増える
+TEST(ImpactTimelineClock, SinkShakeHoldsTheBottomUntilTheReboundFrame)
+{
+    CameraSinkEvent sink;
+    sink.maxPixels = 9.0f;
+    sink.powerBase = 1.0f;
+    HitTimeline timeline;
+    timeline.events = {{HitStopEvent{}, 1, 12, HitDirection::Any},
+                       {sink, 1, 33, HitDirection::Any},
+                       {ReboundEvent{}, 13, 1, HitDirection::Any},
+                       {TargetLaunchEvent{}, 13, 1, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("SinkShake");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    std::vector<float> pixels;
+    bool detected = false;
+    for (int frame = 0; frame < 120 && pixels.size() < 20; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        // カメラの効果はカメラの段で 1 フレーム進む
+        scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Camera);
+        detected = detected || player->Resolver().LastImpact().sequence != 0;
+        if (!detected)
+        {
+            continue;
+        }
+        float now = 0.0f;
+        if (const NS::Obj::CameraManager* cameras = player->GetCameraManager())
+        {
+            if (const NS::Obj::CameraSinkModifier* modifier = cameras->FindModifier<NS::Obj::CameraSinkModifier>())
+            {
+                now = modifier->Pixels();
+            }
+        }
+        pixels.push_back(now);
+    }
+    ASSERT_EQ(pixels.size(), 20u);
+    const float power = player->Resolver().LastImpact().power;
+    const float bottom = -9.0f * (1.0f - std::exp(-power / 1.0f));
+    // 0 が検知、1 が止めの頭
+    EXPECT_FLOAT_EQ(pixels[0], 0.0f);
+    EXPECT_LT(pixels[1], 0.0f);
+    EXPECT_NEAR(pixels[2], bottom, 1.0e-4f);
+    for (std::size_t clock = 9; clock <= 13; ++clock)
+    {
+        SCOPED_TRACE(clock);
+        EXPECT_NEAR(pixels[clock], bottom, 1.0e-4f);
+    }
+    EXPECT_GT(pixels[14], bottom + 0.1f);
 }

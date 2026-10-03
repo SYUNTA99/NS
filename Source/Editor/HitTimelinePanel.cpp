@@ -106,7 +106,7 @@ namespace NS::Editor
         constexpr ImU32 k_PlayheadColor = IM_COL32(255, 80, 80, 255);
         constexpr ImU32 k_DetectionColor = IM_COL32(200, 200, 200, 120);
         constexpr ImU32 k_RulerTextColor = IM_COL32(200, 200, 200, 255);
-        constexpr int k_PreviewGraphCount = 4; // 帯の下の折れ線の行の数
+        constexpr int k_PreviewGraphCount = 5; // 帯の下の折れ線の行の数
         constexpr ImU32 k_GraphBackColor = IM_COL32(40, 40, 46, 255);
         constexpr ImU32 k_GraphTraumaColor = IM_COL32(255, 170, 60, 255);
         constexpr ImU32 k_GraphXColor = IM_COL32(240, 90, 90, 255);
@@ -522,7 +522,7 @@ namespace NS::Editor
         const float frameWidth = std::max(bandsWidth / static_cast<float>(frameCount), k_MinFrameWidth);
         const float totalWidth = frameWidth * static_cast<float>(frameCount);
         // 帯は横に流れる区画へ入れ、フレームが多い時は横に送れるようにする
-        // 帯の行は 360 で頭打ちにして縦に送る。下見の折れ線の 4 行はその下へいつも見える高さを足す
+        // 帯の行は 360 で頭打ちにして縦に送る。下見の折れ線の行はその下へいつも見える高さを足す
         float graphsHeight = 0.0f;
         if (m_result.hit && !m_result.frames.empty())
         {
@@ -642,6 +642,7 @@ namespace NS::Editor
         // 揺れの角度とずれは一番大きい所で縦を合わせる。0 しか無ければ 1 で割る
         float largestAngle = 0.0f;
         float largestOffset = 0.0f;
+        float largestSink = 0.0f;
         for (const HitPreviewFrame& frame : frames)
         {
             largestAngle = std::max({largestAngle,
@@ -649,6 +650,11 @@ namespace NS::Editor
                                      std::fabs(frame.shakeAngles.y),
                                      std::fabs(frame.shakeAngles.z)});
             largestOffset = std::max({largestOffset, std::fabs(frame.shakeOffset.x), std::fabs(frame.shakeOffset.y)});
+            largestSink = std::max(largestSink, std::fabs(frame.sinkPixels));
+        }
+        if (largestSink <= 0.0f)
+        {
+            largestSink = 1.0f;
         }
         if (largestAngle <= 0.0f)
         {
@@ -719,6 +725,13 @@ namespace NS::Editor
                      });
                      drawLine(origin, k_GraphYColor, true, [largestOffset](const HitPreviewFrame& frame) {
                          return frame.shakeOffset.y / largestOffset;
+                     });
+                 });
+        graphRow("沈む揺れ",
+                 "沈む揺れの画面の縦のずれ。真ん中が 0 で下が沈み、一番大きい所で縦を合わせる",
+                 [&](const ImVec2& origin) {
+                     drawLine(origin, k_GraphYColor, true, [largestSink](const HitPreviewFrame& frame) {
+                         return frame.sinkPixels / largestSink;
                      });
                  });
         graphRow("世界の速さ", "世界の速さ。下が 0、上が普段の速さ 1", [&](const ImVec2& origin) {

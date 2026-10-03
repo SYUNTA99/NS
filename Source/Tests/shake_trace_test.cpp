@@ -60,12 +60,14 @@ namespace
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
-    // 当たりの揺れ。平行移動の揺れのずれ (x が右、y が上、m) とトラウマの揺れの角度 (横・縦・傾き、度)
+    // 当たりの揺れ。平行移動の揺れのずれ (x が右、y が上、m)・トラウマの揺れの角度 (横・縦・傾き、度)・
+    // 沈む揺れの縦のずれ (y、高さ 1080 の画面の画素、下が負)
     struct HitShakeTrace
     {
         HitTier tier = HitTier::Center;
         std::vector<NS::Core::Vector3> offsets;
         std::vector<NS::Core::Vector3> angles;
+        std::vector<NS::Core::Vector3> sinks;
     };
 
     // 突進を頼んで場面を回し、検知のフレームから k_HitFrames フレームぶんの揺れのずれを並べる。当たらなければ空
@@ -89,6 +91,7 @@ namespace
             trace.tier = player->Resolver().LastImpact().tier;
             NS::Core::Vector3 offset{};
             NS::Core::Vector3 angles{};
+            NS::Core::Vector3 sink{};
             const NS::Obj::CameraManager* cameras = player->GetCameraManager();
             if (cameras != nullptr)
             {
@@ -102,9 +105,15 @@ namespace
                 {
                     angles = trauma->Angles();
                 }
+                const NS::Obj::CameraSinkModifier* sinking = cameras->FindModifier<NS::Obj::CameraSinkModifier>();
+                if (sinking != nullptr)
+                {
+                    sink = NS::Core::Vector3{0.0f, sinking->Pixels(), 0.0f};
+                }
             }
             trace.offsets.push_back(offset);
             trace.angles.push_back(angles);
+            trace.sinks.push_back(sink);
         }
         return trace;
     }
@@ -180,13 +189,18 @@ namespace
         return step / largest;
     }
 
-    // 当たりの揺れの差の比。平行移動の揺れが出ていればその比、出ていなければトラウマの揺れの角度の比
+    // 当たりの揺れの差の比。平行移動の揺れ・沈む揺れ・トラウマの揺れの角度の順に、出ている物の比
     float HitStepRatio(const HitShakeTrace& trace)
     {
         const float offsetRatio = MaxStepRatio(trace.offsets);
         if (offsetRatio > 0.0f)
         {
             return offsetRatio;
+        }
+        const float sinkRatio = MaxStepRatio(trace.sinks);
+        if (sinkRatio > 0.0f)
+        {
+            return sinkRatio;
         }
         return MaxStepRatio(trace.angles);
     }
@@ -233,6 +247,8 @@ TEST(ShakeTrace, WritesTheShakeOfTheSameHitsAndCharge)
     // 平行移動のずれは m、角度は度
     root["center"] = SeriesJson(center.offsets);
     root["centerAngles"] = SeriesJson(center.angles);
+    // 沈む揺れの縦のずれは高さ 1080 の画面の画素
+    root["centerSink"] = SeriesJson(center.sinks);
     root["miss"] = SeriesJson(miss.offsets);
     root["missAngles"] = SeriesJson(miss.angles);
     root["chargeAngles"] = SeriesJson(charge);
