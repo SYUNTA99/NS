@@ -73,7 +73,7 @@ namespace NS::Game::Level
     //! 溜めている間に相手が外れたら、直前の枠を縮めて欄のフレーム数だけ出す。
     //! 示す物と、捉えてから・外れてからのフレーム数は OnUpdate で決めて控え、描く時はそれを投げるだけ。
     //! 溜め量・威力・質量は形に入れない。突進の道筋は SlamArrow が地面に描く
-    //! 依存: CollisionInput, ImpactResolver (SlamLineTarget), NS::Gfx::Renderer
+    //! 依存: CollisionInput, SlamAim (SlamLineTarget), NS::Gfx::Renderer
     class TargetMarker : public NS::Obj::OverlayRenderer
     {
     public:

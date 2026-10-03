@@ -2,6 +2,7 @@
 
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Level/SlamAim.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
@@ -15,18 +16,6 @@ namespace NS::Obj
 
 namespace NS::Game::Level
 {
-    //! @brief 押している間の狙いの線。狙う相手を探す線で、溜めている間は SlamArrow がこの線の向きへ放った玉の道筋に
-    //! 矢印を描く。溜めて放した突進はこの線の向きと縦の速さで出て、突進の間も向きを曲げない
-    struct AimLine
-    {
-        NS::Core::Vector3 origin;    //!< 線を引き始める自機の位置 (配置物の根)。世界座標
-        NS::Core::Vector3 direction; //!< シーンの実カメラの正面の水平の向き。正規化済みで y は 0
-        float length = 0.0f;         //!< 線に沿って突進が止まる所までの距離。欄「突進距離」の値で、単位は m
-        //! 溜めて放つ瞬間の縦の速さ (m/s)。上が正。狙う相手の SlamLineTarget::launchVerticalSpeed で、相手が無ければ 0
-        float launchVerticalSpeed = 0.0f;
-        bool grounded = false; //!< 線を控えた時に接地していたか。真なら道筋は放った高さより下へ行かない
-    };
-
     //! @brief 体当たりのボタン入力を読んで発動を要求する Component
     //! @details 押しは Player が PlayerInput から渡す。ImpactInputJudge がタップ / チャージを裁く
     //! どちらも離したフレームに、溜め量を添えて Player::RequestBodySlam を呼ぶ。
