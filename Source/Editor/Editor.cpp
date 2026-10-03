@@ -84,10 +84,6 @@ void Editor::OnAttach()
     // 終了要求を握って保存確認を挟む。出荷には Editor が無いのでリリースは確認なしで終了する
     app->SetQuitGuard([this]() { return m_quitModal.RequestQuit(); });
 
-    // プレイ中の Esc はカーソルを出すだけにする。2 回目で落ちると、出したカーソルでタブを押しに行く途中で
-    // アプリごと終わる。プレイから抜けるのは Tab / Start / 帯の停止
-    game->SetSecondEscapeQuits(false);
-
     NS_LOG_INFO(App, "Editor attached (Debug/Dev/GameDebug only)");
 }
 

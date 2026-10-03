@@ -53,7 +53,8 @@ public:
     //! scene の OnStart 完了後に呼ぶ。free-fly カメラ / EditorMode / ギズモを立ち上げ編集モードへ入る
     void Setup(NS::UI::ImGuiContext* imgui);
 
-    //! fixed step 更新。編集中は free-fly カメラ / ギズモ / EditorMode を回す。プレイ中は何もしない
+    //! fixed step 更新。編集中は free-fly カメラ / ギズモ / EditorMode を回す。プレイ中は Esc
+    //! で隠したカーソルを出すだけ
     void Tick();
 
     //! 編集中のカーソルの枠 / パレット / ギズモを ImGui のフレームへ重ねる。プレイ中は何もしない

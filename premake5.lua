@@ -924,6 +924,8 @@ project "Tests"
         -- Game.cpp の Application と Window への依存は OnAttach / OnUpdate / OnRender の中だけなので、
         -- 開始シーンのパスの試験はそれらを呼ばずに済む。リンクは既に App を繋いでいる
         "Source/Game/Game.cpp",
+        -- 単体の外枠は Esc の判断 ResolveEscape だけを試す。Application に触るのは OnAttach / OnUpdate の中だけ
+        "Source/Game/StandaloneLayer.cpp",
         "Source/Editor/EditorCamera.cpp",
         -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
         -- Setup は Application::Get() を要求するため test では呼ばないが、 ctor / EnterPlay /

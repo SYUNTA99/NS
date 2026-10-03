@@ -679,6 +679,19 @@ void LevelEditorController::Tick()
     if (m_mode == Mode::Edit)
     {
         TickEdit();
+        return;
+    }
+
+    // プレイ中の Esc は隠したカーソルを出すだけ。出ている時の Esc で終えると、出したカーソルでタブを押しに
+    // 行く途中でアプリごと終わる。プレイから抜けるのは Tab / Start / 帯の停止
+    NS::App::Application* app = NS::App::Application::Get();
+    if (app == nullptr)
+    {
+        return;
+    }
+    if (app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape) && !app->Window().IsCursorVisible())
+    {
+        ApplyPlayCursor(NS::Editor::PlayCursor::Released);
     }
 }
 

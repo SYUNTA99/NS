@@ -6,7 +6,6 @@
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Platform/Input.h"
 
 #include <optional>
 #include <string>
@@ -21,19 +20,6 @@ namespace
 } // namespace
 
 Game* Game::s_instance = nullptr;
-
-Game::EscapeResponse Game::ResolveEscape(EscapeQuery query) noexcept
-{
-    if (!query.cursorVisible)
-    {
-        return EscapeResponse::ReleaseCursor;
-    }
-    if (query.secondEscapeQuits)
-    {
-        return EscapeResponse::Quit;
-    }
-    return EscapeResponse::None;
-}
 
 Game::Game(std::string_view startScenePath) : NS::App::Layer("Game"), m_startScenePath(startScenePath)
 {
@@ -70,10 +56,6 @@ void Game::OnAttach()
         (void)m_scenes.LoadScene(NS::Obj::MakeSceneJson());
         StartLoadedScene();
     }
-
-    // カーソルを握り、視点操作をカーソル位置から切り離す
-    // Esc で出すまで非表示のまま。出し直しは OnUpdate の Esc 処理が行う
-    app->SetCursorCaptured(true);
 }
 
 void Game::OnDetach()
@@ -83,45 +65,13 @@ void Game::OnDetach()
 
 void Game::OnUpdate()
 {
-    // プレイ中の Esc は 2 段階。1 回目で隠したカーソルを出し、出ている状態の 2 回目で終了する
-    // カーソルの状態がそのまま段階の記録になる。世界が止まっている編集モードの Esc はエディタが処理する
-    // エディタのプレイは 2 回目で終えない。プレイから抜けるのはエディタの操作
-    const NS::Obj::Scene* scene = m_scenes.Current();
-    if (scene != nullptr && scene->IsSimulationEnabled())
-    {
-        if (NS::App::Application* app = NS::App::Application::Get())
-        {
-            if (app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
-            {
-                const EscapeResponse response = ResolveEscape(
-                    {.cursorVisible = app->Window().IsCursorVisible(), .secondEscapeQuits = m_secondEscapeQuits});
-                if (response == EscapeResponse::ReleaseCursor)
-                {
-                    app->SetCursorCaptured(false);
-                    return;
-                }
-                if (response == EscapeResponse::Quit)
-                {
-                    NS::App::Application::Quit();
-                    return;
-                }
-            }
-        }
-    }
-
-    // 世界の駆動はシーン自身が持つ。ここはシーン更新を呼ぶだけ
+    // 世界の駆動はシーン自身が持つ。プレイ中のカーソルと Esc は構成ごとの外枠 (StandaloneLayer / Editor) が持つ
     m_scenes.Update();
 }
 
 void Game::OnRender()
 {
     m_scenes.Render();
-    // scene が最後に bind した描画先へ UI を重ねる。単体起動はバックバッファ、editor はビュー列の
-    // 末尾にある Game ビューがそのまま残るので、どちらもゲームの絵の上に載る
-    if (NS::App::Application* app = NS::App::Application::Get())
-    {
-        m_ui.Render(app->Renderer());
-    }
 }
 
 bool Game::LoadStartScene()
