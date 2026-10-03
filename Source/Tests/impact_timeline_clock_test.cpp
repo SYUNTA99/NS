@@ -411,6 +411,45 @@ TEST(ImpactTimelineClock, ANewHitAbortsTheRunningTimeline)
     EXPECT_FALSE(player->Resolver().IsShapeAnimating());
 }
 
+// 段階的な明けの事象は置いたフレームに世界を遅くする。使った止めの種類は当たりの記録に残る
+TEST(ImpactTimelineClock, GradualReleaseSlowsTheWorldFromItsFrame)
+{
+    HitTimeline timeline = MakeSplitReleaseTimeline();
+    GradualReleaseEvent release;
+    release.startSpeed = 0.25f;
+    timeline.events.push_back({release, 6, 1, HitDirection::Any});
+    const ScopedHitTimelineDirectory directory("GradualRelease");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    ASSERT_EQ(RunHit(*player, *rock, 1.0f, 6).size(), 6u);
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
+    player->Update(false);
+    rock->Update();
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.25f);
+    EXPECT_TRUE(player->Resolver().LastImpact().localStop);
+    EXPECT_TRUE(player->Resolver().LastImpact().gradualRelease);
+    // やり直しで当たりを打ち切ると、遅い世界も持ち越さない
+    player->ResetState();
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
+}
+
+TEST(ImpactTimelineClock, TheRecordNamesOnlyTheStopsTheTimelineUsed)
+{
+    HitTimeline timeline;
+    timeline.events = {{TargetLaunchEvent{}, 1, 1, HitDirection::Any}, {ReboundEvent{}, 1, 1, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("NoStop");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 2).empty());
+    EXPECT_FALSE(player->Resolver().LastImpact().localStop);
+    EXPECT_FALSE(player->Resolver().LastImpact().gradualRelease);
+}
+
 // 白・振動・寄り・揺れ・当たりと飛びの絵は、それぞれの事象が置いたフレームに始まる
 TEST(ImpactTimelineClock, ReturnsStartOnTheirOwnFrames)
 {

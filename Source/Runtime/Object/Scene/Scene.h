@@ -8,6 +8,7 @@
 #include "Runtime/Object/IUse/IUseEffect.h"
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectList.h"
+#include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Scene/HitSensorDirector.h"
 #include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -182,6 +183,14 @@ namespace NS::Obj
         void SetWorldSpeed(float speed) noexcept;
         [[nodiscard]] float WorldSpeed() const noexcept { return m_worldSpeed; }
 
+        //! @brief 世界の速さを fromSpeed から 1 へ、実時間の realSeconds 秒で戻し始める (段階的な明け)
+        //! @details 戻り方は shape (横軸は 0〜1 の経過の割合、縦軸は 0〜1 の戻りの割合)。点の無い曲線は直線。
+        //! 戻る間も毎歩の速さは SetWorldSpeed と同じに効く。SetWorldSpeed と SetSimulationEnabled は戻りを止める
+        //! @param[in] fromSpeed 始まりの速さ。0〜1 に収める
+        //! @param[in] realSeconds 1 へ戻るまでの実時間の秒。0 以下ならすぐ 1 へ戻す
+        //! @param[in] shape 戻り方
+        void StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept;
+
         //! @brief 描く補間の割合を返す
         //! @details 世界の速さが 1 未満の間は、前に世界を進めてからの溜めに、実時間の割合 × 速さを足す。
         //! 止めている間は 1 (同じフレームの絵が描くたびに揺れないように)
@@ -248,6 +257,9 @@ namespace NS::Obj
         //! 世界の速さを溜めに足し、1 に届いたら 1 引く。世界を進める歩の場合 true、それ以外の場合は false
         bool AdvanceWorldClock() noexcept;
 
+        //! 戻りの曲線を実時間の 1 歩だけ進め、世界の速さを書く
+        void AdvanceWorldSpeedRamp() noexcept;
+
         //! @brief 渡されたシーンの JSON 文書から配置物と当たりの body を組み直す
         void RebuildObjectsFrom(const nlohmann::json& scene);
 
@@ -283,5 +295,10 @@ namespace NS::Obj
         std::int32_t m_simulationStepFrames = 0; // コマ送り残り fixed step 数。止めたままこの数だけ進める
         float m_worldSpeed = 1.0f;               // 世界の速さ (0〜1)
         float m_worldCarry = 0.0f;               // 前に世界を進めてから足した速さ。1 に届いたら世界を 1 歩進める
+        bool m_rampActive = false;               // 世界の速さを戻している間か
+        float m_rampFrom = 1.0f;                 // 戻りの始まりの速さ
+        float m_rampSeconds = 0.0f;              // 戻りの実時間の長さ (秒)
+        float m_rampElapsed = 0.0f;              // 戻りを始めてからの実時間 (秒)
+        Curve m_rampShape{};                     // 戻り方。点が無ければ直線
     };
 } // namespace NS::Obj

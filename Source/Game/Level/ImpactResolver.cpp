@@ -688,6 +688,10 @@ namespace NS::Game::Level
         m_lastImpact.faceU = judgement.u;
         m_lastImpact.faceV = judgement.v;
         m_lastImpact.hitStopSteps = stopSteps;
+        m_lastImpact.localStop = stopSteps > 0;
+        m_lastImpact.gradualRelease = std::any_of(events.begin(), events.end(), [](const HitEvent& event) noexcept {
+            return std::holds_alternative<GradualReleaseEvent>(event.value);
+        });
         m_lastImpact.centerHit = centerHit;
         m_lastImpact.broke = m_pendingBreak;
         m_lastImpact.selfVelocity = m_pendingSelfVelocity;
@@ -822,6 +826,18 @@ namespace NS::Game::Level
             {
                 resolver.m_player->ImpactVisuals().RequestHitEffect();
             }
+        }
+
+        void operator()(const GradualReleaseEvent& release) const
+        {
+            NS::Obj::Scene* scene = resolver.Owner()->OwningScene();
+            if (scene == nullptr)
+            {
+                return;
+            }
+            // 戻りは世界の速さの持ち主が進める。ここは始めるだけ
+            scene->StartWorldSpeedRamp(release.startSpeed, release.returnSeconds, release.shape);
+            resolver.m_startedGradualRelease = true;
         }
 
         void operator()(const FlightEffectEvent&) const
@@ -967,6 +983,15 @@ namespace NS::Game::Level
 
     void ImpactResolver::AbortTimeline() noexcept
     {
+        // 段階的な明けは時計より長く続く。打ち切る当たりが遅くした世界を普段の速さへ戻す
+        if (m_startedGradualRelease)
+        {
+            m_startedGradualRelease = false;
+            if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
+            {
+                Owner()->OwningScene()->SetWorldSpeed(1.0f);
+            }
+        }
         m_beforeContact = false;
         m_events.clear();
         m_eventRows.clear();

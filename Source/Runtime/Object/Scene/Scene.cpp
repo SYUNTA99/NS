@@ -132,6 +132,7 @@ namespace NS::Obj
         // 遅い世界はプレイの中の状態なので、入れ直したプレイへ持ち越さない
         m_worldSpeed = 1.0f;
         m_worldCarry = 0.0f;
+        m_rampActive = false;
     }
 
     void Scene::StepSimulation() noexcept
@@ -148,6 +149,50 @@ namespace NS::Obj
             return;
         }
         m_worldSpeed = NS::Core::Clamp(speed, 0.0f, 1.0f);
+        m_rampActive = false;
+    }
+
+    void Scene::StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept
+    {
+        if (!std::isfinite(fromSpeed) || !std::isfinite(realSeconds))
+        {
+            return;
+        }
+        m_rampActive = false;
+        if (realSeconds <= 0.0f)
+        {
+            m_worldSpeed = 1.0f;
+            return;
+        }
+        m_worldSpeed = NS::Core::Clamp(fromSpeed, 0.0f, 1.0f);
+        m_rampActive = true;
+        m_rampFrom = m_worldSpeed;
+        m_rampSeconds = realSeconds;
+        m_rampElapsed = 0.0f;
+        m_rampShape = shape;
+    }
+
+    void Scene::AdvanceWorldSpeedRamp() noexcept
+    {
+        if (!m_rampActive)
+        {
+            return;
+        }
+        // 世界の時間で数えると、遅い分だけ戻るのが延びる
+        m_rampElapsed += NS::Platform::FrameTimer::FixedDelta();
+        const float ratio = m_rampElapsed / m_rampSeconds;
+        if (ratio >= 1.0f - k_WorldCarryTolerance)
+        {
+            m_worldSpeed = 1.0f;
+            m_rampActive = false;
+            return;
+        }
+        float recovered = ratio;
+        if (m_rampShape.count > 0)
+        {
+            recovered = NS::Core::Clamp(m_rampShape.Evaluate(ratio), 0.0f, 1.0f);
+        }
+        m_worldSpeed = m_rampFrom + (1.0f - m_rampFrom) * recovered;
     }
 
     float Scene::RenderAlpha(float frameAlpha) const noexcept
@@ -412,6 +457,8 @@ namespace NS::Obj
             m_objects.ExecutePhase(phase);
         }
         m_objects.RemoveKilledTransients();
+        // この歩は始めた時の速さで回し、次の歩の速さを書く
+        AdvanceWorldSpeedRamp();
     }
 
     void Scene::OnShutdown()

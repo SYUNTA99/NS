@@ -1,11 +1,14 @@
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/Model.h"
+#include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/UpdatePhase.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -300,5 +303,40 @@ TEST(WorldSpeed, NormalSpeedKeepsTheFrameAlphaAndPauseHoldsAtOne)
     EXPECT_FLOAT_EQ(scene.RenderAlpha(0.3f), 1.0f);
     // プレイを入れ直すと普段の速さへ戻る
     scene.SetSimulationEnabled(true);
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
+}
+
+TEST(WorldSpeed, RampReturnsToNormalSpeedInRealSeconds)
+{
+    // 段階的な明けは実時間で戻す。世界の時間で数えると、遅い分だけ戻るのが延びる
+    NS::Obj::Scene scene;
+    const float dt = NS::Platform::FrameTimer::FixedDelta();
+    const int steps = static_cast<int>(std::ceil(0.3f / dt - 1.0e-3f));
+    scene.StartWorldSpeedRamp(0.2f, 0.3f, NS::Obj::Curve{});
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.2f);
+    float previous = scene.WorldSpeed();
+    for (int i = 1; i < steps; ++i)
+    {
+        SCOPED_TRACE(i);
+        scene.OnUpdate();
+        EXPECT_GT(scene.WorldSpeed(), previous);
+        EXPECT_LT(scene.WorldSpeed(), 1.0f);
+        previous = scene.WorldSpeed();
+    }
+    scene.OnUpdate();
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
+}
+
+TEST(WorldSpeed, SettingTheSpeedStopsTheRamp)
+{
+    // 速さの持ち主は 1 つ。置き直した速さを戻りの曲線が上書きしない
+    NS::Obj::Scene scene;
+    scene.StartWorldSpeedRamp(0.2f, 0.3f, NS::Obj::Curve{});
+    scene.SetWorldSpeed(0.5f);
+    scene.OnUpdate();
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.5f);
+    scene.StartWorldSpeedRamp(0.2f, 0.3f, NS::Obj::Curve{});
+    scene.SetSimulationEnabled(true);
+    scene.OnUpdate();
     EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
 }

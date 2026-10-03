@@ -58,6 +58,8 @@ namespace NS::Game::Level
         float rollStart = 0.0f;   //!< 傾きの始めの値 (度)。正は画面の上端をカメラの右へ倒す向き。傾きの無い当たりは 0
         NS::Platform::GamepadVibration padStart; //!< パッドの振動の始めの値。振動の無い当たりは 0
         int hitStopSteps = 0;                    //!< 止めのフレーム数。タイムラインが引けない当たりは 0
+        bool localStop = false;                  //!< ローカル・ヒットストップ (自機と相手の止め) を使った場合 true
+        bool gradualRelease = false;             //!< 段階的な明け (明けの後の遅い世界) を使った場合 true
         bool centerHit = false;                  //!< 段が Center の場合 true
         bool broke = false;
         NS::Core::Vector3 selfVelocity; //!< 明けに自機が持つ速度。反動は初速、貫通は減速した突進の速度。単位は m/s
@@ -275,6 +277,7 @@ namespace NS::Game::Level
         bool m_holdReleased = false;                    // 止めた自機を動かし直したか
         bool m_hasReboundEvent = false;                 // 走っているタイムラインに反動の事象があるか
         bool m_stopStarted = false;                     // 止めの事象が始まったか
+        bool m_startedGradualRelease = false;           // 段階的な明けで世界を遅くしたか。打ち切りで普段の速さへ戻す
         int m_stopEnd = 0;                              // 止めの事象の最後のフレーム
         int m_breakStopSteps = -1;                      // 貫通の当たりの止めのフレーム数。負なら止めの事象の長さのまま
         ShapeEvent m_shape{};                           // 走っている形の事象

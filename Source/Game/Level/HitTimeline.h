@@ -178,6 +178,24 @@ namespace NS::Game::Level
         static constexpr bool k_BeforeContact = false;
     };
 
+    //! @brief 段階的な明け。始まりのフレームに世界を遅くし、実時間で普段の速さへ戻す。始まりのフレームに 1 回だけ起きる
+    struct GradualReleaseEvent
+    {
+        static constexpr std::string_view k_Name = "GradualRelease";
+        static constexpr std::string_view k_Label = "段階的な明け";
+        static constexpr bool k_BeforeContact = false;
+
+        float startSpeed = 0.2f;    //!< 始まりの世界の速さ 0〜1
+        float returnSeconds = 0.3f; //!< 普段の速さへ戻るまでの実時間 (秒)
+        NS::Obj::Curve shape{};     //!< 戻り方。横軸は 0〜1 の経過の割合、縦軸は 0〜1 の戻りの割合。点が無ければ直線
+
+        NS_REFLECT_BEGIN(GradualReleaseEvent, void)
+        NS_REFLECT_FIELD(startSpeed, "始まりの速さ")
+        NS_REFLECT_FIELD(returnSeconds, "戻る秒")
+        NS_REFLECT_FIELD(shape, "戻り方")
+        NS_REFLECT_END_VALUE()
+    };
+
     //! @brief 事象の種類ごとの値。種類を足す時はここへ型を足す
     using HitEventValue = std::variant<HitStopEvent,
                                        ShapeEvent,
@@ -189,7 +207,8 @@ namespace NS::Game::Level
                                        PadVibrationEvent,
                                        FlashEvent,
                                        HitEffectEvent,
-                                       FlightEffectEvent>;
+                                       FlightEffectEvent,
+                                       GradualReleaseEvent>;
 
     //! @brief タイムラインの 1 行。触れたフレームを 0 にしたフレーム数で、始まりと長さを持つ
     struct HitEvent
