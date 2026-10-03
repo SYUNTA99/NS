@@ -171,4 +171,14 @@ namespace NS::Game::Level
         return ArcOffsetAt(shape, seconds);
     }
 
+    float LaunchArcFlightSeconds(const LaunchArc& arc) noexcept
+    {
+        ArcShape shape;
+        if (!TryShapeOf(arc, shape))
+        {
+            return 0.0f;
+        }
+        return arc.distance / shape.horizontalSpeed;
+    }
+
 } // namespace NS::Game::Level

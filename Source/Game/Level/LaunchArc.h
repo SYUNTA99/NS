@@ -32,4 +32,9 @@ namespace NS::Game::Level
     //! seconds が有限の 0 以上でない時と、arc が LaunchArcInitialVelocity の挙げる曲線にならない値の時は 0 を返す
     [[nodiscard]] NS::Core::Vector3 LaunchArcOffsetAt(const LaunchArc& arc, float seconds) noexcept;
 
+    //! @brief 発射から発射の高さへ戻るまでの秒を返す
+    //! @details 水平は一定の速さで進むので、飛ぶ距離 ÷ 水平の速さ。
+    //! arc が LaunchArcInitialVelocity の挙げる曲線にならない値の時は 0 を返す
+    [[nodiscard]] float LaunchArcFlightSeconds(const LaunchArc& arc) noexcept;
+
 } // namespace NS::Game::Level

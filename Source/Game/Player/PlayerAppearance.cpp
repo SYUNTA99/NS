@@ -152,7 +152,7 @@ namespace NS::Game::Player
         if (m_actor->IsBodySlamming())
         {
             SetRollAxisToward(m_actor->BodySlamVelocity(), m_spinAxis);
-            m_spinSpeed = Tuning().m_bodySlamSpinSpeed;
+            m_spinSpeed = m_actor->BodySlamSpinSpeed();
         }
         else if (m_actor->ChargeJudge().IsHeld())
         {
@@ -174,7 +174,7 @@ namespace NS::Game::Player
             // 弾かれた向きへ前転する。真正面の当たりでは突進と逆向きになる
             // 反動の間は空中の操作で速度の向きが変わっても、弾かれた向きから取った軸のまま回す
             SetRollAxisToward(m_actor->ReboundDirection(), m_spinAxis);
-            m_spinSpeed = Tuning().m_bodySlamSpinSpeed;
+            m_spinSpeed = m_actor->ReboundSpinSpeed();
         }
         // 放した後の空中と、反動に入らずに突進が終わった後は、直前のフレームの軸と速さのまま回る
 

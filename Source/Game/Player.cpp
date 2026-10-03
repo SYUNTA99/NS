@@ -516,6 +516,7 @@ void Player::ResetState() noexcept
     m_slam.justStarted = false;
     m_slam.dir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
     m_rebound.direction = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    m_rebound.spinSpeed = 0.0f;
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_curled = false;

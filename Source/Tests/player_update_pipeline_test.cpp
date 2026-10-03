@@ -2,6 +2,7 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
+#include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -16,6 +17,7 @@
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectJson.h"
+#include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Clock.h"
 #include "Tests/TestHitTimelines.h"
@@ -563,6 +565,8 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
         }
         Player* player = PlacePipelinePlayer(scene, targetX, targetZ);
         ASSERT_NE(player, nullptr);
+        // 基準はタップ初速 10 で採った。見るのは状態の移り方なので、欄の既定を触っても基準を取り直さずに済むよう留める
+        NS::Obj::ApplyJsonFields(player->Params(), nlohmann::json{{"タップ初速", 10.0f}});
         NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
         int impact = -1;

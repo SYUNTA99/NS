@@ -17,6 +17,36 @@
 
 #include <cmath>
 
+namespace
+{
+    // 回転数を秒で割った回る速さ (度/秒)。秒が 0 以下か有限でない時は 0
+    [[nodiscard]] float SpinSpeedFor(float turns, float seconds) noexcept
+    {
+        if (!std::isfinite(seconds) || !(seconds > 0.0f))
+        {
+            return 0.0f;
+        }
+        return turns * 360.0f / seconds;
+    }
+
+    // 反動の初速と着地までの秒を同じ曲線から出す。組は実際に当てる重力 (Player::ReboundGravity) と同じ
+    // PlayerParams::ReboundGravity。曲線は上りの重力を正の大きさで、下りの重力を上りに対する倍率で持つので、
+    // 符号を反転して下降重力を上りの重力で割る
+    [[nodiscard]] NS::Game::Level::LaunchArc ReboundLaunchArc(const NS::Game::Player::PlayerParams& params,
+                                                              const NS::Game::Player::ReboundArc& arc) noexcept
+    {
+        const NS::Game::Player::PlayerGravity gravity = params.ReboundGravity();
+        const float riseGravity = -gravity.rise;
+        return NS::Game::Level::LaunchArc{.direction = arc.direction,
+                                          .distance = arc.distance,
+                                          .apexHeight = arc.apexHeight,
+                                          .riseGravity = riseGravity,
+                                          .fallGravityScale = -gravity.fall / riseGravity,
+                                          .apexBandSpeed = gravity.apexSpeed,
+                                          .apexBandGravityScale = gravity.apexScale};
+    }
+} // namespace
+
 // ---- 突進と反発 ----
 
 void Player::RequestBodySlam(float charge01) noexcept
@@ -65,6 +95,16 @@ float Player::BodySlamSpeed() const noexcept
         return m_params->m_tapSlamSpeed;
     }
     return m_params->m_bodySlamSpeed;
+}
+
+float Player::BodySlamSpinSpeed() const noexcept
+{
+    float turns = m_params->m_chargedSlamTurns;
+    if (m_slam.isTap)
+    {
+        turns = m_params->m_tapSlamTurns;
+    }
+    return SpinSpeedFor(turns, m_slam.distanceTarget / BodySlamSpeed());
 }
 
 NS::Core::Vector3 Player::BodySlamVelocity() const noexcept
@@ -283,7 +323,15 @@ bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept
         return false;
     }
 
+    // 反動は最後に出した突進が当たって始まるので、その突進がタップだったかで回転数を選ぶ
+    float turns = m_params->m_chargedReboundTurns;
+    if (m_slam.isTap)
+    {
+        turns = m_params->m_tapReboundTurns;
+    }
     m_rebound.direction = direction;
+    m_rebound.spinSpeed =
+        SpinSpeedFor(turns, NS::Game::Level::LaunchArcFlightSeconds(ReboundLaunchArc(*m_params, arc)));
     m_body->SetVelocity(velocity);
     (void)m_states->Change<NS::Game::Player::ReboundPlayerState>();
     return true;
@@ -291,18 +339,8 @@ bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept
 
 NS::Core::Vector3 Player::ReboundVelocityFor(const NS::Game::Player::ReboundArc& arc) const noexcept
 {
-    // 下りは普段の落ち方のままにする。組は実際に当てる重力 (ReboundGravity) と同じ PlayerParams::ReboundGravity
-    // 曲線は上りの重力を正の大きさで、下りの重力を上りに対する倍率で持つので、符号を反転して下降重力を上りの重力で割る
-    const NS::Game::Player::PlayerGravity gravity = m_params->ReboundGravity();
-    const float riseGravity = -gravity.rise;
-    const NS::Game::Level::LaunchArc launchArc{.direction = arc.direction,
-                                               .distance = arc.distance,
-                                               .apexHeight = arc.apexHeight,
-                                               .riseGravity = riseGravity,
-                                               .fallGravityScale = -gravity.fall / riseGravity,
-                                               .apexBandSpeed = gravity.apexSpeed,
-                                               .apexBandGravityScale = gravity.apexScale};
-    return NS::Game::Level::LaunchArcInitialVelocity(launchArc);
+    // 下りは普段の落ち方のままにする
+    return NS::Game::Level::LaunchArcInitialVelocity(ReboundLaunchArc(*m_params, arc));
 }
 
 void Player::SetCurled(bool curled) noexcept

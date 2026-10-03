@@ -122,7 +122,10 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_ballMeshRef, "玉のメッシュ")
         NS_REFLECT_FIELD(m_emptyChargeSpinSpeed, "溜め 0 の回る速さ")
         NS_REFLECT_FIELD(m_fullChargeSpinSpeed, "溜めきりの回る速さ")
-        NS_REFLECT_FIELD(m_bodySlamSpinSpeed, "突進中の回る速さ")
+        NS_REFLECT_FIELD(m_chargedSlamTurns, "溜めた突進の届くまでの回転数")
+        NS_REFLECT_FIELD(m_tapSlamTurns, "タップの届くまでの回転数")
+        NS_REFLECT_FIELD(m_chargedReboundTurns, "溜めて当てた反動の回転数")
+        NS_REFLECT_FIELD(m_tapReboundTurns, "タップで当てた反動の回転数")
         NS_REFLECT_FIELD(m_landingSquash, "着地の潰れ")
         NS_REFLECT_FIELD(m_landingSquashRecoverSteps, "着地の潰れを戻すフレーム数")
         NS_REFLECT_FIELD(m_tapBurstScale, "タップの弾けの大きさ")
@@ -274,7 +277,13 @@ namespace NS::Game::Player
         std::string m_ballMeshRef{};
         float m_emptyChargeSpinSpeed = 360.0f;
         float m_fullChargeSpinSpeed = 1440.0f;
-        float m_bodySlamSpinSpeed = 1800.0f;
+        // 回転は届くまでの回転数で持ち、回る速さは届くまでの秒から毎回出す。速さや距離を触っても回る数が変わらない
+        // タップ 2 は本人の「到達まで一回転か 2, 3 回転」から、溜めた突進 5 はタップとはっきり違う数から始める
+        float m_chargedSlamTurns = 5.0f; // 溜めた突進が届くまでに回る回転数
+        float m_tapSlamTurns = 2.0f;     // タップが届くまでに回る回転数
+        // 反動は溜めて当てた時とタップで当てた時で変える。1 と 3 は 1〜3 の両端で、差が一番分かる組
+        float m_chargedReboundTurns = 3.0f; // 溜めて当てた反動が着地までに回る回転数
+        float m_tapReboundTurns = 1.0f;     // タップで当てた反動が着地までに回る回転数
         float m_landingSquash = 0.8f;
         int m_landingSquashRecoverSteps = 6;
         float m_tapBurstScale = 0.75f;
@@ -324,7 +333,8 @@ namespace NS::Game::Player
         // 突進が高い所へ登る手段にならない所で止める。水平 20 m/s・上りの重力 -25 で上がれる高さは 45 度で約 8 m、
         // 40 度で約 5.6 m、30 度で約 2.6 m。2026-10-03 本人の指定で 40
         float m_launchPitchLimitDegrees = 40.0f;
-        float m_tapSlamSpeed = 10.0f;
+        // 軽く当てても速く届かせる。溜めきりの 20 m/s の 4 分の 3 から始める。距離は変えないので届くまで約 0.42 秒
+        float m_tapSlamSpeed = 15.0f;
         float m_tapSlamUpSpeed = 3.0f;
         float m_tapSlamDistance = 6.25f;
         float m_slamAimHoldTime = 0.11f;

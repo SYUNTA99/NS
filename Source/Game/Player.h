@@ -175,6 +175,18 @@ public:
     [[nodiscard]] bool CanMoveBody() const noexcept;
     //! 最後に始めた反動の水平の向き。正規化済み。反動を始める前と ResetState の後はゼロ
     [[nodiscard]] NS::Core::Vector3 ReboundDirection() const noexcept { return m_rebound.direction; }
+    //! @brief 突進の玉の回る速さ (度/秒) を返す
+    //! @details 届くまでの回転数 × 360 ÷ 届くまでの秒。回転数は溜めた突進が欄「溜めた突進の届くまでの回転数」、
+    //! タップが欄「タップの届くまでの回転数」。届くまでの秒は突進を終える水平の距離 ÷ 突進の水平の速さ。
+    //! 速さや距離を触っても、届くまでに回る数は変わらない
+    //! @return 回る速さ。届くまでの秒が 0 以下か有限でない時は 0
+    [[nodiscard]] float BodySlamSpinSpeed() const noexcept;
+    //! @brief 最後に始めた反動の玉の回る速さ (度/秒) を返す
+    //! @details 反動の回転数 × 360 ÷
+    //! 発射の高さへ戻るまでの秒。回転数は溜めて当てた反動が欄「溜めて当てた反動の回転数」、
+    //! タップで当てた反動が欄「タップで当てた反動の回転数」。書くのは BeginRebound
+    //! @return 回る速さ。反動を始める前と ResetState の後は 0
+    [[nodiscard]] float ReboundSpinSpeed() const noexcept { return m_rebound.spinSpeed; }
     //! 丸まっている場合 true、それ以外の場合は false
     [[nodiscard]] bool IsCurled() const noexcept { return m_curled; }
     //! @brief 根を rootPosition に置いた時の突進の玉を返す
@@ -368,6 +380,7 @@ private:
     struct ReboundRecord
     {
         NS::Core::Vector3 direction{}; // 最後に始めた反動の水平の向き。正規化済み
+        float spinSpeed = 0.0f;        // 最後に始めた反動の玉の回る速さ (度/秒)
     };
 
     //! @brief 溜めと狙いの記録。観測の段 (ObserveCharge) が observed の側を書き、決定の段 (AdvanceCharge) が確定する
