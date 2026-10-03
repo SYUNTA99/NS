@@ -41,6 +41,22 @@ namespace NS::Game::Level
             }
         }
 
+        template <std::size_t I = 0> [[nodiscard]] bool BeforeContactAt(std::size_t index) noexcept
+        {
+            if constexpr (I < k_EventKinds)
+            {
+                if (index == I)
+                {
+                    return std::variant_alternative_t<I, HitEventValue>::k_BeforeContact;
+                }
+                return BeforeContactAt<I + 1>(index);
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         template <std::size_t I = 0> [[nodiscard]] std::string_view LabelAt(std::size_t index) noexcept
         {
             if constexpr (I < k_EventKinds)
@@ -169,6 +185,12 @@ namespace NS::Game::Level
                 error = std::format("{} 行目の始まり start が整数でない", index);
                 return std::nullopt;
             }
+            if (event.start < 0 && !CanStartBeforeContact(event.value))
+            {
+                error = std::format(
+                    "{} 行目の {} は触れる前 (マイナスのフレーム) に置けない", index, type->get<std::string>());
+                return std::nullopt;
+            }
             const nlohmann::json::const_iterator length = row.find("length");
             if (length == row.end() || !ReadInteger(*length, event.length) || event.length < 0)
             {
@@ -223,6 +245,11 @@ namespace NS::Game::Level
     std::string_view HitEventLabel(const HitEventValue& value) noexcept
     {
         return LabelAt(value.index());
+    }
+
+    bool CanStartBeforeContact(const HitEventValue& value) noexcept
+    {
+        return BeforeContactAt(value.index());
     }
 
     std::optional<HitEventValue> MakeHitEventValue(std::string_view typeName)

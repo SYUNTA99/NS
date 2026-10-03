@@ -35,6 +35,8 @@ namespace NS::Game::Level
     {
         static constexpr std::string_view k_Name = "HitStop";     //!< ファイルに書く種類の名前
         static constexpr std::string_view k_Label = "自機の止め"; //!< パネルに出す名前
+        //! 触れる前 (マイナスのフレーム) に置けるか。当たりの結果 (相手・反動・威力) を読む種類は置けない
+        static constexpr bool k_BeforeContact = false;
     };
 
     //! @brief 自機の描く形の倍率。始まりからのフレーム数を横軸にした曲線 2 本で、縮み・潰れ・伸びを 1 本の流れで持つ
@@ -43,6 +45,7 @@ namespace NS::Game::Level
     {
         static constexpr std::string_view k_Name = "Shape";
         static constexpr std::string_view k_Label = "自機の形";
+        static constexpr bool k_BeforeContact = true; //!< 触れる前の縮みを置く
 
         NS::Obj::Curve along{};  //!< 突進の向きの倍率。元の形が 1
         NS::Obj::Curve height{}; //!< 高さの倍率。元の形が 1
@@ -58,6 +61,7 @@ namespace NS::Game::Level
     {
         static constexpr std::string_view k_Name = "TargetFreeze";
         static constexpr std::string_view k_Label = "相手の止め";
+        static constexpr bool k_BeforeContact = false;
 
         float pushInDistance = 0.06f; //!< 止めの頭で飛ぶ向きへ食い込ませる距離 (m)
         float swingAmplitude = 0.05f; //!< 往復の振れ幅 (m)。相手の質量 + 1 で割ってから渡す
@@ -77,6 +81,7 @@ namespace NS::Game::Level
     {
         static constexpr std::string_view k_Name = "TargetLaunch";
         static constexpr std::string_view k_Label = "相手を飛ばす";
+        static constexpr bool k_BeforeContact = false;
     };
 
     //! @brief 自機の反動を始める (貫通の当たりでは突き抜ける速度を書く)。始まりのフレームに 1 回だけ起きる
@@ -85,6 +90,7 @@ namespace NS::Game::Level
     {
         static constexpr std::string_view k_Name = "Rebound";
         static constexpr std::string_view k_Label = "反動を始める";
+        static constexpr bool k_BeforeContact = false;
     };
 
     //! @brief カメラの揺れ。長さが揺れのフレーム数
@@ -93,6 +99,7 @@ namespace NS::Game::Level
     {
         static constexpr std::string_view k_Name = "CameraShake";
         static constexpr std::string_view k_Label = "カメラの揺れ";
+        static constexpr bool k_BeforeContact = false; //!< 振れは威力と質量で決まる
 
         float strength = 0.06f;    //!< 威力 1・質量の効き 1 の最初の振れの大きさ (m)
         float sideWeight = 0.0f;   //!< 振れの向きの横の重み
@@ -112,6 +119,7 @@ namespace NS::Game::Level
     {
         static constexpr std::string_view k_Name = "ZoomRoll";
         static constexpr std::string_view k_Label = "寄りと傾き";
+        static constexpr bool k_BeforeContact = false; //!< 傾きの向きは相手の飛ぶ向きで決まる
 
         float zoom = 1.15f;       //!< 寄りの倍率。1 は寄らない
         float rollDegrees = 3.0f; //!< 傾き (度)。正は画面の上端を、相手の飛ぶ向きがカメラの右なら右へ倒す
@@ -129,6 +137,7 @@ namespace NS::Game::Level
     {
         static constexpr std::string_view k_Name = "PadVibration";
         static constexpr std::string_view k_Label = "パッドの振動";
+        static constexpr bool k_BeforeContact = false;
 
         NS::Obj::Curve left{};  //!< 左のモーターの速さ 0〜1
         NS::Obj::Curve right{}; //!< 右のモーターの速さ 0〜1
@@ -144,6 +153,7 @@ namespace NS::Game::Level
     {
         static constexpr std::string_view k_Name = "Flash";
         static constexpr std::string_view k_Label = "白い光";
+        static constexpr bool k_BeforeContact = false;
 
         float alpha = 0.5f; //!< 始めの濃さ 0〜1
 
@@ -157,6 +167,7 @@ namespace NS::Game::Level
     {
         static constexpr std::string_view k_Name = "HitEffect";
         static constexpr std::string_view k_Label = "当たりのエフェクト";
+        static constexpr bool k_BeforeContact = false; //!< 絵は当たりの記録から置く
     };
 
     //! @brief 相手の飛び出しのエフェクトを出す。始まりのフレームに 1 回だけ起きる
@@ -164,6 +175,7 @@ namespace NS::Game::Level
     {
         static constexpr std::string_view k_Name = "FlightEffect";
         static constexpr std::string_view k_Label = "飛び出しのエフェクト";
+        static constexpr bool k_BeforeContact = false;
     };
 
     //! @brief 事象の種類ごとの値。種類を足す時はここへ型を足す
@@ -199,6 +211,9 @@ namespace NS::Game::Level
 
     //! value の種類のパネルに出す名前
     [[nodiscard]] std::string_view HitEventLabel(const HitEventValue& value) noexcept;
+
+    //! value の種類を触れる前 (マイナスのフレーム) に置ける場合 true。種類の k_BeforeContact
+    [[nodiscard]] bool CanStartBeforeContact(const HitEventValue& value) noexcept;
 
     //! @brief 種類の名前から、その種類の既定の値を作る
     //! @return 知らない名前の場合は std::nullopt

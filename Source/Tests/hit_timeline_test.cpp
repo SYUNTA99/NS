@@ -1,6 +1,6 @@
 #include "Game/Level/HitTimeline.h"
-#include "Tests/TestHitTimelines.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
+#include "Tests/TestHitTimelines.h"
 
 #include <gtest/gtest.h>
 
@@ -122,6 +122,9 @@ TEST(HitTimeline, BrokenFilesAreRejectedWithAReason)
         R"({"version": 1, "events": [{"type": "Flash", "start": 1.5, "length": 1}]})",
         R"({"version": 1, "events": [{"type": "Flash", "start": 1, "length": 1, "direction": "back"}]})",
         R"({"version": 1, "events": [{"type": "Flash", "length": 1}]})",
+        // 触れる前に置けるのは自機の形だけ。止めや相手への知らせは当たりの結果が要る
+        R"({"version": 1, "events": [{"type": "HitStop", "start": -1, "length": 1}]})",
+        R"({"version": 1, "events": [{"type": "Flash", "start": -3, "length": 2}]})",
         R"([1, 2])",
     };
     for (const char* text : broken)

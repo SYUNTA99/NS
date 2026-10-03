@@ -511,3 +511,88 @@ TEST(ImpactTimelineClock, TheShakeIsItsStrengthScaledByTheHit)
     EXPECT_NEAR(shakes[1], shakes[0] * 2.0f, 1e-6f);
     EXPECT_NEAR(shakes[2], shakes[1], 1e-6f);
 }
+
+namespace
+{
+    // 触れる前の 3 フレームから縮む形と、止め 2 フレームのタイムライン
+    HitTimeline MakeBeforeContactTimeline()
+    {
+        ShapeEvent shrink;
+        shrink.along.count = 1;
+        shrink.along.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
+        shrink.height.count = 1;
+        shrink.height.keys[0] = NS::Obj::Curve::Key{0.0f, 0.5f};
+        HitTimeline timeline;
+        timeline.events = {{shrink, -3, 5, HitDirection::Any},
+                           {HitStopEvent{}, 1, 2, HitDirection::Any},
+                           {ReboundEvent{}, 3, 1, HitDirection::Any},
+                           {TargetLaunchEvent{}, 3, 1, HitDirection::Any}};
+        return timeline;
+    }
+} // namespace
+
+// R-2: マイナスに置いた事象は、触れる前の予測のフレームで始まる。当たったら同じ時計を 0 から続ける
+TEST(ImpactTimelineClock, NegativeEventsStartBeforeContact)
+{
+    const ScopedHitTimelineDirectory directory("BeforeContact");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeBeforeContactTimeline());
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    std::vector<bool> shaping;
+    int detectedAt = -1;
+    for (int frame = 0; frame < 60 && detectedAt < 0; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        shaping.push_back(player->Resolver().IsShapeAnimating());
+        if (player->Resolver().LastImpact().sequence != 0)
+        {
+            detectedAt = frame;
+        }
+    }
+    ASSERT_GE(detectedAt, 4) << "当たるまでに縮みの 3 フレームが入る間合いが要る";
+    for (int frame = 0; frame <= detectedAt; ++frame)
+    {
+        SCOPED_TRACE(frame);
+        EXPECT_EQ(shaping[static_cast<std::size_t>(frame)], frame >= detectedAt - 3);
+    }
+    EXPECT_FLOAT_EQ(player->Resolver().ShapeFactors().y, 0.5f);
+    // 形の事象は -3 から 5 フレームなので、検知の次のフレーム (1) が最後
+    player->Update(false);
+    rock->Update();
+    EXPECT_TRUE(player->Resolver().IsShapeAnimating());
+    player->Update(false);
+    rock->Update();
+    EXPECT_FALSE(player->Resolver().IsShapeAnimating());
+}
+
+// 予測した相手が線から外れたら、触れる前に始めた事象を止める
+TEST(ImpactTimelineClock, AMissedPredictionStopsTheEarlyEvents)
+{
+    const ScopedHitTimelineDirectory directory("BeforeContactMiss");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeBeforeContactTimeline());
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    bool started = false;
+    for (int frame = 0; frame < 60 && !started; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        started = player->Resolver().IsShapeAnimating();
+    }
+    ASSERT_TRUE(started);
+    ASSERT_EQ(player->Resolver().LastImpact().sequence, 0u);
+    // 相手を線の横へ退ける
+    rock->Root().SetPosition(rock->Root().Position() + NS::Core::Vector3{10.0f, 0.0f, 0.0f});
+    player->Update(false);
+    rock->Update();
+    EXPECT_FALSE(player->Resolver().IsShapeAnimating());
+    EXPECT_FLOAT_EQ(player->Resolver().ShapeFactors().y, 1.0f);
+    EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
+}

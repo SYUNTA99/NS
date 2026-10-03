@@ -107,7 +107,9 @@ namespace NS::Game::Level
         //! @brief タイムラインの時計を 1 フレーム進め、ObserveImpact が控えた相手へ向かっていれば衝突の結果を決める
         //! @details ObserveImpact の後に 1 回だけ効き、2 回目は何もしない。
         //! 時計が走っている間は、始まりのフレームに来た事象を並びの順に起こす。
-        //! 新しい当たりは、走っているタイムラインを打ち切り、同居の HitReaction の返りを止めてから始め直す
+        //! 新しい当たりは、走っているタイムラインを打ち切り、同居の HitReaction の返りを止めてから始め直す。
+        //! 触れる前 (マイナスのフレーム) の事象を置いた段では、当たらなかった突進のフレームに線の先の相手を予測し、
+        //! 検知までのフレーム数で時計をマイナスから始める。予測どおりの相手と段に当たれば同じ時計を 0 から続ける
         void StepState();
 
         //! 直近の更新で反発を検知した場合 true、それ以外の場合は false
@@ -212,6 +214,17 @@ namespace NS::Game::Level
         // 走っているタイムラインの事象を止め、時計と形を元へ戻す
         void AbortTimeline() noexcept;
 
+        // 控えた相手へ向かっていれば衝突の結果を決め、段のタイムラインを始める。当たりにならなかった場合 false
+        [[nodiscard]] bool ResolveObservedHit(bool hadObservation);
+
+        // 突進の間、触れる前の事象を置いた段があれば狙いの線の先の相手を予測し、検知までのフレーム数が最初の
+        // マイナスの事象に届いたら、時計をマイナスから始める。予測した相手か段が変わった時と、相手が線から
+        // 外れた時は、触れる前に始めた事象を止める
+        void UpdateBeforeContact();
+
+        // 触れる前に始めた事象を止め、時計と形を元へ戻す。始めていなければ何もしない
+        void DropBeforeContact() noexcept;
+
         // 時計の今のフレームに始まる事象を並びの順に起こし、止めの明けを数える
         void AdvanceTimeline();
 
@@ -241,21 +254,24 @@ namespace NS::Game::Level
         // 相手へ明けを知らせて飛ばすか壊させる
         void LaunchTarget();
 
-        std::vector<HitEvent> m_events;   // 走っているタイムラインのうち、当たりの向きで起きる事象
-        int m_clock = 0;                  // 検知のフレームを 0 にした今のフレーム
-        int m_clockEnd = 0;               // 最後の事象が終わる時計の値。ここまで進めたら時計を止める
-        bool m_clockRunning = false;      // 時計が走っているか
-        bool m_holdArmed = false;         // この当たりで自機を止めるか。止めの事象のある当たりで立つ
-        bool m_holdReleased = false;      // 止めた自機を動かし直したか
-        bool m_hasReboundEvent = false;   // 走っているタイムラインに反動の事象があるか
-        bool m_stopStarted = false;       // 止めの事象が始まったか
-        int m_stopEnd = 0;                // 止めの事象の最後のフレーム
-        int m_breakStopSteps = -1;        // 貫通の当たりの止めのフレーム数。負なら止めの事象の長さのまま
-        ShapeEvent m_shape{};             // 走っている形の事象
-        int m_shapeStart = 0;             // 形の事象の始まりのフレーム
-        int m_shapeLength = 0;            // 形の事象の長さ
-        bool m_shapeActive = false;       // 形の事象が始まったか
-        float m_pendingTargetMass = 1.0f; // 検知のフレームに相手が答えた質量。往復の振れ幅を割る
+        std::vector<HitEvent> m_events;                // 走っているタイムラインのうち、当たりの向きで起きる事象
+        int m_clock = 0;                               // 検知のフレームを 0 にした今のフレーム
+        int m_clockEnd = 0;                            // 最後の事象が終わる時計の値。ここまで進めたら時計を止める
+        bool m_clockRunning = false;                   // 時計が走っているか
+        bool m_holdArmed = false;                      // この当たりで自機を止めるか。止めの事象のある当たりで立つ
+        bool m_holdReleased = false;                   // 止めた自機を動かし直したか
+        bool m_hasReboundEvent = false;                // 走っているタイムラインに反動の事象があるか
+        bool m_stopStarted = false;                    // 止めの事象が始まったか
+        int m_stopEnd = 0;                             // 止めの事象の最後のフレーム
+        int m_breakStopSteps = -1;                     // 貫通の当たりの止めのフレーム数。負なら止めの事象の長さのまま
+        ShapeEvent m_shape{};                          // 走っている形の事象
+        int m_shapeStart = 0;                          // 形の事象の始まりのフレーム
+        int m_shapeLength = 0;                         // 形の事象の長さ
+        bool m_shapeActive = false;                    // 形の事象が始まったか
+        bool m_beforeContact = false;                  // 時計が触れる前 (マイナスのフレーム) を進めているか
+        NS::Obj::ActorRef m_beforeContactTarget{};     // 触れる前の時計を始めた予測の相手
+        HitTier m_beforeContactTier = HitTier::Center; // 触れる前の時計を始めた予測の段
+        float m_pendingTargetMass = 1.0f;              // 検知のフレームに相手が答えた質量。往復の振れ幅を割る
         // 明けたフレームに自機が持つ速度。反動の当たりは、明けに BeginRebound が同じ m_pendingReboundArc から出し直す
         NS::Core::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};
         NS::Game::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離

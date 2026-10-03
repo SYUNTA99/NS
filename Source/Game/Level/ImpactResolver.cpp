@@ -470,8 +470,12 @@ namespace NS::Game::Level
 
         if (m_clockRunning)
         {
-            ++m_clock;
-            AdvanceTimeline();
+            // 触れる前の時計は検知を待つ間 -1 で留まる。0 は検知のフレームが置く
+            if (!m_beforeContact || m_clock < -1)
+            {
+                ++m_clock;
+                AdvanceTimeline();
+            }
         }
         // 止めた自機を動かし直すまでは新しい衝突を見ない。止まった自機は重なったままなので、見ると毎フレーム検知し直す
         if (IsHoldingPlayer())
@@ -482,18 +486,28 @@ namespace NS::Game::Level
         // 押していない接触は物理の停止だけで済ませるため、体当たり中でないフレームは裁定しない
         if (!m_player->IsBodySlamming())
         {
+            // 当たらずに突進が終わったので、触れる前の予測は外れた
+            DropBeforeContact();
             return;
         }
+        if (ResolveObservedHit(hadObservation))
+        {
+            return;
+        }
+        UpdateBeforeContact();
+    }
 
+    bool ImpactResolver::ResolveObservedHit(bool hadObservation)
+    {
         NS::Obj::Scene* scene = Owner()->OwningScene();
         if (!hadObservation || scene == nullptr)
         {
-            return;
+            return false;
         }
         const NS::Obj::Actor* target = scene->Objects().FindObject(m_observedTarget);
         if (target == nullptr || !target->IsActiveInHierarchy())
         {
-            return;
+            return false;
         }
         const TackleTargetAnswer& answer = m_observedAnswer;
         const NS::Core::AABB bounds = answer.bounds;
@@ -514,7 +528,7 @@ namespace NS::Game::Level
             lengthSq = awayX * awayX + awayZ * awayZ;
             if (lengthSq < NS::Core::k_Epsilon * NS::Core::k_Epsilon)
             {
-                return;
+                return false;
             }
         }
         const float invLength = 1.0f / std::sqrt(lengthSq);
@@ -524,7 +538,7 @@ namespace NS::Game::Level
         // 箱へ向かっているフレームだけ弾く。離れていく間も弾くと、重なりが解けるまで毎フレーム掛かり直す
         if (velocity.x * awayX + velocity.z * awayZ >= 0.0f)
         {
-            return;
+            return false;
         }
 
         const float charge01 = m_player->BodySlamCharge01();
@@ -620,15 +634,22 @@ namespace NS::Game::Level
                         centerHit);
         }
 
-        // 前の当たりの事象が走っていれば、この当たりの事象を起こす前に止める。始めた返りも止め、
-        // この当たりのタイムラインに置いた返りだけが出る
-        if (m_clockRunning && m_hitReaction != nullptr)
-        {
-            m_hitReaction->Stop();
-        }
-        AbortTimeline();
         const HitDirection direction = HitDirectionOf(judgement.u, judgement.v);
         const HitTimeline* timeline = HitTimelineLibrary::Get().FindForTier(tier);
+        // 同じ相手と同じ段の予測で触れる前の時計を始めていれば、止めずに 0 から続ける
+        // それ以外で前の当たりの事象が走っていれば、この当たりの事象を起こす前に止める。始めた返りも止め、
+        // この当たりのタイムラインに置いた返りだけが出る
+        const bool continuesBeforeContact = m_beforeContact && timeline != nullptr &&
+                                            m_beforeContactTarget == m_pendingTarget && m_beforeContactTier == tier;
+        if (!continuesBeforeContact)
+        {
+            if (m_clockRunning && m_hitReaction != nullptr)
+            {
+                m_hitReaction->Stop();
+            }
+            AbortTimeline();
+        }
+        m_beforeContact = false;
         std::vector<HitEvent> events;
         if (timeline != nullptr)
         {
@@ -680,9 +701,10 @@ namespace NS::Game::Level
         {
             ApplyRebound();
             LaunchTarget();
-            return;
+            return true;
         }
         StartTimeline(std::move(events), breakStopSteps);
+        return true;
     }
 
     // 事象の種類ごとの受け持ち。種類を足して受け持ちを書き忘れると、std::visit が呼べずにコンパイルが止まる
@@ -828,8 +850,109 @@ namespace NS::Game::Level
         AdvanceTimeline();
     }
 
+    void ImpactResolver::UpdateBeforeContact()
+    {
+        // 触れる前の事象を置いた段が無ければ、線を掃かない
+        int earliest = 0;
+        for (const HitTier tier : k_AllHitTiers)
+        {
+            if (const HitTimeline* timeline = HitTimelineLibrary::Get().FindForTier(tier))
+            {
+                for (const HitEvent& event : timeline->events)
+                {
+                    earliest = std::min(earliest, event.start);
+                }
+            }
+        }
+        if (earliest >= 0)
+        {
+            DropBeforeContact();
+            return;
+        }
+
+        const NS::Core::Vector3 velocity = m_player->BodySlamVelocity();
+        NS::Core::Vector3 direction{};
+        const float stepLength =
+            std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z) * NS::Platform::FrameTimer::FixedDelta();
+        SlamLineTarget predicted{};
+        if (!NS::Core::TryNormalizeHorizontal(velocity, direction) || !(stepLength > 0.0f) ||
+            !FindSlamLineTarget(direction, m_player->BodySlamDistance(), predicted))
+        {
+            DropBeforeContact();
+            return;
+        }
+        if (m_beforeContact)
+        {
+            if (predicted.target == m_beforeContactTarget && predicted.tier == m_beforeContactTier)
+            {
+                return;
+            }
+            DropBeforeContact();
+        }
+
+        const HitTimeline* timeline = HitTimelineLibrary::Get().FindForTier(predicted.tier);
+        if (timeline == nullptr)
+        {
+            return;
+        }
+        // 触れる前は外れの向きが決まらないので、向きの付いた行は起こさない
+        std::vector<HitEvent> events = EventsFor(*timeline, HitDirection::Any);
+        int first = 0;
+        for (const HitEvent& event : events)
+        {
+            first = std::min(first, event.start);
+        }
+        // 観測の段は、今の位置から 1 歩進んだ玉の重なりで当たりを見る。触れるまでの距離を k 歩目に越えるなら、
+        // 検知はこのフレームから k - 1 フレーム後。このフレームで検知しなかったので 1 以上
+        const int untilDetect = std::max(static_cast<int>(std::ceil(predicted.contact / stepLength)) - 1, 1);
+        if (first >= 0 || untilDetect > -first)
+        {
+            return;
+        }
+
+        // 前の当たりの返りが残っていれば、検知の時と同じく止めてから始める
+        if (m_clockRunning && m_hitReaction != nullptr)
+        {
+            m_hitReaction->Stop();
+        }
+        AbortTimeline();
+        m_events = std::move(events);
+        m_clock = -untilDetect;
+        for (const HitEvent& event : m_events)
+        {
+            m_clockEnd = std::max(m_clockEnd, event.start + std::max(event.length, 1));
+        }
+        m_clockRunning = true;
+        m_beforeContact = true;
+        m_beforeContactTarget = predicted.target;
+        m_beforeContactTier = predicted.tier;
+        // 形は相手の飛ぶ向き (突進の向き) で混ぜる。検知のフレームに当たりの向きで置き直す
+        m_pendingImpactDir = direction;
+        m_pendingBreak = false;
+        // 予測が遅れて今のフレームより前に始まるはずだった事象は、置いたフレームを始まりにして今起こす
+        const int now = m_clock;
+        for (const HitEvent& event : m_events)
+        {
+            if (event.start <= now && event.start < 0 && CanStartBeforeContact(event.value))
+            {
+                m_clock = event.start;
+                std::visit(EventRunner{.resolver = *this, .event = event}, event.value);
+            }
+        }
+        m_clock = now;
+    }
+
+    void ImpactResolver::DropBeforeContact() noexcept
+    {
+        if (m_beforeContact)
+        {
+            AbortTimeline();
+        }
+    }
+
     void ImpactResolver::AbortTimeline() noexcept
     {
+        m_beforeContact = false;
         m_events.clear();
         m_clock = 0;
         m_clockEnd = 0;
@@ -847,7 +970,8 @@ namespace NS::Game::Level
     {
         for (const HitEvent& event : m_events)
         {
-            if (event.start == m_clock)
+            // 触れる前に置けない種類は、ファイルの読み込みで弾いている。手で組んだ並びでもマイナスでは起こさない
+            if (event.start == m_clock && (m_clock >= 0 || CanStartBeforeContact(event.value)))
             {
                 std::visit(EventRunner{.resolver = *this, .event = event}, event.value);
             }
