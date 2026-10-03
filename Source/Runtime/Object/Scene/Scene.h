@@ -224,8 +224,8 @@ namespace NS::Obj
         //! 補間スナップショットの後に、UpdatePhase の段を表の順に 1 つずつ回す
         //! 世界の駆動はここが持つ
         //! 物理の段では、Jolt の 1 歩、その段に置いた物の順に呼ぶ
-        //! Camera の段の後に CameraManager、UI の段の後に開いている UIActor、
-        //! Effects の段の後にエフェクトの 1 フレームを進める
+        //! 段の中は Actor、登録物の順に呼ぶ。CameraManager は Camera の段、エフェクトの世界は Effects の段の登録物
+        //! UI の段の後に開いている UIActor を進める
         //! 読み込んだら回り続けるのが既定で、止める口は SetSimulationEnabled / SetSimulationPaused
         void OnUpdate();
 

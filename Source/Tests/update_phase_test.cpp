@@ -144,7 +144,8 @@ TEST(UpdatePhase, StableActorOrderAndRemovedTickerArePreserved)
     PhaseTicker ticker(log, "ticker");
     scene.Objects().AddTicker(&ticker, NS::Obj::UpdatePhase::Triggers);
     scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
-    EXPECT_EQ(log, (std::vector<std::string>{"ticker", "first", "second"}));
+    // 登録物は段の Actor が出した物を受けてまとめる役なので、同じ段の Actor の後に動く
+    EXPECT_EQ(log, (std::vector<std::string>{"first", "second", "ticker"}));
     scene.Objects().RemoveTicker(&ticker);
     log.clear();
     scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);

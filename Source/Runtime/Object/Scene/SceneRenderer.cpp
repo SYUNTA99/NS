@@ -12,6 +12,7 @@
 #include "Runtime/Object/IRenderable.h"
 #include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Object/UIActor.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Platform/Filesystem.h"
 
 #include <algorithm>
@@ -65,13 +66,13 @@ namespace NS::Obj
         m_effectRoot = std::move(root);
     }
 
-    void SceneRenderer::UpdateEffects(float deltaSeconds) noexcept
+    void SceneRenderer::OnTick()
     {
         if (m_effects == nullptr)
         {
             return;
         }
-        m_effects->Update(deltaSeconds);
+        m_effects->Update(NS::Platform::FrameTimer::FixedDelta());
     }
 
     void SceneRenderer::RegisterRenderable(IRenderable* renderable)

@@ -134,7 +134,7 @@ TEST(UIActor, OpenRegistersForUpdateAndCloseRemoves)
     EXPECT_EQ(ui.updates, 1);
 }
 
-TEST(ObjectListTicker, TickerRunsBeforeComponentsOfSameBand)
+TEST(ObjectListTicker, TickerRunsAfterComponentsOfSameBand)
 {
     NS::Obj::Scene scene;
     TickLog log;
@@ -144,9 +144,9 @@ TEST(ObjectListTicker, TickerRunsBeforeComponentsOfSameBand)
 
     scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     ASSERT_EQ(log.order.size(), 3u);
-    EXPECT_EQ(log.order[0], "ticker");
-    EXPECT_EQ(log.order[1], "actor");
-    EXPECT_EQ(log.order[2], "component");
+    EXPECT_EQ(log.order[0], "actor");
+    EXPECT_EQ(log.order[1], "component");
+    EXPECT_EQ(log.order[2], "ticker");
 
     scene.Objects().RemoveTicker(&ticker);
     log.order.clear();

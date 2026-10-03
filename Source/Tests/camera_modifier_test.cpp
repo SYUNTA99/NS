@@ -31,6 +31,20 @@ TEST(CameraManager, SceneOwnsCameraWithoutActorHost)
     EXPECT_EQ(scene.Objects().ObjectCount(), 0u);
 }
 
+// 管理役はカメラの段の登録物。段の表を回すだけで仮想カメラを選び、シーンに直書きの呼び出しは要らない
+TEST(CameraManager, CameraPhaseSelectsTheVirtualCamera)
+{
+    NS::Obj::Scene scene;
+    ASSERT_NE(PlaceViewCamera(scene, NS::Core::Vector3{0.0f, 0.0f, -5.0f}, NS::Core::Vector3{}), nullptr);
+    NS::Obj::CameraManager* cameras = scene.GetCameraManager();
+    ASSERT_NE(cameras, nullptr);
+    ASSERT_EQ(cameras->ActiveVirtualCamera(), nullptr);
+
+    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Camera);
+
+    EXPECT_NE(cameras->ActiveVirtualCamera(), nullptr);
+}
+
 // カメラの効果をモディファイアの積み重ねで掛けることと、カメラの窓口からの積み方を縛る
 
 namespace
@@ -146,13 +160,13 @@ TEST(CameraManager, SameKindReplacesAndClearRemovesAll)
     EXPECT_EQ(cameras.ShakeOffset(), (NS::Core::Vector2{0.0f, 0.0f}));
 }
 
-TEST(CameraManager, FinishedModifiersAreRemovedOnUpdate)
+TEST(CameraManager, FinishedModifiersAreRemovedOnTick)
 {
     NS::Obj::CameraManager cameras;
     ASSERT_TRUE(cameras.StartShake(ShakeOf(1)));
-    cameras.OnUpdate(); // 積んだ直後は進めない
+    cameras.OnTick(); // 積んだ直後は進めない
     EXPECT_NE(cameras.FindModifier<NS::Obj::CameraShakeModifier>(), nullptr);
-    cameras.OnUpdate();
+    cameras.OnTick();
     EXPECT_EQ(cameras.FindModifier<NS::Obj::CameraShakeModifier>(), nullptr);
 }
 
@@ -212,12 +226,12 @@ TEST(CameraManager, ForwardIgnoresTheDrawAlphaDuringABlend)
     cameras.SetBlendDuration(NS::Platform::FrameTimer::FixedDelta() * 2.0f);
     TestViewCameraHost from;
     cameras.AddVirtualCamera(&from.Vcam());
-    cameras.OnUpdate();
+    cameras.OnTick();
     cameras.Evaluate(1.0f);
     AlphaCameraHost to;
     to.vcam.SetVcamPriority(1);
     cameras.AddVirtualCamera(&to.vcam);
-    cameras.OnUpdate();
+    cameras.OnTick();
     cameras.Evaluate(0.0f);
 
     const std::optional<NS::Obj::CameraPose> view = cameras.ViewPose();

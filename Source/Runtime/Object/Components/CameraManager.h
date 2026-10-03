@@ -21,8 +21,8 @@ namespace NS::Obj
     //! SetBlendDuration 秒の ease-in-out で旧 pose から繋ぎ、0 で即時カット。揺れや寄りのような効果はモディファイア
     //! (CameraModifier) として積み、ブレンドの後に Order の順で掛ける。効果を足す側は管理役を触らずモディファイアを 1
     //! つ積むだけでよい。描き終えたモディファイアは管理役が外す。描く絵は Evaluate が効果まで掛けて実カメラへ書き、
-    //! 遊びが読む向きは ViewPose が効果の前まで合成する。遊びは実カメラを読まない。シーンがカメラの段の Actor
-    //! を回した直後に OnTick を呼ぶので、vcam を動かす追従カメラ (カメラの段) より後ろで選び直す
+    //! 遊びが読む向きは ViewPose が効果の前まで合成する。遊びは実カメラを読まない
+    //! シーンがカメラの段の登録物にするので、vcam を動かす追従カメラ (カメラの段の Actor) の後で選び直す
     //! 依存: NS::Core, NS::Obj::Component / SceneCamera / VirtualCamera / CameraModifier
     class CameraManager : public NS::Core::NonCopyable, public ITickable
     {
@@ -44,8 +44,7 @@ namespace NS::Obj
         [[nodiscard]] float BlendDuration() const noexcept { return m_blendDuration; }
 
         //! fixed step で active 切替を検出しブレンドタイマーを進める。描画はしない
-        void OnUpdate();
-        void OnTick() override { OnUpdate(); }
+        void OnTick() override;
 
         //! 現在の active vcam の EvaluatePose(alpha) を実カメラへ書く。ブレンド中なら旧 pose と補間する
         //! 呼ぶのは描画だけで、Scene が決めた割合を渡す
@@ -65,7 +64,7 @@ namespace NS::Obj
 
         //! @brief モディファイアを積む
         //! @details 同じ種類の印 (Kind) の物が積まれていれば外してから積む。null は何もしない
-        //! 積んだ後に初めて来る OnUpdate ではフレームを進めない。積んだフレームに最初の姿を描く
+        //! 積んだ後に初めて来る OnTick ではフレームを進めない。積んだフレームに最初の姿を描く
         //! @return 積んだ場合 true、null で何もしなかった場合は false
         bool AddModifier(std::unique_ptr<CameraModifier> modifier);
 

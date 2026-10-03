@@ -314,13 +314,6 @@ namespace NS::Obj
         NS_ASSERT(Scene, !m_updating, "段の更新を入れ子で呼んでいる");
         m_updating = true;
         m_scheduled.clear();
-        for (const TickerEntry& entry : m_tickers)
-        {
-            if (entry.priority == phase)
-            {
-                m_scheduled.push_back(ScheduledTick{.ticker = entry.ticker});
-            }
-        }
         for (const std::unique_ptr<Actor>& obj : m_objects)
         {
             if (!obj->IsActiveInHierarchy())
@@ -330,6 +323,14 @@ namespace NS::Obj
             if (phase == UpdatePhase::Input || phase == UpdatePhase::RenderPrep || obj->Phase() == phase)
             {
                 m_scheduled.push_back(ScheduledTick{.actor = obj.get()});
+            }
+        }
+        // 登録物は段の Actor が出した物を受けてまとめる役なので、Actor の後に積む
+        for (const TickerEntry& entry : m_tickers)
+        {
+            if (entry.phase == phase)
+            {
+                m_scheduled.push_back(ScheduledTick{.ticker = entry.ticker});
             }
         }
         for (const ScheduledTick& tick : m_scheduled)
@@ -357,7 +358,7 @@ namespace NS::Obj
             }
             const bool stillRegistered =
                 std::any_of(m_tickers.begin(), m_tickers.end(), [&tick, phase](const TickerEntry& entry) noexcept {
-                    return entry.ticker == tick.ticker && entry.priority == phase;
+                    return entry.ticker == tick.ticker && entry.phase == phase;
                 });
             if (stillRegistered)
             {
@@ -367,7 +368,7 @@ namespace NS::Obj
         m_updating = false;
     }
 
-    void ObjectList::AddTicker(ITickable* ticker, UpdatePhase priority)
+    void ObjectList::AddTicker(ITickable* ticker, UpdatePhase phase)
     {
         if (ticker == nullptr)
         {
@@ -377,11 +378,11 @@ namespace NS::Obj
         {
             if (entry.ticker == ticker)
             {
-                entry.priority = priority;
+                entry.phase = phase;
                 return;
             }
         }
-        m_tickers.push_back(TickerEntry{.ticker = ticker, .priority = priority});
+        m_tickers.push_back(TickerEntry{.ticker = ticker, .phase = phase});
     }
 
     void ObjectList::RemoveTicker(ITickable* ticker) noexcept

@@ -71,7 +71,7 @@ namespace NS::Obj
         m_vcams.erase(std::remove(m_vcams.begin(), m_vcams.end(), vcam), m_vcams.end());
         if (m_active == vcam)
         {
-            m_active = nullptr; // 次の OnUpdate / Evaluate で選び直す
+            m_active = nullptr; // 次の OnTick / Evaluate で選び直す
         }
     }
 
@@ -201,7 +201,7 @@ namespace NS::Obj
         return best->EvaluatePose(alpha);
     }
 
-    void CameraManager::OnUpdate()
+    void CameraManager::OnTick()
     {
         VirtualCamera* next = SelectActive();
         if (next != m_active)
@@ -281,7 +281,7 @@ namespace NS::Obj
 
     void CameraManager::Evaluate(float alpha) noexcept
     {
-        // 非 active になった vcam の pose は書かない。編集モードのように OnUpdate が回らない間も選び直す
+        // 非 active になった vcam の pose は書かない。編集モードのように OnTick が回らない間も選び直す
         if (m_active == nullptr || !m_active->IsActive())
         {
             m_active = SelectActive();

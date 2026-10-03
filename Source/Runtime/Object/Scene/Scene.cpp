@@ -23,6 +23,10 @@ namespace NS::Obj
         m_cameraManager->SetCamera(&m_mainCamera);
         // 当たりの調べ役はセンサーの段 (物理の後、仕掛けとゴールの前) で回る
         m_objects.AddTicker(&m_hitSensors, UpdatePhase::Sensors);
+        // 管理役は vcam を動かす追従カメラの後で選び直す
+        m_objects.AddTicker(m_cameraManager.get(), UpdatePhase::Camera);
+        // エフェクトの世界は同じ歩の Actor が出した演出を受けてから進む
+        m_objects.AddTicker(&m_sceneRenderer, UpdatePhase::Effects);
     }
 
     Scene::~Scene() = default;
@@ -345,11 +349,7 @@ namespace NS::Obj
             }
             // 物理の段に置いた物は、Jolt を 1 歩進めた直後に呼ばれる
             m_objects.ExecutePhase(phase);
-            if (phase == UpdatePhase::Camera)
-            {
-                m_cameraManager->OnTick();
-            }
-            else if (phase == UpdatePhase::UI)
+            if (phase == UpdatePhase::UI)
             {
                 const std::vector<UIActor*> uiActors = m_sceneRenderer.UIActors();
                 for (UIActor* actor : uiActors)
@@ -361,10 +361,6 @@ namespace NS::Obj
                         actor->Update();
                     }
                 }
-            }
-            else if (phase == UpdatePhase::Effects)
-            {
-                m_sceneRenderer.UpdateEffects(NS::Platform::FrameTimer::FixedDelta());
             }
         }
         m_objects.RemoveKilledTransients();

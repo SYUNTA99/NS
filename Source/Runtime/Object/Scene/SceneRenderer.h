@@ -4,6 +4,7 @@
 #include "Runtime/Graphics/RenderProxyList.h"
 #include "Runtime/Graphics/RenderSettings.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
+#include "Runtime/Object/ITickable.h"
 
 #include <memory>
 #include <optional>
@@ -41,9 +42,10 @@ namespace NS::Obj
     //! @brief 描画物・重ね描き・平行光の登録簿を持ち、1 フレーム分のシーンを描く
     //! @details 登録は Component が OnStart / OnEndPlay で自分で行い、Scene の同名メソッドがここへ転送する
     //! 描画は Scene::OnRender が Render を 1 回呼んで駆動する
+    //! エフェクトの世界はエフェクトの段の登録物として、その段の Actor が出した演出を受けて進む
     //! 世界は NS::Gfx::Bloom の浮動小数の描画先へ描き、1 を超えた分をにじませて書き戻す
     //! 依存: NS::Gfx::Renderer, NS::Gfx::RenderProxyList, NS::Gfx::EffectScene, NS::Gfx::Bloom, CameraManager
-    class SceneRenderer : public NS::Core::NonCopyable
+    class SceneRenderer : public NS::Core::NonCopyable, public ITickable
     {
     public:
         //! EffectScene を前方宣言のまま持つ。unique_ptr が完全型を要る境目は .cpp 側
@@ -61,8 +63,8 @@ namespace NS::Obj
         //! 所有している EffectScene。レンダラー未設定の間は nullptr
         [[nodiscard]] NS::Gfx::EffectScene* Effects() const noexcept { return m_effects.get(); }
 
-        //! 経過秒ぶんエフェクトを進める。EffectScene が無ければ何もしない
-        void UpdateEffects(float deltaSeconds) noexcept;
+        //! エフェクトの世界を固定ステップの刻み幅ぶん進める。EffectScene が無ければ何もしない
+        void OnTick() override;
 
         //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ CameraManager の視点で 1 回だけ描く
         //! @details 空でない間は各ビューを順に bind して描き分ける。差すのは Editor だけで、出荷では常に空
