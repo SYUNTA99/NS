@@ -13,7 +13,7 @@
 
 namespace NS::Obj
 {
-    class CameraComponent;
+    class SceneCamera;
 
     //! @brief シーンに 1 つのカメラの管理役。仮想カメラ群を束ね、選ばれた 1 個の pose に効果を掛けて実カメラへ流す
     //! @details UE の PlayerCameraManager、オデッセイの CameraDirector に当たる。部品と Actor は IUseCamera
@@ -23,14 +23,14 @@ namespace NS::Obj
     //! つ積むだけでよい。描き終えたモディファイアは管理役が外す。描く絵は Evaluate が効果まで掛けて実カメラへ書き、
     //! 遊びが読む向きは ViewPose が効果の前まで合成する。遊びは実カメラを読まない。シーンがカメラの段の Actor
     //! を回した直後に OnTick を呼ぶので、vcam を動かす追従カメラ (カメラの段) より後ろで選び直す
-    //! 依存: NS::Core, NS::Obj::Component / CameraComponent / VirtualCamera / CameraModifier
+    //! 依存: NS::Core, NS::Obj::Component / SceneCamera / VirtualCamera / CameraModifier
     class CameraManager : public NS::Core::NonCopyable, public ITickable
     {
     public:
         CameraManager() noexcept;
 
         //! 姿勢を書き込む実カメラを差し替える。非所有で、nullptr は書き込む先が無い状態
-        void SetCamera(CameraComponent* camera) noexcept { m_camera = camera; }
+        void SetCamera(SceneCamera* camera) noexcept { m_camera = camera; }
 
         //! 候補 vcam を登録する。null と重複は無視する。寿命は呼出側が支配する非所有参照
         void AddVirtualCamera(VirtualCamera* vcam);
@@ -138,7 +138,7 @@ namespace NS::Obj
         [[nodiscard]] NS::Core::Vector3 ForwardHorizontal() const noexcept;
 
         //! 姿勢を書き込む実カメラ。無ければ nullptr
-        [[nodiscard]] CameraComponent* Camera() const noexcept { return m_camera; }
+        [[nodiscard]] SceneCamera* Camera() const noexcept { return m_camera; }
 
     private:
         [[nodiscard]] VirtualCamera* SelectActive() const noexcept;
@@ -146,7 +146,7 @@ namespace NS::Obj
         // 仮想カメラとブレンドまでを合成する。効果は掛けない。選べる仮想カメラが無ければ nullopt
         [[nodiscard]] std::optional<CameraPose> ComposeBeforeEffects(float alpha) const noexcept;
 
-        CameraComponent* m_camera = nullptr; // Scene が持つ実カメラ (非所有)
+        SceneCamera* m_camera = nullptr;     // Scene が持つ実カメラ (非所有)
         std::vector<VirtualCamera*> m_vcams; // 登録済み vcam 候補 (非所有)
         VirtualCamera* m_active = nullptr;   // 現在選ばれている vcam
 

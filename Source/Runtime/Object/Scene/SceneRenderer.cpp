@@ -6,11 +6,11 @@
 #include "Runtime/Graphics/EffectScene.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/Renderer.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/DirectionalLight.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
 #include "Runtime/Object/IRenderable.h"
+#include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Object/UIActor.h"
 #include "Runtime/Platform/Filesystem.h"
 
@@ -255,10 +255,7 @@ namespace NS::Obj
         return resolved;
     }
 
-    void SceneRenderer::Render(CameraManager& cameras,
-                               CameraComponent& camera,
-                               std::string_view skyboxPath,
-                               float alpha)
+    void SceneRenderer::Render(CameraManager& cameras, SceneCamera& camera, std::string_view skyboxPath, float alpha)
     {
         if (m_renderer == nullptr)
         {
@@ -290,7 +287,7 @@ namespace NS::Obj
     }
 
     void SceneRenderer::RenderViewWithOverlays(CameraManager& cameras,
-                                               CameraComponent& camera,
+                                               SceneCamera& camera,
                                                std::string_view skyboxPath,
                                                const std::optional<CameraPose>& viewOverride,
                                                float alpha,
@@ -306,7 +303,7 @@ namespace NS::Obj
     }
 
     NS::Gfx::RenderContext SceneRenderer::RenderWorld(CameraManager& cameras,
-                                                      CameraComponent& camera,
+                                                      SceneCamera& camera,
                                                       std::string_view skyboxPath,
                                                       const std::optional<CameraPose>& viewOverride,
                                                       float alpha,

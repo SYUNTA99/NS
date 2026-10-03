@@ -2,10 +2,10 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Platform/Clock.h"
 #include "Tests/TestViewCamera.h"
 
@@ -243,7 +243,7 @@ TEST(PlayerChargeSequence, AimLineFollowsTheViewCameraNotTheDrawnCamera)
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     ASSERT_NE(PlaceViewCamera(scene, NS::Core::Vector3{-5.0f, 0.0f, 0.0f}, NS::Core::Vector3{}), nullptr);
-    NS::Obj::CameraComponent* camera = scene.MainCamera();
+    NS::Obj::SceneCamera* camera = scene.MainCamera();
     ASSERT_NE(camera, nullptr);
     camera->SetPosition(NS::Core::Vector3{});
     camera->SetTarget(NS::Core::Vector3{0.0f, 0.0f, 1.0f});

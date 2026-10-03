@@ -24,7 +24,7 @@ namespace NS::Gfx
 namespace NS::Obj
 {
     class CameraManager;
-    class CameraComponent;
+    class SceneCamera;
     class DirectionalLight;
     class IRenderable;
     class OverlayRenderer;
@@ -102,7 +102,7 @@ namespace NS::Obj
         //! @param[in] skyboxPath 描く skybox の ContentRoot 配下相対パス。空なら skybox を描かない
         //! @param[in] alpha 前の固定フレームから今の固定フレームまでの補間の割合 0..1
         //! 1 なら今の固定フレームの姿
-        void Render(CameraManager& cameras, CameraComponent& camera, std::string_view skyboxPath, float alpha);
+        void Render(CameraManager& cameras, SceneCamera& camera, std::string_view skyboxPath, float alpha);
 
         //! Opaque バケットを視錐台で絞り、並べ替えずに描画する
         void DrawOpaque(const NS::Gfx::RenderContext& context);
@@ -120,7 +120,7 @@ namespace NS::Obj
     private:
         //! 1 ビュー分のシーンを描き、その上へデバッグ描画と OverlayRenderer の重ね描きを出す
         void RenderViewWithOverlays(CameraManager& cameras,
-                                    CameraComponent& camera,
+                                    SceneCamera& camera,
                                     std::string_view skyboxPath,
                                     const std::optional<CameraPose>& viewOverride,
                                     float alpha,
@@ -130,7 +130,7 @@ namespace NS::Obj
         //! にじみを足して今の描画先へ書き戻す
         //! 組んだ RenderContext を返す。viewOverride が空なら CameraManager の選ぶカメラで描く
         [[nodiscard]] NS::Gfx::RenderContext RenderWorld(CameraManager& cameras,
-                                                         CameraComponent& camera,
+                                                         SceneCamera& camera,
                                                          std::string_view skyboxPath,
                                                          const std::optional<CameraPose>& viewOverride,
                                                          float alpha,

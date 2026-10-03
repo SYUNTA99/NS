@@ -17,7 +17,6 @@
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/Animation.h"
 #include "Runtime/Object/Components/BoxCollider.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/Components/Collider.h"
@@ -36,6 +35,7 @@
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Object/Scene/SceneManager.h"
 #include "Runtime/Object/Transform.h"
 

@@ -2,7 +2,6 @@
 
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/RenderSettings.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/IUse/IUseCamera.h"
 #include "Runtime/Object/IUse/IUseCollision.h"
@@ -10,6 +9,7 @@
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Scene/HitSensorDirector.h"
+#include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Object/Scene/SceneObjHolder.h"
 #include "Runtime/Object/Scene/SceneRenderer.h"
@@ -33,7 +33,7 @@ namespace NS::Obj
 {
     class AssetManager;
     class CameraManager;
-    class CameraComponent;
+    class SceneCamera;
     class Component;
     class DirectionalLight;
     class IRenderable;
@@ -84,7 +84,7 @@ namespace NS::Obj
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
 
         //! 管理役が駆動する実カメラ。シーンの破棄後は nullptr
-        [[nodiscard]] CameraComponent* MainCamera() noexcept;
+        [[nodiscard]] SceneCamera* MainCamera() noexcept;
 
         //! シーンに 1 つの物の置き場
         [[nodiscard]] SceneObjHolder* GetSceneObjHolder() const noexcept override;
@@ -251,7 +251,7 @@ namespace NS::Obj
 
         // ヒットセンサーの調べ役。配置物の部品が OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         HitSensorDirector m_hitSensors;
-        CameraComponent m_mainCamera;
+        SceneCamera m_mainCamera;
         std::unique_ptr<NS::Obj::CameraManager> m_cameraManager;
         NS::Obj::ObjectList m_objects; // 配置物の一覧
         // シーンに 1 つの物。配置物と画面の一覧を借りるので、それより後に宣言して先に破棄する

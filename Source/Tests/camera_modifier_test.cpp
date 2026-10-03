@@ -1,12 +1,12 @@
 #include "Game/Level/FollowCamera.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/CameraTarget.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/CameraModifier.h"
 #include "Runtime/Object/IUse/IUseCamera.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Platform/Clock.h"
 #include "Tests/TestViewCamera.h"
 
@@ -17,7 +17,12 @@
 #include <type_traits>
 
 static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Obj::CameraManager>);
-static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Obj::CameraComponent>);
+static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Obj::SceneCamera>);
+// 実カメラは遊びの向きを答えない。向きの口は IUseCamera の補助関数 1 本だけ
+template <class T>
+concept AnswersForwardHorizontal = requires(const T& camera) { camera.ForwardHorizontal(); };
+static_assert(AnswersForwardHorizontal<NS::Obj::CameraManager>);
+static_assert(!AnswersForwardHorizontal<NS::Obj::SceneCamera>);
 
 TEST(CameraManager, SceneOwnsCameraWithoutActorHost)
 {
@@ -200,7 +205,7 @@ TEST(IUseCamera, ForwardWithoutAVirtualCameraIsPlusZ)
 // 描画が割合 0 で実カメラを書いても、遊びの向きはその歩のブレンドの値 (割合 1) のまま
 TEST(CameraManager, ForwardIgnoresTheDrawAlphaDuringABlend)
 {
-    NS::Obj::CameraComponent drawn;
+    NS::Obj::SceneCamera drawn;
     NS::Obj::CameraManager cameras;
     cameras.SetCamera(&drawn);
     // 1 歩で半分まで進むブレンド
@@ -228,7 +233,7 @@ TEST(CameraManager, ForwardIgnoresTheDrawAlphaDuringABlend)
 // 効果は描く絵にだけ掛かる。揺れや傾きの間も、入力と狙いが読む向きは揺らさない
 TEST(CameraManager, ForwardLeavesOutTheModifiers)
 {
-    NS::Obj::CameraComponent drawn;
+    NS::Obj::SceneCamera drawn;
     NS::Obj::CameraManager cameras;
     cameras.SetCamera(&drawn);
     TestViewCameraHost host;

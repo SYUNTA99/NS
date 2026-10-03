@@ -1,7 +1,7 @@
 ﻿#include "Runtime/Object/Components/CameraManager.h"
 
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
+#include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Platform/Clock.h"
 
 #include <algorithm>

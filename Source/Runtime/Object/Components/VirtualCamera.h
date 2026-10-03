@@ -34,7 +34,7 @@ namespace NS::Obj
     //! @brief 実カメラを持たない「仮想カメラ」基底
     //! @details 描画も実 Camera 所有もせず、EvaluatePose(alpha) で位置 / 注視点 / up と
     //! 投影設定をまとめた目標 pose を返すだけ。CameraManager が登録済みの
-    //! vcam から最高優先度の active なものを選び、その pose を 1 個の実 CameraComponent へ書く
+    //! vcam から最高優先度の active なものを選び、その pose を 1 個の実 SceneCamera へ書く
     //! 状態は fixed step の OnUpdate で進め、最終姿勢は EvaluatePose で返す。follow 系は
     //! render 時に alpha で補間 target を追うため、姿勢決定を pose 返却へ分離する
     //! カメラの窓口から管理役へ OnStart で自分を登録し、OnEndPlay で外す

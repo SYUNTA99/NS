@@ -22,7 +22,7 @@ namespace NS::Obj
     class Actor;
     class Transform;
     class CameraManager;
-    class CameraComponent;
+    class SceneCamera;
     class Component;
     class ObjectList;
     class ThirdPersonFollow;
@@ -268,7 +268,7 @@ private:
     void CaptureSelectionFromGizmo() noexcept;
 
     [[nodiscard]] NS::Obj::CameraManager* Cameras() const noexcept;
-    [[nodiscard]] NS::Obj::CameraComponent* MainCamera() const noexcept;
+    [[nodiscard]] NS::Obj::SceneCamera* MainCamera() const noexcept;
 
     NS::Obj::Scene* m_scene = nullptr;           // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
     NS::Editor::ObjectSnapshotApplier m_applier; // 編集を live へ写す口。undo コマンドが叩く適用先

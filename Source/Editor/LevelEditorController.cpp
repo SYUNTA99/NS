@@ -21,7 +21,6 @@
 #include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/BoxCollider.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/Components/HitSensor.h"
@@ -37,6 +36,7 @@
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Platform/Clock.h"
 #include "Runtime/Platform/Filesystem.h"
@@ -377,7 +377,7 @@ NS::Obj::CameraManager* LevelEditorController::Cameras() const noexcept
     return m_scene->GetCameraManager();
 }
 
-NS::Obj::CameraComponent* LevelEditorController::MainCamera() const noexcept
+NS::Obj::SceneCamera* LevelEditorController::MainCamera() const noexcept
 {
     if (m_scene == nullptr)
     {
@@ -439,7 +439,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_editor.SetAllocateIdFn([this]() { return m_scene->Objects().AllocateObjectId(); });
     m_editor.SetInput(&app->Input());
     m_editor.SetImGui(imgui);
-    m_editor.SetCameraComponent(MainCamera());
+    m_editor.SetSceneCamera(MainCamera());
     m_editor.SetActive(true);
     // 読み込みで組み上がり済なので、初回 Tick の貼り直しを省く
     m_editor.ClearLevelDirty();
@@ -734,7 +734,7 @@ void LevelEditorController::TickEdit()
 
     // free-fly 更新後に実カメラへ反映し、ギズモ / 編集の ray-pick が当フレームの視点を使えるようにする
     // 編集中は active な vcam が無く CameraManager は実カメラに触れないので、この書き込みが上書きされずに残る
-    if (NS::Obj::CameraComponent* camera = MainCamera())
+    if (NS::Obj::SceneCamera* camera = MainCamera())
     {
         NS::Obj::CameraPose pose = m_editorCamera.Pose();
         if (m_editBlending)

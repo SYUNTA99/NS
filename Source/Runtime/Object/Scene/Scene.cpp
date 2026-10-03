@@ -1,13 +1,13 @@
 ﻿#include "Runtime/Object/Scene/Scene.h"
 
 #include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
+#include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Object/UIActor.h"
 #include "Runtime/Platform/Clock.h"
 
@@ -384,7 +384,7 @@ namespace NS::Obj
         m_sceneRenderer.SyncRenderBounds();
 
         NS::Obj::CameraManager* cameras = GetCameraManager();
-        CameraComponent* camera = MainCamera();
+        SceneCamera* camera = MainCamera();
         if (cameras == nullptr || camera == nullptr)
         {
             return;
@@ -460,7 +460,7 @@ namespace NS::Obj
         m_sceneRenderer.UnregisterUIActor(actor);
     }
 
-    CameraComponent* Scene::MainCamera() noexcept
+    SceneCamera* Scene::MainCamera() noexcept
     {
         return &m_mainCamera;
     }

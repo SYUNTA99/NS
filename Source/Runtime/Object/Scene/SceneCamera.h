@@ -12,13 +12,13 @@ namespace NS::Obj
 {
     struct CameraPose;
 
-    //! @brief Scene が直接持つ実カメラ。NS::Core::CameraData を値で内包する
+    //! @brief Scene が 1 つ持つ実カメラ。NS::Core::CameraData を値で内包する
     //! @details Getter / Setter は内包する CameraData への薄いラッパー
-    //! 前方向の XZ 成分は PlayerInput がカメラ相対の移動入力に使う
-    class CameraComponent
+    //! 描画とエディタが書いて読む。遊びは読まず、向きと位置は IUseCamera の補助関数から引く
+    class SceneCamera
     {
     public:
-        CameraComponent() noexcept = default;
+        SceneCamera() noexcept = default;
 
         void SetPosition(const NS::Core::Vector3& position) noexcept;
         void SetTarget(const NS::Core::Vector3& target) noexcept;
@@ -42,9 +42,6 @@ namespace NS::Obj
         [[nodiscard]] NS::Core::CameraData& Camera() noexcept { return m_camera; }
 
         [[nodiscard]] NS::Core::Matrix ViewProjection() const noexcept { return m_camera.ViewProjection(); }
-
-        //! target - position を XZ 平面で正規化した前方向。距離 0 や Y 方向だけならワールドの +Z
-        [[nodiscard]] NS::Core::Vector3 ForwardHorizontal() const noexcept;
 
     private:
         NS::Core::CameraData m_camera; // 内包する実カメラ
