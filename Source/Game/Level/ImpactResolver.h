@@ -96,8 +96,9 @@ namespace NS::Game::Level
     //! @details Player の観測の段 (ObserveStep) と決定の段 (DecideStep) が、状態と移動の段より前に呼ぶ。
     //! 身体が動く前にその 1 固定ステップの結末を決めるので、
     //! 壁の手前で止められて速度を消された後から結果を推測し直さずに済む
-    //! 相手は次の固定ステップの自機のカプセルに重なる物の体のセンサーから選ぶ。調べる種類はプレイヤーの体当たりの
-    //! 組み合わせの表に従う。選んだ相手には MsgAskTackleTarget で重さと置かれ方を問い、応じた物だけを相手にする
+    //! 相手は次の固定ステップの自機のカプセルに重なる体のセンサーから選ぶ。センサーの段の照合を待たず、
+    //! HitSensorDirector::FindOverlaps へ先に問う。相手にするのは置物の体の種類だけ。
+    //! 選んだ相手には MsgAskTackleTarget で重さと置かれ方を問い、応じた物だけを相手にする
     //! 衝突の瞬間は自機を数固定ステップ止め、止めの頭に MsgTackleFreeze、明けに MsgTackleRelease を相手へ送る
     //! 相手が食い込み・縮み・飛ぶ・壊れるかは相手が決める。相手の部品は触らない
     //! 白の光・カメラの揺れと寄り・パッドの振動は同居する HitReaction へ組んで渡す
@@ -169,7 +170,7 @@ namespace NS::Game::Level
         void OnEndPlay() override;
 
         //! @brief 突進の線で最初に触れる相手を探す
-        //! @details 相手はプレイヤーの体当たりが調べる種類の、有効な体のセンサーを持つ物で、裁定と同じ絞り。
+        //! @details 相手は置物の体の種類だけで、有効な体のセンサーを持つ物。裁定と同じ絞り。
         //! 自機の当たりの玉
         //! (Player::SlamBallAt。丸まっていれば根の位置、立ち姿なら下の球の位置が中心で、半径は自機の半径) を direction
         //! の水平へ maxDistance 掃き、当たりの裁定と同じく相手の体のセンサーの形に触れるかを見る。
@@ -206,7 +207,7 @@ namespace NS::Game::Level
 
     private:
         [[nodiscard]] const NS::Game::Player::PlayerParams& Tuning() const noexcept;
-        // 次の固定ステップの自機に重なる体のセンサーのうち中心が最も近い 1 つ。無ければ nullptr
+        // 次の固定ステップの自機に重なる置物の体のセンサーのうち中心が最も近い 1 つ。無ければ nullptr
         // 事前条件: m_movement が非 null
         [[nodiscard]] NS::Obj::HitSensor* FindOverlapped(const NS::Core::Vector3& predictedVelocity) const;
 

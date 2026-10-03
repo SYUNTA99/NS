@@ -5,6 +5,7 @@
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Component.h"
 
+#include <cstdint>
 #include <functional>
 
 namespace NS::Phys
@@ -14,16 +15,6 @@ namespace NS::Phys
 
 namespace NS::Obj
 {
-    //! @brief センサーの種類。どの種類がどの種類を調べるかは HitSensorDirector の組み合わせの表が決める
-    enum class HitSensorType : int
-    {
-        PlayerBody = 0,   //!< プレイヤーの体。範囲に調べられる
-        PlayerAttack = 1, //!< プレイヤーの体当たり。物の体を調べる
-        MapObjBody = 2,   //!< 物の体。体当たりに調べられる
-        Area = 3,         //!< 範囲 (落下死・ゴール)。プレイヤーの体を調べる
-        Count
-    };
-
     //! センサーの形
     enum class HitSensorShape : int
     {
@@ -57,8 +48,8 @@ namespace NS::Obj
 
     //! @brief Actor に付く当たりの調べ役の基底。オデッセイの HitSensor に当たる
     //! @details 種類と、シーンの HitSensorDirector へ OnStart で入り OnEndPlay で出る登録だけを持つ
-    //! 調べ役は 1 フレームに 1 回、センサーの段で組み合わせの表に載った種類同士の重なりを調べ、
-    //! 調べる側の持ち主の Actor::AttackSensor を呼ぶ。相手へ知らせを送るかは持ち主が決める
+    //! 調べ役は 1 フレームに 1 回、センサーの段で持ち主の違うセンサーの重なりを調べ、重なった組の両方の持ち主の
+    //! Actor::AttackSensor を呼ぶ。相手の種類を見て応じるかは持ち主が決める
     //! 形は派生が決める。欄は持たず、派生ごとに持つ (Collider の一族と同じ形)
     //! 抽象基底なので TypeRegistry には登録しない
     class HitSensor : public Component
@@ -73,8 +64,12 @@ namespace NS::Obj
         //! シーンの調べ役から出る
         void OnEndPlay() override;
 
-        void SetType(HitSensorType type) noexcept { m_type = type; }
-        [[nodiscard]] HitSensorType Type() const noexcept { return m_type; }
+        //! @brief 種類を書く
+        //! @details 値に名前は付けない。名前と、どの種類に応じるかは Game の SensorKinds.h が持つ
+        //! @param[in] kind 種類の値。0 は未設定
+        void SetKind(std::uint8_t kind) noexcept { m_kind = kind; }
+        //! 種類の値。0 は未設定
+        [[nodiscard]] std::uint8_t Kind() const noexcept { return m_kind; }
 
         //! 調べる対象か。部品が効いていて、無効にされていない時だけ真
         [[nodiscard]] bool IsValid() const noexcept { return m_valid && IsActive(); }
@@ -89,12 +84,12 @@ namespace NS::Obj
         NS_REFLECT_NONE(HitSensor, Component)
 
     private:
-        HitSensorType m_type = HitSensorType::MapObjBody;
+        std::uint8_t m_kind = 0;   // 種類の値。0 は未設定で、どの受け手も応じない
         bool m_valid = true;       // 調べる対象か
         bool m_registered = false; // 調べ役へ入っているか
     };
 
-    //! @brief 形を自分で持つ調べ役。ゴールと落下死の範囲、体当たりの枠が使う
+    //! @brief 形を自分で持つ調べ役。ゴールと落下死の範囲と、2 つ目のセンサーの枠 AttackSensor が使う
     //! @details 形 (球・カプセル・箱) と大きさを欄に持ち、大きさは根の世界のスケールに付いて来る
     //! 種類と形はクラスがコンストラクタで決め、大きさは値で調整する
     class ShapeHitSensor final : public HitSensor

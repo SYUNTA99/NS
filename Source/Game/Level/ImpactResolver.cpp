@@ -157,10 +157,11 @@ namespace NS::Game::Level
                 position.x + velocity.x * dt, position.y + velocity.y * dt, position.z + velocity.z * dt};
         }
 
-        // 体当たりが調べる種類 (置物の体) の、有効なセンサーか。当たりの裁定と狙う相手の探索が同じ絞りを通る
-        [[nodiscard]] bool IsTackleTarget(const NS::Obj::HitSensor& sensor, const NS::Obj::Actor* self) noexcept
+        // 体当たりの相手を決める唯一の所。置物の体だけを相手にする
+        // 有効か・自分かの絞りは FindOverlaps が持つ。当たりの裁定と狙う相手の探索が同じ絞りを通る
+        [[nodiscard]] bool IsTackleTarget(const NS::Obj::HitSensor& sensor) noexcept
         {
-            return sensor.IsValid() && sensor.Owner() != self && IsSensorKind(sensor, SensorKind::MapObjBody);
+            return IsSensorKind(sensor, SensorKind::MapObjBody);
         }
     } // namespace
 
@@ -208,13 +209,17 @@ namespace NS::Game::Level
 
         // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
         const NS::Phys::Capsule capsule = m_body->CapsuleAt(PositionAfterStep(position, predictedVelocity));
-        const std::vector<NS::Obj::HitSensor*> touching = scene->HitSensors().FindOverlaps(
-            NS::Obj::SensorVolume::Capsule(capsule), NS::Obj::HitSensorType::PlayerAttack, Owner());
+        const std::vector<NS::Obj::HitSensor*> touching =
+            scene->HitSensors().FindOverlaps(NS::Obj::SensorVolume::Capsule(capsule), Owner());
 
         NS::Obj::HitSensor* nearest = nullptr;
         float nearestDistanceSq = 0.0f;
         for (NS::Obj::HitSensor* sensor : touching)
         {
+            if (!IsTackleTarget(*sensor))
+            {
+                continue;
+            }
             const NS::Core::AABB bounds = sensor->WorldVolume().Bounds();
             const float dx = bounds.Center.x - position.x;
             const float dy = bounds.Center.y - position.y;
@@ -264,13 +269,13 @@ namespace NS::Game::Level
         const NS::Obj::SensorVolume swept =
             NS::Obj::SensorVolume::Capsule(SweptBall(ballCenter, lineDir, maxDistance, playerRadius));
 
-        // TODO: 体のセンサーを総当たりで見ている。数十個までを想定。増えたら格子で絞る
         bool found = false;
         SlamLineTarget first{};
         NS::Obj::HitSensor* firstSensor = nullptr;
-        for (NS::Obj::HitSensor* sensor : scene->HitSensors().Sensors())
+        // 掃いた玉に触れる相手だけを先に問う。下の線の条件はどれも順に依らないので、選ぶ相手は絞る順で変わらない
+        for (NS::Obj::HitSensor* sensor : scene->HitSensors().FindOverlaps(swept, Owner()))
         {
-            if (!IsTackleTarget(*sensor, Owner()))
+            if (!IsTackleTarget(*sensor))
             {
                 continue;
             }

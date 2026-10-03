@@ -113,7 +113,7 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInConstructor)
 
 TEST(SensorKinds, SetKindIsSeenByIsKindOnlyForThatKind)
 {
-    // 名前は今の HitSensorType へ写る。付けた種類にだけ真で、他の種類には偽
+    // 付けた種類にだけ真で、他の種類と未設定には偽
     NS::Obj::ShapeHitSensor sensor;
     const NS::Game::Level::SensorKind kinds[] = {NS::Game::Level::SensorKind::PlayerBody,
                                                  NS::Game::Level::SensorKind::MapObjBody,
@@ -129,11 +129,15 @@ TEST(SensorKinds, SetKindIsSeenByIsKindOnlyForThatKind)
     }
 }
 
-TEST(SensorKinds, UnsetCannotBeWrittenYet)
+TEST(SensorKinds, NewSensorIsUnsetAndUnsetCanBeWrittenBack)
 {
-    // 未設定は Runtime の種類にまだ無い。書こうとしても種類は動かない
+    // 作ったばかりのセンサーはどの種類でもない。付け忘れたセンサーが黙って体当たりの相手にならない
     NS::Obj::ShapeHitSensor sensor;
+    EXPECT_EQ(sensor.Kind(), 0u);
+    EXPECT_FALSE(NS::Game::Level::IsSensorKind(sensor, NS::Game::Level::SensorKind::MapObjBody));
+    // 未設定を書くと未設定へ戻る
     NS::Game::Level::SetSensorKind(sensor, NS::Game::Level::SensorKind::Area);
     NS::Game::Level::SetSensorKind(sensor, NS::Game::Level::SensorKind::Unset);
-    EXPECT_TRUE(NS::Game::Level::IsSensorKind(sensor, NS::Game::Level::SensorKind::Area));
+    EXPECT_FALSE(NS::Game::Level::IsSensorKind(sensor, NS::Game::Level::SensorKind::Area));
+    EXPECT_EQ(sensor.Kind(), 0u);
 }

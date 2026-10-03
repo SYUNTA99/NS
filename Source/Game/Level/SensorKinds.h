@@ -11,18 +11,19 @@ namespace NS::Game::Level
 {
     //! @brief センサーの種類。誰が誰に応じるかを決める Game の語彙
     //! @details 種類は Player / MapObj / Goal / KillZone のコンストラクタが付ける。保存はしない
-    //! 値は Runtime の HitSensor には名前の無い数として渡る。今は HitSensorType へ写している
+    //! 値は Runtime の HitSensor には名前の無い数として渡る。調べ役は種類を見ずに重なった組の両方へ知らせ、
+    //! 応じるかを決めるのは Goal / KillZone の AttackSensor と、体当たりの相手を絞る ImpactResolver
     enum class SensorKind : std::uint8_t
     {
-        Unset = 0,  //!< 未設定。どの受け手にも応じられない
-        PlayerBody, //!< 自機の体。範囲 (ゴール・落下死) に調べられる
-        MapObjBody, //!< 置物の体。体当たりに調べられる
-        Area,       //!< 範囲 (ゴール・落下死)。自機の体を調べる
+        Unset = 0,  //!< 未設定。どの受け手も応じない
+        PlayerBody, //!< 自機の体。ゴールと落下死の範囲が応じる
+        MapObjBody, //!< 置物の体。体当たりの相手になる
+        Area,       //!< ゴールと落下死の範囲。自機の体にだけ応じる
     };
 
     //! @brief センサーに種類を付ける
     //! @param[in,out] sensor 種類を付けるセンサー
-    //! @param[in] kind 付ける種類。Unset は Runtime の種類に無いので、ログを出して何もしない
+    //! @param[in] kind 付ける種類。Unset を付けると未設定へ戻る
     void SetSensorKind(NS::Obj::HitSensor& sensor, SensorKind kind) noexcept;
 
     //! @brief センサーが指定の種類か

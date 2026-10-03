@@ -1,3 +1,4 @@
+#include "Game/Level/Goal.h"
 #include "Game/Level/HitTier.h"
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactResolver.h"
@@ -22,6 +23,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -923,4 +925,56 @@ TEST(HitZonesTest, AimHeightIsTheRedCenterOnTheFace)
         face, SensorVolume::Sphere(Vector3{}, 0.0f), forward, k_PlayerRadius, height));
     EXPECT_FALSE(NS::Game::Level::HitFaceAimHeight(face, ball, Vector3{0.0f, 1.0f, 0.0f}, k_PlayerRadius, height));
     EXPECT_FLOAT_EQ(height, 7.0f);
+}
+
+// 体当たりの相手は置物の体だけ。1 ステップ先の自機に岩より近く重なるゴールの範囲は相手にしない
+TEST(ImpactResolver, TackleSkipsANearerAreaSensor)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSlamTarget(scene, nlohmann::json::object());
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::Goal* goal = scene.SpawnTransient<NS::Game::Level::Goal>();
+    goal->Root().SetPosition(Vector3{0.0f, 1.0f, 0.3f});
+
+    const NS::Game::Level::ImpactRecord& impact = SlamOnce(*player);
+    ASSERT_EQ(impact.sequence, 1u);
+    EXPECT_EQ(impact.targetId, 2u);
+}
+
+// 狙いの線も同じ相手を選ぶ。岩より手前の線の上にゴールの範囲があっても、最初に触れる相手は岩
+TEST(ImpactResolver, SlamLineSkipsAnAreaSensorOnTheLine)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSlamTarget(scene, nlohmann::json::object());
+    ASSERT_NE(player, nullptr);
+    NS::Obj::Actor* rock = scene.Objects().FindByObjectId(2);
+    ASSERT_NE(rock, nullptr);
+    rock->Root().SetPosition(Vector3{0.0f, 0.5f, 3.0f});
+    NS::Game::Level::Goal* goal = scene.SpawnTransient<NS::Game::Level::Goal>();
+    goal->Root().SetPosition(Vector3{0.0f, 0.5f, 1.5f});
+
+    NS::Game::Level::SlamLineTarget predicted{};
+    ASSERT_TRUE(player->Resolver().FindSlamLineTarget(Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
+    EXPECT_EQ(predicted.target.id, 2u);
+}
+
+// 種類を付けていないセンサーは体当たりの相手にならない。付け忘れが黙って相手になる道は無い
+TEST(HitSensor, UnsetKindIsNotATackleTarget)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSlamTarget(scene, nlohmann::json::object());
+    ASSERT_NE(player, nullptr);
+    // 岩は線の後ろへ退ける
+    NS::Obj::Actor* rock = scene.Objects().FindByObjectId(2);
+    ASSERT_NE(rock, nullptr);
+    rock->Root().SetPosition(Vector3{0.0f, 0.5f, -5.0f});
+    std::unique_ptr<NS::Obj::Actor> bare = std::make_unique<NS::Obj::Actor>();
+    NS::Obj::ShapeHitSensor* sensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(bare->CreatePart("BodySensor"));
+    ASSERT_NE(sensor, nullptr);
+    sensor->SetSphere(0.5f);
+    bare->Root().SetPosition(Vector3{0.0f, 0.5f, 2.0f});
+    ASSERT_NE(scene.SpawnTransient(std::move(bare)), nullptr);
+
+    NS::Game::Level::SlamLineTarget predicted{};
+    EXPECT_FALSE(player->Resolver().FindSlamLineTarget(Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
 }

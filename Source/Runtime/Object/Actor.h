@@ -69,8 +69,11 @@ namespace NS::Obj
         [[nodiscard]] const Shadow* ShadowPart() const noexcept { return m_shadow.get(); }
         [[nodiscard]] Collider* CollisionPart() noexcept { return m_collision.get(); }
         [[nodiscard]] const Collider* CollisionPart() const noexcept { return m_collision.get(); }
+        //! その物の体の広がりのセンサー。持たなければ nullptr
         [[nodiscard]] HitSensor* BodySensorPart() noexcept { return m_bodySensor.get(); }
         [[nodiscard]] const HitSensor* BodySensorPart() const noexcept { return m_bodySensor.get(); }
+        //! @brief 体と別の広がりを持つ 2 つ目のセンサー。持たなければ nullptr
+        //! @details 調べ役は体のセンサーと区別せずに扱う。今はこの枠を作る種類が無い
         [[nodiscard]] HitSensor* AttackSensorPart() noexcept { return m_attackSensor.get(); }
         [[nodiscard]] const HitSensor* AttackSensorPart() const noexcept { return m_attackSensor.get(); }
         [[nodiscard]] HitReaction* HitReactionPart() noexcept { return m_hitReaction.get(); }
@@ -96,8 +99,9 @@ namespace NS::Obj
         //! @details シーンに 1 つの物を作るなど、他の配置物が揃っている前提の用意を書く
         virtual void InitAfterPlacement() {}
 
-        //! @brief 自分のセンサー self が、self の種類が調べる種類の相手のセンサー other に重なったフレームに呼ばれる
-        //! @details 重なっている間は毎フレーム呼ばれる。相手へ知らせを送るかはここで決める。オデッセイの attackSensor
+        //! @brief 自分のセンサー self が、持ち主の違うセンサー other に重なったフレームに呼ばれる
+        //! @details 重なっている間は毎フレーム呼ばれ、相手の持ち主にも向きを入れ替えて同じフレームに呼ばれる。
+        //! 調べ役は種類を見ないので、相手の種類を見て知らせを送るかはここで決める。オデッセイの attackSensor
         virtual void AttackSensor(HitSensor& self, HitSensor& other)
         {
             (void)self;
