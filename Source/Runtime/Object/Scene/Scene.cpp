@@ -1,13 +1,13 @@
 ﻿#include "Runtime/Object/Scene/Scene.h"
 
 #include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
+#include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Object/UIActor.h"
 #include "Runtime/Platform/Clock.h"
 
@@ -23,6 +23,10 @@ namespace NS::Obj
         m_cameraManager->SetCamera(&m_mainCamera);
         // 当たりの調べ役はセンサーの段 (物理の後、仕掛けとゴールの前) で回る
         m_objects.AddTicker(&m_hitSensors, UpdatePhase::Sensors);
+        // 管理役は vcam を動かす追従カメラの後で選び直す
+        m_objects.AddTicker(m_cameraManager.get(), UpdatePhase::Camera);
+        // エフェクトの世界は同じ歩の Actor が出した演出を受けてから進む
+        m_objects.AddTicker(&m_sceneRenderer, UpdatePhase::Effects);
     }
 
     Scene::~Scene() = default;
@@ -301,6 +305,10 @@ namespace NS::Obj
 
     void Scene::RebuildObjectsFrom(const nlohmann::json& scene)
     {
+#if !defined(NS_SHIPPING)
+        // ステップの図形は前の世界の姿。組み直した世界へ残すと、次の歩が来るまで消えた物の線が出る
+        NS::Gfx::DebugDraw::Clear();
+#endif
         // シーンに 1 つの物 (進行役など) は最初の状態から作り直させる。組み直した配置物の開始が必要な物を作る
         m_sceneObjs.Clear();
         // Actor の型選択は登録一覧、参照の実体化は各 component の ResolveAssets が行う
@@ -314,7 +322,7 @@ namespace NS::Obj
 
     void Scene::OnUpdate()
     {
-        // 補間描画用。全配置物の Root を Snapshot する
+        // 補間描画用。全配置物の根の Transform と Model の前の値を控える
         m_objects.SnapshotObjects();
 
         // 世界の駆動。読み込んだら回り続けるのが既定で、編集モードのエディタだけが止める
@@ -332,7 +340,6 @@ namespace NS::Obj
             }
             m_simulationStepFrames -= 1;
         }
-        m_simulationStepCount += 1;
 #if !defined(NS_SHIPPING)
         // 描画 1 回ごとに捨てると、その間に進む固定ステップの回数で映る図形が変わる
         NS::Gfx::DebugDraw::BeginStep();
@@ -345,27 +352,6 @@ namespace NS::Obj
             }
             // 物理の段に置いた物は、Jolt を 1 歩進めた直後に呼ばれる
             m_objects.ExecutePhase(phase);
-            if (phase == UpdatePhase::Camera)
-            {
-                m_cameraManager->OnTick();
-            }
-            else if (phase == UpdatePhase::UI)
-            {
-                const std::vector<UIActor*> uiActors = m_sceneRenderer.UIActors();
-                for (UIActor* actor : uiActors)
-                {
-                    if (std::find(m_sceneRenderer.UIActors().begin(), m_sceneRenderer.UIActors().end(), actor) !=
-                            m_sceneRenderer.UIActors().end() &&
-                        actor->IsOpen())
-                    {
-                        actor->Update();
-                    }
-                }
-            }
-            else if (phase == UpdatePhase::Effects)
-            {
-                m_sceneRenderer.UpdateEffects(NS::Platform::FrameTimer::FixedDelta());
-            }
         }
         m_objects.RemoveKilledTransients();
     }
@@ -376,6 +362,10 @@ namespace NS::Obj
         m_sceneObjs.Clear();
         m_objects.Clear();
         m_cameraManager->SetCamera(nullptr);
+#if !defined(NS_SHIPPING)
+        // 溜め場は静的な 1 つなので、畳んだ世界の線が次のシーンの描画へ残る
+        NS::Gfx::DebugDraw::Clear();
+#endif
     }
 
     void Scene::OnRender()
@@ -384,19 +374,22 @@ namespace NS::Obj
         m_sceneRenderer.SyncRenderBounds();
 
         NS::Obj::CameraManager* cameras = GetCameraManager();
-        CameraComponent* camera = MainCamera();
+        SceneCamera* camera = MainCamera();
         if (cameras == nullptr || camera == nullptr)
         {
             return;
         }
         // 世界が実時間で進まない間は、前の固定フレームからの経過の割合に意味が無い
         // 描く度に割合が変わると、同じフレームの絵が揺れる
-        // 実カメラの姿勢もここで決まり、次のフレームの狙いの向きが読む
-        // 1 フレームずつ進める走行が、走るたびに割れないようにする
         float alpha = NS::Platform::FrameTimer::Alpha();
         if (!m_simulationEnabled || m_simulationPaused)
         {
             alpha = 1.0f;
+        }
+        // 姿勢はビューに依らないので 1 フレームに 1 回。止めている間の実カメラは止めた側が書く
+        if (m_simulationEnabled)
+        {
+            cameras->Evaluate(alpha);
         }
         m_sceneRenderer.Render(*cameras, *camera, m_skyboxPath, alpha);
     }
@@ -455,14 +448,17 @@ namespace NS::Obj
     void Scene::RegisterUIActor(UIActor* actor)
     {
         m_sceneRenderer.RegisterUIActor(actor);
+        // 進む順は DrawOrder でなく開いた順
+        m_objects.AddTicker(actor, UpdatePhase::UI);
     }
 
     void Scene::UnregisterUIActor(UIActor* actor) noexcept
     {
         m_sceneRenderer.UnregisterUIActor(actor);
+        m_objects.RemoveTicker(actor);
     }
 
-    CameraComponent* Scene::MainCamera() noexcept
+    SceneCamera* Scene::MainCamera() noexcept
     {
         return &m_mainCamera;
     }

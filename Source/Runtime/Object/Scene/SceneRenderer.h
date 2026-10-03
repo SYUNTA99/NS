@@ -1,10 +1,14 @@
 #pragma once
 
+#include "Runtime/Core/Math.h"
 #include "Runtime/Core/NonCopyable.h"
+#include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Graphics/RenderProxyList.h"
 #include "Runtime/Graphics/RenderSettings.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
+#include "Runtime/Object/ITickable.h"
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -24,7 +28,7 @@ namespace NS::Gfx
 namespace NS::Obj
 {
     class CameraManager;
-    class CameraComponent;
+    class SceneCamera;
     class DirectionalLight;
     class IRenderable;
     class OverlayRenderer;
@@ -32,18 +36,24 @@ namespace NS::Obj
 
     //! @brief 指定の描画先へ指定の視点でシーンを描く単位
     //! @details target が null なら backbuffer、viewPose が空なら CameraManager の選ぶカメラで描く
+    //! drawShapes を持つビューだけ、描く直前に使い捨ての DebugShapes へ図形を積ませて描く
     struct SceneView
     {
         NS::Gfx::RenderTarget* target = nullptr; // 描画先、非所有。null は backbuffer
         std::optional<CameraPose> viewPose;      // 描画視点。空なら CameraManager の選ぶカメラ
+
+        //! そのビューを描く間だけ要る開発用の図形を積む口。空なら積まない
+        //! 渡される DebugShapes は空で、描いた後に捨てられる。行列はそのビューのビュー射影
+        std::function<void(NS::Gfx::DebugShapes&, const NS::Core::Matrix&)> drawShapes;
     };
 
     //! @brief 描画物・重ね描き・平行光の登録簿を持ち、1 フレーム分のシーンを描く
     //! @details 登録は Component が OnStart / OnEndPlay で自分で行い、Scene の同名メソッドがここへ転送する
     //! 描画は Scene::OnRender が Render を 1 回呼んで駆動する
+    //! エフェクトの世界はエフェクトの段の登録物として、その段の Actor が出した演出を受けて進む
     //! 世界は NS::Gfx::Bloom の浮動小数の描画先へ描き、1 を超えた分をにじませて書き戻す
     //! 依存: NS::Gfx::Renderer, NS::Gfx::RenderProxyList, NS::Gfx::EffectScene, NS::Gfx::Bloom, CameraManager
-    class SceneRenderer : public NS::Core::NonCopyable
+    class SceneRenderer : public NS::Core::NonCopyable, public ITickable
     {
     public:
         //! EffectScene を前方宣言のまま持つ。unique_ptr が完全型を要る境目は .cpp 側
@@ -61,8 +71,8 @@ namespace NS::Obj
         //! 所有している EffectScene。レンダラー未設定の間は nullptr
         [[nodiscard]] NS::Gfx::EffectScene* Effects() const noexcept { return m_effects.get(); }
 
-        //! 経過秒ぶんエフェクトを進める。EffectScene が無ければ何もしない
-        void UpdateEffects(float deltaSeconds) noexcept;
+        //! エフェクトの世界を固定ステップの刻み幅ぶん進める。EffectScene が無ければ何もしない
+        void OnTick() override;
 
         //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ CameraManager の視点で 1 回だけ描く
         //! @details 空でない間は各ビューを順に bind して描き分ける。差すのは Editor だけで、出荷では常に空
@@ -97,12 +107,12 @@ namespace NS::Obj
 
         //! @brief ビュー列を順に描く。列が空なら現描画先へ 1 回だけ描く
         //! @details レンダラー未設定なら何も描かない。ビューごとに Renderer::BeginSceneView で描画先を差し替える
-        //! @param[in,out] cameras 描画の直前に Evaluate する CameraManager
+        //! @param[in,out] cameras 実カメラの行列を引く CameraManager。姿勢は Scene::OnRender が書き終えている
         //! @param[in,out] camera cameras が駆動する実カメラ。アスペクト比をレンダラーの現在サイズへ揃える
         //! @param[in] skyboxPath 描く skybox の ContentRoot 配下相対パス。空なら skybox を描かない
         //! @param[in] alpha 前の固定フレームから今の固定フレームまでの補間の割合 0..1
         //! 1 なら今の固定フレームの姿
-        void Render(CameraManager& cameras, CameraComponent& camera, std::string_view skyboxPath, float alpha);
+        void Render(CameraManager& cameras, SceneCamera& camera, std::string_view skyboxPath, float alpha);
 
         //! Opaque バケットを視錐台で絞り、並べ替えずに描画する
         void DrawOpaque(const NS::Gfx::RenderContext& context);
@@ -118,19 +128,21 @@ namespace NS::Obj
         [[nodiscard]] NS::Gfx::RenderSettings ResolveSceneSettings(const NS::Gfx::RenderSettings& projectDefaults);
 
     private:
-        //! 1 ビュー分のシーンを描き、その上へデバッグ描画と OverlayRenderer の重ね描きを出す
+        //! @brief 1 ビュー分のシーンを描き、その上へデバッグ描画と OverlayRenderer の重ね描きを出す
+        //! @details デバッグ描画は、この固定ステップの図形、view.drawShapes が積んだ図形の順に描く
+        //! view.viewPose が空なら実カメラで描く
         void RenderViewWithOverlays(CameraManager& cameras,
-                                    CameraComponent& camera,
+                                    SceneCamera& camera,
                                     std::string_view skyboxPath,
-                                    const std::optional<CameraPose>& viewOverride,
+                                    const SceneView& view,
                                     float alpha,
                                     NS::Gfx::Bloom& bloom);
 
         //! 不透明→空→半透明→エフェクトの順に 1 ビュー分を bloom の描画先へ描く
         //! にじみを足して今の描画先へ書き戻す
-        //! 組んだ RenderContext を返す。viewOverride が空なら CameraManager の選ぶカメラで描く
+        //! 組んだ RenderContext を返す。viewOverride が空なら実カメラで描く
         [[nodiscard]] NS::Gfx::RenderContext RenderWorld(CameraManager& cameras,
-                                                         CameraComponent& camera,
+                                                         SceneCamera& camera,
                                                          std::string_view skyboxPath,
                                                          const std::optional<CameraPose>& viewOverride,
                                                          float alpha,
@@ -159,6 +171,8 @@ namespace NS::Obj
         NS::Gfx::Renderer* m_renderer = nullptr; // レンダラー、非所有。未設定なら描かない
 
         std::vector<SceneView> m_sceneViews; // 描くビュー列。空なら現描画先へ 1 回だけ描く
+
+        NS::Gfx::DebugShapes m_viewShapes; // ビューの図形の使い捨ての溜め場。1 ビューを描く間だけ中身がある
 
         std::unique_ptr<NS::Gfx::EffectScene> m_effects; // エフェクトの再生と描画。レンダラー未設定の間は空
 

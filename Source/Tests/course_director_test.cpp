@@ -1,6 +1,7 @@
-#include "Game/Level/CollisionInput.h"
+#include "Game/Game.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/Goal.h"
+#include "Game/Level/ImpactResolver.h"
 #include "Game/Level/KillZone.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
@@ -247,4 +248,57 @@ TEST(CourseDirector, RestartReturnsObjectsToBaseline)
 
     NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(scene)->RestartCourse();
     EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
+}
+
+TEST(CourseDirector, StartCourseFreezesThePlacedSceneAndStartsEveryoneFromIt)
+{
+    NS::Obj::Scene scene;
+    scene.LoadJson(CourseWithPlayer());
+    Player* player = FindPlayer(scene.Objects());
+    ASSERT_NE(player, nullptr);
+    const NS::Core::Vector3 placedAt{5.0f, 5.0f, 5.0f};
+    player->Root().SetPosition(placedAt);
+    player->Body().SetVelocity(NS::Core::Vector3{2.0f, 4.0f, 3.0f});
+
+    NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(scene)->StartCourse();
+
+    // 凍結は呼んだ時の配置を写し、自機はそこからやり直しと同じ姿で始まる
+    const nlohmann::json& baseline = scene.PlayBaseline();
+    const std::size_t index = NS::Obj::FindObjectIndexById(baseline, player->Id());
+    ASSERT_NE(index, NS::Obj::k_NoObjectIndex);
+    const NS::Core::Vector3 frozen = NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(baseline)[index]);
+    EXPECT_FLOAT_EQ(frozen.x, placedAt.x);
+    EXPECT_FLOAT_EQ(frozen.y, placedAt.y);
+    EXPECT_FLOAT_EQ(frozen.z, placedAt.z);
+    EXPECT_FLOAT_EQ(player->Body().Velocity().x, 0.0f);
+    EXPECT_FLOAT_EQ(player->Body().Velocity().y, 0.0f);
+    EXPECT_FLOAT_EQ(player->Body().Velocity().z, 0.0f);
+    EXPECT_FLOAT_EQ(player->Root().Position().x, placedAt.x);
+    EXPECT_FLOAT_EQ(player->Root().Position().y, placedAt.y);
+    EXPECT_FLOAT_EQ(player->Root().Position().z, placedAt.z);
+}
+
+TEST(CourseDirector, GameLoadSceneFreezesTheNewlyLoadedScene)
+{
+    // ServeLayer の台本の差し替えと同じく、立ち上がった後に別のシーンを読み直す
+    ::Game game{"Assets/Scenes/new_scene.scene"};
+    ASSERT_TRUE(game.LoadScene("Assets/Scenes/new_scene.scene"));
+    ASSERT_TRUE(game.LoadScene("Assets/Scenes/course.scene"));
+    NS::Obj::Scene* scene = game.CurrentScene();
+    ASSERT_NE(scene, nullptr);
+
+    // やり直しの戻り先が読み直したシーンの配置になっている
+    std::size_t placed = 0;
+    for (const NS::Obj::Actor* actor : scene->Objects())
+    {
+        if (!actor->IsTransient())
+        {
+            ++placed;
+        }
+    }
+    ASSERT_GT(placed, 0u);
+    EXPECT_EQ(NS::Obj::SceneJsonObjects(scene->PlayBaseline()).size(), placed);
+    const Player* player = FindPlayer(scene->Objects());
+    ASSERT_NE(player, nullptr);
+    EXPECT_NE(NS::Obj::FindObjectIndexById(scene->PlayBaseline(), player->Id()), NS::Obj::k_NoObjectIndex);
 }

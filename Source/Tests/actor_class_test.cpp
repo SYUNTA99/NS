@@ -1,4 +1,3 @@
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/FollowCamera.h"
 #include "Game/Level/Goal.h"
 #include "Game/Level/ImpactResolver.h"
@@ -103,7 +102,6 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInConstructor)
     EXPECT_EQ(player.Phase(), NS::Obj::UpdatePhase::Player);
     EXPECT_EQ(&player.Input(), NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input")));
     EXPECT_EQ(&player.Body(), NS::Obj::ComponentCast<NS::Obj::Body>(player.Part("Movement")));
-    EXPECT_NE(NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player.Part("ChargeControl")), nullptr);
     EXPECT_NE(NS::Obj::ComponentCast<NS::Game::Level::ImpactResolver>(player.Part("ImpactResolver")), nullptr);
     EXPECT_NE(player.HitReactionPart(), nullptr);
     const NS::Obj::HitSensor* body = player.BodySensorPart();

@@ -2,7 +2,6 @@
 
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/RenderSettings.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/IUse/IUseCamera.h"
 #include "Runtime/Object/IUse/IUseCollision.h"
@@ -10,6 +9,7 @@
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Scene/HitSensorDirector.h"
+#include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Object/Scene/SceneObjHolder.h"
 #include "Runtime/Object/Scene/SceneRenderer.h"
@@ -33,7 +33,7 @@ namespace NS::Obj
 {
     class AssetManager;
     class CameraManager;
-    class CameraComponent;
+    class SceneCamera;
     class Component;
     class DirectionalLight;
     class IRenderable;
@@ -60,6 +60,7 @@ namespace NS::Obj
         virtual ~Scene();
 
         //! @brief 可変フレーム Render の入口。標準のシーン描画パスを 1 回回す
+        //! @details 世界が回っている間だけ、描く前に CameraManager が実カメラを 1 回書く
         void OnRender();
 
         //! IRenderable Component の自己登録。Model 等が OnStart で呼ぶ。二重登録は無視する
@@ -84,7 +85,7 @@ namespace NS::Obj
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
 
         //! 管理役が駆動する実カメラ。シーンの破棄後は nullptr
-        [[nodiscard]] CameraComponent* MainCamera() noexcept;
+        [[nodiscard]] SceneCamera* MainCamera() noexcept;
 
         //! シーンに 1 つの物の置き場
         [[nodiscard]] SceneObjHolder* GetSceneObjHolder() const noexcept override;
@@ -99,9 +100,9 @@ namespace NS::Obj
         [[nodiscard]] HitSensorDirector& HitSensors() noexcept { return m_hitSensors; }
         [[nodiscard]] const HitSensorDirector& HitSensors() const noexcept { return m_hitSensors; }
 
-        //! 画面に出す物を一覧へ入れる。UIActor::Open が呼ぶ。二重登録は無視する
+        //! 画面に出す物を描画の一覧と UI の段の登録物へ入れる。UIActor::Open が呼ぶ。二重登録は無視する
         void RegisterUIActor(UIActor* actor);
-        //! 画面に出す物を一覧から外す。UIActor::Close が呼ぶ
+        //! 画面に出す物を描画の一覧と UI の段の登録物から外す。UIActor::Close が呼ぶ
         void UnregisterUIActor(UIActor* actor) noexcept;
 
         //! PhysicsScene への参照。Scene が値で持つので寿命は Scene と同じ
@@ -134,7 +135,7 @@ namespace NS::Obj
         [[nodiscard]] const NS::Obj::ObjectList& Objects() const noexcept { return m_objects; }
 
         //! @brief シーンの JSON 文書を取り込み配置物を組み直す。文書は取込後に用済みになる
-        //! @details 組む前に id と名前を一意に揃える
+        //! @details 組む前に id と名前を一意に揃える。前の世界の固定ステップで積んだ開発用の図形は捨てる
         void LoadJson(nlohmann::json scene);
 
         //! @brief シーンが自分を JSON 文書へ書き出す。保存と凍結の出所を実体に一本化する
@@ -159,7 +160,8 @@ namespace NS::Obj
         void WritePlayBaselineField(const Component& comp, std::string_view fieldName);
 
         //! @brief 世界を回すかの切替。既定は回す。エディタが編集モードの間だけ下ろす
-        //! @details 切替時に一時停止とコマ送りは払う
+        //! @details 「世界がプレイ中か」の持ち主はこの切替 1 つで、部品の active へ写さない
+        //! 下ろしている間は CameraManager も実カメラを書かず、止めた側が書く。切替時に一時停止とコマ送りは払う
         void SetSimulationEnabled(bool enabled) noexcept;
         [[nodiscard]] bool IsSimulationEnabled() const noexcept { return m_simulationEnabled; }
 
@@ -170,12 +172,6 @@ namespace NS::Obj
 
         //! @brief 止めたまま次の fixed step を 1 コマだけ進める。動いていればまず止める
         void StepSimulation() noexcept;
-
-        //! @brief 世界が実際に進んだ固定ステップの数を返す
-        //! @details OnUpdate が段を回した回数。編集モードと一時停止で段を回さずに戻った回は数えない
-        //! 単調に増え、組み直しでも戻らない。前に読んだ値と比べて、その間に世界が進んだかを知る口
-        //! @return 段を回した固定ステップの累計
-        [[nodiscard]] std::uint64_t SimulationStepCount() const noexcept { return m_simulationStepCount; }
 
         //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ CameraManager の視点で 1 回だけ描く
         //! @details 空でない間は各ビューを順に bind して描き分ける。出荷 (Editor 無し) では常に空
@@ -224,12 +220,12 @@ namespace NS::Obj
         //! 補間スナップショットの後に、UpdatePhase の段を表の順に 1 つずつ回す
         //! 世界の駆動はここが持つ
         //! 物理の段では、Jolt の 1 歩、その段に置いた物の順に呼ぶ
-        //! Camera の段の後に CameraManager、UI の段の後に開いている UIActor、
-        //! Effects の段の後にエフェクトの 1 フレームを進める
+        //! 段の中は Actor、登録物の順に呼ぶ。CameraManager は Camera の段、エフェクトの世界は Effects の段、
+        //! 開いている UIActor は UI の段の登録物
         //! 読み込んだら回り続けるのが既定で、止める口は SetSimulationEnabled / SetSimulationPaused
         void OnUpdate();
 
-        //! 配置物と、配置物から借りている物を捨てる
+        //! 配置物と、配置物から借りている物と、固定ステップで積んだ開発用の図形を捨てる
         void OnShutdown();
 
     private:
@@ -251,7 +247,7 @@ namespace NS::Obj
 
         // ヒットセンサーの調べ役。配置物の部品が OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         HitSensorDirector m_hitSensors;
-        CameraComponent m_mainCamera;
+        SceneCamera m_mainCamera;
         std::unique_ptr<NS::Obj::CameraManager> m_cameraManager;
         NS::Obj::ObjectList m_objects; // 配置物の一覧
         // シーンに 1 つの物。配置物と画面の一覧を借りるので、それより後に宣言して先に破棄する
@@ -266,6 +262,5 @@ namespace NS::Obj
         bool m_simulationEnabled = true;         // 世界を回すか。エディタの編集モードだけが下ろす
         bool m_simulationPaused = false;         // 時間停止中か
         std::int32_t m_simulationStepFrames = 0; // コマ送り残り fixed step 数。止めたままこの数だけ進める
-        std::uint64_t m_simulationStepCount = 0; // 段を回した固定ステップの累計
     };
 } // namespace NS::Obj

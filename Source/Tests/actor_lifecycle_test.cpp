@@ -18,7 +18,7 @@ namespace
     class LifeUI final : public NS::Obj::UIActor
     {
     public:
-        void OnUpdate() override { ++updates; }
+        void OnTick() override { ++updates; }
         int updates = 0;
     };
 

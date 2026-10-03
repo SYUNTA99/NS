@@ -2,7 +2,6 @@
     "class": "Player",
     "parts": {
         "Appearance": {},
-        "ChargeControl": {},
         "ImpactResolver": {},
         "Model": {
             "マテリアル": "player",

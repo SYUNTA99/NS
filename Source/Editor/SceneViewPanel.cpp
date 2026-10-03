@@ -59,9 +59,6 @@ namespace NS::Editor
         }
         m_surface.EndView();
 
-        // プレイ中の当たり表示は、このパネルが映っているフレームだけ積ませる
-        editor.SetSceneViewVisible(m_surface.IsVisible());
-
         // 編集中に自分が裏なら編集オーバーレイと矩形を止める
         if (!playMode && !m_surface.IsVisible())
         {
@@ -90,7 +87,6 @@ namespace NS::Editor
         m_surface.ResetVisibility();
         m_freeViewLatch = false;
         m_freeFlying = false;
-        editor.SetSceneViewVisible(false);
         if (editor.CurrentMode() == LevelEditorController::Mode::Edit)
         {
             editor.HideGameView();
@@ -104,15 +100,22 @@ namespace NS::Editor
     {
         // F5 の全画面直描き中はパネル矩形が無いので予備の全画面矩形へ戻す
         editor.ClearGameView();
-        // 全画面はゲーム画面そのものなので当たりの線を出さない
-        editor.SetSceneViewVisible(false);
         m_freeViewLatch = false;
         m_freeFlying = false;
     }
 
     std::optional<NS::Obj::SceneView> SceneViewPanel::CollectView(LevelEditorController& editor) noexcept
     {
-        return m_surface.CollectView(editor.SceneViewPose());
+        std::optional<NS::Obj::SceneView> view = m_surface.CollectView(editor.SceneViewPose());
+        if (!view.has_value())
+        {
+            return view;
+        }
+        // エディタの図形は Scene タブにだけ積ませる。Game タブはゲーム画面そのままを映す
+        view->drawShapes = [&editor](NS::Gfx::DebugShapes& shapes, const NS::Core::Matrix& viewProjection) {
+            editor.DrawSceneViewShapes(shapes, viewProjection);
+        };
+        return view;
     }
 
     bool SceneViewPanel::ConsumeFreeFlyReleased() noexcept

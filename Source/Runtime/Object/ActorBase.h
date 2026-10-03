@@ -6,7 +6,6 @@
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/IUse/IUseState.h"
 #include "Runtime/Object/Object.h"
-#include "Runtime/Object/UpdatePhase.h"
 
 namespace NS::Obj
 {
@@ -33,17 +32,6 @@ namespace NS::Obj
         void Kill() noexcept;
         [[nodiscard]] bool IsAlive() const noexcept { return m_alive; }
 
-        //! @brief Update を呼ばれる段を返す
-        //! @return 既定は Triggers
-        [[nodiscard]] virtual UpdatePhase Phase() const noexcept { return UpdatePhase::Triggers; }
-        //! Input の段で、出ている全ての Actor に呼ばれる。既定は何もしない
-        virtual void ReadInput() {}
-        //! @brief 1 固定ステップ進める。既定は何もしない
-        //! @details Actor は Phase が返す段で、UIActor は開いている間 UI の段の後に呼ばれる。
-        //! 部品は自分では回らないので、ここで順に呼ぶ
-        virtual void Update() {}
-        //! RenderPrep の段で、出ている全ての Actor に呼ばれる。既定は何もしない
-        virtual void PrepareRender() {}
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
         NS_REFLECT_NONE(ActorBase, Object)
 

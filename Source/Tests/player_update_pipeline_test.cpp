@@ -1,4 +1,3 @@
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
@@ -11,13 +10,14 @@
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/Model.h"
+#include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Clock.h"
+#include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
@@ -46,8 +46,7 @@ namespace
         floor.halfExtentY = 0.5f;
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-        scene.MainCamera()->SetPosition(NS::Core::Vector3{});
-        scene.MainCamera()->SetTarget(NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        PlaceViewCamera(scene, NS::Core::Vector3{}, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
@@ -111,7 +110,7 @@ namespace
     }
 } // namespace
 
-TEST(PlayerUpdatePipeline, ObservationDoesNotAdvanceChargeOrMoveThePlayer)
+TEST(PlayerUpdatePipeline, ImpactObservationDoesNotJudgeOrMoveThePlayer)
 {
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene);
@@ -119,30 +118,10 @@ TEST(PlayerUpdatePipeline, ObservationDoesNotAdvanceChargeOrMoveThePlayer)
     player->Body().SetVelocity(NS::Core::Vector3{2.0f, 4.0f, 3.0f});
     const NS::Core::Vector3 position = player->Root().Position();
     const NS::Core::Vector3 velocity = player->Body().Velocity();
-    player->ChargeControl().Observe(true);
     player->Resolver().ObserveImpact();
-    EXPECT_FALSE(player->ChargeControl().Judge().IsHeld());
-    EXPECT_FALSE(player->IsCurled());
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
     ExpectSameVector(player->Root().Position(), position);
     ExpectSameVector(player->Body().Velocity(), velocity);
-    player->ChargeControl().AdvanceState(NS::Platform::FrameTimer::FixedDelta());
-    EXPECT_TRUE(player->ChargeControl().Judge().JustPressed());
-    EXPECT_TRUE(player->IsCurled());
-}
-
-TEST(PlayerUpdatePipeline, OneObservationCannotAdvanceChargeTwice)
-{
-    Player player;
-    player.ChargeControl().OnStart();
-    player.ChargeControl().Observe(true);
-    player.ChargeControl().AdvanceState(0.1f);
-    player.ChargeControl().AdvanceState(0.1f);
-    EXPECT_TRUE(player.ChargeControl().Judge().JustPressed());
-    EXPECT_FALSE(player.ChargeControl().IsCharging());
-    player.ChargeControl().Observe(true);
-    player.ChargeControl().AdvanceState(0.1f);
-    EXPECT_TRUE(player.ChargeControl().Judge().JustStartedCharging());
 }
 
 // 左右の寄せは消した。脇の相手へ向きを曲げると、放った後に矢印とずれて当て所が見えない所で動く
@@ -341,11 +320,11 @@ TEST(PlayerAppearance, ComposesTheStanceIntoTheDrawScale)
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene);
     ASSERT_NE(player, nullptr);
-    for (int frame = 0; frame < 120 && !player->ChargeControl().IsCharging(); ++frame)
+    for (int frame = 0; frame < 120 && !player->ChargeJudge().IsCharging(); ++frame)
     {
         player->Update(true);
     }
-    ASSERT_TRUE(player->ChargeControl().IsCharging());
+    ASSERT_TRUE(player->ChargeJudge().IsCharging());
     EXPECT_FLOAT_EQ(player->ModelPart()->DrawScale().y, 0.95f);
 }
 
@@ -468,6 +447,28 @@ TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl
     ExpectSameVector(player->Root().Position(), position);
     ExpectSameVector(player->Body().Velocity(), velocity);
     EXPECT_EQ(player->States().StepsInState(), stateStep);
+}
+
+// 編集の休止の持ち主は世界の駆動だけ。身体と入力の部品を起こしたままでも、止めた世界では自機が動かない
+TEST(PlayerUpdatePipeline, StoppedWorldHoldsThePlayerWithItsPartsAwake)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    ASSERT_TRUE(player->Body().IsActive());
+    ASSERT_TRUE(player->Input().IsActive());
+    scene.SetSimulationEnabled(false);
+    player->Input().SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    // 入力の段が実機の入力で歩きを消しても、回っていればこの速さで動く
+    player->Body().SetVelocity(NS::Core::Vector3{0.0f, 2.0f, 0.0f});
+    const NS::Core::Vector3 position = player->Root().Position();
+
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        scene.OnUpdate();
+    }
+
+    ExpectSameVector(player->Root().Position(), position);
 }
 
 // 溜めて当てる組とタップの組を、本番の 1 フレームの入口で回した数字の基準

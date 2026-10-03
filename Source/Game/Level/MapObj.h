@@ -26,7 +26,8 @@ namespace NS::Game::Level
         //! 配置が揃った後に、当たりの球を物理へ入れる
         void InitAfterPlacement() override;
 
-        //! @brief 状態機械を 1 固定ステップ進め、当たりの球が動いていれば物理へ置き直す
+        //! @brief 状態機械の段と身体の段を 1 回ずつ進める
+        //! @details 状態機械を 1 固定ステップ進め、当たりの球が動いていれば物理へ置き直す
         void UpdateMotion();
         void OnEndPlay() override;
         //! 体当たりの止めの最中の場合 true、それ以外の場合は false
@@ -46,12 +47,11 @@ namespace NS::Game::Level
         bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
     protected:
-        //! 発光の層の歩を始める。Model の控えは見た目の段で、状態の後に取る。
-        //! 更新を段に分ける前の順 (発光の歩、状態、Model、発光) を保つため。状態は Model の回転と倍率を書かない
+        //! 発光の層の歩を始める
         void ObserveStep() override;
-        //! 状態機械を 1 歩進め、当たりの球が動いていれば物理へ置き直す
-        void StateStep() override { UpdateMotion(); }
-        //! Model の控えと発光の層を進める。HitReaction は進めない
+        //! 当たりの球が動いていれば物理へ置き直す
+        void BodyStep() override;
+        //! 発光の層を進める。HitReaction は進めない
         void VisualStep() override;
 
     private:

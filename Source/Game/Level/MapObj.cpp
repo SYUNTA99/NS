@@ -130,21 +130,25 @@ namespace NS::Game::Level
         }
     }
 
-    void MapObj::VisualStep()
+    void MapObj::BodyStep()
     {
-        TickPart(ModelPart());
-        TickPart(&m_effects);
-    }
-
-    void MapObj::UpdateMotion()
-    {
-        StepStateMachine();
         // 置き直すたびに形を作り直すので、球が変わらない間は置かない。止まっている置物の数だけ毎ステップ確保が走る
         const NS::Core::Sphere sphere = Sphere().WorldSphere();
         if (!m_hasSyncedSphere || sphere.center != m_syncedSphere.center || sphere.radius != m_syncedSphere.radius)
         {
             SyncCollider();
         }
+    }
+
+    void MapObj::VisualStep()
+    {
+        TickPart(&m_effects);
+    }
+
+    void MapObj::UpdateMotion()
+    {
+        StateStep();
+        BodyStep();
     }
 
     void MapObj::SyncCollider()

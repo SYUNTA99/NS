@@ -19,8 +19,12 @@ namespace NS::UI
 }
 namespace NS::Obj
 {
-    class CameraComponent;
+    class SceneCamera;
 } // namespace NS::Obj
+namespace NS::Gfx
+{
+    class DebugShapes;
+}
 namespace NS::Editor
 {
     class IObjectSnapshotApplier;
@@ -77,7 +81,7 @@ namespace NS::Editor
         void SetAllocateIdFn(std::function<std::uint32_t()> fn) noexcept { m_allocateId = std::move(fn); }
         void SetInput(NS::Platform::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
-        void SetCameraComponent(NS::Obj::CameraComponent* camera) noexcept { m_camera = camera; }
+        void SetSceneCamera(NS::Obj::SceneCamera* camera) noexcept { m_camera = camera; }
 
         //! 休止の間はプレイ中として扱い、保存も受け付けない
         void SetActive(bool active) noexcept { m_active = active; }
@@ -98,7 +102,12 @@ namespace NS::Editor
         //! @brief 毎フレーム入力を見て、対応する編集操作を実行する
         void Tick() noexcept;
 
-        //! @brief カーソル位置に置いた時のプレビュー枠を描く
+        //! @brief カーソル位置に置いた時のプレビュー枠を、Scene タブの図形として積む
+        //! @param[in,out] shapes 積む先。そのビューを描いたら捨てられる
+        void DrawCursorShapes(NS::Gfx::DebugShapes& shapes) const noexcept;
+
+        //! @brief カーソル位置のセルの枠とスロープの向きを ImGui の前面へ描く
+        //! @details ImGui のフレームの中で呼ぶ。立体の枠は DrawCursorShapes が積む
         void RenderCursorPreview() noexcept;
 
         [[nodiscard]] const NS::Editor::UndoStack& Undo() const noexcept { return m_undo; }
@@ -160,7 +169,7 @@ namespace NS::Editor
         std::function<std::uint32_t()> m_allocateId;            // 新規配置物の永続 id 採番
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
-        NS::Obj::CameraComponent* m_camera = nullptr;
+        NS::Obj::SceneCamera* m_camera = nullptr;
 
         bool m_active = true;
         bool m_inputSuppressed = false;

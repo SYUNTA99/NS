@@ -9,12 +9,12 @@
 #include "Game/Level/KillZone.h"
 #include "Game/Player.h"
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Platform/Clock.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
+#include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Object/Scene/SceneJson.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Platform/Gamepad.h"
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Keyboard.h"
@@ -313,7 +313,7 @@ namespace NS::Editor
 #endif
     }
 
-    void EditorMode::RenderCursorPreview() noexcept
+    void EditorMode::DrawCursorShapes(NS::Gfx::DebugShapes& shapes) const noexcept
     {
         if (!m_active || !m_cursor.valid)
         {
@@ -329,7 +329,15 @@ namespace NS::Editor
             cursorColor = k_CursorBlockedColor;
         }
 
-        NS::Gfx::DebugDraw::AABB(placeBox, cursorColor);
+        shapes.AABB(placeBox, cursorColor);
+    }
+
+    void EditorMode::RenderCursorPreview() noexcept
+    {
+        if (!m_active || !m_cursor.valid)
+        {
+            return;
+        }
 
 #if NS_EDITOR_ENABLED
         if (m_camera == nullptr)

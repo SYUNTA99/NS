@@ -90,7 +90,6 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
     EXPECT_EQ(player.Part("Input"), &player.Input());
     EXPECT_EQ(player.Part("Movement"), &player.Body());
     EXPECT_NE(player.Part("Params"), nullptr);
-    EXPECT_NE(player.Part("ChargeControl"), nullptr);
     EXPECT_NE(player.ModelPart(), nullptr);
     EXPECT_NE(player.BodySensorPart(), nullptr);
     EXPECT_NE(rock.ModelPart(), nullptr);

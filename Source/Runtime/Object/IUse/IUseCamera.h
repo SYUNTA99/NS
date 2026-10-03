@@ -39,11 +39,11 @@ namespace NS::Obj
     //! 今のカメラの画面で direction が右と左のどちらの側か。左なら -1、それ以外と管理役が無い時は 1
     [[nodiscard]] float CameraSideSignOf(const IUseCamera& user, const NS::Core::Vector3& direction) noexcept;
 
-    //! 実カメラの水平の前。管理役が無ければ +Z
+    //! 遊びが読む水平の前。効果を掛ける前の視点から作る。管理役か選べる仮想カメラが無ければ +Z
     [[nodiscard]] NS::Core::Vector3 CameraForwardHorizontal(const IUseCamera& user) noexcept;
 
-    //! 管理役が実カメラへ書く姿勢を、書かずに返す。管理役か選べる仮想カメラが無ければ nullopt
-    [[nodiscard]] std::optional<CameraPose> ComposeCameraPose(const IUseCamera& user, float alpha) noexcept;
+    //! 効果を掛ける前の、遊びが読む視点。管理役か選べる仮想カメラが無ければ nullopt
+    [[nodiscard]] std::optional<CameraPose> CameraViewPose(const IUseCamera& user) noexcept;
 
     //! 仮想カメラを管理役の候補へ入れる。管理役が無ければ何もしない
     void RegisterVirtualCamera(const IUseCamera& user, VirtualCamera* vcam);

@@ -18,27 +18,17 @@ namespace
     constexpr std::size_t k_MaxVertices = 4096;
     constexpr int k_CircleSegments = 12;
 
-    struct DebugVertex
-    {
-        NS::Core::Vector3 position;
-        NS::Core::Color color;
-    };
-
-    static_assert(sizeof(DebugVertex) == 28, "DebugVertex は POSITION(12) + COLOR(16) の 28 byte 前提");
-
-    std::vector<DebugVertex>& Storage() noexcept
-    {
-        static std::vector<DebugVertex> g_vertices;
-        return g_vertices;
-    }
+    // 頂点バッファの 1 頂点 (POSITION 12 + COLOR 16)。DebugShapes::Vertex と同じ並び
+    constexpr std::size_t k_VertexStride = 28;
 
     // 三角形 12960 枚ぶんの頂点 (約 1 MB)。エディタの面は相手 1 体で 100 枚に満たず、相手の数で溢れない
     constexpr std::size_t k_MaxFaceVertices = 38880;
 
-    std::vector<DebugVertex>& FaceStorage() noexcept
+    // この固定ステップの図形の積み先。自由関数の Line や Circle などは全部ここへ積む
+    NS::Gfx::DebugShapes& StepShapes() noexcept
     {
-        static std::vector<DebugVertex> g_faceVertices;
-        return g_faceVertices;
+        static NS::Gfx::DebugShapes g_stepShapes;
+        return g_stepShapes;
     }
 
     // 描画用のリソース一式
@@ -100,9 +90,9 @@ namespace
         }
 
         b.vb = NS::Gfx::Buffer::Create(
-            NS::Gfx::MakeVertexBufferDesc(nullptr, k_MaxVertices, sizeof(DebugVertex), D3D11_USAGE_DYNAMIC));
+            NS::Gfx::MakeVertexBufferDesc(nullptr, k_MaxVertices, k_VertexStride, D3D11_USAGE_DYNAMIC));
         b.faceVb = NS::Gfx::Buffer::Create(
-            NS::Gfx::MakeVertexBufferDesc(nullptr, k_MaxFaceVertices, sizeof(DebugVertex), D3D11_USAGE_DYNAMIC));
+            NS::Gfx::MakeVertexBufferDesc(nullptr, k_MaxFaceVertices, k_VertexStride, D3D11_USAGE_DYNAMIC));
         b.cb = NS::Gfx::Buffer::Create(NS::Gfx::MakeConstantBufferDesc(sizeof(NS::Core::Matrix)));
         if (!b.vb->IsValid() || !b.faceVb->IsValid() || !b.cb->IsValid())
         {
@@ -122,50 +112,21 @@ namespace
         b.valid = true;
         return true;
     }
-
-    void PushLine(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept
-    {
-        std::vector<DebugVertex>& v = Storage();
-        if (v.size() + 2 > k_MaxVertices) // 最大容量を超える場合は最も古い線を破棄する
-        {
-            v.erase(v.begin(), v.begin() + 2);
-        }
-        v.push_back({a, color});
-        v.push_back({b, color});
-    }
-
-    // center を中心に u と v が張る平面上の円を積む。u と v は半径ぶん伸ばした直交ベクトルを渡す
-    void PushCircle(const NS::Core::Vector3& center,
-                    const NS::Core::Vector3& u,
-                    const NS::Core::Vector3& v,
-                    const NS::Core::Color& color) noexcept
-    {
-        constexpr float twoPi = 2.0f * NS::Core::k_Pi;
-        NS::Core::Vector3 prev{};
-        for (int i = 0; i <= k_CircleSegments; ++i)
-        {
-            const float t = (static_cast<float>(i) / k_CircleSegments) * twoPi;
-            const float ca = std::cos(t);
-            const float sa = std::sin(t);
-            const NS::Core::Vector3 point{
-                center.x + u.x * ca + v.x * sa, center.y + u.y * ca + v.y * sa, center.z + u.z * ca + v.z * sa};
-            if (i > 0)
-            {
-                PushLine(prev, point, color);
-            }
-            prev = point;
-        }
-    }
 } // namespace
 
-namespace NS::Gfx::DebugDraw
+namespace NS::Gfx
 {
-    void Line(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept
+    void DebugShapes::Line(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color)
     {
-        PushLine(a, b, color);
+        if (m_lines.size() + 2 > k_MaxVertices) // 最大容量を超える場合は最も古い線を破棄する
+        {
+            m_lines.erase(m_lines.begin(), m_lines.begin() + 2);
+        }
+        m_lines.push_back({a, color});
+        m_lines.push_back({b, color});
     }
 
-    void AABB(const NS::Core::AABB& box, const NS::Core::Color& color) noexcept
+    void DebugShapes::AABB(const NS::Core::AABB& box, const NS::Core::Color& color)
     {
         NS::Core::OBB obb{};
         obb.center = box.Center;
@@ -175,7 +136,7 @@ namespace NS::Gfx::DebugDraw
         OBB(obb, color);
     }
 
-    void OBB(const NS::Core::OBB& obb, const NS::Core::Color& color) noexcept
+    void DebugShapes::OBB(const NS::Core::OBB& obb, const NS::Core::Color& color)
     {
         const NS::Core::Vector3 ex = obb.axisX * obb.halfExtentX;
         const NS::Core::Vector3 ey = obb.axisY * obb.halfExtentY;
@@ -191,47 +152,62 @@ namespace NS::Gfx::DebugDraw
         const NS::Core::Vector3 c011 = obb.center - ex + ey + ez;
 
         // 前面
-        PushLine(c000, c100, color);
-        PushLine(c100, c110, color);
-        PushLine(c110, c010, color);
-        PushLine(c010, c000, color);
+        Line(c000, c100, color);
+        Line(c100, c110, color);
+        Line(c110, c010, color);
+        Line(c010, c000, color);
 
         // 背面
-        PushLine(c001, c101, color);
-        PushLine(c101, c111, color);
-        PushLine(c111, c011, color);
-        PushLine(c011, c001, color);
+        Line(c001, c101, color);
+        Line(c101, c111, color);
+        Line(c111, c011, color);
+        Line(c011, c001, color);
 
         // 前面と背面を繋ぐ辺
-        PushLine(c000, c001, color);
-        PushLine(c100, c101, color);
-        PushLine(c110, c111, color);
-        PushLine(c010, c011, color);
+        Line(c000, c001, color);
+        Line(c100, c101, color);
+        Line(c110, c111, color);
+        Line(c010, c011, color);
     }
 
-    void Sphere(const NS::Core::Sphere& sphere, const NS::Core::Color& color) noexcept
+    void DebugShapes::Sphere(const NS::Core::Sphere& sphere, const NS::Core::Color& color)
     {
         const NS::Core::Vector3 rx{sphere.radius, 0.0f, 0.0f};
         const NS::Core::Vector3 ry{0.0f, sphere.radius, 0.0f};
         const NS::Core::Vector3 rz{0.0f, 0.0f, sphere.radius};
 
-        PushCircle(sphere.center, rx, ry, color);
-        PushCircle(sphere.center, ry, rz, color);
-        PushCircle(sphere.center, rz, rx, color);
+        Circle(sphere.center, rx, ry, color);
+        Circle(sphere.center, ry, rz, color);
+        Circle(sphere.center, rz, rx, color);
     }
 
-    void Circle(const NS::Core::Vector3& center,
-                const NS::Core::Vector3& u,
-                const NS::Core::Vector3& v,
-                const NS::Core::Color& color) noexcept
+    // center を中心に u と v が張る平面上の円を積む。u と v は半径ぶん伸ばした直交ベクトルを渡す
+    void DebugShapes::Circle(const NS::Core::Vector3& center,
+                             const NS::Core::Vector3& u,
+                             const NS::Core::Vector3& v,
+                             const NS::Core::Color& color)
     {
-        PushCircle(center, u, v, color);
+        constexpr float twoPi = 2.0f * NS::Core::k_Pi;
+        NS::Core::Vector3 prev{};
+        for (int i = 0; i <= k_CircleSegments; ++i)
+        {
+            const float t = (static_cast<float>(i) / k_CircleSegments) * twoPi;
+            const float ca = std::cos(t);
+            const float sa = std::sin(t);
+            const NS::Core::Vector3 point{
+                center.x + u.x * ca + v.x * sa, center.y + u.y * ca + v.y * sa, center.z + u.z * ca + v.z * sa};
+            if (i > 0)
+            {
+                Line(prev, point, color);
+            }
+            prev = point;
+        }
     }
 
-    void Capsule(const NS::Core::Vector3& base,
-                 const NS::Core::Vector3& axis,
-                 float radius,
-                 const NS::Core::Color& color) noexcept
+    void DebugShapes::Capsule(const NS::Core::Vector3& base,
+                              const NS::Core::Vector3& axis,
+                              float radius,
+                              const NS::Core::Color& color)
     {
         // 上下端の基準点
         const NS::Core::Vector3 top = base + axis;
@@ -260,36 +236,49 @@ namespace NS::Gfx::DebugDraw
         // 上下端の円
         const NS::Core::Vector3 uA = perpA * radius;
         const NS::Core::Vector3 uB = perpB * radius;
-        PushCircle(top, uA, uB, color);
-        PushCircle(bottom, uA, uB, color);
+        Circle(top, uA, uB, color);
+        Circle(bottom, uA, uB, color);
 
         // 円柱の側面に沿う線 4 本
         const NS::Core::Vector3 dirs[4] = {uA, -uA, uB, -uB};
         for (const NS::Core::Vector3& d : dirs)
         {
-            PushLine(bottom + d, top + d, color);
+            Line(bottom + d, top + d, color);
         }
     }
 
-    void Flush(Renderer& renderer, const NS::Core::Matrix& viewProjection) noexcept
+    void DebugShapes::Triangle(const NS::Core::Vector3& a,
+                               const NS::Core::Vector3& b,
+                               const NS::Core::Vector3& c,
+                               const NS::Core::Color& color)
     {
-        std::vector<DebugVertex>& store = Storage();
-        std::vector<DebugVertex>& faces = FaceStorage();
-        if (store.empty() && faces.empty())
+        // 線と同じく、上限を超える時は最も古い三角形を捨てる
+        if (m_faces.size() + 3 > k_MaxFaceVertices)
+        {
+            m_faces.erase(m_faces.begin(), m_faces.begin() + 3);
+        }
+        m_faces.push_back({a, color});
+        m_faces.push_back({b, color});
+        m_faces.push_back({c, color});
+    }
+
+    void DebugShapes::Draw(Renderer& renderer, const NS::Core::Matrix& viewProjection) const noexcept
+    {
+        static_assert(sizeof(Vertex) == k_VertexStride, "Vertex は POSITION(12) + COLOR(16) の 28 byte 前提");
+
+        if (m_lines.empty() && m_faces.empty())
         {
             return;
         }
 
         if (!EnsureBackend())
         {
-            Clear();
             return;
         }
 
         CommandList& cmd = renderer.Commands();
         if (cmd.Native() == nullptr)
         {
-            Clear();
             return;
         }
 
@@ -301,43 +290,89 @@ namespace NS::Gfx::DebugDraw
         cmd.VSSetConstantBuffer(*b.cb, 0u);
 
         // 面を先に描く。線は深度を書くので、後に描かないと面が線の奥で途切れる
-        if (!faces.empty())
+        if (!m_faces.empty())
         {
-            cmd.UpdateSubresource(*b.faceVb, faces.data(), faces.size() * sizeof(DebugVertex));
+            cmd.UpdateSubresource(*b.faceVb, m_faces.data(), m_faces.size() * sizeof(Vertex));
             cmd.SetPipeline(*b.facePipeline);
             cmd.SetVertexBuffer(*b.faceVb, 0u);
             cmd.SetTopology(Topology::TriangleList);
-            cmd.Draw(static_cast<unsigned>(faces.size()));
+            cmd.Draw(static_cast<unsigned>(m_faces.size()));
         }
 
-        // 蓄積された頂点データを一括で描画する
-        if (!store.empty())
+        // 溜めた頂点データを一括で描画する
+        if (!m_lines.empty())
         {
-            cmd.UpdateSubresource(*b.vb, store.data(), store.size() * sizeof(DebugVertex));
+            cmd.UpdateSubresource(*b.vb, m_lines.data(), m_lines.size() * sizeof(Vertex));
             cmd.SetPipeline(renderer.CommonPipeline(BlendMode::Opaque));
             cmd.SetVertexBuffer(*b.vb, 0u);
             cmd.SetTopology(Topology::LineList);
-            cmd.Draw(static_cast<unsigned>(store.size()));
+            cmd.Draw(static_cast<unsigned>(m_lines.size()));
         }
+    }
 
-        Clear();
+    void DebugShapes::Clear() noexcept
+    {
+        m_lines.clear();
+        m_faces.clear();
+    }
+} // namespace NS::Gfx
+
+namespace NS::Gfx::DebugDraw
+{
+    void Line(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept
+    {
+        StepShapes().Line(a, b, color);
+    }
+
+    void AABB(const NS::Core::AABB& box, const NS::Core::Color& color) noexcept
+    {
+        StepShapes().AABB(box, color);
+    }
+
+    void OBB(const NS::Core::OBB& obb, const NS::Core::Color& color) noexcept
+    {
+        StepShapes().OBB(obb, color);
+    }
+
+    void Sphere(const NS::Core::Sphere& sphere, const NS::Core::Color& color) noexcept
+    {
+        StepShapes().Sphere(sphere, color);
+    }
+
+    void Circle(const NS::Core::Vector3& center,
+                const NS::Core::Vector3& u,
+                const NS::Core::Vector3& v,
+                const NS::Core::Color& color) noexcept
+    {
+        StepShapes().Circle(center, u, v, color);
+    }
+
+    void Capsule(const NS::Core::Vector3& base,
+                 const NS::Core::Vector3& axis,
+                 float radius,
+                 const NS::Core::Color& color) noexcept
+    {
+        StepShapes().Capsule(base, axis, radius, color);
+    }
+
+    void Draw(Renderer& renderer, const NS::Core::Matrix& viewProjection) noexcept
+    {
+        StepShapes().Draw(renderer, viewProjection);
     }
 
     void BeginStep() noexcept
     {
-        Storage().clear();
-        FaceStorage().clear();
+        StepShapes().Clear();
     }
 
     void Clear() noexcept
     {
-        Storage().clear();
-        FaceStorage().clear();
+        StepShapes().Clear();
     }
 
     std::size_t VertexCount() noexcept
     {
-        return Storage().size();
+        return StepShapes().VertexCount();
     }
 
     void Triangle(const NS::Core::Vector3& a,
@@ -345,19 +380,11 @@ namespace NS::Gfx::DebugDraw
                   const NS::Core::Vector3& c,
                   const NS::Core::Color& color) noexcept
     {
-        std::vector<DebugVertex>& faces = FaceStorage();
-        // 線と同じく、上限を超える時は最も古い三角形を捨てる
-        if (faces.size() + 3 > k_MaxFaceVertices)
-        {
-            faces.erase(faces.begin(), faces.begin() + 3);
-        }
-        faces.push_back({a, color});
-        faces.push_back({b, color});
-        faces.push_back({c, color});
+        StepShapes().Triangle(a, b, c, color);
     }
 
     std::size_t FaceVertexCount() noexcept
     {
-        return FaceStorage().size();
+        return StepShapes().FaceVertexCount();
     }
 } // namespace NS::Gfx::DebugDraw

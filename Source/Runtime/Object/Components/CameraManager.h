@@ -13,24 +13,24 @@
 
 namespace NS::Obj
 {
-    class CameraComponent;
+    class SceneCamera;
 
     //! @brief シーンに 1 つのカメラの管理役。仮想カメラ群を束ね、選ばれた 1 個の pose に効果を掛けて実カメラへ流す
     //! @details UE の PlayerCameraManager、オデッセイの CameraDirector に当たる。部品と Actor は IUseCamera
     //! から引く。登録済み VirtualCamera のうち active かつ最高 VcamPriority のものを毎フレーム選ぶ。active 切替は
     //! SetBlendDuration 秒の ease-in-out で旧 pose から繋ぎ、0 で即時カット。揺れや寄りのような効果はモディファイア
     //! (CameraModifier) として積み、ブレンドの後に Order の順で掛ける。効果を足す側は管理役を触らずモディファイアを 1
-    //! つ積むだけでよい。描き終えたモディファイアは管理役が外す。描画 / aspect 設定 / PlayerInput の forward
-    //! 取得もこの管理役経由に集約する。シーンがカメラの段の Actor を回した直後に OnTick を呼ぶので、vcam を動かす
-    //! 追従カメラ (カメラの段) より後ろで選び直す
-    //! 依存: NS::Core, NS::Obj::Component / CameraComponent / VirtualCamera / CameraModifier
+    //! つ積むだけでよい。描き終えたモディファイアは管理役が外す。描く絵は Evaluate が効果まで掛けて実カメラへ書き、
+    //! 遊びが読む向きは ViewPose が効果の前まで合成する。遊びは実カメラを読まない
+    //! シーンがカメラの段の登録物にするので、vcam を動かす追従カメラ (カメラの段の Actor) の後で選び直す
+    //! 依存: NS::Core, NS::Obj::Component / SceneCamera / VirtualCamera / CameraModifier
     class CameraManager : public NS::Core::NonCopyable, public ITickable
     {
     public:
         CameraManager() noexcept;
 
         //! 姿勢を書き込む実カメラを差し替える。非所有で、nullptr は書き込む先が無い状態
-        void SetCamera(CameraComponent* camera) noexcept { m_camera = camera; }
+        void SetCamera(SceneCamera* camera) noexcept { m_camera = camera; }
 
         //! 候補 vcam を登録する。null と重複は無視する。寿命は呼出側が支配する非所有参照
         void AddVirtualCamera(VirtualCamera* vcam);
@@ -44,12 +44,11 @@ namespace NS::Obj
         [[nodiscard]] float BlendDuration() const noexcept { return m_blendDuration; }
 
         //! fixed step で active 切替を検出しブレンドタイマーを進める。描画はしない
-        void OnUpdate();
-        void OnTick() override { OnUpdate(); }
+        void OnTick() override;
 
         //! 現在の active vcam の EvaluatePose(alpha) を実カメラへ書く。ブレンド中なら旧 pose と補間する
-        //! 呼ぶのは描画だけで、Scene が決めた割合を渡す
-        //! 固定ステップの間の実カメラは最後の描画の姿勢のまま
+        //! 呼ぶのは Scene::OnRender だけで、世界が回っている間に 1 フレーム 1 回、Scene が決めた割合を渡す
+        //! 遊びは実カメラを読まず ViewPose を読む
         //! タイマーは進めない
         void Evaluate(float alpha) noexcept;
 
@@ -65,7 +64,7 @@ namespace NS::Obj
 
         //! @brief モディファイアを積む
         //! @details 同じ種類の印 (Kind) の物が積まれていれば外してから積む。null は何もしない
-        //! 積んだ後に初めて来る OnUpdate ではフレームを進めない。積んだフレームに最初の姿を描く
+        //! 積んだ後に初めて来る OnTick ではフレームを進めない。積んだフレームに最初の姿を描く
         //! @return 積んだ場合 true、null で何もしなかった場合は false
         bool AddModifier(std::unique_ptr<CameraModifier> modifier);
 
@@ -107,7 +106,7 @@ namespace NS::Obj
         [[nodiscard]] CameraZoomRoll ZoomRoll() const noexcept;
 
         //! @brief 今のカメラの画面で direction が右と左のどちらの側かを返す
-        //! @details 実カメラの水平の前から作った右と direction
+        //! @details ForwardHorizontal から作った右と direction
         //! の内積で決める。揺れの最初の横の向きと傾きの向きもこの決まり
         //! @param[in] direction 世界の向き
         //! @return 内積が負の場合 -1、それ以外の場合は 1
@@ -119,19 +118,34 @@ namespace NS::Obj
         //! @return 合成した姿勢。選べる仮想カメラが無い場合は nullopt
         [[nodiscard]] std::optional<CameraPose> ComposePose(float alpha) const noexcept;
 
+        //! @brief 効果を掛ける前の、遊びが読む視点を返す
+        //! @details 仮想カメラとブレンドを割合 1 で合成する。固定ステップの状態だけで決まり、描画の割合も実カメラも
+        //! 読まない。揺れ・寄り・傾きは描く絵にだけ掛け、入力と狙いが読む向きは揺らさない
+        //! @return 合成した視点。選べる仮想カメラが無い場合は nullopt
+        [[nodiscard]] std::optional<CameraPose> ViewPose() const noexcept;
+
         //! @brief 登録済みから priority 最高の vcam の pose を返す。候補が無ければ nullopt
         //! @details active は問わず選ぶ。ゲーム視点を別ビューへ映す用で実カメラには触れない
         [[nodiscard]] std::optional<CameraPose> EvaluateTopPose(float alpha) const noexcept;
 
-        //! 実カメラへの素通しアクセサ。描画 / 半透明ソート / PlayerInput forward の接続先
+        //! 実カメラの視点と投影の行列。実カメラが無ければ単位行列
         [[nodiscard]] NS::Core::Matrix ViewProjection() const noexcept;
+
+        //! @brief 遊びが読む水平の前を返す
+        //! @details ViewPose の位置から注視点への向きを水平にして長さ 1 にする。移動の基準・狙いの線・突進の向きが読む
+        //! @return 水平の前。視点が無いか水平の成分が無い場合は +Z
         [[nodiscard]] NS::Core::Vector3 ForwardHorizontal() const noexcept;
-        [[nodiscard]] CameraComponent* Camera() const noexcept { return m_camera; }
+
+        //! 姿勢を書き込む実カメラ。無ければ nullptr
+        [[nodiscard]] SceneCamera* Camera() const noexcept { return m_camera; }
 
     private:
         [[nodiscard]] VirtualCamera* SelectActive() const noexcept;
 
-        CameraComponent* m_camera = nullptr; // Scene が持つ実カメラ (非所有)
+        // 仮想カメラとブレンドまでを合成する。効果は掛けない。選べる仮想カメラが無ければ nullopt
+        [[nodiscard]] std::optional<CameraPose> ComposeBeforeEffects(float alpha) const noexcept;
+
+        SceneCamera* m_camera = nullptr;     // Scene が持つ実カメラ (非所有)
         std::vector<VirtualCamera*> m_vcams; // 登録済み vcam 候補 (非所有)
         VirtualCamera* m_active = nullptr;   // 現在選ばれている vcam
 

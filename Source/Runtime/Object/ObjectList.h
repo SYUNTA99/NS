@@ -81,18 +81,19 @@ namespace NS::Obj
         void SyncPhysics(NS::Phys::PhysicsScene& physics);
 
         //! @brief 段 phase に属する物を 1 回ずつ呼ぶ
-        //! @details 先に AddTicker で登録した物を登録順に、続けて出ている Actor を配置の並びに呼ぶ
+        //! @details 出ている Actor を配置の並びに呼び、続けて AddTicker で登録した物を登録順に呼ぶ
+        //! 登録物は段の Actor が出した物を受けてまとめる役なので Actor の後に動く
         //! 出ているかは IsActiveInHierarchy で見る。Input の段は全 Actor の ReadInput
         //! RenderPrep の段は全 Actor の PrepareRender、他は Phase が一致する Actor の Update
         //! 途中で外れた物はそのフレームの残りでは呼ばない。入れ子で呼ぶことはできない
         void ExecutePhase(UpdatePhase phase);
-        //! @brief 部品でない物を段 priority に登録する
+        //! @brief 部品でない物を段 phase に登録する
         //! @details 登録済みなら段だけを差し替える。nullptr は無視する
-        void AddTicker(ITickable* ticker, UpdatePhase priority);
+        void AddTicker(ITickable* ticker, UpdatePhase phase);
         //! 登録を外す。更新の最中に外した物は、そのフレームの残りでは呼ばれない
         void RemoveTicker(ITickable* ticker) noexcept;
 
-        //! 全配置物の Root を Snapshot する。previous を current へ揃える
+        //! 全配置物の補間の前の値を控える。根の Transform と Model の previous を current へ揃える
         void SnapshotObjects();
 
         //! 永続 object id を 1 個割り当ててカウンタを進める
@@ -163,9 +164,9 @@ namespace NS::Obj
         struct TickerEntry
         {
             ITickable* ticker = nullptr;
-            UpdatePhase priority = UpdatePhase::Triggers;
+            UpdatePhase phase = UpdatePhase::Triggers;
         };
-        std::vector<ScheduledTick> m_scheduled; // ExecutePhase がその段で呼ぶ物を登録順に積む作業用の並び
+        std::vector<ScheduledTick> m_scheduled; // ExecutePhase がその段で呼ぶ物を呼ぶ順に積む作業用の並び
         std::vector<TickerEntry> m_tickers;     // 部品でない物の登録。登録順
         std::unordered_map<std::uint32_t, Actor*>
             m_index;                      // 永続 id から配置物への索引。汚れていれば次に引く時に作り直す

@@ -22,7 +22,7 @@ namespace NS::Obj
     class Actor;
     class Transform;
     class CameraManager;
-    class CameraComponent;
+    class SceneCamera;
     class Component;
     class ObjectList;
     class ThirdPersonFollow;
@@ -33,6 +33,11 @@ namespace NS::Obj
 namespace NS::UI
 {
     class ImGuiContext;
+}
+
+namespace NS::Gfx
+{
+    class DebugShapes;
 }
 
 //! @brief レベル編集機能およびプレイモードの切り替えを統括するコントローラ
@@ -48,11 +53,20 @@ public:
     //! scene の OnStart 完了後に呼ぶ。free-fly カメラ / EditorMode / ギズモを立ち上げ編集モードへ入る
     void Setup(NS::UI::ImGuiContext* imgui);
 
-    //! fixed step 更新。編集中は free-fly カメラ / ギズモ / EditorMode を回す。プレイ中は何もしない
+    //! fixed step 更新。編集中は free-fly カメラ / ギズモ / EditorMode を回す。プレイ中は Esc
+    //! で隠したカーソルを出すだけ
     void Tick();
 
-    //! カーソルプレビュー / カメラギズモ / 当たり線 / 選択枠 / ツールバー / ギズモを描画フレームへ重ねる
+    //! 編集中のカーソルの枠 / パレット / ギズモを ImGui のフレームへ重ねる。プレイ中は何もしない
     void Render();
+
+    //! @brief Scene タブを描く時に、そのビューへ出す開発用の図形を積む
+    //! @details 編集中はカーソル・カメラの錐台と印・選択中の当たり線・正面の面・選択枠、
+    //! プレイ中は全配置物の当たり線と正面の面
+    //! SceneRenderer がビューの描画の中で呼び、積んだ図形はそのビューを描いたら捨てられる
+    //! @param[in,out] shapes 積む先。空で渡される
+    //! @param[in] viewProjection そのビューのビュー射影。カメラの印の大きさを画面上で揃えるのに使う
+    void DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes, const NS::Core::Matrix& viewProjection) noexcept;
 
     //! scene 破棄の前に呼ぶ。ギズモ選択解除と free-fly カメラの後始末
     void Teardown();
@@ -85,15 +99,6 @@ public:
     [[nodiscard]] NS::Editor::ViewRect CurrentViewRect() const noexcept;
     //! 前面のパネルが裏へ隠れているか
     [[nodiscard]] bool GameViewHidden() const noexcept { return m_gameViewHidden; }
-
-    //! @brief Scene パネルが映っているフレームで真を渡す
-    //! @details プレイ中の当たり表示の条件。Scene が映っていない間は線を積まず、ゲーム画面へ出さない
-    void SetSceneViewVisible(bool visible) noexcept { m_sceneViewVisible = visible; }
-
-    //! @brief 固定ステップの更新の後に呼ぶ。そのステップで世界が進んでいれば、プレイ中の当たり線と面を溜め直す
-    //! @details 世界が進んだステップの頭で前の図形が捨てられるので、描画の時に溜めた分は Scene タブまで残らない
-    //! 世界が進まなかったステップでは溜めない。捨てられずに重なり、面の半透明が濃くなるため
-    void QueuePlayOverlaysAfterStep() noexcept;
 
     //! プレイ中に Scene タブへ自由視点を映すフレームで毎回呼ぶ。入力を free-fly カメラへ流す
     //! 編集モード中は何もしない
@@ -235,22 +240,21 @@ private:
     //! 配置物を新しい永続 id で 1 体追加する唯一の経路。採番・履歴登録・選択をまとめて面倒を見る
     void PushCreateObject(nlohmann::json object);
 
-    void RenderCameraGizmos(const NS::Core::Matrix& viewProjection, NS::Core::Size2D viewport) noexcept;
-    //! @brief 当たり形状を線で描く
+    void RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
+                            const NS::Core::Matrix& viewProjection,
+                            NS::Core::Size2D viewport) noexcept;
+    //! @brief 当たり形状を線で積む
+    //! @param[in,out] shapes 積む先
     //! @param[in] all 真なら全配置物、偽なら選んでいる分だけ
-    void RenderColliderWireframes(bool all) noexcept;
-
-    //! @brief Scene パネルが映っていれば、プレイ中の当たり線と相手の正面の面を全配置物ぶん溜める
-    //! @details 描画の時と固定ステップの更新の後の両方から呼ぶ
-    void QueuePlayOverlays() noexcept;
+    void RenderColliderWireframes(NS::Gfx::DebugShapes& shapes, bool all) noexcept;
 
     //! @brief 赤の欄 (部品 HitZones) を持つ相手ごとに、自機の方を向いた正面の面と、直近の当たりの触れた点を描く
     //! @details 面の向きは、溜めて狙っている相手には狙いの線、それ以外は自機の玉の中心から相手の中心への水平の向き。
     //! 自機が居なければエディタのカメラから相手への水平の向き。外れの面に段の形を色の表の色で重ね、縁を線で描く
-    void RenderHitFaces() noexcept;
+    void RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcept;
 
     //! 主対象以外の選択物を枠で見せる。ギズモは 1 体にしか出ないので、選んだ範囲を目で追えるようにする
-    void RenderSelectionOutlines() noexcept;
+    void RenderSelectionOutlines(NS::Gfx::DebugShapes& shapes) noexcept;
     void RefreshGizmoSelectables();
     void ResolveSelectionFromId() noexcept;
 
@@ -268,7 +272,7 @@ private:
     void CaptureSelectionFromGizmo() noexcept;
 
     [[nodiscard]] NS::Obj::CameraManager* Cameras() const noexcept;
-    [[nodiscard]] NS::Obj::CameraComponent* MainCamera() const noexcept;
+    [[nodiscard]] NS::Obj::SceneCamera* MainCamera() const noexcept;
 
     NS::Obj::Scene* m_scene = nullptr;           // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
     NS::Editor::ObjectSnapshotApplier m_applier; // 編集を live へ写す口。undo コマンドが叩く適用先
@@ -277,9 +281,7 @@ private:
     NS::Editor::ViewRect m_gameViewRect{};
     bool m_gameViewRectValid = false;
     bool m_gameViewHovered = false;
-    bool m_gameViewHidden = false;           // UI 表示中に前面のパネルが裏へ隠れているか
-    bool m_sceneViewVisible = false;         // Scene パネルが映っているか。プレイ中の当たり表示の条件
-    std::uint64_t m_lastQueuedStepCount = 0; // 前の固定ステップの更新の後に見た Scene の進んだステップの累計
+    bool m_gameViewHidden = false; // UI 表示中に前面のパネルが裏へ隠れているか
 
     NS::UI::ImGuiContext* m_imgui = nullptr; // UI描画用コンテキスト、非所有
     NS::Editor::EditorCamera m_editorCamera; // 編集用自由視点カメラ

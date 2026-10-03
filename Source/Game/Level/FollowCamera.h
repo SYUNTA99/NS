@@ -18,8 +18,10 @@ namespace NS::Game::Level
         [[nodiscard]] const NS::Obj::ThirdPersonFollow& Vcam() const noexcept { return m_vcam; }
 
     protected:
-        //! 追う相手の状態を仮想カメラへ渡し、仮想カメラを 1 歩進める
-        void StateStep() override;
+        //! 追う相手の状態を読んで仮想カメラへ渡す
+        void ObserveStep() override;
+        //! 仮想カメラを 1 歩進める
+        void BodyStep() override;
         void OnKill() noexcept override;
 
     private:

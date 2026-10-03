@@ -98,7 +98,7 @@ Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effe
 
 ## 絵の作りの決まり (efkprobe で数えた)
 
-efkprobe の「フレーム 1」は Play → Update(1) → 描く。ゲームでは固定ステップの終わりに `Scene::OnUpdate` が `UpdateEffects` で 1 フレーム進めるので、ステップの中で `Play` した層も同じ手順で最初の絵になる見込み (推測。層を出す口を作る所で確かめる)。
+efkprobe の「フレーム 1」は Play → Update(1) → 描く。ゲームでは固定ステップの終わりのエフェクトの段で、登録物の `SceneRenderer::OnTick` が 1 フレーム進めるので、ステップの中で `Play` した層も同じ手順で最初の絵になる見込み (推測。層を出す口を作る所で確かめる)。
 
 - **1 フレーム目の絵は生まれた瞬間の値で描かれる。** 大きさの始点が 0 の `hit_flash_min` はフレーム 1 の描いた画素が 0 で、見えるのはフレーム 2 から。出るフレームに写したい層は、大きさ・不透明度の始点を 0 にしない
 - **一度に出す粒は、生成間隔 0 に生成の開始 -1 を足す。** 間隔 0 だけでは (実行側は 1e-05 と読む) フレーム 1 に 1 粒、残りはフレーム 2。開始を 0 より前に置くと、実行側は 0 より前の分を最初の更新でまとめて生む (`InstanceGroup::GenerateInstancesIfRequired`)

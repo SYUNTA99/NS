@@ -1,4 +1,3 @@
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamArrow.h"
@@ -9,12 +8,12 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Clock.h"
+#include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
@@ -481,10 +480,9 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     scene.LoadJson(doc);
     Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    NS::Obj::CameraComponent* camera = scene.MainCamera();
-    ASSERT_NE(camera, nullptr);
-    camera->SetPosition(NS::Core::Vector3{0.0f, 0.0f, -6.0f});
-    camera->SetTarget(NS::Core::Vector3{0.0f, 0.0f, 4.0f});
+    const NS::Core::Vector3 eye{0.0f, 0.0f, -6.0f};
+    const NS::Core::Vector3 lookAt{0.0f, 0.0f, 4.0f};
+    ASSERT_NE(PlaceViewCamera(scene, eye, lookAt), nullptr);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
                                        {{"印の太さ", 7.0f},
                                         {"溜めの前半の色", {0.2f, 0.3f, 0.4f}},
@@ -497,10 +495,9 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     {
         player->Update(true);
     }
-    ASSERT_TRUE(player->ChargeControl().IsCharging());
+    ASSERT_TRUE(player->ChargeJudge().IsCharging());
     NS::Game::Level::LockOnFrameShape frame{};
-    const NS::Core::Matrix view =
-        NS::Core::Matrix::CreateLookAt(camera->Position(), camera->Target(), NS::Core::Vector3::UnitY);
+    const NS::Core::Matrix view = NS::Core::Matrix::CreateLookAt(eye, lookAt, NS::Core::Vector3::UnitY);
     const NS::Core::Matrix projection =
         NS::Core::Matrix::CreatePerspectiveFieldOfView(1.0f, 16.0f / 9.0f, 0.1f, 100.0f);
     ASSERT_TRUE(player->TargetIndicator().BuildShownShape(view * projection, NS::Core::Size2D{1280, 720}, frame));

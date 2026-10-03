@@ -1,7 +1,7 @@
 ﻿#include "Runtime/Object/Components/CameraManager.h"
 
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
+#include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Platform/Clock.h"
 
 #include <algorithm>
@@ -71,7 +71,7 @@ namespace NS::Obj
         m_vcams.erase(std::remove(m_vcams.begin(), m_vcams.end(), vcam), m_vcams.end());
         if (m_active == vcam)
         {
-            m_active = nullptr; // 次の OnUpdate / Evaluate で選び直す
+            m_active = nullptr; // 次の OnTick / Evaluate で選び直す
         }
     }
 
@@ -201,7 +201,7 @@ namespace NS::Obj
         return best->EvaluatePose(alpha);
     }
 
-    void CameraManager::OnUpdate()
+    void CameraManager::OnTick()
     {
         VirtualCamera* next = SelectActive();
         if (next != m_active)
@@ -233,7 +233,7 @@ namespace NS::Obj
         std::erase_if(m_modifiers, [](const std::unique_ptr<CameraModifier>& m) { return m->IsFinished(); });
     }
 
-    std::optional<CameraPose> CameraManager::ComposePose(float alpha) const noexcept
+    std::optional<CameraPose> CameraManager::ComposeBeforeEffects(float alpha) const noexcept
     {
         VirtualCamera* active = m_active;
         if (active == nullptr || !active->IsActive())
@@ -251,6 +251,23 @@ namespace NS::Obj
             const float t = NS::Core::Clamp(m_blendElapsed / m_blendDuration, 0.0f, 1.0f);
             pose = CameraPose::Lerp(m_blendFrom, pose, NS::Core::SmoothStep(t));
         }
+        return pose;
+    }
+
+    std::optional<CameraPose> CameraManager::ViewPose() const noexcept
+    {
+        // 割合 1 は今の固定ステップの状態そのもの。描画が何枚・どの割合で描いても同じ値になる
+        return ComposeBeforeEffects(1.0f);
+    }
+
+    std::optional<CameraPose> CameraManager::ComposePose(float alpha) const noexcept
+    {
+        std::optional<CameraPose> composed = ComposeBeforeEffects(alpha);
+        if (!composed.has_value())
+        {
+            return std::nullopt;
+        }
+        CameraPose pose = *composed;
 
         // 効果はブレンドの後に掛ける。どの vcam が選ばれていてもブレンド中でも一様に掛かる
         // 軸は効果を掛ける前の姿勢から 1 度だけ作る。揺れは平行移動なので、後の傾きの軸は変わらない
@@ -264,7 +281,7 @@ namespace NS::Obj
 
     void CameraManager::Evaluate(float alpha) noexcept
     {
-        // 非 active になった vcam の pose は書かない。編集モードのように OnUpdate が回らない間も選び直す
+        // 非 active になった vcam の pose は書かない。一時停止で OnTick が回らない間も選び直す
         if (m_active == nullptr || !m_active->IsActive())
         {
             m_active = SelectActive();
@@ -294,11 +311,17 @@ namespace NS::Obj
 
     NS::Core::Vector3 CameraManager::ForwardHorizontal() const noexcept
     {
-        if (m_camera != nullptr)
+        const std::optional<CameraPose> view = ViewPose();
+        if (!view.has_value())
         {
-            return m_camera->ForwardHorizontal();
+            return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
         }
-        return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+        NS::Core::Vector3 forward{};
+        if (!NS::Core::TryNormalizeHorizontal(view->target - view->position, forward))
+        {
+            return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+        }
+        return forward;
     }
 
 } // namespace NS::Obj

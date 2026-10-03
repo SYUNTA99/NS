@@ -40,8 +40,13 @@ namespace NS::Game::Level
         //! 暗転。テストと演出の確認が読む
         [[nodiscard]] const NS::Obj::ScreenFade& Fade() const noexcept { return *m_fade; }
 
+        //! @brief 今の配置を凍結し、そこから最初の走行をやり直しと同じ道で始める
+        //! @details プレイの始まりはここだけを通る。呼ぶのは Game がシーンを立てた直後とエディタのプレイ突入
+        //! 1 走目も死んだ後や 2 周目と同じ RestartCourse を通るので、どの周も同じ始まり方になる
+        void StartCourse();
+
         //! @brief コースを最初からやり直す。全ての配置物へ MsgCourseRestart を送る
-        //! @details 凍結 (プレイ開始時のシーンの JSON 文書) にある姿へ、受け手が自分で戻る
+        //! @details 凍結 (StartCourse が取ったシーンの JSON 文書) にある姿へ、受け手が自分で戻る
         void RestartCourse();
 
         //! 知らせを受けた分だけ流れを進める

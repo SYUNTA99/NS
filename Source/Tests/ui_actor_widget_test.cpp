@@ -1,8 +1,71 @@
+#include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/ScreenFade.h"
+#include "Runtime/Object/UIActor.h"
 #include "Runtime/UI/ColorRect.h"
 
 #include <gtest/gtest.h>
+
+#include <string>
+#include <utility>
+#include <vector>
+
+namespace
+{
+    // 進んだ順を控え、描く順を外から決める画面の物
+    class OrderedUI final : public NS::Obj::UIActor
+    {
+    public:
+        OrderedUI(std::vector<std::string>& log, std::string name, int drawOrder) noexcept
+            : m_log(log), m_name(std::move(name)), m_drawOrder(drawOrder)
+        {}
+        void OnTick() override { m_log.push_back(m_name); }
+        [[nodiscard]] int DrawOrder() const noexcept override { return m_drawOrder; }
+
+    private:
+        std::vector<std::string>& m_log;
+        std::string m_name;
+        int m_drawOrder = 0;
+    };
+} // namespace
+
+// 段で回る口は Actor だけが持ち、UIActor と ActorBase には無い
+template <class T>
+concept HasPhaseHooks = requires(T& actor) {
+    actor.Phase();
+    actor.ReadInput();
+    actor.Update();
+    actor.PrepareRender();
+};
+template <class T>
+concept HasAnyPhaseHook = requires(T& actor) { actor.Phase(); } || requires(T& actor) { actor.ReadInput(); } ||
+                          requires(T& actor) { actor.Update(); } || requires(T& actor) { actor.PrepareRender(); };
+static_assert(HasPhaseHooks<NS::Obj::Actor>);
+static_assert(!HasAnyPhaseHook<NS::Obj::UIActor>);
+static_assert(!HasAnyPhaseHook<NS::Obj::ActorBase>);
+
+// 更新の順は開いた順で、描く順とは別の一覧になる
+TEST(UIActorWidgets, OpenScreensTickInOpenOrderOnTheUIPhase)
+{
+    NS::Obj::Scene scene;
+    std::vector<std::string> log;
+    OrderedUI front(log, "front", 1);
+    OrderedUI back(log, "back", 0);
+    front.Open(scene);
+    back.Open(scene);
+
+    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::UI);
+    ASSERT_EQ(log.size(), 2u);
+    EXPECT_EQ(log[0], "front");
+    EXPECT_EQ(log[1], "back");
+
+    front.Close();
+    log.clear();
+    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::UI);
+    ASSERT_EQ(log.size(), 1u);
+    EXPECT_EQ(log[0], "back");
+    back.Close();
+}
 
 TEST(UIActorWidgets, FadeOwnsAFullScreenWidgetAndKeepsTheExistingAlphaTiming)
 {

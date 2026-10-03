@@ -74,3 +74,94 @@ TEST(DebugDrawTest, FaceOverflowDropsTheOldestAndStaysAtTheCapacity)
     EXPECT_EQ(DD::FaceVertexCount(), k_MaxFaceTriangles * 3);
     DD::Clear();
 }
+
+// 図形の入れ物 DebugShapes: ステップの図形 (自由関数の積み先) とは別の溜め場で、互いに数を動かさない
+
+namespace
+{
+    // 円は 12 分割。線分 1 本が頂点 2 つ
+    constexpr std::size_t k_CircleVertices = 12 * 2;
+    // 線の上限頂点数。ステップの図形と同じ GPU の頂点バッファを共有するので揃える
+    constexpr std::size_t k_MaxLineVertices = 4096;
+
+    const Color k_LineColor{0.0f, 1.0f, 0.0f, 1.0f};
+} // namespace
+
+TEST(DebugShapesTest, PushingIntoShapesDoesNotChangeTheStepShapes)
+{
+    DD::Clear();
+    NS::Gfx::DebugShapes shapes;
+    shapes.Line(Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_LineColor);
+    shapes.Triangle(Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}, k_FaceColor);
+    EXPECT_EQ(shapes.VertexCount(), std::size_t{2});
+    EXPECT_EQ(shapes.FaceVertexCount(), std::size_t{3});
+    EXPECT_EQ(DD::VertexCount(), std::size_t{0});
+    EXPECT_EQ(DD::FaceVertexCount(), std::size_t{0});
+}
+
+TEST(DebugShapesTest, StepShapesDoNotLandInAnIndependentShapes)
+{
+    DD::Clear();
+    const NS::Gfx::DebugShapes shapes;
+    DD::Line(Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_LineColor);
+    EXPECT_EQ(shapes.VertexCount(), std::size_t{0});
+    EXPECT_EQ(DD::VertexCount(), std::size_t{2});
+    DD::Clear();
+}
+
+// 自由関数と同じ頂点の数で積む。移した形の見張り
+TEST(DebugShapesTest, ShapesPushTheSameVertexCountsAsTheFreeFunctions)
+{
+    DD::Clear();
+    NS::Gfx::DebugShapes shapes;
+
+    shapes.AABB(NS::Core::AABB{}, k_LineColor);
+    EXPECT_EQ(shapes.VertexCount(), std::size_t{24});
+    shapes.Clear();
+
+    shapes.OBB(NS::Core::OBB{}, k_LineColor);
+    EXPECT_EQ(shapes.VertexCount(), std::size_t{24});
+    shapes.Clear();
+
+    shapes.Circle(Vector3{}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}, k_LineColor);
+    EXPECT_EQ(shapes.VertexCount(), k_CircleVertices);
+    shapes.Clear();
+
+    shapes.Sphere(NS::Core::Sphere{Vector3{}, 1.0f}, k_LineColor);
+    EXPECT_EQ(shapes.VertexCount(), k_CircleVertices * 3);
+    shapes.Clear();
+
+    shapes.Capsule(Vector3{}, Vector3{0.0f, 1.0f, 0.0f}, 0.5f, k_LineColor);
+    EXPECT_EQ(shapes.VertexCount(), k_CircleVertices * 2 + 8);
+
+    DD::AABB(NS::Core::AABB{}, k_LineColor);
+    EXPECT_EQ(DD::VertexCount(), std::size_t{24});
+    DD::Clear();
+}
+
+TEST(DebugShapesTest, ClearDropsLinesAndFaces)
+{
+    NS::Gfx::DebugShapes shapes;
+    shapes.Line(Vector3{}, Vector3{1.0f, 0.0f, 0.0f}, k_LineColor);
+    shapes.Triangle(Vector3{}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}, k_FaceColor);
+    shapes.Clear();
+    EXPECT_EQ(shapes.VertexCount(), std::size_t{0});
+    EXPECT_EQ(shapes.FaceVertexCount(), std::size_t{0});
+}
+
+// 線も面も上限を超えたら古い物から捨て、上限で止まる
+TEST(DebugShapesTest, ShapesStayAtTheirCapacityByDroppingTheOldest)
+{
+    NS::Gfx::DebugShapes shapes;
+    for (std::size_t i = 0; i < k_MaxLineVertices; ++i)
+    {
+        shapes.Line(Vector3{}, Vector3{1.0f, 0.0f, 0.0f}, k_LineColor);
+    }
+    EXPECT_EQ(shapes.VertexCount(), k_MaxLineVertices);
+    for (std::size_t i = 0; i < k_MaxFaceTriangles + 5; ++i)
+    {
+        shapes.Triangle(Vector3{}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}, k_FaceColor);
+    }
+    EXPECT_EQ(shapes.FaceVertexCount(), k_MaxFaceTriangles * 3);
+    EXPECT_EQ(shapes.VertexCount(), k_MaxLineVertices);
+}

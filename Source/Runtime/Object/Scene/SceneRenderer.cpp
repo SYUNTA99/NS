@@ -6,12 +6,13 @@
 #include "Runtime/Graphics/EffectScene.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/Renderer.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/DirectionalLight.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
 #include "Runtime/Object/IRenderable.h"
+#include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Object/UIActor.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Platform/Filesystem.h"
 
 #include <algorithm>
@@ -65,13 +66,13 @@ namespace NS::Obj
         m_effectRoot = std::move(root);
     }
 
-    void SceneRenderer::UpdateEffects(float deltaSeconds) noexcept
+    void SceneRenderer::OnTick()
     {
         if (m_effects == nullptr)
         {
             return;
         }
-        m_effects->Update(deltaSeconds);
+        m_effects->Update(NS::Platform::FrameTimer::FixedDelta());
     }
 
     void SceneRenderer::RegisterRenderable(IRenderable* renderable)
@@ -255,10 +256,7 @@ namespace NS::Obj
         return resolved;
     }
 
-    void SceneRenderer::Render(CameraManager& cameras,
-                               CameraComponent& camera,
-                               std::string_view skyboxPath,
-                               float alpha)
+    void SceneRenderer::Render(CameraManager& cameras, SceneCamera& camera, std::string_view skyboxPath, float alpha)
     {
         if (m_renderer == nullptr)
         {
@@ -268,7 +266,7 @@ namespace NS::Obj
         // ビュー列が空なら現描画先へ CameraManager の視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
         if (m_sceneViews.empty())
         {
-            RenderViewWithOverlays(cameras, camera, skyboxPath, std::nullopt, alpha, BloomForView(0));
+            RenderViewWithOverlays(cameras, camera, skyboxPath, SceneView{}, alpha, BloomForView(0));
             return;
         }
 
@@ -276,7 +274,7 @@ namespace NS::Obj
         {
             const SceneView& view = m_sceneViews[i];
             m_renderer->BeginSceneView(view.target);
-            RenderViewWithOverlays(cameras, camera, skyboxPath, view.viewPose, alpha, BloomForView(i));
+            RenderViewWithOverlays(cameras, camera, skyboxPath, view, alpha, BloomForView(i));
         }
     }
 
@@ -290,23 +288,32 @@ namespace NS::Obj
     }
 
     void SceneRenderer::RenderViewWithOverlays(CameraManager& cameras,
-                                               CameraComponent& camera,
+                                               SceneCamera& camera,
                                                std::string_view skyboxPath,
-                                               const std::optional<CameraPose>& viewOverride,
+                                               const SceneView& view,
                                                float alpha,
                                                NS::Gfx::Bloom& bloom)
     {
-        const NS::Gfx::RenderContext ctx = RenderWorld(cameras, camera, skyboxPath, viewOverride, alpha, bloom);
+        const NS::Gfx::RenderContext ctx = RenderWorld(cameras, camera, skyboxPath, view.viewPose, alpha, bloom);
 
 #if !defined(NS_SHIPPING)
-        NS::Gfx::DebugDraw::Flush(*ctx.renderer, ctx.viewProjection);
+        NS::Gfx::DebugDraw::Draw(*ctx.renderer, ctx.viewProjection);
+
+        // ビューの図形は、このビューの行列で積んで描いたらすぐ捨てる。次のビューや次のフレームへ持ち越さない
+        if (view.drawShapes)
+        {
+            m_viewShapes.Clear();
+            view.drawShapes(m_viewShapes, ctx.viewProjection);
+            m_viewShapes.Draw(*ctx.renderer, ctx.viewProjection);
+            m_viewShapes.Clear();
+        }
 #endif
 
         DrawOverlays(ctx);
     }
 
     NS::Gfx::RenderContext SceneRenderer::RenderWorld(CameraManager& cameras,
-                                                      CameraComponent& camera,
+                                                      SceneCamera& camera,
                                                       std::string_view skyboxPath,
                                                       const std::optional<CameraPose>& viewOverride,
                                                       float alpha,
@@ -318,8 +325,6 @@ namespace NS::Obj
         NS::Gfx::RenderContext ctx{};
         ctx.renderer = m_renderer;
         ctx.alpha = alpha;
-
-        cameras.Evaluate(ctx.alpha);
 
         // 上書き視点は実カメラを経由せず、その場で行列を組む。実カメラの中身はゲーム視点のまま残す
         NS::Core::CameraData overrideCamera{};

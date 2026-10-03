@@ -74,9 +74,8 @@ namespace NS::Obj
         }
 
         //! @brief 描く時だけの局所の回転を書く。根の行列より先に掛かるので、根のスケールは局所の回転と一緒に回らない
-        //! @details 今のフレームの値だけを書き、前のフレームの値は OnUpdate が控える。保存はしない
-        //! 持ち主の Actor の Update が呼ぶ OnUpdate より後に書くこと。
-        //! 先に書くと前のフレームの値と同じになり補間されない
+        //! @details 今のフレームの値だけを書き、前のフレームの値は固定ステップの頭で Snapshot が控える。保存はしない
+        //! 固定ステップの中で書いた値は補間される。補間させない時は SnapLocalRotation で書く
         void SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept { m_localRotation = rotation; }
         //! @brief 今と前のフレームの局所の回転を同じ値にする
         //! @details 補間せずにこの姿勢で描く。mesh を差し替えたフレームに、差し替える前の回転から補間されないようにする
@@ -93,14 +92,14 @@ namespace NS::Obj
         //! 縦に潰しても下端の高さは変わらない。描く形は、差された局所の境界か mesh の局所の境界を
         //! 根の補間 world 行列で包んだ箱で、局所の回転は含めない。どちらも無ければ根の原点を中心にする
         //! 保存はせず、根の Transform と当たりは変えない
-        //! 今のフレームの値だけを書き、前のフレームの値は OnUpdate が控える
-        //! 持ち主の Actor の Update が呼ぶ OnUpdate より後に書くこと。先に書くと補間されない
+        //! 今のフレームの値だけを書き、前のフレームの値は固定ステップの頭で Snapshot が控える
+        //! 固定ステップの中で書いた値は補間される。補間させない時は SnapDrawScale で書く
         //! 有限の正でない成分 (非数・無限大・0 以下) を含む倍率は何も変えない
         //! @param[in] scale 世界の軸ごとの倍率。(1, 1, 1) で倍率の無い形
         //! @return 成分が全部有限の正で書いた場合 true、それ以外の場合は false
         [[nodiscard]] bool SetDrawScale(const NS::Core::Vector3& scale) noexcept;
         //! @brief 今と前のフレームの描く時だけの倍率を同じ値にする
-        //! @details 補間せずにこの倍率で描く。書くのが OnUpdate の前でも後でも、OnUpdate が回らなくても変わらない
+        //! @details 補間せずにこの倍率で描く。書くのが Snapshot の前でも後でも、Snapshot が回らなくても変わらない
         //! 有限の正でない成分 (非数・無限大・0 以下) を含む倍率は何も変えない
         //! @param[in] scale 世界の軸ごとの倍率。(1, 1, 1) で倍率の無い形
         //! @return 成分が全部有限の正で書いた場合 true、それ以外の場合は false
@@ -138,10 +137,9 @@ namespace NS::Obj
         //! Owner の OwningScene から self を解除する。無効ポインタを残さないよう Scene 破棄前に呼ぶ
         void OnEndPlay() override;
         //! @brief 今の局所の回転と描く時だけの倍率を前のフレームの値として控える
-        //! @details 持ち主の Actor の Update が呼ぶ。局所の回転と倍率は同じフレームのこれより後に書くこと。
-        //! 非活性の間は控えないので、活性に戻った
-        //! 最初のフレームは止める前の値から補間される
-        void OnUpdate() override;
+        //! @details 持ち主の Actor の SnapshotForInterpolation が、根の Transform と一緒に固定ステップの頭で呼ぶ。
+        //! 世界を止めている間も毎回呼ばれ、前と今が揃って補間が凍る。部品の 1 歩としては回らない
+        void Snapshot() noexcept;
 
         //! meshRef / matRef の参照文字列から実体の Mesh / Material を引き当てる
         //! 共有 material 名を先に引き、外れたら .mat 相対パスとして読む。解決不可は cube と既定 material にする
