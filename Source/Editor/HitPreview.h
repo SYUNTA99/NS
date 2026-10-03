@@ -30,7 +30,8 @@ namespace NS::Editor
     //! @brief 下見の当たりの条件
     struct HitPreviewDesc
     {
-        std::uint32_t targetId = 0;  //!< 当てる相手の配置物の id
+        //! 当てる相手の配置物の id。0 は自機に一番近い、突進が当たる体と面を持つ配置物 (結果の desc に選んだ id が入る)
+        std::uint32_t targetId = 0;
         float faceU = 0.0f;          //!< 当てる面の上の左右の位置。自機から見て右が正。-1..1 が面の端
         float faceV = 0.0f;          //!< 当てる面の上の上下の位置。上が正。-1..1 が面の端
         float charge01 = 1.0f;       //!< 溜め量 0..1。0 はタップの飛び込み
@@ -107,4 +108,10 @@ namespace NS::Editor
                                                                          const HitPreviewResult& result,
                                                                          int frameIndex,
                                                                          const HitPreviewWorld& world = {});
+
+    //! @brief BuildHitPreviewSceneAt で組んだ場面を steps 歩進める
+    //! @details 下見と同じく入力を中立にし、1 歩ごとに書かれなかった振動を 0 に戻す。再生で前へ進む時に組み直さずに済む
+    //! @param[in,out] scene 進める場面
+    //! @param[in] steps 進める歩数。0 以下なら何もしない
+    void StepHitPreviewScene(NS::Obj::Scene& scene, int steps);
 } // namespace NS::Editor

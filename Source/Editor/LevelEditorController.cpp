@@ -664,6 +664,15 @@ std::optional<NS::Obj::CameraPose> LevelEditorController::GameViewPose() noexcep
     return Cameras()->EvaluateTopPose(1.0f);
 }
 
+nlohmann::json LevelEditorController::SceneSnapshot() const
+{
+    if (m_scene == nullptr)
+    {
+        return NS::Obj::MakeSceneJson();
+    }
+    return m_scene->ToJson();
+}
+
 void LevelEditorController::SetSceneViews(std::vector<NS::Obj::SceneView> views)
 {
     if (m_scene != nullptr)

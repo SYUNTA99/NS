@@ -274,3 +274,24 @@ TEST(EditorHitPreview, MatchesADirectRunFromTheSamePlacement)
     EXPECT_TRUE(direct.selfVelocity == preview.impact.selfVelocity);
     EXPECT_TRUE(direct.launchVelocity == preview.impact.launchVelocity);
 }
+
+// 相手を選んでいない時は、自機に一番近い、突進が当たる体と面を持つ配置物を相手にする
+TEST(EditorHitPreview, PicksTheNearestTargetWhenNoneIsChosen)
+{
+    const ScopedHitTimelineDirectory directory("EditorHitPreviewNearest");
+    ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
+    nlohmann::json snapshot = MakePreviewSceneJson();
+    nlohmann::json distant = NS::Obj::MakeObjectJson();
+    NS::Obj::SetObjectJsonClass(distant, "MapObj");
+    NS::Obj::SetObjectJsonId(distant, 3);
+    NS::Obj::SetObjectPosition(distant, NS::Core::Vector3{0.0f, 0.5f, 25.0f});
+    NS::Obj::SceneJsonObjects(snapshot).push_back(std::move(distant));
+    PreviewAssets assets;
+    NS::Editor::HitPreviewDesc desc = MakeDesc(0.0f, 0.0f);
+    desc.targetId = 0;
+
+    const NS::Editor::HitPreviewResult result = NS::Editor::RunHitPreview(snapshot, desc, assets.World());
+    ASSERT_TRUE(result.hit) << result.error;
+    EXPECT_EQ(result.desc.targetId, k_RockId);
+    EXPECT_EQ(result.impact.targetId, k_RockId);
+}
