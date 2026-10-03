@@ -10,6 +10,7 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -23,6 +24,7 @@ namespace NS::Core
 
 namespace NS::Gfx
 {
+    class Texture;
 
     //! @brief EffectScene::Play が返す、再生したエフェクトのハンドル
     struct EffectHandle
@@ -127,9 +129,40 @@ namespace NS::Gfx
 
         //! @brief camera から見た全エフェクトを現在の描画先へ描く
         //! @param[in] camera ビュー行列・投影行列・位置を使う視点
+        //! @details 描画先に結ばれた奥行き (D24_UNORM_S8_UINT) を別のテクスチャへ写してエフェクトへ渡し、
+        //! 柔らかい粒の欄を入れた層は物と重なる所の近くほど薄く描く。写し先は大きさごとに 2 枚まで控え、
+        //! 同じ大きさの描画先では作り直さない。奥行きが結ばれていない時は奥行き無しで描く。
+        //! 写せない奥行きの時と写し先を作れなかった時はエラーを 1 回出して奥行き無しで描き、IsUsingDepthFallback が
+        //! true を返す
         void Draw(const NS::Core::CameraData& camera) noexcept;
 
+        //! 直前の Draw がエフェクトへ奥行きを渡した場合 true、それ以外の場合は false
+        [[nodiscard]] bool PassesDepth() const noexcept;
+
+        //! 直前の Draw が写せない奥行きか写し先の作りそこないで奥行き無しに倒した場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsUsingDepthFallback() const noexcept { return m_depthFallback; }
+
+        //! 奥行きの写し先を作った回数
+        [[nodiscard]] std::uint32_t DepthCopiesCreated() const noexcept { return m_depthCopiesCreated; }
+
     private:
+        // 奥行きの写し先 1 枚。描画先の大きさで引く
+        struct DepthCopy
+        {
+            std::unique_ptr<Texture> texture;
+            Effekseer::Backend::TextureRef effekseerTexture;
+            std::uint32_t width = 0;
+            std::uint32_t height = 0;
+            std::uint32_t lastUsed = 0; // 最後に使った Draw の番号。3 つ目の大きさが来たら古い方を捨てる
+        };
+
+        // 描画先に結ばれた奥行きを写し先へ写してエフェクトへ渡す。渡せない時は奥行きを外す
+        void PassDepth(const NS::Core::CameraData& camera) noexcept;
+        // 大きさの合う写し先を返す。無ければ作る。作れなければ nullptr
+        [[nodiscard]] DepthCopy* DepthCopyFor(std::uint32_t width, std::uint32_t height) noexcept;
+        // 奥行き無しへ倒す。同じ理由と大きさでは 2 回目からエラーを出さない
+        void FallBackWithoutDepth(std::string_view reason, std::uint32_t width, std::uint32_t height) noexcept;
+
         Effekseer::ManagerRef m_manager;
         EffekseerRenderer::RendererRef m_renderer;
         std::unordered_map<std::string, Effekseer::EffectRef> m_effects;
@@ -138,5 +171,11 @@ namespace NS::Gfx
         std::unordered_map<std::string, std::uint32_t> m_playCounts;
         std::string m_effectRoot;
         float m_elapsedSeconds = 0.0f;
+
+        std::array<DepthCopy, 2> m_depthCopies{}; // Bloom と同じくゲームの絵とエディタのビューで 1 枚ずつ
+        std::uint32_t m_depthCopiesCreated = 0;
+        std::uint32_t m_drawCount = 0;
+        bool m_depthFallback = false;
+        std::string m_failedDepthKey; // 最後にエラーを出した理由と大きさ。同じ失敗を毎フレーム出さない
     };
 } // namespace NS::Gfx

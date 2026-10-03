@@ -179,6 +179,13 @@
         <RendererCommonValues>
           <ColorTexture>Texture/charge_shell.png</ColorTexture>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.3 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.3</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>
@@ -210,6 +217,13 @@
         <RendererCommonValues>
           <ColorTexture>Texture/charge_shell.png</ColorTexture>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.3 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.3</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>
@@ -246,6 +260,13 @@
           <ColorTexture>Texture/charge_shell.png</ColorTexture>
           <AlphaBlend>2</AlphaBlend>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.3 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.3</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Type>2</Type>
@@ -309,6 +330,13 @@
           <ColorTexture>Texture/charge_shell.png</ColorTexture>
           <AlphaBlend>2</AlphaBlend>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.3 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.3</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>
@@ -344,6 +372,13 @@
           <AlphaBlend>2</AlphaBlend>
           <EmissiveScaling>2</EmissiveScaling>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.3 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.3</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>
@@ -395,6 +430,13 @@
           <AlphaBlend>2</AlphaBlend>
           <EmissiveScaling>2.4</EmissiveScaling>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.6 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.6</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Type>2</Type>
@@ -454,6 +496,13 @@
           <AlphaBlend>2</AlphaBlend>
           <EmissiveScaling>1.6</EmissiveScaling>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.6 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.6</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>
@@ -484,6 +533,13 @@
           <ColorTexture>Texture/charge_aura.png</ColorTexture>
           <AlphaBlend>2</AlphaBlend>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.6 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.6</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>
@@ -514,6 +570,13 @@
           <ColorTexture>Texture/charge_aura.png</ColorTexture>
           <AlphaBlend>2</AlphaBlend>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.6 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.6</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>
@@ -555,6 +618,13 @@
           <AlphaBlend>2</AlphaBlend>
           <EmissiveScaling>2.0</EmissiveScaling>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.6 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.6</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>
@@ -598,6 +668,13 @@
           <AlphaBlend>2</AlphaBlend>
           <EmissiveScaling>6.0</EmissiveScaling>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.6 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.6</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>
@@ -628,6 +705,13 @@
           <ColorTexture>Texture/charge_aura.png</ColorTexture>
           <AlphaBlend>2</AlphaBlend>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.6 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.6</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>
@@ -660,6 +744,13 @@
           <AlphaBlend>2</AlphaBlend>
           <EmissiveScaling>2.0</EmissiveScaling>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.6 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.6</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>
@@ -710,6 +801,13 @@
           <AlphaBlend>2</AlphaBlend>
           <EmissiveScaling>2.55</EmissiveScaling>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.6 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.6</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>

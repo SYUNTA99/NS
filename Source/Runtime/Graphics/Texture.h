@@ -23,6 +23,9 @@ namespace NS::Gfx
         UINT height = 0;                                 //!< 高さ。path が空の時だけ見る
         DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM; //!< 画素形式。path が空の時だけ見る
         UINT bindFlags = D3D11_BIND_SHADER_RESOURCE;     //!< 作るビュー。path が空の時だけ見る
+        //! 読むビュー (SRV) の書式。DXGI_FORMAT_UNKNOWN なら format
+        //! のまま。型の無い書式で作って型を付けて読む時に渡す。 path が空の時だけ見る
+        DXGI_FORMAT viewFormat = DXGI_FORMAT_UNKNOWN;
     };
 
     //! @brief 2D テクスチャ
