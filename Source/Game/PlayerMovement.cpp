@@ -366,7 +366,7 @@ bool Player::LedgeGrab() noexcept
         body.SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         m_ledgeTopY = top;
         m_ledgeFaceNormal = faceNormal;
-        (void)m_states->Change<NS::Game::Player::LedgeHangingPlayerState>(*this);
+        (void)m_states->Change<NS::Game::Player::LedgeHangingPlayerState>();
         m_playerEvents.onLedgeGrabbed.Invoke();
         return true;
     }
@@ -401,7 +401,7 @@ bool Player::LedgeJump() noexcept
     NS::Obj::Body& body = *m_body;
     body.SetVerticalVelocity(m_params->m_jumpImpulse);
     body.SetGrounded(false);
-    (void)m_states->Change<NS::Game::Player::FallPlayerState>(*this);
+    (void)m_states->Change<NS::Game::Player::FallPlayerState>();
     m_playerEvents.onJump.Invoke();
     return true;
 }
@@ -419,7 +419,7 @@ void Player::ClimbLedge() noexcept
         pos.z - m_ledgeFaceNormal.z * mantleStep,
     };
     m_ledgeMantleTimer = 0.0f;
-    (void)m_states->Change<NS::Game::Player::LedgeClimbingPlayerState>(*this);
+    (void)m_states->Change<NS::Game::Player::LedgeClimbingPlayerState>();
     body.SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
     m_playerEvents.onLedgeClimbing.Invoke();
 }
@@ -427,7 +427,7 @@ void Player::ClimbLedge() noexcept
 void Player::DropLedge() noexcept
 {
     NS::Obj::Body& body = *m_body;
-    (void)m_states->Change<NS::Game::Player::FallPlayerState>(*this);
+    (void)m_states->Change<NS::Game::Player::FallPlayerState>();
     body.SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
     body.SetGrounded(false);
     // 壁と逆を向いて落ちる。壁を向いたままだと、帯の上の余白に縁が入って次のフレームで掴み直す
@@ -485,7 +485,7 @@ void Player::UpdateLedgeClimb(float dt) noexcept
     if (t >= 1.0f)
     {
         Root().SetPosition(m_ledgeMantleEnd);
-        (void)m_states->Change<NS::Game::Player::IdlePlayerState>(*this);
+        (void)m_states->Change<NS::Game::Player::IdlePlayerState>();
         body.SetGrounded(true);
         m_jumpsRemaining = 1;
         m_coyoteTimer = m_params->m_coyoteTime;

@@ -27,6 +27,8 @@ namespace
         bool finishOnEntry = false;
         int resumed = 0;
         std::vector<float> deltas;
+        const StateOwner* activeEnteredBy = nullptr;
+        const StateOwner* activeSteppedBy = nullptr;
     };
 
     NS::Core::Coroutine ResumeLater(StateOwner& owner)
@@ -35,7 +37,7 @@ namespace
         ++owner.resumed;
         if (owner.coroutineChangesState)
         {
-            owner.machine->Change<ActiveState>(owner);
+            owner.machine->Change<ActiveState>();
         }
         if (owner.finishFromCoroutine)
         {
@@ -63,7 +65,7 @@ namespace
             owner.calls.push_back(2);
             if (owner.change)
             {
-                owner.machine->Change<ActiveState>(owner);
+                owner.machine->Change<ActiveState>();
                 if (owner.recordAfterChange)
                 {
                     owner.calls.push_back(7);
@@ -81,7 +83,7 @@ namespace
             if (owner.exitChangesState)
             {
                 owner.exitChangesState = false;
-                owner.machine->Change<DeltaState>(owner);
+                owner.machine->Change<DeltaState>();
             }
         }
     };
@@ -92,16 +94,21 @@ namespace
         void OnEnter(StateOwner& owner) override
         {
             owner.calls.push_back(4);
+            owner.activeEnteredBy = &owner;
             if (owner.finishOnEntry)
             {
                 owner.child->Finish();
             }
             if (owner.entryChangesState)
             {
-                owner.machine->Change<DeltaState>(owner);
+                owner.machine->Change<DeltaState>();
             }
         }
-        void OnStep(StateOwner& owner, float) override { owner.calls.push_back(5); }
+        void OnStep(StateOwner& owner, float) override
+        {
+            owner.calls.push_back(5);
+            owner.activeSteppedBy = &owner;
+        }
     };
 
     class ChildState final : public NS::Obj::StateOf<ChildState, StateOwner>
@@ -143,19 +150,31 @@ TEST(StateMachine, TransitionOrderAndFirstStep)
     EXPECT_TRUE(machine.IsFirstStep());
     EXPECT_EQ(machine.StepsInState(), 0u);
 
-    machine.Step(owner, 1.0f / 60.0f);
+    machine.Step(1.0f / 60.0f);
     EXPECT_EQ(machine.StepsInState(), 1u);
     EXPECT_FALSE(machine.IsFirstStep());
 
     owner.change = true;
-    machine.Step(owner, 1.0f / 60.0f);
+    machine.Step(1.0f / 60.0f);
     EXPECT_TRUE(machine.IsCurrent<ActiveState>());
     EXPECT_EQ(machine.StepsInState(), 0u);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 2, 3, 4}));
 
-    machine.Step(owner, 1.0f / 60.0f);
+    machine.Step(1.0f / 60.0f);
     EXPECT_EQ(machine.StepsInState(), 1u);
     EXPECT_EQ(owner.calls.back(), 5);
+}
+
+TEST(StateMachine, OwnerComesFromBuildOnly)
+{
+    StateOwner owner;
+    NS::Obj::StateMachine<StateOwner> machine;
+    owner.machine = &machine;
+    machine.Build<IdleState, ActiveState>(owner);
+    ASSERT_TRUE(machine.Change<ActiveState>());
+    machine.Step(1.0f / 60.0f);
+    EXPECT_EQ(owner.activeEnteredBy, &owner);
+    EXPECT_EQ(owner.activeSteppedBy, &owner);
 }
 
 TEST(StateMachine, LeavingStateCancelsItsCoroutine)
@@ -164,8 +183,8 @@ TEST(StateMachine, LeavingStateCancelsItsCoroutine)
     NS::Obj::StateMachine<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
-    ASSERT_TRUE(machine.Change<ActiveState>(owner));
-    machine.Step(owner, 1.0f / 60.0f);
+    ASSERT_TRUE(machine.Change<ActiveState>());
+    machine.Step(1.0f / 60.0f);
     EXPECT_EQ(owner.resumed, 0);
 }
 
@@ -176,7 +195,7 @@ TEST(StateMachine, CoroutineCanLeaveItsStateWhileResuming)
     owner.machine = &machine;
     owner.coroutineChangesState = true;
     machine.Build<IdleState, ActiveState>(owner);
-    machine.Step(owner, 1.0f / 60.0f);
+    machine.Step(1.0f / 60.0f);
     EXPECT_TRUE(machine.IsCurrent<ActiveState>());
     EXPECT_EQ(owner.resumed, 1);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 4}));
@@ -189,12 +208,12 @@ TEST(StateMachine, ChildFinishStopsStepsAndCancelsCoroutine)
     owner.child = &child;
     child.Build<ChildState>(owner);
     EXPECT_FALSE(child.IsDead());
-    child.Step(owner, 1.0f / 60.0f);
+    child.Step(1.0f / 60.0f);
     EXPECT_TRUE(child.IsDead());
     EXPECT_EQ(owner.calls, (std::vector<int>{6}));
-    child.Step(owner, 1.0f / 60.0f);
+    child.Step(1.0f / 60.0f);
     EXPECT_EQ(owner.calls, (std::vector<int>{6}));
-    child.Machine().Step(owner, 2.0f);
+    child.Machine().Step(2.0f);
     EXPECT_EQ(owner.resumed, 0);
 }
 
@@ -204,8 +223,8 @@ TEST(StateMachine, CoroutineReadsTheCurrentStepDelta)
     NS::Obj::StateMachine<StateOwner> machine;
     machine.Build<DeltaState>(owner);
     EXPECT_TRUE(owner.deltas.empty());
-    machine.Step(owner, 0.1f);
-    machine.Step(owner, 0.2f);
+    machine.Step(0.1f);
+    machine.Step(0.2f);
     EXPECT_EQ(owner.deltas, (std::vector<float>{0.1f, 0.2f}));
 }
 
@@ -215,12 +234,12 @@ TEST(StateMachine, ExternalRequestDefersEntryUntilTheNextStepBoundary)
     NS::Obj::StateMachine<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
-    ASSERT_TRUE(machine.Change<ActiveState>(owner));
+    ASSERT_TRUE(machine.Change<ActiveState>());
     EXPECT_TRUE(machine.IsCurrent<ActiveState>());
     EXPECT_FALSE(machine.IsFirstStep());
     EXPECT_EQ(machine.StepsInState(), static_cast<std::uint32_t>(-1));
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
-    machine.Step(owner, 0.1f);
+    machine.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 4, 5}));
     EXPECT_EQ(machine.StepsInState(), 1u);
     EXPECT_EQ(owner.resumed, 0);
@@ -234,7 +253,7 @@ TEST(StateMachine, EntryDoesNotInterruptThePreviousStep)
     owner.change = true;
     owner.recordAfterChange = true;
     machine.Build<IdleState, ActiveState>(owner);
-    machine.Step(owner, 0.1f);
+    machine.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3, 7, 4}));
     EXPECT_TRUE(machine.IsFirstStep());
     EXPECT_EQ(machine.StepsInState(), 0u);
@@ -246,13 +265,13 @@ TEST(StateMachine, LastValidRequestWinsWithoutExitingTwice)
     NS::Obj::StateMachine<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState, DeltaState>(owner);
-    ASSERT_TRUE(machine.Change<ActiveState>(owner));
-    ASSERT_TRUE(machine.Change<DeltaState>(owner));
-    ASSERT_TRUE(machine.Change<DeltaState>(owner));
-    EXPECT_FALSE(machine.Change<ChildState>(owner));
+    ASSERT_TRUE(machine.Change<ActiveState>());
+    ASSERT_TRUE(machine.Change<DeltaState>());
+    ASSERT_TRUE(machine.Change<DeltaState>());
+    EXPECT_FALSE(machine.Change<ChildState>());
     EXPECT_TRUE(machine.IsCurrent<DeltaState>());
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
-    machine.Step(owner, 0.1f);
+    machine.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
     EXPECT_EQ(owner.deltas, (std::vector<float>{0.1f}));
 }
@@ -263,9 +282,9 @@ TEST(StateMachine, ResetDiscardsAPendingEntry)
     NS::Obj::StateMachine<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
-    machine.Change<ActiveState>(owner);
+    machine.Change<ActiveState>();
     machine.Reset();
-    machine.Step(owner, 0.1f);
+    machine.Step(0.1f);
     EXPECT_TRUE(machine.IsCurrent<IdleState>());
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 2}));
     EXPECT_EQ(owner.resumed, 0);
@@ -280,11 +299,11 @@ TEST(StateMachine, ChildFinishDiscardsAnEntryRequestedDuringItsStep)
     owner.change = true;
     owner.finishAfterChange = true;
     child.Build<IdleState, ActiveState>(owner);
-    child.Step(owner, 0.1f);
+    child.Step(0.1f);
     EXPECT_TRUE(child.IsDead());
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3}));
     owner.change = false;
-    child.Machine().Step(owner, 0.1f);
+    child.Machine().Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3, 2}));
 }
 
@@ -294,10 +313,10 @@ TEST(StateMachine, ReturningToTheExitedStateReentersAtTheBoundary)
     NS::Obj::StateMachine<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
-    machine.Change<ActiveState>(owner);
-    machine.Change<IdleState>(owner);
+    machine.Change<ActiveState>();
+    machine.Change<IdleState>();
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
-    machine.Step(owner, 0.1f);
+    machine.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 1, 2}));
 }
 
@@ -307,8 +326,8 @@ TEST(StateMachine, RequestingTheCurrentStateDoesNotResetItsStep)
     NS::Obj::StateMachine<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
-    machine.Step(owner, 0.1f);
-    machine.Change<IdleState>(owner);
+    machine.Step(0.1f);
+    machine.Change<IdleState>();
     EXPECT_EQ(machine.StepsInState(), 1u);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2}));
 }
@@ -320,13 +339,13 @@ TEST(StateMachine, EntryRequestAtTheOpeningBoundaryDoesNotStepTheExitedState)
     owner.machine = &machine;
     owner.entryChangesState = true;
     machine.Build<IdleState, ActiveState, DeltaState>(owner);
-    machine.Change<ActiveState>(owner);
-    machine.Step(owner, 0.1f);
+    machine.Change<ActiveState>();
+    machine.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 4}));
     EXPECT_TRUE(machine.IsCurrent<DeltaState>());
     EXPECT_TRUE(machine.IsFirstStep());
     EXPECT_TRUE(owner.deltas.empty());
-    machine.Step(owner, 0.2f);
+    machine.Step(0.2f);
     EXPECT_EQ(owner.deltas, (std::vector<float>{0.2f}));
 }
 
@@ -338,13 +357,13 @@ TEST(StateMachine, EntryRequestAtTheClosingBoundaryWaitsUntilTheNextStep)
     owner.entryChangesState = true;
     owner.change = true;
     machine.Build<IdleState, ActiveState, DeltaState>(owner);
-    machine.Step(owner, 0.1f);
+    machine.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3, 4}));
     EXPECT_TRUE(machine.IsCurrent<DeltaState>());
     EXPECT_FALSE(machine.IsFirstStep());
     EXPECT_EQ(machine.StepsInState(), static_cast<std::uint32_t>(-1));
     EXPECT_TRUE(owner.deltas.empty());
-    machine.Step(owner, 0.2f);
+    machine.Step(0.2f);
     EXPECT_EQ(owner.deltas, (std::vector<float>{0.2f}));
 }
 
@@ -355,10 +374,10 @@ TEST(StateMachine, ExitCanReplaceThePendingTargetWithoutRecursiveExit)
     owner.machine = &machine;
     owner.exitChangesState = true;
     machine.Build<IdleState, ActiveState, DeltaState>(owner);
-    machine.Change<ActiveState>(owner);
+    machine.Change<ActiveState>();
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
     EXPECT_TRUE(machine.IsCurrent<DeltaState>());
-    machine.Step(owner, 0.1f);
+    machine.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
     EXPECT_EQ(owner.deltas, (std::vector<float>{0.1f}));
 }
@@ -369,9 +388,9 @@ TEST(StateMachine, RebuildDiscardsThePreviousPendingEntry)
     NS::Obj::StateMachine<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
-    machine.Change<ActiveState>(owner);
+    machine.Change<ActiveState>();
     machine.Build<IdleState, ActiveState>(owner);
-    machine.Step(owner, 0.1f);
+    machine.Step(0.1f);
     EXPECT_TRUE(machine.IsCurrent<IdleState>());
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 1, 2}));
     EXPECT_EQ(owner.resumed, 1);
@@ -386,12 +405,12 @@ TEST(StateMachine, ChildFinishDuringCoroutineStopsTheRemainingStateStep)
     owner.coroutineChangesState = true;
     owner.finishFromCoroutine = true;
     child.Build<IdleState, ActiveState>(owner);
-    child.Step(owner, 0.1f);
+    child.Step(0.1f);
     EXPECT_TRUE(child.IsDead());
     EXPECT_EQ(owner.resumed, 1);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
     EXPECT_EQ(child.Machine().StepsInState(), 0u);
-    child.Step(owner, 0.1f);
+    child.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
 }
 
@@ -403,11 +422,11 @@ TEST(StateMachine, ChildFinishDuringEntryStopsTheFirstStateStep)
     owner.machine = &child.Machine();
     owner.finishOnEntry = true;
     child.Build<IdleState, ActiveState>(owner);
-    child.Machine().Change<ActiveState>(owner);
-    child.Step(owner, 0.1f);
+    child.Machine().Change<ActiveState>();
+    child.Step(0.1f);
     EXPECT_TRUE(child.IsDead());
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 4}));
     EXPECT_EQ(child.Machine().StepsInState(), 0u);
-    child.Step(owner, 0.1f);
+    child.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 4}));
 }

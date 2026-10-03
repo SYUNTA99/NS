@@ -100,11 +100,11 @@ void Player::EndBodySlam() noexcept
 
     if (body.IsGrounded())
     {
-        (void)m_states->Change<NS::Game::Player::WalkPlayerState>(*this);
+        (void)m_states->Change<NS::Game::Player::WalkPlayerState>();
     }
     else
     {
-        (void)m_states->Change<NS::Game::Player::FallPlayerState>(*this);
+        (void)m_states->Change<NS::Game::Player::FallPlayerState>();
     }
     m_playerEvents.onBodySlamEnded.Invoke();
 }
@@ -259,7 +259,7 @@ bool Player::BodySlam() noexcept
     // 縁を離れれば出るが、その時の丸まりは掴まりで解けている
     ChangeCurled(true);
 
-    (void)m_states->Change<NS::Game::Player::BodySlamPlayerState>(*this);
+    (void)m_states->Change<NS::Game::Player::BodySlamPlayerState>();
     m_playerEvents.onBodySlamStarted.Invoke();
     return true;
 }
@@ -290,7 +290,7 @@ bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept
 
     m_rebound.direction = direction;
     m_body->SetVelocity(velocity);
-    (void)m_states->Change<NS::Game::Player::ReboundPlayerState>(*this);
+    (void)m_states->Change<NS::Game::Player::ReboundPlayerState>();
     return true;
 }
 

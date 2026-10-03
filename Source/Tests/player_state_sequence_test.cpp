@@ -49,11 +49,11 @@ TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
     ASSERT_TRUE(player->States().IsCurrent<NS::Game::Player::LedgeClimbingPlayerState>());
     EXPECT_FLOAT_EQ(player->Root().Position().y, 0.0f);
     const float top = movement->CapsuleHalfHeight() + movement->CapsuleRadius();
-    player->States().Step(*player, 0.0625f);
+    player->States().Step(0.0625f);
     EXPECT_NEAR(player->Root().Position().y, top * 0.5f, 0.00001f);
-    player->States().Step(*player, 0.0625f);
+    player->States().Step(0.0625f);
     EXPECT_NEAR(player->Root().Position().y, top, 0.00001f);
-    player->States().Step(*player, 0.125f);
+    player->States().Step(0.125f);
     EXPECT_TRUE(player->States().IsCurrent<NS::Game::Player::IdlePlayerState>());
     EXPECT_TRUE(movement->IsGrounded());
 }
@@ -66,10 +66,10 @@ TEST(PlayerStateSequence, LeavingClimbCannotResumeAnOldPositionWrite)
     NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player->Part("Movement"));
     ASSERT_NE(movement, nullptr);
     player->ClimbLedge();
-    player->States().Step(*player, 0.0625f);
-    ASSERT_TRUE(player->States().Change<NS::Game::Player::IdlePlayerState>(*player));
+    player->States().Step(0.0625f);
+    ASSERT_TRUE(player->States().Change<NS::Game::Player::IdlePlayerState>());
     player->Root().SetPosition(NS::Core::Vector3{0.0f, 3.0f, 0.0f});
-    player->States().Step(*player, 0.0625f);
+    player->States().Step(0.0625f);
     EXPECT_FLOAT_EQ(player->Root().Position().y, 3.0f);
 }
 
@@ -141,13 +141,13 @@ TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)
     ASSERT_TRUE(player->BeginRebound(arc));
     EXPECT_FLOAT_EQ(movement->VerticalVelocity(), initial.y);
     player->SetJumpPressed();
-    player->States().Step(*player, 0.01f);
+    player->States().Step(0.01f);
     EXPECT_NEAR(movement->VerticalVelocity(), initial.y - 0.125f, 0.00001f);
     EXPECT_TRUE(player->States().IsCurrent<NS::Game::Player::ReboundPlayerState>());
-    player->States().Step(*player, 0.02f);
+    player->States().Step(0.02f);
     EXPECT_NEAR(movement->VerticalVelocity(), initial.y - 0.375f, 0.00001f);
     movement->SetVerticalVelocity(0.0f);
-    player->States().Step(*player, 0.01f);
+    player->States().Step(0.01f);
     EXPECT_TRUE(player->States().IsCurrent<NS::Game::Player::IdlePlayerState>());
 }
 
@@ -159,10 +159,10 @@ TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
     NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player->Part("Movement"));
     ASSERT_NE(movement, nullptr);
     player->ClimbLedge();
-    player->States().Step(*player, 0.0625f);
+    player->States().Step(0.0625f);
     player->OnEndPlay();
     player->Root().SetPosition(NS::Core::Vector3{0.0f, 3.0f, 0.0f});
-    player->States().Step(*player, 0.0625f);
+    player->States().Step(0.0625f);
     EXPECT_FLOAT_EQ(player->Root().Position().y, 3.0f);
 }
 

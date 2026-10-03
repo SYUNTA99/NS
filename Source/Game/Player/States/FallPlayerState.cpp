@@ -20,7 +20,7 @@ namespace NS::Game::Player
 
         if (player.Body().IsGrounded())
         {
-            player.States().Change<IdlePlayerState>(player);
+            player.States().Change<IdlePlayerState>();
         }
     }
 } // namespace NS::Game::Player

@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "Runtime/Core/Assert.h"
 #include "Runtime/Object/ActorBase.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/StateMachine.h"
@@ -175,16 +176,20 @@ namespace NS::Obj
         //! @details 状態機械は 1 体に 1 つで、Update が 1 固定ステップ進める。既に持っている時は組まずに
         //! NS_LOG_ERROR で知らせて false を返し、今の機械をそのまま残す (動いている機械は状態の中から呼ばれて
         //! いることがあり、捨てると呼び出し中の状態が消える)。型付きのポインタは先頭の OnEnter より前に
-        //! outMachine へ書くので、OnEnter の中からも引ける。持ち主は OnEnter の触る所を作り終えてから呼ぶ
+        //! outMachine へ書くので、OnEnter の中からも引ける。持ち主は OnEnter の触る所を作り終えてから呼ぶ。
+        //! 持ち主を受けるのはここだけで、機械は生涯この持ち主を状態へ渡す
         //! @tparam TOwner 呼ぶ派生の型。状態は StateOf<自分の型, TOwner> から派生する
         //! @tparam TStates 状態の型の並び。先頭が初期状態で、並べた型が移れる状態の全部になる
-        //! @param[in] owner 状態へ渡す持ち主
+        //! @param[in] owner 状態へ渡す持ち主。自分自身を渡す
         //! @param[out] outMachine 組んだ状態機械の置き場。基底が所有するので持ち主は参照を持つだけ。失敗時は触らない
         //! @return 組めた場合 true、既に状態機械を持っていて組まなかった場合 false
         template <typename TOwner, typename... TStates>
         bool BuildStateMachine(TOwner& owner, StateMachine<TOwner>*& outMachine)
         {
             static_assert(std::is_base_of_v<Actor, TOwner>, "持ち主は Actor の派生");
+            NS_ASSERT(Scene,
+                      static_cast<const Actor*>(&owner) == this,
+                      "Actor::BuildStateMachine: 持ち主に自分以外の Actor を渡している");
             std::unique_ptr<StateMachine<TOwner>> machine = std::make_unique<StateMachine<TOwner>>();
             StateMachine<TOwner>* built = machine.get();
             if (!AdoptStateMachine(std::move(machine)))

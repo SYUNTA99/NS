@@ -20,14 +20,14 @@ namespace NS::Game::Player
         const NS::Obj::Body& body = player.Body();
         if (PlayerJudgeFall::Judge(body.IsGrounded()))
         {
-            player.States().Change<FallPlayerState>(player);
+            player.States().Change<FallPlayerState>();
         }
         else if (PlayerJudgeWalk::Judge(
                      body.IsGrounded(),
                      PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), player.Params().StickDeadzone()),
                      PlayerJudgeStopped::Judge(body.LateralVelocity())))
         {
-            player.States().Change<WalkPlayerState>(player);
+            player.States().Change<WalkPlayerState>();
         }
     }
 } // namespace NS::Game::Player

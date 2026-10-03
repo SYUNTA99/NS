@@ -106,7 +106,7 @@ TEST(PlayerUpdatePipeline, SlamHeadingStaysOnTheAimBesideAnOffAxisTarget)
     ExpectSameVector(predicted, before);
     ExpectSameVector(player->BodySlamVelocity(), before);
     player->ChargeControl().AdvanceState(NS::Platform::FrameTimer::FixedDelta());
-    player->States().Step(*player, NS::Platform::FrameTimer::FixedDelta());
+    player->States().Step(NS::Platform::FrameTimer::FixedDelta());
     EXPECT_FLOAT_EQ(player->BodySlamVelocity().x, before.x);
     const float vertical = player->Body().VerticalVelocity();
     player->ChargeControl().ApplyControl();
