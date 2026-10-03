@@ -384,6 +384,7 @@ private:
         NS::Core::Vector3 dir{};     // 最後に出した突進の水平の向き。正規化済み。書くのは出せた時だけ
         float charge01 = 0.0f;       // 発動時に確定した溜め量 0..1
         float overcharge01 = 0.0f;   // 発動時に確定した溜めすぎの深さ 0..1
+        bool forced = false;         // 溜めすぎで勝手に出た突進か
         bool wasSlamming = false;    // 直前のフレームを突進中で終えたか。書くのは MoveBody と ResetState
     };
 

@@ -52,6 +52,8 @@ TEST(PlayerOvercharge, ForcedLaunchFiresOnceAndThenStopsTheChargeShow)
     player.Update(true);
     EXPECT_TRUE(player.IsBodySlamming());
     EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 1.0f);
+    // 勝手に出た突進の間は、追従カメラが遅れて付いていく
+    EXPECT_TRUE(player.GetCameraTargetState().rebound.forcedSlamming);
 
     // 出た後は押したままでも溜めの見せ方を出さない。押している事実と丸まりは続く
     player.Update(true);

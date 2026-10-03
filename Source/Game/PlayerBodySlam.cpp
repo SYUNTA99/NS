@@ -324,6 +324,7 @@ bool Player::BodySlam() noexcept
     m_slam.dir = dir;
     m_request.hasDir = false;
     // 溜めすぎで控えた突進なら、判定が頼み直しを止めて放すまで溜め無しになる
+    m_slam.forced = m_charge.judge.IsAwaitingLaunch();
     m_charge.judge.MarkLaunched();
     // 地面から出した突進は数えない。数えると、浮いて当てたタップや上向きに放った突進の反動で空中の 1 発が出ない
     if (launchedInAir)

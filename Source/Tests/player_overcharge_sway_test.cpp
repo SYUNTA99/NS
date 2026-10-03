@@ -94,6 +94,8 @@ TEST(PlayerOverchargeSway, RedHoldsStillAndPurpleReleaseFollowsTheSwayedLine)
     EXPECT_NEAR(SwayAngle(player.BodySlamDirection()), SwayAngle(aim.direction), 0.0001f);
     EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 1.0f);
     EXPECT_FLOAT_EQ(player.BodySlamOvercharge01(), overcharge);
+    // 自分で放した突進ではカメラを遅らせない
+    EXPECT_FALSE(player.GetCameraTargetState().rebound.forcedSlamming);
 }
 
 // 紫になりきった時、揺れは端に来ていて、勝手に出た突進はその向きへ出る。どちらの端かは溜めすぎのたびに入れ替わる

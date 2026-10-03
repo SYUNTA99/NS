@@ -189,6 +189,8 @@ namespace NS::Obj
     {
         m_rebound = FollowReboundDesc{};
         m_wasRebounding = false;
+        m_wasForcedSlamming = false;
+        m_reboundLagCap = 0.0f;
         m_reboundLookHeld = false;
         m_reboundTurnAngle = 0.0f;
         m_reboundTurnFrame = 0;
@@ -242,10 +244,11 @@ namespace NS::Obj
         }
     }
 
-    void ThirdPersonFollow::UpdateReboundPhase(bool began, bool rebounding, const NS::Core::Vector3& head) noexcept
+    void ThirdPersonFollow::UpdateReboundPhase(
+        bool began, bool rebounding, bool launchBegan, bool launching, const NS::Core::Vector3& head) noexcept
     {
         // 反動の状態になったフレームに、前のフレームに見ていた所から留める
-        // 空中で続けて当てた時も留め直す
+        // 空中で続けて当てた時も留め直す。勝手に出た突進の途中で当たった時も、遅れた注視点から続けるので跳ばない
         if (began)
         {
             m_reboundPhase = ReboundPhase::Following;
@@ -258,12 +261,34 @@ namespace NS::Obj
                 m_reboundAnchor = head;
             }
             m_reboundAnchorVelocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            // 勝手に出た突進の遅れは反動の上限より大きいことがある。入った時の遅れを上限の初めにして、切って跳ばさない
+            const float lagX = m_reboundAnchor.x - head.x;
+            const float lagZ = m_reboundAnchor.z - head.z;
+            m_reboundLagCap = std::max(m_reboundMaxLag, std::sqrt(lagX * lagX + lagZ * lagZ));
             return;
         }
 
-        // 反動の状態が外れたフレームから寄せ戻す
-        // 着地のほか、空中の 1 発と縁を掴んだ時も外れる
-        if (m_reboundPhase == ReboundPhase::Following && !rebounding)
+        // 勝手に出た突進になったフレームに、前のフレームに見ていた所へ取り残す。バネは止まった所から動き出すので、
+        // 出た最初の数フレームは注視点がほぼ動かない
+        if (launchBegan)
+        {
+            m_reboundPhase = ReboundPhase::Launching;
+            if (m_hasLook)
+            {
+                m_reboundAnchor = m_look;
+            }
+            else
+            {
+                m_reboundAnchor = head;
+            }
+            m_reboundAnchorVelocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            return;
+        }
+
+        // 反動の状態か勝手に出た突進が外れたフレームから寄せ戻す
+        // 着地のほか、空中の 1 発と縁を掴んだ時も外れる。突進は当たらずに止まった時に外れる
+        if ((m_reboundPhase == ReboundPhase::Following && !rebounding) ||
+            (m_reboundPhase == ReboundPhase::Launching && !launching))
         {
             if (m_reboundReturnFrames > 0 && m_hasLook)
             {
@@ -313,6 +338,27 @@ namespace NS::Obj
             return m_look;
         }
 
+        if (m_reboundPhase == ReboundPhase::Launching)
+        {
+            // 横と前後は臨界減衰のバネで追う。バネの値は切らず、見せる遅れだけを 上限 × tanh(遅れ ÷ 上限) で丸める
+            // 届いたフレームに切ると、カメラの速さが急に突進と同じになって引っかかったように見える
+            // 高さは追う相手の頭のまま
+            CriticalSpringStep(m_reboundAnchor.x, m_reboundAnchorVelocity.x, head.x, m_forcedLaunchFollowOmega, dt);
+            CriticalSpringStep(m_reboundAnchor.z, m_reboundAnchorVelocity.z, head.z, m_forcedLaunchFollowOmega, dt);
+            const float lagX = m_reboundAnchor.x - head.x;
+            const float lagZ = m_reboundAnchor.z - head.z;
+            const float lag = std::sqrt(lagX * lagX + lagZ * lagZ);
+            const float maxLag = std::max(m_forcedLaunchMaxLag, 0.0f);
+            m_look = head;
+            if (lag > 0.0f && maxLag > 0.0f)
+            {
+                const float shown = maxLag * std::tanh(lag / maxLag);
+                m_look.x = head.x + lagX * (shown / lag);
+                m_look.z = head.z + lagZ * (shown / lag);
+            }
+            return m_look;
+        }
+
         // 横と前後は臨界減衰のバネで遅れて付いていき、遅れは上限の内に留める
         // 高さは留めたまま
         CriticalSpringStep(m_reboundAnchor.x, m_reboundAnchorVelocity.x, head.x, m_reboundFollowOmega, dt);
@@ -320,13 +366,15 @@ namespace NS::Obj
         const float lagX = m_reboundAnchor.x - head.x;
         const float lagZ = m_reboundAnchor.z - head.z;
         const float lag = std::sqrt(lagX * lagX + lagZ * lagZ);
-        const float maxLag = std::max(m_reboundMaxLag, 0.0f);
+        const float maxLag = std::max(m_reboundLagCap, 0.0f);
         if (lag > maxLag)
         {
             const float scale = maxLag / lag;
             m_reboundAnchor.x = head.x + lagX * scale;
             m_reboundAnchor.z = head.z + lagZ * scale;
         }
+        // 上限は欄の値より上にある間だけ、今の遅れまで縮めていく。増やさないので注視点は跳ばない
+        m_reboundLagCap = std::max(m_reboundMaxLag, std::min(m_reboundLagCap, std::min(lag, maxLag)));
         m_look = m_reboundAnchor;
 
         // 追う相手が画面の上下の帯を越えそうな時だけ、
@@ -573,6 +621,8 @@ namespace NS::Obj
         // 空中で続けて当てた時も、間に反動でないフレームを挟むのでここを通る
         const bool reboundBegan = rebound.rebounding && !m_wasRebounding;
         m_wasRebounding = rebound.rebounding;
+        const bool launchBegan = rebound.forcedSlamming && !m_wasForcedSlamming;
+        m_wasForcedSlamming = rebound.forcedSlamming;
         UpdateReboundTurn(reboundBegan, rebound);
 
         // マウスと右スティックの手動回転。反動になってから接地するまでは受けない
@@ -603,7 +653,7 @@ namespace NS::Obj
 
         const NS::Core::Vector3 root = target->Position();
         const NS::Core::Vector3 head{root.x, root.y + m_targetHeightOffset + m_headHeight, root.z};
-        UpdateReboundPhase(reboundBegan, rebound.rebounding, head);
+        UpdateReboundPhase(reboundBegan, rebound.rebounding, launchBegan, rebound.forcedSlamming, head);
 
         // 接地と速度で決める自動ズーム距離
         // 反動になったフレームに、目標を当たった瞬間の距離より欄の分だけ伸ばし、

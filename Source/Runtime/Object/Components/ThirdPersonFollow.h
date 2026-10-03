@@ -25,6 +25,8 @@ namespace NS::Obj
     struct FollowReboundDesc
     {
         bool rebounding = false; // 追う相手が反動の状態か
+        // 追う相手が溜めすぎで勝手に出た突進の最中か。真の間は注視点の横と前後が遅れて付いていく
+        bool forcedSlamming = false;
         // 反動を起こした突進を出したフレームの向き。世界座標で、縦の成分は使わない
         // 水平の長さが 0 なら回さない
         NS::Core::Vector3 slamDirection{};
@@ -38,6 +40,7 @@ namespace NS::Obj
     //! 受けた溜めから視野角の締め・縦の揺れ・構図のずらしを作って姿勢に足す
     //! 構図のずらしは追う相手と狙う相手を枠に収めるよう、位置と注視点を同じだけ動かす
     //! 反動の状態の間は、注視点の高さを反動の始まりに留め、横と前後は遅れて付いていく
+    //! 勝手に出た突進の間は、注視点の横と前後がその場に取り残されてから引っ張られるように追い付く
     //! 追う相手が画面の上下の帯を越えそうな時だけ追い、
     //! 反動の状態が外れたら普通の追い方へ寄せ戻す
     //! 反動になったフレームから、水平の向きを反動を起こした突進を出した向きへ回し、
@@ -177,6 +180,8 @@ namespace NS::Obj
         NS_REFLECT_FIELD(m_reboundReturnFrames, "反動の後に戻すフレーム数")
         NS_REFLECT_FIELD(m_reboundTurnFrames, "反動の向きへ回すフレーム数")
         NS_REFLECT_FIELD(m_reboundPullBack, "反動の間に下げる距離")
+        NS_REFLECT_FIELD(m_forcedLaunchFollowOmega, "強制発射の追う速さ")
+        NS_REFLECT_FIELD(m_forcedLaunchMaxLag, "強制発射の遅れの上限")
         NS_REFLECT_ACCESSOR(float, "ファークリップ", FarPlane(), SetFarPlane)
         NS_REFLECT_ACCESSOR(int, "優先度", VcamPriority(), SetVcamPriority)
         NS_REFLECT_END()
@@ -190,9 +195,11 @@ namespace NS::Obj
                           float dt) noexcept;
 
         // 反動になったフレームかと反動の状態から、反動の間の追い方の段を進める
+        // 勝手に出た突進になったフレームと、その最中かも見る
         // 距離と注視点を決める前に呼ぶ
         // head は追う相手の頭
-        void UpdateReboundPhase(bool began, bool rebounding, const NS::Core::Vector3& head) noexcept;
+        void UpdateReboundPhase(
+            bool began, bool rebounding, bool launchBegan, bool launching, const NS::Core::Vector3& head) noexcept;
 
         // 反動になったフレームかと受けた反動の状態から、回す入力を受けないかを決め、
         // 水平の向きの回しを 1 フレーム進める
@@ -210,6 +217,7 @@ namespace NS::Obj
         enum class ReboundPhase
         {
             None,      // 普通の追い方
+            Launching, // 勝手に出た突進の間
             Following, // 反動の状態の間
             Returning, // 反動の状態が外れてから普通の追い方へ寄せ戻している
         };
@@ -266,6 +274,10 @@ namespace NS::Obj
         int m_reboundReturnFrames = 20;    // 反動が外れてから普通の追い方へ寄せ戻すフレーム数
         int m_reboundTurnFrames = 20;      // 反動になってから突進の向きへ回し終えるフレーム数
         float m_reboundPullBack = 1.0f;    // 反動の間に当たった瞬間の距離より伸ばす距離 (m)
+        // 勝手に出た突進の間に注視点の横と前後が寄るバネ角速度 (1/秒)。反動と同じ 4 から始める
+        float m_forcedLaunchFollowOmega = 4.0f;
+        // 勝手に出た突進の間に見せる遅れの上限 (m)。反動の 1.5 m だと約 5 フレームで届き、普通の突進と見分けにくい
+        float m_forcedLaunchMaxLag = 3.0f;
 
         FollowChargeDesc m_charge{};               // 次の OnUpdate で使う溜めの状態
         float m_chargeHoldNarrowDegrees = 0.0f;    // 前のフレームの押している間の締め (度)
@@ -277,12 +289,14 @@ namespace NS::Obj
 
         FollowReboundDesc m_rebound{};                    // 次の OnUpdate で使う反動の状態
         bool m_wasRebounding = false;                     // 前のフレームに反動の状態だったか
+        bool m_wasForcedSlamming = false;                 // 前のフレームに勝手に出た突進の最中だったか
         bool m_reboundLookHeld = false;                   // 反動になってから接地するまで、回す入力を受けないか
         float m_reboundTurnAngle = 0.0f;                  // 反動になったフレームに決めた、回す角度 (ラジアン)
         int m_reboundTurnFrame = 0;                       // 回しの何フレーム目か。欄のフレーム数で回し終える
         ReboundPhase m_reboundPhase = ReboundPhase::None; // 今の段
         NS::Core::Vector3 m_reboundAnchor{};              // 横と前後を遅らせて追う注視点。高さは留める
         NS::Core::Vector3 m_reboundAnchorVelocity{};      // 注視点の横と前後の速さ (m/秒)。縦は使わない
+        float m_reboundLagCap = 0.0f;                     // 反動の間の遅れの今の上限 (m)。欄の上限より下にはしない
         NS::Core::Vector3 m_reboundReturnOffset{};        // 寄せ戻し始めの、注視点 − 追う相手の頭 (m)
         int m_reboundReturnFrame = 0;                     // 寄せ戻しの何フレーム目か
         NS::Core::Vector3 m_look{};                       // このフレームの注視点。反動と寄せ戻しで使う

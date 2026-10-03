@@ -108,6 +108,7 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
     state.hasRebound = true;
     state.rebound = NS::Obj::FollowReboundDesc{
         .rebounding = IsRebounding(),
+        .forcedSlamming = IsBodySlamming() && m_slam.forced,
         .slamDirection = BodySlamDirection(),
     };
     // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す。溜めすぎで出た後は押していても
@@ -514,6 +515,7 @@ void Player::ResetState() noexcept
     m_request.verticalSpeed = 0.0f;
     m_slam.charge01 = 0.0f;
     m_slam.overcharge01 = 0.0f;
+    m_slam.forced = false;
     m_slam.travelled = 0.0f;
     m_slam.distanceTarget = 0.0f;
     m_slam.justStarted = false;
