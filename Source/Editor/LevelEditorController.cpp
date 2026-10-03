@@ -115,7 +115,9 @@ namespace
     }
 
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状
-    void DrawColliderWireframe(NS::Gfx::DebugShapes& shapes, NS::Obj::Actor& object, const NS::Core::Color& color) noexcept
+    void DrawColliderWireframe(NS::Gfx::DebugShapes& shapes,
+                               NS::Obj::Actor& object,
+                               const NS::Core::Color& color) noexcept
     {
         if (NS::Obj::BoxCollider* box = NS::Obj::ComponentCast<NS::Obj::BoxCollider>(object.CollisionPart()))
         {
@@ -138,8 +140,7 @@ namespace
         {
             // 移動が掃引するのと同じ、根を中心にした縦のカプセル。根の拡縮は掛けない
             const NS::Phys::Capsule bodyCapsule = body->CapsuleAt(object.Root().Position());
-            shapes.Capsule(
-                bodyCapsule.center, bodyCapsule.axis * bodyCapsule.halfHeight, bodyCapsule.radius, color);
+            shapes.Capsule(bodyCapsule.center, bodyCapsule.axis * bodyCapsule.halfHeight, bodyCapsule.radius, color);
         }
         else if (NS::Obj::ComponentCast<NS::Obj::MeshCollider>(object.CollisionPart()) != nullptr)
         {
@@ -161,7 +162,9 @@ namespace
     }
 
     // 配置物 1 体のヒットセンサーの形を線で描く。範囲 (落下死・ゴール) は地形の当たりを持たないので、ここで見せる
-    void DrawSensorWireframe(NS::Gfx::DebugShapes& shapes, NS::Obj::Actor& object, const NS::Core::Color& color) noexcept
+    void DrawSensorWireframe(NS::Gfx::DebugShapes& shapes,
+                             NS::Obj::Actor& object,
+                             const NS::Core::Color& color) noexcept
     {
         for (const NS::Obj::HitSensor* sensor : {object.BodySensorPart(), object.AttackSensorPart()})
         {
@@ -361,12 +364,7 @@ void LevelEditorController::ApplyPlayCursor(NS::Editor::PlayCursor cursor) noexc
     {
         return;
     }
-    // 見えるカーソルと相対モードの併存は挙動が矛盾するので、3 つを必ず揃えて切り替える
-    const bool captured = cursor == NS::Editor::PlayCursor::Captured;
-    app->Window().SetCursorVisible(!captured);
-    // 固定しないとクリックが他のパネルへ落ち、押しっぱなしの体当たり入力が届かないフレームができる
-    app->Window().SetCursorLocked(captured);
-    app->Input().Mouse().SetRelativeMode(captured);
+    app->SetCursorCaptured(cursor == NS::Editor::PlayCursor::Captured);
 }
 
 const NS::Obj::ObjectList& LevelEditorController::Objects() const noexcept
@@ -574,12 +572,10 @@ void LevelEditorController::LeavePlayForEdit()
     nlohmann::json baseline = m_scene->PlayBaseline();
     m_scene->LoadJson(std::move(baseline));
 
-    // 編集モードはカーソルを出し、相対モードも解いてカーソル位置ベースの操作へ戻す
+    // 編集モードはカーソルを出し、カーソル位置ベースの操作へ戻す
     if (NS::App::Application* app = NS::App::Application::Get())
     {
-        app->Window().SetCursorVisible(true);
-        app->Window().SetCursorLocked(false);
-        app->Input().Mouse().SetRelativeMode(false);
+        app->SetCursorCaptured(false);
     }
 }
 
@@ -1132,8 +1128,7 @@ void LevelEditorController::RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
         const NS::Obj::CameraPose pose = vcam->EvaluatePose(1.0f);
         DrawCameraFrustum(shapes, pose, aspect, camColor);
         const float markerHalf = CameraMarkerHalf(pose.position, viewProjection);
-        shapes.AABB(NS::Core::AABB{pose.position, NS::Core::Vector3{markerHalf, markerHalf, markerHalf}},
-                                 camColor);
+        shapes.AABB(NS::Core::AABB{pose.position, NS::Core::Vector3{markerHalf, markerHalf, markerHalf}}, camColor);
     }
 }
 
@@ -1276,8 +1271,7 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
     {
         return;
     }
-    shapes.Sphere(NS::Core::Sphere{impact.surfacePoint, k_HitTouchMarkerRadius},
-                               NS::Editor::HitZoneColor(impact.tier));
+    shapes.Sphere(NS::Core::Sphere{impact.surfacePoint, k_HitTouchMarkerRadius}, NS::Editor::HitZoneColor(impact.tier));
 }
 
 void LevelEditorController::CaptureSelectionFromGizmo() noexcept

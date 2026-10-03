@@ -113,6 +113,14 @@ namespace NS::App
         return NS::Platform::Input::Get();
     }
 
+    void Application::SetCursorCaptured(bool captured) noexcept
+    {
+        m_window->SetCursorVisible(!captured);
+        // 固定しないとクリックが他のパネルへ落ち、押しっぱなしの体当たり入力が届かないフレームができる
+        m_window->SetCursorLocked(captured);
+        NS::Platform::Input::Get().Mouse().SetRelativeMode(captured);
+    }
+
     NS::Obj::AssetManager& Application::Assets() noexcept
     {
         NS_ASSERT(App, m_assets, "Init 前 / Shutdown 後に Assets() を呼んでいる");
