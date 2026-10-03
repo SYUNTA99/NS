@@ -1,6 +1,7 @@
 #include "Game/Player.h"
 
 #include "Game/Player/HorizontalTurn.h"
+#include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -153,22 +154,9 @@ void Player::CutJumpRelease() noexcept
 
 void Player::Gravity(float dt) noexcept
 {
+    // 強さの選び方は LaunchPitch と同じ関数。写すと欄を変えた時に放つ角度の予測と実際の落ち方が割れる
     NS::Obj::Body& body = *m_body;
-    const bool apex = std::abs(body.VerticalVelocity()) < m_params->m_apexHangVy;
-
-    float baseG = m_params->m_gravityDown;
-    if (body.VerticalVelocity() > 0.0f)
-    {
-        baseG = m_params->m_gravityUp;
-    }
-
-    float g = baseG;
-    if (apex)
-    {
-        g = baseG * m_params->m_apexHangScale;
-    }
-
-    body.Gravity(g, dt);
+    body.Gravity(NS::Game::Player::ChooseGravity(m_params->Gravity(), body.VerticalVelocity()), dt);
 }
 
 void Player::TapSlamGravity(float dt) noexcept

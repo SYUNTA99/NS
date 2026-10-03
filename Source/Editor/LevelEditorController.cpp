@@ -1,17 +1,22 @@
 #include "Editor/LevelEditorController.h"
 
 #include "Editor/EditorObjects.h"
+#include "Editor/HitZoneColors.h"
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
+#include "Game/Level/CollisionInput.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/FollowCamera.h"
+#include "Game/Level/HitZones.h"
+#include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
 #include "Runtime/App/Application.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Core/OBB.h"
+#include "Runtime/Core/Sphere.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/Components/Body.h"
@@ -160,6 +165,32 @@ namespace
             {
                 NS::Gfx::DebugDraw::Sphere(NS::Core::Sphere{center, volume.radius}, color);
             }
+        }
+    }
+
+    // 正面の面の塗りの不透明度。外れの青に赤を重ねても、向こうの相手と床が透けて見える濃さ
+    constexpr float k_HitFaceAlpha = 0.35f;
+    // 直近の当たりの触れた点の印。相手の表面に出るので、玉の模様を隠さない小ささ
+    constexpr float k_HitTouchMarkerRadius = 0.08f;
+
+    // 面の上の形を 1 つ描く。中心から縁の点へ扇に塗り、縁の点を線で結ぶ
+    // 形と縁の点と面の置き方は HitZones の関数が出す。判定と同じ値から描くので、色の境目が判定とずれない
+    void DrawHitFaceShape(const NS::Game::Level::HitFaceFrame& frame,
+                          const NS::Game::Level::HitFaceShape& shape) noexcept
+    {
+        const std::vector<NS::Core::Vector2> outline = NS::Game::Level::HitFaceShapeOutline(shape);
+        const NS::Core::Color edgeColor = NS::Editor::HitZoneColor(shape.tier);
+        NS::Core::Color fillColor = edgeColor;
+        fillColor.A(k_HitFaceAlpha);
+        const NS::Core::Vector3 center = NS::Game::Level::HitFacePoint(frame, shape.centerU, shape.centerV);
+        for (std::size_t i = 0; i < outline.size(); ++i)
+        {
+            const NS::Core::Vector2& from = outline[i];
+            const NS::Core::Vector2& to = outline[(i + 1) % outline.size()];
+            const NS::Core::Vector3 a = NS::Game::Level::HitFacePoint(frame, from.x, from.y);
+            const NS::Core::Vector3 b = NS::Game::Level::HitFacePoint(frame, to.x, to.y);
+            NS::Gfx::DebugDraw::Triangle(center, a, b, fillColor);
+            NS::Gfx::DebugDraw::Line(a, b, edgeColor);
         }
     }
 
@@ -785,6 +816,7 @@ void LevelEditorController::Render()
         if (m_sceneViewVisible)
         {
             RenderColliderWireframes(true);
+            RenderHitFaces();
         }
         return;
     }
@@ -795,6 +827,7 @@ void LevelEditorController::Render()
         RenderCameraGizmos(Cameras()->ViewProjection(), app->Window().Size());
     }
     RenderColliderWireframes(false);
+    RenderHitFaces();
     RenderSelectionOutlines();
     // 蓄積した DebugDraw 線をシーン描画後・ImGui 前にまとめて 1 描画する
     if (Cameras())
@@ -1152,6 +1185,84 @@ void LevelEditorController::RenderColliderWireframes(bool all) noexcept
             DrawSensorWireframe(*objPtr, sensorColor);
         }
     }
+}
+
+void LevelEditorController::RenderHitFaces() noexcept
+{
+    if (m_scene == nullptr)
+    {
+        return;
+    }
+
+    Player* player = FindPlayer(m_scene->Objects());
+    // 自機が居ない場面は半径 0 として、相手の輪郭の大きさで描く
+    float playerRadius = 0.0f;
+    NS::Core::Vector3 ballCenter{};
+    NS::Game::Level::SlamLineTarget aim{};
+    bool aiming = false;
+    if (player != nullptr)
+    {
+        // 突進の玉の中心。丸まっていれば根、立ち姿なら下の球の中心で、狙う相手の探し方と同じ
+        const NS::Core::Vector3 root = player->Root().Position();
+        ballCenter = NS::Core::Vector3{root.x, root.y - player->Body().CapsuleHalfHeight(), root.z};
+        playerRadius = player->Body().CapsuleRadius();
+        aiming = player->ChargeControl().TryGetAimTarget(aim);
+    }
+    const NS::Core::Vector3 cameraPosition = m_editorCamera.Pose().position;
+
+    for (NS::Obj::Actor* object : m_scene->Objects())
+    {
+        if (!object->IsActiveInHierarchy())
+        {
+            continue;
+        }
+        const NS::Game::Level::HitZones* zones =
+            NS::Obj::ComponentCast<NS::Game::Level::HitZones>(object->Part("HitZones"));
+        const NS::Obj::HitSensor* bodySensor = object->BodySensorPart();
+        if (zones == nullptr || bodySensor == nullptr)
+        {
+            continue;
+        }
+        // 調べる対象から外した体は、突進が当たらないので面も出さない
+        if (!bodySensor->IsValid())
+        {
+            continue;
+        }
+        const NS::Obj::SensorVolume body = bodySensor->WorldVolume();
+        NS::Core::Vector3 direction = body.Center() - cameraPosition;
+        if (player != nullptr)
+        {
+            direction = body.Center() - ballCenter;
+        }
+        if (aiming && aim.target.id == object->Id())
+        {
+            direction = aim.direction;
+        }
+        // 真上や真下から見て水平の向きが決まらない相手は描かない
+        NS::Game::Level::HitFaceFrame frame;
+        if (!NS::Game::Level::MakeHitFaceFrame(body, direction, playerRadius, frame))
+        {
+            continue;
+        }
+        for (const NS::Game::Level::HitFaceShape& shape :
+             NS::Game::Level::HitFaceShapes(zones->Face(), frame.bodyShape))
+        {
+            DrawHitFaceShape(frame, shape);
+        }
+    }
+
+    if (player == nullptr)
+    {
+        return;
+    }
+    const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
+    // まだ 1 度も当てていない
+    if (impact.sequence == 0)
+    {
+        return;
+    }
+    NS::Gfx::DebugDraw::Sphere(NS::Core::Sphere{impact.surfacePoint, k_HitTouchMarkerRadius},
+                               NS::Editor::HitZoneColor(impact.tier));
 }
 
 void LevelEditorController::CaptureSelectionFromGizmo() noexcept

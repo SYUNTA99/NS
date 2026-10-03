@@ -235,6 +235,11 @@ private:
     //! @param[in] all 真なら全配置物、偽なら選んでいる分だけ
     void RenderColliderWireframes(bool all) noexcept;
 
+    //! @brief 赤の欄 (部品 HitZones) を持つ相手ごとに、自機の方を向いた正面の面と、直近の当たりの触れた点を描く
+    //! @details 面の向きは、溜めて狙っている相手には狙いの線、それ以外は自機の玉の中心から相手の中心への水平の向き。
+    //! 自機が居なければエディタのカメラから相手への水平の向き。外れの面に段の形を色の表の色で重ね、縁を線で描く
+    void RenderHitFaces() noexcept;
+
     //! 主対象以外の選択物を枠で見せる。ギズモは 1 体にしか出ないので、選んだ範囲を目で追えるようにする
     void RenderSelectionOutlines() noexcept;
     void RefreshGizmoSelectables();

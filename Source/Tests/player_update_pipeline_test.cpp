@@ -92,7 +92,8 @@ TEST(PlayerUpdatePipeline, OneObservationCannotAdvanceChargeTwice)
     EXPECT_TRUE(player.ChargeControl().Judge().JustStartedCharging());
 }
 
-TEST(PlayerUpdatePipeline, PredictedHeadingMatchesControlWithoutChangingVerticalVelocity)
+// 左右の寄せは消した。脇の相手へ向きを曲げると、放った後に矢印とずれて当て所が見えない所で動く
+TEST(PlayerUpdatePipeline, SlamHeadingStaysOnTheAimBesideAnOffAxisTarget)
 {
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
@@ -102,7 +103,7 @@ TEST(PlayerUpdatePipeline, PredictedHeadingMatchesControlWithoutChangingVertical
     const NS::Core::Vector3 before = player->BodySlamVelocity();
     player->ChargeControl().Observe(false);
     const NS::Core::Vector3 predicted = player->ChargeControl().PredictedSlamVelocity();
-    EXPECT_GT(predicted.x, before.x);
+    ExpectSameVector(predicted, before);
     ExpectSameVector(player->BodySlamVelocity(), before);
     player->ChargeControl().AdvanceState(NS::Platform::FrameTimer::FixedDelta());
     player->States().Step(*player, NS::Platform::FrameTimer::FixedDelta());
@@ -205,7 +206,7 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
     EXPECT_TRUE(player->Body().IsActive());
 }
 
-TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringHomingControl)
+TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl)
 {
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
@@ -259,22 +260,22 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
         R"([
         [0, 94, 95, 107, [
             [0, 0, 0.649999976, 0, 0, 0, 0, 0.04, 0.5, 2.5],
-            [90, 0.0053326515, 0.6500000358, 0.3332906961, 0.3199590743, 0, 19.997440338, 0.04, 0.5, 2.5],
-            [92, 0.0174521543, 0.6499999762, 0.999845624, 0.4072110355, 0, 19.995853424, 0.14, 0.5, 2.5],
-            [93, 0.0256930776, 0.6499999166, 1.333077073, 0.4944552481, 0, 19.993886948, 0.14, 0.5, 2.5],
-            [100, 0.0182858333, 0.6500000954, 1.348796487, -0.5317211151, 1.67509e-7, 0.0520853996, 0.141320929, 0.5, 2.54539752],
-            [110, 0.0044905245, 1.111082792, 1.20796454, -0.2069296092, 6.603737831, -2.112478495, 0.240193799, 1.375061989, 5.943464279],
-            [140, -0.098974295, 2.808784485, 0.151724979, -0.2069296092, 0.6662364602, -2.112478495, 0.99164772, 4.410938263, 31.769449234],
-            [189, -0.209735185, 1.149999738, -0.978997231, 0, 0, 0, 2.200480461, 0.501000941, 73.314628601]
+            [90, 0, 0.6500000358, 0.3333333433, 0, 0, 20, 0.04, 0.5, 2.5],
+            [92, 0, 0.6499999762, 1.0, 0, 0, 20, 0.14, 0.5, 2.5],
+            [93, 0, 0.6499999166, 1.3333333731, 0, 0, 20, 0.14, 0.5, 2.5],
+            [100, -0.0123793595, 0.6500000954, 1.3523943424, -0.8675079346, 1.67509e-7, 0.104101181, 0.14, 0.5, 2.5454165936],
+            [110, -0.02943230793, 1.116387725, 1.210286379, -0.2557942271, 6.683314323, -2.131618738, 0.14, 1.384893417, 5.983239174],
+            [140, -0.1573294252, 2.848669291, 0.1444766968, -0.2557942271, 0.641646266, -2.131618738, 0.14, 4.491162777, 32.10754395],
+            [189, -0.294336319, 1.149999738, -0.9972489476, 0, 0, 0, 0.14, 0.501000941, 74.210495]
         ]],
-        [1, 14, 15, 23, [
+        [1, 14, 15, 18, [
             [0, 0, 0.649999976, 0, 0, 0, 0, 0, 0.5, 3],
             [3, 0, 0.6973332763, 0.1666666716, 0, 2.839999914, 10, 0, 0.5, 3],
             [4, 0, 0.7419999242, 0.3333333433, 0, 2.679999828, 10, 0, 0.5, 3],
             [10, 0, 0.953999877, 1.333333254, 0, 1.719999552, 10, 0, 0.5, 3],
-            [30, 0, 1.615098953, 1.771274805, 0, 3.601159573, -1.465437889, 0, 1.604427814, 7.812767506],
-            [60, 0, 1.905609369, 1.038556099, 0, -3.54467392, -1.465437889, 0, 1.999017358, 25.860649109],
-            [89, 0, 1.149999738, 0.729953945, 0, 0, 0, 0, 0.500999987, 42.594406128]
+            [30, 0, 1.669279456, 1.836697578, 0, 1.664880991, -0.5998571515, 0, 1.712962747, 9.446973801],
+            [60, 0, 1.149999976, 1.53676939, 0, 0, -0.5998571515, 0, 0.5009999871, 24.31210518],
+            [89, 0, 1.149999738, 1.53676939, 0, 0, 0, 0, 0.500999987, 36.63962555]
         ]]
     ])");
     for (int scenario = 0; scenario < 2; ++scenario)

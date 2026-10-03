@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Level/HitZones.h"
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
@@ -80,6 +81,7 @@ namespace NS::Game::Level
             return *static_cast<NS::Obj::SphereCollider*>(CollisionPart());
         }
         MapObjParams m_params;
+        HitZones m_hitZones;
         LaunchEffects m_effects;
         NS::Obj::StateMachine<MapObj>* m_states = nullptr; // 基底が所有する。コンストラクタが預けた直後から有効
         NS::Obj::SubStateMachine<MapObj> m_motion;

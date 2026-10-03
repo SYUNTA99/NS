@@ -45,15 +45,15 @@ namespace NS::Game::Level
         float power = 0.0f;
         float charge01 = 0.0f;
         float positionFactor = 0.0f;
-        float offset01 = 0.0f;          //!< 相手の中心からの横ずれ。相手の半幅と自機の半径の和で割った 0..1
-        HitTier tier = HitTier::Center; //!< 当たりの段。CollisionInput が無い時は Center だが演出は掛けない
+        float offset01 = 0.0f;          //!< 面の判定の横ずれ。相手の半幅と自機の半径の和で割った 0..1
+        HitTier tier = HitTier::Center; //!< 当たりの段。CollisionInput が無い時は Center だが段の返りと倍率は掛けない
         float cameraShake = 0.0f;       //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
         int flashStart = 0;             //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
         float zoomStart = 1.0f;         //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
         float rollStart = 0.0f; //!< 傾きの始めの値 (度)。正は画面の上端をカメラの右へ倒す向き。傾きの無い当たりは 0
         NS::Platform::GamepadVibration padStart; //!< パッドの振動の始めの値。振動の無い当たりは 0
         int hitStopSteps = 0;
-        bool centerHit = false; //!< 白の光と止めの倍率を掛けた場合 true。CollisionInput が無い時は false
+        bool centerHit = false; //!< 段が Center で段の返りを掛けた場合 true。CollisionInput が無い時は false
         bool broke = false;
         NS::Core::Vector3 selfVelocity; //!< 明けに自機が持つ速度。反動は初速、貫通は減速した突進の速度。単位は m/s
         // 反動の頂点の高さは押し飛ばしの当たりだけが埋める。貫通の当たりは反動しないので 0
@@ -63,14 +63,14 @@ namespace NS::Game::Level
         float launchDistance = 0.0f;      //!< 相手の曲線が発射の高さへ戻るまでに水平に進む距離。単位は m
         float launchApexHeight = 0.0f;    //!< 相手の曲線の、発射の高さから頂点までの高さ。単位は m
         NS::Core::Vector3 impactDir;      //!< 相手の飛ぶ水平の向き。食い込みと振動の向きも同じ
+        //! 自機の玉が相手の表面に触れた点。JudgeHitFace の触れる点で、判定できない体の時は相手の体の中心
+        NS::Core::Vector3 surfacePoint;
         NS::Core::Vector3 targetPos;
         float targetBottom = 0.0f; //!< 相手の体の外接箱の底の高さ (m)。当たりの粉と照りを置く床
         float targetMass = 1.0f;   //!< 相手の質量。相手が答えた重さ
         bool targetPlaced = true;  //!< 相手が置かれていた (飛んでいなかった) 場合 true
         float launchScale = 0.0f;  //!< 相手の曲線の距離と高さに掛けた比。威力 ÷ 質量の指数乗で、質量 1・威力 1 で 1
         float reboundScale = 0.0f; //!< 自機の反動の高さと距離に掛けた比。威力 × 2 × 質量 ÷ (質量 + 1)
-        //! 惜しい当たりの寄りと振動を保つフレーム数。止めの頭から数え、このフレームから引き始める。他の段は 0
-        int pullBackFrames = 0;
     };
 
     //! @brief 突進の線で最初に触れる相手の予測
@@ -81,10 +81,17 @@ namespace NS::Game::Level
         NS::Core::Vector3 origin;    //!< 探した時の自機の位置。世界座標
         NS::Core::Vector3 direction; //!< 探した水平の向き。正規化済みで y は 0
         float along = 0.0f;          //!< 自機の位置から相手の外接箱の中心までの、線に沿った水平の距離。単位は m
-        float offset = 0.0f; //!< 線から相手の中心までの横ずれ。相手の半幅と自機の半径の和で割った比で、0 以上 1 以下
+        float offset = 0.0f;         //!< 面の判定の横ずれ。0 以上 1 以下で、裁定の当たりの横ずれと同じ式
         //! 線を進む自機の当たりの玉が相手の当たりの形に初めて触れるまでに、玉の中心が線に沿って進む距離。単位は m。
         //! 1 mm の幅で、触れている側へ丸める
         float contact = 0.0f;
+        //! 溜めて放つ瞬間の縦の速さ (m/s)。上が正。LaunchPitch の値で、届かない相手と応じない相手は 0
+        float launchVerticalSpeed = 0.0f;
+        //! 放った玉の中心が相手に触れる所までの、線に沿った水平の距離 (m)。届く相手は着きたい高さで測り、
+        //! それ以外は contact と同じ
+        float launchContact = 0.0f;
+        //! 段の予測。放つ縦の速さの道筋が launchContact で居る高さで、裁定と同じ面の判定で出す
+        HitTier tier = HitTier::Wide;
     };
 
     //! @brief ぶつかった結果を自機側で決める Component
@@ -138,7 +145,7 @@ namespace NS::Game::Level
         //! 直近の裁定で読んだ溜め量 0..1
         [[nodiscard]] float LastCharge01() const noexcept { return m_lastCharge01; }
 
-        //! 直近の裁定の当たり位置係数
+        //! 直近の裁定の当たり位置係数。相手の面で当てはまった決まりの威力の倍率
         [[nodiscard]] float LastPositionFactor() const noexcept { return m_lastPositionFactor; }
 
         //! 直近の裁定の最終威力
@@ -153,29 +160,17 @@ namespace NS::Game::Level
         //! 凍結の途中で外れても移動を止めたままにしない
         void OnEndPlay() override;
 
-        //! @brief 突進の向きを寄せる相手を探す
-        //! @details 相手はプレイヤーの体当たりが調べる種類の、有効な体のセンサーを持つ物。裁定と同じ絞り。
-        //! 自機の位置から外接箱の中心への水平の向きが forward から coneDegrees 以内で、
-        //! 水平の距離が maxDistance 以内の相手のうち、preferred が居ればそれを、居なければ一番近い 1 体を選ぶ
-        //! @param[in] forward 基準の向き。水平の成分だけを見る
-        //! @param[in] coneDegrees 基準の向きから片側に見る角度。単位は度
-        //! @param[in] maxDistance 見る水平の距離。単位は m
-        //! @param[out] outCenter 見つけた相手の外接箱の中心。見つからない場合は書き換えない
-        //! @param[in] preferred 角度と距離の内に居れば、一番近い相手より先に選ぶ相手。未設定なら一番近い相手を選ぶ
-        //! @return 見つかった場合 true、それ以外の場合は false
-        [[nodiscard]] bool FindHomingTarget(const NS::Core::Vector3& forward,
-                                            float coneDegrees,
-                                            float maxDistance,
-                                            NS::Core::Vector3& outCenter,
-                                            NS::Obj::ActorRef preferred = NS::Obj::ActorRef{}) const;
-
         //! @brief 突進の線で最初に触れる相手を探す
-        //! @details 相手の絞りは FindHomingTarget と同じ。自機の当たりの玉 (丸まっていれば根の位置、立ち姿なら下の球の
-        //! 位置が中心で、半径は自機の半径) を direction の水平へ maxDistance 掃き、当たりの裁定と同じく
-        //! 相手の体のセンサーの形に触れるかを見る。
+        //! @details 相手はプレイヤーの体当たりが調べる種類の、有効な体のセンサーを持つ物で、裁定と同じ絞り。
+        //! 自機の当たりの玉 (丸まっていれば根の位置、立ち姿なら下の球の位置が中心で、半径は自機の半径) を
+        //! direction の水平へ maxDistance 掃き、当たりの裁定と同じく相手の体のセンサーの形に触れるかを見る。
         //! 線から相手の外接箱の中心までの横ずれが、外接箱を線に直交する軸へ投影した半幅と自機の半径の和以内で、
         //! 中心までの線に沿った距離が 0 より大きく、掃いた玉が触れる相手のうち、玉が触れるまでに進む距離が一番短い
-        //! 1 体を選ぶ。横ずれの比は当たりの裁定と同じ式で出し、裁定はそれを 0〜1 に丸めて使う。
+        //! 1 体を選ぶ。選んだ相手には MsgAskTackleTarget で面を問い、段と横ずれを裁定と同じ JudgeHitFaceOrWide で出す。
+        //! 選んだ相手の赤の高さ (HitFaceAimHeight) へ向ける、溜めて放つ瞬間の縦の速さを LaunchPitch で出す。
+        //! 水平の速さは欄「突進速度」、角度の上限は欄「放つ角度の上限」、接地しているかは今の身体の値。
+        //! 段を出す玉の中心の高さは、その縦の速さで放った道筋 (LaunchHeightAt) が触れる所で居る高さ。
+        //! 応じない相手は外れ・横ずれ 1・縦の速さ 0 とする。
         //! 壁と地形で突進が止まることは見ない
         //! @param[in] direction 線の向き。水平の成分だけを見る
         //! @param[in] maxDistance 線に沿って玉を掃く距離。単位は m
@@ -200,6 +195,22 @@ namespace NS::Game::Level
 
         // 凍結を掛ける。自機を寝かせて潰し、当たりの返りを始め、相手へ止めの頭を知らせる
         void BeginFreeze(int stopSteps);
+
+        // 当たり 1 回の返り。揺れの向きと種、寄りと傾きの向きは呼び手が入れる
+        struct TierReturns
+        {
+            int flashSteps = 0; // 白の光のフレーム数
+            NS::Obj::CameraShakeDesc shake;
+            NS::Obj::CameraZoomRollDesc zoomRoll;
+            NS::Obj::HitPadVibration pad;
+        };
+
+        // 段の返りを掛けない当たりの返り。縦だけの揺れを止めのフレーム数で収め、白・寄り・傾き・振動は無い
+        [[nodiscard]] static TierReturns PlainReturns(float swing, int stopSteps) noexcept;
+
+        // 段ごとに 1 行の表から返りを組む。段を足したら行を足す
+        // swing は全段で同じ式の最初の振れの大きさで、段の倍率は行が掛ける
+        [[nodiscard]] TierReturns TierReturnsFor(HitTier tier, float swing, int stopSteps) const noexcept;
 
         // 当たりの返り (白・揺れ・寄りと傾き・振動) を段から組んで控え、記録へ始めの値を書く。検知のフレームに呼ぶ
         // 事前条件: 反動の向き・相手の飛ぶ向き・相手の番号と位置を控え終えている

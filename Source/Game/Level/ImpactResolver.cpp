@@ -1,10 +1,12 @@
 ﻿#include "Game/Level/ImpactResolver.h"
 
 #include "Game/Level/CollisionInput.h"
+#include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player.h"
+#include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Logger.h"
@@ -59,17 +61,6 @@ namespace NS::Game::Level
             return seed[0];
         }
 
-        // 止めのフレーム数 × ratio を切り上げたフレーム数。ratio は 0〜1 に収め、非数は 0 として扱う
-        [[nodiscard]] int PullBackFrames(int stopSteps, float ratio) noexcept
-        {
-            if (!(ratio > 0.0f))
-            {
-                return 0;
-            }
-            const float clamped = std::min(ratio, 1.0f);
-            return static_cast<int>(std::ceil(static_cast<float>(stopSteps) * clamped));
-        }
-
         // 自機の位置から向きの線を引いた時の、相手の外接箱の中心の測り
         struct LineOffset
         {
@@ -77,7 +68,7 @@ namespace NS::Game::Level
             float ratio = 0.0f; // 線から相手の中心までの横ずれ ÷ (相手の半幅 + 自機の半径)。0〜1 へ丸めない
         };
 
-        // 当たりの裁定と突進の線の予測が同じ式を通る。式を 2 つ置くと、予測した横ずれと当たりの段が食い違う
+        // 狙う相手の絞りだけが使う。段と横ずれの値は裁定と同じく JudgeHitFace で出す
         // 分母は AABB を向きに直交する軸へ投影した半幅に自機の半径を足した値
         // 触れられる横ずれの上限が比 1 になる。斜めの箱でも角をかすめる当たりが 1
         // 球と傾いた箱は外接箱で測るので実際の縁より広く出る
@@ -104,16 +95,6 @@ namespace NS::Game::Level
                 return LineOffset{.along = along, .ratio = 0.0f};
             }
             return LineOffset{.along = along, .ratio = lateral / reach};
-        }
-
-        // 相手の中心からの横ずれ 0..1。OnUpdate へ式を埋めると当たり判定の流れが読めなくなる
-        // 水平が 0 の枝は要らない。向かっていないフレームは内積の判定で先に返しており、水平が 0 のフレームもそこへ入る
-        [[nodiscard]] float HitOffset01(const NS::Core::Vector3& position,
-                                        const NS::Core::AABB& bounds,
-                                        const NS::Core::Vector3& velocity,
-                                        float playerRadius) noexcept
-        {
-            return NS::Core::Clamp(MeasureLineOffset(position, bounds, velocity, playerRadius).ratio, 0.0f, 1.0f);
         }
 
         // 触れる所を詰める幅の下限 (m)。1 mm は地面の矢印の先の位置の違いとして見分けられない長さ
@@ -167,7 +148,16 @@ namespace NS::Game::Level
             return touched;
         }
 
-        // 体当たりが調べる種類の、有効な体のセンサーか。当たりの裁定と寄せる相手の探索が同じ絞りを通る
+        // この固定ステップで進んだ先の根の位置。重なりと段を同じ所で見るため、裁定はどちらもここを通る
+        [[nodiscard]] NS::Core::Vector3 PositionAfterStep(const NS::Core::Vector3& position,
+                                                          const NS::Core::Vector3& velocity) noexcept
+        {
+            const float dt = NS::Platform::FrameTimer::FixedDelta();
+            return NS::Core::Vector3{
+                position.x + velocity.x * dt, position.y + velocity.y * dt, position.z + velocity.z * dt};
+        }
+
+        // 体当たりが調べる種類の、有効な体のセンサーか。当たりの裁定と狙う相手の探索が同じ絞りを通る
         [[nodiscard]] bool IsTackleTarget(const NS::Obj::HitSensor& sensor, const NS::Obj::Actor* self) noexcept
         {
             return sensor.IsValid() && sensor.Owner() != self &&
@@ -217,12 +207,9 @@ namespace NS::Game::Level
         }
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
-        const float dt = NS::Platform::FrameTimer::FixedDelta();
 
         // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
-        const NS::Phys::Capsule capsule{NS::Core::Vector3{position.x + predictedVelocity.x * dt,
-                                                          position.y + predictedVelocity.y * dt,
-                                                          position.z + predictedVelocity.z * dt},
+        const NS::Phys::Capsule capsule{PositionAfterStep(position, predictedVelocity),
                                         NS::Core::Vector3::UnitY,
                                         m_body->CapsuleHalfHeight(),
                                         m_body->CapsuleRadius()};
@@ -245,79 +232,6 @@ namespace NS::Game::Level
             }
         }
         return nearest;
-    }
-
-    bool ImpactResolver::FindHomingTarget(const NS::Core::Vector3& forward,
-                                          float coneDegrees,
-                                          float maxDistance,
-                                          NS::Core::Vector3& outCenter,
-                                          NS::Obj::ActorRef preferred) const
-    {
-        NS::Core::Vector3 forwardDir{};
-        if (Owner() == nullptr || !NS::Core::TryNormalizeHorizontal(forward, forwardDir))
-        {
-            return false;
-        }
-        NS::Obj::Scene* scene = Owner()->OwningScene();
-        if (scene == nullptr)
-        {
-            return false;
-        }
-
-        // 角度は内積と余弦で比べる。非有限の角度は比較が偽になり、誰も拾わない
-        const float minCosine = std::cos(NS::Core::ToRadians(NS::Core::Degrees{coneDegrees}).value);
-        const NS::Core::Vector3 position = Owner()->Root().Position();
-
-        // TODO: 体のセンサーを総当たりで見ている。数十個までを想定。増えたら格子で絞る
-        bool found = false;
-        float nearestDistance = 0.0f;
-        NS::Core::Vector3 nearestCenter{};
-        bool preferredFound = false;
-        NS::Core::Vector3 preferredCenter{};
-        for (const NS::Obj::HitSensor* sensor : scene->HitSensors().Sensors())
-        {
-            if (!IsTackleTarget(*sensor, Owner()))
-            {
-                continue;
-            }
-            const NS::Core::AABB bounds = sensor->WorldVolume().Bounds();
-
-            const float dx = bounds.Center.x - position.x;
-            const float dz = bounds.Center.z - position.z;
-            const float distance = std::sqrt(dx * dx + dz * dz);
-            // 真上と真下の相手は向きが決まらない
-            if (!(distance >= NS::Core::k_Epsilon) || !(distance <= maxDistance))
-            {
-                continue;
-            }
-            const float cosine = (dx * forwardDir.x + dz * forwardDir.z) / distance;
-            if (!(cosine >= minCosine))
-            {
-                continue;
-            }
-            if (preferred.IsSet() && sensor->Owner()->Id() == preferred.id)
-            {
-                preferredFound = true;
-                preferredCenter = bounds.Center;
-            }
-            if (!found || distance < nearestDistance)
-            {
-                found = true;
-                nearestDistance = distance;
-                nearestCenter = bounds.Center;
-            }
-        }
-
-        if (preferredFound)
-        {
-            outCenter = preferredCenter;
-            return true;
-        }
-        if (found)
-        {
-            outCenter = nearestCenter;
-        }
-        return found;
     }
 
     bool ImpactResolver::FindSlamLineTarget(const NS::Core::Vector3& direction,
@@ -359,7 +273,8 @@ namespace NS::Game::Level
         // TODO: 体のセンサーを総当たりで見ている。数十個までを想定。増えたら格子で絞る
         bool found = false;
         SlamLineTarget first{};
-        for (const NS::Obj::HitSensor* sensor : scene->HitSensors().Sensors())
+        NS::Obj::HitSensor* firstSensor = nullptr;
+        for (NS::Obj::HitSensor* sensor : scene->HitSensors().Sensors())
         {
             if (!IsTackleTarget(*sensor, Owner()))
             {
@@ -393,16 +308,67 @@ namespace NS::Game::Level
                                        .origin = position,
                                        .direction = lineDir,
                                        .along = line.along,
-                                       .offset = line.ratio,
                                        .contact = contact};
+                firstSensor = sensor;
             }
         }
-
-        if (found)
+        if (!found)
         {
-            outTarget = first;
+            return false;
         }
-        return found;
+
+        // 応じない相手は裁定でも当たらないので、外れの既定のまま水平に放つ
+        first.launchContact = first.contact;
+        HitFaceJudgement judgement;
+        TackleTargetAnswer answer{};
+        if (SendMsgAskTackleTarget(*firstSensor, answer))
+        {
+            const NS::Game::Player::PlayerParams& params = Tuning();
+            float aimHeight = ballCenter.y;
+            if (!HitFaceAimHeight(answer.face, answer.body, lineDir, playerRadius, aimHeight))
+            {
+                aimHeight = ballCenter.y;
+            }
+            // 触れる所は、着きたい高さで線を進めた玉が触れる所。今の高さで測ると、高さの違う相手の上の縁をかすめる
+            // 所まで寄ってしまい、弧の着く所と実際に触れる所がずれる。その高さで触れない時は今の高さの値のまま
+            const NS::Core::Vector3 aimedCenter{ballCenter.x, aimHeight, ballCenter.z};
+            float aimedContact = first.contact;
+            if (NS::Obj::VolumesOverlap(
+                    NS::Obj::SensorVolume::Capsule(SweptBall(aimedCenter, lineDir, maxDistance, playerRadius)),
+                    firstSensor->WorldVolume()))
+            {
+                aimedContact =
+                    FirstTouchDistance(firstSensor->WorldVolume(), aimedCenter, lineDir, maxDistance, playerRadius);
+            }
+            const float dt = NS::Platform::FrameTimer::FixedDelta();
+            const NS::Game::Player::LaunchPitchResult pitch = NS::Game::Player::LaunchPitch(
+                NS::Game::Player::LaunchPitchDesc{.ballHeight = ballCenter.y,
+                                                  .targetHeight = aimHeight,
+                                                  .contactDistance = aimedContact,
+                                                  .horizontalSpeed = params.m_bodySlamSpeed,
+                                                  .gravity = params.Gravity(),
+                                                  .maxAngleDegrees = params.m_launchPitchLimitDegrees,
+                                                  .grounded = m_body->IsGrounded(),
+                                                  .dt = dt});
+            first.launchVerticalSpeed = pitch.verticalSpeed;
+            if (pitch.reachable)
+            {
+                first.launchContact = aimedContact;
+            }
+            // 段と横ずれは裁定と同じく相手の答えの面で決める。玉の高さは放つ縦の速さの道筋が触れる所で居る高さ
+            const NS::Game::Player::LaunchPath path{.horizontalSpeed = params.m_bodySlamSpeed,
+                                                    .verticalSpeed = pitch.verticalSpeed,
+                                                    .gravity = params.Gravity(),
+                                                    .dt = dt,
+                                                    .grounded = m_body->IsGrounded()};
+            const NS::Core::Vector3 arrival{
+                ballCenter.x, ballCenter.y + NS::Game::Player::LaunchHeightAt(path, first.launchContact), ballCenter.z};
+            judgement = JudgeHitFaceOrWide(answer.face, answer.body, arrival, lineDir, playerRadius);
+        }
+        first.offset = judgement.offset01;
+        first.tier = judgement.tier;
+        outTarget = first;
+        return true;
     }
 
     void ImpactResolver::OnUpdate()
@@ -540,19 +506,28 @@ namespace NS::Game::Level
 
         const float mass = answer.mass;
 
-        // ボタン未搭載は係数 1.0 の素通し。段は中心近くと記録するが、白の光と止めの倍率は掛けない
-        const float offset01 = HitOffset01(position, bounds, velocity, m_body->CapsuleRadius());
+        // 段と威力の当たり位置の係数は、相手の面で当てはまった同じ決まりから取る
+        // 玉の中心は重なりを見た所と同じく、この固定ステップで進んだ先。今の位置で見ると、縦に動く突進は 1 ステップ
+        // ぶん違う高さで段が決まる。丸まっていれば根、立ち姿なら下の球の中心で、狙う相手の探し方と同じ
+        const NS::Core::Vector3 stepped = PositionAfterStep(position, velocity);
+        const NS::Core::Vector3 ballCenter{stepped.x, stepped.y - m_body->CapsuleHalfHeight(), stepped.z};
+        const HitFaceJudgement judgement =
+            JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, m_body->CapsuleRadius());
+        const float offset01 = judgement.offset01;
+        // ボタン未搭載は係数 1.0 の素通し。段は中心近くと記録するが、段の返りと止めと反動の距離の倍率は掛けない
+        // 外し方は段の種類に混ぜず、下の tiered で分ける
         float chargeFactor = 1.0f;
         float positionFactor = 1.0f;
         HitTier tier = HitTier::Center;
-        bool centerHit = false;
-        if (m_collisionInput != nullptr)
+        const bool tiered = m_collisionInput != nullptr;
+        if (tiered)
         {
             chargeFactor = m_collisionInput->ChargeFactorFor(charge01);
-            positionFactor = m_collisionInput->PositionFactorFor(offset01);
-            tier = m_collisionInput->HitTierFor(offset01);
-            centerHit = tier == HitTier::Center;
+            positionFactor = judgement.powerScale;
+            tier = judgement.tier;
         }
+        // 読むのは記録と WasCenterHit とログだけ。配分と返りは段で分ける
+        const bool centerHit = tiered && tier == HitTier::Center;
         // 最終威力 = チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
         const float power = chargeFactor * positionFactor;
         m_lastCharge01 = charge01;
@@ -587,14 +562,20 @@ namespace NS::Game::Level
         // TODO: 敵が自機に当たる場面が出たら、裁定をシーンに 1 つの物へ移す。今は自機だけが検知する
         ImpactInput impactInput;
         impactInput.power = power;
-        impactInput.centerHit = centerHit;
+        impactInput.tier = tier;
         impactInput.mass = mass;
         impactInput.toughness = answer.toughness;
         impactInput.breakable = answer.breakable;
         impactInput.awayDirection = NS::Core::Vector3{awayX, 0.0f, awayZ};
         impactInput.launchDirection = launchDir;
         impactInput.slamVelocity = velocity;
-        const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, MakeImpactTuning(Tuning()));
+        ImpactTuning impactTuning = MakeImpactTuning(Tuning());
+        if (!tiered)
+        {
+            impactTuning.centerHitStopScale = 1.0f;
+            impactTuning.centerHitReboundDistanceScale = 1.0f;
+        }
+        const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, impactTuning);
         m_pendingShakeAmplitude = outcome.shakeAmplitude;
 
         const float reboundScale = outcome.reboundScale;
@@ -630,7 +611,7 @@ namespace NS::Game::Level
                         centerHit);
         }
 
-        PrepareHitReturns(tier, m_collisionInput != nullptr, power, outcome.massFactor, offset01, stopSteps);
+        PrepareHitReturns(tier, tiered, power, outcome.massFactor, offset01, stopSteps);
 
         // 止めるフレーム数が決まってから控える。止めが 0 フレームの当たりも残すので、下の return より手前に置く
         m_lastImpact.sequence += 1;
@@ -649,6 +630,8 @@ namespace NS::Game::Level
         m_lastImpact.launchDistance = m_pendingLaunchArc.distance;
         m_lastImpact.launchApexHeight = m_pendingLaunchArc.apexHeight;
         m_lastImpact.impactDir = m_pendingImpactDir;
+        // 触れた点は記録とエディタの印だけが読む。段と威力を決めた判定の結果を使う
+        m_lastImpact.surfacePoint = judgement.surfacePoint;
         m_lastImpact.targetPos = m_pendingTargetHome;
         m_lastImpact.targetBottom = bounds.Center.y - bounds.Extents.y;
         m_lastImpact.targetMass = mass;
@@ -713,95 +696,82 @@ namespace NS::Game::Level
         }
     }
 
+    ImpactResolver::TierReturns ImpactResolver::PlainReturns(float swing, int stopSteps) noexcept
+    {
+        TierReturns returns;
+        returns.shake.upAmplitude = swing;
+        returns.shake.frames = stopSteps;
+        returns.shake.longestFlipFrames = 1;
+        return returns;
+    }
+
+    ImpactResolver::TierReturns ImpactResolver::TierReturnsFor(HitTier tier, float swing, int stopSteps) const noexcept
+    {
+        // 振動は段ごとにモーターを分ける。強さは質量と威力で変えない
+        switch (tier)
+        {
+        case HitTier::Center:
+        {
+            // 縦だけを毎フレーム入れ替え、寄り・傾き・振動の長さを止めで結ぶ
+            TierReturns returns = PlainReturns(swing * Tuning().m_centerHitShakeScale, stopSteps);
+            returns.flashSteps = Tuning().m_centerHitFlashSteps;
+            returns.zoomRoll.zoom = Tuning().m_centerHitZoom;
+            returns.zoomRoll.rollDegrees = Tuning().m_centerHitRollDegrees;
+            returns.zoomRoll.holdFrames = stopSteps;
+            returns.zoomRoll.returnFrames = Tuning().m_zoomRollReturnFrames;
+            returns.pad.start.left = Tuning().m_centerHitPadStrength;
+            returns.pad.fadeFrames = stopSteps;
+            returns.pad.frames = stopSteps;
+            return returns;
+        }
+        case HitTier::Wide:
+        {
+            TierReturns returns;
+            // 横と縦を合わせた長さが最初の振れの大きさになるよう、比で分ける
+            const float upOverSide = Tuning().m_wideShakeUpOverSide;
+            const float side = swing / std::sqrt(1.0f + upOverSide * upOverSide);
+            returns.shake.sideAmplitude = side;
+            returns.shake.upAmplitude = side * upOverSide;
+            returns.shake.frames = Tuning().m_wideShakeFrames;
+            returns.shake.longestFlipFrames = Tuning().m_wideShakeLongestFlipFrames;
+            returns.pad.start.right = Tuning().m_widePadStrength;
+            returns.pad.fadeFrames = Tuning().m_wideShakeFrames;
+            returns.pad.frames = Tuning().m_wideShakeFrames;
+            return returns;
+        }
+        }
+        // 番号から作った段の外の値は段の返りを掛けない
+        return PlainReturns(swing, stopSteps);
+    }
+
     void ImpactResolver::PrepareHitReturns(
         HitTier tier, bool tiered, float power, float massFactor, float offset01, int stopSteps)
     {
-        // 段の無い台は白と寄りと傾きを出さず、揺れの倍率も掛けない
-        const bool center = tiered && tier == HitTier::Center;
-        const bool nearMiss = tiered && tier == HitTier::Near;
-        const bool wide = tiered && tier == HitTier::Wide;
-
-        // 最初の振れの大きさは全段で同じ式。反発と同じ質量因子を掛け、中心近くだけ段の倍率を掛ける
-        float swing = Tuning().m_cameraShakeScale * power * massFactor;
-        m_pendingFlashSteps = 0;
-        if (center)
+        // 最初の振れの大きさは全段で同じ式。反発と同じ質量因子を掛け、段の倍率は表の行が掛ける
+        const float swing = Tuning().m_cameraShakeScale * power * massFactor;
+        // 段の無い台は段の表を引かず、白と寄りと傾きと振動を出さない
+        TierReturns returns = PlainReturns(swing, stopSteps);
+        if (tiered)
         {
-            swing *= Tuning().m_centerHitShakeScale;
-            m_pendingFlashSteps = Tuning().m_centerHitFlashSteps;
+            returns = TierReturnsFor(tier, swing, stopSteps);
         }
 
-        // 中心近くと惜しいは縦だけを毎フレーム入れ替え、止めのフレーム数で収める
-        m_pendingShake = NS::Obj::CameraShakeDesc{
-            .sideAmplitude = 0.0f,
-            .upAmplitude = swing,
-            .frames = stopSteps,
-            .longestFlipFrames = 1,
-            .firstSideDirection = m_pendingReboundArc.direction,
-            .seed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, m_pendingTargetHome),
-        };
-        if (wide)
-        {
-            // 横と縦を合わせた長さが最初の振れの大きさになるよう、比で分ける
-            const float side =
-                swing / std::sqrt(1.0f + Tuning().m_wideShakeUpOverSide * Tuning().m_wideShakeUpOverSide);
-            m_pendingShake.sideAmplitude = side;
-            m_pendingShake.upAmplitude = side * Tuning().m_wideShakeUpOverSide;
-            m_pendingShake.frames = Tuning().m_wideShakeFrames;
-            m_pendingShake.longestFlipFrames = Tuning().m_wideShakeLongestFlipFrames;
-        }
-
+        m_pendingFlashSteps = returns.flashSteps;
+        m_pendingShake = returns.shake;
+        m_pendingShake.firstSideDirection = m_pendingReboundArc.direction;
+        m_pendingShake.seed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, m_pendingTargetHome);
         // 寄りの無い段も倍率 1 の設定を渡し、前の当たりの寄りを残さない
-        m_pendingZoomRoll = NS::Obj::CameraZoomRollDesc{.rollDirection = m_pendingImpactDir};
-        if (center)
-        {
-            m_pendingZoomRoll.zoom = Tuning().m_centerHitZoom;
-            m_pendingZoomRoll.rollDegrees = Tuning().m_centerHitRollDegrees;
-            m_pendingZoomRoll.holdFrames = stopSteps;
-            m_pendingZoomRoll.returnFrames = Tuning().m_zoomRollReturnFrames;
-        }
-        if (nearMiss)
-        {
-            // 寄りは 1 を超えた分に割合を掛ける。倍率そのものに掛けると 1 未満の引きになる
-            m_pendingZoomRoll.zoom = 1.0f + (Tuning().m_centerHitZoom - 1.0f) * Tuning().m_nearHitReturnRatio;
-            m_pendingZoomRoll.rollDegrees = Tuning().m_centerHitRollDegrees * Tuning().m_nearHitReturnRatio;
-            m_pendingZoomRoll.holdFrames = PullBackFrames(stopSteps, Tuning().m_nearHitPullBackRatio);
-            m_pendingZoomRoll.returnFrames = Tuning().m_zoomRollReturnFrames;
-        }
+        m_pendingZoomRoll = returns.zoomRoll;
+        m_pendingZoomRoll.rollDirection = m_pendingImpactDir;
+        m_pendingPad = returns.pad;
 
         // 当たりの記録は検知のフレームに読まれるので、傾きの向きもここで今のカメラから決める
         const float rollSign = NS::Obj::CameraSideSignOf(*Owner(), m_pendingZoomRoll.rollDirection);
-        // 振動は段ごとにモーターを分ける。強さは質量と威力で変えない。中心近くと惜しいの長さは止めで結ぶ
-        m_pendingPad = NS::Obj::HitPadVibration{};
-        if (center)
-        {
-            m_pendingPad.start.left = Tuning().m_centerHitPadStrength;
-            m_pendingPad.fadeFrames = stopSteps;
-            m_pendingPad.frames = stopSteps;
-        }
-        if (nearMiss)
-        {
-            // 減る傾きは中心近くと同じにし、寄りと同じフレームで切る
-            m_pendingPad.start.left = Tuning().m_centerHitPadStrength * Tuning().m_nearHitReturnRatio;
-            m_pendingPad.fadeFrames = stopSteps;
-            m_pendingPad.frames = PullBackFrames(stopSteps, Tuning().m_nearHitPullBackRatio);
-        }
-        if (wide)
-        {
-            m_pendingPad.start.right = Tuning().m_widePadStrength;
-            m_pendingPad.fadeFrames = Tuning().m_wideShakeFrames;
-            m_pendingPad.frames = Tuning().m_wideShakeFrames;
-        }
-
         m_lastImpact.cameraShake = NS::Core::Vector2{m_pendingShake.sideAmplitude, m_pendingShake.upAmplitude}.Length();
         m_lastImpact.flashStart = m_pendingFlashSteps;
         m_lastImpact.zoomStart = m_pendingZoomRoll.zoom;
         m_lastImpact.rollStart = m_pendingZoomRoll.rollDegrees * rollSign;
         m_lastImpact.padStart = m_pendingPad.start;
-        m_lastImpact.pullBackFrames = 0;
-        if (nearMiss)
-        {
-            m_lastImpact.pullBackFrames = PullBackFrames(stopSteps, Tuning().m_nearHitPullBackRatio);
-        }
     }
 
     void ImpactResolver::StartHitReturns()

@@ -11,6 +11,7 @@
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
+#include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 
@@ -100,13 +101,12 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
                                      {"振り向きの速さ", 970.0f},
                                      {"突進速度", 20.0f},
                                      {"突進距離", 10.0f},
+                                     {"放つ角度の上限", 40.0f},
                                      {"タップ初速", 10.0f},
                                      {"タップの上向き初速", 3.0f},
                                      {"タップ距離", 6.25f},
                                      {"狙いの巻き戻し秒", 0.11f},
                                      {"狙いの巻き戻しが消える秒", 0.19f},
-                                     {"寄せる角度の上限", 3.0f},
-                                     {"1 フレームの向きの変化の上限", 0.25f},
                                      {"反動の上りの重力倍率", 0.5f},
                                      {"反動中の空中の加速度", 2.0f}};
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
@@ -114,6 +114,9 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
     }
+    // 左右の寄せは消した。鍵が戻ると、保存した場面に効かない角度が載る
+    EXPECT_FALSE(fields.contains("寄せる角度の上限"));
+    EXPECT_FALSE(fields.contains("1 フレームの向きの変化の上限"));
     const NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player.Part("Movement"));
     ASSERT_NE(movement, nullptr);
     EXPECT_TRUE(NS::Obj::SerializeComponent(*movement)["fields"].empty());
@@ -203,7 +206,7 @@ TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
     EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(std::numeric_limits<float>::infinity()), 0.5f);
 }
 
-TEST(PlayerParams, ImpactDefaultsKeepAllSeventyDisplayNamesAndValues)
+TEST(PlayerParams, ImpactDefaultsKeepAllSixtySixDisplayNamesAndValues)
 {
     Player player;
     const nlohmann::json fields = NS::Obj::SerializeComponent(player.Params())["fields"];
@@ -230,8 +233,6 @@ TEST(PlayerParams, ImpactDefaultsKeepAllSeventyDisplayNamesAndValues)
                                      {"中心近くの当たりの寄りの倍率", 1.15f},
                                      {"中心近くの当たりの傾き", 3.0f},
                                      {"寄りと傾きを戻すフレーム数", 6},
-                                     {"惜しい当たりの返りの割合", 0.4f},
-                                     {"惜しい当たりの返りを引き始める割合", 0.5f},
                                      {"中心近くの当たりのパッドの振動の強さ", 1.0f},
                                      {"大きな外れのパッドの振動の強さ", 0.6f},
                                      {"潰れの厚み", 0.7f},
@@ -254,13 +255,11 @@ TEST(PlayerParams, ImpactDefaultsKeepAllSeventyDisplayNamesAndValues)
                                      {"輪の半径の基準", 0.5f},
                                      {"輪の半径の威力あたり", 0.6f},
                                      {"輪の出始めの半径", 0.3f},
-                                     {"惜しいの輪が届く割合", 0.5f},
                                      {"輪をカメラへ起こす割合", 1.0f},
                                      {"火花の数の下限", 10},
                                      {"火花の数の上限", 30},
                                      {"火花の速さの基準", 6.0f},
                                      {"火花の速さの飛ばしの比あたり", 3.0f},
-                                     {"惜しいの火花の数の割合", 0.5f},
                                      {"大きな外れの火花の数", 16},
                                      {"大きな外れの火花の速さ", 4.0f},
                                      {"火の粉の数の火花あたり", 7.0f},
@@ -281,6 +280,14 @@ TEST(PlayerParams, ImpactDefaultsKeepAllSeventyDisplayNamesAndValues)
     {
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
+    }
+    // 惜しいの段は消した。惜しいだけの演出の欄が戻ると、段の無い当たりの調整値が保存に載る
+    for (const char* removed : {"惜しい当たりの返りの割合",
+                                "惜しい当たりの返りを引き始める割合",
+                                "惜しいの輪が届く割合",
+                                "惜しいの火花の数の割合"})
+    {
+        EXPECT_FALSE(fields.contains(removed)) << removed;
     }
     EXPECT_TRUE(NS::Obj::SerializeComponent(player.Resolver())["fields"].empty());
     EXPECT_TRUE(NS::Obj::SerializeComponent(player.ImpactVisuals())["fields"].empty());
@@ -308,6 +315,57 @@ TEST(PlayerParams, LiveImpactVisualTuningDrivesShapeAndLandingDust)
     EXPECT_FLOAT_EQ(player.ImpactVisuals().LandDustRadiusFor(-1.0f), 2.0f);
 }
 
+// 段で変わる絵の決まりは段ごとの 1 行から来る。絵を出す側は段を比べずに形の欄を読む
+TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
+{
+    using NS::Game::Level::HitTier;
+    using NS::Game::Player::CoreHoldMotion;
+    using NS::Game::Player::ImpactShape;
+    using NS::Game::Player::SparkHeading;
+    Player player;
+    // 中心近くと大きな外れで本数が違えば、どちらの行から来たかが分かる
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"弾かれ線の本数", 9}, {"大きな外れの弾かれ線の本数", 4}}),
+              0u);
+    NS::Game::Level::ImpactRecord impact{};
+    impact.power = 1.0f;
+    impact.hitStopSteps = 8;
+    impact.targetPlaced = true;
+    impact.tier = HitTier::Center;
+    const ImpactShape center = player.ImpactVisuals().ShapeFor(impact);
+    impact.tier = HitTier::Wide;
+    const ImpactShape wide = player.ImpactVisuals().ShapeFor(impact);
+
+    EXPECT_EQ(center.coreInput, 0u);
+    EXPECT_EQ(center.coreHold, CoreHoldMotion::Pulse);
+    EXPECT_EQ(center.sparkHeading, SparkHeading::Launch);
+    EXPECT_EQ(center.sparkCountInput, 0u);
+    EXPECT_EQ(center.recoilCount, 9);
+    EXPECT_EQ(center.recoilCountInput, 0u);
+
+    EXPECT_EQ(wide.coreInput, 2u);
+    EXPECT_EQ(wide.coreHold, CoreHoldMotion::Settle);
+    EXPECT_EQ(wide.sparkHeading, SparkHeading::Scrape);
+    EXPECT_EQ(wide.sparkCountInput, 1u);
+    EXPECT_EQ(wide.recoilCount, 4);
+    EXPECT_EQ(wide.recoilCountInput, 2u);
+
+    // 番号から作った段の外の値は、行を混ぜずに大きな外れの行で出す。中心近くの層は 1 つも足さない
+    impact.tier = static_cast<HitTier>(3);
+    const ImpactShape unknown = player.ImpactVisuals().ShapeFor(impact);
+    EXPECT_EQ(unknown.coreInput, wide.coreInput);
+    EXPECT_EQ(unknown.coreHold, wide.coreHold);
+    EXPECT_EQ(unknown.holdLastFrame, wide.holdLastFrame);
+    EXPECT_EQ(unknown.sparkHeading, wide.sparkHeading);
+    EXPECT_EQ(unknown.sparkCountInput, wide.sparkCountInput);
+    EXPECT_EQ(unknown.sparkCount, wide.sparkCount);
+    EXPECT_EQ(unknown.recoilCount, wide.recoilCount);
+    EXPECT_EQ(unknown.recoilCountInput, wide.recoilCountInput);
+    EXPECT_FLOAT_EQ(unknown.streakLength, 0.0f);
+    EXPECT_FLOAT_EQ(unknown.ringRadius, 0.0f);
+    EXPECT_EQ(unknown.emberCount, 0);
+    EXPECT_FLOAT_EQ(unknown.glowDiameter, 0.0f);
+}
+
 TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
 {
     NS::Obj::Scene scene;
@@ -320,8 +378,10 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     nlohmann::json rock = NS::Obj::MakeObjectJson();
     NS::Obj::SetObjectJsonClass(rock, "MapObj");
     NS::Obj::SetObjectJsonId(rock, 2);
-    NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{0.0f, 1.0f, 1.0f});
-    rock["parts"] = {{"Params", {{"質量", 1.0f}}}};
+    // 自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さ。赤の真ん中に当たり、威力の倍率は 1
+    NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{0.0f, 0.5f, 1.0f});
+    // 位置は部品の件 Transform に入っているので、件ごと置き換えずに足す
+    NS::Obj::ObjectJsonParts(rock)["Params"] = {{"質量", 1.0f}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.LoadJson(doc);
     Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));

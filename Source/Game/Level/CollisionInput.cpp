@@ -105,7 +105,6 @@ namespace NS::Game::Level
         m_stateReady = true;
         m_controlReady = true;
         UpdateAimTarget(held);
-        ObserveHomingTarget(held);
     }
 
     NS::Core::Vector3 CollisionInput::PredictedSlamVelocity() const noexcept
@@ -113,10 +112,6 @@ namespace NS::Game::Level
         if (m_body == nullptr)
         {
             return NS::Core::Vector3{};
-        }
-        if (m_observedRushing && m_observedHasHomingTarget)
-        {
-            return m_player->PredictHomingVelocity(m_observedHomingCenter);
         }
         return m_player->BodySlamVelocity();
     }
@@ -143,13 +138,10 @@ namespace NS::Game::Level
             return;
         }
         m_controlReady = false;
-        if (m_observedRushing && m_body != nullptr && m_player->IsBodySlamming())
+        if (refreshVelocity && m_observedRushing && m_body != nullptr && m_body->IsActive() &&
+            m_player->IsBodySlamming())
         {
-            SteerTowardTarget();
-            if (refreshVelocity && m_body->IsActive())
-            {
-                m_player->ApplyBodySlamHeading();
-            }
+            m_player->ApplyBodySlamHeading();
         }
 #if !defined(NS_SHIPPING)
         DrawChargeRing();
@@ -196,7 +188,7 @@ namespace NS::Game::Level
             // 溜めて放した突進はスティックを見ずにその向きへ出す。タップは矢印が出ないので入力の向きへ出す
             if (fired == SlamKind::Charged && m_hasAimLine)
             {
-                m_player->RequestBodySlam(charge01, m_aimLine.direction);
+                m_player->RequestBodySlam(charge01, m_aimLine.direction, m_aimLine.launchVerticalSpeed);
             }
             else
             {
@@ -234,10 +226,6 @@ namespace NS::Game::Level
         {
             m_aimTarget.origin = RootTransform().Position();
         }
-        if (!m_observedRushing)
-        {
-            SteerTowardTarget();
-        }
         UpdateChargeStance();
     }
 
@@ -268,8 +256,11 @@ namespace NS::Game::Level
         {
             return;
         }
-        m_observedAimLine = AimLine{
-            .origin = RootTransform().Position(), .direction = direction, .length = m_player->BodySlamDistance()};
+        m_observedAimLine = AimLine{.origin = RootTransform().Position(),
+                                    .direction = direction,
+                                    .length = m_player->BodySlamDistance(),
+                                    .launchVerticalSpeed = 0.0f,
+                                    .grounded = m_body->IsGrounded()};
         m_observedHasAimLine = true;
         if (m_resolver == nullptr)
         {
@@ -277,6 +268,11 @@ namespace NS::Game::Level
         }
         m_observedHasAimTarget =
             m_resolver->FindSlamLineTarget(m_observedAimLine.direction, m_observedAimLine.length, m_observedAimTarget);
+        // 放す時に添える縦の速さ。届かない相手と相手が無い時は 0 で水平に放つ
+        if (m_observedHasAimTarget)
+        {
+            m_observedAimLine.launchVerticalSpeed = m_observedAimTarget.launchVerticalSpeed;
+        }
     }
 
     bool CollisionInput::TryGetAimTarget(SlamLineTarget& outTarget) const noexcept
@@ -297,64 +293,6 @@ namespace NS::Game::Level
         }
         outLine = m_aimLine;
         return true;
-    }
-
-    void CollisionInput::ObserveHomingTarget(bool held)
-    {
-        m_observedHasHomingTarget = false;
-        if (m_body == nullptr || m_resolver == nullptr)
-        {
-            return;
-        }
-
-        NS::Core::Vector3 forward{};
-        SlamLineTarget onLine{};
-        bool hasOnLine = false;
-        if (m_observedRushing)
-        {
-            const NS::Core::Vector3 velocity = m_player->BodySlamVelocity();
-            forward = NS::Core::Vector3{velocity.x, 0.0f, velocity.z};
-            hasOnLine = m_resolver->FindSlamLineTarget(forward, m_player->BodySlamDistance(), onLine);
-        }
-        else if (held)
-        {
-            forward = m_player->AimDirection();
-            if (m_observedHasAimLine)
-            {
-                forward = m_observedAimLine.direction;
-            }
-            hasOnLine = m_observedHasAimTarget;
-            if (hasOnLine)
-            {
-                onLine = m_observedAimTarget;
-            }
-        }
-        else
-        {
-            return;
-        }
-
-        NS::Obj::ActorRef preferred{};
-        if (hasOnLine)
-        {
-            preferred = onLine.target;
-        }
-        NS::Core::Vector3 center{};
-        if (m_resolver->FindHomingTarget(
-                forward, Tuning().m_homingSearchDegrees, Tuning().m_homingSearchDistance, center, preferred))
-        {
-            m_observedHasHomingTarget = true;
-            m_observedHomingCenter = center;
-            m_observedHomingForward = forward;
-        }
-    }
-
-    void CollisionInput::SteerTowardTarget()
-    {
-        if (m_observedHasHomingTarget && m_body != nullptr)
-        {
-            m_player->SteerToward(m_observedHomingCenter, Tuning().m_homingSearchDegrees, m_observedHomingForward);
-        }
     }
 
     void CollisionInput::UpdateChargeStance()
@@ -422,42 +360,6 @@ namespace NS::Game::Level
             return 1.0f;
         }
         return factor;
-    }
-
-    float CollisionInput::PositionFactorFor(float offset01) const noexcept
-    {
-        if (!std::isfinite(offset01))
-        {
-            return 1.0f;
-        }
-
-        const float clamped = NS::Core::Clamp(offset01, 0.0f, 1.0f);
-        const float factor = Tuning().m_positionFactorCurve.Evaluate(clamped);
-        // 点を全部消すと威力が 0 になるため、チャージ倍率カーブと同じく 0 以下は 1 とみなす
-        if (!(factor > 0.0f))
-        {
-            return 1.0f;
-        }
-
-        return factor;
-    }
-
-    HitTier CollisionInput::HitTierFor(float offset01) const noexcept
-    {
-        // 横ずれが測れない当たりに中心近くの白の光と長い止めを出さない
-        if (!std::isfinite(offset01))
-        {
-            return HitTier::Wide;
-        }
-        if (offset01 < Tuning().m_centerTierEdge)
-        {
-            return HitTier::Center;
-        }
-        if (offset01 < Tuning().m_nearTierEdge)
-        {
-            return HitTier::Near;
-        }
-        return HitTier::Wide;
     }
 
     float CollisionInput::ChargingSpeedScale() const noexcept

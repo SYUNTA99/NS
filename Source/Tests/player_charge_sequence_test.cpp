@@ -141,6 +141,6 @@ TEST(PlayerChargeSequence, ChargedReleaseUsesTheLastHeldAimBeforeClearingIt)
     input->Step(false, 0.1f);
     EXPECT_FALSE(input->TryGetAimLine(aim));
     EXPECT_TRUE(player->BodySlam());
-    EXPECT_FLOAT_EQ(player->BodySlamStartDirection().x, 0.0f);
-    EXPECT_FLOAT_EQ(player->BodySlamStartDirection().z, 1.0f);
+    EXPECT_FLOAT_EQ(player->BodySlamDirection().x, 0.0f);
+    EXPECT_FLOAT_EQ(player->BodySlamDirection().z, 1.0f);
 }

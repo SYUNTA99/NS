@@ -44,6 +44,28 @@ namespace NS::Game::Level
             const int steps = static_cast<int>(std::lround(raw));
             return NS::Core::Clamp(steps, 0, MaxHitStopSteps(tuning));
         }
+
+        // 段が配分に掛ける倍率
+        struct TierScales
+        {
+            float hitStop = 1.0f;         // 止めの倍率
+            float reboundDistance = 1.0f; // 反動の距離の倍率。高さは段で変えない
+        };
+
+        // 段ごとに 1 行の表。段を足したら行を足す。真偽で分けると段が 2 つと決め打ちになる
+        [[nodiscard]] TierScales TierScalesFor(HitTier tier, const ImpactTuning& tuning) noexcept
+        {
+            switch (tier)
+            {
+            case HitTier::Center:
+                return TierScales{.hitStop = tuning.centerHitStopScale,
+                                  .reboundDistance = tuning.centerHitReboundDistanceScale};
+            case HitTier::Wide:
+                return TierScales{};
+            }
+            // 番号から作った段の外の値は倍率を掛けない
+            return TierScales{};
+        }
     } // namespace
 
     ImpactOutcome ComputeImpactOutcome(const ImpactInput& input, const ImpactTuning& tuning) noexcept
@@ -53,11 +75,8 @@ namespace NS::Game::Level
         const float mass = input.mass;
         outcome.massFactor = mass / (mass + 1.0f);
 
-        float hitStopScale = 1.0f;
-        if (input.centerHit)
-        {
-            hitStopScale = tuning.centerHitStopScale;
-        }
+        const TierScales tierScales = TierScalesFor(input.tier, tuning);
+        const float hitStopScale = tierScales.hitStop;
         // 反発の質量因子の残り。動きは軽い側が受け取るので、重い物ほど揺れない
         outcome.shakeAmplitude = tuning.shakeAmplitude / (1.0f + mass);
 
@@ -79,11 +98,7 @@ namespace NS::Game::Level
         // TODO: 質量 0.5 より軽い物では自機の返りが 0 に近づく。軽い物を置く時は、先に高さと距離の下限を足す
         outcome.reboundScale = power * 2.0f * outcome.massFactor;
         // 中心近くの当たりだけ距離を伸ばし、高さは変えない。真ん中に当てた時は後ろへ飛ぶ
-        float reboundDistance = tuning.reboundDistance * outcome.reboundScale;
-        if (input.centerHit)
-        {
-            reboundDistance *= tuning.centerHitReboundDistanceScale;
-        }
+        const float reboundDistance = tuning.reboundDistance * outcome.reboundScale * tierScales.reboundDistance;
         outcome.reboundArc = NS::Game::Player::ReboundArc{
             .direction = NS::Core::Vector3{input.awayDirection.x, 0.0f, input.awayDirection.z},
             .apexHeight = tuning.reboundApexHeight * outcome.reboundScale,

@@ -43,7 +43,7 @@ namespace NS::Game::Player
         constexpr int k_WideCoreHoldLast = 4;
         // 中心近くの火花を出すフレーム。手本の弾きは塊の中の放射の筋が 3 から出る
         // 0 では接触点から上下へ伸びる筋が 1 フレーム目に見え、手本より 2 フレーム早かった
-        // 惜しいと大きな外れは手本のガードの火花と同じく止めの頭から
+        // 大きな外れは手本のガードの火花と同じく止めの頭から
         constexpr int k_CenterSparkStart = 3;
         // 大きな外れの火花の向きに入れる、相手の飛ぶ向きの重み。横ずれの側の重みは 1 で、真ん中の 45 度へ擦れる
         // 横ずれの側だけでは横からの絵で奥行きの向きに潰れ、相手の飛ぶ向きが形に出なかった
@@ -99,13 +99,13 @@ namespace NS::Game::Player
         // 大きな外れの核が留まる間の面積の移り。1 フレーム目の最大から、落ち着く割合へ 1 フレームごとに差を
         // この割合で詰める (2 で 84%、3 で 78%、4 で 76%)。手本のガードの層だけの明るさが +1 の最大から
         // +2〜+4 で 84・78・74% と、下がり幅を詰めながら 74% へ寄る形を写した。核と放射の線が画面に足す量は面積に沿う
-        // 中心近くと惜しいと同じ 1 フレームおきの脈では、1 と 3 が同じ最大になり、最大が 1 フレームに立たなかった
+        // 中心近くと同じ 1 フレームおきの脈では、1 と 3 が同じ最大になり、最大が 1 フレームに立たなかった
         constexpr float k_WideFlashFloor = 0.74f;
         constexpr float k_WideFlashDecay = 0.4f;
         // 当たりの粉の輪の真ん中を、相手が居た所から自機と逆の側へずらす距離の、粉の大きさへの割合
         // 粉は輪の半径 0.4〜0.6 と塊の半径 (出始め 0.3、明けの 3 フレーム後に 0.35) を大きさに掛けて広がるので、
         // ずらさないと明けの 3 フレーム後に塊の縁が相手の中心から自機の側へ大きさの 0.95 倍まで届き、
-        // 1.4 m 離れた自機の縁 (相手の中心から 0.75 m) を越えて自機の輪郭を覆った (惜しいと大きな外れの横からの絵)
+        // 1.4 m 離れた自機の縁 (相手の中心から 0.75 m) を越えて自機の輪郭を覆った。見たのは大きな外れの横からの絵
         // 0.7 倍ずらすと届くのは大きさの 0.25 倍 (中心近くの 1.65 m で 0.41 m) で、自機の縁まで 0.3 m 以上空く
         constexpr float k_DustAwayShare = 0.7f;
         // 反動の尾の親を止めてから消すまでのフレーム数。絵の定義の筋の落ちるフレーム数と同じ
@@ -254,85 +254,78 @@ namespace NS::Game::Player
         AdvanceLanding(effects);
     }
 
+    // 段で変わる絵を段ごとに 1 行で埋める。段を足したら行を足す
+    // 入力の番号は段の番号と別に持つ。段の番号をそのまま使うと、3 番の段を足した時に核の出始めの大きさ (3 番)
+    // を上書きする
+    void ImpactEffects::ApplyTierRow(ImpactShape& shape,
+                                     const NS::Game::Level::ImpactRecord& impact,
+                                     float power,
+                                     const PlayerParams& tuning) noexcept
+    {
+        switch (impact.tier)
+        {
+        case HitTier::Center:
+        {
+            shape.coreInput = 0;
+            shape.coreHold = CoreHoldMotion::Pulse;
+            // 核の留まりは止めと結ぶ。止めの短い当たりは明けの前に落ち始め、明けの後に光が残らない
+            shape.holdLastFrame = std::max(1, std::min(k_CoreHoldMax, impact.hitStopSteps - 1));
+            shape.sparkStartFrame = k_CenterSparkStart;
+            // 手本の弾きは光の塊が消える 11 に火の粉が接触点から新しく弾ける。核が落ちるフレームに揃える
+            shape.emberStartFrame = shape.holdLastFrame + 1;
+            shape.streakLength = tuning.m_streakLengthBase + tuning.m_streakLengthPerPower * power;
+            shape.ringRadius = tuning.m_ringRadiusBase + tuning.m_ringRadiusPerPower * power;
+            const float share = std::clamp((power - k_PowerMin) / (k_PowerMax - k_PowerMin), 0.0f, 1.0f);
+            const float count = static_cast<float>(tuning.m_sparkCountMin) +
+                                static_cast<float>(tuning.m_sparkCountMax - tuning.m_sparkCountMin) * share;
+            shape.sparkCount = std::max(1, static_cast<int>(std::lround(count)));
+            shape.sparkSpeed =
+                tuning.m_sparkSpeedBase + tuning.m_sparkSpeedPerLaunch * std::max(impact.launchScale, 0.0f);
+            shape.sparkHeading = SparkHeading::Launch;
+            shape.sparkCountInput = 0;
+            shape.emberCount = std::max(
+                1, static_cast<int>(std::lround(static_cast<float>(shape.sparkCount) * tuning.m_emberShare)));
+            // 照りは相手の足元の床に出す。飛んでいた相手の下に床は無い
+            if (impact.targetPlaced)
+            {
+                shape.glowDiameter = tuning.m_glowDiameterBase + tuning.m_glowDiameterPerPower * power;
+            }
+            shape.recoilCount = tuning.m_recoilCount;
+            shape.recoilCountInput = 0;
+            return;
+        }
+        case HitTier::Wide:
+            break;
+        }
+        // 大きな外れの行。番号から作った段の外の値もこの行で出し、中心近くの層を足さない
+        shape.coreInput = 2;
+        shape.coreHold = CoreHoldMotion::Settle;
+        shape.holdLastFrame = k_WideCoreHoldLast;
+        shape.sparkCount = tuning.m_wideSparkCount;
+        shape.sparkSpeed = tuning.m_wideSparkSpeed;
+        shape.sparkHeading = SparkHeading::Scrape;
+        shape.sparkCountInput = 1;
+        shape.recoilCount = tuning.m_wideRecoilCount;
+        shape.recoilCountInput = 2;
+    }
+
     ImpactShape ImpactEffects::ShapeFor(const NS::Game::Level::ImpactRecord& impact) const noexcept
     {
         ImpactShape shape;
         shape.tier = impact.tier;
         const float power = std::max(impact.power, 0.0f);
-        const bool center = impact.tier == HitTier::Center;
-        const bool nearMiss = impact.tier == HitTier::Near;
-
-        // 核の留まりは止めと結ぶ。止めの短い当たりは明けの前に落ち始め、明けの後に光が残らない
-        shape.holdLastFrame = k_WideCoreHoldLast;
-        if (center)
-        {
-            shape.holdLastFrame = std::max(1, std::min(k_CoreHoldMax, impact.hitStopSteps - 1));
-        }
-        if (center)
-        {
-            shape.sparkStartFrame = k_CenterSparkStart;
-            // 手本の弾きは光の塊が消える 11 に火の粉が接触点から新しく弾ける。核が落ちるフレームに揃える
-            shape.emberStartFrame = shape.holdLastFrame + 1;
-        }
-        if (nearMiss)
-        {
-            // 寄りと振動と同じフレームで引き始める。核はその 1 フレーム前まで留まる
-            shape.nearPullFrame = impact.pullBackFrames;
-            shape.holdLastFrame = std::max(1, impact.pullBackFrames - 1);
-        }
 
         shape.coreDiameter =
             std::min(Tuning().m_coreDiameterMax, Tuning().m_coreDiameterBase + Tuning().m_coreDiameterPerPower * power);
-        if (center)
-        {
-            shape.streakLength = Tuning().m_streakLengthBase + Tuning().m_streakLengthPerPower * power;
-        }
-        if (center || nearMiss)
-        {
-            shape.ringRadius = Tuning().m_ringRadiusBase + Tuning().m_ringRadiusPerPower * power;
-        }
-
-        if (center || nearMiss)
-        {
-            const float share = std::clamp((power - k_PowerMin) / (k_PowerMax - k_PowerMin), 0.0f, 1.0f);
-            float count = static_cast<float>(Tuning().m_sparkCountMin) +
-                          static_cast<float>(Tuning().m_sparkCountMax - Tuning().m_sparkCountMin) * share;
-            if (nearMiss)
-            {
-                count *= Tuning().m_nearSparkShare;
-            }
-            shape.sparkCount = std::max(1, static_cast<int>(std::lround(count)));
-            shape.sparkSpeed =
-                Tuning().m_sparkSpeedBase + Tuning().m_sparkSpeedPerLaunch * std::max(impact.launchScale, 0.0f);
-            if (center)
-            {
-                shape.emberCount = std::max(
-                    1, static_cast<int>(std::lround(static_cast<float>(shape.sparkCount) * Tuning().m_emberShare)));
-            }
-        }
-        else
-        {
-            shape.sparkCount = Tuning().m_wideSparkCount;
-            shape.sparkSpeed = Tuning().m_wideSparkSpeed;
-        }
+        ApplyTierRow(shape, impact, power, Tuning());
         // 量は数と速さの積。数は威力で、速さは飛ばしの比 (重い相手ほど遅い) で決まるので、積は威力の順と
         // 同じ威力での質量の順の両方に並ぶ。速さだけでは質量 8 の溜めきりが質量 1 のタップより小さく出た
         shape.sparkAmount = static_cast<float>(shape.sparkCount) * shape.sparkSpeed;
 
-        // 照りと粉は相手の足元の床に出す。飛んでいた相手の下に床は無い
-        if (center && impact.targetPlaced)
-        {
-            shape.glowDiameter = Tuning().m_glowDiameterBase + Tuning().m_glowDiameterPerPower * power;
-        }
-
-        shape.recoilCount = Tuning().m_recoilCount;
-        if (impact.tier == HitTier::Wide)
-        {
-            shape.recoilCount = Tuning().m_wideRecoilCount;
-        }
         shape.recoilLength =
             Tuning().m_recoilLengthBase + Tuning().m_recoilLengthPerRebound * std::max(impact.reboundScale, 0.0f);
 
+        // 粉は相手の足元の床に出す。飛んでいた相手の下に床は無い
         if (impact.targetPlaced)
         {
             const float mass = std::max(impact.targetMass, 0.0f);
@@ -447,7 +440,7 @@ namespace NS::Game::Player
         m_plan = plan;
         m_aim.contact = plan.contact;
         m_aim.sparkDir = plan.launchDir;
-        if (plan.shape.tier == HitTier::Wide)
+        if (plan.shape.sparkHeading == SparkHeading::Scrape)
         {
             m_aim.sparkDir = plan.scrapeDir;
         }
@@ -462,7 +455,7 @@ namespace NS::Game::Player
         core.dynamicInputs[0] = 0.0f;
         core.dynamicInputs[1] = 0.0f;
         core.dynamicInputs[2] = 0.0f;
-        core.dynamicInputs[static_cast<std::size_t>(shape.tier)] = 1.0f;
+        core.dynamicInputs[shape.coreInput] = 1.0f;
         core.dynamicInputs[3] = Tuning().m_coreBirthScale / k_CoreHoldPulse;
         m_plan.core = m_layers.Play(effects, k_Core, core);
         SetAmount(m_plan.core, shape.coreDiameter);
@@ -481,26 +474,20 @@ namespace NS::Game::Player
     void ImpactEffects::PlaySparks(NS::Gfx::EffectScene* effects)
     {
         const ImpactShape& shape = m_plan.shape;
-        // 粒の数は段ごとの節の入力に入れ、他の節は 0。0 番が中心近くの帯、1 番が大きな外れの擦れ、3 番が惜しいの帯
+        // 粒の数は段ごとの節の入力に入れ、他の節は 0。3 番の節はどの段も使わない
         NS::Gfx::EffectPlayDesc sparks;
-        std::size_t countInput = 0;
-        if (shape.tier == HitTier::Wide)
+        if (shape.sparkHeading == SparkHeading::Scrape)
         {
             sparks = PlayAt(m_plan.contact, TurnUpTo(m_plan.scrapeDir), Uniform(1.0f));
-            countInput = 1;
         }
         else
         {
             sparks = PlayAt(m_plan.contact, TurnUpTo(m_plan.launchDir), Uniform(1.0f));
         }
-        if (shape.tier == HitTier::Near)
-        {
-            countInput = 3;
-        }
         sparks.dynamicInputs[0] = 0.0f;
         sparks.dynamicInputs[1] = 0.0f;
         sparks.dynamicInputs[3] = 0.0f;
-        sparks.dynamicInputs[countInput] = static_cast<float>(shape.sparkCount);
+        sparks.dynamicInputs[shape.sparkCountInput] = static_cast<float>(shape.sparkCount);
         // 秒の速さを 1 フレームの距離にして絵へ渡す
         sparks.dynamicInputs[2] = shape.sparkSpeed / 60.0f;
         SetAmount(m_layers.Play(effects, k_Sparks, sparks), shape.sparkAmount);
@@ -525,8 +512,6 @@ namespace NS::Game::Player
         const int step = m_layers.Step();
         const int frame = step - m_plan.freezeStep;
         const ImpactShape& shape = m_plan.shape;
-        const bool center = shape.tier == HitTier::Center;
-        const bool nearMiss = shape.tier == HitTier::Near;
 
         if (!m_plan.sparksPlayed && frame == shape.sparkStartFrame)
         {
@@ -547,7 +532,7 @@ namespace NS::Game::Player
                 // 描く位置が変わるのはこのステップの終わりの更新の後。1 フレーム目の絵から最大の大きさで写り、
                 // 留まる間は偶数のフレームだけ少し縮める。大きな外れは 1 フレーム目の最大から少しずつ縮める
                 float diameter = shape.coreDiameter;
-                if (shape.tier == HitTier::Wide)
+                if (shape.coreHold == CoreHoldMotion::Settle)
                 {
                     const float settle = std::pow(k_WideFlashDecay, static_cast<float>(frame - 1));
                     const float share = k_WideFlashFloor + (1.0f - k_WideFlashFloor) * settle;
@@ -575,7 +560,7 @@ namespace NS::Game::Player
             }
         }
 
-        if (center && frame == 1)
+        if (shape.streakLength > 0.0f && frame == 1)
         {
             m_plan.streak =
                 m_layers.Play(effects,
@@ -641,47 +626,26 @@ namespace NS::Game::Player
             m_plan.glow = 0;
         }
 
-        // 惜しいの輪は引き始めのフレームで広がり止み、その 2 フレーム後に消える。消えるのが出る前なら出さない
-        int ringEnd = k_RingEnd;
-        if (nearMiss)
-        {
-            ringEnd = std::min(k_RingEnd, shape.nearPullFrame + 2);
-        }
-        if (shape.ringRadius > 0.0f && frame == k_RingStart && ringEnd > k_RingStart)
+        if (shape.ringRadius > 0.0f && frame == k_RingStart)
         {
             m_plan.ring = m_layers.Play(
                 effects,
                 k_Ring,
                 PlayAt(m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(Tuning().m_ringStartRadius)));
-            float reach = shape.ringRadius;
-            if (nearMiss)
-            {
-                reach = shape.ringRadius * Tuning().m_nearRingReach;
-            }
-            SetAmount(m_plan.ring, reach);
+            SetAmount(m_plan.ring, shape.ringRadius);
         }
         if (m_plan.ring != 0)
         {
-            if (frame >= ringEnd)
+            if (frame >= k_RingEnd)
             {
                 m_layers.Stop(effects, m_plan.ring);
                 m_plan.ring = 0;
             }
             else if (effects != nullptr)
             {
-                int grownFrame = frame;
-                if (nearMiss)
-                {
-                    grownFrame = std::min(frame, shape.nearPullFrame);
-                }
-                const float t =
-                    static_cast<float>(grownFrame - k_RingStart) / static_cast<float>(k_RingFull - k_RingStart);
-                float radius =
+                const float t = static_cast<float>(frame - k_RingStart) / static_cast<float>(k_RingFull - k_RingStart);
+                const float radius =
                     Tuning().m_ringStartRadius + (shape.ringRadius - Tuning().m_ringStartRadius) * EaseOutCubic(t);
-                if (nearMiss)
-                {
-                    radius = std::min(radius, shape.ringRadius * Tuning().m_nearRingReach);
-                }
                 const EffectLayerRecord* record = m_layers.Find(m_plan.ring);
                 if (record != nullptr)
                 {
@@ -720,13 +684,9 @@ namespace NS::Game::Player
                 }
                 m_aim.recoilOrigin = Owner()->Root().Position() - m_plan.selfDir * radius;
                 NS::Gfx::EffectPlayDesc recoil = PlayAt(m_aim.recoilOrigin, TurnUpTo(m_plan.selfDir), Uniform(1.0f));
-                recoil.dynamicInputs[0] = static_cast<float>(shape.recoilCount);
+                recoil.dynamicInputs[0] = 0.0f;
                 recoil.dynamicInputs[2] = 0.0f;
-                if (shape.tier == HitTier::Wide)
-                {
-                    recoil.dynamicInputs[0] = 0.0f;
-                    recoil.dynamicInputs[2] = static_cast<float>(shape.recoilCount);
-                }
+                recoil.dynamicInputs[shape.recoilCountInput] = static_cast<float>(shape.recoilCount);
                 recoil.dynamicInputs[1] = shape.recoilLength;
                 SetAmount(m_layers.Play(effects, k_Recoil, recoil), shape.recoilLength);
             }

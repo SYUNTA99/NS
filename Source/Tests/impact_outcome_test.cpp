@@ -1,3 +1,4 @@
+#include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerParams.h"
@@ -7,6 +8,7 @@
 namespace
 {
     using NS::Game::Level::ComputeImpactOutcome;
+    using NS::Game::Level::HitTier;
     using NS::Game::Level::ImpactInput;
     using NS::Game::Level::ImpactOutcome;
     using NS::Game::Level::ImpactTuning;
@@ -24,7 +26,7 @@ namespace
     {
         ImpactInput input;
         input.power = 1.0f;
-        input.centerHit = false;
+        input.tier = HitTier::Wide;
         input.mass = 1.0f;
         input.awayDirection = NS::Core::Vector3{1.0f, 0.0f, 0.0f};
         input.launchDirection = NS::Core::Vector3{0.0f, 0.0f, 1.0f};
@@ -58,7 +60,7 @@ TEST(ImpactOutcome, CenterHitStretchesReboundDistanceAndHitStopButNotHeight)
     const ImpactTuning tuning = DefaultTuning();
     ImpactInput wide = BaseInput();
     ImpactInput center = BaseInput();
-    center.centerHit = true;
+    center.tier = HitTier::Center;
 
     const ImpactOutcome wideOutcome = ComputeImpactOutcome(wide, tuning);
     const ImpactOutcome centerOutcome = ComputeImpactOutcome(center, tuning);
@@ -67,6 +69,26 @@ TEST(ImpactOutcome, CenterHitStretchesReboundDistanceAndHitStopButNotHeight)
                     wideOutcome.reboundArc.distance * tuning.centerHitReboundDistanceScale);
     EXPECT_FLOAT_EQ(centerOutcome.reboundArc.apexHeight, wideOutcome.reboundArc.apexHeight);
     EXPECT_GT(centerOutcome.stopSteps, wideOutcome.stopSteps);
+}
+
+// 段が配分に効くのは中心近くの止めと反動の距離の倍率だけ。呼び手が 2 つの倍率を 1 にすれば、
+// 中心近くと記録する当たりも大きな外れと同じ配分になる。ボタン未搭載の当たりはこの形で段の倍率を外す
+TEST(ImpactOutcome, TiersDifferOnlyByTheCenterScales)
+{
+    ImpactTuning tuning = DefaultTuning();
+    tuning.centerHitStopScale = 1.0f;
+    tuning.centerHitReboundDistanceScale = 1.0f;
+    ImpactInput wide = BaseInput();
+    ImpactInput center = BaseInput();
+    center.tier = HitTier::Center;
+
+    const ImpactOutcome wideOutcome = ComputeImpactOutcome(wide, tuning);
+    const ImpactOutcome centerOutcome = ComputeImpactOutcome(center, tuning);
+
+    EXPECT_FLOAT_EQ(centerOutcome.reboundArc.distance, wideOutcome.reboundArc.distance);
+    EXPECT_FLOAT_EQ(centerOutcome.reboundArc.apexHeight, wideOutcome.reboundArc.apexHeight);
+    EXPECT_FLOAT_EQ(centerOutcome.launchArc.distance, wideOutcome.launchArc.distance);
+    EXPECT_EQ(centerOutcome.stopSteps, wideOutcome.stopSteps);
 }
 
 // 威力が 0 の当たりは止めず、動かさない。質量が極端に重くても止めは上限で頭打ち

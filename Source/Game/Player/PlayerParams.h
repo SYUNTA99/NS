@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerVisualParams.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Reflection/Curve.h"
@@ -42,6 +43,12 @@ namespace NS::Game::Player
         [[nodiscard]] float StickDeadzone() const noexcept { return m_stickDeadzone; }
         //! 欄「ブレーキのしきい値」の値。進行方向と入力方向の内積がこれ以下ならブレーキに入る
         [[nodiscard]] float BrakeThreshold() const noexcept { return m_brakeThreshold; }
+        //! 欄「上昇重力」「下降重力」「頂点滞空 Vy」「頂点滞空倍率」の写し。重力の強さを選ぶ ChooseGravity へ渡す
+        [[nodiscard]] PlayerGravity Gravity() const noexcept
+        {
+            return PlayerGravity{
+                .rise = m_gravityUp, .fall = m_gravityDown, .apexSpeed = m_apexHangVy, .apexScale = m_apexHangScale};
+        }
 
         NS_REFLECT_BEGIN(PlayerParams, NS::Obj::Component)
         NS_REFLECT_FIELD(m_maxHealth, "体力")
@@ -70,13 +77,12 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_turnSpeed, "振り向きの速さ")
         NS_REFLECT_FIELD(m_bodySlamSpeed, "突進速度")
         NS_REFLECT_FIELD(m_bodySlamDistance, "突進距離")
+        NS_REFLECT_FIELD(m_launchPitchLimitDegrees, "放つ角度の上限")
         NS_REFLECT_FIELD(m_tapSlamSpeed, "タップ初速")
         NS_REFLECT_FIELD(m_tapSlamUpSpeed, "タップの上向き初速")
         NS_REFLECT_FIELD(m_tapSlamDistance, "タップ距離")
         NS_REFLECT_FIELD(m_slamAimHoldTime, "狙いの巻き戻し秒")
         NS_REFLECT_FIELD(m_slamAimFadeTime, "狙いの巻き戻しが消える秒")
-        NS_REFLECT_FIELD(m_homingMaxDegrees, "寄せる角度の上限")
-        NS_REFLECT_FIELD(m_homingStepDegrees, "1 フレームの向きの変化の上限")
         NS_REFLECT_FIELD(m_reboundRiseGravityScale, "反動の上りの重力倍率")
         NS_REFLECT_FIELD(m_reboundAirAcceleration, "反動中の空中の加速度")
         NS_REFLECT_FIELD(m_idleClip, "立ちのクリップ")
@@ -91,11 +97,6 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_chargeFullSeconds, "チャージ満タン秒")
         NS_REFLECT_FIELD(m_chargeSlowRate, "チャージ減速率")
         NS_REFLECT_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
-        NS_REFLECT_FIELD(m_positionFactorCurve, "突進位置係数カーブ")
-        NS_REFLECT_FIELD(m_centerTierEdge, "中心近くの境目")
-        NS_REFLECT_FIELD(m_nearTierEdge, "惜しいの境目")
-        NS_REFLECT_FIELD(m_homingSearchDegrees, "寄せる相手を探す角度")
-        NS_REFLECT_FIELD(m_homingSearchDistance, "寄せる相手を探す距離")
         NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
         NS_REFLECT_FIELD(m_pressSquashScale, "押しの構えの縮み")
         NS_REFLECT_FIELD(m_standingMeshRef, "立ち姿のメッシュ")
@@ -130,8 +131,6 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_centerHitZoom, "中心近くの当たりの寄りの倍率")
         NS_REFLECT_FIELD(m_centerHitRollDegrees, "中心近くの当たりの傾き")
         NS_REFLECT_FIELD(m_zoomRollReturnFrames, "寄りと傾きを戻すフレーム数")
-        NS_REFLECT_FIELD(m_nearHitReturnRatio, "惜しい当たりの返りの割合")
-        NS_REFLECT_FIELD(m_nearHitPullBackRatio, "惜しい当たりの返りを引き始める割合")
         NS_REFLECT_FIELD(m_centerHitPadStrength, "中心近くの当たりのパッドの振動の強さ")
         NS_REFLECT_FIELD(m_widePadStrength, "大きな外れのパッドの振動の強さ")
         NS_REFLECT_FIELD(m_squashThickness, "潰れの厚み")
@@ -154,13 +153,11 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_ringRadiusBase, "輪の半径の基準")
         NS_REFLECT_FIELD(m_ringRadiusPerPower, "輪の半径の威力あたり")
         NS_REFLECT_FIELD(m_ringStartRadius, "輪の出始めの半径")
-        NS_REFLECT_FIELD(m_nearRingReach, "惜しいの輪が届く割合")
         NS_REFLECT_FIELD(m_ringFaceCamera, "輪をカメラへ起こす割合")
         NS_REFLECT_FIELD(m_sparkCountMin, "火花の数の下限")
         NS_REFLECT_FIELD(m_sparkCountMax, "火花の数の上限")
         NS_REFLECT_FIELD(m_sparkSpeedBase, "火花の速さの基準")
         NS_REFLECT_FIELD(m_sparkSpeedPerLaunch, "火花の速さの飛ばしの比あたり")
-        NS_REFLECT_FIELD(m_nearSparkShare, "惜しいの火花の数の割合")
         NS_REFLECT_FIELD(m_wideSparkCount, "大きな外れの火花の数")
         NS_REFLECT_FIELD(m_wideSparkSpeed, "大きな外れの火花の速さ")
         NS_REFLECT_FIELD(m_emberShare, "火の粉の数の火花あたり")
@@ -251,8 +248,6 @@ namespace NS::Game::Player
         float m_centerHitZoom = 1.15f;
         float m_centerHitRollDegrees = 3.0f;
         int m_zoomRollReturnFrames = 6;
-        float m_nearHitReturnRatio = 0.4f;
-        float m_nearHitPullBackRatio = 0.5f;
         float m_centerHitPadStrength = 1.0f;
         float m_widePadStrength = 0.6f;
         float m_squashThickness = 0.7f;
@@ -275,13 +270,11 @@ namespace NS::Game::Player
         float m_ringRadiusBase = 0.5f;
         float m_ringRadiusPerPower = 0.6f;
         float m_ringStartRadius = 0.3f;
-        float m_nearRingReach = 0.5f;
         float m_ringFaceCamera = 1.0f;
         int m_sparkCountMin = 10;
         int m_sparkCountMax = 30;
         float m_sparkSpeedBase = 6.0f;
         float m_sparkSpeedPerLaunch = 3.0f;
-        float m_nearSparkShare = 0.5f;
         int m_wideSparkCount = 16;
         float m_wideSparkSpeed = 4.0f;
         float m_emberShare = 7.0f;
@@ -313,11 +306,6 @@ namespace NS::Game::Player
         float m_chargeFullSeconds = 1.0f;
         float m_chargeSlowRate = 0.7f;
         NS::Obj::Curve m_chargeFactorCurve{};
-        NS::Obj::Curve m_positionFactorCurve{};
-        float m_centerTierEdge = 0.35f;
-        float m_nearTierEdge = 0.7f;
-        float m_homingSearchDegrees = 30.0f;
-        float m_homingSearchDistance = 6.0f;
         float m_chargeSquashScale = 0.95f;
         float m_pressSquashScale = 0.97f;
         std::string m_idleClip = "idle";
@@ -354,13 +342,15 @@ namespace NS::Game::Player
         float m_turnSpeed = 970.0f;
         float m_bodySlamSpeed = 20.0f;
         float m_bodySlamDistance = 10.0f;
+        // 溜めて放つ突進を相手の赤の高さへ向ける角度の上限 (度)。上向きも下向きもこの角度で切る
+        // 突進が高い所へ登る手段にならない所で止める。水平 20 m/s・上りの重力 -25 で上がれる高さは 45 度で約 8 m、
+        // 40 度で約 5.6 m、30 度で約 2.6 m。2026-10-03 本人の指定で 40
+        float m_launchPitchLimitDegrees = 40.0f;
         float m_tapSlamSpeed = 10.0f;
         float m_tapSlamUpSpeed = 3.0f;
         float m_tapSlamDistance = 6.25f;
         float m_slamAimHoldTime = 0.11f;
         float m_slamAimFadeTime = 0.19f;
-        float m_homingMaxDegrees = 3.0f;
-        float m_homingStepDegrees = 0.25f;
         float m_reboundRiseGravityScale = 0.5f;
         float m_reboundAirAcceleration = 2.0f;
     };

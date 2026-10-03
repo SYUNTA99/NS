@@ -264,7 +264,7 @@ namespace NS::Game::Player
     void ChargeEffects::StartRelease(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
     {
         const float charge01 = m_actor->BodySlamCharge01();
-        m_slamDirection = m_actor->BodySlamStartDirection();
+        m_slamDirection = m_actor->BodySlamDirection();
         const NS::Core::Quaternion facing = YawToward(m_slamDirection);
 
         // 効果の全体を縮めると、タップの散って残る筋は玉の輪郭の内側で生まれ、はじけの光も画面を明るくしない。

@@ -34,7 +34,7 @@ namespace NS::Game::Level
         void OnUpdate() override;
 
         //! @brief 押し飛ばされた所から尾を出す。前の尾が残っていれば消してから出す
-        //! @param[in] tier 当たりの段。大きな外れは灰、他は橙
+        //! @param[in] tier 当たりの段。尾の色を段ごとの表で引き、中心近くは橙、大きな外れは灰
         //! @param[in] power 最終威力。落ちた所の粉を大きくする
         //! @param[in] launchScale 飛ばしの比。尾を長く残す
         //! @param[in] launchDir 飛ぶ水平の向き。速さが 0 の時の尾の向き

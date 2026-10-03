@@ -84,6 +84,7 @@ namespace NS::Game::Level
         ModelPart()->SetBaseColor(NS::Core::Vector3{0.72f, 0.70f, 0.66f});
         SetCollisionPart(std::make_unique<NS::Obj::SphereCollider>());
         AttachFixedComponent(m_params);
+        AttachFixedComponent(m_hitZones);
         AttachFixedComponent(m_effects);
         (void)CreatePart("BodySensor");
         BodySensorPart()->SetType(NS::Obj::HitSensorType::MapObjBody);
@@ -96,6 +97,7 @@ namespace NS::Game::Level
     {
         NS::Obj::Actor::ForEachPart(visitor);
         visitor("Params", const_cast<MapObjParams&>(m_params));
+        visitor("HitZones", const_cast<HitZones&>(m_hitZones));
         visitor("LaunchEffects", const_cast<LaunchEffects&>(m_effects));
     }
 
@@ -507,7 +509,10 @@ namespace NS::Game::Level
             answer.breakable = false;
             answer.placed = !IsFlying();
             answer.position = Root().Position();
-            answer.bounds = BodySensorPart()->WorldVolume().Bounds();
+            const NS::Obj::SensorVolume body = BodySensorPart()->WorldVolume();
+            answer.bounds = body.Bounds();
+            answer.face = m_hitZones.Face();
+            answer.body = body;
             return true;
         }
         if (const MsgTackleFreeze* freeze = NS::Obj::MsgCast<MsgTackleFreeze>(msg))
