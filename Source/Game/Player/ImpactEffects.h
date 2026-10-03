@@ -48,9 +48,9 @@ namespace NS::Game::Player
         SparkHeading sparkHeading = SparkHeading::Launch; //!< 火花の向き
         std::size_t sparkCountInput = 0;                  //!< 火花の絵 impact.sparks の、粒の数を入れる動的入力の番号
         std::size_t recoilCountInput = 0;                 //!< 弾かれ線の絵 impact.recoil の、本数を入れる動的入力の番号
-        int holdLastFrame = 1;                            //!< 核が最大近くに留まる最後のフレーム。止めの頭を 0 と数える
-        int sparkStartFrame = 0;                          //!< 火花を出すフレーム。止めの頭を 0 と数え、中心近くだけ 3
-        int emberStartFrame = 0;   //!< 火の粉を出すフレーム。止めの頭を 0 と数え、核が落ちるフレーム。中心近くだけ
+        int holdLastFrame = 1;                            //!< 核が最大近くに留まる最後のフレーム。当たりの絵の頭を 0 と数える
+        int sparkStartFrame = 0;                          //!< 火花を出すフレーム。当たりの絵の頭を 0 と数え、中心近くだけ 3
+        int emberStartFrame = 0;   //!< 火の粉を出すフレーム。当たりの絵の頭を 0 と数え、核が落ちるフレーム。中心近くだけ
         float coreDiameter = 0.0f; //!< 核の直径。単位は m
         float streakLength = 0.0f; //!< 光条の長さ。単位は m。中心近くだけ
         float ringRadius = 0.0f;   //!< 輪が広がりきった半径。単位は m。大きな外れは 0
@@ -78,17 +78,17 @@ namespace NS::Game::Player
 
     //! @brief 自機が当ててから着地するまでのエフェクトの層を出し、出すと決めた記録を持つ
     //! @details 受け持つ層の名前は impact.・rebound.・land. で始まる
-    //! 同居する ImpactResolver の止めの頭と明けを読み、止めの頭に核と照り、次のフレームから光条、
-    //! 3 フレーム目から輪、明けに粉、明けの 4 フレーム後に弾かれ線を出す。火花は中心近くが 3 フレーム目、他は止めの頭
-    //! 中心近くは核が落ちるフレームに火の粉を出す
-    //! 明けに、反動に入った自機へ反動の尾を出し、毎フレーム付いていかせる。反動の尾は頂点で親を止めて 8
+    //! 当たりのタイムラインの事象が置いた頼みを読み、当たりの絵の頭に核と照り、次のフレームから光条、
+    //! 3 フレーム目から輪、飛びの絵の頭に粉、その 4 フレーム後に弾かれ線を出す。火花は中心近くが 3 フレーム目、
+    //! 他は当たりの絵の頭。中心近くは核が落ちるフレームに火の粉を出す
+    //! 飛びの絵の頭に、反動に入った自機へ反動の尾を出し、毎フレーム付いていかせる。反動の尾は頂点で親を止めて 8
     //! フレーム後に消す 反動の着地 (着地の潰れと同じフレーム) には足元へ粉を出す
     //! 飛ばした相手の飛び出しの尾と落ちた所の粉は、相手が自分で出す (LaunchEffects)。相手の部品は読まない
-    //! 止めが 0 の当たりでは何も出さない
+    //! 当たりの絵の事象を置いていないタイムラインの当たりと、タイムラインの引けない当たりでは何も出さない
     //! 層の時間 (留まり・広がり・消えるフレーム) はここが持ち、形と色は絵が持つ
     //! 描画の無い世界でも記録は残し、試しと Replay は Layers を読む
     //! Player の見た目の段 (VisualStep) が最後に呼ぶ。
-    //! 同じフレームの ImpactResolver が決めた止めの頭と明けと、自機の移動の段の後に走る。
+    //! 同じフレームの ImpactResolver が事象から頼みを置いた後と、自機の移動の段の後に走る。
     //! 物理の段と、飛ばした相手が自分の段階を切り替える Triggers の段よりは前に走る
     //! 依存: EffectLayerList, NS::Game::Level::ImpactResolver, Player, カメラの窓口
     class ImpactEffects : public NS::Obj::Component
@@ -99,8 +99,17 @@ namespace NS::Game::Player
         //! 同居する ImpactResolver を控え、描画のある世界なら層の絵を読み込む
         void OnStart() override;
 
-        //! 記録のフレームを 1 つ進め、止めの頭と明けを読んで層を出し、出ている層の大きさを置き直す
+        //! 記録のフレームを 1 つ進め、置かれた頼みを読んで層を出し、出ている層の大きさを置き直す
         void OnUpdate() override;
+
+        //! @brief 当たりの絵を始める頼みを置く。同じフレームの OnUpdate が、同居する ImpactResolver
+        //! の直近の当たりから層を出す
+        //! @details 決定の段から直に層を出すと EffectLayerList::BeginStep より前に出て、始まりのフレームが 1 つずれる
+        void RequestHitEffect() noexcept { m_hitRequested = true; }
+
+        //! @brief 飛びの絵を始める頼みを置く。同じフレームの OnUpdate が反動の尾を出す
+        //! @details 当たりの絵の段取りが終わった後の頼みは何もしない
+        void RequestFlightEffect() noexcept { m_flightRequested = true; }
 
         //! 出すと決めた層の記録
         [[nodiscard]] const EffectLayerList& Layers() const noexcept { return m_layers; }
@@ -140,12 +149,12 @@ namespace NS::Game::Player
                                  const NS::Game::Level::ImpactRecord& impact,
                                  float power,
                                  const PlayerParams& tuning) noexcept;
-        // 止めの頭から数えた当たり 1 回の段取り。層の番号 0 はまだ出していない印
+        // 当たりの絵の頭から数えた当たり 1 回の段取り。層の番号 0 はまだ出していない印
         struct HitPlan
         {
             bool active = false;
-            int freezeStep = 0;   // 止めの頭の EffectLayerList のフレーム
-            int releaseStep = -1; // 明けのフレーム。まだ明けていなければ -1
+            int freezeStep = 0;   // 当たりの絵の頭の EffectLayerList のフレーム
+            int releaseStep = -1; // 飛びの絵の頭のフレーム。まだ始めていなければ -1
             ImpactShape shape;
             NS::Core::Vector3 contact;    // 接触点。自機の玉の縁の、相手へ向いた点
             NS::Core::Vector3 launchDir;  // 相手の飛ぶ水平の向き
@@ -166,7 +175,7 @@ namespace NS::Game::Player
             bool dustPlayed = false;
         };
 
-        // 明けから、自機の反動が終わるまでの尾。当たりの段取りより長く残る。層の番号 0 は無い印
+        // 飛びの絵の頭から、自機の反動が終わるまでの尾。当たりの段取りより長く残る。層の番号 0 は無い印
         struct Flight
         {
             std::uint32_t reboundTrail = 0; // 反動の尾。親を止めたか消したら 0
@@ -187,7 +196,7 @@ namespace NS::Game::Player
         // 前の当たりの層のうち、ここが消える時を持っている物を今のフレームで畳む
         void FinishHeldLayers(NS::Gfx::EffectScene* effects);
         void SetAmount(std::uint32_t id, float amount) noexcept;
-        // 明けに反動の尾を出す
+        // 飛びの絵の頭に反動の尾を出す
         void BeginFlight(NS::Gfx::EffectScene* effects);
         // 反動の尾を自機へ付いていかせる。頂点で親を止める
         void AdvanceFlight(NS::Gfx::EffectScene* effects);
@@ -208,6 +217,8 @@ namespace NS::Game::Player
         float m_lastVerticalVelocity = 0.0f; // 前のフレームの自機の縦の速さ (m/s)。着地のフレームは既に 0
         bool m_landingDustPlayed = false;    // この反動の着地の粉を出した。反動を抜けたら戻す
         ImpactAim m_aim;
-        std::vector<std::uint32_t> m_dusts; // 出した粉。次の当たりの止めの頭で親を止める
+        std::vector<std::uint32_t> m_dusts; // 出した粉。次の当たりの絵の頭で親を止める
+        bool m_hitRequested = false;        // 事象が置いた、当たりの絵を始める頼み。OnUpdate が読んで消す
+        bool m_flightRequested = false;     // 事象が置いた、飛びの絵を始める頼み。OnUpdate が読んで消す
     };
 } // namespace NS::Game::Player

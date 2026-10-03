@@ -36,10 +36,8 @@ namespace NS::Obj
         }
         if (desc.frames > k_MaxShakeFrames)
         {
-            NS_LOG_WARN(Scene,
-                        "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった",
-                        desc.frames,
-                        k_MaxShakeFrames);
+            NS_LOG_WARN(
+                Scene, "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった", desc.frames, k_MaxShakeFrames);
             return false;
         }
         // カメラの無い場面 (試しの台) では揺らす先が無い。設定の誤りではないので黙って返す
@@ -130,19 +128,18 @@ namespace NS::Obj
     void HitReaction::WritePadVibration()
     {
         NS::Platform::GamepadVibration speed{};
-        if (m_padElapsed < m_pad.frames && m_pad.fadeFrames > 0)
+        if (m_padElapsed < m_pad.frames)
         {
-            const float fade =
-                static_cast<float>(m_pad.fadeFrames - m_padElapsed) / static_cast<float>(m_pad.fadeFrames);
-            speed.left = m_pad.start.left * fade;
-            speed.right = m_pad.start.right * fade;
+            const float elapsed = static_cast<float>(m_padElapsed);
+            speed.left = m_pad.left.Evaluate(elapsed);
+            speed.right = m_pad.right.Evaluate(elapsed);
         }
         else
         {
             // 終わりのフレームも 0 を書く。書かないと次の Input::Update までは前の値が読める
             m_padRunning = false;
         }
-        // 以後のフレームは始めの値から 0 へ減るだけなので、範囲の外になるのは始めの値が外の時だけ
+        // 曲線の途中で範囲の外へ出たら、そのフレームで振動を止める
         if (!NS::Platform::Input::Get().Gamepad(0).SetVibration(speed.left, speed.right))
         {
             NS_LOG_WARN(

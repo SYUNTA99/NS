@@ -32,6 +32,17 @@ namespace
     {
         return NS::Platform::Input::Get().Gamepad(0).Vibration().left;
     }
+
+    // 左のモーターを start から frames フレームで 0 へ下げる振動
+    NS::Obj::HitPadVibration FadingLeft(float start, int frames)
+    {
+        NS::Obj::HitPadVibration pad;
+        pad.left.count = 2;
+        pad.left.keys[0] = NS::Obj::Curve::Key{0.0f, start};
+        pad.left.keys[1] = NS::Obj::Curve::Key{static_cast<float>(frames), 0.0f};
+        pad.frames = frames;
+        return pad;
+    }
 } // namespace
 
 // 白を始めても書いている振動は続き、振動を始めても薄れている白は続く
@@ -41,7 +52,7 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
     NS::Obj::HitReaction* reaction = PlaceReaction(scene);
     ASSERT_NE(reaction, nullptr);
 
-    reaction->StartPadVibration(NS::Obj::HitPadVibration{.start = {.left = 1.0f}, .fadeFrames = 4, .frames = 4});
+    reaction->StartPadVibration(FadingLeft(1.0f, 4));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);
     reaction->OnUpdate();
     reaction->OnUpdate();
@@ -54,7 +65,7 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
     EXPECT_EQ(reaction->FlashFramesRemaining(), 3);
     EXPECT_FLOAT_EQ(PadLeft(), 0.5f);
 
-    reaction->StartPadVibration(NS::Obj::HitPadVibration{.start = {.left = 0.5f}, .fadeFrames = 2, .frames = 2});
+    reaction->StartPadVibration(FadingLeft(0.5f, 2));
     reaction->OnUpdate();
     // 振動は始めたフレームの姿のまま、白は薄れる
     EXPECT_EQ(reaction->FlashFramesRemaining(), 2);

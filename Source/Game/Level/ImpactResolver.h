@@ -86,8 +86,9 @@ namespace NS::Game::Level
     //! 1 フレームずつ進め、始まりのフレームに来た事象を受け持ちへ渡す。自機の止め・形・反動はここが持ち、
     //! 相手の止めと飛ばしは MsgTackleFreeze と MsgTackleRelease で相手へ渡す
     //! 相手が食い込み・縮み・飛ぶ・壊れるかは相手が決める。相手の部品は触らない
-    //! 白の光・カメラの揺れと寄り・パッドの振動は同居する HitReaction へ組んで渡す
-    //! 依存: NS::Obj::Body / Collider, PlayerParams, HitTier, NS::Obj::HitSensor, NS::Obj::HitReaction
+    //! 白の光・カメラの揺れと寄り・パッドの振動の事象は同居する HitReaction で始め、
+    //! 当たりと飛びの絵の事象は同居する ImpactEffects へ頼みを置く
+    //! 依存: NS::Obj::Body / Collider, PlayerParams, HitTier, NS::Obj::HitSensor, NS::Obj::HitReaction, ImpactEffects
     class ImpactResolver : public NS::Obj::Component
     {
     public:
@@ -106,7 +107,7 @@ namespace NS::Game::Level
         //! @brief タイムラインの時計を 1 フレーム進め、ObserveImpact が控えた相手へ向かっていれば衝突の結果を決める
         //! @details ObserveImpact の後に 1 回だけ効き、2 回目は何もしない。
         //! 時計が走っている間は、始まりのフレームに来た事象を並びの順に起こす。
-        //! 新しい当たりは、走っているタイムラインを打ち切ってから始め直す
+        //! 新しい当たりは、走っているタイムラインを打ち切り、同居の HitReaction の返りを止めてから始め直す
         void StepState();
 
         //! 直近の更新で反発を検知した場合 true、それ以外の場合は false
@@ -217,29 +218,19 @@ namespace NS::Game::Level
         // 検知のフレームから、止めた自機を動かし直すまでの場合 true
         [[nodiscard]] bool IsHoldingPlayer() const noexcept { return m_holdArmed && !m_holdReleased; }
 
-        // 当たり 1 回の返り。揺れの向きと種、寄りと傾きの向きは呼び手が入れる
-        struct TierReturns
-        {
-            int flashSteps = 0; // 白の光のフレーム数
-            NS::Obj::CameraShakeDesc shake;
-            NS::Obj::CameraZoomRollDesc zoomRoll;
-            NS::Obj::HitPadVibration pad;
-        };
+        // 揺れの事象から、この当たりのカメラの揺れを組む。最初の振れは 強さ × 威力 × 質量の効きで、
+        // 横と縦の重みの比で分ける。重みが両方 0 なら揺らさない (フレーム数 0)
+        // 事前条件: 反動の向き・威力・質量の効き・揺れの種を控え終えている
+        [[nodiscard]] NS::Obj::CameraShakeDesc ShakeDescFor(const CameraShakeEvent& shake, int length) const noexcept;
 
-        // 縦だけの揺れを止めのフレーム数で収める返り。白・寄り・傾き・振動は無い。TierReturnsFor の Center
-        // 行と段の外の値が使う
-        [[nodiscard]] static TierReturns PlainReturns(float swing, int stopSteps) noexcept;
+        // 寄りの事象から、この当たりの寄りと傾きを組む。長さのうち末尾の戻すフレーム数を除いた間を保つ
+        // 事前条件: 相手の飛ぶ向きを控え終えている
+        [[nodiscard]] NS::Obj::CameraZoomRollDesc ZoomRollDescFor(const ZoomRollEvent& zoomRoll,
+                                                                  int length) const noexcept;
 
-        // 段ごとに 1 行の表から返りを組む。段を足したら行を足す
-        // swing は全段で同じ式の最初の振れの大きさで、段の倍率は行が掛ける
-        [[nodiscard]] TierReturns TierReturnsFor(HitTier tier, float swing, int stopSteps) const noexcept;
-
-        // 当たりの返り (白・揺れ・寄りと傾き・振動) を段から組んで控え、記録へ始めの値を書く。検知のフレームに呼ぶ
-        // 事前条件: 反動の向き・相手の飛ぶ向き・相手の番号と位置を控え終えている
-        void PrepareHitReturns(HitTier tier, float power, float massFactor, float offset01, int stopSteps);
-
-        // 控えた当たりの返りを同居する HitReaction で始める。前の当たりの返りが残っていても、控えた値で始め直す
-        void StartHitReturns();
+        // 検知のフレームに、返りの事象の種類ごとに最初の 1 つから始めの値を記録へ写す。事象の無い返りは無い時の値
+        // 事前条件: ShakeDescFor と ZoomRollDescFor の事前条件と同じ
+        void RecordReturns(const std::vector<HitEvent>& events);
 
         // 元の形を 1 とした倍率。進行の軸の成分の 2 乗で along を x と z に混ぜ、縦は height
         [[nodiscard]] NS::Core::Vector3 AlongImpactFactors(float along, float height) const noexcept;
@@ -275,13 +266,12 @@ namespace NS::Game::Level
         float m_pendingLaunchScale = 0.0f;                      // この衝突の飛ばしの比。明けに相手の尾の長さへ渡す
         HitTier m_pendingTier = HitTier::Center;                // この衝突の段。明けに相手の尾の色へ渡す
         NS::Core::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f}; // 発射の水平方向。食い込みと振動の軸
-        int m_pendingFlashSteps = 0;                            // この衝突の白のフレーム数。白の無い段は 0
-        NS::Obj::CameraShakeDesc m_pendingShake{};              // この衝突のカメラの揺れ
-        NS::Obj::CameraZoomRollDesc m_pendingZoomRoll{};        // この衝突の寄りと傾き。寄りの無い段は倍率 1
         NS::Obj::ActorRef m_pendingTarget{};                    // 知らせる相手。凍結をまたぐので使うたびに引く
         // 検知のフレームに相手が置かれていたか。記録と当たりの演出が読む
         bool m_pendingTargetPlaced = false;
-        NS::Obj::HitPadVibration m_pendingPad{}; // この衝突の振動。振動の無い段は書くフレーム数 0
+        float m_pendingPower = 0.0f;          // この衝突の威力。揺れの最初の振れに掛ける
+        float m_pendingMassFactor = 0.0f;     // この衝突の質量の効き。揺れの最初の振れに掛ける
+        std::uint32_t m_pendingShakeSeed = 0; // この衝突の揺れの、入れ替わりの間隔を選ぶ種
 
         bool m_didRebound = false;          // 直近の更新で反発を検知したか
         bool m_didBreak = false;            // 直近の更新で貫通を検知したか

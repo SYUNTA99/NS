@@ -6,6 +6,7 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
 #include "Game/Player.h"
+#include "Game/Player/ImpactEffects.h"
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/AABB.h"
@@ -619,7 +620,12 @@ namespace NS::Game::Level
                         centerHit);
         }
 
-        // 前の当たりの事象が走っていれば、この当たりの事象を起こす前に止める
+        // 前の当たりの事象が走っていれば、この当たりの事象を起こす前に止める。始めた返りも止め、
+        // この当たりのタイムラインに置いた返りだけが出る
+        if (m_clockRunning && m_hitReaction != nullptr)
+        {
+            m_hitReaction->Stop();
+        }
         AbortTimeline();
         const HitDirection direction = HitDirectionOf(judgement.u, judgement.v);
         const HitTimeline* timeline = HitTimelineLibrary::Get().FindForTier(tier);
@@ -636,7 +642,10 @@ namespace NS::Game::Level
         }
         const int stopSteps = StopStepsOf(events, breakStopSteps);
 
-        PrepareHitReturns(tier, power, outcome.massFactor, offset01, stopSteps);
+        m_pendingPower = power;
+        m_pendingMassFactor = outcome.massFactor;
+        m_pendingShakeSeed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, m_pendingTargetPosition);
+        RecordReturns(events);
 
         // 止めるフレーム数が決まってから控える。タイムラインの引けない当たりも残すので、下の return より手前に置く
         m_lastImpact.sequence += 1;
@@ -698,7 +707,6 @@ namespace NS::Game::Level
             resolver.m_stopEnd = resolver.m_clock + length - 1;
             resolver.m_freezeBeganThisStep = true;
             NS_LOG_INFO(Game, "ヒットストップ: {} フレーム", length);
-            resolver.StartHitReturns();
         }
 
         void operator()(const ShapeEvent& shape) const
@@ -742,13 +750,55 @@ namespace NS::Game::Level
 
         void operator()(const ReboundEvent&) const { resolver.ApplyRebound(); }
 
-        // 白・揺れ・寄り・振動は今は止めの頭の StartHitReturns が出し、エフェクトは ImpactEffects が止めの印で出す
-        void operator()(const CameraShakeEvent&) const {}
-        void operator()(const ZoomRollEvent&) const {}
-        void operator()(const PadVibrationEvent&) const {}
-        void operator()(const FlashEvent&) const {}
-        void operator()(const HitEffectEvent&) const {}
-        void operator()(const FlightEffectEvent&) const {}
+        void operator()(const CameraShakeEvent& shake) const
+        {
+            if (resolver.m_hitReaction != nullptr)
+            {
+                (void)resolver.m_hitReaction->StartShake(resolver.ShakeDescFor(shake, event.length));
+            }
+        }
+
+        void operator()(const ZoomRollEvent& zoomRoll) const
+        {
+            if (resolver.m_hitReaction != nullptr)
+            {
+                (void)resolver.m_hitReaction->StartZoomRoll(resolver.ZoomRollDescFor(zoomRoll, event.length));
+            }
+        }
+
+        void operator()(const PadVibrationEvent& pad) const
+        {
+            if (resolver.m_hitReaction != nullptr)
+            {
+                resolver.m_hitReaction->StartPadVibration(
+                    NS::Obj::HitPadVibration{.left = pad.left, .right = pad.right, .frames = event.length});
+            }
+        }
+
+        void operator()(const FlashEvent& flash) const
+        {
+            if (resolver.m_hitReaction != nullptr)
+            {
+                resolver.m_hitReaction->StartFlash(event.length, flash.alpha);
+            }
+        }
+
+        // 絵は ImpactEffects が自分の更新で出す。ここは頼みを置くだけ
+        void operator()(const HitEffectEvent&) const
+        {
+            if (resolver.m_player != nullptr)
+            {
+                resolver.m_player->ImpactVisuals().RequestHitEffect();
+            }
+        }
+
+        void operator()(const FlightEffectEvent&) const
+        {
+            if (resolver.m_player != nullptr)
+            {
+                resolver.m_player->ImpactVisuals().RequestFlightEffect();
+            }
+        }
     };
 
     void ImpactResolver::StartTimeline(std::vector<HitEvent> events, int breakStopSteps)
@@ -835,89 +885,84 @@ namespace NS::Game::Level
         return m_shapeActive && frame >= 0 && frame < m_shapeLength;
     }
 
-    ImpactResolver::TierReturns ImpactResolver::PlainReturns(float swing, int stopSteps) noexcept
+    NS::Obj::CameraShakeDesc ImpactResolver::ShakeDescFor(const CameraShakeEvent& shake, int length) const noexcept
     {
-        TierReturns returns;
-        returns.shake.upAmplitude = swing;
-        returns.shake.frames = stopSteps;
-        returns.shake.longestFlipFrames = 1;
-        return returns;
+        NS::Obj::CameraShakeDesc desc;
+        desc.longestFlipFrames = shake.longestFlipFrames;
+        desc.firstSideDirection = m_pendingReboundArc.direction;
+        desc.seed = m_pendingShakeSeed;
+        const float weight = std::sqrt(shake.sideWeight * shake.sideWeight + shake.upWeight * shake.upWeight);
+        // 非数の重みも向きが決まらないので揺らさない
+        if (!(weight > 0.0f))
+        {
+            return desc;
+        }
+        desc.frames = length;
+        // 威力の手応えは振れ幅で出す。事象の強さに威力と、反発と同じ質量の効きを掛ける
+        // 横と縦を合わせた長さが最初の振れの大きさになるよう、重みの比で分ける
+        const float amplitude = shake.strength * m_pendingPower * m_pendingMassFactor;
+        const float perWeight = amplitude / weight;
+        desc.sideAmplitude = shake.sideWeight * perWeight;
+        desc.upAmplitude = shake.upWeight * perWeight;
+        return desc;
     }
 
-    ImpactResolver::TierReturns ImpactResolver::TierReturnsFor(HitTier tier, float swing, int stopSteps) const noexcept
+    NS::Obj::CameraZoomRollDesc ImpactResolver::ZoomRollDescFor(const ZoomRollEvent& zoomRoll,
+                                                                int length) const noexcept
     {
-        // 振動は段ごとにモーターを分ける。強さは質量と威力で変えない
-        switch (tier)
-        {
-        case HitTier::Center:
-        {
-            // 縦だけを毎フレーム入れ替え、寄り・傾き・振動の長さを止めで結ぶ
-            TierReturns returns = PlainReturns(swing * Tuning().m_centerHitShakeScale, stopSteps);
-            returns.flashSteps = Tuning().m_centerHitFlashSteps;
-            returns.zoomRoll.zoom = Tuning().m_centerHitZoom;
-            returns.zoomRoll.rollDegrees = Tuning().m_centerHitRollDegrees;
-            returns.zoomRoll.holdFrames = stopSteps;
-            returns.zoomRoll.returnFrames = Tuning().m_zoomRollReturnFrames;
-            returns.pad.start.left = Tuning().m_centerHitPadStrength;
-            returns.pad.fadeFrames = stopSteps;
-            returns.pad.frames = stopSteps;
-            return returns;
-        }
-        case HitTier::Wide:
-        {
-            TierReturns returns;
-            // 横と縦を合わせた長さが最初の振れの大きさになるよう、比で分ける
-            const float upOverSide = Tuning().m_wideShakeUpOverSide;
-            const float side = swing / std::sqrt(1.0f + upOverSide * upOverSide);
-            returns.shake.sideAmplitude = side;
-            returns.shake.upAmplitude = side * upOverSide;
-            returns.shake.frames = Tuning().m_wideShakeFrames;
-            returns.shake.longestFlipFrames = Tuning().m_wideShakeLongestFlipFrames;
-            returns.pad.start.right = Tuning().m_widePadStrength;
-            returns.pad.fadeFrames = Tuning().m_wideShakeFrames;
-            returns.pad.frames = Tuning().m_wideShakeFrames;
-            return returns;
-        }
-        }
-        // 番号から作った段の外の値は段の返りを掛けない
-        return PlainReturns(swing, stopSteps);
+        const int frames = std::max(length, 0);
+        NS::Obj::CameraZoomRollDesc desc;
+        desc.zoom = zoomRoll.zoom;
+        desc.rollDegrees = zoomRoll.rollDegrees;
+        desc.rollDirection = m_pendingImpactDir;
+        desc.returnFrames = std::clamp(zoomRoll.returnFrames, 0, frames);
+        desc.holdFrames = frames - desc.returnFrames;
+        return desc;
     }
 
-    void ImpactResolver::PrepareHitReturns(HitTier tier, float power, float massFactor, float offset01, int stopSteps)
+    void ImpactResolver::RecordReturns(const std::vector<HitEvent>& events)
     {
-        // 最初の振れの大きさは全段で同じ式。反発と同じ質量因子を掛け、段の倍率は表の行が掛ける
-        const float swing = Tuning().m_cameraShakeScale * power * massFactor;
-        const TierReturns returns = TierReturnsFor(tier, swing, stopSteps);
-
-        m_pendingFlashSteps = returns.flashSteps;
-        m_pendingShake = returns.shake;
-        m_pendingShake.firstSideDirection = m_pendingReboundArc.direction;
-        m_pendingShake.seed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, m_pendingTargetPosition);
-        // 寄りの無い段も倍率 1 の設定を渡し、前の当たりの寄りを残さない
-        m_pendingZoomRoll = returns.zoomRoll;
-        m_pendingZoomRoll.rollDirection = m_pendingImpactDir;
-        m_pendingPad = returns.pad;
-
-        // 当たりの記録は検知のフレームに読まれるので、傾きの向きもここで今のカメラから決める
-        const float rollSign = NS::Obj::CameraSideSignOf(*Owner(), m_pendingZoomRoll.rollDirection);
-        m_lastImpact.cameraShake = NS::Core::Vector2{m_pendingShake.sideAmplitude, m_pendingShake.upAmplitude}.Length();
-        m_lastImpact.flashStart = m_pendingFlashSteps;
-        m_lastImpact.zoomStart = m_pendingZoomRoll.zoom;
-        m_lastImpact.rollStart = m_pendingZoomRoll.rollDegrees * rollSign;
-        m_lastImpact.padStart = m_pendingPad.start;
-    }
-
-    void ImpactResolver::StartHitReturns()
-    {
-        if (m_hitReaction == nullptr)
+        m_lastImpact.cameraShake = 0.0f;
+        m_lastImpact.flashStart = 0;
+        m_lastImpact.zoomStart = 1.0f;
+        m_lastImpact.rollStart = 0.0f;
+        m_lastImpact.padStart = NS::Platform::GamepadVibration{};
+        bool shakeRecorded = false;
+        bool flashRecorded = false;
+        bool zoomRollRecorded = false;
+        bool padRecorded = false;
+        for (const HitEvent& event : events)
         {
-            return;
+            const CameraShakeEvent* shake = std::get_if<CameraShakeEvent>(&event.value);
+            if (shake != nullptr && !shakeRecorded)
+            {
+                const NS::Obj::CameraShakeDesc desc = ShakeDescFor(*shake, event.length);
+                m_lastImpact.cameraShake = NS::Core::Vector2{desc.sideAmplitude, desc.upAmplitude}.Length();
+                shakeRecorded = true;
+            }
+            const FlashEvent* flash = std::get_if<FlashEvent>(&event.value);
+            if (flash != nullptr && !flashRecorded)
+            {
+                m_lastImpact.flashStart = std::max(event.length, 0);
+                flashRecorded = true;
+            }
+            const ZoomRollEvent* zoomRoll = std::get_if<ZoomRollEvent>(&event.value);
+            if (zoomRoll != nullptr && !zoomRollRecorded)
+            {
+                // 当たりの記録は検知のフレームに読まれるので、傾きの向きもここで今のカメラから決める
+                const float rollSign = NS::Obj::CameraSideSignOf(*Owner(), m_pendingImpactDir);
+                m_lastImpact.zoomStart = zoomRoll->zoom;
+                m_lastImpact.rollStart = zoomRoll->rollDegrees * rollSign;
+                zoomRollRecorded = true;
+            }
+            const PadVibrationEvent* pad = std::get_if<PadVibrationEvent>(&event.value);
+            if (pad != nullptr && !padRecorded)
+            {
+                m_lastImpact.padStart.left = pad->left.Evaluate(0.0f);
+                m_lastImpact.padStart.right = pad->right.Evaluate(0.0f);
+                padRecorded = true;
+            }
         }
-        m_hitReaction->StartFlash(m_pendingFlashSteps, Tuning().m_centerHitFlashAlpha);
-        m_hitReaction->StartPadVibration(m_pendingPad);
-        (void)m_hitReaction->StartShake(m_pendingShake);
-        // 寄りの無い段も倍率 1 の設定を積み、前の当たりの寄りを残さない
-        (void)m_hitReaction->StartZoomRoll(m_pendingZoomRoll);
     }
 
     void ImpactResolver::OnEndPlay()

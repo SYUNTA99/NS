@@ -71,6 +71,65 @@
       "direction": "any",
       "fields": {},
       "length": 1,
+      "start": 1,
+      "type": "HitEffect"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "入れ替わりの最長フレーム数": 1,
+        "強さ": 0.075,
+        "横の重み": 0.0,
+        "縦の重み": 1.0
+      },
+      "length": 12,
+      "start": 1,
+      "type": "CameraShake"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "傾き": 3.0,
+        "寄りの倍率": 1.15,
+        "戻すフレーム数": 6
+      },
+      "length": 18,
+      "start": 1,
+      "type": "ZoomRoll"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "左の速さ": {
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              12.0,
+              0.0
+            ]
+          ]
+        }
+      },
+      "length": 12,
+      "start": 1,
+      "type": "PadVibration"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "濃さ": 0.5
+      },
+      "length": 6,
+      "start": 1,
+      "type": "Flash"
+    },
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 1,
       "start": 13,
       "type": "Rebound"
     },
@@ -80,6 +139,13 @@
       "length": 1,
       "start": 13,
       "type": "TargetLaunch"
+    },
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 1,
+      "start": 13,
+      "type": "FlightEffect"
     }
   ],
   "version": 1

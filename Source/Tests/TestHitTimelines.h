@@ -60,7 +60,8 @@ private:
 };
 
 //! @brief 移す前の返りを、止めの長さ stopSteps の当たりについて写したタイムライン
-//! @details 止め [1, N]、潰れは止めの間、明け N + 1 に反動と相手を飛ばすと伸び、伸びは 6 フレームで戻す
+//! @details 止め [1, N]、潰れは止めの間、明け N + 1 に反動と相手を飛ばすと伸び、伸びは 6 フレームで戻す。
+//! 白・揺れ・寄り・振動・エフェクトの事象は持たない (自機と相手の動きだけを見る試しが使う)
 inline NS::Game::Level::HitTimeline MakeLegacyHitTimeline(int stopSteps)
 {
     using namespace NS::Game::Level;

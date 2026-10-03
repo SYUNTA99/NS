@@ -2,16 +2,23 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
+#include "Game/Player/ImpactEffects.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/CameraManager.h"
+#include "Runtime/Object/Components/CameraModifier.h"
+#include "Runtime/Object/Components/HitReaction.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Platform/Input.h"
 #include "Tests/TestHitTimelines.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <string_view>
 #include <vector>
 
 // 当たりの返りの時間を、タイムラインの事象が置いたフレームで決める事を縛る
@@ -68,7 +75,26 @@ namespace
         bool rockFlying = false;
         NS::Core::Vector3 shape{1.0f, 1.0f, 1.0f};
         bool shapeAnimating = false;
+        int flashRemaining = 0;
+        float padLeft = 0.0f;
+        bool shaking = false;
+        float zoom = 1.0f;
+        int hitLayers = 0;    // 出した当たりの核の数
+        int flightLayers = 0; // 出した反動の尾の数
     };
+
+    int CountLayers(Player& player, std::string_view name)
+    {
+        int count = 0;
+        for (const NS::Game::Player::EffectLayerRecord& record : player.ImpactVisuals().Layers().Records())
+        {
+            if (record.name == name)
+            {
+                ++count;
+            }
+        }
+        return count;
+    }
 
     // 突進を出して当たりまで回し、検知のフレームから frames フレームぶんの姿を並べる。当たらなければ空
     std::vector<ClockFrame> RunHit(Player& player, MapObj& rock, float charge01, int frames)
@@ -96,6 +122,15 @@ namespace
             now.rockFlying = rock.IsFlying();
             now.shape = player.Resolver().ShapeFactors();
             now.shapeAnimating = player.Resolver().IsShapeAnimating();
+            now.flashRemaining = player.HitReactionPart()->FlashFramesRemaining();
+            now.padLeft = NS::Platform::Input::Get().Gamepad(0).Vibration().left;
+            if (const NS::Obj::CameraManager* cameras = player.GetCameraManager())
+            {
+                now.shaking = cameras->FindModifier<NS::Obj::CameraShakeModifier>() != nullptr;
+                now.zoom = cameras->ZoomRoll().zoom;
+            }
+            now.hitLayers = CountLayers(player, "impact.core");
+            now.flightLayers = CountLayers(player, "rebound.trail");
             trace.push_back(now);
         }
         return trace;
@@ -334,6 +369,7 @@ TEST(ImpactTimelineClock, ANewHitAbortsTheRunningTimeline)
     shape.height.keys[0] = NS::Obj::Curve::Key{0.0f, 2.0f};
     timeline.events = {{HitStopEvent{}, 1, 1, HitDirection::Any},
                        {shape, 1, 50, HitDirection::Any},
+                       {FlashEvent{}, 1, 50, HitDirection::Any},
                        {TargetLaunchEvent{}, 2, 1, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("Abort");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
@@ -344,6 +380,7 @@ TEST(ImpactTimelineClock, ANewHitAbortsTheRunningTimeline)
     const std::vector<ClockFrame> first = RunHit(*player, *rock, 1.0f, 4);
     ASSERT_EQ(first.size(), 4u);
     ASSERT_TRUE(first[3].shapeAnimating);
+    ASSERT_GT(first[3].flashRemaining, 0);
 
     // 2 回目は形の事象の無いタイムラインで当てる。前の形が残っていれば、新しい時計の上でまた動き出す
     HitTimeline noShape;
@@ -362,7 +399,9 @@ TEST(ImpactTimelineClock, ANewHitAbortsTheRunningTimeline)
         rehit = player->Resolver().LastImpact().sequence == 2;
         if (rehit)
         {
+            // 前の当たりの返りも止まる。2 回目のタイムラインには白が無い
             EXPECT_FALSE(player->Resolver().IsShapeAnimating());
+            EXPECT_EQ(player->HitReactionPart()->FlashFramesRemaining(), 0);
         }
     }
     ASSERT_TRUE(rehit);
@@ -370,4 +409,105 @@ TEST(ImpactTimelineClock, ANewHitAbortsTheRunningTimeline)
     rock->Update();
     EXPECT_TRUE(player->Resolver().FreezeBeganThisStep());
     EXPECT_FALSE(player->Resolver().IsShapeAnimating());
+}
+
+// 白・振動・寄り・揺れ・当たりと飛びの絵は、それぞれの事象が置いたフレームに始まる
+TEST(ImpactTimelineClock, ReturnsStartOnTheirOwnFrames)
+{
+    FlashEvent flash;
+    flash.alpha = 0.5f;
+    PadVibrationEvent pad;
+    pad.left.count = 2;
+    pad.left.keys[0] = NS::Obj::Curve::Key{0.0f, 0.8f};
+    pad.left.keys[1] = NS::Obj::Curve::Key{4.0f, 0.0f};
+    ZoomRollEvent zoom;
+    zoom.zoom = 1.2f;
+    zoom.returnFrames = 2;
+    HitTimeline timeline;
+    timeline.events = {
+        {HitStopEvent{}, 1, 5, HitDirection::Any},
+        {TargetFreezeEvent{}, 1, 5, HitDirection::Any},
+        {HitEffectEvent{}, 2, 1, HitDirection::Any},
+        {pad, 2, 4, HitDirection::Any},
+        {zoom, 2, 5, HitDirection::Any},
+        {flash, 3, 4, HitDirection::Any},
+        {CameraShakeEvent{}, 4, 6, HitDirection::Any},
+        {TargetLaunchEvent{}, 6, 1, HitDirection::Any},
+        {ReboundEvent{}, 6, 1, HitDirection::Any},
+        {FlightEffectEvent{}, 7, 1, HitDirection::Any},
+    };
+    const ScopedHitTimelineDirectory directory("Returns");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    (void)NS::Platform::Input::Get().Gamepad(0).SetVibration(0.0f, 0.0f);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 10);
+    ASSERT_EQ(trace.size(), 10u);
+    for (int k = 0; k < 10; ++k)
+    {
+        SCOPED_TRACE(k);
+        const ClockFrame& frame = trace[static_cast<std::size_t>(k)];
+        EXPECT_EQ(frame.hitLayers, static_cast<int>(k >= 2));
+        EXPECT_EQ(frame.flightLayers, static_cast<int>(k >= 7));
+        EXPECT_EQ(frame.shaking, k >= 4);
+        float expectedZoom = 1.0f;
+        if (k >= 2)
+        {
+            expectedZoom = 1.2f;
+        }
+        EXPECT_FLOAT_EQ(frame.zoom, expectedZoom);
+        // 白は始めたフレームに 4、そこから 1 ずつ減る
+        int expectedFlash = 0;
+        if (k >= 3)
+        {
+            expectedFlash = std::max(4 - (k - 3), 0);
+        }
+        EXPECT_EQ(frame.flashRemaining, expectedFlash);
+        // 振動は始めたフレームから曲線をなぞり、長さの 4 フレームを過ぎると 0
+        float expectedPad = 0.0f;
+        if (k >= 2 && k < 6)
+        {
+            expectedPad = 0.8f * (1.0f - static_cast<float>(k - 2) / 4.0f);
+        }
+        EXPECT_NEAR(frame.padLeft, expectedPad, 1e-6f);
+    }
+    // 当たりの記録は検知のフレームに、タイムラインの返りの始めの値を持つ
+    const ImpactRecord& impact = player->Resolver().LastImpact();
+    EXPECT_EQ(impact.flashStart, 4);
+    EXPECT_FLOAT_EQ(impact.zoomStart, 1.2f);
+    EXPECT_FLOAT_EQ(impact.padStart.left, 0.8f);
+    EXPECT_GT(impact.cameraShake, 0.0f);
+}
+
+// 揺れの最初の振れは 強さ × 威力 × 質量の効き。横と縦の重みは向きだけを決める
+TEST(ImpactTimelineClock, TheShakeIsItsStrengthScaledByTheHit)
+{
+    struct Row
+    {
+        float strength;
+        float side;
+        float up;
+    };
+    std::vector<float> shakes;
+    for (const Row row : {Row{0.1f, 0.0f, 1.0f}, Row{0.2f, 0.0f, 1.0f}, Row{0.2f, 3.0f, 4.0f}})
+    {
+        CameraShakeEvent shake;
+        shake.strength = row.strength;
+        shake.sideWeight = row.side;
+        shake.upWeight = row.up;
+        HitTimeline timeline = MakeLegacyHitTimeline(2);
+        timeline.events.push_back({shake, 1, 2, HitDirection::Any});
+        const ScopedHitTimelineDirectory directory("Shake");
+        ScopedHitTimelineDirectory::SetBothTiers(timeline);
+        NS::Obj::Scene scene;
+        Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 2.0f);
+        ASSERT_NE(player, nullptr);
+        ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 1).empty());
+        shakes.push_back(player->Resolver().LastImpact().cameraShake);
+    }
+    ASSERT_EQ(shakes.size(), 3u);
+    EXPECT_GT(shakes[0], 0.0f);
+    EXPECT_NEAR(shakes[1], shakes[0] * 2.0f, 1e-6f);
+    EXPECT_NEAR(shakes[2], shakes[1], 1e-6f);
 }

@@ -2,20 +2,22 @@
 
 #include "Runtime/Object/Components/CameraModifier.h"
 #include "Runtime/Object/Components/OverlayRenderer.h"
+#include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Platform/Gamepad.h"
 
 namespace NS::Obj
 {
-    //! @brief パッドの振動 1 回。始めの値から直線に減らし、書くフレーム数で切る
+    //! @brief パッドの振動 1 回。左右のモーターの速さを始めてからのフレーム数の曲線で決め、書くフレーム数で切る
     struct HitPadVibration
     {
-        NS::Platform::GamepadVibration start{}; //!< 始めの速さ
-        int fadeFrames = 0;                     //!< 始めの値から 0 まで減るフレーム数
-        int frames = 0;                         //!< 書くフレーム数。fadeFrames 以下。0 なら震わせない
+        Curve left{};   //!< 左のモーターの速さ 0〜1。横軸は始めたフレームを 0 にしたフレーム数。点が無ければ 0
+        Curve right{};  //!< 右のモーターの速さ 0〜1。横軸は left と同じ
+        int frames = 0; //!< 書くフレーム数。0 なら震わせない
     };
 
     //! @brief 当たりの演出を出す部品。オデッセイの HitReactionKeeper に当たる
-    //! @details 当たりを決めた側が、白・揺れ・寄り・振動を別々に始める。並びと始めるフレームは当たりのタイムラインが決め、
+    //! @details
+    //! 当たりを決めた側が、白・揺れ・寄り・振動を別々に始める。並びと始めるフレームは当たりのタイムラインが決め、
     //! ここは始めた物を出して進めるだけ。揺れと寄りはカメラの窓口から管理役へモディファイアを積む。
     //! 白は画面へ重ね描き、振動はパッドへ毎フレーム書く。白と振動は始めたフレームに最初の姿を出し、次の更新から進める
     class HitReaction : public OverlayRenderer
@@ -67,11 +69,11 @@ namespace NS::Obj
         // 振動を始めてからのフレーム数に応じた速さをパッドへ書く。書くフレーム数に届いたフレームは 0 を書いて止める
         void WritePadVibration();
 
-        int m_flashRemaining = 0;  // 白の残りフレーム数
-        int m_flashFrames = 0;     // 白の始めのフレーム数。薄める割合の分母
-        float m_flashAlpha = 0.0f; // 白の始めの濃さ
-        HitPadVibration m_pad{};   // 書いている振動
-        int m_padElapsed = 0;      // 振動を始めたフレームから数えたフレーム数
+        int m_flashRemaining = 0;        // 白の残りフレーム数
+        int m_flashFrames = 0;           // 白の始めのフレーム数。薄める割合の分母
+        float m_flashAlpha = 0.0f;       // 白の始めの濃さ
+        HitPadVibration m_pad{};         // 書いている振動
+        int m_padElapsed = 0;            // 振動を始めたフレームから数えたフレーム数
         bool m_padRunning = false;       // 振動を書いている最中か
         bool m_flashJustStarted = false; // 白を始めた後まだ更新を通っていないか
         bool m_padJustStarted = false;   // 振動を始めた後まだ更新を通っていないか

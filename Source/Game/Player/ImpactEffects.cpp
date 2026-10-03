@@ -37,6 +37,7 @@ namespace NS::Game::Player
         constexpr std::string_view k_LandDust = "land.dust";
 
         // 層のフレームの並びは弾きの手本のコマを写し、絵の寿命 (定義) と組で決まる。欄にすると絵とずれる
+        // TODO: 層ごとの時間を当たりのタイムラインの帯で見たくなったら、ここの定数を事象に分ける
         // 中心近くの核が最大近くに留まる最後のフレームの上限。手本は 1〜10 に留まり 11 で落ちる
         constexpr int k_CoreHoldMax = 10;
         // 大きな外れの核が留まる最後のフレーム。落ちる 5 フレーム (絵の定義) と合わせて 0〜8 に見える
@@ -44,7 +45,7 @@ namespace NS::Game::Player
         constexpr int k_WideCoreHoldLast = 4;
         // 中心近くの火花を出すフレーム。手本の弾きは塊の中の放射の筋が 3 から出る
         // 0 では接触点から上下へ伸びる筋が 1 フレーム目に見え、手本より 2 フレーム早かった
-        // 大きな外れは手本のガードの火花と同じく止めの頭から
+        // 大きな外れは手本のガードの火花と同じく当たりの絵の頭から
         constexpr int k_CenterSparkStart = 3;
         // 大きな外れの火花の向きに入れる、相手の飛ぶ向きの重み。横ずれの側の重みは 1 で、真ん中の 45 度へ擦れる
         // 横ずれの側だけでは横からの絵で奥行きの向きに潰れ、相手の飛ぶ向きが形に出なかった
@@ -59,7 +60,7 @@ namespace NS::Game::Player
         // 核の留まりの終わりまで照りを最大のまま置いた時は、最大が 5、最大の 9 割以上が 2〜8 の 7 フレームで、
         // 光の塊が消える 11 の次に最大の 8 割から 2 割へ 1 フレームで落ちた (手本の弾きは 8〜12 で少しずつ下がる)
         constexpr int k_GlowDimStart = 3;
-        // 照りが最大に届く前 (止めの頭から弱め始めるフレームの前まで) の、照らす面積の割合
+        // 照りが最大に届く前 (当たりの絵の頭から弱め始めるフレームの前まで) の、照らす面積の割合
         // 最大の面積を 3 だけにし、山を 3 に置く。0〜2 も最大の面積では、中心近くの溜めきりの走行で
         // 2 の明るさ (+2.11) が 3 (+2.09) を上回り、山が 2 になった
         // 0.9 は 2 の明るさを約 0.15 下げ、2 と 3 の差 (0.02) を超える割合
@@ -78,7 +79,7 @@ namespace NS::Game::Player
         // 濃さで写り、e + 6 に消える。並べた絵の手本の横線は 15 まで残り、16 にも薄く見える所がある
         // 2 の時は e + 4 に半分の濃さで写るのが最後で、手本より 1〜2 フレーム早く消えた
         constexpr int k_StreakFadeFrames = 3;
-        // 明けから弾かれ線を出すまでのフレーム数。手本は当てた側が上がり始めて 4 フレーム後に線が出る
+        // 飛びの絵の頭から弾かれ線を出すまでのフレーム数。手本は当てた側が上がり始めて 4 フレーム後に線が出る
         constexpr int k_RecoilDelay = 4;
         // 火花の数を威力で振る範囲。溜め 0 で縁寄りの 0.7 から、溜めきりで真ん中の 2.0 まで
         constexpr float k_PowerMin = 0.7f;
@@ -104,10 +105,11 @@ namespace NS::Game::Player
         constexpr float k_WideFlashFloor = 0.74f;
         constexpr float k_WideFlashDecay = 0.4f;
         // 当たりの粉の輪の真ん中を、相手が居た所から自機と逆の側へずらす距離の、粉の大きさへの割合
-        // 粉は輪の半径 0.4〜0.6 と塊の半径 (出始め 0.3、明けの 3 フレーム後に 0.35) を大きさに掛けて広がるので、
-        // ずらさないと明けの 3 フレーム後に塊の縁が相手の中心から自機の側へ大きさの 0.95 倍まで届き、
-        // 1.4 m 離れた自機の縁 (相手の中心から 0.75 m) を越えて自機の輪郭を覆った。見たのは大きな外れの横からの絵
-        // 0.7 倍ずらすと届くのは大きさの 0.25 倍 (中心近くの 1.65 m で 0.41 m) で、自機の縁まで 0.3 m 以上空く
+        // 粉は輪の半径 0.4〜0.6 と塊の半径 (出始め 0.3、飛びの絵の頭の 3 フレーム後に 0.35)
+        // を大きさに掛けて広がるので、 ずらさないと飛びの絵の頭の 3
+        // フレーム後に塊の縁が相手の中心から自機の側へ大きさの 0.95 倍まで届き、 1.4 m 離れた自機の縁 (相手の中心から
+        // 0.75 m) を越えて自機の輪郭を覆った。見たのは大きな外れの横からの絵 0.7 倍ずらすと届くのは大きさの 0.25 倍
+        // (中心近くの 1.65 m で 0.41 m) で、自機の縁まで 0.3 m 以上空く
         constexpr float k_DustAwayShare = 0.7f;
         // 反動の尾の親を止めてから消すまでのフレーム数。絵の定義の筋の落ちるフレーム数と同じ
         // 頂点で親を止め、薄れる間に落ち始める。着地まで付けていた時は、頂点の後の 24 フレームも筋が写った
@@ -236,16 +238,21 @@ namespace NS::Game::Player
         NS::Gfx::EffectScene* effects = EffectsOf(*this);
         m_layers.BeginStep(effects);
         RunScheduledStops(effects);
+        // 頼みは同じフレームの決定の段で事象が置く。読んだら消し、次のフレームへ持ち越さない
+        const bool hitRequested = m_hitRequested;
+        const bool flightRequested = m_flightRequested;
+        m_hitRequested = false;
+        m_flightRequested = false;
         if (m_resolver == nullptr)
         {
             return;
         }
-        // 止めの頭と明けの正は ImpactResolver。ここで止めのフレーム数を数え直さない
-        if (m_resolver->FreezeBeganThisStep())
+        if (hitRequested)
         {
             BeginHit(effects, m_resolver->LastImpact());
         }
-        else if (m_plan.active && m_resolver->ReleasedThisStep())
+        // 同じフレームに置かれた 2 つの頼みは、当たりの絵の後に飛びの絵を出す
+        if (m_plan.active && flightRequested)
         {
             m_plan.releaseStep = m_layers.Step();
             BeginFlight(effects);
@@ -284,8 +291,8 @@ namespace NS::Game::Player
                 tuning.m_sparkSpeedBase + tuning.m_sparkSpeedPerLaunch * std::max(impact.launchScale, 0.0f);
             shape.sparkHeading = SparkHeading::Launch;
             shape.sparkCountInput = 0;
-            shape.emberCount = std::max(
-                1, static_cast<int>(std::lround(static_cast<float>(shape.sparkCount) * tuning.m_emberShare)));
+            shape.emberCount =
+                std::max(1, static_cast<int>(std::lround(static_cast<float>(shape.sparkCount) * tuning.m_emberShare)));
             // 照りは相手の足元の床に出す。飛んでいた相手の下に床は無い
             if (impact.targetPlaced)
             {
@@ -382,7 +389,7 @@ namespace NS::Game::Player
 
     void ImpactEffects::BeginHit(NS::Gfx::EffectScene* effects, const NS::Game::Level::ImpactRecord& impact)
     {
-        // 前の当たりの層が残っていても、次の核は止めの頭から出す。前の粉は親を止めて短くする
+        // 前の当たりの層が残っていても、次の核は当たりの絵の頭から出す。前の粉は親を止めて短くする
         FinishHeldLayers(effects);
         // 頂点の前に次に当てたら、その反動はここで終わる。尾は輪ごと消す
         if (m_flight.reboundTrail != 0)
@@ -449,7 +456,7 @@ namespace NS::Game::Player
         m_aim.ringNormal = plan.ringNormal;
 
         const ImpactShape& shape = m_plan.shape;
-        // 止めの頭は放射の線を留まる間の縮んだフレームと同じ大きさで出し、星形と芯 (動的入力 3 番が掛かる) だけを
+        // 当たりの絵の頭は放射の線を留まる間の縮んだフレームと同じ大きさで出し、星形と芯 (動的入力 3 番が掛かる) だけを
         // 出始めの大きさにする。手本は接触のコマで既に光が広がり、層の広がりが次のコマの 9 割を超える
         NS::Gfx::EffectPlayDesc core =
             PlayAt(m_plan.contact, Quaternion::Identity, Uniform(shape.coreDiameter * k_CoreHoldPulse));
@@ -461,7 +468,8 @@ namespace NS::Game::Player
         m_plan.core = m_layers.Play(effects, k_Core, core);
         SetAmount(m_plan.core, shape.coreDiameter);
 
-        // 照りは核と同じ止めの頭から。手本の弾きは接触のコマで既に床が照らされ、画面の明るさが最大の 4 割まで上がる
+        // 照りは核と同じ当たりの絵の頭から。手本の弾きは接触のコマで既に床が照らされ、画面の明るさが最大の 4
+        // 割まで上がる
         if (shape.glowDiameter > 0.0f)
         {
             // 板の法線 (+Z) を上へ向け、床に寝かせる
@@ -656,7 +664,7 @@ namespace NS::Game::Player
             }
         }
 
-        // 自機の側は明けから。止めの頭で相手の側、明けで自機の側が出て、作用と反作用の順に読める
+        // 自機の側は飛びの絵の頭から。当たりの絵の頭で相手の側、飛びの絵の頭で自機の側が出て、作用と反作用の順に読める
         if (m_plan.releaseStep >= 0)
         {
             if (!m_plan.dustPlayed && step == m_plan.releaseStep)
