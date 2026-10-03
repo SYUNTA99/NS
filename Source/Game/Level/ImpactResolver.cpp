@@ -689,9 +689,13 @@ namespace NS::Game::Level
         m_lastImpact.faceV = judgement.v;
         m_lastImpact.hitStopSteps = stopSteps;
         m_lastImpact.localStop = stopSteps > 0;
-        m_lastImpact.gradualRelease = std::any_of(events.begin(), events.end(), [](const HitEvent& event) noexcept {
-            return std::holds_alternative<GradualReleaseEvent>(event.value);
-        });
+        m_lastImpact.overcharge01 = m_player->BodySlamOvercharge01();
+        const bool overcharged = m_lastImpact.overcharge01 > 0.0f;
+        m_lastImpact.gradualRelease =
+            std::any_of(events.begin(), events.end(), [overcharged](const HitEvent& event) noexcept {
+                const GradualReleaseEvent* release = std::get_if<GradualReleaseEvent>(&event.value);
+                return release != nullptr && (overcharged || !release->overchargedOnly);
+            });
         m_lastImpact.centerHit = centerHit;
         m_lastImpact.broke = m_pendingBreak;
         m_lastImpact.selfVelocity = m_pendingSelfVelocity;
@@ -848,6 +852,11 @@ namespace NS::Game::Level
         {
             NS::Obj::Scene* scene = resolver.Owner()->OwningScene();
             if (scene == nullptr)
+            {
+                return;
+            }
+            // 紫で上がった威力を当たった結果で見せる遅さなので、赤で放した当たりには出さない
+            if (release.overchargedOnly && !(resolver.m_lastImpact.overcharge01 > 0.0f))
             {
                 return;
             }

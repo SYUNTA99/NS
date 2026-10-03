@@ -221,11 +221,14 @@ namespace NS::Game::Level
         float startSpeed = 0.2f;    //!< 始まりの世界の速さ 0〜1
         float returnSeconds = 0.3f; //!< 普段の速さへ戻るまでの実時間 (秒)
         NS::Obj::Curve shape{};     //!< 戻り方。横軸は 0〜1 の経過の割合、縦軸は 0〜1 の戻りの割合。点が無ければ直線
+        //! 溜めすぎて (紫で) 出した突進の当たりだけで遅くする場合 true。赤の溜めきりとタップでは何もしない
+        bool overchargedOnly = false;
 
         NS_REFLECT_BEGIN(GradualReleaseEvent, void)
         NS_REFLECT_FIELD(startSpeed, "始まりの速さ")
         NS_REFLECT_FIELD(returnSeconds, "戻る秒")
         NS_REFLECT_FIELD(shape, "戻り方")
+        NS_REFLECT_FIELD(overchargedOnly, "紫の時だけ")
         NS_REFLECT_END_VALUE()
     };
 

@@ -101,10 +101,10 @@ namespace
     }
 
     // 突進を出して当たりまで回し、検知のフレームから frames フレームぶんの姿を並べる。当たらなければ空
-    std::vector<ClockFrame> RunHit(Player& player, MapObj& rock, float charge01, int frames)
+    std::vector<ClockFrame> RunHit(Player& player, MapObj& rock, float charge01, int frames, float overcharge01 = 0.0f)
     {
         std::vector<ClockFrame> trace;
-        player.RequestBodySlam(charge01, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        player.RequestBodySlam(charge01, NS::Core::Vector3{0.0f, 0.0f, 1.0f}, 0.0f, overcharge01);
         bool detected = false;
         for (int frame = 0; frame < 60 + frames && static_cast<int>(trace.size()) < frames; ++frame)
         {
@@ -438,6 +438,45 @@ TEST(ImpactTimelineClock, GradualReleaseSlowsTheWorldFromItsFrame)
     // やり直しで当たりを打ち切ると、遅い世界も持ち越さない
     player->ResetState();
     EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
+}
+
+// 欄「紫の時だけ」の段階的な明けは、溜めすぎて放した突進の当たりだけで世界を遅くする。赤の溜めきりでは遅くしない
+TEST(ImpactTimelineClock, PurpleOnlyGradualReleaseSkipsTheRedHit)
+{
+    HitTimeline timeline = MakeSplitReleaseTimeline();
+    GradualReleaseEvent release;
+    release.startSpeed = 0.25f;
+    release.overchargedOnly = true;
+    timeline.events.push_back({release, 6, 1, HitDirection::Any});
+    const ScopedHitTimelineDirectory directory("PurpleRelease");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    for (int purple = 0; purple < 2; ++purple)
+    {
+        SCOPED_TRACE(purple);
+        NS::Obj::Scene scene;
+        Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+        ASSERT_NE(player, nullptr);
+        MapObj* rock = RockOf(scene);
+        float overcharge = 0.0f;
+        if (purple == 1)
+        {
+            overcharge = 0.4f;
+        }
+        ASSERT_EQ(RunHit(*player, *rock, 1.0f, 6, overcharge).size(), 6u);
+        player->Update(false);
+        rock->Update();
+        EXPECT_FLOAT_EQ(player->Resolver().LastImpact().overcharge01, overcharge);
+        if (purple == 1)
+        {
+            EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.25f);
+            EXPECT_TRUE(player->Resolver().LastImpact().gradualRelease);
+        }
+        else
+        {
+            EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
+            EXPECT_FALSE(player->Resolver().LastImpact().gradualRelease);
+        }
+    }
 }
 
 TEST(ImpactTimelineClock, TheRecordNamesOnlyTheStopsTheTimelineUsed)

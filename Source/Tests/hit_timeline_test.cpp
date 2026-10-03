@@ -235,6 +235,39 @@ TEST(HitTimeline, ShippedCenterShrinksBeforeContactAndMissDoesNot)
 }
 
 // impact-feel-pass 3 節: 真ん中の揺れは止めの頭から沈む揺れ 1 つ。平行移動の揺れと寄りは外した
+// 出荷の真ん中は、紫で当てた時だけ止めの明けのフレームから世界を遅くする
+TEST(HitTimeline, ShippedCenterSlowsTheWorldOnlyForPurple)
+{
+    const std::optional<HitTimeline> center = ReadShippedTimeline("center");
+    ASSERT_TRUE(center.has_value());
+    int stopEnd = 0;
+    int releases = 0;
+    for (const NS::Game::Level::HitEvent& event : center->events)
+    {
+        if (std::holds_alternative<NS::Game::Level::HitStopEvent>(event.value))
+        {
+            stopEnd = event.start + event.length;
+        }
+    }
+    for (const NS::Game::Level::HitEvent& event : center->events)
+    {
+        if (const NS::Game::Level::GradualReleaseEvent* release =
+                std::get_if<NS::Game::Level::GradualReleaseEvent>(&event.value))
+        {
+            ++releases;
+            EXPECT_TRUE(release->overchargedOnly);
+            EXPECT_EQ(event.start, stopEnd);
+        }
+    }
+    EXPECT_EQ(releases, 1);
+    const std::optional<HitTimeline> miss = ReadShippedTimeline("miss");
+    ASSERT_TRUE(miss.has_value());
+    for (const NS::Game::Level::HitEvent& event : miss->events)
+    {
+        EXPECT_FALSE(std::holds_alternative<NS::Game::Level::GradualReleaseEvent>(event.value));
+    }
+}
+
 TEST(HitTimeline, ShippedCenterSinksAndDoesNotZoom)
 {
     const std::optional<HitTimeline> center = ReadShippedTimeline("center");
