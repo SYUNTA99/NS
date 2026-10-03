@@ -491,13 +491,12 @@ void LevelEditorController::EnterPlay() noexcept
     // live が唯一の出所なので組み直しは要らない。編集で動いた当たりだけ張り直してプレイへ入る
     m_scene->SyncPhysics();
 
-    // プレイの間の判定と編集復帰の姿は、突入時に凍結したスナップショットを読む
-    (void)m_scene->BeginPlayBaseline();
-    // 走行を最初から。手順は出荷と同じコースの進行役の持ち物
+    // 凍結を取り、そこから走行を最初から。プレイの間の判定と編集復帰の姿はこの凍結を読む
+    // 手順は出荷と同じ CourseDirector::StartCourse の持ち物
     if (NS::Game::Level::CourseDirector* director =
             NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(*m_scene))
     {
-        director->RestartCourse();
+        director->StartCourse();
     }
     // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
     if (NS::Obj::CameraManager* cameras = Cameras())

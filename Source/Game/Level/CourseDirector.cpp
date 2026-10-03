@@ -47,6 +47,13 @@ namespace NS::Game::Level
         }
     }
 
+    void CourseDirector::StartCourse()
+    {
+        // 凍結がやり直しの戻り先なので、取ってからやり直す
+        (void)m_scene.BeginPlayBaseline();
+        RestartCourse();
+    }
+
     void CourseDirector::RestartCourse()
     {
         // 送る先は控えた並びで回す。受け手が戻る間に配置物の並びが変わっても崩れない

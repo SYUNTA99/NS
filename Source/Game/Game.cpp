@@ -1,6 +1,8 @@
 #include "Game/Game.h"
 
+#include "Game/Level/CourseDirector.h"
 #include "Runtime/App/Application.h"
+#include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Platform/Filesystem.h"
@@ -66,17 +68,8 @@ void Game::OnAttach()
     {
         NS_LOG_ERROR(Game, "起動シーンを読めなかった。 空のシーンで立ち上げる");
         (void)m_scenes.LoadScene(NS::Obj::MakeSceneJson());
+        StartLoadedScene();
     }
-
-    NS::Obj::Scene* scene = m_scenes.Current();
-    if (scene == nullptr)
-    {
-        NS_LOG_ERROR(Game, "Game::OnAttach: シーンが立たなかった");
-        return;
-    }
-
-    // 走行のやり直しが読む凍結スナップショットをここで捕まえる。世界はシーンが読み込みから回している
-    (void)scene->BeginPlayBaseline();
 
     // カーソルを消し、マウスを相対モードにして視点操作をカーソル位置から切り離す
     // Esc で出すまで非表示のまま。出し直しは OnUpdate の Esc 処理が行う
@@ -166,7 +159,24 @@ bool Game::LoadScene(std::string_view scenePath)
 
     // 欠けた物の補完はしない。プレイヤーの居ないシーンはそのまま立て、足りない事実を隠さない
     (void)m_scenes.LoadScene(std::move(data));
+    StartLoadedScene();
     return true;
+}
+
+void Game::StartLoadedScene()
+{
+    NS::Obj::Scene* scene = m_scenes.Current();
+    if (scene == nullptr)
+    {
+        NS_LOG_ERROR(Game, "StartLoadedScene: シーンが立っていない");
+        return;
+    }
+    // 自機の居ないシーンでも CourseDirector を作って凍結を取る。読み直しの後に前のシーンの凍結が残らない
+    if (NS::Game::Level::CourseDirector* director =
+            NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(*scene))
+    {
+        director->StartCourse();
+    }
 }
 
 NS::Obj::Scene* Game::CurrentScene() noexcept

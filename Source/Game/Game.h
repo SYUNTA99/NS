@@ -83,6 +83,11 @@ public:
     [[nodiscard]] bool SecondEscapeQuits() const noexcept { return m_secondEscapeQuits; }
 
 private:
+    //! @brief 立てたばかりのシーンでプレイを始める
+    //! @details 凍結と 1 走目は CourseDirector::StartCourse が持つ。シーンを立てる道 (LoadScene
+    //! と起動時の空シーンへの退避) は全部ここを通る
+    void StartLoadedScene();
+
     std::string m_startScenePath;
     bool m_startSceneLoaded = false;
     bool m_secondEscapeQuits = true; // カーソルが出ている状態の Esc でアプリを終えるか
