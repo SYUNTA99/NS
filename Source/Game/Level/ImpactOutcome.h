@@ -99,4 +99,16 @@ namespace NS::Game::Level
     //! @param[in] exponent 減り方。大きいほど早く落ちて長く残る。有限の正でない値は 1 (直線)
     //! @return 0〜1 の倍率
     [[nodiscard]] float MissSkidSpeedScale(int elapsedSteps, int totalSteps, float exponent) noexcept;
+
+    //! @brief 止めの間の横揺れの、frame フレーム目の符号付きのずれを返す
+    //! @details 振れ幅 × (1 − frame ÷ length)² × ばらつき × 向き。向きは 1 フレーム目が firstSign で、1 フレームごとに
+    //! 入れ替わる。ばらつきは seed と frame から出す 0.7〜1 で、同じ種と frame なら同じ値
+    //! @param[in] frame 揺れの何フレーム目か。始まりのフレームが 1
+    //! @param[in] length 揺れのフレーム数。0 以下は揺らさない
+    //! @param[in] amplitude 最初の振れ幅
+    //! @param[in] seed ばらつきの種
+    //! @param[in] firstSign 1 フレーム目の向き。負なら −、それ以外は +
+    //! @return ずれ。frame が 1 より前か length 以降は 0
+    [[nodiscard]] float BodyShakeOffset(
+        int frame, int length, float amplitude, std::uint32_t seed, float firstSign) noexcept;
 } // namespace NS::Game::Level

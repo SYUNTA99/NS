@@ -93,7 +93,6 @@
     {
       "direction": "any",
       "fields": {
-        "往復の振れ幅": 0.05,
         "潰れの伸び上がり": 1.1,
         "潰れの厚み": 0.7,
         "食い込み距離": 0.06
@@ -101,6 +100,15 @@
       "length": 12,
       "start": 1,
       "type": "TargetFreeze"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "振れ幅の画素": 10.0
+      },
+      "length": 12,
+      "start": 1,
+      "type": "BodyShake"
     },
     {
       "direction": "any",

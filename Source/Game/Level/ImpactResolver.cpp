@@ -524,6 +524,7 @@ namespace NS::Game::Level
                 AdvanceTimeline();
             }
         }
+        AdvanceBodyShake();
         // 止めた自機を動かし直すまでは新しい衝突を見ない。止まった自機は重なったままなので、見ると毎フレーム検知し直す
         if (IsHoldingPlayer())
         {
@@ -650,7 +651,6 @@ namespace NS::Game::Level
         impactInput.faceV = judgement.v;
         impactInput.bodyShape = judgement.bodyShape;
         const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, MakeImpactTuning(Tuning()));
-        m_pendingTargetMass = mass;
 
         const float reboundScale = outcome.reboundScale;
         const float launchScale = outcome.launchScale;
@@ -813,7 +813,6 @@ namespace NS::Game::Level
                 return;
             }
             // 力が伝わった瞬間の絵。置かれていれば食い込ませて止めさせ、押し返されている反発の時だけ縮める
-            // 動きは軽い側が受け取るので、往復は重い相手ほど小さい
             NS::Obj::Actor* target = scene->Objects().FindObject(resolver.m_pendingTarget);
             if (target == nullptr)
             {
@@ -821,7 +820,6 @@ namespace NS::Game::Level
             }
             const TackleFreezeDesc desc{.impactDir = resolver.m_pendingImpactDir,
                                         .pushInDistance = freeze.pushInDistance,
-                                        .shakeAmplitude = freeze.swingAmplitude / (1.0f + resolver.m_pendingTargetMass),
                                         .squashThickness = freeze.squashThickness,
                                         .squashHeight = freeze.squashHeight,
                                         .squash = !resolver.m_pendingBreak,
@@ -830,6 +828,8 @@ namespace NS::Game::Level
         }
 
         void operator()(const TargetLaunchEvent&) const { resolver.LaunchTarget(); }
+
+        void operator()(const BodyShakeEvent& shake) const { resolver.StartBodyShake(shake, event.length); }
 
         void operator()(const ReboundEvent&) const { resolver.ApplyRebound(); }
 
@@ -945,6 +945,8 @@ namespace NS::Game::Level
         m_events = std::move(events);
         m_eventRows = std::move(rows);
         m_breakStopSteps = breakStopSteps;
+        // 前の当たりの横揺れは、新しい時計で数えると長さの終わりが来ない
+        StopBodyShake();
         m_clock = 0;
         m_padStartClock.reset();
         m_clockEnd = 0;
@@ -1111,6 +1113,7 @@ namespace NS::Game::Level
             }
         }
         m_beforeContact = false;
+        StopBodyShake();
         m_events.clear();
         m_eventRows.clear();
         m_padStartClock.reset();
@@ -1317,6 +1320,118 @@ namespace NS::Game::Level
     void ImpactResolver::OnEndPlay()
     {
         CancelImpact();
+    }
+
+    namespace
+    {
+        // 横揺れの振れ幅を画面の画素で持つ時の、画面の高さの画素数。Replay の撮る画面と同じ 720
+        constexpr float k_ShakeReferenceScreenHeight = 720.0f;
+
+        // 画面の上の画素数を、カメラから見た body の奥行きでの世界の長さ (m) へ直す
+        [[nodiscard]] float PixelsToMetersAt(float pixels,
+                                             const NS::Obj::CameraPose& pose,
+                                             const NS::Core::Vector3& body) noexcept
+        {
+            NS::Core::Vector3 forward = pose.target - pose.position;
+            if (!(forward.Length() > NS::Core::k_Epsilon))
+            {
+                return 0.0f;
+            }
+            forward.Normalize();
+            float depth = NS::Core::Dot(body - pose.position, forward);
+            if (!(depth > 0.0f))
+            {
+                depth = (body - pose.position).Length();
+            }
+            return pixels * 2.0f * depth * std::tan(pose.fovY.value * 0.5f) / k_ShakeReferenceScreenHeight;
+        }
+    } // namespace
+
+    void ImpactResolver::StartBodyShake(const BodyShakeEvent& shake, int length)
+    {
+        StopBodyShake();
+        if (Owner() == nullptr || length <= 0 || !std::isfinite(shake.amplitudePixels))
+        {
+            return;
+        }
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*Owner());
+        if (!pose.has_value())
+        {
+            return;
+        }
+        // 画面の横を床に沿わせた向き。後ろから見る NS では、地上でも空中でも視線に直角でよく見える
+        const NS::Core::Vector3 forward = NS::Obj::CameraForwardHorizontal(*Owner());
+        const NS::Core::Vector3 axis{forward.z, 0.0f, -forward.x};
+        // 1 フレーム目の向き。外れは自機が外した側 (面の上の位置 u の側) へ逃げ、カメラの最初のひと揺れ・火花・
+        // 逸れ方と揃える。真ん中は画面の右から
+        float firstSign = 1.0f;
+        NS::Core::Vector3 slam{};
+        if (m_lastImpact.tier == HitTier::Wide && m_lastImpact.faceU != 0.0f &&
+            NS::Core::TryNormalizeHorizontal(m_pendingImpactDir, slam))
+        {
+            const NS::Core::Vector3 faceRight{slam.z, 0.0f, -slam.x};
+            if (NS::Core::Dot(faceRight * m_lastImpact.faceU, axis) < 0.0f)
+            {
+                firstSign = -1.0f;
+            }
+        }
+        // 種は何回目の当たりか。毎回少し違い、Replay では同じ
+        const std::uint32_t seed = m_lastImpact.sequence;
+        m_bodyShake = BodyShakeRun{
+            .desc =
+                TackleShakeDesc{.axis = axis,
+                                .amplitude = PixelsToMetersAt(shake.amplitudePixels, *pose, Owner()->Root().Position()),
+                                .length = length,
+                                .seed = seed,
+                                .firstSign = firstSign},
+            .startClock = m_clock,
+            .active = true};
+        // 始めたフレームから描く。時計の 0 の事象は時計を進めた後に起きるので、ここで書かないと 1 フレーム遅れる
+        AdvanceBodyShake();
+
+        // 相手は同じ大きさで逆向きに揺れる
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+        {
+            return;
+        }
+        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
+        if (target == nullptr)
+        {
+            return;
+        }
+        const TackleShakeDesc other{.axis = axis,
+                                    .amplitude =
+                                        PixelsToMetersAt(shake.amplitudePixels, *pose, target->Root().Position()),
+                                    .length = length,
+                                    .seed = seed,
+                                    .firstSign = -firstSign};
+        (void)SendMsgTackleShake(*target, other);
+    }
+
+    void ImpactResolver::AdvanceBodyShake()
+    {
+        if (!m_bodyShake.active || m_player->ModelPart() == nullptr)
+        {
+            return;
+        }
+        const TackleShakeDesc& desc = m_bodyShake.desc;
+        const int frame = m_clock - m_bodyShake.startClock + 1;
+        const float offset = BodyShakeOffset(frame, desc.length, desc.amplitude, desc.seed, desc.firstSign);
+        (void)m_player->ModelPart()->SetDrawOffset(desc.axis * offset);
+        if (frame >= desc.length)
+        {
+            m_bodyShake.active = false;
+        }
+    }
+
+    void ImpactResolver::StopBodyShake() noexcept
+    {
+        m_bodyShake.active = false;
+        if (m_player != nullptr && m_player->ModelPart() != nullptr)
+        {
+            (void)m_player->ModelPart()->SetDrawOffset(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        }
     }
 
     void ImpactResolver::CancelImpact() noexcept

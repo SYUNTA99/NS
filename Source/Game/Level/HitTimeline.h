@@ -57,7 +57,7 @@ namespace NS::Game::Level
         NS_REFLECT_END_VALUE()
     };
 
-    //! @brief 相手の止め。置かれていた相手を食い込ませ、長さの間だけ往復させて形を縮める
+    //! @brief 相手の止め。置かれていた相手を食い込ませ、長さの間だけ止めて形を縮める
     struct TargetFreezeEvent
     {
         static constexpr std::string_view k_Name = "TargetFreeze";
@@ -65,13 +65,11 @@ namespace NS::Game::Level
         static constexpr bool k_BeforeContact = false;
 
         float pushInDistance = 0.06f; //!< 止めの頭で飛ぶ向きへ食い込ませる距離 (m)
-        float swingAmplitude = 0.05f; //!< 往復の振れ幅 (m)。相手の質量 + 1 で割ってから渡す
         float squashThickness = 0.7f; //!< 相手の飛ぶ向きの厚みの倍率
         float squashHeight = 1.1f;    //!< 相手の高さの倍率
 
         NS_REFLECT_BEGIN(TargetFreezeEvent, void)
         NS_REFLECT_FIELD(pushInDistance, "食い込み距離")
-        NS_REFLECT_FIELD(swingAmplitude, "往復の振れ幅")
         NS_REFLECT_FIELD(squashThickness, "潰れの厚み")
         NS_REFLECT_FIELD(squashHeight, "潰れの伸び上がり")
         NS_REFLECT_END_VALUE()
@@ -274,6 +272,23 @@ namespace NS::Game::Level
         static constexpr bool k_BeforeContact = true; //!< 予測した当たりの前に置く
     };
 
+    //! @brief 止めの間の横揺れ。自機と相手を画面の横 (床に沿う向き) へ逆向きに、体ごと揺らす
+    //! @details 長さが揺れのフレーム数で、振れ幅に (1 − 経過 ÷ 長さ)² を掛けて長さの終わりで 0 にする
+    //! 1 フレームごとに左右を入れ替え、振れ幅を 7〜10 割でばらつかせる。揺らすのは描く形だけで、当たりは動かさない
+    struct BodyShakeEvent
+    {
+        static constexpr std::string_view k_Name = "BodyShake";
+        static constexpr std::string_view k_Label = "横揺れ";
+        static constexpr bool k_BeforeContact = false;
+
+        //! 最初の振れ幅。高さ 720 画素の画面の上の画素数で持ち、始まりのフレームにカメラとの距離から世界の長さへ直す
+        float amplitudePixels = 10.0f;
+
+        NS_REFLECT_BEGIN(BodyShakeEvent, void)
+        NS_REFLECT_FIELD(amplitudePixels, "振れ幅の画素")
+        NS_REFLECT_END_VALUE()
+    };
+
     //! @brief 事象の種類ごとの値。種類を足す時はここへ型を足す
     using HitEventValue = std::variant<HitStopEvent,
                                        ShapeEvent,
@@ -289,7 +304,8 @@ namespace NS::Game::Level
                                        GradualReleaseEvent,
                                        CameraTraumaEvent,
                                        OthersStopEvent,
-                                       CameraSinkEvent>;
+                                       CameraSinkEvent,
+                                       BodyShakeEvent>;
 
     //! @brief タイムラインの 1 行。触れたフレームを 0 にしたフレーム数で、始まりと長さを持つ
     struct HitEvent

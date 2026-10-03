@@ -1,6 +1,7 @@
 #include "Game/Level/MapObj.h"
 
 #include "Game/Level/ImpactMark.h"
+#include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/SensorKinds.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Gravity.h"
@@ -198,8 +199,34 @@ namespace NS::Game::Level
         SyncCollision();
     }
 
+    void MapObj::AdvanceShake()
+    {
+        if (!m_shake.active || ModelPart() == nullptr)
+        {
+            return;
+        }
+        ++m_shake.frame;
+        const TackleShakeDesc& desc = m_shake.desc;
+        const float offset = BodyShakeOffset(m_shake.frame, desc.length, desc.amplitude, desc.seed, desc.firstSign);
+        (void)ModelPart()->SetDrawOffset(desc.axis * offset);
+        if (m_shake.frame >= desc.length)
+        {
+            m_shake.active = false;
+        }
+    }
+
+    void MapObj::StopShake()
+    {
+        m_shake.active = false;
+        if (ModelPart() != nullptr)
+        {
+            (void)ModelPart()->SetDrawOffset(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        }
+    }
+
     void MapObj::EndFreeze()
     {
+        StopShake();
         if (m_freezePlaced)
         {
             Root().SetPosition(m_freezeHome);
@@ -213,6 +240,8 @@ namespace NS::Game::Level
 
     void MapObj::StepFreeze()
     {
+        // 横揺れは止めに入ったフレームから進める。下の早い戻りより前に置く
+        AdvanceShake();
         const std::uint32_t step = m_states->StepsInState();
         if (step == 0)
         {
@@ -234,13 +263,6 @@ namespace NS::Game::Level
                 }
             }
             return;
-        }
-        if (m_freezePlaced && m_freeze.stopSteps > 0)
-        {
-            const float sign = 1.0f - 2.0f * static_cast<float>(remaining % 2);
-            const float decay = static_cast<float>(remaining) / static_cast<float>(m_freeze.stopSteps);
-            Root().SetPosition(m_freezeHome +
-                               m_freeze.impactDir * (m_freeze.pushInDistance + m_freeze.shakeAmplitude * sign * decay));
         }
     }
 
@@ -469,6 +491,7 @@ namespace NS::Game::Level
         {
             EndFreeze();
         }
+        StopShake();
         (void)m_states->Change<RestingState>();
         m_states->Reset();
         m_motion.Finish();
@@ -519,6 +542,11 @@ namespace NS::Game::Level
         if (const MsgTackleFreeze* freeze = NS::Obj::MsgCast<MsgTackleFreeze>(msg))
         {
             BeginFreeze(freeze->Desc());
+            return true;
+        }
+        if (const MsgTackleShake* shake = NS::Obj::MsgCast<MsgTackleShake>(msg))
+        {
+            m_shake = ShakeRun{.desc = shake->Desc(), .frame = 0, .active = true};
             return true;
         }
         if (const MsgTackleRelease* release = NS::Obj::MsgCast<MsgTackleRelease>(msg))

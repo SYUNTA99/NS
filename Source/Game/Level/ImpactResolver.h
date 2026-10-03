@@ -261,6 +261,12 @@ namespace NS::Game::Level
         // 一撃は外した側 (面の上の位置) へ振る。面の上の位置が無い当たりは、自機が弾かれる向きの画面の側へ振る
         // 事前条件: 威力・揺れの種・反動の向きを控え終えている
         [[nodiscard]] NS::Obj::CameraTraumaDesc TraumaDescFor(const CameraTraumaEvent& trauma) const noexcept;
+        // 横揺れを始める。自機の揺れを控え、相手へ逆向きの揺れを知らせる。カメラが無い世界では揺らさない
+        void StartBodyShake(const BodyShakeEvent& shake, int length);
+        // 自機の横揺れを 1 フレーム進めて、描く時だけのずれを書く。長さの終わりで 0 を書いて止める
+        void AdvanceBodyShake();
+        // 自機の横揺れを止め、描く時だけのずれを 0 へ戻す
+        void StopBodyShake() noexcept;
         // 沈む揺れの事象から 4 拍の形を作る。深さは威力の頭打ちの曲線、跳ね返りは反動の事象の始まりから
         [[nodiscard]] NS::Obj::CameraSinkDesc SinkDescFor(const CameraSinkEvent& sink,
                                                           const HitEvent& event) const noexcept;
@@ -305,7 +311,6 @@ namespace NS::Game::Level
         bool m_beforeContact = false;                   // 時計が触れる前 (マイナスのフレーム) を進めているか
         NS::Obj::ActorRef m_beforeContactTarget{};      // 触れる前の時計を始めた予測の相手
         HitTier m_beforeContactTier = HitTier::Center;  // 触れる前の時計を始めた予測の段
-        float m_pendingTargetMass = 1.0f;               // 検知のフレームに相手が答えた質量。往復の振れ幅を割る
         // 明けたフレームに自機が持つ速度。反動の当たりは、明けに BeginRebound が同じ m_pendingReboundArc から出し直す
         NS::Core::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};
         NS::Game::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離
@@ -322,6 +327,14 @@ namespace NS::Game::Level
         float m_pendingPower = 0.0f;          // この衝突の威力。揺れの最初の振れに掛ける
         float m_pendingMassFactor = 0.0f;     // この衝突の質量の効き。揺れの最初の振れに掛ける
         std::uint32_t m_pendingShakeSeed = 0; // この衝突の揺れの、入れ替わりの間隔を選ぶ種
+        // 自機の横揺れ。始めた時計の値から数え、長さの終わりで止める
+        struct BodyShakeRun
+        {
+            TackleShakeDesc desc{};
+            int startClock = 0;
+            bool active = false;
+        };
+        BodyShakeRun m_bodyShake;
 
         bool m_didRebound = false;          // 直近の更新で反発を検知したか
         bool m_didBreak = false;            // 直近の更新で貫通を検知したか

@@ -664,6 +664,76 @@ TEST(ImpactTimelineClock, MissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
     EXPECT_NEAR(heading.Dot(expected), 1.0f, 1.0e-4f);
 }
 
+// 止めの間の横揺れは、自機と相手を画面の横 (床に沿う向き) へ逆向きに揺らし、横揺れの長さの終わりで 0 にする
+// 揺らすのは描く形だけで、相手の根は食い込んだ所に留まる
+TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
+{
+    BodyShakeEvent shake;
+    shake.amplitudePixels = 10.0f;
+    HitTimeline timeline;
+    timeline.events = {{HitStopEvent{}, 1, 6, HitDirection::Any},
+                       {TargetFreezeEvent{}, 1, 6, HitDirection::Any},
+                       {shake, 1, 6, HitDirection::Any},
+                       {TargetLaunchEvent{}, 7, 1, HitDirection::Any},
+                       {ReboundEvent{}, 7, 1, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("BodyShake");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    ASSERT_NE(rock, nullptr);
+    const NS::Obj::CameraManager* cameras = player->GetCameraManager();
+    ASSERT_NE(cameras, nullptr);
+    const NS::Core::Vector3 forward = cameras->ForwardHorizontal();
+
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    int clock = -1;
+    float previousSelf = 0.0f;
+    NS::Core::Vector3 frozenRoot{};
+    for (int frame = 0; frame < 90 && clock < 9; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        {
+            continue;
+        }
+        ++clock;
+        SCOPED_TRACE(clock);
+        const NS::Core::Vector3 self = player->ModelPart()->DrawOffset();
+        const NS::Core::Vector3 other = rock->ModelPart()->DrawOffset();
+        if (clock >= 1 && clock <= 5)
+        {
+            // 画面の横の向きだけに、逆向きに揺れる
+            EXPECT_GT(self.Length(), 0.0f);
+            EXPECT_NEAR(self.Dot(forward), 0.0f, 1.0e-5f);
+            EXPECT_NEAR(self.y, 0.0f, 1.0e-6f);
+            EXPECT_LT(self.Dot(other), 0.0f);
+            const float side = self.Dot(NS::Core::Vector3{forward.z, 0.0f, -forward.x});
+            if (clock > 1)
+            {
+                EXPECT_LT(side * previousSelf, 0.0f);
+            }
+            previousSelf = side;
+            if (clock == 1)
+            {
+                frozenRoot = rock->Root().Position();
+            }
+            else
+            {
+                EXPECT_TRUE(rock->Root().Position() == frozenRoot);
+            }
+        }
+        if (clock >= 6)
+        {
+            EXPECT_FLOAT_EQ(self.Length(), 0.0f);
+            EXPECT_FLOAT_EQ(other.Length(), 0.0f);
+        }
+    }
+    EXPECT_GE(clock, 9);
+}
+
 // 揺れの最初の振れは 強さ × 威力 × 質量の効き。横と縦の重みは向きだけを決める
 TEST(ImpactTimelineClock, TheShakeIsItsStrengthScaledByTheHit)
 {

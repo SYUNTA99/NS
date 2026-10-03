@@ -103,6 +103,28 @@ namespace NS::Game::Level
         return std::pow(left, c);
     }
 
+    float BodyShakeOffset(int frame, int length, float amplitude, std::uint32_t seed, float firstSign) noexcept
+    {
+        if (length <= 0 || frame < 1 || frame >= length)
+        {
+            return 0.0f;
+        }
+        const float left = 1.0f - static_cast<float>(frame) / static_cast<float>(length);
+        // 振れ幅だけをばらつかせ、左右の入れ替わりは乱さない。乱すと止まって見えるフレームができる
+        constexpr float k_HashToUnit = 1.0f / 4294967295.0f;
+        const float spread = 0.7f + 0.3f * static_cast<float>(NS::Core::NoiseHash(frame, seed)) * k_HashToUnit;
+        float sign = 1.0f;
+        if (firstSign < 0.0f)
+        {
+            sign = -1.0f;
+        }
+        if (frame % 2 == 0)
+        {
+            sign = -sign;
+        }
+        return amplitude * left * left * spread * sign;
+    }
+
     ImpactOutcome ComputeImpactOutcome(const ImpactInput& input, const ImpactTuning& tuning) noexcept
     {
         ImpactOutcome outcome{};

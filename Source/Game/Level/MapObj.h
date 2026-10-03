@@ -64,6 +64,10 @@ namespace NS::Game::Level
         void BeginFreeze(const TackleFreezeDesc& desc);
         void EndFreeze();
         void StepFreeze();
+        // 横揺れを 1 フレーム進め、描く時だけのずれを書く。長さの終わりで 0 を書いて止める
+        void AdvanceShake();
+        // 横揺れを止め、描く時だけのずれを 0 へ戻す
+        void StopShake();
         void Release(const TackleReleaseDesc& desc);
         void ResetTo(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation);
         void StepLaunched(float dt);
@@ -86,6 +90,14 @@ namespace NS::Game::Level
         NS::Obj::StateMachine<MapObj>* m_states = nullptr; // 基底が所有する。コンストラクタが預けた直後から有効
         NS::Obj::SubStateMachine<MapObj> m_motion;
         TackleFreezeDesc m_freeze;
+        // 止めの間の横揺れ。知らせを受けたフレームの止めの 1 歩を 1 フレーム目に数える
+        struct ShakeRun
+        {
+            TackleShakeDesc desc{};
+            int frame = 0;
+            bool active = false;
+        };
+        ShakeRun m_shake;
         NS::Core::Vector3 m_freezeHome{};
         bool m_freezePlaced = true;
         LaunchArc m_arc;

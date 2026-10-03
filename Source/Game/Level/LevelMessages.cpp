@@ -65,6 +65,16 @@ namespace NS::Game::Level
         return NS::Obj::IsMsg<MsgTackleFreeze>(msg);
     }
 
+    bool SendMsgTackleShake(NS::Obj::Actor& receiver, const TackleShakeDesc& desc)
+    {
+        return NS::Obj::SendMsgToActor(MsgTackleShake{desc}, receiver);
+    }
+
+    bool IsMsgTackleShake(const NS::Obj::Message& msg) noexcept
+    {
+        return NS::Obj::IsMsg<MsgTackleShake>(msg);
+    }
+
     bool SendMsgTackleRelease(NS::Obj::Actor& receiver, const TackleReleaseDesc& desc)
     {
         return NS::Obj::SendMsgToActor(MsgTackleRelease{desc}, receiver);

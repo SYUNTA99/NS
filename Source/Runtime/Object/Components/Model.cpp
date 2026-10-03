@@ -127,6 +127,16 @@ namespace NS::Obj
         return true;
     }
 
+    bool Model::SetDrawOffset(const NS::Core::Vector3& offset) noexcept
+    {
+        if (!(std::isfinite(offset.x) && std::isfinite(offset.y) && std::isfinite(offset.z)))
+        {
+            return false;
+        }
+        m_drawOffset = offset;
+        return true;
+    }
+
     const NS::Core::AABB* Model::DrawnLocalBounds() const noexcept
     {
         if (m_hasLocalBoundsOverride)
@@ -151,11 +161,23 @@ namespace NS::Obj
         }
         // 回転を先に掛ける。根のスケールは根の軸に残り、局所の回転と一緒に回らない
         const NS::Core::Matrix root = owner->Root().InterpolatedWorldMatrix(alpha);
-        const NS::Core::Matrix drawn = localMatrix * root;
+        NS::Core::Matrix drawn = localMatrix * root;
+        // ずれは倍率の後に世界で足す。倍率の中心 (下端の真ん中) は根から測るので、ずれと一緒に動いて形を変えない
+        // ずれが 0 の間は掛けない。0 の平行移動でも掛け算が下の桁を丸めることがある
+        NS::Core::Matrix shift = NS::Core::Matrix::Identity;
+        const bool shifted = m_drawOffset.x != 0.0f || m_drawOffset.y != 0.0f || m_drawOffset.z != 0.0f;
+        if (shifted)
+        {
+            shift = NS::Core::Matrix::CreateTranslation(m_drawOffset);
+        }
         const NS::Core::Vector3 scale = NS::Core::Vector3::Lerp(m_previousDrawScale, m_drawScale, alpha);
         // 倍率が 1 でも、下端の真ん中へ移して戻す足し引きが下の桁を丸めることがある。倍率の無い間は掛けずに返す
         if (scale == k_NoDrawScale)
         {
+            if (shifted)
+            {
+                drawn = drawn * shift;
+            }
             return drawn;
         }
 
@@ -169,9 +191,14 @@ namespace NS::Obj
             pivot = NS::Core::Vector3{
                 worldBounds.Center.x, worldBounds.Center.y - worldBounds.Extents.y, worldBounds.Center.z};
         }
-        // 倍率は世界の軸で最後に掛ける。局所の回転と根の回転に依らず世界の縦に潰れる
-        return drawn * NS::Core::Matrix::CreateTranslation(-pivot) * NS::Core::Matrix::CreateScale(scale) *
-               NS::Core::Matrix::CreateTranslation(pivot);
+        // 倍率は世界の軸で掛ける。局所の回転と根の回転に依らず世界の縦に潰れる
+        NS::Core::Matrix scaled = drawn * NS::Core::Matrix::CreateTranslation(-pivot) *
+                                  NS::Core::Matrix::CreateScale(scale) * NS::Core::Matrix::CreateTranslation(pivot);
+        if (shifted)
+        {
+            scaled = scaled * shift;
+        }
+        return scaled;
     }
 
     void Model::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
@@ -259,15 +286,17 @@ namespace NS::Obj
 
         // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま
         const NS::Core::Vector3 scale = NS::Core::Vector3::Max(m_previousDrawScale, m_drawScale);
-        if (scale == k_NoDrawScale)
+        if (scale != k_NoDrawScale)
         {
-            return out;
+            const float bottom = out.Center.y - out.Extents.y;
+            out.Extents.x *= scale.x;
+            out.Extents.y *= scale.y;
+            out.Extents.z *= scale.z;
+            out.Center.y = bottom + out.Extents.y;
         }
-        const float bottom = out.Center.y - out.Extents.y;
-        out.Extents.x *= scale.x;
-        out.Extents.y *= scale.y;
-        out.Extents.z *= scale.z;
-        out.Center.y = bottom + out.Extents.y;
+        out.Center.x += m_drawOffset.x;
+        out.Center.y += m_drawOffset.y;
+        out.Center.z += m_drawOffset.z;
         return out;
     }
 
