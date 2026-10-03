@@ -65,7 +65,7 @@ namespace NS::Gfx
             return;
         }
 
-        // 頂点バッファを使わない全画面三角形。暗転と同じ物
+        // 頂点バッファを使わない全画面三角形。DrawFullscreenColor と同じ物
         m_vs = Shader::CreateBuiltin("fade.vs.hlsl");
         m_thresholdPs = Shader::CreateBuiltin("bloom_threshold.ps.hlsl");
         m_downPs = Shader::CreateBuiltin("bloom_down.ps.hlsl");

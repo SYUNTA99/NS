@@ -1,5 +1,5 @@
-#include "Game/Level/ScreenFade.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Object/ScreenFade.h"
 #include "Runtime/UI/ColorRect.h"
 
 #include <gtest/gtest.h>
@@ -7,7 +7,7 @@
 TEST(UIActorWidgets, FadeOwnsAFullScreenWidgetAndKeepsTheExistingAlphaTiming)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::ScreenFade fade;
+    NS::Obj::ScreenFade fade;
     EXPECT_TRUE(fade.Widgets().Root().HasChildren());
     EXPECT_FLOAT_EQ(fade.Widgets().Root().Alpha(), 0.0f);
     fade.Open(scene);
@@ -31,7 +31,7 @@ TEST(UIActorWidgets, FadeOwnsAFullScreenWidgetAndKeepsTheExistingAlphaTiming)
 
 TEST(UIActorWidgets, ZeroDurationFadeChangesTheWidgetImmediately)
 {
-    NS::Game::Level::ScreenFade fade;
+    NS::Obj::ScreenFade fade;
     fade.BeginOut(0.0f);
     EXPECT_FLOAT_EQ(fade.Widgets().Root().Alpha(), 1.0f);
     fade.BeginIn(0.0f);

@@ -124,7 +124,7 @@ namespace NS::Gfx
         [[nodiscard]] const Pipeline& CommonPipeline(BlendMode blend) const noexcept;
 
         //! @brief 画面全体をアルファ込みの指定色で塗る。描画済みシーンの上へ半透明合成で重ねる
-        //! @details 全画面三角形を 1 枚描く。暗転・フラッシュ等、色の意味は呼び出し側が決める
+        //! @details 全画面三角形を 1 枚描く。当てた瞬間の白い光など、色の意味は呼び出し側が決める
         //! 資源は初回呼び出し時に一度だけ構築し、失敗時は以後何もしない。最前面に出すため全描画の最後に呼ぶ
         void DrawFullscreenColor(const NS::Core::Color& color) noexcept;
 
@@ -182,8 +182,8 @@ namespace NS::Gfx
         std::unique_ptr<CommandList> m_commands;
         std::unique_ptr<CommonStates> m_states;
         std::unique_ptr<Pipeline> m_commonPipelines[3]; //!< 共通パイプライン
-        OverlayResources m_fullscreen; // 全画面塗り (暗転・フラッシュ)。初回 DrawFullscreenColor で構築
-        OverlayResources m_screenRect; // UI 矩形。初回 DrawScreenRect で構築
+        OverlayResources m_fullscreen;                  // 全画面塗り。初回 DrawFullscreenColor で構築
+        OverlayResources m_screenRect;                  // UI 矩形。初回 DrawScreenRect で構築
         // 空を描く Skybox。cubemap を指定した初回の DrawSky で一度だけ構築する
         std::unique_ptr<Skybox> m_skybox;
         std::string m_loadedSkyboxPath; // 前回判定した cubemap のパス。読めた物と拒否した物が入り、差分の時だけ読み直す

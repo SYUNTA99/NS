@@ -2,7 +2,6 @@
 #include "Game/Level/Goal.h"
 #include "Game/Level/KillZone.h"
 #include "Game/Level/LaunchArc.h"
-#include "Game/Level/ScreenFade.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/PlayerInput.h"
@@ -11,6 +10,7 @@
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
+#include "Runtime/Object/ScreenFade.h"
 
 #include <gtest/gtest.h>
 
