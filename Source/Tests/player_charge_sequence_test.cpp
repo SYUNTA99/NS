@@ -1,8 +1,10 @@
 #include "Game/Level/CollisionInput.h"
 #include "Game/Player.h"
+#include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/CameraComponent.h"
+#include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Clock.h"
@@ -43,7 +45,7 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
     EXPECT_TRUE(player.IsCurled());
     EXPECT_FLOAT_EQ(player.MaxSpeed(), maxSpeed);
     EXPECT_GT(movement.Velocity().x, 0.0f);
-    EXPECT_FLOAT_EQ(player.Root().Scale().y, 0.97f);
+    EXPECT_FLOAT_EQ(input->StanceHeight(), 0.97f);
 
     while (held < threshold - 1)
     {
@@ -60,7 +62,7 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
     EXPECT_FLOAT_EQ(movement.Velocity().z, 0.0f);
     // 縦は残す。0 を書くと同じフレームの重力で下向きになる
     EXPECT_GT(movement.Velocity().y, 0.0f);
-    EXPECT_FLOAT_EQ(player.Root().Scale().y, 0.95f);
+    EXPECT_FLOAT_EQ(input->StanceHeight(), 0.95f);
 
     // 横を止めるのはしきい値のフレームだけ
     movement.SetVelocity(NS::Core::Vector3{2.0f, 5.0f, 1.0f});
@@ -76,7 +78,7 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
     player.Update(false);
     EXPECT_FALSE(input->Judge().IsHeld());
     EXPECT_FLOAT_EQ(player.MaxSpeed(), maxSpeed);
-    EXPECT_FLOAT_EQ(player.Root().Scale().y, 1.0f);
+    EXPECT_FLOAT_EQ(input->StanceHeight(), 1.0f);
     EXPECT_TRUE(player.IsBodySlamming());
     EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 0.5f);
 }
@@ -175,7 +177,8 @@ TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
     EXPECT_FLOAT_EQ(input->Judge().Charge01(), static_cast<float>(threshold * 6) / span);
 }
 
-TEST(PlayerChargeSequence, EndPlayRestoresStanceBeforeThePlayerPartsLeave)
+// 構えは縦の倍率を答えるだけで、根のスケールは押しても溜めても放しても配置の値のまま
+TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 {
     Player player;
     NS::Game::Level::CollisionInput* input =
@@ -183,13 +186,40 @@ TEST(PlayerChargeSequence, EndPlayRestoresStanceBeforeThePlayerPartsLeave)
     ASSERT_NE(input, nullptr);
     input->OnStart();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
+    const NS::Core::Vector3 one{1.0f, 1.0f, 1.0f};
+    player.Update(true);
+    EXPECT_FLOAT_EQ(input->StanceHeight(), 0.97f);
+    EXPECT_TRUE(player.Root().Scale() == one);
+    for (int held = 1; held < FramesFor(0.2f); ++held)
+    {
+        player.Update(true);
+        SCOPED_TRACE(held);
+        EXPECT_TRUE(player.Root().Scale() == one);
+    }
+    ASSERT_TRUE(input->IsCharging());
+    EXPECT_FLOAT_EQ(input->StanceHeight(), 0.95f);
+    player.Update(false);
+    EXPECT_FLOAT_EQ(input->StanceHeight(), 1.0f);
+    EXPECT_TRUE(player.Root().Scale() == one);
+}
+
+TEST(PlayerChargeSequence, EndPlayRestoresStanceBeforeThePlayerPartsLeave)
+{
+    Player player;
+    NS::Game::Level::CollisionInput* input =
+        NS::Obj::ComponentCast<NS::Game::Level::CollisionInput>(player.Part("ChargeControl"));
+    ASSERT_NE(input, nullptr);
+    input->OnStart();
+    player.Appearance().OnStart();
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     for (int frame = 0; frame < FramesFor(0.2f); ++frame)
     {
         player.Update(true);
     }
-    EXPECT_FLOAT_EQ(player.Root().Scale().y, 0.95f);
+    ASSERT_FLOAT_EQ(player.ModelPart()->DrawScale().y, 0.95f);
     player.OnEndPlay();
-    EXPECT_FLOAT_EQ(player.Root().Scale().y, 1.0f);
+    EXPECT_FLOAT_EQ(input->StanceHeight(), 1.0f);
+    EXPECT_TRUE(player.ModelPart()->DrawScale() == (NS::Core::Vector3{1.0f, 1.0f, 1.0f}));
     EXPECT_FALSE(player.IsCurled());
 }
 

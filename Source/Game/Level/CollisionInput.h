@@ -31,7 +31,8 @@ namespace NS::Game::Level
     //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
     //! どちらも離したフレームに、溜め量を添えて Player::RequestBodySlam を呼ぶ。
     //! 溜めて放した時は、放す前のフレームに控えた狙いの線の向きと縦の速さも添える
-    //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる
+    //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる。
+    //! 構えの縮みは StanceHeight が答えるだけで、描く形へ書くのは PlayerAppearance
     //! 依存: NS::Obj::Body, NS::Obj::Curve, ImpactInputJudge, ImpactResolver
     class CollisionInput : public NS::Obj::Component
     {
@@ -58,7 +59,7 @@ namespace NS::Game::Level
         //! 速度は書かない。突進の水平の書き手は Player::UpdateBodySlam
         void ApplyControl();
 
-        //! 構えの縮みが残っていれば元の形へ戻し、自機へ渡した押しの印を戻して丸まりを解く
+        //! 押しを捨てて構えを 1 に戻し、自機へ渡した押しの印を戻して丸まりを解く
         void OnEndPlay() override;
 
         //! チャージ中の場合 true、それ以外の場合は false
@@ -66,6 +67,12 @@ namespace NS::Game::Level
 
         //! チャージが満タンの場合 true、それ以外の場合は false
         [[nodiscard]] bool IsChargeFull() const noexcept { return m_judge.IsChargeFull(); }
+
+        //! @brief 構えで縦に縮める倍率を返す
+        //! @details 溜めている間は欄「構えの縮み」、溜めに入る前に押している間は欄「押しの構えの縮み」、
+        //! それ以外は 1。当たりの止めは見ない。描く形へ書くのは PlayerAppearance で、ここは何も書かない
+        //! @return 元の形を 1 とした縦の倍率
+        [[nodiscard]] float StanceHeight() const noexcept;
 
         //! @brief 押している間に控えた狙う相手を読む
         //! @details 押している間は毎フレーム、TryGetAimLine の狙いの線の向きと長さで
@@ -94,7 +101,6 @@ namespace NS::Game::Level
         NS_REFLECT_NONE(CollisionInput, NS::Obj::Component)
 
     private:
-        void UpdateChargeStance();
         // 押している間はカメラの正面へ狙いの線を作って控え、その線で狙う相手を探して控える。
         // 押していなければ両方の控えを消す
         void UpdateAimTarget(bool held);
@@ -121,8 +127,6 @@ namespace NS::Game::Level
         bool m_hasAimTarget = false;
         AimLine m_aimLine{}; // 押している間の狙いの線。m_hasAimLine が偽の間は読まない
         bool m_hasAimLine = false;
-        NS::Core::Vector3 m_homeScale{1.0f, 1.0f, 1.0f};
-        bool m_stanceApplied = false;
         NS::Obj::Body* m_body = nullptr;
         ImpactResolver* m_resolver = nullptr;
     };

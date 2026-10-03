@@ -12,6 +12,7 @@
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/CameraComponent.h"
+#include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectJson.h"
@@ -312,7 +313,7 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
             EXPECT_FALSE(player->Resolver().ReleasedThisStep());
             EXPECT_FALSE(player->Resolver().IsHitStopping());
             ExpectSameVector(rock->Root().Position(), rockHome);
-            ExpectSameVector(player->Root().Scale(), NS::Core::Vector3{1.0f, 1.0f, 1.0f});
+            ExpectSameVector(player->ModelPart()->DrawScale(), NS::Core::Vector3{1.0f, 1.0f, 1.0f});
         }
     }
 }
@@ -326,12 +327,105 @@ TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
     NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
-    ASSERT_TRUE(player->Resolver().IsScaleAnimating());
-    ASSERT_LT(player->Root().Scale().z, 1.0f);
-    player->Resolver().OnEndPlay();
-    ExpectSameVector(player->Root().Scale(), NS::Core::Vector3{1.0f, 1.0f, 1.0f});
+    ASSERT_TRUE(player->Resolver().IsShapeAnimating());
+    ASSERT_LT(player->ModelPart()->DrawScale().z, 1.0f);
+    player->OnEndPlay();
+    EXPECT_TRUE(player->ModelPart()->DrawScale() == (NS::Core::Vector3{1.0f, 1.0f, 1.0f}));
     EXPECT_FALSE(player->Resolver().IsHitStopping());
-    EXPECT_FALSE(player->Resolver().IsScaleAnimating());
+    EXPECT_FALSE(player->Resolver().IsShapeAnimating());
+}
+
+// 溜めの構えは描く形の倍率に出る
+TEST(PlayerAppearance, ComposesTheStanceIntoTheDrawScale)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    for (int frame = 0; frame < 120 && !player->ChargeControl().IsCharging(); ++frame)
+    {
+        player->Update(true);
+    }
+    ASSERT_TRUE(player->ChargeControl().IsCharging());
+    EXPECT_FLOAT_EQ(player->ModelPart()->DrawScale().y, 0.95f);
+}
+
+// 当てた瞬間の潰れと明けの伸びは描く形の倍率に出て、根のスケールは 1 のまま。戻しの最後のフレームでちょうど 1
+TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    ASSERT_NE(rock, nullptr);
+    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
+    ASSERT_FALSE(player->Resolver().LastImpact().broke);
+    // 欄「潰れの厚み」0.7 を進む向きの成分の 2 乗で混ぜ、縦は欄「潰れの伸び上がり」1.1
+    const NS::Core::Vector3 dir = player->Resolver().LastImpact().impactDir;
+    const NS::Core::Vector3 squash{1.0f - 0.3f * dir.x * dir.x, 1.1f, 1.0f - 0.3f * dir.z * dir.z};
+    const NS::Core::Vector3 one{1.0f, 1.0f, 1.0f};
+    bool released = false;
+    for (int frame = 0; frame < 30 && !released; ++frame)
+    {
+        SCOPED_TRACE(frame);
+        ExpectSameVector(player->Root().Scale(), one);
+        ExpectSameVector(player->ModelPart()->DrawScale(), squash);
+        player->Update(false);
+        rock->Update();
+        released = player->Resolver().ReleasedThisStep();
+    }
+    ASSERT_TRUE(released);
+    // 反発の明けは縦へ欄「弾け伸びの倍率」1.2
+    ExpectSameVector(player->ModelPart()->DrawScale(), NS::Core::Vector3{1.0f, 1.2f, 1.0f});
+    for (int frame = 0; frame < 30 && player->Resolver().IsShapeAnimating(); ++frame)
+    {
+        SCOPED_TRACE(frame);
+        ExpectSameVector(player->Root().Scale(), one);
+        player->Update(false);
+        rock->Update();
+    }
+    ASSERT_FALSE(player->Resolver().IsShapeAnimating());
+    EXPECT_TRUE(player->ModelPart()->DrawScale() == one);
+    EXPECT_TRUE(player->Root().Scale() == one);
+}
+
+// 接地して当てた明けの伸びは描く形の下端の真ん中を中心に掛かり、玉の下端が床の下へ出ない
+TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 2.5f);
+    ASSERT_NE(player, nullptr);
+    NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    ASSERT_NE(rock, nullptr);
+    for (int frame = 0; frame < 60; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+    }
+    ASSERT_TRUE(player->Body().IsGrounded());
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    bool released = false;
+    for (int frame = 0; frame < 30 && !released; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        released = player->Resolver().ReleasedThisStep();
+    }
+    ASSERT_TRUE(released);
+    ASSERT_FALSE(player->Resolver().LastImpact().broke);
+    ASSERT_TRUE(player->Resolver().IsShapeAnimating());
+    NS::Obj::Model* model = player->ModelPart();
+    // 試しには mesh が無いので、玉の局所の境界を差し、回転を外して形の伸びだけを測る
+    const float radius = player->Body().CapsuleRadius();
+    NS::Core::AABB local{};
+    local.Center = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    local.Extents = NS::Core::Vector3{radius, radius, radius};
+    model->SetLocalBoundsOverride(local);
+    model->SnapLocalRotation(NS::Core::Quaternion::Identity);
+    NS::Core::AABB drawn{};
+    local.Transform(drawn, model->DrawWorldMatrix(1.0f));
+    const float bottom = drawn.Center.y - drawn.Extents.y;
+    EXPECT_NEAR(bottom, player->Root().Position().y - radius, 0.001f);
+    EXPECT_GE(bottom, -0.001f);
 }
 
 // Inspector で裁定役を外すと、持っていた止めと予約を捨てる。入れ直しても遅れて弾かれない
@@ -377,7 +471,7 @@ TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl
 }
 
 // 溜めて当てる組とタップの組を、本番の 1 フレームの入口で回した数字の基準
-// 末尾の列は、状態・根のスケール・身体が動いているかが変わったフレームだけを並べた物。間のフレームは直前の行と同じ
+// 末尾の列は、状態・描く形の倍率・身体が動いているかが変わったフレームだけを並べた物。間のフレームは直前の行と同じ
 TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
 {
     const nlohmann::json baseline = nlohmann::json::parse(
@@ -404,9 +498,13 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             [111, "Rebound", 1, 0.9333333373, 1, true],
             [112, "Rebound", 1, 0.9666666389, 1, true],
             [113, "Rebound", 1, 1, 1, true],
-            [171, "Idle", 1, 1, 1, true],
-            [172, "Walk", 1, 1, 1, true],
-            [175, "Idle", 1, 1, 1, true]
+            [170, "Rebound", 1.118034005, 0.8000000119, 1.118034005, true],
+            [171, "Idle", 1.095445156, 0.8333333731, 1.095445156, true],
+            [172, "Walk", 1.074172258, 0.8666666746, 1.074172258, true],
+            [173, "Walk", 1.054092646, 0.8999999762, 1.054092646, true],
+            [174, "Walk", 1.035098314, 0.9333333373, 1.035098314, true],
+            [175, "Idle", 1.017095208, 0.9666666985, 1.017095208, true],
+            [176, "Idle", 1, 1, 1, true]
         ]],
         [1, 14, 15, 18, [
             [0, 0, 0.649999976, 0, 0, 0, 0, 0, 0.5, 3],
@@ -428,7 +526,13 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             [22, "Rebound", 1, 0.9333333373, 1, true],
             [23, "Rebound", 1, 0.9666666389, 1, true],
             [24, "Rebound", 1, 1, 1, true],
-            [60, "Idle", 1, 1, 1, true]
+            [59, "Rebound", 1.118034005, 0.8000000119, 1.118034005, true],
+            [60, "Idle", 1.095445156, 0.8333333731, 1.095445156, true],
+            [61, "Idle", 1.074172258, 0.8666666746, 1.074172258, true],
+            [62, "Idle", 1.054092646, 0.8999999762, 1.054092646, true],
+            [63, "Idle", 1.035098314, 0.9333333373, 1.035098314, true],
+            [64, "Idle", 1.017095208, 0.9666666985, 1.017095208, true],
+            [65, "Idle", 1, 1, 1, true]
         ]]
     ])");
     for (int scenario = 0; scenario < 2; ++scenario)
@@ -493,8 +597,10 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                 SCOPED_TRACE(frame);
                 EXPECT_EQ(StateName(*player), (*pose)[1].get<std::string>());
                 ExpectSameVector(
-                    player->Root().Scale(),
+                    player->ModelPart()->DrawScale(),
                     NS::Core::Vector3{(*pose)[2].get<float>(), (*pose)[3].get<float>(), (*pose)[4].get<float>()});
+                // 構え・潰れ・伸び・着地の潰れのどれの間も、根のスケールは配置の値のまま
+                EXPECT_TRUE(player->Root().Scale() == (NS::Core::Vector3{1.0f, 1.0f, 1.0f}));
                 EXPECT_EQ(player->CanMoveBody(), (*pose)[5].get<bool>());
             }
             for (const nlohmann::json& sample : expected[4])

@@ -435,7 +435,7 @@ namespace NS::Game::Level
 
         if (m_recoverRemaining > 0)
         {
-            RecoverScale();
+            AdvanceShapeRecovery();
         }
 
         // 押していない接触は物理の停止だけで済ませるため、体当たり中でないフレームは裁定しない
@@ -627,19 +627,9 @@ namespace NS::Game::Level
         m_hitStopTotal = stopSteps;
         NS_LOG_INFO(Game, "ヒットストップ: {} フレーム", stopSteps);
 
-        // 潰れは反発の前半。進行方向の厚みを潰し、代わりに高さを伸ばす
-        // 戻りの最中に次の衝突が来たら、控え済みの元の形をそのまま使い続ける
-        if (m_recoverRemaining == 0)
-        {
-            m_scaleHome = RootTransform().Scale();
-        }
+        // 潰れは反発の前半。形は ShapeFactors が答え、戻しの途中に来た衝突は戻しを捨てて潰れから始める
         m_recoverRemaining = 0;
         m_scaleHeld = true;
-        // 貫通は押し勝っている側なので潰さない。潰れは押し返されている反発だけの絵
-        if (!m_pendingBreak)
-        {
-            RootTransform().SetScale(ScaledAlongImpact(Tuning().m_squashThickness, Tuning().m_squashHeight));
-        }
 
         StartHitReturns();
 
@@ -771,12 +761,9 @@ namespace NS::Game::Level
         m_releasedThisStep = false;
         // 相手へは明けを送らない。相手はやり直しの知らせで自分の位置へ戻り、凍結は相手の数えで明ける
         m_pendingTarget = NS::Obj::ActorRef{};
-        if ((m_scaleHeld || m_recoverRemaining > 0) && Owner() != nullptr)
-        {
-            RootTransform().SetScale(m_scaleHome);
-        }
         m_scaleHeld = false;
         m_recoverRemaining = 0;
+        m_stretchFactors = NS::Core::Vector3{1.0f, 1.0f, 1.0f};
         if (hadStop && m_hitReaction != nullptr)
         {
             m_hitReaction->Stop();
@@ -825,16 +812,15 @@ namespace NS::Game::Level
         if (m_scaleHeld)
         {
             // 解放の伸びが衝突の後半。反発は自機が上へ大きく弾かれるので縦へ、貫通は突き抜ける進行の軸へ伸ばす
+            // 戻しの途中に次の当たりの向きが控えに入っても形がぶれないよう、伸びはこのフレームに決めて控える
             if (wasBreak)
             {
-                m_stretchScale = ScaledAlongImpact(Tuning().m_stretchAlong, 1.0f);
+                m_stretchFactors = AlongImpactFactors(Tuning().m_stretchAlong, 1.0f);
             }
             else
             {
-                m_stretchScale =
-                    NS::Core::Vector3{m_scaleHome.x, m_scaleHome.y * Tuning().m_stretchAlong, m_scaleHome.z};
+                m_stretchFactors = NS::Core::Vector3{1.0f, Tuning().m_stretchAlong, 1.0f};
             }
-            RootTransform().SetScale(m_stretchScale);
             m_recoverRemaining = Tuning().m_stretchRecoverSteps;
             m_scaleHeld = false;
         }
@@ -859,33 +845,39 @@ namespace NS::Game::Level
         (void)SendMsgTackleRelease(*target, release);
     }
 
-    void ImpactResolver::RecoverScale()
+    void ImpactResolver::AdvanceShapeRecovery() noexcept
     {
         --m_recoverRemaining;
-        if (m_recoverRemaining <= 0)
+    }
+
+    NS::Core::Vector3 ImpactResolver::ShapeFactors() const noexcept
+    {
+        const NS::Core::Vector3 home{1.0f, 1.0f, 1.0f};
+        if (m_scaleHeld)
         {
-            // 補間の残差を残さない。控えた元の値をそのまま書いて形を確定させる
-            RootTransform().SetScale(m_scaleHome);
-            return;
+            // 貫通は押し勝っている側なので潰さない。潰れは押し返されている反発だけの絵
+            if (m_pendingBreak)
+            {
+                return home;
+            }
+            return AlongImpactFactors(Tuning().m_squashThickness, Tuning().m_squashHeight);
+        }
+        // 戻し切ったフレームは補間の残差を残さず、ちょうど 1 を返す
+        const float total = static_cast<float>(Tuning().m_stretchRecoverSteps);
+        if (m_recoverRemaining <= 0 || !(total > 0.0f))
+        {
+            return home;
         }
         // 前半は伸びた形から、元の形を伸びと反対の側へ 伸びの量 × 行き過ぎの割合 だけ越えた所まで進む
         // 後半はそこから元の形へ戻る
-        const float total = static_cast<float>(Tuning().m_stretchRecoverSteps);
         const float half = total * 0.5f;
         const float elapsed = total - static_cast<float>(m_recoverRemaining);
-        const NS::Core::Vector3 overshoot = m_scaleHome - (m_stretchScale - m_scaleHome) * Tuning().m_stretchOvershoot;
+        const NS::Core::Vector3 overshoot = home - (m_stretchFactors - home) * Tuning().m_stretchOvershoot;
         if (elapsed <= half)
         {
-            RootTransform().SetScale(m_stretchScale + (overshoot - m_stretchScale) * (elapsed / half));
-            return;
+            return m_stretchFactors + (overshoot - m_stretchFactors) * (elapsed / half);
         }
-        RootTransform().SetScale(overshoot + (m_scaleHome - overshoot) * ((elapsed - half) / (total - half)));
-    }
-
-    NS::Core::Vector3 ImpactResolver::ScaledAlongImpact(float along, float height) const noexcept
-    {
-        const NS::Core::Vector3 factors = AlongImpactFactors(along, height);
-        return NS::Core::Vector3{m_scaleHome.x * factors.x, m_scaleHome.y * factors.y, m_scaleHome.z * factors.z};
+        return overshoot + (home - overshoot) * ((elapsed - half) / (total - half));
     }
 
     NS::Core::Vector3 ImpactResolver::AlongImpactFactors(float along, float height) const noexcept

@@ -116,7 +116,8 @@ public:
     void SetMaxSpeedScale(float scale) noexcept;
     [[nodiscard]] float RunSpeed() const noexcept;
     //! 奈落落ちの復活などで速度・接地・ジャンプまわりの記録と状態機械を初期状態へ戻す。
-    //! 丸まりも解くが根は動かさない。当たりの止めと止めの予約は ImpactResolver::CancelImpact で捨てる。
+    //! 丸まりも解くが根は動かさない。当たりの止めと止めの予約は ImpactResolver::CancelImpact で捨て、
+    //! 描く形の倍率は PlayerAppearance::ResetDrawScale で補間なしに 1 へ戻す。
     //! 呼び手は先に根を出現位置へ置いてから呼ぶ
     void ResetState() noexcept;
     //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す

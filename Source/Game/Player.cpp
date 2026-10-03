@@ -543,6 +543,8 @@ void Player::ResetState() noexcept
     m_states->Reset();
     // 止めの最中か予約の残るやり直しで、出現位置で明けて弾かれないよう止めを持ち主に捨てさせる
     m_resolver->CancelImpact();
+    // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
+    m_appearance->ResetDrawScale();
 }
 
 void Player::SkipBodyStep() noexcept

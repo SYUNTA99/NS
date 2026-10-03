@@ -161,7 +161,7 @@ namespace NS::Game::Level
 
         //! @brief 持っている止めと止めの予約と、控えた相手を捨てる
         //! @details 相手へ明けを送らない。止めか予約が残っていた時だけ、同居の HitReaction の白・揺れ・振動を止める。
-        //! 潰した形か戻しの途中なら根のスケールを控えた元の形へ戻す。最後の当たりの記録は残す。
+        //! 潰れと伸びの戻しも捨てる。最後の当たりの記録は残す。
         //! 何度呼んでも同じ結果になる
         void CancelImpact() noexcept;
 
@@ -190,8 +190,16 @@ namespace NS::Game::Level
                                               float maxDistance,
                                               SlamLineTarget& outTarget) const;
 
-        //! 潰した形で凍結中か、伸びから元の形へ戻している途中の場合 true、それ以外の場合は false
-        [[nodiscard]] bool IsScaleAnimating() const noexcept { return m_scaleHeld || m_recoverRemaining > 0; }
+        //! 当たりの止めの最中か、明けの伸びから元の形へ戻している途中の場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsShapeAnimating() const noexcept { return m_scaleHeld || m_recoverRemaining > 0; }
+
+        //! @brief 当たりで自機の描く形に掛ける倍率を返す
+        //! @details 止めの間は進む向きの厚みを欄「潰れの厚み」、縦を欄「潰れの伸び上がり」にした潰れで、
+        //! 貫通の止めは潰さない。明けの後は伸びた形から縮む側へ行き過ぎて元の形へ戻る途中の倍率で、
+        //! 戻し切ったフレームからはちょうど 1。どちらでもない間も 1。描く形へ書くのは PlayerAppearance で、
+        //! ここは何も書かない
+        //! @return 元の形を 1 とした世界の x / y / z の倍率
+        [[nodiscard]] NS::Core::Vector3 ShapeFactors() const noexcept;
 
         // 返り方は当てた時の手触りそのもの。プレイ中に Inspector で触って詰められるよう公開する
         NS_REFLECT_NONE(ImpactResolver, NS::Obj::Component)
@@ -202,7 +210,7 @@ namespace NS::Game::Level
         // 事前条件: m_movement が非 null
         [[nodiscard]] NS::Obj::HitSensor* FindOverlapped(const NS::Core::Vector3& predictedVelocity) const;
 
-        // 凍結を掛ける。止めの数えを立てて自機を潰し、当たりの返りを始め、相手へ止めの頭を知らせる
+        // 凍結を掛ける。止めの数えと潰れを立て、当たりの返りを始め、相手へ止めの頭を知らせる
         void BeginFreeze(int stopSteps);
 
         // 当たり 1 回の返り。揺れの向きと種、寄りと傾きの向きは呼び手が入れる
@@ -229,12 +237,8 @@ namespace NS::Game::Level
         // 控えた当たりの返りを同居する HitReaction で始める。前の当たりの返りが残っていても、控えた値で始め直す
         void StartHitReturns();
 
-        // 解放後のフレームで伸びた形から戻す。前半で縮む側へ行き過ぎ、後半で配置で決めた元の形へ戻る
-        // 最後のフレームは控えた値を厳密に書く
-        void RecoverScale();
-
-        // 進行の軸だけ倍率を効かせた描画スケールを作る。縦は別の倍率で受ける
-        [[nodiscard]] NS::Core::Vector3 ScaledAlongImpact(float along, float height) const noexcept;
+        // 明けの後の伸びの戻しを 1 フレーム進める。形は ShapeFactors が残りのフレーム数から出す
+        void AdvanceShapeRecovery() noexcept;
 
         // 元の形を 1 とした倍率。進行の軸の成分の 2 乗で along を x と z に混ぜ、縦は height
         [[nodiscard]] NS::Core::Vector3 AlongImpactFactors(float along, float height) const noexcept;
@@ -258,8 +262,7 @@ namespace NS::Game::Level
         int m_pendingFlashSteps = 0;                            // この衝突の白のフレーム数。白の無い段は 0
         NS::Obj::CameraShakeDesc m_pendingShake{};              // この衝突のカメラの揺れ
         NS::Obj::CameraZoomRollDesc m_pendingZoomRoll{};        // この衝突の寄りと傾き。寄りの無い段は倍率 1
-        NS::Core::Vector3 m_scaleHome{1.0f, 1.0f, 1.0f};        // 配置で決めた元の描画スケールの控え
-        NS::Core::Vector3 m_stretchScale{1.0f, 1.0f, 1.0f};     // 解放のフレームの伸びた形
+        NS::Core::Vector3 m_stretchFactors{1.0f, 1.0f, 1.0f};   // 明けのフレームの伸びの倍率。元の形が 1
         int m_recoverRemaining = 0;                             // 形を戻し切るまでの残りフレーム数
         bool m_scaleHeld = false;                               // 潰した形のまま凍結している最中か
         NS::Obj::ActorRef m_pendingTarget{};                    // 知らせる相手。凍結をまたぐので使うたびに引く

@@ -63,12 +63,8 @@ namespace NS::Game::Level
     {
         m_stateReady = false;
         m_controlReady = false;
-        // 構えを掛けたまま外れると縮んだ形が残るため、必ず元の形へ戻す
-        if (m_stanceApplied)
-        {
-            RootTransform().SetScale(m_homeScale);
-            m_stanceApplied = false;
-        }
+        // 押しを捨てて構えを 1 に戻す。判定のしきい値の歩数は AdvanceCharge が毎回入れ直すので失われない
+        m_judge = ImpactInputJudge{};
         // 押しの印が真の間、自機は着地しても丸まりを解かない。外れた後は印を書く物が無いので、真のまま残すと
         // 着地で解けなくなる。印を偽へ戻し、丸まりもここで解く。ResetState は速度と状態機械まで戻すので呼ばない
         if (m_player != nullptr && m_body != nullptr)
@@ -189,7 +185,6 @@ namespace NS::Game::Level
         {
             m_aimTarget.origin = RootTransform().Position();
         }
-        UpdateChargeStance();
     }
 
     void CollisionInput::UpdateAimTarget(bool held)
@@ -258,30 +253,17 @@ namespace NS::Game::Level
         return true;
     }
 
-    void CollisionInput::UpdateChargeStance()
+    float CollisionInput::StanceHeight() const noexcept
     {
-        // 凍結と潰れ・伸びの最中は触らない。書くと控えた元の形と衝突演出が壊れる
-        const bool resolverAnimating = m_resolver != nullptr && m_resolver->IsScaleAnimating();
-        const bool movementFrozen = m_body != nullptr && !m_body->IsActiveSelf();
-        if (m_judge.IsHeld() && !resolverAnimating && !movementFrozen)
+        if (!m_judge.IsHeld())
         {
-            if (!m_stanceApplied)
-            {
-                m_homeScale = RootTransform().Scale();
-                m_stanceApplied = true;
-            }
-            float scale = Tuning().m_pressSquashScale;
-            if (m_judge.IsCharging())
-            {
-                scale = Tuning().m_chargeSquashScale;
-            }
-            RootTransform().SetScale(NS::Core::Vector3{m_homeScale.x, m_homeScale.y * scale, m_homeScale.z});
+            return 1.0f;
         }
-        else if (m_stanceApplied && !resolverAnimating)
+        if (m_judge.IsCharging())
         {
-            RootTransform().SetScale(m_homeScale);
-            m_stanceApplied = false;
+            return Tuning().m_chargeSquashScale;
         }
+        return Tuning().m_pressSquashScale;
     }
 
 #if !defined(NS_SHIPPING)
