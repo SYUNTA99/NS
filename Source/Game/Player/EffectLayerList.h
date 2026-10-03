@@ -28,6 +28,8 @@ namespace NS::Game::Player
         NS::Gfx::EffectHandle handle{}; //!< 再生したエフェクト。描画の無い世界と、絵を読めなかった層では無効
         //! 層の大きさか量。何を入れるかは層ごとに出した部品が決める。入れていなければ空
         std::optional<float> amount;
+        //! 最後に置いた根の向き。置いていなければ空
+        std::optional<NS::Core::Quaternion> rotation;
     };
 
     //! @brief 自機のエフェクトの部品が出すと決めた層を、出した順に持つ記録
@@ -80,6 +82,11 @@ namespace NS::Game::Player
         //! @param[in] id Play が返した番号
         //! @param[in] amount 層の大きさか量
         void SetAmount(std::uint32_t id, float amount) noexcept;
+        //! @brief 層の根を置いた向きを記録に書く
+        //! @details 無い番号なら何もしない。描画の無い世界でも書く
+        //! @param[in] id Play が返した番号
+        //! @param[in] rotation 根の向き
+        void SetRotation(std::uint32_t id, const NS::Core::Quaternion& rotation) noexcept;
 
         //! @brief 番号の記録を返す
         //! @param[in] id Play が返した番号

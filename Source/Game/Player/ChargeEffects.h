@@ -28,7 +28,7 @@ namespace NS::Game::Player
     //! - charge.curl 丸まりの殻: p に出し p + k_CurlSteps に消す。それより前に放したら放したフレームに消す
     //! - charge.spin 回転の弧: p に出し、放したフレームに消す。板の回りの角度に玉が回った角度の累計を渡す
     //! - charge.gather 溜まる光: p に出し、放したフレームに消す。溜めきってからの数 (FramesSinceFullCharge) を
-    //!   動的入力 1 番で渡す
+    //!   動的入力 1 番で渡す。根は毎フレーム狙いの線の水平の向きへ回し、光の点を手前は低く・奥は高く生ませる
     //! - charge.grind 削る粉: q に出し、放したフレームに消す
     //! - charge.full 溜めきりの閃き: 1 回の押しで 1 回だけ F に出し、F + k_FullFlashSteps に消す。
     //!   それより前に放したら放したフレームに消す。消すまで玉へ付いていく
@@ -114,11 +114,11 @@ namespace NS::Game::Player
         void StartRelease(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center);
         void UpdateTrail(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center, bool slamming) noexcept;
         void StopTrailRoot(NS::Gfx::EffectScene* effects) noexcept;
-        // 層を今の位置・向き・大きさへ置き直す。描画の無い世界か、再生できなかった層なら何もしない
+        // 層を今の位置・向き・大きさへ置き直し、向きを記録に書く。描画の無い世界では記録だけ書く
         void Place(NS::Gfx::EffectScene* effects,
                    std::uint32_t id,
                    const NS::Core::Vector3& position,
-                   const NS::Core::Quaternion& rotation) const noexcept;
+                   const NS::Core::Quaternion& rotation) noexcept;
         void SetCharge(NS::Gfx::EffectScene* effects, std::uint32_t id, float charge01) const noexcept;
         // 動的入力 index 番に value を入れる。描画の無い世界か、再生できなかった層なら何もしない
         void SetInput(NS::Gfx::EffectScene* effects, std::uint32_t id, int index, float value) const noexcept;

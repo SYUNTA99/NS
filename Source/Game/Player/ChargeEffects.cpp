@@ -210,7 +210,7 @@ namespace NS::Game::Player
         m_spin = m_layers.Play(effects, k_Spin, PlayDesc(center, NS::Core::Quaternion::Identity, 0.0f));
         // 玉を包む光は押したフレームから出し、丸まりの殻が消えた後も放すまで途切れさせない
         StopLayer(effects, m_gather);
-        m_gather = m_layers.Play(effects, k_Gather, PlayDesc(center, NS::Core::Quaternion::Identity, 0.0f));
+        m_gather = m_layers.Play(effects, k_Gather, PlayDesc(center, YawToward(HeldAimDirection()), 0.0f));
     }
 
     void ChargeEffects::StartCharging(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
@@ -278,7 +278,8 @@ namespace NS::Game::Player
         Place(effects, m_curl, center, NS::Core::Quaternion::Identity);
         Place(effects, m_spin, center, spinBoard);
         Place(effects, m_grind, center, YawToward(HeldAimDirection()));
-        Place(effects, m_gather, center, NS::Core::Quaternion::Identity);
+        // 溜まる光の根は狙いの線 (カメラの正面の水平の向き) へ回す。定義は根の手前に低く、奥に高く光の点を生む
+        Place(effects, m_gather, center, YawToward(HeldAimDirection()));
         Place(effects, m_full, center, NS::Core::Quaternion::Identity);
         SetCharge(effects, m_spin, charge01);
         SetCharge(effects, m_grind, charge01);
@@ -380,14 +381,20 @@ namespace NS::Game::Player
     void ChargeEffects::Place(NS::Gfx::EffectScene* effects,
                               std::uint32_t id,
                               const NS::Core::Vector3& position,
-                              const NS::Core::Quaternion& rotation) const noexcept
+                              const NS::Core::Quaternion& rotation) noexcept
     {
-        if (effects == nullptr || id == 0)
+        if (id == 0)
         {
             return;
         }
         const EffectLayerRecord* record = m_layers.Find(id);
         if (record == nullptr || record->endStep.has_value())
+        {
+            return;
+        }
+        // 描画の無い世界でも向きは記録に残し、試しが読む
+        m_layers.SetRotation(id, rotation);
+        if (effects == nullptr)
         {
             return;
         }

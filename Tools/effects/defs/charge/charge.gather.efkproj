@@ -322,10 +322,16 @@
         </DrawingValues>
       </Node>
       <!-- 溜まる光の点。半径 1.5 m の球面に生まれ、玉の中心へ 12 フレームで吸い込まれる (内向きに 0.125 m/フレーム)
-           1 フレームに 1 + 3 × 溜め量 個。玉に付いていく。点の本体は下塗りの濃い青で、白い升の上でも読める
-           子の 2 枚が光: 水色 1.0 と、溜め量 0.5 から足す白水色 1.0 -->
+           玉に付いていく。点の本体は下塗りの濃い青で、白い升の上でも読める
+           子の 2 枚が光: 水色 1.0 と、溜め量 0.5 から足す白水色 1.0
+           カメラから見て奥の半球 (PointFar) と、手前の赤道より 10 度下から下 (PointNearLow) の 2 つの節で生む。
+           手前の高い所に生むと点が玉の正面を横切って自機を隠すので、手前は低く・奥は高くする。
+           根の向きは ChargeEffects が狙いの線 (カメラの正面の水平の向き) で毎フレーム渡す。
+           点の向きは生む時だけ根に従う。従い続けると、カメラを速く回した時に出ている点が玉の周りを回る。
+           1 フレームに 奥 (1 + 3 × 溜め量) / 2 個・手前 (1 + 3 × 溜め量) / 5 個。
+           球を均した面積の比 (奥の半球 1/2、手前の低い所 約 0.2) で、分ける前の 1 + 3 × 溜め量 個と同じ密度 -->
       <Node>
-        <Name>Point</Name>
+        <Name>PointFar</Name>
         <CommonValues>
           <MaxGeneration>
             <Infinite>True</Infinite>
@@ -341,6 +347,151 @@
               <DynamicEquationMin>0</DynamicEquationMin>
             </GenerationTime>
           </Generation>
+          <RotationEffectType>1</RotationEffectType>
+        </CommonValues>
+        <LocationValues>
+          <Type>1</Type>
+          <PVA>
+            <Velocity>
+              <Y>
+                <Center>-0.125</Center>
+                <Max>-0.125</Max>
+                <Min>-0.125</Min>
+              </Y>
+            </Velocity>
+          </PVA>
+        </LocationValues>
+        <ScalingValues>
+          <Type>4</Type>
+          <SingleEasing>
+            <Start>
+              <Center>0.3</Center>
+              <Max>0.3</Max>
+              <Min>0.3</Min>
+            </Start>
+            <End>
+              <Center>0.1</Center>
+              <Max>0.1</Max>
+              <Min>0.1</Min>
+            </End>
+            <Type>1</Type>
+          </SingleEasing>
+        </ScalingValues>
+        <GenerationLocationValues>
+          <EffectsRotation>True</EffectsRotation>
+          <Type>1</Type>
+          <Sphere>
+            <Radius>
+              <Center>1.5</Center>
+              <Max>1.5</Max>
+              <Min>1.5</Min>
+            </Radius>
+            <RotationX>
+              <Min>-180</Min>
+            </RotationX>
+            <RotationY>
+              <Max>90</Max>
+              <Min>-90</Min>
+            </RotationY>
+          </Sphere>
+        </GenerationLocationValues>
+        <RendererCommonValues>
+          <ColorTexture>Texture/charge_dot.png</ColorTexture>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>30</R>
+              <G>110</G>
+              <B>220</B>
+              <A>200</A>
+            </Fixed>
+          </ColorAll>
+        </DrawingValues>
+        <Children>
+          <Node>
+            <Name>PointAdd</Name>
+            <CommonValues>
+              <Life>
+                <Center>12</Center>
+                <Max>12</Max>
+                <Min>12</Min>
+              </Life>
+            </CommonValues>
+            <ScalingValues>
+              <Fixed>
+                <Scale>
+                  <X>0.7</X>
+                  <Y>0.7</Y>
+                  <Z>0.7</Z>
+                </Scale>
+              </Fixed>
+            </ScalingValues>
+            <RendererCommonValues>
+              <ColorTexture>Texture/charge_dot.png</ColorTexture>
+              <AlphaBlend>2</AlphaBlend>
+            </RendererCommonValues>
+            <DrawingValues>
+              <ColorAll>
+                <Fixed>
+                  <R>90</R>
+                  <G>200</G>
+                </Fixed>
+              </ColorAll>
+            </DrawingValues>
+          </Node>
+          <Node>
+            <Name>PointHot</Name>
+            <CommonValues>
+              <Life>
+                <Center>12</Center>
+                <Max>12</Max>
+                <Min>12</Min>
+              </Life>
+            </CommonValues>
+            <ScalingValues>
+              <Fixed>
+                <Scale>
+                  <X>0.7</X>
+                  <Y>0.7</Y>
+                  <Z>0.7</Z>
+                  <DynamicEquation>2</DynamicEquation>
+                </Scale>
+              </Fixed>
+            </ScalingValues>
+            <RendererCommonValues>
+              <ColorTexture>Texture/charge_dot.png</ColorTexture>
+              <AlphaBlend>2</AlphaBlend>
+            </RendererCommonValues>
+            <DrawingValues>
+              <ColorAll>
+                <Fixed>
+                  <R>200</R>
+                  <G>240</G>
+                </Fixed>
+              </ColorAll>
+            </DrawingValues>
+          </Node>
+        </Children>
+      </Node>
+      <Node>
+        <Name>PointNearLow</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <Infinite>True</Infinite>
+          </MaxGeneration>
+          <Life>
+            <Center>12</Center>
+            <Max>12</Max>
+            <Min>12</Min>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <DynamicEquationMax>13</DynamicEquationMax>
+              <DynamicEquationMin>13</DynamicEquationMin>
+            </GenerationTime>
+          </Generation>
+          <RotationEffectType>1</RotationEffectType>
         </CommonValues>
         <LocationValues>
           <Type>1</Type>
@@ -381,11 +532,11 @@
             </Radius>
             <RotationX>
               <Max>180</Max>
-              <Min>-180</Min>
+              <Min>100</Min>
             </RotationX>
             <RotationY>
-              <Max>180</Max>
-              <Min>-180</Min>
+              <Max>90</Max>
+              <Min>-90</Min>
             </RotationY>
           </Sphere>
         </GenerationLocationValues>
@@ -1151,8 +1302,8 @@
     </Inputs>
     <Equations>
       <DynamicEquation>
-        <Name>PointInterval</Name>
-        <Code>@O.x = 1 / (1 + 3 * @In0)</Code>
+        <Name>PointIntervalFar</Name>
+        <Code>@O.x = 2 / (1 + 3 * @In0)</Code>
       </DynamicEquation>
       <DynamicEquation>
         <Name>HalfChargeShell</Name>
@@ -1225,6 +1376,10 @@
         <Code>@O.x = 4.0 * step(6, @In1)
 @O.y = 4.0 * step(6, @In1)
 @O.z = 4.0 * step(6, @In1)</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>PointIntervalNearLow</Name>
+        <Code>@O.x = 5 / (1 + 3 * @In0)</Code>
       </DynamicEquation>
     </Equations>
   </Dynamic>

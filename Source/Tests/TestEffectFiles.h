@@ -11,7 +11,7 @@
 //! @details 絵の定義の並びや欄が書き出しで残ったかを、実行側が読む形で確かめる
 //! 依存: Effekseer::Effect
 
-//! 書き出した絵を読む。読めない時は空
+//! 書き出した絵を EffectScene と同じ左手系で読む。読めない時は空
 inline Effekseer::EffectRef LoadEffectFile(const char* path)
 {
     std::ifstream file(path, std::ios::binary);
@@ -21,6 +21,8 @@ inline Effekseer::EffectRef LoadEffectFile(const char* path)
         return nullptr;
     }
     const Effekseer::SettingRef setting = Effekseer::Setting::Create();
+    // 左手系で読むと、生む位置の球の回転の符号が読み込みで反転される。ゲームと同じ値を見るために揃える
+    setting->SetCoordinateSystem(Effekseer::CoordinateSystem::LH);
     return Effekseer::Effect::Create(setting, bytes.data(), static_cast<int32_t>(bytes.size()));
 }
 
