@@ -62,6 +62,17 @@ namespace NS::Obj
         ConsumePressed();
     }
 
+    void PlayerInput::SetLocked(bool locked) noexcept
+    {
+        m_locked = locked;
+        if (locked)
+        {
+            // 部品が回っていない間に止めても、止めた瞬間の値を残さない
+            ResetMovementInput();
+            m_slamHeld = false;
+        }
+    }
+
     void PlayerInput::OnUpdate()
     {
         if (!IsActive())
@@ -78,6 +89,17 @@ namespace NS::Obj
         NS::Platform::Input& input = NS::Platform::Input::Get();
         const NS::Platform::Keyboard& kb = input.Keyboard();
         const NS::Platform::Gamepad& pad = input.Gamepad(0);
+
+        // トリガーは XInput の既定のしきい値を NormalizeTrigger が先に切っているので、0 を超えたかだけ見る
+        const bool releaseLedgeHeld = pad.LeftTrigger() > 0.0f;
+        if (m_locked)
+        {
+            // 止めの間も手放しのトリガーの控えは進める。引いたまま止めが明けた歩を押した瞬間と読まない
+            m_prevReleaseLedgeHeld = releaseLedgeHeld;
+            ResetMovementInput();
+            m_slamHeld = false;
+            return;
+        }
 
         // UI のテキスト入力中はキーボード由来の移動 / ジャンプを取り合わない。gamepad は維持する
         const bool wantKb = input.UiWantsKeyboard();
@@ -147,9 +169,12 @@ namespace NS::Obj
         m_jumpPressed = m_jumpPressed || jumpPressed;
         m_jumpHeld = jumpHeld;
 
+        // 体当たりのマウス左は、ゲームがマウスのボタンを受け取っている間だけ数える
+        m_slamHeld = (input.GameReceivesMouseButton(NS::Platform::MouseButton::Left) &&
+                      input.Mouse().IsHeld(NS::Platform::MouseButton::Left)) ||
+                     pad.IsHeld(NS::Platform::GamepadButton::X);
+
         // 手放しは専用のマウス右ボタン / 左トリガー。後ろ入力と兼ねると、カメラ側の縁へ寄せた入力で手を放す
-        // トリガーは XInput の既定のしきい値を NormalizeTrigger が先に切っているので、0 を超えたかだけ見る
-        const bool releaseLedgeHeld = pad.LeftTrigger() > 0.0f;
         const bool mouseFree = !input.UiWantsMouse();
         m_releaseLedgePressed = m_releaseLedgePressed ||
                                 (mouseFree && input.Mouse().IsPressed(NS::Platform::MouseButton::Right)) ||

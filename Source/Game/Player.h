@@ -81,7 +81,8 @@ public:
     void ReadInput() override;
     using NS::Obj::Actor::Update;
     //! @brief 体当たりのボタンの押下を差し込んで 1 固定ステップ進める。試しが入力を作る口
-    //! @details 順は基底の Update と同じで、観測の段が入力の読み取りの代わりに chargeHeld を使う
+    //! @details chargeHeld を PlayerInput::SetSlamHeld で書いてから基底の Update を回す。
+    //! 入力の段は回さないので、書いた押しがそのまま観測の段に届く
     //! @param[in] chargeHeld 体当たりのボタンを押しているか
     void Update(bool chargeHeld);
     //! @brief 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
@@ -273,7 +274,9 @@ public:
     //! コースの進行役を用意する。全ての配置物が揃った後に呼ばれる
     void InitAfterPlacement() override;
 
-    //! 即死・ゴール・コースのやり直し・操作の停止の知らせに応じる
+    //! @brief 即死・ゴール・コースのやり直し・操作の停止の知らせに応じる
+    //! @details 操作の停止は PlayerInput の止め (SetLocked) へ写し、止める時は
+    //! CollisionInput::CancelCharge で溜めを捨てる
     bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
     //! @brief プレイ開始時の凍結 (baseline) の自分の位置へ戻り、動きと命を最初の状態へ戻す
@@ -295,8 +298,8 @@ public:
     [[nodiscard]] int Health() const noexcept;
 
 protected:
-    //! Model の控え、溜めの判定 (CollisionInput::Observe)、体当たりの衝突の観測
-    //! (ImpactResolver::ObserveImpact)。副作用は無い
+    //! Model の控え、PlayerInput の体当たりの押しでの溜めの判定 (CollisionInput::Observe)、
+    //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
     void ObserveStep() override;
     //! @brief 溜めを進め (CollisionInput::AdvanceState)、衝突の裁定を出して知らせを送る (ImpactResolver::StepState)
     //! @details 裁定役が外されていれば、止めと止めの予約を捨てる (ImpactResolver::CancelImpact)
@@ -381,8 +384,6 @@ private:
     //! @return 手の高さ以下の帯に縁があり、登り先も塞がっていない場合 true、それ以外の場合は false
     [[nodiscard]] bool FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) const noexcept;
     std::unique_ptr<NS::Game::Level::CollisionInput> m_collisionInput;
-    bool m_hasInjectedHeld = false; // Update(bool) の間だけ立つ。観測が入力の代わりに m_injectedHeld を使う
-    bool m_injectedHeld = false;
     [[nodiscard]] std::string_view ChooseClip(float lateralSpeed) const noexcept;
     [[nodiscard]] float ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept;
     std::unique_ptr<NS::Game::Player::PlayerParams> m_params;

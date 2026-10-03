@@ -169,10 +169,8 @@ void Player::ReadInput()
 
 void Player::Update(bool chargeHeld)
 {
-    m_hasInjectedHeld = true;
-    m_injectedHeld = chargeHeld;
+    m_input->SetSlamHeld(chargeHeld);
     NS::Obj::Actor::Update();
-    m_hasInjectedHeld = false;
 }
 
 void Player::ObserveStep()
@@ -180,12 +178,7 @@ void Player::ObserveStep()
     NS::Obj::Actor::ObserveStep();
     if (m_collisionInput->IsActive())
     {
-        bool chargeHeld = m_injectedHeld;
-        if (!m_hasInjectedHeld)
-        {
-            chargeHeld = m_collisionInput->ReadHeld();
-        }
-        m_collisionInput->Observe(chargeHeld);
+        m_collisionInput->Observe(m_input->SlamHeld());
     }
     if (m_resolver->IsActive())
     {
@@ -350,9 +343,11 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
     }
     if (const NS::Game::Level::MsgInputLock* lock = NS::Obj::MsgCast<NS::Game::Level::MsgInputLock>(msg))
     {
-        if (NS::Obj::PlayerInput* input = m_input.get())
+        m_input->SetLocked(lock->Locked());
+        // 押しが偽になった歩を放したと読むと、溜めた突進が出る。止める時は放させずに溜めを捨てる
+        if (lock->Locked())
         {
-            input->SetActive(!lock->Locked());
+            m_collisionInput->CancelCharge();
         }
         return true;
     }

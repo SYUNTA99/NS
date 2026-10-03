@@ -10,9 +10,6 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Platform/Gamepad.h"
-#include "Runtime/Platform/Input.h"
-#include "Runtime/Platform/Mouse.h"
 
 #include <algorithm>
 #include <cmath>
@@ -59,29 +56,32 @@ namespace NS::Game::Level
         }
     }
 
-    void CollisionInput::OnEndPlay()
+    void CollisionInput::CancelCharge() noexcept
     {
         m_stateReady = false;
         m_controlReady = false;
-        // 押しを捨てて構えを 1 に戻す。判定のしきい値の歩数は AdvanceCharge が毎回入れ直すので失われない
+        // 判定のしきい値の歩数は AdvanceCharge が毎回入れ直すので失われない
         m_judge = ImpactInputJudge{};
-        // 押しの印が真の間、自機は着地しても丸まりを解かない。外れた後は印を書く物が無いので、真のまま残すと
-        // 着地で解けなくなる。印を偽へ戻し、丸まりもここで解く。ResetState は速度と状態機械まで戻すので呼ばない
+        m_observedHasAimLine = false;
+        m_observedHasAimTarget = false;
+        m_hasAimLine = false;
+        m_hasAimTarget = false;
+        // 押しの印が真の間、自機は着地しても丸まりを解かない。印を書くのは押しを裁いた歩だけなので、ここで偽へ戻す
         if (m_player != nullptr && m_body != nullptr)
         {
             m_player->SetBodySlamHeld(false);
-            m_player->SetCurled(false);
+            m_player->SetMaxSpeedScale(1.0f);
         }
     }
 
-    bool CollisionInput::ReadHeld() const
+    void CollisionInput::OnEndPlay()
     {
-        NS::Platform::Input& input = NS::Platform::Input::Get();
-        const bool leftFree = input.GameReceivesMouseButton(NS::Platform::MouseButton::Left);
-        const NS::Platform::Mouse& mouse = input.Mouse();
-        const NS::Platform::Gamepad& pad = input.Gamepad(0);
-        return (leftFree && mouse.IsHeld(NS::Platform::MouseButton::Left)) ||
-               pad.IsHeld(NS::Platform::GamepadButton::X);
+        CancelCharge();
+        // 外れた後は着地で丸まりを解く歩が来ないので、ここで解く。ResetState は速度と状態機械まで戻すので呼ばない
+        if (m_player != nullptr && m_body != nullptr)
+        {
+            m_player->SetCurled(false);
+        }
     }
 
     void CollisionInput::Observe(bool held)

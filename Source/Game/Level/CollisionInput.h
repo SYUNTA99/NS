@@ -28,7 +28,7 @@ namespace NS::Game::Level
     };
 
     //! @brief 体当たりのボタン入力を読んで発動を要求する Component
-    //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
+    //! @details 押しは Player が PlayerInput から渡す。ImpactInputJudge がタップ / チャージを裁く
     //! どちらも離したフレームに、溜め量を添えて Player::RequestBodySlam を呼ぶ。
     //! 溜めて放した時は、放す前のフレームに控えた狙いの線の向きと縦の速さも添える
     //! チャージ中は最高速度へ減速を掛ける。構えの縮みと自機の丸まりは押したフレームから掛かる。
@@ -42,10 +42,6 @@ namespace NS::Game::Level
         //! 同じ配置物の移動と裁定を引き当てる。見つからない相手に関わる処理は以後行わない
         void OnStart() override;
 
-        //! @brief マウス左かゲームパッドの X を押しているかを読む
-        //! @details マウス左は、ゲームがマウスのボタンを受け取っている間だけ数える
-        //! @return どちらかを押している場合 true、それ以外の場合は false
-        [[nodiscard]] bool ReadHeld() const;
         //! @brief このフレームの押しを控え、狙う相手を探す
         //! @details 控えた押しは AdvanceState が 1 回使う。AdvanceState と ApplyControl は Observe ごとに 1 回ずつ効く
         //! @param[in] held ボタンを押しているか
@@ -59,7 +55,12 @@ namespace NS::Game::Level
         //! 速度は書かない。突進の水平の書き手は Player::UpdateBodySlam
         void ApplyControl();
 
-        //! 押しを捨てて構えを 1 に戻し、自機へ渡した押しの印を戻して丸まりを解く
+        //! @brief 溜めを捨てる。放した扱いにはしないので、タップも溜めた突進も出ない
+        //! @details 判定を初めの値へ戻して控えた押しと狙いの線・狙う相手を消す。自機へ渡した押しの印は偽、
+        //! 最高速度の倍率は 1 へ戻す。構えは判定から答えるので 1 に戻る。丸まりは解かず、着地で解ける
+        void CancelCharge() noexcept;
+
+        //! 溜めを捨て (CancelCharge)、丸まりを解く
         void OnEndPlay() override;
 
         //! チャージ中の場合 true、それ以外の場合は false
