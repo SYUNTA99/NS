@@ -828,6 +828,14 @@ namespace NS::Game::Level
             }
         }
 
+        void operator()(const CameraTraumaEvent& trauma) const
+        {
+            if (resolver.m_hitReaction != nullptr)
+            {
+                (void)resolver.m_hitReaction->AddTrauma(resolver.TraumaDescFor(trauma));
+            }
+        }
+
         void operator()(const GradualReleaseEvent& release) const
         {
             NS::Obj::Scene* scene = resolver.Owner()->OwningScene();
@@ -1074,6 +1082,29 @@ namespace NS::Game::Level
         return desc;
     }
 
+    NS::Obj::CameraTraumaDesc ImpactResolver::TraumaDescFor(const CameraTraumaEvent& trauma) const noexcept
+    {
+        NS::Obj::CameraTraumaDesc desc;
+        // 外れは自分でしくじった手応え。相手の重さでなく、出した威力で揺らす
+        desc.trauma = std::max(trauma.trauma * m_pendingPower, 0.0f);
+        desc.shape.yawDegrees = trauma.yawDegrees;
+        desc.shape.pitchDegrees = trauma.pitchDegrees;
+        desc.shape.rollDegrees = trauma.rollDegrees;
+        desc.shape.frequency = trauma.frequency;
+        desc.shape.decayPerSecond = trauma.decayPerSecond;
+        desc.shape.exponent = trauma.exponent;
+        desc.seed = m_pendingShakeSeed;
+        desc.kick.degrees = trauma.kickDegrees;
+        desc.kick.peakFrames = trauma.kickPeakFrames;
+        desc.kick.direction = NS::Core::Vector2{m_lastImpact.faceU, m_lastImpact.faceV};
+        if (desc.kick.direction.LengthSquared() <= NS::Core::k_Epsilon * NS::Core::k_Epsilon)
+        {
+            desc.kick.direction =
+                NS::Core::Vector2{NS::Obj::CameraSideSignOf(*Owner(), m_pendingReboundArc.direction), 0.0f};
+        }
+        return desc;
+    }
+
     NS::Obj::CameraZoomRollDesc ImpactResolver::ZoomRollDescFor(const ZoomRollEvent& zoomRoll,
                                                                 int length) const noexcept
     {
@@ -1090,11 +1121,13 @@ namespace NS::Game::Level
     void ImpactResolver::RecordReturns(const std::vector<HitEvent>& events)
     {
         m_lastImpact.cameraShake = 0.0f;
+        m_lastImpact.cameraTrauma = 0.0f;
         m_lastImpact.flashStart = 0;
         m_lastImpact.zoomStart = 1.0f;
         m_lastImpact.rollStart = 0.0f;
         m_lastImpact.padStart = NS::Platform::GamepadVibration{};
         bool shakeRecorded = false;
+        bool traumaRecorded = false;
         bool flashRecorded = false;
         bool zoomRollRecorded = false;
         bool padRecorded = false;
@@ -1106,6 +1139,12 @@ namespace NS::Game::Level
                 const NS::Obj::CameraShakeDesc desc = ShakeDescFor(*shake, event.length);
                 m_lastImpact.cameraShake = NS::Core::Vector2{desc.sideAmplitude, desc.upAmplitude}.Length();
                 shakeRecorded = true;
+            }
+            const CameraTraumaEvent* trauma = std::get_if<CameraTraumaEvent>(&event.value);
+            if (trauma != nullptr && !traumaRecorded)
+            {
+                m_lastImpact.cameraTrauma = TraumaDescFor(*trauma).trauma;
+                traumaRecorded = true;
             }
             const FlashEvent* flash = std::get_if<FlashEvent>(&event.value);
             if (flash != nullptr && !flashRecorded)

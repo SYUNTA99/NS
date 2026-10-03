@@ -37,6 +37,11 @@ namespace NS::Obj
         //! 設定が壊れている・上限を超える・カメラの管理役が無い場合 false
         bool StartShake(const CameraShakeDesc& desc);
 
+        //! @brief カメラのトラウマを足す。揺れの途中なら前のトラウマに足す
+        //! @param[in] desc 足す量と揺れの形
+        //! @return 足した場合 true。量が壊れている・カメラの管理役が無い場合 false
+        bool AddTrauma(const CameraTraumaDesc& desc);
+
         //! @brief カメラの寄りと傾きを始める
         //! @param[in] desc 寄りと傾きの設定
         //! @return 積んだ場合 true。設定が壊れている・カメラの管理役が無い場合 false
@@ -46,7 +51,8 @@ namespace NS::Obj
         //! @param[in] pad 振動の設定
         void StartPadVibration(const HitPadVibration& pad);
 
-        //! 演出を全て止める。白を消し、振動を 0 にし、積んだカメラの効果を外す
+        //! @brief 当たりの演出を止める。白を消し、振動を 0 にし、揺れと寄りを外す
+        //! @details トラウマは残す。次の当たりが止めてから始め直しても、続けて当てたトラウマは足される
         void Stop();
 
         //! 白の残りフレーム数。出していない場合 0

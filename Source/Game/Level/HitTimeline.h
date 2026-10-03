@@ -114,6 +114,39 @@ namespace NS::Game::Level
         NS_REFLECT_END_VALUE()
     };
 
+    //! @brief トラウマの揺れ (外れ)。始まりのフレームにトラウマを足し、外した側へ一撃を振る。始まりのフレームに 1
+    //! 回だけ起きる
+    //! @details 足すトラウマは 欄のトラウマ × 威力。揺れの長さはトラウマが減る速さで決まる。
+    //! 続けて当てると前のトラウマに足される
+    struct CameraTraumaEvent
+    {
+        static constexpr std::string_view k_Name = "CameraTrauma";
+        static constexpr std::string_view k_Label = "トラウマの揺れ";
+        static constexpr bool k_BeforeContact = false; //!< 量は威力、一撃の向きは面の上の位置で決まる
+
+        float trauma = 0.9f;         //!< 威力 1 で足すトラウマ 0〜1
+        float yawDegrees = 3.0f;     //!< トラウマ 1 の横の首振りの最大 (度)
+        float pitchDegrees = 2.0f;   //!< トラウマ 1 の縦の首振りの最大 (度)
+        float rollDegrees = 1.5f;    //!< トラウマ 1 の傾きの最大 (度)
+        float frequency = 9.0f;      //!< ノイズの格子を 1 秒に進める数
+        float decayPerSecond = 1.8f; //!< トラウマが 1 秒に減る量
+        float exponent = 2.0f;       //!< トラウマを振れ幅にする指数
+        float kickDegrees = 2.5f;    //!< 一撃の山の大きさ (度)
+        int kickPeakFrames = 1;      //!< 一撃の山のフレーム。始まりのフレームを 1 と数える
+
+        NS_REFLECT_BEGIN(CameraTraumaEvent, void)
+        NS_REFLECT_FIELD(trauma, "トラウマ")
+        NS_REFLECT_FIELD(yawDegrees, "横の首振り")
+        NS_REFLECT_FIELD(pitchDegrees, "縦の首振り")
+        NS_REFLECT_FIELD(rollDegrees, "傾き")
+        NS_REFLECT_FIELD(frequency, "細かさ")
+        NS_REFLECT_FIELD(decayPerSecond, "減る速さ")
+        NS_REFLECT_FIELD(exponent, "指数")
+        NS_REFLECT_FIELD(kickDegrees, "一撃の大きさ")
+        NS_REFLECT_FIELD(kickPeakFrames, "一撃の山のフレーム")
+        NS_REFLECT_END_VALUE()
+    };
+
     //! @brief カメラの寄りと傾き。長さは保つフレーム数と戻すフレーム数の和
     struct ZoomRollEvent
     {
@@ -208,7 +241,8 @@ namespace NS::Game::Level
                                        FlashEvent,
                                        HitEffectEvent,
                                        FlightEffectEvent,
-                                       GradualReleaseEvent>;
+                                       GradualReleaseEvent,
+                                       CameraTraumaEvent>;
 
     //! @brief タイムラインの 1 行。触れたフレームを 0 にしたフレーム数で、始まりと長さを持つ
     struct HitEvent

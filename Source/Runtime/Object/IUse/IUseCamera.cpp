@@ -30,6 +30,25 @@ namespace NS::Obj
         }
     }
 
+    bool AddCameraTrauma(const IUseCamera& user, const CameraTraumaDesc& desc)
+    {
+        CameraManager* cameras = user.GetCameraManager();
+        if (cameras == nullptr)
+        {
+            return false;
+        }
+        return cameras->AddTrauma(desc);
+    }
+
+    void StopCameraHitEffects(const IUseCamera& user) noexcept
+    {
+        if (CameraManager* cameras = user.GetCameraManager())
+        {
+            cameras->RemoveModifiers(CameraShakeModifier::StaticKind());
+            cameras->RemoveModifiers(CameraZoomRollModifier::StaticKind());
+        }
+    }
+
     float CameraSideSignOf(const IUseCamera& user, const NS::Core::Vector3& direction) noexcept
     {
         const CameraManager* cameras = user.GetCameraManager();

@@ -23,7 +23,7 @@
 #include <string>
 #include <vector>
 
-// 同じ当たりと同じ溜めで、カメラの揺れのずれをフレームごとに書き出す (R-4-3)
+// 同じ当たりと同じ溜めで、カメラの揺れのずれと角度をフレームごとに書き出す (R-4-3)
 // 揺れを作り直す前と後で同じ場面を書き出し、隣り合うフレームのずれの差の最大を並べる
 // 書き出し先は build/ShakeTrace/trace.json。タイムラインは置き場の既定 (Assets/HitTimelines) を読む
 
@@ -59,11 +59,12 @@ namespace
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
-    // 当たりの揺れのずれ。x がカメラの右、y が上 (m)
+    // 当たりの揺れ。平行移動の揺れのずれ (x が右、y が上、m) とトラウマの揺れの角度 (横・縦・傾き、度)
     struct HitShakeTrace
     {
         HitTier tier = HitTier::Center;
-        std::vector<NS::Core::Vector2> offsets;
+        std::vector<NS::Core::Vector3> offsets;
+        std::vector<NS::Core::Vector3> angles;
     };
 
     // 突進を頼んで場面を回し、検知のフレームから k_HitFrames フレームぶんの揺れのずれを並べる。当たらなければ空
@@ -85,17 +86,24 @@ namespace
                 continue;
             }
             trace.tier = player->Resolver().LastImpact().tier;
-            NS::Core::Vector2 offset{0.0f, 0.0f};
+            NS::Core::Vector3 offset{};
+            NS::Core::Vector3 angles{};
             const NS::Obj::CameraManager* cameras = player->GetCameraManager();
             if (cameras != nullptr)
             {
                 const NS::Obj::CameraShakeModifier* shake = cameras->FindModifier<NS::Obj::CameraShakeModifier>();
                 if (shake != nullptr)
                 {
-                    offset = shake->Offset();
+                    offset = NS::Core::Vector3{shake->Offset().x, shake->Offset().y, 0.0f};
+                }
+                const NS::Obj::CameraTraumaModifier* trauma = cameras->FindModifier<NS::Obj::CameraTraumaModifier>();
+                if (trauma != nullptr)
+                {
+                    angles = trauma->Angles();
                 }
             }
             trace.offsets.push_back(offset);
+            trace.angles.push_back(angles);
         }
         return trace;
     }
@@ -141,16 +149,17 @@ namespace
     }
 
     // 隣り合うフレームのずれの差の最大 ÷ ずれの大きさの最大。揺れが無ければ 0
-    float MaxStepRatio(const std::vector<NS::Core::Vector2>& offsets)
+    // 揺れが始まるフレーム (前のフレームのずれが 0) の差は数えない。始まりは一撃で、跳ばないのは揺れの途中の話
+    float MaxStepRatio(const std::vector<NS::Core::Vector3>& offsets)
     {
         float largest = 0.0f;
         float step = 0.0f;
         for (std::size_t i = 0; i < offsets.size(); ++i)
         {
-            largest = std::max(largest, std::hypot(offsets[i].x, offsets[i].y));
-            if (i > 0)
+            largest = std::max(largest, offsets[i].Length());
+            if (i > 0 && offsets[i - 1].LengthSquared() > 0.0f)
             {
-                step = std::max(step, std::hypot(offsets[i].x - offsets[i - 1].x, offsets[i].y - offsets[i - 1].y));
+                step = std::max(step, (offsets[i] - offsets[i - 1]).Length());
             }
         }
         if (largest <= 0.0f)
@@ -160,12 +169,23 @@ namespace
         return step / largest;
     }
 
-    nlohmann::ordered_json OffsetsJson(const std::vector<NS::Core::Vector2>& offsets)
+    // 当たりの揺れの差の比。平行移動の揺れが出ていればその比、出ていなければトラウマの揺れの角度の比
+    float HitStepRatio(const HitShakeTrace& trace)
+    {
+        const float offsetRatio = MaxStepRatio(trace.offsets);
+        if (offsetRatio > 0.0f)
+        {
+            return offsetRatio;
+        }
+        return MaxStepRatio(trace.angles);
+    }
+
+    nlohmann::ordered_json SeriesJson(const std::vector<NS::Core::Vector3>& series)
     {
         nlohmann::ordered_json list = nlohmann::ordered_json::array();
-        for (const NS::Core::Vector2& offset : offsets)
+        for (const NS::Core::Vector3& value : series)
         {
-            list.push_back(nlohmann::ordered_json{offset.x, offset.y});
+            list.push_back(nlohmann::ordered_json{value.x, value.y, value.z});
         }
         return list;
     }
@@ -182,27 +202,32 @@ TEST(ShakeTrace, WritesTheShakeOfTheSameHitsAndCharge)
     EXPECT_EQ(center.tier, HitTier::Center);
     EXPECT_EQ(miss.tier, HitTier::Wide);
 
-    std::vector<NS::Core::Vector2> chargeOffsets;
+    std::vector<NS::Core::Vector3> chargeOffsets;
     for (const float up : charge)
     {
-        chargeOffsets.push_back(NS::Core::Vector2{0.0f, up});
+        chargeOffsets.push_back(NS::Core::Vector3{0.0f, up, 0.0f});
     }
-    const float centerRatio = MaxStepRatio(center.offsets);
-    const float missRatio = MaxStepRatio(miss.offsets);
+    const float centerRatio = HitStepRatio(center);
+    const float missRatio = HitStepRatio(miss);
     const float chargeRatio = MaxStepRatio(chargeOffsets);
     // 揺れが書き出されていなければ基準にならない
     EXPECT_GT(centerRatio, 0.0f);
     EXPECT_GT(missRatio, 0.0f);
     EXPECT_GT(chargeRatio, 0.0f);
+    // R-3-1: 外れはトラウマの揺れ。方形の波 (直す前 1.71) のように振れ幅の倍近くを 1 フレームで跳ばない
+    EXPECT_LT(missRatio, 0.6f);
 
     nlohmann::ordered_json root;
     root["frameSeconds"] = 1.0f / 60.0f;
     root["centerMaxStepRatio"] = centerRatio;
     root["missMaxStepRatio"] = missRatio;
     root["chargeMaxStepRatio"] = chargeRatio;
-    root["center"] = OffsetsJson(center.offsets);
-    root["miss"] = OffsetsJson(miss.offsets);
-    root["charge"] = OffsetsJson(chargeOffsets);
+    // 平行移動のずれは m、角度は度
+    root["center"] = SeriesJson(center.offsets);
+    root["centerAngles"] = SeriesJson(center.angles);
+    root["miss"] = SeriesJson(miss.offsets);
+    root["missAngles"] = SeriesJson(miss.angles);
+    root["charge"] = SeriesJson(chargeOffsets);
     const std::string text = root.dump(1);
     using NS::Platform::FileSystem;
     const std::string directory =

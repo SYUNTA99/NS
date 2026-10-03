@@ -1,7 +1,16 @@
 #include "Runtime/Object/Components/CameraModifier.h"
 
+#include "Runtime/Platform/Clock.h"
+
+#include <algorithm>
 #include <cmath>
 #include <random>
+
+namespace
+{
+    // 一撃を終えるフレームを、山のフレームの何倍にするか
+    constexpr int k_KickEndPeakMultiple = 8;
+} // namespace
 
 namespace NS::Obj
 {
@@ -218,5 +227,105 @@ namespace NS::Obj
     void CameraZoomRollModifier::Advance() noexcept
     {
         ++m_frame;
+    }
+
+    const void* CameraTraumaModifier::StaticKind() noexcept
+    {
+        static const char kind = 0;
+        return &kind;
+    }
+
+    void CameraTraumaModifier::AddTrauma(const CameraTraumaDesc& desc) noexcept
+    {
+        m_trauma = std::min(m_trauma + std::max(desc.trauma, 0.0f), 1.0f);
+        m_shape = desc.shape;
+        m_seed = desc.seed;
+        if (desc.kick.degrees != 0.0f && desc.kick.direction.LengthSquared() > 0.0f)
+        {
+            m_kick = desc.kick;
+            m_kick.peakFrames = std::max(m_kick.peakFrames, 1);
+            m_kickFrame = 1;
+        }
+    }
+
+    void CameraTraumaModifier::HoldTrauma(float level, const CameraTraumaShape& shape) noexcept
+    {
+        const float clamped = NS::Core::Clamp(level, 0.0f, 1.0f);
+        m_trauma = std::max(m_trauma, clamped);
+        m_held = std::max(m_held, clamped);
+        m_shape = shape;
+    }
+
+    float CameraTraumaModifier::ShakeAmount() const noexcept
+    {
+        return std::pow(m_trauma, m_shape.exponent);
+    }
+
+    NS::Core::Vector3 CameraTraumaModifier::Angles() const noexcept
+    {
+        // 時刻はフレーム数から出す。種と時刻だけで決まり、下見で途中のフレームへ飛んでもその場で引ける
+        const float time = static_cast<float>(m_frame) * NS::Platform::FrameTimer::FixedDelta() * m_shape.frequency;
+        const float amount = ShakeAmount();
+        NS::Core::Vector3 angles{m_shape.yawDegrees * amount * NS::Core::ValueNoise1D(time, m_seed),
+                                 m_shape.pitchDegrees * amount * NS::Core::ValueNoise1D(time, m_seed + 1u),
+                                 m_shape.rollDegrees * amount * NS::Core::ValueNoise1D(time, m_seed + 2u)};
+        if (m_kickFrame > 0)
+        {
+            const float ratio = static_cast<float>(m_kickFrame) / static_cast<float>(m_kick.peakFrames);
+            const float kick = m_kick.degrees * ratio * std::exp(1.0f - ratio);
+            NS::Core::Vector2 direction = m_kick.direction;
+            direction.Normalize();
+            angles.x += kick * direction.x;
+            angles.y += kick * direction.y;
+        }
+        return angles;
+    }
+
+    void CameraTraumaModifier::Modify(CameraPose& pose, const CameraAxes& axes) const noexcept
+    {
+        const NS::Core::Vector3 angles = Angles();
+        NS::Core::Vector3 look = pose.target - pose.position;
+        const float distance = look.Length();
+        if (distance <= NS::Core::k_Epsilon)
+        {
+            return;
+        }
+        look /= distance;
+        // 右手まわりの符号に合わせる。横は上の軸まわりの正で右を向き、縦と傾きは軸まわりの負で上・右へ倒れる
+        const NS::Core::Quaternion yaw =
+            NS::Core::Quaternion::CreateFromAxisAngle(axes.up, NS::Core::DegreesToRadians(angles.x));
+        const NS::Core::Quaternion pitch =
+            NS::Core::Quaternion::CreateFromAxisAngle(axes.right, NS::Core::DegreesToRadians(-angles.y));
+        const NS::Core::Quaternion turn = yaw * pitch;
+        const NS::Core::Vector3 turnedLook = NS::Core::Vector3::Transform(look, turn);
+        const NS::Core::Quaternion roll =
+            NS::Core::Quaternion::CreateFromAxisAngle(turnedLook, NS::Core::DegreesToRadians(-angles.z));
+        NS::Core::Vector3 up = NS::Core::Vector3::Transform(NS::Core::Vector3::Transform(pose.up, turn), roll);
+        up.Normalize();
+        pose.target = pose.position + turnedLook * distance;
+        pose.up = up;
+    }
+
+    bool CameraTraumaModifier::IsFinished() const noexcept
+    {
+        return m_trauma <= 0.0f && m_held <= 0.0f && m_kickFrame == 0;
+    }
+
+    void CameraTraumaModifier::Advance() noexcept
+    {
+        ++m_frame;
+        m_trauma = std::max(m_trauma - m_shape.decayPerSecond * NS::Platform::FrameTimer::FixedDelta(), 0.0f);
+        // 保たれたフレームは減らさない。頼みは 1 フレームだけ効く
+        m_trauma = std::max(m_trauma, m_held);
+        m_held = 0.0f;
+        if (m_kickFrame > 0)
+        {
+            ++m_kickFrame;
+            // 山の 8 倍のフレームで e^-7 (山の約 0.6%)。見えなくなったので終える
+            if (m_kickFrame > m_kick.peakFrames * k_KickEndPeakMultiple)
+            {
+                m_kickFrame = 0;
+            }
+        }
     }
 } // namespace NS::Obj

@@ -50,12 +50,13 @@ namespace NS::Game::Level
         HitTier tier = HitTier::Center; //!< 当たりの段。相手の面の判定で決まる
         //! 面の上の位置から決めた外れの向き。タイムラインの向きの付いた行を選ぶ
         HitDirection direction = HitDirection::Any;
-        float faceU = 0.0f;       //!< 段を決めた面の上の左右の位置。自機から見て右が正。判定できない体は 0
-        float faceV = 0.0f;       //!< 段を決めた面の上の上下の位置。上が正。判定できない体は 0
-        float cameraShake = 0.0f; //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
-        int flashStart = 0;       //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
-        float zoomStart = 1.0f;   //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
-        float rollStart = 0.0f;   //!< 傾きの始めの値 (度)。正は画面の上端をカメラの右へ倒す向き。傾きの無い当たりは 0
+        float faceU = 0.0f;        //!< 段を決めた面の上の左右の位置。自機から見て右が正。判定できない体は 0
+        float faceV = 0.0f;        //!< 段を決めた面の上の上下の位置。上が正。判定できない体は 0
+        float cameraShake = 0.0f;  //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
+        float cameraTrauma = 0.0f; //!< トラウマの揺れで足すトラウマ。トラウマの揺れの無い当たりは 0
+        int flashStart = 0;        //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
+        float zoomStart = 1.0f;    //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
+        float rollStart = 0.0f;    //!< 傾きの始めの値 (度)。正は画面の上端をカメラの右へ倒す向き。傾きの無い当たりは 0
         NS::Platform::GamepadVibration padStart; //!< パッドの振動の始めの値。振動の無い当たりは 0
         int hitStopSteps = 0;                    //!< 止めのフレーム数。タイムラインが引けない当たりは 0
         bool localStop = false;                  //!< ローカル・ヒットストップ (自機と相手の止め) を使った場合 true
@@ -248,6 +249,11 @@ namespace NS::Game::Level
         // 横と縦の重みの比で分ける。重みが両方 0 なら揺らさない (フレーム数 0)
         // 事前条件: 反動の向き・威力・質量の効き・揺れの種を控え終えている
         [[nodiscard]] NS::Obj::CameraShakeDesc ShakeDescFor(const CameraShakeEvent& shake, int length) const noexcept;
+
+        // トラウマの揺れの事象から、この当たりのトラウマを組む。量は 欄のトラウマ × 威力。
+        // 一撃は外した側 (面の上の位置) へ振る。面の上の位置が無い当たりは、自機が弾かれる向きの画面の側へ振る
+        // 事前条件: 威力・揺れの種・反動の向きを控え終えている
+        [[nodiscard]] NS::Obj::CameraTraumaDesc TraumaDescFor(const CameraTraumaEvent& trauma) const noexcept;
 
         // 寄りの事象から、この当たりの寄りと傾きを組む。長さのうち末尾の戻すフレーム数を除いた間を保つ
         // 事前条件: 相手の飛ぶ向きを控え終えている

@@ -450,6 +450,46 @@ TEST(ImpactTimelineClock, TheRecordNamesOnlyTheStopsTheTimelineUsed)
     EXPECT_FALSE(player->Resolver().LastImpact().gradualRelease);
 }
 
+// トラウマの揺れは始まりのフレームにトラウマを足し、続けて当てると前のトラウマに足される
+TEST(ImpactTimelineClock, TraumaEventAddsTraumaThatStacksOnTheNextHit)
+{
+    CameraTraumaEvent trauma;
+    trauma.trauma = 0.3f;
+    trauma.decayPerSecond = 0.0f;
+    HitTimeline timeline;
+    timeline.events = {{HitStopEvent{}, 1, 1, HitDirection::Any},
+                       {trauma, 1, 1, HitDirection::Any},
+                       {TargetLaunchEvent{}, 2, 1, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("Trauma");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    ASSERT_EQ(RunHit(*player, *rock, 1.0f, 4).size(), 4u);
+    const NS::Obj::CameraManager* cameras = player->GetCameraManager();
+    ASSERT_NE(cameras, nullptr);
+    const float added = player->Resolver().LastImpact().cameraTrauma;
+    EXPECT_GT(added, 0.0f);
+    EXPECT_NEAR(cameras->Trauma(), added, 1.0e-5f);
+    // 次の当たりは前の当たりの返りを止めるが、トラウマは残して足す
+    player->HitReactionPart()->Stop();
+    rock->Root().SetPosition(player->Root().Position() + NS::Core::Vector3{0.75f, -0.5f, 0.6f});
+    player->Body().SetGrounded(true);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    bool rehit = false;
+    for (int frame = 0; frame < 30 && !rehit; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        rehit = player->Resolver().LastImpact().sequence == 2;
+    }
+    ASSERT_TRUE(rehit);
+    player->Update(false);
+    rock->Update();
+    EXPECT_GT(cameras->Trauma(), added);
+}
+
 // 白・振動・寄り・揺れ・当たりと飛びの絵は、それぞれの事象が置いたフレームに始まる
 TEST(ImpactTimelineClock, ReturnsStartOnTheirOwnFrames)
 {

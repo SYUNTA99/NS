@@ -98,8 +98,23 @@ namespace NS::Obj
         WritePadVibration();
         if (Owner() != nullptr)
         {
-            StopCameraEffects(*Owner());
+            StopCameraHitEffects(*Owner());
         }
+    }
+
+    bool HitReaction::AddTrauma(const CameraTraumaDesc& desc)
+    {
+        // カメラの無い場面 (試しの台) では揺らす先が無い。設定の誤りではないので黙って返す
+        if (Owner() == nullptr || Owner()->GetCameraManager() == nullptr)
+        {
+            return false;
+        }
+        if (!AddCameraTrauma(*Owner(), desc))
+        {
+            NS_LOG_WARN(Scene, "トラウマの量が壊れていて、揺らさなかった: {}", desc.trauma);
+            return false;
+        }
+        return true;
     }
 
     void HitReaction::OnUpdate()
@@ -164,6 +179,11 @@ namespace NS::Obj
         // 基底が重ね描きの登録簿から自分を外す
         OverlayRenderer::OnEndPlay();
         Stop();
+        // プレイを終えた後の視点にトラウマを残さない
+        if (Owner() != nullptr)
+        {
+            StopCameraEffects(*Owner());
+        }
     }
 
     NS_CLASS(HitReaction)
