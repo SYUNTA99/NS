@@ -396,10 +396,7 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
-                                       {{"押し飛ばしの距離", 8.0f},
-                                        {"押し飛ばしの高さ", 3.0f},
-                                        {"反動の高さ", 2.0f},
-                                        {"ヒットストップ基準秒", 0.0f}}),
+                                       {{"押し飛ばしの距離", 8.0f}, {"押し飛ばしの高さ", 3.0f}, {"反動の高さ", 2.0f}}),
               0u);
     player->RequestBodySlam(0.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
@@ -409,7 +406,6 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     EXPECT_FLOAT_EQ(impact.launchDistance, 8.0f);
     EXPECT_FLOAT_EQ(impact.launchApexHeight, 3.0f);
     EXPECT_FLOAT_EQ(impact.reboundApexHeight, 2.0f);
-    EXPECT_EQ(impact.hitStopSteps, 0);
 }
 
 TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)

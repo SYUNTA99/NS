@@ -33,7 +33,7 @@ namespace NS::Game::Level
     //! @brief 自機の止め。始まりから長さの間、自機の状態と身体を止める
     struct HitStopEvent
     {
-        static constexpr std::string_view k_Name = "HitStop"; //!< ファイルに書く種類の名前
+        static constexpr std::string_view k_Name = "HitStop";     //!< ファイルに書く種類の名前
         static constexpr std::string_view k_Label = "自機の止め"; //!< パネルに出す名前
     };
 
@@ -210,6 +210,13 @@ namespace NS::Game::Level
     //! value の今の種類の値を指す番地。HitEventReflection の欄を読み書きする時に渡す
     [[nodiscard]] void* HitEventFields(HitEventValue& value) noexcept;
     [[nodiscard]] const void* HitEventFields(const HitEventValue& value) noexcept;
+
+    //! @brief 面の上の位置から外れの向きを決める
+    //! @details 絶対値の大きい方の軸の符号で決め、絶対値が等しい時は左右にする
+    //! @param[in] u 面の上の左右の位置。自機から見て右が正
+    //! @param[in] v 面の上の上下の位置。上が正
+    //! @return 右・左・上・下のどれか
+    [[nodiscard]] HitDirection HitDirectionOf(float u, float v) noexcept;
 
     //! direction のファイルに書く名前
     [[nodiscard]] std::string_view HitDirectionName(HitDirection direction) noexcept;

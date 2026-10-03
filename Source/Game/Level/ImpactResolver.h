@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game/Level/HitTier.h"
+#include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
@@ -12,6 +13,7 @@
 #include "Runtime/Platform/Gamepad.h"
 
 #include <cstdint>
+#include <vector>
 
 class Player;
 
@@ -45,13 +47,15 @@ namespace NS::Game::Level
         float positionFactor = 0.0f;
         float offset01 = 0.0f;          //!< 面の判定の横ずれ。相手の半幅と自機の半径の和で割った 0..1
         HitTier tier = HitTier::Center; //!< 当たりの段。相手の面の判定で決まる
-        float cameraShake = 0.0f;       //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
-        int flashStart = 0;             //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
-        float zoomStart = 1.0f;         //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
-        float rollStart = 0.0f; //!< 傾きの始めの値 (度)。正は画面の上端をカメラの右へ倒す向き。傾きの無い当たりは 0
+        //! 面の上の位置から決めた外れの向き。タイムラインの向きの付いた行を選ぶ
+        HitDirection direction = HitDirection::Any;
+        float cameraShake = 0.0f; //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
+        int flashStart = 0;       //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
+        float zoomStart = 1.0f;   //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
+        float rollStart = 0.0f;   //!< 傾きの始めの値 (度)。正は画面の上端をカメラの右へ倒す向き。傾きの無い当たりは 0
         NS::Platform::GamepadVibration padStart; //!< パッドの振動の始めの値。振動の無い当たりは 0
-        int hitStopSteps = 0;
-        bool centerHit = false; //!< 段が Center の場合 true
+        int hitStopSteps = 0;                    //!< 止めのフレーム数。タイムラインが引けない当たりは 0
+        bool centerHit = false;                  //!< 段が Center の場合 true
         bool broke = false;
         NS::Core::Vector3 selfVelocity; //!< 明けに自機が持つ速度。反動は初速、貫通は減速した突進の速度。単位は m/s
         // 反動の頂点の高さは押し飛ばしの当たりだけが埋める。貫通の当たりは反動しないので 0
@@ -78,7 +82,9 @@ namespace NS::Game::Level
     //! 相手は次の固定ステップの自機のカプセルに重なる体のセンサーから選ぶ。センサーの段の照合を待たず、
     //! HitSensorDirector::FindOverlaps へ先に問う。相手にするのは置物の体の種類だけ。
     //! 選んだ相手には MsgAskTackleTarget で重さと置かれ方を問い、応じた物だけを相手にする
-    //! 衝突の瞬間は自機を数固定ステップ止め、止めの頭に MsgTackleFreeze、明けに MsgTackleRelease を相手へ送る
+    //! 当たりの後の返りは段のタイムライン (HitTimelineLibrary) の事象が決める。検知のフレームを 0 にした時計を
+    //! 1 フレームずつ進め、始まりのフレームに来た事象を受け持ちへ渡す。自機の止め・形・反動はここが持ち、
+    //! 相手の止めと飛ばしは MsgTackleFreeze と MsgTackleRelease で相手へ渡す
     //! 相手が食い込み・縮み・飛ぶ・壊れるかは相手が決める。相手の部品は触らない
     //! 白の光・カメラの揺れと寄り・パッドの振動は同居する HitReaction へ組んで渡す
     //! 依存: NS::Obj::Body / Collider, PlayerParams, HitTier, NS::Obj::HitSensor, NS::Obj::HitReaction
@@ -91,15 +97,16 @@ namespace NS::Game::Level
         void OnStart() override;
 
         //! @brief 次の固定ステップで重なる相手を探し、MsgAskTackleTarget に応じた相手と答えを控える
-        //! @details 突進中でない時、止めの最中と止めの頭を待つ間は探さない。
+        //! @details 突進中でない時と、検知から止めた自機を動かし直すまでの間は探さない。
         //! 控えた相手は StepState が 1 回だけ使う。
         //! 重なりを探す位置と向かっているかの判定は、次の固定ステップの自機の速度の見込みで見る。
         //! 見込みは持ち主の Player::BodySlamVelocity を読む。身体の実速度は壁へ押し付けられたフレームで 0 に潰れ、
         //! 今の位置から先を探せなくなるので使わない
         void ObserveImpact();
-        //! @brief 止めと戻りを 1 フレーム進め、ObserveImpact が控えた相手へ向かっていれば衝突の結果を決める
+        //! @brief タイムラインの時計を 1 フレーム進め、ObserveImpact が控えた相手へ向かっていれば衝突の結果を決める
         //! @details ObserveImpact の後に 1 回だけ効き、2 回目は何もしない。
-        //! 止めの最中は止めを数え、明けで相手へ放しを送る
+        //! 時計が走っている間は、始まりのフレームに来た事象を並びの順に起こす。
+        //! 新しい当たりは、走っているタイムラインを打ち切ってから始め直す
         void StepState();
 
         //! 直近の更新で反発を検知した場合 true、それ以外の場合は false
@@ -109,11 +116,11 @@ namespace NS::Game::Level
         [[nodiscard]] bool DidBreak() const noexcept { return m_didBreak; }
 
         //! @brief 直近の更新で止めを始めた場合 true、それ以外の場合は false
-        //! @details 立つのは検知の次のフレーム (止めの頭) の 1 回だけ。止めが 0 の当たりは止めを通らないので立たない
+        //! @details 立つのは止めの事象の始まりのフレーム (止めの頭) の 1 回だけ。止めの事象の無い当たりでは立たない
         [[nodiscard]] bool FreezeBeganThisStep() const noexcept { return m_freezeBeganThisStep; }
 
         //! @brief 直近の更新で止めが明けた場合 true、それ以外の場合は false
-        //! @details 立つのは止めの頭から止めのフレーム数だけ後のフレームの 1 回だけ。止めが 0 の当たりでは立たない
+        //! @details 立つのは止めの事象が終わった次のフレームの 1 回だけ。止めの事象の無い当たりでは立たない
         [[nodiscard]] bool ReleasedThisStep() const noexcept { return m_releasedThisStep; }
 
         //! 直近の裁定が中心近くで当たった場合 true、それ以外の場合は false
@@ -135,17 +142,21 @@ namespace NS::Game::Level
         [[nodiscard]] int CenterHitFlashStepsRemaining() const noexcept;
 
         //! @brief 当たりの止めの最中の場合 true、それ以外の場合は false
-        //! @details 止めの正はこの部品の数え 1 つ。止めの頭のフレームから明けの 1 つ前のフレームまで真で、
-        //! 止めの予約だけが残る検知のフレームは偽。身体を動かしてよいかは Player::CanMoveBody が答える
-        [[nodiscard]] bool IsHitStopping() const noexcept { return m_hitStopRemaining > 0; }
+        //! @details 止めの正はこの部品の時計 1 つ。止めの事象の始まりから終わりのフレームまで真で、
+        //! 止めを待つ検知のフレームは偽。身体を動かしてよいかは Player::CanMoveBody が答える
+        [[nodiscard]] bool IsHitStopping() const noexcept;
 
-        //! @brief 持っている止めと止めの予約と、控えた相手を捨てる
-        //! @details 相手へ明けを送らない。止めか予約が残っていた時だけ、同居の HitReaction の白・揺れ・振動を止める。
-        //! 潰れと伸びの戻しも捨てる。最後の当たりの記録は残す。
+        //! @brief 止めが明けた後、反動の事象を待って自機を止めている間の場合 true、それ以外の場合は false
+        //! @details 反動の事象が止めの終わりより後にあるタイムラインだけが真になる
+        [[nodiscard]] bool IsAwaitingRebound() const noexcept;
+
+        //! @brief 走っているタイムラインと、控えた相手を捨てる
+        //! @details 相手へ明けを送らない。自機を止めていた時だけ、同居の HitReaction の白・揺れ・振動を止める。
+        //! 形も元へ戻す。最後の当たりの記録は残す。
         //! 何度呼んでも同じ結果になる
         void CancelImpact() noexcept;
 
-        //! 止めと予約を捨てる。プレイの途中で外れても止めが次のプレイへ残らない
+        //! 走っているタイムラインを捨てる。プレイの途中で外れても止めが次のプレイへ残らない
         void OnEndPlay() override;
 
         //! @brief 突進の線で最初に触れる相手を探す
@@ -170,14 +181,13 @@ namespace NS::Game::Level
                                               float maxDistance,
                                               SlamLineTarget& outTarget) const;
 
-        //! 当たりの止めの最中か、明けの伸びから元の形へ戻している途中の場合 true、それ以外の場合は false
-        [[nodiscard]] bool IsShapeAnimating() const noexcept { return m_scaleHeld || m_recoverRemaining > 0; }
+        //! 形の事象の始まりから長さの間の場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsShapeAnimating() const noexcept;
 
         //! @brief 当たりで自機の描く形に掛ける倍率を返す
-        //! @details 止めの間は進む向きの厚みを欄「潰れの厚み」、縦を欄「潰れの伸び上がり」にした潰れで、
-        //! 貫通の止めは潰さない。明けの後は伸びた形から縮む側へ行き過ぎて元の形へ戻る途中の倍率で、
-        //! 戻し切ったフレームからはちょうど 1。どちらでもない間も 1。描く形へ書くのは PlayerAppearance で、
-        //! ここは何も書かない
+        //! @details 形の事象の間は、事象の始まりからのフレーム数で引いた曲線の値。突進の向きの倍率は、当たりの水平の
+        //! 向きの軸成分の 2 乗で x と z へ混ぜる。点の無い曲線は 1。事象の外はちょうど 1。
+        //! 描く形へ書くのは PlayerAppearance で、ここは何も書かない
         //! @return 元の形を 1 とした世界の x / y / z の倍率
         [[nodiscard]] NS::Core::Vector3 ShapeFactors() const noexcept;
 
@@ -190,8 +200,22 @@ namespace NS::Game::Level
         // 事前条件: m_movement が非 null
         [[nodiscard]] NS::Obj::HitSensor* FindOverlapped(const NS::Core::Vector3& predictedVelocity) const;
 
-        // 凍結を掛ける。止めの数えと潰れを立て、当たりの返りを始め、相手へ止めの頭を知らせる
-        void BeginFreeze(int stopSteps);
+        // 当たりの向きで起きる事象の並びを控え、時計を 0 にして 0 フレームの事象を起こす
+        // breakStopSteps は貫通の当たりの止めのフレーム数で、0 以上なら止めの事象の長さの代わりに使う
+        // 事前条件: 相手・反動と飛ばしの曲線を控え終えている
+        void StartTimeline(std::vector<HitEvent> events, int breakStopSteps);
+
+        // 事象の種類ごとの受け持ち。std::visit で事象の値の種類から呼ぶ
+        struct EventRunner;
+
+        // 走っているタイムラインの事象を止め、時計と形を元へ戻す
+        void AbortTimeline() noexcept;
+
+        // 時計の今のフレームに始まる事象を並びの順に起こし、止めの明けを数える
+        void AdvanceTimeline();
+
+        // 検知のフレームから、止めた自機を動かし直すまでの場合 true
+        [[nodiscard]] bool IsHoldingPlayer() const noexcept { return m_holdArmed && !m_holdReleased; }
 
         // 当たり 1 回の返り。揺れの向きと種、寄りと傾きの向きは呼び手が入れる
         struct TierReturns
@@ -217,18 +241,30 @@ namespace NS::Game::Level
         // 控えた当たりの返りを同居する HitReaction で始める。前の当たりの返りが残っていても、控えた値で始め直す
         void StartHitReturns();
 
-        // 明けの後の伸びの戻しを 1 フレーム進める。形は ShapeFactors が残りのフレーム数から出す
-        void AdvanceShapeRecovery() noexcept;
-
         // 元の形を 1 とした倍率。進行の軸の成分の 2 乗で along を x と z に混ぜ、縦は height
         [[nodiscard]] NS::Core::Vector3 AlongImpactFactors(float along, float height) const noexcept;
 
-        // 止めていた結果を適用する。反発は自機の反動を始め、貫通は速度を書く。相手へ明けを知らせて飛ばすか壊させる
-        void ReleaseHitStop();
+        // 反発は自機の反動を始め、貫通は速度を書く。止めていた自機を動かし直す
+        void ApplyRebound();
 
-        int m_freezePendingSteps = 0; // 次のフレームに掛ける凍結のフレーム数。0 は予約なし
-        int m_hitStopRemaining = 0;   // 止まっている残りフレーム数。0 は止まっていない
-        int m_hitStopTotal = 0;       // 止め始めのフレーム数。振動の減衰の分母
+        // 相手へ明けを知らせて飛ばすか壊させる
+        void LaunchTarget();
+
+        std::vector<HitEvent> m_events;   // 走っているタイムラインのうち、当たりの向きで起きる事象
+        int m_clock = 0;                  // 検知のフレームを 0 にした今のフレーム
+        int m_clockEnd = 0;               // 最後の事象が終わる時計の値。ここまで進めたら時計を止める
+        bool m_clockRunning = false;      // 時計が走っているか
+        bool m_holdArmed = false;         // この当たりで自機を止めるか。止めの事象のある当たりで立つ
+        bool m_holdReleased = false;      // 止めた自機を動かし直したか
+        bool m_hasReboundEvent = false;   // 走っているタイムラインに反動の事象があるか
+        bool m_stopStarted = false;       // 止めの事象が始まったか
+        int m_stopEnd = 0;                // 止めの事象の最後のフレーム
+        int m_breakStopSteps = -1;        // 貫通の当たりの止めのフレーム数。負なら止めの事象の長さのまま
+        ShapeEvent m_shape{};             // 走っている形の事象
+        int m_shapeStart = 0;             // 形の事象の始まりのフレーム
+        int m_shapeLength = 0;            // 形の事象の長さ
+        bool m_shapeActive = false;       // 形の事象が始まったか
+        float m_pendingTargetMass = 1.0f; // 検知のフレームに相手が答えた質量。往復の振れ幅を割る
         // 明けたフレームに自機が持つ速度。反動の当たりは、明けに BeginRebound が同じ m_pendingReboundArc から出し直す
         NS::Core::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};
         NS::Game::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離
@@ -239,13 +275,9 @@ namespace NS::Game::Level
         float m_pendingLaunchScale = 0.0f;                      // この衝突の飛ばしの比。明けに相手の尾の長さへ渡す
         HitTier m_pendingTier = HitTier::Center;                // この衝突の段。明けに相手の尾の色へ渡す
         NS::Core::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f}; // 発射の水平方向。食い込みと振動の軸
-        float m_pendingShakeAmplitude = 0.0f;                   // この衝突の往復の振れ幅
         int m_pendingFlashSteps = 0;                            // この衝突の白のフレーム数。白の無い段は 0
         NS::Obj::CameraShakeDesc m_pendingShake{};              // この衝突のカメラの揺れ
         NS::Obj::CameraZoomRollDesc m_pendingZoomRoll{};        // この衝突の寄りと傾き。寄りの無い段は倍率 1
-        NS::Core::Vector3 m_stretchFactors{1.0f, 1.0f, 1.0f};   // 明けのフレームの伸びの倍率。元の形が 1
-        int m_recoverRemaining = 0;                             // 形を戻し切るまでの残りフレーム数
-        bool m_scaleHeld = false;                               // 潰した形のまま凍結している最中か
         NS::Obj::ActorRef m_pendingTarget{};                    // 知らせる相手。凍結をまたぐので使うたびに引く
         // 検知のフレームに相手が置かれていたか。記録と当たりの演出が読む
         bool m_pendingTargetPlaced = false;
@@ -253,8 +285,8 @@ namespace NS::Game::Level
 
         bool m_didRebound = false;          // 直近の更新で反発を検知したか
         bool m_didBreak = false;            // 直近の更新で貫通を検知したか
-        bool m_freezeBeganThisStep = false; // 直近の更新で BeginFreeze を通ったか
-        bool m_releasedThisStep = false;    // 直近の更新で止めの数え下ろしが明けたか
+        bool m_freezeBeganThisStep = false; // 直近の更新で止めの事象が始まったか
+        bool m_releasedThisStep = false;    // 直近の更新が止めの事象の終わりの次のフレームだったか
         bool m_pendingBreak = false;        // 保留中の結果が貫通か
         bool m_wasCenterHit = false;
         float m_lastCharge01 = 0.0f;

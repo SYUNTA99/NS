@@ -145,7 +145,7 @@ public:
     [[nodiscard]] float MaxSpeed() const noexcept;
     [[nodiscard]] float RunSpeed() const noexcept;
     //! 奈落落ちの復活などで速度・接地・ジャンプまわりの記録と状態機械を初期状態へ戻す。
-    //! 丸まりも解くが根は動かさない。当たりの止めと止めの予約は ImpactResolver::CancelImpact で捨て、
+    //! 丸まりも解くが根は動かさない。走っている当たりのタイムラインは ImpactResolver::CancelImpact で捨て、
     //! 描く形の倍率は PlayerAppearance::ResetDrawScale で補間なしに 1 へ戻す。
     //! 呼び手は先に根を出現位置へ置いてから呼ぶ
     void ResetState() noexcept;
@@ -169,7 +169,8 @@ public:
     //! 反動の状態の場合 true、それ以外の場合は false
     [[nodiscard]] bool IsRebounding() const noexcept;
     //! @brief 身体を今動かしてよい場合 true、それ以外の場合は false
-    //! @details 身体の部品が外されておらず、当たりの止め (ImpactResolver::IsHitStopping) の最中でない時に真。
+    //! @details 身体の部品が外されておらず、当たりの止め (ImpactResolver::IsHitStopping) の最中でも、
+    //! 止めの明けの後に反動の事象を待つ間 (ImpactResolver::IsAwaitingRebound) でもない時に真。
     //! 状態機械の 1 歩・身体の移動・玉の回転と着地の潰れの戻しがこの問いを読む
     [[nodiscard]] bool CanMoveBody() const noexcept;
     //! 最後に始めた反動の水平の向き。正規化済み。反動を始める前と ResetState の後はゼロ
@@ -325,7 +326,7 @@ protected:
     //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
     void ObserveStep() override;
     //! @brief 溜めを進め (AdvanceCharge)、衝突の裁定を出して知らせを送る (ImpactResolver::StepState)
-    //! @details 裁定役が外されていれば、止めと止めの予約を捨てる (ImpactResolver::CancelImpact)
+    //! @details 裁定役が外されていれば、走っている当たりのタイムラインを捨てる (ImpactResolver::CancelImpact)
     void DecideStep() override;
     //! 突進の発動、状態機械の 1 歩、丸まりの解除と押下の消費。CanMoveBody が偽の間は押下の消費だけ
     void StateStep() override;

@@ -1,15 +1,11 @@
 #include "Game/Level/HitTimeline.h"
+#include "Tests/TestHitTimelines.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Platform/FileSystem.h"
-#include "Runtime/Platform/StringUtils.h"
 
 #include <gtest/gtest.h>
 
-#include <filesystem>
-#include <span>
 #include <string>
 #include <string_view>
-#include <system_error>
 
 // 当たりのタイムラインのファイルの形・読み込みと保存の往復・壊れたファイルの扱いを縛る
 
@@ -17,42 +13,6 @@ namespace
 {
     using NS::Game::Level::HitTimeline;
     using NS::Game::Level::HitTimelineLibrary;
-
-    // タイムラインの置き場を試しごとの空のディレクトリへ向け、終わったら元へ戻す
-    class ScopedTimelineDirectory
-    {
-    public:
-        explicit ScopedTimelineDirectory(std::string_view name) : m_previous(HitTimelineLibrary::Get().Directory())
-        {
-            using NS::Platform::FileSystem;
-            m_directory = FileSystem::Combine(
-                FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "build"), "TestHitTimelines"), name);
-            (void)FileSystem::CreateDirectories(m_directory);
-            for (const std::string& path : FileSystem::ListFiles(m_directory, ".json"))
-            {
-                std::error_code error;
-                std::filesystem::remove(std::filesystem::path{NS::Platform::StringUtils::WideFromUtf8(path)}, error);
-            }
-            HitTimelineLibrary::Get().SetDirectory(m_directory);
-        }
-
-        ~ScopedTimelineDirectory() { HitTimelineLibrary::Get().SetDirectory(m_previous); }
-
-        ScopedTimelineDirectory(const ScopedTimelineDirectory&) = delete;
-        ScopedTimelineDirectory& operator=(const ScopedTimelineDirectory&) = delete;
-
-        // name.json へ text をそのまま書く
-        void WriteFile(std::string_view name, std::string_view text) const
-        {
-            const std::string path = NS::Platform::FileSystem::Combine(m_directory, std::string{name} + ".json");
-            const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
-            ASSERT_TRUE(NS::Platform::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size())));
-        }
-
-    private:
-        std::string m_previous;
-        std::string m_directory;
-    };
 
     // 種類ごとに 1 つずつ、欄と向きを既定から動かした並び
     HitTimeline MakeEveryKindTimeline()
@@ -182,7 +142,7 @@ TEST(HitTimeline, TiersNameTheirFiles)
 
 TEST(HitTimeline, LibrarySavesAndReadsBackTheSameTimeline)
 {
-    const ScopedTimelineDirectory directory("RoundTrip");
+    const ScopedHitTimelineDirectory directory("RoundTrip");
     const HitTimeline written = MakeEveryKindTimeline();
     HitTimelineLibrary::Get().Set("center", written);
     ASSERT_TRUE(HitTimelineLibrary::Get().Save("center"));
@@ -195,7 +155,7 @@ TEST(HitTimeline, LibrarySavesAndReadsBackTheSameTimeline)
 
 TEST(HitTimeline, LibraryHasNoTimelineForAMissingOrBrokenFile)
 {
-    const ScopedTimelineDirectory directory("Broken");
+    const ScopedHitTimelineDirectory directory("Broken");
     directory.WriteFile("center", R"({"version": 1, "events": [{"type": "Explode", "start": 1, "length": 1}]})");
     directory.WriteFile("miss", "{ not json");
     HitTimelineLibrary::Get().Reload();

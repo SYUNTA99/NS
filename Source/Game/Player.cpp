@@ -485,8 +485,8 @@ bool Player::IsRebounding() const noexcept
 
 bool Player::CanMoveBody() const noexcept
 {
-    // 当たりの止めの正は裁定役の数え。身体の active へ写すと、やり直しが写しを戻し忘れた時に正と食い違う
-    return m_body->IsActive() && !m_resolver->IsHitStopping();
+    // 当たりの止めの正は裁定役の時計。身体の active へ写すと、やり直しが写しを戻し忘れた時に正と食い違う
+    return m_body->IsActive() && !m_resolver->IsHitStopping() && !m_resolver->IsAwaitingRebound();
 }
 
 void Player::ResetState() noexcept

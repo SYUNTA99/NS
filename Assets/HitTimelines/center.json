@@ -1,0 +1,86 @@
+{
+  "events": [
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 12,
+      "start": 1,
+      "type": "HitStop"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "突進の向きの倍率": {
+          "curve": [
+            [
+              0.0,
+              0.7
+            ],
+            [
+              11.0,
+              0.7
+            ],
+            [
+              12.0,
+              1.0
+            ]
+          ]
+        },
+        "高さの倍率": {
+          "curve": [
+            [
+              0.0,
+              1.1
+            ],
+            [
+              11.0,
+              1.1
+            ],
+            [
+              12.0,
+              1.2
+            ],
+            [
+              15.0,
+              0.9
+            ],
+            [
+              18.0,
+              1.0
+            ]
+          ]
+        }
+      },
+      "length": 18,
+      "start": 1,
+      "type": "Shape"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "往復の振れ幅": 0.05,
+        "潰れの伸び上がり": 1.1,
+        "潰れの厚み": 0.7,
+        "食い込み距離": 0.06
+      },
+      "length": 12,
+      "start": 1,
+      "type": "TargetFreeze"
+    },
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 1,
+      "start": 13,
+      "type": "Rebound"
+    },
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 1,
+      "start": 13,
+      "type": "TargetLaunch"
+    }
+  ],
+  "version": 1
+}

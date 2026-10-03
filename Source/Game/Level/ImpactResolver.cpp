@@ -28,6 +28,8 @@
 #include <cmath>
 #include <cstdint>
 #include <random>
+#include <utility>
+#include <variant>
 #include <vector>
 
 namespace NS::Game::Level
@@ -156,6 +158,54 @@ namespace NS::Game::Level
             const float dt = NS::Platform::FrameTimer::FixedDelta();
             return NS::Core::Vector3{
                 position.x + velocity.x * dt, position.y + velocity.y * dt, position.z + velocity.z * dt};
+        }
+
+        // 曲線の倍率。点の無い曲線は元の形の 1。0 を返すと描く形が消える
+        [[nodiscard]] float CurveFactor(const NS::Obj::Curve& curve, float frame) noexcept
+        {
+            if (curve.count == 0)
+            {
+                return 1.0f;
+            }
+            return curve.Evaluate(frame);
+        }
+
+        // 止めの事象の長さ。貫通の当たりは breakStopSteps (0 以上) に置き換える
+        [[nodiscard]] int StopLengthOf(const HitEvent& event, int breakStopSteps) noexcept
+        {
+            if (breakStopSteps >= 0)
+            {
+                return breakStopSteps;
+            }
+            return event.length;
+        }
+
+        // 当たりの記録へ書く止めのフレーム数。最初の止めの事象の長さで、止めの事象が無ければ 0
+        [[nodiscard]] int StopStepsOf(const std::vector<HitEvent>& events, int breakStopSteps) noexcept
+        {
+            for (const HitEvent& event : events)
+            {
+                if (std::holds_alternative<HitStopEvent>(event.value))
+                {
+                    return std::max(StopLengthOf(event, breakStopSteps), 0);
+                }
+            }
+            return 0;
+        }
+
+        // timeline のうち、向き direction の当たりで起きる事象。並びの順は保つ
+        [[nodiscard]] std::vector<HitEvent> EventsFor(const HitTimeline& timeline, HitDirection direction)
+        {
+            std::vector<HitEvent> events;
+            events.reserve(timeline.events.size());
+            for (const HitEvent& event : timeline.events)
+            {
+                if (event.direction == HitDirection::Any || event.direction == direction)
+                {
+                    events.push_back(event);
+                }
+            }
+            return events;
         }
 
         // 体当たりの相手を決める唯一の所。置物の体だけを相手にする
@@ -376,7 +426,7 @@ namespace NS::Game::Level
     {
         m_stateReady = true;
         m_hasObservedTarget = false;
-        if (m_body == nullptr || !m_player->IsBodySlamming() || m_hitStopRemaining > 0 || m_freezePendingSteps > 0)
+        if (m_body == nullptr || !m_player->IsBodySlamming() || IsHoldingPlayer())
         {
             return;
         }
@@ -417,32 +467,15 @@ namespace NS::Game::Level
             return;
         }
 
-        // 止まっている間は新しい衝突を見ない。凍った自機は重なったままなので、見ると毎フレーム検知し直す
-        if (m_hitStopRemaining > 0)
+        if (m_clockRunning)
         {
-            --m_hitStopRemaining;
-            if (m_hitStopRemaining == 0)
-            {
-                // 止めが 0 の当たりが検知のフレームで呼ぶ ReleaseHitStop は明けに数えない。立てるのはこの道だけ
-                m_releasedThisStep = true;
-                ReleaseHitStop();
-                return;
-            }
-            // 置かれていた相手の往復は相手が自分で置く
-            return;
+            ++m_clock;
+            AdvanceTimeline();
         }
-
-        if (m_freezePendingSteps > 0)
+        // 止めた自機を動かし直すまでは新しい衝突を見ない。止まった自機は重なったままなので、見ると毎フレーム検知し直す
+        if (IsHoldingPlayer())
         {
-            m_freezeBeganThisStep = true;
-            BeginFreeze(m_freezePendingSteps);
-            m_freezePendingSteps = 0;
             return;
-        }
-
-        if (m_recoverRemaining > 0)
-        {
-            AdvanceShapeRecovery();
         }
 
         // 押していない接触は物理の停止だけで済ませるため、体当たり中でないフレームは裁定しない
@@ -552,11 +585,10 @@ namespace NS::Game::Level
         impactInput.launchDirection = launchDir;
         impactInput.slamVelocity = velocity;
         const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, MakeImpactTuning(Tuning()));
-        m_pendingShakeAmplitude = outcome.shakeAmplitude;
+        m_pendingTargetMass = mass;
 
         const float reboundScale = outcome.reboundScale;
         const float launchScale = outcome.launchScale;
-        const int stopSteps = outcome.stopSteps;
         if (outcome.broke)
         {
             m_pendingBreak = true;
@@ -587,9 +619,26 @@ namespace NS::Game::Level
                         centerHit);
         }
 
+        // 前の当たりの事象が走っていれば、この当たりの事象を起こす前に止める
+        AbortTimeline();
+        const HitDirection direction = HitDirectionOf(judgement.u, judgement.v);
+        const HitTimeline* timeline = HitTimelineLibrary::Get().FindForTier(tier);
+        std::vector<HitEvent> events;
+        if (timeline != nullptr)
+        {
+            events = EventsFor(*timeline, direction);
+        }
+        // 貫通の止めはタイムラインへ移さず、欄「貫通の止め秒」の長さのまま
+        int breakStopSteps = -1;
+        if (outcome.broke)
+        {
+            breakStopSteps = outcome.stopSteps;
+        }
+        const int stopSteps = StopStepsOf(events, breakStopSteps);
+
         PrepareHitReturns(tier, power, outcome.massFactor, offset01, stopSteps);
 
-        // 止めるフレーム数が決まってから控える。止めが 0 フレームの当たりも残すので、下の return より手前に置く
+        // 止めるフレーム数が決まってから控える。タイムラインの引けない当たりも残すので、下の return より手前に置く
         m_lastImpact.sequence += 1;
         m_lastImpact.targetId = m_pendingTarget.id;
         m_lastImpact.power = power;
@@ -597,6 +646,7 @@ namespace NS::Game::Level
         m_lastImpact.positionFactor = positionFactor;
         m_lastImpact.offset01 = offset01;
         m_lastImpact.tier = tier;
+        m_lastImpact.direction = direction;
         m_lastImpact.hitStopSteps = stopSteps;
         m_lastImpact.centerHit = centerHit;
         m_lastImpact.broke = m_pendingBreak;
@@ -616,49 +666,173 @@ namespace NS::Game::Level
         m_pendingLaunchScale = launchScale;
         m_lastImpact.reboundScale = reboundScale;
 
-        if (stopSteps <= 0)
+        // 遊びの結果は配分で決まっているので、返りを置けない当たりも反動と飛ばしだけは出す
+        if (timeline == nullptr)
         {
-            ReleaseHitStop();
+            ApplyRebound();
+            LaunchTarget();
             return;
         }
-
-        // 凍結は次のフレームから。今回は移動を最後まで走らせ、自機が箱へ触れてから止まる
-        m_freezePendingSteps = stopSteps;
+        StartTimeline(std::move(events), breakStopSteps);
     }
 
-    void ImpactResolver::BeginFreeze(int stopSteps)
+    // 事象の種類ごとの受け持ち。種類を足して受け持ちを書き忘れると、std::visit が呼べずにコンパイルが止まる
+    struct ImpactResolver::EventRunner
     {
-        // 数えを立てて凍らせる。Player の StateStep と BodyStep はこの後に CanMoveBody で数えを見るので、
-        // 同じフレームから効く
-        m_hitStopRemaining = stopSteps;
-        m_hitStopTotal = stopSteps;
-        NS_LOG_INFO(Game, "ヒットストップ: {} フレーム", stopSteps);
+        ImpactResolver& resolver;
+        const HitEvent& event;
 
-        // 潰れは反発の前半。形は ShapeFactors が答え、戻しの途中に来た衝突は戻しを捨てて潰れから始める
-        m_recoverRemaining = 0;
-        m_scaleHeld = true;
-
-        StartHitReturns();
-
-        NS::Obj::Scene* scene = Owner()->OwningScene();
-        if (scene == nullptr)
+        void operator()(const HitStopEvent&) const
         {
-            return;
+            int length = event.length;
+            if (resolver.m_breakStopSteps >= 0)
+            {
+                length = resolver.m_breakStopSteps;
+            }
+            if (length <= 0)
+            {
+                return;
+            }
+            // Player の StateStep と BodyStep はこの後に CanMoveBody で止めを見るので、同じフレームから効く
+            resolver.m_stopStarted = true;
+            resolver.m_stopEnd = resolver.m_clock + length - 1;
+            resolver.m_freezeBeganThisStep = true;
+            NS_LOG_INFO(Game, "ヒットストップ: {} フレーム", length);
+            resolver.StartHitReturns();
         }
 
-        // 力が伝わった瞬間の絵。相手へ止めの頭を知らせ、置かれていれば食い込ませて止めさせる
-        // 相手も自機と同じく、押し返されている反発の時だけ縮める
-        if (NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget))
+        void operator()(const ShapeEvent& shape) const
         {
-            const TackleFreezeDesc freeze{.impactDir = m_pendingImpactDir,
-                                          .pushInDistance = Tuning().m_pushInDistance,
-                                          .shakeAmplitude = m_pendingShakeAmplitude,
-                                          .squashThickness = Tuning().m_squashThickness,
-                                          .squashHeight = Tuning().m_squashHeight,
-                                          .squash = !m_pendingBreak,
-                                          .stopSteps = stopSteps};
-            (void)SendMsgTackleFreeze(*target, freeze);
+            // 貫通は押し勝っている側なので形を変えない
+            if (resolver.m_pendingBreak)
+            {
+                return;
+            }
+            resolver.m_shape = shape;
+            resolver.m_shapeStart = resolver.m_clock;
+            resolver.m_shapeLength = event.length;
+            resolver.m_shapeActive = true;
         }
+
+        void operator()(const TargetFreezeEvent& freeze) const
+        {
+            NS::Obj::Scene* scene = resolver.Owner()->OwningScene();
+            if (scene == nullptr)
+            {
+                return;
+            }
+            // 力が伝わった瞬間の絵。置かれていれば食い込ませて止めさせ、押し返されている反発の時だけ縮める
+            // 動きは軽い側が受け取るので、往復は重い相手ほど小さい
+            NS::Obj::Actor* target = scene->Objects().FindObject(resolver.m_pendingTarget);
+            if (target == nullptr)
+            {
+                return;
+            }
+            const TackleFreezeDesc desc{.impactDir = resolver.m_pendingImpactDir,
+                                        .pushInDistance = freeze.pushInDistance,
+                                        .shakeAmplitude = freeze.swingAmplitude / (1.0f + resolver.m_pendingTargetMass),
+                                        .squashThickness = freeze.squashThickness,
+                                        .squashHeight = freeze.squashHeight,
+                                        .squash = !resolver.m_pendingBreak,
+                                        .stopSteps = event.length};
+            (void)SendMsgTackleFreeze(*target, desc);
+        }
+
+        void operator()(const TargetLaunchEvent&) const { resolver.LaunchTarget(); }
+
+        void operator()(const ReboundEvent&) const { resolver.ApplyRebound(); }
+
+        // 白・揺れ・寄り・振動は今は止めの頭の StartHitReturns が出し、エフェクトは ImpactEffects が止めの印で出す
+        void operator()(const CameraShakeEvent&) const {}
+        void operator()(const ZoomRollEvent&) const {}
+        void operator()(const PadVibrationEvent&) const {}
+        void operator()(const FlashEvent&) const {}
+        void operator()(const HitEffectEvent&) const {}
+        void operator()(const FlightEffectEvent&) const {}
+    };
+
+    void ImpactResolver::StartTimeline(std::vector<HitEvent> events, int breakStopSteps)
+    {
+        m_events = std::move(events);
+        m_breakStopSteps = breakStopSteps;
+        m_clock = 0;
+        m_clockEnd = 0;
+        m_holdArmed = false;
+        m_holdReleased = false;
+        m_hasReboundEvent = false;
+        m_stopStarted = false;
+        for (const HitEvent& event : m_events)
+        {
+            // 長さ 0 の事象も始まりのフレームには起きるので、そのフレームまで時計を回す
+            m_clockEnd = std::max(m_clockEnd, event.start + std::max(event.length, 1));
+            if (std::holds_alternative<HitStopEvent>(event.value) && StopLengthOf(event, breakStopSteps) > 0)
+            {
+                m_holdArmed = true;
+            }
+            if (std::holds_alternative<ReboundEvent>(event.value))
+            {
+                m_hasReboundEvent = true;
+            }
+        }
+        m_clockRunning = true;
+        AdvanceTimeline();
+    }
+
+    void ImpactResolver::AbortTimeline() noexcept
+    {
+        m_events.clear();
+        m_clock = 0;
+        m_clockEnd = 0;
+        m_clockRunning = false;
+        m_holdArmed = false;
+        m_holdReleased = false;
+        m_hasReboundEvent = false;
+        m_stopStarted = false;
+        m_stopEnd = 0;
+        m_breakStopSteps = -1;
+        m_shapeActive = false;
+    }
+
+    void ImpactResolver::AdvanceTimeline()
+    {
+        for (const HitEvent& event : m_events)
+        {
+            if (event.start == m_clock)
+            {
+                std::visit(EventRunner{.resolver = *this, .event = event}, event.value);
+            }
+        }
+        if (m_stopStarted && m_clock == m_stopEnd + 1)
+        {
+            m_releasedThisStep = true;
+            // 反動の事象の無いタイムラインは、止めの終わりで自機を動かし直す
+            if (!m_hasReboundEvent)
+            {
+                m_holdReleased = true;
+            }
+        }
+        if (m_clock >= m_clockEnd)
+        {
+            m_clockRunning = false;
+            // 反動の事象が止めより前に置かれていても、時計が止まったら自機を動かし直す
+            m_holdReleased = true;
+        }
+    }
+
+    bool ImpactResolver::IsHitStopping() const noexcept
+    {
+        return m_stopStarted && !m_holdReleased && m_clock <= m_stopEnd;
+    }
+
+    bool ImpactResolver::IsAwaitingRebound() const noexcept
+    {
+        return m_stopStarted && !m_holdReleased && m_clock > m_stopEnd;
+    }
+
+    bool ImpactResolver::IsShapeAnimating() const noexcept
+    {
+        const int frame = m_clock - m_shapeStart;
+        return m_shapeActive && frame >= 0 && frame < m_shapeLength;
     }
 
     ImpactResolver::TierReturns ImpactResolver::PlainReturns(float swing, int stopSteps) noexcept
@@ -754,11 +928,9 @@ namespace NS::Game::Level
 
     void ImpactResolver::CancelImpact() noexcept
     {
-        // 白・揺れ・振動を始めたのは裁定役なので止めるのも裁定役。止めも予約も無い時は前の当たりの薄れを残す
-        const bool hadStop = m_hitStopRemaining > 0 || m_freezePendingSteps > 0;
-        m_hitStopRemaining = 0;
-        m_hitStopTotal = 0;
-        m_freezePendingSteps = 0;
+        // 白・揺れ・振動を始めたのは裁定役なので止めるのも裁定役。自機を止めていない時は前の当たりの薄れを残す
+        const bool hadStop = IsHoldingPlayer();
+        AbortTimeline();
         m_pendingBreak = false;
         m_hasObservedTarget = false;
         m_stateReady = false;
@@ -768,9 +940,6 @@ namespace NS::Game::Level
         m_releasedThisStep = false;
         // 相手へは明けを送らない。相手はやり直しの知らせで自分の位置へ戻り、凍結は相手の数えで明ける
         m_pendingTarget = NS::Obj::ActorRef{};
-        m_scaleHeld = false;
-        m_recoverRemaining = 0;
-        m_stretchFactors = NS::Core::Vector3{1.0f, 1.0f, 1.0f};
         if (hadStop && m_hitReaction != nullptr)
         {
             m_hitReaction->Stop();
@@ -799,15 +968,15 @@ namespace NS::Game::Level
                             .fixedDelta = NS::Platform::FrameTimer::FixedDelta()};
     }
 
-    void ImpactResolver::ReleaseHitStop()
+    void ImpactResolver::ApplyRebound()
     {
-        const bool wasBreak = m_pendingBreak;
-        m_pendingBreak = false;
-        if (wasBreak)
+        m_holdReleased = true;
+        if (m_pendingBreak)
         {
             m_body->SetVelocity(m_pendingSelfVelocity);
+            return;
         }
-        else if (!m_player->BeginRebound(m_pendingReboundArc))
+        if (!m_player->BeginRebound(m_pendingReboundArc))
         {
             // 欄が曲線にならない値の時だけ通る。書かないと、止める前の最後のフレームの速度のまま動き出す
             m_body->SetVelocity(m_pendingSelfVelocity);
@@ -816,21 +985,10 @@ namespace NS::Game::Level
                         m_pendingReboundArc.apexHeight,
                         m_pendingReboundArc.distance);
         }
-        if (m_scaleHeld)
-        {
-            // 解放の伸びが衝突の後半。反発は自機が上へ大きく弾かれるので縦へ、貫通は突き抜ける進行の軸へ伸ばす
-            // 戻しの途中に次の当たりの向きが控えに入っても形がぶれないよう、伸びはこのフレームに決めて控える
-            if (wasBreak)
-            {
-                m_stretchFactors = AlongImpactFactors(Tuning().m_stretchAlong, 1.0f);
-            }
-            else
-            {
-                m_stretchFactors = NS::Core::Vector3{1.0f, Tuning().m_stretchAlong, 1.0f};
-            }
-            m_recoverRemaining = Tuning().m_stretchRecoverSteps;
-            m_scaleHeld = false;
-        }
+    }
+
+    void ImpactResolver::LaunchTarget()
+    {
         NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
         {
@@ -845,46 +1003,22 @@ namespace NS::Game::Level
             return;
         }
         const TackleReleaseDesc release{.arc = m_pendingLaunchArc,
-                                        .breaks = wasBreak,
+                                        .breaks = m_pendingBreak,
                                         .tier = m_pendingTier,
                                         .power = m_lastPower,
                                         .launchScale = m_pendingLaunchScale};
         (void)SendMsgTackleRelease(*target, release);
     }
 
-    void ImpactResolver::AdvanceShapeRecovery() noexcept
-    {
-        --m_recoverRemaining;
-    }
-
     NS::Core::Vector3 ImpactResolver::ShapeFactors() const noexcept
     {
-        const NS::Core::Vector3 home{1.0f, 1.0f, 1.0f};
-        if (m_scaleHeld)
+        // 事象の外は補間の残差を残さず、ちょうど 1 を返す
+        if (!IsShapeAnimating())
         {
-            // 貫通は押し勝っている側なので潰さない。潰れは押し返されている反発だけの絵
-            if (m_pendingBreak)
-            {
-                return home;
-            }
-            return AlongImpactFactors(Tuning().m_squashThickness, Tuning().m_squashHeight);
+            return NS::Core::Vector3{1.0f, 1.0f, 1.0f};
         }
-        // 戻し切ったフレームは補間の残差を残さず、ちょうど 1 を返す
-        const float total = static_cast<float>(Tuning().m_stretchRecoverSteps);
-        if (m_recoverRemaining <= 0 || !(total > 0.0f))
-        {
-            return home;
-        }
-        // 前半は伸びた形から、元の形を伸びと反対の側へ 伸びの量 × 行き過ぎの割合 だけ越えた所まで進む
-        // 後半はそこから元の形へ戻る
-        const float half = total * 0.5f;
-        const float elapsed = total - static_cast<float>(m_recoverRemaining);
-        const NS::Core::Vector3 overshoot = home - (m_stretchFactors - home) * Tuning().m_stretchOvershoot;
-        if (elapsed <= half)
-        {
-            return m_stretchFactors + (overshoot - m_stretchFactors) * (elapsed / half);
-        }
-        return overshoot + (home - overshoot) * ((elapsed - half) / (total - half));
+        const float frame = static_cast<float>(m_clock - m_shapeStart);
+        return AlongImpactFactors(CurveFactor(m_shape.along, frame), CurveFactor(m_shape.height, frame));
     }
 
     NS::Core::Vector3 ImpactResolver::AlongImpactFactors(float along, float height) const noexcept

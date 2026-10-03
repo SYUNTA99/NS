@@ -18,6 +18,7 @@
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Clock.h"
+#include "Tests/TestHitTimelines.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -89,7 +90,7 @@ namespace
     }
 
     // 手前の置物へ溜めた突進を出し、止めの頭まで回す。届いた場合 true
-    // waitForFreeze が偽なら、止めの予約だけが残る検知のフレームで止める
+    // waitForFreeze が偽なら、止めの頭を待つ検知のフレームで止める
     // 突進は 1 フレームの入口から出す。BodySlam を直に呼ぶと先行入力が残り、止めが明けた後にもう 1 度出る
     bool SlamIntoTheRock(Player& player, NS::Game::Level::MapObj& rock, bool waitForFreeze)
     {
@@ -265,7 +266,7 @@ TEST(PlayerUpdatePipeline, ReleasingTheHitStopLeavesASwitchedOffBodyAlone)
     EXPECT_FALSE(player->Body().IsActiveSelf());
 }
 
-// やり直しは止めと止めの予約を捨てる。出現位置で弾かれず、元の位置へ戻った置物へ明けも止めの頭も届かない
+// やり直しは走っている当たりのタイムラインを捨てる。出現位置で弾かれず、元の位置へ戻った置物へ明けも止めの頭も届かない
 TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
 {
     for (const bool waitForFreeze : {true, false})
@@ -408,7 +409,7 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     EXPECT_GE(bottom, -0.001f);
 }
 
-// Inspector で裁定役を外すと、持っていた止めと予約を捨てる。入れ直しても遅れて弾かれない
+// Inspector で裁定役を外すと、走っている当たりのタイムラインを捨てる。入れ直しても遅れて弾かれない
 TEST(PlayerUpdatePipeline, SwitchingTheResolverOffDropsItsHitStop)
 {
     NS::Obj::Scene scene;
@@ -539,8 +540,16 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
     ])");
     for (int scenario = 0; scenario < 2; ++scenario)
     {
-        NS::Obj::Scene scene;
         const bool charge = scenario == 0;
+        // 止めの長さは移す前の式が出した長さ (溜め 12・タップ 3) を、移す前の返りを写したタイムラインに置く
+        const ScopedHitTimelineDirectory timelines("Trajectories");
+        int legacyStopSteps = 3;
+        if (charge)
+        {
+            legacyStopSteps = 12;
+        }
+        ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(legacyStopSteps));
+        NS::Obj::Scene scene;
         float targetX = 0.0f;
         float targetZ = 3.0f;
         int frames = 90;

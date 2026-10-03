@@ -4,6 +4,7 @@
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Platform/FileSystem.h"
 
+#include <cmath>
 #include <cstddef>
 #include <format>
 #include <span>
@@ -242,6 +243,24 @@ namespace NS::Game::Level
     const void* HitEventFields(const HitEventValue& value) noexcept
     {
         return FieldsAt(const_cast<HitEventValue&>(value));
+    }
+
+    HitDirection HitDirectionOf(float u, float v) noexcept
+    {
+        // 斜めの境目は左右へ倒す。どちらへ倒しても当たり方は変わらず、帯の行を引く向きが決まればよい
+        if (std::abs(u) >= std::abs(v))
+        {
+            if (u >= 0.0f)
+            {
+                return HitDirection::Right;
+            }
+            return HitDirection::Left;
+        }
+        if (v >= 0.0f)
+        {
+            return HitDirection::Up;
+        }
+        return HitDirection::Down;
     }
 
     std::string_view HitDirectionName(HitDirection direction) noexcept
