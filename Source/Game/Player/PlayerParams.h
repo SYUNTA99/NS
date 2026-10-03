@@ -114,6 +114,7 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_minPlaybackSpeed, "再生速度の下限")
         NS_REFLECT_FIELD(m_chargeThresholdSeconds, "チャージしきい値秒")
         NS_REFLECT_FIELD(m_chargeFullSeconds, "チャージ満タン秒")
+        NS_REFLECT_FIELD(m_overchargeSeconds, "溜めすぎの秒数")
         NS_REFLECT_FIELD(m_chargeSlowRate, "チャージ減速率")
         NS_REFLECT_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
         NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
@@ -291,6 +292,8 @@ namespace NS::Game::Player
         friend class ::Player;
         float m_chargeThresholdSeconds = 0.2f;
         float m_chargeFullSeconds = 1.0f;
+        // 溜めきりから押したままで勝手に出るまで。3 は本人の「3 秒ほど赤からゆっくりと紫に」から
+        float m_overchargeSeconds = 3.0f;
         float m_chargeSlowRate = 0.7f;
         NS::Obj::Curve m_chargeFactorCurve{};
         float m_chargeSquashScale = 0.95f;

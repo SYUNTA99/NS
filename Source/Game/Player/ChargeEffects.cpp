@@ -84,7 +84,8 @@ namespace NS::Game::Player
 
         const NS::Game::Level::ImpactInputJudge& judge = m_actor->ChargeJudge();
         const NS::Core::Vector3 center = RootTransform().Position();
-        const bool held = judge.IsHeld();
+        // 溜めすぎで出た後は押したままでも溜めの層を消す
+        const bool held = judge.IsHoldingCharge();
         if (judge.JustPressed())
         {
             StartPress(effects, center);

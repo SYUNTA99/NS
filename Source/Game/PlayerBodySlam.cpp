@@ -314,6 +314,8 @@ bool Player::BodySlam() noexcept
     // 出せた時だけ書く。反動の後のカメラと放した瞬間の絵が、突進の後も最後に出た突進の向きとして読む
     m_slam.dir = dir;
     m_request.hasDir = false;
+    // 溜めすぎで控えた突進なら、判定が頼み直しを止めて放すまで溜め無しになる
+    m_charge.judge.MarkLaunched();
     // 地面から出した突進は数えない。数えると、浮いて当てたタップや上向きに放った突進の反動で空中の 1 発が出ない
     if (launchedInAir)
     {

@@ -58,7 +58,7 @@ bool Player::TryGetAimTarget(NS::Game::Level::SlamLineTarget& outTarget) const n
 
 float Player::StanceHeight() const noexcept
 {
-    if (!m_charge.judge.IsHeld())
+    if (!m_charge.judge.IsHoldingCharge())
     {
         return 1.0f;
     }
@@ -108,6 +108,7 @@ void Player::AdvanceCharge(float dt)
     NS::Game::Level::ImpactInputJudge& judge = m_charge.judge;
     judge.chargeThresholdSteps = SecondsToSteps(m_params->m_chargeThresholdSeconds, dt);
     judge.chargeMaxSteps = SecondsToSteps(m_params->m_chargeFullSeconds, dt);
+    judge.overchargeSteps = SecondsToSteps(m_params->m_overchargeSeconds, dt);
     judge.Step(m_charge.observedHeld);
 
     if (judge.JustPressed())
@@ -115,24 +116,17 @@ void Player::AdvanceCharge(float dt)
         MarkBodySlamAim();
     }
     // 溜めに入るのを待たずに、押したフレームから丸まる。押したフレームだけ入れると、押したまま出直した後に
-    // 丸まりが戻らない
+    // 丸まりが戻らない。溜めすぎで出た後も押している間は丸まったまま
     if (judge.IsHeld())
     {
         SetCurled(true);
     }
     SetBodySlamHeld(judge.IsHeld());
 
-    const NS::Game::Level::SlamKind fired = judge.TakeFired();
-    if (fired != NS::Game::Level::SlamKind::None)
-    {
-        float charge01 = 0.0f;
-        if (fired == NS::Game::Level::SlamKind::Charged)
-        {
-            charge01 = judge.Charge01();
-        }
-        // 控えた線は放す前のフレームに矢印を貼った線で、放したフレームはまだ引き直していない。溜めて放した突進は
-        // スティックを見ずにその向きへ出す。タップは矢印が出ないので入力の向きへ出す
-        if (fired == NS::Game::Level::SlamKind::Charged && m_charge.hasAimLine)
+    // 控えた線は放す前のフレームに矢印を貼った線で、放したフレームはまだ引き直していない。溜めて放した突進は
+    // スティックを見ずにその向きへ出す。タップは矢印が出ないので入力の向きへ出す
+    const auto requestCharged = [this](float charge01) {
+        if (m_charge.hasAimLine)
         {
             RequestBodySlam(charge01, m_charge.aimLine.direction, m_charge.aimLine.launchVerticalSpeed);
         }
@@ -140,7 +134,23 @@ void Player::AdvanceCharge(float dt)
         {
             RequestBodySlam(charge01);
         }
-        NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", NS::Game::Level::SlamKindLabel(fired), charge01);
+    };
+    const NS::Game::Level::SlamKind fired = judge.TakeFired();
+    if (fired == NS::Game::Level::SlamKind::Charged)
+    {
+        requestCharged(judge.Charge01());
+        NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", NS::Game::Level::SlamKindLabel(fired), judge.Charge01());
+    }
+    else if (fired == NS::Game::Level::SlamKind::Tap)
+    {
+        RequestBodySlam(0.0f);
+        NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", NS::Game::Level::SlamKindLabel(fired), 0.0f);
+    }
+    else if (judge.IsAwaitingLaunch())
+    {
+        // 溜めすぎで控えた突進は、出せない間 (止め・突進の最中) の頼みが捨てられるので、出るまで毎フレーム頼み直す。
+        // 向きは出たフレームの狙いの線。出たかは BodySlam が判定へ知らせ、次のフレームからここへ来ない
+        requestCharged(judge.Charge01());
     }
 
     float scale = 1.0f;

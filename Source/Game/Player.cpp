@@ -110,10 +110,11 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
         .rebounding = IsRebounding(),
         .slamDirection = BodySlamDirection(),
     };
-    // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す
+    // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す。溜めすぎで出た後は押していても
+    // 溜めの締めと揺れを解く
     const NS::Game::Level::ImpactInputJudge& judge = ChargeJudge();
     state.hasCharge = true;
-    state.charge.held = judge.IsHeld();
+    state.charge.held = judge.IsHoldingCharge();
     if (state.charge.held)
     {
         state.charge.charge01 = judge.Charge01();
