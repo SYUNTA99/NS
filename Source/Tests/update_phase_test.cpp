@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -225,4 +226,79 @@ TEST(ActorStepOrder, UpdateCallsEachStepOnceInTheFixedOrder)
     log.clear();
     actor.Update();
     EXPECT_EQ(log, (std::vector<std::string>{"observe", "decide", "state", "body", "visual"}));
+}
+
+TEST(WorldSpeed, SlowWorldStepsOnceInFiveAndRealTimePhasesEveryStep)
+{
+    // 遅い世界は 1 歩の中身を変えず、世界の時計の段を間引く。入力と UI は毎歩回る
+    NS::Obj::Scene scene;
+    std::vector<std::string> log;
+    scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Player, log, "player");
+    PhaseTicker physics(log, "physics");
+    PhaseTicker ui(log, "ui");
+    PhaseTicker effects(log, "effects");
+    scene.Objects().AddTicker(&physics, NS::Obj::UpdatePhase::Physics);
+    scene.Objects().AddTicker(&ui, NS::Obj::UpdatePhase::UI);
+    scene.Objects().AddTicker(&effects, NS::Obj::UpdatePhase::Effects);
+    scene.SetWorldSpeed(0.2f);
+
+    for (int i = 0; i < 10; ++i)
+    {
+        scene.OnUpdate();
+    }
+
+    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"player"}), 2);
+    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"physics"}), 2);
+    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"effects"}), 2);
+    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"render-prep"}), 2);
+    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"ui"}), 10);
+    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"input"}), 10);
+    // 4 歩目までは入力と UI だけ。5 歩目に初めて世界が進む
+    ASSERT_GE(log.size(), 10u);
+    EXPECT_EQ(log[7], std::string{"ui"});
+    EXPECT_EQ(log[8], std::string{"input"});
+    EXPECT_EQ(log[9], std::string{"player"});
+    scene.Objects().RemoveTicker(&physics);
+    scene.Objects().RemoveTicker(&ui);
+    scene.Objects().RemoveTicker(&effects);
+}
+
+TEST(WorldSpeed, SlowWorldInterpolatesAcrossTheSkippedSteps)
+{
+    // 世界を進めない歩に前の値を控えると補間が止まる。割合は前に世界を進めてからの溜めで出す
+    NS::Obj::Scene scene;
+    NS::Obj::Actor* drawn = scene.SpawnTransient<NS::Obj::Actor>();
+    ASSERT_NE(drawn->CreatePart("Model"), nullptr);
+    NS::Obj::Model* model = drawn->ModelPart();
+    scene.SpawnTransient<DrawScaleWriterActor>(*model);
+    scene.SetWorldSpeed(0.5f);
+
+    scene.OnUpdate();
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._11, 1.0f);
+    scene.OnUpdate();
+    // 世界を進めた歩。前の値は進める前の倍率
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 1.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._11, 2.0f);
+    EXPECT_FLOAT_EQ(scene.RenderAlpha(0.5f), 0.25f);
+    scene.OnUpdate();
+    // 世界を進めない歩でも前の値を取り直さない
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 1.0f);
+    EXPECT_FLOAT_EQ(scene.RenderAlpha(0.5f), 0.75f);
+}
+
+TEST(WorldSpeed, NormalSpeedKeepsTheFrameAlphaAndPauseHoldsAtOne)
+{
+    NS::Obj::Scene scene;
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
+    scene.OnUpdate();
+    EXPECT_FLOAT_EQ(scene.RenderAlpha(0.3f), 0.3f);
+    scene.SetWorldSpeed(2.0f);
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
+    scene.SetWorldSpeed(-1.0f);
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.0f);
+    scene.SetSimulationPaused(true);
+    EXPECT_FLOAT_EQ(scene.RenderAlpha(0.3f), 1.0f);
+    // プレイを入れ直すと普段の速さへ戻る
+    scene.SetSimulationEnabled(true);
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
 }

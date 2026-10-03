@@ -34,7 +34,7 @@ namespace NS::Obj
         void SetReleaseLedgePressed() noexcept { m_releaseLedgePressed = true; }
         //! 跳びの押しっぱなしを書く
         void SetJumpHeld(bool held) noexcept { m_jumpHeld = held; }
-        //! 跳びと掴まりの手放しの押した瞬間を下ろす
+        //! 跳びと掴まりの手放しの押した瞬間と、突進の押しの控えを下ろす
         void ConsumePressed() noexcept;
         //! 移動・掴まり・跳びの入力を全て 0 と false に戻す
         void ResetMovementInput() noexcept;
@@ -80,6 +80,7 @@ namespace NS::Obj
         bool m_releaseLedgePressed = false;
         bool m_prevReleaseLedgeHeld = false;
         bool m_slamHeld = false;
-        bool m_locked = false; // 操作の停止中か。保存しない
+        bool m_slamSeen = false; // ConsumePressed の後に突進を押したか
+        bool m_locked = false;   // 操作の停止中か。保存しない
     };
 } // namespace NS::Obj

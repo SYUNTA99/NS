@@ -11,9 +11,17 @@
 #include "Runtime/Object/UIActor.h"
 #include "Runtime/Platform/Clock.h"
 
+#include <algorithm>
+#include <cmath>
 #include <limits>
 #include <string_view>
 #include <vector>
+
+namespace
+{
+    // 世界の速さの溜めが 1 に届いたと見なす余白
+    constexpr float k_WorldCarryTolerance = 1.0e-4f;
+} // namespace
 
 namespace NS::Obj
 {
@@ -121,12 +129,50 @@ namespace NS::Obj
         m_simulationEnabled = enabled;
         m_simulationPaused = false;
         m_simulationStepFrames = 0;
+        // 遅い世界はプレイの中の状態なので、入れ直したプレイへ持ち越さない
+        m_worldSpeed = 1.0f;
+        m_worldCarry = 0.0f;
     }
 
     void Scene::StepSimulation() noexcept
     {
         m_simulationPaused = true;
         m_simulationStepFrames += 1;
+    }
+
+    void Scene::SetWorldSpeed(float speed) noexcept
+    {
+        // 非数は Clamp を素通りして溜めを壊すので受けない
+        if (!std::isfinite(speed))
+        {
+            return;
+        }
+        m_worldSpeed = NS::Core::Clamp(speed, 0.0f, 1.0f);
+    }
+
+    float Scene::RenderAlpha(float frameAlpha) const noexcept
+    {
+        if (!m_simulationEnabled || m_simulationPaused)
+        {
+            return 1.0f;
+        }
+        if (m_worldSpeed >= 1.0f)
+        {
+            return frameAlpha;
+        }
+        return std::min(m_worldCarry + frameAlpha * m_worldSpeed, 1.0f);
+    }
+
+    bool Scene::AdvanceWorldClock() noexcept
+    {
+        m_worldCarry += m_worldSpeed;
+        // 0.2 を 5 回足しても 1 にわずかに届かない事がある
+        if (m_worldCarry < 1.0f - k_WorldCarryTolerance)
+        {
+            return false;
+        }
+        m_worldCarry = std::max(m_worldCarry - 1.0f, 0.0f);
+        return true;
     }
 
     Actor* Scene::SpawnTransient(std::unique_ptr<Actor> obj)
@@ -322,13 +368,11 @@ namespace NS::Obj
 
     void Scene::OnUpdate()
     {
-        // 補間描画用。全配置物の根の Transform と Model の前の値を控える
-        m_objects.SnapshotObjects();
-
         // 世界の駆動。読み込んだら回り続けるのが既定で、編集モードのエディタだけが止める
-        // 時間停止中は上の snapshot だけが残り、previous == current で補間が凍る
+        // 時間停止中は前の値の控えだけが残り、previous == current で補間が凍る
         if (!m_simulationEnabled)
         {
+            m_objects.SnapshotObjects();
             return;
         }
 
@@ -336,16 +380,30 @@ namespace NS::Obj
         {
             if (m_simulationStepFrames <= 0)
             {
+                m_objects.SnapshotObjects();
                 return;
             }
+            // コマ送りは実時間の 1 歩。遅い世界では世界が進まない歩もある
             m_simulationStepFrames -= 1;
         }
+
+        const bool worldStep = AdvanceWorldClock();
+        if (worldStep)
+        {
+            // 補間描画用。全配置物の根の Transform と Model の前の値を控える
+            // 世界を進めない歩に控えると previous == current になり、遅い世界の補間が止まる
+            m_objects.SnapshotObjects();
 #if !defined(NS_SHIPPING)
-        // 描画 1 回ごとに捨てると、その間に進む固定ステップの回数で映る図形が変わる
-        NS::Gfx::DebugDraw::BeginStep();
+            // 描画 1 回ごとに捨てると、その間に進む固定ステップの回数で映る図形が変わる
+            NS::Gfx::DebugDraw::BeginStep();
 #endif
+        }
         for (UpdatePhase phase : k_UpdatePhases)
         {
+            if (!worldStep && ClockOf(phase) == PhaseClock::World)
+            {
+                continue;
+            }
             if (phase == UpdatePhase::Physics)
             {
                 m_physicsScene.Update(NS::Platform::FrameTimer::FixedDelta());
@@ -381,11 +439,7 @@ namespace NS::Obj
         }
         // 世界が実時間で進まない間は、前の固定フレームからの経過の割合に意味が無い
         // 描く度に割合が変わると、同じフレームの絵が揺れる
-        float alpha = NS::Platform::FrameTimer::Alpha();
-        if (!m_simulationEnabled || m_simulationPaused)
-        {
-            alpha = 1.0f;
-        }
+        const float alpha = RenderAlpha(NS::Platform::FrameTimer::Alpha());
         // 姿勢はビューに依らないので 1 フレームに 1 回。止めている間の実カメラは止めた側が書く
         if (m_simulationEnabled)
         {

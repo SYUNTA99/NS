@@ -33,4 +33,25 @@ namespace NS::Obj
                                                UpdatePhase::UI,
                                                UpdatePhase::RenderPrep,
                                                UpdatePhase::Effects};
+
+    //! @brief 段の時計。世界の速さ (Scene::SetWorldSpeed) が 1 未満の間に、段を間引くか
+    enum class PhaseClock
+    {
+        World,    //!< 世界の速さに従い、世界を進める歩だけ回る
+        RealTime, //!< 世界の速さに依らず毎歩回る
+    };
+
+    //! @brief 段の時計を返す。世界の速さに従うかの表はここ 1 か所で、部品ごとに止め方を書かない
+    //! @details 入力の段は押しを溜めて次に世界を進める歩の自機へ渡すので、毎歩回す。UI は遅い世界でも普段の速さで動く
+    [[nodiscard]] constexpr PhaseClock ClockOf(UpdatePhase phase) noexcept
+    {
+        switch (phase)
+        {
+        case UpdatePhase::Input:
+        case UpdatePhase::UI:
+            return PhaseClock::RealTime;
+        default:
+            return PhaseClock::World;
+        }
+    }
 } // namespace NS::Obj
