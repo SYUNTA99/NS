@@ -367,12 +367,6 @@ namespace NS::Game::Level
         return true;
     }
 
-    void ImpactResolver::OnUpdate()
-    {
-        ObserveImpact();
-        StepState();
-    }
-
     void ImpactResolver::ObserveImpact()
     {
         m_stateReady = true;

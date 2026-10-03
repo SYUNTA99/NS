@@ -177,6 +177,20 @@ TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
     EXPECT_FALSE(player->Body().IsActive());
 }
 
+// 1 フレームを進める入口は Player::Update だけ。裁定の部品を単独で回しても、観測も裁定も走らない
+TEST(PlayerUpdatePipeline, TickingTheResolverPartAloneDoesNotJudge)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    ASSERT_NE(player, nullptr);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_TRUE(player->BodySlam());
+    player->Resolver().OnUpdate();
+    EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
+    EXPECT_TRUE(player->IsBodySlamming());
+    EXPECT_TRUE(player->Body().IsActive());
+}
+
 TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
 {
     NS::Obj::Scene scene;

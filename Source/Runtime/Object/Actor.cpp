@@ -319,11 +319,6 @@ namespace NS::Obj
         TickPart(m_animation.get());
     }
 
-    void Actor::OnUpdate()
-    {
-        Update();
-    }
-
     void Actor::OnEndPlay()
     {
         Kill();

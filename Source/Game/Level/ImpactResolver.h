@@ -112,8 +112,6 @@ namespace NS::Game::Level
         //! 同じ配置物の移動と体当たりの入力と当たりの演出を引き当てる。移動が無ければ以後何もしない
         void OnStart() override;
 
-        //! この固定ステップで重なる壊せる物を探し、向かっていれば止めてから破壊するか、反発と押し飛ばしを与える
-        void OnUpdate() override;
         //! @brief 次の固定ステップで重なる相手を探し、MsgAskTackleTarget に応じた相手と答えを控える
         //! @details 突進中でない時、止めの最中と止めの頭を待つ間は探さない。
         //! 控えた相手は StepState が 1 回だけ使う。

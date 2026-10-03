@@ -123,8 +123,6 @@ namespace NS::Obj
 
         //! 配下 Component の OnStart を伝播
         void OnStart();
-        //! Update を呼ぶ
-        void OnUpdate();
         //! 世界から外し、全ての部品の OnEndPlay を呼ぶ
         virtual void OnEndPlay();
 

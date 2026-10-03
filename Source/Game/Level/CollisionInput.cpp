@@ -10,7 +10,6 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Platform/Clock.h"
 #include "Runtime/Platform/Gamepad.h"
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Mouse.h"
@@ -89,11 +88,6 @@ namespace NS::Game::Level
                pad.IsHeld(NS::Platform::GamepadButton::X);
     }
 
-    void CollisionInput::OnUpdate()
-    {
-        Step(ReadHeld(), NS::Platform::FrameTimer::FixedDelta());
-    }
-
     void CollisionInput::Observe(bool held)
     {
         m_observedHeld = held;
@@ -122,13 +116,6 @@ namespace NS::Game::Level
 #if !defined(NS_SHIPPING)
         DrawChargeRing();
 #endif
-    }
-
-    void CollisionInput::Step(bool held, float dt)
-    {
-        Observe(held);
-        AdvanceState(dt);
-        ApplyControl();
     }
 
     void CollisionInput::AdvanceCharge(bool held, float dt)

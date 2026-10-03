@@ -41,14 +41,6 @@ namespace NS::Game::Level
         //! 同じ配置物の移動と裁定を引き当てる。見つからない相手に関わる処理は以後行わない
         void OnStart() override;
 
-        //! @brief ボタンの保持を判定へ 1 フレーム進め、発動を控えたフレームに溜め量を添えて体当たりを要求する
-        //! @details 溜めて放したフレームは、狙いの線を控えていればその向きも添える。
-        //! 押している間はカメラの正面の線で狙う相手を探して控える
-        void OnUpdate() override;
-        //! @brief Observe・AdvanceState・ApplyControl を続けて呼び、判定を 1 フレーム進める
-        //! @param[in] held ボタンを押しているか
-        //! @param[in] dt 進める秒
-        void Step(bool held, float dt);
         //! @brief マウス左かゲームパッドの X を押しているかを読む
         //! @details マウス左は、ゲームがマウスのボタンを受け取っている間だけ数える
         //! @return どちらかを押している場合 true、それ以外の場合は false
