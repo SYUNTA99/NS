@@ -327,7 +327,6 @@ TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
     NS::Obj::Actor* target = scene.SpawnObject(std::make_unique<FollowTargetProbe>(), "target");
     NS::Game::Level::FollowCamera* actor = scene.SpawnTransient<NS::Game::Level::FollowCamera>();
     NS::Obj::ThirdPersonFollow& vcam = actor->Vcam();
-    vcam.SetActive(true);
     NS::Obj::ApplyJsonFields(vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
     actor->Update();
     EXPECT_GT(vcam.ChargeNarrowDegrees(), 0.0f);
@@ -338,4 +337,44 @@ TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
     EXPECT_GT(vcam.ChargeNarrowDegrees(), 0.0f);
     scene.DestroyObject(target->Id());
     actor->Update();
+}
+
+// 追従カメラは出荷の姿で生まれる。プレイ中かは世界の駆動が答え、部品の active へ写さない
+TEST(FollowCamera, VcamIsLiveFromConstruction)
+{
+    const NS::Game::Level::FollowCamera camera;
+    EXPECT_TRUE(camera.Vcam().IsActiveSelf());
+}
+
+// 世界が回っている間は、描画の入口が管理役の姿勢を実カメラへ書く。描画先が無くても書く
+TEST(SceneCameraOnRender, RunningWorldWritesTheFollowPoseOnRender)
+{
+    NS::Obj::Scene scene;
+    NS::Game::Level::FollowCamera* follow = scene.SpawnTransient<NS::Game::Level::FollowCamera>();
+    ASSERT_NE(follow, nullptr);
+    // 追う相手の居ない追従カメラは (0, 0, -5) から原点を見る
+    const NS::Obj::CameraPose expected = follow->Vcam().EvaluatePose(1.0f);
+    scene.MainCamera()->SetPosition(NS::Core::Vector3{100.0f, 0.0f, 0.0f});
+    ASSERT_NE(expected.position.x, 100.0f);
+
+    scene.OnRender();
+
+    EXPECT_FLOAT_EQ(scene.MainCamera()->Position().x, expected.position.x);
+    EXPECT_FLOAT_EQ(scene.MainCamera()->Position().y, expected.position.y);
+    EXPECT_FLOAT_EQ(scene.MainCamera()->Position().z, expected.position.z);
+}
+
+// 世界を止めた側が実カメラを書く。止めている間に管理役が書くと、エディタの視点を追従カメラが奪う
+TEST(SceneCameraOnRender, StoppedWorldLeavesTheRealCameraToWhoeverStoppedIt)
+{
+    NS::Obj::Scene scene;
+    ASSERT_NE(scene.SpawnTransient<NS::Game::Level::FollowCamera>(), nullptr);
+    scene.SetSimulationEnabled(false);
+    scene.MainCamera()->SetPosition(NS::Core::Vector3{100.0f, 0.0f, 0.0f});
+
+    scene.OnRender();
+
+    EXPECT_FLOAT_EQ(scene.MainCamera()->Position().x, 100.0f);
+    EXPECT_FLOAT_EQ(scene.MainCamera()->Position().y, 0.0f);
+    EXPECT_FLOAT_EQ(scene.MainCamera()->Position().z, 0.0f);
 }

@@ -60,6 +60,7 @@ namespace NS::Obj
         virtual ~Scene();
 
         //! @brief 可変フレーム Render の入口。標準のシーン描画パスを 1 回回す
+        //! @details 世界が回っている間だけ、描く前に CameraManager が実カメラを 1 回書く
         void OnRender();
 
         //! IRenderable Component の自己登録。Model 等が OnStart で呼ぶ。二重登録は無視する
@@ -159,7 +160,8 @@ namespace NS::Obj
         void WritePlayBaselineField(const Component& comp, std::string_view fieldName);
 
         //! @brief 世界を回すかの切替。既定は回す。エディタが編集モードの間だけ下ろす
-        //! @details 切替時に一時停止とコマ送りは払う
+        //! @details 「世界がプレイ中か」の持ち主はこの切替 1 つで、部品の active へ写さない
+        //! 下ろしている間は CameraManager も実カメラを書かず、止めた側が書く。切替時に一時停止とコマ送りは払う
         void SetSimulationEnabled(bool enabled) noexcept;
         [[nodiscard]] bool IsSimulationEnabled() const noexcept { return m_simulationEnabled; }
 

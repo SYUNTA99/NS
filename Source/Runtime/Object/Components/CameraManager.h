@@ -47,7 +47,7 @@ namespace NS::Obj
         void OnTick() override;
 
         //! 現在の active vcam の EvaluatePose(alpha) を実カメラへ書く。ブレンド中なら旧 pose と補間する
-        //! 呼ぶのは描画だけで、Scene が決めた割合を渡す
+        //! 呼ぶのは Scene::OnRender だけで、世界が回っている間に 1 フレーム 1 回、Scene が決めた割合を渡す
         //! 遊びは実カメラを読まず ViewPose を読む
         //! タイマーは進めない
         void Evaluate(float alpha) noexcept;

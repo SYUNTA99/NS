@@ -317,8 +317,6 @@ namespace NS::Obj
         ctx.renderer = m_renderer;
         ctx.alpha = alpha;
 
-        cameras.Evaluate(ctx.alpha);
-
         // 上書き視点は実カメラを経由せず、その場で行列を組む。実カメラの中身はゲーム視点のまま残す
         NS::Core::CameraData overrideCamera{};
         const NS::Core::CameraData* viewCamera = &camera.Camera();

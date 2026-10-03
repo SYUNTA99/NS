@@ -281,7 +281,7 @@ namespace NS::Obj
 
     void CameraManager::Evaluate(float alpha) noexcept
     {
-        // 非 active になった vcam の pose は書かない。編集モードのように OnTick が回らない間も選び直す
+        // 非 active になった vcam の pose は書かない。一時停止で OnTick が回らない間も選び直す
         if (m_active == nullptr || !m_active->IsActive())
         {
             m_active = SelectActive();

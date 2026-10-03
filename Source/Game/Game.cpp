@@ -1,8 +1,6 @@
 #include "Game/Game.h"
 
-#include "Game/Level/FollowCamera.h"
 #include "Runtime/App/Application.h"
-#include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Platform/Filesystem.h"
@@ -79,15 +77,6 @@ void Game::OnAttach()
 
     // 走行のやり直しが読む凍結スナップショットをここで捕まえる。世界はシーンが読み込みから回している
     (void)scene->BeginPlayBaseline();
-
-    // 追従カメラは生成直後は休止している。出荷はプレイしかないので起動で有効化する
-    for (NS::Obj::Actor* actor : scene->Objects())
-    {
-        if (NS::Game::Level::FollowCamera* camera = NS::Obj::Cast<NS::Game::Level::FollowCamera>(actor))
-        {
-            camera->Vcam().SetActive(true);
-        }
-    }
 
     // カーソルを消し、マウスを相対モードにして視点操作をカーソル位置から切り離す
     // Esc で出すまで非表示のまま。出し直しは OnUpdate の Esc 処理が行う

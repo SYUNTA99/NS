@@ -26,7 +26,6 @@
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/MeshCollider.h"
 #include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/SphereCollider.h"
 #include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Components/TransformComponent.h"
@@ -494,25 +493,11 @@ void LevelEditorController::EnterPlay() noexcept
 
     // プレイの間の判定と編集復帰の姿は、突入時に凍結したスナップショットを読む
     (void)m_scene->BeginPlayBaseline();
-    if (Player* player = FindPlayer(m_scene->Objects()))
-    {
-        // 編集で休止させた自機と入力を起こす。休止させる側は LeavePlayForEdit
-        player->Body().SetActive(true);
-        player->Input().SetActive(true);
-    }
     // 走行を最初から。手順は出荷と同じコースの進行役の持ち物
     if (NS::Game::Level::CourseDirector* director =
             NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(*m_scene))
     {
         director->RestartCourse();
-    }
-    // 追従カメラも配置物の 1 体。プレイの間だけ有効化する
-    for (NS::Obj::Actor* actor : m_scene->Objects())
-    {
-        if (NS::Game::Level::FollowCamera* camera = NS::Obj::Cast<NS::Game::Level::FollowCamera>(actor))
-        {
-            camera->Vcam().SetActive(true);
-        }
     }
     // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
     if (NS::Obj::CameraManager* cameras = Cameras())
@@ -582,14 +567,6 @@ void LevelEditorController::LeavePlayForEdit()
     // 一時オブジェクトの実カメラは凍結に写らないが、Rebuild が退避して残す
     nlohmann::json baseline = m_scene->PlayBaseline();
     m_scene->LoadJson(std::move(baseline));
-
-    if (Player* player = FindPlayer(m_scene->Objects()))
-    {
-        // 操作系は生成時 active のまま組み上がるので、編集中だけ休止させる。起こす側は EnterPlay
-        // follow と vcam はコンストラクタが休止で作るので、ここで寝かせる行は要らない
-        player->Body().SetActive(false);
-        player->Input().SetActive(false);
-    }
 
     // 編集モードはカーソルを出し、相対モードも解いてカーソル位置ベースの操作へ戻す
     if (NS::App::Application* app = NS::App::Application::Get())
@@ -733,7 +710,7 @@ void LevelEditorController::TickEdit()
     m_editorCamera.Tick();
 
     // free-fly 更新後に実カメラへ反映し、ギズモ / 編集の ray-pick が当フレームの視点を使えるようにする
-    // 編集中は active な vcam が無く CameraManager は実カメラに触れないので、この書き込みが上書きされずに残る
+    // 編集中は世界が止まり CameraManager が実カメラを書かないので、この書き込みが上書きされずに残る
     if (NS::Obj::SceneCamera* camera = MainCamera())
     {
         NS::Obj::CameraPose pose = m_editorCamera.Pose();

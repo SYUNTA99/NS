@@ -101,8 +101,6 @@ namespace NS::Obj
 
     ThirdPersonFollow::ThirdPersonFollow() noexcept : VirtualCamera()
     {
-        // 生成直後は非 active でプレイ突入時に有効化される。編集中は free-fly が active のまま
-        SetActive(false);
         // 追う相手を中心に見るので遠景は要らない。編集カメラの 5000 と違いプレイ視点は 100 で足りる
         SetFarPlane(100.0f);
     }

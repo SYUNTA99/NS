@@ -379,6 +379,11 @@ namespace NS::Obj
         {
             alpha = 1.0f;
         }
+        // 姿勢はビューに依らないので 1 フレームに 1 回。止めている間の実カメラは止めた側が書く
+        if (m_simulationEnabled)
+        {
+            cameras->Evaluate(alpha);
+        }
         m_sceneRenderer.Render(*cameras, *camera, m_skyboxPath, alpha);
     }
 

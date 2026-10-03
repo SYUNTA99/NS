@@ -11,6 +11,7 @@
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/Model.h"
+#include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectJson.h"
@@ -446,6 +447,28 @@ TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl
     ExpectSameVector(player->Root().Position(), position);
     ExpectSameVector(player->Body().Velocity(), velocity);
     EXPECT_EQ(player->States().StepsInState(), stateStep);
+}
+
+// 編集の休止の持ち主は世界の駆動だけ。身体と入力の部品を起こしたままでも、止めた世界では自機が動かない
+TEST(PlayerUpdatePipeline, StoppedWorldHoldsThePlayerWithItsPartsAwake)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlacePipelinePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    ASSERT_TRUE(player->Body().IsActive());
+    ASSERT_TRUE(player->Input().IsActive());
+    scene.SetSimulationEnabled(false);
+    player->Input().SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    // 入力の段が実機の入力で歩きを消しても、回っていればこの速さで動く
+    player->Body().SetVelocity(NS::Core::Vector3{0.0f, 2.0f, 0.0f});
+    const NS::Core::Vector3 position = player->Root().Position();
+
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        scene.OnUpdate();
+    }
+
+    ExpectSameVector(player->Root().Position(), position);
 }
 
 // 溜めて当てる組とタップの組を、本番の 1 フレームの入口で回した数字の基準

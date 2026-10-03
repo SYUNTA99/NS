@@ -99,7 +99,7 @@ namespace NS::Obj
 
         //! @brief ビュー列を順に描く。列が空なら現描画先へ 1 回だけ描く
         //! @details レンダラー未設定なら何も描かない。ビューごとに Renderer::BeginSceneView で描画先を差し替える
-        //! @param[in,out] cameras 描画の直前に Evaluate する CameraManager
+        //! @param[in,out] cameras 実カメラの行列を引く CameraManager。姿勢は Scene::OnRender が書き終えている
         //! @param[in,out] camera cameras が駆動する実カメラ。アスペクト比をレンダラーの現在サイズへ揃える
         //! @param[in] skyboxPath 描く skybox の ContentRoot 配下相対パス。空なら skybox を描かない
         //! @param[in] alpha 前の固定フレームから今の固定フレームまでの補間の割合 0..1
@@ -130,7 +130,7 @@ namespace NS::Obj
 
         //! 不透明→空→半透明→エフェクトの順に 1 ビュー分を bloom の描画先へ描く
         //! にじみを足して今の描画先へ書き戻す
-        //! 組んだ RenderContext を返す。viewOverride が空なら CameraManager の選ぶカメラで描く
+        //! 組んだ RenderContext を返す。viewOverride が空なら実カメラで描く
         [[nodiscard]] NS::Gfx::RenderContext RenderWorld(CameraManager& cameras,
                                                          SceneCamera& camera,
                                                          std::string_view skyboxPath,
