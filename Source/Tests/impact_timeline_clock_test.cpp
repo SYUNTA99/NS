@@ -506,7 +506,8 @@ TEST(ImpactTimelineClock, TraumaEventAddsTraumaThatStacksOnTheNextHit)
     const ScopedHitTimelineDirectory directory("Trauma");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
+    // 正面の当たりにする。外れは相手を脇へ押し、置き直した後も脇へ飛び続ける相手は 2 回目の突進の道から外れる
+    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     MapObj* rock = RockOf(scene);
     ASSERT_EQ(RunHit(*player, *rock, 1.0f, 4).size(), 4u);
@@ -517,7 +518,7 @@ TEST(ImpactTimelineClock, TraumaEventAddsTraumaThatStacksOnTheNextHit)
     EXPECT_NEAR(cameras->Trauma(), added, 1.0e-5f);
     // 次の当たりは前の当たりの返りを止めるが、トラウマは残して足す
     player->HitReactionPart()->Stop();
-    rock->Root().SetPosition(player->Root().Position() + NS::Core::Vector3{0.75f, -0.5f, 0.6f});
+    rock->Root().SetPosition(player->Root().Position() + NS::Core::Vector3{0.0f, -0.5f, 0.6f});
     player->Body().SetGrounded(true);
     player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
     bool rehit = false;

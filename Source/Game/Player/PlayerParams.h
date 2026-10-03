@@ -150,6 +150,9 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_reboundApexHeight, "反動の高さ")
         NS_REFLECT_FIELD(m_reboundDistance, "反動の距離")
         NS_REFLECT_FIELD(m_centerHitReboundDistanceScale, "中心近くの当たりの反動の距離の倍率")
+        NS_REFLECT_FIELD(m_missReboundHeightRatio, "外れの反動の高さの割合")
+        NS_REFLECT_FIELD(m_missSlamBounce, "叩きつけた時の跳ね")
+        NS_REFLECT_FIELD(m_missBoxEdgeSharpness, "四角の角の鋭さ")
         NS_REFLECT_FIELD(m_launchDistance, "押し飛ばしの距離")
         NS_REFLECT_FIELD(m_launchMassExponent, "押し飛ばしの質量指数")
         NS_REFLECT_FIELD(m_launchApexHeight, "押し飛ばしの高さ")
@@ -248,6 +251,12 @@ namespace NS::Game::Player
         float m_reboundApexHeight = 1.15f;
         float m_reboundDistance = 0.575f;
         float m_centerHitReboundDistanceScale = 2.0f;
+        // 外れは浮かせず短く。見本の出発点 (真ん中 1.15 m に対して 0.35 m) の比
+        float m_missReboundHeightRatio = 0.3f;
+        // 下の縁の外れは地面へ叩きつけ、少し跳ねてこする。真下を向いた面で外れの高さの 4 割
+        float m_missSlamBounce = 0.4f;
+        // 箱の相手の面の読み方。見本の出発点 6 で、縁に沿った所は縁の向きへ真っすぐ、角の近くだけ斜めに逸れる
+        float m_missBoxEdgeSharpness = 6.0f;
         float m_launchDistance = 29.0f;
         float m_launchMassExponent = 0.35f;
         float m_launchApexHeight = 2.0f;

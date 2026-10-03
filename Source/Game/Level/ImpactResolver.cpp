@@ -646,6 +646,9 @@ namespace NS::Game::Level
         impactInput.awayDirection = NS::Core::Vector3{awayX, 0.0f, awayZ};
         impactInput.launchDirection = launchDir;
         impactInput.slamVelocity = velocity;
+        impactInput.faceU = judgement.u;
+        impactInput.faceV = judgement.v;
+        impactInput.bodyShape = judgement.bodyShape;
         const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, MakeImpactTuning(Tuning()));
         m_pendingTargetMass = mass;
 
@@ -1353,7 +1356,10 @@ namespace NS::Game::Level
                             .launchApexBandSpeed = params.m_launchApexBandSpeed,
                             .launchApexBandGravityScale = params.m_launchApexBandGravityScale,
                             .hitStopMaxSeconds = params.m_hitStopMaxSeconds,
-                            .fixedDelta = NS::Platform::FrameTimer::FixedDelta()};
+                            .fixedDelta = NS::Platform::FrameTimer::FixedDelta(),
+                            .missReboundHeightRatio = params.m_missReboundHeightRatio,
+                            .missSlamBounce = params.m_missSlamBounce,
+                            .missBoxEdgeSharpness = params.m_missBoxEdgeSharpness};
     }
 
     void ImpactResolver::ApplyRebound()
