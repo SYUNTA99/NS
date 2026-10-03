@@ -72,11 +72,13 @@ namespace NS::Obj
     void Body::SetCapsuleRadius(float radius) noexcept
     {
         m_radius = NonNegativeLength(radius, m_radius);
+        SyncBodySensor();
     }
 
     void Body::SetStandingHalfHeight(float halfHeight) noexcept
     {
         m_standingHalfHeight = NonNegativeLength(halfHeight, m_standingHalfHeight);
+        SyncBodySensor();
     }
 
     float Body::CapsuleHalfHeight() const noexcept

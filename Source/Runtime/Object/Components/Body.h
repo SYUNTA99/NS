@@ -57,8 +57,8 @@ namespace NS::Obj
         //! 当たりのカプセルの半径 (m)。欄「半径」の値で、球にしている間も変わらない
         [[nodiscard]] float CapsuleRadius() const noexcept { return m_radius; }
         //! @brief 当たりのカプセルの半径を置く
-        //! @details 負は 0 にし、有限でない値は捨てて元の値を残す。体のセンサーの寸法は次の
-        //! OnStart か SetSphereShape で揃う
+        //! @details 負は 0 にし、有限でない値は捨てて元の値を残す。OnStart の後なら体のセンサーの寸法も
+        //! その場で揃える
         //! @param[in] radius 半径 (m)
         void SetCapsuleRadius(float radius) noexcept;
         //! 今の当たりの円柱の半分の高さ。球にしていなければ StandingHalfHeight と同じ。
@@ -68,8 +68,8 @@ namespace NS::Obj
         //! 球にしている間も変わらないので、立ち姿の寸法はここから引く
         [[nodiscard]] float StandingHalfHeight() const noexcept { return m_standingHalfHeight; }
         //! @brief 立ち姿の円柱の半分の高さを置く
-        //! @details 負は 0 にし、有限でない値は捨てて元の値を残す。体のセンサーの寸法は次の
-        //! OnStart か SetSphereShape で揃う
+        //! @details 負は 0 にし、有限でない値は捨てて元の値を残す。OnStart の後なら体のセンサーの寸法も
+        //! その場で揃える
         //! @param[in] halfHeight 半分の高さ (m)
         void SetStandingHalfHeight(float halfHeight) noexcept;
 

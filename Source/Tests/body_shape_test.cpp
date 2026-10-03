@@ -1,5 +1,6 @@
 #include "Game/Player.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -82,6 +83,22 @@ TEST(BodyShape, PlayerArchetypeShapeLandsOnBody)
     ASSERT_NE(body, nullptr);
     EXPECT_FLOAT_EQ(body->CapsuleRadius(), 0.65f);
     EXPECT_FLOAT_EQ(body->StandingHalfHeight(), 0.5f);
+}
+
+TEST(BodyShape, BodySensorFollowsShapeEdits)
+{
+    // インスペクタで寸法を変えた時も、体のセンサーは移動と同じ形のまま
+    NS::Obj::Scene scene;
+    LoadPlayerScene(scene, nlohmann::json::object());
+    Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
+    ASSERT_NE(player, nullptr);
+    const NS::Obj::HitSensor* sensor = player->BodySensorPart();
+    ASSERT_NE(sensor, nullptr);
+
+    player->Body().SetCapsuleRadius(0.3f);
+    player->Body().SetStandingHalfHeight(0.8f);
+    EXPECT_FLOAT_EQ(sensor->Radius(), 0.3f);
+    EXPECT_FLOAT_EQ(sensor->HalfHeight(), 0.8f);
 }
 
 TEST(BodyShape, ShapeSurvivesSaveAndReload)
