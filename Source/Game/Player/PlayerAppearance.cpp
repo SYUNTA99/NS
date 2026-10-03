@@ -257,6 +257,10 @@ namespace NS::Game::Player
 
     void PlayerAppearance::WriteDrawScale() noexcept
     {
+        if (Owner() == nullptr)
+        {
+            return;
+        }
         NS::Obj::Model* renderer = Owner()->ModelPart();
         if (renderer == nullptr)
         {
