@@ -229,6 +229,16 @@ namespace NS::Game::Level
         NS_REFLECT_END_VALUE()
     };
 
+    //! @brief 自機以外の止め。始まりから長さのフレームの間、自機以外の世界 (置物・物理・エフェクトなど) を止める
+    //! @details 止める段は RunsWhileOthersHeld の表で決まる。自機・入力・カメラ・画面は回る。
+    //! 真ん中の触れる前に置き、世界が止まった中で自機だけが縮みながら突っ込む対比で当たりを予感させる
+    struct OthersStopEvent
+    {
+        static constexpr std::string_view k_Name = "OthersStop";
+        static constexpr std::string_view k_Label = "自機以外の止め";
+        static constexpr bool k_BeforeContact = true; //!< 予測した当たりの前に置く
+    };
+
     //! @brief 事象の種類ごとの値。種類を足す時はここへ型を足す
     using HitEventValue = std::variant<HitStopEvent,
                                        ShapeEvent,
@@ -242,7 +252,8 @@ namespace NS::Game::Level
                                        HitEffectEvent,
                                        FlightEffectEvent,
                                        GradualReleaseEvent,
-                                       CameraTraumaEvent>;
+                                       CameraTraumaEvent,
+                                       OthersStopEvent>;
 
     //! @brief タイムラインの 1 行。触れたフレームを 0 にしたフレーム数で、始まりと長さを持つ
     struct HitEvent

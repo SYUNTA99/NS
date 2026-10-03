@@ -191,6 +191,14 @@ namespace NS::Obj
         //! @param[in] shape 戻り方
         void StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept;
 
+        //! @brief 自機以外の世界を steps 歩のあいだ止める
+        //! @details 止めている間は、RunsWhileOthersHeld が偽の段を飛ばす。歩の途中で呼ぶと、その歩の残りの段から効き、
+        //! その歩も 1 歩と数える。今の残りより長い時だけ置き直し、0 は止めを解く。プレイを入れ直すと解ける
+        //! @param[in] steps 止める歩の数。0 以下で止めを解く
+        void HoldOthers(int steps) noexcept;
+        //! 自機以外の世界を止めている場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsHoldingOthers() const noexcept { return m_othersHeldSteps > 0; }
+
         //! @brief 描く補間の割合を返す
         //! @details 世界の速さが 1 未満の間は、前に世界を進めてからの溜めに、実時間の割合 × 速さを足す。
         //! 止めている間は 1 (同じフレームの絵が描くたびに揺れないように)
@@ -300,5 +308,6 @@ namespace NS::Obj
         float m_rampSeconds = 0.0f;              // 戻りの実時間の長さ (秒)
         float m_rampElapsed = 0.0f;              // 戻りを始めてからの実時間 (秒)
         Curve m_rampShape{};                     // 戻り方。点が無ければ直線
+        int m_othersHeldSteps = 0;               // 自機以外の世界を止める残りの歩数
     };
 } // namespace NS::Obj

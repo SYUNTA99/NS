@@ -220,7 +220,12 @@ namespace NS::Game::Level
         // breakStopSteps は貫通の当たりの止めのフレーム数で、0 以上なら止めの事象の長さの代わりに使う
         // 事前条件: 相手・反動と飛ばしの曲線を控え終えている
         // rows は events のそれぞれの、段のタイムラインのファイルの並びでの番号
-        void StartTimeline(std::vector<HitEvent> events, std::vector<std::size_t> rows, int breakStopSteps);
+        // startEarlyEvents が真なら、マイナスに置いた事象のうち検知のフレームより後まで続く物を、置いたフレームを
+        // 始まりにして今起こす。触れる前の時計を続けている時は、それらはもう始まっているので偽を渡す
+        void StartTimeline(std::vector<HitEvent> events,
+                           std::vector<std::size_t> rows,
+                           int breakStopSteps,
+                           bool startEarlyEvents);
 
         // 事象の種類ごとの受け持ち。std::visit で事象の値の種類から呼ぶ
         struct EventRunner;
@@ -284,6 +289,7 @@ namespace NS::Game::Level
         bool m_hasReboundEvent = false;                 // 走っているタイムラインに反動の事象があるか
         bool m_stopStarted = false;                     // 止めの事象が始まったか
         bool m_startedGradualRelease = false;           // 段階的な明けで世界を遅くしたか。打ち切りで普段の速さへ戻す
+        bool m_heldOthers = false;                      // 自機以外の止めを置いたか。打ち切りで解く
         int m_stopEnd = 0;                              // 止めの事象の最後のフレーム
         int m_breakStopSteps = -1;                      // 貫通の当たりの止めのフレーム数。負なら止めの事象の長さのまま
         ShapeEvent m_shape{};                           // 走っている形の事象

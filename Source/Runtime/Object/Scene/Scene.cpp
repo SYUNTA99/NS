@@ -133,6 +133,7 @@ namespace NS::Obj
         m_worldSpeed = 1.0f;
         m_worldCarry = 0.0f;
         m_rampActive = false;
+        m_othersHeldSteps = 0;
     }
 
     void Scene::StepSimulation() noexcept
@@ -150,6 +151,16 @@ namespace NS::Obj
         }
         m_worldSpeed = NS::Core::Clamp(speed, 0.0f, 1.0f);
         m_rampActive = false;
+    }
+
+    void Scene::HoldOthers(int steps) noexcept
+    {
+        if (steps <= 0)
+        {
+            m_othersHeldSteps = 0;
+            return;
+        }
+        m_othersHeldSteps = std::max(m_othersHeldSteps, steps);
     }
 
     void Scene::StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept
@@ -449,6 +460,11 @@ namespace NS::Obj
             {
                 continue;
             }
+            // 止めは自機の段で置かれるので、毎段読み直してその歩の残りの段から効かせる
+            if (m_othersHeldSteps > 0 && !RunsWhileOthersHeld(phase))
+            {
+                continue;
+            }
             if (phase == UpdatePhase::Physics)
             {
                 m_physicsScene.Update(NS::Platform::FrameTimer::FixedDelta());
@@ -457,6 +473,11 @@ namespace NS::Obj
             m_objects.ExecutePhase(phase);
         }
         m_objects.RemoveKilledTransients();
+        // 止めは世界を進めた歩で数える。遅い世界でも、止めた歩の数だけ自機が進む
+        if (worldStep && m_othersHeldSteps > 0)
+        {
+            m_othersHeldSteps -= 1;
+        }
         // この歩は始めた時の速さで回し、次の歩の速さを書く
         AdvanceWorldSpeedRamp();
     }

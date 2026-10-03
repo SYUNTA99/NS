@@ -717,7 +717,7 @@ namespace NS::Game::Level
             LaunchTarget();
             return true;
         }
-        StartTimeline(std::move(events), std::move(rows), breakStopSteps);
+        StartTimeline(std::move(events), std::move(rows), breakStopSteps, !continuesBeforeContact);
         return true;
     }
 
@@ -848,6 +848,18 @@ namespace NS::Game::Level
             resolver.m_startedGradualRelease = true;
         }
 
+        void operator()(const OthersStopEvent&) const
+        {
+            NS::Obj::Scene* scene = resolver.Owner()->OwningScene();
+            if (scene == nullptr)
+            {
+                return;
+            }
+            // 止めの数えは世界の持ち主が進める。ここは始めるだけ
+            scene->HoldOthers(event.length);
+            resolver.m_heldOthers = true;
+        }
+
         void operator()(const FlightEffectEvent&) const
         {
             if (resolver.m_player != nullptr)
@@ -857,7 +869,10 @@ namespace NS::Game::Level
         }
     };
 
-    void ImpactResolver::StartTimeline(std::vector<HitEvent> events, std::vector<std::size_t> rows, int breakStopSteps)
+    void ImpactResolver::StartTimeline(std::vector<HitEvent> events,
+                                       std::vector<std::size_t> rows,
+                                       int breakStopSteps,
+                                       bool startEarlyEvents)
     {
         m_events = std::move(events);
         m_eventRows = std::move(rows);
@@ -882,6 +897,23 @@ namespace NS::Game::Level
             }
         }
         m_clockRunning = true;
+        // 触れる前の時計を回せなかった当たり (接した所から放した時・予測より先に触れた時) でも、触れた後まで続く
+        // 形を落とすと潰れごと消える。触れる前の分は飛ばし、置いたフレームを始まりにして途中から起こす
+        if (startEarlyEvents)
+        {
+            for (std::size_t i = 0; i < m_events.size(); ++i)
+            {
+                const HitEvent& event = m_events[i];
+                if (event.start < 0 && event.start + std::max(event.length, 1) > 0 &&
+                    CanStartBeforeContact(event.value))
+                {
+                    m_clock = event.start;
+                    m_rowsStartedThisStep.push_back(m_eventRows[i]);
+                    std::visit(EventRunner{.resolver = *this, .event = event}, event.value);
+                }
+            }
+            m_clock = 0;
+        }
         AdvanceTimeline();
     }
 
@@ -998,6 +1030,15 @@ namespace NS::Game::Level
             if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
             {
                 Owner()->OwningScene()->SetWorldSpeed(1.0f);
+            }
+        }
+        // 外れた予測の止めを残すと、当たらないのに世界が止まったままになる
+        if (m_heldOthers)
+        {
+            m_heldOthers = false;
+            if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
+            {
+                Owner()->OwningScene()->HoldOthers(0);
             }
         }
         m_beforeContact = false;

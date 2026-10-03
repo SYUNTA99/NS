@@ -9,8 +9,11 @@
 #include "Runtime/Object/Components/CameraModifier.h"
 #include "Runtime/Object/Components/HitReaction.h"
 #include "Runtime/Object/Components/TransformComponent.h"
+#include "Runtime/Object/ITickable.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Object/UpdatePhase.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Platform/Input.h"
 #include "Tests/TestHitTimelines.h"
 #include "Tests/TestViewCamera.h"
@@ -674,4 +677,136 @@ TEST(ImpactTimelineClock, AMissedPredictionStopsTheEarlyEvents)
     EXPECT_FALSE(player->Resolver().IsShapeAnimating());
     EXPECT_FLOAT_EQ(player->Resolver().ShapeFactors().y, 1.0f);
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
+}
+
+namespace
+{
+    // 自機以外の段で回った歩を数える
+    class CountingTicker final : public NS::Obj::ITickable
+    {
+    public:
+        void OnTick() override { ++ticks; }
+        int ticks = 0;
+    };
+
+    // 縮み [-4, 4)・自機以外の止め [-2, 0)・止め [1, 2]・明け 3 に反動と相手を飛ばす
+    HitTimeline MakeOthersStopTimeline()
+    {
+        ShapeEvent shrink;
+        shrink.along.count = 1;
+        shrink.along.keys[0] = NS::Obj::Curve::Key{0.0f, 0.9f};
+        HitTimeline timeline;
+        timeline.events = {{shrink, -4, 8, HitDirection::Any},
+                           {OthersStopEvent{}, -2, 2, HitDirection::Any},
+                           {HitStopEvent{}, 1, 2, HitDirection::Any},
+                           {ReboundEvent{}, 3, 1, HitDirection::Any},
+                           {TargetLaunchEvent{}, 3, 1, HitDirection::Any}};
+        return timeline;
+    }
+
+    // シーンを 1 歩ずつ回して突進を当て、各歩の「自機以外が回ったか」と自機の水平の進みを並べる。最後の要素が検知の歩
+    struct OthersStep
+    {
+        bool othersRan = false;
+        float playerAdvance = 0.0f;
+    };
+
+    std::vector<OthersStep> RunUntilDetection(NS::Obj::Scene& scene, Player& player, CountingTicker& others)
+    {
+        std::vector<OthersStep> steps;
+        player.RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        for (int frame = 0; frame < 60 && player.Resolver().LastImpact().sequence == 0; ++frame)
+        {
+            const int before = others.ticks;
+            const float z = player.Root().Position().z;
+            scene.OnUpdate();
+            steps.push_back(
+                OthersStep{.othersRan = others.ticks != before, .playerAdvance = player.Root().Position().z - z});
+        }
+        return steps;
+    }
+} // namespace
+
+// impact-feel-pass R-3-1: 真ん中で触れる 2 フレーム前から触れるまで、自機以外の世界が進まず、自機は突進の速さのまま進む
+TEST(ImpactTimelineClock, OthersStopHoldsTheWorldButNotThePlayerBeforeContact)
+{
+    const ScopedHitTimelineDirectory directory("OthersStop");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeOthersStopTimeline());
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 6.0f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    CountingTicker others;
+    scene.Objects().AddTicker(&others, NS::Obj::UpdatePhase::Triggers);
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        scene.OnUpdate();
+    }
+    const std::vector<OthersStep> steps = RunUntilDetection(scene, *player, others);
+    scene.Objects().RemoveTicker(&others);
+    ASSERT_GE(steps.size(), 5u);
+    ASSERT_NE(player->Resolver().LastImpact().sequence, 0u);
+    const std::size_t detect = steps.size() - 1;
+    const float slamStep = 20.0f * NS::Platform::FrameTimer::FixedDelta();
+    for (std::size_t i = 0; i <= detect; ++i)
+    {
+        SCOPED_TRACE(static_cast<int>(i) - static_cast<int>(detect));
+        const bool held = i + 2 == detect || i + 1 == detect;
+        EXPECT_EQ(steps[i].othersRan, !held);
+        if (held)
+        {
+            EXPECT_NEAR(steps[i].playerAdvance, slamStep, slamStep * 0.05f);
+        }
+    }
+    EXPECT_FALSE(scene.IsHoldingOthers());
+}
+
+// 外れの予測では止めない。外れのタイムラインに触れる前の事象を置かなければ、線の先が外れの相手でも世界は回る
+TEST(ImpactTimelineClock, OthersStopDoesNotRunForAMissPrediction)
+{
+    const ScopedHitTimelineDirectory directory("OthersStopMiss");
+    HitTimelineLibrary::Get().Set("center", MakeOthersStopTimeline());
+    HitTimelineLibrary::Get().Set("miss", MakeLegacyHitTimeline(4));
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.75f, 6.0f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    CountingTicker others;
+    scene.Objects().AddTicker(&others, NS::Obj::UpdatePhase::Triggers);
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        scene.OnUpdate();
+    }
+    const std::vector<OthersStep> steps = RunUntilDetection(scene, *player, others);
+    scene.Objects().RemoveTicker(&others);
+    ASSERT_NE(player->Resolver().LastImpact().sequence, 0u);
+    ASSERT_EQ(player->Resolver().LastImpact().tier, HitTier::Wide);
+    for (const OthersStep& step : steps)
+    {
+        EXPECT_TRUE(step.othersRan);
+    }
+}
+
+// 予測した相手が線から外れたら、自機以外の止めも解く
+TEST(ImpactTimelineClock, AMissedPredictionReleasesTheOthers)
+{
+    const ScopedHitTimelineDirectory directory("OthersStopDrop");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeOthersStopTimeline());
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 6.0f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        scene.OnUpdate();
+    }
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    for (int frame = 0; frame < 60 && !scene.IsHoldingOthers(); ++frame)
+    {
+        scene.OnUpdate();
+    }
+    ASSERT_TRUE(scene.IsHoldingOthers());
+    ASSERT_EQ(player->Resolver().LastImpact().sequence, 0u);
+    rock->Root().SetPosition(rock->Root().Position() + NS::Core::Vector3{10.0f, 0.0f, 0.0f});
+    scene.OnUpdate();
+    EXPECT_FALSE(scene.IsHoldingOthers());
+    EXPECT_FALSE(player->Resolver().IsShapeAnimating());
 }

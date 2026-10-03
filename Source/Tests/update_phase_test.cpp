@@ -340,3 +340,57 @@ TEST(WorldSpeed, SettingTheSpeedStopsTheRamp)
     scene.OnUpdate();
     EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
 }
+
+TEST(OthersHold, HoldingOthersRunsOnlyThePlayerSideForItsSteps)
+{
+    // impact-feel-pass R-3-1: 真ん中で触れる前の数フレーム、自機以外の世界を止める。自機・入力・カメラ・UI は回す
+    NS::Obj::Scene scene;
+    std::vector<std::string> log;
+    scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Player, log, "player");
+    scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Enemy, log, "enemy");
+    scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Triggers, log, "triggers");
+    scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Camera, log, "camera");
+    PhaseTicker physics(log, "physics");
+    PhaseTicker sensors(log, "sensors");
+    PhaseTicker course(log, "course");
+    PhaseTicker ui(log, "ui");
+    PhaseTicker effects(log, "effects");
+    scene.Objects().AddTicker(&physics, NS::Obj::UpdatePhase::Physics);
+    scene.Objects().AddTicker(&sensors, NS::Obj::UpdatePhase::Sensors);
+    scene.Objects().AddTicker(&course, NS::Obj::UpdatePhase::Course);
+    scene.Objects().AddTicker(&ui, NS::Obj::UpdatePhase::UI);
+    scene.Objects().AddTicker(&effects, NS::Obj::UpdatePhase::Effects);
+    scene.HoldOthers(2);
+    EXPECT_TRUE(scene.IsHoldingOthers());
+
+    for (int i = 0; i < 3; ++i)
+    {
+        scene.OnUpdate();
+    }
+
+    EXPECT_FALSE(scene.IsHoldingOthers());
+    for (const char* label : {"input", "player", "camera", "ui", "render-prep"})
+    {
+        EXPECT_EQ(std::count(log.begin(), log.end(), std::string{label}), 3) << label;
+    }
+    for (const char* label : {"enemy", "physics", "sensors", "triggers", "course", "effects"})
+    {
+        EXPECT_EQ(std::count(log.begin(), log.end(), std::string{label}), 1) << label;
+    }
+    scene.Objects().RemoveTicker(&physics);
+    scene.Objects().RemoveTicker(&sensors);
+    scene.Objects().RemoveTicker(&course);
+    scene.Objects().RemoveTicker(&ui);
+    scene.Objects().RemoveTicker(&effects);
+}
+
+TEST(OthersHold, ZeroStepsAndRestartingThePlayReleaseTheHold)
+{
+    NS::Obj::Scene scene;
+    scene.HoldOthers(3);
+    scene.HoldOthers(0);
+    EXPECT_FALSE(scene.IsHoldingOthers());
+    scene.HoldOthers(3);
+    scene.SetSimulationEnabled(true);
+    EXPECT_FALSE(scene.IsHoldingOthers());
+}

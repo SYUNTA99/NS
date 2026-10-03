@@ -54,4 +54,22 @@ namespace NS::Obj
             return PhaseClock::World;
         }
     }
+
+    //! @brief 自機以外の止め (Scene::HoldOthers) の間も段を回す場合 true、止める場合は false
+    //! @details 表はここ 1 か所。回すのは自機と、自機を見せる側 (入力・カメラ・UI・描く支度)。
+    //! 止めるのは置物・敵・物理・判定・コースの進行・エフェクト。カメラまで止めると、進み続ける自機が画面の中で動いて見える
+    [[nodiscard]] constexpr bool RunsWhileOthersHeld(UpdatePhase phase) noexcept
+    {
+        switch (phase)
+        {
+        case UpdatePhase::Input:
+        case UpdatePhase::Player:
+        case UpdatePhase::Camera:
+        case UpdatePhase::UI:
+        case UpdatePhase::RenderPrep:
+            return true;
+        default:
+            return false;
+        }
+    }
 } // namespace NS::Obj

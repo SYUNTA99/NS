@@ -1,11 +1,14 @@
 #include "Game/Level/HitTimeline.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
+#include "Runtime/Platform/FileSystem.h"
 #include "Tests/TestHitTimelines.h"
 
 #include <gtest/gtest.h>
 
+#include <optional>
 #include <string>
 #include <string_view>
+#include <variant>
 
 // 当たりのタイムラインのファイルの形・読み込みと保存の往復・壊れたファイルの扱いを縛る
 
@@ -166,4 +169,67 @@ TEST(HitTimeline, LibraryHasNoTimelineForAMissingOrBrokenFile)
     EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(NS::Game::Level::HitTier::Wide), nullptr);
     EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(static_cast<NS::Game::Level::HitTier>(7)), nullptr);
     EXPECT_EQ(HitTimelineLibrary::Get().Find("graze"), nullptr);
+}
+
+namespace
+{
+    // 出荷の Assets/HitTimelines/<name>.json を読む。読めなければ空
+    std::optional<HitTimeline> ReadShippedTimeline(std::string_view name)
+    {
+        using NS::Platform::FileSystem;
+        const std::string path = FileSystem::Combine(
+            FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "Assets"), "HitTimelines"),
+            std::string{name} + ".json");
+        const std::optional<std::string> text = FileSystem::ReadAllText(path);
+        if (!text.has_value())
+        {
+            return std::nullopt;
+        }
+        std::string error;
+        return NS::Game::Level::ParseHitTimeline(nlohmann::json::parse(*text), error);
+    }
+} // namespace
+
+// impact-feel-pass R-3-1: 真ん中は触れる 6 フレーム前から突進の向きに縮み、触れた次のフレームにもっと深く潰れる。
+// 触れる 2 フレーム前から触れるまで自機以外を止める。外れは触れる前に何も起こさない
+TEST(HitTimeline, ShippedCenterShrinksBeforeContactAndMissDoesNot)
+{
+    const std::optional<HitTimeline> center = ReadShippedTimeline("center");
+    ASSERT_TRUE(center.has_value());
+    const NS::Game::Level::HitEvent* shape = nullptr;
+    const NS::Game::Level::HitEvent* othersStop = nullptr;
+    for (const NS::Game::Level::HitEvent& event : center->events)
+    {
+        if (std::holds_alternative<NS::Game::Level::ShapeEvent>(event.value))
+        {
+            shape = &event;
+        }
+        if (std::holds_alternative<NS::Game::Level::OthersStopEvent>(event.value))
+        {
+            othersStop = &event;
+        }
+    }
+    ASSERT_NE(shape, nullptr);
+    ASSERT_NE(othersStop, nullptr);
+    EXPECT_EQ(shape->start, -6);
+    EXPECT_EQ(othersStop->start, -2);
+    EXPECT_EQ(othersStop->length, 2);
+    const NS::Obj::Curve& along = std::get<NS::Game::Level::ShapeEvent>(shape->value).along;
+    // 横軸は形の始まり (-6) からのフレーム数
+    const float atStart = along.Evaluate(0.0f);
+    const float halfway = along.Evaluate(3.0f);
+    const float atContact = along.Evaluate(6.0f);
+    const float atStopHead = along.Evaluate(7.0f);
+    EXPECT_FLOAT_EQ(atStart, 1.0f);
+    // 初めはわずかで、触れる直前にぐっと縮む
+    EXPECT_LT(1.0f - halfway, (1.0f - atContact) * 0.5f);
+    EXPECT_NEAR(atContact, 0.85f, 1.0e-4f);
+    EXPECT_LT(atStopHead, atContact);
+
+    const std::optional<HitTimeline> miss = ReadShippedTimeline("miss");
+    ASSERT_TRUE(miss.has_value());
+    for (const NS::Game::Level::HitEvent& event : miss->events)
+    {
+        EXPECT_GE(event.start, 0) << NS::Game::Level::HitEventTypeName(event.value);
+    }
 }
