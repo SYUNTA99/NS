@@ -72,7 +72,7 @@ TEST(ImpactOutcome, CenterHitStretchesReboundDistanceAndHitStopButNotHeight)
 }
 
 // 段が配分に効くのは中心近くの止めと反動の距離の倍率だけ。呼び手が 2 つの倍率を 1 にすれば、
-// 中心近くと記録する当たりも大きな外れと同じ配分になる。ボタン未搭載の当たりはこの形で段の倍率を外す
+// 中心近くと記録する当たりも大きな外れと同じ配分になる
 TEST(ImpactOutcome, TiersDifferOnlyByTheCenterScales)
 {
     ImpactTuning tuning = DefaultTuning();

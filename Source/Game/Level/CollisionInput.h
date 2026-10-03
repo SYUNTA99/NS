@@ -61,12 +61,6 @@ namespace NS::Game::Level
         //! 構えの縮みが残っていれば元の形へ戻し、自機へ渡した押しの印を戻して丸まりを解く
         void OnEndPlay() override;
 
-        //! 溜め量 0..1 をチャージ倍率カーブで威力の倍率にする。非有限の入力とカーブの 0 以下の値は 1 とみなす
-        [[nodiscard]] float ChargeFactorFor(float charge01) const noexcept;
-
-        //! 溜め中に最高速へ掛ける倍率を返す。1 − チャージ減速率を 0..1 に丸める
-        [[nodiscard]] float ChargingSpeedScale() const noexcept;
-
         //! チャージ中の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsCharging() const noexcept { return m_judge.IsCharging(); }
 

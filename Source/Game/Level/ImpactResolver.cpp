@@ -1,6 +1,5 @@
 ﻿#include "Game/Level/ImpactResolver.h"
 
-#include "Game/Level/CollisionInput.h"
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/LaunchArc.h"
@@ -184,7 +183,6 @@ namespace NS::Game::Level
         {
             m_player = ownerPlayer;
             m_body = &ownerPlayer->Body();
-            m_collisionInput = &ownerPlayer->ChargeControl();
             m_hitReaction = ownerPlayer->HitReactionPart();
         }
     }
@@ -500,20 +498,11 @@ namespace NS::Game::Level
         const HitFaceJudgement judgement =
             JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, m_body->CapsuleRadius());
         const float offset01 = judgement.offset01;
-        // ボタン未搭載は係数 1.0 の素通し。段は中心近くと記録するが、段の返りと止めと反動の距離の倍率は掛けない
-        // 外し方は段の種類に混ぜず、下の tiered で分ける
-        float chargeFactor = 1.0f;
-        float positionFactor = 1.0f;
-        HitTier tier = HitTier::Center;
-        const bool tiered = m_collisionInput != nullptr;
-        if (tiered)
-        {
-            chargeFactor = m_collisionInput->ChargeFactorFor(charge01);
-            positionFactor = judgement.powerScale;
-            tier = judgement.tier;
-        }
+        const float chargeFactor = Tuning().ChargeFactorFor(charge01);
+        const float positionFactor = judgement.powerScale;
+        const HitTier tier = judgement.tier;
         // 読むのは記録と WasCenterHit とログだけ。配分と返りは段で分ける
-        const bool centerHit = tiered && tier == HitTier::Center;
+        const bool centerHit = tier == HitTier::Center;
         // 最終威力 = チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
         const float power = chargeFactor * positionFactor;
         m_lastCharge01 = charge01;
@@ -555,13 +544,7 @@ namespace NS::Game::Level
         impactInput.awayDirection = NS::Core::Vector3{awayX, 0.0f, awayZ};
         impactInput.launchDirection = launchDir;
         impactInput.slamVelocity = velocity;
-        ImpactTuning impactTuning = MakeImpactTuning(Tuning());
-        if (!tiered)
-        {
-            impactTuning.centerHitStopScale = 1.0f;
-            impactTuning.centerHitReboundDistanceScale = 1.0f;
-        }
-        const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, impactTuning);
+        const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, MakeImpactTuning(Tuning()));
         m_pendingShakeAmplitude = outcome.shakeAmplitude;
 
         const float reboundScale = outcome.reboundScale;
@@ -597,7 +580,7 @@ namespace NS::Game::Level
                         centerHit);
         }
 
-        PrepareHitReturns(tier, tiered, power, outcome.massFactor, offset01, stopSteps);
+        PrepareHitReturns(tier, power, outcome.massFactor, offset01, stopSteps);
 
         // 止めるフレーム数が決まってから控える。止めが 0 フレームの当たりも残すので、下の return より手前に置く
         m_lastImpact.sequence += 1;
@@ -730,17 +713,11 @@ namespace NS::Game::Level
         return PlainReturns(swing, stopSteps);
     }
 
-    void ImpactResolver::PrepareHitReturns(
-        HitTier tier, bool tiered, float power, float massFactor, float offset01, int stopSteps)
+    void ImpactResolver::PrepareHitReturns(HitTier tier, float power, float massFactor, float offset01, int stopSteps)
     {
         // 最初の振れの大きさは全段で同じ式。反発と同じ質量因子を掛け、段の倍率は表の行が掛ける
         const float swing = Tuning().m_cameraShakeScale * power * massFactor;
-        // 段の無い台は段の表を引かず、白と寄りと傾きと振動を出さない
-        TierReturns returns = PlainReturns(swing, stopSteps);
-        if (tiered)
-        {
-            returns = TierReturnsFor(tier, swing, stopSteps);
-        }
+        const TierReturns returns = TierReturnsFor(tier, swing, stopSteps);
 
         m_pendingFlashSteps = returns.flashSteps;
         m_pendingShake = returns.shake;

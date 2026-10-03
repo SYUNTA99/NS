@@ -29,8 +29,6 @@ namespace NS::Obj
 
 namespace NS::Game::Level
 {
-    class CollisionInput;
-
     //! @brief 配分の計算 ComputeImpactOutcome へ渡す調整値を、params の欄から全部入れて作る
     //! @details ImpactTuning の値の正は PlayerParams 1 つで、ここがその写し先の組み立てを 1 か所で持つ
     //! @param[in] params 自機の調整値の欄
@@ -46,14 +44,14 @@ namespace NS::Game::Level
         float charge01 = 0.0f;
         float positionFactor = 0.0f;
         float offset01 = 0.0f;          //!< 面の判定の横ずれ。相手の半幅と自機の半径の和で割った 0..1
-        HitTier tier = HitTier::Center; //!< 当たりの段。CollisionInput が無い時は Center だが段の返りと倍率は掛けない
+        HitTier tier = HitTier::Center; //!< 当たりの段。相手の面の判定で決まる
         float cameraShake = 0.0f;       //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
         int flashStart = 0;             //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
         float zoomStart = 1.0f;         //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
         float rollStart = 0.0f; //!< 傾きの始めの値 (度)。正は画面の上端をカメラの右へ倒す向き。傾きの無い当たりは 0
         NS::Platform::GamepadVibration padStart; //!< パッドの振動の始めの値。振動の無い当たりは 0
         int hitStopSteps = 0;
-        bool centerHit = false; //!< 段が Center で段の返りを掛けた場合 true。CollisionInput が無い時は false
+        bool centerHit = false; //!< 段が Center の場合 true
         bool broke = false;
         NS::Core::Vector3 selfVelocity; //!< 明けに自機が持つ速度。反動は初速、貫通は減速した突進の速度。単位は m/s
         // 反動の頂点の高さは押し飛ばしの当たりだけが埋める。貫通の当たりは反動しないので 0
@@ -103,7 +101,7 @@ namespace NS::Game::Level
     //! 衝突の瞬間は自機を数固定ステップ止め、止めの頭に MsgTackleFreeze、明けに MsgTackleRelease を相手へ送る
     //! 相手が食い込み・縮み・飛ぶ・壊れるかは相手が決める。相手の部品は触らない
     //! 白の光・カメラの揺れと寄り・パッドの振動は同居する HitReaction へ組んで渡す
-    //! 依存: NS::Obj::Body, CollisionInput, HitTier, NS::Obj::HitSensor, NS::Obj::HitReaction
+    //! 依存: NS::Obj::Body, PlayerParams, HitTier, NS::Obj::HitSensor, NS::Obj::HitReaction
     class ImpactResolver : public NS::Obj::Component
     {
     public:
@@ -205,7 +203,8 @@ namespace NS::Game::Level
             NS::Obj::HitPadVibration pad;
         };
 
-        // 段の返りを掛けない当たりの返り。縦だけの揺れを止めのフレーム数で収め、白・寄り・傾き・振動は無い
+        // 縦だけの揺れを止めのフレーム数で収める返り。白・寄り・傾き・振動は無い。TierReturnsFor の Center
+        // 行と段の外の値が使う
         [[nodiscard]] static TierReturns PlainReturns(float swing, int stopSteps) noexcept;
 
         // 段ごとに 1 行の表から返りを組む。段を足したら行を足す
@@ -214,7 +213,7 @@ namespace NS::Game::Level
 
         // 当たりの返り (白・揺れ・寄りと傾き・振動) を段から組んで控え、記録へ始めの値を書く。検知のフレームに呼ぶ
         // 事前条件: 反動の向き・相手の飛ぶ向き・相手の番号と位置を控え終えている
-        void PrepareHitReturns(HitTier tier, bool tiered, float power, float massFactor, float offset01, int stopSteps);
+        void PrepareHitReturns(HitTier tier, float power, float massFactor, float offset01, int stopSteps);
 
         // 控えた当たりの返りを同居する HitReaction で始める。前の当たりの返りが残っていても、控えた値で始め直す
         void StartHitReturns();
@@ -272,9 +271,8 @@ namespace NS::Game::Level
         NS::Core::Vector3 m_observedVelocity{};
         bool m_hasObservedTarget = false;
         bool m_stateReady = false;
-        ::Player* m_player = nullptr;    // 突進と反動の技の呼び先。非所有
-        NS::Obj::Body* m_body = nullptr; // 同じ配置物の身体。非所有
-        CollisionInput* m_collisionInput = nullptr;
+        ::Player* m_player = nullptr;                  // 突進と反動の技の呼び先。非所有
+        NS::Obj::Body* m_body = nullptr;               // 同じ配置物の身体。非所有
         NS::Obj::HitReaction* m_hitReaction = nullptr; // 同じ配置物の当たりの演出。非所有
     };
 } // namespace NS::Game::Level

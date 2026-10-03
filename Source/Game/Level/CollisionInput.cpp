@@ -165,7 +165,7 @@ namespace NS::Game::Level
             float scale = 1.0f;
             if (m_judge.IsCharging())
             {
-                scale = ChargingSpeedScale();
+                scale = Tuning().ChargingSpeedScale();
             }
             m_player->SetMaxSpeedScale(scale);
         }
@@ -309,28 +309,6 @@ namespace NS::Game::Level
                                    color);
     }
 #endif
-
-    float CollisionInput::ChargeFactorFor(float charge01) const noexcept
-    {
-        if (!std::isfinite(charge01))
-        {
-            return 1.0f;
-        }
-        const float clamped = NS::Core::Clamp(charge01, 0.0f, 1.0f);
-        const float factor = Tuning().m_chargeFactorCurve.Evaluate(clamped);
-        // Inspector で点を全部消すと Evaluate が 0 を返して威力が消えるため、0 以下は 1 とみなす
-        if (!(factor > 0.0f))
-        {
-            return 1.0f;
-        }
-        return factor;
-    }
-
-    float CollisionInput::ChargingSpeedScale() const noexcept
-    {
-        // 減速率の欄は非有限の書き込みを捨てるので、ここへ来る値は有限。Clamp だけで 0..1 に収まる
-        return NS::Core::Clamp(1.0f - Tuning().m_chargeSlowRate, 0.0f, 1.0f);
-    }
 
     NS_CLASS(CollisionInput)
 } // namespace NS::Game::Level
