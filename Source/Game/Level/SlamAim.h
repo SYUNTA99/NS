@@ -15,7 +15,7 @@ namespace NS::Game::Level
     struct AimLine
     {
         NS::Core::Vector3 origin;    //!< 線を引き始める自機の位置 (配置物の根)。世界座標
-        NS::Core::Vector3 direction; //!< シーンの実カメラの正面の水平の向き。正規化済みで y は 0
+        NS::Core::Vector3 direction; //!< カメラの管理役の ViewPose から作った水平の前。正規化済みで y は 0
         float length = 0.0f;         //!< 線に沿って突進が止まる所までの距離。欄「突進距離」の値で、単位は m
         //! 溜めて放つ瞬間の縦の速さ (m/s)。上が正。狙う相手の SlamLineTarget::launchVerticalSpeed で、相手が無ければ 0
         float launchVerticalSpeed = 0.0f;

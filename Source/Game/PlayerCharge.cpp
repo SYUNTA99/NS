@@ -5,8 +5,7 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/CameraComponent.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Object/IUse/IUseCamera.h"
 
 #include <algorithm>
 #include <cmath>
@@ -78,21 +77,12 @@ void Player::ObserveCharge(bool held)
     {
         return;
     }
-    NS::Obj::Scene* scene = OwningScene();
-    if (scene == nullptr)
+    // 向きは効果を掛ける前の遊びの視点から読む。描画の割合と実カメラに依らない
+    if (GetCameraManager() == nullptr)
     {
         return;
     }
-    const NS::Obj::CameraComponent* camera = scene->MainCamera();
-    if (camera == nullptr)
-    {
-        return;
-    }
-    NS::Core::Vector3 direction{};
-    if (!NS::Core::TryNormalizeHorizontal(camera->ForwardHorizontal(), direction))
-    {
-        return;
-    }
+    const NS::Core::Vector3 direction = NS::Obj::CameraForwardHorizontal(*this);
     if (!std::isfinite(direction.x) || !std::isfinite(direction.z))
     {
         return;

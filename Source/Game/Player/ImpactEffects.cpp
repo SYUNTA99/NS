@@ -780,7 +780,8 @@ namespace NS::Game::Player
 
     std::optional<Vector3> ImpactEffects::CameraPosition() const
     {
-        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::ComposeCameraPose(*Owner(), 1.0f);
+        // 揺れを掛ける前の位置。輪と尾は世界に置く物なので、揺れの間に向きが震えない
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*Owner());
         if (!pose.has_value())
         {
             return std::nullopt;

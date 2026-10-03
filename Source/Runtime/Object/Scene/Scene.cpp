@@ -391,8 +391,6 @@ namespace NS::Obj
         }
         // 世界が実時間で進まない間は、前の固定フレームからの経過の割合に意味が無い
         // 描く度に割合が変わると、同じフレームの絵が揺れる
-        // 実カメラの姿勢もここで決まり、次のフレームの狙いの向きが読む
-        // 1 フレームずつ進める走行が、走るたびに割れないようにする
         float alpha = NS::Platform::FrameTimer::Alpha();
         if (!m_simulationEnabled || m_simulationPaused)
         {

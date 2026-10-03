@@ -7,6 +7,7 @@
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Clock.h"
+#include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
@@ -210,6 +211,38 @@ TEST(PlayerChargeSequence, ChargedReleaseUsesTheLastHeldAimBeforeClearingIt)
     Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
+    TestViewCamera* camera = PlaceViewCamera(scene, NS::Core::Vector3{}, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    ASSERT_NE(camera, nullptr);
+    for (int frame = 0; frame < FramesFor(0.2f); ++frame)
+    {
+        player->Update(true);
+    }
+    ASSERT_TRUE(player->ChargeJudge().IsCharging());
+    NS::Game::Level::AimLine aim{};
+    ASSERT_TRUE(player->TryGetAimLine(aim));
+    EXPECT_FLOAT_EQ(aim.direction.z, 1.0f);
+    camera->SetPose(NS::Core::Vector3{}, NS::Core::Vector3{1.0f, 0.0f, 0.0f});
+    player->Update(false);
+    EXPECT_FALSE(player->TryGetAimLine(aim));
+    EXPECT_TRUE(player->IsBodySlamming());
+    EXPECT_FLOAT_EQ(player->BodySlamDirection().x, 0.0f);
+    EXPECT_FLOAT_EQ(player->BodySlamDirection().z, 1.0f);
+}
+
+// 狙いの線は遊びの視点 (仮想カメラの合成) に沿う。描画が書いた実カメラの向きは読まない
+TEST(PlayerChargeSequence, AimLineFollowsTheViewCameraNotTheDrawnCamera)
+{
+    NS::Obj::Scene scene;
+    nlohmann::json doc = NS::Obj::MakeSceneJson();
+    nlohmann::json entry = NS::Obj::MakeObjectJson();
+    NS::Obj::SetObjectJsonClass(entry, "Player");
+    NS::Obj::SetObjectJsonId(entry, 1);
+    NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
+    scene.LoadJson(doc);
+    Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
+    ASSERT_NE(player, nullptr);
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
+    ASSERT_NE(PlaceViewCamera(scene, NS::Core::Vector3{-5.0f, 0.0f, 0.0f}, NS::Core::Vector3{}), nullptr);
     NS::Obj::CameraComponent* camera = scene.MainCamera();
     ASSERT_NE(camera, nullptr);
     camera->SetPosition(NS::Core::Vector3{});
@@ -219,13 +252,9 @@ TEST(PlayerChargeSequence, ChargedReleaseUsesTheLastHeldAimBeforeClearingIt)
         player->Update(true);
     }
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
+
     NS::Game::Level::AimLine aim{};
     ASSERT_TRUE(player->TryGetAimLine(aim));
-    EXPECT_FLOAT_EQ(aim.direction.z, 1.0f);
-    camera->SetTarget(NS::Core::Vector3{1.0f, 0.0f, 0.0f});
-    player->Update(false);
-    EXPECT_FALSE(player->TryGetAimLine(aim));
-    EXPECT_TRUE(player->IsBodySlamming());
-    EXPECT_FLOAT_EQ(player->BodySlamDirection().x, 0.0f);
-    EXPECT_FLOAT_EQ(player->BodySlamDirection().z, 1.0f);
+    EXPECT_FLOAT_EQ(aim.direction.x, 1.0f);
+    EXPECT_FLOAT_EQ(aim.direction.z, 0.0f);
 }

@@ -6,11 +6,11 @@
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Clock.h"
+#include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
@@ -57,8 +57,7 @@ namespace
         floor.halfExtentY = 0.5f;
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-        scene.MainCamera()->SetPosition(Vector3{0.0f, playerPosition.y, -1.0f});
-        scene.MainCamera()->SetTarget(Vector3{0.0f, playerPosition.y, 1.0f});
+        PlaceViewCamera(scene, Vector3{0.0f, playerPosition.y, -1.0f}, Vector3{0.0f, playerPosition.y, 1.0f});
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 

@@ -196,7 +196,7 @@ namespace NS::Game::Player
         // 出した層を lifeSteps フレーム後に消す
         void StopLater(std::uint32_t id, int lifeSteps);
         void RunScheduledStops(NS::Gfx::EffectScene* effects);
-        // 場面のカメラの位置。カメラが無い・姿が決まらない世界では空
+        // 効果を掛ける前の視点の位置。カメラが無い・姿が決まらない世界では空
         [[nodiscard]] std::optional<NS::Core::Vector3> CameraPosition() const;
 
         EffectLayerList m_layers;

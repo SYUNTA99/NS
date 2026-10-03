@@ -7,6 +7,8 @@
 #include "Runtime/Object/IUse/IUseCamera.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Platform/Clock.h"
+#include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
@@ -34,31 +36,29 @@ namespace
             .sideAmplitude = 0.2f, .upAmplitude = 0.1f, .frames = frames, .longestFlipFrames = 1};
     }
 
-    // 決まった姿勢を返す仮想カメラ
-    class FixedCamera final : public NS::Obj::VirtualCamera
+    // 割合が 0 なら +Z、1 なら +X 寄りを見る仮想カメラ。描画の割合が遊びの向きへ漏れると分かる
+    class AlphaCamera final : public NS::Obj::VirtualCamera
     {
     public:
-        FixedCamera() noexcept : NS::Obj::VirtualCamera() {}
         [[nodiscard]] NS::Obj::CameraPose EvaluatePose(float alpha) const noexcept override
         {
-            (void)alpha;
-            return MakePose(NS::Core::Vector3{1.0f, 0.0f, -5.0f},
-                            NS::Core::Vector3{1.0f, 0.0f, 0.0f},
+            return MakePose(NS::Core::Vector3{0.0f, 0.0f, -5.0f},
+                            NS::Core::Vector3{10.0f * alpha, 0.0f, 0.0f},
                             NS::Core::Vector3{0.0f, 1.0f, 0.0f});
         }
-        NS_REFLECT_NONE(FixedCamera, NS::Obj::VirtualCamera)
+        NS_REFLECT_NONE(AlphaCamera, NS::Obj::VirtualCamera)
     };
 
-    class FixedCameraHost final : public NS::Obj::Actor
+    class AlphaCameraHost final : public NS::Obj::Actor
     {
     public:
-        FixedCameraHost() { AttachFixedComponent(vcam); }
+        AlphaCameraHost() { AttachFixedComponent(vcam); }
         void ForEachPart(const PartVisitor& visitor) const override
         {
             NS::Obj::Actor::ForEachPart(visitor);
             visitor("Vcam", vcam);
         }
-        mutable FixedCamera vcam;
+        mutable AlphaCamera vcam;
     };
 
     class OrderProbe final : public NS::Obj::CameraModifier
@@ -153,10 +153,10 @@ TEST(CameraManager, FinishedModifiersAreRemovedOnUpdate)
 
 TEST(CameraManager, ModifiersApplyInOrder)
 {
-    FixedCameraHost host;
-    FixedCamera* vcam = &host.vcam;
+    TestViewCameraHost host;
+    host.Vcam().SetPose(NS::Core::Vector3{1.0f, 0.0f, -5.0f}, NS::Core::Vector3{1.0f, 0.0f, 0.0f});
     NS::Obj::CameraManager cameras;
-    cameras.AddVirtualCamera(vcam);
+    cameras.AddVirtualCamera(&host.Vcam());
     // 積んだ順と逆でも Order の小さい方が先に掛かる
     ASSERT_TRUE(cameras.AddModifier(std::make_unique<OrderProbe>(200, 1.0f)));
     ASSERT_TRUE(cameras.AddModifier(std::make_unique<OrderProbe>(100, 10.0f)));
@@ -164,6 +164,107 @@ TEST(CameraManager, ModifiersApplyInOrder)
     ASSERT_TRUE(pose.has_value());
     // Order 100 (x*2+10) が先、200 (x*2+1) が後: (1*2+10)*2+1 = 25
     EXPECT_FLOAT_EQ(pose->position.x, 25.0f);
+}
+
+// 遊びの向きは仮想カメラから合成する。実カメラは描画の出力で、遊びは読まない
+TEST(IUseCamera, ForwardFollowsTheVirtualCameraNotTheDrawnCamera)
+{
+    NS::Obj::Scene scene;
+    ASSERT_NE(PlaceViewCamera(scene, NS::Core::Vector3{0.0f, 0.0f, -5.0f}, NS::Core::Vector3{}), nullptr);
+    scene.MainCamera()->SetPosition(NS::Core::Vector3{});
+    scene.MainCamera()->SetTarget(NS::Core::Vector3{1.0f, 0.0f, 0.0f});
+    NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
+    ASSERT_NE(actor, nullptr);
+
+    const NS::Core::Vector3 forward = NS::Obj::CameraForwardHorizontal(*actor);
+
+    EXPECT_FLOAT_EQ(forward.x, 0.0f);
+    EXPECT_FLOAT_EQ(forward.z, 1.0f);
+}
+
+// 仮想カメラが無い時は管理役が無い時と同じ +Z。描いた実カメラの向きを拾わない
+TEST(IUseCamera, ForwardWithoutAVirtualCameraIsPlusZ)
+{
+    NS::Obj::Scene scene;
+    scene.MainCamera()->SetPosition(NS::Core::Vector3{});
+    scene.MainCamera()->SetTarget(NS::Core::Vector3{1.0f, 0.0f, 0.0f});
+    NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
+    ASSERT_NE(actor, nullptr);
+
+    const NS::Core::Vector3 forward = NS::Obj::CameraForwardHorizontal(*actor);
+
+    EXPECT_FLOAT_EQ(forward.x, 0.0f);
+    EXPECT_FLOAT_EQ(forward.z, 1.0f);
+}
+
+// 描画が割合 0 で実カメラを書いても、遊びの向きはその歩のブレンドの値 (割合 1) のまま
+TEST(CameraManager, ForwardIgnoresTheDrawAlphaDuringABlend)
+{
+    NS::Obj::CameraComponent drawn;
+    NS::Obj::CameraManager cameras;
+    cameras.SetCamera(&drawn);
+    // 1 歩で半分まで進むブレンド
+    cameras.SetBlendDuration(NS::Platform::FrameTimer::FixedDelta() * 2.0f);
+    TestViewCameraHost from;
+    cameras.AddVirtualCamera(&from.Vcam());
+    cameras.OnUpdate();
+    cameras.Evaluate(1.0f);
+    AlphaCameraHost to;
+    to.vcam.SetVcamPriority(1);
+    cameras.AddVirtualCamera(&to.vcam);
+    cameras.OnUpdate();
+    cameras.Evaluate(0.0f);
+
+    const std::optional<NS::Obj::CameraPose> view = cameras.ViewPose();
+    ASSERT_TRUE(view.has_value());
+    NS::Core::Vector3 expected{};
+    ASSERT_TRUE(NS::Core::TryNormalizeHorizontal(view->target - view->position, expected));
+    ASSERT_GT(expected.x, 0.1f);
+    const NS::Core::Vector3 forward = cameras.ForwardHorizontal();
+    EXPECT_NEAR(forward.x, expected.x, 1e-5f);
+    EXPECT_NEAR(forward.z, expected.z, 1e-5f);
+}
+
+// 効果は描く絵にだけ掛かる。揺れや傾きの間も、入力と狙いが読む向きは揺らさない
+TEST(CameraManager, ForwardLeavesOutTheModifiers)
+{
+    NS::Obj::CameraComponent drawn;
+    NS::Obj::CameraManager cameras;
+    cameras.SetCamera(&drawn);
+    TestViewCameraHost host;
+    cameras.AddVirtualCamera(&host.Vcam());
+    // 位置の x を 0*2+10 = 10 へずらし、描く視線を斜めにする
+    ASSERT_TRUE(cameras.AddModifier(std::make_unique<OrderProbe>(100, 10.0f)));
+    cameras.Evaluate(1.0f);
+    ASSERT_FLOAT_EQ(drawn.Position().x, 10.0f);
+
+    const NS::Core::Vector3 forward = cameras.ForwardHorizontal();
+
+    EXPECT_FLOAT_EQ(forward.x, 0.0f);
+    EXPECT_FLOAT_EQ(forward.z, 1.0f);
+    const std::optional<NS::Obj::CameraPose> view = cameras.ViewPose();
+    ASSERT_TRUE(view.has_value());
+    EXPECT_FLOAT_EQ(view->position.x, 0.0f);
+}
+
+// 窓口の視点も効果の前。揺れの間も位置が揺れない
+TEST(IUseCamera, ViewPoseLeavesOutTheShake)
+{
+    NS::Obj::Scene scene;
+    ASSERT_NE(PlaceViewCamera(scene, NS::Core::Vector3{0.0f, 0.0f, -5.0f}, NS::Core::Vector3{}), nullptr);
+    NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
+    ASSERT_NE(actor, nullptr);
+    ASSERT_TRUE(NS::Obj::StartCameraShake(*actor, ShakeOf(5)));
+    const std::optional<NS::Obj::CameraPose> drawn = scene.GetCameraManager()->ComposePose(1.0f);
+    ASSERT_TRUE(drawn.has_value());
+    ASSERT_NE(drawn->position.x, 0.0f);
+
+    const std::optional<NS::Obj::CameraPose> view = NS::Obj::CameraViewPose(*actor);
+
+    ASSERT_TRUE(view.has_value());
+    EXPECT_FLOAT_EQ(view->position.x, 0.0f);
+    EXPECT_FLOAT_EQ(view->position.y, 0.0f);
+    EXPECT_FLOAT_EQ(view->position.z, -5.0f);
 }
 
 TEST(IUseCamera, ActorReachesSceneCameraManager)

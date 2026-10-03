@@ -10,13 +10,13 @@
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Clock.h"
+#include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
@@ -45,8 +45,7 @@ namespace
         floor.halfExtentY = 0.5f;
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-        scene.MainCamera()->SetPosition(NS::Core::Vector3{});
-        scene.MainCamera()->SetTarget(NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        PlaceViewCamera(scene, NS::Core::Vector3{}, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 

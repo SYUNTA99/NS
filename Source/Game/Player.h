@@ -73,10 +73,11 @@ public:
     //! 溜めの判定を読むだけの口。溜め量・押しているか・溜めている間かは、見た目の部品と追従カメラがここから読む
     [[nodiscard]] const NS::Game::Level::ImpactInputJudge& ChargeJudge() const noexcept;
     //! @brief 押している間に控えた狙いの線を読む
-    //! @details 押している間は毎フレーム、自機の位置からシーンの実カメラの正面の水平の向きへ、
-    //! BodySlamDistance の長さの線を控える。押したキーとスティックの向きは使わない。狙う相手がいなくても控える。
+    //! @details 押している間は毎フレーム、自機の位置から CameraForwardHorizontal の向きへ、
+    //! BodySlamDistance の長さの線を控える。向きは効果を掛ける前の遊びの視点から作り、仮想カメラが無ければ +Z。
+    //! 押したキーとスティックの向きは使わない。狙う相手がいなくても控える。
     //! 縦の速さは狙う相手の予測の値で、相手が無ければ 0。接地はその時の身体の値。
-    //! 押していないフレーム、所属シーンか実カメラが無いフレーム、正面の向きが決まらないフレームは控えが無い
+    //! 押していないフレーム、カメラの管理役が無いフレーム、向きが非数のフレームは控えが無い
     //! @param[out] outLine 控えた狙いの線。控えが無い場合は書き換えない
     //! @return 控えがある場合 true、それ以外の場合は false
     [[nodiscard]] bool TryGetAimLine(NS::Game::Level::AimLine& outLine) const noexcept;

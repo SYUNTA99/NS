@@ -50,14 +50,14 @@ namespace NS::Obj
         return cameras->ForwardHorizontal();
     }
 
-    std::optional<CameraPose> ComposeCameraPose(const IUseCamera& user, float alpha) noexcept
+    std::optional<CameraPose> CameraViewPose(const IUseCamera& user) noexcept
     {
         const CameraManager* cameras = user.GetCameraManager();
         if (cameras == nullptr)
         {
             return std::nullopt;
         }
-        return cameras->ComposePose(alpha);
+        return cameras->ViewPose();
     }
 
     void RegisterVirtualCamera(const IUseCamera& user, VirtualCamera* vcam)
