@@ -184,7 +184,7 @@ void Player::DecideStep()
     }
     else
     {
-        // 外された裁定役は止めも予約も捨てる。持ち越すと入れ直した時に残りの止めが明け、遅れて弾かれる
+        // 外された裁定役は走っている当たりのタイムラインを打ち切る。持ち越すと入れ直した時に残りの止めが明け、遅れて弾かれる
         m_resolver->CancelImpact();
     }
 }
@@ -523,7 +523,7 @@ void Player::ResetState() noexcept
     m_bodySlamHeld = false;
     m_slam.wasSlamming = false;
     m_states->Reset();
-    // 止めの最中か予約の残るやり直しで、出現位置で明けて弾かれないよう止めを持ち主に捨てさせる
+    // 止めの最中か反動を待つ間のやり直しで、出現位置で明けて弾かれないよう、走っている当たりのタイムラインを持ち主に打ち切らせる
     m_resolver->CancelImpact();
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale();
