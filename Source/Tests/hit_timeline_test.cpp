@@ -190,7 +190,7 @@ namespace
     }
 } // namespace
 
-// impact-feel-pass R-3-1: 真ん中は触れる 6 フレーム前から突進の向きに縮み、触れた次のフレームにもっと深く潰れる。
+// 真ん中は触れる 6 フレーム前から突進の向きに縮み、触れた次のフレームにもっと深く潰れる
 // 触れる 2 フレーム前から触れるまで自機以外を止める。外れは触れる前に何も起こさない
 TEST(HitTimeline, ShippedCenterShrinksBeforeContactAndMissDoesNot)
 {

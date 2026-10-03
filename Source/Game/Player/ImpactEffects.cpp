@@ -456,7 +456,7 @@ namespace NS::Game::Player
         m_aim.ringNormal = plan.ringNormal;
 
         const ImpactShape& shape = m_plan.shape;
-        // 当たりの絵の頭は放射の線を留まる間の縮んだフレームと同じ大きさで出し、星形と芯 (動的入力 3 番が掛かる) だけを
+        // 当たりの絵の頭は放射の線を留まる間の縮んだフレームと同じ大きさで出し、星形と核 (動的入力 3 番が掛かる) だけを
         // 出始めの大きさにする。手本は接触のコマで既に光が広がり、層の広がりが次のコマの 9 割を超える
         NS::Gfx::EffectPlayDesc core =
             PlayAt(m_plan.contact, Quaternion::Identity, Uniform(shape.coreDiameter * k_CoreHoldPulse));

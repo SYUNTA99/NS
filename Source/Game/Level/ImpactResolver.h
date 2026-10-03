@@ -255,7 +255,7 @@ namespace NS::Game::Level
         // 事前条件: 反動の向き・威力・質量の効き・揺れの種を控え終えている
         [[nodiscard]] NS::Obj::CameraShakeDesc ShakeDescFor(const CameraShakeEvent& shake, int length) const noexcept;
 
-        // トラウマの揺れの事象から、この当たりのトラウマを組む。量は 欄のトラウマ × 威力。
+        // トラウマの揺れの事象から、この当たりのトラウマを組む。量は欄のトラウマ × 威力
         // 一撃は外した側 (面の上の位置) へ振る。面の上の位置が無い当たりは、自機が弾かれる向きの画面の側へ振る
         // 事前条件: 威力・揺れの種・反動の向きを控え終えている
         [[nodiscard]] NS::Obj::CameraTraumaDesc TraumaDescFor(const CameraTraumaEvent& trauma) const noexcept;
