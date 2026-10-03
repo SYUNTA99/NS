@@ -126,7 +126,7 @@ namespace NS::Obj
 
         //! @brief 今の状態に入ってから進めたフレーム数を返す
         //! @return 入った最初のフレームは 0。移る予約があれば std::uint32_t の最大値
-        [[nodiscard]] std::uint32_t StateStep() const noexcept override
+        [[nodiscard]] std::uint32_t StepsInState() const noexcept override
         {
             if (m_next != nullptr)
             {

@@ -141,20 +141,20 @@ TEST(StateMachine, TransitionOrderAndFirstStep)
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     EXPECT_TRUE(machine.IsFirstStep());
-    EXPECT_EQ(machine.StateStep(), 0u);
+    EXPECT_EQ(machine.StepsInState(), 0u);
 
     machine.Step(owner, 1.0f / 60.0f);
-    EXPECT_EQ(machine.StateStep(), 1u);
+    EXPECT_EQ(machine.StepsInState(), 1u);
     EXPECT_FALSE(machine.IsFirstStep());
 
     owner.change = true;
     machine.Step(owner, 1.0f / 60.0f);
     EXPECT_TRUE(machine.IsCurrent<ActiveState>());
-    EXPECT_EQ(machine.StateStep(), 0u);
+    EXPECT_EQ(machine.StepsInState(), 0u);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 2, 3, 4}));
 
     machine.Step(owner, 1.0f / 60.0f);
-    EXPECT_EQ(machine.StateStep(), 1u);
+    EXPECT_EQ(machine.StepsInState(), 1u);
     EXPECT_EQ(owner.calls.back(), 5);
 }
 
@@ -218,11 +218,11 @@ TEST(StateMachine, ExternalRequestDefersEntryUntilTheNextStepBoundary)
     ASSERT_TRUE(machine.Change<ActiveState>(owner));
     EXPECT_TRUE(machine.IsCurrent<ActiveState>());
     EXPECT_FALSE(machine.IsFirstStep());
-    EXPECT_EQ(machine.StateStep(), static_cast<std::uint32_t>(-1));
+    EXPECT_EQ(machine.StepsInState(), static_cast<std::uint32_t>(-1));
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
     machine.Step(owner, 0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 4, 5}));
-    EXPECT_EQ(machine.StateStep(), 1u);
+    EXPECT_EQ(machine.StepsInState(), 1u);
     EXPECT_EQ(owner.resumed, 0);
 }
 
@@ -237,7 +237,7 @@ TEST(StateMachine, EntryDoesNotInterruptThePreviousStep)
     machine.Step(owner, 0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3, 7, 4}));
     EXPECT_TRUE(machine.IsFirstStep());
-    EXPECT_EQ(machine.StateStep(), 0u);
+    EXPECT_EQ(machine.StepsInState(), 0u);
 }
 
 TEST(StateMachine, LastValidRequestWinsWithoutExitingTwice)
@@ -309,7 +309,7 @@ TEST(StateMachine, RequestingTheCurrentStateDoesNotResetItsStep)
     machine.Build<IdleState, ActiveState>(owner);
     machine.Step(owner, 0.1f);
     machine.Change<IdleState>(owner);
-    EXPECT_EQ(machine.StateStep(), 1u);
+    EXPECT_EQ(machine.StepsInState(), 1u);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2}));
 }
 
@@ -342,7 +342,7 @@ TEST(StateMachine, EntryRequestAtTheClosingBoundaryWaitsUntilTheNextStep)
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3, 4}));
     EXPECT_TRUE(machine.IsCurrent<DeltaState>());
     EXPECT_FALSE(machine.IsFirstStep());
-    EXPECT_EQ(machine.StateStep(), static_cast<std::uint32_t>(-1));
+    EXPECT_EQ(machine.StepsInState(), static_cast<std::uint32_t>(-1));
     EXPECT_TRUE(owner.deltas.empty());
     machine.Step(owner, 0.2f);
     EXPECT_EQ(owner.deltas, (std::vector<float>{0.2f}));
@@ -390,7 +390,7 @@ TEST(StateMachine, ChildFinishDuringCoroutineStopsTheRemainingStateStep)
     EXPECT_TRUE(child.IsDead());
     EXPECT_EQ(owner.resumed, 1);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
-    EXPECT_EQ(child.Machine().StateStep(), 0u);
+    EXPECT_EQ(child.Machine().StepsInState(), 0u);
     child.Step(owner, 0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
 }
@@ -407,7 +407,7 @@ TEST(StateMachine, ChildFinishDuringEntryStopsTheFirstStateStep)
     child.Step(owner, 0.1f);
     EXPECT_TRUE(child.IsDead());
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 4}));
-    EXPECT_EQ(child.Machine().StateStep(), 0u);
+    EXPECT_EQ(child.Machine().StepsInState(), 0u);
     child.Step(owner, 0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 4}));
 }

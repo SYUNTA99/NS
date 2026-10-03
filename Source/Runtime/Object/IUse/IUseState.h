@@ -31,7 +31,7 @@ namespace NS::Obj
         [[nodiscard]] virtual StateId CurrentId() const noexcept = 0;
         //! @brief 今の状態に入ってから進めたフレーム数を返す
         //! @return 入った最初のフレームは 0
-        [[nodiscard]] virtual std::uint32_t StateStep() const noexcept = 0;
+        [[nodiscard]] virtual std::uint32_t StepsInState() const noexcept = 0;
         //! @brief 印 id の状態へ移る予約をする
         //! @param[in] id 移る先の状態の印
         //! @return 予約できたか既にその状態の場合 true、それ以外の場合は false
@@ -43,7 +43,7 @@ namespace NS::Obj
     };
 
     //! @brief 自分の状態機械を返す口。状態機械を持つ物が実装する
-    //! @details SetState / IsState / IsFirstStep / StateStep は IUseState だけを受け取る
+    //! @details SetState / IsState / IsFirstStep / StepsInState は IUseState だけを受け取る
     class IUseState
     {
     public:
@@ -77,18 +77,18 @@ namespace NS::Obj
     [[nodiscard]] inline bool IsFirstStep(const IUseState& user) noexcept
     {
         const IStateMachine* machine = user.GetStateMachine();
-        return machine != nullptr && machine->CurrentId() != nullptr && machine->StateStep() == 0;
+        return machine != nullptr && machine->CurrentId() != nullptr && machine->StepsInState() == 0;
     }
 
     //! @brief user が今の状態に入ってから進めたフレーム数を返す
     //! @return 状態機械を持たなければ 0
-    [[nodiscard]] inline std::uint32_t StateStep(const IUseState& user) noexcept
+    [[nodiscard]] inline std::uint32_t StepsInState(const IUseState& user) noexcept
     {
         const IStateMachine* machine = user.GetStateMachine();
         if (machine == nullptr)
         {
             return 0;
         }
-        return machine->StateStep();
+        return machine->StepsInState();
     }
 } // namespace NS::Obj

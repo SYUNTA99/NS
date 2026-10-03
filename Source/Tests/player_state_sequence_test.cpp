@@ -80,10 +80,10 @@ TEST(PlayerStateSequence, OnlyActorUpdateAdvancesTheOwnedStateMachine)
     ASSERT_NE(player, nullptr);
     player->Body().SetGrounded(true);
     ASSERT_TRUE(player->States().IsCurrent<NS::Game::Player::IdlePlayerState>());
-    EXPECT_EQ(player->States().StateStep(), 0u);
+    EXPECT_EQ(player->States().StepsInState(), 0u);
     player->Body().SetGrounded(true);
     player->Update();
-    EXPECT_EQ(player->States().StateStep(), 1u);
+    EXPECT_EQ(player->States().StepsInState(), 1u);
 }
 
 TEST(PlayerStateSequence, InactiveMovementStopsTheActorStateStep)
@@ -94,7 +94,7 @@ TEST(PlayerStateSequence, InactiveMovementStopsTheActorStateStep)
     player->Body().SetGrounded(true);
     player->Body().SetActive(false);
     player->Update();
-    EXPECT_EQ(player->States().StateStep(), 0u);
+    EXPECT_EQ(player->States().StepsInState(), 0u);
 }
 
 TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
@@ -109,7 +109,7 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
     ASSERT_EQ(reaction->FlashFramesRemaining(), 3);
     player->States().Build<ObservePlayerEffectsState>(*player);
     player->Update();
-    EXPECT_EQ(player->States().StateStep(), 1u);
+    EXPECT_EQ(player->States().StepsInState(), 1u);
     EXPECT_EQ(reaction->FlashFramesRemaining(), 2);
 }
 
@@ -124,7 +124,7 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
     reaction->OnUpdate();
     player->Body().SetActive(false);
     player->Update();
-    EXPECT_EQ(player->States().StateStep(), 0u);
+    EXPECT_EQ(player->States().StepsInState(), 0u);
     EXPECT_EQ(reaction->FlashFramesRemaining(), 2);
 }
 

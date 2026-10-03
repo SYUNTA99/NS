@@ -217,11 +217,11 @@ TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl
     player->Body().SetActive(false);
     const NS::Core::Vector3 position = player->Root().Position();
     const NS::Core::Vector3 velocity = player->Body().Velocity();
-    const std::uint32_t stateStep = player->States().StateStep();
+    const std::uint32_t stateStep = player->States().StepsInState();
     player->Update(false);
     ExpectSameVector(player->Root().Position(), position);
     ExpectSameVector(player->Body().Velocity(), velocity);
-    EXPECT_EQ(player->States().StateStep(), stateStep);
+    EXPECT_EQ(player->States().StepsInState(), stateStep);
 }
 
 TEST(PlayerUpdatePipeline, ActorPipelineMatchesLegacyTapFrames)

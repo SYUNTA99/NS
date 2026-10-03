@@ -207,7 +207,7 @@ namespace NS::Game::Level
 
     void MapObj::StepFreeze()
     {
-        const std::uint32_t step = m_states->StateStep();
+        const std::uint32_t step = m_states->StepsInState();
         if (step == 0)
         {
             return;
