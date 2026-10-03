@@ -62,6 +62,8 @@ namespace NS::Game::Player
         static constexpr std::string_view k_Full = "charge.full";
         static constexpr std::string_view k_Burst = "release.burst";
         static constexpr std::string_view k_Trail = "slam.trail";
+        // 紫の揺れの端で散らす火花。当たりの火花の絵の、擦れて飛ぶ節 (動的入力 1 番) を使う
+        static constexpr std::string_view k_SwaySparks = "impact.sparks";
 
         ChargeEffects() noexcept;
 
@@ -104,6 +106,8 @@ namespace NS::Game::Player
         void StartPress(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center);
         void StartCharging(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center);
         void StartFullFlash(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center);
+        // 紫の揺れが端へ来たフレームに、その側へ火花を散らす
+        void PlaySwaySparks(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center);
         // 押している間の層を玉へ付いていかせ、溜め量を渡す
         void FollowHeldLayers(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center, float charge01) noexcept;
         void ClearHeldLayers(NS::Gfx::EffectScene* effects) noexcept;
@@ -146,8 +150,8 @@ namespace NS::Game::Player
         float m_spinDegrees = 0.0f;        // 押してから玉が回った角度の累計。回転の弧の板の回りの角度
         NS::Core::Vector3 m_slamDirection; // 突進の尾を向ける水平の向き
 
-        const ::Player* m_actor = nullptr;                           // 押し・溜め量・突進の速度・狙いの向きを答える自機。非所有
-        const PlayerAppearance* m_appearance = nullptr;              // 玉の回転の正。非所有
+        const ::Player* m_actor = nullptr;              // 押し・溜め量・突進の速度・狙いの向きを答える自機。非所有
+        const PlayerAppearance* m_appearance = nullptr; // 玉の回転の正。非所有
         const NS::Game::Level::ImpactResolver* m_resolver = nullptr; // 止めの頭の正。非所有
     };
 } // namespace NS::Game::Player

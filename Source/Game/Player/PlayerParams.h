@@ -127,6 +127,10 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_overchargeSwayEndRate, "紫の揺れの終わりの速さ")
         NS_REFLECT_FIELD(m_overchargeSwayFallbackDistance, "相手がいない時に直す距離")
         NS_REFLECT_FIELD(m_overchargePowerMax, "紫の威力の上限")
+        NS_REFLECT_FIELD(m_overchargeSparkCountMin, "紫の火花の数の始め")
+        NS_REFLECT_FIELD(m_overchargeSparkCountMax, "紫の火花の数の終わり")
+        NS_REFLECT_FIELD(m_overchargeSparkSpeedMin, "紫の火花の速さの始め")
+        NS_REFLECT_FIELD(m_overchargeSparkSpeedMax, "紫の火花の速さの終わり")
         NS_REFLECT_FIELD(m_chargeSlowRate, "チャージ減速率")
         NS_REFLECT_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
         NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
@@ -217,6 +221,7 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_slamArrowDesc.earlyColor, "溜めの前半の色")
         NS_REFLECT_FIELD(m_slamArrowDesc.lateColor, "溜めの後半の色")
         NS_REFLECT_FIELD(m_slamArrowDesc.fullColor, "溜めきりの色")
+        NS_REFLECT_FIELD(m_slamArrowDesc.overchargeColor, "溜めすぎの色")
         NS_REFLECT_FIELD(m_slamArrowDesc.plainColor, "色の付いていない部分の色")
         NS_REFLECT_FIELD(m_slamArrowDesc.darkColor, "矢印の暗い縁の色")
         NS_REFLECT_FIELD(m_slamArrowDesc.darkAlpha, "矢印の暗い縁の不透明度")
@@ -316,6 +321,12 @@ namespace NS::Game::Player
         float m_overchargeSwayFallbackDistance = 10.0f;
         // 紫になりきった時に溜めきりの威力へ掛ける倍率。見本の 1.5
         float m_overchargePowerMax = 1.5f;
+        // 揺れが端へ来るたびにその側へ散らす火花の数と速さ (m/秒)。紫の深さで始めから終わりへ上げ、勝手に出る直前ほど
+        // バチバチを強くする。当たりの大きな外れの火花 (16 本・4 m/秒) より少なく遅い所から始め、終わりで並ぶ
+        int m_overchargeSparkCountMin = 4;
+        int m_overchargeSparkCountMax = 14;
+        float m_overchargeSparkSpeedMin = 2.5f;
+        float m_overchargeSparkSpeedMax = 5.0f;
         float m_chargeSlowRate = 0.7f;
         NS::Obj::Curve m_chargeFactorCurve{};
         float m_chargeSquashScale = 0.95f;

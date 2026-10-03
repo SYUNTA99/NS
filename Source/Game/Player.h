@@ -109,6 +109,9 @@ public:
     //! @details 狙いの線の右を正にした、相手の所 (相手がいなければ欄「相手がいない時に直す距離」の所) での横のずれ。
     //! 単位は m。紫でない間は 0
     [[nodiscard]] float ChargeSwayOffset() const noexcept { return m_charge.swayOffset; }
+    //! @brief このフレームに紫の揺れが端を通った場合 true、それ以外の場合は false
+    //! @details 位相が π/2 + nπ を通ったフレーム。紫になりきるフレームは必ず端を通る。紫に入ったフレームは数えない
+    [[nodiscard]] bool ChargeSwayReachedEdge() const noexcept { return m_charge.swayReachedEdge; }
     //! @brief 構えで縦に縮める倍率を読む
     //! @details 溜めている間は欄「構えの縮み」、溜めに入る前に押している間は欄「押しの構えの縮み」、それ以外は 1。
     //! 描く形へ書くのは PlayerAppearance で、ここは問いに答えるだけ
@@ -424,8 +427,11 @@ private:
         // 紫の揺れを足した狙いの線で最初に触れる相手。hasLineTarget が偽の間は読まない
         NS::Game::Level::SlamLineTarget lineTarget{};
         bool hasLineTarget = false;
-        float swayPhase = 0.0f;  // 紫の揺れの位相 (ラジアン)
-        float swayOffset = 0.0f; // 紫の揺れの横のずれ (m)。狙いの線の右が正
+        float swayPhase = 0.0f;       // 紫の揺れの位相 (ラジアン)
+        float swayOffset = 0.0f;      // 紫の揺れの横のずれ (m)。狙いの線の右が正
+        int swayEdge = 0;             // 位相が通った端の番号。(位相 − π/2) ÷ π の切り捨て
+        bool hasSwayEdge = false;     // 前のフレームの端の番号を控えているか
+        bool swayReachedEdge = false; // このフレームに端を通ったか
     };
 
     //! @brief 身体を 1 フレーム動かす。更新の中で 1 回だけ呼ぶ

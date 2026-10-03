@@ -231,13 +231,17 @@ void Player::ApplyChargeSway(float dt)
     m_charge.hasLineTarget = m_charge.hasAimTarget;
     m_charge.swayPhase = 0.0f;
     m_charge.swayOffset = 0.0f;
+    m_charge.swayReachedEdge = false;
     if (steps <= 0 || !m_charge.hasAimLine)
     {
+        m_charge.hasSwayEdge = false;
         return;
     }
 
+    // 秒は欄でなく判定のフレーム数から出す。紫になりきったフレームで seconds と overchargeSeconds が同じ値になり、
+    // 位相がちょうど端に来る
     const float seconds = static_cast<float>(steps) * dt;
-    const float overchargeSeconds = m_params->m_overchargeSeconds;
+    const float overchargeSeconds = static_cast<float>(judge.overchargeSteps) * dt;
     m_charge.swayPhase = OverchargeSwayPhase(
         seconds, overchargeSeconds, m_params->m_overchargeSwayStartRate, m_params->m_overchargeSwayEndRate);
     // 振れ幅は紫の深さの 2 乗。前半は真ん中に収まって強くなるだけの区間、後半で外れまで振れる
@@ -253,6 +257,11 @@ void Player::ApplyChargeSway(float dt)
         side = -1.0f;
     }
     m_charge.swayOffset = side * m_params->m_overchargeSwayMaxOffset * depth * depth * std::sin(m_charge.swayPhase);
+    // 端は位相が π/2 + nπ を通る所。数を別に持たないので、矢印と火花の拍がずれない
+    const int edge = static_cast<int>(std::floor((m_charge.swayPhase - 0.5f * NS::Core::k_Pi) / NS::Core::k_Pi));
+    m_charge.swayReachedEdge = m_charge.hasSwayEdge && edge > m_charge.swayEdge;
+    m_charge.swayEdge = edge;
+    m_charge.hasSwayEdge = true;
 
     float distance = m_params->m_overchargeSwayFallbackDistance;
     if (m_charge.hasAimTarget)

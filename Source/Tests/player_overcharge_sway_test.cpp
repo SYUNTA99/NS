@@ -140,3 +140,48 @@ TEST(PlayerOverchargeSway, PurplePowerRisesToTheCapFromTheFullCharge)
     EXPECT_FLOAT_EQ(params.ChargeFactorFor(1.0f, 1.0f), full * 1.5f);
     EXPECT_FLOAT_EQ(params.ChargeFactorFor(0.5f, 0.0f), params.ChargeFactorFor(0.5f));
 }
+
+// 揺れが端を通るフレームに 1 回ずつ拍が立つ。紫の 3 秒に 9 回で、最後の拍は勝手に出るフレーム。拍ごとに端が入れ替わる
+TEST(PlayerOverchargeSway, EdgeBeatsCountDownToTheForcedLaunch)
+{
+    SwayScene s;
+    s.Load();
+    Player& player = *s.player;
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(
+                  player.Params(),
+                  {{"溜めすぎの秒数", 3.0f}, {"紫の揺れの始めの速さ", 0.8f}, {"紫の揺れの終わりの速さ", 2.6f}}),
+              0u);
+    const int full = FramesFor(1.0f);
+    const int forced = full + FramesFor(3.0f);
+    int beats = 0;
+    int lastBeat = -1;
+    float lastSide = 0.0f;
+    bool alternates = true;
+    for (int held = 1; held <= forced; ++held)
+    {
+        player.Update(true);
+        if (!player.ChargeSwayReachedEdge())
+        {
+            continue;
+        }
+        ++beats;
+        lastBeat = held;
+        const float side = player.ChargeSwayOffset();
+        EXPECT_NE(side, 0.0f);
+        if (lastSide * side > 0.0f)
+        {
+            alternates = false;
+        }
+        lastSide = side;
+    }
+    EXPECT_EQ(beats, 9);
+    EXPECT_EQ(lastBeat, forced);
+    EXPECT_TRUE(alternates);
+    EXPECT_TRUE(player.IsBodySlamming());
+    // 出た後は拍が立たない
+    for (int frame = 0; frame < FramesFor(1.0f); ++frame)
+    {
+        player.Update(true);
+        EXPECT_FALSE(player.ChargeSwayReachedEdge());
+    }
+}

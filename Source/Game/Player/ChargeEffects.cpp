@@ -66,7 +66,7 @@ namespace NS::Game::Player
             return;
         }
         // 読めない絵は EffectScene が警告を出し、その層は記録だけ残る。遊びは止めない
-        for (std::string_view name : {k_Curl, k_Spin, k_Grind, k_Gather, k_Full, k_Burst, k_Trail})
+        for (std::string_view name : {k_Curl, k_Spin, k_Grind, k_Gather, k_Full, k_Burst, k_Trail, k_SwaySparks})
         {
             static_cast<void>(effects->Preload(name));
         }
@@ -106,6 +106,10 @@ namespace NS::Game::Player
         if (held)
         {
             FollowHeldLayers(effects, center, judge.Charge01());
+            if (m_actor->ChargeSwayReachedEdge())
+            {
+                PlaySwaySparks(effects, center);
+            }
         }
         else if (m_wasHeld)
         {
@@ -223,6 +227,42 @@ namespace NS::Game::Player
         StopLayer(effects, m_full);
         m_full = m_layers.Play(effects, k_Full, PlayDesc(center, NS::Core::Quaternion::Identity, 1.0f));
         m_scheduledStops.push_back(ScheduledStop{m_full, m_layers.Step() + k_FullFlashSteps});
+    }
+
+    void ChargeEffects::PlaySwaySparks(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
+    {
+        NS::Game::Level::AimLine line{};
+        if (!m_actor->TryGetAimLine(line))
+        {
+            return;
+        }
+        float side = 1.0f;
+        if (m_actor->ChargeSwayOffset() < 0.0f)
+        {
+            side = -1.0f;
+        }
+        // 擦れの節は +Y の 45 度の円錐へ飛ぶ。+Y を横から 45 度起こすと円錐の下の縁が水平になり、床へ潜る粒が出ない
+        constexpr float k_SideLift = 1.0f;
+        const NS::Core::Vector3 right{line.direction.z, 0.0f, -line.direction.x};
+        NS::Core::Vector3 heading = right * side + NS::Core::Vector3{0.0f, k_SideLift, 0.0f};
+        heading.Normalize();
+
+        const PlayerParams& tuning = Tuning();
+        const float depth = NS::Core::Clamp(m_actor->ChargeJudge().Overcharge01(), 0.0f, 1.0f);
+        const float count =
+            static_cast<float>(tuning.m_overchargeSparkCountMin) +
+            static_cast<float>(tuning.m_overchargeSparkCountMax - tuning.m_overchargeSparkCountMin) * depth;
+        const float speed = tuning.m_overchargeSparkSpeedMin +
+                            (tuning.m_overchargeSparkSpeedMax - tuning.m_overchargeSparkSpeedMin) * depth;
+        NS::Gfx::EffectPlayDesc sparks{};
+        sparks.position = center;
+        sparks.rotation = NS::Core::Quaternion::FromToRotation(NS::Core::Vector3{0.0f, 1.0f, 0.0f}, heading);
+        sparks.dynamicInputs[0] = 0.0f;
+        sparks.dynamicInputs[1] = std::round(count);
+        // 秒の速さを 1 フレームの距離にして絵へ渡す
+        sparks.dynamicInputs[2] = speed / 60.0f;
+        sparks.dynamicInputs[3] = 0.0f;
+        static_cast<void>(m_layers.Play(effects, k_SwaySparks, sparks));
     }
 
     void ChargeEffects::FollowHeldLayers(NS::Gfx::EffectScene* effects,

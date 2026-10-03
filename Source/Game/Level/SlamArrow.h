@@ -35,9 +35,10 @@ namespace NS::Game::Level
         //! 放った玉の縁が狙う相手に触れる所までの、線に沿った距離 (SlamLineTarget::launchContact)。単位は m。
         //! hasTarget が偽の間は読まない
         float targetContact = 0.0f;
-        int framesSinceShown = 0; //!< 矢印を出したフレームを 0 として数えたフレーム数
-        float charge01 = 0.0f;    //!< 溜め量 0..1
-        bool chargeFull = false;  //!< 溜めきりの場合 true
+        int framesSinceShown = 0;  //!< 矢印を出したフレームを 0 として数えたフレーム数
+        float charge01 = 0.0f;     //!< 溜め量 0..1
+        bool chargeFull = false;   //!< 溜めきりの場合 true
+        float overcharge01 = 0.0f; //!< 溜めすぎの深さ 0..1。溜めきりの間だけ色に効く
     };
 
     //! 地面の矢印の形と色を決める値

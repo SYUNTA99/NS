@@ -294,7 +294,13 @@ namespace NS::Game::Level
         shape.fullyColored = state.chargeFull;
         if (state.chargeFull)
         {
-            shape.stageColor = desc.fullColor;
+            // 赤から紫へ 3 秒かけてゆっくり変える。非数は赤のまま
+            float purple = 0.0f;
+            if (std::isfinite(state.overcharge01))
+            {
+                purple = NS::Core::Clamp(state.overcharge01, 0.0f, 1.0f);
+            }
+            shape.stageColor = desc.fullColor + (desc.overchargeColor - desc.fullColor) * purple;
         }
         else if (charge < desc.lateStageFrom)
         {
@@ -511,6 +517,7 @@ namespace NS::Game::Level
         state.framesSinceShown = m_framesSinceShown;
         state.charge01 = m_player->ChargeJudge().Charge01();
         state.chargeFull = m_player->ChargeJudge().IsChargeFull();
+        state.overcharge01 = m_player->ChargeJudge().Overcharge01();
 
         SlamArrowShape shape{};
         if (!BuildSlamArrow(state, Tuning(), shape))
