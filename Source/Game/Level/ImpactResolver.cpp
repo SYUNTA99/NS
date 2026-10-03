@@ -560,7 +560,7 @@ namespace NS::Game::Level
         const HitFaceJudgement judgement =
             JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, m_player->Collider().CapsuleRadius());
         const float offset01 = judgement.offset01;
-        const float chargeFactor = Tuning().ChargeFactorFor(charge01);
+        const float chargeFactor = Tuning().ChargeFactorFor(charge01, m_player->BodySlamOvercharge01());
         const float positionFactor = judgement.powerScale;
         const HitTier tier = judgement.tier;
         // 読むのは記録と WasCenterHit とログだけ。配分と返りは段で分ける

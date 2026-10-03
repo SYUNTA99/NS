@@ -95,6 +95,20 @@ public:
     //! @param[out] outTarget 控えた狙う相手。控えが無い場合は書き換えない
     //! @return 控えがある場合 true、それ以外の場合は false
     [[nodiscard]] bool TryGetAimTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept;
+    //! @brief 狙いの線 (紫の揺れを足した向き) を進んだ時に最初に触れる相手を読む
+    //! @details 揺れていない間は TryGetAimTarget と同じ相手。紫の揺れで線が振れている間は、振れた線の向きで
+    //! ImpactResolver::FindSlamLineTarget を引き直した相手で、矢印の先はこれで決まる。
+    //! 狙う相手の枠と放つ縦の速さは揺れていない線の相手 (TryGetAimTarget) のまま
+    //! @param[out] outTarget 線の上の相手。控えが無い場合は書き換えない
+    //! @return 控えがある場合 true、それ以外の場合は false
+    [[nodiscard]] bool TryGetLineTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept;
+    //! @brief 紫の揺れの位相 (ラジアン) を返す
+    //! @details 溜めすぎのフレーム数から閉じた式で出す。紫になりきった瞬間に π/2 を通る。紫でない間は 0
+    [[nodiscard]] float ChargeSwayPhase() const noexcept { return m_charge.swayPhase; }
+    //! @brief 紫の揺れのずれを返す
+    //! @details 狙いの線の右を正にした、相手の所 (相手がいなければ欄「相手がいない時に直す距離」の所) での横のずれ。
+    //! 単位は m。紫でない間は 0
+    [[nodiscard]] float ChargeSwayOffset() const noexcept { return m_charge.swayOffset; }
     //! @brief 構えで縦に縮める倍率を読む
     //! @details 溜めている間は欄「構えの縮み」、溜めに入る前に押している間は欄「押しの構えの縮み」、それ以外は 1。
     //! 描く形へ書くのは PlayerAppearance で、ここは問いに答えるだけ
@@ -160,6 +174,8 @@ public:
     //! 突進の進み具合 0..1。突進中でなければ 0
     [[nodiscard]] float BodySlamProgress01() const noexcept;
     [[nodiscard]] float BodySlamCharge01() const noexcept { return m_slam.charge01; } //!< 発動時の溜め量 0..1
+    //! 発動時の溜めすぎの深さ 0..1。赤で放した突進とタップは 0
+    [[nodiscard]] float BodySlamOvercharge01() const noexcept { return m_slam.overcharge01; }
     //! 溜めた突進を終える水平の距離。欄「突進距離」の値で、単位は m
     [[nodiscard]] float BodySlamDistance() const noexcept;
     //! @brief 最後に出した突進の水平の向きを返す
@@ -253,7 +269,8 @@ public:
     //! 空中で出すと接地するまで次は出せない。地面から出した突進は数えないので、その後の空中で 1 回出せる。
     //! 出る向きは BodySlam が入力と押したフレームの控えから決める。前の要求に添えた向きは捨てる
     //! @param[in] charge01 溜め量 0..1
-    void RequestBodySlam(float charge01) noexcept;
+    //! @param[in] overcharge01 溜めすぎの深さ 0..1。威力を溜めきりより上げる。有限でなければ 0
+    void RequestBodySlam(float charge01, float overcharge01 = 0.0f) noexcept;
     //! @brief 出す向きを添えて体当たりの発動を要求する
     //! @details 溜め量と先行入力と捨てる時は 1 つ引数の RequestBodySlam と同じ。捨てた時は向きも覚えない。
     //! 出る時は入力と押したフレームの控えを見ず、添えた向きの水平を正規化した向きへ出す。
@@ -262,9 +279,11 @@ public:
     //! @param[in] aimDirection 出す向き。世界座標で、縦の成分は使わない
     //! @param[in] launchVerticalSpeed 溜めた突進を放つ瞬間の縦の速さ (m/s)。上が正。溜めの観測が狙う相手の予測
     //! (SlamLineTarget::launchVerticalSpeed) から控えた値で、届く相手が無ければ 0。タップには効かない。有限でなければ 0
+    //! @param[in] overcharge01 溜めすぎの深さ 0..1。威力を溜めきりより上げる。有限でなければ 0
     void RequestBodySlam(float charge01,
                          const NS::Core::Vector3& aimDirection,
-                         float launchVerticalSpeed = 0.0f) noexcept;
+                         float launchVerticalSpeed = 0.0f,
+                         float overcharge01 = 0.0f) noexcept;
     //! @brief 突進の速度を返す。突進中は発動時の向きと BodySlamSpeed から作り、縦は身体の今の値
     //! @details 衝突の裁定と玉の回転が読み、溜めた突進の間は UpdateBodySlam がこの水平で身体を書き直す。
     //! 実速度は壁へ押し付けられたフレームで 0 に潰れ、衝突の先読みが今の位置から動かなくなる
@@ -361,6 +380,7 @@ private:
         bool justStarted = false;    // 発動したフレームか
         NS::Core::Vector3 dir{};     // 最後に出した突進の水平の向き。正規化済み。書くのは出せた時だけ
         float charge01 = 0.0f;       // 発動時に確定した溜め量 0..1
+        float overcharge01 = 0.0f;   // 発動時に確定した溜めすぎの深さ 0..1
         bool wasSlamming = false;    // 直前のフレームを突進中で終えたか。書くのは MoveBody と ResetState
     };
 
@@ -370,6 +390,7 @@ private:
         float bufferRemaining = 0.0f; // 出せないフレームの押しを覚える残り秒
         bool spent = false;           // 空中で発動してから接地していないか
         float charge01 = 0.0f;        // 要求された溜め量 0..1
+        float overcharge01 = 0.0f;    // 要求された溜めすぎの深さ 0..1
         NS::Core::Vector3 dir{};      // 要求に添えた出す向き。正規化済み
         bool hasDir = false;          // 要求に向きが添えてあるか
         float verticalSpeed = 0.0f;   // 溜めた突進を放つ瞬間の縦の速さ。hasDir が偽の間は読まない
@@ -400,6 +421,11 @@ private:
         // 押している間の狙う相手。hasAimTarget が偽の間は読まない
         NS::Game::Level::SlamLineTarget aimTarget{};
         bool hasAimTarget = false;
+        // 紫の揺れを足した狙いの線で最初に触れる相手。hasLineTarget が偽の間は読まない
+        NS::Game::Level::SlamLineTarget lineTarget{};
+        bool hasLineTarget = false;
+        float swayPhase = 0.0f;  // 紫の揺れの位相 (ラジアン)
+        float swayOffset = 0.0f; // 紫の揺れの横のずれ (m)。狙いの線の右が正
     };
 
     //! @brief 身体を 1 フレーム動かす。更新の中で 1 回だけ呼ぶ
@@ -448,6 +474,11 @@ private:
     //! 突進の要求・溜めの間の最高速度の倍率・溜めに入ったフレームの横の停止を書き、観測した狙いを確定する
     //! @param[in] dt 進める秒
     void AdvanceCharge(float dt);
+    //! @brief 紫の揺れを確定した狙いの線へ足す
+    //! @details 溜めすぎのフレーム数から位相とずれを閉じた式で出し、狙いの線の向きを左右へ回して、
+    //! 回した線で最初に触れる相手を引き直す。紫でない間と線が無い間は揺らさない
+    //! @param[in] dt 1 フレームの秒
+    void ApplyChargeSway(float dt);
     //! @brief 溜めを捨てる。放した扱いにはしないので、タップも溜めた突進も出ない
     //! @details 判定と狙いの控えを初めの値へ戻し、押しの印を偽、最高速度の倍率を 1 へ戻す。
     //! 構えは判定から答えるので 1 に戻る。丸まりは解かず、着地で解ける
@@ -500,6 +531,8 @@ private:
     BodySlamRequest m_request;
     ReboundRecord m_rebound;
     ChargeRecord m_charge;
+    // 紫に入った回数。紫になりきった時に揺れが来る端を毎回入れ替える。溜めを捨てても戻さない
+    int m_overchargeCount = 0;
 
     NS::Core::Vector3 m_facingDir{0.0f, 0.0f, 0.0f};       // 掴む向き。動こうとした水平の向きへ振り向きの速さで回る
     float m_lastMoveDistance = 0.0f;                       // 直前の Move で動いた距離。縁を探す帯の上の余白

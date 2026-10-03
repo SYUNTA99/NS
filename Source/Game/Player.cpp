@@ -508,10 +508,12 @@ void Player::ResetState() noexcept
     m_request.spent = false;
     m_slam.isTap = false;
     m_request.charge01 = 0.0f;
+    m_request.overcharge01 = 0.0f;
     m_request.dir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
     m_request.hasDir = false;
     m_request.verticalSpeed = 0.0f;
     m_slam.charge01 = 0.0f;
+    m_slam.overcharge01 = 0.0f;
     m_slam.travelled = 0.0f;
     m_slam.distanceTarget = 0.0f;
     m_slam.justStarted = false;

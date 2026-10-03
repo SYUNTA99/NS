@@ -493,8 +493,9 @@ namespace NS::Game::Level
             m_framesSinceShown = -1;
             return;
         }
+        // 先は紫の揺れで振れた線の上の相手で決める。振れて外れた時は相手の手前で止めない
         SlamLineTarget target{};
-        state.hasTarget = m_player->TryGetAimTarget(target);
+        state.hasTarget = m_player->TryGetLineTarget(target);
         // 前のフレームに出ていなければ 0 から数える。相手が替わっても数え直さない
         if (m_framesSinceShown < 0)
         {

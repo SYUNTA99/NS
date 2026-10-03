@@ -52,6 +52,11 @@ namespace NS::Game::Level
         //! @details 満タンまでと溜めすぎで出た後は 0。離したフレームは控えた値から読む
         [[nodiscard]] float Overcharge01() const noexcept;
 
+        //! @brief 満タンから数えた溜めすぎのフレーム数を返す
+        //! @details 溜めすぎきった後も押している間は数え続ける。満タンまでと溜めすぎで出た後は 0。
+        //! 離したフレームは控えた値から読む
+        [[nodiscard]] int OverchargedSteps() const noexcept;
+
         //! 溜めすぎきってチャージを控え、突進が出るのを待っている場合 true、それ以外の場合は false
         [[nodiscard]] bool IsAwaitingLaunch() const noexcept;
 

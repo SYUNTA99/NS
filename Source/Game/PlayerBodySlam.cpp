@@ -54,7 +54,7 @@ bool Player::AcceptsBodySlamRequest() const noexcept
     return !IsBodySlamming() && CanMoveBody();
 }
 
-void Player::RequestBodySlam(float charge01) noexcept
+void Player::RequestBodySlam(float charge01, float overcharge01) noexcept
 {
     if (!AcceptsBodySlamRequest())
     {
@@ -71,18 +71,26 @@ void Player::RequestBodySlam(float charge01) noexcept
     {
         m_request.charge01 = NS::Core::Clamp(charge01, 0.0f, 1.0f);
     }
+    m_request.overcharge01 = 0.0f;
+    if (std::isfinite(overcharge01))
+    {
+        m_request.overcharge01 = NS::Core::Clamp(overcharge01, 0.0f, 1.0f);
+    }
     // 残すと、先行入力のうちに来たタップが前の溜めた突進の向きへ出る
     m_request.hasDir = false;
     m_request.verticalSpeed = 0.0f;
 }
 
-void Player::RequestBodySlam(float charge01, const NS::Core::Vector3& aimDirection, float launchVerticalSpeed) noexcept
+void Player::RequestBodySlam(float charge01,
+                             const NS::Core::Vector3& aimDirection,
+                             float launchVerticalSpeed,
+                             float overcharge01) noexcept
 {
     if (!AcceptsBodySlamRequest())
     {
         return;
     }
-    RequestBodySlam(charge01);
+    RequestBodySlam(charge01, overcharge01);
     NS::Core::Vector3 dir{};
     if (!NS::Core::TryNormalizeHorizontal(aimDirection, dir))
     {
@@ -282,6 +290,7 @@ bool Player::BodySlam() noexcept
     }
 
     m_slam.charge01 = m_request.charge01;
+    m_slam.overcharge01 = m_request.overcharge01;
     m_slam.isTap = !(m_request.charge01 > 0.0f);
     m_slam.travelled = 0.0f;
     m_slam.justStarted = true;

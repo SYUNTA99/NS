@@ -32,6 +32,16 @@ namespace NS::Game::Player
         return factor;
     }
 
+    float PlayerParams::ChargeFactorFor(float charge01, float overcharge01) const noexcept
+    {
+        float depth = 0.0f;
+        if (std::isfinite(overcharge01))
+        {
+            depth = NS::Core::Clamp(overcharge01, 0.0f, 1.0f);
+        }
+        return ChargeFactorFor(charge01) * (1.0f + (m_overchargePowerMax - 1.0f) * depth);
+    }
+
     float PlayerParams::ChargingSpeedScale() const noexcept
     {
         // 減速率の欄は非有限の書き込みを捨てるので、ここへ来る値は有限。Clamp だけで 0..1 に収まる

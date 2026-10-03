@@ -156,6 +156,16 @@ namespace NS::Game::Level
         return raw;
     }
 
+    int ImpactInputJudge::OverchargedSteps() const noexcept
+    {
+        const int steps = ChargeSteps();
+        if (steps <= 0 || steps < chargeThresholdSteps || steps < chargeMaxSteps)
+        {
+            return 0;
+        }
+        return steps - chargeMaxSteps;
+    }
+
     bool ImpactInputJudge::IsAwaitingLaunch() const noexcept
     {
         return m_phase == HoldPhase::AwaitingLaunch;

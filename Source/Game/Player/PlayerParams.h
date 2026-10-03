@@ -63,6 +63,13 @@ namespace NS::Game::Player
         //! @param[in] charge01 溜め量。0..1 の外は丸める
         //! @return 威力の倍率
         [[nodiscard]] float ChargeFactorFor(float charge01) const noexcept;
+        //! @brief 溜め量と溜めすぎの深さを威力の倍率にする
+        //! @details 溜め量の倍率 (1 つ引数の ChargeFactorFor) に、溜めすぎの深さで 1 から欄「紫の威力の上限」まで
+        //! 線形に上がる倍率を掛ける。非有限の深さは 0、0..1 の外は丸める
+        //! @param[in] charge01 溜め量。0..1 の外は丸める
+        //! @param[in] overcharge01 溜めすぎの深さ
+        //! @return 威力の倍率
+        [[nodiscard]] float ChargeFactorFor(float charge01, float overcharge01) const noexcept;
         //! @brief 溜め中に最高速へ掛ける倍率を返す
         //! @details 1 − 欄「チャージ減速率」を 0..1 に丸める。
         //! 溜めている間に Player::AdvanceCharge が自機の最高速度へ掛ける
@@ -115,6 +122,11 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_chargeThresholdSeconds, "チャージしきい値秒")
         NS_REFLECT_FIELD(m_chargeFullSeconds, "チャージ満タン秒")
         NS_REFLECT_FIELD(m_overchargeSeconds, "溜めすぎの秒数")
+        NS_REFLECT_FIELD(m_overchargeSwayMaxOffset, "紫の揺れの最大のずれ")
+        NS_REFLECT_FIELD(m_overchargeSwayStartRate, "紫の揺れの始めの速さ")
+        NS_REFLECT_FIELD(m_overchargeSwayEndRate, "紫の揺れの終わりの速さ")
+        NS_REFLECT_FIELD(m_overchargeSwayFallbackDistance, "相手がいない時に直す距離")
+        NS_REFLECT_FIELD(m_overchargePowerMax, "紫の威力の上限")
         NS_REFLECT_FIELD(m_chargeSlowRate, "チャージ減速率")
         NS_REFLECT_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
         NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
@@ -294,6 +306,16 @@ namespace NS::Game::Player
         float m_chargeFullSeconds = 1.0f;
         // 溜めきりから押したままで勝手に出るまで。3 は本人の「3 秒ほど赤からゆっくりと紫に」から
         float m_overchargeSeconds = 3.0f;
+        // 紫の揺れは相手の所の横のずれ (m) で持つ。角度で持つと、同じ揺れでも遠い相手ほど外れる
+        // 2.2 は見本 overcharge-sway.html の値。真ん中の半幅 0.4 m に対し、振れきると外れまで届く
+        float m_overchargeSwayMaxOffset = 2.2f;
+        // 1 秒に振れる回数。紫の始めは遅く、紫の深さの 2 乗で終わりの速さへ上がる。見本の 0.8〜2.6 回
+        float m_overchargeSwayStartRate = 0.8f;
+        float m_overchargeSwayEndRate = 2.6f;
+        // 狙う相手がいない時にずれを角度へ直す距離 (m)。10 は欄「突進距離」の既定で、矢印の先が最大のずれだけ振れる
+        float m_overchargeSwayFallbackDistance = 10.0f;
+        // 紫になりきった時に溜めきりの威力へ掛ける倍率。見本の 1.5
+        float m_overchargePowerMax = 1.5f;
         float m_chargeSlowRate = 0.7f;
         NS::Obj::Curve m_chargeFactorCurve{};
         float m_chargeSquashScale = 0.95f;
