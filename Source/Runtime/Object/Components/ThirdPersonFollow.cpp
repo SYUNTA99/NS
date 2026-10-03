@@ -200,6 +200,11 @@ namespace NS::Obj
         m_reboundReturnOffset = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_reboundReturnFrame = 0;
         m_hasLook = false;
+        m_reboundBaseDistance = 0.0f;
+        m_partnerLean = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_partnerLeanVelocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_partnerPull = 0.0f;
+        m_partnerPullVelocity = 0.0f;
     }
 
     void ThirdPersonFollow::UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept
@@ -311,6 +316,39 @@ namespace NS::Obj
         }
     }
 
+    void ThirdPersonFollow::UpdateReboundPartner(const FollowReboundDesc& rebound,
+                                                 const NS::Core::Vector3& head,
+                                                 float dt) noexcept
+    {
+        NS::Core::Vector3 leanTarget{0.0f, 0.0f, 0.0f};
+        float pullTarget = 0.0f;
+        const float release = std::max(m_reboundPartnerReleaseDistance, 0.0f);
+        if (m_reboundPhase == ReboundPhase::Following && rebound.partnerPosition.has_value() && release > 0.0f)
+        {
+            const NS::Core::Vector3 gap = rebound.partnerPosition.value() - head;
+            const float distance = gap.Length();
+            // 見送った後は引きも戻す。目標は 0 へ跳ぶが、ばねがなめらかに戻す
+            if (std::isfinite(distance) && distance < release)
+            {
+                const float weight = NS::Core::Clamp(m_reboundPartnerWeight, 0.0f, 1.0f) * (1.0f - distance / release);
+                leanTarget = gap * weight;
+                pullTarget = NS::Core::Clamp(m_reboundPullPerMeter * (distance - m_reboundPullStartDistance),
+                                             0.0f,
+                                             std::max(m_reboundPullMax, 0.0f));
+            }
+        }
+        // 臨界減衰のバネが止まった所から差の半分まで詰めるのは ωτ ≈ 1.678 の時。半分の秒から角速度を出す
+        float omega = 0.0f;
+        if (m_reboundPartnerHalfSeconds > 0.0f)
+        {
+            omega = 1.678f / m_reboundPartnerHalfSeconds;
+        }
+        CriticalSpringStep(m_partnerLean.x, m_partnerLeanVelocity.x, leanTarget.x, omega, dt);
+        CriticalSpringStep(m_partnerLean.y, m_partnerLeanVelocity.y, leanTarget.y, omega, dt);
+        CriticalSpringStep(m_partnerLean.z, m_partnerLeanVelocity.z, leanTarget.z, omega, dt);
+        CriticalSpringStep(m_partnerPull, m_partnerPullVelocity, pullTarget, omega, dt);
+    }
+
     NS::Core::Vector3 ThirdPersonFollow::UpdateReboundLook(const NS::Core::Vector3& head,
                                                            const NS::Core::Vector3& ball,
                                                            float dt) noexcept
@@ -375,7 +413,7 @@ namespace NS::Obj
         }
         // 上限は欄の値より上にある間だけ、今の遅れまで縮めていく。増やさないので注視点は跳ばない
         m_reboundLagCap = std::max(m_reboundMaxLag, std::min(m_reboundLagCap, std::min(lag, maxLag)));
-        m_look = m_reboundAnchor;
+        m_look = m_reboundAnchor + m_partnerLean;
 
         // 追う相手が画面の上下の帯を越えそうな時だけ、
         // 越えない所まで位置と注視点をカメラの上の向きへ動かす
@@ -654,6 +692,15 @@ namespace NS::Obj
         const NS::Core::Vector3 root = target->Position();
         const NS::Core::Vector3 head{root.x, root.y + m_targetHeightOffset + m_headHeight, root.z};
         UpdateReboundPhase(reboundBegan, rebound.rebounding, launchBegan, rebound.forcedSlamming, head);
+        // 反動になったフレームは前の反動の寄せと引きを持ち越さない
+        if (reboundBegan)
+        {
+            m_partnerLean = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            m_partnerLeanVelocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            m_partnerPull = 0.0f;
+            m_partnerPullVelocity = 0.0f;
+        }
+        UpdateReboundPartner(rebound, head, dt);
 
         // 接地と速度で決める自動ズーム距離
         // 反動になったフレームに、目標を当たった瞬間の距離より欄の分だけ伸ばし、
@@ -662,7 +709,13 @@ namespace NS::Obj
         // 目標へ寄っている途中に目標へ足すと、見えている距離より下がりすぎるか寄る
         if (!m_manualDistance && reboundBegan)
         {
-            m_desiredDistance = m_distance + std::max(m_reboundPullBack, 0.0f);
+            m_reboundBaseDistance = m_distance + std::max(m_reboundPullBack, 0.0f);
+            m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
+        }
+        else if (!m_manualDistance && m_reboundPhase == ReboundPhase::Following)
+        {
+            // 反動の間は当たった瞬間に決めた距離に、相手を収める引きだけを足す
+            m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
         }
         else if (!m_manualDistance && m_reboundPhase != ReboundPhase::Following)
         {

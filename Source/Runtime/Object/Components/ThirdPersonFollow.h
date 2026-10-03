@@ -30,6 +30,8 @@ namespace NS::Obj
         // 反動を起こした突進を出したフレームの向き。世界座標で、縦の成分は使わない
         // 水平の長さが 0 なら回さない
         NS::Core::Vector3 slamDirection{};
+        // 反動の間に画面へ残したい相手の今の位置。世界座標。空なら追う相手だけを見る
+        std::optional<NS::Core::Vector3> partnerPosition{};
     };
 
     //! @brief Mario 系ジャンプアクションの追従カメラ
@@ -40,6 +42,8 @@ namespace NS::Obj
     //! 受けた溜めから視野角の締め・縦の揺れ・構図のずらしを作って姿勢に足す
     //! 構図のずらしは追う相手と狙う相手を枠に収めるよう、位置と注視点を同じだけ動かす
     //! 反動の状態の間は、注視点の高さを反動の始まりに留め、横と前後は遅れて付いていく
+    //! 反動の間に相手の位置を受けた時は、注視点を相手へ重みで寄せ、二人が離れた分だけ後ろへ引く。
+    //! 重みは相手が見送りの距離へ近づくほど 0 へ落ち、見送った後は追う相手だけを見る
     //! 勝手に出た突進の間は、注視点の横と前後がその場に取り残されてから引っ張られるように追い付く
     //! 追う相手が画面の上下の帯を越えそうな時だけ追い、
     //! 反動の状態が外れたら普通の追い方へ寄せ戻す
@@ -180,6 +184,12 @@ namespace NS::Obj
         NS_REFLECT_FIELD(m_reboundReturnFrames, "反動の後に戻すフレーム数")
         NS_REFLECT_FIELD(m_reboundTurnFrames, "反動の向きへ回すフレーム数")
         NS_REFLECT_FIELD(m_reboundPullBack, "反動の間に下げる距離")
+        NS_REFLECT_FIELD(m_reboundPartnerWeight, "反動の間に相手を収める重み")
+        NS_REFLECT_FIELD(m_reboundPartnerReleaseDistance, "相手を見送る距離")
+        NS_REFLECT_FIELD(m_reboundPullStartDistance, "引き始めの二人の距離")
+        NS_REFLECT_FIELD(m_reboundPullPerMeter, "二人の距離 1 m あたりに引く距離")
+        NS_REFLECT_FIELD(m_reboundPullMax, "相手を収める引きの上限")
+        NS_REFLECT_FIELD(m_reboundPartnerHalfSeconds, "相手を収めるばねの半分の秒")
         NS_REFLECT_FIELD(m_forcedLaunchFollowOmega, "強制発射の追う速さ")
         NS_REFLECT_FIELD(m_forcedLaunchMaxLag, "強制発射の遅れの上限")
         NS_REFLECT_ACCESSOR(float, "ファークリップ", FarPlane(), SetFarPlane)
@@ -205,6 +215,8 @@ namespace NS::Obj
         // 水平の向きの回しを 1 フレーム進める
         // 回す入力を足す前に呼ぶ
         void UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept;
+        // 反動の間に受けた相手の位置から、注視点の寄せと引きのばねを 1 フレーム進める。反動の間でなければ 0 へ戻す
+        void UpdateReboundPartner(const FollowReboundDesc& rebound, const NS::Core::Vector3& head, float dt) noexcept;
 
         // 今の段でこのフレームの注視点を決めて控える
         // 普通の追い方の時は head をそのまま返す
@@ -274,6 +286,18 @@ namespace NS::Obj
         int m_reboundReturnFrames = 20;    // 反動が外れてから普通の追い方へ寄せ戻すフレーム数
         int m_reboundTurnFrames = 20;      // 反動になってから突進の向きへ回し終えるフレーム数
         float m_reboundPullBack = 1.0f;    // 反動の間に当たった瞬間の距離より伸ばす距離 (m)
+        // 真ん中の反動は、自分の跳ね返り方と飛んでいく相手の飛び方の差を見せる。主役は自機のまま、相手も画面に残す
+        // 注視点 = 自機 + 重み × (相手 − 自機)、重み = 最大 × (1 − 二人の距離 ÷ 見送りの距離)。最大 0.3 は 1
+        // 節の決定の値
+        float m_reboundPartnerWeight = 0.3f;
+        // 相手がこれより遠くへ飛ぶと重みが 0 になり、自機だけを追う (m)。出発点で、値は撮って詰める
+        float m_reboundPartnerReleaseDistance = 30.0f;
+        // 二人がこれより離れた分に、1 m あたりの距離を掛けて引く。引きは上限で止まる (m)
+        float m_reboundPullStartDistance = 3.0f;
+        float m_reboundPullPerMeter = 0.3f;
+        float m_reboundPullMax = 4.0f;
+        // 寄せと引きのばねが差の半分まで追いつく秒。1 節の決定の 0.15 秒から
+        float m_reboundPartnerHalfSeconds = 0.15f;
         // 勝手に出た突進の間に注視点の横と前後が寄るバネ角速度 (1/秒)。反動と同じ 4 から始める
         float m_forcedLaunchFollowOmega = 4.0f;
         // 勝手に出た突進の間に見せる遅れの上限 (m)。反動の 1.5 m だと約 5 フレームで届き、普通の突進と見分けにくい
@@ -299,9 +323,14 @@ namespace NS::Obj
         float m_reboundLagCap = 0.0f;                     // 反動の間の遅れの今の上限 (m)。欄の上限より下にはしない
         NS::Core::Vector3 m_reboundReturnOffset{};        // 寄せ戻し始めの、注視点 − 追う相手の頭 (m)
         int m_reboundReturnFrame = 0;                     // 寄せ戻しの何フレーム目か
-        NS::Core::Vector3 m_look{};                       // このフレームの注視点。反動と寄せ戻しで使う
-        NS::Core::Vector3 m_previousLook{};               // 前のフレームの注視点。描画の補間に使う
-        bool m_hasLook = false;                           // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
+        float m_reboundBaseDistance = 0.0f;        // 反動になったフレームに決めた、相手を収める引きの前の距離 (m)
+        NS::Core::Vector3 m_partnerLean{};         // 注視点を相手へ寄せている量 (m)
+        NS::Core::Vector3 m_partnerLeanVelocity{}; // 寄せの速さ (m/秒)
+        float m_partnerPull = 0.0f;                // 相手を収めるために引いている距離 (m)
+        float m_partnerPullVelocity = 0.0f;        // 引きの速さ (m/秒)
+        NS::Core::Vector3 m_look{};                // このフレームの注視点。反動と寄せ戻しで使う
+        NS::Core::Vector3 m_previousLook{};        // 前のフレームの注視点。描画の補間に使う
+        bool m_hasLook = false;                    // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
     };
 
 } // namespace NS::Obj

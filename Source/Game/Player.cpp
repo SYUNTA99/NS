@@ -114,6 +114,15 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
         .forcedSlamming = IsBodySlamming() && m_slam.forced,
         .slamDirection = BodySlamDirection(),
     };
+    // 真ん中の反動は、飛んでいく相手を画面に残す。外れはいつもどおり自機だけを追う (外れのカメラは寄り無し)
+    const NS::Game::Level::ImpactRecord& impact = m_resolver->LastImpact();
+    if (IsRebounding() && impact.tier == NS::Game::Level::HitTier::Center && OwningScene() != nullptr)
+    {
+        if (const NS::Obj::Actor* partner = OwningScene()->Objects().FindByObjectId(impact.targetId))
+        {
+            state.rebound.partnerPosition = partner->Root().Position();
+        }
+    }
     // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す。溜めすぎで出た後は押していても
     // 溜めの締めと揺れを解く
     const NS::Game::Level::ImpactInputJudge& judge = ChargeJudge();
