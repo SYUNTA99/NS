@@ -423,41 +423,29 @@ namespace NS::Editor
             drawList.PopClipRect();
             drawList.AddRect(rectMin, rectMax, ImGui::GetColorU32(ImGuiCol_Border));
         }
-    } // namespace
-
-    ComponentEditResult DrawReflectedComponent(NS::Obj::Component& comp,
-                                               std::span<const ObjectRefOption> refOptions,
-                                               const NS::Obj::Component* defaults) noexcept
-    {
-        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
-        if (info == nullptr || info->fieldCount == 0)
+        // 欄 1 つのウィジェットで起きた事
+        struct FieldWidgetResult
         {
-            return ComponentEditResult{};
-        }
-        if (!BeginFieldTable("##fields"))
-        {
-            return ComponentEditResult{};
-        }
+            bool changed = false;   // 値が編集された
+            bool activated = false; // 編集が始まった
+            bool committed = false; // ウィジェットが非活性化した
+        };
 
-        ComponentEditResult result;
-        // リフレクションの欄を 1 つずつ ImGui ウィジェットへ落とす
-        for (std::size_t i = 0; i < info->fieldCount; ++i)
+        // owner の欄 field を、型に合ったウィジェット 1 つで描く。部品と値型の両方が使う
+        FieldWidgetResult DrawFieldWidget(void* owner,
+                                          const NS::Obj::FieldDesc& field,
+                                          std::span<const ObjectRefOption> refOptions) noexcept
         {
-            const NS::Obj::FieldDesc& field = info->fields[i];
-            const bool changed = FieldDiffersFromDefault(comp, defaults, field);
-            const bool wasChanged = result.changed;
-            ImGui::PushID(static_cast<int>(i));
-            FieldRow(field.name, changed);
-
+            FieldWidgetResult result;
             switch (field.type)
             {
             case NS::Obj::FieldType::Float:
             {
                 float value = 0.0f;
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 if (ImGui::DragFloat("##value", &value, 0.05f))
                 {
-                    field.set(&comp, &value);
+                    field.set(owner, &value);
                     result.changed = true;
                 }
                 break;
@@ -465,10 +453,10 @@ namespace NS::Editor
             case NS::Obj::FieldType::Int:
             {
                 int value = 0;
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 if (ImGui::DragInt("##value", &value))
                 {
-                    field.set(&comp, &value);
+                    field.set(owner, &value);
                     result.changed = true;
                 }
                 break;
@@ -476,10 +464,10 @@ namespace NS::Editor
             case NS::Obj::FieldType::Bool:
             {
                 bool value = false;
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 if (ImGui::Checkbox("##value", &value))
                 {
-                    field.set(&comp, &value);
+                    field.set(owner, &value);
                     result.changed = true;
                 }
                 break;
@@ -487,12 +475,12 @@ namespace NS::Editor
             case NS::Obj::FieldType::Vector3:
             {
                 NS::Core::Vector3 value{};
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 float xyz[3] = {value.x, value.y, value.z};
                 if (ImGui::DragFloat3("##value", xyz, 0.05f))
                 {
                     value = NS::Core::Vector3{xyz[0], xyz[1], xyz[2]};
-                    field.set(&comp, &value);
+                    field.set(owner, &value);
                     result.changed = true;
                 }
                 break;
@@ -501,13 +489,13 @@ namespace NS::Editor
             {
                 // 4 成分を直接触らせると正規化の崩れた回転を作れるので、度の Euler を経由する
                 NS::Core::Quaternion value{};
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 const NS::Core::Vector3 degrees = NS::Core::QuaternionToEulerDegrees(value);
                 float xyz[3] = {degrees.x, degrees.y, degrees.z};
                 if (ImGui::DragFloat3("##value", xyz, 0.5f))
                 {
                     value = NS::Core::EulerDegreesToQuaternion(NS::Core::Vector3{xyz[0], xyz[1], xyz[2]});
-                    field.set(&comp, &value);
+                    field.set(owner, &value);
                     result.changed = true;
                 }
                 break;
@@ -515,14 +503,14 @@ namespace NS::Editor
             case NS::Obj::FieldType::String:
             {
                 std::string value;
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 char buf[256];
                 const std::size_t copied = value.copy(buf, sizeof(buf) - 1);
                 buf[copied] = '\0';
                 if (ImGui::InputText("##value", buf, sizeof(buf)))
                 {
                     std::string edited(buf);
-                    field.set(&comp, &edited);
+                    field.set(owner, &edited);
                     result.changed = true;
                 }
                 break;
@@ -530,7 +518,7 @@ namespace NS::Editor
             case NS::Obj::FieldType::ActorRef:
             {
                 NS::Obj::ActorRef value{};
-                field.get(&comp, &value);
+                field.get(owner, &value);
 
                 // 参照候補が無ければ id を直接打たせる
                 if (refOptions.empty())
@@ -551,7 +539,7 @@ namespace NS::Editor
                         {
                             value.id = static_cast<std::uint32_t>(id);
                         }
-                        field.set(&comp, &value);
+                        field.set(owner, &value);
                         result.changed = true;
                     }
                     break;
@@ -576,7 +564,7 @@ namespace NS::Editor
                     if (ImGui::Selectable("未設定", !value.IsSet()))
                     {
                         value.id = 0;
-                        field.set(&comp, &value);
+                        field.set(owner, &value);
                         result.changed = true;
                     }
                     for (const ObjectRefOption& option : refOptions)
@@ -585,7 +573,7 @@ namespace NS::Editor
                         if (ImGui::Selectable(option.label.c_str(), option.id == value.id))
                         {
                             value.id = option.id;
-                            field.set(&comp, &value);
+                            field.set(owner, &value);
                             result.changed = true;
                         }
                         ImGui::PopID();
@@ -597,7 +585,7 @@ namespace NS::Editor
             case NS::Obj::FieldType::Curve:
             {
                 NS::Obj::Curve value{};
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 bool edited = false;
 
                 CurveGraphView view{};
@@ -900,7 +888,7 @@ namespace NS::Editor
                 {
                     // x を左右へドラッグすると並びが崩れるため、編集のたびに並べ直してから書き戻す
                     value.SortKeys();
-                    field.set(&comp, &value);
+                    field.set(owner, &value);
                     result.changed = true;
                 }
                 break;
@@ -911,6 +899,38 @@ namespace NS::Editor
             // 編集無しのクリックでもラッチを解くため、確定ではなく非活性化で committed を立てる
             // 空編集は CommitComponentEdit が before==after で弾くので履歴は汚れない
             result.committed |= ImGui::IsItemDeactivated();
+            return result;
+        }
+    } // namespace
+
+    ComponentEditResult DrawReflectedComponent(NS::Obj::Component& comp,
+                                               std::span<const ObjectRefOption> refOptions,
+                                               const NS::Obj::Component* defaults) noexcept
+    {
+        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
+        if (info == nullptr || info->fieldCount == 0)
+        {
+            return ComponentEditResult{};
+        }
+        if (!BeginFieldTable("##fields"))
+        {
+            return ComponentEditResult{};
+        }
+
+        ComponentEditResult result;
+        // リフレクションの欄を 1 つずつ ImGui ウィジェットへ落とす
+        for (std::size_t i = 0; i < info->fieldCount; ++i)
+        {
+            const NS::Obj::FieldDesc& field = info->fields[i];
+            const bool changed = FieldDiffersFromDefault(comp, defaults, field);
+            const bool wasChanged = result.changed;
+            ImGui::PushID(static_cast<int>(i));
+            FieldRow(field.name, changed);
+
+            const FieldWidgetResult widget = DrawFieldWidget(&comp, field, refOptions);
+            result.changed |= widget.changed;
+            result.activated |= widget.activated;
+            result.committed |= widget.committed;
 
             if (result.changed && !wasChanged)
             {
@@ -939,12 +959,51 @@ namespace NS::Editor
         return result;
     }
 
+    ValueEditResult DrawReflectedValue(void* value,
+                                       const NS::Obj::ReflectionInfo& info,
+                                       std::span<const ObjectRefOption> refOptions) noexcept
+    {
+        if (value == nullptr || info.fieldCount == 0)
+        {
+            return ValueEditResult{};
+        }
+        if (!BeginFieldTable("##value-fields"))
+        {
+            return ValueEditResult{};
+        }
+        ValueEditResult result;
+        for (std::size_t i = 0; i < info.fieldCount; ++i)
+        {
+            const NS::Obj::FieldDesc& field = info.fields[i];
+            ImGui::PushID(static_cast<int>(i));
+            FieldRow(field.name);
+            const FieldWidgetResult widget = DrawFieldWidget(value, field, refOptions);
+            result.activated |= widget.activated;
+            result.committed |= widget.committed;
+            if (widget.changed && !result.changed)
+            {
+                result.changedField = &field;
+            }
+            result.changed |= widget.changed;
+            // 部品の行と値の幅を揃えるため、上書きの印の幅だけ空ける
+            (void)OverrideButton(false, false);
+            ImGui::PopID();
+        }
+        EndFieldTable();
+        return result;
+    }
+
 #else
     ComponentEditResult DrawReflectedComponent(NS::Obj::Component&,
                                                std::span<const ObjectRefOption>,
                                                const NS::Obj::Component*) noexcept
     {
         return ComponentEditResult{};
+    }
+
+    ValueEditResult DrawReflectedValue(void*, const NS::Obj::ReflectionInfo&, std::span<const ObjectRefOption>) noexcept
+    {
+        return ValueEditResult{};
     }
 #endif
 } // namespace NS::Editor
