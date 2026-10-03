@@ -248,7 +248,7 @@ TEST(SceneActor, EnsuredPlayerStandsOnTheAssumedFloorForItsCapsule)
     // 補う自機の高さはカプセルの寸法から出す。床の上面 0.5 + 半分の高さ + 半径 + 余白 1cm
     // 種類の既定の半径を変えても、足元が床の 1cm 上に出る
     const ScopedPlayerArchetype archetype{
-        nlohmann::json{{"class", "Player"}, {"parts", {{"Movement", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
+        nlohmann::json{{"class", "Player"}, {"parts", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     EXPECT_TRUE(NS::Editor::EnsurePlayerObject(doc));
 
@@ -261,7 +261,7 @@ TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosit
 {
     // 補う位置とやり直しの落ち先は同じ DefaultSpawnPosition から出る。数字の写しが戻ると片方だけずれる
     const ScopedPlayerArchetype archetype{
-        nlohmann::json{{"class", "Player"}, {"parts", {{"Movement", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
+        nlohmann::json{{"class", "Player"}, {"parts", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     ASSERT_TRUE(NS::Editor::EnsurePlayerObject(doc));
     const NS::Core::Vector3 ensured = NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(doc)[0]);
@@ -270,7 +270,7 @@ TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosit
     scene.LoadJson(doc);
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    const NS::Core::Vector3 fallback = DefaultSpawnPosition(player->Body());
+    const NS::Core::Vector3 fallback = DefaultSpawnPosition(player->Collider());
     EXPECT_FLOAT_EQ(ensured.y, fallback.y);
 
     // 凍結に自機が居ないやり直しは、補う位置と同じ高さへ戻る

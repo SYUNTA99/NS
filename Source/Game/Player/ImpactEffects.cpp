@@ -7,6 +7,7 @@
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Clock.h"
@@ -405,7 +406,7 @@ namespace NS::Game::Player
         float radius = 0.0f;
         if (m_player != nullptr)
         {
-            radius = m_player->Body().CapsuleRadius();
+            radius = m_player->Collider().CapsuleRadius();
         }
         const Vector3 horizontalForward{impact.impactDir.x, 0.0f, impact.impactDir.z};
         plan.launchDir = NormalizedOr(horizontalForward, Vector3{1.0f, 0.0f, 0.0f});
@@ -680,7 +681,7 @@ namespace NS::Game::Player
                 float radius = 0.0f;
                 if (m_player != nullptr)
                 {
-                    radius = m_player->Body().CapsuleRadius();
+                    radius = m_player->Collider().CapsuleRadius();
                 }
                 m_aim.recoilOrigin = Owner()->Root().Position() - m_plan.selfDir * radius;
                 NS::Gfx::EffectPlayDesc recoil = PlayAt(m_aim.recoilOrigin, TurnUpTo(m_plan.selfDir), Uniform(1.0f));
@@ -767,7 +768,7 @@ namespace NS::Game::Player
             m_landingDustPlayed = true;
             const float radius = LandDustRadiusFor(-m_lastVerticalVelocity);
             // 足元は当たりのカプセルの下端 (中心 − 軸 × (半分の高さ + 半径))
-            const NS::Phys::Capsule capsule = m_player->Body().CapsuleAt(Owner()->Root().Position());
+            const NS::Phys::Capsule capsule = m_player->Collider().CapsuleAt(Owner()->Root().Position());
             Vector3 at = capsule.center - capsule.axis * (capsule.halfHeight + capsule.radius);
             at.y += k_DustRingLift;
             const std::uint32_t dust = m_layers.Play(

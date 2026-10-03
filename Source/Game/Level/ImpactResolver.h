@@ -81,7 +81,7 @@ namespace NS::Game::Level
     //! 衝突の瞬間は自機を数固定ステップ止め、止めの頭に MsgTackleFreeze、明けに MsgTackleRelease を相手へ送る
     //! 相手が食い込み・縮み・飛ぶ・壊れるかは相手が決める。相手の部品は触らない
     //! 白の光・カメラの揺れと寄り・パッドの振動は同居する HitReaction へ組んで渡す
-    //! 依存: NS::Obj::Body, PlayerParams, HitTier, NS::Obj::HitSensor, NS::Obj::HitReaction
+    //! 依存: NS::Obj::Body / Collider, PlayerParams, HitTier, NS::Obj::HitSensor, NS::Obj::HitReaction
     class ImpactResolver : public NS::Obj::Component
     {
     public:

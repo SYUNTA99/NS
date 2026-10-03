@@ -5,7 +5,7 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Mesh.h"
 #include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectList.h"
@@ -197,7 +197,7 @@ namespace NS::Editor
         bool created = false;
         if (FindPlayerObjectIndex(scene) == NS::Obj::k_NoObjectIndex)
         {
-            // 高さはカプセルの寸法の持ち主 Body から引く。種類の既定でカプセルを変えても足元が床の上に出る
+            // 高さはカプセルの寸法の持ち主 Collider から引く。種類の既定でカプセルを変えても足元が床の上に出る
             const NS::Obj::Actor& baseline =
                 NS::Obj::ArchetypeLibrary::Get().Baseline(::Player::StaticReflection()->typeName);
             const ::Player* player = NS::Obj::Cast<::Player>(&baseline);
@@ -207,7 +207,7 @@ namespace NS::Editor
                 return false;
             }
             NS::Obj::SceneJsonObjects(scene).push_back(
-                MakePlayerObject(DefaultSpawnPosition(player->Body()), NS::Core::Quaternion{}));
+                MakePlayerObject(DefaultSpawnPosition(player->Collider()), NS::Core::Quaternion{}));
             created = true;
         }
 

@@ -29,7 +29,7 @@ namespace NS::Game::Player
 
     //! @brief 自機の立ち姿と玉の 2 つの見た目を持ち、丸まる時に同居する Model の mesh を持ち替える
     //! @details 見た目の欄が空なら仮の形を使う。立ち姿は当たりのカプセルと同じ寸法のカプセル、玉は同じ半径の球
-    //! 寸法は身体の部品が移動に使うカプセルから引き、見た目の側には数を持たない
+    //! 寸法は当たりの部品 Collider が移動に使うカプセルから引き、見た目の側には数を持たない
     //! 欄に ContentRoot 相対の参照を書けば、そのファイルの mesh を使う。引き当てられない参照は仮の形へ戻す
     //! 根の Transform は書かない。位置は移動が持ち、スケールは配置の値のまま
     //! 自機の描く形の倍率を書くのはここだけで、OnUpdate で 1 回組んで同居する Model の描く時だけの倍率へ書く。
@@ -45,10 +45,10 @@ namespace NS::Game::Player
     //! Player の見た目の段 (VisualStep) が移動の段と HitReaction の後に呼ぶ。
     //! 配置物を組む経路 (ObjectFromJson / StartSpawned) では
     //! 参照の引き当てが Player::ForEachPart の並びに回るので、Model が自分の参照から mesh を差した後にこちらが差す
-    //! 依存: Player, NS::Obj::Body, NS::Game::Level::ImpactResolver,
+    //! 依存: Player, NS::Obj::Body / Collider, NS::Game::Level::ImpactResolver,
     //! NS::Obj::Model, NS::Obj::AssetManager
     // TODO: Scene::ApplyFromJson は値の変わった部品だけ引き直す。Model の値の undo で mesh が
-    // 組み込みの cube に戻り、身体 (Body) の寸法の変更に見た目が付いてこない。編集へ戻る時の LoadJson で直る
+    // 組み込みの cube に戻り、当たり (Collider) の寸法の変更に見た目が付いてこない。編集へ戻る時の LoadJson で直る
     class PlayerAppearance : public NS::Obj::Component
     {
     public:
@@ -101,8 +101,8 @@ namespace NS::Game::Player
         NS::Gfx::Mesh* m_standingMesh = nullptr; // AssetManager 所有
         NS::Gfx::Mesh* m_ballMesh = nullptr;     // AssetManager 所有
         bool m_curled = false;
-        const NS::Obj::Body* m_body = nullptr;                       // 寸法と接地の問い先。非所有
-        const ::Player* m_actor = nullptr;                           // 突進の速度と狙いの向きと溜めと構えの縮みの問い先。非所有
+        const NS::Obj::Body* m_body = nullptr; // 接地の問い先。非所有
+        const ::Player* m_actor = nullptr;     // 突進の速度と狙いの向きと溜めと構えの縮みの問い先。非所有
         const NS::Game::Level::ImpactResolver* m_resolver = nullptr; // 当たりの潰れと伸びの問い先。非所有
 
         // 回る速さは 3 つとも 1 フレーム 180 度未満 (1/60 秒のフレームで 10800 度/秒未満) で使う。超えると描く時の

@@ -19,10 +19,10 @@
 #include "Runtime/Core/Sphere.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/BoxCollision.h"
 #include "Runtime/Object/Components/CameraManager.h"
 #include "Runtime/Object/Components/CapsuleCollision.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/MeshCollision.h"
 #include "Runtime/Object/Components/Model.h"
@@ -101,14 +101,14 @@ namespace
     // 編集復帰の視点ブレンド秒。CameraManager の vcam 切替の既定 0.35 秒と揃え、モード切替の繋ぎを同じ感触にする
     constexpr float k_EditBlendSeconds = 0.35f;
 
-    // 部品のうち動く体 (Body) を返す。持たなければ nullptr
-    const NS::Obj::Body* BodyOf(const NS::Obj::Actor& object) noexcept
+    // 部品のうち動く体の当たり (Collider) を返す。持たなければ nullptr
+    const NS::Obj::Collider* ColliderOf(const NS::Obj::Actor& object) noexcept
     {
-        const NS::Obj::Body* found = nullptr;
+        const NS::Obj::Collider* found = nullptr;
         object.ForEachPart([&found](std::string_view, NS::Obj::Component& part) {
             if (found == nullptr)
             {
-                found = NS::Obj::ComponentCast<NS::Obj::Body>(&part);
+                found = NS::Obj::ComponentCast<NS::Obj::Collider>(&part);
             }
         });
         return found;
@@ -136,10 +136,10 @@ namespace
             shapes.Capsule(
                 worldCapsule.center, worldCapsule.axis * worldCapsule.halfHeight, worldCapsule.radius, color);
         }
-        else if (const NS::Obj::Body* body = BodyOf(object))
+        else if (const NS::Obj::Collider* collider = ColliderOf(object))
         {
             // 移動が掃引するのと同じ、根を中心にした縦のカプセル。根の拡縮は掛けない
-            const NS::Phys::Capsule bodyCapsule = body->CapsuleAt(object.Root().Position());
+            const NS::Phys::Capsule bodyCapsule = collider->CapsuleAt(object.Root().Position());
             shapes.Capsule(bodyCapsule.center, bodyCapsule.axis * bodyCapsule.halfHeight, bodyCapsule.radius, color);
         }
         else if (NS::Obj::ComponentCast<NS::Obj::MeshCollision>(object.CollisionPart()) != nullptr)

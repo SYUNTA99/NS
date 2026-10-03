@@ -21,6 +21,7 @@
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Object/Components/Animation.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/HitReaction.h"
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/Components/Model.h"
@@ -40,6 +41,7 @@ Player::Player() noexcept
 {
     m_appearance = std::make_unique<NS::Game::Player::PlayerAppearance>();
     m_body = std::make_unique<NS::Obj::Body>();
+    m_collider = std::make_unique<NS::Obj::Collider>();
     m_input = std::make_unique<NS::Obj::PlayerInput>();
     m_params = std::make_unique<NS::Game::Player::PlayerParams>();
     m_resolver = std::make_unique<NS::Game::Level::ImpactResolver>();
@@ -52,12 +54,13 @@ Player::Player() noexcept
     ModelPart()->SetBaseColor(NS::Core::Vector3{0.5f, 0.5f, 0.5f});
     AttachFixedComponent(*m_appearance);
     AttachFixedComponent(*m_body);
+    AttachFixedComponent(*m_collider);
     AttachFixedComponent(*m_input);
     AttachFixedComponent(*m_params);
     (void)CreatePart("Shadow");
-    // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Body の欄で、センサーは毎回それを読む
+    // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
     SetBodySensorPart(std::make_unique<NS::Obj::FollowHitSensor>(
-        [body = m_body.get()] { return NS::Obj::SensorVolume::Capsule(body->WorldCapsule()); }));
+        [collider = m_collider.get()] { return NS::Obj::SensorVolume::Capsule(collider->WorldCapsule()); }));
     NS::Game::Level::SetSensorKind(*BodySensorPart(), NS::Game::Level::SensorKind::PlayerBody);
     AttachFixedComponent(*m_resolver);
     (void)CreatePart("HitReaction");
@@ -84,6 +87,7 @@ void Player::ForEachPart(const PartVisitor& visitor) const
     NS::Obj::Actor::ForEachPart(visitor);
     visitor("Appearance", *m_appearance);
     visitor("Movement", *m_body);
+    visitor("Collider", *m_collider);
     visitor("Input", *m_input);
     visitor("Params", *m_params);
     visitor("ImpactResolver", *m_resolver);
@@ -100,7 +104,7 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
     state.velocity = m_body->Velocity();
     // 当たりの足元に立ち姿のカプセルを立てた時の中心を見る。玉の間は根が立ち姿の半長ぶん下がっているので、
     // 根を見ると押すたびに画面が 1 フレームで半長ぶん沈み、解けると跳ね上がる
-    state.heightOffset = m_body->StandingHalfHeight() - m_body->CapsuleHalfHeight();
+    state.heightOffset = m_collider->StandingHalfHeight() - m_collider->CapsuleHalfHeight();
     state.hasRebound = true;
     state.rebound = NS::Obj::FollowReboundDesc{
         .rebounding = IsRebounding(),
@@ -341,7 +345,7 @@ void Player::RestartFrom(const nlohmann::json& baseline) noexcept
 {
     // 出現位置はエディタで配置したプレイヤーの capsule 中心の world 位置そのもの
     // 凍結に既にある値なので写しは持たず、その都度読む。居なければ新規レベルで補う位置へ戻す
-    NS::Core::Vector3 spawn = DefaultSpawnPosition(Body());
+    NS::Core::Vector3 spawn = DefaultSpawnPosition(Collider());
     const std::size_t index = NS::Obj::FindObjectIndexById(baseline, Id());
     if (index != NS::Obj::k_NoObjectIndex)
     {
@@ -515,7 +519,7 @@ void Player::ResetState() noexcept
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_curled = false;
-    m_body->SetSphereShape(false);
+    m_collider->SetSphereShape(false);
     m_bodySlamHeld = false;
     m_slam.wasSlamming = false;
     m_states->Reset();
@@ -581,14 +585,14 @@ namespace
     // 感じてほしい体験: 新しいレベルを開いた瞬間、自機が床に立っている
     // してほしい挙動: 補った自機の足元が仮定の床の少し上に出て、置いた瞬間に床と重ならない
     // 用意した変数: k_DefaultFloorTop = 0.5 (エディタの立方体の床の上面)、k_SpawnClearance = 0.01 (床と重ならない余白)
-    // 実装: DefaultSpawnPosition が、この 2 つにカプセルの寸法 (Body の欄) を足して中心の高さを出す
+    // 実装: DefaultSpawnPosition が、この 2 つにカプセルの寸法 (Collider の欄) を足して中心の高さを出す
     // TODO: 床の上面を仮定している。補う時に下向きに引いて置く
     constexpr float k_DefaultFloorTop = 0.5f;
     constexpr float k_SpawnClearance = 0.01f;
 } // namespace
 
-NS::Core::Vector3 DefaultSpawnPosition(const NS::Obj::Body& body) noexcept
+NS::Core::Vector3 DefaultSpawnPosition(const NS::Obj::Collider& collider) noexcept
 {
     return NS::Core::Vector3{
-        0.0f, k_DefaultFloorTop + body.StandingHalfHeight() + body.CapsuleRadius() + k_SpawnClearance, 0.0f};
+        0.0f, k_DefaultFloorTop + collider.StandingHalfHeight() + collider.CapsuleRadius() + k_SpawnClearance, 0.0f};
 }

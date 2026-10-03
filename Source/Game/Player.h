@@ -18,6 +18,7 @@
 namespace NS::Obj
 {
     class Body;
+    class Collider;
     class ObjectList;
     class PlayerInput;
 } // namespace NS::Obj
@@ -38,10 +39,11 @@ namespace NS::Game::Level
 } // namespace NS::Game::Level
 
 //! @brief プレイヤーキャラクタ。固定の部品をコードで組む
-//! @details 部品と部品名は ForEachPart が正。Body が Movement、PlayerInput が Input を名乗る。
+//! @details 部品と部品名は ForEachPart が正。Body が Movement、Collider が Collider、PlayerInput が Input を名乗る。
 //! 値はプレイヤーの種類の既定値と個体の上書きから写す。
 //! 状態機械と命は Actor 自身が持ち、入力の窓口・移動の組み立て・崖つかまり・突進と反発とそれらの記録はここが持つ。
-//! 速度と接地の計算だけは身体の部品 (Body) へ任せる。状態の遷移の条件は PlayerJudges の判定を状態が呼ぶ
+//! 速度と接地の計算は身体の部品 (Body) へ、当たりの寸法と地形に当てて押し返す移動は Collider へ任せる。
+//! 状態の遷移の条件は PlayerJudges の判定を状態が呼ぶ
 //! 落下死やゴールは体のセンサーへ届く知らせで受け取り、コースの流れは進行役へ伝えるだけにする
 //! 実装は 4 つに分ける。Player.cpp (生成・部品・更新の流れ・入力・記録)、
 //! PlayerMovement.cpp (移動の組み立てと崖つかまり)、PlayerBodySlam.cpp (突進・反動・丸まり)、
@@ -66,9 +68,13 @@ public:
     [[nodiscard]] const NS::Obj::StateMachine<Player>& States() const noexcept { return *m_states; }
     [[nodiscard]] NS::Obj::PlayerInput& Input() noexcept { return *m_input; }
     [[nodiscard]] const NS::Obj::PlayerInput& Input() const noexcept { return *m_input; }
-    //! 速度・接地・カプセル寸法・移動を持つ身体の部品。部品名は保存の鍵なので "Movement" のまま
+    //! 速度・接地を持つ身体の部品。部品名は保存の鍵なので "Movement" のまま
     [[nodiscard]] NS::Obj::Body& Body() noexcept { return *m_body; }
     [[nodiscard]] const NS::Obj::Body& Body() const noexcept { return *m_body; }
+    //! 動く体の当たりの部品で、部品名は "Collider"。カプセルの寸法と、地形に当てて押し返す移動を持つ。
+    //! 体の周りの地形はこれを渡して問う
+    [[nodiscard]] NS::Obj::Collider& Collider() noexcept { return *m_collider; }
+    [[nodiscard]] const NS::Obj::Collider& Collider() const noexcept { return *m_collider; }
     [[nodiscard]] NS::Game::Player::PlayerParams& Params() noexcept { return *m_params; }
     [[nodiscard]] const NS::Game::Player::PlayerParams& Params() const noexcept { return *m_params; }
     //! 溜めの判定を読むだけの口。溜め量・押しているか・溜めている間かは、見た目の部品と追従カメラがここから読む
@@ -449,6 +455,7 @@ private:
     std::string m_appliedClip{};
     std::unique_ptr<NS::Obj::PlayerInput> m_input;
     std::unique_ptr<NS::Obj::Body> m_body;
+    std::unique_ptr<NS::Obj::Collider> m_collider;
     std::unique_ptr<NS::Game::Player::PlayerAppearance> m_appearance;
     std::unique_ptr<NS::Game::Level::ImpactResolver> m_resolver;
     std::unique_ptr<NS::Game::Level::TargetMarker> m_targetMarker;
@@ -492,8 +499,8 @@ private:
 [[nodiscard]] Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept;
 
 //! @brief プレイヤーの居ないレベルへ補う時と、凍結に自機が居ないやり直しで使う出現位置の既定
-//! @details 水平は原点。高さは仮定した床の上面にカプセルの半分の高さと半径と余白を足した中心の高さで、寸法は body
+//! @details 水平は原点。高さは仮定した床の上面にカプセルの半分の高さと半径と余白を足した中心の高さで、寸法は collider
 //! の欄から引く 補う側 (エディタの EnsurePlayerObject) とやり直しの落ち先 (RestartFrom) が同じこの関数を読む
-//! @param[in] body 立たせる自機の身体。カプセルの寸法の持ち主
+//! @param[in] collider 立たせる自機の動く体の当たり。カプセルの寸法の持ち主
 //! @return カプセルの中心の world 位置
-[[nodiscard]] NS::Core::Vector3 DefaultSpawnPosition(const NS::Obj::Body& body) noexcept;
+[[nodiscard]] NS::Core::Vector3 DefaultSpawnPosition(const NS::Obj::Collider& collider) noexcept;

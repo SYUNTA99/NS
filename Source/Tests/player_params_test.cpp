@@ -8,6 +8,7 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectJson.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
@@ -120,11 +121,14 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
     EXPECT_FALSE(fields.contains("1 フレームの向きの変化の上限"));
     const NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player.Part("Movement"));
     ASSERT_NE(movement, nullptr);
-    // 身体の欄は自分の当たりの寸法だけ。動きの調整値は Params に居る
-    const nlohmann::json movementFields = NS::Obj::SerializeComponent(*movement)["fields"];
-    EXPECT_EQ(movementFields.size(), 2u);
-    EXPECT_TRUE(movementFields.contains("半径"));
-    EXPECT_TRUE(movementFields.contains("半分の高さ"));
+    // 身体は欄を持たない。動きの調整値は Params、当たりの寸法は Collider に居る
+    EXPECT_TRUE(NS::Obj::SerializeComponent(*movement)["fields"].empty());
+    const NS::Obj::Collider* collider = NS::Obj::ComponentCast<NS::Obj::Collider>(player.Part("Collider"));
+    ASSERT_NE(collider, nullptr);
+    const nlohmann::json colliderFields = NS::Obj::SerializeComponent(*collider)["fields"];
+    EXPECT_EQ(colliderFields.size(), 2u);
+    EXPECT_TRUE(colliderFields.contains("半径"));
+    EXPECT_TRUE(colliderFields.contains("半分の高さ"));
 }
 
 TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)

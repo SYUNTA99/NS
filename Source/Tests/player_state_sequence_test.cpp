@@ -7,6 +7,7 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/HitReaction.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectJson.h"
@@ -55,7 +56,7 @@ TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
     player->ClimbLedge();
     ASSERT_TRUE(player->States().IsCurrent<NS::Game::Player::LedgeClimbingPlayerState>());
     EXPECT_FLOAT_EQ(player->Root().Position().y, 0.0f);
-    const float top = movement->CapsuleHalfHeight() + movement->CapsuleRadius();
+    const float top = player->Collider().CapsuleHalfHeight() + player->Collider().CapsuleRadius();
     player->States().Step(0.0625f);
     EXPECT_NEAR(player->Root().Position().y, top * 0.5f, 0.00001f);
     player->States().Step(0.0625f);
@@ -216,8 +217,8 @@ TEST(PlayerStateSequence, SlamBallStaysPutWhenCurling)
     ASSERT_FALSE(player->IsCurled());
     const NS::Core::Vector3 standingRoot = player->Root().Position();
     const NS::Core::Sphere standing = player->SlamBallAt(standingRoot);
-    EXPECT_FLOAT_EQ(standing.center.y, standingRoot.y - player->Body().StandingHalfHeight());
-    EXPECT_FLOAT_EQ(standing.radius, player->Body().CapsuleRadius());
+    EXPECT_FLOAT_EQ(standing.center.y, standingRoot.y - player->Collider().StandingHalfHeight());
+    EXPECT_FLOAT_EQ(standing.radius, player->Collider().CapsuleRadius());
 
     player->SetCurled(true);
     ASSERT_TRUE(player->IsCurled());

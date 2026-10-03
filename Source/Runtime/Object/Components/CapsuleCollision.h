@@ -8,7 +8,7 @@
 namespace NS::Obj
 {
     //! @brief カプセル collision を Scene に登録する Component
-    //! @details 地形として出す形で、持ち主のクラスが部品 Collision に入れる。動く体の形は Body が自分で持つ。
+    //! @details 地形として出す形で、持ち主のクラスが部品 Collision に入れる。動く体の形は Collider が自分で持つ。
     //! owner の world 変換から中心・軸・半径・半高を個別に返す
     //! 既定は縦向き Y 軸の capsule。local 回転で寝かせられる。半径は X/Z scale の最大、半高は Y scale で拡縮する
     //! 回転と非一様 scale を併用すると近似になる

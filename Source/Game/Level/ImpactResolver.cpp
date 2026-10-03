@@ -13,6 +13,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/HitSensor.h"
 #include "Runtime/Object/IUse/IUseCamera.h"
 #include "Runtime/Object/ObjectList.h"
@@ -208,7 +209,8 @@ namespace NS::Game::Level
         const NS::Core::Vector3 position = Owner()->Root().Position();
 
         // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
-        const NS::Phys::Capsule capsule = m_body->CapsuleAt(PositionAfterStep(position, predictedVelocity));
+        const NS::Phys::Capsule capsule =
+            m_player->Collider().CapsuleAt(PositionAfterStep(position, predictedVelocity));
         const std::vector<NS::Obj::HitSensor*> touching =
             scene->HitSensors().FindOverlaps(NS::Obj::SensorVolume::Capsule(capsule), Owner());
 
@@ -261,7 +263,7 @@ namespace NS::Game::Level
         }
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
-        const float playerRadius = m_body->CapsuleRadius();
+        const float playerRadius = m_player->Collider().CapsuleRadius();
         // 突進は丸まった玉で進む。玉の決まりは Player::SlamBallAt が持つ
         const NS::Core::Vector3 ballCenter = m_player->SlamBallAt(position).center;
         // 届くかは裁定と同じく、自機の当たりの玉と相手の体のセンサーの形で見る。外接箱を水平に見ると、中心の高い
@@ -501,7 +503,7 @@ namespace NS::Game::Level
         const NS::Core::Vector3 stepped = PositionAfterStep(position, velocity);
         const NS::Core::Vector3 ballCenter = m_player->SlamBallAt(stepped).center;
         const HitFaceJudgement judgement =
-            JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, m_body->CapsuleRadius());
+            JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, m_player->Collider().CapsuleRadius());
         const float offset01 = judgement.offset01;
         const float chargeFactor = Tuning().ChargeFactorFor(charge01);
         const float positionFactor = judgement.powerScale;

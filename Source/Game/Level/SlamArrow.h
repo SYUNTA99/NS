@@ -21,7 +21,7 @@ namespace NS::Gfx
 
 namespace NS::Obj
 {
-    class Body;
+    class Collider;
 }
 
 namespace NS::Game::Level
@@ -124,7 +124,7 @@ namespace NS::Game::Level
     //! 形は OnUpdate で組んで控え、描く時は板を積むだけ。
     //! 狙いの線が無いフレームと放したフレームは何も組まない。
     //! 板は組み込みの上向きの板 shadowQuad に、帯と矢じりのマテリアル (Shaders/ground_arrow.ps.hlsl) を貼った半透明
-    //! 依存: Player, SlamAim (AimLine), NS::Obj::Body, NS::Obj::Scene, NS::Obj::IUseCollision
+    //! 依存: Player, SlamAim (AimLine), NS::Obj::Collider, NS::Obj::Scene, NS::Obj::IUseCollision
     class SlamArrow : public NS::Obj::Component, public NS::Obj::IRenderable
     {
     public:
@@ -173,11 +173,11 @@ namespace NS::Game::Level
         [[nodiscard]] const SlamArrowDesc& Tuning() const noexcept;
         SlamArrowShape m_shown{}; // 控えた矢印。m_hasShown が偽の間は読まない
         bool m_hasShown = false;
-        int m_framesSinceShown = -1; // 矢印を出していない間は負
-        const ::Player* m_player = nullptr; // 溜めと狙いの問い先。非所有
-        const NS::Obj::Body* m_body = nullptr;
-        NS::Gfx::StaticMesh* m_mesh = nullptr;       // 共有の上向きの板 (非所有)
-        NS::Gfx::Material* m_bandMaterial = nullptr; // 帯のマテリアル (非所有)
-        NS::Gfx::Material* m_headMaterial = nullptr; // 矢じりのマテリアル (非所有)
+        int m_framesSinceShown = -1;                   // 矢印を出していない間は負
+        const ::Player* m_player = nullptr;            // 溜めと狙いの問い先。非所有
+        const NS::Obj::Collider* m_collider = nullptr; // 玉の半径と床の問い先。非所有
+        NS::Gfx::StaticMesh* m_mesh = nullptr;         // 共有の上向きの板 (非所有)
+        NS::Gfx::Material* m_bandMaterial = nullptr;   // 帯のマテリアル (非所有)
+        NS::Gfx::Material* m_headMaterial = nullptr;   // 矢じりのマテリアル (非所有)
     };
 } // namespace NS::Game::Level

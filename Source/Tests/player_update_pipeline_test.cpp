@@ -10,6 +10,7 @@
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/Body.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/TransformComponent.h"
@@ -394,7 +395,7 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     ASSERT_TRUE(player->Resolver().IsShapeAnimating());
     NS::Obj::Model* model = player->ModelPart();
     // 試しには mesh が無いので、玉の局所の境界を差し、回転を外して形の伸びだけを測る
-    const float radius = player->Body().CapsuleRadius();
+    const float radius = player->Collider().CapsuleRadius();
     NS::Core::AABB local{};
     local.Center = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
     local.Extents = NS::Core::Vector3{radius, radius, radius};
