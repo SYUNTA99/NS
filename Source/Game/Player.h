@@ -162,7 +162,7 @@ public:
     void TapSlamGravity(float dt) noexcept;
     //! @brief 反動の間の重力を当てる
     //! @details 上向きの間は上昇重力に反動の上りの重力倍率を掛け、頂点の近くはさらに頂点滞空倍率を掛ける。
-    //! 上向きでなければ Gravity と同じ
+    //! 上向きでなければ Gravity と同じ。組は PlayerParams::ReboundGravity、選び方は Gravity と同じ ChooseGravity
     void ReboundGravity(float dt) noexcept;
     //! @brief 反動の間、入力の向きへ反動中の空中の加速度で加速する。入力が無ければ何もしない
     //! @details 接地の印に依らずこの加速度を使い、入力の向きからずれた速度は減らさない

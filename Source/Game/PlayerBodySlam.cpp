@@ -296,16 +296,17 @@ bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept
 
 NS::Core::Vector3 Player::ReboundVelocityFor(const NS::Game::Player::ReboundArc& arc) const noexcept
 {
-    // 下りは普段の落ち方のままにする
-    // 曲線は下りの重力を上りの重力に対する倍率で持つので、下降重力を上りの重力で割る
-    const float riseGravity = -m_params->m_gravityUp * m_params->m_reboundRiseGravityScale;
+    // 下りは普段の落ち方のままにする。組は実際に当てる重力 (ReboundGravity) と同じ PlayerParams::ReboundGravity
+    // 曲線は上りの重力を正の大きさで、下りの重力を上りに対する倍率で持つので、符号を反転して下降重力を上りの重力で割る
+    const NS::Game::Player::PlayerGravity gravity = m_params->ReboundGravity();
+    const float riseGravity = -gravity.rise;
     const NS::Game::Level::LaunchArc launchArc{.direction = arc.direction,
                                                .distance = arc.distance,
                                                .apexHeight = arc.apexHeight,
                                                .riseGravity = riseGravity,
-                                               .fallGravityScale = -m_params->m_gravityDown / riseGravity,
-                                               .apexBandSpeed = m_params->m_apexHangVy,
-                                               .apexBandGravityScale = m_params->m_apexHangScale};
+                                               .fallGravityScale = -gravity.fall / riseGravity,
+                                               .apexBandSpeed = gravity.apexSpeed,
+                                               .apexBandGravityScale = gravity.apexScale};
     return NS::Game::Level::LaunchArcInitialVelocity(launchArc);
 }
 

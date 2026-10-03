@@ -183,19 +183,9 @@ void Player::TapSlamGravity(float dt) noexcept
 
 void Player::ReboundGravity(float dt) noexcept
 {
+    // 上りだけ倍率付きの組を PlayerParams が持つ。選び方は普段の重力と同じ ChooseGravity 1 つ
     NS::Obj::Body& body = *m_body;
-    if (!(body.VerticalVelocity() > 0.0f))
-    {
-        Gravity(dt);
-        return;
-    }
-
-    float g = m_params->m_gravityUp * m_params->m_reboundRiseGravityScale;
-    if (std::abs(body.VerticalVelocity()) < m_params->m_apexHangVy)
-    {
-        g = g * m_params->m_apexHangScale;
-    }
-    body.Gravity(g, dt);
+    body.Gravity(NS::Game::Player::ChooseGravity(m_params->ReboundGravity(), body.VerticalVelocity()), dt);
 }
 
 void Player::AccelerateDuringRebound(float dt) noexcept

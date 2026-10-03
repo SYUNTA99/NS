@@ -1,9 +1,12 @@
 #include "Game/Player.h"
+#include "Game/Player/PlayerGravity.h"
+#include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/HitReaction.h"
+#include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 
 #include <gtest/gtest.h>
@@ -149,6 +152,26 @@ TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)
     movement->SetVerticalVelocity(0.0f);
     player->States().Step(0.01f);
     EXPECT_TRUE(player->States().IsCurrent<NS::Game::Player::IdlePlayerState>());
+}
+
+// 反動の 1 フレームに当てる重力は、普段と同じ選び方 ChooseGravity へ反動の組 (上りだけ倍率付き) を渡した値
+// 頂点の帯 (縦の速さの大きさが頂点滞空 Vy 未満) を反動でも同じ式で見るので、1 と -1 の場合が帯を外すと割れる
+TEST(PlayerStateSequence, ReboundGravityIsTheChoiceWithTheReboundRise)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceSequencePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"頂点滞空 Vy", 3.0f}, {"頂点滞空倍率", 0.3f}}), 0u);
+    constexpr float k_Dt = 1.0f / 60.0f;
+    const NS::Game::Player::PlayerGravity gravity = player->Params().ReboundGravity();
+    for (const float vertical : {5.0f, 1.0f, -1.0f, -5.0f})
+    {
+        SCOPED_TRACE(vertical);
+        player->Body().SetVerticalVelocity(vertical);
+        player->ReboundGravity(k_Dt);
+        EXPECT_FLOAT_EQ(player->Body().VerticalVelocity(),
+                        vertical + NS::Game::Player::ChooseGravity(gravity, vertical) * k_Dt);
+    }
 }
 
 TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)

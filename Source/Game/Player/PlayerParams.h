@@ -49,6 +49,16 @@ namespace NS::Game::Player
             return PlayerGravity{
                 .rise = m_gravityUp, .fall = m_gravityDown, .apexSpeed = m_apexHangVy, .apexScale = m_apexHangScale};
         }
+        //! @brief 反動の間の重力の組。上りだけ欄「反動の上りの重力倍率」を掛け、下りと頂点の帯は Gravity() と同じ
+        //! @details Player::ReboundGravity が ChooseGravity へ渡す組と、Player::ReboundVelocityFor が初速の曲線を組む
+        //! 元の組は同じ。どちらかだけ欄の選び方を変える道を残さない
+        [[nodiscard]] PlayerGravity ReboundGravity() const noexcept
+        {
+            return PlayerGravity{.rise = m_gravityUp * m_reboundRiseGravityScale,
+                                 .fall = m_gravityDown,
+                                 .apexSpeed = m_apexHangVy,
+                                 .apexScale = m_apexHangScale};
+        }
 
         NS_REFLECT_BEGIN(PlayerParams, NS::Obj::Component)
         NS_REFLECT_FIELD(m_maxHealth, "体力")
