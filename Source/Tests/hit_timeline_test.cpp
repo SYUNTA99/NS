@@ -1,0 +1,206 @@
+#include "Game/Level/HitTimeline.h"
+#include "Runtime/Object/Reflection/ReflectionJson.h"
+#include "Runtime/Platform/FileSystem.h"
+#include "Runtime/Platform/StringUtils.h"
+
+#include <gtest/gtest.h>
+
+#include <filesystem>
+#include <span>
+#include <string>
+#include <string_view>
+#include <system_error>
+
+// 当たりのタイムラインのファイルの形・読み込みと保存の往復・壊れたファイルの扱いを縛る
+
+namespace
+{
+    using NS::Game::Level::HitTimeline;
+    using NS::Game::Level::HitTimelineLibrary;
+
+    // タイムラインの置き場を試しごとの空のディレクトリへ向け、終わったら元へ戻す
+    class ScopedTimelineDirectory
+    {
+    public:
+        explicit ScopedTimelineDirectory(std::string_view name) : m_previous(HitTimelineLibrary::Get().Directory())
+        {
+            using NS::Platform::FileSystem;
+            m_directory = FileSystem::Combine(
+                FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "build"), "TestHitTimelines"), name);
+            (void)FileSystem::CreateDirectories(m_directory);
+            for (const std::string& path : FileSystem::ListFiles(m_directory, ".json"))
+            {
+                std::error_code error;
+                std::filesystem::remove(std::filesystem::path{NS::Platform::StringUtils::WideFromUtf8(path)}, error);
+            }
+            HitTimelineLibrary::Get().SetDirectory(m_directory);
+        }
+
+        ~ScopedTimelineDirectory() { HitTimelineLibrary::Get().SetDirectory(m_previous); }
+
+        ScopedTimelineDirectory(const ScopedTimelineDirectory&) = delete;
+        ScopedTimelineDirectory& operator=(const ScopedTimelineDirectory&) = delete;
+
+        // name.json へ text をそのまま書く
+        void WriteFile(std::string_view name, std::string_view text) const
+        {
+            const std::string path = NS::Platform::FileSystem::Combine(m_directory, std::string{name} + ".json");
+            const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
+            ASSERT_TRUE(NS::Platform::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size())));
+        }
+
+    private:
+        std::string m_previous;
+        std::string m_directory;
+    };
+
+    // 種類ごとに 1 つずつ、欄と向きを既定から動かした並び
+    HitTimeline MakeEveryKindTimeline()
+    {
+        HitTimeline timeline;
+        NS::Game::Level::ShapeEvent shape;
+        shape.along.count = 2;
+        shape.along.keys[0] = NS::Obj::Curve::Key{0.0f, 0.7f};
+        shape.along.keys[1] = NS::Obj::Curve::Key{11.0f, 0.7f};
+        shape.height.count = 1;
+        shape.height.keys[0] = NS::Obj::Curve::Key{0.0f, 1.1f};
+        NS::Game::Level::TargetFreezeEvent freeze;
+        freeze.pushInDistance = 0.1f;
+        NS::Game::Level::CameraShakeEvent shake;
+        shake.sideWeight = 1.0f;
+        shake.longestFlipFrames = 3;
+        NS::Game::Level::ZoomRollEvent zoom;
+        zoom.zoom = 1.3f;
+        NS::Game::Level::PadVibrationEvent pad;
+        pad.right.count = 2;
+        pad.right.keys[0] = NS::Obj::Curve::Key{0.0f, 0.6f};
+        pad.right.keys[1] = NS::Obj::Curve::Key{16.0f, 0.0f};
+        NS::Game::Level::FlashEvent flash;
+        flash.alpha = 0.25f;
+        timeline.events = {
+            {NS::Game::Level::HitStopEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
+            {shape, -6, 18, NS::Game::Level::HitDirection::Any},
+            {freeze, 1, 12, NS::Game::Level::HitDirection::Any},
+            {NS::Game::Level::TargetLaunchEvent{}, 13, 1, NS::Game::Level::HitDirection::Any},
+            {NS::Game::Level::ReboundEvent{}, 13, 1, NS::Game::Level::HitDirection::Any},
+            {shake, 1, 16, NS::Game::Level::HitDirection::Left},
+            {zoom, 1, 18, NS::Game::Level::HitDirection::Any},
+            {pad, 1, 16, NS::Game::Level::HitDirection::Right},
+            {flash, 1, 6, NS::Game::Level::HitDirection::Up},
+            {NS::Game::Level::HitEffectEvent{}, 1, 1, NS::Game::Level::HitDirection::Down},
+            {NS::Game::Level::FlightEffectEvent{}, 13, 0, NS::Game::Level::HitDirection::Any},
+        };
+        return timeline;
+    }
+} // namespace
+
+TEST(HitTimeline, ValueTypeFieldsRoundTripThroughJson)
+{
+    NS::Game::Level::CameraShakeEvent shake;
+    shake.strength = 0.2f;
+    shake.longestFlipFrames = 4;
+    const nlohmann::json fields = NS::Obj::SerializeValueFields(shake);
+    EXPECT_FLOAT_EQ(fields["強さ"].get<float>(), 0.2f);
+    EXPECT_EQ(fields["入れ替わりの最長フレーム数"].get<int>(), 4);
+
+    NS::Game::Level::CameraShakeEvent read;
+    EXPECT_EQ(NS::Obj::ApplyValueFields(read, fields), 0u);
+    EXPECT_FLOAT_EQ(read.strength, 0.2f);
+    EXPECT_EQ(read.longestFlipFrames, 4);
+}
+
+TEST(HitTimeline, EveryKindRoundTripsThroughTheFileForm)
+{
+    const HitTimeline written = MakeEveryKindTimeline();
+    const nlohmann::json doc = NS::Game::Level::HitTimelineToJson(written);
+    EXPECT_EQ(doc["version"].get<int>(), 1);
+    ASSERT_EQ(doc["events"].size(), written.events.size());
+    EXPECT_EQ(doc["events"][0]["type"].get<std::string>(), "HitStop");
+    EXPECT_EQ(doc["events"][5]["direction"].get<std::string>(), "left");
+
+    std::string error;
+    const std::optional<HitTimeline> read = NS::Game::Level::ParseHitTimeline(doc, error);
+    ASSERT_TRUE(read.has_value()) << error;
+    ASSERT_EQ(read->events.size(), written.events.size());
+    for (std::size_t i = 0; i < written.events.size(); ++i)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_EQ(read->events[i].value.index(), written.events[i].value.index());
+        EXPECT_EQ(read->events[i].start, written.events[i].start);
+        EXPECT_EQ(read->events[i].length, written.events[i].length);
+        EXPECT_EQ(read->events[i].direction, written.events[i].direction);
+    }
+    EXPECT_EQ(NS::Game::Level::HitTimelineToJson(*read), doc);
+    const NS::Game::Level::ShapeEvent* shape = std::get_if<NS::Game::Level::ShapeEvent>(&read->events[1].value);
+    ASSERT_NE(shape, nullptr);
+    EXPECT_EQ(shape->along, std::get<NS::Game::Level::ShapeEvent>(written.events[1].value).along);
+}
+
+TEST(HitTimeline, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
+{
+    const nlohmann::json doc = nlohmann::json::parse(R"({"version": 1, "events": [
+        {"type": "Flash", "start": 1, "length": 6, "fields": {"濃さ": 0.3, "消した欄": 2}},
+        {"type": "CameraShake", "start": 1, "length": 12}
+    ]})");
+    std::string error;
+    const std::optional<HitTimeline> read = NS::Game::Level::ParseHitTimeline(doc, error);
+    ASSERT_TRUE(read.has_value()) << error;
+    ASSERT_EQ(read->events.size(), 2u);
+    EXPECT_FLOAT_EQ(std::get<NS::Game::Level::FlashEvent>(read->events[0].value).alpha, 0.3f);
+    EXPECT_EQ(read->events[0].direction, NS::Game::Level::HitDirection::Any);
+    EXPECT_FLOAT_EQ(std::get<NS::Game::Level::CameraShakeEvent>(read->events[1].value).strength,
+                    NS::Game::Level::CameraShakeEvent{}.strength);
+}
+
+TEST(HitTimeline, BrokenFilesAreRejectedWithAReason)
+{
+    const char* const broken[] = {
+        R"({"version": 2, "events": []})",
+        R"({"version": 1})",
+        R"({"version": 1, "events": [{"type": "Explode", "start": 1, "length": 1}]})",
+        R"({"version": 1, "events": [{"type": "Flash", "start": 1, "length": -1}]})",
+        R"({"version": 1, "events": [{"type": "Flash", "start": 1.5, "length": 1}]})",
+        R"({"version": 1, "events": [{"type": "Flash", "start": 1, "length": 1, "direction": "back"}]})",
+        R"({"version": 1, "events": [{"type": "Flash", "length": 1}]})",
+        R"([1, 2])",
+    };
+    for (const char* text : broken)
+    {
+        SCOPED_TRACE(text);
+        std::string error;
+        EXPECT_FALSE(NS::Game::Level::ParseHitTimeline(nlohmann::json::parse(text), error).has_value());
+        EXPECT_FALSE(error.empty());
+    }
+}
+
+TEST(HitTimeline, TiersNameTheirFiles)
+{
+    EXPECT_EQ(NS::Game::Level::HitTimelineNameOf(NS::Game::Level::HitTier::Center), "center");
+    EXPECT_EQ(NS::Game::Level::HitTimelineNameOf(NS::Game::Level::HitTier::Wide), "miss");
+    EXPECT_TRUE(NS::Game::Level::HitTimelineNameOf(static_cast<NS::Game::Level::HitTier>(7)).empty());
+}
+
+TEST(HitTimeline, LibrarySavesAndReadsBackTheSameTimeline)
+{
+    const ScopedTimelineDirectory directory("RoundTrip");
+    const HitTimeline written = MakeEveryKindTimeline();
+    HitTimelineLibrary::Get().Set("center", written);
+    ASSERT_TRUE(HitTimelineLibrary::Get().Save("center"));
+    HitTimelineLibrary::Get().Reload();
+    const HitTimeline* read = HitTimelineLibrary::Get().FindForTier(NS::Game::Level::HitTier::Center);
+    ASSERT_NE(read, nullptr);
+    EXPECT_EQ(NS::Game::Level::HitTimelineToJson(*read), NS::Game::Level::HitTimelineToJson(written));
+    EXPECT_FALSE(HitTimelineLibrary::Get().Save("graze"));
+}
+
+TEST(HitTimeline, LibraryHasNoTimelineForAMissingOrBrokenFile)
+{
+    const ScopedTimelineDirectory directory("Broken");
+    directory.WriteFile("center", R"({"version": 1, "events": [{"type": "Explode", "start": 1, "length": 1}]})");
+    directory.WriteFile("miss", "{ not json");
+    HitTimelineLibrary::Get().Reload();
+    EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(NS::Game::Level::HitTier::Center), nullptr);
+    EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(NS::Game::Level::HitTier::Wide), nullptr);
+    EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(static_cast<NS::Game::Level::HitTier>(7)), nullptr);
+    EXPECT_EQ(HitTimelineLibrary::Get().Find("graze"), nullptr);
+}
