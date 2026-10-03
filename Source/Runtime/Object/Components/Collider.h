@@ -25,11 +25,12 @@ namespace NS::Obj
     };
 
     //! @brief 動く体の当たり。カプセルの寸法と、地形に当てて押し返す 1 フレームの移動の部品
-    //! @details 世界に問う側で、自分は静的な世界 (PhysicsScene の body)
-    //! に登録しない。登録すると自分の掃引が自分に当たる。 置く当たりの一族 (Collision) とは別の型で、部品名は持ち主が
-    //! ForEachPart で付ける (自機は "Collider")。 カプセルは根を中心にした縦向きで、寸法 (半径・半分の高さ)
-    //! はリフレクションの欄として自分が持つ。 持ち主が無くても OnStart の前でも欄の値を返す。速度と接地は持たず、Body
-    //! が Move の結果を書く。 IUseCollision を継ぎ、PhysicsScene は使う時に持ち主の Scene から引く。
+    //! @details 世界に問う側で、自分は静的な世界 (PhysicsScene の body) に登録しない。
+    //! 登録すると自分の掃引が自分に当たる。
+    //! 置く当たりの一族 (Collision) とは別の型で、部品名は持ち主が ForEachPart で付ける (自機は "Collider")。
+    //! カプセルは根を中心にした縦向きで、寸法 (半径・半分の高さ) はリフレクションの欄として自分が持つ。
+    //! 持ち主が無くても OnStart の前でも欄の値を返す。速度と接地は持たず、Body が Move の結果を書く。
+    //! IUseCollision を継ぎ、PhysicsScene は使う時に持ち主の Scene から引く。
     //! 体の周りの地形は、この部品を渡して RaycastCollision・OverlapBoxCollision で問う。
     //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。TypeRegistry には登録しない
     //! 依存: NS::Core, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Actor / IUseCollision

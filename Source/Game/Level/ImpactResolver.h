@@ -233,8 +233,8 @@ namespace NS::Game::Level
         NS::Core::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};
         NS::Game::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離
         LaunchArc m_pendingLaunchArc{};                     // 明けたフレームに相手を飛ばす曲線
-        // 検知のフレームに相手が答えた位置。記録の targetPos
-        // と揺れの種に使う。置かれていた相手を元の位置へ戻すのは相手自身
+        // 検知のフレームに相手が答えた位置。記録の targetPos と揺れの種に使う
+        // 置かれていた相手を元の位置へ戻すのは相手自身
         NS::Core::Vector3 m_pendingTargetPosition{0.0f, 0.0f, 0.0f};
         float m_pendingLaunchScale = 0.0f;                      // この衝突の飛ばしの比。明けに相手の尾の長さへ渡す
         HitTier m_pendingTier = HitTier::Center;                // この衝突の段。明けに相手の尾の色へ渡す

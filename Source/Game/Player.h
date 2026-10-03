@@ -499,8 +499,9 @@ private:
 [[nodiscard]] Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept;
 
 //! @brief プレイヤーの居ないレベルへ補う時と、凍結に自機が居ないやり直しで使う出現位置の既定
-//! @details 水平は原点。高さは仮定した床の上面にカプセルの半分の高さと半径と余白を足した中心の高さで、寸法は collider
-//! の欄から引く 補う側 (エディタの EnsurePlayerObject) とやり直しの落ち先 (RestartFrom) が同じこの関数を読む
+//! @details 水平は原点。高さは仮定した床の上面に、カプセルの半分の高さと半径と余白を足した中心の高さ。
+//! 寸法は collider の欄から引く。
+//! 補う側 (エディタの EnsurePlayerObject) とやり直しの落ち先 (RestartFrom) が同じこの関数を読む
 //! @param[in] collider 立たせる自機の動く体の当たり。カプセルの寸法の持ち主
 //! @return カプセルの中心の world 位置
 [[nodiscard]] NS::Core::Vector3 DefaultSpawnPosition(const NS::Obj::Collider& collider) noexcept;
