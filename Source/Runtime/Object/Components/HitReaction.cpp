@@ -88,6 +88,36 @@ namespace NS::Obj
         return true;
     }
 
+    bool HitReaction::StartNudge(const CameraNudgeDesc& desc)
+    {
+        if (desc.frames <= 0)
+        {
+            return true;
+        }
+        if (desc.frames > k_MaxShakeFrames)
+        {
+            NS_LOG_WARN(
+                Scene, "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった", desc.frames, k_MaxShakeFrames);
+            return false;
+        }
+        // カメラの無い場面 (試しの台) ではずらす先が無い。設定の誤りではないので黙って返す
+        if (Owner() == nullptr || Owner()->GetCameraManager() == nullptr)
+        {
+            return false;
+        }
+        if (!AddCameraModifier(*Owner(), CameraNudgeModifier::Create(desc)))
+        {
+            NS_LOG_WARN(Scene,
+                        "ずれの設定が壊れていて、ずらさなかった: 向き ({}, {}, {}) フレーム数 {}",
+                        desc.direction.x,
+                        desc.direction.y,
+                        desc.direction.z,
+                        desc.frames);
+            return false;
+        }
+        return true;
+    }
+
     bool HitReaction::StartZoomRoll(const CameraZoomRollDesc& desc)
     {
         if (Owner() == nullptr || Owner()->GetCameraManager() == nullptr)

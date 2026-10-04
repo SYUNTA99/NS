@@ -13,6 +13,10 @@ namespace
     constexpr int k_KickEndPeakMultiple = 8;
     // 沈む揺れの画素を測る画面の高さ。画面の座標 (縦 -1〜1) へ直す時の割る数で、解像度が違っても同じ割合だけ動く
     constexpr float k_SinkReferenceHeightPixels = 1080.0f;
+    // ずれの向きを長さ 1 と見なす誤差。設定の数字の丸めで外れない幅
+    constexpr float k_UnitLengthTolerance = 1.0e-3f;
+    // 画面へ写した向きの長さがこれ未満なら、向きが画面の奥をほぼ真っすぐ指していて画面の上の向きが決まらないので動かさない
+    constexpr float k_MinScreenShare = 0.2f;
 } // namespace
 
 namespace NS::Obj
@@ -412,5 +416,79 @@ namespace NS::Obj
                 m_kickFrame = 0;
             }
         }
+    }
+
+    std::unique_ptr<CameraNudgeModifier> CameraNudgeModifier::Create(const CameraNudgeDesc& desc)
+    {
+        // 壊れた値が姿へ流れると画面が消える。入口で捨てる
+        const NS::Core::Vector3& d = desc.direction;
+        if (!std::isfinite(d.x) || !std::isfinite(d.y) || !std::isfinite(d.z) ||
+            !(std::abs(d.Length() - 1.0f) < k_UnitLengthTolerance) || desc.frames <= 0 ||
+            desc.distance.count > Curve::k_MaxKeys)
+        {
+            return nullptr;
+        }
+        for (std::uint32_t i = 0; i < desc.distance.count; ++i)
+        {
+            const Curve::Key& key = desc.distance.keys[i];
+            if (!std::isfinite(key.x) || !std::isfinite(key.y) || !std::isfinite(key.inTangent) ||
+                !std::isfinite(key.outTangent))
+            {
+                return nullptr;
+            }
+        }
+        std::unique_ptr<CameraNudgeModifier> nudge{new CameraNudgeModifier()};
+        nudge->m_desc = desc;
+        return nudge;
+    }
+
+    const void* CameraNudgeModifier::KindFor(bool onScreen) noexcept
+    {
+        static const char world = 0;
+        static const char screen = 0;
+        if (onScreen)
+        {
+            return &screen;
+        }
+        return &world;
+    }
+
+    float CameraNudgeModifier::Distance() const noexcept
+    {
+        if (m_frame >= m_desc.frames)
+        {
+            return 0.0f;
+        }
+        return m_desc.distance.Evaluate(static_cast<float>(m_frame));
+    }
+
+    void CameraNudgeModifier::Modify(CameraPose& pose, const CameraAxes& axes) const noexcept
+    {
+        NS::Core::Vector3 direction = m_desc.direction;
+        if (m_desc.onScreen)
+        {
+            // 奥へ向かう分を捨て、画面の右と上の成分だけを長さ 1 にする
+            const float right = NS::Core::Dot(direction, axes.right);
+            const float up = NS::Core::Dot(direction, axes.up);
+            const float onScreen = std::sqrt(right * right + up * up);
+            if (!(onScreen > k_MinScreenShare))
+            {
+                return;
+            }
+            direction = axes.right * (right / onScreen) + axes.up * (up / onScreen);
+        }
+        const NS::Core::Vector3 shift = direction * Distance();
+        pose.position += shift;
+        pose.target += shift;
+    }
+
+    bool CameraNudgeModifier::IsFinished() const noexcept
+    {
+        return m_frame >= m_desc.frames;
+    }
+
+    void CameraNudgeModifier::Advance() noexcept
+    {
+        ++m_frame;
     }
 } // namespace NS::Obj

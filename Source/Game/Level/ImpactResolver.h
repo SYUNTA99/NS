@@ -290,6 +290,12 @@ namespace NS::Game::Level
         // 沈む揺れの事象から 4 拍の形を作る。深さは威力の頭打ちの曲線、跳ね返りは反動の事象の始まりから
         [[nodiscard]] NS::Obj::CameraSinkDesc SinkDescFor(const CameraSinkEvent& sink,
                                                           const HitEvent& event) const noexcept;
+        // カメラを direction の水平の向きへ、distance の曲線の距離だけずらし始める。水平の成分が無ければずらさない
+        // onScreen が真なら、向きをカメラから見た画面の上の向きへ写してずらす
+        void StartCameraNudge(const NS::Core::Vector3& direction,
+                              const NS::Obj::Curve& distance,
+                              int length,
+                              bool onScreen);
 
         // 寄りの事象から、この当たりの寄りと傾きを組む。長さのうち末尾の戻すフレーム数を除いた間を保つ
         // 事前条件: 相手の飛ぶ向きを控え終えている

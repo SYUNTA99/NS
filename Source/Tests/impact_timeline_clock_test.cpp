@@ -637,6 +637,58 @@ TEST(ImpactTimelineClock, AMissShowsNoReboundTrailOrRecoilLines)
     EXPECT_EQ(CountLayers(*player, "impact.recoil"), 0);
 }
 
+// 外れのカメラ: つんのめりは突進の水平の向きのまま押し、反動の揺れは反動の水平の向きをカメラから見た向きへ写す
+TEST(ImpactTimelineClock, MissCameraLurchesAlongTheSlamAndSwaysAlongTheRebound)
+{
+    NS::Obj::Curve distance;
+    distance.count = 1;
+    distance.keys[0] = NS::Obj::Curve::Key{0.0f, 0.3f};
+    for (const bool sway : {false, true})
+    {
+        SCOPED_TRACE(sway);
+        HitTimeline timeline;
+        timeline.events = {
+            {HitStopEvent{}, 1, 2, HitDirection::Any},
+            {ReboundEvent{}, 3, 1, HitDirection::Any},
+        };
+        if (sway)
+        {
+            CameraReboundSwayEvent row;
+            row.distance = distance;
+            timeline.events.push_back({row, 3, 30, HitDirection::Any});
+        }
+        else
+        {
+            CameraLurchEvent row;
+            row.distance = distance;
+            timeline.events.push_back({row, 1, 30, HitDirection::Any});
+        }
+        const ScopedHitTimelineDirectory directory("MissCamera");
+        ScopedHitTimelineDirectory::SetBothTiers(timeline);
+        NS::Obj::Scene scene;
+        Player* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
+        ASSERT_NE(player, nullptr);
+        ASSERT_EQ(RunHit(*player, *RockOf(scene), 1.0f, 6).size(), 6u);
+        ASSERT_EQ(player->Resolver().LastImpact().tier, HitTier::Wide);
+        const NS::Obj::CameraManager* cameras = player->GetCameraManager();
+        ASSERT_NE(cameras, nullptr);
+        const NS::Obj::CameraNudgeModifier* nudge =
+            cameras->FindModifier<NS::Obj::CameraNudgeModifier>(NS::Obj::CameraNudgeModifier::KindFor(sway));
+        ASSERT_NE(nudge, nullptr);
+        EXPECT_EQ(nudge->Desc().onScreen, sway);
+        NS::Core::Vector3 expected{0.0f, 0.0f, 1.0f};
+        if (sway)
+        {
+            const NS::Core::Vector3 rebound = player->Resolver().LastImpact().selfVelocity;
+            expected = NS::Core::Vector3{rebound.x, 0.0f, rebound.z};
+            expected.Normalize();
+        }
+        EXPECT_NEAR(nudge->Desc().direction.x, expected.x, 1.0e-4f);
+        EXPECT_NEAR(nudge->Desc().direction.y, 0.0f, 1.0e-4f);
+        EXPECT_NEAR(nudge->Desc().direction.z, expected.z, 1.0e-4f);
+    }
+}
+
 // 外れの火花は外した側へ 7 割、相手の表面に沿って滑る向きへ 3 割で流す。面の真ん中は向きが決まらない
 TEST(ImpactTimelineClock, MissSparksFlowTowardTheSideThatWasMissed)
 {

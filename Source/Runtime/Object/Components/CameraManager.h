@@ -74,12 +74,15 @@ namespace NS::Obj
         //! 積んだモディファイアを全て外す。プレイを終えた後の視点に効果が残らないようにする
         void ClearModifiers() noexcept;
 
-        //! 型 T (StaticKind を持つモディファイア) の積まれている物。無ければ nullptr
-        template <class T> [[nodiscard]] const T* FindModifier() const noexcept
+        //! @brief 型 T (StaticKind を持つモディファイア) の積まれている物を返す
+        //! @details 1 つの型が向きの取り方などで幾つかの印を使い分ける時は、探す印を kind に渡す
+        //! @param[in] kind 探す種類の印。省くと T::StaticKind
+        //! @return 見つけた物。無ければ nullptr
+        template <class T> [[nodiscard]] const T* FindModifier(const void* kind = T::StaticKind()) const noexcept
         {
             for (const std::unique_ptr<CameraModifier>& modifier : m_modifiers)
             {
-                if (modifier->Kind() == T::StaticKind())
+                if (modifier->Kind() == kind)
                 {
                     return static_cast<const T*>(modifier.get());
                 }

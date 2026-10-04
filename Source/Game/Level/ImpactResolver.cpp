@@ -846,6 +846,18 @@ namespace NS::Game::Level
             }
         }
 
+        void operator()(const CameraLurchEvent& lurch) const
+        {
+            // 突進の向きへ世界の向きのまま押す。外した事を、体が前へ持って行かれる事で見せる
+            resolver.StartCameraNudge(resolver.m_pendingImpactDir, lurch.distance, event.length, false);
+        }
+
+        void operator()(const CameraReboundSwayEvent& sway) const
+        {
+            // カメラから見た反動の向きで、逆へ大きく振れて縮み、最後に反動の側へ速く送る
+            resolver.StartCameraNudge(resolver.m_pendingReboundArc.direction, sway.distance, event.length, true);
+        }
+
         void operator()(const CameraSinkEvent& sink) const
         {
             if (resolver.m_hitReaction != nullptr)
@@ -1209,6 +1221,20 @@ namespace NS::Game::Level
                                        .overshootRatio = sink.overshootRatio,
                                        .bouncePeriodFrames = sink.bouncePeriodFrames,
                                        .frames = event.length};
+    }
+
+    void ImpactResolver::StartCameraNudge(const NS::Core::Vector3& direction,
+                                          const NS::Obj::Curve& distance,
+                                          int length,
+                                          bool onScreen)
+    {
+        NS::Core::Vector3 horizontal{};
+        if (m_hitReaction == nullptr || !NS::Core::TryNormalizeHorizontal(direction, horizontal))
+        {
+            return;
+        }
+        (void)m_hitReaction->StartNudge(NS::Obj::CameraNudgeDesc{
+            .direction = horizontal, .distance = distance, .frames = length, .onScreen = onScreen});
     }
 
     NS::Obj::CameraShakeDesc ImpactResolver::ShakeDescFor(const CameraShakeEvent& shake, int length) const noexcept

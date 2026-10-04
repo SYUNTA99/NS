@@ -45,6 +45,12 @@ namespace NS::Obj
         //! 設定が壊れている・上限を超える・カメラの管理役が無い場合 false
         bool StartSink(const CameraSinkDesc& desc);
 
+        //! @brief カメラのずれを始める。位置と注視点を同じだけずらし、向きは変えない
+        //! @param[in] desc ずらす向きと距離の曲線。フレーム数 0 以下ならずらさない
+        //! @return ずれを積んだか、フレーム数 0 以下でずらさなかった場合 true。
+        //! 設定が壊れている・上限を超える・カメラの管理役が無い場合 false
+        bool StartNudge(const CameraNudgeDesc& desc);
+
         //! @brief カメラのトラウマを足す。揺れの途中なら前のトラウマに足す
         //! @param[in] desc 足す量と揺れの形
         //! @return 足した場合 true。量が壊れている・カメラの管理役が無い場合 false
@@ -64,7 +70,7 @@ namespace NS::Obj
         //! @param[in] pad 重ねる振動
         void BlendPadVibration(const HitPadVibration& pad);
 
-        //! @brief 当たりの演出を止める。白を消し、振動を 0 にし、揺れと寄りを外す
+        //! @brief 当たりの演出を止める。白を消し、振動を 0 にし、揺れ・ずれ・寄りを外す
         //! @details トラウマは残す。次の当たりが止めてから始め直しても、続けて当てたトラウマは足される
         void Stop();
 
@@ -88,9 +94,9 @@ namespace NS::Obj
         // 振動を始めてからのフレーム数に応じた速さをパッドへ書く。書くフレーム数に届いたフレームは 0 を書いて止める
         void WritePadVibration();
 
-        int m_flashRemaining = 0;        // 白の残りフレーム数
-        int m_flashFrames = 0;           // 白の始めのフレーム数。薄める割合の分母
-        float m_flashAlpha = 0.0f;       // 白の始めの濃さ
+        int m_flashRemaining = 0;  // 白の残りフレーム数
+        int m_flashFrames = 0;     // 白の始めのフレーム数。薄める割合の分母
+        float m_flashAlpha = 0.0f; // 白の始めの濃さ
         // 重ねた振動 1 つ。重ねたフレームの m_padElapsed から進める
         struct PadLayer
         {

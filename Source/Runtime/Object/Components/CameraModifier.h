@@ -3,6 +3,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
+#include "Runtime/Object/Reflection/Curve.h"
 
 #include <cstdint>
 #include <memory>
@@ -296,5 +297,56 @@ namespace NS::Obj
         int m_frame = 0;             // 積んでから進めたフレーム数。ノイズの時刻
         CameraKick m_kick{};         // 重ねている一撃
         int m_kickFrame = 0;         // 一撃のフレーム。足したフレームが 1、一撃が無ければ 0
+    };
+
+    //! @brief カメラのずれの設定
+    //! @details 位置と注視点を同じだけずらすので、向きと地平線は変わらない
+    struct CameraNudgeDesc
+    {
+        NS::Core::Vector3 direction{}; // ずらす世界の向き。長さ 1
+        Curve distance{}; // 始めたフレームを 0 とした番号を横軸にした、ずらす距離 (m)。負は逆の向き
+        int frames = 0;   // 描くフレーム数。始めたフレームを含む
+        bool onScreen = false; // 向きをカメラの右と上へ写した画面の上の向きでずらすか。偽は世界の向きのまま
+    };
+
+    //! @brief カメラのずれ。位置と注視点を、決まった向きへ曲線の距離だけ同じだけずらす
+    //! @details 画面へ写す時は奥へ向かう分を捨て、画面の上で見える向きだけでずらす。写した向きがほぼ無い
+    //! (向きが真っすぐ画面の奥か手前を指す) 時は動かさない。種類の印は向きの取り方 (世界 / 画面) ごとに分かれ、
+    //! 同じ取り方のずれを積み直すと前の物が外れる。取り方の違うずれは重なる
+    class CameraNudgeModifier final : public CameraModifier
+    {
+    public:
+        //! @brief カメラのずれを作る
+        //! @details 非数を含む・長さ 1 でない向き・フレーム数 0 以下・非数の点を持つ曲線は壊れた設定で nullptr
+        [[nodiscard]] static std::unique_ptr<CameraNudgeModifier> Create(const CameraNudgeDesc& desc);
+
+        //! @brief 向きの取り方ごとの種類の印を返す
+        //! @param[in] onScreen 画面へ写すずれか
+        //! @return 種類の印
+        [[nodiscard]] static const void* KindFor(bool onScreen) noexcept;
+
+        //! 世界の向きのままずらす物の種類の印
+        [[nodiscard]] static const void* StaticKind() noexcept { return KindFor(false); }
+        [[nodiscard]] const void* Kind() const noexcept override { return KindFor(m_desc.onScreen); }
+
+        //! 揺れなので平行移動の揺れと同じ順。寄りと傾きより先に掛ける
+        [[nodiscard]] int Order() const noexcept override { return 100; }
+
+        void Modify(CameraPose& pose, const CameraAxes& axes) const noexcept override;
+        [[nodiscard]] bool IsFinished() const noexcept override;
+        [[nodiscard]] bool IsShake() const noexcept override { return true; }
+
+        //! 作った時の設定
+        [[nodiscard]] const CameraNudgeDesc& Desc() const noexcept { return m_desc; }
+
+        //! 今のフレームのずらす距離 (m)。描き終えたら 0
+        [[nodiscard]] float Distance() const noexcept;
+
+    private:
+        CameraNudgeModifier() noexcept = default;
+        void Advance() noexcept override;
+
+        CameraNudgeDesc m_desc{}; // 作った時の設定
+        int m_frame = 0;          // 始めたフレームからの番号
     };
 } // namespace NS::Obj

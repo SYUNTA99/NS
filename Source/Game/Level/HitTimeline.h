@@ -308,6 +308,37 @@ namespace NS::Game::Level
         NS_REFLECT_END_VALUE()
     };
 
+    //! @brief つんのめり。カメラの位置と注視点を、突進の水平の向きへ曲線の距離だけ同じだけずらす
+    //! @details 長さが描くフレーム数。向きと地平線は変えない。外れで、止まるはずの勢いが止まらず空振りした事を見せる
+    struct CameraLurchEvent
+    {
+        static constexpr std::string_view k_Name = "CameraLurch";
+        static constexpr std::string_view k_Label = "つんのめり";
+        static constexpr bool k_BeforeContact = false; //!< 突進の向きは当たりの記録から読む
+
+        NS::Obj::Curve distance{}; //!< 始まりからのフレーム数を横軸にした、ずらす距離 (m)。負は手前へ
+
+        NS_REFLECT_BEGIN(CameraLurchEvent, void)
+        NS_REFLECT_FIELD(distance, "ずらす距離")
+        NS_REFLECT_END_VALUE()
+    };
+
+    //! @brief 反動の揺れ。カメラの位置と注視点を、カメラから見た反動の向きの軸で曲線の距離だけ同じだけずらす
+    //! @details 長さが描くフレーム数。反動の水平の向きをカメラの右と上へ写した画面の上の向きを使い、奥へ向かう分は
+    //! 使わない。写した向きがほぼ無い (反動が真っすぐ奥か手前) 時は揺らさない。向きと地平線は変えない
+    struct CameraReboundSwayEvent
+    {
+        static constexpr std::string_view k_Name = "CameraReboundSway";
+        static constexpr std::string_view k_Label = "反動の揺れ";
+        static constexpr bool k_BeforeContact = false; //!< 反動の向きは当たりで決まる
+
+        NS::Obj::Curve distance{}; //!< 始まりからのフレーム数を横軸にした、ずらす距離 (m)。負は反動と逆の向き
+
+        NS_REFLECT_BEGIN(CameraReboundSwayEvent, void)
+        NS_REFLECT_FIELD(distance, "ずらす距離")
+        NS_REFLECT_END_VALUE()
+    };
+
     //! @brief 事象の種類ごとの値。種類を足す時はここへ型を足す
     using HitEventValue = std::variant<HitStopEvent,
                                        ShapeEvent,
@@ -325,7 +356,9 @@ namespace NS::Game::Level
                                        OthersStopEvent,
                                        CameraSinkEvent,
                                        BodyShakeEvent,
-                                       ImpactTremorEvent>;
+                                       ImpactTremorEvent,
+                                       CameraLurchEvent,
+                                       CameraReboundSwayEvent>;
 
     //! @brief タイムラインの 1 行。触れたフレームを 0 にしたフレーム数で、始まりと長さを持つ
     struct HitEvent

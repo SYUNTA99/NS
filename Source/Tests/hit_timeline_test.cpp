@@ -40,6 +40,14 @@ namespace
         pad.right.keys[1] = NS::Obj::Curve::Key{16.0f, 0.0f};
         NS::Game::Level::FlashEvent flash;
         flash.alpha = 0.25f;
+        NS::Game::Level::CameraLurchEvent lurch;
+        lurch.distance.count = 2;
+        lurch.distance.keys[0] = NS::Obj::Curve::Key{0.0f, 0.3f};
+        lurch.distance.keys[1] = NS::Obj::Curve::Key{8.0f, 0.0f};
+        NS::Game::Level::CameraReboundSwayEvent sway;
+        sway.distance.count = 2;
+        sway.distance.keys[0] = NS::Obj::Curve::Key{0.0f, -0.5f};
+        sway.distance.keys[1] = NS::Obj::Curve::Key{12.0f, 0.8f};
         timeline.events = {
             {NS::Game::Level::HitStopEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
             {shape, -6, 18, NS::Game::Level::HitDirection::Any},
@@ -52,6 +60,8 @@ namespace
             {flash, 1, 6, NS::Game::Level::HitDirection::Up},
             {NS::Game::Level::HitEffectEvent{}, 1, 1, NS::Game::Level::HitDirection::Down},
             {NS::Game::Level::FlightEffectEvent{}, 13, 0, NS::Game::Level::HitDirection::Any},
+            {lurch, 1, 9, NS::Game::Level::HitDirection::Any},
+            {sway, 1, 29, NS::Game::Level::HitDirection::Right},
         };
         return timeline;
     }

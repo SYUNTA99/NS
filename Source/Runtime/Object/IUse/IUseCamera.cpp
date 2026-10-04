@@ -57,6 +57,8 @@ namespace NS::Obj
             cameras->RemoveModifiers(CameraShakeModifier::StaticKind());
             cameras->RemoveModifiers(CameraSinkModifier::StaticKind());
             cameras->RemoveModifiers(CameraZoomRollModifier::StaticKind());
+            cameras->RemoveModifiers(CameraNudgeModifier::KindFor(false));
+            cameras->RemoveModifiers(CameraNudgeModifier::KindFor(true));
         }
     }
 
