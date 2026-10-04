@@ -27,7 +27,7 @@ namespace
             state.grounded = grounded;
             state.hasCharge = true;
             state.charge.held = held;
-            state.charge.charge01 = 1.0f;
+            state.charge.charge01 = charge01;
             state.framingHeld = framingHeld;
             state.charge.hasAimTarget = hasAim;
             state.charge.aimTargetCenter = aim;
@@ -36,6 +36,7 @@ namespace
         }
 
         bool hasAim = false;
+        float charge01 = 1.0f;
         NS::Core::Vector3 aim{};
         bool grounded = true;
         bool held = true;
@@ -96,15 +97,22 @@ TEST(FollowImpactFraming, HeldFramingKeepsDistanceAndNarrowUntilTheRelease)
     EXPECT_GT(vcam.Distance(), distance);
 }
 
-// 狙う相手のいる溜めでは、自機と相手の真ん中を画面の縦の中心へ寄せる。注視点は頭の高さにあるので、寄せないと
-// 二人は画面の下の方に小さく写る。寄せは位置と注視点を同じだけ動かすので、カメラが下がる
+// 狙う相手のいる溜めきりでは、自機と相手の真ん中を画面の縦の中心へ寄せる。注視点は頭の高さにあるので、寄せないと
+// 二人は画面の下の方に小さく写る。寄せは注視点だけを下げて下を向かせ、カメラの位置は下げない。下げると見下ろす
+// 角が浅くなり、奥の相手が自機の真後ろに重なる
 TEST(FollowImpactFraming, ChargeWithATargetCentersThePairVertically)
 {
+    FramingScene alone;
+    alone.Run(120);
+    const NS::Obj::CameraPose alonePose = alone.camera->Vcam().EvaluatePose(1.0f);
+
     FramingScene world;
     world.target->hasAim = true;
     world.target->aim = NS::Core::Vector3{0.0f, 0.2f, 3.0f};
     world.Run(120);
     const NS::Obj::CameraPose pose = world.camera->Vcam().EvaluatePose(1.0f);
+    EXPECT_NEAR(pose.position.y, alonePose.position.y, 1.0e-4f);
+    EXPECT_LT(pose.target.y, alonePose.target.y);
     NS::Core::Vector3 forward = pose.target - pose.position;
     forward.Normalize();
     NS::Core::Vector3 right = NS::Core::Cross(NS::Core::Vector3{0.0f, 1.0f, 0.0f}, forward);
@@ -112,4 +120,25 @@ TEST(FollowImpactFraming, ChargeWithATargetCentersThePairVertically)
     const NS::Core::Vector3 up = NS::Core::Cross(forward, right);
     const NS::Core::Vector3 middle = (world.target->Root().Position() + world.target->aim) * 0.5f;
     EXPECT_NEAR(NS::Core::Dot(middle - pose.position, up), 0.0f, 0.02f);
+}
+
+// 寄せる量は溜めの量に比例する。溜めるにつれてだんだん下を向き、相手を見付けたフレームに一気に動かない
+TEST(FollowImpactFraming, CenteringGrowsWithTheCharge)
+{
+    FramingScene alone;
+    alone.Run(120);
+    const float aloneLook = alone.camera->Vcam().EvaluatePose(1.0f).target.y;
+    float drop[2] = {0.0f, 0.0f};
+    const float charges[2] = {0.25f, 1.0f};
+    for (int i = 0; i < 2; ++i)
+    {
+        FramingScene world;
+        world.target->hasAim = true;
+        world.target->aim = NS::Core::Vector3{0.0f, 0.2f, 3.0f};
+        world.target->charge01 = charges[i];
+        world.Run(120);
+        drop[i] = aloneLook - world.camera->Vcam().EvaluatePose(1.0f).target.y;
+    }
+    ASSERT_GT(drop[1], 0.0f);
+    EXPECT_NEAR(drop[0], drop[1] * 0.25f, drop[1] * 0.05f);
 }

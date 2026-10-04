@@ -292,7 +292,8 @@ namespace NS::Obj
         float m_chargeShakeFrequency = 10.0f;     // 溜めの揺れのノイズの格子を 1 秒に進める数
         float m_chargeShakeDecayPerSecond = 4.0f; // 放した後に溜めの揺れのトラウマが 1 秒に減る量
         float m_chargeFrameRatio = 0.7f;          // 構図の枠。視野の半分に対する割合
-        float m_chargeCenterRatio = 1.0f; // 溜めで自機と相手の真ん中を画面の縦の中心へ寄せる割合。0 は枠に入れるだけ
+        // 溜めきりで自機と相手の真ん中を画面の縦の中心へ寄せる割合。0 は枠に入れるだけ。途中の溜めは溜めの量を掛ける
+        float m_chargeCenterRatio = 1.0f;
         float m_chargeFrameOmega = 26.0f; // 構図のずらしのバネ角速度 (1/秒)
 
         float m_reboundFollowOmega = 4.0f; // 反動の間に注視点の横と前後が寄るバネ角速度 (1/秒)
@@ -326,6 +327,8 @@ namespace NS::Obj
         bool m_chargeReturnWaiting = false;        // 放した後、止めの明けまで戻しを始めずに待っているか
         NS::Core::Vector2 m_chargeFrameOffset{};   // 今の構図のずらし (m、カメラの右と上)
         NS::Core::Vector2 m_chargeFrameVelocity{}; // 構図のずらしの速さ (m/秒)
+        float m_chargeCenterTilt = 0.0f;           // 二人を縦の中心へ寄せる、注視点だけの上の向きのずれ (m)
+        float m_chargeCenterTiltVelocity = 0.0f;   // 寄せの速さ (m/秒)
 
         FollowReboundDesc m_rebound{};                    // 次の OnUpdate で使う反動の状態
         bool m_wasRebounding = false;                     // 前のフレームに反動の状態だったか

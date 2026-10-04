@@ -172,6 +172,8 @@ namespace NS::Obj
         m_chargeReturnFrame = 0;
         m_chargeFrameOffset = NS::Core::Vector2{0.0f, 0.0f};
         m_chargeFrameVelocity = NS::Core::Vector2{0.0f, 0.0f};
+        m_chargeCenterTilt = 0.0f;
+        m_chargeCenterTiltVelocity = 0.0f;
     }
 
     bool ThirdPersonFollow::SetFollowRebound(const FollowReboundDesc& desc) noexcept
@@ -513,6 +515,7 @@ namespace NS::Obj
 
         // 構図は押したフレームから動かし、溜めに入った時には相手を枠へ入れておく
         NS::Core::Vector2 wanted{0.0f, 0.0f};
+        float wantedTilt = 0.0f;
         const float frameFov = FovY().value - NS::Core::DegreesToRadians(m_chargeNarrowDegrees);
         const bool framing = charge.held && charge.hasAimTarget && m_chargeFrameRatio > 0.0f && frameFov > 0.0f;
         if (framing)
@@ -535,17 +538,23 @@ namespace NS::Obj
             const float aimHalfWidth = std::max(aim.halfWidth - charge.aimTargetRadius, 0.0f);
             const float aimHalfHeight = std::max(aim.halfHeight - charge.aimTargetRadius, 0.0f);
             wanted.x = FrameAxisShift(self.usable, self.right, self.halfWidth, aim.usable, aim.right, aimHalfWidth);
-            const float keepUp =
-                FrameAxisShift(self.usable, self.up, self.halfHeight, aim.usable, aim.up, aimHalfHeight);
+            wanted.y = FrameAxisShift(self.usable, self.up, self.halfHeight, aim.usable, aim.up, aimHalfHeight);
             // 縦は自機と相手の真ん中を画面の中心へ寄せる。注視点は頭の高さなので、枠に入れるだけだと二人は画面の
-            // 下の方に写り、当たりの揺れが小さく見える。ずらしは位置と注視点を同じだけ動かすので、カメラが下がる
-            float centerUp = keepUp;
+            // 下の方に写り、当たりの揺れが小さく見える。寄せは注視点だけを下げて下を向かせ、カメラの位置は下げない。
+            // 位置を下げると見下ろす角が浅くなり、奥の相手が自機の真後ろに重なる
+            // 寄せる量は溜めの量に比例させ、溜めるにつれてだんだん下を向く。相手を見付けたフレームに一気に動かさない
             if (self.usable && aim.usable)
             {
-                centerUp = (self.up + aim.up) * 0.5f;
+                const NS::Core::Vector3 middle = (root + charge.aimTargetCenter) * 0.5f;
+                const NS::Core::Vector3 toMiddle = middle - (camPos + up * wanted.y);
+                const float depth = NS::Core::Dot(toMiddle, forward);
+                if (depth > 0.0f)
+                {
+                    // 注視点を上の向きに s 下げると、視線は s ÷ 距離 の傾きだけ下を向く。真ん中の傾きと等しくする
+                    const float centerRatio = NS::Core::Clamp(m_chargeCenterRatio, 0.0f, 1.0f);
+                    wantedTilt = NS::Core::Dot(toMiddle, up) / depth * m_distance * centerRatio * holdCharge;
+                }
             }
-            const float centerRatio = NS::Core::Clamp(m_chargeCenterRatio, 0.0f, 1.0f);
-            wanted.y = keepUp + (centerUp - keepUp) * centerRatio;
         }
 
         // 体当たりから止めの明けまでは構図のずらしも動かさない。当たる瞬間に二人が画面の上で滑らない
@@ -556,11 +565,17 @@ namespace NS::Obj
         }
         CriticalSpringStep(m_chargeFrameOffset.x, m_chargeFrameVelocity.x, wanted.x, m_chargeFrameOmega, dt);
         CriticalSpringStep(m_chargeFrameOffset.y, m_chargeFrameVelocity.y, wanted.y, m_chargeFrameOmega, dt);
+        CriticalSpringStep(m_chargeCenterTilt, m_chargeCenterTiltVelocity, wantedTilt, m_chargeFrameOmega, dt);
         // 0 へは限りなく近づくだけなので、k_ChargeFrameSnap を切ったら 0 にして溜めを受けていない時の式へ戻す
         if (!framing && m_chargeFrameOffset.Length() < k_ChargeFrameSnap)
         {
             m_chargeFrameOffset = NS::Core::Vector2{0.0f, 0.0f};
             m_chargeFrameVelocity = NS::Core::Vector2{0.0f, 0.0f};
+        }
+        if (!framing && std::abs(m_chargeCenterTilt) < k_ChargeFrameSnap)
+        {
+            m_chargeCenterTilt = 0.0f;
+            m_chargeCenterTiltVelocity = 0.0f;
         }
     }
 
@@ -827,6 +842,11 @@ namespace NS::Obj
             const NS::Core::Vector3 shift = right * m_chargeFrameOffset.x + up * upShift;
             camPos += shift;
             headPos += shift;
+        }
+        // 真ん中への寄せは注視点だけを下げ、カメラの位置は変えずに下を向かせる
+        if (m_chargeCenterTilt != 0.0f)
+        {
+            headPos += NS::Core::Vector3{-sp * sy, cp, -sp * cy} * m_chargeCenterTilt;
         }
 
         CameraPose pose = MakePose(camPos, headPos, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
