@@ -28,20 +28,20 @@ namespace NS::Gfx
     static_assert(sizeof(TremorCB) == 64, "TremorCB は Common.hlsli の震えの欄と同じ 64 byte");
 
     //! @brief 描画 1 回ごとの定数バッファ。standard.{vs,ps} と完全一致で sizeof=272、row_major LH
-    //! @details world / viewProj のオブジェクト単位値に照明を束ねる。Material の内蔵 CB へ流す
+    //! @details world / viewProj のオブジェクト単位値に照明と床の波を束ねる。Material の内蔵 CB へ流す
     struct alignas(16) FrameCB
     {
         NS::Core::Matrix world{};
         NS::Core::Matrix viewProj{};
         // 照明の既定値はプロジェクト描画既定値の RenderSettings と共有し、値の二重管理を避ける
         NS::Core::Vector3 lightDir = NS::Gfx::RenderSettings{}.lightDir;
-        float pad0 = 0.0f;
+        float groundWaveCenterX = 0.0f; //!< 床の波の中心の世界の x。GroundWave と同じ意味
         NS::Core::Vector3 baseColor{1.0f, 1.0f, 1.0f};
-        float pad1 = 0.0f;
+        float groundWaveCenterZ = 0.0f; //!< 床の波の中心の世界の z
         NS::Core::Vector3 lightColor = NS::Gfx::RenderSettings{}.lightColor;
-        float pad2 = 0.0f;
+        float groundWaveRadius = 0.0f; //!< 床の波の輪の半径 (m)
         NS::Core::Vector3 ambientColor = NS::Gfx::RenderSettings{}.ambientColor;
-        float pad3 = 0.0f;
+        float groundWaveStrength = 0.0f; //!< 床の波の強さ。0 以下なら出さない
         NS::Core::Vector3 groundColor = NS::Gfx::RenderSettings{}.groundColor;
         float exposure = NS::Gfx::RenderSettings{}.exposure;
         TremorCB tremor{}; //!< 物の震え。頂点のシェーダーが読む。書かなければ震えない

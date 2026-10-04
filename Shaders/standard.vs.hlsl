@@ -17,6 +17,7 @@ SurfaceInterp VSMain(VSIn input)
     worldPos.xyz += TremorOffset(worldPos.xyz);
     output.pos = mul(worldPos, viewProj);
     output.uv = input.uv;
+    output.worldPos = worldPos.xyz;
     // 等スケール前提なので世界行列の 3x3 をそのまま掛ける、 非等スケール導入時は逆転置へ
     output.worldNormal = normalize(mul(input.normal, (float3x3)world));
     return output;

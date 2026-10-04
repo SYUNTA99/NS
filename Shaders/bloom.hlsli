@@ -10,7 +10,9 @@ cbuffer BloomCB : register(b0)
     float2 g_destinationTexel; // 書く絵の 1 画素の UV の幅と高さ
     float  g_threshold;        // これを超えた分だけをにじませる
     float  g_intensity;        // にじみを足す強さ
-    float2 g_padding;
+    float  g_ringHalfWidth;    // 歪みの輪の半分の幅 (書く絵の画素)
+    float  g_padding;
+    float4 g_ring;             // 歪みの輪の中心の x・y、 半径、 押し (書く絵の画素)。 押しが 0 以下なら歪めない
 };
 
 Texture2D g_source : register(t0);

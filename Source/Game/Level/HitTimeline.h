@@ -50,10 +50,13 @@ namespace NS::Game::Level
 
         NS::Obj::Curve along{};  //!< 突進の向きの倍率。元の形が 1
         NS::Obj::Curve height{}; //!< 高さの倍率。元の形が 1
+        //! 突進の向きに直角な水平の横の倍率。元の形が 1。点が無ければ 1。真後ろのカメラから見える幅
+        NS::Obj::Curve side{};
 
         NS_REFLECT_BEGIN(ShapeEvent, void)
         NS_REFLECT_FIELD(along, "突進の向きの倍率")
         NS_REFLECT_FIELD(height, "高さの倍率")
+        NS_REFLECT_FIELD(side, "横の倍率")
         NS_REFLECT_END_VALUE()
     };
 
@@ -273,25 +276,39 @@ namespace NS::Game::Level
     };
 
     //! @brief 止めの間の横揺れ。自機と相手を画面の横 (床に沿う向き) へ逆向きに、体ごと揺らす
-    //! @details 長さが揺れのフレーム数で、振れ幅に (1 − 経過 ÷ 長さ)² を掛けて長さの終わりで 0 にする
-    //! 1 フレームごとに左右を入れ替え、振れ幅を 7〜10 割でばらつかせる。揺らすのは描く形だけで、当たりは動かさない
+    //! @details 揺れのフレーム数はこの当たりで効く止めのフレーム数で、行の長さは使わない。振れ幅に
+    //! (1 − 経過 ÷ フレーム数) を掛けて止めの終わりで 0 にする
+    //! 決めたフレーム数ごとに左右を入れ替え、振れ幅を 7〜10
+    //! 割でばらつかせる。揺らすのは描く形だけで、当たりは動かさない
     struct BodyShakeEvent
     {
         static constexpr std::string_view k_Name = "BodyShake";
         static constexpr std::string_view k_Label = "横揺れ";
         static constexpr bool k_BeforeContact = false;
 
-        //! 最初の振れ幅。高さ 720 画素の画面の上の画素数で持ち、始まりのフレームにカメラとの距離から世界の長さへ直す
+        //! 相手の最初の振れ幅。高さ 720
+        //! 画素の画面の上の画素数で持ち、始まりのフレームにカメラとの距離から世界の長さへ直す
         float amplitudePixels = 10.0f;
+        //! 自機の最初の振れ幅。画素の数え方は amplitudePixels と同じ
+        float selfAmplitudePixels = 10.0f;
+        //! 左右を入れ替えるフレーム数。1 未満は 1
+        int flipFrames = 1;
+        //! 残像を根から左右へ離す、振れ幅の包み (振れ幅 × 残り) に対する倍率。0 なら残像を出さない。
+        //! 真後ろからは体の横揺れが重なって見えにくいので、左右に残る半透明の写しで揺れの幅を見せる
+        float ghostRatio = 0.0f;
 
         NS_REFLECT_BEGIN(BodyShakeEvent, void)
         NS_REFLECT_FIELD(amplitudePixels, "振れ幅の画素")
+        NS_REFLECT_FIELD(selfAmplitudePixels, "自機の振れ幅の画素")
+        NS_REFLECT_FIELD(flipFrames, "左右を入れ替えるフレーム数")
+        NS_REFLECT_FIELD(ghostRatio, "残像の離れの倍率")
         NS_REFLECT_END_VALUE()
     };
 
     //! @brief 衝撃の震え。自機と相手の体を、衝突点から裏へ数画素の震えが遅れて伝わる
-    //! @details 長さが震えのフレーム数。衝突点から体の一番遠い所へ届くフレーム数で裏まで伝わり、1 か所は
-    //! 長さ − 届くフレーム数 で弱まって止まる。揺らすのは描く形だけで、当たりと根の位置は動かさない
+    //! @details 震えのフレーム数はこの当たりで効く止めのフレーム数で、行の長さは使わない。衝突点から体の一番遠い所へ
+    //! 届くフレーム数 (フレーム数の半分まで) で裏まで伝わり、1 か所は フレーム数 − 届くフレーム数 で弱まって止まる。
+    //! 揺らすのは描く形だけで、当たりと根の位置は動かさない
     struct ImpactTremorEvent
     {
         static constexpr std::string_view k_Name = "ImpactTremor";
@@ -300,11 +317,73 @@ namespace NS::Game::Level
 
         //! 振れ幅。高さ 720 画素の画面の上の画素数で持ち、毎フレームその物とカメラの距離から世界の長さへ直す
         float amplitudePixels = 3.0f;
-        int reachFrames = 6; //!< 衝突点から体の一番遠い所へ届くまでのフレーム数
+        //! 衝突点から体の一番遠い所へ届くまでのフレーム数。震えのフレーム数の半分を超える分は使わない
+        int reachFrames = 6;
 
         NS_REFLECT_BEGIN(ImpactTremorEvent, void)
         NS_REFLECT_FIELD(amplitudePixels, "振れ幅の画素")
         NS_REFLECT_FIELD(reachFrames, "裏まで届くフレーム数")
+        NS_REFLECT_END_VALUE()
+    };
+
+    //! @brief 床の波。触れた点の真下を中心に、上を向いた面へ光の輪を広げる
+    //! @details 長さが出すフレーム数。半径と強さは始まりからのフレーム数を横軸にした曲線。真後ろのカメラから
+    //! 床は斜めに大きく見えるので、二人の足元から広がる輪で当たりの力が周りへ伝わった事を見せる
+    struct GroundWaveEvent
+    {
+        static constexpr std::string_view k_Name = "GroundWave";
+        static constexpr std::string_view k_Label = "床の波";
+        static constexpr bool k_BeforeContact = false; //!< 中心は触れた点で決まる
+
+        NS::Obj::Curve radius{};   //!< 輪の半径 (m)。点が無ければ 0
+        NS::Obj::Curve strength{}; //!< 輪の強さ。面の倒れと頂の光の量。点が無ければ 0 で出さない
+
+        NS_REFLECT_BEGIN(GroundWaveEvent, void)
+        NS_REFLECT_FIELD(radius, "半径")
+        NS_REFLECT_FIELD(strength, "強さ")
+        NS_REFLECT_END_VALUE()
+    };
+
+    //! @brief 歪みの輪。触れた点を中心に、画面の上で広がる輪の所の絵を外へ押し出す
+    //! @details 長さが出すフレーム数。半径と押しは始まりからのフレーム数を横軸にした曲線で、どれも画面の高さに
+    //! 対する割合。真後ろのカメラからも、当たった所から空気が押し出された事を画面の歪みで見せる
+    struct DistortionRingEvent
+    {
+        static constexpr std::string_view k_Name = "DistortionRing";
+        static constexpr std::string_view k_Label = "歪みの輪";
+        static constexpr bool k_BeforeContact = false; //!< 中心は触れた点で決まる
+
+        NS::Obj::Curve radius{}; //!< 輪の半径。画面の高さに対する割合。点が無ければ 0
+        NS::Obj::Curve push{};   //!< 輪の真ん中で絵を押し出す長さ。画面の高さに対する割合。点が無ければ 0 で歪めない
+        float halfWidth = 0.05f; //!< 輪の半分の幅。画面の高さに対する割合
+
+        NS_REFLECT_BEGIN(DistortionRingEvent, void)
+        NS_REFLECT_FIELD(radius, "半径")
+        NS_REFLECT_FIELD(push, "押し")
+        NS_REFLECT_FIELD(halfWidth, "半分の幅")
+        NS_REFLECT_END_VALUE()
+    };
+
+    //! @brief 震えの線。相手と自機をまとめた輪郭の外の左右に縦の短い線を 3
+    //! 本ずつ画面へ描き、横揺れと同じ拍で外と内へずらす
+    //! @details 線のフレーム数はこの当たりで効く止めのフレーム数で、行の長さは使わない。挟む中心と半径は始めた時の
+    //! 二人の形。真後ろのカメラでは体の横揺れが小さく見えるので、揺れている事を画面の線で読ませる
+    struct ShakeLinesEvent
+    {
+        static constexpr std::string_view k_Name = "ShakeLines";
+        static constexpr std::string_view k_Label = "震えの線";
+        static constexpr bool k_BeforeContact = false; //!< 挟む相手は当たりで決まる
+
+        float lengthPixels = 80.0f; //!< 内側の線の長さ。高さ 720 画素の画面の上の画素数
+        float widthPixels = 7.0f;   //!< 線の太さ。画素の数え方は lengthPixels と同じ
+        float gapPixels = 16.0f;    //!< 輪郭から内側の線までの間。画素の数え方は lengthPixels と同じ
+        int flipFrames = 2;         //!< 外と内へずらし直すフレーム数。1 未満は 1
+
+        NS_REFLECT_BEGIN(ShakeLinesEvent, void)
+        NS_REFLECT_FIELD(lengthPixels, "線の長さの画素")
+        NS_REFLECT_FIELD(widthPixels, "線の太さの画素")
+        NS_REFLECT_FIELD(gapPixels, "輪郭から離す画素")
+        NS_REFLECT_FIELD(flipFrames, "ずらし直すフレーム数")
         NS_REFLECT_END_VALUE()
     };
 
@@ -358,7 +437,10 @@ namespace NS::Game::Level
                                        BodyShakeEvent,
                                        ImpactTremorEvent,
                                        CameraLurchEvent,
-                                       CameraReboundSwayEvent>;
+                                       CameraReboundSwayEvent,
+                                       ShakeLinesEvent,
+                                       GroundWaveEvent,
+                                       DistortionRingEvent>;
 
     //! @brief タイムラインの 1 行。触れたフレームを 0 にしたフレーム数で、始まりと長さを持つ
     struct HitEvent

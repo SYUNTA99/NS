@@ -10,7 +10,7 @@
 #include <cmath>
 #include <limits>
 
-// 止めの間の横揺れは、体ごと画面の横へ 1 フレームごとに左右を入れ替えて揺らし、止めの終わりで 0 になる
+// 止めの間の横揺れは、体ごと画面の横へ決めたフレーム数ごとに左右を入れ替えて揺らし、止めの終わりで 0 になる
 // 揺らすのは描く形だけで、根の位置と当たりは動かさない
 
 namespace
@@ -28,40 +28,42 @@ namespace
     }
 } // namespace
 
-// 振れ幅 × (1 − 経過 ÷ 長さ)² に 0.7〜1 のばらつきを掛け、1 フレーム目は最初の向き、そこから 1 フレームごとに入れ替わる
-TEST(BodyShake, OffsetAlternatesAndFallsToZeroByTheEnd)
+// 振れ幅 × (1 − 経過 ÷ 長さ) に 0.7〜1 のばらつきを掛ける。1 フレーム目から入れ替えのフレーム数 (2) の間は最初の向き、
+// そこから 2 フレームごとに入れ替わる。止めの後半まで揺れが残るよう、弱まり方は直線
+TEST(BodyShake, OffsetHoldsEachSideForTheFlipFramesAndFallsLinearly)
 {
     constexpr int k_Length = 12;
-    float previous = 0.0f;
+    constexpr int k_Flip = 2;
     for (int frame = 1; frame < k_Length; ++frame)
     {
         SCOPED_TRACE(frame);
-        const float offset = NS::Game::Level::BodyShakeOffset(frame, k_Length, 0.1f, 7u, -1.0f);
-        const float left = 1.0f - static_cast<float>(frame) / static_cast<float>(k_Length);
-        const float envelope = 0.1f * left * left;
+        const float offset = NS::Game::Level::BodyShakeOffset(frame, k_Length, 0.1f, 7u, -1.0f, k_Flip);
+        const float envelope = 0.1f * (1.0f - static_cast<float>(frame) / static_cast<float>(k_Length));
         EXPECT_GE(std::abs(offset), envelope * 0.7f - 1.0e-6f);
         EXPECT_LE(std::abs(offset), envelope + 1.0e-6f);
-        // 1 フレーム目は最初の向き (−)、次は +
+        // 1・2 フレーム目は最初の向き (−)、3・4 は +、5・6 は −
         float sign = -1.0f;
-        if (frame % 2 == 0)
+        if (((frame - 1) / k_Flip) % 2 == 1)
         {
             sign = 1.0f;
         }
         EXPECT_GT(offset * sign, 0.0f);
-        EXPECT_NE(offset, previous);
-        previous = offset;
     }
-    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeOffset(k_Length, k_Length, 0.1f, 7u, -1.0f), 0.0f);
-    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeOffset(0, k_Length, 0.1f, 7u, -1.0f), 0.0f);
-    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeOffset(3, 0, 0.1f, 7u, -1.0f), 0.0f);
+    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeOffset(k_Length, k_Length, 0.1f, 7u, -1.0f, k_Flip), 0.0f);
+    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeOffset(0, k_Length, 0.1f, 7u, -1.0f, k_Flip), 0.0f);
+    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeOffset(3, 0, 0.1f, 7u, -1.0f, k_Flip), 0.0f);
+    // 入れ替えのフレーム数が 1 未満なら 1 フレームごとに入れ替える
+    EXPECT_LT(NS::Game::Level::BodyShakeOffset(1, k_Length, 0.1f, 7u, 1.0f, 0) *
+                  NS::Game::Level::BodyShakeOffset(2, k_Length, 0.1f, 7u, 1.0f, 0),
+              0.0f);
     // 同じ種は同じ揺れ、違う種はばらつきが違う
-    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeOffset(2, k_Length, 0.1f, 7u, 1.0f),
-                    NS::Game::Level::BodyShakeOffset(2, k_Length, 0.1f, 7u, 1.0f));
+    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeOffset(2, k_Length, 0.1f, 7u, 1.0f, k_Flip),
+                    NS::Game::Level::BodyShakeOffset(2, k_Length, 0.1f, 7u, 1.0f, k_Flip));
     bool differs = false;
     for (int frame = 1; frame < k_Length; ++frame)
     {
-        differs = differs || NS::Game::Level::BodyShakeOffset(frame, k_Length, 0.1f, 7u, 1.0f) !=
-                                 NS::Game::Level::BodyShakeOffset(frame, k_Length, 0.1f, 8u, 1.0f);
+        differs = differs || NS::Game::Level::BodyShakeOffset(frame, k_Length, 0.1f, 7u, 1.0f, k_Flip) !=
+                                 NS::Game::Level::BodyShakeOffset(frame, k_Length, 0.1f, 8u, 1.0f, k_Flip);
     }
     EXPECT_TRUE(differs);
 }
@@ -89,4 +91,40 @@ TEST(BodyShake, DrawOffsetMovesOnlyTheDrawnShape)
     ASSERT_TRUE(model->SetDrawOffset(NS::Core::Vector3{0.0f, 0.0f, 0.0f}));
     const NS::Core::Matrix reset = model->DrawWorldMatrix(1.0f);
     EXPECT_FLOAT_EQ(reset._41, before._41);
+}
+
+// 残像は根の形を ±離れだけずらした所に描く。描く時だけのずれは残像に足さないので、体が片側へ振れても残像は
+// 根を挟んで左右に残る。有限でない離れは書かない
+TEST(BodyShake, GhostsSitAtPlusAndMinusTheSpreadAroundTheRoot)
+{
+    NS::Obj::Scene scene;
+    NS::Obj::Actor* rock = PlaceRock(scene);
+    ASSERT_NE(rock, nullptr);
+    NS::Obj::Model* model = rock->ModelPart();
+    ASSERT_NE(model, nullptr);
+    const NS::Core::Matrix root = model->DrawWorldMatrix(1.0f);
+    ASSERT_TRUE(model->SetDrawOffset(NS::Core::Vector3{0.1f, 0.0f, 0.0f}));
+    ASSERT_TRUE(model->SetGhostSpread(NS::Core::Vector3{0.3f, 0.0f, -0.2f}));
+    const NS::Core::Matrix plus = model->GhostWorldMatrix(1.0f, 1.0f);
+    const NS::Core::Matrix minus = model->GhostWorldMatrix(1.0f, -1.0f);
+    EXPECT_NEAR(plus._41 - root._41, 0.3f, 1.0e-5f);
+    EXPECT_NEAR(plus._43 - root._43, -0.2f, 1.0e-5f);
+    EXPECT_NEAR(minus._41 - root._41, -0.3f, 1.0e-5f);
+    EXPECT_NEAR(minus._43 - root._43, 0.2f, 1.0e-5f);
+    EXPECT_FALSE(model->SetGhostSpread(NS::Core::Vector3{std::numeric_limits<float>::infinity(), 0.0f, 0.0f}));
+    EXPECT_FLOAT_EQ(model->GhostSpread().x, 0.3f);
+}
+
+// 残像の離れは、横揺れの振れ幅の包み (振れ幅 × 残り) に倍率を掛けた物。揺れの外では 0
+TEST(BodyShake, ReachIsTheEnvelopeWithoutTheSpreadOrSide)
+{
+    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeReach(3, 12, 0.2f), 0.2f * (1.0f - 3.0f / 12.0f));
+    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeReach(0, 12, 0.2f), 0.0f);
+    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeReach(12, 12, 0.2f), 0.0f);
+    for (int frame = 1; frame < 12; ++frame)
+    {
+        SCOPED_TRACE(frame);
+        EXPECT_LE(std::abs(NS::Game::Level::BodyShakeOffset(frame, 12, 0.2f, 5u, 1.0f, 2)),
+                  NS::Game::Level::BodyShakeReach(frame, 12, 0.2f) + 1.0e-6f);
+    }
 }

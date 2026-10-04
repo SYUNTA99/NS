@@ -9,6 +9,9 @@ SamplerState samp    : register(s0);
 float4 PSMain(SurfaceInterp input) : SV_TARGET
 {
     float3 albedo = diffuse.Sample(samp, input.uv).rgb;
-    float3 lit = albedo * baseColor * DirectionalLight(input.worldNormal);
+    // 床の波は上を向く面だけ、 斜面の向きで明暗を付け、 頂へ光を足す
+    float3 normal = GroundWaveNormal(input.worldPos, input.worldNormal);
+    float3 lit = albedo * baseColor * DirectionalLight(normal) +
+                 GroundWaveGlow(input.worldPos, input.worldNormal) * g_lightColor;
     return float4(ToDisplay(lit), 1.0);
 }

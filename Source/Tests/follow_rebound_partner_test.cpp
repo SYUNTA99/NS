@@ -167,15 +167,24 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
         ASSERT_NE(rock, nullptr);
         player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
         int checked = 0;
+        int held = 0;
         for (int frame = 0; frame < 400 && checked < 5; ++frame)
         {
             player->Update(false);
             rock->Update();
+            // 体当たりと止めの間は、カメラに距離と溜めの締めを保たせる
+            if (player->IsBodySlamming() || player->Resolver().IsHoldingPlayer())
+            {
+                EXPECT_TRUE(player->GetCameraTargetState().framingHeld);
+                ++held;
+            }
             if (!player->IsRebounding())
             {
                 continue;
             }
             const NS::Obj::CameraTargetState state = player->GetCameraTargetState();
+            // 反動の間はもう保たない。保つのは体当たりから止めの明けまで
+            EXPECT_FALSE(state.framingHeld);
             if (player->Resolver().LastImpact().tier == NS::Game::Level::HitTier::Center)
             {
                 ASSERT_TRUE(state.rebound.partnerPosition.has_value());
@@ -194,6 +203,7 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
             ++checked;
         }
         EXPECT_EQ(checked, 5);
+        EXPECT_GT(held, 0);
         if (rockX == 0.0f)
         {
             EXPECT_EQ(player->Resolver().LastImpact().tier, NS::Game::Level::HitTier::Center);

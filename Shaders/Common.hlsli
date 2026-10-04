@@ -8,13 +8,13 @@ cbuffer FrameCB : register(b0)
     row_major float4x4 world;
     row_major float4x4 viewProj;
     float3 lightDir;
-    float  pad0;
+    float  g_groundWaveCenterX;
     float3 baseColor;
-    float  pad1;
+    float  g_groundWaveCenterZ;
     float3 g_lightColor;
-    float  pad2;
+    float  g_groundWaveRadius;
     float3 g_ambientColor;
-    float  pad3;
+    float  g_groundWaveStrength;
     float3 g_groundColor;
     float  g_exposure;
     // 物の震え。 C++ の TremorCB と同じ並び
@@ -55,7 +55,58 @@ struct SurfaceInterp
     float4 pos         : SV_POSITION;
     float2 uv          : TEXCOORD;
     float3 worldNormal : NORMAL;
+    float3 worldPos    : TEXCOORD1;
 };
+
+// 床の波の輪の半分の幅 (m)。 真後ろのカメラから床を斜めに見下ろした時に、 輪が線ではなく帯に見える幅
+static const float k_GroundWaveHalfWidth = 0.7;
+
+// 床の波の輪の中の位置。 輪の真ん中が 0、 内の縁が -1、 外の縁が +1。 輪の外か上を向かない面は 2 を返す
+// 床は頂点の少ない箱なので形は曲げず、 光と面の向きだけで、 波が床を走って見せる
+float GroundWaveSlot(float3 worldPos, float3 worldNormal, out float3 outward)
+{
+    outward = float3(0.0, 0.0, 0.0);
+    if (g_groundWaveStrength <= 0.0 || worldNormal.y < 0.5)
+    {
+        return 2.0;
+    }
+    float2 fromCenter = worldPos.xz - float2(g_groundWaveCenterX, g_groundWaveCenterZ);
+    float distanceFromCenter = length(fromCenter);
+    float slot = (distanceFromCenter - g_groundWaveRadius) / k_GroundWaveHalfWidth;
+    if (abs(slot) >= 1.0)
+    {
+        return 2.0;
+    }
+    float2 direction = fromCenter / max(distanceFromCenter, 1.0e-4);
+    outward = float3(direction.x, 0.0, direction.y);
+    return slot;
+}
+
+// 床の波の盛り上がりの斜面の向き。 内の斜面は中心へ、 外の斜面は外へ倒す。 光の当たり方が輪の前後で入れ替わる
+float3 GroundWaveNormal(float3 worldPos, float3 worldNormal)
+{
+    float3 outward;
+    float slot = GroundWaveSlot(worldPos, worldNormal, outward);
+    if (slot >= 1.0)
+    {
+        return worldNormal;
+    }
+    const float k_Pi = 3.14159265;
+    return normalize(worldNormal + outward * sin(k_Pi * slot) * g_groundWaveStrength);
+}
+
+// 床の波の頂に足す光の量。 輪の真ん中が一番明るく、 縁で 0
+float GroundWaveGlow(float3 worldPos, float3 worldNormal)
+{
+    float3 outward;
+    float slot = GroundWaveSlot(worldPos, worldNormal, outward);
+    if (slot >= 1.0)
+    {
+        return 0.0;
+    }
+    float crest = 1.0 - slot * slot;
+    return crest * crest * g_groundWaveStrength * 0.6;
+}
 
 // 上下 2 色の環境光に平行光を足して返す。 albedo と baseColor は呼び出し側で掛ける
 float3 DirectionalLight(float3 worldNormal)

@@ -528,6 +528,8 @@ namespace NS::Game::Level
         }
         AdvanceBodyShake();
         AdvanceTremor();
+        AdvanceGroundWave();
+        AdvanceDistortionRing();
         // 止めた自機を動かし直すまでは新しい衝突を見ない。止まった自機は重なったままなので、見ると毎フレーム検知し直す
         if (IsHoldingPlayer())
         {
@@ -832,9 +834,27 @@ namespace NS::Game::Level
 
         void operator()(const TargetLaunchEvent&) const { resolver.LaunchTarget(); }
 
-        void operator()(const BodyShakeEvent& shake) const { resolver.StartBodyShake(shake, event.length); }
+        // 横揺れと震えは行の長さを使わず、この当たりで効く止めと同じフレーム数だけ出す。止めの長さを変えても
+        // (貫通の止めを含む) 揺れだけが残る・先に切れる事が無い
+        void operator()(const BodyShakeEvent& shake) const
+        {
+            resolver.StartBodyShake(shake, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps));
+        }
 
-        void operator()(const ImpactTremorEvent& tremor) const { resolver.StartTremor(tremor, event.length); }
+        void operator()(const ImpactTremorEvent& tremor) const
+        {
+            resolver.StartTremor(tremor, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps));
+        }
+
+        // 震えの線も横揺れと同じく、止めと同じフレーム数だけ出す
+        void operator()(const ShakeLinesEvent& lines) const
+        {
+            resolver.StartShakeLines(lines, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps));
+        }
+
+        void operator()(const GroundWaveEvent& wave) const { resolver.StartGroundWave(wave, event.length); }
+
+        void operator()(const DistortionRingEvent& ring) const { resolver.StartDistortionRing(ring, event.length); }
 
         void operator()(const ReboundEvent&) const { resolver.ApplyRebound(); }
 
@@ -962,9 +982,11 @@ namespace NS::Game::Level
         m_events = std::move(events);
         m_eventRows = std::move(rows);
         m_breakStopSteps = breakStopSteps;
-        // 前の当たりの横揺れと震えは、新しい時計で数えると長さの終わりが来ない
+        // 前の当たりの横揺れ・震え・床の波は、新しい時計で数えると長さの終わりが来ない
         StopBodyShake();
         StopTremor();
+        StopGroundWave();
+        StopDistortionRing();
         m_clock = 0;
         m_padStartClock.reset();
         m_clockEnd = 0;
@@ -1134,6 +1156,8 @@ namespace NS::Game::Level
         m_beforeContact = false;
         StopBodyShake();
         StopTremor();
+        StopGroundWave();
+        StopDistortionRing();
         m_events.clear();
         m_eventRows.clear();
         m_padStartClock.reset();
@@ -1359,7 +1383,8 @@ namespace NS::Game::Level
     void ImpactResolver::StartBodyShake(const BodyShakeEvent& shake, int length)
     {
         StopBodyShake();
-        if (Owner() == nullptr || length <= 0 || !std::isfinite(shake.amplitudePixels))
+        if (Owner() == nullptr || length <= 0 || !std::isfinite(shake.amplitudePixels) ||
+            !std::isfinite(shake.selfAmplitudePixels))
         {
             return;
         }
@@ -1389,16 +1414,18 @@ namespace NS::Game::Level
         m_bodyShake =
             BodyShakeRun{.desc = TackleShakeDesc{.axis = axis,
                                                  .amplitude = ScreenPixelsToMeters(
-                                                     shake.amplitudePixels, *pose, Owner()->Root().Position()),
+                                                     shake.selfAmplitudePixels, *pose, Owner()->Root().Position()),
                                                  .length = length,
                                                  .seed = seed,
-                                                 .firstSign = firstSign},
+                                                 .firstSign = firstSign,
+                                                 .flipFrames = shake.flipFrames,
+                                                 .ghostRatio = shake.ghostRatio},
                          .startClock = m_clock,
                          .active = true};
         // 始めたフレームから描く。時計の 0 の事象は時計を進めた後に起きるので、ここで書かないと 1 フレーム遅れる
         AdvanceBodyShake();
 
-        // 相手は同じ大きさで逆向きに揺れる
+        // 相手は逆向きに揺れる。真後ろからは二人が重なるので、相手の欄を大きくすると誰が震えているかが分かる
         NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
         {
@@ -1414,8 +1441,42 @@ namespace NS::Game::Level
                                         ScreenPixelsToMeters(shake.amplitudePixels, *pose, target->Root().Position()),
                                     .length = length,
                                     .seed = seed,
-                                    .firstSign = -firstSign};
+                                    .firstSign = -firstSign,
+                                    .flipFrames = shake.flipFrames,
+                                    .ghostRatio = shake.ghostRatio};
         (void)SendMsgTackleShake(*target, other);
+    }
+
+    void ImpactResolver::StartShakeLines(const ShakeLinesEvent& lines, int length)
+    {
+        if (m_hitReaction == nullptr || Owner() == nullptr || length <= 0)
+        {
+            return;
+        }
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+        {
+            return;
+        }
+        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
+        if (target == nullptr || target->ModelPart() == nullptr || m_player->ModelPart() == nullptr)
+        {
+            return;
+        }
+        // 止めの間の二人は食い込んだ所に留まり、描く形が揺れるだけなので、始めた時の形で挟めば最後まで外れない
+        // 真後ろのカメラでは自機が相手に重なるので、二人をまとめて挟む
+        const NS::Core::AABB other = target->ModelPart()->WorldBounds();
+        const NS::Core::AABB self = m_player->ModelPart()->WorldBounds();
+        m_hitReaction->StartShakeLines(
+            NS::Obj::HitShakeLinesDesc{.center = NS::Core::Vector3{other.Center.x, other.Center.y, other.Center.z},
+                                       .radius = std::max({other.Extents.x, other.Extents.y, other.Extents.z}),
+                                       .otherCenter = NS::Core::Vector3{self.Center.x, self.Center.y, self.Center.z},
+                                       .otherRadius = std::max({self.Extents.x, self.Extents.y, self.Extents.z}),
+                                       .frames = length,
+                                       .flipFrames = lines.flipFrames,
+                                       .lengthPixels = lines.lengthPixels,
+                                       .widthPixels = lines.widthPixels,
+                                       .gapPixels = lines.gapPixels});
     }
 
     void ImpactResolver::AdvanceBodyShake()
@@ -1426,8 +1487,11 @@ namespace NS::Game::Level
         }
         const TackleShakeDesc& desc = m_bodyShake.desc;
         const int frame = m_clock - m_bodyShake.startClock + 1;
-        const float offset = BodyShakeOffset(frame, desc.length, desc.amplitude, desc.seed, desc.firstSign);
+        const float offset =
+            BodyShakeOffset(frame, desc.length, desc.amplitude, desc.seed, desc.firstSign, desc.flipFrames);
         (void)m_player->ModelPart()->SetDrawOffset(desc.axis * offset);
+        (void)m_player->ModelPart()->SetGhostSpread(
+            desc.axis * (BodyShakeReach(frame, desc.length, desc.amplitude) * desc.ghostRatio));
         if (frame >= desc.length)
         {
             m_bodyShake.active = false;
@@ -1440,6 +1504,7 @@ namespace NS::Game::Level
         if (m_player != nullptr && m_player->ModelPart() != nullptr)
         {
             (void)m_player->ModelPart()->SetDrawOffset(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+            (void)m_player->ModelPart()->SetGhostSpread(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         }
     }
 
@@ -1452,9 +1517,11 @@ namespace NS::Game::Level
         }
         // 震えは自機の玉が相手の表面に触れた点から両方の体へ伝わる
         const NS::Core::Vector3 contact = m_lastImpact.surfacePoint;
+        // 長さは止めに合わせて短くなる。裏まで届くのに長さを使い切ると震えが残らないので、届くのは長さの半分まで
+        const int reachFrames = std::min(tremor.reachFrames, length / 2);
         m_tremor = TremorRun{.desc = TackleTremorDesc{.contactOffset = contact - Owner()->Root().Position(),
                                                       .amplitudePixels = tremor.amplitudePixels,
-                                                      .reachFrames = tremor.reachFrames,
+                                                      .reachFrames = reachFrames,
                                                       .length = length},
                              .startClock = m_clock,
                              .elapsed = 0,
@@ -1505,6 +1572,110 @@ namespace NS::Game::Level
         }
     }
 
+    void ImpactResolver::StartGroundWave(const GroundWaveEvent& wave, int length)
+    {
+        StopGroundWave();
+        if (length <= 0)
+        {
+            return;
+        }
+        // 中心は自機の玉が相手の表面に触れた点。床の上の水平の位置だけを使う
+        const NS::Core::Vector3 contact = m_lastImpact.surfacePoint;
+        m_groundWave = GroundWaveRun{.event = wave,
+                                     .centerX = contact.x,
+                                     .centerZ = contact.z,
+                                     .length = length,
+                                     .startClock = m_clock,
+                                     .active = true};
+        // 始めたフレームから描く。時計の事象は時計を進めた後に起きるので、ここで書かないと 1 フレーム遅れる
+        AdvanceGroundWave();
+    }
+
+    void ImpactResolver::AdvanceGroundWave()
+    {
+        if (!m_groundWave.active || Owner() == nullptr || Owner()->OwningScene() == nullptr)
+        {
+            return;
+        }
+        const int elapsed = m_clock - m_groundWave.startClock;
+        if (elapsed >= m_groundWave.length)
+        {
+            StopGroundWave();
+            return;
+        }
+        const float frame = static_cast<float>(elapsed);
+        Owner()->OwningScene()->SetGroundWave(
+            NS::Gfx::GroundWave{.centerX = m_groundWave.centerX,
+                                .centerZ = m_groundWave.centerZ,
+                                .radius = m_groundWave.event.radius.Evaluate(frame),
+                                .strength = m_groundWave.event.strength.Evaluate(frame)});
+    }
+
+    void ImpactResolver::StopGroundWave() noexcept
+    {
+        // 書いた時だけ消す。床の波を出していない裁定役が、他の物の波を消さない
+        if (!m_groundWave.active)
+        {
+            return;
+        }
+        m_groundWave.active = false;
+        if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
+        {
+            Owner()->OwningScene()->SetGroundWave(NS::Gfx::GroundWave{});
+        }
+    }
+
+    void ImpactResolver::StartDistortionRing(const DistortionRingEvent& ring, int length)
+    {
+        StopDistortionRing();
+        if (length <= 0)
+        {
+            return;
+        }
+        // 中心は自機の玉が相手の表面に触れた点
+        m_distortionRing = DistortionRingRun{.event = ring,
+                                             .center = m_lastImpact.surfacePoint,
+                                             .length = length,
+                                             .startClock = m_clock,
+                                             .active = true};
+        // 始めたフレームから描く。時計の事象は時計を進めた後に起きるので、ここで書かないと 1 フレーム遅れる
+        AdvanceDistortionRing();
+    }
+
+    void ImpactResolver::AdvanceDistortionRing()
+    {
+        if (!m_distortionRing.active || Owner() == nullptr || Owner()->OwningScene() == nullptr)
+        {
+            return;
+        }
+        const int elapsed = m_clock - m_distortionRing.startClock;
+        if (elapsed >= m_distortionRing.length)
+        {
+            StopDistortionRing();
+            return;
+        }
+        const float frame = static_cast<float>(elapsed);
+        Owner()->OwningScene()->SetDistortionRing(
+            NS::Gfx::DistortionRing{.center = m_distortionRing.center,
+                                    .radius = m_distortionRing.event.radius.Evaluate(frame),
+                                    .push = m_distortionRing.event.push.Evaluate(frame),
+                                    .halfWidth = m_distortionRing.event.halfWidth});
+    }
+
+    void ImpactResolver::StopDistortionRing() noexcept
+    {
+        // 書いた時だけ消す。歪みの輪を出していない裁定役が、他の物の輪を消さない
+        if (!m_distortionRing.active)
+        {
+            return;
+        }
+        m_distortionRing.active = false;
+        if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
+        {
+            Owner()->OwningScene()->SetDistortionRing(NS::Gfx::DistortionRing{});
+        }
+    }
+
     void ImpactResolver::StopTremor() noexcept
     {
         m_tremor.active = false;
@@ -1544,6 +1715,7 @@ namespace NS::Game::Level
                             .reboundDistance = params.m_reboundDistance,
                             .reboundApexHeight = params.m_reboundApexHeight,
                             .centerHitReboundDistanceScale = params.m_centerHitReboundDistanceScale,
+                            .centerHitReboundHeightScale = params.m_centerHitReboundHeightScale,
                             .missReboundDistanceScale = params.m_missReboundDistanceScale,
                             .launchDistance = params.m_launchDistance,
                             .launchMassExponent = params.m_launchMassExponent,
@@ -1612,15 +1784,19 @@ namespace NS::Game::Level
             return NS::Core::Vector3{1.0f, 1.0f, 1.0f};
         }
         const float frame = static_cast<float>(m_clock - m_shapeStart);
-        return AlongImpactFactors(CurveFactor(m_shape.along, frame), CurveFactor(m_shape.height, frame));
+        return AlongImpactFactors(
+            CurveFactor(m_shape.along, frame), CurveFactor(m_shape.height, frame), CurveFactor(m_shape.side, frame));
     }
 
-    NS::Core::Vector3 ImpactResolver::AlongImpactFactors(float along, float height) const noexcept
+    NS::Core::Vector3 ImpactResolver::AlongImpactFactors(float along, float height, float side) const noexcept
     {
         // 衝突は水平でしか起きない。進行の軸成分の 2 乗で倍率を混ぜ、軸に載った衝突では素の倍率になる
+        // 横は進行に直角な水平の軸なので、x には z の成分の 2 乗、z には x の成分の 2 乗で混ぜる
         const float dx2 = m_pendingImpactDir.x * m_pendingImpactDir.x;
         const float dz2 = m_pendingImpactDir.z * m_pendingImpactDir.z;
-        return NS::Core::Vector3{1.0f + (along - 1.0f) * dx2, height, 1.0f + (along - 1.0f) * dz2};
+        return NS::Core::Vector3{1.0f + (along - 1.0f) * dx2 + (side - 1.0f) * dz2,
+                                 height,
+                                 1.0f + (along - 1.0f) * dz2 + (side - 1.0f) * dx2};
     }
 
     NS_CLASS(ImpactResolver)

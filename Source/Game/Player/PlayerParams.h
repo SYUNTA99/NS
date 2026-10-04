@@ -158,6 +158,7 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_reboundApexHeight, "反動の高さ")
         NS_REFLECT_FIELD(m_reboundDistance, "反動の距離")
         NS_REFLECT_FIELD(m_centerHitReboundDistanceScale, "中心近くの当たりの反動の距離の倍率")
+        NS_REFLECT_FIELD(m_centerHitReboundHeightScale, "中心近くの当たりの反動の高さの倍率")
         NS_REFLECT_GROUP("外れ")
         NS_REFLECT_FIELD(m_missReboundDistanceScale, "外れの反動の距離の倍率")
         NS_REFLECT_FIELD(m_missReboundHeightRatio, "外れの反動の高さの割合")
@@ -280,7 +281,11 @@ namespace NS::Game::Player
         NS::Game::Level::SlamArrowDesc m_slamArrowDesc{};
         float m_reboundApexHeight = 1.15f;
         float m_reboundDistance = 0.575f;
-        float m_centerHitReboundDistanceScale = 2.0f;
+        // 真ん中の当たりは、後ろのカメラの方へ低く速く弾き返す。手前へ来る動きは真後ろから大きくなって見え、
+        // 弾き返されたと読める。距離 4.5 倍 (威力 2・質量 1 で 5.2 m) と高さ 0.6 倍 (頂点 1.4 m) で、
+        // 真ん中だけの印の浮きは残す。前は 2 倍と 1 倍で、頂点 2.3 m・横の速さ秒速 2 m のほぼ真上の跳ねだった
+        float m_centerHitReboundDistanceScale = 4.5f;
+        float m_centerHitReboundHeightScale = 0.6f;
         // 外れは手応えが来ない「すかし」。勢いが相手に止められず、外した側へ滑って抜けていく。距離を 2.5 倍に
         // 伸ばして高さを下げ、浮かずに速く横へ抜けて、後ろからのカメラでどちらへ外したかが見える量にする
         float m_missReboundDistanceScale = 2.5f;

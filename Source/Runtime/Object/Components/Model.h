@@ -130,6 +130,22 @@ namespace NS::Obj
         //! 描く時だけの震えを返す。書かれていなければ振れ幅 0
         [[nodiscard]] const NS::Gfx::TremorCB& Tremor() const noexcept { return m_tremor; }
 
+        //! @brief 描く時だけの残像の離れを書く
+        //! @details 描く形を根から +離れ と −離れ だけずらした所へ、半透明の写しを 1 つずつ描く。描く時だけのずれは
+        //! 写しに足さないので、体が片側へ振れても写しは根を挟んで左右に残る。写しの不透明度は共有の water の
+        //! material が決める。補間しない。保存はせず、根の Transform と当たりは変えない。有限でない成分を含む離れは
+        //! 何も変えない
+        //! @param[in] spread 世界の長さの離れ (m)。(0, 0, 0) で写しを描かない
+        //! @return 成分が全部有限で書いた場合 true、それ以外の場合は false
+        [[nodiscard]] bool SetGhostSpread(const NS::Core::Vector3& spread) noexcept;
+        //! 描く時だけの残像の離れを返す。書かれていなければ (0, 0, 0)
+        [[nodiscard]] const NS::Core::Vector3& GhostSpread() const noexcept { return m_ghostSpread; }
+        //! @brief 残像 1 つの world 行列を返す
+        //! @details DrawWorldMatrix の描く時だけのずれを、side × 離れ に置き換えた行列
+        //! @param[in] alpha 前の固定フレームから今の固定フレームまでの補間の割合 0..1
+        //! @param[in] side 離れに掛ける向き。+1 か −1
+        [[nodiscard]] NS::Core::Matrix GhostWorldMatrix(float alpha, float side) const noexcept;
+
         //! @brief 描く world 行列を返す
         //! @details 前と今の局所の回転を alpha で補間した行列を、根の補間 world 行列の前に掛ける
         //! 前と今の描く時だけの倍率を alpha で補間し、描く形の下端の真ん中を中心に世界の軸で掛ける
@@ -155,11 +171,11 @@ namespace NS::Obj
         //! 描く時だけのずれは中心へ足す
         [[nodiscard]] NS::Core::AABB WorldBounds() const noexcept override;
 
-        //! OwningScene に self を IRenderable として登録する。Owner/Scene が null なら何もしない
+        //! OwningScene に self と残像を IRenderable として登録する。Owner/Scene が null なら何もしない
         void OnAppear() override { Model::OnStart(); }
         void OnKill() noexcept override { Model::OnEndPlay(); }
         void OnStart() override;
-        //! Owner の OwningScene から self を解除する。無効ポインタを残さないよう Scene 破棄前に呼ぶ
+        //! Owner の OwningScene から self と残像を解除する。無効ポインタを残さないよう Scene 破棄前に呼ぶ
         void OnEndPlay() override;
         //! @brief 今の局所の回転と描く時だけの倍率を前のフレームの値として控える
         //! @details 持ち主の Actor の SnapshotForInterpolation が、根の Transform と一緒に固定ステップの頭で呼ぶ。
@@ -168,6 +184,7 @@ namespace NS::Obj
 
         //! meshRef / matRef の参照文字列から実体の Mesh / Material を引き当てる
         //! 共有 material 名を先に引き、外れたら .mat 相対パスとして読む。解決不可は cube と既定 material にする
+        //! 残像には共有の water の material を当てる
         void ResolveAssets(AssetManager& assets) override;
 
         NS_REFLECT_BEGIN(Model, Component)
@@ -177,6 +194,28 @@ namespace NS::Obj
         NS_REFLECT_END()
 
     private:
+        // 残像の写しを半透明の並びで描く。不透明の並びで描くと、後に描く空と物が写しを上書きする
+        class Ghosts final : public IRenderable
+        {
+        public:
+            explicit Ghosts(Model& model) noexcept : m_model(model) {}
+            void Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out) override;
+            [[nodiscard]] NS::Core::AABB WorldBounds() const noexcept override;
+            [[nodiscard]] RenderBucket Bucket() const noexcept override { return RenderBucket::Transparent; }
+            [[nodiscard]] NS::Core::Vector3 SortCenter() const noexcept override { return m_model.SortCenter(); }
+
+        private:
+            Model& m_model;
+        };
+
+        // 描く world 行列。描く時だけのずれの代わりに offset を足す
+        [[nodiscard]] NS::Core::Matrix DrawWorldMatrixWithOffset(float alpha,
+                                                                 const NS::Core::Vector3& offset) const noexcept;
+        // material と world 行列を詰めた DrawItem を作る。他の定数は形と描く設定から詰める
+        [[nodiscard]] NS::Gfx::DrawItem MakeDrawItem(const NS::Gfx::RenderContext& context,
+                                                     NS::Gfx::Material* material,
+                                                     const NS::Core::Matrix& world) const noexcept;
+
         // 描く形の局所の境界。差された境界を先に、無ければ mesh の境界。どちらも無ければ nullptr
         [[nodiscard]] const NS::Core::AABB* DrawnLocalBounds() const noexcept;
 
@@ -210,6 +249,10 @@ namespace NS::Obj
         NS::Core::Vector3 m_drawOffset{0.0f, 0.0f, 0.0f};
         // 描く時だけの震え。他の component が書き直すので保存しない。補間しない
         NS::Gfx::TremorCB m_tremor{};
+        // 描く時だけの残像の離れ。他の component が書き直すので保存しない。補間しない
+        NS::Core::Vector3 m_ghostSpread{0.0f, 0.0f, 0.0f};
+        NS::Gfx::Material* m_ghostMaterial = nullptr; // 残像の共有 water material (非所有)
+        Ghosts m_ghosts{*this};                       // 残像を描く物。Scene へは self と並べて登録する
     };
 #pragma warning(pop)
 } // namespace NS::Obj

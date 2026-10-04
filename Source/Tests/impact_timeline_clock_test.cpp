@@ -288,6 +288,7 @@ TEST(ImpactTimelineClock, EventsOnTheSameFrameRunInFileOrder)
 }
 
 // 形は形の事象の曲線が答え、事象の長さを過ぎると元の形へ戻る
+// 横の倍率は突進の向きに直角な水平の軸に掛かる。+Z へ進む当たりでは X
 TEST(ImpactTimelineClock, TheShapeFollowsItsCurvesForItsLength)
 {
     HitTimeline timeline;
@@ -297,6 +298,8 @@ TEST(ImpactTimelineClock, TheShapeFollowsItsCurvesForItsLength)
     shape.height.count = 2;
     shape.height.keys[0] = NS::Obj::Curve::Key{0.0f, 2.0f};
     shape.height.keys[1] = NS::Obj::Curve::Key{3.0f, 1.25f};
+    shape.side.count = 1;
+    shape.side.keys[0] = NS::Obj::Curve::Key{0.0f, 1.5f};
     timeline.events = {{HitStopEvent{}, 1, 2, HitDirection::Any},
                        {shape, 1, 4, HitDirection::Any},
                        {ReboundEvent{}, 3, 1, HitDirection::Any}};
@@ -309,11 +312,14 @@ TEST(ImpactTimelineClock, TheShapeFollowsItsCurvesForItsLength)
     ASSERT_EQ(trace.size(), 7u);
     EXPECT_FALSE(trace[0].shapeAnimating);
     EXPECT_FLOAT_EQ(trace[1].shape.y, 2.0f);
+    EXPECT_FLOAT_EQ(trace[1].shape.x, 1.5f);
+    EXPECT_FLOAT_EQ(trace[1].shape.z, 1.0f);
     EXPECT_FLOAT_EQ(trace[2].shape.y, 1.75f);
     EXPECT_FLOAT_EQ(trace[4].shape.y, 1.25f);
     EXPECT_TRUE(trace[4].shapeAnimating);
     EXPECT_FALSE(trace[5].shapeAnimating);
     EXPECT_FLOAT_EQ(trace[5].shape.y, 1.0f);
+    EXPECT_FLOAT_EQ(trace[5].shape.x, 1.0f);
 }
 
 // 外れの向きは面の上の位置の絶対値の大きい方の軸。等しい時は左右
@@ -773,8 +779,9 @@ namespace
     }
 } // namespace
 
-// 衝撃の震えは、事象の始まり (止めの明け) から長さの間だけ、自機と相手の描く所へ震えを渡す
-// 経過はゲームのフレーム数で数え、振れ幅は画素の欄を毎フレームその物とカメラの距離で世界の長さへ直す
+// 衝撃の震えは、事象の始まり (止めの明け) から止めと同じフレーム数だけ、自機と相手の描く所へ震えを渡す
+// 行の長さ (10) は使わない。経過はゲームのフレーム数で数え、振れ幅は画素の欄を毎フレームその物とカメラの距離で
+// 世界の長さへ直す
 TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
 {
     ImpactTremorEvent tremor;
@@ -812,7 +819,7 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
         previousSelfRoot = selfRootBefore;
         const NS::Gfx::TremorCB& self = player->ModelPart()->Tremor();
         const NS::Gfx::TremorCB& other = rock->ModelPart()->Tremor();
-        if (clock < 7 || clock >= 17)
+        if (clock < 7 || clock >= 13)
         {
             EXPECT_FLOAT_EQ(self.amplitude, 0.0f);
             EXPECT_FLOAT_EQ(other.amplitude, 0.0f);
@@ -826,9 +833,10 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
         const NS::Core::Vector3 otherRoot = rock->Root().Position();
         for (const NS::Gfx::TremorCB* each : {&self, &other})
         {
-            // 経過は始まりのフレームを 0 にしたゲームのフレーム数。1 か所は 長さ − 届くフレーム数 で止まる
+            // 経過は始まりのフレームを 0 にしたゲームのフレーム数。届くフレーム数 (欄 4) は長さ 6 の半分の 3 までに
+            // 抑え、1 か所は 長さ − 届くフレーム数 で止まる
             EXPECT_FLOAT_EQ(each->elapsedFrames, static_cast<float>(clock - 7));
-            EXPECT_FLOAT_EQ(each->ringFrames, 6.0f);
+            EXPECT_FLOAT_EQ(each->ringFrames, 3.0f);
             // 揺らす向きは画面の平面の中
             EXPECT_NEAR(each->right.Length(), 1.0f, 1.0e-5f);
             EXPECT_NEAR(each->up.Length(), 1.0f, 1.0e-5f);
@@ -837,8 +845,8 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
             EXPECT_NEAR(each->right.Dot(each->up), 0.0f, 1.0e-5f);
         }
         // 一番遠い所 (体の差し渡し) へ届くフレーム数で遅れを決める
-        EXPECT_NEAR(self.framesPerMeter, 4.0f / (2.0f * player->Collider().CapsuleRadius()), 1.0e-4f);
-        EXPECT_NEAR(other.framesPerMeter, 4.0f / (2.0f * RockRadius(*rock)), 1.0e-4f);
+        EXPECT_NEAR(self.framesPerMeter, 3.0f / (2.0f * player->Collider().CapsuleRadius()), 1.0e-4f);
+        EXPECT_NEAR(other.framesPerMeter, 3.0f / (2.0f * RockRadius(*rock)), 1.0e-4f);
         EXPECT_NEAR(self.amplitude, MetersForPixels(*pose, selfRoot, 3.0f), 1.0e-5f);
         EXPECT_NEAR(other.amplitude, MetersForPixels(*pose, otherRoot, 3.0f), 1.0e-5f);
         // 衝突点は根からのずれで渡し、体と一緒に動かす。始まりは自機の玉が相手の表面に触れた点
@@ -857,16 +865,190 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
     EXPECT_GE(clock, 20);
 }
 
-// 止めの間の横揺れは、自機と相手を画面の横 (床に沿う向き) へ逆向きに揺らし、横揺れの長さの終わりで 0 にする
-// 揺らすのは描く形だけで、相手の根は食い込んだ所に留まる
-TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
+// 震えの線は行の長さ (3) を使わず、止めと同じフレーム数だけ二人の体の周りに出す。中心と半径は始めた時の二人の形
+TEST(ImpactTimelineClock, ShakeLinesFrameTheTargetForTheStop)
 {
-    BodyShakeEvent shake;
-    shake.amplitudePixels = 10.0f;
+    ShakeLinesEvent lines;
+    lines.lengthPixels = 40.0f;
+    lines.flipFrames = 3;
     HitTimeline timeline;
     timeline.events = {{HitStopEvent{}, 1, 6, HitDirection::Any},
                        {TargetFreezeEvent{}, 1, 6, HitDirection::Any},
-                       {shake, 1, 6, HitDirection::Any},
+                       {TargetLaunchEvent{}, 7, 1, HitDirection::Any},
+                       {ReboundEvent{}, 7, 1, HitDirection::Any},
+                       {lines, 1, 3, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("ShakeLines");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    ASSERT_NE(rock, nullptr);
+
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    int clock = -1;
+    for (int frame = 0; frame < 120 && clock < 10; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        {
+            continue;
+        }
+        ++clock;
+        SCOPED_TRACE(clock);
+        const NS::Obj::HitReaction& reaction = *player->HitReactionPart();
+        if (clock < 1 || clock > 6)
+        {
+            EXPECT_EQ(reaction.ShakeLinesFramesRemaining(), 0);
+            continue;
+        }
+        EXPECT_EQ(reaction.ShakeLinesFramesRemaining(), 7 - clock);
+        if (clock == 1)
+        {
+            const NS::Core::AABB bounds = rock->ModelPart()->WorldBounds();
+            const NS::Core::AABB self = player->ModelPart()->WorldBounds();
+            const NS::Obj::HitShakeLinesDesc& shown = reaction.ShakeLines();
+            EXPECT_NEAR(shown.center.x, bounds.Center.x, 1.0e-5f);
+            EXPECT_NEAR(shown.center.y, bounds.Center.y, 1.0e-5f);
+            EXPECT_NEAR(shown.center.z, bounds.Center.z, 1.0e-5f);
+            EXPECT_FLOAT_EQ(shown.radius, std::max({bounds.Extents.x, bounds.Extents.y, bounds.Extents.z}));
+            EXPECT_NEAR(shown.otherCenter.x, self.Center.x, 1.0e-5f);
+            EXPECT_NEAR(shown.otherCenter.y, self.Center.y, 1.0e-5f);
+            EXPECT_NEAR(shown.otherCenter.z, self.Center.z, 1.0e-5f);
+            EXPECT_FLOAT_EQ(shown.otherRadius, std::max({self.Extents.x, self.Extents.y, self.Extents.z}));
+            EXPECT_EQ(shown.frames, 6);
+            EXPECT_EQ(shown.flipFrames, 3);
+            EXPECT_FLOAT_EQ(shown.lengthPixels, 40.0f);
+        }
+    }
+    EXPECT_GE(clock, 10);
+}
+
+// 床の波は行の長さだけ、触れた点の真下を中心に、始まりからのフレーム数の曲線の半径と強さで広がる。行の終わりで消える
+TEST(ImpactTimelineClock, GroundWaveSpreadsFromTheContactForItsLength)
+{
+    GroundWaveEvent wave;
+    wave.radius.count = 2;
+    wave.radius.keys[0] = NS::Obj::Curve::Key{0.0f, 0.0f};
+    wave.radius.keys[1] = NS::Obj::Curve::Key{8.0f, 4.0f};
+    wave.strength.count = 1;
+    wave.strength.keys[0] = NS::Obj::Curve::Key{0.0f, 0.8f};
+    HitTimeline timeline;
+    timeline.events = {{HitStopEvent{}, 1, 6, HitDirection::Any},
+                       {TargetFreezeEvent{}, 1, 6, HitDirection::Any},
+                       {TargetLaunchEvent{}, 7, 1, HitDirection::Any},
+                       {ReboundEvent{}, 7, 1, HitDirection::Any},
+                       {wave, 1, 8, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("GroundWave");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    ASSERT_NE(rock, nullptr);
+
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    int clock = -1;
+    float previousRadius = -1.0f;
+    for (int frame = 0; frame < 120 && clock < 12; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        {
+            continue;
+        }
+        ++clock;
+        SCOPED_TRACE(clock);
+        const NS::Gfx::GroundWave& now = scene.GroundWaveShown();
+        if (clock < 1 || clock > 8)
+        {
+            EXPECT_FLOAT_EQ(now.strength, 0.0f);
+            continue;
+        }
+        const NS::Core::Vector3 contact = player->Resolver().LastImpact().surfacePoint;
+        EXPECT_FLOAT_EQ(now.centerX, contact.x);
+        EXPECT_FLOAT_EQ(now.centerZ, contact.z);
+        EXPECT_FLOAT_EQ(now.strength, 0.8f);
+        EXPECT_GT(now.radius, previousRadius);
+        previousRadius = now.radius;
+        if (clock == 1)
+        {
+            EXPECT_FLOAT_EQ(now.radius, 0.0f);
+        }
+        if (clock == 5)
+        {
+            EXPECT_FLOAT_EQ(now.radius, 2.0f);
+        }
+    }
+    EXPECT_GE(clock, 12);
+}
+
+// 歪みの輪は行の長さだけ、触れた点を中心に、始まりからのフレーム数の曲線の半径と押しで広がる。行の終わりで消える
+TEST(ImpactTimelineClock, DistortionRingSpreadsFromTheContactForItsLength)
+{
+    DistortionRingEvent ring;
+    ring.radius.count = 2;
+    ring.radius.keys[0] = NS::Obj::Curve::Key{0.0f, 0.0f};
+    ring.radius.keys[1] = NS::Obj::Curve::Key{6.0f, 0.6f};
+    ring.push.count = 1;
+    ring.push.keys[0] = NS::Obj::Curve::Key{0.0f, 0.04f};
+    ring.halfWidth = 0.05f;
+    HitTimeline timeline;
+    timeline.events = {{HitStopEvent{}, 1, 6, HitDirection::Any},
+                       {TargetFreezeEvent{}, 1, 6, HitDirection::Any},
+                       {TargetLaunchEvent{}, 7, 1, HitDirection::Any},
+                       {ReboundEvent{}, 7, 1, HitDirection::Any},
+                       {ring, 2, 6, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("DistortionRing");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    ASSERT_NE(rock, nullptr);
+
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    int clock = -1;
+    for (int frame = 0; frame < 120 && clock < 10; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        {
+            continue;
+        }
+        ++clock;
+        SCOPED_TRACE(clock);
+        const NS::Gfx::DistortionRing& now = scene.DistortionRingShown();
+        if (clock < 2 || clock > 7)
+        {
+            EXPECT_FLOAT_EQ(now.push, 0.0f);
+            continue;
+        }
+        EXPECT_TRUE(now.center == player->Resolver().LastImpact().surfacePoint);
+        EXPECT_NEAR(now.radius, 0.1f * static_cast<float>(clock - 2), 1.0e-5f);
+        EXPECT_FLOAT_EQ(now.push, 0.04f);
+        EXPECT_FLOAT_EQ(now.halfWidth, 0.05f);
+    }
+    EXPECT_GE(clock, 10);
+}
+
+// 止めの間の横揺れは、自機と相手を画面の横 (床に沿う向き) へ逆向きに揺らし、止めの終わりで 0 にする
+// 行の長さ (3) は使わず、止めと同じフレーム数だけ揺らす。揺らすのは描く形だけで、相手の根は食い込んだ所に留まる
+TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
+{
+    // 自機は相手より大きく揺らす。自機はカメラに近いので、同じ画素なら自機の方が世界の長さは短い。
+    // 自機の方が長く揺れたら、自機の欄を読んでいる
+    BodyShakeEvent shake;
+    shake.amplitudePixels = 10.0f;
+    shake.selfAmplitudePixels = 30.0f;
+    shake.ghostRatio = 2.0f;
+    HitTimeline timeline;
+    timeline.events = {{HitStopEvent{}, 1, 6, HitDirection::Any},
+                       {TargetFreezeEvent{}, 1, 6, HitDirection::Any},
+                       {shake, 1, 3, HitDirection::Any},
                        {TargetLaunchEvent{}, 7, 1, HitDirection::Any},
                        {ReboundEvent{}, 7, 1, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("BodyShake");
@@ -903,6 +1085,16 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
             EXPECT_NEAR(self.Dot(forward), 0.0f, 1.0e-5f);
             EXPECT_NEAR(self.y, 0.0f, 1.0e-6f);
             EXPECT_LT(self.Dot(other), 0.0f);
+            EXPECT_GT(self.Length(), other.Length());
+            // 残像は同じ画面の横の向きに、振れ幅の包みの 2 倍だけ離れる。体のずれは包みを超えない
+            for (const NS::Obj::Actor* each :
+                 {static_cast<const NS::Obj::Actor*>(player), static_cast<const NS::Obj::Actor*>(rock)})
+            {
+                const NS::Core::Vector3 ghost = each->ModelPart()->GhostSpread();
+                EXPECT_NEAR(ghost.Dot(forward), 0.0f, 1.0e-5f);
+                EXPECT_NEAR(ghost.y, 0.0f, 1.0e-6f);
+                EXPECT_GE(ghost.Length(), each->ModelPart()->DrawOffset().Length() * 2.0f - 1.0e-5f);
+            }
             const float side = self.Dot(NS::Core::Vector3{forward.z, 0.0f, -forward.x});
             if (clock > 1)
             {
@@ -922,6 +1114,8 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
         {
             EXPECT_FLOAT_EQ(self.Length(), 0.0f);
             EXPECT_FLOAT_EQ(other.Length(), 0.0f);
+            EXPECT_FLOAT_EQ(player->ModelPart()->GhostSpread().Length(), 0.0f);
+            EXPECT_FLOAT_EQ(rock->ModelPart()->GhostSpread().Length(), 0.0f);
         }
     }
     EXPECT_GE(clock, 9);

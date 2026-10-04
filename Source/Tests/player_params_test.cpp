@@ -218,13 +218,14 @@ TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
     EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(std::numeric_limits<float>::infinity()), 0.5f);
 }
 
-TEST(PlayerParams, ImpactDefaultsKeepAllFortySixDisplayNamesAndValues)
+TEST(PlayerParams, ImpactDefaultsKeepAllFortySevenDisplayNamesAndValues)
 {
     Player player;
     const nlohmann::json fields = NS::Obj::SerializeComponent(player.Params())["fields"];
     const nlohmann::json expected = {{"反動の高さ", 1.15f},
                                      {"反動の距離", 0.575f},
-                                     {"中心近くの当たりの反動の距離の倍率", 2.0f},
+                                     {"中心近くの当たりの反動の距離の倍率", 4.5f},
+                                     {"中心近くの当たりの反動の高さの倍率", 0.6f},
                                      {"押し飛ばしの距離", 29.0f},
                                      {"押し飛ばしの質量指数", 0.35f},
                                      {"押し飛ばしの高さ", 2.0f},
@@ -406,7 +407,10 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
-                                       {{"押し飛ばしの距離", 8.0f}, {"押し飛ばしの高さ", 3.0f}, {"反動の高さ", 2.0f}}),
+                                       {{"押し飛ばしの距離", 8.0f},
+                                        {"押し飛ばしの高さ", 3.0f},
+                                        {"反動の高さ", 2.0f},
+                                        {"中心近くの当たりの反動の高さの倍率", 1.0f}}),
               0u);
     player->RequestBodySlam(0.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());

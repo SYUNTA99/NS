@@ -167,6 +167,7 @@ namespace NS::Obj
         m_charge = FollowChargeDesc{};
         m_chargeHoldNarrowDegrees = 0.0f;
         m_chargeNarrowDegrees = 0.0f;
+        m_chargeReturnWaiting = false;
         m_chargeReturnFromDegrees = 0.0f;
         m_chargeReturnFrame = 0;
         m_chargeFrameOffset = NS::Core::Vector2{0.0f, 0.0f};
@@ -447,6 +448,7 @@ namespace NS::Obj
     }
 
     void ThirdPersonFollow::UpdateCharge(const FollowChargeDesc& charge,
+                                         bool framingHeld,
                                          const Transform& target,
                                          const NS::Core::Vector3& look,
                                          float dt) noexcept
@@ -459,11 +461,17 @@ namespace NS::Obj
         }
         const float holdNarrow = m_chargeNarrowMaxDegrees * holdCharge;
 
-        // 押している間の締めが下がったフレームを戻しの 1 フレーム目にする。放したフレームがこれに当たる
+        // 押している間の締めが下がったフレームを戻しの始まりにする。放したフレームがこれに当たる
+        // 体当たりから止めの明けまでは戻しの 0 フレーム目に留め、明けたフレームを 1 フレーム目にする
         if (holdNarrow < m_chargeHoldNarrowDegrees)
         {
             m_chargeReturnFromDegrees = m_chargeNarrowDegrees;
             m_chargeReturnFrame = 1;
+            m_chargeReturnWaiting = framingHeld;
+        }
+        else if (m_chargeReturnWaiting)
+        {
+            m_chargeReturnWaiting = framingHeld;
         }
         else if (m_chargeReturnFrame > 0)
         {
@@ -472,7 +480,11 @@ namespace NS::Obj
         m_chargeHoldNarrowDegrees = holdNarrow;
 
         float returning = 0.0f;
-        if (m_chargeReturnFrame > 0)
+        if (m_chargeReturnWaiting)
+        {
+            returning = m_chargeReturnFromDegrees;
+        }
+        else if (m_chargeReturnFrame > 0)
         {
             if (m_chargeReturnFrame >= m_chargeNarrowReturnFrames)
             {
@@ -523,9 +535,25 @@ namespace NS::Obj
             const float aimHalfWidth = std::max(aim.halfWidth - charge.aimTargetRadius, 0.0f);
             const float aimHalfHeight = std::max(aim.halfHeight - charge.aimTargetRadius, 0.0f);
             wanted.x = FrameAxisShift(self.usable, self.right, self.halfWidth, aim.usable, aim.right, aimHalfWidth);
-            wanted.y = FrameAxisShift(self.usable, self.up, self.halfHeight, aim.usable, aim.up, aimHalfHeight);
+            const float keepUp =
+                FrameAxisShift(self.usable, self.up, self.halfHeight, aim.usable, aim.up, aimHalfHeight);
+            // 縦は自機と相手の真ん中を画面の中心へ寄せる。注視点は頭の高さなので、枠に入れるだけだと二人は画面の
+            // 下の方に写り、当たりの揺れが小さく見える。ずらしは位置と注視点を同じだけ動かすので、カメラが下がる
+            float centerUp = keepUp;
+            if (self.usable && aim.usable)
+            {
+                centerUp = (self.up + aim.up) * 0.5f;
+            }
+            const float centerRatio = NS::Core::Clamp(m_chargeCenterRatio, 0.0f, 1.0f);
+            wanted.y = keepUp + (centerUp - keepUp) * centerRatio;
         }
 
+        // 体当たりから止めの明けまでは構図のずらしも動かさない。当たる瞬間に二人が画面の上で滑らない
+        if (framingHeld && !charge.held)
+        {
+            m_chargeFrameVelocity = NS::Core::Vector2{0.0f, 0.0f};
+            return;
+        }
         CriticalSpringStep(m_chargeFrameOffset.x, m_chargeFrameVelocity.x, wanted.x, m_chargeFrameOmega, dt);
         CriticalSpringStep(m_chargeFrameOffset.y, m_chargeFrameVelocity.y, wanted.y, m_chargeFrameOmega, dt);
         // 0 へは限りなく近づくだけなので、k_ChargeFrameSnap を切ったら 0 にして溜めを受けていない時の式へ戻す
@@ -644,6 +672,8 @@ namespace NS::Obj
         m_charge = FollowChargeDesc{};
         const FollowReboundDesc rebound = m_rebound;
         m_rebound = FollowReboundDesc{};
+        const bool framingHeld = m_framingHeld;
+        m_framingHeld = false;
 
         const float dt = NS::Platform::FrameTimer::FixedDelta();
         const Transform* target = Target();
@@ -721,6 +751,11 @@ namespace NS::Obj
             // 反動の間は当たった瞬間に決めた距離に、相手を収める引きだけを足す
             m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
         }
+        else if (!m_manualDistance && framingHeld)
+        {
+            // 体当たりから止めの明けまでは今の距離のまま。突進で浮いても空中の距離へ引かない
+            m_desiredDistance = m_distance;
+        }
         else if (!m_manualDistance && m_reboundPhase != ReboundPhase::Following)
         {
             float desired = m_idleDistance;
@@ -747,7 +782,7 @@ namespace NS::Obj
         m_distance = SpringApproach(m_distance, m_desiredDistance, m_springOmega, dt);
 
         const NS::Core::Vector3 look = UpdateReboundLook(head, root, dt);
-        UpdateCharge(charge, *target, look, dt);
+        UpdateCharge(charge, framingHeld, *target, look, dt);
     }
 
     CameraPose ThirdPersonFollow::EvaluatePose(float alpha) const noexcept

@@ -15,6 +15,8 @@ namespace NS::Obj
         FollowReboundDesc rebound{};                  //!< 反動の状態
         bool hasCharge = false;                       //!< 溜めの状態を出すか
         FollowChargeDesc charge{};                    //!< 溜めの状態
+        //! 体当たりから止めの明けまでか。真の間、カメラは距離と溜めの締めをその時のまま保つ
+        bool framingHeld = false;
     };
 
     //! @brief 追従カメラに追われる物が持つ窓口。オデッセイの CameraTargetBase に当たる

@@ -36,6 +36,7 @@ namespace NS::Game::Level
                     const NS::Obj::CameraTargetState state = cameraTarget->GetCameraTargetState();
                     m_vcam.SetFollowMotion(state.grounded, state.velocity);
                     m_vcam.SetTargetHeightOffset(state.heightOffset);
+                    m_vcam.SetFollowFramingHeld(state.framingHeld);
                     if (state.hasRebound && !m_vcam.SetFollowRebound(state.rebound))
                     {
                         NS_LOG_WARN(Game,

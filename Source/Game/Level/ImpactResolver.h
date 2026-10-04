@@ -177,6 +177,11 @@ namespace NS::Game::Level
         //! @details 反動の事象が止めの終わりより後にあるタイムラインだけが真になる
         [[nodiscard]] bool IsAwaitingRebound() const noexcept;
 
+        //! @brief 当たりを検知したフレームから、止めた自機を動かし直すまでの場合 true、それ以外の場合は false
+        //! @details
+        //! 止めの事象のある当たりだけが真になる。止めが始まる前の検知のフレームと、明けの後に反動を待つ間も含む
+        [[nodiscard]] bool IsHoldingPlayer() const noexcept { return m_holdArmed && !m_holdReleased; }
+
         //! @brief 走っているタイムラインと、控えた相手を捨てる
         //! @details 相手へ明けを送らない。自機を止めていた時だけ、同居の HitReaction の白・揺れ・振動を止める。
         //! 形も元へ戻す。最後の当たりの記録は残す。
@@ -263,9 +268,6 @@ namespace NS::Game::Level
         // 時計の今のフレームに始まる事象を並びの順に起こし、止めの明けを数える
         void AdvanceTimeline();
 
-        // 検知のフレームから、止めた自機を動かし直すまでの場合 true
-        [[nodiscard]] bool IsHoldingPlayer() const noexcept { return m_holdArmed && !m_holdReleased; }
-
         // 揺れの事象から、この当たりのカメラの揺れを組む。最初の振れは 強さ × 威力 × 質量の効きで、
         // 横と縦の重みの比で分ける。重みが両方 0 なら揺らさない (フレーム数 0)
         // 事前条件: 反動の向き・威力・質量の効き・揺れの種を控え終えている
@@ -282,7 +284,22 @@ namespace NS::Game::Level
         // 自機の横揺れを止め、描く時だけのずれを 0 へ戻す
         void StopBodyShake() noexcept;
         // 衝撃の震えを始める。自機の震えを控え、相手へ同じ衝突点からの震えを知らせる
+        // 裏まで届くフレーム数は length の半分までに抑える
         void StartTremor(const ImpactTremorEvent& tremor, int length);
+        // 触れた点の真下を中心にした床の波を、length フレームだけ出す
+        void StartGroundWave(const GroundWaveEvent& wave, int length);
+        // 床の波の半径と強さを今の時計で曲線から引き、場面へ書く。長さの終わりで消す
+        void AdvanceGroundWave();
+        // 床の波を消す。出していなければ何もしない
+        void StopGroundWave() noexcept;
+        // 触れた点を中心にした歪みの輪を、length フレームだけ出す
+        void StartDistortionRing(const DistortionRingEvent& ring, int length);
+        // 歪みの輪の半径と押しを今の時計で曲線から引き、場面へ書く。長さの終わりで消す
+        void AdvanceDistortionRing();
+        // 歪みの輪を消す。出していなければ何もしない
+        void StopDistortionRing() noexcept;
+        // 相手と自機の今の形をまとめて挟む震えの線を、length フレームだけ出す
+        void StartShakeLines(const ShakeLinesEvent& lines, int length);
         // 自機の震えの経過を今の時計で数え直す。描く所へ書くのは WriteTremor
         void AdvanceTremor() noexcept;
         // 自機の震えを止め、振れ幅 0 を書く
@@ -307,7 +324,8 @@ namespace NS::Game::Level
         void RecordReturns(const std::vector<HitEvent>& events);
 
         // 元の形を 1 とした倍率。進行の軸の成分の 2 乗で along を x と z に混ぜ、縦は height
-        [[nodiscard]] NS::Core::Vector3 AlongImpactFactors(float along, float height) const noexcept;
+        // side は進行に直角な水平の軸の倍率で、along と逆の成分で混ぜる
+        [[nodiscard]] NS::Core::Vector3 AlongImpactFactors(float along, float height, float side) const noexcept;
 
         // 反発は自機の反動を始め、貫通は速度を書く。止めていた自機を動かし直す
         void ApplyRebound();
@@ -371,6 +389,29 @@ namespace NS::Game::Level
             bool active = false;
         };
         TremorRun m_tremor;
+
+        // 出している床の波。場面へ書くのはこの裁定役だけ
+        struct GroundWaveRun
+        {
+            GroundWaveEvent event{};
+            float centerX = 0.0f;
+            float centerZ = 0.0f;
+            int length = 0;
+            int startClock = 0;
+            bool active = false;
+        };
+        GroundWaveRun m_groundWave;
+
+        // 出している歪みの輪。場面へ書くのはこの裁定役だけ
+        struct DistortionRingRun
+        {
+            DistortionRingEvent event{};
+            NS::Core::Vector3 center{};
+            int length = 0;
+            int startClock = 0;
+            bool active = false;
+        };
+        DistortionRingRun m_distortionRing;
 
         bool m_didRebound = false;          // 直近の更新で反発を検知したか
         bool m_didBreak = false;            // 直近の更新で貫通を検知したか

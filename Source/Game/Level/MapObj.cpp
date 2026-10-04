@@ -210,8 +210,11 @@ namespace NS::Game::Level
         }
         ++m_shake.frame;
         const TackleShakeDesc& desc = m_shake.desc;
-        const float offset = BodyShakeOffset(m_shake.frame, desc.length, desc.amplitude, desc.seed, desc.firstSign);
+        const float offset =
+            BodyShakeOffset(m_shake.frame, desc.length, desc.amplitude, desc.seed, desc.firstSign, desc.flipFrames);
         (void)ModelPart()->SetDrawOffset(desc.axis * offset);
+        (void)ModelPart()->SetGhostSpread(
+            desc.axis * (BodyShakeReach(m_shake.frame, desc.length, desc.amplitude) * desc.ghostRatio));
         if (m_shake.frame >= desc.length)
         {
             m_shake.active = false;
@@ -224,6 +227,7 @@ namespace NS::Game::Level
         if (ModelPart() != nullptr)
         {
             (void)ModelPart()->SetDrawOffset(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+            (void)ModelPart()->SetGhostSpread(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         }
     }
 

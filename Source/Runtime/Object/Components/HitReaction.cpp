@@ -8,6 +8,9 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Input.h"
 
+#include <limits>
+#include <utility>
+
 namespace NS::Obj
 {
     namespace
@@ -15,7 +18,39 @@ namespace NS::Obj
         // 揺れのフレーム数の上限。揺れの並びは始める時に全フレームぶんの領域を取るので、欄の打ち間違いの大きな値を止める
         // 1 秒を超える揺れは当たりの返りではなく、画面が揺れ続けている状態
         constexpr int k_MaxShakeFrames = 60;
+        // 震えの線の画素の欄は描画先の高さがこの値のときの大きさで書く
+        constexpr float k_ReferenceHeight = 720.0f;
+        // 線の暗い縁が白い線からはみ出す片側の幅。描画先の高さ 720 のときの画素。明るい床の上でも白い線を読ませる
+        constexpr float k_LineOutlineWidth = 1.5f;
     } // namespace
+
+    std::array<HitShakeLineRect, 6> ShakeLineRects(const HitShakeLinesDesc& desc,
+                                                   int frame,
+                                                   const HitShakeLineSpan& span,
+                                                   float pixelScale) noexcept
+    {
+        // 漫画の震えの描き文字のように、輪郭の外へ縦の線を並べる。外の線ほど短くし、輪郭から離れる向きを読ませる
+        // 入れ替えのフレーム数ごとに全部を外へ間の半分ずらす。左右に振れる体の横揺れと同じ拍で線が動く
+        const int flip = std::max(desc.flipFrames, 1);
+        const bool outward = (std::max(frame, 0) / flip) % 2 == 1;
+        const float gap = desc.gapPixels * pixelScale;
+        const float width = desc.widthPixels * pixelScale;
+        float shift = 0.0f;
+        if (outward)
+        {
+            shift = gap * 0.5f;
+        }
+        std::array<HitShakeLineRect, 6> rects{};
+        for (int i = 0; i < 3; ++i)
+        {
+            const float fromOutline = gap + shift + static_cast<float>(i) * (width + gap * 0.6f);
+            const float length = desc.lengthPixels * pixelScale * (1.0f - 0.25f * static_cast<float>(i));
+            const float top = span.centerY - length * 0.5f;
+            rects[static_cast<std::size_t>(i)] = HitShakeLineRect{span.left - fromOutline - width, top, width, length};
+            rects[static_cast<std::size_t>(i + 3)] = HitShakeLineRect{span.right + fromOutline, top, width, length};
+        }
+        return rects;
+    }
 
     // 持ち主の Actor の Update が呼ぶ。自機では ImpactResolver の後に呼ばれ、決めたフレームに最初の姿を出す
     HitReaction::HitReaction() noexcept : OverlayRenderer() {}
@@ -137,6 +172,19 @@ namespace NS::Obj
         return true;
     }
 
+    void HitReaction::StartShakeLines(const HitShakeLinesDesc& desc) noexcept
+    {
+        if (!(desc.radius > 0.0f) || desc.frames <= 0)
+        {
+            m_linesRemaining = 0;
+            m_linesJustStarted = false;
+            return;
+        }
+        m_lines = desc;
+        m_linesRemaining = desc.frames;
+        m_linesJustStarted = true;
+    }
+
     void HitReaction::StartPadVibration(const HitPadVibration& pad)
     {
         m_pads.clear();
@@ -162,6 +210,8 @@ namespace NS::Obj
     {
         m_flashRemaining = 0;
         m_flashJustStarted = false;
+        m_linesRemaining = 0;
+        m_linesJustStarted = false;
         m_padJustStarted = false;
         // 振動の無い状態を書くと 0 が入り、止めたフレームの値が残らない
         m_pads.clear();
@@ -199,6 +249,14 @@ namespace NS::Obj
         else if (m_flashRemaining > 0)
         {
             --m_flashRemaining;
+        }
+        if (m_linesJustStarted)
+        {
+            m_linesJustStarted = false;
+        }
+        else if (m_linesRemaining > 0)
+        {
+            --m_linesRemaining;
         }
         // 書かれなかったフレームは Gamepad::Update が 0 にするので、振動の間は毎フレーム書く
         if (m_padJustStarted)
@@ -242,13 +300,77 @@ namespace NS::Obj
 
     void HitReaction::OnRenderOverlay(const NS::Gfx::RenderContext& context)
     {
-        if (m_flashRemaining <= 0 || m_flashFrames <= 0)
+        if (context.renderer == nullptr)
         {
             return;
         }
-        // 暗転の黒とは別の、瞬間に薄れる白。フレームごとに直線で下げる
-        const float decay = static_cast<float>(m_flashRemaining) / static_cast<float>(m_flashFrames);
-        context.renderer->DrawFullscreenColor(NS::Core::Color{1.0f, 1.0f, 1.0f, m_flashAlpha * decay});
+        if (m_flashRemaining > 0 && m_flashFrames > 0)
+        {
+            // 暗転の黒とは別の、瞬間に薄れる白。フレームごとに直線で下げる
+            const float decay = static_cast<float>(m_flashRemaining) / static_cast<float>(m_flashFrames);
+            context.renderer->DrawFullscreenColor(NS::Core::Color{1.0f, 1.0f, 1.0f, m_flashAlpha * decay});
+        }
+        RenderShakeLines(context);
+    }
+
+    void HitReaction::RenderShakeLines(const NS::Gfx::RenderContext& context) const noexcept
+    {
+        if (m_linesRemaining <= 0)
+        {
+            return;
+        }
+        const NS::Core::Size2D size = context.renderer->Size();
+        if (size.width <= 0 || size.height <= 0)
+        {
+            return;
+        }
+        const float width = static_cast<float>(size.width);
+        const float height = static_cast<float>(size.height);
+        // 真後ろのカメラでは自機が相手に重なるので、2 つを囲む幅の外へ出す。縦は 2 つの上端と下端の真ん中
+        float left = std::numeric_limits<float>::max();
+        float right = std::numeric_limits<float>::lowest();
+        float top = std::numeric_limits<float>::max();
+        float bottom = std::numeric_limits<float>::lowest();
+        const std::array<std::pair<NS::Core::Vector3, float>, 2> bodies{
+            std::pair{m_lines.center, m_lines.radius}, std::pair{m_lines.otherCenter, m_lines.otherRadius}};
+        for (const std::pair<NS::Core::Vector3, float>& body : bodies)
+        {
+            if (!(body.second > 0.0f))
+            {
+                continue;
+            }
+            NS::Core::Vector2 centerPixel{};
+            float centerW = 0.0f;
+            if (!NS::Gfx::TryProjectToPixels(context.viewProjection, body.first, width, height, centerPixel, centerW))
+            {
+                return;
+            }
+            const float radiusPixels =
+                NS::Gfx::ProjectedLengthPixels(context.viewProjection, body.second, centerW, height);
+            left = std::min(left, centerPixel.x - radiusPixels);
+            right = std::max(right, centerPixel.x + radiusPixels);
+            top = std::min(top, centerPixel.y - radiusPixels);
+            bottom = std::max(bottom, centerPixel.y + radiusPixels);
+        }
+        const float pixelScale = height / k_ReferenceHeight;
+        const HitShakeLineSpan span{.left = left, .right = right, .centerY = (top + bottom) * 0.5f};
+        const std::array<HitShakeLineRect, 6> rects =
+            ShakeLineRects(m_lines, m_lines.frames - m_linesRemaining, span, pixelScale);
+        // 暗い縁を先に描き、白い線を上に重ねる
+        const float outline = k_LineOutlineWidth * pixelScale;
+        for (const HitShakeLineRect& rect : rects)
+        {
+            context.renderer->DrawScreenRect(rect.x - outline,
+                                             rect.y - outline,
+                                             rect.width + outline * 2.0f,
+                                             rect.height + outline * 2.0f,
+                                             NS::Core::Color{0.0f, 0.0f, 0.0f, 0.6f});
+        }
+        for (const HitShakeLineRect& rect : rects)
+        {
+            context.renderer->DrawScreenRect(
+                rect.x, rect.y, rect.width, rect.height, NS::Core::Color{1.0f, 1.0f, 1.0f, 1.0f});
+        }
     }
 
     void HitReaction::OnEndPlay()

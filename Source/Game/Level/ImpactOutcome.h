@@ -20,6 +20,7 @@ namespace NS::Game::Level
         float reboundDistance{};               //!< 質量 1・威力 1 の自機の反動の距離 (m)
         float reboundApexHeight{};             //!< 質量 1・威力 1 の自機の反動の高さ (m)
         float centerHitReboundDistanceScale{}; //!< 中心近くの当たりの反動の距離の倍率
+        float centerHitReboundHeightScale{};   //!< 中心近くの当たりの反動の高さの倍率
         float missReboundDistanceScale{};      //!< 外れの反動の距離の倍率
         float launchDistance{};                //!< 質量 1・威力 1 の相手の飛ぶ距離 (m)
         float launchMassExponent{};            //!< 質量で割る指数。範囲は 0〜1
@@ -103,15 +104,25 @@ namespace NS::Game::Level
     //! @return 0〜1 の倍率
     [[nodiscard]] float MissSkidSpeedScale(int elapsedSteps, int totalSteps, float exponent) noexcept;
 
+    //! @brief 止めの間の横揺れの、frame フレーム目の振れ幅の包みを返す
+    //! @details 振れ幅 × (1 − frame ÷ length)。BodyShakeOffset の大きさはこれを超えない
+    //! @param[in] frame 揺れの何フレーム目か。始まりのフレームが 1
+    //! @param[in] length 揺れのフレーム数。0 以下は揺らさない
+    //! @param[in] amplitude 最初の振れ幅
+    //! @return 包み。frame が 1 より前か length 以降は 0
+    [[nodiscard]] float BodyShakeReach(int frame, int length, float amplitude) noexcept;
+
     //! @brief 止めの間の横揺れの、frame フレーム目の符号付きのずれを返す
-    //! @details 振れ幅 × (1 − frame ÷ length)² × ばらつき × 向き。向きは 1 フレーム目が firstSign で、1 フレームごとに
-    //! 入れ替わる。ばらつきは seed と frame から出す 0.7〜1 で、同じ種と frame なら同じ値
+    //! @details 振れ幅 × (1 − frame ÷ length) × ばらつき × 向き。向きは 1 フレーム目から flipFrames の間が firstSign
+    //! で、 そこから flipFrames ごとに入れ替わる。ばらつきは seed と frame から出す 0.7〜1 で、同じ種と frame
+    //! なら同じ値
     //! @param[in] frame 揺れの何フレーム目か。始まりのフレームが 1
     //! @param[in] length 揺れのフレーム数。0 以下は揺らさない
     //! @param[in] amplitude 最初の振れ幅
     //! @param[in] seed ばらつきの種
     //! @param[in] firstSign 1 フレーム目の向き。負なら −、それ以外は +
+    //! @param[in] flipFrames 左右を入れ替えるフレーム数。1 未満は 1
     //! @return ずれ。frame が 1 より前か length 以降は 0
     [[nodiscard]] float BodyShakeOffset(
-        int frame, int length, float amplitude, std::uint32_t seed, float firstSign) noexcept;
+        int frame, int length, float amplitude, std::uint32_t seed, float firstSign, int flipFrames) noexcept;
 } // namespace NS::Game::Level

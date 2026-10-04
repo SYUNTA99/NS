@@ -336,6 +336,7 @@ TEST(PlayerAppearance, ComposesTheStanceIntoTheDrawScale)
 }
 
 // 当てた瞬間の潰れと明けの伸びは描く形の倍率に出て、根のスケールは 1 のまま。戻しの最後のフレームでちょうど 1
+// 止めの途中で、衝撃が背中に着いたフレームに横と高さを 1.3 倍へ一度膨らませ、5 フレームで潰れの形へ戻す
 TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
 {
     NS::Obj::Scene scene;
@@ -350,16 +351,32 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
     const NS::Core::Vector3 squash{1.0f - 0.3f * dir.x * dir.x, 1.1f, 1.0f - 0.3f * dir.z * dir.z};
     const NS::Core::Vector3 one{1.0f, 1.0f, 1.0f};
     bool released = false;
+    int bulgeAt = -1;
     for (int frame = 0; frame < 30 && !released; ++frame)
     {
         SCOPED_TRACE(frame);
         ExpectSameVector(player->Root().Scale(), one);
-        ExpectSameVector(player->ModelPart()->DrawScale(), squash);
+        // 膨らみは高さの倍率が 1.1 を超えたフレームから。横は進む向きに直角な軸 (成分の 2 乗を入れ替えて混ぜる)
+        if (bulgeAt < 0 && player->ModelPart()->DrawScale().y > 1.1f + 1.0e-4f)
+        {
+            bulgeAt = frame;
+        }
+        float left = 0.0f;
+        if (bulgeAt >= 0)
+        {
+            left = std::max(1.0f - static_cast<float>(frame - bulgeAt) / 5.0f, 0.0f);
+        }
+        const float side = 0.3f * left;
+        ExpectSameVector(player->ModelPart()->DrawScale(),
+                         NS::Core::Vector3{
+                             squash.x + side * dir.z * dir.z, squash.y + 0.2f * left, squash.z + side * dir.x * dir.x});
         player->Update(false);
         rock->Update();
         released = player->Resolver().ReleasedThisStep();
     }
     ASSERT_TRUE(released);
+    // 膨らみは止めの途中 (止めの 12 フレームの 7 フレーム目) に来る
+    EXPECT_GT(bulgeAt, 0);
     // 明けは潰れ 0.7 から 3 フレームで突進の向きへ 1.25 まで伸び、縦は 1.1 から 0.9 へ細る。明けはその 1 フレーム目
     const float along = 0.7f + 0.55f / 3.0f;
     const float height = 1.1f - 0.2f / 3.0f;
@@ -585,7 +602,9 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                                                 {"外れの反動の距離の倍率", 1.0f},
                                                 {"外れで飛ばす相手の距離の割合", 1.0f},
                                                 {"叩きつけた時の跳ね", 1.0f},
-                                                {"外れのこすって止まるまでのフレーム数", 0}});
+                                                {"外れのこすって止まるまでのフレーム数", 0},
+                                                {"中心近くの当たりの反動の距離の倍率", 2.0f},
+                                                {"中心近くの当たりの反動の高さの倍率", 1.0f}});
         NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
         int impact = -1;

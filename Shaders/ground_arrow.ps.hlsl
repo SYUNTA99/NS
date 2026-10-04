@@ -22,6 +22,7 @@ struct SurfaceInterp
     float4 pos         : SV_POSITION;
     float2 uv          : TEXCOORD;
     float3 worldNormal : NORMAL;
+    float3 worldPos    : TEXCOORD1;
 };
 
 Texture2D    layers : register(t0);

@@ -122,6 +122,27 @@ namespace NS::Obj
         //! レンダラーを非所有で差す。OnRender が使う。未設定 (テスト等) は描かない
         void SetRenderer(NS::Gfx::Renderer* renderer) noexcept { m_sceneRenderer.SetRenderer(renderer); }
 
+        //! @brief 次に描くフレームから使う床の波を書く。強さ 0 で消える
+        //! @param[in] wave 床の波
+        void SetGroundWave(const NS::Gfx::GroundWave& wave) noexcept { m_sceneRenderer.SetGroundWave(wave); }
+        //! 描く時に使う床の波
+        [[nodiscard]] const NS::Gfx::GroundWave& GroundWaveShown() const noexcept
+        {
+            return m_sceneRenderer.GroundWaveShown();
+        }
+
+        //! @brief 次に描くフレームから使う歪みの輪を書く。押し 0 で消える
+        //! @param[in] ring 歪みの輪
+        void SetDistortionRing(const NS::Gfx::DistortionRing& ring) noexcept
+        {
+            m_sceneRenderer.SetDistortionRing(ring);
+        }
+        //! 描く時に使う歪みの輪
+        [[nodiscard]] const NS::Gfx::DistortionRing& DistortionRingShown() const noexcept
+        {
+            return m_sceneRenderer.DistortionRingShown();
+        }
+
         //! エフェクトを探すディレクトリを SceneRenderer へ渡す。空のままなら ContentRoot の Assets/Effects
         //! effectRoot は EffectScene の構築時に固まる。SetRenderer より前に差す
         void SetEffectRoot(std::string root) noexcept { m_sceneRenderer.SetEffectRoot(std::move(root)); }

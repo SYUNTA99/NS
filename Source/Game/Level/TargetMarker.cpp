@@ -22,27 +22,6 @@ namespace NS::Game::Level
         // 暗い縁が明るい線からはみ出す片側の幅。描画先の高さ 720 のときの画素。明るい線を読ませる最小の幅
         constexpr float k_OutlineWidth = 1.0f;
 
-        // 世界の点を描画先の画素 (左上が原点) へ投げる。カメラの後ろ (投げた w が 0 以下) なら false
-        [[nodiscard]] bool TryProjectToPixels(const NS::Core::Matrix& viewProjection,
-                                              const NS::Core::Vector3& point,
-                                              float width,
-                                              float height,
-                                              NS::Core::Vector2& outPixel,
-                                              float& outW) noexcept
-        {
-            const NS::Core::Vector4 clip =
-                NS::Core::Vector4::Transform(NS::Core::Vector4{point.x, point.y, point.z, 1.0f}, viewProjection);
-            if (!(clip.w > 0.0f))
-            {
-                return false;
-            }
-            const float ndcX = clip.x / clip.w;
-            const float ndcY = clip.y / clip.w;
-            outPixel = NS::Core::Vector2{(ndcX + 1.0f) * 0.5f * width, (1.0f - ndcY) * 0.5f * height};
-            outW = clip.w;
-            return true;
-        }
-
         [[nodiscard]] bool IsPositiveFinite(float value) noexcept
         {
             return std::isfinite(value) && value > 0.0f;
@@ -164,19 +143,15 @@ namespace NS::Game::Level
         const NS::Core::Vector3 center{bounds.Center.x, bounds.Center.y, bounds.Center.z};
         NS::Core::Vector2 centerPixel{};
         float centerW = 0.0f;
-        if (!TryProjectToPixels(viewProjection, center, width, height, centerPixel, centerW))
+        if (!NS::Gfx::TryProjectToPixels(viewProjection, center, width, height, centerPixel, centerW))
         {
             outFrame = std::move(frame);
             return true;
         }
 
-        // 行列の縦の成分のうち世界の x・y・z に掛かる 3 つの長さは、ビューの回転で変わらず射影の縦の倍率になる
         // 中心と同じ奥行きの面の上の半径なので、カメラの向きで大きさが変わらない
-        const float verticalScale =
-            std::sqrt(viewProjection._12 * viewProjection._12 + viewProjection._22 * viewProjection._22 +
-                      viewProjection._32 * viewProjection._32);
         const float radius = std::max({bounds.Extents.x, bounds.Extents.y, bounds.Extents.z});
-        const float radiusPixels = radius * verticalScale / centerW * height * 0.5f;
+        const float radiusPixels = NS::Gfx::ProjectedLengthPixels(viewProjection, radius, centerW, height);
         const float settledSide =
             std::max(2.0f * (radiusPixels + desc.frameGap * pixelScale), desc.frameMinSide * pixelScale);
         // 近い大きな相手で一辺が上限を超える時は、縮まずに出る

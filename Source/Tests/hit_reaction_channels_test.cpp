@@ -7,6 +7,8 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+
 // 当たりの演出の白・揺れ・寄り・振動は、別々に始められ、始めた物だけが変わる
 
 namespace
@@ -76,6 +78,59 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
     reaction->Stop();
     EXPECT_EQ(reaction->FlashFramesRemaining(), 0);
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);
+}
+
+// 震えの線は始めたフレームの姿のまま出し、次の更新から数えて決めたフレーム数で消える。止めると消える
+TEST(HitReactionChannels, ShakeLinesRunForTheirFramesAndStop)
+{
+    NS::Obj::Scene scene;
+    NS::Obj::HitReaction* reaction = PlaceReaction(scene);
+    ASSERT_NE(reaction, nullptr);
+    reaction->StartShakeLines(NS::Obj::HitShakeLinesDesc{.radius = 0.5f, .frames = 3});
+    EXPECT_EQ(reaction->ShakeLinesFramesRemaining(), 3);
+    reaction->OnUpdate();
+    EXPECT_EQ(reaction->ShakeLinesFramesRemaining(), 3);
+    reaction->OnUpdate();
+    EXPECT_EQ(reaction->ShakeLinesFramesRemaining(), 2);
+    reaction->Stop();
+    EXPECT_EQ(reaction->ShakeLinesFramesRemaining(), 0);
+    // 半径が 0 以下・フレーム数 0 以下は出さない
+    reaction->StartShakeLines(NS::Obj::HitShakeLinesDesc{.radius = 0.0f, .frames = 3});
+    EXPECT_EQ(reaction->ShakeLinesFramesRemaining(), 0);
+}
+
+// 震えの線は挟む物の輪郭の外の左右に 3 本ずつ。入れ替えのフレーム数ごとに、外と内へ交互にずれる
+TEST(HitReactionChannels, ShakeLinesSitOutsideTheOutlineAndJitterByTheFlipFrames)
+{
+    const NS::Obj::HitShakeLinesDesc desc{.radius = 0.5f, .frames = 12, .flipFrames = 2};
+    const NS::Obj::HitShakeLineSpan span{.left = 540.0f, .right = 760.0f, .centerY = 360.0f};
+    const std::array<NS::Obj::HitShakeLineRect, 6> first = NS::Obj::ShakeLineRects(desc, 0, span, 1.0f);
+    int left = 0;
+    int right = 0;
+    for (const NS::Obj::HitShakeLineRect& rect : first)
+    {
+        EXPECT_GT(rect.width, 0.0f);
+        EXPECT_GT(rect.height, rect.width);
+        EXPECT_FLOAT_EQ(rect.y + rect.height * 0.5f, span.centerY);
+        if (rect.x + rect.width <= span.left)
+        {
+            ++left;
+        }
+        if (rect.x >= span.right)
+        {
+            ++right;
+        }
+    }
+    EXPECT_EQ(left, 3);
+    EXPECT_EQ(right, 3);
+    const std::array<NS::Obj::HitShakeLineRect, 6> same = NS::Obj::ShakeLineRects(desc, 1, span, 1.0f);
+    const std::array<NS::Obj::HitShakeLineRect, 6> flipped = NS::Obj::ShakeLineRects(desc, 2, span, 1.0f);
+    for (std::size_t i = 0; i < first.size(); ++i)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_FLOAT_EQ(same[i].x, first[i].x);
+        EXPECT_NE(flipped[i].x, first[i].x);
+    }
 }
 
 // 揺れと寄りは、始めた物だけがカメラの効果に積まれる

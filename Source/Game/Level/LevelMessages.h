@@ -140,6 +140,8 @@ namespace NS::Game::Level
         int length = 0;                           //!< 揺れのフレーム数
         std::uint32_t seed = 0;                   //!< 振れ幅のばらつきの種
         float firstSign = 1.0f;                   //!< 1 フレーム目の向き
+        int flipFrames = 1;                       //!< 左右を入れ替えるフレーム数
+        float ghostRatio = 0.0f;                  //!< 残像の離れの、振れ幅の包みに対する倍率。0 なら出さない
     };
 
     //! @brief 止めの間の横揺れを知らせる。受け手は止めの間、知らせを受けたフレームを 1 フレーム目として揺れる

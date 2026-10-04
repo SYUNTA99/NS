@@ -67,6 +67,7 @@ namespace NS::Obj
         }
 
         SetMesh(resolved);
+        m_ghostMaterial = assets.SharedMaterial("water");
     }
 
     void Model::OnStart()
@@ -82,6 +83,7 @@ namespace NS::Obj
             return;
         }
         scene->RegisterRenderable(this);
+        scene->RegisterRenderable(&m_ghosts);
     }
 
     void Model::OnEndPlay()
@@ -98,6 +100,7 @@ namespace NS::Obj
             return;
         }
         scene->UnregisterRenderable(this);
+        scene->UnregisterRenderable(&m_ghosts);
     }
 
     void Model::Snapshot() noexcept
@@ -135,6 +138,21 @@ namespace NS::Obj
         }
         m_drawOffset = offset;
         return true;
+    }
+
+    bool Model::SetGhostSpread(const NS::Core::Vector3& spread) noexcept
+    {
+        if (!(std::isfinite(spread.x) && std::isfinite(spread.y) && std::isfinite(spread.z)))
+        {
+            return false;
+        }
+        m_ghostSpread = spread;
+        return true;
+    }
+
+    NS::Core::Matrix Model::GhostWorldMatrix(float alpha, float side) const noexcept
+    {
+        return DrawWorldMatrixWithOffset(alpha, m_ghostSpread * side);
     }
 
     bool Model::SetTremor(const NS::Gfx::TremorCB& tremor) noexcept
@@ -178,6 +196,11 @@ namespace NS::Obj
 
     NS::Core::Matrix Model::DrawWorldMatrix(float alpha) const noexcept
     {
+        return DrawWorldMatrixWithOffset(alpha, m_drawOffset);
+    }
+
+    NS::Core::Matrix Model::DrawWorldMatrixWithOffset(float alpha, const NS::Core::Vector3& offset) const noexcept
+    {
         const NS::Core::Quaternion local = NS::Core::Quaternion::Slerp(m_previousLocalRotation, m_localRotation, alpha);
         const NS::Core::Matrix localMatrix = NS::Core::Matrix::CreateFromQuaternion(local);
         const Actor* owner = Owner();
@@ -191,10 +214,10 @@ namespace NS::Obj
         // ずれは倍率の後に世界で足す。倍率の中心 (下端の真ん中) は根から測るので、ずれと一緒に動いて形を変えない
         // ずれが 0 の間は掛けない。0 の平行移動でも掛け算が下の桁を丸めることがある
         NS::Core::Matrix shift = NS::Core::Matrix::Identity;
-        const bool shifted = m_drawOffset.x != 0.0f || m_drawOffset.y != 0.0f || m_drawOffset.z != 0.0f;
+        const bool shifted = offset.x != 0.0f || offset.y != 0.0f || offset.z != 0.0f;
         if (shifted)
         {
-            shift = NS::Core::Matrix::CreateTranslation(m_drawOffset);
+            shift = NS::Core::Matrix::CreateTranslation(offset);
         }
         const NS::Core::Vector3 scale = NS::Core::Vector3::Lerp(m_previousDrawScale, m_drawScale, alpha);
         // 倍率が 1 でも、下端の真ん中へ移して戻す足し引きが下の桁を丸めることがある。倍率の無い間は掛けずに返す
@@ -235,14 +258,21 @@ namespace NS::Obj
             return;
         }
 
+        out.push_back(MakeDrawItem(context, m_material, DrawWorldMatrix(context.alpha)));
+    }
+
+    NS::Gfx::DrawItem Model::MakeDrawItem(const NS::Gfx::RenderContext& context,
+                                          NS::Gfx::Material* material,
+                                          const NS::Core::Matrix& world) const noexcept
+    {
         // context.resolvedSettings は project 既定に配置された平行光まで解決済
         const NS::Gfx::RenderSettings& settings = context.resolvedSettings;
 
         NS::Gfx::DrawItem item{};
         item.mesh = m_mesh;
-        item.material = m_material;
-        item.blend = m_material->Blend();
-        item.constants.world = DrawWorldMatrix(context.alpha);
+        item.material = material;
+        item.blend = material->Blend();
+        item.constants.world = world;
         item.constants.viewProj = context.viewProjection;
         item.constants.lightDir = settings.lightDir;
         item.constants.lightDir.Normalize();
@@ -251,12 +281,47 @@ namespace NS::Obj
         item.constants.ambientColor = settings.ambientColor;
         item.constants.groundColor = settings.groundColor;
         item.constants.exposure = settings.exposure;
+        item.constants.groundWaveCenterX = context.groundWave.centerX;
+        item.constants.groundWaveCenterZ = context.groundWave.centerZ;
+        item.constants.groundWaveRadius = context.groundWave.radius;
+        item.constants.groundWaveStrength = context.groundWave.strength;
         item.constants.tremor = m_tremor;
         item.extraVsCb = m_perObjectVsCb;
         item.extraVsData = m_perObjectVsData;
         item.extraVsSize = m_perObjectVsSize;
         item.extraVsSlot = m_perObjectVsSlot;
-        out.push_back(item);
+        return item;
+    }
+
+    void Model::Ghosts::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
+    {
+        const NS::Core::Vector3& spread = m_model.m_ghostSpread;
+        if (spread.x == 0.0f && spread.y == 0.0f && spread.z == 0.0f)
+        {
+            return;
+        }
+        if (!m_model.IsActive() || m_model.m_mesh == nullptr || m_model.m_ghostMaterial == nullptr ||
+            m_model.Owner() == nullptr)
+        {
+            return;
+        }
+        for (const float side : {1.0f, -1.0f})
+        {
+            out.push_back(
+                m_model.MakeDrawItem(context, m_model.m_ghostMaterial, m_model.GhostWorldMatrix(context.alpha, side)));
+        }
+    }
+
+    NS::Core::AABB Model::Ghosts::WorldBounds() const noexcept
+    {
+        // 描く形の箱を、描く時だけのずれと残像の離れの分だけ広げる。どちらの写しも外さない
+        NS::Core::AABB out = m_model.WorldBounds();
+        const NS::Core::Vector3& spread = m_model.m_ghostSpread;
+        const NS::Core::Vector3& offset = m_model.m_drawOffset;
+        out.Extents.x += std::abs(spread.x) + std::abs(offset.x);
+        out.Extents.y += std::abs(spread.y) + std::abs(offset.y);
+        out.Extents.z += std::abs(spread.z) + std::abs(offset.z);
+        return out;
     }
 
     RenderBucket Model::Bucket() const noexcept

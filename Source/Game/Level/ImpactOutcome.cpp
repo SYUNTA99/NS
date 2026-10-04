@@ -35,6 +35,7 @@ namespace NS::Game::Level
         {
             float hitStop = 1.0f;         // 貫通の止めの倍率
             float reboundDistance = 1.0f; // 反動の距離の倍率。外れの高さは外れの節で下げる
+            float reboundHeight = 1.0f;   // 反動の高さの倍率
         };
 
         // 段ごとに 1 行の表。段を足したら行を足す。真偽で分けると段が 2 つと決め打ちになる
@@ -44,7 +45,8 @@ namespace NS::Game::Level
             {
             case HitTier::Center:
                 return TierScales{.hitStop = tuning.centerHitStopScale,
-                                  .reboundDistance = tuning.centerHitReboundDistanceScale};
+                                  .reboundDistance = tuning.centerHitReboundDistanceScale,
+                                  .reboundHeight = tuning.centerHitReboundHeightScale};
             case HitTier::Wide:
                 return TierScales{.reboundDistance = tuning.missReboundDistanceScale};
             }
@@ -103,7 +105,17 @@ namespace NS::Game::Level
         return std::pow(left, c);
     }
 
-    float BodyShakeOffset(int frame, int length, float amplitude, std::uint32_t seed, float firstSign) noexcept
+    float BodyShakeReach(int frame, int length, float amplitude) noexcept
+    {
+        if (length <= 0 || frame < 1 || frame >= length)
+        {
+            return 0.0f;
+        }
+        return amplitude * (1.0f - static_cast<float>(frame) / static_cast<float>(length));
+    }
+
+    float BodyShakeOffset(
+        int frame, int length, float amplitude, std::uint32_t seed, float firstSign, int flipFrames) noexcept
     {
         if (length <= 0 || frame < 1 || frame >= length)
         {
@@ -118,11 +130,14 @@ namespace NS::Game::Level
         {
             sign = -1.0f;
         }
-        if (frame % 2 == 0)
+        // 1 フレームごとの入れ替えは 1 秒に 30 往復で、ちらつきに見える。数フレーム同じ側に留めると揺れと読める
+        const int flip = std::max(flipFrames, 1);
+        if (((frame - 1) / flip) % 2 == 1)
         {
             sign = -sign;
         }
-        return amplitude * left * left * spread * sign;
+        // 直線で弱める。2 乗だと止めの半分で 4 分の 1 まで落ち、大きく振れるのが白と火花に隠れる最初だけになる
+        return amplitude * left * spread * sign;
     }
 
     ImpactOutcome ComputeImpactOutcome(const ImpactInput& input, const ImpactTuning& tuning) noexcept
@@ -152,11 +167,11 @@ namespace NS::Game::Level
         // 高さと距離に同じ倍率を掛け、威力と質量が変わっても弾かれ始めの角度を揃える
         // TODO: 質量 0.5 より軽い物では自機の返りが 0 に近づく。軽い物を置く時は、先に高さと距離の下限を足す
         outcome.reboundScale = power * 2.0f * outcome.massFactor;
-        // 中心近くの当たりだけ距離を伸ばし、高さは変えない。真ん中に当てた時は後ろへ飛ぶ
+        // 中心近くの当たりは距離を伸ばして高さを下げる。真ん中に当てた時は低く速く後ろへ、カメラの方へ戻る
         const float reboundDistance = tuning.reboundDistance * outcome.reboundScale * tierScales.reboundDistance;
         outcome.reboundArc = NS::Game::Player::ReboundArc{
             .direction = NS::Core::Vector3{input.awayDirection.x, 0.0f, input.awayDirection.z},
-            .apexHeight = tuning.reboundApexHeight * outcome.reboundScale,
+            .apexHeight = tuning.reboundApexHeight * outcome.reboundScale * tierScales.reboundHeight,
             .distance = reboundDistance};
         NS::Core::Vector3 launchDirection = input.launchDirection;
         // 外れで相手へ押し込む成分。突進の向きと触れた面の向きの内積で、面の真ん中は 1、端ほど 0 へ寄る

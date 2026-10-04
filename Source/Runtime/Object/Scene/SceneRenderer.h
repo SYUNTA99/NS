@@ -3,6 +3,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/DebugDraw.h"
+#include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/RenderProxyList.h"
 #include "Runtime/Graphics/RenderSettings.h"
 #include "Runtime/Object/Components/VirtualCamera.h"
@@ -77,6 +78,18 @@ namespace NS::Obj
         //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ CameraManager の視点で 1 回だけ描く
         //! @details 空でない間は各ビューを順に bind して描き分ける。差すのは Editor だけで、出荷では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneViews = std::move(views); }
+
+        //! @brief 次に描くフレームから使う床の波を書く。強さ 0 で消える
+        //! @param[in] wave 床の波
+        void SetGroundWave(const NS::Gfx::GroundWave& wave) noexcept { m_groundWave = wave; }
+        //! 描く時に使う床の波
+        [[nodiscard]] const NS::Gfx::GroundWave& GroundWaveShown() const noexcept { return m_groundWave; }
+
+        //! @brief 次に描くフレームから使う歪みの輪を書く。押し 0 で消える
+        //! @param[in] ring 歪みの輪
+        void SetDistortionRing(const NS::Gfx::DistortionRing& ring) noexcept { m_distortionRing = ring; }
+        //! 描く時に使う歪みの輪
+        [[nodiscard]] const NS::Gfx::DistortionRing& DistortionRingShown() const noexcept { return m_distortionRing; }
 
         //! IRenderable Component の自己登録。二重登録は無視する
         void RegisterRenderable(IRenderable* renderable);
@@ -179,6 +192,8 @@ namespace NS::Obj
         // 光のにじみ。ビュー列と同じ並び。レンダラーを差し替えると畳み、描く時に作る
         std::vector<std::unique_ptr<NS::Gfx::Bloom>> m_blooms;
 
-        std::string m_effectRoot; // .efkefc を探すディレクトリ。空なら既定の Assets/Effects
+        std::string m_effectRoot;                   // .efkefc を探すディレクトリ。空なら既定の Assets/Effects
+        NS::Gfx::GroundWave m_groundWave{};         // 描く床の波。書くのは当たりの裁定役だけ
+        NS::Gfx::DistortionRing m_distortionRing{}; // 描く歪みの輪。書くのは当たりの裁定役だけ
     };
 } // namespace NS::Obj

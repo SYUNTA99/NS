@@ -82,6 +82,13 @@ namespace NS::Obj
         //! @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
         bool SetFollowCharge(const FollowChargeDesc& desc) noexcept;
 
+        //! @brief このフレームに、距離と溜めの締めを今のまま保つかを受け取る
+        //! @details 追う相手の体当たりから止めの明けまで真を渡す。当たる瞬間に画面が引くと、揺れを見せたい止めの間に
+        //! 二人が小さく遠ざかる。受けた値は次の OnUpdate だけで使い、渡されなかったフレームは偽と同じ。
+        //! 真の間は距離の目標を今の距離にし、放した後の締めを戻し始めず、構図のずらしも動かさない
+        //! @param[in] held 保つか
+        void SetFollowFramingHeld(bool held) noexcept { m_framingHeld = held; }
+
         //! @brief 溜めで締めている視野角を返す
         //! @return 基準の視野角から引いている角度 (度)。締めていない時は 0
         [[nodiscard]] float ChargeNarrowDegrees() const noexcept { return m_chargeNarrowDegrees; }
@@ -181,6 +188,7 @@ namespace NS::Obj
         NS_REFLECT_FIELD(m_chargeShakeFrequency, "溜めの揺れの細かさ")
         NS_REFLECT_FIELD(m_chargeShakeDecayPerSecond, "溜めの揺れの消える速さ")
         NS_REFLECT_FIELD(m_chargeFrameRatio, "溜めの構図の枠")
+        NS_REFLECT_FIELD(m_chargeCenterRatio, "溜めで二人を縦の中心へ寄せる割合")
         NS_REFLECT_FIELD(m_chargeFrameOmega, "溜めの構図のバネ角速度")
         NS_REFLECT_FIELD(m_reboundFollowOmega, "反動の間の横と前後のバネ角速度")
         NS_REFLECT_FIELD(m_reboundMaxLag, "反動の間の横と前後の遅れの上限")
@@ -202,8 +210,9 @@ namespace NS::Obj
 
     private:
         // 受けた溜めの状態から締め・揺れ・構図のずらしを 1 フレーム進める
-        // look はこのフレームの注視点
+        // look はこのフレームの注視点。framingHeld が真の間は、放した後の締めの戻しと構図のずらしを止める
         void UpdateCharge(const FollowChargeDesc& charge,
+                          bool framingHeld,
                           const Transform& target,
                           const NS::Core::Vector3& look,
                           float dt) noexcept;
@@ -244,6 +253,7 @@ namespace NS::Obj
         bool m_followGrounded = false;
         float m_followHorizontalSpeed = 0.0f; // 速度の向きは使わないので水平の大きさへ畳んで持つ
         bool m_hasFollowMotion = false;
+        bool m_framingHeld = false;        // このフレームに距離と溜めの締めを保つか。OnUpdate が読んで偽へ戻す
         float m_targetHeightOffset = 0.0f; // 追う相手の根から注視の高さを測り始める所までの縦のずれ
 
         float m_yaw = 0.0f;       // 水平回転角
@@ -282,7 +292,8 @@ namespace NS::Obj
         float m_chargeShakeFrequency = 10.0f;     // 溜めの揺れのノイズの格子を 1 秒に進める数
         float m_chargeShakeDecayPerSecond = 4.0f; // 放した後に溜めの揺れのトラウマが 1 秒に減る量
         float m_chargeFrameRatio = 0.7f;          // 構図の枠。視野の半分に対する割合
-        float m_chargeFrameOmega = 26.0f;         // 構図のずらしのバネ角速度 (1/秒)
+        float m_chargeCenterRatio = 1.0f; // 溜めで自機と相手の真ん中を画面の縦の中心へ寄せる割合。0 は枠に入れるだけ
+        float m_chargeFrameOmega = 26.0f; // 構図のずらしのバネ角速度 (1/秒)
 
         float m_reboundFollowOmega = 4.0f; // 反動の間に注視点の横と前後が寄るバネ角速度 (1/秒)
         float m_reboundMaxLag = 1.5f;      // 反動の間に注視点が横と前後へ遅れてよい上限 (m)
@@ -312,6 +323,7 @@ namespace NS::Obj
         float m_chargeNarrowDegrees = 0.0f;        // 今の締め (度)
         float m_chargeReturnFromDegrees = 0.0f;    // 戻し始めた時の締め (度)
         int m_chargeReturnFrame = 0;               // 戻しの何フレーム目か。0 は戻していない
+        bool m_chargeReturnWaiting = false;        // 放した後、止めの明けまで戻しを始めずに待っているか
         NS::Core::Vector2 m_chargeFrameOffset{};   // 今の構図のずらし (m、カメラの右と上)
         NS::Core::Vector2 m_chargeFrameVelocity{}; // 構図のずらしの速さ (m/秒)
 

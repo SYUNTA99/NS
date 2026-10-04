@@ -312,6 +312,32 @@ namespace NS::Obj
         DrawOverlays(ctx);
     }
 
+    namespace
+    {
+        // 歪みの輪を描画先の画素へ直す。中心がカメラの後ろか、描画先が無い時は歪めない
+        [[nodiscard]] NS::Gfx::BloomRing ToBloomRing(const NS::Gfx::DistortionRing& ring,
+                                                     const NS::Core::Matrix& viewProjection,
+                                                     NS::Core::Size2D size) noexcept
+        {
+            if (!(ring.push > 0.0f) || size.width <= 0 || size.height <= 0)
+            {
+                return NS::Gfx::BloomRing{};
+            }
+            const float width = static_cast<float>(size.width);
+            const float height = static_cast<float>(size.height);
+            NS::Core::Vector2 centerPixel{};
+            float centerW = 0.0f;
+            if (!NS::Gfx::TryProjectToPixels(viewProjection, ring.center, width, height, centerPixel, centerW))
+            {
+                return NS::Gfx::BloomRing{};
+            }
+            return NS::Gfx::BloomRing{.centerPixel = centerPixel,
+                                      .radiusPixels = ring.radius * height,
+                                      .pushPixels = ring.push * height,
+                                      .halfWidthPixels = ring.halfWidth * height};
+        }
+    } // namespace
+
     NS::Gfx::RenderContext SceneRenderer::RenderWorld(CameraManager& cameras,
                                                       SceneCamera& camera,
                                                       std::string_view skyboxPath,
@@ -359,6 +385,8 @@ namespace NS::Obj
             ctx.cameraPosition = camera.Position();
         }
         ctx.resolvedSettings = ResolveSceneSettings(m_renderer->Settings());
+        ctx.groundWave = m_groundWave;
+        ctx.distortionRing = m_distortionRing;
 
         // 物の絵は S 字で 1 以下に書くので、にじむのは 1 を超えて書いたエフェクトだけ
         // 深度は今の描画先の物を使うので、後で描くデバッグの線も世界の深度で隠れる
@@ -372,7 +400,7 @@ namespace NS::Obj
             m_effects->Draw(*viewCamera);
         }
         // 重ね描きとデバッグの線はにじませないので、この後に今の描画先へ描く
-        bloom.EndWorld(*m_renderer);
+        bloom.EndWorld(*m_renderer, ToBloomRing(ctx.distortionRing, ctx.viewProjection, m_renderer->Size()));
         return ctx;
     }
 } // namespace NS::Obj

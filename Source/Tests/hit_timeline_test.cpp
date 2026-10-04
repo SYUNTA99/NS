@@ -44,6 +44,14 @@ namespace
         lurch.distance.count = 2;
         lurch.distance.keys[0] = NS::Obj::Curve::Key{0.0f, 0.3f};
         lurch.distance.keys[1] = NS::Obj::Curve::Key{8.0f, 0.0f};
+        NS::Game::Level::GroundWaveEvent wave;
+        wave.radius.count = 2;
+        wave.radius.keys[0] = NS::Obj::Curve::Key{0.0f, 0.5f};
+        wave.radius.keys[1] = NS::Obj::Curve::Key{10.0f, 6.0f};
+        NS::Game::Level::DistortionRingEvent ring;
+        ring.halfWidth = 0.07f;
+        NS::Game::Level::ShakeLinesEvent lines;
+        lines.gapPixels = 20.0f;
         NS::Game::Level::CameraReboundSwayEvent sway;
         sway.distance.count = 2;
         sway.distance.keys[0] = NS::Obj::Curve::Key{0.0f, -0.5f};
@@ -62,6 +70,9 @@ namespace
             {NS::Game::Level::FlightEffectEvent{}, 13, 0, NS::Game::Level::HitDirection::Any},
             {lurch, 1, 9, NS::Game::Level::HitDirection::Any},
             {sway, 1, 29, NS::Game::Level::HitDirection::Right},
+            {lines, 1, 12, NS::Game::Level::HitDirection::Any},
+            {wave, 1, 18, NS::Game::Level::HitDirection::Any},
+            {ring, 2, 10, NS::Game::Level::HitDirection::Any},
         };
         return timeline;
     }
@@ -278,15 +289,23 @@ TEST(HitTimeline, ShippedCenterSlowsTheWorldOnlyForPurple)
     }
 }
 
-TEST(HitTimeline, ShippedCenterSinksAndDoesNotZoom)
+// 真ん中のカメラは沈む揺れが 1 つと、衝撃が背中に着く止めの 7 フレーム目に 1 回だけの傾かない寄り (押し)
+TEST(HitTimeline, ShippedCenterSinksAndPunchesOnceWhenTheShockReachesTheBack)
 {
     const std::optional<HitTimeline> center = ReadShippedTimeline("center");
     ASSERT_TRUE(center.has_value());
     int sinks = 0;
+    int punches = 0;
     for (const NS::Game::Level::HitEvent& event : center->events)
     {
         EXPECT_FALSE(std::holds_alternative<NS::Game::Level::CameraShakeEvent>(event.value));
-        EXPECT_FALSE(std::holds_alternative<NS::Game::Level::ZoomRollEvent>(event.value));
+        if (const NS::Game::Level::ZoomRollEvent* zoom = std::get_if<NS::Game::Level::ZoomRollEvent>(&event.value))
+        {
+            ++punches;
+            EXPECT_EQ(event.start, 7);
+            EXPECT_FLOAT_EQ(zoom->rollDegrees, 0.0f);
+            EXPECT_GT(zoom->zoom, 1.0f);
+        }
         if (std::holds_alternative<NS::Game::Level::CameraSinkEvent>(event.value))
         {
             ++sinks;
@@ -296,6 +315,7 @@ TEST(HitTimeline, ShippedCenterSinksAndDoesNotZoom)
         }
     }
     EXPECT_EQ(sinks, 1);
+    EXPECT_EQ(punches, 1);
 }
 
 // 外れの振動は向きごとに 1 行ずつ。頭に重い方 (左) の一打を 2〜3 フレーム鳴らしてすぐ切り、軽い方 (右) の擦れが抜ける

@@ -54,7 +54,8 @@ TEST(ImpactOutcome, HeavierTargetBouncesSelfMoreAndLaunchesTargetLess)
     EXPECT_FALSE(heavyOutcome.broke);
 }
 
-// 段ごとに反動の距離の倍率を掛ける。外れは高さを欄「外れの反動の高さの割合」で下げ、真ん中より浮かせない
+// 段ごとに反動の距離の倍率を掛ける。真ん中は高さを欄「中心近くの当たりの反動の高さの倍率」で下げ、低く速く後ろへ
+// 戻す。外れは高さを欄「外れの反動の高さの割合」で下げ、真ん中より浮かせない
 TEST(ImpactOutcome, CenterHitStretchesReboundDistanceAndMissStaysLow)
 {
     const ImpactTuning tuning = DefaultTuning();
@@ -67,16 +68,21 @@ TEST(ImpactOutcome, CenterHitStretchesReboundDistanceAndMissStaysLow)
 
     EXPECT_FLOAT_EQ(centerOutcome.reboundArc.distance * tuning.missReboundDistanceScale,
                     wideOutcome.reboundArc.distance * tuning.centerHitReboundDistanceScale);
-    EXPECT_FLOAT_EQ(wideOutcome.reboundArc.apexHeight,
+    EXPECT_FLOAT_EQ(wideOutcome.reboundArc.apexHeight * tuning.centerHitReboundHeightScale,
                     centerOutcome.reboundArc.apexHeight * tuning.missReboundHeightRatio);
+    // 真ん中は高さより距離を大きく伸ばす。高さに対する距離の比が、倍率を掛けない時より大きい
+    EXPECT_LT(tuning.centerHitReboundHeightScale, 1.0f);
+    EXPECT_GT(centerOutcome.reboundArc.distance / centerOutcome.reboundArc.apexHeight,
+              tuning.reboundDistance / tuning.reboundApexHeight);
     EXPECT_LT(wideOutcome.reboundArc.apexHeight, centerOutcome.reboundArc.apexHeight);
 }
 
-// 段が押し飛ばしの量に効くのは段ごとの反動の距離の倍率と外れの高さの割合だけ。相手の飛ぶ量は段で変えない
+// 段が押し飛ばしの量に効くのは段ごとの反動の距離と高さの倍率と外れの高さの割合だけ。相手の飛ぶ量は段で変えない
 TEST(ImpactOutcome, TiersDifferOnlyByTheCenterDistanceAndMissHeight)
 {
     ImpactTuning tuning = DefaultTuning();
     tuning.centerHitReboundDistanceScale = 1.0f;
+    tuning.centerHitReboundHeightScale = 1.0f;
     tuning.missReboundDistanceScale = 1.0f;
     tuning.missReboundHeightRatio = 1.0f;
     tuning.missLaunchDistanceRatio = 1.0f;
@@ -183,7 +189,8 @@ TEST(ImpactOutcome, DefaultTuningAtMassOneAndPowerOne)
             return input;
         }(),
         tuning);
-    EXPECT_FLOAT_EQ(center.reboundArc.apexHeight, 1.15f);
+    // 真ん中は高さを欄「中心近くの当たりの反動の高さの倍率」0.6 で下げる
+    EXPECT_FLOAT_EQ(center.reboundArc.apexHeight, 1.15f * 0.6f);
     EXPECT_FLOAT_EQ(center.launchArc.direction.z, 1.0f);
 }
 
