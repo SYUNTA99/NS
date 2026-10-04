@@ -19,11 +19,11 @@ namespace NS::Gfx
         // 前回の描画ステートを引き継がないよう、描画ごとにパイプラインを設定する
         if (item.occludedOnly)
         {
-            cmd.SetPipeline(renderer.OccludedPipeline());
+            cmd.SetPipeline(renderer.OccludedPipeline(item.twoSided));
         }
         else
         {
-            cmd.SetPipeline(renderer.CommonPipeline(item.blend));
+            cmd.SetPipeline(renderer.CommonPipeline(item.blend, item.twoSided));
         }
         item.material->CreateInputLayoutFor(*item.mesh);
         item.material->SetParams(renderer, item.constants);

@@ -40,6 +40,10 @@ namespace NS::Game::Level
         float headDepthRatio = 0.28f;
         float headDepthMin = 1.3f;
         float headDepthMax = 2.8f;
+        // 矢じりの手前の端をカメラから見る角度の下限 (度)。下回る時は矢じりの板を手前の端を軸にカメラの方へ
+        // 起こす。カメラを下げると床に寝た矢じりが縦に潰れて読めなくなる。既定のカメラから近い矢じりを見る角度
+        // (約 23 度) ではほぼ起きず、下げたカメラや遠い矢じりで起きる 25 度
+        float headMinViewDegrees = 25.0f;
         float startFade = 0.5f;
         float frontSoftness = 0.3f;
         float lateStageFrom = 1.0f / 3.0f;
@@ -57,8 +61,6 @@ namespace NS::Game::Level
         float headFillAlpha = 0.85f;
         float plainBandEdgeAlpha = 0.30f;
         float plainBandFillAlpha = 0.08f;
-        float plainHeadEdgeAlpha = 0.35f;
-        float plainHeadFillAlpha = 0.18f;
         // 隠れた矢じりを透かして描く時に、矢じりの不透明度へ掛ける割合。高い相手へ反った矢印は、先が相手の体の下や
         // 自機の玉の後ろに入る。0.5 では市松の玉の上で先が読めなかったので、見えている所より一段薄い 0.7
         float occludedHeadAlpha = 0.7f;

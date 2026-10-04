@@ -5,6 +5,8 @@
 #include "Game/Player/PlayerVisualParams.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Graphics/DrawItem.h"
+#include "Runtime/Graphics/FrameConstants.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/IRenderable.h"
 
@@ -117,6 +119,51 @@ namespace NS::Game::Level
                               float groundLift,
                               SlamArrowShape& shape);
 
+    //! 矢印の板 1 枚ぶんの、描く単位へ写す値。Shaders/ground_arrow.ps.hlsl の cbuffer と同じ並び
+    //! @details 頂点シェーダは standard.vs.hlsl をそのまま使うので FrameCB と同じ大きさにし、world と viewProj を
+    //! 同じ位置に置く。残りは照明の欄の場所に矢印の値を置く。板の v は 0 が遠い端、1 が近い端
+    struct alignas(16) SlamArrowConstants
+    {
+        NS::Core::Matrix world{};         //!< 上向きの板を線に沿った範囲と幅へ伸ばして置く行列
+        NS::Core::Matrix viewProj{};      //!< ビュー × 射影
+        NS::Core::Vector4 chargedColor{}; //!< rgb は色の付いた部分の色、a は明るい縁の不透明度
+        NS::Core::Vector4 plainColor{};   //!< rgb は色の付いていない部分の色、a は明るい縁の不透明度
+        NS::Core::Vector4 darkColor{};    //!< rgb は暗い縁の色、a はその不透明度
+        //! xy は始まりのぼかし、zw は色の付いた部分の重み。どちらも板の v の 1 次式 (v = 0 の値と v あたりの変化)
+        NS::Core::Vector4 fadeAndFront{};
+        //! xy は帯の切れ目を測る、矢じりの先からの距離 ÷ 矢じりの奥行き (板の v の 1 次式)。
+        //! z と w は色の付いた部分と付いていない部分の塗りの平均の不透明度
+        NS::Core::Vector4 rearAndFill{};
+        NS::Gfx::TremorCB tremor{}; //!< standard.vs.hlsl が読む震えの欄。振れ幅 0 のまま送り、矢印は震わせない
+    };
+
+    //! 矢印を描く資材。どれも非所有
+    struct SlamArrowDrawAssets
+    {
+        NS::Gfx::StaticMesh* mesh = nullptr;       //!< 共有の上向きの板
+        NS::Gfx::Material* bandMaterial = nullptr; //!< 帯のマテリアル
+        NS::Gfx::Material* headMaterial = nullptr; //!< 矢じりのマテリアル
+    };
+
+    //! @brief 置いた矢印の帯の板と矢じりの板、隠れた所へ描く矢じりの板を、描く単位にして out の後ろへ積む
+    //! @details 帯の板を shape.band の順に積み、矢じりがあれば矢じりの板と、隠れた画素だけへ描く矢じりの板を積む。
+    //! 帯は始まりでぼかし、色の付いた部分の先 (shape.colorFront) で色を切る。矢じりは溜めの始めから段の色で全部を塗り、
+    //! ぼかさない。どの板も裏からも描く。カメラが矢じりの後ろにあり、矢じりの手前の端を見る角度が
+    //! desc.headMinViewDegrees を下回る時は、矢じりの板を手前の端を軸に長さを変えずにカメラの方へ起こし、
+    //! 手前の端をその角度で見せる。起こすのは 80 度まで。資材が空でも積む。空のまま描かないかは呼び手が見る
+    //! @param[in] shape PlaceSlamArrowOnGround か PlaceSlamArrowOnPath で置いた形
+    //! @param[in] desc 色と不透明度を決める値
+    //! @param[in] viewProjection 描く視点のビュー × 射影
+    //! @param[in] cameraPosition 描く視点のカメラの位置。世界座標
+    //! @param[in] assets 板とマテリアル
+    //! @param[in,out] out 描く単位の並び
+    void AppendSlamArrowDrawItems(const SlamArrowShape& shape,
+                                  const SlamArrowDesc& desc,
+                                  const NS::Core::Matrix& viewProjection,
+                                  const NS::Core::Vector3& cameraPosition,
+                                  const SlamArrowDrawAssets& assets,
+                                  std::vector<NS::Gfx::DrawItem>& out);
+
     //! @brief 溜めている間、狙いの線の向きへ放った玉の道筋に矢印を描く Component
     //! @details 溜めている間 (Player::ChargeJudge の IsCharging) に、同じ配置物の Player が控えた狙いの線と
     //! 狙う相手と溜め量から BuildSlamArrow で形を組む。狙う相手はいなくても組む。
@@ -177,6 +224,7 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_desc.headDepthRatio, "矢じりの奥行きの割合")
         NS_REFLECT_FIELD(m_desc.headDepthMin, "矢じりの奥行きの下限")
         NS_REFLECT_FIELD(m_desc.headDepthMax, "矢じりの奥行きの上限")
+        NS_REFLECT_FIELD(m_desc.headMinViewDegrees, "矢じりを見せる最小の角度")
         NS_REFLECT_FIELD(m_desc.startFade, "帯の始まりのぼかし")
         NS_REFLECT_FIELD(m_desc.frontSoftness, "色の境目のぼかし")
         NS_REFLECT_GROUP("色")
@@ -195,8 +243,6 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_desc.headFillAlpha, "矢じりの塗りの不透明度")
         NS_REFLECT_FIELD(m_desc.plainBandEdgeAlpha, "色の無い帯の明るい縁の不透明度")
         NS_REFLECT_FIELD(m_desc.plainBandFillAlpha, "色の無い帯の塗りの不透明度")
-        NS_REFLECT_FIELD(m_desc.plainHeadEdgeAlpha, "色の無い矢じりの明るい縁の不透明度")
-        NS_REFLECT_FIELD(m_desc.plainHeadFillAlpha, "色の無い矢じりの塗りの不透明度")
         NS_REFLECT_FIELD(m_desc.occludedHeadAlpha, "隠れた矢じりの不透明度")
         NS_REFLECT_END()
 

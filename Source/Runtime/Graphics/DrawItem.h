@@ -23,7 +23,8 @@ namespace NS::Gfx
         BlendMode blend = BlendMode::Opaque; //!< 合成モード
         //! 手前の物に隠れた画素だけへ描く場合 true。その時の合成は blend に関わらず半透明で、深度は書かない
         bool occludedOnly = false;
-        FrameCB constants{}; //!< オブジェクトの座標やカメラ、ライトなどの基本定数
+        bool twoSided = false; //!< 裏からも描く場合 true。偽なら裏を向いた面は描かない
+        FrameCB constants{};   //!< オブジェクトの座標やカメラ、ライトなどの基本定数
 
         // 頂点シェーダへの追加データ。スキンメッシュのボーンパレットがこれを使う
         const Buffer* extraVsCb = nullptr;

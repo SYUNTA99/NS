@@ -236,11 +236,19 @@ namespace NS::Gfx
         }
 
         // 共通 Pipeline を 1 回だけ生成して使い回す。Pipeline::Create は Gpu() を引くので公開の後に呼ぶ
-        m_commonPipelines[0] = Pipeline::Create(PipelineDesc{});
-        m_commonPipelines[1] = Pipeline::Create(PipelineDesc{.blend = BlendMode::Alpha, .depth = DepthMode::ReadOnly});
-        m_commonPipelines[2] =
-            Pipeline::Create(PipelineDesc{.blend = BlendMode::Additive, .depth = DepthMode::ReadOnly});
-        m_occludedPipeline = Pipeline::Create(PipelineDesc{.blend = BlendMode::Alpha, .depth = DepthMode::Occluded});
+        // [0] は裏を向いた面を描かない、[1] は裏も描く
+        const CullMode culls[2] = {CullMode::Back, CullMode::None};
+        for (int sided = 0; sided < 2; ++sided)
+        {
+            const CullMode cull = culls[sided];
+            m_commonPipelines[sided][0] = Pipeline::Create(PipelineDesc{.cull = cull});
+            m_commonPipelines[sided][1] =
+                Pipeline::Create(PipelineDesc{.cull = cull, .blend = BlendMode::Alpha, .depth = DepthMode::ReadOnly});
+            m_commonPipelines[sided][2] = Pipeline::Create(
+                PipelineDesc{.cull = cull, .blend = BlendMode::Additive, .depth = DepthMode::ReadOnly});
+            m_occludedPipelines[sided] =
+                Pipeline::Create(PipelineDesc{.cull = cull, .blend = BlendMode::Alpha, .depth = DepthMode::Occluded});
+        }
 
         window.SetResizeCallback([this](::NS::Core::Size2D rs) { this->Resize(rs); });
         m_resizeCallbackRegistered = true;
@@ -387,8 +395,13 @@ namespace NS::Gfx
         return true;
     }
 
-    const Pipeline& Renderer::CommonPipeline(BlendMode blend) const noexcept
+    const Pipeline& Renderer::CommonPipeline(BlendMode blend, bool twoSided) const noexcept
     {
+        int sided = 0;
+        if (twoSided)
+        {
+            sided = 1;
+        }
         int index = 0;
         switch (blend)
         {
@@ -403,14 +416,19 @@ namespace NS::Gfx
             index = 0;
             break;
         }
-        NS_ASSERT(Graphics, m_commonPipelines[index], "Renderer が無効な状態で CommonPipeline() を呼んでいる");
-        return *m_commonPipelines[index];
+        NS_ASSERT(Graphics, m_commonPipelines[sided][index], "Renderer が無効な状態で CommonPipeline() を呼んでいる");
+        return *m_commonPipelines[sided][index];
     }
 
-    const Pipeline& Renderer::OccludedPipeline() const noexcept
+    const Pipeline& Renderer::OccludedPipeline(bool twoSided) const noexcept
     {
-        NS_ASSERT(Graphics, m_occludedPipeline, "Renderer が無効な状態で OccludedPipeline() を呼んでいる");
-        return *m_occludedPipeline;
+        int sided = 0;
+        if (twoSided)
+        {
+            sided = 1;
+        }
+        NS_ASSERT(Graphics, m_occludedPipelines[sided], "Renderer が無効な状態で OccludedPipeline() を呼んでいる");
+        return *m_occludedPipelines[sided];
     }
 
     bool Renderer::EnsureOverlay(OverlayResources& overlay,

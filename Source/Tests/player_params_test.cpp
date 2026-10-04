@@ -498,9 +498,8 @@ TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)
         {"矢じりの塗りの不透明度", arrow.headFillAlpha},
         {"色の無い帯の明るい縁の不透明度", arrow.plainBandEdgeAlpha},
         {"色の無い帯の塗りの不透明度", arrow.plainBandFillAlpha},
-        {"色の無い矢じりの明るい縁の不透明度", arrow.plainHeadEdgeAlpha},
-        {"色の無い矢じりの塗りの不透明度", arrow.plainHeadFillAlpha},
-        {"隠れた矢じりの不透明度", arrow.occludedHeadAlpha}};
+        {"隠れた矢じりの不透明度", arrow.occludedHeadAlpha},
+        {"矢じりを見せる最小の角度", arrow.headMinViewDegrees}};
     // 枠と矢印の見た目は描く部品が持ち、遊びの欄と並ばない
     ExpectPartFields(player.TargetIndicator(), markerFields);
     ExpectPartFields(player.SlamIndicator(), arrowFields);

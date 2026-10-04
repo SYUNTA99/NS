@@ -49,32 +49,14 @@ namespace NS::Game::Level
         constexpr const char* k_BandMaterialPath = "Assets/Materials/ground_arrow_band.mat";
         constexpr const char* k_HeadMaterialPath = "Assets/Materials/ground_arrow_head.mat";
 
-        // Shaders/ground_arrow.ps.hlsl の cbuffer と同じ並び。頂点シェーダは standard.vs.hlsl をそのまま使うので、
-        // FrameCB と同じ大きさにし、world と viewProj を同じ位置に置く。残りは照明の欄の場所に地面の矢印の値を置く
-        struct alignas(16) GroundArrowConstants
-        {
-            NS::Core::Matrix world{};
-            NS::Core::Matrix viewProj{};
-            NS::Core::Vector4 chargedColor{}; // rgb は色の付いた部分の色、a は明るい縁の不透明度
-            NS::Core::Vector4 plainColor{};   // rgb は色の付いていない部分の色、a は明るい縁の不透明度
-            NS::Core::Vector4 darkColor{};    // rgb は暗い縁の色、a はその不透明度
-            // xy は始まりのぼかし、zw は色の付いた部分の先の境目。どちらも板の v の 1 次式 (v = 0 の値と v
-            // あたりの変化)
-            NS::Core::Vector4 fadeAndFront{};
-            // xy は帯の切れ目を測る、矢じりの先からの距離 ÷ 矢じりの奥行き (板の v の 1 次式)
-            // z と w は色の付いた部分と付いていない部分の塗りの平均の不透明度
-            NS::Core::Vector4 rearAndFill{};
-            // standard.vs.hlsl が読む震えの欄。振れ幅 0 のまま送り、矢印は震わせない
-            NS::Gfx::TremorCB tremor{};
-        };
-        static_assert(sizeof(GroundArrowConstants) == sizeof(NS::Gfx::FrameCB), "FrameCB と同じ大きさで送る");
-        static_assert(offsetof(GroundArrowConstants, world) == offsetof(NS::Gfx::FrameCB, world),
+        static_assert(sizeof(SlamArrowConstants) == sizeof(NS::Gfx::FrameCB), "FrameCB と同じ大きさで送る");
+        static_assert(offsetof(SlamArrowConstants, world) == offsetof(NS::Gfx::FrameCB, world),
                       "頂点シェーダが読む world の位置");
-        static_assert(offsetof(GroundArrowConstants, viewProj) == offsetof(NS::Gfx::FrameCB, viewProj),
+        static_assert(offsetof(SlamArrowConstants, viewProj) == offsetof(NS::Gfx::FrameCB, viewProj),
                       "頂点シェーダが読む viewProj の位置");
-        static_assert(offsetof(GroundArrowConstants, tremor) == offsetof(NS::Gfx::FrameCB, tremor),
+        static_assert(offsetof(SlamArrowConstants, tremor) == offsetof(NS::Gfx::FrameCB, tremor),
                       "頂点シェーダが読む震えの位置");
-        static_assert(std::is_trivially_copyable_v<GroundArrowConstants>, "FrameCB へバイトで写す");
+        static_assert(std::is_trivially_copyable_v<SlamArrowConstants>, "FrameCB へバイトで写す");
 
         // 板の v (0 が遠い端、1 が近い端) の 1 次式。v での値は value + slope × v
         struct PlateLinear
@@ -132,8 +114,7 @@ namespace NS::Game::Level
                                          desc.headFillAlpha,
                                          desc.plainBandEdgeAlpha,
                                          desc.plainBandFillAlpha,
-                                         desc.plainHeadEdgeAlpha,
-                                         desc.plainHeadFillAlpha,
+                                         desc.headMinViewDegrees,
                                          desc.occludedHeadAlpha};
             for (const float value : nonNegative)
             {
@@ -185,19 +166,22 @@ namespace NS::Game::Level
             float fillAlpha = 0.0f;      // 色の付いた部分の塗りの平均の不透明度
             float plainEdgeAlpha = 0.0f; // 色の付いていない部分の明るい縁の不透明度
             float plainFillAlpha = 0.0f; // 色の付いていない部分の塗りの平均の不透明度
-            bool cutUnderHead = false;   // 帯を矢じりの後ろの端で切る場合 true
+            // 帯の場合 true。帯だけが始まりでぼけ、溜め量の所で色が切れ、矢じりの後ろの端で切れる。矢じりは溜めの
+            // 始めから段の色で全部を塗り、ぼかさない。白っぽい薄い塗りは市松の床に溶け、出たばかりの短い矢印では
+            // 始まりのぼかしに矢じりまで消えていた
+            bool isBand = false;
         };
 
-        [[nodiscard]] GroundArrowConstants MakeConstants(const NS::Gfx::RenderContext& context,
-                                                         const SlamArrowShape& shape,
-                                                         const SlamArrowDesc& desc,
-                                                         const SlamArrowPiece& plate,
-                                                         float width,
-                                                         const PlateLook& look) noexcept
+        [[nodiscard]] SlamArrowConstants MakeConstants(const NS::Core::Matrix& viewProjection,
+                                                       const SlamArrowShape& shape,
+                                                       const SlamArrowDesc& desc,
+                                                       const SlamArrowPiece& plate,
+                                                       float width,
+                                                       const PlateLook& look) noexcept
         {
-            GroundArrowConstants constants{};
+            SlamArrowConstants constants{};
             constants.world = PlateWorld(shape, plate.alongNear, plate.alongFar, width, plate.height, plate.rise);
-            constants.viewProj = context.viewProjection;
+            constants.viewProj = viewProjection;
             constants.chargedColor =
                 NS::Core::Vector4{shape.stageColor.x, shape.stageColor.y, shape.stageColor.z, look.edgeAlpha};
             constants.plainColor =
@@ -206,11 +190,14 @@ namespace NS::Game::Level
                 NS::Core::Vector4{desc.darkColor.x, desc.darkColor.y, desc.darkColor.z, desc.darkAlpha};
 
             // 始まりのぼかし: (along − 玉の縁) ÷ ぼかす長さ。0 以下で消え、1 以上で全部出る
-            const PlateLinear fade =
-                ToPlateV(-shape.start / desc.startFade, 1.0f / desc.startFade, plate.alongNear, plate.alongFar);
+            PlateLinear fade{.value = 1.0f, .slope = 0.0f};
+            if (look.isBand)
+            {
+                fade = ToPlateV(-shape.start / desc.startFade, 1.0f / desc.startFade, plate.alongNear, plate.alongFar);
+            }
             // 色の付いた部分の重み: (色の先 − along) ÷ 境目の幅 + 0.5。境目の真ん中で半分になる
             PlateLinear front{.value = 1.0f, .slope = 0.0f};
-            if (!shape.fullyColored)
+            if (look.isBand && !shape.fullyColored)
             {
                 front = ToPlateV(shape.colorFront / desc.frontSoftness + 0.5f,
                                  -1.0f / desc.frontSoftness,
@@ -220,7 +207,7 @@ namespace NS::Game::Level
             // 帯の切れ目: (矢じりの先 − along) ÷ 矢じりの奥行きが、帯の絵の a (その横の位置で切れる割合)
             // 以上の所だけ帯を出す
             PlateLinear rear{.value = 1.0f, .slope = 0.0f};
-            if (look.cutUnderHead)
+            if (look.isBand)
             {
                 rear = ToPlateV(shape.tip / shape.headDepth, -1.0f / shape.headDepth, plate.alongNear, plate.alongFar);
             }
@@ -229,14 +216,53 @@ namespace NS::Game::Level
             return constants;
         }
 
+        // 矢じりを起こす角度の上限 (度)。90 度で板が真上を向くと線に沿った長さが 0 になり、向きが決まらない
+        constexpr float k_MaxHeadTiltDegrees = 80.0f;
+
+        // カメラから矢じりの手前の端を見る角度が desc.headMinViewDegrees を下回る時、矢じりの板を手前の端を軸に
+        // 長さを変えずに起こし、手前の端をその角度で見せる。カメラが矢じりの後ろに無ければ起こさない
+        // 見る角度は、線を含む縦の面の中の、カメラを見下ろす角 + 板の傾き
+        void TiltHeadTowardCamera(const SlamArrowShape& shape,
+                                  const SlamArrowDesc& desc,
+                                  const NS::Core::Vector3& cameraPosition,
+                                  float& inOutAlong,
+                                  float& inOutRise) noexcept
+        {
+            if (!(inOutAlong > 0.0f) || !IsFiniteVector(cameraPosition))
+            {
+                return;
+            }
+            const NS::Core::Vector3 nearEdge = shape.origin + shape.direction * shape.head.alongNear;
+            const NS::Core::Vector3 toCamera =
+                cameraPosition - NS::Core::Vector3{nearEdge.x, shape.head.height, nearEdge.z};
+            const float behind = -NS::Core::Dot(toCamera, shape.direction);
+            if (!(behind > 0.0f))
+            {
+                return;
+            }
+            const float lookDown = std::atan2(toCamera.y, behind);
+            const float tilt = std::atan2(inOutRise, inOutAlong);
+            const float wanted = std::min(NS::Core::DegreesToRadians(desc.headMinViewDegrees) - lookDown,
+                                          NS::Core::DegreesToRadians(k_MaxHeadTiltDegrees));
+            if (!(wanted > tilt))
+            {
+                return;
+            }
+            const float length = std::sqrt(inOutAlong * inOutAlong + inOutRise * inOutRise);
+            inOutAlong = length * std::cos(wanted);
+            inOutRise = length * std::sin(wanted);
+        }
+
         [[nodiscard]] NS::Gfx::DrawItem MakeDrawItem(NS::Gfx::StaticMesh* mesh,
                                                      NS::Gfx::Material* material,
-                                                     const GroundArrowConstants& constants) noexcept
+                                                     const SlamArrowConstants& constants) noexcept
         {
             NS::Gfx::DrawItem item{};
             item.mesh = mesh;
             item.material = material;
             item.blend = NS::Gfx::BlendMode::Alpha; // 深度は読むだけ。壁と手前の物に隠れる
+            // 下る道筋と目の高さより上の弧では、板がカメラから裏を向く。裏を描かないと帯の先と矢じりが丸ごと消える
+            item.twoSided = true;
             std::memcpy(&item.constants, &constants, sizeof(constants));
             return item;
         }
@@ -441,6 +467,58 @@ namespace NS::Game::Level
                                     .rise = surfaceAt(shape.tip) - headHeight};
     }
 
+    void AppendSlamArrowDrawItems(const SlamArrowShape& shape,
+                                  const SlamArrowDesc& desc,
+                                  const NS::Core::Matrix& viewProjection,
+                                  const NS::Core::Vector3& cameraPosition,
+                                  const SlamArrowDrawAssets& assets,
+                                  std::vector<NS::Gfx::DrawItem>& out)
+    {
+        // 帯の板は絵の横幅ぶん広く置き、明るい縁の外側を玉の通る幅の端に合わせる
+        const float bandPlateWidth = shape.bandWidth / k_BandTextureSpan;
+        const PlateLook bandLook{.edgeAlpha = desc.bandEdgeAlpha,
+                                 .fillAlpha = desc.bandFillAlpha,
+                                 .plainEdgeAlpha = desc.plainBandEdgeAlpha,
+                                 .plainFillAlpha = desc.plainBandFillAlpha,
+                                 .isBand = true};
+        for (const SlamArrowPiece& piece : shape.band)
+        {
+            out.push_back(MakeDrawItem(assets.mesh,
+                                       assets.bandMaterial,
+                                       MakeConstants(viewProjection, shape, desc, piece, bandPlateWidth, bandLook)));
+        }
+        if (!shape.hasHead)
+        {
+            return;
+        }
+        // 矢じりの板の線に沿った長さと高さの差。低いカメラからは手前の端を軸に起こす
+        float headAlong = shape.head.alongFar - shape.head.alongNear;
+        float headRise = shape.head.rise;
+        TiltHeadTowardCamera(shape, desc, cameraPosition, headAlong, headRise);
+        // 矢じりの板は絵の余白ぶん広く長く置き、不透明な範囲を幅と奥行きに合わせる。傾いた矢じりは同じ傾きのまま
+        // 両端へ伸ばす
+        const float marginRatio = (1.0f / k_HeadTextureSpan - 1.0f) * 0.5f;
+        const SlamArrowPiece headPlate{.alongNear = shape.head.alongNear - headAlong * marginRatio,
+                                       .alongFar = shape.head.alongNear + headAlong * (1.0f + marginRatio),
+                                       .height = shape.head.height - headRise * marginRatio,
+                                       .rise = headRise * (1.0f + 2.0f * marginRatio)};
+        const PlateLook headLook{.edgeAlpha = desc.headEdgeAlpha, .fillAlpha = desc.headFillAlpha, .isBand = false};
+        const float headPlateWidth = desc.headWidth / k_HeadTextureSpan;
+        out.push_back(MakeDrawItem(assets.mesh,
+                                   assets.headMaterial,
+                                   MakeConstants(viewProjection, shape, desc, headPlate, headPlateWidth, headLook)));
+        // 隠れた所だけへ薄く描く 2 枚目。高い相手へ反った矢印の先は相手の体の下や自機の玉の後ろに入って隠れる
+        const float occluded = desc.occludedHeadAlpha;
+        const PlateLook occludedLook{
+            .edgeAlpha = headLook.edgeAlpha * occluded, .fillAlpha = headLook.fillAlpha * occluded, .isBand = false};
+        SlamArrowConstants occludedConstants =
+            MakeConstants(viewProjection, shape, desc, headPlate, headPlateWidth, occludedLook);
+        occludedConstants.darkColor.w *= occluded;
+        NS::Gfx::DrawItem occludedItem = MakeDrawItem(assets.mesh, assets.headMaterial, occludedConstants);
+        occludedItem.occludedOnly = true;
+        out.push_back(occludedItem);
+    }
+
     // Player の見た目の段 (VisualStep) が呼ぶ。溜めを観測する観測の段より後なので、
     // このフレームの狙いの線と狙う相手を控えた後に読む
     SlamArrow::SlamArrow() noexcept : NS::Obj::Component() {}
@@ -563,56 +641,13 @@ namespace NS::Game::Level
         {
             return;
         }
-        // 帯の板は絵の横幅ぶん広く置き、明るい縁の外側を玉の通る幅の端に合わせる
-        const float bandPlateWidth = m_shown.bandWidth / k_BandTextureSpan;
-        const PlateLook bandLook{.edgeAlpha = m_desc.bandEdgeAlpha,
-                                 .fillAlpha = m_desc.bandFillAlpha,
-                                 .plainEdgeAlpha = m_desc.plainBandEdgeAlpha,
-                                 .plainFillAlpha = m_desc.plainBandFillAlpha,
-                                 .cutUnderHead = true};
-        for (const SlamArrowPiece& piece : m_shown.band)
-        {
-            out.push_back(MakeDrawItem(
-                m_mesh, m_bandMaterial, MakeConstants(context, m_shown, m_desc, piece, bandPlateWidth, bandLook)));
-        }
-        if (!m_shown.hasHead)
-        {
-            return;
-        }
-        // 矢じりの板は絵の余白ぶん広く長く置き、不透明な範囲を幅と奥行きに合わせる
-        const float lengthMargin = m_shown.headDepth * (1.0f / k_HeadTextureSpan - 1.0f) * 0.5f;
-        // 傾いた矢じりは同じ傾きのまま両端へ伸ばす
-        float slope = 0.0f;
-        const float headLength = m_shown.head.alongFar - m_shown.head.alongNear;
-        if (headLength > 0.0f)
-        {
-            slope = m_shown.head.rise / headLength;
-        }
-        const SlamArrowPiece headPlate{.alongNear = m_shown.head.alongNear - lengthMargin,
-                                       .alongFar = m_shown.head.alongFar + lengthMargin,
-                                       .height = m_shown.head.height - slope * lengthMargin,
-                                       .rise = m_shown.head.rise + slope * lengthMargin * 2.0f};
-        const PlateLook headLook{.edgeAlpha = m_desc.headEdgeAlpha,
-                                 .fillAlpha = m_desc.headFillAlpha,
-                                 .plainEdgeAlpha = m_desc.plainHeadEdgeAlpha,
-                                 .plainFillAlpha = m_desc.plainHeadFillAlpha,
-                                 .cutUnderHead = false};
-        const float headPlateWidth = m_desc.headWidth / k_HeadTextureSpan;
-        out.push_back(MakeDrawItem(
-            m_mesh, m_headMaterial, MakeConstants(context, m_shown, m_desc, headPlate, headPlateWidth, headLook)));
-        // 隠れた所だけへ薄く描く 2 枚目。高い相手へ反った矢印の先は相手の体の下や自機の玉の後ろに入って隠れる
-        const float occluded = m_desc.occludedHeadAlpha;
-        const PlateLook occludedLook{.edgeAlpha = headLook.edgeAlpha * occluded,
-                                     .fillAlpha = headLook.fillAlpha * occluded,
-                                     .plainEdgeAlpha = headLook.plainEdgeAlpha * occluded,
-                                     .plainFillAlpha = headLook.plainFillAlpha * occluded,
-                                     .cutUnderHead = false};
-        GroundArrowConstants occludedConstants =
-            MakeConstants(context, m_shown, m_desc, headPlate, headPlateWidth, occludedLook);
-        occludedConstants.darkColor.w *= occluded;
-        NS::Gfx::DrawItem occludedItem = MakeDrawItem(m_mesh, m_headMaterial, occludedConstants);
-        occludedItem.occludedOnly = true;
-        out.push_back(occludedItem);
+        AppendSlamArrowDrawItems(
+            m_shown,
+            m_desc,
+            context.viewProjection,
+            context.cameraPosition,
+            SlamArrowDrawAssets{.mesh = m_mesh, .bandMaterial = m_bandMaterial, .headMaterial = m_headMaterial},
+            out);
     }
 
     NS::Core::Vector3 SlamArrow::SortCenter() const noexcept
@@ -632,7 +667,8 @@ namespace NS::Game::Level
             return NS::Core::AABB{SortCenter(), NS::Core::Vector3{0.0f, 0.0f, 0.0f}};
         }
         // 線の始まりから矢じりの先 (余白込み) までを、板の幅の半分だけ横へ広げて覆う。高さは板の一番低い端から、
-        // 線の高さと板の一番高い端の高い方まで。矢じりは描く時に余白ぶん傾きのまま伸びるので、傾きの差ぶん広げる
+        // 線の高さと板の一番高い端の高い方まで。矢じりは描く時に余白ぶん傾きのまま伸びるので、傾きの差ぶん
+        // 広げる。低いカメラへ起こした矢じりは手前の端から板の長さまで上がるので、上はその長さぶん広げる
         const float reach = m_shown.tip + m_shown.headDepth;
         const float halfWidth =
             std::max(m_shown.bandWidth / k_BandTextureSpan, m_desc.headWidth / k_HeadTextureSpan) * 0.5f;
@@ -648,7 +684,9 @@ namespace NS::Game::Level
         {
             const float spread = std::abs(m_shown.head.rise);
             lowest = std::min({lowest, m_shown.head.height, m_shown.head.height + m_shown.head.rise}) - spread;
-            highest = std::max({highest, m_shown.head.height, m_shown.head.height + m_shown.head.rise}) + spread;
+            const float standing = (m_shown.headDepth + spread) / k_HeadTextureSpan;
+            highest =
+                std::max({highest, m_shown.head.height, m_shown.head.height + m_shown.head.rise}) + spread + standing;
         }
         const NS::Core::Vector3 low{std::min(m_shown.origin.x, reachEnd.x) - halfWidth,
                                     lowest,
