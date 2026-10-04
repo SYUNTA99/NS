@@ -521,36 +521,17 @@ namespace NS::Game::Level
 
     // Player の見た目の段 (VisualStep) が呼ぶ。溜めを観測する観測の段より後なので、
     // このフレームの狙いの線と狙う相手を控えた後に読む
-    SlamArrow::SlamArrow() noexcept : NS::Obj::Component() {}
+    SlamArrow::SlamArrow() noexcept : NS::Obj::OverlayRenderer() {}
 
     void SlamArrow::OnStart()
     {
-        NS::Obj::Actor* owner = Owner();
-        if (owner == nullptr)
-        {
-            return;
-        }
-        if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(owner))
+        // 基底が重ね描きの登録簿へ自分を入れる
+        NS::Obj::OverlayRenderer::OnStart();
+
+        if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
         {
             m_player = ownerPlayer;
             m_collider = &ownerPlayer->Collider();
-        }
-        if (NS::Obj::Scene* scene = owner->OwningScene())
-        {
-            scene->RegisterRenderable(this);
-        }
-    }
-
-    void SlamArrow::OnEndPlay()
-    {
-        NS::Obj::Actor* owner = Owner();
-        if (owner == nullptr)
-        {
-            return;
-        }
-        if (NS::Obj::Scene* scene = owner->OwningScene())
-        {
-            scene->UnregisterRenderable(this);
         }
     }
 
@@ -635,66 +616,25 @@ namespace NS::Game::Level
         m_hasShown = true;
     }
 
-    void SlamArrow::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
+    void SlamArrow::OnRenderOverlay(const NS::Gfx::RenderContext& context)
     {
-        if (!IsActive() || !m_hasShown || m_mesh == nullptr || m_bandMaterial == nullptr || m_headMaterial == nullptr)
+        if (!IsActive() || !m_hasShown || context.renderer == nullptr || m_mesh == nullptr ||
+            m_bandMaterial == nullptr || m_headMaterial == nullptr)
         {
             return;
         }
+        m_drawScratch.clear();
         AppendSlamArrowDrawItems(
             m_shown,
             m_desc,
             context.viewProjection,
             context.cameraPosition,
             SlamArrowDrawAssets{.mesh = m_mesh, .bandMaterial = m_bandMaterial, .headMaterial = m_headMaterial},
-            out);
-    }
-
-    NS::Core::Vector3 SlamArrow::SortCenter() const noexcept
-    {
-        const NS::Obj::Actor* owner = Owner();
-        if (owner == nullptr)
+            m_drawScratch);
+        for (const NS::Gfx::DrawItem& item : m_drawScratch)
         {
-            return {};
+            NS::Gfx::IssueDrawItem(*context.renderer, item);
         }
-        return owner->Root().Position();
-    }
-
-    NS::Core::AABB SlamArrow::WorldBounds() const noexcept
-    {
-        if (!m_hasShown)
-        {
-            return NS::Core::AABB{SortCenter(), NS::Core::Vector3{0.0f, 0.0f, 0.0f}};
-        }
-        // 線の始まりから矢じりの先 (余白込み) までを、板の幅の半分だけ横へ広げて覆う。高さは板の一番低い端から、
-        // 線の高さと板の一番高い端の高い方まで。矢じりは描く時に余白ぶん傾きのまま伸びるので、傾きの差ぶん
-        // 広げる。低いカメラへ起こした矢じりは手前の端から板の長さまで上がるので、上はその長さぶん広げる
-        const float reach = m_shown.tip + m_shown.headDepth;
-        const float halfWidth =
-            std::max(m_shown.bandWidth / k_BandTextureSpan, m_desc.headWidth / k_HeadTextureSpan) * 0.5f;
-        const NS::Core::Vector3 reachEnd = m_shown.origin + m_shown.direction * reach;
-        float lowest = m_shown.origin.y;
-        float highest = m_shown.origin.y;
-        for (const SlamArrowPiece& piece : m_shown.band)
-        {
-            lowest = std::min({lowest, piece.height, piece.height + piece.rise});
-            highest = std::max({highest, piece.height, piece.height + piece.rise});
-        }
-        if (m_shown.hasHead)
-        {
-            const float spread = std::abs(m_shown.head.rise);
-            lowest = std::min({lowest, m_shown.head.height, m_shown.head.height + m_shown.head.rise}) - spread;
-            const float standing = (m_shown.headDepth + spread) / k_HeadTextureSpan;
-            highest =
-                std::max({highest, m_shown.head.height, m_shown.head.height + m_shown.head.rise}) + spread + standing;
-        }
-        const NS::Core::Vector3 low{std::min(m_shown.origin.x, reachEnd.x) - halfWidth,
-                                    lowest,
-                                    std::min(m_shown.origin.z, reachEnd.z) - halfWidth};
-        const NS::Core::Vector3 high{std::max(m_shown.origin.x, reachEnd.x) + halfWidth,
-                                     highest,
-                                     std::max(m_shown.origin.z, reachEnd.z) + halfWidth};
-        return NS::Core::AABB{(low + high) * 0.5f, (high - low) * 0.5f};
     }
 
     bool SlamArrow::TryGetShownArrow(SlamArrowShape& outShape) const

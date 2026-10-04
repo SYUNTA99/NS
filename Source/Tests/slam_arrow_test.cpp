@@ -1,6 +1,7 @@
 #include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamArrow.h"
+#include "Game/Level/TargetMarker.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
@@ -141,6 +142,16 @@ TEST(SlamArrowTest, ArcArrowFollowsTheBallThatIsActuallyLaunched)
     // 弧で上がった。床に沿うまっすぐな矢印とは違う形
     EXPECT_GT(highest, startHeight + 0.3f);
     EXPECT_GT(player->Resolver().LastImpact().sequence, 0u);
+}
+
+// 矢印は世界を描いてにじませた後の重ね描きで描き、溜めの光とそのにじみが矢じりを白く覆わない。ロックオンの
+// 枠は矢印より後に重ね、枠が矢印の下に隠れない
+TEST(SlamArrowTest, ArrowIsOverlaidBeforeTheLockOnFrame)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, false, 1.0f, Vector3{});
+    ASSERT_NE(player, nullptr);
+    EXPECT_LT(player->SlamIndicator().OverlayOrder(), player->TargetIndicator().OverlayOrder());
 }
 
 // 予測の段は、放つ上下の速さで計算した弧の、相手に触れる所の高さで出す

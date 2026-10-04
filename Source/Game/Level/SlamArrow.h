@@ -3,12 +3,10 @@
 #include "Game/Level/SlamAim.h"
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerVisualParams.h"
-#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/DrawItem.h"
 #include "Runtime/Graphics/FrameConstants.h"
-#include "Runtime/Object/Component.h"
-#include "Runtime/Object/IRenderable.h"
+#include "Runtime/Object/Components/OverlayRenderer.h"
 
 #include <functional>
 #include <vector>
@@ -172,19 +170,18 @@ namespace NS::Game::Level
     //! 形は OnUpdate で組んで控え、描く時は板を積むだけ。
     //! 狙いの線が無いフレームと放したフレームは何も組まない。
     //! 板は組み込みの上向きの板 shadowQuad に、帯と矢じりのマテリアル (Shaders/ground_arrow.ps.hlsl) を貼った半透明。
-    //! 矢じりはもう 1 枚、手前の物に隠れた画素だけへ薄く描き、相手や自機の玉の後ろに入った先も見せる
+    //! 矢じりはもう 1 枚、手前の物に隠れた画素だけへ薄く描き、相手や自機の玉の後ろに入った先も見せる。
+    //! 世界を描いてにじませた後の重ね描きで、世界の奥行きを読んで描く。溜めの光とそのにじみが矢じりを白く覆わない。
+    //! 矢印の板は 1 以下の色で書くので、にじみの前に描いてもにじまない
     //! 依存: Player, SlamAim (AimLine), NS::Obj::Collider, NS::Obj::Scene, NS::Obj::IUseCollision
-    class SlamArrow : public NS::Obj::Component, public NS::Obj::IRenderable
+    class SlamArrow : public NS::Obj::OverlayRenderer
     {
     public:
         SlamArrow() noexcept;
 
-        //! 描く物の登録簿へ入り、同じ配置物の Player と身体を引き当てる。
+        //! 重ね描きの登録簿へ入り、同じ配置物の Player と身体を引き当てる。
         //! どちらかが無ければ以後何も組まない
         void OnStart() override;
-
-        //! 描く物の登録簿から出る
-        void OnEndPlay() override;
 
         //! 組み込みの板と、帯と矢じりのマテリアルを引き当てる
         void ResolveAssets(NS::Obj::AssetManager& assets) override;
@@ -193,30 +190,19 @@ namespace NS::Game::Level
         //! 溜めていないか狙いの線が無いフレームは控えを消し、フレーム数を戻す
         void OnUpdate() override;
 
-        //! 控えた矢印の帯の板と矢じりの板、隠れた所へ描く矢じりの板を積む。控えが無いか、資材が引けていなければ何も積まない
-        void Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out) override;
+        //! ロックオンの枠 (TargetMarker の 0) より先に描き、枠を矢印の上に重ねる
+        [[nodiscard]] int OverlayOrder() const noexcept override { return -1; }
 
-        //! 半透明の並びに入る
-        [[nodiscard]] NS::Obj::RenderBucket Bucket() const noexcept override
-        {
-            return NS::Obj::RenderBucket::Transparent;
-        }
-
-        //! 半透明の並びの中心。自機の影と同じ自機の位置
-        [[nodiscard]] NS::Core::Vector3 SortCenter() const noexcept override;
-
-        //! 自機の影 (優先度 0) より後に描く
-        [[nodiscard]] int SortPriority() const noexcept override { return 1; }
-
-        //! 控えた矢印を覆う箱。控えが無ければ自機の位置の大きさ 0 の箱
-        [[nodiscard]] NS::Core::AABB WorldBounds() const noexcept override;
+        //! 控えた矢印の帯の板と矢じりの板、隠れた所へ描く矢じりの板を描く。控えが無いか、資材が引けていないか、
+        //! 描く装置が無ければ何も描かない
+        void OnRenderOverlay(const NS::Gfx::RenderContext& context) override;
 
         //! @brief このフレームに控えた矢印を読む
         //! @param[out] outShape 控えた形。控えが無い場合は書き換えない
         //! @return 控えがある場合 true、それ以外の場合は false
         [[nodiscard]] bool TryGetShownArrow(SlamArrowShape& outShape) const;
 
-        NS_REFLECT_BEGIN(SlamArrow, NS::Obj::Component)
+        NS_REFLECT_BEGIN(SlamArrow, NS::Obj::OverlayRenderer)
         NS_REFLECT_GROUP("形")
         NS_REFLECT_FIELD(m_desc.growFrames, "矢印が伸びるフレーム数")
         NS_REFLECT_FIELD(m_desc.groundLift, "矢印を浮かせる高さ")
@@ -256,5 +242,6 @@ namespace NS::Game::Level
         NS::Gfx::StaticMesh* m_mesh = nullptr;         // 共有の上向きの板 (非所有)
         NS::Gfx::Material* m_bandMaterial = nullptr;   // 帯のマテリアル (非所有)
         NS::Gfx::Material* m_headMaterial = nullptr;   // 矢じりのマテリアル (非所有)
+        std::vector<NS::Gfx::DrawItem> m_drawScratch;  // 描く単位を毎フレーム積み直す置き場。確保を使い回す
     };
 } // namespace NS::Game::Level
