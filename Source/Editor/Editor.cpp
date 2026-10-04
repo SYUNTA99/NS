@@ -109,7 +109,6 @@ void Editor::OnDetach()
     }
     m_sceneView.ReleaseTarget();
     m_gameView.ReleaseTarget();
-    m_hitTimeline.ReleaseTargets();
     // ImGui_ImplDX11_Shutdown が ID3D11Device を要求するため Renderer 健在で Application::Shutdown より前の今に破棄
     m_imgui.reset();
     NS_LOG_INFO(App, "Editor detached");
@@ -205,7 +204,6 @@ void Editor::OnRender()
         else
         {
             // 全面化中はドックも他パネルも発行せず、対象 1 枚だけをワークエリア全面へ描く
-            m_hitTimeline.Suppress();
             RenderMaximizedPanel(editor, toolbarHeight);
         }
 
@@ -237,12 +235,9 @@ void Editor::OnRender()
             views.push_back(*gameView);
         }
         editor.SetSceneViews(std::move(views));
-        // 下見の場面は編集中の場面と別なので、ここで自分の描画先へ描く。絵は次のフレームの ImGui が貼る
-        m_hitTimeline.RenderPreview();
     }
     else
     {
-        m_hitTimeline.Suppress();
         // F5 全画面プレイ: ビュー列を空にし backbuffer へ Brain 視点で 1 回描く
         editor.SetSceneViews({});
     }

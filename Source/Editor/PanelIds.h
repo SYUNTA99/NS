@@ -13,6 +13,4 @@ namespace NS::Editor
     inline constexpr const char* k_PanelAssets = "Assets";
     inline constexpr const char* k_PanelEditMode = "Edit Mode";
     inline constexpr const char* k_PanelHitTimeline = "当たりのタイムライン###HitTimeline";
-    inline constexpr const char* k_PanelHitPreviewGame = "下見 ゲームのカメラ###HitPreviewGame";
-    inline constexpr const char* k_PanelHitPreviewSide = "下見 横から###HitPreviewSide";
 } // namespace NS::Editor

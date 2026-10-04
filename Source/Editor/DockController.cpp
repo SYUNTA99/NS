@@ -61,8 +61,6 @@ namespace NS::Editor
             // 中央ノードは窓を割り当てず、Scene / Game の両方をドックする。映像を持つのは前面の側だけ
             ImGui::DockBuilderDockWindow(k_PanelScene, centerId);
             ImGui::DockBuilderDockWindow(k_PanelGame, centerId);
-            ImGui::DockBuilderDockWindow(k_PanelHitPreviewGame, centerId);
-            ImGui::DockBuilderDockWindow(k_PanelHitPreviewSide, centerId);
 
             // ドック順や発行順に前面タブを委ねると Edit Mode が出てくるので明示する
             SelectDefaultTab(leftId, k_PanelHierarchy);

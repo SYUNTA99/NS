@@ -7,16 +7,12 @@
 #include "Runtime/App/Application.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/Input.h"
 
 #include <algorithm>
 #include <cstdio>
 #include <format>
 #include <functional>
-#include <optional>
 #include <string_view>
-#include <utility>
 #include <variant>
 #include <vector>
 
@@ -85,11 +81,6 @@ namespace NS::Editor
             return "外れ";
         }
 
-        // 横から見る絵の、当たった点からの距離 (m) と高さ (m)。相手と自機が 1 枚に収まる大きさ
-        constexpr float k_SideViewDistance = 7.0f;
-        constexpr float k_SideViewHeight = 1.0f;
-        constexpr float k_SideViewFovDegrees = 50.0f;
-
         // 再生の速さ。12 フレームの止めはそのままの速さだと 0.2 秒で目で追えないので、遅い方を既定にする
         constexpr float k_NormalSpeed = 1.0f;
         constexpr float k_QuarterSpeed = 0.25f;
@@ -124,11 +115,6 @@ namespace NS::Editor
         m_needsRun = true;
     }
 
-    HitTimelinePanel::~HitTimelinePanel()
-    {
-        DropPreview();
-    }
-
     void HitTimelinePanel::LoadWorking(HitTier tier)
     {
         m_tier = tier;
@@ -152,18 +138,9 @@ namespace NS::Editor
         m_needsRun = true;
     }
 
-    void HitTimelinePanel::DropPreview() noexcept
-    {
-        // 自機の HitReaction は片付けでパッドへ 0 を書くので、手元のパッドへ書かせないよう中立の中で壊す
-        const NS::Platform::ScopedNeutralInput neutral;
-        m_scene.reset();
-        m_sceneFrame = -1;
-    }
-
     void HitTimelinePanel::RunPreview(LevelEditorController& editor)
     {
         m_needsRun = false;
-        DropPreview();
         m_snapshot = editor.SceneSnapshot();
         HitPreviewWorld world;
         if (NS::App::Application* app = NS::App::Application::Get())
@@ -180,36 +157,6 @@ namespace NS::Editor
         if (m_result.hit && (!wasHit || m_playback.frame > last))
         {
             m_playback.frame = m_result.detectionIndex;
-        }
-    }
-
-    void HitTimelinePanel::PrepareSceneAt(int frameIndex)
-    {
-        if (m_scene != nullptr && m_sceneFrame <= frameIndex)
-        {
-            if (frameIndex > m_sceneFrame)
-            {
-                m_scene->SetSimulationPaused(false);
-                StepHitPreviewScene(*m_scene, frameIndex - m_sceneFrame);
-                m_sceneFrame = frameIndex;
-            }
-        }
-        else
-        {
-            DropPreview();
-            HitPreviewWorld world;
-            if (NS::App::Application* app = NS::App::Application::Get())
-            {
-                world.assets = &app->Assets();
-                world.renderer = &app->Renderer();
-            }
-            m_scene = BuildHitPreviewSceneAt(m_snapshot, m_result, frameIndex, world);
-            m_sceneFrame = frameIndex;
-        }
-        // 描く間は止めておく。止めていないと描くたびに前の固定フレームとの補間の割合が変わり、同じフレームの絵が揺れる
-        if (m_scene != nullptr)
-        {
-            m_scene->SetSimulationPaused(true);
         }
     }
 
@@ -237,8 +184,6 @@ namespace NS::Editor
 
         if (playMode)
         {
-            DropPreview();
-            Suppress();
             return;
         }
         if (m_needsRun && !ImGui::IsAnyItemActive())
@@ -247,20 +192,9 @@ namespace NS::Editor
         }
         const int last = std::max(static_cast<int>(m_result.frames.size()) - 1, 0);
         m_playback.Tick(ImGui::GetIO().DeltaTime, last);
-        if (m_result.hit)
-        {
-            PrepareSceneAt(m_playback.frame);
-        }
-        RenderImages();
 #else
         (void)editor;
 #endif
-    }
-
-    void HitTimelinePanel::Suppress() noexcept
-    {
-        m_gameSurface.ResetVisibility();
-        m_sideSurface.ResetVisibility();
     }
 
     void HitTimelinePanel::RenderConditions(LevelEditorController& editor) noexcept
@@ -501,9 +435,6 @@ namespace NS::Editor
             clock = m_playback.frame - m_result.detectionIndex;
         }
         ImGui::Text("フレーム %d (検知から %+d)", m_playback.frame, clock);
-        ImGui::SameLine();
-        // 横の向きに別の配置物があると相手が隠れるので、反対側から見られるようにする
-        ImGui::Checkbox("横の絵を反対側から", &m_sideFlipped);
 #endif
     }
 
@@ -809,61 +740,5 @@ namespace NS::Editor
             ApplyWorking();
         }
 #endif
-    }
-
-    void HitTimelinePanel::RenderImages() noexcept
-    {
-#if NS_EDITOR_ENABLED
-        ImVec2 rectMin{};
-        ImVec2 rectMax{};
-        bool hovered = false;
-        (void)m_gameSurface.BeginView(k_PanelHitPreviewGame, rectMin, rectMax, hovered);
-        m_gameSurface.EndView();
-        (void)m_sideSurface.BeginView(k_PanelHitPreviewSide, rectMin, rectMax, hovered);
-        m_sideSurface.EndView();
-#endif
-    }
-
-    void HitTimelinePanel::RenderPreview() noexcept
-    {
-        if (m_scene == nullptr || !m_result.hit)
-        {
-            return;
-        }
-        std::vector<NS::Obj::SceneView> views;
-        // ゲームのカメラの絵は、下見の場面のカメラの管理役が選ぶカメラ (揺れと寄りを掛けた後)
-        if (std::optional<NS::Obj::SceneView> game = m_gameSurface.CollectView(std::nullopt))
-        {
-            views.push_back(*game);
-        }
-        // 横の絵は、突進の向きに直交する横から当たった点を見る
-        NS::Obj::CameraPose side;
-        const NS::Core::Vector3 point = m_result.impact.surfacePoint;
-        NS::Core::Vector3 across{m_result.direction.z, 0.0f, -m_result.direction.x};
-        if (m_sideFlipped)
-        {
-            across = -across;
-        }
-        side.target = point;
-        side.position = point + across * k_SideViewDistance + NS::Core::Vector3{0.0f, k_SideViewHeight, 0.0f};
-        side.fovY = NS::Core::ToRadians(NS::Core::Degrees{k_SideViewFovDegrees});
-        if (std::optional<NS::Obj::SceneView> sideView = m_sideSurface.CollectView(side))
-        {
-            views.push_back(*sideView);
-        }
-        if (views.empty())
-        {
-            return;
-        }
-        m_scene->SetSceneViews(std::move(views));
-        m_scene->OnRender();
-        m_scene->SetSceneViews({});
-    }
-
-    void HitTimelinePanel::ReleaseTargets() noexcept
-    {
-        DropPreview();
-        m_gameSurface.Release();
-        m_sideSurface.Release();
     }
 } // namespace NS::Editor
