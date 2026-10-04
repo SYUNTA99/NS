@@ -4,6 +4,8 @@
 #include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/Reflection/ActorRef.h"
 
+#include <optional>
+
 namespace NS::Obj
 {
     class Transform;
