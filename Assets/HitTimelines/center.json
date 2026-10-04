@@ -166,9 +166,9 @@
     {
       "direction": "any",
       "fields": {
-        "濃さ": 0.5
+        "濃さ": 0.9
       },
-      "length": 6,
+      "length": 2,
       "start": 1,
       "type": "Flash"
     },
