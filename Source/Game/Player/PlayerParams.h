@@ -150,9 +150,12 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_reboundApexHeight, "反動の高さ")
         NS_REFLECT_FIELD(m_reboundDistance, "反動の距離")
         NS_REFLECT_FIELD(m_centerHitReboundDistanceScale, "中心近くの当たりの反動の距離の倍率")
+        NS_REFLECT_FIELD(m_missReboundDistanceScale, "外れの反動の距離の倍率")
         NS_REFLECT_FIELD(m_missReboundHeightRatio, "外れの反動の高さの割合")
         NS_REFLECT_FIELD(m_missSlamBounce, "叩きつけた時の跳ね")
         NS_REFLECT_FIELD(m_missBoxEdgeSharpness, "四角の角の鋭さ")
+        NS_REFLECT_FIELD(m_missLaunchHeightRatio, "外れで飛ばす相手の弧の高さの割合")
+        NS_REFLECT_FIELD(m_missLaunchDistanceRatio, "外れで飛ばす相手の距離の割合")
         NS_REFLECT_FIELD(m_missTwistTurnsPerSecond, "外れの縁でのねじれの回転数")
         NS_REFLECT_FIELD(m_missSpinCarryRatio, "外れで当たる前の回転を引き継ぐ割合")
         NS_REFLECT_FIELD(m_missSpinBlendSteps, "外れの回転を寄せるフレーム数")
@@ -260,12 +263,22 @@ namespace NS::Game::Player
         float m_reboundApexHeight = 1.15f;
         float m_reboundDistance = 0.575f;
         float m_centerHitReboundDistanceScale = 2.0f;
-        // 外れは浮かせず短く。見本の出発点 (真ん中 1.15 m に対して 0.35 m) の比
-        float m_missReboundHeightRatio = 0.3f;
+        // 外れは手応えが来ない「すかし」。勢いが相手に止められず、外した側へ滑って抜けていく。距離を 2.5 倍に
+        // 伸ばして高さを下げ、浮かずに速く横へ抜けて、後ろからのカメラでどちらへ外したかが見える量にする
+        float m_missReboundDistanceScale = 2.5f;
+        // 外れは浮かせず、地面すれすれを滑って抜け、すぐ次を狙わせる。真ん中の 5% で、0.15 では反動の上りの
+        // 弱い重力のせいで 0.2 m ほどの弧に 24 フレームかかり、ふわっと浮いて見えた
+        float m_missReboundHeightRatio = 0.05f;
         // 下の縁の外れは地面へ叩きつけ、少し跳ねてこする。真下を向いた面で外れの高さの 4 割
         float m_missSlamBounce = 0.4f;
         // 箱の相手の面の読み方。見本の出発点 6 で、縁に沿った所は縁の向きへ真っすぐ、角の近くだけ斜めに逸れる
         float m_missBoxEdgeSharpness = 6.0f;
+        // 外れの相手は低く短く飛んで地面を跳ねる。真ん中と同じ角度の弧だと「弾き飛ばした」に見えるので、
+        // 距離を押し込む成分の 2 乗で縮めた上から、高さだけさらに 0.35 倍にして地面すれすれに出す
+        float m_missLaunchHeightRatio = 0.35f;
+        // 外れは手応えが来ない「すかし」。相手は触れた所から少しずれるだけにする。押し込む成分の 2 乗の上から
+        // 0.1 倍で、端の外れは 1 m ほど、赤のすぐ外でも 3 m ほどしか動かず、画面の中に残る
+        float m_missLaunchDistanceRatio = 0.1f;
         // 外れの玉は止まりかけのコマのように、かすった所の摩擦の軸でねじれ、その軸自体が傾いてぐらぐら回る
         // ねじれは縁で威力 1 の時の毎秒の回転数。威力と端の近さを掛ける
         float m_missTwistTurnsPerSecond = 2.0f;
@@ -273,12 +286,13 @@ namespace NS::Game::Player
         float m_missSpinCarryRatio = 0.4f;
         // 突進の回転からこのフレーム数で寄せる。急に変えると絵が飛ぶ
         int m_missSpinBlendSteps = 6;
-        // 軸がねじれの軸から傾く角度 (度) と、傾いた軸が回る速さ (回/秒)
-        float m_missWobbleDegrees = 25.0f;
+        // 軸がねじれの軸から傾く角度 (度) と、傾いた軸が回る速さ (回/秒)。ぐらつきは気持ち悪さに寄るので
+        // かすった感じが残る 10 度に抑える
+        float m_missWobbleDegrees = 10.0f;
         float m_missWobbleTurnsPerSecond = 1.5f;
         // 外れの着地からこすって止まり、操作が戻るまで。着いた速さに依らず同じフレーム数で戻り、身体で覚えられる
-        // 0 はこすらずに、着いたフレームに立ちへ戻る
-        int m_missSkidSteps = 18;
+        // 0 はこすらずに、着いたフレームに立ちへ戻る。外れはすぐ次を狙えるよう 10
+        int m_missSkidSteps = 10;
         // 速さ = 着いた速さ × (1 − 経過 ÷ フレーム数)^減り方。2 で、すぐ落ちて最後に少し擦れが残る
         float m_missSkidExponent = 2.0f;
         float m_launchDistance = 29.0f;
@@ -317,7 +331,8 @@ namespace NS::Game::Player
         float m_glowDiameterBase = 2.0f;
         float m_glowDiameterPerPower = 1.6f;
         int m_recoilCount = 8;
-        int m_wideRecoilCount = 4;
+        // 外れは弾かれた手応えが来ない「すかし」。弾かれ線は弾き返された印に見えるので出さない
+        int m_wideRecoilCount = 0;
         float m_recoilLengthBase = 0.6f;
         float m_recoilLengthPerRebound = 0.5f;
         int m_dustCountBase = 4;

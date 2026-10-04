@@ -34,7 +34,7 @@ namespace NS::Game::Level
         struct TierScales
         {
             float hitStop = 1.0f;         // 貫通の止めの倍率
-            float reboundDistance = 1.0f; // 反動の距離の倍率。高さは段で変えない
+            float reboundDistance = 1.0f; // 反動の距離の倍率。外れの高さは外れの節で下げる
         };
 
         // 段ごとに 1 行の表。段を足したら行を足す。真偽で分けると段が 2 つと決め打ちになる
@@ -46,7 +46,7 @@ namespace NS::Game::Level
                 return TierScales{.hitStop = tuning.centerHitStopScale,
                                   .reboundDistance = tuning.centerHitReboundDistanceScale};
             case HitTier::Wide:
-                return TierScales{};
+                return TierScales{.reboundDistance = tuning.missReboundDistanceScale};
             }
             // 番号から作った段の外の値は倍率を掛けない
             return TierScales{};
@@ -159,6 +159,8 @@ namespace NS::Game::Level
             .apexHeight = tuning.reboundApexHeight * outcome.reboundScale,
             .distance = reboundDistance};
         NS::Core::Vector3 launchDirection = input.launchDirection;
+        // 外れで相手へ押し込む成分。突進の向きと触れた面の向きの内積で、面の真ん中は 1、端ほど 0 へ寄る
+        float missPush = 1.0f;
 
         // 外れは触れた表面の向き n で来た勢いを分ける。n へ押し込む成分は跳ね返り、面に沿って滑る成分はそのまま
         // 残るので、真ん中は来た向きへ戻り、端は勢いの多くが横へ逃げて相手の脇を逸れる。量は今の配分のまま、
@@ -173,6 +175,11 @@ namespace NS::Game::Level
                 sharpness = tuning.missBoxEdgeSharpness;
             }
             const NS::Core::Vector3 normal = MissSurfaceNormal(input.faceU, input.faceV, sharpness, input.slamVelocity);
+            const float slamSpeed = input.slamVelocity.Length();
+            if (slamSpeed > NS::Core::k_Epsilon)
+            {
+                missPush = NS::Core::Clamp(-(input.slamVelocity / slamSpeed).Dot(normal), 0.0f, 1.0f);
+            }
             NS::Core::Vector3 forward{};
             NS::Core::Vector3 flatNormal{};
             if (NS::Core::TryNormalizeHorizontal(input.slamVelocity, forward))
@@ -225,6 +232,14 @@ namespace NS::Game::Level
                                       .fallGravityScale = tuning.launchFallGravityScale,
                                       .apexBandSpeed = tuning.launchApexBandSpeed,
                                       .apexBandGravityScale = tuning.launchApexBandGravityScale};
+        // 外れは力が相手へ真っすぐ入らない。飛ぶ量を押し込む成分の 2 乗で減らした上から距離と弧をさらに縮め、
+        // 相手は少しずれるだけにして、真ん中の「弾き飛ばした」に見せない
+        if (input.tier == HitTier::Wide)
+        {
+            const float pushSquared = missPush * missPush;
+            outcome.launchArc.distance *= pushSquared * tuning.missLaunchDistanceRatio;
+            outcome.launchArc.apexHeight *= pushSquared * tuning.missLaunchHeightRatio;
+        }
         return outcome;
     }
 } // namespace NS::Game::Level

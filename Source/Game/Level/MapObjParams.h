@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Level/MissHop.h"
 #include "Runtime/Object/Component.h"
 
 #include <algorithm>
@@ -55,6 +56,14 @@ namespace NS::Game::Level
         [[nodiscard]] float DebrisScale() const noexcept { return m_debrisScale; }
         [[nodiscard]] NS::Core::Vector3 DebrisBaseColor() const noexcept { return m_debrisBaseColor; }
         [[nodiscard]] float MarkProbeDistance() const noexcept { return m_markProbeDistance; }
+        //! 欄「外れで跳ねる回数」の値。負は 0
+        [[nodiscard]] int MissHopCount() const noexcept { return std::max(m_missHopCount, 0); }
+        //! 外れで着地した後の跳ね方の欄をまとめた値
+        [[nodiscard]] MissHopDesc MissHop() const noexcept
+        {
+            return MissHopDesc{
+                .heightRatio = m_missHopHeightRatio, .turnDegrees = m_missHopTurnDegrees, .keep = m_missHopKeep};
+        }
 
         NS_REFLECT_BEGIN(MapObjParams, NS::Obj::Component)
         NS_REFLECT_FIELD(m_mass, "質量")
@@ -74,6 +83,10 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_landDustBase, "着地の粉の大きさの基準")
         NS_REFLECT_FIELD(m_landDustPerRootMass, "着地の粉の大きさの質量の平方根あたり")
         NS_REFLECT_FIELD(m_landDustPerPower, "着地の粉の大きさの威力あたりの伸び")
+        NS_REFLECT_FIELD(m_missHopCount, "外れで跳ねる回数")
+        NS_REFLECT_FIELD(m_missHopHeightRatio, "外れで跳ねる高さの割合")
+        NS_REFLECT_FIELD(m_missHopTurnDegrees, "外れで跳ねる向きのぶれの角度")
+        NS_REFLECT_FIELD(m_missHopKeep, "外れで跳ねるたびに残る速さの割合")
         NS_REFLECT_END()
 
     private:
@@ -95,5 +108,12 @@ namespace NS::Game::Level
         float m_debrisScale = 0.25f;
         NS::Core::Vector3 m_debrisBaseColor{0.35f, 0.32f, 0.30f};
         float m_markProbeDistance = 64.0f;
+        // 外れで飛ばされた置物は、着地で 1 回だけ小さく向きを変えて跳ね、転がって止まる。真ん中のまっすぐ飛ぶ弧と
+        // 違って、力がまともに入らずかすめた事を相手の動きで見せる。何度も跳ねると目を引いて派手になるので 1 回、
+        // 跳ねの高さは水平の速さの 0.35 倍まで、向きは左右 30 度までぶらし、速さは跳ねると 7 割に落とす
+        int m_missHopCount = 1;
+        float m_missHopHeightRatio = 0.35f;
+        float m_missHopTurnDegrees = 30.0f;
+        float m_missHopKeep = 0.7f;
     };
 } // namespace NS::Game::Level

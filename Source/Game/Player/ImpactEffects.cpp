@@ -723,9 +723,14 @@ namespace NS::Game::Player
                     m_dusts.push_back(id);
                 }
             }
-            if (!m_plan.recoilPlayed && step == m_plan.releaseStep + k_RecoilDelay)
+            // 線の本数が 0 の段は出さずに済ませる
+            const bool recoilDue = !m_plan.recoilPlayed && step == m_plan.releaseStep + k_RecoilDelay;
+            if (recoilDue)
             {
                 m_plan.recoilPlayed = true;
+            }
+            if (recoilDue && shape.recoilCount > 0)
+            {
                 // 玉の縁のうち反動の向きの逆の点から、反動の向きへ開く扇にする。接触点 (玉の相手の側) から出すと、
                 // 線の出た側を玉の後ろと読まれ、上へ弾かれた玉が横へ動いて見えた
                 float radius = 0.0f;
@@ -761,7 +766,13 @@ namespace NS::Game::Player
             m_flight.reboundTrail = 0;
         }
         // 貫通した時と反動の初速が 0 の時は反動に入らないので、尾は出さない
-        if (m_player != nullptr && m_player->IsRebounding())
+        // 外れは弾かれた手応えを出さない。尾の輪と筋は弾き返された印に見える
+        bool missed = false;
+        if (m_resolver != nullptr)
+        {
+            missed = m_resolver->LastImpact().tier == NS::Game::Level::HitTier::Wide;
+        }
+        if (m_player != nullptr && m_player->IsRebounding() && !missed)
         {
             const Vector3 ball = Owner()->Root().Position();
             const Vector3 heading = ReboundTrailHeading(m_player->Body().Velocity(), ball, CameraPosition());

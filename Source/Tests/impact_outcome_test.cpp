@@ -54,7 +54,7 @@ TEST(ImpactOutcome, HeavierTargetBouncesSelfMoreAndLaunchesTargetLess)
     EXPECT_FALSE(heavyOutcome.broke);
 }
 
-// 中心近くの当たりだけ反動の距離を伸ばす。外れは高さを欄「外れの反動の高さの割合」で下げ、真ん中より浮かせない
+// 段ごとに反動の距離の倍率を掛ける。外れは高さを欄「外れの反動の高さの割合」で下げ、真ん中より浮かせない
 TEST(ImpactOutcome, CenterHitStretchesReboundDistanceAndMissStaysLow)
 {
     const ImpactTuning tuning = DefaultTuning();
@@ -65,19 +65,21 @@ TEST(ImpactOutcome, CenterHitStretchesReboundDistanceAndMissStaysLow)
     const ImpactOutcome wideOutcome = ComputeImpactOutcome(wide, tuning);
     const ImpactOutcome centerOutcome = ComputeImpactOutcome(center, tuning);
 
-    EXPECT_FLOAT_EQ(centerOutcome.reboundArc.distance,
+    EXPECT_FLOAT_EQ(centerOutcome.reboundArc.distance * tuning.missReboundDistanceScale,
                     wideOutcome.reboundArc.distance * tuning.centerHitReboundDistanceScale);
     EXPECT_FLOAT_EQ(wideOutcome.reboundArc.apexHeight,
                     centerOutcome.reboundArc.apexHeight * tuning.missReboundHeightRatio);
     EXPECT_LT(wideOutcome.reboundArc.apexHeight, centerOutcome.reboundArc.apexHeight);
 }
 
-// 段が押し飛ばしの量に効くのは中心近くの反動の距離の倍率と外れの高さの割合だけ。相手の飛ぶ量は段で変えない
+// 段が押し飛ばしの量に効くのは段ごとの反動の距離の倍率と外れの高さの割合だけ。相手の飛ぶ量は段で変えない
 TEST(ImpactOutcome, TiersDifferOnlyByTheCenterDistanceAndMissHeight)
 {
     ImpactTuning tuning = DefaultTuning();
     tuning.centerHitReboundDistanceScale = 1.0f;
+    tuning.missReboundDistanceScale = 1.0f;
     tuning.missReboundHeightRatio = 1.0f;
+    tuning.missLaunchDistanceRatio = 1.0f;
     ImpactInput wide = BaseInput();
     ImpactInput center = BaseInput();
     center.tier = HitTier::Center;
@@ -163,11 +165,13 @@ TEST(ImpactOutcome, DefaultTuningAtMassOneAndPowerOne)
     EXPECT_FLOAT_EQ(outcome.massFactor, 0.5f);
     EXPECT_FLOAT_EQ(outcome.reboundScale, 1.0f);
     EXPECT_FLOAT_EQ(outcome.launchScale, 1.0f);
-    EXPECT_FLOAT_EQ(outcome.reboundArc.apexHeight, 1.15f * 0.3f);
-    EXPECT_FLOAT_EQ(outcome.reboundArc.distance, 0.575f);
+    // 外れは浮かせずに横へ滑って抜ける。高さは真ん中の 5%、距離は 2.5 倍
+    EXPECT_FLOAT_EQ(outcome.reboundArc.apexHeight, 1.15f * 0.05f);
+    EXPECT_FLOAT_EQ(outcome.reboundArc.distance, 0.575f * 2.5f);
     EXPECT_FLOAT_EQ(outcome.reboundArc.direction.x, 1.0f);
-    EXPECT_FLOAT_EQ(outcome.launchArc.distance, 29.0f);
-    EXPECT_FLOAT_EQ(outcome.launchArc.apexHeight, 2.0f);
+    // 面の真ん中の外れは押し込む成分が 1。距離は外れの距離の割合 0.1、弧は外れの高さの割合 0.35 だけ縮む
+    EXPECT_FLOAT_EQ(outcome.launchArc.distance, 29.0f * 0.1f);
+    EXPECT_FLOAT_EQ(outcome.launchArc.apexHeight, 2.0f * 0.35f);
     // 面の真ん中の外れは、押し込む向き (突進の向き) へ飛ばす
     EXPECT_FLOAT_EQ(outcome.launchArc.direction.x, -1.0f);
     EXPECT_EQ(outcome.stopSteps, 0);
@@ -238,6 +242,22 @@ TEST(ImpactOutcome, MissDeflectsTowardTheSideItSlidesOff)
     const ImpactOutcome centerOutcome = ComputeImpactOutcome(center, tuning);
     EXPECT_FLOAT_EQ(centerOutcome.reboundArc.direction.z, -1.0f);
     EXPECT_FLOAT_EQ(centerOutcome.launchArc.direction.z, 1.0f);
+}
+
+// 外れの相手は押し込む成分の 2 乗で短く飛び、弧は外れの高さの割合でさらに低い。真ん中の段は縮めない
+TEST(ImpactOutcome, MissLaunchShrinksWithTheSquareOfThePushAndStaysLow)
+{
+    const ImpactTuning tuning = DefaultTuning();
+    // 面の向き n = 0.8 右 + 0.6 手前。押し込む成分は 0.6
+    const ImpactOutcome miss = ComputeImpactOutcome(MissAlongZ(0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere), tuning);
+    EXPECT_NEAR(miss.launchArc.distance, 29.0f * 0.36f * tuning.missLaunchDistanceRatio, 0.001f);
+    EXPECT_NEAR(miss.launchArc.apexHeight, 2.0f * 0.36f * tuning.missLaunchHeightRatio, 0.001f);
+
+    ImpactInput center = MissAlongZ(0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere);
+    center.tier = HitTier::Center;
+    const ImpactOutcome centerOutcome = ComputeImpactOutcome(center, tuning);
+    EXPECT_FLOAT_EQ(centerOutcome.launchArc.distance, 29.0f);
+    EXPECT_FLOAT_EQ(centerOutcome.launchArc.apexHeight, 2.0f);
 }
 
 // 下の縁の外れは地面へ叩きつけられ、外れの高さよりさらに低く跳ねる。上の縁は外れの高さより浮かない

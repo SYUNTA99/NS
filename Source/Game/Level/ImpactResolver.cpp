@@ -1518,6 +1518,7 @@ namespace NS::Game::Level
                             .reboundDistance = params.m_reboundDistance,
                             .reboundApexHeight = params.m_reboundApexHeight,
                             .centerHitReboundDistanceScale = params.m_centerHitReboundDistanceScale,
+                            .missReboundDistanceScale = params.m_missReboundDistanceScale,
                             .launchDistance = params.m_launchDistance,
                             .launchMassExponent = params.m_launchMassExponent,
                             .launchApexHeight = params.m_launchApexHeight,
@@ -1529,7 +1530,9 @@ namespace NS::Game::Level
                             .fixedDelta = NS::Platform::FrameTimer::FixedDelta(),
                             .missReboundHeightRatio = params.m_missReboundHeightRatio,
                             .missSlamBounce = params.m_missSlamBounce,
-                            .missBoxEdgeSharpness = params.m_missBoxEdgeSharpness};
+                            .missBoxEdgeSharpness = params.m_missBoxEdgeSharpness,
+                            .missLaunchHeightRatio = params.m_missLaunchHeightRatio,
+                            .missLaunchDistanceRatio = params.m_missLaunchDistanceRatio};
     }
 
     void ImpactResolver::ApplyRebound()
@@ -1570,7 +1573,8 @@ namespace NS::Game::Level
                                         .breaks = m_pendingBreak,
                                         .tier = m_pendingTier,
                                         .power = m_lastPower,
-                                        .launchScale = m_pendingLaunchScale};
+                                        .launchScale = m_pendingLaunchScale,
+                                        .hopSeed = m_lastImpact.sequence};
         (void)SendMsgTackleRelease(*target, release);
     }
 

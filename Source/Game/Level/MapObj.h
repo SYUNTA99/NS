@@ -120,6 +120,9 @@ namespace NS::Game::Level
         float m_restAge = 0.0f;
         bool m_hasLaunched = false;
         bool m_arcDeflected = false;
+        int m_hopsLeft = 0;                // 外れで着地した後に残っている跳ねの回数。外れでなければ 0
+        int m_hopIndex = 0;                // 次の跳ねが何回目か。0 から数える
+        std::uint32_t m_hopSeed = 0;       // 跳ね方の種
         NS::Core::Sphere m_syncedSphere{}; // 最後に当たりへ置いた球 (世界座標)
         bool m_hasSyncedSphere = false;    // m_syncedSphere を一度でも置いたか
     };

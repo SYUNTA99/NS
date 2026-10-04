@@ -608,6 +608,35 @@ TEST(ImpactTimelineClock, ReturnsStartOnTheirOwnFrames)
     EXPECT_GT(impact.cameraShake, 0.0f);
 }
 
+// 外れは弾かれた手応えを出さない。反動しても反動の尾と弾かれ線を出さない
+TEST(ImpactTimelineClock, AMissShowsNoReboundTrailOrRecoilLines)
+{
+    HitTimeline timeline;
+    timeline.events = {
+        {HitStopEvent{}, 1, 2, HitDirection::Any},
+        {HitEffectEvent{}, 1, 1, HitDirection::Any},
+        {TargetLaunchEvent{}, 3, 1, HitDirection::Any},
+        {ReboundEvent{}, 3, 1, HitDirection::Any},
+        {FlightEffectEvent{}, 4, 1, HitDirection::Any},
+    };
+    const ScopedHitTimelineDirectory directory("MissFlight");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 20);
+    ASSERT_EQ(trace.size(), 20u);
+    ASSERT_EQ(player->Resolver().LastImpact().tier, HitTier::Wide);
+    bool rebounded = false;
+    for (const ClockFrame& frame : trace)
+    {
+        rebounded = rebounded || frame.rebounding;
+        EXPECT_EQ(frame.flightLayers, 0);
+    }
+    EXPECT_TRUE(rebounded);
+    EXPECT_EQ(CountLayers(*player, "impact.recoil"), 0);
+}
+
 // 外れの火花は外した側へ 7 割、相手の表面に沿って滑る向きへ 3 割で流す。面の真ん中は向きが決まらない
 TEST(ImpactTimelineClock, MissSparksFlowTowardTheSideThatWasMissed)
 {

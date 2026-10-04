@@ -334,6 +334,13 @@ namespace NS::Game::Level
         m_arcForward = forward / length;
         m_arcSeconds = 0.0f;
         m_arcDeflected = false;
+        m_hopsLeft = 0;
+        if (desc.tier == HitTier::Wide)
+        {
+            m_hopsLeft = m_params.MissHopCount();
+        }
+        m_hopIndex = 0;
+        m_hopSeed = desc.hopSeed;
         m_velocity = m_arcForward * initial.x + m_arcUp * initial.y;
         m_hasLaunched = true;
         m_motion.Build<ArcState, RollingState>(*this);
@@ -418,6 +425,22 @@ namespace NS::Game::Level
 
     void MapObj::Land(const NS::Core::Vector3& normal)
     {
+        // 外れの跳ねが残っていれば、向きを変えて跳ね直し、曲線の重力で落ちる
+        if (m_hopsLeft > 0)
+        {
+            const NS::Core::Vector3 hop =
+                MissHopVelocity(m_velocity, m_arcUp, m_params.MissHop(), m_hopSeed, m_hopIndex);
+            if (NS::Core::Dot(hop, m_arcUp) > 0.0f)
+            {
+                m_velocity = hop;
+                m_arcDeflected = true;
+                --m_hopsLeft;
+                ++m_hopIndex;
+                m_effects.NotifyLanding(Sphere().WorldSphere().center - normal * Sphere().WorldSphere().radius, normal);
+                return;
+            }
+            m_hopsLeft = 0;
+        }
         m_velocity -= normal * NS::Core::Dot(m_velocity, normal);
         (void)m_motion.Machine().Change<RollingState>();
         m_effects.NotifyLanding(Sphere().WorldSphere().center - normal * Sphere().WorldSphere().radius, normal);

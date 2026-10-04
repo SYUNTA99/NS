@@ -8,6 +8,8 @@
 #include "Runtime/Object/Message.h"
 #include "Runtime/Object/ObjectJson.h"
 
+#include <cstdint>
+
 namespace NS::Obj
 {
     class Actor;
@@ -187,6 +189,7 @@ namespace NS::Game::Level
         HitTier tier = HitTier::Center; //!< 当たりの段。尾の色が変わる
         float power = 0.0f;             //!< 最終威力
         float launchScale = 0.0f;       //!< 曲線の距離と高さに掛けた比。尾の長さに効く
+        std::uint32_t hopSeed = 0;      //!< 外れで着地した後の跳ね方の種。何回目の当たりか
     };
 
     //! @brief 体当たりの止めが明けたことを知らせる。受け手は元の位置と形へ戻ってから飛ぶか壊れ、床に跡を残す

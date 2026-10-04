@@ -20,6 +20,7 @@ namespace NS::Game::Level
         float reboundDistance{};               //!< 質量 1・威力 1 の自機の反動の距離 (m)
         float reboundApexHeight{};             //!< 質量 1・威力 1 の自機の反動の高さ (m)
         float centerHitReboundDistanceScale{}; //!< 中心近くの当たりの反動の距離の倍率
+        float missReboundDistanceScale{};      //!< 外れの反動の距離の倍率
         float launchDistance{};                //!< 質量 1・威力 1 の相手の飛ぶ距離 (m)
         float launchMassExponent{};            //!< 質量で割る指数。範囲は 0〜1
         float launchApexHeight{};              //!< 質量 1・威力 1 の相手の飛ぶ高さ (m)
@@ -32,6 +33,8 @@ namespace NS::Game::Level
         float missReboundHeightRatio{};        //!< 外れの反動の高さの、同じ威力と質量の真ん中に対する割合
         float missSlamBounce{};                //!< 真下を向いた面で外した時の、外れの反動の高さに掛ける割合
         float missBoxEdgeSharpness{};          //!< 箱の相手の面を、角を丸めた箱の表面として読む時の鋭さ。2 で球
+        float missLaunchHeightRatio{};         //!< 外れで飛ばした相手の弧の高さに、距離と同じ縮みの上から掛ける割合
+        float missLaunchDistanceRatio{};       //!< 外れで飛ばした相手の距離に、押し込む成分の縮みの上から掛ける割合
     };
 
     //! @brief 衝突の配分の計算へ渡す、検知で決まった値

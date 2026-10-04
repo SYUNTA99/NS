@@ -169,10 +169,13 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
             {
                 ASSERT_TRUE(state.rebound.partnerPosition.has_value());
                 EXPECT_TRUE(state.rebound.partnerPosition.value() == rock->Root().Position());
+                EXPECT_GT(state.rebound.slamDirection.Length(), 0.0f);
             }
             else
             {
                 EXPECT_FALSE(state.rebound.partnerPosition.has_value());
+                // 外れはカメラを突進の向きへ回り込ませない。どちらへ外したかを、自機が画面の中で逸れる幅で見せる
+                EXPECT_FLOAT_EQ(state.rebound.slamDirection.Length(), 0.0f);
             }
             ++checked;
         }
