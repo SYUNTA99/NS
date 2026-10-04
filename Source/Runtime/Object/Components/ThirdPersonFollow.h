@@ -32,6 +32,8 @@ namespace NS::Obj
         NS::Core::Vector3 slamDirection{};
         // 反動の間に画面へ残したい相手の今の位置。世界座標。空なら追う相手だけを見る
         std::optional<NS::Core::Vector3> partnerPosition{};
+        // 反動になったフレームに、欄「反動の間に下げる距離」だけ後ろへ下げるか。反動になったフレームにだけ読む
+        bool pullBack = true;
     };
 
     //! @brief Mario 系ジャンプアクションの追従カメラ
@@ -48,7 +50,7 @@ namespace NS::Obj
     //! 追う相手が画面の上下の帯を越えそうな時だけ追い、
     //! 反動の状態が外れたら普通の追い方へ寄せ戻す
     //! 反動になったフレームから、水平の向きを反動を起こした突進を出した向きへ回し、
-    //! 距離の目標を当たった瞬間の距離より伸ばす。接地するまで回す入力を受けない
+    //! 下げる反動なら距離の目標を当たった瞬間の距離より伸ばす。接地するまで回す入力を受けない
     class ThirdPersonFollow : public VirtualCamera
     {
     public:

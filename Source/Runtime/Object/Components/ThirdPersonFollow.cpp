@@ -703,13 +703,17 @@ namespace NS::Obj
         UpdateReboundPartner(rebound, head, dt);
 
         // 接地と速度で決める自動ズーム距離
-        // 反動になったフレームに、目標を当たった瞬間の距離より欄の分だけ伸ばし、
+        // 反動になったフレームに、目標を当たった瞬間の距離にする。下げる反動なら欄の分だけ伸ばし、
         // カメラを後ろへ下げる。反動の間は書き換えない
         // 今の目標でなく今の距離から測る
         // 目標へ寄っている途中に目標へ足すと、見えている距離より下がりすぎるか寄る
         if (!m_manualDistance && reboundBegan)
         {
-            m_reboundBaseDistance = m_distance + std::max(m_reboundPullBack, 0.0f);
+            m_reboundBaseDistance = m_distance;
+            if (rebound.pullBack)
+            {
+                m_reboundBaseDistance += std::max(m_reboundPullBack, 0.0f);
+            }
             m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
         }
         else if (!m_manualDistance && m_reboundPhase == ReboundPhase::Following)

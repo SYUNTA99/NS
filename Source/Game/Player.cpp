@@ -117,9 +117,11 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
     // 真ん中の反動は、飛んでいく相手を画面に残す。外れはいつもどおり自機だけを追う (外れのカメラは寄り無し)
     const NS::Game::Level::ImpactRecord& impact = m_resolver->LastImpact();
     // 外れはカメラを突進の向きへ回り込ませない。回り込むと画面が振り回され、自機がどちらへ逸れたかも読めない
+    // 後ろへも下げない。下げるのは飛んでいく相手を画面に収めるためで、外れの相手はほとんど飛ばない
     if (IsRebounding() && impact.tier == NS::Game::Level::HitTier::Wide)
     {
         state.rebound.slamDirection = NS::Core::Vector3{};
+        state.rebound.pullBack = false;
     }
     if (IsRebounding() && impact.tier == NS::Game::Level::HitTier::Center && OwningScene() != nullptr)
     {

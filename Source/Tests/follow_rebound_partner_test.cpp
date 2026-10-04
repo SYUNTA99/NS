@@ -36,10 +36,12 @@ namespace
             state.rebound.rebounding = true;
             state.rebound.slamDirection = NS::Core::Vector3{0.0f, 0.0f, 1.0f};
             state.rebound.partnerPosition = partner;
+            state.rebound.pullBack = pullBack;
             return state;
         }
 
         std::optional<NS::Core::Vector3> partner;
+        bool pullBack = true;
     };
 
     struct PartnerScene
@@ -48,11 +50,12 @@ namespace
         PartnerTargetProbe* target = nullptr;
         NS::Game::Level::FollowCamera* camera = nullptr;
 
-        explicit PartnerScene(const std::optional<NS::Core::Vector3>& partner)
+        explicit PartnerScene(const std::optional<NS::Core::Vector3>& partner, bool pullBack = true)
         {
             target =
                 static_cast<PartnerTargetProbe*>(scene.SpawnObject(std::make_unique<PartnerTargetProbe>(), "target"));
             target->partner = partner;
+            target->pullBack = pullBack;
             camera = scene.SpawnTransient<NS::Game::Level::FollowCamera>();
             NS::Obj::ApplyJsonFields(camera->Vcam(),
                                      nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
@@ -115,6 +118,14 @@ TEST(FollowReboundPartner, PartnerBeyondTheReleaseDistanceIsLetGo)
     EXPECT_NEAR(DistanceOf(pose), DistanceOf(without), 0.001f);
 }
 
+// 下げない反動 (外れ) は、反動になったフレームの距離のまま追う。下げる反動とは欄「反動の間に下げる距離」1 m だけ違う
+TEST(FollowReboundPartner, ReboundWithoutPullBackKeepsTheDistance)
+{
+    const PartnerScene pulled(std::nullopt);
+    const PartnerScene kept(std::nullopt, false);
+    EXPECT_NEAR(DistanceOf(pulled.Pose()) - DistanceOf(kept.Pose()), 1.0f, 0.01f);
+}
+
 namespace
 {
     // 床の上に自機 (id 1) と、その前に置物 (id 2) を置く
@@ -143,7 +154,7 @@ namespace
     }
 } // namespace
 
-// 自機は真ん中の反動の間だけ、飛ばした相手の今の位置をカメラへ渡す。外れの反動は渡さず、いつもどおり自機を追う
+// 自機は真ん中の反動の間だけ、飛ばした相手の今の位置をカメラへ渡す。外れの反動は渡さず、いつもどおり自機を追い、後ろへも下げない
 TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
 {
     for (const float rockX : {0.0f, 0.75f})
@@ -170,12 +181,15 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
                 ASSERT_TRUE(state.rebound.partnerPosition.has_value());
                 EXPECT_TRUE(state.rebound.partnerPosition.value() == rock->Root().Position());
                 EXPECT_GT(state.rebound.slamDirection.Length(), 0.0f);
+                EXPECT_TRUE(state.rebound.pullBack);
             }
             else
             {
                 EXPECT_FALSE(state.rebound.partnerPosition.has_value());
                 // 外れはカメラを突進の向きへ回り込ませない。どちらへ外したかを、自機が画面の中で逸れる幅で見せる
                 EXPECT_FLOAT_EQ(state.rebound.slamDirection.Length(), 0.0f);
+                // 外れはカメラを後ろへ下げない。相手はほとんど飛ばないので、二人を収めるために引く物が無い
+                EXPECT_FALSE(state.rebound.pullBack);
             }
             ++checked;
         }
