@@ -104,9 +104,9 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_bodySlamSpeed, "突進速度")
         NS_REFLECT_FIELD(m_bodySlamDistance, "突進距離")
         NS_REFLECT_FIELD(m_launchPitchLimitDegrees, "放つ角度の上限")
-        NS_REFLECT_FIELD(m_tapSlamSpeed, "タップ初速")
-        NS_REFLECT_FIELD(m_tapSlamUpSpeed, "タップの上向き初速")
-        NS_REFLECT_FIELD(m_tapSlamDistance, "タップ距離")
+        NS_REFLECT_FIELD(m_tapSlamSpeed, "通常突進の初速")
+        NS_REFLECT_FIELD(m_tapSlamUpSpeed, "通常突進の上向き初速")
+        NS_REFLECT_FIELD(m_tapSlamDistance, "通常突進の距離")
         NS_REFLECT_FIELD(m_slamAimHoldTime, "狙いの巻き戻し秒")
         NS_REFLECT_FIELD(m_slamAimFadeTime, "狙いの巻き戻しが消える秒")
         NS_REFLECT_FIELD(m_reboundRiseGravityScale, "反動の上りの重力倍率")
@@ -140,12 +140,12 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_emptyChargeSpinSpeed, "溜め 0 の回る速さ")
         NS_REFLECT_FIELD(m_fullChargeSpinSpeed, "溜めきりの回る速さ")
         NS_REFLECT_FIELD(m_chargedSlamTurns, "溜めた突進の届くまでの回転数")
-        NS_REFLECT_FIELD(m_tapSlamTurns, "タップの届くまでの回転数")
+        NS_REFLECT_FIELD(m_tapSlamTurns, "通常突進の届くまでの回転数")
         NS_REFLECT_FIELD(m_chargedReboundTurns, "溜めて当てた反動の回転数")
-        NS_REFLECT_FIELD(m_tapReboundTurns, "タップで当てた反動の回転数")
+        NS_REFLECT_FIELD(m_tapReboundTurns, "通常突進で当てた反動の回転数")
         NS_REFLECT_FIELD(m_landingSquash, "着地の潰れ")
         NS_REFLECT_FIELD(m_landingSquashRecoverSteps, "着地の潰れを戻すフレーム数")
-        NS_REFLECT_FIELD(m_tapBurstScale, "タップの弾けの大きさ")
+        NS_REFLECT_FIELD(m_tapBurstScale, "通常突進の弾けの大きさ")
         NS_REFLECT_FIELD(m_fullBurstScaleGain, "溜めきりで足す弾けの大きさ")
         NS_REFLECT_FIELD(m_reboundApexHeight, "反動の高さ")
         NS_REFLECT_FIELD(m_reboundDistance, "反動の距離")
@@ -347,12 +347,12 @@ namespace NS::Game::Player
         float m_emptyChargeSpinSpeed = 360.0f;
         float m_fullChargeSpinSpeed = 1440.0f;
         // 回転は届くまでの回転数で持ち、回る速さは届くまでの秒から毎回出す。速さや距離を触っても回る数が変わらない
-        // タップ 2 は本人の「到達まで一回転か 2, 3 回転」から、溜めた突進 5 はタップとはっきり違う数から始める
+        // 通常突進 2 は本人の「到達まで一回転か 2, 3 回転」から、溜めた突進 5 は通常突進とはっきり違う数から始める
         float m_chargedSlamTurns = 5.0f; // 溜めた突進が届くまでに回る回転数
-        float m_tapSlamTurns = 2.0f;     // タップが届くまでに回る回転数
-        // 反動は溜めて当てた時とタップで当てた時で変える。1 と 3 は 1〜3 の両端で、差が一番分かる組
+        float m_tapSlamTurns = 2.0f;     // 通常突進が届くまでに回る回転数
+        // 反動は溜めて当てた時と通常突進で当てた時で変える。1 と 3 は 1〜3 の両端で、差が一番分かる組
         float m_chargedReboundTurns = 3.0f; // 溜めて当てた反動が着地までに回る回転数
-        float m_tapReboundTurns = 1.0f;     // タップで当てた反動が着地までに回る回転数
+        float m_tapReboundTurns = 1.0f;     // 通常突進で当てた反動が着地までに回る回転数
         float m_landingSquash = 0.8f;
         int m_landingSquashRecoverSteps = 6;
         float m_tapBurstScale = 0.75f;

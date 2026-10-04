@@ -76,7 +76,7 @@ void Player::RequestBodySlam(float charge01, float overcharge01) noexcept
     {
         m_request.overcharge01 = NS::Core::Clamp(overcharge01, 0.0f, 1.0f);
     }
-    // 残すと、先行入力のうちに来たタップが前の溜めた突進の向きへ出る
+    // 残すと、先行入力のうちに来た通常突進が前の溜めた突進の向きへ出る
     m_request.hasDir = false;
     m_request.verticalSpeed = 0.0f;
 }
@@ -326,7 +326,7 @@ bool Player::BodySlam() noexcept
     // 溜めすぎで控えた突進なら、判定が頼み直しを止めて放すまで溜め無しになる
     m_slam.forced = m_charge.judge.IsAwaitingLaunch();
     m_charge.judge.MarkLaunched();
-    // 地面から出した突進は数えない。数えると、浮いて当てたタップや上向きに放った突進の反動で空中の 1 発が出ない
+    // 地面から出した突進は数えない。数えると、浮いて当てた通常突進や上向きに放った突進の反動で空中の 1 発が出ない
     if (launchedInAir)
     {
         m_request.spent = true;
@@ -354,7 +354,7 @@ bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept
         return false;
     }
 
-    // 反動は最後に出した突進が当たって始まるので、その突進がタップだったかで回転数を選ぶ
+    // 反動は最後に出した突進が当たって始まるので、その突進が通常突進だったかで回転数を選ぶ
     float turns = m_params->m_chargedReboundTurns;
     if (m_slam.isTap)
     {

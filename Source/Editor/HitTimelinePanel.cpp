@@ -231,7 +231,7 @@ namespace NS::Editor
 
         changed |= ImGui::SliderFloat("面の左右 (右が正)", &m_desc.faceU, -1.0f, 1.0f, "%.2f");
         changed |= ImGui::SliderFloat("面の上下 (上が正)", &m_desc.faceV, -1.0f, 1.0f, "%.2f");
-        changed |= ImGui::SliderFloat("溜め (0 はタップ)", &m_desc.charge01, 0.0f, 1.0f, "%.2f");
+        changed |= ImGui::SliderFloat("溜め (0 は通常突進)", &m_desc.charge01, 0.0f, 1.0f, "%.2f");
         changed |= ImGui::SliderInt("検知までのフレーム", &m_desc.leadFrames, 1, 30);
 
         struct Preset

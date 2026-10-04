@@ -88,7 +88,8 @@ namespace NS::Game::Player
 
         //! @brief 放しの弾けの大きさの倍率
         //! @param[in] charge01 突進を出した時の溜め量 0..1。範囲の外は丸める。有限でなければ 0 とみなす
-        //! @return 欄「タップの弾けの大きさ」+ 欄「溜めきりで足す弾けの大きさ」× 溜め量。既定でタップ 0.75、溜めきり 1
+        //! @return 欄「通常突進の弾けの大きさ」+ 欄「溜めきりで足す弾けの大きさ」× 溜め量。
+        //! 既定で通常突進 0.75、溜めきり 1
         [[nodiscard]] float ReleaseBurstScale(float charge01) const noexcept;
 
         //! @brief +Z を水平の向き direction へ向ける Y 軸まわりの回転
@@ -134,7 +135,7 @@ namespace NS::Game::Player
         [[nodiscard]] bool IsContactNear() const noexcept;
 
         // 放しの弾けの輪・丸屋根・筋の大きさ。溜めきりで輪が半径 3.2 m まで広がる
-        // タップの 0.75 は輪が半径 2.4 m で、押した瞬間の丸まりの殻 (半径 1.2 m) の倍。0.4 (半径 1.3 m) は
+        // 通常突進の 0.75 は輪が半径 2.4 m で、押した瞬間の丸まりの殻 (半径 1.2 m) の倍。0.4 (半径 1.3 m) は
         // 放した次のフレームの輪が殻と同じ大きさに見えた
 
         EffectLayerList m_layers;

@@ -305,7 +305,7 @@ namespace NS::Game::Player
     void ChargeEffects::ClearHeldLayers(NS::Gfx::EffectScene* effects) noexcept
     {
         // 空中の粉も溜まる光の点も同じフレームに消す。放した後に溜めの層を残さない
-        // タップは押した次のフレームに放すので、丸まりの殻もまだ出ている。消さないと放した後に足元の輪が残る
+        // 通常突進は押した次のフレームに放すので、丸まりの殻もまだ出ている。消さないと放した後に足元の輪が残る
         // 溜めきりの次のフレームに放すと閃きもまだ出ている。残すと放した後の縦の柱が溜めの層として写る
         StopLayer(effects, m_curl);
         StopLayer(effects, m_spin);
@@ -320,7 +320,7 @@ namespace NS::Game::Player
         m_slamDirection = m_actor->BodySlamDirection();
         const NS::Core::Quaternion facing = YawToward(m_slamDirection);
 
-        // 効果の全体を縮めると、タップの散って残る筋は玉の輪郭の内側で生まれ、はじけの光も画面を明るくしない。
+        // 効果の全体を縮めると、通常突進の散って残る筋は玉の輪郭の内側で生まれ、はじけの光も画面を明るくしない。
         // 大きさを変えるのは輪・丸屋根・筋だけにする
         NS::Gfx::EffectPlayDesc burst = PlayDesc(center, facing, charge01);
         burst.dynamicInputs[k_BurstScaleInput] = ReleaseBurstScale(charge01);

@@ -334,7 +334,7 @@ namespace NS::Game::Player
             std::min(Tuning().m_coreDiameterMax, Tuning().m_coreDiameterBase + Tuning().m_coreDiameterPerPower * power);
         ApplyTierRow(shape, impact, power, Tuning());
         // 量は数と速さの積。数は威力で、速さは飛ばしの比 (重い相手ほど遅い) で決まるので、積は威力の順と
-        // 同じ威力での質量の順の両方に並ぶ。速さだけでは質量 8 の溜めきりが質量 1 のタップより小さく出た
+        // 同じ威力での質量の順の両方に並ぶ。速さだけでは質量 8 の溜めきりが質量 1 の通常突進より小さく出た
         shape.sparkAmount = static_cast<float>(shape.sparkCount) * shape.sparkSpeed;
 
         shape.recoilLength =

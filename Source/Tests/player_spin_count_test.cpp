@@ -16,7 +16,7 @@
 #include <string>
 
 // 玉の回転を、届くまで (反動は着地まで) の回転数で持つ
-// 速さや距離を触っても回転数は変わらない。溜めた突進とタップ、溜めて当てた反動とタップで当てた反動で数を変える
+// 速さや距離を触っても回転数は変わらない。溜めた突進と通常突進、溜めて当てた反動と通常突進で当てた反動で数を変える
 
 namespace
 {
@@ -101,13 +101,13 @@ namespace
     }
 } // namespace
 
-// タップの初速は欄の値
+// 通常突進の初速は欄の値
 TEST(PlayerSpinCount, TapLeavesAtItsFieldSpeed)
 {
     NS::Obj::Scene scene;
     Player* player = PlaceSpinScene(scene, false);
     ASSERT_NE(player, nullptr);
-    EXPECT_FLOAT_EQ(FieldOf(*player, "タップ初速"), 15.0f);
+    EXPECT_FLOAT_EQ(FieldOf(*player, "通常突進の初速"), 15.0f);
     player->RequestBodySlam(0.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
     player->Update(false);
     ASSERT_TRUE(player->IsBodySlamming());
@@ -115,7 +115,7 @@ TEST(PlayerSpinCount, TapLeavesAtItsFieldSpeed)
     EXPECT_NEAR(std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z), 15.0f, 1.0e-3f);
 }
 
-// タップは届くまでに欄の回転数だけ回る。速さと距離を変えても同じ
+// 通常突進は届くまでに欄の回転数だけ回る。速さと距離を変えても同じ
 TEST(PlayerSpinCount, TapTurnsItsCountWhateverTheSpeedAndDistance)
 {
     for (const float speed : {15.0f, 10.0f})
@@ -126,28 +126,29 @@ TEST(PlayerSpinCount, TapTurnsItsCountWhateverTheSpeedAndDistance)
             NS::Obj::Scene scene;
             Player* player = PlaceSpinScene(scene, false);
             ASSERT_NE(player, nullptr);
-            NS::Obj::ApplyJsonFields(player->Params(), nlohmann::json{{"タップ初速", speed}, {"タップ距離", distance}});
-            const float turns = FieldOf(*player, "タップの届くまでの回転数");
+            NS::Obj::ApplyJsonFields(player->Params(),
+                                     nlohmann::json{{"通常突進の初速", speed}, {"通常突進の距離", distance}});
+            const float turns = FieldOf(*player, "通常突進の届くまでの回転数");
             const float perFrame = turns * 360.0f * speed / distance * k_FrameSeconds;
             EXPECT_NEAR(SpinWhileSlamming(*player, 0.0f), turns * 360.0f, perFrame * 1.01f);
         }
     }
 }
 
-// 溜めた突進は溜めた突進の回転数で回り、タップとはっきり違う
+// 溜めた突進は溜めた突進の回転数で回り、通常突進とはっきり違う
 TEST(PlayerSpinCount, ChargedSlamTurnsItsOwnCount)
 {
     NS::Obj::Scene scene;
     Player* player = PlaceSpinScene(scene, false);
     ASSERT_NE(player, nullptr);
     const float turns = FieldOf(*player, "溜めた突進の届くまでの回転数");
-    EXPECT_GE(turns - FieldOf(*player, "タップの届くまでの回転数"), 2.0f);
+    EXPECT_GE(turns - FieldOf(*player, "通常突進の届くまでの回転数"), 2.0f);
     const float perFrame =
         turns * 360.0f * FieldOf(*player, "突進速度") / FieldOf(*player, "突進距離") * k_FrameSeconds;
     EXPECT_NEAR(SpinWhileSlamming(*player, 1.0f), turns * 360.0f, perFrame * 1.01f);
 }
 
-// 反動は着地までに、溜めて当てた時とタップで当てた時のそれぞれの回転数だけ回る
+// 反動は着地までに、溜めて当てた時と通常突進で当てた時のそれぞれの回転数だけ回る
 TEST(PlayerSpinCount, ReboundTurnsTheCountOfTheSlamThatHit)
 {
     for (const float charge01 : {1.0f, 0.0f})
@@ -161,7 +162,7 @@ TEST(PlayerSpinCount, ReboundTurnsTheCountOfTheSlamThatHit)
         const char* field = "溜めて当てた反動の回転数";
         if (charge01 <= 0.0f)
         {
-            field = "タップで当てた反動の回転数";
+            field = "通常突進で当てた反動の回転数";
         }
         const float turns = FieldOf(*player, field);
         const float degrees = SpinWhileRebounding(*player, *rock, charge01);

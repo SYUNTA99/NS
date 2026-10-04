@@ -7,9 +7,9 @@ namespace NS::Game::Level
         switch (kind)
         {
         case SlamKind::Tap:
-            return "タップ";
+            return "通常突進";
         case SlamKind::Charged:
-            return "チャージ";
+            return "チャージ突進";
         default:
             return "なし";
         }
@@ -19,7 +19,7 @@ namespace NS::Game::Level
     {
         if (held)
         {
-            // 押している間は溜めすぎきったフレームの他は何も控えない。押したフレームでタップを出すとチャージ狙いにも
+            // 押している間は溜めすぎきったフレームの他は何も控えない。押したフレームで通常突進を出すとチャージ狙いにも
             // 必ず 1 回混ざる
             ++m_heldSteps;
             if (m_phase == HoldPhase::Charging && IsChargeFull() && m_heldSteps >= chargeMaxSteps + overchargeSteps)

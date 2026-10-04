@@ -482,7 +482,7 @@ TEST(PlayerUpdatePipeline, StoppedWorldHoldsThePlayerWithItsPartsAwake)
     ExpectSameVector(player->Root().Position(), position);
 }
 
-// 溜めて当てる組とタップの組を、本番の 1 フレームの入口で回した数字の基準
+// 溜めて当てる組と通常突進の組を、本番の 1 フレームの入口で回した数字の基準
 // 末尾の列は、状態・描く形の倍率・身体が動いているかが変わったフレームだけを並べた物。間のフレームは直前の行と同じ
 TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
 {
@@ -550,7 +550,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
     for (int scenario = 0; scenario < 2; ++scenario)
     {
         const bool charge = scenario == 0;
-        // 止めの長さは移す前の式が出した長さ (溜め 12・タップ 3) を、移す前の返りを写したタイムラインに置く
+        // 止めの長さは移す前の式が出した長さ (溜め 12・通常突進 3) を、移す前の返りを写したタイムラインに置く
         const ScopedHitTimelineDirectory timelines("Trajectories");
         int legacyStopSteps = 3;
         if (charge)
@@ -572,13 +572,13 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
         }
         Player* player = PlacePipelinePlayer(scene, targetX, targetZ);
         ASSERT_NE(player, nullptr);
-        // 基準はタップ初速 10 で、紫の揺れと紫の威力が無い時に採った
+        // 基準は通常突進の初速 10 で、紫の揺れと紫の威力が無い時に採った
         // 外れの反動は真ん中と同じ高さと距離で、着いた後にこすらない。外れの相手は押し込む成分だけで飛ぶ距離を縮める
         // 止めの間の置物の位置は、根を往復させていた頃から食い込みの距離だけの値へ直した
         // 溜めは 1.5 秒押して紫に入ってから放す
         // 見るのは状態の移り方なので、欄の既定を触っても基準を取り直さずに済むよう留める
         NS::Obj::ApplyJsonFields(player->Params(),
-                                 nlohmann::json{{"タップ初速", 10.0f},
+                                 nlohmann::json{{"通常突進の初速", 10.0f},
                                                 {"紫の揺れの最大のずれ", 0.0f},
                                                 {"紫の威力の上限", 1.0f},
                                                 {"外れの反動の高さの割合", 1.0f},

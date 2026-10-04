@@ -840,7 +840,7 @@ TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
 }
 
 // 上下のずれも段に効く。赤の既定 0.43 に対し、玉の中心が相手の中心より 0.5 m 低い線は 0.5 ÷ 1.15 ≒ 0.435 で外
-// 溜め 0 のタップは上向きの初速で 1 ステップぶん上がって赤へ入るので、縦の速さ 0 を添えた溜めた突進で見る
+// 溜め 0 の通常突進は上向きの初速で 1 ステップぶん上がって赤へ入るので、縦の速さ 0 を添えた溜めた突進で見る
 TEST(HitZonesTest, VerdictMissesWhenTheLinePassesBelowTheRed)
 {
     NS::Obj::Scene scene;

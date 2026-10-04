@@ -32,7 +32,7 @@ namespace NS::Editor
         std::uint32_t targetId = 0;
         float faceU = 0.0f;          //!< 当てる面の上の左右の位置。自機から見て右が正。-1..1 が面の端
         float faceV = 0.0f;          //!< 当てる面の上の上下の位置。上が正。-1..1 が面の端
-        float charge01 = 1.0f;       //!< 溜め量 0..1。0 はタップの飛び込み
+        float charge01 = 1.0f;       //!< 溜め量 0..1。0 は通常突進
         int leadFrames = 10;         //!< 突進を出してから検知するまでのフレーム数の狙い。触れる前の事象を見る間合い
         int framesAfterRebound = 20; //!< 反動が終わってから記録を続けるフレーム数
         int maxFrames = 300;         //!< 記録するフレーム数の上限

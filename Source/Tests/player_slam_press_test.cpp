@@ -129,7 +129,7 @@ TEST(PlayerSlamPress, PressDuringTheHitStopDoesNotFireOnTheRelease)
     EXPECT_EQ(starts, 1);
 }
 
-// 地面から出した突進の反動の間に押すと、空中の 1 発が出る。浮いて当てたタップと、上向きに放った溜めた突進でも出る
+// 地面から出した突進の反動の間に押すと、空中の 1 発が出る。浮いて当てた通常突進と、上向きに放った溜めた突進でも出る
 TEST(PlayerSlamPress, PressDuringTheReboundOfAGroundSlamFiresTheAirShot)
 {
     for (const float charge01 : {0.0f, 1.0f})

@@ -207,7 +207,7 @@ TEST(LaunchPitchTest, ChargedSlamStartsFromTheGivenVerticalSpeed)
         EXPECT_FLOAT_EQ(player.Body().VerticalVelocity(), 0.0f);
     }
     {
-        // タップは今のまま「タップの上向き初速」で跳ぶ
+        // 通常突進は今のまま「通常突進の上向き初速」で跳ぶ
         Player player;
         player.RequestBodySlam(0.0f, forward, 4.5f);
         ASSERT_TRUE(player.BodySlam());

@@ -179,7 +179,7 @@ public:
     //! 突進の進み具合 0..1。突進中でなければ 0
     [[nodiscard]] float BodySlamProgress01() const noexcept;
     [[nodiscard]] float BodySlamCharge01() const noexcept { return m_slam.charge01; } //!< 発動時の溜め量 0..1
-    //! 発動時の溜めすぎの深さ 0..1。赤で放した突進とタップは 0
+    //! 発動時の溜めすぎの深さ 0..1。赤で放した突進と通常突進は 0
     [[nodiscard]] float BodySlamOvercharge01() const noexcept { return m_slam.overcharge01; }
     //! 溜めた突進を終える水平の距離。欄「突進距離」の値で、単位は m
     [[nodiscard]] float BodySlamDistance() const noexcept;
@@ -204,14 +204,14 @@ public:
     [[nodiscard]] NS::Core::Vector3 ReboundDirection() const noexcept { return m_rebound.direction; }
     //! @brief 突進の玉の回る速さ (度/秒) を返す
     //! @details 届くまでの回転数 × 360 ÷ 届くまでの秒。回転数は溜めた突進が欄「溜めた突進の届くまでの回転数」、
-    //! タップが欄「タップの届くまでの回転数」。届くまでの秒は突進を終える水平の距離 ÷ 突進の水平の速さ。
+    //! 通常突進が欄「通常突進の届くまでの回転数」。届くまでの秒は突進を終える水平の距離 ÷ 突進の水平の速さ。
     //! 速さや距離を触っても、届くまでに回る数は変わらない
     //! @return 回る速さ。届くまでの秒が 0 以下か有限でない時は 0
     [[nodiscard]] float BodySlamSpinSpeed() const noexcept;
     //! @brief 最後に始めた反動の玉の回る速さ (度/秒) を返す
     //! @details 反動の回転数 × 360 ÷
     //! 発射の高さへ戻るまでの秒。回転数は溜めて当てた反動が欄「溜めて当てた反動の回転数」、
-    //! タップで当てた反動が欄「タップで当てた反動の回転数」。書くのは BeginRebound
+    //! 通常突進で当てた反動が欄「通常突進で当てた反動の回転数」。書くのは BeginRebound
     //! @return 回る速さ。反動を始める前と ResetState の後は 0
     [[nodiscard]] float ReboundSpinSpeed() const noexcept { return m_rebound.spinSpeed; }
     //! @brief 最後に始めた反動の外れの回り方を返す
@@ -252,7 +252,7 @@ public:
     void CutJumpRelease() noexcept;
     //! 上昇と下降で非対称な重力を当てる。頂点の近くは弱める。強さは ChooseGravity が PlayerParams::Gravity から選ぶ
     void Gravity(float dt) noexcept;
-    //! タップの飛び込みだけに当てる重力。滞空秒がタップ距離を進む秒と揃う強さにする
+    //! 通常突進だけに当てる重力。滞空秒が欄「通常突進の距離」を進む秒と揃う強さにする
     void TapSlamGravity(float dt) noexcept;
     //! @brief 反動の間の重力を当てる
     //! @details 上向きの間は上昇重力に反動の上りの重力倍率を掛け、頂点の近くはさらに頂点滞空倍率を掛ける。
@@ -293,7 +293,7 @@ public:
 
     // 突進と反発。速度と接地は身体が持つ
     //! @brief 体当たりの発動を要求する
-    //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
+    //! @details 溜め量 0 は通常突進で、非有限値は 0 とみなす。
     //! そのフレームで出せない要求は先行入力時間だけ覚え、過ぎたら失効する。
     //! 突進中と、身体を動かせない間 (当たりの止めと、止めの明けの後に反動を待つ間) の要求は覚えずに捨てる。
     //! 空中で出すと接地するまで次は出せない。地面から出した突進は数えないので、その後の空中で 1 回出せる。
@@ -308,7 +308,8 @@ public:
     //! @param[in] charge01 溜め量 0..1
     //! @param[in] aimDirection 出す向き。世界座標で、縦の成分は使わない
     //! @param[in] launchVerticalSpeed 溜めた突進を放つ瞬間の縦の速さ (m/s)。上が正。溜めの観測が狙う相手の予測
-    //! (SlamLineTarget::launchVerticalSpeed) から控えた値で、届く相手が無ければ 0。タップには効かない。有限でなければ 0
+    //! (SlamLineTarget::launchVerticalSpeed) から控えた値で、届く相手が無ければ 0。通常突進には効かない。
+    //! 有限でなければ 0
     //! @param[in] overcharge01 溜めすぎの深さ 0..1。威力を溜めきりより上げる。有限でなければ 0
     void RequestBodySlam(float charge01,
                          const NS::Core::Vector3& aimDirection,
@@ -325,10 +326,10 @@ public:
     //! @details 向きは要求に添えた向き。添えていなければ AimDirection の向きに、押したフレームの控え
     //! (MarkBodySlamAim) を控えてからの秒に応じて混ぜる。
     //! 溜めた突進の縦の速さは要求に添えた値で、向きを添えていなければ 0。ジャンプの途中の縦の速さは持ち越さない。
-    //! タップは欄「タップの上向き初速」
+    //! 通常突進は欄「通常突進の上向き初速」
     //! @return 向きが決まらないか距離が 0 以下の場合 false、それ以外の場合は true
     [[nodiscard]] bool BodySlam() noexcept;
-    //! @brief 向きを添えずに要求した体当たり (タップ) を出す水平の向きを返す
+    //! @brief 向きを添えずに要求した体当たり (通常突進) を出す水平の向きを返す
     //! @details 入力・カメラの前・速度の順に見て、どれも無ければゼロ。
     //! 溜めて放した突進は、狙いの線を控えていればその向きを添えるので、この向きへは出ない
     [[nodiscard]] NS::Core::Vector3 AimDirection() const noexcept;
@@ -449,7 +450,7 @@ private:
     //! @details 読み手が見るのは確定した側だけ。CancelCharge で全部を初期値へ戻す
     struct ChargeRecord
     {
-        NS::Game::Level::ImpactInputJudge judge{};           // タップと溜めの判定
+        NS::Game::Level::ImpactInputJudge judge{};           // 通常突進と溜めの判定
         bool observedHeld = false;                           // 観測の段で読んだ体当たりの押し
         NS::Game::Level::AimLine observedAimLine{};          // 観測の段で引いた狙いの線
         bool observedHasAimLine = false;                     // 観測の段で狙いの線を引けたか
@@ -487,7 +488,7 @@ private:
     [[nodiscard]] float BodySlamAimBlend01() const noexcept;
     //! @brief 突進の水平の速さ (m/s) を返す
     //! @details 発動の初速 (BodySlam) と突進の速度 (BodySlamVelocity) がこれを読む。速さの式はここ 1 か所
-    //! @return タップの飛び込みは欄「タップ初速」、溜めた突進は欄「突進速度」
+    //! @return 通常突進は欄「通常突進の初速」、溜めた突進は欄「突進速度」
     [[nodiscard]] float BodySlamSpeed() const noexcept;
     //! @brief 体当たりの要求を覚えてよい場合 true、それ以外の場合は false
     //! @details 突進中と CanMoveBody が偽の間は偽。ここで覚えた押しは止めの間に減らず、明けや空振りの後に 2 本目になる
@@ -522,7 +523,7 @@ private:
     //! 回した線で最初に触れる相手を引き直す。紫でない間と線が無い間は揺らさない
     //! @param[in] dt 1 フレームの秒
     void ApplyChargeSway(float dt);
-    //! @brief 溜めを捨てる。放した扱いにはしないので、タップも溜めた突進も出ない
+    //! @brief 溜めを捨てる。放した扱いにはしないので、通常突進も溜めた突進も出ない
     //! @details 判定と狙いの控えを初めの値へ戻し、押しの印を偽、最高速度の倍率を 1 へ戻す。
     //! 構えは判定から答えるので 1 に戻る。丸まりは解かず、着地で解ける
     void CancelCharge() noexcept;

@@ -104,9 +104,9 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
                                      {"突進速度", 20.0f},
                                      {"突進距離", 10.0f},
                                      {"放つ角度の上限", 40.0f},
-                                     {"タップ初速", 15.0f},
-                                     {"タップの上向き初速", 3.0f},
-                                     {"タップ距離", 6.25f},
+                                     {"通常突進の初速", 15.0f},
+                                     {"通常突進の上向き初速", 3.0f},
+                                     {"通常突進の距離", 6.25f},
                                      {"狙いの巻き戻し秒", 0.11f},
                                      {"狙いの巻き戻しが消える秒", 0.19f},
                                      {"反動の上りの重力倍率", 0.5f},
@@ -189,12 +189,12 @@ TEST(PlayerParams, AppearanceAndChargeDefaultsBelongToParams)
                                      {"溜め 0 の回る速さ", 360.0f},
                                      {"溜めきりの回る速さ", 1440.0f},
                                      {"溜めた突進の届くまでの回転数", 5.0f},
-                                     {"タップの届くまでの回転数", 2.0f},
+                                     {"通常突進の届くまでの回転数", 2.0f},
                                      {"溜めて当てた反動の回転数", 3.0f},
-                                     {"タップで当てた反動の回転数", 1.0f},
+                                     {"通常突進で当てた反動の回転数", 1.0f},
                                      {"着地の潰れ", 0.8f},
                                      {"着地の潰れを戻すフレーム数", 6},
-                                     {"タップの弾けの大きさ", 0.75f},
+                                     {"通常突進の弾けの大きさ", 0.75f},
                                      {"溜めきりで足す弾けの大きさ", 0.25f}};
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
     {
@@ -209,7 +209,7 @@ TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
 {
     Player player;
     EXPECT_EQ(NS::Obj::ApplyJsonFields(player.Params(),
-                                       {{"タップの弾けの大きさ", 0.5f}, {"溜めきりで足す弾けの大きさ", 0.4f}}),
+                                       {{"通常突進の弾けの大きさ", 0.5f}, {"溜めきりで足す弾けの大きさ", 0.4f}}),
               0u);
     EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(0.5f), 0.7f);
     EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(-1.0f), 0.5f);

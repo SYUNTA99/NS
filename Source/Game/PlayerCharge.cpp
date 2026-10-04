@@ -159,7 +159,7 @@ void Player::AdvanceCharge(float dt)
     SetBodySlamHeld(judge.IsHeld());
 
     // 控えた線は放す前のフレームに矢印を貼った線で、放したフレームはまだ引き直していない。溜めて放した突進は
-    // スティックを見ずにその向きへ出す。タップは矢印が出ないので入力の向きへ出す
+    // スティックを見ずにその向きへ出す。通常突進は矢印が出ないので入力の向きへ出す
     // 紫で放した時と勝手に出た時は、控えた線に放す前のフレームの揺れが入っている
     const auto requestCharged = [this](float charge01, float overcharge01) {
         if (m_charge.hasAimLine)

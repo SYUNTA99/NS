@@ -46,7 +46,7 @@ namespace NS::Game::Level
         std::uint32_t targetId = 0;
         float power = 0.0f;
         float charge01 = 0.0f;
-        float overcharge01 = 0.0f; //!< 突進を出した時の溜めすぎの深さ 0..1。赤で放した突進とタップは 0
+        float overcharge01 = 0.0f; //!< 突進を出した時の溜めすぎの深さ 0..1。赤で放した突進と通常突進は 0
         float positionFactor = 0.0f;
         float offset01 = 0.0f;          //!< 面の判定の横ずれ。相手の半幅と自機の半径の和で割った 0..1
         HitTier tier = HitTier::Center; //!< 当たりの段。相手の面の判定で決まる
