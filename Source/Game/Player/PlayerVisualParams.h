@@ -59,6 +59,9 @@ namespace NS::Game::Level
         float plainBandFillAlpha = 0.08f;
         float plainHeadEdgeAlpha = 0.35f;
         float plainHeadFillAlpha = 0.18f;
+        // 隠れた矢じりを透かして描く時に、矢じりの不透明度へ掛ける割合。高い相手へ反った矢印は、先が相手の体の下や
+        // 自機の玉の後ろに入る。0.5 では市松の玉の上で先が読めなかったので、見えている所より一段薄い 0.7
+        float occludedHeadAlpha = 0.7f;
     };
 
 } // namespace NS::Game::Level

@@ -244,6 +244,7 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_slamArrowDesc.plainBandFillAlpha, "色の無い帯の塗りの不透明度")
         NS_REFLECT_FIELD(m_slamArrowDesc.plainHeadEdgeAlpha, "色の無い矢じりの明るい縁の不透明度")
         NS_REFLECT_FIELD(m_slamArrowDesc.plainHeadFillAlpha, "色の無い矢じりの塗りの不透明度")
+        NS_REFLECT_FIELD(m_slamArrowDesc.occludedHeadAlpha, "隠れた矢じりの不透明度")
         NS_REFLECT_END()
 
     private:

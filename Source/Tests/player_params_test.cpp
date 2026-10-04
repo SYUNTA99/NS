@@ -463,7 +463,8 @@ TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)
         {"色の無い帯の明るい縁の不透明度", arrow.plainBandEdgeAlpha},
         {"色の無い帯の塗りの不透明度", arrow.plainBandFillAlpha},
         {"色の無い矢じりの明るい縁の不透明度", arrow.plainHeadEdgeAlpha},
-        {"色の無い矢じりの塗りの不透明度", arrow.plainHeadFillAlpha}};
+        {"色の無い矢じりの塗りの不透明度", arrow.plainHeadFillAlpha},
+        {"隠れた矢じりの不透明度", arrow.occludedHeadAlpha}};
     const nlohmann::json fields = NS::Obj::SerializeComponent(player.Params())["fields"];
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
     {

@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/GraphicObject.h"
+#include "Runtime/Graphics/detail/PipelineDepth.h"
 
 namespace NS::Gfx
 {
@@ -86,29 +87,7 @@ namespace NS::Gfx
                                 const PipelineDesc& desc,
                                 ComPtr<ID3D11DepthStencilState>& out) noexcept
         {
-            D3D11_DEPTH_STENCIL_DESC dd{};
-            dd.StencilEnable = FALSE;
-            dd.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
-            dd.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
-            switch (desc.depth)
-            {
-            case DepthMode::ReadOnly:
-                dd.DepthEnable = TRUE;
-                dd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-                dd.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
-                break;
-            case DepthMode::Disabled:
-                dd.DepthEnable = FALSE;
-                dd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-                dd.DepthFunc = D3D11_COMPARISON_ALWAYS;
-                break;
-            case DepthMode::ReadWrite:
-            default:
-                dd.DepthEnable = TRUE;
-                dd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-                dd.DepthFunc = D3D11_COMPARISON_LESS;
-                break;
-            }
+            const D3D11_DEPTH_STENCIL_DESC dd = detail::MakeDepthStencilDesc(desc.depth);
             return SUCCEEDED(device->CreateDepthStencilState(&dd, out.GetAddressOf()));
         }
     } // namespace

@@ -124,7 +124,8 @@ namespace NS::Game::Level
     //! 届く相手への弧と空中は PlaceSlamArrowOnPath が LaunchPitch と同じ重力の道筋に置く。
     //! 形は OnUpdate で組んで控え、描く時は板を積むだけ。
     //! 狙いの線が無いフレームと放したフレームは何も組まない。
-    //! 板は組み込みの上向きの板 shadowQuad に、帯と矢じりのマテリアル (Shaders/ground_arrow.ps.hlsl) を貼った半透明
+    //! 板は組み込みの上向きの板 shadowQuad に、帯と矢じりのマテリアル (Shaders/ground_arrow.ps.hlsl) を貼った半透明。
+    //! 矢じりはもう 1 枚、手前の物に隠れた画素だけへ薄く描き、相手や自機の玉の後ろに入った先も見せる
     //! 依存: Player, SlamAim (AimLine), NS::Obj::Collider, NS::Obj::Scene, NS::Obj::IUseCollision
     class SlamArrow : public NS::Obj::Component, public NS::Obj::IRenderable
     {
@@ -145,7 +146,7 @@ namespace NS::Game::Level
         //! 溜めていないか狙いの線が無いフレームは控えを消し、フレーム数を戻す
         void OnUpdate() override;
 
-        //! 控えた矢印の帯の板と矢じりの板を積む。控えが無いか、資材が引けていなければ何も積まない
+        //! 控えた矢印の帯の板と矢じりの板、隠れた所へ描く矢じりの板を積む。控えが無いか、資材が引けていなければ何も積まない
         void Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out) override;
 
         //! 半透明の並びに入る

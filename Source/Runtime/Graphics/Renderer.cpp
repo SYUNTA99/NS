@@ -240,6 +240,7 @@ namespace NS::Gfx
         m_commonPipelines[1] = Pipeline::Create(PipelineDesc{.blend = BlendMode::Alpha, .depth = DepthMode::ReadOnly});
         m_commonPipelines[2] =
             Pipeline::Create(PipelineDesc{.blend = BlendMode::Additive, .depth = DepthMode::ReadOnly});
+        m_occludedPipeline = Pipeline::Create(PipelineDesc{.blend = BlendMode::Alpha, .depth = DepthMode::Occluded});
 
         window.SetResizeCallback([this](::NS::Core::Size2D rs) { this->Resize(rs); });
         m_resizeCallbackRegistered = true;
@@ -404,6 +405,12 @@ namespace NS::Gfx
         }
         NS_ASSERT(Graphics, m_commonPipelines[index], "Renderer が無効な状態で CommonPipeline() を呼んでいる");
         return *m_commonPipelines[index];
+    }
+
+    const Pipeline& Renderer::OccludedPipeline() const noexcept
+    {
+        NS_ASSERT(Graphics, m_occludedPipeline, "Renderer が無効な状態で OccludedPipeline() を呼んでいる");
+        return *m_occludedPipeline;
     }
 
     bool Renderer::EnsureOverlay(OverlayResources& overlay,

@@ -17,7 +17,14 @@ namespace NS::Gfx
         CommandList& cmd = renderer.Commands();
 
         // 前回の描画ステートを引き継がないよう、描画ごとにパイプラインを設定する
-        cmd.SetPipeline(renderer.CommonPipeline(item.blend));
+        if (item.occludedOnly)
+        {
+            cmd.SetPipeline(renderer.OccludedPipeline());
+        }
+        else
+        {
+            cmd.SetPipeline(renderer.CommonPipeline(item.blend));
+        }
         item.material->CreateInputLayoutFor(*item.mesh);
         item.material->SetParams(renderer, item.constants);
 

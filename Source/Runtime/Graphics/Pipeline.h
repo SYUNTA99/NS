@@ -31,12 +31,14 @@ namespace NS::Gfx
     };
 
     //! @brief 深度の読み書き設定
-    //! @details ReadOnly は手前かどうかを判定するが深度を書かない。半透明と背景に使う
+    //! @details ReadOnly は手前かどうかを判定するが深度を書かない。半透明と背景に使う。
+    //! Occluded は手前の物に隠れた画素だけを描き、深度を書かない。隠れた所を透かして見せる時に使う
     enum class DepthMode
     {
         ReadWrite,
         ReadOnly,
-        Disabled
+        Disabled,
+        Occluded
     };
 
     //! Pipeline 構築パラメータ

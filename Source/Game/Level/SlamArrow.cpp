@@ -133,7 +133,8 @@ namespace NS::Game::Level
                                          desc.plainBandEdgeAlpha,
                                          desc.plainBandFillAlpha,
                                          desc.plainHeadEdgeAlpha,
-                                         desc.plainHeadFillAlpha};
+                                         desc.plainHeadFillAlpha,
+                                         desc.occludedHeadAlpha};
             for (const float value : nonNegative)
             {
                 if (!IsNonNegativeFinite(value))
@@ -606,10 +607,22 @@ namespace NS::Game::Level
                                  .plainEdgeAlpha = Tuning().plainHeadEdgeAlpha,
                                  .plainFillAlpha = Tuning().plainHeadFillAlpha,
                                  .cutUnderHead = false};
+        const float headPlateWidth = Tuning().headWidth / k_HeadTextureSpan;
         out.push_back(MakeDrawItem(
-            m_mesh,
-            m_headMaterial,
-            MakeConstants(context, m_shown, Tuning(), headPlate, Tuning().headWidth / k_HeadTextureSpan, headLook)));
+            m_mesh, m_headMaterial, MakeConstants(context, m_shown, Tuning(), headPlate, headPlateWidth, headLook)));
+        // 隠れた所だけへ薄く描く 2 枚目。高い相手へ反った矢印の先は相手の体の下や自機の玉の後ろに入って隠れる
+        const float occluded = Tuning().occludedHeadAlpha;
+        const PlateLook occludedLook{.edgeAlpha = headLook.edgeAlpha * occluded,
+                                     .fillAlpha = headLook.fillAlpha * occluded,
+                                     .plainEdgeAlpha = headLook.plainEdgeAlpha * occluded,
+                                     .plainFillAlpha = headLook.plainFillAlpha * occluded,
+                                     .cutUnderHead = false};
+        GroundArrowConstants occludedConstants =
+            MakeConstants(context, m_shown, Tuning(), headPlate, headPlateWidth, occludedLook);
+        occludedConstants.darkColor.w *= occluded;
+        NS::Gfx::DrawItem occludedItem = MakeDrawItem(m_mesh, m_headMaterial, occludedConstants);
+        occludedItem.occludedOnly = true;
+        out.push_back(occludedItem);
     }
 
     NS::Core::Vector3 SlamArrow::SortCenter() const noexcept

@@ -123,6 +123,11 @@ namespace NS::Gfx
         //! @note 共通パイプラインは構築の最後に作るので、構築に失敗した Renderer では呼んではいけない
         [[nodiscard]] const Pipeline& CommonPipeline(BlendMode blend) const noexcept;
 
+        //! @brief 手前の物に隠れた画素だけへ半透明で描くパイプラインを取得する
+        //! @details 深度は書かない。隠れた所を透かして見せる描画が、普通の描画と同じ物を 2 回目に描く時に使う
+        //! @note 共通パイプラインと一緒に構築の最後に作るので、構築に失敗した Renderer では呼んではいけない
+        [[nodiscard]] const Pipeline& OccludedPipeline() const noexcept;
+
         //! @brief 画面全体をアルファ込みの指定色で塗る。描画済みシーンの上へ半透明合成で重ねる
         //! @details 全画面三角形を 1 枚描く。当てた瞬間の白い光など、色の意味は呼び出し側が決める
         //! 資源は初回呼び出し時に一度だけ構築し、失敗時は以後何もしない。最前面に出すため全描画の最後に呼ぶ
@@ -182,6 +187,7 @@ namespace NS::Gfx
         std::unique_ptr<CommandList> m_commands;
         std::unique_ptr<CommonStates> m_states;
         std::unique_ptr<Pipeline> m_commonPipelines[3]; //!< 共通パイプライン
+        std::unique_ptr<Pipeline> m_occludedPipeline;   //!< 隠れた画素だけへ半透明で描くパイプライン
         OverlayResources m_fullscreen;                  // 全画面塗り。初回 DrawFullscreenColor で構築
         OverlayResources m_screenRect;                  // UI 矩形。初回 DrawScreenRect で構築
         // 空を描く Skybox。cubemap を指定した初回の DrawSky で一度だけ構築する

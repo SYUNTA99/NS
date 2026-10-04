@@ -21,7 +21,9 @@ namespace NS::Gfx
         Mesh* mesh = nullptr;                //!< 描画する形状データ
         Material* material = nullptr;        //!< 表面の質感やシェーダ設定
         BlendMode blend = BlendMode::Opaque; //!< 合成モード
-        FrameCB constants{};                 //!< オブジェクトの座標やカメラ、ライトなどの基本定数
+        //! 手前の物に隠れた画素だけへ描く場合 true。その時の合成は blend に関わらず半透明で、深度は書かない
+        bool occludedOnly = false;
+        FrameCB constants{}; //!< オブジェクトの座標やカメラ、ライトなどの基本定数
 
         // 頂点シェーダへの追加データ。スキンメッシュのボーンパレットがこれを使う
         const Buffer* extraVsCb = nullptr;
