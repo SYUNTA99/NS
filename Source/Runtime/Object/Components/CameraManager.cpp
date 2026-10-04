@@ -145,6 +145,60 @@ namespace NS::Obj
         return CameraZoomRoll{};
     }
 
+    CameraTraumaModifier* CameraManager::TraumaModifier()
+    {
+        for (const std::unique_ptr<CameraModifier>& modifier : m_modifiers)
+        {
+            if (modifier->Kind() == CameraTraumaModifier::StaticKind())
+            {
+                return static_cast<CameraTraumaModifier*>(modifier.get());
+            }
+        }
+        std::unique_ptr<CameraTraumaModifier> created = std::make_unique<CameraTraumaModifier>();
+        CameraTraumaModifier* raw = created.get();
+        (void)AddModifier(std::move(created));
+        return raw;
+    }
+
+    bool CameraManager::AddTrauma(const CameraTraumaDesc& desc)
+    {
+        if (!std::isfinite(desc.trauma) || desc.trauma < 0.0f)
+        {
+            return false;
+        }
+        TraumaModifier()->AddTrauma(desc);
+        return true;
+    }
+
+    bool CameraManager::HoldTrauma(float level, const CameraTraumaShape& shape)
+    {
+        if (!std::isfinite(level) || level < 0.0f)
+        {
+            return false;
+        }
+        TraumaModifier()->HoldTrauma(level, shape);
+        return true;
+    }
+
+    float CameraManager::Trauma() const noexcept
+    {
+        if (const CameraTraumaModifier* trauma = FindModifier<CameraTraumaModifier>())
+        {
+            return trauma->Trauma();
+        }
+        return 0.0f;
+    }
+
+    void CameraManager::SetShakeScale(float scale) noexcept
+    {
+        // 非数は Clamp を素通りする
+        if (!std::isfinite(scale))
+        {
+            return;
+        }
+        m_shakeScale = NS::Core::Clamp(scale, 0.0f, 1.0f);
+    }
+
     float CameraManager::SideSignOf(const NS::Core::Vector3& direction) const noexcept
     {
         return SideSign(ForwardHorizontal(), direction);
@@ -274,6 +328,14 @@ namespace NS::Obj
         const CameraAxes axes = ViewAxes(pose);
         for (const std::unique_ptr<CameraModifier>& modifier : m_modifiers)
         {
+            if (modifier->IsShake() && m_shakeScale < 1.0f)
+            {
+                // 揺れを掛けた姿勢へ倍率の分だけ寄せる。揺れの角度とずれは小さいので、寄せた量が振れ幅の倍率になる
+                CameraPose shaken = pose;
+                modifier->Modify(shaken, axes);
+                pose = CameraPose::Lerp(pose, shaken, m_shakeScale);
+                continue;
+            }
             modifier->Modify(pose, axes);
         }
         return pose;

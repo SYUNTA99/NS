@@ -62,6 +62,7 @@ namespace NS::Obj
         m_camera.SetFovY(pose.fovY);
         m_camera.SetNearPlane(pose.nearPlane);
         m_camera.SetFarPlane(pose.farPlane);
+        m_camera.SetScreenOffset(pose.screenOffset);
     }
 
 } // namespace NS::Obj

@@ -19,6 +19,7 @@
 Tools\@build_effects.cmd                        # efkprobe を組み、defs/*.efkproj と defs/<組>/*.efkproj を全部通す
 Tools\@build_effects.cmd spark_min --frames 40  # 1 本だけ。組のフォルダの定義も名前だけで渡す
 Tools\@build_effects.cmd nobuild --install      # 組まずに通し、全部通ったら Assets\Effects へ置く
+Tools\@build_effects.cmd charge.gather --input "0=0.5" --bg "0.85,0.85,0.83"  # 溜め量 0.5 を明るい背景で撮る
 python Tools/effects/defs/make_textures.py      # 確かめ用の 2 本の素材を描き直す (defs/Texture/)
 python Tools/effects/defs/charge/make_textures.py  # 溜めの組の素材を描き直す (defs/charge/Texture/)
 python Tools/effects/defs/impact/make_textures.py  # 当たりの組の素材を描き直す (defs/impact/Texture/)
@@ -64,6 +65,7 @@ Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effe
    - `Play` の後 `Update(1)` を k 回呼んで描いた絵を `frame_k.png` に書く。各フレームの生存・インスタンス数 (Root を含む)・描いた画素 (背景から色の成分の 1 つでも 16 以上離れた画素) を出す
    - Manager と Renderer の組み方は `EffectScene` のコンストラクタと同じ (左手系・最大 8000・描画 5 種・読み手 4 種)。描画先は `R8G8B8A8_UNORM`。カメラは原点を `--distance` (既定 6) の手前から見る、画角 60 度、背景は暗い灰 (`--bg`)
    - `--start-frame N` は `Manager::Play` の開始フレームに N を渡す (ゲームの `EffectScene::Play` は渡さない。比べる時だけ使う)
+   - `--input 番号=値` は `Play` の直後、最初の更新の前に動的入力を渡す。何度でも書け、渡さない番号は定義の既定の値のまま。`efkbuild.py` の `--bg` と `--input` はそのまま efkprobe へ渡る。入口のバッチは `=` と `,` で引数を割るので、値は引用符で囲む
 6. **並べる。** PNG を 8 列に並べた一覧 `frames/<名前>_sheet.png`
 7. **置く (`--install` の時だけ)。** 全部通った後、`.efkefc` と素材のフォルダを `Assets/Effects/` へ写す
 
@@ -82,6 +84,7 @@ Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effe
 - 形は編集ソフトの `.efkproj` の XML そのもの。**既定から動かす値だけを書く**。公式サンプルを `efkxml dump` で開けば書き方の手本になる
 - 末尾に `<ToolVersion>1.80.7</ToolVersion>`・`<Version>3</Version>`・`<StartFrame>`・`<EndFrame>`・`<IsLoop>` を書く。`Version` が無いと古い形として読み替えられる。後ろの 3 つは実行側に渡らないが、**無いと編集ソフトの読み込みが落ちる**
 - 理由は注釈 (`<!-- -->`) で定義に書いてよい。編集ソフトは注釈で落ちるので、`efkbuild.py` が外してから渡す
+- 定義の前後は読み込みで反転されるので、定義のプラスはゲームでは狙いの向きの後ろ、マイナスは前。ゲームは左手系で読み込み (`EffectScene`)、実行側が前後の符号を反転した後で、溜めの組は `ChargeEffects::YawToward` が前を狙いの向きへ回す
 - 数の意味 (EffekseerCore.dll の列挙から引いた物のうち使う物)
   - 描画 `DrawingValues/Type`: 0 無し・2 板 (既定)・3 リボン・4 輪・5 モデル・6 軌跡
   - 合成 `RendererCommonValues/AlphaBlend`: 0 不透明・1 半透明 (既定)・2 加算・3 減算・4 乗算

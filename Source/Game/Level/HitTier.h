@@ -11,4 +11,8 @@ namespace NS::Game::Level
         Center = 0, //!< 中心近く
         Wide = 2,   //!< 大きな外れ
     };
+
+    //! @brief 段の全部。段ごとのタイムラインを全部見る所 (触れる前の事象を探す所) が回す
+    //! @details 段を足したらここにも足す
+    inline constexpr HitTier k_AllHitTiers[] = {HitTier::Center, HitTier::Wide};
 } // namespace NS::Game::Level

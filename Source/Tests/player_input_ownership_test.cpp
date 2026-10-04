@@ -1,6 +1,7 @@
 #include "Game/Player.h"
 #include "Runtime/Object/Components/Body.h"
 #include "Runtime/Object/Components/PlayerInput.h"
+#include "Runtime/Platform/Input.h"
 
 #include <gtest/gtest.h>
 
@@ -71,4 +72,21 @@ TEST(PlayerInputOwnership, RestartClearsSharedInputAndHeldJumpCutsOnlyOnce)
     EXPECT_FLOAT_EQ(input->DesiredSpeedScale(), 0.0f);
     EXPECT_FALSE(input->JumpPressed());
     EXPECT_FALSE(input->JumpHeld());
+}
+
+TEST(PlayerInputOwnership, SlamTappedBetweenPlayerStepsIsSeenOnce)
+{
+    // 遅い世界では入力の段だけが毎歩回る。自機が読まない歩に押して放した突進を、次に読む歩で 1 回押したと見せる
+    NS::Platform::Input& platform = NS::Platform::Input::Get();
+    Player player;
+    NS::Obj::PlayerInput* input = NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input"));
+    ASSERT_NE(input, nullptr);
+    platform.Mouse().OnButtonDown(NS::Platform::MouseButton::Left);
+    input->OnUpdate();
+    platform.Mouse().OnButtonUp(NS::Platform::MouseButton::Left);
+    input->OnUpdate();
+    EXPECT_TRUE(input->SlamHeld());
+    input->ConsumePressed();
+    input->OnUpdate();
+    EXPECT_FALSE(input->SlamHeld());
 }

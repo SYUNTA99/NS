@@ -1,7 +1,19 @@
 #include "Runtime/Object/Components/CameraModifier.h"
 
+#include "Runtime/Platform/Clock.h"
+
+#include <algorithm>
 #include <cmath>
+#include <numbers>
 #include <random>
+
+namespace
+{
+    // 一撃を終えるフレームを、山のフレームの何倍にするか
+    constexpr int k_KickEndPeakMultiple = 8;
+    // 沈む揺れの画素を測る画面の高さ。画面の座標 (縦 -1〜1) へ直す時の割る数で、解像度が違っても同じ割合だけ動く
+    constexpr float k_SinkReferenceHeightPixels = 1080.0f;
+} // namespace
 
 namespace NS::Obj
 {
@@ -145,6 +157,84 @@ namespace NS::Obj
         ++m_frame;
     }
 
+    float CameraSinkPixelsAt(const CameraSinkDesc& desc, int frame) noexcept
+    {
+        if (frame < 0 || frame >= desc.frames)
+        {
+            return 0.0f;
+        }
+        const float pi = std::numbers::pi_v<float>;
+        const float bottom = -desc.bottomPixels;
+        if (frame >= desc.bounceStartFrame)
+        {
+            // 行き過ぎの割合 r から減衰比 z を出し、底から 0 へ戻る減衰振動にする。半周期で -r × 底まで出る
+            const float logRatio = std::log(desc.overshootRatio);
+            const float damping = -logRatio / std::sqrt(pi * pi + logRatio * logRatio);
+            const float dampedOmega = 2.0f * pi / static_cast<float>(desc.bouncePeriodFrames);
+            const float omega = dampedOmega / std::sqrt(1.0f - damping * damping);
+            const float u = static_cast<float>(frame - desc.bounceStartFrame);
+            return bottom * std::exp(-damping * omega * u) *
+                   (std::cos(dampedOmega * u) +
+                    damping / std::sqrt(1.0f - damping * damping) * std::sin(dampedOmega * u));
+        }
+        if (frame < desc.sinkFrames)
+        {
+            return bottom * std::sin(pi * 0.5f * static_cast<float>(frame + 1) / static_cast<float>(desc.sinkFrames));
+        }
+        const int trembleFrame = frame - desc.sinkFrames;
+        if (trembleFrame < desc.trembleFrames)
+        {
+            const float t = static_cast<float>(trembleFrame);
+            const float fade = 1.0f - t / static_cast<float>(desc.trembleFrames);
+            return bottom +
+                   desc.tremblePixels * fade * std::cos(2.0f * pi * t / static_cast<float>(desc.tremblePeriodFrames));
+        }
+        return bottom;
+    }
+
+    std::unique_ptr<CameraSinkModifier> CameraSinkModifier::Create(const CameraSinkDesc& desc)
+    {
+        // 壊れた値が姿へ流れると画面が消える。入口で捨てる
+        const bool finite =
+            std::isfinite(desc.bottomPixels) && std::isfinite(desc.tremblePixels) && std::isfinite(desc.overshootRatio);
+        if (!finite || desc.bottomPixels < 0.0f || desc.tremblePixels < 0.0f || desc.frames <= 0 ||
+            desc.sinkFrames < 1 || desc.trembleFrames < 0 || desc.tremblePeriodFrames < 1 ||
+            desc.bouncePeriodFrames < 1 || !(desc.overshootRatio > 0.0f) || !(desc.overshootRatio < 1.0f))
+        {
+            return nullptr;
+        }
+        std::unique_ptr<CameraSinkModifier> sink{new CameraSinkModifier()};
+        sink->m_desc = desc;
+        return sink;
+    }
+
+    const void* CameraSinkModifier::StaticKind() noexcept
+    {
+        static const char kind = 0;
+        return &kind;
+    }
+
+    float CameraSinkModifier::Pixels() const noexcept
+    {
+        return CameraSinkPixelsAt(m_desc, m_frame);
+    }
+
+    void CameraSinkModifier::Modify(CameraPose& pose, const CameraAxes& axes) const noexcept
+    {
+        (void)axes;
+        pose.screenOffset.y += Pixels() * 2.0f / k_SinkReferenceHeightPixels;
+    }
+
+    bool CameraSinkModifier::IsFinished() const noexcept
+    {
+        return m_frame >= m_desc.frames;
+    }
+
+    void CameraSinkModifier::Advance() noexcept
+    {
+        ++m_frame;
+    }
+
     std::unique_ptr<CameraZoomRollModifier> CameraZoomRollModifier::Create(const CameraZoomRollDesc& desc,
                                                                            float rollSign)
     {
@@ -218,5 +308,109 @@ namespace NS::Obj
     void CameraZoomRollModifier::Advance() noexcept
     {
         ++m_frame;
+    }
+
+    const void* CameraTraumaModifier::StaticKind() noexcept
+    {
+        static const char kind = 0;
+        return &kind;
+    }
+
+    void CameraTraumaModifier::AddTrauma(const CameraTraumaDesc& desc) noexcept
+    {
+        m_trauma = std::min(m_trauma + std::max(desc.trauma, 0.0f), 1.0f);
+        m_shape = desc.shape;
+        m_seed = desc.seed;
+        if (desc.kick.degrees != 0.0f && desc.kick.direction.LengthSquared() > 0.0f)
+        {
+            m_kick = desc.kick;
+            m_kick.peakFrames = std::max(m_kick.peakFrames, 1);
+            m_kickFrame = 1;
+        }
+    }
+
+    void CameraTraumaModifier::HoldTrauma(float level, const CameraTraumaShape& shape) noexcept
+    {
+        const float clamped = NS::Core::Clamp(level, 0.0f, 1.0f);
+        // 弱い保ちは強い揺れの形を奪わない。外れの揺れの途中に溜め始めても、外れの揺れのまま減る
+        if (clamped >= m_trauma)
+        {
+            m_shape = shape;
+        }
+        m_trauma = std::max(m_trauma, clamped);
+        m_held = std::max(m_held, clamped);
+    }
+
+    float CameraTraumaModifier::ShakeAmount() const noexcept
+    {
+        return std::pow(m_trauma, m_shape.exponent);
+    }
+
+    NS::Core::Vector3 CameraTraumaModifier::Angles() const noexcept
+    {
+        // 時刻はフレーム数から出す。種と時刻だけで決まり、下見で途中のフレームへ飛んでもその場で引ける
+        const float time = static_cast<float>(m_frame) * NS::Platform::FrameTimer::FixedDelta() * m_shape.frequency;
+        const float amount = ShakeAmount();
+        NS::Core::Vector3 angles{m_shape.yawDegrees * amount * NS::Core::ValueNoise1D(time, m_seed),
+                                 m_shape.pitchDegrees * amount * NS::Core::ValueNoise1D(time, m_seed + 1u),
+                                 m_shape.rollDegrees * amount * NS::Core::ValueNoise1D(time, m_seed + 2u)};
+        if (m_kickFrame > 0)
+        {
+            const float ratio = static_cast<float>(m_kickFrame) / static_cast<float>(m_kick.peakFrames);
+            const float kick = m_kick.degrees * ratio * std::exp(1.0f - ratio);
+            NS::Core::Vector2 direction = m_kick.direction;
+            direction.Normalize();
+            angles.x += kick * direction.x;
+            angles.y += kick * direction.y;
+        }
+        return angles;
+    }
+
+    void CameraTraumaModifier::Modify(CameraPose& pose, const CameraAxes& axes) const noexcept
+    {
+        const NS::Core::Vector3 angles = Angles();
+        NS::Core::Vector3 look = pose.target - pose.position;
+        const float distance = look.Length();
+        if (distance <= NS::Core::k_Epsilon)
+        {
+            return;
+        }
+        look /= distance;
+        // 右手まわりの符号に合わせる。横は上の軸まわりの正で右を向き、縦と傾きは軸まわりの負で上・右へ倒れる
+        const NS::Core::Quaternion yaw =
+            NS::Core::Quaternion::CreateFromAxisAngle(axes.up, NS::Core::DegreesToRadians(angles.x));
+        const NS::Core::Quaternion pitch =
+            NS::Core::Quaternion::CreateFromAxisAngle(axes.right, NS::Core::DegreesToRadians(-angles.y));
+        const NS::Core::Quaternion turn = yaw * pitch;
+        const NS::Core::Vector3 turnedLook = NS::Core::Vector3::Transform(look, turn);
+        const NS::Core::Quaternion roll =
+            NS::Core::Quaternion::CreateFromAxisAngle(turnedLook, NS::Core::DegreesToRadians(-angles.z));
+        NS::Core::Vector3 up = NS::Core::Vector3::Transform(NS::Core::Vector3::Transform(pose.up, turn), roll);
+        up.Normalize();
+        pose.target = pose.position + turnedLook * distance;
+        pose.up = up;
+    }
+
+    bool CameraTraumaModifier::IsFinished() const noexcept
+    {
+        return m_trauma <= 0.0f && m_held <= 0.0f && m_kickFrame == 0;
+    }
+
+    void CameraTraumaModifier::Advance() noexcept
+    {
+        ++m_frame;
+        m_trauma = std::max(m_trauma - m_shape.decayPerSecond * NS::Platform::FrameTimer::FixedDelta(), 0.0f);
+        // 保たれたフレームは減らさない。頼みは 1 フレームだけ効く
+        m_trauma = std::max(m_trauma, m_held);
+        m_held = 0.0f;
+        if (m_kickFrame > 0)
+        {
+            ++m_kickFrame;
+            // 山の 8 倍のフレームで e^-7 (山の約 0.6%)。見えなくなったので終える
+            if (m_kickFrame > m_kick.peakFrames * k_KickEndPeakMultiple)
+            {
+                m_kickFrame = 0;
+            }
+        }
     }
 } // namespace NS::Obj

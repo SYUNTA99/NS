@@ -208,3 +208,35 @@ TEST(SlamArrowTest, AirArrowWithoutTargetFallsAndTheReleaseStartsLevel)
                 NS::Game::Player::ChooseGravity(player->Params().Gravity(), 0.0f) * dt,
                 0.0001f);
 }
+
+// 溜めきりの後は、溜めすぎの深さで溜めきりの赤から溜めすぎの紫へ移る。赤のうちと溜めきる前は今の色のまま
+TEST(SlamArrowTest, FullArrowTurnsFromRedToPurpleWithTheOvercharge)
+{
+    NS::Game::Level::SlamArrowDesc desc{};
+    NS::Game::Level::SlamArrowState state{};
+    state.line.origin = Vector3{};
+    state.line.direction = Vector3{0.0f, 0.0f, 1.0f};
+    state.line.length = 10.0f;
+    state.ballRadius = 0.5f;
+    state.charge01 = 1.0f;
+    state.chargeFull = true;
+    NS::Game::Level::SlamArrowShape shape{};
+    ASSERT_TRUE(NS::Game::Level::BuildSlamArrow(state, desc, shape));
+    EXPECT_TRUE(shape.stageColor == desc.fullColor);
+
+    state.overcharge01 = 1.0f;
+    ASSERT_TRUE(NS::Game::Level::BuildSlamArrow(state, desc, shape));
+    EXPECT_TRUE(shape.stageColor == desc.overchargeColor);
+
+    state.overcharge01 = 0.5f;
+    ASSERT_TRUE(NS::Game::Level::BuildSlamArrow(state, desc, shape));
+    EXPECT_FLOAT_EQ(shape.stageColor.x, (desc.fullColor.x + desc.overchargeColor.x) * 0.5f);
+    EXPECT_FLOAT_EQ(shape.stageColor.y, (desc.fullColor.y + desc.overchargeColor.y) * 0.5f);
+    EXPECT_FLOAT_EQ(shape.stageColor.z, (desc.fullColor.z + desc.overchargeColor.z) * 0.5f);
+
+    // 溜めきる前に溜めすぎの深さが入っていても紫にしない
+    state.chargeFull = false;
+    state.charge01 = 0.9f;
+    ASSERT_TRUE(NS::Game::Level::BuildSlamArrow(state, desc, shape));
+    EXPECT_TRUE(shape.stageColor == desc.lateColor);
+}

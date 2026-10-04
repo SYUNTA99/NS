@@ -29,6 +29,9 @@ namespace NS::Core
         void SetAspectRatio(float aspect) noexcept;
         void SetNearPlane(float nearPlane) noexcept;
         void SetFarPlane(float farPlane) noexcept;
+        //! @brief 射影の後の画面を offset だけずらす。縦横とも画面の幅を 2 とした座標で、右と上が正
+        //! @details 投影行列の 3 行目の x と y に足す。どの奥行きの点も同じだけずれ、ビュー行列は変わらない
+        void SetScreenOffset(const NS::Core::Vector2& offset) noexcept;
 
         [[nodiscard]] const NS::Core::Vector3& Position() const noexcept;
         [[nodiscard]] const NS::Core::Vector3& Target() const noexcept;
@@ -38,6 +41,7 @@ namespace NS::Core
         [[nodiscard]] float AspectRatio() const noexcept;
         [[nodiscard]] float NearPlane() const noexcept;
         [[nodiscard]] float FarPlane() const noexcept;
+        [[nodiscard]] const NS::Core::Vector2& ScreenOffset() const noexcept;
 
         //! XMMatrixLookAtLH 相当。位置と注視点が重なっている時は単位行列を返す
         [[nodiscard]] const NS::Core::Matrix& View() const noexcept;
@@ -54,6 +58,7 @@ namespace NS::Core
         float m_aspect = 16.0f / 9.0f;                                           //!< アスペクト比
         float m_near = 0.1f;                                                     //!< ニアクリップ距離
         float m_far = 1000.0f;                                                   //!< ファークリップ距離
+        NS::Core::Vector2 m_screenOffset{0.0f, 0.0f};                            //!< 射影の後の画面のずれ
 
         mutable NS::Core::Matrix m_view = NS::Core::Matrix::Identity;       //!< ビュー行列のキャッシュ
         mutable NS::Core::Matrix m_projection = NS::Core::Matrix::Identity; //!< プロジェクション行列のキャッシュ

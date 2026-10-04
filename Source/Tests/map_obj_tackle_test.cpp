@@ -50,11 +50,8 @@ TEST(MapObjTackle, FreezePushesInAndReleaseRestoresThenLaunches)
     NS::Obj::Actor* rock = PlaceRock(scene, NS::Core::Vector3{2.0f, 1.0f, 0.0f});
     ASSERT_NE(rock, nullptr);
 
-    const NS::Game::Level::TackleFreezeDesc freeze{.impactDir = NS::Core::Vector3{1.0f, 0.0f, 0.0f},
-                                                   .pushInDistance = 0.1f,
-                                                   .shakeAmplitude = 0.02f,
-                                                   .squash = true,
-                                                   .stopSteps = 3};
+    const NS::Game::Level::TackleFreezeDesc freeze{
+        .impactDir = NS::Core::Vector3{1.0f, 0.0f, 0.0f}, .pushInDistance = 0.1f, .squash = true, .stopSteps = 3};
     ASSERT_TRUE(NS::Game::Level::SendMsgTackleFreeze(*rock, freeze));
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 2.1f);
     const NS::Game::Level::MapObj* reaction = static_cast<NS::Game::Level::MapObj*>(rock);

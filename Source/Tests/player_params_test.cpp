@@ -104,7 +104,7 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
                                      {"突進速度", 20.0f},
                                      {"突進距離", 10.0f},
                                      {"放つ角度の上限", 40.0f},
-                                     {"タップ初速", 10.0f},
+                                     {"タップ初速", 15.0f},
                                      {"タップの上向き初速", 3.0f},
                                      {"タップ距離", 6.25f},
                                      {"狙いの巻き戻し秒", 0.11f},
@@ -188,7 +188,10 @@ TEST(PlayerParams, AppearanceAndChargeDefaultsBelongToParams)
                                      {"玉のメッシュ", ""},
                                      {"溜め 0 の回る速さ", 360.0f},
                                      {"溜めきりの回る速さ", 1440.0f},
-                                     {"突進中の回る速さ", 1800.0f},
+                                     {"溜めた突進の届くまでの回転数", 5.0f},
+                                     {"タップの届くまでの回転数", 2.0f},
+                                     {"溜めて当てた反動の回転数", 3.0f},
+                                     {"タップで当てた反動の回転数", 1.0f},
                                      {"着地の潰れ", 0.8f},
                                      {"着地の潰れを戻すフレーム数", 6},
                                      {"タップの弾けの大きさ", 0.75f},
@@ -215,7 +218,7 @@ TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
     EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(std::numeric_limits<float>::infinity()), 0.5f);
 }
 
-TEST(PlayerParams, ImpactDefaultsKeepAllSixtySixDisplayNamesAndValues)
+TEST(PlayerParams, ImpactDefaultsKeepAllFortySixDisplayNamesAndValues)
 {
     Player player;
     const nlohmann::json fields = NS::Obj::SerializeComponent(player.Params())["fields"];
@@ -229,28 +232,8 @@ TEST(PlayerParams, ImpactDefaultsKeepAllSixtySixDisplayNamesAndValues)
                                      {"下りの速さの倍率", 1.4f},
                                      {"頂点の帯の縦速度", 1.0f},
                                      {"頂点の帯の重力倍率", 0.5f},
-                                     {"ヒットストップ基準秒", 4.0f / 60.0f},
                                      {"中心近くの当たりのヒットストップ倍率", 2.0f},
                                      {"ヒットストップの上限秒", 12.0f / 60.0f},
-                                     {"食い込み距離", 0.06f},
-                                     {"振動の振幅", 0.05f},
-                                     {"カメラ揺れの強さ", 0.06f},
-                                     {"中心近くの当たりの揺れの倍率", 1.25f},
-                                     {"大きな外れの揺れのフレーム数", 16},
-                                     {"大きな外れの揺れの縦と横の比", 0.35f},
-                                     {"大きな外れの揺れの入れ替わりの最長フレーム数", 3},
-                                     {"中心近くの当たりの寄りの倍率", 1.15f},
-                                     {"中心近くの当たりの傾き", 3.0f},
-                                     {"寄りと傾きを戻すフレーム数", 6},
-                                     {"中心近くの当たりのパッドの振動の強さ", 1.0f},
-                                     {"大きな外れのパッドの振動の強さ", 0.6f},
-                                     {"潰れの厚み", 0.7f},
-                                     {"潰れの伸び上がり", 1.1f},
-                                     {"弾け伸びの倍率", 1.2f},
-                                     {"弾け伸びの行き過ぎ", 0.5f},
-                                     {"弾け伸びを戻すフレーム数", 6},
-                                     {"中心近くの当たりの白の濃さ", 0.5f},
-                                     {"中心近くの当たりの白のフレーム数", 6},
                                      {"破壊を許可", false},
                                      {"貫通時の減速倍率", 0.75f},
                                      {"貫通の止め秒", 4.0f / 60.0f},
@@ -291,10 +274,31 @@ TEST(PlayerParams, ImpactDefaultsKeepAllSixtySixDisplayNamesAndValues)
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
     }
     // 惜しいの段は消した。惜しいだけの演出の欄が戻ると、段の無い当たりの調整値が保存に載る
+    // 当たりの返りの時間と形はタイムラインへ移した。欄が戻ると、同じ返りの値の出所が 2 つになる
     for (const char* removed : {"惜しい当たりの返りの割合",
                                 "惜しい当たりの返りを引き始める割合",
                                 "惜しいの輪が届く割合",
-                                "惜しいの火花の数の割合"})
+                                "惜しいの火花の数の割合",
+                                "ヒットストップ基準秒",
+                                "食い込み距離",
+                                "振動の振幅",
+                                "カメラ揺れの強さ",
+                                "中心近くの当たりの揺れの倍率",
+                                "大きな外れの揺れのフレーム数",
+                                "大きな外れの揺れの縦と横の比",
+                                "大きな外れの揺れの入れ替わりの最長フレーム数",
+                                "中心近くの当たりの寄りの倍率",
+                                "中心近くの当たりの傾き",
+                                "寄りと傾きを戻すフレーム数",
+                                "中心近くの当たりのパッドの振動の強さ",
+                                "大きな外れのパッドの振動の強さ",
+                                "潰れの厚み",
+                                "潰れの伸び上がり",
+                                "弾け伸びの倍率",
+                                "弾け伸びの行き過ぎ",
+                                "弾け伸びを戻すフレーム数",
+                                "中心近くの当たりの白の濃さ",
+                                "中心近くの当たりの白のフレーム数"})
     {
         EXPECT_FALSE(fields.contains(removed)) << removed;
     }
@@ -333,7 +337,9 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     using NS::Game::Player::SparkHeading;
     Player player;
     // 中心近くと大きな外れで本数が違えば、どちらの行から来たかが分かる
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"弾かれ線の本数", 9}, {"大きな外れの弾かれ線の本数", 4}}),
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(
+                  player.Params(),
+                  {{"弾かれ線の本数", 9}, {"大きな外れの弾かれ線の本数", 4}, {"大きな外れの火花の大きさ", 2.5f}}),
               0u);
     NS::Game::Level::ImpactRecord impact{};
     impact.power = 1.0f;
@@ -350,6 +356,8 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     EXPECT_EQ(center.sparkCountInput, 0u);
     EXPECT_EQ(center.recoilCount, 9);
     EXPECT_EQ(center.recoilCountInput, 0u);
+    EXPECT_FALSE(center.coreCut);
+    EXPECT_FLOAT_EQ(center.sparkScale, 1.0f);
 
     EXPECT_EQ(wide.coreInput, 2u);
     EXPECT_EQ(wide.coreHold, CoreHoldMotion::Settle);
@@ -357,6 +365,8 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     EXPECT_EQ(wide.sparkCountInput, 1u);
     EXPECT_EQ(wide.recoilCount, 4);
     EXPECT_EQ(wide.recoilCountInput, 2u);
+    EXPECT_TRUE(wide.coreCut);
+    EXPECT_FLOAT_EQ(wide.sparkScale, 2.5f);
 
     // 番号から作った段の外の値は、行を混ぜずに大きな外れの行で出す。中心近くの層は 1 つも足さない
     impact.tier = static_cast<HitTier>(3);
@@ -396,10 +406,7 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
-                                       {{"押し飛ばしの距離", 8.0f},
-                                        {"押し飛ばしの高さ", 3.0f},
-                                        {"反動の高さ", 2.0f},
-                                        {"ヒットストップ基準秒", 0.0f}}),
+                                       {{"押し飛ばしの距離", 8.0f}, {"押し飛ばしの高さ", 3.0f}, {"反動の高さ", 2.0f}}),
               0u);
     player->RequestBodySlam(0.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
@@ -409,7 +416,6 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     EXPECT_FLOAT_EQ(impact.launchDistance, 8.0f);
     EXPECT_FLOAT_EQ(impact.launchApexHeight, 3.0f);
     EXPECT_FLOAT_EQ(impact.reboundApexHeight, 2.0f);
-    EXPECT_EQ(impact.hitStopSteps, 0);
 }
 
 TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)

@@ -1,6 +1,7 @@
 ﻿#include "Runtime/Object/Components/ThirdPersonFollow.h"
 
 #include "Runtime/Object/Actor.h"
+#include "Runtime/Object/IUse/IUseCamera.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -168,7 +169,6 @@ namespace NS::Obj
         m_chargeNarrowDegrees = 0.0f;
         m_chargeReturnFromDegrees = 0.0f;
         m_chargeReturnFrame = 0;
-        m_chargeShake = 0.0f;
         m_chargeFrameOffset = NS::Core::Vector2{0.0f, 0.0f};
         m_chargeFrameVelocity = NS::Core::Vector2{0.0f, 0.0f};
     }
@@ -189,6 +189,8 @@ namespace NS::Obj
     {
         m_rebound = FollowReboundDesc{};
         m_wasRebounding = false;
+        m_wasForcedSlamming = false;
+        m_reboundLagCap = 0.0f;
         m_reboundLookHeld = false;
         m_reboundTurnAngle = 0.0f;
         m_reboundTurnFrame = 0;
@@ -198,6 +200,11 @@ namespace NS::Obj
         m_reboundReturnOffset = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_reboundReturnFrame = 0;
         m_hasLook = false;
+        m_reboundBaseDistance = 0.0f;
+        m_partnerLean = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_partnerLeanVelocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_partnerPull = 0.0f;
+        m_partnerPullVelocity = 0.0f;
     }
 
     void ThirdPersonFollow::UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept
@@ -242,10 +249,11 @@ namespace NS::Obj
         }
     }
 
-    void ThirdPersonFollow::UpdateReboundPhase(bool began, bool rebounding, const NS::Core::Vector3& head) noexcept
+    void ThirdPersonFollow::UpdateReboundPhase(
+        bool began, bool rebounding, bool launchBegan, bool launching, const NS::Core::Vector3& head) noexcept
     {
         // 反動の状態になったフレームに、前のフレームに見ていた所から留める
-        // 空中で続けて当てた時も留め直す
+        // 空中で続けて当てた時も留め直す。勝手に出た突進の途中で当たった時も、遅れた注視点から続けるので跳ばない
         if (began)
         {
             m_reboundPhase = ReboundPhase::Following;
@@ -258,12 +266,34 @@ namespace NS::Obj
                 m_reboundAnchor = head;
             }
             m_reboundAnchorVelocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            // 勝手に出た突進の遅れは反動の上限より大きいことがある。入った時の遅れを上限の初めにして、切って跳ばさない
+            const float lagX = m_reboundAnchor.x - head.x;
+            const float lagZ = m_reboundAnchor.z - head.z;
+            m_reboundLagCap = std::max(m_reboundMaxLag, std::sqrt(lagX * lagX + lagZ * lagZ));
             return;
         }
 
-        // 反動の状態が外れたフレームから寄せ戻す
-        // 着地のほか、空中の 1 発と縁を掴んだ時も外れる
-        if (m_reboundPhase == ReboundPhase::Following && !rebounding)
+        // 勝手に出た突進になったフレームに、前のフレームに見ていた所へ取り残す。バネは止まった所から動き出すので、
+        // 出た最初の数フレームは注視点がほぼ動かない
+        if (launchBegan)
+        {
+            m_reboundPhase = ReboundPhase::Launching;
+            if (m_hasLook)
+            {
+                m_reboundAnchor = m_look;
+            }
+            else
+            {
+                m_reboundAnchor = head;
+            }
+            m_reboundAnchorVelocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            return;
+        }
+
+        // 反動の状態か勝手に出た突進が外れたフレームから寄せ戻す
+        // 着地のほか、空中の 1 発と縁を掴んだ時も外れる。突進は当たらずに止まった時に外れる
+        if ((m_reboundPhase == ReboundPhase::Following && !rebounding) ||
+            (m_reboundPhase == ReboundPhase::Launching && !launching))
         {
             if (m_reboundReturnFrames > 0 && m_hasLook)
             {
@@ -284,6 +314,39 @@ namespace NS::Obj
         {
             m_reboundPhase = ReboundPhase::None;
         }
+    }
+
+    void ThirdPersonFollow::UpdateReboundPartner(const FollowReboundDesc& rebound,
+                                                 const NS::Core::Vector3& head,
+                                                 float dt) noexcept
+    {
+        NS::Core::Vector3 leanTarget{0.0f, 0.0f, 0.0f};
+        float pullTarget = 0.0f;
+        const float release = std::max(m_reboundPartnerReleaseDistance, 0.0f);
+        if (m_reboundPhase == ReboundPhase::Following && rebound.partnerPosition.has_value() && release > 0.0f)
+        {
+            const NS::Core::Vector3 gap = rebound.partnerPosition.value() - head;
+            const float distance = gap.Length();
+            // 見送った後は引きも戻す。目標は 0 へ跳ぶが、ばねがなめらかに戻す
+            if (std::isfinite(distance) && distance < release)
+            {
+                const float weight = NS::Core::Clamp(m_reboundPartnerWeight, 0.0f, 1.0f) * (1.0f - distance / release);
+                leanTarget = gap * weight;
+                pullTarget = NS::Core::Clamp(m_reboundPullPerMeter * (distance - m_reboundPullStartDistance),
+                                             0.0f,
+                                             std::max(m_reboundPullMax, 0.0f));
+            }
+        }
+        // 臨界減衰のバネが止まった所から差の半分まで詰めるのは ωτ ≈ 1.678 の時。半分の秒から角速度を出す
+        float omega = 0.0f;
+        if (m_reboundPartnerHalfSeconds > 0.0f)
+        {
+            omega = 1.678f / m_reboundPartnerHalfSeconds;
+        }
+        CriticalSpringStep(m_partnerLean.x, m_partnerLeanVelocity.x, leanTarget.x, omega, dt);
+        CriticalSpringStep(m_partnerLean.y, m_partnerLeanVelocity.y, leanTarget.y, omega, dt);
+        CriticalSpringStep(m_partnerLean.z, m_partnerLeanVelocity.z, leanTarget.z, omega, dt);
+        CriticalSpringStep(m_partnerPull, m_partnerPullVelocity, pullTarget, omega, dt);
     }
 
     NS::Core::Vector3 ThirdPersonFollow::UpdateReboundLook(const NS::Core::Vector3& head,
@@ -313,6 +376,27 @@ namespace NS::Obj
             return m_look;
         }
 
+        if (m_reboundPhase == ReboundPhase::Launching)
+        {
+            // 横と前後は臨界減衰のバネで追う。バネの値は切らず、見せる遅れだけを 上限 × tanh(遅れ ÷ 上限) で丸める
+            // 届いたフレームに切ると、カメラの速さが急に突進と同じになって引っかかったように見える
+            // 高さは追う相手の頭のまま
+            CriticalSpringStep(m_reboundAnchor.x, m_reboundAnchorVelocity.x, head.x, m_forcedLaunchFollowOmega, dt);
+            CriticalSpringStep(m_reboundAnchor.z, m_reboundAnchorVelocity.z, head.z, m_forcedLaunchFollowOmega, dt);
+            const float lagX = m_reboundAnchor.x - head.x;
+            const float lagZ = m_reboundAnchor.z - head.z;
+            const float lag = std::sqrt(lagX * lagX + lagZ * lagZ);
+            const float maxLag = std::max(m_forcedLaunchMaxLag, 0.0f);
+            m_look = head;
+            if (lag > 0.0f && maxLag > 0.0f)
+            {
+                const float shown = maxLag * std::tanh(lag / maxLag);
+                m_look.x = head.x + lagX * (shown / lag);
+                m_look.z = head.z + lagZ * (shown / lag);
+            }
+            return m_look;
+        }
+
         // 横と前後は臨界減衰のバネで遅れて付いていき、遅れは上限の内に留める
         // 高さは留めたまま
         CriticalSpringStep(m_reboundAnchor.x, m_reboundAnchorVelocity.x, head.x, m_reboundFollowOmega, dt);
@@ -320,14 +404,16 @@ namespace NS::Obj
         const float lagX = m_reboundAnchor.x - head.x;
         const float lagZ = m_reboundAnchor.z - head.z;
         const float lag = std::sqrt(lagX * lagX + lagZ * lagZ);
-        const float maxLag = std::max(m_reboundMaxLag, 0.0f);
+        const float maxLag = std::max(m_reboundLagCap, 0.0f);
         if (lag > maxLag)
         {
             const float scale = maxLag / lag;
             m_reboundAnchor.x = head.x + lagX * scale;
             m_reboundAnchor.z = head.z + lagZ * scale;
         }
-        m_look = m_reboundAnchor;
+        // 上限は欄の値より上にある間だけ、今の遅れまで縮めていく。増やさないので注視点は跳ばない
+        m_reboundLagCap = std::max(m_reboundMaxLag, std::min(m_reboundLagCap, std::min(lag, maxLag)));
+        m_look = m_reboundAnchor + m_partnerLean;
 
         // 追う相手が画面の上下の帯を越えそうな時だけ、
         // 越えない所まで位置と注視点をカメラの上の向きへ動かす
@@ -401,19 +487,16 @@ namespace NS::Obj
         }
         m_chargeNarrowDegrees = std::max(holdNarrow, returning);
 
-        // 締めと同じ溜め量から作り、変わり始めと変わり終わりのフレームを締めと揃える
-        if (holdCharge > 0.0f)
+        // 溜めの揺れはカメラの管理役のトラウマに保たせる。揺れの持ち主を当たりの揺れと 1 つにする
+        // 締めと同じ溜め量から作り、変わり始めのフレームを締めと揃える。トラウマの 2 乗で、溜めきりに近いほど強まる
+        if (holdCharge > 0.0f && Owner() != nullptr)
         {
-            float sign = -1.0f;
-            if (m_chargeShake < 0.0f)
-            {
-                sign = 1.0f;
-            }
-            m_chargeShake = sign * m_chargeShakeStrength * holdCharge;
-        }
-        else
-        {
-            m_chargeShake = 0.0f;
+            NS::Obj::CameraTraumaShape shape;
+            shape.yawDegrees = m_chargeShakeYawDegrees;
+            shape.pitchDegrees = m_chargeShakePitchDegrees;
+            shape.frequency = m_chargeShakeFrequency;
+            shape.decayPerSecond = m_chargeShakeDecayPerSecond;
+            (void)HoldCameraTrauma(*Owner(), holdCharge, shape);
         }
 
         // 構図は押したフレームから動かし、溜めに入った時には相手を枠へ入れておく
@@ -576,6 +659,8 @@ namespace NS::Obj
         // 空中で続けて当てた時も、間に反動でないフレームを挟むのでここを通る
         const bool reboundBegan = rebound.rebounding && !m_wasRebounding;
         m_wasRebounding = rebound.rebounding;
+        const bool launchBegan = rebound.forcedSlamming && !m_wasForcedSlamming;
+        m_wasForcedSlamming = rebound.forcedSlamming;
         UpdateReboundTurn(reboundBegan, rebound);
 
         // マウスと右スティックの手動回転。反動になってから接地するまでは受けない
@@ -606,7 +691,16 @@ namespace NS::Obj
 
         const NS::Core::Vector3 root = target->Position();
         const NS::Core::Vector3 head{root.x, root.y + m_targetHeightOffset + m_headHeight, root.z};
-        UpdateReboundPhase(reboundBegan, rebound.rebounding, head);
+        UpdateReboundPhase(reboundBegan, rebound.rebounding, launchBegan, rebound.forcedSlamming, head);
+        // 反動になったフレームは前の反動の寄せと引きを持ち越さない
+        if (reboundBegan)
+        {
+            m_partnerLean = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            m_partnerLeanVelocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            m_partnerPull = 0.0f;
+            m_partnerPullVelocity = 0.0f;
+        }
+        UpdateReboundPartner(rebound, head, dt);
 
         // 接地と速度で決める自動ズーム距離
         // 反動になったフレームに、目標を当たった瞬間の距離より欄の分だけ伸ばし、
@@ -615,7 +709,13 @@ namespace NS::Obj
         // 目標へ寄っている途中に目標へ足すと、見えている距離より下がりすぎるか寄る
         if (!m_manualDistance && reboundBegan)
         {
-            m_desiredDistance = m_distance + std::max(m_reboundPullBack, 0.0f);
+            m_reboundBaseDistance = m_distance + std::max(m_reboundPullBack, 0.0f);
+            m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
+        }
+        else if (!m_manualDistance && m_reboundPhase == ReboundPhase::Following)
+        {
+            // 反動の間は当たった瞬間に決めた距離に、相手を収める引きだけを足す
+            m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
         }
         else if (!m_manualDistance && m_reboundPhase != ReboundPhase::Following)
         {
@@ -679,8 +779,8 @@ namespace NS::Obj
             headPos.z - forward.z * m_distance,
         };
 
-        // 構図のずらしと溜めの揺れは位置と注視点を同じだけ動かし、視線の向きを変えない。どちらも 0 なら足さない
-        const float upShift = m_chargeFrameOffset.y + m_chargeShake;
+        // 構図のずらしは位置と注視点を同じだけ動かし、視線の向きを変えない。0 なら足さない
+        const float upShift = m_chargeFrameOffset.y;
         if (m_chargeFrameOffset.x != 0.0f || upShift != 0.0f)
         {
             const NS::Core::Vector3 right{cy, 0.0f, -sy};

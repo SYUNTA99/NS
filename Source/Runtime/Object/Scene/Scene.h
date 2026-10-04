@@ -8,6 +8,7 @@
 #include "Runtime/Object/IUse/IUseEffect.h"
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectList.h"
+#include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Scene/HitSensorDirector.h"
 #include "Runtime/Object/Scene/SceneCamera.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -173,6 +174,38 @@ namespace NS::Obj
         //! @brief 止めたまま次の fixed step を 1 コマだけ進める。動いていればまず止める
         void StepSimulation() noexcept;
 
+        //! @brief 世界の速さを置く。0〜1 に収め、非数は受けない
+        //! @details 1 未満の間は、世界の時計の段 (ClockOf が World) を速さの分だけ間引いて回す。実時間の段は毎歩回る。
+        //! 1
+        //! 歩の中身は変えないので、フレーム数で数える物も経過秒で進む物も同じだけ遅くなり、同じ入力から同じ結果が出る。
+        //! プレイを入れ直すと 1 へ戻る
+        //! @param[in] speed 世界の速さ。1 が普段の速さ、0 で世界が止まる
+        void SetWorldSpeed(float speed) noexcept;
+        [[nodiscard]] float WorldSpeed() const noexcept { return m_worldSpeed; }
+
+        //! @brief 世界の速さを fromSpeed から 1 へ、実時間の realSeconds 秒で戻し始める (段階的な明け)
+        //! @details 戻り方は shape (横軸は 0〜1 の経過の割合、縦軸は 0〜1 の戻りの割合)。点の無い曲線は直線。
+        //! 戻る間も毎歩の速さは SetWorldSpeed と同じに効く。SetWorldSpeed と SetSimulationEnabled は戻りを止める
+        //! @param[in] fromSpeed 始まりの速さ。0〜1 に収める
+        //! @param[in] realSeconds 1 へ戻るまでの実時間の秒。0 以下ならすぐ 1 へ戻す
+        //! @param[in] shape 戻り方
+        void StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept;
+
+        //! @brief 自機以外の世界を steps 歩のあいだ止める
+        //! @details 止めている間は、RunsWhileOthersHeld が偽の段を飛ばす。歩の途中で呼ぶと、その歩の残りの段から効き、
+        //! その歩も 1 歩と数える。今の残りより長い時だけ置き直し、0 は止めを解く。プレイを入れ直すと解ける
+        //! @param[in] steps 止める歩の数。0 以下で止めを解く
+        void HoldOthers(int steps) noexcept;
+        //! 自機以外の世界を止めている場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsHoldingOthers() const noexcept { return m_othersHeldSteps > 0; }
+
+        //! @brief 描く補間の割合を返す
+        //! @details 世界の速さが 1 未満の間は、前に世界を進めてからの溜めに、実時間の割合 × 速さを足す。
+        //! 止めている間は 1 (同じフレームの絵が描くたびに揺れないように)
+        //! @param[in] frameAlpha 固定ステップの間の実時間の割合 (FrameTimer::Alpha)
+        //! @return 0〜1 の割合
+        [[nodiscard]] float RenderAlpha(float frameAlpha) const noexcept;
+
         //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ CameraManager の視点で 1 回だけ描く
         //! @details 空でない間は各ビューを順に bind して描き分ける。出荷 (Editor 無し) では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneRenderer.SetSceneViews(std::move(views)); }
@@ -229,6 +262,12 @@ namespace NS::Obj
         void OnShutdown();
 
     private:
+        //! 世界の速さを溜めに足し、1 に届いたら 1 引く。世界を進める歩の場合 true、それ以外の場合は false
+        bool AdvanceWorldClock() noexcept;
+
+        //! 戻りの曲線を実時間の 1 歩だけ進め、世界の速さを書く
+        void AdvanceWorldSpeedRamp() noexcept;
+
         //! @brief 渡されたシーンの JSON 文書から配置物と当たりの body を組み直す
         void RebuildObjectsFrom(const nlohmann::json& scene);
 
@@ -262,5 +301,13 @@ namespace NS::Obj
         bool m_simulationEnabled = true;         // 世界を回すか。エディタの編集モードだけが下ろす
         bool m_simulationPaused = false;         // 時間停止中か
         std::int32_t m_simulationStepFrames = 0; // コマ送り残り fixed step 数。止めたままこの数だけ進める
+        float m_worldSpeed = 1.0f;               // 世界の速さ (0〜1)
+        float m_worldCarry = 0.0f;               // 前に世界を進めてから足した速さ。1 に届いたら世界を 1 歩進める
+        bool m_rampActive = false;               // 世界の速さを戻している間か
+        float m_rampFrom = 1.0f;                 // 戻りの始まりの速さ
+        float m_rampSeconds = 0.0f;              // 戻りの実時間の長さ (秒)
+        float m_rampElapsed = 0.0f;              // 戻りを始めてからの実時間 (秒)
+        Curve m_rampShape{};                     // 戻り方。点が無ければ直線
+        int m_othersHeldSteps = 0;               // 自機以外の世界を止める残りの歩数
     };
 } // namespace NS::Obj

@@ -123,6 +123,13 @@
         <RendererCommonValues>
           <ColorTexture>Texture/charge_pillar_v.png</ColorTexture>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.3 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.3</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>
@@ -175,6 +182,13 @@
           <AlphaBlend>2</AlphaBlend>
           <EmissiveScaling>4</EmissiveScaling>
         </RendererCommonValues>
+        <!-- 床か玉と交わる所を 0.3 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <AdvancedRendererCommonValuesValues>
+          <SoftParticleParams>
+            <Enabled>True</Enabled>
+            <Distance>0.3</Distance>
+          </SoftParticleParams>
+        </AdvancedRendererCommonValuesValues>
         <DrawingValues>
           <ColorAll>
             <Fixed>

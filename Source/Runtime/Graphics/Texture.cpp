@@ -55,6 +55,7 @@ namespace NS::Gfx
         void CreateRequestedViews(ID3D11Device* device,
                                   ID3D11Texture2D* tex2d,
                                   UINT bindFlags,
+                                  DXGI_FORMAT viewFormat,
                                   ComPtr<ID3D11ShaderResourceView>& outSrv,
                                   ComPtr<ID3D11RenderTargetView>& outRtv,
                                   ComPtr<ID3D11DepthStencilView>& outDsv) noexcept
@@ -65,7 +66,18 @@ namespace NS::Gfx
             }
             if (bindFlags & D3D11_BIND_SHADER_RESOURCE)
             {
-                const HRESULT hr = device->CreateShaderResourceView(tex2d, nullptr, outSrv.GetAddressOf());
+                // 書式を渡されなければ資源の書式のまま作る
+                D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc{};
+                const D3D11_SHADER_RESOURCE_VIEW_DESC* viewDescPtr = nullptr;
+                if (viewFormat != DXGI_FORMAT_UNKNOWN)
+                {
+                    viewDesc.Format = viewFormat;
+                    viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+                    viewDesc.Texture2D.MostDetailedMip = 0;
+                    viewDesc.Texture2D.MipLevels = 1;
+                    viewDescPtr = &viewDesc;
+                }
+                const HRESULT hr = device->CreateShaderResourceView(tex2d, viewDescPtr, outSrv.GetAddressOf());
                 if (FAILED(hr))
                 {
                     NS_LOG_ERROR(
@@ -237,7 +249,7 @@ namespace NS::Gfx
         {
             if (CreateEmptyTexture(device, desc, m_tex))
             {
-                CreateRequestedViews(device, m_tex.Get(), desc.bindFlags, m_srv, m_rtv, m_dsv);
+                CreateRequestedViews(device, m_tex.Get(), desc.bindFlags, desc.viewFormat, m_srv, m_rtv, m_dsv);
                 m_size = ::NS::Core::Size2D{static_cast<int>(desc.width), static_cast<int>(desc.height)};
             }
             return;
@@ -294,7 +306,7 @@ namespace NS::Gfx
         }
         m_tex = std::move(existing);
         m_size = Texture2DSize(m_tex.Get());
-        CreateRequestedViews(device, m_tex.Get(), bindFlags, m_srv, m_rtv, m_dsv);
+        CreateRequestedViews(device, m_tex.Get(), bindFlags, DXGI_FORMAT_UNKNOWN, m_srv, m_rtv, m_dsv);
     }
 
     Texture::~Texture() = default;

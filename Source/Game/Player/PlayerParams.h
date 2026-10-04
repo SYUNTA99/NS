@@ -63,6 +63,13 @@ namespace NS::Game::Player
         //! @param[in] charge01 溜め量。0..1 の外は丸める
         //! @return 威力の倍率
         [[nodiscard]] float ChargeFactorFor(float charge01) const noexcept;
+        //! @brief 溜め量と溜めすぎの深さを威力の倍率にする
+        //! @details 溜め量の倍率 (1 つ引数の ChargeFactorFor) に、溜めすぎの深さで 1 から欄「紫の威力の上限」まで
+        //! 線形に上がる倍率を掛ける。非有限の深さは 0、0..1 の外は丸める
+        //! @param[in] charge01 溜め量。0..1 の外は丸める
+        //! @param[in] overcharge01 溜めすぎの深さ
+        //! @return 威力の倍率
+        [[nodiscard]] float ChargeFactorFor(float charge01, float overcharge01) const noexcept;
         //! @brief 溜め中に最高速へ掛ける倍率を返す
         //! @details 1 − 欄「チャージ減速率」を 0..1 に丸める。
         //! 溜めている間に Player::AdvanceCharge が自機の最高速度へ掛ける
@@ -114,6 +121,16 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_minPlaybackSpeed, "再生速度の下限")
         NS_REFLECT_FIELD(m_chargeThresholdSeconds, "チャージしきい値秒")
         NS_REFLECT_FIELD(m_chargeFullSeconds, "チャージ満タン秒")
+        NS_REFLECT_FIELD(m_overchargeSeconds, "溜めすぎの秒数")
+        NS_REFLECT_FIELD(m_overchargeSwayMaxOffset, "紫の揺れの最大のずれ")
+        NS_REFLECT_FIELD(m_overchargeSwayStartRate, "紫の揺れの始めの速さ")
+        NS_REFLECT_FIELD(m_overchargeSwayEndRate, "紫の揺れの終わりの速さ")
+        NS_REFLECT_FIELD(m_overchargeSwayFallbackDistance, "相手がいない時に直す距離")
+        NS_REFLECT_FIELD(m_overchargePowerMax, "紫の威力の上限")
+        NS_REFLECT_FIELD(m_overchargeSparkCountMin, "紫の火花の数の始め")
+        NS_REFLECT_FIELD(m_overchargeSparkCountMax, "紫の火花の数の終わり")
+        NS_REFLECT_FIELD(m_overchargeSparkSpeedMin, "紫の火花の速さの始め")
+        NS_REFLECT_FIELD(m_overchargeSparkSpeedMax, "紫の火花の速さの終わり")
         NS_REFLECT_FIELD(m_chargeSlowRate, "チャージ減速率")
         NS_REFLECT_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
         NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
@@ -122,7 +139,10 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_ballMeshRef, "玉のメッシュ")
         NS_REFLECT_FIELD(m_emptyChargeSpinSpeed, "溜め 0 の回る速さ")
         NS_REFLECT_FIELD(m_fullChargeSpinSpeed, "溜めきりの回る速さ")
-        NS_REFLECT_FIELD(m_bodySlamSpinSpeed, "突進中の回る速さ")
+        NS_REFLECT_FIELD(m_chargedSlamTurns, "溜めた突進の届くまでの回転数")
+        NS_REFLECT_FIELD(m_tapSlamTurns, "タップの届くまでの回転数")
+        NS_REFLECT_FIELD(m_chargedReboundTurns, "溜めて当てた反動の回転数")
+        NS_REFLECT_FIELD(m_tapReboundTurns, "タップで当てた反動の回転数")
         NS_REFLECT_FIELD(m_landingSquash, "着地の潰れ")
         NS_REFLECT_FIELD(m_landingSquashRecoverSteps, "着地の潰れを戻すフレーム数")
         NS_REFLECT_FIELD(m_tapBurstScale, "タップの弾けの大きさ")
@@ -130,6 +150,16 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_reboundApexHeight, "反動の高さ")
         NS_REFLECT_FIELD(m_reboundDistance, "反動の距離")
         NS_REFLECT_FIELD(m_centerHitReboundDistanceScale, "中心近くの当たりの反動の距離の倍率")
+        NS_REFLECT_FIELD(m_missReboundHeightRatio, "外れの反動の高さの割合")
+        NS_REFLECT_FIELD(m_missSlamBounce, "叩きつけた時の跳ね")
+        NS_REFLECT_FIELD(m_missBoxEdgeSharpness, "四角の角の鋭さ")
+        NS_REFLECT_FIELD(m_missTwistTurnsPerSecond, "外れの縁でのねじれの回転数")
+        NS_REFLECT_FIELD(m_missSpinCarryRatio, "外れで当たる前の回転を引き継ぐ割合")
+        NS_REFLECT_FIELD(m_missSpinBlendSteps, "外れの回転を寄せるフレーム数")
+        NS_REFLECT_FIELD(m_missWobbleDegrees, "外れの軸のぶれの角度")
+        NS_REFLECT_FIELD(m_missWobbleTurnsPerSecond, "外れの軸のぶれの速さ")
+        NS_REFLECT_FIELD(m_missSkidSteps, "外れのこすって止まるまでのフレーム数")
+        NS_REFLECT_FIELD(m_missSkidExponent, "外れのこすって止まる減り方")
         NS_REFLECT_FIELD(m_launchDistance, "押し飛ばしの距離")
         NS_REFLECT_FIELD(m_launchMassExponent, "押し飛ばしの質量指数")
         NS_REFLECT_FIELD(m_launchApexHeight, "押し飛ばしの高さ")
@@ -137,28 +167,8 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_launchFallGravityScale, "下りの速さの倍率")
         NS_REFLECT_FIELD(m_launchApexBandSpeed, "頂点の帯の縦速度")
         NS_REFLECT_FIELD(m_launchApexBandGravityScale, "頂点の帯の重力倍率")
-        NS_REFLECT_FIELD(m_hitStopBaseSeconds, "ヒットストップ基準秒")
         NS_REFLECT_FIELD(m_centerHitStopScale, "中心近くの当たりのヒットストップ倍率")
         NS_REFLECT_FIELD(m_hitStopMaxSeconds, "ヒットストップの上限秒")
-        NS_REFLECT_FIELD(m_pushInDistance, "食い込み距離")
-        NS_REFLECT_FIELD(m_shakeAmplitude, "振動の振幅")
-        NS_REFLECT_FIELD(m_cameraShakeScale, "カメラ揺れの強さ")
-        NS_REFLECT_FIELD(m_centerHitShakeScale, "中心近くの当たりの揺れの倍率")
-        NS_REFLECT_FIELD(m_wideShakeFrames, "大きな外れの揺れのフレーム数")
-        NS_REFLECT_FIELD(m_wideShakeUpOverSide, "大きな外れの揺れの縦と横の比")
-        NS_REFLECT_FIELD(m_wideShakeLongestFlipFrames, "大きな外れの揺れの入れ替わりの最長フレーム数")
-        NS_REFLECT_FIELD(m_centerHitZoom, "中心近くの当たりの寄りの倍率")
-        NS_REFLECT_FIELD(m_centerHitRollDegrees, "中心近くの当たりの傾き")
-        NS_REFLECT_FIELD(m_zoomRollReturnFrames, "寄りと傾きを戻すフレーム数")
-        NS_REFLECT_FIELD(m_centerHitPadStrength, "中心近くの当たりのパッドの振動の強さ")
-        NS_REFLECT_FIELD(m_widePadStrength, "大きな外れのパッドの振動の強さ")
-        NS_REFLECT_FIELD(m_squashThickness, "潰れの厚み")
-        NS_REFLECT_FIELD(m_squashHeight, "潰れの伸び上がり")
-        NS_REFLECT_FIELD(m_stretchAlong, "弾け伸びの倍率")
-        NS_REFLECT_FIELD(m_stretchOvershoot, "弾け伸びの行き過ぎ")
-        NS_REFLECT_FIELD(m_stretchRecoverSteps, "弾け伸びを戻すフレーム数")
-        NS_REFLECT_FIELD(m_centerHitFlashAlpha, "中心近くの当たりの白の濃さ")
-        NS_REFLECT_FIELD(m_centerHitFlashSteps, "中心近くの当たりの白のフレーム数")
         NS_REFLECT_FIELD(m_breakEnabled, "破壊を許可")
         NS_REFLECT_FIELD(m_breakSpeedScale, "貫通時の減速倍率")
         NS_REFLECT_FIELD(m_breakStopSeconds, "貫通の止め秒")
@@ -179,6 +189,7 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_sparkSpeedPerLaunch, "火花の速さの飛ばしの比あたり")
         NS_REFLECT_FIELD(m_wideSparkCount, "大きな外れの火花の数")
         NS_REFLECT_FIELD(m_wideSparkSpeed, "大きな外れの火花の速さ")
+        NS_REFLECT_FIELD(m_wideSparkScale, "大きな外れの火花の大きさ")
         NS_REFLECT_FIELD(m_emberShare, "火の粉の数の火花あたり")
         NS_REFLECT_FIELD(m_glowDiameterBase, "照りの直径の基準")
         NS_REFLECT_FIELD(m_glowDiameterPerPower, "照りの直径の威力あたり")
@@ -221,6 +232,7 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_slamArrowDesc.earlyColor, "溜めの前半の色")
         NS_REFLECT_FIELD(m_slamArrowDesc.lateColor, "溜めの後半の色")
         NS_REFLECT_FIELD(m_slamArrowDesc.fullColor, "溜めきりの色")
+        NS_REFLECT_FIELD(m_slamArrowDesc.overchargeColor, "溜めすぎの色")
         NS_REFLECT_FIELD(m_slamArrowDesc.plainColor, "色の付いていない部分の色")
         NS_REFLECT_FIELD(m_slamArrowDesc.darkColor, "矢印の暗い縁の色")
         NS_REFLECT_FIELD(m_slamArrowDesc.darkAlpha, "矢印の暗い縁の不透明度")
@@ -247,6 +259,27 @@ namespace NS::Game::Player
         float m_reboundApexHeight = 1.15f;
         float m_reboundDistance = 0.575f;
         float m_centerHitReboundDistanceScale = 2.0f;
+        // 外れは浮かせず短く。見本の出発点 (真ん中 1.15 m に対して 0.35 m) の比
+        float m_missReboundHeightRatio = 0.3f;
+        // 下の縁の外れは地面へ叩きつけ、少し跳ねてこする。真下を向いた面で外れの高さの 4 割
+        float m_missSlamBounce = 0.4f;
+        // 箱の相手の面の読み方。見本の出発点 6 で、縁に沿った所は縁の向きへ真っすぐ、角の近くだけ斜めに逸れる
+        float m_missBoxEdgeSharpness = 6.0f;
+        // 外れの玉は止まりかけのコマのように、かすった所の摩擦の軸でねじれ、その軸自体が傾いてぐらぐら回る
+        // ねじれは縁で威力 1 の時の毎秒の回転数。威力と端の近さを掛ける
+        float m_missTwistTurnsPerSecond = 2.0f;
+        // 溜めて外したほど大きく振り回される。突進の回転をこの割合だけ残してねじれに足す
+        float m_missSpinCarryRatio = 0.4f;
+        // 突進の回転からこのフレーム数で寄せる。急に変えると絵が飛ぶ
+        int m_missSpinBlendSteps = 6;
+        // 軸がねじれの軸から傾く角度 (度) と、傾いた軸が回る速さ (回/秒)
+        float m_missWobbleDegrees = 25.0f;
+        float m_missWobbleTurnsPerSecond = 1.5f;
+        // 外れの着地からこすって止まり、操作が戻るまで。着いた速さに依らず同じフレーム数で戻り、身体で覚えられる
+        // 0 はこすらずに、着いたフレームに立ちへ戻る
+        int m_missSkidSteps = 18;
+        // 速さ = 着いた速さ × (1 − 経過 ÷ フレーム数)^減り方。2 で、すぐ落ちて最後に少し擦れが残る
+        float m_missSkidExponent = 2.0f;
         float m_launchDistance = 29.0f;
         float m_launchMassExponent = 0.35f;
         float m_launchApexHeight = 2.0f;
@@ -254,28 +287,8 @@ namespace NS::Game::Player
         float m_launchFallGravityScale = 1.4f;
         float m_launchApexBandSpeed = 1.0f;
         float m_launchApexBandGravityScale = 0.5f;
-        float m_hitStopBaseSeconds = 4.0f / 60.0f;
         float m_centerHitStopScale = 2.0f;
         float m_hitStopMaxSeconds = 12.0f / 60.0f;
-        float m_pushInDistance = 0.06f;
-        float m_shakeAmplitude = 0.05f;
-        float m_cameraShakeScale = 0.06f;
-        float m_centerHitShakeScale = 1.25f;
-        int m_wideShakeFrames = 16;
-        float m_wideShakeUpOverSide = 0.35f;
-        int m_wideShakeLongestFlipFrames = 3;
-        float m_centerHitZoom = 1.15f;
-        float m_centerHitRollDegrees = 3.0f;
-        int m_zoomRollReturnFrames = 6;
-        float m_centerHitPadStrength = 1.0f;
-        float m_widePadStrength = 0.6f;
-        float m_squashThickness = 0.7f;
-        float m_squashHeight = 1.1f;
-        float m_stretchAlong = 1.2f;
-        float m_stretchOvershoot = 0.5f;
-        int m_stretchRecoverSteps = 6;
-        float m_centerHitFlashAlpha = 0.5f;
-        int m_centerHitFlashSteps = 6;
         bool m_breakEnabled = false;
         float m_breakSpeedScale = 0.75f;
         float m_breakStopSeconds = 4.0f / 60.0f;
@@ -296,6 +309,9 @@ namespace NS::Game::Player
         float m_sparkSpeedPerLaunch = 3.0f;
         int m_wideSparkCount = 16;
         float m_wideSparkSpeed = 4.0f;
+        // 外れの火花の絵の全体に掛ける大きさ。粒の大きさ・散る範囲・速さが一緒に伸びる
+        // 本人「HTML のやつの 3 倍ぐらい大きくしてほしい」から 3。1 では後ろからのカメラで自機の玉の陰に入った
+        float m_wideSparkScale = 3.0f;
         float m_emberShare = 7.0f;
         float m_glowDiameterBase = 2.0f;
         float m_glowDiameterPerPower = 1.6f;
@@ -314,7 +330,13 @@ namespace NS::Game::Player
         std::string m_ballMeshRef{};
         float m_emptyChargeSpinSpeed = 360.0f;
         float m_fullChargeSpinSpeed = 1440.0f;
-        float m_bodySlamSpinSpeed = 1800.0f;
+        // 回転は届くまでの回転数で持ち、回る速さは届くまでの秒から毎回出す。速さや距離を触っても回る数が変わらない
+        // タップ 2 は本人の「到達まで一回転か 2, 3 回転」から、溜めた突進 5 はタップとはっきり違う数から始める
+        float m_chargedSlamTurns = 5.0f; // 溜めた突進が届くまでに回る回転数
+        float m_tapSlamTurns = 2.0f;     // タップが届くまでに回る回転数
+        // 反動は溜めて当てた時とタップで当てた時で変える。1 と 3 は 1〜3 の両端で、差が一番分かる組
+        float m_chargedReboundTurns = 3.0f; // 溜めて当てた反動が着地までに回る回転数
+        float m_tapReboundTurns = 1.0f;     // タップで当てた反動が着地までに回る回転数
         float m_landingSquash = 0.8f;
         int m_landingSquashRecoverSteps = 6;
         float m_tapBurstScale = 0.75f;
@@ -322,6 +344,24 @@ namespace NS::Game::Player
         friend class ::Player;
         float m_chargeThresholdSeconds = 0.2f;
         float m_chargeFullSeconds = 1.0f;
+        // 溜めきりから押したままで勝手に出るまで。3 は本人の「3 秒ほど赤からゆっくりと紫に」から
+        float m_overchargeSeconds = 3.0f;
+        // 紫の揺れは相手の所の横のずれ (m) で持つ。角度で持つと、同じ揺れでも遠い相手ほど外れる
+        // 2.2 は見本 overcharge-sway.html の値。真ん中の半幅 0.4 m に対し、振れきると外れまで届く
+        float m_overchargeSwayMaxOffset = 2.2f;
+        // 1 秒に振れる回数。紫の始めは遅く、紫の深さの 2 乗で終わりの速さへ上がる。見本の 0.8〜2.6 回
+        float m_overchargeSwayStartRate = 0.8f;
+        float m_overchargeSwayEndRate = 2.6f;
+        // 狙う相手がいない時にずれを角度へ直す距離 (m)。10 は欄「突進距離」の既定で、矢印の先が最大のずれだけ振れる
+        float m_overchargeSwayFallbackDistance = 10.0f;
+        // 紫になりきった時に溜めきりの威力へ掛ける倍率。見本の 1.5
+        float m_overchargePowerMax = 1.5f;
+        // 揺れが端へ来るたびにその側へ散らす火花の数と速さ (m/秒)。紫の深さで始めから終わりへ上げ、勝手に出る直前ほど
+        // バチバチを強くする。当たりの大きな外れの火花 (16 本・4 m/秒) より少なく遅い所から始め、終わりで並ぶ
+        int m_overchargeSparkCountMin = 4;
+        int m_overchargeSparkCountMax = 14;
+        float m_overchargeSparkSpeedMin = 2.5f;
+        float m_overchargeSparkSpeedMax = 5.0f;
         float m_chargeSlowRate = 0.7f;
         NS::Obj::Curve m_chargeFactorCurve{};
         float m_chargeSquashScale = 0.95f;
@@ -364,7 +404,8 @@ namespace NS::Game::Player
         // 突進が高い所へ登る手段にならない所で止める。水平 20 m/s・上りの重力 -25 で上がれる高さは 45 度で約 8 m、
         // 40 度で約 5.6 m、30 度で約 2.6 m。2026-10-03 本人の指定で 40
         float m_launchPitchLimitDegrees = 40.0f;
-        float m_tapSlamSpeed = 10.0f;
+        // 軽く当てても速く届かせる。溜めきりの 20 m/s の 4 分の 3 から始める。距離は変えないので届くまで約 0.42 秒
+        float m_tapSlamSpeed = 15.0f;
         float m_tapSlamUpSpeed = 3.0f;
         float m_tapSlamDistance = 6.25f;
         float m_slamAimHoldTime = 0.11f;

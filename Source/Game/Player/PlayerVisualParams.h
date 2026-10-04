@@ -46,6 +46,8 @@ namespace NS::Game::Level
         NS::Core::Vector3 earlyColor{72.0f / 255.0f, 230.0f / 255.0f, 120.0f / 255.0f};
         NS::Core::Vector3 lateColor{1.0f, 208.0f / 255.0f, 48.0f / 255.0f};
         NS::Core::Vector3 fullColor{1.0f, 64.0f / 255.0f, 56.0f / 255.0f};
+        // 溜めすぎきった時の色。溜めきりの赤から溜めすぎの深さで移る。暗い床でも赤と見分けられる明るさの紫
+        NS::Core::Vector3 overchargeColor{168.0f / 255.0f, 64.0f / 255.0f, 1.0f};
         NS::Core::Vector3 plainColor{224.0f / 255.0f, 232.0f / 255.0f, 242.0f / 255.0f};
         NS::Core::Vector3 darkColor{12.0f / 255.0f, 20.0f / 255.0f, 36.0f / 255.0f};
         float darkAlpha = 1.0f;

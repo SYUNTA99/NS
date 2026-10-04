@@ -1,0 +1,319 @@
+{
+  "events": [
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 4,
+      "start": 1,
+      "type": "HitStop"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "突進の向きの倍率": {
+          "curve": [
+            [
+              0.0,
+              0.7
+            ],
+            [
+              3.0,
+              0.7
+            ],
+            [
+              4.0,
+              1.0
+            ]
+          ]
+        },
+        "高さの倍率": {
+          "curve": [
+            [
+              0.0,
+              1.1
+            ],
+            [
+              3.0,
+              1.1
+            ],
+            [
+              4.0,
+              1.2
+            ],
+            [
+              7.0,
+              0.9
+            ],
+            [
+              10.0,
+              1.0
+            ]
+          ]
+        }
+      },
+      "length": 10,
+      "start": 1,
+      "type": "Shape"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "潰れの伸び上がり": 1.1,
+        "潰れの厚み": 0.7,
+        "食い込み距離": 0.06
+      },
+      "length": 4,
+      "start": 1,
+      "type": "TargetFreeze"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "振れ幅の画素": 6.0
+      },
+      "length": 4,
+      "start": 1,
+      "type": "BodyShake"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "振れ幅の画素": 1.5,
+        "裏まで届くフレーム数": 6
+      },
+      "length": 14,
+      "start": 5,
+      "type": "ImpactTremor"
+    },
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 1,
+      "start": 1,
+      "type": "HitEffect"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "トラウマ": 0.9,
+        "一撃の大きさ": 2.5,
+        "一撃の山のフレーム": 1,
+        "傾き": 1.5,
+        "指数": 2.0,
+        "横の首振り": 3.0,
+        "減る速さ": 1.8,
+        "細かさ": 9.0,
+        "縦の首振り": 2.0
+      },
+      "length": 1,
+      "start": 1,
+      "type": "CameraTrauma"
+    },
+    {
+      "direction": "right",
+      "fields": {
+        "右の速さ": {
+          "curve": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              2.0,
+              0.0
+            ],
+            [
+              3.0,
+              0.55
+            ],
+            [
+              16.0,
+              0.0
+            ]
+          ]
+        },
+        "左の速さ": {
+          "curve": [
+            [
+              0.0,
+              0.75
+            ],
+            [
+              2.0,
+              0.75
+            ],
+            [
+              3.0,
+              0.0
+            ]
+          ]
+        }
+      },
+      "length": 16,
+      "start": 1,
+      "type": "PadVibration"
+    },
+    {
+      "direction": "left",
+      "fields": {
+        "右の速さ": {
+          "curve": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              2.0,
+              0.0
+            ],
+            [
+              3.0,
+              0.45
+            ],
+            [
+              16.0,
+              0.0
+            ]
+          ]
+        },
+        "左の速さ": {
+          "curve": [
+            [
+              0.0,
+              0.85
+            ],
+            [
+              2.0,
+              0.85
+            ],
+            [
+              3.0,
+              0.0
+            ]
+          ]
+        }
+      },
+      "length": 16,
+      "start": 1,
+      "type": "PadVibration"
+    },
+    {
+      "direction": "up",
+      "fields": {
+        "右の速さ": {
+          "curve": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              2.0,
+              0.0
+            ],
+            [
+              3.0,
+              0.35
+            ],
+            [
+              12.0,
+              0.0
+            ]
+          ]
+        },
+        "左の速さ": {
+          "curve": [
+            [
+              0.0,
+              0.75
+            ],
+            [
+              2.0,
+              0.75
+            ],
+            [
+              3.0,
+              0.0
+            ]
+          ]
+        }
+      },
+      "length": 16,
+      "start": 1,
+      "type": "PadVibration"
+    },
+    {
+      "direction": "down",
+      "fields": {
+        "右の速さ": {
+          "curve": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              2.0,
+              0.0
+            ],
+            [
+              3.0,
+              0.5
+            ],
+            [
+              16.0,
+              0.0
+            ]
+          ]
+        },
+        "左の速さ": {
+          "curve": [
+            [
+              0.0,
+              0.8
+            ],
+            [
+              2.0,
+              0.8
+            ],
+            [
+              3.0,
+              0.2
+            ],
+            [
+              4.0,
+              0.55
+            ],
+            [
+              6.0,
+              0.0
+            ]
+          ]
+        }
+      },
+      "length": 16,
+      "start": 1,
+      "type": "PadVibration"
+    },
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 1,
+      "start": 5,
+      "type": "Rebound"
+    },
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 1,
+      "start": 5,
+      "type": "TargetLaunch"
+    },
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 1,
+      "start": 5,
+      "type": "FlightEffect"
+    }
+  ],
+  "version": 1
+}

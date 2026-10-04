@@ -951,6 +951,9 @@ project "Tests"
         "Source/Editor/LevelFilePaths.cpp",
         "Source/Editor/PlayControls.cpp",
         "Source/Editor/HitZoneColors.cpp",
+        -- 当たりの下見は写しの場面を組んで進めるだけで、Application に触らない
+        "Source/Editor/HitPreview.cpp",
+        "Source/Editor/HitTimelineEdit.cpp",
         "Source/Editor/Theme/**.cpp",
         -- Editor / Game の各 .cpp は GamePch の /FI 前提で Runtime include を持たない。
         -- 同じソースを直接コンパイルする Tests でも同一 prelude を与えるため GamePch を共有する

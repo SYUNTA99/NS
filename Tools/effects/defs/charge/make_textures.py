@@ -14,6 +14,8 @@ charge_streak    32x128  先細りの筋。放しの弾けの筋 (release.burst)
 charge_glow     128x128  柔らかい円。放しの丸屋根の光と、はじけの後のもや (release.burst)
 charge_halo     128x128  中が抜けた柔らかい円。放しのはじけの光 (release.burst)
 charge_aura     128x128  charge_halo の上の ±45 度を抜いた形。玉を包む光 (charge.gather)
+charge_aura_rim 128x128  charge_aura と同じく中が抜けて上を抜いた形で、最も濃い所を半径 0.82 へ外へずらした物。
+                         玉を包む光の下に敷く濃い青の塗り (charge.gather)
 charge_trail     64x64   横ぼかしの帯。横は中心が明るく、縦は一様 (slam.trail のリボン)
 charge_smoke    128x128  CC0 の煙の塊 (Effekseer 1.80.7 の Sample/01_AndrewFM01/Texture/smoke_tex.png) の明るさを
                          透明度にした物。削る粉 (charge.grind)。
@@ -148,6 +150,17 @@ def aura(size=128):
     return white_with_alpha(inner * outer * smoothstep(45.0, 80.0, from_up))
 
 
+def aura_rim(size=128):
+    # aura の最も明るい半径 0.55 より外の 0.82 を最も濃くする。加算の白い光のすぐ外側に濃い青を置き、明るい背景でも
+    # 光の輪郭を背景より暗い色で読ませる。上の抜き方は aura と同じで、床の狙いの矢印を青で塗らない
+    x, y = grid(size, size)
+    r = np.hypot(x, y)
+    inner = smoothstep(0.5, 0.82, r)
+    outer = 1.0 - smoothstep(0.82, 1.0, r)
+    from_up = np.degrees(np.arctan2(np.abs(x), -y))
+    return white_with_alpha(inner * outer * smoothstep(45.0, 80.0, from_up))
+
+
 def trail(size=64):
     # 横 (x) は中心が明るく端で消え、縦 (y) は一様。リボンの幅の向きに横を当てる
     x, _ = grid(size, size)
@@ -178,6 +191,7 @@ DRAWERS = {
     "charge_glow": glow,
     "charge_halo": halo,
     "charge_aura": aura,
+    "charge_aura_rim": aura_rim,
     "charge_trail": trail,
     "charge_smoke": smoke,
 }

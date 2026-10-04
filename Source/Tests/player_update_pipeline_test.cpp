@@ -2,6 +2,7 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
+#include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -16,8 +17,10 @@
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/IUse/IUseSceneObj.h"
 #include "Runtime/Object/ObjectJson.h"
+#include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Platform/Clock.h"
+#include "Tests/TestHitTimelines.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -89,7 +92,7 @@ namespace
     }
 
     // 手前の置物へ溜めた突進を出し、止めの頭まで回す。届いた場合 true
-    // waitForFreeze が偽なら、止めの予約だけが残る検知のフレームで止める
+    // waitForFreeze が偽なら、止めの頭を待つ検知のフレームで止める
     // 突進は 1 フレームの入口から出す。BodySlam を直に呼ぶと先行入力が残り、止めが明けた後にもう 1 度出る
     bool SlamIntoTheRock(Player& player, NS::Game::Level::MapObj& rock, bool waitForFreeze)
     {
@@ -225,19 +228,22 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
     EXPECT_FALSE(player->CanMoveBody());
     const NS::Core::Vector3 position = player->Root().Position();
     const std::uint32_t stateStep = player->States().StepsInState();
+    // 真ん中は止めが明けた後、伸びきって反動の事象が来るまでも止まったまま
     for (int frame = 0; frame < 30; ++frame)
     {
         player->Update(false);
         rock->Update();
-        if (!player->Resolver().IsHitStopping())
+        if (!player->Resolver().IsHitStopping() && !player->Resolver().IsAwaitingRebound())
         {
             break;
         }
         SCOPED_TRACE(frame);
+        EXPECT_TRUE(player->Body().IsActive());
         ExpectSameVector(player->Root().Position(), position);
         EXPECT_EQ(player->States().StepsInState(), stateStep);
     }
     EXPECT_FALSE(player->Resolver().IsHitStopping());
+    EXPECT_FALSE(player->Resolver().IsAwaitingRebound());
     EXPECT_TRUE(player->CanMoveBody());
 }
 
@@ -265,7 +271,7 @@ TEST(PlayerUpdatePipeline, ReleasingTheHitStopLeavesASwitchedOffBodyAlone)
     EXPECT_FALSE(player->Body().IsActiveSelf());
 }
 
-// やり直しは止めと止めの予約を捨てる。出現位置で弾かれず、元の位置へ戻った置物へ明けも止めの頭も届かない
+// やり直しは走っている当たりのタイムラインを捨てる。出現位置で弾かれず、元の位置へ戻った置物へ明けも止めの頭も届かない
 TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
 {
     for (const bool waitForFreeze : {true, false})
@@ -354,8 +360,12 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
         released = player->Resolver().ReleasedThisStep();
     }
     ASSERT_TRUE(released);
-    // 反発の明けは縦へ欄「弾け伸びの倍率」1.2
-    ExpectSameVector(player->ModelPart()->DrawScale(), NS::Core::Vector3{1.0f, 1.2f, 1.0f});
+    // 明けは潰れ 0.7 から 3 フレームで突進の向きへ 1.25 まで伸び、縦は 1.1 から 0.9 へ細る。明けはその 1 フレーム目
+    const float along = 0.7f + 0.55f / 3.0f;
+    const float height = 1.1f - 0.2f / 3.0f;
+    ExpectSameVector(
+        player->ModelPart()->DrawScale(),
+        NS::Core::Vector3{1.0f - (1.0f - along) * dir.x * dir.x, height, 1.0f - (1.0f - along) * dir.z * dir.z});
     for (int frame = 0; frame < 30 && player->Resolver().IsShapeAnimating(); ++frame)
     {
         SCOPED_TRACE(frame);
@@ -408,7 +418,7 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     EXPECT_GE(bottom, -0.001f);
 }
 
-// Inspector で裁定役を外すと、持っていた止めと予約を捨てる。入れ直しても遅れて弾かれない
+// Inspector で裁定役を外すと、走っている当たりのタイムラインを捨てる。入れ直しても遅れて弾かれない
 TEST(PlayerUpdatePipeline, SwitchingTheResolverOffDropsItsHitStop)
 {
     NS::Obj::Scene scene;
@@ -483,7 +493,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             [90, 0, 0.6500000358, 0.3333333433, 0, 0, 20, 0.04, 0.5, 2.5],
             [92, 0, 0.6499999762, 1.0, 0, 0, 20, 0.14, 0.5, 2.5],
             [93, 0, 0.6499999166, 1.3333333731, 0, 0, 20, 0.14, 0.5, 2.5],
-            [100, -0.0123793595, 0.6500000954, 1.3523943424, -0.8675079346, 1.67509e-7, 0.104101181, 0.14, 0.5, 2.5454165936],
+            [100, -0.0123793595, 0.6500000954, 1.3523943424, -0.8675079346, 1.67509e-7, 0.104101181, 0.14, 0.5, 2.56],
             [110, -0.02943230793, 1.116387725, 1.210286379, -0.2557942271, 6.683314323, -2.131618738, 0.14, 1.384893417, 5.983239174],
             [140, -0.1573294252, 2.848669291, 0.1444766968, -0.2557942271, 0.641646266, -2.131618738, 0.14, 4.491162777, 32.10754395],
             [189, -0.294336319, 1.149999738, -0.9972489476, 0, 0, 0, 0.14, 0.501000941, 74.210495]
@@ -539,8 +549,16 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
     ])");
     for (int scenario = 0; scenario < 2; ++scenario)
     {
-        NS::Obj::Scene scene;
         const bool charge = scenario == 0;
+        // 止めの長さは移す前の式が出した長さ (溜め 12・タップ 3) を、移す前の返りを写したタイムラインに置く
+        const ScopedHitTimelineDirectory timelines("Trajectories");
+        int legacyStopSteps = 3;
+        if (charge)
+        {
+            legacyStopSteps = 12;
+        }
+        ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(legacyStopSteps));
+        NS::Obj::Scene scene;
         float targetX = 0.0f;
         float targetZ = 3.0f;
         int frames = 90;
@@ -554,6 +572,18 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
         }
         Player* player = PlacePipelinePlayer(scene, targetX, targetZ);
         ASSERT_NE(player, nullptr);
+        // 基準はタップ初速 10 で、紫の揺れと紫の威力が無い時に採った
+        // 外れの反動は真ん中と同じ高さで、着いた後にこすらない
+        // 止めの間の置物の位置は、根を往復させていた頃から食い込みの距離だけの値へ直した
+        // 溜めは 1.5 秒押して紫に入ってから放す
+        // 見るのは状態の移り方なので、欄の既定を触っても基準を取り直さずに済むよう留める
+        NS::Obj::ApplyJsonFields(player->Params(),
+                                 nlohmann::json{{"タップ初速", 10.0f},
+                                                {"紫の揺れの最大のずれ", 0.0f},
+                                                {"紫の威力の上限", 1.0f},
+                                                {"外れの反動の高さの割合", 1.0f},
+                                                {"叩きつけた時の跳ね", 1.0f},
+                                                {"外れのこすって止まるまでのフレーム数", 0}});
         NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
         int impact = -1;

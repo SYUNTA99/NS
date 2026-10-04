@@ -20,11 +20,15 @@ namespace NS::Gfx
 namespace NS::Obj
 {
 
+    // 震えの定数の 16 byte 整列を値で抱えるため、想定どおりのパディングが入る。C4324 を黙らせる
+#pragma warning(push)
+#pragma warning(disable : 4324)
     //! @brief Mesh と Material を描く Component
     //! @details Collect が DrawWorldMatrix(context.alpha) を FrameCB へ詰めた DrawItem を積む
     //! 固定ステップの物理結果を、可変フレームレートでなめらかに補間して描く
     //! 描く時だけの局所の回転を持ち、根の行列より先に掛ける。根の Transform は書き換えない
-    //! 描く時だけの世界の軸の倍率も持ち、描く形の下端の真ん中を中心に最後に掛ける
+    //! 描く時だけの世界の軸の倍率も持ち、描く形の下端の真ん中を中心に掛ける
+    //! 描く時だけの世界のずれと震えも持つ。どちらも補間せず、ずれは倍率の後に足し、震えは頂点のシェーダーへ渡す
     class Model : public Component, public IRenderable
     {
     public:
@@ -107,10 +111,30 @@ namespace NS::Obj
         //! 今のフレームの描く時だけの倍率を返す。書かれていなければ (1, 1, 1)
         [[nodiscard]] const NS::Core::Vector3& DrawScale() const noexcept { return m_drawScale; }
 
+        //! @brief 描く時だけ世界で足すずれを書く
+        //! @details 局所の回転・根の行列・描く時だけの倍率を掛けた後に、世界で足す。補間しないので、
+        //! 1 フレームごとに向きが入れ替わる揺れが描画の回数に依らず同じ形で見える。保存はせず、根の Transform と
+        //! 当たりは変えない。有限でない成分を含むずれは何も変えない
+        //! @param[in] offset 世界の長さのずれ (m)。(0, 0, 0) でずれの無い形
+        //! @return 成分が全部有限で書いた場合 true、それ以外の場合は false
+        [[nodiscard]] bool SetDrawOffset(const NS::Core::Vector3& offset) noexcept;
+        //! 描く時だけのずれを返す。書かれていなければ (0, 0, 0)
+        [[nodiscard]] const NS::Core::Vector3& DrawOffset() const noexcept { return m_drawOffset; }
+
+        //! @brief 描く時だけの震えを書く
+        //! @details Collect がそのまま頂点のシェーダーへ渡す。補間しないので、経過のフレーム数は描画の回数に依らない
+        //! 保存はせず、根の Transform と当たりは変えない。有限でない欄を含む震えは何も変えない
+        //! @param[in] tremor 震え。振れ幅 0 で震えない
+        //! @return 欄が全部有限で書いた場合 true、それ以外の場合は false
+        [[nodiscard]] bool SetTremor(const NS::Gfx::TremorCB& tremor) noexcept;
+        //! 描く時だけの震えを返す。書かれていなければ振れ幅 0
+        [[nodiscard]] const NS::Gfx::TremorCB& Tremor() const noexcept { return m_tremor; }
+
         //! @brief 描く world 行列を返す
         //! @details 前と今の局所の回転を alpha で補間した行列を、根の補間 world 行列の前に掛ける
-        //! 前と今の描く時だけの倍率を alpha で補間し、描く形の下端の真ん中を中心に世界の軸で最後に掛ける。
-        //! 補間した倍率が (1, 1, 1) の時は掛けない。持ち主が無い時は局所の回転の行列だけを返す
+        //! 前と今の描く時だけの倍率を alpha で補間し、描く形の下端の真ん中を中心に世界の軸で掛ける
+        //! 補間した倍率が (1, 1, 1) の時は掛けない。描く時だけのずれは最後に足す
+        //! 持ち主が無い時は局所の回転の行列だけを返す
         //! @param[in] alpha 前の固定フレームから今の固定フレームまでの補間の割合 0..1
         [[nodiscard]] NS::Core::Matrix DrawWorldMatrix(float alpha) const noexcept;
 
@@ -128,6 +152,7 @@ namespace NS::Obj
         //! @details 局所の境界は差された境界を優先し、無ければ mesh の局所 AABB
         //! mesh か owner が無い時は、中心が原点で半分の幅が 1 の AABB
         //! 描く時だけの倍率がある間は、前と今の倍率の成分ごとの大きい方を、下端の真ん中を中心に掛ける
+        //! 描く時だけのずれは中心へ足す
         [[nodiscard]] NS::Core::AABB WorldBounds() const noexcept override;
 
         //! OwningScene に self を IRenderable として登録する。Owner/Scene が null なら何もしない
@@ -180,5 +205,11 @@ namespace NS::Obj
         // 描く時だけの世界の軸の倍率。他の component が書き直すので保存しない
         NS::Core::Vector3 m_drawScale{1.0f, 1.0f, 1.0f};
         NS::Core::Vector3 m_previousDrawScale{1.0f, 1.0f, 1.0f}; // 前のフレームの値。補間の始点
+
+        // 描く時だけの世界のずれ。他の component が書き直すので保存しない。補間しない
+        NS::Core::Vector3 m_drawOffset{0.0f, 0.0f, 0.0f};
+        // 描く時だけの震え。他の component が書き直すので保存しない。補間しない
+        NS::Gfx::TremorCB m_tremor{};
     };
+#pragma warning(pop)
 } // namespace NS::Obj

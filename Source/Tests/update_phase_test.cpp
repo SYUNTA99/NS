@@ -1,10 +1,14 @@
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/Model.h"
+#include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/UpdatePhase.h"
+#include "Runtime/Platform/Clock.h"
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -225,4 +229,168 @@ TEST(ActorStepOrder, UpdateCallsEachStepOnceInTheFixedOrder)
     log.clear();
     actor.Update();
     EXPECT_EQ(log, (std::vector<std::string>{"observe", "decide", "state", "body", "visual"}));
+}
+
+TEST(WorldSpeed, SlowWorldStepsOnceInFiveAndRealTimePhasesEveryStep)
+{
+    // 遅い世界は 1 歩の中身を変えず、世界の時計の段を間引く。入力と UI は毎歩回る
+    NS::Obj::Scene scene;
+    std::vector<std::string> log;
+    scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Player, log, "player");
+    PhaseTicker physics(log, "physics");
+    PhaseTicker ui(log, "ui");
+    PhaseTicker effects(log, "effects");
+    scene.Objects().AddTicker(&physics, NS::Obj::UpdatePhase::Physics);
+    scene.Objects().AddTicker(&ui, NS::Obj::UpdatePhase::UI);
+    scene.Objects().AddTicker(&effects, NS::Obj::UpdatePhase::Effects);
+    scene.SetWorldSpeed(0.2f);
+
+    for (int i = 0; i < 10; ++i)
+    {
+        scene.OnUpdate();
+    }
+
+    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"player"}), 2);
+    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"physics"}), 2);
+    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"effects"}), 2);
+    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"render-prep"}), 2);
+    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"ui"}), 10);
+    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"input"}), 10);
+    // 4 歩目までは入力と UI だけ。5 歩目に初めて世界が進む
+    ASSERT_GE(log.size(), 10u);
+    EXPECT_EQ(log[7], std::string{"ui"});
+    EXPECT_EQ(log[8], std::string{"input"});
+    EXPECT_EQ(log[9], std::string{"player"});
+    scene.Objects().RemoveTicker(&physics);
+    scene.Objects().RemoveTicker(&ui);
+    scene.Objects().RemoveTicker(&effects);
+}
+
+TEST(WorldSpeed, SlowWorldInterpolatesAcrossTheSkippedSteps)
+{
+    // 世界を進めない歩に前の値を控えると補間が止まる。割合は前に世界を進めてからの溜めで出す
+    NS::Obj::Scene scene;
+    NS::Obj::Actor* drawn = scene.SpawnTransient<NS::Obj::Actor>();
+    ASSERT_NE(drawn->CreatePart("Model"), nullptr);
+    NS::Obj::Model* model = drawn->ModelPart();
+    scene.SpawnTransient<DrawScaleWriterActor>(*model);
+    scene.SetWorldSpeed(0.5f);
+
+    scene.OnUpdate();
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._11, 1.0f);
+    scene.OnUpdate();
+    // 世界を進めた歩。前の値は進める前の倍率
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 1.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._11, 2.0f);
+    EXPECT_FLOAT_EQ(scene.RenderAlpha(0.5f), 0.25f);
+    scene.OnUpdate();
+    // 世界を進めない歩でも前の値を取り直さない
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 1.0f);
+    EXPECT_FLOAT_EQ(scene.RenderAlpha(0.5f), 0.75f);
+}
+
+TEST(WorldSpeed, NormalSpeedKeepsTheFrameAlphaAndPauseHoldsAtOne)
+{
+    NS::Obj::Scene scene;
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
+    scene.OnUpdate();
+    EXPECT_FLOAT_EQ(scene.RenderAlpha(0.3f), 0.3f);
+    scene.SetWorldSpeed(2.0f);
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
+    scene.SetWorldSpeed(-1.0f);
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.0f);
+    scene.SetSimulationPaused(true);
+    EXPECT_FLOAT_EQ(scene.RenderAlpha(0.3f), 1.0f);
+    // プレイを入れ直すと普段の速さへ戻る
+    scene.SetSimulationEnabled(true);
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
+}
+
+TEST(WorldSpeed, RampReturnsToNormalSpeedInRealSeconds)
+{
+    // 段階的な明けは実時間で戻す。世界の時間で数えると、遅い分だけ戻るのが延びる
+    NS::Obj::Scene scene;
+    const float dt = NS::Platform::FrameTimer::FixedDelta();
+    const int steps = static_cast<int>(std::ceil(0.3f / dt - 1.0e-3f));
+    scene.StartWorldSpeedRamp(0.2f, 0.3f, NS::Obj::Curve{});
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.2f);
+    float previous = scene.WorldSpeed();
+    for (int i = 1; i < steps; ++i)
+    {
+        SCOPED_TRACE(i);
+        scene.OnUpdate();
+        EXPECT_GT(scene.WorldSpeed(), previous);
+        EXPECT_LT(scene.WorldSpeed(), 1.0f);
+        previous = scene.WorldSpeed();
+    }
+    scene.OnUpdate();
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
+}
+
+TEST(WorldSpeed, SettingTheSpeedStopsTheRamp)
+{
+    // 速さの持ち主は 1 つ。置き直した速さを戻りの曲線が上書きしない
+    NS::Obj::Scene scene;
+    scene.StartWorldSpeedRamp(0.2f, 0.3f, NS::Obj::Curve{});
+    scene.SetWorldSpeed(0.5f);
+    scene.OnUpdate();
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.5f);
+    scene.StartWorldSpeedRamp(0.2f, 0.3f, NS::Obj::Curve{});
+    scene.SetSimulationEnabled(true);
+    scene.OnUpdate();
+    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
+}
+
+TEST(OthersHold, HoldingOthersRunsOnlyThePlayerSideForItsSteps)
+{
+    // impact-feel-pass R-3-1: 真ん中で触れる前の数フレーム、自機以外の世界を止める。自機・入力・カメラ・UI は回す
+    NS::Obj::Scene scene;
+    std::vector<std::string> log;
+    scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Player, log, "player");
+    scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Enemy, log, "enemy");
+    scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Triggers, log, "triggers");
+    scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Camera, log, "camera");
+    PhaseTicker physics(log, "physics");
+    PhaseTicker sensors(log, "sensors");
+    PhaseTicker course(log, "course");
+    PhaseTicker ui(log, "ui");
+    PhaseTicker effects(log, "effects");
+    scene.Objects().AddTicker(&physics, NS::Obj::UpdatePhase::Physics);
+    scene.Objects().AddTicker(&sensors, NS::Obj::UpdatePhase::Sensors);
+    scene.Objects().AddTicker(&course, NS::Obj::UpdatePhase::Course);
+    scene.Objects().AddTicker(&ui, NS::Obj::UpdatePhase::UI);
+    scene.Objects().AddTicker(&effects, NS::Obj::UpdatePhase::Effects);
+    scene.HoldOthers(2);
+    EXPECT_TRUE(scene.IsHoldingOthers());
+
+    for (int i = 0; i < 3; ++i)
+    {
+        scene.OnUpdate();
+    }
+
+    EXPECT_FALSE(scene.IsHoldingOthers());
+    for (const char* label : {"input", "player", "camera", "ui", "render-prep"})
+    {
+        EXPECT_EQ(std::count(log.begin(), log.end(), std::string{label}), 3) << label;
+    }
+    for (const char* label : {"enemy", "physics", "sensors", "triggers", "course", "effects"})
+    {
+        EXPECT_EQ(std::count(log.begin(), log.end(), std::string{label}), 1) << label;
+    }
+    scene.Objects().RemoveTicker(&physics);
+    scene.Objects().RemoveTicker(&sensors);
+    scene.Objects().RemoveTicker(&course);
+    scene.Objects().RemoveTicker(&ui);
+    scene.Objects().RemoveTicker(&effects);
+}
+
+TEST(OthersHold, ZeroStepsAndRestartingThePlayReleaseTheHold)
+{
+    NS::Obj::Scene scene;
+    scene.HoldOthers(3);
+    scene.HoldOthers(0);
+    EXPECT_FALSE(scene.IsHoldingOthers());
+    scene.HoldOthers(3);
+    scene.SetSimulationEnabled(true);
+    EXPECT_FALSE(scene.IsHoldingOthers());
 }

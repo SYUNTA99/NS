@@ -17,10 +17,49 @@
 
 #include <cmath>
 
+namespace
+{
+    // 回転数を秒で割った回る速さ (度/秒)。秒が 0 以下か有限でない時は 0
+    [[nodiscard]] float SpinSpeedFor(float turns, float seconds) noexcept
+    {
+        if (!std::isfinite(seconds) || !(seconds > 0.0f))
+        {
+            return 0.0f;
+        }
+        return turns * 360.0f / seconds;
+    }
+
+    // 反動の初速と着地までの秒を同じ曲線から出す。組は実際に当てる重力 (Player::ReboundGravity) と同じ
+    // PlayerParams::ReboundGravity。曲線は上りの重力を正の大きさで、下りの重力を上りに対する倍率で持つので、
+    // 符号を反転して下降重力を上りの重力で割る
+    [[nodiscard]] NS::Game::Level::LaunchArc ReboundLaunchArc(const NS::Game::Player::PlayerParams& params,
+                                                              const NS::Game::Player::ReboundArc& arc) noexcept
+    {
+        const NS::Game::Player::PlayerGravity gravity = params.ReboundGravity();
+        const float riseGravity = -gravity.rise;
+        return NS::Game::Level::LaunchArc{.direction = arc.direction,
+                                          .distance = arc.distance,
+                                          .apexHeight = arc.apexHeight,
+                                          .riseGravity = riseGravity,
+                                          .fallGravityScale = -gravity.fall / riseGravity,
+                                          .apexBandSpeed = gravity.apexSpeed,
+                                          .apexBandGravityScale = gravity.apexScale};
+    }
+} // namespace
+
 // ---- 突進と反発 ----
 
-void Player::RequestBodySlam(float charge01) noexcept
+bool Player::AcceptsBodySlamRequest() const noexcept
 {
+    return !IsBodySlamming() && CanMoveBody();
+}
+
+void Player::RequestBodySlam(float charge01, float overcharge01) noexcept
+{
+    if (!AcceptsBodySlamRequest())
+    {
+        return;
+    }
     // そのフレームで出せないと押しが無言で消える。ジャンプと同じ先行入力時間だけ覚える
     m_request.bufferRemaining = m_params->m_jumpBufferTime;
     // 非数は 0..1 への丸めを素通りして溜め量に残るため、入口で 0 へ倒す
@@ -32,14 +71,26 @@ void Player::RequestBodySlam(float charge01) noexcept
     {
         m_request.charge01 = NS::Core::Clamp(charge01, 0.0f, 1.0f);
     }
+    m_request.overcharge01 = 0.0f;
+    if (std::isfinite(overcharge01))
+    {
+        m_request.overcharge01 = NS::Core::Clamp(overcharge01, 0.0f, 1.0f);
+    }
     // 残すと、先行入力のうちに来たタップが前の溜めた突進の向きへ出る
     m_request.hasDir = false;
     m_request.verticalSpeed = 0.0f;
 }
 
-void Player::RequestBodySlam(float charge01, const NS::Core::Vector3& aimDirection, float launchVerticalSpeed) noexcept
+void Player::RequestBodySlam(float charge01,
+                             const NS::Core::Vector3& aimDirection,
+                             float launchVerticalSpeed,
+                             float overcharge01) noexcept
 {
-    RequestBodySlam(charge01);
+    if (!AcceptsBodySlamRequest())
+    {
+        return;
+    }
+    RequestBodySlam(charge01, overcharge01);
     NS::Core::Vector3 dir{};
     if (!NS::Core::TryNormalizeHorizontal(aimDirection, dir))
     {
@@ -65,6 +116,16 @@ float Player::BodySlamSpeed() const noexcept
         return m_params->m_tapSlamSpeed;
     }
     return m_params->m_bodySlamSpeed;
+}
+
+float Player::BodySlamSpinSpeed() const noexcept
+{
+    float turns = m_params->m_chargedSlamTurns;
+    if (m_slam.isTap)
+    {
+        turns = m_params->m_tapSlamTurns;
+    }
+    return SpinSpeedFor(turns, m_slam.distanceTarget / BodySlamSpeed());
 }
 
 NS::Core::Vector3 Player::BodySlamVelocity() const noexcept
@@ -191,6 +252,8 @@ float Player::BodySlamAimBlend01() const noexcept
 bool Player::BodySlam() noexcept
 {
     NS::Obj::Body& body = *m_body;
+    // 速度を書く前に読む。発動のフレームはまだ前のフレームの接地のまま
+    const bool launchedInAir = !body.IsGrounded();
     NS::Core::Vector3 dir = AimDirection();
 
     const float aimLength =
@@ -227,6 +290,7 @@ bool Player::BodySlam() noexcept
     }
 
     m_slam.charge01 = m_request.charge01;
+    m_slam.overcharge01 = m_request.overcharge01;
     m_slam.isTap = !(m_request.charge01 > 0.0f);
     m_slam.travelled = 0.0f;
     m_slam.justStarted = true;
@@ -259,7 +323,14 @@ bool Player::BodySlam() noexcept
     // 出せた時だけ書く。反動の後のカメラと放した瞬間の絵が、突進の後も最後に出た突進の向きとして読む
     m_slam.dir = dir;
     m_request.hasDir = false;
-    m_request.spent = true;
+    // 溜めすぎで控えた突進なら、判定が頼み直しを止めて放すまで溜め無しになる
+    m_slam.forced = m_charge.judge.IsAwaitingLaunch();
+    m_charge.judge.MarkLaunched();
+    // 地面から出した突進は数えない。数えると、浮いて当てたタップや上向きに放った突進の反動で空中の 1 発が出ない
+    if (launchedInAir)
+    {
+        m_request.spent = true;
+    }
     // 突進はどの経路で出ても玉で走らせる。掴まり中に放した押しは予約に残り、先行入力の秒の内に
     // 縁を離れれば出るが、その時の丸まりは掴まりで解けている
     ChangeCurled(true);
@@ -283,7 +354,17 @@ bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept
         return false;
     }
 
+    // 反動は最後に出した突進が当たって始まるので、その突進がタップだったかで回転数を選ぶ
+    float turns = m_params->m_chargedReboundTurns;
+    if (m_slam.isTap)
+    {
+        turns = m_params->m_tapReboundTurns;
+    }
     m_rebound.direction = direction;
+    m_rebound.missTumble = arc.missTumble;
+    ++m_rebound.count;
+    m_rebound.spinSpeed =
+        SpinSpeedFor(turns, NS::Game::Level::LaunchArcFlightSeconds(ReboundLaunchArc(*m_params, arc)));
     m_body->SetVelocity(velocity);
     (void)m_states->Change<NS::Game::Player::ReboundPlayerState>();
     return true;
@@ -291,18 +372,8 @@ bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept
 
 NS::Core::Vector3 Player::ReboundVelocityFor(const NS::Game::Player::ReboundArc& arc) const noexcept
 {
-    // 下りは普段の落ち方のままにする。組は実際に当てる重力 (ReboundGravity) と同じ PlayerParams::ReboundGravity
-    // 曲線は上りの重力を正の大きさで、下りの重力を上りに対する倍率で持つので、符号を反転して下降重力を上りの重力で割る
-    const NS::Game::Player::PlayerGravity gravity = m_params->ReboundGravity();
-    const float riseGravity = -gravity.rise;
-    const NS::Game::Level::LaunchArc launchArc{.direction = arc.direction,
-                                               .distance = arc.distance,
-                                               .apexHeight = arc.apexHeight,
-                                               .riseGravity = riseGravity,
-                                               .fallGravityScale = -gravity.fall / riseGravity,
-                                               .apexBandSpeed = gravity.apexSpeed,
-                                               .apexBandGravityScale = gravity.apexScale};
-    return NS::Game::Level::LaunchArcInitialVelocity(launchArc);
+    // 下りは普段の落ち方のままにする
+    return NS::Game::Level::LaunchArcInitialVelocity(ReboundLaunchArc(*m_params, arc));
 }
 
 void Player::SetCurled(bool curled) noexcept
@@ -360,6 +431,11 @@ void Player::UncurlWhenSettled() noexcept
         return;
     }
     if (m_bodySlamHeld || IsBodySlamming() || !body.IsGrounded())
+    {
+        return;
+    }
+    // 外れの着地からこすって止まる間は玉のまま地面をこする
+    if (IsSkidding())
     {
         return;
     }

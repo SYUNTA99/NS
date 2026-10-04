@@ -50,6 +50,7 @@ namespace NS::Obj
     {
         m_jumpPressed = false;
         m_releaseLedgePressed = false;
+        m_slamSeen = false;
     }
 
     void PlayerInput::ResetMovementInput() noexcept
@@ -170,9 +171,12 @@ namespace NS::Obj
         m_jumpHeld = jumpHeld;
 
         // 体当たりのマウス左は、ゲームがマウスのボタンを受け取っている間だけ数える
-        m_slamHeld = (input.GameReceivesMouseButton(NS::Platform::MouseButton::Left) &&
-                      input.Mouse().IsHeld(NS::Platform::MouseButton::Left)) ||
-                     pad.IsHeld(NS::Platform::GamepadButton::X);
+        const bool slamHeld = (input.GameReceivesMouseButton(NS::Platform::MouseButton::Left) &&
+                               input.Mouse().IsHeld(NS::Platform::MouseButton::Left)) ||
+                              pad.IsHeld(NS::Platform::GamepadButton::X);
+        // 遅い世界では自機が読まない歩がある。その間に押して放した分も、次に読む歩で押したと見せる
+        m_slamHeld = slamHeld || m_slamSeen;
+        m_slamSeen = m_slamHeld;
 
         // 手放しは専用のマウス右ボタン / 左トリガー。後ろ入力と兼ねると、カメラ側の縁へ寄せた入力で手を放す
         const bool mouseFree = !input.UiWantsMouse();

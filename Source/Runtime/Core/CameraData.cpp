@@ -60,6 +60,11 @@ namespace NS::Core
         m_far = farPlane;
         m_projDirty = true;
     }
+    void CameraData::SetScreenOffset(const NS::Core::Vector2& offset) noexcept
+    {
+        m_screenOffset = offset;
+        m_projDirty = true;
+    }
 
     const NS::Core::Vector3& CameraData::Position() const noexcept
     {
@@ -89,6 +94,10 @@ namespace NS::Core
     {
         return m_far;
     }
+    const NS::Core::Vector2& CameraData::ScreenOffset() const noexcept
+    {
+        return m_screenOffset;
+    }
 
     const NS::Core::Matrix& CameraData::View() const noexcept
     {
@@ -113,6 +122,9 @@ namespace NS::Core
         if (m_projDirty)
         {
             m_projection = MakeProjectionLH(m_fovY.value, m_aspect, m_near, m_far);
+            // 行ベクトルでは clip.w がビューの奥行きなので、3 行目に足した分は w で割った後にそのまま画面のずれになる
+            m_projection._31 += m_screenOffset.x;
+            m_projection._32 += m_screenOffset.y;
             m_projDirty = false;
         }
         return m_projection;

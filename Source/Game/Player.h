@@ -12,6 +12,8 @@
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Object/StateMachine.h"
 
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -95,6 +97,23 @@ public:
     //! @param[out] outTarget 控えた狙う相手。控えが無い場合は書き換えない
     //! @return 控えがある場合 true、それ以外の場合は false
     [[nodiscard]] bool TryGetAimTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept;
+    //! @brief 狙いの線 (紫の揺れを足した向き) を進んだ時に最初に触れる相手を読む
+    //! @details 揺れていない間は TryGetAimTarget と同じ相手。紫の揺れで線が振れている間は、振れた線の向きで
+    //! ImpactResolver::FindSlamLineTarget を引き直した相手で、矢印の先はこれで決まる。
+    //! 狙う相手の枠と放つ縦の速さは揺れていない線の相手 (TryGetAimTarget) のまま
+    //! @param[out] outTarget 線の上の相手。控えが無い場合は書き換えない
+    //! @return 控えがある場合 true、それ以外の場合は false
+    [[nodiscard]] bool TryGetLineTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept;
+    //! @brief 紫の揺れの位相 (ラジアン) を返す
+    //! @details 溜めすぎのフレーム数から閉じた式で出す。紫になりきった瞬間に π/2 を通る。紫でない間は 0
+    [[nodiscard]] float ChargeSwayPhase() const noexcept { return m_charge.swayPhase; }
+    //! @brief 紫の揺れのずれを返す
+    //! @details 狙いの線の右を正にした、相手の所 (相手がいなければ欄「相手がいない時に直す距離」の所) での横のずれ。
+    //! 単位は m。紫でない間は 0
+    [[nodiscard]] float ChargeSwayOffset() const noexcept { return m_charge.swayOffset; }
+    //! @brief このフレームに紫の揺れが端を通った場合 true、それ以外の場合は false
+    //! @details 位相が π/2 + nπ を通ったフレーム。紫になりきるフレームは必ず端を通る。紫に入ったフレームは数えない
+    [[nodiscard]] bool ChargeSwayReachedEdge() const noexcept { return m_charge.swayReachedEdge; }
     //! @brief 構えで縦に縮める倍率を読む
     //! @details 溜めている間は欄「構えの縮み」、溜めに入る前に押している間は欄「押しの構えの縮み」、それ以外は 1。
     //! 描く形へ書くのは PlayerAppearance で、ここは問いに答えるだけ
@@ -145,7 +164,7 @@ public:
     [[nodiscard]] float MaxSpeed() const noexcept;
     [[nodiscard]] float RunSpeed() const noexcept;
     //! 奈落落ちの復活などで速度・接地・ジャンプまわりの記録と状態機械を初期状態へ戻す。
-    //! 丸まりも解くが根は動かさない。当たりの止めと止めの予約は ImpactResolver::CancelImpact で捨て、
+    //! 丸まりも解くが根は動かさない。走っている当たりのタイムラインは ImpactResolver::CancelImpact で捨て、
     //! 描く形の倍率は PlayerAppearance::ResetDrawScale で補間なしに 1 へ戻す。
     //! 呼び手は先に根を出現位置へ置いてから呼ぶ
     void ResetState() noexcept;
@@ -160,6 +179,8 @@ public:
     //! 突進の進み具合 0..1。突進中でなければ 0
     [[nodiscard]] float BodySlamProgress01() const noexcept;
     [[nodiscard]] float BodySlamCharge01() const noexcept { return m_slam.charge01; } //!< 発動時の溜め量 0..1
+    //! 発動時の溜めすぎの深さ 0..1。赤で放した突進とタップは 0
+    [[nodiscard]] float BodySlamOvercharge01() const noexcept { return m_slam.overcharge01; }
     //! 溜めた突進を終える水平の距離。欄「突進距離」の値で、単位は m
     [[nodiscard]] float BodySlamDistance() const noexcept;
     //! @brief 最後に出した突進の水平の向きを返す
@@ -168,12 +189,43 @@ public:
     [[nodiscard]] NS::Core::Vector3 BodySlamDirection() const noexcept { return m_slam.dir; }
     //! 反動の状態の場合 true、それ以外の場合は false
     [[nodiscard]] bool IsRebounding() const noexcept;
+    //! 外れの反動の着地からこすって止まる状態の場合 true、それ以外の場合は false
+    [[nodiscard]] bool IsSkidding() const noexcept;
+    //! @brief 今の反動が着いた後にこすって止まる場合 true、それ以外の場合は false
+    //! @details 外れの反動で、欄「外れのこすって止まるまでのフレーム数」が 1
+    //! 以上の時に真。偽なら着いたフレームに立ちへ戻る
+    [[nodiscard]] bool SkidsOnLanding() const noexcept;
     //! @brief 身体を今動かしてよい場合 true、それ以外の場合は false
-    //! @details 身体の部品が外されておらず、当たりの止め (ImpactResolver::IsHitStopping) の最中でない時に真。
+    //! @details 身体の部品が外されておらず、当たりの止め (ImpactResolver::IsHitStopping) の最中でも、
+    //! 止めの明けの後に反動の事象を待つ間 (ImpactResolver::IsAwaitingRebound) でもない時に真。
     //! 状態機械の 1 歩・身体の移動・玉の回転と着地の潰れの戻しがこの問いを読む
     [[nodiscard]] bool CanMoveBody() const noexcept;
     //! 最後に始めた反動の水平の向き。正規化済み。反動を始める前と ResetState の後はゼロ
     [[nodiscard]] NS::Core::Vector3 ReboundDirection() const noexcept { return m_rebound.direction; }
+    //! @brief 突進の玉の回る速さ (度/秒) を返す
+    //! @details 届くまでの回転数 × 360 ÷ 届くまでの秒。回転数は溜めた突進が欄「溜めた突進の届くまでの回転数」、
+    //! タップが欄「タップの届くまでの回転数」。届くまでの秒は突進を終える水平の距離 ÷ 突進の水平の速さ。
+    //! 速さや距離を触っても、届くまでに回る数は変わらない
+    //! @return 回る速さ。届くまでの秒が 0 以下か有限でない時は 0
+    [[nodiscard]] float BodySlamSpinSpeed() const noexcept;
+    //! @brief 最後に始めた反動の玉の回る速さ (度/秒) を返す
+    //! @details 反動の回転数 × 360 ÷
+    //! 発射の高さへ戻るまでの秒。回転数は溜めて当てた反動が欄「溜めて当てた反動の回転数」、
+    //! タップで当てた反動が欄「タップで当てた反動の回転数」。書くのは BeginRebound
+    //! @return 回る速さ。反動を始める前と ResetState の後は 0
+    [[nodiscard]] float ReboundSpinSpeed() const noexcept { return m_rebound.spinSpeed; }
+    //! @brief 最後に始めた反動の外れの回り方を返す
+    //! @details 外れの反動の時だけ値を持つ。書くのは BeginRebound
+    [[nodiscard]] const std::optional<NS::Game::Player::MissTumble>& ReboundMissTumble() const noexcept
+    {
+        return m_rebound.missTumble;
+    }
+    //! @brief 反動を始めた回数を返す
+    //! @details 見た目が新しい反動の始まりを知るために読む。ResetState では戻さない
+    [[nodiscard]] std::uint32_t ReboundCount() const noexcept { return m_rebound.count; }
+    //! @brief こすって止まる間の、着いた水平の速さに掛けている今の倍率を返す
+    //! @return 0〜1。こすって止まる状態でない間は 1
+    [[nodiscard]] float SkidSpeedScale() const noexcept;
     //! 丸まっている場合 true、それ以外の場合は false
     [[nodiscard]] bool IsCurled() const noexcept { return m_curled; }
     //! @brief 根を rootPosition に置いた時の突進の玉を返す
@@ -209,6 +261,13 @@ public:
     //! @brief 反動の間、入力の向きへ反動中の空中の加速度で加速する。入力が無ければ何もしない
     //! @details 接地の印に依らずこの加速度を使い、入力の向きからずれた速度は減らさない
     void AccelerateDuringRebound(float dt) noexcept;
+    //! 外れの着地からこすって止まり始める。今の水平の速度を着いた速度として控え、経過を 0 にする
+    void BeginSkid() noexcept;
+    //! @brief こすって止まる 1 フレームを進める
+    //! @details 経過を 1 進め、水平の速度を 着いた速度 × MissSkidSpeedScale (経過, 欄「外れのこすって止まるまでの
+    //! フレーム数」, 欄「外れのこすって止まる減り方」) に書く
+    //! @return 止まりきった場合 true、それ以外の場合は false
+    [[nodiscard]] bool AdvanceSkid() noexcept;
     //! @brief 突進の 1 フレームを進める。溜めた突進は水平を BodySlamVelocity で書き直し、重力を当てる
     //! @details 突進の間の水平の書き手はここだけ
     void UpdateBodySlam(float dt) noexcept;
@@ -236,21 +295,25 @@ public:
     //! @brief 体当たりの発動を要求する
     //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
     //! そのフレームで出せない要求は先行入力時間だけ覚え、過ぎたら失効する。
-    //! 1 度出すと接地するまで次は出せない。
+    //! 突進中と、身体を動かせない間 (当たりの止めと、止めの明けの後に反動を待つ間) の要求は覚えずに捨てる。
+    //! 空中で出すと接地するまで次は出せない。地面から出した突進は数えないので、その後の空中で 1 回出せる。
     //! 出る向きは BodySlam が入力と押したフレームの控えから決める。前の要求に添えた向きは捨てる
     //! @param[in] charge01 溜め量 0..1
-    void RequestBodySlam(float charge01) noexcept;
+    //! @param[in] overcharge01 溜めすぎの深さ 0..1。威力を溜めきりより上げる。有限でなければ 0
+    void RequestBodySlam(float charge01, float overcharge01 = 0.0f) noexcept;
     //! @brief 出す向きを添えて体当たりの発動を要求する
-    //! @details 溜め量と先行入力は 1 つ引数の RequestBodySlam と同じ。
+    //! @details 溜め量と先行入力と捨てる時は 1 つ引数の RequestBodySlam と同じ。捨てた時は向きも覚えない。
     //! 出る時は入力と押したフレームの控えを見ず、添えた向きの水平を正規化した向きへ出す。
     //! 水平の長さが 0 の向きと有限でない向きは、添えなかったのと同じ
     //! @param[in] charge01 溜め量 0..1
     //! @param[in] aimDirection 出す向き。世界座標で、縦の成分は使わない
     //! @param[in] launchVerticalSpeed 溜めた突進を放つ瞬間の縦の速さ (m/s)。上が正。溜めの観測が狙う相手の予測
     //! (SlamLineTarget::launchVerticalSpeed) から控えた値で、届く相手が無ければ 0。タップには効かない。有限でなければ 0
+    //! @param[in] overcharge01 溜めすぎの深さ 0..1。威力を溜めきりより上げる。有限でなければ 0
     void RequestBodySlam(float charge01,
                          const NS::Core::Vector3& aimDirection,
-                         float launchVerticalSpeed = 0.0f) noexcept;
+                         float launchVerticalSpeed = 0.0f,
+                         float overcharge01 = 0.0f) noexcept;
     //! @brief 突進の速度を返す。突進中は発動時の向きと BodySlamSpeed から作り、縦は身体の今の値
     //! @details 衝突の裁定と玉の回転が読み、溜めた突進の間は UpdateBodySlam がこの水平で身体を書き直す。
     //! 実速度は壁へ押し付けられたフレームで 0 に潰れ、衝突の先読みが今の位置から動かなくなる
@@ -325,7 +388,7 @@ protected:
     //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
     void ObserveStep() override;
     //! @brief 溜めを進め (AdvanceCharge)、衝突の裁定を出して知らせを送る (ImpactResolver::StepState)
-    //! @details 裁定役が外されていれば、止めと止めの予約を捨てる (ImpactResolver::CancelImpact)
+    //! @details 裁定役が外されていれば、走っている当たりのタイムラインを捨てる (ImpactResolver::CancelImpact)
     void DecideStep() override;
     //! 突進の発動、状態機械の 1 歩、丸まりの解除と押下の消費。CanMoveBody が偽の間は押下の消費だけ
     void StateStep() override;
@@ -347,6 +410,8 @@ private:
         bool justStarted = false;    // 発動したフレームか
         NS::Core::Vector3 dir{};     // 最後に出した突進の水平の向き。正規化済み。書くのは出せた時だけ
         float charge01 = 0.0f;       // 発動時に確定した溜め量 0..1
+        float overcharge01 = 0.0f;   // 発動時に確定した溜めすぎの深さ 0..1
+        bool forced = false;         // 溜めすぎで勝手に出た突進か
         bool wasSlamming = false;    // 直前のフレームを突進中で終えたか。書くのは MoveBody と ResetState
     };
 
@@ -354,8 +419,9 @@ private:
     struct BodySlamRequest
     {
         float bufferRemaining = 0.0f; // 出せないフレームの押しを覚える残り秒
-        bool spent = false;           // 発動してから接地していないか
+        bool spent = false;           // 空中で発動してから接地していないか
         float charge01 = 0.0f;        // 要求された溜め量 0..1
+        float overcharge01 = 0.0f;    // 要求された溜めすぎの深さ 0..1
         NS::Core::Vector3 dir{};      // 要求に添えた出す向き。正規化済み
         bool hasDir = false;          // 要求に向きが添えてあるか
         float verticalSpeed = 0.0f;   // 溜めた突進を放つ瞬間の縦の速さ。hasDir が偽の間は読まない
@@ -366,7 +432,17 @@ private:
     //! 反動の記録
     struct ReboundRecord
     {
-        NS::Core::Vector3 direction{}; // 最後に始めた反動の水平の向き。正規化済み
+        NS::Core::Vector3 direction{};                            // 最後に始めた反動の水平の向き。正規化済み
+        float spinSpeed = 0.0f;                                   // 最後に始めた反動の玉の回る速さ (度/秒)
+        std::optional<NS::Game::Player::MissTumble> missTumble{}; // 最後に始めた反動の外れの回り方
+        std::uint32_t count = 0;                                  // 反動を始めた回数
+    };
+
+    //! 外れの着地からこすって止まる間の記録。書くのは BeginSkid と AdvanceSkid
+    struct SkidRecord
+    {
+        NS::Core::Vector3 landingVelocity{}; // 着いたフレームの水平の速度
+        int elapsedSteps = 0;                // 着いてからのフレーム数
     };
 
     //! @brief 溜めと狙いの記録。観測の段 (ObserveCharge) が observed の側を書き、決定の段 (AdvanceCharge) が確定する
@@ -385,6 +461,14 @@ private:
         // 押している間の狙う相手。hasAimTarget が偽の間は読まない
         NS::Game::Level::SlamLineTarget aimTarget{};
         bool hasAimTarget = false;
+        // 紫の揺れを足した狙いの線で最初に触れる相手。hasLineTarget が偽の間は読まない
+        NS::Game::Level::SlamLineTarget lineTarget{};
+        bool hasLineTarget = false;
+        float swayPhase = 0.0f;       // 紫の揺れの位相 (ラジアン)
+        float swayOffset = 0.0f;      // 紫の揺れの横のずれ (m)。狙いの線の右が正
+        int swayEdge = 0;             // 位相が通った端の番号。(位相 − π/2) ÷ π の切り捨て
+        bool hasSwayEdge = false;     // 前のフレームの端の番号を控えているか
+        bool swayReachedEdge = false; // このフレームに端を通ったか
     };
 
     //! @brief 身体を 1 フレーム動かす。更新の中で 1 回だけ呼ぶ
@@ -405,6 +489,9 @@ private:
     //! @details 発動の初速 (BodySlam) と突進の速度 (BodySlamVelocity) がこれを読む。速さの式はここ 1 か所
     //! @return タップの飛び込みは欄「タップ初速」、溜めた突進は欄「突進速度」
     [[nodiscard]] float BodySlamSpeed() const noexcept;
+    //! @brief 体当たりの要求を覚えてよい場合 true、それ以外の場合は false
+    //! @details 突進中と CanMoveBody が偽の間は偽。ここで覚えた押しは止めの間に減らず、明けや空振りの後に 2 本目になる
+    [[nodiscard]] bool AcceptsBodySlamRequest() const noexcept;
     //! @brief 丸まりを入れるか解き、当たりの形と根の高さを一緒に切り替える
     //! @details 丸まると当たりを球にして根を立ち姿の半長ぶん下げる。
     //! 解くと立ち姿へ戻して、その時の立ち姿の半長ぶん上げる。当たりの下端 (中心 − 半長 − 半径) は動かない。
@@ -430,6 +517,11 @@ private:
     //! 突進の要求・溜めの間の最高速度の倍率・溜めに入ったフレームの横の停止を書き、観測した狙いを確定する
     //! @param[in] dt 進める秒
     void AdvanceCharge(float dt);
+    //! @brief 紫の揺れを確定した狙いの線へ足す
+    //! @details 溜めすぎのフレーム数から位相とずれを閉じた式で出し、狙いの線の向きを左右へ回して、
+    //! 回した線で最初に触れる相手を引き直す。紫でない間と線が無い間は揺らさない
+    //! @param[in] dt 1 フレームの秒
+    void ApplyChargeSway(float dt);
     //! @brief 溜めを捨てる。放した扱いにはしないので、タップも溜めた突進も出ない
     //! @details 判定と狙いの控えを初めの値へ戻し、押しの印を偽、最高速度の倍率を 1 へ戻す。
     //! 構えは判定から答えるので 1 に戻る。丸まりは解かず、着地で解ける
@@ -481,7 +573,10 @@ private:
     BodySlamRecord m_slam;
     BodySlamRequest m_request;
     ReboundRecord m_rebound;
+    SkidRecord m_skid;
     ChargeRecord m_charge;
+    // 紫に入った回数。紫になりきった時に揺れが来る端を毎回入れ替える。溜めを捨てても戻さない
+    int m_overchargeCount = 0;
 
     NS::Core::Vector3 m_facingDir{0.0f, 0.0f, 0.0f};       // 掴む向き。動こうとした水平の向きへ振り向きの速さで回る
     float m_lastMoveDistance = 0.0f;                       // 直前の Move で動いた距離。縁を探す帯の上の余白

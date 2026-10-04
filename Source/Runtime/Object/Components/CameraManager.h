@@ -105,6 +105,24 @@ namespace NS::Obj
         //! 今のフレームの寄りと傾き。始めていない時と戻し終えた後は倍率 1・傾き 0
         [[nodiscard]] CameraZoomRoll ZoomRoll() const noexcept;
 
+        //! @brief トラウマを足す。トラウマの揺れが積まれていなければ積む
+        //! @details 揺れの途中なら今のトラウマに足す (上限 1)。続けて当てた時に揺れが重なる
+        //! @return 足した場合 true、非数か負の量で何も変えなかった場合は false
+        bool AddTrauma(const CameraTraumaDesc& desc);
+
+        //! @brief このフレームのトラウマを少なくとも level に保つ。トラウマの揺れが積まれていなければ積む
+        //! @details 溜めのように続く揺れが毎フレーム呼ぶ。呼ばなかったフレームから減り始める
+        //! @return 保った場合 true、非数か負の量で何も変えなかった場合は false
+        bool HoldTrauma(float level, const CameraTraumaShape& shape);
+
+        //! 今のトラウマ。トラウマの揺れが無い時は 0
+        [[nodiscard]] float Trauma() const noexcept;
+
+        //! @brief 揺れの振れ幅に掛ける設定の倍率を置く。0〜1 に収め、非数は受けない
+        //! @details 揺れの効果 (IsShake が真) にだけ掛ける。寄りと傾き・止めには掛けない。既定は 1
+        void SetShakeScale(float scale) noexcept;
+        [[nodiscard]] float ShakeScale() const noexcept { return m_shakeScale; }
+
         //! @brief 今のカメラの画面で direction が右と左のどちらの側かを返す
         //! @details ForwardHorizontal から作った右と direction
         //! の内積で決める。揺れの最初の横の向きと傾きの向きもこの決まり
@@ -142,6 +160,9 @@ namespace NS::Obj
     private:
         [[nodiscard]] VirtualCamera* SelectActive() const noexcept;
 
+        // 積んであるトラウマの揺れ。無ければ積んで返す
+        [[nodiscard]] CameraTraumaModifier* TraumaModifier();
+
         // 仮想カメラとブレンドまでを合成する。効果は掛けない。選べる仮想カメラが無ければ nullopt
         [[nodiscard]] std::optional<CameraPose> ComposeBeforeEffects(float alpha) const noexcept;
 
@@ -154,6 +175,7 @@ namespace NS::Obj
         float m_blendDuration = 0.35f; // active 切替のブレンド秒数
         float m_blendElapsed = 0.0f;   // ブレンド開始からの経過秒
         bool m_blending = false;       // ブレンド進行中か
+        float m_shakeScale = 1.0f;     // 揺れの振れ幅に掛ける設定の倍率
 
         std::vector<std::unique_ptr<CameraModifier>> m_modifiers; // 積んだ効果。Order 昇順、同じ順は積んだ順
     };

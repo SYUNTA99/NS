@@ -25,9 +25,13 @@ namespace NS::Obj
     struct FollowReboundDesc
     {
         bool rebounding = false; // 追う相手が反動の状態か
+        // 追う相手が溜めすぎで勝手に出た突進の最中か。真の間は注視点の横と前後が遅れて付いていく
+        bool forcedSlamming = false;
         // 反動を起こした突進を出したフレームの向き。世界座標で、縦の成分は使わない
         // 水平の長さが 0 なら回さない
         NS::Core::Vector3 slamDirection{};
+        // 反動の間に画面へ残したい相手の今の位置。世界座標。空なら追う相手だけを見る
+        std::optional<NS::Core::Vector3> partnerPosition{};
     };
 
     //! @brief Mario 系ジャンプアクションの追従カメラ
@@ -38,6 +42,9 @@ namespace NS::Obj
     //! 受けた溜めから視野角の締め・縦の揺れ・構図のずらしを作って姿勢に足す
     //! 構図のずらしは追う相手と狙う相手を枠に収めるよう、位置と注視点を同じだけ動かす
     //! 反動の状態の間は、注視点の高さを反動の始まりに留め、横と前後は遅れて付いていく
+    //! 反動の間に相手の位置を受けた時は、注視点を相手へ重みで寄せ、二人が離れた分だけ後ろへ引く。
+    //! 重みは相手が見送りの距離へ近づくほど 0 へ落ち、見送った後は追う相手だけを見る
+    //! 勝手に出た突進の間は、注視点の横と前後がその場に取り残されてから引っ張られるように追い付く
     //! 追う相手が画面の上下の帯を越えそうな時だけ追い、
     //! 反動の状態が外れたら普通の追い方へ寄せ戻す
     //! 反動になったフレームから、水平の向きを反動を起こした突進を出した向きへ回し、
@@ -74,10 +81,6 @@ namespace NS::Obj
         //! @brief 溜めで締めている視野角を返す
         //! @return 基準の視野角から引いている角度 (度)。締めていない時は 0
         [[nodiscard]] float ChargeNarrowDegrees() const noexcept { return m_chargeNarrowDegrees; }
-
-        //! @brief 溜めの揺れのずれを返す
-        //! @return カメラの上の向きのずれ (m)。負は下。揺れていない時は 0
-        [[nodiscard]] float ChargeShake() const noexcept { return m_chargeShake; }
 
         //! @brief 溜めの構図のずらしを返す
         //! @return x がカメラの右、y がカメラの上の向きのずれ (m)。ずらしていない時は 0
@@ -169,7 +172,10 @@ namespace NS::Obj
         NS_REFLECT_FIELD(m_pitchMax, "ピッチ上限")
         NS_REFLECT_FIELD(m_chargeNarrowMaxDegrees, "溜めで締める視野角")
         NS_REFLECT_FIELD(m_chargeNarrowReturnFrames, "締めを戻すフレーム数")
-        NS_REFLECT_FIELD(m_chargeShakeStrength, "溜めの揺れの強さ")
+        NS_REFLECT_FIELD(m_chargeShakePitchDegrees, "溜めの揺れの縦")
+        NS_REFLECT_FIELD(m_chargeShakeYawDegrees, "溜めの揺れの横")
+        NS_REFLECT_FIELD(m_chargeShakeFrequency, "溜めの揺れの細かさ")
+        NS_REFLECT_FIELD(m_chargeShakeDecayPerSecond, "溜めの揺れの消える速さ")
         NS_REFLECT_FIELD(m_chargeFrameRatio, "溜めの構図の枠")
         NS_REFLECT_FIELD(m_chargeFrameOmega, "溜めの構図のバネ角速度")
         NS_REFLECT_FIELD(m_reboundFollowOmega, "反動の間の横と前後のバネ角速度")
@@ -178,6 +184,14 @@ namespace NS::Obj
         NS_REFLECT_FIELD(m_reboundReturnFrames, "反動の後に戻すフレーム数")
         NS_REFLECT_FIELD(m_reboundTurnFrames, "反動の向きへ回すフレーム数")
         NS_REFLECT_FIELD(m_reboundPullBack, "反動の間に下げる距離")
+        NS_REFLECT_FIELD(m_reboundPartnerWeight, "反動の間に相手を収める重み")
+        NS_REFLECT_FIELD(m_reboundPartnerReleaseDistance, "相手を見送る距離")
+        NS_REFLECT_FIELD(m_reboundPullStartDistance, "引き始めの二人の距離")
+        NS_REFLECT_FIELD(m_reboundPullPerMeter, "二人の距離 1 m あたりに引く距離")
+        NS_REFLECT_FIELD(m_reboundPullMax, "相手を収める引きの上限")
+        NS_REFLECT_FIELD(m_reboundPartnerHalfSeconds, "相手を収めるばねの半分の秒")
+        NS_REFLECT_FIELD(m_forcedLaunchFollowOmega, "強制発射の追う速さ")
+        NS_REFLECT_FIELD(m_forcedLaunchMaxLag, "強制発射の遅れの上限")
         NS_REFLECT_ACCESSOR(float, "ファークリップ", FarPlane(), SetFarPlane)
         NS_REFLECT_ACCESSOR(int, "優先度", VcamPriority(), SetVcamPriority)
         NS_REFLECT_END()
@@ -191,14 +205,18 @@ namespace NS::Obj
                           float dt) noexcept;
 
         // 反動になったフレームかと反動の状態から、反動の間の追い方の段を進める
+        // 勝手に出た突進になったフレームと、その最中かも見る
         // 距離と注視点を決める前に呼ぶ
         // head は追う相手の頭
-        void UpdateReboundPhase(bool began, bool rebounding, const NS::Core::Vector3& head) noexcept;
+        void UpdateReboundPhase(
+            bool began, bool rebounding, bool launchBegan, bool launching, const NS::Core::Vector3& head) noexcept;
 
         // 反動になったフレームかと受けた反動の状態から、回す入力を受けないかを決め、
         // 水平の向きの回しを 1 フレーム進める
         // 回す入力を足す前に呼ぶ
         void UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept;
+        // 反動の間に受けた相手の位置から、注視点の寄せと引きのばねを 1 フレーム進める。反動の間でなければ 0 へ戻す
+        void UpdateReboundPartner(const FollowReboundDesc& rebound, const NS::Core::Vector3& head, float dt) noexcept;
 
         // 今の段でこのフレームの注視点を決めて控える
         // 普通の追い方の時は head をそのまま返す
@@ -211,6 +229,7 @@ namespace NS::Obj
         enum class ReboundPhase
         {
             None,      // 普通の追い方
+            Launching, // 勝手に出た突進の間
             Following, // 反動の状態の間
             Returning, // 反動の状態が外れてから普通の追い方へ寄せ戻している
         };
@@ -252,11 +271,14 @@ namespace NS::Obj
         float m_pitchMin = -1.396f;  // 仰俯角の下限
         float m_pitchMax = -0.0873f; // 仰俯角の上限
 
-        float m_chargeNarrowMaxDegrees = 15.0f; // 溜めきりで締める視野角 (度)
-        int m_chargeNarrowReturnFrames = 6;     // 放してから締めを 0 へ戻すフレーム数
-        float m_chargeShakeStrength = 0.02f;    // 溜めきりの溜めの揺れの振れ幅 (m)
-        float m_chargeFrameRatio = 0.7f;        // 構図の枠。視野の半分に対する割合
-        float m_chargeFrameOmega = 26.0f;       // 構図のずらしのバネ角速度 (1/秒)
+        float m_chargeNarrowMaxDegrees = 15.0f;   // 溜めきりで締める視野角 (度)
+        int m_chargeNarrowReturnFrames = 6;       // 放してから締めを 0 へ戻すフレーム数
+        float m_chargeShakePitchDegrees = 0.3f;   // 溜めきりの溜めの揺れの縦の首振りの最大 (度)
+        float m_chargeShakeYawDegrees = 0.15f;    // 溜めきりの溜めの揺れの横の首振りの最大 (度)
+        float m_chargeShakeFrequency = 10.0f;     // 溜めの揺れのノイズの格子を 1 秒に進める数
+        float m_chargeShakeDecayPerSecond = 4.0f; // 放した後に溜めの揺れのトラウマが 1 秒に減る量
+        float m_chargeFrameRatio = 0.7f;          // 構図の枠。視野の半分に対する割合
+        float m_chargeFrameOmega = 26.0f;         // 構図のずらしのバネ角速度 (1/秒)
 
         float m_reboundFollowOmega = 4.0f; // 反動の間に注視点の横と前後が寄るバネ角速度 (1/秒)
         float m_reboundMaxLag = 1.5f;      // 反動の間に注視点が横と前後へ遅れてよい上限 (m)
@@ -264,29 +286,51 @@ namespace NS::Obj
         int m_reboundReturnFrames = 20;    // 反動が外れてから普通の追い方へ寄せ戻すフレーム数
         int m_reboundTurnFrames = 20;      // 反動になってから突進の向きへ回し終えるフレーム数
         float m_reboundPullBack = 1.0f;    // 反動の間に当たった瞬間の距離より伸ばす距離 (m)
+        // 真ん中の反動は、自分の跳ね返り方と飛んでいく相手の飛び方の差を見せる。主役は自機のまま、相手も画面に残す
+        // 注視点 = 自機 + 重み × (相手 − 自機)、重み = 最大 × (1 − 二人の距離 ÷ 見送りの距離)。最大 0.3 は 1
+        // 節の決定の値
+        float m_reboundPartnerWeight = 0.3f;
+        // 相手がこれより遠くへ飛ぶと重みが 0 になり、自機だけを追う (m)。出発点で、値は撮って詰める
+        float m_reboundPartnerReleaseDistance = 30.0f;
+        // 二人がこれより離れた分に、1 m あたりの距離を掛けて引く。引きは上限で止まる (m)
+        float m_reboundPullStartDistance = 3.0f;
+        float m_reboundPullPerMeter = 0.3f;
+        float m_reboundPullMax = 4.0f;
+        // 寄せと引きのばねが差の半分まで追いつく秒。1 節の決定の 0.15 秒から
+        float m_reboundPartnerHalfSeconds = 0.15f;
+        // 勝手に出た突進の間に注視点の横と前後が寄るバネ角速度 (1/秒)。反動と同じ 4 から始める
+        float m_forcedLaunchFollowOmega = 4.0f;
+        // 勝手に出た突進の間に見せる遅れの上限 (m)。反動の 1.5 m だと約 5 フレームで届き、普通の突進と見分けにくい
+        float m_forcedLaunchMaxLag = 3.0f;
 
         FollowChargeDesc m_charge{};               // 次の OnUpdate で使う溜めの状態
         float m_chargeHoldNarrowDegrees = 0.0f;    // 前のフレームの押している間の締め (度)
         float m_chargeNarrowDegrees = 0.0f;        // 今の締め (度)
         float m_chargeReturnFromDegrees = 0.0f;    // 戻し始めた時の締め (度)
         int m_chargeReturnFrame = 0;               // 戻しの何フレーム目か。0 は戻していない
-        float m_chargeShake = 0.0f;                // 今の溜めの揺れ (m、カメラの上の向き)
         NS::Core::Vector2 m_chargeFrameOffset{};   // 今の構図のずらし (m、カメラの右と上)
         NS::Core::Vector2 m_chargeFrameVelocity{}; // 構図のずらしの速さ (m/秒)
 
         FollowReboundDesc m_rebound{};                    // 次の OnUpdate で使う反動の状態
         bool m_wasRebounding = false;                     // 前のフレームに反動の状態だったか
+        bool m_wasForcedSlamming = false;                 // 前のフレームに勝手に出た突進の最中だったか
         bool m_reboundLookHeld = false;                   // 反動になってから接地するまで、回す入力を受けないか
         float m_reboundTurnAngle = 0.0f;                  // 反動になったフレームに決めた、回す角度 (ラジアン)
         int m_reboundTurnFrame = 0;                       // 回しの何フレーム目か。欄のフレーム数で回し終える
         ReboundPhase m_reboundPhase = ReboundPhase::None; // 今の段
         NS::Core::Vector3 m_reboundAnchor{};              // 横と前後を遅らせて追う注視点。高さは留める
         NS::Core::Vector3 m_reboundAnchorVelocity{};      // 注視点の横と前後の速さ (m/秒)。縦は使わない
+        float m_reboundLagCap = 0.0f;                     // 反動の間の遅れの今の上限 (m)。欄の上限より下にはしない
         NS::Core::Vector3 m_reboundReturnOffset{};        // 寄せ戻し始めの、注視点 − 追う相手の頭 (m)
         int m_reboundReturnFrame = 0;                     // 寄せ戻しの何フレーム目か
-        NS::Core::Vector3 m_look{};                       // このフレームの注視点。反動と寄せ戻しで使う
-        NS::Core::Vector3 m_previousLook{};               // 前のフレームの注視点。描画の補間に使う
-        bool m_hasLook = false;                           // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
+        float m_reboundBaseDistance = 0.0f;        // 反動になったフレームに決めた、相手を収める引きの前の距離 (m)
+        NS::Core::Vector3 m_partnerLean{};         // 注視点を相手へ寄せている量 (m)
+        NS::Core::Vector3 m_partnerLeanVelocity{}; // 寄せの速さ (m/秒)
+        float m_partnerPull = 0.0f;                // 相手を収めるために引いている距離 (m)
+        float m_partnerPullVelocity = 0.0f;        // 引きの速さ (m/秒)
+        NS::Core::Vector3 m_look{};                // このフレームの注視点。反動と寄せ戻しで使う
+        NS::Core::Vector3 m_previousLook{};        // 前のフレームの注視点。描画の補間に使う
+        bool m_hasLook = false;                    // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
     };
 
 } // namespace NS::Obj

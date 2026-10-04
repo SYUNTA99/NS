@@ -1,6 +1,7 @@
 #include "Game/Player.h"
 
 #include "Game/Level/CourseDirector.h"
+#include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
@@ -18,6 +19,7 @@
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
+#include "Game/Player/States/SkidPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Object/Components/Animation.h"
 #include "Runtime/Object/Components/Body.h"
@@ -77,7 +79,8 @@ Player::Player() noexcept
                             NS::Game::Player::LedgeClimbingPlayerState,
                             NS::Game::Player::BodySlamPlayerState,
                             NS::Game::Player::BrakePlayerState,
-                            NS::Game::Player::ReboundPlayerState>(*this, m_states);
+                            NS::Game::Player::ReboundPlayerState,
+                            NS::Game::Player::SkidPlayerState>(*this, m_states);
 }
 
 Player::~Player() = default;
@@ -108,12 +111,23 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
     state.hasRebound = true;
     state.rebound = NS::Obj::FollowReboundDesc{
         .rebounding = IsRebounding(),
+        .forcedSlamming = IsBodySlamming() && m_slam.forced,
         .slamDirection = BodySlamDirection(),
     };
-    // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す
+    // 真ん中の反動は、飛んでいく相手を画面に残す。外れはいつもどおり自機だけを追う (外れのカメラは寄り無し)
+    const NS::Game::Level::ImpactRecord& impact = m_resolver->LastImpact();
+    if (IsRebounding() && impact.tier == NS::Game::Level::HitTier::Center && OwningScene() != nullptr)
+    {
+        if (const NS::Obj::Actor* partner = OwningScene()->Objects().FindByObjectId(impact.targetId))
+        {
+            state.rebound.partnerPosition = partner->Root().Position();
+        }
+    }
+    // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す。溜めすぎで出た後は押していても
+    // 溜めの締めと揺れを解く
     const NS::Game::Level::ImpactInputJudge& judge = ChargeJudge();
     state.hasCharge = true;
-    state.charge.held = judge.IsHeld();
+    state.charge.held = judge.IsHoldingCharge();
     if (state.charge.held)
     {
         state.charge.charge01 = judge.Charge01();
@@ -184,7 +198,7 @@ void Player::DecideStep()
     }
     else
     {
-        // 外された裁定役は止めも予約も捨てる。持ち越すと入れ直した時に残りの止めが明け、遅れて弾かれる
+        // 外された裁定役は走っている当たりのタイムラインを打ち切る。持ち越すと入れ直した時に残りの止めが明け、遅れて弾かれる
         m_resolver->CancelImpact();
     }
 }
@@ -220,6 +234,8 @@ void Player::VisualStep()
     TickPart(m_targetMarker.get());
     TickPart(m_slamArrow.get());
     TickPart(HitReactionPart());
+    // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
+    m_resolver->WriteTremor();
     TickPart(m_appearance.get());
     TickPart(m_chargeEffects.get());
     TickPart(m_impactEffects.get());
@@ -483,10 +499,30 @@ bool Player::IsRebounding() const noexcept
     return m_states != nullptr && m_states->IsCurrent<NS::Game::Player::ReboundPlayerState>();
 }
 
+bool Player::IsSkidding() const noexcept
+{
+    return m_states != nullptr && m_states->IsCurrent<NS::Game::Player::SkidPlayerState>();
+}
+
+bool Player::SkidsOnLanding() const noexcept
+{
+    return m_rebound.missTumble.has_value() && m_params->m_missSkidSteps > 0;
+}
+
+float Player::SkidSpeedScale() const noexcept
+{
+    if (!IsSkidding())
+    {
+        return 1.0f;
+    }
+    return NS::Game::Level::MissSkidSpeedScale(
+        m_skid.elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
+}
+
 bool Player::CanMoveBody() const noexcept
 {
-    // 当たりの止めの正は裁定役の数え。身体の active へ写すと、やり直しが写しを戻し忘れた時に正と食い違う
-    return m_body->IsActive() && !m_resolver->IsHitStopping();
+    // 当たりの止めの正は裁定役の時計。身体の active へ写すと、やり直しが写しを戻し忘れた時に正と食い違う
+    return m_body->IsActive() && !m_resolver->IsHitStopping() && !m_resolver->IsAwaitingRebound();
 }
 
 void Player::ResetState() noexcept
@@ -507,15 +543,21 @@ void Player::ResetState() noexcept
     m_request.spent = false;
     m_slam.isTap = false;
     m_request.charge01 = 0.0f;
+    m_request.overcharge01 = 0.0f;
     m_request.dir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
     m_request.hasDir = false;
     m_request.verticalSpeed = 0.0f;
     m_slam.charge01 = 0.0f;
+    m_slam.overcharge01 = 0.0f;
+    m_slam.forced = false;
     m_slam.travelled = 0.0f;
     m_slam.distanceTarget = 0.0f;
     m_slam.justStarted = false;
     m_slam.dir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
     m_rebound.direction = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    m_rebound.spinSpeed = 0.0f;
+    m_rebound.missTumble.reset();
+    m_skid = SkidRecord{};
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_curled = false;
@@ -523,7 +565,7 @@ void Player::ResetState() noexcept
     m_bodySlamHeld = false;
     m_slam.wasSlamming = false;
     m_states->Reset();
-    // 止めの最中か予約の残るやり直しで、出現位置で明けて弾かれないよう止めを持ち主に捨てさせる
+    // 止めの最中か反動を待つ間のやり直しで、出現位置で明けて弾かれないよう、走っている当たりのタイムラインを持ち主に打ち切らせる
     m_resolver->CancelImpact();
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale();

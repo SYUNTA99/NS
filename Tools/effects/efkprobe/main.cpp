@@ -5,10 +5,11 @@
 // Manager と Renderer の組み方は Source/Runtime/Graphics/EffectScene.cpp と同じ
 //
 // 使い方: efkprobe <.efkefc> <PNG の出力先フォルダ> [--frames N] [--size 画素] [--distance 距離] [--height 目の高さ]
-//                  [--bg r,g,b] [--start-frame フレーム数] [--no-png]
+//                  [--bg r,g,b] [--start-frame フレーム数] [--input 番号=値]... [--no-png]
 //   フレーム k の PNG は、Play の後に Update(1) を k 回呼んで描いた絵。ゲームの 60Hz の k フレーム目に当たる
 //   --start-frame は Manager::Play の開始フレームに渡す。実行側は最初の更新でその数だけ先に進めてから描く
 //   EffectScene::Play は開始フレームを渡さないので、ゲームと同じ形は 0
+//   --input は Play の直後、最初の更新の前に動的入力を渡す。何度でも書ける。渡さない番号は定義の既定の値のまま
 
 #pragma warning(push, 0)
 #include <Effekseer.h>
@@ -50,6 +51,7 @@ namespace
         float eyeHeight = 0.0f;
         std::array<float, 3> background{0.08f, 0.08f, 0.10f};
         std::int32_t startFrame = 0;
+        std::vector<std::pair<std::int32_t, float>> inputs; // 動的入力の番号と値
         bool writePng = true;
     };
 
@@ -399,6 +401,16 @@ namespace
             {
                 options.startFrame = _wtoi(argv[++i]);
             }
+            else if (flag == L"--input" && hasValue)
+            {
+                std::int32_t index = 0;
+                float value = 0.0f;
+                if (swscanf_s(argv[++i], L"%d=%f", &index, &value) != 2 || index < 0 || index >= 4)
+                {
+                    return false;
+                }
+                options.inputs.emplace_back(index, value);
+            }
             else if (flag == L"--no-png")
             {
                 options.writePng = false;
@@ -419,7 +431,7 @@ int wmain(int argc, wchar_t** argv)
     {
         std::printf("使い方: efkprobe <.efkefc> <PNG の出力先> [--frames N] [--size 画素] [--distance 距離] [--height "
                     "目の高さ] "
-                    "[--bg r,g,b] [--start-frame フレーム数] [--no-png]\n");
+                    "[--bg r,g,b] [--start-frame フレーム数] [--input 番号=値]... [--no-png]\n");
         return 2;
     }
 
@@ -530,6 +542,11 @@ int wmain(int argc, wchar_t** argv)
     if (options.startFrame > 0)
     {
         std::printf("Play の開始フレーム: %d\n", options.startFrame);
+    }
+    for (const std::pair<std::int32_t, float>& input : options.inputs)
+    {
+        manager->SetDynamicInput(handle, input.first, input.second);
+        std::printf("動的入力 %d: %g\n", input.first, input.second);
     }
     int lastAliveFrame = 0;
     std::vector<std::uint8_t> rgb(static_cast<std::size_t>(options.size) * options.size * 3);

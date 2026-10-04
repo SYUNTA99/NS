@@ -64,12 +64,16 @@ namespace NS::Game::Level
             // xy は帯の切れ目を測る、矢じりの先からの距離 ÷ 矢じりの奥行き (板の v の 1 次式)
             // z と w は色の付いた部分と付いていない部分の塗りの平均の不透明度
             NS::Core::Vector4 rearAndFill{};
+            // standard.vs.hlsl が読む震えの欄。振れ幅 0 のまま送り、矢印は震わせない
+            NS::Gfx::TremorCB tremor{};
         };
         static_assert(sizeof(GroundArrowConstants) == sizeof(NS::Gfx::FrameCB), "FrameCB と同じ大きさで送る");
         static_assert(offsetof(GroundArrowConstants, world) == offsetof(NS::Gfx::FrameCB, world),
                       "頂点シェーダが読む world の位置");
         static_assert(offsetof(GroundArrowConstants, viewProj) == offsetof(NS::Gfx::FrameCB, viewProj),
                       "頂点シェーダが読む viewProj の位置");
+        static_assert(offsetof(GroundArrowConstants, tremor) == offsetof(NS::Gfx::FrameCB, tremor),
+                      "頂点シェーダが読む震えの位置");
         static_assert(std::is_trivially_copyable_v<GroundArrowConstants>, "FrameCB へバイトで写す");
 
         // 板の v (0 が遠い端、1 が近い端) の 1 次式。v での値は value + slope × v
@@ -294,7 +298,13 @@ namespace NS::Game::Level
         shape.fullyColored = state.chargeFull;
         if (state.chargeFull)
         {
-            shape.stageColor = desc.fullColor;
+            // 赤から紫へ 3 秒かけてゆっくり変える。非数は赤のまま
+            float purple = 0.0f;
+            if (std::isfinite(state.overcharge01))
+            {
+                purple = NS::Core::Clamp(state.overcharge01, 0.0f, 1.0f);
+            }
+            shape.stageColor = desc.fullColor + (desc.overchargeColor - desc.fullColor) * purple;
         }
         else if (charge < desc.lateStageFrom)
         {
@@ -493,8 +503,9 @@ namespace NS::Game::Level
             m_framesSinceShown = -1;
             return;
         }
+        // 先は紫の揺れで振れた線の上の相手で決める。振れて外れた時は相手の手前で止めない
         SlamLineTarget target{};
-        state.hasTarget = m_player->TryGetAimTarget(target);
+        state.hasTarget = m_player->TryGetLineTarget(target);
         // 前のフレームに出ていなければ 0 から数える。相手が替わっても数え直さない
         if (m_framesSinceShown < 0)
         {
@@ -510,6 +521,7 @@ namespace NS::Game::Level
         state.framesSinceShown = m_framesSinceShown;
         state.charge01 = m_player->ChargeJudge().Charge01();
         state.chargeFull = m_player->ChargeJudge().IsChargeFull();
+        state.overcharge01 = m_player->ChargeJudge().Overcharge01();
 
         SlamArrowShape shape{};
         if (!BuildSlamArrow(state, Tuning(), shape))

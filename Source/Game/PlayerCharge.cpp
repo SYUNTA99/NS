@@ -29,6 +29,31 @@ namespace
         }
         return std::max(0, static_cast<int>(std::lround(raw)));
     }
+
+    // 紫の揺れの位相 (ラジアン)。紫の間の速さ f = f0 + (f1 − f0) (t / T)^2 を 0 から t まで積んだ閉じた式で、
+    // 足し込む値を別に持たないので台本の再生と食い違わない。始まりの位相は、紫になりきった t = T で π/2 を通るように
+    // 決める。紫になりきった後は終わりの速さで進む
+    [[nodiscard]] float OverchargeSwayPhase(float seconds,
+                                            float overchargeSeconds,
+                                            float startRate,
+                                            float endRate) noexcept
+    {
+        constexpr float k_TwoPi = 2.0f * NS::Core::k_Pi;
+        constexpr float k_EdgePhase = 0.5f * NS::Core::k_Pi;
+        if (!(overchargeSeconds > 0.0f))
+        {
+            return k_EdgePhase + k_TwoPi * endRate * seconds;
+        }
+        const float rise = endRate - startRate;
+        const float phaseAtEdge = k_TwoPi * (startRate * overchargeSeconds + rise * overchargeSeconds / 3.0f);
+        if (seconds >= overchargeSeconds)
+        {
+            return k_EdgePhase + k_TwoPi * endRate * (seconds - overchargeSeconds);
+        }
+        const float travelled = k_TwoPi * (startRate * seconds + rise * seconds * seconds * seconds /
+                                                                     (3.0f * overchargeSeconds * overchargeSeconds));
+        return k_EdgePhase - phaseAtEdge + travelled;
+    }
 } // namespace
 
 const NS::Game::Level::ImpactInputJudge& Player::ChargeJudge() const noexcept
@@ -56,9 +81,19 @@ bool Player::TryGetAimTarget(NS::Game::Level::SlamLineTarget& outTarget) const n
     return true;
 }
 
+bool Player::TryGetLineTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept
+{
+    if (!m_charge.hasLineTarget)
+    {
+        return false;
+    }
+    outTarget = m_charge.lineTarget;
+    return true;
+}
+
 float Player::StanceHeight() const noexcept
 {
-    if (!m_charge.judge.IsHeld())
+    if (!m_charge.judge.IsHoldingCharge())
     {
         return 1.0f;
     }
@@ -108,6 +143,7 @@ void Player::AdvanceCharge(float dt)
     NS::Game::Level::ImpactInputJudge& judge = m_charge.judge;
     judge.chargeThresholdSteps = SecondsToSteps(m_params->m_chargeThresholdSeconds, dt);
     judge.chargeMaxSteps = SecondsToSteps(m_params->m_chargeFullSeconds, dt);
+    judge.overchargeSteps = SecondsToSteps(m_params->m_overchargeSeconds, dt);
     judge.Step(m_charge.observedHeld);
 
     if (judge.JustPressed())
@@ -115,32 +151,42 @@ void Player::AdvanceCharge(float dt)
         MarkBodySlamAim();
     }
     // 溜めに入るのを待たずに、押したフレームから丸まる。押したフレームだけ入れると、押したまま出直した後に
-    // 丸まりが戻らない
+    // 丸まりが戻らない。溜めすぎで出た後も押している間は丸まったまま
     if (judge.IsHeld())
     {
         SetCurled(true);
     }
     SetBodySlamHeld(judge.IsHeld());
 
-    const NS::Game::Level::SlamKind fired = judge.TakeFired();
-    if (fired != NS::Game::Level::SlamKind::None)
-    {
-        float charge01 = 0.0f;
-        if (fired == NS::Game::Level::SlamKind::Charged)
+    // 控えた線は放す前のフレームに矢印を貼った線で、放したフレームはまだ引き直していない。溜めて放した突進は
+    // スティックを見ずにその向きへ出す。タップは矢印が出ないので入力の向きへ出す
+    // 紫で放した時と勝手に出た時は、控えた線に放す前のフレームの揺れが入っている
+    const auto requestCharged = [this](float charge01, float overcharge01) {
+        if (m_charge.hasAimLine)
         {
-            charge01 = judge.Charge01();
-        }
-        // 控えた線は放す前のフレームに矢印を貼った線で、放したフレームはまだ引き直していない。溜めて放した突進は
-        // スティックを見ずにその向きへ出す。タップは矢印が出ないので入力の向きへ出す
-        if (fired == NS::Game::Level::SlamKind::Charged && m_charge.hasAimLine)
-        {
-            RequestBodySlam(charge01, m_charge.aimLine.direction, m_charge.aimLine.launchVerticalSpeed);
+            RequestBodySlam(charge01, m_charge.aimLine.direction, m_charge.aimLine.launchVerticalSpeed, overcharge01);
         }
         else
         {
-            RequestBodySlam(charge01);
+            RequestBodySlam(charge01, overcharge01);
         }
-        NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", NS::Game::Level::SlamKindLabel(fired), charge01);
+    };
+    const NS::Game::Level::SlamKind fired = judge.TakeFired();
+    if (fired == NS::Game::Level::SlamKind::Charged)
+    {
+        requestCharged(judge.Charge01(), judge.Overcharge01());
+        NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", NS::Game::Level::SlamKindLabel(fired), judge.Charge01());
+    }
+    else if (fired == NS::Game::Level::SlamKind::Tap)
+    {
+        RequestBodySlam(0.0f);
+        NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", NS::Game::Level::SlamKindLabel(fired), 0.0f);
+    }
+    else if (judge.IsAwaitingLaunch())
+    {
+        // 溜めすぎで控えた突進は、出せない間 (止め・突進の最中) の頼みが捨てられるので、出るまで毎フレーム頼み直す
+        // 向きは出たフレームの狙いの線。出たかは BodySlam が判定へ知らせ、次のフレームからここへ来ない
+        requestCharged(judge.Charge01(), judge.Overcharge01());
     }
 
     float scale = 1.0f;
@@ -168,6 +214,77 @@ void Player::AdvanceCharge(float dt)
     if (m_charge.hasAimTarget)
     {
         m_charge.aimTarget.origin = Root().Position();
+    }
+    ApplyChargeSway(dt);
+}
+
+void Player::ApplyChargeSway(float dt)
+{
+    const NS::Game::Level::ImpactInputJudge& judge = m_charge.judge;
+    const int steps = judge.OverchargedSteps();
+    // 紫に入ったフレームに数える。離したフレームは控えた値が残るので、押している間だけ見る
+    if (steps == 1 && judge.IsHeld())
+    {
+        ++m_overchargeCount;
+    }
+    m_charge.lineTarget = m_charge.aimTarget;
+    m_charge.hasLineTarget = m_charge.hasAimTarget;
+    m_charge.swayPhase = 0.0f;
+    m_charge.swayOffset = 0.0f;
+    m_charge.swayReachedEdge = false;
+    if (steps <= 0 || !m_charge.hasAimLine)
+    {
+        m_charge.hasSwayEdge = false;
+        return;
+    }
+
+    // 秒は欄でなく判定のフレーム数から出す。紫になりきったフレームで seconds と overchargeSeconds が同じ値になり、
+    // 位相がちょうど端に来る
+    const float seconds = static_cast<float>(steps) * dt;
+    const float overchargeSeconds = static_cast<float>(judge.overchargeSteps) * dt;
+    m_charge.swayPhase = OverchargeSwayPhase(
+        seconds, overchargeSeconds, m_params->m_overchargeSwayStartRate, m_params->m_overchargeSwayEndRate);
+    // 振れ幅は紫の深さの 2 乗。前半は真ん中に収まって強くなるだけの区間、後半で外れまで振れる
+    float depth = 1.0f;
+    if (overchargeSeconds > 0.0f && seconds < overchargeSeconds)
+    {
+        depth = seconds / overchargeSeconds;
+    }
+    // 紫になりきった時に来る端を、紫に入るたびに入れ替える
+    float side = 1.0f;
+    if (m_overchargeCount % 2 == 0)
+    {
+        side = -1.0f;
+    }
+    m_charge.swayOffset = side * m_params->m_overchargeSwayMaxOffset * depth * depth * std::sin(m_charge.swayPhase);
+    // 端は位相が π/2 + nπ を通る所。数を別に持たないので、矢印と火花の拍がずれない
+    const int edge = static_cast<int>(std::floor((m_charge.swayPhase - 0.5f * NS::Core::k_Pi) / NS::Core::k_Pi));
+    m_charge.swayReachedEdge = m_charge.hasSwayEdge && edge > m_charge.swayEdge;
+    m_charge.swayEdge = edge;
+    m_charge.hasSwayEdge = true;
+
+    float distance = m_params->m_overchargeSwayFallbackDistance;
+    if (m_charge.hasAimTarget)
+    {
+        distance = m_charge.aimTarget.along;
+    }
+    const NS::Core::Vector3 forward = m_charge.aimLine.direction;
+    const NS::Core::Vector3 right{forward.z, 0.0f, -forward.x};
+    NS::Core::Vector3 swayed{};
+    // 距離が 0 か非数で向きが作れない時は揺らさない
+    if (!(distance > 0.0f) ||
+        !NS::Core::TryNormalizeHorizontal(forward * distance + right * m_charge.swayOffset, swayed) ||
+        !std::isfinite(swayed.x) || !std::isfinite(swayed.z))
+    {
+        m_charge.swayOffset = 0.0f;
+        return;
+    }
+    // 上下の角度は揺れていない線の相手へ合わせた縦の速さのまま。揺れは左右だけ
+    m_charge.aimLine.direction = swayed;
+    m_charge.hasLineTarget = m_resolver->FindSlamLineTarget(swayed, m_charge.aimLine.length, m_charge.lineTarget);
+    if (m_charge.hasLineTarget)
+    {
+        m_charge.lineTarget.origin = Root().Position();
     }
 }
 

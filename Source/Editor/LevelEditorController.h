@@ -111,6 +111,10 @@ public:
     //! @brief 可視な中央ビュー列を Scene へ流す。空なら現描画先へ 1 回だけ描く
     void SetSceneViews(std::vector<NS::Obj::SceneView> views);
 
+    //! @brief 編集中の場面の写し (Scene::ToJson)。当たりの下見が写しから別の場面を組むのに読む
+    //! @return 写し。場面が無ければ空の場面の文書
+    [[nodiscard]] nlohmann::json SceneSnapshot() const;
+
     [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
 
     //! 編集の自由視点カメラ。Inspector が感度をライブ編集する

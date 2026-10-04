@@ -1,12 +1,13 @@
 #include "Game/Level/ImpactOutcome.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace NS::Game::Level
 {
     namespace
     {
-        // 上限秒をフレーム数へ換算する。非有限と 0 以下は 0 で、止めない
+        // 貫通の止めの上限秒をフレーム数へ換算する。非有限と 0 以下は 0 で、止めない
         [[nodiscard]] int MaxHitStopSteps(const ImpactTuning& tuning) noexcept
         {
             const float raw = tuning.hitStopMaxSeconds / tuning.fixedDelta;
@@ -29,26 +30,10 @@ namespace NS::Game::Level
             return NS::Core::Clamp(static_cast<int>(std::lround(raw)), 0, MaxHitStopSteps(tuning));
         }
 
-        // 最終威力と質量から止めるフレーム数を出す。0 なら止めない
-        [[nodiscard]] int ComputeHitStopSteps(const ImpactTuning& tuning,
-                                              float power,
-                                              float mass,
-                                              float hitStopScale) noexcept
-        {
-            // 質量差をそのままフレーム数に出すと停止が伸びすぎるので平方根で圧縮する
-            const float raw = tuning.hitStopBaseSeconds * power * std::sqrt(mass) / tuning.fixedDelta * hitStopScale;
-            if (!std::isfinite(raw))
-            {
-                return 0;
-            }
-            const int steps = static_cast<int>(std::lround(raw));
-            return NS::Core::Clamp(steps, 0, MaxHitStopSteps(tuning));
-        }
-
         // 段が配分に掛ける倍率
         struct TierScales
         {
-            float hitStop = 1.0f;         // 止めの倍率
+            float hitStop = 1.0f;         // 貫通の止めの倍率
             float reboundDistance = 1.0f; // 反動の距離の倍率。高さは段で変えない
         };
 
@@ -68,6 +53,78 @@ namespace NS::Game::Level
         }
     } // namespace
 
+    NS::Core::Vector3 MissSurfaceNormal(float u,
+                                        float v,
+                                        float sharpness,
+                                        const NS::Core::Vector3& slamDirection) noexcept
+    {
+        NS::Core::Vector3 forward{};
+        if (!NS::Core::TryNormalizeHorizontal(slamDirection, forward))
+        {
+            return NS::Core::Vector3{};
+        }
+        float p = sharpness;
+        if (!std::isfinite(p) || p < 2.0f)
+        {
+            p = 2.0f;
+        }
+        // 面の右は JudgeHitFace と同じ。左手系で上から見て、進む向きの右
+        const NS::Core::Vector3 right{forward.z, 0.0f, -forward.x};
+        const NS::Core::Vector3 up{0.0f, 1.0f, 0.0f};
+        const float absU = std::abs(u);
+        const float absV = std::abs(v);
+        const float edge = std::min(std::pow(std::pow(absU, p) + std::pow(absV, p), 1.0f / p), 1.0f);
+        // 超楕円の面の勾配。p = 2 で位置そのもの、p が大きいと大きい方の軸へ寄る
+        const float slideU = std::copysign(std::pow(absU, p - 1.0f), u);
+        const float slideV = std::copysign(std::pow(absV, p - 1.0f), v);
+        const float slideLength = std::sqrt(slideU * slideU + slideV * slideV);
+        NS::Core::Vector3 normal = -forward;
+        if (std::isfinite(edge) && slideLength > NS::Core::k_Epsilon)
+        {
+            const NS::Core::Vector3 slide = (right * slideU + up * slideV) / slideLength;
+            normal = slide * edge - forward * std::sqrt(std::max(1.0f - edge * edge, 0.0f));
+        }
+        normal.Normalize();
+        return normal;
+    }
+
+    float MissSkidSpeedScale(int elapsedSteps, int totalSteps, float exponent) noexcept
+    {
+        if (totalSteps <= 0 || elapsedSteps >= totalSteps)
+        {
+            return 0.0f;
+        }
+        float c = exponent;
+        if (!std::isfinite(c) || !(c > 0.0f))
+        {
+            c = 1.0f;
+        }
+        const float left = 1.0f - static_cast<float>(std::max(elapsedSteps, 0)) / static_cast<float>(totalSteps);
+        return std::pow(left, c);
+    }
+
+    float BodyShakeOffset(int frame, int length, float amplitude, std::uint32_t seed, float firstSign) noexcept
+    {
+        if (length <= 0 || frame < 1 || frame >= length)
+        {
+            return 0.0f;
+        }
+        const float left = 1.0f - static_cast<float>(frame) / static_cast<float>(length);
+        // 振れ幅だけをばらつかせ、左右の入れ替わりは乱さない。乱すと止まって見えるフレームができる
+        constexpr float k_HashToUnit = 1.0f / 4294967295.0f;
+        const float spread = 0.7f + 0.3f * static_cast<float>(NS::Core::NoiseHash(frame, seed)) * k_HashToUnit;
+        float sign = 1.0f;
+        if (firstSign < 0.0f)
+        {
+            sign = -1.0f;
+        }
+        if (frame % 2 == 0)
+        {
+            sign = -sign;
+        }
+        return amplitude * left * left * spread * sign;
+    }
+
     ImpactOutcome ComputeImpactOutcome(const ImpactInput& input, const ImpactTuning& tuning) noexcept
     {
         ImpactOutcome outcome{};
@@ -77,8 +134,6 @@ namespace NS::Game::Level
 
         const TierScales tierScales = TierScalesFor(input.tier, tuning);
         const float hitStopScale = tierScales.hitStop;
-        // 反発の質量因子の残り。動きは軽い側が受け取るので、重い物ほど揺れない
-        outcome.shakeAmplitude = tuning.shakeAmplitude / (1.0f + mass);
 
         // 破壊を許可していない間は耐久を見ない。壊れる相手も押し飛ばしと反発へ回る
         // 壊れる動きを持たない相手も同じ。貫通させると、残った相手の当たりへ自機がめり込んで止まる
@@ -103,6 +158,55 @@ namespace NS::Game::Level
             .direction = NS::Core::Vector3{input.awayDirection.x, 0.0f, input.awayDirection.z},
             .apexHeight = tuning.reboundApexHeight * outcome.reboundScale,
             .distance = reboundDistance};
+        NS::Core::Vector3 launchDirection = input.launchDirection;
+
+        // 外れは触れた表面の向き n で来た勢いを分ける。n へ押し込む成分は跳ね返り、面に沿って滑る成分はそのまま
+        // 残るので、真ん中は来た向きへ戻り、端は勢いの多くが横へ逃げて相手の脇を逸れる。量は今の配分のまま、
+        // 向きと符号だけをこの分け方から借りる。相手は押し込む成分だけを受け取り、−n の向きへ押される
+        // 水平の向きは n の水平の成分で映す。縦の成分まで映すと、上の縁の外れが前へ抜けて相手を越え、
+        // 低い反動の弧のまま相手へもう 1 度ぶつかる。上下の縁は高さだけで分ける
+        if (input.tier == HitTier::Wide)
+        {
+            float sharpness = 2.0f;
+            if (input.bodyShape == NS::Obj::HitSensorShape::Box)
+            {
+                sharpness = tuning.missBoxEdgeSharpness;
+            }
+            const NS::Core::Vector3 normal = MissSurfaceNormal(input.faceU, input.faceV, sharpness, input.slamVelocity);
+            NS::Core::Vector3 forward{};
+            NS::Core::Vector3 flatNormal{};
+            if (NS::Core::TryNormalizeHorizontal(input.slamVelocity, forward))
+            {
+                // 真上か真下の縁で水平の成分が無い時は、来た向きへ戻す
+                flatNormal = -forward;
+                NS::Core::Vector3 horizontal{};
+                if (NS::Core::Vector2{normal.x, normal.z}.Length() > NS::Core::k_Epsilon &&
+                    NS::Core::TryNormalizeHorizontal(normal, horizontal))
+                {
+                    flatNormal = horizontal;
+                }
+                const NS::Core::Vector3 mirrored = forward - flatNormal * (2.0f * forward.Dot(flatNormal));
+                NS::Core::Vector3 deflect{};
+                if (NS::Core::TryNormalizeHorizontal(mirrored, deflect))
+                {
+                    outcome.reboundArc.direction = deflect;
+                }
+                launchDirection = -flatNormal;
+            }
+            // ねじれる軸はかすった所の摩擦から出す。滑る成分 = 来た向き − 押し込む成分、軸 = n × 滑る成分
+            // 右の縁では相手の側が引きずられ、相手の方へ巻き込まれる向きに回る
+            NS::Core::Vector3 slide{};
+            if (NS::Core::TryNormalizeHorizontal(input.slamVelocity, slide))
+            {
+                slide = slide - normal * slide.Dot(normal);
+            }
+            outcome.reboundArc.missTumble =
+                NS::Game::Player::MissTumble{.twist = normal.Cross(slide), .power = input.power};
+            // 浮く感じは真ん中だけの物にする。下を向いた面は地面へ叩きつけられ、さらに低く跳ねる
+            const float downward = NS::Core::Clamp(-normal.y, 0.0f, 1.0f);
+            const float slam = 1.0f - (1.0f - tuning.missSlamBounce) * downward;
+            outcome.reboundArc.apexHeight *= tuning.missReboundHeightRatio * slam;
+        }
 
         // 指数の範囲は 0〜1。負にすると重い物ほど飛ぶ逆転になる
         float massExponent = tuning.launchMassExponent;
@@ -114,15 +218,13 @@ namespace NS::Game::Level
 
         // 威力は距離に線形に効き、質量で割ると重い物ほど飛ばない。高さは距離と同じ比で伸ばし、打ち上げの角度を揃える
         outcome.launchScale = power / std::pow(mass, massExponent);
-        outcome.launchArc = LaunchArc{.direction = input.launchDirection,
+        outcome.launchArc = LaunchArc{.direction = launchDirection,
                                       .distance = tuning.launchDistance * outcome.launchScale,
                                       .apexHeight = tuning.launchApexHeight * outcome.launchScale,
                                       .riseGravity = tuning.launchRiseGravity,
                                       .fallGravityScale = tuning.launchFallGravityScale,
                                       .apexBandSpeed = tuning.launchApexBandSpeed,
                                       .apexBandGravityScale = tuning.launchApexBandGravityScale};
-
-        outcome.stopSteps = ComputeHitStopSteps(tuning, power, mass, hitStopScale);
         return outcome;
     }
 } // namespace NS::Game::Level

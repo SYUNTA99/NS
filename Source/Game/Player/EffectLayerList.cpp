@@ -87,6 +87,16 @@ namespace NS::Game::Player
         record->amount = amount;
     }
 
+    void EffectLayerList::SetRotation(std::uint32_t id, const NS::Core::Quaternion& rotation) noexcept
+    {
+        EffectLayerRecord* record = FindMutable(id);
+        if (record == nullptr)
+        {
+            return;
+        }
+        record->rotation = rotation;
+    }
+
     const EffectLayerRecord* EffectLayerList::Find(std::uint32_t id) const noexcept
     {
         for (const EffectLayerRecord& record : m_records)

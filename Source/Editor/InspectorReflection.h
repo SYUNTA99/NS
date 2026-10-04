@@ -17,6 +17,7 @@ namespace NS::Obj
 {
     class Component;
     class Actor;
+    struct Curve;
 } // namespace NS::Obj
 
 namespace NS::Editor
@@ -88,9 +89,45 @@ namespace NS::Editor
     //! @param[in] refOptions 参照先候補のリスト。指定しない場合は数値入力となる
     //! @param[in] defaults 既定の部品。渡すと既定と違う欄に上書きの印が付き、戻すか種類の既定にするかを選べる
     //! @return 値の編集有無と、編集の開始・確定フレームを集約した結果
-    [[nodiscard]] ComponentEditResult DrawReflectedComponent(
-        NS::Obj::Component& comp,
-        std::span<const ObjectRefOption> refOptions = {},
-        const NS::Obj::Component* defaults = nullptr) noexcept;
+    [[nodiscard]] ComponentEditResult DrawReflectedComponent(NS::Obj::Component& comp,
+                                                             std::span<const ObjectRefOption> refOptions = {},
+                                                             const NS::Obj::Component* defaults = nullptr) noexcept;
+
+    //! @brief 部品でない値型の 1 フレームの編集で起きた事
+    struct ValueEditResult
+    {
+        bool changed = false;   //!< いずれかの値が編集された
+        bool activated = false; //!< いずれかのウィジェットで編集が始まった (ドラッグ開始フレーム)
+        bool committed = false; //!< いずれかのウィジェットが非活性化した (編集の有無は問わない)
+        //! 値が編集された欄。編集が起きたフレームだけ入る
+        const NS::Obj::FieldDesc* changedField = nullptr;
+    };
+
+    //! @brief 部品でない値型 (タイムラインの事象など) の欄を、部品と同じウィジェットで描く
+    //! @details 欄の並べ方とウィジェットは DrawReflectedComponent と同じ。既定と比べる印と戻すボタンは出さない
+    //! (値型には持ち主の種類の既定が無い)
+    //! @param[in,out] value 編集する値の実体。info が表す型の物
+    //! @param[in] info 値型のリフレクション (T::StaticReflection())
+    //! @param[in] refOptions 参照先候補のリスト。指定しない場合は数値入力となる
+    //! @return 値の編集有無と、編集の開始・確定フレーム
+    [[nodiscard]] ValueEditResult DrawReflectedValue(void* value,
+                                                     const NS::Obj::ReflectionInfo& info,
+                                                     std::span<const ObjectRefOption> refOptions = {}) noexcept;
+
+    //! @brief 曲線のグラフの横軸の範囲を決める
+    //! @details 点の x が 0〜1 に収まる曲線は 0〜1 のまま (部品の欄の曲線は割合を横軸にする)。外へ出る曲線
+    //! (横軸がフレーム数のタイムラインの事象の曲線) は点を全部含め、右へ 1 割の余白を足して点を右へ引き伸ばせるようにする
+    //! @param[in] curve 描く曲線
+    //! @param[out] outMin 左端の x
+    //! @param[out] outMax 右端の x。outMin より大きい
+    void CurveGraphXRange(const NS::Obj::Curve& curve, float& outMin, float& outMax) noexcept;
+
+    //! @brief DrawReflectedValue を型から呼ぶ
+    //! @param[in,out] value 編集する値。T は NS_REFLECT_END_VALUE で欄を宣言した型
+    //! @return 値の編集有無と、編集の開始・確定フレーム
+    template <class T> [[nodiscard]] ValueEditResult DrawReflectedValue(T& value) noexcept
+    {
+        return DrawReflectedValue(&value, *T::StaticReflection());
+    }
 
 } // namespace NS::Editor

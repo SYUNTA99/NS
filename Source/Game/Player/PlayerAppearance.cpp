@@ -15,6 +15,7 @@
 #include "Runtime/Object/Components/Model.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Platform/Clock.h"
+#include <algorithm>
 #include <cmath>
 
 namespace
@@ -152,9 +153,9 @@ namespace NS::Game::Player
         if (m_actor->IsBodySlamming())
         {
             SetRollAxisToward(m_actor->BodySlamVelocity(), m_spinAxis);
-            m_spinSpeed = Tuning().m_bodySlamSpinSpeed;
+            m_spinSpeed = m_actor->BodySlamSpinSpeed();
         }
-        else if (m_actor->ChargeJudge().IsHeld())
+        else if (m_actor->ChargeJudge().IsHoldingCharge())
         {
             // 放せば出る向きへ回す。溜めて放した突進は狙いの線の向きへ、タップと線の無い時は AimDirection の向きへ出る
             // 狙いが決まらないフレームは前の軸で回し続ける
@@ -169,12 +170,16 @@ namespace NS::Game::Player
                 Tuning().m_emptyChargeSpinSpeed +
                 (Tuning().m_fullChargeSpinSpeed - Tuning().m_emptyChargeSpinSpeed) * m_actor->ChargeJudge().Charge01();
         }
+        else if ((m_actor->IsRebounding() || m_actor->IsSkidding()) && m_actor->ReboundMissTumble().has_value())
+        {
+            AdvanceMissTumble(*m_actor->ReboundMissTumble());
+        }
         else if (m_actor->IsRebounding())
         {
             // 弾かれた向きへ前転する。真正面の当たりでは突進と逆向きになる
             // 反動の間は空中の操作で速度の向きが変わっても、弾かれた向きから取った軸のまま回す
             SetRollAxisToward(m_actor->ReboundDirection(), m_spinAxis);
-            m_spinSpeed = Tuning().m_bodySlamSpinSpeed;
+            m_spinSpeed = m_actor->ReboundSpinSpeed();
         }
         // 放した後の空中と、反動に入らずに突進が終わった後は、直前のフレームの軸と速さのまま回る
 
@@ -190,6 +195,65 @@ namespace NS::Game::Player
         {
             renderer->SetLocalRotation(m_spin);
         }
+    }
+
+    void PlayerAppearance::AdvanceMissTumble(const MissTumble& tumble) noexcept
+    {
+        // 新しい反動の最初のフレームに、その時の回転を寄せ始めの回転として控える
+        if (m_tumbleReboundCount != m_actor->ReboundCount())
+        {
+            m_tumbleReboundCount = m_actor->ReboundCount();
+            m_tumbleStartSpin = m_spinAxis * m_spinSpeed;
+            m_tumbleSteps = 0;
+            m_tumbleWobblePhase = 0.0f;
+            if (m_resolver != nullptr)
+            {
+                // 種は何回目の当たりか。黄金角ずつずらし、続けて外しても始まりの向きが重ならない。Replay では同じ
+                constexpr float k_GoldenAngle = 2.39996323f;
+                m_tumbleWobblePhase = std::fmod(static_cast<float>(m_resolver->LastImpact().sequence) * k_GoldenAngle,
+                                                2.0f * NS::Core::k_Pi);
+            }
+        }
+        ++m_tumbleSteps;
+
+        const PlayerParams& tuning = Tuning();
+        // 当たる前の回転を割合だけ残してねじれに足す。溜めて外したほど大きく振り回される
+        const NS::Core::Vector3 target = tumble.twist * (tuning.m_missTwistTurnsPerSecond * 360.0f * tumble.power) +
+                                         m_tumbleStartSpin * tuning.m_missSpinCarryRatio;
+        float blend = 1.0f;
+        if (tuning.m_missSpinBlendSteps > 0)
+        {
+            blend = std::min(static_cast<float>(m_tumbleSteps) / static_cast<float>(tuning.m_missSpinBlendSteps), 1.0f);
+        }
+        // こすって止まる間は、身体の速さと同じ割合で回転も落とす
+        const NS::Core::Vector3 spin =
+            (m_tumbleStartSpin + (target - m_tumbleStartSpin) * blend) * m_actor->SkidSpeedScale();
+        const float speed = spin.Length();
+        if (!std::isfinite(speed) || speed <= NS::Core::k_Epsilon)
+        {
+            m_spinSpeed = 0.0f;
+            return;
+        }
+
+        // 止まりかけのコマのように、軸自体をぶれの角度だけ傾け、傾けた向きをぶれの速さで回す
+        const NS::Core::Vector3 axis = spin / speed;
+        NS::Core::Vector3 helper{0.0f, 1.0f, 0.0f};
+        if (std::abs(axis.y) > 0.9f)
+        {
+            helper = NS::Core::Vector3{1.0f, 0.0f, 0.0f};
+        }
+        NS::Core::Vector3 side = axis.Cross(helper);
+        side.Normalize();
+        const NS::Core::Vector3 other = axis.Cross(side);
+        const float phase = m_tumbleWobblePhase + 2.0f * NS::Core::k_Pi * tuning.m_missWobbleTurnsPerSecond *
+                                                      static_cast<float>(m_tumbleSteps) *
+                                                      NS::Platform::FrameTimer::FixedDelta();
+        const float tilt = NS::Core::ToRadians(NS::Core::Degrees{tuning.m_missWobbleDegrees}).value;
+        const NS::Core::Vector3 lean = side * std::cos(phase) + other * std::sin(phase);
+        NS::Core::Vector3 tilted = axis * std::cos(tilt) + lean * std::sin(tilt);
+        tilted.Normalize();
+        m_spinAxis = tilted;
+        m_spinSpeed = speed;
     }
 
     void PlayerAppearance::OnUpdate()

@@ -66,7 +66,7 @@ namespace NS::Game::Player
             return;
         }
         // 読めない絵は EffectScene が警告を出し、その層は記録だけ残る。遊びは止めない
-        for (std::string_view name : {k_Curl, k_Spin, k_Grind, k_Gather, k_Full, k_Burst, k_Trail})
+        for (std::string_view name : {k_Curl, k_Spin, k_Grind, k_Gather, k_Full, k_Burst, k_Trail, k_SwaySparks})
         {
             static_cast<void>(effects->Preload(name));
         }
@@ -84,7 +84,8 @@ namespace NS::Game::Player
 
         const NS::Game::Level::ImpactInputJudge& judge = m_actor->ChargeJudge();
         const NS::Core::Vector3 center = RootTransform().Position();
-        const bool held = judge.IsHeld();
+        // 溜めすぎで出た後は押したままでも溜めの層を消す
+        const bool held = judge.IsHoldingCharge();
         if (judge.JustPressed())
         {
             StartPress(effects, center);
@@ -105,6 +106,10 @@ namespace NS::Game::Player
         if (held)
         {
             FollowHeldLayers(effects, center, judge.Charge01());
+            if (m_actor->ChargeSwayReachedEdge())
+            {
+                PlaySwaySparks(effects, center);
+            }
         }
         else if (m_wasHeld)
         {
@@ -205,7 +210,7 @@ namespace NS::Game::Player
         m_spin = m_layers.Play(effects, k_Spin, PlayDesc(center, NS::Core::Quaternion::Identity, 0.0f));
         // 玉を包む光は押したフレームから出し、丸まりの殻が消えた後も放すまで途切れさせない
         StopLayer(effects, m_gather);
-        m_gather = m_layers.Play(effects, k_Gather, PlayDesc(center, NS::Core::Quaternion::Identity, 0.0f));
+        m_gather = m_layers.Play(effects, k_Gather, PlayDesc(center, YawToward(HeldAimDirection()), 0.0f));
     }
 
     void ChargeEffects::StartCharging(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
@@ -224,6 +229,42 @@ namespace NS::Game::Player
         m_scheduledStops.push_back(ScheduledStop{m_full, m_layers.Step() + k_FullFlashSteps});
     }
 
+    void ChargeEffects::PlaySwaySparks(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
+    {
+        NS::Game::Level::AimLine line{};
+        if (!m_actor->TryGetAimLine(line))
+        {
+            return;
+        }
+        float side = 1.0f;
+        if (m_actor->ChargeSwayOffset() < 0.0f)
+        {
+            side = -1.0f;
+        }
+        // 擦れの節は +Y の 45 度の円錐へ飛ぶ。+Y を横から 45 度起こすと円錐の下の縁が水平になり、床へ潜る粒が出ない
+        constexpr float k_SideLift = 1.0f;
+        const NS::Core::Vector3 right{line.direction.z, 0.0f, -line.direction.x};
+        NS::Core::Vector3 heading = right * side + NS::Core::Vector3{0.0f, k_SideLift, 0.0f};
+        heading.Normalize();
+
+        const PlayerParams& tuning = Tuning();
+        const float depth = NS::Core::Clamp(m_actor->ChargeJudge().Overcharge01(), 0.0f, 1.0f);
+        const float count =
+            static_cast<float>(tuning.m_overchargeSparkCountMin) +
+            static_cast<float>(tuning.m_overchargeSparkCountMax - tuning.m_overchargeSparkCountMin) * depth;
+        const float speed = tuning.m_overchargeSparkSpeedMin +
+                            (tuning.m_overchargeSparkSpeedMax - tuning.m_overchargeSparkSpeedMin) * depth;
+        NS::Gfx::EffectPlayDesc sparks{};
+        sparks.position = center;
+        sparks.rotation = NS::Core::Quaternion::FromToRotation(NS::Core::Vector3{0.0f, 1.0f, 0.0f}, heading);
+        sparks.dynamicInputs[0] = 0.0f;
+        sparks.dynamicInputs[1] = std::round(count);
+        // 秒の速さを 1 フレームの距離にして絵へ渡す
+        sparks.dynamicInputs[2] = speed / 60.0f;
+        sparks.dynamicInputs[3] = 0.0f;
+        static_cast<void>(m_layers.Play(effects, k_SwaySparks, sparks));
+    }
+
     void ChargeEffects::FollowHeldLayers(NS::Gfx::EffectScene* effects,
                                          const NS::Core::Vector3& center,
                                          float charge01) noexcept
@@ -237,7 +278,8 @@ namespace NS::Game::Player
         Place(effects, m_curl, center, NS::Core::Quaternion::Identity);
         Place(effects, m_spin, center, spinBoard);
         Place(effects, m_grind, center, YawToward(HeldAimDirection()));
-        Place(effects, m_gather, center, NS::Core::Quaternion::Identity);
+        // 溜まる光の根は狙いの線 (カメラの正面の水平の向き) へ回す。定義は根の手前に低く、奥に高く光の点を生む
+        Place(effects, m_gather, center, YawToward(HeldAimDirection()));
         Place(effects, m_full, center, NS::Core::Quaternion::Identity);
         SetCharge(effects, m_spin, charge01);
         SetCharge(effects, m_grind, charge01);
@@ -339,14 +381,20 @@ namespace NS::Game::Player
     void ChargeEffects::Place(NS::Gfx::EffectScene* effects,
                               std::uint32_t id,
                               const NS::Core::Vector3& position,
-                              const NS::Core::Quaternion& rotation) const noexcept
+                              const NS::Core::Quaternion& rotation) noexcept
     {
-        if (effects == nullptr || id == 0)
+        if (id == 0)
         {
             return;
         }
         const EffectLayerRecord* record = m_layers.Find(id);
         if (record == nullptr || record->endStep.has_value())
+        {
+            return;
+        }
+        // 描画の無い世界でも向きは記録に残し、試しが読む
+        m_layers.SetRotation(id, rotation);
+        if (effects == nullptr)
         {
             return;
         }

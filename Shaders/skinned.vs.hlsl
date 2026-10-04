@@ -30,6 +30,7 @@ SurfaceInterp VSMain(VSIn input)
 
     SurfaceInterp output;
     float4 worldPos = mul(skinnedPos, world);
+    worldPos.xyz += TremorOffset(worldPos.xyz);
     output.pos = mul(worldPos, viewProj);
     output.uv = input.uv;
     // 等スケール前提で skin / world の 3x3 をそのまま掛ける、 非等スケール導入時は逆転置へ

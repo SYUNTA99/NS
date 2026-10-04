@@ -10,6 +10,8 @@
       <!-- 削る粉。玉の輪郭 (半径 0.65 m) の外の左右 0.75 m・後ろ 0.3 m で生み、
            左右へ 1.5〜2.7 m/s・後ろへ 3.6〜4.8 m/s (斜め後ろ)、
            上へ 1.2〜2.4 m/s で低く飛び、重力 9.8 m/s² で落ちる。根の向きは ChargeEffects が狙いの向きで渡す。
+           定義の前後は読み込みで反転されるので、定義のプラスはゲームでは狙いの向きの後ろ、マイナスは前。
+           下の後ろの位置と速さが定義でプラスなのはそのため
            出た後は世界に残す (生成時だけ親に従う)
            左右だけへ飛ばすと横からの視点で玉の手前と奥に重なって見えず、
            後ろだけへ飛ばすと後ろからの視点で画面の下の外へ出た。
@@ -65,9 +67,9 @@
                 <Min>-0.5</Min>
               </Y>
               <Z>
-                <Center>-0.3</Center>
-                <Max>-0.3</Max>
-                <Min>-0.3</Min>
+                <Center>0.3</Center>
+                <Max>0.3</Max>
+                <Min>0.3</Min>
               </Z>
             </Location>
             <Velocity>
@@ -82,9 +84,9 @@
                 <Min>0.02</Min>
               </Y>
               <Z>
-                <Center>-0.07</Center>
-                <Max>-0.06</Max>
-                <Min>-0.08</Min>
+                <Center>0.07</Center>
+                <Max>0.08</Max>
+                <Min>0.06</Min>
               </Z>
             </Velocity>
             <Acceleration>
@@ -223,9 +225,9 @@
                 <Min>-0.5</Min>
               </Y>
               <Z>
-                <Center>-1.0</Center>
-                <Max>-1.0</Max>
-                <Min>-1.0</Min>
+                <Center>1.0</Center>
+                <Max>1.0</Max>
+                <Min>1.0</Min>
               </Z>
             </Location>
             <Velocity>
@@ -240,9 +242,9 @@
                 <Min>0.02</Min>
               </Y>
               <Z>
-                <Center>-0.07</Center>
-                <Max>-0.06</Max>
-                <Min>-0.08</Min>
+                <Center>0.07</Center>
+                <Max>0.08</Max>
+                <Min>0.06</Min>
               </Z>
             </Velocity>
             <Acceleration>
@@ -375,9 +377,9 @@
                 <Min>-0.58</Min>
               </Y>
               <Z>
-                <Center>-0.3</Center>
-                <Max>-0.3</Max>
-                <Min>-0.3</Min>
+                <Center>0.3</Center>
+                <Max>0.3</Max>
+                <Min>0.3</Min>
               </Z>
             </Location>
             <Velocity>
@@ -392,9 +394,9 @@
                 <Min>0.035</Min>
               </Y>
               <Z>
-                <Center>-0.09</Center>
-                <Max>-0.08</Max>
-                <Min>-0.1</Min>
+                <Center>0.09</Center>
+                <Max>0.1</Max>
+                <Min>0.08</Min>
               </Z>
             </Velocity>
             <Acceleration>
@@ -506,9 +508,9 @@
                 <Min>-0.5</Min>
               </Y>
               <Z>
-                <Center>-0.3</Center>
-                <Max>-0.3</Max>
-                <Min>-0.3</Min>
+                <Center>0.3</Center>
+                <Max>0.3</Max>
+                <Min>0.3</Min>
               </Z>
             </Location>
             <Velocity>
@@ -523,9 +525,9 @@
                 <Min>0.02</Min>
               </Y>
               <Z>
-                <Center>-0.07</Center>
-                <Max>-0.06</Max>
-                <Min>-0.08</Min>
+                <Center>0.07</Center>
+                <Max>0.08</Max>
+                <Min>0.06</Min>
               </Z>
             </Velocity>
             <Acceleration>
@@ -664,9 +666,9 @@
                 <Min>-0.5</Min>
               </Y>
               <Z>
-                <Center>-1.0</Center>
-                <Max>-1.0</Max>
-                <Min>-1.0</Min>
+                <Center>1.0</Center>
+                <Max>1.0</Max>
+                <Min>1.0</Min>
               </Z>
             </Location>
             <Velocity>
@@ -681,9 +683,9 @@
                 <Min>0.02</Min>
               </Y>
               <Z>
-                <Center>-0.07</Center>
-                <Max>-0.06</Max>
-                <Min>-0.08</Min>
+                <Center>0.07</Center>
+                <Max>0.08</Max>
+                <Min>0.06</Min>
               </Z>
             </Velocity>
             <Acceleration>
@@ -816,9 +818,9 @@
                 <Min>-0.58</Min>
               </Y>
               <Z>
-                <Center>-0.3</Center>
-                <Max>-0.3</Max>
-                <Min>-0.3</Min>
+                <Center>0.3</Center>
+                <Max>0.3</Max>
+                <Min>0.3</Min>
               </Z>
             </Location>
             <Velocity>
@@ -833,9 +835,9 @@
                 <Min>0.035</Min>
               </Y>
               <Z>
-                <Center>-0.09</Center>
-                <Max>-0.08</Max>
-                <Min>-0.1</Min>
+                <Center>0.09</Center>
+                <Max>0.1</Max>
+                <Min>0.08</Min>
               </Z>
             </Velocity>
             <Acceleration>

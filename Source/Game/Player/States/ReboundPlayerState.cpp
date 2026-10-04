@@ -3,6 +3,7 @@
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/States/IdlePlayerState.h"
+#include "Game/Player/States/SkidPlayerState.h"
 #include "Runtime/Object/Components/Body.h"
 
 namespace NS::Game::Player
@@ -28,7 +29,15 @@ namespace NS::Game::Player
 
             if (PlayerJudgeLand::Judge(player.Body().IsGrounded(), player.Body().VerticalVelocity()))
             {
-                player.States().Change<IdlePlayerState>();
+                // 外れは着いた後もこすって止まるまで操作が戻らない。真ん中は着いたフレームに立ちへ戻る
+                if (player.SkidsOnLanding())
+                {
+                    player.States().Change<SkidPlayerState>();
+                }
+                else
+                {
+                    player.States().Change<IdlePlayerState>();
+                }
                 co_return;
             }
         }

@@ -8,6 +8,7 @@
 #include <Xinput.h>
 
 #include <cmath>
+#include <utility>
 
 namespace NS::Platform
 {
@@ -462,6 +463,45 @@ namespace NS::Platform
         for (NS::Platform::Gamepad& pad : m_gamepads)
         {
             pad.Update();
+        }
+    }
+
+    void Input::BeginNeutral() noexcept
+    {
+        ++m_neutralDepth;
+        if (m_neutralDepth > 1)
+        {
+            return;
+        }
+        // 控えの側を中立の物に作り直してから入れ替える。入れ替えた後の控えが手元の状態
+        m_heldKeyboard = NS::Platform::Keyboard{};
+        m_heldMouse = NS::Platform::Mouse{};
+        std::swap(m_keyboard, m_heldKeyboard);
+        std::swap(m_mouse, m_heldMouse);
+        for (std::size_t i = 0; i < m_gamepads.size(); ++i)
+        {
+            // 中立のパッドは Update を受けないので機器を読まず、送った速さが 0 のまま止めても機器へ書かない
+            m_heldGamepads[i] = ::NS::Platform::Gamepad{static_cast<int>(i)};
+            std::swap(m_gamepads[i], m_heldGamepads[i]);
+        }
+    }
+
+    void Input::EndNeutral() noexcept
+    {
+        if (m_neutralDepth == 0)
+        {
+            return;
+        }
+        --m_neutralDepth;
+        if (m_neutralDepth > 0)
+        {
+            return;
+        }
+        std::swap(m_keyboard, m_heldKeyboard);
+        std::swap(m_mouse, m_heldMouse);
+        for (std::size_t i = 0; i < m_gamepads.size(); ++i)
+        {
+            std::swap(m_gamepads[i], m_heldGamepads[i]);
         }
     }
 

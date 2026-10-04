@@ -138,6 +138,24 @@ namespace NS::Editor
         }
     }
 
+    void CurveGraphXRange(const NS::Obj::Curve& curve, float& outMin, float& outMax) noexcept
+    {
+        float low = 0.0f;
+        float high = 1.0f;
+        for (std::uint32_t i = 0; i < curve.count; ++i)
+        {
+            low = std::min(low, curve.keys[i].x);
+            high = std::max(high, curve.keys[i].x);
+        }
+        // 0〜1 の曲線は余白を足さない。部品の欄の曲線の見た目を変えないため
+        if (low < 0.0f || high > 1.0f)
+        {
+            high += (high - low) * 0.1f;
+        }
+        outMin = low;
+        outMax = high;
+    }
+
 #if NS_EDITOR_ENABLED
     namespace
     {
@@ -170,6 +188,8 @@ namespace NS::Editor
         {
             ImVec2 origin{};
             ImVec2 size{};
+            float xMin = 0.0f;
+            float xMax = 1.0f;
             float yMin = 0.0f;
             float yMax = 1.0f;
         };
@@ -193,15 +213,17 @@ namespace NS::Editor
         ImVec2 CurveToScreen(const CurveGraphView& view, float x, float y) noexcept
         {
             const float ratioY = (y - view.yMin) / (view.yMax - view.yMin);
-            return ImVec2{view.origin.x + x * view.size.x, view.origin.y + (1.0f - ratioY) * view.size.y};
+            const float ratioX = (x - view.xMin) / (view.xMax - view.xMin);
+            return ImVec2{view.origin.x + ratioX * view.size.x, view.origin.y + (1.0f - ratioY) * view.size.y};
         }
 
         // 画面ピクセルをカーブ座標へ戻す。今の使い手の入力域が 0..1 のため x はそこへ収める
         NS::Obj::Curve::Key ScreenToCurve(const CurveGraphView& view, ImVec2 pos) noexcept
         {
-            const float x = std::clamp((pos.x - view.origin.x) / view.size.x, 0.0f, 1.0f);
+            const float ratioX = std::clamp((pos.x - view.origin.x) / view.size.x, 0.0f, 1.0f);
             const float ratioY = 1.0f - (pos.y - view.origin.y) / view.size.y;
-            return NS::Obj::Curve::Key{x, view.yMin + ratioY * (view.yMax - view.yMin)};
+            return NS::Obj::Curve::Key{view.xMin + ratioX * (view.xMax - view.xMin),
+                                       view.yMin + ratioY * (view.yMax - view.yMin)};
         }
 
         // 昇格の初期値も表示も実際に効いている傾きから作る。ずれると掴んだ瞬間に形が飛ぶため
@@ -248,7 +270,7 @@ namespace NS::Editor
         // 接線の向きを画面座標へ写して一定の画面距離に置く。カーブ座標の距離だと棒の長さが暴れるため
         ImVec2 TangentHandleTip(const CurveGraphView& view, ImVec2 center, float slope, bool leftSide) noexcept
         {
-            float directionX = view.size.x;
+            float directionX = view.size.x / (view.xMax - view.xMin);
             float directionY = -slope * view.size.y / (view.yMax - view.yMin);
             if (leftSide)
             {
@@ -266,10 +288,11 @@ namespace NS::Editor
 
         float ScreenToTangent(const CurveGraphView& view, ImVec2 center, ImVec2 pos, bool leftSide) noexcept
         {
-            float deltaX = (pos.x - center.x) / view.size.x;
+            const float rangeX = view.xMax - view.xMin;
+            float deltaX = (pos.x - center.x) / view.size.x * rangeX;
             const float deltaY = (center.y - pos.y) / view.size.y * (view.yMax - view.yMin);
             // x の幅が 0 に近づくと傾きが発散するので、点の反対側へ回り込んでも符号ごと最小幅で止める
-            constexpr float k_MinDeltaX = 0.02f;
+            const float k_MinDeltaX = 0.02f * rangeX;
             if (leftSide)
             {
                 deltaX = std::min(deltaX, -k_MinDeltaX);
@@ -359,7 +382,7 @@ namespace NS::Editor
             {
                 // Evaluate は範囲の外を端の値で止めるので、見た目も両端まで水平に延ばす
                 const ImVec2 firstPoint = CurveToScreen(view, curve.keys[0].x, curve.keys[0].y);
-                drawList.AddLine(CurveToScreen(view, 0.0f, curve.keys[0].y), firstPoint, k_CurveLineColor, 2.0f);
+                drawList.AddLine(CurveToScreen(view, view.xMin, curve.keys[0].y), firstPoint, k_CurveLineColor, 2.0f);
                 for (std::uint32_t i = 0; i + 1 < curve.count; ++i)
                 {
                     const NS::Obj::Curve::Key& left = curve.keys[i];
@@ -387,7 +410,7 @@ namespace NS::Editor
                 }
                 const NS::Obj::Curve::Key& lastKey = curve.keys[curve.count - 1];
                 const ImVec2 lastPoint = CurveToScreen(view, lastKey.x, lastKey.y);
-                drawList.AddLine(lastPoint, CurveToScreen(view, 1.0f, lastKey.y), k_CurveLineColor, 2.0f);
+                drawList.AddLine(lastPoint, CurveToScreen(view, view.xMax, lastKey.y), k_CurveLineColor, 2.0f);
             }
 
             if (selected >= 0 && static_cast<std::uint32_t>(selected) < curve.count)
@@ -423,41 +446,29 @@ namespace NS::Editor
             drawList.PopClipRect();
             drawList.AddRect(rectMin, rectMax, ImGui::GetColorU32(ImGuiCol_Border));
         }
-    } // namespace
-
-    ComponentEditResult DrawReflectedComponent(NS::Obj::Component& comp,
-                                               std::span<const ObjectRefOption> refOptions,
-                                               const NS::Obj::Component* defaults) noexcept
-    {
-        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
-        if (info == nullptr || info->fieldCount == 0)
+        // 欄 1 つのウィジェットで起きた事
+        struct FieldWidgetResult
         {
-            return ComponentEditResult{};
-        }
-        if (!BeginFieldTable("##fields"))
-        {
-            return ComponentEditResult{};
-        }
+            bool changed = false;   // 値が編集された
+            bool activated = false; // 編集が始まった
+            bool committed = false; // ウィジェットが非活性化した
+        };
 
-        ComponentEditResult result;
-        // リフレクションの欄を 1 つずつ ImGui ウィジェットへ落とす
-        for (std::size_t i = 0; i < info->fieldCount; ++i)
+        // owner の欄 field を、型に合ったウィジェット 1 つで描く。部品と値型の両方が使う
+        FieldWidgetResult DrawFieldWidget(void* owner,
+                                          const NS::Obj::FieldDesc& field,
+                                          std::span<const ObjectRefOption> refOptions) noexcept
         {
-            const NS::Obj::FieldDesc& field = info->fields[i];
-            const bool changed = FieldDiffersFromDefault(comp, defaults, field);
-            const bool wasChanged = result.changed;
-            ImGui::PushID(static_cast<int>(i));
-            FieldRow(field.name, changed);
-
+            FieldWidgetResult result;
             switch (field.type)
             {
             case NS::Obj::FieldType::Float:
             {
                 float value = 0.0f;
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 if (ImGui::DragFloat("##value", &value, 0.05f))
                 {
-                    field.set(&comp, &value);
+                    field.set(owner, &value);
                     result.changed = true;
                 }
                 break;
@@ -465,10 +476,10 @@ namespace NS::Editor
             case NS::Obj::FieldType::Int:
             {
                 int value = 0;
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 if (ImGui::DragInt("##value", &value))
                 {
-                    field.set(&comp, &value);
+                    field.set(owner, &value);
                     result.changed = true;
                 }
                 break;
@@ -476,10 +487,10 @@ namespace NS::Editor
             case NS::Obj::FieldType::Bool:
             {
                 bool value = false;
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 if (ImGui::Checkbox("##value", &value))
                 {
-                    field.set(&comp, &value);
+                    field.set(owner, &value);
                     result.changed = true;
                 }
                 break;
@@ -487,12 +498,12 @@ namespace NS::Editor
             case NS::Obj::FieldType::Vector3:
             {
                 NS::Core::Vector3 value{};
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 float xyz[3] = {value.x, value.y, value.z};
                 if (ImGui::DragFloat3("##value", xyz, 0.05f))
                 {
                     value = NS::Core::Vector3{xyz[0], xyz[1], xyz[2]};
-                    field.set(&comp, &value);
+                    field.set(owner, &value);
                     result.changed = true;
                 }
                 break;
@@ -501,13 +512,13 @@ namespace NS::Editor
             {
                 // 4 成分を直接触らせると正規化の崩れた回転を作れるので、度の Euler を経由する
                 NS::Core::Quaternion value{};
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 const NS::Core::Vector3 degrees = NS::Core::QuaternionToEulerDegrees(value);
                 float xyz[3] = {degrees.x, degrees.y, degrees.z};
                 if (ImGui::DragFloat3("##value", xyz, 0.5f))
                 {
                     value = NS::Core::EulerDegreesToQuaternion(NS::Core::Vector3{xyz[0], xyz[1], xyz[2]});
-                    field.set(&comp, &value);
+                    field.set(owner, &value);
                     result.changed = true;
                 }
                 break;
@@ -515,14 +526,14 @@ namespace NS::Editor
             case NS::Obj::FieldType::String:
             {
                 std::string value;
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 char buf[256];
                 const std::size_t copied = value.copy(buf, sizeof(buf) - 1);
                 buf[copied] = '\0';
                 if (ImGui::InputText("##value", buf, sizeof(buf)))
                 {
                     std::string edited(buf);
-                    field.set(&comp, &edited);
+                    field.set(owner, &edited);
                     result.changed = true;
                 }
                 break;
@@ -530,7 +541,7 @@ namespace NS::Editor
             case NS::Obj::FieldType::ActorRef:
             {
                 NS::Obj::ActorRef value{};
-                field.get(&comp, &value);
+                field.get(owner, &value);
 
                 // 参照候補が無ければ id を直接打たせる
                 if (refOptions.empty())
@@ -551,7 +562,7 @@ namespace NS::Editor
                         {
                             value.id = static_cast<std::uint32_t>(id);
                         }
-                        field.set(&comp, &value);
+                        field.set(owner, &value);
                         result.changed = true;
                     }
                     break;
@@ -576,7 +587,7 @@ namespace NS::Editor
                     if (ImGui::Selectable("未設定", !value.IsSet()))
                     {
                         value.id = 0;
-                        field.set(&comp, &value);
+                        field.set(owner, &value);
                         result.changed = true;
                     }
                     for (const ObjectRefOption& option : refOptions)
@@ -585,7 +596,7 @@ namespace NS::Editor
                         if (ImGui::Selectable(option.label.c_str(), option.id == value.id))
                         {
                             value.id = option.id;
-                            field.set(&comp, &value);
+                            field.set(owner, &value);
                             result.changed = true;
                         }
                         ImGui::PopID();
@@ -597,13 +608,14 @@ namespace NS::Editor
             case NS::Obj::FieldType::Curve:
             {
                 NS::Obj::Curve value{};
-                field.get(&comp, &value);
+                field.get(owner, &value);
                 bool edited = false;
 
                 CurveGraphView view{};
                 view.size = ImVec2{ImGui::CalcItemWidth(), k_CurveGraphHeight};
                 view.origin = ImGui::GetCursorScreenPos();
                 ComputeCurveYRange(value, view.yMin, view.yMax);
+                CurveGraphXRange(value, view.xMin, view.xMax);
 
                 // 右クリックのメニュー操作でも活性化と確定を拾うため、右ボタンも受ける
                 ImGui::InvisibleButton(
@@ -889,7 +901,10 @@ namespace NS::Editor
                             lastX = value.keys[value.count - 1].x;
                             lastY = value.keys[value.count - 1].y;
                         }
-                        value.keys[value.count] = NS::Obj::Curve::Key{lastX + 0.1f, lastY};
+                        float rangeMin = 0.0f;
+                        float rangeMax = 1.0f;
+                        CurveGraphXRange(value, rangeMin, rangeMax);
+                        value.keys[value.count] = NS::Obj::Curve::Key{lastX + 0.1f * (rangeMax - rangeMin), lastY};
                         ++value.count;
                         edited = true;
                     }
@@ -900,7 +915,7 @@ namespace NS::Editor
                 {
                     // x を左右へドラッグすると並びが崩れるため、編集のたびに並べ直してから書き戻す
                     value.SortKeys();
-                    field.set(&comp, &value);
+                    field.set(owner, &value);
                     result.changed = true;
                 }
                 break;
@@ -911,6 +926,38 @@ namespace NS::Editor
             // 編集無しのクリックでもラッチを解くため、確定ではなく非活性化で committed を立てる
             // 空編集は CommitComponentEdit が before==after で弾くので履歴は汚れない
             result.committed |= ImGui::IsItemDeactivated();
+            return result;
+        }
+    } // namespace
+
+    ComponentEditResult DrawReflectedComponent(NS::Obj::Component& comp,
+                                               std::span<const ObjectRefOption> refOptions,
+                                               const NS::Obj::Component* defaults) noexcept
+    {
+        const NS::Obj::ReflectionInfo* info = comp.GetReflection();
+        if (info == nullptr || info->fieldCount == 0)
+        {
+            return ComponentEditResult{};
+        }
+        if (!BeginFieldTable("##fields"))
+        {
+            return ComponentEditResult{};
+        }
+
+        ComponentEditResult result;
+        // リフレクションの欄を 1 つずつ ImGui ウィジェットへ落とす
+        for (std::size_t i = 0; i < info->fieldCount; ++i)
+        {
+            const NS::Obj::FieldDesc& field = info->fields[i];
+            const bool changed = FieldDiffersFromDefault(comp, defaults, field);
+            const bool wasChanged = result.changed;
+            ImGui::PushID(static_cast<int>(i));
+            FieldRow(field.name, changed);
+
+            const FieldWidgetResult widget = DrawFieldWidget(&comp, field, refOptions);
+            result.changed |= widget.changed;
+            result.activated |= widget.activated;
+            result.committed |= widget.committed;
 
             if (result.changed && !wasChanged)
             {
@@ -939,12 +986,51 @@ namespace NS::Editor
         return result;
     }
 
+    ValueEditResult DrawReflectedValue(void* value,
+                                       const NS::Obj::ReflectionInfo& info,
+                                       std::span<const ObjectRefOption> refOptions) noexcept
+    {
+        if (value == nullptr || info.fieldCount == 0)
+        {
+            return ValueEditResult{};
+        }
+        if (!BeginFieldTable("##value-fields"))
+        {
+            return ValueEditResult{};
+        }
+        ValueEditResult result;
+        for (std::size_t i = 0; i < info.fieldCount; ++i)
+        {
+            const NS::Obj::FieldDesc& field = info.fields[i];
+            ImGui::PushID(static_cast<int>(i));
+            FieldRow(field.name);
+            const FieldWidgetResult widget = DrawFieldWidget(value, field, refOptions);
+            result.activated |= widget.activated;
+            result.committed |= widget.committed;
+            if (widget.changed && !result.changed)
+            {
+                result.changedField = &field;
+            }
+            result.changed |= widget.changed;
+            // 部品の行と値の幅を揃えるため、上書きの印の幅だけ空ける
+            (void)OverrideButton(false, false);
+            ImGui::PopID();
+        }
+        EndFieldTable();
+        return result;
+    }
+
 #else
     ComponentEditResult DrawReflectedComponent(NS::Obj::Component&,
                                                std::span<const ObjectRefOption>,
                                                const NS::Obj::Component*) noexcept
     {
         return ComponentEditResult{};
+    }
+
+    ValueEditResult DrawReflectedValue(void*, const NS::Obj::ReflectionInfo&, std::span<const ObjectRefOption>) noexcept
+    {
+        return ValueEditResult{};
     }
 #endif
 } // namespace NS::Editor

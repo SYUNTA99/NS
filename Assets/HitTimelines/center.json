@@ -1,0 +1,207 @@
+{
+  "events": [
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 12,
+      "start": 1,
+      "type": "HitStop"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "突進の向きの倍率": {
+          "curve": [
+            [
+              0.0,
+              1.0,
+              2,
+              0.0,
+              0.0
+            ],
+            [
+              6.0,
+              0.85,
+              2,
+              -0.05,
+              -0.15
+            ],
+            [
+              7.0,
+              0.7
+            ],
+            [
+              18.0,
+              0.7
+            ],
+            [
+              21.0,
+              1.25
+            ],
+            [
+              25.0,
+              1.0
+            ]
+          ]
+        },
+        "高さの倍率": {
+          "curve": [
+            [
+              0.0,
+              1.0,
+              2,
+              0.0,
+              0.0
+            ],
+            [
+              6.0,
+              1.05,
+              2,
+              0.016666666666666666,
+              0.05
+            ],
+            [
+              7.0,
+              1.1
+            ],
+            [
+              18.0,
+              1.1
+            ],
+            [
+              21.0,
+              0.9
+            ],
+            [
+              25.0,
+              1.0
+            ]
+          ]
+        }
+      },
+      "length": 26,
+      "start": -6,
+      "type": "Shape"
+    },
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 2,
+      "start": -2,
+      "type": "OthersStop"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "潰れの伸び上がり": 1.1,
+        "潰れの厚み": 0.7,
+        "食い込み距離": 0.06
+      },
+      "length": 12,
+      "start": 1,
+      "type": "TargetFreeze"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "振れ幅の画素": 10.0
+      },
+      "length": 12,
+      "start": 1,
+      "type": "BodyShake"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "振れ幅の画素": 3.0,
+        "裏まで届くフレーム数": 6
+      },
+      "length": 14,
+      "start": 13,
+      "type": "ImpactTremor"
+    },
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 1,
+      "start": 1,
+      "type": "HitEffect"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "威力の基準": 1.0,
+        "沈みの最大": 9.0,
+        "沈むフレーム数": 2,
+        "行き過ぎの割合": 0.5,
+        "跳ね返りの 1 往復": 8,
+        "震えの 1 往復": 2,
+        "震えのフレーム数": 6,
+        "震えの大きさ": 5.0
+      },
+      "length": 33,
+      "start": 1,
+      "type": "CameraSink"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "左の速さ": {
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              12.0,
+              0.0
+            ]
+          ]
+        }
+      },
+      "length": 12,
+      "start": 1,
+      "type": "PadVibration"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "濃さ": 0.5
+      },
+      "length": 6,
+      "start": 1,
+      "type": "Flash"
+    },
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 1,
+      "start": 15,
+      "type": "Rebound"
+    },
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 1,
+      "start": 13,
+      "type": "TargetLaunch"
+    },
+    {
+      "direction": "any",
+      "fields": {},
+      "length": 1,
+      "start": 13,
+      "type": "FlightEffect"
+    },
+    {
+      "direction": "any",
+      "fields": {
+        "紫の時だけ": true
+      },
+      "length": 1,
+      "start": 13,
+      "type": "GradualRelease"
+    }
+  ],
+  "version": 1
+}
