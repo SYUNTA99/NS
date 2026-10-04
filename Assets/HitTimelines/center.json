@@ -144,18 +144,6 @@
     {
       "direction": "any",
       "fields": {
-        "ずらし直すフレーム数": 2,
-        "線の太さの画素": 7.0,
-        "線の長さの画素": 80.0,
-        "輪郭から離す画素": 32.0
-      },
-      "length": 12,
-      "start": 1,
-      "type": "ShakeLines"
-    },
-    {
-      "direction": "any",
-      "fields": {
         "半径": {
           "curve": [
             [0.0, 0.6],
