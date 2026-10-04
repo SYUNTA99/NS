@@ -196,7 +196,7 @@ TEST(ImpactTimelineClock, EventsStartTheStopReleaseAndReboundOnTheirFrames)
     EXPECT_EQ(player->Resolver().LastImpact().hitStopSteps, 5);
 }
 
-// R-1: 止めの長さを決めるのはタイムラインだけ。12 を 8 にすると止めが 8 になる
+// 止めの長さを決めるのはタイムラインだけ。12 を 8 にすると止めが 8 になる
 TEST(ImpactTimelineClock, TheStopIsAsLongAsTheTimelineSays)
 {
     for (const int steps : {12, 8})
@@ -213,7 +213,7 @@ TEST(ImpactTimelineClock, TheStopIsAsLongAsTheTimelineSays)
     }
 }
 
-// R-3b: 止めの長さは溜めと相手の質量で変わらない
+// 止めの長さは溜めと相手の質量で変わらない
 TEST(ImpactTimelineClock, TheStopIgnoresChargeAndMass)
 {
     for (const float charge : {0.0f, 1.0f})
@@ -896,7 +896,7 @@ namespace
     }
 } // namespace
 
-// R-2: マイナスに置いた事象は、触れる前の予測のフレームで始まる。当たったら同じ時計を 0 から続ける
+// マイナスに置いた事象は、触れる前の予測のフレームで始まる。当たったら同じ時計を 0 から続ける
 TEST(ImpactTimelineClock, NegativeEventsStartBeforeContact)
 {
     const ScopedHitTimelineDirectory directory("BeforeContact");
@@ -1010,7 +1010,7 @@ namespace
     }
 } // namespace
 
-// impact-feel-pass R-3-1: 真ん中で触れる 2 フレーム前から触れるまで、自機以外の世界が進まず、自機は突進の速さのまま進む
+// 真ん中で触れる 2 フレーム前から触れるまで、自機以外の世界が進まず、自機は突進の速さのまま進む
 TEST(ImpactTimelineClock, OthersStopHoldsTheWorldButNotThePlayerBeforeContact)
 {
     const ScopedHitTimelineDirectory directory("OthersStop");
@@ -1094,7 +1094,6 @@ TEST(ImpactTimelineClock, AMissedPredictionReleasesTheOthers)
     EXPECT_FALSE(player->Resolver().IsShapeAnimating());
 }
 
-// impact-feel-pass 3 節:
 // 沈む揺れは止めの頭に始まり、底で反動の頭までこらえ、反動の頭から跳ね返る。底の深さは威力で頭打ちに増える
 TEST(ImpactTimelineClock, SinkShakeHoldsTheBottomUntilTheReboundFrame)
 {

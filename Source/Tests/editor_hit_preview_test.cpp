@@ -87,7 +87,7 @@ namespace
     }
 } // namespace
 
-// R-6: 選んだ面の位置へ当たり、段は面の判定のとおりに決まる。検知は狙ったフレーム数の後
+// 選んだ面の位置へ当たり、段は面の判定のとおりに決まる。検知は狙ったフレーム数の後
 TEST(EditorHitPreview, HitsThePickedPointOnTheFace)
 {
     const ScopedHitTimelineDirectory directory("EditorHitPreview");
@@ -111,7 +111,7 @@ TEST(EditorHitPreview, HitsThePickedPointOnTheFace)
     EXPECT_NEAR(edge.impact.faceU, 0.85f, 0.05f);
 }
 
-// hitstop-and-shake R-4-2: 帯に重ねるため、揺れ・トラウマ・世界の速さをフレームごとに記録する
+// 帯に重ねるため、揺れ・トラウマ・世界の速さをフレームごとに記録する
 TEST(EditorHitPreview, RecordsTheShakeAndTheWorldSpeedEachFrame)
 {
     HitTimeline timeline = MakePreviewTimeline();
@@ -138,7 +138,7 @@ TEST(EditorHitPreview, RecordsTheShakeAndTheWorldSpeedEachFrame)
     EXPECT_LT(result.frames[releaseFrame].worldSpeed, 1.0f);
 }
 
-// R-8 の下地: 帯へ重ねるため、事象が実際に始まったフレームを行の番号で記録する
+// 帯へ重ねるため、事象が実際に始まったフレームを行の番号で記録する
 TEST(EditorHitPreview, RecordsTheFrameEachRowStarted)
 {
     const ScopedHitTimelineDirectory directory("EditorHitPreviewRows");
@@ -168,7 +168,7 @@ TEST(EditorHitPreview, RecordsTheFrameEachRowStarted)
     EXPECT_FALSE(result.frames.back().rebounding);
 }
 
-// R-10・R-7 の下地: 下見は写しの中で閉じ、同じ条件なら毎回同じ記録になる。選んだフレームの場面も記録と同じ所に居る
+// 下見は写しの中で閉じ、同じ条件なら毎回同じ記録になる。選んだフレームの場面も記録と同じ所に居る
 TEST(EditorHitPreview, LeavesTheEditedSceneAloneAndRepeats)
 {
     const ScopedHitTimelineDirectory directory("EditorHitPreviewRepeat");
@@ -211,7 +211,7 @@ TEST(EditorHitPreview, MissingTargetIsAnError)
     EXPECT_TRUE(result.frames.empty());
 }
 
-// R-10: 下見の振動は手元のパッドへ送らず、フレームごとの記録に残す
+// 下見の振動は手元のパッドへ送らず、フレームごとの記録に残す
 TEST(EditorHitPreview, HoldsPadVibrationInTheRecord)
 {
     const ScopedHitTimelineDirectory directory("EditorHitPreviewPad");
@@ -259,7 +259,7 @@ TEST(EditorHitPreview, HitLineHasTheReplayKeys)
     EXPECT_EQ(line["victim"].get<std::uint32_t>(), k_RockId);
 }
 
-// R-7: 下見は試しの道 (入力を止めて突進を直接頼み、場面の 1 歩で進める) と同じ記録を出す
+// 下見は試しの道 (入力を止めて突進を直接頼み、場面の 1 歩で進める) と同じ記録を出す
 TEST(EditorHitPreview, MatchesADirectRunFromTheSamePlacement)
 {
     const ScopedHitTimelineDirectory directory("EditorHitPreviewDirect");

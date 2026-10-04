@@ -52,7 +52,7 @@ namespace
     };
 } // namespace
 
-// R-8: 事象の欄 (白の濃さ) へ打ち込むと、値が書き換わり、編集した欄が返る
+// 事象の欄 (白の濃さ) へ打ち込むと、値が書き換わり、編集した欄が返る
 TEST(EditorValueFields, TypingIntoAnEventFieldWritesTheValue)
 {
     HeadlessImGui gui;

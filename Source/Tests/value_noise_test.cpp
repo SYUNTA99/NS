@@ -5,7 +5,7 @@
 #include <cmath>
 #include <cstdint>
 
-// 揺れのずれを引くノイズ。種と位置だけで値が決まり (R-3-8)、隣り合う位置で値が跳ばない (R-3-1)
+// 揺れのずれを引くノイズ。種と位置だけで値が決まり、隣り合う位置で値が跳ばない
 
 TEST(ValueNoise, SameSeedAndPositionGiveTheSameValue)
 {

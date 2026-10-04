@@ -37,7 +37,7 @@
         <RendererCommonValues>
           <ColorTexture>Texture/charge_shell.png</ColorTexture>
         </RendererCommonValues>
-        <!-- 床か玉と交わる所を 0.3 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <!-- 床か玉と交わる所を 0.3 m の手前から薄くし、刺さった線を見せない -->
         <AdvancedRendererCommonValuesValues>
           <SoftParticleParams>
             <Enabled>True</Enabled>
@@ -126,7 +126,7 @@
           <ColorTexture>Texture/charge_shell.png</ColorTexture>
           <AlphaBlend>2</AlphaBlend>
         </RendererCommonValues>
-        <!-- 床か玉と交わる所を 0.3 m の手前から薄くし、刺さった線を見せない (impact-feel-pass R-7-1) -->
+        <!-- 床か玉と交わる所を 0.3 m の手前から薄くし、刺さった線を見せない -->
         <AdvancedRendererCommonValuesValues>
           <SoftParticleParams>
             <Enabled>True</Enabled>

@@ -343,7 +343,7 @@ TEST(WorldSpeed, SettingTheSpeedStopsTheRamp)
 
 TEST(OthersHold, HoldingOthersRunsOnlyThePlayerSideForItsSteps)
 {
-    // impact-feel-pass R-3-1: 真ん中で触れる前の数フレーム、自機以外の世界を止める。自機・入力・カメラ・UI は回す
+    // 真ん中で触れる前の数フレーム、自機以外の世界を止める。自機・入力・カメラ・UI は回す
     NS::Obj::Scene scene;
     std::vector<std::string> log;
     scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Player, log, "player");

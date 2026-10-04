@@ -234,7 +234,7 @@ TEST(HitTimeline, ShippedCenterShrinksBeforeContactAndMissDoesNot)
     }
 }
 
-// impact-feel-pass 3 節: 真ん中の揺れは止めの頭から沈む揺れ 1 つ。平行移動の揺れと寄りは外した
+// 真ん中の揺れは止めの頭から沈む揺れ 1 つ。平行移動の揺れと寄りは外した
 // 出荷の真ん中は、紫で当てた時だけ止めの明けのフレームから世界を遅くする
 TEST(HitTimeline, ShippedCenterSlowsTheWorldOnlyForPurple)
 {

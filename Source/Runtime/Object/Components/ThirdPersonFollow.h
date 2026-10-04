@@ -287,8 +287,8 @@ namespace NS::Obj
         int m_reboundTurnFrames = 20;      // 反動になってから突進の向きへ回し終えるフレーム数
         float m_reboundPullBack = 1.0f;    // 反動の間に当たった瞬間の距離より伸ばす距離 (m)
         // 真ん中の反動は、自分の跳ね返り方と飛んでいく相手の飛び方の差を見せる。主役は自機のまま、相手も画面に残す
-        // 注視点 = 自機 + 重み × (相手 − 自機)、重み = 最大 × (1 − 二人の距離 ÷ 見送りの距離)。最大 0.3 は 1
-        // 節の決定の値
+        // 注視点 = 自機 + 重み × (相手 − 自機)、重み = 最大 × (1 − 二人の距離 ÷ 見送りの距離)
+        // 最大 0.3 は手触りで決めた値
         float m_reboundPartnerWeight = 0.3f;
         // 相手がこれより遠くへ飛ぶと重みが 0 になり、自機だけを追う (m)。出発点で、値は撮って詰める
         float m_reboundPartnerReleaseDistance = 30.0f;
@@ -296,7 +296,7 @@ namespace NS::Obj
         float m_reboundPullStartDistance = 3.0f;
         float m_reboundPullPerMeter = 0.3f;
         float m_reboundPullMax = 4.0f;
-        // 寄せと引きのばねが差の半分まで追いつく秒。1 節の決定の 0.15 秒から
+        // 寄せと引きのばねが差の半分まで追いつく秒
         float m_reboundPartnerHalfSeconds = 0.15f;
         // 勝手に出た突進の間に注視点の横と前後が寄るバネ角速度 (1/秒)。反動と同じ 4 から始める
         float m_forcedLaunchFollowOmega = 4.0f;

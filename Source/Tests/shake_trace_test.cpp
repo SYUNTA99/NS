@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-// 同じ当たりと同じ溜めで、カメラの揺れのずれと角度をフレームごとに書き出す (R-4-3)
+// 同じ当たりと同じ溜めで、カメラの揺れのずれと角度をフレームごとに書き出す
 // 揺れを作り直す前と後で同じ場面を書き出し、隣り合うフレームのずれの差の最大を並べる
 // 書き出し先は build/ShakeTrace/trace.json。タイムラインは置き場の既定 (Assets/HitTimelines) を読む
 
@@ -234,8 +234,8 @@ TEST(ShakeTrace, WritesTheShakeOfTheSameHitsAndCharge)
     EXPECT_GT(centerRatio, 0.0f);
     EXPECT_GT(missRatio, 0.0f);
     EXPECT_GT(chargeRatio, 0.0f);
-    // R-3-1: 外れと溜めはトラウマの揺れ。方形の波 (直す前 外れ 1.71・溜め 1.98) のように振れ幅の倍近くを 1
-    // フレームで跳ばない
+    // 外れと溜めはトラウマの揺れ。方形の波 (直す前 外れ 1.71・溜め 1.98) のように振れ幅の倍近くを
+    // 1 フレームで跳ばない
     EXPECT_LT(missRatio, 0.6f);
     EXPECT_LT(chargeRatio, 0.6f);
 

@@ -15,7 +15,7 @@
 #include <cmath>
 #include <string>
 
-// impact-feel-pass R-8-1〜R-8-3: 玉の回転を、届くまで (反動は着地まで) の回転数で持つ
+// 玉の回転を、届くまで (反動は着地まで) の回転数で持つ
 // 速さや距離を触っても回転数は変わらない。溜めた突進とタップ、溜めて当てた反動とタップで当てた反動で数を変える
 
 namespace
@@ -101,7 +101,7 @@ namespace
     }
 } // namespace
 
-// R-8-1: タップの初速は欄の値
+// タップの初速は欄の値
 TEST(PlayerSpinCount, TapLeavesAtItsFieldSpeed)
 {
     NS::Obj::Scene scene;
@@ -115,7 +115,7 @@ TEST(PlayerSpinCount, TapLeavesAtItsFieldSpeed)
     EXPECT_NEAR(std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z), 15.0f, 1.0e-3f);
 }
 
-// R-8-2: タップは届くまでに欄の回転数だけ回る。速さと距離を変えても同じ
+// タップは届くまでに欄の回転数だけ回る。速さと距離を変えても同じ
 TEST(PlayerSpinCount, TapTurnsItsCountWhateverTheSpeedAndDistance)
 {
     for (const float speed : {15.0f, 10.0f})
@@ -134,7 +134,7 @@ TEST(PlayerSpinCount, TapTurnsItsCountWhateverTheSpeedAndDistance)
     }
 }
 
-// R-8-2b: 溜めた突進は溜めた突進の回転数で回り、タップとはっきり違う
+// 溜めた突進は溜めた突進の回転数で回り、タップとはっきり違う
 TEST(PlayerSpinCount, ChargedSlamTurnsItsOwnCount)
 {
     NS::Obj::Scene scene;
@@ -147,7 +147,7 @@ TEST(PlayerSpinCount, ChargedSlamTurnsItsOwnCount)
     EXPECT_NEAR(SpinWhileSlamming(*player, 1.0f), turns * 360.0f, perFrame * 1.01f);
 }
 
-// R-8-3: 反動は着地までに、溜めて当てた時とタップで当てた時のそれぞれの回転数だけ回る
+// 反動は着地までに、溜めて当てた時とタップで当てた時のそれぞれの回転数だけ回る
 TEST(PlayerSpinCount, ReboundTurnsTheCountOfTheSlamThatHit)
 {
     for (const float charge01 : {1.0f, 0.0f})

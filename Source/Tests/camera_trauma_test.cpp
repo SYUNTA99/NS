@@ -11,7 +11,7 @@
 #include <memory>
 #include <optional>
 
-// トラウマの揺れ (外れと溜め) の決まりを縛る。R-3-1 連続・R-3-2 一撃・R-3-3 トラウマ・R-3-4 入力の向き・R-3-10 倍率
+// トラウマの揺れ (外れと溜め) の決まりを縛る。連続・一撃・トラウマ・入力の向き・倍率
 
 namespace
 {
@@ -42,7 +42,7 @@ namespace
     }
 } // namespace
 
-// R-3-3: 振れ幅はトラウマの 2 乗。0.5 で最大の 1/4
+// 振れ幅はトラウマの 2 乗。0.5 で最大の 1/4
 TEST(CameraTrauma, HalfTraumaShakesAQuarter)
 {
     NS::Obj::CameraTraumaModifier trauma;
@@ -58,7 +58,7 @@ TEST(CameraTrauma, HalfTraumaShakesAQuarter)
     }
 }
 
-// R-3-3: 続けて足すと足され、1 で頭打ち。時間で直線に減って終わる
+// 続けて足すと足され、1 で頭打ち。時間で直線に減って終わる
 TEST(CameraTrauma, AddsUpToOneThenDecaysLinearly)
 {
     NS::Obj::CameraTraumaModifier trauma;
@@ -80,7 +80,7 @@ TEST(CameraTrauma, AddsUpToOneThenDecaysLinearly)
     EXPECT_TRUE(trauma.IsFinished());
 }
 
-// R-3-1: 隣り合うフレームの角度の差は、振れ幅に対して小さい (方形の波は約 2 倍を跳ぶ)
+// 隣り合うフレームの角度の差は、振れ幅に対して小さい (方形の波は約 2 倍を跳ぶ)
 TEST(CameraTrauma, NeighbouringFramesDoNotJump)
 {
     NS::Obj::CameraTraumaModifier trauma;
@@ -103,7 +103,7 @@ TEST(CameraTrauma, NeighbouringFramesDoNotJump)
     EXPECT_LT(step / largest, 0.6f);
 }
 
-// R-3-8: 同じ種と同じ足し方は同じ揺れ
+// 同じ種と同じ足し方は同じ揺れ
 TEST(CameraTrauma, SameSeedGivesTheSameShake)
 {
     NS::Obj::CameraTraumaModifier first;
@@ -118,7 +118,7 @@ TEST(CameraTrauma, SameSeedGivesTheSameShake)
     }
 }
 
-// R-3-2: 一撃は足したフレームに山を置けば、そのフレームが一番大きく、向きは渡した側
+// 一撃は足したフレームに山を置けば、そのフレームが一番大きく、向きは渡した側
 TEST(CameraTrauma, KickPeaksOnItsFrameTowardItsDirection)
 {
     NS::Obj::CameraTraumaModifier trauma;
@@ -161,7 +161,7 @@ TEST(CameraTrauma, HeldTraumaStaysUntilReleased)
     EXPECT_LT(trauma.Trauma(), 0.6f);
 }
 
-// R-3-4: 揺れは描く姿勢にだけ掛かり、遊びが読む水平の前は変わらない。R-3-10: 倍率 0 で揺れが消える
+// 揺れは描く姿勢にだけ掛かり、遊びが読む水平の前は変わらない。倍率 0 で揺れが消える
 TEST(CameraTrauma, ShakesTheDrawnPoseOnlyAndScalesBySetting)
 {
     NS::Obj::Scene scene;
