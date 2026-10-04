@@ -2,7 +2,6 @@
 
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerParams.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Object/Actor.h"
@@ -222,16 +221,6 @@ namespace NS::Game::Level
     // このフレームの狙う相手を控えた後に読む
     TargetMarker::TargetMarker() noexcept : NS::Obj::OverlayRenderer() {}
 
-    const TargetMarkerDesc& TargetMarker::Tuning() const noexcept
-    {
-        if (const ::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
-        {
-            return ownerPlayer->Params().m_targetMarkerDesc;
-        }
-        static const TargetMarkerDesc defaults;
-        return defaults;
-    }
-
     void TargetMarker::OnStart()
     {
         // 基底が重ね描きの登録簿へ自分を入れる
@@ -281,7 +270,7 @@ namespace NS::Game::Level
         if (m_framesSinceLost >= 0)
         {
             ++m_framesSinceLost;
-            if (m_framesSinceLost >= Tuning().lostFrames)
+            if (m_framesSinceLost >= m_desc.lostFrames)
             {
                 m_framesSinceLost = -1;
             }
@@ -329,7 +318,7 @@ namespace NS::Game::Level
                                     targetSize,
                                     m_shown.bounds,
                                     LockOnFrames{.sinceCapture = m_framesSinceCapture},
-                                    Tuning(),
+                                    m_desc,
                                     outFrame);
         }
         if (m_framesSinceLost < 0)
@@ -337,7 +326,7 @@ namespace NS::Game::Level
             return false;
         }
         const LockOnFrames frames{.sinceCapture = m_framesSinceCapture, .sinceLost = m_framesSinceLost};
-        return BuildLockOnFrame(viewProjection, targetSize, m_lostBounds, frames, Tuning(), outFrame);
+        return BuildLockOnFrame(viewProjection, targetSize, m_lostBounds, frames, m_desc, outFrame);
     }
 
     NS_CLASS(TargetMarker)

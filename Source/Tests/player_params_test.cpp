@@ -11,15 +11,20 @@
 #include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectJson.h"
+#include "Runtime/Object/Reflection/Archetype.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 #include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Platform/Clock.h"
+#include "Runtime/Platform/FileSystem.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
 #include <cmath>
 #include <limits>
+#include <string>
+#include <string_view>
 #include <type_traits>
 
 static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Game::Level::Health>);
@@ -180,35 +185,63 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
     EXPECT_FLOAT_EQ(fields["下降重力"].get<float>(), -39.0f);
 }
 
-TEST(PlayerParams, AppearanceAndChargeDefaultsBelongToParams)
+// part の欄に expected の名前が全部あり、値も同じことを確かめる
+static void ExpectPartFields(const NS::Obj::Component& part, const nlohmann::json& expected)
 {
-    Player player;
-    const nlohmann::json fields = NS::Obj::SerializeComponent(player.Params())["fields"];
-    const nlohmann::json expected = {{"立ち姿のメッシュ", ""},
-                                     {"玉のメッシュ", ""},
-                                     {"溜め 0 の回る速さ", 360.0f},
-                                     {"溜めきりの回る速さ", 1440.0f},
-                                     {"溜めた突進の届くまでの回転数", 5.0f},
-                                     {"通常突進の届くまでの回転数", 2.0f},
-                                     {"溜めて当てた反動の回転数", 3.0f},
-                                     {"通常突進で当てた反動の回転数", 1.0f},
-                                     {"着地の潰れ", 0.8f},
-                                     {"着地の潰れを戻すフレーム数", 6},
-                                     {"通常突進の弾けの大きさ", 0.75f},
-                                     {"溜めきりで足す弾けの大きさ", 0.25f}};
+    const nlohmann::json fields = NS::Obj::SerializeComponent(part)["fields"];
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
     {
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
     }
-    EXPECT_TRUE(NS::Obj::SerializeComponent(player.Appearance())["fields"].empty());
-    EXPECT_TRUE(NS::Obj::SerializeComponent(player.ChargeVisuals())["fields"].empty());
+}
+
+// 調整値の部品に expected の名前が 1 つも無いことを確かめる。演出の欄は描く部品が持ち、遊びの欄と並ばない
+static void ExpectNotInParams(const Player& player, const nlohmann::json& expected)
+{
+    const nlohmann::json fields = NS::Obj::SerializeComponent(player.Params())["fields"];
+    for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
+    {
+        EXPECT_FALSE(fields.contains(it.key())) << it.key();
+    }
+}
+
+TEST(PlayerParams, AppearanceAndChargeVisualDefaultsBelongToThePartsThatDrawThem)
+{
+    Player player;
+    const nlohmann::json appearance = {{"立ち姿のメッシュ", ""},
+                                       {"玉のメッシュ", ""},
+                                       {"溜め 0 の回る速さ", 360.0f},
+                                       {"溜めきりの回る速さ", 1440.0f},
+                                       {"着地の潰れ", 0.8f},
+                                       {"着地の潰れを戻すフレーム数", 6},
+                                       {"外れの縁でのねじれの回転数", 2.0f},
+                                       {"外れで当たる前の回転を引き継ぐ割合", 0.4f},
+                                       {"外れの回転を寄せるフレーム数", 6},
+                                       {"外れの軸のぶれの角度", 10.0f},
+                                       {"外れの軸のぶれの速さ", 1.5f}};
+    const nlohmann::json charge = {{"通常突進の弾けの大きさ", 0.75f},
+                                   {"溜めきりで足す弾けの大きさ", 0.25f},
+                                   {"紫の火花の数の始め", 4},
+                                   {"紫の火花の数の終わり", 14},
+                                   {"紫の火花の速さの始め", 2.5f},
+                                   {"紫の火花の速さの終わり", 5.0f}};
+    // 回転数は Player が突進と反動の回る速さを出すのに読むので、調整値の部品に残る
+    const nlohmann::json spin = {{"溜めた突進の届くまでの回転数", 5.0f},
+                                 {"通常突進の届くまでの回転数", 2.0f},
+                                 {"溜めて当てた反動の回転数", 3.0f},
+                                 {"通常突進で当てた反動の回転数", 1.0f}};
+    ExpectPartFields(player.Appearance(), appearance);
+    ExpectPartFields(player.ChargeVisuals(), charge);
+    ExpectPartFields(player.Params(), spin);
+    ExpectNotInParams(player, appearance);
+    ExpectNotInParams(player, charge);
 }
 
 TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
 {
     Player player;
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(player.Params(),
+    EXPECT_EQ(NS::Obj::ApplyJsonFields(player.ChargeVisuals(),
                                        {{"通常突進の弾けの大きさ", 0.5f}, {"溜めきりで足す弾けの大きさ", 0.4f}}),
               0u);
     EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(0.5f), 0.7f);
@@ -222,22 +255,23 @@ TEST(PlayerParams, ImpactDefaultsKeepAllFortySixDisplayNamesAndValues)
 {
     Player player;
     const nlohmann::json fields = NS::Obj::SerializeComponent(player.Params())["fields"];
-    const nlohmann::json expected = {{"反動の高さ", 1.15f},
-                                     {"反動の距離", 0.575f},
-                                     {"中心近くの当たりの反動の距離の倍率", 2.0f},
-                                     {"押し飛ばしの距離", 29.0f},
-                                     {"押し飛ばしの質量指数", 0.35f},
-                                     {"押し飛ばしの高さ", 2.0f},
-                                     {"押し飛ばしの上昇重力", 25.0f},
-                                     {"下りの速さの倍率", 1.4f},
-                                     {"頂点の帯の縦速度", 1.0f},
-                                     {"頂点の帯の重力倍率", 0.5f},
-                                     {"中心近くの当たりのヒットストップ倍率", 2.0f},
-                                     {"ヒットストップの上限秒", 12.0f / 60.0f},
-                                     {"破壊を許可", false},
-                                     {"貫通時の減速倍率", 0.75f},
-                                     {"貫通の止め秒", 4.0f / 60.0f},
-                                     {"核の直径の基準", 0.3f},
+    const nlohmann::json play = {{"反動の高さ", 1.15f},
+                                 {"反動の距離", 0.575f},
+                                 {"中心近くの当たりの反動の距離の倍率", 2.0f},
+                                 {"押し飛ばしの距離", 29.0f},
+                                 {"押し飛ばしの質量指数", 0.35f},
+                                 {"押し飛ばしの高さ", 2.0f},
+                                 {"押し飛ばしの上昇重力", 25.0f},
+                                 {"下りの速さの倍率", 1.4f},
+                                 {"頂点の帯の縦速度", 1.0f},
+                                 {"頂点の帯の重力倍率", 0.5f},
+                                 {"中心近くの当たりのヒットストップ倍率", 2.0f},
+                                 {"ヒットストップの上限秒", 12.0f / 60.0f},
+                                 {"破壊を許可", false},
+                                 {"貫通時の減速倍率", 0.75f},
+                                 {"貫通の止め秒", 4.0f / 60.0f}};
+    ExpectPartFields(player.Params(), play);
+    const nlohmann::json expected = {{"核の直径の基準", 0.3f},
                                      {"核の直径の威力あたり", 0.2f},
                                      {"核の直径の上限", 0.7f},
                                      {"核の出始めの大きさ", 0.5f},
@@ -268,11 +302,9 @@ TEST(PlayerParams, ImpactDefaultsKeepAllFortySixDisplayNamesAndValues)
                                      {"当たりの粉の大きさの威力あたりの伸び", 0.5f},
                                      {"着地の粉の半径の基準", 1.2f},
                                      {"着地の粉の半径の落ちる速さあたり", 0.04f}};
-    for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
-    {
-        ASSERT_TRUE(fields.contains(it.key())) << it.key();
-        EXPECT_EQ(fields[it.key()], it.value()) << it.key();
-    }
+    // 当たりの絵の大きさと量は絵を出す ImpactEffects が持ち、遊びの欄と並ばない
+    ExpectPartFields(player.ImpactVisuals(), expected);
+    ExpectNotInParams(player, expected);
     // 惜しいの段は消した。惜しいだけの演出の欄が戻ると、段の無い当たりの調整値が保存に載る
     // 当たりの返りの時間と形はタイムラインへ移した。欄が戻ると、同じ返りの値の出所が 2 つになる
     for (const char* removed : {"惜しい当たりの返りの割合",
@@ -303,13 +335,12 @@ TEST(PlayerParams, ImpactDefaultsKeepAllFortySixDisplayNamesAndValues)
         EXPECT_FALSE(fields.contains(removed)) << removed;
     }
     EXPECT_TRUE(NS::Obj::SerializeComponent(player.Resolver())["fields"].empty());
-    EXPECT_TRUE(NS::Obj::SerializeComponent(player.ImpactVisuals())["fields"].empty());
 }
 
 TEST(PlayerParams, LiveImpactVisualTuningDrivesShapeAndLandingDust)
 {
     Player player;
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(player.Params(),
+    EXPECT_EQ(NS::Obj::ApplyJsonFields(player.ImpactVisuals(),
                                        {{"核の直径の基準", 0.4f},
                                         {"核の直径の威力あたり", 0.3f},
                                         {"核の直径の上限", 2.0f},
@@ -338,7 +369,7 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     Player player;
     // 中心近くと大きな外れで本数が違えば、どちらの行から来たかが分かる
     ASSERT_EQ(NS::Obj::ApplyJsonFields(
-                  player.Params(),
+                  player.ImpactVisuals(),
                   {{"弾かれ線の本数", 9}, {"大きな外れの弾かれ線の本数", 4}, {"大きな外れの火花の大きさ", 2.5f}}),
               0u);
     NS::Game::Level::ImpactRecord impact{};
@@ -423,7 +454,7 @@ TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)
     Player player;
     const NS::Game::Level::TargetMarkerDesc marker{};
     const NS::Game::Level::SlamArrowDesc arrow{};
-    const nlohmann::json expected = {
+    const nlohmann::json markerFields = {
         {"印の色", {marker.color.x, marker.color.y, marker.color.z}},
         {"印の太さ", marker.lineThickness},
         {"印の腕の割合", marker.armRatio},
@@ -440,7 +471,8 @@ TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)
         {"外れた時の枠の倍率", marker.lostScale},
         {"外れた時の枠のフレーム数", marker.lostFrames},
         {"枠の縁の色", {marker.outlineColor.x, marker.outlineColor.y, marker.outlineColor.z}},
-        {"枠の縁の不透明度", marker.outlineAlpha},
+        {"枠の縁の不透明度", marker.outlineAlpha}};
+    const nlohmann::json arrowFields = {
         {"矢印が伸びるフレーム数", arrow.growFrames},
         {"矢印を浮かせる高さ", arrow.groundLift},
         {"矢じりの幅", arrow.headWidth},
@@ -465,14 +497,11 @@ TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)
         {"色の無い矢じりの明るい縁の不透明度", arrow.plainHeadEdgeAlpha},
         {"色の無い矢じりの塗りの不透明度", arrow.plainHeadFillAlpha},
         {"隠れた矢じりの不透明度", arrow.occludedHeadAlpha}};
-    const nlohmann::json fields = NS::Obj::SerializeComponent(player.Params())["fields"];
-    for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
-    {
-        ASSERT_TRUE(fields.contains(it.key())) << it.key();
-        EXPECT_EQ(fields[it.key()], it.value()) << it.key();
-    }
-    EXPECT_TRUE(NS::Obj::SerializeComponent(player.TargetIndicator())["fields"].empty());
-    EXPECT_TRUE(NS::Obj::SerializeComponent(player.SlamIndicator())["fields"].empty());
+    // 枠と矢印の見た目は描く部品が持ち、遊びの欄と並ばない
+    ExpectPartFields(player.TargetIndicator(), markerFields);
+    ExpectPartFields(player.SlamIndicator(), arrowFields);
+    ExpectNotInParams(player, markerFields);
+    ExpectNotInParams(player, arrowFields);
 }
 
 TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
@@ -494,11 +523,10 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     const NS::Core::Vector3 eye{0.0f, 0.0f, -6.0f};
     const NS::Core::Vector3 lookAt{0.0f, 0.0f, 4.0f};
     ASSERT_NE(PlaceViewCamera(scene, eye, lookAt), nullptr);
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
-                                       {{"印の太さ", 7.0f},
-                                        {"溜めの前半の色", {0.2f, 0.3f, 0.4f}},
-                                        {"矢印が伸びるフレーム数", 1},
-                                        {"チャージしきい値秒", 0.2f}}),
+    EXPECT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
+    EXPECT_EQ(NS::Obj::ApplyJsonFields(player->TargetIndicator(), {{"印の太さ", 7.0f}}), 0u);
+    EXPECT_EQ(NS::Obj::ApplyJsonFields(player->SlamIndicator(),
+                                       {{"溜めの前半の色", {0.2f, 0.3f, 0.4f}}, {"矢印が伸びるフレーム数", 1}}),
               0u);
     // しきい値のフレームまで押して溜めに入れる
     const int threshold = static_cast<int>(std::lround(0.2f / NS::Platform::FrameTimer::FixedDelta()));
@@ -520,4 +548,41 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     EXPECT_FLOAT_EQ(arrow.stageColor.y, 0.3f);
     EXPECT_FLOAT_EQ(arrow.stageColor.z, 0.4f);
     EXPECT_FLOAT_EQ(arrow.tip, arrow.fullTip);
+}
+
+// 欄を別の部品へ移した後も、同梱の種類の既定値と場面の値は読まれる。古い部品の下に残った鍵はどの欄にも
+// 照合されず、詰めた値が静かに既定へ戻る
+TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
+{
+    const auto expectEveryFieldRead = [](const nlohmann::json& entry, std::string_view source) {
+        Player player;
+        const nlohmann::json& parts = NS::Obj::ObjectJsonParts(entry);
+        for (nlohmann::json::const_iterator it = parts.begin(); it != parts.end(); ++it)
+        {
+            NS::Obj::Component* part = player.Part(it.key());
+            ASSERT_NE(part, nullptr) << source << " " << it.key();
+            EXPECT_EQ(NS::Obj::ApplyJsonFields(*part, it.value()), 0u) << source << " " << it.key();
+        }
+    };
+    NS::Obj::ArchetypeLibrary::Get().Reload();
+    const nlohmann::json* archetype = NS::Obj::ArchetypeLibrary::Get().Find("Player");
+    ASSERT_NE(archetype, nullptr);
+    expectEveryFieldRead(*archetype, "Player.json");
+
+    for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
+    {
+        const std::string path = NS::Platform::FileSystem::Combine(
+            NS::Platform::FileSystem::Combine(
+                NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+            sceneName);
+        nlohmann::json doc;
+        ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path)) << sceneName;
+        for (const nlohmann::json& entry : NS::Obj::SceneJsonObjects(doc))
+        {
+            if (NS::Obj::ObjectJsonClass(entry) == "Player")
+            {
+                expectEveryFieldRead(entry, sceneName);
+            }
+        }
+    }
 }

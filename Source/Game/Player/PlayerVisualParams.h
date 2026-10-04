@@ -5,7 +5,7 @@
 
 namespace NS::Game::Level
 {
-    //! ロックオンの枠の見た目の調整値。PlayerParams が欄として持ち、TargetMarker が読む
+    //! ロックオンの枠の見た目の調整値。TargetMarker が欄として持つ
     struct TargetMarkerDesc
     {
         NS::Core::Vector3 color{245.0f / 255.0f, 247.0f / 255.0f, 1.0f};
@@ -31,7 +31,7 @@ namespace NS::Game::Level
         float outlineAlpha = 0.6f;
     };
 
-    //! 突進の矢印の見た目の調整値。PlayerParams が欄として持ち、SlamArrow が読む
+    //! 突進の矢印の見た目の調整値。SlamArrow が欄として持つ
     struct SlamArrowDesc
     {
         int growFrames = 10;

@@ -445,16 +445,6 @@ namespace NS::Game::Level
     // このフレームの狙いの線と狙う相手を控えた後に読む
     SlamArrow::SlamArrow() noexcept : NS::Obj::Component() {}
 
-    const SlamArrowDesc& SlamArrow::Tuning() const noexcept
-    {
-        if (const ::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
-        {
-            return ownerPlayer->Params().m_slamArrowDesc;
-        }
-        static const SlamArrowDesc defaults;
-        return defaults;
-    }
-
     void SlamArrow::OnStart()
     {
         NS::Obj::Actor* owner = Owner();
@@ -525,7 +515,7 @@ namespace NS::Game::Level
         state.overcharge01 = m_player->ChargeJudge().Overcharge01();
 
         SlamArrowShape shape{};
-        if (!BuildSlamArrow(state, Tuning(), shape))
+        if (!BuildSlamArrow(state, m_desc, shape))
         {
             return;
         }
@@ -548,7 +538,7 @@ namespace NS::Game::Level
         // 接地して水平に放つ玉は床の上を転がる。段を下りた先と落ちる所には今までどおり貼らない
         if (state.line.grounded && !(state.line.launchVerticalSpeed > 0.0f))
         {
-            PlaceSlamArrowOnGround(probe, Tuning().groundLift, shape);
+            PlaceSlamArrowOnGround(probe, m_desc.groundLift, shape);
         }
         else if (const ::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
         {
@@ -561,7 +551,7 @@ namespace NS::Game::Level
                                                     .grounded = state.line.grounded};
             // 線の始まりは根。玉の中心は持ち主の SlamBallAt が決める
             const float ballCenterHeight = ownerPlayer->SlamBallAt(state.line.origin).center.y;
-            PlaceSlamArrowOnPath(probe, path, ballCenterHeight, Tuning().groundLift, shape);
+            PlaceSlamArrowOnPath(probe, path, ballCenterHeight, m_desc.groundLift, shape);
         }
         m_shown = std::move(shape);
         m_hasShown = true;
@@ -575,15 +565,15 @@ namespace NS::Game::Level
         }
         // 帯の板は絵の横幅ぶん広く置き、明るい縁の外側を玉の通る幅の端に合わせる
         const float bandPlateWidth = m_shown.bandWidth / k_BandTextureSpan;
-        const PlateLook bandLook{.edgeAlpha = Tuning().bandEdgeAlpha,
-                                 .fillAlpha = Tuning().bandFillAlpha,
-                                 .plainEdgeAlpha = Tuning().plainBandEdgeAlpha,
-                                 .plainFillAlpha = Tuning().plainBandFillAlpha,
+        const PlateLook bandLook{.edgeAlpha = m_desc.bandEdgeAlpha,
+                                 .fillAlpha = m_desc.bandFillAlpha,
+                                 .plainEdgeAlpha = m_desc.plainBandEdgeAlpha,
+                                 .plainFillAlpha = m_desc.plainBandFillAlpha,
                                  .cutUnderHead = true};
         for (const SlamArrowPiece& piece : m_shown.band)
         {
             out.push_back(MakeDrawItem(
-                m_mesh, m_bandMaterial, MakeConstants(context, m_shown, Tuning(), piece, bandPlateWidth, bandLook)));
+                m_mesh, m_bandMaterial, MakeConstants(context, m_shown, m_desc, piece, bandPlateWidth, bandLook)));
         }
         if (!m_shown.hasHead)
         {
@@ -602,23 +592,23 @@ namespace NS::Game::Level
                                        .alongFar = m_shown.head.alongFar + lengthMargin,
                                        .height = m_shown.head.height - slope * lengthMargin,
                                        .rise = m_shown.head.rise + slope * lengthMargin * 2.0f};
-        const PlateLook headLook{.edgeAlpha = Tuning().headEdgeAlpha,
-                                 .fillAlpha = Tuning().headFillAlpha,
-                                 .plainEdgeAlpha = Tuning().plainHeadEdgeAlpha,
-                                 .plainFillAlpha = Tuning().plainHeadFillAlpha,
+        const PlateLook headLook{.edgeAlpha = m_desc.headEdgeAlpha,
+                                 .fillAlpha = m_desc.headFillAlpha,
+                                 .plainEdgeAlpha = m_desc.plainHeadEdgeAlpha,
+                                 .plainFillAlpha = m_desc.plainHeadFillAlpha,
                                  .cutUnderHead = false};
-        const float headPlateWidth = Tuning().headWidth / k_HeadTextureSpan;
+        const float headPlateWidth = m_desc.headWidth / k_HeadTextureSpan;
         out.push_back(MakeDrawItem(
-            m_mesh, m_headMaterial, MakeConstants(context, m_shown, Tuning(), headPlate, headPlateWidth, headLook)));
+            m_mesh, m_headMaterial, MakeConstants(context, m_shown, m_desc, headPlate, headPlateWidth, headLook)));
         // 隠れた所だけへ薄く描く 2 枚目。高い相手へ反った矢印の先は相手の体の下や自機の玉の後ろに入って隠れる
-        const float occluded = Tuning().occludedHeadAlpha;
+        const float occluded = m_desc.occludedHeadAlpha;
         const PlateLook occludedLook{.edgeAlpha = headLook.edgeAlpha * occluded,
                                      .fillAlpha = headLook.fillAlpha * occluded,
                                      .plainEdgeAlpha = headLook.plainEdgeAlpha * occluded,
                                      .plainFillAlpha = headLook.plainFillAlpha * occluded,
                                      .cutUnderHead = false};
         GroundArrowConstants occludedConstants =
-            MakeConstants(context, m_shown, Tuning(), headPlate, headPlateWidth, occludedLook);
+            MakeConstants(context, m_shown, m_desc, headPlate, headPlateWidth, occludedLook);
         occludedConstants.darkColor.w *= occluded;
         NS::Gfx::DrawItem occludedItem = MakeDrawItem(m_mesh, m_headMaterial, occludedConstants);
         occludedItem.occludedOnly = true;
@@ -645,7 +635,7 @@ namespace NS::Game::Level
         // 線の高さと板の一番高い端の高い方まで。矢じりは描く時に余白ぶん傾きのまま伸びるので、傾きの差ぶん広げる
         const float reach = m_shown.tip + m_shown.headDepth;
         const float halfWidth =
-            std::max(m_shown.bandWidth / k_BandTextureSpan, Tuning().headWidth / k_HeadTextureSpan) * 0.5f;
+            std::max(m_shown.bandWidth / k_BandTextureSpan, m_desc.headWidth / k_HeadTextureSpan) * 0.5f;
         const NS::Core::Vector3 reachEnd = m_shown.origin + m_shown.direction * reach;
         float lowest = m_shown.origin.y;
         float highest = m_shown.origin.y;
