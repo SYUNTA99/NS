@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
+#include <memory>
 #include <utility>
 
 namespace NS::Editor
@@ -350,41 +351,5 @@ namespace NS::Editor
         root["rollStart"] = impact.rollStart;
         root["padStart"] = Json{impact.padStart.left, impact.padStart.right};
         return root.dump(-1, ' ', false, Json::error_handler_t::replace);
-    }
-
-    std::unique_ptr<NS::Obj::Scene> BuildHitPreviewSceneAt(const nlohmann::json& snapshot,
-                                                           const HitPreviewResult& result,
-                                                           int frameIndex,
-                                                           const HitPreviewWorld& world)
-    {
-        const NS::Platform::ScopedNeutralInput neutral;
-        Player* player = nullptr;
-        std::unique_ptr<NS::Obj::Scene> scene = StartRun(snapshot, result, world, player);
-        if (player == nullptr)
-        {
-            return nullptr;
-        }
-        const int last = std::max(static_cast<int>(result.frames.size()) - 1, 0);
-        const int steps = std::clamp(frameIndex, 0, last) + 1;
-        for (int step = 0; step < steps; ++step)
-        {
-            scene->OnUpdate();
-        }
-        return scene;
-    }
-
-    void StepHitPreviewScene(NS::Obj::Scene& scene, int steps)
-    {
-        if (steps <= 0)
-        {
-            return;
-        }
-        const NS::Platform::ScopedNeutralInput neutral;
-        NS::Platform::Gamepad& pad = NS::Platform::Input::Get().Gamepad();
-        for (int step = 0; step < steps; ++step)
-        {
-            pad.StopVibration();
-            scene.OnUpdate();
-        }
     }
 } // namespace NS::Editor

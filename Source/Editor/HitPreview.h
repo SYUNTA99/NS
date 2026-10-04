@@ -10,14 +10,12 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <vector>
 
 namespace NS::Obj
 {
     class AssetManager;
-    class Scene;
 } // namespace NS::Obj
 
 namespace NS::Gfx
@@ -99,24 +97,4 @@ namespace NS::Editor
     //! @param[in] result RunHitPreview の結果
     //! @return 改行を含まない 1 行。当たらなかった結果は空の文字列
     [[nodiscard]] std::string HitPreviewHitLine(const HitPreviewResult& result);
-
-    //! @brief 下見の選んだフレームの場面を、写しから組み直して進める
-    //! @details 描くために 1 枚ぶんの場面を作る。RunHitPreview と同じ置き直しと頼みから frameIndex + 1 歩進める。
-    //! 組む・進める間は入力を中立にする。返した場面を壊す時、自機の HitReaction が片付けでパッドへ 0 を書くので、
-    //! 手元のパッドへ書かせないなら NS::Platform::ScopedNeutralInput の中で壊す
-    //! @param[in] snapshot RunHitPreview に渡した写し
-    //! @param[in] result RunHitPreview の結果
-    //! @param[in] frameIndex result.frames の添字。範囲の外は端へ寄せる
-    //! @param[in] world 写しの場面に渡す資産と描き手
-    //! @return 進めた場面。自機が居ない場合は nullptr
-    [[nodiscard]] std::unique_ptr<NS::Obj::Scene> BuildHitPreviewSceneAt(const nlohmann::json& snapshot,
-                                                                         const HitPreviewResult& result,
-                                                                         int frameIndex,
-                                                                         const HitPreviewWorld& world = {});
-
-    //! @brief BuildHitPreviewSceneAt で組んだ場面を steps 歩進める
-    //! @details 下見と同じく入力を中立にし、1 歩ごとに書かれなかった振動を 0 に戻す。再生で前へ進む時に組み直さずに済む
-    //! @param[in,out] scene 進める場面
-    //! @param[in] steps 進める歩数。0 以下なら何もしない
-    void StepHitPreviewScene(NS::Obj::Scene& scene, int steps);
 } // namespace NS::Editor

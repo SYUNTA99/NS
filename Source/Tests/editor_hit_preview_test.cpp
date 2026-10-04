@@ -168,7 +168,7 @@ TEST(EditorHitPreview, RecordsTheFrameEachRowStarted)
     EXPECT_FALSE(result.frames.back().rebounding);
 }
 
-// 下見は写しの中で閉じ、同じ条件なら毎回同じ記録になる。選んだフレームの場面も記録と同じ所に居る
+// 下見は写しの中で閉じ、同じ条件なら毎回同じ記録になる
 TEST(EditorHitPreview, LeavesTheEditedSceneAloneAndRepeats)
 {
     const ScopedHitTimelineDirectory directory("EditorHitPreviewRepeat");
@@ -191,13 +191,6 @@ TEST(EditorHitPreview, LeavesTheEditedSceneAloneAndRepeats)
         EXPECT_TRUE(second.frames[i].playerPosition == first.frames[i].playerPosition);
         EXPECT_EQ(second.frames[i].startedRows, first.frames[i].startedRows);
     }
-
-    const int picked = first.detectionIndex + 2;
-    std::unique_ptr<NS::Obj::Scene> scene = NS::Editor::BuildHitPreviewSceneAt(before, first, picked, assets.World());
-    ASSERT_NE(scene, nullptr);
-    const NS::Obj::Actor* player = scene->Objects().FindByObjectId(1);
-    ASSERT_NE(player, nullptr);
-    EXPECT_TRUE(player->Root().Position() == first.frames[static_cast<std::size_t>(picked)].playerPosition);
 }
 
 // 選んだ相手が場面に居ない時は、当てずにエラーを返す
