@@ -85,13 +85,16 @@ namespace NS::Editor
                               const NS::Obj::FieldDesc& field) noexcept;
 
     //! @brief コンポーネントのフィールドをImGuiウィジェットとして描画する
+    //! @details 欄の見出し (ReflectionInfo::groups) ごとに畳める行を挟む
     //! @param[in,out] comp 編集対象のコンポーネント
     //! @param[in] refOptions 参照先候補のリスト。指定しない場合は数値入力となる
     //! @param[in] defaults 既定の部品。渡すと既定と違う欄に上書きの印が付き、戻すか種類の既定にするかを選べる
+    //! @param[in] filter 欄の名前の検索語。空でない間は名前に含む欄と、その欄を持つ見出しだけを出す。nullptr は空
     //! @return 値の編集有無と、編集の開始・確定フレームを集約した結果
     [[nodiscard]] ComponentEditResult DrawReflectedComponent(NS::Obj::Component& comp,
                                                              std::span<const ObjectRefOption> refOptions = {},
-                                                             const NS::Obj::Component* defaults = nullptr) noexcept;
+                                                             const NS::Obj::Component* defaults = nullptr,
+                                                             const char* filter = nullptr) noexcept;
 
     //! @brief 部品でない値型の 1 フレームの編集で起きた事
     struct ValueEditResult
@@ -116,7 +119,8 @@ namespace NS::Editor
 
     //! @brief 曲線のグラフの横軸の範囲を決める
     //! @details 点の x が 0〜1 に収まる曲線は 0〜1 のまま (部品の欄の曲線は割合を横軸にする)。外へ出る曲線
-    //! (横軸がフレーム数のタイムラインの事象の曲線) は点を全部含め、右へ 1 割の余白を足して点を右へ引き伸ばせるようにする
+    //! (横軸がフレーム数のタイムラインの事象の曲線) は点を全部含め、右へ 1
+    //! 割の余白を足して点を右へ引き伸ばせるようにする
     //! @param[in] curve 描く曲線
     //! @param[out] outMin 左端の x
     //! @param[out] outMax 右端の x。outMin より大きい

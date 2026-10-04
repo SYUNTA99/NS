@@ -195,6 +195,9 @@ namespace NS::Editor
 
             // 部品はクラスが決めるので、ここでは値だけを変える。足し引きはできない
 
+            ImGui::SetNextItemWidth(-1.0f);
+            ImGui::InputTextWithHint("##fieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
+
             NS::Editor::ComponentEditResult componentEdit{};
             for (std::size_t k = 0; k < components.size(); ++k)
             {
@@ -241,7 +244,7 @@ namespace NS::Editor
                         // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
                         const NS::Obj::Component* baseline = m_defaults.Find(*live);
                         const NS::Editor::ComponentEditResult r =
-                            NS::Editor::DrawReflectedComponent(*live, refOptions, baseline);
+                            NS::Editor::DrawReflectedComponent(*live, refOptions, baseline, m_fieldFilter);
                         componentEdit.activated |= r.activated;
                         componentEdit.committed |= r.committed;
                         componentEdit.changed |= r.changed;

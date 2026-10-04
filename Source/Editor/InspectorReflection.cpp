@@ -928,11 +928,91 @@ namespace NS::Editor
             result.committed |= ImGui::IsItemDeactivated();
             return result;
         }
+
+        // 見出し groupIndex が束ねる欄の終わり (含まない添字)。次の見出しの始まりか、欄の数
+        std::size_t GroupEnd(const NS::Obj::ReflectionInfo& info, std::size_t groupIndex) noexcept
+        {
+            if (groupIndex + 1 < info.groupCount)
+            {
+                return info.groups[groupIndex + 1].firstField;
+            }
+            return info.fieldCount;
+        }
+
+        // 見出しの行を出し、下の欄を出すかを返す。検索中は畳めない行にして、一致した欄が無ければ行ごと出さない
+        // 検索で畳んだ状態を書き換えると、検索を消した時に開け閉めが崩れる
+        bool DrawGroupRow(const NS::Obj::ReflectionInfo& info,
+                          std::size_t groupIndex,
+                          const char* filter,
+                          bool filtering) noexcept
+        {
+            const NS::Obj::FieldGroup& group = info.groups[groupIndex];
+            const std::size_t end = GroupEnd(info, groupIndex);
+            if (filtering)
+            {
+                bool anyMatch = false;
+                for (std::size_t i = group.firstField; i < end; ++i)
+                {
+                    if (NameMatches(info.fields[i].name, filter))
+                    {
+                        anyMatch = true;
+                        break;
+                    }
+                }
+                if (!anyMatch)
+                {
+                    return false;
+                }
+            }
+            ImGui::TableNextRow();
+            ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_TableHeaderBg));
+            ImGui::TableSetColumnIndex(0);
+            if (filtering)
+            {
+                ImGui::TextDisabled("%s", group.name);
+                return true;
+            }
+            const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAllColumns |
+                                             ImGuiTreeNodeFlags_NoTreePushOnOpen;
+            return ImGui::TreeNodeEx(group.name, flags, "%s (%zu)", group.name, end - group.firstField);
+        }
+
+        // 欄を宣言の並びで回し、見出しの始まる所で見出しの行を挟む。畳んだ見出しの欄と、検索に外れた欄は飛ばす
+        // 欄を持たない見出しは出さない。drawRow は出す欄の添字を受け取って 1 行を描く
+        template <class DrawRow>
+        void DrawGroupedRows(const NS::Obj::ReflectionInfo& info, const char* filter, DrawRow&& drawRow) noexcept
+        {
+            const bool filtering = filter != nullptr && filter[0] != '\0';
+            std::size_t nextGroup = 0;
+            bool groupOpen = true;
+            for (std::size_t i = 0; i < info.fieldCount; ++i)
+            {
+                while (nextGroup < info.groupCount && info.groups[nextGroup].firstField <= i)
+                {
+                    const std::size_t groupIndex = nextGroup;
+                    ++nextGroup;
+                    if (info.groups[groupIndex].firstField < GroupEnd(info, groupIndex))
+                    {
+                        groupOpen = DrawGroupRow(info, groupIndex, filter, filtering);
+                    }
+                }
+                if (!groupOpen)
+                {
+                    continue;
+                }
+                if (filtering && !NameMatches(info.fields[i].name, filter))
+                {
+                    continue;
+                }
+                drawRow(i);
+            }
+        }
     } // namespace
 
     ComponentEditResult DrawReflectedComponent(NS::Obj::Component& comp,
                                                std::span<const ObjectRefOption> refOptions,
-                                               const NS::Obj::Component* defaults) noexcept
+                                               const NS::Obj::Component* defaults,
+                                               const char* filter) noexcept
     {
         const NS::Obj::ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr || info->fieldCount == 0)
@@ -946,8 +1026,7 @@ namespace NS::Editor
 
         ComponentEditResult result;
         // リフレクションの欄を 1 つずつ ImGui ウィジェットへ落とす
-        for (std::size_t i = 0; i < info->fieldCount; ++i)
-        {
+        const auto drawRow = [&](std::size_t i) {
             const NS::Obj::FieldDesc& field = info->fields[i];
             const bool changed = FieldDiffersFromDefault(comp, defaults, field);
             const bool wasChanged = result.changed;
@@ -981,7 +1060,8 @@ namespace NS::Editor
                 result.promoteField = &field;
             }
             ImGui::PopID();
-        }
+        };
+        DrawGroupedRows(*info, filter, drawRow);
         EndFieldTable();
         return result;
     }
@@ -999,8 +1079,7 @@ namespace NS::Editor
             return ValueEditResult{};
         }
         ValueEditResult result;
-        for (std::size_t i = 0; i < info.fieldCount; ++i)
-        {
+        const auto drawRow = [&](std::size_t i) {
             const NS::Obj::FieldDesc& field = info.fields[i];
             ImGui::PushID(static_cast<int>(i));
             FieldRow(field.name);
@@ -1015,7 +1094,8 @@ namespace NS::Editor
             // 部品の行と値の幅を揃えるため、上書きの印の幅だけ空ける
             (void)OverrideButton(false, false);
             ImGui::PopID();
-        }
+        };
+        DrawGroupedRows(info, nullptr, drawRow);
         EndFieldTable();
         return result;
     }
@@ -1023,7 +1103,8 @@ namespace NS::Editor
 #else
     ComponentEditResult DrawReflectedComponent(NS::Obj::Component&,
                                                std::span<const ObjectRefOption>,
-                                               const NS::Obj::Component*) noexcept
+                                               const NS::Obj::Component*,
+                                               const char*) noexcept
     {
         return ComponentEditResult{};
     }
