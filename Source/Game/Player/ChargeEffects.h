@@ -19,7 +19,6 @@ namespace NS::Game::Level
 namespace NS::Game::Player
 {
     class PlayerAppearance;
-    class PlayerParams;
 
     //! @brief 自機の溜めと放しのエフェクトの層を出し、出すと決めた記録を持つ
     //! @details 押した・溜めに入った・溜めきった・放した・突進が終わった・当たりの止めが始まった、を同居する部品から
@@ -97,10 +96,18 @@ namespace NS::Game::Player
         //! @return 回転。水平の長さが 0 か有限でなければ回さない
         [[nodiscard]] static NS::Core::Quaternion YawToward(const NS::Core::Vector3& direction) noexcept;
 
-        NS_REFLECT_NONE(ChargeEffects, NS::Obj::Component)
+        NS_REFLECT_BEGIN(ChargeEffects, NS::Obj::Component)
+        NS_REFLECT_GROUP("放しの弾け")
+        NS_REFLECT_FIELD(m_tapBurstScale, "通常突進の弾けの大きさ")
+        NS_REFLECT_FIELD(m_fullBurstScaleGain, "溜めきりで足す弾けの大きさ")
+        NS_REFLECT_GROUP("紫の火花")
+        NS_REFLECT_FIELD(m_overchargeSparkCountMin, "紫の火花の数の始め")
+        NS_REFLECT_FIELD(m_overchargeSparkCountMax, "紫の火花の数の終わり")
+        NS_REFLECT_FIELD(m_overchargeSparkSpeedMin, "紫の火花の速さの始め")
+        NS_REFLECT_FIELD(m_overchargeSparkSpeedMax, "紫の火花の速さの終わり")
+        NS_REFLECT_END()
 
     private:
-        [[nodiscard]] const PlayerParams& Tuning() const noexcept;
         // 決めたフレームに消す層
         struct ScheduledStop
         {
@@ -137,6 +144,14 @@ namespace NS::Game::Player
         // 放しの弾けの輪・丸屋根・筋の大きさ。溜めきりで輪が半径 3.2 m まで広がる
         // 通常突進の 0.75 は輪が半径 2.4 m で、押した瞬間の丸まりの殻 (半径 1.2 m) の倍。0.4 (半径 1.3 m) は
         // 放した次のフレームの輪が殻と同じ大きさに見えた
+        float m_tapBurstScale = 0.75f;
+        float m_fullBurstScaleGain = 0.25f;
+        // 揺れが端へ来るたびにその側へ散らす火花の数と速さ (m/秒)。紫の深さで始めから終わりへ上げ、勝手に出る直前ほど
+        // バチバチを強くする。当たりの大きな外れの火花 (16 本・4 m/秒) より少なく遅い所から始め、終わりで並ぶ
+        int m_overchargeSparkCountMin = 4;
+        int m_overchargeSparkCountMax = 14;
+        float m_overchargeSparkSpeedMin = 2.5f;
+        float m_overchargeSparkSpeedMax = 5.0f;
 
         EffectLayerList m_layers;
         std::vector<ScheduledStop> m_scheduledStops;

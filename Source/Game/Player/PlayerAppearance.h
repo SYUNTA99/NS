@@ -26,7 +26,6 @@ namespace NS::Game::Level
 
 namespace NS::Game::Player
 {
-    class PlayerParams;
     struct MissTumble;
 
     //! @brief 自機の立ち姿と玉の 2 つの見た目を持ち、丸まる時に同居する Model の mesh を持ち替える
@@ -88,10 +87,25 @@ namespace NS::Game::Player
         //! @return 直前の OnUpdate で回した軸。止めの間は止まる前の軸、立ち姿では (1, 0, 0)
         [[nodiscard]] NS::Core::Vector3 SpinAxis() const noexcept { return m_spinAxis; }
 
-        NS_REFLECT_NONE(PlayerAppearance, NS::Obj::Component)
+        NS_REFLECT_BEGIN(PlayerAppearance, NS::Obj::Component)
+        NS_REFLECT_GROUP("姿")
+        NS_REFLECT_FIELD(m_standingMeshRef, "立ち姿のメッシュ")
+        NS_REFLECT_FIELD(m_ballMeshRef, "玉のメッシュ")
+        NS_REFLECT_GROUP("溜めの回転")
+        NS_REFLECT_FIELD(m_emptyChargeSpinSpeed, "溜め 0 の回る速さ")
+        NS_REFLECT_FIELD(m_fullChargeSpinSpeed, "溜めきりの回る速さ")
+        NS_REFLECT_GROUP("外れの回り方")
+        NS_REFLECT_FIELD(m_missTwistTurnsPerSecond, "外れの縁でのねじれの回転数")
+        NS_REFLECT_FIELD(m_missSpinCarryRatio, "外れで当たる前の回転を引き継ぐ割合")
+        NS_REFLECT_FIELD(m_missSpinBlendSteps, "外れの回転を寄せるフレーム数")
+        NS_REFLECT_FIELD(m_missWobbleDegrees, "外れの軸のぶれの角度")
+        NS_REFLECT_FIELD(m_missWobbleTurnsPerSecond, "外れの軸のぶれの速さ")
+        NS_REFLECT_GROUP("着地の潰れ")
+        NS_REFLECT_FIELD(m_landingSquash, "着地の潰れ")
+        NS_REFLECT_FIELD(m_landingSquashRecoverSteps, "着地の潰れを戻すフレーム数")
+        NS_REFLECT_END()
 
     private:
-        [[nodiscard]] const PlayerParams& Tuning() const noexcept;
         // 今の姿の mesh を同居する Model へ差す
         void ShowCurrentLook() noexcept;
         // 玉の回転を 1 フレーム進め、同居する Model の局所の回転へ書く
@@ -104,6 +118,8 @@ namespace NS::Game::Player
         void WriteDrawScale() noexcept;
 
         // 保存・編集される参照文字列。空は仮の形。ResolveAssets が実体を当てる
+        std::string m_standingMeshRef{};
+        std::string m_ballMeshRef{};
         NS::Gfx::Mesh* m_standingMesh = nullptr; // AssetManager 所有
         NS::Gfx::Mesh* m_ballMesh = nullptr;     // AssetManager 所有
         bool m_curled = false;
@@ -128,5 +144,21 @@ namespace NS::Game::Player
         int m_landingSquashRemaining = 0;       // 着地の潰れを戻し切るまでの残りフレーム数。0 は潰れていない
         float m_landingSquashVertical = 1.0f;   // 着地の潰れの今の縦の倍率。潰れていない間は 1
         bool m_drawScaleRejected = false;       // 直前に組んだ倍率を Model が断ったか。知らせを 1 回に絞る
+
+        float m_emptyChargeSpinSpeed = 360.0f; // 溜め 0 の玉が回る速さ。度/秒
+        float m_fullChargeSpinSpeed = 1440.0f; // 溜めきりの玉が回る速さ。度/秒
+        // 外れの玉は止まりかけのコマのように、かすった所の摩擦の軸でねじれ、その軸自体が傾いてぐらぐら回る
+        // ねじれは縁で威力 1 の時の毎秒の回転数。威力と端の近さを掛ける
+        float m_missTwistTurnsPerSecond = 2.0f;
+        // 溜めて外したほど大きく振り回される。突進の回転をこの割合だけ残してねじれに足す
+        float m_missSpinCarryRatio = 0.4f;
+        // 突進の回転からこのフレーム数で寄せる。急に変えると絵が飛ぶ
+        int m_missSpinBlendSteps = 6;
+        // 軸がねじれの軸から傾く角度 (度) と、傾いた軸が回る速さ (回/秒)。ぐらつきは気持ち悪さに寄るので
+        // かすった感じが残る 10 度に抑える
+        float m_missWobbleDegrees = 10.0f;
+        float m_missWobbleTurnsPerSecond = 1.5f;
+        float m_landingSquash = 0.8f;        // 反動のまま着地したフレームの縦の倍率
+        int m_landingSquashRecoverSteps = 6; // 着地の潰れを 1 へ戻すまでのフレーム数
     };
 } // namespace NS::Game::Player

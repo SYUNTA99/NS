@@ -21,8 +21,6 @@ namespace NS::Game::Level
 
 namespace NS::Game::Player
 {
-    class PlayerParams;
-
     //! @brief 核が最大近くに留まる間の大きさの動かし方
     enum class CoreHoldMotion
     {
@@ -159,15 +157,52 @@ namespace NS::Game::Player
                                                                 const NS::Core::Vector3& slamDirection) noexcept;
 
         // 当たりの層の大きさと量は当てた瞬間の手触りそのもの。Inspector で触って詰められるよう公開する
-        NS_REFLECT_NONE(ImpactEffects, NS::Obj::Component)
+        NS_REFLECT_BEGIN(ImpactEffects, NS::Obj::Component)
+        NS_REFLECT_GROUP("核")
+        NS_REFLECT_FIELD(m_coreDiameterBase, "核の直径の基準")
+        NS_REFLECT_FIELD(m_coreDiameterPerPower, "核の直径の威力あたり")
+        NS_REFLECT_FIELD(m_coreDiameterMax, "核の直径の上限")
+        NS_REFLECT_FIELD(m_coreBirthScale, "核の出始めの大きさ")
+        NS_REFLECT_GROUP("光条")
+        NS_REFLECT_FIELD(m_streakLengthBase, "光条の長さの基準")
+        NS_REFLECT_FIELD(m_streakLengthPerPower, "光条の長さの威力あたり")
+        NS_REFLECT_FIELD(m_streakEndThickness, "光条の細りきった太さ")
+        NS_REFLECT_GROUP("輪")
+        NS_REFLECT_FIELD(m_ringRadiusBase, "輪の半径の基準")
+        NS_REFLECT_FIELD(m_ringRadiusPerPower, "輪の半径の威力あたり")
+        NS_REFLECT_FIELD(m_ringStartRadius, "輪の出始めの半径")
+        NS_REFLECT_FIELD(m_ringFaceCamera, "輪をカメラへ起こす割合")
+        NS_REFLECT_GROUP("火花と火の粉")
+        NS_REFLECT_FIELD(m_sparkCountMin, "火花の数の下限")
+        NS_REFLECT_FIELD(m_sparkCountMax, "火花の数の上限")
+        NS_REFLECT_FIELD(m_sparkSpeedBase, "火花の速さの基準")
+        NS_REFLECT_FIELD(m_sparkSpeedPerLaunch, "火花の速さの飛ばしの比あたり")
+        NS_REFLECT_FIELD(m_wideSparkCount, "大きな外れの火花の数")
+        NS_REFLECT_FIELD(m_wideSparkSpeed, "大きな外れの火花の速さ")
+        NS_REFLECT_FIELD(m_wideSparkScale, "大きな外れの火花の大きさ")
+        NS_REFLECT_FIELD(m_emberShare, "火の粉の数の火花あたり")
+        NS_REFLECT_GROUP("照り")
+        NS_REFLECT_FIELD(m_glowDiameterBase, "照りの直径の基準")
+        NS_REFLECT_FIELD(m_glowDiameterPerPower, "照りの直径の威力あたり")
+        NS_REFLECT_GROUP("弾かれ線")
+        NS_REFLECT_FIELD(m_recoilCount, "弾かれ線の本数")
+        NS_REFLECT_FIELD(m_wideRecoilCount, "大きな外れの弾かれ線の本数")
+        NS_REFLECT_FIELD(m_recoilLengthBase, "弾かれ線の長さの基準")
+        NS_REFLECT_FIELD(m_recoilLengthPerRebound, "弾かれ線の長さの反動の比あたり")
+        NS_REFLECT_GROUP("当たりの粉")
+        NS_REFLECT_FIELD(m_dustCountBase, "当たりの粉の数の基準")
+        NS_REFLECT_FIELD(m_dustCountMassLimit, "当たりの粉の数を増やす質量の上限")
+        NS_REFLECT_FIELD(m_dustScaleBase, "当たりの粉の大きさの基準")
+        NS_REFLECT_FIELD(m_dustScalePerRootMass, "当たりの粉の大きさの質量の平方根あたり")
+        NS_REFLECT_FIELD(m_dustScalePerPower, "当たりの粉の大きさの威力あたりの伸び")
+        NS_REFLECT_GROUP("着地の粉")
+        NS_REFLECT_FIELD(m_landDustRadiusBase, "着地の粉の半径の基準")
+        NS_REFLECT_FIELD(m_landDustRadiusPerFallSpeed, "着地の粉の半径の落ちる速さあたり")
+        NS_REFLECT_END()
 
     private:
-        [[nodiscard]] const PlayerParams& Tuning() const noexcept;
         // 段で変わる層の形を段ごとの 1 行から埋める。段を足したら行を足す
-        static void ApplyTierRow(ImpactShape& shape,
-                                 const NS::Game::Level::ImpactRecord& impact,
-                                 float power,
-                                 const PlayerParams& tuning) noexcept;
+        void ApplyTierRow(ImpactShape& shape, const NS::Game::Level::ImpactRecord& impact, float power) const noexcept;
         // 当たりの絵の頭から数えた当たり 1 回の段取り。層の番号 0 はまだ出していない印
         struct HitPlan
         {
@@ -239,5 +274,41 @@ namespace NS::Game::Player
         std::vector<std::uint32_t> m_dusts; // 出した粉。次の当たりの絵の頭で親を止める
         bool m_hitRequested = false;        // 事象が置いた、当たりの絵を始める頼み。OnUpdate が読んで消す
         bool m_flightRequested = false;     // 事象が置いた、飛びの絵を始める頼み。OnUpdate が読んで消す
+
+        float m_coreDiameterBase = 0.3f;
+        float m_coreDiameterPerPower = 0.2f;
+        float m_coreDiameterMax = 0.7f;
+        float m_coreBirthScale = 0.5f;
+        float m_streakLengthBase = 4.0f;
+        float m_streakLengthPerPower = 2.0f;
+        float m_streakEndThickness = 0.3f;
+        float m_ringRadiusBase = 0.5f;
+        float m_ringRadiusPerPower = 0.6f;
+        float m_ringStartRadius = 0.3f;
+        float m_ringFaceCamera = 1.0f;
+        int m_sparkCountMin = 10;
+        int m_sparkCountMax = 30;
+        float m_sparkSpeedBase = 6.0f;
+        float m_sparkSpeedPerLaunch = 3.0f;
+        int m_wideSparkCount = 16;
+        float m_wideSparkSpeed = 4.0f;
+        // 外れの火花の絵の全体に掛ける大きさ。粒の大きさ・散る範囲・速さが一緒に伸びる
+        // 本人「HTML のやつの 3 倍ぐらい大きくしてほしい」から 3。1 では後ろからのカメラで自機の玉の陰に入った
+        float m_wideSparkScale = 3.0f;
+        float m_emberShare = 7.0f;
+        float m_glowDiameterBase = 2.0f;
+        float m_glowDiameterPerPower = 1.6f;
+        int m_recoilCount = 8;
+        // 外れは弾かれた手応えが来ない「すかし」。弾かれ線は弾き返された印に見えるので出さない
+        int m_wideRecoilCount = 0;
+        float m_recoilLengthBase = 0.6f;
+        float m_recoilLengthPerRebound = 0.5f;
+        int m_dustCountBase = 4;
+        float m_dustCountMassLimit = 4.0f;
+        float m_dustScaleBase = 0.8f;
+        float m_dustScalePerRootMass = 0.3f;
+        float m_dustScalePerPower = 0.5f;
+        float m_landDustRadiusBase = 1.2f;
+        float m_landDustRadiusPerFallSpeed = 0.04f;
     };
 } // namespace NS::Game::Player

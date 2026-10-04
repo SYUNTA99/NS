@@ -105,11 +105,32 @@ namespace NS::Game::Level
                                            NS::Core::Size2D targetSize,
                                            LockOnFrameShape& outFrame) const;
 
-        NS_REFLECT_NONE(TargetMarker, NS::Obj::OverlayRenderer)
+        NS_REFLECT_BEGIN(TargetMarker, NS::Obj::OverlayRenderer)
+        NS_REFLECT_GROUP("印")
+        NS_REFLECT_FIELD(m_desc.color, "印の色")
+        NS_REFLECT_FIELD(m_desc.lineThickness, "印の太さ")
+        NS_REFLECT_FIELD(m_desc.armRatio, "印の腕の割合")
+        NS_REFLECT_GROUP("枠")
+        NS_REFLECT_FIELD(m_desc.frameGap, "枠と輪郭の間")
+        NS_REFLECT_FIELD(m_desc.frameMinSide, "枠の一辺の下限")
+        NS_REFLECT_FIELD(m_desc.frameAlpha, "枠の不透明度")
+        NS_REFLECT_FIELD(m_desc.outlineColor, "枠の縁の色")
+        NS_REFLECT_FIELD(m_desc.outlineAlpha, "枠の縁の不透明度")
+        NS_REFLECT_GROUP("枠が出る時")
+        NS_REFLECT_FIELD(m_desc.appearScale, "枠が出る時の倍率")
+        NS_REFLECT_FIELD(m_desc.appearMaxSide, "枠が出る時の一辺の上限")
+        NS_REFLECT_FIELD(m_desc.appearFrames, "枠が縮むフレーム数")
+        NS_REFLECT_FIELD(m_desc.appearCurve, "枠が縮む進みの曲線")
+        NS_REFLECT_FIELD(m_desc.appearColor, "枠が出る時の色")
+        NS_REFLECT_FIELD(m_desc.appearAlpha, "枠が出る時の不透明度")
+        NS_REFLECT_GROUP("外れた時")
+        NS_REFLECT_FIELD(m_desc.lostScale, "外れた時の枠の倍率")
+        NS_REFLECT_FIELD(m_desc.lostFrames, "外れた時の枠のフレーム数")
+        NS_REFLECT_END()
 
     private:
-        [[nodiscard]] const TargetMarkerDesc& Tuning() const noexcept;
-        SlamLineTarget m_shown{}; // 示す相手の予測。m_hasShown が偽の間は読まない
+        TargetMarkerDesc m_desc{}; // 枠の見た目の調整値
+        SlamLineTarget m_shown{};  // 示す相手の予測。m_hasShown が偽の間は読まない
         bool m_hasShown = false;
         int m_framesSinceCapture = 0;  // 外れた後は外れたフレームの値で止める
         NS::Core::AABB m_lostBounds{}; // 外れた相手の外接箱。m_framesSinceLost が負の間は読まない

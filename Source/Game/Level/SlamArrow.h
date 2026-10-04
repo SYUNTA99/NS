@@ -169,10 +169,39 @@ namespace NS::Game::Level
         //! @return 控えがある場合 true、それ以外の場合は false
         [[nodiscard]] bool TryGetShownArrow(SlamArrowShape& outShape) const;
 
-        NS_REFLECT_NONE(SlamArrow, NS::Obj::Component)
+        NS_REFLECT_BEGIN(SlamArrow, NS::Obj::Component)
+        NS_REFLECT_GROUP("形")
+        NS_REFLECT_FIELD(m_desc.growFrames, "矢印が伸びるフレーム数")
+        NS_REFLECT_FIELD(m_desc.groundLift, "矢印を浮かせる高さ")
+        NS_REFLECT_FIELD(m_desc.headWidth, "矢じりの幅")
+        NS_REFLECT_FIELD(m_desc.headDepthRatio, "矢じりの奥行きの割合")
+        NS_REFLECT_FIELD(m_desc.headDepthMin, "矢じりの奥行きの下限")
+        NS_REFLECT_FIELD(m_desc.headDepthMax, "矢じりの奥行きの上限")
+        NS_REFLECT_FIELD(m_desc.startFade, "帯の始まりのぼかし")
+        NS_REFLECT_FIELD(m_desc.frontSoftness, "色の境目のぼかし")
+        NS_REFLECT_GROUP("色")
+        NS_REFLECT_FIELD(m_desc.lateStageFrom, "後半の色へ変わる溜め量")
+        NS_REFLECT_FIELD(m_desc.earlyColor, "溜めの前半の色")
+        NS_REFLECT_FIELD(m_desc.lateColor, "溜めの後半の色")
+        NS_REFLECT_FIELD(m_desc.fullColor, "溜めきりの色")
+        NS_REFLECT_FIELD(m_desc.overchargeColor, "溜めすぎの色")
+        NS_REFLECT_FIELD(m_desc.plainColor, "色の付いていない部分の色")
+        NS_REFLECT_FIELD(m_desc.darkColor, "矢印の暗い縁の色")
+        NS_REFLECT_GROUP("不透明度")
+        NS_REFLECT_FIELD(m_desc.darkAlpha, "矢印の暗い縁の不透明度")
+        NS_REFLECT_FIELD(m_desc.bandEdgeAlpha, "帯の明るい縁の不透明度")
+        NS_REFLECT_FIELD(m_desc.bandFillAlpha, "帯の塗りの不透明度")
+        NS_REFLECT_FIELD(m_desc.headEdgeAlpha, "矢じりの明るい縁の不透明度")
+        NS_REFLECT_FIELD(m_desc.headFillAlpha, "矢じりの塗りの不透明度")
+        NS_REFLECT_FIELD(m_desc.plainBandEdgeAlpha, "色の無い帯の明るい縁の不透明度")
+        NS_REFLECT_FIELD(m_desc.plainBandFillAlpha, "色の無い帯の塗りの不透明度")
+        NS_REFLECT_FIELD(m_desc.plainHeadEdgeAlpha, "色の無い矢じりの明るい縁の不透明度")
+        NS_REFLECT_FIELD(m_desc.plainHeadFillAlpha, "色の無い矢じりの塗りの不透明度")
+        NS_REFLECT_FIELD(m_desc.occludedHeadAlpha, "隠れた矢じりの不透明度")
+        NS_REFLECT_END()
 
     private:
-        [[nodiscard]] const SlamArrowDesc& Tuning() const noexcept;
+        SlamArrowDesc m_desc{};   // 矢印の見た目の調整値
         SlamArrowShape m_shown{}; // 控えた矢印。m_hasShown が偽の間は読まない
         bool m_hasShown = false;
         int m_framesSinceShown = -1;                   // 矢印を出していない間は負

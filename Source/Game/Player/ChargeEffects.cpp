@@ -1,6 +1,5 @@
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player.h"
-#include "Game/Player/PlayerParams.h"
 
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
@@ -40,16 +39,6 @@ namespace NS::Game::Player
     } // namespace
 
     ChargeEffects::ChargeEffects() noexcept : NS::Obj::Component() {}
-
-    const PlayerParams& ChargeEffects::Tuning() const noexcept
-    {
-        if (const ::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
-        {
-            return ownerPlayer->Params();
-        }
-        static const PlayerParams defaults;
-        return defaults;
-    }
 
     void ChargeEffects::OnStart()
     {
@@ -166,7 +155,7 @@ namespace NS::Game::Player
         {
             charge = std::clamp(charge01, 0.0f, 1.0f);
         }
-        return Tuning().m_tapBurstScale + Tuning().m_fullBurstScaleGain * charge;
+        return m_tapBurstScale + m_fullBurstScaleGain * charge;
     }
 
     NS::Core::Quaternion ChargeEffects::YawToward(const NS::Core::Vector3& direction) noexcept
@@ -260,13 +249,10 @@ namespace NS::Game::Player
         NS::Core::Vector3 heading = right * side + NS::Core::Vector3{0.0f, k_SideLift, 0.0f};
         heading.Normalize();
 
-        const PlayerParams& tuning = Tuning();
         const float depth = NS::Core::Clamp(m_actor->ChargeJudge().Overcharge01(), 0.0f, 1.0f);
-        const float count =
-            static_cast<float>(tuning.m_overchargeSparkCountMin) +
-            static_cast<float>(tuning.m_overchargeSparkCountMax - tuning.m_overchargeSparkCountMin) * depth;
-        const float speed = tuning.m_overchargeSparkSpeedMin +
-                            (tuning.m_overchargeSparkSpeedMax - tuning.m_overchargeSparkSpeedMin) * depth;
+        const float count = static_cast<float>(m_overchargeSparkCountMin) +
+                            static_cast<float>(m_overchargeSparkCountMax - m_overchargeSparkCountMin) * depth;
+        const float speed = m_overchargeSparkSpeedMin + (m_overchargeSparkSpeedMax - m_overchargeSparkSpeedMin) * depth;
         NS::Gfx::EffectPlayDesc sparks{};
         sparks.position = center;
         sparks.rotation = NS::Core::Quaternion::FromToRotation(NS::Core::Vector3{0.0f, 1.0f, 0.0f}, heading);

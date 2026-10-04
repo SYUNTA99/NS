@@ -4,7 +4,6 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
-#include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Actor.h"
 #include "Runtime/Object/Components/Body.h"
@@ -208,16 +207,6 @@ namespace NS::Game::Player
 
     ImpactEffects::ImpactEffects() noexcept : NS::Obj::Component() {}
 
-    const PlayerParams& ImpactEffects::Tuning() const noexcept
-    {
-        if (const ::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
-        {
-            return ownerPlayer->Params();
-        }
-        static const PlayerParams defaults;
-        return defaults;
-    }
-
     void ImpactEffects::OnStart()
     {
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
@@ -272,8 +261,7 @@ namespace NS::Game::Player
     // を上書きする
     void ImpactEffects::ApplyTierRow(ImpactShape& shape,
                                      const NS::Game::Level::ImpactRecord& impact,
-                                     float power,
-                                     const PlayerParams& tuning) noexcept
+                                     float power) const noexcept
     {
         switch (impact.tier)
         {
@@ -286,24 +274,23 @@ namespace NS::Game::Player
             shape.sparkStartFrame = k_CenterSparkStart;
             // 手本の弾きは光の塊が消える 11 に火の粉が接触点から新しく弾ける。核が落ちるフレームに揃える
             shape.emberStartFrame = shape.holdLastFrame + 1;
-            shape.streakLength = tuning.m_streakLengthBase + tuning.m_streakLengthPerPower * power;
-            shape.ringRadius = tuning.m_ringRadiusBase + tuning.m_ringRadiusPerPower * power;
+            shape.streakLength = m_streakLengthBase + m_streakLengthPerPower * power;
+            shape.ringRadius = m_ringRadiusBase + m_ringRadiusPerPower * power;
             const float share = std::clamp((power - k_PowerMin) / (k_PowerMax - k_PowerMin), 0.0f, 1.0f);
-            const float count = static_cast<float>(tuning.m_sparkCountMin) +
-                                static_cast<float>(tuning.m_sparkCountMax - tuning.m_sparkCountMin) * share;
+            const float count =
+                static_cast<float>(m_sparkCountMin) + static_cast<float>(m_sparkCountMax - m_sparkCountMin) * share;
             shape.sparkCount = std::max(1, static_cast<int>(std::lround(count)));
-            shape.sparkSpeed =
-                tuning.m_sparkSpeedBase + tuning.m_sparkSpeedPerLaunch * std::max(impact.launchScale, 0.0f);
+            shape.sparkSpeed = m_sparkSpeedBase + m_sparkSpeedPerLaunch * std::max(impact.launchScale, 0.0f);
             shape.sparkHeading = SparkHeading::Launch;
             shape.sparkCountInput = 0;
             shape.emberCount =
-                std::max(1, static_cast<int>(std::lround(static_cast<float>(shape.sparkCount) * tuning.m_emberShare)));
+                std::max(1, static_cast<int>(std::lround(static_cast<float>(shape.sparkCount) * m_emberShare)));
             // 照りは相手の足元の床に出す。飛んでいた相手の下に床は無い
             if (impact.targetPlaced)
             {
-                shape.glowDiameter = tuning.m_glowDiameterBase + tuning.m_glowDiameterPerPower * power;
+                shape.glowDiameter = m_glowDiameterBase + m_glowDiameterPerPower * power;
             }
-            shape.recoilCount = tuning.m_recoilCount;
+            shape.recoilCount = m_recoilCount;
             shape.recoilCountInput = 0;
             return;
         }
@@ -315,12 +302,12 @@ namespace NS::Game::Player
         shape.coreHold = CoreHoldMotion::Settle;
         shape.holdLastFrame = k_WideCoreHoldLast;
         shape.coreCut = true;
-        shape.sparkCount = tuning.m_wideSparkCount;
-        shape.sparkSpeed = tuning.m_wideSparkSpeed;
-        shape.sparkScale = tuning.m_wideSparkScale;
+        shape.sparkCount = m_wideSparkCount;
+        shape.sparkSpeed = m_wideSparkSpeed;
+        shape.sparkScale = m_wideSparkScale;
         shape.sparkHeading = SparkHeading::Scrape;
         shape.sparkCountInput = 1;
-        shape.recoilCount = tuning.m_wideRecoilCount;
+        shape.recoilCount = m_wideRecoilCount;
         shape.recoilCountInput = 2;
     }
 
@@ -330,26 +317,22 @@ namespace NS::Game::Player
         shape.tier = impact.tier;
         const float power = std::max(impact.power, 0.0f);
 
-        shape.coreDiameter =
-            std::min(Tuning().m_coreDiameterMax, Tuning().m_coreDiameterBase + Tuning().m_coreDiameterPerPower * power);
-        ApplyTierRow(shape, impact, power, Tuning());
+        shape.coreDiameter = std::min(m_coreDiameterMax, m_coreDiameterBase + m_coreDiameterPerPower * power);
+        ApplyTierRow(shape, impact, power);
         // 量は数と速さの積。数は威力で、速さは飛ばしの比 (重い相手ほど遅い) で決まるので、積は威力の順と
         // 同じ威力での質量の順の両方に並ぶ。速さだけでは質量 8 の溜めきりが質量 1 の通常突進より小さく出た
         shape.sparkAmount = static_cast<float>(shape.sparkCount) * shape.sparkSpeed;
 
-        shape.recoilLength =
-            Tuning().m_recoilLengthBase + Tuning().m_recoilLengthPerRebound * std::max(impact.reboundScale, 0.0f);
+        shape.recoilLength = m_recoilLengthBase + m_recoilLengthPerRebound * std::max(impact.reboundScale, 0.0f);
 
         // 粉は相手の足元の床に出す。飛んでいた相手の下に床は無い
         if (impact.targetPlaced)
         {
             const float mass = std::max(impact.targetMass, 0.0f);
-            shape.dustCount =
-                Tuning().m_dustCountBase + static_cast<int>(std::lround(std::min(mass, Tuning().m_dustCountMassLimit)));
+            shape.dustCount = m_dustCountBase + static_cast<int>(std::lround(std::min(mass, m_dustCountMassLimit)));
             // 威力 1 で質量だけの大きさ。強い当たりほど床を大きく巻き上げ、段の順にも並ぶ
-            const float powerGrowth = std::max(0.0f, 1.0f + Tuning().m_dustScalePerPower * (power - 1.0f));
-            shape.dustScale =
-                (Tuning().m_dustScaleBase + Tuning().m_dustScalePerRootMass * std::sqrt(mass)) * powerGrowth;
+            const float powerGrowth = std::max(0.0f, 1.0f + m_dustScalePerPower * (power - 1.0f));
+            shape.dustScale = (m_dustScaleBase + m_dustScalePerRootMass * std::sqrt(mass)) * powerGrowth;
         }
 
         return shape;
@@ -375,7 +358,7 @@ namespace NS::Game::Player
 
     float ImpactEffects::LandDustRadiusFor(float fallSpeed) const noexcept
     {
-        return Tuning().m_landDustRadiusBase + Tuning().m_landDustRadiusPerFallSpeed * std::max(fallSpeed, 0.0f);
+        return m_landDustRadiusBase + m_landDustRadiusPerFallSpeed * std::max(fallSpeed, 0.0f);
     }
 
     Vector3 ImpactEffects::ReboundTrailHeading(const Vector3& velocity,
@@ -475,7 +458,7 @@ namespace NS::Game::Player
             toCamera = NormalizedOr(camera.value() - plan.contact, Vector3{});
         }
         plan.ringNormal =
-            NormalizedOr(plan.launchDir * k_RingLaunchWeight + toCamera * Tuning().m_ringFaceCamera, plan.launchDir);
+            NormalizedOr(plan.launchDir * k_RingLaunchWeight + toCamera * m_ringFaceCamera, plan.launchDir);
 
         // 床は相手の体の外接箱の底。置かれた相手は床に接している。底は当てた時に相手が答えた値
         plan.floor = Vector3{impact.targetPos.x, impact.targetBottom, impact.targetPos.z};
@@ -499,7 +482,7 @@ namespace NS::Game::Player
         core.dynamicInputs[1] = 0.0f;
         core.dynamicInputs[2] = 0.0f;
         core.dynamicInputs[shape.coreInput] = 1.0f;
-        core.dynamicInputs[3] = Tuning().m_coreBirthScale / k_CoreHoldPulse;
+        core.dynamicInputs[3] = m_coreBirthScale / k_CoreHoldPulse;
         m_plan.core = m_layers.Play(effects, k_Core, core);
         SetAmount(m_plan.core, shape.coreDiameter);
 
@@ -639,7 +622,7 @@ namespace NS::Game::Player
                 // 留まる間は核と同じ偶数のフレームだけ長さを縮める
                 const int thinFrame = std::min(frame, thinned);
                 const float t = static_cast<float>(thinFrame - 1) / static_cast<float>(std::max(1, thinned - 1));
-                const float thickness = 1.0f + (Tuning().m_streakEndThickness - 1.0f) * t;
+                const float thickness = 1.0f + (m_streakEndThickness - 1.0f) * t;
                 float length = shape.streakLength;
                 if (frame <= shape.holdLastFrame && frame % 2 == 0)
                 {
@@ -680,9 +663,7 @@ namespace NS::Game::Player
         if (shape.ringRadius > 0.0f && frame == k_RingStart)
         {
             m_plan.ring = m_layers.Play(
-                effects,
-                k_Ring,
-                PlayAt(m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(Tuning().m_ringStartRadius)));
+                effects, k_Ring, PlayAt(m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(m_ringStartRadius)));
             SetAmount(m_plan.ring, shape.ringRadius);
         }
         if (m_plan.ring != 0)
@@ -695,8 +676,7 @@ namespace NS::Game::Player
             else if (effects != nullptr)
             {
                 const float t = static_cast<float>(frame - k_RingStart) / static_cast<float>(k_RingFull - k_RingStart);
-                const float radius =
-                    Tuning().m_ringStartRadius + (shape.ringRadius - Tuning().m_ringStartRadius) * EaseOutCubic(t);
+                const float radius = m_ringStartRadius + (shape.ringRadius - m_ringStartRadius) * EaseOutCubic(t);
                 const EffectLayerRecord* record = m_layers.Find(m_plan.ring);
                 if (record != nullptr)
                 {

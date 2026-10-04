@@ -5,7 +5,6 @@
 #include "Game/Level/SlamAim.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
-#include "Game/Player/PlayerParams.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Object/Actor.h"
@@ -61,16 +60,6 @@ namespace NS::Game::Player
     // 配置物を組む経路では参照の引き当てが Player::ForEachPart の並びに回る。Model が自分の参照から mesh
     // を差した後に差し直す
     PlayerAppearance::PlayerAppearance() noexcept : NS::Obj::Component() {}
-
-    const PlayerParams& PlayerAppearance::Tuning() const noexcept
-    {
-        if (const ::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
-        {
-            return ownerPlayer->Params();
-        }
-        static const PlayerParams defaults;
-        return defaults;
-    }
 
     void PlayerAppearance::Curl() noexcept
     {
@@ -167,8 +156,8 @@ namespace NS::Game::Player
             }
             SetRollAxisToward(aim, m_spinAxis);
             m_spinSpeed =
-                Tuning().m_emptyChargeSpinSpeed +
-                (Tuning().m_fullChargeSpinSpeed - Tuning().m_emptyChargeSpinSpeed) * m_actor->ChargeJudge().Charge01();
+                m_emptyChargeSpinSpeed +
+                (m_fullChargeSpinSpeed - m_emptyChargeSpinSpeed) * m_actor->ChargeJudge().Charge01();
         }
         else if ((m_actor->IsRebounding() || m_actor->IsSkidding()) && m_actor->ReboundMissTumble().has_value())
         {
@@ -216,14 +205,13 @@ namespace NS::Game::Player
         }
         ++m_tumbleSteps;
 
-        const PlayerParams& tuning = Tuning();
         // 当たる前の回転を割合だけ残してねじれに足す。溜めて外したほど大きく振り回される
-        const NS::Core::Vector3 target = tumble.twist * (tuning.m_missTwistTurnsPerSecond * 360.0f * tumble.power) +
-                                         m_tumbleStartSpin * tuning.m_missSpinCarryRatio;
+        const NS::Core::Vector3 target = tumble.twist * (m_missTwistTurnsPerSecond * 360.0f * tumble.power) +
+                                         m_tumbleStartSpin * m_missSpinCarryRatio;
         float blend = 1.0f;
-        if (tuning.m_missSpinBlendSteps > 0)
+        if (m_missSpinBlendSteps > 0)
         {
-            blend = std::min(static_cast<float>(m_tumbleSteps) / static_cast<float>(tuning.m_missSpinBlendSteps), 1.0f);
+            blend = std::min(static_cast<float>(m_tumbleSteps) / static_cast<float>(m_missSpinBlendSteps), 1.0f);
         }
         // こすって止まる間は、身体の速さと同じ割合で回転も落とす
         const NS::Core::Vector3 spin =
@@ -245,10 +233,10 @@ namespace NS::Game::Player
         NS::Core::Vector3 side = axis.Cross(helper);
         side.Normalize();
         const NS::Core::Vector3 other = axis.Cross(side);
-        const float phase = m_tumbleWobblePhase + 2.0f * NS::Core::k_Pi * tuning.m_missWobbleTurnsPerSecond *
+        const float phase = m_tumbleWobblePhase + 2.0f * NS::Core::k_Pi * m_missWobbleTurnsPerSecond *
                                                       static_cast<float>(m_tumbleSteps) *
                                                       NS::Platform::FrameTimer::FixedDelta();
-        const float tilt = NS::Core::ToRadians(NS::Core::Degrees{tuning.m_missWobbleDegrees}).value;
+        const float tilt = NS::Core::ToRadians(NS::Core::Degrees{m_missWobbleDegrees}).value;
         const NS::Core::Vector3 lean = side * std::cos(phase) + other * std::sin(phase);
         NS::Core::Vector3 tilted = axis * std::cos(tilt) + lean * std::sin(tilt);
         tilted.Normalize();
@@ -287,10 +275,10 @@ namespace NS::Game::Player
         // 次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
         // 戻すフレーム数が 0 以下では戻す手段が無く、潰れたまま残るので潰さない
         if (m_actor->IsRebounding() && PlayerJudgeLand::Judge(m_body->IsGrounded(), m_body->VerticalVelocity()) &&
-            Tuning().m_landingSquashRecoverSteps > 0)
+            m_landingSquashRecoverSteps > 0)
         {
-            m_landingSquashRemaining = Tuning().m_landingSquashRecoverSteps;
-            m_landingSquashVertical = Tuning().m_landingSquash;
+            m_landingSquashRemaining = m_landingSquashRecoverSteps;
+            m_landingSquashVertical = m_landingSquash;
         }
         else if (m_landingSquashRemaining > 0)
         {
@@ -301,9 +289,9 @@ namespace NS::Game::Player
                 m_landingSquashVertical = 1.0f;
                 return;
             }
-            const float total = static_cast<float>(Tuning().m_landingSquashRecoverSteps);
+            const float total = static_cast<float>(m_landingSquashRecoverSteps);
             const float elapsed = total - static_cast<float>(m_landingSquashRemaining);
-            m_landingSquashVertical = Tuning().m_landingSquash + (1.0f - Tuning().m_landingSquash) * (elapsed / total);
+            m_landingSquashVertical = m_landingSquash + (1.0f - m_landingSquash) * (elapsed / total);
         }
         else
         {
@@ -313,7 +301,7 @@ namespace NS::Game::Player
         if (!std::isfinite(m_landingSquashVertical) || !(m_landingSquashVertical > 0.0f))
         {
             NS_LOG_WARN(
-                Game, "PlayerAppearance: 着地の潰れが有限の正でなく、潰さなかった: {}", Tuning().m_landingSquash);
+                Game, "PlayerAppearance: 着地の潰れが有限の正でなく、潰さなかった: {}", m_landingSquash);
             m_landingSquashRemaining = 0;
             m_landingSquashVertical = 1.0f;
         }
@@ -387,8 +375,8 @@ namespace NS::Game::Player
             NS_LOG_WARN(Game, "PlayerAppearance: 同居する当たりの部品 Collider が無く、仮の形の寸法を決められない");
         }
 
-        m_standingMesh = ResolveLook(assets, Tuning().m_standingMeshRef, standingPlaceholder);
-        m_ballMesh = ResolveLook(assets, Tuning().m_ballMeshRef, ballPlaceholder);
+        m_standingMesh = ResolveLook(assets, m_standingMeshRef, standingPlaceholder);
+        m_ballMesh = ResolveLook(assets, m_ballMeshRef, ballPlaceholder);
         ShowCurrentLook();
     }
 

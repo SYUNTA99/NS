@@ -154,7 +154,7 @@ TEST(MissTumble, TumbleBlendsIntoTheTwistAndTiltsByTheWobble)
         NS::Obj::Scene scene;
         Player* player = PlaceTumblePlayer(scene);
         ASSERT_NE(player, nullptr);
-        ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
+        ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Appearance(),
                                            {{"外れの縁でのねじれの回転数", 2.0f},
                                             {"外れで当たる前の回転を引き継ぐ割合", 0.0f},
                                             {"外れの回転を寄せるフレーム数", 4},
@@ -184,7 +184,7 @@ TEST(MissTumble, TumbleCarriesTheSlamSpin)
     NS::Obj::Scene scene;
     Player* player = PlaceTumblePlayer(scene);
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Appearance(),
                                        {{"外れの縁でのねじれの回転数", 0.0f},
                                         {"外れで当たる前の回転を引き継ぐ割合", 0.5f},
                                         {"外れの回転を寄せるフレーム数", 1},

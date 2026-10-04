@@ -1,6 +1,4 @@
 #include "Game/Player/PlayerParams.h"
-#include "Game/Player.h"
-#include "Game/Player/PlayerAppearance.h"
 
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -46,14 +44,6 @@ namespace NS::Game::Player
     {
         // 減速率の欄は非有限の書き込みを捨てるので、ここへ来る値は有限。Clamp だけで 0..1 に収まる
         return NS::Core::Clamp(1.0f - m_chargeSlowRate, 0.0f, 1.0f);
-    }
-
-    void PlayerParams::ResolveAssets(NS::Obj::AssetManager& assets)
-    {
-        if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
-        {
-            ownerPlayer->Appearance().ResolveAssets(assets);
-        }
     }
 
     NS_CLASS(PlayerParams)
