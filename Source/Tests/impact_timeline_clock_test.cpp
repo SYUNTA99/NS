@@ -2,6 +2,7 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
+#include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/Body.h"
@@ -932,6 +933,148 @@ TEST(ImpactTimelineClock, NegativeEventsStartBeforeContact)
     player->Update(false);
     rock->Update();
     EXPECT_FALSE(player->Resolver().IsShapeAnimating());
+}
+
+// 触れる前の時計が走り始めたフレームに放しの弾けを消し、縮みと止まる間を光で隠さない
+TEST(ImpactTimelineClock, ReleaseBurstEndsWhenTheBeforeContactClockStarts)
+{
+    const ScopedHitTimelineDirectory directory("BeforeContactBurst");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeBeforeContactTimeline());
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    int beforeContactStep = -1;
+    for (int frame = 0; frame < 60 && player->Resolver().LastImpact().sequence == 0; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        if (beforeContactStep < 0 && player->Resolver().IsBeforeContact())
+        {
+            beforeContactStep = player->ChargeVisuals().Layers().Step();
+        }
+    }
+    ASSERT_GE(beforeContactStep, 0);
+    const NS::Game::Player::EffectLayerRecord* burst = nullptr;
+    for (const NS::Game::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
+    {
+        if (record.name == NS::Game::Player::ChargeEffects::k_Burst)
+        {
+            burst = &record;
+        }
+    }
+    ASSERT_NE(burst, nullptr);
+    ASSERT_TRUE(burst->endStep.has_value());
+    EXPECT_EQ(*burst->endStep, beforeContactStep);
+}
+
+// 触れる前の事象が無い段 (外れ) でも、触れたフレームに放しの弾けを消す。外れの触れた瞬間を光で飾らない
+TEST(ImpactTimelineClock, ReleaseBurstEndsOnTheContactFrameWithoutBeforeContactEvents)
+{
+    const ScopedHitTimelineDirectory directory("ContactBurst");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    int contactStep = -1;
+    for (int frame = 0; frame < 60 && contactStep < 0; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        if (player->Resolver().LastImpact().sequence != 0)
+        {
+            contactStep = player->ChargeVisuals().Layers().Step();
+        }
+    }
+    ASSERT_GE(contactStep, 0);
+    const NS::Game::Player::EffectLayerRecord* burst = nullptr;
+    for (const NS::Game::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
+    {
+        if (record.name == NS::Game::Player::ChargeEffects::k_Burst)
+        {
+            burst = &record;
+        }
+    }
+    ASSERT_NE(burst, nullptr);
+    ASSERT_TRUE(burst->endStep.has_value());
+    EXPECT_EQ(*burst->endStep, contactStep);
+}
+
+// 線の先の相手に触れる見込みのフレーム数は、触れる前の事象の長さに依らず数える。検知の 1 フレーム前で 1
+TEST(ImpactTimelineClock, FramesToPredictedContactCountDownToTheDetection)
+{
+    // 触れる前は 1 フレームだけの形。予測を回すのに、どこかの段にマイナスの事象が要る
+    ShapeEvent shrink;
+    shrink.along.count = 1;
+    shrink.along.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
+    shrink.height.count = 1;
+    shrink.height.keys[0] = NS::Obj::Curve::Key{0.0f, 0.5f};
+    HitTimeline timeline = MakeLegacyHitTimeline(2);
+    timeline.events.push_back({shrink, -1, 2, HitDirection::Any});
+    const ScopedHitTimelineDirectory directory("PredictedFrames");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    std::vector<int> frames;
+    for (int frame = 0; frame < 60 && player->Resolver().LastImpact().sequence == 0; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        frames.push_back(player->Resolver().FramesToPredictedContact());
+    }
+    ASSERT_GE(frames.size(), 5u);
+    // 検知のフレームは見込みを捨てる。その前は 1, 2, 3 … と遠くなる
+    EXPECT_EQ(frames[frames.size() - 1], -1);
+    EXPECT_EQ(frames[frames.size() - 2], 1);
+    EXPECT_EQ(frames[frames.size() - 3], 2);
+    EXPECT_EQ(frames[frames.size() - 4], 3);
+}
+
+// 触れる見込みが 3 フレーム以内になったら放しの弾けを消す。外れになる当たりでも、触れる直前を光で飾らない
+TEST(ImpactTimelineClock, ReleaseBurstEndsThreeFramesBeforeThePredictedContact)
+{
+    ShapeEvent shrink;
+    shrink.along.count = 1;
+    shrink.along.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
+    shrink.height.count = 1;
+    shrink.height.keys[0] = NS::Obj::Curve::Key{0.0f, 0.5f};
+    HitTimeline timeline = MakeLegacyHitTimeline(2);
+    timeline.events.push_back({shrink, -1, 2, HitDirection::Any});
+    const ScopedHitTimelineDirectory directory("PredictedBurst");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    int contactStep = -1;
+    for (int frame = 0; frame < 60 && contactStep < 0; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        if (player->Resolver().LastImpact().sequence != 0)
+        {
+            contactStep = player->ChargeVisuals().Layers().Step();
+        }
+    }
+    ASSERT_GE(contactStep, 0);
+    const NS::Game::Player::EffectLayerRecord* burst = nullptr;
+    for (const NS::Game::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
+    {
+        if (record.name == NS::Game::Player::ChargeEffects::k_Burst)
+        {
+            burst = &record;
+        }
+    }
+    ASSERT_NE(burst, nullptr);
+    ASSERT_TRUE(burst->endStep.has_value());
+    EXPECT_EQ(*burst->endStep, contactStep - 3);
 }
 
 // 予測した相手が線から外れたら、触れる前に始めた事象を止める

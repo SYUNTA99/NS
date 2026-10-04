@@ -141,6 +141,15 @@ namespace NS::Game::Level
             return m_rowsStartedThisStep;
         }
 
+        //! @brief 触れる前 (マイナスのフレーム) の時計を進めている場合 true、それ以外の場合は false
+        //! @details 突進の線の先の相手に当たると予測して、触れる前の事象を始めてから検知するまで真
+        [[nodiscard]] bool IsBeforeContact() const noexcept { return m_beforeContact; }
+
+        //! @brief 突進の線の先の相手を検知するまでの見込みのフレーム数を返す
+        //! @details 段を問わず数える。どこかの段に触れる前の事象を置いた時だけ線を掃くので、置いていなければ数えない
+        //! @return 検知の 1 フレーム前で 1。突進していない時・線の先に相手がいない時・検知したフレームは -1
+        [[nodiscard]] int FramesToPredictedContact() const noexcept { return m_framesToPredictedContact; }
+
         //! 直近の裁定が中心近くで当たった場合 true、それ以外の場合は false
         [[nodiscard]] bool WasCenterHit() const noexcept { return m_wasCenterHit; }
 
@@ -319,6 +328,7 @@ namespace NS::Game::Level
         int m_shapeStart = 0;                           // 形の事象の始まりのフレーム
         int m_shapeLength = 0;                          // 形の事象の長さ
         bool m_shapeActive = false;                     // 形の事象が始まったか
+        int m_framesToPredictedContact = -1;            // 線の先の相手を検知するまでの見込み。無ければ -1
         bool m_beforeContact = false;                   // 時計が触れる前 (マイナスのフレーム) を進めているか
         NS::Obj::ActorRef m_beforeContactTarget{};      // 触れる前の時計を始めた予測の相手
         HitTier m_beforeContactTier = HitTier::Center;  // 触れる前の時計を始めた予測の段

@@ -33,7 +33,9 @@ namespace NS::Game::Player
     //! - charge.full 溜めきりの閃き: 1 回の押しで 1 回だけ F に出し、F + k_FullFlashSteps に消す。
     //!   それより前に放したら放したフレームに消す。消すまで玉へ付いていく
     //! - release.burst 放しの弾け: u に出し u + k_BurstSteps に消す。輪・丸屋根・筋の大きさは ReleaseBurstScale を
-    //!   動的入力 1 番で渡す。はじけの光と散って残る筋は大きさを変えない。放した所に置いたまま
+    //!   動的入力 1 番で渡す。はじけの光と散って残る筋は大きさを変えない。放した所に置いたまま。
+    //!   触れる前の時計が走り始めたら (ImpactResolver::IsBeforeContact) そのフレームに、線の先の相手に触れる見込みが
+    //!   k_BurstClearFrames 以内になったらそのフレームに、どちらも無いまま触れたら触れたフレームに消す
     //! - slam.trail 突進の尾: u に出す。当たったら c で、当たらずに突進が終わったら終わったフレームで親を止め、
     //!   止めた k_TrailFadeSteps フレーム後に消す
     //! 溜めている間の層には溜め量 (Player::ChargeJudge) を動的入力 0 番で毎フレーム渡す。
@@ -52,6 +54,9 @@ namespace NS::Game::Player
         static constexpr int k_FullFlashSteps = 6;
         //! 放しの弾けを出してから消すまでのフレーム数。散って残る粒の寿命 21 フレームと同じ
         static constexpr int k_BurstSteps = 21;
+        //! 線の先の相手に触れる見込みがこのフレーム数以内になったら、放しの弾けを消す。触れる直前の
+        //! 3 フレームは二人が近づくのを見せ、外れでも光で手応えを期待させない
+        static constexpr int k_BurstClearFrames = 3;
         //! 突進の尾の親を止めてから消すまでのフレーム数。尾の点の寿命と同じ
         static constexpr int k_TrailFadeSteps = 6;
 
@@ -125,6 +130,8 @@ namespace NS::Game::Player
         // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ Player::AimDirection
         [[nodiscard]] NS::Core::Vector3 HeldAimDirection() const noexcept;
         void StopLayer(NS::Gfx::EffectScene* effects, std::uint32_t& id) noexcept;
+        // このフレームに触れたか、線の先の相手に触れる見込みが k_BurstClearFrames 以内か
+        [[nodiscard]] bool IsContactNear() const noexcept;
 
         // 放しの弾けの輪・丸屋根・筋の大きさ。溜めきりで輪が半径 3.2 m まで広がる
         // タップの 0.75 は輪が半径 2.4 m で、押した瞬間の丸まりの殻 (半径 1.2 m) の倍。0.4 (半径 1.3 m) は
@@ -140,6 +147,7 @@ namespace NS::Game::Player
         std::uint32_t m_gather = 0;
         std::uint32_t m_full = 0;
         std::uint32_t m_trail = 0;
+        std::uint32_t m_burst = 0;
 
         int m_fullStep = 0;                // 溜めきりの閃きを出したフレームの記録の番号
         int m_framesSinceFull = 0;         // FramesSinceFullCharge の値。OnUpdate が毎フレーム決める

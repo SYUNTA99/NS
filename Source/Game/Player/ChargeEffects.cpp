@@ -122,6 +122,14 @@ namespace NS::Game::Player
             StartRelease(effects, center);
         }
         UpdateTrail(effects, center, slamming);
+        // 触れる前の時計が走り始めたら放しの弾けを消す。光が画面を覆ったままだと、触れる直前の縮みと止まる間が見えない
+        // 外れになる当たりも、触れる見込みが近づいたら消し、触れた瞬間の前を光で飾らない
+        if (m_burst != 0 && m_resolver != nullptr && (m_resolver->IsBeforeContact() || IsContactNear()))
+        {
+            const std::uint32_t burst = m_burst;
+            std::erase_if(m_scheduledStops, [burst](const ScheduledStop& scheduled) { return scheduled.id == burst; });
+            StopLayer(effects, m_burst);
+        }
 
         m_wasHeld = held;
         m_wasSlamming = slamming;
@@ -144,6 +152,7 @@ namespace NS::Game::Player
         m_gather = 0;
         m_full = 0;
         m_trail = 0;
+        m_burst = 0;
         m_wasHeld = false;
         m_wasSlamming = false;
         m_trailAwaitsFreeze = false;
@@ -186,6 +195,10 @@ namespace NS::Game::Player
         if (m_curl != 0 && m_layers.Find(m_curl) != nullptr && m_layers.Find(m_curl)->endStep.has_value())
         {
             m_curl = 0;
+        }
+        if (m_burst != 0 && m_layers.Find(m_burst) != nullptr && m_layers.Find(m_burst)->endStep.has_value())
+        {
+            m_burst = 0;
         }
         if (m_trail != 0 && m_layers.Find(m_trail) != nullptr && m_layers.Find(m_trail)->endStep.has_value())
         {
@@ -313,6 +326,7 @@ namespace NS::Game::Player
         burst.dynamicInputs[k_BurstScaleInput] = ReleaseBurstScale(charge01);
         const std::uint32_t burstId = m_layers.Play(effects, k_Burst, burst);
         m_scheduledStops.push_back(ScheduledStop{burstId, m_layers.Step() + k_BurstSteps});
+        m_burst = burstId;
 
         // 前の突進の尾がまだ伸びていれば止め、新しい尾と繋げない
         if (m_trail != 0)
@@ -432,6 +446,16 @@ namespace NS::Game::Player
             return m_actor->AimDirection();
         }
         return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+    }
+
+    bool ChargeEffects::IsContactNear() const noexcept
+    {
+        if (m_resolver->DidRebound() || m_resolver->DidBreak())
+        {
+            return true;
+        }
+        const int frames = m_resolver->FramesToPredictedContact();
+        return frames >= 0 && frames <= k_BurstClearFrames;
     }
 
     void ChargeEffects::StopLayer(NS::Gfx::EffectScene* effects, std::uint32_t& id) noexcept

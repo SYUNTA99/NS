@@ -509,6 +509,7 @@ namespace NS::Game::Level
         m_didBreak = false;
         m_freezeBeganThisStep = false;
         m_releasedThisStep = false;
+        m_framesToPredictedContact = -1;
         m_rowsStartedThisStep.clear();
         // 白の光と振動の進みは HitReaction が持つ。止まっている間も薄れる
         if (m_body == nullptr)
@@ -1024,6 +1025,9 @@ namespace NS::Game::Level
             DropBeforeContact();
             return;
         }
+        // 観測の段は、今の位置から 1 歩進んだ玉の重なりで当たりを見る。触れるまでの距離を k 歩目に越えるなら、
+        // 検知はこのフレームから k - 1 フレーム後。このフレームで検知しなかったので 1 以上
+        m_framesToPredictedContact = std::max(static_cast<int>(std::ceil(predicted.contact / stepLength)) - 1, 1);
         if (m_beforeContact)
         {
             if (predicted.target == m_beforeContactTarget && predicted.tier == m_beforeContactTier)
@@ -1046,9 +1050,7 @@ namespace NS::Game::Level
         {
             first = std::min(first, event.start);
         }
-        // 観測の段は、今の位置から 1 歩進んだ玉の重なりで当たりを見る。触れるまでの距離を k 歩目に越えるなら、
-        // 検知はこのフレームから k - 1 フレーム後。このフレームで検知しなかったので 1 以上
-        const int untilDetect = std::max(static_cast<int>(std::ceil(predicted.contact / stepLength)) - 1, 1);
+        const int untilDetect = m_framesToPredictedContact;
         if (first >= 0 || untilDetect > -first)
         {
             return;
@@ -1498,6 +1500,7 @@ namespace NS::Game::Level
         m_didBreak = false;
         m_freezeBeganThisStep = false;
         m_releasedThisStep = false;
+        m_framesToPredictedContact = -1;
         // 相手へは明けを送らない。相手はやり直しの知らせで自分の位置へ戻り、凍結は相手の数えで明ける
         m_pendingTarget = NS::Obj::ActorRef{};
         if (hadStop && m_hitReaction != nullptr)
