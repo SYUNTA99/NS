@@ -1150,9 +1150,9 @@ TEST(ImpactTimelineClock, SinkShakeHoldsTheBottomUntilTheReboundFrame)
     EXPECT_GT(pixels[14], bottom + 0.1f);
 }
 
-// impact-feel-pass 3 節「明けの伸び上がりと反動の順番」: 真ん中は明けのフレームに相手が飛び、自機は止まったまま
-// 突進の向きへ伸び、伸びきったフレームに反動が始まる。外れは明けのフレームに反動が始まる (出荷のファイルで見る)
-TEST(ImpactTimelineClock, ShippedCenterStretchesBeforeTheReboundAndMissReboundsOnRelease)
+// 明けの伸び上がりと反動の順番: 真ん中も外れも、明けのフレームに相手が飛び、同じフレームに反動が始まる
+// 真ん中は跳ね返りながら突進の向きへ伸びる (出荷のファイルで見る)
+TEST(ImpactTimelineClock, ShippedCenterAndMissReboundOnTheReleaseFrame)
 {
     for (const float rockX : {0.0f, 0.75f})
     {
@@ -1187,18 +1187,17 @@ TEST(ImpactTimelineClock, ShippedCenterStretchesBeforeTheReboundAndMissReboundsO
         if (rockX == 0.0f)
         {
             ASSERT_EQ(player->Resolver().LastImpact().tier, HitTier::Center);
-            // 伸びの間は自機が止まったまま、突進の向き (z) へ伸びて細くなる
-            EXPECT_EQ(rebounded, released + 2);
-            for (int clock = released; clock < rebounded; ++clock)
+            // 相手が飛ぶのを待たずに跳ね返り、跳ね返りながら突進の向き (z) へ伸びて細くなる
+            EXPECT_EQ(rebounded, released);
+            for (int clock = released; clock < released + 2; ++clock)
             {
                 SCOPED_TRACE(clock);
-                EXPECT_FALSE(trace[static_cast<std::size_t>(clock)].canMoveBody);
+                EXPECT_TRUE(trace[static_cast<std::size_t>(clock)].canMoveBody);
                 EXPECT_GT(trace[static_cast<std::size_t>(clock + 1)].shape.z,
                           trace[static_cast<std::size_t>(clock)].shape.z);
             }
-            EXPECT_NEAR(trace[static_cast<std::size_t>(rebounded)].shape.z, 1.25f, 1.0e-4f);
-            EXPECT_LT(trace[static_cast<std::size_t>(rebounded)].shape.y, 1.0f);
-            EXPECT_TRUE(trace[static_cast<std::size_t>(rebounded)].canMoveBody);
+            EXPECT_NEAR(trace[static_cast<std::size_t>(released + 2)].shape.z, 1.25f, 1.0e-4f);
+            EXPECT_LT(trace[static_cast<std::size_t>(released + 2)].shape.y, 1.0f);
         }
         else
         {
