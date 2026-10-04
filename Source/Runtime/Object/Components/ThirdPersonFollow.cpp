@@ -461,7 +461,15 @@ namespace NS::Obj
         {
             holdCharge = charge.charge01;
         }
-        const float holdNarrow = m_chargeNarrowMaxDegrees * holdCharge;
+        // 寄り (締めと真ん中への下向き) は溜めの量の指数乗で効かせる。溜めの終わりにかけて速まり、もうすぐ弾ける事を
+        // 見せる。溜めの揺れのトラウマも 2 乗で効くので、揺れと寄りが一緒に高まる。指数が正でなければ比例にする
+        float approachExponent = 1.0f;
+        if (std::isfinite(m_chargeApproachExponent) && m_chargeApproachExponent > 0.0f)
+        {
+            approachExponent = m_chargeApproachExponent;
+        }
+        const float approach = std::pow(holdCharge, approachExponent);
+        const float holdNarrow = m_chargeNarrowMaxDegrees * approach;
 
         // 押している間の締めが下がったフレームを戻しの始まりにする。放したフレームがこれに当たる
         // 体当たりから止めの明けまでは戻しの 0 フレーム目に留め、明けたフレームを 1 フレーム目にする
@@ -542,7 +550,8 @@ namespace NS::Obj
             // 縦は自機と相手の真ん中を画面の中心へ寄せる。注視点は頭の高さなので、枠に入れるだけだと二人は画面の
             // 下の方に写り、当たりの揺れが小さく見える。寄せは注視点だけを下げて下を向かせ、カメラの位置は下げない。
             // 位置を下げると見下ろす角が浅くなり、奥の相手が自機の真後ろに重なる
-            // 寄せる量は溜めの量に比例させ、溜めるにつれてだんだん下を向く。相手を見付けたフレームに一気に動かさない
+            // 寄せる量は締めと同じ寄りの量で増やし、溜めるにつれて速まりながら下を向く。相手を見付けたフレームに
+            // 一気に動かさない
             if (self.usable && aim.usable)
             {
                 const NS::Core::Vector3 middle = (root + charge.aimTargetCenter) * 0.5f;
@@ -552,7 +561,7 @@ namespace NS::Obj
                 {
                     // 注視点を上の向きに s 下げると、視線は s ÷ 距離 の傾きだけ下を向く。真ん中の傾きと等しくする
                     const float centerRatio = NS::Core::Clamp(m_chargeCenterRatio, 0.0f, 1.0f);
-                    wantedTilt = NS::Core::Dot(toMiddle, up) / depth * m_distance * centerRatio * holdCharge;
+                    wantedTilt = NS::Core::Dot(toMiddle, up) / depth * m_distance * centerRatio * approach;
                 }
             }
         }

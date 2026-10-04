@@ -183,6 +183,7 @@ namespace NS::Obj
         NS_REFLECT_FIELD(m_pitchMax, "ピッチ上限")
         NS_REFLECT_FIELD(m_chargeNarrowMaxDegrees, "溜めで締める視野角")
         NS_REFLECT_FIELD(m_chargeNarrowReturnFrames, "締めを戻すフレーム数")
+        NS_REFLECT_FIELD(m_chargeApproachExponent, "溜めの寄りの効き方の指数")
         NS_REFLECT_FIELD(m_chargeShakePitchDegrees, "溜めの揺れの縦")
         NS_REFLECT_FIELD(m_chargeShakeYawDegrees, "溜めの揺れの横")
         NS_REFLECT_FIELD(m_chargeShakeFrequency, "溜めの揺れの細かさ")
@@ -285,14 +286,17 @@ namespace NS::Obj
         float m_pitchMin = -1.396f;  // 仰俯角の下限
         float m_pitchMax = -0.0873f; // 仰俯角の上限
 
-        float m_chargeNarrowMaxDegrees = 15.0f;   // 溜めきりで締める視野角 (度)
-        int m_chargeNarrowReturnFrames = 6;       // 放してから締めを 0 へ戻すフレーム数
+        float m_chargeNarrowMaxDegrees = 15.0f; // 溜めきりで締める視野角 (度)
+        int m_chargeNarrowReturnFrames = 6;     // 放してから締めを 0 へ戻すフレーム数
+        // 締めと真ん中への下向きに掛ける、溜めの量の指数。1 で溜めに比例、2 で溜めの半分では 4 分の 1 で終わりにかけて
+        // 速まる。溜めの揺れのトラウマの 2 乗とそろえ、揺れと寄りが一緒に高まる
+        float m_chargeApproachExponent = 2.0f;
         float m_chargeShakePitchDegrees = 0.3f;   // 溜めきりの溜めの揺れの縦の首振りの最大 (度)
         float m_chargeShakeYawDegrees = 0.15f;    // 溜めきりの溜めの揺れの横の首振りの最大 (度)
         float m_chargeShakeFrequency = 10.0f;     // 溜めの揺れのノイズの格子を 1 秒に進める数
         float m_chargeShakeDecayPerSecond = 4.0f; // 放した後に溜めの揺れのトラウマが 1 秒に減る量
         float m_chargeFrameRatio = 0.7f;          // 構図の枠。視野の半分に対する割合
-        // 溜めきりで自機と相手の真ん中を画面の縦の中心へ寄せる割合。0 は枠に入れるだけ。途中の溜めは溜めの量を掛ける
+        // 溜めきりで自機と相手の真ん中を画面の縦の中心へ寄せる割合。0 は枠に入れるだけ。途中の溜めは寄りの量を掛ける
         float m_chargeCenterRatio = 1.0f;
         float m_chargeFrameOmega = 26.0f; // 構図のずらしのバネ角速度 (1/秒)
 

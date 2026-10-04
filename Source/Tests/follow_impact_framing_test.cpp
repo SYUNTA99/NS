@@ -122,7 +122,8 @@ TEST(FollowImpactFraming, ChargeWithATargetCentersThePairVertically)
     EXPECT_NEAR(NS::Core::Dot(middle - pose.position, up), 0.0f, 0.02f);
 }
 
-// 寄せる量は溜めの量に比例する。溜めるにつれてだんだん下を向き、相手を見付けたフレームに一気に動かない
+// 寄せる量は溜めの量の 2 乗 (欄「溜めの寄りの効き方の指数」) で増える。溜めるにつれて速まりながら下を向き、
+// 相手を見付けたフレームに一気に動かない
 TEST(FollowImpactFraming, CenteringGrowsWithTheCharge)
 {
     FramingScene alone;
@@ -140,5 +141,22 @@ TEST(FollowImpactFraming, CenteringGrowsWithTheCharge)
         drop[i] = aloneLook - world.camera->Vcam().EvaluatePose(1.0f).target.y;
     }
     ASSERT_GT(drop[1], 0.0f);
-    EXPECT_NEAR(drop[0], drop[1] * 0.25f, drop[1] * 0.05f);
+    EXPECT_NEAR(drop[0], drop[1] * 0.25f * 0.25f, drop[1] * 0.02f);
+}
+
+// 視野の締めは 溜めで締める視野角 × 溜めの量の指数乗。溜めの半分では 4 分の 1 で、終わりにかけて速まる。
+// 指数を 1 にすると溜めの量に比例する
+TEST(FollowImpactFraming, NarrowSpeedsUpTowardTheFullCharge)
+{
+    FramingScene world;
+    world.target->charge01 = 0.5f;
+    world.Run(2);
+    EXPECT_FLOAT_EQ(world.camera->Vcam().ChargeNarrowDegrees(), 15.0f * 0.25f);
+    NS::Obj::ApplyJsonFields(world.camera->Vcam(), nlohmann::json{{"溜めの寄りの効き方の指数", 1.0f}});
+    world.Run(1);
+    EXPECT_FLOAT_EQ(world.camera->Vcam().ChargeNarrowDegrees(), 15.0f * 0.5f);
+    world.target->charge01 = 1.0f;
+    NS::Obj::ApplyJsonFields(world.camera->Vcam(), nlohmann::json{{"溜めの寄りの効き方の指数", 2.0f}});
+    world.Run(1);
+    EXPECT_FLOAT_EQ(world.camera->Vcam().ChargeNarrowDegrees(), 15.0f);
 }
