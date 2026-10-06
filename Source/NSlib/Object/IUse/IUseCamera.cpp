@@ -33,21 +33,13 @@ namespace NS::Obj
     bool AddCameraTrauma(const IUseCamera& user, const CameraTraumaDesc& desc)
     {
         CameraManager* cameras = user.GetCameraManager();
-        if (cameras == nullptr)
-        {
-            return false;
-        }
-        return cameras->AddTrauma(desc);
+        return cameras != nullptr && cameras->AddTrauma(desc);
     }
 
     bool HoldCameraTrauma(const IUseCamera& user, float level, const CameraTraumaShape& shape)
     {
         CameraManager* cameras = user.GetCameraManager();
-        if (cameras == nullptr)
-        {
-            return false;
-        }
-        return cameras->HoldTrauma(level, shape);
+        return cameras != nullptr && cameras->HoldTrauma(level, shape);
     }
 
     void StopCameraHitEffects(const IUseCamera& user) noexcept

@@ -51,6 +51,9 @@ namespace NS::Obj
         std::vector<Entry> m_entries; // 登録順のまま持つ。型の種類は少数なので線形照合で足りる
     };
 
+    //! クラス名から Actor をコードの既定値で作る。未登録のクラスと空の名前は素の Actor
+    [[nodiscard]] std::unique_ptr<Actor> CreateActorOfClass(std::string_view className);
+
     //! object の Actor を作る。className 一致の登録があればその生成関数、該当しなければ素の Actor を返す
     [[nodiscard]] std::unique_ptr<Actor> CreateRegisteredObject(const nlohmann::json& object);
 

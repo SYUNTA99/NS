@@ -20,8 +20,7 @@ namespace
     // 0 以下と非数・無限大の成分を弾き、全部が有限の正の時だけ真を返す
     [[nodiscard]] bool IsPositiveFiniteScale(const NS::Vector3& scale) noexcept
     {
-        return std::isfinite(scale.x) && std::isfinite(scale.y) && std::isfinite(scale.z) && scale.x > 0.0f &&
-               scale.y > 0.0f && scale.z > 0.0f;
+        return NS::IsPositiveFinite(scale.x) && NS::IsPositiveFinite(scale.y) && NS::IsPositiveFinite(scale.z);
     }
 } // namespace
 
@@ -146,25 +145,11 @@ namespace NS::Obj
 
     bool Model::SetTremor(const NS::Gfx::TremorCB& tremor) noexcept
     {
-        const float values[] = {tremor.contactOffset.x,
-                                tremor.contactOffset.y,
-                                tremor.contactOffset.z,
-                                tremor.amplitude,
-                                tremor.right.x,
-                                tremor.right.y,
-                                tremor.right.z,
-                                tremor.elapsedFrames,
-                                tremor.up.x,
-                                tremor.up.y,
-                                tremor.up.z,
-                                tremor.framesPerMeter,
-                                tremor.ringFrames};
-        for (const float value : values)
+        if (!NS::IsFinite(tremor.contactOffset) || !NS::IsFinite(tremor.right) || !NS::IsFinite(tremor.up) ||
+            !std::isfinite(tremor.amplitude) || !std::isfinite(tremor.elapsedFrames) ||
+            !std::isfinite(tremor.framesPerMeter) || !std::isfinite(tremor.ringFrames))
         {
-            if (!std::isfinite(value))
-            {
-                return false;
-            }
+            return false;
         }
         m_tremor = tremor;
         return true;
@@ -315,11 +300,7 @@ namespace NS::Obj
 
     RenderBucket Model::Bucket() const noexcept
     {
-        if (m_material == nullptr)
-        {
-            return RenderBucket::Opaque;
-        }
-        if (m_material->Blend() == NS::Gfx::BlendMode::Opaque)
+        if (m_material == nullptr || m_material->Blend() == NS::Gfx::BlendMode::Opaque)
         {
             return RenderBucket::Opaque;
         }

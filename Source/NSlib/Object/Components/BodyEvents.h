@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include <cstddef>
 #include <functional>
 #include <utility>
 #include <vector>
@@ -32,8 +31,6 @@ namespace NS::Obj
                 callback();
             }
         }
-
-        [[nodiscard]] std::size_t SubscriberCount() const noexcept { return m_callbacks.size(); }
 
     private:
         std::vector<std::function<void()>> m_callbacks;

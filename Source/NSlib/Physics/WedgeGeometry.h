@@ -4,7 +4,6 @@
 #include "NSlib/Physics/Triangle.h"
 
 #include <array>
-#include <cstdint>
 
 namespace NS::Phys
 {

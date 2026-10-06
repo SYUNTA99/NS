@@ -21,10 +21,6 @@ namespace NS
     //! 4x4の変換行列
     using Matrix = DirectX::SimpleMath::Matrix;
 
-    //! @brief Matrixのエイリアス
-    //! @note 4x4の行列であることをコード上で明示したい場合に使用する
-    using Matrix4x4 = DirectX::SimpleMath::Matrix;
-
     //! クォータニオン
     using Quaternion = DirectX::SimpleMath::Quaternion;
 
@@ -128,17 +124,9 @@ namespace NS
     {
         return a.value == b.value;
     }
-    [[nodiscard]] constexpr bool operator!=(Radians a, Radians b) noexcept
-    {
-        return !(a == b);
-    }
     [[nodiscard]] constexpr bool operator==(Degrees a, Degrees b) noexcept
     {
         return a.value == b.value;
-    }
-    [[nodiscard]] constexpr bool operator!=(Degrees a, Degrees b) noexcept
-    {
-        return !(a == b);
     }
 
     //! 2次元の幅と高さを明確に示すための強い型。負の値は無効として扱う
@@ -151,10 +139,6 @@ namespace NS
     [[nodiscard]] constexpr bool operator==(Size2D a, Size2D b) noexcept
     {
         return a.width == b.width && a.height == b.height;
-    }
-    [[nodiscard]] constexpr bool operator!=(Size2D a, Size2D b) noexcept
-    {
-        return !(a == b);
     }
 
     //! @brief 幅を高さで割ったアスペクト比を返す

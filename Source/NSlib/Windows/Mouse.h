@@ -24,8 +24,6 @@ namespace NS::OS
     class Mouse
     {
     public:
-        Mouse() = default;
-
         //! @brief 対象のボタンが現在のフレームで新たに押されたかどうかを判定する
         [[nodiscard]] bool IsPressed(MouseButton b) const noexcept;
 

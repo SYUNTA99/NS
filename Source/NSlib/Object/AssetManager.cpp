@@ -12,7 +12,6 @@
 #include "NSlib/Graphics/SkeletalMesh.h"
 #include "NSlib/Graphics/StaticMesh.h"
 #include "NSlib/Graphics/Texture.h"
-#include "NSlib/Object/Components/Model.h"
 #include "NSlib/Physics/MeshShape.h"
 #include "NSlib/Windows/Filesystem.h"
 
@@ -304,11 +303,6 @@ namespace NS::Obj
         return LoadMeshRecord(path).mesh.get();
     }
 
-    std::size_t AssetManager::MeshCacheSize() const noexcept
-    {
-        return m_meshes.size();
-    }
-
     const NS::Phys::MeshShape* AssetManager::GetOrLoadMeshShape(const std::string& meshRef)
     {
         if (meshRef.empty())
@@ -547,13 +541,9 @@ namespace NS::Obj
             material->SetTexture(static_cast<unsigned>(i), texture);
         }
 
-        MaterialRecord record{};
-        record.material = std::move(material);
-        record.baseColor = fileDesc.baseColor;
-        NS::Gfx::Material* rawMaterial = record.material.get();
-        const NS::Vector3 color = record.baseColor;
-        m_materials.emplace(matKey, std::move(record));
-        return LoadedMaterial{rawMaterial, color};
+        NS::Gfx::Material* rawMaterial = material.get();
+        m_materials.emplace(matKey, MaterialRecord{std::move(material), fileDesc.baseColor});
+        return LoadedMaterial{rawMaterial, fileDesc.baseColor};
     }
 
     void AssetManager::RegisterSharedMaterials()

@@ -23,7 +23,6 @@ namespace NS::Gfx
     class EffectScene;
     class Renderer;
     class RenderTarget;
-    struct RenderContext;
 } // namespace NS::Gfx
 
 namespace NS::Obj

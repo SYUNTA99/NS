@@ -27,10 +27,6 @@ namespace
 
 namespace NS::Obj
 {
-    // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、
-    // 天井に当たったフレームの上向き速度は Move を抜けた時点で 0 になっている
-    Body::Body() noexcept : NS::Obj::Component() {}
-
     NS::Vector3 Body::LateralVelocity() const noexcept
     {
         // 8 m/s を減速度 40 で止めると、最後のフレームに 6×10⁻⁷ m/s の端数が残る
@@ -92,6 +88,8 @@ namespace NS::Obj
         NS::Obj::AddGravity(*owner, m_velocity, -gravity, dt);
     }
 
+    // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、
+    // 天井に当たったフレームの上向き速度は Move を抜けた時点で 0 になっている
     void Body::Move(NS::Obj::Collider& collider, float dt, float maxStepHeight) noexcept
     {
         const NS::Obj::ColliderMove moved = collider.Move(RootTransform().Position(), m_velocity, dt, maxStepHeight);

@@ -3,7 +3,6 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/D3dCommon.h"
 #include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Graphics/detail/D3dUsage.h"
 
 namespace NS::Gfx

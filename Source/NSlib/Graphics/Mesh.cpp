@@ -81,20 +81,6 @@ namespace NS::Gfx
     Mesh::Mesh() = default;
     Mesh::~Mesh() = default;
 
-    void Mesh::SetGeometry(std::unique_ptr<Buffer> vertexBuffer,
-                           std::unique_ptr<Buffer> indexBuffer,
-                           std::size_t vertexCount,
-                           std::size_t indexCount,
-                           bool usingFallback) noexcept
-    {
-        m_vb = std::move(vertexBuffer);
-        m_ib = std::move(indexBuffer);
-        m_vertexCount = vertexCount;
-        m_indexCount = indexCount;
-        m_usingFallback = usingFallback;
-        m_valid = (m_vb != nullptr && m_ib != nullptr && Gpu().device != nullptr);
-    }
-
     bool Mesh::BuildGeometry(const void* vertices,
                              std::size_t vertexCount,
                              std::size_t stride,
@@ -112,7 +98,12 @@ namespace NS::Gfx
         {
             return false;
         }
-        SetGeometry(std::move(vb), std::move(ib), vertexCount, indexCount, usingFallback);
+        m_vb = std::move(vb);
+        m_ib = std::move(ib);
+        m_vertexCount = vertexCount;
+        m_indexCount = indexCount;
+        m_usingFallback = usingFallback;
+        m_valid = (m_vb != nullptr && m_ib != nullptr && Gpu().device != nullptr);
         return true;
     }
 
@@ -139,7 +130,7 @@ namespace NS::Gfx
             return;
         }
 
-        const std::span<const std::byte> bytecode = detail::GetVertexShaderBytecode(vertexShader);
+        const std::span<const std::byte> bytecode = vertexShader.VertexShaderBytecode();
         if (bytecode.empty())
         {
             NS_LOG_ERROR(Graphics, "Mesh::CreateInputLayout: VS バイトコードが空");

@@ -10,8 +10,6 @@
 namespace NS::Gfx
 {
 
-    class Texture;
-
     //! @brief テクスチャの作り方
     //! @details path が空でなければ画像ファイルから読む。大きさと画素形式はファイルが決める
     //! path が空なら width / height / format / bindFlags で中身の無いテクスチャを作る

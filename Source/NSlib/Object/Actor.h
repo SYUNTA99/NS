@@ -7,7 +7,6 @@
 #include "NSlib/Object/Transform.h"
 #include "NSlib/Object/UpdatePhase.h"
 
-#include <concepts>
 #include <cstdint>
 #include <functional>
 #include <memory>

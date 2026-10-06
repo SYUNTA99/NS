@@ -1,27 +1,22 @@
 ﻿#include "NSlib/Object/Reflection/ComponentEntry.h"
 
-#include "NSlib/Object/ObjectJson.h"
-
 namespace NS::Obj
 {
     namespace
     {
-        // fields から name 一致の値を返す。値を読む Field 関数と HasField の共通処理
+        // entry から name 一致の値を返す。値を読む Field 関数と HasField の共通処理。壊れた形は nullptr
         const nlohmann::json* FindFieldValue(const nlohmann::json& entry, std::string_view name) noexcept
         {
-            const nlohmann::json* fields = ComponentEntryFields(entry);
-            if (fields == nullptr)
+            if (!entry.is_object())
             {
                 return nullptr;
             }
-            for (nlohmann::json::const_iterator it = fields->begin(); it != fields->end(); ++it)
+            const nlohmann::json::const_iterator it = entry.find(name);
+            if (it == entry.end())
             {
-                if (it.key() == name)
-                {
-                    return &it.value();
-                }
+                return nullptr;
             }
-            return nullptr;
+            return &*it;
         }
 
         // entry の fields object を返し、無ければ作る。SetField の書き込み先
@@ -34,15 +29,6 @@ namespace NS::Obj
             return entry;
         }
     } // namespace
-
-    const nlohmann::json* ComponentEntryFields(const nlohmann::json& entry) noexcept
-    {
-        if (!entry.is_object())
-        {
-            return nullptr;
-        }
-        return &entry;
-    }
 
     float FieldFloat(const nlohmann::json& entry, std::string_view name, float fallback) noexcept
     {

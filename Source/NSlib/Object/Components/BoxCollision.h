@@ -15,7 +15,7 @@ namespace NS::Obj
     {
     public:
         //! 既定 halfExtents {0.5,0.5,0.5} で構築する
-        BoxCollision() noexcept;
+        BoxCollision() noexcept = default;
         //! halfExtents を指定して構築する。負の成分は 0 にクランプ
         explicit BoxCollision(const NS::Vector3& halfExtents) noexcept;
 

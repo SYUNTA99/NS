@@ -72,11 +72,23 @@ namespace NS::Obj
         if (!className.empty())
         {
             const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
+            if (entry == nullptr || entry->create == nullptr)
+            {
+                NS_LOG_WARN(Scene, "CreateRegisteredObject: 未登録クラス {} を素の Actor で組む", className);
+            }
+        }
+        return CreateActorOfClass(className);
+    }
+
+    std::unique_ptr<Actor> CreateActorOfClass(std::string_view className)
+    {
+        if (!className.empty())
+        {
+            const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
             if (entry != nullptr && entry->create != nullptr)
             {
                 return entry->create();
             }
-            NS_LOG_WARN(Scene, "CreateRegisteredObject: 未登録クラス {} を素の Actor で組む", className);
         }
         return std::make_unique<Actor>();
     }

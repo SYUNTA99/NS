@@ -1,8 +1,6 @@
 #pragma once
 
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/Graphics/RenderSettings.h"
-#include "NSlib/Object/Components/VirtualCamera.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/IUse/IUseCollision.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
@@ -27,14 +25,12 @@ namespace NS::Gfx
 {
     class EffectScene;
     class Renderer;
-    struct RenderContext;
 } // namespace NS::Gfx
 
 namespace NS::Obj
 {
     class AssetManager;
     class CameraManager;
-    class SceneCamera;
     class Component;
     class DirectionalLight;
     class IRenderable;

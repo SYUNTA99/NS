@@ -96,7 +96,6 @@ namespace NS::Gfx::detail
             {
                 oldToNew[i] = static_cast<std::uint32_t>(sorted.size());
                 sorted.push_back(bones[i]);
-                emitted[i] = true;
             }
         }
 

@@ -40,8 +40,6 @@ namespace NS::Obj
         }
     } // namespace
 
-    MeshCollision::MeshCollision() noexcept {}
-
     void MeshCollision::SetShape(const NS::Phys::MeshShape* shape) noexcept
     {
         m_shape = shape;

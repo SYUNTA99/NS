@@ -12,9 +12,10 @@
 #include "NSlib/Object/UIActor.h"
 #include "NSlib/Windows/Clock.h"
 
+#include <magic_enum/magic_enum.hpp>
+
 #include <algorithm>
 #include <cmath>
-#include <limits>
 #include <string_view>
 #include <vector>
 
@@ -451,7 +452,7 @@ namespace NS::Obj
             NS::Gfx::DebugDraw::BeginStep();
 #endif
         }
-        for (UpdatePhase phase : k_UpdatePhases)
+        for (UpdatePhase phase : magic_enum::enum_values<UpdatePhase>())
         {
             if (!worldStep && ClockOf(phase) == PhaseClock::World)
             {

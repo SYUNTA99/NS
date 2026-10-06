@@ -15,7 +15,7 @@ namespace NS::Obj
     {
     public:
         //! 既定半径 0.5 で構築する
-        SphereCollision() noexcept;
+        SphereCollision() noexcept = default;
         //! 半径を指定して構築する。負は 0 にクランプ
         explicit SphereCollision(float radius) noexcept;
 

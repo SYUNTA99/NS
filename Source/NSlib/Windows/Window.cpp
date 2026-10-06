@@ -16,31 +16,7 @@ namespace NS::OS
         // Window は単一インスタンス
         Window::Impl* s_instance = nullptr;
 
-        // Input へ送る Win32 メッセージの判定
-        [[nodiscard]] constexpr bool IsInputMessage(UINT msg) noexcept
-        {
-            switch (msg)
-            {
-            case WM_KEYDOWN:
-            case WM_KEYUP:
-            case WM_SYSKEYDOWN:
-            case WM_SYSKEYUP:
-            case WM_KILLFOCUS:
-            case WM_MOUSEMOVE:
-            case WM_LBUTTONDOWN:
-            case WM_LBUTTONUP:
-            case WM_RBUTTONDOWN:
-            case WM_RBUTTONUP:
-            case WM_MBUTTONDOWN:
-            case WM_MBUTTONUP:
-            case WM_XBUTTONDOWN:
-            case WM_XBUTTONUP:
-            case WM_MOUSEWHEEL:
-                return true;
-            default:
-                return false;
-            }
-        }
+        constexpr wchar_t k_ClassName[] = L"NS_Window";
 
         // キーボード系メッセージ
         [[nodiscard]] constexpr bool IsKeyboardMessage(UINT msg) noexcept
@@ -67,6 +43,12 @@ namespace NS::OS
             default:
                 return false;
             }
+        }
+
+        // Input へ送る Win32 メッセージの判定
+        [[nodiscard]] constexpr bool IsInputMessage(UINT msg) noexcept
+        {
+            return IsKeyboardMessage(msg) || IsMouseMessage(msg) || msg == WM_KILLFOCUS;
         }
 
         // 離しのメッセージ
@@ -126,10 +108,7 @@ namespace NS::OS
             // OSからのメッセージを ImGui に送る
             if (impl->messageHook)
             {
-                impl->messageHook(static_cast<void*>(hwnd),
-                                  static_cast<std::uint32_t>(msg),
-                                  static_cast<std::uintptr_t>(wparam),
-                                  static_cast<std::intptr_t>(lparam));
+                impl->messageHook(hwnd, msg, wparam, lparam);
             }
 
             // 入力メッセージは Input へ振り分け
@@ -144,10 +123,7 @@ namespace NS::OS
                         return ::DefWindowProcW(hwnd, msg, wparam, lparam);
                     }
 
-                    DispatchWin32MessageToInput(*impl->input,
-                                                static_cast<unsigned int>(msg),
-                                                static_cast<std::uintptr_t>(wparam),
-                                                static_cast<std::intptr_t>(lparam));
+                    DispatchWin32MessageToInput(*impl->input, msg, wparam, lparam);
                 }
                 return ::DefWindowProcW(hwnd, msg, wparam, lparam);
             }
@@ -189,10 +165,7 @@ namespace NS::OS
             {
                 if (impl->input != nullptr)
                 {
-                    DispatchWin32MessageToInput(*impl->input,
-                                                static_cast<unsigned int>(msg),
-                                                static_cast<std::uintptr_t>(wparam),
-                                                static_cast<std::intptr_t>(lparam));
+                    DispatchWin32MessageToInput(*impl->input, msg, wparam, lparam);
                 }
                 break;
             }
@@ -232,7 +205,6 @@ namespace NS::OS
 
         m_pImpl->hInstance = ::GetModuleHandleW(nullptr);
         m_pImpl->size = desc.size;
-        m_pImpl->className = L"NS_Window";
 
         // ウィンドウクラス登録
         WNDCLASSEXW wc{};
@@ -243,7 +215,7 @@ namespace NS::OS
         wc.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
         // 背景消去を無効化し、初回Present時の白フラッシュを回避する
         wc.hbrBackground = nullptr;
-        wc.lpszClassName = m_pImpl->className.c_str();
+        wc.lpszClassName = k_ClassName;
 
         m_pImpl->classAtom = ::RegisterClassExW(&wc);
         if (m_pImpl->classAtom == 0)
@@ -262,7 +234,7 @@ namespace NS::OS
         const std::wstring wideTitle = ::NS::OS::StringUtils::WideFromUtf8(desc.title);
 
         m_pImpl->hwnd = ::CreateWindowExW(exStyle,
-                                          m_pImpl->className.c_str(),
+                                          k_ClassName,
                                           wideTitle.c_str(),
                                           style,
                                           CW_USEDEFAULT,
@@ -277,7 +249,7 @@ namespace NS::OS
         if (m_pImpl->hwnd == nullptr)
         {
             NS_LOG_ERROR(Platform, "CreateWindowExW 失敗 (GetLastError={})", ::GetLastError());
-            ::UnregisterClassW(m_pImpl->className.c_str(), m_pImpl->hInstance);
+            ::UnregisterClassW(k_ClassName, m_pImpl->hInstance);
             m_pImpl->classAtom = 0;
             s_instance = nullptr;
             return;
@@ -315,7 +287,7 @@ namespace NS::OS
         }
         if (m_pImpl->classAtom != 0)
         {
-            ::UnregisterClassW(m_pImpl->className.c_str(), m_pImpl->hInstance);
+            ::UnregisterClassW(k_ClassName, m_pImpl->hInstance);
             m_pImpl->classAtom = 0;
         }
         s_instance = nullptr;
@@ -343,17 +315,7 @@ namespace NS::OS
         // 相対マウスは WM_INPUT の生の移動量で動くので、毎フレーム固定点へ戻してもカメラ操作は壊れない
         if (m_pImpl->cursorLocked && m_pImpl->hasFocus && m_pImpl->hwnd != nullptr)
         {
-            POINT point{};
-            if (m_pImpl->lockPointSet)
-            {
-                point.x = m_pImpl->lockPointX;
-                point.y = m_pImpl->lockPointY;
-            }
-            else
-            {
-                point.x = m_pImpl->size.width / 2;
-                point.y = m_pImpl->size.height / 2;
-            }
+            POINT point = m_pImpl->lockPoint.value_or(POINT{m_pImpl->size.width / 2, m_pImpl->size.height / 2});
             ::ClientToScreen(m_pImpl->hwnd, &point);
             ::SetCursorPos(point.x, point.y);
         }
@@ -413,9 +375,7 @@ namespace NS::OS
 
     void Window::SetCursorLockPoint(int clientX, int clientY) noexcept
     {
-        m_pImpl->lockPointSet = true;
-        m_pImpl->lockPointX = clientX;
-        m_pImpl->lockPointY = clientY;
+        m_pImpl->lockPoint = POINT{clientX, clientY};
     }
 
     void Window::RequestClose() noexcept

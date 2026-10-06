@@ -27,8 +27,6 @@ namespace
 
 namespace NS::Obj
 {
-    PlayerInput::PlayerInput() noexcept : Component() {}
-
     void PlayerInput::SetCameraForward(const NS::Vector3& cameraForwardHorizontal) noexcept
     {
         m_cameraForward = NormalizeHorizontal(cameraForwardHorizontal);

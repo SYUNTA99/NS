@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "NSlib/Core/NonCopyable.h"
+
 #include <coroutine>
 #include <cstddef>
 #include <exception>
@@ -110,16 +112,11 @@ namespace NS
     //! @brief 所有するシーケンスの待ちを進め、明けた物を再開する
     //! @details いつ Tick するかは持ち主が決める。止めている間は全シーケンスが止まる。一時停止はこれで効く
     //! CancelAll はシーケンスを途中のまま破棄する。コルーチンフレームのデストラクタは走る。破棄後の再開は無い
-    class CoroutineRunner
+    class CoroutineRunner : public NS::NonCopyable
     {
     public:
         CoroutineRunner() = default;
         ~CoroutineRunner() { CancelAll(); }
-
-        CoroutineRunner(const CoroutineRunner&) = delete;
-        CoroutineRunner& operator=(const CoroutineRunner&) = delete;
-        CoroutineRunner(CoroutineRunner&&) = delete;
-        CoroutineRunner& operator=(CoroutineRunner&&) = delete;
 
         //! シーケンスを先頭から最初の待ちまで即時に走らせ、続きを預かる。待ち無しで終わればその場で捨てる
         void Start(Coroutine&& coroutine)

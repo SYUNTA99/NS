@@ -67,9 +67,6 @@ namespace NS::Obj
         bool m_loaded = false;
     };
 
-    //! クラス名から Actor をコードの既定値で作る。未登録のクラスと空の名前は素の Actor
-    [[nodiscard]] std::unique_ptr<Actor> CreateActorOfClass(std::string_view className);
-
     //! actor のクラスの種類の既定値を当てる。足す部品を作り、欄の値を写す
     void ApplyArchetype(Actor& actor);
 

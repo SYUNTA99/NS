@@ -12,15 +12,10 @@
 
 namespace NS::Obj
 {
-    void Shadow::SetResources(NS::Gfx::StaticMesh* mesh, NS::Gfx::Material* material) noexcept
-    {
-        m_mesh = mesh;
-        m_material = material;
-    }
-
     void Shadow::ResolveAssets(AssetManager& assets)
     {
-        SetResources(assets.Builtin("shadowQuad"), assets.SharedMaterial("shadow"));
+        m_mesh = assets.Builtin("shadowQuad");
+        m_material = assets.SharedMaterial("shadow");
     }
 
     void Shadow::OnStart()
@@ -75,16 +70,7 @@ namespace NS::Obj
         {
             return 0.0f;
         }
-        const float f = 1.0f - dist / maxDist;
-        if (f < 0.0f)
-        {
-            return 0.0f;
-        }
-        if (f > 1.0f)
-        {
-            return 1.0f;
-        }
-        return f;
+        return NS::Clamp(1.0f - dist / maxDist, 0.0f, 1.0f);
     }
 
     void Shadow::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)

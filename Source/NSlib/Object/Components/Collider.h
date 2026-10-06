@@ -37,7 +37,7 @@ namespace NS::Obj
     class Collider : public NS::Obj::Component, public NS::Obj::IUseCollision
     {
     public:
-        Collider() noexcept;
+        Collider() noexcept = default;
 
         //! 当たりのカプセルの半径 (m)。欄「半径」の値で、球にしている間も変わらない
         [[nodiscard]] float CapsuleRadius() const noexcept { return m_radius; }

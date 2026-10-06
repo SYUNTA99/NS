@@ -24,9 +24,6 @@ namespace NS::Obj
     class Shadow : public Component, public IRenderable
     {
     public:
-        //! 共有の quad mesh と shadow material を非所有で注入する。未設定なら Collect は何も積まない
-        void SetResources(NS::Gfx::StaticMesh* mesh, NS::Gfx::Material* material) noexcept;
-
         //! 真下の地面に影クアッドの DrawItem を積む。地面が無い / リソース未設定なら何も積まない
         void Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out) override;
         //! 半透明バケットに分類させる

@@ -85,8 +85,6 @@ namespace NS::OS
     class Keyboard
     {
     public:
-        Keyboard() = default;
-
         //! @brief 対象のキーが現在のフレームで新たに押されたかどうかを判定する
         [[nodiscard]] bool IsPressed(Key k) const noexcept;
 

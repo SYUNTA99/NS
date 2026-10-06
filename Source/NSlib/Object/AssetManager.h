@@ -87,8 +87,6 @@ namespace NS::Obj
         //! path キーで Mesh を共有して返す。読込 / GPU 生成に失敗した path も負キャッシュし、以後は再読込せず
         //! 即 nullptr を返す。修正した file の再試行は Clear() でキャッシュを解いてから
         [[nodiscard]] NS::Gfx::Mesh* GetOrLoadMesh(std::string_view path);
-        //! 現在キャッシュしている mesh エントリ数。読込失敗を負キャッシュした path も 1 件として数える
-        [[nodiscard]] std::size_t MeshCacheSize() const noexcept;
 
         //! meshRef の形を当たりにして返す。参照の引き方は ResolveMeshFromRef と同じ
         //! 三角形は描画の index の並びのままで、法線 (v1 - v0) × (v2 - v0) が表面の外を向く

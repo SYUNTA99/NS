@@ -6,7 +6,6 @@
 #include <memory>
 namespace NS::Gfx
 {
-    class Buffer;
     //! バッファ構築パラメータ。役割は D3D11_BIND_* の bindFlags で表す
     //! 用途別の値は MakeVertexBufferDesc 等のヘルパが埋める
     struct BufferDesc

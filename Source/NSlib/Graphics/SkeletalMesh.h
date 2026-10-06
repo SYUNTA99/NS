@@ -10,8 +10,6 @@
 
 namespace NS::Gfx
 {
-    class Buffer;
-
     //! スキンメッシュで使えるボーンの最大数
     inline constexpr std::size_t k_MaxBones = 128;
 

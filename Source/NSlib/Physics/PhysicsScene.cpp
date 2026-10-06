@@ -22,7 +22,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <utility>
 
 namespace NS::Phys
 {
@@ -48,8 +47,7 @@ namespace NS::Phys
         {
             const BodyMotion defaults;
             BodyMotion out = motion;
-            out.mass = FiniteOr(motion.mass, defaults.mass);
-            if (!(out.mass > 0.0f))
+            if (!NS::IsPositiveFinite(out.mass))
             {
                 out.mass = defaults.mass;
             }
@@ -152,7 +150,7 @@ namespace NS::Phys
     JPH::BroadPhaseLayer PhysicsScene::BPLayerInterface::GetBroadPhaseLayer(JPH::ObjectLayer layer) const
     {
         JPH_ASSERT(layer < ObjectLayers::Count);
-        return JPH::BroadPhaseLayer{static_cast<JPH::BroadPhaseLayer::Type>(layer)};
+        return BroadPhaseLayers::FromObjectLayer(layer);
     }
 
     bool PhysicsScene::ObjLayerPairFilter::ShouldCollide(JPH::ObjectLayer first, JPH::ObjectLayer second) const
@@ -175,21 +173,7 @@ namespace NS::Phys
 
     bool PhysicsScene::ObjVsBPLayerFilter::ShouldCollide(JPH::ObjectLayer object, JPH::BroadPhaseLayer broadPhase) const
     {
-        const JPH::ObjectLayer other = static_cast<JPH::ObjectLayer>(broadPhase.GetValue());
-        if (object == ObjectLayers::Terrain)
-        {
-            return other == ObjectLayers::Rock || other == ObjectLayers::Debris;
-        }
-        if (object == ObjectLayers::Rock)
-        {
-            return other == ObjectLayers::Terrain || other == ObjectLayers::Rock || other == ObjectLayers::Debris;
-        }
-        if (object == ObjectLayers::Debris)
-        {
-            return other == ObjectLayers::Terrain || other == ObjectLayers::Rock;
-        }
-
-        return false;
+        return ObjLayerPairFilter{}.ShouldCollide(object, static_cast<JPH::ObjectLayer>(broadPhase.GetValue()));
     }
 
     void PhysicsScene::ContactRecorder::OnContactAdded(const JPH::Body& first,
@@ -242,21 +226,6 @@ namespace NS::Phys
         return m_physicsSystem.GetNumBodies();
     }
 
-    JPH::BodyID PhysicsScene::AddStatic(const JPH::ShapeRefC& shape,
-                                        const NS::Vector3& position,
-                                        const NS::Quaternion& rotation,
-                                        JPH::ObjectLayer layer)
-    {
-        if (shape == nullptr)
-        {
-            return JPH::BodyID{};
-        }
-
-        const JPH::BodyCreationSettings settings{
-            shape, ToJolt(position), ToJolt(rotation), JPH::EMotionType::Static, layer};
-        return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::DontActivate);
-    }
-
     JPH::BodyID PhysicsScene::SyncStatic(JPH::BodyID id,
                                          const JPH::ShapeRefC& shape,
                                          const NS::Vector3& position,
@@ -270,7 +239,9 @@ namespace NS::Phys
 
         if (id.IsInvalid())
         {
-            return AddStatic(shape, position, rotation, layer);
+            const JPH::BodyCreationSettings settings{
+                shape, ToJolt(position), ToJolt(rotation), JPH::EMotionType::Static, layer};
+            return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::DontActivate);
         }
 
         JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
@@ -531,7 +502,7 @@ namespace NS::Phys
 
     void PhysicsScene::SetGravity(const NS::Vector3& gravity)
     {
-        if (!std::isfinite(gravity.x) || !std::isfinite(gravity.y) || !std::isfinite(gravity.z))
+        if (!NS::IsFinite(gravity))
         {
             return;
         }
@@ -610,8 +581,7 @@ namespace NS::Phys
                                float& outDistance) const
     {
         const float directionLength = direction.Length();
-        if (!std::isfinite(maxDistance) || !std::isfinite(directionLength) || !std::isfinite(origin.x) ||
-            !std::isfinite(origin.y) || !std::isfinite(origin.z) || !(maxDistance > 0.0f) || !(directionLength > 0.0f))
+        if (!NS::IsPositiveFinite(maxDistance) || !NS::IsPositiveFinite(directionLength) || !NS::IsFinite(origin))
         {
             return false;
         }
@@ -633,8 +603,7 @@ namespace NS::Phys
                                JPH::BodyID ignoredBody) const
     {
         const float directionLength = direction.Length();
-        if (!std::isfinite(maxDistance) || !std::isfinite(directionLength) || !std::isfinite(origin.x) ||
-            !std::isfinite(origin.y) || !std::isfinite(origin.z) || !(maxDistance > 0.0f) || !(directionLength > 0.0f))
+        if (!NS::IsPositiveFinite(maxDistance) || !NS::IsPositiveFinite(directionLength) || !NS::IsFinite(origin))
         {
             return false;
         }
@@ -706,10 +675,7 @@ namespace NS::Phys
             }
 
             const JPH::AABox& bounds = body.GetBody().GetWorldSpaceBounds();
-            NS::AABB out;
-            out.Center = FromJolt(bounds.GetCenter());
-            out.Extents = FromJolt(bounds.GetExtent());
-            found.push_back(out);
+            found.push_back(NS::AABB{FromJolt(bounds.GetCenter()), FromJolt(bounds.GetExtent())});
         }
         return found;
     }

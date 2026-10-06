@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <type_traits>
-#include <vector>
 
 namespace NS::Obj
 {

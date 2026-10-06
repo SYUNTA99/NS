@@ -12,7 +12,6 @@
 #include "NSlib/Graphics/Texture.h"
 
 #include <algorithm>
-#include <string>
 
 namespace NS::Gfx
 {

@@ -4,7 +4,6 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Component.h"
 #include "NSlib/Object/Components/TransformComponent.h"
-#include "NSlib/Object/Reflection/ComponentEntry.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
@@ -15,7 +14,6 @@
 #include <optional>
 #include <span>
 #include <utility>
-#include <vector>
 
 namespace NS::Obj
 {
@@ -28,16 +26,6 @@ namespace NS::Obj
         [[nodiscard]] bool IsRefValue(const nlohmann::json& value) noexcept
         {
             return value.is_object() && value.contains("ref");
-        }
-
-        [[nodiscard]] std::string_view PartTypeName(const Component& part) noexcept
-        {
-            const ReflectionInfo* info = part.GetReflection();
-            if (info != nullptr)
-            {
-                return std::string_view{info->typeName};
-            }
-            return {};
         }
 
         // 位置・回転・拡縮は個体の物。種類の既定値に持たせず、保存の差分でも落とさない
@@ -189,26 +177,14 @@ namespace NS::Obj
         }
         m_archetypes[std::string{className}] = Sanitize(className, archetype);
         // 既定の 1 体は種類の既定値から作るので、変えたら作り直す
-        const std::map<std::string, std::unique_ptr<Actor>, std::less<>>::iterator it = m_baselines.find(className);
-        if (it != m_baselines.end())
-        {
-            m_baselines.erase(it);
-        }
+        m_baselines.erase(std::string{className});
     }
 
     void ArchetypeLibrary::Erase(std::string_view className)
     {
         EnsureLoaded();
-        const std::map<std::string, nlohmann::json, std::less<>>::iterator found = m_archetypes.find(className);
-        if (found != m_archetypes.end())
-        {
-            m_archetypes.erase(found);
-        }
-        const std::map<std::string, std::unique_ptr<Actor>, std::less<>>::iterator it = m_baselines.find(className);
-        if (it != m_baselines.end())
-        {
-            m_baselines.erase(it);
-        }
+        m_archetypes.erase(std::string{className});
+        m_baselines.erase(std::string{className});
     }
 
     bool ArchetypeLibrary::Save(std::string_view className)
@@ -244,19 +220,6 @@ namespace NS::Obj
         const Actor& result = *actor;
         m_baselines.emplace(std::string{className}, std::move(actor));
         return result;
-    }
-
-    std::unique_ptr<Actor> CreateActorOfClass(std::string_view className)
-    {
-        if (!className.empty())
-        {
-            const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
-            if (entry != nullptr && entry->create != nullptr)
-            {
-                return entry->create();
-            }
-        }
-        return std::make_unique<Actor>();
     }
 
     void ApplyArchetype(Actor& actor)
@@ -328,7 +291,7 @@ namespace NS::Obj
         const Actor& baseline = ArchetypeLibrary::Get().Baseline(owner->ClassName());
         const std::string_view role = owner->PartName(comp);
         const Component* found = baseline.Part(role);
-        if (found != nullptr && PartTypeName(*found) == PartTypeName(comp))
+        if (found != nullptr && std::string_view{found->ClassName()} == comp.ClassName())
         {
             return found;
         }

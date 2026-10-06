@@ -3,15 +3,6 @@
 namespace NS::UI
 {
 
-    void Widget::Adopt(std::unique_ptr<Widget> child)
-    {
-        if (child == nullptr)
-        {
-            return;
-        }
-        m_children.push_back(std::move(child));
-    }
-
     WidgetRect Widget::ResolveRect(const WidgetRect& parent) const noexcept
     {
         if (m_stretch)
@@ -65,7 +56,9 @@ namespace NS::UI
         }
 
         // 上に描かれる物から先に当てる。子は末尾ほど上
-        for (std::vector<std::unique_ptr<Widget>>::const_reverse_iterator it = m_children.rbegin(); it != m_children.rend(); ++it)
+        for (std::vector<std::unique_ptr<Widget>>::const_reverse_iterator it = m_children.rbegin();
+             it != m_children.rend();
+             ++it)
         {
             if ((*it)->HitTest(px, py))
             {

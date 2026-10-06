@@ -64,9 +64,6 @@ namespace NS::Obj
         return rects;
     }
 
-    // 持ち主の Actor の Update が呼ぶ。自機では ImpactResolver の後に呼ばれ、決めたフレームに最初の姿を出す
-    HitReaction::HitReaction() noexcept : OverlayRenderer() {}
-
     void HitReaction::StartFlash(int frames, float alpha) noexcept
     {
         m_flashRemaining = std::max(frames, 0);
@@ -230,6 +227,7 @@ namespace NS::Obj
         return true;
     }
 
+    // 持ち主の Actor の Update が呼ぶ。自機では ImpactResolver の後に呼ばれ、決めたフレームに最初の姿を出す
     void HitReaction::OnUpdate()
     {
         // 始めたフレームは最初の姿のまま。次の更新から薄め、振動を進める

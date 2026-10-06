@@ -20,9 +20,7 @@ namespace
     {
         MSG msg;
         while (::PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
-        {
-            (void)msg;
-        }
+        {}
     }
 } // namespace
 
@@ -189,13 +187,10 @@ namespace NS
             return false;
         }
 
-        if (m_quitGuard)
+        if (m_quitGuard && !m_quitGuard())
         {
-            if (!m_quitGuard())
-            {
-                m_quitRequested = false;
-                return false;
-            }
+            m_quitRequested = false;
+            return false;
         }
         return true;
     }

@@ -47,7 +47,7 @@ namespace NS::Obj
     {
     public:
         VirtualCamera() noexcept = default;
-        ~VirtualCamera() noexcept override;
+        ~VirtualCamera() noexcept override = default;
 
         //! カメラの窓口から管理役へ自分を登録する。派生で上書きするなら基底のこれを呼ぶ
         void OnAppear() override { VirtualCamera::OnStart(); }

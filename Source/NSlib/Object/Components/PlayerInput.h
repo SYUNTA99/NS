@@ -15,7 +15,7 @@ namespace NS::Obj
     class PlayerInput : public Component
     {
     public:
-        PlayerInput() noexcept;
+        PlayerInput() noexcept = default;
 
         //! camera 相対移動用の水平 forward を注入し、XZ 平面で Y=0 とする。未注入時は world +Z
         //! CameraManager の居る scene では OnUpdate が毎ステップ上書きする。CameraManager 不在 (テスト等)

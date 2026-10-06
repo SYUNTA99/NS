@@ -1,19 +1,14 @@
 ﻿#include "NSlib/Object/Reflection/ObjectBuilder.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Core/Math.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Component.h"
 #include "NSlib/Object/Components/TransformComponent.h"
 #include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/ComponentEntry.h"
-#include "NSlib/Object/Reflection/Reflection.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
-#include <algorithm>
 #include <string>
-#include <vector>
 
 namespace NS::Obj
 {

@@ -11,17 +11,6 @@ namespace NS::Obj
 {
     namespace
     {
-        // 水平の前から作った右と direction の内積が負なら -1、それ以外は 1
-        [[nodiscard]] float SideSign(const NS::Vector3& forwardHorizontal, const NS::Vector3& direction) noexcept
-        {
-            const NS::Vector3 right{forwardHorizontal.z, 0.0f, -forwardHorizontal.x};
-            if (NS::Dot(right, direction) < 0.0f)
-            {
-                return -1.0f;
-            }
-            return 1.0f;
-        }
-
         // 姿勢の視線の水平から右、視線と右から上を作る。どちらも長さ 1
         [[nodiscard]] CameraAxes ViewAxes(const CameraPose& pose) noexcept
         {
@@ -194,7 +183,13 @@ namespace NS::Obj
 
     float CameraManager::SideSignOf(const NS::Vector3& direction) const noexcept
     {
-        return SideSign(ForwardHorizontal(), direction);
+        const NS::Vector3 forwardHorizontal = ForwardHorizontal();
+        const NS::Vector3 right{forwardHorizontal.z, 0.0f, -forwardHorizontal.x};
+        if (NS::Dot(right, direction) < 0.0f)
+        {
+            return -1.0f;
+        }
+        return 1.0f;
     }
 
     void CameraManager::BeginBlendFrom(const CameraPose& pose) noexcept

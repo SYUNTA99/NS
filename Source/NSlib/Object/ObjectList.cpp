@@ -4,15 +4,10 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Components/Collision.h"
 #include "NSlib/Object/ObjectName.h"
-#include "NSlib/Object/Reflection/ComponentEntry.h"
-#include "NSlib/Object/Reflection/ObjectBuilder.h"
-#include "NSlib/Object/Reflection/Reflection.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Physics/PhysicsScene.h"
 
 #include <algorithm>
-#include <limits>
-#include <numeric>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -158,13 +153,7 @@ namespace NS::Obj
         obj->SetId(AllocateObjectId());
 
         // ファイルの参照は名前で書くので、プレイ中に足す物も既存と重ならない名前にする
-        std::unordered_set<std::string> used;
-        used.reserve(m_objects.size());
-        for (const std::unique_ptr<Actor>& existing : m_objects)
-        {
-            used.insert(existing->Name());
-        }
-        obj->SetName(MakeUniqueObjectName(name, used));
+        RenameObject(*obj, name);
         return Append(std::move(obj));
     }
 
@@ -405,13 +394,7 @@ namespace NS::Obj
         }
         ApplyIdentity(*obj, entry);
         // 名前はシーンの中で一意に保つ。組み直さずに 1 体だけ入れるので、読込の一意化を通らない
-        std::unordered_set<std::string> used;
-        used.reserve(m_objects.size());
-        for (const std::unique_ptr<Actor>& existing : m_objects)
-        {
-            used.insert(existing->Name());
-        }
-        obj->SetName(MakeUniqueObjectName(obj->Name(), used));
+        RenameObject(*obj, obj->Name());
         // 入れた物の id より先へカウンタを進める。進めないと次に置く 1 個目と重なる
         m_nextObjectId = std::max(m_nextObjectId, obj->Id() + 1);
 

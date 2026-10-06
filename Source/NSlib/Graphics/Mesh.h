@@ -13,7 +13,6 @@ namespace NS::Gfx
 {
     class Buffer;
     class Shader;
-    class Mesh;
     class CommandList;
 
     //! 公開 InputElement 用フォーマット。頂点属性として受け付けるフォーマットの閉集合
@@ -82,20 +81,7 @@ namespace NS::Gfx
     protected:
         Mesh();
 
-        //! @brief 派生クラスで構築したバッファを基底クラスに登録する
-        //! @param[in] vertexBuffer 登録する頂点バッファ
-        //! @param[in] indexBuffer 登録するインデックスバッファ
-        //! @param[in] vertexCount 頂点数
-        //! @param[in] indexCount インデックス数
-        //! @param[in] usingFallback 代替ジオメトリとして構築されたかどうかのフラグ
-        //! @note どちらかのバッファが未割り当ての場合は無効な状態として扱われる
-        void SetGeometry(std::unique_ptr<Buffer> vertexBuffer,
-                         std::unique_ptr<Buffer> indexBuffer,
-                         std::size_t vertexCount,
-                         std::size_t indexCount,
-                         bool usingFallback) noexcept;
-
-        //! @brief 頂点とインデックスから GPU のバッファを作り、成功した時だけ SetGeometry で登録する
+        //! @brief 頂点とインデックスから GPU のバッファを作り、成功した時だけ登録する
         //! @param[in] vertices 頂点データの先頭
         //! @param[in] vertexCount 頂点数
         //! @param[in] stride 頂点 1 個のバイト数

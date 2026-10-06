@@ -16,7 +16,7 @@ namespace NS::Obj
     {
     public:
         //! 既定 半径 0.4 / 半高 0.5 の縦 capsule で構築する
-        CapsuleCollision() noexcept;
+        CapsuleCollision() noexcept = default;
         //! 半径 / 半高を指定して構築する。負は 0 にクランプ
         CapsuleCollision(float radius, float halfHeight) noexcept;
 

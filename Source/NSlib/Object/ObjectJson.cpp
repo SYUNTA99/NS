@@ -177,19 +177,16 @@ namespace NS::Obj
     void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<std::uint32_t, std::uint32_t>& idMap)
     {
         ForEachRefValue(object, [&idMap](nlohmann::json& value) {
-            for (const char* key : {"ref"})
+            const nlohmann::json::iterator it = value.find("ref");
+            if (it == value.end() || !it->is_number_unsigned())
             {
-                const nlohmann::json::iterator it = value.find(key);
-                if (it == value.end() || !it->is_number_unsigned())
-                {
-                    continue;
-                }
-                const std::unordered_map<std::uint32_t, std::uint32_t>::const_iterator mapped =
-                    idMap.find(it->get<std::uint32_t>());
-                if (mapped != idMap.end())
-                {
-                    *it = mapped->second;
-                }
+                return;
+            }
+            const std::unordered_map<std::uint32_t, std::uint32_t>::const_iterator mapped =
+                idMap.find(it->get<std::uint32_t>());
+            if (mapped != idMap.end())
+            {
+                *it = mapped->second;
             }
         });
     }

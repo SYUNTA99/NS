@@ -282,9 +282,7 @@ namespace NS::Gfx
                 }
                 else
                 {
-                    n[0] = computedNormals[i][0];
-                    n[1] = computedNormals[i][1];
-                    n[2] = computedNormals[i][2];
+                    std::copy(computedNormals[i].begin(), computedNormals[i].end(), n);
                 }
                 const float nx = nm[0] * n[0] + nm[1] * n[1] + nm[2] * n[2];
                 const float ny = nm[3] * n[0] + nm[4] * n[1] + nm[5] * n[2];
@@ -583,21 +581,16 @@ namespace NS::Gfx
                 }
                 else
                 {
-                    n[0] = computedNormals[i][0];
-                    n[1] = computedNormals[i][1];
-                    n[2] = computedNormals[i][2];
+                    std::copy(computedNormals[i].begin(), computedNormals[i].end(), n);
                 }
                 NS::Vector3 normal = detail::MirrorZ(NS::Vector3{n[0], n[1], n[2]});
                 normal.Normalize();
                 v.normal = normal;
 
-                cgltf_uint rawJoints[4] = {0u, 0u, 0u, 0u};
-                cgltf_accessor_read_uint(jointsAcc, i, rawJoints, 4);
-                float rawWeights[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-                cgltf_accessor_read_float(weightsAcc, i, rawWeights, 4);
-
-                std::array<std::uint32_t, 4> joints{rawJoints[0], rawJoints[1], rawJoints[2], rawJoints[3]};
-                std::array<float, 4> weights{rawWeights[0], rawWeights[1], rawWeights[2], rawWeights[3]};
+                std::array<std::uint32_t, 4> joints{};
+                cgltf_accessor_read_uint(jointsAcc, i, joints.data(), 4);
+                std::array<float, 4> weights{};
+                cgltf_accessor_read_float(weightsAcc, i, weights.data(), 4);
                 for (int k = 0; k < 4; ++k)
                 {
                     // 重み 0 の枠は index を 0 にして GPU の範囲外参照を避ける
@@ -616,11 +609,8 @@ namespace NS::Gfx
                     }
                 }
                 detail::NormalizeJointWeights(joints, weights);
-                for (int k = 0; k < 4; ++k)
-                {
-                    v.joints[k] = joints[k];
-                    v.weights[k] = weights[k];
-                }
+                std::copy(joints.begin(), joints.end(), v.joints);
+                std::copy(weights.begin(), weights.end(), v.weights);
 
                 vertices.push_back(v);
             }

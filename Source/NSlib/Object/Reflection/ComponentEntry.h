@@ -13,9 +13,6 @@
 
 namespace NS::Obj
 {
-    //! エントリの fields。壊れた形は nullptr
-    [[nodiscard]] const nlohmann::json* ComponentEntryFields(const nlohmann::json& entry) noexcept;
-
     //! @brief 数 3 つの配列 [x,y,z] を読む
     //! @param[out] out 読めた値。失敗した場合は書き換えない
     //! @return 読めた場合 true、配列でない・長さが違う・数でない成分がある場合は false

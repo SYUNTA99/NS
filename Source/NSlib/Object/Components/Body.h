@@ -19,7 +19,7 @@ namespace NS::Obj
     class Body : public NS::Obj::Component
     {
     public:
-        Body() noexcept;
+        Body() noexcept = default;
 
         [[nodiscard]] NS::Vector3 Velocity() const noexcept { return m_velocity; }
         void SetVelocity(const NS::Vector3& v) noexcept { m_velocity = v; }

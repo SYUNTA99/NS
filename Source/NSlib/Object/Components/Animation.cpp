@@ -49,10 +49,7 @@ namespace NS::Obj
         }
     } // namespace
 
-    Animation::Animation() noexcept
-        // 移動が終わった後に骨を追従させる
-        : Component()
-    {}
+    Animation::Animation() noexcept = default;
 
     Animation::~Animation() = default;
 

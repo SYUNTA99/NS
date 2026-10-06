@@ -109,14 +109,10 @@ namespace NS
 
         [[noreturn]] void DebugBreakAndAbort()
         {
-#if defined(NS_SHIPPING)
-            std::abort();
-#elif defined(_MSC_VER)
+#if !defined(NS_SHIPPING)
             __debugbreak();
-            std::abort();
-#else
-            std::abort();
 #endif
+            std::abort();
         }
 
     } // namespace

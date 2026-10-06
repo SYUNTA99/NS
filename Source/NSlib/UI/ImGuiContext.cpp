@@ -17,10 +17,6 @@
 
 // WndProcHandler は backend が非公開にしているため利用側で前方宣言する
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-#define NS_UI_IMGUI_ENABLED 1
-#else
-#define NS_UI_IMGUI_ENABLED 0
 #endif
 
 namespace NS::UI
@@ -30,13 +26,13 @@ namespace NS::UI
     {
         bool valid = false;   // 初期化に成功したか
         bool fallback = true; // スタブ / 失敗で実機能が無効か
-#if NS_UI_IMGUI_ENABLED
+#if NS_EDITOR_ENABLED
         ::ImGuiContext* context = nullptr; // ImGui コンテキスト (所有)
         NS::OS::Window* window = nullptr;  // カーソル状態参照用 (非所有)
 #endif
     };
 
-#if NS_UI_IMGUI_ENABLED
+#if NS_EDITOR_ENABLED
     namespace
     {
         // エディタ用の暗い配色に整える。中間グレー地・角を落としたフラット・青の選択色へ寄せる
@@ -118,7 +114,7 @@ namespace NS::UI
     ImGuiContext::ImGuiContext(NS::OS::Window& window, NS::Gfx::Renderer& renderer) noexcept
         : m_pImpl(std::make_unique<Impl>())
     {
-#if NS_UI_IMGUI_ENABLED
+#if NS_EDITOR_ENABLED
         IMGUI_CHECKVERSION();
         m_pImpl->window = &window;
 
@@ -205,7 +201,7 @@ namespace NS::UI
 
     ImGuiContext::~ImGuiContext() noexcept
     {
-#if NS_UI_IMGUI_ENABLED
+#if NS_EDITOR_ENABLED
         if (m_pImpl && m_pImpl->context != nullptr)
         {
             ::ImGui_ImplDX11_Shutdown();
@@ -228,7 +224,7 @@ namespace NS::UI
 
     void ImGuiContext::BeginFrame() noexcept
     {
-#if NS_UI_IMGUI_ENABLED
+#if NS_EDITOR_ENABLED
         if (!IsValid())
         {
             return;
@@ -252,7 +248,7 @@ namespace NS::UI
 
     void ImGuiContext::EndFrame() noexcept
     {
-#if NS_UI_IMGUI_ENABLED
+#if NS_EDITOR_ENABLED
         if (!IsValid())
         {
             return;
@@ -273,7 +269,7 @@ namespace NS::UI
                                       std::uintptr_t wParam,
                                       std::intptr_t lParam) noexcept
     {
-#if NS_UI_IMGUI_ENABLED
+#if NS_EDITOR_ENABLED
         if (!IsValid())
         {
             return false;
@@ -293,7 +289,7 @@ namespace NS::UI
 
     bool ImGuiContext::WantCaptureMouse() const noexcept
     {
-#if NS_UI_IMGUI_ENABLED
+#if NS_EDITOR_ENABLED
         if (!IsValid())
         {
             return false;
@@ -306,7 +302,7 @@ namespace NS::UI
 
     bool ImGuiContext::WantCaptureKeyboard() const noexcept
     {
-#if NS_UI_IMGUI_ENABLED
+#if NS_EDITOR_ENABLED
         if (!IsValid())
         {
             return false;

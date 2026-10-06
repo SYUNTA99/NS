@@ -12,8 +12,6 @@
 
 namespace NS::Obj
 {
-    SphereCollision::SphereCollision() noexcept {}
-
     SphereCollision::SphereCollision(float radius) noexcept : m_radius(std::max(radius, 0.0f)) {}
 
     void SphereCollision::SetRadius(float radius) noexcept

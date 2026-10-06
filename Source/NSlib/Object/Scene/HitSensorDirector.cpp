@@ -29,7 +29,7 @@ namespace NS::Obj
     {
         // TODO: 組を総当たりで見ている。センサーが数十を超えたら格子で絞る
         // 先に組を全部集めてから呼ぶ。呼んだ先で配置物が増えたり消えたりしても、調べる並びが崩れない
-        m_pairs.clear();
+        std::vector<std::pair<HitSensor*, HitSensor*>> pairs;
         for (std::size_t i = 0; i < m_sensors.size(); ++i)
         {
             HitSensor* first = m_sensors[i];
@@ -47,13 +47,12 @@ namespace NS::Obj
                 }
                 if (VolumesOverlap(firstVolume, second->WorldVolume()))
                 {
-                    m_pairs.emplace_back(first, second);
-                    m_pairs.emplace_back(second, first);
+                    pairs.emplace_back(first, second);
+                    pairs.emplace_back(second, first);
                 }
             }
         }
 
-        const std::vector<std::pair<HitSensor*, HitSensor*>> pairs = m_pairs;
         for (const std::pair<HitSensor*, HitSensor*>& pair : pairs)
         {
             if (!IsRegistered(pair.first) || !IsRegistered(pair.second))

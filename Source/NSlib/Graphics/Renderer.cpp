@@ -731,11 +731,7 @@ namespace NS::Gfx
             BindTarget(rtv, dsv, target->Size());
             return;
         }
-        if (!m_backbuffer || !m_depth)
-        {
-            return;
-        }
-        BindTarget(m_backbuffer->Rtv(), m_depth->Dsv(), m_backbuffer->Size());
+        BindBackbuffer();
     }
 
     void Renderer::BindBackbuffer() noexcept

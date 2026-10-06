@@ -21,7 +21,7 @@ namespace NS::Obj
     {
     public:
         //! 空の collision で構築する
-        MeshCollision() noexcept;
+        MeshCollision() noexcept = default;
 
         //! 使う当たりを差し替える。所有しないので、この Component より長く生きる物を渡す。null で当たり無し
         void SetShape(const NS::Phys::MeshShape* shape) noexcept;

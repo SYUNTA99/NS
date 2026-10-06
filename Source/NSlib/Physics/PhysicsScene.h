@@ -26,7 +26,7 @@
 
 namespace NS::Phys
 {
-    //! body の種別を表す ObjectLayer。どの組み合わせが当たるかは 2 つの ShouldCollide が同じ形で持つ
+    //! body の種別を表す ObjectLayer。どの組み合わせが当たるかは ObjLayerPairFilter が持つ
     namespace ObjectLayers
     {
         inline constexpr JPH::ObjectLayer Terrain = 0;
@@ -253,11 +253,6 @@ namespace NS::Phys
 
     private:
         friend class JoltCharacter;
-
-        JPH::BodyID AddStatic(const JPH::ShapeRefC& shape,
-                              const NS::Vector3& position,
-                              const NS::Quaternion& rotation,
-                              JPH::ObjectLayer layer);
 
         JPH::BodyID SyncStatic(JPH::BodyID id,
                                const JPH::ShapeRefC& shape,

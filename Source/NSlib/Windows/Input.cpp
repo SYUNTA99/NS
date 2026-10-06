@@ -35,35 +35,25 @@ namespace NS::OS
             return i < static_cast<std::size_t>(GamepadButton::Count);
         }
 
+        [[nodiscard]] float NormalizeAxis(short raw, float deadzone) noexcept
+        {
+            float value = static_cast<float>(raw) / 32767.0f;
+            if (raw < 0)
+            {
+                value = static_cast<float>(raw) / 32768.0f;
+            }
+            if (std::fabs(value) < deadzone)
+            {
+                return 0.0f;
+            }
+            return value;
+        }
+
         // スティック値を -1.0〜1.0 へ正規化
         [[nodiscard]] Stick NormalizeStick(short rawX, short rawY, unsigned short deadzone) noexcept
         {
-            const float fx = [&]() -> float {
-                if (rawX < 0)
-                {
-                    return static_cast<float>(rawX) / 32768.0f;
-                }
-                return static_cast<float>(rawX) / 32767.0f;
-            }();
-            const float fy = [&]() -> float {
-                if (rawY < 0)
-                {
-                    return static_cast<float>(rawY) / 32768.0f;
-                }
-                return static_cast<float>(rawY) / 32767.0f;
-            }();
             const float dz = static_cast<float>(deadzone) / 32767.0f;
-            float clampedX = fx;
-            if (std::fabs(fx) < dz)
-            {
-                clampedX = 0.0f;
-            }
-            float clampedY = fy;
-            if (std::fabs(fy) < dz)
-            {
-                clampedY = 0.0f;
-            }
-            return Stick{clampedX, clampedY};
+            return Stick{NormalizeAxis(rawX, dz), NormalizeAxis(rawY, dz)};
         }
 
         [[nodiscard]] float NormalizeTrigger(std::uint8_t raw) noexcept
@@ -505,60 +495,63 @@ namespace NS::OS
         }
     }
 
-    Key MapVkToKey(unsigned int vk) noexcept
+    namespace
     {
-        if (vk >= 'A' && vk <= 'Z')
+        Key MapVkToKey(unsigned int vk) noexcept
         {
-            return static_cast<Key>(static_cast<int>(Key::A) + static_cast<int>(vk - 'A'));
-        }
-        if (vk >= '0' && vk <= '9')
-        {
-            return static_cast<Key>(static_cast<int>(Key::Num0) + static_cast<int>(vk - '0'));
-        }
-        if (vk >= VK_F1 && vk <= VK_F12)
-        {
-            return static_cast<Key>(static_cast<int>(Key::F1) + static_cast<int>(vk - VK_F1));
-        }
+            if (vk >= 'A' && vk <= 'Z')
+            {
+                return static_cast<Key>(static_cast<int>(Key::A) + static_cast<int>(vk - 'A'));
+            }
+            if (vk >= '0' && vk <= '9')
+            {
+                return static_cast<Key>(static_cast<int>(Key::Num0) + static_cast<int>(vk - '0'));
+            }
+            if (vk >= VK_F1 && vk <= VK_F12)
+            {
+                return static_cast<Key>(static_cast<int>(Key::F1) + static_cast<int>(vk - VK_F1));
+            }
 
-        // 記号・制御キーの個別対応
-        switch (vk)
-        {
-        case VK_LEFT:
-            return Key::Left;
-        case VK_RIGHT:
-            return Key::Right;
-        case VK_UP:
-            return Key::Up;
-        case VK_DOWN:
-            return Key::Down;
-        case VK_SPACE:
-            return Key::Space;
-        case VK_RETURN:
-            return Key::Enter;
-        case VK_ESCAPE:
-            return Key::Escape;
-        case VK_TAB:
-            return Key::Tab;
-        case VK_BACK:
-            return Key::Backspace;
-        case VK_DELETE:
-            return Key::Delete;
-        case VK_SHIFT:
-        case VK_LSHIFT:
-        case VK_RSHIFT:
-            return Key::Shift;
-        case VK_CONTROL:
-        case VK_LCONTROL:
-        case VK_RCONTROL:
-            return Key::Ctrl;
-        case VK_MENU:
-        case VK_LMENU:
-        case VK_RMENU:
-            return Key::Alt;
-        default:
-            return Key::Unknown;
+            // 記号・制御キーの個別対応
+            switch (vk)
+            {
+            case VK_LEFT:
+                return Key::Left;
+            case VK_RIGHT:
+                return Key::Right;
+            case VK_UP:
+                return Key::Up;
+            case VK_DOWN:
+                return Key::Down;
+            case VK_SPACE:
+                return Key::Space;
+            case VK_RETURN:
+                return Key::Enter;
+            case VK_ESCAPE:
+                return Key::Escape;
+            case VK_TAB:
+                return Key::Tab;
+            case VK_BACK:
+                return Key::Backspace;
+            case VK_DELETE:
+                return Key::Delete;
+            case VK_SHIFT:
+            case VK_LSHIFT:
+            case VK_RSHIFT:
+                return Key::Shift;
+            case VK_CONTROL:
+            case VK_LCONTROL:
+            case VK_RCONTROL:
+                return Key::Ctrl;
+            case VK_MENU:
+            case VK_LMENU:
+            case VK_RMENU:
+                return Key::Alt;
+            default:
+                return Key::Unknown;
+            }
         }
-    }
+    } // namespace
 
     void DispatchWin32MessageToInput(Input& input,
                                      unsigned int msg,

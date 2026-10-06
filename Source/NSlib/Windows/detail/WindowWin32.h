@@ -5,7 +5,7 @@
 #include <windows.h>
 
 #include <functional>
-#include <string>
+#include <optional>
 
 namespace NS::OS
 {
@@ -20,8 +20,6 @@ namespace NS::OS
         ::NS::Size2D size{0, 0};
         bool shouldClose = false; // WM_QUIT を受けたか
 
-        std::wstring className;
-
         std::function<void(::NS::Size2D)> onResize;
         std::function<void()> onClose;
 
@@ -34,9 +32,7 @@ namespace NS::OS
         bool cursorLocked = false;
         // 一度も前に出ない窓には WM_SETFOCUS が来ない。作成時に実際の状態を書く
         bool hasFocus = false;
-        bool lockPointSet = false;
-        int lockPointX = 0;
-        int lockPointY = 0;
+        std::optional<POINT> lockPoint; // 無い時はクライアント領域の中央
     };
 
 } // namespace NS::OS

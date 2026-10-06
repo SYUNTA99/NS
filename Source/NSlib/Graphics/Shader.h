@@ -8,8 +8,6 @@
 
 namespace NS::Gfx
 {
-    class Shader;
-
     //! シェーダのパイプラインステージ種別
     enum class ShaderType
     {
@@ -21,12 +19,6 @@ namespace NS::Gfx
         Domain,
         Compute,
     };
-
-    namespace detail
-    {
-        //! 頂点シェーダのバイナリコードを取得する
-        [[nodiscard]] std::span<const std::byte> GetVertexShaderBytecode(const Shader& shader) noexcept;
-    } // namespace detail
 
     //! @brief シェーダ 1 本
     //! @details 頂点・ピクセルなどの種類をファイル名から決め、実行時にコンパイルする

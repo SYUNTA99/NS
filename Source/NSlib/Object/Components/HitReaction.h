@@ -71,7 +71,7 @@ namespace NS::Obj
     class HitReaction : public OverlayRenderer
     {
     public:
-        HitReaction() noexcept;
+        HitReaction() noexcept = default;
         [[nodiscard]] int OverlayOrder() const noexcept override { return 1; }
 
         //! @brief 白の光を始める。前の白が残っていても始め直す

@@ -11,24 +11,11 @@
 
 namespace NS::Obj
 {
-    CapsuleCollision::CapsuleCollision() noexcept {}
-
     CapsuleCollision::CapsuleCollision(float radius, float halfHeight) noexcept
-        : m_radius([&]() -> float {
-              if (radius < 0.0f)
-              {
-                  return 0.0f;
-              }
-              return radius;
-          }()),
-          m_halfHeight([&]() -> float {
-              if (halfHeight < 0.0f)
-              {
-                  return 0.0f;
-              }
-              return halfHeight;
-          }())
-    {}
+    {
+        SetRadius(radius);
+        SetHalfHeight(halfHeight);
+    }
 
     void CapsuleCollision::SetRadius(float radius) noexcept
     {

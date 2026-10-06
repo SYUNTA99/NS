@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <memory>
 #include <utility>
@@ -32,16 +33,11 @@ namespace NS::UI
     //! @details 座標は基準解像度 (高さ 1080) 単位で書き、実ピクセルへの一様拡縮は UISystem が決める
     //! anchor は親矩形内の基準点 (0..1)、pivot は自分の矩形のどこを anchor に合わせるか
     //! alpha は子へ掛け算で伝わり、木ごとまとめて薄くできる
-    class Widget
+    class Widget : public NS::NonCopyable
     {
     public:
         Widget() = default;
         virtual ~Widget() = default;
-
-        Widget(const Widget&) = delete;
-        Widget& operator=(const Widget&) = delete;
-        Widget(Widget&&) = delete;
-        Widget& operator=(Widget&&) = delete;
 
         //! 型 T の子を自分の中で作って末尾へ加える。後に加えた子ほど上に描かれる
         //! 所有は自分が握り、呼出側へは生ポインタだけ返す
@@ -49,7 +45,7 @@ namespace NS::UI
         {
             std::unique_ptr<T> child = std::make_unique<T>(std::forward<Args>(args)...);
             T* raw = child.get();
-            Adopt(std::move(child));
+            m_children.push_back(std::move(child));
             return raw;
         }
 
@@ -96,14 +92,11 @@ namespace NS::UI
         virtual void OnDraw(NS::Gfx::Renderer&, const WidgetRect& /*rectPx*/, float /*alpha*/) {}
 
     private:
-        //! 組み上がった子を受け取って所有する。AddChild<T> だけが通る
-        void Adopt(std::unique_ptr<Widget> child);
-
         NS::Vector2 m_anchor{0.0f, 0.0f}; // 親矩形内の基準点 (0..1)
         NS::Vector2 m_pivot{0.0f, 0.0f};  // 自分の矩形の合わせ点 (0..1)
         NS::Vector2 m_offset{0.0f, 0.0f}; // anchor からのずらし (基準解像度ピクセル)
         NS::Vector2 m_size{0.0f, 0.0f};   // 大きさ (基準解像度ピクセル)
-        bool m_stretch = false;                 // 親いっぱいに広がるか
+        bool m_stretch = false;           // 親いっぱいに広がるか
         bool m_visible = true;
         float m_alpha = 1.0f;
         bool m_blocksInput = false;

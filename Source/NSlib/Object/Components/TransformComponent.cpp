@@ -54,11 +54,6 @@ namespace NS::Obj
             }
             return FieldVector3(*transform, fieldName, fallback);
         }
-
-        void WriteTransformVec3(nlohmann::json& object, std::string_view fieldName, const NS::Vector3& value)
-        {
-            SetField(EnsureTransformComponent(object), fieldName, value);
-        }
     } // namespace
 
     nlohmann::json& EnsureTransformComponent(nlohmann::json& object)
@@ -81,7 +76,7 @@ namespace NS::Obj
 
     void SetObjectPosition(nlohmann::json& object, const NS::Vector3& position) noexcept
     {
-        WriteTransformVec3(object, k_PositionFieldName, position);
+        SetField(EnsureTransformComponent(object), k_PositionFieldName, position);
     }
 
     NS::Quaternion ObjectRotation(const nlohmann::json& object) noexcept
@@ -106,6 +101,6 @@ namespace NS::Obj
 
     void SetObjectScale(nlohmann::json& object, const NS::Vector3& scale) noexcept
     {
-        WriteTransformVec3(object, k_ScaleFieldName, scale);
+        SetField(EnsureTransformComponent(object), k_ScaleFieldName, scale);
     }
 } // namespace NS::Obj

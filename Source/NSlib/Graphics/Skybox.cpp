@@ -326,19 +326,15 @@ namespace NS::Gfx
         {
             loaded = LoadDdsCubemap(device, path, newSrv);
         }
-        else
+        else if (::NS::OS::FileSystem::IsDirectory(path))
         {
             // ディレクトリが指定された場合は、6方向の画像ファイルとして読み込みを試みる
-            if (::NS::OS::FileSystem::IsDirectory(path))
-            {
-                ID3D11DeviceContext* context = Gpu().context;
-                loaded = (context != nullptr) && LoadSixFacePngCubemap(device, context, path, newSrv);
-            }
-            else
-            {
-                NS_LOG_ERROR(Graphics, "Skybox LoadCubemap: ディレクトリでも .dds でもないパス: {}", path);
-                loaded = false;
-            }
+            ID3D11DeviceContext* context = Gpu().context;
+            loaded = (context != nullptr) && LoadSixFacePngCubemap(device, context, path, newSrv);
+        }
+        else
+        {
+            NS_LOG_ERROR(Graphics, "Skybox LoadCubemap: ディレクトリでも .dds でもないパス: {}", path);
         }
 
         if (loaded && newSrv)

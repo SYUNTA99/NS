@@ -27,7 +27,6 @@ namespace NS::Gfx
         RenderSettings settings{};     //!< プロジェクト全体の標準となる描画設定
     };
 
-    class Renderer;
     class CommandList;
     class CommonStates;
     class RenderTarget;

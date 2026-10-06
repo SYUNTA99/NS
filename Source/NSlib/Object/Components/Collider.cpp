@@ -25,8 +25,6 @@ namespace
 
 namespace NS::Obj
 {
-    Collider::Collider() noexcept : NS::Obj::Component() {}
-
     void Collider::SetCapsuleRadius(float radius) noexcept
     {
         m_radius = NonNegativeLength(radius, m_radius);

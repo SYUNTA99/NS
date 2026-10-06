@@ -3,6 +3,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Windows/StringUtils.h"
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <format>
@@ -298,8 +299,7 @@ namespace NS::OS
                 {
                     continue;
                 }
-                onEntry(data.dwFileAttributes,
-                        FileSystem::Combine(dir, ::NS::OS::StringUtils::Utf8FromWide(name)));
+                onEntry(data.dwFileAttributes, FileSystem::Combine(dir, ::NS::OS::StringUtils::Utf8FromWide(name)));
             }
             while (::FindNextFileW(handle.Get(), &data) != 0);
 
@@ -459,13 +459,7 @@ namespace NS::OS
     std::string FileSystem::Normalize(std::string_view path)
     {
         std::string slashed(path);
-        for (char& c : slashed)
-        {
-            if (c == '\\')
-            {
-                c = '/';
-            }
-        }
+        std::replace(slashed.begin(), slashed.end(), '\\', '/');
 
         const std::size_t rootLen = RootLength(slashed);
         const std::string_view body(slashed);

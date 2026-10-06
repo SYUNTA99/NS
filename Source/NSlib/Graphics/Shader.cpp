@@ -93,34 +93,6 @@ namespace NS::Gfx
                          msg);
         }
 
-        // メモリ上のソース専用。実ファイルは CompileStage
-        bool CompileFromMemory(const void* bytes,
-                               std::size_t size,
-                               const char* entryPoint,
-                               const char* target,
-                               const char* sourceName,
-                               ComPtr<ID3DBlob>& outBlob) noexcept
-        {
-            ComPtr<ID3DBlob> errorBlob;
-            const HRESULT hr = D3DCompile(bytes,
-                                          size,
-                                          sourceName,
-                                          nullptr,
-                                          D3D_COMPILE_STANDARD_FILE_INCLUDE,
-                                          entryPoint,
-                                          target,
-                                          CompileFlags(),
-                                          0u,
-                                          outBlob.GetAddressOf(),
-                                          errorBlob.GetAddressOf());
-            if (FAILED(hr))
-            {
-                LogCompileFailure(entryPoint, target, hr, errorBlob);
-                return false;
-            }
-            return true;
-        }
-
         // D3DCompile のソース名は char* のみで、非 ASCII を含むパスは #include の基準として扱えない
         // Common.hlsli が解決できずコンパイルが失敗するため、wide のまま渡せる D3DCompileFromFile を使う
         [[nodiscard]] ComPtr<ID3DBlob> CompileStage(std::string_view path,
@@ -160,7 +132,22 @@ namespace NS::Gfx
         {
             constexpr std::string_view k_Fallback{k_FallbackHlsl};
             ComPtr<ID3DBlob> blob;
-            CompileFromMemory(k_Fallback.data(), k_Fallback.size(), entryPoint, target, "ns_shader_fallback", blob);
+            ComPtr<ID3DBlob> errorBlob;
+            const HRESULT hr = D3DCompile(k_Fallback.data(),
+                                          k_Fallback.size(),
+                                          "ns_shader_fallback",
+                                          nullptr,
+                                          D3D_COMPILE_STANDARD_FILE_INCLUDE,
+                                          entryPoint,
+                                          target,
+                                          CompileFlags(),
+                                          0u,
+                                          blob.GetAddressOf(),
+                                          errorBlob.GetAddressOf());
+            if (FAILED(hr))
+            {
+                LogCompileFailure(entryPoint, target, hr, errorBlob);
+            }
             return blob;
         }
 
@@ -356,13 +343,5 @@ namespace NS::Gfx
         return std::span<const std::byte>(static_cast<const std::byte*>(m_vsBytecode->GetBufferPointer()),
                                           m_vsBytecode->GetBufferSize());
     }
-
-    namespace detail
-    {
-        std::span<const std::byte> GetVertexShaderBytecode(const Shader& shader) noexcept
-        {
-            return shader.VertexShaderBytecode();
-        }
-    } // namespace detail
 
 } // namespace NS::Gfx

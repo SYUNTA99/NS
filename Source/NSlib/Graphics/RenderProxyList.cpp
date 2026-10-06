@@ -10,22 +10,20 @@ namespace NS::Gfx
 {
     RenderHandle RenderProxyList::Register(const RenderProxyDesc& desc)
     {
+        std::uint32_t slot = static_cast<std::uint32_t>(m_proxies.size());
         if (!m_freeSlots.empty())
         {
-            const std::uint32_t slot = m_freeSlots.back();
+            slot = m_freeSlots.back();
             m_freeSlots.pop_back();
-            Proxy& p = m_proxies[slot];
-            p.desc = desc;
-            p.alive = true;
-            // generation は Unregister で進めた値を使い回し、古いハンドルを無効にする
-            return RenderHandle{slot, p.generation};
         }
-
-        const std::uint32_t slot = static_cast<std::uint32_t>(m_proxies.size());
-        Proxy p{};
+        else
+        {
+            m_proxies.push_back(Proxy{});
+        }
+        Proxy& p = m_proxies[slot];
         p.desc = desc;
         p.alive = true;
-        m_proxies.push_back(p);
+        // 使い回す枠の generation は Unregister で進めた値のまま。古いハンドルを無効にする
         return RenderHandle{slot, p.generation};
     }
 
@@ -116,15 +114,8 @@ namespace NS::Gfx
 
     std::size_t RenderProxyList::Count() const noexcept
     {
-        std::size_t n = 0;
-        for (const Proxy& p : m_proxies)
-        {
-            if (p.alive)
-            {
-                ++n;
-            }
-        }
-        return n;
+        return static_cast<std::size_t>(
+            std::ranges::count_if(m_proxies, [](const Proxy& p) { return p.alive; }));
     }
 
     bool RenderProxyList::IsLive(RenderHandle handle) const noexcept

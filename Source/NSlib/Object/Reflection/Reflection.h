@@ -246,13 +246,7 @@ namespace NS::Obj
 
 //! フィールド宣言の終了。static なリフレクション情報を組み立てて返し、仮想の GetReflection はそこへ転送する
 #define NS_REFLECT_END()                                                                                               \
-    }                                                                                                                  \
-    ;                                                                                                                  \
-    static const NS::Obj::ReflectedFields k_Fields{k_Entries};                                                         \
-    static const NS::Obj::ReflectionInfo k_Info =                                                                      \
-        k_Fields.MakeInfo(k_TypeName, NS::Obj::ReflectionBaseOf<ReflectBase>());                                       \
-    return &k_Info;                                                                                                    \
-    }                                                                                                                  \
+    NS_REFLECT_END_VALUE()                                                                                             \
     [[nodiscard]] const NS::Obj::ReflectionInfo* GetReflection() const noexcept override                               \
     {                                                                                                                  \
         return StaticReflection();                                                                                     \

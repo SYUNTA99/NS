@@ -9,7 +9,6 @@
 #include "NSlib/Object/Components/Model.h"
 #include "NSlib/Object/Components/Shadow.h"
 #include "NSlib/Object/Components/TransformComponent.h"
-#include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>

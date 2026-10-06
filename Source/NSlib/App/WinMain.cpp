@@ -1,5 +1,6 @@
 ﻿#include "NSlib/App/Application.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <windows.h>
@@ -7,7 +8,7 @@
 namespace
 {
     // ロガーの初期化と終了を自動化して、途中で return しても絶対に終了処理が呼ばれるようにする
-    class LoggerScope
+    class LoggerScope : public ::NS::NonCopyable
     {
     public:
         LoggerScope()
@@ -24,11 +25,6 @@ namespace
             ::NS::Logger::Init(desc);
         }
         ~LoggerScope() { ::NS::Logger::Shutdown(); }
-
-        LoggerScope(const LoggerScope&) = delete;
-        LoggerScope& operator=(const LoggerScope&) = delete;
-        LoggerScope(LoggerScope&&) = delete;
-        LoggerScope& operator=(LoggerScope&&) = delete;
     };
 } // namespace
 

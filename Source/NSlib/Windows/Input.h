@@ -66,16 +66,14 @@ namespace NS::OS
         //! @param[in] desc UI が取る入力。既定値はすべてゲームへ渡す
         void SetUiCapture(const UiCaptureDesc& desc) noexcept
         {
-            m_uiWantsMouse = desc.wantMouse;
-            m_uiWantsKeyboard = desc.wantKeyboard;
-            m_leftButtonToGame = desc.leftButtonToGame;
+            m_uiCapture = desc;
         }
 
         //! UIがマウス入力をキャプチャしているかどうかを返す
-        [[nodiscard]] bool UiWantsMouse() const noexcept { return m_uiWantsMouse; }
+        [[nodiscard]] bool UiWantsMouse() const noexcept { return m_uiCapture.wantMouse; }
 
         //! UIがキーボード入力をキャプチャしているかどうかを返す
-        [[nodiscard]] bool UiWantsKeyboard() const noexcept { return m_uiWantsKeyboard; }
+        [[nodiscard]] bool UiWantsKeyboard() const noexcept { return m_uiCapture.wantKeyboard; }
 
         //! @brief ゲームがマウスのボタンを受け取るかを返す
         //! @details UI がマウスを持つ間は受け取らない。ただし左ボタンの受け渡しを登録した間は左だけ受け取る
@@ -83,11 +81,11 @@ namespace NS::OS
         //! @return ゲームへ渡す場合 true、それ以外の場合は false
         [[nodiscard]] bool GameReceivesMouseButton(MouseButton button) const noexcept
         {
-            if (!m_uiWantsMouse)
+            if (!m_uiCapture.wantMouse)
             {
                 return true;
             }
-            return button == MouseButton::Left && m_leftButtonToGame;
+            return button == MouseButton::Left && m_uiCapture.leftButtonToGame;
         }
 
     private:
@@ -97,9 +95,7 @@ namespace NS::OS
         NS::OS::Mouse m_mouse;
         std::array<NS::OS::Gamepad, k_GamepadSlotCount> m_gamepads;
 
-        bool m_uiWantsMouse = false;
-        bool m_uiWantsKeyboard = false;
-        bool m_leftButtonToGame = false; // UI がマウスを持つ間も左ボタンだけゲームへ渡すか
+        UiCaptureDesc m_uiCapture{};
 
         // 中立の間に控える手元の機器の状態。BeginNeutral で入れ替え、EndNeutral で戻す
         NS::OS::Keyboard m_heldKeyboard;

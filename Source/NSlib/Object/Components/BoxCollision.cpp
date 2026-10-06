@@ -34,8 +34,6 @@ namespace NS::Obj
         }
     } // namespace
 
-    BoxCollision::BoxCollision() noexcept {}
-
     BoxCollision::BoxCollision(const NS::Vector3& halfExtents) noexcept : m_halfExtents(ClampNonNegative(halfExtents))
     {}
 

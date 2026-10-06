@@ -11,14 +11,6 @@ namespace NS
     class CameraData
     {
     public:
-        CameraData() noexcept = default;
-
-        CameraData(const CameraData&) = default;
-        CameraData& operator=(const CameraData&) = default;
-        CameraData(CameraData&&) = default;
-        CameraData& operator=(CameraData&&) = default;
-        ~CameraData() = default;
-
         void SetPosition(const NS::Vector3& position) noexcept;
         void SetTarget(const NS::Vector3& target) noexcept;
         void SetUp(const NS::Vector3& up) noexcept;
@@ -51,19 +43,19 @@ namespace NS
         [[nodiscard]] NS::Matrix ViewProjection() const noexcept;
 
     private:
-        NS::Vector3 m_position{0.0f, 0.0f, -5.0f};                         //!< カメラ位置
-        NS::Vector3 m_target{0.0f, 0.0f, 0.0f};                            //!< 注視点
-        NS::Vector3 m_up{0.0f, 1.0f, 0.0f};                                //!< アップベクトル
+        NS::Vector3 m_position{0.0f, 0.0f, -5.0f};             //!< カメラ位置
+        NS::Vector3 m_target{0.0f, 0.0f, 0.0f};                //!< 注視点
+        NS::Vector3 m_up{0.0f, 1.0f, 0.0f};                    //!< アップベクトル
         NS::Radians m_fovY{NS::ToRadians(NS::Degrees{60.0f})}; //!< 垂直視野角
-        float m_aspect = 16.0f / 9.0f;                                           //!< アスペクト比
-        float m_near = 0.1f;                                                     //!< ニアクリップ距離
-        float m_far = 1000.0f;                                                   //!< ファークリップ距離
-        NS::Vector2 m_screenOffset{0.0f, 0.0f};                            //!< 射影の後の画面のずれ
+        float m_aspect = 16.0f / 9.0f;                         //!< アスペクト比
+        float m_near = 0.1f;                                   //!< ニアクリップ距離
+        float m_far = 1000.0f;                                 //!< ファークリップ距離
+        NS::Vector2 m_screenOffset{0.0f, 0.0f};                //!< 射影の後の画面のずれ
 
         mutable NS::Matrix m_view = NS::Matrix::Identity;       //!< ビュー行列のキャッシュ
         mutable NS::Matrix m_projection = NS::Matrix::Identity; //!< プロジェクション行列のキャッシュ
-        mutable bool m_viewDirty = true;                                    //!< 位置・注視点・Up が変わったら立つ
-        mutable bool m_projDirty = true; //!< 視野角・アスペクト・クリップ距離が変わったら立つ
+        mutable bool m_viewDirty = true;                        //!< 位置・注視点・Up が変わったら立つ
+        mutable bool m_projDirty = true;                        //!< 視野角・アスペクト・クリップ距離が変わったら立つ
     };
 
 } // namespace NS

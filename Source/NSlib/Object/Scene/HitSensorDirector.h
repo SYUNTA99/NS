@@ -43,7 +43,5 @@ namespace NS::Obj
         [[nodiscard]] bool IsRegistered(const HitSensor* sensor) const noexcept;
 
         std::vector<HitSensor*> m_sensors; // 登録順、非所有
-        // OnTick の作業用。知らせる向きに並べた自分と相手の組
-        std::vector<std::pair<HitSensor*, HitSensor*>> m_pairs;
     };
 } // namespace NS::Obj

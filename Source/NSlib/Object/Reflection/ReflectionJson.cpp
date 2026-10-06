@@ -2,7 +2,6 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Reflection/ComponentEntry.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Reflection/Reflection.h"
