@@ -260,6 +260,25 @@ project "effekseer"
     buildoptions { "/utf-8", "/FS" }
 
 --============================================================================
+-- ヘッダだけの依存 (Utility)
+--   ビルドする物が無く、 使う側が includedirs で読むだけ。 同梱の依存を Solution Explorer に
+--   全部並べるために、 何もビルドしないプロジェクトとして置く。 リンクにもビルド順にも関わらない
+--   cgltf の実装は NSlib の GltfLoader.cpp がコンパイルする
+--============================================================================
+local headerOnlyLibraries = {
+    { name = "cgltf", headers = { "Source/ThirdParty/cgltf/**.h" } },
+    { name = "magic_enum", headers = { "Source/ThirdParty/magic_enum/include/**.hpp" } },
+    { name = "nlohmann", headers = { "Source/ThirdParty/nlohmann/**.hpp" } },
+    { name = "spdlog", headers = { "Source/ThirdParty/spdlog/include/**.h" } },
+}
+for _, library in ipairs(headerOnlyLibraries) do
+    project(library.name)
+        kind "Utility"
+        location ("build/" .. library.name)
+        files(library.headers)
+end
+
+--============================================================================
 -- NSlib: 8 層を 1 つのプロジェクトのフィルターに並べ、層ごとの PCH はファイル単位で当てる
 --============================================================================
 group ""
