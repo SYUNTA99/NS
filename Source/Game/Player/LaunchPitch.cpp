@@ -7,17 +7,9 @@
 
 namespace NS::Game::Player
 {
-    namespace
-    {
-        [[nodiscard]] bool IsFinitePositive(float value) noexcept
-        {
-            return std::isfinite(value) && value > 0.0f;
-        }
-    } // namespace
-
     float LaunchHeightAt(const LaunchPath& path, float distance) noexcept
     {
-        if (!IsFinitePositive(path.horizontalSpeed) || !IsFinitePositive(path.dt) || !std::isfinite(distance) ||
+        if (!NS::IsPositiveFinite(path.horizontalSpeed) || !NS::IsPositiveFinite(path.dt) || !std::isfinite(distance) ||
             distance < 0.0f || !std::isfinite(path.verticalSpeed))
         {
             return 0.0f;
@@ -64,9 +56,9 @@ namespace NS::Game::Player
         const LaunchPitchResult level{};
         if (!std::isfinite(desc.ballHeight) || !std::isfinite(desc.targetHeight) ||
             !std::isfinite(desc.contactDistance) || desc.contactDistance < 0.0f ||
-            !std::isfinite(desc.maxAngleDegrees) || !IsFinitePositive(desc.horizontalSpeed) ||
-            !IsFinitePositive(desc.dt) || !IsFinitePositive(desc.heightTolerance) ||
-            !IsFinitePositive(desc.angleGuardDegrees) || desc.angleGuardDegrees >= 90.0f || desc.maxFrames <= 0)
+            !std::isfinite(desc.maxAngleDegrees) || !NS::IsPositiveFinite(desc.horizontalSpeed) ||
+            !NS::IsPositiveFinite(desc.dt) || !NS::IsPositiveFinite(desc.heightTolerance) ||
+            !NS::IsPositiveFinite(desc.angleGuardDegrees) || desc.angleGuardDegrees >= 90.0f || desc.maxFrames <= 0)
         {
             return level;
         }
@@ -84,7 +76,8 @@ namespace NS::Game::Player
                         .verticalSpeed = 0.0f,
                         .gravity = desc.gravity,
                         .dt = desc.dt,
-                        .grounded = desc.grounded, .maxFrames = desc.maxFrames};
+                        .grounded = desc.grounded,
+                        .maxFrames = desc.maxFrames};
         const float rise = desc.targetHeight - desc.ballHeight;
         const auto heightFor = [&](float vertical) {
             path.verticalSpeed = vertical;

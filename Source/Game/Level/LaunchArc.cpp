@@ -7,20 +7,10 @@ namespace NS::Game::Level
 {
     namespace
     {
-        [[nodiscard]] bool IsFinite(const NS::Vector3& v) noexcept
-        {
-            return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
-        }
-
-        [[nodiscard]] bool IsFinitePositive(float value) noexcept
-        {
-            return std::isfinite(value) && value > 0.0f;
-        }
-
         // 曲線を式で辿るための値。LaunchArc の欄から毎回組み直す
         struct ArcShape
         {
-            NS::Vector3 forward{};  // 水平の向き (長さ 1)
+            NS::Vector3 forward{};        // 水平の向き (長さ 1)
             float horizontalSpeed = 0.0f; // 水平の速さ (m/s)
             float riseSpeed = 0.0f;       // 発射の瞬間の上向きの速さ (m/s)
             float riseGravity = 0.0f;     // 上りの重力の大きさ (m/s^2)
@@ -68,10 +58,10 @@ namespace NS::Game::Level
         // arc が曲線にならない値なら false
         [[nodiscard]] bool TryShapeOf(const LaunchArc& arc, ArcShape& outShape) noexcept
         {
-            if (!IsFinitePositive(arc.distance) || !IsFinitePositive(arc.apexHeight) ||
-                !IsFinitePositive(arc.riseGravity) || !IsFinitePositive(arc.fallGravityScale) ||
-                !IsFinitePositive(arc.apexBandGravityScale) || !std::isfinite(arc.apexBandSpeed) ||
-                arc.apexBandSpeed < 0.0f || !IsFinite(arc.direction))
+            if (!NS::IsPositiveFinite(arc.distance) || !NS::IsPositiveFinite(arc.apexHeight) ||
+                !NS::IsPositiveFinite(arc.riseGravity) || !NS::IsPositiveFinite(arc.fallGravityScale) ||
+                !NS::IsPositiveFinite(arc.apexBandGravityScale) || !std::isfinite(arc.apexBandSpeed) ||
+                arc.apexBandSpeed < 0.0f || !NS::IsFinite(arc.direction))
             {
                 return false;
             }

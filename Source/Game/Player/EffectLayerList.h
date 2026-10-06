@@ -46,9 +46,9 @@ namespace NS::Game::Player
         explicit EffectLayerList(int keepEndedSteps = 600) noexcept : m_keepEndedSteps(keepEndedSteps) {}
 
         //! @brief フレームを 1 つ進め、前のフレームの更新で Effekseer から消えた層に消えたフレームを書く
-        //! @details 保存フレーム数を過ぎた記録を捨てる
-        //! @param[in] effects 持ち主の世界の EffectScene。null なら寿命を見ない
-        void BeginStep(const NS::Gfx::EffectScene* effects);
+        //! @details 保存フレーム数を過ぎた記録を捨て、StopAfter で決めたフレームが来た層を消す
+        //! @param[in,out] effects 持ち主の世界の EffectScene。null なら寿命を見ず、記録だけ書く
+        void BeginStep(NS::Gfx::EffectScene* effects);
 
         //! 今のフレームの番号。BeginStep を呼ぶ前は 0
         [[nodiscard]] int Step() const noexcept { return m_step; }
@@ -75,6 +75,11 @@ namespace NS::Game::Player
         //! @param[in,out] effects 再生先。null なら記録だけ書く
         //! @param[in] id Play が返した番号
         void Stop(NS::Gfx::EffectScene* effects, std::uint32_t id) noexcept;
+
+        //! @brief 層を今から steps フレーム後の BeginStep で、子も含めて消す
+        //! @details steps が 0 以下なら次の BeginStep で消す。その時に消えた後なら何もしない
+        //! @param[in] id Play が返した番号
+        void StopAfter(std::uint32_t id, int steps);
 
         //! @brief 層の大きさか量を記録に書く
         //! @details 無い番号なら何もしない。2 回書くと後の値が残る
@@ -113,7 +118,14 @@ namespace NS::Game::Player
         int m_keepEndedSteps;
         [[nodiscard]] EffectLayerRecord* FindMutable(std::uint32_t id) noexcept;
 
+        struct ScheduledStop
+        {
+            std::uint32_t id = 0;
+            int step = 0;
+        };
+
         std::vector<EffectLayerRecord> m_records;
+        std::vector<ScheduledStop> m_scheduledStops;
         int m_step = 0;
         std::uint32_t m_nextId = 1;
     };

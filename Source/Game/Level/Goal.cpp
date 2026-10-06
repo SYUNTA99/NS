@@ -37,10 +37,5 @@ namespace NS::Game::Level
         }
     }
 
-    bool IsGoalObject(const nlohmann::json& object) noexcept
-    {
-        return NS::Obj::ObjectJsonClass(object) == "Goal";
-    }
-
     NS_PLACEABLE(Goal, "ゴール")
 } // namespace NS::Game::Level

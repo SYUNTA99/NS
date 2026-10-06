@@ -15,15 +15,6 @@
 
 namespace NS::Game::Level
 {
-    namespace
-    {
-
-        bool IsFinite(const NS::Vector3& value) noexcept
-        {
-            return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
-        }
-    } // namespace
-
     class MapObj::RestingState : public NS::Obj::StateOf<RestingState, MapObj>
     {
         void OnEnter(MapObj& owner) override
@@ -317,7 +308,7 @@ namespace NS::Game::Level
         const NS::Vector3 up = -NS::Obj::GravityDirection(*this);
         NS::Vector3 forward = desc.arc.direction - up * NS::Dot(desc.arc.direction, up);
         const float length = forward.Length();
-        if (!IsFinite(forward) || !(length > 0.0001f))
+        if (!NS::IsFinite(forward) || !(length > 0.0001f))
         {
             return;
         }

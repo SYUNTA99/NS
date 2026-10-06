@@ -126,7 +126,6 @@ namespace NS::Game::Player
     {
         NS::Gfx::EffectScene* effects = EffectsOf(*this);
         m_layers.BeginStep(effects);
-        RunScheduledStops(effects);
         // 頼みは同じフレームの決定の段で事象が置く。読んだら消し、次のフレームへ持ち越さない
         const bool hitRequested = m_hitRequested;
         const bool flightRequested = m_flightRequested;
@@ -535,12 +534,12 @@ namespace NS::Game::Player
                 {
                     length = shape.streakLength * m_coreHoldPulse;
                 }
-                const EffectLayerRecord* record = m_layers.Find(m_plan.streak);
-                if (record != nullptr)
-                {
-                    effects->SetTransform(
-                        record->handle, m_plan.contact, Quaternion::Identity, Vector3{length, thickness, 1.0f});
-                }
+                PlaceLayer(effects,
+                           m_layers,
+                           m_plan.streak,
+                           m_plan.contact,
+                           Quaternion::Identity,
+                           Vector3{length, thickness, 1.0f});
             }
         }
         if (m_plan.glow != 0 && frame >= 1 && frame <= shape.holdLastFrame)
@@ -587,12 +586,8 @@ namespace NS::Game::Player
                 const float t = static_cast<float>(frame - std::max(m_ringStart, 0)) /
                                 static_cast<float>(std::max(m_ringFull - std::max(m_ringStart, 0), 1));
                 const float radius = m_ringStartRadius + (shape.ringRadius - m_ringStartRadius) * EaseOutCubic(t);
-                const EffectLayerRecord* record = m_layers.Find(m_plan.ring);
-                if (record != nullptr)
-                {
-                    effects->SetTransform(
-                        record->handle, m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(radius));
-                }
+                PlaceLayer(
+                    effects, m_layers, m_plan.ring, m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(radius));
             }
         }
 
@@ -690,7 +685,7 @@ namespace NS::Game::Player
                 // 頂点は縦の速さが 0 以下になったフレーム。親を止め、筋は頂点の位置と向きのまま薄れる
                 // 親を止めた後の筋は置き直しても動かない (Effekseer は親の最後の姿で子を描く)
                 m_layers.StopRoot(effects, m_flight.reboundTrail);
-                StopLater(m_flight.reboundTrail, std::max(m_reboundTrailFadeSteps, 1));
+                m_layers.StopAfter(m_flight.reboundTrail, std::max(m_reboundTrailFadeSteps, 1));
                 m_flight.reboundTrail = 0;
             }
             else
@@ -723,9 +718,11 @@ namespace NS::Game::Player
             Vector3 at = capsule.center - capsule.axis * (capsule.halfHeight + capsule.radius);
             at.y += m_dustRingLift;
             const std::uint32_t dust = m_layers.Play(
-                effects, m_landDustAsset, PlayAt(at, Quaternion::Identity, Uniform(radius / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
+                effects,
+                m_landDustAsset,
+                PlayAt(at, Quaternion::Identity, Uniform(radius / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
             SetAmount(dust, radius);
-            StopLater(dust, std::max(m_landDustLife, 1));
+            m_layers.StopAfter(dust, std::max(m_landDustLife, 1));
         }
         m_lastVerticalVelocity = m_player->Body().VerticalVelocity();
     }
@@ -739,24 +736,6 @@ namespace NS::Game::Player
             return std::nullopt;
         }
         return pose->position;
-    }
-
-    void ImpactEffects::StopLater(std::uint32_t id, int lifeSteps)
-    {
-        m_scheduledStops.push_back(ScheduledStop{.id = id, .step = m_layers.Step() + lifeSteps});
-    }
-
-    void ImpactEffects::RunScheduledStops(NS::Gfx::EffectScene* effects)
-    {
-        const int step = m_layers.Step();
-        for (const ScheduledStop& stop : m_scheduledStops)
-        {
-            if (step >= stop.step)
-            {
-                m_layers.Stop(effects, stop.id);
-            }
-        }
-        std::erase_if(m_scheduledStops, [step](const ScheduledStop& stop) { return step >= stop.step; });
     }
 
     void ImpactEffects::FinishHeldLayers(NS::Gfx::EffectScene* effects)

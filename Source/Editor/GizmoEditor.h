@@ -135,11 +135,11 @@ namespace NS::Editor
 
         //! 指定されたギズモ軸に沿った移動後の新しいワールド座標を計算する
         [[nodiscard]] static NS::Vector3 ComputeAxisMove(const NS::Vector3& startPos,
-                                                               GizmoAxis axis,
-                                                               const NS::Quaternion& rotation,
-                                                               const NS::Ray& rayStart,
-                                                               const NS::Ray& rayNow,
-                                                               bool snap) noexcept;
+                                                         GizmoAxis axis,
+                                                         const NS::Quaternion& rotation,
+                                                         const NS::Ray& rayStart,
+                                                         const NS::Ray& rayNow,
+                                                         bool snap) noexcept;
 
         //! 画面のドラッグ量を、指定軸まわりの回転角 (ラジアン) へ変換する
         [[nodiscard]] static float WorldDragToAngle(const NS::Vector3& origin,
@@ -152,20 +152,19 @@ namespace NS::Editor
 
         //! 指定の軸と角度から新しい回転を計算する
         [[nodiscard]] static NS::Quaternion ComputeAxisRotate(const NS::Quaternion& startRot,
-                                                                    GizmoAxis axis,
-                                                                    float angleRad,
-                                                                    bool snap,
-                                                                    bool worldSpace = false) noexcept;
+                                                              GizmoAxis axis,
+                                                              float angleRad,
+                                                              bool snap,
+                                                              bool worldSpace = false) noexcept;
 
         //! スクリーンのドラッグ量を、スケールへ足し引きする変化量に変換する
-        [[nodiscard]] static float ScreenDragToScaleAmount(NS::Vector2 axisDir2d,
-                                                           NS::Vector2 dragPixels) noexcept;
+        [[nodiscard]] static float ScreenDragToScaleAmount(NS::Vector2 axisDir2d, NS::Vector2 dragPixels) noexcept;
 
         //! 指定された軸とスケール変化量に基づく、新しいスケールベクトルを計算する
         [[nodiscard]] static NS::Vector3 ComputeScale(const NS::Vector3& startScale,
-                                                            GizmoAxis axis,
-                                                            float amount,
-                                                            bool snap) noexcept;
+                                                      GizmoAxis axis,
+                                                      float amount,
+                                                      bool snap) noexcept;
 
         //! 入力されたキーに応じたギズモツール種別を返す
         [[nodiscard]] static GizmoTool ToolForKey(GizmoTool current, NS::OS::Key key) noexcept;
@@ -177,14 +176,6 @@ namespace NS::Editor
                                                       NS::Vector2 mouse2d,
                                                       const NS::Matrix& viewProjection,
                                                       NS::Size2D viewport) noexcept;
-
-        void SetToolForTest(GizmoTool tool) noexcept { m_tool = tool; }
-        void SelectForTest(NS::Obj::Transform* target) noexcept { m_selected = target; }
-        void ApplyDragForTest(const NS::Matrix& viewProjection,
-                              NS::Size2D viewport,
-                              GizmoAxis axis,
-                              NS::Vector2 screenStart,
-                              NS::Vector2 screenEnd) noexcept;
 
     private:
         void OnToolKey(NS::OS::Key key) noexcept;
@@ -202,7 +193,7 @@ namespace NS::Editor
 
         bool m_dragging = false;                //!< ドラッグ中か
         GizmoAxis m_dragAxis = GizmoAxis::None; //!< ドラッグ中の軸
-        NS::Vector2 m_dragStartScreen{};  //!< ドラッグ開始時のスクリーン座標
+        NS::Vector2 m_dragStartScreen{};        //!< ドラッグ開始時のスクリーン座標
         TransformState m_dragBefore{};          //!< ドラッグ開始時の 位置・回転・スケール
     };
 } // namespace NS::Editor

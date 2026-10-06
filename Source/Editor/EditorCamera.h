@@ -43,20 +43,13 @@ namespace NS::Editor
 
         //! 投影設定。Pose() が返す pose に載せる
         void SetFovY(NS::Radians fov) noexcept { m_fovY = fov; }
-        [[nodiscard]] NS::Radians FovY() const noexcept { return m_fovY; }
         void SetNearPlane(float nearPlane) noexcept { m_nearPlane = nearPlane; }
-        [[nodiscard]] float NearPlane() const noexcept { return m_nearPlane; }
         void SetFarPlane(float farPlane) noexcept { m_farPlane = farPlane; }
-        [[nodiscard]] float FarPlane() const noexcept { return m_farPlane; }
 
-        // プログラム制御用。テストやモード切替で状態を保存・復元するのに使う
-        void SetYawPitch(float yaw, float pitch) noexcept;
+        // 起動時の視点と、選んだ物へ寄せる時に使う
         void SetCenter(NS::Vector3 center) noexcept;
         void SetDistance(float distance) noexcept;
 
-        [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
-        [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
-        [[nodiscard]] float Distance() const noexcept { return m_distance; }
         [[nodiscard]] NS::Vector3 Center() const noexcept { return m_center; }
         [[nodiscard]] NS::Vector3 ComputeCameraPosition() const noexcept;
 
@@ -108,16 +101,16 @@ namespace NS::Editor
 
     private:
         NS::Vector3 m_center{0.0f, 0.0f, 0.0f}; // orbit の中心 pivot
-        float m_yaw = 0.0f;                           // 方位角 (ラジアン)
-        float m_pitch = -0.5236f;                     // 仰角 (ラジアン)
-        float m_distance = 15.0f;                     // center からの現在距離
-        float m_desiredDistance = 15.0f;              // ズームの目標距離、バネで寄せる
+        float m_yaw = 0.0f;                     // 方位角 (ラジアン)
+        float m_pitch = -0.5236f;               // 仰角 (ラジアン)
+        float m_distance = 15.0f;               // center からの現在距離
+        float m_desiredDistance = 15.0f;        // ズームの目標距離、バネで寄せる
 
         FeelTuning m_tuning{}; // free-fly の感触。Inspector がライブで書く
 
         NS::Radians m_fovY{NS::ToRadians(NS::Degrees{60.0f})}; // 垂直視野角
-        float m_nearPlane = 0.1f;                                                // ニアクリップ距離
-        float m_farPlane = 1000.0f;                                              // ファークリップ距離
+        float m_nearPlane = 0.1f;                              // ニアクリップ距離
+        float m_farPlane = 1000.0f;                            // ファークリップ距離
     };
 
 } // namespace NS::Editor

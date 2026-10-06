@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 
+#include <algorithm>
 #include <cstdint>
 
 #if NS_EDITOR_ENABLED
@@ -48,10 +49,7 @@ namespace NS::Editor
 #endif
     }
 
-    NS::Ray ScreenToWorldRay(const NS::Matrix& viewProjection,
-                                   NS::Size2D viewport,
-                                   int mouseX,
-                                   int mouseY) noexcept
+    NS::Ray ScreenToWorldRay(const NS::Matrix& viewProjection, NS::Size2D viewport, int mouseX, int mouseY) noexcept
     {
         const float ndcX = (2.0f * static_cast<float>(mouseX)) / static_cast<float>(viewport.width) - 1.0f;
         const float ndcY = 1.0f - (2.0f * static_cast<float>(mouseY)) / static_cast<float>(viewport.height);
@@ -123,6 +121,18 @@ namespace NS::Editor
         // 90 度刻み = π/2 ラジアン
         const float angle = static_cast<float>(r) * (NS::k_Pi * 0.5f);
         return NS::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, angle);
+    }
+
+    float ScreenConstantScale(const NS::Vector3& point, const NS::Matrix& viewProjection) noexcept
+    {
+        // 見かけの寸法は世界の長さ / clip.w に比例するので、長さを clip.w に比例させると相殺される
+        const NS::Vector4 clip = NS::Vector4::Transform(NS::Vector4{point.x, point.y, point.z, 1.0f}, viewProjection);
+        // カメラ至近や背面では伸ばさない
+        if (clip.w <= 1.0e-3f)
+        {
+            return 1.0f;
+        }
+        return std::max(clip.w / 10.0f, 1.0f);
     }
 
 } // namespace NS::Editor

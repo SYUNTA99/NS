@@ -37,29 +37,6 @@ namespace NS::Editor
         return LiveCenterTab(transition.playMode);
     }
 
-    CenterPanelRole ResolveCenterPanelRole(CenterPanelQuery query) noexcept
-    {
-        if (query.tab == CenterTab::Game)
-        {
-            if (query.playMode)
-            {
-                return CenterPanelRole::LiveView;
-            }
-            return CenterPanelRole::Placeholder;
-        }
-
-        // Scene タブ
-        if (!query.playMode)
-        {
-            return CenterPanelRole::LiveView;
-        }
-        if (query.otherDisplayed)
-        {
-            return CenterPanelRole::Placeholder;
-        }
-        return CenterPanelRole::FreeView;
-    }
-
     InputOwnership ResolveInputOwnership(InputOwnerQuery query) noexcept
     {
         InputOwnership owner{};

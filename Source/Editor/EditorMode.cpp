@@ -9,15 +9,16 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Graphics/DebugDraw.h"
+#include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Object/Components/TransformComponent.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Gamepad.h"
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/Keyboard.h"
 #include "NSlib/Windows/Mouse.h"
-#include "NSlib/UI/ImGuiContext.h"
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -31,9 +32,6 @@ namespace NS::Editor
     namespace
     {
         constexpr float k_CellHalfExtent = 0.5f;
-
-        // 90 度をラジアンで
-        constexpr float k_QuarterTurnYaw = NS::k_Pi * 0.5f;
 
         constexpr NS::Color k_CursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
         constexpr NS::Color k_CursorBlockedColor{1.0f, 0.1f, 0.1f, 1.0f};
@@ -57,21 +55,21 @@ namespace NS::Editor
         struct CursorScreenProjector
         {
             NS::Matrix viewProjection; // 射影に使う view * projection
-            float originX = 0.0f;            // パネル左上の X
-            float originY = 0.0f;            // パネル左上の Y
-            float width = 0.0f;              // パネル幅
-            float height = 0.0f;             // パネル高さ
+            float originX = 0.0f;      // パネル左上の X
+            float originY = 0.0f;      // パネル左上の Y
+            float width = 0.0f;        // パネル幅
+            float height = 0.0f;       // パネル高さ
 
             bool operator()(const NS::Vector3& world, ImVec2& out) const noexcept
             {
-                const NS::Vector4 worldH{world.x, world.y, world.z, 1.0f};
-                const NS::Vector4 clip = NS::Vector4::Transform(worldH, viewProjection);
-                if (clip.w <= 0.0f)
+                NS::Vector2 pixel{};
+                float w = 0.0f;
+                if (!NS::Gfx::TryProjectToPixels(viewProjection, world, width, height, pixel, w))
                 {
                     return false;
                 }
-                out.x = originX + ((clip.x / clip.w) * 0.5f + 0.5f) * width;
-                out.y = originY + (1.0f - ((clip.y / clip.w) * 0.5f + 0.5f)) * height;
+                out.x = originX + pixel.x;
+                out.y = originY + pixel.y;
                 return true;
             }
         };
@@ -97,8 +95,7 @@ namespace NS::Editor
         m_palette.TickInput(m_input, m_imgui);
 
         // カーソルの回転状態に合わせて、表示用のヨー角を滑らかに追従させる
-        const NS::Quaternion targetQuat = NS::Quaternion::CreateFromAxisAngle(
-            {0.0f, 1.0f, 0.0f}, static_cast<float>(m_currentRotation) * k_QuarterTurnYaw);
+        const NS::Quaternion targetQuat = RotationToQuaternion(m_currentRotation);
         constexpr float k_RotationSpringRate = 12.0f;
         const float dt = NS::OS::FrameTimer::FixedDelta();
         const float t = std::min(1.0f, k_RotationSpringRate * dt);
@@ -319,7 +316,7 @@ namespace NS::Editor
         }
 
         const NS::AABB placeBox(m_cursor.placementCenter,
-                                      NS::Vector3{k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
+                                NS::Vector3{k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
         NS::Color cursorColor = k_CursorOkColor;
 
         if (m_cursor.placementBlocked)
@@ -408,7 +405,7 @@ namespace NS::Editor
             return IM_COL32(64, 255, 64, 255);
         }();
 
-        for (const int (&e)[2] : k_BoxEdges)
+        for (const int(&e)[2] : k_BoxEdges)
         {
             if (boxFront[e[0]] && boxFront[e[1]])
             {
@@ -456,7 +453,7 @@ namespace NS::Editor
             };
 
             const ImU32 slopeColor = IM_COL32(150, 255, 210, 230);
-            for (const int (&e)[2] : k_WedgeEdges)
+            for (const int(&e)[2] : k_WedgeEdges)
             {
                 if (wedgeFront[e[0]] && wedgeFront[e[1]])
                 {
@@ -487,8 +484,8 @@ namespace NS::Editor
 
         // パレット雛形を cell 座標と回転 step だけ書き込んで 1 体分の姿を作る
         nlohmann::json placed = m_palette.CurrentTemplate();
-        NS::Obj::SetObjectPosition(
-            placed, NS::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
+        NS::Obj::SetObjectPosition(placed,
+                                   NS::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
         NS::Editor::SetCellRotationStep(placed, rotation);
 
         // 既存 cell は同じ永続 id で置換、空 cell は新規採番
@@ -623,8 +620,8 @@ namespace NS::Editor
                 hitY = cy;
                 hitZ = cz;
                 hitPoint = NS::Vector3(ray.position.x + ray.direction.x * t,
-                                             ray.position.y + ray.direction.y * t,
-                                             ray.position.z + ray.direction.z * t);
+                                       ray.position.y + ray.direction.y * t,
+                                       ray.position.z + ray.direction.z * t);
 
                 const NS::Vector3 d = hitPoint - center;
                 const float ax = std::fabs(d.x);
@@ -719,8 +716,7 @@ namespace NS::Editor
         {
             PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
         }
-        if (mouse.IsPressed(NS::OS::MouseButton::Right) &&
-            HasObjectAtCell(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
+        if (mouse.IsPressed(NS::OS::MouseButton::Right) && HasObjectAtCell(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
         {
             DeleteAtProgrammatic(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
         }
@@ -735,8 +731,7 @@ namespace NS::Editor
         {
             PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
         }
-        if (gp.IsPressed(NS::OS::GamepadButton::B) &&
-            HasObjectAtCell(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
+        if (gp.IsPressed(NS::OS::GamepadButton::B) && HasObjectAtCell(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
         {
             DeleteAtProgrammatic(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
         }

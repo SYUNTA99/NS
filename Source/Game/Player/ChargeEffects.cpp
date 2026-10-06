@@ -58,7 +58,7 @@ namespace NS::Game::Player
     {
         NS::Gfx::EffectScene* effects = EffectsOf(*this);
         m_layers.BeginStep(effects);
-        StopDueLayers(effects);
+        ForgetEndedLayers();
         if (m_actor == nullptr)
         {
             return;
@@ -108,8 +108,6 @@ namespace NS::Game::Player
         // 外れになる当たりも、触れる見込みが近づいたら消し、触れた瞬間の前を光で飾らない
         if (m_burst != 0 && m_resolver != nullptr && (m_resolver->IsBeforeContact() || IsContactNear()))
         {
-            const std::uint32_t burst = m_burst;
-            std::erase_if(m_scheduledStops, [burst](const ScheduledStop& scheduled) { return scheduled.id == burst; });
             StopLayer(effects, m_burst);
         }
 
@@ -127,7 +125,6 @@ namespace NS::Game::Player
                 m_layers.Stop(effects, record.id);
             }
         }
-        m_scheduledStops.clear();
         m_curl = 0;
         m_spin = 0;
         m_grind = 0;
@@ -163,17 +160,8 @@ namespace NS::Game::Player
         return NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, yaw);
     }
 
-    void ChargeEffects::StopDueLayers(NS::Gfx::EffectScene* effects) noexcept
+    void ChargeEffects::ForgetEndedLayers() noexcept
     {
-        const int step = m_layers.Step();
-        for (const ScheduledStop& scheduled : m_scheduledStops)
-        {
-            if (scheduled.step <= step)
-            {
-                m_layers.Stop(effects, scheduled.id);
-            }
-        }
-        std::erase_if(m_scheduledStops, [step](const ScheduledStop& scheduled) { return scheduled.step <= step; });
         if (m_curl != 0 && m_layers.Find(m_curl) != nullptr && m_layers.Find(m_curl)->endStep.has_value())
         {
             m_curl = 0;
@@ -201,7 +189,7 @@ namespace NS::Game::Player
         m_spinDegrees = 0.0f;
 
         m_curl = m_layers.Play(effects, m_curlAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
-        m_scheduledStops.push_back(ScheduledStop{m_curl, m_layers.Step() + std::max(m_curlSteps, 1)});
+        m_layers.StopAfter(m_curl, std::max(m_curlSteps, 1));
         m_spin = m_layers.Play(effects, m_spinAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
         // 玉を包む光は押したフレームから出し、丸まりの殻が消えた後も放すまで途切れさせない
         StopLayer(effects, m_gather);
@@ -221,7 +209,7 @@ namespace NS::Game::Player
         m_fullStep = m_layers.Step();
         StopLayer(effects, m_full);
         m_full = m_layers.Play(effects, m_fullAsset, PlayDesc(center, NS::Quaternion::Identity, 1.0f));
-        m_scheduledStops.push_back(ScheduledStop{m_full, m_layers.Step() + std::max(m_fullFlashSteps, 1)});
+        m_layers.StopAfter(m_full, std::max(m_fullFlashSteps, 1));
     }
 
     void ChargeEffects::PlaySwaySparks(NS::Gfx::EffectScene* effects, const NS::Vector3& center)
@@ -303,7 +291,7 @@ namespace NS::Game::Player
         NS::Gfx::EffectPlayDesc burst = PlayDesc(center, facing, charge01);
         burst.dynamicInputs[m_burstScaleInput] = ReleaseBurstScale(charge01);
         const std::uint32_t burstId = m_layers.Play(effects, m_burstAsset, burst);
-        m_scheduledStops.push_back(ScheduledStop{burstId, m_layers.Step() + std::max(m_burstSteps, 1)});
+        m_layers.StopAfter(burstId, std::max(m_burstSteps, 1));
         m_burst = burstId;
 
         // 前の突進の尾がまだ伸びていれば止め、新しい尾と繋げない
@@ -364,7 +352,7 @@ namespace NS::Game::Player
     void ChargeEffects::StopTrailRoot(NS::Gfx::EffectScene* effects) noexcept
     {
         m_layers.StopRoot(effects, m_trail);
-        m_scheduledStops.push_back(ScheduledStop{m_trail, m_layers.Step() + std::max(m_trailFadeSteps, 1)});
+        m_layers.StopAfter(m_trail, std::max(m_trailFadeSteps, 1));
         m_trailAwaitsFreeze = false;
     }
 

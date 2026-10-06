@@ -147,15 +147,6 @@ namespace NS::Game::Level
     {
         NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
         m_layers.BeginStep(effects);
-        const int step = m_layers.Step();
-        for (const ScheduledStop& stop : m_scheduledStops)
-        {
-            if (step >= stop.step)
-            {
-                m_layers.Stop(effects, stop.id);
-            }
-        }
-        std::erase_if(m_scheduledStops, [step](const ScheduledStop& stop) { return step >= stop.step; });
     }
 
     void LaunchEffects::OnUpdate()
@@ -199,12 +190,12 @@ namespace NS::Game::Level
         NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
         EndTrail(effects);
         const Vector3 at = position + normal * m_dustRingLift;
-        const std::uint32_t dust =
-            m_layers.Play(effects,
-                          m_launchLandDustAsset,
-                          PlayAt(at, TurnUpTo(normal), Uniform(m_landDustScale / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
+        const std::uint32_t dust = m_layers.Play(
+            effects,
+            m_launchLandDustAsset,
+            PlayAt(at, TurnUpTo(normal), Uniform(m_landDustScale / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
         m_layers.SetAmount(dust, m_landDustScale);
-        m_scheduledStops.push_back(ScheduledStop{.id = dust, .step = m_layers.Step() + std::max(m_landDustLife, 1)});
+        m_layers.StopAfter(dust, std::max(m_landDustLife, 1));
     }
 
     NS_CLASS(LaunchEffects)

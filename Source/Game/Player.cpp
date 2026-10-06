@@ -146,7 +146,7 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
     if (state.charge.hasAimTarget)
     {
         state.charge.aimTargetCenter = NS::Vector3{aim.bounds.Center.x, aim.bounds.Center.y, aim.bounds.Center.z};
-        state.charge.aimTargetRadius = std::max({aim.bounds.Extents.x, aim.bounds.Extents.y, aim.bounds.Extents.z});
+        state.charge.aimTargetRadius = NS::MaxAbsComponent(NS::Vector3{aim.bounds.Extents});
     }
     return state;
 }

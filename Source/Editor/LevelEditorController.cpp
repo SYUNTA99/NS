@@ -1,6 +1,7 @@
 #include "Editor/LevelEditorController.h"
 
 #include "Editor/EditorObjects.h"
+#include "Editor/GridMath.h"
 #include "Editor/HitZoneColors.h"
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
@@ -267,19 +268,10 @@ namespace
     }
 
     // 視点マーカーのワールド空間での半径。カメラから遠いほど半径を伸ばし、画面上の見かけサイズを一定に近づける
-    // 見かけ寸法はワールド空間の半径 / clip.w に比例するので、半径を clip.w に比例させると相殺されて一定になる
     [[nodiscard]] float CameraMarkerHalf(const NS::Vector3& center, const NS::Matrix& vp) noexcept
     {
         const float baseHalf = 0.3f;
-        const NS::Vector4 clip = NS::Vector4::Transform(NS::Vector4{center.x, center.y, center.z, 1.0f}, vp);
-        // clip.w がほぼ 0 になるカメラ至近や背面では基準半径へフォールバックする
-        if (clip.w <= 1.0e-3f)
-        {
-            return baseHalf;
-        }
-        // 深度 10 までは基準半径、これより遠いほど深度に比例して伸ばし画面上一定に近づける
-        const float scale = clip.w / 10.0f;
-        return baseHalf * std::max(scale, 1.0f);
+        return baseHalf * NS::Editor::ScreenConstantScale(center, vp);
     }
 
     // 子を先、自分を後の順で永続 id を集める。削除はこの順で流し、undo は逆順に親から戻る
@@ -387,8 +379,6 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     {
         return;
     }
-
-    m_imgui = imgui;
 
     // 編集の投影設定で、遠景を 5000 まで見せ near 0.1 は既定
     // far は EditorCamera の k_MaxDistance より広く取り、最大ズームアウトでも地形を映す
@@ -898,14 +888,12 @@ std::size_t LevelEditorController::SelectedObjectIndex() const noexcept
         return NS::Obj::k_NoObjectIndex;
     }
     const NS::Obj::ObjectList& objects = m_scene->Objects();
-    for (std::size_t i = 0; i < objects.ObjectCount(); ++i)
+    const std::size_t index = objects.IndexOfObjectId(m_selectedObjectId);
+    if (index == objects.ObjectCount())
     {
-        if (objects.ObjectAt(i)->Id() == m_selectedObjectId)
-        {
-            return i;
-        }
+        return NS::Obj::k_NoObjectIndex;
     }
-    return NS::Obj::k_NoObjectIndex;
+    return index;
 }
 
 bool LevelEditorController::HasInspectableSelection() const noexcept
@@ -1007,18 +995,6 @@ void LevelEditorController::ApplyFollowCameraGizmoDrag()
         return;
     }
     follow->SetInitialPoseFromCameraPosition(go->Root().Position());
-}
-
-void LevelEditorController::SelectObjectByIndex(std::size_t index) noexcept
-{
-    // 選択の真実は id。添字が動いても id から引き直せる
-    const NS::Obj::Actor* object = m_scene->Objects().ObjectAt(index);
-    if (object == nullptr)
-    {
-        SelectObjectById(NS::Obj::k_NoObjectId);
-        return;
-    }
-    SelectObjectById(object->Id());
 }
 
 void LevelEditorController::SelectObjectById(std::uint32_t id) noexcept
@@ -1412,12 +1388,10 @@ bool LevelEditorController::PromoteFieldToArchetype(NS::Obj::Component& comp, st
     const std::string_view typeName{info->typeName};
 
     // 上げる前の既定の値。これと同じ値の個体は上書きしていないので、新しい既定値へ付いて行く
-    const NS::Obj::Component* oldPart = NS::Obj::FindBaselinePart(comp);
-    if (oldPart == nullptr)
+    if (NS::Obj::FindBaselinePart(comp) == nullptr)
     {
         return false;
     }
-    const nlohmann::json oldValue = FieldJson(*oldPart, fieldName);
 
     std::vector<NS::Obj::Component*> followers;
     for (NS::Obj::Actor* actor : m_scene->Objects())
@@ -1431,7 +1405,7 @@ bool LevelEditorController::PromoteFieldToArchetype(NS::Obj::Component& comp, st
         {
             continue;
         }
-        if (FieldJson(*part, fieldName) == oldValue)
+        if (!NS::Obj::IsFieldOverridden(*part, fieldName))
         {
             followers.push_back(part);
         }

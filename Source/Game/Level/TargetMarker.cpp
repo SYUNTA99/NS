@@ -18,22 +18,6 @@ namespace NS::Game::Level
     {
         // 画素の欄は描画先の高さがこの値のときの大きさで書く
 
-
-        [[nodiscard]] bool IsPositiveFinite(float value) noexcept
-        {
-            return std::isfinite(value) && value > 0.0f;
-        }
-
-        [[nodiscard]] bool IsNonNegativeFinite(float value) noexcept
-        {
-            return std::isfinite(value) && value >= 0.0f;
-        }
-
-        [[nodiscard]] bool IsFiniteColor(const NS::Vector3& color) noexcept
-        {
-            return std::isfinite(color.x) && std::isfinite(color.y) && std::isfinite(color.z);
-        }
-
         // 左上 (left, top)・一辺 side の正方形の四隅に、横と縦の 2 本ずつのかぎ形を足す
         void AppendCornerHooks(
             float left, float top, float side, float thickness, float armRatio, std::vector<MarkerRect>& outCorners)
@@ -54,18 +38,18 @@ namespace NS::Game::Level
         // 枠の欄が組める値か
         [[nodiscard]] bool IsValidFrameDesc(const TargetMarkerDesc& desc) noexcept
         {
-            if (!IsFiniteColor(desc.color) || !IsFiniteColor(desc.appearColor) || !IsFiniteColor(desc.outlineColor))
+            if (!NS::IsFinite(desc.color) || !NS::IsFinite(desc.appearColor) || !NS::IsFinite(desc.outlineColor))
             {
                 return false;
             }
-            if (!IsPositiveFinite(desc.referenceHeight) || !IsPositiveFinite(desc.frameMinSide) || !IsPositiveFinite(desc.frameAlpha) ||
-                !IsPositiveFinite(desc.appearScale) || !IsPositiveFinite(desc.appearMaxSide) ||
-                !IsPositiveFinite(desc.lostScale))
+            if (!NS::IsPositiveFinite(desc.referenceHeight) || !NS::IsPositiveFinite(desc.frameMinSide) ||
+                !NS::IsPositiveFinite(desc.frameAlpha) || !NS::IsPositiveFinite(desc.appearScale) ||
+                !NS::IsPositiveFinite(desc.appearMaxSide) || !NS::IsPositiveFinite(desc.lostScale))
             {
                 return false;
             }
-            if (!IsNonNegativeFinite(desc.frameGap) || !IsNonNegativeFinite(desc.appearAlpha) ||
-                !IsNonNegativeFinite(desc.outlineAlpha) || !IsNonNegativeFinite(desc.outlineWidth))
+            if (!NS::IsNonNegativeFinite(desc.frameGap) || !NS::IsNonNegativeFinite(desc.appearAlpha) ||
+                !NS::IsNonNegativeFinite(desc.outlineAlpha) || !NS::IsNonNegativeFinite(desc.outlineWidth))
             {
                 return false;
             }
@@ -77,7 +61,7 @@ namespace NS::Game::Level
         // 欄の値と描画先の大きさが組める値か
         [[nodiscard]] bool CanBuild(NS::Size2D targetSize, const TargetMarkerDesc& desc) noexcept
         {
-            if (!IsPositiveFinite(desc.lineThickness) || !IsPositiveFinite(desc.armRatio))
+            if (!NS::IsPositiveFinite(desc.lineThickness) || !NS::IsPositiveFinite(desc.armRatio))
             {
                 return false;
             }

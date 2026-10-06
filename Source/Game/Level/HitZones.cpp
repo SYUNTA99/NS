@@ -45,11 +45,6 @@ namespace NS::Game::Level
             return result;
         }
 
-        [[nodiscard]] bool IsFinite(const NS::Vector3& value) noexcept
-        {
-            return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
-        }
-
         // 面の大きさと触れる点を出すための体の測り。core は表面までの距離を測る起点、surfaceRadius は core から表面まで
         struct BodyMeasure
         {
@@ -79,7 +74,7 @@ namespace NS::Game::Level
                 const NS::OBB& box = body.box;
                 const std::array<NS::Vector3, 3> axes{box.axisX, box.axisY, box.axisZ};
                 const std::array<float, 3> halves{box.halfExtentX, box.halfExtentY, box.halfExtentZ};
-                if (!IsFinite(box.center))
+                if (!NS::IsFinite(box.center))
                 {
                     return false;
                 }
@@ -91,7 +86,7 @@ namespace NS::Game::Level
                 float surfaceSq = 0.0f;
                 for (std::size_t i = 0; i < axes.size(); ++i)
                 {
-                    if (!IsFinite(axes[i]) || !std::isfinite(halves[i]) || halves[i] < 0.0f)
+                    if (!NS::IsFinite(axes[i]) || !std::isfinite(halves[i]) || halves[i] < 0.0f)
                     {
                         return false;
                     }
@@ -105,7 +100,7 @@ namespace NS::Game::Level
                 out.surfaceRadius = std::sqrt(surfaceSq);
                 return true;
             }
-            if (!IsFinite(body.a) || !IsFinite(body.b) || !std::isfinite(body.radius) || !(body.radius > 0.0f))
+            if (!NS::IsFinite(body.a) || !NS::IsFinite(body.b) || !std::isfinite(body.radius) || !(body.radius > 0.0f))
             {
                 return false;
             }
@@ -194,7 +189,7 @@ namespace NS::Game::Level
                       float playerRadius,
                       HitFaceJudgement& out) noexcept
     {
-        if (!IsFinite(origin) || !std::isfinite(playerRadius))
+        if (!NS::IsFinite(origin) || !std::isfinite(playerRadius))
         {
             return false;
         }

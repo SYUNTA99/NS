@@ -2,7 +2,6 @@
 
 #include "Game/Level/GoalParams.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Scene/SceneJson.h"
 
 namespace NS::Game::Level
 {
@@ -23,7 +22,4 @@ namespace NS::Game::Level
     private:
         GoalParams m_params;
     };
-
-    //! ゴールの配置物の JSON か
-    [[nodiscard]] bool IsGoalObject(const nlohmann::json& object) noexcept;
 } // namespace NS::Game::Level

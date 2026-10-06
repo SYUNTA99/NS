@@ -96,14 +96,7 @@ namespace NS::Game::Player
         NS::Gfx::EffectPlayDesc PlayDesc(const NS::Vector3& position,
                                          const NS::Quaternion& rotation,
                                          float charge01) const noexcept;
-        // 決めたフレームに消す層
-        struct ScheduledStop
-        {
-            std::uint32_t id = 0;
-            int step = 0;
-        };
-
-        void StopDueLayers(NS::Gfx::EffectScene* effects) noexcept;
+        void ForgetEndedLayers() noexcept;
         void StartPress(NS::Gfx::EffectScene* effects, const NS::Vector3& center);
         void StartCharging(NS::Gfx::EffectScene* effects, const NS::Vector3& center);
         void StartFullFlash(NS::Gfx::EffectScene* effects, const NS::Vector3& center);
@@ -151,7 +144,6 @@ namespace NS::Game::Player
         float m_overchargeSparkSpeedMax = 5.0f;
 
         EffectLayerList m_layers;
-        std::vector<ScheduledStop> m_scheduledStops;
 
         // 出ている層の記録の番号。0 は出ていない
         std::uint32_t m_curl = 0;

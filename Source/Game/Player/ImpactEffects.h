@@ -285,13 +285,6 @@ namespace NS::Game::Player
             int reboundStartStep = 0;       // 反動の尾を出したフレーム。このフレームは出した姿のまま置き直さない
         };
 
-        // 出した層を、決めたフレームに子ごと消す控え
-        struct ScheduledStop
-        {
-            std::uint32_t id = 0;
-            int step = 0;
-        };
-
         void BeginHit(NS::Gfx::EffectScene* effects, const NS::Game::Level::ImpactRecord& impact);
         void AdvanceHit(NS::Gfx::EffectScene* effects);
         void PlaySparks(NS::Gfx::EffectScene* effects);
@@ -305,9 +298,6 @@ namespace NS::Game::Player
         void AdvanceFlight(NS::Gfx::EffectScene* effects);
         // 反動の着地のフレームに足元へ粉を出し、次のフレームのために縦の速さを控える
         void AdvanceLanding(NS::Gfx::EffectScene* effects);
-        // 出した層を lifeSteps フレーム後に消す
-        void StopLater(std::uint32_t id, int lifeSteps);
-        void RunScheduledStops(NS::Gfx::EffectScene* effects);
         // 効果を掛ける前の視点の位置。カメラが無い・姿が決まらない世界では空
         [[nodiscard]] std::optional<NS::Vector3> CameraPosition() const;
 
@@ -316,7 +306,6 @@ namespace NS::Game::Player
         ::Player* m_player = nullptr;
         HitPlan m_plan;
         Flight m_flight;
-        std::vector<ScheduledStop> m_scheduledStops;
         float m_lastVerticalVelocity = 0.0f; // 前のフレームの自機の縦の速さ (m/s)。着地のフレームは既に 0
         bool m_landingDustPlayed = false;    // この反動の着地の粉を出した。反動を抜けたら戻す
         ImpactAim m_aim;

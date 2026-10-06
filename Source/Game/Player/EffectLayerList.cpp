@@ -8,7 +8,7 @@
 
 namespace NS::Game::Player
 {
-    void EffectLayerList::BeginStep(const NS::Gfx::EffectScene* effects)
+    void EffectLayerList::BeginStep(NS::Gfx::EffectScene* effects)
     {
         // 前のフレームの終わりの更新で消えた層。そのフレームの終わりに記録を読んだ時点で残っていない
         if (effects != nullptr)
@@ -30,6 +30,19 @@ namespace NS::Game::Player
         std::erase_if(m_records, [step, this](const EffectLayerRecord& record) {
             return record.endStep.has_value() && step - record.endStep.value() > m_keepEndedSteps;
         });
+        for (const ScheduledStop& scheduled : m_scheduledStops)
+        {
+            if (step >= scheduled.step)
+            {
+                Stop(effects, scheduled.id);
+            }
+        }
+        std::erase_if(m_scheduledStops, [step](const ScheduledStop& scheduled) { return step >= scheduled.step; });
+    }
+
+    void EffectLayerList::StopAfter(std::uint32_t id, int steps)
+    {
+        m_scheduledStops.push_back(ScheduledStop{.id = id, .step = m_step + steps});
     }
 
     std::uint32_t EffectLayerList::Play(NS::Gfx::EffectScene* effects,

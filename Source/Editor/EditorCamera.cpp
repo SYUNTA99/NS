@@ -10,12 +10,6 @@
 namespace NS::Editor
 {
 
-    void EditorCamera::SetYawPitch(float yaw, float pitch) noexcept
-    {
-        m_yaw = yaw;
-        m_pitch = std::clamp(pitch, k_PitchMin, k_PitchMax);
-    }
-
     void EditorCamera::SetCenter(NS::Vector3 center) noexcept
     {
         m_center = center;

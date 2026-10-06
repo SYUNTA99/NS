@@ -37,13 +37,12 @@ namespace NS::Editor
 
     //! @brief スクリーンの2D座標からワールド空間へ向かう Ray を生成する
     [[nodiscard]] NS::Ray ScreenToWorldRay(const NS::Matrix& viewProjection,
-                                                 NS::Size2D viewport,
-                                                 int mouseX,
-                                                 int mouseY) noexcept;
+                                           NS::Size2D viewport,
+                                           int mouseX,
+                                           int mouseY) noexcept;
 
     //! ワールド座標を最も近いグリッドセルの中心座標に丸める
-    [[nodiscard]] NS::Vector3 SnapWorldPointToGrid(NS::Vector3 worldPoint,
-                                                         float gridSize = k_GridSize) noexcept;
+    [[nodiscard]] NS::Vector3 SnapWorldPointToGrid(NS::Vector3 worldPoint, float gridSize = k_GridSize) noexcept;
 
     //! @brief レイと水平な地面との交点を算出し、グリッドにスナップした座標を取得する
     //! @param[out] outCellCenter スナップ後のセル中心。交差した時だけ書く
@@ -54,4 +53,8 @@ namespace NS::Editor
 
     //! 0〜3の段階的な回転値を、Y軸周りの90度刻みのクォータニオンに変換する
     [[nodiscard]] NS::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept;
+
+    //! @brief 画面上の見かけの大きさを一定に近づける、世界の長さの倍率を返す
+    //! @details 深度 10 までは 1、遠いほど深度に比例して伸ばす。clip.w が 0.001 以下なら 1
+    [[nodiscard]] float ScreenConstantScale(const NS::Vector3& point, const NS::Matrix& viewProjection) noexcept;
 } // namespace NS::Editor

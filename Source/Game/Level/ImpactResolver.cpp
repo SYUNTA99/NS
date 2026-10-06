@@ -343,7 +343,7 @@ namespace NS::Game::Level
             return false;
         }
         // 非数と無限の向きは正規化を通り抜ける
-        if (!std::isfinite(lineDir.x) || !std::isfinite(lineDir.z))
+        if (!NS::IsFinite(lineDir))
         {
             return false;
         }
@@ -578,23 +578,15 @@ namespace NS::Game::Level
         const NS::Vector3 velocity = m_observedVelocity;
 
         // 弾かれる向きは箱と自機の並びで決まる。水平だけを見て、上向きは反動の高さから出す
-        float awayX = position.x - bounds.Center.x;
-        float awayZ = position.z - bounds.Center.z;
-        float lengthSq = awayX * awayX + awayZ * awayZ;
+        NS::Vector3 away{};
         // 箱の中心へ重なると向きが決まらない。進んできた向きの逆へ弾く
-        if (lengthSq < NS::k_Epsilon * NS::k_Epsilon)
+        if (!NS::TryNormalizeHorizontal(position - NS::Vector3{bounds.Center}, away) &&
+            !NS::TryNormalizeHorizontal(-velocity, away))
         {
-            awayX = -velocity.x;
-            awayZ = -velocity.z;
-            lengthSq = awayX * awayX + awayZ * awayZ;
-            if (lengthSq < NS::k_Epsilon * NS::k_Epsilon)
-            {
-                return false;
-            }
+            return false;
         }
-        const float invLength = 1.0f / std::sqrt(lengthSq);
-        awayX *= invLength;
-        awayZ *= invLength;
+        const float awayX = away.x;
+        const float awayZ = away.z;
 
         // 箱へ向かっているフレームだけ弾く。離れていく間も弾くと、重なりが解けるまで毎フレーム掛かり直す
         if (velocity.x * awayX + velocity.z * awayZ >= 0.0f)
@@ -617,14 +609,10 @@ namespace NS::Game::Level
         const float chargeFactor = Tuning().ChargeFactorFor(charge01, m_player->BodySlamOvercharge01());
         const float positionFactor = judgement.powerScale;
         const HitTier tier = judgement.tier;
-        // 読むのは記録と WasCenterHit とログだけ。配分と返りは段で分ける
+        // 読むのは記録とログだけ
         const bool centerHit = tier == HitTier::Center;
         // 最終威力 = チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
         const float power = chargeFactor * positionFactor;
-        m_lastCharge01 = charge01;
-        m_lastPositionFactor = positionFactor;
-        m_lastPower = power;
-        m_wasCenterHit = centerHit;
         NS_LOG_INFO(Game,
                     "威力の内訳: 溜め {} × 当たり位置 {} = {} 溜め量 {} 中心からの横ずれ {}",
                     chargeFactor,
@@ -789,11 +777,7 @@ namespace NS::Game::Level
 
         void operator()(const HitStopEvent&) const
         {
-            int length = event.length;
-            if (resolver.m_breakStopSteps >= 0)
-            {
-                length = resolver.m_breakStopSteps;
-            }
+            const int length = StopLengthOf(event, resolver.m_breakStopSteps);
             if (length <= 0)
             {
                 return;
@@ -1778,7 +1762,7 @@ namespace NS::Game::Level
         const TackleReleaseDesc release{.arc = m_pendingLaunchArc,
                                         .breaks = m_pendingBreak,
                                         .tier = m_pendingTier,
-                                        .power = m_lastPower,
+                                        .power = m_lastImpact.power,
                                         .launchScale = m_pendingLaunchScale,
                                         .hopSeed = m_lastImpact.sequence};
         (void)SendMsgTackleRelease(*target, release);

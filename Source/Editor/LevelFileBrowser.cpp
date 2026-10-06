@@ -3,6 +3,9 @@
 #include "Editor/EditorUi.h"
 #include "Editor/LevelFilePaths.h"
 
+#include <algorithm>
+#include <cstring>
+
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
 #endif
@@ -28,7 +31,6 @@ namespace NS::Editor
         {
             m_saveNameBuffer = "Scenes/new_scene";
         }
-        m_saveNameBuffer.reserve(k_InputBufferCapacity);
     }
 
     void LevelFileBrowser::OpenLoadModal() noexcept
@@ -88,8 +90,9 @@ namespace NS::Editor
             if (ImGui::Begin("Save Level", &m_saveModalOpen, k_SaveModalFlags))
             {
                 ImGui::TextUnformatted("Level path (A-Za-z0-9 _-, / for subfolders)");
-                m_saveNameBuffer.reserve(k_InputBufferCapacity);
-                ImGui::InputText("##name", m_saveNameBuffer.data(), m_saveNameBuffer.capacity());
+                // ImGui に書かせるのは size の内側だけにする
+                m_saveNameBuffer.resize(std::max(m_saveNameBuffer.size() + 1, k_InputBufferCapacity));
+                ImGui::InputText("##name", m_saveNameBuffer.data(), m_saveNameBuffer.size());
                 m_saveNameBuffer.resize(std::strlen(m_saveNameBuffer.c_str()));
 
                 if (ImGui::Button("Save", ImVec2(120.0f, 0.0f)))

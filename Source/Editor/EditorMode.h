@@ -37,15 +37,15 @@ namespace NS::Editor
         //! @brief 編集中のカーソル状態。レイキャスト結果や配置候補のセル情報を保持する
         struct CursorState
         {
-            bool valid = false;                  //!< ブロック面か地面に当たったか
+            bool valid = false;            //!< ブロック面か地面に当たったか
             NS::Vector3 placementCenter{}; //!< 配置先セルの中心ワールド座標
-            bool placementBlocked = false;       //!< 配置予定地にすでにブロックが存在するかどうか
-            std::int16_t hitX = 0;               //!< ヒットしたセルのX座標
-            std::int16_t hitY = 0;               //!< ヒットしたセルのY座標
-            std::int16_t hitZ = 0;               //!< ヒットしたセルのZ座標
-            std::int16_t placeX = 0;             //!< 配置先セルのX座標
-            std::int16_t placeY = 0;             //!< 配置先セルのY座標
-            std::int16_t placeZ = 0;             //!< 配置先セルのZ座標
+            bool placementBlocked = false; //!< 配置予定地にすでにブロックが存在するかどうか
+            std::int16_t hitX = 0;         //!< ヒットしたセルのX座標
+            std::int16_t hitY = 0;         //!< ヒットしたセルのY座標
+            std::int16_t hitZ = 0;         //!< ヒットしたセルのZ座標
+            std::int16_t placeX = 0;       //!< 配置先セルのX座標
+            std::int16_t placeY = 0;       //!< 配置先セルのY座標
+            std::int16_t placeZ = 0;       //!< 配置先セルのZ座標
         };
 
         //! @brief cell 1 個分の整数座標。live 照会の受け渡しに使う
@@ -130,9 +130,6 @@ namespace NS::Editor
 
         [[nodiscard]] CategoryPalette& Palette() noexcept { return m_palette; }
 
-        //! テスト用にカーソル状態を直接設定する
-        void SetCursorForTest(const CursorState& state) noexcept { m_cursor = state; }
-
         //! @brief 保存と読み込みのショートカット入力を見る
         void HandleSaveLoadInput() noexcept;
 
@@ -160,9 +157,9 @@ namespace NS::Editor
         void OpenLoadModal() noexcept { m_fileBrowser.OpenLoadModal(); }
 
     private:
-        std::function<nlohmann::json()> m_captureLevel;        // 保存時に live からシーンの JSON 文書を作る
-        IObjectSnapshotApplier* m_applier = nullptr;              // grid 編集・ undo を live へ通す適用経路
-        std::function<void(nlohmann::json&&)> m_loadLevel;     // 読み込んだ文書を実体側へ取り込む
+        std::function<nlohmann::json()> m_captureLevel;    // 保存時に live からシーンの JSON 文書を作る
+        IObjectSnapshotApplier* m_applier = nullptr;       // grid 編集・ undo を live へ通す適用経路
+        std::function<void(nlohmann::json&&)> m_loadLevel; // 読み込んだ文書を実体側へ取り込む
         std::function<std::uint32_t(std::int16_t, std::int16_t, std::int16_t)>
             m_findCellObject;                                   // cell に居る配置物の永続 id を live から引く
         std::function<std::vector<CellCoord>()> m_collectCells; // live の cell ブラシ座標一覧

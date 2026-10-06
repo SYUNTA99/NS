@@ -75,18 +75,10 @@ namespace NS::Game::Level
         //! 床の法線の向きへ浮かせる。単位はメートル
         float m_dustRingLift = 0.3f;
         [[nodiscard]] const MapObjParams& Tuning() const noexcept;
-        // 出した層を、決めたフレームに子ごと消す控え
-        struct ScheduledStop
-        {
-            std::uint32_t id = 0;
-            int step = 0;
-        };
-
         // 尾を消し、床に落ちていればその場へ粉を出す
         void EndTrail(NS::Gfx::EffectScene* effects);
 
         NS::Game::Player::EffectLayerList m_layers;
-        std::vector<ScheduledStop> m_scheduledStops;
         MapObj* m_body = nullptr;
         std::uint32_t m_trail = 0;                 // 飛び出しの尾。消したら 0
         int m_trailStartStep = 0;                  // 尾を出したフレーム。このフレームは出した姿のまま

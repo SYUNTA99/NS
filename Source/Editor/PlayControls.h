@@ -46,25 +46,6 @@ namespace NS::Editor
     //! モードが変わったフレームだけフォーカス先のタブを返す。変化が無ければ空
     [[nodiscard]] std::optional<CenterTab> TabFocusOnModeChange(ModeTransition transition) noexcept;
 
-    //! @brief 中央パネル 1 枚の役割
-    enum class CenterPanelRole : std::uint8_t
-    {
-        Placeholder, // 説明文だけ
-        LiveView,    // 前面の映像。マウスはゲームへ通す
-        FreeView     // 自由カメラ映像。マウスは UI が持ち自由カメラが使う
-    };
-
-    //! @brief 役割判定の入力。プレイ中は Game パネルを先に描き、その結果を渡す
-    struct CenterPanelQuery
-    {
-        CenterTab tab = CenterTab::Scene; // 判定するタブ
-        bool playMode = false;            // プレイモード中か
-        bool otherDisplayed = false;      // もう片方のタブが先に映像を出したか
-    };
-
-    //! 中央パネルの役割を決める。プレイ中の Scene は Game が裏のときだけ自由視点を映す
-    [[nodiscard]] CenterPanelRole ResolveCenterPanelRole(CenterPanelQuery query) noexcept;
-
     //! @brief 入力の持ち主を決める材料。フレームの終わりに集め、次のフレームのメッセージの振り分けに効く
     struct InputOwnerQuery
     {

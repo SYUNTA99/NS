@@ -1,6 +1,7 @@
 #include "Editor/HitPreview.h"
 
 #include "Editor/EditorObjects.h"
+#include "Editor/HitTimelineEdit.h"
 #include "Game/Level/FollowCamera.h"
 #include "Game/Level/HitZones.h"
 #include "Game/Player.h"
@@ -149,10 +150,7 @@ namespace NS::Editor
                     if (const NS::Game::Level::HitTimeline* timeline =
                             NS::Game::Level::HitTimelineLibrary::Get().FindForTier(result.impact.tier))
                     {
-                        for (const NS::Game::Level::HitEvent& event : timeline->events)
-                        {
-                            lastEventClock = std::max(lastEventClock, event.start + std::max(event.length, 1) - 1);
-                        }
+                        lastEventClock = HitTimelineFrameRange(*timeline, nullptr).last;
                     }
                 }
                 if (result.frames.back().rebounding)

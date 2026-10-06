@@ -131,19 +131,14 @@ namespace NS::Editor
                 // 回転は内部 quaternion を度の Euler に直して編集し、入力を quaternion へ戻す
                 // 滑らかに回し続けるならギズモの回転ツールが向く。ここは角度の直接入力 / 微調整用
                 const NS::Quaternion q = go->Root().Rotation();
-                const NS::Vector3 euler = q.ToEuler();
-                float rot[3] = {NS::RadiansToDegrees(euler.x),
-                                NS::RadiansToDegrees(euler.y),
-                                NS::RadiansToDegrees(euler.z)};
+                const NS::Vector3 euler = NS::QuaternionToEulerDegrees(q);
+                float rot[3] = {euler.x, euler.y, euler.z};
                 const bool turned = (q != NS::Quaternion::Identity);
                 ImGui::PushID("rotation");
                 NS::Editor::FieldRow("回転");
                 if (ImGui::DragFloat3("##value", rot, 0.5f))
                 {
-                    editor.SetSelectedFreeRotation(NS::Quaternion::CreateFromYawPitchRoll(
-                        NS::Vector3{NS::DegreesToRadians(rot[0]),
-                                          NS::DegreesToRadians(rot[1]),
-                                          NS::DegreesToRadians(rot[2])}));
+                    editor.SetSelectedFreeRotation(NS::EulerDegreesToQuaternion(NS::Vector3{rot[0], rot[1], rot[2]}));
                 }
                 if (ImGui::IsItemActivated())
                 {

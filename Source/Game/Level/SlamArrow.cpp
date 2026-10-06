@@ -54,30 +54,15 @@ namespace NS::Game::Level
             return PlateLinear{.value = a + b * alongFar, .slope = b * (alongNear - alongFar)};
         }
 
-        [[nodiscard]] bool IsPositiveFinite(float value) noexcept
-        {
-            return std::isfinite(value) && value > 0.0f;
-        }
-
-        [[nodiscard]] bool IsNonNegativeFinite(float value) noexcept
-        {
-            return std::isfinite(value) && value >= 0.0f;
-        }
-
-        [[nodiscard]] bool IsFiniteVector(const NS::Vector3& value) noexcept
-        {
-            return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
-        }
-
         [[nodiscard]] bool IsValidDesc(const SlamArrowDesc& desc) noexcept
         {
             if (desc.growFrames <= 0)
             {
                 return false;
             }
-            if (!IsPositiveFinite(desc.headWidth) || !IsPositiveFinite(desc.headDepthMin) ||
-                !IsPositiveFinite(desc.headDepthMax) || !IsPositiveFinite(desc.startFade) ||
-                !IsPositiveFinite(desc.frontSoftness))
+            if (!NS::IsPositiveFinite(desc.headWidth) || !NS::IsPositiveFinite(desc.headDepthMin) ||
+                !NS::IsPositiveFinite(desc.headDepthMax) || !NS::IsPositiveFinite(desc.startFade) ||
+                !NS::IsPositiveFinite(desc.frontSoftness))
             {
                 return false;
             }
@@ -100,13 +85,13 @@ namespace NS::Game::Level
                                          desc.occludedHeadAlpha};
             for (const float value : nonNegative)
             {
-                if (!IsNonNegativeFinite(value))
+                if (!NS::IsNonNegativeFinite(value))
                 {
                     return false;
                 }
             }
-            return IsFiniteVector(desc.earlyColor) && IsFiniteVector(desc.lateColor) &&
-                   IsFiniteVector(desc.fullColor) && IsFiniteVector(desc.plainColor) && IsFiniteVector(desc.darkColor);
+            return NS::IsFinite(desc.earlyColor) && NS::IsFinite(desc.lateColor) &&
+                   NS::IsFinite(desc.fullColor) && NS::IsFinite(desc.plainColor) && NS::IsFinite(desc.darkColor);
         }
 
         // 上向きの板 (shadowQuad。1 × 1 m で、+z の端が v = 0) を、線に沿った範囲と横の幅へ伸ばし、線の向きへ回して
@@ -197,7 +182,6 @@ namespace NS::Game::Level
             return constants;
         }
 
-
         // カメラから矢じりの手前の端を見る角度が desc.headMinViewDegrees を下回る時、矢じりの板を手前の端を軸に
         // 長さを変えずに起こし、手前の端をその角度で見せる。カメラが矢じりの後ろに無ければ起こさない
         // 見る角度は、線を含む縦の面の中の、カメラを見下ろす角 + 板の傾き
@@ -207,7 +191,7 @@ namespace NS::Game::Level
                                   float& inOutAlong,
                                   float& inOutRise) noexcept
         {
-            if (!(inOutAlong > 0.0f) || !IsFiniteVector(cameraPosition))
+            if (!(inOutAlong > 0.0f) || !NS::IsFinite(cameraPosition))
             {
                 return;
             }
@@ -263,13 +247,13 @@ namespace NS::Game::Level
         {
             return false;
         }
-        if (!IsPositiveFinite(state.ballRadius) || !IsFiniteVector(state.line.origin) || !std::isfinite(state.charge01))
+        if (!NS::IsPositiveFinite(state.ballRadius) || !NS::IsFinite(state.line.origin) || !std::isfinite(state.charge01))
         {
             return false;
         }
         NS::Vector3 direction{};
         // 非数と無限の向きは正規化を通り抜ける
-        if (!NS::TryNormalizeHorizontal(state.line.direction, direction) || !IsFiniteVector(direction))
+        if (!NS::TryNormalizeHorizontal(state.line.direction, direction) || !NS::IsFinite(direction))
         {
             return false;
         }
@@ -328,7 +312,7 @@ namespace NS::Game::Level
     {
         shape.band.clear();
         shape.hasHead = false;
-        if (!IsPositiveFinite(desc.groundProbeSpacing) || !IsPositiveFinite(desc.ballGroundSearchDepth) ||
+        if (!NS::IsPositiveFinite(desc.groundProbeSpacing) || !NS::IsPositiveFinite(desc.ballGroundSearchDepth) ||
             !std::isfinite(desc.sameHeightTolerance) || desc.sameHeightTolerance < 0.0f || desc.maxBandPieces <= 0)
         {
             return;
@@ -345,7 +329,7 @@ namespace NS::Game::Level
         // 玉の中心の高さから、玉の下の床より玉の半径だけ深い所まで探す。上りは玉の中心の高さまでの段を拾う
         // それより深い所 (段を下りた先・落下死の体積の上面) には貼らない
         const float depth = (shape.origin.y - ballGround) + shape.bandWidth * 0.5f;
-        if (!IsPositiveFinite(depth))
+        if (!NS::IsPositiveFinite(depth))
         {
             return;
         }
@@ -385,8 +369,9 @@ namespace NS::Game::Level
         if (probe(headCenter, depth, headGround))
         {
             shape.hasHead = true;
-            shape.head = SlamArrowPiece{
-                .alongNear = shape.tip - shape.headDepth, .alongFar = shape.tip, .height = headGround + desc.groundLift};
+            shape.head = SlamArrowPiece{.alongNear = shape.tip - shape.headDepth,
+                                        .alongFar = shape.tip,
+                                        .height = headGround + desc.groundLift};
         }
     }
 
@@ -398,7 +383,7 @@ namespace NS::Game::Level
     {
         shape.band.clear();
         shape.hasHead = false;
-        if (!IsPositiveFinite(desc.groundProbeSpacing) || !IsPositiveFinite(desc.ballGroundSearchDepth) ||
+        if (!NS::IsPositiveFinite(desc.groundProbeSpacing) || !NS::IsPositiveFinite(desc.ballGroundSearchDepth) ||
             !std::isfinite(desc.sameHeightTolerance) || desc.sameHeightTolerance < 0.0f || desc.maxBandPieces <= 0)
         {
             return;
@@ -462,8 +447,9 @@ namespace NS::Game::Level
                                   const SlamArrowDrawAssets& assets,
                                   std::vector<NS::Gfx::DrawItem>& out)
     {
-        if (!IsPositiveFinite(desc.bandTextureSpan) || !IsPositiveFinite(desc.headTextureSpan) ||
-            !std::isfinite(desc.maxHeadTiltDegrees) || desc.maxHeadTiltDegrees < 0.0f || desc.maxHeadTiltDegrees >= 90.0f)
+        if (!NS::IsPositiveFinite(desc.bandTextureSpan) || !NS::IsPositiveFinite(desc.headTextureSpan) ||
+            !std::isfinite(desc.maxHeadTiltDegrees) || desc.maxHeadTiltDegrees < 0.0f ||
+            desc.maxHeadTiltDegrees >= 90.0f)
         {
             return;
         }

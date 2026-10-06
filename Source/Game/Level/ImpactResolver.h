@@ -150,18 +150,6 @@ namespace NS::Game::Level
         //! @return 検知の 1 フレーム前で 1。突進していない時・線の先に相手がいない時・検知したフレームは -1
         [[nodiscard]] int FramesToPredictedContact() const noexcept { return m_framesToPredictedContact; }
 
-        //! 直近の裁定が中心近くで当たった場合 true、それ以外の場合は false
-        [[nodiscard]] bool WasCenterHit() const noexcept { return m_wasCenterHit; }
-
-        //! 直近の裁定で読んだ溜め量 0..1
-        [[nodiscard]] float LastCharge01() const noexcept { return m_lastCharge01; }
-
-        //! 直近の裁定の当たり位置係数。相手の面で当てはまった決まりの威力の倍率
-        [[nodiscard]] float LastPositionFactor() const noexcept { return m_lastPositionFactor; }
-
-        //! 直近の裁定の最終威力
-        [[nodiscard]] float LastPower() const noexcept { return m_lastPower; }
-
         //! 直近の当たりで控えた内訳。まだ当たっていない間は sequence が 0
         [[nodiscard]] const ImpactRecord& LastImpact() const noexcept { return m_lastImpact; }
 
@@ -418,10 +406,6 @@ namespace NS::Game::Level
         bool m_freezeBeganThisStep = false; // 直近の更新で止めの事象が始まったか
         bool m_releasedThisStep = false;    // 直近の更新が止めの事象の終わりの次のフレームだったか
         bool m_pendingBreak = false;        // 保留中の結果が貫通か
-        bool m_wasCenterHit = false;
-        float m_lastCharge01 = 0.0f;
-        float m_lastPositionFactor = 0.0f;
-        float m_lastPower = 0.0f;
         ImpactRecord m_lastImpact{};
         NS::Obj::ActorRef m_observedTarget{};
         TackleTargetAnswer m_observedAnswer{};

@@ -139,8 +139,6 @@ public:
 
     //! 現在選択中の配置物の表示用添字。選択の真実は永続 id で、添字は live から引き直す
     [[nodiscard]] std::size_t SelectedObjectIndex() const noexcept;
-    //! Hierarchy から添字で配置物を選択する。Object ツールへ切替え、ギズモ選択も貼る
-    void SelectObjectByIndex(std::size_t index) noexcept;
     //! 永続 id で配置物を 1 体だけ選択する。0 を渡すと選択を外す
     void SelectObjectById(std::uint32_t id) noexcept;
     //! 現在の主対象の永続 id。未選択は 0。ギズモと Inspector はこの 1 体を見る
@@ -287,7 +285,6 @@ private:
     bool m_gameViewHovered = false;
     bool m_gameViewHidden = false; // UI 表示中に前面のパネルが裏へ隠れているか
 
-    NS::UI::ImGuiContext* m_imgui = nullptr; // UI描画用コンテキスト、非所有
     NS::Editor::EditorCamera m_editorCamera; // 編集用自由視点カメラ
 
     // 編集復帰時にプレイ視点から自由視点へ繋ぐブレンド。TickEdit が進める

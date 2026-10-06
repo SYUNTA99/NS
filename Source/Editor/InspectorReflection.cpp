@@ -159,16 +159,6 @@ namespace NS::Editor
 #if NS_EDITOR_ENABLED
     namespace
     {
-        // コンポーネントの表示名を解決する
-        const char* DisplayTypeName(const NS::Obj::ReflectionInfo* info) noexcept
-        {
-            if (info != nullptr)
-            {
-                return info->typeName;
-            }
-            return "Component";
-        }
-
         constexpr float k_CurveGraphHeight = 100.0f;
         constexpr float k_CurveGrabRadius = 6.0f;
         constexpr float k_CurveHandleLength = 40.0f;

@@ -1,8 +1,7 @@
 #pragma once
 
-// 配置物をエディタ側から扱うヘルパ
-// cell ブラシの照合・90° 回転・Hierarchy の表示名・クリックで選ぶ判定箱・レベルの JSON へ既定の物を補う手順。出荷ビルドには載らない
-// エディタだけが使う関数の置き場はここ。例外は、ゲームの判定の決まりを写さないと書けない物だけで、判定の隣に置いて NS_SHIPPING で囲む
+// 配置物をエディタ側から扱う関数。出荷ビルドには載らない
+// ゲームの判定の決まりを写す物だけは、判定の隣に置いて NS_SHIPPING で囲む
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
@@ -18,11 +17,6 @@ namespace NS::Obj
 
 namespace NS::Editor
 {
-    //! 配置物の cell 座標 = position を最近接整数へ丸めた値
-    [[nodiscard]] std::int16_t ObjectCellX(const nlohmann::json& object) noexcept;
-    [[nodiscard]] std::int16_t ObjectCellY(const nlohmann::json& object) noexcept;
-    [[nodiscard]] std::int16_t ObjectCellZ(const nlohmann::json& object) noexcept;
-
     //! cell ブラシが置換 / 削除できる配置物か。地形の部品 (MapParts) が対象
     [[nodiscard]] bool IsCellBrushObject(const nlohmann::json& object) noexcept;
 
@@ -51,9 +45,6 @@ namespace NS::Editor
 
     //! @brief UI に出す名前。付けた名前があればそれ、無ければクラスの表示名
     //! @details 置けるクラスは登録の表示名、置けないクラスはクラス名、クラスの無い素の Actor は "Actor"
-    [[nodiscard]] const char* ObjectDisplayName(const nlohmann::json& object);
-
-    //! live 実体版。判定は JSON 版と同じ基準
     [[nodiscard]] const char* ObjectDisplayName(const NS::Obj::Actor& object);
 
     //! @brief クリックで配置物を選ぶ時の判定箱を、Root のローカル空間で返す

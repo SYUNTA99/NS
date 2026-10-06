@@ -42,21 +42,6 @@ namespace NS::Editor
         }
     } // namespace
 
-    std::int16_t ObjectCellX(const nlohmann::json& object) noexcept
-    {
-        return static_cast<std::int16_t>(std::lround(NS::Obj::ObjectPosition(object).x));
-    }
-
-    std::int16_t ObjectCellY(const nlohmann::json& object) noexcept
-    {
-        return static_cast<std::int16_t>(std::lround(NS::Obj::ObjectPosition(object).y));
-    }
-
-    std::int16_t ObjectCellZ(const nlohmann::json& object) noexcept
-    {
-        return static_cast<std::int16_t>(std::lround(NS::Obj::ObjectPosition(object).z));
-    }
-
     bool IsCellBrushObject(const nlohmann::json& object) noexcept
     {
         // 自前の振る舞いを持つ Actor は、ブラシの置換や削除で崩さない
@@ -133,17 +118,6 @@ namespace NS::Editor
     {
         // 地形の部品はどれも回せる。球は回しても見た目が変わらないだけ
         return IsCellBrushObject(object);
-    }
-
-    const char* ObjectDisplayName(const nlohmann::json& object)
-    {
-        // 名前は JSON の中の文字列を指す。std::string の中身なので終端がある
-        const std::string_view name = NS::Obj::ObjectJsonName(object);
-        if (!name.empty())
-        {
-            return name.data();
-        }
-        return ClassDisplayName(NS::Obj::ObjectJsonClass(object));
     }
 
     const char* ObjectDisplayName(const NS::Obj::Actor& object)

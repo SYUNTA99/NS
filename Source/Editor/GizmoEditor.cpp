@@ -3,12 +3,13 @@
 #include "Editor/EditorObjects.h"
 #include "Editor/GridMath.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Transform.h"
+#include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/Keyboard.h"
 #include "NSlib/Windows/Mouse.h"
-#include "NSlib/UI/ImGuiContext.h"
 
 #include <limits>
 
@@ -88,8 +89,8 @@ namespace NS::Editor
 
         // ツールと座標系モードに基づき、ギズモハンドルの基準となる回転を決定する
         [[nodiscard]] NS::Quaternion EffectiveAxisOrientation(GizmoTool tool,
-                                                                    GizmoSpace space,
-                                                                    const NS::Quaternion& objectRotation) noexcept
+                                                              GizmoSpace space,
+                                                              const NS::Quaternion& objectRotation) noexcept
         {
             if (tool == GizmoTool::Scale)
             {
@@ -176,35 +177,19 @@ namespace NS::Editor
                                            NS::Size2D viewport,
                                            NS::Vector2& outScreen) noexcept
         {
-            const NS::Vector4 worldH{world.x, world.y, world.z, 1.0f};
-            const NS::Vector4 clip = NS::Vector4::Transform(worldH, vp);
-            if (clip.w <= 0.0f)
-            {
-                return false;
-            }
-            outScreen.x = ((clip.x / clip.w) * 0.5f + 0.5f) * static_cast<float>(viewport.width);
-            outScreen.y = (1.0f - ((clip.y / clip.w) * 0.5f + 0.5f)) * static_cast<float>(viewport.height);
-            return true;
+            float w = 0.0f;
+            return NS::Gfx::TryProjectToPixels(
+                vp, world, static_cast<float>(viewport.width), static_cast<float>(viewport.height), outScreen, w);
         }
 
         // 画面上での見かけの大きさを一定に保つための、ハンドルのワールド空間での長さを算出する
         [[nodiscard]] float HandleWorldLength(const NS::Vector3& origin, const NS::Matrix& vp) noexcept
         {
-            const NS::Vector4 clip =
-                NS::Vector4::Transform(NS::Vector4{origin.x, origin.y, origin.z, 1.0f}, vp);
-
-            if (clip.w <= 1.0e-3f)
-            {
-                return k_HandleLength;
-            }
-            const float scale = clip.w / 10.0f;
-            return k_HandleLength * std::max(scale, 1.0f);
+            return k_HandleLength * ScreenConstantScale(origin, vp);
         }
 
         // 点から線分までの最短距離を算出する
-        [[nodiscard]] float DistancePointToSegment(NS::Vector2 p,
-                                                   NS::Vector2 a,
-                                                   NS::Vector2 b) noexcept
+        [[nodiscard]] float DistancePointToSegment(NS::Vector2 p, NS::Vector2 a, NS::Vector2 b) noexcept
         {
             const float abx = b.x - a.x;
             const float aby = b.y - a.y;
@@ -298,11 +283,8 @@ namespace NS::Editor
         }
 
         // 指定軸に直交するリング上の座標
-        [[nodiscard]] NS::Vector3 RingPoint(GizmoAxis axis,
-                                                  const NS::Vector3& center,
-                                                  float t,
-                                                  const NS::Quaternion& rotation,
-                                                  float radius) noexcept
+        [[nodiscard]] NS::Vector3 RingPoint(
+            GizmoAxis axis, const NS::Vector3& center, float t, const NS::Quaternion& rotation, float radius) noexcept
         {
             NS::Vector3 u{};
             NS::Vector3 v{};
@@ -368,10 +350,7 @@ namespace NS::Editor
             float panelX = 0.0f; // パネル左上の X
             float panelY = 0.0f; // パネル左上の Y
 
-            ImVec2 operator()(NS::Vector2 local) const noexcept
-            {
-                return ImVec2{panelX + local.x, panelY + local.y};
-            }
+            ImVec2 operator()(NS::Vector2 local) const noexcept { return ImVec2{panelX + local.x, panelY + local.y}; }
         };
     } // namespace
 
@@ -725,11 +704,11 @@ namespace NS::Editor
     }
 
     NS::Vector3 GizmoEditor::ComputeAxisMove(const NS::Vector3& startPos,
-                                                   GizmoAxis axis,
-                                                   const NS::Quaternion& rotation,
-                                                   const NS::Ray& rayStart,
-                                                   const NS::Ray& rayNow,
-                                                   bool snap) noexcept
+                                             GizmoAxis axis,
+                                             const NS::Quaternion& rotation,
+                                             const NS::Ray& rayStart,
+                                             const NS::Ray& rayNow,
+                                             bool snap) noexcept
     {
         if (axis != GizmoAxis::X && axis != GizmoAxis::Y && axis != GizmoAxis::Z)
         {
@@ -863,9 +842,9 @@ namespace NS::Editor
     }
 
     NS::Vector3 GizmoEditor::ComputeScale(const NS::Vector3& startScale,
-                                                GizmoAxis axis,
-                                                float amount,
-                                                bool snap) noexcept
+                                          GizmoAxis axis,
+                                          float amount,
+                                          bool snap) noexcept
     {
         NS::Vector3 result = startScale;
         switch (axis)
@@ -1010,23 +989,6 @@ namespace NS::Editor
         }
 
         return best;
-    }
-
-    void GizmoEditor::ApplyDragForTest(const NS::Matrix& viewProjection,
-                                       NS::Size2D viewport,
-                                       GizmoAxis axis,
-                                       NS::Vector2 screenStart,
-                                       NS::Vector2 screenEnd) noexcept
-    {
-        if (m_selected == nullptr)
-        {
-            return;
-        }
-
-        const TransformState before{m_selected->Position(), m_selected->Rotation(), m_selected->Scale()};
-        const TransformState after =
-            ComputeDragResult(before, m_tool, m_space, axis, viewProjection, viewport, screenStart, screenEnd, false);
-        ApplyState(*m_selected, after);
     }
 
     void GizmoEditor::OnToolKey(NS::OS::Key key) noexcept

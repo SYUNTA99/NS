@@ -239,6 +239,18 @@ namespace NS
         return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
     }
 
+    //! 有限で 0 より大きい場合 true、それ以外の場合は false
+    [[nodiscard]] inline bool IsPositiveFinite(float value) noexcept
+    {
+        return std::isfinite(value) && value > 0.0f;
+    }
+
+    //! 有限で 0 以上の場合 true、それ以外の場合は false
+    [[nodiscard]] inline bool IsNonNegativeFinite(float value) noexcept
+    {
+        return std::isfinite(value) && value >= 0.0f;
+    }
+
     //! @brief 3 成分の絶対値のうち最大のもの。非一様な拡縮から球の半径を決める時に使う
     [[nodiscard]] inline float MaxAbsComponent(const Vector3& v) noexcept
     {

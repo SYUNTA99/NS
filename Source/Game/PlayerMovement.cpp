@@ -21,9 +21,7 @@ namespace
 {
     // from を Y 軸まわりに最大 maxRadians だけ to へ寄せた向き。from と to は正規化した水平の向き。
     // 使うのは MoveBody の振り向きだけなので、ここに置く
-    NS::Vector3 TurnHorizontalToward(const NS::Vector3& from,
-                                           const NS::Vector3& to,
-                                           float maxRadians) noexcept
+    NS::Vector3 TurnHorizontalToward(const NS::Vector3& from, const NS::Vector3& to, float maxRadians) noexcept
     {
         const float angle = NS::Game::Player::HorizontalAngleBetween(from, to);
         if (std::abs(angle) <= maxRadians)
@@ -251,9 +249,9 @@ namespace
 {
     // 掴まりの走査で見る AABB 群。体が Scene に居なければ空で、掴めないだけ
     [[nodiscard]] std::vector<NS::AABB> BoxesTouchingBand(const NS::Obj::IUseCollision& collider,
-                                                                const NS::Vector3& probe,
-                                                                float below,
-                                                                float above)
+                                                          const NS::Vector3& probe,
+                                                          float below,
+                                                          float above)
     {
         NS::AABB region;
         region.Center = NS::Vector3{probe.x, probe.y + 0.5f * (above - below), probe.z};
@@ -261,8 +259,7 @@ namespace
         return NS::Obj::OverlapBoxCollision(collider, region);
     }
 
-    [[nodiscard]] std::vector<NS::AABB> BoxesAtPoint(const NS::Obj::IUseCollision& collider,
-                                                           const NS::Vector3& point)
+    [[nodiscard]] std::vector<NS::AABB> BoxesAtPoint(const NS::Obj::IUseCollision& collider, const NS::Vector3& point)
     {
         NS::AABB region;
         region.Center = point;
@@ -479,13 +476,13 @@ void Player::UpdateLedgeClimb(float dt) noexcept
         const float u = t / 0.5f;
         pos.x = m_ledgeMantleStart.x;
         pos.z = m_ledgeMantleStart.z;
-        pos.y = m_ledgeMantleStart.y + (m_ledgeMantleEnd.y - m_ledgeMantleStart.y) * u;
+        pos.y = NS::Lerp(m_ledgeMantleStart.y, m_ledgeMantleEnd.y, u);
     }
     else
     {
         const float u = (t - 0.5f) / 0.5f;
-        pos.x = m_ledgeMantleStart.x + (m_ledgeMantleEnd.x - m_ledgeMantleStart.x) * u;
-        pos.z = m_ledgeMantleStart.z + (m_ledgeMantleEnd.z - m_ledgeMantleStart.z) * u;
+        pos.x = NS::Lerp(m_ledgeMantleStart.x, m_ledgeMantleEnd.x, u);
+        pos.z = NS::Lerp(m_ledgeMantleStart.z, m_ledgeMantleEnd.z, u);
         pos.y = m_ledgeMantleEnd.y;
     }
     Root().SetPosition(pos);
@@ -514,19 +511,11 @@ bool Player::FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noe
 
     for (const NS::AABB& box : BoxesTouchingBand(collider, probe, m_params->m_ledgeGrabBelowHand, 0.0f))
     {
+        if (!NS::Game::Player::PlayerJudgeLedgeGrab::InBand(probe, box, m_params->m_ledgeGrabBelowHand, 0.0f))
+        {
+            continue;
+        }
         const float top = box.Center.y + box.Extents.y;
-        if (top < handY - m_params->m_ledgeGrabBelowHand || top > handY)
-        {
-            continue;
-        }
-        if (probe.x < box.Center.x - box.Extents.x || probe.x > box.Center.x + box.Extents.x)
-        {
-            continue;
-        }
-        if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
-        {
-            continue;
-        }
 
         // 乗り上がり先が別ブロックで塞がっていたら縁とみなさない。オーバーハングの下では掴めない
         const float mantleStep = 2.0f * collider.CapsuleRadius();
