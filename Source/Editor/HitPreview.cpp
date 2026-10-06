@@ -321,7 +321,7 @@ namespace NS::Editor
         {
             return std::string{};
         }
-        // 鍵と並びは Replay の hits.jsonl (Tools/replay の HitRecord.cpp の ToJsonLine) に合わせる
+        // 鍵と並びは当たりの記録 hits.jsonl の 1 行に合わせる
         using Json = nlohmann::ordered_json;
         const NS::Game::Level::ImpactRecord& impact = result.impact;
         const NS::Vector3& launch = impact.launchVelocity;

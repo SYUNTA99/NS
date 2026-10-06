@@ -1407,7 +1407,7 @@ namespace NS::Game::Level
                 firstSign = -1.0f;
             }
         }
-        // 種は何回目の当たりか。毎回少し違い、Replay では同じ
+        // 種は何回目の当たりか。毎回少し違い、同じ入力の再生では同じ
         const std::uint32_t seed = m_lastImpact.sequence;
         m_bodyShake =
             BodyShakeRun{.desc = TackleShakeDesc{.axis = axis,

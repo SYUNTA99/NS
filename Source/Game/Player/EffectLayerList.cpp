@@ -10,7 +10,7 @@ namespace NS::Game::Player
 {
     void EffectLayerList::BeginStep(const NS::Gfx::EffectScene* effects)
     {
-        // 前のフレームの終わりの更新で消えた層。Replay がそのフレームの終わりに読んだ時点で残っていない
+        // 前のフレームの終わりの更新で消えた層。そのフレームの終わりに記録を読んだ時点で残っていない
         if (effects != nullptr)
         {
             for (EffectLayerRecord& record : m_records)

@@ -34,7 +34,7 @@ namespace NS::Game::Player
 
     //! @brief 自機のエフェクトの部品が出すと決めた層を、出した順に持つ記録
     //! @details 層を出す・親を止める・消すはここを通し、再生と記録を 1 か所で揃える。
-    //! 描画の無い世界 (EffectScene が null) では再生せず、記録だけ残す。試しと Replay はこの記録を読む。
+    //! 描画の無い世界 (EffectScene が null) では再生せず、記録だけ残す。試しはこの記録を読む。
     //! 寿命で消えたかは、描画のある世界で BeginStep が Effekseer に問い合わせて書く。
     //! 描画の無い世界の層は Stop を呼ぶまで残っている扱い
     //! 依存: NS::Gfx::EffectScene

@@ -4,10 +4,9 @@
 
 #include <cstdint>
 
-//! @brief 単体の遊びの外枠。Editor も ReplayLayer も載らない構成で、プレイ中のカーソルと Esc を持つ
+//! @brief 単体の遊びの外枠。Editor が載らない構成で、プレイ中のカーソルと Esc を持つ
 //! @details 起動でカーソルを握り、Esc で出し、出ている状態の Esc でアプリを終える。
-//! 積むのは構成を組み立てる GameMain だけ。エディタはプレイ中の Esc を自分で読み、Replay.exe は ReplayLayer
-//! か ServeLayer を積む
+//! 積むのは構成を組み立てる GameMain だけ。エディタはプレイ中の Esc を自分で読む
 class StandaloneLayer : public NS::Layer
 {
 public:

@@ -196,7 +196,7 @@ namespace NS::Game::Player
             m_tumbleWobblePhase = 0.0f;
             if (m_resolver != nullptr)
             {
-                // 種は何回目の当たりか。黄金角ずつずらし、続けて外しても始まりの向きが重ならない。Replay では同じ
+                // 種は何回目の当たりか。黄金角ずつずらし、続けて外しても始まりの向きが重ならない。同じ入力の再生では同じ
                 constexpr float k_GoldenAngle = 2.39996323f;
                 m_tumbleWobblePhase =
                     std::fmod(static_cast<float>(m_resolver->LastImpact().sequence) * k_GoldenAngle, 2.0f * NS::k_Pi);

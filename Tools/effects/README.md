@@ -165,6 +165,6 @@ efkprobe の「フレーム 1」は Play → Update(1) → 描く。ゲームで
 ## 見ていない物
 
 - 作った `.efkefc` を編集ソフトの画面で開いた姿 (中核の DLL で開いたのは確かめた)
-- ゲームの中での見え方と Replay の撮影 (efkprobe の絵との突き合わせは S6 の T6-8)
+- ゲームの中での見え方 (efkprobe の絵との突き合わせ)
 - モデル・マテリアル (`.efkmat`)・カーブ (`.efkcurve`) を読む節
 - efkprobe の WARP (GPU が無い時) の道

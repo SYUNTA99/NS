@@ -38,7 +38,7 @@ namespace NS::Game::Player
     //! - slam.trail 突進の尾: u に出す。当たったら c で、当たらずに突進が終わったら終わったフレームで親を止め、
     //!   止めた k_TrailFadeSteps フレーム後に消す
     //! 溜めている間の層には溜め量 (Player::ChargeJudge) を動的入力 0 番で毎フレーム渡す。
-    //! 描画の無い世界でも記録は残し、試しと Replay は Layers を読む
+    //! 描画の無い世界でも記録は残し、試しは Layers を読む
     //! Player の見た目の段 (VisualStep) が PlayerAppearance の後に呼ぶ。
     //! 同じフレームに PlayerAppearance が回した玉の向きより後に走る
     //! 依存: EffectLayerList, PlayerAppearance, Player, NS::Game::Level::ImpactResolver

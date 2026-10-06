@@ -7,7 +7,7 @@ namespace NS::Game::Level
 {
     namespace
     {
-        // 画素の欄の基準の画面の高さ。Replay の撮る画面と、震えを選んだ見本の大きさに揃える
+        // 画素の欄の基準の画面の高さ。撮影の画面と、震えを選んだ見本の大きさに揃える
         constexpr float k_ReferenceScreenHeight = 720.0f;
     } // namespace
 

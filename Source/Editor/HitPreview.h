@@ -91,9 +91,8 @@ namespace NS::Editor
                                                  const HitPreviewDesc& desc,
                                                  const HitPreviewWorld& world = {});
 
-    //! @brief 下見の当たりを、Replay の hits.jsonl と同じ鍵と並びの 1 行の JSON にする
-    //! @details f は検知のフレームの frames の添字。Replay と記録のコードは共有しない (Replay
-    //! は公開リポジトリの外にある)
+    //! @brief 下見の当たりを、当たりの記録 hits.jsonl と同じ鍵と並びの 1 行の JSON にする
+    //! @details f は検知のフレームの frames の添字
     //! @param[in] result RunHitPreview の結果
     //! @return 改行を含まない 1 行。当たらなかった結果は空の文字列
     [[nodiscard]] std::string HitPreviewHitLine(const HitPreviewResult& result);

@@ -227,8 +227,8 @@ TEST(EditorHitPreview, HoldsPadVibrationInTheRecord)
     input.Gamepad().StopVibration();
 }
 
-// 記録の 1 行は Replay の hits.jsonl と同じ鍵を同じ並びで持ち、f は検知のフレーム
-TEST(EditorHitPreview, HitLineHasTheReplayKeys)
+// 記録の 1 行は当たりの記録 hits.jsonl と同じ鍵を同じ並びで持ち、f は検知のフレーム
+TEST(EditorHitPreview, HitLineHasTheRecordKeys)
 {
     const ScopedHitTimelineDirectory directory("EditorHitPreviewLine");
     ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
