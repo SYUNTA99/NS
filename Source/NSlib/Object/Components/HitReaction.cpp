@@ -22,6 +22,18 @@ namespace NS::Obj
         constexpr float k_ReferenceHeight = 720.0f;
         // 線の暗い縁が白い線からはみ出す片側の幅。描画先の高さ 720 のときの画素。明るい床の上でも白い線を読ませる
         constexpr float k_LineOutlineWidth = 1.5f;
+
+        // 上限を超えた長さは警告して断る。カメラの無い場面は黙って断る
+        bool CanStartCameraMotion(const Actor* owner, int frames)
+        {
+            if (frames > k_MaxShakeFrames)
+            {
+                NS_LOG_WARN(
+                    Scene, "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった", frames, k_MaxShakeFrames);
+                return false;
+            }
+            return owner != nullptr && owner->GetCameraManager() != nullptr;
+        }
     } // namespace
 
     std::array<HitShakeLineRect, 6> ShakeLineRects(const HitShakeLinesDesc& desc,
@@ -69,14 +81,7 @@ namespace NS::Obj
         {
             return true;
         }
-        if (desc.frames > k_MaxShakeFrames)
-        {
-            NS_LOG_WARN(
-                Scene, "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった", desc.frames, k_MaxShakeFrames);
-            return false;
-        }
-        // カメラの無い場面 (試しの台) では揺らす先が無い。設定の誤りではないので黙って返す
-        if (Owner() == nullptr || Owner()->GetCameraManager() == nullptr)
+        if (!CanStartCameraMotion(Owner(), desc.frames))
         {
             return false;
         }
@@ -99,14 +104,7 @@ namespace NS::Obj
         {
             return true;
         }
-        if (desc.frames > k_MaxShakeFrames)
-        {
-            NS_LOG_WARN(
-                Scene, "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった", desc.frames, k_MaxShakeFrames);
-            return false;
-        }
-        // カメラの無い場面 (試しの台) では揺らす先が無い。設定の誤りではないので黙って返す
-        if (Owner() == nullptr || Owner()->GetCameraManager() == nullptr)
+        if (!CanStartCameraMotion(Owner(), desc.frames))
         {
             return false;
         }
@@ -129,14 +127,7 @@ namespace NS::Obj
         {
             return true;
         }
-        if (desc.frames > k_MaxShakeFrames)
-        {
-            NS_LOG_WARN(
-                Scene, "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった", desc.frames, k_MaxShakeFrames);
-            return false;
-        }
-        // カメラの無い場面 (試しの台) ではずらす先が無い。設定の誤りではないので黙って返す
-        if (Owner() == nullptr || Owner()->GetCameraManager() == nullptr)
+        if (!CanStartCameraMotion(Owner(), desc.frames))
         {
             return false;
         }
@@ -331,8 +322,8 @@ namespace NS::Obj
         float right = std::numeric_limits<float>::lowest();
         float top = std::numeric_limits<float>::max();
         float bottom = std::numeric_limits<float>::lowest();
-        const std::array<std::pair<NS::Vector3, float>, 2> bodies{
-            std::pair{m_lines.center, m_lines.radius}, std::pair{m_lines.otherCenter, m_lines.otherRadius}};
+        const std::array<std::pair<NS::Vector3, float>, 2> bodies{std::pair{m_lines.center, m_lines.radius},
+                                                                  std::pair{m_lines.otherCenter, m_lines.otherRadius}};
         for (const std::pair<NS::Vector3, float>& body : bodies)
         {
             if (!(body.second > 0.0f))

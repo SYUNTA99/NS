@@ -52,7 +52,7 @@ namespace
 
     float FieldOf(Player& player, const char* name)
     {
-        return NS::Obj::SerializeComponent(player.Params())["fields"][name].get<float>();
+        return NS::Obj::SerializeComponentFields(player.Params())[name].get<float>();
     }
 
     // 突進を出して、突進の間に回った角度の和 (度) を返す

@@ -42,7 +42,7 @@ TEST(PlayerAnimation, PlayerParamsKeepAllAnimatorNamesAndDefaults)
     const NS::Game::Player::PlayerParams* params =
         NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
     ASSERT_NE(params, nullptr);
-    const nlohmann::json fields = NS::Obj::SerializeComponent(*params)["fields"];
+    const nlohmann::json fields = NS::Obj::SerializeComponentFields(*params);
     const nlohmann::json expected = {{"立ちのクリップ", "idle"},
                                      {"歩きのクリップ", "walk"},
                                      {"走りのクリップ", "run"},

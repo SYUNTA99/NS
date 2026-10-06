@@ -51,14 +51,9 @@ namespace
     // 部品の欄 1 つの値を JSON で読む。無い欄は null
     nlohmann::json FieldJson(const NS::Obj::Component& comp, std::string_view fieldName)
     {
-        const nlohmann::json serialized = NS::Obj::SerializeComponent(comp);
-        const nlohmann::json* fields = NS::Obj::ComponentEntryFields(serialized);
-        if (fields == nullptr)
-        {
-            return nullptr;
-        }
-        const nlohmann::json::const_iterator it = fields->find(std::string{fieldName});
-        if (it == fields->end())
+        const nlohmann::json fields = NS::Obj::SerializeComponentFields(comp);
+        const nlohmann::json::const_iterator it = fields.find(std::string{fieldName});
+        if (it == fields.end())
         {
             return nullptr;
         }
@@ -115,9 +110,7 @@ namespace
     }
 
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状
-    void DrawCollisionWireframe(NS::Gfx::DebugShapes& shapes,
-                                NS::Obj::Actor& object,
-                                const NS::Color& color) noexcept
+    void DrawCollisionWireframe(NS::Gfx::DebugShapes& shapes, NS::Obj::Actor& object, const NS::Color& color) noexcept
     {
         if (NS::Obj::BoxCollision* box = NS::Obj::ComponentCast<NS::Obj::BoxCollision>(object.CollisionPart()))
         {
@@ -155,16 +148,14 @@ namespace
             const NS::AffineDecomposition parts = NS::DecomposeAffine(world);
             const NS::Vector3 center = NS::Vector3::Transform(NS::Vector3{local.Center}, world);
             const NS::Vector3 half{local.Extents.x * std::abs(parts.scale.x),
-                                         local.Extents.y * std::abs(parts.scale.y),
-                                         local.Extents.z * std::abs(parts.scale.z)};
+                                   local.Extents.y * std::abs(parts.scale.y),
+                                   local.Extents.z * std::abs(parts.scale.z)};
             shapes.OBB(NS::MakeOBB(center, parts.rotation, half), color);
         }
     }
 
     // 配置物 1 体のヒットセンサーの形を線で描く。範囲 (落下死・ゴール) は地形の当たりを持たないので、ここで見せる
-    void DrawSensorWireframe(NS::Gfx::DebugShapes& shapes,
-                             NS::Obj::Actor& object,
-                             const NS::Color& color) noexcept
+    void DrawSensorWireframe(NS::Gfx::DebugShapes& shapes, NS::Obj::Actor& object, const NS::Color& color) noexcept
     {
         for (const NS::Obj::HitSensor* sensor : {object.BodySensorPart(), object.AttackSensorPart()})
         {
@@ -280,8 +271,7 @@ namespace
     [[nodiscard]] float CameraMarkerHalf(const NS::Vector3& center, const NS::Matrix& vp) noexcept
     {
         const float baseHalf = 0.3f;
-        const NS::Vector4 clip =
-            NS::Vector4::Transform(NS::Vector4{center.x, center.y, center.z, 1.0f}, vp);
+        const NS::Vector4 clip = NS::Vector4::Transform(NS::Vector4{center.x, center.y, center.z, 1.0f}, vp);
         // clip.w がほぼ 0 になるカメラ至近や背面では基準半径へフォールバックする
         if (clip.w <= 1.0e-3f)
         {
@@ -822,8 +812,7 @@ void LevelEditorController::TickEdit()
     }
 }
 
-void LevelEditorController::DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes,
-                                                const NS::Matrix& viewProjection) noexcept
+void LevelEditorController::DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes, const NS::Matrix& viewProjection) noexcept
 {
     if (m_scene == nullptr)
     {

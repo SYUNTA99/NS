@@ -77,14 +77,9 @@ namespace NS::Obj
         // comp の欄 fieldName の値を JSON で読む。無ければ nullopt
         [[nodiscard]] std::optional<nlohmann::json> FieldValue(const Component& comp, std::string_view fieldName)
         {
-            const nlohmann::json serialized = SerializeComponent(comp);
-            const nlohmann::json* fields = ComponentEntryFields(serialized);
-            if (fields == nullptr)
-            {
-                return std::nullopt;
-            }
-            const nlohmann::json::const_iterator it = fields->find(std::string{fieldName});
-            if (it == fields->end())
+            const nlohmann::json fields = SerializeComponentFields(comp);
+            const nlohmann::json::const_iterator it = fields.find(std::string{fieldName});
+            if (it == fields.end())
             {
                 return std::nullopt;
             }

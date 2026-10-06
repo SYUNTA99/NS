@@ -76,14 +76,8 @@ namespace NS::Obj
 
     void CameraManager::SetBlendDuration(float seconds) noexcept
     {
-        if (seconds > 0.0f)
-        {
-            m_blendDuration = seconds;
-        }
-        else
-        {
-            m_blendDuration = 0.0f;
-        }
+        // 引数の順を変えない。非数は 0 になる
+        m_blendDuration = std::max(0.0f, seconds);
     }
 
     bool CameraManager::AddModifier(std::unique_ptr<CameraModifier> modifier)

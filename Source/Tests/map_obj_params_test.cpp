@@ -104,14 +104,14 @@ TEST(MapObjParams, InvalidOverridesKeepPhysicalValuesSafe)
 TEST(MapObjParams, LaunchSizeDefaultsBelongToParams)
 {
     NS::Game::Level::MapObjParams params;
-    const nlohmann::json fields = NS::Obj::SerializeComponent(params)["fields"];
+    const nlohmann::json fields = NS::Obj::SerializeComponentFields(params);
     const nlohmann::json expected = {{"飛び出しの尾が残るフレーム数の基準", 8},
                                      {"飛び出しの尾が残るフレーム数の飛ばしの比あたり", 4.0f},
                                      {"着地の粉の大きさの基準", 0.8f},
                                      {"着地の粉の大きさの質量の平方根あたり", 0.4f},
                                      {"着地の粉の大きさの威力あたりの伸び", 0.5f}};
     NS::Game::Level::LaunchEffects effects;
-    const nlohmann::json effectFields = NS::Obj::SerializeComponent(effects)["fields"];
+    const nlohmann::json effectFields = NS::Obj::SerializeComponentFields(effects);
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
     {
         ASSERT_TRUE(fields.contains(it.key())) << it.key();

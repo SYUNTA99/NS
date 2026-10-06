@@ -260,27 +260,20 @@ namespace NS::Obj
 
     nlohmann::json SerializePartFields(const Component& part)
     {
-        nlohmann::json fields = SerializeComponent(part)["fields"];
+        nlohmann::json fields = SerializeComponentFields(part);
         fields["enabled"] = part.IsEnabled();
         return fields;
     }
 
-    nlohmann::json SerializeComponent(const Component& comp)
+    nlohmann::json SerializeComponentFields(const Component& comp)
     {
-        nlohmann::json out;
         const ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr)
         {
-            // リフレクションの無い component は type を復元できない。宣言の書き忘れに気付けるよう警告する
-            NS_LOG_WARN(Game, "リフレクションの無い Component を直列化しようとした (type 復元不可)");
-            out["type"] = "";
-            out["fields"] = nlohmann::json::object();
-            return out;
+            NS_LOG_WARN(Game, "リフレクションの無い Component を直列化しようとした");
+            return nlohmann::json::object();
         }
-
-        out["type"] = info->typeName;
-        out["fields"] = SerializeReflectedFields(&comp, *info);
-        return out;
+        return SerializeReflectedFields(&comp, *info);
     }
 
     nlohmann::json SerializeReflectedFields(const void* owner, const ReflectionInfo& info)

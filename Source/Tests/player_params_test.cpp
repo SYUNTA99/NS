@@ -82,7 +82,7 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
     const NS::Game::Player::PlayerParams* params =
         NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
     ASSERT_NE(params, nullptr);
-    const nlohmann::json fields = NS::Obj::SerializeComponent(*params)["fields"];
+    const nlohmann::json fields = NS::Obj::SerializeComponentFields(*params);
     const nlohmann::json expected = {{"ジャンプ初速", 12.0f},
                                      {"上昇重力", -25.0f},
                                      {"下降重力", -35.0f},
@@ -127,10 +127,10 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
     const NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player.Part("Movement"));
     ASSERT_NE(movement, nullptr);
     // 身体は欄を持たない。動きの調整値は Params、当たりの寸法は Collider に居る
-    EXPECT_TRUE(NS::Obj::SerializeComponent(*movement)["fields"].empty());
+    EXPECT_TRUE(NS::Obj::SerializeComponentFields(*movement).empty());
     const NS::Obj::Collider* collider = NS::Obj::ComponentCast<NS::Obj::Collider>(player.Part("Collider"));
     ASSERT_NE(collider, nullptr);
-    const nlohmann::json colliderFields = NS::Obj::SerializeComponent(*collider)["fields"];
+    const nlohmann::json colliderFields = NS::Obj::SerializeComponentFields(*collider);
     EXPECT_EQ(colliderFields.size(), 2u);
     EXPECT_TRUE(colliderFields.contains("半径"));
     EXPECT_TRUE(colliderFields.contains("半分の高さ"));
@@ -180,7 +180,7 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
     const NS::Game::Player::PlayerParams* params =
         NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player->Part("Params"));
     ASSERT_NE(params, nullptr);
-    const nlohmann::json fields = NS::Obj::SerializeComponent(*params)["fields"];
+    const nlohmann::json fields = NS::Obj::SerializeComponentFields(*params);
     EXPECT_FLOAT_EQ(fields["上昇重力"].get<float>(), -21.0f);
     EXPECT_FLOAT_EQ(fields["下降重力"].get<float>(), -39.0f);
 }
@@ -188,7 +188,7 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
 // part の欄に expected の名前が全部あり、値も同じことを確かめる
 static void ExpectPartFields(const NS::Obj::Component& part, const nlohmann::json& expected)
 {
-    const nlohmann::json fields = NS::Obj::SerializeComponent(part)["fields"];
+    const nlohmann::json fields = NS::Obj::SerializeComponentFields(part);
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
     {
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
@@ -199,7 +199,7 @@ static void ExpectPartFields(const NS::Obj::Component& part, const nlohmann::jso
 // 調整値の部品に expected の名前が 1 つも無いことを確かめる。演出の欄は描く部品が持ち、遊びの欄と並ばない
 static void ExpectNotInParams(const Player& player, const nlohmann::json& expected)
 {
-    const nlohmann::json fields = NS::Obj::SerializeComponent(player.Params())["fields"];
+    const nlohmann::json fields = NS::Obj::SerializeComponentFields(player.Params());
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
     {
         EXPECT_FALSE(fields.contains(it.key())) << it.key();
@@ -254,7 +254,7 @@ TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
 TEST(PlayerParams, ImpactDefaultsKeepAllFortySevenDisplayNamesAndValues)
 {
     Player player;
-    const nlohmann::json fields = NS::Obj::SerializeComponent(player.Params())["fields"];
+    const nlohmann::json fields = NS::Obj::SerializeComponentFields(player.Params());
     const nlohmann::json play = {{"反動の高さ", 1.15f},
                                  {"反動の距離", 0.575f},
                                  {"中心近くの当たりの反動の距離の倍率", 4.5f},
@@ -335,7 +335,7 @@ TEST(PlayerParams, ImpactDefaultsKeepAllFortySevenDisplayNamesAndValues)
     {
         EXPECT_FALSE(fields.contains(removed)) << removed;
     }
-    EXPECT_TRUE(NS::Obj::SerializeComponent(player.Resolver())["fields"].empty());
+    EXPECT_TRUE(NS::Obj::SerializeComponentFields(player.Resolver()).empty());
 }
 
 TEST(PlayerParams, LiveImpactVisualTuningDrivesShapeAndLandingDust)

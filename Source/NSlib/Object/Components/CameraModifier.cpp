@@ -80,6 +80,7 @@ namespace NS::Obj
         }
         if (!IsFinished())
         {
+            ++m_frame;
             Advance();
         }
     }
@@ -127,9 +128,9 @@ namespace NS::Obj
 
     NS::Vector2 CameraShakeModifier::Offset() const noexcept
     {
-        if (m_frame < static_cast<int>(m_offsets.size()))
+        if (Frame() < static_cast<int>(m_offsets.size()))
         {
-            return m_offsets[static_cast<std::size_t>(m_frame)];
+            return m_offsets[static_cast<std::size_t>(Frame())];
         }
         return NS::Vector2{0.0f, 0.0f};
     }
@@ -148,12 +149,7 @@ namespace NS::Obj
 
     bool CameraShakeModifier::IsFinished() const noexcept
     {
-        return m_frame >= static_cast<int>(m_offsets.size());
-    }
-
-    void CameraShakeModifier::Advance() noexcept
-    {
-        ++m_frame;
+        return Frame() >= static_cast<int>(m_offsets.size());
     }
 
     float CameraSinkPixelsAt(const CameraSinkDesc& desc, int frame) noexcept
@@ -215,7 +211,7 @@ namespace NS::Obj
 
     float CameraSinkModifier::Pixels() const noexcept
     {
-        return CameraSinkPixelsAt(m_desc, m_frame);
+        return CameraSinkPixelsAt(m_desc, Frame());
     }
 
     void CameraSinkModifier::Modify(CameraPose& pose, const CameraAxes& axes) const noexcept
@@ -226,12 +222,7 @@ namespace NS::Obj
 
     bool CameraSinkModifier::IsFinished() const noexcept
     {
-        return m_frame >= m_desc.frames;
-    }
-
-    void CameraSinkModifier::Advance() noexcept
-    {
-        ++m_frame;
+        return Frame() >= m_desc.frames;
     }
 
     std::unique_ptr<CameraZoomRollModifier> CameraZoomRollModifier::Create(const CameraZoomRollDesc& desc,
@@ -267,17 +258,17 @@ namespace NS::Obj
 
     CameraZoomRoll CameraZoomRollModifier::Current() const noexcept
     {
-        if (m_frame >= m_holdFrames + m_returnFrames)
+        if (Frame() >= m_holdFrames + m_returnFrames)
         {
             return CameraZoomRoll{};
         }
-        if (m_frame < m_holdFrames)
+        if (Frame() < m_holdFrames)
         {
             return m_full;
         }
 
         // 重みを 1 - weight と weight に分けて掛けるので、戻しの最後のフレームで倍率 1・傾き 0 ちょうどになる
-        const float t = static_cast<float>(m_frame - m_holdFrames + 1) / static_cast<float>(m_returnFrames);
+        const float t = static_cast<float>(Frame() - m_holdFrames + 1) / static_cast<float>(m_returnFrames);
         const float weight = NS::SmoothStep(t);
         return CameraZoomRoll{
             .zoom = m_full.zoom * (1.0f - weight) + weight,
@@ -301,12 +292,7 @@ namespace NS::Obj
 
     bool CameraZoomRollModifier::IsFinished() const noexcept
     {
-        return m_frame >= m_holdFrames + m_returnFrames;
-    }
-
-    void CameraZoomRollModifier::Advance() noexcept
-    {
-        ++m_frame;
+        return Frame() >= m_holdFrames + m_returnFrames;
     }
 
     const void* CameraTraumaModifier::StaticKind() noexcept
@@ -348,7 +334,7 @@ namespace NS::Obj
     NS::Vector3 CameraTraumaModifier::Angles() const noexcept
     {
         // 時刻はフレーム数から出す。種と時刻だけで決まり、下見で途中のフレームへ飛んでもその場で引ける
-        const float time = static_cast<float>(m_frame) * NS::OS::FrameTimer::FixedDelta() * m_shape.frequency;
+        const float time = static_cast<float>(Frame()) * NS::OS::FrameTimer::FixedDelta() * m_shape.frequency;
         const float amount = ShakeAmount();
         NS::Vector3 angles{m_shape.yawDegrees * amount * NS::ValueNoise1D(time, m_seed),
                            m_shape.pitchDegrees * amount * NS::ValueNoise1D(time, m_seed + 1u),
@@ -394,7 +380,6 @@ namespace NS::Obj
 
     void CameraTraumaModifier::Advance() noexcept
     {
-        ++m_frame;
         m_trauma = std::max(m_trauma - m_shape.decayPerSecond * NS::OS::FrameTimer::FixedDelta(), 0.0f);
         // 保たれたフレームは減らさない。頼みは 1 フレームだけ効く
         m_trauma = std::max(m_trauma, m_held);
@@ -446,11 +431,11 @@ namespace NS::Obj
 
     float CameraNudgeModifier::Distance() const noexcept
     {
-        if (m_frame >= m_desc.frames)
+        if (Frame() >= m_desc.frames)
         {
             return 0.0f;
         }
-        return m_desc.distance.Evaluate(static_cast<float>(m_frame));
+        return m_desc.distance.Evaluate(static_cast<float>(Frame()));
     }
 
     void CameraNudgeModifier::Modify(CameraPose& pose, const CameraAxes& axes) const noexcept
@@ -475,11 +460,6 @@ namespace NS::Obj
 
     bool CameraNudgeModifier::IsFinished() const noexcept
     {
-        return m_frame >= m_desc.frames;
-    }
-
-    void CameraNudgeModifier::Advance() noexcept
-    {
-        ++m_frame;
+        return Frame() >= m_desc.frames;
     }
 } // namespace NS::Obj

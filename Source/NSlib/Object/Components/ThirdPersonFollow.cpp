@@ -47,6 +47,25 @@ namespace
         value = target + (gap + push) * decay;
     }
 
+    // 右は水平で、上は視線と右に直交する
+    struct ViewAxes
+    {
+        NS::Vector3 forward;
+        NS::Vector3 right;
+        NS::Vector3 up;
+    };
+
+    [[nodiscard]] ViewAxes ViewAxesFromYawPitch(float yaw, float pitch) noexcept
+    {
+        const float cy = std::cos(yaw);
+        const float sy = std::sin(yaw);
+        const float cp = std::cos(pitch);
+        const float sp = std::sin(pitch);
+        return ViewAxes{.forward = NS::Vector3{sy * cp, sp, cy * cp},
+                        .right = NS::Vector3{cy, 0.0f, -sy},
+                        .up = NS::Vector3{-sp * sy, cp, -sp * cy}};
+    }
+
     // カメラから見た 1 点の、右と上の向きの位置と、枠の半分の幅
     struct FramePoint
     {
@@ -59,21 +78,19 @@ namespace
 
     [[nodiscard]] FramePoint ToFramePoint(const NS::Vector3& point,
                                           const NS::Vector3& cameraPosition,
-                                          const NS::Vector3& forward,
-                                          const NS::Vector3& right,
-                                          const NS::Vector3& up,
+                                          const ViewAxes& axes,
                                           float frameTanHalf) noexcept
     {
         const NS::Vector3 offset = point - cameraPosition;
-        const float depth = NS::Dot(offset, forward);
+        const float depth = NS::Dot(offset, axes.forward);
         FramePoint framePoint{};
         if (depth <= 0.0f)
         {
             return framePoint;
         }
         framePoint.usable = true;
-        framePoint.right = NS::Dot(offset, right);
-        framePoint.up = NS::Dot(offset, up);
+        framePoint.right = NS::Dot(offset, axes.right);
+        framePoint.up = NS::Dot(offset, axes.up);
         framePoint.halfHeight = depth * frameTanHalf;
         framePoint.halfWidth = framePoint.halfHeight * k_ChargeFrameAspect;
         return framePoint;
@@ -252,20 +269,21 @@ namespace NS::Obj
     void ThirdPersonFollow::UpdateReboundPhase(
         bool began, bool rebounding, bool launchBegan, bool launching, const NS::Vector3& head) noexcept
     {
+        const auto anchorAtLastLook = [this, &head]() {
+            m_reboundAnchor = head;
+            if (m_hasLook)
+            {
+                m_reboundAnchor = m_look;
+            }
+            m_reboundAnchorVelocity = NS::Vector3{0.0f, 0.0f, 0.0f};
+        };
+
         // 反動の状態になったフレームに、前のフレームに見ていた所から留める
         // 空中で続けて当てた時も留め直す。勝手に出た突進の途中で当たった時も、遅れた注視点から続けるので跳ばない
         if (began)
         {
             m_reboundPhase = ReboundPhase::Following;
-            if (m_hasLook)
-            {
-                m_reboundAnchor = m_look;
-            }
-            else
-            {
-                m_reboundAnchor = head;
-            }
-            m_reboundAnchorVelocity = NS::Vector3{0.0f, 0.0f, 0.0f};
+            anchorAtLastLook();
             // 勝手に出た突進の遅れは反動の上限より大きいことがある。入った時の遅れを上限の初めにして、切って跳ばさない
             const float lagX = m_reboundAnchor.x - head.x;
             const float lagZ = m_reboundAnchor.z - head.z;
@@ -278,15 +296,7 @@ namespace NS::Obj
         if (launchBegan)
         {
             m_reboundPhase = ReboundPhase::Launching;
-            if (m_hasLook)
-            {
-                m_reboundAnchor = m_look;
-            }
-            else
-            {
-                m_reboundAnchor = head;
-            }
-            m_reboundAnchorVelocity = NS::Vector3{0.0f, 0.0f, 0.0f};
+            anchorAtLastLook();
             return;
         }
 
@@ -421,25 +431,20 @@ namespace NS::Obj
         const float viewFov = FovY().value - NS::DegreesToRadians(m_chargeNarrowDegrees);
         if (m_reboundScreenBand > 0.0f && viewFov > 0.0f)
         {
-            const float cy = std::cos(m_yaw);
-            const float sy = std::sin(m_yaw);
-            const float cp = std::cos(m_pitch);
-            const float sp = std::sin(m_pitch);
-            const NS::Vector3 forward{sy * cp, sp, cy * cp};
-            const NS::Vector3 up{-sp * sy, cp, -sp * cy};
-            const NS::Vector3 toBall = ball - (m_look - forward * m_distance);
-            const float depth = NS::Dot(toBall, forward);
+            const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
+            const NS::Vector3 toBall = ball - (m_look - axes.forward * m_distance);
+            const float depth = NS::Dot(toBall, axes.forward);
             if (depth > 0.0f)
             {
                 const float limit = m_reboundScreenBand * depth * std::tan(viewFov * 0.5f);
-                const float height = NS::Dot(toBall, up);
+                const float height = NS::Dot(toBall, axes.up);
                 if (height > limit)
                 {
-                    m_look += up * (height - limit);
+                    m_look += axes.up * (height - limit);
                 }
                 else if (height < -limit)
                 {
-                    m_look += up * (height + limit);
+                    m_look += axes.up * (height + limit);
                 }
             }
         }
@@ -525,19 +530,13 @@ namespace NS::Obj
         const bool framing = charge.held && charge.hasAimTarget && m_chargeFrameRatio > 0.0f && frameFov > 0.0f;
         if (framing)
         {
-            const float cy = std::cos(m_yaw);
-            const float sy = std::sin(m_yaw);
-            const float cp = std::cos(m_pitch);
-            const float sp = std::sin(m_pitch);
-            const NS::Vector3 forward{sy * cp, sp, cy * cp};
-            const NS::Vector3 right{cy, 0.0f, -sy};
-            const NS::Vector3 up{-sp * sy, cp, -sp * cy};
+            const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
             const NS::Vector3 root = target.Position();
-            const NS::Vector3 camPos = look - forward * m_distance;
+            const NS::Vector3 camPos = look - axes.forward * m_distance;
             const float frameTanHalf = m_chargeFrameRatio * std::tan(frameFov * 0.5f);
 
-            const FramePoint self = ToFramePoint(root, camPos, forward, right, up, frameTanHalf);
-            const FramePoint aim = ToFramePoint(charge.aimTargetCenter, camPos, forward, right, up, frameTanHalf);
+            const FramePoint self = ToFramePoint(root, camPos, axes, frameTanHalf);
+            const FramePoint aim = ToFramePoint(charge.aimTargetCenter, camPos, axes, frameTanHalf);
             // 相手は中心でなく中心 ± 半径を枠に入れる
             // 締めた視野では玉が大きく写り、中心だけ入れると縁が画面の端で切れる
             const float aimHalfWidth = std::max(aim.halfWidth - charge.aimTargetRadius, 0.0f);
@@ -552,13 +551,13 @@ namespace NS::Obj
             if (self.usable && aim.usable)
             {
                 const NS::Vector3 middle = (root + charge.aimTargetCenter) * 0.5f;
-                const NS::Vector3 toMiddle = middle - (camPos + up * wanted.y);
-                const float depth = NS::Dot(toMiddle, forward);
+                const NS::Vector3 toMiddle = middle - (camPos + axes.up * wanted.y);
+                const float depth = NS::Dot(toMiddle, axes.forward);
                 if (depth > 0.0f)
                 {
                     // 注視点を上の向きに s 下げると、視線は s ÷ 距離 の傾きだけ下を向く。真ん中の傾きと等しくする
                     const float centerRatio = NS::Clamp(m_chargeCenterRatio, 0.0f, 1.0f);
-                    wantedTilt = NS::Dot(toMiddle, up) / depth * m_distance * centerRatio * approach;
+                    wantedTilt = NS::Dot(toMiddle, axes.up) / depth * m_distance * centerRatio * approach;
                 }
             }
         }
@@ -758,47 +757,39 @@ namespace NS::Obj
         // カメラを後ろへ下げる。反動の間は書き換えない
         // 今の目標でなく今の距離から測る
         // 目標へ寄っている途中に目標へ足すと、見えている距離より下がりすぎるか寄る
-        if (!m_manualDistance && reboundBegan)
+        if (!m_manualDistance)
         {
-            m_reboundBaseDistance = m_distance;
-            if (rebound.pullBack)
+            if (reboundBegan)
             {
-                m_reboundBaseDistance += std::max(m_reboundPullBack, 0.0f);
+                m_reboundBaseDistance = m_distance;
+                if (rebound.pullBack)
+                {
+                    m_reboundBaseDistance += std::max(m_reboundPullBack, 0.0f);
+                }
+                m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
             }
-            m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
-        }
-        else if (!m_manualDistance && m_reboundPhase == ReboundPhase::Following)
-        {
-            // 反動の間は当たった瞬間に決めた距離に、相手を収める引きだけを足す
-            m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
-        }
-        else if (!m_manualDistance && framingHeld)
-        {
-            // 体当たりから止めの明けまでは今の距離のまま。突進で浮いても空中の距離へ引かない
-            m_desiredDistance = m_distance;
-        }
-        else if (!m_manualDistance && m_reboundPhase != ReboundPhase::Following)
-        {
-            float desired = m_idleDistance;
-            if (m_hasFollowMotion)
+            else if (m_reboundPhase == ReboundPhase::Following)
             {
-                if (!m_followGrounded)
-                {
-                    desired = m_jumpDistance;
-                }
-                else
-                {
-                    if (m_followHorizontalSpeed > m_runSpeedThreshold)
-                    {
-                        desired = m_runDistance;
-                    }
-                    else
-                    {
-                        desired = m_idleDistance;
-                    }
-                }
+                // 反動の間は当たった瞬間に決めた距離に、相手を収める引きだけを足す
+                m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
             }
-            m_desiredDistance = desired;
+            else if (framingHeld)
+            {
+                // 体当たりから止めの明けまでは今の距離のまま。突進で浮いても空中の距離へ引かない
+                m_desiredDistance = m_distance;
+            }
+            else if (m_hasFollowMotion && !m_followGrounded)
+            {
+                m_desiredDistance = m_jumpDistance;
+            }
+            else if (m_hasFollowMotion && m_followHorizontalSpeed > m_runSpeedThreshold)
+            {
+                m_desiredDistance = m_runDistance;
+            }
+            else
+            {
+                m_desiredDistance = m_idleDistance;
+            }
         }
         m_distance = SpringApproach(m_distance, m_desiredDistance, m_springOmega, dt);
 
@@ -815,11 +806,7 @@ namespace NS::Obj
                 NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{0.0f, 1.0f, 0.0f});
         }
 
-        const float cy = std::cos(m_yaw);
-        const float sy = std::sin(m_yaw);
-        const float cp = std::cos(m_pitch);
-        const float sp = std::sin(m_pitch);
-        const NS::Vector3 forward{sy * cp, sp, cy * cp};
+        const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
 
         // Player Mesh の補間と整合させ、相対位置のガタつきを防ぐ
         const NS::Vector3 tgtPos = target->InterpolatedWorldMatrix(alpha).Translation();
@@ -832,26 +819,20 @@ namespace NS::Obj
         {
             headPos = m_previousLook * (1.0f - alpha) + m_look * alpha;
         }
-        NS::Vector3 camPos{
-            headPos.x - forward.x * m_distance,
-            headPos.y - forward.y * m_distance,
-            headPos.z - forward.z * m_distance,
-        };
+        NS::Vector3 camPos = headPos - axes.forward * m_distance;
 
         // 構図のずらしは位置と注視点を同じだけ動かし、視線の向きを変えない。0 なら足さない
         const float upShift = m_chargeFrameOffset.y;
         if (m_chargeFrameOffset.x != 0.0f || upShift != 0.0f)
         {
-            const NS::Vector3 right{cy, 0.0f, -sy};
-            const NS::Vector3 up{-sp * sy, cp, -sp * cy};
-            const NS::Vector3 shift = right * m_chargeFrameOffset.x + up * upShift;
+            const NS::Vector3 shift = axes.right * m_chargeFrameOffset.x + axes.up * upShift;
             camPos += shift;
             headPos += shift;
         }
         // 真ん中への寄せは注視点だけを下げ、カメラの位置は変えずに下を向かせる
         if (m_chargeCenterTilt != 0.0f)
         {
-            headPos += NS::Vector3{-sp * sy, cp, -sp * cy} * m_chargeCenterTilt;
+            headPos += axes.up * m_chargeCenterTilt;
         }
 
         CameraPose pose = MakePose(camPos, headPos, NS::Vector3{0.0f, 1.0f, 0.0f});

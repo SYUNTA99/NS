@@ -215,8 +215,8 @@ TEST(HitZonesTest, CapsuleHalfHeightAddsItsTube)
 // 箱の半分の高さは、向きの付いた箱の 3 軸を縦へ写した長さの和
 TEST(HitZonesTest, BoxHalfHeightComesFromItsAxes)
 {
-    const SensorVolume box = SensorVolume::Box(
-        NS::MakeOBB(Vector3{0.0f, 0.0f, 0.0f}, NS::Quaternion::Identity, Vector3{1.0f, 0.5f, 0.2f}));
+    const SensorVolume box =
+        SensorVolume::Box(NS::MakeOBB(Vector3{0.0f, 0.0f, 0.0f}, NS::Quaternion::Identity, Vector3{1.0f, 0.5f, 0.2f}));
     HitFaceJudgement result;
     ASSERT_TRUE(
         JudgeHitFace(HitFace{}, box, Vector3{-3.0f, 0.5f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius, result));
@@ -228,10 +228,9 @@ TEST(HitZonesTest, BoxHalfHeightComesFromItsAxes)
 // 外接箱で測ると、細い板の長い辺に沿って通る線でも板の対角ぶん広く出る
 TEST(HitZonesTest, RotatedBoxUsesItsOwnWidthAcrossTheLine)
 {
-    const NS::OBB obb =
-        NS::MakeOBB(Vector3{0.0f, 0.0f, 0.0f},
-                          NS::Quaternion::CreateFromAxisAngle(Vector3{0.0f, 1.0f, 0.0f}, 0.25f * 3.14159265f),
-                          Vector3{1.0f, 0.5f, 0.2f});
+    const NS::OBB obb = NS::MakeOBB(Vector3{0.0f, 0.0f, 0.0f},
+                                    NS::Quaternion::CreateFromAxisAngle(Vector3{0.0f, 1.0f, 0.0f}, 0.25f * 3.14159265f),
+                                    Vector3{1.0f, 0.5f, 0.2f});
     // 板の長い辺に沿って進み、板の厚みの向きへ 0.5 m ずれた線
     HitFaceJudgement result;
     ASSERT_TRUE(JudgeHitFace(HitFace{},
@@ -461,7 +460,7 @@ TEST(HitZonesTest, LinePointIsTheCenterDroppedOntoTheLineAtTheCenterHeight)
 TEST(HitZonesTest, FieldDefaultsAreARoundRedOfPoint43)
 {
     const HitZones zones;
-    const nlohmann::json fields = NS::Obj::SerializeComponent(zones)["fields"];
+    const nlohmann::json fields = NS::Obj::SerializeComponentFields(zones);
     EXPECT_EQ(fields["丸"], true);
     EXPECT_FLOAT_EQ(fields["横幅"].get<float>(), 0.43f);
     EXPECT_FLOAT_EQ(fields["縦の幅"].get<float>(), 0.43f);

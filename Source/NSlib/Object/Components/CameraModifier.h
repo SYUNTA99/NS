@@ -48,11 +48,15 @@ namespace NS::Obj
         [[nodiscard]] virtual bool IsShake() const noexcept { return false; }
 
     protected:
-        //! 1 フレーム進める
-        virtual void Advance() noexcept = 0;
+        //! @brief Frame を 1 つ進めた後に呼ぶ。番号のほかに進める物がある効果だけが上書きする
+        virtual void Advance() noexcept {}
+
+        //! 積んだフレームを 0 とした番号
+        [[nodiscard]] int Frame() const noexcept { return m_frame; }
 
     private:
         bool m_justAdded = true; // 積んだ後まだ Tick を通っていないか
+        int m_frame = 0;
     };
 
     //! @brief 画面揺れの形の設定
@@ -63,23 +67,23 @@ namespace NS::Obj
     //! 間隔は seed から選び、横と縦は別の並びになる。縦の最初の振れは下
     struct CameraShakeDesc
     {
-        float sideAmplitude = 0.0f; // 最初の振れの横の大きさ (m)
-        float upAmplitude = 0.0f;   // 最初の振れの縦の大きさ (m)
-        int frames = 0;             // 揺れを描くフレーム数。始めたフレームを含む
-        int longestFlipFrames = 1;  // 向きが入れ替わるまでの最長フレーム数。横と縦の両方に掛かる
+        float sideAmplitude = 0.0f;                       // 最初の振れの横の大きさ (m)
+        float upAmplitude = 0.0f;                         // 最初の振れの縦の大きさ (m)
+        int frames = 0;                                   // 揺れを描くフレーム数。始めたフレームを含む
+        int longestFlipFrames = 1;                        // 向きが入れ替わるまでの最長フレーム数。横と縦の両方に掛かる
         NS::Vector3 firstSideDirection{1.0f, 0.0f, 0.0f}; // 最初の横の振れを向ける世界の向き
-        std::uint32_t seed = 0;                                 // 入れ替わりの間隔を選ぶ種
+        std::uint32_t seed = 0;                           // 入れ替わりの間隔を選ぶ種
     };
 
     //! @brief 寄りと傾きの設定
     //! @details 始めたフレームから倍率と傾きを全部入れ、holdFrames の間保ち、returnFrames で滑らかに元へ戻す
     struct CameraZoomRollDesc
     {
-        float zoom = 1.0f;                                 // 画面に写る大きさの倍率。1 で寄らない
-        float rollDegrees = 0.0f;                          // 視線の軸まわりの傾き (度)
+        float zoom = 1.0f;                           // 画面に写る大きさの倍率。1 で寄らない
+        float rollDegrees = 0.0f;                    // 視線の軸まわりの傾き (度)
         NS::Vector3 rollDirection{1.0f, 0.0f, 0.0f}; // 画面の上端を倒す側を決める世界の向き
-        int holdFrames = 0;                                // 倍率と傾きを保つフレーム数。始めたフレームを含む
-        int returnFrames = 0;                              // 元へ戻すフレーム数
+        int holdFrames = 0;                          // 倍率と傾きを保つフレーム数。始めたフレームを含む
+        int returnFrames = 0;                        // 元へ戻すフレーム数
     };
 
     //! @brief 今のフレームの寄りと傾き
@@ -117,10 +121,8 @@ namespace NS::Obj
 
     private:
         CameraShakeModifier() noexcept = default;
-        void Advance() noexcept override;
 
         std::vector<NS::Vector2> m_offsets; // フレームごとのずれ (m)。x が右、y が上
-        int m_frame = 0;                          // m_offsets の今のフレームの番号
     };
 
     //! @brief 寄りと傾き。寄りは視野角、傾きは視線の軸まわりの上の向きで掛け、注視点 - 位置は変えない
@@ -149,12 +151,10 @@ namespace NS::Obj
 
     private:
         CameraZoomRollModifier() noexcept = default;
-        void Advance() noexcept override;
 
         CameraZoomRoll m_full{}; // 保つ間の倍率と向きを付けた傾き
         int m_holdFrames = 0;    // 保つフレーム数
         int m_returnFrames = 0;  // 戻すフレーム数
-        int m_frame = 0;         // 始めたフレームからの番号。保つと戻すの和に達したら終わり
     };
 
     //! @brief 沈む揺れ (真ん中) の 4 拍の形
@@ -209,10 +209,8 @@ namespace NS::Obj
 
     private:
         CameraSinkModifier() noexcept = default;
-        void Advance() noexcept override;
 
         CameraSinkDesc m_desc{}; // 4 拍の形
-        int m_frame = 0;         // 始めたフレームからの番号
     };
 
     //! @brief トラウマの揺れの形。場面ごとに持つ (外れ・溜め)
@@ -232,8 +230,8 @@ namespace NS::Obj
     //! f が peakFrames のフレームに最大になり、その後は滑らかに戻る
     struct CameraKick
     {
-        float degrees = 0.0f;          // 山の大きさ (度)
-        int peakFrames = 1;            // 山のフレーム
+        float degrees = 0.0f;    // 山の大きさ (度)
+        int peakFrames = 1;      // 山のフレーム
         NS::Vector2 direction{}; // 画面の上の向き。x が右、y が上。長さ 0 なら振らない
     };
 
@@ -294,7 +292,6 @@ namespace NS::Obj
         float m_trauma = 0.0f;       // 今のトラウマ
         float m_held = 0.0f;         // このフレームに保つと頼まれたトラウマ。次の Advance で下ろす
         std::uint32_t m_seed = 0;    // ノイズの種
-        int m_frame = 0;             // 積んでから進めたフレーム数。ノイズの時刻
         CameraKick m_kick{};         // 重ねている一撃
         int m_kickFrame = 0;         // 一撃のフレーム。足したフレームが 1、一撃が無ければ 0
     };
@@ -304,9 +301,9 @@ namespace NS::Obj
     struct CameraNudgeDesc
     {
         NS::Vector3 direction{}; // ずらす世界の向き。長さ 1
-        Curve distance{}; // 始めたフレームを 0 とした番号を横軸にした、ずらす距離 (m)。負は逆の向き
-        int frames = 0;   // 描くフレーム数。始めたフレームを含む
-        bool onScreen = false; // 向きをカメラの右と上へ写した画面の上の向きでずらすか。偽は世界の向きのまま
+        Curve distance{};        // 始めたフレームを 0 とした番号を横軸にした、ずらす距離 (m)。負は逆の向き
+        int frames = 0;          // 描くフレーム数。始めたフレームを含む
+        bool onScreen = false;   // 向きをカメラの右と上へ写した画面の上の向きでずらすか。偽は世界の向きのまま
     };
 
     //! @brief カメラのずれ。位置と注視点を、決まった向きへ曲線の距離だけ同じだけずらす
@@ -344,9 +341,7 @@ namespace NS::Obj
 
     private:
         CameraNudgeModifier() noexcept = default;
-        void Advance() noexcept override;
 
         CameraNudgeDesc m_desc{}; // 作った時の設定
-        int m_frame = 0;          // 始めたフレームからの番号
     };
 } // namespace NS::Obj

@@ -31,16 +31,7 @@ namespace NS::Obj
             {
                 entry = nlohmann::json::object();
             }
-            if (!entry.contains("type"))
-            {
-                return entry;
-            }
-            nlohmann::json& fields = entry["fields"];
-            if (!fields.is_object())
-            {
-                fields = nlohmann::json::object();
-            }
-            return fields;
+            return entry;
         }
     } // namespace
 
@@ -50,16 +41,7 @@ namespace NS::Obj
         {
             return nullptr;
         }
-        if (!entry.contains("type"))
-        {
-            return &entry;
-        }
-        const nlohmann::json::const_iterator it = entry.find("fields");
-        if (it == entry.end() || !it->is_object())
-        {
-            return nullptr;
-        }
-        return &*it;
+        return &entry;
     }
 
     float FieldFloat(const nlohmann::json& entry, std::string_view name, float fallback) noexcept

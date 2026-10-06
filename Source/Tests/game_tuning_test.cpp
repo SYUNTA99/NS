@@ -73,10 +73,10 @@ TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
     const NS::Game::Player::EffectLayerList& layers = player->ChargeVisuals().Layers();
     ASSERT_FALSE(layers.Records().empty());
     EXPECT_EQ(layers.Records().front().name, "custom.curl");
-    const nlohmann::json saved = NS::Obj::SerializeComponent(player->ChargeVisuals());
+    const nlohmann::json saved = NS::Obj::SerializeComponentFields(player->ChargeVisuals());
     NS::Game::Player::ChargeEffects restored;
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(restored, saved["fields"]), 0u);
-    EXPECT_EQ(NS::Obj::SerializeComponent(restored)["fields"]["丸まりの殻の資産"], "custom.curl");
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(restored, saved), 0u);
+    EXPECT_EQ(NS::Obj::SerializeComponentFields(restored)["丸まりの殻の資産"], "custom.curl");
 }
 
 TEST(GameTuning, DefaultSpawnReadsThePlayerInstance)
@@ -152,8 +152,8 @@ TEST(GameTuning, EditableSparkDirectionAndMarkerWidthReachTheirShapes)
     EXPECT_NEAR(heading.z, 0.0f, 0.001f);
     NS::Game::Level::TargetMarker marker;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(marker, {{"枠の縁の幅", 3.0f}}), 0u);
-    const nlohmann::json fields = NS::Obj::SerializeComponent(marker);
-    EXPECT_EQ(fields["fields"]["枠の縁の幅"], 3.0f);
+    const nlohmann::json fields = NS::Obj::SerializeComponentFields(marker);
+    EXPECT_EQ(fields["枠の縁の幅"], 3.0f);
     NS::Game::Level::TargetMarkerDesc desc;
     desc.outlineWidth = 3.0f;
     NS::AABB bounds;

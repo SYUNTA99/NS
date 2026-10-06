@@ -23,7 +23,7 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
     NS::Game::Player::PlayerParams* params =
         NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
     ASSERT_NE(params, nullptr);
-    const nlohmann::json fields = NS::Obj::SerializeComponent(*params)["fields"];
+    const nlohmann::json fields = NS::Obj::SerializeComponentFields(*params);
     const nlohmann::json expected = {{"チャージしきい値秒", 0.2f},
                                      {"チャージ満タン秒", 1.0f},
                                      {"チャージ減速率", 0.7f},
@@ -129,8 +129,8 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
     for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
     {
         const std::string path = NS::OS::FileSystem::Combine(
-            NS::OS::FileSystem::Combine(
-                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"),
+                                        "Scenes"),
             sceneName);
         nlohmann::json doc;
         ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path)) << sceneName;
@@ -165,8 +165,8 @@ TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
     for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
     {
         const std::string path = NS::OS::FileSystem::Combine(
-            NS::OS::FileSystem::Combine(
-                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"),
+                                        "Scenes"),
             sceneName);
         nlohmann::json doc;
         ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path)) << sceneName;
