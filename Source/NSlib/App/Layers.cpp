@@ -2,8 +2,6 @@
 
 #include "NSlib/App/Layer.h"
 
-#include <algorithm>
-
 namespace NS
 {
 
@@ -17,7 +15,7 @@ namespace NS
         {
             return;
         }
- 
+
         m_layers.insert(m_layers.begin() + static_cast<std::ptrdiff_t>(m_overlayBegin), std::move(layer));
         ++m_overlayBegin;
     }
@@ -29,32 +27,6 @@ namespace NS
             return;
         }
         m_layers.push_back(std::move(overlay));
-    }
-
-    std::unique_ptr<Layer> Layers::Remove(Layer* layer) noexcept
-    {
-        if (layer == nullptr)
-        {
-            return nullptr;
-        }
-
-        std::vector<std::unique_ptr<Layer>>::iterator it = std::find_if(
-            m_layers.begin(), m_layers.end(), [layer](const std::unique_ptr<Layer>& p) { return p.get() == layer; });
-        if (it == m_layers.end())
-        {
-            return nullptr;
-        }
-
-        const std::size_t idx = static_cast<std::size_t>(it - m_layers.begin());
-        std::unique_ptr<Layer> removed = std::move(*it);
-        m_layers.erase(it);
-
-        if (idx < m_overlayBegin)
-        {
-            --m_overlayBegin;
-        }
-
-        return removed;
     }
 
 } // namespace NS

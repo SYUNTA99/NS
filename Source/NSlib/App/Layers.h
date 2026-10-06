@@ -27,17 +27,14 @@ namespace NS
         //! オーバーレイを追加する。常に通常のレイヤーより後ろに配置される
         void AddOverlay(std::unique_ptr<Layer> overlay);
 
-        //! 指定したレイヤーを取り外して返す。見つからなければ nullptr を返す
-        std::unique_ptr<Layer> Remove(Layer* layer) noexcept;
-
-        [[nodiscard]] std::size_t Size() const noexcept { return m_layers.size(); }
         [[nodiscard]] bool Empty() const noexcept { return m_layers.empty(); }
 
         [[nodiscard]] std::vector<std::unique_ptr<Layer>>::iterator begin() noexcept { return m_layers.begin(); }
         [[nodiscard]] std::vector<std::unique_ptr<Layer>>::iterator end() noexcept { return m_layers.end(); }
-        [[nodiscard]] std::vector<std::unique_ptr<Layer>>::const_iterator begin() const noexcept { return m_layers.begin(); }
-        [[nodiscard]] std::vector<std::unique_ptr<Layer>>::const_iterator end() const noexcept { return m_layers.end(); }
-        [[nodiscard]] std::vector<std::unique_ptr<Layer>>::reverse_iterator rbegin() noexcept { return m_layers.rbegin(); }
+        [[nodiscard]] std::vector<std::unique_ptr<Layer>>::reverse_iterator rbegin() noexcept
+        {
+            return m_layers.rbegin();
+        }
         [[nodiscard]] std::vector<std::unique_ptr<Layer>>::reverse_iterator rend() noexcept { return m_layers.rend(); }
 
     private:

@@ -6,6 +6,7 @@
 
 #include <Jolt/Math/Quat.h>
 #include <Jolt/Math/Vec3.h>
+#include <Jolt/Physics/Collision/Shape/Shape.h>
 
 namespace NS::Phys
 {
@@ -35,5 +36,14 @@ namespace NS::Phys
     [[nodiscard]] inline NS::Quaternion FromJolt(JPH::QuatArg value) noexcept
     {
         return NS::Quaternion{value.GetX(), value.GetY(), value.GetZ(), value.GetW()};
+    }
+
+    [[nodiscard]] inline JPH::ShapeRefC ShapeOrNull(const JPH::ShapeSettings::ShapeResult& result)
+    {
+        if (result.HasError())
+        {
+            return nullptr;
+        }
+        return result.Get();
     }
 } // namespace NS::Phys

@@ -49,17 +49,16 @@ namespace NS::Gfx
         //! 構築時に指定された半透明ソート時の優先度を返す
         [[nodiscard]] int RenderPriority() const noexcept;
 
-        //! テクスチャを設定
+        //! テクスチャを設定する。nullptr ならその枠を外す
         void SetTexture(unsigned slot, const Texture* texture) noexcept;
-        //! テクスチャをクリア
-        void ClearTexture(unsigned slot) noexcept;
 
         //! @brief 定数バッファのパラメータを更新する
         //! @details 定数バッファを持たない Material では何もしない
         //! @note T は alignas(16) で、サイズも 16 の倍数であること
         template <typename T> void SetParams(Renderer& renderer, const T& params) noexcept
         {
-            static_assert((sizeof(T) % 16) == 0,"Material::SetParams<T> は sizeof(T) が 16 byte 倍数で alignas(16) 必須");
+            static_assert((sizeof(T) % 16) == 0,
+                          "Material::SetParams<T> は sizeof(T) が 16 byte 倍数で alignas(16) 必須");
             static_assert(alignof(T) >= 16, "Material::SetParams<T> は struct alignas(16) 必須 (Vector3 16-byte 境界)");
             UpdateParamsRaw(renderer, &params, sizeof(T));
         }

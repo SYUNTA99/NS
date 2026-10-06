@@ -57,14 +57,8 @@ namespace NS::Obj
         // 固形の body として OBB のまま入れる
         [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
 
-        // owner world 変換に重ねる当たり箱の local 変換を行列化する。offset と回転を合わせる
-        [[nodiscard]] NS::Matrix LocalMatrix() const noexcept;
-
-        // owner があれば local 変換に owner の world を重ね、無ければ local 変換だけを返す
-        [[nodiscard]] NS::Matrix CombinedWorldMatrix() const noexcept;
-
-        NS::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f};                     // 当たり箱の各軸半径
-        NS::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};                    // owner local 空間での中心オフセット
+        NS::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f};               // 当たり箱の各軸半径
+        NS::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};              // owner local 空間での中心オフセット
         NS::Quaternion m_localRotation = NS::Quaternion::Identity; // owner 回転に重ねる local 回転
     };
 } // namespace NS::Obj

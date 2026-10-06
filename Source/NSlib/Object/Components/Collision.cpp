@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Transform.h"
 #include "NSlib/Physics/PhysicsScene.h"
 
 namespace
@@ -19,6 +20,19 @@ namespace
 
 namespace NS::Obj
 {
+    NS::Matrix Collision::ShapeWorldMatrix(const NS::Quaternion& localRotation,
+                                           const NS::Vector3& centerOffset) const noexcept
+    {
+        const NS::Matrix local =
+            NS::Matrix::CreateFromQuaternion(localRotation) * NS::Matrix::CreateTranslation(centerOffset);
+        const Actor* owner = Owner();
+        if (owner == nullptr)
+        {
+            return local;
+        }
+        return local * owner->Root().WorldMatrix();
+    }
+
     void Collision::SyncToPhysics()
     {
         NS::Phys::PhysicsScene* physics = OwnerPhysics(Owner());

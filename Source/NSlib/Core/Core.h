@@ -9,7 +9,6 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Sphere.h"
 
-#include "NSlib/Core/EditorAccess.h"
 #include "NSlib/Core/LogType.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/NonCopyable.h"

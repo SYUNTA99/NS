@@ -33,7 +33,7 @@ namespace NS::Gfx
         //! @return 成功した場合 true、それ以外の場合は false。失敗しても前の中身を保つ
         [[nodiscard]] bool LoadCubemap(std::string_view path);
 
-        //! 立方体メッシュ・シェーダ・定数バッファ・サンプラー・キューブマップが揃っているか
+        //! 立方体メッシュ・シェーダ・定数バッファ・パイプライン・代替のキューブマップが揃っているか
         [[nodiscard]] bool IsValid() const noexcept;
 
         //! 画像が未読み込み、または直近の読み込みに失敗したか
@@ -43,8 +43,11 @@ namespace NS::Gfx
         //! @details 描画前の深度・ラスタライザ・ブレンドのステートを退避し、描いた後に戻す。無効な状態では何もしない
         //! @param[in,out] commands コマンドの発行先
         //! @param[in] viewProjNoTranslate カメラの移動成分を排除したビュー・プロジェクション行列
+        //! @param[in] sampler キューブマップを拾うサンプラ。線形で端を固定する物
         //! @note 不透明なオブジェクトを描画した後、かつ半透明なオブジェクトを描画する前に呼び出すこと
-        void Draw(CommandList& commands, const NS::Matrix& viewProjNoTranslate) const noexcept;
+        void Draw(CommandList& commands,
+                  const NS::Matrix& viewProjNoTranslate,
+                  ID3D11SamplerState* sampler) const noexcept;
 
     private:
         Skybox();
@@ -53,7 +56,6 @@ namespace NS::Gfx
         std::unique_ptr<Shader> m_vs;
         std::unique_ptr<Shader> m_ps;
         std::unique_ptr<Buffer> m_cb;
-        ComPtr<ID3D11SamplerState> m_sampler;
         std::unique_ptr<Pipeline> m_pipeline;
         ComPtr<ID3D11ShaderResourceView> m_cubemapSrv;
         bool m_usingFallback = true;

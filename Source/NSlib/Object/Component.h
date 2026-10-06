@@ -9,11 +9,12 @@ namespace NS::Obj
 {
     class AssetManager;
     class Actor;
+    class Scene;
     class Transform;
 
     //! @brief 振る舞いを表現する再利用ブロック。通常は派生して使う
     //! Component 自身は所有者 Actor を生参照する。owner は生成後に Actor が注入する
-    //! scene が持つ物は OnStart で Owner()->OwningScene() 経由で借りる
+    //! scene が持つ物は OnStart で OwningScene() 経由で借りる
     //! ライフサイクル:
     //!   - OnStart() — Scene attach 直後に 1 回
     //!   - OnUpdate() — 持ち主の Actor のクラスが自分の Update の中で呼んだ時だけ。IsActive()==false なら呼ばれない
@@ -29,6 +30,9 @@ namespace NS::Obj
         //! 所有 Actor。Scene attach 後は non-null
         [[nodiscard]] Actor* Owner() noexcept { return m_owner; }
         [[nodiscard]] const Actor* Owner() const noexcept { return m_owner; }
+
+        //! 持ち主の居る Scene。持ち主が無いか Scene に居なければ nullptr
+        [[nodiscard]] Scene* OwningScene() const noexcept;
 
         //! 所有 Actor の root Transform への近道。型名衝突回避のため RootTransform 命名
         [[nodiscard]] Transform& RootTransform() noexcept;

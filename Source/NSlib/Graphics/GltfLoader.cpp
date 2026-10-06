@@ -654,10 +654,6 @@ namespace NS::Gfx
                 {
                     clip.name = anim.name;
                 }
-                else
-                {
-                    clip.name = "";
-                }
                 float duration = 0.0f;
                 std::vector<BoneTrack> tracks;
 
@@ -752,8 +748,7 @@ namespace NS::Gfx
                         {
                             float q[4] = {0.0f, 0.0f, 0.0f, 1.0f};
                             cgltf_accessor_read_float(sampler.output, i * stride + valueOffset, q, 4);
-                            track.rotationValues[i] =
-                                detail::MirrorQuaternionZ(NS::Quaternion{q[0], q[1], q[2], q[3]});
+                            track.rotationValues[i] = detail::MirrorQuaternionZ(NS::Quaternion{q[0], q[1], q[2], q[3]});
                         }
                     }
                     else if (channel.target_path == cgltf_animation_path_type_scale)

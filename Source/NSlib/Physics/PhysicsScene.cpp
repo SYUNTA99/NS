@@ -17,7 +17,6 @@
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
-#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 
@@ -133,20 +132,10 @@ namespace NS::Phys
                     return single;
                 }
                 const JPH::RotatedTranslatedShapeSettings shifted{singlePosition, singleRotation, single.GetPtr()};
-                const JPH::ShapeSettings::ShapeResult result = shifted.Create();
-                if (result.HasError())
-                {
-                    return nullptr;
-                }
-                return result.Get();
+                return ShapeOrNull(shifted.Create());
             }
 
-            const JPH::ShapeSettings::ShapeResult result = compound.Create();
-            if (result.HasError())
-            {
-                return nullptr;
-            }
-            return result.Get();
+            return ShapeOrNull(compound.Create());
         }
     } // namespace
 
@@ -165,25 +154,6 @@ namespace NS::Phys
         JPH_ASSERT(layer < ObjectLayers::Count);
         return JPH::BroadPhaseLayer{static_cast<JPH::BroadPhaseLayer::Type>(layer)};
     }
-
-#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
-    const char* PhysicsScene::BroadPhaseLayerInterface::GetBroadPhaseLayerName(JPH::BroadPhaseLayer layer) const
-    {
-        if (layer == BroadPhaseLayers::Terrain)
-        {
-            return "Terrain";
-        }
-        if (layer == BroadPhaseLayers::Rock)
-        {
-            return "Rock";
-        }
-        if (layer == BroadPhaseLayers::Debris)
-        {
-            return "Debris";
-        }
-        return "Unknown";
-    }
-#endif
 
     bool PhysicsScene::ObjLayerPairFilter::ShouldCollide(JPH::ObjectLayer first, JPH::ObjectLayer second) const
     {
@@ -369,13 +339,7 @@ namespace NS::Phys
         }
 
         // 拡縮が 1 なら ScaleShape は共有の形そのものを返す
-        const JPH::Shape::ShapeResult scaled = collision.shape->ScaleShape(ToJolt(scale));
-        if (scaled.HasError())
-        {
-            return JPH::BodyID{};
-        }
-
-        return SyncStatic(id, scaled.Get(), position, rotation, layer);
+        return SyncStatic(id, ShapeOrNull(collision.shape->ScaleShape(ToJolt(scale))), position, rotation, layer);
     }
 
     JPH::BodyID PhysicsScene::AddDynamic(const JPH::ShapeRefC& shape,
@@ -504,9 +468,7 @@ namespace NS::Phys
             id, ToJolt(position), ToJolt(rotation).Normalized(), deltaTime);
     }
 
-    void PhysicsScene::TeleportBody(JPH::BodyID id,
-                                    const NS::Vector3& position,
-                                    const NS::Quaternion& rotation)
+    void PhysicsScene::TeleportBody(JPH::BodyID id, const NS::Vector3& position, const NS::Quaternion& rotation)
     {
         if (id.IsInvalid())
         {
@@ -699,21 +661,16 @@ namespace NS::Phys
 
     std::vector<JPH::BodyID> PhysicsScene::OverlapCapsule(const Capsule& capsule) const
     {
-        const JPH::CapsuleShapeSettings shapeSettings{capsule.halfHeight, capsule.radius};
-        const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
-        if (shape.HasError())
+        const ShapePart part = MakeCapsulePart(capsule);
+        if (part.shape == nullptr)
         {
             return {};
         }
-
-        // JPH::CapsuleShape は Y 軸に沿った形なので、Y から axis へ回す
-        const JPH::Vec3 axis = ToJolt(capsule.axis).NormalizedOr(JPH::Vec3::sAxisY());
-        const JPH::Quat rotation = JPH::Quat::sFromTo(JPH::Vec3::sAxisY(), axis);
-        const JPH::RMat44 transform = JPH::RMat44::sRotationTranslation(rotation, ToJolt(capsule.center));
+        const JPH::RMat44 transform = JPH::RMat44::sRotationTranslation(ToJolt(part.rotation), ToJolt(part.position));
 
         JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> collector;
         m_physicsSystem.GetNarrowPhaseQueryNoLock().CollideShape(
-            shape.Get(), JPH::Vec3::sOne(), transform, JPH::CollideShapeSettings{}, JPH::RVec3::sZero(), collector);
+            part.shape, JPH::Vec3::sOne(), transform, JPH::CollideShapeSettings{}, JPH::RVec3::sZero(), collector);
 
         // mesh の body は三角形ごとに当たりを返すので、同じ id を落としてから返す
         std::vector<JPH::BodyID> found;

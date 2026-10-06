@@ -9,19 +9,6 @@
 
 namespace NS::Phys
 {
-    namespace
-    {
-        // 失敗した形は null で返す。呼出側は形の null だけを見れば、作れたかが分かる
-        [[nodiscard]] JPH::ShapeRefC ShapeOrNull(const JPH::ShapeSettings::ShapeResult& result)
-        {
-            if (result.HasError())
-            {
-                return nullptr;
-            }
-            return result.Get();
-        }
-    } // namespace
-
     ShapePart MakeBoxPart(const NS::OBB& box)
     {
         // collision は PhysicsScene より先に形を作ることがある。形の確保は allocator の登録が済んでいないと落ちる

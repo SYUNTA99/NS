@@ -17,13 +17,6 @@
 
 namespace NS::Obj
 {
-    namespace
-    {
-        // Actor に既に載る同型 component をリフレクション型名で探す。適用済みの控えにある分は飛ばし、無ければ
-        // nullptr
-
-    } // namespace
-
     void ApplyObjectParts(Actor& obj, const nlohmann::json& object, PartCreation creation)
     {
         const nlohmann::json& parts = ObjectJsonParts(object);

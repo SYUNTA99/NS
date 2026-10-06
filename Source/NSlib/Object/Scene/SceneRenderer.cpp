@@ -32,8 +32,7 @@ namespace NS::Obj
         // effectRoot が空ならここを見る
         std::string DefaultEffectRoot()
         {
-            const std::string assets =
-                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets");
+            const std::string assets = NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets");
             return NS::OS::FileSystem::Combine(assets, "Effects");
         }
     } // namespace
@@ -364,16 +363,8 @@ namespace NS::Obj
             overrideCamera.SetNearPlane(viewOverride->nearPlane);
             overrideCamera.SetFarPlane(viewOverride->farPlane);
 
-            // aspect は実カメラと同じ規則で renderer から取る。幅か高さが 0 以下なら 16:9
-            const NS::Size2D size = m_renderer->Size();
-            const float aspect = [&]() -> float {
-                if (size.width <= 0 || size.height <= 0)
-                {
-                    return 16.0f / 9.0f;
-                }
-                return NS::AspectRatio(size);
-            }();
-            overrideCamera.SetAspectRatio(aspect);
+            // aspect は関数の冒頭で renderer から取り直した実カメラの物を写す
+            overrideCamera.SetAspectRatio(camera.Camera().AspectRatio());
 
             ctx.viewProjection = overrideCamera.ViewProjection();
             ctx.cameraPosition = viewOverride->position;

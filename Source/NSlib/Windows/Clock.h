@@ -119,12 +119,11 @@ namespace NS::OS
             const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
             const double ms = std::chrono::duration<double, std::milli>(end - m_startTime).count();
             ::NS::Logger::LogImpl(::NS::LogLevel::Debug,
-                                        m_logType,
-                                        ::magic_enum::enum_name(m_logType),
-                                        __FILE__,
-                                        __LINE__,
-                                        __func__,
-                                        ::std::format("{}: {:.3f}ms", m_label, ms));
+                                  ::magic_enum::enum_name(m_logType),
+                                  __FILE__,
+                                  __LINE__,
+                                  __func__,
+                                  ::std::format("{}: {:.3f}ms", m_label, ms));
         }
 
         ScopedTimer(const ScopedTimer&) = delete;

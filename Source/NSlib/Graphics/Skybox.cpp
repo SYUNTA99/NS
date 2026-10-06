@@ -9,6 +9,7 @@
 #include "NSlib/Graphics/Pipeline.h"
 #include "NSlib/Graphics/Shader.h"
 #include "NSlib/Graphics/StaticMesh.h"
+#include "NSlib/Graphics/detail/TextureFile.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/StringUtils.h"
 
@@ -38,15 +39,6 @@ namespace NS::Gfx
             "space_rt.png", // 奥
             "space_lf.png", // 手前
         };
-
-        [[nodiscard]] bool IsDdsExtension(std::string_view path)
-        {
-            std::string ext = NS::OS::FileSystem::Extension(path);
-            std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) {
-                return static_cast<char>(std::tolower(c));
-            });
-            return ext == ".dds";
-        }
 
         // 読み込みに失敗した時のピンク一色のキューブマップを作る
         bool CreateMagentaCubemapFallback(ID3D11Device* device, ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
@@ -107,17 +99,16 @@ namespace NS::Gfx
                             ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
         {
             ComPtr<ID3D11Resource> resource;
-            const HRESULT hr =
-                DirectX::CreateDDSTextureFromFileEx(device,
-                                                    NS::OS::StringUtils::WideFromUtf8(path).c_str(),
-                                                    0,
-                                                    D3D11_USAGE_IMMUTABLE,
-                                                    D3D11_BIND_SHADER_RESOURCE,
-                                                    0,
-                                                    D3D11_RESOURCE_MISC_TEXTURECUBE,
-                                                    DirectX::DDS_LOADER_DEFAULT,
-                                                    resource.GetAddressOf(),
-                                                    outSrv.GetAddressOf());
+            const HRESULT hr = DirectX::CreateDDSTextureFromFileEx(device,
+                                                                   NS::OS::StringUtils::WideFromUtf8(path).c_str(),
+                                                                   0,
+                                                                   D3D11_USAGE_IMMUTABLE,
+                                                                   D3D11_BIND_SHADER_RESOURCE,
+                                                                   0,
+                                                                   D3D11_RESOURCE_MISC_TEXTURECUBE,
+                                                                   DirectX::DDS_LOADER_DEFAULT,
+                                                                   resource.GetAddressOf(),
+                                                                   outSrv.GetAddressOf());
             if (FAILED(hr))
             {
                 NS_LOG_ERROR(Graphics, "Skybox .dds ロード失敗: {} (hr=0x{:08X})", path, static_cast<unsigned>(hr));
@@ -248,24 +239,6 @@ namespace NS::Gfx
             return true;
         }
 
-        bool CreateSkyboxSampler(ID3D11Device* device, ComPtr<ID3D11SamplerState>& outSampler) noexcept
-        {
-            D3D11_SAMPLER_DESC sd{};
-            sd.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-            sd.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-            sd.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-            sd.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-            sd.MaxLOD = D3D11_FLOAT32_MAX;
-            sd.ComparisonFunc = D3D11_COMPARISON_NEVER;
-
-            const HRESULT hr = device->CreateSamplerState(&sd, outSampler.GetAddressOf());
-            if (FAILED(hr))
-            {
-                NS_LOG_ERROR(Graphics, "Skybox SamplerState 作成失敗 (hr=0x{:08X})", static_cast<unsigned>(hr));
-                return false;
-            }
-            return true;
-        }
     } // namespace
 
     std::unique_ptr<Skybox> Skybox::Create()
@@ -325,11 +298,6 @@ namespace NS::Gfx
             NS_LOG_ERROR(Graphics, "Skybox: Pipeline 構築失敗");
             return;
         }
-        if (!CreateSkyboxSampler(device, m_sampler))
-        {
-            NS_LOG_ERROR(Graphics, "Skybox: SamplerState 構築失敗");
-            return;
-        }
         // 未ロード時でも安全に描画できるよう、初期状態として代替画像を設定しておく
         if (!CreateMagentaCubemapFallback(device, m_cubemapSrv))
         {
@@ -354,7 +322,7 @@ namespace NS::Gfx
         ComPtr<ID3D11ShaderResourceView> newSrv;
         bool loaded = false;
 
-        if (IsDdsExtension(path))
+        if (detail::IsDdsExtension(path))
         {
             loaded = LoadDdsCubemap(device, path, newSrv);
         }
@@ -384,7 +352,9 @@ namespace NS::Gfx
         return false;
     }
 
-    void Skybox::Draw(CommandList& commands, const NS::Matrix& viewProjNoTranslate) const noexcept
+    void Skybox::Draw(CommandList& commands,
+                      const NS::Matrix& viewProjNoTranslate,
+                      ID3D11SamplerState* sampler) const noexcept
     {
         if (!IsValid() || commands.Native() == nullptr)
         {
@@ -417,7 +387,7 @@ namespace NS::Gfx
         ID3D11ShaderResourceView* srvs[1] = {m_cubemapSrv.Get()};
         commands->PSSetShaderResources(0, 1, srvs);
 
-        commands.PSSetSampler(m_sampler.Get(), 0);
+        commands.PSSetSampler(sampler, 0);
 
         DrawMesh(commands, *m_cubeMesh);
 

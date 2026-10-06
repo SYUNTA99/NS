@@ -11,7 +11,7 @@ namespace NS::Phys
 {
     JPH::ShapeRefC CreateMeshShape(std::span<const Triangle> triangles)
     {
-        if (triangles.empty()) 
+        if (triangles.empty())
         {
             return nullptr;
         }
@@ -20,18 +20,12 @@ namespace NS::Phys
         detail::InitJoltRuntime();
         JPH::TriangleList list;
         list.reserve(triangles.size());
-        for (const Triangle& triangle : triangles) 
+        for (const Triangle& triangle : triangles)
         {
             list.emplace_back(ToJolt(triangle.v0), ToJolt(triangle.v1), ToJolt(triangle.v2));
         }
 
         const JPH::MeshShapeSettings settings{std::move(list)};
-        const JPH::ShapeSettings::ShapeResult shape = settings.Create();
-        if (shape.HasError()) 
-        {
-            return nullptr;
-        }
-
-        return shape.Get();
+        return ShapeOrNull(settings.Create());
     }
 } // namespace NS::Phys

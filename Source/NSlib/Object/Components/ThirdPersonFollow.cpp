@@ -148,9 +148,7 @@ namespace NS::Obj
         {
             return false;
         }
-        const NS::Vector3& center = desc.aimTargetCenter;
-        const bool finiteCenter = std::isfinite(center.x) && std::isfinite(center.y) && std::isfinite(center.z);
-        if (desc.hasAimTarget && !finiteCenter)
+        if (desc.hasAimTarget && !NS::IsFinite(desc.aimTargetCenter))
         {
             return false;
         }
@@ -179,8 +177,7 @@ namespace NS::Obj
     bool ThirdPersonFollow::SetFollowRebound(const FollowReboundDesc& desc) noexcept
     {
         // 非数の向きを持つと、回す角度が非数になって向きごと壊れる
-        const NS::Vector3& direction = desc.slamDirection;
-        if (!(std::isfinite(direction.x) && std::isfinite(direction.y) && std::isfinite(direction.z)))
+        if (!NS::IsFinite(desc.slamDirection))
         {
             return false;
         }
@@ -336,8 +333,8 @@ namespace NS::Obj
                 const float weight = NS::Clamp(m_reboundPartnerWeight, 0.0f, 1.0f) * (1.0f - distance / release);
                 leanTarget = gap * weight;
                 pullTarget = NS::Clamp(m_reboundPullPerMeter * (distance - m_reboundPullStartDistance),
-                                             0.0f,
-                                             std::max(m_reboundPullMax, 0.0f));
+                                       0.0f,
+                                       std::max(m_reboundPullMax, 0.0f));
             }
         }
         // 臨界減衰のバネが止まった所から差の半分まで詰めるのは ωτ ≈ 1.678 の時。半分の秒から角速度を出す
@@ -353,8 +350,8 @@ namespace NS::Obj
     }
 
     NS::Vector3 ThirdPersonFollow::UpdateReboundLook(const NS::Vector3& head,
-                                                           const NS::Vector3& ball,
-                                                           float dt) noexcept
+                                                     const NS::Vector3& ball,
+                                                     float dt) noexcept
     {
         m_previousLook = m_look;
         m_hasLook = true;
@@ -814,9 +811,8 @@ namespace NS::Obj
         const Transform* target = Target();
         if (target == nullptr)
         {
-            return MakePose(NS::Vector3{0.0f, 0.0f, -5.0f},
-                            NS::Vector3{0.0f, 0.0f, 0.0f},
-                            NS::Vector3{0.0f, 1.0f, 0.0f});
+            return MakePose(
+                NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{0.0f, 1.0f, 0.0f});
         }
 
         const float cy = std::cos(m_yaw);

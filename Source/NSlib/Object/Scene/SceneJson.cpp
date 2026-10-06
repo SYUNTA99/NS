@@ -1,10 +1,9 @@
 ﻿#include "NSlib/Object/Scene/SceneJson.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Components/TransformComponent.h"
 #include "NSlib/Object/ObjectName.h"
-#include "NSlib/Object/Reflection/Archetype.h"
+#include "NSlib/Object/Reflection/ComponentEntry.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>
@@ -56,7 +55,6 @@ namespace NS::Obj
         }
 
         // ファイルの参照は相手の名前で書く。空と重複した名前は相手が 1 つに決まらないので id のまま残す
-        // Component は持ち主の中の名前で書く。読込は持ち主を決めてから、その中で名前を引く
         void WriteRefsByName(nlohmann::json& scene)
         {
             nlohmann::json& objects = SceneJsonObjects(scene);
@@ -93,7 +91,6 @@ namespace NS::Obj
         }
 
         // ファイルの参照は相手の名前で書かれている。名前を一意にした後で id へ直す。旧形式の数値はそのまま通す
-        // Component の名前は持ち主の中で一意なので、持ち主の id を決めてからその中で引く
         void ReadRefsByName(nlohmann::json& scene)
         {
             nlohmann::json& objects = SceneJsonObjects(scene);
@@ -246,13 +243,12 @@ namespace NS::Obj
             return NS::Vector3{0.0f, -1.0f, 0.0f};
         }
         const nlohmann::json::const_iterator directionIt = environmentIt->find("gravityDirection");
-        if (directionIt == environmentIt->end() || !directionIt->is_array() || directionIt->size() != 3 ||
-            !(*directionIt)[0].is_number() || !(*directionIt)[1].is_number() || !(*directionIt)[2].is_number())
+        NS::Vector3 direction;
+        if (directionIt == environmentIt->end() || !ReadVector3(*directionIt, direction))
         {
             return NS::Vector3{0.0f, -1.0f, 0.0f};
         }
-        return NormalizeGravityDirection(NS::Vector3{
-            (*directionIt)[0].get<float>(), (*directionIt)[1].get<float>(), (*directionIt)[2].get<float>()});
+        return NormalizeGravityDirection(direction);
     }
 
     void SetSceneJsonGravityDirection(nlohmann::json& scene, const NS::Vector3& direction)
@@ -334,45 +330,24 @@ namespace NS::Obj
     std::size_t PruneDanglingObjectRefs(nlohmann::json& scene)
     {
         nlohmann::json& objects = SceneJsonObjects(scene);
-        std::unordered_map<std::uint32_t, std::unordered_set<std::string>> roles;
+        std::unordered_set<std::uint32_t> ids;
         for (const nlohmann::json& object : objects)
         {
-            std::unordered_set<std::string>& names = roles[ObjectJsonId(object)];
-            const Actor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
-            baseline.ForEachPart([&names](std::string_view name, Component&) { names.emplace(name); });
+            ids.insert(ObjectJsonId(object));
         }
         std::size_t pruned = 0;
         for (nlohmann::json& object : objects)
         {
-            ForEachRefValue(object, [&roles, &pruned](nlohmann::json& value) {
+            ForEachRefValue(object, [&ids, &pruned](nlohmann::json& value) {
                 nlohmann::json& ref = value["ref"];
                 if (!ref.is_number_unsigned())
                 {
                     return;
                 }
                 const std::uint32_t id = ref.get<std::uint32_t>();
-                const std::unordered_map<std::uint32_t, std::unordered_set<std::string>>::const_iterator owner =
-                    roles.find(id);
-                const nlohmann::json::iterator part = value.find("part");
-                if (part == value.end())
+                if (id == 0 || ids.contains(id))
                 {
-                    if (id == 0 || owner != roles.end())
-                    {
-                        return;
-                    }
-                }
-                else
-                {
-                    if (!part->is_string())
-                    {
-                        return;
-                    }
-                    const std::string name = part->get<std::string>();
-                    if ((id == 0 && name.empty()) || (owner != roles.end() && owner->second.contains(name)))
-                    {
-                        return;
-                    }
-                    *part = "";
+                    return;
                 }
                 ref = 0u;
                 ++pruned;
@@ -548,11 +523,6 @@ namespace NS::Obj
             return false;
         }
 
-        if (!DeserializeSceneFromJson(outScene, *textOpt))
-        {
-            outScene = MakeSceneJson();
-            return false;
-        }
-        return true;
+        return DeserializeSceneFromJson(outScene, *textOpt);
     }
 } // namespace NS::Obj

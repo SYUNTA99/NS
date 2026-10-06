@@ -64,7 +64,7 @@ namespace NS::Phys
     //! @brief 直近の Update で記録した接触 1 件
     struct BodyContact
     {
-        JPH::BodyID other;        // ぶつかった相手の body
+        JPH::BodyID other;  // ぶつかった相手の body
         NS::Vector3 normal; // 接触面の法線。持ち主を相手から離す向き
     };
 
@@ -276,9 +276,6 @@ namespace NS::Phys
         public:
             [[nodiscard]] JPH::uint GetNumBroadPhaseLayers() const override;
             [[nodiscard]] JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer layer) const override;
-#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
-            [[nodiscard]] const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer layer) const override;
-#endif
         };
 
         class ObjLayerPairFilter final : public JPH::ObjectLayerPairFilter

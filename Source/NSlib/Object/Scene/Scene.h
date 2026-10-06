@@ -295,9 +295,6 @@ namespace NS::Obj
         //! @brief 渡されたシーンの JSON 文書から配置物と当たりの body を組み直す
         void RebuildObjectsFrom(const nlohmann::json& scene);
 
-        //! 配置物の変化を一時オブジェクトへ知らせる。組み直しと当たりの張り直しの後に呼ぶ
-        void NotifyTransientsObjectsRebuilt();
-
         //! 実行時に入れた配置物の資産を引き当ててから開始する
         void StartSpawned(Actor& obj);
 

@@ -3,6 +3,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/Buffer.h"
 #include "NSlib/Graphics/CommandList.h"
+#include "NSlib/Graphics/CommonStates.h"
 #include "NSlib/Graphics/GraphicObject.h"
 #include "NSlib/Graphics/Mesh.h"
 #include "NSlib/Graphics/Pipeline.h"
@@ -104,21 +105,6 @@ namespace NS::Gfx
             return;
         }
 
-        // 縮めと山形は画素の間を線形で拾う。端の外は端の色を伸ばし、画面の外から黒が入らないようにする
-        D3D11_SAMPLER_DESC sampler{};
-        sampler.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-        sampler.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-        sampler.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-        sampler.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-        sampler.ComparisonFunc = D3D11_COMPARISON_NEVER;
-        sampler.MaxLOD = D3D11_FLOAT32_MAX;
-        const HRESULT hr = gpu.device->CreateSamplerState(&sampler, m_sampler.GetAddressOf());
-        if (FAILED(hr))
-        {
-            NS_LOG_ERROR(Graphics, "Bloom: サンプラを作れなかった (hr=0x{:08X})", static_cast<unsigned>(hr));
-            return;
-        }
-
         m_valid = true;
     }
 
@@ -187,6 +173,8 @@ namespace NS::Gfx
         m_ring = ring;
 
         CommandList& cmd = renderer.Commands();
+        // 縮めと山形は画素の間を線形で拾う。端の外は端の色を伸ばし、画面の外から黒が入らないようにする
+        cmd.PSSetSampler(renderer.States().LinearClamp(), 0);
         if (m_desc.intensity > 0.0f)
         {
             DrawPass(cmd, *m_thresholdPs, *m_writePipeline, *m_scene, nullptr, m_bright->Rtv(), m_size);
@@ -280,7 +268,6 @@ namespace NS::Gfx
         {
             cmd.PSSetShaderResource(*scene, 1);
         }
-        cmd.PSSetSampler(m_sampler.Get(), 0);
 
         // 頂点は SV_VertexID から作るので、入力レイアウトも頂点も差さずに 3 頂点を投げる
         cmd->IASetInputLayout(nullptr);

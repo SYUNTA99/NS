@@ -99,9 +99,6 @@ namespace NS::Obj
         //! 一時オブジェクトの印。Scene::SpawnTransient が立てる。テストは直接立ててよい
         void SetTransient(bool transient) noexcept { m_transient = transient; }
 
-        //! 配置物の組み直し・当たりの張り直しの後に scene が一時オブジェクトへ知らせる。データ由来の配置物には来ない
-        virtual void OnObjectsRebuilt() {}
-
         //! @brief 全ての配置物の開始が済んだ後に 1 回呼ばれる。オデッセイの initAfterPlacement に当たる
         //! @details シーンに 1 つの物を作るなど、他の配置物が揃っている前提の用意を書く
         virtual void InitAfterPlacement() {}

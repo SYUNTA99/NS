@@ -3,6 +3,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Reflection/ComponentEntry.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 
@@ -130,31 +131,20 @@ namespace NS::Obj
             }
             case FieldType::Vector3:
             {
-                if (!value.is_array() || value.size() != 3u)
+                NS::Vector3 v;
+                if (ReadVector3(value, v))
                 {
-                    return;
+                    field.set(owner, &v);
                 }
-                if (!value[0].is_number() || !value[1].is_number() || !value[2].is_number())
-                {
-                    return;
-                }
-                NS::Vector3 v{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
-                field.set(owner, &v);
                 return;
             }
             case FieldType::Quaternion:
             {
-                if (!value.is_array() || value.size() != 4u)
+                NS::Quaternion v;
+                if (ReadQuaternion(value, v))
                 {
-                    return;
+                    field.set(owner, &v);
                 }
-                if (!value[0].is_number() || !value[1].is_number() || !value[2].is_number() || !value[3].is_number())
-                {
-                    return;
-                }
-                NS::Quaternion v{
-                    value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>()};
-                field.set(owner, &v);
                 return;
             }
             case FieldType::String:

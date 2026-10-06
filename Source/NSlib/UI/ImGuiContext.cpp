@@ -31,8 +31,8 @@ namespace NS::UI
         bool valid = false;   // 初期化に成功したか
         bool fallback = true; // スタブ / 失敗で実機能が無効か
 #if NS_UI_IMGUI_ENABLED
-        ::ImGuiContext* context = nullptr;      // ImGui コンテキスト (所有)
-        NS::OS::Window* window = nullptr; // カーソル状態参照用 (非所有)
+        ::ImGuiContext* context = nullptr; // ImGui コンテキスト (所有)
+        NS::OS::Window* window = nullptr;  // カーソル状態参照用 (非所有)
 #endif
     };
 
@@ -137,11 +137,6 @@ namespace NS::UI
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
         ::ImGui::StyleColorsDark();
         ApplyEditorStyle();
-        // 別 OS ウィンドウは半透明だと背景が透けるので、ビューポート有効時は確実に不透明へ
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-        {
-            ::ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 1.0f;
-        }
 
         // 既定フォントは ASCII のみで日本語が ??? になるため、システムの日本語フォントを読み込む
         // エディタは開発専用なので Windows のフォントパス直指定でよい。見つからなければ ASCII 既定で続行する

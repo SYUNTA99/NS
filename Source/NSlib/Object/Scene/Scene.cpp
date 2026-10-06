@@ -78,18 +78,6 @@ namespace NS::Obj
     {
         // ギズモで動いた live の当たりを張り直す。object を作り直さないので選択・参照はそのまま保たれる
         m_objects.SyncPhysics(m_physicsScene);
-        NotifyTransientsObjectsRebuilt();
-    }
-
-    void Scene::NotifyTransientsObjectsRebuilt()
-    {
-        for (Actor* obj : m_objects)
-        {
-            if (obj->IsTransient())
-            {
-                obj->OnObjectsRebuilt();
-            }
-        }
     }
 
     const nlohmann::json& Scene::BeginPlayBaseline()
@@ -391,7 +379,6 @@ namespace NS::Obj
             {
                 return;
             }
-            part.SetEnabled(fields->value("enabled", true));
             (void)ApplyJsonFields(part, *fields);
             if (m_assets != nullptr)
             {
@@ -430,8 +417,6 @@ namespace NS::Obj
         m_objects.Rebuild(
             scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, m_assets); });
         m_objects.SyncPhysics(m_physicsScene);
-
-        NotifyTransientsObjectsRebuilt();
     }
 
     void Scene::OnUpdate()

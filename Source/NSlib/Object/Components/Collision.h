@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NSlib/Core/Math.h"
 #include "NSlib/Object/Component.h"
 
 #include <Jolt/Jolt.h>
@@ -40,6 +41,12 @@ namespace NS::Obj
         void OnEndPlay() override;
 
         NS_REFLECT_NONE(Collision, Component)
+
+    protected:
+        //! @brief 形の回転と中心のずれに、持ち主の root の世界行列を重ねた行列を返す
+        //! @details 持ち主が居なければ、回転とずれの行列だけを返す
+        [[nodiscard]] NS::Matrix ShapeWorldMatrix(const NS::Quaternion& localRotation,
+                                                  const NS::Vector3& centerOffset) const noexcept;
 
     private:
         // current の body を自分の形と姿勢へ置き直した id を返す

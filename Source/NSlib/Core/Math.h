@@ -233,6 +233,12 @@ namespace NS
         return Clamp(Lerp(a, b, SmoothStep(t)), -1.0f, 1.0f);
     }
 
+    //! 3 成分が全部有限の場合 true、非数か無限大が 1 つでもあれば false
+    [[nodiscard]] inline bool IsFinite(const Vector3& v) noexcept
+    {
+        return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
+    }
+
     //! @brief 3 成分の絶対値のうち最大のもの。非一様な拡縮から球の半径を決める時に使う
     [[nodiscard]] inline float MaxAbsComponent(const Vector3& v) noexcept
     {

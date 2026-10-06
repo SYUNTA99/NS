@@ -10,12 +10,7 @@ namespace NS::Obj
 
     void DirectionalLight::OnStart()
     {
-        Actor* owner = Owner();
-        if (owner == nullptr)
-        {
-            return;
-        }
-        Scene* scene = owner->OwningScene();
+        Scene* scene = OwningScene();
         if (scene == nullptr)
         {
             return;
@@ -25,12 +20,7 @@ namespace NS::Obj
 
     void DirectionalLight::OnEndPlay()
     {
-        Actor* owner = Owner();
-        if (owner == nullptr)
-        {
-            return;
-        }
-        Scene* scene = owner->OwningScene();
+        Scene* scene = OwningScene();
         if (scene == nullptr)
         {
             return;

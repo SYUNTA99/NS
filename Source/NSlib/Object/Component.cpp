@@ -25,6 +25,15 @@ namespace NS::Obj
         return m_owner->IsActiveInHierarchy();
     }
 
+    Scene* Component::OwningScene() const noexcept
+    {
+        if (m_owner == nullptr)
+        {
+            return nullptr;
+        }
+        return m_owner->OwningScene();
+    }
+
     Transform& Component::RootTransform() noexcept
     {
         NS_ASSERT(Scene, m_owner != nullptr, "owner の居ない Component から RootTransform() を呼んでいる");

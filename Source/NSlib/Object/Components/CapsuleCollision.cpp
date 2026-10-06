@@ -94,21 +94,10 @@ namespace NS::Obj
         return NS::QuaternionToEulerDegrees(m_localRotation);
     }
 
-    NS::Matrix CapsuleCollision::CapsuleWorldMatrix() const noexcept
-    {
-        const Actor* owner = Owner();
-        const NS::Matrix local = NS::Matrix::CreateFromQuaternion(m_localRotation) *
-                                       NS::Matrix::CreateTranslation(m_centerOffset);
-        if (owner == nullptr)
-        {
-            return local;
-        }
-        return local * owner->Root().WorldMatrix();
-    }
-
     NS::Phys::Capsule CapsuleCollision::WorldCapsule() const noexcept
     {
-        const NS::AffineDecomposition decomposed = NS::DecomposeAffine(CapsuleWorldMatrix());
+        const NS::AffineDecomposition decomposed =
+            NS::DecomposeAffine(ShapeWorldMatrix(m_localRotation, m_centerOffset));
         const NS::Vector3& scale = decomposed.scale;
         const NS::Quaternion& rotation = decomposed.rotation;
         const NS::Vector3& translation = decomposed.translation;

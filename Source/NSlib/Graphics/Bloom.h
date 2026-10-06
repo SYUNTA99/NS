@@ -34,10 +34,10 @@ namespace NS::Gfx
     //! @brief 書き戻す時に掛ける歪みの輪。長さはどれも描画先の画素
     struct BloomRing
     {
-        NS::Vector2 centerPixel{}; //!< 中心。左上が原点
-        float radiusPixels = 0.0f;       //!< 輪の半径
-        float pushPixels = 0.0f;         //!< 輪の真ん中で絵を押し出す長さ。0 以下なら歪めない
-        float halfWidthPixels = 0.0f;    //!< 輪の半分の幅。0 以下なら歪めない
+        NS::Vector2 centerPixel{};    //!< 中心。左上が原点
+        float radiusPixels = 0.0f;    //!< 輪の半径
+        float pushPixels = 0.0f;      //!< 輪の真ん中で絵を押し出す長さ。0 以下なら歪めない
+        float halfWidthPixels = 0.0f; //!< 輪の半分の幅。0 以下なら歪めない
     };
 
     //! @brief 世界を 1 を超える明るさまで持てる描画先へ描かせ、超えた分を縮めてぼかして元の描画先へ足す
@@ -51,7 +51,7 @@ namespace NS::Gfx
     class Bloom : public NS::NonCopyable
     {
     public:
-        //! @brief シェーダ・パイプライン・定数バッファ・サンプラを作る
+        //! @brief シェーダ・パイプライン・定数バッファを作る
         //! @param[in] desc 閾値・足す強さ・段の数
         explicit Bloom(const BloomDesc& desc) noexcept;
         ~Bloom();
@@ -96,9 +96,8 @@ namespace NS::Gfx
         std::unique_ptr<Pipeline> m_writePipeline; // 書き込み先を置き換える
         std::unique_ptr<Pipeline> m_addPipeline;   // 書き込み先へ足す
         std::unique_ptr<Buffer> m_cb;
-        ComPtr<ID3D11SamplerState> m_sampler;
 
-        NS::Size2D m_size{0, 0};                  // 浮動小数の描画先の大きさ。0 なら未作成
+        NS::Size2D m_size{0, 0};                        // 浮動小数の描画先の大きさ。0 なら未作成
         std::unique_ptr<Texture> m_scene;               // 世界を描く浮動小数の描画先
         std::unique_ptr<Texture> m_bright;              // 閾値を超えた分。世界と同じ大きさ
         std::vector<std::unique_ptr<Texture>> m_levels; // 縮めた段。先頭が半分の大きさ

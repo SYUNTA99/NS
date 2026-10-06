@@ -92,11 +92,6 @@ namespace NS::Gfx
         m_textures[slot] = texture;
     }
 
-    void Material::ClearTexture(unsigned slot) noexcept
-    {
-        m_textures.erase(slot);
-    }
-
     void Material::UpdateParamsRaw(Renderer& renderer, const void* data, std::size_t bytes) noexcept
     {
         if (!IsValid() || !m_cb)
@@ -118,10 +113,7 @@ namespace NS::Gfx
 
         for (std::pair<const unsigned, const Texture*>& entry : m_textures)
         {
-            if (entry.second != nullptr)
-            {
-                renderer.Commands().PSSetShaderResource(*entry.second, entry.first);
-            }
+            renderer.Commands().PSSetShaderResource(*entry.second, entry.first);
         }
 
         if (m_cb)

@@ -122,12 +122,12 @@ TEST(FixedParts, SavedObjectsUseRoleKeysAndDirectFields)
     EXPECT_TRUE(saved["parts"]["Transform"].contains("位置"));
 }
 
-TEST(FixedParts, FileReferencesAndClonesPreservePartRoles)
+TEST(FixedParts, FileReferencesUseNamesAndClonesRemapIds)
 {
     nlohmann::json scene = NS::Obj::MakeSceneJson();
     NS::Obj::SceneJsonObjects(scene) = {
         {{"class", "MapObj"}, {"id", 1u}, {"name", "target"}, {"parts", {{"Model", nlohmann::json::object()}}}},
-        {{"class", "MapObj"}, {"id", 2u}, {"parts", {{"Model", {{"reference", {{"ref", 1u}, {"part", "Model"}}}}}}}}};
+        {{"class", "MapObj"}, {"id", 2u}, {"parts", {{"Model", {{"reference", {{"ref", 1u}}}}}}}}};
     const std::string text = NS::Obj::SerializeSceneToJson(scene);
     const nlohmann::json file = nlohmann::json::parse(text);
     EXPECT_EQ(file["objects"][1]["parts"]["Model"]["reference"]["ref"], "target");
@@ -135,5 +135,5 @@ TEST(FixedParts, FileReferencesAndClonesPreservePartRoles)
     ASSERT_TRUE(NS::Obj::DeserializeSceneFromJson(restored, text));
     nlohmann::json& copy = NS::Obj::SceneJsonObjects(restored)[1];
     NS::Obj::RemapObjectRefs(copy, {{1u, 9u}});
-    EXPECT_EQ(copy["parts"]["Model"]["reference"], (nlohmann::json{{"ref", 9u}, {"part", "Model"}}));
+    EXPECT_EQ(copy["parts"]["Model"]["reference"], (nlohmann::json{{"ref", 9u}}));
 }

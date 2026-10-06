@@ -572,7 +572,7 @@ namespace NS::Gfx
         }
 
         EnsureSkyboxResources();
-        if (!m_skybox || !m_commands)
+        if (!m_skybox || !m_commands || !m_states)
         {
             return;
         }
@@ -606,7 +606,7 @@ namespace NS::Gfx
         viewNoTranslate._41 = 0.0f;
         viewNoTranslate._42 = 0.0f;
         viewNoTranslate._43 = 0.0f;
-        m_skybox->Draw(*m_commands, viewNoTranslate * camera.Projection());
+        m_skybox->Draw(*m_commands, viewNoTranslate * camera.Projection(), m_states->LinearClamp());
     }
 
     void Renderer::BeginFrame(float r, float g, float b, float a) noexcept
@@ -747,9 +747,7 @@ namespace NS::Gfx
         BindTarget(m_backbuffer->Rtv(), m_depth->Dsv(), m_backbuffer->Size());
     }
 
-    void Renderer::BindTarget(ID3D11RenderTargetView* rtv,
-                              ID3D11DepthStencilView* dsv,
-                              ::NS::Size2D size) noexcept
+    void Renderer::BindTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv, ::NS::Size2D size) noexcept
     {
         m_commands->SetRenderTarget(rtv, dsv);
         m_commands->SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));

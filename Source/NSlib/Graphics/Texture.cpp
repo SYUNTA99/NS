@@ -4,6 +4,7 @@
 #include "NSlib/Graphics/D3dCommon.h"
 #include "NSlib/Graphics/GraphicObject.h"
 #include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Graphics/detail/TextureFile.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <DDSTextureLoader.h>
@@ -15,15 +16,6 @@ namespace NS::Gfx
 
     namespace
     {
-        [[nodiscard]] bool IsDdsExtension(std::string_view path)
-        {
-            std::string ext = NS::OS::FileSystem::Extension(path);
-            std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) {
-                return static_cast<char>(std::tolower(c));
-            });
-            return ext == ".dds";
-        }
-
         [[nodiscard]] ComPtr<ID3D11Texture2D> AsTexture2D(ID3D11Resource* resource) noexcept
         {
             ComPtr<ID3D11Texture2D> tex2d;
@@ -264,7 +256,7 @@ namespace NS::Gfx
             {
                 const std::vector<std::byte>& bytes = bytesOpt.value();
                 const std::uint8_t* data = reinterpret_cast<const std::uint8_t*>(bytes.data());
-                if (IsDdsExtension(desc.path))
+                if (detail::IsDdsExtension(desc.path))
                 {
                     // DDS は内蔵 mipmap を尊重して作り直さない
                     // mipmap が欲しければ Texconv.exe 等で事前生成した DDS を渡すこと

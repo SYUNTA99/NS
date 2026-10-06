@@ -12,8 +12,7 @@ namespace NS::Obj
     namespace
     {
         // 水平の前から作った右と direction の内積が負なら -1、それ以外は 1
-        [[nodiscard]] float SideSign(const NS::Vector3& forwardHorizontal,
-                                     const NS::Vector3& direction) noexcept
+        [[nodiscard]] float SideSign(const NS::Vector3& forwardHorizontal, const NS::Vector3& direction) noexcept
         {
             const NS::Vector3 right{forwardHorizontal.z, 0.0f, -forwardHorizontal.x};
             if (NS::Dot(right, direction) < 0.0f)
@@ -217,12 +216,12 @@ namespace NS::Obj
         m_blending = true;
     }
 
-    VirtualCamera* CameraManager::SelectActive() const noexcept
+    VirtualCamera* CameraManager::SelectTop(bool activeOnly) const noexcept
     {
         VirtualCamera* best = nullptr;
         for (VirtualCamera* vcam : m_vcams)
         {
-            if (vcam == nullptr || !vcam->IsActive())
+            if (vcam == nullptr || (activeOnly && !vcam->IsActive()))
             {
                 continue;
             }
@@ -236,18 +235,7 @@ namespace NS::Obj
 
     std::optional<CameraPose> CameraManager::EvaluateTopPose(float alpha) const noexcept
     {
-        VirtualCamera* best = nullptr;
-        for (VirtualCamera* vcam : m_vcams)
-        {
-            if (vcam == nullptr)
-            {
-                continue;
-            }
-            if (best == nullptr || vcam->VcamPriority() > best->VcamPriority())
-            {
-                best = vcam;
-            }
-        }
+        VirtualCamera* best = SelectTop(false);
         if (best == nullptr)
         {
             return std::nullopt;
@@ -257,7 +245,7 @@ namespace NS::Obj
 
     void CameraManager::OnTick()
     {
-        VirtualCamera* next = SelectActive();
+        VirtualCamera* next = SelectTop(true);
         if (next != m_active)
         {
             // 直前まで写していた pose から新 vcam へ繋ぐ。旧 pose が無い初回 active 化はカットする
@@ -292,7 +280,7 @@ namespace NS::Obj
         VirtualCamera* active = m_active;
         if (active == nullptr || !active->IsActive())
         {
-            active = SelectActive();
+            active = SelectTop(true);
         }
         if (active == nullptr)
         {
@@ -346,7 +334,7 @@ namespace NS::Obj
         // 非 active になった vcam の pose は書かない。一時停止で OnTick が回らない間も選び直す
         if (m_active == nullptr || !m_active->IsActive())
         {
-            m_active = SelectActive();
+            m_active = SelectTop(true);
         }
         if (m_active == nullptr || m_camera == nullptr)
         {

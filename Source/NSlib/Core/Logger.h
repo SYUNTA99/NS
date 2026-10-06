@@ -51,7 +51,6 @@ namespace NS
 
         //! NS_LOG_* マクロ内部用。直接呼ばないこと
         static void LogImpl(LogLevel level,
-                            LogType logType,
                             std::string_view logTypeStr,
                             const char* file,
                             int line,
@@ -59,24 +58,15 @@ namespace NS
                             std::string_view msg);
 
         //! Fatal マクロ内部用。ログを書き出した後、開発環境ではデバッガで停止し、その後プロセスを強制終了する
-        [[noreturn]] static void FatalImpl(LogType logType,
-                                           std::string_view logTypeStr,
-                                           const char* file,
-                                           int line,
-                                           const char* func,
-                                           std::string_view msg);
+        [[noreturn]] static void FatalImpl(
+            std::string_view logTypeStr, const char* file, int line, const char* func, std::string_view msg);
     };
 
 } // namespace NS
 
 #define NS_LOG_IMPL_(lv, cat, ...)                                                                                     \
-    ::NS::Logger::LogImpl((lv),                                                                                  \
-                                ::NS::LogType::cat,                                                              \
-                                ::magic_enum::enum_name(::NS::LogType::cat),                                     \
-                                __FILE__,                                                                              \
-                                __LINE__,                                                                              \
-                                __func__,                                                                              \
-                                ::std::format(__VA_ARGS__))
+    ::NS::Logger::LogImpl(                                                                                             \
+        (lv), ::magic_enum::enum_name(::NS::LogType::cat), __FILE__, __LINE__, __func__, ::std::format(__VA_ARGS__))
 
 #define NS_LOG_TRACE(cat, ...) NS_LOG_IMPL_(::NS::LogLevel::Trace, cat, __VA_ARGS__)
 #define NS_LOG_DEBUG(cat, ...) NS_LOG_IMPL_(::NS::LogLevel::Debug, cat, __VA_ARGS__)
@@ -85,9 +75,5 @@ namespace NS
 #define NS_LOG_ERROR(cat, ...) NS_LOG_IMPL_(::NS::LogLevel::Error, cat, __VA_ARGS__)
 
 #define NS_LOG_FATAL(cat, ...)                                                                                         \
-    ::NS::Logger::FatalImpl(::NS::LogType::cat,                                                            \
-                                  ::magic_enum::enum_name(::NS::LogType::cat),                                   \
-                                  __FILE__,                                                                            \
-                                  __LINE__,                                                                            \
-                                  __func__,                                                                            \
-                                  ::std::format(__VA_ARGS__))
+    ::NS::Logger::FatalImpl(                                                                                           \
+        ::magic_enum::enum_name(::NS::LogType::cat), __FILE__, __LINE__, __func__, ::std::format(__VA_ARGS__))

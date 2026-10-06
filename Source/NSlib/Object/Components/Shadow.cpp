@@ -4,8 +4,8 @@
 #include "NSlib/Graphics/Material.h"
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Graphics/StaticMesh.h"
-#include "NSlib/Object/AssetManager.h"
 #include "NSlib/Object/Actor.h"
+#include "NSlib/Object/AssetManager.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Transform.h"
@@ -25,27 +25,17 @@ namespace NS::Obj
 
     void Shadow::OnStart()
     {
-        Actor* owner = Owner();
-        if (owner == nullptr)
-        {
-            return;
-        }
-        Scene* scene = owner->OwningScene();
+        Scene* scene = OwningScene();
         if (scene == nullptr)
         {
-			return;
+            return;
         }
         scene->RegisterRenderable(this);
     }
 
     void Shadow::OnEndPlay()
     {
-        Actor* owner = Owner();
-        if (owner == nullptr)
-        {
-			return;
-        }
-        Scene* scene = owner->OwningScene();
+        Scene* scene = OwningScene();
         if (scene == nullptr)
         {
             return;
@@ -58,7 +48,7 @@ namespace NS::Obj
         const Actor* owner = Owner();
         if (owner == nullptr)
         {
-			return {};
+            return {};
         }
         const NS::Matrix m = owner->Root().WorldMatrix();
         return NS::Vector3{m._41, m._42, m._43};
@@ -69,7 +59,7 @@ namespace NS::Obj
         const Actor* owner = Owner();
         if (owner == nullptr)
         {
-			return {};
+            return {};
         }
         const NS::Matrix world = owner->Root().WorldMatrix();
         const NS::Vector3 origin{world._41, world._42, world._43};
@@ -83,16 +73,16 @@ namespace NS::Obj
     {
         if (maxDist <= 0.0f)
         {
-			return 0.0f;
+            return 0.0f;
         }
         const float f = 1.0f - dist / maxDist;
         if (f < 0.0f)
         {
-			return 0.0f;
+            return 0.0f;
         }
         if (f > 1.0f)
         {
-			return 1.0f;
+            return 1.0f;
         }
         return f;
     }
@@ -102,7 +92,7 @@ namespace NS::Obj
         Actor* owner = Owner();
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
         {
-			return;
+            return;
         }
         const NS::Matrix ownerWorld = owner->Root().InterpolatedWorldMatrix(context.alpha);
         const NS::Vector3 origin{ownerWorld._41, ownerWorld._42, ownerWorld._43};
@@ -117,15 +107,14 @@ namespace NS::Obj
         const float alpha = fade * m_baseAlpha;
         if (alpha <= 0.0f)
         {
-			return;
+            return;
         }
 
         const float scale = m_baseDiameter * (0.6f + 0.4f * fade); // 高いほど小さく
         const float groundY = origin.y - dist;
 
-        const NS::Matrix world =
-            NS::Matrix::CreateScale(scale, 1.0f, scale) *
-            NS::Matrix::CreateTranslation(origin.x, groundY + m_surfaceOffset, origin.z);
+        const NS::Matrix world = NS::Matrix::CreateScale(scale, 1.0f, scale) *
+                                 NS::Matrix::CreateTranslation(origin.x, groundY + m_surfaceOffset, origin.z);
 
         NS::Gfx::DrawItem item{};
         item.mesh = m_mesh;

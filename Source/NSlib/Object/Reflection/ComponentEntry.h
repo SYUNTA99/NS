@@ -16,15 +16,24 @@ namespace NS::Obj
     //! エントリの fields。壊れた形は nullptr
     [[nodiscard]] const nlohmann::json* ComponentEntryFields(const nlohmann::json& entry) noexcept;
 
+    //! @brief 数 3 つの配列 [x,y,z] を読む
+    //! @param[out] out 読めた値。失敗した場合は書き換えない
+    //! @return 読めた場合 true、配列でない・長さが違う・数でない成分がある場合は false
+    [[nodiscard]] bool ReadVector3(const nlohmann::json& value, NS::Vector3& out) noexcept;
+    //! @brief 数 4 つの配列 [x,y,z,w] を読む
+    //! @param[out] out 読めた値。失敗した場合は書き換えない
+    //! @return 読めた場合 true、配列でない・長さが違う・数でない成分がある場合は false
+    [[nodiscard]] bool ReadQuaternion(const nlohmann::json& value, NS::Quaternion& out) noexcept;
+
     //! entry の fields から値を型付きで読む。不在・型不一致は fallback
     [[nodiscard]] float FieldFloat(const nlohmann::json& entry, std::string_view name, float fallback) noexcept;
     [[nodiscard]] int FieldInt(const nlohmann::json& entry, std::string_view name, int fallback) noexcept;
     [[nodiscard]] NS::Vector3 FieldVector3(const nlohmann::json& entry,
-                                                 std::string_view name,
-                                                 const NS::Vector3& fallback) noexcept;
+                                           std::string_view name,
+                                           const NS::Vector3& fallback) noexcept;
     [[nodiscard]] NS::Quaternion FieldQuaternion(const nlohmann::json& entry,
-                                                       std::string_view name,
-                                                       const NS::Quaternion& fallback) noexcept;
+                                                 std::string_view name,
+                                                 const NS::Quaternion& fallback) noexcept;
     [[nodiscard]] std::string FieldString(const nlohmann::json& entry,
                                           std::string_view name,
                                           std::string_view fallback);

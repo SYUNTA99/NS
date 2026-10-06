@@ -101,11 +101,9 @@ namespace NS
             file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
             sinks.push_back(file);
 
-#if defined(_WIN32)
             std::shared_ptr<spdlog::sinks::msvc_sink_mt> msvc = std::make_shared<spdlog::sinks::msvc_sink_mt>();
             msvc->set_pattern("[%H:%M:%S.%e] [%l] [%n] [%s:%#] %v");
             sinks.push_back(msvc);
-#endif
             return sinks;
         }
 
@@ -130,10 +128,8 @@ namespace NS
             return;
         }
 
-#if defined(_WIN32)
         // Windowsのコンソールで日本語ログが文字化けしないようにUTF-8に強制する
         ::SetConsoleOutputCP(CP_UTF8);
-#endif
 
         CreateDirectoryRecursive(LogsDirectory(desc));
 
@@ -144,7 +140,6 @@ namespace NS
         logger->set_level(spdlog::level::trace);
         logger->flush_on(spdlog::level::warn);
 
-        spdlog::register_logger(logger);
         spdlog::set_default_logger(logger);
         spdlog::flush_every(std::chrono::seconds(3));
 
@@ -160,13 +155,8 @@ namespace NS
         spdlog::shutdown();
     }
 
-    void Logger::LogImpl(LogLevel level,
-                         LogType logType,
-                         std::string_view logTypeStr,
-                         const char* file,
-                         int line,
-                         const char* func,
-                         std::string_view msg)
+    void Logger::LogImpl(
+        LogLevel level, std::string_view logTypeStr, const char* file, int line, const char* func, std::string_view msg)
     {
         std::shared_ptr<spdlog::logger> logger = spdlog::default_logger();
         if (!logger)
@@ -178,12 +168,8 @@ namespace NS
         logger->log(loc, ToSpdLevel(level), "[{}] {}", logTypeStr, msg);
     }
 
-    [[noreturn]] void Logger::FatalImpl(LogType logType,
-                                        std::string_view logTypeStr,
-                                        const char* file,
-                                        int line,
-                                        const char* func,
-                                        std::string_view msg)
+    [[noreturn]] void Logger::FatalImpl(
+        std::string_view logTypeStr, const char* file, int line, const char* func, std::string_view msg)
     {
         if (std::shared_ptr<spdlog::logger> logger = spdlog::default_logger())
         {

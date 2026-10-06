@@ -59,11 +59,10 @@ namespace NS::Obj
 
     private:
         [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
-        [[nodiscard]] NS::Matrix CapsuleWorldMatrix() const noexcept;
 
-        float m_radius = 0.4f;                                                 // capsule 半径
-        float m_halfHeight = 0.5f;                                             // 円柱部の半長、半球を除く
-        NS::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};                    // owner local 空間での中心オフセット
+        float m_radius = 0.4f;                                     // capsule 半径
+        float m_halfHeight = 0.5f;                                 // 円柱部の半長、半球を除く
+        NS::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};              // owner local 空間での中心オフセット
         NS::Quaternion m_localRotation = NS::Quaternion::Identity; // owner 回転に重ねる local 回転
     };
 } // namespace NS::Obj

@@ -23,11 +23,6 @@ namespace NS::Obj
 {
     namespace
     {
-        [[nodiscard]] bool IsFiniteVector(const NS::Vector3& v) noexcept
-        {
-            return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
-        }
-
         // 向きが入れ替わるまでのフレーム数を 1〜longest から選ぶ。longest が 2 以上なら previous と同じ数を選ばない
         // 分布は実装ごとに結果が違うので通さず、生成器の出力の余りから選ぶ
         [[nodiscard]] int PickFlipFrames(std::mt19937& generator, int longest, int previous) noexcept
@@ -93,7 +88,7 @@ namespace NS::Obj
     {
         // 壊れた値が pose へ流れると視点が消える。入口で捨てる
         const bool finite = std::isfinite(desc.sideAmplitude) && std::isfinite(desc.upAmplitude) &&
-                            IsFiniteVector(desc.firstSideDirection);
+                            NS::IsFinite(desc.firstSideDirection);
         if (!finite || desc.sideAmplitude < 0.0f || desc.upAmplitude < 0.0f || desc.frames <= 0 ||
             desc.longestFlipFrames < 1)
         {
@@ -243,7 +238,7 @@ namespace NS::Obj
                                                                            float rollSign)
     {
         const bool finite =
-            std::isfinite(desc.zoom) && std::isfinite(desc.rollDegrees) && IsFiniteVector(desc.rollDirection);
+            std::isfinite(desc.zoom) && std::isfinite(desc.rollDegrees) && NS::IsFinite(desc.rollDirection);
         if (!finite || desc.zoom < 1.0f || desc.holdFrames < 0 || desc.returnFrames < 0)
         {
             return nullptr;
@@ -356,8 +351,8 @@ namespace NS::Obj
         const float time = static_cast<float>(m_frame) * NS::OS::FrameTimer::FixedDelta() * m_shape.frequency;
         const float amount = ShakeAmount();
         NS::Vector3 angles{m_shape.yawDegrees * amount * NS::ValueNoise1D(time, m_seed),
-                                 m_shape.pitchDegrees * amount * NS::ValueNoise1D(time, m_seed + 1u),
-                                 m_shape.rollDegrees * amount * NS::ValueNoise1D(time, m_seed + 2u)};
+                           m_shape.pitchDegrees * amount * NS::ValueNoise1D(time, m_seed + 1u),
+                           m_shape.rollDegrees * amount * NS::ValueNoise1D(time, m_seed + 2u)};
         if (m_kickFrame > 0)
         {
             const float ratio = static_cast<float>(m_kickFrame) / static_cast<float>(m_kick.peakFrames);
@@ -381,14 +376,11 @@ namespace NS::Obj
         }
         look /= distance;
         // 右手まわりの符号に合わせる。横は上の軸まわりの正で右を向き、縦と傾きは軸まわりの負で上・右へ倒れる
-        const NS::Quaternion yaw =
-            NS::Quaternion::CreateFromAxisAngle(axes.up, NS::DegreesToRadians(angles.x));
-        const NS::Quaternion pitch =
-            NS::Quaternion::CreateFromAxisAngle(axes.right, NS::DegreesToRadians(-angles.y));
+        const NS::Quaternion yaw = NS::Quaternion::CreateFromAxisAngle(axes.up, NS::DegreesToRadians(angles.x));
+        const NS::Quaternion pitch = NS::Quaternion::CreateFromAxisAngle(axes.right, NS::DegreesToRadians(-angles.y));
         const NS::Quaternion turn = yaw * pitch;
         const NS::Vector3 turnedLook = NS::Vector3::Transform(look, turn);
-        const NS::Quaternion roll =
-            NS::Quaternion::CreateFromAxisAngle(turnedLook, NS::DegreesToRadians(-angles.z));
+        const NS::Quaternion roll = NS::Quaternion::CreateFromAxisAngle(turnedLook, NS::DegreesToRadians(-angles.z));
         NS::Vector3 up = NS::Vector3::Transform(NS::Vector3::Transform(pose.up, turn), roll);
         up.Normalize();
         pose.target = pose.position + turnedLook * distance;
@@ -422,8 +414,7 @@ namespace NS::Obj
     {
         // 壊れた値が姿へ流れると画面が消える。入口で捨てる
         const NS::Vector3& d = desc.direction;
-        if (!std::isfinite(d.x) || !std::isfinite(d.y) || !std::isfinite(d.z) ||
-            !(std::abs(d.Length() - 1.0f) < k_UnitLengthTolerance) || desc.frames <= 0 ||
+        if (!NS::IsFinite(d) || !(std::abs(d.Length() - 1.0f) < k_UnitLengthTolerance) || desc.frames <= 0 ||
             desc.distance.count > Curve::k_MaxKeys)
         {
             return nullptr;

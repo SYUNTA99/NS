@@ -72,12 +72,7 @@ namespace NS::Obj
 
     void Model::OnStart()
     {
-        Actor* owner = Owner();
-        if (owner == nullptr)
-        {
-            return;
-        }
-        Scene* scene = owner->OwningScene();
+        Scene* scene = OwningScene();
         if (scene == nullptr)
         {
             return;
@@ -88,13 +83,7 @@ namespace NS::Obj
 
     void Model::OnEndPlay()
     {
-        Actor* owner = Owner();
-        if (owner == nullptr)
-        {
-            return;
-        }
-
-        Scene* scene = owner->OwningScene();
+        Scene* scene = OwningScene();
         if (scene == nullptr)
         {
             return;
@@ -132,7 +121,7 @@ namespace NS::Obj
 
     bool Model::SetDrawOffset(const NS::Vector3& offset) noexcept
     {
-        if (!(std::isfinite(offset.x) && std::isfinite(offset.y) && std::isfinite(offset.z)))
+        if (!NS::IsFinite(offset))
         {
             return false;
         }
@@ -142,7 +131,7 @@ namespace NS::Obj
 
     bool Model::SetGhostSpread(const NS::Vector3& spread) noexcept
     {
-        if (!(std::isfinite(spread.x) && std::isfinite(spread.y) && std::isfinite(spread.z)))
+        if (!NS::IsFinite(spread))
         {
             return false;
         }
@@ -237,12 +226,12 @@ namespace NS::Obj
         {
             NS::AABB worldBounds{};
             localBounds->Transform(worldBounds, root);
-            pivot = NS::Vector3{
-                worldBounds.Center.x, worldBounds.Center.y - worldBounds.Extents.y, worldBounds.Center.z};
+            pivot =
+                NS::Vector3{worldBounds.Center.x, worldBounds.Center.y - worldBounds.Extents.y, worldBounds.Center.z};
         }
         // 倍率は世界の軸で掛ける。局所の回転と根の回転に依らず世界の縦に潰れる
-        NS::Matrix scaled = drawn * NS::Matrix::CreateTranslation(-pivot) *
-                                  NS::Matrix::CreateScale(scale) * NS::Matrix::CreateTranslation(pivot);
+        NS::Matrix scaled = drawn * NS::Matrix::CreateTranslation(-pivot) * NS::Matrix::CreateScale(scale) *
+                            NS::Matrix::CreateTranslation(pivot);
         if (shifted)
         {
             scaled = scaled * shift;
@@ -366,15 +355,8 @@ namespace NS::Obj
             return {}; // 描くものが無い。間引かれても Collect が何も積まず結果は変わらない
         }
         NS::AABB out{};
-        // skinned は現在ポーズの override を優先、無ければ mesh 固定のバインド箱
-        if (m_hasLocalBoundsOverride)
-        {
-            m_localBoundsOverride.Transform(out, owner->Root().WorldMatrix());
-        }
-        else
-        {
-            m_mesh->LocalBounds().Transform(out, owner->Root().WorldMatrix());
-        }
+        // m_mesh は確かめ済みなので、描く境界は null にならない
+        DrawnLocalBounds()->Transform(out, owner->Root().WorldMatrix());
 
         // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま
         const NS::Vector3 scale = NS::Vector3::Max(m_previousDrawScale, m_drawScale);
