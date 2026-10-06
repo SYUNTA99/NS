@@ -698,16 +698,17 @@ TEST(ImpactTimelineClock, MissCameraLurchesAlongTheSlamAndSwaysAlongTheRebound)
 // 外れの火花は外した側へ 7 割、相手の表面に沿って滑る向きへ 3 割で流す。面の真ん中は向きが決まらない
 TEST(ImpactTimelineClock, MissSparksFlowTowardTheSideThatWasMissed)
 {
+    NS::Game::Player::ImpactEffects effects;
     const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
     // 右の縁: 外した側 +X、滑る向き (0.6, 0, 0.8)。0.7 × (1, 0, 0) + 0.3 × (0.6, 0, 0.8) を正規化
-    const NS::Vector3 right = NS::Game::Player::ImpactEffects::MissSparkHeading(0.8f, 0.0f, forward);
+    const NS::Vector3 right = effects.MissSparkHeading(0.8f, 0.0f, forward);
     EXPECT_NEAR(right.x, 0.9648f, 0.0005f);
     EXPECT_NEAR(right.y, 0.0f, 0.0005f);
     EXPECT_NEAR(right.z, 0.2631f, 0.0005f);
-    const NS::Vector3 top = NS::Game::Player::ImpactEffects::MissSparkHeading(0.0f, 0.8f, forward);
+    const NS::Vector3 top = effects.MissSparkHeading(0.0f, 0.8f, forward);
     EXPECT_NEAR(top.y, 0.9648f, 0.0005f);
     EXPECT_NEAR(top.z, 0.2631f, 0.0005f);
-    const NS::Vector3 middle = NS::Game::Player::ImpactEffects::MissSparkHeading(0.0f, 0.0f, forward);
+    const NS::Vector3 middle = effects.MissSparkHeading(0.0f, 0.0f, forward);
     EXPECT_FLOAT_EQ(middle.Length(), 0.0f);
 }
 
@@ -748,10 +749,9 @@ TEST(ImpactTimelineClock, MissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
 
     ASSERT_NE(sparks, nullptr);
     ASSERT_TRUE(sparks->rotation.has_value());
-    const NS::Vector3 heading =
-        NS::Vector3::Transform(NS::Vector3{0.0f, 1.0f, 0.0f}, sparks->rotation.value());
+    const NS::Vector3 heading = NS::Vector3::Transform(NS::Vector3{0.0f, 1.0f, 0.0f}, sparks->rotation.value());
     const NS::Vector3 expected =
-        NS::Game::Player::ImpactEffects::MissSparkHeading(impact.faceU, impact.faceV, player->BodySlamDirection());
+        player->ImpactVisuals().MissSparkHeading(impact.faceU, impact.faceV, player->BodySlamDirection());
     ASSERT_GT(expected.Length(), 0.5f);
     EXPECT_NEAR(heading.Dot(expected), 1.0f, 1.0e-4f);
 }
@@ -863,6 +863,44 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
         }
     }
     EXPECT_GE(clock, 20);
+}
+
+TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
+{
+    ImpactTremorEvent tremor;
+    tremor.amplitudePixels = 3.0f;
+    tremor.referenceHeight = 1440.0f;
+    HitTimeline timeline;
+    timeline.events = {{HitStopEvent{}, 1, 6, HitDirection::Any},
+                       {TargetFreezeEvent{}, 1, 6, HitDirection::Any},
+                       {TargetLaunchEvent{}, 7, 1, HitDirection::Any},
+                       {ReboundEvent{}, 7, 1, HitDirection::Any},
+                       {tremor, 7, 10, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("TremorPixelReference");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    ASSERT_NE(rock, nullptr);
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+    for (int frame = 0; frame < 120; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        const float selfAmplitude = player->ModelPart()->Tremor().amplitude;
+        if (!(selfAmplitude > 0.0f))
+        {
+            continue;
+        }
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*player);
+        ASSERT_TRUE(pose.has_value());
+        EXPECT_NEAR(selfAmplitude, MetersForPixels(*pose, player->Root().Position(), 3.0f) * 0.5f, 0.00001f);
+        EXPECT_NEAR(rock->ModelPart()->Tremor().amplitude,
+                    MetersForPixels(*pose, rock->Root().Position(), 3.0f) * 0.5f, 0.00001f);
+        return;
+    }
+    FAIL();
 }
 
 // 震えの線は行の長さ (3) を使わず、止めと同じフレーム数だけ二人の体の周りに出す。中心と半径は始めた時の二人の形
@@ -1234,7 +1272,7 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsWhenTheBeforeContactClockStarts)
     const NS::Game::Player::EffectLayerRecord* burst = nullptr;
     for (const NS::Game::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
     {
-        if (record.name == NS::Game::Player::ChargeEffects::k_Burst)
+        if (record.name == "release.burst")
         {
             burst = &record;
         }
@@ -1268,7 +1306,7 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsOnTheContactFrameWithoutBeforeContactE
     const NS::Game::Player::EffectLayerRecord* burst = nullptr;
     for (const NS::Game::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
     {
-        if (record.name == NS::Game::Player::ChargeEffects::k_Burst)
+        if (record.name == "release.burst")
         {
             burst = &record;
         }
@@ -1342,7 +1380,7 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsThreeFramesBeforeThePredictedContact)
     const NS::Game::Player::EffectLayerRecord* burst = nullptr;
     for (const NS::Game::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
     {
-        if (record.name == NS::Game::Player::ChargeEffects::k_Burst)
+        if (record.name == "release.burst")
         {
             burst = &record;
         }

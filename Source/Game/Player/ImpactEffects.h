@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "Game/Level/HitTier.h"
 #include "Game/Player/EffectLayerList.h"
 #include "NSlib/Core/Math.h"
@@ -134,24 +136,23 @@ namespace NS::Game::Player
         //! @param[in] ballCenter 玉の中心
         //! @param[in] cameraPosition カメラの位置。無ければ起こさない
         //! @return 長さ 1 の向き
-        [[nodiscard]] static NS::Vector3 ReboundTrailHeading(const NS::Vector3& velocity,
-                                                             const NS::Vector3& ballCenter,
-                                                             const std::optional<NS::Vector3>& cameraPosition) noexcept;
+        [[nodiscard]] NS::Vector3 ReboundTrailHeading(const NS::Vector3& velocity,
+                                                      const NS::Vector3& ballCenter,
+                                                      const std::optional<NS::Vector3>& cameraPosition) const noexcept;
 
         //! 直近の当たりの層を置いた所と向き。まだ当たっていなければ全部 0
         [[nodiscard]] const ImpactAim& LastAim() const noexcept { return m_aim; }
 
         //! @brief 外れの火花の向きを、当てた面の上の位置と突進の向きから決める
-        //! @details 外した側 (面の右 × u + 上 × v の向き) へ 7 割、相手の表面に沿って滑る向き
-        //! (突進の向きから表面の向きへ 押し込む成分を除いた向き) へ 3
-        //! 割を足して正規化する。表面の向きは相手を丸として読む (MissSurfaceNormal の鋭さ 2)。 面の右は JudgeHitFace
-        //! と同じく、上から見て進む向きの右
+        //! 外した側と面に沿って滑る向きを、欄の割合で混ぜる
+        //! 既定は外した側を 7 割、滑る向きを 3 割とする
+        //! 面の右は、上から見て突進の向きの右
         //! @param[in] u 面の上の左右の位置。自機から見て右が正
         //! @param[in] v 面の上の上下の位置。上が正
         //! @param[in] slamDirection 突進の向き。縦の成分は捨てる
         //! @return 長さ 1 の向き。位置が面の真ん中で外した側が決まらない時と、突進の水平の向きが決まらない時は (0, 0,
         //! 0)
-        [[nodiscard]] static NS::Vector3 MissSparkHeading(float u, float v, const NS::Vector3& slamDirection) noexcept;
+        [[nodiscard]] NS::Vector3 MissSparkHeading(float u, float v, const NS::Vector3& slamDirection) const noexcept;
 
         // 当たりの層の大きさと量は当てた瞬間の手触りそのもの。Inspector で触って詰められるよう公開する
         NS_REFLECT_BEGIN(ImpactEffects, NS::Obj::Component)
@@ -195,9 +196,60 @@ namespace NS::Game::Player
         NS_REFLECT_GROUP("着地の粉")
         NS_REFLECT_FIELD(m_landDustRadiusBase, "着地の粉の半径の基準")
         NS_REFLECT_FIELD(m_landDustRadiusPerFallSpeed, "着地の粉の半径の落ちる速さあたり")
+        NS_REFLECT_GROUP("時間と向き")
+        NS_REFLECT_FIELD(m_coreHoldMax, "核の留まりの上限フレーム")
+        NS_REFLECT_FIELD(m_wideCoreHoldLast, "外れの核の留まりフレーム")
+        NS_REFLECT_FIELD(m_missSparkSideShare, "外れの火花の横の割合")
+        NS_REFLECT_FIELD(m_centerSparkStart, "中心の火花の開始フレーム")
+        NS_REFLECT_FIELD(m_scrapeLaunchWeight, "擦る火花の飛ぶ向きの重み")
+        NS_REFLECT_FIELD(m_scrapeLiftWeight, "擦る火花の上向きの重み")
+        NS_REFLECT_FIELD(m_glowDimStart, "照りが減り始めるフレーム")
+        NS_REFLECT_FIELD(m_glowRiseShare, "照りの山の前の面積の割合")
+        NS_REFLECT_FIELD(m_ringStart, "輪の開始フレーム")
+        NS_REFLECT_FIELD(m_ringFull, "輪が広がり切るフレーム")
+        NS_REFLECT_FIELD(m_ringEnd, "輪の終了フレーム")
+        NS_REFLECT_FIELD(m_streakTailFrames, "光条の尾のフレーム")
+        NS_REFLECT_FIELD(m_streakFadeFrames, "光条の薄れるフレーム")
+        NS_REFLECT_FIELD(m_recoilDelay, "弾かれ線の遅れフレーム")
+        NS_REFLECT_FIELD(m_powerMin, "火花の数を振る威力の下限")
+        NS_REFLECT_FIELD(m_powerMax, "火花の数を振る威力の上限")
+        NS_REFLECT_FIELD(m_ringLaunchWeight, "輪の飛ぶ向きの重み")
+        NS_REFLECT_FIELD(m_coreHoldPulse, "核の脈の倍率")
+        NS_REFLECT_FIELD(m_wideFlashFloor, "外れの光の面積の落ち先")
+        NS_REFLECT_FIELD(m_wideFlashDecay, "外れの光の面積の減衰")
+        NS_REFLECT_FIELD(m_dustAwayShare, "当たりの粉を向こうへずらす割合")
+        NS_REFLECT_FIELD(m_reboundTrailFadeSteps, "反動の尾の薄れるフレーム")
+        NS_REFLECT_FIELD(m_landDustLife, "着地の粉の寿命フレーム")
+        NS_REFLECT_FIELD(m_dustRingLift, "着地の粉を浮かせる高さ")
+        NS_REFLECT_FIELD(m_reboundStreakMinAcross, "反動の尾の最小横成分")
+        NS_REFLECT_FIELD(m_coreAsset, "核の資産")
+        NS_REFLECT_FIELD(m_streakAsset, "光条の資産")
+        NS_REFLECT_FIELD(m_ringAsset, "輪の資産")
+        NS_REFLECT_FIELD(m_sparksAsset, "火花の資産")
+        NS_REFLECT_FIELD(m_embersAsset, "火の粉の資産")
+        NS_REFLECT_FIELD(m_glowAsset, "照りの資産")
+        NS_REFLECT_FIELD(m_recoilAsset, "弾かれ線の資産")
+        NS_REFLECT_FIELD(m_dustAsset, "当たりの粉の資産")
+        NS_REFLECT_FIELD(m_reboundTrailAsset, "反動の尾の資産")
+        NS_REFLECT_FIELD(m_landDustAsset, "着地の粉の資産")
+        NS_REFLECT_FIELD(m_floorLift, "照りを浮かせる高さ")
+        NS_REFLECT_FIELD(m_landDustAssetRadius, "着地の粉の資産半径")
         NS_REFLECT_END()
 
     private:
+        std::string m_coreAsset = "impact.core";
+        std::string m_streakAsset = "impact.streak";
+        std::string m_ringAsset = "impact.ring";
+        std::string m_sparksAsset = "impact.sparks";
+        std::string m_embersAsset = "impact.embers";
+        std::string m_glowAsset = "impact.glow";
+        std::string m_recoilAsset = "impact.recoil";
+        std::string m_dustAsset = "impact.dust";
+        std::string m_reboundTrailAsset = "rebound.trail";
+        std::string m_landDustAsset = "land.dust";
+        //! 同じ面で描画がちらつかないための離隔
+        float m_floorLift = 0.03f;
+        float m_landDustAssetRadius = 1.2f;
         // 段で変わる層の形を段ごとの 1 行から埋める。段を足したら行を足す
         void ApplyTierRow(ImpactShape& shape, const NS::Game::Level::ImpactRecord& impact, float power) const noexcept;
         // 当たりの絵の頭から数えた当たり 1 回の段取り。層の番号 0 はまだ出していない印
@@ -271,6 +323,36 @@ namespace NS::Game::Player
         std::vector<std::uint32_t> m_dusts; // 出した粉。次の当たりの絵の頭で親を止める
         bool m_hitRequested = false;        // 事象が置いた、当たりの絵を始める頼み。OnUpdate が読んで消す
         bool m_flightRequested = false;     // 事象が置いた、飛びの絵を始める頼み。OnUpdate が読んで消す
+
+        int m_coreHoldMax = 10;
+        int m_wideCoreHoldLast = 1;
+        float m_missSparkSideShare = 0.7f;
+        int m_centerSparkStart = 3;
+        float m_scrapeLaunchWeight = 1.0f;
+        float m_scrapeLiftWeight = 1.0f;
+        int m_glowDimStart = 3;
+        float m_glowRiseShare = 0.9f;
+        int m_ringStart = 3;
+        int m_ringFull = 9;
+        int m_ringEnd = 10;
+        int m_streakTailFrames = 3;
+        int m_streakFadeFrames = 3;
+        int m_recoilDelay = 4;
+        //! 弱い当たりから強い当たりへ火花の数を振る威力の範囲
+        float m_powerMin = 0.7f;
+        float m_powerMax = 2.0f;
+        //! 輪を視線に起こし、止めの間も光を脈打たせる
+        float m_ringLaunchWeight = 0.6f;
+        float m_coreHoldPulse = 0.85f;
+        float m_wideFlashFloor = 0.74f;
+        float m_wideFlashDecay = 0.4f;
+        //! 粉が自機を覆わないよう向こうへずらす割合
+        float m_dustAwayShare = 0.7f;
+        int m_reboundTrailFadeSteps = 8;
+        int m_landDustLife = 30;
+        //! 粉が床へ埋まらないよう浮かせる高さ。単位はメートル
+        float m_dustRingLift = 0.3f;
+        float m_reboundStreakMinAcross = 0.8f / 1.3f;
 
         float m_coreDiameterBase = 0.3f;
         float m_coreDiameterPerPower = 0.2f;

@@ -7,6 +7,7 @@ class LevelEditorController;
 
 namespace NS::Editor
 {
+    class TimelinePreview;
     //! @brief ゲーム視点の出力を映すパネル。プレイ中は入力を持ち、編集中はゲームカメラを貼るだけ
     //! @details 出力を映すだけで、自由視点のようなナビゲーションは持たない。描画先は ViewportSurface が持つ
     class GameViewPanel : public NS::NonCopyable
@@ -29,8 +30,15 @@ namespace NS::Editor
         //! 中央以外を全面化する間、前面の矩形と hover を無効化する
         void Suppress(LevelEditorController& editor) noexcept;
 
-        //! @return 可視なら {RT, ゲーム視点} のビュー。不可視なら nullopt
-        [[nodiscard]] std::optional<NS::Obj::SceneView> CollectView(LevelEditorController& editor) noexcept;
+        //! @brief 描画先とゲーム視点のビューを返す
+        //! @param[in] preview true なら視点を渡さず、下見の場面のカメラを使う
+        //! @return 可視ならビュー、不可視なら nullopt
+        [[nodiscard]] std::optional<NS::Obj::SceneView> CollectView(LevelEditorController& editor,
+                                                                    bool preview = false) noexcept;
+
+        //! @brief 貼り付け中の描画先へ、下見の現在のフレームを描く
+        //! @return 描画できた場合 true、それ以外の場合は false
+        bool RenderPreview(TimelinePreview& preview);
 
         //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
         void ReleaseTarget() noexcept { m_surface.Release(); }

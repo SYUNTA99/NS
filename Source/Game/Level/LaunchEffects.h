@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "Game/Level/HitTier.h"
 #include "Game/Player/EffectLayerList.h"
 #include "NSlib/Core/Math.h"
@@ -57,9 +59,21 @@ namespace NS::Game::Level
         [[nodiscard]] float LandDustScale() const noexcept { return m_landDustScale; }
 
         // 飛んでいく物の尾と落ちた所の粉は、飛ばした手応えそのもの。Inspector で触って詰められるよう公開する
-        NS_REFLECT_NONE(LaunchEffects, NS::Obj::Component)
+        NS_REFLECT_BEGIN(LaunchEffects, NS::Obj::Component)
+        NS_REFLECT_FIELD(m_landDustLife, "着地の粉の寿命フレーム")
+        NS_REFLECT_FIELD(m_dustRingLift, "着地の粉を浮かせる高さ")
+        NS_REFLECT_FIELD(m_launchTrailAsset, "飛び出しの尾の資産")
+        NS_REFLECT_FIELD(m_launchLandDustAsset, "着地の粉の資産")
+        NS_REFLECT_FIELD(m_landDustAssetRadius, "着地の粉の資産半径")
+        NS_REFLECT_END()
 
     private:
+        std::string m_launchTrailAsset = "launch.trail";
+        std::string m_launchLandDustAsset = "launch.landDust";
+        float m_landDustAssetRadius = 1.2f;
+        int m_landDustLife = 24;
+        //! 床の法線の向きへ浮かせる。単位はメートル
+        float m_dustRingLift = 0.3f;
         [[nodiscard]] const MapObjParams& Tuning() const noexcept;
         // 出した層を、決めたフレームに子ごと消す控え
         struct ScheduledStop
@@ -74,11 +88,11 @@ namespace NS::Game::Level
         NS::Game::Player::EffectLayerList m_layers;
         std::vector<ScheduledStop> m_scheduledStops;
         MapObj* m_body = nullptr;
-        std::uint32_t m_trail = 0;                       // 飛び出しの尾。消したら 0
-        int m_trailStartStep = 0;                        // 尾を出したフレーム。このフレームは出した姿のまま
-        int m_trailFrames = 0;                           // 尾が残るフレーム数
-        float m_trailScale = 1.0f;                       // 尾の再生の大きさ。自分の直径 (m)
+        std::uint32_t m_trail = 0;                 // 飛び出しの尾。消したら 0
+        int m_trailStartStep = 0;                  // 尾を出したフレーム。このフレームは出した姿のまま
+        int m_trailFrames = 0;                     // 尾が残るフレーム数
+        float m_trailScale = 1.0f;                 // 尾の再生の大きさ。自分の直径 (m)
         NS::Vector3 m_launchDir{1.0f, 0.0f, 0.0f}; // 飛ぶ水平の向き
-        float m_landDustScale = 0.0f;                    // 落ちた所の粉の大きさ (m)
+        float m_landDustScale = 0.0f;              // 落ちた所の粉の大きさ (m)
     };
 } // namespace NS::Game::Level

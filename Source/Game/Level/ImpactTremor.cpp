@@ -5,14 +5,12 @@
 
 namespace NS::Game::Level
 {
-    namespace
+    float ScreenPixelsToMeters(float pixels, const NS::Obj::CameraPose& pose, const NS::Vector3& at, float referenceHeight) noexcept
     {
-        // 画素の欄の基準の画面の高さ。撮影の画面と、震えを選んだ見本の大きさに揃える
-        constexpr float k_ReferenceScreenHeight = 720.0f;
-    } // namespace
-
-    float ScreenPixelsToMeters(float pixels, const NS::Obj::CameraPose& pose, const NS::Vector3& at) noexcept
-    {
+        if (!std::isfinite(referenceHeight) || referenceHeight <= 0.0f)
+        {
+            return 0.0f;
+        }
         NS::Vector3 forward = pose.target - pose.position;
         if (!(forward.Length() > NS::k_Epsilon))
         {
@@ -24,7 +22,7 @@ namespace NS::Game::Level
         {
             depth = (at - pose.position).Length();
         }
-        return pixels * 2.0f * depth * std::tan(pose.fovY.value * 0.5f) / k_ReferenceScreenHeight;
+        return pixels * 2.0f * depth * std::tan(pose.fovY.value * 0.5f) / referenceHeight;
     }
 
     NS::Gfx::TremorCB MakeTremor(const TackleTremorDesc& desc,
@@ -60,7 +58,7 @@ namespace NS::Game::Level
         up.Normalize();
 
         tremor.contactOffset = desc.contactOffset;
-        tremor.amplitude = std::max(ScreenPixelsToMeters(desc.amplitudePixels, pose, root), 0.0f);
+        tremor.amplitude = std::max(ScreenPixelsToMeters(desc.amplitudePixels, pose, root, desc.referenceHeight), 0.0f);
         tremor.right = right;
         tremor.up = up;
         tremor.elapsedFrames = static_cast<float>(elapsedFrames);

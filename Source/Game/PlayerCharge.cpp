@@ -38,21 +38,20 @@ namespace
                                             float startRate,
                                             float endRate) noexcept
     {
-        constexpr float k_TwoPi = 2.0f * NS::k_Pi;
-        constexpr float k_EdgePhase = 0.5f * NS::k_Pi;
         if (!(overchargeSeconds > 0.0f))
         {
-            return k_EdgePhase + k_TwoPi * endRate * seconds;
+            return (0.5f * NS::k_Pi) + (2.0f * NS::k_Pi) * endRate * seconds;
         }
         const float rise = endRate - startRate;
-        const float phaseAtEdge = k_TwoPi * (startRate * overchargeSeconds + rise * overchargeSeconds / 3.0f);
+        const float phaseAtEdge = (2.0f * NS::k_Pi) * (startRate * overchargeSeconds + rise * overchargeSeconds / 3.0f);
         if (seconds >= overchargeSeconds)
         {
-            return k_EdgePhase + k_TwoPi * endRate * (seconds - overchargeSeconds);
+            return (0.5f * NS::k_Pi) + (2.0f * NS::k_Pi) * endRate * (seconds - overchargeSeconds);
         }
-        const float travelled = k_TwoPi * (startRate * seconds + rise * seconds * seconds * seconds /
-                                                                     (3.0f * overchargeSeconds * overchargeSeconds));
-        return k_EdgePhase - phaseAtEdge + travelled;
+        const float travelled =
+            (2.0f * NS::k_Pi) *
+            (startRate * seconds + rise * seconds * seconds * seconds / (3.0f * overchargeSeconds * overchargeSeconds));
+        return (0.5f * NS::k_Pi) - phaseAtEdge + travelled;
     }
 } // namespace
 
@@ -272,8 +271,7 @@ void Player::ApplyChargeSway(float dt)
     const NS::Vector3 right{forward.z, 0.0f, -forward.x};
     NS::Vector3 swayed{};
     // 距離が 0 か非数で向きが作れない時は揺らさない
-    if (!(distance > 0.0f) ||
-        !NS::TryNormalizeHorizontal(forward * distance + right * m_charge.swayOffset, swayed) ||
+    if (!(distance > 0.0f) || !NS::TryNormalizeHorizontal(forward * distance + right * m_charge.swayOffset, swayed) ||
         !std::isfinite(swayed.x) || !std::isfinite(swayed.z))
     {
         m_charge.swayOffset = 0.0f;

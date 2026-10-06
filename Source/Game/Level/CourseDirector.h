@@ -32,7 +32,16 @@ namespace NS::Game::Level
         void NotifyPlayerDead() noexcept { m_playerDead = true; }
 
         //! ゴールに着いた知らせ。次の進行役の段でクリアの流れを始める。流れの最中は無視する
-        void NotifyGoal() noexcept { m_goalReached = true; }
+        void NotifyGoal(float fadeOutSeconds, float fadeInSeconds) noexcept
+        {
+            if (m_sequences.IsRunning() || m_goalReached)
+            {
+                return;
+            }
+            m_fadeOutSeconds = fadeOutSeconds;
+            m_fadeInSeconds = fadeInSeconds;
+            m_goalReached = true;
+        }
 
         //! クリアの流れの最中か
         [[nodiscard]] bool IsClearing() const noexcept { return m_sequences.IsRunning(); }
@@ -59,13 +68,12 @@ namespace NS::Game::Level
         //! プレイヤーへ操作を止めるか戻す知らせを送る
         void SendInputLock(bool locked);
 
-        // ゴールの達成感を一拍味わわせてから、もう一周へ送り出すテンポ。短いと唐突で長いと待たされる
-        static constexpr float k_FadeOutSeconds = 0.4f; // ゴールから全黒になるまでの秒
-        static constexpr float k_FadeInSeconds = 0.4f;  // やり直した後に明けるまでの秒
+        float m_fadeOutSeconds = 0.0f;
+        float m_fadeInSeconds = 0.0f;
 
         NS::Obj::Scene& m_scene;
         std::unique_ptr<NS::Obj::ScreenFade> m_fade; // 開いて持つ暗転
-        NS::CoroutineRunner m_sequences;       // クリアの流れ
+        NS::CoroutineRunner m_sequences;             // クリアの流れ
         bool m_playerDead = false;                   // 次の段でやり直すか
         bool m_goalReached = false;                  // 次の段でクリアの流れを始めるか
     };

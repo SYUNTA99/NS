@@ -13,30 +13,16 @@
 
 namespace NS::Game::Player
 {
-    namespace
+    NS::Gfx::EffectPlayDesc ChargeEffects::PlayDesc(const NS::Vector3& position,
+                                                    const NS::Quaternion& rotation,
+                                                    float charge01) const noexcept
     {
-        // 弧の板を回す軸。世界の Z 軸まわりの回転だけが、視点へ向く板の回りの角度として読まれる
-        constexpr NS::Vector3 k_SpinBoardAxis{0.0f, 0.0f, 1.0f};
-        constexpr NS::Vector3 k_Unit{1.0f, 1.0f, 1.0f};
-
-        // 溜め量を渡す動的入力の番号。溜めの組の絵は全部 0 番で読む
-        constexpr int k_ChargeInput = 0;
-        // 放しの弾けで、溜めた量で大きさを変える層の倍率を渡す動的入力の番号
-        constexpr int k_BurstScaleInput = 1;
-        // 溜まる光へ溜めきってからの数を渡す動的入力の番号
-        constexpr int k_FullFramesInput = 1;
-
-        [[nodiscard]] NS::Gfx::EffectPlayDesc PlayDesc(const NS::Vector3& position,
-                                                       const NS::Quaternion& rotation,
-                                                       float charge01) noexcept
-        {
-            NS::Gfx::EffectPlayDesc desc{};
-            desc.position = position;
-            desc.rotation = rotation;
-            desc.dynamicInputs[k_ChargeInput] = charge01;
-            return desc;
-        }
-    } // namespace
+        NS::Gfx::EffectPlayDesc desc{};
+        desc.position = position;
+        desc.rotation = rotation;
+        desc.dynamicInputs[m_chargeInput] = charge01;
+        return desc;
+    }
 
     ChargeEffects::ChargeEffects() noexcept : NS::Obj::Component() {}
 
@@ -55,7 +41,14 @@ namespace NS::Game::Player
             return;
         }
         // 読めない絵は EffectScene が警告を出し、その層は記録だけ残る。遊びは止めない
-        for (std::string_view name : {k_Curl, k_Spin, k_Grind, k_Gather, k_Full, k_Burst, k_Trail, k_SwaySparks})
+        for (std::string_view name : {m_curlAsset,
+                                      m_spinAsset,
+                                      m_grindAsset,
+                                      m_gatherAsset,
+                                      m_fullAsset,
+                                      m_burstAsset,
+                                      m_trailAsset,
+                                      m_swaySparksAsset})
         {
             static_cast<void>(effects->Preload(name));
         }
@@ -207,19 +200,19 @@ namespace NS::Game::Player
         m_fullShown = false;
         m_spinDegrees = 0.0f;
 
-        m_curl = m_layers.Play(effects, k_Curl, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
-        m_scheduledStops.push_back(ScheduledStop{m_curl, m_layers.Step() + k_CurlSteps});
-        m_spin = m_layers.Play(effects, k_Spin, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
+        m_curl = m_layers.Play(effects, m_curlAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
+        m_scheduledStops.push_back(ScheduledStop{m_curl, m_layers.Step() + std::max(m_curlSteps, 1)});
+        m_spin = m_layers.Play(effects, m_spinAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
         // 玉を包む光は押したフレームから出し、丸まりの殻が消えた後も放すまで途切れさせない
         StopLayer(effects, m_gather);
-        m_gather = m_layers.Play(effects, k_Gather, PlayDesc(center, YawToward(HeldAimDirection()), 0.0f));
+        m_gather = m_layers.Play(effects, m_gatherAsset, PlayDesc(center, YawToward(HeldAimDirection()), 0.0f));
     }
 
     void ChargeEffects::StartCharging(NS::Gfx::EffectScene* effects, const NS::Vector3& center)
     {
         StopLayer(effects, m_grind);
         const float charge01 = m_actor->ChargeJudge().Charge01();
-        m_grind = m_layers.Play(effects, k_Grind, PlayDesc(center, YawToward(HeldAimDirection()), charge01));
+        m_grind = m_layers.Play(effects, m_grindAsset, PlayDesc(center, YawToward(HeldAimDirection()), charge01));
     }
 
     void ChargeEffects::StartFullFlash(NS::Gfx::EffectScene* effects, const NS::Vector3& center)
@@ -227,8 +220,8 @@ namespace NS::Game::Player
         m_fullShown = true;
         m_fullStep = m_layers.Step();
         StopLayer(effects, m_full);
-        m_full = m_layers.Play(effects, k_Full, PlayDesc(center, NS::Quaternion::Identity, 1.0f));
-        m_scheduledStops.push_back(ScheduledStop{m_full, m_layers.Step() + k_FullFlashSteps});
+        m_full = m_layers.Play(effects, m_fullAsset, PlayDesc(center, NS::Quaternion::Identity, 1.0f));
+        m_scheduledStops.push_back(ScheduledStop{m_full, m_layers.Step() + std::max(m_fullFlashSteps, 1)});
     }
 
     void ChargeEffects::PlaySwaySparks(NS::Gfx::EffectScene* effects, const NS::Vector3& center)
@@ -244,9 +237,8 @@ namespace NS::Game::Player
             side = -1.0f;
         }
         // 擦れの節は +Y の 45 度の円錐へ飛ぶ。+Y を横から 45 度起こすと円錐の下の縁が水平になり、床へ潜る粒が出ない
-        constexpr float k_SideLift = 1.0f;
         const NS::Vector3 right{line.direction.z, 0.0f, -line.direction.x};
-        NS::Vector3 heading = right * side + NS::Vector3{0.0f, k_SideLift, 0.0f};
+        NS::Vector3 heading = right * side + NS::Vector3{0.0f, m_sideLift, 0.0f};
         heading.Normalize();
 
         const float depth = NS::Clamp(m_actor->ChargeJudge().Overcharge01(), 0.0f, 1.0f);
@@ -261,7 +253,7 @@ namespace NS::Game::Player
         // 秒の速さを 1 フレームの距離にして絵へ渡す
         sparks.dynamicInputs[2] = speed / 60.0f;
         sparks.dynamicInputs[3] = 0.0f;
-        static_cast<void>(m_layers.Play(effects, k_SwaySparks, sparks));
+        static_cast<void>(m_layers.Play(effects, m_swaySparksAsset, sparks));
     }
 
     void ChargeEffects::FollowHeldLayers(NS::Gfx::EffectScene* effects,
@@ -272,8 +264,8 @@ namespace NS::Game::Player
         {
             m_spinDegrees = std::fmod(m_spinDegrees + m_appearance->SpinDegreesThisFrame(), 360.0f);
         }
-        const NS::Quaternion spinBoard = NS::Quaternion::CreateFromAxisAngle(
-            k_SpinBoardAxis, NS::ToRadians(NS::Degrees{m_spinDegrees}).value);
+        const NS::Quaternion spinBoard =
+            NS::Quaternion::CreateFromAxisAngle(NS::Vector3::UnitZ, NS::ToRadians(NS::Degrees{m_spinDegrees}).value);
         Place(effects, m_curl, center, NS::Quaternion::Identity);
         Place(effects, m_spin, center, spinBoard);
         Place(effects, m_grind, center, YawToward(HeldAimDirection()));
@@ -285,7 +277,7 @@ namespace NS::Game::Player
         SetCharge(effects, m_gather, charge01);
         // 溜まる光は溜めきりで玉を包む光を広がりきった大きさの光に替え、この数で F + 4 までの替わり方を選び、
         // F + 5 から放すまで落ち着いた光を出す
-        SetInput(effects, m_gather, k_FullFramesInput, static_cast<float>(m_framesSinceFull));
+        SetInput(effects, m_gather, m_fullFramesInput, static_cast<float>(m_framesSinceFull));
     }
 
     void ChargeEffects::ClearHeldLayers(NS::Gfx::EffectScene* effects) noexcept
@@ -309,9 +301,9 @@ namespace NS::Game::Player
         // 効果の全体を縮めると、通常突進の散って残る筋は玉の輪郭の内側で生まれ、はじけの光も画面を明るくしない。
         // 大きさを変えるのは輪・丸屋根・筋だけにする
         NS::Gfx::EffectPlayDesc burst = PlayDesc(center, facing, charge01);
-        burst.dynamicInputs[k_BurstScaleInput] = ReleaseBurstScale(charge01);
-        const std::uint32_t burstId = m_layers.Play(effects, k_Burst, burst);
-        m_scheduledStops.push_back(ScheduledStop{burstId, m_layers.Step() + k_BurstSteps});
+        burst.dynamicInputs[m_burstScaleInput] = ReleaseBurstScale(charge01);
+        const std::uint32_t burstId = m_layers.Play(effects, m_burstAsset, burst);
+        m_scheduledStops.push_back(ScheduledStop{burstId, m_layers.Step() + std::max(m_burstSteps, 1)});
         m_burst = burstId;
 
         // 前の突進の尾がまだ伸びていれば止め、新しい尾と繋げない
@@ -320,12 +312,10 @@ namespace NS::Game::Player
             StopTrailRoot(effects);
         }
         m_trailAwaitsFreeze = false;
-        m_trail = m_layers.Play(effects, k_Trail, PlayDesc(center, facing, charge01));
+        m_trail = m_layers.Play(effects, m_trailAsset, PlayDesc(center, facing, charge01));
     }
 
-    void ChargeEffects::UpdateTrail(NS::Gfx::EffectScene* effects,
-                                    const NS::Vector3& center,
-                                    bool slamming) noexcept
+    void ChargeEffects::UpdateTrail(NS::Gfx::EffectScene* effects, const NS::Vector3& center, bool slamming) noexcept
     {
         if (m_trail == 0)
         {
@@ -374,7 +364,7 @@ namespace NS::Game::Player
     void ChargeEffects::StopTrailRoot(NS::Gfx::EffectScene* effects) noexcept
     {
         m_layers.StopRoot(effects, m_trail);
-        m_scheduledStops.push_back(ScheduledStop{m_trail, m_layers.Step() + k_TrailFadeSteps});
+        m_scheduledStops.push_back(ScheduledStop{m_trail, m_layers.Step() + std::max(m_trailFadeSteps, 1)});
         m_trailAwaitsFreeze = false;
     }
 
@@ -398,12 +388,12 @@ namespace NS::Game::Player
         {
             return;
         }
-        effects->SetTransform(record->handle, position, rotation, k_Unit);
+        effects->SetTransform(record->handle, position, rotation, NS::Vector3::One);
     }
 
     void ChargeEffects::SetCharge(NS::Gfx::EffectScene* effects, std::uint32_t id, float charge01) const noexcept
     {
-        SetInput(effects, id, k_ChargeInput, charge01);
+        SetInput(effects, id, m_chargeInput, charge01);
     }
 
     void ChargeEffects::SetInput(NS::Gfx::EffectScene* effects, std::uint32_t id, int index, float value) const noexcept
@@ -441,7 +431,7 @@ namespace NS::Game::Player
             return true;
         }
         const int frames = m_resolver->FramesToPredictedContact();
-        return frames >= 0 && frames <= k_BurstClearFrames;
+        return frames >= 0 && frames <= std::max(m_burstClearFrames, 0);
     }
 
     void ChargeEffects::StopLayer(NS::Gfx::EffectScene* effects, std::uint32_t& id) noexcept

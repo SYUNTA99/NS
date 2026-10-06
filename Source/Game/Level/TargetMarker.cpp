@@ -17,9 +17,7 @@ namespace NS::Game::Level
     namespace
     {
         // 画素の欄は描画先の高さがこの値のときの大きさで書く
-        constexpr float k_ReferenceHeight = 720.0f;
-        // 暗い縁が明るい線からはみ出す片側の幅。描画先の高さ 720 のときの画素。明るい線を読ませる最小の幅
-        constexpr float k_OutlineWidth = 1.0f;
+
 
         [[nodiscard]] bool IsPositiveFinite(float value) noexcept
         {
@@ -60,14 +58,14 @@ namespace NS::Game::Level
             {
                 return false;
             }
-            if (!IsPositiveFinite(desc.frameMinSide) || !IsPositiveFinite(desc.frameAlpha) ||
+            if (!IsPositiveFinite(desc.referenceHeight) || !IsPositiveFinite(desc.frameMinSide) || !IsPositiveFinite(desc.frameAlpha) ||
                 !IsPositiveFinite(desc.appearScale) || !IsPositiveFinite(desc.appearMaxSide) ||
                 !IsPositiveFinite(desc.lostScale))
             {
                 return false;
             }
             if (!IsNonNegativeFinite(desc.frameGap) || !IsNonNegativeFinite(desc.appearAlpha) ||
-                !IsNonNegativeFinite(desc.outlineAlpha))
+                !IsNonNegativeFinite(desc.outlineAlpha) || !IsNonNegativeFinite(desc.outlineWidth))
             {
                 return false;
             }
@@ -138,7 +136,7 @@ namespace NS::Game::Level
 
         const float width = static_cast<float>(targetSize.width);
         const float height = static_cast<float>(targetSize.height);
-        const float pixelScale = height / k_ReferenceHeight;
+        const float pixelScale = height / desc.referenceHeight;
         const NS::Vector3 center{bounds.Center.x, bounds.Center.y, bounds.Center.z};
         NS::Vector2 centerPixel{};
         float centerW = 0.0f;
@@ -171,7 +169,7 @@ namespace NS::Game::Level
                           desc.lineThickness * pixelScale,
                           desc.armRatio,
                           frame.corners);
-        const float outlineWidth = k_OutlineWidth * pixelScale;
+        const float outlineWidth = desc.outlineWidth * pixelScale;
         frame.outline.reserve(frame.corners.size());
         for (const MarkerRect& rect : frame.corners)
         {
@@ -181,9 +179,9 @@ namespace NS::Game::Level
                                                rect.height + outlineWidth * 2.0f});
         }
         frame.color = NS::Color{NS::Lerp(desc.appearColor.x, desc.color.x, progress),
-                                      NS::Lerp(desc.appearColor.y, desc.color.y, progress),
-                                      NS::Lerp(desc.appearColor.z, desc.color.z, progress),
-                                      alpha};
+                                NS::Lerp(desc.appearColor.y, desc.color.y, progress),
+                                NS::Lerp(desc.appearColor.z, desc.color.z, progress),
+                                alpha};
         // 白く大きく透けて出る間に暗い縁だけが濃く見えないよう、枠の不透明度に比例させる
         frame.outlineColor = NS::Color{
             desc.outlineColor.x, desc.outlineColor.y, desc.outlineColor.z, desc.outlineAlpha * alpha / desc.frameAlpha};

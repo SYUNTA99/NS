@@ -19,17 +19,6 @@ namespace NS::Game::Level
     {
         using NS::Quaternion;
         using NS::Vector3;
-
-        constexpr std::string_view k_LaunchTrail = "launch.trail";
-        constexpr std::string_view k_LaunchLandDust = "launch.landDust";
-        // 落ちた所の粉の塊の寿命 (絵の定義と同じ)
-        constexpr int k_LandDustLife = 24;
-        // 粉の輪が再生の大きさ 1 で広がりきる半径 (m)。絵の定義の出始め 0.4 m と外へ進む 0.8 m の和
-        constexpr float k_DustRingRadiusAtUnitScale = 1.2f;
-        // 粉の輪を置く床からの高さ (m)。塊の中心を浮かせ、カメラへ向く板の下半分が床に切られないようにする
-        constexpr float k_DustRingLift = 0.3f;
-        constexpr float k_TinyLength = 1e-4f;
-
         // 尾の絵 launch.trail の、段の色の節を出す動的入力の番号。段ごとに 1 行の表で、段を足したら行を足す
         [[nodiscard]] std::size_t TrailColorInputFor(HitTier tier) noexcept
         {
@@ -47,7 +36,7 @@ namespace NS::Game::Level
         [[nodiscard]] Vector3 NormalizedOr(const Vector3& v, const Vector3& fallback) noexcept
         {
             const float length = v.Length();
-            if (!(length > k_TinyLength))
+            if (!(length > NS::k_Epsilon))
             {
                 return fallback;
             }
@@ -101,8 +90,8 @@ namespace NS::Game::Level
             return;
         }
         // 読めない絵は Play が無効なハンドルを返し、記録だけ残る。警告は EffectScene が名前ごとに 1 回出す
-        static_cast<void>(effects->Preload(k_LaunchTrail));
-        static_cast<void>(effects->Preload(k_LaunchLandDust));
+        static_cast<void>(effects->Preload(m_launchTrailAsset));
+        static_cast<void>(effects->Preload(m_launchLandDustAsset));
     }
 
     void LaunchEffects::BeginTrail(HitTier tier, float power, float launchScale, const NS::Vector3& launchDir)
@@ -149,7 +138,7 @@ namespace NS::Game::Level
         desc.dynamicInputs[TrailColorInputFor(tier)] = 1.0f;
         desc.dynamicInputs[2] = static_cast<float>(m_trailFrames);
         desc.dynamicInputs[3] = 0.0f;
-        m_trail = m_layers.Play(effects, k_LaunchTrail, desc);
+        m_trail = m_layers.Play(effects, m_launchTrailAsset, desc);
         m_layers.SetAmount(m_trail, static_cast<float>(m_trailFrames));
         m_trailStartStep = m_layers.Step();
     }
@@ -209,13 +198,13 @@ namespace NS::Game::Level
     {
         NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
         EndTrail(effects);
-        const Vector3 at = position + normal * k_DustRingLift;
+        const Vector3 at = position + normal * m_dustRingLift;
         const std::uint32_t dust =
             m_layers.Play(effects,
-                          k_LaunchLandDust,
-                          PlayAt(at, TurnUpTo(normal), Uniform(m_landDustScale / k_DustRingRadiusAtUnitScale)));
+                          m_launchLandDustAsset,
+                          PlayAt(at, TurnUpTo(normal), Uniform(m_landDustScale / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
         m_layers.SetAmount(dust, m_landDustScale);
-        m_scheduledStops.push_back(ScheduledStop{.id = dust, .step = m_layers.Step() + k_LandDustLife});
+        m_scheduledStops.push_back(ScheduledStop{.id = dust, .step = m_layers.Step() + std::max(m_landDustLife, 1)});
     }
 
     NS_CLASS(LaunchEffects)

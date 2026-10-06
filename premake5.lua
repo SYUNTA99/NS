@@ -648,6 +648,11 @@ project "Tests"
         -- 当たりの下見は写しの場面を組んで進めるだけで、Application に触らない
         "Source/Editor/HitPreview.cpp",
         "Source/Editor/HitTimelineEdit.cpp",
+        "Source/Editor/HitTimelinePanel.cpp",
+        "Source/Editor/Timeline.cpp",
+        "Source/Editor/TimelinePreview.cpp",
+        "Source/Editor/GameViewPanel.cpp",
+        "Source/Editor/ViewportSurface.cpp",
         "Source/Editor/Theme/**.cpp",
         -- Editor / Game の各 .cpp は GamePch の /FI 前提で NSlib include を持たない。
         -- 同じソースを直接コンパイルする Tests でも同一 prelude を与えるため GamePch を共有する

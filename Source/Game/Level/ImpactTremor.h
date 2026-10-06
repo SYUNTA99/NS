@@ -13,10 +13,11 @@ namespace NS::Game::Level
     //! @param[in] pixels 高さ 720 画素の画面の上の画素数
     //! @param[in] pose 遊びが読む視点
     //! @param[in] at 長さを測る世界の位置
+    //! @param[in] referenceHeight 画素寸法を決めた基準の高さ
     //! @return 世界の長さ (m)。カメラの向きが決まらない時は 0
     [[nodiscard]] float ScreenPixelsToMeters(float pixels,
                                              const NS::Obj::CameraPose& pose,
-                                             const NS::Vector3& at) noexcept;
+                                             const NS::Vector3& at, float referenceHeight = 720.0f) noexcept;
 
     //! @brief 衝撃の震えの、elapsedFrames フレーム目に描く所へ渡す震えを作る
     //! @details 衝突点は desc.contactOffset を根からのずれのまま渡し、描く形と一緒に動かす

@@ -130,9 +130,9 @@ namespace NS::Game::Level
         // 予測は遠くから、当たりは触れてから呼ぶので、今の位置で測ると両者が割れる
         // 直線が届かない時と、球が origin の後ろにある時は、直線に一番近い点の向き
         [[nodiscard]] NS::Vector3 FindTouchDirection(const NS::Vector3& core,
-                                                           float touchRadius,
-                                                           const NS::Vector3& origin,
-                                                           const NS::Vector3& direction) noexcept
+                                                     float touchRadius,
+                                                     const NS::Vector3& origin,
+                                                     const NS::Vector3& direction) noexcept
         {
             const NS::Vector3 fromCore = origin - core;
             const float along = fromCore.Dot(direction);
@@ -152,14 +152,6 @@ namespace NS::Game::Level
             touch.Normalize();
             return touch;
         }
-
-        // 決まりが読む物。条件の種類を足す時は、JudgeHitFace の入力から欄を足す
-        struct TierRuleInput
-        {
-            const HitFace& face;
-            float u = 0.0f;
-            float v = 0.0f;
-        };
 
         // 形の中か。丸は横と縦の半分の幅を半径にした楕円、箱は矩形。縁ちょうどは外
         [[nodiscard]] bool ShapeContains(const HitFaceShape& shape, float u, float v) noexcept
@@ -193,38 +185,6 @@ namespace NS::Game::Level
             return true;
         }
 
-        // 赤の中か
-        [[nodiscard]] bool IsInsideRed(const TierRuleInput& input) noexcept
-        {
-            HitFaceShape red;
-            return RedShape(input.face, red) && ShapeContains(red, input.u, input.v);
-        }
-
-        [[nodiscard]] float RedPowerScale(const HitFace& face) noexcept
-        {
-            return face.powerScale;
-        }
-
-        // 段の決まり 1 つ。当てはまる条件、その時の段、威力の倍率、エディタが描く形
-        // 形は条件と同じ値から作る。描く形が無い決まりは shape が false を返す
-        struct TierRule
-        {
-            bool (*matches)(const TierRuleInput& input) noexcept;
-            HitTier tier;
-            float (*powerScale)(const HitFace& face) noexcept;
-            bool (*shape)(const HitFace& face, HitFaceShape& out) noexcept;
-        };
-
-        // 段の決まりの並び。優先の高い順で、上から見て最初に当てはまった決まりで段と威力の倍率を決める
-        // 段を足す時はここへ決まりを 1 つ足す。どれにも当てはまらない所は外れと残りの威力の倍率
-        constexpr std::array<TierRule, 1> k_TierRules{{
-            {&IsInsideRed, HitTier::Center, &RedPowerScale, &RedShape},
-        }};
-
-#if !defined(NS_SHIPPING)
-        // 楕円の縁を何等分するか。結んだ多角形が楕円より内側へ入るのは最大 1 − cos(π / 32) ≒ 0.5 %
-        constexpr int k_OutlineSegments = 32;
-#endif
     } // namespace
 
     bool JudgeHitFace(const HitFace& face,
@@ -275,17 +235,13 @@ namespace NS::Game::Level
         }
 
         const HitFace sanitized = SanitizeFace(face);
-        const TierRuleInput input{sanitized, u, v};
         out.tier = HitTier::Wide;
         out.powerScale = sanitized.remainderPowerScale;
-        for (const TierRule& rule : k_TierRules)
+        HitFaceShape red;
+        if (RedShape(sanitized, red) && ShapeContains(red, u, v))
         {
-            if (rule.matches(input))
-            {
-                out.tier = rule.tier;
-                out.powerScale = rule.powerScale(sanitized);
-                break;
-            }
+            out.tier = HitTier::Center;
+            out.powerScale = sanitized.powerScale;
         }
         out.u = u;
         out.v = v;
@@ -351,7 +307,6 @@ namespace NS::Game::Level
         {
             return false;
         }
-        // 狙うのは並びの先頭の決まりである赤の中心。覆わない赤は狙う所が無いので相手の中心
         HitFaceShape red;
         if (!RedShape(SanitizeFace(face), red))
         {
@@ -406,7 +361,7 @@ namespace NS::Game::Level
     std::vector<HitFaceShape> HitFaceShapes(const HitFace& face, NS::Obj::HitSensorShape bodyShape) noexcept
     {
         std::vector<HitFaceShape> shapes;
-        shapes.reserve(k_TierRules.size() + 1);
+        shapes.reserve(2);
         // 外れの面。球の相手は u² + v² ≤ 1 の丸の中にしか触れられない
         HitFaceShape remainder;
         remainder.tier = HitTier::Wide;
@@ -414,16 +369,11 @@ namespace NS::Game::Level
         shapes.push_back(remainder);
 
         const HitFace sanitized = SanitizeFace(face);
-        for (std::size_t i = k_TierRules.size(); i > 0; --i)
+        HitFaceShape red;
+        if (RedShape(sanitized, red))
         {
-            const TierRule& rule = k_TierRules[i - 1];
-            HitFaceShape shape;
-            if (!rule.shape(sanitized, shape))
-            {
-                continue;
-            }
-            shape.tier = rule.tier;
-            shapes.push_back(shape);
+            red.tier = HitTier::Center;
+            shapes.push_back(red);
         }
         return shapes;
     }
@@ -440,10 +390,11 @@ namespace NS::Game::Level
             points.emplace_back(shape.centerU - shape.halfU, shape.centerV + shape.halfV);
             return points;
         }
-        points.reserve(k_OutlineSegments);
-        for (int i = 0; i < k_OutlineSegments; ++i)
+        const int segments = std::max(shape.outlineSegments, 3);
+        points.reserve(segments);
+        for (int i = 0; i < segments; ++i)
         {
-            const float angle = 2.0f * NS::k_Pi * static_cast<float>(i) / static_cast<float>(k_OutlineSegments);
+            const float angle = 2.0f * NS::k_Pi * static_cast<float>(i) / static_cast<float>(segments);
             points.emplace_back(shape.centerU + shape.halfU * std::cos(angle),
                                 shape.centerV + shape.halfV * std::sin(angle));
         }

@@ -16,134 +16,38 @@ namespace NS::Game::Level
 {
     namespace
     {
-        // タイムラインのファイルの版。形を変えたら上げ、古い版は読まない
-        constexpr int k_FileVersion = 1;
-        // 1 ファイルの上限。手で置く事象は数十行で、これを超えるのは壊れたファイル
-        constexpr std::size_t k_MaxFileBytes = 1024 * 1024;
+        template <class Kind>
+        concept HasReflectedFields = requires { Kind::StaticReflection(); };
 
-        constexpr std::size_t k_EventKinds = std::variant_size_v<HitEventValue>;
-
-        template <class T>
-        concept HasReflectedFields = requires { T::StaticReflection(); };
-
-        template <std::size_t I = 0> [[nodiscard]] std::string_view NameAt(std::size_t index) noexcept
+        template <HasReflectedFields Kind>
+        [[nodiscard]] const NS::Obj::ReflectionInfo* ReflectionOf(const Kind&) noexcept
         {
-            if constexpr (I < k_EventKinds)
+            return Kind::StaticReflection();
+        }
+
+        template <class Kind>
+            requires(!HasReflectedFields<Kind>)
+        [[nodiscard]] const NS::Obj::ReflectionInfo* ReflectionOf(const Kind&) noexcept
+        {
+            return nullptr;
+        }
+
+        template <class Kind> void TryMakeEvent(std::string_view name, std::optional<HitEventValue>& result)
+        {
+            if (!result.has_value() && name == Kind{}.typeName)
             {
-                if (index == I)
-                {
-                    return std::variant_alternative_t<I, HitEventValue>::k_Name;
-                }
-                return NameAt<I + 1>(index);
-            }
-            else
-            {
-                return {};
+                result.emplace(std::in_place_type<Kind>);
             }
         }
 
-        template <std::size_t I = 0> [[nodiscard]] bool BeforeContactAt(std::size_t index) noexcept
+        template <class... Kinds>
+        [[nodiscard]] std::optional<HitEventValue> MakeByName(std::string_view name,
+                                                              std::type_identity<std::variant<Kinds...>>)
         {
-            if constexpr (I < k_EventKinds)
-            {
-                if (index == I)
-                {
-                    return std::variant_alternative_t<I, HitEventValue>::k_BeforeContact;
-                }
-                return BeforeContactAt<I + 1>(index);
-            }
-            else
-            {
-                return false;
-            }
+            std::optional<HitEventValue> result;
+            (TryMakeEvent<Kinds>(name, result), ...);
+            return result;
         }
-
-        template <std::size_t I = 0> [[nodiscard]] std::string_view LabelAt(std::size_t index) noexcept
-        {
-            if constexpr (I < k_EventKinds)
-            {
-                if (index == I)
-                {
-                    return std::variant_alternative_t<I, HitEventValue>::k_Label;
-                }
-                return LabelAt<I + 1>(index);
-            }
-            else
-            {
-                return {};
-            }
-        }
-
-        template <std::size_t I = 0> [[nodiscard]] std::optional<HitEventValue> MakeByName(std::string_view name)
-        {
-            if constexpr (I < k_EventKinds)
-            {
-                if (name == std::variant_alternative_t<I, HitEventValue>::k_Name)
-                {
-                    return HitEventValue{std::in_place_index<I>};
-                }
-                return MakeByName<I + 1>(name);
-            }
-            else
-            {
-                return std::nullopt;
-            }
-        }
-
-        template <std::size_t I = 0>
-        [[nodiscard]] const NS::Obj::ReflectionInfo* ReflectionAt(std::size_t index) noexcept
-        {
-            if constexpr (I < k_EventKinds)
-            {
-                using Kind = std::variant_alternative_t<I, HitEventValue>;
-                if (index == I)
-                {
-                    if constexpr (HasReflectedFields<Kind>)
-                    {
-                        return Kind::StaticReflection();
-                    }
-                    else
-                    {
-                        return nullptr;
-                    }
-                }
-                return ReflectionAt<I + 1>(index);
-            }
-            else
-            {
-                return nullptr;
-            }
-        }
-
-        template <std::size_t I = 0> [[nodiscard]] void* FieldsAt(HitEventValue& value) noexcept
-        {
-            if constexpr (I < k_EventKinds)
-            {
-                if (value.index() == I)
-                {
-                    return std::get_if<I>(&value);
-                }
-                return FieldsAt<I + 1>(value);
-            }
-            else
-            {
-                return nullptr;
-            }
-        }
-
-        struct DirectionName
-        {
-            HitDirection direction;
-            std::string_view name;
-        };
-
-        constexpr DirectionName k_DirectionNames[] = {
-            {HitDirection::Any, "any"},
-            {HitDirection::Right, "right"},
-            {HitDirection::Left, "left"},
-            {HitDirection::Up, "up"},
-            {HitDirection::Down, "down"},
-        };
 
         // 整数でない数 (1.5 など) と整数の外の値を断る
         [[nodiscard]] bool ReadInteger(const nlohmann::json& value, int& out) noexcept
@@ -240,37 +144,38 @@ namespace NS::Game::Level
 
     std::string_view HitEventTypeName(const HitEventValue& value) noexcept
     {
-        return NameAt(value.index());
+        return std::visit([]<class Kind>(const Kind& event) -> std::string_view { return event.typeName; }, value);
     }
 
     std::string_view HitEventLabel(const HitEventValue& value) noexcept
     {
-        return LabelAt(value.index());
+        return std::visit([]<class Kind>(const Kind& event) -> std::string_view { return event.label; }, value);
     }
 
     bool CanStartBeforeContact(const HitEventValue& value) noexcept
     {
-        return BeforeContactAt(value.index());
+        return std::visit([]<class Kind>(const Kind& event) -> bool { return event.beforeContact; }, value);
     }
 
     std::optional<HitEventValue> MakeHitEventValue(std::string_view typeName)
     {
-        return MakeByName(typeName);
+        return MakeByName(typeName, std::type_identity<HitEventValue>{});
     }
 
     const NS::Obj::ReflectionInfo* HitEventReflection(const HitEventValue& value) noexcept
     {
-        return ReflectionAt(value.index());
+        return std::visit(
+            []<class Kind>(const Kind& event) -> const NS::Obj::ReflectionInfo* { return ReflectionOf(event); }, value);
     }
 
     void* HitEventFields(HitEventValue& value) noexcept
     {
-        return FieldsAt(value);
+        return std::visit([]<class Kind>(Kind& event) -> void* { return &event; }, value);
     }
 
     const void* HitEventFields(const HitEventValue& value) noexcept
     {
-        return FieldsAt(const_cast<HitEventValue&>(value));
+        return std::visit([]<class Kind>(const Kind& event) -> const void* { return &event; }, value);
     }
 
     HitDirection HitDirectionOf(float u, float v) noexcept
@@ -337,23 +242,29 @@ namespace NS::Game::Level
 
     std::string_view HitDirectionName(HitDirection direction) noexcept
     {
-        for (const DirectionName& entry : k_DirectionNames)
+        switch (direction)
         {
-            if (entry.direction == direction)
-            {
-                return entry.name;
-            }
+        case HitDirection::Right:
+            return "right";
+        case HitDirection::Left:
+            return "left";
+        case HitDirection::Up:
+            return "up";
+        case HitDirection::Down:
+            return "down";
+        default:
+            return "any";
         }
-        return k_DirectionNames[0].name;
     }
 
     std::optional<HitDirection> ParseHitDirection(std::string_view name) noexcept
     {
-        for (const DirectionName& entry : k_DirectionNames)
+        for (int index = static_cast<int>(HitDirection::Any); index <= static_cast<int>(HitDirection::Down); ++index)
         {
-            if (entry.name == name)
+            const HitDirection direction = static_cast<HitDirection>(index);
+            if (HitDirectionName(direction) == name)
             {
-                return entry.direction;
+                return direction;
             }
         }
         return std::nullopt;
@@ -366,11 +277,12 @@ namespace NS::Game::Level
             error = "全体が object でない";
             return std::nullopt;
         }
+        HitTimeline timeline;
         const nlohmann::json::const_iterator version = doc.find("version");
         int versionNumber = 0;
-        if (version == doc.end() || !ReadInteger(*version, versionNumber) || versionNumber != k_FileVersion)
+        if (version == doc.end() || !ReadInteger(*version, versionNumber) || versionNumber != timeline.version)
         {
-            error = std::format("版 version が {} でない", k_FileVersion);
+            error = std::format("版 version が {} でない", timeline.version);
             return std::nullopt;
         }
         const nlohmann::json::const_iterator events = doc.find("events");
@@ -379,7 +291,6 @@ namespace NS::Game::Level
             error = "事象の並び events が配列でない";
             return std::nullopt;
         }
-        HitTimeline timeline;
         timeline.events.reserve(events->size());
         for (std::size_t i = 0; i < events->size(); ++i)
         {
@@ -416,7 +327,7 @@ namespace NS::Game::Level
             events.push_back(std::move(row));
         }
         nlohmann::json doc;
-        doc["version"] = k_FileVersion;
+        doc["version"] = timeline.version;
         doc["events"] = std::move(events);
         return doc;
     }
@@ -484,10 +395,10 @@ namespace NS::Game::Level
                 NS_LOG_ERROR(Game, "当たりのタイムライン {} を読めない", path);
                 continue;
             }
-            if (text->size() > k_MaxFileBytes)
+            if (text->size() > m_maxFileBytes)
             {
                 NS_LOG_ERROR(
-                    Game, "当たりのタイムライン {} が上限 ({} byte) を超えるので読まない", path, k_MaxFileBytes);
+                    Game, "当たりのタイムライン {} が上限 ({} byte) を超えるので読まない", path, m_maxFileBytes);
                 continue;
             }
             const nlohmann::json root = nlohmann::json::parse(*text, nullptr, false);

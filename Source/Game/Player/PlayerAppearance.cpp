@@ -123,7 +123,7 @@ namespace NS::Game::Player
         {
             // 立ち姿は回さず、玉の回転と軸と速さも捨てる。丸まり直した玉へ前の玉の値を持ち越さない
             m_spin = NS::Quaternion::Identity;
-            m_spinAxis = k_FirstSpinAxis;
+            m_spinAxis = NS::Vector3::UnitX;
             m_spinSpeed = 0.0f;
             // 前のフレームの値も揃える。今の値だけを戻すと、持ち替えたフレームの立ち姿が、玉の姿勢から戻る途中の
             // 傾きで描かれる
@@ -197,9 +197,9 @@ namespace NS::Game::Player
             if (m_resolver != nullptr)
             {
                 // 種は何回目の当たりか。黄金角ずつずらし、続けて外しても始まりの向きが重ならない。同じ入力の再生では同じ
-                constexpr float k_GoldenAngle = 2.39996323f;
+                const float goldenAngle = static_cast<float>(std::acos(-1.0) * (3.0 - std::sqrt(5.0)));
                 m_tumbleWobblePhase =
-                    std::fmod(static_cast<float>(m_resolver->LastImpact().sequence) * k_GoldenAngle, 2.0f * NS::k_Pi);
+                    std::fmod(static_cast<float>(m_resolver->LastImpact().sequence) * goldenAngle, 2.0f * NS::k_Pi);
             }
         }
         ++m_tumbleSteps;

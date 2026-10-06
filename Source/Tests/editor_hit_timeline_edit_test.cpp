@@ -49,7 +49,7 @@ TEST(EditorHitTimelineEdit, RemovesARow)
 TEST(EditorHitTimelineEdit, FrameRangeCoversEventsAndThePreview)
 {
     HitTimeline timeline = MakeTwoEvents();
-    NS::Editor::HitPreviewFrameRange range = NS::Editor::HitTimelineFrameRange(timeline, nullptr);
+    NS::Editor::TimelineFrameRange range = NS::Editor::HitTimelineFrameRange(timeline, nullptr);
     EXPECT_EQ(range.first, 0);
     EXPECT_EQ(range.last, 13);
 
@@ -74,30 +74,4 @@ TEST(EditorHitTimelineEdit, RowStartsCountFromTheDetection)
     EXPECT_EQ(NS::Editor::RowStartFrames(preview, 0), (std::vector<int>{0, 1}));
     EXPECT_EQ(NS::Editor::RowStartFrames(preview, 1), (std::vector<int>{1}));
     EXPECT_TRUE(NS::Editor::RowStartFrames(preview, 2).empty());
-}
-
-// 再生は 1 秒に 60 フレームを速さの倍率で進め、最後のフレームで止まる。コマ送りは 1 つずつ
-TEST(EditorHitTimelineEdit, PlaybackAdvancesBySpeedAndStopsAtTheEnd)
-{
-    NS::Editor::HitPreviewPlayback playback;
-    playback.speed = 0.25f;
-    playback.playing = true;
-    for (int i = 0; i < 8; ++i)
-    {
-        playback.Tick(1.0f / 60.0f, 10);
-    }
-    EXPECT_EQ(playback.frame, 2);
-    for (int i = 0; i < 100; ++i)
-    {
-        playback.Tick(1.0f / 60.0f, 10);
-    }
-    EXPECT_EQ(playback.frame, 10);
-    EXPECT_FALSE(playback.playing);
-
-    playback.StepBy(-3, 10);
-    EXPECT_EQ(playback.frame, 7);
-    playback.StepBy(20, 10);
-    EXPECT_EQ(playback.frame, 10);
-    playback.StepBy(-20, 10);
-    EXPECT_EQ(playback.frame, 0);
 }

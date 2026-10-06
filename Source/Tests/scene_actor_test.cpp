@@ -162,8 +162,7 @@ TEST(SceneActor, ShippedSceneUsesRegisteredClasses)
 {
     // 出荷シーンの配置物はどれも登録済みのクラスを持つ。素の Actor で組まれる物が無い
     const std::string path = NS::OS::FileSystem::Combine(
-        NS::OS::FileSystem::Combine(
-            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
         "new_scene.scene");
     nlohmann::json doc;
     ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path));
@@ -270,7 +269,7 @@ TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosit
     scene.LoadJson(doc);
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    const NS::Vector3 fallback = DefaultSpawnPosition(player->Collider());
+    const NS::Vector3 fallback = player->DefaultSpawnPosition();
     EXPECT_FLOAT_EQ(ensured.y, fallback.y);
 
     // 凍結に自機が居ないやり直しは、補う位置と同じ高さへ戻る
@@ -286,8 +285,7 @@ TEST(SceneLoad, CourseSceneHasOneDeathZoneAndNoUnregisteredActor)
     // 同梱の course.scene は落下死の範囲 (DeathZone) をちょうど 1 体持ち、未登録のクラスで素の Actor へ落ちる物が無い
     // クラス名は保存の鍵なので、クラスを改名してこのシーンを書き換え忘れるとここが赤になる
     const std::string path = NS::OS::FileSystem::Combine(
-        NS::OS::FileSystem::Combine(
-            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
         "course.scene");
     nlohmann::json doc;
     ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path));

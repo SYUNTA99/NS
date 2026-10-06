@@ -1,11 +1,12 @@
 #pragma once
 
+#include <array>
+
 namespace NS::Game::Level
 {
     //! @brief 相手の正面の面のどこに当てたかで分けた当たりの段
-    //! @details JudgeHitFace が面の上の位置を段の決まりの並びで段へ分け、ImpactResolver が段で配分と演出を決める
     //! 当たりの記録 "tier" と台本の期待はこの番号で段を読むので、番号を変えると台本の意味が変わる
-    //! 1 は欠番。惜しいの段を消した時に外れの番号を詰めず、撮ってある記録と台本の意味を保った。段を足すなら 3 から
+    //! 1 は欠番。撮ってある記録と台本の意味を保つため、外れの番号を詰めない。段を足すなら 3 から
     enum class HitTier
     {
         Center = 0, //!< 中心近く
@@ -13,6 +14,8 @@ namespace NS::Game::Level
     };
 
     //! @brief 段の全部。段ごとのタイムラインを全部見る所 (触れる前の事象を探す所) が回す
-    //! @details 段を足したらここにも足す
-    inline constexpr HitTier k_AllHitTiers[] = {HitTier::Center, HitTier::Wide};
+    [[nodiscard]] inline std::array<HitTier, 2> HitTiers() noexcept
+    {
+        return {HitTier::Center, HitTier::Wide};
+    }
 } // namespace NS::Game::Level

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerGravity.h"
 #include "NSlib/Object/Component.h"
 #include "NSlib/Object/Reflection/Curve.h"
@@ -172,9 +173,21 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_ledgeHangClip, "ぶら下がりのクリップ")
         NS_REFLECT_FIELD(m_runBlendRatio, "走りへ移る速さの比")
         NS_REFLECT_FIELD(m_minPlaybackSpeed, "再生速度の下限")
+        NS_REFLECT_FIELD(m_spawnFloorTop, "補う床の上面")
+        NS_REFLECT_FIELD(m_spawnClearance, "補う足元の余白")
+        NS_REFLECT_FIELD(m_contactTolerance, "突進の接触探索の誤差")
+        NS_REFLECT_FIELD(m_launchHeightTolerance, "突進の高さ探索の誤差")
+        NS_REFLECT_FIELD(m_launchAngleGuardDegrees, "突進の角度計算の上限")
+        NS_REFLECT_FIELD(m_launchMaxFrames, "突進の予測フレーム上限")
         NS_REFLECT_END()
 
     private:
+        float m_spawnFloorTop = 0.5f;
+        float m_spawnClearance = 0.01f;
+        float m_contactTolerance = 0.001f;
+        float m_launchHeightTolerance = LaunchPitchDesc{}.heightTolerance;
+        float m_launchAngleGuardDegrees = LaunchPitchDesc{}.angleGuardDegrees;
+        int m_launchMaxFrames = LaunchPath{}.maxFrames;
         friend class NS::Game::Level::ImpactResolver;
         friend class NS::Game::Level::SlamArrow;
         friend NS::Game::Level::ImpactTuning NS::Game::Level::MakeImpactTuning(const PlayerParams& params) noexcept;

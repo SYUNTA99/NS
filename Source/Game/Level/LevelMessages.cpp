@@ -15,9 +15,12 @@ namespace NS::Game::Level
         return NS::Obj::IsMsg<MsgInstantDeath>(msg);
     }
 
-    bool SendMsgGoal(NS::Obj::HitSensor& receiver, NS::Obj::HitSensor& sender)
+    bool SendMsgGoal(NS::Obj::HitSensor& receiver,
+                     NS::Obj::HitSensor& sender,
+                     float fadeOutSeconds,
+                     float fadeInSeconds)
     {
-        return NS::Obj::SendMsg(MsgGoal{}, receiver, &sender);
+        return NS::Obj::SendMsg(MsgGoal{fadeOutSeconds, fadeInSeconds}, receiver, &sender);
     }
 
     bool IsMsgGoal(const NS::Obj::Message& msg) noexcept

@@ -36,7 +36,7 @@ namespace NS::Game::Level
         float offset01 = 1.0f;        //!< 横ずれ。u の大きさを 0〜1 に丸めた値
         float ratio = 1.0f;           //!< 丸める前の u の大きさ。1 を超える線は、線を進む自機の縁が届かない
         float along = 0.0f;           //!< 線の起点から相手の体の中心までの、線に沿った水平の距離 (m)。後ろは負
-        NS::Vector3 linePoint;  //!< 相手の体の中心に一番近い線の上の点を、中心の高さに置いた物
+        NS::Vector3 linePoint;        //!< 相手の体の中心に一番近い線の上の点を、中心の高さに置いた物
         //! 自機の玉が相手の表面に触れる点。線が届かない時は、線に一番近い表面の点
         NS::Vector3 surfacePoint;
         NS::Obj::HitSensorShape bodyShape = NS::Obj::HitSensorShape::Sphere; //!< 相手の体の形の種類
@@ -46,8 +46,8 @@ namespace NS::Game::Level
     //! @details 面は相手の物で、いつも自機が来る向きを向く。面の上の位置は、相手の体の中心から線までの左右と上下の
     //! ずれを、左右は「半幅 + 自機の半径」、上下は「半分の高さ + 自機の半径」で割った物。半幅と半分の高さは体の形から
     //! 出す (球は半径、カプセルは筒を線に直交する水平の軸と真上へ写した長さ + 半径、箱は 3 軸を写した長さの和)
-    //! 段は決まりの並びを上から見て、最初に当てはまった決まりの段と威力の倍率。どれにも当てはまらなければ外れと
-    //! 残りの威力の倍率。赤の欄の非数は 0、幅は 0〜1、位置は -1〜1 へ丸めて読む
+    //! 赤の内側は中心の段と赤の威力倍率、それ以外は外れと残りの威力倍率
+    //! 赤の欄の非数は 0、幅は 0〜1、位置は -1〜1 へ丸めて読む
     //! 線は origin を通り、origin の高さのまま direction の水平の向きへ伸びる直線
     //! @param[in] face 相手の赤の欄
     //! @param[in] body 相手の体のセンサーの世界の形
@@ -108,16 +108,18 @@ namespace NS::Game::Level
         float centerV = 0.0f;         //!< 中心の上下の位置。上が正
         float halfU = 1.0f;           //!< 左右の半分の幅
         float halfV = 1.0f;           //!< 上下の半分の幅
+        //! 丸の縁の分割数。既定の近似誤差は約半パーセント
+        int outlineSegments = 32;
     };
 
 #if !defined(NS_SHIPPING)
     //! @brief 相手の正面の面を世界に置いた時の位置と軸
     struct HitFaceFrame
     {
-        NS::Vector3 center;                                            //!< 面の中心。相手の正面に接する点
-        NS::Vector3 right;                                             //!< 面の左右の軸。自機から見て右
-        NS::Vector3 up;                                                //!< 面の上下の軸。真上
-        NS::Vector3 normal;                                            //!< 面の向き。自機の方
+        NS::Vector3 center;                                                  //!< 面の中心。相手の正面に接する点
+        NS::Vector3 right;                                                   //!< 面の左右の軸。自機から見て右
+        NS::Vector3 up;                                                      //!< 面の上下の軸。真上
+        NS::Vector3 normal;                                                  //!< 面の向き。自機の方
         float reachU = 0.0f;                                                 //!< u が 1 の所までの長さ (m)
         float reachV = 0.0f;                                                 //!< v が 1 の所までの長さ (m)
         NS::Obj::HitSensorShape bodyShape = NS::Obj::HitSensorShape::Sphere; //!< 相手の体の形の種類

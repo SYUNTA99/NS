@@ -276,7 +276,7 @@ namespace
             outGroundY = 0.0f;
             return true;
         };
-        NS::Game::Level::PlaceSlamArrowOnGround(flat, desc.groundLift, outShape);
+        NS::Game::Level::PlaceSlamArrowOnGround(flat, desc, outShape);
         EXPECT_TRUE(outShape.hasHead);
         std::vector<NS::Gfx::DrawItem> items;
         NS::Game::Level::AppendSlamArrowDrawItems(
@@ -308,6 +308,59 @@ TEST(SlamArrowTest, EveryPlateIsDrawnFromBothSides)
     {
         EXPECT_TRUE(item.twoSided);
     }
+}
+
+TEST(SlamArrowTest, InstanceTextureSpanChangesTheActualPlateWidth)
+{
+    NS::Game::Level::SlamArrowDesc desc;
+    NS::Game::Level::SlamArrowShape originalShape;
+    const std::vector<NS::Gfx::DrawItem> original = DrawGroundArrow(desc, 10, {0.0f, 20.0f, -10.0f}, originalShape);
+    ASSERT_FALSE(original.empty());
+    desc.bandTextureSpan *= 0.5f;
+    NS::Game::Level::SlamArrowShape changedShape;
+    const std::vector<NS::Gfx::DrawItem> changed = DrawGroundArrow(desc, 10, {0.0f, 20.0f, -10.0f}, changedShape);
+    ASSERT_FALSE(changed.empty());
+    EXPECT_FLOAT_EQ(ConstantsOf(changed.front()).world._11, ConstantsOf(original.front()).world._11 * 2.0f);
+    EXPECT_FLOAT_EQ(changedShape.tip, originalShape.tip);
+    desc.bandTextureSpan = 0.0f;
+    std::vector<NS::Gfx::DrawItem> invalid;
+    NS::Game::Level::AppendSlamArrowDrawItems(changedShape, desc, NS::Matrix::Identity, {}, {}, invalid);
+    EXPECT_TRUE(invalid.empty());
+}
+
+TEST(SlamArrowTest, InstanceGroundSamplingControlsProbesAndRejectsZeroSpacing)
+{
+    NS::Game::Level::SlamArrowShape shape;
+    shape.origin = {0.0f, 1.0f, 0.0f};
+    shape.direction = {0.0f, 0.0f, 1.0f};
+    shape.bandWidth = 1.0f;
+    shape.start = 0.0f;
+    shape.tip = 1.0f;
+    shape.headDepth = 0.2f;
+    NS::Game::Level::SlamArrowDesc desc;
+    desc.groundProbeSpacing = 0.5f;
+    desc.ballGroundSearchDepth = 3.0f;
+    int probes = 0;
+    float firstDepth = 0.0f;
+    const NS::Game::Level::SlamArrowGroundProbe probe = [&](const Vector3&, float depth, float& ground) {
+        if (probes == 0)
+        {
+            firstDepth = depth;
+        }
+        ++probes;
+        ground = 0.0f;
+        return true;
+    };
+    NS::Game::Level::PlaceSlamArrowOnGround(probe, desc, shape);
+    EXPECT_EQ(probes, 4);
+    EXPECT_FLOAT_EQ(firstDepth, 3.0f);
+    ASSERT_EQ(shape.band.size(), 1u);
+    EXPECT_FLOAT_EQ(shape.band.front().height, desc.groundLift);
+    desc.groundProbeSpacing = 0.0f;
+    NS::Game::Level::PlaceSlamArrowOnGround(probe, desc, shape);
+    EXPECT_TRUE(shape.band.empty());
+    EXPECT_FALSE(shape.hasHead);
+    EXPECT_EQ(probes, 4);
 }
 
 // 矢じりは溜めの始めから段の色で塗り、始まりのぼかしも掛けない。白っぽい薄い塗りだと市松の床に溶け、

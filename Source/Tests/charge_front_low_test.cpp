@@ -62,9 +62,8 @@ TEST(ChargeFrontLow, GatherRootFacesTheAimLineEveryFrame)
     }
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
 
-    const NS::Vector3 targets[] = {NS::Vector3{1.0f, 0.0f, 0.0f},
-                                         NS::Vector3{-1.0f, 0.0f, -1.0f},
-                                         NS::Vector3{0.0f, 0.0f, 1.0f}};
+    const NS::Vector3 targets[] = {
+        NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Vector3{-1.0f, 0.0f, -1.0f}, NS::Vector3{0.0f, 0.0f, 1.0f}};
     for (const NS::Vector3& target : targets)
     {
         camera->SetPose(NS::Vector3{}, target);
@@ -73,8 +72,7 @@ TEST(ChargeFrontLow, GatherRootFacesTheAimLineEveryFrame)
             player->Update(true);
             NS::Game::Level::AimLine aim{};
             ASSERT_TRUE(player->TryGetAimLine(aim));
-            const NS::Game::Player::EffectLayerRecord* gather =
-                LiveLayer(player->ChargeVisuals(), NS::Game::Player::ChargeEffects::k_Gather);
+            const NS::Game::Player::EffectLayerRecord* gather = LiveLayer(player->ChargeVisuals(), "charge.gather");
             ASSERT_NE(gather, nullptr);
             ASSERT_TRUE(gather->rotation.has_value());
             const NS::Quaternion expected = NS::Game::Player::ChargeEffects::YawToward(aim.direction);

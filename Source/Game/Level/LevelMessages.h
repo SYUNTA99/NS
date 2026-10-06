@@ -33,8 +33,22 @@ namespace NS::Game::Level
     class MsgGoal final : public NS::Obj::Message
     {
         NS_MESSAGE(MsgGoal)
+
+    public:
+        MsgGoal(float fadeOutSeconds, float fadeInSeconds) noexcept
+            : m_fadeOutSeconds(fadeOutSeconds), m_fadeInSeconds(fadeInSeconds)
+        {}
+        [[nodiscard]] float FadeOutSeconds() const noexcept { return m_fadeOutSeconds; }
+        [[nodiscard]] float FadeInSeconds() const noexcept { return m_fadeInSeconds; }
+
+    private:
+        float m_fadeOutSeconds;
+        float m_fadeInSeconds;
     };
-    bool SendMsgGoal(NS::Obj::HitSensor& receiver, NS::Obj::HitSensor& sender);
+    bool SendMsgGoal(NS::Obj::HitSensor& receiver,
+                     NS::Obj::HitSensor& sender,
+                     float fadeOutSeconds,
+                     float fadeInSeconds);
     [[nodiscard]] bool IsMsgGoal(const NS::Obj::Message& msg) noexcept;
 
     //! @brief コースを最初からやり直す知らせ。進行役が全ての配置物へ送る
@@ -77,14 +91,14 @@ namespace NS::Game::Level
     //! @brief 体当たりの相手の答え。MsgAskTackleTarget の受け手が書く
     struct TackleTargetAnswer
     {
-        float mass = 1.0f;                            //!< 重さ。押し飛ばしの距離と止めの長さに効く
-        float toughness = 0.0f;                       //!< 耐久。破壊を許した時だけ、威力がこれ以下なら壊れる
-        bool breakable = false;                       //!< 壊れる動きを持つか。偽なら破壊を許しても押し飛ばしへ回る
-        bool placed = true;                           //!< 置かれているか。飛んでいる相手は食い込ませない
+        float mass = 1.0f;                      //!< 重さ。押し飛ばしの距離と止めの長さに効く
+        float toughness = 0.0f;                 //!< 耐久。破壊を許した時だけ、威力がこれ以下なら壊れる
+        bool breakable = false;                 //!< 壊れる動きを持つか。偽なら破壊を許しても押し飛ばしへ回る
+        bool placed = true;                     //!< 置かれているか。飛んでいる相手は食い込ませない
         NS::Vector3 position{0.0f, 0.0f, 0.0f}; //!< 根の位置 (世界座標)
         NS::AABB bounds{};                      //!< 体の外接箱 (世界座標)
-        HitFace face{};                               //!< 面の赤の欄の写し。段と威力の倍率を JudgeHitFace で決める
-        NS::Obj::SensorVolume body{};                 //!< 体のセンサーの世界の形。面の大きさを出す
+        HitFace face{};                         //!< 面の赤の欄の写し。段と威力の倍率を JudgeHitFace で決める
+        NS::Obj::SensorVolume body{};           //!< 体のセンサーの世界の形。面の大きさを出す
     };
 
     //! @brief 体当たりを受けるかを問う知らせ。体当たりの裁定が、重なった物の体のセンサーへ送る
@@ -110,11 +124,11 @@ namespace NS::Game::Level
     struct TackleFreezeDesc
     {
         NS::Vector3 impactDir{1.0f, 0.0f, 0.0f}; //!< 相手の飛ぶ水平の向き。食い込みの向き
-        float pushInDistance = 0.0f;                   //!< 止めの頭で飛ぶ向きへ食い込ませる距離 (m)
-        float squashThickness = 1.0f;                  //!< 飛ぶ向きの厚みの倍率
-        float squashHeight = 1.0f;                     //!< 高さの倍率
-        bool squash = true;                            //!< 形を縮めるか。押し返している反発の時だけ縮める
-        int stopSteps = 0;                             //!< 止めるフレーム数
+        float pushInDistance = 0.0f;             //!< 止めの頭で飛ぶ向きへ食い込ませる距離 (m)
+        float squashThickness = 1.0f;            //!< 飛ぶ向きの厚みの倍率
+        float squashHeight = 1.0f;               //!< 高さの倍率
+        bool squash = true;                      //!< 形を縮めるか。押し返している反発の時だけ縮める
+        int stopSteps = 0;                       //!< 止めるフレーム数
     };
 
     //! @brief 体当たりの止めの頭を知らせる。受け手は置かれていれば食い込み、止めの間だけ止まり、形を縮める
@@ -136,12 +150,12 @@ namespace NS::Game::Level
     struct TackleShakeDesc
     {
         NS::Vector3 axis{1.0f, 0.0f, 0.0f}; //!< 揺らす世界の向き。画面の横を床に沿わせた長さ 1 の向き
-        float amplitude = 0.0f;                   //!< 最初の振れ幅 (m)
-        int length = 0;                           //!< 揺れのフレーム数
-        std::uint32_t seed = 0;                   //!< 振れ幅のばらつきの種
-        float firstSign = 1.0f;                   //!< 1 フレーム目の向き
-        int flipFrames = 1;                       //!< 左右を入れ替えるフレーム数
-        float ghostRatio = 0.0f;                  //!< 残像の離れの、振れ幅の包みに対する倍率。0 なら出さない
+        float amplitude = 0.0f;             //!< 最初の振れ幅 (m)
+        int length = 0;                     //!< 揺れのフレーム数
+        std::uint32_t seed = 0;             //!< 振れ幅のばらつきの種
+        float firstSign = 1.0f;             //!< 1 フレーム目の向き
+        int flipFrames = 1;                 //!< 左右を入れ替えるフレーム数
+        float ghostRatio = 0.0f;            //!< 残像の離れの、振れ幅の包みに対する倍率。0 なら出さない
     };
 
     //! @brief 止めの間の横揺れを知らせる。受け手は止めの間、知らせを受けたフレームを 1 フレーム目として揺れる
@@ -162,10 +176,11 @@ namespace NS::Game::Level
     //! @brief 衝撃の震え。受け手は長さの間、描く所の震えを毎フレーム MakeTremor で書き直す
     struct TackleTremorDesc
     {
-        NS::Vector3 contactOffset{}; //!< 衝突点の、受け手の根の位置からのずれ (m)。体と一緒に動く
-        float amplitudePixels = 0.0f;      //!< 振れ幅。高さ 720 画素の画面の上の画素数
-        int reachFrames = 0;               //!< 衝突点から体の一番遠い所へ届くまでのフレーム数
-        int length = 0;                    //!< 震えのフレーム数
+        NS::Vector3 contactOffset{};  //!< 衝突点の、受け手の根の位置からのずれ (m)。体と一緒に動く
+        float amplitudePixels = 0.0f; //!< 振れ幅。高さ 720 画素の画面の上の画素数
+        int reachFrames = 0;          //!< 衝突点から体の一番遠い所へ届くまでのフレーム数
+        int length = 0;               //!< 震えのフレーム数
+        float referenceHeight = 720.0f;
     };
 
     //! @brief 衝撃の震えを知らせる。受け手は知らせを受けたフレームを 0 フレーム目として震える

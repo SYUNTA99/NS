@@ -339,12 +339,12 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
         }
         return true;
     }
-    if (NS::Game::Level::IsMsgGoal(msg))
+    if (const NS::Game::Level::MsgGoal* goal = NS::Obj::MsgCast<NS::Game::Level::MsgGoal>(msg))
     {
         if (NS::Game::Level::CourseDirector* director =
                 NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(*this))
         {
-            director->NotifyGoal();
+            director->NotifyGoal(goal->FadeOutSeconds(), goal->FadeInSeconds());
         }
         return true;
     }
@@ -370,7 +370,7 @@ void Player::RestartFrom(const nlohmann::json& baseline) noexcept
 {
     // 出現位置はエディタで配置したプレイヤーの capsule 中心の world 位置そのもの
     // 凍結に既にある値なので写しは持たず、その都度読む。居なければ新規レベルで補う位置へ戻す
-    NS::Vector3 spawn = DefaultSpawnPosition(Collider());
+    NS::Vector3 spawn = DefaultSpawnPosition();
     const std::size_t index = NS::Obj::FindObjectIndexById(baseline, Id());
     if (index != NS::Obj::k_NoObjectIndex)
     {
@@ -630,20 +630,10 @@ Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept
     return nullptr;
 }
 
-namespace
+NS::Vector3 Player::DefaultSpawnPosition() const noexcept
 {
-    // 補う自機が立つと仮定する床の上面 (m)
-    // 感じてほしい体験: 新しいレベルを開いた瞬間、自機が床に立っている
-    // してほしい挙動: 補った自機の足元が仮定の床の少し上に出て、置いた瞬間に床と重ならない
-    // 用意した変数: k_DefaultFloorTop = 0.5 (エディタの立方体の床の上面)、k_SpawnClearance = 0.01 (床と重ならない余白)
-    // 実装: DefaultSpawnPosition が、この 2 つにカプセルの寸法 (Collider の欄) を足して中心の高さを出す
-    // TODO: 床の上面を仮定している。補う時に下向きに引いて置く
-    constexpr float k_DefaultFloorTop = 0.5f;
-    constexpr float k_SpawnClearance = 0.01f;
-} // namespace
-
-NS::Vector3 DefaultSpawnPosition(const NS::Obj::Collider& collider) noexcept
-{
-    return NS::Vector3{
-        0.0f, k_DefaultFloorTop + collider.StandingHalfHeight() + collider.CapsuleRadius() + k_SpawnClearance, 0.0f};
+    return NS::Vector3{0.0f,
+                       m_params->m_spawnFloorTop + Collider().StandingHalfHeight() + Collider().CapsuleRadius() +
+                           m_params->m_spawnClearance,
+                       0.0f};
 }

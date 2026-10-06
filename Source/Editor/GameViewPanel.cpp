@@ -2,6 +2,7 @@
 
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
+#include "Editor/TimelinePreview.h"
 #include "NSlib/Object/Scene/Scene.h"
 
 #if NS_EDITOR_ENABLED
@@ -60,9 +61,23 @@ namespace NS::Editor
 #endif
     }
 
-    std::optional<NS::Obj::SceneView> GameViewPanel::CollectView(LevelEditorController& editor) noexcept
+    std::optional<NS::Obj::SceneView> GameViewPanel::CollectView(LevelEditorController& editor, bool preview) noexcept
     {
+        if (preview)
+        {
+            return m_surface.CollectView(std::nullopt);
+        }
         return m_surface.CollectView(editor.GameViewPose());
+    }
+
+    bool GameViewPanel::RenderPreview(TimelinePreview& preview)
+    {
+        const std::optional<NS::Obj::SceneView> view = m_surface.CurrentView(std::nullopt);
+        if (!view.has_value())
+        {
+            return false;
+        }
+        return preview.RenderView(*view);
     }
 
     void GameViewPanel::UpdateMouseLatch() noexcept

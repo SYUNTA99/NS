@@ -1,5 +1,6 @@
 #include "Editor/EditorObjects.h"
 #include "Editor/HitPreview.h"
+#include "Editor/TimelinePreview.h"
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
@@ -333,4 +334,50 @@ TEST(EditorHitPreview, RecordsTheSinkShakeEachFrame)
     EXPECT_FLOAT_EQ(result.frames[sinkFrame - 1].sinkPixels, 0.0f);
     EXPECT_LT(result.frames[sinkFrame].sinkPixels, 0.0f);
     EXPECT_LT(result.frames[sinkFrame + 1].sinkPixels, result.frames[sinkFrame].sinkPixels);
+}
+
+TEST(EditorHitPreview, PlaybackEvaluatesTheSceneAtTheRecordedFrameAndCanRewind)
+{
+    const ScopedHitTimelineDirectory directory("EditorHitPreviewPlayback");
+    ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
+    PreviewAssets assets;
+    const nlohmann::json snapshot = MakePreviewSceneJson();
+    const NS::Editor::HitPreviewResult result =
+        NS::Editor::RunHitPreview(snapshot, MakeDesc(0.0f, 0.0f), assets.World());
+    ASSERT_TRUE(result.hit) << result.error;
+    NS::Editor::TimelinePreview playback;
+    playback.Reset(
+        [&snapshot, &result, &assets] { return NS::Editor::MakeHitPreviewScene(snapshot, result, assets.World()); },
+        {-result.detectionIndex, static_cast<int>(result.frames.size()) - 1 - result.detectionIndex});
+    const int indexes[] = {
+        0, result.detectionIndex, static_cast<int>(result.frames.size()) - 1, 0, result.detectionIndex};
+    for (const int index : indexes)
+    {
+        SCOPED_TRACE(index);
+        NS::Obj::Scene* scene = playback.Seek(index - result.detectionIndex);
+        ASSERT_NE(scene, nullptr);
+        Player* player = FindPlayer(scene->Objects());
+        ASSERT_NE(player, nullptr);
+        const NS::Editor::HitPreviewFrame& frame = result.frames[static_cast<std::size_t>(index)];
+        EXPECT_TRUE(player->Root().Position() == frame.playerPosition);
+        EXPECT_TRUE(player->Resolver().ShapeFactors() == frame.shape);
+        EXPECT_EQ(player->Resolver().IsHitStopping(), frame.hitStopping);
+        EXPECT_EQ(player->IsRebounding(), frame.rebounding);
+        EXPECT_FLOAT_EQ(scene->WorldSpeed(), frame.worldSpeed);
+        EXPECT_TRUE(scene->IsSimulationPaused());
+    }
+    EXPECT_EQ(snapshot, MakePreviewSceneJson());
+}
+
+TEST(EditorHitPreview, RecordsUntilTheLastEventEvenWhenTheReboundHasAlreadyEnded)
+{
+    const ScopedHitTimelineDirectory directory("EditorHitPreviewLateEvent");
+    HitTimeline timeline = MakePreviewTimeline();
+    timeline.events.push_back({CameraSinkEvent{}, 100, 60, HitDirection::Any});
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    PreviewAssets assets;
+    const NS::Editor::HitPreviewResult result =
+        NS::Editor::RunHitPreview(MakePreviewSceneJson(), MakeDesc(0.0f, 0.0f), assets.World());
+    ASSERT_TRUE(result.hit) << result.error;
+    EXPECT_GE(static_cast<int>(result.frames.size()) - result.detectionIndex, 160);
 }

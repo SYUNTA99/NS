@@ -27,8 +27,8 @@ namespace NS::Game::Player
         }
         ++m_step;
         const int step = m_step;
-        std::erase_if(m_records, [step](const EffectLayerRecord& record) {
-            return record.endStep.has_value() && step - record.endStep.value() > k_KeepEndedSteps;
+        std::erase_if(m_records, [step, this](const EffectLayerRecord& record) {
+            return record.endStep.has_value() && step - record.endStep.value() > m_keepEndedSteps;
         });
     }
 

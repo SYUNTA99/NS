@@ -58,6 +58,12 @@ namespace NS::Editor
         //! @return 可視だったフレームは {RT, pose}。不可視やサイズ不足なら nullopt
         [[nodiscard]] std::optional<NS::Obj::SceneView> CollectView(std::optional<NS::Obj::CameraPose> pose) noexcept;
 
+        //! @brief 貼り付け中の描画先をリサイズせず、pose とセットで返す
+        //! @details 画像の実描画前に使い、CollectView の前に使い終える
+        //! @return 可視かつ描画先が有効ならビュー、それ以外なら nullopt
+        [[nodiscard]] std::optional<NS::Obj::SceneView> CurrentView(
+            std::optional<NS::Obj::CameraPose> pose) const noexcept;
+
         //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
         void Release() noexcept;
 
@@ -69,9 +75,9 @@ namespace NS::Editor
 
     private:
         std::unique_ptr<NS::Gfx::RenderTarget> m_target;
-        NS::Size2D m_size{0, 0}; // content 領域。次フレームの描画先サイズ
-        float m_fixedAspect = 0.0f;    // 固定する縦横比。0 以下はパネルの形に追従
-        bool m_visible = false;        // このフレームにパネルが可視だったか
-        bool m_focused = false;        // このフレームにパネルへ焦点があったか
+        NS::Size2D m_size{0, 0};    // content 領域。次フレームの描画先サイズ
+        float m_fixedAspect = 0.0f; // 固定する縦横比。0 以下はパネルの形に追従
+        bool m_visible = false;     // このフレームにパネルが可視だったか
+        bool m_focused = false;     // このフレームにパネルへ焦点があったか
     };
 } // namespace NS::Editor

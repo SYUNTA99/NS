@@ -9,6 +9,7 @@
 #include "NSlib/Object/Components/OverlayRenderer.h"
 
 #include <functional>
+#include <string>
 #include <vector>
 
 class Player;
@@ -55,8 +56,8 @@ namespace NS::Game::Level
     //! 地面の矢印の形と色。距離は狙いの線の始まり (自機の位置) から線に沿って測る
     struct SlamArrowShape
     {
-        NS::Vector3 origin;         //!< 狙いの線の始まり。世界座標
-        NS::Vector3 direction;      //!< 狙いの水平の向き。正規化済みで y は 0
+        NS::Vector3 origin;               //!< 狙いの線の始まり。世界座標
+        NS::Vector3 direction;            //!< 狙いの水平の向き。正規化済みで y は 0
         float bandWidth = 0.0f;           //!< 帯の幅 (玉の通る幅)。単位は m
         float start = 0.0f;               //!< 帯の始まり (玉の縁) の距離。単位は m
         float tip = 0.0f;                 //!< このフレームの矢じりの先の距離。伸びている途中はその長さ。単位は m
@@ -64,7 +65,7 @@ namespace NS::Game::Level
         float headDepth = 0.0f;           //!< 矢じりの奥行き。単位は m
         float colorFront = 0.0f;          //!< 色の付いた部分の先の距離。単位は m
         bool fullyColored = false;        //!< 溜めきりで、矢じりの先まで全部に色を付ける場合 true
-        NS::Vector3 stageColor;     //!< 色の付いた部分の色。RGB で各 0〜1
+        NS::Vector3 stageColor;           //!< 色の付いた部分の色。RGB で各 0〜1
         std::vector<SlamArrowPiece> band; //!< 帯を貼る板。自機の側から並ぶ。床の無い所は入れない
         bool hasHead = false;             //!< 矢じりの下に床がある場合 true
         SlamArrowPiece head{};            //!< 矢じりを貼る板。hasHead が偽の間は読まない
@@ -92,29 +93,29 @@ namespace NS::Game::Level
 
     //! @brief 組んだ矢印の真下の床を探し、帯の板と矢じりの板を置く
     //! @details 玉の下の床 (線の始まりの真下) を先に探す。見つからなければ何も置かない。
-    //! 帯は玉の縁から先までを 0.1 m の区切りに分け、区切りの真ん中の真下を、玉の下の床より玉の半径だけ深い所まで探す。
-    //! 床のある区切りを床の高さ + groundLift に置き、同じ高さで続く区切りは 1 枚につなぐ。床の無い区切りは置かない。
+    //! 帯を指定した刻みで区切り、玉の下の床まで探す
+    //! 床から指定高さへ浮かせ、同じ高さの区切りをつなぐ
     //! 矢じりは奥行きの真ん中の真下を同じ深さまで探し、床があれば置く
     //! @param[in] probe 床を探す関数
-    //! @param[in] groundLift 床から浮かせる高さ。単位は m
+    //! @param[in] desc 床を探す刻みと距離と浮かせる高さ
     //! @param[in,out] shape BuildSlamArrow が組んだ形。帯の板と矢じりの板を置き直す
-    void PlaceSlamArrowOnGround(const SlamArrowGroundProbe& probe, float groundLift, SlamArrowShape& shape);
+    void PlaceSlamArrowOnGround(const SlamArrowGroundProbe& probe, const SlamArrowDesc& desc, SlamArrowShape& shape);
 
     //! @brief 組んだ矢印を、放った玉の一番下の点が通る道筋に置く
-    //! @details 帯は玉の縁から先までを 0.1 m の区切りに分け、区切りの両端の高さを結んだ傾いた板にする。
-    //! 端の高さは、玉の中心 (ballCenterHeight + LaunchHeightAt) から玉の半径を引いた高さ + groundLift。
+    //! 指定した刻みで区切り、両端の高さを傾いた板で結ぶ
+    //! 端の高さは玉の底に指定した浮かせる高さを足す
     //! 玉の中心の高さと放った高さの高い方から、その一番下の点までの間に床があれば、玉は床に着いて転がるので床の高さに置く。
     //! 床を見るのは玉の中心が止まる所 (伸びきった先 − 玉の半径) までで、その先は止まる所の真下の床を見る。
     //! 矢じりも奥行きの両端の高さで同じく置く
     //! @param[in] probe 床を探す関数。空なら床を見ない
     //! @param[in] path 放った玉の道筋
     //! @param[in] ballCenterHeight 放つ時の玉の中心の高さ (世界の y)
-    //! @param[in] groundLift 玉の一番下の点から浮かせる高さ。単位は m
+    //! @param[in] desc 道筋の刻みと浮かせる高さ
     //! @param[in,out] shape BuildSlamArrow が組んだ形。帯の板と矢じりの板を置き直す
     void PlaceSlamArrowOnPath(const SlamArrowGroundProbe& probe,
                               const NS::Game::Player::LaunchPath& path,
                               float ballCenterHeight,
-                              float groundLift,
+                              const SlamArrowDesc& desc,
                               SlamArrowShape& shape);
 
     //! 矢印の板 1 枚ぶんの、描く単位へ写す値。Shaders/ground_arrow.ps.hlsl の cbuffer と同じ並び
@@ -148,7 +149,7 @@ namespace NS::Game::Level
     //! 帯は始まりでぼかし、色の付いた部分の先 (shape.colorFront) で色を切る。矢じりは溜めの始めから段の色で全部を塗り、
     //! ぼかさない。どの板も裏からも描く。カメラが矢じりの後ろにあり、矢じりの手前の端を見る角度が
     //! desc.headMinViewDegrees を下回る時は、矢じりの板を手前の端を軸に長さを変えずにカメラの方へ起こし、
-    //! 手前の端をその角度で見せる。起こすのは 80 度まで。資材が空でも積む。空のまま描かないかは呼び手が見る
+    //! 起こす角度は指定した上限まで。空の資材でも積む
     //! @param[in] shape PlaceSlamArrowOnGround か PlaceSlamArrowOnPath で置いた形
     //! @param[in] desc 色と不透明度を決める値
     //! @param[in] viewProjection 描く視点のビュー × 射影
@@ -163,17 +164,9 @@ namespace NS::Game::Level
                                   std::vector<NS::Gfx::DrawItem>& out);
 
     //! @brief 溜めている間、狙いの線の向きへ放った玉の道筋に矢印を描く Component
-    //! @details 溜めている間 (Player::ChargeJudge の IsCharging) に、同じ配置物の Player が控えた狙いの線と
-    //! 狙う相手と溜め量から BuildSlamArrow で形を組む。狙う相手はいなくても組む。
-    //! 接地していて縦の速さが 0 なら、今までどおり所属シーンの当たりへの光線で PlaceSlamArrowOnGround が床に貼る。
-    //! 届く相手への弧と空中は PlaceSlamArrowOnPath が LaunchPitch と同じ重力の道筋に置く。
-    //! 形は OnUpdate で組んで控え、描く時は板を積むだけ。
-    //! 狙いの線が無いフレームと放したフレームは何も組まない。
-    //! 板は組み込みの上向きの板 shadowQuad に、帯と矢じりのマテリアル (Shaders/ground_arrow.ps.hlsl) を貼った半透明。
-    //! 矢じりはもう 1 枚、手前の物に隠れた画素だけへ薄く描き、相手や自機の玉の後ろに入った先も見せる。
-    //! 世界を描いてにじませた後の重ね描きで、世界の奥行きを読んで描く。溜めの光とそのにじみが矢じりを白く覆わない。
-    //! 矢印の板は 1 以下の色で書くので、にじみの前に描いてもにじまない
-    //! 依存: Player, SlamAim (AimLine), NS::Obj::Collider, NS::Obj::Scene, NS::Obj::IUseCollision
+    //! @details 溜めている間だけ OnUpdate で形を組み、描く時は板を積む。狙う相手はいなくても組む
+    //! 接地して縦の速さが 0 なら床へ光線で貼り、それ以外は LaunchPitch と同じ重力の道筋に置く
+    //! 矢じりは手前の物に隠れた画素へも薄く描く。世界のにじみの後の重ね描きで、奥行きを読む
     class SlamArrow : public NS::Obj::OverlayRenderer
     {
     public:
@@ -230,9 +223,22 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_desc.plainBandEdgeAlpha, "色の無い帯の明るい縁の不透明度")
         NS_REFLECT_FIELD(m_desc.plainBandFillAlpha, "色の無い帯の塗りの不透明度")
         NS_REFLECT_FIELD(m_desc.occludedHeadAlpha, "隠れた矢じりの不透明度")
+        NS_REFLECT_FIELD(m_desc.groundProbeSpacing, "床探索の刻み")
+        NS_REFLECT_FIELD(m_desc.ballGroundSearchDepth, "床探索の深さ")
+        NS_REFLECT_FIELD(m_desc.sameHeightTolerance, "同じ床高さの誤差")
+        NS_REFLECT_FIELD(m_desc.maxBandPieces, "帯の分割上限")
+        NS_REFLECT_FIELD(m_desc.bandTextureSpan, "帯の画像内の幅比")
+        NS_REFLECT_FIELD(m_desc.headTextureSpan, "矢じりの画像内の幅比")
+        NS_REFLECT_FIELD(m_desc.maxHeadTiltDegrees, "矢じりを起こす角度の上限")
+        NS_REFLECT_FIELD(m_meshAsset, "板の資産")
+        NS_REFLECT_FIELD(m_bandMaterialAsset, "帯の材質の資産")
+        NS_REFLECT_FIELD(m_headMaterialAsset, "矢じりの材質の資産")
         NS_REFLECT_END()
 
     private:
+        std::string m_meshAsset = "shadowQuad";
+        std::string m_bandMaterialAsset = "Assets/Materials/ground_arrow_band.mat";
+        std::string m_headMaterialAsset = "Assets/Materials/ground_arrow_head.mat";
         SlamArrowDesc m_desc{};   // 矢印の見た目の調整値
         SlamArrowShape m_shown{}; // 控えた矢印。m_hasShown が偽の間は読まない
         bool m_hasShown = false;

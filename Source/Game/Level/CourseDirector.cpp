@@ -87,13 +87,13 @@ namespace NS::Game::Level
         // 世界は止めず操作だけ止める。暗転の間も重力とカメラは動いたまま
         SendInputLock(true);
 
-        m_fade->BeginOut(k_FadeOutSeconds);
+        m_fade->BeginOut(m_fadeOutSeconds);
         co_await NS::WaitUntil{[this] { return m_fade->IsBlack(); }};
 
         // 全黒の裏でやり直すので、出現位置への瞬間移動が黒に隠れる
         RestartCourse();
 
-        m_fade->BeginIn(k_FadeInSeconds);
+        m_fade->BeginIn(m_fadeInSeconds);
         co_await NS::WaitUntil{[this] { return !m_fade->IsFading(); }};
 
         SendInputLock(false);

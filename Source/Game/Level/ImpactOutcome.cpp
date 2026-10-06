@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace NS::Game::Level
 {
@@ -55,10 +56,7 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    NS::Vector3 MissSurfaceNormal(float u,
-                                        float v,
-                                        float sharpness,
-                                        const NS::Vector3& slamDirection) noexcept
+    NS::Vector3 MissSurfaceNormal(float u, float v, float sharpness, const NS::Vector3& slamDirection) noexcept
     {
         NS::Vector3 forward{};
         if (!NS::TryNormalizeHorizontal(slamDirection, forward))
@@ -123,8 +121,8 @@ namespace NS::Game::Level
         }
         const float left = 1.0f - static_cast<float>(frame) / static_cast<float>(length);
         // 振れ幅だけをばらつかせ、左右の入れ替わりは乱さない。乱すと止まって見えるフレームができる
-        constexpr float k_HashToUnit = 1.0f / 4294967295.0f;
-        const float spread = 0.7f + 0.3f * static_cast<float>(NS::NoiseHash(frame, seed)) * k_HashToUnit;
+        const float spread = 0.7f + 0.3f * static_cast<float>(NS::NoiseHash(frame, seed)) *
+                                        (1.0f / static_cast<float>(std::numeric_limits<std::uint32_t>::max()));
         float sign = 1.0f;
         if (firstSign < 0.0f)
         {

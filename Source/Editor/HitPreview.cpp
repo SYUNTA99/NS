@@ -111,6 +111,7 @@ namespace NS::Editor
             }
             bool sawRebound = false;
             int afterRebound = -1;
+            int lastEventClock = 0;
             for (int step = 0; step < result.desc.maxFrames; ++step)
             {
                 // ゲームでは書かれなかったフレームの振動を Input::Update が 0 に戻す。中立のパッドは Update
@@ -145,6 +146,14 @@ namespace NS::Editor
                 {
                     result.detectionIndex = step;
                     result.impact = player->Resolver().LastImpact();
+                    if (const NS::Game::Level::HitTimeline* timeline =
+                            NS::Game::Level::HitTimelineLibrary::Get().FindForTier(result.impact.tier))
+                    {
+                        for (const NS::Game::Level::HitEvent& event : timeline->events)
+                        {
+                            lastEventClock = std::max(lastEventClock, event.start + std::max(event.length, 1) - 1);
+                        }
+                    }
                 }
                 if (result.frames.back().rebounding)
                 {
@@ -156,7 +165,8 @@ namespace NS::Editor
                 }
                 if (afterRebound >= 0)
                 {
-                    if (afterRebound >= result.desc.framesAfterRebound)
+                    if (afterRebound >= result.desc.framesAfterRebound &&
+                        step - result.detectionIndex >= lastEventClock)
                     {
                         break;
                     }
@@ -313,6 +323,19 @@ namespace NS::Editor
             }
         }
         return best;
+    }
+
+    std::unique_ptr<NS::Obj::Scene> MakeHitPreviewScene(const nlohmann::json& snapshot,
+                                                        const HitPreviewResult& result,
+                                                        const HitPreviewWorld& world)
+    {
+        if (!result.hit)
+        {
+            return nullptr;
+        }
+        const NS::OS::ScopedNeutralInput neutral;
+        Player* player = nullptr;
+        return StartRun(snapshot, result, world, player);
     }
 
     std::string HitPreviewHitLine(const HitPreviewResult& result)

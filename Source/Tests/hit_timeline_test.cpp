@@ -73,6 +73,12 @@ namespace
             {lines, 1, 12, NS::Game::Level::HitDirection::Any},
             {wave, 1, 18, NS::Game::Level::HitDirection::Any},
             {ring, 2, 10, NS::Game::Level::HitDirection::Any},
+            {NS::Game::Level::CameraTraumaEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
+            {NS::Game::Level::GradualReleaseEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
+            {NS::Game::Level::ImpactTremorEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
+            {NS::Game::Level::CameraSinkEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
+            {NS::Game::Level::OthersStopEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
+            {NS::Game::Level::BodyShakeEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
         };
         return timeline;
     }
@@ -96,6 +102,7 @@ TEST(HitTimeline, ValueTypeFieldsRoundTripThroughJson)
 TEST(HitTimeline, EveryKindRoundTripsThroughTheFileForm)
 {
     const HitTimeline written = MakeEveryKindTimeline();
+    ASSERT_EQ(written.events.size(), std::variant_size_v<NS::Game::Level::HitEventValue>);
     const nlohmann::json doc = NS::Game::Level::HitTimelineToJson(written);
     EXPECT_EQ(doc["version"].get<int>(), 1);
     ASSERT_EQ(doc["events"].size(), written.events.size());

@@ -207,7 +207,7 @@ namespace NS::Editor
                 return false;
             }
             NS::Obj::SceneJsonObjects(scene).push_back(
-                MakePlayerObject(DefaultSpawnPosition(player->Collider()), NS::Quaternion{}));
+                MakePlayerObject(player->DefaultSpawnPosition(), NS::Quaternion{}));
             created = true;
         }
 

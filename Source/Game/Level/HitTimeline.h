@@ -34,19 +34,19 @@ namespace NS::Game::Level
     //! @brief 自機の止め。始まりから長さの間、自機の状態と身体を止める
     struct HitStopEvent
     {
-        static constexpr std::string_view k_Name = "HitStop";     //!< ファイルに書く種類の名前
-        static constexpr std::string_view k_Label = "自機の止め"; //!< パネルに出す名前
+        std::string_view typeName = "HitStop"; //!< ファイルに書く種類の名前
+        std::string_view label = "自機の止め"; //!< パネルに出す名前
         //! 触れる前 (マイナスのフレーム) に置けるか。当たりの結果 (相手・反動・威力) を読む種類は置けない
-        static constexpr bool k_BeforeContact = false;
+        bool beforeContact = false;
     };
 
     //! @brief 自機の描く形の倍率。始まりからのフレーム数を横軸にした曲線 2 本で、縮み・潰れ・伸びを 1 本の流れで持つ
     //! @details 突進の向きの倍率は、当たりの水平の向きの軸成分の 2 乗で x と z へ混ぜる。貫通の当たりでは起こさない
     struct ShapeEvent
     {
-        static constexpr std::string_view k_Name = "Shape";
-        static constexpr std::string_view k_Label = "自機の形";
-        static constexpr bool k_BeforeContact = true; //!< 触れる前の縮みを置く
+        std::string_view typeName = "Shape";
+        std::string_view label = "自機の形";
+        bool beforeContact = true; //!< 触れる前の縮みを置く
 
         NS::Obj::Curve along{};  //!< 突進の向きの倍率。元の形が 1
         NS::Obj::Curve height{}; //!< 高さの倍率。元の形が 1
@@ -63,9 +63,9 @@ namespace NS::Game::Level
     //! @brief 相手の止め。置かれていた相手を食い込ませ、長さの間だけ止めて形を縮める
     struct TargetFreezeEvent
     {
-        static constexpr std::string_view k_Name = "TargetFreeze";
-        static constexpr std::string_view k_Label = "相手の止め";
-        static constexpr bool k_BeforeContact = false;
+        std::string_view typeName = "TargetFreeze";
+        std::string_view label = "相手の止め";
+        bool beforeContact = false;
 
         float pushInDistance = 0.06f; //!< 止めの頭で飛ぶ向きへ食い込ませる距離 (m)
         float squashThickness = 0.7f; //!< 相手の飛ぶ向きの厚みの倍率
@@ -81,27 +81,27 @@ namespace NS::Game::Level
     //! @brief 相手を飛ばす (貫通の当たりでは壊させる)。始まりのフレームに 1 回だけ起きる
     struct TargetLaunchEvent
     {
-        static constexpr std::string_view k_Name = "TargetLaunch";
-        static constexpr std::string_view k_Label = "相手を飛ばす";
-        static constexpr bool k_BeforeContact = false;
+        std::string_view typeName = "TargetLaunch";
+        std::string_view label = "相手を飛ばす";
+        bool beforeContact = false;
     };
 
     //! @brief 自機の反動を始める (貫通の当たりでは突き抜ける速度を書く)。始まりのフレームに 1 回だけ起きる
     //! @details 自機は止めの始まりからこの事象まで止まったまま。この事象が無いタイムラインは止めの終わりで動き出す
     struct ReboundEvent
     {
-        static constexpr std::string_view k_Name = "Rebound";
-        static constexpr std::string_view k_Label = "反動を始める";
-        static constexpr bool k_BeforeContact = false;
+        std::string_view typeName = "Rebound";
+        std::string_view label = "反動を始める";
+        bool beforeContact = false;
     };
 
     //! @brief カメラの揺れ。長さが揺れのフレーム数
     //! @details 最初の振れの大きさは 強さ × 威力 × 質量の効き で、横と縦の重みの向きへ分ける
     struct CameraShakeEvent
     {
-        static constexpr std::string_view k_Name = "CameraShake";
-        static constexpr std::string_view k_Label = "カメラの揺れ";
-        static constexpr bool k_BeforeContact = false; //!< 振れは威力と質量で決まる
+        std::string_view typeName = "CameraShake";
+        std::string_view label = "カメラの揺れ";
+        bool beforeContact = false; //!< 振れは威力と質量で決まる
 
         float strength = 0.06f;    //!< 威力 1・質量の効き 1 の最初の振れの大きさ (m)
         float sideWeight = 0.0f;   //!< 振れの向きの横の重み
@@ -122,9 +122,9 @@ namespace NS::Game::Level
     //! 続けて当てると前のトラウマに足される
     struct CameraTraumaEvent
     {
-        static constexpr std::string_view k_Name = "CameraTrauma";
-        static constexpr std::string_view k_Label = "トラウマの揺れ";
-        static constexpr bool k_BeforeContact = false; //!< 量は威力、一撃の向きは面の上の位置で決まる
+        std::string_view typeName = "CameraTrauma";
+        std::string_view label = "トラウマの揺れ";
+        bool beforeContact = false; //!< 量は威力、一撃の向きは面の上の位置で決まる
 
         float trauma = 0.9f;         //!< 威力 1 で足すトラウマ 0〜1
         float yawDegrees = 3.0f;     //!< トラウマ 1 の横の首振りの最大 (度)
@@ -152,9 +152,9 @@ namespace NS::Game::Level
     //! @brief カメラの寄りと傾き。長さは保つフレーム数と戻すフレーム数の和
     struct ZoomRollEvent
     {
-        static constexpr std::string_view k_Name = "ZoomRoll";
-        static constexpr std::string_view k_Label = "寄りと傾き";
-        static constexpr bool k_BeforeContact = false; //!< 傾きの向きは相手の飛ぶ向きで決まる
+        std::string_view typeName = "ZoomRoll";
+        std::string_view label = "寄りと傾き";
+        bool beforeContact = false; //!< 傾きの向きは相手の飛ぶ向きで決まる
 
         float zoom = 1.15f;       //!< 寄りの倍率。1 は寄らない
         float rollDegrees = 3.0f; //!< 傾き (度)。正は画面の上端を、相手の飛ぶ向きがカメラの右なら右へ倒す
@@ -170,9 +170,9 @@ namespace NS::Game::Level
     //! @brief パッドの振動。始まりからのフレーム数を横軸にした、左右のモーターの速さの曲線 2 本。長さの間だけ書く
     struct PadVibrationEvent
     {
-        static constexpr std::string_view k_Name = "PadVibration";
-        static constexpr std::string_view k_Label = "パッドの振動";
-        static constexpr bool k_BeforeContact = false;
+        std::string_view typeName = "PadVibration";
+        std::string_view label = "パッドの振動";
+        bool beforeContact = false;
 
         NS::Obj::Curve left{};  //!< 左のモーターの速さ 0〜1
         NS::Obj::Curve right{}; //!< 右のモーターの速さ 0〜1
@@ -186,9 +186,9 @@ namespace NS::Game::Level
     //! @brief 画面の白い光。長さの間に始めの濃さから直線で薄れる
     struct FlashEvent
     {
-        static constexpr std::string_view k_Name = "Flash";
-        static constexpr std::string_view k_Label = "白い光";
-        static constexpr bool k_BeforeContact = false;
+        std::string_view typeName = "Flash";
+        std::string_view label = "白い光";
+        bool beforeContact = false;
 
         float alpha = 0.5f; //!< 始めの濃さ 0〜1
 
@@ -200,25 +200,25 @@ namespace NS::Game::Level
     //! @brief 当たりのエフェクトを出す。始まりのフレームに 1 回だけ起きる
     struct HitEffectEvent
     {
-        static constexpr std::string_view k_Name = "HitEffect";
-        static constexpr std::string_view k_Label = "当たりのエフェクト";
-        static constexpr bool k_BeforeContact = false; //!< 絵は当たりの記録から置く
+        std::string_view typeName = "HitEffect";
+        std::string_view label = "当たりのエフェクト";
+        bool beforeContact = false; //!< 絵は当たりの記録から置く
     };
 
     //! @brief 相手の飛び出しのエフェクトを出す。始まりのフレームに 1 回だけ起きる
     struct FlightEffectEvent
     {
-        static constexpr std::string_view k_Name = "FlightEffect";
-        static constexpr std::string_view k_Label = "飛び出しのエフェクト";
-        static constexpr bool k_BeforeContact = false;
+        std::string_view typeName = "FlightEffect";
+        std::string_view label = "飛び出しのエフェクト";
+        bool beforeContact = false;
     };
 
     //! @brief 段階的な明け。始まりのフレームに世界を遅くし、実時間で普段の速さへ戻す。始まりのフレームに 1 回だけ起きる
     struct GradualReleaseEvent
     {
-        static constexpr std::string_view k_Name = "GradualRelease";
-        static constexpr std::string_view k_Label = "段階的な明け";
-        static constexpr bool k_BeforeContact = false;
+        std::string_view typeName = "GradualRelease";
+        std::string_view label = "段階的な明け";
+        bool beforeContact = false;
 
         float startSpeed = 0.2f;    //!< 始まりの世界の速さ 0〜1
         float returnSeconds = 0.3f; //!< 普段の速さへ戻るまでの実時間 (秒)
@@ -240,9 +240,9 @@ namespace NS::Game::Level
     //! 画素は高さ 1080 の画面の画素で、射影の後の画面をずらすのでカメラの位置と向きは変えない
     struct CameraSinkEvent
     {
-        static constexpr std::string_view k_Name = "CameraSink";
-        static constexpr std::string_view k_Label = "沈む揺れ";
-        static constexpr bool k_BeforeContact = false; //!< 深さは威力で決まる
+        std::string_view typeName = "CameraSink";
+        std::string_view label = "沈む揺れ";
+        bool beforeContact = false; //!< 深さは威力で決まる
 
         float maxPixels = 9.0f;      //!< 底の深さの頭打ち (画素)
         float powerBase = 1.0f;      //!< 頭打ちへ近づく速さを決める威力の基準。威力がこの値で頭打ちの約 63%
@@ -270,9 +270,9 @@ namespace NS::Game::Level
     //! 真ん中の触れる前に置き、世界が止まった中で自機だけが縮みながら突っ込む対比で当たりを予感させる
     struct OthersStopEvent
     {
-        static constexpr std::string_view k_Name = "OthersStop";
-        static constexpr std::string_view k_Label = "自機以外の止め";
-        static constexpr bool k_BeforeContact = true; //!< 予測した当たりの前に置く
+        std::string_view typeName = "OthersStop";
+        std::string_view label = "自機以外の止め";
+        bool beforeContact = true; //!< 予測した当たりの前に置く
     };
 
     //! @brief 止めの間の横揺れ。自機と相手を画面の横 (床に沿う向き) へ逆向きに、体ごと揺らす
@@ -282,9 +282,9 @@ namespace NS::Game::Level
     //! 割でばらつかせる。揺らすのは描く形だけで、当たりは動かさない
     struct BodyShakeEvent
     {
-        static constexpr std::string_view k_Name = "BodyShake";
-        static constexpr std::string_view k_Label = "横揺れ";
-        static constexpr bool k_BeforeContact = false;
+        std::string_view typeName = "BodyShake";
+        std::string_view label = "横揺れ";
+        bool beforeContact = false;
 
         //! 相手の最初の振れ幅。高さ 720
         //! 画素の画面の上の画素数で持ち、始まりのフレームにカメラとの距離から世界の長さへ直す
@@ -311,18 +311,20 @@ namespace NS::Game::Level
     //! 揺らすのは描く形だけで、当たりと根の位置は動かさない
     struct ImpactTremorEvent
     {
-        static constexpr std::string_view k_Name = "ImpactTremor";
-        static constexpr std::string_view k_Label = "衝撃の震え";
-        static constexpr bool k_BeforeContact = false;
+        std::string_view typeName = "ImpactTremor";
+        std::string_view label = "衝撃の震え";
+        bool beforeContact = false;
 
         //! 振れ幅。高さ 720 画素の画面の上の画素数で持ち、毎フレームその物とカメラの距離から世界の長さへ直す
         float amplitudePixels = 3.0f;
         //! 衝突点から体の一番遠い所へ届くまでのフレーム数。震えのフレーム数の半分を超える分は使わない
         int reachFrames = 6;
 
+        float referenceHeight = 720.0f;
         NS_REFLECT_BEGIN(ImpactTremorEvent, void)
         NS_REFLECT_FIELD(amplitudePixels, "振れ幅の画素")
         NS_REFLECT_FIELD(reachFrames, "裏まで届くフレーム数")
+        NS_REFLECT_FIELD(referenceHeight, "画素寸法の基準の高さ")
         NS_REFLECT_END_VALUE()
     };
 
@@ -331,9 +333,9 @@ namespace NS::Game::Level
     //! 床は斜めに大きく見えるので、二人の足元から広がる輪で当たりの力が周りへ伝わった事を見せる
     struct GroundWaveEvent
     {
-        static constexpr std::string_view k_Name = "GroundWave";
-        static constexpr std::string_view k_Label = "床の波";
-        static constexpr bool k_BeforeContact = false; //!< 中心は触れた点で決まる
+        std::string_view typeName = "GroundWave";
+        std::string_view label = "床の波";
+        bool beforeContact = false; //!< 中心は触れた点で決まる
 
         NS::Obj::Curve radius{};   //!< 輪の半径 (m)。点が無ければ 0
         NS::Obj::Curve strength{}; //!< 輪の強さ。面の倒れと頂の光の量。点が無ければ 0 で出さない
@@ -349,9 +351,9 @@ namespace NS::Game::Level
     //! 対する割合。真後ろのカメラからも、当たった所から空気が押し出された事を画面の歪みで見せる
     struct DistortionRingEvent
     {
-        static constexpr std::string_view k_Name = "DistortionRing";
-        static constexpr std::string_view k_Label = "歪みの輪";
-        static constexpr bool k_BeforeContact = false; //!< 中心は触れた点で決まる
+        std::string_view typeName = "DistortionRing";
+        std::string_view label = "歪みの輪";
+        bool beforeContact = false; //!< 中心は触れた点で決まる
 
         NS::Obj::Curve radius{}; //!< 輪の半径。画面の高さに対する割合。点が無ければ 0
         NS::Obj::Curve push{};   //!< 輪の真ん中で絵を押し出す長さ。画面の高さに対する割合。点が無ければ 0 で歪めない
@@ -370,9 +372,9 @@ namespace NS::Game::Level
     //! 二人の形。真後ろのカメラでは体の横揺れが小さく見えるので、揺れている事を画面の線で読ませる
     struct ShakeLinesEvent
     {
-        static constexpr std::string_view k_Name = "ShakeLines";
-        static constexpr std::string_view k_Label = "震えの線";
-        static constexpr bool k_BeforeContact = false; //!< 挟む相手は当たりで決まる
+        std::string_view typeName = "ShakeLines";
+        std::string_view label = "震えの線";
+        bool beforeContact = false; //!< 挟む相手は当たりで決まる
 
         float lengthPixels = 80.0f; //!< 内側の線の長さ。高さ 720 画素の画面の上の画素数
         float widthPixels = 7.0f;   //!< 線の太さ。画素の数え方は lengthPixels と同じ
@@ -391,9 +393,9 @@ namespace NS::Game::Level
     //! @details 長さが描くフレーム数。向きと地平線は変えない。外れで、止まるはずの勢いが止まらず空振りした事を見せる
     struct CameraLurchEvent
     {
-        static constexpr std::string_view k_Name = "CameraLurch";
-        static constexpr std::string_view k_Label = "つんのめり";
-        static constexpr bool k_BeforeContact = false; //!< 突進の向きは当たりの記録から読む
+        std::string_view typeName = "CameraLurch";
+        std::string_view label = "つんのめり";
+        bool beforeContact = false; //!< 突進の向きは当たりの記録から読む
 
         NS::Obj::Curve distance{}; //!< 始まりからのフレーム数を横軸にした、ずらす距離 (m)。負は手前へ
 
@@ -407,9 +409,9 @@ namespace NS::Game::Level
     //! 使わない。写した向きがほぼ無い (反動が真っすぐ奥か手前) 時は揺らさない。向きと地平線は変えない
     struct CameraReboundSwayEvent
     {
-        static constexpr std::string_view k_Name = "CameraReboundSway";
-        static constexpr std::string_view k_Label = "反動の揺れ";
-        static constexpr bool k_BeforeContact = false; //!< 反動の向きは当たりで決まる
+        std::string_view typeName = "CameraReboundSway";
+        std::string_view label = "反動の揺れ";
+        bool beforeContact = false; //!< 反動の向きは当たりで決まる
 
         NS::Obj::Curve distance{}; //!< 始まりからのフレーム数を横軸にした、ずらす距離 (m)。負は反動と逆の向き
 
@@ -454,6 +456,7 @@ namespace NS::Game::Level
     //! @brief 当たり方 1 つの事象の並び。同じフレームに始まる事象は並びの順に起きる
     struct HitTimeline
     {
+        int version = 1;
         std::vector<HitEvent> events; //!< 事象の並び
     };
 
@@ -463,7 +466,6 @@ namespace NS::Game::Level
     //! value の種類のパネルに出す名前
     [[nodiscard]] std::string_view HitEventLabel(const HitEventValue& value) noexcept;
 
-    //! value の種類を触れる前 (マイナスのフレーム) に置ける場合 true。種類の k_BeforeContact
     [[nodiscard]] bool CanStartBeforeContact(const HitEventValue& value) noexcept;
 
     //! @brief 種類の名前から、その種類の既定の値を作る
@@ -547,6 +549,7 @@ namespace NS::Game::Level
         HitTimelineLibrary() = default;
         void EnsureLoaded();
 
+        std::size_t m_maxFileBytes = 1024 * 1024;
         std::string m_directory;                                     // 空なら既定のディレクトリ
         std::map<std::string, HitTimeline, std::less<>> m_timelines; // 名前からタイムライン
         std::set<int> m_reportedTiers;                               // 引けないとエラーを出した段の番号

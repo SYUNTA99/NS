@@ -14,6 +14,8 @@ namespace NS::Game::Player
         PlayerGravity gravity{};      //!< 重力の強さを選ぶ欄の写し
         float dt = 0.0f;              //!< 1 フレームの秒
         bool grounded = false;        //!< 接地して放つか。真なら道筋は放った高さより下へ行かない
+        //! 道筋を予測するフレーム数の上限
+        int maxFrames = 600;
     };
 
     //! @brief 放った玉の中心が水平に distance 進んだ所での、放った高さからの高さを返す
@@ -36,6 +38,12 @@ namespace NS::Game::Player
         float maxAngleDegrees = 40.0f; //!< 放つ角度の上限 (度)。上向きも下向きもこの角度で切る
         bool grounded = false;         //!< 接地しているか。真なら下へ向けない
         float dt = 0.0f;               //!< 1 フレームの秒
+        //! 着きたい高さに対する誤差の許容幅
+        float heightTolerance = 0.001f;
+        //! 直角で計算が発散する手前の角度上限
+        float angleGuardDegrees = 89.0f;
+        //! 道筋を予測するフレーム数の上限
+        int maxFrames = LaunchPath{}.maxFrames;
     };
 
     //! @brief LaunchPitch の結果

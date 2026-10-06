@@ -6,10 +6,10 @@
 #include "Game/Game.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Gamepad.h"
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/Keyboard.h"
-#include "NSlib/UI/ImGuiContext.h"
 
 #include <memory>
 #include <optional>
@@ -89,6 +89,7 @@ void Editor::OnAttach()
 
 void Editor::OnDetach()
 {
+    m_hitTimeline.ResetPreview();
     // overlay は逆順で OnDetach されるので、scene を破棄する Game::OnDetach より先にここが走る
     if (m_controller)
     {
@@ -150,6 +151,8 @@ void Editor::OnRender()
     m_quitModal.Render(editor);
 
     const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
+
+    m_hitTimeline.Tick(editor, ImGui::GetIO().DeltaTime);
 
     // プレイ中は F5 でエディタ UI を丸ごと隠せる。隠している間も 3D 描画とゲーム進行はそのまま走る
     if (m_uiVisible)
@@ -218,6 +221,17 @@ void Editor::OnRender()
         m_sceneView.ClearForHiddenUi(editor);
     }
 
+    NS::Editor::TimelinePreview* preview = nullptr;
+    // 貼っている描画先を今の再生位置へ描き直す。リサイズは画像の実描画後
+    if (m_uiVisible)
+    {
+        preview = m_hitTimeline.Preview(editor);
+        if (preview != nullptr)
+        {
+            (void)m_gameView.RenderPreview(*preview);
+        }
+    }
+
     // ImGui 実描画の直前に backbuffer へ戻す。それまではオフスクリーンへ描いたままで良い
     app->Renderer().BindBackbuffer();
     m_imgui->EndFrame();
@@ -230,9 +244,12 @@ void Editor::OnRender()
         {
             views.push_back(*sceneView);
         }
-        if (std::optional<NS::Obj::SceneView> gameView = m_gameView.CollectView(editor))
+        if (std::optional<NS::Obj::SceneView> gameView = m_gameView.CollectView(editor, preview != nullptr))
         {
-            views.push_back(*gameView);
+            if (preview == nullptr)
+            {
+                views.push_back(*gameView);
+            }
         }
         editor.SetSceneViews(std::move(views));
     }
@@ -327,8 +344,7 @@ void Editor::HandlePauseInput(LevelEditorController& editor) noexcept
     const bool wantKb = input.UiWantsKeyboard();
 
     const bool pPressed = !wantKb && input.Keyboard().IsPressed(NS::OS::Key::P);
-    const bool backPressed =
-        input.Gamepad(0).IsConnected() && input.Gamepad(0).IsPressed(NS::OS::GamepadButton::Back);
+    const bool backPressed = input.Gamepad(0).IsConnected() && input.Gamepad(0).IsPressed(NS::OS::GamepadButton::Back);
 
     if (pPressed || backPressed)
     {

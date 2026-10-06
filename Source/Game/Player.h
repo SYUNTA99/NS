@@ -369,6 +369,8 @@ public:
     //! @brief プレイ開始時の凍結 (baseline) の自分の位置へ戻り、動きと命を最初の状態へ戻す
     //! @details 凍結に自分が居なければ、DefaultSpawnPosition の位置へ戻す
     void RestartFrom(const nlohmann::json& baseline) noexcept;
+    //! 自分の床の仮定と身体の寸法から補う出現位置を出す
+    [[nodiscard]] NS::Vector3 DefaultSpawnPosition() const noexcept;
 
     //! 命を amount 削る。下限 0
     void ApplyDamage(int amount) noexcept;
@@ -409,7 +411,7 @@ private:
         float distanceTarget = 0.0f; // 突進を終える水平距離
         bool isTap = false;          // 溜め量 0 の飛び込みか
         bool justStarted = false;    // 発動したフレームか
-        NS::Vector3 dir{};     // 最後に出した突進の水平の向き。正規化済み。書くのは出せた時だけ
+        NS::Vector3 dir{};           // 最後に出した突進の水平の向き。正規化済み。書くのは出せた時だけ
         float charge01 = 0.0f;       // 発動時に確定した溜め量 0..1
         float overcharge01 = 0.0f;   // 発動時に確定した溜めすぎの深さ 0..1
         bool forced = false;         // 溜めすぎで勝手に出た突進か
@@ -423,17 +425,17 @@ private:
         bool spent = false;           // 空中で発動してから接地していないか
         float charge01 = 0.0f;        // 要求された溜め量 0..1
         float overcharge01 = 0.0f;    // 要求された溜めすぎの深さ 0..1
-        NS::Vector3 dir{};      // 要求に添えた出す向き。正規化済み
+        NS::Vector3 dir{};            // 要求に添えた出す向き。正規化済み
         bool hasDir = false;          // 要求に向きが添えてあるか
         float verticalSpeed = 0.0f;   // 溜めた突進を放つ瞬間の縦の速さ。hasDir が偽の間は読まない
-        NS::Vector3 aimDir{};   // 押したフレームに控えた狙いの向き。正規化済み
+        NS::Vector3 aimDir{};         // 押したフレームに控えた狙いの向き。正規化済み
         float aimAge = 0.0f;          // 狙いを控えてからの経過秒
     };
 
     //! 反動の記録
     struct ReboundRecord
     {
-        NS::Vector3 direction{};                            // 最後に始めた反動の水平の向き。正規化済み
+        NS::Vector3 direction{};                                  // 最後に始めた反動の水平の向き。正規化済み
         float spinSpeed = 0.0f;                                   // 最後に始めた反動の玉の回る速さ (度/秒)
         std::optional<NS::Game::Player::MissTumble> missTumble{}; // 最後に始めた反動の外れの回り方
         std::uint32_t count = 0;                                  // 反動を始めた回数
@@ -443,7 +445,7 @@ private:
     struct SkidRecord
     {
         NS::Vector3 landingVelocity{}; // 着いたフレームの水平の速度
-        int elapsedSteps = 0;                // 着いてからのフレーム数
+        int elapsedSteps = 0;          // 着いてからのフレーム数
     };
 
     //! @brief 溜めと狙いの記録。観測の段 (ObserveCharge) が observed の側を書き、決定の段 (AdvanceCharge) が確定する
@@ -580,8 +582,8 @@ private:
     int m_overchargeCount = 0;
 
     NS::Vector3 m_facingDir{0.0f, 0.0f, 0.0f};       // 掴む向き。動こうとした水平の向きへ振り向きの速さで回る
-    float m_lastMoveDistance = 0.0f;                       // 直前の Move で動いた距離。縁を探す帯の上の余白
-    float m_ledgeTopY = 0.0f;                              // 掴んでいる縁の上端の y
+    float m_lastMoveDistance = 0.0f;                 // 直前の Move で動いた距離。縁を探す帯の上の余白
+    float m_ledgeTopY = 0.0f;                        // 掴んでいる縁の上端の y
     NS::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f}; // 掴んでいる面の外向き法線
     NS::Vector3 m_ledgeMantleStart{0.0f, 0.0f, 0.0f};
     NS::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};
@@ -593,11 +595,3 @@ private:
 //! live の配置物からプレイヤーを引く。無ければ nullptr
 //! @param[in,out] objects 探す先の配置物。返した Player* から中身が書き換わる
 [[nodiscard]] Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept;
-
-//! @brief プレイヤーの居ないレベルへ補う時と、凍結に自機が居ないやり直しで使う出現位置の既定
-//! @details 水平は原点。高さは仮定した床の上面に、カプセルの半分の高さと半径と余白を足した中心の高さ。
-//! 寸法は collider の欄から引く。
-//! 補う側 (エディタの EnsurePlayerObject) とやり直しの落ち先 (RestartFrom) が同じこの関数を読む
-//! @param[in] collider 立たせる自機の動く体の当たり。カプセルの寸法の持ち主
-//! @return カプセルの中心の world 位置
-[[nodiscard]] NS::Vector3 DefaultSpawnPosition(const NS::Obj::Collider& collider) noexcept;

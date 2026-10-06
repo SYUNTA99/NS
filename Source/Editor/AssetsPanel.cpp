@@ -29,22 +29,6 @@ namespace NS::Editor
                 }
                 ImGui::TextUnformatted(selectionLabel);
 
-                const char* dropLabel = "選択してから .mat を落とす";
-                if (hasSelection)
-                {
-                    dropLabel = ".mat をここへ落とすと選択中のオブジェクトへ適用";
-                }
-                ImGui::Button(dropLabel, ImVec2(-1.0f, 32.0f));
-                if (ImGui::BeginDragDropTarget())
-                {
-                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(k_MaterialDragType))
-                    {
-                        const char* droppedPath = static_cast<const char*>(payload->Data);
-                        editor.ApplyMaterialToSelected(droppedPath);
-                    }
-                    ImGui::EndDragDropTarget();
-                }
-
                 ImGui::Separator();
             }
 

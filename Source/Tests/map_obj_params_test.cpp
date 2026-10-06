@@ -42,8 +42,8 @@ TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
     for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
     {
         const std::string path = NS::OS::FileSystem::Combine(
-            NS::OS::FileSystem::Combine(
-                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"),
+                                        "Scenes"),
             sceneName);
         nlohmann::json doc;
         ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path));
@@ -101,7 +101,7 @@ TEST(MapObjParams, InvalidOverridesKeepPhysicalValuesSafe)
     EXPECT_FLOAT_EQ(params->Restitution(), 0.0f);
 }
 
-TEST(MapObjParams, LaunchVisualDefaultsBelongToParams)
+TEST(MapObjParams, LaunchSizeDefaultsBelongToParams)
 {
     NS::Game::Level::MapObjParams params;
     const nlohmann::json fields = NS::Obj::SerializeComponent(params)["fields"];
@@ -110,13 +110,14 @@ TEST(MapObjParams, LaunchVisualDefaultsBelongToParams)
                                      {"着地の粉の大きさの基準", 0.8f},
                                      {"着地の粉の大きさの質量の平方根あたり", 0.4f},
                                      {"着地の粉の大きさの威力あたりの伸び", 0.5f}};
+    NS::Game::Level::LaunchEffects effects;
+    const nlohmann::json effectFields = NS::Obj::SerializeComponent(effects)["fields"];
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
     {
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
+        EXPECT_FALSE(effectFields.contains(it.key())) << it.key();
     }
-    NS::Game::Level::LaunchEffects effects;
-    EXPECT_TRUE(NS::Obj::SerializeComponent(effects)["fields"].empty());
 }
 
 TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)

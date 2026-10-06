@@ -36,7 +36,7 @@ namespace NS::Game::Level
     {
         //! 明るい線。左上・右上・左下・右下の隅の順に、隅ごとに横の 1 本と縦の 1 本
         std::vector<MarkerRect> corners;
-        //! 暗い縁。corners と同じ並びで、各四角を両側 1 画素ずつ広げた物
+        //! 暗い縁。同じ並びで、各四角を縁の幅ぶん広げる
         std::vector<MarkerRect> outline;
         NS::Color color{};        //!< 明るい線の色と不透明度
         NS::Color outlineColor{}; //!< 暗い縁の色と不透明度
@@ -116,6 +116,7 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_desc.frameAlpha, "枠の不透明度")
         NS_REFLECT_FIELD(m_desc.outlineColor, "枠の縁の色")
         NS_REFLECT_FIELD(m_desc.outlineAlpha, "枠の縁の不透明度")
+        NS_REFLECT_FIELD(m_desc.outlineWidth, "枠の縁の幅")
         NS_REFLECT_GROUP("枠が出る時")
         NS_REFLECT_FIELD(m_desc.appearScale, "枠が出る時の倍率")
         NS_REFLECT_FIELD(m_desc.appearMaxSide, "枠が出る時の一辺の上限")
@@ -126,14 +127,15 @@ namespace NS::Game::Level
         NS_REFLECT_GROUP("外れた時")
         NS_REFLECT_FIELD(m_desc.lostScale, "外れた時の枠の倍率")
         NS_REFLECT_FIELD(m_desc.lostFrames, "外れた時の枠のフレーム数")
+        NS_REFLECT_FIELD(m_desc.referenceHeight, "画素寸法の基準の高さ")
         NS_REFLECT_END()
 
     private:
         TargetMarkerDesc m_desc{}; // 枠の見た目の調整値
         SlamLineTarget m_shown{};  // 示す相手の予測。m_hasShown が偽の間は読まない
         bool m_hasShown = false;
-        int m_framesSinceCapture = 0;  // 外れた後は外れたフレームの値で止める
-        NS::AABB m_lostBounds{}; // 外れた相手の外接箱。m_framesSinceLost が負の間は読まない
+        int m_framesSinceCapture = 0; // 外れた後は外れたフレームの値で止める
+        NS::AABB m_lostBounds{};      // 外れた相手の外接箱。m_framesSinceLost が負の間は読まない
         int m_framesSinceLost = -1;
         const ::Player* m_player = nullptr; // 溜めと狙う相手の問い先。非所有
     };

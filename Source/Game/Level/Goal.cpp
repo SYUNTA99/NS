@@ -10,6 +10,7 @@ namespace NS::Game::Level
 {
     Goal::Goal() noexcept
     {
+        AttachFixedComponent(m_params);
         // 目印の金色の立方体
         (void)CreatePart("Model");
         NS::Obj::Model* mesh = ModelPart();
@@ -21,12 +22,18 @@ namespace NS::Game::Level
         area->SetSphere(0.9f);
     }
 
+    void Goal::ForEachPart(const PartVisitor& visitor) const
+    {
+        NS::Obj::Actor::ForEachPart(visitor);
+        visitor("Params", const_cast<GoalParams&>(m_params));
+    }
+
     void Goal::AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other)
     {
         // 触れている間は毎フレーム送る。流れの最中の知らせは進行役が捨てる
         if (IsSensorKind(other, SensorKind::PlayerBody))
         {
-            (void)SendMsgGoal(other, self);
+            (void)SendMsgGoal(other, self, m_params.FadeOutSeconds(), m_params.FadeInSeconds());
         }
     }
 

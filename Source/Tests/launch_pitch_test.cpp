@@ -68,6 +68,29 @@ TEST(LaunchPitchTest, ChooseGravityPicksRiseFallAndTheApexBand)
     EXPECT_FLOAT_EQ(ChooseGravity(gravity, -5.0f), -35.0f);
 }
 
+TEST(LaunchPitchTest, PredictionBudgetBelongsToThePath)
+{
+    LaunchPath path;
+    path.horizontalSpeed = 1.0f;
+    path.verticalSpeed = 1.0f;
+    path.gravity = PlayerGravity{.rise = 0.0f, .fall = 0.0f, .apexSpeed = 0.0f, .apexScale = 1.0f};
+    path.dt = 0.1f;
+    path.maxFrames = 2;
+    EXPECT_NEAR(LaunchHeightAt(path, 1.0f), 0.2f, 0.00001f);
+    path.maxFrames = 20;
+    EXPECT_NEAR(LaunchHeightAt(path, 1.0f), 1.0f, 0.00001f);
+}
+
+TEST(LaunchPitchTest, SearchStopsAtRepresentablePrecisionWithTinyTolerance)
+{
+    LaunchPitchDesc desc = GroundDesc(1.4321f, 8.0f);
+    desc.heightTolerance = std::numeric_limits<float>::denorm_min();
+    const LaunchPitchResult result = LaunchPitch(desc);
+    ASSERT_TRUE(result.reachable);
+    EXPECT_TRUE(std::isfinite(result.verticalSpeed));
+    EXPECT_NEAR(ArrivalHeight(desc, result.verticalSpeed), desc.targetHeight, 0.00001f);
+}
+
 // Player::Gravity と切り出した関数は同じ値を当てる。欄を変えても両方が一緒に変わる
 TEST(LaunchPitchTest, PlayerGravityMatchesTheSharedChoice)
 {

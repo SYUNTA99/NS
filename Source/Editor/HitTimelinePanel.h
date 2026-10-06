@@ -6,6 +6,8 @@
 
 #include "Editor/HitPreview.h"
 #include "Editor/HitTimelineEdit.h"
+#include "Editor/Timeline.h"
+#include "Editor/TimelinePreview.h"
 #include "Game/Level/HitTier.h"
 #include "Game/Level/HitTimeline.h"
 #include "NSlib/Core/NonCopyable.h"
@@ -27,9 +29,20 @@ namespace NS::Editor
         HitTimelinePanel();
 
         //! @brief パネルを描く
-        //! @details プレイ中は下見しない (編集中の場面がプレイで動いているため)。下見し直しは、どのウィジェットも
-        //! 触られていないフレームに走らせる (ドラッグの間に毎フレーム走らせない)
+        //! @details プレイ中は編集の欄を出さない。下見の更新は Tick が行う
         void Render(LevelEditorController& editor) noexcept;
+
+        //! @brief 配置の変更を調べ、下見の取り直しと再生時計を進める
+        //! @details パネルの可視状態に依らず毎描画フレームに 1 回呼ぶ
+        //! プレイ中は下見を手放す
+        void Tick(LevelEditorController& editor, float seconds);
+
+        //! @brief 再生位置まで評価した下見を返す
+        //! @details 取り直し待ちの間は直前の下見を表示する
+        //! @return 編集中で下見表示が有効なら非所有の下見、それ以外は nullptr
+        [[nodiscard]] TimelinePreview* Preview(LevelEditorController& editor);
+        //! @brief 下見を手放して再生を止め、編集中の次の Tick で取り直す
+        void ResetPreview() noexcept;
 
     private:
         // 条件の欄と下見の結果の行
@@ -39,8 +52,7 @@ namespace NS::Editor
         // 事象ごとの帯と、下見で実際に始まったフレームの印と、再生の位置
         void RenderBands() noexcept;
         // 下見の揺れ・トラウマ・世界の速さを帯の下に折れ線で描く。横は帯と同じフレームの並び
-        void RenderPreviewGraphs(
-            ImDrawList& draw, int firstClock, float frameWidth, float totalWidth, float rowHeight) noexcept;
+        void RenderPreviewGraphs(ImDrawList& draw, const TimelineLayout& layout) noexcept;
         // 選んだ行の始まり・長さ・向きと、事象の欄
         void RenderSelectedRow() noexcept;
         // 再生・止め・コマ送り・速さ
@@ -52,6 +64,8 @@ namespace NS::Editor
         void ApplyWorking();
         // 写しの場面で下見する
         void RunPreview(LevelEditorController& editor);
+
+        [[nodiscard]] TimelineFrameRange PlaybackRange() const noexcept;
 
         NS::Game::Level::HitTier m_tier = NS::Game::Level::HitTier::Center; // 編集している段
         NS::Game::Level::HitTimeline m_working;                             // 編集している段の写し
@@ -65,6 +79,8 @@ namespace NS::Editor
         std::size_t m_selectedRow = 0; // 選んだ行。行が無ければ使わない
         bool m_hasSelectedRow = false; // 行を選んでいるか
         int m_addType = 0;             // 足す事象の種類の番号 (HitEventValue の並び)
-        HitPreviewPlayback m_playback; // 再生の位置
+        TimelinePlayback m_playback;
+        TimelinePreview m_preview;
+        bool m_showPreview = false;
     };
 } // namespace NS::Editor

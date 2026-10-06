@@ -10,12 +10,14 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace NS::Obj
 {
     class AssetManager;
+    class Scene;
 } // namespace NS::Obj
 
 namespace NS::Gfx
@@ -90,6 +92,14 @@ namespace NS::Editor
     [[nodiscard]] HitPreviewResult RunHitPreview(const nlohmann::json& snapshot,
                                                  const HitPreviewDesc& desc,
                                                  const HitPreviewWorld& world = {});
+
+    //! @brief 下見で決めた位置・向き・溜めで、開始直後の場面を作る
+    //! @details 記録の 0 番目はこの場面を 1 歩進めた姿
+    //! RunHitPreview と同じ開始処理を使う
+    //! @return 生成した場面。当たらなかった結果の場合は nullptr
+    [[nodiscard]] std::unique_ptr<NS::Obj::Scene> MakeHitPreviewScene(const nlohmann::json& snapshot,
+                                                                      const HitPreviewResult& result,
+                                                                      const HitPreviewWorld& world = {});
 
     //! @brief 下見の当たりを、当たりの記録 hits.jsonl と同じ鍵と並びの 1 行の JSON にする
     //! @details f は検知のフレームの frames の添字

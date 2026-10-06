@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Level/GoalParams.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 
@@ -11,12 +12,16 @@ namespace NS::Game::Level
     {
     public:
         Goal() noexcept;
+        void ForEachPart(const PartVisitor& visitor) const override;
 
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         NS_REFLECT_NONE(Goal, NS::Obj::Actor)
 
         //! 範囲に入ったプレイヤーの体へ MsgGoal を送る
         void AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other) override;
+
+    private:
+        GoalParams m_params;
     };
 
     //! ゴールの配置物の JSON か

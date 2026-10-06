@@ -17,10 +17,6 @@ namespace NS::Game::Level
 {
     namespace
     {
-        constexpr float k_ContactSkin = 0.001f;
-        constexpr float k_StopSpeed = 0.01f;
-        constexpr float k_FloorDot = 0.7071f;
-        constexpr int k_MaxContacts = 4;
 
         bool IsFinite(const NS::Vector3& value) noexcept
         {
@@ -193,10 +189,9 @@ namespace NS::Game::Level
             {
                 const float x2 = desc.impactDir.x * desc.impactDir.x;
                 const float z2 = desc.impactDir.z * desc.impactDir.z;
-                m_freeze.squash =
-                    ModelPart()->SnapDrawScale(NS::Vector3{1.0f + (desc.squashThickness - 1.0f) * x2,
-                                                                 desc.squashHeight,
-                                                                 1.0f + (desc.squashThickness - 1.0f) * z2});
+                m_freeze.squash = ModelPart()->SnapDrawScale(NS::Vector3{1.0f + (desc.squashThickness - 1.0f) * x2,
+                                                                         desc.squashHeight,
+                                                                         1.0f + (desc.squashThickness - 1.0f) * z2});
             }
         }
         SyncCollision();
@@ -399,7 +394,7 @@ namespace NS::Game::Level
         if (NS::Dot(m_velocity, m_arcUp) <= 0.0f)
         {
             NS::Vector3 normal{};
-            if (ProbeFloor(Sphere().WorldSphere().radius / k_FloorDot + k_ContactSkin, normal))
+            if (ProbeFloor(Sphere().WorldSphere().radius / m_params.FloorDot() + m_params.ContactSkin(), normal))
             {
                 Land(normal);
             }
@@ -413,7 +408,7 @@ namespace NS::Game::Level
         const NS::Vector3 down = NS::Obj::GravityDirection(*this);
         if (!NS::Obj::RaycastCollision(
                 *this, sphere.center, down, distance, hitDistance, outNormal, Sphere().BodyId()) ||
-            NS::Dot(outNormal, -down) < k_FloorDot)
+            NS::Dot(outNormal, -down) < m_params.FloorDot())
         {
             return false;
         }
@@ -423,7 +418,7 @@ namespace NS::Game::Level
         {
             return false;
         }
-        Root().SetPosition(Root().Position() + down * (hitDistance - clearance - k_ContactSkin));
+        Root().SetPosition(Root().Position() + down * (hitDistance - clearance - m_params.ContactSkin()));
         return true;
     }
 
@@ -432,8 +427,7 @@ namespace NS::Game::Level
         // 外れの跳ねが残っていれば、向きを変えて跳ね直し、曲線の重力で落ちる
         if (m_hopsLeft > 0)
         {
-            const NS::Vector3 hop =
-                MissHopVelocity(m_velocity, m_arcUp, m_params.MissHop(), m_hopSeed, m_hopIndex);
+            const NS::Vector3 hop = MissHopVelocity(m_velocity, m_arcUp, m_params.MissHop(), m_hopSeed, m_hopIndex);
             if (NS::Dot(hop, m_arcUp) > 0.0f)
             {
                 m_velocity = hop;
@@ -453,7 +447,7 @@ namespace NS::Game::Level
     void MapObj::StepRolling(float dt)
     {
         NS::Vector3 normal{};
-        if (!ProbeFloor(Sphere().WorldSphere().radius / k_FloorDot + 0.01f, normal))
+        if (!ProbeFloor(Sphere().WorldSphere().radius / m_params.FloorDot() + 0.01f, normal))
         {
             m_arcDeflected = true;
             (void)m_motion.Machine().Change<ArcState>();
@@ -464,7 +458,7 @@ namespace NS::Game::Level
         m_velocity += (downhill - normal * NS::Dot(downhill, normal)) * (m_arc.riseGravity * dt);
         const float speed = m_velocity.Length();
         const float reduced = std::max(0.0f, speed - m_params.Friction() * m_arc.riseGravity * dt);
-        if (reduced <= k_StopSpeed)
+        if (reduced <= m_params.StopSpeed())
         {
             m_velocity = NS::Vector3{};
             m_motion.Finish();
@@ -477,10 +471,10 @@ namespace NS::Game::Level
     void MapObj::MoveLaunched(float dt)
     {
         float remaining = dt;
-        for (int contact = 0; contact < k_MaxContacts && remaining > 0.0f; ++contact)
+        for (int contact = 0; contact < m_params.MaxContacts() && remaining > 0.0f; ++contact)
         {
             const float speed = m_velocity.Length();
-            if (!(speed > k_StopSpeed))
+            if (!(speed > m_params.StopSpeed()))
             {
                 break;
             }
@@ -495,7 +489,7 @@ namespace NS::Game::Level
             const float approach = -NS::Dot(direction, normal);
             if (blocked && approach > 0.0001f)
             {
-                allowed = std::max(0.0f, distance - sphere.radius / approach - k_ContactSkin);
+                allowed = std::max(0.0f, distance - sphere.radius / approach - m_params.ContactSkin());
                 blocked = allowed < travel;
             }
             else
@@ -509,7 +503,7 @@ namespace NS::Game::Level
             }
             Root().SetPosition(Root().Position() + direction * allowed);
             remaining -= allowed / speed;
-            if (NS::Dot(normal, -NS::Obj::GravityDirection(*this)) >= k_FloorDot &&
+            if (NS::Dot(normal, -NS::Obj::GravityDirection(*this)) >= m_params.FloorDot() &&
                 m_motion.Machine().IsCurrent<ArcState>())
             {
                 Land(normal);
@@ -521,7 +515,7 @@ namespace NS::Game::Level
                 m_velocity -= normal * ((1.0f + m_params.Restitution()) * into);
                 m_arcDeflected = true;
             }
-            Root().SetPosition(Root().Position() + normal * k_ContactSkin);
+            Root().SetPosition(Root().Position() + normal * m_params.ContactSkin());
         }
         const NS::Vector3 up = -NS::Obj::GravityDirection(*this);
         const NS::Vector3 horizontal = m_velocity - up * NS::Dot(m_velocity, up);

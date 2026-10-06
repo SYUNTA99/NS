@@ -6,11 +6,6 @@
 
 namespace NS::Editor
 {
-    namespace
-    {
-        // 再生の速さ 1 で 1 秒に進むフレーム数。ゲームの固定の 1 歩と同じ
-        constexpr float k_FramesPerSecond = 60.0f;
-    } // namespace
 
     std::size_t AddHitEvent(NS::Game::Level::HitTimeline& timeline,
                             const NS::Game::Level::HitEventValue& value,
@@ -37,10 +32,10 @@ namespace NS::Editor
         return true;
     }
 
-    HitPreviewFrameRange HitTimelineFrameRange(const NS::Game::Level::HitTimeline& timeline,
-                                               const HitPreviewResult* preview) noexcept
+    TimelineFrameRange HitTimelineFrameRange(const NS::Game::Level::HitTimeline& timeline,
+                                             const HitPreviewResult* preview) noexcept
     {
-        HitPreviewFrameRange range;
+        TimelineFrameRange range;
         for (const NS::Game::Level::HitEvent& event : timeline.events)
         {
             range.first = std::min(range.first, event.start);
@@ -71,29 +66,4 @@ namespace NS::Editor
         return starts;
     }
 
-    void HitPreviewPlayback::Tick(float seconds, int lastFrame) noexcept
-    {
-        if (!playing)
-        {
-            return;
-        }
-        carry += seconds * k_FramesPerSecond * speed;
-        // 浮動小数の足し込みで 1 にわずかに届かない分を拾う
-        const int whole = static_cast<int>(carry + 1.0e-4f);
-        carry -= static_cast<float>(whole);
-        frame += whole;
-        if (frame >= lastFrame)
-        {
-            frame = std::max(lastFrame, 0);
-            playing = false;
-            carry = 0.0f;
-        }
-    }
-
-    void HitPreviewPlayback::StepBy(int steps, int lastFrame) noexcept
-    {
-        playing = false;
-        carry = 0.0f;
-        frame = std::clamp(frame + steps, 0, std::max(lastFrame, 0));
-    }
 } // namespace NS::Editor

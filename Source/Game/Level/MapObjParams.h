@@ -50,6 +50,7 @@ namespace NS::Game::Level
             return std::max(m_toughness, 0.0f);
         }
         [[nodiscard]] float RestLifeSeconds() const noexcept { return m_restLifeSeconds; }
+        [[nodiscard]] float FloorDot() const noexcept { return std::clamp(m_floorDot, NS::k_Epsilon, 1.0f); }
         [[nodiscard]] int DebrisCount() const noexcept { return m_debrisCount; }
         [[nodiscard]] float DebrisSpeed() const noexcept { return m_debrisSpeed; }
         [[nodiscard]] float DebrisLifeSeconds() const noexcept { return m_debrisLifeSeconds; }
@@ -65,6 +66,10 @@ namespace NS::Game::Level
                 .heightRatio = m_missHopHeightRatio, .turnDegrees = m_missHopTurnDegrees, .keep = m_missHopKeep};
         }
 
+        [[nodiscard]] float ContactSkin() const noexcept { return std::max(m_contactSkin, 0.0f); }
+        [[nodiscard]] float StopSpeed() const noexcept { return std::max(m_stopSpeed, 0.0f); }
+        [[nodiscard]] int MaxContacts() const noexcept { return std::max(m_maxContacts, 1); }
+
         NS_REFLECT_BEGIN(MapObjParams, NS::Obj::Component)
         NS_REFLECT_FIELD(m_mass, "質量")
         NS_REFLECT_FIELD(m_friction, "摩擦")
@@ -72,6 +77,7 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_spinPerSpeed, "回転の強さ")
         NS_REFLECT_FIELD(m_toughness, "耐久")
         NS_REFLECT_FIELD(m_restLifeSeconds, "止まってから消える秒")
+        NS_REFLECT_FIELD(m_floorDot, "床とみなす法線の上向き成分")
         NS_REFLECT_FIELD(m_debrisCount, "破片の数")
         NS_REFLECT_FIELD(m_debrisSpeed, "破片の速さ")
         NS_REFLECT_FIELD(m_debrisLifeSeconds, "破片の寿命秒")
@@ -87,9 +93,15 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_missHopHeightRatio, "外れで跳ねる高さの割合")
         NS_REFLECT_FIELD(m_missHopTurnDegrees, "外れで跳ねる向きのぶれの角度")
         NS_REFLECT_FIELD(m_missHopKeep, "外れで跳ねるたびに残る速さの割合")
+        NS_REFLECT_FIELD(m_contactSkin, "接触の余白")
+        NS_REFLECT_FIELD(m_stopSpeed, "停止とみなす速さ")
+        NS_REFLECT_FIELD(m_maxContacts, "接触を解く回数")
         NS_REFLECT_END()
 
     private:
+        float m_contactSkin = 0.001f;
+        float m_stopSpeed = 0.01f;
+        int m_maxContacts = 4;
         friend class LaunchEffects;
         int m_trailFramesBase = 8;
         float m_trailFramesPerLaunch = 4.0f;
@@ -102,6 +114,8 @@ namespace NS::Game::Level
         float m_spinPerSpeed = 0.2f;
         float m_toughness = 1.0f;
         float m_restLifeSeconds = 0.0f;
+        //! 法線の上向き成分。既定は 45 度までの面を床とする
+        float m_floorDot = 0.7071f;
         int m_debrisCount = 5;
         float m_debrisSpeed = 6.0f;
         float m_debrisLifeSeconds = 8.0f;

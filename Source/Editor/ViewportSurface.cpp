@@ -104,6 +104,16 @@ namespace NS::Editor
         return NS::Obj::SceneView{m_target.get(), pose};
     }
 
+    std::optional<NS::Obj::SceneView> ViewportSurface::CurrentView(
+        std::optional<NS::Obj::CameraPose> pose) const noexcept
+    {
+        if (!m_visible || m_target == nullptr || !m_target->IsValid())
+        {
+            return std::nullopt;
+        }
+        return NS::Obj::SceneView{m_target.get(), pose};
+    }
+
     void ViewportSurface::Release() noexcept
     {
         m_target.reset();

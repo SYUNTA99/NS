@@ -9,10 +9,11 @@
 #include "NSlib/Object/Components/HitSensor.h"
 
 #include <algorithm>
-#include <cstdio>
+#include <cstdint>
 #include <format>
 #include <functional>
 #include <string_view>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -82,21 +83,9 @@ namespace NS::Editor
         }
 
         // 再生の速さ。12 フレームの止めはそのままの速さだと 0.2 秒で目で追えないので、遅い方を既定にする
-        constexpr float k_NormalSpeed = 1.0f;
         constexpr float k_QuarterSpeed = 0.25f;
 
-        // 帯の行の左の名前の幅 (px)
-        constexpr float k_BandLabelWidth = 170.0f;
-        // 1 フレームの帯の幅の下限 (px)。狭いと押せない
-        constexpr float k_MinFrameWidth = 4.0f;
-
 #if NS_EDITOR_ENABLED
-        constexpr ImU32 k_BandColor = IM_COL32(90, 140, 210, 255);
-        constexpr ImU32 k_BandSelectedColor = IM_COL32(240, 170, 60, 255);
-        constexpr ImU32 k_StartedColor = IM_COL32(250, 230, 90, 255);
-        constexpr ImU32 k_PlayheadColor = IM_COL32(255, 80, 80, 255);
-        constexpr ImU32 k_DetectionColor = IM_COL32(200, 200, 200, 120);
-        constexpr ImU32 k_RulerTextColor = IM_COL32(200, 200, 200, 255);
         constexpr int k_PreviewGraphCount = 5; // 帯の下の折れ線の行の数
         constexpr ImU32 k_GraphBackColor = IM_COL32(40, 40, 46, 255);
         constexpr ImU32 k_GraphTraumaColor = IM_COL32(255, 170, 60, 255);
@@ -138,6 +127,16 @@ namespace NS::Editor
         m_needsRun = true;
     }
 
+    TimelineFrameRange HitTimelinePanel::PlaybackRange() const noexcept
+    {
+        if (!m_result.hit || m_result.frames.empty())
+        {
+            return TimelineFrameRange{0, -1};
+        }
+        return TimelineFrameRange{-m_result.detectionIndex,
+                                  static_cast<int>(m_result.frames.size()) - 1 - m_result.detectionIndex};
+    }
+
     void HitTimelinePanel::RunPreview(LevelEditorController& editor)
     {
         m_needsRun = false;
@@ -149,15 +148,97 @@ namespace NS::Editor
             world.renderer = &app->Renderer();
         }
         const bool wasHit = m_result.hit;
-        m_result = RunHitPreview(m_snapshot, m_desc, world);
-        // 選んでいなかった相手は下見が選んだ物に固定し、条件を変えても同じ相手を見続ける
-        m_desc.targetId = m_result.desc.targetId;
-        const int last = std::max(static_cast<int>(m_result.frames.size()) - 1, 0);
-        // 初めて当たった下見は当たりの瞬間から見せる。値を変えて下見し直した時は、見ていたフレームのまま比べられるよう動かさない
-        if (m_result.hit && (!wasHit || m_playback.frame > last))
+        HitPreviewDesc desc = m_desc;
+        // 手入力の開始時刻が過大でも、取り直しを無制限に回さないための上限
+        constexpr int k_MaxPreviewFrames = 10000;
+        for (const HitTier tier : NS::Game::Level::HitTiers())
         {
-            m_playback.frame = m_result.detectionIndex;
+            if (const NS::Game::Level::HitTimeline* timeline =
+                    NS::Game::Level::HitTimelineLibrary::Get().FindForTier(tier))
+            {
+                for (const HitEvent& event : timeline->events)
+                {
+                    const std::int64_t end = static_cast<std::int64_t>(event.start) + std::max(event.length, 1) +
+                                             desc.leadFrames + desc.framesAfterRebound;
+                    desc.maxFrames =
+                        std::max(desc.maxFrames,
+                                 static_cast<int>(std::clamp(end, std::int64_t{0}, std::int64_t{k_MaxPreviewFrames})));
+                }
+            }
         }
+        m_result = RunHitPreview(m_snapshot, desc, world);
+        m_desc.targetId = m_result.desc.targetId;
+        m_playback.playing = false;
+        m_playback.carry = 0.0f;
+        if (!m_result.hit || m_result.frames.empty())
+        {
+            m_preview.Clear();
+            return;
+        }
+        const TimelineFrameRange range = PlaybackRange();
+        if (!wasHit)
+        {
+            m_playback.Seek(0, range);
+        }
+        else
+        {
+            m_playback.Seek(m_playback.frame, range);
+        }
+        HitPreviewResult placement = m_result;
+        placement.frames.clear();
+        m_preview.Reset(
+            [snapshot = m_snapshot, placement, world] { return MakeHitPreviewScene(snapshot, placement, world); },
+            range);
+    }
+
+    void HitTimelinePanel::ResetPreview() noexcept
+    {
+        m_preview.Clear();
+        m_playback.playing = false;
+        m_playback.carry = 0.0f;
+        m_needsRun = true;
+    }
+
+    TimelinePreview* HitTimelinePanel::Preview(LevelEditorController& editor)
+    {
+        if (editor.CurrentMode() != LevelEditorController::Mode::Edit || !m_showPreview || !m_result.hit)
+        {
+            return nullptr;
+        }
+        if (m_preview.Seek(m_playback.frame) == nullptr)
+        {
+            return nullptr;
+        }
+        return &m_preview;
+    }
+
+    void HitTimelinePanel::Tick(LevelEditorController& editor, float seconds)
+    {
+#if NS_EDITOR_ENABLED
+        const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
+        if (playMode)
+        {
+            ResetPreview();
+        }
+        else if (!ImGui::IsAnyItemActive())
+        {
+            if (m_snapshot != editor.SceneSnapshot())
+            {
+                m_needsRun = true;
+            }
+            if (m_needsRun)
+            {
+                RunPreview(editor);
+            }
+        }
+        if (!playMode && m_result.hit && !m_needsRun)
+        {
+            m_playback.Tick(seconds, PlaybackRange());
+        }
+#else
+        (void)editor;
+        (void)seconds;
+#endif
     }
 
     void HitTimelinePanel::Render(LevelEditorController& editor) noexcept
@@ -181,17 +262,6 @@ namespace NS::Editor
             }
         }
         ImGui::End();
-
-        if (playMode)
-        {
-            return;
-        }
-        if (m_needsRun && !ImGui::IsAnyItemActive())
-        {
-            RunPreview(editor);
-        }
-        const int last = std::max(static_cast<int>(m_result.frames.size()) - 1, 0);
-        m_playback.Tick(ImGui::GetIO().DeltaTime, last);
 #else
         (void)editor;
 #endif
@@ -302,7 +372,7 @@ namespace NS::Editor
         ImGui::SetNextItemWidth(120.0f);
         if (ImGui::BeginCombo("編集する段", TierLabel(m_tier)))
         {
-            for (const HitTier tier : NS::Game::Level::k_AllHitTiers)
+            for (const HitTier tier : NS::Game::Level::HitTiers())
             {
                 if (ImGui::Selectable(TierLabel(tier), tier == m_tier))
                 {
@@ -365,7 +435,7 @@ namespace NS::Editor
             int clock = 0;
             if (m_result.hit)
             {
-                clock = m_playback.frame - m_result.detectionIndex;
+                clock = m_playback.frame;
             }
             m_selectedRow = AddHitEvent(m_working, types[static_cast<std::size_t>(m_addType)], clock);
             m_hasSelectedRow = true;
@@ -381,60 +451,17 @@ namespace NS::Editor
     void HitTimelinePanel::RenderPlayback() noexcept
     {
 #if NS_EDITOR_ENABLED
-        const int last = std::max(static_cast<int>(m_result.frames.size()) - 1, 0);
-        if (ImGui::Button("|<"))
+        if (ImGui::Checkbox("Game に下見を表示", &m_showPreview) && m_showPreview)
         {
-            m_playback.StepBy(-last - 1, last);
+            ImGui::SetWindowFocus(k_PanelGame);
         }
-        ImGui::SameLine();
-        if (ImGui::Button("<"))
+        const bool ready = m_result.hit && !m_needsRun;
+        if (DrawTimelinePlayback(m_playback, PlaybackRange(), ready))
         {
-            m_playback.StepBy(-1, last);
+            m_showPreview = true;
+            ImGui::SetWindowFocus(k_PanelGame);
         }
-        ImGui::SameLine();
-        const char* playLabel = "再生";
-        if (m_playback.playing)
-        {
-            playLabel = "止める";
-        }
-        if (ImGui::Button(playLabel))
-        {
-            if (m_playback.playing)
-            {
-                m_playback.playing = false;
-            }
-            else
-            {
-                // 最後で押したら頭から
-                if (m_playback.frame >= last)
-                {
-                    m_playback.frame = 0;
-                }
-                m_playback.playing = true;
-            }
-        }
-        ImGui::SameLine();
-        if (ImGui::Button(">"))
-        {
-            m_playback.StepBy(1, last);
-        }
-        ImGui::SameLine();
-        bool quarter = m_playback.speed < 1.0f;
-        if (ImGui::Checkbox("1/4 の速さ", &quarter))
-        {
-            m_playback.speed = k_NormalSpeed;
-            if (quarter)
-            {
-                m_playback.speed = k_QuarterSpeed;
-            }
-        }
-        ImGui::SameLine();
-        int clock = 0;
-        if (m_result.hit)
-        {
-            clock = m_playback.frame - m_result.detectionIndex;
-        }
-        ImGui::Text("フレーム %d (検知から %+d)", m_playback.frame, clock);
+        ImGui::TextUnformatted("検知を 0 としたフレーム。Game ビューで動きを確認");
 #endif
     }
 
@@ -446,129 +473,72 @@ namespace NS::Editor
         {
             preview = &m_result;
         }
-        const HitPreviewFrameRange range = HitTimelineFrameRange(m_working, preview);
-        const int frameCount = range.last - range.first + 1;
-        const float rowHeight = ImGui::GetFrameHeight();
-        const float bandsWidth = std::max(ImGui::GetContentRegionAvail().x - k_BandLabelWidth, 1.0f);
-        const float frameWidth = std::max(bandsWidth / static_cast<float>(frameCount), k_MinFrameWidth);
-        const float totalWidth = frameWidth * static_cast<float>(frameCount);
-        // 帯は横に流れる区画へ入れ、フレームが多い時は横に送れるようにする
-        // 帯の行は 360 で頭打ちにして縦に送る。下見の折れ線の行はその下へいつも見える高さを足す
-        float graphsHeight = 0.0f;
-        if (m_result.hit && !m_result.frames.empty())
-        {
-            graphsHeight =
-                static_cast<float>(k_PreviewGraphCount) * (rowHeight * 2.0f + ImGui::GetStyle().ItemSpacing.y);
-        }
-        // 行ごとに行の間の空きが入る
-        const float regionHeight =
-            (rowHeight + ImGui::GetStyle().ItemSpacing.y) * static_cast<float>(m_working.events.size() + 1) +
-            graphsHeight + ImGui::GetStyle().ScrollbarSize + ImGui::GetStyle().ItemSpacing.y * 2.0f;
-        if (!ImGui::BeginChild("##bands",
-                               ImVec2{0.0f, std::min(regionHeight, 360.0f + graphsHeight)},
-                               ImGuiChildFlags_Borders,
-                               ImGuiWindowFlags_HorizontalScrollbar))
-        {
-            ImGui::EndChild();
-            return;
-        }
-        ImDrawList* draw = ImGui::GetWindowDrawList();
-        const ImVec2 top = ImGui::GetCursorScreenPos();
-        const float bandsLeft = top.x + k_BandLabelWidth;
+        const TimelineFrameRange range = HitTimelineFrameRange(m_working, preview);
         const bool overlay = m_result.hit && m_result.impact.tier == m_tier;
-
-        // 目盛り。押すとそのフレームへ再生の位置を動かす
-        ImGui::Dummy(ImVec2{k_BandLabelWidth, rowHeight});
-        ImGui::SameLine(0.0f, 0.0f);
-        ImGui::InvisibleButton("##ruler", ImVec2{totalWidth, rowHeight});
-        if (ImGui::IsItemActive() && m_result.hit)
-        {
-            const int clock = range.first + static_cast<int>((ImGui::GetIO().MousePos.x - bandsLeft) / frameWidth);
-            const int last = std::max(static_cast<int>(m_result.frames.size()) - 1, 0);
-            m_playback.playing = false;
-            m_playback.frame = std::clamp(clock + m_result.detectionIndex, 0, last);
-        }
-        for (int clock = range.first; clock <= range.last; ++clock)
-        {
-            if (clock % 5 != 0)
-            {
-                continue;
-            }
-            const float x = bandsLeft + static_cast<float>(clock - range.first) * frameWidth;
-            char text[16];
-            std::snprintf(text, sizeof(text), "%d", clock);
-            draw->AddLine(ImVec2{x, top.y + rowHeight * 0.6f}, ImVec2{x, top.y + rowHeight}, k_RulerTextColor);
-            draw->AddText(ImVec2{x + 2.0f, top.y}, k_RulerTextColor, text);
-        }
-
+        std::vector<TimelineTrack> tracks;
+        tracks.reserve(m_working.events.size());
         for (std::size_t row = 0; row < m_working.events.size(); ++row)
         {
             const HitEvent& event = m_working.events[row];
-            ImGui::PushID(static_cast<int>(row));
-            std::string label{NS::Game::Level::HitEventLabel(event.value)};
+            TimelineTrack track;
+            track.label = NS::Game::Level::HitEventLabel(event.value);
             if (event.direction != HitDirection::Any)
             {
-                label += std::format(" ({})", DirectionLabel(event.direction));
+                track.label += std::format(" ({})", DirectionLabel(event.direction));
             }
-            const bool selected = m_hasSelectedRow && m_selectedRow == row;
-            if (ImGui::Selectable(label.c_str(), selected, 0, ImVec2{k_BandLabelWidth - 4.0f, rowHeight}))
-            {
-                m_selectedRow = row;
-                m_hasSelectedRow = true;
-            }
-            ImGui::SameLine(k_BandLabelWidth, 0.0f);
-            const ImVec2 rowMin = ImGui::GetCursorScreenPos();
-            if (ImGui::InvisibleButton("##band", ImVec2{totalWidth, rowHeight}))
-            {
-                m_selectedRow = row;
-                m_hasSelectedRow = true;
-            }
-            const float x0 = rowMin.x + static_cast<float>(event.start - range.first) * frameWidth;
-            const float x1 = x0 + static_cast<float>(std::max(event.length, 1)) * frameWidth;
-            ImU32 color = k_BandColor;
-            if (selected)
-            {
-                color = k_BandSelectedColor;
-            }
-            draw->AddRectFilled(ImVec2{x0, rowMin.y + 2.0f}, ImVec2{x1, rowMin.y + rowHeight * 0.65f}, color, 2.0f);
-            // 下見で実際に始まったフレームを、帯の下に細い印で重ねる
+            track.start = event.start;
+            track.length = event.length;
             if (overlay)
             {
-                for (const int clock : RowStartFrames(m_result, row))
-                {
-                    const float sx = rowMin.x + static_cast<float>(clock - range.first) * frameWidth;
-                    draw->AddRectFilled(ImVec2{sx, rowMin.y + rowHeight * 0.72f},
-                                        ImVec2{sx + std::max(frameWidth, 3.0f), rowMin.y + rowHeight - 1.0f},
-                                        k_StartedColor);
-                }
+                track.startedFrames = RowStartFrames(m_result, row);
             }
-            ImGui::PopID();
+            tracks.push_back(std::move(track));
         }
-
-        // 下見の揺れ・トラウマ・世界の速さを、帯と同じフレームの並びで折れ線に重ねる。段が違っても下見そのものの値
+        std::optional<std::size_t> selected;
+        if (m_hasSelectedRow)
+        {
+            selected = m_selectedRow;
+        }
+        float graphsHeight = 0.0f;
         if (m_result.hit && !m_result.frames.empty())
         {
-            RenderPreviewGraphs(*draw, range.first, frameWidth, totalWidth, rowHeight);
+            graphsHeight = static_cast<float>(k_PreviewGraphCount) *
+                           (ImGui::GetFrameHeight() * 2.0f + ImGui::GetStyle().ItemSpacing.y);
         }
-
-        // 検知のフレームと再生の位置の縦線
-        const float bottom = ImGui::GetCursorScreenPos().y;
-        const float detectionX = bandsLeft + static_cast<float>(0 - range.first) * frameWidth;
-        draw->AddLine(ImVec2{detectionX, top.y}, ImVec2{detectionX, bottom}, k_DetectionColor, 1.0f);
-        if (m_result.hit)
+        const bool moved = DrawTimelineTracks(
+            tracks,
+            range,
+            m_playback,
+            selected,
+            m_result.hit && !m_needsRun,
+            graphsHeight,
+            [this](const TimelineLayout& layout) {
+                if (m_result.hit && !m_result.frames.empty())
+                {
+                    RenderPreviewGraphs(*ImGui::GetWindowDrawList(), layout);
+                }
+            },
+            PlaybackRange());
+        m_hasSelectedRow = selected.has_value();
+        if (selected.has_value())
         {
-            const int clock = m_playback.frame - m_result.detectionIndex;
-            const float x = bandsLeft + (static_cast<float>(clock - range.first) + 0.5f) * frameWidth;
-            draw->AddLine(ImVec2{x, top.y}, ImVec2{x, bottom}, k_PlayheadColor, 2.0f);
+            m_selectedRow = *selected;
         }
-        ImGui::EndChild();
+        if (moved)
+        {
+            m_showPreview = true;
+            ImGui::SetWindowFocus(k_PanelGame);
+        }
 #endif
     }
 
-    void HitTimelinePanel::RenderPreviewGraphs(
-        ImDrawList& draw, int firstClock, float frameWidth, float totalWidth, float rowHeight) noexcept
+    void HitTimelinePanel::RenderPreviewGraphs(ImDrawList& draw, const TimelineLayout& layout) noexcept
     {
 #if NS_EDITOR_ENABLED
+        const int firstClock = layout.firstFrame;
+        const float frameWidth = layout.frameWidth;
+        const float totalWidth = layout.totalWidth;
+        const float rowHeight = layout.rowHeight;
         const std::vector<HitPreviewFrame>& frames = m_result.frames;
         // 揺れの角度とずれは一番大きい所で縦を合わせる。0 しか無ければ 1 で割る
         float largestAngle = 0.0f;
@@ -625,7 +595,7 @@ namespace NS::Editor
             [&](const char* label, const char* tooltip, const std::function<void(const ImVec2&)>& body) {
                 ImGui::TextUnformatted(label);
                 ImGui::SetItemTooltip("%s", tooltip);
-                ImGui::SameLine(k_BandLabelWidth, 0.0f);
+                ImGui::SameLine(layout.labelWidth, 0.0f);
                 const ImVec2 origin = ImGui::GetCursorScreenPos();
                 ImGui::Dummy(ImVec2{totalWidth, graphHeight});
                 draw.AddRectFilled(origin, ImVec2{origin.x + totalWidth, origin.y + graphHeight}, k_GraphBackColor);
@@ -670,10 +640,7 @@ namespace NS::Editor
         });
 #else
         (void)draw;
-        (void)firstClock;
-        (void)frameWidth;
-        (void)totalWidth;
-        (void)rowHeight;
+        (void)layout;
 #endif
     }
 

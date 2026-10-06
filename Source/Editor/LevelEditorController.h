@@ -303,7 +303,7 @@ private:
         Build,
         Object
     };
-    EditorToolMode m_editorToolMode = EditorToolMode::Build; // ツールモード (Build / Object)
+    EditorToolMode m_editorToolMode = EditorToolMode::Object; // ツールモード (Build / Object)
 
     NS::Editor::GizmoEditor m_gizmo{}; // 変形ギズモ管理
 
@@ -321,7 +321,7 @@ private:
         NS::Matrix world{};
     };
     std::vector<DragFollower> m_dragFollowers; // 主対象に付いて動く残りの選択
-    NS::Matrix m_dragPrimaryWorld{};     // ドラッグ開始時の主対象の world 変換
+    NS::Matrix m_dragPrimaryWorld{};           // ドラッグ開始時の主対象の world 変換
 
     bool m_gizmoWasDragging = false; // ドラッグ状態の保持
     bool m_transformEditing = false; // 変形編集の開始状態

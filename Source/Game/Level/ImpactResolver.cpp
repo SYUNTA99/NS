@@ -102,11 +102,6 @@ namespace NS::Game::Level
             return LineOffset{.along = along, .ratio = lateral / reach};
         }
 
-        // 触れる所を詰める幅の下限 (m)。1 mm は地面の矢印の先の位置の違いとして見分けられない長さ
-        constexpr float k_ContactTolerance = 0.001f;
-        // 触れる所を詰める回数の上限。10 m の線を 1 mm まで詰めるのは 14 回。浮動小数の桁が尽きて幅が縮まない時に止める
-        constexpr int k_ContactSearchSteps = 32;
-
         // 半径 radius の玉が origin から direction へ distance 進む間に通る所。玉を線分に沿って掃いた形はカプセル
         // 事前条件: direction が正規化済み、distance が 0 以上で有限
         [[nodiscard]] NS::Phys::Capsule SweptBall(const NS::Vector3& origin,
@@ -119,14 +114,15 @@ namespace NS::Game::Level
                 .center = origin + direction * half, .axis = direction, .halfHeight = half, .radius = radius};
         }
 
-        // 玉が相手の体に初めて触れるまでに線に沿って進む距離 (m)。k_ContactTolerance の幅で、触れている側の端を返す
+        // 接触距離を指定した誤差まで詰め、触れる側の端を返す
         // 掃く長さを伸ばすほど触れる形は増えるだけなので、触れない長さと触れる長さの間を半分ずつ詰める
         // 事前条件: SweptBall(origin, direction, distance, radius) が target に触れている
         [[nodiscard]] float FirstTouchDistance(const NS::Obj::SensorVolume& target,
                                                const NS::Vector3& origin,
                                                const NS::Vector3& direction,
                                                float distance,
-                                               float radius) noexcept
+                                               float radius,
+                                               float tolerance) noexcept
         {
             const auto touches = [&](float length) {
                 return NS::Obj::VolumesOverlap(
@@ -138,9 +134,13 @@ namespace NS::Game::Level
             }
             float missed = 0.0f;
             float touched = distance;
-            for (int i = 0; i < k_ContactSearchSteps && touched - missed > k_ContactTolerance; ++i)
+            while (touched - missed > tolerance)
             {
                 const float middle = (missed + touched) * 0.5f;
+                if (middle == missed || middle == touched)
+                {
+                    break;
+                }
                 if (touches(middle))
                 {
                     touched = middle;
@@ -397,7 +397,8 @@ namespace NS::Game::Level
                 continue;
             }
             // 最初に触れる相手は、中心の近さでなく玉が触れるまでに進む距離で決める。突進はそこで止まって当たる
-            const float contact = FirstTouchDistance(volume, ballCenter, lineDir, maxDistance, playerRadius);
+            const float contact = FirstTouchDistance(
+                volume, ballCenter, lineDir, maxDistance, playerRadius, std::max(Tuning().m_contactTolerance, 0.0f));
             if (!found || contact < first.contact)
             {
                 found = true;
@@ -435,8 +436,12 @@ namespace NS::Game::Level
                     NS::Obj::SensorVolume::Capsule(SweptBall(aimedCenter, lineDir, maxDistance, playerRadius)),
                     firstSensor->WorldVolume()))
             {
-                aimedContact =
-                    FirstTouchDistance(firstSensor->WorldVolume(), aimedCenter, lineDir, maxDistance, playerRadius);
+                aimedContact = FirstTouchDistance(firstSensor->WorldVolume(),
+                                                  aimedCenter,
+                                                  lineDir,
+                                                  maxDistance,
+                                                  playerRadius,
+                                                  std::max(params.m_contactTolerance, 0.0f));
             }
             const float dt = NS::OS::FrameTimer::FixedDelta();
             const NS::Game::Player::LaunchPitchResult pitch = NS::Game::Player::LaunchPitch(
@@ -447,7 +452,10 @@ namespace NS::Game::Level
                                                   .gravity = params.Gravity(),
                                                   .maxAngleDegrees = params.m_launchPitchLimitDegrees,
                                                   .grounded = m_body->IsGrounded(),
-                                                  .dt = dt});
+                                                  .dt = dt,
+                                                  .heightTolerance = params.m_launchHeightTolerance,
+                                                  .angleGuardDegrees = params.m_launchAngleGuardDegrees,
+                                                  .maxFrames = params.m_launchMaxFrames});
             first.launchVerticalSpeed = pitch.verticalSpeed;
             if (pitch.reachable)
             {
@@ -458,7 +466,8 @@ namespace NS::Game::Level
                                                     .verticalSpeed = pitch.verticalSpeed,
                                                     .gravity = params.Gravity(),
                                                     .dt = dt,
-                                                    .grounded = m_body->IsGrounded()};
+                                                    .grounded = m_body->IsGrounded(),
+                                                    .maxFrames = params.m_launchMaxFrames};
             const NS::Vector3 arrival{
                 ballCenter.x, ballCenter.y + NS::Game::Player::LaunchHeightAt(path, first.launchContact), ballCenter.z};
             judgement = JudgeHitFaceOrWide(answer.face, answer.body, arrival, lineDir, playerRadius);
@@ -1031,7 +1040,7 @@ namespace NS::Game::Level
     {
         // 触れる前の事象を置いた段が無ければ、線を掃かない
         int earliest = 0;
-        for (const HitTier tier : k_AllHitTiers)
+        for (const HitTier tier : HitTiers())
         {
             if (const HitTimeline* timeline = HitTimelineLibrary::Get().FindForTier(tier))
             {
@@ -1520,7 +1529,8 @@ namespace NS::Game::Level
         m_tremor = TremorRun{.desc = TackleTremorDesc{.contactOffset = contact - Owner()->Root().Position(),
                                                       .amplitudePixels = tremor.amplitudePixels,
                                                       .reachFrames = reachFrames,
-                                                      .length = length},
+                                                      .length = length,
+                                                      .referenceHeight = tremor.referenceHeight},
                              .startClock = m_clock,
                              .elapsed = 0,
                              .active = true};

@@ -131,19 +131,18 @@ namespace NS::Game::Player
         // 補間が短い側を通り、逆回りに見える
 
         // 立ち姿の間の軸。丸まった直後に狙いが決まらなければこの軸で回る
-        static constexpr NS::Vector3 k_FirstSpinAxis{1.0f, 0.0f, 0.0f};
 
         NS::Quaternion m_spin = NS::Quaternion::Identity; // 玉の今の回転
-        NS::Vector3 m_spinAxis = k_FirstSpinAxis;               // 直前のフレームに回した軸
-        float m_spinSpeed = 0.0f;                                     // 直前のフレームに回した速さ。度/秒
-        float m_spinDegreesThisFrame = 0.0f;                          // 直前の OnUpdate で回った角度。度
-        std::uint32_t m_tumbleReboundCount = 0; // 外れの回り方を始めた反動の回数。変わったら新しい反動
-        NS::Vector3 m_tumbleStartSpin{};  // 外れの反動の始まりの回転。軸 × 度/秒
-        int m_tumbleSteps = 0;                  // 外れの反動を始めてからのフレーム数
-        float m_tumbleWobblePhase = 0.0f;       // 軸のぶれの始まりの向き。ラジアン
-        int m_landingSquashRemaining = 0;       // 着地の潰れを戻し切るまでの残りフレーム数。0 は潰れていない
-        float m_landingSquashVertical = 1.0f;   // 着地の潰れの今の縦の倍率。潰れていない間は 1
-        bool m_drawScaleRejected = false;       // 直前に組んだ倍率を Model が断ったか。知らせを 1 回に絞る
+        NS::Vector3 m_spinAxis = NS::Vector3::UnitX;      // 直前のフレームに回した軸
+        float m_spinSpeed = 0.0f;                         // 直前のフレームに回した速さ。度/秒
+        float m_spinDegreesThisFrame = 0.0f;              // 直前の OnUpdate で回った角度。度
+        std::uint32_t m_tumbleReboundCount = 0;           // 外れの回り方を始めた反動の回数。変わったら新しい反動
+        NS::Vector3 m_tumbleStartSpin{};                  // 外れの反動の始まりの回転。軸 × 度/秒
+        int m_tumbleSteps = 0;                            // 外れの反動を始めてからのフレーム数
+        float m_tumbleWobblePhase = 0.0f;                 // 軸のぶれの始まりの向き。ラジアン
+        int m_landingSquashRemaining = 0;                 // 着地の潰れを戻し切るまでの残りフレーム数。0 は潰れていない
+        float m_landingSquashVertical = 1.0f;             // 着地の潰れの今の縦の倍率。潰れていない間は 1
+        bool m_drawScaleRejected = false;                 // 直前に組んだ倍率を Model が断ったか。知らせを 1 回に絞る
 
         float m_emptyChargeSpinSpeed = 360.0f; // 溜め 0 の玉が回る速さ。度/秒
         float m_fullChargeSpinSpeed = 1440.0f; // 溜めきりの玉が回る速さ。度/秒

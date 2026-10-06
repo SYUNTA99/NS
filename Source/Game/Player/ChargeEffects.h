@@ -6,6 +6,7 @@
 #include "NSlib/Object/Reflection/Reflection.h"
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -20,55 +21,13 @@ namespace NS::Game::Player
 {
     class PlayerAppearance;
 
-    //! @brief 自機の溜めと放しのエフェクトの層を出し、出すと決めた記録を持つ
-    //! @details 押した・溜めに入った・溜めきった・放した・突進が終わった・当たりの止めが始まった、を同居する部品から
-    //! 読み、層を出す・付いていかせる・消す。層と出るフレーム (p = 押した、q = 溜めに入った、F = 溜めきった、
-    //! u = 突進が始まった、c = 止めの頭):
-    //! - charge.curl 丸まりの殻: p に出し p + k_CurlSteps に消す。それより前に放したら放したフレームに消す
-    //! - charge.spin 回転の弧: p に出し、放したフレームに消す。板の回りの角度に玉が回った角度の累計を渡す
-    //! - charge.gather 溜まる光: p に出し、放したフレームに消す。溜めきってからの数 (FramesSinceFullCharge) を
-    //!   動的入力 1 番で渡す。根は毎フレーム狙いの線の水平の向きへ回し、光の点を手前は低く・奥は高く生ませる
-    //! - charge.grind 削る粉: q に出し、放したフレームに消す
-    //! - charge.full 溜めきりの閃き: 1 回の押しで 1 回だけ F に出し、F + k_FullFlashSteps に消す。
-    //!   それより前に放したら放したフレームに消す。消すまで玉へ付いていく
-    //! - release.burst 放しの弾け: u に出し u + k_BurstSteps に消す。輪・丸屋根・筋の大きさは ReleaseBurstScale を
-    //!   動的入力 1 番で渡す。はじけの光と散って残る筋は大きさを変えない。放した所に置いたまま。
-    //!   触れる前の時計が走り始めたら (ImpactResolver::IsBeforeContact) そのフレームに、線の先の相手に触れる見込みが
-    //!   k_BurstClearFrames 以内になったらそのフレームに、どちらも無いまま触れたら触れたフレームに消す
-    //! - slam.trail 突進の尾: u に出す。当たったら c で、当たらずに突進が終わったら終わったフレームで親を止め、
-    //!   止めた k_TrailFadeSteps フレーム後に消す
-    //! 溜めている間の層には溜め量 (Player::ChargeJudge) を動的入力 0 番で毎フレーム渡す。
-    //! 描画の無い世界でも記録は残し、試しは Layers を読む
-    //! Player の見た目の段 (VisualStep) が PlayerAppearance の後に呼ぶ。
-    //! 同じフレームに PlayerAppearance が回した玉の向きより後に走る
-    //! 依存: EffectLayerList, PlayerAppearance, Player, NS::Game::Level::ImpactResolver
-    // TODO: エフェクトは固定ステップで進み、付いていく層は固定ステップの位置へ置く。60 を超える画面で付いていく層が
-    // 段々に見えたら、描画フレームごとに描く時の補間の位置で渡す形へ移す
+    //! 溜めと放しの演出を出し、層の寿命を管理する
+    //! 時間と向きは自分の保存欄から読む
+    //! PlayerAppearance の後に見た目の段で更新する
+    //! 描画のない世界でも層の記録を残す
     class ChargeEffects : public NS::Obj::Component
     {
     public:
-        //! 丸まりの殻を出してから消すまでのフレーム数
-        static constexpr int k_CurlSteps = 6;
-        //! 溜めきりの閃きを出してから消すまでのフレーム数。横の閃き 4 フレームと、続く縦の柱 2 フレーム
-        static constexpr int k_FullFlashSteps = 6;
-        //! 放しの弾けを出してから消すまでのフレーム数。散って残る粒の寿命 21 フレームと同じ
-        static constexpr int k_BurstSteps = 21;
-        //! 線の先の相手に触れる見込みがこのフレーム数以内になったら、放しの弾けを消す。触れる直前の
-        //! 3 フレームは二人が近づくのを見せ、外れでも光で手応えを期待させない
-        static constexpr int k_BurstClearFrames = 3;
-        //! 突進の尾の親を止めてから消すまでのフレーム数。尾の点の寿命と同じ
-        static constexpr int k_TrailFadeSteps = 6;
-
-        static constexpr std::string_view k_Curl = "charge.curl";
-        static constexpr std::string_view k_Spin = "charge.spin";
-        static constexpr std::string_view k_Grind = "charge.grind";
-        static constexpr std::string_view k_Gather = "charge.gather";
-        static constexpr std::string_view k_Full = "charge.full";
-        static constexpr std::string_view k_Burst = "release.burst";
-        static constexpr std::string_view k_Trail = "slam.trail";
-        // 紫の揺れの端で散らす火花。当たりの火花の絵の、擦れて飛ぶ節 (動的入力 1 番) を使う
-        static constexpr std::string_view k_SwaySparks = "impact.sparks";
-
         ChargeEffects() noexcept;
 
         //! 同居する部品を控え、描画のある世界なら受け持つ層の絵を読み込む
@@ -105,9 +64,38 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_overchargeSparkCountMax, "紫の火花の数の終わり")
         NS_REFLECT_FIELD(m_overchargeSparkSpeedMin, "紫の火花の速さの始め")
         NS_REFLECT_FIELD(m_overchargeSparkSpeedMax, "紫の火花の速さの終わり")
+        NS_REFLECT_GROUP("時間と向き")
+        NS_REFLECT_FIELD(m_curlSteps, "丸まりの殻の寿命フレーム")
+        NS_REFLECT_FIELD(m_fullFlashSteps, "溜めきりの閃きの寿命フレーム")
+        NS_REFLECT_FIELD(m_burstSteps, "放しの弾けの寿命フレーム")
+        NS_REFLECT_FIELD(m_burstClearFrames, "放しの弾けを消す接触前フレーム")
+        NS_REFLECT_FIELD(m_trailFadeSteps, "突進の尾の薄れるフレーム")
+        NS_REFLECT_FIELD(m_sideLift, "紫の火花の上向きの重み")
+        NS_REFLECT_FIELD(m_curlAsset, "丸まりの殻の資産")
+        NS_REFLECT_FIELD(m_spinAsset, "回転の弧の資産")
+        NS_REFLECT_FIELD(m_grindAsset, "溜めの擦れの資産")
+        NS_REFLECT_FIELD(m_gatherAsset, "溜まる光の資産")
+        NS_REFLECT_FIELD(m_fullAsset, "溜めきりの資産")
+        NS_REFLECT_FIELD(m_burstAsset, "放しの弾けの資産")
+        NS_REFLECT_FIELD(m_trailAsset, "突進の尾の資産")
+        NS_REFLECT_FIELD(m_swaySparksAsset, "紫の火花の資産")
         NS_REFLECT_END()
 
     private:
+        std::string m_curlAsset = "charge.curl";
+        std::string m_spinAsset = "charge.spin";
+        std::string m_grindAsset = "charge.grind";
+        std::string m_gatherAsset = "charge.gather";
+        std::string m_fullAsset = "charge.full";
+        std::string m_burstAsset = "release.burst";
+        std::string m_trailAsset = "slam.trail";
+        std::string m_swaySparksAsset = "impact.sparks";
+        int m_chargeInput = 0;
+        int m_burstScaleInput = 1;
+        int m_fullFramesInput = 1;
+        NS::Gfx::EffectPlayDesc PlayDesc(const NS::Vector3& position,
+                                         const NS::Quaternion& rotation,
+                                         float charge01) const noexcept;
         // 決めたフレームに消す層
         struct ScheduledStop
         {
@@ -138,8 +126,17 @@ namespace NS::Game::Player
         // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ Player::AimDirection
         [[nodiscard]] NS::Vector3 HeldAimDirection() const noexcept;
         void StopLayer(NS::Gfx::EffectScene* effects, std::uint32_t& id) noexcept;
-        // このフレームに触れたか、線の先の相手に触れる見込みが k_BurstClearFrames 以内か
+        // 跳ね返りか破壊が起きたか、触れる見込みが m_burstClearFrames 以内か
         [[nodiscard]] bool IsContactNear() const noexcept;
+
+        //! 演出の寿命と接触前に消す猶予。単位は固定フレーム
+        int m_curlSteps = 6;
+        int m_fullFlashSteps = 6;
+        int m_burstSteps = 21;
+        int m_burstClearFrames = 3;
+        int m_trailFadeSteps = 6;
+        //! 紫の火花の横方向に混ぜる上向きの重み
+        float m_sideLift = 1.0f;
 
         // 放しの弾けの輪・丸屋根・筋の大きさ。溜めきりで輪が半径 3.2 m まで広がる
         // 通常突進の 0.75 は輪が半径 2.4 m で、押した瞬間の丸まりの殻 (半径 1.2 m) の倍。0.4 (半径 1.3 m) は
