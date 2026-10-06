@@ -14,9 +14,6 @@ namespace NS::Editor
         Game
     };
 
-    //! 前面の映像を映すタブを返す。編集中は Scene、プレイ中は Game
-    [[nodiscard]] CenterTab LiveCenterTab(bool playMode) noexcept;
-
     //! @brief ツールバー状態の入力。現在のモードと一時停止フラグの写し
     struct PlayModeSnapshot
     {

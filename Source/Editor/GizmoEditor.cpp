@@ -92,11 +92,7 @@ namespace NS::Editor
                                                               GizmoSpace space,
                                                               const NS::Quaternion& objectRotation) noexcept
         {
-            if (tool == GizmoTool::Scale)
-            {
-                return objectRotation;
-            }
-            if (space == GizmoSpace::World)
+            if (tool != GizmoTool::Scale && space == GizmoSpace::World)
             {
                 return NS::Quaternion::Identity;
             }
@@ -379,21 +375,12 @@ namespace NS::Editor
         // Q/W/E/R でツール、X で Local / World を切り替える
         if (!imguiWantsKeyboard && !m_dragging && !cameraFlying)
         {
-            if (kb.IsPressed(NS::OS::Key::Q))
+            for (const NS::OS::Key key : {NS::OS::Key::Q, NS::OS::Key::W, NS::OS::Key::E, NS::OS::Key::R})
             {
-                OnToolKey(NS::OS::Key::Q);
-            }
-            if (kb.IsPressed(NS::OS::Key::W))
-            {
-                OnToolKey(NS::OS::Key::W);
-            }
-            if (kb.IsPressed(NS::OS::Key::E))
-            {
-                OnToolKey(NS::OS::Key::E);
-            }
-            if (kb.IsPressed(NS::OS::Key::R))
-            {
-                OnToolKey(NS::OS::Key::R);
+                if (kb.IsPressed(key))
+                {
+                    m_tool = ToolForKey(m_tool, key);
+                }
             }
             if (kb.IsPressed(NS::OS::Key::X))
             {
@@ -799,22 +786,17 @@ namespace NS::Editor
             return startRot;
         }
 
-        const float angle = [&]() -> float {
-            if (snap)
-            {
-                return SnapTo(angleRad, k_RotateSnapStep);
-            }
-            return angleRad;
-        }();
+        float angle = angleRad;
+        if (snap)
+        {
+            angle = SnapTo(angleRad, k_RotateSnapStep);
+        }
 
-        // 回転軸を決定する
-        const NS::Vector3 n = [&]() -> NS::Vector3 {
-            if (worldSpace)
-            {
-                return AxisVector(axis);
-            }
-            return OrientedAxis(axis, startRot);
-        }();
+        NS::Vector3 n = AxisVector(axis);
+        if (!worldSpace)
+        {
+            n = OrientedAxis(axis, startRot);
+        }
 
         const NS::Quaternion delta = NS::Quaternion::CreateFromAxisAngle(n, angle);
 
@@ -827,13 +809,11 @@ namespace NS::Editor
         const float axisLen = axisDir2d.Length();
         if (axisLen <= 1.0e-6f)
         {
-            const float sign = [&]() -> float {
-                if (dragPixels.x < 0.0f)
-                {
-                    return -1.0f;
-                }
-                return 1.0f;
-            }();
+            float sign = 1.0f;
+            if (dragPixels.x < 0.0f)
+            {
+                sign = -1.0f;
+            }
             return dragPixels.Length() * k_ScaleSensitivity * sign;
         }
 
@@ -989,11 +969,6 @@ namespace NS::Editor
         }
 
         return best;
-    }
-
-    void GizmoEditor::OnToolKey(NS::OS::Key key) noexcept
-    {
-        m_tool = ToolForKey(m_tool, key);
     }
 
 } // namespace NS::Editor

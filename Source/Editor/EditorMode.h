@@ -34,20 +34,6 @@ namespace NS::Editor
     class EditorMode : public NS::NonCopyable
     {
     public:
-        //! @brief 編集中のカーソル状態。レイキャスト結果や配置候補のセル情報を保持する
-        struct CursorState
-        {
-            bool valid = false;            //!< ブロック面か地面に当たったか
-            NS::Vector3 placementCenter{}; //!< 配置先セルの中心ワールド座標
-            bool placementBlocked = false; //!< 配置予定地にすでにブロックが存在するかどうか
-            std::int16_t hitX = 0;         //!< ヒットしたセルのX座標
-            std::int16_t hitY = 0;         //!< ヒットしたセルのY座標
-            std::int16_t hitZ = 0;         //!< ヒットしたセルのZ座標
-            std::int16_t placeX = 0;       //!< 配置先セルのX座標
-            std::int16_t placeY = 0;       //!< 配置先セルのY座標
-            std::int16_t placeZ = 0;       //!< 配置先セルのZ座標
-        };
-
         //! @brief cell 1 個分の整数座標。live 照会の受け渡しに使う
         struct CellCoord
         {
@@ -56,8 +42,15 @@ namespace NS::Editor
             std::int16_t z = 0;
         };
 
-        EditorMode() noexcept = default;
-        ~EditorMode() noexcept = default;
+        //! @brief 編集中のカーソル状態。レイキャスト結果や配置候補のセル情報を保持する
+        struct CursorState
+        {
+            bool valid = false;            //!< ブロック面か地面に当たったか
+            NS::Vector3 placementCenter{}; //!< 配置先セルの中心ワールド座標
+            bool placementBlocked = false; //!< 配置予定地にすでにブロックが存在するかどうか
+            CellCoord hit{};               //!< ヒットしたセル
+            CellCoord place{};             //!< 配置先セル
+        };
 
         //! @brief 保存時に live 実体からシーンの JSON 文書を作る捕捉関数を差す。未設定なら保存できない
         void SetCaptureLevelFn(std::function<nlohmann::json()> fn) noexcept { m_captureLevel = std::move(fn); }

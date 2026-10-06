@@ -54,6 +54,26 @@ namespace NS::Game::Level
             return PlateLinear{.value = a + b * alongFar, .slope = b * (alongNear - alongFar)};
         }
 
+        [[nodiscard]] bool IsValidBandDesc(const SlamArrowDesc& desc) noexcept
+        {
+            return NS::IsPositiveFinite(desc.groundProbeSpacing) && NS::IsPositiveFinite(desc.ballGroundSearchDepth) &&
+                   NS::IsNonNegativeFinite(desc.sameHeightTolerance) && desc.maxBandPieces > 0;
+        }
+
+        // 帯の板の数。上限を超える時と、数が定まらない時は false
+        [[nodiscard]] bool TryBandPieceCount(const SlamArrowShape& shape,
+                                             const SlamArrowDesc& desc,
+                                             int& outCount) noexcept
+        {
+            const float pieceCount = std::ceil((shape.tip - shape.start) / desc.groundProbeSpacing);
+            if (!(static_cast<double>(pieceCount) <= static_cast<double>(desc.maxBandPieces)))
+            {
+                return false;
+            }
+            outCount = static_cast<int>(pieceCount);
+            return true;
+        }
+
         [[nodiscard]] bool IsValidDesc(const SlamArrowDesc& desc) noexcept
         {
             if (desc.growFrames <= 0)
@@ -90,8 +110,8 @@ namespace NS::Game::Level
                     return false;
                 }
             }
-            return NS::IsFinite(desc.earlyColor) && NS::IsFinite(desc.lateColor) &&
-                   NS::IsFinite(desc.fullColor) && NS::IsFinite(desc.plainColor) && NS::IsFinite(desc.darkColor);
+            return NS::IsFinite(desc.earlyColor) && NS::IsFinite(desc.lateColor) && NS::IsFinite(desc.fullColor) &&
+                   NS::IsFinite(desc.plainColor) && NS::IsFinite(desc.darkColor);
         }
 
         // 上向きの板 (shadowQuad。1 × 1 m で、+z の端が v = 0) を、線に沿った範囲と横の幅へ伸ばし、線の向きへ回して
@@ -247,7 +267,8 @@ namespace NS::Game::Level
         {
             return false;
         }
-        if (!NS::IsPositiveFinite(state.ballRadius) || !NS::IsFinite(state.line.origin) || !std::isfinite(state.charge01))
+        if (!NS::IsPositiveFinite(state.ballRadius) || !NS::IsFinite(state.line.origin) ||
+            !std::isfinite(state.charge01))
         {
             return false;
         }
@@ -312,8 +333,7 @@ namespace NS::Game::Level
     {
         shape.band.clear();
         shape.hasHead = false;
-        if (!NS::IsPositiveFinite(desc.groundProbeSpacing) || !NS::IsPositiveFinite(desc.ballGroundSearchDepth) ||
-            !std::isfinite(desc.sameHeightTolerance) || desc.sameHeightTolerance < 0.0f || desc.maxBandPieces <= 0)
+        if (!IsValidBandDesc(desc))
         {
             return;
         }
@@ -334,12 +354,11 @@ namespace NS::Game::Level
             return;
         }
 
-        const float pieceCount = std::ceil((shape.tip - shape.start) / desc.groundProbeSpacing);
-        if (!(static_cast<double>(pieceCount) <= static_cast<double>(desc.maxBandPieces)))
+        int count = 0;
+        if (!TryBandPieceCount(shape, desc, count))
         {
             return;
         }
-        const int count = static_cast<int>(pieceCount);
         int lastIndex = -2;
         for (int i = 0; i < count; ++i)
         {
@@ -383,8 +402,7 @@ namespace NS::Game::Level
     {
         shape.band.clear();
         shape.hasHead = false;
-        if (!NS::IsPositiveFinite(desc.groundProbeSpacing) || !NS::IsPositiveFinite(desc.ballGroundSearchDepth) ||
-            !std::isfinite(desc.sameHeightTolerance) || desc.sameHeightTolerance < 0.0f || desc.maxBandPieces <= 0)
+        if (!IsValidBandDesc(desc))
         {
             return;
         }
@@ -413,12 +431,11 @@ namespace NS::Game::Level
             return bottom + desc.groundLift;
         };
 
-        const float pieceCount = std::ceil((shape.tip - shape.start) / desc.groundProbeSpacing);
-        if (!(static_cast<double>(pieceCount) <= static_cast<double>(desc.maxBandPieces)))
+        int count = 0;
+        if (!TryBandPieceCount(shape, desc, count))
         {
             return;
         }
-        const int count = static_cast<int>(pieceCount);
         shape.band.reserve(static_cast<std::size_t>(count));
         float nearHeight = surfaceAt(shape.start);
         for (int i = 0; i < count; ++i)
@@ -577,10 +594,10 @@ namespace NS::Game::Level
         {
             PlaceSlamArrowOnGround(probe, m_desc, shape);
         }
-        else if (const ::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+        else
         {
             // 道筋は放つ縦の速さを決めた LaunchPitch と同じ重力の計算。矢印と実際の飛び方をずらさない
-            const NS::Game::Player::PlayerParams& params = ownerPlayer->Params();
+            const NS::Game::Player::PlayerParams& params = m_player->Params();
             const NS::Game::Player::LaunchPath path{.horizontalSpeed = params.m_bodySlamSpeed,
                                                     .verticalSpeed = state.line.launchVerticalSpeed,
                                                     .gravity = params.Gravity(),
@@ -588,7 +605,7 @@ namespace NS::Game::Level
                                                     .grounded = state.line.grounded,
                                                     .maxFrames = params.m_launchMaxFrames};
             // 線の始まりは根。玉の中心は持ち主の SlamBallAt が決める
-            const float ballCenterHeight = ownerPlayer->SlamBallAt(state.line.origin).center.y;
+            const float ballCenterHeight = m_player->SlamBallAt(state.line.origin).center.y;
             PlaceSlamArrowOnPath(probe, path, ballCenterHeight, m_desc, shape);
         }
         m_shown = std::move(shape);

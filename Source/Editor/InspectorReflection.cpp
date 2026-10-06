@@ -334,10 +334,7 @@ namespace NS::Editor
 
         void RemoveKey(NS::Obj::Curve& curve, std::uint32_t index) noexcept
         {
-            for (std::uint32_t next = index; next + 1 < curve.count; ++next)
-            {
-                curve.keys[next] = curve.keys[next + 1];
-            }
+            std::copy(curve.keys + index + 1, curve.keys + curve.count, curve.keys + index);
             --curve.count;
             curve.keys[curve.count] = NS::Obj::Curve::Key{};
         }
@@ -818,23 +815,12 @@ namespace NS::Editor
                 }
                 // メニューが開いている間は確定を遅らせる。開いた瞬間に確定するとメニューの編集が履歴に残らないため
                 const bool menuOpen = ImGui::IsPopupOpen("curve-menu");
-                const bool menuWasOpen = storage->GetInt(menuWasOpenId, 0) != 0;
-                if (graphDeactivated && !menuOpen)
+                const bool menuWasOpen = storage->GetBool(menuWasOpenId, false);
+                if (!menuOpen && (graphDeactivated || menuWasOpen))
                 {
                     result.committed = true;
                 }
-                if (menuWasOpen && !menuOpen)
-                {
-                    result.committed = true;
-                }
-                if (menuOpen)
-                {
-                    storage->SetInt(menuWasOpenId, 1);
-                }
-                else
-                {
-                    storage->SetInt(menuWasOpenId, 0);
-                }
+                storage->SetBool(menuWasOpenId, menuOpen);
 
                 DrawCurveGraph(*ImGui::GetWindowDrawList(), view, value, highlighted, storage->GetInt(selectedId, -1));
                 ImGui::TextDisabled(
@@ -940,15 +926,9 @@ namespace NS::Editor
             const std::size_t end = GroupEnd(info, groupIndex);
             if (filtering)
             {
-                bool anyMatch = false;
-                for (std::size_t i = group.firstField; i < end; ++i)
-                {
-                    if (NameMatches(info.fields[i].name, filter))
-                    {
-                        anyMatch = true;
-                        break;
-                    }
-                }
+                const bool anyMatch =
+                    std::any_of(info.fields + group.firstField, info.fields + end,
+                                [filter](const NS::Obj::FieldDesc& field) { return NameMatches(field.name, filter); });
                 if (!anyMatch)
                 {
                     return false;

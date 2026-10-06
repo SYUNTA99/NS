@@ -6,9 +6,8 @@
 
 namespace NS::Obj
 {
-    class Actor;
     class Scene;
-} // namespace NS::Obj
+}
 
 namespace NS::Game::Level
 {

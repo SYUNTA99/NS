@@ -263,17 +263,10 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    // 身体の移動より前。書き込んだ速度が同じ固定ステップの移動に乗る
-    ImpactResolver::ImpactResolver() noexcept : NS::Obj::Component() {}
-
     const NS::Game::Player::PlayerParams& ImpactResolver::Tuning() const noexcept
     {
-        if (const ::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
-        {
-            return ownerPlayer->Params();
-        }
-        static const NS::Game::Player::PlayerParams defaults;
-        return defaults;
+        // 呼ぶのは OnStart が持ち主を引き当てた後だけ
+        return m_player->Params();
     }
 
     void ImpactResolver::OnStart()
@@ -392,10 +385,6 @@ namespace NS::Game::Level
             {
                 continue;
             }
-            if (!NS::Obj::VolumesOverlap(swept, volume))
-            {
-                continue;
-            }
             // 最初に触れる相手は、中心の近さでなく玉が触れるまでに進む距離で決める。突進はそこで止まって当たる
             const float contact = FirstTouchDistance(
                 volume, ballCenter, lineDir, maxDistance, playerRadius, std::max(Tuning().m_contactTolerance, 0.0f));
@@ -424,10 +413,7 @@ namespace NS::Game::Level
         {
             const NS::Game::Player::PlayerParams& params = Tuning();
             float aimHeight = ballCenter.y;
-            if (!HitFaceAimHeight(answer.face, answer.body, lineDir, playerRadius, aimHeight))
-            {
-                aimHeight = ballCenter.y;
-            }
+            (void)HitFaceAimHeight(answer.face, answer.body, lineDir, playerRadius, aimHeight);
             // 触れる所は、着きたい高さで線を進めた玉が触れる所。今の高さで測ると、高さの違う相手の上の縁をかすめる
             // 所まで寄ってしまい、弧の着く所と実際に触れる所がずれる。その高さで触れない時は今の高さの値のまま
             const NS::Vector3 aimedCenter{ballCenter.x, aimHeight, ballCenter.z};
@@ -625,10 +611,6 @@ namespace NS::Game::Level
         m_player->CancelBodySlam();
 
         m_pendingTarget = m_observedTarget;
-        m_pendingTargetPosition = answer.position;
-        // 飛んでいる相手は食い込まない。どう応じるかは相手が決めるが、演出の大きさを選ぶのに答えを控える
-        m_pendingTargetPlaced = answer.placed;
-        m_pendingTier = tier;
         // 相手は突進の向きへ飛ばす。中心の並びで飛ばすと、横ずれのある当たりが狙いと別の所へ飛ぶ
         // 突進の水平の速さがほぼ 0 で向きが決まらない時だけ、中心の並びの向きへ飛ばす
         NS::Vector3 launchDir{-awayX, 0.0f, -awayZ};
@@ -717,7 +699,7 @@ namespace NS::Game::Level
 
         m_pendingPower = power;
         m_pendingMassFactor = outcome.massFactor;
-        m_pendingShakeSeed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, m_pendingTargetPosition);
+        m_pendingShakeSeed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, answer.position);
         RecordReturns(events);
 
         // 止めるフレーム数が決まってから控える。タイムラインの引けない当たりも残すので、下の return より手前に置く
@@ -750,12 +732,11 @@ namespace NS::Game::Level
         m_lastImpact.impactDir = m_pendingImpactDir;
         // 触れた点は記録とエディタの印だけが読む。段と威力を決めた判定の結果を使う
         m_lastImpact.surfacePoint = judgement.surfacePoint;
-        m_lastImpact.targetPos = m_pendingTargetPosition;
+        m_lastImpact.targetPos = answer.position;
         m_lastImpact.targetBottom = bounds.Center.y - bounds.Extents.y;
         m_lastImpact.targetMass = mass;
-        m_lastImpact.targetPlaced = m_pendingTargetPlaced;
+        m_lastImpact.targetPlaced = answer.placed;
         m_lastImpact.launchScale = launchScale;
-        m_pendingLaunchScale = launchScale;
         m_lastImpact.reboundScale = reboundScale;
 
         // 遊びの結果は配分で決まっているので、返りを置けない当たりも反動と飛ばしだけは出す
@@ -1761,9 +1742,9 @@ namespace NS::Game::Level
         }
         const TackleReleaseDesc release{.arc = m_pendingLaunchArc,
                                         .breaks = m_pendingBreak,
-                                        .tier = m_pendingTier,
+                                        .tier = m_lastImpact.tier,
                                         .power = m_lastImpact.power,
-                                        .launchScale = m_pendingLaunchScale,
+                                        .launchScale = m_lastImpact.launchScale,
                                         .hopSeed = m_lastImpact.sequence};
         (void)SendMsgTackleRelease(*target, release);
     }

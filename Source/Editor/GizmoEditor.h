@@ -63,9 +63,6 @@ namespace NS::Editor
     class GizmoEditor : public NS::NonCopyable
     {
     public:
-        GizmoEditor() noexcept = default;
-        ~GizmoEditor() noexcept = default;
-
         void SetInput(NS::OS::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
 
@@ -106,12 +103,7 @@ namespace NS::Editor
         [[nodiscard]] NS::Obj::Transform* Selected() const noexcept { return m_selected; }
 
         //! @brief 選択を解除し、進行中のドラッグを取り消す
-        void ClearSelection() noexcept
-        {
-            m_selected = nullptr;
-            m_dragging = false;
-            m_dragAxis = GizmoAxis::None;
-        }
+        void ClearSelection() noexcept { SetSelected(nullptr); }
 
         //! @brief 選択対象を直接指定して変更する。進行中のドラッグ操作はキャンセルされる
         void SetSelected(NS::Obj::Transform* target) noexcept
@@ -178,8 +170,6 @@ namespace NS::Editor
                                                       NS::Size2D viewport) noexcept;
 
     private:
-        void OnToolKey(NS::OS::Key key) noexcept;
-
         NS::OS::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
 

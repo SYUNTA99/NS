@@ -133,7 +133,7 @@ public:
     [[nodiscard]] const NS::Obj::ObjectList& Objects() const noexcept;
 
     //! 配置ツールのモード (Build / Object) を取得する
-    [[nodiscard]] bool ObjectToolActive() const noexcept { return m_editorToolMode == EditorToolMode::Object; }
+    [[nodiscard]] bool ObjectToolActive() const noexcept { return m_objectToolActive; }
     //! 配置ツールを Build / Object 切替える。Build へ戻す時はギズモ選択を解除する
     void SetObjectToolActive(bool active) noexcept;
 
@@ -208,7 +208,8 @@ public:
 
     //! @brief 選択中の配置物のコンポーネント 1 個について、データの active を切り替える
     //! @details false は保存に残り、読み直しても false のまま。player の入力と transform は守って何もしない
-    void SetComponentEnabledOnSelected(std::size_t componentIndex, bool enabled);
+    //! @param comp 選択中の配置物が持つ部品
+    void SetComponentEnabledOnSelected(NS::Obj::Component& comp, bool enabled);
 
     //! 選択中の配置物を新しい永続 id で複製して undo へ積む。プレイヤーは複製の対象から外す
     void DuplicateSelectedObject();
@@ -295,12 +296,7 @@ private:
     NS::Editor::EditorMode m_editor{}; // カーソルと Undo を持つ編集モード
     Mode m_mode = Mode::Edit;          // 現在の実行モード
 
-    enum class EditorToolMode : std::uint8_t
-    {
-        Build,
-        Object
-    };
-    EditorToolMode m_editorToolMode = EditorToolMode::Object; // ツールモード (Build / Object)
+    bool m_objectToolActive = true; // false の時は Build
 
     NS::Editor::GizmoEditor m_gizmo{}; // 変形ギズモ管理
 

@@ -18,7 +18,7 @@ namespace NS::Editor
 {
     void CategoryPalette::SetActiveSlot(std::size_t slot) noexcept
     {
-        if (slot < k_SlotCount)
+        if (slot < k_PaletteSlotCount)
         {
             m_activeSlot = slot;
         }
@@ -42,12 +42,12 @@ namespace NS::Editor
         {
             if (gp.IsPressed(NS::OS::GamepadButton::LeftShoulder))
             {
-                SetActiveSlot((m_activeSlot + k_SlotCount - 1) % k_SlotCount);
+                SetActiveSlot((m_activeSlot + k_PaletteSlotCount - 1) % k_PaletteSlotCount);
             }
 
             if (gp.IsPressed(NS::OS::GamepadButton::RightShoulder))
             {
-                SetActiveSlot((m_activeSlot + 1) % k_SlotCount);
+                SetActiveSlot((m_activeSlot + 1) % k_PaletteSlotCount);
             }
         }
 
@@ -59,7 +59,7 @@ namespace NS::Editor
         }
 
         NS::OS::Keyboard& kb = input->Keyboard();
-        for (std::size_t i = 0; i < k_SlotCount; ++i)
+        for (std::size_t i = 0; i < k_PaletteSlotCount; ++i)
         {
             const NS::OS::Key code =
                 static_cast<NS::OS::Key>(static_cast<int>(NS::OS::Key::Num1) + static_cast<int>(i));
@@ -126,7 +126,7 @@ namespace NS::Editor
             }
 
             // 各ブラシのスロットボタンを横並びで描画する
-            for (std::size_t i = 0; i < k_SlotCount; ++i)
+            for (std::size_t i = 0; i < k_PaletteSlotCount; ++i)
             {
                 if (i > 0)
                 {

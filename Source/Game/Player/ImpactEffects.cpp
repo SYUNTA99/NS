@@ -388,7 +388,7 @@ namespace NS::Game::Player
         core.dynamicInputs[shape.coreInput] = 1.0f;
         core.dynamicInputs[3] = m_coreBirthScale / std::max(m_coreHoldPulse, NS::k_Epsilon);
         m_plan.core = m_layers.Play(effects, m_coreAsset, core);
-        SetAmount(m_plan.core, shape.coreDiameter);
+        m_layers.SetAmount(m_plan.core, shape.coreDiameter);
 
         // 照りは核と同じ当たりの絵の頭から。手本の弾きは接触のコマで既に床が照らされ、画面の明るさが最大の 4
         // 割まで上がる
@@ -398,7 +398,7 @@ namespace NS::Game::Player
             const Quaternion lieFlat = TurnNormalTo(Vector3{0.0f, 1.0f, 0.0f});
             const float riseDiameter = shape.glowDiameter * std::sqrt(std::clamp(m_glowRiseShare, 0.0f, 1.0f));
             m_plan.glow = m_layers.Play(effects, m_glowAsset, PlayAt(m_plan.floor, lieFlat, Uniform(riseDiameter)));
-            SetAmount(m_plan.glow, shape.glowDiameter * 0.5f);
+            m_layers.SetAmount(m_plan.glow, shape.glowDiameter * 0.5f);
         }
     }
 
@@ -419,7 +419,7 @@ namespace NS::Game::Player
         // 秒の速さを 1 フレームの距離にして絵へ渡す
         sparks.dynamicInputs[2] = shape.sparkSpeed / 60.0f;
         const std::uint32_t id = m_layers.Play(effects, m_sparksAsset, sparks);
-        SetAmount(id, shape.sparkAmount);
+        m_layers.SetAmount(id, shape.sparkAmount);
         m_layers.SetRotation(id, heading);
     }
 
@@ -430,7 +430,7 @@ namespace NS::Game::Player
         NS::Gfx::EffectPlayDesc embers = PlayAt(m_plan.contact, TurnUpTo(m_plan.launchDir), Uniform(1.0f));
         embers.dynamicInputs[0] = static_cast<float>(shape.emberCount);
         embers.dynamicInputs[1] = shape.sparkSpeed / 60.0f;
-        SetAmount(m_layers.Play(effects, m_embersAsset, embers), static_cast<float>(shape.emberCount));
+        m_layers.SetAmount(m_layers.Play(effects, m_embersAsset, embers), static_cast<float>(shape.emberCount));
     }
 
     void ImpactEffects::AdvanceHit(NS::Gfx::EffectScene* effects)
@@ -506,7 +506,7 @@ namespace NS::Game::Player
                 m_layers.Play(effects,
                               m_streakAsset,
                               PlayAt(m_plan.contact, Quaternion::Identity, Vector3{shape.streakLength, 1.0f, 1.0f}));
-            SetAmount(m_plan.streak, shape.streakLength);
+            m_layers.SetAmount(m_plan.streak, shape.streakLength);
         }
         if (m_plan.streak != 0)
         {
@@ -572,7 +572,7 @@ namespace NS::Game::Player
                 m_layers.Play(effects,
                               m_ringAsset,
                               PlayAt(m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(m_ringStartRadius)));
-            SetAmount(m_plan.ring, shape.ringRadius);
+            m_layers.SetAmount(m_plan.ring, shape.ringRadius);
         }
         if (m_plan.ring != 0)
         {
@@ -604,7 +604,7 @@ namespace NS::Game::Player
                         PlayAt(m_aim.dustOrigin, Quaternion::Identity, Uniform(shape.dustScale));
                     dust.dynamicInputs[0] = static_cast<float>(shape.dustCount);
                     const std::uint32_t id = m_layers.Play(effects, m_dustAsset, dust);
-                    SetAmount(id, shape.dustScale);
+                    m_layers.SetAmount(id, shape.dustScale);
                     m_dusts.push_back(id);
                 }
             }
@@ -629,7 +629,7 @@ namespace NS::Game::Player
                 recoil.dynamicInputs[2] = 0.0f;
                 recoil.dynamicInputs[shape.recoilCountInput] = static_cast<float>(shape.recoilCount);
                 recoil.dynamicInputs[1] = shape.recoilLength;
-                SetAmount(m_layers.Play(effects, m_recoilAsset, recoil), shape.recoilLength);
+                m_layers.SetAmount(m_layers.Play(effects, m_recoilAsset, recoil), shape.recoilLength);
             }
         }
 
@@ -721,7 +721,7 @@ namespace NS::Game::Player
                 effects,
                 m_landDustAsset,
                 PlayAt(at, Quaternion::Identity, Uniform(radius / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
-            SetAmount(dust, radius);
+            m_layers.SetAmount(dust, radius);
             m_layers.StopAfter(dust, std::max(m_landDustLife, 1));
         }
         m_lastVerticalVelocity = m_player->Body().VerticalVelocity();
@@ -749,11 +749,6 @@ namespace NS::Game::Player
         m_layers.Stop(effects, m_plan.streak);
         m_layers.Stop(effects, m_plan.ring);
         m_plan = HitPlan{};
-    }
-
-    void ImpactEffects::SetAmount(std::uint32_t id, float amount) noexcept
-    {
-        m_layers.SetAmount(id, amount);
     }
 
     NS_CLASS(ImpactEffects)

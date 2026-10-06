@@ -31,22 +31,11 @@ namespace NS::Editor
         using NS::Game::Level::HitTier;
 
         // 事象の種類の並び。HitEventValue の選択肢の順で、種類を足すとここにも出る
-        template <std::size_t I> void CollectEventTypes(std::vector<HitEventValue>& out)
-        {
-            if constexpr (I < std::variant_size_v<HitEventValue>)
-            {
-                out.emplace_back(std::in_place_index<I>);
-                CollectEventTypes<I + 1>(out);
-            }
-        }
-
         const std::vector<HitEventValue>& EventTypes()
         {
-            static const std::vector<HitEventValue> s_types = [] {
-                std::vector<HitEventValue> types;
-                CollectEventTypes<0>(types);
-                return types;
-            }();
+            static const std::vector<HitEventValue> s_types = []<std::size_t... I>(std::index_sequence<I...>) {
+                return std::vector<HitEventValue>{HitEventValue{std::in_place_index<I>}...};
+            }(std::make_index_sequence<std::variant_size_v<HitEventValue>>{});
             return s_types;
         }
 
@@ -117,7 +106,7 @@ namespace NS::Editor
         {
             m_working = NS::Game::Level::HitTimeline{};
         }
-        m_hasSelectedRow = false;
+        m_selectedRow.reset();
     }
 
     void HitTimelinePanel::ApplyWorking()
@@ -438,7 +427,6 @@ namespace NS::Editor
                 clock = m_playback.frame;
             }
             m_selectedRow = AddHitEvent(m_working, types[static_cast<std::size_t>(m_addType)], clock);
-            m_hasSelectedRow = true;
             ApplyWorking();
         }
         if (!m_status.empty())
@@ -494,11 +482,6 @@ namespace NS::Editor
             }
             tracks.push_back(std::move(track));
         }
-        std::optional<std::size_t> selected;
-        if (m_hasSelectedRow)
-        {
-            selected = m_selectedRow;
-        }
         float graphsHeight = 0.0f;
         if (m_result.hit && !m_result.frames.empty())
         {
@@ -509,7 +492,7 @@ namespace NS::Editor
             tracks,
             range,
             m_playback,
-            selected,
+            m_selectedRow,
             m_result.hit && !m_needsRun,
             graphsHeight,
             [this](const TimelineLayout& layout) {
@@ -519,11 +502,6 @@ namespace NS::Editor
                 }
             },
             PlaybackRange());
-        m_hasSelectedRow = selected.has_value();
-        if (selected.has_value())
-        {
-            m_selectedRow = *selected;
-        }
         if (moved)
         {
             m_showPreview = true;
@@ -647,11 +625,11 @@ namespace NS::Editor
     void HitTimelinePanel::RenderSelectedRow() noexcept
     {
 #if NS_EDITOR_ENABLED
-        if (!m_hasSelectedRow || m_selectedRow >= m_working.events.size())
+        if (!m_selectedRow.has_value() || *m_selectedRow >= m_working.events.size())
         {
             return;
         }
-        HitEvent& event = m_working.events[m_selectedRow];
+        HitEvent& event = m_working.events[*m_selectedRow];
         const std::string title{NS::Game::Level::HitEventLabel(event.value)};
         ImGui::SeparatorText(title.c_str());
         bool changed = false;
@@ -698,8 +676,8 @@ namespace NS::Editor
         }
         if (ImGui::Button("この事象を消す"))
         {
-            (void)RemoveHitEvent(m_working, m_selectedRow);
-            m_hasSelectedRow = false;
+            (void)RemoveHitEvent(m_working, *m_selectedRow);
+            m_selectedRow.reset();
             changed = true;
         }
         if (changed)

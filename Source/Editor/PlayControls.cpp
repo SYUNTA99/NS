@@ -4,15 +4,6 @@
 
 namespace NS::Editor
 {
-    CenterTab LiveCenterTab(bool playMode) noexcept
-    {
-        if (playMode)
-        {
-            return CenterTab::Game;
-        }
-        return CenterTab::Scene;
-    }
-
     PlayToolbarState MakePlayToolbarState(PlayModeSnapshot snapshot) noexcept
     {
         PlayToolbarState state{};
@@ -34,7 +25,11 @@ namespace NS::Editor
         {
             return std::nullopt;
         }
-        return LiveCenterTab(transition.playMode);
+        if (transition.playMode)
+        {
+            return CenterTab::Game;
+        }
+        return CenterTab::Scene;
     }
 
     InputOwnership ResolveInputOwnership(InputOwnerQuery query) noexcept

@@ -60,19 +60,19 @@ namespace NS::Game::Level
         float zoomStart = 1.0f;    //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
         float rollStart = 0.0f;    //!< 傾きの始めの値 (度)。正は画面の上端をカメラの右へ倒す向き。傾きの無い当たりは 0
         NS::OS::GamepadVibration padStart; //!< パッドの振動の始めの値。振動の無い当たりは 0
-        int hitStopSteps = 0;                    //!< 止めのフレーム数。タイムラインが引けない当たりは 0
-        bool localStop = false;                  //!< ローカル・ヒットストップ (自機と相手の止め) を使った場合 true
-        bool gradualRelease = false;             //!< 段階的な明け (明けの後の遅い世界) を使った場合 true
-        bool centerHit = false;                  //!< 段が Center の場合 true
+        int hitStopSteps = 0;              //!< 止めのフレーム数。タイムラインが引けない当たりは 0
+        bool localStop = false;            //!< ローカル・ヒットストップ (自機と相手の止め) を使った場合 true
+        bool gradualRelease = false;       //!< 段階的な明け (明けの後の遅い世界) を使った場合 true
+        bool centerHit = false;            //!< 段が Center の場合 true
         bool broke = false;
         NS::Vector3 selfVelocity; //!< 明けに自機が持つ速度。反動は初速、貫通は減速した突進の速度。単位は m/s
         // 反動の頂点の高さは押し飛ばしの当たりだけが埋める。貫通の当たりは反動しないので 0
         float reboundApexHeight = 0.0f; //!< 自機の反動の、弾かれ始めの高さから頂点までの高さ。単位は m
         // 飛ばす曲線の 3 つの欄は押し飛ばしの当たりだけが埋める。貫通の当たりは相手を飛ばさないので 0
-        NS::Vector3 launchVelocity; //!< 相手の曲線の発射の瞬間の速度。単位は m/s
-        float launchDistance = 0.0f;      //!< 相手の曲線が発射の高さへ戻るまでに水平に進む距離。単位は m
-        float launchApexHeight = 0.0f;    //!< 相手の曲線の、発射の高さから頂点までの高さ。単位は m
-        NS::Vector3 impactDir;      //!< 相手の飛ぶ水平の向き。食い込みの向きも同じ
+        NS::Vector3 launchVelocity;    //!< 相手の曲線の発射の瞬間の速度。単位は m/s
+        float launchDistance = 0.0f;   //!< 相手の曲線が発射の高さへ戻るまでに水平に進む距離。単位は m
+        float launchApexHeight = 0.0f; //!< 相手の曲線の、発射の高さから頂点までの高さ。単位は m
+        NS::Vector3 impactDir;         //!< 相手の飛ぶ水平の向き。食い込みの向きも同じ
         //! 自機の玉が相手の表面に触れた点。JudgeHitFace の触れる点で、判定できない体の時は相手の体の中心
         NS::Vector3 surfacePoint;
         NS::Vector3 targetPos;
@@ -100,7 +100,7 @@ namespace NS::Game::Level
     class ImpactResolver : public NS::Obj::Component
     {
     public:
-        ImpactResolver() noexcept;
+        ImpactResolver() noexcept = default;
 
         //! 持ち主の Player と移動と当たりの演出を引き当てる。持ち主が Player でなければ以後何もしない
         void OnStart() override;
@@ -297,10 +297,7 @@ namespace NS::Game::Level
                                                           const HitEvent& event) const noexcept;
         // カメラを direction の水平の向きへ、distance の曲線の距離だけずらし始める。水平の成分が無ければずらさない
         // onScreen が真なら、向きをカメラから見た画面の上の向きへ写してずらす
-        void StartCameraNudge(const NS::Vector3& direction,
-                              const NS::Obj::Curve& distance,
-                              int length,
-                              bool onScreen);
+        void StartCameraNudge(const NS::Vector3& direction, const NS::Obj::Curve& distance, int length, bool onScreen);
 
         // 寄りの事象から、この当たりの寄りと傾きを組む。長さのうち末尾の戻すフレーム数を除いた間を保つ
         // 事前条件: 相手の飛ぶ向きを控え終えている
@@ -348,18 +345,11 @@ namespace NS::Game::Level
         NS::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};
         NS::Game::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離
         LaunchArc m_pendingLaunchArc{};                     // 明けたフレームに相手を飛ばす曲線
-        // 検知のフレームに相手が答えた位置。記録の targetPos と揺れの種に使う
-        // 置かれていた相手を元の位置へ戻すのは相手自身
-        NS::Vector3 m_pendingTargetPosition{0.0f, 0.0f, 0.0f};
-        float m_pendingLaunchScale = 0.0f;                      // この衝突の飛ばしの比。明けに相手の尾の長さへ渡す
-        HitTier m_pendingTier = HitTier::Center;                // この衝突の段。明けに相手の尾の色へ渡す
-        NS::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f}; // 発射の水平方向。食い込みと振動の軸
-        NS::Obj::ActorRef m_pendingTarget{};                    // 知らせる相手。凍結をまたぐので使うたびに引く
-        // 検知のフレームに相手が置かれていたか。記録と当たりの演出が読む
-        bool m_pendingTargetPlaced = false;
-        float m_pendingPower = 0.0f;          // この衝突の威力。揺れの最初の振れに掛ける
-        float m_pendingMassFactor = 0.0f;     // この衝突の質量の効き。揺れの最初の振れに掛ける
-        std::uint32_t m_pendingShakeSeed = 0; // この衝突の揺れの、入れ替わりの間隔を選ぶ種
+        NS::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f};   // 発射の水平方向。食い込みと振動の軸
+        NS::Obj::ActorRef m_pendingTarget{};                // 知らせる相手。凍結をまたぐので使うたびに引く
+        float m_pendingPower = 0.0f;                        // この衝突の威力。揺れの最初の振れに掛ける
+        float m_pendingMassFactor = 0.0f;                   // この衝突の質量の効き。揺れの最初の振れに掛ける
+        std::uint32_t m_pendingShakeSeed = 0;               // この衝突の揺れの、入れ替わりの間隔を選ぶ種
         // 自機の横揺れ。始めた時計の値から数え、長さの終わりで止める
         struct BodyShakeRun
         {

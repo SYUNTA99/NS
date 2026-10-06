@@ -108,8 +108,6 @@ namespace NS::Game::Level
         float centerV = 0.0f;         //!< 中心の上下の位置。上が正
         float halfU = 1.0f;           //!< 左右の半分の幅
         float halfV = 1.0f;           //!< 上下の半分の幅
-        //! 丸の縁の分割数。既定の近似誤差は約半パーセント
-        int outlineSegments = 32;
     };
 
 #if !defined(NS_SHIPPING)

@@ -123,7 +123,8 @@ namespace NS::Game::Level
     {
         // 置き直すたびに形を作り直すので、球が変わらない間は置かない。止まっている置物の数だけ毎ステップ確保が走る
         const NS::Sphere sphere = Sphere().WorldSphere();
-        if (!m_hasSyncedSphere || sphere.center != m_syncedSphere.center || sphere.radius != m_syncedSphere.radius)
+        if (!m_syncedSphere.has_value() || sphere.center != m_syncedSphere->center ||
+            sphere.radius != m_syncedSphere->radius)
         {
             SyncCollision();
         }
@@ -149,7 +150,6 @@ namespace NS::Game::Level
         {
             Sphere().SyncToPhysics();
             m_syncedSphere = Sphere().WorldSphere();
-            m_hasSyncedSphere = true;
         }
     }
 
@@ -157,15 +157,7 @@ namespace NS::Game::Level
     {
         if (IsFrozen())
         {
-            EndFreeze();
-            if (m_freezePlaced || m_motion.IsDead())
-            {
-                (void)m_states->Change<RestingState>();
-            }
-            else
-            {
-                (void)m_states->Change<LaunchedState>();
-            }
+            LeaveFreeze();
         }
         m_freezePlaced = !IsFlying();
         m_freezeHome = Root().Position();
@@ -264,29 +256,23 @@ namespace NS::Game::Level
 
     void MapObj::StepFreeze()
     {
-        // 横揺れは止めに入ったフレームから進める。下の早い戻りより前に置く
         AdvanceShake();
-        const std::uint32_t step = m_states->StepsInState();
-        if (step == 0)
+        if (m_states->StepsInState() >= static_cast<std::uint32_t>(std::max(m_freeze.stopSteps, 1)) + 2)
         {
-            return;
+            LeaveFreeze();
         }
-        const int remaining = std::max(m_freeze.stopSteps - static_cast<int>(step), 0);
-        if (remaining == 0)
+    }
+
+    void MapObj::LeaveFreeze()
+    {
+        EndFreeze();
+        if (m_freezePlaced || m_motion.IsDead())
         {
-            if (step >= static_cast<std::uint32_t>(std::max(m_freeze.stopSteps, 1)) + 2)
-            {
-                EndFreeze();
-                if (m_freezePlaced || m_motion.IsDead())
-                {
-                    (void)m_states->Change<RestingState>();
-                }
-                else
-                {
-                    (void)m_states->Change<LaunchedState>();
-                }
-            }
-            return;
+            (void)m_states->Change<RestingState>();
+        }
+        else
+        {
+            (void)m_states->Change<LaunchedState>();
         }
     }
 
@@ -294,15 +280,7 @@ namespace NS::Game::Level
     {
         if (IsFrozen())
         {
-            EndFreeze();
-            if (m_freezePlaced || m_motion.IsDead())
-            {
-                (void)m_states->Change<RestingState>();
-            }
-            else
-            {
-                (void)m_states->Change<LaunchedState>();
-            }
+            LeaveFreeze();
         }
         SpawnMark();
         const NS::Vector3 up = -NS::Obj::GravityDirection(*this);

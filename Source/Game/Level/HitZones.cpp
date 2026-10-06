@@ -80,9 +80,6 @@ namespace NS::Game::Level
                 }
                 out.shape = NS::Obj::HitSensorShape::Box;
                 out.center = box.center;
-                out.halfWidth = 0.0f;
-                out.halfHeight = 0.0f;
-                out.halfDepth = 0.0f;
                 float surfaceSq = 0.0f;
                 for (std::size_t i = 0; i < axes.size(); ++i)
                 {
@@ -273,10 +270,8 @@ namespace NS::Game::Level
         {
             return result;
         }
-        result = HitFaceJudgement{};
-        result.tier = HitTier::Wide;
+        // 失敗した JudgeHitFace は result を書かないので、外れの既定のまま
         result.powerScale = SanitizeScale(face.remainderPowerScale);
-        result.offset01 = 1.0f;
         result.surfacePoint = body.Center();
         return result;
     }
@@ -385,7 +380,8 @@ namespace NS::Game::Level
             points.emplace_back(shape.centerU - shape.halfU, shape.centerV + shape.halfV);
             return points;
         }
-        const int segments = std::max(shape.outlineSegments, 3);
+        // 丸の縁の分割数。近似の誤差は約半パーセント
+        constexpr int segments = 32;
         points.reserve(segments);
         for (int i = 0; i < segments; ++i)
         {

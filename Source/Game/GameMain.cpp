@@ -17,8 +17,6 @@ namespace NS
         desc.window.size = NS::Size2D{1920, 1080};
 #ifdef NS_BUILD_DEBUG
         desc.renderer.enableDebugLayer = true;
-#else
-        desc.renderer.enableDebugLayer = false;
 #endif
         std::unique_ptr<Application> app = std::make_unique<Application>(desc);
 

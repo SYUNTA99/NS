@@ -162,22 +162,21 @@ namespace NS::Game::Player
 
     void ChargeEffects::ForgetEndedLayers() noexcept
     {
-        if (m_curl != 0 && m_layers.Find(m_curl) != nullptr && m_layers.Find(m_curl)->endStep.has_value())
-        {
-            m_curl = 0;
-        }
-        if (m_burst != 0 && m_layers.Find(m_burst) != nullptr && m_layers.Find(m_burst)->endStep.has_value())
-        {
-            m_burst = 0;
-        }
-        if (m_trail != 0 && m_layers.Find(m_trail) != nullptr && m_layers.Find(m_trail)->endStep.has_value())
-        {
-            m_trail = 0;
-        }
-        if (m_full != 0 && m_layers.Find(m_full) != nullptr && m_layers.Find(m_full)->endStep.has_value())
-        {
-            m_full = 0;
-        }
+        const auto forgetIfEnded = [this](std::uint32_t& id) {
+            if (id == 0)
+            {
+                return;
+            }
+            const EffectLayerRecord* record = m_layers.Find(id);
+            if (record != nullptr && record->endStep.has_value())
+            {
+                id = 0;
+            }
+        };
+        forgetIfEnded(m_curl);
+        forgetIfEnded(m_burst);
+        forgetIfEnded(m_trail);
+        forgetIfEnded(m_full);
     }
 
     void ChargeEffects::StartPress(NS::Gfx::EffectScene* effects, const NS::Vector3& center)

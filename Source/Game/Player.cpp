@@ -396,10 +396,7 @@ void Player::Die() noexcept
 
 void Player::ResetHealth() noexcept
 {
-    if (const NS::Game::Player::PlayerParams* params = m_params.get())
-    {
-        m_health.SetMaxHealth(params->MaxHealth());
-    }
+    m_health.SetMaxHealth(m_params->MaxHealth());
     m_health.Reset();
 }
 
@@ -550,19 +547,12 @@ void Player::ResetState() noexcept
     m_lastMoveDistance = 0.0f;
     m_request.bufferRemaining = 0.0f;
     m_request.spent = false;
-    m_slam.isTap = false;
     m_request.charge01 = 0.0f;
     m_request.overcharge01 = 0.0f;
     m_request.dir = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_request.hasDir = false;
     m_request.verticalSpeed = 0.0f;
-    m_slam.charge01 = 0.0f;
-    m_slam.overcharge01 = 0.0f;
-    m_slam.forced = false;
-    m_slam.travelled = 0.0f;
-    m_slam.distanceTarget = 0.0f;
-    m_slam.justStarted = false;
-    m_slam.dir = NS::Vector3{0.0f, 0.0f, 0.0f};
+    m_slam = BodySlamRecord{};
     m_rebound.direction = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_rebound.spinSpeed = 0.0f;
     m_rebound.missTumble.reset();
@@ -572,7 +562,6 @@ void Player::ResetState() noexcept
     m_curled = false;
     m_collider->SetSphereShape(false);
     m_bodySlamHeld = false;
-    m_slam.wasSlamming = false;
     m_states->Reset();
     // 止めの最中か反動を待つ間のやり直しで、出現位置で明けて弾かれないよう、走っている当たりのタイムラインを持ち主に打ち切らせる
     m_resolver->CancelImpact();

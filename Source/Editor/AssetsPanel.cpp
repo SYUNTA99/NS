@@ -60,18 +60,21 @@ namespace NS::Editor
         {
             const std::string name = NS::OS::FileSystem::FileName(file);
             const std::string extension = NS::OS::FileSystem::Extension(file);
+            // ドラッグで渡すのは資産のファイルのパス全体
+            const auto dragSource = [&](const char* type) {
+                if (ImGui::BeginDragDropSource())
+                {
+                    ImGui::SetDragDropPayload(type, file.c_str(), file.size() + 1);
+                    ImGui::TextUnformatted(name.c_str());
+                    ImGui::EndDragDropSource();
+                }
+            };
 
             if (extension == ".gltf" || extension == ".glb")
             {
                 ImGui::PushID(name.c_str());
                 ImGui::Selectable(name.c_str());
-                if (ImGui::BeginDragDropSource())
-                {
-                    const std::string& full = file;
-                    ImGui::SetDragDropPayload(k_MeshDragType, full.c_str(), full.size() + 1);
-                    ImGui::TextUnformatted(name.c_str());
-                    ImGui::EndDragDropSource();
-                }
+                dragSource(k_MeshDragType);
                 if (ImGui::IsItemHovered())
                 {
                     ImGui::SetTooltip("Scene ビューへドラッグすると置ける");
@@ -90,13 +93,7 @@ namespace NS::Editor
             {
                 editor.ApplyMaterialToSelected(file);
             }
-            if (ImGui::BeginDragDropSource())
-            {
-                const std::string& full = file;
-                ImGui::SetDragDropPayload(k_MaterialDragType, full.c_str(), full.size() + 1);
-                ImGui::TextUnformatted(name.c_str());
-                ImGui::EndDragDropSource();
-            }
+            dragSource(k_MaterialDragType);
             ImGui::PopID();
         }
 #else

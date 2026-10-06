@@ -430,10 +430,7 @@ float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
 
         // 一時停止 / 再開。抜けずに時間だけ止める
         ImGui::SameLine();
-        if (!state.pauseEnabled)
-        {
-            ImGui::BeginDisabled();
-        }
+        ImGui::BeginDisabled(!state.pauseEnabled);
         if (state.pauseDown)
         {
             ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_ButtonActive]);
@@ -446,25 +443,16 @@ float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
         {
             ImGui::PopStyleColor();
         }
-        if (!state.pauseEnabled)
-        {
-            ImGui::EndDisabled();
-        }
+        ImGui::EndDisabled();
 
         // コマ送り。一時停止したまま 1 fixed step だけ進める
         ImGui::SameLine();
-        if (!state.stepEnabled)
-        {
-            ImGui::BeginDisabled();
-        }
+        ImGui::BeginDisabled(!state.stepEnabled);
         if (ImGui::Button("▶|", ImVec2(buttonWidth, 0.0f)))
         {
             editor.RequestStepFrame();
         }
-        if (!state.stepEnabled)
-        {
-            ImGui::EndDisabled();
-        }
+        ImGui::EndDisabled();
     }
     ImGui::End();
     return height;

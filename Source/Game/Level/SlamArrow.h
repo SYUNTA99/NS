@@ -42,8 +42,6 @@ namespace NS::Game::Level
         float overcharge01 = 0.0f; //!< 溜めすぎの深さ 0..1。溜めきりの間だけ色に効く
     };
 
-    //! 地面の矢印の形と色を決める値
-
     //! 床に貼る板 1 枚ぶんの、線に沿った範囲と高さ
     struct SlamArrowPiece
     {

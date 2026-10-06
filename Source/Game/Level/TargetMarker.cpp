@@ -16,8 +16,6 @@ namespace NS::Game::Level
 {
     namespace
     {
-        // 画素の欄は描画先の高さがこの値のときの大きさで書く
-
         // 左上 (left, top)・一辺 side の正方形の四隅に、横と縦の 2 本ずつのかぎ形を足す
         void AppendCornerHooks(
             float left, float top, float side, float thickness, float armRatio, std::vector<MarkerRect>& outCorners)

@@ -1,17 +1,17 @@
 #include "Game/Level/LaunchEffects.h"
 
-#include "Game/Level/CollisionBounds.h"
 #include "Game/Level/MapObj.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Graphics/EffectScene.h"
 #include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/BoxCollision.h"
+#include "NSlib/Object/Components/SphereCollision.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <string_view>
 
 namespace NS::Game::Level
 {
@@ -64,26 +64,37 @@ namespace NS::Game::Level
         {
             return Vector3{value, value, value};
         }
+
+        // 当たりの箱か球の世界の外接箱。物理の登録に依らず、持ち主の変換と欄から作る
+        [[nodiscard]] bool TryGetCollisionBounds(const NS::Obj::Actor& object, NS::AABB& outBounds) noexcept
+        {
+            if (const NS::Obj::BoxCollision* box =
+                    NS::Obj::ComponentCast<NS::Obj::BoxCollision>(object.CollisionPart()))
+            {
+                outBounds = box->WorldAABB();
+                return true;
+            }
+            if (const NS::Obj::SphereCollision* sphere =
+                    NS::Obj::ComponentCast<NS::Obj::SphereCollision>(object.CollisionPart()))
+            {
+                outBounds = sphere->WorldAABB();
+                return true;
+            }
+            return false;
+        }
     } // namespace
 
     LaunchEffects::LaunchEffects() noexcept : NS::Obj::Component() {}
 
     const MapObjParams& LaunchEffects::Tuning() const noexcept
     {
-        if (const MapObj* owner = NS::Obj::Cast<MapObj>(Owner()))
-        {
-            return owner->Params();
-        }
-        static const MapObjParams defaults;
-        return defaults;
+        // 呼ぶのは OnStart が持ち主の MapObj を引き当てた後だけ
+        return m_body->Params();
     }
 
     void LaunchEffects::OnStart()
     {
-        if (Owner() != nullptr && std::string_view{Owner()->ClassName()} == "MapObj")
-        {
-            m_body = static_cast<MapObj*>(Owner());
-        }
+        m_body = NS::Obj::Cast<MapObj>(Owner());
         NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
         if (effects == nullptr)
         {

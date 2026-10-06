@@ -124,14 +124,7 @@ namespace NS::Game::Player
 
     EffectLayerRecord* EffectLayerList::FindMutable(std::uint32_t id) noexcept
     {
-        for (EffectLayerRecord& record : m_records)
-        {
-            if (record.id == id)
-            {
-                return &record;
-            }
-        }
-        return nullptr;
+        return const_cast<EffectLayerRecord*>(std::as_const(*this).Find(id));
     }
 
     void EffectLayerList::AppendStartedNames(std::vector<std::string>& out) const

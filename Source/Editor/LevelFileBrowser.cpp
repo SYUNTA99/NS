@@ -16,6 +16,20 @@ namespace NS::Editor
     {
         // ImGui InputText で確保する name buffer の容量。sanitize 側の上限 200 + 余裕
         constexpr std::size_t k_InputBufferCapacity = 256;
+
+#if NS_EDITOR_ENABLED
+        void DrawResultMessage(const std::string& message, bool error) noexcept
+        {
+            if (error)
+            {
+                ImGui::TextColored(k_MsgErrorColor, "%s", message.c_str());
+            }
+            else
+            {
+                ImGui::TextColored(k_MsgOkColor, "%s", message.c_str());
+            }
+        }
+#endif
     } // namespace
 
     void LevelFileBrowser::OpenSaveModal(std::string_view initialName) noexcept
@@ -79,10 +93,7 @@ namespace NS::Editor
             ImGuiViewport* const vp = ImGui::GetMainViewport();
             if (vp != nullptr)
             {
-                ImGui::SetNextWindowPos(
-                    ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.5f, vp->WorkPos.y + vp->WorkSize.y * 0.5f),
-                    ImGuiCond_Appearing,
-                    ImVec2(0.5f, 0.5f));
+                ImGui::SetNextWindowPos(vp->GetWorkCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
             }
             ImGui::SetNextWindowSize(ImVec2(320.0f, 0.0f), ImGuiCond_Appearing);
             constexpr ImGuiWindowFlags k_SaveModalFlags =
@@ -118,14 +129,7 @@ namespace NS::Editor
                 if (!m_lastMessage.empty())
                 {
                     ImGui::Separator();
-                    if (m_lastMessageError)
-                    {
-                        ImGui::TextColored(k_MsgErrorColor, "%s", m_lastMessage.c_str());
-                    }
-                    else
-                    {
-                        ImGui::TextColored(k_MsgOkColor, "%s", m_lastMessage.c_str());
-                    }
+                    DrawResultMessage(m_lastMessage, m_lastMessageError);
                 }
             }
             ImGui::End();
@@ -137,10 +141,7 @@ namespace NS::Editor
             ImGuiViewport* const vp = ImGui::GetMainViewport();
             if (vp != nullptr)
             {
-                ImGui::SetNextWindowPos(
-                    ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.5f, vp->WorkPos.y + vp->WorkSize.y * 0.5f),
-                    ImGuiCond_Appearing,
-                    ImVec2(0.5f, 0.5f));
+                ImGui::SetNextWindowPos(vp->GetWorkCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
             }
             ImGui::SetNextWindowSize(ImVec2(360.0f, 320.0f), ImGuiCond_Appearing);
             constexpr ImGuiWindowFlags k_LoadModalFlags = ImGuiWindowFlags_NoCollapse;
@@ -195,14 +196,7 @@ namespace NS::Editor
 
                 if (!m_lastMessage.empty())
                 {
-                    if (m_lastMessageError)
-                    {
-                        ImGui::TextColored(k_MsgErrorColor, "%s", m_lastMessage.c_str());
-                    }
-                    else
-                    {
-                        ImGui::TextColored(k_MsgOkColor, "%s", m_lastMessage.c_str());
-                    }
+                    DrawResultMessage(m_lastMessage, m_lastMessageError);
                 }
             }
             ImGui::End();

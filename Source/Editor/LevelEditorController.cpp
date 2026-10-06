@@ -73,24 +73,6 @@ namespace
         return absNorm;
     }
 
-    // index 番目のリフレクション付き component。添字は ForEachPart の並びで、Inspector の並びに揃う
-    NS::Obj::Component* ReflectedComponentAt(NS::Obj::Actor& object, std::size_t index) noexcept
-    {
-        std::size_t count = 0;
-        NS::Obj::Component* result = nullptr;
-        object.ForEachPart([&count, &result, index](std::string_view, NS::Obj::Component& part) {
-            if (part.GetReflection() != nullptr)
-            {
-                if (count == index)
-                {
-                    result = &part;
-                }
-                ++count;
-            }
-        });
-        return result;
-    }
-
     // カメラの視錐台を描く時の far。vcam の既定 1000 のままだと錐台が画面に収まらないので近くで切る
     constexpr float k_CameraGizmoFar = 8.0f;
 
@@ -702,7 +684,7 @@ void LevelEditorController::TickEdit()
     // Esc: Object モードで選択中ならまず選択解除に使い終了させない
     if (app->Input().Keyboard().IsPressed(NS::OS::Key::Escape))
     {
-        if (m_editorToolMode == EditorToolMode::Object && m_gizmo.Selected() != nullptr)
+        if (m_objectToolActive && m_gizmo.Selected() != nullptr)
         {
             m_gizmo.ClearSelection();
             return;
@@ -734,7 +716,7 @@ void LevelEditorController::TickEdit()
 
     // 同時に 1 モードだけがクリックと R を消費する。Object 中は grid 入力を抑制しギズモへ回す
     // モード切替は Editor の UI ボタンが SetObjectToolActive で入れる。Tab は Edit↔Play 専用
-    const bool objectMode = (m_editorToolMode == EditorToolMode::Object);
+    const bool objectMode = m_objectToolActive;
     m_gizmo.SetActive(objectMode);
     m_editor.SetInputSuppressed(objectMode);
 
@@ -832,12 +814,6 @@ void LevelEditorController::DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes, co
 
 void LevelEditorController::Render()
 {
-    NS::Application* app = NS::Application::Get();
-    if (app == nullptr)
-    {
-        return;
-    }
-
     // プレイ中に Scene タブへ出す図形は DrawSceneViewShapes が積む。ImGui へ重ねる物は無い
     if (m_mode != Mode::Edit)
     {
@@ -860,24 +836,14 @@ void LevelEditorController::Render()
 
 void LevelEditorController::SetObjectToolActive(bool active) noexcept
 {
-    const EditorToolMode next = [active]() -> EditorToolMode {
-        if (active)
-        {
-            return EditorToolMode::Object;
-        }
-        return EditorToolMode::Build;
-    }();
-    if (next == m_editorToolMode)
+    if (active == m_objectToolActive)
     {
         return;
     }
-    m_editorToolMode = next;
+    m_objectToolActive = active;
     if (!active)
     {
-        m_gizmo.ClearSelection();
-        m_selectionIds.clear();
-        m_selectedObjectId = NS::Obj::k_NoObjectId;
-        m_lastGizmoSelected = nullptr;
+        SelectObjectById(NS::Obj::k_NoObjectId);
     }
 }
 
@@ -934,13 +900,7 @@ void LevelEditorController::RefreshGizmoSelectables()
             continue;
         }
         m_selectablePtrs.push_back(object);
-        const bool hasVisual = object->ModelPart() != nullptr;
-        std::uint8_t pickable = std::uint8_t{0};
-        if (hasVisual)
-        {
-            pickable = std::uint8_t{1};
-        }
-        m_selectablePickable.push_back(pickable);
+        m_selectablePickable.push_back(static_cast<std::uint8_t>(object->ModelPart() != nullptr));
     }
 
     m_gizmo.SetSelectableObjects(m_selectablePtrs, m_selectablePickable);
@@ -1186,11 +1146,6 @@ void LevelEditorController::RenderCollisionWireframes(NS::Gfx::DebugShapes& shap
 
 void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcept
 {
-    if (m_scene == nullptr)
-    {
-        return;
-    }
-
     Player* player = FindPlayer(m_scene->Objects());
     // 自機が居ない場面は半径 0 として、相手の輪郭の大きさで描く
     float playerRadius = 0.0f;
@@ -1575,7 +1530,7 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
     return true;
 }
 
-void LevelEditorController::SetComponentEnabledOnSelected(std::size_t componentIndex, bool enabled)
+void LevelEditorController::SetComponentEnabledOnSelected(NS::Obj::Component& comp, bool enabled)
 {
     const std::uint32_t id = m_selectedObjectId;
     if (id == NS::Obj::k_NoObjectId)
@@ -1587,21 +1542,20 @@ void LevelEditorController::SetComponentEnabledOnSelected(std::size_t componentI
     {
         return;
     }
-    NS::Obj::Component* comp = ReflectedComponentAt(*object, componentIndex);
-    if (comp == nullptr || comp->IsEnabled() == enabled)
+    if (comp.IsEnabled() == enabled)
     {
         return;
     }
     // 入力 component を休止させると player が動かなくなる。根の部品も同様に守る
-    const std::string_view typeName = comp->ClassName();
-    if (typeName == "PlayerInput" || object->PartName(*comp) == NS::Obj::k_TransformPartName)
+    const std::string_view typeName = comp.ClassName();
+    if (typeName == "PlayerInput" || object->PartName(comp) == NS::Obj::k_TransformPartName)
     {
         return;
     }
 
     // 実体の有効を直接切り替え、当たりを張り直す。実体は既に after なので Do を呼ばず履歴だけ積む
     std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
-    comp->SetEnabled(enabled);
+    comp.SetEnabled(enabled);
     m_scene->SyncPhysics();
     std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
     m_editor.Undo().Record(
@@ -1702,7 +1656,6 @@ void LevelEditorController::DuplicateSelectedObject()
 
     m_editor.Undo().Push(MakeUndoUnit(std::move(commands)), m_applier);
 
-    SetObjectToolActive(true);
     SelectObjects(created, created.back());
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -1764,10 +1717,7 @@ void LevelEditorController::DeleteSelectedObject()
 
     m_editor.Undo().Push(MakeUndoUnit(std::move(commands)), m_applier);
 
-    m_selectionIds.clear();
-    m_selectedObjectId = NS::Obj::k_NoObjectId;
-    m_gizmo.ClearSelection();
-    m_lastGizmoSelected = nullptr;
+    SelectObjectById(NS::Obj::k_NoObjectId);
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
 }
@@ -1998,7 +1948,7 @@ void LevelEditorController::CommitComponentEdit() noexcept
 bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
 {
     NS::Application* app = NS::Application::Get();
-    if (m_editorToolMode != EditorToolMode::Object || app == nullptr)
+    if (!m_objectToolActive || app == nullptr)
     {
         return false;
     }

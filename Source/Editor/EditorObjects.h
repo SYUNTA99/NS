@@ -40,9 +40,6 @@ namespace NS::Editor
     //! object の回転を rotationStep に対応する Y 軸 yaw quaternion に設定する
     void SetCellRotationStep(nlohmann::json& object, std::uint8_t rotationStep) noexcept;
 
-    //! 90 度回転できる配置物か。地形の部品
-    [[nodiscard]] bool IsRotatableObject(const nlohmann::json& object);
-
     //! @brief UI に出す名前。付けた名前があればそれ、無ければクラスの表示名
     //! @details 置けるクラスは登録の表示名、置けないクラスはクラス名、クラスの無い素の Actor は "Actor"
     [[nodiscard]] const char* ObjectDisplayName(const NS::Obj::Actor& object);
@@ -53,9 +50,6 @@ namespace NS::Editor
     //! @param[in] object 判定箱を求める配置物
     //! @return Root のローカル空間の軸並行境界ボックス
     [[nodiscard]] NS::AABB PickLocalBounds(const NS::Obj::Actor& object) noexcept;
-
-    //! プレイヤーの配置物か。live の FindPlayer と同じく、反映の型名で照合する
-    [[nodiscard]] bool IsPlayerObject(const nlohmann::json& object) noexcept;
 
     //! シーンの JSON 文書からプレイヤーを探す。最初の 1 件の添字、無ければ k_NoObjectIndex
     //! 複数居ても先頭を正とする。2 体以上の警告は EnsurePlayerObject を通した時だけ出る
@@ -69,12 +63,6 @@ namespace NS::Editor
     //! @param[in,out] scene 補う先のシーンの JSON 文書
     //! @return 足した場合 true、それ以外の場合は false
     [[nodiscard]] bool EnsurePlayerObject(nlohmann::json& scene);
-
-    //! 落下死の範囲の配置物か。反映の型名で照合する
-    [[nodiscard]] bool IsDeathZoneObject(const nlohmann::json& object) noexcept;
-
-    //! 奈落用の落下死の範囲のひな形の JSON を作る
-    [[nodiscard]] nlohmann::json MakeDeathZoneObject();
 
     //! 落下死の範囲が 1 つも無ければ既定の物を敷き、永続 id まで振る
     //! 無いレベルは奈落で死ねず落ち続けてしまうので、新しいレベルを作る時に通す

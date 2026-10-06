@@ -507,10 +507,11 @@ private:
     void UncurlWhenSettled() noexcept;
     //! 走行速度に掛ける倍率を渡す。非有限値は無視して直前の値を残す
     void SetMaxSpeedScale(float scale) noexcept;
+    //! @brief 動かす入力があれば、その水平の向きと加速の上限を返す
+    //! @return 入力があり向きが決まった場合 true、それ以外の場合は false
+    [[nodiscard]] bool TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const noexcept;
     //! 押したフレームの狙いを控える。離すまでの遅れのぶん、向きを添えない発動はこの向きから始める
     void MarkBodySlamAim() noexcept;
-    //! 体当たりのボタンを押しているかを渡す。押している間は丸まりを解かない
-    void SetBodySlamHeld(bool held) noexcept;
     //! @brief このフレームの押しを控え、押していれば狙いの線と狙う相手を探して控える
     //! @details 控えるのは ChargeRecord の observed の側だけで、判定・速度・丸まりには触らない
     //! @param[in] held 体当たりのボタンを押しているか

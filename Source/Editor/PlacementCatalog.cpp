@@ -5,6 +5,7 @@
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
+#include <algorithm>
 #include <memory>
 
 namespace NS::Editor
@@ -70,14 +71,13 @@ namespace NS::Editor
 
     const PlacementItem* FindPlacementItem(std::string_view label) noexcept
     {
-        for (const PlacementItem& item : PlacementItems())
+        const std::vector<PlacementItem>& items = PlacementItems();
+        const std::vector<PlacementItem>::const_iterator it = std::ranges::find(items, label, &PlacementItem::label);
+        if (it == items.end())
         {
-            if (item.label == label)
-            {
-                return &item;
-            }
+            return nullptr;
         }
-        return nullptr;
+        return &*it;
     }
 
     nlohmann::json MakeMeshPartsPrototype(std::string_view meshRef)

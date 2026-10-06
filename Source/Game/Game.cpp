@@ -11,14 +11,6 @@
 #include <string>
 #include <utility>
 
-namespace
-{
-    std::optional<std::string> ResolveScenePath(std::string_view scenePath)
-    {
-        return NS::OS::FileSystem::ResolveUnder(NS::OS::FileSystem::ContentRoot(), scenePath);
-    }
-} // namespace
-
 Game* Game::s_instance = nullptr;
 
 Game::Game(std::string_view startScenePath) : NS::Layer("Game"), m_startScenePath(startScenePath)
@@ -89,7 +81,8 @@ bool Game::LoadScene(std::string_view scenePath)
         return false;
     }
 
-    const std::optional<std::string> path = ResolveScenePath(scenePath);
+    const std::optional<std::string> path =
+        NS::OS::FileSystem::ResolveUnder(NS::OS::FileSystem::ContentRoot(), scenePath);
     if (!path)
     {
         NS_LOG_ERROR(Game, "LoadScene: シーンのパスが ContentRoot 配下に収まらない: {}", scenePath);

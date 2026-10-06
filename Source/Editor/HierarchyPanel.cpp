@@ -189,12 +189,8 @@ namespace NS::Editor
                     {
                         std::swap(from, to);
                     }
-                    std::vector<std::uint32_t> range;
-                    range.reserve(to - from + 1);
-                    for (std::size_t i = from; i <= to; ++i)
-                    {
-                        range.push_back(m_visibleOrder[i]);
-                    }
+                    std::vector<std::uint32_t> range(m_visibleOrder.begin() + static_cast<std::ptrdiff_t>(from),
+                                                     m_visibleOrder.begin() + static_cast<std::ptrdiff_t>(to) + 1);
                     editor.SelectObjects(std::move(range), m_rangeSelectToId);
                 }
             }
@@ -225,9 +221,7 @@ namespace NS::Editor
 #endif
     }
 
-    void HierarchyPanel::RenderNode(LevelEditorController& editor,
-                                    NS::Obj::Actor& object,
-                                    bool withChildren) noexcept
+    void HierarchyPanel::RenderNode(LevelEditorController& editor, NS::Obj::Actor& object, bool withChildren) noexcept
     {
 #if NS_EDITOR_ENABLED
         const std::uint32_t id = object.Id();

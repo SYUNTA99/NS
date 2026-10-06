@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -29,7 +30,6 @@ namespace NS::Editor
         const NS::Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
         const NS::Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
 
-        // 添字は SetComponentEnabledOnSelected へそのまま渡る。絞り方を変えると編集操作が隣を掴む
         std::vector<NS::Obj::Component*> ReflectedComponents(NS::Obj::Actor& go)
         {
             std::vector<NS::Obj::Component*> result;
@@ -103,83 +103,74 @@ namespace NS::Editor
 
             if (NS::Editor::BeginFieldTable("##transform"))
             {
+                const auto transformRow = [&](const char* id,
+                                              const char* label,
+                                              float(&values)[3],
+                                              float speed,
+                                              bool moved,
+                                              const std::function<void()>& apply,
+                                              const std::function<void()>& revert) {
+                    ImGui::PushID(id);
+                    NS::Editor::FieldRow(label);
+                    if (ImGui::DragFloat3("##value", values, speed))
+                    {
+                        apply();
+                    }
+                    if (ImGui::IsItemActivated())
+                    {
+                        editor.BeginTransformEdit();
+                    }
+                    if (ImGui::IsItemDeactivatedAfterEdit())
+                    {
+                        editor.CommitTransformEdit();
+                    }
+                    if (NS::Editor::RevertButton(moved))
+                    {
+                        editor.BeginTransformEdit();
+                        revert();
+                        editor.CommitTransformEdit();
+                    }
+                    ImGui::PopID();
+                };
+
                 const NS::Vector3 posVec = go->Root().Position();
                 float pos[3] = {posVec.x, posVec.y, posVec.z};
-                const bool posMoved = (posVec != k_DefaultPosition);
-                ImGui::PushID("position");
-                NS::Editor::FieldRow("位置");
-                if (ImGui::DragFloat3("##value", pos, 0.05f))
-                {
-                    editor.SetSelectedFreePosition(NS::Vector3{pos[0], pos[1], pos[2]});
-                }
-                if (ImGui::IsItemActivated())
-                {
-                    editor.BeginTransformEdit();
-                }
-                if (ImGui::IsItemDeactivatedAfterEdit())
-                {
-                    editor.CommitTransformEdit();
-                }
-                if (NS::Editor::RevertButton(posMoved))
-                {
-                    editor.BeginTransformEdit();
-                    editor.SetSelectedFreePosition(k_DefaultPosition);
-                    editor.CommitTransformEdit();
-                }
-                ImGui::PopID();
+                transformRow(
+                    "position",
+                    "位置",
+                    pos,
+                    0.05f,
+                    posVec != k_DefaultPosition,
+                    [&] { editor.SetSelectedFreePosition(NS::Vector3{pos[0], pos[1], pos[2]}); },
+                    [&] { editor.SetSelectedFreePosition(k_DefaultPosition); });
 
                 // 回転は内部 quaternion を度の Euler に直して編集し、入力を quaternion へ戻す
                 // 滑らかに回し続けるならギズモの回転ツールが向く。ここは角度の直接入力 / 微調整用
                 const NS::Quaternion q = go->Root().Rotation();
                 const NS::Vector3 euler = NS::QuaternionToEulerDegrees(q);
                 float rot[3] = {euler.x, euler.y, euler.z};
-                const bool turned = (q != NS::Quaternion::Identity);
-                ImGui::PushID("rotation");
-                NS::Editor::FieldRow("回転");
-                if (ImGui::DragFloat3("##value", rot, 0.5f))
-                {
-                    editor.SetSelectedFreeRotation(NS::EulerDegreesToQuaternion(NS::Vector3{rot[0], rot[1], rot[2]}));
-                }
-                if (ImGui::IsItemActivated())
-                {
-                    editor.BeginTransformEdit();
-                }
-                if (ImGui::IsItemDeactivatedAfterEdit())
-                {
-                    editor.CommitTransformEdit();
-                }
-                if (NS::Editor::RevertButton(turned))
-                {
-                    editor.BeginTransformEdit();
-                    editor.SetSelectedFreeRotation(NS::Quaternion::Identity);
-                    editor.CommitTransformEdit();
-                }
-                ImGui::PopID();
+                transformRow(
+                    "rotation",
+                    "回転",
+                    rot,
+                    0.5f,
+                    q != NS::Quaternion::Identity,
+                    [&] {
+                        const NS::Vector3 degrees{rot[0], rot[1], rot[2]};
+                        editor.SetSelectedFreeRotation(NS::EulerDegreesToQuaternion(degrees));
+                    },
+                    [&] { editor.SetSelectedFreeRotation(NS::Quaternion::Identity); });
 
                 const NS::Vector3 sclVec = go->Root().Scale();
                 float scl[3] = {sclVec.x, sclVec.y, sclVec.z};
-                const bool resized = (sclVec != k_DefaultScale);
-                ImGui::PushID("scale");
-                NS::Editor::FieldRow("スケール");
-                if (ImGui::DragFloat3("##value", scl, 0.05f))
-                {
-                    editor.SetSelectedFreeScale(NS::Vector3{scl[0], scl[1], scl[2]});
-                }
-                if (ImGui::IsItemActivated())
-                {
-                    editor.BeginTransformEdit();
-                }
-                if (ImGui::IsItemDeactivatedAfterEdit())
-                {
-                    editor.CommitTransformEdit();
-                }
-                if (NS::Editor::RevertButton(resized))
-                {
-                    editor.BeginTransformEdit();
-                    editor.SetSelectedFreeScale(k_DefaultScale);
-                    editor.CommitTransformEdit();
-                }
-                ImGui::PopID();
+                transformRow(
+                    "scale",
+                    "スケール",
+                    scl,
+                    0.05f,
+                    sclVec != k_DefaultScale,
+                    [&] { editor.SetSelectedFreeScale(NS::Vector3{scl[0], scl[1], scl[2]}); },
+                    [&] { editor.SetSelectedFreeScale(k_DefaultScale); });
 
                 NS::Editor::EndFieldTable();
             }
@@ -211,7 +202,7 @@ namespace NS::Editor
                 ImGui::BeginDisabled(lockedComponent);
                 if (ImGui::Checkbox("##enabled", &enabled))
                 {
-                    editor.SetComponentEnabledOnSelected(k, enabled);
+                    editor.SetComponentEnabledOnSelected(*components[k], enabled);
                 }
                 ImGui::EndDisabled();
                 ImGui::SameLine();
@@ -234,34 +225,27 @@ namespace NS::Editor
                 if (open)
                 {
                     NS::Obj::Component* live = components[k];
-                    if (live->GetReflection() != nullptr)
+                    // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
+                    const NS::Obj::Component* baseline = m_defaults.Find(*live);
+                    const NS::Editor::ComponentEditResult r =
+                        NS::Editor::DrawReflectedComponent(*live, refOptions, baseline, m_fieldFilter);
+                    componentEdit.activated |= r.activated;
+                    componentEdit.committed |= r.committed;
+                    componentEdit.changed |= r.changed;
+                    if (r.revertField != nullptr)
                     {
-                        // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
-                        const NS::Obj::Component* baseline = m_defaults.Find(*live);
-                        const NS::Editor::ComponentEditResult r =
-                            NS::Editor::DrawReflectedComponent(*live, refOptions, baseline, m_fieldFilter);
-                        componentEdit.activated |= r.activated;
-                        componentEdit.committed |= r.committed;
-                        componentEdit.changed |= r.changed;
-                        if (r.revertField != nullptr)
-                        {
-                            componentEdit.revertTarget = r.revertTarget;
-                            componentEdit.revertField = r.revertField;
-                        }
-                        if (r.promoteField != nullptr)
-                        {
-                            componentEdit.promoteTarget = r.promoteTarget;
-                            componentEdit.promoteField = r.promoteField;
-                        }
-                        // プレイ中の手編集は編集復帰の組み直しで消えるので、編集された欄だけ凍結側へも写す
-                        if (r.changedTarget != nullptr && r.changedField != nullptr)
-                        {
-                            editor.MirrorPlayEditToBaseline(*r.changedTarget, r.changedField->name);
-                        }
+                        componentEdit.revertTarget = r.revertTarget;
+                        componentEdit.revertField = r.revertField;
                     }
-                    else
+                    if (r.promoteField != nullptr)
                     {
-                        ImGui::TextDisabled("調整できるパラメータなし");
+                        componentEdit.promoteTarget = r.promoteTarget;
+                        componentEdit.promoteField = r.promoteField;
+                    }
+                    // プレイ中の手編集は編集復帰の組み直しで消えるので、編集された欄だけ凍結側へも写す
+                    if (r.changedTarget != nullptr && r.changedField != nullptr)
+                    {
+                        editor.MirrorPlayEditToBaseline(*r.changedTarget, r.changedField->name);
                     }
                 }
                 ImGui::PopID();

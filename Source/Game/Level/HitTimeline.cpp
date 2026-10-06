@@ -19,19 +19,6 @@ namespace NS::Game::Level
         template <class Kind>
         concept HasReflectedFields = requires { Kind::StaticReflection(); };
 
-        template <HasReflectedFields Kind>
-        [[nodiscard]] const NS::Obj::ReflectionInfo* ReflectionOf(const Kind&) noexcept
-        {
-            return Kind::StaticReflection();
-        }
-
-        template <class Kind>
-            requires(!HasReflectedFields<Kind>)
-        [[nodiscard]] const NS::Obj::ReflectionInfo* ReflectionOf(const Kind&) noexcept
-        {
-            return nullptr;
-        }
-
         template <class Kind> void TryMakeEvent(std::string_view name, std::optional<HitEventValue>& result)
         {
             if (!result.has_value() && name == Kind{}.typeName)
@@ -165,7 +152,17 @@ namespace NS::Game::Level
     const NS::Obj::ReflectionInfo* HitEventReflection(const HitEventValue& value) noexcept
     {
         return std::visit(
-            []<class Kind>(const Kind& event) -> const NS::Obj::ReflectionInfo* { return ReflectionOf(event); }, value);
+            []<class Kind>(const Kind&) -> const NS::Obj::ReflectionInfo* {
+                if constexpr (HasReflectedFields<Kind>)
+                {
+                    return Kind::StaticReflection();
+                }
+                else
+                {
+                    return nullptr;
+                }
+            },
+            value);
     }
 
     void* HitEventFields(HitEventValue& value) noexcept

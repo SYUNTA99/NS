@@ -1,12 +1,9 @@
 #include "Game/Player.h"
 
 #include "Game/Level/LaunchArc.h"
-#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
-#include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
-#include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
@@ -269,8 +266,8 @@ bool Player::BodySlam() noexcept
         if (blend > 0.0f)
         {
             NS::Vector3 mixed{dir.x * (1.0f - blend) + m_request.aimDir.x * blend,
-                                    0.0f,
-                                    dir.z * (1.0f - blend) + m_request.aimDir.z * blend};
+                              0.0f,
+                              dir.z * (1.0f - blend) + m_request.aimDir.z * blend};
             const float mixedLength = std::sqrt(mixed.x * mixed.x + mixed.z * mixed.z);
             // 正反対の向きを同じくらいの重みで混ぜると長さが 0 近くになる。その時は濃い側をそのまま採る
             if (mixedLength >= NS::k_Epsilon)
@@ -416,11 +413,6 @@ NS::Sphere Player::SlamBallAt(const NS::Vector3& rootPosition) const noexcept
     // 立ち姿の下の球が、丸まった後の玉の中心。ChangeCurled が下端を揃えて根を下げるので、この式が成り立つ
     const NS::Phys::Capsule capsule = m_collider->CapsuleAt(rootPosition);
     return NS::Sphere{capsule.center - capsule.axis * capsule.halfHeight, capsule.radius};
-}
-
-void Player::SetBodySlamHeld(bool held) noexcept
-{
-    m_bodySlamHeld = held;
 }
 
 void Player::UncurlWhenSettled() noexcept

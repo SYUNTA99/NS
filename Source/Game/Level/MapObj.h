@@ -10,6 +10,8 @@
 #include "NSlib/Object/Components/SphereCollision.h"
 #include "NSlib/Object/StateMachine.h"
 
+#include <optional>
+
 namespace NS::Game::Level
 {
     //! @brief 動く・反応する置物。岩・箱・樽
@@ -63,6 +65,8 @@ namespace NS::Game::Level
 
         void BeginFreeze(const TackleFreezeDesc& desc);
         void EndFreeze();
+        // 止めを解く。置かれていたか状態機械が終わっていれば Resting、他は Launched
+        void LeaveFreeze();
         void StepFreeze();
         // 横揺れを 1 フレーム進め、描く時だけのずれを書く。長さの終わりで 0 を書いて止める
         void AdvanceShake();
@@ -120,10 +124,9 @@ namespace NS::Game::Level
         float m_restAge = 0.0f;
         bool m_hasLaunched = false;
         bool m_arcDeflected = false;
-        int m_hopsLeft = 0;                // 外れで着地した後に残っている跳ねの回数。外れでなければ 0
-        int m_hopIndex = 0;                // 次の跳ねが何回目か。0 から数える
-        std::uint32_t m_hopSeed = 0;       // 跳ね方の種
-        NS::Sphere m_syncedSphere{}; // 最後に当たりへ置いた球 (世界座標)
-        bool m_hasSyncedSphere = false;    // m_syncedSphere を一度でも置いたか
+        int m_hopsLeft = 0;                       // 外れで着地した後に残っている跳ねの回数。外れでなければ 0
+        int m_hopIndex = 0;                       // 次の跳ねが何回目か。0 から数える
+        std::uint32_t m_hopSeed = 0;              // 跳ね方の種
+        std::optional<NS::Sphere> m_syncedSphere; // 最後に当たりへ置いた世界座標の球。置く前は空
     };
 } // namespace NS::Game::Level

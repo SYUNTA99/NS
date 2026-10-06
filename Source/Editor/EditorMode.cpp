@@ -43,14 +43,6 @@ namespace NS::Editor
             return static_cast<std::int16_t>(std::lround(v));
         }
 
-        // 足した結果を 4 で割った余り。90° 刻みの回転を 0〜3 で巻き戻す
-        [[nodiscard]] std::uint8_t RotateMod4(std::uint8_t current, std::int8_t delta) noexcept
-        {
-            int32_t r = static_cast<int32_t>(current) + delta;
-            r = ((r % 4) + 4) % 4;
-            return static_cast<std::uint8_t>(r);
-        }
-
         //! ワールド座標をパネル上のスクリーン座標へ射影する。カメラの後ろ (w <= 0) なら false を返す
         struct CursorScreenProjector
         {
@@ -541,13 +533,13 @@ namespace NS::Editor
             return;
         }
         std::optional<nlohmann::json> before = m_applier->CaptureObject(id);
-        if (!before || !NS::Editor::IsRotatableObject(*before))
+        if (!before || !NS::Editor::IsCellBrushObject(*before))
         {
             return;
         }
         nlohmann::json after = *before;
         const std::uint8_t step = NS::Editor::CellRotationStep(*before);
-        NS::Editor::SetCellRotationStep(after, RotateMod4(step, std::int8_t{1}));
+        NS::Editor::SetCellRotationStep(after, static_cast<std::uint8_t>((step + 1) & 0x03));
         m_undo.Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(*before), std::move(after)),
                     *m_applier);
         m_levelDirty = true;
@@ -592,11 +584,9 @@ namespace NS::Editor
 
         float bestT = std::numeric_limits<float>::max();
         bool hit = false;
-        std::int16_t hitX = 0;
-        std::int16_t hitY = 0;
-        std::int16_t hitZ = 0;
+        CellCoord hitCell{};
+        CellCoord normal{0, 1, 0};
         NS::Vector3 hitPoint{};
-        NS::Vector3 hitNormal{0.0f, 1.0f, 0.0f};
 
         std::vector<CellCoord> cells;
         if (m_collectCells)
@@ -605,10 +595,8 @@ namespace NS::Editor
         }
         for (const CellCoord& cell : cells)
         {
-            const std::int16_t cx = cell.x;
-            const std::int16_t cy = cell.y;
-            const std::int16_t cz = cell.z;
-            const NS::Vector3 center{static_cast<float>(cx), static_cast<float>(cy), static_cast<float>(cz)};
+            const NS::Vector3 center{
+                static_cast<float>(cell.x), static_cast<float>(cell.y), static_cast<float>(cell.z)};
             const NS::AABB box(center, {k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
 
             float t = 0.0f;
@@ -616,9 +604,7 @@ namespace NS::Editor
             {
                 bestT = t;
                 hit = true;
-                hitX = cx;
-                hitY = cy;
-                hitZ = cz;
+                hitCell = cell;
                 hitPoint = NS::Vector3(ray.position.x + ray.direction.x * t,
                                        ray.position.y + ray.direction.y * t,
                                        ray.position.z + ray.direction.z * t);
@@ -628,56 +614,46 @@ namespace NS::Editor
                 const float ay = std::fabs(d.y);
                 const float az = std::fabs(d.z);
 
+                normal = CellCoord{};
                 if (ax > ay && ax > az)
                 {
-                    float signX = -1.0f;
+                    normal.x = -1;
                     if (d.x > 0.0f)
                     {
-                        signX = 1.0f;
+                        normal.x = 1;
                     }
-                    hitNormal = NS::Vector3{signX, 0.0f, 0.0f};
                 }
                 else if (ay > az)
                 {
-                    float signY = -1.0f;
+                    normal.y = -1;
                     if (d.y > 0.0f)
                     {
-                        signY = 1.0f;
+                        normal.y = 1;
                     }
-                    hitNormal = NS::Vector3{0.0f, signY, 0.0f};
                 }
                 else
                 {
-                    float signZ = -1.0f;
+                    normal.z = -1;
                     if (d.z > 0.0f)
                     {
-                        signZ = 1.0f;
+                        normal.z = 1;
                     }
-                    hitNormal = NS::Vector3{0.0f, 0.0f, signZ};
                 }
             }
         }
 
         if (hit)
         {
-            // ヒットしたセルの法線方向から、隣接する配置先セルを算出する
-            const std::int16_t normalX = static_cast<std::int16_t>(std::lround(hitNormal.x));
-            const std::int16_t normalY = static_cast<std::int16_t>(std::lround(hitNormal.y));
-            const std::int16_t normalZ = static_cast<std::int16_t>(std::lround(hitNormal.z));
-            const std::int16_t placeX = static_cast<std::int16_t>(hitX + normalX);
-            const std::int16_t placeY = static_cast<std::int16_t>(hitY + normalY);
-            const std::int16_t placeZ = static_cast<std::int16_t>(hitZ + normalZ);
+            const CellCoord place{static_cast<std::int16_t>(hitCell.x + normal.x),
+                                  static_cast<std::int16_t>(hitCell.y + normal.y),
+                                  static_cast<std::int16_t>(hitCell.z + normal.z)};
 
             m_cursor.valid = true;
-            m_cursor.hitX = hitX;
-            m_cursor.hitY = hitY;
-            m_cursor.hitZ = hitZ;
+            m_cursor.hit = hitCell;
             m_cursor.placementCenter =
-                NS::Vector3{static_cast<float>(placeX), static_cast<float>(placeY), static_cast<float>(placeZ)};
-            m_cursor.placeX = placeX;
-            m_cursor.placeY = placeY;
-            m_cursor.placeZ = placeZ;
-            m_cursor.placementBlocked = HasObjectAtCell(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
+                NS::Vector3{static_cast<float>(place.x), static_cast<float>(place.y), static_cast<float>(place.z)};
+            m_cursor.place = place;
+            m_cursor.placementBlocked = HasObjectAtCell(place.x, place.y, place.z);
             return;
         }
 
@@ -689,13 +665,9 @@ namespace NS::Editor
 
         m_cursor.valid = true;
         m_cursor.placementCenter = cellCenter;
-        m_cursor.placeX = RoundToCell(cellCenter.x);
-        m_cursor.placeY = RoundToCell(cellCenter.y);
-        m_cursor.placeZ = RoundToCell(cellCenter.z);
-        m_cursor.hitX = m_cursor.placeX;
-        m_cursor.hitY = m_cursor.placeY;
-        m_cursor.hitZ = m_cursor.placeZ;
-        m_cursor.placementBlocked = HasObjectAtCell(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
+        m_cursor.place = CellCoord{RoundToCell(cellCenter.x), RoundToCell(cellCenter.y), RoundToCell(cellCenter.z)};
+        m_cursor.hit = m_cursor.place;
+        m_cursor.placementBlocked = HasObjectAtCell(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
     }
 
     void EditorMode::HandlePlaceDeleteInput() noexcept
@@ -714,11 +686,12 @@ namespace NS::Editor
         NS::OS::Mouse& mouse = m_input->Mouse();
         if (mouse.IsPressed(NS::OS::MouseButton::Left) && !m_cursor.placementBlocked)
         {
-            PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
+            PlaceUnderCursorProgrammatic(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
         }
-        if (mouse.IsPressed(NS::OS::MouseButton::Right) && HasObjectAtCell(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
+        if (mouse.IsPressed(NS::OS::MouseButton::Right) &&
+            HasObjectAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
         {
-            DeleteAtProgrammatic(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
+            DeleteAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
         }
 
         NS::OS::Gamepad& gp = m_input->Gamepad(0);
@@ -729,11 +702,11 @@ namespace NS::Editor
 
         if (gp.IsPressed(NS::OS::GamepadButton::A) && !m_cursor.placementBlocked)
         {
-            PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
+            PlaceUnderCursorProgrammatic(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
         }
-        if (gp.IsPressed(NS::OS::GamepadButton::B) && HasObjectAtCell(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
+        if (gp.IsPressed(NS::OS::GamepadButton::B) && HasObjectAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
         {
-            DeleteAtProgrammatic(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
+            DeleteAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
         }
     }
 
@@ -761,10 +734,10 @@ namespace NS::Editor
             return;
         }
 
-        if (HasObjectAtCell(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
+        if (HasObjectAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
         {
             // 回転対象かどうかは RotateAtProgrammatic が捕捉した姿で判定する
-            RotateAtProgrammatic(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
+            RotateAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
         }
         else if (m_palette.CurrentIsRotatable())
         {

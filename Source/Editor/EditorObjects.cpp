@@ -14,6 +14,8 @@
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
+#include <algorithm>
+
 namespace NS::Editor
 {
     namespace
@@ -39,6 +41,24 @@ namespace NS::Editor
                 return entry->label;
             }
             return entry->className;
+        }
+
+        bool IsPlayerObject(const nlohmann::json& object) noexcept
+        {
+            return NS::Obj::ObjectJsonClass(object) == ::Player::StaticReflection()->typeName;
+        }
+
+        bool IsDeathZoneObject(const nlohmann::json& object) noexcept
+        {
+            return NS::Obj::ObjectJsonClass(object) == NS::Game::Level::DeathZone::StaticReflection()->typeName;
+        }
+
+        nlohmann::json MakeDeathZoneObject()
+        {
+            nlohmann::json object = NS::Obj::MakePrototypeJson<NS::Game::Level::DeathZone>();
+            // 上面 y=-50 は従来の落下死の高さ
+            NS::Obj::SetObjectPosition(object, NS::Vector3{0.0f, -55.0f, 0.0f});
+            return object;
         }
     } // namespace
 
@@ -114,12 +134,6 @@ namespace NS::Editor
         NS::Obj::SetObjectRotation(object, rotation);
     }
 
-    bool IsRotatableObject(const nlohmann::json& object)
-    {
-        // 地形の部品はどれも回せる。球は回しても見た目が変わらないだけ
-        return IsCellBrushObject(object);
-    }
-
     const char* ObjectDisplayName(const NS::Obj::Actor& object)
     {
         if (!object.Name().empty())
@@ -137,11 +151,6 @@ namespace NS::Editor
             return renderer->GetMesh()->LocalBounds();
         }
         return NS::AABB{NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{0.5f, 0.5f, 0.5f}};
-    }
-
-    bool IsPlayerObject(const nlohmann::json& object) noexcept
-    {
-        return NS::Obj::ObjectJsonClass(object) == ::Player::StaticReflection()->typeName;
     }
 
     std::size_t FindPlayerObjectIndex(const nlohmann::json& scene) noexcept
@@ -185,14 +194,8 @@ namespace NS::Editor
             created = true;
         }
 
-        std::size_t count = 0;
-        for (const nlohmann::json& object : NS::Obj::SceneJsonObjects(scene))
-        {
-            if (IsPlayerObject(object))
-            {
-                ++count;
-            }
-        }
+        const nlohmann::json& objects = NS::Obj::SceneJsonObjects(scene);
+        const std::ptrdiff_t count = std::count_if(objects.begin(), objects.end(), IsPlayerObject);
         if (count > 1)
         {
             NS_LOG_WARN(Game, "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う", count);
@@ -203,27 +206,12 @@ namespace NS::Editor
         return created;
     }
 
-    bool IsDeathZoneObject(const nlohmann::json& object) noexcept
-    {
-        return NS::Obj::ObjectJsonClass(object) == NS::Game::Level::DeathZone::StaticReflection()->typeName;
-    }
-
-    nlohmann::json MakeDeathZoneObject()
-    {
-        nlohmann::json object = NS::Obj::MakePrototypeJson<NS::Game::Level::DeathZone>();
-        // 上面 y=-50 は従来の落下死の高さ
-        NS::Obj::SetObjectPosition(object, NS::Vector3{0.0f, -55.0f, 0.0f});
-        return object;
-    }
-
     bool EnsureDeathZoneObject(nlohmann::json& scene)
     {
-        for (const nlohmann::json& object : NS::Obj::SceneJsonObjects(scene))
+        const nlohmann::json& objects = NS::Obj::SceneJsonObjects(scene);
+        if (std::any_of(objects.begin(), objects.end(), IsDeathZoneObject))
         {
-            if (IsDeathZoneObject(object))
-            {
-                return false;
-            }
+            return false;
         }
         NS::Obj::SceneJsonObjects(scene).push_back(MakeDeathZoneObject());
         NS::Obj::EnsureUniqueObjectIds(scene);

@@ -13,6 +13,7 @@
 #include "NSlib/Core/NonCopyable.h"
 
 #include <cstddef>
+#include <optional>
 #include <string>
 
 class LevelEditorController;
@@ -72,13 +73,12 @@ namespace NS::Editor
         bool m_dirty = false;                                               // 保存していない変更があるか
         std::string m_status;                                               // 保存・読み直しの結果の 1 行
 
-        HitPreviewDesc m_desc{};       // 下見の条件
-        HitPreviewResult m_result{};   // 直近の下見の結果
-        nlohmann::json m_snapshot;     // 直近の下見に使った写し
-        bool m_needsRun = false;       // 下見し直しを頼まれているか
-        std::size_t m_selectedRow = 0; // 選んだ行。行が無ければ使わない
-        bool m_hasSelectedRow = false; // 行を選んでいるか
-        int m_addType = 0;             // 足す事象の種類の番号 (HitEventValue の並び)
+        HitPreviewDesc m_desc{};                  // 下見の条件
+        HitPreviewResult m_result{};              // 直近の下見の結果
+        nlohmann::json m_snapshot;                // 直近の下見に使った写し
+        bool m_needsRun = false;                  // 下見し直しを頼まれているか
+        std::optional<std::size_t> m_selectedRow; // 選んだ行。選んでいなければ空
+        int m_addType = 0;                        // 足す事象の種類の番号 (HitEventValue の並び)
         TimelinePlayback m_playback;
         TimelinePreview m_preview;
         bool m_showPreview = false;

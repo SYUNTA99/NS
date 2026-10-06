@@ -1,7 +1,6 @@
 #include "Game/Player.h"
 
 #include "Game/Level/ImpactOutcome.h"
-#include "Game/Player/HorizontalTurn.h"
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
@@ -12,18 +11,31 @@
 #include "NSlib/Object/Components/Body.h"
 #include "NSlib/Object/Components/Collider.h"
 #include "NSlib/Object/Components/PlayerInput.h"
-#include "NSlib/Object/Scene/Scene.h"
 
 #include <algorithm>
 #include <cmath>
 
 namespace
 {
+    // 水平の向き from を Y 軸まわりに radians だけ回す。正の角度は +X を -Z の側へ回す
+    NS::Vector3 RotateHorizontal(const NS::Vector3& from, float radians) noexcept
+    {
+        const float c = std::cos(radians);
+        const float s = std::sin(radians);
+        return NS::Vector3{from.x * c + from.z * s, 0.0f, -from.x * s + from.z * c};
+    }
+
+    // from を RotateHorizontal で回して to へ重ねる角度。範囲は -π..π
+    float HorizontalAngleBetween(const NS::Vector3& from, const NS::Vector3& to) noexcept
+    {
+        return std::atan2(from.z * to.x - from.x * to.z, from.x * to.x + from.z * to.z);
+    }
+
     // from を Y 軸まわりに最大 maxRadians だけ to へ寄せた向き。from と to は正規化した水平の向き。
     // 使うのは MoveBody の振り向きだけなので、ここに置く
     NS::Vector3 TurnHorizontalToward(const NS::Vector3& from, const NS::Vector3& to, float maxRadians) noexcept
     {
-        const float angle = NS::Game::Player::HorizontalAngleBetween(from, to);
+        const float angle = HorizontalAngleBetween(from, to);
         if (std::abs(angle) <= maxRadians)
         {
             return to;
@@ -33,7 +45,7 @@ namespace
         {
             step = -maxRadians;
         }
-        return NS::Game::Player::RotateHorizontal(from, step);
+        return RotateHorizontal(from, step);
     }
 } // namespace
 
@@ -100,17 +112,27 @@ void Player::TickTimers(float dt) noexcept
     }
 }
 
+bool Player::TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const noexcept
+{
+    if (!NS::Game::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->StickDeadzone()) ||
+        !NS::TryNormalizeHorizontal(DesiredDirection(), outDirection))
+    {
+        return false;
+    }
+    outTopSpeed = std::max(MaxSpeed() * DesiredSpeedScale(), m_params->m_walkSpeed);
+    return true;
+}
+
 void Player::AccelerateToInputDirection(float dt) noexcept
 {
     NS::Obj::Body& body = *m_body;
     NS::Vector3 direction{};
-    if (!NS::Game::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->StickDeadzone()) ||
-        !NS::TryNormalizeHorizontal(DesiredDirection(), direction))
+    float topSpeed = 0.0f;
+    if (!TryMoveInput(direction, topSpeed))
     {
         return;
     }
 
-    const float topSpeed = std::max(MaxSpeed() * DesiredSpeedScale(), m_params->m_walkSpeed);
     float acceleration = m_params->m_airAcceleration;
     if (body.IsGrounded())
     {
@@ -192,13 +214,12 @@ void Player::AccelerateDuringRebound(float dt) noexcept
 {
     NS::Obj::Body& body = *m_body;
     NS::Vector3 direction{};
-    if (!NS::Game::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->StickDeadzone()) ||
-        !NS::TryNormalizeHorizontal(DesiredDirection(), direction))
+    float topSpeed = 0.0f;
+    if (!TryMoveInput(direction, topSpeed))
     {
         return;
     }
 
-    const float topSpeed = std::max(MaxSpeed() * DesiredSpeedScale(), m_params->m_walkSpeed);
     // 入力の向きからずれた速度は削らない。削ると横へ倒しただけで相手から離れる流れが消え、
     // 弾かれる向きが当て方でなくスティックで決まる。触って詰める値ではないので欄にしない
     const float turningDrag = 0.0f;
@@ -272,6 +293,18 @@ namespace
         return p.x >= box.Center.x - box.Extents.x && p.x <= box.Center.x + box.Extents.x &&
                p.y >= box.Center.y - box.Extents.y && p.y <= box.Center.y + box.Extents.y &&
                p.z >= box.Center.z - box.Extents.z && p.z <= box.Center.z + box.Extents.z;
+    }
+
+    [[nodiscard]] bool IsBlockedAt(const NS::Obj::IUseCollision& collider, const NS::Vector3& point)
+    {
+        for (const NS::AABB& box : BoxesAtPoint(collider, point))
+        {
+            if (AABBContainsPoint(box, point))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 } // namespace
 
@@ -350,16 +383,7 @@ bool Player::LedgeGrab() noexcept
             top + halfHeight,
             hang.z - faceNormal.z * mantleStep,
         };
-        bool blocked = false;
-        for (const NS::AABB& other : BoxesAtPoint(collider, mantleCheck))
-        {
-            if (AABBContainsPoint(other, mantleCheck))
-            {
-                blocked = true;
-                break;
-            }
-        }
-        if (blocked)
+        if (IsBlockedAt(collider, mantleCheck))
         {
             continue;
         }
@@ -524,16 +548,7 @@ bool Player::FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noe
             top + collider.CapsuleHalfHeight(),
             hangPos.z - m_ledgeFaceNormal.z * mantleStep,
         };
-        bool blocked = false;
-        for (const NS::AABB& other : BoxesAtPoint(collider, mantleCheck))
-        {
-            if (AABBContainsPoint(other, mantleCheck))
-            {
-                blocked = true;
-                break;
-            }
-        }
-        if (blocked)
+        if (IsBlockedAt(collider, mantleCheck))
         {
             continue;
         }

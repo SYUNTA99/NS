@@ -1,7 +1,7 @@
 ﻿#include "Editor/LevelFilePaths.h"
 
-#include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>
 #include <array>
@@ -35,37 +35,42 @@ namespace NS::Editor
             }
             return false;
         }
-    } // namespace
 
-    std::string SanitizeLevelName(std::string_view name) noexcept
-    {
-        if (name.size() < k_MinNameLen || name.size() > k_MaxNameLen)
+        std::string SanitizeLevelName(std::string_view name) noexcept
         {
-            return "";
-        }
-        for (char c : name)
-        {
-            const bool isAlnum = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
-            const bool isAllowedPunct = (c == '_' || c == '-' || c == ' ');
-            if (!isAlnum && !isAllowedPunct)
+            if (name.size() < k_MinNameLen || name.size() > k_MaxNameLen)
             {
                 return "";
             }
+            for (char c : name)
+            {
+                const bool isAlnum = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+                const bool isAllowedPunct = (c == '_' || c == '-' || c == ' ');
+                if (!isAlnum && !isAllowedPunct)
+                {
+                    return "";
+                }
+            }
+            if (name.find("..") != std::string_view::npos)
+            {
+                return "";
+            }
+            if (name.front() == ' ' || name.back() == ' ')
+            {
+                return "";
+            }
+            if (IsReservedName(name))
+            {
+                return "";
+            }
+            return std::string{name};
         }
-        if (name.find("..") != std::string_view::npos)
+
+        std::string GetScenesDirectory() noexcept
         {
-            return "";
+            return NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Scenes");
         }
-        if (name.front() == ' ' || name.back() == ' ')
-        {
-            return "";
-        }
-        if (IsReservedName(name))
-        {
-            return "";
-        }
-        return std::string{name};
-    }
+    } // namespace
 
     std::string SanitizeLevelPath(std::string_view relativePath) noexcept
     {
@@ -98,11 +103,6 @@ namespace NS::Editor
             start = slash + 1;
         }
         return result;
-    }
-
-    std::string GetScenesDirectory() noexcept
-    {
-        return NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Scenes");
     }
 
     std::string QualifyLevelPath(std::string_view sanitizedPath) noexcept

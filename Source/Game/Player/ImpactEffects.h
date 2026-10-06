@@ -291,7 +291,6 @@ namespace NS::Game::Player
         void PlayEmbers(NS::Gfx::EffectScene* effects);
         // 前の当たりの層のうち、ここが消える時を持っている物を今のフレームで畳む
         void FinishHeldLayers(NS::Gfx::EffectScene* effects);
-        void SetAmount(std::uint32_t id, float amount) noexcept;
         // 飛びの絵の頭に反動の尾を出す
         void BeginFlight(NS::Gfx::EffectScene* effects);
         // 反動の尾を自機へ付いていかせる。頂点で親を止める

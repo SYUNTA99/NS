@@ -30,12 +30,6 @@ namespace NS::Editor
             }
             return bytes;
         }
-
-        //! sizeof 外の heap 量。配置物の JSON 木を再帰で概算する
-        std::size_t EstimatedHeapBytes(const nlohmann::json& object) noexcept
-        {
-            return EstimatedJsonBytes(object);
-        }
     } // namespace
 
     ObjectSnapshotCommand::ObjectSnapshotCommand(std::uint32_t id,
@@ -59,11 +53,11 @@ namespace NS::Editor
         std::size_t bytes = sizeof(ObjectSnapshotCommand);
         if (m_before)
         {
-            bytes += EstimatedHeapBytes(*m_before);
+            bytes += EstimatedJsonBytes(*m_before);
         }
         if (m_after)
         {
-            bytes += EstimatedHeapBytes(*m_after);
+            bytes += EstimatedJsonBytes(*m_after);
         }
         return bytes;
     }

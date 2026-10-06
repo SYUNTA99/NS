@@ -21,11 +21,6 @@ namespace NS::Editor
     class CategoryPalette : public NS::NonCopyable
     {
     public:
-        static constexpr std::size_t k_SlotCount = k_PaletteSlotCount;
-
-        CategoryPalette() noexcept = default;
-        ~CategoryPalette() noexcept = default;
-
         //! @brief 数字キーを見て、選択中のスロットを切り替える
         //! @note UI側がキーボード入力を要求している場合は、誤操作を防ぐためショートカット入力は無視される
         void TickInput(NS::OS::Input* input, NS::UI::ImGuiContext* imgui) noexcept;

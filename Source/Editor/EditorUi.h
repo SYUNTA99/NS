@@ -3,8 +3,7 @@
 #if NS_EDITOR_ENABLED
 
 #include <imgui.h>
-
-#include <cctype>
+#include <imgui_internal.h>
 
 namespace NS::Editor
 {
@@ -126,22 +125,7 @@ namespace NS::Editor
         {
             return true;
         }
-        for (const char* start = name; *start != '\0'; ++start)
-        {
-            const char* a = start;
-            const char* b = filter;
-            while (*b != '\0' &&
-                   std::tolower(static_cast<unsigned char>(*a)) == std::tolower(static_cast<unsigned char>(*b)))
-            {
-                ++a;
-                ++b;
-            }
-            if (*b == '\0')
-            {
-                return true;
-            }
-        }
-        return false;
+        return ImStristr(name, nullptr, filter, nullptr) != nullptr;
     }
 } // namespace NS::Editor
 

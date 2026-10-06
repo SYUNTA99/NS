@@ -32,10 +32,7 @@ namespace NS::Editor
         ImGuiViewport* const vp = ImGui::GetMainViewport();
         if (vp != nullptr)
         {
-            ImGui::SetNextWindowPos(
-                ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.5f, vp->WorkPos.y + vp->WorkSize.y * 0.5f),
-                ImGuiCond_Always,
-                ImVec2(0.5f, 0.5f));
+            ImGui::SetNextWindowPos(vp->GetWorkCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
         }
         constexpr ImGuiWindowFlags k_QuitModalFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                                                       ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize;
