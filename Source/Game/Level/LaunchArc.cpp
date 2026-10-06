@@ -7,7 +7,7 @@ namespace NS::Game::Level
 {
     namespace
     {
-        [[nodiscard]] bool IsFinite(const NS::Core::Vector3& v) noexcept
+        [[nodiscard]] bool IsFinite(const NS::Vector3& v) noexcept
         {
             return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
         }
@@ -20,7 +20,7 @@ namespace NS::Game::Level
         // 曲線を式で辿るための値。LaunchArc の欄から毎回組み直す
         struct ArcShape
         {
-            NS::Core::Vector3 forward{};  // 水平の向き (長さ 1)
+            NS::Vector3 forward{};  // 水平の向き (長さ 1)
             float horizontalSpeed = 0.0f; // 水平の速さ (m/s)
             float riseSpeed = 0.0f;       // 発射の瞬間の上向きの速さ (m/s)
             float riseGravity = 0.0f;     // 上りの重力の大きさ (m/s^2)
@@ -76,7 +76,7 @@ namespace NS::Game::Level
                 return false;
             }
             ArcShape shape;
-            if (!NS::Core::TryNormalizeHorizontal(arc.direction, shape.forward))
+            if (!NS::TryNormalizeHorizontal(arc.direction, shape.forward))
             {
                 return false;
             }
@@ -110,16 +110,16 @@ namespace NS::Game::Level
         }
 
         // 発射から seconds 秒後の、起点から見た位置
-        [[nodiscard]] NS::Core::Vector3 ArcOffsetAt(const ArcShape& shape, float seconds) noexcept
+        [[nodiscard]] NS::Vector3 ArcOffsetAt(const ArcShape& shape, float seconds) noexcept
         {
             const ArcSegments segments = SegmentsOf(shape);
-            const NS::Core::Vector3 horizontal = shape.forward * (shape.horizontalSpeed * seconds);
+            const NS::Vector3 horizontal = shape.forward * (shape.horizontalSpeed * seconds);
 
             float t = seconds;
             if (t <= segments.riseOutside)
             {
                 const float height = shape.riseSpeed * t - 0.5f * shape.riseGravity * t * t;
-                return NS::Core::Vector3{horizontal.x, height, horizontal.z};
+                return NS::Vector3{horizontal.x, height, horizontal.z};
             }
             float height = shape.riseSpeed * segments.riseOutside -
                            0.5f * shape.riseGravity * segments.riseOutside * segments.riseOutside;
@@ -130,7 +130,7 @@ namespace NS::Game::Level
             if (t <= segments.riseBand)
             {
                 height += bandEntrySpeed * t - 0.5f * riseBandGravity * t * t;
-                return NS::Core::Vector3{horizontal.x, height, horizontal.z};
+                return NS::Vector3{horizontal.x, height, horizontal.z};
             }
             height +=
                 bandEntrySpeed * segments.riseBand - 0.5f * riseBandGravity * segments.riseBand * segments.riseBand;
@@ -140,33 +140,33 @@ namespace NS::Game::Level
             if (t <= segments.fallBand)
             {
                 height -= 0.5f * fallBandGravity * t * t;
-                return NS::Core::Vector3{horizontal.x, height, horizontal.z};
+                return NS::Vector3{horizontal.x, height, horizontal.z};
             }
             height -= 0.5f * fallBandGravity * segments.fallBand * segments.fallBand;
             t -= segments.fallBand;
 
             height -= shape.bandSpeed * t + 0.5f * shape.fallGravity * t * t;
-            return NS::Core::Vector3{horizontal.x, height, horizontal.z};
+            return NS::Vector3{horizontal.x, height, horizontal.z};
         }
     } // namespace
 
-    NS::Core::Vector3 LaunchArcInitialVelocity(const LaunchArc& arc) noexcept
+    NS::Vector3 LaunchArcInitialVelocity(const LaunchArc& arc) noexcept
     {
         ArcShape shape;
         if (!TryShapeOf(arc, shape))
         {
-            return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            return NS::Vector3{0.0f, 0.0f, 0.0f};
         }
-        const NS::Core::Vector3 horizontal = shape.forward * shape.horizontalSpeed;
-        return NS::Core::Vector3{horizontal.x, shape.riseSpeed, horizontal.z};
+        const NS::Vector3 horizontal = shape.forward * shape.horizontalSpeed;
+        return NS::Vector3{horizontal.x, shape.riseSpeed, horizontal.z};
     }
 
-    NS::Core::Vector3 LaunchArcOffsetAt(const LaunchArc& arc, float seconds) noexcept
+    NS::Vector3 LaunchArcOffsetAt(const LaunchArc& arc, float seconds) noexcept
     {
         ArcShape shape;
         if (!std::isfinite(seconds) || seconds < 0.0f || !TryShapeOf(arc, shape))
         {
-            return NS::Core::Vector3{};
+            return NS::Vector3{};
         }
         return ArcOffsetAt(shape, seconds);
     }

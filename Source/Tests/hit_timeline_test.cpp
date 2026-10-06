@@ -1,6 +1,6 @@
 #include "Game/Level/HitTimeline.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Platform/FileSystem.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Windows/FileSystem.h"
 #include "Tests/TestHitTimelines.h"
 
 #include <gtest/gtest.h>
@@ -197,7 +197,7 @@ namespace
     // 出荷の Assets/HitTimelines/<name>.json を読む。読めなければ空
     std::optional<HitTimeline> ReadShippedTimeline(std::string_view name)
     {
-        using NS::Platform::FileSystem;
+        using NS::OS::FileSystem;
         const std::string path = FileSystem::Combine(
             FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "Assets"), "HitTimelines"),
             std::string{name} + ".json");

@@ -1,8 +1,8 @@
-#include "Runtime/Core/CameraData.h"
-#include "Runtime/Object/Components/CameraManager.h"
-#include "Runtime/Object/Components/CameraModifier.h"
-#include "Runtime/Object/IUse/IUseCamera.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Core/CameraData.h"
+#include "NSlib/Object/Components/CameraManager.h"
+#include "NSlib/Object/Components/CameraModifier.h"
+#include "NSlib/Object/IUse/IUseCamera.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -34,29 +34,29 @@ namespace
     }
 
     // 世界の点を射影して、画面の座標 (縦横 -1〜1) を返す
-    NS::Core::Vector2 Project(const NS::Core::CameraData& camera, const NS::Core::Vector3& point)
+    NS::Vector2 Project(const NS::CameraData& camera, const NS::Vector3& point)
     {
-        const NS::Core::Vector4 clip =
-            NS::Core::Vector4::Transform(NS::Core::Vector4{point.x, point.y, point.z, 1.0f}, camera.ViewProjection());
-        return NS::Core::Vector2{clip.x / clip.w, clip.y / clip.w};
+        const NS::Vector4 clip =
+            NS::Vector4::Transform(NS::Vector4{point.x, point.y, point.z, 1.0f}, camera.ViewProjection());
+        return NS::Vector2{clip.x / clip.w, clip.y / clip.w};
     }
 } // namespace
 
 // 画面のずれは、どの奥行きの点も同じだけずらす。カメラとの距離で揺れの画素数が変わらない
 TEST(CameraSink, ScreenOffsetShiftsEveryDepthByTheSameAmount)
 {
-    NS::Core::CameraData camera;
-    camera.SetPosition(NS::Core::Vector3{0.0f, 2.0f, -6.0f});
-    camera.SetTarget(NS::Core::Vector3{0.0f, 1.0f, 0.0f});
-    const NS::Core::Matrix viewBefore = camera.View();
-    const NS::Core::Vector3 nearPoint{0.5f, 1.0f, 0.0f};
-    const NS::Core::Vector3 farPoint{-3.0f, 0.0f, 40.0f};
-    const NS::Core::Vector2 nearBefore = Project(camera, nearPoint);
-    const NS::Core::Vector2 farBefore = Project(camera, farPoint);
-    camera.SetScreenOffset(NS::Core::Vector2{0.01f, -0.02f});
+    NS::CameraData camera;
+    camera.SetPosition(NS::Vector3{0.0f, 2.0f, -6.0f});
+    camera.SetTarget(NS::Vector3{0.0f, 1.0f, 0.0f});
+    const NS::Matrix viewBefore = camera.View();
+    const NS::Vector3 nearPoint{0.5f, 1.0f, 0.0f};
+    const NS::Vector3 farPoint{-3.0f, 0.0f, 40.0f};
+    const NS::Vector2 nearBefore = Project(camera, nearPoint);
+    const NS::Vector2 farBefore = Project(camera, farPoint);
+    camera.SetScreenOffset(NS::Vector2{0.01f, -0.02f});
     EXPECT_EQ(camera.View(), viewBefore);
-    const NS::Core::Vector2 nearAfter = Project(camera, nearPoint);
-    const NS::Core::Vector2 farAfter = Project(camera, farPoint);
+    const NS::Vector2 nearAfter = Project(camera, nearPoint);
+    const NS::Vector2 farAfter = Project(camera, farPoint);
     EXPECT_NEAR(nearAfter.x - nearBefore.x, 0.01f, 1.0e-5f);
     EXPECT_NEAR(nearAfter.y - nearBefore.y, -0.02f, 1.0e-5f);
     EXPECT_NEAR(farAfter.x - farBefore.x, 0.01f, 1.0e-5f);
@@ -94,11 +94,11 @@ TEST(CameraSink, BouncesPastZeroByTheOvershootRatio)
 TEST(CameraSink, ShiftsTheDrawnScreenOnlyAndScalesBySetting)
 {
     NS::Obj::Scene scene;
-    ASSERT_NE(PlaceViewCamera(scene, NS::Core::Vector3{0.0f, 0.0f, -5.0f}, NS::Core::Vector3{}), nullptr);
+    ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
     NS::Obj::CameraManager* cameras = scene.GetCameraManager();
     ASSERT_NE(cameras, nullptr);
     scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Camera);
-    const NS::Core::Vector3 forwardBefore = cameras->ForwardHorizontal();
+    const NS::Vector3 forwardBefore = cameras->ForwardHorizontal();
     const std::optional<NS::Obj::CameraPose> calm = cameras->ComposePose(1.0f);
     ASSERT_TRUE(calm.has_value());
 

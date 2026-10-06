@@ -1,9 +1,9 @@
 #include "Game/Level/FollowCamera.h"
 
-#include "Runtime/Core/Logger.h"
-#include "Runtime/Object/CameraTarget.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Core/Logger.h"
+#include "NSlib/Object/CameraTarget.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/Scene/Scene.h"
 
 namespace NS::Game::Level
 {

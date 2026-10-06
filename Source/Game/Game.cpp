@@ -1,11 +1,11 @@
 #include "Game/Game.h"
 
 #include "Game/Level/CourseDirector.h"
-#include "Runtime/App/Application.h"
-#include "Runtime/Object/IUse/IUseSceneObj.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Platform/Filesystem.h"
+#include "NSlib/App/Application.h"
+#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Windows/Filesystem.h"
 
 #include <optional>
 #include <string>
@@ -15,13 +15,13 @@ namespace
 {
     std::optional<std::string> ResolveScenePath(std::string_view scenePath)
     {
-        return NS::Platform::FileSystem::ResolveUnder(NS::Platform::FileSystem::ContentRoot(), scenePath);
+        return NS::OS::FileSystem::ResolveUnder(NS::OS::FileSystem::ContentRoot(), scenePath);
     }
 } // namespace
 
 Game* Game::s_instance = nullptr;
 
-Game::Game(std::string_view startScenePath) : NS::App::Layer("Game"), m_startScenePath(startScenePath)
+Game::Game(std::string_view startScenePath) : NS::Layer("Game"), m_startScenePath(startScenePath)
 {
     s_instance = this;
 }
@@ -36,7 +36,7 @@ Game::~Game()
 
 void Game::OnAttach()
 {
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
         NS_LOG_ERROR(Game, "Game::OnAttach: Application::Get()==null");

@@ -10,7 +10,7 @@
 #include "Editor/QuitModal.h"
 #include "Editor/SceneViewPanel.h"
 #include "Editor/ToolModePanel.h"
-#include "Runtime/App/Layer.h"
+#include "NSlib/App/Layer.h"
 
 #include <memory>
 
@@ -24,7 +24,7 @@ class LevelEditorController;
 //! @brief エディタ用のUIを提供するレイヤー
 //! @details
 //! ゲームを止めずに、UI パネル・ギズモ・自由視点カメラを world の上へ重ねる
-class Editor : public NS::App::Layer
+class Editor : public NS::Layer
 {
 public:
     Editor();

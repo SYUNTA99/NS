@@ -5,15 +5,15 @@
 #include "Game/Level/SlamAim.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
-#include "Runtime/Core/Logger.h"
-#include "Runtime/Graphics/StaticMesh.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Core/Logger.h"
+#include "NSlib/Graphics/StaticMesh.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/AssetManager.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Windows/Clock.h"
 #include <algorithm>
 #include <cmath>
 
@@ -39,19 +39,19 @@ namespace
     // 上と向きの外積を水平の回転軸として axis へ書く。正の角度で上面がその向きへ倒れる前転になる
     // 長さの無い向きと、水平成分に非数・無限大を含む向きは採らず、axis を書き換えない
     // TryNormalizeHorizontal は長さの 2 乗が非数だと下限との比較が偽になって通すので、先に有限かを見る
-    void SetRollAxisToward(const NS::Core::Vector3& direction, NS::Core::Vector3& axis) noexcept
+    void SetRollAxisToward(const NS::Vector3& direction, NS::Vector3& axis) noexcept
     {
         const float lengthSq = direction.x * direction.x + direction.z * direction.z;
         if (!std::isfinite(lengthSq))
         {
             return;
         }
-        NS::Core::Vector3 forward{};
-        if (!NS::Core::TryNormalizeHorizontal(direction, forward))
+        NS::Vector3 forward{};
+        if (!NS::TryNormalizeHorizontal(direction, forward))
         {
             return;
         }
-        axis = NS::Core::Vector3{forward.z, 0.0f, -forward.x};
+        axis = NS::Vector3{forward.z, 0.0f, -forward.x};
     }
 } // namespace
 
@@ -106,7 +106,7 @@ namespace NS::Game::Player
         }
         if (NS::Obj::Model* renderer = Owner()->ModelPart())
         {
-            (void)renderer->SnapDrawScale(NS::Core::Vector3{1.0f, 1.0f, 1.0f});
+            (void)renderer->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
         }
     }
 
@@ -122,7 +122,7 @@ namespace NS::Game::Player
         if (!m_curled)
         {
             // 立ち姿は回さず、玉の回転と軸と速さも捨てる。丸まり直した玉へ前の玉の値を持ち越さない
-            m_spin = NS::Core::Quaternion::Identity;
+            m_spin = NS::Quaternion::Identity;
             m_spinAxis = k_FirstSpinAxis;
             m_spinSpeed = 0.0f;
             // 前のフレームの値も揃える。今の値だけを戻すと、持ち替えたフレームの立ち姿が、玉の姿勢から戻る途中の
@@ -148,7 +148,7 @@ namespace NS::Game::Player
         {
             // 放せば出る向きへ回す。溜めて放した突進は狙いの線の向きへ、通常突進と線の無い時は
             // AimDirection の向きへ出る。狙いが決まらないフレームは前の軸で回し続ける
-            NS::Core::Vector3 aim = m_actor->AimDirection();
+            NS::Vector3 aim = m_actor->AimDirection();
             NS::Game::Level::AimLine line{};
             if (m_actor->ChargeJudge().IsCharging() && m_actor->TryGetAimLine(line))
             {
@@ -172,9 +172,9 @@ namespace NS::Game::Player
         }
         // 放した後の空中と、反動に入らずに突進が終わった後は、直前のフレームの軸と速さのまま回る
 
-        const float degrees = m_spinSpeed * NS::Platform::FrameTimer::FixedDelta();
-        const float radians = NS::Core::ToRadians(NS::Core::Degrees{degrees}).value;
-        const NS::Core::Quaternion turn = NS::Core::Quaternion::CreateFromAxisAngle(m_spinAxis, radians);
+        const float degrees = m_spinSpeed * NS::OS::FrameTimer::FixedDelta();
+        const float radians = NS::ToRadians(NS::Degrees{degrees}).value;
+        const NS::Quaternion turn = NS::Quaternion::CreateFromAxisAngle(m_spinAxis, radians);
         // 既に回った姿勢の後に今の軸の回転を足す。SimpleMath の q1 * q2 は q1 の後に q2 で、軸は根の空間で固定
         m_spin = m_spin * turn;
         m_spin.Normalize();
@@ -200,13 +200,13 @@ namespace NS::Game::Player
                 // 種は何回目の当たりか。黄金角ずつずらし、続けて外しても始まりの向きが重ならない。Replay では同じ
                 constexpr float k_GoldenAngle = 2.39996323f;
                 m_tumbleWobblePhase = std::fmod(static_cast<float>(m_resolver->LastImpact().sequence) * k_GoldenAngle,
-                                                2.0f * NS::Core::k_Pi);
+                                                2.0f * NS::k_Pi);
             }
         }
         ++m_tumbleSteps;
 
         // 当たる前の回転を割合だけ残してねじれに足す。溜めて外したほど大きく振り回される
-        const NS::Core::Vector3 target = tumble.twist * (m_missTwistTurnsPerSecond * 360.0f * tumble.power) +
+        const NS::Vector3 target = tumble.twist * (m_missTwistTurnsPerSecond * 360.0f * tumble.power) +
                                          m_tumbleStartSpin * m_missSpinCarryRatio;
         float blend = 1.0f;
         if (m_missSpinBlendSteps > 0)
@@ -214,31 +214,31 @@ namespace NS::Game::Player
             blend = std::min(static_cast<float>(m_tumbleSteps) / static_cast<float>(m_missSpinBlendSteps), 1.0f);
         }
         // こすって止まる間は、身体の速さと同じ割合で回転も落とす
-        const NS::Core::Vector3 spin =
+        const NS::Vector3 spin =
             (m_tumbleStartSpin + (target - m_tumbleStartSpin) * blend) * m_actor->SkidSpeedScale();
         const float speed = spin.Length();
-        if (!std::isfinite(speed) || speed <= NS::Core::k_Epsilon)
+        if (!std::isfinite(speed) || speed <= NS::k_Epsilon)
         {
             m_spinSpeed = 0.0f;
             return;
         }
 
         // 止まりかけのコマのように、軸自体をぶれの角度だけ傾け、傾けた向きをぶれの速さで回す
-        const NS::Core::Vector3 axis = spin / speed;
-        NS::Core::Vector3 helper{0.0f, 1.0f, 0.0f};
+        const NS::Vector3 axis = spin / speed;
+        NS::Vector3 helper{0.0f, 1.0f, 0.0f};
         if (std::abs(axis.y) > 0.9f)
         {
-            helper = NS::Core::Vector3{1.0f, 0.0f, 0.0f};
+            helper = NS::Vector3{1.0f, 0.0f, 0.0f};
         }
-        NS::Core::Vector3 side = axis.Cross(helper);
+        NS::Vector3 side = axis.Cross(helper);
         side.Normalize();
-        const NS::Core::Vector3 other = axis.Cross(side);
-        const float phase = m_tumbleWobblePhase + 2.0f * NS::Core::k_Pi * m_missWobbleTurnsPerSecond *
+        const NS::Vector3 other = axis.Cross(side);
+        const float phase = m_tumbleWobblePhase + 2.0f * NS::k_Pi * m_missWobbleTurnsPerSecond *
                                                       static_cast<float>(m_tumbleSteps) *
-                                                      NS::Platform::FrameTimer::FixedDelta();
-        const float tilt = NS::Core::ToRadians(NS::Core::Degrees{m_missWobbleDegrees}).value;
-        const NS::Core::Vector3 lean = side * std::cos(phase) + other * std::sin(phase);
-        NS::Core::Vector3 tilted = axis * std::cos(tilt) + lean * std::sin(tilt);
+                                                      NS::OS::FrameTimer::FixedDelta();
+        const float tilt = NS::ToRadians(NS::Degrees{m_missWobbleDegrees}).value;
+        const NS::Vector3 lean = side * std::cos(phase) + other * std::sin(phase);
+        NS::Vector3 tilted = axis * std::cos(tilt) + lean * std::sin(tilt);
         tilted.Normalize();
         m_spinAxis = tilted;
         m_spinSpeed = speed;
@@ -319,7 +319,7 @@ namespace NS::Game::Player
             return;
         }
         // 当たりの潰れと伸びの間は構えを混ぜない。構えの最中に来た止めも元の形から潰す
-        NS::Core::Vector3 shape{1.0f, 1.0f, 1.0f};
+        NS::Vector3 shape{1.0f, 1.0f, 1.0f};
         if (m_resolver != nullptr && m_resolver->IsShapeAnimating())
         {
             shape = m_resolver->ShapeFactors();
@@ -331,7 +331,7 @@ namespace NS::Game::Player
         // 着地の潰れの水平は体積を保つ 1 ÷ √縦
         const float vertical = m_landingSquashVertical;
         const float horizontal = 1.0f / std::sqrt(vertical);
-        const NS::Core::Vector3 scale{shape.x * horizontal, shape.y * vertical, shape.z * horizontal};
+        const NS::Vector3 scale{shape.x * horizontal, shape.y * vertical, shape.z * horizontal};
         if (renderer->SetDrawScale(scale))
         {
             m_drawScaleRejected = false;

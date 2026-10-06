@@ -1,9 +1,9 @@
 #include "Game/Player.h"
-#include "Runtime/Object/Components/HitReaction.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/Input.h"
+#include "NSlib/Object/Components/HitReaction.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/Input.h"
 
 #include <gtest/gtest.h>
 
@@ -19,7 +19,7 @@ namespace
         nlohmann::json entry = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(entry, "Player");
         NS::Obj::SetObjectJsonId(entry, 1);
-        NS::Obj::SetObjectPosition(entry, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+        NS::Obj::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
         scene.LoadJson(doc);
         Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
@@ -32,7 +32,7 @@ namespace
 
     float PadLeft()
     {
-        return NS::Platform::Input::Get().Gamepad(0).Vibration().left;
+        return NS::OS::Input::Get().Gamepad(0).Vibration().left;
     }
 
     // 左のモーターを start から frames フレームで 0 へ下げる振動

@@ -3,10 +3,10 @@
 #include "Game/Level/HitTier.h"
 #include "Game/Level/HitZones.h"
 #include "Game/Level/LaunchArc.h"
-#include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Message.h"
-#include "Runtime/Object/ObjectJson.h"
+#include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Message.h"
+#include "NSlib/Object/ObjectJson.h"
 
 #include <cstdint>
 
@@ -81,8 +81,8 @@ namespace NS::Game::Level
         float toughness = 0.0f;                       //!< 耐久。破壊を許した時だけ、威力がこれ以下なら壊れる
         bool breakable = false;                       //!< 壊れる動きを持つか。偽なら破壊を許しても押し飛ばしへ回る
         bool placed = true;                           //!< 置かれているか。飛んでいる相手は食い込ませない
-        NS::Core::Vector3 position{0.0f, 0.0f, 0.0f}; //!< 根の位置 (世界座標)
-        NS::Core::AABB bounds{};                      //!< 体の外接箱 (世界座標)
+        NS::Vector3 position{0.0f, 0.0f, 0.0f}; //!< 根の位置 (世界座標)
+        NS::AABB bounds{};                      //!< 体の外接箱 (世界座標)
         HitFace face{};                               //!< 面の赤の欄の写し。段と威力の倍率を JudgeHitFace で決める
         NS::Obj::SensorVolume body{};                 //!< 体のセンサーの世界の形。面の大きさを出す
     };
@@ -109,7 +109,7 @@ namespace NS::Game::Level
     //! @brief 体当たりの止めの頭の、相手の形と動き
     struct TackleFreezeDesc
     {
-        NS::Core::Vector3 impactDir{1.0f, 0.0f, 0.0f}; //!< 相手の飛ぶ水平の向き。食い込みの向き
+        NS::Vector3 impactDir{1.0f, 0.0f, 0.0f}; //!< 相手の飛ぶ水平の向き。食い込みの向き
         float pushInDistance = 0.0f;                   //!< 止めの頭で飛ぶ向きへ食い込ませる距離 (m)
         float squashThickness = 1.0f;                  //!< 飛ぶ向きの厚みの倍率
         float squashHeight = 1.0f;                     //!< 高さの倍率
@@ -135,7 +135,7 @@ namespace NS::Game::Level
     //! @brief 止めの間の横揺れ。受け手は描く形だけを axis の向きへ BodyShakeOffset のずれで揺らす
     struct TackleShakeDesc
     {
-        NS::Core::Vector3 axis{1.0f, 0.0f, 0.0f}; //!< 揺らす世界の向き。画面の横を床に沿わせた長さ 1 の向き
+        NS::Vector3 axis{1.0f, 0.0f, 0.0f}; //!< 揺らす世界の向き。画面の横を床に沿わせた長さ 1 の向き
         float amplitude = 0.0f;                   //!< 最初の振れ幅 (m)
         int length = 0;                           //!< 揺れのフレーム数
         std::uint32_t seed = 0;                   //!< 振れ幅のばらつきの種
@@ -162,7 +162,7 @@ namespace NS::Game::Level
     //! @brief 衝撃の震え。受け手は長さの間、描く所の震えを毎フレーム MakeTremor で書き直す
     struct TackleTremorDesc
     {
-        NS::Core::Vector3 contactOffset{}; //!< 衝突点の、受け手の根の位置からのずれ (m)。体と一緒に動く
+        NS::Vector3 contactOffset{}; //!< 衝突点の、受け手の根の位置からのずれ (m)。体と一緒に動く
         float amplitudePixels = 0.0f;      //!< 振れ幅。高さ 720 画素の画面の上の画素数
         int reachFrames = 0;               //!< 衝突点から体の一番遠い所へ届くまでのフレーム数
         int length = 0;                    //!< 震えのフレーム数

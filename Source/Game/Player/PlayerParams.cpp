@@ -1,7 +1,7 @@
 #include "Game/Player/PlayerParams.h"
 
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
 
 #include <cmath>
 
@@ -20,7 +20,7 @@ namespace NS::Game::Player
         {
             return 1.0f;
         }
-        const float clamped = NS::Core::Clamp(charge01, 0.0f, 1.0f);
+        const float clamped = NS::Clamp(charge01, 0.0f, 1.0f);
         const float factor = m_chargeFactorCurve.Evaluate(clamped);
         // Inspector で点を全部消すと Evaluate が 0 を返して威力が消えるため、0 以下は 1 とみなす
         if (!(factor > 0.0f))
@@ -35,7 +35,7 @@ namespace NS::Game::Player
         float depth = 0.0f;
         if (std::isfinite(overcharge01))
         {
-            depth = NS::Core::Clamp(overcharge01, 0.0f, 1.0f);
+            depth = NS::Clamp(overcharge01, 0.0f, 1.0f);
         }
         return ChargeFactorFor(charge01) * (1.0f + (m_overchargePowerMax - 1.0f) * depth);
     }
@@ -43,7 +43,7 @@ namespace NS::Game::Player
     float PlayerParams::ChargingSpeedScale() const noexcept
     {
         // 減速率の欄は非有限の書き込みを捨てるので、ここへ来る値は有限。Clamp だけで 0..1 に収まる
-        return NS::Core::Clamp(1.0f - m_chargeSlowRate, 0.0f, 1.0f);
+        return NS::Clamp(1.0f - m_chargeSlowRate, 0.0f, 1.0f);
     }
 
     NS_CLASS(PlayerParams)

@@ -1,8 +1,8 @@
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/ScreenFade.h"
-#include "Runtime/Object/UIActor.h"
-#include "Runtime/UI/ColorRect.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/ScreenFade.h"
+#include "NSlib/Object/UIActor.h"
+#include "NSlib/UI/ColorRect.h"
 
 #include <gtest/gtest.h>
 

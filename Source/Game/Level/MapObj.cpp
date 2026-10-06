@@ -4,11 +4,11 @@
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactTremor.h"
 #include "Game/Level/SensorKinds.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/Gravity.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneJson.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/Gravity.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
 
 #include <algorithm>
 #include <cmath>
@@ -22,7 +22,7 @@ namespace NS::Game::Level
         constexpr float k_FloorDot = 0.7071f;
         constexpr int k_MaxContacts = 4;
 
-        bool IsFinite(const NS::Core::Vector3& value) noexcept
+        bool IsFinite(const NS::Vector3& value) noexcept
         {
             return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
         }
@@ -32,7 +32,7 @@ namespace NS::Game::Level
     {
         void OnEnter(MapObj& owner) override
         {
-            owner.m_velocity = NS::Core::Vector3{};
+            owner.m_velocity = NS::Vector3{};
             owner.m_restAge = 0.0f;
         }
         void OnStep(MapObj& owner, float dt) override
@@ -81,14 +81,14 @@ namespace NS::Game::Level
     {
         (void)CreatePart("Model");
         ModelPart()->SetMeshRef("sphere");
-        ModelPart()->SetBaseColor(NS::Core::Vector3{0.72f, 0.70f, 0.66f});
+        ModelPart()->SetBaseColor(NS::Vector3{0.72f, 0.70f, 0.66f});
         SetCollisionPart(std::make_unique<NS::Obj::SphereCollision>());
         AttachFixedComponent(m_params);
         AttachFixedComponent(m_hitZones);
         AttachFixedComponent(m_effects);
         // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
         SetBodySensorPart(std::make_unique<NS::Obj::FollowHitSensor>([collision = &Sphere()] {
-            const NS::Core::Sphere sphere = collision->WorldSphere();
+            const NS::Sphere sphere = collision->WorldSphere();
             return NS::Obj::SensorVolume::Sphere(sphere.center, sphere.radius);
         }));
         SetSensorKind(*BodySensorPart(), SensorKind::MapObjBody);
@@ -135,7 +135,7 @@ namespace NS::Game::Level
     void MapObj::BodyStep()
     {
         // 置き直すたびに形を作り直すので、球が変わらない間は置かない。止まっている置物の数だけ毎ステップ確保が走る
-        const NS::Core::Sphere sphere = Sphere().WorldSphere();
+        const NS::Sphere sphere = Sphere().WorldSphere();
         if (!m_hasSyncedSphere || sphere.center != m_syncedSphere.center || sphere.radius != m_syncedSphere.radius)
         {
             SyncCollision();
@@ -194,7 +194,7 @@ namespace NS::Game::Level
                 const float x2 = desc.impactDir.x * desc.impactDir.x;
                 const float z2 = desc.impactDir.z * desc.impactDir.z;
                 m_freeze.squash =
-                    ModelPart()->SnapDrawScale(NS::Core::Vector3{1.0f + (desc.squashThickness - 1.0f) * x2,
+                    ModelPart()->SnapDrawScale(NS::Vector3{1.0f + (desc.squashThickness - 1.0f) * x2,
                                                                  desc.squashHeight,
                                                                  1.0f + (desc.squashThickness - 1.0f) * z2});
             }
@@ -226,8 +226,8 @@ namespace NS::Game::Level
         m_shake.active = false;
         if (ModelPart() != nullptr)
         {
-            (void)ModelPart()->SetDrawOffset(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
-            (void)ModelPart()->SetGhostSpread(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+            (void)ModelPart()->SetDrawOffset(NS::Vector3{0.0f, 0.0f, 0.0f});
+            (void)ModelPart()->SetGhostSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
         }
     }
 
@@ -271,7 +271,7 @@ namespace NS::Game::Level
         }
         if (m_freeze.squash)
         {
-            (void)ModelPart()->SnapDrawScale(NS::Core::Vector3{1.0f, 1.0f, 1.0f});
+            (void)ModelPart()->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
             m_freeze.squash = false;
         }
     }
@@ -319,16 +319,16 @@ namespace NS::Game::Level
             }
         }
         SpawnMark();
-        const NS::Core::Vector3 up = -NS::Obj::GravityDirection(*this);
-        NS::Core::Vector3 forward = desc.arc.direction - up * NS::Core::Dot(desc.arc.direction, up);
+        const NS::Vector3 up = -NS::Obj::GravityDirection(*this);
+        NS::Vector3 forward = desc.arc.direction - up * NS::Dot(desc.arc.direction, up);
         const float length = forward.Length();
         if (!IsFinite(forward) || !(length > 0.0001f))
         {
             return;
         }
         LaunchArc arc = desc.arc;
-        arc.direction = NS::Core::Vector3{1.0f, 0.0f, 0.0f};
-        const NS::Core::Vector3 initial = LaunchArcInitialVelocity(arc);
+        arc.direction = NS::Vector3{1.0f, 0.0f, 0.0f};
+        const NS::Vector3 initial = LaunchArcInitialVelocity(arc);
         if (!(initial.Length() > 0.0f))
         {
             return;
@@ -353,9 +353,9 @@ namespace NS::Game::Level
         SyncCollision();
     }
 
-    NS::Core::Vector3 MapObj::ArcOffset(float seconds) const noexcept
+    NS::Vector3 MapObj::ArcOffset(float seconds) const noexcept
     {
-        const NS::Core::Vector3 offset = LaunchArcOffsetAt(m_arc, seconds);
+        const NS::Vector3 offset = LaunchArcOffsetAt(m_arc, seconds);
         return m_arcForward * offset.x + m_arcUp * offset.y;
     }
 
@@ -370,16 +370,16 @@ namespace NS::Game::Level
 
     void MapObj::StepArc(float dt)
     {
-        const NS::Core::Vector3 before = ArcOffset(m_arcSeconds);
+        const NS::Vector3 before = ArcOffset(m_arcSeconds);
         m_arcSeconds += dt;
-        const NS::Core::Vector3 delta = ArcOffset(m_arcSeconds) - before;
+        const NS::Vector3 delta = ArcOffset(m_arcSeconds) - before;
         if (!m_arcDeflected)
         {
             m_velocity = delta / dt;
         }
         else
         {
-            const float vertical = NS::Core::Dot(m_velocity, m_arcUp);
+            const float vertical = NS::Dot(m_velocity, m_arcUp);
             float gravity = m_arc.riseGravity;
             if (vertical <= 0.0f)
             {
@@ -396,9 +396,9 @@ namespace NS::Game::Level
         {
             return;
         }
-        if (NS::Core::Dot(m_velocity, m_arcUp) <= 0.0f)
+        if (NS::Dot(m_velocity, m_arcUp) <= 0.0f)
         {
-            NS::Core::Vector3 normal{};
+            NS::Vector3 normal{};
             if (ProbeFloor(Sphere().WorldSphere().radius / k_FloorDot + k_ContactSkin, normal))
             {
                 Land(normal);
@@ -406,18 +406,18 @@ namespace NS::Game::Level
         }
     }
 
-    bool MapObj::ProbeFloor(float distance, NS::Core::Vector3& outNormal)
+    bool MapObj::ProbeFloor(float distance, NS::Vector3& outNormal)
     {
-        const NS::Core::Sphere sphere = Sphere().WorldSphere();
+        const NS::Sphere sphere = Sphere().WorldSphere();
         float hitDistance = 0.0f;
-        const NS::Core::Vector3 down = NS::Obj::GravityDirection(*this);
+        const NS::Vector3 down = NS::Obj::GravityDirection(*this);
         if (!NS::Obj::RaycastCollision(
                 *this, sphere.center, down, distance, hitDistance, outNormal, Sphere().BodyId()) ||
-            NS::Core::Dot(outNormal, -down) < k_FloorDot)
+            NS::Dot(outNormal, -down) < k_FloorDot)
         {
             return false;
         }
-        const float alignment = NS::Core::Dot(outNormal, -down);
+        const float alignment = NS::Dot(outNormal, -down);
         const float clearance = sphere.radius / alignment;
         if (hitDistance > clearance + 0.01f)
         {
@@ -427,14 +427,14 @@ namespace NS::Game::Level
         return true;
     }
 
-    void MapObj::Land(const NS::Core::Vector3& normal)
+    void MapObj::Land(const NS::Vector3& normal)
     {
         // 外れの跳ねが残っていれば、向きを変えて跳ね直し、曲線の重力で落ちる
         if (m_hopsLeft > 0)
         {
-            const NS::Core::Vector3 hop =
+            const NS::Vector3 hop =
                 MissHopVelocity(m_velocity, m_arcUp, m_params.MissHop(), m_hopSeed, m_hopIndex);
-            if (NS::Core::Dot(hop, m_arcUp) > 0.0f)
+            if (NS::Dot(hop, m_arcUp) > 0.0f)
             {
                 m_velocity = hop;
                 m_arcDeflected = true;
@@ -445,28 +445,28 @@ namespace NS::Game::Level
             }
             m_hopsLeft = 0;
         }
-        m_velocity -= normal * NS::Core::Dot(m_velocity, normal);
+        m_velocity -= normal * NS::Dot(m_velocity, normal);
         (void)m_motion.Machine().Change<RollingState>();
         m_effects.NotifyLanding(Sphere().WorldSphere().center - normal * Sphere().WorldSphere().radius, normal);
     }
 
     void MapObj::StepRolling(float dt)
     {
-        NS::Core::Vector3 normal{};
+        NS::Vector3 normal{};
         if (!ProbeFloor(Sphere().WorldSphere().radius / k_FloorDot + 0.01f, normal))
         {
             m_arcDeflected = true;
             (void)m_motion.Machine().Change<ArcState>();
             return;
         }
-        m_velocity -= normal * NS::Core::Dot(m_velocity, normal);
-        const NS::Core::Vector3 downhill = NS::Obj::GravityDirection(*this);
-        m_velocity += (downhill - normal * NS::Core::Dot(downhill, normal)) * (m_arc.riseGravity * dt);
+        m_velocity -= normal * NS::Dot(m_velocity, normal);
+        const NS::Vector3 downhill = NS::Obj::GravityDirection(*this);
+        m_velocity += (downhill - normal * NS::Dot(downhill, normal)) * (m_arc.riseGravity * dt);
         const float speed = m_velocity.Length();
         const float reduced = std::max(0.0f, speed - m_params.Friction() * m_arc.riseGravity * dt);
         if (reduced <= k_StopSpeed)
         {
-            m_velocity = NS::Core::Vector3{};
+            m_velocity = NS::Vector3{};
             m_motion.Finish();
             return;
         }
@@ -484,15 +484,15 @@ namespace NS::Game::Level
             {
                 break;
             }
-            const NS::Core::Vector3 direction = m_velocity / speed;
-            const NS::Core::Sphere sphere = Sphere().WorldSphere();
+            const NS::Vector3 direction = m_velocity / speed;
+            const NS::Sphere sphere = Sphere().WorldSphere();
             const float travel = speed * remaining;
             float distance = 0.0f;
-            NS::Core::Vector3 normal{};
+            NS::Vector3 normal{};
             float allowed = travel;
             bool blocked = NS::Obj::RaycastCollision(
                 *this, sphere.center, direction, travel + sphere.radius * 2.0f, distance, normal, Sphere().BodyId());
-            const float approach = -NS::Core::Dot(direction, normal);
+            const float approach = -NS::Dot(direction, normal);
             if (blocked && approach > 0.0001f)
             {
                 allowed = std::max(0.0f, distance - sphere.radius / approach - k_ContactSkin);
@@ -509,13 +509,13 @@ namespace NS::Game::Level
             }
             Root().SetPosition(Root().Position() + direction * allowed);
             remaining -= allowed / speed;
-            if (NS::Core::Dot(normal, -NS::Obj::GravityDirection(*this)) >= k_FloorDot &&
+            if (NS::Dot(normal, -NS::Obj::GravityDirection(*this)) >= k_FloorDot &&
                 m_motion.Machine().IsCurrent<ArcState>())
             {
                 Land(normal);
                 return;
             }
-            const float into = NS::Core::Dot(m_velocity, normal);
+            const float into = NS::Dot(m_velocity, normal);
             if (into < 0.0f)
             {
                 m_velocity -= normal * ((1.0f + m_params.Restitution()) * into);
@@ -523,22 +523,22 @@ namespace NS::Game::Level
             }
             Root().SetPosition(Root().Position() + normal * k_ContactSkin);
         }
-        const NS::Core::Vector3 up = -NS::Obj::GravityDirection(*this);
-        const NS::Core::Vector3 horizontal = m_velocity - up * NS::Core::Dot(m_velocity, up);
-        const NS::Core::Vector3 spin = NS::Core::Cross(up, horizontal) * m_params.SpinPerSpeed();
+        const NS::Vector3 up = -NS::Obj::GravityDirection(*this);
+        const NS::Vector3 horizontal = m_velocity - up * NS::Dot(m_velocity, up);
+        const NS::Vector3 spin = NS::Cross(up, horizontal) * m_params.SpinPerSpeed();
         const float rate = spin.Length();
         if (std::isfinite(rate) && rate > 0.0001f)
         {
-            Root().SetRotation(NS::Core::Quaternion::CreateFromAxisAngle(spin / rate, rate * dt) * Root().Rotation());
+            Root().SetRotation(NS::Quaternion::CreateFromAxisAngle(spin / rate, rate * dt) * Root().Rotation());
         }
     }
 
     void MapObj::SpawnMark()
     {
-        const NS::Core::Vector3 down = NS::Obj::GravityDirection(*this);
-        const NS::Core::Sphere sphere = Sphere().WorldSphere();
+        const NS::Vector3 down = NS::Obj::GravityDirection(*this);
+        const NS::Sphere sphere = Sphere().WorldSphere();
         float distance = 0.0f;
-        NS::Core::Vector3 normal{};
+        NS::Vector3 normal{};
         if (NS::Obj::RaycastCollision(
                 *this, sphere.center, down, m_params.MarkProbeDistance(), distance, normal, Sphere().BodyId()))
         {
@@ -546,7 +546,7 @@ namespace NS::Game::Level
         }
     }
 
-    void MapObj::ResetTo(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation)
+    void MapObj::ResetTo(const NS::Vector3& position, const NS::Quaternion& rotation)
     {
         if (IsFrozen())
         {
@@ -557,7 +557,7 @@ namespace NS::Game::Level
         (void)m_states->Change<RestingState>();
         m_states->Reset();
         m_motion.Finish();
-        m_velocity = NS::Core::Vector3{};
+        m_velocity = NS::Vector3{};
         m_restAge = 0.0f;
         m_hasLaunched = false;
         Root().SetPosition(position);

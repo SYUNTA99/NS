@@ -1,13 +1,13 @@
 #include "Game/Level/FollowCamera.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/CameraTarget.h"
-#include "Runtime/Object/Components/CameraManager.h"
-#include "Runtime/Object/Components/CameraModifier.h"
-#include "Runtime/Object/IUse/IUseCamera.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneCamera.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/CameraTarget.h"
+#include "NSlib/Object/Components/CameraManager.h"
+#include "NSlib/Object/Components/CameraModifier.h"
+#include "NSlib/Object/IUse/IUseCamera.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneCamera.h"
+#include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -35,7 +35,7 @@ TEST(CameraManager, SceneOwnsCameraWithoutActorHost)
 TEST(CameraManager, CameraPhaseSelectsTheVirtualCamera)
 {
     NS::Obj::Scene scene;
-    ASSERT_NE(PlaceViewCamera(scene, NS::Core::Vector3{0.0f, 0.0f, -5.0f}, NS::Core::Vector3{}), nullptr);
+    ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
     NS::Obj::CameraManager* cameras = scene.GetCameraManager();
     ASSERT_NE(cameras, nullptr);
     ASSERT_EQ(cameras->ActiveVirtualCamera(), nullptr);
@@ -61,9 +61,9 @@ namespace
     public:
         [[nodiscard]] NS::Obj::CameraPose EvaluatePose(float alpha) const noexcept override
         {
-            return MakePose(NS::Core::Vector3{0.0f, 0.0f, -5.0f},
-                            NS::Core::Vector3{10.0f * alpha, 0.0f, 0.0f},
-                            NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+            return MakePose(NS::Vector3{0.0f, 0.0f, -5.0f},
+                            NS::Vector3{10.0f * alpha, 0.0f, 0.0f},
+                            NS::Vector3{0.0f, 1.0f, 0.0f});
         }
         NS_REFLECT_NONE(AlphaCamera, NS::Obj::VirtualCamera)
     };
@@ -104,7 +104,7 @@ TEST(CameraModifier, ShakeDrawsFirstFrameThenDecaysAndFinishes)
 {
     std::unique_ptr<NS::Obj::CameraShakeModifier> shake = NS::Obj::CameraShakeModifier::Create(ShakeOf(3), 1.0f);
     ASSERT_NE(shake, nullptr);
-    const NS::Core::Vector2 first = shake->Offset();
+    const NS::Vector2 first = shake->Offset();
     EXPECT_FLOAT_EQ(std::abs(first.x), 0.2f);
     // 縦の最初の振れは下
     EXPECT_LT(first.y, 0.0f);
@@ -117,7 +117,7 @@ TEST(CameraModifier, ShakeDrawsFirstFrameThenDecaysAndFinishes)
     shake->Tick();
     shake->Tick();
     EXPECT_TRUE(shake->IsFinished());
-    EXPECT_EQ(shake->Offset(), (NS::Core::Vector2{0.0f, 0.0f}));
+    EXPECT_EQ(shake->Offset(), (NS::Vector2{0.0f, 0.0f}));
 }
 
 TEST(CameraModifier, BrokenDescIsRejected)
@@ -157,7 +157,7 @@ TEST(CameraManager, SameKindReplacesAndClearRemovesAll)
     cameras.ClearModifiers();
     EXPECT_EQ(cameras.FindModifier<NS::Obj::CameraShakeModifier>(), nullptr);
     EXPECT_FLOAT_EQ(cameras.ZoomRoll().zoom, 1.0f);
-    EXPECT_EQ(cameras.ShakeOffset(), (NS::Core::Vector2{0.0f, 0.0f}));
+    EXPECT_EQ(cameras.ShakeOffset(), (NS::Vector2{0.0f, 0.0f}));
 }
 
 TEST(CameraManager, FinishedModifiersAreRemovedOnTick)
@@ -173,7 +173,7 @@ TEST(CameraManager, FinishedModifiersAreRemovedOnTick)
 TEST(CameraManager, ModifiersApplyInOrder)
 {
     TestViewCameraHost host;
-    host.Vcam().SetPose(NS::Core::Vector3{1.0f, 0.0f, -5.0f}, NS::Core::Vector3{1.0f, 0.0f, 0.0f});
+    host.Vcam().SetPose(NS::Vector3{1.0f, 0.0f, -5.0f}, NS::Vector3{1.0f, 0.0f, 0.0f});
     NS::Obj::CameraManager cameras;
     cameras.AddVirtualCamera(&host.Vcam());
     // 積んだ順と逆でも Order の小さい方が先に掛かる
@@ -189,13 +189,13 @@ TEST(CameraManager, ModifiersApplyInOrder)
 TEST(IUseCamera, ForwardFollowsTheVirtualCameraNotTheDrawnCamera)
 {
     NS::Obj::Scene scene;
-    ASSERT_NE(PlaceViewCamera(scene, NS::Core::Vector3{0.0f, 0.0f, -5.0f}, NS::Core::Vector3{}), nullptr);
-    scene.MainCamera()->SetPosition(NS::Core::Vector3{});
-    scene.MainCamera()->SetTarget(NS::Core::Vector3{1.0f, 0.0f, 0.0f});
+    ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
+    scene.MainCamera()->SetPosition(NS::Vector3{});
+    scene.MainCamera()->SetTarget(NS::Vector3{1.0f, 0.0f, 0.0f});
     NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
     ASSERT_NE(actor, nullptr);
 
-    const NS::Core::Vector3 forward = NS::Obj::CameraForwardHorizontal(*actor);
+    const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(*actor);
 
     EXPECT_FLOAT_EQ(forward.x, 0.0f);
     EXPECT_FLOAT_EQ(forward.z, 1.0f);
@@ -205,12 +205,12 @@ TEST(IUseCamera, ForwardFollowsTheVirtualCameraNotTheDrawnCamera)
 TEST(IUseCamera, ForwardWithoutAVirtualCameraIsPlusZ)
 {
     NS::Obj::Scene scene;
-    scene.MainCamera()->SetPosition(NS::Core::Vector3{});
-    scene.MainCamera()->SetTarget(NS::Core::Vector3{1.0f, 0.0f, 0.0f});
+    scene.MainCamera()->SetPosition(NS::Vector3{});
+    scene.MainCamera()->SetTarget(NS::Vector3{1.0f, 0.0f, 0.0f});
     NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
     ASSERT_NE(actor, nullptr);
 
-    const NS::Core::Vector3 forward = NS::Obj::CameraForwardHorizontal(*actor);
+    const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(*actor);
 
     EXPECT_FLOAT_EQ(forward.x, 0.0f);
     EXPECT_FLOAT_EQ(forward.z, 1.0f);
@@ -223,7 +223,7 @@ TEST(CameraManager, ForwardIgnoresTheDrawAlphaDuringABlend)
     NS::Obj::CameraManager cameras;
     cameras.SetCamera(&drawn);
     // 1 歩で半分まで進むブレンド
-    cameras.SetBlendDuration(NS::Platform::FrameTimer::FixedDelta() * 2.0f);
+    cameras.SetBlendDuration(NS::OS::FrameTimer::FixedDelta() * 2.0f);
     TestViewCameraHost from;
     cameras.AddVirtualCamera(&from.Vcam());
     cameras.OnTick();
@@ -236,10 +236,10 @@ TEST(CameraManager, ForwardIgnoresTheDrawAlphaDuringABlend)
 
     const std::optional<NS::Obj::CameraPose> view = cameras.ViewPose();
     ASSERT_TRUE(view.has_value());
-    NS::Core::Vector3 expected{};
-    ASSERT_TRUE(NS::Core::TryNormalizeHorizontal(view->target - view->position, expected));
+    NS::Vector3 expected{};
+    ASSERT_TRUE(NS::TryNormalizeHorizontal(view->target - view->position, expected));
     ASSERT_GT(expected.x, 0.1f);
-    const NS::Core::Vector3 forward = cameras.ForwardHorizontal();
+    const NS::Vector3 forward = cameras.ForwardHorizontal();
     EXPECT_NEAR(forward.x, expected.x, 1e-5f);
     EXPECT_NEAR(forward.z, expected.z, 1e-5f);
 }
@@ -257,7 +257,7 @@ TEST(CameraManager, ForwardLeavesOutTheModifiers)
     cameras.Evaluate(1.0f);
     ASSERT_FLOAT_EQ(drawn.Position().x, 10.0f);
 
-    const NS::Core::Vector3 forward = cameras.ForwardHorizontal();
+    const NS::Vector3 forward = cameras.ForwardHorizontal();
 
     EXPECT_FLOAT_EQ(forward.x, 0.0f);
     EXPECT_FLOAT_EQ(forward.z, 1.0f);
@@ -270,7 +270,7 @@ TEST(CameraManager, ForwardLeavesOutTheModifiers)
 TEST(IUseCamera, ViewPoseLeavesOutTheShake)
 {
     NS::Obj::Scene scene;
-    ASSERT_NE(PlaceViewCamera(scene, NS::Core::Vector3{0.0f, 0.0f, -5.0f}, NS::Core::Vector3{}), nullptr);
+    ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
     NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
     ASSERT_NE(actor, nullptr);
     ASSERT_TRUE(NS::Obj::StartCameraShake(*actor, ShakeOf(5)));
@@ -354,7 +354,7 @@ TEST(SceneCameraOnRender, RunningWorldWritesTheFollowPoseOnRender)
     ASSERT_NE(follow, nullptr);
     // 追う相手の居ない追従カメラは (0, 0, -5) から原点を見る
     const NS::Obj::CameraPose expected = follow->Vcam().EvaluatePose(1.0f);
-    scene.MainCamera()->SetPosition(NS::Core::Vector3{100.0f, 0.0f, 0.0f});
+    scene.MainCamera()->SetPosition(NS::Vector3{100.0f, 0.0f, 0.0f});
     ASSERT_NE(expected.position.x, 100.0f);
 
     scene.OnRender();
@@ -370,7 +370,7 @@ TEST(SceneCameraOnRender, StoppedWorldLeavesTheRealCameraToWhoeverStoppedIt)
     NS::Obj::Scene scene;
     ASSERT_NE(scene.SpawnTransient<NS::Game::Level::FollowCamera>(), nullptr);
     scene.SetSimulationEnabled(false);
-    scene.MainCamera()->SetPosition(NS::Core::Vector3{100.0f, 0.0f, 0.0f});
+    scene.MainCamera()->SetPosition(NS::Vector3{100.0f, 0.0f, 0.0f});
 
     scene.OnRender();
 

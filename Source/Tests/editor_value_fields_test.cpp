@@ -1,6 +1,6 @@
 #include "Editor/InspectorReflection.h"
 #include "Game/Level/HitTimeline.h"
-#include "Runtime/Object/Reflection/Curve.h"
+#include "NSlib/Object/Reflection/Curve.h"
 
 #include <gtest/gtest.h>
 

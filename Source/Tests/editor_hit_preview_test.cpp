@@ -3,13 +3,13 @@
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
-#include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/Components/PlayerInput.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/FileSystem.h"
-#include "Runtime/Platform/Input.h"
+#include "NSlib/Object/AssetManager.h"
+#include "NSlib/Object/Components/PlayerInput.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/FileSystem.h"
+#include "NSlib/Windows/Input.h"
 #include "Tests/TestHitTimelines.h"
 
 #include <gtest/gtest.h>
@@ -31,7 +31,7 @@ namespace
     // 床の当たりは組み込みの立方体のメッシュから作るので、資産の置き場を差す。描き手は要らない
     struct PreviewAssets
     {
-        NS::Obj::AssetManager assets{NS::Platform::FileSystem::ContentRoot()};
+        NS::Obj::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
         NS::Editor::HitPreviewWorld World() { return NS::Editor::HitPreviewWorld{.assets = &assets}; }
     };
 
@@ -43,19 +43,19 @@ namespace
         nlohmann::json floor = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(floor, "MapParts");
         NS::Obj::SetObjectJsonId(floor, 100);
-        NS::Obj::SetObjectPosition(floor, NS::Core::Vector3{0.0f, -0.5f, 0.0f});
-        NS::Obj::SetObjectScale(floor, NS::Core::Vector3{60.0f, 1.0f, 60.0f});
+        NS::Obj::SetObjectPosition(floor, NS::Vector3{0.0f, -0.5f, 0.0f});
+        NS::Obj::SetObjectScale(floor, NS::Vector3{60.0f, 1.0f, 60.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(floor));
         nlohmann::json player = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(player, "Player");
         NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(rock, "MapObj");
         NS::Obj::SetObjectJsonId(rock, k_RockId);
-        NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{0.0f, 1.5f, 7.0f});
-        NS::Obj::SetObjectScale(rock, NS::Core::Vector3{3.0f, 3.0f, 3.0f});
+        NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 1.5f, 7.0f});
+        NS::Obj::SetObjectScale(rock, NS::Vector3{3.0f, 3.0f, 3.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         return doc;
     }
@@ -214,7 +214,7 @@ TEST(EditorHitPreview, HoldsPadVibrationInTheRecord)
     pad.left.keys[0] = NS::Obj::Curve::Key{0.0f, 0.7f};
     timeline.events.push_back({pad, 0, 4, HitDirection::Any});
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Platform::Input& input = NS::Platform::Input::Get();
+    NS::OS::Input& input = NS::OS::Input::Get();
     ASSERT_TRUE(input.Gamepad().SetVibration(0.1f, 0.0f));
     PreviewAssets assets;
 
@@ -304,7 +304,7 @@ TEST(EditorHitPreview, PicksTheNearestTargetWhenNoneIsChosen)
     nlohmann::json distant = NS::Obj::MakeObjectJson();
     NS::Obj::SetObjectJsonClass(distant, "MapObj");
     NS::Obj::SetObjectJsonId(distant, 3);
-    NS::Obj::SetObjectPosition(distant, NS::Core::Vector3{0.0f, 0.5f, 25.0f});
+    NS::Obj::SetObjectPosition(distant, NS::Vector3{0.0f, 0.5f, 25.0f});
     NS::Obj::SceneJsonObjects(snapshot).push_back(std::move(distant));
     PreviewAssets assets;
     NS::Editor::HitPreviewDesc desc = MakeDesc(0.0f, 0.0f);

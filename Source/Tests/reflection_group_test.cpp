@@ -1,5 +1,5 @@
 #include "Game/Player/PlayerParams.h"
-#include "Runtime/Object/Reflection/Reflection.h"
+#include "NSlib/Object/Reflection/Reflection.h"
 
 #include <gtest/gtest.h>
 

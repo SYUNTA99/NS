@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/VirtualCamera.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/VirtualCamera.h"
+#include "NSlib/Object/Scene/Scene.h"
 
 //! @brief 試し用の仮想カメラ。差し替えた位置と注視点をそのまま返す
 //! @details 遊びはカメラの管理役が仮想カメラから合成した視点を読み、実カメラは読まない
@@ -13,7 +13,7 @@ class TestViewCamera final : public NS::Obj::VirtualCamera
 {
 public:
     //! 返す位置と注視点を差し替える
-    void SetPose(const NS::Core::Vector3& position, const NS::Core::Vector3& target) noexcept
+    void SetPose(const NS::Vector3& position, const NS::Vector3& target) noexcept
     {
         m_position = position;
         m_target = target;
@@ -23,14 +23,14 @@ public:
     [[nodiscard]] NS::Obj::CameraPose EvaluatePose(float alpha) const noexcept override
     {
         (void)alpha;
-        return MakePose(m_position, m_target, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+        return MakePose(m_position, m_target, NS::Vector3{0.0f, 1.0f, 0.0f});
     }
 
     NS_REFLECT_NONE(TestViewCamera, NS::Obj::VirtualCamera)
 
 private:
-    NS::Core::Vector3 m_position{0.0f, 0.0f, -5.0f}; // 返す位置
-    NS::Core::Vector3 m_target{0.0f, 0.0f, 0.0f};    // 返す注視点
+    NS::Vector3 m_position{0.0f, 0.0f, -5.0f}; // 返す位置
+    NS::Vector3 m_target{0.0f, 0.0f, 0.0f};    // 返す注視点
 };
 
 //! @brief 試し用の仮想カメラの持ち主
@@ -61,8 +61,8 @@ private:
 //! @param[in] target 注視点
 //! @return 湧かした仮想カメラ。湧かせなかった場合は nullptr
 inline TestViewCamera* PlaceViewCamera(NS::Obj::Scene& scene,
-                                       const NS::Core::Vector3& position,
-                                       const NS::Core::Vector3& target)
+                                       const NS::Vector3& position,
+                                       const NS::Vector3& target)
 {
     TestViewCameraHost* host = scene.SpawnTransient<TestViewCameraHost>();
     if (host == nullptr)

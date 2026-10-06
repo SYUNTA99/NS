@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Game/Level/HitTier.h"
-#include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Reflection/ActorRef.h"
+#include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Reflection/ActorRef.h"
 
 // 突進の狙いの予測の型
 // Player と ImpactResolver の両方が使うので、どちらのヘッダにも置かない
@@ -14,8 +14,8 @@ namespace NS::Game::Level
     //! 矢印を描く。溜めて放した突進はこの線の向きと縦の速さで出て、突進の間も向きを曲げない
     struct AimLine
     {
-        NS::Core::Vector3 origin;    //!< 線を引き始める自機の位置 (配置物の根)。世界座標
-        NS::Core::Vector3 direction; //!< カメラの管理役の ViewPose から作った水平の前。正規化済みで y は 0
+        NS::Vector3 origin;    //!< 線を引き始める自機の位置 (配置物の根)。世界座標
+        NS::Vector3 direction; //!< カメラの管理役の ViewPose から作った水平の前。正規化済みで y は 0
         float length = 0.0f;         //!< 線に沿って突進が止まる所までの距離。欄「突進距離」の値で、単位は m
         //! 溜めて放つ瞬間の縦の速さ (m/s)。上が正。狙う相手の SlamLineTarget::launchVerticalSpeed で、相手が無ければ 0
         float launchVerticalSpeed = 0.0f;
@@ -26,9 +26,9 @@ namespace NS::Game::Level
     struct SlamLineTarget
     {
         NS::Obj::ActorRef target{};  //!< 相手の配置物
-        NS::Core::AABB bounds{};     //!< 相手の当たりの外接箱。世界座標
-        NS::Core::Vector3 origin;    //!< 探した時の自機の位置。世界座標
-        NS::Core::Vector3 direction; //!< 探した水平の向き。正規化済みで y は 0
+        NS::AABB bounds{};     //!< 相手の当たりの外接箱。世界座標
+        NS::Vector3 origin;    //!< 探した時の自機の位置。世界座標
+        NS::Vector3 direction; //!< 探した水平の向き。正規化済みで y は 0
         float along = 0.0f;          //!< 自機の位置から相手の外接箱の中心までの、線に沿った水平の距離。単位は m
         float offset = 0.0f;         //!< 面の判定の横ずれ。0 以上 1 以下で、裁定の当たりの横ずれと同じ式
         //! 線を進む自機の当たりの玉が相手の当たりの形に初めて触れるまでに、玉の中心が線に沿って進む距離。単位は m。

@@ -1,7 +1,7 @@
 #include "Game/Player.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/PlayerInput.h"
-#include "Runtime/Platform/Input.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/PlayerInput.h"
+#include "NSlib/Windows/Input.h"
 
 #include <gtest/gtest.h>
 
@@ -11,12 +11,12 @@ TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
     NS::Obj::PlayerInput* input = NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input"));
     ASSERT_NE(input, nullptr);
     NS::Obj::Body& movement = player.Body();
-    input->SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    input->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     movement.SetGrounded(true);
     player.AccelerateToInputDirection(0.1f);
     EXPECT_FLOAT_EQ(player.DesiredDirection().x, 1.0f);
     EXPECT_NEAR(movement.LateralVelocity().x, 4.0f, 0.00001f);
-    input->SetDesiredMove(NS::Core::Vector3{-1.0f, 0.0f, 0.0f}, 0.5f);
+    input->SetDesiredMove(NS::Vector3{-1.0f, 0.0f, 0.0f}, 0.5f);
     EXPECT_FLOAT_EQ(player.DesiredDirection().x, -1.0f);
     EXPECT_FLOAT_EQ(player.DesiredSpeedScale(), 0.5f);
     input->SetClimbMove(2.0f, -2.0f);
@@ -66,7 +66,7 @@ TEST(PlayerInputOwnership, RestartClearsSharedInputAndHeldJumpCutsOnlyOnce)
     const float afterRelease = movement.VerticalVelocity();
     player.Update();
     EXPECT_GT(movement.VerticalVelocity(), afterRelease * 0.6f);
-    input->SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    input->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     input->SetJumpPressed();
     player.ResetState();
     EXPECT_FLOAT_EQ(input->DesiredSpeedScale(), 0.0f);
@@ -77,13 +77,13 @@ TEST(PlayerInputOwnership, RestartClearsSharedInputAndHeldJumpCutsOnlyOnce)
 TEST(PlayerInputOwnership, SlamTappedBetweenPlayerStepsIsSeenOnce)
 {
     // 遅い世界では入力の段だけが毎歩回る。自機が読まない歩に押して放した突進を、次に読む歩で 1 回押したと見せる
-    NS::Platform::Input& platform = NS::Platform::Input::Get();
+    NS::OS::Input& platform = NS::OS::Input::Get();
     Player player;
     NS::Obj::PlayerInput* input = NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input"));
     ASSERT_NE(input, nullptr);
-    platform.Mouse().OnButtonDown(NS::Platform::MouseButton::Left);
+    platform.Mouse().OnButtonDown(NS::OS::MouseButton::Left);
     input->OnUpdate();
-    platform.Mouse().OnButtonUp(NS::Platform::MouseButton::Left);
+    platform.Mouse().OnButtonUp(NS::OS::MouseButton::Left);
     input->OnUpdate();
     EXPECT_TRUE(input->SlamHeld());
     input->ConsumePressed();

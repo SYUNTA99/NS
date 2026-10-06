@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Object/Actor.h"
+#include "NSlib/Object/Actor.h"
 
 namespace NS::Game::Level
 {

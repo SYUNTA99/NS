@@ -1,17 +1,17 @@
 #include "Editor/LevelEditorController.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/DirectionalLight.h"
-#include "Runtime/Object/Components/Shadow.h"
-#include "Runtime/Object/Components/SphereCollision.h"
-#include "Runtime/Object/Components/ThirdPersonFollow.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/Reflection/Archetype.h"
-#include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/Reflection/ObjectBuilder.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Platform/StringUtils.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/DirectionalLight.h"
+#include "NSlib/Object/Components/Shadow.h"
+#include "NSlib/Object/Components/SphereCollision.h"
+#include "NSlib/Object/Components/ThirdPersonFollow.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/Reflection/Archetype.h"
+#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/ObjectBuilder.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Windows/StringUtils.h"
 
 #include <gtest/gtest.h>
 
@@ -34,14 +34,14 @@ namespace
         explicit ScopedArchetypeDirectory(std::string_view name)
             : m_previous(NS::Obj::ArchetypeLibrary::Get().Directory())
         {
-            using NS::Platform::FileSystem;
+            using NS::OS::FileSystem;
             m_directory = FileSystem::Combine(
                 FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "build"), "TestArchetypes"), name);
             (void)FileSystem::CreateDirectories(m_directory);
             for (const std::string& path : FileSystem::ListFiles(m_directory, ".json"))
             {
                 std::error_code error;
-                std::filesystem::remove(std::filesystem::path{NS::Platform::StringUtils::WideFromUtf8(path)}, error);
+                std::filesystem::remove(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(path)}, error);
             }
             NS::Obj::ArchetypeLibrary::Get().SetDirectory(m_directory);
         }
@@ -304,11 +304,11 @@ TEST(Archetype, TransformPartIsInstanceOnlyOnEveryPath)
     // 位置・回転・拡縮は個体の物。種類の既定値の読込・保存の差分・インスペクタの 3 つの道が同じ判断を通る
     const ScopedArchetypeDirectory scope("TransformInstanceOnly");
     nlohmann::json written = nlohmann::json::object();
-    NS::Obj::SetField(written, NS::Obj::k_PositionFieldName, NS::Core::Vector3{5.0f, 6.0f, 7.0f});
+    NS::Obj::SetField(written, NS::Obj::k_PositionFieldName, NS::Vector3{5.0f, 6.0f, 7.0f});
     NS::Obj::ArchetypeLibrary::Get().Set("MapObj",
                                          ArchetypeWith("MapObj", NS::Obj::k_TransformPartName, std::move(written)));
     const NS::Obj::Actor& baseline = NS::Obj::ArchetypeLibrary::Get().Baseline("MapObj");
-    const NS::Core::Vector3 position = baseline.Root().Position();
+    const NS::Vector3 position = baseline.Root().Position();
     EXPECT_FLOAT_EQ(position.x, 0.0f);
     EXPECT_FLOAT_EQ(position.y, 0.0f);
     EXPECT_FLOAT_EQ(position.z, 0.0f);
@@ -330,7 +330,7 @@ TEST(Archetype, SavedArchetypeIsReadBack)
     NS::Obj::ArchetypeLibrary& library = NS::Obj::ArchetypeLibrary::Get();
     library.Set("MapObj", ArchetypeWith("MapObj", "Collision", SphereEntry(1.25f)));
     ASSERT_TRUE(library.Save("MapObj"));
-    EXPECT_TRUE(NS::Platform::FileSystem::Exists(NS::Platform::FileSystem::Combine(scope.Path(), "MapObj.json")));
+    EXPECT_TRUE(NS::OS::FileSystem::Exists(NS::OS::FileSystem::Combine(scope.Path(), "MapObj.json")));
 
     library.Erase("MapObj");
     EXPECT_EQ(library.Find("MapObj"), nullptr);
@@ -362,7 +362,7 @@ TEST(Archetype, PromoteReachesOtherInstancesAndFile)
     EXPECT_FALSE(NS::Obj::IsFieldOverridden(*sphere, "半径"));
     EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 1.75f);
     EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(3)), 4.0f);
-    EXPECT_TRUE(NS::Platform::FileSystem::Exists(NS::Platform::FileSystem::Combine(scope.Path(), "MapObj.json")));
+    EXPECT_TRUE(NS::OS::FileSystem::Exists(NS::OS::FileSystem::Combine(scope.Path(), "MapObj.json")));
 }
 
 TEST(Archetype, PromoteRejectsReferenceField)

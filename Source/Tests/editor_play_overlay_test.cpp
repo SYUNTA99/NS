@@ -1,7 +1,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
-#include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Graphics/DebugDraw.h"
+#include "NSlib/Object/Scene/Scene.h"
 
 #include <gtest/gtest.h>
 
@@ -33,7 +33,7 @@ TEST(EditorSceneViewShapes, PlayShapesNeedNoStepAndStayOutOfTheStepShapes)
     DD::Clear();
 
     NS::Gfx::DebugShapes shapes;
-    editor.DrawSceneViewShapes(shapes, NS::Core::Matrix::Identity);
+    editor.DrawSceneViewShapes(shapes, NS::Matrix::Identity);
     const std::size_t lines = shapes.VertexCount();
     const std::size_t faces = shapes.FaceVertexCount();
     EXPECT_GT(lines, std::size_t{0});
@@ -44,7 +44,7 @@ TEST(EditorSceneViewShapes, PlayShapesNeedNoStepAndStayOutOfTheStepShapes)
     {
         scene.OnUpdate();
         shapes.Clear();
-        editor.DrawSceneViewShapes(shapes, NS::Core::Matrix::Identity);
+        editor.DrawSceneViewShapes(shapes, NS::Matrix::Identity);
         EXPECT_EQ(shapes.VertexCount(), lines);
         EXPECT_EQ(shapes.FaceVertexCount(), faces);
     }
@@ -61,13 +61,13 @@ TEST(EditorSceneViewShapes, EditShapesDoNotPileUpOverManyDraws)
     DD::Clear();
 
     NS::Gfx::DebugShapes first;
-    editor.DrawSceneViewShapes(first, NS::Core::Matrix::Identity);
+    editor.DrawSceneViewShapes(first, NS::Matrix::Identity);
     ASSERT_GT(first.VertexCount(), std::size_t{0});
 
     for (int i = 0; i < 100; ++i)
     {
         NS::Gfx::DebugShapes shapes;
-        editor.DrawSceneViewShapes(shapes, NS::Core::Matrix::Identity);
+        editor.DrawSceneViewShapes(shapes, NS::Matrix::Identity);
         EXPECT_EQ(shapes.VertexCount(), first.VertexCount());
         EXPECT_EQ(shapes.FaceVertexCount(), first.FaceVertexCount());
     }

@@ -1,9 +1,9 @@
 #include "Editor/PlacementCatalog.h"
 
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/Reflection/ObjectBuilder.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/ObjectBuilder.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
 
 #include <memory>
 

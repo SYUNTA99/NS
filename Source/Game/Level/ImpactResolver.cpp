@@ -10,20 +10,20 @@
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerParams.h"
-#include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Logger.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/IUse/IUseCamera.h"
-#include "Runtime/Object/ObjectList.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
-#include "Runtime/Object/Scene/HitSensorDirector.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Physics/Capsule.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Logger.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/IUse/IUseCamera.h"
+#include "NSlib/Object/ObjectList.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/Scene/HitSensorDirector.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Physics/Capsule.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
 #include <array>
@@ -49,10 +49,10 @@ namespace NS::Game::Level
         // seed_seq の畳み方は規格で決まっていて、実装によらず同じ値から同じ種を出す
         [[nodiscard]] std::uint32_t ShakeSeed(std::uint32_t targetId,
                                               float offset01,
-                                              const NS::Core::Vector3& impactDir,
-                                              const NS::Core::Vector3& targetPos)
+                                              const NS::Vector3& impactDir,
+                                              const NS::Vector3& targetPos)
         {
-            const float headingDegrees = NS::Core::RadiansToDegrees(std::atan2(impactDir.z, impactDir.x));
+            const float headingDegrees = NS::RadiansToDegrees(std::atan2(impactDir.z, impactDir.x));
             std::seed_seq values{
                 targetId,
                 RoundedBits(offset01 * 1000.0f),
@@ -78,9 +78,9 @@ namespace NS::Game::Level
         // 触れられる横ずれの上限が比 1 になる。斜めの箱でも角をかすめる当たりが 1
         // 球と傾いた箱は外接箱で測るので実際の縁より広く出る
         // 事前条件: direction の水平の長さが 0 でない
-        [[nodiscard]] LineOffset MeasureLineOffset(const NS::Core::Vector3& position,
-                                                   const NS::Core::AABB& bounds,
-                                                   const NS::Core::Vector3& direction,
+        [[nodiscard]] LineOffset MeasureLineOffset(const NS::Vector3& position,
+                                                   const NS::AABB& bounds,
+                                                   const NS::Vector3& direction,
                                                    float playerRadius) noexcept
         {
             const float toX = bounds.Center.x - position.x;
@@ -109,8 +109,8 @@ namespace NS::Game::Level
 
         // 半径 radius の玉が origin から direction へ distance 進む間に通る所。玉を線分に沿って掃いた形はカプセル
         // 事前条件: direction が正規化済み、distance が 0 以上で有限
-        [[nodiscard]] NS::Phys::Capsule SweptBall(const NS::Core::Vector3& origin,
-                                                  const NS::Core::Vector3& direction,
+        [[nodiscard]] NS::Phys::Capsule SweptBall(const NS::Vector3& origin,
+                                                  const NS::Vector3& direction,
                                                   float distance,
                                                   float radius) noexcept
         {
@@ -123,8 +123,8 @@ namespace NS::Game::Level
         // 掃く長さを伸ばすほど触れる形は増えるだけなので、触れない長さと触れる長さの間を半分ずつ詰める
         // 事前条件: SweptBall(origin, direction, distance, radius) が target に触れている
         [[nodiscard]] float FirstTouchDistance(const NS::Obj::SensorVolume& target,
-                                               const NS::Core::Vector3& origin,
-                                               const NS::Core::Vector3& direction,
+                                               const NS::Vector3& origin,
+                                               const NS::Vector3& direction,
                                                float distance,
                                                float radius) noexcept
         {
@@ -154,11 +154,11 @@ namespace NS::Game::Level
         }
 
         // この固定ステップで進んだ先の根の位置。重なりと段を同じ所で見るため、裁定はどちらもここを通る
-        [[nodiscard]] NS::Core::Vector3 PositionAfterStep(const NS::Core::Vector3& position,
-                                                          const NS::Core::Vector3& velocity) noexcept
+        [[nodiscard]] NS::Vector3 PositionAfterStep(const NS::Vector3& position,
+                                                          const NS::Vector3& velocity) noexcept
         {
-            const float dt = NS::Platform::FrameTimer::FixedDelta();
-            return NS::Core::Vector3{
+            const float dt = NS::OS::FrameTimer::FixedDelta();
+            return NS::Vector3{
                 position.x + velocity.x * dt, position.y + velocity.y * dt, position.z + velocity.z * dt};
         }
 
@@ -213,7 +213,7 @@ namespace NS::Game::Level
         // 他の種類の向きの付いた行は、HitDirectionOf の向きの行だけ残す。face が無ければ向きの付いた行は起こさない
         // outRows に、選んだ事象のそれぞれのファイルの並びでの番号を同じ並びで入れる
         [[nodiscard]] std::vector<HitEvent> EventsFor(const HitTimeline& timeline,
-                                                      const std::optional<NS::Core::Vector2>& face,
+                                                      const std::optional<NS::Vector2>& face,
                                                       std::vector<std::size_t>& outRows)
         {
             std::vector<HitEvent> events;
@@ -296,7 +296,7 @@ namespace NS::Game::Level
         return m_hitReaction->FlashFramesRemaining();
     }
 
-    NS::Obj::HitSensor* ImpactResolver::FindOverlapped(const NS::Core::Vector3& predictedVelocity) const
+    NS::Obj::HitSensor* ImpactResolver::FindOverlapped(const NS::Vector3& predictedVelocity) const
     {
         NS::Obj::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
@@ -304,7 +304,7 @@ namespace NS::Game::Level
             return nullptr;
         }
 
-        const NS::Core::Vector3 position = Owner()->Root().Position();
+        const NS::Vector3 position = Owner()->Root().Position();
 
         // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
         const NS::Phys::Capsule capsule =
@@ -320,7 +320,7 @@ namespace NS::Game::Level
             {
                 continue;
             }
-            const NS::Core::AABB bounds = sensor->WorldVolume().Bounds();
+            const NS::AABB bounds = sensor->WorldVolume().Bounds();
             const float dx = bounds.Center.x - position.x;
             const float dy = bounds.Center.y - position.y;
             const float dz = bounds.Center.z - position.z;
@@ -334,12 +334,12 @@ namespace NS::Game::Level
         return nearest;
     }
 
-    bool ImpactResolver::FindSlamLineTarget(const NS::Core::Vector3& direction,
+    bool ImpactResolver::FindSlamLineTarget(const NS::Vector3& direction,
                                             float maxDistance,
                                             SlamLineTarget& outTarget) const
     {
-        NS::Core::Vector3 lineDir{};
-        if (Owner() == nullptr || m_body == nullptr || !NS::Core::TryNormalizeHorizontal(direction, lineDir))
+        NS::Vector3 lineDir{};
+        if (Owner() == nullptr || m_body == nullptr || !NS::TryNormalizeHorizontal(direction, lineDir))
         {
             return false;
         }
@@ -360,10 +360,10 @@ namespace NS::Game::Level
             return false;
         }
 
-        const NS::Core::Vector3 position = Owner()->Root().Position();
+        const NS::Vector3 position = Owner()->Root().Position();
         const float playerRadius = m_player->Collider().CapsuleRadius();
         // 突進は丸まった玉で進む。玉の決まりは Player::SlamBallAt が持つ
-        const NS::Core::Vector3 ballCenter = m_player->SlamBallAt(position).center;
+        const NS::Vector3 ballCenter = m_player->SlamBallAt(position).center;
         // 届くかは裁定と同じく、自機の当たりの玉と相手の体のセンサーの形で見る。外接箱を水平に見ると、中心の高い
         // 大きな球の端では、玉が触れずに横を通るのに届くと出る
         const NS::Obj::SensorVolume swept =
@@ -380,7 +380,7 @@ namespace NS::Game::Level
                 continue;
             }
             const NS::Obj::SensorVolume volume = sensor->WorldVolume();
-            const NS::Core::AABB bounds = volume.Bounds();
+            const NS::AABB bounds = volume.Bounds();
 
             const LineOffset line = MeasureLineOffset(position, bounds, lineDir, playerRadius);
             // 真横と後ろの相手は線の先に居ない
@@ -430,7 +430,7 @@ namespace NS::Game::Level
             }
             // 触れる所は、着きたい高さで線を進めた玉が触れる所。今の高さで測ると、高さの違う相手の上の縁をかすめる
             // 所まで寄ってしまい、弧の着く所と実際に触れる所がずれる。その高さで触れない時は今の高さの値のまま
-            const NS::Core::Vector3 aimedCenter{ballCenter.x, aimHeight, ballCenter.z};
+            const NS::Vector3 aimedCenter{ballCenter.x, aimHeight, ballCenter.z};
             float aimedContact = first.contact;
             if (NS::Obj::VolumesOverlap(
                     NS::Obj::SensorVolume::Capsule(SweptBall(aimedCenter, lineDir, maxDistance, playerRadius)),
@@ -439,7 +439,7 @@ namespace NS::Game::Level
                 aimedContact =
                     FirstTouchDistance(firstSensor->WorldVolume(), aimedCenter, lineDir, maxDistance, playerRadius);
             }
-            const float dt = NS::Platform::FrameTimer::FixedDelta();
+            const float dt = NS::OS::FrameTimer::FixedDelta();
             const NS::Game::Player::LaunchPitchResult pitch = NS::Game::Player::LaunchPitch(
                 NS::Game::Player::LaunchPitchDesc{.ballHeight = ballCenter.y,
                                                   .targetHeight = aimHeight,
@@ -460,7 +460,7 @@ namespace NS::Game::Level
                                                     .gravity = params.Gravity(),
                                                     .dt = dt,
                                                     .grounded = m_body->IsGrounded()};
-            const NS::Core::Vector3 arrival{
+            const NS::Vector3 arrival{
                 ballCenter.x, ballCenter.y + NS::Game::Player::LaunchHeightAt(path, first.launchContact), ballCenter.z};
             judgement = JudgeHitFaceOrWide(answer.face, answer.body, arrival, lineDir, playerRadius);
         }
@@ -478,7 +478,7 @@ namespace NS::Game::Level
         {
             return;
         }
-        const NS::Core::Vector3 predictedVelocity = m_player->BodySlamVelocity();
+        const NS::Vector3 predictedVelocity = m_player->BodySlamVelocity();
         NS::Obj::HitSensor* hit = FindOverlapped(predictedVelocity);
         if (hit == nullptr || hit->Owner() == nullptr)
         {
@@ -563,23 +563,23 @@ namespace NS::Game::Level
             return false;
         }
         const TackleTargetAnswer& answer = m_observedAnswer;
-        const NS::Core::AABB bounds = answer.bounds;
+        const NS::AABB bounds = answer.bounds;
 
-        const NS::Core::Vector3 position = Owner()->Root().Position();
+        const NS::Vector3 position = Owner()->Root().Position();
         // 箱へ押し付けられたフレームは実速度が 0 に潰されるため、突進の狙いの速度で向きと貫通後の速度を決める
-        const NS::Core::Vector3 velocity = m_observedVelocity;
+        const NS::Vector3 velocity = m_observedVelocity;
 
         // 弾かれる向きは箱と自機の並びで決まる。水平だけを見て、上向きは反動の高さから出す
         float awayX = position.x - bounds.Center.x;
         float awayZ = position.z - bounds.Center.z;
         float lengthSq = awayX * awayX + awayZ * awayZ;
         // 箱の中心へ重なると向きが決まらない。進んできた向きの逆へ弾く
-        if (lengthSq < NS::Core::k_Epsilon * NS::Core::k_Epsilon)
+        if (lengthSq < NS::k_Epsilon * NS::k_Epsilon)
         {
             awayX = -velocity.x;
             awayZ = -velocity.z;
             lengthSq = awayX * awayX + awayZ * awayZ;
-            if (lengthSq < NS::Core::k_Epsilon * NS::Core::k_Epsilon)
+            if (lengthSq < NS::k_Epsilon * NS::k_Epsilon)
             {
                 return false;
             }
@@ -601,8 +601,8 @@ namespace NS::Game::Level
         // 段と威力の当たり位置の係数は、相手の面で当てはまった同じ決まりから取る
         // 玉の中心は重なりを見た所と同じく、この固定ステップで進んだ先。今の位置で見ると、縦に動く突進は 1 ステップ
         // ぶん違う高さで段が決まる。玉は狙う相手の探し方と同じ Player::SlamBallAt から引く
-        const NS::Core::Vector3 stepped = PositionAfterStep(position, velocity);
-        const NS::Core::Vector3 ballCenter = m_player->SlamBallAt(stepped).center;
+        const NS::Vector3 stepped = PositionAfterStep(position, velocity);
+        const NS::Vector3 ballCenter = m_player->SlamBallAt(stepped).center;
         const HitFaceJudgement judgement =
             JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, m_player->Collider().CapsuleRadius());
         const float offset01 = judgement.offset01;
@@ -635,9 +635,9 @@ namespace NS::Game::Level
         m_pendingTier = tier;
         // 相手は突進の向きへ飛ばす。中心の並びで飛ばすと、横ずれのある当たりが狙いと別の所へ飛ぶ
         // 突進の水平の速さがほぼ 0 で向きが決まらない時だけ、中心の並びの向きへ飛ばす
-        NS::Core::Vector3 launchDir{-awayX, 0.0f, -awayZ};
-        NS::Core::Vector3 slamDir{};
-        if (NS::Core::TryNormalizeHorizontal(velocity, slamDir))
+        NS::Vector3 launchDir{-awayX, 0.0f, -awayZ};
+        NS::Vector3 slamDir{};
+        if (NS::TryNormalizeHorizontal(velocity, slamDir))
         {
             launchDir = slamDir;
         }
@@ -649,7 +649,7 @@ namespace NS::Game::Level
         impactInput.mass = mass;
         impactInput.toughness = answer.toughness;
         impactInput.breakable = answer.breakable;
-        impactInput.awayDirection = NS::Core::Vector3{awayX, 0.0f, awayZ};
+        impactInput.awayDirection = NS::Vector3{awayX, 0.0f, awayZ};
         impactInput.launchDirection = launchDir;
         impactInput.slamVelocity = velocity;
         impactInput.faceU = judgement.u;
@@ -709,7 +709,7 @@ namespace NS::Game::Level
         std::vector<std::size_t> rows;
         if (timeline != nullptr)
         {
-            events = EventsFor(*timeline, NS::Core::Vector2{judgement.u, judgement.v}, rows);
+            events = EventsFor(*timeline, NS::Vector2{judgement.u, judgement.v}, rows);
         }
         // 貫通の止めはタイムラインへ移さず、欄「貫通の止め秒」の長さのまま
         int breakStopSteps = -1;
@@ -1048,12 +1048,12 @@ namespace NS::Game::Level
             return;
         }
 
-        const NS::Core::Vector3 velocity = m_player->BodySlamVelocity();
-        NS::Core::Vector3 direction{};
+        const NS::Vector3 velocity = m_player->BodySlamVelocity();
+        NS::Vector3 direction{};
         const float stepLength =
-            std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z) * NS::Platform::FrameTimer::FixedDelta();
+            std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z) * NS::OS::FrameTimer::FixedDelta();
         SlamLineTarget predicted{};
-        if (!NS::Core::TryNormalizeHorizontal(velocity, direction) || !(stepLength > 0.0f) ||
+        if (!NS::TryNormalizeHorizontal(velocity, direction) || !(stepLength > 0.0f) ||
             !FindSlamLineTarget(direction, m_player->BodySlamDistance(), predicted))
         {
             DropBeforeContact();
@@ -1247,13 +1247,13 @@ namespace NS::Game::Level
                                        .frames = event.length};
     }
 
-    void ImpactResolver::StartCameraNudge(const NS::Core::Vector3& direction,
+    void ImpactResolver::StartCameraNudge(const NS::Vector3& direction,
                                           const NS::Obj::Curve& distance,
                                           int length,
                                           bool onScreen)
     {
-        NS::Core::Vector3 horizontal{};
-        if (m_hitReaction == nullptr || !NS::Core::TryNormalizeHorizontal(direction, horizontal))
+        NS::Vector3 horizontal{};
+        if (m_hitReaction == nullptr || !NS::TryNormalizeHorizontal(direction, horizontal))
         {
             return;
         }
@@ -1297,11 +1297,11 @@ namespace NS::Game::Level
         desc.seed = m_pendingShakeSeed;
         desc.kick.degrees = trauma.kickDegrees;
         desc.kick.peakFrames = trauma.kickPeakFrames;
-        desc.kick.direction = NS::Core::Vector2{m_lastImpact.faceU, m_lastImpact.faceV};
-        if (desc.kick.direction.LengthSquared() <= NS::Core::k_Epsilon * NS::Core::k_Epsilon)
+        desc.kick.direction = NS::Vector2{m_lastImpact.faceU, m_lastImpact.faceV};
+        if (desc.kick.direction.LengthSquared() <= NS::k_Epsilon * NS::k_Epsilon)
         {
             desc.kick.direction =
-                NS::Core::Vector2{NS::Obj::CameraSideSignOf(*Owner(), m_pendingReboundArc.direction), 0.0f};
+                NS::Vector2{NS::Obj::CameraSideSignOf(*Owner(), m_pendingReboundArc.direction), 0.0f};
         }
         return desc;
     }
@@ -1326,7 +1326,7 @@ namespace NS::Game::Level
         m_lastImpact.flashStart = 0;
         m_lastImpact.zoomStart = 1.0f;
         m_lastImpact.rollStart = 0.0f;
-        m_lastImpact.padStart = NS::Platform::GamepadVibration{};
+        m_lastImpact.padStart = NS::OS::GamepadVibration{};
         bool shakeRecorded = false;
         bool traumaRecorded = false;
         bool flashRecorded = false;
@@ -1339,7 +1339,7 @@ namespace NS::Game::Level
             if (shake != nullptr && !shakeRecorded)
             {
                 const NS::Obj::CameraShakeDesc desc = ShakeDescFor(*shake, event.length);
-                m_lastImpact.cameraShake = NS::Core::Vector2{desc.sideAmplitude, desc.upAmplitude}.Length();
+                m_lastImpact.cameraShake = NS::Vector2{desc.sideAmplitude, desc.upAmplitude}.Length();
                 shakeRecorded = true;
             }
             const CameraTraumaEvent* trauma = std::get_if<CameraTraumaEvent>(&event.value);
@@ -1394,17 +1394,17 @@ namespace NS::Game::Level
             return;
         }
         // 画面の横を床に沿わせた向き。後ろから見る NS では、地上でも空中でも視線に直角でよく見える
-        const NS::Core::Vector3 forward = NS::Obj::CameraForwardHorizontal(*Owner());
-        const NS::Core::Vector3 axis{forward.z, 0.0f, -forward.x};
+        const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(*Owner());
+        const NS::Vector3 axis{forward.z, 0.0f, -forward.x};
         // 1 フレーム目の向き。外れは自機が外した側 (面の上の位置 u の側) へ逃げ、カメラの最初のひと揺れ・火花・
         // 逸れ方と揃える。真ん中は画面の右から
         float firstSign = 1.0f;
-        NS::Core::Vector3 slam{};
+        NS::Vector3 slam{};
         if (m_lastImpact.tier == HitTier::Wide && m_lastImpact.faceU != 0.0f &&
-            NS::Core::TryNormalizeHorizontal(m_pendingImpactDir, slam))
+            NS::TryNormalizeHorizontal(m_pendingImpactDir, slam))
         {
-            const NS::Core::Vector3 faceRight{slam.z, 0.0f, -slam.x};
-            if (NS::Core::Dot(faceRight * m_lastImpact.faceU, axis) < 0.0f)
+            const NS::Vector3 faceRight{slam.z, 0.0f, -slam.x};
+            if (NS::Dot(faceRight * m_lastImpact.faceU, axis) < 0.0f)
             {
                 firstSign = -1.0f;
             }
@@ -1465,12 +1465,12 @@ namespace NS::Game::Level
         }
         // 止めの間の二人は食い込んだ所に留まり、描く形が揺れるだけなので、始めた時の形で挟めば最後まで外れない
         // 真後ろのカメラでは自機が相手に重なるので、二人をまとめて挟む
-        const NS::Core::AABB other = target->ModelPart()->WorldBounds();
-        const NS::Core::AABB self = m_player->ModelPart()->WorldBounds();
+        const NS::AABB other = target->ModelPart()->WorldBounds();
+        const NS::AABB self = m_player->ModelPart()->WorldBounds();
         m_hitReaction->StartShakeLines(
-            NS::Obj::HitShakeLinesDesc{.center = NS::Core::Vector3{other.Center.x, other.Center.y, other.Center.z},
+            NS::Obj::HitShakeLinesDesc{.center = NS::Vector3{other.Center.x, other.Center.y, other.Center.z},
                                        .radius = std::max({other.Extents.x, other.Extents.y, other.Extents.z}),
-                                       .otherCenter = NS::Core::Vector3{self.Center.x, self.Center.y, self.Center.z},
+                                       .otherCenter = NS::Vector3{self.Center.x, self.Center.y, self.Center.z},
                                        .otherRadius = std::max({self.Extents.x, self.Extents.y, self.Extents.z}),
                                        .frames = length,
                                        .flipFrames = lines.flipFrames,
@@ -1503,8 +1503,8 @@ namespace NS::Game::Level
         m_bodyShake.active = false;
         if (m_player != nullptr && m_player->ModelPart() != nullptr)
         {
-            (void)m_player->ModelPart()->SetDrawOffset(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
-            (void)m_player->ModelPart()->SetGhostSpread(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+            (void)m_player->ModelPart()->SetDrawOffset(NS::Vector3{0.0f, 0.0f, 0.0f});
+            (void)m_player->ModelPart()->SetGhostSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
         }
     }
 
@@ -1516,7 +1516,7 @@ namespace NS::Game::Level
             return;
         }
         // 震えは自機の玉が相手の表面に触れた点から両方の体へ伝わる
-        const NS::Core::Vector3 contact = m_lastImpact.surfacePoint;
+        const NS::Vector3 contact = m_lastImpact.surfacePoint;
         // 長さは止めに合わせて短くなる。裏まで届くのに長さを使い切ると震えが残らないので、届くのは長さの半分まで
         const int reachFrames = std::min(tremor.reachFrames, length / 2);
         m_tremor = TremorRun{.desc = TackleTremorDesc{.contactOffset = contact - Owner()->Root().Position(),
@@ -1580,7 +1580,7 @@ namespace NS::Game::Level
             return;
         }
         // 中心は自機の玉が相手の表面に触れた点。床の上の水平の位置だけを使う
-        const NS::Core::Vector3 contact = m_lastImpact.surfacePoint;
+        const NS::Vector3 contact = m_lastImpact.surfacePoint;
         m_groundWave = GroundWaveRun{.event = wave,
                                      .centerX = contact.x,
                                      .centerZ = contact.z,
@@ -1725,7 +1725,7 @@ namespace NS::Game::Level
                             .launchApexBandSpeed = params.m_launchApexBandSpeed,
                             .launchApexBandGravityScale = params.m_launchApexBandGravityScale,
                             .hitStopMaxSeconds = params.m_hitStopMaxSeconds,
-                            .fixedDelta = NS::Platform::FrameTimer::FixedDelta(),
+                            .fixedDelta = NS::OS::FrameTimer::FixedDelta(),
                             .missReboundHeightRatio = params.m_missReboundHeightRatio,
                             .missSlamBounce = params.m_missSlamBounce,
                             .missBoxEdgeSharpness = params.m_missBoxEdgeSharpness,
@@ -1776,25 +1776,25 @@ namespace NS::Game::Level
         (void)SendMsgTackleRelease(*target, release);
     }
 
-    NS::Core::Vector3 ImpactResolver::ShapeFactors() const noexcept
+    NS::Vector3 ImpactResolver::ShapeFactors() const noexcept
     {
         // 事象の外は補間の残差を残さず、ちょうど 1 を返す
         if (!IsShapeAnimating())
         {
-            return NS::Core::Vector3{1.0f, 1.0f, 1.0f};
+            return NS::Vector3{1.0f, 1.0f, 1.0f};
         }
         const float frame = static_cast<float>(m_clock - m_shapeStart);
         return AlongImpactFactors(
             CurveFactor(m_shape.along, frame), CurveFactor(m_shape.height, frame), CurveFactor(m_shape.side, frame));
     }
 
-    NS::Core::Vector3 ImpactResolver::AlongImpactFactors(float along, float height, float side) const noexcept
+    NS::Vector3 ImpactResolver::AlongImpactFactors(float along, float height, float side) const noexcept
     {
         // 衝突は水平でしか起きない。進行の軸成分の 2 乗で倍率を混ぜ、軸に載った衝突では素の倍率になる
         // 横は進行に直角な水平の軸なので、x には z の成分の 2 乗、z には x の成分の 2 乗で混ぜる
         const float dx2 = m_pendingImpactDir.x * m_pendingImpactDir.x;
         const float dz2 = m_pendingImpactDir.z * m_pendingImpactDir.z;
-        return NS::Core::Vector3{1.0f + (along - 1.0f) * dx2 + (side - 1.0f) * dz2,
+        return NS::Vector3{1.0f + (along - 1.0f) * dx2 + (side - 1.0f) * dz2,
                                  height,
                                  1.0f + (along - 1.0f) * dz2 + (side - 1.0f) * dx2};
     }

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Math.h"
+#include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Math.h"
 
 namespace NS::Game::Player
 {
@@ -47,8 +47,8 @@ namespace NS::Game::Player
         //! @param[in] belowHand 手より下に許す上端の深さ。単位は m
         //! @param[in] aboveHand 手より上に許す上端の高さ。単位は m
         //! @return 入っている場合 true、それ以外の場合は false
-        [[nodiscard]] static bool InBand(const NS::Core::Vector3& probe,
-                                         const NS::Core::AABB& box,
+        [[nodiscard]] static bool InBand(const NS::Vector3& probe,
+                                         const NS::AABB& box,
                                          float belowHand,
                                          float aboveHand) noexcept
         {
@@ -85,12 +85,12 @@ namespace NS::Game::Player
         //! @brief 入力があり、入力の水平の向きへの水平の速度の成分が threshold 未満かを返す
         //! @return ブレーキを掛ける場合 true、それ以外の場合は false。入力の向きが水平に無い時は false
         [[nodiscard]] static bool Judge(bool hasInput,
-                                        const NS::Core::Vector3& desiredDirection,
-                                        const NS::Core::Vector3& lateralVelocity,
+                                        const NS::Vector3& desiredDirection,
+                                        const NS::Vector3& lateralVelocity,
                                         float threshold) noexcept
         {
-            NS::Core::Vector3 direction{};
-            if (!hasInput || !NS::Core::TryNormalizeHorizontal(desiredDirection, direction))
+            NS::Vector3 direction{};
+            if (!hasInput || !NS::TryNormalizeHorizontal(desiredDirection, direction))
             {
                 return false;
             }
@@ -135,7 +135,7 @@ namespace NS::Game::Player
     {
     public:
         //! 水平の速度の x と z がどちらもちょうど 0 の場合 true、それ以外の場合は false
-        [[nodiscard]] static bool Judge(const NS::Core::Vector3& lateralVelocity) noexcept
+        [[nodiscard]] static bool Judge(const NS::Vector3& lateralVelocity) noexcept
         {
             return lateralVelocity.x == 0.0f && lateralVelocity.z == 0.0f;
         }

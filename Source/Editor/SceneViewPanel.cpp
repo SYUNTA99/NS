@@ -4,7 +4,7 @@
 #include "Editor/EditorCamera.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/Scene.h"
 
 #include <optional>
 
@@ -112,7 +112,7 @@ namespace NS::Editor
             return view;
         }
         // エディタの図形は Scene タブにだけ積ませる。Game タブはゲーム画面そのままを映す
-        view->drawShapes = [&editor](NS::Gfx::DebugShapes& shapes, const NS::Core::Matrix& viewProjection) {
+        view->drawShapes = [&editor](NS::Gfx::DebugShapes& shapes, const NS::Matrix& viewProjection) {
             editor.DrawSceneViewShapes(shapes, viewProjection);
         };
         return view;

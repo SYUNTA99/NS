@@ -2,10 +2,10 @@
 
 #include "Editor/GridMath.h"
 #include "Editor/PaletteTemplates.h"
-#include "Runtime/Core/NonCopyable.h"
-#include "Runtime/Object/ObjectJson.h"
+#include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Object/ObjectJson.h"
 
-namespace NS::Platform
+namespace NS::OS
 {
     class Input;
 }
@@ -18,7 +18,7 @@ namespace NS::Editor
 {
     //! @brief 置くブラシを選ぶツールバー
     //! @details 選択中のスロットを保持し、数字キーでの切り替えとツールバーの描画を行う
-    class CategoryPalette : public NS::Core::NonCopyable
+    class CategoryPalette : public NS::NonCopyable
     {
     public:
         static constexpr std::size_t k_SlotCount = k_PaletteSlotCount;
@@ -28,7 +28,7 @@ namespace NS::Editor
 
         //! @brief 数字キーを見て、選択中のスロットを切り替える
         //! @note UI側がキーボード入力を要求している場合は、誤操作を防ぐためショートカット入力は無視される
-        void TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept;
+        void TickInput(NS::OS::Input* input, NS::UI::ImGuiContext* imgui) noexcept;
 
         //! @brief ツールバーを描く。UI を外したビルドでは何もしない
         //! @param[in] viewRect Scene

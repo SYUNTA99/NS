@@ -1,6 +1,6 @@
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/IUse/IUseState.h"
-#include "Runtime/Object/StateMachine.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/IUse/IUseState.h"
+#include "NSlib/Object/StateMachine.h"
 
 #include <gtest/gtest.h>
 

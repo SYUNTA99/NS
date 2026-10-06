@@ -9,11 +9,11 @@ namespace NS::Game::Player
         StartCoroutine(Run(player));
     }
 
-    NS::Core::Coroutine LedgeClimbingPlayerState::Run(::Player& player)
+    NS::Coroutine LedgeClimbingPlayerState::Run(::Player& player)
     {
         while (true)
         {
-            co_await NS::Core::NextFrame{};
+            co_await NS::NextFrame{};
             player.UpdateLedgeClimb(StepDelta());
             if (!player.States().IsCurrent<LedgeClimbingPlayerState>())
             {

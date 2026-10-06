@@ -20,8 +20,8 @@
 //#define IM_ASSERT(_EXPR)  MyAssert(_EXPR)
 //#define IM_ASSERT(_EXPR)  ((void)(_EXPR))     // Disable asserts
 
-// NS: 共通のアサート機構 (Runtime/Core/Assert.h) を通し、ログへ書き出してからデバッガで止める
-#include "Runtime/Core/Assert.h"
+// NS: 共通のアサート機構 (NSlib/Core/Assert.h) を通し、ログへ書き出してからデバッガで止める
+#include "NSlib/Core/Assert.h"
 #define IM_ASSERT(_EXPR) NS_ASSERT(UI, (_EXPR), "{}", #_EXPR)
 
 //---- Define attributes of all API symbols declarations, e.g. for DLL under Windows

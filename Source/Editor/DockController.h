@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Core/NonCopyable.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <string>
 
@@ -9,7 +9,7 @@ namespace NS::Editor
     //! @brief ドックホストとパネル全面化。レイアウトと全面化の状態を持ち、controller には触れない
     //! @details 各パネルの中身は描かない。描くのはホストの設置・ 全面化の出入り・ タブ焦点の確定だけで、
     //! 全面化中にどのパネルを描くかは呼び出し側が MaximizedPanel() を見て振り分ける
-    class DockController : public NS::Core::NonCopyable
+    class DockController : public NS::NonCopyable
     {
     public:
         //! @brief ツールバー帯の下にドックホストを 1 枚置く

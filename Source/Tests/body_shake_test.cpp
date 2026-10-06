@@ -1,9 +1,9 @@
 #include "Game/Level/ImpactOutcome.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Scene/Scene.h"
 
 #include <gtest/gtest.h>
 
@@ -21,7 +21,7 @@ namespace
         nlohmann::json rock = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(rock, "MapObj");
         NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{2.0f, 1.0f, 0.0f});
+        NS::Obj::SetObjectPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.LoadJson(doc);
         return scene.Objects().FindByObjectId(2);
@@ -77,19 +77,19 @@ TEST(BodyShake, DrawOffsetMovesOnlyTheDrawnShape)
     ASSERT_NE(rock, nullptr);
     NS::Obj::Model* model = rock->ModelPart();
     ASSERT_NE(model, nullptr);
-    const NS::Core::Matrix before = model->DrawWorldMatrix(1.0f);
+    const NS::Matrix before = model->DrawWorldMatrix(1.0f);
 
-    ASSERT_TRUE(model->SetDrawOffset(NS::Core::Vector3{0.25f, 0.0f, -0.5f}));
-    const NS::Core::Matrix after = model->DrawWorldMatrix(1.0f);
+    ASSERT_TRUE(model->SetDrawOffset(NS::Vector3{0.25f, 0.0f, -0.5f}));
+    const NS::Matrix after = model->DrawWorldMatrix(1.0f);
     EXPECT_NEAR(after._41 - before._41, 0.25f, 1.0e-5f);
     EXPECT_NEAR(after._42 - before._42, 0.0f, 1.0e-5f);
     EXPECT_NEAR(after._43 - before._43, -0.5f, 1.0e-5f);
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 2.0f);
 
-    EXPECT_FALSE(model->SetDrawOffset(NS::Core::Vector3{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f}));
+    EXPECT_FALSE(model->SetDrawOffset(NS::Vector3{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f}));
     EXPECT_FLOAT_EQ(model->DrawOffset().x, 0.25f);
-    ASSERT_TRUE(model->SetDrawOffset(NS::Core::Vector3{0.0f, 0.0f, 0.0f}));
-    const NS::Core::Matrix reset = model->DrawWorldMatrix(1.0f);
+    ASSERT_TRUE(model->SetDrawOffset(NS::Vector3{0.0f, 0.0f, 0.0f}));
+    const NS::Matrix reset = model->DrawWorldMatrix(1.0f);
     EXPECT_FLOAT_EQ(reset._41, before._41);
 }
 
@@ -102,16 +102,16 @@ TEST(BodyShake, GhostsSitAtPlusAndMinusTheSpreadAroundTheRoot)
     ASSERT_NE(rock, nullptr);
     NS::Obj::Model* model = rock->ModelPart();
     ASSERT_NE(model, nullptr);
-    const NS::Core::Matrix root = model->DrawWorldMatrix(1.0f);
-    ASSERT_TRUE(model->SetDrawOffset(NS::Core::Vector3{0.1f, 0.0f, 0.0f}));
-    ASSERT_TRUE(model->SetGhostSpread(NS::Core::Vector3{0.3f, 0.0f, -0.2f}));
-    const NS::Core::Matrix plus = model->GhostWorldMatrix(1.0f, 1.0f);
-    const NS::Core::Matrix minus = model->GhostWorldMatrix(1.0f, -1.0f);
+    const NS::Matrix root = model->DrawWorldMatrix(1.0f);
+    ASSERT_TRUE(model->SetDrawOffset(NS::Vector3{0.1f, 0.0f, 0.0f}));
+    ASSERT_TRUE(model->SetGhostSpread(NS::Vector3{0.3f, 0.0f, -0.2f}));
+    const NS::Matrix plus = model->GhostWorldMatrix(1.0f, 1.0f);
+    const NS::Matrix minus = model->GhostWorldMatrix(1.0f, -1.0f);
     EXPECT_NEAR(plus._41 - root._41, 0.3f, 1.0e-5f);
     EXPECT_NEAR(plus._43 - root._43, -0.2f, 1.0e-5f);
     EXPECT_NEAR(minus._41 - root._41, -0.3f, 1.0e-5f);
     EXPECT_NEAR(minus._43 - root._43, 0.2f, 1.0e-5f);
-    EXPECT_FALSE(model->SetGhostSpread(NS::Core::Vector3{std::numeric_limits<float>::infinity(), 0.0f, 0.0f}));
+    EXPECT_FALSE(model->SetGhostSpread(NS::Vector3{std::numeric_limits<float>::infinity(), 0.0f, 0.0f}));
     EXPECT_FLOAT_EQ(model->GhostSpread().x, 0.3f);
 }
 

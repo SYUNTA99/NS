@@ -1,12 +1,12 @@
 #include "Game/Player.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneCamera.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneCamera.h"
+#include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -18,7 +18,7 @@ namespace
     // 欄の秒を固定ステップのフレーム数にする。Player::AdvanceCharge と同じ丸め
     int FramesFor(float seconds)
     {
-        return static_cast<int>(std::lround(seconds / NS::Platform::FrameTimer::FixedDelta()));
+        return static_cast<int>(std::lround(seconds / NS::OS::FrameTimer::FixedDelta()));
     }
 } // namespace
 
@@ -31,7 +31,7 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
     const int threshold = FramesFor(0.2f);
     const int full = FramesFor(1.0f);
     NS::Obj::Body& movement = player.Body();
-    movement.SetVelocity(NS::Core::Vector3{3.0f, 5.0f, 4.0f});
+    movement.SetVelocity(NS::Vector3{3.0f, 5.0f, 4.0f});
     const float maxSpeed = player.MaxSpeed();
 
     player.Update(true);
@@ -49,7 +49,7 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
         ++held;
         EXPECT_FALSE(player.ChargeJudge().IsCharging());
     }
-    movement.SetVelocity(NS::Core::Vector3{3.0f, 5.0f, 4.0f});
+    movement.SetVelocity(NS::Vector3{3.0f, 5.0f, 4.0f});
     player.Update(true);
     ++held;
     EXPECT_TRUE(player.ChargeJudge().JustStartedCharging());
@@ -61,7 +61,7 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
     EXPECT_FLOAT_EQ(player.StanceHeight(), 0.95f);
 
     // 横を止めるのはしきい値のフレームだけ
-    movement.SetVelocity(NS::Core::Vector3{2.0f, 5.0f, 1.0f});
+    movement.SetVelocity(NS::Vector3{2.0f, 5.0f, 1.0f});
     player.Update(true);
     ++held;
     EXPECT_GT(movement.Velocity().x, 0.0f);
@@ -85,7 +85,7 @@ TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     const int threshold = FramesFor(0.2f);
     player.Update(true);
-    player.SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.Update(false);
     EXPECT_TRUE(player.IsBodySlamming());
     EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 0.0f);
@@ -124,7 +124,7 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
     EXPECT_TRUE(player.IsCurled());
     EXPECT_TRUE(player.ChargeJudge().IsCharging());
     EXPECT_FLOAT_EQ(player.ChargeJudge().Charge01(), 0.5f);
-    player.SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.Update(false);
     EXPECT_TRUE(player.IsBodySlamming());
     EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 0.5f);
@@ -166,7 +166,7 @@ TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 {
     Player player;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
-    const NS::Core::Vector3 one{1.0f, 1.0f, 1.0f};
+    const NS::Vector3 one{1.0f, 1.0f, 1.0f};
     player.Update(true);
     EXPECT_FLOAT_EQ(player.StanceHeight(), 0.97f);
     EXPECT_TRUE(player.Root().Scale() == one);
@@ -195,7 +195,7 @@ TEST(PlayerChargeSequence, EndPlayWhileHeldRestoresStanceAndUncurls)
     ASSERT_FLOAT_EQ(player.ModelPart()->DrawScale().y, 0.95f);
     player.OnEndPlay();
     EXPECT_FLOAT_EQ(player.StanceHeight(), 1.0f);
-    EXPECT_TRUE(player.ModelPart()->DrawScale() == (NS::Core::Vector3{1.0f, 1.0f, 1.0f}));
+    EXPECT_TRUE(player.ModelPart()->DrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
     EXPECT_FALSE(player.IsCurled());
 }
 
@@ -211,7 +211,7 @@ TEST(PlayerChargeSequence, ChargedReleaseUsesTheLastHeldAimBeforeClearingIt)
     Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
-    TestViewCamera* camera = PlaceViewCamera(scene, NS::Core::Vector3{}, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    TestViewCamera* camera = PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_NE(camera, nullptr);
     for (int frame = 0; frame < FramesFor(0.2f); ++frame)
     {
@@ -221,7 +221,7 @@ TEST(PlayerChargeSequence, ChargedReleaseUsesTheLastHeldAimBeforeClearingIt)
     NS::Game::Level::AimLine aim{};
     ASSERT_TRUE(player->TryGetAimLine(aim));
     EXPECT_FLOAT_EQ(aim.direction.z, 1.0f);
-    camera->SetPose(NS::Core::Vector3{}, NS::Core::Vector3{1.0f, 0.0f, 0.0f});
+    camera->SetPose(NS::Vector3{}, NS::Vector3{1.0f, 0.0f, 0.0f});
     player->Update(false);
     EXPECT_FALSE(player->TryGetAimLine(aim));
     EXPECT_TRUE(player->IsBodySlamming());
@@ -242,11 +242,11 @@ TEST(PlayerChargeSequence, AimLineFollowsTheViewCameraNotTheDrawnCamera)
     Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
-    ASSERT_NE(PlaceViewCamera(scene, NS::Core::Vector3{-5.0f, 0.0f, 0.0f}, NS::Core::Vector3{}), nullptr);
+    ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{-5.0f, 0.0f, 0.0f}, NS::Vector3{}), nullptr);
     NS::Obj::SceneCamera* camera = scene.MainCamera();
     ASSERT_NE(camera, nullptr);
-    camera->SetPosition(NS::Core::Vector3{});
-    camera->SetTarget(NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    camera->SetPosition(NS::Vector3{});
+    camera->SetTarget(NS::Vector3{0.0f, 0.0f, 1.0f});
     for (int frame = 0; frame < FramesFor(0.2f); ++frame)
     {
         player->Update(true);

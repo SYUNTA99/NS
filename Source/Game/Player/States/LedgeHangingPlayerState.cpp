@@ -2,8 +2,8 @@
 
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/PlayerInput.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/PlayerInput.h"
 
 namespace NS::Game::Player
 {

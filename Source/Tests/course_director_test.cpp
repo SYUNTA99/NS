@@ -7,17 +7,17 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/PlayerInput.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/IUse/IUseSceneObj.h"
-#include "Runtime/Object/Reflection/ObjectBuilder.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Object/ScreenFade.h"
-#include "Runtime/Platform/Input.h"
-#include "Runtime/Platform/Mouse.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/PlayerInput.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/Reflection/ObjectBuilder.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/ScreenFade.h"
+#include "NSlib/Windows/Input.h"
+#include "NSlib/Windows/Mouse.h"
 
 #include <gtest/gtest.h>
 
@@ -28,8 +28,8 @@ namespace
     // 本物のマウス左を押したままにする。試しの終わりにマウスの状態を空へ戻す
     struct MouseLeftPress
     {
-        MouseLeftPress() noexcept { NS::Platform::Input::Get().Mouse().OnButtonDown(NS::Platform::MouseButton::Left); }
-        ~MouseLeftPress() noexcept { NS::Platform::Input::Get().Mouse().ClearState(); }
+        MouseLeftPress() noexcept { NS::OS::Input::Get().Mouse().OnButtonDown(NS::OS::MouseButton::Left); }
+        ~MouseLeftPress() noexcept { NS::OS::Input::Get().Mouse().ClearState(); }
         MouseLeftPress(const MouseLeftPress&) = delete;
         MouseLeftPress& operator=(const MouseLeftPress&) = delete;
     };
@@ -50,7 +50,7 @@ namespace
         return doc;
     }
 
-    NS::Core::Vector3 SpawnOf(const nlohmann::json& doc)
+    NS::Vector3 SpawnOf(const nlohmann::json& doc)
     {
         return NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(doc)[NS::Editor::FindPlayerObjectIndex(doc)]);
     }
@@ -88,7 +88,7 @@ TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
     ASSERT_NE(player, nullptr);
 
     // 落下死の範囲 (上面 y=-50) の中へ落とす
-    player->Root().SetPosition(NS::Core::Vector3{0.0f, -52.0f, 0.0f});
+    player->Root().SetPosition(NS::Vector3{0.0f, -52.0f, 0.0f});
     scene.HitSensors().OnTick();
     EXPECT_TRUE(player->IsDead());
 
@@ -176,7 +176,7 @@ TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
     NS::Game::Level::CourseDirector* director = NS::Obj::FindSceneObj<NS::Game::Level::CourseDirector>(scene);
     ASSERT_NE(director, nullptr);
 
-    player->SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     for (int i = 0; i < 5; ++i)
     {
         player->Update();
@@ -229,7 +229,7 @@ TEST(CourseDirector, RestartReturnsObjectsToBaseline)
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json rock = NS::Obj::MakeObjectJson();
     NS::Obj::SetObjectJsonClass(rock, "MapObj");
-    NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{5.0f, 1.0f, 0.0f});
+    NS::Obj::SetObjectPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     NS::Obj::EnsureUniqueObjectIds(doc);
 
@@ -245,7 +245,7 @@ TEST(CourseDirector, RestartReturnsObjectsToBaseline)
         }
     }
     ASSERT_NE(placed, nullptr);
-    placed->Root().SetPosition(NS::Core::Vector3{9.0f, 1.0f, 0.0f});
+    placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
 
     NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(scene)->RestartCourse();
     EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
@@ -257,9 +257,9 @@ TEST(CourseDirector, StartCourseFreezesThePlacedSceneAndStartsEveryoneFromIt)
     scene.LoadJson(CourseWithPlayer());
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    const NS::Core::Vector3 placedAt{5.0f, 5.0f, 5.0f};
+    const NS::Vector3 placedAt{5.0f, 5.0f, 5.0f};
     player->Root().SetPosition(placedAt);
-    player->Body().SetVelocity(NS::Core::Vector3{2.0f, 4.0f, 3.0f});
+    player->Body().SetVelocity(NS::Vector3{2.0f, 4.0f, 3.0f});
 
     NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(scene)->StartCourse();
 
@@ -267,7 +267,7 @@ TEST(CourseDirector, StartCourseFreezesThePlacedSceneAndStartsEveryoneFromIt)
     const nlohmann::json& baseline = scene.PlayBaseline();
     const std::size_t index = NS::Obj::FindObjectIndexById(baseline, player->Id());
     ASSERT_NE(index, NS::Obj::k_NoObjectIndex);
-    const NS::Core::Vector3 frozen = NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(baseline)[index]);
+    const NS::Vector3 frozen = NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(baseline)[index]);
     EXPECT_FLOAT_EQ(frozen.x, placedAt.x);
     EXPECT_FLOAT_EQ(frozen.y, placedAt.y);
     EXPECT_FLOAT_EQ(frozen.z, placedAt.z);

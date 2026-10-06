@@ -1,7 +1,7 @@
 #include "Editor/ViewportSurface.h"
 
-#include "Runtime/Graphics/RenderTarget.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Graphics/RenderTarget.h"
+#include "NSlib/Object/Scene/Scene.h"
 
 #include <cstdint>
 
@@ -50,7 +50,7 @@ namespace NS::Editor
 
                 // 可視なら次フレームの描画先サイズを立てる。RT 未生成でも記録する
                 m_visible = true;
-                m_size = NS::Core::Size2D{static_cast<int>(draw.x), static_cast<int>(draw.y)};
+                m_size = NS::Size2D{static_cast<int>(draw.x), static_cast<int>(draw.y)};
 
                 if (m_target != nullptr && m_target->IsValid())
                 {

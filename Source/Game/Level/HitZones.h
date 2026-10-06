@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Game/Level/HitTier.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Component.h"
-#include "Runtime/Object/Components/HitSensor.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Component.h"
+#include "NSlib/Object/Components/HitSensor.h"
 
 #include <vector>
 
@@ -36,9 +36,9 @@ namespace NS::Game::Level
         float offset01 = 1.0f;        //!< 横ずれ。u の大きさを 0〜1 に丸めた値
         float ratio = 1.0f;           //!< 丸める前の u の大きさ。1 を超える線は、線を進む自機の縁が届かない
         float along = 0.0f;           //!< 線の起点から相手の体の中心までの、線に沿った水平の距離 (m)。後ろは負
-        NS::Core::Vector3 linePoint;  //!< 相手の体の中心に一番近い線の上の点を、中心の高さに置いた物
+        NS::Vector3 linePoint;  //!< 相手の体の中心に一番近い線の上の点を、中心の高さに置いた物
         //! 自機の玉が相手の表面に触れる点。線が届かない時は、線に一番近い表面の点
-        NS::Core::Vector3 surfacePoint;
+        NS::Vector3 surfacePoint;
         NS::Obj::HitSensorShape bodyShape = NS::Obj::HitSensorShape::Sphere; //!< 相手の体の形の種類
     };
 
@@ -59,8 +59,8 @@ namespace NS::Game::Level
     //! 場合、起点か自機の半径が有限でない場合は false
     [[nodiscard]] bool JudgeHitFace(const HitFace& face,
                                     const NS::Obj::SensorVolume& body,
-                                    const NS::Core::Vector3& origin,
-                                    const NS::Core::Vector3& direction,
+                                    const NS::Vector3& origin,
+                                    const NS::Vector3& direction,
                                     float playerRadius,
                                     HitFaceJudgement& out) noexcept;
 
@@ -77,8 +77,8 @@ namespace NS::Game::Level
     //! @return 判定の結果。判定できない時は外れの結果
     [[nodiscard]] HitFaceJudgement JudgeHitFaceOrWide(const HitFace& face,
                                                       const NS::Obj::SensorVolume& body,
-                                                      const NS::Core::Vector3& origin,
-                                                      const NS::Core::Vector3& direction,
+                                                      const NS::Vector3& origin,
+                                                      const NS::Vector3& direction,
                                                       float playerRadius) noexcept;
 
     //! @brief 溜めて放つ突進が狙う高さ (世界の y) を出す
@@ -94,7 +94,7 @@ namespace NS::Game::Level
     //! 場合、自機の半径が有限でない場合は false
     [[nodiscard]] bool HitFaceAimHeight(const HitFace& face,
                                         const NS::Obj::SensorVolume& body,
-                                        const NS::Core::Vector3& direction,
+                                        const NS::Vector3& direction,
                                         float playerRadius,
                                         float& outHeight) noexcept;
 
@@ -114,10 +114,10 @@ namespace NS::Game::Level
     //! @brief 相手の正面の面を世界に置いた時の位置と軸
     struct HitFaceFrame
     {
-        NS::Core::Vector3 center;                                            //!< 面の中心。相手の正面に接する点
-        NS::Core::Vector3 right;                                             //!< 面の左右の軸。自機から見て右
-        NS::Core::Vector3 up;                                                //!< 面の上下の軸。真上
-        NS::Core::Vector3 normal;                                            //!< 面の向き。自機の方
+        NS::Vector3 center;                                            //!< 面の中心。相手の正面に接する点
+        NS::Vector3 right;                                             //!< 面の左右の軸。自機から見て右
+        NS::Vector3 up;                                                //!< 面の上下の軸。真上
+        NS::Vector3 normal;                                            //!< 面の向き。自機の方
         float reachU = 0.0f;                                                 //!< u が 1 の所までの長さ (m)
         float reachV = 0.0f;                                                 //!< v が 1 の所までの長さ (m)
         NS::Obj::HitSensorShape bodyShape = NS::Obj::HitSensorShape::Sphere; //!< 相手の体の形の種類
@@ -133,7 +133,7 @@ namespace NS::Game::Level
     //! @return 置けた場合 true。体の形が球・カプセル・箱のどれでもない場合、向きの水平の長さが 0 か有限でない
     //! 場合、自機の半径が有限でない場合は false
     [[nodiscard]] bool MakeHitFaceFrame(const NS::Obj::SensorVolume& body,
-                                        const NS::Core::Vector3& direction,
+                                        const NS::Vector3& direction,
                                         float playerRadius,
                                         HitFaceFrame& out) noexcept;
 
@@ -142,7 +142,7 @@ namespace NS::Game::Level
     //! @param[in] u 左右の位置。自機から見て右が正
     //! @param[in] v 上下の位置。上が正
     //! @return 面の上の世界の点
-    [[nodiscard]] NS::Core::Vector3 HitFacePoint(const HitFaceFrame& frame, float u, float v) noexcept;
+    [[nodiscard]] NS::Vector3 HitFacePoint(const HitFaceFrame& frame, float u, float v) noexcept;
 
     //! @brief 面に重ねて描く形を、下に敷く順に返す
     //! @details 先頭は外れの面。球の相手は触れられる丸 (半径 1 の円)、それ以外は四角 (±1)。その後に段の決まりの
@@ -160,7 +160,7 @@ namespace NS::Game::Level
     //! 楕円の点を結んだ多角形は楕円より内側へ最大 0.5 % 入る
     //! @param[in] shape 形
     //! @return 縁の点。x が左右の位置 u、y が上下の位置 v
-    [[nodiscard]] std::vector<NS::Core::Vector2> HitFaceShapeOutline(const HitFaceShape& shape) noexcept;
+    [[nodiscard]] std::vector<NS::Vector2> HitFaceShapeOutline(const HitFaceShape& shape) noexcept;
 #endif
 
     //! @brief 置物の面の赤 1 つと残りの威力の倍率を持つ部品

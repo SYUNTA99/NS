@@ -1,5 +1,5 @@
-#include "Runtime/Core/Logger.h"
-#include "Runtime/Platform/Filesystem.h"
+#include "NSlib/Core/Logger.h"
+#include "NSlib/Windows/Filesystem.h"
 
 #include <windows.h>
 
@@ -16,13 +16,13 @@ int main(int argc, char** argv)
     // game.log と tests.log を物理分離するため、Tests 側はここで先に Init して logger 名を固定する
     // 各テスト fixture が SetUp で Logger::Init() を呼んでも、g_initialized の guard で
     // 二度目以降は何もしない、logger 名は最初の Init で固定される
-    ::NS::Core::LoggerDesc desc;
+    ::NS::LoggerDesc desc;
     desc.logName = "tests";
-    desc.logDirectory = ::NS::Platform::FileSystem::Combine(::NS::Platform::FileSystem::ContentRoot(), "build");
-    ::NS::Core::Logger::Init(desc);
+    desc.logDirectory = ::NS::OS::FileSystem::Combine(::NS::OS::FileSystem::ContentRoot(), "build");
+    ::NS::Logger::Init(desc);
     ::testing::InitGoogleTest(&argc, argv);
     const int result = RUN_ALL_TESTS();
-    ::NS::Core::Logger::Shutdown();
+    ::NS::Logger::Shutdown();
 
     if (comReady)
     {

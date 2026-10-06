@@ -4,18 +4,18 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerParams.h"
-#include "Runtime/Graphics/FrameConstants.h"
-#include "Runtime/Graphics/Material.h"
-#include "Runtime/Graphics/Pipeline.h"
-#include "Runtime/Graphics/RenderContext.h"
-#include "Runtime/Graphics/StaticMesh.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Transform.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Graphics/FrameConstants.h"
+#include "NSlib/Graphics/Material.h"
+#include "NSlib/Graphics/Pipeline.h"
+#include "NSlib/Graphics/RenderContext.h"
+#include "NSlib/Graphics/StaticMesh.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/AssetManager.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Transform.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>
@@ -82,7 +82,7 @@ namespace NS::Game::Level
             return std::isfinite(value) && value >= 0.0f;
         }
 
-        [[nodiscard]] bool IsFiniteVector(const NS::Core::Vector3& value) noexcept
+        [[nodiscard]] bool IsFiniteVector(const NS::Vector3& value) noexcept
         {
             return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
         }
@@ -129,19 +129,19 @@ namespace NS::Game::Level
 
         // 上向きの板 (shadowQuad。1 × 1 m で、+z の端が v = 0) を、線に沿った範囲と横の幅へ伸ばし、線の向きへ回して
         // 近い端を高さ height、遠い端を height + rise に置く。傾けても横の軸は水平のまま
-        [[nodiscard]] NS::Core::Matrix PlateWorld(const SlamArrowShape& shape,
+        [[nodiscard]] NS::Matrix PlateWorld(const SlamArrowShape& shape,
                                                   float alongNear,
                                                   float alongFar,
                                                   float width,
                                                   float height,
                                                   float rise) noexcept
         {
-            const NS::Core::Vector3& forward = shape.direction;
+            const NS::Vector3& forward = shape.direction;
             // 左手系で y が上。前が +z の時に右が +x になる向き
-            const NS::Core::Vector3 right{forward.z, 0.0f, -forward.x};
+            const NS::Vector3 right{forward.z, 0.0f, -forward.x};
             const float length = alongFar - alongNear;
-            const NS::Core::Vector3 center = shape.origin + forward * ((alongNear + alongFar) * 0.5f);
-            return NS::Core::Matrix{right.x * width,
+            const NS::Vector3 center = shape.origin + forward * ((alongNear + alongFar) * 0.5f);
+            return NS::Matrix{right.x * width,
                                     0.0f,
                                     right.z * width,
                                     0.0f,
@@ -172,7 +172,7 @@ namespace NS::Game::Level
             bool isBand = false;
         };
 
-        [[nodiscard]] SlamArrowConstants MakeConstants(const NS::Core::Matrix& viewProjection,
+        [[nodiscard]] SlamArrowConstants MakeConstants(const NS::Matrix& viewProjection,
                                                        const SlamArrowShape& shape,
                                                        const SlamArrowDesc& desc,
                                                        const SlamArrowPiece& plate,
@@ -183,11 +183,11 @@ namespace NS::Game::Level
             constants.world = PlateWorld(shape, plate.alongNear, plate.alongFar, width, plate.height, plate.rise);
             constants.viewProj = viewProjection;
             constants.chargedColor =
-                NS::Core::Vector4{shape.stageColor.x, shape.stageColor.y, shape.stageColor.z, look.edgeAlpha};
+                NS::Vector4{shape.stageColor.x, shape.stageColor.y, shape.stageColor.z, look.edgeAlpha};
             constants.plainColor =
-                NS::Core::Vector4{desc.plainColor.x, desc.plainColor.y, desc.plainColor.z, look.plainEdgeAlpha};
+                NS::Vector4{desc.plainColor.x, desc.plainColor.y, desc.plainColor.z, look.plainEdgeAlpha};
             constants.darkColor =
-                NS::Core::Vector4{desc.darkColor.x, desc.darkColor.y, desc.darkColor.z, desc.darkAlpha};
+                NS::Vector4{desc.darkColor.x, desc.darkColor.y, desc.darkColor.z, desc.darkAlpha};
 
             // 始まりのぼかし: (along − 玉の縁) ÷ ぼかす長さ。0 以下で消え、1 以上で全部出る
             PlateLinear fade{.value = 1.0f, .slope = 0.0f};
@@ -211,8 +211,8 @@ namespace NS::Game::Level
             {
                 rear = ToPlateV(shape.tip / shape.headDepth, -1.0f / shape.headDepth, plate.alongNear, plate.alongFar);
             }
-            constants.fadeAndFront = NS::Core::Vector4{fade.value, fade.slope, front.value, front.slope};
-            constants.rearAndFill = NS::Core::Vector4{rear.value, rear.slope, look.fillAlpha, look.plainFillAlpha};
+            constants.fadeAndFront = NS::Vector4{fade.value, fade.slope, front.value, front.slope};
+            constants.rearAndFill = NS::Vector4{rear.value, rear.slope, look.fillAlpha, look.plainFillAlpha};
             return constants;
         }
 
@@ -224,7 +224,7 @@ namespace NS::Game::Level
         // 見る角度は、線を含む縦の面の中の、カメラを見下ろす角 + 板の傾き
         void TiltHeadTowardCamera(const SlamArrowShape& shape,
                                   const SlamArrowDesc& desc,
-                                  const NS::Core::Vector3& cameraPosition,
+                                  const NS::Vector3& cameraPosition,
                                   float& inOutAlong,
                                   float& inOutRise) noexcept
         {
@@ -232,18 +232,18 @@ namespace NS::Game::Level
             {
                 return;
             }
-            const NS::Core::Vector3 nearEdge = shape.origin + shape.direction * shape.head.alongNear;
-            const NS::Core::Vector3 toCamera =
-                cameraPosition - NS::Core::Vector3{nearEdge.x, shape.head.height, nearEdge.z};
-            const float behind = -NS::Core::Dot(toCamera, shape.direction);
+            const NS::Vector3 nearEdge = shape.origin + shape.direction * shape.head.alongNear;
+            const NS::Vector3 toCamera =
+                cameraPosition - NS::Vector3{nearEdge.x, shape.head.height, nearEdge.z};
+            const float behind = -NS::Dot(toCamera, shape.direction);
             if (!(behind > 0.0f))
             {
                 return;
             }
             const float lookDown = std::atan2(toCamera.y, behind);
             const float tilt = std::atan2(inOutRise, inOutAlong);
-            const float wanted = std::min(NS::Core::DegreesToRadians(desc.headMinViewDegrees) - lookDown,
-                                          NS::Core::DegreesToRadians(k_MaxHeadTiltDegrees));
+            const float wanted = std::min(NS::DegreesToRadians(desc.headMinViewDegrees) - lookDown,
+                                          NS::DegreesToRadians(k_MaxHeadTiltDegrees));
             if (!(wanted > tilt))
             {
                 return;
@@ -289,9 +289,9 @@ namespace NS::Game::Level
         {
             return false;
         }
-        NS::Core::Vector3 direction{};
+        NS::Vector3 direction{};
         // 非数と無限の向きは正規化を通り抜ける
-        if (!NS::Core::TryNormalizeHorizontal(state.line.direction, direction) || !IsFiniteVector(direction))
+        if (!NS::TryNormalizeHorizontal(state.line.direction, direction) || !IsFiniteVector(direction))
         {
             return false;
         }
@@ -318,9 +318,9 @@ namespace NS::Game::Level
         const float grown =
             std::min(1.0f, (static_cast<float>(state.framesSinceShown) + 1.0f) / static_cast<float>(desc.growFrames));
         shape.tip = shape.start + (shape.fullTip - shape.start) * grown;
-        shape.headDepth = NS::Core::Clamp(desc.headDepthRatio * shape.tip, desc.headDepthMin, desc.headDepthMax);
+        shape.headDepth = NS::Clamp(desc.headDepthRatio * shape.tip, desc.headDepthMin, desc.headDepthMax);
 
-        const float charge = NS::Core::Clamp(state.charge01, 0.0f, 1.0f);
+        const float charge = NS::Clamp(state.charge01, 0.0f, 1.0f);
         shape.colorFront = shape.start + (shape.fullTip - shape.start) * charge;
         shape.fullyColored = state.chargeFull;
         if (state.chargeFull)
@@ -329,7 +329,7 @@ namespace NS::Game::Level
             float purple = 0.0f;
             if (std::isfinite(state.overcharge01))
             {
-                purple = NS::Core::Clamp(state.overcharge01, 0.0f, 1.0f);
+                purple = NS::Clamp(state.overcharge01, 0.0f, 1.0f);
             }
             shape.stageColor = desc.fullColor + (desc.overchargeColor - desc.fullColor) * purple;
         }
@@ -378,7 +378,7 @@ namespace NS::Game::Level
         {
             const float alongNear = shape.start + k_GroundProbeSpacing * static_cast<float>(i);
             const float alongFar = std::min(alongNear + k_GroundProbeSpacing, shape.tip);
-            const NS::Core::Vector3 from = shape.origin + shape.direction * ((alongNear + alongFar) * 0.5f);
+            const NS::Vector3 from = shape.origin + shape.direction * ((alongNear + alongFar) * 0.5f);
             float ground = 0.0f;
             if (!probe(from, depth, ground))
             {
@@ -397,7 +397,7 @@ namespace NS::Game::Level
         }
 
         // 矢じりは奥行きの真ん中の真下の 1 つの高さに置く
-        const NS::Core::Vector3 headCenter = shape.origin + shape.direction * (shape.tip - shape.headDepth * 0.5f);
+        const NS::Vector3 headCenter = shape.origin + shape.direction * (shape.tip - shape.headDepth * 0.5f);
         float headGround = 0.0f;
         if (probe(headCenter, depth, headGround))
         {
@@ -430,9 +430,9 @@ namespace NS::Game::Level
                 // 床を見るのは玉の中心が止まる所、相手に触れる所まで。その先の矢じりの下は相手の体で、床ではない
                 const float top = std::max(center, ballCenterHeight);
                 const float probeAlong = std::min(along, shape.fullTip - radius);
-                const NS::Core::Vector3 from = shape.origin + shape.direction * probeAlong;
+                const NS::Vector3 from = shape.origin + shape.direction * probeAlong;
                 float ground = 0.0f;
-                if (probe(NS::Core::Vector3{from.x, top, from.z}, top - bottom, ground) && ground > bottom)
+                if (probe(NS::Vector3{from.x, top, from.z}, top - bottom, ground) && ground > bottom)
                 {
                     bottom = ground;
                 }
@@ -469,8 +469,8 @@ namespace NS::Game::Level
 
     void AppendSlamArrowDrawItems(const SlamArrowShape& shape,
                                   const SlamArrowDesc& desc,
-                                  const NS::Core::Matrix& viewProjection,
-                                  const NS::Core::Vector3& cameraPosition,
+                                  const NS::Matrix& viewProjection,
+                                  const NS::Vector3& cameraPosition,
                                   const SlamArrowDrawAssets& assets,
                                   std::vector<NS::Gfx::DrawItem>& out)
     {
@@ -583,10 +583,10 @@ namespace NS::Game::Level
         // Scene に居なければ probe は空のまま。空の probe は床を見ない合図
         if (Owner()->OwningScene() != nullptr)
         {
-            probe = [collider](const NS::Core::Vector3& from, float maxDepth, float& outGroundY) {
+            probe = [collider](const NS::Vector3& from, float maxDepth, float& outGroundY) {
                 float distance = 0.0f;
                 if (!NS::Obj::RaycastCollision(
-                        *collider, from, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
+                        *collider, from, NS::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
                 {
                     return false;
                 }
@@ -606,7 +606,7 @@ namespace NS::Game::Level
             const NS::Game::Player::LaunchPath path{.horizontalSpeed = params.m_bodySlamSpeed,
                                                     .verticalSpeed = state.line.launchVerticalSpeed,
                                                     .gravity = params.Gravity(),
-                                                    .dt = NS::Platform::FrameTimer::FixedDelta(),
+                                                    .dt = NS::OS::FrameTimer::FixedDelta(),
                                                     .grounded = state.line.grounded};
             // 線の始まりは根。玉の中心は持ち主の SlamBallAt が決める
             const float ballCenterHeight = ownerPlayer->SlamBallAt(state.line.origin).center.y;

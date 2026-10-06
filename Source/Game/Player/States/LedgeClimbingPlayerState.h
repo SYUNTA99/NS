@@ -14,6 +14,6 @@ namespace NS::Game::Player
         void OnStep(::Player&, float) override {}
 
     private:
-        NS::Core::Coroutine Run(::Player& player);
+        NS::Coroutine Run(::Player& player);
     };
 } // namespace NS::Game::Player

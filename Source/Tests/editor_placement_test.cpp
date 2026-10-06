@@ -1,11 +1,11 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/MeshCollision.h"
-#include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/Filesystem.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/MeshCollision.h"
+#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/Filesystem.h"
 
 #include <gtest/gtest.h>
 
@@ -77,9 +77,9 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
     NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
 
-    editor.AddMeshParts(NS::Platform::FileSystem::Combine(
-        NS::Platform::FileSystem::Combine(
-            NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"),
+    editor.AddMeshParts(NS::OS::FileSystem::Combine(
+        NS::OS::FileSystem::Combine(
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Models"),
         "__ns_missing_terrain__.glb"));
 
     NS::Obj::Actor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());

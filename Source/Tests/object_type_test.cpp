@@ -1,5 +1,5 @@
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/Model.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/Model.h"
 
 #include <gtest/gtest.h>
 

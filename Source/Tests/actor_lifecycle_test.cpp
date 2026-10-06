@@ -1,6 +1,6 @@
 #include "Game/Level/MapObj.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/UIActor.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/UIActor.h"
 
 #include <gtest/gtest.h>
 
@@ -98,15 +98,15 @@ TEST(ActorLifecycle, PhysicsAndSensorsLeaveTheirRegistries)
     const std::size_t sensors = scene.HitSensors().Sensors().size();
     ASSERT_GT(sensors, 0u);
     float distance = 0.0f;
-    const NS::Core::Vector3 from{0.0f, 2.0f, 0.0f};
-    ASSERT_TRUE(scene.Physics().Raycast(from, -NS::Core::Vector3::UnitY, 4.0f, distance));
+    const NS::Vector3 from{0.0f, 2.0f, 0.0f};
+    ASSERT_TRUE(scene.Physics().Raycast(from, -NS::Vector3::UnitY, 4.0f, distance));
     actor->Kill();
     EXPECT_TRUE(scene.HitSensors().Sensors().empty());
-    EXPECT_FALSE(scene.Physics().Raycast(from, -NS::Core::Vector3::UnitY, 4.0f, distance));
+    EXPECT_FALSE(scene.Physics().Raycast(from, -NS::Vector3::UnitY, 4.0f, distance));
     actor->Appear();
     actor->Appear();
     EXPECT_EQ(scene.HitSensors().Sensors().size(), sensors);
-    EXPECT_TRUE(scene.Physics().Raycast(from, -NS::Core::Vector3::UnitY, 4.0f, distance));
+    EXPECT_TRUE(scene.Physics().Raycast(from, -NS::Vector3::UnitY, 4.0f, distance));
 }
 
 TEST(ActorLifecycle, UIKillAndAppearKeepTheSceneAttachment)
@@ -140,9 +140,9 @@ TEST(ActorLifecycle, ParentKillRemovesChildPhysicsWithoutChangingChildLife)
     EXPECT_TRUE(scene.HitSensors().Sensors().empty());
     float distance = 0.0f;
     EXPECT_FALSE(
-        scene.Physics().Raycast(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, -NS::Core::Vector3::UnitY, 4.0f, distance));
+        scene.Physics().Raycast(NS::Vector3{0.0f, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance));
     parent->Appear();
     EXPECT_FALSE(scene.HitSensors().Sensors().empty());
     EXPECT_TRUE(
-        scene.Physics().Raycast(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, -NS::Core::Vector3::UnitY, 4.0f, distance));
+        scene.Physics().Raycast(NS::Vector3{0.0f, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance));
 }

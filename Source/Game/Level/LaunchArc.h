@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Core/Math.h"
+#include "NSlib/Core/Math.h"
 
 namespace NS::Game::Level
 {
@@ -11,7 +11,7 @@ namespace NS::Game::Level
     //! 水平は一定の速さで進み、発射の高さへ戻った所で飛ぶ距離だけ進んでいる
     struct LaunchArc
     {
-        NS::Core::Vector3 direction{1.0f, 0.0f, 0.0f}; // 飛ぶ向き。水平の成分だけを使う
+        NS::Vector3 direction{1.0f, 0.0f, 0.0f}; // 飛ぶ向き。水平の成分だけを使う
         float distance = 0.0f;                         // 発射から発射の高さへ戻るまでの水平の距離 (m)
         float apexHeight = 0.0f;                       // 発射の高さから頂点までの高さ (m)
         // 上りの重力の大きさ (m/s²)
@@ -25,12 +25,12 @@ namespace NS::Game::Level
     //! @details 水平は飛ぶ距離 ÷ 発射の高さへ戻るまでの秒、上向きは頂点の高さへちょうど届く速さ
     //! 距離・高さ・上りの重力・2 つの倍率が有限の正でない時、帯の縦速度が有限の 0 以上でない時、
     //! 向きに水平の成分が無い時は 0 を返す
-    [[nodiscard]] NS::Core::Vector3 LaunchArcInitialVelocity(const LaunchArc& arc) noexcept;
+    [[nodiscard]] NS::Vector3 LaunchArcInitialVelocity(const LaunchArc& arc) noexcept;
 
     //! @brief 発射から seconds 秒後の、発射の位置からのずれを返す
     //! @details 水平の成分は arc.direction の水平の向きへ進んだずれ、y は発射の高さからの高さ。単位は m
     //! seconds が有限の 0 以上でない時と、arc が LaunchArcInitialVelocity の挙げる曲線にならない値の時は 0 を返す
-    [[nodiscard]] NS::Core::Vector3 LaunchArcOffsetAt(const LaunchArc& arc, float seconds) noexcept;
+    [[nodiscard]] NS::Vector3 LaunchArcOffsetAt(const LaunchArc& arc, float seconds) noexcept;
 
     //! @brief 発射から発射の高さへ戻るまでの秒を返す
     //! @details 水平は一定の速さで進むので、飛ぶ距離 ÷ 水平の速さ。

@@ -1,14 +1,14 @@
 ﻿#pragma once
 
 #include "Editor/GridMath.h"
-#include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Core/NonCopyable.h"
-#include "Runtime/Platform/Keyboard.h"
+#include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Windows/Keyboard.h"
 
 #include <span>
 
-namespace NS::Platform
+namespace NS::OS
 {
     class Input;
 }
@@ -54,19 +54,19 @@ namespace NS::Editor
     //! @brief 位置・回転・スケールのスナップショット
     struct TransformState
     {
-        NS::Core::Vector3 position{0.0f, 0.0f, 0.0f};
-        NS::Core::Quaternion rotation{};
-        NS::Core::Vector3 scale{1.0f, 1.0f, 1.0f};
+        NS::Vector3 position{0.0f, 0.0f, 0.0f};
+        NS::Quaternion rotation{};
+        NS::Vector3 scale{1.0f, 1.0f, 1.0f};
     };
 
     //! @brief オブジェクトの選択と、変形ギズモのドラッグによる Transform 書き換え
-    class GizmoEditor : public NS::Core::NonCopyable
+    class GizmoEditor : public NS::NonCopyable
     {
     public:
         GizmoEditor() noexcept = default;
         ~GizmoEditor() noexcept = default;
 
-        void SetInput(NS::Platform::Input* input) noexcept { m_input = input; }
+        void SetInput(NS::OS::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
 
         //! @brief 選択できる配置物を設定する
@@ -97,10 +97,10 @@ namespace NS::Editor
         //! @brief 毎フレーム入力を見て、選択とドラッグによる変形を進める
         //! @param[in] view ゲーム表示パネルの矩形。マウスはこの矩形基準のローカル座標で扱う
         //! @param[in] viewHovered マウスがそのパネル上に居るか。偽の間は選択クリックとハンドル掴みを受けない
-        void Tick(const NS::Core::Matrix& viewProjection, const ViewRect& view, bool viewHovered) noexcept;
+        void Tick(const NS::Matrix& viewProjection, const ViewRect& view, bool viewHovered) noexcept;
 
         //! 現在の選択対象に対するギズモのUI描画コマンドを発行する。パネル外はクリップされる
-        void Render(const NS::Core::Matrix& viewProjection, const ViewRect& view) noexcept;
+        void Render(const NS::Matrix& viewProjection, const ViewRect& view) noexcept;
 
         [[nodiscard]] GizmoTool Tool() const noexcept { return m_tool; }
         [[nodiscard]] NS::Obj::Transform* Selected() const noexcept { return m_selected; }
@@ -128,68 +128,68 @@ namespace NS::Editor
         //! @param[in] localBounds worldMatrices と同じ添字の判定箱。行列のローカル空間で、中心は原点でなくてよい
         //! @param[in] pickMask 0 の添字を飛ばす。空なら全部を見る
         //! @return ヒットした場合はそのインデックス、ヒットしなかった場合は -1
-        [[nodiscard]] static int PickNearestOBB(const NS::Core::Ray& ray,
-                                                std::span<const NS::Core::Matrix> worldMatrices,
-                                                std::span<const NS::Core::AABB> localBounds,
+        [[nodiscard]] static int PickNearestOBB(const NS::Ray& ray,
+                                                std::span<const NS::Matrix> worldMatrices,
+                                                std::span<const NS::AABB> localBounds,
                                                 std::span<const std::uint8_t> pickMask = {}) noexcept;
 
         //! 指定されたギズモ軸に沿った移動後の新しいワールド座標を計算する
-        [[nodiscard]] static NS::Core::Vector3 ComputeAxisMove(const NS::Core::Vector3& startPos,
+        [[nodiscard]] static NS::Vector3 ComputeAxisMove(const NS::Vector3& startPos,
                                                                GizmoAxis axis,
-                                                               const NS::Core::Quaternion& rotation,
-                                                               const NS::Core::Ray& rayStart,
-                                                               const NS::Core::Ray& rayNow,
+                                                               const NS::Quaternion& rotation,
+                                                               const NS::Ray& rayStart,
+                                                               const NS::Ray& rayNow,
                                                                bool snap) noexcept;
 
         //! 画面のドラッグ量を、指定軸まわりの回転角 (ラジアン) へ変換する
-        [[nodiscard]] static float WorldDragToAngle(const NS::Core::Vector3& origin,
+        [[nodiscard]] static float WorldDragToAngle(const NS::Vector3& origin,
                                                     GizmoAxis axis,
-                                                    const NS::Core::Quaternion& rotation,
-                                                    const NS::Core::Matrix& viewProjection,
-                                                    NS::Core::Size2D viewport,
-                                                    NS::Core::Vector2 screenStart,
-                                                    NS::Core::Vector2 screenEnd) noexcept;
+                                                    const NS::Quaternion& rotation,
+                                                    const NS::Matrix& viewProjection,
+                                                    NS::Size2D viewport,
+                                                    NS::Vector2 screenStart,
+                                                    NS::Vector2 screenEnd) noexcept;
 
         //! 指定の軸と角度から新しい回転を計算する
-        [[nodiscard]] static NS::Core::Quaternion ComputeAxisRotate(const NS::Core::Quaternion& startRot,
+        [[nodiscard]] static NS::Quaternion ComputeAxisRotate(const NS::Quaternion& startRot,
                                                                     GizmoAxis axis,
                                                                     float angleRad,
                                                                     bool snap,
                                                                     bool worldSpace = false) noexcept;
 
         //! スクリーンのドラッグ量を、スケールへ足し引きする変化量に変換する
-        [[nodiscard]] static float ScreenDragToScaleAmount(NS::Core::Vector2 axisDir2d,
-                                                           NS::Core::Vector2 dragPixels) noexcept;
+        [[nodiscard]] static float ScreenDragToScaleAmount(NS::Vector2 axisDir2d,
+                                                           NS::Vector2 dragPixels) noexcept;
 
         //! 指定された軸とスケール変化量に基づく、新しいスケールベクトルを計算する
-        [[nodiscard]] static NS::Core::Vector3 ComputeScale(const NS::Core::Vector3& startScale,
+        [[nodiscard]] static NS::Vector3 ComputeScale(const NS::Vector3& startScale,
                                                             GizmoAxis axis,
                                                             float amount,
                                                             bool snap) noexcept;
 
         //! 入力されたキーに応じたギズモツール種別を返す
-        [[nodiscard]] static GizmoTool ToolForKey(GizmoTool current, NS::Platform::Key key) noexcept;
+        [[nodiscard]] static GizmoTool ToolForKey(GizmoTool current, NS::OS::Key key) noexcept;
 
         //! @brief マウス座標から、クリックされたギズモのハンドルを判定して返す
-        [[nodiscard]] static GizmoAxis ToolHandlePick(const NS::Core::Vector3& gizmoOrigin,
-                                                      const NS::Core::Quaternion& rotation,
+        [[nodiscard]] static GizmoAxis ToolHandlePick(const NS::Vector3& gizmoOrigin,
+                                                      const NS::Quaternion& rotation,
                                                       GizmoTool tool,
-                                                      NS::Core::Vector2 mouse2d,
-                                                      const NS::Core::Matrix& viewProjection,
-                                                      NS::Core::Size2D viewport) noexcept;
+                                                      NS::Vector2 mouse2d,
+                                                      const NS::Matrix& viewProjection,
+                                                      NS::Size2D viewport) noexcept;
 
         void SetToolForTest(GizmoTool tool) noexcept { m_tool = tool; }
         void SelectForTest(NS::Obj::Transform* target) noexcept { m_selected = target; }
-        void ApplyDragForTest(const NS::Core::Matrix& viewProjection,
-                              NS::Core::Size2D viewport,
+        void ApplyDragForTest(const NS::Matrix& viewProjection,
+                              NS::Size2D viewport,
                               GizmoAxis axis,
-                              NS::Core::Vector2 screenStart,
-                              NS::Core::Vector2 screenEnd) noexcept;
+                              NS::Vector2 screenStart,
+                              NS::Vector2 screenEnd) noexcept;
 
     private:
-        void OnToolKey(NS::Platform::Key key) noexcept;
+        void OnToolKey(NS::OS::Key key) noexcept;
 
-        NS::Platform::Input* m_input = nullptr;
+        NS::OS::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
 
         std::span<NS::Obj::Actor* const> m_objects{}; //!< 選択判定の対象となるオブジェクト
@@ -202,7 +202,7 @@ namespace NS::Editor
 
         bool m_dragging = false;                //!< ドラッグ中か
         GizmoAxis m_dragAxis = GizmoAxis::None; //!< ドラッグ中の軸
-        NS::Core::Vector2 m_dragStartScreen{};  //!< ドラッグ開始時のスクリーン座標
+        NS::Vector2 m_dragStartScreen{};  //!< ドラッグ開始時のスクリーン座標
         TransformState m_dragBefore{};          //!< ドラッグ開始時の 位置・回転・スケール
     };
 } // namespace NS::Editor

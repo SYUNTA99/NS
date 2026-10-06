@@ -2,9 +2,9 @@
 
 #include "Game/Level/HitTier.h"
 #include "Game/Player/EffectLayerList.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Component.h"
-#include "Runtime/Object/Reflection/Reflection.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Component.h"
+#include "NSlib/Object/Reflection/Reflection.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -69,14 +69,14 @@ namespace NS::Game::Player
     //! @brief 当たり 1 回の層を置く所と向き
     struct ImpactAim
     {
-        NS::Core::Vector3 contact; //!< 接触点。自機の玉の縁の、相手へ向いた点
+        NS::Vector3 contact; //!< 接触点。自機の玉の縁の、相手へ向いた点
         //! 火花の向き。大きな外れは MissSparkHeading (面の上の位置が無い時は横ずれの側と飛ぶ向きと上の間)、
         //! 他は相手の飛ぶ向き
-        NS::Core::Vector3 sparkDir;
-        NS::Core::Vector3 recoilDir;    //!< 弾かれ線の向き。自機の反動の初速の向き
-        NS::Core::Vector3 recoilOrigin; //!< 弾かれ線を出した所。自機の玉の縁の、反動の向きの逆の点
-        NS::Core::Vector3 dustOrigin;   //!< 当たりの粉の輪の真ん中。相手が居た床から、自機と逆の側へずらした点
-        NS::Core::Vector3 ringNormal;   //!< 輪の面の法線。相手の飛ぶ向きをカメラへ起こした向き
+        NS::Vector3 sparkDir;
+        NS::Vector3 recoilDir;    //!< 弾かれ線の向き。自機の反動の初速の向き
+        NS::Vector3 recoilOrigin; //!< 弾かれ線を出した所。自機の玉の縁の、反動の向きの逆の点
+        NS::Vector3 dustOrigin;   //!< 当たりの粉の輪の真ん中。相手が居た床から、自機と逆の側へずらした点
+        NS::Vector3 ringNormal;   //!< 輪の面の法線。相手の飛ぶ向きをカメラへ起こした向き
     };
 
     //! @brief 自機が当ててから着地するまでのエフェクトの層を出し、出すと決めた記録を持つ
@@ -134,10 +134,10 @@ namespace NS::Game::Player
         //! @param[in] ballCenter 玉の中心
         //! @param[in] cameraPosition カメラの位置。無ければ起こさない
         //! @return 長さ 1 の向き
-        [[nodiscard]] static NS::Core::Vector3 ReboundTrailHeading(
-            const NS::Core::Vector3& velocity,
-            const NS::Core::Vector3& ballCenter,
-            const std::optional<NS::Core::Vector3>& cameraPosition) noexcept;
+        [[nodiscard]] static NS::Vector3 ReboundTrailHeading(
+            const NS::Vector3& velocity,
+            const NS::Vector3& ballCenter,
+            const std::optional<NS::Vector3>& cameraPosition) noexcept;
 
         //! 直近の当たりの層を置いた所と向き。まだ当たっていなければ全部 0
         [[nodiscard]] const ImpactAim& LastAim() const noexcept { return m_aim; }
@@ -152,9 +152,9 @@ namespace NS::Game::Player
         //! @param[in] slamDirection 突進の向き。縦の成分は捨てる
         //! @return 長さ 1 の向き。位置が面の真ん中で外した側が決まらない時と、突進の水平の向きが決まらない時は (0, 0,
         //! 0)
-        [[nodiscard]] static NS::Core::Vector3 MissSparkHeading(float u,
+        [[nodiscard]] static NS::Vector3 MissSparkHeading(float u,
                                                                 float v,
-                                                                const NS::Core::Vector3& slamDirection) noexcept;
+                                                                const NS::Vector3& slamDirection) noexcept;
 
         // 当たりの層の大きさと量は当てた瞬間の手触りそのもの。Inspector で触って詰められるよう公開する
         NS_REFLECT_BEGIN(ImpactEffects, NS::Obj::Component)
@@ -210,14 +210,14 @@ namespace NS::Game::Player
             int freezeStep = 0;   // 当たりの絵の頭の EffectLayerList のフレーム
             int releaseStep = -1; // 飛びの絵の頭のフレーム。まだ始めていなければ -1
             ImpactShape shape;
-            NS::Core::Vector3 contact;    // 接触点。自機の玉の縁の、相手へ向いた点
-            NS::Core::Vector3 launchDir;  // 相手の飛ぶ水平の向き
-            NS::Core::Vector3 sideDir;    // 相手の面に沿った、横ずれの側の水平の向き
-            NS::Core::Vector3 scrapeDir;  // 大きな外れの火花の向き。ImpactAim::sparkDir と同じ決め方
-            NS::Core::Vector3 selfDir;    // 自機の反動の初速の向き
-            NS::Core::Vector3 ringNormal; // 輪の面の法線
-            NS::Core::Vector3 floor;      // 相手が置かれていた床の上の点
-            NS::Core::Vector3 awayDir;    // 自機から相手への水平の向き。当たりの粉を自機から離す側
+            NS::Vector3 contact;    // 接触点。自機の玉の縁の、相手へ向いた点
+            NS::Vector3 launchDir;  // 相手の飛ぶ水平の向き
+            NS::Vector3 sideDir;    // 相手の面に沿った、横ずれの側の水平の向き
+            NS::Vector3 scrapeDir;  // 大きな外れの火花の向き。ImpactAim::sparkDir と同じ決め方
+            NS::Vector3 selfDir;    // 自機の反動の初速の向き
+            NS::Vector3 ringNormal; // 輪の面の法線
+            NS::Vector3 floor;      // 相手が置かれていた床の上の点
+            NS::Vector3 awayDir;    // 自機から相手への水平の向き。当たりの粉を自機から離す側
             std::uint32_t targetId = 0;   // 当たった相手の配置物の id
             std::uint32_t core = 0;
             std::uint32_t streak = 0;
@@ -260,7 +260,7 @@ namespace NS::Game::Player
         void StopLater(std::uint32_t id, int lifeSteps);
         void RunScheduledStops(NS::Gfx::EffectScene* effects);
         // 効果を掛ける前の視点の位置。カメラが無い・姿が決まらない世界では空
-        [[nodiscard]] std::optional<NS::Core::Vector3> CameraPosition() const;
+        [[nodiscard]] std::optional<NS::Vector3> CameraPosition() const;
 
         EffectLayerList m_layers;
         NS::Game::Level::ImpactResolver* m_resolver = nullptr;

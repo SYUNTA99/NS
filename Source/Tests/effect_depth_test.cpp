@@ -1,7 +1,7 @@
-#include "Runtime/Core/CameraData.h"
-#include "Runtime/Graphics/EffectScene.h"
-#include "Runtime/Graphics/GraphicObject.h"
-#include "Runtime/Graphics/Texture.h"
+#include "NSlib/Core/CameraData.h"
+#include "NSlib/Graphics/EffectScene.h"
+#include "NSlib/Graphics/GraphicObject.h"
+#include "NSlib/Graphics/Texture.h"
 #include "TestEffectFiles.h"
 
 #include <gtest/gtest.h>
@@ -66,11 +66,11 @@ namespace
         return NS::Gfx::Texture::Create(desc);
     }
 
-    NS::Core::CameraData MakeCamera()
+    NS::CameraData MakeCamera()
     {
-        NS::Core::CameraData camera;
-        camera.SetPosition(NS::Core::Vector3{0.0f, 1.0f, -5.0f});
-        camera.SetTarget(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        NS::CameraData camera;
+        camera.SetPosition(NS::Vector3{0.0f, 1.0f, -5.0f});
+        camera.SetTarget(NS::Vector3{0.0f, 0.0f, 0.0f});
         return camera;
     }
 
@@ -122,7 +122,7 @@ TEST(EffectDepth, PassesTheBoundDepthAndKeepsOneCopyPerSize)
     const std::unique_ptr<NS::Gfx::Texture> editor = MakeDepth(48, 48, DXGI_FORMAT_D24_UNORM_S8_UINT);
     ASSERT_NE(game->Dsv(), nullptr);
     ASSERT_NE(editor->Dsv(), nullptr);
-    const NS::Core::CameraData camera = MakeCamera();
+    const NS::CameraData camera = MakeCamera();
 
     for (int frame = 0; frame < 3; ++frame)
     {
@@ -150,7 +150,7 @@ TEST(EffectDepth, UnreadableDepthFallsBackToDrawingWithoutIt)
     const std::unique_ptr<NS::Gfx::Texture> good = MakeDepth(32, 32, DXGI_FORMAT_D24_UNORM_S8_UINT);
     const std::unique_ptr<NS::Gfx::Texture> other = MakeDepth(32, 32, DXGI_FORMAT_D32_FLOAT);
     ASSERT_NE(other->Dsv(), nullptr);
-    const NS::Core::CameraData camera = MakeCamera();
+    const NS::CameraData camera = MakeCamera();
 
     BindDepth(gpu, *good);
     effects.Draw(camera);

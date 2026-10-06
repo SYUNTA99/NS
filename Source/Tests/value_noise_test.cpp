@@ -1,4 +1,4 @@
-#include "Runtime/Core/Math.h"
+#include "NSlib/Core/Math.h"
 
 #include <gtest/gtest.h>
 
@@ -12,7 +12,7 @@ TEST(ValueNoise, SameSeedAndPositionGiveTheSameValue)
     for (int i = -20; i < 20; ++i)
     {
         const float x = static_cast<float>(i) * 0.37f;
-        EXPECT_EQ(NS::Core::ValueNoise1D(x, 7u), NS::Core::ValueNoise1D(x, 7u));
+        EXPECT_EQ(NS::ValueNoise1D(x, 7u), NS::ValueNoise1D(x, 7u));
     }
 }
 
@@ -22,7 +22,7 @@ TEST(ValueNoise, StaysWithinOneAndSpreadsAcrossTheRange)
     float highest = -1.0f;
     for (int i = -400; i < 400; ++i)
     {
-        const float value = NS::Core::ValueNoise1D(static_cast<float>(i) * 0.25f, 11u);
+        const float value = NS::ValueNoise1D(static_cast<float>(i) * 0.25f, 11u);
         EXPECT_GE(value, -1.0f);
         EXPECT_LE(value, 1.0f);
         lowest = std::fmin(lowest, value);
@@ -40,7 +40,7 @@ TEST(ValueNoise, NeighbouringPositionsDoNotJump)
     for (int i = -500; i < 500; ++i)
     {
         const float x = static_cast<float>(i) * k_Step;
-        const float difference = std::fabs(NS::Core::ValueNoise1D(x + k_Step, 3u) - NS::Core::ValueNoise1D(x, 3u));
+        const float difference = std::fabs(NS::ValueNoise1D(x + k_Step, 3u) - NS::ValueNoise1D(x, 3u));
         EXPECT_LE(difference, 3.0f * k_Step + 1.0e-5f);
     }
 }
@@ -51,7 +51,7 @@ TEST(ValueNoise, DifferentSeedsGiveDifferentSequences)
     for (int i = 0; i < 32; ++i)
     {
         const float x = static_cast<float>(i) + 0.5f;
-        if (NS::Core::ValueNoise1D(x, 1u) != NS::Core::ValueNoise1D(x, 2u))
+        if (NS::ValueNoise1D(x, 1u) != NS::ValueNoise1D(x, 2u))
         {
             ++differing;
         }

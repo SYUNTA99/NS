@@ -1,9 +1,9 @@
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Reflection/Curve.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/UpdatePhase.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/Reflection/Curve.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/UpdatePhase.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
 
@@ -98,7 +98,7 @@ namespace
         NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Player; }
 
     protected:
-        void StateStep() override { (void)m_target.SetDrawScale(NS::Core::Vector3{2.0f, 2.0f, 2.0f}); }
+        void StateStep() override { (void)m_target.SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}); }
 
     private:
         NS::Obj::Model& m_target;
@@ -213,7 +213,7 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
     ASSERT_NE(drawn->CreatePart("Model"), nullptr);
     NS::Obj::Model* model = drawn->ModelPart();
     scene.SetSimulationPaused(true);
-    ASSERT_TRUE(model->SetDrawScale(NS::Core::Vector3{2.0f, 2.0f, 2.0f}));
+    ASSERT_TRUE(model->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
 
     scene.OnUpdate();
 
@@ -310,7 +310,7 @@ TEST(WorldSpeed, RampReturnsToNormalSpeedInRealSeconds)
 {
     // 段階的な明けは実時間で戻す。世界の時間で数えると、遅い分だけ戻るのが延びる
     NS::Obj::Scene scene;
-    const float dt = NS::Platform::FrameTimer::FixedDelta();
+    const float dt = NS::OS::FrameTimer::FixedDelta();
     const int steps = static_cast<int>(std::ceil(0.3f / dt - 1.0e-3f));
     scene.StartWorldSpeedRamp(0.2f, 0.3f, NS::Obj::Curve{});
     EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.2f);

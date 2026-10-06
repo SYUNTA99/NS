@@ -1,11 +1,11 @@
-#include "Runtime/Core/AABB.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/SphereCollision.h"
-#include "Runtime/Object/IUse/IUseCollision.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Physics/PhysicsScene.h"
+#include "NSlib/Core/AABB.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Components/SphereCollision.h"
+#include "NSlib/Object/IUse/IUseCollision.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Physics/PhysicsScene.h"
 
 #include <gtest/gtest.h>
 
@@ -35,8 +35,8 @@ namespace
     // 上面が y = 0 の床
     void AddFloor(NS::Obj::Scene& scene)
     {
-        NS::Core::OBB floor{};
-        floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+        NS::OBB floor{};
+        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
         floor.halfExtentX = 5.0f;
         floor.halfExtentY = 0.5f;
         floor.halfExtentZ = 5.0f;
@@ -44,18 +44,18 @@ namespace
     }
 
     // 床の上面をまたぐ細い柱。崖掴みが縁を探す箱と同じく幅 0
-    NS::Core::AABB BandAcrossFloorTop()
+    NS::AABB BandAcrossFloorTop()
     {
-        NS::Core::AABB region;
-        region.Center = NS::Core::Vector3{2.0f, 0.0f, 2.0f};
-        region.Extents = NS::Core::Vector3{0.0f, 0.25f, 0.0f};
+        NS::AABB region;
+        region.Center = NS::Vector3{2.0f, 0.0f, 2.0f};
+        region.Extents = NS::Vector3{0.0f, 0.25f, 0.0f};
         return region;
     }
 
-    bool HitsDownFrom(const NS::Obj::Scene& scene, const NS::Core::Vector3& from)
+    bool HitsDownFrom(const NS::Obj::Scene& scene, const NS::Vector3& from)
     {
         float distance = 0.0f;
-        return scene.Physics().Raycast(from, -NS::Core::Vector3::UnitY, 4.0f, distance);
+        return scene.Physics().Raycast(from, -NS::Vector3::UnitY, 4.0f, distance);
     }
 } // namespace
 
@@ -71,8 +71,8 @@ TEST(CollisionWindow, OverlapBoxAnswersLikeThePhysicsScene)
     AddFloor(scene);
     CollisionProbe* placed = scene.SpawnTransient<CollisionProbe>();
 
-    const std::vector<NS::Core::AABB> expected = scene.Physics().OverlapBox(BandAcrossFloorTop());
-    const std::vector<NS::Core::AABB> actual = NS::Obj::OverlapBoxCollision(*placed, BandAcrossFloorTop());
+    const std::vector<NS::AABB> expected = scene.Physics().OverlapBox(BandAcrossFloorTop());
+    const std::vector<NS::AABB> actual = NS::Obj::OverlapBoxCollision(*placed, BandAcrossFloorTop());
     ASSERT_FALSE(expected.empty());
     ASSERT_EQ(actual.size(), expected.size());
     for (std::size_t i = 0; i < expected.size(); ++i)
@@ -110,7 +110,7 @@ TEST(CollisionWindow, CollisionSyncsIntoItsOwnersPhysicsScene)
 
     NS::Obj::Scene scene;
     CollisionProbe* placed = scene.SpawnTransient<CollisionProbe>();
-    const NS::Core::Vector3 above{0.0f, 2.0f, 0.0f};
+    const NS::Vector3 above{0.0f, 2.0f, 0.0f};
     placed->sphere.RemoveFromPhysics();
     EXPECT_TRUE(placed->sphere.BodyId().IsInvalid());
     EXPECT_FALSE(HitsDownFrom(scene, above));

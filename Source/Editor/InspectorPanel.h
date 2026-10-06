@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Editor/InspectorReflection.h"
-#include "Runtime/Core/NonCopyable.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <cstdint>
 
@@ -11,7 +11,7 @@ namespace NS::Editor
 {
     //! @brief 選択中の対象のトランスフォームとコンポーネント構成を編集するインスペクターパネル
     //! @details 名前欄の一時状態を自分で持つ。改名は world を組み直すので、パネルを描き終えてから流す
-    class InspectorPanel : public NS::Core::NonCopyable
+    class InspectorPanel : public NS::NonCopyable
     {
     public:
         //! インスペクターを 1 枚描く。名前・トランスフォーム・コンポーネントの編集は controller へ流す

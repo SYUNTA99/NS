@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Scene/SceneJson.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Scene/SceneJson.h"
 
 namespace NS::Game::Level
 {

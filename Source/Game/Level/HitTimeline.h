@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Game/Level/HitTier.h"
-#include "Runtime/Object/Reflection/Curve.h"
-#include "Runtime/Object/Reflection/Reflection.h"
+#include "NSlib/Object/Reflection/Curve.h"
+#include "NSlib/Object/Reflection/Reflection.h"
 
 #pragma warning(push, 0)
 #include "ThirdParty/nlohmann/json.hpp"

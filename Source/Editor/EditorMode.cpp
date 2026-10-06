@@ -6,18 +6,18 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/IObjectSnapshotApplier.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
-#include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/Scene/SceneCamera.h"
-#include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Platform/Clock.h"
-#include "Runtime/Platform/Gamepad.h"
-#include "Runtime/Platform/Input.h"
-#include "Runtime/Platform/Keyboard.h"
-#include "Runtime/Platform/Mouse.h"
-#include "Runtime/UI/ImGuiContext.h"
+#include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Graphics/DebugDraw.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/Scene/SceneCamera.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Windows/Clock.h"
+#include "NSlib/Windows/Gamepad.h"
+#include "NSlib/Windows/Input.h"
+#include "NSlib/Windows/Keyboard.h"
+#include "NSlib/Windows/Mouse.h"
+#include "NSlib/UI/ImGuiContext.h"
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -33,10 +33,10 @@ namespace NS::Editor
         constexpr float k_CellHalfExtent = 0.5f;
 
         // 90 度をラジアンで
-        constexpr float k_QuarterTurnYaw = NS::Core::k_Pi * 0.5f;
+        constexpr float k_QuarterTurnYaw = NS::k_Pi * 0.5f;
 
-        constexpr NS::Core::Color k_CursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
-        constexpr NS::Core::Color k_CursorBlockedColor{1.0f, 0.1f, 0.1f, 1.0f};
+        constexpr NS::Color k_CursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
+        constexpr NS::Color k_CursorBlockedColor{1.0f, 0.1f, 0.1f, 1.0f};
 
         constexpr float k_StatusToastSeconds = 2.5f;
 
@@ -56,16 +56,16 @@ namespace NS::Editor
         //! ワールド座標をパネル上のスクリーン座標へ射影する。カメラの後ろ (w <= 0) なら false を返す
         struct CursorScreenProjector
         {
-            NS::Core::Matrix viewProjection; // 射影に使う view * projection
+            NS::Matrix viewProjection; // 射影に使う view * projection
             float originX = 0.0f;            // パネル左上の X
             float originY = 0.0f;            // パネル左上の Y
             float width = 0.0f;              // パネル幅
             float height = 0.0f;             // パネル高さ
 
-            bool operator()(const NS::Core::Vector3& world, ImVec2& out) const noexcept
+            bool operator()(const NS::Vector3& world, ImVec2& out) const noexcept
             {
-                const NS::Core::Vector4 worldH{world.x, world.y, world.z, 1.0f};
-                const NS::Core::Vector4 clip = NS::Core::Vector4::Transform(worldH, viewProjection);
+                const NS::Vector4 worldH{world.x, world.y, world.z, 1.0f};
+                const NS::Vector4 clip = NS::Vector4::Transform(worldH, viewProjection);
                 if (clip.w <= 0.0f)
                 {
                     return false;
@@ -97,12 +97,12 @@ namespace NS::Editor
         m_palette.TickInput(m_input, m_imgui);
 
         // カーソルの回転状態に合わせて、表示用のヨー角を滑らかに追従させる
-        const NS::Core::Quaternion targetQuat = NS::Core::Quaternion::CreateFromAxisAngle(
+        const NS::Quaternion targetQuat = NS::Quaternion::CreateFromAxisAngle(
             {0.0f, 1.0f, 0.0f}, static_cast<float>(m_currentRotation) * k_QuarterTurnYaw);
         constexpr float k_RotationSpringRate = 12.0f;
-        const float dt = NS::Platform::FrameTimer::FixedDelta();
+        const float dt = NS::OS::FrameTimer::FixedDelta();
         const float t = std::min(1.0f, k_RotationSpringRate * dt);
-        m_displayedYawQuat = NS::Core::Quaternion::Slerp(m_displayedYawQuat, targetQuat, t);
+        m_displayedYawQuat = NS::Quaternion::Slerp(m_displayedYawQuat, targetQuat, t);
     }
 
     void EditorMode::HandleSaveLoadInput() noexcept
@@ -118,14 +118,14 @@ namespace NS::Editor
             return;
         }
 
-        const NS::Platform::Keyboard& kb = m_input->Keyboard();
-        if (!kb.IsHeld(NS::Platform::Key::Ctrl))
+        const NS::OS::Keyboard& kb = m_input->Keyboard();
+        if (!kb.IsHeld(NS::OS::Key::Ctrl))
         {
             return;
         }
 
-        const bool shift = kb.IsHeld(NS::Platform::Key::Shift);
-        if (kb.IsPressed(NS::Platform::Key::S))
+        const bool shift = kb.IsHeld(NS::OS::Key::Shift);
+        if (kb.IsPressed(NS::OS::Key::S))
         {
             // Shift 付きは常に名前を付けて保存、素の Ctrl+S は上書き (名前が無ければ付けて保存へ落ちる)
             if (shift)
@@ -137,7 +137,7 @@ namespace NS::Editor
                 RequestSave();
             }
         }
-        if (kb.IsPressed(NS::Platform::Key::O))
+        if (kb.IsPressed(NS::OS::Key::O))
         {
             OpenLoadModal();
         }
@@ -281,7 +281,7 @@ namespace NS::Editor
         // 上書き保存などモーダルを開かずに終わった操作をトーストで知らせる
         if (m_statusTimer > 0.0f)
         {
-            m_statusTimer -= NS::Platform::FrameTimer::DeltaSeconds();
+            m_statusTimer -= NS::OS::FrameTimer::DeltaSeconds();
             ImGuiViewport* const vp = ImGui::GetMainViewport();
             if (vp != nullptr)
             {
@@ -318,9 +318,9 @@ namespace NS::Editor
             return;
         }
 
-        const NS::Core::AABB placeBox(m_cursor.placementCenter,
-                                      NS::Core::Vector3{k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
-        NS::Core::Color cursorColor = k_CursorOkColor;
+        const NS::AABB placeBox(m_cursor.placementCenter,
+                                      NS::Vector3{k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
+        NS::Color cursorColor = k_CursorOkColor;
 
         if (m_cursor.placementBlocked)
         {
@@ -349,8 +349,8 @@ namespace NS::Editor
             return;
         }
 
-        const NS::Core::Matrix vp = m_camera->ViewProjection();
-        const NS::Core::Vector3 c = m_cursor.placementCenter;
+        const NS::Matrix vp = m_camera->ViewProjection();
+        const NS::Vector3 c = m_cursor.placementCenter;
         constexpr float h = k_CellHalfExtent;
         const float vpW = static_cast<float>(view.width);
         const float vpH = static_cast<float>(view.height);
@@ -368,7 +368,7 @@ namespace NS::Editor
         const CursorScreenProjector project{vp, originX, originY, vpW, vpH};
 
         // 選択セルの境界ボックスを描画する
-        const NS::Core::Vector3 boxCorners[8] = {
+        const NS::Vector3 boxCorners[8] = {
             {c.x - h, c.y - h, c.z - h},
             {c.x + h, c.y - h, c.z - h},
             {c.x + h, c.y + h, c.z - h},
@@ -421,12 +421,12 @@ namespace NS::Editor
         if (slopeAngle >= 0.0f)
         {
             const float angle = slopeAngle;
-            const float rawHeight = std::tan(NS::Core::DegreesToRadians(angle)) * (2.0f * h);
+            const float rawHeight = std::tan(NS::DegreesToRadians(angle)) * (2.0f * h);
             const float height = std::min(rawHeight, 2.0f * h);
             const float yBot = -h;
             const float yTop = -h + height;
 
-            const NS::Core::Vector3 wedgeLocal[6] = {
+            const NS::Vector3 wedgeLocal[6] = {
                 {-h, yBot, -h},
                 {+h, yBot, -h},
                 {-h, yBot, +h},
@@ -439,8 +439,8 @@ namespace NS::Editor
             bool wedgeFront[6]{};
             for (int i = 0; i < 6; ++i)
             {
-                const NS::Core::Vector3 r = NS::Core::Vector3::Transform(wedgeLocal[i], m_displayedYawQuat);
-                wedgeFront[i] = project(NS::Core::Vector3{c.x + r.x, c.y + r.y, c.z + r.z}, wedgeScreen[i]);
+                const NS::Vector3 r = NS::Vector3::Transform(wedgeLocal[i], m_displayedYawQuat);
+                wedgeFront[i] = project(NS::Vector3{c.x + r.x, c.y + r.y, c.z + r.z}, wedgeScreen[i]);
             }
 
             static constexpr int k_WedgeEdges[9][2] = {
@@ -488,7 +488,7 @@ namespace NS::Editor
         // パレット雛形を cell 座標と回転 step だけ書き込んで 1 体分の姿を作る
         nlohmann::json placed = m_palette.CurrentTemplate();
         NS::Obj::SetObjectPosition(
-            placed, NS::Core::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
+            placed, NS::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
         NS::Editor::SetCellRotationStep(placed, rotation);
 
         // 既存 cell は同じ永続 id で置換、空 cell は新規採番
@@ -590,16 +590,16 @@ namespace NS::Editor
         int localY = 0;
         ViewRectToLocal(view, mouseX, mouseY, localX, localY);
 
-        const NS::Core::Matrix vp = m_camera->ViewProjection();
-        const NS::Core::Ray ray = NS::Editor::ScreenToWorldRay(vp, ViewRectSize(view), localX, localY);
+        const NS::Matrix vp = m_camera->ViewProjection();
+        const NS::Ray ray = NS::Editor::ScreenToWorldRay(vp, ViewRectSize(view), localX, localY);
 
         float bestT = std::numeric_limits<float>::max();
         bool hit = false;
         std::int16_t hitX = 0;
         std::int16_t hitY = 0;
         std::int16_t hitZ = 0;
-        NS::Core::Vector3 hitPoint{};
-        NS::Core::Vector3 hitNormal{0.0f, 1.0f, 0.0f};
+        NS::Vector3 hitPoint{};
+        NS::Vector3 hitNormal{0.0f, 1.0f, 0.0f};
 
         std::vector<CellCoord> cells;
         if (m_collectCells)
@@ -611,8 +611,8 @@ namespace NS::Editor
             const std::int16_t cx = cell.x;
             const std::int16_t cy = cell.y;
             const std::int16_t cz = cell.z;
-            const NS::Core::Vector3 center{static_cast<float>(cx), static_cast<float>(cy), static_cast<float>(cz)};
-            const NS::Core::AABB box(center, {k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
+            const NS::Vector3 center{static_cast<float>(cx), static_cast<float>(cy), static_cast<float>(cz)};
+            const NS::AABB box(center, {k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
 
             float t = 0.0f;
             if (ray.Intersects(box, t) && t < bestT)
@@ -622,11 +622,11 @@ namespace NS::Editor
                 hitX = cx;
                 hitY = cy;
                 hitZ = cz;
-                hitPoint = NS::Core::Vector3(ray.position.x + ray.direction.x * t,
+                hitPoint = NS::Vector3(ray.position.x + ray.direction.x * t,
                                              ray.position.y + ray.direction.y * t,
                                              ray.position.z + ray.direction.z * t);
 
-                const NS::Core::Vector3 d = hitPoint - center;
+                const NS::Vector3 d = hitPoint - center;
                 const float ax = std::fabs(d.x);
                 const float ay = std::fabs(d.y);
                 const float az = std::fabs(d.z);
@@ -638,7 +638,7 @@ namespace NS::Editor
                     {
                         signX = 1.0f;
                     }
-                    hitNormal = NS::Core::Vector3{signX, 0.0f, 0.0f};
+                    hitNormal = NS::Vector3{signX, 0.0f, 0.0f};
                 }
                 else if (ay > az)
                 {
@@ -647,7 +647,7 @@ namespace NS::Editor
                     {
                         signY = 1.0f;
                     }
-                    hitNormal = NS::Core::Vector3{0.0f, signY, 0.0f};
+                    hitNormal = NS::Vector3{0.0f, signY, 0.0f};
                 }
                 else
                 {
@@ -656,7 +656,7 @@ namespace NS::Editor
                     {
                         signZ = 1.0f;
                     }
-                    hitNormal = NS::Core::Vector3{0.0f, 0.0f, signZ};
+                    hitNormal = NS::Vector3{0.0f, 0.0f, signZ};
                 }
             }
         }
@@ -676,7 +676,7 @@ namespace NS::Editor
             m_cursor.hitY = hitY;
             m_cursor.hitZ = hitZ;
             m_cursor.placementCenter =
-                NS::Core::Vector3{static_cast<float>(placeX), static_cast<float>(placeY), static_cast<float>(placeZ)};
+                NS::Vector3{static_cast<float>(placeX), static_cast<float>(placeY), static_cast<float>(placeZ)};
             m_cursor.placeX = placeX;
             m_cursor.placeY = placeY;
             m_cursor.placeZ = placeZ;
@@ -684,7 +684,7 @@ namespace NS::Editor
             return;
         }
 
-        NS::Core::Vector3 cellCenter{};
+        NS::Vector3 cellCenter{};
         if (!NS::Editor::TryGroundPlaneFallback(ray, cellCenter))
         {
             return;
@@ -714,28 +714,28 @@ namespace NS::Editor
             return;
         }
 
-        NS::Platform::Mouse& mouse = m_input->Mouse();
-        if (mouse.IsPressed(NS::Platform::MouseButton::Left) && !m_cursor.placementBlocked)
+        NS::OS::Mouse& mouse = m_input->Mouse();
+        if (mouse.IsPressed(NS::OS::MouseButton::Left) && !m_cursor.placementBlocked)
         {
             PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
         }
-        if (mouse.IsPressed(NS::Platform::MouseButton::Right) &&
+        if (mouse.IsPressed(NS::OS::MouseButton::Right) &&
             HasObjectAtCell(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
         {
             DeleteAtProgrammatic(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
         }
 
-        NS::Platform::Gamepad& gp = m_input->Gamepad(0);
+        NS::OS::Gamepad& gp = m_input->Gamepad(0);
         if (!gp.IsConnected())
         {
             return;
         }
 
-        if (gp.IsPressed(NS::Platform::GamepadButton::A) && !m_cursor.placementBlocked)
+        if (gp.IsPressed(NS::OS::GamepadButton::A) && !m_cursor.placementBlocked)
         {
             PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
         }
-        if (gp.IsPressed(NS::Platform::GamepadButton::B) &&
+        if (gp.IsPressed(NS::OS::GamepadButton::B) &&
             HasObjectAtCell(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
         {
             DeleteAtProgrammatic(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
@@ -758,8 +758,8 @@ namespace NS::Editor
         }
 
         const bool rotate =
-            m_input->Keyboard().IsPressed(NS::Platform::Key::R) ||
-            (m_input->Gamepad(0).IsConnected() && m_input->Gamepad(0).IsPressed(NS::Platform::GamepadButton::Y));
+            m_input->Keyboard().IsPressed(NS::OS::Key::R) ||
+            (m_input->Gamepad(0).IsConnected() && m_input->Gamepad(0).IsPressed(NS::OS::GamepadButton::Y));
 
         if (!rotate || !m_cursor.valid)
         {
@@ -793,20 +793,20 @@ namespace NS::Editor
             return;
         }
 
-        NS::Platform::Keyboard& kb = m_input->Keyboard();
-        const bool ctrl = kb.IsHeld(NS::Platform::Key::Ctrl);
-        const bool shift = kb.IsHeld(NS::Platform::Key::Shift);
+        NS::OS::Keyboard& kb = m_input->Keyboard();
+        const bool ctrl = kb.IsHeld(NS::OS::Key::Ctrl);
+        const bool shift = kb.IsHeld(NS::OS::Key::Shift);
 
-        if (ctrl && shift && kb.IsPressed(NS::Platform::Key::Z))
+        if (ctrl && shift && kb.IsPressed(NS::OS::Key::Z))
         {
             PerformRedo();
             return;
         }
-        if (ctrl && kb.IsPressed(NS::Platform::Key::Z))
+        if (ctrl && kb.IsPressed(NS::OS::Key::Z))
         {
             PerformUndo();
         }
-        if (ctrl && kb.IsPressed(NS::Platform::Key::Y))
+        if (ctrl && kb.IsPressed(NS::OS::Key::Y))
         {
             PerformRedo();
         }

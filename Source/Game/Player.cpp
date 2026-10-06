@@ -21,18 +21,18 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/SkidPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
-#include "Runtime/Object/Components/Animation.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/HitReaction.h"
-#include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Components/PlayerInput.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/IUse/IUseSceneObj.h"
-#include "Runtime/Object/ObjectList.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Object/Components/Animation.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Components/HitReaction.h"
+#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/Components/PlayerInput.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/ObjectList.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>
@@ -53,7 +53,7 @@ Player::Player() noexcept
     m_impactEffects = std::make_unique<NS::Game::Player::ImpactEffects>();
     (void)CreatePart("Model");
     ModelPart()->SetMaterialRef("player");
-    ModelPart()->SetBaseColor(NS::Core::Vector3{0.5f, 0.5f, 0.5f});
+    ModelPart()->SetBaseColor(NS::Vector3{0.5f, 0.5f, 0.5f});
     AttachFixedComponent(*m_appearance);
     AttachFixedComponent(*m_body);
     AttachFixedComponent(*m_collider);
@@ -122,7 +122,7 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
     // 後ろへも下げない。下げるのは飛んでいく相手を画面に収めるためで、外れの相手はほとんど飛ばない
     if (IsRebounding() && impact.tier == NS::Game::Level::HitTier::Wide)
     {
-        state.rebound.slamDirection = NS::Core::Vector3{};
+        state.rebound.slamDirection = NS::Vector3{};
         state.rebound.pullBack = false;
     }
     if (IsRebounding() && impact.tier == NS::Game::Level::HitTier::Center && OwningScene() != nullptr)
@@ -145,7 +145,7 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
     state.charge.hasAimTarget = TryGetAimTarget(aim);
     if (state.charge.hasAimTarget)
     {
-        state.charge.aimTargetCenter = NS::Core::Vector3{aim.bounds.Center.x, aim.bounds.Center.y, aim.bounds.Center.z};
+        state.charge.aimTargetCenter = NS::Vector3{aim.bounds.Center.x, aim.bounds.Center.y, aim.bounds.Center.z};
         state.charge.aimTargetRadius = std::max({aim.bounds.Extents.x, aim.bounds.Extents.y, aim.bounds.Extents.z});
     }
     return state;
@@ -200,7 +200,7 @@ void Player::ObserveStep()
 
 void Player::DecideStep()
 {
-    AdvanceCharge(NS::Platform::FrameTimer::FixedDelta());
+    AdvanceCharge(NS::OS::FrameTimer::FixedDelta());
     if (m_resolver->IsActive())
     {
         m_resolver->StepState();
@@ -214,7 +214,7 @@ void Player::DecideStep()
 
 void Player::StateStep()
 {
-    const float dt = NS::Platform::FrameTimer::FixedDelta();
+    const float dt = NS::OS::FrameTimer::FixedDelta();
     if (CanMoveBody() && dt > 0.0f)
     {
         PrepareStateStep();
@@ -230,7 +230,7 @@ void Player::StateStep()
 
 void Player::BodyStep()
 {
-    const float dt = NS::Platform::FrameTimer::FixedDelta();
+    const float dt = NS::OS::FrameTimer::FixedDelta();
     if (CanMoveBody() && dt > 0.0f)
     {
         MoveBody(dt);
@@ -277,7 +277,7 @@ std::string_view Player::ChooseClip(float lateralSpeed) const noexcept
         return m_params->m_idleClip;
     }
 
-    if (lateralSpeed <= NS::Core::k_Epsilon)
+    if (lateralSpeed <= NS::k_Epsilon)
     {
         return m_params->m_idleClip;
     }
@@ -370,7 +370,7 @@ void Player::RestartFrom(const nlohmann::json& baseline) noexcept
 {
     // 出現位置はエディタで配置したプレイヤーの capsule 中心の world 位置そのもの
     // 凍結に既にある値なので写しは持たず、その都度読む。居なければ新規レベルで補う位置へ戻す
-    NS::Core::Vector3 spawn = DefaultSpawnPosition(Collider());
+    NS::Vector3 spawn = DefaultSpawnPosition(Collider());
     const std::size_t index = NS::Obj::FindObjectIndexById(baseline, Id());
     if (index != NS::Obj::k_NoObjectIndex)
     {
@@ -413,7 +413,7 @@ int Player::Health() const noexcept
     return m_health.Current();
 }
 
-void Player::SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept
+void Player::SetDesiredMove(const NS::Vector3& worldDir, float speedScale01) noexcept
 {
     m_input->SetDesiredMove(worldDir, speedScale01);
 }
@@ -423,7 +423,7 @@ float Player::DesiredSpeedScale() const noexcept
     return m_input->DesiredSpeedScale();
 }
 
-NS::Core::Vector3 Player::DesiredDirection() const noexcept
+NS::Vector3 Player::DesiredDirection() const noexcept
 {
     return m_input->DesiredDirection();
 }
@@ -495,7 +495,7 @@ float Player::BodySlamProgress01() const noexcept
     {
         return 0.0f;
     }
-    return NS::Core::Clamp(m_slam.travelled / m_slam.distanceTarget, 0.0f, 1.0f);
+    return NS::Clamp(m_slam.travelled / m_slam.distanceTarget, 0.0f, 1.0f);
 }
 
 float Player::BodySlamDistance() const noexcept
@@ -536,7 +536,7 @@ bool Player::CanMoveBody() const noexcept
 
 void Player::ResetState() noexcept
 {
-    m_body->SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+    m_body->SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
     m_input->ResetMovementInput();
     m_prevJumpHeld = false;
     m_jumpsRemaining = 1;
@@ -544,16 +544,16 @@ void Player::ResetState() noexcept
     m_bufferTimer = 0.0f;
     m_body->SetGrounded(false);
     m_ledgeTopY = 0.0f;
-    m_ledgeFaceNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    m_ledgeFaceNormal = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_ledgeMantleTimer = 0.0f;
-    m_facingDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    m_facingDir = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_lastMoveDistance = 0.0f;
     m_request.bufferRemaining = 0.0f;
     m_request.spent = false;
     m_slam.isTap = false;
     m_request.charge01 = 0.0f;
     m_request.overcharge01 = 0.0f;
-    m_request.dir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    m_request.dir = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_request.hasDir = false;
     m_request.verticalSpeed = 0.0f;
     m_slam.charge01 = 0.0f;
@@ -562,8 +562,8 @@ void Player::ResetState() noexcept
     m_slam.travelled = 0.0f;
     m_slam.distanceTarget = 0.0f;
     m_slam.justStarted = false;
-    m_slam.dir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-    m_rebound.direction = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    m_slam.dir = NS::Vector3{0.0f, 0.0f, 0.0f};
+    m_rebound.direction = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_rebound.spinSpeed = 0.0f;
     m_rebound.missTumble.reset();
     m_skid = SkidRecord{};
@@ -642,8 +642,8 @@ namespace
     constexpr float k_SpawnClearance = 0.01f;
 } // namespace
 
-NS::Core::Vector3 DefaultSpawnPosition(const NS::Obj::Collider& collider) noexcept
+NS::Vector3 DefaultSpawnPosition(const NS::Obj::Collider& collider) noexcept
 {
-    return NS::Core::Vector3{
+    return NS::Vector3{
         0.0f, k_DefaultFloorTop + collider.StandingHalfHeight() + collider.CapsuleRadius() + k_SpawnClearance, 0.0f};
 }

@@ -5,7 +5,7 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
-#include "Runtime/Object/Components/Body.h"
+#include "NSlib/Object/Components/Body.h"
 
 namespace NS::Game::Player
 {

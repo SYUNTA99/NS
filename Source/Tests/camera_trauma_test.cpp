@@ -1,7 +1,7 @@
-#include "Runtime/Object/Components/CameraManager.h"
-#include "Runtime/Object/Components/CameraModifier.h"
-#include "Runtime/Object/IUse/IUseCamera.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Object/Components/CameraManager.h"
+#include "NSlib/Object/Components/CameraModifier.h"
+#include "NSlib/Object/IUse/IUseCamera.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -36,7 +36,7 @@ namespace
         return desc;
     }
 
-    float AngleLength(const NS::Core::Vector3& angles)
+    float AngleLength(const NS::Vector3& angles)
     {
         return std::sqrt(angles.x * angles.x + angles.y * angles.y + angles.z * angles.z);
     }
@@ -51,7 +51,7 @@ TEST(CameraTrauma, HalfTraumaShakesAQuarter)
     for (int i = 0; i < 30; ++i)
     {
         trauma.Tick();
-        const NS::Core::Vector3 angles = trauma.Angles();
+        const NS::Vector3 angles = trauma.Angles();
         EXPECT_LE(std::fabs(angles.x), 4.0f * 0.25f + 1.0e-5f);
         EXPECT_LE(std::fabs(angles.y), 2.0f * 0.25f + 1.0e-5f);
         EXPECT_LE(std::fabs(angles.z), 1.0f * 0.25f + 1.0e-5f);
@@ -88,13 +88,13 @@ TEST(CameraTrauma, NeighbouringFramesDoNotJump)
     desc.shape.decayPerSecond = 0.5f;
     trauma.AddTrauma(desc);
     trauma.Tick();
-    NS::Core::Vector3 previous = trauma.Angles();
+    NS::Vector3 previous = trauma.Angles();
     float largest = AngleLength(previous);
     float step = 0.0f;
     for (int i = 0; i < 90; ++i)
     {
         trauma.Tick();
-        const NS::Core::Vector3 now = trauma.Angles();
+        const NS::Vector3 now = trauma.Angles();
         largest = std::max(largest, AngleLength(now));
         step = std::max(step, AngleLength(now - previous));
         previous = now;
@@ -125,9 +125,9 @@ TEST(CameraTrauma, KickPeaksOnItsFrameTowardItsDirection)
     NS::Obj::CameraTraumaDesc desc;
     desc.kick.degrees = 3.0f;
     desc.kick.peakFrames = 1;
-    desc.kick.direction = NS::Core::Vector2{-1.0f, 0.0f};
+    desc.kick.direction = NS::Vector2{-1.0f, 0.0f};
     trauma.AddTrauma(desc);
-    const NS::Core::Vector3 first = trauma.Angles();
+    const NS::Vector3 first = trauma.Angles();
     EXPECT_FLOAT_EQ(first.x, -3.0f);
     float previous = std::fabs(first.x);
     for (int i = 0; i < 6; ++i)
@@ -165,17 +165,17 @@ TEST(CameraTrauma, HeldTraumaStaysUntilReleased)
 TEST(CameraTrauma, ShakesTheDrawnPoseOnlyAndScalesBySetting)
 {
     NS::Obj::Scene scene;
-    ASSERT_NE(PlaceViewCamera(scene, NS::Core::Vector3{0.0f, 0.0f, -5.0f}, NS::Core::Vector3{}), nullptr);
+    ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
     NS::Obj::CameraManager* cameras = scene.GetCameraManager();
     ASSERT_NE(cameras, nullptr);
     scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Camera);
-    const NS::Core::Vector3 forwardBefore = cameras->ForwardHorizontal();
+    const NS::Vector3 forwardBefore = cameras->ForwardHorizontal();
     const std::optional<NS::Obj::CameraPose> calm = cameras->ComposePose(1.0f);
     ASSERT_TRUE(calm.has_value());
 
     NS::Obj::CameraTraumaDesc desc = TraumaOf(1.0f);
     desc.kick.degrees = 3.0f;
-    desc.kick.direction = NS::Core::Vector2{1.0f, 0.0f};
+    desc.kick.direction = NS::Vector2{1.0f, 0.0f};
     ASSERT_TRUE(cameras->AddTrauma(desc));
     EXPECT_FLOAT_EQ(cameras->Trauma(), 1.0f);
     const std::optional<NS::Obj::CameraPose> shaken = cameras->ComposePose(1.0f);
@@ -200,7 +200,7 @@ TEST(CameraTrauma, ShakesTheDrawnPoseOnlyAndScalesBySetting)
 TEST(CameraTrauma, HitEffectsStopKeepsTheTrauma)
 {
     NS::Obj::Scene scene;
-    ASSERT_NE(PlaceViewCamera(scene, NS::Core::Vector3{0.0f, 0.0f, -5.0f}, NS::Core::Vector3{}), nullptr);
+    ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
     NS::Obj::CameraManager* cameras = scene.GetCameraManager();
     ASSERT_NE(cameras, nullptr);
     ASSERT_TRUE(cameras->AddTrauma(TraumaOf(0.4f)));

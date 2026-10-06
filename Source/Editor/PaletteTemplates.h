@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Runtime/Object/ObjectJson.h"
+#include "NSlib/Object/ObjectJson.h"
 
 #include <array>
 

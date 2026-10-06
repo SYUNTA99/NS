@@ -1,14 +1,14 @@
 #include "Editor/EditorObjects.h"
 #include "Game/Level/DeathZone.h"
 #include "Game/Player.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/SphereCollision.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/Reflection/Archetype.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Platform/Filesystem.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/SphereCollision.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/Reflection/Archetype.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Windows/Filesystem.h"
 
 #include <gtest/gtest.h>
 
@@ -86,7 +86,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     NS::Obj::SphereCollision* sphere = NS::Obj::ComponentCast<NS::Obj::SphereCollision>(actor->Part("Collision"));
     ASSERT_NE(sphere, nullptr);
     sphere->SetRadius(1.5f);
-    actor->Root().SetPosition(NS::Core::Vector3{3.0f, 4.0f, 5.0f});
+    actor->Root().SetPosition(NS::Vector3{3.0f, 4.0f, 5.0f});
 
     const nlohmann::json saved = scene.ToJson();
     const nlohmann::json& objects = NS::Obj::SceneJsonObjects(saved);
@@ -127,30 +127,30 @@ TEST(SceneActor, FileTextRoundTripKeepsClass)
 TEST(SceneActor, GravityDirectionRoundTripsThroughFileAndScene)
 {
     nlohmann::json doc = NS::Obj::MakeSceneJson();
-    NS::Obj::SetSceneJsonGravityDirection(doc, NS::Core::Vector3{3.0f, 0.0f, 0.0f});
+    NS::Obj::SetSceneJsonGravityDirection(doc, NS::Vector3{3.0f, 0.0f, 0.0f});
 
     const std::string text = NS::Obj::SerializeSceneToJson(doc);
     nlohmann::json decoded;
     ASSERT_TRUE(NS::Obj::DeserializeSceneFromJson(decoded, text));
-    EXPECT_EQ(NS::Obj::SceneJsonGravityDirection(decoded), (NS::Core::Vector3{1.0f, 0.0f, 0.0f}));
+    EXPECT_EQ(NS::Obj::SceneJsonGravityDirection(decoded), (NS::Vector3{1.0f, 0.0f, 0.0f}));
 
     NS::Obj::Scene scene;
     scene.LoadJson(decoded);
-    EXPECT_EQ(scene.GravityDirection(), (NS::Core::Vector3{1.0f, 0.0f, 0.0f}));
-    EXPECT_EQ(scene.Physics().Gravity(), (NS::Core::Vector3{25.0f, 0.0f, 0.0f}));
-    EXPECT_EQ(NS::Obj::SceneJsonGravityDirection(scene.ToJson()), (NS::Core::Vector3{1.0f, 0.0f, 0.0f}));
+    EXPECT_EQ(scene.GravityDirection(), (NS::Vector3{1.0f, 0.0f, 0.0f}));
+    EXPECT_EQ(scene.Physics().Gravity(), (NS::Vector3{25.0f, 0.0f, 0.0f}));
+    EXPECT_EQ(NS::Obj::SceneJsonGravityDirection(scene.ToJson()), (NS::Vector3{1.0f, 0.0f, 0.0f}));
 }
 
 TEST(SceneActor, InvalidGravityDirectionFallsBackToDown)
 {
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     doc["environment"]["gravityDirection"] = nlohmann::json::array({0.0f, 0.0f, 0.0f});
-    EXPECT_EQ(NS::Obj::SceneJsonGravityDirection(doc), (NS::Core::Vector3{0.0f, -1.0f, 0.0f}));
+    EXPECT_EQ(NS::Obj::SceneJsonGravityDirection(doc), (NS::Vector3{0.0f, -1.0f, 0.0f}));
 
     NS::Obj::Scene scene;
-    scene.SetGravityDirection(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
-    EXPECT_EQ(scene.GravityDirection(), (NS::Core::Vector3{0.0f, -1.0f, 0.0f}));
-    EXPECT_EQ(scene.Physics().Gravity(), (NS::Core::Vector3{0.0f, -25.0f, 0.0f}));
+    scene.SetGravityDirection(NS::Vector3{0.0f, 0.0f, 0.0f});
+    EXPECT_EQ(scene.GravityDirection(), (NS::Vector3{0.0f, -1.0f, 0.0f}));
+    EXPECT_EQ(scene.Physics().Gravity(), (NS::Vector3{0.0f, -25.0f, 0.0f}));
 }
 
 TEST(SceneActor, PhysicsSettingsIsNotAPlaceableComponent)
@@ -161,9 +161,9 @@ TEST(SceneActor, PhysicsSettingsIsNotAPlaceableComponent)
 TEST(SceneActor, ShippedSceneUsesRegisteredClasses)
 {
     // 出荷シーンの配置物はどれも登録済みのクラスを持つ。素の Actor で組まれる物が無い
-    const std::string path = NS::Platform::FileSystem::Combine(
-        NS::Platform::FileSystem::Combine(
-            NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+    const std::string path = NS::OS::FileSystem::Combine(
+        NS::OS::FileSystem::Combine(
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
         "new_scene.scene");
     nlohmann::json doc;
     ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path));
@@ -264,17 +264,17 @@ TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosit
         nlohmann::json{{"class", "Player"}, {"parts", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     ASSERT_TRUE(NS::Editor::EnsurePlayerObject(doc));
-    const NS::Core::Vector3 ensured = NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(doc)[0]);
+    const NS::Vector3 ensured = NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(doc)[0]);
 
     NS::Obj::Scene scene;
     scene.LoadJson(doc);
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    const NS::Core::Vector3 fallback = DefaultSpawnPosition(player->Collider());
+    const NS::Vector3 fallback = DefaultSpawnPosition(player->Collider());
     EXPECT_FLOAT_EQ(ensured.y, fallback.y);
 
     // 凍結に自機が居ないやり直しは、補う位置と同じ高さへ戻る
-    player->Root().SetPosition(NS::Core::Vector3{3.0f, 40.0f, 3.0f});
+    player->Root().SetPosition(NS::Vector3{3.0f, 40.0f, 3.0f});
     player->RestartFrom(NS::Obj::MakeSceneJson());
     EXPECT_FLOAT_EQ(player->Root().Position().x, fallback.x);
     EXPECT_FLOAT_EQ(player->Root().Position().y, fallback.y);
@@ -285,9 +285,9 @@ TEST(SceneLoad, CourseSceneHasOneDeathZoneAndNoUnregisteredActor)
 {
     // 同梱の course.scene は落下死の範囲 (DeathZone) をちょうど 1 体持ち、未登録のクラスで素の Actor へ落ちる物が無い
     // クラス名は保存の鍵なので、クラスを改名してこのシーンを書き換え忘れるとここが赤になる
-    const std::string path = NS::Platform::FileSystem::Combine(
-        NS::Platform::FileSystem::Combine(
-            NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+    const std::string path = NS::OS::FileSystem::Combine(
+        NS::OS::FileSystem::Combine(
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
         "course.scene");
     nlohmann::json doc;
     ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path));

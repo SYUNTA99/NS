@@ -1,14 +1,14 @@
 #pragma once
 
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Reflection/Curve.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Reflection/Curve.h"
 
 namespace NS::Game::Level
 {
     //! ロックオンの枠の見た目の調整値。TargetMarker が欄として持つ
     struct TargetMarkerDesc
     {
-        NS::Core::Vector3 color{245.0f / 255.0f, 247.0f / 255.0f, 1.0f};
+        NS::Vector3 color{245.0f / 255.0f, 247.0f / 255.0f, 1.0f};
         float lineThickness = 3.0f;
         float armRatio = 0.25f;
         float frameGap = 6.0f;
@@ -23,11 +23,11 @@ namespace NS::Game::Level
                                             NS::Obj::Curve::Key{0.75f, 0.70f},
                                             NS::Obj::Curve::Key{1.0f, 1.0f}},
                                    .count = 5};
-        NS::Core::Vector3 appearColor{1.0f, 1.0f, 1.0f};
+        NS::Vector3 appearColor{1.0f, 1.0f, 1.0f};
         float appearAlpha = 0.35f;
         float lostScale = 0.9f;
         int lostFrames = 2;
-        NS::Core::Vector3 outlineColor{12.0f / 255.0f, 20.0f / 255.0f, 36.0f / 255.0f};
+        NS::Vector3 outlineColor{12.0f / 255.0f, 20.0f / 255.0f, 36.0f / 255.0f};
         float outlineAlpha = 0.6f;
     };
 
@@ -47,13 +47,13 @@ namespace NS::Game::Level
         float startFade = 0.5f;
         float frontSoftness = 0.3f;
         float lateStageFrom = 1.0f / 3.0f;
-        NS::Core::Vector3 earlyColor{72.0f / 255.0f, 230.0f / 255.0f, 120.0f / 255.0f};
-        NS::Core::Vector3 lateColor{1.0f, 208.0f / 255.0f, 48.0f / 255.0f};
-        NS::Core::Vector3 fullColor{1.0f, 64.0f / 255.0f, 56.0f / 255.0f};
+        NS::Vector3 earlyColor{72.0f / 255.0f, 230.0f / 255.0f, 120.0f / 255.0f};
+        NS::Vector3 lateColor{1.0f, 208.0f / 255.0f, 48.0f / 255.0f};
+        NS::Vector3 fullColor{1.0f, 64.0f / 255.0f, 56.0f / 255.0f};
         // 溜めすぎきった時の色。溜めきりの赤から溜めすぎの深さで移る。暗い床でも赤と見分けられる明るさの紫
-        NS::Core::Vector3 overchargeColor{168.0f / 255.0f, 64.0f / 255.0f, 1.0f};
-        NS::Core::Vector3 plainColor{224.0f / 255.0f, 232.0f / 255.0f, 242.0f / 255.0f};
-        NS::Core::Vector3 darkColor{12.0f / 255.0f, 20.0f / 255.0f, 36.0f / 255.0f};
+        NS::Vector3 overchargeColor{168.0f / 255.0f, 64.0f / 255.0f, 1.0f};
+        NS::Vector3 plainColor{224.0f / 255.0f, 232.0f / 255.0f, 242.0f / 255.0f};
+        NS::Vector3 darkColor{12.0f / 255.0f, 20.0f / 255.0f, 36.0f / 255.0f};
         float darkAlpha = 1.0f;
         float bandEdgeAlpha = 0.85f;
         float bandFillAlpha = 0.30f;

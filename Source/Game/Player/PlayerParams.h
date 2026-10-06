@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Game/Player/PlayerGravity.h"
-#include "Runtime/Object/Component.h"
-#include "Runtime/Object/Reflection/Curve.h"
+#include "NSlib/Object/Component.h"
+#include "NSlib/Object/Reflection/Curve.h"
 
 #include <algorithm>
 #include <string>

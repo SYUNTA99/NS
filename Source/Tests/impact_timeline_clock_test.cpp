@@ -4,21 +4,21 @@
 #include "Game/Player.h"
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/CameraManager.h"
-#include "Runtime/Object/Components/CameraModifier.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/HitReaction.h"
-#include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ITickable.h"
-#include "Runtime/Object/IUse/IUseCamera.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/UpdatePhase.h"
-#include "Runtime/Platform/Clock.h"
-#include "Runtime/Platform/Input.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/CameraManager.h"
+#include "NSlib/Object/Components/CameraModifier.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Components/HitReaction.h"
+#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ITickable.h"
+#include "NSlib/Object/IUse/IUseCamera.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/UpdatePhase.h"
+#include "NSlib/Windows/Clock.h"
+#include "NSlib/Windows/Input.h"
 #include "Tests/TestHitTimelines.h"
 #include "Tests/TestViewCamera.h"
 
@@ -44,25 +44,25 @@ namespace
         nlohmann::json player = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(player, "Player");
         NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(rock, "MapObj");
         NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{rockX, 0.5f, rockZ});
+        NS::Obj::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, rockZ});
         if (mass > 0.0f)
         {
             NS::Obj::ObjectJsonParts(rock)["Params"]["質量"] = mass;
         }
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.LoadJson(doc);
-        NS::Core::OBB floor{};
-        floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+        NS::OBB floor{};
+        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
         floor.halfExtentX = 100.0f;
         floor.halfExtentY = 0.5f;
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-        PlaceViewCamera(scene, NS::Core::Vector3{}, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
@@ -82,7 +82,7 @@ namespace
         bool rebounding = false;
         bool rockFrozen = false;
         bool rockFlying = false;
-        NS::Core::Vector3 shape{1.0f, 1.0f, 1.0f};
+        NS::Vector3 shape{1.0f, 1.0f, 1.0f};
         bool shapeAnimating = false;
         int flashRemaining = 0;
         float padLeft = 0.0f;
@@ -109,7 +109,7 @@ namespace
     std::vector<ClockFrame> RunHit(Player& player, MapObj& rock, float charge01, int frames, float overcharge01 = 0.0f)
     {
         std::vector<ClockFrame> trace;
-        player.RequestBodySlam(charge01, NS::Core::Vector3{0.0f, 0.0f, 1.0f}, 0.0f, overcharge01);
+        player.RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f}, 0.0f, overcharge01);
         bool detected = false;
         for (int frame = 0; frame < 60 + frames && static_cast<int>(trace.size()) < frames; ++frame)
         {
@@ -132,7 +132,7 @@ namespace
             now.shape = player.Resolver().ShapeFactors();
             now.shapeAnimating = player.Resolver().IsShapeAnimating();
             now.flashRemaining = player.HitReactionPart()->FlashFramesRemaining();
-            now.padLeft = NS::Platform::Input::Get().Gamepad(0).Vibration().left;
+            now.padLeft = NS::OS::Input::Get().Gamepad(0).Vibration().left;
             if (const NS::Obj::CameraManager* cameras = player.GetCameraManager())
             {
                 now.shaking = cameras->FindModifier<NS::Obj::CameraShakeModifier>() != nullptr;
@@ -403,9 +403,9 @@ TEST(ImpactTimelineClock, ANewHitAbortsTheRunningTimeline)
     ScopedHitTimelineDirectory::SetBothTiers(noShape);
 
     // 飛んだ相手を自機の前へ戻し、置いて当て直す
-    rock->Root().SetPosition(player->Root().Position() + NS::Core::Vector3{0.0f, -0.5f, 0.6f});
+    rock->Root().SetPosition(player->Root().Position() + NS::Vector3{0.0f, -0.5f, 0.6f});
     player->Body().SetGrounded(true);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     bool rehit = false;
     for (int frame = 0; frame < 20 && !rehit; ++frame)
     {
@@ -529,9 +529,9 @@ TEST(ImpactTimelineClock, TraumaEventAddsTraumaThatStacksOnTheNextHit)
     EXPECT_NEAR(cameras->Trauma(), added, 1.0e-5f);
     // 次の当たりは前の当たりの返りを止めるが、トラウマは残して足す
     player->HitReactionPart()->Stop();
-    rock->Root().SetPosition(player->Root().Position() + NS::Core::Vector3{0.0f, -0.5f, 0.6f});
+    rock->Root().SetPosition(player->Root().Position() + NS::Vector3{0.0f, -0.5f, 0.6f});
     player->Body().SetGrounded(true);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     bool rehit = false;
     for (int frame = 0; frame < 30 && !rehit; ++frame)
     {
@@ -572,7 +572,7 @@ TEST(ImpactTimelineClock, ReturnsStartOnTheirOwnFrames)
     };
     const ScopedHitTimelineDirectory directory("Returns");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    (void)NS::Platform::Input::Get().Gamepad(0).SetVibration(0.0f, 0.0f);
+    (void)NS::OS::Input::Get().Gamepad(0).SetVibration(0.0f, 0.0f);
     NS::Obj::Scene scene;
     Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
@@ -682,11 +682,11 @@ TEST(ImpactTimelineClock, MissCameraLurchesAlongTheSlamAndSwaysAlongTheRebound)
             cameras->FindModifier<NS::Obj::CameraNudgeModifier>(NS::Obj::CameraNudgeModifier::KindFor(sway));
         ASSERT_NE(nudge, nullptr);
         EXPECT_EQ(nudge->Desc().onScreen, sway);
-        NS::Core::Vector3 expected{0.0f, 0.0f, 1.0f};
+        NS::Vector3 expected{0.0f, 0.0f, 1.0f};
         if (sway)
         {
-            const NS::Core::Vector3 rebound = player->Resolver().LastImpact().selfVelocity;
-            expected = NS::Core::Vector3{rebound.x, 0.0f, rebound.z};
+            const NS::Vector3 rebound = player->Resolver().LastImpact().selfVelocity;
+            expected = NS::Vector3{rebound.x, 0.0f, rebound.z};
             expected.Normalize();
         }
         EXPECT_NEAR(nudge->Desc().direction.x, expected.x, 1.0e-4f);
@@ -698,16 +698,16 @@ TEST(ImpactTimelineClock, MissCameraLurchesAlongTheSlamAndSwaysAlongTheRebound)
 // 外れの火花は外した側へ 7 割、相手の表面に沿って滑る向きへ 3 割で流す。面の真ん中は向きが決まらない
 TEST(ImpactTimelineClock, MissSparksFlowTowardTheSideThatWasMissed)
 {
-    const NS::Core::Vector3 forward{0.0f, 0.0f, 1.0f};
+    const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
     // 右の縁: 外した側 +X、滑る向き (0.6, 0, 0.8)。0.7 × (1, 0, 0) + 0.3 × (0.6, 0, 0.8) を正規化
-    const NS::Core::Vector3 right = NS::Game::Player::ImpactEffects::MissSparkHeading(0.8f, 0.0f, forward);
+    const NS::Vector3 right = NS::Game::Player::ImpactEffects::MissSparkHeading(0.8f, 0.0f, forward);
     EXPECT_NEAR(right.x, 0.9648f, 0.0005f);
     EXPECT_NEAR(right.y, 0.0f, 0.0005f);
     EXPECT_NEAR(right.z, 0.2631f, 0.0005f);
-    const NS::Core::Vector3 top = NS::Game::Player::ImpactEffects::MissSparkHeading(0.0f, 0.8f, forward);
+    const NS::Vector3 top = NS::Game::Player::ImpactEffects::MissSparkHeading(0.0f, 0.8f, forward);
     EXPECT_NEAR(top.y, 0.9648f, 0.0005f);
     EXPECT_NEAR(top.z, 0.2631f, 0.0005f);
-    const NS::Core::Vector3 middle = NS::Game::Player::ImpactEffects::MissSparkHeading(0.0f, 0.0f, forward);
+    const NS::Vector3 middle = NS::Game::Player::ImpactEffects::MissSparkHeading(0.0f, 0.0f, forward);
     EXPECT_FLOAT_EQ(middle.Length(), 0.0f);
 }
 
@@ -748,9 +748,9 @@ TEST(ImpactTimelineClock, MissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
 
     ASSERT_NE(sparks, nullptr);
     ASSERT_TRUE(sparks->rotation.has_value());
-    const NS::Core::Vector3 heading =
-        NS::Core::Vector3::Transform(NS::Core::Vector3{0.0f, 1.0f, 0.0f}, sparks->rotation.value());
-    const NS::Core::Vector3 expected =
+    const NS::Vector3 heading =
+        NS::Vector3::Transform(NS::Vector3{0.0f, 1.0f, 0.0f}, sparks->rotation.value());
+    const NS::Vector3 expected =
         NS::Game::Player::ImpactEffects::MissSparkHeading(impact.faceU, impact.faceV, player->BodySlamDirection());
     ASSERT_GT(expected.Length(), 0.5f);
     EXPECT_NEAR(heading.Dot(expected), 1.0f, 1.0e-4f);
@@ -759,9 +759,9 @@ TEST(ImpactTimelineClock, MissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
 namespace
 {
     // 高さ 720 画素の画面の上の pixels 画素を、カメラから見た at の奥行きでの世界の長さへ直す
-    float MetersForPixels(const NS::Obj::CameraPose& pose, const NS::Core::Vector3& at, float pixels)
+    float MetersForPixels(const NS::Obj::CameraPose& pose, const NS::Vector3& at, float pixels)
     {
-        NS::Core::Vector3 forward = pose.target - pose.position;
+        NS::Vector3 forward = pose.target - pose.position;
         forward.Normalize();
         float depth = (at - pose.position).Dot(forward);
         // カメラより後ろの物は、奥行きの代わりにカメラとの距離で測る
@@ -801,13 +801,13 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
     MapObj* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
 
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     int clock = -1;
-    NS::Core::Vector3 otherContact{};
-    NS::Core::Vector3 previousSelfRoot = player->Root().Position();
+    NS::Vector3 otherContact{};
+    NS::Vector3 previousSelfRoot = player->Root().Position();
     for (int frame = 0; frame < 120 && clock < 20; ++frame)
     {
-        const NS::Core::Vector3 selfRootBefore = player->Root().Position();
+        const NS::Vector3 selfRootBefore = player->Root().Position();
         player->Update(false);
         rock->Update();
         if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
@@ -827,10 +827,10 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
         }
         const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*player);
         ASSERT_TRUE(pose.has_value());
-        NS::Core::Vector3 forward = pose->target - pose->position;
+        NS::Vector3 forward = pose->target - pose->position;
         forward.Normalize();
-        const NS::Core::Vector3 selfRoot = player->Root().Position();
-        const NS::Core::Vector3 otherRoot = rock->Root().Position();
+        const NS::Vector3 selfRoot = player->Root().Position();
+        const NS::Vector3 otherRoot = rock->Root().Position();
         for (const NS::Gfx::TremorCB* each : {&self, &other})
         {
             // 経過は始まりのフレームを 0 にしたゲームのフレーム数。届くフレーム数 (欄 4) は長さ 6 の半分の 3 までに
@@ -854,7 +854,7 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
         {
             otherContact = other.contactOffset;
             EXPECT_GT(otherContact.Length(), 0.0f);
-            const NS::Core::Vector3 surface = player->Resolver().LastImpact().surfacePoint;
+            const NS::Vector3 surface = player->Resolver().LastImpact().surfacePoint;
             EXPECT_NEAR((previousSelfRoot + self.contactOffset - surface).Length(), 0.0f, 1.0e-4f);
         }
         else
@@ -885,7 +885,7 @@ TEST(ImpactTimelineClock, ShakeLinesFrameTheTargetForTheStop)
     MapObj* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
 
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     int clock = -1;
     for (int frame = 0; frame < 120 && clock < 10; ++frame)
     {
@@ -906,8 +906,8 @@ TEST(ImpactTimelineClock, ShakeLinesFrameTheTargetForTheStop)
         EXPECT_EQ(reaction.ShakeLinesFramesRemaining(), 7 - clock);
         if (clock == 1)
         {
-            const NS::Core::AABB bounds = rock->ModelPart()->WorldBounds();
-            const NS::Core::AABB self = player->ModelPart()->WorldBounds();
+            const NS::AABB bounds = rock->ModelPart()->WorldBounds();
+            const NS::AABB self = player->ModelPart()->WorldBounds();
             const NS::Obj::HitShakeLinesDesc& shown = reaction.ShakeLines();
             EXPECT_NEAR(shown.center.x, bounds.Center.x, 1.0e-5f);
             EXPECT_NEAR(shown.center.y, bounds.Center.y, 1.0e-5f);
@@ -948,7 +948,7 @@ TEST(ImpactTimelineClock, GroundWaveSpreadsFromTheContactForItsLength)
     MapObj* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
 
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     int clock = -1;
     float previousRadius = -1.0f;
     for (int frame = 0; frame < 120 && clock < 12; ++frame)
@@ -967,7 +967,7 @@ TEST(ImpactTimelineClock, GroundWaveSpreadsFromTheContactForItsLength)
             EXPECT_FLOAT_EQ(now.strength, 0.0f);
             continue;
         }
-        const NS::Core::Vector3 contact = player->Resolver().LastImpact().surfacePoint;
+        const NS::Vector3 contact = player->Resolver().LastImpact().surfacePoint;
         EXPECT_FLOAT_EQ(now.centerX, contact.x);
         EXPECT_FLOAT_EQ(now.centerZ, contact.z);
         EXPECT_FLOAT_EQ(now.strength, 0.8f);
@@ -1009,7 +1009,7 @@ TEST(ImpactTimelineClock, DistortionRingSpreadsFromTheContactForItsLength)
     MapObj* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
 
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     int clock = -1;
     for (int frame = 0; frame < 120 && clock < 10; ++frame)
     {
@@ -1060,12 +1060,12 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
     ASSERT_NE(rock, nullptr);
     const NS::Obj::CameraManager* cameras = player->GetCameraManager();
     ASSERT_NE(cameras, nullptr);
-    const NS::Core::Vector3 forward = cameras->ForwardHorizontal();
+    const NS::Vector3 forward = cameras->ForwardHorizontal();
 
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     int clock = -1;
     float previousSelf = 0.0f;
-    NS::Core::Vector3 frozenRoot{};
+    NS::Vector3 frozenRoot{};
     for (int frame = 0; frame < 90 && clock < 9; ++frame)
     {
         player->Update(false);
@@ -1076,8 +1076,8 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Core::Vector3 self = player->ModelPart()->DrawOffset();
-        const NS::Core::Vector3 other = rock->ModelPart()->DrawOffset();
+        const NS::Vector3 self = player->ModelPart()->DrawOffset();
+        const NS::Vector3 other = rock->ModelPart()->DrawOffset();
         if (clock >= 1 && clock <= 5)
         {
             // 画面の横の向きだけに、逆向きに揺れる
@@ -1090,12 +1090,12 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
             for (const NS::Obj::Actor* each :
                  {static_cast<const NS::Obj::Actor*>(player), static_cast<const NS::Obj::Actor*>(rock)})
             {
-                const NS::Core::Vector3 ghost = each->ModelPart()->GhostSpread();
+                const NS::Vector3 ghost = each->ModelPart()->GhostSpread();
                 EXPECT_NEAR(ghost.Dot(forward), 0.0f, 1.0e-5f);
                 EXPECT_NEAR(ghost.y, 0.0f, 1.0e-6f);
                 EXPECT_GE(ghost.Length(), each->ModelPart()->DrawOffset().Length() * 2.0f - 1.0e-5f);
             }
-            const float side = self.Dot(NS::Core::Vector3{forward.z, 0.0f, -forward.x});
+            const float side = self.Dot(NS::Vector3{forward.z, 0.0f, -forward.x});
             if (clock > 1)
             {
                 EXPECT_LT(side * previousSelf, 0.0f);
@@ -1181,7 +1181,7 @@ TEST(ImpactTimelineClock, NegativeEventsStartBeforeContact)
     Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     MapObj* rock = RockOf(scene);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     std::vector<bool> shaping;
     int detectedAt = -1;
     for (int frame = 0; frame < 60 && detectedAt < 0; ++frame)
@@ -1219,7 +1219,7 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsWhenTheBeforeContactClockStarts)
     Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     MapObj* rock = RockOf(scene);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     int beforeContactStep = -1;
     for (int frame = 0; frame < 60 && player->Resolver().LastImpact().sequence == 0; ++frame)
     {
@@ -1253,7 +1253,7 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsOnTheContactFrameWithoutBeforeContactE
     Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     MapObj* rock = RockOf(scene);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     int contactStep = -1;
     for (int frame = 0; frame < 60 && contactStep < 0; ++frame)
     {
@@ -1295,7 +1295,7 @@ TEST(ImpactTimelineClock, FramesToPredictedContactCountDownToTheDetection)
     Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     MapObj* rock = RockOf(scene);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     std::vector<int> frames;
     for (int frame = 0; frame < 60 && player->Resolver().LastImpact().sequence == 0; ++frame)
     {
@@ -1327,7 +1327,7 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsThreeFramesBeforeThePredictedContact)
     Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     MapObj* rock = RockOf(scene);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     int contactStep = -1;
     for (int frame = 0; frame < 60 && contactStep < 0; ++frame)
     {
@@ -1361,7 +1361,7 @@ TEST(ImpactTimelineClock, AMissedPredictionStopsTheEarlyEvents)
     Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     MapObj* rock = RockOf(scene);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     bool started = false;
     for (int frame = 0; frame < 60 && !started; ++frame)
     {
@@ -1372,7 +1372,7 @@ TEST(ImpactTimelineClock, AMissedPredictionStopsTheEarlyEvents)
     ASSERT_TRUE(started);
     ASSERT_EQ(player->Resolver().LastImpact().sequence, 0u);
     // 相手を線の横へ退ける
-    rock->Root().SetPosition(rock->Root().Position() + NS::Core::Vector3{10.0f, 0.0f, 0.0f});
+    rock->Root().SetPosition(rock->Root().Position() + NS::Vector3{10.0f, 0.0f, 0.0f});
     player->Update(false);
     rock->Update();
     EXPECT_FALSE(player->Resolver().IsShapeAnimating());
@@ -1415,7 +1415,7 @@ namespace
     std::vector<OthersStep> RunUntilDetection(NS::Obj::Scene& scene, Player& player, CountingTicker& others)
     {
         std::vector<OthersStep> steps;
-        player.RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        player.RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
         for (int frame = 0; frame < 60 && player.Resolver().LastImpact().sequence == 0; ++frame)
         {
             const int before = others.ticks;
@@ -1447,7 +1447,7 @@ TEST(ImpactTimelineClock, OthersStopHoldsTheWorldButNotThePlayerBeforeContact)
     ASSERT_GE(steps.size(), 5u);
     ASSERT_NE(player->Resolver().LastImpact().sequence, 0u);
     const std::size_t detect = steps.size() - 1;
-    const float slamStep = 20.0f * NS::Platform::FrameTimer::FixedDelta();
+    const float slamStep = 20.0f * NS::OS::FrameTimer::FixedDelta();
     for (std::size_t i = 0; i <= detect; ++i)
     {
         SCOPED_TRACE(static_cast<int>(i) - static_cast<int>(detect));
@@ -1499,14 +1499,14 @@ TEST(ImpactTimelineClock, AMissedPredictionReleasesTheOthers)
     {
         scene.OnUpdate();
     }
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     for (int frame = 0; frame < 60 && !scene.IsHoldingOthers(); ++frame)
     {
         scene.OnUpdate();
     }
     ASSERT_TRUE(scene.IsHoldingOthers());
     ASSERT_EQ(player->Resolver().LastImpact().sequence, 0u);
-    rock->Root().SetPosition(rock->Root().Position() + NS::Core::Vector3{10.0f, 0.0f, 0.0f});
+    rock->Root().SetPosition(rock->Root().Position() + NS::Vector3{10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
     EXPECT_FALSE(scene.IsHoldingOthers());
     EXPECT_FALSE(player->Resolver().IsShapeAnimating());
@@ -1529,7 +1529,7 @@ TEST(ImpactTimelineClock, SinkShakeHoldsTheBottomUntilTheReboundFrame)
     Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     MapObj* rock = RockOf(scene);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     std::vector<float> pixels;
     bool detected = false;
     for (int frame = 0; frame < 120 && pixels.size() < 20; ++frame)
@@ -1643,7 +1643,7 @@ TEST(ImpactTimelineClock, DirectionWeightsBlendTheTwoNeighborsByAngle)
     float previous[4] = {};
     for (int step = 0; step <= 720; ++step)
     {
-        const float angle = static_cast<float>(step) * 0.5f * NS::Core::k_Pi / 180.0f;
+        const float angle = static_cast<float>(step) * 0.5f * NS::k_Pi / 180.0f;
         const float u = 0.7f * std::cos(angle);
         const float v = 0.7f * std::sin(angle);
         float sum = 0.0f;
@@ -1687,7 +1687,7 @@ TEST(ImpactTimelineClock, DirectedPadVibrationsAreBlendedByTheFacePosition)
     ASSERT_NE(player, nullptr);
     MapObj* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
-    rock->Root().SetPosition(NS::Core::Vector3{0.5f, 0.85f, 0.6f});
+    rock->Root().SetPosition(NS::Vector3{0.5f, 0.85f, 0.6f});
     const std::vector<ClockFrame> trace = RunHit(*player, *rock, 1.0f, 4);
     ASSERT_EQ(trace.size(), 4u);
     const ImpactRecord& record = player->Resolver().LastImpact();

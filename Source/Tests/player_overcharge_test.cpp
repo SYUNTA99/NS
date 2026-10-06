@@ -1,7 +1,7 @@
 #include "Game/Player.h"
 #include "Game/Player/PlayerParams.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
 
@@ -12,7 +12,7 @@ namespace
     // 欄の秒を固定ステップのフレーム数にする。Player::AdvanceCharge と同じ丸め
     int FramesFor(float seconds)
     {
-        return static_cast<int>(std::lround(seconds / NS::Platform::FrameTimer::FixedDelta()));
+        return static_cast<int>(std::lround(seconds / NS::OS::FrameTimer::FixedDelta()));
     }
 
     // しきい値 0.2 秒・満タン 1 秒・溜めすぎ 0.5 秒。強制で出るのは押し始めから 1.5 秒のフレーム
@@ -30,7 +30,7 @@ TEST(PlayerOvercharge, ForcedLaunchFiresOnceAndThenStopsTheChargeShow)
 {
     Player player;
     UseShortOvercharge(player);
-    player.SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     const int full = FramesFor(1.0f);
     const int forced = full + FramesFor(0.5f);
     const float maxSpeed = player.MaxSpeed();
@@ -98,7 +98,7 @@ TEST(PlayerOvercharge, ForcedLaunchWaitsUntilASlamCanStart)
     Player player;
     UseShortOvercharge(player);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"突進距離", 1000.0f}}), 0u);
-    player.SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     // 溜めて放した長い突進の間に押し直し、突進の最中に溜めすぎきらせる
     for (int held = 0; held < FramesFor(1.0f); ++held)
     {
@@ -126,7 +126,7 @@ TEST(PlayerOvercharge, ForcedLaunchWaitsUntilASlamCanStart)
     EXPECT_TRUE(player.ChargeJudge().IsAwaitingLaunch());
     // やり直しで空中の 1 発の印が消えて出せるようになったフレームに出る
     player.ResetState();
-    player.SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.Update(true);
     EXPECT_TRUE(player.IsBodySlamming());
     player.Update(true);
@@ -140,7 +140,7 @@ TEST(PlayerOvercharge, ReleasingWhileWaitingFiresNothingNew)
     Player player;
     UseShortOvercharge(player);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"突進距離", 1000.0f}}), 0u);
-    player.SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     for (int held = 0; held < FramesFor(1.0f); ++held)
     {
         player.Update(true);

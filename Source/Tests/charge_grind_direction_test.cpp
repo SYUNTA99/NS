@@ -1,4 +1,4 @@
-#include "Runtime/Platform/FileSystem.h"
+#include "NSlib/Windows/FileSystem.h"
 
 #include <gtest/gtest.h>
 
@@ -13,7 +13,7 @@
 
 namespace
 {
-    using NS::Platform::FileSystem;
+    using NS::OS::FileSystem;
 
     std::string ReadGrindDefinition()
     {

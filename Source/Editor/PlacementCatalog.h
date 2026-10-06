@@ -3,7 +3,7 @@
 // エディタで置ける物の一覧。ヒエラルキーの追加メニューとパレットが同じ一覧を読む
 // 置ける物は TypeRegistry に NS_PLACEABLE で登録した Actor のクラスから組む。出荷ビルドには載らない
 
-#include "Runtime/Object/ObjectJson.h"
+#include "NSlib/Object/ObjectJson.h"
 
 #include <string>
 #include <string_view>

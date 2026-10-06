@@ -1,10 +1,10 @@
 #include "Game/Level/FollowCamera.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/CameraTarget.h"
-#include "Runtime/Object/Components/ThirdPersonFollow.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/CameraTarget.h"
+#include "NSlib/Object/Components/ThirdPersonFollow.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
 
@@ -25,7 +25,7 @@ namespace
             state.hasRebound = true;
             state.rebound.rebounding = rebounding;
             state.rebound.forcedSlamming = forcedSlamming;
-            state.rebound.slamDirection = NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+            state.rebound.slamDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
             return state;
         }
 
@@ -37,7 +37,7 @@ namespace
     float HorizontalLag(const NS::Obj::ThirdPersonFollow& vcam, const NS::Obj::Actor& target)
     {
         const NS::Obj::CameraPose pose = vcam.EvaluatePose(1.0f);
-        const NS::Core::Vector3 root = target.Root().Position();
+        const NS::Vector3 root = target.Root().Position();
         const float dx = pose.target.x - root.x;
         const float dz = pose.target.z - root.z;
         return std::sqrt(dx * dx + dz * dz);
@@ -68,7 +68,7 @@ namespace
         // 追われる物を 1 秒に 20 m で +Z へ進め、カメラを 1 フレーム進める
         void Step()
         {
-            target->Root().ShiftPosition(NS::Core::Vector3{0.0f, 0.0f, 20.0f * NS::Platform::FrameTimer::FixedDelta()});
+            target->Root().ShiftPosition(NS::Vector3{0.0f, 0.0f, 20.0f * NS::OS::FrameTimer::FixedDelta()});
             camera->Update();
         }
     };
@@ -118,11 +118,11 @@ TEST(FollowForcedLaunch, ReboundStartsFromTheLaggedLookWithoutAJump)
         s.Step();
     }
     const NS::Obj::ThirdPersonFollow& vcam = s.camera->Vcam();
-    const NS::Core::Vector3 before = vcam.EvaluatePose(1.0f).target;
+    const NS::Vector3 before = vcam.EvaluatePose(1.0f).target;
     s.target->forcedSlamming = false;
     s.target->rebounding = true;
     s.camera->Update();
-    const NS::Core::Vector3 after = vcam.EvaluatePose(1.0f).target;
+    const NS::Vector3 after = vcam.EvaluatePose(1.0f).target;
     EXPECT_LT((after - before).Length(), 0.5f);
 
     // 突進が終わって止まった時も跳ばずに寄せ戻す
@@ -133,7 +133,7 @@ TEST(FollowForcedLaunch, ReboundStartsFromTheLaggedLookWithoutAJump)
     {
         t.Step();
     }
-    const NS::Core::Vector3 held = t.camera->Vcam().EvaluatePose(1.0f).target;
+    const NS::Vector3 held = t.camera->Vcam().EvaluatePose(1.0f).target;
     t.target->forcedSlamming = false;
     t.camera->Update();
     EXPECT_LT((t.camera->Vcam().EvaluatePose(1.0f).target - held).Length(), 0.5f);

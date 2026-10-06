@@ -21,24 +21,24 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    NS::Core::Vector3 MissHopVelocity(const NS::Core::Vector3& velocity,
-                                      const NS::Core::Vector3& up,
+    NS::Vector3 MissHopVelocity(const NS::Vector3& velocity,
+                                      const NS::Vector3& up,
                                       const MissHopDesc& desc,
                                       std::uint32_t seed,
                                       int hopIndex) noexcept
     {
-        const NS::Core::Vector3 horizontal = velocity - up * velocity.Dot(up);
+        const NS::Vector3 horizontal = velocity - up * velocity.Dot(up);
         const float speed = horizontal.Length();
         if (!(speed > 0.0001f))
         {
-            return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            return NS::Vector3{0.0f, 0.0f, 0.0f};
         }
         const std::uint32_t index = static_cast<std::uint32_t>(hopIndex);
         const float turn = (Hash01(seed, index * 2u) * 2.0f - 1.0f) * desc.turnDegrees * (k_Pi / 180.0f);
         const float lift = 0.5f + 0.5f * Hash01(seed, index * 2u + 1u);
-        const NS::Core::Vector3 forward = horizontal / speed;
-        const NS::Core::Vector3 side = up.Cross(forward);
-        const NS::Core::Vector3 turned = forward * std::cos(turn) + side * std::sin(turn);
+        const NS::Vector3 forward = horizontal / speed;
+        const NS::Vector3 side = up.Cross(forward);
+        const NS::Vector3 turned = forward * std::cos(turn) + side * std::sin(turn);
         const float kept = speed * desc.keep;
         return turned * kept + up * (kept * desc.heightRatio * lift);
     }

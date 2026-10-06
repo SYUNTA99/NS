@@ -2,14 +2,14 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/CameraTarget.h"
-#include "Runtime/Object/Components/ThirdPersonFollow.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/CameraTarget.h"
+#include "NSlib/Object/Components/ThirdPersonFollow.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -34,13 +34,13 @@ namespace
             state.grounded = false;
             state.hasRebound = true;
             state.rebound.rebounding = true;
-            state.rebound.slamDirection = NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+            state.rebound.slamDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
             state.rebound.partnerPosition = partner;
             state.rebound.pullBack = pullBack;
             return state;
         }
 
-        std::optional<NS::Core::Vector3> partner;
+        std::optional<NS::Vector3> partner;
         bool pullBack = true;
     };
 
@@ -50,7 +50,7 @@ namespace
         PartnerTargetProbe* target = nullptr;
         NS::Game::Level::FollowCamera* camera = nullptr;
 
-        explicit PartnerScene(const std::optional<NS::Core::Vector3>& partner, bool pullBack = true)
+        explicit PartnerScene(const std::optional<NS::Vector3>& partner, bool pullBack = true)
         {
             target =
                 static_cast<PartnerTargetProbe*>(scene.SpawnObject(std::make_unique<PartnerTargetProbe>(), "target"));
@@ -87,11 +87,11 @@ TEST(FollowReboundPartner, LookLeansTowardThePartnerAndPullsBack)
 {
     const PartnerScene alone(std::nullopt);
     const NS::Obj::CameraPose without = alone.Pose();
-    const NS::Core::Vector3 partner = without.target + NS::Core::Vector3{10.0f, 0.0f, 0.0f};
+    const NS::Vector3 partner = without.target + NS::Vector3{10.0f, 0.0f, 0.0f};
     const PartnerScene with(partner);
     const NS::Obj::CameraPose pose = with.Pose();
 
-    const NS::Core::Vector3 lean = pose.target - without.target;
+    const NS::Vector3 lean = pose.target - without.target;
     EXPECT_NEAR(lean.x, 2.0f, 0.01f);
     EXPECT_NEAR(lean.y, 0.0f, 0.01f);
     EXPECT_NEAR(lean.z, 0.0f, 0.01f);
@@ -103,7 +103,7 @@ TEST(FollowReboundPartner, PullBackStopsAtTheCap)
 {
     const PartnerScene alone(std::nullopt);
     const NS::Obj::CameraPose without = alone.Pose();
-    const PartnerScene with(without.target + NS::Core::Vector3{0.0f, 0.0f, 25.0f});
+    const PartnerScene with(without.target + NS::Vector3{0.0f, 0.0f, 25.0f});
     EXPECT_NEAR(DistanceOf(with.Pose()) - DistanceOf(without), 4.0f, 0.01f);
 }
 
@@ -112,7 +112,7 @@ TEST(FollowReboundPartner, PartnerBeyondTheReleaseDistanceIsLetGo)
 {
     const PartnerScene alone(std::nullopt);
     const NS::Obj::CameraPose without = alone.Pose();
-    const PartnerScene with(without.target + NS::Core::Vector3{0.0f, 0.0f, 40.0f});
+    const PartnerScene with(without.target + NS::Vector3{0.0f, 0.0f, 40.0f});
     const NS::Obj::CameraPose pose = with.Pose();
     EXPECT_NEAR((pose.target - without.target).Length(), 0.0f, 0.001f);
     EXPECT_NEAR(DistanceOf(pose), DistanceOf(without), 0.001f);
@@ -135,21 +135,21 @@ namespace
         nlohmann::json player = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(player, "Player");
         NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(rock, "MapObj");
         NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{rockX, 0.5f, 0.6f});
+        NS::Obj::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.LoadJson(doc);
-        NS::Core::OBB floor{};
-        floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+        NS::OBB floor{};
+        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
         floor.halfExtentX = 100.0f;
         floor.halfExtentY = 0.5f;
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-        PlaceViewCamera(scene, NS::Core::Vector3{}, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 } // namespace
@@ -165,7 +165,7 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
         ASSERT_NE(player, nullptr);
         NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
-        player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
         int checked = 0;
         int held = 0;
         for (int frame = 0; frame < 400 && checked < 5; ++frame)

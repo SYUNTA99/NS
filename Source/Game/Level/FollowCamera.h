@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/ThirdPersonFollow.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/ThirdPersonFollow.h"
 
 namespace NS::Game::Level
 {

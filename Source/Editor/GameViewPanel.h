@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Editor/ViewportSurface.h"
-#include "Runtime/Core/NonCopyable.h"
+#include "NSlib/Core/NonCopyable.h"
 
 class LevelEditorController;
 
@@ -9,7 +9,7 @@ namespace NS::Editor
 {
     //! @brief ゲーム視点の出力を映すパネル。プレイ中は入力を持ち、編集中はゲームカメラを貼るだけ
     //! @details 出力を映すだけで、自由視点のようなナビゲーションは持たない。描画先は ViewportSurface が持つ
-    class GameViewPanel : public NS::Core::NonCopyable
+    class GameViewPanel : public NS::NonCopyable
     {
     public:
         //! 出荷時の画面比。パネルをどう並べてもゲームの見え方が変わらないようここで固定する
@@ -18,7 +18,7 @@ namespace NS::Editor
         GameViewPanel() noexcept { m_surface.SetFixedAspect(k_GameAspect); }
 
         //! 描画先の初期目標サイズを窓サイズに合わせる
-        void SetInitialSize(const NS::Core::Size2D& size) noexcept { m_surface.SetInitialSize(size); }
+        void SetInitialSize(const NS::Size2D& size) noexcept { m_surface.SetInitialSize(size); }
 
         //! フレーム先頭で可視状態を false にする。描画パス (通常 / 全面化) が立て直す
         void ResetVisibility() noexcept { m_surface.ResetVisibility(); }

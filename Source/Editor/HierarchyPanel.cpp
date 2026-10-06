@@ -5,8 +5,8 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/ObjectList.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/ObjectList.h"
 
 #include <algorithm>
 #include <cstdint>

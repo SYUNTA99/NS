@@ -9,17 +9,17 @@
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Components/PlayerInput.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/IUse/IUseSceneObj.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/Components/PlayerInput.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/Clock.h"
 #include "Tests/TestHitTimelines.h"
 #include "Tests/TestViewCamera.h"
 
@@ -36,21 +36,21 @@ namespace
         nlohmann::json player = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(player, "Player");
         NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(rock, "MapObj");
         NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{targetX, 0.5f, targetZ});
+        NS::Obj::SetObjectPosition(rock, NS::Vector3{targetX, 0.5f, targetZ});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.LoadJson(doc);
-        NS::Core::OBB floor{};
-        floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+        NS::OBB floor{};
+        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
         floor.halfExtentX = 100.0f;
         floor.halfExtentY = 0.5f;
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-        PlaceViewCamera(scene, NS::Core::Vector3{}, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
@@ -84,7 +84,7 @@ namespace
         return "Other";
     }
 
-    void ExpectSameVector(const NS::Core::Vector3& actual, const NS::Core::Vector3& expected)
+    void ExpectSameVector(const NS::Vector3& actual, const NS::Vector3& expected)
     {
         EXPECT_NEAR(actual.x, expected.x, 0.00001f);
         EXPECT_NEAR(actual.y, expected.y, 0.00001f);
@@ -96,7 +96,7 @@ namespace
     // 突進は 1 フレームの入口から出す。BodySlam を直に呼ぶと先行入力が残り、止めが明けた後にもう 1 度出る
     bool SlamIntoTheRock(Player& player, NS::Game::Level::MapObj& rock, bool waitForFreeze)
     {
-        player.RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        player.RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
         for (int frame = 0; frame < 10; ++frame)
         {
             player.Update(false);
@@ -119,9 +119,9 @@ TEST(PlayerUpdatePipeline, ImpactObservationDoesNotJudgeOrMoveThePlayer)
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene);
     ASSERT_NE(player, nullptr);
-    player->Body().SetVelocity(NS::Core::Vector3{2.0f, 4.0f, 3.0f});
-    const NS::Core::Vector3 position = player->Root().Position();
-    const NS::Core::Vector3 velocity = player->Body().Velocity();
+    player->Body().SetVelocity(NS::Vector3{2.0f, 4.0f, 3.0f});
+    const NS::Vector3 position = player->Root().Position();
+    const NS::Vector3 velocity = player->Body().Velocity();
     player->Resolver().ObserveImpact();
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
     ExpectSameVector(player->Root().Position(), position);
@@ -134,9 +134,9 @@ TEST(PlayerUpdatePipeline, SlamHeadingStaysOnTheAimBesideAnOffAxisTarget)
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
     ASSERT_NE(player, nullptr);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    const NS::Core::Vector3 before = player->BodySlamVelocity();
+    const NS::Vector3 before = player->BodySlamVelocity();
     for (int frame = 0; frame < 2; ++frame)
     {
         SCOPED_TRACE(frame);
@@ -154,12 +154,12 @@ TEST(PlayerUpdatePipeline, SquashedSlamRegainsItsHeadingFromTheState)
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.0f, 40.0f);
     ASSERT_NE(player, nullptr);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    player->Body().SetLateralVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+    player->Body().SetLateralVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
     player->Update(false);
     ASSERT_TRUE(player->IsBodySlamming());
-    const NS::Core::Vector3 expected = player->BodySlamVelocity();
+    const NS::Vector3 expected = player->BodySlamVelocity();
     EXPECT_GT(expected.z, 0.0f);
     EXPECT_NEAR(player->Body().Velocity().x, expected.x, 0.00001f);
     EXPECT_NEAR(player->Body().Velocity().z, expected.z, 0.00001f);
@@ -170,7 +170,7 @@ TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
     player->Resolver().ObserveImpact();
     player->Resolver().StepState();
@@ -191,7 +191,7 @@ TEST(PlayerUpdatePipeline, TickingTheResolverPartAloneDoesNotJudge)
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
     player->Resolver().OnUpdate();
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
@@ -204,7 +204,7 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
     player->Resolver().ObserveImpact();
     scene.Objects().RemoveByObjectId(2);
@@ -226,7 +226,7 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
     EXPECT_TRUE(player->Body().IsActive());
     EXPECT_TRUE(player->Resolver().IsHitStopping());
     EXPECT_FALSE(player->CanMoveBody());
-    const NS::Core::Vector3 position = player->Root().Position();
+    const NS::Vector3 position = player->Root().Position();
     const std::uint32_t stateStep = player->States().StepsInState();
     // 真ん中は止めが明けた後、伸びきって反動の事象が来るまでも止まったまま
     for (int frame = 0; frame < 30; ++frame)
@@ -283,7 +283,7 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
         (void)scene.BeginPlayBaseline();
         NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
-        const NS::Core::Vector3 rockHome = rock->Root().Position();
+        const NS::Vector3 rockHome = rock->Root().Position();
         ASSERT_TRUE(SlamIntoTheRock(*player, *rock, waitForFreeze));
         NS::Game::Level::CourseDirector* director =
             NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(scene);
@@ -299,7 +299,7 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
             EXPECT_FALSE(player->Resolver().ReleasedThisStep());
             EXPECT_FALSE(player->Resolver().IsHitStopping());
             ExpectSameVector(rock->Root().Position(), rockHome);
-            ExpectSameVector(player->ModelPart()->DrawScale(), NS::Core::Vector3{1.0f, 1.0f, 1.0f});
+            ExpectSameVector(player->ModelPart()->DrawScale(), NS::Vector3{1.0f, 1.0f, 1.0f});
         }
     }
 }
@@ -316,7 +316,7 @@ TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
     ASSERT_TRUE(player->Resolver().IsShapeAnimating());
     ASSERT_LT(player->ModelPart()->DrawScale().z, 1.0f);
     player->OnEndPlay();
-    EXPECT_TRUE(player->ModelPart()->DrawScale() == (NS::Core::Vector3{1.0f, 1.0f, 1.0f}));
+    EXPECT_TRUE(player->ModelPart()->DrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
     EXPECT_FALSE(player->Resolver().IsHitStopping());
     EXPECT_FALSE(player->Resolver().IsShapeAnimating());
 }
@@ -347,9 +347,9 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     ASSERT_FALSE(player->Resolver().LastImpact().broke);
     // 欄「潰れの厚み」0.7 を進む向きの成分の 2 乗で混ぜ、縦は欄「潰れの伸び上がり」1.1
-    const NS::Core::Vector3 dir = player->Resolver().LastImpact().impactDir;
-    const NS::Core::Vector3 squash{1.0f - 0.3f * dir.x * dir.x, 1.1f, 1.0f - 0.3f * dir.z * dir.z};
-    const NS::Core::Vector3 one{1.0f, 1.0f, 1.0f};
+    const NS::Vector3 dir = player->Resolver().LastImpact().impactDir;
+    const NS::Vector3 squash{1.0f - 0.3f * dir.x * dir.x, 1.1f, 1.0f - 0.3f * dir.z * dir.z};
+    const NS::Vector3 one{1.0f, 1.0f, 1.0f};
     bool released = false;
     int bulgeAt = -1;
     for (int frame = 0; frame < 30 && !released; ++frame)
@@ -368,7 +368,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
         }
         const float side = 0.3f * left;
         ExpectSameVector(player->ModelPart()->DrawScale(),
-                         NS::Core::Vector3{
+                         NS::Vector3{
                              squash.x + side * dir.z * dir.z, squash.y + 0.2f * left, squash.z + side * dir.x * dir.x});
         player->Update(false);
         rock->Update();
@@ -382,7 +382,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
     const float height = 1.1f - 0.2f / 3.0f;
     ExpectSameVector(
         player->ModelPart()->DrawScale(),
-        NS::Core::Vector3{1.0f - (1.0f - along) * dir.x * dir.x, height, 1.0f - (1.0f - along) * dir.z * dir.z});
+        NS::Vector3{1.0f - (1.0f - along) * dir.x * dir.x, height, 1.0f - (1.0f - along) * dir.z * dir.z});
     for (int frame = 0; frame < 30 && player->Resolver().IsShapeAnimating(); ++frame)
     {
         SCOPED_TRACE(frame);
@@ -409,7 +409,7 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
         rock->Update();
     }
     ASSERT_TRUE(player->Body().IsGrounded());
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     bool released = false;
     for (int frame = 0; frame < 30 && !released; ++frame)
     {
@@ -423,12 +423,12 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     NS::Obj::Model* model = player->ModelPart();
     // 試しには mesh が無いので、玉の局所の境界を差し、回転を外して形の伸びだけを測る
     const float radius = player->Collider().CapsuleRadius();
-    NS::Core::AABB local{};
-    local.Center = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-    local.Extents = NS::Core::Vector3{radius, radius, radius};
+    NS::AABB local{};
+    local.Center = NS::Vector3{0.0f, 0.0f, 0.0f};
+    local.Extents = NS::Vector3{radius, radius, radius};
     model->SetLocalBoundsOverride(local);
-    model->SnapLocalRotation(NS::Core::Quaternion::Identity);
-    NS::Core::AABB drawn{};
+    model->SnapLocalRotation(NS::Quaternion::Identity);
+    NS::AABB drawn{};
     local.Transform(drawn, model->DrawWorldMatrix(1.0f));
     const float bottom = drawn.Center.y - drawn.Extents.y;
     EXPECT_NEAR(bottom, player->Root().Position().y - radius, 0.001f);
@@ -464,12 +464,12 @@ TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl
     NS::Obj::Scene scene;
     Player* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
     ASSERT_NE(player, nullptr);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    player->Body().SetVelocity(NS::Core::Vector3{0.0f, 2.0f, 0.0f});
+    player->Body().SetVelocity(NS::Vector3{0.0f, 2.0f, 0.0f});
     player->Body().SetActive(false);
-    const NS::Core::Vector3 position = player->Root().Position();
-    const NS::Core::Vector3 velocity = player->Body().Velocity();
+    const NS::Vector3 position = player->Root().Position();
+    const NS::Vector3 velocity = player->Body().Velocity();
     const std::uint32_t stateStep = player->States().StepsInState();
     player->Update(false);
     ExpectSameVector(player->Root().Position(), position);
@@ -486,10 +486,10 @@ TEST(PlayerUpdatePipeline, StoppedWorldHoldsThePlayerWithItsPartsAwake)
     ASSERT_TRUE(player->Body().IsActive());
     ASSERT_TRUE(player->Input().IsActive());
     scene.SetSimulationEnabled(false);
-    player->Input().SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     // 入力の段が実機の入力で歩きを消しても、回っていればこの速さで動く
-    player->Body().SetVelocity(NS::Core::Vector3{0.0f, 2.0f, 0.0f});
-    const NS::Core::Vector3 position = player->Root().Position();
+    player->Body().SetVelocity(NS::Vector3{0.0f, 2.0f, 0.0f});
+    const NS::Vector3 position = player->Root().Position();
 
     for (int frame = 0; frame < 30; ++frame)
     {
@@ -620,7 +620,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             }
             if (charge && frame == 92)
             {
-                rock->Root().ShiftPosition(NS::Core::Vector3{0.1f, 0.0f, 0.0f});
+                rock->Root().ShiftPosition(NS::Vector3{0.1f, 0.0f, 0.0f});
             }
             player->Update(held);
             if (impact < 0 && player->Resolver().LastImpact().sequence > 0)
@@ -651,9 +651,9 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                 EXPECT_EQ(StateName(*player), (*pose)[1].get<std::string>());
                 ExpectSameVector(
                     player->ModelPart()->DrawScale(),
-                    NS::Core::Vector3{(*pose)[2].get<float>(), (*pose)[3].get<float>(), (*pose)[4].get<float>()});
+                    NS::Vector3{(*pose)[2].get<float>(), (*pose)[3].get<float>(), (*pose)[4].get<float>()});
                 // 構え・潰れ・伸び・着地の潰れのどれの間も、根のスケールは配置の値のまま
-                EXPECT_TRUE(player->Root().Scale() == (NS::Core::Vector3{1.0f, 1.0f, 1.0f}));
+                EXPECT_TRUE(player->Root().Scale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
                 EXPECT_EQ(player->CanMoveBody(), (*pose)[5].get<bool>());
             }
             for (const nlohmann::json& sample : expected[4])
@@ -666,13 +666,13 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                 SCOPED_TRACE(frame);
                 ExpectSameVector(
                     player->Root().Position(),
-                    NS::Core::Vector3{sample[1].get<float>(), sample[2].get<float>(), sample[3].get<float>()});
+                    NS::Vector3{sample[1].get<float>(), sample[2].get<float>(), sample[3].get<float>()});
                 ExpectSameVector(
                     player->Body().Velocity(),
-                    NS::Core::Vector3{sample[4].get<float>(), sample[5].get<float>(), sample[6].get<float>()});
+                    NS::Vector3{sample[4].get<float>(), sample[5].get<float>(), sample[6].get<float>()});
                 ExpectSameVector(
                     rock->Root().Position(),
-                    NS::Core::Vector3{sample[7].get<float>(), sample[8].get<float>(), sample[9].get<float>()});
+                    NS::Vector3{sample[7].get<float>(), sample[8].get<float>(), sample[9].get<float>()});
             }
         }
         EXPECT_EQ(impact, expected[1].get<int>());

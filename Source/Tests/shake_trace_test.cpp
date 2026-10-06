@@ -2,15 +2,15 @@
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/CameraTarget.h"
-#include "Runtime/Object/Components/CameraManager.h"
-#include "Runtime/Object/Components/CameraModifier.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/FileSystem.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/CameraTarget.h"
+#include "NSlib/Object/Components/CameraManager.h"
+#include "NSlib/Object/Components/CameraModifier.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/FileSystem.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -42,21 +42,21 @@ namespace
         nlohmann::json player = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(player, "Player");
         NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(rock, "MapObj");
         NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{rockX, 0.5f, 0.6f});
+        NS::Obj::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.LoadJson(doc);
-        NS::Core::OBB floor{};
-        floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+        NS::OBB floor{};
+        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
         floor.halfExtentX = 100.0f;
         floor.halfExtentY = 0.5f;
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-        PlaceViewCamera(scene, NS::Core::Vector3{}, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
@@ -65,9 +65,9 @@ namespace
     struct HitShakeTrace
     {
         HitTier tier = HitTier::Center;
-        std::vector<NS::Core::Vector3> offsets;
-        std::vector<NS::Core::Vector3> angles;
-        std::vector<NS::Core::Vector3> sinks;
+        std::vector<NS::Vector3> offsets;
+        std::vector<NS::Vector3> angles;
+        std::vector<NS::Vector3> sinks;
     };
 
     // 突進を頼んで場面を回し、検知のフレームから k_HitFrames フレームぶんの揺れのずれを並べる。当たらなければ空
@@ -80,7 +80,7 @@ namespace
         {
             return trace;
         }
-        player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
         for (int frame = 0; frame < 60 + k_HitFrames && static_cast<int>(trace.offsets.size()) < k_HitFrames; ++frame)
         {
             scene.OnUpdate();
@@ -89,16 +89,16 @@ namespace
                 continue;
             }
             trace.tier = player->Resolver().LastImpact().tier;
-            NS::Core::Vector3 offset{};
-            NS::Core::Vector3 angles{};
-            NS::Core::Vector3 sink{};
+            NS::Vector3 offset{};
+            NS::Vector3 angles{};
+            NS::Vector3 sink{};
             const NS::Obj::CameraManager* cameras = player->GetCameraManager();
             if (cameras != nullptr)
             {
                 const NS::Obj::CameraShakeModifier* shake = cameras->FindModifier<NS::Obj::CameraShakeModifier>();
                 if (shake != nullptr)
                 {
-                    offset = NS::Core::Vector3{shake->Offset().x, shake->Offset().y, 0.0f};
+                    offset = NS::Vector3{shake->Offset().x, shake->Offset().y, 0.0f};
                 }
                 const NS::Obj::CameraTraumaModifier* trauma = cameras->FindModifier<NS::Obj::CameraTraumaModifier>();
                 if (trauma != nullptr)
@@ -108,7 +108,7 @@ namespace
                 const NS::Obj::CameraSinkModifier* sinking = cameras->FindModifier<NS::Obj::CameraSinkModifier>();
                 if (sinking != nullptr)
                 {
-                    sink = NS::Core::Vector3{0.0f, sinking->Pixels(), 0.0f};
+                    sink = NS::Vector3{0.0f, sinking->Pixels(), 0.0f};
                 }
             }
             trace.offsets.push_back(offset);
@@ -136,9 +136,9 @@ namespace
     };
 
     // 溜めの揺れの角度 (横・縦・傾き、度) を k_ChargeFrames フレームぶん並べる
-    std::vector<NS::Core::Vector3> RecordChargeShake()
+    std::vector<NS::Vector3> RecordChargeShake()
     {
-        std::vector<NS::Core::Vector3> offsets;
+        std::vector<NS::Vector3> offsets;
         NS::Obj::Scene scene;
         ChargingTarget* target =
             NS::Obj::Cast<ChargingTarget>(scene.SpawnObject(std::make_unique<ChargingTarget>(), "target"));
@@ -153,7 +153,7 @@ namespace
         {
             target->frame = frame;
             scene.OnUpdate();
-            NS::Core::Vector3 angles{};
+            NS::Vector3 angles{};
             const NS::Obj::CameraManager* cameras = scene.GetCameraManager();
             if (cameras != nullptr)
             {
@@ -170,7 +170,7 @@ namespace
 
     // 隣り合うフレームのずれの差の最大 ÷ ずれの大きさの最大。揺れが無ければ 0
     // 揺れが始まるフレーム (前のフレームのずれが 0) の差は数えない。始まりは一撃で、跳ばないのは揺れの途中の話
-    float MaxStepRatio(const std::vector<NS::Core::Vector3>& offsets)
+    float MaxStepRatio(const std::vector<NS::Vector3>& offsets)
     {
         float largest = 0.0f;
         float step = 0.0f;
@@ -205,10 +205,10 @@ namespace
         return MaxStepRatio(trace.angles);
     }
 
-    nlohmann::ordered_json SeriesJson(const std::vector<NS::Core::Vector3>& series)
+    nlohmann::ordered_json SeriesJson(const std::vector<NS::Vector3>& series)
     {
         nlohmann::ordered_json list = nlohmann::ordered_json::array();
-        for (const NS::Core::Vector3& value : series)
+        for (const NS::Vector3& value : series)
         {
             list.push_back(nlohmann::ordered_json{value.x, value.y, value.z});
         }
@@ -220,7 +220,7 @@ TEST(ShakeTrace, WritesTheShakeOfTheSameHitsAndCharge)
 {
     const HitShakeTrace center = RecordHitShake(0.0f);
     const HitShakeTrace miss = RecordHitShake(0.75f);
-    const std::vector<NS::Core::Vector3> charge = RecordChargeShake();
+    const std::vector<NS::Vector3> charge = RecordChargeShake();
     ASSERT_EQ(center.offsets.size(), static_cast<std::size_t>(k_HitFrames));
     ASSERT_EQ(miss.offsets.size(), static_cast<std::size_t>(k_HitFrames));
     ASSERT_EQ(charge.size(), static_cast<std::size_t>(k_ChargeFrames));
@@ -253,7 +253,7 @@ TEST(ShakeTrace, WritesTheShakeOfTheSameHitsAndCharge)
     root["missAngles"] = SeriesJson(miss.angles);
     root["chargeAngles"] = SeriesJson(charge);
     const std::string text = root.dump(1);
-    using NS::Platform::FileSystem;
+    using NS::OS::FileSystem;
     const std::string directory =
         FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "build"), "ShakeTrace");
     (void)FileSystem::CreateDirectories(directory);

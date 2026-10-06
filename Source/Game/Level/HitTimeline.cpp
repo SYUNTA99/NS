@@ -1,8 +1,8 @@
 #include "Game/Level/HitTimeline.h"
 
-#include "Runtime/Core/Logger.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Platform/FileSystem.h"
+#include "NSlib/Core/Logger.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Windows/FileSystem.h"
 
 #include <algorithm>
 #include <cmath>
@@ -321,7 +321,7 @@ namespace NS::Game::Level
         default:
             break;
         }
-        const float angle = NS::Core::ToDegrees(NS::Core::Radians{std::atan2(v, u)}).value;
+        const float angle = NS::ToDegrees(NS::Radians{std::atan2(v, u)}).value;
         // 向きの角度からのずれを -180〜180 へ畳む。90 度離れると 0
         float difference = std::fmod(angle - center, 360.0f);
         if (difference > 180.0f)
@@ -444,8 +444,8 @@ namespace NS::Game::Level
     {
         if (m_directory.empty())
         {
-            m_directory = NS::Platform::FileSystem::Combine(
-                NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "HitTimelines");
+            m_directory = NS::OS::FileSystem::Combine(
+                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "HitTimelines");
         }
         return m_directory;
     }
@@ -471,14 +471,14 @@ namespace NS::Game::Level
         m_loaded = true;
 
         const std::string& directory = Directory();
-        if (!NS::Platform::FileSystem::IsDirectory(directory))
+        if (!NS::OS::FileSystem::IsDirectory(directory))
         {
             NS_LOG_ERROR(Game, "当たりのタイムラインの置き場 {} が無い", directory);
             return;
         }
-        for (const std::string& path : NS::Platform::FileSystem::ListFiles(directory, ".json"))
+        for (const std::string& path : NS::OS::FileSystem::ListFiles(directory, ".json"))
         {
-            const std::optional<std::string> text = NS::Platform::FileSystem::ReadAllText(path);
+            const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(path);
             if (!text.has_value())
             {
                 NS_LOG_ERROR(Game, "当たりのタイムライン {} を読めない", path);
@@ -503,7 +503,7 @@ namespace NS::Game::Level
                 NS_LOG_ERROR(Game, "当たりのタイムライン {} が壊れている: {}", path, error);
                 continue;
             }
-            m_timelines[NS::Platform::FileSystem::Stem(path)] = std::move(*timeline);
+            m_timelines[NS::OS::FileSystem::Stem(path)] = std::move(*timeline);
         }
     }
 
@@ -556,9 +556,9 @@ namespace NS::Game::Level
         // 種類の既定値と同じく辞書順のキーで書く。同じ中身の 2 回の保存は byte 一致になる
         const std::string text =
             HitTimelineToJson(*timeline).dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
-        const std::string path = NS::Platform::FileSystem::Combine(Directory(), std::string{name} + ".json");
+        const std::string path = NS::OS::FileSystem::Combine(Directory(), std::string{name} + ".json");
         const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
-        if (!NS::Platform::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size())))
+        if (!NS::OS::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size())))
         {
             NS_LOG_ERROR(Game, "当たりのタイムライン {} を書けない", path);
             return false;

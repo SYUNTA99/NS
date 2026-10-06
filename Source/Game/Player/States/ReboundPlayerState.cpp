@@ -4,7 +4,7 @@
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/SkidPlayerState.h"
-#include "Runtime/Object/Components/Body.h"
+#include "NSlib/Object/Components/Body.h"
 
 namespace NS::Game::Player
 {
@@ -13,11 +13,11 @@ namespace NS::Game::Player
         StartCoroutine(Run(player));
     }
 
-    NS::Core::Coroutine ReboundPlayerState::Run(::Player& player)
+    NS::Coroutine ReboundPlayerState::Run(::Player& player)
     {
         while (true)
         {
-            co_await NS::Core::NextFrame{};
+            co_await NS::NextFrame{};
             const float dt = StepDelta();
             player.TickTimers(dt);
             player.AccelerateDuringRebound(dt);

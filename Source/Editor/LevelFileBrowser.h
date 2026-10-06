@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Runtime/Core/NonCopyable.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <string>
 #include <string_view>
@@ -9,7 +9,7 @@
 namespace NS::Editor
 {
     //! @brief レベルファイルを保存・読込するモーダル UI
-    class LevelFileBrowser : public NS::Core::NonCopyable
+    class LevelFileBrowser : public NS::NonCopyable
     {
     public:
         enum class Action : std::uint8_t

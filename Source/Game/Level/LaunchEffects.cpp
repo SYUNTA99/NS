@@ -2,11 +2,11 @@
 
 #include "Game/Level/CollisionBounds.h"
 #include "Game/Level/MapObj.h"
-#include "Runtime/Core/AABB.h"
-#include "Runtime/Graphics/EffectScene.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Core/AABB.h"
+#include "NSlib/Graphics/EffectScene.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>
@@ -17,8 +17,8 @@ namespace NS::Game::Level
 {
     namespace
     {
-        using NS::Core::Quaternion;
-        using NS::Core::Vector3;
+        using NS::Quaternion;
+        using NS::Vector3;
 
         constexpr std::string_view k_LaunchTrail = "launch.trail";
         constexpr std::string_view k_LaunchLandDust = "launch.landDust";
@@ -105,7 +105,7 @@ namespace NS::Game::Level
         static_cast<void>(effects->Preload(k_LaunchLandDust));
     }
 
-    void LaunchEffects::BeginTrail(HitTier tier, float power, float launchScale, const NS::Core::Vector3& launchDir)
+    void LaunchEffects::BeginTrail(HitTier tier, float power, float launchScale, const NS::Vector3& launchDir)
     {
         NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
         // 尾は 1 本ずつ持つ。前の尾が残っていればここで消す
@@ -131,7 +131,7 @@ namespace NS::Game::Level
 
         // 再生の大きさは自分の直径。帯の幅は絵の定義が直径への割合で持つ
         m_trailScale = 1.0f;
-        NS::Core::AABB bounds{};
+        NS::AABB bounds{};
         if (TryGetCollisionBounds(*Owner(), bounds))
         {
             m_trailScale = 2.0f * std::max(bounds.Extents.x, bounds.Extents.z);
@@ -140,7 +140,7 @@ namespace NS::Game::Level
 
         // 置物が自分を動かす Triggers の段より前に走るので、帯の頭は放した時の速度で 1 フレーム先へ置く
         // 帯の点の +Y を飛ぶ向きへ回す。揃えないと、横から見た時に幅が道に沿って潰れる
-        const Vector3 head = Owner()->Root().Position() + m_body->Velocity() * NS::Platform::FrameTimer::FixedDelta();
+        const Vector3 head = Owner()->Root().Position() + m_body->Velocity() * NS::OS::FrameTimer::FixedDelta();
         NS::Gfx::EffectPlayDesc desc =
             PlayAt(head, TurnUpTo(NormalizedOr(m_body->Velocity(), m_launchDir)), Uniform(m_trailScale));
         // 0 番が橙、1 番が大きな外れの灰。2 番が点の寿命

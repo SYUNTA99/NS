@@ -2,15 +2,15 @@
 #include "Game/Level/Goal.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/SphereCollision.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneJson.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/Components/SphereCollision.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
 
 #include <gtest/gtest.h>
 
@@ -62,7 +62,7 @@ TEST(ColliderShape, CapsuleAtPutsTheCurrentShapeAroundTheRoot)
 {
     NS::Obj::Collider collider;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(collider, {{"半径", 0.3f}, {"半分の高さ", 0.7f}}), 0u);
-    const NS::Core::Vector3 root{1.0f, 2.0f, 3.0f};
+    const NS::Vector3 root{1.0f, 2.0f, 3.0f};
     NS::Phys::Capsule capsule = collider.CapsuleAt(root);
     EXPECT_FLOAT_EQ(capsule.center.x, 1.0f);
     EXPECT_FLOAT_EQ(capsule.center.y, 2.0f);
@@ -147,7 +147,7 @@ TEST(ColliderShape, ScaledPlayerRootDoesNotScaleTheBodySensor)
     Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
 
-    player->Root().SetScale(NS::Core::Vector3{1.2f, 1.2f, 1.2f});
+    player->Root().SetScale(NS::Vector3{1.2f, 1.2f, 1.2f});
     const NS::Obj::SensorVolume volume = player->BodySensorPart()->WorldVolume();
     const NS::Phys::Capsule capsule = player->Collider().CapsuleAt(player->Root().Position());
     EXPECT_FLOAT_EQ(volume.radius, capsule.radius);
@@ -163,7 +163,7 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
     nlohmann::json rock = NS::Obj::MakeObjectJson();
     NS::Obj::SetObjectJsonClass(rock, "MapObj");
     NS::Obj::SetObjectJsonId(rock, 1);
-    NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{2.0f, 1.0f, 0.0f});
+    NS::Obj::SetObjectPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.LoadJson(doc);
     NS::Obj::Actor* placed = scene.Objects().FindByObjectId(1);
@@ -175,7 +175,7 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
     ASSERT_EQ(
         NS::Obj::ApplyJsonFields(*placed->Part("Collision"), {{"半径", 0.8f}, {"中心オフセット", {0.0f, 0.25f, 0.0f}}}),
         0u);
-    const NS::Core::Sphere sphere = collision->WorldSphere();
+    const NS::Sphere sphere = collision->WorldSphere();
     const NS::Obj::SensorVolume volume = placed->BodySensorPart()->WorldVolume();
     EXPECT_FLOAT_EQ(sphere.radius, 0.8f);
     EXPECT_FLOAT_EQ(volume.radius, sphere.radius);

@@ -1,7 +1,7 @@
 ﻿#include "Game/Level/ImpactMark.h"
 
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <cmath>
 #include <memory>
@@ -14,10 +14,10 @@ namespace NS::Game::Level
         (void)CreatePart("Model");
         ModelPart()->SetMeshRef("shadowQuad");
         ModelPart()->SetMaterialRef("shadow");
-        Root().SetScale(NS::Core::Vector3{m_diameter, 1.0f, m_diameter});
+        Root().SetScale(NS::Vector3{m_diameter, 1.0f, m_diameter});
     }
 
-    NS::Obj::Actor* ImpactMark::SpawnAt(NS::Obj::Scene* scene, const NS::Core::Vector3& position)
+    NS::Obj::Actor* ImpactMark::SpawnAt(NS::Obj::Scene* scene, const NS::Vector3& position)
     {
         if (scene == nullptr)
         {
@@ -35,7 +35,7 @@ namespace NS::Game::Level
         if (std::isfinite(diameter) && diameter > 0.0f)
         {
             m_diameter = diameter;
-            Root().SetScale(NS::Core::Vector3{diameter, 1.0f, diameter});
+            Root().SetScale(NS::Vector3{diameter, 1.0f, diameter});
         }
     }
 
@@ -54,14 +54,14 @@ namespace NS::Game::Level
         {
             return;
         }
-        m_age += NS::Platform::FrameTimer::FixedDelta();
+        m_age += NS::OS::FrameTimer::FixedDelta();
         float t = 1.0f;
         if (m_lifeSeconds > 0.0f)
         {
-            t = NS::Core::Clamp(m_age / m_lifeSeconds, 0.0f, 1.0f);
+            t = NS::Clamp(m_age / m_lifeSeconds, 0.0f, 1.0f);
         }
         const float size = m_diameter * (1.0f - t);
-        Root().SetScale(NS::Core::Vector3{size, 1.0f, size});
+        Root().SetScale(NS::Vector3{size, 1.0f, size});
         if (t >= 1.0f)
         {
             Kill();

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Core/Math.h"
+#include "NSlib/Core/Math.h"
 
 #include <cstdint>
 
@@ -24,8 +24,8 @@ namespace NS::Game::Level
     //! @param[in] seed 当たりごとの種
     //! @param[in] hopIndex 何回目の跳ねか。0 から数える
     //! @return 跳ねた直後の速度 (m/s)
-    [[nodiscard]] NS::Core::Vector3 MissHopVelocity(const NS::Core::Vector3& velocity,
-                                                    const NS::Core::Vector3& up,
+    [[nodiscard]] NS::Vector3 MissHopVelocity(const NS::Vector3& velocity,
+                                                    const NS::Vector3& up,
                                                     const MissHopDesc& desc,
                                                     std::uint32_t seed,
                                                     int hopIndex) noexcept;

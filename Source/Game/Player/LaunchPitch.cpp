@@ -1,6 +1,6 @@
 #include "Game/Player/LaunchPitch.h"
 
-#include "Runtime/Core/Math.h"
+#include "NSlib/Core/Math.h"
 
 #include <algorithm>
 #include <cmath>
@@ -81,7 +81,7 @@ namespace NS::Game::Player
             return level;
         }
         const float angle = std::clamp(desc.maxAngleDegrees, 0.0f, k_MaxAngleDegrees);
-        const float limit = desc.horizontalSpeed * std::tan(NS::Core::ToRadians(NS::Core::Degrees{angle}).value);
+        const float limit = desc.horizontalSpeed * std::tan(NS::ToRadians(NS::Degrees{angle}).value);
         // 地上は床があるので下へ向けない
         float low = -limit;
         if (desc.grounded)

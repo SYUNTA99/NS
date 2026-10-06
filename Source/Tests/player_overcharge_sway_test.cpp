@@ -1,8 +1,8 @@
 #include "Game/Player.h"
 #include "Game/Player/PlayerParams.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -14,11 +14,11 @@ namespace
     // 欄の秒を固定ステップのフレーム数にする。Player::AdvanceCharge と同じ丸め
     int FramesFor(float seconds)
     {
-        return static_cast<int>(std::lround(seconds / NS::Platform::FrameTimer::FixedDelta()));
+        return static_cast<int>(std::lround(seconds / NS::OS::FrameTimer::FixedDelta()));
     }
 
     // 前 (z) から右 (x) へ振れた角度 (ラジアン)
-    float SwayAngle(const NS::Core::Vector3& direction)
+    float SwayAngle(const NS::Vector3& direction)
     {
         return std::atan2(direction.x, direction.z);
     }
@@ -46,7 +46,7 @@ namespace
                                                 {"紫の揺れの最大のずれ", 2.0f},
                                                 {"相手がいない時に直す距離", 10.0f}}),
                       0u);
-            ASSERT_NE(PlaceViewCamera(scene, NS::Core::Vector3{}, NS::Core::Vector3{0.0f, 0.0f, 1.0f}), nullptr);
+            ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f}), nullptr);
         }
     };
 } // namespace

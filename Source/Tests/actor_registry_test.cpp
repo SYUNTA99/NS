@@ -1,5 +1,5 @@
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
 
 #include <gtest/gtest.h>
 

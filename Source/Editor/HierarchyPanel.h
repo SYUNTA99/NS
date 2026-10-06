@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Core/NonCopyable.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <cstdint>
 #include <vector>
@@ -17,7 +17,7 @@ namespace NS::Editor
     //! @brief 配置物の親子ツリーを出すヒエラルキーパネル
     //! @details 選択・改名・親付け替え・複製/削除・範囲選択の UI 状態を自分で持ち、
     //! 実際の適用は controller へ流す。world を跨ぐので要求は木を描き終えてから一括で流す
-    class HierarchyPanel : public NS::Core::NonCopyable
+    class HierarchyPanel : public NS::NonCopyable
     {
     public:
         //! ヒエラルキーを 1 枚描く。選択・改名・付け替え・複製/削除の要求は controller へ渡す

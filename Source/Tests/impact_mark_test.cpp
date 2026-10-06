@@ -1,6 +1,6 @@
 #include "Game/Level/ImpactMark.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
 
@@ -12,13 +12,13 @@ static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Game::Level::ImpactMark
 TEST(ImpactMark, TemporaryActorShrinksAndStops)
 {
     NS::Obj::Scene scene;
-    NS::Obj::Actor* spawned = NS::Game::Level::ImpactMark::SpawnAt(&scene, NS::Core::Vector3{2.0f, 3.0f, 4.0f});
+    NS::Obj::Actor* spawned = NS::Game::Level::ImpactMark::SpawnAt(&scene, NS::Vector3{2.0f, 3.0f, 4.0f});
     ASSERT_NE(spawned, nullptr);
     EXPECT_TRUE(spawned->IsTransient());
-    EXPECT_EQ(spawned->Root().Position(), (NS::Core::Vector3{2.0f, 3.0f, 4.0f}));
+    EXPECT_EQ(spawned->Root().Position(), (NS::Vector3{2.0f, 3.0f, 4.0f}));
 
     NS::Game::Level::ImpactMark* mark = static_cast<NS::Game::Level::ImpactMark*>(spawned);
-    mark->SetLifeSeconds(NS::Platform::FrameTimer::FixedDelta());
+    mark->SetLifeSeconds(NS::OS::FrameTimer::FixedDelta());
     mark->Update();
     EXPECT_FALSE(mark->IsActiveSelf());
     ASSERT_NE(mark->ModelPart(), nullptr);
@@ -29,9 +29,9 @@ TEST(ImpactMark, ExpiredMarkLeavesTheObjectList)
 {
     NS::Obj::Scene scene;
     const std::size_t before = scene.Objects().ObjectCount();
-    NS::Obj::Actor* spawned = NS::Game::Level::ImpactMark::SpawnAt(&scene, NS::Core::Vector3{});
+    NS::Obj::Actor* spawned = NS::Game::Level::ImpactMark::SpawnAt(&scene, NS::Vector3{});
     ASSERT_NE(spawned, nullptr);
-    static_cast<NS::Game::Level::ImpactMark*>(spawned)->SetLifeSeconds(NS::Platform::FrameTimer::FixedDelta());
+    static_cast<NS::Game::Level::ImpactMark*>(spawned)->SetLifeSeconds(NS::OS::FrameTimer::FixedDelta());
     EXPECT_EQ(scene.Objects().ObjectCount(), before + 1);
 
     // 当てるたびに 1 体増えるので、消えた跡は更新の終わりに捨てる

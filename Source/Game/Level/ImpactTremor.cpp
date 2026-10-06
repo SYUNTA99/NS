@@ -11,15 +11,15 @@ namespace NS::Game::Level
         constexpr float k_ReferenceScreenHeight = 720.0f;
     } // namespace
 
-    float ScreenPixelsToMeters(float pixels, const NS::Obj::CameraPose& pose, const NS::Core::Vector3& at) noexcept
+    float ScreenPixelsToMeters(float pixels, const NS::Obj::CameraPose& pose, const NS::Vector3& at) noexcept
     {
-        NS::Core::Vector3 forward = pose.target - pose.position;
-        if (!(forward.Length() > NS::Core::k_Epsilon))
+        NS::Vector3 forward = pose.target - pose.position;
+        if (!(forward.Length() > NS::k_Epsilon))
         {
             return 0.0f;
         }
         forward.Normalize();
-        float depth = NS::Core::Dot(at - pose.position, forward);
+        float depth = NS::Dot(at - pose.position, forward);
         if (!(depth > 0.0f))
         {
             depth = (at - pose.position).Length();
@@ -29,7 +29,7 @@ namespace NS::Game::Level
 
     NS::Gfx::TremorCB MakeTremor(const TackleTremorDesc& desc,
                                  int elapsedFrames,
-                                 const NS::Core::Vector3& root,
+                                 const NS::Vector3& root,
                                  float bodyLength,
                                  const NS::Obj::CameraPose& pose) noexcept
     {
@@ -40,23 +40,23 @@ namespace NS::Game::Level
         {
             return tremor;
         }
-        NS::Core::Vector3 forward = pose.target - pose.position;
-        if (!(forward.Length() > NS::Core::k_Epsilon))
+        NS::Vector3 forward = pose.target - pose.position;
+        if (!(forward.Length() > NS::k_Epsilon))
         {
             return tremor;
         }
         forward.Normalize();
         // 画面の右と上。真上か真下を見ている時は世界の X を右にする
-        NS::Core::Vector3 right = NS::Core::Cross(NS::Core::Vector3{0.0f, 1.0f, 0.0f}, forward);
-        if (right.Length() > NS::Core::k_Epsilon)
+        NS::Vector3 right = NS::Cross(NS::Vector3{0.0f, 1.0f, 0.0f}, forward);
+        if (right.Length() > NS::k_Epsilon)
         {
             right.Normalize();
         }
         else
         {
-            right = NS::Core::Vector3{1.0f, 0.0f, 0.0f};
+            right = NS::Vector3{1.0f, 0.0f, 0.0f};
         }
-        NS::Core::Vector3 up = NS::Core::Cross(forward, right);
+        NS::Vector3 up = NS::Cross(forward, right);
         up.Normalize();
 
         tremor.contactOffset = desc.contactOffset;

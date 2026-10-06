@@ -1,10 +1,10 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Components/PlayerInput.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Components/PlayerInput.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -18,12 +18,12 @@ namespace
         nlohmann::json player = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(player, "Player");
         NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(rock, "MapObj");
         NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{0.0f, 0.5f, 3.0f});
+        NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 3.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         return doc;
     }
@@ -31,8 +31,8 @@ namespace
     // 床は文書に載らない当たりなので、場面ごとに足す
     void AddFloor(NS::Obj::Scene& scene)
     {
-        NS::Core::OBB floor{};
-        floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+        NS::OBB floor{};
+        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
         floor.halfExtentX = 100.0f;
         floor.halfExtentY = 0.5f;
         floor.halfExtentZ = 100.0f;
@@ -52,14 +52,14 @@ namespace
         NS::Obj::Scene preview;
         preview.LoadJson(snapshot);
         AddFloor(preview);
-        PlaceViewCamera(preview, NS::Core::Vector3{}, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        PlaceViewCamera(preview, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
         Player* player = NS::Obj::Cast<Player>(preview.Objects().FindByObjectId(1));
         if (player == nullptr)
         {
             return result;
         }
         player->Input().SetLocked(true);
-        player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
         for (int frame = 0; frame < 60; ++frame)
         {
             preview.OnUpdate();
@@ -84,7 +84,7 @@ TEST(PreviewScene, CopiedSceneReachesTheImpactWithoutTouchingTheEditedScene)
     edited.SetSimulationEnabled(false);
     Player* editedPlayer = NS::Obj::Cast<Player>(edited.Objects().FindByObjectId(1));
     ASSERT_NE(editedPlayer, nullptr);
-    const NS::Core::Vector3 editedPosition = editedPlayer->Root().Position();
+    const NS::Vector3 editedPosition = editedPlayer->Root().Position();
     const nlohmann::json snapshot = edited.ToJson();
 
     const PreviewResult first = RunPreview(snapshot);

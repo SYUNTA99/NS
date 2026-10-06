@@ -4,5 +4,5 @@ reviews:
     base_branches:
       - develop
   path_instructions:
-    - path: "Source/Runtime/**"
+    - path: "Source/NSlib/**"
       instructions: "Runtime 層ライブラリコード。 パフォーマンスとメモリ管理に注意。"

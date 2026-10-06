@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Runtime/Core/Math.h"
+#include "NSlib/Core/Math.h"
 
 #include <cstdint>
 
@@ -24,7 +24,7 @@ namespace NS::Editor
     [[nodiscard]] bool ViewRectContains(const ViewRect& rect, int screenX, int screenY) noexcept;
 
     //! 矩形の幅と高さを返す
-    [[nodiscard]] NS::Core::Size2D ViewRectSize(const ViewRect& rect) noexcept;
+    [[nodiscard]] NS::Size2D ViewRectSize(const ViewRect& rect) noexcept;
 
     //! @brief スクリーン座標を矩形原点基準のローカル座標へ変換する
     //! @note 矩形外でも変換自体は返す。範囲判定は ViewRectContains が担う
@@ -36,22 +36,22 @@ namespace NS::Editor
     void WindowMouseToViewSpace(int mouseX, int mouseY, int& outX, int& outY) noexcept;
 
     //! @brief スクリーンの2D座標からワールド空間へ向かう Ray を生成する
-    [[nodiscard]] NS::Core::Ray ScreenToWorldRay(const NS::Core::Matrix& viewProjection,
-                                                 NS::Core::Size2D viewport,
+    [[nodiscard]] NS::Ray ScreenToWorldRay(const NS::Matrix& viewProjection,
+                                                 NS::Size2D viewport,
                                                  int mouseX,
                                                  int mouseY) noexcept;
 
     //! ワールド座標を最も近いグリッドセルの中心座標に丸める
-    [[nodiscard]] NS::Core::Vector3 SnapWorldPointToGrid(NS::Core::Vector3 worldPoint,
+    [[nodiscard]] NS::Vector3 SnapWorldPointToGrid(NS::Vector3 worldPoint,
                                                          float gridSize = k_GridSize) noexcept;
 
     //! @brief レイと水平な地面との交点を算出し、グリッドにスナップした座標を取得する
     //! @param[out] outCellCenter スナップ後のセル中心。交差した時だけ書く
     //! @return 交差した場合 true、それ以外の場合は false
-    [[nodiscard]] bool TryGroundPlaneFallback(const NS::Core::Ray& ray,
-                                              NS::Core::Vector3& outCellCenter,
+    [[nodiscard]] bool TryGroundPlaneFallback(const NS::Ray& ray,
+                                              NS::Vector3& outCellCenter,
                                               float gridSize = k_GridSize) noexcept;
 
     //! 0〜3の段階的な回転値を、Y軸周りの90度刻みのクォータニオンに変換する
-    [[nodiscard]] NS::Core::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept;
+    [[nodiscard]] NS::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept;
 } // namespace NS::Editor

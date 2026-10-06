@@ -27,7 +27,7 @@ namespace NS::Game::Level
             {
                 return 0;
             }
-            return NS::Core::Clamp(static_cast<int>(std::lround(raw)), 0, MaxHitStopSteps(tuning));
+            return NS::Clamp(static_cast<int>(std::lround(raw)), 0, MaxHitStopSteps(tuning));
         }
 
         // 段が配分に掛ける倍率
@@ -55,15 +55,15 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    NS::Core::Vector3 MissSurfaceNormal(float u,
+    NS::Vector3 MissSurfaceNormal(float u,
                                         float v,
                                         float sharpness,
-                                        const NS::Core::Vector3& slamDirection) noexcept
+                                        const NS::Vector3& slamDirection) noexcept
     {
-        NS::Core::Vector3 forward{};
-        if (!NS::Core::TryNormalizeHorizontal(slamDirection, forward))
+        NS::Vector3 forward{};
+        if (!NS::TryNormalizeHorizontal(slamDirection, forward))
         {
-            return NS::Core::Vector3{};
+            return NS::Vector3{};
         }
         float p = sharpness;
         if (!std::isfinite(p) || p < 2.0f)
@@ -71,8 +71,8 @@ namespace NS::Game::Level
             p = 2.0f;
         }
         // 面の右は JudgeHitFace と同じ。左手系で上から見て、進む向きの右
-        const NS::Core::Vector3 right{forward.z, 0.0f, -forward.x};
-        const NS::Core::Vector3 up{0.0f, 1.0f, 0.0f};
+        const NS::Vector3 right{forward.z, 0.0f, -forward.x};
+        const NS::Vector3 up{0.0f, 1.0f, 0.0f};
         const float absU = std::abs(u);
         const float absV = std::abs(v);
         const float edge = std::min(std::pow(std::pow(absU, p) + std::pow(absV, p), 1.0f / p), 1.0f);
@@ -80,10 +80,10 @@ namespace NS::Game::Level
         const float slideU = std::copysign(std::pow(absU, p - 1.0f), u);
         const float slideV = std::copysign(std::pow(absV, p - 1.0f), v);
         const float slideLength = std::sqrt(slideU * slideU + slideV * slideV);
-        NS::Core::Vector3 normal = -forward;
-        if (std::isfinite(edge) && slideLength > NS::Core::k_Epsilon)
+        NS::Vector3 normal = -forward;
+        if (std::isfinite(edge) && slideLength > NS::k_Epsilon)
         {
-            const NS::Core::Vector3 slide = (right * slideU + up * slideV) / slideLength;
+            const NS::Vector3 slide = (right * slideU + up * slideV) / slideLength;
             normal = slide * edge - forward * std::sqrt(std::max(1.0f - edge * edge, 0.0f));
         }
         normal.Normalize();
@@ -124,7 +124,7 @@ namespace NS::Game::Level
         const float left = 1.0f - static_cast<float>(frame) / static_cast<float>(length);
         // 振れ幅だけをばらつかせ、左右の入れ替わりは乱さない。乱すと止まって見えるフレームができる
         constexpr float k_HashToUnit = 1.0f / 4294967295.0f;
-        const float spread = 0.7f + 0.3f * static_cast<float>(NS::Core::NoiseHash(frame, seed)) * k_HashToUnit;
+        const float spread = 0.7f + 0.3f * static_cast<float>(NS::NoiseHash(frame, seed)) * k_HashToUnit;
         float sign = 1.0f;
         if (firstSign < 0.0f)
         {
@@ -170,10 +170,10 @@ namespace NS::Game::Level
         // 中心近くの当たりは距離を伸ばして高さを下げる。真ん中に当てた時は低く速く後ろへ、カメラの方へ戻る
         const float reboundDistance = tuning.reboundDistance * outcome.reboundScale * tierScales.reboundDistance;
         outcome.reboundArc = NS::Game::Player::ReboundArc{
-            .direction = NS::Core::Vector3{input.awayDirection.x, 0.0f, input.awayDirection.z},
+            .direction = NS::Vector3{input.awayDirection.x, 0.0f, input.awayDirection.z},
             .apexHeight = tuning.reboundApexHeight * outcome.reboundScale * tierScales.reboundHeight,
             .distance = reboundDistance};
-        NS::Core::Vector3 launchDirection = input.launchDirection;
+        NS::Vector3 launchDirection = input.launchDirection;
         // 外れで相手へ押し込む成分。突進の向きと触れた面の向きの内積で、面の真ん中は 1、端ほど 0 へ寄る
         float missPush = 1.0f;
 
@@ -189,27 +189,27 @@ namespace NS::Game::Level
             {
                 sharpness = tuning.missBoxEdgeSharpness;
             }
-            const NS::Core::Vector3 normal = MissSurfaceNormal(input.faceU, input.faceV, sharpness, input.slamVelocity);
+            const NS::Vector3 normal = MissSurfaceNormal(input.faceU, input.faceV, sharpness, input.slamVelocity);
             const float slamSpeed = input.slamVelocity.Length();
-            if (slamSpeed > NS::Core::k_Epsilon)
+            if (slamSpeed > NS::k_Epsilon)
             {
-                missPush = NS::Core::Clamp(-(input.slamVelocity / slamSpeed).Dot(normal), 0.0f, 1.0f);
+                missPush = NS::Clamp(-(input.slamVelocity / slamSpeed).Dot(normal), 0.0f, 1.0f);
             }
-            NS::Core::Vector3 forward{};
-            NS::Core::Vector3 flatNormal{};
-            if (NS::Core::TryNormalizeHorizontal(input.slamVelocity, forward))
+            NS::Vector3 forward{};
+            NS::Vector3 flatNormal{};
+            if (NS::TryNormalizeHorizontal(input.slamVelocity, forward))
             {
                 // 真上か真下の縁で水平の成分が無い時は、来た向きへ戻す
                 flatNormal = -forward;
-                NS::Core::Vector3 horizontal{};
-                if (NS::Core::Vector2{normal.x, normal.z}.Length() > NS::Core::k_Epsilon &&
-                    NS::Core::TryNormalizeHorizontal(normal, horizontal))
+                NS::Vector3 horizontal{};
+                if (NS::Vector2{normal.x, normal.z}.Length() > NS::k_Epsilon &&
+                    NS::TryNormalizeHorizontal(normal, horizontal))
                 {
                     flatNormal = horizontal;
                 }
-                const NS::Core::Vector3 mirrored = forward - flatNormal * (2.0f * forward.Dot(flatNormal));
-                NS::Core::Vector3 deflect{};
-                if (NS::Core::TryNormalizeHorizontal(mirrored, deflect))
+                const NS::Vector3 mirrored = forward - flatNormal * (2.0f * forward.Dot(flatNormal));
+                NS::Vector3 deflect{};
+                if (NS::TryNormalizeHorizontal(mirrored, deflect))
                 {
                     outcome.reboundArc.direction = deflect;
                 }
@@ -217,15 +217,15 @@ namespace NS::Game::Level
             }
             // ねじれる軸はかすった所の摩擦から出す。滑る成分 = 来た向き − 押し込む成分、軸 = n × 滑る成分
             // 右の縁では相手の側が引きずられ、相手の方へ巻き込まれる向きに回る
-            NS::Core::Vector3 slide{};
-            if (NS::Core::TryNormalizeHorizontal(input.slamVelocity, slide))
+            NS::Vector3 slide{};
+            if (NS::TryNormalizeHorizontal(input.slamVelocity, slide))
             {
                 slide = slide - normal * slide.Dot(normal);
             }
             outcome.reboundArc.missTumble =
                 NS::Game::Player::MissTumble{.twist = normal.Cross(slide), .power = input.power};
             // 浮く感じは真ん中だけの物にする。下を向いた面は地面へ叩きつけられ、さらに低く跳ねる
-            const float downward = NS::Core::Clamp(-normal.y, 0.0f, 1.0f);
+            const float downward = NS::Clamp(-normal.y, 0.0f, 1.0f);
             const float slam = 1.0f - (1.0f - tuning.missSlamBounce) * downward;
             outcome.reboundArc.apexHeight *= tuning.missReboundHeightRatio * slam;
         }
@@ -236,7 +236,7 @@ namespace NS::Game::Level
         {
             massExponent = 1.0f;
         }
-        massExponent = NS::Core::Clamp(massExponent, 0.0f, 1.0f);
+        massExponent = NS::Clamp(massExponent, 0.0f, 1.0f);
 
         // 威力は距離に線形に効き、質量で割ると重い物ほど飛ばない。高さは距離と同じ比で伸ばし、打ち上げの角度を揃える
         outcome.launchScale = power / std::pow(mass, massExponent);

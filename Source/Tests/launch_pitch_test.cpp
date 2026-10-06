@@ -2,8 +2,8 @@
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
 
 #include <gtest/gtest.h>
 
@@ -54,7 +54,7 @@ namespace
 
     float AngleDegrees(const LaunchPitchDesc& desc, float verticalSpeed)
     {
-        return NS::Core::RadiansToDegrees(std::atan2(verticalSpeed, desc.horizontalSpeed));
+        return NS::RadiansToDegrees(std::atan2(verticalSpeed, desc.horizontalSpeed));
     }
 } // namespace
 
@@ -181,7 +181,7 @@ TEST(LaunchPitchTest, NonFiniteInputLaunchesLevel)
 // 放った瞬間の縦の速さ: 添えた値で出る。添えない溜めた突進は、空中で上がっている途中でも 0 から
 TEST(LaunchPitchTest, ChargedSlamStartsFromTheGivenVerticalSpeed)
 {
-    const NS::Core::Vector3 forward{0.0f, 0.0f, 1.0f};
+    const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
     {
         Player player;
         player.Body().SetVerticalVelocity(8.0f);

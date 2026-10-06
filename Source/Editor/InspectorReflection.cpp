@@ -1,12 +1,12 @@
 #include "Editor/InspectorReflection.h"
 
 #include "Editor/EditorUi.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Component.h"
-#include "Runtime/Object/Reflection/Archetype.h"
-#include "Runtime/Object/Reflection/Curve.h"
-#include "Runtime/Object/Reflection/Reflection.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Component.h"
+#include "NSlib/Object/Reflection/Archetype.h"
+#include "NSlib/Object/Reflection/Curve.h"
+#include "NSlib/Object/Reflection/Reflection.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
 
 #include <algorithm>
 #include <climits>
@@ -92,9 +92,9 @@ namespace NS::Editor
         case NS::Obj::FieldType::Bool:
             return !SameValue<bool>(comp, *defaults, field);
         case NS::Obj::FieldType::Vector3:
-            return !SameValue<NS::Core::Vector3>(comp, *defaults, field);
+            return !SameValue<NS::Vector3>(comp, *defaults, field);
         case NS::Obj::FieldType::Quaternion:
-            return !SameValue<NS::Core::Quaternion>(comp, *defaults, field);
+            return !SameValue<NS::Quaternion>(comp, *defaults, field);
         case NS::Obj::FieldType::String:
             return !SameValue<std::string>(comp, *defaults, field);
         case NS::Obj::FieldType::ActorRef:
@@ -121,10 +121,10 @@ namespace NS::Editor
             CopyValue<bool>(comp, defaults, field);
             break;
         case NS::Obj::FieldType::Vector3:
-            CopyValue<NS::Core::Vector3>(comp, defaults, field);
+            CopyValue<NS::Vector3>(comp, defaults, field);
             break;
         case NS::Obj::FieldType::Quaternion:
-            CopyValue<NS::Core::Quaternion>(comp, defaults, field);
+            CopyValue<NS::Quaternion>(comp, defaults, field);
             break;
         case NS::Obj::FieldType::String:
             CopyValue<std::string>(comp, defaults, field);
@@ -497,12 +497,12 @@ namespace NS::Editor
             }
             case NS::Obj::FieldType::Vector3:
             {
-                NS::Core::Vector3 value{};
+                NS::Vector3 value{};
                 field.get(owner, &value);
                 float xyz[3] = {value.x, value.y, value.z};
                 if (ImGui::DragFloat3("##value", xyz, 0.05f))
                 {
-                    value = NS::Core::Vector3{xyz[0], xyz[1], xyz[2]};
+                    value = NS::Vector3{xyz[0], xyz[1], xyz[2]};
                     field.set(owner, &value);
                     result.changed = true;
                 }
@@ -511,13 +511,13 @@ namespace NS::Editor
             case NS::Obj::FieldType::Quaternion:
             {
                 // 4 成分を直接触らせると正規化の崩れた回転を作れるので、度の Euler を経由する
-                NS::Core::Quaternion value{};
+                NS::Quaternion value{};
                 field.get(owner, &value);
-                const NS::Core::Vector3 degrees = NS::Core::QuaternionToEulerDegrees(value);
+                const NS::Vector3 degrees = NS::QuaternionToEulerDegrees(value);
                 float xyz[3] = {degrees.x, degrees.y, degrees.z};
                 if (ImGui::DragFloat3("##value", xyz, 0.5f))
                 {
-                    value = NS::Core::EulerDegreesToQuaternion(NS::Core::Vector3{xyz[0], xyz[1], xyz[2]});
+                    value = NS::EulerDegreesToQuaternion(NS::Vector3{xyz[0], xyz[1], xyz[2]});
                     field.set(owner, &value);
                     result.changed = true;
                 }

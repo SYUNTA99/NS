@@ -5,12 +5,12 @@
 #include "Game/Level/SlamAim.h"
 #include "Game/Player/PlayerEvents.h"
 #include "Game/Player/ReboundArc.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Core/Sphere.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/CameraTarget.h"
-#include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Object/StateMachine.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Core/Sphere.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/CameraTarget.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/StateMachine.h"
 
 #include <cstdint>
 #include <optional>
@@ -141,11 +141,11 @@ public:
 
     // 入力の窓口。値は PlayerInput が持つ
     //! world 空間の目標移動方向と速度スケールを渡す。スケールは 0..1 に丸める
-    void SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept;
+    void SetDesiredMove(const NS::Vector3& worldDir, float speedScale01) noexcept;
     //! 直近に渡された目標速度スケール 0..1
     [[nodiscard]] float DesiredSpeedScale() const noexcept;
     //! 直近に渡された world 空間の目標移動方向。長さは入力の強さのままで正規化されていない
-    [[nodiscard]] NS::Core::Vector3 DesiredDirection() const noexcept;
+    [[nodiscard]] NS::Vector3 DesiredDirection() const noexcept;
     //! 掴まり中の生ローカル入力で各成分は -1..1。SetDesiredMove とは別に持つ
     void SetClimbMove(float localRight, float localForward) noexcept;
     [[nodiscard]] float ClimbRight() const noexcept;
@@ -186,7 +186,7 @@ public:
     //! @brief 最後に出した突進の水平の向きを返す
     //! @details 突進の間は向きが変わらない。突進が終わった後も、次の突進を出すまで残す
     //! @return 正規化済みの向き。突進を出す前と ResetState の後はゼロ
-    [[nodiscard]] NS::Core::Vector3 BodySlamDirection() const noexcept { return m_slam.dir; }
+    [[nodiscard]] NS::Vector3 BodySlamDirection() const noexcept { return m_slam.dir; }
     //! 反動の状態の場合 true、それ以外の場合は false
     [[nodiscard]] bool IsRebounding() const noexcept;
     //! 外れの反動の着地からこすって止まる状態の場合 true、それ以外の場合は false
@@ -201,7 +201,7 @@ public:
     //! 状態機械の 1 歩・身体の移動・玉の回転と着地の潰れの戻しがこの問いを読む
     [[nodiscard]] bool CanMoveBody() const noexcept;
     //! 最後に始めた反動の水平の向き。正規化済み。反動を始める前と ResetState の後はゼロ
-    [[nodiscard]] NS::Core::Vector3 ReboundDirection() const noexcept { return m_rebound.direction; }
+    [[nodiscard]] NS::Vector3 ReboundDirection() const noexcept { return m_rebound.direction; }
     //! @brief 突進の玉の回る速さ (度/秒) を返す
     //! @details 届くまでの回転数 × 360 ÷ 届くまでの秒。回転数は溜めた突進が欄「溜めた突進の届くまでの回転数」、
     //! 通常突進が欄「通常突進の届くまでの回転数」。届くまでの秒は突進を終える水平の距離 ÷ 突進の水平の速さ。
@@ -233,7 +233,7 @@ public:
     //! 揃えて根を下げるので、立ち姿の下の球が丸まった後の玉になる。丸まっていれば半分の高さが 0 で、玉の中心は根
     //! そのもの。判定・矢印・エディタの面は玉をここから引く。丸まりの揃え方を変える時は ChangeCurled と一緒に直す
     //! @param[in] rootPosition 根の位置 (ワールド)
-    [[nodiscard]] NS::Core::Sphere SlamBallAt(const NS::Core::Vector3& rootPosition) const noexcept;
+    [[nodiscard]] NS::Sphere SlamBallAt(const NS::Vector3& rootPosition) const noexcept;
 
     // 移動の組み立て。状態が呼ぶ順序がそのまま手触りになる。速度・接地・重力の計算は身体 (Body) が持ち、
     // どの状態でどの値をどの順に掛けるかをここが決める。調整値は PlayerParams から読む
@@ -312,14 +312,14 @@ public:
     //! 有限でなければ 0
     //! @param[in] overcharge01 溜めすぎの深さ 0..1。威力を溜めきりより上げる。有限でなければ 0
     void RequestBodySlam(float charge01,
-                         const NS::Core::Vector3& aimDirection,
+                         const NS::Vector3& aimDirection,
                          float launchVerticalSpeed = 0.0f,
                          float overcharge01 = 0.0f) noexcept;
     //! @brief 突進の速度を返す。突進中は発動時の向きと BodySlamSpeed から作り、縦は身体の今の値
     //! @details 衝突の裁定と玉の回転が読み、溜めた突進の間は UpdateBodySlam がこの水平で身体を書き直す。
     //! 実速度は壁へ押し付けられたフレームで 0 に潰れ、衝突の先読みが今の位置から動かなくなる
     //! @return 突進中は突進の速度、それ以外は身体の速度
-    [[nodiscard]] NS::Core::Vector3 BodySlamVelocity() const noexcept;
+    [[nodiscard]] NS::Vector3 BodySlamVelocity() const noexcept;
     //! 突進を打ち切って通常移動へ戻す。突進中でなければ何もしない
     void CancelBodySlam() noexcept;
     //! @brief 向きを解決して突進を始める
@@ -332,7 +332,7 @@ public:
     //! @brief 向きを添えずに要求した体当たり (通常突進) を出す水平の向きを返す
     //! @details 入力・カメラの前・速度の順に見て、どれも無ければゼロ。
     //! 溜めて放した突進は、狙いの線を控えていればその向きを添えるので、この向きへは出ない
-    [[nodiscard]] NS::Core::Vector3 AimDirection() const noexcept;
+    [[nodiscard]] NS::Vector3 AimDirection() const noexcept;
     //! @brief 速度を ReboundVelocityFor の値にして反動の状態へ移す
     //! @details 反動の間は上りの重力に反動の上りの重力倍率を掛け、下りは普段の重力のまま
     //! 反動の間は跳べず、空中の操作は反動中の空中の加速度だけ効く
@@ -346,7 +346,7 @@ public:
     //! @param[in] arc 弾かれる向きと頂点の高さと横の距離
     //! @return 反動の初速。高さか距離が有限の正でない時、向きに水平の成分が無い時、
     //! 重力の欄から曲線が組めない時は 0
-    [[nodiscard]] NS::Core::Vector3 ReboundVelocityFor(const NS::Game::Player::ReboundArc& arc) const noexcept;
+    [[nodiscard]] NS::Vector3 ReboundVelocityFor(const NS::Game::Player::ReboundArc& arc) const noexcept;
     //! @brief 丸まりを入れるか解く
     //! @details 押している間は毎フレーム true が入る。自分で解くので、false はプレイを終える時だけ渡す。
     //! 丸まると当たりを球にして根を立ち姿の半長ぶん下げ、解くと立ち姿へ戻して上げる。
@@ -409,7 +409,7 @@ private:
         float distanceTarget = 0.0f; // 突進を終える水平距離
         bool isTap = false;          // 溜め量 0 の飛び込みか
         bool justStarted = false;    // 発動したフレームか
-        NS::Core::Vector3 dir{};     // 最後に出した突進の水平の向き。正規化済み。書くのは出せた時だけ
+        NS::Vector3 dir{};     // 最後に出した突進の水平の向き。正規化済み。書くのは出せた時だけ
         float charge01 = 0.0f;       // 発動時に確定した溜め量 0..1
         float overcharge01 = 0.0f;   // 発動時に確定した溜めすぎの深さ 0..1
         bool forced = false;         // 溜めすぎで勝手に出た突進か
@@ -423,17 +423,17 @@ private:
         bool spent = false;           // 空中で発動してから接地していないか
         float charge01 = 0.0f;        // 要求された溜め量 0..1
         float overcharge01 = 0.0f;    // 要求された溜めすぎの深さ 0..1
-        NS::Core::Vector3 dir{};      // 要求に添えた出す向き。正規化済み
+        NS::Vector3 dir{};      // 要求に添えた出す向き。正規化済み
         bool hasDir = false;          // 要求に向きが添えてあるか
         float verticalSpeed = 0.0f;   // 溜めた突進を放つ瞬間の縦の速さ。hasDir が偽の間は読まない
-        NS::Core::Vector3 aimDir{};   // 押したフレームに控えた狙いの向き。正規化済み
+        NS::Vector3 aimDir{};   // 押したフレームに控えた狙いの向き。正規化済み
         float aimAge = 0.0f;          // 狙いを控えてからの経過秒
     };
 
     //! 反動の記録
     struct ReboundRecord
     {
-        NS::Core::Vector3 direction{};                            // 最後に始めた反動の水平の向き。正規化済み
+        NS::Vector3 direction{};                            // 最後に始めた反動の水平の向き。正規化済み
         float spinSpeed = 0.0f;                                   // 最後に始めた反動の玉の回る速さ (度/秒)
         std::optional<NS::Game::Player::MissTumble> missTumble{}; // 最後に始めた反動の外れの回り方
         std::uint32_t count = 0;                                  // 反動を始めた回数
@@ -442,7 +442,7 @@ private:
     //! 外れの着地からこすって止まる間の記録。書くのは BeginSkid と AdvanceSkid
     struct SkidRecord
     {
-        NS::Core::Vector3 landingVelocity{}; // 着いたフレームの水平の速度
+        NS::Vector3 landingVelocity{}; // 着いたフレームの水平の速度
         int elapsedSteps = 0;                // 着いてからのフレーム数
     };
 
@@ -481,7 +481,7 @@ private:
     //! 突進の進んだ距離を足し、距離を使い切るか進めなくなったら突進を終える
     //! @details 進めた距離は動かした後にしか出ないので、打ち切りの判定は状態でなくここに置く
     //! 受け取るのは直前の Move で実際に動いた量
-    void AdvanceBodySlamTravel(const NS::Core::Vector3& delta) noexcept;
+    void AdvanceBodySlamTravel(const NS::Vector3& delta) noexcept;
     //! 突進を終える。水平の速さを MaxSpeed で切り、接地していれば走りへ、空中なら落下へ移す
     void EndBodySlam() noexcept;
     //! 控えた狙いを今の向きにどれだけ混ぜるか 0..1。巻き戻し秒までは 1、消える秒で 0
@@ -541,7 +541,7 @@ private:
     //! @param[in] hangPos 手を伸ばす元になるカプセル中心の位置
     //! @param[out] outTop 見つけた縁の上端の y。見つからない場合は書き換えない
     //! @return 手の高さ以下の帯に縁があり、登り先も塞がっていない場合 true、それ以外の場合は false
-    [[nodiscard]] bool FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) const noexcept;
+    [[nodiscard]] bool FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noexcept;
     [[nodiscard]] std::string_view ChooseClip(float lateralSpeed) const noexcept;
     [[nodiscard]] float ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept;
     std::unique_ptr<NS::Game::Player::PlayerParams> m_params;
@@ -579,12 +579,12 @@ private:
     // 紫に入った回数。紫になりきった時に揺れが来る端を毎回入れ替える。溜めを捨てても戻さない
     int m_overchargeCount = 0;
 
-    NS::Core::Vector3 m_facingDir{0.0f, 0.0f, 0.0f};       // 掴む向き。動こうとした水平の向きへ振り向きの速さで回る
+    NS::Vector3 m_facingDir{0.0f, 0.0f, 0.0f};       // 掴む向き。動こうとした水平の向きへ振り向きの速さで回る
     float m_lastMoveDistance = 0.0f;                       // 直前の Move で動いた距離。縁を探す帯の上の余白
     float m_ledgeTopY = 0.0f;                              // 掴んでいる縁の上端の y
-    NS::Core::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f}; // 掴んでいる面の外向き法線
-    NS::Core::Vector3 m_ledgeMantleStart{0.0f, 0.0f, 0.0f};
-    NS::Core::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};
+    NS::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f}; // 掴んでいる面の外向き法線
+    NS::Vector3 m_ledgeMantleStart{0.0f, 0.0f, 0.0f};
+    NS::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};
     float m_ledgeMantleTimer = 0.0f; // よじ登りの経過秒
 
     NS::Game::Player::PlayerEvents m_playerEvents;
@@ -600,4 +600,4 @@ private:
 //! 補う側 (エディタの EnsurePlayerObject) とやり直しの落ち先 (RestartFrom) が同じこの関数を読む
 //! @param[in] collider 立たせる自機の動く体の当たり。カプセルの寸法の持ち主
 //! @return カプセルの中心の world 位置
-[[nodiscard]] NS::Core::Vector3 DefaultSpawnPosition(const NS::Obj::Collider& collider) noexcept;
+[[nodiscard]] NS::Vector3 DefaultSpawnPosition(const NS::Obj::Collider& collider) noexcept;

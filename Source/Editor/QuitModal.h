@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Runtime/Core/NonCopyable.h"
+#include "NSlib/Core/NonCopyable.h"
 
 class LevelEditorController;
 
 namespace NS::Editor
 {
     //! @brief 終了時に保存を確認するモーダル。終了ガードと保存確認の状態を持つ
-    class QuitModal : public NS::Core::NonCopyable
+    class QuitModal : public NS::NonCopyable
     {
     public:
         //! @brief 終了要求を受ける

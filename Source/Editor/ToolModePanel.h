@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Runtime/Core/NonCopyable.h"
+#include "NSlib/Core/NonCopyable.h"
 
 class LevelEditorController;
 
 namespace NS::Editor
 {
     //! @brief Build / Object の編集モードを切り替え、主要ショートカットを一覧するパネル
-    class ToolModePanel : public NS::Core::NonCopyable
+    class ToolModePanel : public NS::NonCopyable
     {
     public:
         //! Edit Mode パネルを 1 枚描く。エディタを外したビルドでは何もしない

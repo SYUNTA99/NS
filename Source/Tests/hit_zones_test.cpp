@@ -4,19 +4,19 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Reflection/Archetype.h"
-#include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Physics/Capsule.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Reflection/Archetype.h"
+#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Physics/Capsule.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
 
@@ -31,7 +31,7 @@
 
 namespace
 {
-    using NS::Core::Vector3;
+    using NS::Vector3;
     using NS::Game::Level::HitFace;
     using NS::Game::Level::HitFaceJudgement;
     using NS::Game::Level::HitTier;
@@ -216,7 +216,7 @@ TEST(HitZonesTest, CapsuleHalfHeightAddsItsTube)
 TEST(HitZonesTest, BoxHalfHeightComesFromItsAxes)
 {
     const SensorVolume box = SensorVolume::Box(
-        NS::Core::MakeOBB(Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Quaternion::Identity, Vector3{1.0f, 0.5f, 0.2f}));
+        NS::MakeOBB(Vector3{0.0f, 0.0f, 0.0f}, NS::Quaternion::Identity, Vector3{1.0f, 0.5f, 0.2f}));
     HitFaceJudgement result;
     ASSERT_TRUE(
         JudgeHitFace(HitFace{}, box, Vector3{-3.0f, 0.5f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius, result));
@@ -228,9 +228,9 @@ TEST(HitZonesTest, BoxHalfHeightComesFromItsAxes)
 // 外接箱で測ると、細い板の長い辺に沿って通る線でも板の対角ぶん広く出る
 TEST(HitZonesTest, RotatedBoxUsesItsOwnWidthAcrossTheLine)
 {
-    const NS::Core::OBB obb =
-        NS::Core::MakeOBB(Vector3{0.0f, 0.0f, 0.0f},
-                          NS::Core::Quaternion::CreateFromAxisAngle(Vector3{0.0f, 1.0f, 0.0f}, 0.25f * 3.14159265f),
+    const NS::OBB obb =
+        NS::MakeOBB(Vector3{0.0f, 0.0f, 0.0f},
+                          NS::Quaternion::CreateFromAxisAngle(Vector3{0.0f, 1.0f, 0.0f}, 0.25f * 3.14159265f),
                           Vector3{1.0f, 0.5f, 0.2f});
     // 板の長い辺に沿って進み、板の厚みの向きへ 0.5 m ずれた線
     HitFaceJudgement result;
@@ -633,7 +633,7 @@ TEST(HitZonesTest, FaceFrameStandsOnTheFrontOfTheBodyFacingThePlayer)
     EXPECT_NEAR(frame.reachV, 0.4f + 0.8f + k_PlayerRadius, k_Tolerance);
 
     // 箱は奥行きの軸を線の向きへ写した長さだけ手前に立つ
-    NS::Core::OBB box{};
+    NS::OBB box{};
     box.center = Vector3{0.0f, 1.0f, 0.0f};
     box.halfExtentX = 1.0f;
     box.halfExtentY = 0.5f;
@@ -715,14 +715,14 @@ TEST(HitZonesTest, RedOutlineAgreesWithTheJudgement)
             ASSERT_FALSE(shapes.empty());
             const NS::Game::Level::HitFaceShape& red = shapes.back();
             ASSERT_EQ(red.tier, HitTier::Center);
-            const std::vector<NS::Core::Vector2> outline = NS::Game::Level::HitFaceShapeOutline(red);
+            const std::vector<NS::Vector2> outline = NS::Game::Level::HitFaceShapeOutline(red);
             ASSERT_GE(outline.size(), 4u);
-            for (const NS::Core::Vector2& edge : outline)
+            for (const NS::Vector2& edge : outline)
             {
-                const NS::Core::Vector2 center{red.centerU, red.centerV};
+                const NS::Vector2 center{red.centerU, red.centerV};
                 for (const float scale : {0.98f, 1.02f})
                 {
-                    const NS::Core::Vector2 at = center + (edge - center) * scale;
+                    const NS::Vector2 at = center + (edge - center) * scale;
                     const Vector3 onFace = NS::Game::Level::HitFacePoint(frame, at.x, at.y);
                     HitFaceJudgement result;
                     ASSERT_TRUE(JudgeHitFace(face, body, onFace - direction * 4.0f, direction, k_PlayerRadius, result));
@@ -865,7 +865,7 @@ TEST(HitZonesTest, VerdictJudgesTheBallWhereThisStepMovesIt)
     NS::Obj::Scene scene;
     Player* player = PlaceSlamTarget(scene, nlohmann::json::object(), 1.0f);
     ASSERT_NE(player, nullptr);
-    const float riseSpeed = 0.15f / NS::Platform::FrameTimer::FixedDelta();
+    const float riseSpeed = 0.15f / NS::OS::FrameTimer::FixedDelta();
     player->RequestBodySlam(1.0f, Vector3{0.0f, 0.0f, 1.0f}, riseSpeed);
     ASSERT_TRUE(player->BodySlam());
     ASSERT_FLOAT_EQ(player->BodySlamVelocity().y, riseSpeed);

@@ -1,7 +1,7 @@
 #include "Game/Level/HitZones.h"
 
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
 
 #include <algorithm>
 #include <array>
@@ -45,7 +45,7 @@ namespace NS::Game::Level
             return result;
         }
 
-        [[nodiscard]] bool IsFinite(const NS::Core::Vector3& value) noexcept
+        [[nodiscard]] bool IsFinite(const NS::Vector3& value) noexcept
         {
             return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
         }
@@ -54,12 +54,12 @@ namespace NS::Game::Level
         struct BodyMeasure
         {
             NS::Obj::HitSensorShape shape = NS::Obj::HitSensorShape::Sphere;
-            NS::Core::Vector3 center;
+            NS::Vector3 center;
             float halfWidth = 0.0f;
             float halfHeight = 0.0f;
             // 線の向きへ写した半分の奥行き。中心から正面に接する平面まで
             float halfDepth = 0.0f;
-            NS::Core::Vector3 core;
+            NS::Vector3 core;
             float surfaceRadius = 0.0f;
         };
 
@@ -76,8 +76,8 @@ namespace NS::Game::Level
             const float dirZ = rightX;
             if (body.isBox)
             {
-                const NS::Core::OBB& box = body.box;
-                const std::array<NS::Core::Vector3, 3> axes{box.axisX, box.axisY, box.axisZ};
+                const NS::OBB& box = body.box;
+                const std::array<NS::Vector3, 3> axes{box.axisX, box.axisY, box.axisZ};
                 const std::array<float, 3> halves{box.halfExtentX, box.halfExtentY, box.halfExtentZ};
                 if (!IsFinite(box.center))
                 {
@@ -109,7 +109,7 @@ namespace NS::Game::Level
             {
                 return false;
             }
-            const NS::Core::Vector3 half = (body.b - body.a) * 0.5f;
+            const NS::Vector3 half = (body.b - body.a) * 0.5f;
             out.center = (body.a + body.b) * 0.5f;
             out.halfWidth = body.radius + std::abs(half.x * rightX + half.z * rightZ);
             out.halfHeight = body.radius + std::abs(half.y);
@@ -117,7 +117,7 @@ namespace NS::Game::Level
             out.core = out.center;
             out.surfaceRadius = body.radius;
             out.shape = NS::Obj::HitSensorShape::Sphere;
-            if (half.LengthSquared() > NS::Core::k_Epsilon * NS::Core::k_Epsilon)
+            if (half.LengthSquared() > NS::k_Epsilon * NS::k_Epsilon)
             {
                 out.shape = NS::Obj::HitSensorShape::Capsule;
             }
@@ -129,23 +129,23 @@ namespace NS::Game::Level
         // 直線がその球に入る点の向きで測り、origin がもう球の中でも入った点へ戻る
         // 予測は遠くから、当たりは触れてから呼ぶので、今の位置で測ると両者が割れる
         // 直線が届かない時と、球が origin の後ろにある時は、直線に一番近い点の向き
-        [[nodiscard]] NS::Core::Vector3 FindTouchDirection(const NS::Core::Vector3& core,
+        [[nodiscard]] NS::Vector3 FindTouchDirection(const NS::Vector3& core,
                                                            float touchRadius,
-                                                           const NS::Core::Vector3& origin,
-                                                           const NS::Core::Vector3& direction) noexcept
+                                                           const NS::Vector3& origin,
+                                                           const NS::Vector3& direction) noexcept
         {
-            const NS::Core::Vector3 fromCore = origin - core;
+            const NS::Vector3 fromCore = origin - core;
             const float along = fromCore.Dot(direction);
             const float outside = fromCore.Dot(fromCore) - touchRadius * touchRadius;
             const float discriminant = along * along - outside;
-            NS::Core::Vector3 point = origin + direction * -along;
+            NS::Vector3 point = origin + direction * -along;
             if (outside <= 0.0f || (discriminant >= 0.0f && along < 0.0f))
             {
                 point = origin + direction * (-along - std::sqrt(std::max(discriminant, 0.0f)));
             }
-            NS::Core::Vector3 touch = point - core;
+            NS::Vector3 touch = point - core;
             // 玉の中心が core に重なると向きが無い。来た側から触れたことにする
-            if (touch.LengthSquared() < NS::Core::k_Epsilon * NS::Core::k_Epsilon)
+            if (touch.LengthSquared() < NS::k_Epsilon * NS::k_Epsilon)
             {
                 touch = -direction;
             }
@@ -229,8 +229,8 @@ namespace NS::Game::Level
 
     bool JudgeHitFace(const HitFace& face,
                       const NS::Obj::SensorVolume& body,
-                      const NS::Core::Vector3& origin,
-                      const NS::Core::Vector3& direction,
+                      const NS::Vector3& origin,
+                      const NS::Vector3& direction,
                       float playerRadius,
                       HitFaceJudgement& out) noexcept
     {
@@ -239,7 +239,7 @@ namespace NS::Game::Level
             return false;
         }
         const float horizontal = std::sqrt(direction.x * direction.x + direction.z * direction.z);
-        if (!std::isfinite(horizontal) || !(horizontal > NS::Core::k_Epsilon))
+        if (!std::isfinite(horizontal) || !(horizontal > NS::k_Epsilon))
         {
             return false;
         }
@@ -254,7 +254,7 @@ namespace NS::Game::Level
         {
             return false;
         }
-        const NS::Core::Vector3& center = measure.center;
+        const NS::Vector3& center = measure.center;
         const float toX = center.x - origin.x;
         const float toZ = center.z - origin.z;
         const float along = toX * dirX + toZ * dirZ;
@@ -290,21 +290,21 @@ namespace NS::Game::Level
         out.u = u;
         out.v = v;
         out.ratio = std::abs(u);
-        out.offset01 = NS::Core::Clamp(out.ratio, 0.0f, 1.0f);
+        out.offset01 = NS::Clamp(out.ratio, 0.0f, 1.0f);
         out.along = along;
-        out.linePoint = NS::Core::Vector3{origin.x + dirX * along, center.y, origin.z + dirZ * along};
+        out.linePoint = NS::Vector3{origin.x + dirX * along, center.y, origin.z + dirZ * along};
         out.bodyShape = measure.shape;
 
         // カプセルは、線の通った点を線の高さに置いた点に一番近い筒の軸の上の点から表面までを測る
-        NS::Core::Vector3 core = measure.core;
+        NS::Vector3 core = measure.core;
         if (measure.shape == NS::Obj::HitSensorShape::Capsule)
         {
-            const NS::Core::Vector3 axis = body.b - body.a;
-            const NS::Core::Vector3 nearest{out.linePoint.x, origin.y, out.linePoint.z};
+            const NS::Vector3 axis = body.b - body.a;
+            const NS::Vector3 nearest{out.linePoint.x, origin.y, out.linePoint.z};
             const float t = std::clamp((nearest - body.a).Dot(axis) / axis.Dot(axis), 0.0f, 1.0f);
             core = body.a + axis * t;
         }
-        const NS::Core::Vector3 lineDirection{dirX, 0.0f, dirZ};
+        const NS::Vector3 lineDirection{dirX, 0.0f, dirZ};
         out.surfacePoint =
             core + FindTouchDirection(core, measure.surfaceRadius + playerRadius, origin, lineDirection) *
                        measure.surfaceRadius;
@@ -313,8 +313,8 @@ namespace NS::Game::Level
 
     HitFaceJudgement JudgeHitFaceOrWide(const HitFace& face,
                                         const NS::Obj::SensorVolume& body,
-                                        const NS::Core::Vector3& origin,
-                                        const NS::Core::Vector3& direction,
+                                        const NS::Vector3& origin,
+                                        const NS::Vector3& direction,
                                         float playerRadius) noexcept
     {
         HitFaceJudgement result;
@@ -332,7 +332,7 @@ namespace NS::Game::Level
 
     bool HitFaceAimHeight(const HitFace& face,
                           const NS::Obj::SensorVolume& body,
-                          const NS::Core::Vector3& direction,
+                          const NS::Vector3& direction,
                           float playerRadius,
                           float& outHeight) noexcept
     {
@@ -342,7 +342,7 @@ namespace NS::Game::Level
         }
         // 向きの読み方は JudgeHitFace と揃える。半分の高さは向きに依らないが、箱の測りが右の軸を読む
         const float horizontal = std::sqrt(direction.x * direction.x + direction.z * direction.z);
-        if (!std::isfinite(horizontal) || !(horizontal > NS::Core::k_Epsilon))
+        if (!std::isfinite(horizontal) || !(horizontal > NS::k_Epsilon))
         {
             return false;
         }
@@ -364,7 +364,7 @@ namespace NS::Game::Level
 
 #if !defined(NS_SHIPPING)
     bool MakeHitFaceFrame(const NS::Obj::SensorVolume& body,
-                          const NS::Core::Vector3& direction,
+                          const NS::Vector3& direction,
                           float playerRadius,
                           HitFaceFrame& out) noexcept
     {
@@ -374,7 +374,7 @@ namespace NS::Game::Level
         }
         // 向きの読み方は JudgeHitFace と揃える。面の左右の軸が判定の右と同じになる
         const float horizontal = std::sqrt(direction.x * direction.x + direction.z * direction.z);
-        if (!std::isfinite(horizontal) || !(horizontal > NS::Core::k_Epsilon))
+        if (!std::isfinite(horizontal) || !(horizontal > NS::k_Epsilon))
         {
             return false;
         }
@@ -388,17 +388,17 @@ namespace NS::Game::Level
         {
             return false;
         }
-        out.center = measure.center - NS::Core::Vector3{dirX, 0.0f, dirZ} * measure.halfDepth;
-        out.right = NS::Core::Vector3{rightX, 0.0f, rightZ};
-        out.up = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
-        out.normal = NS::Core::Vector3{-dirX, 0.0f, -dirZ};
+        out.center = measure.center - NS::Vector3{dirX, 0.0f, dirZ} * measure.halfDepth;
+        out.right = NS::Vector3{rightX, 0.0f, rightZ};
+        out.up = NS::Vector3{0.0f, 1.0f, 0.0f};
+        out.normal = NS::Vector3{-dirX, 0.0f, -dirZ};
         out.reachU = measure.halfWidth + playerRadius;
         out.reachV = measure.halfHeight + playerRadius;
         out.bodyShape = measure.shape;
         return true;
     }
 
-    NS::Core::Vector3 HitFacePoint(const HitFaceFrame& frame, float u, float v) noexcept
+    NS::Vector3 HitFacePoint(const HitFaceFrame& frame, float u, float v) noexcept
     {
         return frame.center + frame.right * (u * frame.reachU) + frame.up * (v * frame.reachV);
     }
@@ -428,9 +428,9 @@ namespace NS::Game::Level
         return shapes;
     }
 
-    std::vector<NS::Core::Vector2> HitFaceShapeOutline(const HitFaceShape& shape) noexcept
+    std::vector<NS::Vector2> HitFaceShapeOutline(const HitFaceShape& shape) noexcept
     {
-        std::vector<NS::Core::Vector2> points;
+        std::vector<NS::Vector2> points;
         if (!shape.round)
         {
             points.reserve(4);
@@ -443,7 +443,7 @@ namespace NS::Game::Level
         points.reserve(k_OutlineSegments);
         for (int i = 0; i < k_OutlineSegments; ++i)
         {
-            const float angle = 2.0f * NS::Core::k_Pi * static_cast<float>(i) / static_cast<float>(k_OutlineSegments);
+            const float angle = 2.0f * NS::k_Pi * static_cast<float>(i) / static_cast<float>(k_OutlineSegments);
             points.emplace_back(shape.centerU + shape.halfU * std::cos(angle),
                                 shape.centerV + shape.halfV * std::sin(angle));
         }

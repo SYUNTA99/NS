@@ -7,16 +7,16 @@
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Reflection/Archetype.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Platform/Clock.h"
-#include "Runtime/Platform/FileSystem.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Reflection/Archetype.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Windows/Clock.h"
+#include "NSlib/Windows/FileSystem.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -147,7 +147,7 @@ TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
     EXPECT_EQ(NS::Obj::ApplyJsonFields(*params, {{"走行速度", 10.0f}, {"加速度", 7.0f}, {"上昇重力", -15.0f}}), 0u);
     EXPECT_FLOAT_EQ(player.RunSpeed(), 10.0f);
     movement->SetGrounded(true);
-    player.SetDesiredMove(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.AccelerateToInputDirection(0.1f);
     EXPECT_NEAR(movement->LateralVelocity().x, 0.7f, 0.00001f);
     movement->SetVerticalVelocity(2.0f);
@@ -424,13 +424,13 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     nlohmann::json entry = NS::Obj::MakeObjectJson();
     NS::Obj::SetObjectJsonClass(entry, "Player");
     NS::Obj::SetObjectJsonId(entry, 1);
-    NS::Obj::SetObjectPosition(entry, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+    NS::Obj::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
     nlohmann::json rock = NS::Obj::MakeObjectJson();
     NS::Obj::SetObjectJsonClass(rock, "MapObj");
     NS::Obj::SetObjectJsonId(rock, 2);
     // 自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さ。赤の真ん中に当たり、威力の倍率は 1
-    NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{0.0f, 0.5f, 1.0f});
+    NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 1.0f});
     // 位置は部品の件 Transform に入っているので、件ごと置き換えずに足す
     NS::Obj::ObjectJsonParts(rock)["Params"] = {{"質量", 1.0f}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -443,7 +443,7 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
                                         {"反動の高さ", 2.0f},
                                         {"中心近くの当たりの反動の高さの倍率", 1.0f}}),
               0u);
-    player->RequestBodySlam(0.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
     player->Update(false);
     ASSERT_TRUE(player->Resolver().DidRebound());
@@ -518,13 +518,13 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     nlohmann::json rock = NS::Obj::MakeObjectJson();
     NS::Obj::SetObjectJsonClass(rock, "MapObj");
     NS::Obj::SetObjectJsonId(rock, 2);
-    NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{0.0f, 0.0f, 4.0f});
+    NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.0f, 4.0f});
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.LoadJson(doc);
     Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    const NS::Core::Vector3 eye{0.0f, 0.0f, -6.0f};
-    const NS::Core::Vector3 lookAt{0.0f, 0.0f, 4.0f};
+    const NS::Vector3 eye{0.0f, 0.0f, -6.0f};
+    const NS::Vector3 lookAt{0.0f, 0.0f, 4.0f};
     ASSERT_NE(PlaceViewCamera(scene, eye, lookAt), nullptr);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(player->TargetIndicator(), {{"印の太さ", 7.0f}}), 0u);
@@ -532,17 +532,17 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
                                        {{"溜めの前半の色", {0.2f, 0.3f, 0.4f}}, {"矢印が伸びるフレーム数", 1}}),
               0u);
     // しきい値のフレームまで押して溜めに入れる
-    const int threshold = static_cast<int>(std::lround(0.2f / NS::Platform::FrameTimer::FixedDelta()));
+    const int threshold = static_cast<int>(std::lround(0.2f / NS::OS::FrameTimer::FixedDelta()));
     for (int frame = 0; frame < threshold; ++frame)
     {
         player->Update(true);
     }
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
     NS::Game::Level::LockOnFrameShape frame{};
-    const NS::Core::Matrix view = NS::Core::Matrix::CreateLookAt(eye, lookAt, NS::Core::Vector3::UnitY);
-    const NS::Core::Matrix projection =
-        NS::Core::Matrix::CreatePerspectiveFieldOfView(1.0f, 16.0f / 9.0f, 0.1f, 100.0f);
-    ASSERT_TRUE(player->TargetIndicator().BuildShownShape(view * projection, NS::Core::Size2D{1280, 720}, frame));
+    const NS::Matrix view = NS::Matrix::CreateLookAt(eye, lookAt, NS::Vector3::UnitY);
+    const NS::Matrix projection =
+        NS::Matrix::CreatePerspectiveFieldOfView(1.0f, 16.0f / 9.0f, 0.1f, 100.0f);
+    ASSERT_TRUE(player->TargetIndicator().BuildShownShape(view * projection, NS::Size2D{1280, 720}, frame));
     ASSERT_EQ(frame.corners.size(), 8u);
     EXPECT_FLOAT_EQ(frame.corners.front().height, 7.0f);
     NS::Game::Level::SlamArrowShape arrow{};
@@ -574,9 +574,9 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
 
     for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
     {
-        const std::string path = NS::Platform::FileSystem::Combine(
-            NS::Platform::FileSystem::Combine(
-                NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+        const std::string path = NS::OS::FileSystem::Combine(
+            NS::OS::FileSystem::Combine(
+                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
             sceneName);
         nlohmann::json doc;
         ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path)) << sceneName;

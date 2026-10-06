@@ -4,9 +4,9 @@
 // cell ブラシの照合・90° 回転・Hierarchy の表示名・クリックで選ぶ判定箱・レベルの JSON へ既定の物を補う手順。出荷ビルドには載らない
 // エディタだけが使う関数の置き場はここ。例外は、ゲームの判定の決まりを写さないと書けない物だけで、判定の隣に置いて NS_SHIPPING で囲む
 
-#include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Scene/SceneJson.h"
+#include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Scene/SceneJson.h"
 
 #include <string_view>
 
@@ -61,7 +61,7 @@ namespace NS::Editor
     //! メッシュが未解決の配置物は 1m 立方
     //! @param[in] object 判定箱を求める配置物
     //! @return Root のローカル空間の軸並行境界ボックス
-    [[nodiscard]] NS::Core::AABB PickLocalBounds(const NS::Obj::Actor& object) noexcept;
+    [[nodiscard]] NS::AABB PickLocalBounds(const NS::Obj::Actor& object) noexcept;
 
     //! プレイヤーの配置物か。live の FindPlayer と同じく、反映の型名で照合する
     [[nodiscard]] bool IsPlayerObject(const nlohmann::json& object) noexcept;
@@ -71,7 +71,7 @@ namespace NS::Editor
     [[nodiscard]] std::size_t FindPlayerObjectIndex(const nlohmann::json& scene) noexcept;
 
     //! プレイヤーのひな形の JSON を作る。構成は Player のコンストラクタが決め、値はコードの既定を使う
-    [[nodiscard]] nlohmann::json MakePlayerObject(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation);
+    [[nodiscard]] nlohmann::json MakePlayerObject(const NS::Vector3& position, const NS::Quaternion& rotation);
 
     //! @brief プレイヤーが 1 体も居なければ既定構成で足し、永続 id まで振る。2 体以上なら警告して先頭を正とする
     //! @details 足す位置は DefaultSpawnPosition に、プレイヤーの種類の既定のカプセルを当てて求める

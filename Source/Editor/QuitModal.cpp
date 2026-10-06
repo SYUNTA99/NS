@@ -2,7 +2,7 @@
 
 #include "Editor/EditorUi.h"
 #include "Editor/LevelEditorController.h"
-#include "Runtime/App/Application.h"
+#include "NSlib/App/Application.h"
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -58,7 +58,7 @@ namespace NS::Editor
                 {
                     m_confirmed = true;
                     m_open = false;
-                    NS::App::Application::Quit();
+                    NS::Application::Quit();
                 }
                 else
                 {
@@ -69,7 +69,7 @@ namespace NS::Editor
             {
                 m_confirmed = true;
                 m_open = false;
-                NS::App::Application::Quit();
+                NS::Application::Quit();
             }
             if (ImGui::Button("キャンセル", ImVec2(180.0f, 0.0f)))
             {

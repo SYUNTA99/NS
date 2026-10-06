@@ -4,7 +4,7 @@
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
-#include "Runtime/Object/Components/Body.h"
+#include "NSlib/Object/Components/Body.h"
 
 namespace NS::Game::Player
 {

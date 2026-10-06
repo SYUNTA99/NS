@@ -2,11 +2,11 @@
 
 #include "Editor/PaletteTemplates.h"
 #include "Editor/PlacementCatalog.h"
-#include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Platform/Gamepad.h"
-#include "Runtime/Platform/Input.h"
-#include "Runtime/Platform/Keyboard.h"
-#include "Runtime/UI/ImGuiContext.h"
+#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Windows/Gamepad.h"
+#include "NSlib/Windows/Input.h"
+#include "NSlib/Windows/Keyboard.h"
+#include "NSlib/UI/ImGuiContext.h"
 
 #include <algorithm>
 
@@ -30,22 +30,22 @@ namespace NS::Editor
         return PartsSlopeAngleDegrees(PaletteTemplateSlots()[m_activeSlot].prototype);
     }
 
-    void CategoryPalette::TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept
+    void CategoryPalette::TickInput(NS::OS::Input* input, NS::UI::ImGuiContext* imgui) noexcept
     {
         if (input == nullptr)
         {
             return;
         }
 
-        NS::Platform::Gamepad& gp = input->Gamepad(0);
+        NS::OS::Gamepad& gp = input->Gamepad(0);
         if (gp.IsConnected())
         {
-            if (gp.IsPressed(NS::Platform::GamepadButton::LeftShoulder))
+            if (gp.IsPressed(NS::OS::GamepadButton::LeftShoulder))
             {
                 SetActiveSlot((m_activeSlot + k_SlotCount - 1) % k_SlotCount);
             }
 
-            if (gp.IsPressed(NS::Platform::GamepadButton::RightShoulder))
+            if (gp.IsPressed(NS::OS::GamepadButton::RightShoulder))
             {
                 SetActiveSlot((m_activeSlot + 1) % k_SlotCount);
             }
@@ -58,11 +58,11 @@ namespace NS::Editor
             return;
         }
 
-        NS::Platform::Keyboard& kb = input->Keyboard();
+        NS::OS::Keyboard& kb = input->Keyboard();
         for (std::size_t i = 0; i < k_SlotCount; ++i)
         {
-            const NS::Platform::Key code =
-                static_cast<NS::Platform::Key>(static_cast<int>(NS::Platform::Key::Num1) + static_cast<int>(i));
+            const NS::OS::Key code =
+                static_cast<NS::OS::Key>(static_cast<int>(NS::OS::Key::Num1) + static_cast<int>(i));
             if (kb.IsPressed(code))
             {
                 SetActiveSlot(i);

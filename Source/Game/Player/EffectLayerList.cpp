@@ -1,8 +1,8 @@
 #include "Game/Player/EffectLayerList.h"
 
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Component.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Component.h"
+#include "NSlib/Object/Scene/Scene.h"
 
 #include <utility>
 
@@ -87,7 +87,7 @@ namespace NS::Game::Player
         record->amount = amount;
     }
 
-    void EffectLayerList::SetRotation(std::uint32_t id, const NS::Core::Quaternion& rotation) noexcept
+    void EffectLayerList::SetRotation(std::uint32_t id, const NS::Quaternion& rotation) noexcept
     {
         EffectLayerRecord* record = FindMutable(id);
         if (record == nullptr)

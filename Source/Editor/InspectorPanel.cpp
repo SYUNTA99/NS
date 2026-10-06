@@ -5,11 +5,11 @@
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectList.h"
-#include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/Scene/SceneJson.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectList.h"
+#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Scene/SceneJson.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -26,8 +26,8 @@ namespace NS::Editor
     namespace
     {
         // 置いたばかりの配置物の姿。ここから動かした欄だけ印を出す
-        const NS::Core::Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
-        const NS::Core::Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
+        const NS::Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
+        const NS::Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
 
         // 添字は SetComponentEnabledOnSelected へそのまま渡る。絞り方を変えると編集操作が隣を掴む
         std::vector<NS::Obj::Component*> ReflectedComponents(NS::Obj::Actor& go)
@@ -103,14 +103,14 @@ namespace NS::Editor
 
             if (NS::Editor::BeginFieldTable("##transform"))
             {
-                const NS::Core::Vector3 posVec = go->Root().Position();
+                const NS::Vector3 posVec = go->Root().Position();
                 float pos[3] = {posVec.x, posVec.y, posVec.z};
                 const bool posMoved = (posVec != k_DefaultPosition);
                 ImGui::PushID("position");
                 NS::Editor::FieldRow("位置");
                 if (ImGui::DragFloat3("##value", pos, 0.05f))
                 {
-                    editor.SetSelectedFreePosition(NS::Core::Vector3{pos[0], pos[1], pos[2]});
+                    editor.SetSelectedFreePosition(NS::Vector3{pos[0], pos[1], pos[2]});
                 }
                 if (ImGui::IsItemActivated())
                 {
@@ -130,20 +130,20 @@ namespace NS::Editor
 
                 // 回転は内部 quaternion を度の Euler に直して編集し、入力を quaternion へ戻す
                 // 滑らかに回し続けるならギズモの回転ツールが向く。ここは角度の直接入力 / 微調整用
-                const NS::Core::Quaternion q = go->Root().Rotation();
-                const NS::Core::Vector3 euler = q.ToEuler();
-                float rot[3] = {NS::Core::RadiansToDegrees(euler.x),
-                                NS::Core::RadiansToDegrees(euler.y),
-                                NS::Core::RadiansToDegrees(euler.z)};
-                const bool turned = (q != NS::Core::Quaternion::Identity);
+                const NS::Quaternion q = go->Root().Rotation();
+                const NS::Vector3 euler = q.ToEuler();
+                float rot[3] = {NS::RadiansToDegrees(euler.x),
+                                NS::RadiansToDegrees(euler.y),
+                                NS::RadiansToDegrees(euler.z)};
+                const bool turned = (q != NS::Quaternion::Identity);
                 ImGui::PushID("rotation");
                 NS::Editor::FieldRow("回転");
                 if (ImGui::DragFloat3("##value", rot, 0.5f))
                 {
-                    editor.SetSelectedFreeRotation(NS::Core::Quaternion::CreateFromYawPitchRoll(
-                        NS::Core::Vector3{NS::Core::DegreesToRadians(rot[0]),
-                                          NS::Core::DegreesToRadians(rot[1]),
-                                          NS::Core::DegreesToRadians(rot[2])}));
+                    editor.SetSelectedFreeRotation(NS::Quaternion::CreateFromYawPitchRoll(
+                        NS::Vector3{NS::DegreesToRadians(rot[0]),
+                                          NS::DegreesToRadians(rot[1]),
+                                          NS::DegreesToRadians(rot[2])}));
                 }
                 if (ImGui::IsItemActivated())
                 {
@@ -156,19 +156,19 @@ namespace NS::Editor
                 if (NS::Editor::RevertButton(turned))
                 {
                     editor.BeginTransformEdit();
-                    editor.SetSelectedFreeRotation(NS::Core::Quaternion::Identity);
+                    editor.SetSelectedFreeRotation(NS::Quaternion::Identity);
                     editor.CommitTransformEdit();
                 }
                 ImGui::PopID();
 
-                const NS::Core::Vector3 sclVec = go->Root().Scale();
+                const NS::Vector3 sclVec = go->Root().Scale();
                 float scl[3] = {sclVec.x, sclVec.y, sclVec.z};
                 const bool resized = (sclVec != k_DefaultScale);
                 ImGui::PushID("scale");
                 NS::Editor::FieldRow("スケール");
                 if (ImGui::DragFloat3("##value", scl, 0.05f))
                 {
-                    editor.SetSelectedFreeScale(NS::Core::Vector3{scl[0], scl[1], scl[2]});
+                    editor.SetSelectedFreeScale(NS::Vector3{scl[0], scl[1], scl[2]});
                 }
                 if (ImGui::IsItemActivated())
                 {

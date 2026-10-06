@@ -2,14 +2,14 @@
 #include "Game/Level/Goal.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/Message.h"
-#include "Runtime/Object/Scene/HitSensorDirector.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Physics/Capsule.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/Message.h"
+#include "NSlib/Object/Scene/HitSensorDirector.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Physics/Capsule.h"
 
 #include <gtest/gtest.h>
 
@@ -20,7 +20,7 @@
 
 namespace
 {
-    using NS::Core::Vector3;
+    using NS::Vector3;
     using NS::Game::Level::SensorKind;
 
     // 重なった相手を控える試しの Actor
@@ -85,7 +85,7 @@ TEST(SensorVolume, CapsuleUsesItsSegment)
 TEST(SensorVolume, BoxAgainstSphereAndCapsule)
 {
     const NS::Obj::SensorVolume box = NS::Obj::SensorVolume::Box(
-        NS::Core::MakeOBB(Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Quaternion::Identity, Vector3{10.0f, 1.0f, 10.0f}));
+        NS::MakeOBB(Vector3{0.0f, 0.0f, 0.0f}, NS::Quaternion::Identity, Vector3{10.0f, 1.0f, 10.0f}));
     EXPECT_TRUE(NS::Obj::VolumesOverlap(box, NS::Obj::SensorVolume::Sphere(Vector3{3.0f, 1.4f, 3.0f}, 0.5f)));
     EXPECT_FALSE(NS::Obj::VolumesOverlap(box, NS::Obj::SensorVolume::Sphere(Vector3{3.0f, 1.6f, 3.0f}, 0.5f)));
     const NS::Obj::SensorVolume capsule = NS::Obj::SensorVolume::Capsule(NS::Phys::Capsule{
@@ -96,16 +96,16 @@ TEST(SensorVolume, BoxAgainstSphereAndCapsule)
 TEST(SensorVolume, BoxesUseSeparatingAxes)
 {
     const NS::Obj::SensorVolume a = NS::Obj::SensorVolume::Box(
-        NS::Core::MakeOBB(Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Quaternion::Identity, Vector3{1.0f, 1.0f, 1.0f}));
+        NS::MakeOBB(Vector3{0.0f, 0.0f, 0.0f}, NS::Quaternion::Identity, Vector3{1.0f, 1.0f, 1.0f}));
     // 45 度回した箱は、角が軸並行の外接箱より内側にある
-    const NS::Core::Quaternion turned =
-        NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.25f, 0.0f, 0.0f);
+    const NS::Quaternion turned =
+        NS::Quaternion::CreateFromYawPitchRoll(NS::k_Pi * 0.25f, 0.0f, 0.0f);
     EXPECT_TRUE(NS::Obj::VolumesOverlap(
         a,
-        NS::Obj::SensorVolume::Box(NS::Core::MakeOBB(Vector3{2.3f, 0.0f, 0.0f}, turned, Vector3{1.0f, 1.0f, 1.0f}))));
+        NS::Obj::SensorVolume::Box(NS::MakeOBB(Vector3{2.3f, 0.0f, 0.0f}, turned, Vector3{1.0f, 1.0f, 1.0f}))));
     EXPECT_FALSE(NS::Obj::VolumesOverlap(
         a,
-        NS::Obj::SensorVolume::Box(NS::Core::MakeOBB(Vector3{2.5f, 0.0f, 0.0f}, turned, Vector3{1.0f, 1.0f, 1.0f}))));
+        NS::Obj::SensorVolume::Box(NS::MakeOBB(Vector3{2.5f, 0.0f, 0.0f}, turned, Vector3{1.0f, 1.0f, 1.0f}))));
 }
 
 TEST(HitSensor, WorldVolumeFollowsRootScale)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/App/Layer.h"
+#include "NSlib/App/Layer.h"
 
 #include <cstdint>
 
@@ -8,7 +8,7 @@
 //! @details 起動でカーソルを握り、Esc で出し、出ている状態の Esc でアプリを終える。
 //! 積むのは構成を組み立てる GameMain だけ。エディタはプレイ中の Esc を自分で読み、Replay.exe は ReplayLayer
 //! か ServeLayer を積む
-class StandaloneLayer : public NS::App::Layer
+class StandaloneLayer : public NS::Layer
 {
 public:
     //! @brief プレイ中に Esc を押した時の応答

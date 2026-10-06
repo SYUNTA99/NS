@@ -4,12 +4,12 @@
 #include "Editor/PanelIds.h"
 #include "Editor/PlayControls.h"
 #include "Game/Game.h"
-#include "Runtime/App/Application.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/Gamepad.h"
-#include "Runtime/Platform/Input.h"
-#include "Runtime/Platform/Keyboard.h"
-#include "Runtime/UI/ImGuiContext.h"
+#include "NSlib/App/Application.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/Gamepad.h"
+#include "NSlib/Windows/Input.h"
+#include "NSlib/Windows/Keyboard.h"
+#include "NSlib/UI/ImGuiContext.h"
 
 #include <memory>
 #include <optional>
@@ -38,13 +38,13 @@ namespace
 } // namespace
 #endif
 
-Editor::Editor() : NS::App::Layer("Editor") {}
+Editor::Editor() : NS::Layer("Editor") {}
 Editor::~Editor() = default;
 
 void Editor::OnAttach()
 {
     // SceneManager::LoadScene が同期実行するので起動 scene は Game レイヤが既に load + OnStart 済
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     Game* game = Game::Get();
     decltype(game->CurrentScene()) scene = nullptr;
     if (game != nullptr)
@@ -77,7 +77,7 @@ void Editor::OnAttach()
     m_controller->Setup(m_imgui.get());
 
     // 初回フレームからオフスクリーンで描けるよう、ウィンドウサイズを初期の目標サイズにしておく
-    const NS::Core::Size2D viewSize = app->Window().Size();
+    const NS::Size2D viewSize = app->Window().Size();
     m_sceneView.SetInitialSize(viewSize);
     m_gameView.SetInitialSize(viewSize);
 
@@ -99,7 +99,7 @@ void Editor::OnDetach()
     m_controller.reset();
 
     // ImGui を破棄する前に hook を外し、WndProc から無効になった context を踏まないようにする
-    if (NS::App::Application* app = NS::App::Application::Get())
+    if (NS::Application* app = NS::Application::Get())
     {
         app->SetQuitGuard(nullptr);
         app->Window().SetMessageHook(nullptr);
@@ -134,7 +134,7 @@ void Editor::OnRender()
         return;
     }
     LevelEditorController& editor = *m_controller;
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
         return;
@@ -284,19 +284,19 @@ void Editor::OnRender()
 
 void Editor::HandleModeToggleInput(LevelEditorController& editor) noexcept
 {
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
         return;
     }
-    NS::Platform::Input& input = app->Input();
+    NS::OS::Input& input = app->Input();
 
     // UI がキーボードを握っている間は mode flip させない
     const bool wantKb = input.UiWantsKeyboard();
 
-    const bool tabPressed = !wantKb && input.Keyboard().IsPressed(NS::Platform::Key::Tab);
+    const bool tabPressed = !wantKb && input.Keyboard().IsPressed(NS::OS::Key::Tab);
     const bool startPressed =
-        input.Gamepad(0).IsConnected() && input.Gamepad(0).IsPressed(NS::Platform::GamepadButton::Start);
+        input.Gamepad(0).IsConnected() && input.Gamepad(0).IsPressed(NS::OS::GamepadButton::Start);
 
     if (tabPressed || startPressed)
     {
@@ -317,18 +317,18 @@ void Editor::HandlePauseInput(LevelEditorController& editor) noexcept
     {
         return;
     }
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
         return;
     }
-    NS::Platform::Input& input = app->Input();
+    NS::OS::Input& input = app->Input();
 
     const bool wantKb = input.UiWantsKeyboard();
 
-    const bool pPressed = !wantKb && input.Keyboard().IsPressed(NS::Platform::Key::P);
+    const bool pPressed = !wantKb && input.Keyboard().IsPressed(NS::OS::Key::P);
     const bool backPressed =
-        input.Gamepad(0).IsConnected() && input.Gamepad(0).IsPressed(NS::Platform::GamepadButton::Back);
+        input.Gamepad(0).IsConnected() && input.Gamepad(0).IsPressed(NS::OS::GamepadButton::Back);
 
     if (pPressed || backPressed)
     {
@@ -345,15 +345,15 @@ void Editor::HandleUiVisibilityInput(LevelEditorController& editor) noexcept
         return;
     }
 
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
         return;
     }
-    NS::Platform::Input& input = app->Input();
+    NS::OS::Input& input = app->Input();
 
     // 隠している間は ImGui がキーボードを掴まないので F5 で再表示できる
-    if (!input.UiWantsKeyboard() && input.Keyboard().IsPressed(NS::Platform::Key::F5))
+    if (!input.UiWantsKeyboard() && input.Keyboard().IsPressed(NS::OS::Key::F5))
     {
         m_uiVisible = !m_uiVisible;
     }
@@ -493,7 +493,7 @@ void Editor::RenderMainMenuBar(LevelEditorController& editor) noexcept
             ImGui::Separator();
             if (ImGui::MenuItem("終了", "Alt+F4"))
             {
-                NS::App::Application::Quit();
+                NS::Application::Quit();
             }
             ImGui::PopStyleColor();
             ImGui::EndMenu();

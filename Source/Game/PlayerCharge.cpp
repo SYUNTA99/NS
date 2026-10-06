@@ -2,11 +2,11 @@
 
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerParams.h"
-#include "Runtime/Core/Logger.h"
-#include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/IUse/IUseCamera.h"
+#include "NSlib/Core/Logger.h"
+#include "NSlib/Graphics/DebugDraw.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/IUse/IUseCamera.h"
 
 #include <algorithm>
 #include <cmath>
@@ -38,8 +38,8 @@ namespace
                                             float startRate,
                                             float endRate) noexcept
     {
-        constexpr float k_TwoPi = 2.0f * NS::Core::k_Pi;
-        constexpr float k_EdgePhase = 0.5f * NS::Core::k_Pi;
+        constexpr float k_TwoPi = 2.0f * NS::k_Pi;
+        constexpr float k_EdgePhase = 0.5f * NS::k_Pi;
         if (!(overchargeSeconds > 0.0f))
         {
             return k_EdgePhase + k_TwoPi * endRate * seconds;
@@ -118,7 +118,7 @@ void Player::ObserveCharge(bool held)
     {
         return;
     }
-    const NS::Core::Vector3 direction = NS::Obj::CameraForwardHorizontal(*this);
+    const NS::Vector3 direction = NS::Obj::CameraForwardHorizontal(*this);
     if (!std::isfinite(direction.x) || !std::isfinite(direction.z))
     {
         return;
@@ -199,8 +199,8 @@ void Player::AdvanceCharge(float dt)
     if (judge.JustStartedCharging())
     {
         // 縦は残す。空中で溜めたフレームに 0 を書くと落下が一瞬止まって引っかかる
-        const NS::Core::Vector3 velocity = m_body->Velocity();
-        m_body->SetVelocity(NS::Core::Vector3{0.0f, velocity.y, 0.0f});
+        const NS::Vector3 velocity = m_body->Velocity();
+        m_body->SetVelocity(NS::Vector3{0.0f, velocity.y, 0.0f});
     }
 
     m_charge.hasAimLine = m_charge.observedHasAimLine;
@@ -258,7 +258,7 @@ void Player::ApplyChargeSway(float dt)
     }
     m_charge.swayOffset = side * m_params->m_overchargeSwayMaxOffset * depth * depth * std::sin(m_charge.swayPhase);
     // 端は位相が π/2 + nπ を通る所。数を別に持たないので、矢印と火花の拍がずれない
-    const int edge = static_cast<int>(std::floor((m_charge.swayPhase - 0.5f * NS::Core::k_Pi) / NS::Core::k_Pi));
+    const int edge = static_cast<int>(std::floor((m_charge.swayPhase - 0.5f * NS::k_Pi) / NS::k_Pi));
     m_charge.swayReachedEdge = m_charge.hasSwayEdge && edge > m_charge.swayEdge;
     m_charge.swayEdge = edge;
     m_charge.hasSwayEdge = true;
@@ -268,12 +268,12 @@ void Player::ApplyChargeSway(float dt)
     {
         distance = m_charge.aimTarget.along;
     }
-    const NS::Core::Vector3 forward = m_charge.aimLine.direction;
-    const NS::Core::Vector3 right{forward.z, 0.0f, -forward.x};
-    NS::Core::Vector3 swayed{};
+    const NS::Vector3 forward = m_charge.aimLine.direction;
+    const NS::Vector3 right{forward.z, 0.0f, -forward.x};
+    NS::Vector3 swayed{};
     // 距離が 0 か非数で向きが作れない時は揺らさない
     if (!(distance > 0.0f) ||
-        !NS::Core::TryNormalizeHorizontal(forward * distance + right * m_charge.swayOffset, swayed) ||
+        !NS::TryNormalizeHorizontal(forward * distance + right * m_charge.swayOffset, swayed) ||
         !std::isfinite(swayed.x) || !std::isfinite(swayed.z))
     {
         m_charge.swayOffset = 0.0f;
@@ -315,17 +315,17 @@ void Player::DrawChargeRing() const
     const float charge01 = m_charge.judge.Charge01();
     // 輪は当たりのカプセルの下端 (中心 − 軸 × (半分の高さ + 半径)) に置く
     const NS::Phys::Capsule capsule = m_collider->CapsuleAt(Root().Position());
-    const NS::Core::Vector3 foot = capsule.center - capsule.axis * (capsule.halfHeight + capsule.radius);
+    const NS::Vector3 foot = capsule.center - capsule.axis * (capsule.halfHeight + capsule.radius);
     // 溜め量が輪の広がりに出ないと、満タンまでの途中が読めない
     const float radius = m_collider->CapsuleRadius() + 0.25f + charge01 * 0.75f;
-    NS::Core::Color color{1.0f, 0.85f, 0.2f, 1.0f};
+    NS::Color color{1.0f, 0.85f, 0.2f, 1.0f};
     if (m_charge.judge.IsChargeFull())
     {
-        color = NS::Core::Color{1.0f, 1.0f, 1.0f, 1.0f};
+        color = NS::Color{1.0f, 1.0f, 1.0f, 1.0f};
     }
-    NS::Gfx::DebugDraw::Circle(NS::Core::Vector3{foot.x, foot.y + 0.05f, foot.z},
-                               NS::Core::Vector3{radius, 0.0f, 0.0f},
-                               NS::Core::Vector3{0.0f, 0.0f, radius},
+    NS::Gfx::DebugDraw::Circle(NS::Vector3{foot.x, foot.y + 0.05f, foot.z},
+                               NS::Vector3{radius, 0.0f, 0.0f},
+                               NS::Vector3{0.0f, 0.0f, radius},
                                color);
 }
 #endif

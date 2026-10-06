@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Game/Level/LevelMessages.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Graphics/FrameConstants.h"
-#include "Runtime/Object/Components/CameraModifier.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Graphics/FrameConstants.h"
+#include "NSlib/Object/Components/CameraModifier.h"
 
 namespace NS::Game::Level
 {
@@ -16,7 +16,7 @@ namespace NS::Game::Level
     //! @return 世界の長さ (m)。カメラの向きが決まらない時は 0
     [[nodiscard]] float ScreenPixelsToMeters(float pixels,
                                              const NS::Obj::CameraPose& pose,
-                                             const NS::Core::Vector3& at) noexcept;
+                                             const NS::Vector3& at) noexcept;
 
     //! @brief 衝撃の震えの、elapsedFrames フレーム目に描く所へ渡す震えを作る
     //! @details 衝突点は desc.contactOffset を根からのずれのまま渡し、描く形と一緒に動かす
@@ -31,7 +31,7 @@ namespace NS::Game::Level
     //! @return 震え。elapsedFrames が 0 より前か長さ以降の時と、1 か所が震えるフレーム数が 0 以下の時は振れ幅 0
     [[nodiscard]] NS::Gfx::TremorCB MakeTremor(const TackleTremorDesc& desc,
                                                int elapsedFrames,
-                                               const NS::Core::Vector3& root,
+                                               const NS::Vector3& root,
                                                float bodyLength,
                                                const NS::Obj::CameraPose& pose) noexcept;
 } // namespace NS::Game::Level

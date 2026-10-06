@@ -4,9 +4,9 @@
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerAppearance.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
-#include "Runtime/Object/Transform.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/Transform.h"
 
 #include <algorithm>
 #include <cmath>
@@ -16,8 +16,8 @@ namespace NS::Game::Player
     namespace
     {
         // 弧の板を回す軸。世界の Z 軸まわりの回転だけが、視点へ向く板の回りの角度として読まれる
-        constexpr NS::Core::Vector3 k_SpinBoardAxis{0.0f, 0.0f, 1.0f};
-        constexpr NS::Core::Vector3 k_Unit{1.0f, 1.0f, 1.0f};
+        constexpr NS::Vector3 k_SpinBoardAxis{0.0f, 0.0f, 1.0f};
+        constexpr NS::Vector3 k_Unit{1.0f, 1.0f, 1.0f};
 
         // 溜め量を渡す動的入力の番号。溜めの組の絵は全部 0 番で読む
         constexpr int k_ChargeInput = 0;
@@ -26,8 +26,8 @@ namespace NS::Game::Player
         // 溜まる光へ溜めきってからの数を渡す動的入力の番号
         constexpr int k_FullFramesInput = 1;
 
-        [[nodiscard]] NS::Gfx::EffectPlayDesc PlayDesc(const NS::Core::Vector3& position,
-                                                       const NS::Core::Quaternion& rotation,
+        [[nodiscard]] NS::Gfx::EffectPlayDesc PlayDesc(const NS::Vector3& position,
+                                                       const NS::Quaternion& rotation,
                                                        float charge01) noexcept
         {
             NS::Gfx::EffectPlayDesc desc{};
@@ -72,7 +72,7 @@ namespace NS::Game::Player
         }
 
         const NS::Game::Level::ImpactInputJudge& judge = m_actor->ChargeJudge();
-        const NS::Core::Vector3 center = RootTransform().Position();
+        const NS::Vector3 center = RootTransform().Position();
         // 溜めすぎで出た後は押したままでも溜めの層を消す
         const bool held = judge.IsHoldingCharge();
         if (judge.JustPressed())
@@ -158,16 +158,16 @@ namespace NS::Game::Player
         return m_tapBurstScale + m_fullBurstScaleGain * charge;
     }
 
-    NS::Core::Quaternion ChargeEffects::YawToward(const NS::Core::Vector3& direction) noexcept
+    NS::Quaternion ChargeEffects::YawToward(const NS::Vector3& direction) noexcept
     {
         const float length = std::sqrt(direction.x * direction.x + direction.z * direction.z);
         if (!std::isfinite(length) || length <= 0.0f)
         {
-            return NS::Core::Quaternion::Identity;
+            return NS::Quaternion::Identity;
         }
         // Y 軸まわりに角度 a 回すと +Z は (sin a, 0, cos a) へ向く
         const float yaw = std::atan2(direction.x, direction.z);
-        return NS::Core::Quaternion::CreateFromAxisAngle(NS::Core::Vector3{0.0f, 1.0f, 0.0f}, yaw);
+        return NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, yaw);
     }
 
     void ChargeEffects::StopDueLayers(NS::Gfx::EffectScene* effects) noexcept
@@ -199,7 +199,7 @@ namespace NS::Game::Player
         }
     }
 
-    void ChargeEffects::StartPress(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
+    void ChargeEffects::StartPress(NS::Gfx::EffectScene* effects, const NS::Vector3& center)
     {
         // 前の押しの層が残っていれば、新しい押しの層と重ねない
         StopLayer(effects, m_curl);
@@ -207,31 +207,31 @@ namespace NS::Game::Player
         m_fullShown = false;
         m_spinDegrees = 0.0f;
 
-        m_curl = m_layers.Play(effects, k_Curl, PlayDesc(center, NS::Core::Quaternion::Identity, 0.0f));
+        m_curl = m_layers.Play(effects, k_Curl, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
         m_scheduledStops.push_back(ScheduledStop{m_curl, m_layers.Step() + k_CurlSteps});
-        m_spin = m_layers.Play(effects, k_Spin, PlayDesc(center, NS::Core::Quaternion::Identity, 0.0f));
+        m_spin = m_layers.Play(effects, k_Spin, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
         // 玉を包む光は押したフレームから出し、丸まりの殻が消えた後も放すまで途切れさせない
         StopLayer(effects, m_gather);
         m_gather = m_layers.Play(effects, k_Gather, PlayDesc(center, YawToward(HeldAimDirection()), 0.0f));
     }
 
-    void ChargeEffects::StartCharging(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
+    void ChargeEffects::StartCharging(NS::Gfx::EffectScene* effects, const NS::Vector3& center)
     {
         StopLayer(effects, m_grind);
         const float charge01 = m_actor->ChargeJudge().Charge01();
         m_grind = m_layers.Play(effects, k_Grind, PlayDesc(center, YawToward(HeldAimDirection()), charge01));
     }
 
-    void ChargeEffects::StartFullFlash(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
+    void ChargeEffects::StartFullFlash(NS::Gfx::EffectScene* effects, const NS::Vector3& center)
     {
         m_fullShown = true;
         m_fullStep = m_layers.Step();
         StopLayer(effects, m_full);
-        m_full = m_layers.Play(effects, k_Full, PlayDesc(center, NS::Core::Quaternion::Identity, 1.0f));
+        m_full = m_layers.Play(effects, k_Full, PlayDesc(center, NS::Quaternion::Identity, 1.0f));
         m_scheduledStops.push_back(ScheduledStop{m_full, m_layers.Step() + k_FullFlashSteps});
     }
 
-    void ChargeEffects::PlaySwaySparks(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
+    void ChargeEffects::PlaySwaySparks(NS::Gfx::EffectScene* effects, const NS::Vector3& center)
     {
         NS::Game::Level::AimLine line{};
         if (!m_actor->TryGetAimLine(line))
@@ -245,17 +245,17 @@ namespace NS::Game::Player
         }
         // 擦れの節は +Y の 45 度の円錐へ飛ぶ。+Y を横から 45 度起こすと円錐の下の縁が水平になり、床へ潜る粒が出ない
         constexpr float k_SideLift = 1.0f;
-        const NS::Core::Vector3 right{line.direction.z, 0.0f, -line.direction.x};
-        NS::Core::Vector3 heading = right * side + NS::Core::Vector3{0.0f, k_SideLift, 0.0f};
+        const NS::Vector3 right{line.direction.z, 0.0f, -line.direction.x};
+        NS::Vector3 heading = right * side + NS::Vector3{0.0f, k_SideLift, 0.0f};
         heading.Normalize();
 
-        const float depth = NS::Core::Clamp(m_actor->ChargeJudge().Overcharge01(), 0.0f, 1.0f);
+        const float depth = NS::Clamp(m_actor->ChargeJudge().Overcharge01(), 0.0f, 1.0f);
         const float count = static_cast<float>(m_overchargeSparkCountMin) +
                             static_cast<float>(m_overchargeSparkCountMax - m_overchargeSparkCountMin) * depth;
         const float speed = m_overchargeSparkSpeedMin + (m_overchargeSparkSpeedMax - m_overchargeSparkSpeedMin) * depth;
         NS::Gfx::EffectPlayDesc sparks{};
         sparks.position = center;
-        sparks.rotation = NS::Core::Quaternion::FromToRotation(NS::Core::Vector3{0.0f, 1.0f, 0.0f}, heading);
+        sparks.rotation = NS::Quaternion::FromToRotation(NS::Vector3{0.0f, 1.0f, 0.0f}, heading);
         sparks.dynamicInputs[0] = 0.0f;
         sparks.dynamicInputs[1] = std::round(count);
         // 秒の速さを 1 フレームの距離にして絵へ渡す
@@ -265,21 +265,21 @@ namespace NS::Game::Player
     }
 
     void ChargeEffects::FollowHeldLayers(NS::Gfx::EffectScene* effects,
-                                         const NS::Core::Vector3& center,
+                                         const NS::Vector3& center,
                                          float charge01) noexcept
     {
         if (m_appearance != nullptr)
         {
             m_spinDegrees = std::fmod(m_spinDegrees + m_appearance->SpinDegreesThisFrame(), 360.0f);
         }
-        const NS::Core::Quaternion spinBoard = NS::Core::Quaternion::CreateFromAxisAngle(
-            k_SpinBoardAxis, NS::Core::ToRadians(NS::Core::Degrees{m_spinDegrees}).value);
-        Place(effects, m_curl, center, NS::Core::Quaternion::Identity);
+        const NS::Quaternion spinBoard = NS::Quaternion::CreateFromAxisAngle(
+            k_SpinBoardAxis, NS::ToRadians(NS::Degrees{m_spinDegrees}).value);
+        Place(effects, m_curl, center, NS::Quaternion::Identity);
         Place(effects, m_spin, center, spinBoard);
         Place(effects, m_grind, center, YawToward(HeldAimDirection()));
         // 溜まる光の根は狙いの線 (カメラの正面の水平の向き) へ回す。定義は根の手前に低く、奥に高く光の点を生む
         Place(effects, m_gather, center, YawToward(HeldAimDirection()));
-        Place(effects, m_full, center, NS::Core::Quaternion::Identity);
+        Place(effects, m_full, center, NS::Quaternion::Identity);
         SetCharge(effects, m_spin, charge01);
         SetCharge(effects, m_grind, charge01);
         SetCharge(effects, m_gather, charge01);
@@ -300,11 +300,11 @@ namespace NS::Game::Player
         StopLayer(effects, m_full);
     }
 
-    void ChargeEffects::StartRelease(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center)
+    void ChargeEffects::StartRelease(NS::Gfx::EffectScene* effects, const NS::Vector3& center)
     {
         const float charge01 = m_actor->BodySlamCharge01();
         m_slamDirection = m_actor->BodySlamDirection();
-        const NS::Core::Quaternion facing = YawToward(m_slamDirection);
+        const NS::Quaternion facing = YawToward(m_slamDirection);
 
         // 効果の全体を縮めると、通常突進の散って残る筋は玉の輪郭の内側で生まれ、はじけの光も画面を明るくしない。
         // 大きさを変えるのは輪・丸屋根・筋だけにする
@@ -324,7 +324,7 @@ namespace NS::Game::Player
     }
 
     void ChargeEffects::UpdateTrail(NS::Gfx::EffectScene* effects,
-                                    const NS::Core::Vector3& center,
+                                    const NS::Vector3& center,
                                     bool slamming) noexcept
     {
         if (m_trail == 0)
@@ -380,8 +380,8 @@ namespace NS::Game::Player
 
     void ChargeEffects::Place(NS::Gfx::EffectScene* effects,
                               std::uint32_t id,
-                              const NS::Core::Vector3& position,
-                              const NS::Core::Quaternion& rotation) noexcept
+                              const NS::Vector3& position,
+                              const NS::Quaternion& rotation) noexcept
     {
         if (id == 0)
         {
@@ -420,7 +420,7 @@ namespace NS::Game::Player
         effects->SetDynamicInput(record->handle, index, value);
     }
 
-    NS::Core::Vector3 ChargeEffects::HeldAimDirection() const noexcept
+    NS::Vector3 ChargeEffects::HeldAimDirection() const noexcept
     {
         NS::Game::Level::AimLine line{};
         if (m_actor != nullptr)
@@ -431,7 +431,7 @@ namespace NS::Game::Player
             }
             return m_actor->AimDirection();
         }
-        return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+        return NS::Vector3{0.0f, 0.0f, 1.0f};
     }
 
     bool ChargeEffects::IsContactNear() const noexcept

@@ -4,11 +4,11 @@
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Components/SphereCollision.h"
-#include "Runtime/Object/StateMachine.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/Components/SphereCollision.h"
+#include "NSlib/Object/StateMachine.h"
 
 namespace NS::Game::Level
 {
@@ -39,7 +39,7 @@ namespace NS::Game::Level
         //! 飛んでいる中でも曲線の上にいる場合 true、それ以外の場合は false
         [[nodiscard]] bool IsArc() const noexcept;
         //! 自分で動かしている速度。単位は m/s。置かれている間は 0
-        [[nodiscard]] NS::Core::Vector3 Velocity() const noexcept { return m_velocity; }
+        [[nodiscard]] NS::Vector3 Velocity() const noexcept { return m_velocity; }
         [[nodiscard]] const MapObjParams& Params() const noexcept { return m_params; }
 
         //! 体当たりの問い・止め・明けと、コースのやり直しに応じる
@@ -73,16 +73,16 @@ namespace NS::Game::Level
         // 衝撃の震えを止め、振れ幅 0 を書く
         void StopTremor();
         void Release(const TackleReleaseDesc& desc);
-        void ResetTo(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation);
+        void ResetTo(const NS::Vector3& position, const NS::Quaternion& rotation);
         void StepLaunched(float dt);
         void StepArc(float dt);
         void StepRolling(float dt);
         void MoveLaunched(float dt);
-        bool ProbeFloor(float distance, NS::Core::Vector3& outNormal);
-        void Land(const NS::Core::Vector3& normal);
+        bool ProbeFloor(float distance, NS::Vector3& outNormal);
+        void Land(const NS::Vector3& normal);
         void SyncCollision();
         void SpawnMark();
-        [[nodiscard]] NS::Core::Vector3 ArcOffset(float seconds) const noexcept;
+        [[nodiscard]] NS::Vector3 ArcOffset(float seconds) const noexcept;
 
         [[nodiscard]] NS::Obj::SphereCollision& Sphere() noexcept
         {
@@ -110,12 +110,12 @@ namespace NS::Game::Level
             bool active = false;
         };
         TremorRun m_tremor;
-        NS::Core::Vector3 m_freezeHome{};
+        NS::Vector3 m_freezeHome{};
         bool m_freezePlaced = true;
         LaunchArc m_arc;
-        NS::Core::Vector3 m_arcUp{0.0f, 1.0f, 0.0f};
-        NS::Core::Vector3 m_arcForward{1.0f, 0.0f, 0.0f};
-        NS::Core::Vector3 m_velocity{};
+        NS::Vector3 m_arcUp{0.0f, 1.0f, 0.0f};
+        NS::Vector3 m_arcForward{1.0f, 0.0f, 0.0f};
+        NS::Vector3 m_velocity{};
         float m_arcSeconds = 0.0f;
         float m_restAge = 0.0f;
         bool m_hasLaunched = false;
@@ -123,7 +123,7 @@ namespace NS::Game::Level
         int m_hopsLeft = 0;                // 外れで着地した後に残っている跳ねの回数。外れでなければ 0
         int m_hopIndex = 0;                // 次の跳ねが何回目か。0 から数える
         std::uint32_t m_hopSeed = 0;       // 跳ね方の種
-        NS::Core::Sphere m_syncedSphere{}; // 最後に当たりへ置いた球 (世界座標)
+        NS::Sphere m_syncedSphere{}; // 最後に当たりへ置いた球 (世界座標)
         bool m_hasSyncedSphere = false;    // m_syncedSphere を一度でも置いたか
     };
 } // namespace NS::Game::Level

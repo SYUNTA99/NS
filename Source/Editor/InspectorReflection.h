@@ -2,8 +2,8 @@
 
 //! @brief コンポーネントのリフレクション情報から、ImGui編集用UIを自動生成するインスペクタヘルパー
 
-#include "Runtime/Core/NonCopyable.h"
-#include "Runtime/Object/Reflection/Reflection.h"
+#include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Object/Reflection/Reflection.h"
 
 #include <cstdint>
 #include <memory>
@@ -32,7 +32,7 @@ namespace NS::Editor
     //! @brief 部品ごとの既定の値を引く置き場
     //! @details リフレクション欄の上書きの印と戻すボタンが、今の値と比べる相手として引く
     //! 持ち主のクラスの既定の 1 体 (コードの既定値に種類の既定値を当てた物) の同じ部品が相手になる
-    class ComponentDefaults : public NS::Core::NonCopyable
+    class ComponentDefaults : public NS::NonCopyable
     {
     public:
         ComponentDefaults() noexcept;

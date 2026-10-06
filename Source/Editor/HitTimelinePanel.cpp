@@ -4,9 +4,9 @@
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
-#include "Runtime/App/Application.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/HitSensor.h"
+#include "NSlib/App/Application.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/HitSensor.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -143,7 +143,7 @@ namespace NS::Editor
         m_needsRun = false;
         m_snapshot = editor.SceneSnapshot();
         HitPreviewWorld world;
-        if (NS::App::Application* app = NS::App::Application::Get())
+        if (NS::Application* app = NS::Application::Get())
         {
             world.assets = &app->Assets();
             world.renderer = &app->Renderer();

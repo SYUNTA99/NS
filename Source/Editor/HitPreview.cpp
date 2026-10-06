@@ -4,15 +4,15 @@
 #include "Game/Level/FollowCamera.h"
 #include "Game/Level/HitZones.h"
 #include "Game/Player.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/CameraManager.h"
-#include "Runtime/Object/Components/CameraModifier.h"
-#include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/PlayerInput.h"
-#include "Runtime/Object/Components/ThirdPersonFollow.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/Input.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/CameraManager.h"
+#include "NSlib/Object/Components/CameraModifier.h"
+#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/Components/PlayerInput.h"
+#include "NSlib/Object/Components/ThirdPersonFollow.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/Input.h"
 
 #include <algorithm>
 #include <cmath>
@@ -37,7 +37,7 @@ namespace NS::Editor
         // 1 回目の置き直しで、玉の表面から面までに空ける距離 (m)。2 回目からは 1 歩の長さを測って決め直す
         constexpr float k_FirstLeadDistance = 2.0f;
 
-        [[nodiscard]] nlohmann::ordered_json Vec3Json(const NS::Core::Vector3& v)
+        [[nodiscard]] nlohmann::ordered_json Vec3Json(const NS::Vector3& v)
         {
             return nlohmann::ordered_json{v.x, v.y, v.z};
         }
@@ -53,7 +53,7 @@ namespace NS::Editor
         }
 
         // 写しの自機の根を rootPosition へ置き直した文書。自機が居なければ写しのまま
-        nlohmann::json PlacePlayer(const nlohmann::json& snapshot, const NS::Core::Vector3& rootPosition)
+        nlohmann::json PlacePlayer(const nlohmann::json& snapshot, const NS::Vector3& rootPosition)
         {
             nlohmann::json placed = snapshot;
             const std::size_t index = FindPlayerObjectIndex(placed);
@@ -76,8 +76,8 @@ namespace NS::Editor
             {
                 // 追従カメラは置いた時の向きのままだと、突進の横や前から映る。ゲームでは狙う向きの後ろから見ているので、
                 // 自機の後ろ上へ置き直す。当たりの動きはカメラを読まないので、記録は変わらない
-                const NS::Core::Vector3 behind = placement.playerStart - placement.direction * k_CameraBehindDistance +
-                                                 NS::Core::Vector3{0.0f, k_CameraHeight, 0.0f};
+                const NS::Vector3 behind = placement.playerStart - placement.direction * k_CameraBehindDistance +
+                                                 NS::Vector3{0.0f, k_CameraHeight, 0.0f};
                 for (NS::Obj::Actor* object : scene->Objects())
                 {
                     if (NS::Game::Level::FollowCamera* camera = NS::Obj::Cast<NS::Game::Level::FollowCamera>(object))
@@ -100,8 +100,8 @@ namespace NS::Editor
             result.impact = NS::Game::Level::ImpactRecord{};
             result.detectionIndex = -1;
             // 手元の機器を読まず、振動を手元のパッドへ送らない。組む前から入れる (配置物が組む時に機器を読んでも中立)
-            const NS::Platform::ScopedNeutralInput neutral;
-            NS::Platform::Gamepad& pad = NS::Platform::Input::Get().Gamepad();
+            const NS::OS::ScopedNeutralInput neutral;
+            NS::OS::Gamepad& pad = NS::OS::Input::Get().Gamepad();
             Player* player = nullptr;
             std::unique_ptr<NS::Obj::Scene> scene = StartRun(snapshot, result, world, player);
             if (player == nullptr)
@@ -188,7 +188,7 @@ namespace NS::Editor
         // 自機の根に一番近い、下見の相手になれる配置物の id。居なければ 0
         std::uint32_t FindNearestTarget(NS::Obj::Scene& scene, const Player& player)
         {
-            const NS::Core::Vector3 from = player.Root().Position();
+            const NS::Vector3 from = player.Root().Position();
             std::uint32_t nearest = 0;
             float nearestDistance = 0.0f;
             for (NS::Obj::Actor* object : scene.Objects())
@@ -197,7 +197,7 @@ namespace NS::Editor
                 {
                     continue;
                 }
-                const float distance = NS::Core::Vector3::DistanceSquared(object->Root().Position(), from);
+                const float distance = NS::Vector3::DistanceSquared(object->Root().Position(), from);
                 if (nearest == 0 || distance < nearestDistance)
                 {
                     nearest = object->Id();
@@ -214,8 +214,8 @@ namespace NS::Editor
             {
                 return 0.0f;
             }
-            const NS::Core::Vector3 first = result.frames.front().playerPosition;
-            const NS::Core::Vector3 last =
+            const NS::Vector3 first = result.frames.front().playerPosition;
+            const NS::Vector3 last =
                 result.frames[static_cast<std::size_t>(result.detectionIndex - 1)].playerPosition;
             const float dx = last.x - first.x;
             const float dz = last.z - first.z;
@@ -230,7 +230,7 @@ namespace NS::Editor
         HitPreviewResult result;
         result.desc = desc;
         // 写しの場面を組む・進める・壊す間は、手元の機器を読まず振動を送らない
-        const NS::Platform::ScopedNeutralInput neutral;
+        const NS::OS::ScopedNeutralInput neutral;
         // 置き直しの前の自機と相手を、写しをそのまま組んだ場面から読む
         std::unique_ptr<NS::Obj::Scene> original = MakeScene(snapshot, world);
         Player* player = FindPlayer(original->Objects());
@@ -261,9 +261,9 @@ namespace NS::Editor
             return result;
         }
         const NS::Obj::SensorVolume body = bodySensor->WorldVolume();
-        const NS::Core::Vector3 root = player->Root().Position();
-        const NS::Core::Sphere ball = player->SlamBallAt(root);
-        const NS::Core::Vector3 ballOffset = ball.center - root;
+        const NS::Vector3 root = player->Root().Position();
+        const NS::Sphere ball = player->SlamBallAt(root);
+        const NS::Vector3 ballOffset = ball.center - root;
         // 向きはエディタが面を描く時と同じく、自機の玉から相手の体の中心へ
         NS::Game::Level::HitFaceFrame face;
         if (!NS::Game::Level::MakeHitFaceFrame(body, body.Center() - ball.center, ball.radius, face))
@@ -275,9 +275,9 @@ namespace NS::Editor
         result.direction = -face.normal;
 
         // 玉の中心が面の点から自機の半径だけ手前で触れるので、そこから突進の向きの逆へ空けて置く
-        const NS::Core::Vector3 contactCenter =
+        const NS::Vector3 contactCenter =
             NS::Game::Level::HitFacePoint(face, desc.faceU, desc.faceV) + face.normal * ball.radius;
-        NS::Core::Vector3 ballStart = contactCenter + face.normal * k_FirstLeadDistance;
+        NS::Vector3 ballStart = contactCenter + face.normal * k_FirstLeadDistance;
         // 選んだ位置に一番近く当てた回。床より下へ置き直して当たらなくなった時はこれを返す
         HitPreviewResult best;
         float bestMiss = 0.0f;
@@ -325,7 +325,7 @@ namespace NS::Editor
         // 鍵と並びは Replay の hits.jsonl (Tools/replay の HitRecord.cpp の ToJsonLine) に合わせる
         using Json = nlohmann::ordered_json;
         const NS::Game::Level::ImpactRecord& impact = result.impact;
-        const NS::Core::Vector3& launch = impact.launchVelocity;
+        const NS::Vector3& launch = impact.launchVelocity;
         Json root;
         root["f"] = result.detectionIndex;
         root["victim"] = impact.targetId;

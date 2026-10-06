@@ -2,7 +2,7 @@
 //   1. Effect::Create が通るか、依存するテクスチャ・モデル・マテリアル・カーブが全部読めたかを見る
 //   2. 節の木を実行側が読んだ値で出す。種類・最大生成数・寿命・生成間隔・生成の遅れ・合成・色テクスチャ
 //   3. 画面外の DX11 の描画先へ 1 フレームずつ描き、フレームごとのインスタンス数と描いた画素の数を出し、PNG に書く
-// Manager と Renderer の組み方は Source/Runtime/Graphics/EffectScene.cpp と同じ
+// Manager と Renderer の組み方は Source/NSlib/Graphics/EffectScene.cpp と同じ
 //
 // 使い方: efkprobe <.efkefc> <PNG の出力先フォルダ> [--frames N] [--size 画素] [--distance 距離] [--height 目の高さ]
 //                  [--bg r,g,b] [--start-frame フレーム数] [--input 番号=値]... [--no-png]

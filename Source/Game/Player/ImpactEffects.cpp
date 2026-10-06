@@ -4,13 +4,13 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerJudges.h"
-#include "Runtime/Core/AABB.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Core/AABB.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>
@@ -21,8 +21,8 @@ namespace NS::Game::Player
 {
     namespace
     {
-        using NS::Core::Quaternion;
-        using NS::Core::Vector3;
+        using NS::Quaternion;
+        using NS::Vector3;
         using NS::Game::Level::HitTier;
 
         constexpr std::string_view k_Core = "impact.core";
@@ -341,7 +341,7 @@ namespace NS::Game::Player
     Vector3 ImpactEffects::MissSparkHeading(float u, float v, const Vector3& slamDirection) noexcept
     {
         Vector3 forward{};
-        if (!NS::Core::TryNormalizeHorizontal(slamDirection, forward))
+        if (!NS::TryNormalizeHorizontal(slamDirection, forward))
         {
             return Vector3{};
         }
@@ -352,7 +352,7 @@ namespace NS::Game::Player
             return Vector3{};
         }
         const Vector3 normal = NS::Game::Level::MissSurfaceNormal(u, v, 2.0f, forward);
-        const Vector3 slide = NormalizedOr(forward - normal * NS::Core::Dot(forward, normal), side);
+        const Vector3 slide = NormalizedOr(forward - normal * NS::Dot(forward, normal), side);
         return NormalizedOr(side * k_MissSparkSideShare + slide * (1.0f - k_MissSparkSideShare), side);
     }
 
@@ -377,7 +377,7 @@ namespace NS::Game::Player
         }
         // 筋は飛ぶ向きの逆へ伸びる。視線と直角な成分が画面の上に写る向き、視線に沿う成分は奥行き
         const Vector3 back = heading * -1.0f;
-        const float along = NS::Core::Dot(back, sight);
+        const float along = NS::Dot(back, sight);
         const Vector3 across = back - sight * along;
         const float acrossLength = across.Length();
         // 真っ直ぐ視線に沿って飛ぶ時は画面の上の向きが決まらないので起こさない
@@ -431,9 +431,9 @@ namespace NS::Game::Player
 
         // 横ずれの側: 相手の中心から自機への向きのうち、飛ぶ向きに直角な水平の成分
         const Vector3 away = self - impact.targetPos;
-        Vector3 across = away - plan.launchDir * NS::Core::Dot(away, plan.launchDir);
+        Vector3 across = away - plan.launchDir * NS::Dot(away, plan.launchDir);
         across.y = 0.0f;
-        const Vector3 fallbackSide = NS::Core::Cross(Vector3{0.0f, 1.0f, 0.0f}, plan.launchDir);
+        const Vector3 fallbackSide = NS::Cross(Vector3{0.0f, 1.0f, 0.0f}, plan.launchDir);
         plan.sideDir = NormalizedOr(across, NormalizedOr(fallbackSide, Vector3{0.0f, 0.0f, 1.0f}));
         plan.scrapeDir =
             NormalizedOr(plan.sideDir + plan.launchDir * k_ScrapeLaunchWeight + Vector3{0.0f, k_ScrapeLiftWeight, 0.0f},

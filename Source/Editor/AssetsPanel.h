@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Core/NonCopyable.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <string_view>
 
@@ -9,7 +9,7 @@ class LevelEditorController;
 namespace NS::Editor
 {
     //! @brief Assets ツリーを出し、.mat の適用と .gltf / .glb のドラッグ配置を仲介するパネル
-    class AssetsPanel : public NS::Core::NonCopyable
+    class AssetsPanel : public NS::NonCopyable
     {
     public:
         void Render(LevelEditorController& editor) noexcept;

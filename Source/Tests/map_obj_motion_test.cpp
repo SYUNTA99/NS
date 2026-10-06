@@ -1,11 +1,11 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObj.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
 
@@ -17,7 +17,7 @@ namespace
         nlohmann::json rock = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(rock, "MapObj");
         NS::Obj::SetObjectJsonId(rock, 1);
-        NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{0.0f, 0.5f, 0.0f});
+        NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.LoadJson(doc);
         return static_cast<NS::Game::Level::MapObj*>(scene.Objects().FindByObjectId(1));
@@ -46,8 +46,8 @@ TEST(MapObjMotion, ActorMovesAndUpdatesStaticCollision)
     EXPECT_GT(rock->Root().Position().x, 1.0f);
     EXPECT_GT(rock->Root().Position().y, 0.5f);
     float distance = 0.0f;
-    const NS::Core::Vector3 from = rock->Root().Position() + NS::Core::Vector3{0.0f, 2.0f, 0.0f};
-    ASSERT_TRUE(scene.Physics().Raycast(from, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, 3.0f, distance));
+    const NS::Vector3 from = rock->Root().Position() + NS::Vector3{0.0f, 2.0f, 0.0f};
+    ASSERT_TRUE(scene.Physics().Raycast(from, NS::Vector3{0.0f, -1.0f, 0.0f}, 3.0f, distance));
     EXPECT_NEAR(distance, 1.5f, 0.001f);
 }
 
@@ -56,8 +56,8 @@ TEST(MapObjMotion, LandingRollsThenReturnsToRest)
     NS::Obj::Scene scene;
     NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::Core::OBB floor;
-    floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+    NS::OBB floor;
+    floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
     floor.halfExtentX = 100.0f;
     floor.halfExtentY = 0.5f;
     floor.halfExtentZ = 100.0f;
@@ -72,7 +72,7 @@ TEST(MapObjMotion, LandingRollsThenReturnsToRest)
     EXPECT_TRUE(answer.placed);
     EXPECT_GT(rock->Root().Position().x, 5.0f);
     EXPECT_NEAR(rock->Root().Position().y, 0.5f, 0.002f);
-    const NS::Core::Vector3 stopped = rock->Root().Position();
+    const NS::Vector3 stopped = rock->Root().Position();
     rock->UpdateMotion();
     EXPECT_FLOAT_EQ(rock->Root().Position().x, stopped.x);
     EXPECT_FLOAT_EQ(rock->Root().Position().y, stopped.y);
@@ -83,8 +83,8 @@ TEST(MapObjMotion, WallReflectsFlightBeforeItCanTunnel)
     NS::Obj::Scene scene;
     NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::Core::OBB wall;
-    wall.center = NS::Core::Vector3{2.0f, 2.0f, 0.0f};
+    NS::OBB wall;
+    wall.center = NS::Vector3{2.0f, 2.0f, 0.0f};
     wall.halfExtentX = 0.1f;
     wall.halfExtentY = 4.0f;
     wall.halfExtentZ = 4.0f;
@@ -118,9 +118,9 @@ TEST(MapObjMotion, UnobstructedFlightKeepsAnalyticArc)
     float seconds = 0.0f;
     for (int step = 0; step < 45; ++step)
     {
-        seconds += NS::Platform::FrameTimer::FixedDelta();
+        seconds += NS::OS::FrameTimer::FixedDelta();
         rock->UpdateMotion();
-        const NS::Core::Vector3 expected = NS::Game::Level::LaunchArcOffsetAt(arc, seconds);
+        const NS::Vector3 expected = NS::Game::Level::LaunchArcOffsetAt(arc, seconds);
         EXPECT_NEAR(rock->Root().Position().x, expected.x, 0.0001f);
         EXPECT_NEAR(rock->Root().Position().y, 0.5f + expected.y, 0.0001f);
     }
@@ -131,7 +131,7 @@ TEST(MapObjMotion, SceneGravityRotatesTheFlightPlane)
     NS::Obj::Scene scene;
     NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    scene.SetGravityDirection(NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    scene.SetGravityDirection(NS::Vector3{0.0f, 0.0f, 1.0f});
     ReleaseRock(*rock);
     for (int step = 0; step < 10; ++step)
     {
@@ -186,8 +186,8 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
     NS::Obj::Scene scene;
     NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::Core::OBB floor;
-    floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+    NS::OBB floor;
+    floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
     floor.halfExtentX = 100.0f;
     floor.halfExtentZ = 100.0f;
     scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
@@ -218,7 +218,7 @@ TEST(MapObjMotion, FreezeWithoutSquashPreservesExistingDrawScale)
     ASSERT_NE(rock, nullptr);
     NS::Obj::Model* mesh = rock->ModelPart();
     ASSERT_NE(mesh, nullptr);
-    ASSERT_TRUE(mesh->SnapDrawScale(NS::Core::Vector3{0.9f, 0.9f, 0.9f}));
+    ASSERT_TRUE(mesh->SnapDrawScale(NS::Vector3{0.9f, 0.9f, 0.9f}));
     NS::Game::Level::TackleFreezeDesc freeze;
     freeze.squash = false;
     ASSERT_TRUE(NS::Game::Level::SendMsgTackleFreeze(*rock, freeze));
@@ -243,8 +243,8 @@ TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
     NS::Obj::Scene scene;
     NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::Core::OBB floor;
-    floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+    NS::OBB floor;
+    floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
     floor.halfExtentX = 100.0f;
     floor.halfExtentZ = 100.0f;
     scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);

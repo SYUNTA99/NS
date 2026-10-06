@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Game/Level/HitTimeline.h"
-#include "Runtime/Platform/FileSystem.h"
-#include "Runtime/Platform/StringUtils.h"
+#include "NSlib/Windows/FileSystem.h"
+#include "NSlib/Windows/StringUtils.h"
 
 #include <gtest/gtest.h>
 
@@ -22,14 +22,14 @@ public:
     explicit ScopedHitTimelineDirectory(std::string_view name)
         : m_previous(NS::Game::Level::HitTimelineLibrary::Get().Directory())
     {
-        using NS::Platform::FileSystem;
+        using NS::OS::FileSystem;
         m_directory = FileSystem::Combine(
             FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "build"), "TestHitTimelines"), name);
         (void)FileSystem::CreateDirectories(m_directory);
         for (const std::string& path : FileSystem::ListFiles(m_directory, ".json"))
         {
             std::error_code error;
-            std::filesystem::remove(std::filesystem::path{NS::Platform::StringUtils::WideFromUtf8(path)}, error);
+            std::filesystem::remove(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(path)}, error);
         }
         NS::Game::Level::HitTimelineLibrary::Get().SetDirectory(m_directory);
     }
@@ -42,9 +42,9 @@ public:
     //! name.json へ text をそのまま書く
     void WriteFile(std::string_view name, std::string_view text) const
     {
-        const std::string path = NS::Platform::FileSystem::Combine(m_directory, std::string{name} + ".json");
+        const std::string path = NS::OS::FileSystem::Combine(m_directory, std::string{name} + ".json");
         const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
-        ASSERT_TRUE(NS::Platform::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size())));
+        ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size())));
     }
 
     //! 真ん中と外れの両方を timeline にする。段に依らない振る舞いを見る試しが使う

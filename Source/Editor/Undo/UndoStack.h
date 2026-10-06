@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Editor/Undo/ICommand.h"
-#include "Runtime/Core/NonCopyable.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <cstdint>
 #include <deque>
@@ -14,7 +14,7 @@ namespace NS::Editor
     //! @brief Undo/Redo 履歴管理スタック
     //! @note 上限 (200 操作 / 50 MB) を超えた場合、古い履歴から自動的に破棄する
     //! @note 適用は live 実体を触る IObjectSnapshotApplier 越し。コマンドは objectId の before/after を往復させる
-    class UndoStack : public NS::Core::NonCopyable
+    class UndoStack : public NS::NonCopyable
     {
     public:
         static constexpr std::size_t k_MaxOps = 200;

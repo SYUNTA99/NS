@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Runtime/Core/Coroutine.h"
-#include "Runtime/Object/Component.h"
-#include "Runtime/Object/ITickable.h"
-#include "Runtime/Object/Scene/SceneObjHolder.h"
+#include "NSlib/Core/Coroutine.h"
+#include "NSlib/Object/Component.h"
+#include "NSlib/Object/ITickable.h"
+#include "NSlib/Object/Scene/SceneObjHolder.h"
 
 #include <memory>
 
@@ -54,7 +54,7 @@ namespace NS::Game::Level
 
     private:
         //! クリアの流れ: 操作を止める → 暗転 → 全黒の裏でやり直す → 明転 → 操作を戻す
-        [[nodiscard]] NS::Core::Coroutine ClearSequence();
+        [[nodiscard]] NS::Coroutine ClearSequence();
 
         //! プレイヤーへ操作を止めるか戻す知らせを送る
         void SendInputLock(bool locked);
@@ -65,7 +65,7 @@ namespace NS::Game::Level
 
         NS::Obj::Scene& m_scene;
         std::unique_ptr<NS::Obj::ScreenFade> m_fade; // 開いて持つ暗転
-        NS::Core::CoroutineRunner m_sequences;       // クリアの流れ
+        NS::CoroutineRunner m_sequences;       // クリアの流れ
         bool m_playerDead = false;                   // 次の段でやり直すか
         bool m_goalReached = false;                  // 次の段でクリアの流れを始めるか
     };

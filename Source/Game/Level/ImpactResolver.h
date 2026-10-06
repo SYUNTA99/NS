@@ -6,11 +6,11 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SlamAim.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Component.h"
-#include "Runtime/Object/Components/HitReaction.h"
-#include "Runtime/Object/Reflection/ActorRef.h"
-#include "Runtime/Platform/Gamepad.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Component.h"
+#include "NSlib/Object/Components/HitReaction.h"
+#include "NSlib/Object/Reflection/ActorRef.h"
+#include "NSlib/Windows/Gamepad.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -59,23 +59,23 @@ namespace NS::Game::Level
         int flashStart = 0;        //!< 白の残りフレーム数の始めの値。白の無い当たりは 0
         float zoomStart = 1.0f;    //!< 寄りの倍率の始めの値。寄りの無い当たりは 1
         float rollStart = 0.0f;    //!< 傾きの始めの値 (度)。正は画面の上端をカメラの右へ倒す向き。傾きの無い当たりは 0
-        NS::Platform::GamepadVibration padStart; //!< パッドの振動の始めの値。振動の無い当たりは 0
+        NS::OS::GamepadVibration padStart; //!< パッドの振動の始めの値。振動の無い当たりは 0
         int hitStopSteps = 0;                    //!< 止めのフレーム数。タイムラインが引けない当たりは 0
         bool localStop = false;                  //!< ローカル・ヒットストップ (自機と相手の止め) を使った場合 true
         bool gradualRelease = false;             //!< 段階的な明け (明けの後の遅い世界) を使った場合 true
         bool centerHit = false;                  //!< 段が Center の場合 true
         bool broke = false;
-        NS::Core::Vector3 selfVelocity; //!< 明けに自機が持つ速度。反動は初速、貫通は減速した突進の速度。単位は m/s
+        NS::Vector3 selfVelocity; //!< 明けに自機が持つ速度。反動は初速、貫通は減速した突進の速度。単位は m/s
         // 反動の頂点の高さは押し飛ばしの当たりだけが埋める。貫通の当たりは反動しないので 0
         float reboundApexHeight = 0.0f; //!< 自機の反動の、弾かれ始めの高さから頂点までの高さ。単位は m
         // 飛ばす曲線の 3 つの欄は押し飛ばしの当たりだけが埋める。貫通の当たりは相手を飛ばさないので 0
-        NS::Core::Vector3 launchVelocity; //!< 相手の曲線の発射の瞬間の速度。単位は m/s
+        NS::Vector3 launchVelocity; //!< 相手の曲線の発射の瞬間の速度。単位は m/s
         float launchDistance = 0.0f;      //!< 相手の曲線が発射の高さへ戻るまでに水平に進む距離。単位は m
         float launchApexHeight = 0.0f;    //!< 相手の曲線の、発射の高さから頂点までの高さ。単位は m
-        NS::Core::Vector3 impactDir;      //!< 相手の飛ぶ水平の向き。食い込みの向きも同じ
+        NS::Vector3 impactDir;      //!< 相手の飛ぶ水平の向き。食い込みの向きも同じ
         //! 自機の玉が相手の表面に触れた点。JudgeHitFace の触れる点で、判定できない体の時は相手の体の中心
-        NS::Core::Vector3 surfacePoint;
-        NS::Core::Vector3 targetPos;
+        NS::Vector3 surfacePoint;
+        NS::Vector3 targetPos;
         float targetBottom = 0.0f; //!< 相手の体の外接箱の底の高さ (m)。当たりの粉と照りを置く床
         float targetMass = 1.0f;   //!< 相手の質量。相手が答えた重さ
         bool targetPlaced = true;  //!< 相手が置かれていた (飛んでいなかった) 場合 true
@@ -214,7 +214,7 @@ namespace NS::Game::Level
         //! @param[out] outTarget 見つけた相手の予測。見つからない場合は書き換えない
         //! @return 見つかった場合 true。向きの水平の長さが 0 か有限でない場合、見る距離が負か有限でない場合、
         //! 同じ配置物に移動が無い場合と、見つからない場合は false
-        [[nodiscard]] bool FindSlamLineTarget(const NS::Core::Vector3& direction,
+        [[nodiscard]] bool FindSlamLineTarget(const NS::Vector3& direction,
                                               float maxDistance,
                                               SlamLineTarget& outTarget) const;
 
@@ -226,7 +226,7 @@ namespace NS::Game::Level
         //! 向きの軸成分の 2 乗で x と z へ混ぜる。点の無い曲線は 1。事象の外はちょうど 1。
         //! 描く形へ書くのは PlayerAppearance で、ここは何も書かない
         //! @return 元の形を 1 とした世界の x / y / z の倍率
-        [[nodiscard]] NS::Core::Vector3 ShapeFactors() const noexcept;
+        [[nodiscard]] NS::Vector3 ShapeFactors() const noexcept;
 
         // 返り方は当てた時の手触りそのもの。プレイ中に Inspector で触って詰められるよう公開する
         NS_REFLECT_NONE(ImpactResolver, NS::Obj::Component)
@@ -235,7 +235,7 @@ namespace NS::Game::Level
         [[nodiscard]] const NS::Game::Player::PlayerParams& Tuning() const noexcept;
         // 次の固定ステップの自機に重なる置物の体のセンサーのうち中心が最も近い 1 つ。無ければ nullptr
         // 事前条件: m_movement が非 null
-        [[nodiscard]] NS::Obj::HitSensor* FindOverlapped(const NS::Core::Vector3& predictedVelocity) const;
+        [[nodiscard]] NS::Obj::HitSensor* FindOverlapped(const NS::Vector3& predictedVelocity) const;
 
         // 当たりの向きで起きる事象の並びを控え、時計を 0 にして 0 フレームの事象を起こす
         // breakStopSteps は貫通の当たりの止めのフレーム数で、0 以上なら止めの事象の長さの代わりに使う
@@ -309,7 +309,7 @@ namespace NS::Game::Level
                                                           const HitEvent& event) const noexcept;
         // カメラを direction の水平の向きへ、distance の曲線の距離だけずらし始める。水平の成分が無ければずらさない
         // onScreen が真なら、向きをカメラから見た画面の上の向きへ写してずらす
-        void StartCameraNudge(const NS::Core::Vector3& direction,
+        void StartCameraNudge(const NS::Vector3& direction,
                               const NS::Obj::Curve& distance,
                               int length,
                               bool onScreen);
@@ -325,7 +325,7 @@ namespace NS::Game::Level
 
         // 元の形を 1 とした倍率。進行の軸の成分の 2 乗で along を x と z に混ぜ、縦は height
         // side は進行に直角な水平の軸の倍率で、along と逆の成分で混ぜる
-        [[nodiscard]] NS::Core::Vector3 AlongImpactFactors(float along, float height, float side) const noexcept;
+        [[nodiscard]] NS::Vector3 AlongImpactFactors(float along, float height, float side) const noexcept;
 
         // 反発は自機の反動を始め、貫通は速度を書く。止めていた自機を動かし直す
         void ApplyRebound();
@@ -357,15 +357,15 @@ namespace NS::Game::Level
         NS::Obj::ActorRef m_beforeContactTarget{};      // 触れる前の時計を始めた予測の相手
         HitTier m_beforeContactTier = HitTier::Center;  // 触れる前の時計を始めた予測の段
         // 明けたフレームに自機が持つ速度。反動の当たりは、明けに BeginRebound が同じ m_pendingReboundArc から出し直す
-        NS::Core::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};
+        NS::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};
         NS::Game::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離
         LaunchArc m_pendingLaunchArc{};                     // 明けたフレームに相手を飛ばす曲線
         // 検知のフレームに相手が答えた位置。記録の targetPos と揺れの種に使う
         // 置かれていた相手を元の位置へ戻すのは相手自身
-        NS::Core::Vector3 m_pendingTargetPosition{0.0f, 0.0f, 0.0f};
+        NS::Vector3 m_pendingTargetPosition{0.0f, 0.0f, 0.0f};
         float m_pendingLaunchScale = 0.0f;                      // この衝突の飛ばしの比。明けに相手の尾の長さへ渡す
         HitTier m_pendingTier = HitTier::Center;                // この衝突の段。明けに相手の尾の色へ渡す
-        NS::Core::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f}; // 発射の水平方向。食い込みと振動の軸
+        NS::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f}; // 発射の水平方向。食い込みと振動の軸
         NS::Obj::ActorRef m_pendingTarget{};                    // 知らせる相手。凍結をまたぐので使うたびに引く
         // 検知のフレームに相手が置かれていたか。記録と当たりの演出が読む
         bool m_pendingTargetPlaced = false;
@@ -406,7 +406,7 @@ namespace NS::Game::Level
         struct DistortionRingRun
         {
             DistortionRingEvent event{};
-            NS::Core::Vector3 center{};
+            NS::Vector3 center{};
             int length = 0;
             int startClock = 0;
             bool active = false;
@@ -425,7 +425,7 @@ namespace NS::Game::Level
         ImpactRecord m_lastImpact{};
         NS::Obj::ActorRef m_observedTarget{};
         TackleTargetAnswer m_observedAnswer{};
-        NS::Core::Vector3 m_observedVelocity{};
+        NS::Vector3 m_observedVelocity{};
         bool m_hasObservedTarget = false;
         bool m_stateReady = false;
         ::Player* m_player = nullptr;                  // 突進と反動の技の呼び先。非所有

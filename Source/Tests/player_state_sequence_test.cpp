@@ -5,14 +5,14 @@
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/HitReaction.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Components/HitReaction.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
 
 #include <gtest/gtest.h>
 
@@ -52,7 +52,7 @@ TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
     ASSERT_NE(player, nullptr);
     NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player->Part("Movement"));
     ASSERT_NE(movement, nullptr);
-    player->Root().SetPosition(NS::Core::Vector3{});
+    player->Root().SetPosition(NS::Vector3{});
     player->ClimbLedge();
     ASSERT_TRUE(player->States().IsCurrent<NS::Game::Player::LedgeClimbingPlayerState>());
     EXPECT_FLOAT_EQ(player->Root().Position().y, 0.0f);
@@ -76,7 +76,7 @@ TEST(PlayerStateSequence, LeavingClimbCannotResumeAnOldPositionWrite)
     player->ClimbLedge();
     player->States().Step(0.0625f);
     ASSERT_TRUE(player->States().Change<NS::Game::Player::IdlePlayerState>());
-    player->Root().SetPosition(NS::Core::Vector3{0.0f, 3.0f, 0.0f});
+    player->Root().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
     player->States().Step(0.0625f);
     EXPECT_FLOAT_EQ(player->Root().Position().y, 3.0f);
 }
@@ -128,24 +128,24 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
     nlohmann::json entry = NS::Obj::MakeObjectJson();
     NS::Obj::SetObjectJsonClass(entry, "Player");
     NS::Obj::SetObjectJsonId(entry, 1);
-    NS::Obj::SetObjectPosition(entry, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+    NS::Obj::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
     nlohmann::json rock = NS::Obj::MakeObjectJson();
     NS::Obj::SetObjectJsonClass(rock, "MapObj");
     NS::Obj::SetObjectJsonId(rock, 2);
-    NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{0.0f, 0.5f, 0.6f});
+    NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     NS::Obj::Scene scene;
     scene.LoadJson(doc);
-    NS::Core::OBB floor{};
-    floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+    NS::OBB floor{};
+    floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
     floor.halfExtentX = 100.0f;
     floor.halfExtentY = 0.5f;
     floor.halfExtentZ = 100.0f;
     scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
     Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    player->RequestBodySlam(1.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
     for (int frame = 0; frame < 10 && !player->Resolver().FreezeBeganThisStep(); ++frame)
     {
@@ -172,7 +172,7 @@ TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)
     ASSERT_NE(movement, nullptr);
     movement->SetGrounded(true);
     const NS::Game::Player::ReboundArc arc{.apexHeight = 1.0f, .distance = 5.0f};
-    const NS::Core::Vector3 initial = player->ReboundVelocityFor(arc);
+    const NS::Vector3 initial = player->ReboundVelocityFor(arc);
     ASSERT_TRUE(player->BeginRebound(arc));
     EXPECT_FLOAT_EQ(movement->VerticalVelocity(), initial.y);
     player->SetJumpPressed();
@@ -213,16 +213,16 @@ TEST(PlayerStateSequence, SlamBallStaysPutWhenCurling)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    player->Root().SetPosition(NS::Core::Vector3{1.0f, 2.0f, 3.0f});
+    player->Root().SetPosition(NS::Vector3{1.0f, 2.0f, 3.0f});
     ASSERT_FALSE(player->IsCurled());
-    const NS::Core::Vector3 standingRoot = player->Root().Position();
-    const NS::Core::Sphere standing = player->SlamBallAt(standingRoot);
+    const NS::Vector3 standingRoot = player->Root().Position();
+    const NS::Sphere standing = player->SlamBallAt(standingRoot);
     EXPECT_FLOAT_EQ(standing.center.y, standingRoot.y - player->Collider().StandingHalfHeight());
     EXPECT_FLOAT_EQ(standing.radius, player->Collider().CapsuleRadius());
 
     player->SetCurled(true);
     ASSERT_TRUE(player->IsCurled());
-    const NS::Core::Sphere curled = player->SlamBallAt(player->Root().Position());
+    const NS::Sphere curled = player->SlamBallAt(player->Root().Position());
     EXPECT_FLOAT_EQ(curled.center.x, standing.center.x);
     EXPECT_FLOAT_EQ(curled.center.y, standing.center.y);
     EXPECT_FLOAT_EQ(curled.center.z, standing.center.z);
@@ -239,7 +239,7 @@ TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
     player->ClimbLedge();
     player->States().Step(0.0625f);
     player->OnEndPlay();
-    player->Root().SetPosition(NS::Core::Vector3{0.0f, 3.0f, 0.0f});
+    player->Root().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
     player->States().Step(0.0625f);
     EXPECT_FLOAT_EQ(player->Root().Position().y, 3.0f);
 }
@@ -263,7 +263,7 @@ TEST(PlayerStateSequence, ReboundAndBodySlamAreNeverBothTrue)
     EXPECT_TRUE(player->IsRebounding());
     EXPECT_FALSE(player->IsBodySlamming());
 
-    player->RequestBodySlam(0.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
     EXPECT_TRUE(player->IsBodySlamming());
     EXPECT_FALSE(player->IsRebounding());

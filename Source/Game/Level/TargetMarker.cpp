@@ -2,10 +2,10 @@
 
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Player.h"
-#include "Runtime/Graphics/RenderContext.h"
-#include "Runtime/Graphics/Renderer.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Graphics/RenderContext.h"
+#include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
 
 #include <algorithm>
 #include <cmath>
@@ -31,7 +31,7 @@ namespace NS::Game::Level
             return std::isfinite(value) && value >= 0.0f;
         }
 
-        [[nodiscard]] bool IsFiniteColor(const NS::Core::Vector3& color) noexcept
+        [[nodiscard]] bool IsFiniteColor(const NS::Vector3& color) noexcept
         {
             return std::isfinite(color.x) && std::isfinite(color.y) && std::isfinite(color.z);
         }
@@ -77,7 +77,7 @@ namespace NS::Game::Level
         }
 
         // 欄の値と描画先の大きさが組める値か
-        [[nodiscard]] bool CanBuild(NS::Core::Size2D targetSize, const TargetMarkerDesc& desc) noexcept
+        [[nodiscard]] bool CanBuild(NS::Size2D targetSize, const TargetMarkerDesc& desc) noexcept
         {
             if (!IsPositiveFinite(desc.lineThickness) || !IsPositiveFinite(desc.armRatio))
             {
@@ -99,7 +99,7 @@ namespace NS::Game::Level
                 return 1.0f;
             }
             const float elapsed = static_cast<float>(std::max(framesSinceCapture, 0));
-            const float time = NS::Core::Clamp(elapsed / static_cast<float>(desc.appearFrames), 0.0f, 1.0f);
+            const float time = NS::Clamp(elapsed / static_cast<float>(desc.appearFrames), 0.0f, 1.0f);
             // Inspector で点を全部消すと Evaluate が 0 を返し、枠が縮み切らない。点が無ければ時間どおりに進める
             if (desc.appearCurve.count == 0)
             {
@@ -111,14 +111,14 @@ namespace NS::Game::Level
             {
                 return time;
             }
-            return NS::Core::Clamp(progress, 0.0f, 1.0f);
+            return NS::Clamp(progress, 0.0f, 1.0f);
         }
 
     } // namespace
 
-    bool BuildLockOnFrame(const NS::Core::Matrix& viewProjection,
-                          NS::Core::Size2D targetSize,
-                          const NS::Core::AABB& bounds,
+    bool BuildLockOnFrame(const NS::Matrix& viewProjection,
+                          NS::Size2D targetSize,
+                          const NS::AABB& bounds,
                           LockOnFrames frames,
                           const TargetMarkerDesc& desc,
                           LockOnFrameShape& outFrame)
@@ -139,8 +139,8 @@ namespace NS::Game::Level
         const float width = static_cast<float>(targetSize.width);
         const float height = static_cast<float>(targetSize.height);
         const float pixelScale = height / k_ReferenceHeight;
-        const NS::Core::Vector3 center{bounds.Center.x, bounds.Center.y, bounds.Center.z};
-        NS::Core::Vector2 centerPixel{};
+        const NS::Vector3 center{bounds.Center.x, bounds.Center.y, bounds.Center.z};
+        NS::Vector2 centerPixel{};
         float centerW = 0.0f;
         if (!NS::Gfx::TryProjectToPixels(viewProjection, center, width, height, centerPixel, centerW))
         {
@@ -158,12 +158,12 @@ namespace NS::Game::Level
             std::max(std::min(settledSide * desc.appearScale, desc.appearMaxSide * pixelScale), settledSide);
 
         const float progress = AppearProgress(frames.sinceCapture, desc);
-        float side = NS::Core::Lerp(appearSide, settledSide, progress);
+        float side = NS::Lerp(appearSide, settledSide, progress);
         if (lost)
         {
             side *= desc.lostScale;
         }
-        const float alpha = NS::Core::Lerp(desc.appearAlpha, desc.frameAlpha, progress);
+        const float alpha = NS::Lerp(desc.appearAlpha, desc.frameAlpha, progress);
 
         AppendCornerHooks(centerPixel.x - side * 0.5f,
                           centerPixel.y - side * 0.5f,
@@ -180,12 +180,12 @@ namespace NS::Game::Level
                                                rect.width + outlineWidth * 2.0f,
                                                rect.height + outlineWidth * 2.0f});
         }
-        frame.color = NS::Core::Color{NS::Core::Lerp(desc.appearColor.x, desc.color.x, progress),
-                                      NS::Core::Lerp(desc.appearColor.y, desc.color.y, progress),
-                                      NS::Core::Lerp(desc.appearColor.z, desc.color.z, progress),
+        frame.color = NS::Color{NS::Lerp(desc.appearColor.x, desc.color.x, progress),
+                                      NS::Lerp(desc.appearColor.y, desc.color.y, progress),
+                                      NS::Lerp(desc.appearColor.z, desc.color.z, progress),
                                       alpha};
         // 白く大きく透けて出る間に暗い縁だけが濃く見えないよう、枠の不透明度に比例させる
-        frame.outlineColor = NS::Core::Color{
+        frame.outlineColor = NS::Color{
             desc.outlineColor.x, desc.outlineColor.y, desc.outlineColor.z, desc.outlineAlpha * alpha / desc.frameAlpha};
 
         outFrame = std::move(frame);
@@ -210,7 +210,7 @@ namespace NS::Game::Level
     void TargetMarker::OnUpdate()
     {
         const bool hadShown = m_hasShown;
-        const NS::Core::AABB previousBounds = m_shown.bounds;
+        const NS::AABB previousBounds = m_shown.bounds;
         m_hasShown = false;
         // 溜め量は放した後も残るので、溜めているかで示すフレームを決める
         if (m_player == nullptr || !m_player->ChargeJudge().IsCharging())
@@ -283,8 +283,8 @@ namespace NS::Game::Level
         return m_shown.target;
     }
 
-    bool TargetMarker::BuildShownShape(const NS::Core::Matrix& viewProjection,
-                                       NS::Core::Size2D targetSize,
+    bool TargetMarker::BuildShownShape(const NS::Matrix& viewProjection,
+                                       NS::Size2D targetSize,
                                        LockOnFrameShape& outFrame) const
     {
         if (m_hasShown)

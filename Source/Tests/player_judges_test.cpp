@@ -23,14 +23,14 @@ TEST(PlayerJudges, GroundedWalkAndIdleAreExclusive)
 
 TEST(PlayerJudges, BrakeUsesHorizontalInputAndStrictThreshold)
 {
-    const NS::Core::Vector3 desired{2.0f, 8.0f, 0.0f};
+    const NS::Vector3 desired{2.0f, 8.0f, 0.0f};
     EXPECT_FALSE(
-        NS::Game::Player::PlayerJudgeBrake::Judge(false, desired, NS::Core::Vector3{-1.0f, 0.0f, 0.0f}, -0.8f));
+        NS::Game::Player::PlayerJudgeBrake::Judge(false, desired, NS::Vector3{-1.0f, 0.0f, 0.0f}, -0.8f));
     EXPECT_FALSE(NS::Game::Player::PlayerJudgeBrake::Judge(
-        true, NS::Core::Vector3{0.0f, 1.0f, 0.0f}, NS::Core::Vector3{-1.0f, 0.0f, 0.0f}, -0.8f));
-    EXPECT_FALSE(NS::Game::Player::PlayerJudgeBrake::Judge(true, desired, NS::Core::Vector3{-0.8f, 0.0f, 0.0f}, -0.8f));
+        true, NS::Vector3{0.0f, 1.0f, 0.0f}, NS::Vector3{-1.0f, 0.0f, 0.0f}, -0.8f));
+    EXPECT_FALSE(NS::Game::Player::PlayerJudgeBrake::Judge(true, desired, NS::Vector3{-0.8f, 0.0f, 0.0f}, -0.8f));
     EXPECT_TRUE(
-        NS::Game::Player::PlayerJudgeBrake::Judge(true, desired, NS::Core::Vector3{-0.81f, 10.0f, 0.0f}, -0.8f));
+        NS::Game::Player::PlayerJudgeBrake::Judge(true, desired, NS::Vector3{-0.81f, 10.0f, 0.0f}, -0.8f));
 }
 
 TEST(PlayerJudges, UpwardReboundCannotLandOnStaleGroundFlag)
@@ -85,16 +85,16 @@ TEST(PlayerJudges, LedgeEligibilityPreservesGroundUpwardAndRecentImpactExclusion
 
 TEST(PlayerJudges, LedgeBandIncludesItsEdgesWithoutPhysicsOrState)
 {
-    const NS::Core::AABB box{NS::Core::Vector3{0.0f, 1.0f, 0.0f}, NS::Core::Vector3{1.0f, 1.0f, 1.0f}};
-    EXPECT_TRUE(NS::Game::Player::PlayerJudgeLedgeGrab::InBand(NS::Core::Vector3{-1.0f, 2.0f, 1.0f}, box, 0.5f, 0.25f));
-    EXPECT_TRUE(NS::Game::Player::PlayerJudgeLedgeGrab::InBand(NS::Core::Vector3{1.0f, 2.5f, -1.0f}, box, 0.5f, 0.25f));
-    EXPECT_TRUE(NS::Game::Player::PlayerJudgeLedgeGrab::InBand(NS::Core::Vector3{0.0f, 1.75f, 0.0f}, box, 0.5f, 0.25f));
+    const NS::AABB box{NS::Vector3{0.0f, 1.0f, 0.0f}, NS::Vector3{1.0f, 1.0f, 1.0f}};
+    EXPECT_TRUE(NS::Game::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{-1.0f, 2.0f, 1.0f}, box, 0.5f, 0.25f));
+    EXPECT_TRUE(NS::Game::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{1.0f, 2.5f, -1.0f}, box, 0.5f, 0.25f));
+    EXPECT_TRUE(NS::Game::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{0.0f, 1.75f, 0.0f}, box, 0.5f, 0.25f));
     EXPECT_FALSE(
-        NS::Game::Player::PlayerJudgeLedgeGrab::InBand(NS::Core::Vector3{1.001f, 2.0f, 0.0f}, box, 0.5f, 0.25f));
+        NS::Game::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{1.001f, 2.0f, 0.0f}, box, 0.5f, 0.25f));
     EXPECT_FALSE(
-        NS::Game::Player::PlayerJudgeLedgeGrab::InBand(NS::Core::Vector3{0.0f, 2.501f, 0.0f}, box, 0.5f, 0.25f));
+        NS::Game::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{0.0f, 2.501f, 0.0f}, box, 0.5f, 0.25f));
     EXPECT_FALSE(
-        NS::Game::Player::PlayerJudgeLedgeGrab::InBand(NS::Core::Vector3{0.0f, 1.749f, 0.0f}, box, 0.5f, 0.25f));
+        NS::Game::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{0.0f, 1.749f, 0.0f}, box, 0.5f, 0.25f));
 }
 
 TEST(PlayerJudges, MoveInputIncludesTheDeadzoneEdgeAndStoppedNeedsExactZero)
@@ -102,8 +102,8 @@ TEST(PlayerJudges, MoveInputIncludesTheDeadzoneEdgeAndStoppedNeedsExactZero)
     EXPECT_TRUE(NS::Game::Player::PlayerJudgeMoveInput::Judge(0.2f, 0.2f));
     EXPECT_FALSE(NS::Game::Player::PlayerJudgeMoveInput::Judge(0.199f, 0.2f));
     EXPECT_FALSE(NS::Game::Player::PlayerJudgeMoveInput::Judge(std::numeric_limits<float>::quiet_NaN(), 0.2f));
-    EXPECT_TRUE(NS::Game::Player::PlayerJudgeStopped::Judge(NS::Core::Vector3{0.0f, 5.0f, -0.0f}));
-    EXPECT_FALSE(NS::Game::Player::PlayerJudgeStopped::Judge(NS::Core::Vector3{0.0001f, 0.0f, 0.0f}));
+    EXPECT_TRUE(NS::Game::Player::PlayerJudgeStopped::Judge(NS::Vector3{0.0f, 5.0f, -0.0f}));
+    EXPECT_FALSE(NS::Game::Player::PlayerJudgeStopped::Judge(NS::Vector3{0.0001f, 0.0f, 0.0f}));
 }
 
 TEST(PlayerJudges, FallAndLedgeChoicesFollowTheirOneSignal)

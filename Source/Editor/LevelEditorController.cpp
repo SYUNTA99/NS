@@ -11,36 +11,36 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamAim.h"
 #include "Game/Player.h"
-#include "Runtime/App/Application.h"
-#include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Logger.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Core/Sphere.h"
-#include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/Components/BoxCollision.h"
-#include "Runtime/Object/Components/CameraManager.h"
-#include "Runtime/Object/Components/CapsuleCollision.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/MeshCollision.h"
-#include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Components/SphereCollision.h"
-#include "Runtime/Object/Components/ThirdPersonFollow.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/Components/VirtualCamera.h"
-#include "Runtime/Object/ObjectName.h"
-#include "Runtime/Object/Reflection/Archetype.h"
-#include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneCamera.h"
-#include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Platform/Clock.h"
-#include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Platform/Input.h"
-#include "Runtime/Platform/Keyboard.h"
+#include "NSlib/App/Application.h"
+#include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Logger.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Core/Sphere.h"
+#include "NSlib/Graphics/DebugDraw.h"
+#include "NSlib/Object/AssetManager.h"
+#include "NSlib/Object/Components/BoxCollision.h"
+#include "NSlib/Object/Components/CameraManager.h"
+#include "NSlib/Object/Components/CapsuleCollision.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/Components/MeshCollision.h"
+#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/Components/SphereCollision.h"
+#include "NSlib/Object/Components/ThirdPersonFollow.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/Components/VirtualCamera.h"
+#include "NSlib/Object/ObjectName.h"
+#include "NSlib/Object/Reflection/Archetype.h"
+#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneCamera.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Windows/Clock.h"
+#include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Windows/Input.h"
+#include "NSlib/Windows/Keyboard.h"
 
 #include <algorithm>
 #include <string>
@@ -67,8 +67,8 @@ namespace
 
     std::string RelativeToRoot(std::string_view absPath, std::string_view root)
     {
-        const std::string absNorm = NS::Platform::FileSystem::Normalize(absPath);
-        const std::string rootNorm = NS::Platform::FileSystem::Normalize(root);
+        const std::string absNorm = NS::OS::FileSystem::Normalize(absPath);
+        const std::string rootNorm = NS::OS::FileSystem::Normalize(root);
         if (absNorm.size() > rootNorm.size() + 1 &&
             ::_strnicmp(absNorm.c_str(), rootNorm.c_str(), rootNorm.size()) == 0 && absNorm[rootNorm.size()] == '/')
         {
@@ -117,7 +117,7 @@ namespace
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状
     void DrawCollisionWireframe(NS::Gfx::DebugShapes& shapes,
                                 NS::Obj::Actor& object,
-                                const NS::Core::Color& color) noexcept
+                                const NS::Color& color) noexcept
     {
         if (NS::Obj::BoxCollision* box = NS::Obj::ComponentCast<NS::Obj::BoxCollision>(object.CollisionPart()))
         {
@@ -150,21 +150,21 @@ namespace
             {
                 return;
             }
-            const NS::Core::AABB& local = renderer->GetMesh()->LocalBounds();
-            const NS::Core::Matrix world = object.Root().WorldMatrix();
-            const NS::Core::AffineDecomposition parts = NS::Core::DecomposeAffine(world);
-            const NS::Core::Vector3 center = NS::Core::Vector3::Transform(NS::Core::Vector3{local.Center}, world);
-            const NS::Core::Vector3 half{local.Extents.x * std::abs(parts.scale.x),
+            const NS::AABB& local = renderer->GetMesh()->LocalBounds();
+            const NS::Matrix world = object.Root().WorldMatrix();
+            const NS::AffineDecomposition parts = NS::DecomposeAffine(world);
+            const NS::Vector3 center = NS::Vector3::Transform(NS::Vector3{local.Center}, world);
+            const NS::Vector3 half{local.Extents.x * std::abs(parts.scale.x),
                                          local.Extents.y * std::abs(parts.scale.y),
                                          local.Extents.z * std::abs(parts.scale.z)};
-            shapes.OBB(NS::Core::MakeOBB(center, parts.rotation, half), color);
+            shapes.OBB(NS::MakeOBB(center, parts.rotation, half), color);
         }
     }
 
     // 配置物 1 体のヒットセンサーの形を線で描く。範囲 (落下死・ゴール) は地形の当たりを持たないので、ここで見せる
     void DrawSensorWireframe(NS::Gfx::DebugShapes& shapes,
                              NS::Obj::Actor& object,
-                             const NS::Core::Color& color) noexcept
+                             const NS::Color& color) noexcept
     {
         for (const NS::Obj::HitSensor* sensor : {object.BodySensorPart(), object.AttackSensorPart()})
         {
@@ -178,15 +178,15 @@ namespace
                 shapes.OBB(volume.box, color);
                 continue;
             }
-            const NS::Core::Vector3 center = (volume.a + volume.b) * 0.5f;
-            const NS::Core::Vector3 axis = (volume.b - volume.a) * 0.5f;
+            const NS::Vector3 center = (volume.a + volume.b) * 0.5f;
+            const NS::Vector3 axis = (volume.b - volume.a) * 0.5f;
             if (axis.LengthSquared() > 0.0f)
             {
                 shapes.Capsule(center, axis, volume.radius, color);
             }
             else
             {
-                shapes.Sphere(NS::Core::Sphere{center, volume.radius}, color);
+                shapes.Sphere(NS::Sphere{center, volume.radius}, color);
             }
         }
     }
@@ -202,17 +202,17 @@ namespace
                           const NS::Game::Level::HitFaceFrame& frame,
                           const NS::Game::Level::HitFaceShape& shape) noexcept
     {
-        const std::vector<NS::Core::Vector2> outline = NS::Game::Level::HitFaceShapeOutline(shape);
-        const NS::Core::Color edgeColor = NS::Editor::HitZoneColor(shape.tier);
-        NS::Core::Color fillColor = edgeColor;
+        const std::vector<NS::Vector2> outline = NS::Game::Level::HitFaceShapeOutline(shape);
+        const NS::Color edgeColor = NS::Editor::HitZoneColor(shape.tier);
+        NS::Color fillColor = edgeColor;
         fillColor.A(k_HitFaceAlpha);
-        const NS::Core::Vector3 center = NS::Game::Level::HitFacePoint(frame, shape.centerU, shape.centerV);
+        const NS::Vector3 center = NS::Game::Level::HitFacePoint(frame, shape.centerU, shape.centerV);
         for (std::size_t i = 0; i < outline.size(); ++i)
         {
-            const NS::Core::Vector2& from = outline[i];
-            const NS::Core::Vector2& to = outline[(i + 1) % outline.size()];
-            const NS::Core::Vector3 a = NS::Game::Level::HitFacePoint(frame, from.x, from.y);
-            const NS::Core::Vector3 b = NS::Game::Level::HitFacePoint(frame, to.x, to.y);
+            const NS::Vector2& from = outline[i];
+            const NS::Vector2& to = outline[(i + 1) % outline.size()];
+            const NS::Vector3 a = NS::Game::Level::HitFacePoint(frame, from.x, from.y);
+            const NS::Vector3 b = NS::Game::Level::HitFacePoint(frame, to.x, to.y);
             shapes.Triangle(center, a, b, fillColor);
             shapes.Line(a, b, edgeColor);
         }
@@ -221,9 +221,9 @@ namespace
     // a→b を 0.5m を目安に等分し 1 区間おきに線を引いて点線にする。DebugShapes に破線が無いので描画側で
     // 間引く。辺長からセグメント数を出すので、長い辺でも刻みが粗くならない
     void DrawDashedLine(NS::Gfx::DebugShapes& shapes,
-                        const NS::Core::Vector3& a,
-                        const NS::Core::Vector3& b,
-                        const NS::Core::Color& color) noexcept
+                        const NS::Vector3& a,
+                        const NS::Vector3& b,
+                        const NS::Color& color) noexcept
     {
         const float length = (b - a).Length();
         const int rawSegments = static_cast<int>(length / 0.5f);
@@ -232,7 +232,7 @@ namespace
         {
             const float t0 = static_cast<float>(i) / static_cast<float>(segments);
             const float t1 = static_cast<float>(i + 1) / static_cast<float>(segments);
-            shapes.Line(NS::Core::Vector3::Lerp(a, b, t0), NS::Core::Vector3::Lerp(a, b, t1), color);
+            shapes.Line(NS::Vector3::Lerp(a, b, t0), NS::Vector3::Lerp(a, b, t1), color);
         }
     }
 
@@ -241,29 +241,29 @@ namespace
     void DrawCameraFrustum(NS::Gfx::DebugShapes& shapes,
                            const NS::Obj::CameraPose& pose,
                            float aspect,
-                           const NS::Core::Color& color) noexcept
+                           const NS::Color& color) noexcept
     {
-        NS::Core::Vector3 forward = pose.target - pose.position;
+        NS::Vector3 forward = pose.target - pose.position;
         if (forward.LengthSquared() < 1e-6f)
         {
             return;
         }
         forward.Normalize();
-        NS::Core::Vector3 right = pose.up.Cross(forward);
+        NS::Vector3 right = pose.up.Cross(forward);
         if (right.LengthSquared() < 1e-6f)
         {
             return;
         }
         right.Normalize();
-        const NS::Core::Vector3 up = forward.Cross(right);
+        const NS::Vector3 up = forward.Cross(right);
 
         const float halfHeight = std::tan(pose.fovY.value * 0.5f) * k_CameraGizmoFar;
         const float halfWidth = halfHeight * aspect;
-        const NS::Core::Vector3 farCenter = pose.position + forward * k_CameraGizmoFar;
-        const NS::Core::Vector3 topLeft = farCenter + up * halfHeight - right * halfWidth;
-        const NS::Core::Vector3 topRight = farCenter + up * halfHeight + right * halfWidth;
-        const NS::Core::Vector3 bottomLeft = farCenter - up * halfHeight - right * halfWidth;
-        const NS::Core::Vector3 bottomRight = farCenter - up * halfHeight + right * halfWidth;
+        const NS::Vector3 farCenter = pose.position + forward * k_CameraGizmoFar;
+        const NS::Vector3 topLeft = farCenter + up * halfHeight - right * halfWidth;
+        const NS::Vector3 topRight = farCenter + up * halfHeight + right * halfWidth;
+        const NS::Vector3 bottomLeft = farCenter - up * halfHeight - right * halfWidth;
+        const NS::Vector3 bottomRight = farCenter - up * halfHeight + right * halfWidth;
 
         DrawDashedLine(shapes, pose.position, topLeft, color);
         DrawDashedLine(shapes, pose.position, topRight, color);
@@ -277,11 +277,11 @@ namespace
 
     // 視点マーカーのワールド空間での半径。カメラから遠いほど半径を伸ばし、画面上の見かけサイズを一定に近づける
     // 見かけ寸法はワールド空間の半径 / clip.w に比例するので、半径を clip.w に比例させると相殺されて一定になる
-    [[nodiscard]] float CameraMarkerHalf(const NS::Core::Vector3& center, const NS::Core::Matrix& vp) noexcept
+    [[nodiscard]] float CameraMarkerHalf(const NS::Vector3& center, const NS::Matrix& vp) noexcept
     {
         const float baseHalf = 0.3f;
-        const NS::Core::Vector4 clip =
-            NS::Core::Vector4::Transform(NS::Core::Vector4{center.x, center.y, center.z, 1.0f}, vp);
+        const NS::Vector4 clip =
+            NS::Vector4::Transform(NS::Vector4{center.x, center.y, center.z, 1.0f}, vp);
         // clip.w がほぼ 0 になるカメラ至近や背面では基準半径へフォールバックする
         if (clip.w <= 1.0e-3f)
         {
@@ -342,7 +342,7 @@ void LevelEditorController::TogglePlayPause() noexcept
 
 void LevelEditorController::RecaptureCursorOnGameClick(bool gameImageClicked) noexcept
 {
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
         return;
@@ -359,7 +359,7 @@ void LevelEditorController::RecaptureCursorOnGameClick(bool gameImageClicked) no
 
 void LevelEditorController::ApplyPlayCursor(NS::Editor::PlayCursor cursor) noexcept
 {
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
         return;
@@ -392,7 +392,7 @@ NS::Obj::SceneCamera* LevelEditorController::MainCamera() const noexcept
 
 void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
 {
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (app == nullptr || m_scene == nullptr)
     {
         return;
@@ -404,11 +404,11 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     // far は EditorCamera の k_MaxDistance より広く取り、最大ズームアウトでも地形を映す
     m_editorCamera.SetNearPlane(0.1f);
     m_editorCamera.SetFarPlane(5000.0f);
-    m_editorCamera.SetFovY(NS::Core::ToRadians(NS::Core::Degrees{60.0f}));
+    m_editorCamera.SetFovY(NS::ToRadians(NS::Degrees{60.0f}));
 
     // 初期視点はプレイヤーの位置を中心に少し引いた位置から見下ろす。不在なら原点
     NS::Obj::Actor* bootPlayer = FindPlayer(m_scene->Objects());
-    NS::Core::Vector3 startCenter{0.0f, 0.0f, 0.0f};
+    NS::Vector3 startCenter{0.0f, 0.0f, 0.0f};
     if (bootPlayer != nullptr)
     {
         startCenter = bootPlayer->Root().Position();
@@ -451,7 +451,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     // 起動シーンが実在するのに読めていない時は印す。終了保存が元ファイルを潰さず退避名へ逃げる
     if (const std::optional<std::string> bootPath = NS::Editor::BuildLevelPath("Scenes/new_scene"))
     {
-        if (NS::Platform::FileSystem::Exists(*bootPath))
+        if (NS::OS::FileSystem::Exists(*bootPath))
         {
             nlohmann::json probe;
             if (!NS::Obj::LoadSceneFromJsonFile(probe, *bootPath))
@@ -488,7 +488,7 @@ void LevelEditorController::EnterPlay() noexcept
     }
     m_mode = Mode::Play;
     // モード遷移へ押しっぱなしを持ち越さないよう消す
-    if (NS::App::Application* app = NS::App::Application::Get())
+    if (NS::Application* app = NS::Application::Get())
     {
         app->Input().Keyboard().ClearState();
         app->Input().Mouse().ClearState();
@@ -527,7 +527,7 @@ void LevelEditorController::EnterEdit() noexcept
     }
     m_mode = Mode::Edit;
     // モード遷移へ押しっぱなしを持ち越さないよう消す
-    if (NS::App::Application* app = NS::App::Application::Get())
+    if (NS::Application* app = NS::Application::Get())
     {
         app->Input().Keyboard().ClearState();
         app->Input().Mouse().ClearState();
@@ -573,7 +573,7 @@ void LevelEditorController::LeavePlayForEdit()
     m_scene->LoadJson(std::move(baseline));
 
     // 編集モードはカーソルを出し、カーソル位置ベースの操作へ戻す
-    if (NS::App::Application* app = NS::App::Application::Get())
+    if (NS::Application* app = NS::Application::Get())
     {
         app->SetCursorCaptured(false);
     }
@@ -588,7 +588,7 @@ void LevelEditorController::SetGameView(int x, int y, int width, int height, boo
     // 窓の中心だと別のパネルの上へ乗ることがある。プレイ中は Game ビューの中心へ留める
     if (m_mode == Mode::Play)
     {
-        if (NS::App::Application* app = NS::App::Application::Get())
+        if (NS::Application* app = NS::Application::Get())
         {
             app->Window().SetCursorLockPoint(x + width / 2, y + height / 2);
         }
@@ -624,9 +624,9 @@ NS::Editor::ViewRect LevelEditorController::CurrentViewRect() const noexcept
     }
     // 未設定時は全画面をフォールバックとする。ウィンドウ不在は 0 サイズ
     NS::Editor::ViewRect full{};
-    if (NS::App::Application* app = NS::App::Application::Get())
+    if (NS::Application* app = NS::Application::Get())
     {
-        const NS::Core::Size2D size = app->Window().Size();
+        const NS::Size2D size = app->Window().Size();
         full.width = size.width;
         full.height = size.height;
     }
@@ -693,12 +693,12 @@ void LevelEditorController::Tick()
 
     // プレイ中の Esc は隠したカーソルを出すだけ。出ている時の Esc で終えると、出したカーソルでタブを押しに
     // 行く途中でアプリごと終わる。プレイから抜けるのは Tab / Start / 帯の停止
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
         return;
     }
-    if (app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape) && !app->Window().IsCursorVisible())
+    if (app->Input().Keyboard().IsPressed(NS::OS::Key::Escape) && !app->Window().IsCursorVisible())
     {
         ApplyPlayCursor(NS::Editor::PlayCursor::Released);
     }
@@ -706,7 +706,7 @@ void LevelEditorController::Tick()
 
 void LevelEditorController::TickEdit()
 {
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
         return;
@@ -714,20 +714,20 @@ void LevelEditorController::TickEdit()
 
     // F5 で編集中の HLSL を再起動なしで反映する。プレイ中の F5 はエディタ UI の表示トグルに使うため
     // 編集モードのここでだけ再読み込みする。ImGui 入力中は誤爆を防ぐため無効化する
-    if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::Platform::Key::F5))
+    if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::OS::Key::F5))
     {
         app->Assets().ReloadAllShaders();
     }
 
     // Esc: Object モードで選択中ならまず選択解除に使い終了させない
-    if (app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
+    if (app->Input().Keyboard().IsPressed(NS::OS::Key::Escape))
     {
         if (m_editorToolMode == EditorToolMode::Object && m_gizmo.Selected() != nullptr)
         {
             m_gizmo.ClearSelection();
             return;
         }
-        NS::App::Application::Quit();
+        NS::Application::Quit();
         return;
     }
 
@@ -740,9 +740,9 @@ void LevelEditorController::TickEdit()
         NS::Obj::CameraPose pose = m_editorCamera.Pose();
         if (m_editBlending)
         {
-            m_editBlendElapsed += NS::Platform::FrameTimer::FixedDelta();
+            m_editBlendElapsed += NS::OS::FrameTimer::FixedDelta();
             const float t = std::min(m_editBlendElapsed / k_EditBlendSeconds, 1.0f);
-            const float eased = NS::Core::SmoothStep(t); // ease-in-out
+            const float eased = NS::SmoothStep(t); // ease-in-out
             pose = NS::Obj::CameraPose::Lerp(m_editBlendFrom, pose, eased);
             if (t >= 1.0f)
             {
@@ -768,7 +768,7 @@ void LevelEditorController::TickEdit()
         RefreshGizmoSelectables();
         ResolveSelectionFromId();
 
-        const NS::Core::Matrix vp = Cameras()->ViewProjection();
+        const NS::Matrix vp = Cameras()->ViewProjection();
         const bool wasDragging = m_gizmoWasDragging;
         m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered);
 
@@ -823,7 +823,7 @@ void LevelEditorController::TickEdit()
 }
 
 void LevelEditorController::DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes,
-                                                const NS::Core::Matrix& viewProjection) noexcept
+                                                const NS::Matrix& viewProjection) noexcept
 {
     if (m_scene == nullptr)
     {
@@ -840,8 +840,8 @@ void LevelEditorController::DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes,
 
     m_editor.DrawCursorShapes(shapes);
     // 錐台の横幅はゲーム画面の比で出す。窓が無い時は RenderCameraGizmos が 16:9 で代える
-    NS::Core::Size2D viewport{};
-    if (const NS::App::Application* app = NS::App::Application::Get())
+    NS::Size2D viewport{};
+    if (const NS::Application* app = NS::Application::Get())
     {
         viewport = app->Window().Size();
     }
@@ -853,7 +853,7 @@ void LevelEditorController::DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes,
 
 void LevelEditorController::Render()
 {
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
         return;
@@ -1116,8 +1116,8 @@ void LevelEditorController::SetPrimarySelection(std::uint32_t id) noexcept
 }
 
 void LevelEditorController::RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
-                                               const NS::Core::Matrix& viewProjection,
-                                               NS::Core::Size2D viewport) noexcept
+                                               const NS::Matrix& viewProjection,
+                                               NS::Size2D viewport) noexcept
 {
     // edit 中、各カメラの視錐台を点線の四角錐で、視点位置を小箱で可視化する
     // 選択中は強調色にする。追従カメラは pose がプレイヤー基準なので、錐台はプレイ中に居る視点位置へ出る
@@ -1139,18 +1139,18 @@ void LevelEditorController::RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
         }
         NS::Obj::VirtualCamera* vcam = &camera->Vcam();
         const bool selected = (object->Id() == m_selectedObjectId);
-        const NS::Core::Color camColor = [selected]() -> NS::Core::Color {
+        const NS::Color camColor = [selected]() -> NS::Color {
             if (selected)
             {
-                return NS::Core::Color{1.0f, 0.55f, 0.10f, 1.0f};
+                return NS::Color{1.0f, 0.55f, 0.10f, 1.0f};
             }
-            return NS::Core::Color{1.0f, 0.85f, 0.10f, 1.0f};
+            return NS::Color{1.0f, 0.85f, 0.10f, 1.0f};
         }();
 
         const NS::Obj::CameraPose pose = vcam->EvaluatePose(1.0f);
         DrawCameraFrustum(shapes, pose, aspect, camColor);
         const float markerHalf = CameraMarkerHalf(pose.position, viewProjection);
-        shapes.AABB(NS::Core::AABB{pose.position, NS::Core::Vector3{markerHalf, markerHalf, markerHalf}}, camColor);
+        shapes.AABB(NS::AABB{pose.position, NS::Vector3{markerHalf, markerHalf, markerHalf}}, camColor);
     }
 }
 
@@ -1162,7 +1162,7 @@ void LevelEditorController::RenderSelectionOutlines(NS::Gfx::DebugShapes& shapes
         return;
     }
 
-    const NS::Core::Color color{1.0f, 0.65f, 0.15f, 1.0f};
+    const NS::Color color{1.0f, 0.65f, 0.15f, 1.0f};
     for (const std::uint32_t id : m_selectionIds)
     {
         NS::Obj::Actor* object = m_scene->Objects().FindByObjectId(id);
@@ -1171,15 +1171,15 @@ void LevelEditorController::RenderSelectionOutlines(NS::Gfx::DebugShapes& shapes
             continue;
         }
 
-        const NS::Core::Matrix world = object->Root().WorldMatrix();
-        const NS::Core::Vector3 scale = object->Root().Scale();
+        const NS::Matrix world = object->Root().WorldMatrix();
+        const NS::Vector3 scale = object->Root().Scale();
 
         // 行の基底が各軸の向き。正規化して大きさは halfExtent へ回す
-        NS::Core::OBB obb{};
-        obb.center = NS::Core::Vector3{world._41, world._42, world._43};
-        obb.axisX = NS::Core::Vector3{world._11, world._12, world._13};
-        obb.axisY = NS::Core::Vector3{world._21, world._22, world._23};
-        obb.axisZ = NS::Core::Vector3{world._31, world._32, world._33};
+        NS::OBB obb{};
+        obb.center = NS::Vector3{world._41, world._42, world._43};
+        obb.axisX = NS::Vector3{world._11, world._12, world._13};
+        obb.axisY = NS::Vector3{world._21, world._22, world._23};
+        obb.axisZ = NS::Vector3{world._31, world._32, world._33};
         obb.axisX.Normalize();
         obb.axisY.Normalize();
         obb.axisZ.Normalize();
@@ -1193,9 +1193,9 @@ void LevelEditorController::RenderSelectionOutlines(NS::Gfx::DebugShapes& shapes
 
 void LevelEditorController::RenderCollisionWireframes(NS::Gfx::DebugShapes& shapes, bool all) noexcept
 {
-    const NS::Core::Color color{0.35f, 1.0f, 0.45f, 1.0f};
+    const NS::Color color{0.35f, 1.0f, 0.45f, 1.0f};
     // センサーは当たりの緑と見分けが付く橙
-    const NS::Core::Color sensorColor{1.0f, 0.6f, 0.2f, 1.0f};
+    const NS::Color sensorColor{1.0f, 0.6f, 0.2f, 1.0f};
 
     // プレイ中は動いている形を追えるよう全部出す
     if (all)
@@ -1229,18 +1229,18 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
     Player* player = FindPlayer(m_scene->Objects());
     // 自機が居ない場面は半径 0 として、相手の輪郭の大きさで描く
     float playerRadius = 0.0f;
-    NS::Core::Vector3 ballCenter{};
+    NS::Vector3 ballCenter{};
     NS::Game::Level::SlamLineTarget aim{};
     bool aiming = false;
     if (player != nullptr)
     {
         // 突進の玉は、狙う相手の探し方と同じ Player::SlamBallAt から引く
-        const NS::Core::Sphere ball = player->SlamBallAt(player->Root().Position());
+        const NS::Sphere ball = player->SlamBallAt(player->Root().Position());
         ballCenter = ball.center;
         playerRadius = ball.radius;
         aiming = player->TryGetAimTarget(aim);
     }
-    const NS::Core::Vector3 cameraPosition = m_editorCamera.Pose().position;
+    const NS::Vector3 cameraPosition = m_editorCamera.Pose().position;
 
     for (NS::Obj::Actor* object : m_scene->Objects())
     {
@@ -1261,7 +1261,7 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
             continue;
         }
         const NS::Obj::SensorVolume body = bodySensor->WorldVolume();
-        NS::Core::Vector3 direction = body.Center() - cameraPosition;
+        NS::Vector3 direction = body.Center() - cameraPosition;
         if (player != nullptr)
         {
             direction = body.Center() - ballCenter;
@@ -1293,7 +1293,7 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
     {
         return;
     }
-    shapes.Sphere(NS::Core::Sphere{impact.surfacePoint, k_HitTouchMarkerRadius}, NS::Editor::HitZoneColor(impact.tier));
+    shapes.Sphere(NS::Sphere{impact.surfacePoint, k_HitTouchMarkerRadius}, NS::Editor::HitZoneColor(impact.tier));
 }
 
 void LevelEditorController::CaptureSelectionFromGizmo() noexcept
@@ -1356,7 +1356,7 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
     m_lastGizmoSelected = nullptr;
 }
 
-void LevelEditorController::SetSelectedFreePosition(NS::Core::Vector3 position)
+void LevelEditorController::SetSelectedFreePosition(NS::Vector3 position)
 {
     // live の Root を直接動かす。undo の記録は CommitTransformEdit、当たりの追従は SyncPhysics が担う
     if (NS::Obj::Actor* go = SelectedObjectActor())
@@ -1370,7 +1370,7 @@ void LevelEditorController::SetSelectedFreePosition(NS::Core::Vector3 position)
     }
 }
 
-void LevelEditorController::SetSelectedFreeRotation(NS::Core::Quaternion rotation)
+void LevelEditorController::SetSelectedFreeRotation(NS::Quaternion rotation)
 {
     if (NS::Obj::Actor* go = SelectedObjectActor())
     {
@@ -1383,7 +1383,7 @@ void LevelEditorController::SetSelectedFreeRotation(NS::Core::Quaternion rotatio
     }
 }
 
-void LevelEditorController::SetSelectedFreeScale(NS::Core::Vector3 scale)
+void LevelEditorController::SetSelectedFreeScale(NS::Vector3 scale)
 {
     // ImGui の入力で 0 / 負になると描画と当たり判定が壊れるため最小正値で止める
     constexpr float k_MinScale = 0.01f;
@@ -1460,7 +1460,7 @@ bool LevelEditorController::PromoteFieldToArchetype(NS::Obj::Component& comp, st
     // 付いて行く個体へ新しい値を写す。資産の参照の欄なら実体も引き直す
     nlohmann::json fields = nlohmann::json::object();
     fields[std::string{fieldName}] = FieldJson(comp, fieldName);
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     for (NS::Obj::Component* part : followers)
     {
         (void)NS::Obj::ApplyJsonFields(*part, fields);
@@ -1485,11 +1485,11 @@ void LevelEditorController::PlaceItem(const NS::Editor::PlacementItem& item)
 void LevelEditorController::AddMeshParts(std::string_view meshPath)
 {
     // 参照は ContentRoot 相対で持つ。build 時にこの文字列から実体を引く
-    const std::string meshRef = RelativeToRoot(meshPath, NS::Platform::FileSystem::ContentRoot());
+    const std::string meshRef = RelativeToRoot(meshPath, NS::OS::FileSystem::ContentRoot());
 
     nlohmann::json object = NS::Editor::MakeMeshPartsPrototype(meshRef);
     NS::Obj::SetObjectPosition(object, m_editorCamera.Center());
-    NS::Obj::SetObjectJsonName(object, NS::Platform::FileSystem::Stem(meshPath));
+    NS::Obj::SetObjectJsonName(object, NS::OS::FileSystem::Stem(meshPath));
     PushCreateObject(std::move(object));
 }
 
@@ -1579,7 +1579,7 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
     }
 
     // 親空間が変わっても見た目が動かないよう、今のワールド変換から新しいローカル変換を割り出す
-    NS::Core::Matrix local = child->Root().WorldMatrix();
+    NS::Matrix local = child->Root().WorldMatrix();
     if (parent != nullptr)
     {
         local *= parent->Root().WorldMatrix().Invert();
@@ -1587,9 +1587,9 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
 
     // 実体の親を直接付け替える。付け替えは local の値を保つので、割り出した local を後から入れる
     child->SetParent(parent);
-    NS::Core::Vector3 scale{};
-    NS::Core::Quaternion rotation{};
-    NS::Core::Vector3 position{};
+    NS::Vector3 scale{};
+    NS::Quaternion rotation{};
+    NS::Vector3 position{};
     if (local.Decompose(scale, rotation, position))
     {
         child->Root().SetPosition(position);
@@ -1817,8 +1817,8 @@ void LevelEditorController::FocusSelectedInView() noexcept
     }
 
     // 選んだ分を全部収める。中心は重心、距離は一番外側までの広がりで決める
-    NS::Core::Vector3 sum{0.0f, 0.0f, 0.0f};
-    std::vector<NS::Core::Vector3> centers;
+    NS::Vector3 sum{0.0f, 0.0f, 0.0f};
+    std::vector<NS::Vector3> centers;
     float extent = 0.0f;
     centers.reserve(m_selectionIds.size());
     for (const std::uint32_t id : m_selectionIds)
@@ -1828,12 +1828,12 @@ void LevelEditorController::FocusSelectedInView() noexcept
         {
             continue;
         }
-        const NS::Core::Matrix world = object->Root().WorldMatrix();
-        const NS::Core::Vector3 center{world._41, world._42, world._43};
+        const NS::Matrix world = object->Root().WorldMatrix();
+        const NS::Vector3 center{world._41, world._42, world._43};
         centers.push_back(center);
         sum += center;
 
-        const NS::Core::Vector3 scale = object->Root().Scale();
+        const NS::Vector3 scale = object->Root().Scale();
         // 1m 立方の cube mesh の半サイズ 0.5 に拡縮を掛ける
         const float half = std::max({std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)}) * 0.5f;
         extent = std::max(extent, half);
@@ -1843,8 +1843,8 @@ void LevelEditorController::FocusSelectedInView() noexcept
         return;
     }
 
-    const NS::Core::Vector3 center = sum / static_cast<float>(centers.size());
-    for (const NS::Core::Vector3& each : centers)
+    const NS::Vector3 center = sum / static_cast<float>(centers.size());
+    for (const NS::Vector3& each : centers)
     {
         extent = std::max(extent, (each - center).Length());
     }
@@ -1914,7 +1914,7 @@ void LevelEditorController::ApplyDragToFollowers() noexcept
     }
 
     // 主対象が動いた分をワールド空間の差分として取り、残りへ同じだけ効かせる
-    const NS::Core::Matrix delta = m_dragPrimaryWorld.Invert() * primary->Root().WorldMatrix();
+    const NS::Matrix delta = m_dragPrimaryWorld.Invert() * primary->Root().WorldMatrix();
     for (const DragFollower& follower : m_dragFollowers)
     {
         NS::Obj::Actor* object = m_scene->Objects().FindByObjectId(follower.id);
@@ -1923,15 +1923,15 @@ void LevelEditorController::ApplyDragToFollowers() noexcept
             continue;
         }
 
-        NS::Core::Matrix local = follower.world * delta;
+        NS::Matrix local = follower.world * delta;
         if (const NS::Obj::Actor* parent = object->Parent())
         {
             local *= parent->Root().WorldMatrix().Invert();
         }
 
-        NS::Core::Vector3 scale{};
-        NS::Core::Quaternion rotation{};
-        NS::Core::Vector3 position{};
+        NS::Vector3 scale{};
+        NS::Quaternion rotation{};
+        NS::Vector3 position{};
         if (!local.Decompose(scale, rotation, position))
         {
             continue;
@@ -2034,7 +2034,7 @@ void LevelEditorController::CommitComponentEdit() noexcept
 
 bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
 {
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (m_editorToolMode != EditorToolMode::Object || app == nullptr)
     {
         return false;
@@ -2063,7 +2063,7 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
     }
 
     // .mat パスは ContentRoot 相対で持つ。材質の正データは matRef なので live component へ書き込む
-    const std::string stored = RelativeToRoot(matPath, NS::Platform::FileSystem::ContentRoot());
+    const std::string stored = RelativeToRoot(matPath, NS::OS::FileSystem::ContentRoot());
 
     // 差替前を忠実に写す。matRef を live へ書き込み、差替後との差分を undo 履歴へ積む
     std::optional<nlohmann::json> before = m_applier.CaptureObject(m_selectedObjectId);

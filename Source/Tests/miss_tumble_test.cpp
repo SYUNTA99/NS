@@ -2,12 +2,12 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/ReboundArc.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -28,16 +28,16 @@ namespace
         nlohmann::json player = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(player, "Player");
         NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         scene.LoadJson(doc);
-        NS::Core::OBB floor{};
-        floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+        NS::OBB floor{};
+        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
         floor.halfExtentX = 100.0f;
         floor.halfExtentY = 0.5f;
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-        PlaceViewCamera(scene, NS::Core::Vector3{}, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
         Player* placed = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
         if (placed == nullptr)
         {
@@ -55,10 +55,10 @@ namespace
     NS::Game::Player::ReboundArc MissArc(float distance)
     {
         return NS::Game::Player::ReboundArc{
-            .direction = NS::Core::Vector3{0.96f, 0.0f, 0.28f},
+            .direction = NS::Vector3{0.96f, 0.0f, 0.28f},
             .apexHeight = 0.35f,
             .distance = distance,
-            .missTumble = NS::Game::Player::MissTumble{.twist = NS::Core::Vector3{0.0f, -0.8f, 0.0f}, .power = 1.0f}};
+            .missTumble = NS::Game::Player::MissTumble{.twist = NS::Vector3{0.0f, -0.8f, 0.0f}, .power = 1.0f}};
     }
 
     float LateralSpeed(const Player& player)
@@ -172,9 +172,9 @@ TEST(MissTumble, TumbleBlendsIntoTheTwistAndTiltsByTheWobble)
         EXPECT_NEAR(degrees[1], full * 0.5f, 1.0e-3f);
         EXPECT_NEAR(degrees[3], full, 1.0e-3f);
         EXPECT_NEAR(degrees[5], full, 1.0e-3f);
-        const NS::Core::Vector3 axis = player->Appearance().SpinAxis();
+        const NS::Vector3 axis = player->Appearance().SpinAxis();
         EXPECT_NEAR(axis.Length(), 1.0f, 1.0e-4f);
-        EXPECT_NEAR(-axis.y, std::cos(NS::Core::ToRadians(NS::Core::Degrees{wobble}).value), 1.0e-4f);
+        EXPECT_NEAR(-axis.y, std::cos(NS::ToRadians(NS::Degrees{wobble}).value), 1.0e-4f);
     }
 }
 
@@ -190,11 +190,11 @@ TEST(MissTumble, TumbleCarriesTheSlamSpin)
                                         {"外れの回転を寄せるフレーム数", 1},
                                         {"外れの軸のぶれの角度", 0.0f}}),
               0u);
-    player->RequestBodySlam(0.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     player->Update(false);
     ASSERT_TRUE(player->IsBodySlamming());
     const float slamDegrees = player->Appearance().SpinDegreesThisFrame();
-    const NS::Core::Vector3 slamAxis = player->Appearance().SpinAxis();
+    const NS::Vector3 slamAxis = player->Appearance().SpinAxis();
     ASSERT_GT(slamDegrees, 0.0f);
 
     ASSERT_TRUE(player->BeginRebound(MissArc(3.0f)));

@@ -1,11 +1,11 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -15,7 +15,7 @@
 
 namespace
 {
-    const NS::Core::Vector3 k_Forward{0.0f, 0.0f, 1.0f};
+    const NS::Vector3 k_Forward{0.0f, 0.0f, 1.0f};
 
     // 自機 (id 1) を高さ height に置く。withRock なら前に置物 (id 2) を置く
     Player* PlacePressScene(NS::Obj::Scene& scene, bool withRock, float height)
@@ -24,24 +24,24 @@ namespace
         nlohmann::json player = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(player, "Player");
         NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Core::Vector3{0.0f, height, 0.0f});
+        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, height, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         if (withRock)
         {
             nlohmann::json rock = NS::Obj::MakeObjectJson();
             NS::Obj::SetObjectJsonClass(rock, "MapObj");
             NS::Obj::SetObjectJsonId(rock, 2);
-            NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{0.0f, 0.5f, 0.6f});
+            NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
             NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         }
         scene.LoadJson(doc);
-        NS::Core::OBB floor{};
-        floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+        NS::OBB floor{};
+        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
         floor.halfExtentX = 100.0f;
         floor.halfExtentY = 0.5f;
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-        PlaceViewCamera(scene, NS::Core::Vector3{}, k_Forward);
+        PlaceViewCamera(scene, NS::Vector3{}, k_Forward);
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 

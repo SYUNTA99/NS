@@ -62,6 +62,19 @@ echo.
 echo [3/3] テスト実行中...
 
 :run_tests
+set "NSLIB_TEST_EXE=build\bin\%CONFIG%-windows-x86_64\NSlibLinkTests\NSlibLinkTests.exe"
+if not exist "%NSLIB_TEST_EXE%" (
+    echo [ERROR] NSlib のリンクの試しの実行ファイルが見つかりません: %NSLIB_TEST_EXE%
+    echo         先に Tools\@build.cmd %CONFIG% でビルドしてください。
+    exit /b 1
+)
+if "%FILTER%"=="" (
+    "%NSLIB_TEST_EXE%" --gtest_color=yes
+) else (
+    "%NSLIB_TEST_EXE%" --gtest_color=yes --gtest_filter=%FILTER%
+)
+if errorlevel 1 exit /b 1
+
 set "TEST_EXE=build\bin\%CONFIG%-windows-x86_64\tests\tests.exe"
 if not exist "%TEST_EXE%" (
     echo [ERROR] テスト実行ファイルが見つかりません: %TEST_EXE%

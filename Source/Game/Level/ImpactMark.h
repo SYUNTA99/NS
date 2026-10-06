@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/Model.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/Model.h"
 
 namespace NS::Obj
 {
@@ -23,7 +23,7 @@ namespace NS::Game::Level
         NS_REFLECT_NONE(ImpactMark, NS::Obj::Actor)
 
         //! 指定の位置へ跡の一時オブジェクトを出す。scene が nullptr なら nullptr を返す
-        [[nodiscard]] static NS::Obj::Actor* SpawnAt(NS::Obj::Scene* scene, const NS::Core::Vector3& position);
+        [[nodiscard]] static NS::Obj::Actor* SpawnAt(NS::Obj::Scene* scene, const NS::Vector3& position);
 
         //! 跡は効果の段で進む
         [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Effects; }

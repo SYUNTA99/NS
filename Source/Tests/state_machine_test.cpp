@@ -1,5 +1,5 @@
-#include "Runtime/Core/Coroutine.h"
-#include "Runtime/Object/StateMachine.h"
+#include "NSlib/Core/Coroutine.h"
+#include "NSlib/Object/StateMachine.h"
 
 #include <gtest/gtest.h>
 
@@ -31,9 +31,9 @@ namespace
         const StateOwner* activeSteppedBy = nullptr;
     };
 
-    NS::Core::Coroutine ResumeLater(StateOwner& owner)
+    NS::Coroutine ResumeLater(StateOwner& owner)
     {
-        co_await NS::Core::NextFrame{};
+        co_await NS::NextFrame{};
         ++owner.resumed;
         if (owner.coroutineChangesState)
         {
@@ -45,9 +45,9 @@ namespace
         }
     }
 
-    NS::Core::Coroutine ResumeChildLater(StateOwner& owner)
+    NS::Coroutine ResumeChildLater(StateOwner& owner)
     {
-        co_await NS::Core::WaitSeconds{1.0f};
+        co_await NS::WaitSeconds{1.0f};
         ++owner.resumed;
     }
 
@@ -129,11 +129,11 @@ namespace
         void OnStep(StateOwner&, float) override {}
 
     private:
-        NS::Core::Coroutine Run(StateOwner& owner)
+        NS::Coroutine Run(StateOwner& owner)
         {
             for (int step = 0; step < 2; ++step)
             {
-                co_await NS::Core::NextFrame{};
+                co_await NS::NextFrame{};
                 owner.deltas.push_back(StepDelta());
             }
         }

@@ -1,11 +1,11 @@
 #include "Game/Player.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
-#include "Runtime/Graphics/Animation.h"
-#include "Runtime/Object/Components/Animation.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Graphics/Animation.h"
+#include "NSlib/Object/Components/Animation.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
 
@@ -19,19 +19,19 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
     NS::Obj::Animation* animation = NS::Obj::ComponentCast<NS::Obj::Animation>(player.CreatePart("Animation"));
     animation->AddClips(clips);
     player.Body().SetGrounded(true);
-    player.Body().SetLateralVelocity(NS::Core::Vector3{4.0f, 0.0f, 0.0f});
+    player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
     ASSERT_EQ(animation->CurrentClip(), 1u);
     animation->OnUpdate();
     const float first = animation->Time();
-    EXPECT_NEAR(first, NS::Platform::FrameTimer::FixedDelta() * 0.5f, 0.00001f);
+    EXPECT_NEAR(first, NS::OS::FrameTimer::FixedDelta() * 0.5f, 0.00001f);
     player.UpdateAnimation();
     animation->OnUpdate();
     EXPECT_NEAR(animation->Time(), first * 2.0f, 0.00001f);
-    player.Body().SetLateralVelocity(NS::Core::Vector3{2.0f, 0.0f, 0.0f});
+    player.Body().SetLateralVelocity(NS::Vector3{2.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 2u);
-    player.Body().SetLateralVelocity(NS::Core::Vector3{});
+    player.Body().SetLateralVelocity(NS::Vector3{});
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 0u);
 }
@@ -97,13 +97,13 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
         NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
     ASSERT_NE(params, nullptr);
     player.Body().SetGrounded(true);
-    player.Body().SetLateralVelocity(NS::Core::Vector3{4.0f, 0.0f, 0.0f});
+    player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 0u);
-    player.Body().SetLateralVelocity(NS::Core::Vector3{1.0f, 0.0f, 0.0f});
+    player.Body().SetLateralVelocity(NS::Vector3{1.0f, 0.0f, 0.0f});
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"再生速度の下限", 0.75f}}), 0u);
     player.UpdateAnimation();
     ASSERT_EQ(animation->CurrentClip(), 1u);
     animation->OnUpdate();
-    EXPECT_NEAR(animation->Time(), NS::Platform::FrameTimer::FixedDelta() * 0.75f, 0.00001f);
+    EXPECT_NEAR(animation->Time(), NS::OS::FrameTimer::FixedDelta() * 0.75f, 0.00001f);
 }

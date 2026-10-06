@@ -1,6 +1,6 @@
 #include "Game/Level/MapObjParams.h"
 
-#include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
 
 namespace NS::Game::Level
 {

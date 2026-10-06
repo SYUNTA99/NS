@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Game/Player/EffectLayerList.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Component.h"
-#include "Runtime/Object/Reflection/Reflection.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Component.h"
+#include "NSlib/Object/Reflection/Reflection.h"
 
 #include <cstdint>
 #include <string_view>
@@ -94,7 +94,7 @@ namespace NS::Game::Player
         //! @brief +Z を水平の向き direction へ向ける Y 軸まわりの回転
         //! @param[in] direction 向ける先。縦の成分は使わない
         //! @return 回転。水平の長さが 0 か有限でなければ回さない
-        [[nodiscard]] static NS::Core::Quaternion YawToward(const NS::Core::Vector3& direction) noexcept;
+        [[nodiscard]] static NS::Quaternion YawToward(const NS::Vector3& direction) noexcept;
 
         NS_REFLECT_BEGIN(ChargeEffects, NS::Obj::Component)
         NS_REFLECT_GROUP("放しの弾け")
@@ -116,27 +116,27 @@ namespace NS::Game::Player
         };
 
         void StopDueLayers(NS::Gfx::EffectScene* effects) noexcept;
-        void StartPress(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center);
-        void StartCharging(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center);
-        void StartFullFlash(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center);
+        void StartPress(NS::Gfx::EffectScene* effects, const NS::Vector3& center);
+        void StartCharging(NS::Gfx::EffectScene* effects, const NS::Vector3& center);
+        void StartFullFlash(NS::Gfx::EffectScene* effects, const NS::Vector3& center);
         // 紫の揺れが端へ来たフレームに、その側へ火花を散らす
-        void PlaySwaySparks(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center);
+        void PlaySwaySparks(NS::Gfx::EffectScene* effects, const NS::Vector3& center);
         // 押している間の層を玉へ付いていかせ、溜め量を渡す
-        void FollowHeldLayers(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center, float charge01) noexcept;
+        void FollowHeldLayers(NS::Gfx::EffectScene* effects, const NS::Vector3& center, float charge01) noexcept;
         void ClearHeldLayers(NS::Gfx::EffectScene* effects) noexcept;
-        void StartRelease(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center);
-        void UpdateTrail(NS::Gfx::EffectScene* effects, const NS::Core::Vector3& center, bool slamming) noexcept;
+        void StartRelease(NS::Gfx::EffectScene* effects, const NS::Vector3& center);
+        void UpdateTrail(NS::Gfx::EffectScene* effects, const NS::Vector3& center, bool slamming) noexcept;
         void StopTrailRoot(NS::Gfx::EffectScene* effects) noexcept;
         // 層を今の位置・向き・大きさへ置き直し、向きを記録に書く。描画の無い世界では記録だけ書く
         void Place(NS::Gfx::EffectScene* effects,
                    std::uint32_t id,
-                   const NS::Core::Vector3& position,
-                   const NS::Core::Quaternion& rotation) noexcept;
+                   const NS::Vector3& position,
+                   const NS::Quaternion& rotation) noexcept;
         void SetCharge(NS::Gfx::EffectScene* effects, std::uint32_t id, float charge01) const noexcept;
         // 動的入力 index 番に value を入れる。描画の無い世界か、再生できなかった層なら何もしない
         void SetInput(NS::Gfx::EffectScene* effects, std::uint32_t id, int index, float value) const noexcept;
         // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ Player::AimDirection
-        [[nodiscard]] NS::Core::Vector3 HeldAimDirection() const noexcept;
+        [[nodiscard]] NS::Vector3 HeldAimDirection() const noexcept;
         void StopLayer(NS::Gfx::EffectScene* effects, std::uint32_t& id) noexcept;
         // このフレームに触れたか、線の先の相手に触れる見込みが k_BurstClearFrames 以内か
         [[nodiscard]] bool IsContactNear() const noexcept;
@@ -172,7 +172,7 @@ namespace NS::Game::Player
         bool m_wasSlamming = false;        // 前のフレームに突進していたか
         bool m_trailAwaitsFreeze = false;  // 当たりを検知して突進が終わった。次のフレームの止めの頭で尾の親を止める
         float m_spinDegrees = 0.0f;        // 押してから玉が回った角度の累計。回転の弧の板の回りの角度
-        NS::Core::Vector3 m_slamDirection; // 突進の尾を向ける水平の向き
+        NS::Vector3 m_slamDirection; // 突進の尾を向ける水平の向き
 
         const ::Player* m_actor = nullptr;              // 押し・溜め量・突進の速度・狙いの向きを答える自機。非所有
         const PlayerAppearance* m_appearance = nullptr; // 玉の回転の正。非所有

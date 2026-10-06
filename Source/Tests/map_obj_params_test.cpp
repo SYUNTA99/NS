@@ -2,11 +2,11 @@
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
-#include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Platform/FileSystem.h"
+#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Windows/FileSystem.h"
 
 #include <gtest/gtest.h>
 
@@ -41,9 +41,9 @@ TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
 {
     for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
     {
-        const std::string path = NS::Platform::FileSystem::Combine(
-            NS::Platform::FileSystem::Combine(
-                NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+        const std::string path = NS::OS::FileSystem::Combine(
+            NS::OS::FileSystem::Combine(
+                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
             sceneName);
         nlohmann::json doc;
         ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path));
@@ -147,7 +147,7 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
     NS::Game::Level::TackleReleaseDesc release{};
     release.arc = NS::Game::Level::LaunchArc{.distance = 5.0f, .apexHeight = 1.0f};
     ASSERT_TRUE(NS::Game::Level::SendMsgTackleRelease(*actor, release));
-    effects->BeginTrail(NS::Game::Level::HitTier::Center, 2.0f, 1.0f, NS::Core::Vector3{1.0f, 0.0f, 0.0f});
+    effects->BeginTrail(NS::Game::Level::HitTier::Center, 2.0f, 1.0f, NS::Vector3{1.0f, 0.0f, 0.0f});
     EXPECT_EQ(effects->TrailFrames(), 20);
     EXPECT_FLOAT_EQ(effects->LandDustScale(), 2.5f);
 }

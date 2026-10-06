@@ -28,9 +28,9 @@ namespace
         input.power = 1.0f;
         input.tier = HitTier::Wide;
         input.mass = 1.0f;
-        input.awayDirection = NS::Core::Vector3{1.0f, 0.0f, 0.0f};
-        input.launchDirection = NS::Core::Vector3{0.0f, 0.0f, 1.0f};
-        input.slamVelocity = NS::Core::Vector3{-8.0f, 0.0f, 0.0f};
+        input.awayDirection = NS::Vector3{1.0f, 0.0f, 0.0f};
+        input.launchDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
+        input.slamVelocity = NS::Vector3{-8.0f, 0.0f, 0.0f};
         return input;
     }
 } // namespace
@@ -200,9 +200,9 @@ namespace
     ImpactInput MissAlongZ(float u, float v, NS::Obj::HitSensorShape shape)
     {
         ImpactInput input = BaseInput();
-        input.slamVelocity = NS::Core::Vector3{0.0f, 0.0f, 8.0f};
-        input.awayDirection = NS::Core::Vector3{0.0f, 0.0f, -1.0f};
-        input.launchDirection = NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+        input.slamVelocity = NS::Vector3{0.0f, 0.0f, 8.0f};
+        input.awayDirection = NS::Vector3{0.0f, 0.0f, -1.0f};
+        input.launchDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
         input.faceU = u;
         input.faceV = v;
         input.bodyShape = shape;
@@ -213,19 +213,19 @@ namespace
 // 外れの面の向きは面の上の位置から出す。丸は球の表面、四角は角を少し丸めた箱の表面 (角の鋭さ 6) として読む
 TEST(ImpactOutcome, MissSurfaceNormalReadsTheFacePositionByShape)
 {
-    const NS::Core::Vector3 forward{0.0f, 0.0f, 1.0f};
-    const NS::Core::Vector3 middle = NS::Game::Level::MissSurfaceNormal(0.0f, 0.0f, 2.0f, forward);
+    const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
+    const NS::Vector3 middle = NS::Game::Level::MissSurfaceNormal(0.0f, 0.0f, 2.0f, forward);
     EXPECT_NEAR(middle.z, -1.0f, 0.0001f);
     // 右寄り・少し上の当たり。丸は上へ 0.40、四角は縁に沿って右へ逸れ、上へは 0.02
-    const NS::Core::Vector3 round = NS::Game::Level::MissSurfaceNormal(0.85f, 0.4f, 2.0f, forward);
-    const NS::Core::Vector3 box = NS::Game::Level::MissSurfaceNormal(0.85f, 0.4f, 6.0f, forward);
+    const NS::Vector3 round = NS::Game::Level::MissSurfaceNormal(0.85f, 0.4f, 2.0f, forward);
+    const NS::Vector3 box = NS::Game::Level::MissSurfaceNormal(0.85f, 0.4f, 6.0f, forward);
     EXPECT_NEAR(round.y, 0.40f, 0.005f);
     EXPECT_NEAR(box.y, 0.02f, 0.005f);
     EXPECT_GT(round.x, 0.0f);
     EXPECT_NEAR(round.Length(), 1.0f, 0.0001f);
     EXPECT_NEAR(box.Length(), 1.0f, 0.0001f);
     // 縁の外 (1 を超える位置) は縁で頭打ち
-    const NS::Core::Vector3 beyond = NS::Game::Level::MissSurfaceNormal(1.4f, 0.0f, 2.0f, forward);
+    const NS::Vector3 beyond = NS::Game::Level::MissSurfaceNormal(1.4f, 0.0f, 2.0f, forward);
     EXPECT_NEAR(beyond.x, 1.0f, 0.0001f);
 }
 

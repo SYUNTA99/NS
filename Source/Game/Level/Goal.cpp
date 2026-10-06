@@ -2,9 +2,9 @@
 
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
-#include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
 
 namespace NS::Game::Level
 {
@@ -14,7 +14,7 @@ namespace NS::Game::Level
         (void)CreatePart("Model");
         NS::Obj::Model* mesh = ModelPart();
         mesh->SetMeshRef("cube");
-        mesh->SetBaseColor(NS::Core::Vector3{1.0f, 0.84f, 0.0f});
+        mesh->SetBaseColor(NS::Vector3{1.0f, 0.84f, 0.0f});
         // 「触れた」とみなすプレイヤー中心からの距離 0.9m の球。プレイヤーの体の寸法ぶん手前で触れる
         NS::Obj::ShapeHitSensor* area = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(CreatePart("BodySensor"));
         SetSensorKind(*area, SensorKind::Area);

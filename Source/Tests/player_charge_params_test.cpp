@@ -1,13 +1,13 @@
 #include "Game/Player.h"
 #include "Game/Player/PlayerParams.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Reflection/Archetype.h"
-#include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Platform/Clock.h"
-#include "Runtime/Platform/FileSystem.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Reflection/Archetype.h"
+#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Windows/Clock.h"
+#include "NSlib/Windows/FileSystem.h"
 
 #include <gtest/gtest.h>
 
@@ -90,9 +90,9 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
               0u);
     player.Update(false);
     EXPECT_EQ(player.ChargeJudge().chargeThresholdSteps,
-              static_cast<int>(std::lround(0.1f / NS::Platform::FrameTimer::FixedDelta())));
+              static_cast<int>(std::lround(0.1f / NS::OS::FrameTimer::FixedDelta())));
     EXPECT_EQ(player.ChargeJudge().chargeMaxSteps,
-              static_cast<int>(std::lround(0.5f / NS::Platform::FrameTimer::FixedDelta())));
+              static_cast<int>(std::lround(0.5f / NS::OS::FrameTimer::FixedDelta())));
 }
 
 TEST(PlayerChargeParams, SceneOverridesKeepTheirCurvesAfterReload)
@@ -128,9 +128,9 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
 
     for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
     {
-        const std::string path = NS::Platform::FileSystem::Combine(
-            NS::Platform::FileSystem::Combine(
-                NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+        const std::string path = NS::OS::FileSystem::Combine(
+            NS::OS::FileSystem::Combine(
+                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
             sceneName);
         nlohmann::json doc;
         ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path)) << sceneName;
@@ -164,9 +164,9 @@ TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
 
     for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
     {
-        const std::string path = NS::Platform::FileSystem::Combine(
-            NS::Platform::FileSystem::Combine(
-                NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+        const std::string path = NS::OS::FileSystem::Combine(
+            NS::OS::FileSystem::Combine(
+                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
             sceneName);
         nlohmann::json doc;
         ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path)) << sceneName;

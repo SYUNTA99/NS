@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Object/Components/BodyEvents.h"
+#include "NSlib/Object/Components/BodyEvents.h"
 
 namespace NS::Game::Player
 {

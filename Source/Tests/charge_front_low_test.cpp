@@ -1,9 +1,9 @@
 #include "Game/Player.h"
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/PlayerParams.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/Clock.h"
 #include "TestEffectFiles.h"
 #include "Tests/TestViewCamera.h"
 
@@ -24,7 +24,7 @@ namespace
 {
     int FramesFor(float seconds)
     {
-        return static_cast<int>(std::lround(seconds / NS::Platform::FrameTimer::FixedDelta()));
+        return static_cast<int>(std::lround(seconds / NS::OS::FrameTimer::FixedDelta()));
     }
 
     const NS::Game::Player::EffectLayerRecord* LiveLayer(const NS::Game::Player::ChargeEffects& effects,
@@ -54,7 +54,7 @@ TEST(ChargeFrontLow, GatherRootFacesTheAimLineEveryFrame)
     Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
-    TestViewCamera* camera = PlaceViewCamera(scene, NS::Core::Vector3{}, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    TestViewCamera* camera = PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_NE(camera, nullptr);
     for (int frame = 0; frame < FramesFor(0.2f); ++frame)
     {
@@ -62,12 +62,12 @@ TEST(ChargeFrontLow, GatherRootFacesTheAimLineEveryFrame)
     }
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
 
-    const NS::Core::Vector3 targets[] = {NS::Core::Vector3{1.0f, 0.0f, 0.0f},
-                                         NS::Core::Vector3{-1.0f, 0.0f, -1.0f},
-                                         NS::Core::Vector3{0.0f, 0.0f, 1.0f}};
-    for (const NS::Core::Vector3& target : targets)
+    const NS::Vector3 targets[] = {NS::Vector3{1.0f, 0.0f, 0.0f},
+                                         NS::Vector3{-1.0f, 0.0f, -1.0f},
+                                         NS::Vector3{0.0f, 0.0f, 1.0f}};
+    for (const NS::Vector3& target : targets)
     {
-        camera->SetPose(NS::Core::Vector3{}, target);
+        camera->SetPose(NS::Vector3{}, target);
         for (int frame = 0; frame < 3; ++frame)
         {
             player->Update(true);
@@ -77,7 +77,7 @@ TEST(ChargeFrontLow, GatherRootFacesTheAimLineEveryFrame)
                 LiveLayer(player->ChargeVisuals(), NS::Game::Player::ChargeEffects::k_Gather);
             ASSERT_NE(gather, nullptr);
             ASSERT_TRUE(gather->rotation.has_value());
-            const NS::Core::Quaternion expected = NS::Game::Player::ChargeEffects::YawToward(aim.direction);
+            const NS::Quaternion expected = NS::Game::Player::ChargeEffects::YawToward(aim.direction);
             EXPECT_NEAR(gather->rotation->x, expected.x, 0.00001f);
             EXPECT_NEAR(gather->rotation->y, expected.y, 0.00001f);
             EXPECT_NEAR(gather->rotation->z, expected.z, 0.00001f);

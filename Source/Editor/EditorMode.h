@@ -4,12 +4,12 @@
 #include "Editor/GridMath.h"
 #include "Editor/LevelFileBrowser.h"
 #include "Editor/Undo/UndoStack.h"
-#include "Runtime/Core/NonCopyable.h"
-#include "Runtime/Object/Scene/SceneJson.h"
+#include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Object/Scene/SceneJson.h"
 
 #include <functional>
 
-namespace NS::Platform
+namespace NS::OS
 {
     class Input;
 }
@@ -31,14 +31,14 @@ namespace NS::Editor
 
     //! @brief カーソル・パレット・Undo 履歴をまとめた編集機能
     //! @details シーンに対する編集操作を管理し、非アクティブ時はすべての入力・描画処理をスキップする
-    class EditorMode : public NS::Core::NonCopyable
+    class EditorMode : public NS::NonCopyable
     {
     public:
         //! @brief 編集中のカーソル状態。レイキャスト結果や配置候補のセル情報を保持する
         struct CursorState
         {
             bool valid = false;                  //!< ブロック面か地面に当たったか
-            NS::Core::Vector3 placementCenter{}; //!< 配置先セルの中心ワールド座標
+            NS::Vector3 placementCenter{}; //!< 配置先セルの中心ワールド座標
             bool placementBlocked = false;       //!< 配置予定地にすでにブロックが存在するかどうか
             std::int16_t hitX = 0;               //!< ヒットしたセルのX座標
             std::int16_t hitY = 0;               //!< ヒットしたセルのY座標
@@ -79,7 +79,7 @@ namespace NS::Editor
 
         //! @brief 新規配置物へ永続 id を 1 個振る関数を差す
         void SetAllocateIdFn(std::function<std::uint32_t()> fn) noexcept { m_allocateId = std::move(fn); }
-        void SetInput(NS::Platform::Input* input) noexcept { m_input = input; }
+        void SetInput(NS::OS::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
         void SetSceneCamera(NS::Obj::SceneCamera* camera) noexcept { m_camera = camera; }
 
@@ -167,7 +167,7 @@ namespace NS::Editor
             m_findCellObject;                                   // cell に居る配置物の永続 id を live から引く
         std::function<std::vector<CellCoord>()> m_collectCells; // live の cell ブラシ座標一覧
         std::function<std::uint32_t()> m_allocateId;            // 新規配置物の永続 id 採番
-        NS::Platform::Input* m_input = nullptr;
+        NS::OS::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
         NS::Obj::SceneCamera* m_camera = nullptr;
 
@@ -193,7 +193,7 @@ namespace NS::Editor
         float m_statusTimer = 0.0f;
 
         // プレビュー表示用の滑らかな回転状態
-        NS::Core::Quaternion m_displayedYawQuat{NS::Core::Quaternion::Identity};
+        NS::Quaternion m_displayedYawQuat{NS::Quaternion::Identity};
 
         void UpdateCursorFromInput() noexcept;
         void HandlePlaceDeleteInput() noexcept;

@@ -1,5 +1,5 @@
-#include "Runtime/Core/Math.h"
-#include "Runtime/Graphics/DebugDraw.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Graphics/DebugDraw.h"
 
 #include <gtest/gtest.h>
 
@@ -9,8 +9,8 @@
 
 namespace
 {
-    using NS::Core::Color;
-    using NS::Core::Vector3;
+    using NS::Color;
+    using NS::Vector3;
     namespace DD = NS::Gfx::DebugDraw;
 
     // 面の上限。エディタの面を描くのに使う枚数より十分大きい
@@ -115,11 +115,11 @@ TEST(DebugShapesTest, ShapesPushTheSameVertexCountsAsTheFreeFunctions)
     DD::Clear();
     NS::Gfx::DebugShapes shapes;
 
-    shapes.AABB(NS::Core::AABB{}, k_LineColor);
+    shapes.AABB(NS::AABB{}, k_LineColor);
     EXPECT_EQ(shapes.VertexCount(), std::size_t{24});
     shapes.Clear();
 
-    shapes.OBB(NS::Core::OBB{}, k_LineColor);
+    shapes.OBB(NS::OBB{}, k_LineColor);
     EXPECT_EQ(shapes.VertexCount(), std::size_t{24});
     shapes.Clear();
 
@@ -127,14 +127,14 @@ TEST(DebugShapesTest, ShapesPushTheSameVertexCountsAsTheFreeFunctions)
     EXPECT_EQ(shapes.VertexCount(), k_CircleVertices);
     shapes.Clear();
 
-    shapes.Sphere(NS::Core::Sphere{Vector3{}, 1.0f}, k_LineColor);
+    shapes.Sphere(NS::Sphere{Vector3{}, 1.0f}, k_LineColor);
     EXPECT_EQ(shapes.VertexCount(), k_CircleVertices * 3);
     shapes.Clear();
 
     shapes.Capsule(Vector3{}, Vector3{0.0f, 1.0f, 0.0f}, 0.5f, k_LineColor);
     EXPECT_EQ(shapes.VertexCount(), k_CircleVertices * 2 + 8);
 
-    DD::AABB(NS::Core::AABB{}, k_LineColor);
+    DD::AABB(NS::AABB{}, k_LineColor);
     EXPECT_EQ(DD::VertexCount(), std::size_t{24});
     DD::Clear();
 }

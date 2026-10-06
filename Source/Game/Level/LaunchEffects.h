@@ -2,8 +2,8 @@
 
 #include "Game/Level/HitTier.h"
 #include "Game/Player/EffectLayerList.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Component.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Component.h"
 
 #include <cstdint>
 #include <vector>
@@ -38,12 +38,12 @@ namespace NS::Game::Level
         //! @param[in] power 最終威力。落ちた所の粉を大きくする
         //! @param[in] launchScale 飛ばしの比。尾を長く残す
         //! @param[in] launchDir 飛ぶ水平の向き。速さが 0 の時の尾の向き
-        void BeginTrail(HitTier tier, float power, float launchScale, const NS::Core::Vector3& launchDir);
+        void BeginTrail(HitTier tier, float power, float launchScale, const NS::Vector3& launchDir);
 
         //! @brief 尾を消し、落ちた所へ粉を出す
         //! @param[in] position 床に触れた点。世界座標
         //! @param[in] normal 触れた床の法線。粉はこの向きへ少し浮かせて置く
-        void NotifyLanding(const NS::Core::Vector3& position, const NS::Core::Vector3& normal);
+        void NotifyLanding(const NS::Vector3& position, const NS::Vector3& normal);
         //! 出ている尾を消す。粉は出さない
         void CancelTrail();
 
@@ -78,7 +78,7 @@ namespace NS::Game::Level
         int m_trailStartStep = 0;                        // 尾を出したフレーム。このフレームは出した姿のまま
         int m_trailFrames = 0;                           // 尾が残るフレーム数
         float m_trailScale = 1.0f;                       // 尾の再生の大きさ。自分の直径 (m)
-        NS::Core::Vector3 m_launchDir{1.0f, 0.0f, 0.0f}; // 飛ぶ水平の向き
+        NS::Vector3 m_launchDir{1.0f, 0.0f, 0.0f}; // 飛ぶ水平の向き
         float m_landDustScale = 0.0f;                    // 落ちた所の粉の大きさ (m)
     };
 } // namespace NS::Game::Level

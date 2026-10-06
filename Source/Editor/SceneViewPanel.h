@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Editor/ViewportSurface.h"
-#include "Runtime/Core/NonCopyable.h"
+#include "NSlib/Core/NonCopyable.h"
 
 struct ImVec2;
 
@@ -12,11 +12,11 @@ namespace NS::Editor
     //! @brief 編集ビューを映すパネル。編集中は入力とギズモ、プレイ中は自由視点で world を見回す
     //! @details 自前の視点操作 (見回し / パン / ズーム) と向き表示、Assets からのメッシュ / マテリアルの
     //! 持ち込み口を持つ。描画先は ViewportSurface が握る
-    class SceneViewPanel : public NS::Core::NonCopyable
+    class SceneViewPanel : public NS::NonCopyable
     {
     public:
         //! 描画先の初期目標サイズを窓サイズに合わせる
-        void SetInitialSize(const NS::Core::Size2D& size) noexcept { m_surface.SetInitialSize(size); }
+        void SetInitialSize(const NS::Size2D& size) noexcept { m_surface.SetInitialSize(size); }
 
         //! フレーム先頭で可視状態を false にする。描画パス (通常 / 全面化) が立て直す
         void ResetVisibility() noexcept { m_surface.ResetVisibility(); }

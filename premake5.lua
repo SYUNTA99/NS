@@ -47,7 +47,7 @@ workspace "NS"
 
     --------------------------------------------------------------------------
     -- 構成別設定
-    --   - Runtime 層列の最適化を構成デフォルトとし、Game.exe 固有調整は
+    --   - NSlib 層列の最適化を構成デフォルトとし、Game.exe 固有調整は
     --     Game プロジェクト側で filter override する
     --------------------------------------------------------------------------
     filter "configurations:Debug"
@@ -116,7 +116,7 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 bindir = "build/bin/" .. outputdir
 objdir_base = "build/obj/" .. outputdir
 
--- 共通 build options (全 Runtime 層 / Game / Tests project で使用)
+-- 共通 build options (全 NSlib 層 / Game / Tests project で使用)
 function applyCommonBuildOptions()
     warnings "Extra"
     -- flags { "FatalWarnings" }  -- build 安定後に有効化
@@ -128,16 +128,7 @@ function applyCommonBuildOptions()
     linkoptions { "/ignore:4006" }
 end
 
--- Runtime 層共通定義。 各層の <Layer>Pch.h を /FI で全 .cpp へ強制 include し、
--- CommonStl.h (windows.h + 定番 stdlib) と層固有の重いヘッダを PCH で償却する。
--- forceincludes はパスを project 相対へ rebase するが、 層により .cpp の深さが異なり
--- 相対 /FI が破綻するため、 include root (Source) から一意に解決できる論理名を渡す。
-local function applyRuntimeLayerDefaults(layerName)
-    local pchLogical = "Runtime/" .. layerName .. "/" .. layerName .. "Pch.h"
-    pchheader(pchLogical)
-    pchsource("Source/Runtime/" .. layerName .. "/" .. layerName .. "Pch.cpp")
-    buildoptions { "/FI\"" .. pchLogical .. "\"" }
-end
+require "Tools/premake5/modules/nslib"
 
 -- Jolt の定義。 jolt project と Jolt を include する全 project が必ず呼ぶ。
 -- 定義が食い違うと RegisterTypes が起動時に Trace を出して abort する。 照合されるのは 11 個
@@ -269,348 +260,45 @@ project "effekseer"
     buildoptions { "/utf-8", "/FS" }
 
 --============================================================================
--- Runtime 層 (Solution Folder)
---   8 層 (Core / Platform / Physics / Graphics / Audio / Object / UI / App) を
---   Visual Studio Solution Explorer 上で 1 つのフォルダにまとめる。
---   ルート直下は Game / directxtk_simplemath、 Tests / 3rd party は別 group。
+-- NSlib: 8 層を 1 つのプロジェクトのフィルターに並べ、層ごとの PCH はファイル単位で当てる
 --============================================================================
-group "Runtime"
+group ""
 
---============================================================================
--- Core 層 (StaticLib)
---   Logger / Math / StringUtils / Clock / Filesystem
---============================================================================
-project "Core"
+project "NSlib"
     kind "StaticLib"
-    location "build/Core"
-
+    location "build/NSlib"
     targetdir (bindir .. "/%{prj.name}")
     objdir (objdir_base .. "/%{prj.name}")
-
     files {
-        "Source/Runtime/Core/**.h",
-        "Source/Runtime/Core/**.cpp"
-    }
-
-    -- NS::Core::Math は SimpleMath の using-alias、Logger は spdlog/magic_enum を使用
-    includedirs {
-        "Source/ThirdParty/DirectXTK/Inc",
-        "Source/ThirdParty/spdlog/include",
-        "Source/ThirdParty/magic_enum/include",
-    }
-
-    -- Math.h の型は SimpleMath の using-alias なので、静的定数 TU をここでリンクへ伝播させる
-    links { "directxtk_simplemath" }
-
-    defines {
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
-        "SPDLOG_NO_EXCEPTIONS"
-    }
-
-    applyRuntimeLayerDefaults("Core")
-    applyCommonBuildOptions()
-
---============================================================================
--- Platform 層 (StaticLib)
---   Window / Input / Keyboard / Mouse / Gamepad
---============================================================================
-project "Platform"
-    kind "StaticLib"
-    location "build/Platform"
-
-    targetdir (bindir .. "/%{prj.name}")
-    objdir (objdir_base .. "/%{prj.name}")
-
-    files {
-        "Source/Runtime/Platform/**.h",
-        "Source/Runtime/Platform/**.cpp"
-    }
-
-    -- WindowDesc 等が NS::Core::Size2D (Math.h 経由で SimpleMath) を保持するため DirectXTK が必要
-    includedirs {
-        "Source/ThirdParty/DirectXTK/Inc",
-        "Source/ThirdParty/spdlog/include",
-        "Source/ThirdParty/magic_enum/include",
-    }
-
-    defines {
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
-        "SPDLOG_NO_EXCEPTIONS"
-    }
-
-    links { "Core" }
-
-    -- XInput リンク
-    filter "system:windows"
-        links { "Xinput" }
-    filter {}
-
-    applyRuntimeLayerDefaults("Platform")
-    applyCommonBuildOptions()
-
---============================================================================
--- Graphics 層 (StaticLib)
---   Renderer / CommonStates / Buffer / Texture / Shader /
---   Mesh / Camera / Material
---============================================================================
-project "Graphics"
-    kind "StaticLib"
-    location "build/Graphics"
-
-    targetdir (bindir .. "/%{prj.name}")
-    objdir (objdir_base .. "/%{prj.name}")
-
-    files {
-        "Source/Runtime/Graphics/**.h",
-        "Source/Runtime/Graphics/**.cpp",
-        -- backbuffer を PNG へ書く同梱コード。DirectXTex は許諾表示に既に載っている
+        "Source/NSlib/**.h",
+        "Source/NSlib/**.cpp",
         "Source/ThirdParty/DirectXTex/ScreenGrab/ScreenGrab11.h",
         "Source/ThirdParty/DirectXTex/ScreenGrab/ScreenGrab11.cpp"
     }
-
+    removefiles { "Source/NSlib/App/WinMain.cpp" }
+    vpaths {
+        ["*"] = { "Source/NSlib/**" },
+        ["Graphics/ThirdParty/*"] = { "Source/ThirdParty/DirectXTex/ScreenGrab/**" }
+    }
     includedirs {
         "Source/ThirdParty/DirectXTK/Inc",
         "Source/ThirdParty/DirectXTex/DirectXTex",
         "Source/ThirdParty/spdlog/include",
         "Source/ThirdParty/magic_enum/include",
-        "Source/ThirdParty/cgltf"
+        "Source/ThirdParty/cgltf",
+        "Source/ThirdParty/JoltPhysics"
     }
     includedirs(effekseerIncludeDirs)
-
-    defines {
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
-        "SPDLOG_NO_EXCEPTIONS"
-    }
-
-    links {
-        "Core",
-        "Platform",
-        "effekseer",
-        -- D3D11 system libs
-        "d3d11",
-        "dxgi",
-        "dxguid",
-        "d3dcompiler"
-    }
-
-    -- Graphics は GraphicsPch.h で D3D11 / SimpleMath の cold parse も償却する
-    applyRuntimeLayerDefaults("Graphics")
-    applyCommonBuildOptions()
-
---============================================================================
--- Physics 層 (StaticLib)
---   Capsule / SweptAABB / CharacterController / Ray / Plane
---   Mario 系プラットフォーマー特化 Custom AABB 物理、graphics 非依存
---============================================================================
-project "Physics"
-    kind "StaticLib"
-    location "build/Physics"
-
-    targetdir (bindir .. "/%{prj.name}")
-    objdir (objdir_base .. "/%{prj.name}")
-
-    files {
-        "Source/Runtime/Physics/**.h",
-        "Source/Runtime/Physics/**.cpp"
-    }
-
-    -- NS::Core::Vector3 / BoundingBox / Ray (SimpleMath) を使う
-    -- Jolt の型は公開ヘッダへ出す方針なので、 起点をここに入れる
-    includedirs {
-        "Source/ThirdParty/DirectXTK/Inc",
-        "Source/ThirdParty/spdlog/include",
-        "Source/ThirdParty/magic_enum/include",
-        "Source/ThirdParty/JoltPhysics",
-    }
-
+    defines { "SPDLOG_WCHAR_TO_UTF8_SUPPORT", "SPDLOG_NO_EXCEPTIONS" }
     applyJoltDefines()
-    links { "jolt" }
-
-    defines {
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
-        "SPDLOG_NO_EXCEPTIONS"
-    }
-
-    links { "Core" }
-
-    applyRuntimeLayerDefaults("Physics")
-    applyCommonBuildOptions()
-
---============================================================================
--- Audio 層 (StaticLib、 placeholder)
---   現状は空フォルダ + Audio.h placeholder のみ。 将来 XAudio2 + DirectXTK::Audio で
---   BGM/SE を実装予定。
---============================================================================
-project "Audio"
-    kind "StaticLib"
-    location "build/Audio"
-
-    targetdir (bindir .. "/%{prj.name}")
-    objdir (objdir_base .. "/%{prj.name}")
-
-    files {
-        "Source/Runtime/Audio/**.h",
-        "Source/Runtime/Audio/**.cpp"
-    }
-
-    includedirs {
-        "Source/ThirdParty/spdlog/include",
-        "Source/ThirdParty/magic_enum/include",
-    }
-
-    defines {
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
-        "SPDLOG_NO_EXCEPTIONS"
-    }
-
-    links { "Core" }
-
-    applyRuntimeLayerDefaults("Audio")
-    applyCommonBuildOptions()
-
---============================================================================
--- Object 層 (StaticLib)
---   Actor / Component / Transform / IRenderable / RenderContext +
---   各種 Component (MeshRendererComponent / CharacterMovement / Camera / 他)
---   UE5 風 OOP の合成主体。 Runtime Library として 7 層目に配置。
---============================================================================
-project "Object"
-    kind "StaticLib"
-    location "build/Object"
-
-    targetdir (bindir .. "/%{prj.name}")
-    objdir (objdir_base .. "/%{prj.name}")
-
-    files {
-        "Source/Runtime/Object/**.h",
-        "Source/Runtime/Object/**.cpp"
-    }
-
-    includedirs {
-        "Source/ThirdParty/DirectXTK/Inc",
-        "Source/ThirdParty/spdlog/include",
-        "Source/ThirdParty/magic_enum/include",
-        "Source/ThirdParty/JoltPhysics",
-    }
-
-    -- SceneRenderer が EffectScene を所有するので、 Effekseer の型が見える起点が要る
-    includedirs(effekseerIncludeDirs)
-
-    applyJoltDefines()
-
-    defines {
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
-        "SPDLOG_NO_EXCEPTIONS"
-    }
-
-    links {
-        "Core",
-        "Platform",
-        "Graphics",
-        "Physics",
-        "Audio",
-        "UI"
-    }
-
-    applyRuntimeLayerDefaults("Object")
-    applyCommonBuildOptions()
-
---============================================================================
--- UI 層 (StaticLib、 Runtime 8 層目)
---   ImGui ラッパ (GameRelease では非ビルド、 Debug / Development / GameDebug でのみビルド)。
---   ImGui 型はヘッダから露出させず detail/ 配下にのみ取り込む (header pollution rule)。
---============================================================================
-project "UI"
-    kind "StaticLib"
-    location "build/UI"
-
-    targetdir (bindir .. "/%{prj.name}")
-    objdir (objdir_base .. "/%{prj.name}")
-
-    files {
-        "Source/Runtime/UI/**.h",
-        "Source/Runtime/UI/**.cpp"
-    }
-
-    includedirs {
-        "Source/ThirdParty/DirectXTK/Inc",
-        "Source/ThirdParty/spdlog/include",
-        "Source/ThirdParty/magic_enum/include",
-    }
-
-    defines {
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
-        "SPDLOG_NO_EXCEPTIONS"
-    }
-
-    links {
-        "Core",
-        "Platform",
-        "Graphics"
-    }
-
-    -- editor は Debug / Development / GameDebug にのみ存在するため、imgui を取り込み + link する。
+    dependson { "directxtk_simplemath", "jolt", "effekseer" }
     filter "configurations:Debug or Development or GameDebug"
-        includedirs {
-            "Source/ThirdParty/imgui",
-            "Source/ThirdParty/imgui/backends",
-        }
-        links { "imgui" }
+        dependson { "imgui" }
+        includedirs { "Source/ThirdParty/imgui", "Source/ThirdParty/imgui/backends" }
     filter {}
-
-    -- ゲーム UI (Widget / UISystem) は出荷対象なので全構成でビルドする。
-    -- ImGui まわり (ImGuiContext) は NS_EDITOR_ENABLED ガードで GameRelease では空になる
-
-    applyRuntimeLayerDefaults("UI")
     applyCommonBuildOptions()
 
 --============================================================================
--- App 層 (StaticLib)
---   Application / WinMain (基盤は Object 層に同居)
---   DD7: フォルダ・ namespace ・ premake project 全て短縮命名 `App` で統一
---============================================================================
-project "App"
-    kind "StaticLib"
-    location "build/App"
-
-    targetdir (bindir .. "/%{prj.name}")
-    objdir (objdir_base .. "/%{prj.name}")
-
-    files {
-        "Source/Runtime/App/**.h",
-        "Source/Runtime/App/**.cpp"
-    }
-
-    -- WindowDesc 等が NS::Core::Size2D (Math.h 経由で SimpleMath) を保持するため DirectXTK が必要
-    -- Logger 経由で spdlog / magic_enum も参照
-    includedirs {
-        "Source/ThirdParty/DirectXTK/Inc",
-        "Source/ThirdParty/spdlog/include",
-        "Source/ThirdParty/magic_enum/include",
-    }
-
-    defines {
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
-        "SPDLOG_NO_EXCEPTIONS"
-    }
-
-    links {
-        "Core",
-        "Platform",
-        "Physics",
-        "Graphics",
-        "Audio",
-        "Object"
-    }
-
-    applyRuntimeLayerDefaults("App")
-    applyCommonBuildOptions()
-
---============================================================================
--- Solution Folder を解除し、 Game 実行ファイルをルート直下に戻す。
---============================================================================
-group ""
-
 --============================================================================
 -- Game (StaticLib) — ゲーム本体 (content / logic)
 --   Player / Block / LevelPlayScene / Level / Theme 等。
@@ -646,19 +334,9 @@ project "Game"
         "SPDLOG_NO_EXCEPTIONS"
     }
 
-    links {
-        "Core",
-        "Platform",
-        "Physics",
-        "Graphics",
-        "Audio",
-        "Object",
-        "App",
-        "UI",
-        "directxtk_simplemath"
-    }
+    links { "NSlib" }
 
-    -- Game / Editor 共通の安定 Runtime API を全 .cpp へ /FI 強制 include する。
+    -- Game / Editor 共通の安定 NSlib API を全 .cpp へ /FI 強制 include する。
     -- GamePch.cpp は Source/Game/**.cpp の glob で既に拾われる。 GamePch.h は
     -- include root (Source) 経由で全 .cpp から一意に解決できる論理名で渡す。
     pchheader "Game/GamePch.h"
@@ -705,19 +383,7 @@ project "Editor"
         "SPDLOG_NO_EXCEPTIONS"
     }
 
-    links {
-        "Game",
-        "Core",
-        "Platform",
-        "Physics",
-        "Graphics",
-        "Audio",
-        "Object",
-        "App",
-        "UI",
-        "imgui",
-        "directxtk_simplemath"
-    }
+    links { "Game", "NSlib" }
 
     -- GameRelease では editor を丸ごとビルドしない (出荷から物理排除)
     filter "configurations:GameRelease"
@@ -751,6 +417,7 @@ project "GameApp"
 
     files {
         "Source/Game/GameMain.cpp",
+        "Source/NSlib/App/WinMain.cpp",
         -- Game 側 PCH を共有するため pchsource 用に取り込む
         "Source/Game/GamePch.cpp",
         -- パスの文字コードと長さの上限は起動時に決まるので、コードからは変えられない
@@ -772,27 +439,13 @@ project "GameApp"
         "SPDLOG_NO_EXCEPTIONS"
     }
 
-    links {
-        "Game",
-        "Core",
-        "Platform",
-        "Physics",
-        "Graphics",
-        "Audio",
-        "Object",
-        "App",
-        "UI",
-        "directxtk_simplemath",
-        "jolt",
-        "effekseer"
-    }
+    links { "Game", "NSlib" }
 
-    -- Object の component 自己登録はどこからも参照されない TU の静的初期化に載っているため、
-    -- リンカの未参照 obj 除去で無言に欠け得る。Object.lib は全 obj を強制で取り込んで防ぐ
+    -- Object の自己登録は NSlib モジュールの生成設定が保持する。
     -- Game 層の配置物 Component も同じ理由で落ちる。Source/Game/Level/ に足した Component は
     -- 他のコードから型を参照されない限り Game.lib の中で未参照のまま残り、
     -- 対策が無いと登録ごと捨てられてエディタのコンポーネント追加一覧に出ない
-    linkoptions { "/WHOLEARCHIVE:Object.lib", "/WHOLEARCHIVE:Game.lib" }
+    linkoptions { "/WHOLEARCHIVE:Game.lib" }
 
     -- 出荷 (GameRelease) のみ exe 隣へ Shaders/ Assets/ をコピーする (exe 相対で読込む配布レイアウト)
     -- 開発構成は FileSystem::ContentRoot() がリポ直下を直接読むためコピーしない (ビルド毎のコピーを排除)
@@ -807,7 +460,7 @@ project "GameApp"
 
     -- editor 構成のみ Editor モジュール (+imgui) をリンクする。 GameRelease では積まない
     filter "configurations:Debug or Development or GameDebug"
-        links { "Editor", "imgui" }
+        links { "Editor" }
     filter {}
 
     -- GameDebug: Game.exe のみ -O0 + symbols フル
@@ -902,8 +555,30 @@ project "googletest"
 
 --============================================================================
 -- Tests 実行ファイル (ConsoleApp)
---   GoogleTest ベース、 Runtime 各層をリンクして個別モジュールをテスト
+--   GoogleTest ベース、 NSlib 各層をリンクして個別モジュールをテスト
 --============================================================================
+project "NSlibLinkTests"
+    kind "ConsoleApp"
+    location "build/NSlibLinkTests"
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+    files { "Source/Tests/n_slib_test.cpp", "Source/Tests/test_main.cpp" }
+    includedirs {
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/googletest/googletest/include",
+        "Source/ThirdParty/JoltPhysics"
+    }
+    includedirs(effekseerIncludeDirs)
+    applyJoltDefines()
+    links { "googletest", "NSlib" }
+    defines { "SPDLOG_WCHAR_TO_UTF8_SUPPORT", "SPDLOG_NO_EXCEPTIONS" }
+    filter "configurations:GameRelease"
+        kind "None"
+    filter {}
+    applyCommonBuildOptions()
+
 project "Tests"
     kind "ConsoleApp"
     location "build/Tests"
@@ -955,7 +630,7 @@ project "Tests"
         "Source/Editor/HitPreview.cpp",
         "Source/Editor/HitTimelineEdit.cpp",
         "Source/Editor/Theme/**.cpp",
-        -- Editor / Game の各 .cpp は GamePch の /FI 前提で Runtime include を持たない。
+        -- Editor / Game の各 .cpp は GamePch の /FI 前提で NSlib include を持たない。
         -- 同じソースを直接コンパイルする Tests でも同一 prelude を与えるため GamePch を共有する
         "Source/Game/GamePch.cpp"
     }
@@ -982,28 +657,11 @@ project "Tests"
     pchsource "Source/Game/GamePch.cpp"
     buildoptions { "/FI\"Game/GamePch.h\"" }
 
-    links {
-        "googletest",
-        "Core",
-        "Platform",
-        "Physics",
-        "Graphics",
-        "Audio",
-        "Object",
-        "App",
-        "jolt",
-        "effekseer"
-    }
+    links { "googletest", "NSlib" }
 
-    -- Game.exe と同じ理由で Object の自己登録 TU をリンカ除去から守る
-    -- Game 層は Source/Game/Level/**.cpp を直接コンパイルしていて Game.lib を link しないため、
-    -- Game.lib 側の指定は要らない。ここで守れているのは Tests が自分でコンパイルした obj だから
-    linkoptions { "/WHOLEARCHIVE:Object.lib" }
-
-    -- Debug / Development / GameDebug の Tests は editor / ImGui を呼ぶため UI + imgui を link する。
-    -- GameRelease では UI 層が非ビルドのため link / include しない。
+    -- editor 構成の Tests は ImGui のヘッダも直接使う。実装のリンクは NSlib に集約する。
     filter "configurations:Debug or Development or GameDebug"
-        links { "UI", "imgui" }
+
         includedirs {
             "Source/ThirdParty/imgui",
             "Source/ThirdParty/imgui/backends",
@@ -1011,7 +669,7 @@ project "Tests"
     filter {}
 
     -- 出荷 (GameRelease) ではテストをビルドしない。テストは Debug/Development/GameDebug の関心事で
-    -- shipping 構成の成果物ではない (UI 非ビルドと SimpleMath link 漏れの両方をここで回避)
+    -- shipping 構成の成果物ではない。
     filter "configurations:GameRelease"
         kind "None"
     filter {}

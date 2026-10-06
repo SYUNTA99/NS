@@ -2,24 +2,24 @@
 
 #include "Game/Level/DeathZone.h"
 #include "Game/Player.h"
-#include "Runtime/Core/Logger.h"
-#include "Runtime/Graphics/Mesh.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/Model.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectList.h"
-#include "Runtime/Object/Reflection/Archetype.h"
-#include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/Reflection/ObjectBuilder.h"
-#include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Core/Logger.h"
+#include "NSlib/Graphics/Mesh.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectList.h"
+#include "NSlib/Object/Reflection/Archetype.h"
+#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/ObjectBuilder.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
 
 namespace NS::Editor
 {
     namespace
     {
         // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す係数
-        constexpr float k_QuarterTurnYaw = NS::Core::k_Pi * 0.5f;
+        constexpr float k_QuarterTurnYaw = NS::k_Pi * 0.5f;
 
         // クラス名から UI に出す名前を引く。置けるクラスは登録の表示名、置けないクラスはクラス名
         // 戻り値は登録か JSON の文字列を指すので、呼出側が持っている間は切れない
@@ -104,13 +104,13 @@ namespace NS::Editor
     std::uint8_t CellRotationStep(const nlohmann::json& object) noexcept
     {
         // q と -q は同じ回転なので fabs で符号を無視し、4 候補から一番近いものを選ぶ
-        const NS::Core::Quaternion current = NS::Obj::ObjectRotation(object);
+        const NS::Quaternion current = NS::Obj::ObjectRotation(object);
         std::uint8_t best = 0;
         float bestDot = -2.0f;
         for (std::uint8_t step = 0; step < 4; ++step)
         {
             const float yaw = static_cast<float>(step) * k_QuarterTurnYaw;
-            const NS::Core::Quaternion candidate = NS::Core::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
+            const NS::Quaternion candidate = NS::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
             const float dot = std::fabs(current.x * candidate.x + current.y * candidate.y + current.z * candidate.z +
                                         current.w * candidate.w);
             if (dot > bestDot)
@@ -125,7 +125,7 @@ namespace NS::Editor
     void SetCellRotationStep(nlohmann::json& object, std::uint8_t rotationStep) noexcept
     {
         const float yaw = static_cast<float>(rotationStep & 0x03) * k_QuarterTurnYaw;
-        const NS::Core::Quaternion rotation = NS::Core::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
+        const NS::Quaternion rotation = NS::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
         NS::Obj::SetObjectRotation(object, rotation);
     }
 
@@ -155,14 +155,14 @@ namespace NS::Editor
         return ClassDisplayName(object.ClassName());
     }
 
-    NS::Core::AABB PickLocalBounds(const NS::Obj::Actor& object) noexcept
+    NS::AABB PickLocalBounds(const NS::Obj::Actor& object) noexcept
     {
         const NS::Obj::Model* renderer = object.ModelPart();
         if (renderer != nullptr && renderer->GetMesh() != nullptr)
         {
             return renderer->GetMesh()->LocalBounds();
         }
-        return NS::Core::AABB{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Vector3{0.5f, 0.5f, 0.5f}};
+        return NS::AABB{NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{0.5f, 0.5f, 0.5f}};
     }
 
     bool IsPlayerObject(const nlohmann::json& object) noexcept
@@ -183,7 +183,7 @@ namespace NS::Editor
         return NS::Obj::k_NoObjectIndex;
     }
 
-    nlohmann::json MakePlayerObject(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation)
+    nlohmann::json MakePlayerObject(const NS::Vector3& position, const NS::Quaternion& rotation)
     {
         // 構成は Player のコンストラクタが決める。ひな形は型名だけ持ち、値はコード既定を使う
         nlohmann::json object = NS::Obj::MakePrototypeJson<::Player>();
@@ -207,7 +207,7 @@ namespace NS::Editor
                 return false;
             }
             NS::Obj::SceneJsonObjects(scene).push_back(
-                MakePlayerObject(DefaultSpawnPosition(player->Collider()), NS::Core::Quaternion{}));
+                MakePlayerObject(DefaultSpawnPosition(player->Collider()), NS::Quaternion{}));
             created = true;
         }
 
@@ -238,7 +238,7 @@ namespace NS::Editor
     {
         nlohmann::json object = NS::Obj::MakePrototypeJson<NS::Game::Level::DeathZone>();
         // 上面 y=-50 は従来の落下死の高さ
-        NS::Obj::SetObjectPosition(object, NS::Core::Vector3{0.0f, -55.0f, 0.0f});
+        NS::Obj::SetObjectPosition(object, NS::Vector3{0.0f, -55.0f, 0.0f});
         return object;
     }
 

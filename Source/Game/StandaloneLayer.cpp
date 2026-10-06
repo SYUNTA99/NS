@@ -1,9 +1,9 @@
 #include "Game/StandaloneLayer.h"
 
-#include "Runtime/App/Application.h"
-#include "Runtime/Platform/Input.h"
+#include "NSlib/App/Application.h"
+#include "NSlib/Windows/Input.h"
 
-StandaloneLayer::StandaloneLayer() : NS::App::Layer("Standalone") {}
+StandaloneLayer::StandaloneLayer() : NS::Layer("Standalone") {}
 
 StandaloneLayer::EscapeResponse StandaloneLayer::ResolveEscape(bool cursorVisible) noexcept
 {
@@ -16,7 +16,7 @@ StandaloneLayer::EscapeResponse StandaloneLayer::ResolveEscape(bool cursorVisibl
 
 void StandaloneLayer::OnAttach()
 {
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
         NS_LOG_ERROR(Game, "StandaloneLayer::OnAttach: Application::Get()==null");
@@ -28,12 +28,12 @@ void StandaloneLayer::OnAttach()
 
 void StandaloneLayer::OnUpdate()
 {
-    NS::App::Application* app = NS::App::Application::Get();
+    NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
         return;
     }
-    if (!app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
+    if (!app->Input().Keyboard().IsPressed(NS::OS::Key::Escape))
     {
         return;
     }
@@ -43,5 +43,5 @@ void StandaloneLayer::OnUpdate()
         app->SetCursorCaptured(false);
         return;
     }
-    NS::App::Application::Quit();
+    NS::Application::Quit();
 }

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Runtime/App/Layer.h"
-#include "Runtime/Object/Scene/SceneManager.h"
+#include "NSlib/App/Layer.h"
+#include "NSlib/Object/Scene/SceneManager.h"
 
 #include <string>
 #include <string_view>
@@ -12,7 +12,7 @@ namespace NS::Obj
 } // namespace NS::Obj
 
 //! @brief アプリケーション層とシーン管理層を仲介するメインゲームレイヤー
-class Game : public NS::App::Layer
+class Game : public NS::Layer
 {
 public:
     //! @brief 開始シーンのパスを控える。読み込みは OnAttach

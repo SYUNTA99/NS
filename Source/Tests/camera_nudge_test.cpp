@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/CameraModifier.h"
+#include "NSlib/Object/Components/CameraModifier.h"
 
 #include <gtest/gtest.h>
 
@@ -25,8 +25,8 @@ namespace
     NS::Obj::CameraPose PoseOf()
     {
         NS::Obj::CameraPose pose;
-        pose.position = NS::Core::Vector3{0.0f, 2.0f, -6.0f};
-        pose.target = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
+        pose.position = NS::Vector3{0.0f, 2.0f, -6.0f};
+        pose.target = NS::Vector3{0.0f, 1.0f, 0.0f};
         return pose;
     }
 
@@ -44,7 +44,7 @@ namespace
 TEST(CameraNudge, WorldNudgeMovesPositionAndTargetByTheCurve)
 {
     NS::Obj::CameraNudgeDesc desc;
-    desc.direction = NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+    desc.direction = NS::Vector3{0.0f, 0.0f, 1.0f};
     desc.distance = CurveOf({{0.0f, 0.2f}, {2.0f, 0.3f}, {8.0f, 0.0f}});
     desc.frames = 9;
     std::unique_ptr<NS::Obj::CameraNudgeModifier> nudge = NS::Obj::CameraNudgeModifier::Create(desc);
@@ -68,7 +68,7 @@ TEST(CameraNudge, WorldNudgeMovesPositionAndTargetByTheCurve)
 TEST(CameraNudge, ScreenNudgeUsesOnlyTheDirectionSeenFromTheCamera)
 {
     NS::Obj::CameraNudgeDesc desc;
-    NS::Core::Vector3 rightAndAway{1.0f, 0.0f, 1.0f};
+    NS::Vector3 rightAndAway{1.0f, 0.0f, 1.0f};
     rightAndAway.Normalize();
     desc.direction = rightAndAway;
     desc.distance = CurveOf({{0.0f, -0.5f}});
@@ -90,7 +90,7 @@ TEST(CameraNudge, ScreenNudgeUsesOnlyTheDirectionSeenFromTheCamera)
 TEST(CameraNudge, ScreenNudgeHoldsStillWhenTheDirectionPointsIntoTheScreen)
 {
     NS::Obj::CameraNudgeDesc desc;
-    desc.direction = NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+    desc.direction = NS::Vector3{0.0f, 0.0f, 1.0f};
     desc.distance = CurveOf({{0.0f, 0.5f}});
     desc.frames = 4;
     desc.onScreen = true;
@@ -107,7 +107,7 @@ TEST(CameraNudge, ScreenNudgeHoldsStillWhenTheDirectionPointsIntoTheScreen)
 TEST(CameraNudge, FinishesAfterItsFramesAndRefusesBrokenSettings)
 {
     NS::Obj::CameraNudgeDesc desc;
-    desc.direction = NS::Core::Vector3{1.0f, 0.0f, 0.0f};
+    desc.direction = NS::Vector3{1.0f, 0.0f, 0.0f};
     desc.distance = CurveOf({{0.0f, 0.3f}});
     desc.frames = 3;
     std::unique_ptr<NS::Obj::CameraNudgeModifier> nudge = NS::Obj::CameraNudgeModifier::Create(desc);
@@ -121,7 +121,7 @@ TEST(CameraNudge, FinishesAfterItsFramesAndRefusesBrokenSettings)
     noFrames.frames = 0;
     EXPECT_EQ(NS::Obj::CameraNudgeModifier::Create(noFrames), nullptr);
     NS::Obj::CameraNudgeDesc noDirection = desc;
-    noDirection.direction = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    noDirection.direction = NS::Vector3{0.0f, 0.0f, 0.0f};
     EXPECT_EQ(NS::Obj::CameraNudgeModifier::Create(noDirection), nullptr);
     NS::Obj::CameraNudgeDesc notANumber = desc;
     notANumber.direction.x = std::numeric_limits<float>::quiet_NaN();

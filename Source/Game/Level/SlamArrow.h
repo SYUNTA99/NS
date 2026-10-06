@@ -3,10 +3,10 @@
 #include "Game/Level/SlamAim.h"
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerVisualParams.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Graphics/DrawItem.h"
-#include "Runtime/Graphics/FrameConstants.h"
-#include "Runtime/Object/Components/OverlayRenderer.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Graphics/DrawItem.h"
+#include "NSlib/Graphics/FrameConstants.h"
+#include "NSlib/Object/Components/OverlayRenderer.h"
 
 #include <functional>
 #include <vector>
@@ -55,8 +55,8 @@ namespace NS::Game::Level
     //! 地面の矢印の形と色。距離は狙いの線の始まり (自機の位置) から線に沿って測る
     struct SlamArrowShape
     {
-        NS::Core::Vector3 origin;         //!< 狙いの線の始まり。世界座標
-        NS::Core::Vector3 direction;      //!< 狙いの水平の向き。正規化済みで y は 0
+        NS::Vector3 origin;         //!< 狙いの線の始まり。世界座標
+        NS::Vector3 direction;      //!< 狙いの水平の向き。正規化済みで y は 0
         float bandWidth = 0.0f;           //!< 帯の幅 (玉の通る幅)。単位は m
         float start = 0.0f;               //!< 帯の始まり (玉の縁) の距離。単位は m
         float tip = 0.0f;                 //!< このフレームの矢じりの先の距離。伸びている途中はその長さ。単位は m
@@ -64,7 +64,7 @@ namespace NS::Game::Level
         float headDepth = 0.0f;           //!< 矢じりの奥行き。単位は m
         float colorFront = 0.0f;          //!< 色の付いた部分の先の距離。単位は m
         bool fullyColored = false;        //!< 溜めきりで、矢じりの先まで全部に色を付ける場合 true
-        NS::Core::Vector3 stageColor;     //!< 色の付いた部分の色。RGB で各 0〜1
+        NS::Vector3 stageColor;     //!< 色の付いた部分の色。RGB で各 0〜1
         std::vector<SlamArrowPiece> band; //!< 帯を貼る板。自機の側から並ぶ。床の無い所は入れない
         bool hasHead = false;             //!< 矢じりの下に床がある場合 true
         SlamArrowPiece head{};            //!< 矢じりを貼る板。hasHead が偽の間は読まない
@@ -72,7 +72,7 @@ namespace NS::Game::Level
 
     //! @brief 床を探す関数。from から真下へ maxDepth までの間の床の高さを outGroundY に返す
     //! @details 床があれば true、無ければ false を返し、outGroundY を書き換えない
-    using SlamArrowGroundProbe = std::function<bool(const NS::Core::Vector3& from, float maxDepth, float& outGroundY)>;
+    using SlamArrowGroundProbe = std::function<bool(const NS::Vector3& from, float maxDepth, float& outGroundY)>;
 
     //! @brief 溜めと狙いの様子から、地面の矢印の長さ・色の付いた部分・色を組む。床の高さは置かない
     //! @details 帯は玉の縁 (state.ballRadius) から始まる。伸びきった先は、狙う相手がいれば state.targetContact +
@@ -122,16 +122,16 @@ namespace NS::Game::Level
     //! 同じ位置に置く。残りは照明の欄の場所に矢印の値を置く。板の v は 0 が遠い端、1 が近い端
     struct alignas(16) SlamArrowConstants
     {
-        NS::Core::Matrix world{};         //!< 上向きの板を線に沿った範囲と幅へ伸ばして置く行列
-        NS::Core::Matrix viewProj{};      //!< ビュー × 射影
-        NS::Core::Vector4 chargedColor{}; //!< rgb は色の付いた部分の色、a は明るい縁の不透明度
-        NS::Core::Vector4 plainColor{};   //!< rgb は色の付いていない部分の色、a は明るい縁の不透明度
-        NS::Core::Vector4 darkColor{};    //!< rgb は暗い縁の色、a はその不透明度
+        NS::Matrix world{};         //!< 上向きの板を線に沿った範囲と幅へ伸ばして置く行列
+        NS::Matrix viewProj{};      //!< ビュー × 射影
+        NS::Vector4 chargedColor{}; //!< rgb は色の付いた部分の色、a は明るい縁の不透明度
+        NS::Vector4 plainColor{};   //!< rgb は色の付いていない部分の色、a は明るい縁の不透明度
+        NS::Vector4 darkColor{};    //!< rgb は暗い縁の色、a はその不透明度
         //! xy は始まりのぼかし、zw は色の付いた部分の重み。どちらも板の v の 1 次式 (v = 0 の値と v あたりの変化)
-        NS::Core::Vector4 fadeAndFront{};
+        NS::Vector4 fadeAndFront{};
         //! xy は帯の切れ目を測る、矢じりの先からの距離 ÷ 矢じりの奥行き (板の v の 1 次式)。
         //! z と w は色の付いた部分と付いていない部分の塗りの平均の不透明度
-        NS::Core::Vector4 rearAndFill{};
+        NS::Vector4 rearAndFill{};
         NS::Gfx::TremorCB tremor{}; //!< standard.vs.hlsl が読む震えの欄。振れ幅 0 のまま送り、矢印は震わせない
     };
 
@@ -157,8 +157,8 @@ namespace NS::Game::Level
     //! @param[in,out] out 描く単位の並び
     void AppendSlamArrowDrawItems(const SlamArrowShape& shape,
                                   const SlamArrowDesc& desc,
-                                  const NS::Core::Matrix& viewProjection,
-                                  const NS::Core::Vector3& cameraPosition,
+                                  const NS::Matrix& viewProjection,
+                                  const NS::Vector3& cameraPosition,
                                   const SlamArrowDrawAssets& assets,
                                   std::vector<NS::Gfx::DrawItem>& out);
 

@@ -1,11 +1,11 @@
-#include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Component.h"
-#include "Runtime/Object/ITickable.h"
-#include "Runtime/Object/IUse/IUseSceneObj.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneJson.h"
-#include "Runtime/Object/UIActor.h"
+#include "NSlib/Graphics/DebugDraw.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Component.h"
+#include "NSlib/Object/ITickable.h"
+#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/UIActor.h"
 
 #include <gtest/gtest.h>
 
@@ -176,13 +176,13 @@ TEST(SceneStepShapes, RebuildingTheWorldDropsTheStepShapes)
     namespace DD = NS::Gfx::DebugDraw;
     NS::Obj::Scene scene;
     DD::Clear();
-    DD::Line(NS::Core::Vector3{0.0f, 0.0f, 0.0f},
-             NS::Core::Vector3{1.0f, 0.0f, 0.0f},
-             NS::Core::Color{1.0f, 1.0f, 1.0f, 1.0f});
-    DD::Triangle(NS::Core::Vector3{0.0f, 0.0f, 0.0f},
-                 NS::Core::Vector3{1.0f, 0.0f, 0.0f},
-                 NS::Core::Vector3{0.0f, 1.0f, 0.0f},
-                 NS::Core::Color{1.0f, 1.0f, 1.0f, 0.5f});
+    DD::Line(NS::Vector3{0.0f, 0.0f, 0.0f},
+             NS::Vector3{1.0f, 0.0f, 0.0f},
+             NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
+    DD::Triangle(NS::Vector3{0.0f, 0.0f, 0.0f},
+                 NS::Vector3{1.0f, 0.0f, 0.0f},
+                 NS::Vector3{0.0f, 1.0f, 0.0f},
+                 NS::Color{1.0f, 1.0f, 1.0f, 0.5f});
 
     scene.LoadJson(NS::Obj::MakeSceneJson());
 
@@ -197,9 +197,9 @@ TEST(SceneStepShapes, ShutdownDropsTheStepShapes)
     namespace DD = NS::Gfx::DebugDraw;
     NS::Obj::Scene scene;
     DD::Clear();
-    DD::Line(NS::Core::Vector3{0.0f, 0.0f, 0.0f},
-             NS::Core::Vector3{1.0f, 0.0f, 0.0f},
-             NS::Core::Color{1.0f, 1.0f, 1.0f, 1.0f});
+    DD::Line(NS::Vector3{0.0f, 0.0f, 0.0f},
+             NS::Vector3{1.0f, 0.0f, 0.0f},
+             NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
 
     scene.OnShutdown();
 

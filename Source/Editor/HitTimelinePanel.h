@@ -8,7 +8,7 @@
 #include "Editor/HitTimelineEdit.h"
 #include "Game/Level/HitTier.h"
 #include "Game/Level/HitTimeline.h"
-#include "Runtime/Core/NonCopyable.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <cstddef>
 #include <string>
@@ -21,7 +21,7 @@ namespace NS::Editor
     //! @brief 当たりのタイムラインを編集して下見するパネル
     //! @details 編集はパネルの中で持ち、変えるたびにタイムラインの置き場へ差し替えて (ファイルへは書かない)
     //! 下見し直す。 「保存」でファイルへ書き、「元に戻す」で最後に保存した中身を読み直す。編集中の場面は変えない
-    class HitTimelinePanel : public NS::Core::NonCopyable
+    class HitTimelinePanel : public NS::NonCopyable
     {
     public:
         HitTimelinePanel();

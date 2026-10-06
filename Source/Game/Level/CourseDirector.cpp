@@ -2,11 +2,11 @@
 
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/ObjectList.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/ScreenFade.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/ObjectList.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/ScreenFade.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <vector>
 
@@ -31,7 +31,7 @@ namespace NS::Game::Level
     {
         if (m_sequences.IsRunning())
         {
-            m_sequences.Tick(NS::Platform::FrameTimer::FixedDelta());
+            m_sequences.Tick(NS::OS::FrameTimer::FixedDelta());
         }
         else if (m_goalReached)
         {
@@ -82,19 +82,19 @@ namespace NS::Game::Level
         }
     }
 
-    NS::Core::Coroutine CourseDirector::ClearSequence()
+    NS::Coroutine CourseDirector::ClearSequence()
     {
         // 世界は止めず操作だけ止める。暗転の間も重力とカメラは動いたまま
         SendInputLock(true);
 
         m_fade->BeginOut(k_FadeOutSeconds);
-        co_await NS::Core::WaitUntil{[this] { return m_fade->IsBlack(); }};
+        co_await NS::WaitUntil{[this] { return m_fade->IsBlack(); }};
 
         // 全黒の裏でやり直すので、出現位置への瞬間移動が黒に隠れる
         RestartCourse();
 
         m_fade->BeginIn(k_FadeInSeconds);
-        co_await NS::Core::WaitUntil{[this] { return !m_fade->IsFading(); }};
+        co_await NS::WaitUntil{[this] { return !m_fade->IsFading(); }};
 
         SendInputLock(false);
     }

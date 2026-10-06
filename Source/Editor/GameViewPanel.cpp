@@ -2,7 +2,7 @@
 
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/Scene.h"
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>

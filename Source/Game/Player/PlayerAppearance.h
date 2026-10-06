@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Component.h"
-#include "Runtime/Object/Reflection/Reflection.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Component.h"
+#include "NSlib/Object/Reflection/Reflection.h"
 
 #include <cstdint>
 #include <string>
@@ -85,7 +85,7 @@ namespace NS::Game::Player
         //! @details 根の空間の単位ベクトル。正の角度で、玉の上面が 軸 × 上 の向きへ倒れる前転になる。
         //! 外れの反動の間は水平とは限らない
         //! @return 直前の OnUpdate で回した軸。止めの間は止まる前の軸、立ち姿では (1, 0, 0)
-        [[nodiscard]] NS::Core::Vector3 SpinAxis() const noexcept { return m_spinAxis; }
+        [[nodiscard]] NS::Vector3 SpinAxis() const noexcept { return m_spinAxis; }
 
         NS_REFLECT_BEGIN(PlayerAppearance, NS::Obj::Component)
         NS_REFLECT_GROUP("姿")
@@ -131,14 +131,14 @@ namespace NS::Game::Player
         // 補間が短い側を通り、逆回りに見える
 
         // 立ち姿の間の軸。丸まった直後に狙いが決まらなければこの軸で回る
-        static constexpr NS::Core::Vector3 k_FirstSpinAxis{1.0f, 0.0f, 0.0f};
+        static constexpr NS::Vector3 k_FirstSpinAxis{1.0f, 0.0f, 0.0f};
 
-        NS::Core::Quaternion m_spin = NS::Core::Quaternion::Identity; // 玉の今の回転
-        NS::Core::Vector3 m_spinAxis = k_FirstSpinAxis;               // 直前のフレームに回した軸
+        NS::Quaternion m_spin = NS::Quaternion::Identity; // 玉の今の回転
+        NS::Vector3 m_spinAxis = k_FirstSpinAxis;               // 直前のフレームに回した軸
         float m_spinSpeed = 0.0f;                                     // 直前のフレームに回した速さ。度/秒
         float m_spinDegreesThisFrame = 0.0f;                          // 直前の OnUpdate で回った角度。度
         std::uint32_t m_tumbleReboundCount = 0; // 外れの回り方を始めた反動の回数。変わったら新しい反動
-        NS::Core::Vector3 m_tumbleStartSpin{};  // 外れの反動の始まりの回転。軸 × 度/秒
+        NS::Vector3 m_tumbleStartSpin{};  // 外れの反動の始まりの回転。軸 × 度/秒
         int m_tumbleSteps = 0;                  // 外れの反動を始めてからのフレーム数
         float m_tumbleWobblePhase = 0.0f;       // 軸のぶれの始まりの向き。ラジアン
         int m_landingSquashRemaining = 0;       // 着地の潰れを戻し切るまでの残りフレーム数。0 は潰れていない

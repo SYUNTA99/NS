@@ -1,5 +1,5 @@
 ﻿#include "Game/Game.h"
-#include "Runtime/App/Application.h"
+#include "NSlib/App/Application.h"
 
 #if NS_EDITOR_ENABLED
 #include "Editor/Editor.h"
@@ -7,14 +7,14 @@
 #include "Game/StandaloneLayer.h"
 #endif
 
-namespace NS::App
+namespace NS
 {
 
     std::unique_ptr<Application> CreateApplication()
     {
         ApplicationDesc desc{};
         desc.window.title = "NS Game";
-        desc.window.size = NS::Core::Size2D{1920, 1080};
+        desc.window.size = NS::Size2D{1920, 1080};
 #ifdef NS_BUILD_DEBUG
         desc.renderer.enableDebugLayer = true;
 #else
@@ -32,4 +32,4 @@ namespace NS::App
         return app;
     }
 
-} // namespace NS::App
+} // namespace NS

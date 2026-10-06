@@ -1,9 +1,9 @@
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/ObjectList.h"
-#include "Runtime/Object/Reflection/ObjectBuilder.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/ObjectList.h"
+#include "NSlib/Object/Reflection/ObjectBuilder.h"
+#include "NSlib/Object/Scene/Scene.h"
 
 namespace NS::Editor
 {

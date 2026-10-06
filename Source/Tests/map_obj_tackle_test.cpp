@@ -1,11 +1,11 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObj.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/HitSensor.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/Scene/SceneJson.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
 
 #include <gtest/gtest.h>
 
@@ -13,7 +13,7 @@
 
 namespace
 {
-    NS::Obj::Actor* PlaceRock(NS::Obj::Scene& scene, const NS::Core::Vector3& position)
+    NS::Obj::Actor* PlaceRock(NS::Obj::Scene& scene, const NS::Vector3& position)
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json rock = NS::Obj::MakeObjectJson();
@@ -29,7 +29,7 @@ namespace
 TEST(MapObjTackle, RockAnswersTheAsk)
 {
     NS::Obj::Scene scene;
-    NS::Obj::Actor* rock = PlaceRock(scene, NS::Core::Vector3{2.0f, 1.0f, 0.0f});
+    NS::Obj::Actor* rock = PlaceRock(scene, NS::Vector3{2.0f, 1.0f, 0.0f});
     ASSERT_NE(rock, nullptr);
     NS::Obj::HitSensor* body = rock->BodySensorPart();
     ASSERT_NE(body, nullptr);
@@ -47,11 +47,11 @@ TEST(MapObjTackle, RockAnswersTheAsk)
 TEST(MapObjTackle, FreezePushesInAndReleaseRestoresThenLaunches)
 {
     NS::Obj::Scene scene;
-    NS::Obj::Actor* rock = PlaceRock(scene, NS::Core::Vector3{2.0f, 1.0f, 0.0f});
+    NS::Obj::Actor* rock = PlaceRock(scene, NS::Vector3{2.0f, 1.0f, 0.0f});
     ASSERT_NE(rock, nullptr);
 
     const NS::Game::Level::TackleFreezeDesc freeze{
-        .impactDir = NS::Core::Vector3{1.0f, 0.0f, 0.0f}, .pushInDistance = 0.1f, .squash = true, .stopSteps = 3};
+        .impactDir = NS::Vector3{1.0f, 0.0f, 0.0f}, .pushInDistance = 0.1f, .squash = true, .stopSteps = 3};
     ASSERT_TRUE(NS::Game::Level::SendMsgTackleFreeze(*rock, freeze));
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 2.1f);
     const NS::Game::Level::MapObj* reaction = static_cast<NS::Game::Level::MapObj*>(rock);
@@ -59,7 +59,7 @@ TEST(MapObjTackle, FreezePushesInAndReleaseRestoresThenLaunches)
 
     NS::Game::Level::TackleReleaseDesc release{};
     release.arc = NS::Game::Level::LaunchArc{
-        .direction = NS::Core::Vector3{1.0f, 0.0f, 0.0f}, .distance = 5.0f, .apexHeight = 1.0f};
+        .direction = NS::Vector3{1.0f, 0.0f, 0.0f}, .distance = 5.0f, .apexHeight = 1.0f};
     ASSERT_TRUE(NS::Game::Level::SendMsgTackleRelease(*rock, release));
     // 食い込みは見せるための動き。明けで元の位置へ戻ってから飛ぶ
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 2.0f);
@@ -70,11 +70,11 @@ TEST(MapObjTackle, FreezePushesInAndReleaseRestoresThenLaunches)
 TEST(MapObjTackle, FlyingRockIsNotPushedIn)
 {
     NS::Obj::Scene scene;
-    NS::Obj::Actor* rock = PlaceRock(scene, NS::Core::Vector3{2.0f, 1.0f, 0.0f});
+    NS::Obj::Actor* rock = PlaceRock(scene, NS::Vector3{2.0f, 1.0f, 0.0f});
     ASSERT_NE(rock, nullptr);
     NS::Game::Level::TackleReleaseDesc release;
     release.arc = NS::Game::Level::LaunchArc{
-        .direction = NS::Core::Vector3{1.0f, 0.0f, 0.0f}, .distance = 5.0f, .apexHeight = 1.0f};
+        .direction = NS::Vector3{1.0f, 0.0f, 0.0f}, .distance = 5.0f, .apexHeight = 1.0f};
     ASSERT_TRUE(NS::Game::Level::SendMsgTackleRelease(*rock, release));
 
     NS::Game::Level::TackleTargetAnswer answer{};
@@ -82,7 +82,7 @@ TEST(MapObjTackle, FlyingRockIsNotPushedIn)
     EXPECT_FALSE(answer.placed);
 
     const NS::Game::Level::TackleFreezeDesc freeze{
-        .impactDir = NS::Core::Vector3{1.0f, 0.0f, 0.0f}, .pushInDistance = 0.1f, .stopSteps = 3};
+        .impactDir = NS::Vector3{1.0f, 0.0f, 0.0f}, .pushInDistance = 0.1f, .stopSteps = 3};
     ASSERT_TRUE(NS::Game::Level::SendMsgTackleFreeze(*rock, freeze));
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 2.0f);
 }
@@ -90,7 +90,7 @@ TEST(MapObjTackle, FlyingRockIsNotPushedIn)
 TEST(MapObjTackle, DestructionRemainsDisabled)
 {
     NS::Obj::Scene scene;
-    NS::Obj::Actor* rock = PlaceRock(scene, NS::Core::Vector3{2.0f, 1.0f, 0.0f});
+    NS::Obj::Actor* rock = PlaceRock(scene, NS::Vector3{2.0f, 1.0f, 0.0f});
     ASSERT_NE(rock, nullptr);
     NS::Game::Level::TackleReleaseDesc release{};
     release.breaks = true;
@@ -102,10 +102,10 @@ TEST(MapObjTackle, DestructionRemainsDisabled)
 TEST(MapObjTackle, ReplacingAPendingFreezeDoesNotAccumulatePushIn)
 {
     NS::Obj::Scene scene;
-    NS::Obj::Actor* rock = PlaceRock(scene, NS::Core::Vector3{2.0f, 1.0f, 0.0f});
+    NS::Obj::Actor* rock = PlaceRock(scene, NS::Vector3{2.0f, 1.0f, 0.0f});
     ASSERT_NE(rock, nullptr);
     NS::Game::Level::TackleFreezeDesc freeze{
-        .impactDir = NS::Core::Vector3{1.0f, 0.0f, 0.0f}, .pushInDistance = 0.1f, .stopSteps = 3};
+        .impactDir = NS::Vector3{1.0f, 0.0f, 0.0f}, .pushInDistance = 0.1f, .stopSteps = 3};
     ASSERT_TRUE(NS::Game::Level::SendMsgTackleFreeze(*rock, freeze));
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 2.1f);
     freeze.pushInDistance = 0.2f;
@@ -113,7 +113,7 @@ TEST(MapObjTackle, ReplacingAPendingFreezeDoesNotAccumulatePushIn)
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 2.2f);
     NS::Game::Level::TackleReleaseDesc release{};
     release.arc = NS::Game::Level::LaunchArc{
-        .direction = NS::Core::Vector3{1.0f, 0.0f, 0.0f}, .distance = 5.0f, .apexHeight = 1.0f};
+        .direction = NS::Vector3{1.0f, 0.0f, 0.0f}, .distance = 5.0f, .apexHeight = 1.0f};
     ASSERT_TRUE(NS::Game::Level::SendMsgTackleRelease(*rock, release));
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 2.0f);
     EXPECT_TRUE(static_cast<NS::Game::Level::MapObj*>(rock)->IsArc());

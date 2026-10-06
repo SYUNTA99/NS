@@ -3,11 +3,11 @@
 #include "Game/Player.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -29,24 +29,24 @@ namespace
         nlohmann::json player = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(player, "Player");
         NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         if (withRock)
         {
             nlohmann::json rock = NS::Obj::MakeObjectJson();
             NS::Obj::SetObjectJsonClass(rock, "MapObj");
             NS::Obj::SetObjectJsonId(rock, 2);
-            NS::Obj::SetObjectPosition(rock, NS::Core::Vector3{0.0f, 0.5f, 0.6f});
+            NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
             NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         }
         scene.LoadJson(doc);
-        NS::Core::OBB floor{};
-        floor.center = NS::Core::Vector3{0.0f, -0.5f, 0.0f};
+        NS::OBB floor{};
+        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
         floor.halfExtentX = 100.0f;
         floor.halfExtentY = 0.5f;
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-        PlaceViewCamera(scene, NS::Core::Vector3{}, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
@@ -58,7 +58,7 @@ namespace
     // 突進を出して、突進の間に回った角度の和 (度) を返す
     float SpinWhileSlamming(Player& player, float charge01)
     {
-        player.RequestBodySlam(charge01, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        player.RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f});
         float degrees = 0.0f;
         bool started = false;
         for (int frame = 0; frame < 240; ++frame)
@@ -80,7 +80,7 @@ namespace
     // 置物に当てて、反動の始まりから着地までに回った角度の和 (度) を返す。反動しなければ負
     float SpinWhileRebounding(Player& player, NS::Game::Level::MapObj& rock, float charge01)
     {
-        player.RequestBodySlam(charge01, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+        player.RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f});
         float degrees = 0.0f;
         bool started = false;
         for (int frame = 0; frame < 400; ++frame)
@@ -108,10 +108,10 @@ TEST(PlayerSpinCount, TapLeavesAtItsFieldSpeed)
     Player* player = PlaceSpinScene(scene, false);
     ASSERT_NE(player, nullptr);
     EXPECT_FLOAT_EQ(FieldOf(*player, "通常突進の初速"), 15.0f);
-    player->RequestBodySlam(0.0f, NS::Core::Vector3{0.0f, 0.0f, 1.0f});
+    player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     player->Update(false);
     ASSERT_TRUE(player->IsBodySlamming());
-    const NS::Core::Vector3 velocity = player->BodySlamVelocity();
+    const NS::Vector3 velocity = player->BodySlamVelocity();
     EXPECT_NEAR(std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z), 15.0f, 1.0e-3f);
 }
 

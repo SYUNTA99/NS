@@ -5,13 +5,13 @@
 #include "Game/Player.h"
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
-#include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Components/Body.h"
-#include "Runtime/Object/Components/Collider.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Platform/Clock.h"
+#include "NSlib/Core/OBB.h"
+#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -26,7 +26,7 @@
 
 namespace
 {
-    using NS::Core::Vector3;
+    using NS::Vector3;
 
     // 床の上面 y = 0 に自機と、+z の先に相手を置く。カメラは +z を向く
     Player* PlaceOnFloor(NS::Obj::Scene& scene,
@@ -56,7 +56,7 @@ namespace
             NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         }
         scene.LoadJson(doc);
-        NS::Core::OBB floor{};
+        NS::OBB floor{};
         floor.center = Vector3{0.0f, -0.5f, 0.0f};
         floor.halfExtentX = 100.0f;
         floor.halfExtentY = 0.5f;
@@ -115,7 +115,7 @@ TEST(SlamArrowTest, ArcArrowFollowsTheBallThatIsActuallyLaunched)
         {
             // 放した瞬間の縦の速さは狙いの段で控えた値。同じフレームの重力を 1 回当てた後を読む
             ASSERT_TRUE(player->IsBodySlamming());
-            const float dt = NS::Platform::FrameTimer::FixedDelta();
+            const float dt = NS::OS::FrameTimer::FixedDelta();
             const NS::Game::Player::PlayerGravity gravity = player->Params().Gravity();
             EXPECT_NEAR(player->Body().VerticalVelocity(),
                         target.launchVerticalSpeed +
@@ -217,7 +217,7 @@ TEST(SlamArrowTest, AirArrowWithoutTargetFallsAndTheReleaseStartsLevel)
 
     player->Update(false);
     ASSERT_TRUE(player->IsBodySlamming());
-    const float dt = NS::Platform::FrameTimer::FixedDelta();
+    const float dt = NS::OS::FrameTimer::FixedDelta();
     EXPECT_NEAR(player->Body().VerticalVelocity(),
                 NS::Game::Player::ChooseGravity(player->Params().Gravity(), 0.0f) * dt,
                 0.0001f);
@@ -280,7 +280,7 @@ namespace
         EXPECT_TRUE(outShape.hasHead);
         std::vector<NS::Gfx::DrawItem> items;
         NS::Game::Level::AppendSlamArrowDrawItems(
-            outShape, desc, NS::Core::Matrix::Identity, cameraPosition, NS::Game::Level::SlamArrowDrawAssets{}, items);
+            outShape, desc, NS::Matrix::Identity, cameraPosition, NS::Game::Level::SlamArrowDrawAssets{}, items);
         return items;
     }
 
@@ -346,8 +346,8 @@ TEST(SlamArrowTest, LowCameraStandsTheHeadUpToTheMinimumViewAngle)
     for (std::size_t i = lying.size() - 2; i < lying.size(); ++i)
     {
         SCOPED_TRACE(i);
-        const NS::Core::Matrix flat = ConstantsOf(lying[i]).world;
-        const NS::Core::Matrix raised = ConstantsOf(standing[i]).world;
+        const NS::Matrix flat = ConstantsOf(lying[i]).world;
+        const NS::Matrix raised = ConstantsOf(standing[i]).world;
         EXPECT_FLOAT_EQ(flat._32, 0.0f);
         const Vector3 lengthAxis{raised._31, raised._32, raised._33};
         const Vector3 widthAxis{raised._11, raised._12, raised._13};
@@ -357,7 +357,7 @@ TEST(SlamArrowTest, LowCameraStandsTheHeadUpToTheMinimumViewAngle)
         normal.Normalize();
         Vector3 toCamera = low - pivot;
         toCamera.Normalize();
-        const float viewDegrees = NS::Core::RadiansToDegrees(std::asin(std::abs(normal.Dot(toCamera))));
+        const float viewDegrees = NS::RadiansToDegrees(std::asin(std::abs(normal.Dot(toCamera))));
         EXPECT_NEAR(viewDegrees, desc.headMinViewDegrees, 0.1f);
     }
     // 帯は床に寝たまま

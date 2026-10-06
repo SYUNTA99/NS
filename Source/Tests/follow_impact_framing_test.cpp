@@ -1,11 +1,11 @@
 #include "Game/Level/FollowCamera.h"
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/CameraTarget.h"
-#include "Runtime/Object/Components/ThirdPersonFollow.h"
-#include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/ObjectJson.h"
-#include "Runtime/Object/Reflection/ReflectionJson.h"
-#include "Runtime/Object/Scene/Scene.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/CameraTarget.h"
+#include "NSlib/Object/Components/ThirdPersonFollow.h"
+#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
 
 #include <gtest/gtest.h>
 
@@ -37,7 +37,7 @@ namespace
 
         bool hasAim = false;
         float charge01 = 1.0f;
-        NS::Core::Vector3 aim{};
+        NS::Vector3 aim{};
         bool grounded = true;
         bool held = true;
         bool framingHeld = false;
@@ -108,18 +108,18 @@ TEST(FollowImpactFraming, ChargeWithATargetCentersThePairVertically)
 
     FramingScene world;
     world.target->hasAim = true;
-    world.target->aim = NS::Core::Vector3{0.0f, 0.2f, 3.0f};
+    world.target->aim = NS::Vector3{0.0f, 0.2f, 3.0f};
     world.Run(120);
     const NS::Obj::CameraPose pose = world.camera->Vcam().EvaluatePose(1.0f);
     EXPECT_NEAR(pose.position.y, alonePose.position.y, 1.0e-4f);
     EXPECT_LT(pose.target.y, alonePose.target.y);
-    NS::Core::Vector3 forward = pose.target - pose.position;
+    NS::Vector3 forward = pose.target - pose.position;
     forward.Normalize();
-    NS::Core::Vector3 right = NS::Core::Cross(NS::Core::Vector3{0.0f, 1.0f, 0.0f}, forward);
+    NS::Vector3 right = NS::Cross(NS::Vector3{0.0f, 1.0f, 0.0f}, forward);
     right.Normalize();
-    const NS::Core::Vector3 up = NS::Core::Cross(forward, right);
-    const NS::Core::Vector3 middle = (world.target->Root().Position() + world.target->aim) * 0.5f;
-    EXPECT_NEAR(NS::Core::Dot(middle - pose.position, up), 0.0f, 0.02f);
+    const NS::Vector3 up = NS::Cross(forward, right);
+    const NS::Vector3 middle = (world.target->Root().Position() + world.target->aim) * 0.5f;
+    EXPECT_NEAR(NS::Dot(middle - pose.position, up), 0.0f, 0.02f);
 }
 
 // 寄せる量は溜めの量の 2 乗 (欄「溜めの寄りの効き方の指数」) で増える。溜めるにつれて速まりながら下を向き、
@@ -135,7 +135,7 @@ TEST(FollowImpactFraming, CenteringGrowsWithTheCharge)
     {
         FramingScene world;
         world.target->hasAim = true;
-        world.target->aim = NS::Core::Vector3{0.0f, 0.2f, 3.0f};
+        world.target->aim = NS::Vector3{0.0f, 0.2f, 3.0f};
         world.target->charge01 = charges[i];
         world.Run(120);
         drop[i] = aloneLook - world.camera->Vcam().EvaluatePose(1.0f).target.y;

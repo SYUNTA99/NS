@@ -1,5 +1,5 @@
-#include "Runtime/Graphics/Pipeline.h"
-#include "Runtime/Graphics/detail/PipelineDepth.h"
+#include "NSlib/Graphics/Pipeline.h"
+#include "NSlib/Graphics/detail/PipelineDepth.h"
 
 #include <gtest/gtest.h>
 

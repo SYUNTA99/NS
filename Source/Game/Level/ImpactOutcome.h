@@ -3,8 +3,8 @@
 #include "Game/Level/HitTier.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Player/ReboundArc.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Components/HitSensor.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Components/HitSensor.h"
 
 namespace NS::Game::Level
 {
@@ -46,9 +46,9 @@ namespace NS::Game::Level
         float mass = 1.0f;            //!< 相手の質量
         float toughness = 0.0f;       //!< 相手の耐久
         bool breakable = false;       //!< 相手が壊れる動きを持つ場合 true
-        NS::Core::Vector3 awayDirection{1.0f, 0.0f, 0.0f};   //!< 自機が弾かれる水平の向き。正規化済み
-        NS::Core::Vector3 launchDirection{1.0f, 0.0f, 0.0f}; //!< 相手を飛ばす水平の向き。正規化済み
-        NS::Core::Vector3 slamVelocity{0.0f, 0.0f, 0.0f};    //!< 突進の狙いの速度
+        NS::Vector3 awayDirection{1.0f, 0.0f, 0.0f};   //!< 自機が弾かれる水平の向き。正規化済み
+        NS::Vector3 launchDirection{1.0f, 0.0f, 0.0f}; //!< 相手を飛ばす水平の向き。正規化済み
+        NS::Vector3 slamVelocity{0.0f, 0.0f, 0.0f};    //!< 突進の狙いの速度
         float faceU = 0.0f; //!< 段を決めた面の上の左右の位置。自機から見て右が正。外れの逸れる向きを決める
         float faceV = 0.0f; //!< 段を決めた面の上の上下の位置。上が正
         NS::Obj::HitSensorShape bodyShape = NS::Obj::HitSensorShape::Sphere; //!< 相手の体の形の種類
@@ -64,7 +64,7 @@ namespace NS::Game::Level
         float launchScale = 0.0f;                              //!< 相手の曲線の距離と高さに掛けた比
         NS::Game::Player::ReboundArc reboundArc{};             //!< 自機の反動の向きと高さと距離
         LaunchArc launchArc{};                                 //!< 相手の飛ぶ曲線
-        NS::Core::Vector3 breakSelfVelocity{0.0f, 0.0f, 0.0f}; //!< 貫通で明けに自機が持つ速度。貫通しない当たりは 0
+        NS::Vector3 breakSelfVelocity{0.0f, 0.0f, 0.0f}; //!< 貫通で明けに自機が持つ速度。貫通しない当たりは 0
         //! 貫通の当たりの止めるフレーム数。押し飛ばしの当たりの止めはタイムラインが持つので 0
         int stopSteps = 0;
     };
@@ -91,10 +91,10 @@ namespace NS::Game::Level
     //! @param[in] sharpness 角の鋭さ p。2 より小さい値と有限でない値は 2
     //! @param[in] slamDirection 突進の向き。縦の成分は捨てる
     //! @return 表面の向き。正規化済みで自機の側を向く。突進の水平の向きが決まらない時は (0, 0, 0)
-    [[nodiscard]] NS::Core::Vector3 MissSurfaceNormal(float u,
+    [[nodiscard]] NS::Vector3 MissSurfaceNormal(float u,
                                                       float v,
                                                       float sharpness,
-                                                      const NS::Core::Vector3& slamDirection) noexcept;
+                                                      const NS::Vector3& slamDirection) noexcept;
 
     //! @brief 外れの着地からこすって止まる間の、着いた水平の速さに掛ける倍率を返す
     //! @details (1 − elapsedSteps ÷ totalSteps)^exponent。着いた速さに依らず totalSteps フレームで 0 になる

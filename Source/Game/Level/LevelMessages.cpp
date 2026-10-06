@@ -1,7 +1,7 @@
 #include "Game/Level/LevelMessages.h"
 
-#include "Runtime/Object/Actor.h"
-#include "Runtime/Object/Components/HitSensor.h"
+#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Components/HitSensor.h"
 
 namespace NS::Game::Level
 {

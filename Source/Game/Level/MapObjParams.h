@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game/Level/MissHop.h"
-#include "Runtime/Object/Component.h"
+#include "NSlib/Object/Component.h"
 
 #include <algorithm>
 #include <cmath>
@@ -54,7 +54,7 @@ namespace NS::Game::Level
         [[nodiscard]] float DebrisSpeed() const noexcept { return m_debrisSpeed; }
         [[nodiscard]] float DebrisLifeSeconds() const noexcept { return m_debrisLifeSeconds; }
         [[nodiscard]] float DebrisScale() const noexcept { return m_debrisScale; }
-        [[nodiscard]] NS::Core::Vector3 DebrisBaseColor() const noexcept { return m_debrisBaseColor; }
+        [[nodiscard]] NS::Vector3 DebrisBaseColor() const noexcept { return m_debrisBaseColor; }
         [[nodiscard]] float MarkProbeDistance() const noexcept { return m_markProbeDistance; }
         //! 欄「外れで跳ねる回数」の値。負は 0
         [[nodiscard]] int MissHopCount() const noexcept { return std::max(m_missHopCount, 0); }
@@ -106,7 +106,7 @@ namespace NS::Game::Level
         float m_debrisSpeed = 6.0f;
         float m_debrisLifeSeconds = 8.0f;
         float m_debrisScale = 0.25f;
-        NS::Core::Vector3 m_debrisBaseColor{0.35f, 0.32f, 0.30f};
+        NS::Vector3 m_debrisBaseColor{0.35f, 0.32f, 0.30f};
         float m_markProbeDistance = 64.0f;
         // 外れで飛ばされた置物は、着地で 1 回だけ小さく向きを変えて跳ね、転がって止まる。真ん中のまっすぐ飛ぶ弧と
         // 違って、力がまともに入らずかすめた事を相手の動きで見せる。何度も跳ねると目を引いて派手になるので 1 回、

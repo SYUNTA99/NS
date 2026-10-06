@@ -7,8 +7,8 @@
 #include "Editor/PlacementCatalog.h"
 #include "Editor/PlayControls.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
-#include "Runtime/Core/NonCopyable.h"
-#include "Runtime/Object/Components/VirtualCamera.h"
+#include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Object/Components/VirtualCamera.h"
 
 #include <cstdint>
 #include <memory>
@@ -44,7 +44,7 @@ namespace NS::Gfx
 //! @details Scene 上の live な配置物 / カメラ / プレイ進行を操作し、cursor / palette / undo の
 //! EditorMode ・ギズモ変形・free-fly カメラ・編集↔プレイのモード切替を実現する。Editor が 1 個所有し、
 //! 出荷 build には本クラスも Editor も含めない
-class LevelEditorController : public NS::Core::NonCopyable
+class LevelEditorController : public NS::NonCopyable
 {
 public:
     explicit LevelEditorController(NS::Obj::Scene* scene) noexcept;
@@ -66,7 +66,7 @@ public:
     //! SceneRenderer がビューの描画の中で呼び、積んだ図形はそのビューを描いたら捨てられる
     //! @param[in,out] shapes 積む先。空で渡される
     //! @param[in] viewProjection そのビューのビュー射影。カメラの印の大きさを画面上で揃えるのに使う
-    void DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes, const NS::Core::Matrix& viewProjection) noexcept;
+    void DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes, const NS::Matrix& viewProjection) noexcept;
 
     //! scene 破棄の前に呼ぶ。ギズモ選択解除と free-fly カメラの後始末
     void Teardown();
@@ -161,9 +161,9 @@ public:
     [[nodiscard]] bool HasInspectableSelection() const noexcept;
 
     //! 選択中の配置物の位置 / 回転 / スケールを live へ直接設定する。非選択時は何もしない
-    void SetSelectedFreePosition(NS::Core::Vector3 position);
-    void SetSelectedFreeRotation(NS::Core::Quaternion rotation);
-    void SetSelectedFreeScale(NS::Core::Vector3 scale);
+    void SetSelectedFreePosition(NS::Vector3 position);
+    void SetSelectedFreeRotation(NS::Quaternion rotation);
+    void SetSelectedFreeScale(NS::Vector3 scale);
 
     //! ドラッグでの変形を始める / 確定する
     void BeginTransformEdit() noexcept;
@@ -245,8 +245,8 @@ private:
     void PushCreateObject(nlohmann::json object);
 
     void RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
-                            const NS::Core::Matrix& viewProjection,
-                            NS::Core::Size2D viewport) noexcept;
+                            const NS::Matrix& viewProjection,
+                            NS::Size2D viewport) noexcept;
     //! @brief 当たり形状を線で積む
     //! @param[in,out] shapes 積む先
     //! @param[in] all 真なら全配置物、偽なら選んでいる分だけ
@@ -318,10 +318,10 @@ private:
     struct DragFollower
     {
         std::uint32_t id = 0;
-        NS::Core::Matrix world{};
+        NS::Matrix world{};
     };
     std::vector<DragFollower> m_dragFollowers; // 主対象に付いて動く残りの選択
-    NS::Core::Matrix m_dragPrimaryWorld{};     // ドラッグ開始時の主対象の world 変換
+    NS::Matrix m_dragPrimaryWorld{};     // ドラッグ開始時の主対象の world 変換
 
     bool m_gizmoWasDragging = false; // ドラッグ状態の保持
     bool m_transformEditing = false; // 変形編集の開始状態

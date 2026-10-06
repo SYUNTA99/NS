@@ -3,11 +3,11 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamAim.h"
 #include "Game/Player/PlayerVisualParams.h"
-#include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Math.h"
-#include "Runtime/Object/Components/OverlayRenderer.h"
-#include "Runtime/Object/Reflection/ActorRef.h"
-#include "Runtime/Object/Reflection/Curve.h"
+#include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Math.h"
+#include "NSlib/Object/Components/OverlayRenderer.h"
+#include "NSlib/Object/Reflection/ActorRef.h"
+#include "NSlib/Object/Reflection/Curve.h"
 
 #include <vector>
 
@@ -38,8 +38,8 @@ namespace NS::Game::Level
         std::vector<MarkerRect> corners;
         //! 暗い縁。corners と同じ並びで、各四角を両側 1 画素ずつ広げた物
         std::vector<MarkerRect> outline;
-        NS::Core::Color color{};        //!< 明るい線の色と不透明度
-        NS::Core::Color outlineColor{}; //!< 暗い縁の色と不透明度
+        NS::Color color{};        //!< 明るい線の色と不透明度
+        NS::Color outlineColor{}; //!< 暗い縁の色と不透明度
     };
 
     //! ロックオンの枠の形を決める値。画素の欄は描画先の高さ 720 のときの画素
@@ -62,9 +62,9 @@ namespace NS::Game::Level
     //! @param[out] outFrame 組んだ枠。false の場合は書き換えない
     //! @return 組めた場合 true。desc の 0 以下にできない欄が 0 以下の場合、有限でない値か負のフレーム数がある場合と、
     //! 描画先の大きさが 0 以下の場合は false
-    [[nodiscard]] bool BuildLockOnFrame(const NS::Core::Matrix& viewProjection,
-                                        NS::Core::Size2D targetSize,
-                                        const NS::Core::AABB& bounds,
+    [[nodiscard]] bool BuildLockOnFrame(const NS::Matrix& viewProjection,
+                                        NS::Size2D targetSize,
+                                        const NS::AABB& bounds,
                                         LockOnFrames frames,
                                         const TargetMarkerDesc& desc,
                                         LockOnFrameShape& outFrame);
@@ -101,8 +101,8 @@ namespace NS::Game::Level
         //! @param[in] targetSize 描画先の幅と高さ。単位は画素
         //! @param[out] outFrame 組んだ枠。false の場合は書き換えない
         //! @return 示す相手か外れた後の枠があって組めた場合 true、それ以外の場合は false
-        [[nodiscard]] bool BuildShownShape(const NS::Core::Matrix& viewProjection,
-                                           NS::Core::Size2D targetSize,
+        [[nodiscard]] bool BuildShownShape(const NS::Matrix& viewProjection,
+                                           NS::Size2D targetSize,
                                            LockOnFrameShape& outFrame) const;
 
         NS_REFLECT_BEGIN(TargetMarker, NS::Obj::OverlayRenderer)
@@ -133,7 +133,7 @@ namespace NS::Game::Level
         SlamLineTarget m_shown{};  // 示す相手の予測。m_hasShown が偽の間は読まない
         bool m_hasShown = false;
         int m_framesSinceCapture = 0;  // 外れた後は外れたフレームの値で止める
-        NS::Core::AABB m_lostBounds{}; // 外れた相手の外接箱。m_framesSinceLost が負の間は読まない
+        NS::AABB m_lostBounds{}; // 外れた相手の外接箱。m_framesSinceLost が負の間は読まない
         int m_framesSinceLost = -1;
         const ::Player* m_player = nullptr; // 溜めと狙う相手の問い先。非所有
     };
