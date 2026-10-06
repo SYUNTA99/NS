@@ -283,6 +283,9 @@ namespace NS::Obj
         void OnShutdown();
 
     private:
+        //! 古い世界のエフェクトを消し、時間を進めずに描画へ反映する
+        void ClearEffects() noexcept;
+
         //! 世界の速さを溜めに足し、1 に届いたら 1 引く。世界を進める歩の場合 true、それ以外の場合は false
         bool AdvanceWorldClock() noexcept;
 

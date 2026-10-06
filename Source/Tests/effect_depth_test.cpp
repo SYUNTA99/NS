@@ -1,7 +1,10 @@
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Graphics/EffectScene.h"
 #include "NSlib/Graphics/GraphicObject.h"
+#include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Graphics/Texture.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Windows/Window.h"
 #include "TestEffectFiles.h"
 
 #include <gtest/gtest.h>
@@ -78,7 +81,111 @@ namespace
     {
         gpu.context->OMSetRenderTargets(0, nullptr, depth.Dsv());
     }
+    int CountEffectPixels(NS::Gfx::EffectScene& effects)
+    {
+        const NS::Gfx::GraphicObject& gpu = NS::Gfx::Gpu();
+        D3D11_TEXTURE2D_DESC desc{};
+        desc.Width = 32;
+        desc.Height = 32;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        desc.SampleDesc.Count = 1;
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET;
+        ComPtr<ID3D11Texture2D> target;
+        if (FAILED(gpu.device->CreateTexture2D(&desc, nullptr, target.GetAddressOf())))
+        {
+            ADD_FAILURE() << "描画先を作れなかった";
+            return -1;
+        }
+        ComPtr<ID3D11RenderTargetView> view;
+        if (FAILED(gpu.device->CreateRenderTargetView(target.Get(), nullptr, view.GetAddressOf())))
+        {
+            ADD_FAILURE() << "描画先のビューを作れなかった";
+            return -1;
+        }
+        const float clear[4]{};
+        gpu.context->ClearRenderTargetView(view.Get(), clear);
+        ID3D11RenderTargetView* views[]{view.Get()};
+        gpu.context->OMSetRenderTargets(1, views, nullptr);
+        const D3D11_VIEWPORT viewport{0.0f, 0.0f, 32.0f, 32.0f, 0.0f, 1.0f};
+        gpu.context->RSSetViewports(1, &viewport);
+        effects.Draw(MakeCamera());
+        gpu.context->OMSetRenderTargets(0, nullptr, nullptr);
+        desc.BindFlags = 0;
+        desc.Usage = D3D11_USAGE_STAGING;
+        desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        ComPtr<ID3D11Texture2D> staging;
+        if (FAILED(gpu.device->CreateTexture2D(&desc, nullptr, staging.GetAddressOf())))
+        {
+            ADD_FAILURE() << "読み戻し先を作れなかった";
+            return -1;
+        }
+        gpu.context->CopyResource(staging.Get(), target.Get());
+        D3D11_MAPPED_SUBRESOURCE mapped{};
+        if (FAILED(gpu.context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)))
+        {
+            ADD_FAILURE() << "描いた画素を読み戻せなかった";
+            return -1;
+        }
+        int count = 0;
+        for (UINT y = 0; y < desc.Height; ++y)
+        {
+            const std::uint8_t* row = static_cast<const std::uint8_t*>(mapped.pData) + y * mapped.RowPitch;
+            for (UINT x = 0; x < desc.Width; ++x)
+            {
+                if (row[x * 4] != 0 || row[x * 4 + 1] != 0 || row[x * 4 + 2] != 0)
+                {
+                    ++count;
+                }
+            }
+        }
+        gpu.context->Unmap(staging.Get(), 0);
+        return count;
+    }
 } // namespace
+
+TEST(EffectLifecycle, RebuildingThePausedSceneClearsPixelsBeforeAnotherStep)
+{
+    NS::OS::Window window(
+        NS::OS::WindowDesc{.title = "エフェクト終了の試し", .size = {32, 32}, .visible = false});
+    NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
+    ASSERT_TRUE(renderer.IsValid());
+    NS::Obj::Scene scene;
+    scene.SetEffectRoot("Assets/Effects");
+    scene.SetRenderer(&renderer);
+    NS::Gfx::EffectScene* effects = scene.GetEffectScene();
+    ASSERT_NE(effects, nullptr);
+    ASSERT_TRUE(effects->Preload("impact.core"));
+    ASSERT_TRUE(effects->Preload("rebound.trail"));
+    const nlohmann::json baseline = scene.ToJson();
+    const NS::Gfx::EffectHandle core = effects->Play("impact.core");
+    const NS::Gfx::EffectHandle trail = effects->Play("rebound.trail");
+    effects->Update(1.0f / 60.0f);
+    const int pixels = CountEffectPixels(*effects);
+    ASSERT_GT(pixels, 0);
+
+    scene.SetSimulationPaused(true);
+    scene.OnUpdate();
+    EXPECT_TRUE(effects->Exists(core));
+    EXPECT_TRUE(effects->Exists(trail));
+    EXPECT_EQ(CountEffectPixels(*effects), pixels);
+
+    scene.SetSimulationEnabled(false);
+    scene.LoadJson(baseline);
+    EXPECT_FALSE(effects->Exists(core));
+    EXPECT_FALSE(effects->Exists(trail));
+    EXPECT_EQ(CountEffectPixels(*effects), 0);
+
+    scene.SetSimulationEnabled(true);
+    const NS::Gfx::EffectHandle fresh = effects->Play("impact.core");
+    effects->Update(1.0f / 60.0f);
+    EXPECT_TRUE(effects->Exists(fresh));
+    EXPECT_GT(CountEffectPixels(*effects), 0);
+    scene.OnShutdown();
+    EXPECT_FALSE(effects->Exists(fresh));
+    EXPECT_EQ(CountEffectPixels(*effects), 0);
+}
 
 // 書式の欄で読むビューの書式を変えられる。渡さなければ作った書式のまま
 TEST(EffectDepth, TextureViewFormatIsUsedOnlyWhenGiven)

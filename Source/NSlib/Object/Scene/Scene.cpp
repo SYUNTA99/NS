@@ -1,6 +1,7 @@
 ﻿#include "NSlib/Object/Scene/Scene.h"
 
 #include "NSlib/Graphics/DebugDraw.h"
+#include "NSlib/Graphics/EffectScene.h"
 #include "NSlib/Object/Components/CameraManager.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/ComponentEntry.h"
@@ -405,8 +406,19 @@ namespace NS::Obj
         m_objects.RemoveByObjectId(objectId);
     }
 
+    void Scene::ClearEffects() noexcept
+    {
+        NS::Gfx::EffectScene* effects = m_sceneRenderer.Effects();
+        if (effects != nullptr)
+        {
+            effects->StopAll();
+            effects->Update(0.0f);
+        }
+    }
+
     void Scene::RebuildObjectsFrom(const nlohmann::json& scene)
     {
+        ClearEffects();
 #if !defined(NS_SHIPPING)
         // ステップの図形は前の世界の姿。組み直した世界へ残すと、次の歩が来るまで消えた物の線が出る
         NS::Gfx::DebugDraw::Clear();
@@ -487,6 +499,7 @@ namespace NS::Obj
         // シーンに 1 つの物は配置物と画面の一覧を借りるので先に捨てる
         m_sceneObjs.Clear();
         m_objects.Clear();
+        ClearEffects();
         m_cameraManager->SetCamera(nullptr);
 #if !defined(NS_SHIPPING)
         // 溜め場は静的な 1 つなので、畳んだ世界の線が次のシーンの描画へ残る
