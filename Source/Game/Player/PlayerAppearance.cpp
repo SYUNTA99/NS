@@ -155,9 +155,8 @@ namespace NS::Game::Player
                 aim = line.direction;
             }
             SetRollAxisToward(aim, m_spinAxis);
-            m_spinSpeed =
-                m_emptyChargeSpinSpeed +
-                (m_fullChargeSpinSpeed - m_emptyChargeSpinSpeed) * m_actor->ChargeJudge().Charge01();
+            m_spinSpeed = m_emptyChargeSpinSpeed +
+                          (m_fullChargeSpinSpeed - m_emptyChargeSpinSpeed) * m_actor->ChargeJudge().Charge01();
         }
         else if ((m_actor->IsRebounding() || m_actor->IsSkidding()) && m_actor->ReboundMissTumble().has_value())
         {
@@ -199,23 +198,22 @@ namespace NS::Game::Player
             {
                 // 種は何回目の当たりか。黄金角ずつずらし、続けて外しても始まりの向きが重ならない。Replay では同じ
                 constexpr float k_GoldenAngle = 2.39996323f;
-                m_tumbleWobblePhase = std::fmod(static_cast<float>(m_resolver->LastImpact().sequence) * k_GoldenAngle,
-                                                2.0f * NS::k_Pi);
+                m_tumbleWobblePhase =
+                    std::fmod(static_cast<float>(m_resolver->LastImpact().sequence) * k_GoldenAngle, 2.0f * NS::k_Pi);
             }
         }
         ++m_tumbleSteps;
 
         // 当たる前の回転を割合だけ残してねじれに足す。溜めて外したほど大きく振り回される
         const NS::Vector3 target = tumble.twist * (m_missTwistTurnsPerSecond * 360.0f * tumble.power) +
-                                         m_tumbleStartSpin * m_missSpinCarryRatio;
+                                   m_tumbleStartSpin * m_missSpinCarryRatio;
         float blend = 1.0f;
         if (m_missSpinBlendSteps > 0)
         {
             blend = std::min(static_cast<float>(m_tumbleSteps) / static_cast<float>(m_missSpinBlendSteps), 1.0f);
         }
         // こすって止まる間は、身体の速さと同じ割合で回転も落とす
-        const NS::Vector3 spin =
-            (m_tumbleStartSpin + (target - m_tumbleStartSpin) * blend) * m_actor->SkidSpeedScale();
+        const NS::Vector3 spin = (m_tumbleStartSpin + (target - m_tumbleStartSpin) * blend) * m_actor->SkidSpeedScale();
         const float speed = spin.Length();
         if (!std::isfinite(speed) || speed <= NS::k_Epsilon)
         {
@@ -300,8 +298,7 @@ namespace NS::Game::Player
 
         if (!std::isfinite(m_landingSquashVertical) || !(m_landingSquashVertical > 0.0f))
         {
-            NS_LOG_WARN(
-                Game, "PlayerAppearance: 着地の潰れが有限の正でなく、潰さなかった: {}", m_landingSquash);
+            NS_LOG_WARN(Game, "PlayerAppearance: 着地の潰れが有限の正でなく、潰さなかった: {}", m_landingSquash);
             m_landingSquashRemaining = 0;
             m_landingSquashVertical = 1.0f;
         }

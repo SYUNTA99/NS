@@ -41,18 +41,18 @@ namespace NS::Editor
     //! @brief 下見の 1 フレームの姿。場面を 1 歩進めた後に読む
     struct HitPreviewFrame
     {
-        NS::Vector3 playerPosition{};        //!< 自機の根の位置
-        NS::Vector3 shape{1.0f, 1.0f, 1.0f}; //!< 自機の形の倍率
-        bool hitStopping = false;                  //!< 止めの事象の最中
-        bool awaitingRebound = false;              //!< 止めが明けて反動を待っている
-        bool rebounding = false;                   //!< 自機が反動で弾かれている
-        NS::OS::GamepadVibration pad{};      //!< 下見が控えたパッドの振動。手元のパッドへは送らない
-        float trauma = 0.0f;                       //!< カメラのトラウマ 0〜1
-        NS::Vector3 shakeAngles{};           //!< トラウマの揺れの角度 (度)。横・縦・傾き
-        NS::Vector2 shakeOffset{};           //!< 平行移動の揺れのずれ (m)。カメラの右と上
-        float sinkPixels = 0.0f;                   //!< 沈む揺れの縦のずれ (高さ 1080 の画面の画素、下が負)
-        float worldSpeed = 1.0f;                   //!< 世界の速さ 0〜1
-        std::vector<std::size_t> startedRows;      //!< このフレームに始まった事象の、段のタイムラインの行の番号
+        NS::Vector3 playerPosition{};         //!< 自機の根の位置
+        NS::Vector3 shape{1.0f, 1.0f, 1.0f};  //!< 自機の形の倍率
+        bool hitStopping = false;             //!< 止めの事象の最中
+        bool awaitingRebound = false;         //!< 止めが明けて反動を待っている
+        bool rebounding = false;              //!< 自機が反動で弾かれている
+        NS::OS::GamepadVibration pad{};       //!< 下見が控えたパッドの振動。手元のパッドへは送らない
+        float trauma = 0.0f;                  //!< カメラのトラウマ 0〜1
+        NS::Vector3 shakeAngles{};            //!< トラウマの揺れの角度 (度)。横・縦・傾き
+        NS::Vector2 shakeOffset{};            //!< 平行移動の揺れのずれ (m)。カメラの右と上
+        float sinkPixels = 0.0f;              //!< 沈む揺れの縦のずれ (高さ 1080 の画面の画素、下が負)
+        float worldSpeed = 1.0f;              //!< 世界の速さ 0〜1
+        std::vector<std::size_t> startedRows; //!< このフレームに始まった事象の、段のタイムラインの行の番号
     };
 
     //! @brief 下見の結果
@@ -64,8 +64,8 @@ namespace NS::Editor
         NS::Game::Level::ImpactRecord impact{}; //!< 当たりの記録。当たらなかった時は既定のまま
         int detectionIndex = -1;                //!< 当たりを検知したフレームの frames の添字。当たらなかった時は -1
         std::vector<HitPreviewFrame> frames;    //!< 突進を出した次の 1 歩から並ぶ
-        NS::Vector3 playerStart{};        //!< 写しの中で自機の根を置き直した位置
-        NS::Vector3 direction{};          //!< 突進の水平の向き
+        NS::Vector3 playerStart{};              //!< 写しの中で自機の根を置き直した位置
+        NS::Vector3 direction{};                //!< 突進の水平の向き
     };
 
     //! @brief 写しの場面を組む時に渡す物。描かない下見では空でよい

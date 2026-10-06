@@ -154,8 +154,7 @@ namespace NS::Game::Level
         }
 
         // この固定ステップで進んだ先の根の位置。重なりと段を同じ所で見るため、裁定はどちらもここを通る
-        [[nodiscard]] NS::Vector3 PositionAfterStep(const NS::Vector3& position,
-                                                          const NS::Vector3& velocity) noexcept
+        [[nodiscard]] NS::Vector3 PositionAfterStep(const NS::Vector3& position, const NS::Vector3& velocity) noexcept
         {
             const float dt = NS::OS::FrameTimer::FixedDelta();
             return NS::Vector3{
@@ -1300,8 +1299,7 @@ namespace NS::Game::Level
         desc.kick.direction = NS::Vector2{m_lastImpact.faceU, m_lastImpact.faceV};
         if (desc.kick.direction.LengthSquared() <= NS::k_Epsilon * NS::k_Epsilon)
         {
-            desc.kick.direction =
-                NS::Vector2{NS::Obj::CameraSideSignOf(*Owner(), m_pendingReboundArc.direction), 0.0f};
+            desc.kick.direction = NS::Vector2{NS::Obj::CameraSideSignOf(*Owner(), m_pendingReboundArc.direction), 0.0f};
         }
         return desc;
     }
@@ -1795,8 +1793,8 @@ namespace NS::Game::Level
         const float dx2 = m_pendingImpactDir.x * m_pendingImpactDir.x;
         const float dz2 = m_pendingImpactDir.z * m_pendingImpactDir.z;
         return NS::Vector3{1.0f + (along - 1.0f) * dx2 + (side - 1.0f) * dz2,
-                                 height,
-                                 1.0f + (along - 1.0f) * dz2 + (side - 1.0f) * dx2};
+                           height,
+                           1.0f + (along - 1.0f) * dz2 + (side - 1.0f) * dx2};
     }
 
     NS_CLASS(ImpactResolver)

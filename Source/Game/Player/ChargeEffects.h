@@ -165,14 +165,14 @@ namespace NS::Game::Player
         std::uint32_t m_trail = 0;
         std::uint32_t m_burst = 0;
 
-        int m_fullStep = 0;                // 溜めきりの閃きを出したフレームの記録の番号
-        int m_framesSinceFull = 0;         // FramesSinceFullCharge の値。OnUpdate が毎フレーム決める
-        bool m_fullShown = false;          // この押しで溜めきりの閃きを出したか。押し直すまで 2 回目を出さない
-        bool m_wasHeld = false;            // 前のフレームに押していたか
-        bool m_wasSlamming = false;        // 前のフレームに突進していたか
-        bool m_trailAwaitsFreeze = false;  // 当たりを検知して突進が終わった。次のフレームの止めの頭で尾の親を止める
-        float m_spinDegrees = 0.0f;        // 押してから玉が回った角度の累計。回転の弧の板の回りの角度
-        NS::Vector3 m_slamDirection; // 突進の尾を向ける水平の向き
+        int m_fullStep = 0;               // 溜めきりの閃きを出したフレームの記録の番号
+        int m_framesSinceFull = 0;        // FramesSinceFullCharge の値。OnUpdate が毎フレーム決める
+        bool m_fullShown = false;         // この押しで溜めきりの閃きを出したか。押し直すまで 2 回目を出さない
+        bool m_wasHeld = false;           // 前のフレームに押していたか
+        bool m_wasSlamming = false;       // 前のフレームに突進していたか
+        bool m_trailAwaitsFreeze = false; // 当たりを検知して突進が終わった。次のフレームの止めの頭で尾の親を止める
+        float m_spinDegrees = 0.0f;       // 押してから玉が回った角度の累計。回転の弧の板の回りの角度
+        NS::Vector3 m_slamDirection;      // 突進の尾を向ける水平の向き
 
         const ::Player* m_actor = nullptr;              // 押し・溜め量・突進の速度・狙いの向きを答える自機。非所有
         const PlayerAppearance* m_appearance = nullptr; // 玉の回転の正。非所有

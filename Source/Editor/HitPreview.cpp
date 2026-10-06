@@ -77,7 +77,7 @@ namespace NS::Editor
                 // 追従カメラは置いた時の向きのままだと、突進の横や前から映る。ゲームでは狙う向きの後ろから見ているので、
                 // 自機の後ろ上へ置き直す。当たりの動きはカメラを読まないので、記録は変わらない
                 const NS::Vector3 behind = placement.playerStart - placement.direction * k_CameraBehindDistance +
-                                                 NS::Vector3{0.0f, k_CameraHeight, 0.0f};
+                                           NS::Vector3{0.0f, k_CameraHeight, 0.0f};
                 for (NS::Obj::Actor* object : scene->Objects())
                 {
                     if (NS::Game::Level::FollowCamera* camera = NS::Obj::Cast<NS::Game::Level::FollowCamera>(object))
@@ -215,8 +215,7 @@ namespace NS::Editor
                 return 0.0f;
             }
             const NS::Vector3 first = result.frames.front().playerPosition;
-            const NS::Vector3 last =
-                result.frames[static_cast<std::size_t>(result.detectionIndex - 1)].playerPosition;
+            const NS::Vector3 last = result.frames[static_cast<std::size_t>(result.detectionIndex - 1)].playerPosition;
             const float dx = last.x - first.x;
             const float dz = last.z - first.z;
             return std::sqrt(dx * dx + dz * dz) / static_cast<float>(result.detectionIndex - 1);
