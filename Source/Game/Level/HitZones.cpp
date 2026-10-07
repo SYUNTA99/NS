@@ -270,7 +270,7 @@ namespace NS::Game::Level
         {
             return result;
         }
-        // 失敗した JudgeHitFace は result を書かないので、外れの既定のまま
+        result = HitFaceJudgement{};
         result.powerScale = SanitizeScale(face.remainderPowerScale);
         result.surfacePoint = body.Center();
         return result;
@@ -380,8 +380,7 @@ namespace NS::Game::Level
             points.emplace_back(shape.centerU - shape.halfU, shape.centerV + shape.halfV);
             return points;
         }
-        // 丸の縁の分割数。近似の誤差は約半パーセント
-        constexpr int segments = 32;
+        const int segments = std::max(shape.outlineSegments, 3);
         points.reserve(segments);
         for (int i = 0; i < segments; ++i)
         {

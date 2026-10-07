@@ -176,11 +176,11 @@ namespace NS::Game::Level
     //! @brief 衝撃の震え。受け手は長さの間、描く所の震えを毎フレーム MakeTremor で書き直す
     struct TackleTremorDesc
     {
-        NS::Vector3 contactOffset{};  //!< 衝突点の、受け手の根の位置からのずれ (m)。体と一緒に動く
-        float amplitudePixels = 0.0f; //!< 振れ幅。高さ 720 画素の画面の上の画素数
-        int reachFrames = 0;          //!< 衝突点から体の一番遠い所へ届くまでのフレーム数
-        int length = 0;               //!< 震えのフレーム数
-        float referenceHeight = 720.0f;
+        NS::Vector3 contactOffset{};    //!< 衝突点の、受け手の根の位置からのずれ (m)。体と一緒に動く
+        float amplitudePixels = 0.0f;   //!< 振れ幅。高さ referenceHeight 画素の画面の上の画素数
+        int reachFrames = 0;            //!< 衝突点から体の一番遠い所へ届くまでのフレーム数
+        int length = 0;                 //!< 震えのフレーム数
+        float referenceHeight = 720.0f; //!< 画素寸法を決めた基準の画面の高さ
     };
 
     //! @brief 衝撃の震えを知らせる。受け手は知らせを受けたフレームを 0 フレーム目として震える

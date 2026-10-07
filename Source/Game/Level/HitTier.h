@@ -13,7 +13,7 @@ namespace NS::Game::Level
         Wide = 2,   //!< 大きな外れ
     };
 
-    //! @brief 段の全部。段ごとのタイムラインを全部見る所 (触れる前の事象を探す所) が回す
+    // 段を足したらここにも足す
     [[nodiscard]] inline std::array<HitTier, 2> HitTiers() noexcept
     {
         return {HitTier::Center, HitTier::Wide};

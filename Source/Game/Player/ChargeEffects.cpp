@@ -375,6 +375,7 @@ namespace NS::Game::Player
         {
             return;
         }
+        // TODO: 固定ステップの位置へ置いている。60 を超える画面で段々に見えたら、補間の位置で渡す
         effects->SetTransform(record->handle, position, rotation, NS::Vector3::One);
     }
 

@@ -619,6 +619,7 @@ Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept
     return nullptr;
 }
 
+// TODO: 床の上面を仮定している。床の高さが違うレベルを作ったら、補う時に下向きに引いて置く
 NS::Vector3 Player::DefaultSpawnPosition() const noexcept
 {
     return NS::Vector3{0.0f,

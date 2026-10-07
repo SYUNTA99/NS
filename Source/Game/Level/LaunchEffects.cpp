@@ -4,7 +4,6 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Graphics/EffectScene.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/BoxCollision.h"
 #include "NSlib/Object/Components/SphereCollision.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Windows/Clock.h"
@@ -65,15 +64,9 @@ namespace NS::Game::Level
             return Vector3{value, value, value};
         }
 
-        // 当たりの箱か球の世界の外接箱。物理の登録に依らず、持ち主の変換と欄から作る
+        // 物理への登録に依らず、持ち主の変換と欄から作る
         [[nodiscard]] bool TryGetCollisionBounds(const NS::Obj::Actor& object, NS::AABB& outBounds) noexcept
         {
-            if (const NS::Obj::BoxCollision* box =
-                    NS::Obj::ComponentCast<NS::Obj::BoxCollision>(object.CollisionPart()))
-            {
-                outBounds = box->WorldAABB();
-                return true;
-            }
             if (const NS::Obj::SphereCollision* sphere =
                     NS::Obj::ComponentCast<NS::Obj::SphereCollision>(object.CollisionPart()))
             {
@@ -124,7 +117,7 @@ namespace NS::Game::Level
                                   Tuning().m_trailFramesPerLaunch * std::max(launchScale, 0.0f);
         m_trailFrames = std::max(1, static_cast<int>(std::lround(trailFrames)));
         // 威力 1 で質量だけの大きさ。強く飛ばした物ほど高く上がって強く落ちるので威力でも伸ばす
-        const float mass = m_body->Params().Mass();
+        const float mass = Tuning().Mass();
         const float powerGrowth = std::max(0.0f, 1.0f + Tuning().m_landDustPerPower * (std::max(power, 0.0f) - 1.0f));
         m_landDustScale =
             (Tuning().m_landDustBase + Tuning().m_landDustPerRootMass * std::sqrt(std::max(mass, 0.0f))) * powerGrowth;

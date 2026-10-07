@@ -1,9 +1,7 @@
 #pragma once
 
+#include "NSlib/Core/Math.h"
 #include "NSlib/Object/Component.h"
-
-#include <algorithm>
-#include <cmath>
 
 namespace NS::Game::Level
 {
@@ -12,20 +10,20 @@ namespace NS::Game::Level
     public:
         [[nodiscard]] float FadeOutSeconds() const noexcept
         {
-            if (!std::isfinite(m_fadeOutSeconds))
+            if (!NS::IsNonNegativeFinite(m_fadeOutSeconds))
             {
                 return 0.0f;
             }
-            return std::max(m_fadeOutSeconds, 0.0f);
+            return m_fadeOutSeconds;
         }
 
         [[nodiscard]] float FadeInSeconds() const noexcept
         {
-            if (!std::isfinite(m_fadeInSeconds))
+            if (!NS::IsNonNegativeFinite(m_fadeInSeconds))
             {
                 return 0.0f;
             }
-            return std::max(m_fadeInSeconds, 0.0f);
+            return m_fadeInSeconds;
         }
 
         NS_REFLECT_BEGIN(GoalParams, NS::Obj::Component)

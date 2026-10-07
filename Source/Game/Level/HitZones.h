@@ -29,8 +29,8 @@ namespace NS::Game::Level
     //! @brief JudgeHitFace の結果
     struct HitFaceJudgement
     {
-        HitTier tier = HitTier::Wide; //!< 当てはまった決まりの段。どの決まりにも当てはまらなければ外れ
-        float powerScale = 1.0f;      //!< 当てはまった決まりの威力の倍率。どれにも当てはまらなければ残りの威力の倍率
+        HitTier tier = HitTier::Wide; //!< 当たった段。赤の外は外れ
+        float powerScale = 1.0f;      //!< 威力の倍率。赤の外なら残りの威力の倍率
         float u = 0.0f;               //!< 面の上の左右の位置。自機から見て右が正。-1〜1 が触れられる幅
         float v = 0.0f;               //!< 面の上の上下の位置。上が正。-1〜1 が触れられる高さ
         float offset01 = 1.0f;        //!< 横ずれ。u の大きさを 0〜1 に丸めた値
@@ -82,9 +82,8 @@ namespace NS::Game::Level
                                                       float playerRadius) noexcept;
 
     //! @brief 溜めて放つ突進が狙う高さ (世界の y) を出す
-    //! @details 段の決まりの並びの先頭にある赤の中心の高さ。相手の体の中心の高さ + 赤の上下の位置 ×
-    //! (半分の高さ + 自機の半径)。半分の高さは JudgeHitFace と同じく体の形から出す。
-    //! 赤がどこも覆わない (横幅か縦の幅が 0) 時は相手の体の中心の高さ。赤の欄は JudgeHitFace と同じく丸めて読む
+    //! @details 赤の中心の高さ。赤がどこも覆わない時は相手の体の中心の高さ
+    //! 赤の欄と体の半分の高さは JudgeHitFace と同じく読む
     //! @param[in] face 相手の赤の欄
     //! @param[in] body 相手の体のセンサーの世界の形
     //! @param[in] direction 突進の向き。縦の成分は捨てる
@@ -98,8 +97,9 @@ namespace NS::Game::Level
                                         float playerRadius,
                                         float& outHeight) noexcept;
 
-    //! @brief 面の上の 1 つの形。段の決まりが覆う範囲か、外れの面
-    //! @details 位置と大きさは面の上の位置 (左右 u・上下 v) で表す。丸は楕円、箱は長方形で、縁ちょうどは外
+    //! @brief 面の上の 1 つの形。赤の範囲か、外れの面
+    //! @details 位置と大きさは面の上の左右 u・上下 v で表す
+    //! 丸は楕円、箱は長方形で、縁ちょうどは外
     struct HitFaceShape
     {
         HitTier tier = HitTier::Wide; //!< 形の中で当たった時の段
@@ -108,6 +108,8 @@ namespace NS::Game::Level
         float centerV = 0.0f;         //!< 中心の上下の位置。上が正
         float halfU = 1.0f;           //!< 左右の半分の幅
         float halfV = 1.0f;           //!< 上下の半分の幅
+        //! 丸の縁の分割数。既定の近似誤差は約半パーセント
+        int outlineSegments = 32;
     };
 
 #if !defined(NS_SHIPPING)

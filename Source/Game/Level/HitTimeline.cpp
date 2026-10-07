@@ -249,9 +249,10 @@ namespace NS::Game::Level
             return "up";
         case HitDirection::Down:
             return "down";
-        default:
+        case HitDirection::Any:
             return "any";
         }
+        return "any";
     }
 
     std::optional<HitDirection> ParseHitDirection(std::string_view name) noexcept
