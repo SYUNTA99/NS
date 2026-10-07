@@ -31,10 +31,8 @@ namespace NS::Editor
         void Suppress(LevelEditorController& editor) noexcept;
 
         //! @brief 描画先とゲーム視点のビューを返す
-        //! @param[in] preview true なら視点を渡さず、下見の場面のカメラを使う
         //! @return 可視ならビュー、不可視なら nullopt
-        [[nodiscard]] std::optional<NS::Obj::SceneView> CollectView(LevelEditorController& editor,
-                                                                    bool preview = false) noexcept;
+        [[nodiscard]] std::optional<NS::Obj::SceneView> CollectView(LevelEditorController& editor) noexcept;
 
         //! @brief 貼り付け中の描画先へ、下見の現在のフレームを描く
         //! @return 描画できた場合 true、それ以外の場合は false

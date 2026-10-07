@@ -243,7 +243,8 @@ void Editor::OnRender()
         {
             views.push_back(*sceneView);
         }
-        if (std::optional<NS::Obj::SceneView> gameView = m_gameView.CollectView(editor, preview != nullptr))
+        // 下見の間も描画先の寸法を合わせるために呼ぶ。下見の絵は RenderPreview が描くので、ビューは積まない
+        if (std::optional<NS::Obj::SceneView> gameView = m_gameView.CollectView(editor))
         {
             if (preview == nullptr)
             {

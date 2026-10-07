@@ -313,10 +313,9 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     };
     show();
     ImGui::EndFrame();
-    const std::optional<NS::Obj::SceneView> view = game.CollectView(editor, true);
+    const std::optional<NS::Obj::SceneView> view = game.CollectView(editor);
     ASSERT_TRUE(view.has_value());
     ASSERT_TRUE(view->target->IsValid());
-    EXPECT_FALSE(view->viewPose.has_value());
     show();
     renderer.BeginFrame();
     ASSERT_NE(preview.Seek(0), nullptr);
@@ -396,7 +395,7 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         begin();
         drawPanel();
         ImGui::EndFrame();
-        const std::optional<NS::Obj::SceneView> view = game.CollectView(editor, true);
+        const std::optional<NS::Obj::SceneView> view = game.CollectView(editor);
         ASSERT_TRUE(view.has_value());
         begin();
         EXPECT_EQ(timeline.Preview(editor), nullptr);
