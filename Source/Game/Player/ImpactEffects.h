@@ -340,6 +340,7 @@ namespace NS::Game::Player
         int m_landDustLife = 30;
         //! 粉が床へ埋まらないよう浮かせる高さ。単位はメートル
         float m_dustRingLift = 0.3f;
+        //! 筋が玉の陰に入らない傾き。玉の半径と筋の半幅の和を、筋の中心までの長さで割る
         float m_reboundStreakMinAcross = 0.8f / 1.3f;
 
         float m_coreDiameterBase = 0.3f;

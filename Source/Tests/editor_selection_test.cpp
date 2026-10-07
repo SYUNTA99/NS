@@ -7,8 +7,10 @@
 #include "Editor/PlacementCatalog.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
+#include "NSlib/Object/Components/TransformComponent.h"
 #include "NSlib/Object/ObjectList.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -135,6 +137,41 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
         editor.SetSelectedFreePosition(NS::Vector3{5.0f, 0.0f, 0.0f});
         editor.CommitTransformEdit();
         EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore);
+        editor.EnterEdit();
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// プレイ中に動かした位置・回転・スケールは、やり直しで戻る先の凍結にも届く
+TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "プレイ中の変形の試し";
+    desc.window.size = {160, 90};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<SelectionTestLayer>([] {
+        NS::Obj::Scene scene;
+        LevelEditorController editor(&scene);
+        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+        ASSERT_NE(item, nullptr);
+        editor.PlaceItem(*item);
+        const std::uint32_t id = editor.SelectedObjectId();
+
+        editor.EnterPlay();
+        const NS::Quaternion rotation = NS::Quaternion::CreateFromYawPitchRoll(0.5f, 0.0f, 0.0f);
+        editor.SetSelectedFreePosition(NS::Vector3{5.0f, 1.0f, 2.0f});
+        editor.SetSelectedFreeRotation(rotation);
+        editor.SetSelectedFreeScale(NS::Vector3{2.0f, 2.0f, 2.0f});
+
+        const nlohmann::json& baseline = scene.PlayBaseline();
+        const std::size_t index = NS::Obj::FindObjectIndexById(baseline, id);
+        ASSERT_NE(index, NS::Obj::k_NoObjectIndex);
+        const nlohmann::json& object = NS::Obj::SceneJsonObjects(baseline)[index];
+        EXPECT_FLOAT_EQ(NS::Obj::ObjectPosition(object).x, 5.0f);
+        EXPECT_FLOAT_EQ(NS::Obj::ObjectRotation(object).y, rotation.y);
+        EXPECT_FLOAT_EQ(NS::Obj::ObjectScale(object).x, 2.0f);
         editor.EnterEdit();
     }));
     EXPECT_EQ(app.Run(), 0);
