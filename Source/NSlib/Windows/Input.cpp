@@ -518,10 +518,7 @@ namespace NS::OS
         }
     } // namespace
 
-    void DispatchWin32MessageToInput(Input& input,
-                                     unsigned int msg,
-                                     std::uintptr_t wparam,
-                                     std::intptr_t lparam) noexcept
+    void DispatchWin32MessageToInput(Input& input, UINT msg, WPARAM wparam, LPARAM lparam) noexcept
     {
         switch (msg)
         {

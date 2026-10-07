@@ -19,8 +19,7 @@ namespace NS::Obj
             return &*it;
         }
 
-        // entry の fields object を返し、無ければ作る。SetField の書き込み先
-        nlohmann::json& EnsureFields(nlohmann::json& entry)
+        nlohmann::json& EnsureObject(nlohmann::json& entry)
         {
             if (!entry.is_object())
             {
@@ -135,32 +134,32 @@ namespace NS::Obj
 
     void SetField(nlohmann::json& entry, std::string_view name, float value)
     {
-        EnsureFields(entry)[std::string(name)] = value;
+        EnsureObject(entry)[std::string(name)] = value;
     }
 
     void SetField(nlohmann::json& entry, std::string_view name, int value)
     {
-        EnsureFields(entry)[std::string(name)] = value;
+        EnsureObject(entry)[std::string(name)] = value;
     }
 
     void SetField(nlohmann::json& entry, std::string_view name, bool value)
     {
-        EnsureFields(entry)[std::string(name)] = value;
+        EnsureObject(entry)[std::string(name)] = value;
     }
 
     void SetField(nlohmann::json& entry, std::string_view name, const NS::Vector3& value)
     {
-        EnsureFields(entry)[std::string(name)] = nlohmann::json{value.x, value.y, value.z};
+        EnsureObject(entry)[std::string(name)] = nlohmann::json{value.x, value.y, value.z};
     }
 
     void SetField(nlohmann::json& entry, std::string_view name, const NS::Quaternion& value)
     {
-        EnsureFields(entry)[std::string(name)] = nlohmann::json{value.x, value.y, value.z, value.w};
+        EnsureObject(entry)[std::string(name)] = nlohmann::json{value.x, value.y, value.z, value.w};
     }
 
     void SetField(nlohmann::json& entry, std::string_view name, std::string_view value)
     {
-        EnsureFields(entry)[std::string(name)] = std::string(value);
+        EnsureObject(entry)[std::string(name)] = std::string(value);
     }
 
     void SetField(nlohmann::json& entry, std::string_view name, const char* value)
@@ -173,7 +172,7 @@ namespace NS::Obj
         // 素の数値だと読込時に Int と区別できないため {"ref": id} の単キー object で書く
         nlohmann::json ref;
         ref["ref"] = value.id;
-        EnsureFields(entry)[std::string(name)] = std::move(ref);
+        EnsureObject(entry)[std::string(name)] = std::move(ref);
     }
 
 } // namespace NS::Obj

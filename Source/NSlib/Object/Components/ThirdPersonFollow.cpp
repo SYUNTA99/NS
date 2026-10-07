@@ -169,7 +169,7 @@ namespace NS::Obj
         {
             return false;
         }
-        if (desc.hasAimTarget && !(std::isfinite(desc.aimTargetRadius) && desc.aimTargetRadius >= 0.0f))
+        if (desc.hasAimTarget && !NS::IsNonNegativeFinite(desc.aimTargetRadius))
         {
             return false;
         }
@@ -466,7 +466,7 @@ namespace NS::Obj
         // 寄り (締めと真ん中への下向き) は溜めの量の指数乗で効かせる。溜めの終わりにかけて速まり、もうすぐ弾ける事を
         // 見せる。溜めの揺れのトラウマも 2 乗で効くので、揺れと寄りが一緒に高まる。指数が正でなければ比例にする
         float approachExponent = 1.0f;
-        if (std::isfinite(m_chargeApproachExponent) && m_chargeApproachExponent > 0.0f)
+        if (NS::IsPositiveFinite(m_chargeApproachExponent))
         {
             approachExponent = m_chargeApproachExponent;
         }

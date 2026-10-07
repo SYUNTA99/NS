@@ -161,8 +161,10 @@ namespace NS::Obj
         [[nodiscard]] SceneCamera* Camera() const noexcept { return m_camera; }
 
     private:
-        // priority 最高の vcam。activeOnly なら効いている物から選ぶ
-        [[nodiscard]] VirtualCamera* SelectTop(bool activeOnly) const noexcept;
+        // 効いている vcam のうち priority 最高の物。無ければ nullptr
+        [[nodiscard]] VirtualCamera* SelectActive() const noexcept;
+        // 効いていない物も含めて priority 最高の vcam。無ければ nullptr
+        [[nodiscard]] VirtualCamera* SelectHighest() const noexcept;
 
         // 積んであるトラウマの揺れ。無ければ積んで返す
         [[nodiscard]] CameraTraumaModifier* TraumaModifier();

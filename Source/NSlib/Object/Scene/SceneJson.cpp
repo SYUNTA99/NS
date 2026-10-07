@@ -223,8 +223,8 @@ namespace NS::Obj
     NS::Vector3 NormalizeGravityDirection(const NS::Vector3& direction) noexcept
     {
         const float lengthSquared = direction.LengthSquared();
-        if (!std::isfinite(direction.x) || !std::isfinite(direction.y) || !std::isfinite(direction.z) ||
-            !std::isfinite(lengthSquared) || !(lengthSquared > NS::k_Epsilon * NS::k_Epsilon))
+        if (!NS::IsFinite(direction) || !std::isfinite(lengthSquared) ||
+            !(lengthSquared > NS::k_Epsilon * NS::k_Epsilon))
         {
             return NS::Vector3{0.0f, -1.0f, 0.0f};
         }

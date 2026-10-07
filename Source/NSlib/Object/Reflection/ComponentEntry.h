@@ -22,7 +22,7 @@ namespace NS::Obj
     //! @return 読めた場合 true、配列でない・長さが違う・数でない成分がある場合は false
     [[nodiscard]] bool ReadQuaternion(const nlohmann::json& value, NS::Quaternion& out) noexcept;
 
-    //! entry の fields から値を型付きで読む。不在・型不一致は fallback
+    //! entry から値を型付きで読む。不在・型不一致は fallback
     [[nodiscard]] float FieldFloat(const nlohmann::json& entry, std::string_view name, float fallback) noexcept;
     [[nodiscard]] int FieldInt(const nlohmann::json& entry, std::string_view name, int fallback) noexcept;
     [[nodiscard]] NS::Vector3 FieldVector3(const nlohmann::json& entry,
@@ -38,8 +38,8 @@ namespace NS::Obj
     [[nodiscard]] ActorRef FieldObjectRef(const nlohmann::json& entry, std::string_view name) noexcept;
     [[nodiscard]] bool HasField(const nlohmann::json& entry, std::string_view name) noexcept;
 
-    //! entry の fields へ値を書く。JSON 表現は保存形式と同じ
-    //! (Vector3=[x,y,z] / Quaternion=[x,y,z,w] / ActorRef={"ref":id})
+    //! entry へ値を書く。Vector3 は [x,y,z]、Quaternion は [x,y,z,w]
+    //! ActorRef は {"ref":id} の形で書く
     void SetField(nlohmann::json& entry, std::string_view name, float value);
     void SetField(nlohmann::json& entry, std::string_view name, int value);
     void SetField(nlohmann::json& entry, std::string_view name, bool value);

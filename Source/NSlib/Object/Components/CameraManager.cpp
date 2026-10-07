@@ -205,12 +205,29 @@ namespace NS::Obj
         m_blending = true;
     }
 
-    VirtualCamera* CameraManager::SelectTop(bool activeOnly) const noexcept
+    VirtualCamera* CameraManager::SelectActive() const noexcept
     {
         VirtualCamera* best = nullptr;
         for (VirtualCamera* vcam : m_vcams)
         {
-            if (vcam == nullptr || (activeOnly && !vcam->IsActive()))
+            if (vcam == nullptr || !vcam->IsActive())
+            {
+                continue;
+            }
+            if (best == nullptr || vcam->VcamPriority() > best->VcamPriority())
+            {
+                best = vcam;
+            }
+        }
+        return best;
+    }
+
+    VirtualCamera* CameraManager::SelectHighest() const noexcept
+    {
+        VirtualCamera* best = nullptr;
+        for (VirtualCamera* vcam : m_vcams)
+        {
+            if (vcam == nullptr)
             {
                 continue;
             }
@@ -224,7 +241,7 @@ namespace NS::Obj
 
     std::optional<CameraPose> CameraManager::EvaluateTopPose(float alpha) const noexcept
     {
-        VirtualCamera* best = SelectTop(false);
+        VirtualCamera* best = SelectHighest();
         if (best == nullptr)
         {
             return std::nullopt;
@@ -234,7 +251,7 @@ namespace NS::Obj
 
     void CameraManager::OnTick()
     {
-        VirtualCamera* next = SelectTop(true);
+        VirtualCamera* next = SelectActive();
         if (next != m_active)
         {
             // 直前まで写していた pose から新 vcam へ繋ぐ。旧 pose が無い初回 active 化はカットする
@@ -269,7 +286,7 @@ namespace NS::Obj
         VirtualCamera* active = m_active;
         if (active == nullptr || !active->IsActive())
         {
-            active = SelectTop(true);
+            active = SelectActive();
         }
         if (active == nullptr)
         {
@@ -323,7 +340,7 @@ namespace NS::Obj
         // 非 active になった vcam の pose は書かない。一時停止で OnTick が回らない間も選び直す
         if (m_active == nullptr || !m_active->IsActive())
         {
-            m_active = SelectTop(true);
+            m_active = SelectActive();
         }
         if (m_active == nullptr || m_camera == nullptr)
         {
