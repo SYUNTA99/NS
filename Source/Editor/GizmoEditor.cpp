@@ -212,11 +212,42 @@ namespace NS::Editor
             return std::sqrt(dx * dx + dy * dy);
         }
 
+        // ギズモは世界の空間で動かす
+        [[nodiscard]] TransformState WorldState(const NS::Obj::Transform& target) noexcept
+        {
+            // 親が無ければ持つ値が世界の値。分解を通すと誤差が載り、触っていない欄まで書き換わる
+            if (target.Parent() == nullptr)
+            {
+                return TransformState{target.Position(), target.Rotation(), target.Scale()};
+            }
+            const NS::AffineDecomposition world = NS::DecomposeAffine(target.WorldMatrix());
+            return TransformState{world.translation, world.rotation, world.scale};
+        }
+
+        // 世界の値を親の空間へ戻して書く。Transform が持つのは親の空間の値
         void ApplyState(NS::Obj::Transform& target, const TransformState& state) noexcept
         {
-            target.SetPosition(state.position);
-            target.SetRotation(state.rotation);
-            target.SetScale(state.scale);
+            const NS::Obj::Transform* parent = target.Parent();
+            if (parent == nullptr)
+            {
+                target.SetPosition(state.position);
+                target.SetRotation(state.rotation);
+                target.SetScale(state.scale);
+                return;
+            }
+
+            NS::Matrix local = NS::Matrix::CreateScale(state.scale) * NS::Matrix::CreateFromQuaternion(state.rotation) *
+                               NS::Matrix::CreateTranslation(state.position) * parent->WorldMatrix().Invert();
+            NS::Vector3 scale{};
+            NS::Quaternion rotation{};
+            NS::Vector3 position{};
+            if (!local.Decompose(scale, rotation, position))
+            {
+                return;
+            }
+            target.SetPosition(position);
+            target.SetRotation(rotation);
+            target.SetScale(scale);
         }
 
         // スクリーンのドラッグ操作を評価し、新しいトランスフォーム状態を計算する
@@ -437,8 +468,9 @@ namespace NS::Editor
         // 先にギズモのハンドルを拾う
         if (m_selected != nullptr && m_tool != GizmoTool::Select)
         {
-            const GizmoAxis axis = ToolHandlePick(m_selected->Position(),
-                                                  EffectiveAxisOrientation(m_tool, m_space, m_selected->Rotation()),
+            const TransformState world = WorldState(*m_selected);
+            const GizmoAxis axis = ToolHandlePick(world.position,
+                                                  EffectiveAxisOrientation(m_tool, m_space, world.rotation),
                                                   m_tool,
                                                   mouse2d,
                                                   viewProjection,
@@ -448,7 +480,7 @@ namespace NS::Editor
                 m_dragging = true;
                 m_dragAxis = axis;
                 m_dragStartScreen = mouse2d;
-                m_dragBefore = TransformState{m_selected->Position(), m_selected->Rotation(), m_selected->Scale()};
+                m_dragBefore = world;
                 return;
             }
         }
@@ -515,8 +547,9 @@ namespace NS::Editor
             return;
         }
 
-        const NS::Vector3 origin = m_selected->Position();
-        const NS::Quaternion rotation = EffectiveAxisOrientation(m_tool, m_space, m_selected->Rotation());
+        const TransformState world = WorldState(*m_selected);
+        const NS::Vector3 origin = world.position;
+        const NS::Quaternion rotation = EffectiveAxisOrientation(m_tool, m_space, world.rotation);
         NS::Vector2 origin2d{};
         if (!ProjectToScreen(origin, viewProjection, viewport, origin2d))
         {

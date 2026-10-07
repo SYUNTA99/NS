@@ -387,6 +387,9 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_editor.SetFindCellObjectFn([this](std::int16_t x, std::int16_t y, std::int16_t z) {
         return NS::Editor::FindObjectIdAtCell(m_scene->Objects(), x, y, z);
     });
+    m_editor.SetCellOccupiedFn([this](std::int16_t x, std::int16_t y, std::int16_t z) {
+        return NS::Editor::HasPlacedObjectAtCell(m_scene->Objects(), x, y, z);
+    });
     m_editor.SetCollectCellsFn([this]() {
         std::vector<NS::Editor::EditorMode::CellCoord> cells;
         cells.reserve(m_scene->Objects().ObjectCount());
@@ -1093,29 +1096,23 @@ void LevelEditorController::RenderSelectionOutlines(NS::Gfx::DebugShapes& shapes
     const NS::Color color{1.0f, 0.65f, 0.15f, 1.0f};
     for (const std::uint32_t id : m_selectionIds)
     {
+        if (id == m_selectedObjectId)
+        {
+            continue;
+        }
         NS::Obj::Actor* object = m_scene->Objects().FindByObjectId(id);
         if (object == nullptr)
         {
             continue;
         }
 
+        // 拡縮は親の分も掛かった world から取る。局所の値では親の下の物で枠が合わない
         const NS::Matrix world = object->Root().WorldMatrix();
-        const NS::Vector3 scale = object->Root().Scale();
-
-        // 行の基底が各軸の向き。正規化して大きさは halfExtent へ回す
-        NS::OBB obb{};
-        obb.center = NS::Vector3{world._41, world._42, world._43};
-        obb.axisX = NS::Vector3{world._11, world._12, world._13};
-        obb.axisY = NS::Vector3{world._21, world._22, world._23};
-        obb.axisZ = NS::Vector3{world._31, world._32, world._33};
-        obb.axisX.Normalize();
-        obb.axisY.Normalize();
-        obb.axisZ.Normalize();
+        const NS::AffineDecomposition parts = NS::DecomposeAffine(world);
         // 1m 立方の cube mesh の半サイズ 0.5 に拡縮を掛ける
-        obb.halfExtentX = std::abs(scale.x) * 0.5f;
-        obb.halfExtentY = std::abs(scale.y) * 0.5f;
-        obb.halfExtentZ = std::abs(scale.z) * 0.5f;
-        shapes.OBB(obb, color);
+        const NS::Vector3 half{
+            std::abs(parts.scale.x) * 0.5f, std::abs(parts.scale.y) * 0.5f, std::abs(parts.scale.z) * 0.5f};
+        shapes.OBB(NS::MakeOBB(world.Translation(), parts.rotation, half), color);
     }
 }
 
@@ -1758,7 +1755,7 @@ void LevelEditorController::FocusSelectedInView() noexcept
         centers.push_back(center);
         sum += center;
 
-        const NS::Vector3 scale = object->Root().Scale();
+        const NS::Vector3 scale = NS::DecomposeAffine(world).scale;
         // 1m 立方の cube mesh の半サイズ 0.5 に拡縮を掛ける
         const float half = std::max({std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)}) * 0.5f;
         extent = std::max(extent, half);
@@ -1818,6 +1815,20 @@ void LevelEditorController::CaptureDragFollowers() noexcept
             }
         }
         if (underSelected)
+        {
+            continue;
+        }
+        // 主対象の先祖を動かすと主対象も一緒に動き、毎フレーム差が膨らむ
+        bool aboveDragged = false;
+        for (const NS::Obj::Actor* ancestor = primary->Parent(); ancestor != nullptr; ancestor = ancestor->Parent())
+        {
+            if (ancestor == object)
+            {
+                aboveDragged = true;
+                break;
+            }
+        }
+        if (aboveDragged)
         {
             continue;
         }

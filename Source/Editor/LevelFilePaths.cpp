@@ -156,14 +156,20 @@ namespace NS::Editor
             std::string relStr = path.substr(assetsDir.size() + 1);
             const std::string extension = NS::OS::FileSystem::Extension(relStr);
             relStr.resize(relStr.size() - extension.size());
-            if (!SanitizeLevelPath(relStr).empty())
-            {
-                result.push_back(std::move(relStr));
-            }
-            else
+            const std::string safe = SanitizeLevelPath(relStr);
+            if (safe.empty())
             {
                 // 黙って落とすとレベル消失に見える。除外したことをログに残す
                 NS_LOG_WARN(App, "レベル一覧から除外: {} (パスに使えない文字か長さ超過)", relStr);
+            }
+            else if (safe.find('/') == std::string::npos)
+            {
+                // フォルダの無い名前は Scenes/ の下で開くので、Assets 直下は開けない
+                NS_LOG_WARN(App, "レベル一覧から除外: {} (Assets 直下の .scene は開けない)", relStr);
+            }
+            else
+            {
+                result.push_back(std::move(relStr));
             }
         }
         std::sort(result.begin(), result.end());

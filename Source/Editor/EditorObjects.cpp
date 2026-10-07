@@ -62,16 +62,21 @@ namespace NS::Editor
         }
     } // namespace
 
-    bool IsCellBrushObject(const nlohmann::json& object) noexcept
-    {
-        // 自前の振る舞いを持つ Actor は、ブラシの置換や削除で崩さない
-        return NS::Obj::ObjectJsonClass(object) == "MapParts";
-    }
-
     bool IsCellBrushObject(const NS::Obj::Actor& object) noexcept
     {
         // 実行時の一時オブジェクトは配置物でないため対象外
-        return !object.IsTransient() && std::string_view{object.ClassName()} == "MapParts";
+        // 自前の振る舞いを持つ Actor は、ブラシの置換や削除で崩さない
+        if (object.IsTransient() || std::string_view{object.ClassName()} != "MapParts")
+        {
+            return false;
+        }
+        const NS::Obj::Model* model = object.ModelPart();
+        if (model == nullptr)
+        {
+            return false;
+        }
+        const std::string_view mesh = model->MeshRef();
+        return mesh == "cube" || mesh == "wedge45";
     }
 
     std::int16_t ObjectCellX(const NS::Obj::Actor& object) noexcept
@@ -106,25 +111,27 @@ namespace NS::Editor
         return NS::Obj::k_NoObjectId;
     }
 
-    std::uint8_t CellRotationStep(const nlohmann::json& object) noexcept
+    bool HasPlacedObjectAtCell(const NS::Obj::ObjectList& objects,
+                               std::int16_t x,
+                               std::int16_t y,
+                               std::int16_t z) noexcept
     {
-        // q と -q は同じ回転なので fabs で符号を無視し、4 候補から一番近いものを選ぶ
-        const NS::Quaternion current = NS::Obj::ObjectRotation(object);
-        std::uint8_t best = 0;
-        float bestDot = -2.0f;
-        for (std::uint8_t step = 0; step < 4; ++step)
+        for (const NS::Obj::Actor* object : objects)
         {
-            const float yaw = static_cast<float>(step) * k_QuarterTurnYaw;
-            const NS::Quaternion candidate = NS::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
-            const float dot = std::fabs(current.x * candidate.x + current.y * candidate.y + current.z * candidate.z +
-                                        current.w * candidate.w);
-            if (dot > bestDot)
+            if (!object->IsTransient() && ObjectCellX(*object) == x && ObjectCellY(*object) == y &&
+                ObjectCellZ(*object) == z)
             {
-                bestDot = dot;
-                best = step;
+                return true;
             }
         }
-        return best;
+        return false;
+    }
+
+    void AddCellQuarterTurn(nlohmann::json& object) noexcept
+    {
+        // 今の回転の後に世界の Y 軸まわりを掛ける。段へ丸めると傾きが消える
+        const NS::Quaternion quarter = NS::Quaternion::CreateFromYawPitchRoll(k_QuarterTurnYaw, 0.0f, 0.0f);
+        NS::Obj::SetObjectRotation(object, NS::Obj::ObjectRotation(object) * quarter);
     }
 
     void SetCellRotationStep(nlohmann::json& object, std::uint8_t rotationStep) noexcept

@@ -47,7 +47,7 @@ namespace NS::Editor
         {
             bool valid = false;            //!< ブロック面か地面に当たったか
             NS::Vector3 placementCenter{}; //!< 配置先セルの中心ワールド座標
-            bool placementBlocked = false; //!< 配置予定地にすでにブロックが存在するかどうか
+            bool placementBlocked = false; //!< 配置予定地に種類を問わず配置物が居るか
             CellCoord hit{};               //!< ヒットしたセル
             CellCoord place{};             //!< 配置先セル
         };
@@ -65,6 +65,12 @@ namespace NS::Editor
         void SetFindCellObjectFn(std::function<std::uint32_t(std::int16_t, std::int16_t, std::int16_t)> fn) noexcept
         {
             m_findCellObject = std::move(fn);
+        }
+
+        //! @brief cell に種類を問わず配置物が居るかを引く関数を差す
+        void SetCellOccupiedFn(std::function<bool(std::int16_t, std::int16_t, std::int16_t)> fn) noexcept
+        {
+            m_cellOccupied = std::move(fn);
         }
 
         //! @brief live の全 cell ブラシ配置物の cell 座標一覧を返す関数を差す。カーソルの ray 判定が読む
@@ -154,9 +160,10 @@ namespace NS::Editor
         IObjectSnapshotApplier* m_applier = nullptr;       // grid 編集・ undo を live へ通す適用経路
         std::function<void(nlohmann::json&&)> m_loadLevel; // 読み込んだ文書を実体側へ取り込む
         std::function<std::uint32_t(std::int16_t, std::int16_t, std::int16_t)>
-            m_findCellObject;                                   // cell に居る配置物の永続 id を live から引く
-        std::function<std::vector<CellCoord>()> m_collectCells; // live の cell ブラシ座標一覧
-        std::function<std::uint32_t()> m_allocateId;            // 新規配置物の永続 id 採番
+            m_findCellObject; // cell に居る配置物の永続 id を live から引く
+        std::function<bool(std::int16_t, std::int16_t, std::int16_t)> m_cellOccupied; // 種類を問わず居るか
+        std::function<std::vector<CellCoord>()> m_collectCells;                       // live の cell ブラシ座標一覧
+        std::function<std::uint32_t()> m_allocateId;                                  // 新規配置物の永続 id 採番
         NS::OS::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
         NS::Obj::SceneCamera* m_camera = nullptr;
@@ -192,6 +199,8 @@ namespace NS::Editor
 
         //! cell に cell ブラシ配置物が居るか。live 照会が未設定なら常に不在
         [[nodiscard]] bool HasObjectAtCell(std::int16_t x, std::int16_t y, std::int16_t z) const noexcept;
+        //! cell に種類を問わず配置物が居るか。置けるかの判定だけが読む
+        [[nodiscard]] bool IsCellOccupied(std::int16_t x, std::int16_t y, std::int16_t z) const noexcept;
 
         [[nodiscard]] bool SaveLevelToName(std::string_view name) noexcept;
         void OverwriteCurrentLevel() noexcept;

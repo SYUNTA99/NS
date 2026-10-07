@@ -17,10 +17,8 @@ namespace NS::Obj
 
 namespace NS::Editor
 {
-    //! cell ブラシが置換 / 削除できる配置物か。地形の部品 (MapParts) が対象
-    [[nodiscard]] bool IsCellBrushObject(const nlohmann::json& object) noexcept;
-
-    //! live 実体版。判定は JSON 版と同じ基準
+    //! @brief cell ブラシが置換・削除・回転できる 1 m の升の配置物か
+    //! @details 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない
     [[nodiscard]] bool IsCellBrushObject(const NS::Obj::Actor& object) noexcept;
 
     //! live 実体の cell 座標 = Root 位置を最近接整数へ丸めた値
@@ -34,8 +32,14 @@ namespace NS::Editor
                                                    std::int16_t y,
                                                    std::int16_t z) noexcept;
 
-    //! object の現在の 90° 回転 step を quaternion から最近接で復元する
-    [[nodiscard]] std::uint8_t CellRotationStep(const nlohmann::json& object) noexcept;
+    //! live の objects に、種類を問わず cell 一致の配置物が居る場合 true、それ以外の場合は false
+    [[nodiscard]] bool HasPlacedObjectAtCell(const NS::Obj::ObjectList& objects,
+                                             std::int16_t x,
+                                             std::int16_t y,
+                                             std::int16_t z) noexcept;
+
+    //! object の今の回転に、世界の Y 軸まわりの 90° を足す。傾きは残る
+    void AddCellQuarterTurn(nlohmann::json& object) noexcept;
 
     //! object の回転を rotationStep に対応する Y 軸 yaw quaternion に設定する
     void SetCellRotationStep(nlohmann::json& object, std::uint8_t rotationStep) noexcept;

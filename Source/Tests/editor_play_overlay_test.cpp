@@ -6,6 +6,8 @@
 #include <gtest/gtest.h>
 
 #include <cstddef>
+#include <cstdint>
+#include <vector>
 
 // Scene タブを描く時に渡される溜め場へ、エディタが図形を積むことを縛る
 // どのビューにこの口が付くかは ImGui のパネルが決めるので、ここでは見ない
@@ -73,4 +75,32 @@ TEST(EditorSceneViewShapes, EditShapesDoNotPileUpOverManyDraws)
     }
     EXPECT_EQ(DD::VertexCount(), std::size_t{0});
     EXPECT_EQ(DD::FaceVertexCount(), std::size_t{0});
+}
+
+// 枠は主対象以外の選択物にだけ出る。主対象はギズモで見えるので枠を重ねない
+TEST(EditorSceneViewShapes, SelectionOutlinesLeaveOutThePrimary)
+{
+    NS::Obj::Scene scene;
+    LevelEditorController editor(&scene);
+    ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
+    const std::uint32_t first = editor.SelectedObjectId();
+    ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
+    const std::uint32_t second = editor.SelectedObjectId();
+
+    const auto countLines = [&editor](std::vector<std::uint32_t> ids) {
+        editor.SelectObjects(std::move(ids), NS::Obj::k_NoObjectId);
+        NS::Gfx::DebugShapes shapes;
+        editor.DrawSceneViewShapes(shapes, NS::Matrix::Identity);
+        return shapes.VertexCount();
+    };
+    const std::size_t none = countLines({});
+    const std::size_t onlyFirst = countLines({first});
+    const std::size_t onlySecond = countLines({second});
+    editor.SelectObjects({first, second}, second);
+    NS::Gfx::DebugShapes both;
+    editor.DrawSceneViewShapes(both, NS::Matrix::Identity);
+
+    // 1 体ずつ選んだ分を引いた残りが枠。箱の枠は辺 12 本で頂点 24
+    const std::size_t outlines = both.VertexCount() + none - onlyFirst - onlySecond;
+    EXPECT_EQ(outlines, std::size_t{24});
 }

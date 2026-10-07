@@ -34,6 +34,48 @@ namespace
     private:
         std::function<void()> m_check;
     };
+
+    std::optional<NS::Vector2> FindMoveHandle(const NS::Obj::Actor& target,
+                                              const NS::Matrix& viewProjection,
+                                              const NS::Editor::ViewRect& view)
+    {
+        const NS::AffineDecomposition world = NS::DecomposeAffine(target.Root().WorldMatrix());
+        for (int y = 0; y < view.height; ++y)
+        {
+            for (int x = 0; x < view.width; ++x)
+            {
+                const NS::Vector2 point{static_cast<float>(x), static_cast<float>(y)};
+                if (NS::Editor::GizmoEditor::ToolHandlePick(world.translation,
+                                                            world.rotation,
+                                                            NS::Editor::GizmoTool::Move,
+                                                            point,
+                                                            viewProjection,
+                                                            NS::Editor::ViewRectSize(view)) !=
+                    NS::Editor::GizmoAxis::None)
+                {
+                    return point;
+                }
+            }
+        }
+        return std::nullopt;
+    }
+
+    void DragHandle(LevelEditorController& editor, NS::OS::Mouse& mouse, NS::Vector2 handle)
+    {
+        mouse.OnMove(static_cast<int>(handle.x), static_cast<int>(handle.y));
+        mouse.OnButtonDown(NS::OS::MouseButton::Left);
+        editor.Tick();
+        mouse.Update();
+        mouse.OnMove(static_cast<int>(handle.x) + 30, static_cast<int>(handle.y) + 20);
+        for (int frame = 0; frame < 4; ++frame)
+        {
+            editor.Tick();
+            mouse.Update();
+        }
+        mouse.OnButtonUp(NS::OS::MouseButton::Left);
+        editor.Tick();
+        mouse.Update();
+    }
 } // namespace
 
 // Esc は選択を外す。ギズモだけ外すと、次のフレームに残った選択の id から選び直される
@@ -127,40 +169,13 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
 
         const NS::Obj::Actor* camera = editor.SelectedObjectActor();
         ASSERT_NE(camera, nullptr);
-        const NS::Matrix viewProjection = scene.GetCameraManager()->ViewProjection();
-        std::optional<NS::Vector2> handle;
-        for (int y = 0; y < view.height && !handle; ++y)
-        {
-            for (int x = 0; x < view.width; ++x)
-            {
-                const NS::Vector2 point{static_cast<float>(x), static_cast<float>(y)};
-                if (NS::Editor::GizmoEditor::ToolHandlePick(camera->Root().Position(),
-                                                            camera->Root().Rotation(),
-                                                            NS::Editor::GizmoTool::Move,
-                                                            point,
-                                                            viewProjection,
-                                                            NS::Editor::ViewRectSize(view)) !=
-                    NS::Editor::GizmoAxis::None)
-                {
-                    handle = point;
-                    break;
-                }
-            }
-        }
+        const std::optional<NS::Vector2> handle =
+            FindMoveHandle(*camera, scene.GetCameraManager()->ViewProjection(), view);
         ASSERT_TRUE(handle.has_value());
 
         const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
         const NS::Vector3 before = camera->Root().Position();
-        mouse.OnMove(static_cast<int>(handle->x), static_cast<int>(handle->y));
-        mouse.OnButtonDown(NS::OS::MouseButton::Left);
-        editor.Tick();
-        mouse.Update();
-        mouse.OnMove(static_cast<int>(handle->x) + 30, static_cast<int>(handle->y) + 20);
-        editor.Tick();
-        mouse.Update();
-        mouse.OnButtonUp(NS::OS::MouseButton::Left);
-        editor.Tick();
-        mouse.Update();
+        DragHandle(editor, mouse, *handle);
         EXPECT_NE(editor.SelectedObjectActor()->Root().Position(), before);
         EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore + 1);
 
@@ -168,6 +183,169 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
         mouse.OnMove(startX, startY);
         mouse.ClearState();
         mouse.Update();
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// 親子を一緒に選んで子を引いても、親は動かない
+// 親も追従させると子が親ごと進み、毎フレーム差が膨らむ
+TEST(EditorSelection, DraggingAChildLeavesTheSelectedParent)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "親子の引きの試し";
+    desc.window.size = {320, 200};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
+        NS::Obj::Scene scene;
+        LevelEditorController editor(&scene);
+        editor.Setup(nullptr);
+        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+        ASSERT_NE(item, nullptr);
+        editor.PlaceItem(*item);
+        const std::uint32_t parentId = editor.SelectedObjectId();
+        editor.PlaceItem(*item);
+        const std::uint32_t childId = editor.SelectedObjectId();
+        ASSERT_TRUE(editor.SetObjectParent(childId, parentId));
+        editor.SelectObjects({parentId, childId}, childId);
+        const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
+        editor.SetGameView(view.x, view.y, view.width, view.height, true);
+        NS::OS::Mouse& mouse = app.Input().Mouse();
+        const int startX = mouse.GetX();
+        const int startY = mouse.GetY();
+        app.Input().Keyboard().ClearState();
+        mouse.ClearState();
+        editor.Tick();
+        editor.FocusSelectedInView();
+        editor.Tick();
+
+        const auto worldPosition = [&scene](std::uint32_t id) {
+            return scene.Objects().FindByObjectId(id)->Root().WorldMatrix().Translation();
+        };
+        const NS::Obj::Actor* child = scene.Objects().FindByObjectId(childId);
+        ASSERT_NE(child, nullptr);
+        const std::optional<NS::Vector2> handle =
+            FindMoveHandle(*child, scene.GetCameraManager()->ViewProjection(), view);
+        ASSERT_TRUE(handle.has_value());
+
+        const NS::Vector3 parentBefore = worldPosition(parentId);
+        const NS::Vector3 childBefore = worldPosition(childId);
+        DragHandle(editor, mouse, *handle);
+        EXPECT_NE(worldPosition(childId), childBefore);
+        EXPECT_EQ(worldPosition(parentId), parentBefore);
+
+        // 共有の入力を始めの位置と押していない状態へ戻す。残すと後の試しがマウスの動きを読む
+        mouse.OnMove(startX, startY);
+        mouse.ClearState();
+        mouse.Update();
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// ずれた親の下の物も、世界の位置に出たギズモで引ける
+TEST(EditorSelection, GizmoFollowsAChildUnderAnOffsetParent)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "親の下のギズモの試し";
+    desc.window.size = {320, 200};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
+        NS::Obj::Scene scene;
+        LevelEditorController editor(&scene);
+        editor.Setup(nullptr);
+        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+        ASSERT_NE(item, nullptr);
+        editor.PlaceItem(*item);
+        const std::uint32_t parentId = editor.SelectedObjectId();
+        const NS::Vector3 placed = scene.Objects().FindByObjectId(parentId)->Root().Position();
+        editor.SetSelectedFreePosition(placed + NS::Vector3{3.0f, 0.0f, 0.0f});
+        editor.PlaceItem(*item);
+        const std::uint32_t childId = editor.SelectedObjectId();
+        ASSERT_TRUE(editor.SetObjectParent(childId, parentId));
+        editor.SelectObjectById(childId);
+        const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
+        editor.SetGameView(view.x, view.y, view.width, view.height, true);
+        NS::OS::Mouse& mouse = app.Input().Mouse();
+        const int startX = mouse.GetX();
+        const int startY = mouse.GetY();
+        app.Input().Keyboard().ClearState();
+        mouse.ClearState();
+        editor.Tick();
+        editor.FocusSelectedInView();
+        editor.Tick();
+
+        const NS::Obj::Actor* child = scene.Objects().FindByObjectId(childId);
+        ASSERT_NE(child, nullptr);
+        ASSERT_NE(child->Root().Position(), child->Root().WorldMatrix().Translation());
+        const std::optional<NS::Vector2> handle =
+            FindMoveHandle(*child, scene.GetCameraManager()->ViewProjection(), view);
+        ASSERT_TRUE(handle.has_value());
+
+        const NS::Vector3 before = child->Root().WorldMatrix().Translation();
+        DragHandle(editor, mouse, *handle);
+        const NS::Vector3 after = scene.Objects().FindByObjectId(childId)->Root().WorldMatrix().Translation();
+        EXPECT_NE(after, before);
+
+        // 共有の入力を始めの位置と押していない状態へ戻す。残すと後の試しがマウスの動きを読む
+        mouse.OnMove(startX, startY);
+        mouse.ClearState();
+        mouse.Update();
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// 地形の部品でない物が居る升には筆で重ねて置かない
+TEST(EditorBrush, DoesNotStackOnAnOccupiedCell)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "筆の重なりの試し";
+    desc.window.size = {160, 90};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<SelectionTestLayer>([] {
+        NS::Obj::Scene scene;
+        LevelEditorController editor(&scene);
+        editor.Setup(nullptr);
+        editor.Editor().Palette().SetActiveSlot(2);
+        ASSERT_STREQ(editor.Editor().Palette().CurrentTemplateName(), "ゴール");
+        editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
+        const std::size_t placed = scene.Objects().ObjectCount();
+        editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
+        EXPECT_EQ(scene.Objects().ObjectCount(), placed);
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// R は今の向きに縦軸の四半回転を足す。傾けた物も傾きを保つ
+TEST(EditorBrush, RotateKeepsTheTilt)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "筆の回転の試し";
+    desc.window.size = {160, 90};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<SelectionTestLayer>([] {
+        NS::Obj::Scene scene;
+        LevelEditorController editor(&scene);
+        editor.Setup(nullptr);
+        editor.Editor().Palette().SetActiveSlot(0);
+        editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
+        ASSERT_EQ(scene.Objects().ObjectCount(), 1u);
+        const std::uint32_t id = scene.Objects().ObjectAt(0)->Id();
+        editor.SelectObjectById(id);
+        editor.SetSelectedFreeRotation(NS::Quaternion::CreateFromYawPitchRoll(0.0f, 0.5f, 0.0f));
+        const auto up = [&scene, id] {
+            return NS::Vector3::Transform(NS::Vector3::UnitY, scene.Objects().FindByObjectId(id)->Root().Rotation());
+        };
+        const float tiltBefore = up().y;
+
+        editor.Editor().RotateAtProgrammatic(0, 0, 0);
+        EXPECT_NEAR(up().y, tiltBefore, 1.0e-4f);
     }));
     EXPECT_EQ(app.Run(), 0);
 }

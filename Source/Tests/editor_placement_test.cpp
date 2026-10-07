@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
@@ -78,8 +79,7 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
     LevelEditorController editor(&scene);
 
     editor.AddMeshParts(NS::OS::FileSystem::Combine(
-        NS::OS::FileSystem::Combine(
-            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Models"),
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Models"),
         "__ns_missing_terrain__.glb"));
 
     NS::Obj::Actor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
@@ -91,4 +91,24 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
     EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::MeshCollision>(placed->Part("Collision")), nullptr);
     // 名前はファイル名から付く
     EXPECT_EQ(placed->Name(), "__ns_missing_terrain__");
+}
+
+// 1 m の升として数えるのは組み込みの立方体と坂だけ。投げ込んだメッシュは大きさが分からないので数えない
+TEST(EditorPlacement, OnlyTheBuiltInPartsCountAsCells)
+{
+    NS::Obj::Scene scene;
+    LevelEditorController editor(&scene);
+    const NS::Editor::PlacementItem* cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
+    ASSERT_NE(cube, nullptr);
+    editor.PlaceItem(*cube);
+    const NS::Obj::Actor* placedCube = scene.Objects().FindByObjectId(editor.SelectedObjectId());
+    ASSERT_NE(placedCube, nullptr);
+    editor.AddMeshParts(NS::OS::FileSystem::Combine(
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Models"),
+        "__ns_missing_terrain__.glb"));
+    const NS::Obj::Actor* dropped = scene.Objects().FindByObjectId(editor.SelectedObjectId());
+    ASSERT_NE(dropped, nullptr);
+
+    EXPECT_TRUE(NS::Editor::IsCellBrushObject(*placedCube));
+    EXPECT_FALSE(NS::Editor::IsCellBrushObject(*dropped));
 }

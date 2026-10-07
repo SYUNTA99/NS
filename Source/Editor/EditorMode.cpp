@@ -72,6 +72,11 @@ namespace NS::Editor
         return m_findCellObject && m_findCellObject(x, y, z) != NS::Obj::k_NoObjectId;
     }
 
+    bool EditorMode::IsCellOccupied(std::int16_t x, std::int16_t y, std::int16_t z) const noexcept
+    {
+        return m_cellOccupied && m_cellOccupied(x, y, z);
+    }
+
     void EditorMode::Tick() noexcept
     {
         if (!m_active)
@@ -487,6 +492,11 @@ namespace NS::Editor
         {
             before = m_applier->CaptureObject(id);
         }
+        else if (IsCellOccupied(x, y, z))
+        {
+            // 地形の部品でない物は筆で置き換えない
+            return;
+        }
         else
         {
             id = m_allocateId();
@@ -533,13 +543,12 @@ namespace NS::Editor
             return;
         }
         std::optional<nlohmann::json> before = m_applier->CaptureObject(id);
-        if (!before || !NS::Editor::IsCellBrushObject(*before))
+        if (!before)
         {
             return;
         }
         nlohmann::json after = *before;
-        const std::uint8_t step = NS::Editor::CellRotationStep(*before);
-        NS::Editor::SetCellRotationStep(after, static_cast<std::uint8_t>((step + 1) & 0x03));
+        NS::Editor::AddCellQuarterTurn(after);
         m_undo.Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(*before), std::move(after)),
                     *m_applier);
         m_levelDirty = true;
@@ -653,7 +662,7 @@ namespace NS::Editor
             m_cursor.placementCenter =
                 NS::Vector3{static_cast<float>(place.x), static_cast<float>(place.y), static_cast<float>(place.z)};
             m_cursor.place = place;
-            m_cursor.placementBlocked = HasObjectAtCell(place.x, place.y, place.z);
+            m_cursor.placementBlocked = IsCellOccupied(place.x, place.y, place.z);
             return;
         }
 
@@ -667,7 +676,7 @@ namespace NS::Editor
         m_cursor.placementCenter = cellCenter;
         m_cursor.place = CellCoord{RoundToCell(cellCenter.x), RoundToCell(cellCenter.y), RoundToCell(cellCenter.z)};
         m_cursor.hit = m_cursor.place;
-        m_cursor.placementBlocked = HasObjectAtCell(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
+        m_cursor.placementBlocked = IsCellOccupied(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
     }
 
     void EditorMode::HandlePlaceDeleteInput() noexcept
@@ -736,7 +745,6 @@ namespace NS::Editor
 
         if (HasObjectAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
         {
-            // 回転対象かどうかは RotateAtProgrammatic が捕捉した姿で判定する
             RotateAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
         }
         else if (m_palette.CurrentIsRotatable())
