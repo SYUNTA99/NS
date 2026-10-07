@@ -383,6 +383,11 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         const auto drawPanel = [&] {
             ImGui::SetNextWindowPos({330.0f, 0.0f});
             ImGui::SetNextWindowSize({650.0f, 780.0f});
+            ImGui::SetNextWindowCollapsed(false);
+            timeline.Render(editor);
+        };
+        const auto drawPanelCollapsed = [&] {
+            ImGui::SetNextWindowCollapsed(true);
             timeline.Render(editor);
         };
         const auto activate = [](const char* label) {
@@ -428,6 +433,10 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         activate("<");
         drawPanel();
         EXPECT_EQ(*timeline.Preview(editor)->Frame(), pausedFrame - 1);
+        ImGui::EndFrame();
+        // パネルを畳んでも、Game に下見を出していれば配置の変更は下見に届く
+        begin();
+        drawPanelCollapsed();
         ImGui::EndFrame();
         NS::Obj::Actor* target = scene.Objects().FindByObjectId(2);
         ASSERT_NE(target, nullptr);

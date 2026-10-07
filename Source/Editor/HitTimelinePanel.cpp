@@ -209,8 +209,9 @@ namespace NS::Editor
         {
             ResetPreview();
         }
-        else if (!ImGui::IsAnyItemActive())
+        else if (!ImGui::IsAnyItemActive() && (m_panelVisible || m_showPreview))
         {
+            // 見えない間は場面を写して比べない。見える側へ戻れば、閉じていた間の変更を拾う
             if (m_snapshot != editor.SceneSnapshot())
             {
                 m_needsRun = true;
@@ -234,7 +235,8 @@ namespace NS::Editor
     {
 #if NS_EDITOR_ENABLED
         const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
-        if (ImGui::Begin(k_PanelHitTimeline))
+        m_panelVisible = ImGui::Begin(k_PanelHitTimeline);
+        if (m_panelVisible)
         {
             if (playMode)
             {

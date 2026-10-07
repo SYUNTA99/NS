@@ -34,7 +34,7 @@ namespace NS::Editor
         void Render(LevelEditorController& editor) noexcept;
 
         //! @brief 配置の変更を調べ、下見の取り直しと再生時計を進める
-        //! @details パネルの可視状態に依らず毎描画フレームに 1 回呼ぶ
+        //! @details 毎描画フレームに呼ぶ。パネルも Game の下見も見えない間は配置を調べない
         //! プレイ中は下見を手放す
         void Tick(LevelEditorController& editor, float seconds);
 
@@ -82,5 +82,6 @@ namespace NS::Editor
         TimelinePlayback m_playback;
         TimelinePreview m_preview;
         bool m_showPreview = false;
+        bool m_panelVisible = false; // 直近の描画でパネルの中身が見えていたか
     };
 } // namespace NS::Editor
