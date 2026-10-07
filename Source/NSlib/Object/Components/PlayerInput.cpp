@@ -87,7 +87,7 @@ namespace NS::Obj
 
         NS::OS::Input& input = NS::OS::Input::Get();
         const NS::OS::Keyboard& kb = input.Keyboard();
-        const NS::OS::Gamepad& pad = input.Gamepad(0);
+        const NS::OS::Gamepad& pad = input.Gamepad();
 
         // トリガーは XInput の既定のしきい値を NormalizeTrigger が先に切っているので、0 を超えたかだけ見る
         const bool releaseLedgeHeld = pad.LeftTrigger() > 0.0f;

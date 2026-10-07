@@ -694,7 +694,7 @@ namespace NS::Editor
             DeleteAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
         }
 
-        NS::OS::Gamepad& gp = m_input->Gamepad(0);
+        NS::OS::Gamepad& gp = m_input->Gamepad();
         if (!gp.IsConnected())
         {
             return;
@@ -727,7 +727,7 @@ namespace NS::Editor
 
         const bool rotate =
             m_input->Keyboard().IsPressed(NS::OS::Key::R) ||
-            (m_input->Gamepad(0).IsConnected() && m_input->Gamepad(0).IsPressed(NS::OS::GamepadButton::Y));
+            (m_input->Gamepad().IsConnected() && m_input->Gamepad().IsPressed(NS::OS::GamepadButton::Y));
 
         if (!rotate || !m_cursor.valid)
         {

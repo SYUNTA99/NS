@@ -65,13 +65,12 @@ void Editor::OnAttach()
     }
 
     // Platform は UI 実装を知らないので、転送は hook 経由にする
-    app->Window().SetMessageHook(
-        [imgui = m_imgui.get()](void* hwnd, std::uint32_t msg, std::uintptr_t wParam, std::intptr_t lParam) {
-            if (imgui != nullptr)
-            {
-                (void)imgui->ForwardWndProc(hwnd, msg, wParam, lParam);
-            }
-        });
+    app->Window().SetMessageHook([imgui = m_imgui.get()](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+        if (imgui != nullptr)
+        {
+            (void)imgui->ForwardWndProc(hwnd, msg, wParam, lParam);
+        }
+    });
 
     m_controller = std::make_unique<LevelEditorController>(scene);
     m_controller->Setup(m_imgui.get());
@@ -312,8 +311,7 @@ void Editor::HandleModeToggleInput(LevelEditorController& editor) noexcept
     const bool wantKb = input.UiWantsKeyboard();
 
     const bool tabPressed = !wantKb && input.Keyboard().IsPressed(NS::OS::Key::Tab);
-    const bool startPressed =
-        input.Gamepad(0).IsConnected() && input.Gamepad(0).IsPressed(NS::OS::GamepadButton::Start);
+    const bool startPressed = input.Gamepad().IsConnected() && input.Gamepad().IsPressed(NS::OS::GamepadButton::Start);
 
     if (tabPressed || startPressed)
     {
@@ -344,7 +342,7 @@ void Editor::HandlePauseInput(LevelEditorController& editor) noexcept
     const bool wantKb = input.UiWantsKeyboard();
 
     const bool pPressed = !wantKb && input.Keyboard().IsPressed(NS::OS::Key::P);
-    const bool backPressed = input.Gamepad(0).IsConnected() && input.Gamepad(0).IsPressed(NS::OS::GamepadButton::Back);
+    const bool backPressed = input.Gamepad().IsConnected() && input.Gamepad().IsPressed(NS::OS::GamepadButton::Back);
 
     if (pPressed || backPressed)
     {

@@ -279,7 +279,7 @@ namespace NS::Obj
             m_padRunning = false;
         }
         // 曲線の途中で範囲の外へ出たら、そのフレームで振動を止める
-        if (!NS::OS::Input::Get().Gamepad(0).SetVibration(speed.left, speed.right))
+        if (!NS::OS::Input::Get().Gamepad().SetVibration(speed.left, speed.right))
         {
             NS_LOG_WARN(
                 Scene, "パッドの振動の速さが 0〜1 の外で、震わせなかった: 左 {} 右 {}", speed.left, speed.right);

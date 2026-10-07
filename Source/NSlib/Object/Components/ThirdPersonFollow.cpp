@@ -731,7 +731,7 @@ namespace NS::Obj
             m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
             m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
 
-            const NS::OS::Gamepad& pad = input.Gamepad(0);
+            const NS::OS::Gamepad& pad = input.Gamepad();
             const NS::OS::Stick rstick = pad.RightStick();
             m_yaw += rstick.x * m_stickSensX * dt * mxSign;
             m_pitch += rstick.y * m_stickSensY * dt * mySign;

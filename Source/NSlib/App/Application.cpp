@@ -275,7 +275,7 @@ namespace NS
         }
 
         // 終了の後は Update が来ないので、止めないと最後に送った振動が実機に残る
-        NS::OS::Input::Get().Gamepad(0).StopVibration();
+        NS::OS::Input::Get().Gamepad().StopVibration();
 
         m_quitGuard = nullptr;
 

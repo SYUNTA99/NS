@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <limits>
 
 namespace NS
 {
@@ -244,9 +243,6 @@ namespace NS
     //! @brief 0 除算よけの下限
     //! @details 長さ 2 乗と比べる側は k_Epsilon * k_Epsilon と書く。意味を持つ許容誤差には使わない
     inline constexpr float k_Epsilon = 1e-4f;
-
-    //! 1.0f と次に表現できる float との差
-    inline constexpr float k_FloatEpsilon = std::numeric_limits<float>::epsilon();
 
     //! @brief XZ 平面へ畳んだ向きを正規化する
     //! @param[in] v 元のベクトル。y 成分は捨てる

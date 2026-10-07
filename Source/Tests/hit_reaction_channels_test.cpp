@@ -32,7 +32,7 @@ namespace
 
     float PadLeft()
     {
-        return NS::OS::Input::Get().Gamepad(0).Vibration().left;
+        return NS::OS::Input::Get().Gamepad().Vibration().left;
     }
 
     // 左のモーターを start から frames フレームで 0 へ下げる振動

@@ -182,7 +182,7 @@ namespace NS::Gfx
             return;
         }
 
-        HWND hwnd = reinterpret_cast<HWND>(window.NativeHandle());
+        HWND hwnd = window.NativeHandle();
         const ::NS::Size2D winSize = window.Size();
         const int w = winSize.width;
         const int h = winSize.height;

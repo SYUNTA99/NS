@@ -4,9 +4,6 @@
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/StringUtils.h"
 #include "NSlib/Windows/detail/InputWin32.h"
-#include "NSlib/Windows/detail/WindowWin32.h"
-
-#include <memory>
 
 namespace NS::OS
 {
@@ -14,7 +11,7 @@ namespace NS::OS
     namespace
     {
         // Window は単一インスタンス
-        Window::Impl* s_instance = nullptr;
+        Window* s_instance = nullptr;
 
         constexpr wchar_t k_ClassName[] = L"NS_Window";
 
@@ -87,138 +84,139 @@ namespace NS::OS
             return false;
         }
 
-        LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+    } // namespace
+
+    LRESULT CALLBACK Window::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+    {
+        Window* window = s_instance;
+        if (window == nullptr)
         {
-            Window::Impl* impl = s_instance;
-            if (impl == nullptr)
-            {
-                return ::DefWindowProcW(hwnd, msg, wparam, lparam);
-            }
+            return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+        }
 
-            // 焦点を失ったまま毎フレーム SetCursorPos すると他のアプリの操作を奪うため、焦点の有無を控える
-            if (msg == WM_SETFOCUS)
-            {
-                impl->hasFocus = true;
-            }
-            else if (msg == WM_KILLFOCUS)
-            {
-                impl->hasFocus = false;
-            }
+        // 焦点を失ったまま毎フレーム SetCursorPos すると他のアプリの操作を奪うため、焦点の有無を控える
+        if (msg == WM_SETFOCUS)
+        {
+            window->m_hasFocus = true;
+        }
+        else if (msg == WM_KILLFOCUS)
+        {
+            window->m_hasFocus = false;
+        }
 
-            // OSからのメッセージを ImGui に送る
-            if (impl->messageHook)
-            {
-                impl->messageHook(hwnd, msg, wparam, lparam);
-            }
+        // OSからのメッセージを ImGui に送る
+        if (window->m_messageHook)
+        {
+            window->m_messageHook(hwnd, msg, wparam, lparam);
+        }
 
-            // 入力メッセージは Input へ振り分け
-            if (IsInputMessage(msg))
+        // 入力メッセージは Input へ振り分け
+        if (IsInputMessage(msg))
+        {
+            if (window->m_input != nullptr)
             {
-                if (impl->input != nullptr)
+                // UIがキャプチャ中の入力はゲーム側へ流さない
+                // 離しだけは流す。奪うと Input に押しっぱなしが残り、離した瞬間の入力が来なくなる
+                if (!IsReleaseMessage(msg) && IsTakenByUi(*window->m_input, msg))
                 {
-                    // UIがキャプチャ中の入力はゲーム側へ流さない
-                    // 離しだけは流す。奪うと Input に押しっぱなしが残り、離した瞬間の入力が来なくなる
-                    if (!IsReleaseMessage(msg) && IsTakenByUi(*impl->input, msg))
-                    {
-                        return ::DefWindowProcW(hwnd, msg, wparam, lparam);
-                    }
+                    return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+                }
 
-                    DispatchWin32MessageToInput(*impl->input, msg, wparam, lparam);
-                }
-                return ::DefWindowProcW(hwnd, msg, wparam, lparam);
-            }
-
-            // ウィンドウ管理メッセージ
-            switch (msg)
-            {
-            case WM_ERASEBKGND:
-            {
-                // DX11 が毎フレーム Present するので GDI の背景消去は要らない
-                // 通すと初回 Present の前に白く光るため 1 を返して止める
-                return 1;
-            }
-            case WM_SIZE:
-            {
-                if (wparam == SIZE_MINIMIZED)
-                {
-                    break;
-                }
-                impl->size.width = LOWORD(lparam);
-                impl->size.height = HIWORD(lparam);
-                if (impl->onResize)
-                {
-                    impl->onResize(impl->size);
-                }
-                break;
-            }
-            case WM_SETCURSOR:
-            {
-                // 枠やタイトルバーは既定カーソルを使用するため HTCLIENT のみ対象とする
-                if (LOWORD(lparam) == HTCLIENT && !impl->cursorVisible)
-                {
-                    ::SetCursor(nullptr);
-                    return TRUE;
-                }
-                break;
-            }
-            case WM_INPUT:
-            {
-                if (impl->input != nullptr)
-                {
-                    DispatchWin32MessageToInput(*impl->input, msg, wparam, lparam);
-                }
-                break;
-            }
-            case WM_CLOSE:
-            {
-                if (impl->onClose)
-                {
-                    impl->onClose();
-                }
-                else
-                {
-                    ::PostQuitMessage(0);
-                }
-                return 0;
-            }
-            case WM_DESTROY:
-            {
-                ::PostQuitMessage(0);
-                return 0;
-            }
-            default:
-                break;
+                DispatchWin32MessageToInput(*window->m_input, msg, wparam, lparam);
             }
             return ::DefWindowProcW(hwnd, msg, wparam, lparam);
         }
-    } // namespace
 
-    Window::Window(const WindowDesc& desc) : m_pImpl(std::make_unique<Impl>())
+        // ウィンドウ管理メッセージ
+        switch (msg)
+        {
+        case WM_ERASEBKGND:
+        {
+            // DX11 が毎フレーム Present するので GDI の背景消去は要らない
+            // 通すと初回 Present の前に白く光るため 1 を返して止める
+            return 1;
+        }
+        case WM_SIZE:
+        {
+            if (wparam == SIZE_MINIMIZED)
+            {
+                break;
+            }
+            window->m_size.width = LOWORD(lparam);
+            window->m_size.height = HIWORD(lparam);
+            if (window->m_onResize)
+            {
+                window->m_onResize(window->m_size);
+            }
+            break;
+        }
+        case WM_SETCURSOR:
+        {
+            // 枠やタイトルバーは既定カーソルを使用するため HTCLIENT のみ対象とする
+            if (LOWORD(lparam) == HTCLIENT && !window->m_cursorVisible)
+            {
+                ::SetCursor(nullptr);
+                return TRUE;
+            }
+            break;
+        }
+        case WM_INPUT:
+        {
+            if (window->m_input != nullptr)
+            {
+                DispatchWin32MessageToInput(*window->m_input, msg, wparam, lparam);
+            }
+            break;
+        }
+        case WM_CLOSE:
+        {
+            if (window->m_onClose)
+            {
+                window->m_onClose();
+            }
+            else
+            {
+                ::PostQuitMessage(0);
+            }
+            return 0;
+        }
+        case WM_DESTROY:
+        {
+            ::PostQuitMessage(0);
+            return 0;
+        }
+        default:
+            break;
+        }
+        return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+    }
+
+    Window::Window(const WindowDesc& desc)
     {
         if (s_instance != nullptr)
         {
             NS_LOG_FATAL(Platform, "Window は単一インスタンス前提です (二重生成)");
         }
-        s_instance = m_pImpl.get();
+        s_instance = this;
 
         ::SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
-        m_pImpl->hInstance = ::GetModuleHandleW(nullptr);
-        m_pImpl->size = desc.size;
+        m_hInstance = ::GetModuleHandleW(nullptr);
+        m_size = desc.size;
 
         // ウィンドウクラス登録
         WNDCLASSEXW wc{};
         wc.cbSize = sizeof(wc);
         wc.style = CS_HREDRAW | CS_VREDRAW;
         wc.lpfnWndProc = WndProc;
-        wc.hInstance = m_pImpl->hInstance;
+        wc.hInstance = m_hInstance;
         wc.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
         // 背景消去を無効化し、初回Present時の白フラッシュを回避する
         wc.hbrBackground = nullptr;
         wc.lpszClassName = k_ClassName;
 
-        m_pImpl->classAtom = ::RegisterClassExW(&wc);
-        if (m_pImpl->classAtom == 0)
+        m_classAtom = ::RegisterClassExW(&wc);
+        if (m_classAtom == 0)
         {
             NS_LOG_ERROR(Platform, "RegisterClassExW 失敗 (GetLastError={})", ::GetLastError());
             s_instance = nullptr;
@@ -233,24 +231,24 @@ namespace NS::OS
 
         const std::wstring wideTitle = ::NS::OS::StringUtils::WideFromUtf8(desc.title);
 
-        m_pImpl->hwnd = ::CreateWindowExW(exStyle,
-                                          k_ClassName,
-                                          wideTitle.c_str(),
-                                          style,
-                                          CW_USEDEFAULT,
-                                          CW_USEDEFAULT,
-                                          rect.right - rect.left,
-                                          rect.bottom - rect.top,
-                                          nullptr,
-                                          nullptr,
-                                          m_pImpl->hInstance,
-                                          nullptr);
+        m_hwnd = ::CreateWindowExW(exStyle,
+                                   k_ClassName,
+                                   wideTitle.c_str(),
+                                   style,
+                                   CW_USEDEFAULT,
+                                   CW_USEDEFAULT,
+                                   rect.right - rect.left,
+                                   rect.bottom - rect.top,
+                                   nullptr,
+                                   nullptr,
+                                   m_hInstance,
+                                   nullptr);
 
-        if (m_pImpl->hwnd == nullptr)
+        if (m_hwnd == nullptr)
         {
             NS_LOG_ERROR(Platform, "CreateWindowExW 失敗 (GetLastError={})", ::GetLastError());
-            ::UnregisterClassW(k_ClassName, m_pImpl->hInstance);
-            m_pImpl->classAtom = 0;
+            ::UnregisterClassW(k_ClassName, m_hInstance);
+            m_classAtom = 0;
             s_instance = nullptr;
             return;
         }
@@ -260,7 +258,7 @@ namespace NS::OS
         rid.usUsagePage = 0x01;
         rid.usUsage = 0x02;
         rid.dwFlags = 0;
-        rid.hwndTarget = m_pImpl->hwnd;
+        rid.hwndTarget = m_hwnd;
         if (::RegisterRawInputDevices(&rid, 1, sizeof(rid)) == FALSE)
         {
             NS_LOG_ERROR(
@@ -272,30 +270,30 @@ namespace NS::OS
         {
             showCommand = SW_SHOW;
         }
-        ::ShowWindow(m_pImpl->hwnd, showCommand);
-        ::UpdateWindow(m_pImpl->hwnd);
+        ::ShowWindow(m_hwnd, showCommand);
+        ::UpdateWindow(m_hwnd);
 
-        m_pImpl->hasFocus = (::GetForegroundWindow() == m_pImpl->hwnd);
+        m_hasFocus = (::GetForegroundWindow() == m_hwnd);
     }
 
     Window::~Window()
     {
-        if (m_pImpl->hwnd != nullptr)
+        if (m_hwnd != nullptr)
         {
-            ::DestroyWindow(m_pImpl->hwnd);
-            m_pImpl->hwnd = nullptr;
+            ::DestroyWindow(m_hwnd);
+            m_hwnd = nullptr;
         }
-        if (m_pImpl->classAtom != 0)
+        if (m_classAtom != 0)
         {
-            ::UnregisterClassW(k_ClassName, m_pImpl->hInstance);
-            m_pImpl->classAtom = 0;
+            ::UnregisterClassW(k_ClassName, m_hInstance);
+            m_classAtom = 0;
         }
         s_instance = nullptr;
     }
 
     bool Window::IsValid() const noexcept
     {
-        return m_pImpl->hwnd != nullptr;
+        return m_hwnd != nullptr;
     }
 
     void Window::PollMessages() noexcept
@@ -305,7 +303,7 @@ namespace NS::OS
         {
             if (msg.message == WM_QUIT)
             {
-                m_pImpl->shouldClose = true;
+                m_shouldClose = true;
                 continue;
             }
             ::TranslateMessage(&msg);
@@ -313,42 +311,42 @@ namespace NS::OS
         }
 
         // 相対マウスは WM_INPUT の生の移動量で動くので、毎フレーム固定点へ戻してもカメラ操作は壊れない
-        if (m_pImpl->cursorLocked && m_pImpl->hasFocus && m_pImpl->hwnd != nullptr)
+        if (m_cursorLocked && m_hasFocus && m_hwnd != nullptr)
         {
-            POINT point = m_pImpl->lockPoint.value_or(POINT{m_pImpl->size.width / 2, m_pImpl->size.height / 2});
-            ::ClientToScreen(m_pImpl->hwnd, &point);
+            POINT point = m_lockPoint.value_or(POINT{m_size.width / 2, m_size.height / 2});
+            ::ClientToScreen(m_hwnd, &point);
             ::SetCursorPos(point.x, point.y);
         }
     }
 
     bool Window::ShouldClose() const noexcept
     {
-        return m_pImpl->shouldClose;
+        return m_shouldClose;
     }
 
     ::NS::Size2D Window::Size() const noexcept
     {
-        return m_pImpl->size;
+        return m_size;
     }
 
-    void* Window::NativeHandle() const noexcept
+    HWND Window::NativeHandle() const noexcept
     {
-        return static_cast<void*>(m_pImpl->hwnd);
+        return m_hwnd;
     }
 
     void Window::SetTitle(std::string_view utf8Title) noexcept
     {
-        if (m_pImpl->hwnd == nullptr)
+        if (m_hwnd == nullptr)
         {
             return;
         }
         const std::wstring wide = ::NS::OS::StringUtils::WideFromUtf8(utf8Title);
-        ::SetWindowTextW(m_pImpl->hwnd, wide.c_str());
+        ::SetWindowTextW(m_hwnd, wide.c_str());
     }
 
     void Window::SetCursorVisible(bool visible) noexcept
     {
-        m_pImpl->cursorVisible = visible;
+        m_cursorVisible = visible;
         // 次の WM_SETCURSOR を待たず即時反映する。マウスが動かなくても切替わる
         HCURSOR cursor = nullptr;
         if (visible)
@@ -360,50 +358,50 @@ namespace NS::OS
 
     bool Window::IsCursorVisible() const noexcept
     {
-        return m_pImpl->cursorVisible;
+        return m_cursorVisible;
     }
 
     void Window::SetCursorLocked(bool locked) noexcept
     {
-        m_pImpl->cursorLocked = locked;
+        m_cursorLocked = locked;
     }
 
     bool Window::IsCursorLocked() const noexcept
     {
-        return m_pImpl->cursorLocked;
+        return m_cursorLocked;
     }
 
     void Window::SetCursorLockPoint(int clientX, int clientY) noexcept
     {
-        m_pImpl->lockPoint = POINT{clientX, clientY};
+        m_lockPoint = POINT{clientX, clientY};
     }
 
     void Window::RequestClose() noexcept
     {
-        if (m_pImpl->hwnd != nullptr)
+        if (m_hwnd != nullptr)
         {
-            ::PostMessageW(m_pImpl->hwnd, WM_CLOSE, 0, 0);
+            ::PostMessageW(m_hwnd, WM_CLOSE, 0, 0);
         }
     }
 
     void Window::SetResizeCallback(std::function<void(::NS::Size2D)> cb)
     {
-        m_pImpl->onResize = std::move(cb);
+        m_onResize = std::move(cb);
     }
 
     void Window::SetCloseCallback(std::function<void()> cb)
     {
-        m_pImpl->onClose = std::move(cb);
+        m_onClose = std::move(cb);
     }
 
     void Window::AttachInput(Input* input) noexcept
     {
-        m_pImpl->input = input;
+        m_input = input;
     }
 
     void Window::SetMessageHook(MessageHook hook)
     {
-        m_pImpl->messageHook = std::move(hook);
+        m_messageHook = std::move(hook);
     }
 
 } // namespace NS::OS

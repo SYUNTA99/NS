@@ -132,7 +132,7 @@ namespace
             now.shape = player.Resolver().ShapeFactors();
             now.shapeAnimating = player.Resolver().IsShapeAnimating();
             now.flashRemaining = player.HitReactionPart()->FlashFramesRemaining();
-            now.padLeft = NS::OS::Input::Get().Gamepad(0).Vibration().left;
+            now.padLeft = NS::OS::Input::Get().Gamepad().Vibration().left;
             if (const NS::Obj::CameraManager* cameras = player.GetCameraManager())
             {
                 now.shaking = cameras->FindModifier<NS::Obj::CameraShakeModifier>() != nullptr;
@@ -572,7 +572,7 @@ TEST(ImpactTimelineClock, ReturnsStartOnTheirOwnFrames)
     };
     const ScopedHitTimelineDirectory directory("Returns");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    (void)NS::OS::Input::Get().Gamepad(0).SetVibration(0.0f, 0.0f);
+    (void)NS::OS::Input::Get().Gamepad().SetVibration(0.0f, 0.0f);
     NS::Obj::Scene scene;
     Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);

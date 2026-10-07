@@ -408,32 +408,6 @@ namespace NS::OS
         }
     }
 
-    Input::Input() noexcept
-    {
-        for (std::size_t i = 0; i < m_gamepads.size(); ++i)
-        {
-            m_gamepads[i] = ::NS::OS::Gamepad{static_cast<int>(i)};
-        }
-    }
-
-    Gamepad& Input::Gamepad(int index) noexcept
-    {
-        if (index < 0 || static_cast<std::size_t>(index) >= m_gamepads.size())
-        {
-            return m_gamepads[0];
-        }
-        return m_gamepads[static_cast<std::size_t>(index)];
-    }
-
-    const Gamepad& Input::Gamepad(int index) const noexcept
-    {
-        if (index < 0 || static_cast<std::size_t>(index) >= m_gamepads.size())
-        {
-            return m_gamepads[0];
-        }
-        return m_gamepads[static_cast<std::size_t>(index)];
-    }
-
     bool Input::SetGamepadUserIndex(int userIndex) noexcept
     {
         if (userIndex < 0 || userIndex >= static_cast<int>(XUSER_MAX_COUNT))
@@ -441,8 +415,8 @@ namespace NS::OS
             return false;
         }
         // 向け直した後は前の番号の Update が来ないので、前の番号の振動をここで止める
-        m_gamepads[0].StopVibration();
-        m_gamepads[0] = ::NS::OS::Gamepad{userIndex};
+        m_gamepad.StopVibration();
+        m_gamepad = ::NS::OS::Gamepad{userIndex};
         return true;
     }
 
@@ -450,10 +424,7 @@ namespace NS::OS
     {
         m_keyboard.Update();
         m_mouse.Update();
-        for (NS::OS::Gamepad& pad : m_gamepads)
-        {
-            pad.Update();
-        }
+        m_gamepad.Update();
     }
 
     void Input::BeginNeutral() noexcept
@@ -466,14 +437,11 @@ namespace NS::OS
         // 控えの側を中立の物に作り直してから入れ替える。入れ替えた後の控えが手元の状態
         m_heldKeyboard = NS::OS::Keyboard{};
         m_heldMouse = NS::OS::Mouse{};
+        // 中立のパッドは Update を受けないので機器を読まず、送った速さが 0 のまま止めても機器へ書かない
+        m_heldGamepad = NS::OS::Gamepad{};
         std::swap(m_keyboard, m_heldKeyboard);
         std::swap(m_mouse, m_heldMouse);
-        for (std::size_t i = 0; i < m_gamepads.size(); ++i)
-        {
-            // 中立のパッドは Update を受けないので機器を読まず、送った速さが 0 のまま止めても機器へ書かない
-            m_heldGamepads[i] = ::NS::OS::Gamepad{static_cast<int>(i)};
-            std::swap(m_gamepads[i], m_heldGamepads[i]);
-        }
+        std::swap(m_gamepad, m_heldGamepad);
     }
 
     void Input::EndNeutral() noexcept
@@ -489,10 +457,7 @@ namespace NS::OS
         }
         std::swap(m_keyboard, m_heldKeyboard);
         std::swap(m_mouse, m_heldMouse);
-        for (std::size_t i = 0; i < m_gamepads.size(); ++i)
-        {
-            std::swap(m_gamepads[i], m_heldGamepads[i]);
-        }
+        std::swap(m_gamepad, m_heldGamepad);
     }
 
     namespace

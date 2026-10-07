@@ -1,11 +1,12 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
 
-#include <cstdint>
+#include <windows.h>
+
 #include <functional>
-#include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -27,17 +28,13 @@ namespace NS::OS
     };
 
     //! @brief OS ウィンドウ
-    //! @details OS 固有の API を隠し、メッセージ処理とサイズ・カーソル状態の取得口をまとめる
+    //! @details 単一インスタンス。二重に作ると致命ログを出す
     class Window : public NS::NonCopyable
     {
     public:
-        //! 内部実装用の不透明構造体
-        struct Impl;
-
-        //! @brief OS のネイティブメッセージをフックするためのコールバック型
-        //! @note ImGui へのイベント転送に使う。プラットフォーム層を外部へ依存させないための口
-        using MessageHook =
-            std::function<void(void* hwnd, std::uint32_t msg, std::uintptr_t wParam, std::intptr_t lParam)>;
+        //! @brief OS のメッセージをそのまま受け取るコールバック型
+        //! @note ImGui へのイベント転送に使う
+        using MessageHook = std::function<void(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)>;
 
         explicit Window(const WindowDesc& desc);
         ~Window();
@@ -54,9 +51,8 @@ namespace NS::OS
         //! @brief 現在のクライアント領域のサイズを取得する
         [[nodiscard]] NS::Size2D Size() const noexcept;
 
-        //! @brief ネイティブのウィンドウハンドルを取得する
-        //! @note Graphics 層が HWND へキャストして使う
-        [[nodiscard]] void* NativeHandle() const noexcept;
+        //! @brief ウィンドウハンドルを返す。構築に失敗した時は nullptr
+        [[nodiscard]] HWND NativeHandle() const noexcept;
 
         //! @brief ウィンドウのタイトルを変更する
         void SetTitle(std::string_view utf8Title) noexcept;
@@ -96,7 +92,28 @@ namespace NS::OS
         void SetMessageHook(MessageHook hook);
 
     private:
-        std::unique_ptr<Impl> m_pImpl;
+        static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+
+        HWND m_hwnd = nullptr;
+        ATOM m_classAtom = 0;
+        HINSTANCE m_hInstance = nullptr;
+
+        NS::Size2D m_size{0, 0};
+        bool m_shouldClose = false; //!< WM_QUIT を受けたか
+
+        std::function<void(NS::Size2D)> m_onResize;
+        std::function<void()> m_onClose;
+
+        Input* m_input = nullptr; //!< 入力の転送先。持ち主ではない
+        MessageHook m_messageHook;
+
+        // false の間はクライアント領域のカーソルを消す。WM_SETCURSOR がこの値を見て適用する
+        bool m_cursorVisible = true;
+
+        bool m_cursorLocked = false;
+        // 一度も前に出ない窓には WM_SETFOCUS が来ない。作成時に実際の状態を書く
+        bool m_hasFocus = false;
+        std::optional<POINT> m_lockPoint; //!< 無い時はクライアント領域の中央
     };
 
 } // namespace NS::OS

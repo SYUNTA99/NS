@@ -98,10 +98,6 @@ namespace NS::Obj
 
     void SceneRenderer::UnregisterRenderable(IRenderable* renderable)
     {
-        if (renderable == nullptr)
-        {
-            return;
-        }
         const std::vector<RenderEntry>::iterator it =
             std::find_if(m_renderables.begin(), m_renderables.end(), [renderable](const RenderEntry& entry) {
                 return entry.renderable == renderable;
@@ -134,10 +130,6 @@ namespace NS::Obj
 
     void SceneRenderer::UnregisterOverlay(OverlayRenderer* overlay)
     {
-        if (overlay == nullptr)
-        {
-            return;
-        }
         std::erase(m_overlays, overlay);
     }
 
@@ -175,10 +167,6 @@ namespace NS::Obj
 
     void SceneRenderer::UnregisterLight(DirectionalLight* light)
     {
-        if (light == nullptr)
-        {
-            return;
-        }
         std::erase(m_lights, light);
     }
 
@@ -188,10 +176,6 @@ namespace NS::Obj
         for (const RenderEntry& entry : m_renderables)
         {
             IRenderable* r = entry.renderable;
-            if (r == nullptr)
-            {
-                continue;
-            }
             m_renderScene.Update(entry.handle,
                                  r->WorldBounds(),
                                  r->SortCenter(),

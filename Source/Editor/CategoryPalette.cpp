@@ -37,7 +37,7 @@ namespace NS::Editor
             return;
         }
 
-        NS::OS::Gamepad& gp = input->Gamepad(0);
+        NS::OS::Gamepad& gp = input->Gamepad();
         if (gp.IsConnected())
         {
             if (gp.IsPressed(NS::OS::GamepadButton::LeftShoulder))

@@ -187,7 +187,7 @@ namespace NS::Editor
 
         // Gamepad は ImGui キャプチャ対象外、常に入力する。free-fly 入力とは別枠でその場に適用する
         {
-            NS::OS::Gamepad& gp = input.Gamepad(0);
+            NS::OS::Gamepad& gp = input.Gamepad();
             if (gp.IsConnected())
             {
                 const NS::OS::Stick rs = gp.RightStick();

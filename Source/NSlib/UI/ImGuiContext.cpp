@@ -169,7 +169,7 @@ namespace NS::UI
         }
 
         // Win32 backend 初期化
-        HWND hwnd = reinterpret_cast<HWND>(window.NativeHandle());
+        HWND hwnd = window.NativeHandle();
         if (hwnd == nullptr || !::ImGui_ImplWin32_Init(hwnd))
         {
             NS_LOG_ERROR(UI, "ImGui_ImplWin32_Init 失敗、 stub mode に fallback");

@@ -676,27 +676,16 @@ namespace NS::Gfx
 
                     const cgltf_size keyCount = sampler.input->count;
 
-                    const bool cubic = (sampler.interpolation == cgltf_interpolation_type_cubic_spline);
-                    if (cubic)
+                    cgltf_size stride = 1;
+                    cgltf_size valueOffset = 0; // cubic は inTangent, value, outTangent の中央
+                    if (sampler.interpolation == cgltf_interpolation_type_cubic_spline)
                     {
                         NS_LOG_WARN(Graphics, "glTF animation: CUBICSPLINE は未対応のため線形で代替 (path={})", path);
+                        stride = 3;
+                        valueOffset = 1;
                     }
 
                     const Interpolation interp = MapInterpolation(sampler.interpolation);
-                    const cgltf_size stride = [cubic]() -> cgltf_size {
-                        if (cubic)
-                        {
-                            return 3;
-                        }
-                        return 1;
-                    }();
-                    const cgltf_size valueOffset = [cubic]() -> cgltf_size {
-                        if (cubic)
-                        {
-                            return 1;
-                        }
-                        return 0;
-                    }(); // cubic は inTangent, value, outTangent の中央
 
                     std::vector<float> times(keyCount, 0.0f);
                     for (cgltf_size i = 0; i < keyCount; ++i)

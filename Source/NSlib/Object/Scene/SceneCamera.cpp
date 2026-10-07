@@ -34,14 +34,12 @@ namespace NS::Obj
     void SceneCamera::SetAspectRatioFromRenderer(const NS::Gfx::Renderer& renderer) noexcept
     {
         const NS::Size2D size = renderer.Size();
-        const float aspect = [&]() -> float {
-            if (size.width <= 0 || size.height <= 0)
-            {
-                return 16.0f / 9.0f;
-            }
-            return NS::AspectRatio(size);
-        }();
-        m_camera.SetAspectRatio(aspect);
+        if (size.width <= 0 || size.height <= 0)
+        {
+            m_camera.SetAspectRatio(16.0f / 9.0f);
+            return;
+        }
+        m_camera.SetAspectRatio(NS::AspectRatio(size));
     }
 
     void SceneCamera::SetNearPlane(float nearPlane) noexcept

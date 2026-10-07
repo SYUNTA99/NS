@@ -4,8 +4,6 @@
 #include "NSlib/Windows/Keyboard.h"
 #include "NSlib/Windows/Mouse.h"
 
-#include <array>
-
 namespace NS::OS
 {
     //! @brief UI が取る入力の登録内容
@@ -20,8 +18,6 @@ namespace NS::OS
     class Input
     {
     public:
-        Input() noexcept;
-
         //! @brief プロセス全体で共有されるシングルトンインスタンスを取得する
         [[nodiscard]] static Input& Get() noexcept
         {
@@ -35,13 +31,13 @@ namespace NS::OS
         [[nodiscard]] NS::OS::Mouse& Mouse() noexcept { return m_mouse; }
         [[nodiscard]] const NS::OS::Mouse& Mouse() const noexcept { return m_mouse; }
 
-        //! @brief 指定されたインデックスのゲームパッドを取得する
-        [[nodiscard]] NS::OS::Gamepad& Gamepad(int index = 0) noexcept;
-        [[nodiscard]] const NS::OS::Gamepad& Gamepad(int index = 0) const noexcept;
+        //! @brief SetGamepadUserIndex で選んだ 1 台のゲームパッドを返す
+        [[nodiscard]] NS::OS::Gamepad& Gamepad() noexcept { return m_gamepad; }
+        [[nodiscard]] const NS::OS::Gamepad& Gamepad() const noexcept { return m_gamepad; }
 
-        //! @brief Gamepad(0) が読む XInput のユーザー番号を切り替える
+        //! @brief Gamepad が読む XInput のユーザー番号を切り替える
         //! @details 0〜3 の外は何もしない。切り替えると状態を空に戻し、次の Update から読み直す
-        //! @param[in] userIndex XInput のユーザー番号 (0〜3)
+        //! @param[in] userIndex 0〜3 の XInput のユーザー番号
         //! @return 切り替えた場合 true、それ以外の場合は false
         [[nodiscard]] bool SetGamepadUserIndex(int userIndex) noexcept;
 
@@ -64,10 +60,7 @@ namespace NS::OS
         //! @brief UIがマウスやキーボードの入力をキャプチャしている状態を登録する
         //! @note 出荷ビルド等でUIが存在しない環境では常にfalseとなり、すべての入力がゲーム側へ渡る前提となる
         //! @param[in] desc UI が取る入力。既定値はすべてゲームへ渡す
-        void SetUiCapture(const UiCaptureDesc& desc) noexcept
-        {
-            m_uiCapture = desc;
-        }
+        void SetUiCapture(const UiCaptureDesc& desc) noexcept { m_uiCapture = desc; }
 
         //! UIがマウス入力をキャプチャしているかどうかを返す
         [[nodiscard]] bool UiWantsMouse() const noexcept { return m_uiCapture.wantMouse; }
@@ -89,18 +82,16 @@ namespace NS::OS
         }
 
     private:
-        static constexpr std::size_t k_GamepadSlotCount = 1;
-
         NS::OS::Keyboard m_keyboard;
         NS::OS::Mouse m_mouse;
-        std::array<NS::OS::Gamepad, k_GamepadSlotCount> m_gamepads;
+        NS::OS::Gamepad m_gamepad;
 
         UiCaptureDesc m_uiCapture{};
 
         // 中立の間に控える手元の機器の状態。BeginNeutral で入れ替え、EndNeutral で戻す
         NS::OS::Keyboard m_heldKeyboard;
         NS::OS::Mouse m_heldMouse;
-        std::array<NS::OS::Gamepad, k_GamepadSlotCount> m_heldGamepads;
+        NS::OS::Gamepad m_heldGamepad;
         int m_neutralDepth = 0; // BeginNeutral を重ねた数
     };
 
