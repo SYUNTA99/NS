@@ -243,6 +243,9 @@ private:
     //! 配置物を新しい永続 id で 1 体追加する唯一の経路。採番・履歴登録・選択をまとめて面倒を見る
     void PushCreateObject(nlohmann::json object);
 
+    //! 選んだ配置物の Root を書いた後、その欄をプレイ中の凍結へも写す
+    void MirrorRootEditToBaseline(NS::Obj::Actor& actor, std::string_view fieldName);
+
     void RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
                             const NS::Matrix& viewProjection,
                             NS::Size2D viewport) noexcept;

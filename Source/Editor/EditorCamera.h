@@ -17,7 +17,7 @@ namespace NS::Editor
         float forwardAxis = 0.0f;     // 前後 (-1..1)。flying 中のみ効く
         float strafeAxis = 0.0f;      // 左右 (-1..1)。flying 中のみ効く
         float verticalAxis = 0.0f;    // 上下 (-1..1)。flying 中のみ効く
-        float speedScale = 1.0f;      // 移動の加速倍率
+        bool boost = false;           // Shift の加速を掛けるか
         float deltaSeconds = 0.0f;    // 経過秒。ズームバネと移動量が使う
         bool flying = false;          // 見回しドラッグ中か。偽なら見回しと移動を捨てる
     };
@@ -94,6 +94,8 @@ namespace NS::Editor
             // WASD の 1 秒あたり移動量 = この値 × distance。distance 比例でズーム量に依らず体感速度を一定に保つ
             // ただし距離は k_MinMoveDistance で下支えするので、寄り切っても速さは残る
             float keyMoveSpeed = 0.6f;
+            // Shift の間の移動の倍率。微調整と広い地形の移動を両立する
+            float boostMoveScale = 4.0f;
         };
 
         [[nodiscard]] FeelTuning& Tuning() noexcept { return m_tuning; }

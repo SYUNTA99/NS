@@ -1282,11 +1282,7 @@ void LevelEditorController::SetSelectedFreePosition(NS::Vector3 position)
     if (NS::Obj::Actor* go = SelectedObjectActor())
     {
         go->Root().SetPosition(position);
-        if (NS::Obj::TransformComponent* transform =
-                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part(NS::Obj::k_TransformPartName)))
-        {
-            MirrorPlayEditToBaseline(*transform, NS::Obj::k_PositionFieldName);
-        }
+        MirrorRootEditToBaseline(*go, NS::Obj::k_PositionFieldName);
     }
 }
 
@@ -1295,11 +1291,7 @@ void LevelEditorController::SetSelectedFreeRotation(NS::Quaternion rotation)
     if (NS::Obj::Actor* go = SelectedObjectActor())
     {
         go->Root().SetRotation(rotation);
-        if (NS::Obj::TransformComponent* transform =
-                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part(NS::Obj::k_TransformPartName)))
-        {
-            MirrorPlayEditToBaseline(*transform, NS::Obj::k_RotationFieldName);
-        }
+        MirrorRootEditToBaseline(*go, NS::Obj::k_RotationFieldName);
     }
 }
 
@@ -1313,11 +1305,16 @@ void LevelEditorController::SetSelectedFreeScale(NS::Vector3 scale)
     if (NS::Obj::Actor* go = SelectedObjectActor())
     {
         go->Root().SetScale(scale);
-        if (NS::Obj::TransformComponent* transform =
-                NS::Obj::ComponentCast<NS::Obj::TransformComponent>(go->Part(NS::Obj::k_TransformPartName)))
-        {
-            MirrorPlayEditToBaseline(*transform, NS::Obj::k_ScaleFieldName);
-        }
+        MirrorRootEditToBaseline(*go, NS::Obj::k_ScaleFieldName);
+    }
+}
+
+void LevelEditorController::MirrorRootEditToBaseline(NS::Obj::Actor& actor, std::string_view fieldName)
+{
+    if (NS::Obj::TransformComponent* transform =
+            NS::Obj::ComponentCast<NS::Obj::TransformComponent>(actor.Part(NS::Obj::k_TransformPartName)))
+    {
+        MirrorPlayEditToBaseline(*transform, fieldName);
     }
 }
 

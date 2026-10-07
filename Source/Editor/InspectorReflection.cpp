@@ -516,12 +516,12 @@ namespace NS::Editor
             {
                 std::string value;
                 field.get(owner, &value);
-                char buf[256];
-                const std::size_t copied = value.copy(buf, sizeof(buf) - 1);
-                buf[copied] = '\0';
-                if (ImGui::InputText("##value", buf, sizeof(buf)))
+                char text[256];
+                const std::size_t copied = value.copy(text, sizeof(text) - 1);
+                text[copied] = '\0';
+                if (ImGui::InputText("##value", text, sizeof(text)))
                 {
-                    std::string edited(buf);
+                    std::string edited(text);
                     field.set(owner, &edited);
                     result.changed = true;
                 }

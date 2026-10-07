@@ -171,7 +171,7 @@ namespace NS::Editor
         {
             if (io.KeyShift)
             {
-                input.speedScale = 4.0f;
+                input.boost = true;
             }
             if (ImGui::IsKeyDown(ImGuiKey_W))
             {

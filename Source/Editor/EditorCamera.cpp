@@ -77,7 +77,7 @@ namespace NS::Editor
         const float cosYaw = std::cos(m_yaw);
         // 視線方向 forward = normalize(center - eye)。LH look-at の前方で pitch を含むので見ている方向へ進める
         const NS::Vector3 forward{-cosPitch * sinYaw, -sinPitch, -cosPitch * cosYaw};
-        // 画面右 right = cross(worldUp, forward)。LH なので yaw=0 で -X。旧実装の +X とは逆で、左右反転を解消する
+        // 画面右。世界の上と forward の外積で、LH なので yaw=0 で -X
         const NS::Vector3 right{-cosYaw, 0.0f, sinYaw};
         // 速さは distance 比例のままだが、寄った時に動けなくならないよう距離に下限を置く
         // 立方体 1 個へ注視すると distance は下限の 2m まで落ち、比例のままでは 1.2m/s と歩くより遅い
@@ -100,7 +100,12 @@ namespace NS::Editor
         ApplyZoom(input.wheelNotches * m_tuning.mouseSensZoom);
         if (input.flying)
         {
-            ApplyFlyMove(input.forwardAxis, input.strafeAxis, input.verticalAxis, input.deltaSeconds, input.speedScale);
+            float speedScale = 1.0f;
+            if (input.boost)
+            {
+                speedScale = m_tuning.boostMoveScale;
+            }
+            ApplyFlyMove(input.forwardAxis, input.strafeAxis, input.verticalAxis, input.deltaSeconds, speedScale);
         }
 
         // distance を臨界減衰バネで目標距離へ滑らかに寄せる
@@ -178,10 +183,9 @@ namespace NS::Editor
             {
                 frameInput.verticalAxis -= 1.0f;
             }
-            // 微調整と広い地形移動を両立するため、Shift 押下時だけ 4 倍速にする
             if (kb.IsHeld(NS::OS::Key::Shift))
             {
-                frameInput.speedScale = 4.0f;
+                frameInput.boost = true;
             }
         }
 

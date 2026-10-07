@@ -45,6 +45,7 @@ namespace NS::Editor
             ImGui::DragFloat("パッド平行移動感度", &tuning.padSensPan, 0.1f, 0.5f, 30.0f);
             ImGui::DragFloat("パッドズーム感度", &tuning.padSensZoom, 0.05f, 0.5f, 15.0f);
             ImGui::DragFloat("キー移動速度", &tuning.keyMoveSpeed, 0.02f, 0.05f, 3.0f);
+            ImGui::DragFloat("Shift の加速倍率", &tuning.boostMoveScale, 0.1f, 1.0f, 20.0f);
 
             ImGui::Separator();
             ImGui::TextDisabled("F        選択物へ寄る");
