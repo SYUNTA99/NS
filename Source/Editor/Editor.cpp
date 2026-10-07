@@ -23,15 +23,6 @@
 #if NS_EDITOR_ENABLED
 namespace
 {
-    // パネル名定数は PanelIds.h (NS::Editor) が持つ。ドック・ 全面化・ 中央ビュー・ 各パネルが共有する
-    using NS::Editor::k_PanelAssets;
-    using NS::Editor::k_PanelConsole;
-    using NS::Editor::k_PanelEditMode;
-    using NS::Editor::k_PanelGame;
-    using NS::Editor::k_PanelHierarchy;
-    using NS::Editor::k_PanelInspector;
-    using NS::Editor::k_PanelScene;
-
     // メニューバーだけ明るい帯＋濃い文字にする。他のポップアップは暗いテーマ任せ
     const ImVec4 k_MenuBarBg{0.96f, 0.96f, 0.96f, 1.0f};
     const ImVec4 k_MenuBarText{0.10f, 0.10f, 0.10f, 1.0f};
@@ -191,11 +182,11 @@ void Editor::OnRender()
             {
                 if (*tabFocus == NS::Editor::CenterTab::Game)
                 {
-                    ImGui::SetWindowFocus(k_PanelGame);
+                    ImGui::SetWindowFocus(NS::Editor::k_PanelGame);
                 }
                 else
                 {
-                    ImGui::SetWindowFocus(k_PanelScene);
+                    ImGui::SetWindowFocus(NS::Editor::k_PanelScene);
                 }
             }
 
@@ -549,13 +540,13 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
     ImGui::SetNextWindowDockID(0, ImGuiCond_Always);
 
     const std::string& name = m_dock.MaximizedPanel();
-    if (name == k_PanelScene)
+    if (name == NS::Editor::k_PanelScene)
     {
         m_gameView.Suppress(editor);
         m_sceneView.Render(editor);
         return;
     }
-    if (name == k_PanelGame)
+    if (name == NS::Editor::k_PanelGame)
     {
         m_sceneView.Suppress(editor);
         m_gameView.Render(editor);
@@ -565,23 +556,23 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
     // 中央以外は映像を持たないので、前面の矩形を無効化してから対象パネルを描く
     m_sceneView.Suppress(editor);
     m_gameView.Suppress(editor);
-    if (name == k_PanelHierarchy)
+    if (name == NS::Editor::k_PanelHierarchy)
     {
         m_hierarchy.Render(editor);
     }
-    else if (name == k_PanelInspector)
+    else if (name == NS::Editor::k_PanelInspector)
     {
         m_inspector.Render(editor);
     }
-    else if (name == k_PanelConsole)
+    else if (name == NS::Editor::k_PanelConsole)
     {
         m_console.Render();
     }
-    else if (name == k_PanelAssets)
+    else if (name == NS::Editor::k_PanelAssets)
     {
         m_assets.Render(editor);
     }
-    else if (name == k_PanelEditMode)
+    else if (name == NS::Editor::k_PanelEditMode)
     {
         m_toolMode.Render(editor);
     }

@@ -23,7 +23,6 @@ namespace NS::Game::Player
     {
         using NS::Quaternion;
         using NS::Vector3;
-        using NS::Game::Level::HitTier;
 
         [[nodiscard]] Vector3 NormalizedOr(const Vector3& v, const Vector3& fallback) noexcept
         {
@@ -159,7 +158,7 @@ namespace NS::Game::Player
     {
         switch (impact.tier)
         {
-        case HitTier::Center:
+        case NS::Game::Level::HitTier::Center:
         {
             shape.coreInput = 0;
             shape.coreHold = CoreHoldMotion::Pulse;
@@ -196,7 +195,7 @@ namespace NS::Game::Player
             shape.recoilCountInput = 0;
             return;
         }
-        case HitTier::Wide:
+        case NS::Game::Level::HitTier::Wide:
             break;
         }
         // 大きな外れの行。番号から作った段の外の値もこの行で出し、中心近くの層を足さない

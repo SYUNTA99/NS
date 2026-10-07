@@ -25,46 +25,46 @@ namespace NS::Editor
 {
     namespace
     {
-        using NS::Game::Level::HitDirection;
-        using NS::Game::Level::HitEvent;
-        using NS::Game::Level::HitEventValue;
-        using NS::Game::Level::HitTier;
-
         // 事象の種類の並び。HitEventValue の選択肢の順で、種類を足すとここにも出る
-        const std::vector<HitEventValue>& EventTypes()
+        const std::vector<NS::Game::Level::HitEventValue>& EventTypes()
         {
-            static const std::vector<HitEventValue> s_types = []<std::size_t... I>(std::index_sequence<I...>) {
-                return std::vector<HitEventValue>{HitEventValue{std::in_place_index<I>}...};
-            }(std::make_index_sequence<std::variant_size_v<HitEventValue>>{});
+            static const std::vector<NS::Game::Level::HitEventValue> s_types =
+                []<std::size_t... I>(std::index_sequence<I...>) {
+                    return std::vector<NS::Game::Level::HitEventValue>{
+                        NS::Game::Level::HitEventValue{std::in_place_index<I>}...};
+                }(std::make_index_sequence<std::variant_size_v<NS::Game::Level::HitEventValue>>{});
             return s_types;
         }
 
-        constexpr HitDirection k_Directions[] = {
-            HitDirection::Any, HitDirection::Right, HitDirection::Left, HitDirection::Up, HitDirection::Down};
+        constexpr NS::Game::Level::HitDirection k_Directions[] = {NS::Game::Level::HitDirection::Any,
+                                                                  NS::Game::Level::HitDirection::Right,
+                                                                  NS::Game::Level::HitDirection::Left,
+                                                                  NS::Game::Level::HitDirection::Up,
+                                                                  NS::Game::Level::HitDirection::Down};
 
         // 向きのパネルに出す名前
-        const char* DirectionLabel(HitDirection direction) noexcept
+        const char* DirectionLabel(NS::Game::Level::HitDirection direction) noexcept
         {
             switch (direction)
             {
-            case HitDirection::Any:
+            case NS::Game::Level::HitDirection::Any:
                 return "どの向きでも";
-            case HitDirection::Right:
+            case NS::Game::Level::HitDirection::Right:
                 return "右の外れ";
-            case HitDirection::Left:
+            case NS::Game::Level::HitDirection::Left:
                 return "左の外れ";
-            case HitDirection::Up:
+            case NS::Game::Level::HitDirection::Up:
                 return "上の外れ";
-            case HitDirection::Down:
+            case NS::Game::Level::HitDirection::Down:
                 return "下の外れ";
             }
             return "?";
         }
 
         // 段のパネルに出す名前
-        const char* TierLabel(HitTier tier) noexcept
+        const char* TierLabel(NS::Game::Level::HitTier tier) noexcept
         {
-            if (tier == HitTier::Center)
+            if (tier == NS::Game::Level::HitTier::Center)
             {
                 return "真ん中";
             }
@@ -93,7 +93,7 @@ namespace NS::Editor
         m_needsRun = true;
     }
 
-    void HitTimelinePanel::LoadWorking(HitTier tier)
+    void HitTimelinePanel::LoadWorking(NS::Game::Level::HitTier tier)
     {
         m_tier = tier;
         const NS::Game::Level::HitTimeline* found =
@@ -140,12 +140,12 @@ namespace NS::Editor
         HitPreviewDesc desc = m_desc;
         // 手入力の開始時刻が過大でも、取り直しを無制限に回さないための上限
         constexpr int k_MaxPreviewFrames = 10000;
-        for (const HitTier tier : NS::Game::Level::HitTiers())
+        for (const NS::Game::Level::HitTier tier : NS::Game::Level::HitTiers())
         {
             if (const NS::Game::Level::HitTimeline* timeline =
                     NS::Game::Level::HitTimelineLibrary::Get().FindForTier(tier))
             {
-                for (const HitEvent& event : timeline->events)
+                for (const NS::Game::Level::HitEvent& event : timeline->events)
                 {
                     const std::int64_t end = static_cast<std::int64_t>(event.start) + std::max(event.length, 1) +
                                              desc.leadFrames + desc.framesAfterRebound;
@@ -363,7 +363,7 @@ namespace NS::Editor
         ImGui::SetNextItemWidth(120.0f);
         if (ImGui::BeginCombo("編集する段", TierLabel(m_tier)))
         {
-            for (const HitTier tier : NS::Game::Level::HitTiers())
+            for (const NS::Game::Level::HitTier tier : NS::Game::Level::HitTiers())
             {
                 if (ImGui::Selectable(TierLabel(tier), tier == m_tier))
                 {
@@ -379,7 +379,7 @@ namespace NS::Editor
             NS::Game::Level::HitTimelineLibrary& library = NS::Game::Level::HitTimelineLibrary::Get();
             library.Set(NS::Game::Level::HitTimelineNameOf(m_tier), m_working);
             std::string failed;
-            for (const HitTier tier : NS::Game::Level::HitTiers())
+            for (const NS::Game::Level::HitTier tier : NS::Game::Level::HitTiers())
             {
                 const std::string_view name = NS::Game::Level::HitTimelineNameOf(tier);
                 if (library.Find(name) != nullptr && !library.Save(name))
@@ -413,7 +413,7 @@ namespace NS::Editor
             ImGui::TextColored(k_OverriddenFieldColor, "保存していない変更がある");
         }
 
-        const std::vector<HitEventValue>& types = EventTypes();
+        const std::vector<NS::Game::Level::HitEventValue>& types = EventTypes();
         m_addType = std::clamp(m_addType, 0, static_cast<int>(types.size()) - 1);
         ImGui::SetNextItemWidth(160.0f);
         const std::string currentLabel{NS::Game::Level::HitEventLabel(types[static_cast<std::size_t>(m_addType)])};
@@ -478,10 +478,10 @@ namespace NS::Editor
         tracks.reserve(m_working.events.size());
         for (std::size_t row = 0; row < m_working.events.size(); ++row)
         {
-            const HitEvent& event = m_working.events[row];
+            const NS::Game::Level::HitEvent& event = m_working.events[row];
             TimelineTrack track;
             track.label = NS::Game::Level::HitEventLabel(event.value);
-            if (event.direction != HitDirection::Any)
+            if (event.direction != NS::Game::Level::HitDirection::Any)
             {
                 track.label += std::format(" ({})", DirectionLabel(event.direction));
             }
@@ -640,7 +640,7 @@ namespace NS::Editor
         {
             return;
         }
-        HitEvent& event = m_working.events[*m_selectedRow];
+        NS::Game::Level::HitEvent& event = m_working.events[*m_selectedRow];
         const std::string title{NS::Game::Level::HitEventLabel(event.value)};
         ImGui::SeparatorText(title.c_str());
         bool changed = false;
@@ -668,7 +668,7 @@ namespace NS::Editor
             FieldRow("向き");
             if (ImGui::BeginCombo("##direction", DirectionLabel(event.direction)))
             {
-                for (const HitDirection direction : k_Directions)
+                for (const NS::Game::Level::HitDirection direction : k_Directions)
                 {
                     if (ImGui::Selectable(DirectionLabel(direction), direction == event.direction))
                     {
