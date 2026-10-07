@@ -375,17 +375,26 @@ namespace NS::Editor
         ImGui::SameLine();
         if (ImGui::Button("保存"))
         {
+            // 変更の有無は両方の段で 1 つなので、開いていない段の変更も書く
             NS::Game::Level::HitTimelineLibrary& library = NS::Game::Level::HitTimelineLibrary::Get();
-            const std::string_view name = NS::Game::Level::HitTimelineNameOf(m_tier);
-            library.Set(name, m_working);
-            if (library.Save(name))
+            library.Set(NS::Game::Level::HitTimelineNameOf(m_tier), m_working);
+            std::string failed;
+            for (const HitTier tier : NS::Game::Level::HitTiers())
+            {
+                const std::string_view name = NS::Game::Level::HitTimelineNameOf(tier);
+                if (library.Find(name) != nullptr && !library.Save(name))
+                {
+                    failed += std::format(" {}.json", name);
+                }
+            }
+            if (failed.empty())
             {
                 m_dirty = false;
-                m_status = std::format("{}/{}.json へ書いた", library.Directory(), name);
+                m_status = std::format("{} へ両方の段を書いた", library.Directory());
             }
             else
             {
-                m_status = std::format("{}.json を書けなかった", name);
+                m_status = std::format("書けなかった:{}", failed);
             }
         }
         ImGui::SameLine();

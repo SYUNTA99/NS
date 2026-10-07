@@ -455,6 +455,11 @@ void LevelEditorController::EnterPlay() noexcept
         app->Input().Keyboard().ClearState();
         app->Input().Mouse().ClearState();
     }
+    // 引いている途中の変形を確定してギズモを休ませる。引きを持ち越すと、編集へ戻る組み直しで消えた物を読む
+    CommitTransformEdit();
+    m_dragFollowers.clear();
+    m_gizmoWasDragging = false;
+    m_gizmo.SetActive(false);
     // live が唯一の出所なので組み直しは要らない。編集で動いた当たりだけ張り直してプレイへ入る
     m_scene->SyncPhysics();
 
@@ -686,7 +691,8 @@ void LevelEditorController::TickEdit()
     {
         if (m_objectToolActive && m_gizmo.Selected() != nullptr)
         {
-            m_gizmo.ClearSelection();
+            // 選択の id ごと外す。ギズモだけ外すと、次のフレームに id から選び直される
+            SelectObjectById(NS::Obj::k_NoObjectId);
             return;
         }
         NS::Application::Quit();
@@ -741,21 +747,18 @@ void LevelEditorController::TickEdit()
         ApplyFollowCameraGizmoDrag();
 
         // ドラッグ開始で baseline を控え、終了で変わった分のスナップショットを履歴へ積む。grid undo と同じ経路
-        // 追従カメラは Root でなく初期姿勢を変えるので、Root 基準のスナップショットは積まない
+        // 追従カメラの引きは初期姿勢の欄を変える。控えは部品の値まで写すので同じ道で積める
         const bool nowDragging = m_gizmo.IsDragging();
-        if (SelectedFollowCamera() == nullptr)
+        if (!wasDragging && nowDragging)
         {
-            if (!wasDragging && nowDragging)
-            {
-                BeginTransformEdit();
-                // 掴んだ瞬間はまだ動いていない。ここで控えれば差分の基準が揃う
-                CaptureDragFollowers();
-            }
-            else if (wasDragging && !nowDragging)
-            {
-                CommitTransformEdit();
-                m_dragFollowers.clear();
-            }
+            BeginTransformEdit();
+            // 掴んだ瞬間はまだ動いていない。ここで控えれば差分の基準が揃う
+            CaptureDragFollowers();
+        }
+        else if (wasDragging && !nowDragging)
+        {
+            CommitTransformEdit();
+            m_dragFollowers.clear();
         }
         // ギズモは主対象しか動かさないので、残りの選択はここで追わせる
         if (nowDragging)
@@ -1413,6 +1416,11 @@ void LevelEditorController::AddMeshParts(std::string_view meshPath)
 
 void LevelEditorController::PushCreateObject(nlohmann::json object)
 {
+    // プレイ中に組み替えた物は、編集へ戻る組み直しで消える。履歴だけがプレイの姿を指して残る
+    if (m_mode != Mode::Edit)
+    {
+        return;
+    }
     // 新規配置物に永続 id を 1 個振る
     const std::uint32_t id = m_scene->Objects().AllocateObjectId();
     NS::Obj::SetObjectJsonId(object, id);
@@ -1431,7 +1439,7 @@ void LevelEditorController::PushCreateObject(nlohmann::json object)
 
 void LevelEditorController::RenameObject(std::uint32_t id, std::string_view name)
 {
-    if (id == NS::Obj::k_NoObjectId)
+    if (m_mode != Mode::Edit || id == NS::Obj::k_NoObjectId)
     {
         return;
     }
@@ -1461,7 +1469,7 @@ void LevelEditorController::RenameObject(std::uint32_t id, std::string_view name
 
 bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t parentId)
 {
-    if (id == NS::Obj::k_NoObjectId || id == parentId)
+    if (m_mode != Mode::Edit || id == NS::Obj::k_NoObjectId || id == parentId)
     {
         return false;
     }
@@ -1558,8 +1566,12 @@ void LevelEditorController::SetComponentEnabledOnSelected(NS::Obj::Component& co
     comp.SetEnabled(enabled);
     m_scene->SyncPhysics();
     std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
-    m_editor.Undo().Record(
-        std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
+    // プレイ中の控えはプレイの姿なので積まない
+    if (m_mode == Mode::Edit)
+    {
+        m_editor.Undo().Record(
+            std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
+    }
 
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -1567,7 +1579,7 @@ void LevelEditorController::SetComponentEnabledOnSelected(NS::Obj::Component& co
 
 void LevelEditorController::DuplicateSelectedObject()
 {
-    if (m_selectionIds.empty())
+    if (m_mode != Mode::Edit || m_selectionIds.empty())
     {
         return;
     }
@@ -1663,7 +1675,7 @@ void LevelEditorController::DuplicateSelectedObject()
 
 void LevelEditorController::DeleteSelectedObject()
 {
-    if (m_selectionIds.empty())
+    if (m_mode != Mode::Edit || m_selectionIds.empty())
     {
         return;
     }
@@ -1900,7 +1912,8 @@ void LevelEditorController::CommitTransformEdit() noexcept
         commands.push_back(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, baseline, std::move(*after)));
     }
     m_editBaselines.clear();
-    if (commands.empty())
+    // プレイ中の控えはプレイの姿。編集へ戻った後に戻すと、プレイの位置を編集の物へ書く
+    if (m_mode != Mode::Edit || commands.empty())
     {
         return;
     }
@@ -1934,6 +1947,11 @@ void LevelEditorController::CommitComponentEdit() noexcept
     m_componentEditing = false;
 
     // リフレクション編集は live component へ直接入っている。after は live の忠実な写しで、baseline と同じなら積まない
+    // プレイ中の控えはプレイの姿なので積まない
+    if (m_mode != Mode::Edit)
+    {
+        return;
+    }
     std::optional<nlohmann::json> after = m_applier.CaptureObject(m_componentEditBaselineId);
     if (!after || *after == m_componentEditBaseline)
     {

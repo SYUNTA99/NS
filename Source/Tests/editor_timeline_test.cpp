@@ -479,3 +479,42 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
     }));
     EXPECT_EQ(app.Run(), 0);
 }
+
+// 「保存」は開いていない段の変更も書く。今の段だけ書いて印を消すと、もう片方の段の変更が黙って失われる
+TEST(EditorHitTimelinePanel, SaveWritesEveryTier)
+{
+    const ScopedHitTimelineDirectory directory("EditorTimelineSave");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
+    NS::Game::Level::HitTimelineLibrary& library = NS::Game::Level::HitTimelineLibrary::Get();
+    TimelineGui gui;
+    NS::Obj::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Editor::HitTimelinePanel timeline;
+    // パネルは真ん中の段を開いている。外れの段は置き場にだけ変更がある
+    NS::Game::Level::HitTimeline miss = MakeLegacyHitTimeline(2);
+    miss.events.pop_back();
+    library.Set("miss", miss);
+
+    const auto drawPanel = [&] {
+        ImGui::SetNextWindowPos({0.0f, 0.0f});
+        ImGui::SetNextWindowSize({650.0f, 780.0f});
+        timeline.Render(editor);
+    };
+    ImGui::NewFrame();
+    drawPanel();
+    ImGui::EndFrame();
+    ImGui::NewFrame();
+    ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelHitTimeline);
+    ASSERT_NE(window, nullptr);
+    ImGuiContext& context = *ImGui::GetCurrentContext();
+    context.NavActivateId = window->GetID("保存");
+    context.NavActivateDownId = context.NavActivateId;
+    drawPanel();
+    ImGui::EndFrame();
+
+    library.Reload();
+    ASSERT_NE(library.Find("center"), nullptr);
+    const NS::Game::Level::HitTimeline* saved = library.Find("miss");
+    ASSERT_NE(saved, nullptr);
+    EXPECT_EQ(saved->events.size(), miss.events.size());
+}

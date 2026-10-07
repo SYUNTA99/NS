@@ -447,6 +447,8 @@ namespace NS::Editor
                                           std::span<const ObjectRefOption> refOptions) noexcept
         {
             FieldWidgetResult result;
+            // 1 つの欄が部品を幾つも出す。まとめないと始まりと確定を最後の部品からしか拾えない
+            ImGui::BeginGroup();
             switch (field.type)
             {
             case NS::Obj::FieldType::Float:
@@ -897,6 +899,7 @@ namespace NS::Editor
                 break;
             }
             }
+            ImGui::EndGroup();
 
             result.activated |= ImGui::IsItemActivated();
             // 編集無しのクリックでもラッチを解くため、確定ではなく非活性化で committed を立てる
@@ -927,7 +930,8 @@ namespace NS::Editor
             if (filtering)
             {
                 const bool anyMatch =
-                    std::any_of(info.fields + group.firstField, info.fields + end,
+                    std::any_of(info.fields + group.firstField,
+                                info.fields + end,
                                 [filter](const NS::Obj::FieldDesc& field) { return NameMatches(field.name, filter); });
                 if (!anyMatch)
                 {

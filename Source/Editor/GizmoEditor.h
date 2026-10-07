@@ -73,7 +73,16 @@ namespace NS::Editor
         void SetSelectableObjects(std::span<NS::Obj::Actor* const> objects,
                                   std::span<const std::uint8_t> pickable = {}) noexcept;
 
-        void SetActive(bool active) noexcept { m_active = active; }
+        //! @brief ギズモ操作の有効を切り替える。休ませると進行中のドラッグを取り消す
+        void SetActive(bool active) noexcept
+        {
+            m_active = active;
+            if (!active)
+            {
+                m_dragging = false;
+                m_dragAxis = GizmoAxis::None;
+            }
+        }
         [[nodiscard]] bool IsActive() const noexcept { return m_active; }
 
         void SetSpace(GizmoSpace space) noexcept { m_space = space; }

@@ -83,17 +83,26 @@ namespace NS::Editor
 
             // 名前は直接ここで書き換えられる。選択が変わったら今の表示名を入れ直す
             const std::uint32_t selectedId = editor.SelectedObjectId();
-            if (m_nameId != selectedId)
+            // 打っている間は入れ直さない。打った名前は打ち始めた対象へ確定する
+            if (m_nameEditId == 0 && m_nameId != selectedId)
             {
                 m_nameId = selectedId;
                 std::snprintf(m_nameBuffer, sizeof(m_nameBuffer), "%s", NS::Editor::ObjectDisplayName(*go));
             }
             ImGui::SetNextItemWidth(-1.0f);
             ImGui::InputText("##objectName", m_nameBuffer, sizeof(m_nameBuffer));
+            if (ImGui::IsItemActivated())
+            {
+                m_nameEditId = m_nameId;
+            }
             // 改名は配置物を組み直すので、このパネルを描き終えてから流す
             if (ImGui::IsItemDeactivatedAfterEdit())
             {
-                m_nameCommitId = selectedId;
+                m_nameCommitId = m_nameEditId;
+            }
+            if (ImGui::IsItemDeactivated())
+            {
+                m_nameEditId = 0;
             }
             ImGui::Text("[%zu] %s", editor.SelectedObjectIndex(), go->ClassName());
             ImGui::Separator();

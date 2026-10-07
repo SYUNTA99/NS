@@ -172,14 +172,12 @@ void Editor::OnRender()
             m_gameView.Render(editor);
             if (!playMode)
             {
-                editor.Editor().RenderFileBrowser();
                 m_toolMode.Render(editor);
             }
 
             m_hierarchy.Render(editor);
             m_inspector.Render(editor);
             m_hitTimeline.Render(editor);
-            HandleEditShortcuts(editor);
 
             // Assets はプレイ中も出し続け Console と同じタブに重ねる
             m_assets.Render(editor);
@@ -208,6 +206,13 @@ void Editor::OnRender()
             // 全面化中はドックも他パネルも発行せず、対象 1 枚だけをワークエリア全面へ描く
             RenderMaximizedPanel(editor, toolbarHeight);
         }
+
+        // 保存と読み込みの窓とショートカットは、全面化の間も効かせる
+        if (!playMode)
+        {
+            editor.Editor().RenderFileBrowser();
+        }
+        HandleEditShortcuts(editor);
 
         // どちらの表示でもパネル右上に全面化 / 復元ボタンを重ねる
         m_dock.RenderMaximizeButton();
