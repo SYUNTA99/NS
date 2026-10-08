@@ -44,9 +44,6 @@ namespace NS::Obj
         [[nodiscard]] Scene* Current() noexcept;
         [[nodiscard]] const Scene* Current() const noexcept;
 
-        //! 現在有効な scene があるか
-        [[nodiscard]] bool HasScene() const noexcept;
-
         //! 現 scene の OnUpdate へ取り次ぐ。未ロードなら何もしない
         void Update();
         //! 現 scene の OnRender へ取り次ぐ。未ロードなら何もしない

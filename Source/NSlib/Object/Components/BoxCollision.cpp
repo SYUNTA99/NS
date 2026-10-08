@@ -92,14 +92,11 @@ namespace NS::Obj
     {
         const NS::AffineDecomposition decomposed =
             NS::DecomposeAffine(ShapeWorldMatrix(m_localRotation, m_centerOffset));
-        const NS::Vector3& scale = decomposed.scale;
-        const NS::Quaternion& rotation = decomposed.rotation;
-        const NS::Vector3& translation = decomposed.translation;
-        const NS::Vector3 half{m_halfExtents.x * std::abs(scale.x),
-                               m_halfExtents.y * std::abs(scale.y),
-                               m_halfExtents.z * std::abs(scale.z)};
+        const NS::Vector3 half{m_halfExtents.x * std::abs(decomposed.scale.x),
+                               m_halfExtents.y * std::abs(decomposed.scale.y),
+                               m_halfExtents.z * std::abs(decomposed.scale.z)};
 
-        return NS::MakeOBB(translation, rotation, half);
+        return NS::MakeOBB(decomposed.translation, decomposed.rotation, half);
     }
 
     JPH::BodyID BoxCollision::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)

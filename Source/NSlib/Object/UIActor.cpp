@@ -46,8 +46,7 @@ namespace NS::Obj
 
     void UIActor::Close() noexcept
     {
-        Scene* scene = OwningScene();
-        if (scene == nullptr)
+        if (OwningScene() == nullptr)
         {
             return;
         }

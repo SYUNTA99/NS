@@ -78,10 +78,10 @@ namespace NS::Obj
         //! 平行光の自己解除。DirectionalLight が OnEndPlay で呼ぶ
         void UnregisterLight(DirectionalLight* light);
 
-        //! シーンに 1 つのカメラの管理役。シーンの破棄後は nullptr
+        //! シーンに 1 つのカメラ管理
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
 
-        //! 管理役が駆動する実カメラ。シーンの破棄後は nullptr
+        //! カメラ管理が描画に使う実カメラ
         [[nodiscard]] SceneCamera* MainCamera() noexcept;
 
         //! シーンに 1 つの物の置き場

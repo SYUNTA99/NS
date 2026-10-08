@@ -229,7 +229,6 @@ namespace NS::Obj
 
         if (m_indexDirty)
         {
-            m_index.clear();
             for (std::unique_ptr<Actor>& obj : m_objects)
             {
                 if (obj->Id() != k_NoObjectId)
@@ -241,21 +240,11 @@ namespace NS::Obj
         }
 
         const std::unordered_map<std::uint32_t, Actor*>::iterator it = m_index.find(objectId);
-        if (it != m_index.end() && it->second->Id() == objectId)
+        if (it == m_index.end())
         {
-            return it->second;
+            return nullptr;
         }
-
-        // 索引を作った後で id を書き換えた配置物は索引とずれる。全体を見て索引を直す
-        for (std::unique_ptr<Actor>& obj : m_objects)
-        {
-            if (obj->Id() == objectId)
-            {
-                m_index[objectId] = obj.get();
-                return obj.get();
-            }
-        }
-        return nullptr;
+        return it->second;
     }
 
     void ObjectList::MarkIndexDirty() noexcept

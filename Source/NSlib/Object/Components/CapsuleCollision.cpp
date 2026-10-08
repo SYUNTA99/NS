@@ -85,13 +85,10 @@ namespace NS::Obj
     {
         const NS::AffineDecomposition decomposed =
             NS::DecomposeAffine(ShapeWorldMatrix(m_localRotation, m_centerOffset));
-        const NS::Vector3& scale = decomposed.scale;
-        const NS::Quaternion& rotation = decomposed.rotation;
-        const NS::Vector3& translation = decomposed.translation;
-        return NS::Phys::Capsule{translation,
-                                 NS::Vector3::Transform(NS::Vector3::UnitY, rotation),
-                                 m_halfHeight * std::abs(scale.y),
-                                 m_radius * std::max(std::abs(scale.x), std::abs(scale.z))};
+        return NS::Phys::Capsule{decomposed.translation,
+                                 NS::Vector3::Transform(NS::Vector3::UnitY, decomposed.rotation),
+                                 m_halfHeight * std::abs(decomposed.scale.y),
+                                 m_radius * std::max(std::abs(decomposed.scale.x), std::abs(decomposed.scale.z))};
     }
 
     NS::AABB CapsuleCollision::WorldAABB() const noexcept

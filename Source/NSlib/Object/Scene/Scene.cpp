@@ -498,21 +498,15 @@ namespace NS::Obj
         // 更新は終わっているので bounds は 1 フレームに 1 回で足りる。ビューを何枚描いても同じ値
         m_sceneRenderer.SyncRenderBounds();
 
-        NS::Obj::CameraManager* cameras = GetCameraManager();
-        SceneCamera* camera = MainCamera();
-        if (cameras == nullptr || camera == nullptr)
-        {
-            return;
-        }
         // 世界が実時間で進まない間は、前の固定フレームからの経過の割合に意味が無い
         // 描く度に割合が変わると、同じフレームの絵が揺れる
         const float alpha = RenderAlpha(NS::OS::FrameTimer::Alpha());
         // 姿勢はビューに依らないので 1 フレームに 1 回。止めている間の実カメラは止めた側が書く
         if (m_simulationEnabled)
         {
-            cameras->Evaluate(alpha);
+            m_cameraManager->Evaluate(alpha);
         }
-        m_sceneRenderer.Render(*cameras, *camera, m_skyboxPath, alpha);
+        m_sceneRenderer.Render(*m_cameraManager, m_mainCamera, m_skyboxPath, alpha);
     }
 
     void Scene::RegisterRenderable(IRenderable* renderable)

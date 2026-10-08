@@ -16,8 +16,6 @@ namespace NS::Obj
 {
     namespace
     {
-        using NS::Vector3;
-
         // 線分と線分の最も近い点どうしの距離の 2 乗。Ericson の Real-Time Collision Detection 5.1.9 の手順
         [[nodiscard]] float SegmentSegmentDistanceSq(const Vector3& p1,
                                                      const Vector3& q1,
@@ -251,21 +249,23 @@ namespace NS::Obj
 
     void HitSensor::OnStart()
     {
-        if (m_registered || Owner() == nullptr || Owner()->OwningScene() == nullptr)
+        Scene* scene = OwningScene();
+        if (m_registered || scene == nullptr)
         {
             return;
         }
-        Owner()->OwningScene()->HitSensors().Register(this);
+        scene->HitSensors().Register(this);
         m_registered = true;
     }
 
     void HitSensor::OnEndPlay()
     {
-        if (!m_registered || Owner() == nullptr || Owner()->OwningScene() == nullptr)
+        Scene* scene = OwningScene();
+        if (!m_registered || scene == nullptr)
         {
             return;
         }
-        Owner()->OwningScene()->HitSensors().Unregister(this);
+        scene->HitSensors().Unregister(this);
         m_registered = false;
     }
 
@@ -287,8 +287,8 @@ namespace NS::Obj
     void ShapeHitSensor::SetBox(const NS::Vector3& halfExtents) noexcept
     {
         m_shape = HitSensorShape::Box;
-        m_boxHalfExtents = NS::Vector3{
-            std::max(halfExtents.x, 0.0f), std::max(halfExtents.y, 0.0f), std::max(halfExtents.z, 0.0f)};
+        m_boxHalfExtents =
+            NS::Vector3{std::max(halfExtents.x, 0.0f), std::max(halfExtents.y, 0.0f), std::max(halfExtents.z, 0.0f)};
     }
 
     SensorVolume ShapeHitSensor::WorldVolume() const noexcept
@@ -314,8 +314,8 @@ namespace NS::Obj
         case HitSensorShape::Box:
         {
             const NS::Vector3 half{m_boxHalfExtents.x * std::abs(parts.scale.x),
-                                         m_boxHalfExtents.y * std::abs(parts.scale.y),
-                                         m_boxHalfExtents.z * std::abs(parts.scale.z)};
+                                   m_boxHalfExtents.y * std::abs(parts.scale.y),
+                                   m_boxHalfExtents.z * std::abs(parts.scale.z)};
             return SensorVolume::Box(NS::MakeOBB(center, parts.rotation, half));
         }
         case HitSensorShape::Sphere:

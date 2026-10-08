@@ -85,12 +85,7 @@ namespace NS::Obj
         requires std::derived_from<T, Component>
     [[nodiscard]] T* ComponentCast(Component* comp) noexcept
     {
-        if (comp != nullptr && comp->IsA(T::StaticReflection()))
-        {
-            return static_cast<T*>(comp);
-        }
-
-        return nullptr;
+        return Cast<T>(comp);
     }
 
     //! const 版。リフレクション照合で通れば static_cast、外れれば nullptr
@@ -98,12 +93,7 @@ namespace NS::Obj
         requires std::derived_from<T, Component>
     [[nodiscard]] const T* ComponentCast(const Component* comp) noexcept
     {
-        if (comp != nullptr && comp->IsA(T::StaticReflection()))
-        {
-            return static_cast<const T*>(comp);
-        }
-
-        return nullptr;
+        return Cast<T>(comp);
     }
 
 } // namespace NS::Obj

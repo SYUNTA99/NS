@@ -41,7 +41,7 @@ namespace NS::Obj
     {
         if (!m_current)
         {
-			return;
+            return;
         }
         m_current->OnShutdown();
         m_current.reset();
@@ -55,11 +55,6 @@ namespace NS::Obj
     const Scene* SceneManager::Current() const noexcept
     {
         return m_current.get();
-    }
-
-    bool SceneManager::HasScene() const noexcept
-    {
-        return static_cast<bool>(m_current);
     }
 
     void SceneManager::Update()
