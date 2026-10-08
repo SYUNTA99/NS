@@ -1,5 +1,7 @@
 #include "NSlib/Object/ObjectJson.h"
 
+#include "NSlib/Object/Reflection/ComponentEntry.h"
+
 #include <string>
 
 namespace NS::Obj
@@ -55,23 +57,6 @@ namespace NS::Obj
     }
     namespace
     {
-        // object の key が unsigned の数値なら返す。無いか壊れていれば fallback
-        [[nodiscard]] std::uint32_t ReadUnsigned(const nlohmann::json& object,
-                                                 const char* key,
-                                                 std::uint32_t fallback) noexcept
-        {
-            if (!object.is_object())
-            {
-                return fallback;
-            }
-            const nlohmann::json::const_iterator it = object.find(key);
-            if (it == object.end() || !it->is_number_unsigned())
-            {
-                return fallback;
-            }
-            return it->get<std::uint32_t>();
-        }
-
         // object の key が文字列なら返す。無いか壊れていれば空
         [[nodiscard]] std::string_view ReadString(const nlohmann::json& object, const char* key) noexcept
         {
@@ -103,21 +88,17 @@ namespace NS::Obj
         }
     } // namespace
 
-    nlohmann::json MakeObjectJson(nlohmann::json components)
+    nlohmann::json MakeObjectJson()
     {
         nlohmann::json object = nlohmann::json::object();
         object["id"] = 0u;
-        if (!components.is_object())
-        {
-            components = nlohmann::json::object();
-        }
-        object["parts"] = std::move(components);
+        object["parts"] = nlohmann::json::object();
         return object;
     }
 
     std::uint32_t ObjectJsonId(const nlohmann::json& object) noexcept
     {
-        return ReadUnsigned(object, "id", 0);
+        return FieldUnsigned(object, "id", 0);
     }
 
     void SetObjectJsonId(nlohmann::json& object, std::uint32_t id)
@@ -147,7 +128,7 @@ namespace NS::Obj
 
     std::uint32_t ObjectJsonParent(const nlohmann::json& object) noexcept
     {
-        return ReadUnsigned(object, "parent", k_NoObjectId);
+        return FieldUnsigned(object, "parent", k_NoObjectId);
     }
 
     void SetObjectJsonParent(nlohmann::json& object, std::uint32_t parentId)

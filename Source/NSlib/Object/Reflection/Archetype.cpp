@@ -22,12 +22,6 @@ namespace NS::Obj
         // 種類の既定値 1 つの上限。部品の値だけなので、シーンのファイルよりずっと小さい
         constexpr std::size_t k_MaxArchetypeFileBytes = 1024u * 1024u;
 
-        // 参照の欄の値の形。ForEachRefValue と同じ見分け方
-        [[nodiscard]] bool IsRefValue(const nlohmann::json& value) noexcept
-        {
-            return value.is_object() && value.contains("ref");
-        }
-
         // 位置・回転・拡縮は個体の物。種類の既定値に持たせず、保存の差分でも落とさない
         // 保存側は JSON の件しか持たないので、型でなく保存の鍵の部品名で見分ける
         [[nodiscard]] bool IsInstanceOnlyPart(std::string_view partName) noexcept

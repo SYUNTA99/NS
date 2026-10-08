@@ -12,6 +12,7 @@
 #include "NSlib/Graphics/SkeletalMesh.h"
 #include "NSlib/Graphics/StaticMesh.h"
 #include "NSlib/Graphics/Texture.h"
+#include "NSlib/Object/Reflection/ComponentEntry.h"
 #include "NSlib/Physics/MeshShape.h"
 #include "NSlib/Windows/Filesystem.h"
 
@@ -57,18 +58,6 @@ namespace NS::Obj
 
     namespace
     {
-        constexpr const char* k_BuiltinCube = "cube";
-        constexpr const char* k_BuiltinSphere = "sphere";
-        constexpr const char* k_BuiltinWedge45 = "wedge45";
-        constexpr const char* k_BuiltinWedge30 = "wedge30";
-        constexpr const char* k_BuiltinWedge22 = "wedge22";
-        constexpr const char* k_BuiltinWedge15 = "wedge15";
-        constexpr const char* k_BuiltinShadowQuad = "shadowQuad";
-
-        constexpr const char* k_SharedPlayer = "player";
-        constexpr const char* k_SharedWater = "water";
-        constexpr const char* k_SharedShadow = "shadow";
-
         // 描画の RegisterBuiltins と当たりの GetOrLoadMeshShape が同じ表から形を作る
         // 組み込みの形は両者で食い違わない
         struct BuiltinShape
@@ -78,13 +67,13 @@ namespace NS::Obj
         };
 
         constexpr std::array<BuiltinShape, 7> k_BuiltinShapes = {{
-            {k_BuiltinCube, [] { return NS::Gfx::MakeCube(NS::Vector3{0.5f, 0.5f, 0.5f}); }},
-            {k_BuiltinSphere, [] { return NS::Gfx::MakeSphere(0.5f); }},
-            {k_BuiltinWedge45, [] { return NS::Gfx::MakeSlope(45.0f, NS::Vector3{0.5f, 0.5f, 0.5f}); }},
-            {k_BuiltinWedge30, [] { return NS::Gfx::MakeSlope(30.0f, NS::Vector3{0.5f, 0.5f, 0.5f}); }},
-            {k_BuiltinWedge22, [] { return NS::Gfx::MakeSlope(22.5f, NS::Vector3{0.5f, 0.5f, 0.5f}); }},
-            {k_BuiltinWedge15, [] { return NS::Gfx::MakeSlope(15.0f, NS::Vector3{0.5f, 0.5f, 0.5f}); }},
-            {k_BuiltinShadowQuad, [] { return NS::Gfx::MakePlane(NS::Vector2{0.5f, 0.5f}); }},
+            {"cube", [] { return NS::Gfx::MakeCube(NS::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {"sphere", [] { return NS::Gfx::MakeSphere(0.5f); }},
+            {"wedge45", [] { return NS::Gfx::MakeSlope(45.0f, NS::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {"wedge30", [] { return NS::Gfx::MakeSlope(30.0f, NS::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {"wedge22", [] { return NS::Gfx::MakeSlope(22.5f, NS::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {"wedge15", [] { return NS::Gfx::MakeSlope(15.0f, NS::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {"shadowQuad", [] { return NS::Gfx::MakePlane(NS::Vector2{0.5f, 0.5f}); }},
         }};
 
         // 引く先は m_builtins でなく k_BuiltinShapes。RegisterBuiltins を呼んでいなくても引ける
@@ -199,15 +188,7 @@ namespace NS::Obj
         }
 
         // baseColor は任意の 3 要素
-        out.baseColor = NS::Vector3{1.0f, 1.0f, 1.0f};
-        if (j.contains("baseColor") && j["baseColor"].is_array() && j["baseColor"].size() == 3)
-        {
-            const nlohmann::json& c = j["baseColor"];
-            if (c[0].is_number() && c[1].is_number() && c[2].is_number())
-            {
-                out.baseColor = NS::Vector3{c[0].get<float>(), c[1].get<float>(), c[2].get<float>()};
-            }
-        }
+        out.baseColor = FieldVector3(j, "baseColor", NS::Vector3{1.0f, 1.0f, 1.0f});
 
         // blend は任意
         out.blend = NS::Gfx::BlendMode::Opaque;
@@ -568,7 +549,7 @@ namespace NS::Obj
         {
             std::unique_ptr<NS::Gfx::Material> mat = NS::Gfx::Material::Create(base);
             mat->SetTexture(0, baseTexture);
-            m_sharedMaterials.emplace(k_SharedPlayer, std::move(mat));
+            m_sharedMaterials.emplace("player", std::move(mat));
         }
         // water: alpha<1 を出す water.ps + Alpha ブレンドの専用 material
         {
@@ -577,14 +558,14 @@ namespace NS::Obj
             desc.blend = NS::Gfx::BlendMode::Alpha;
             std::unique_ptr<NS::Gfx::Material> mat = NS::Gfx::Material::Create(desc);
             mat->SetTexture(0, baseTexture);
-            m_sharedMaterials.emplace(k_SharedWater, std::move(mat));
+            m_sharedMaterials.emplace("water", std::move(mat));
         }
         // shadow: shadow.ps が放射状アルファを生成するためテクスチャ不要、Alpha ブレンド
         {
             NS::Gfx::MaterialDesc desc = base;
             desc.pixelShader = GetOrLoadShader(shaderPath("shadow.ps.hlsl"));
             desc.blend = NS::Gfx::BlendMode::Alpha;
-            m_sharedMaterials.emplace(k_SharedShadow, NS::Gfx::Material::Create(desc));
+            m_sharedMaterials.emplace("shadow", NS::Gfx::Material::Create(desc));
         }
     }
 

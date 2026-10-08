@@ -49,6 +49,16 @@ namespace NS::Obj
         return value->get<int>();
     }
 
+    std::uint32_t FieldUnsigned(const nlohmann::json& entry, std::string_view name, std::uint32_t fallback) noexcept
+    {
+        const nlohmann::json* value = FindFieldValue(entry, name);
+        if (value == nullptr || !value->is_number_unsigned())
+        {
+            return fallback;
+        }
+        return value->get<std::uint32_t>();
+    }
+
     bool ReadVector3(const nlohmann::json& value, NS::Vector3& out) noexcept
     {
         if (!value.is_array() || value.size() != 3u)

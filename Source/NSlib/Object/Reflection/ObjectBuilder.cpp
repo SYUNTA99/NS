@@ -12,6 +12,23 @@
 
 namespace NS::Obj
 {
+    namespace
+    {
+        nlohmann::json MakeObjectHeaderJson(const Actor& obj, std::uint32_t id)
+        {
+            nlohmann::json object = nlohmann::json::object();
+            SetObjectJsonId(object, id);
+            SetObjectJsonClass(object, obj.ClassName());
+            SetObjectJsonName(object, obj.Name());
+            SetObjectJsonActive(object, obj.IsActiveSelf());
+            if (const Actor* parent = obj.Parent())
+            {
+                SetObjectJsonParent(object, parent->Id());
+            }
+            return object;
+        }
+    } // namespace
+
     void ApplyObjectParts(Actor& obj, const nlohmann::json& object, PartCreation creation)
     {
         const nlohmann::json& parts = ObjectJsonParts(object);
@@ -54,15 +71,7 @@ namespace NS::Obj
 
     nlohmann::json MakePrototypeJson(const Actor& obj)
     {
-        nlohmann::json object = nlohmann::json::object();
-        SetObjectJsonId(object, 0u);
-        SetObjectJsonClass(object, obj.ClassName());
-        SetObjectJsonName(object, obj.Name());
-        SetObjectJsonActive(object, obj.IsActiveSelf());
-        if (const Actor* parent = obj.Parent())
-        {
-            SetObjectJsonParent(object, parent->Id());
-        }
+        nlohmann::json object = MakeObjectHeaderJson(obj, 0u);
         nlohmann::json& parts = ObjectJsonParts(object);
         obj.ForEachPart(
             [&parts](std::string_view name, Component&) { parts[std::string{name}] = nlohmann::json::object(); });
@@ -74,15 +83,7 @@ namespace NS::Obj
 
     nlohmann::json ObjectToJson(const Actor& obj)
     {
-        nlohmann::json object = nlohmann::json::object();
-        SetObjectJsonId(object, obj.Id());
-        SetObjectJsonClass(object, obj.ClassName());
-        SetObjectJsonName(object, obj.Name());
-        SetObjectJsonActive(object, obj.IsActiveSelf());
-        if (const Actor* parent = obj.Parent())
-        {
-            SetObjectJsonParent(object, parent->Id());
-        }
+        nlohmann::json object = MakeObjectHeaderJson(obj, obj.Id());
         nlohmann::json& parts = ObjectJsonParts(object);
         obj.ForEachPart(
             [&parts](std::string_view name, Component& part) { parts[std::string{name}] = SerializePartFields(part); });

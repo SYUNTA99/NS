@@ -27,7 +27,7 @@ namespace NS::Obj
     //! @details 配置物が自分を書き出した保存形式で、実体でない姿はどれもこの形で持つ
     //! ファイルの 1 配置物・undo の控え・プレイ開始時の凍結・パレットのひな形が同じ形を使う
     //! 参照の欄はメモリ上では id、ファイル上だけ名前で書く
-    [[nodiscard]] nlohmann::json MakeObjectJson(nlohmann::json components = nlohmann::json::object());
+    [[nodiscard]] nlohmann::json MakeObjectJson();
 
     //! 配置物の永続 id。未採番と壊れた形は 0
     [[nodiscard]] std::uint32_t ObjectJsonId(const nlohmann::json& object) noexcept;
@@ -54,6 +54,12 @@ namespace NS::Obj
     //! active 値を書く。有効は既定なので消す
     void SetObjectJsonActive(nlohmann::json& object, bool active);
 
+    //! 参照の欄の値の形 {"ref": …} の場合 true、それ以外の場合は false
+    [[nodiscard]] inline bool IsRefValue(const nlohmann::json& value) noexcept
+    {
+        return value.is_object() && value.contains("ref");
+    }
+
     //! fn はその object を受け取る。値はメモリ上では id、ファイル上では名前
     //! 参照の欄を辿る処理はここだけに置き、欄の形を知る場所を 1 つにする
     template <class Fn> void ForEachRefValue(nlohmann::json& object, Fn&& fn)
@@ -67,7 +73,7 @@ namespace NS::Obj
             }
             for (nlohmann::json& value : entry)
             {
-                if (value.is_object() && value.contains("ref"))
+                if (IsRefValue(value))
                 {
                     fn(value);
                 }

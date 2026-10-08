@@ -120,6 +120,20 @@ namespace NS::Obj
                 });
             }
         }
+
+        nlohmann::json& EnsureEnvironment(nlohmann::json& scene)
+        {
+            if (!scene.is_object())
+            {
+                scene = MakeSceneJson();
+            }
+            nlohmann::json& environment = scene["environment"];
+            if (!environment.is_object())
+            {
+                environment = nlohmann::json::object();
+            }
+            return environment;
+        }
     } // namespace
 
     nlohmann::json MakeSceneJson()
@@ -166,16 +180,7 @@ namespace NS::Obj
 
     std::uint32_t SceneJsonNextObjectId(const nlohmann::json& scene) noexcept
     {
-        if (!scene.is_object())
-        {
-            return 1;
-        }
-        const nlohmann::json::const_iterator it = scene.find("nextObjectId");
-        if (it == scene.end() || !it->is_number_unsigned())
-        {
-            return 1;
-        }
-        return it->get<std::uint32_t>();
+        return FieldUnsigned(scene, "nextObjectId", 1);
     }
 
     void SetSceneJsonNextObjectId(nlohmann::json& scene, std::uint32_t nextObjectId)
@@ -208,16 +213,7 @@ namespace NS::Obj
 
     void SetSceneJsonSkybox(nlohmann::json& scene, std::string_view path)
     {
-        if (!scene.is_object())
-        {
-            scene = MakeSceneJson();
-        }
-        nlohmann::json& environment = scene["environment"];
-        if (!environment.is_object())
-        {
-            environment = nlohmann::json::object();
-        }
-        environment["skybox"] = std::string{path};
+        EnsureEnvironment(scene)["skybox"] = std::string{path};
     }
 
     NS::Vector3 NormalizeGravityDirection(const NS::Vector3& direction) noexcept
@@ -242,28 +238,15 @@ namespace NS::Obj
         {
             return NS::Vector3{0.0f, -1.0f, 0.0f};
         }
-        const nlohmann::json::const_iterator directionIt = environmentIt->find("gravityDirection");
-        NS::Vector3 direction;
-        if (directionIt == environmentIt->end() || !ReadVector3(*directionIt, direction))
-        {
-            return NS::Vector3{0.0f, -1.0f, 0.0f};
-        }
-        return NormalizeGravityDirection(direction);
+        return NormalizeGravityDirection(
+            FieldVector3(*environmentIt, "gravityDirection", NS::Vector3{0.0f, -1.0f, 0.0f}));
     }
 
     void SetSceneJsonGravityDirection(nlohmann::json& scene, const NS::Vector3& direction)
     {
-        if (!scene.is_object())
-        {
-            scene = MakeSceneJson();
-        }
-        nlohmann::json& environment = scene["environment"];
-        if (!environment.is_object())
-        {
-            environment = nlohmann::json::object();
-        }
         const NS::Vector3 normalized = NormalizeGravityDirection(direction);
-        environment["gravityDirection"] = nlohmann::json::array({normalized.x, normalized.y, normalized.z});
+        EnsureEnvironment(scene)["gravityDirection"] =
+            nlohmann::json::array({normalized.x, normalized.y, normalized.z});
     }
 
     std::size_t FindObjectIndexById(const nlohmann::json& scene, std::uint32_t id) noexcept
