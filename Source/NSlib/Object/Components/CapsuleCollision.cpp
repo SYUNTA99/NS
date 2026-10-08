@@ -6,9 +6,6 @@
 #include "NSlib/Object/Transform.h"
 #include "NSlib/Physics/PhysicsScene.h"
 
-#include <algorithm>
-#include <cmath>
-
 namespace NS::Obj
 {
     CapsuleCollision::CapsuleCollision(float radius, float halfHeight) noexcept
@@ -85,10 +82,8 @@ namespace NS::Obj
     {
         const NS::AffineDecomposition decomposed =
             NS::DecomposeAffine(ShapeWorldMatrix(m_localRotation, m_centerOffset));
-        return NS::Phys::Capsule{decomposed.translation,
-                                 NS::Vector3::Transform(NS::Vector3::UnitY, decomposed.rotation),
-                                 m_halfHeight * std::abs(decomposed.scale.y),
-                                 m_radius * std::max(std::abs(decomposed.scale.x), std::abs(decomposed.scale.z))};
+        return NS::Phys::MakeScaledCapsule(
+            decomposed.translation, decomposed.rotation, decomposed.scale, m_radius, m_halfHeight);
     }
 
     NS::AABB CapsuleCollision::WorldAABB() const noexcept

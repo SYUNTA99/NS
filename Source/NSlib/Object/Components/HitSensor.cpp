@@ -303,14 +303,8 @@ namespace NS::Obj
         switch (m_shape)
         {
         case HitSensorShape::Capsule:
-        {
-            const NS::Vector3 axis = NS::Vector3::Transform(NS::Vector3::UnitY, parts.rotation);
-            const float side = std::max(std::abs(parts.scale.x), std::abs(parts.scale.z));
-            return SensorVolume::Capsule(NS::Phys::Capsule{.center = center,
-                                                           .axis = axis,
-                                                           .halfHeight = m_halfHeight * std::abs(parts.scale.y),
-                                                           .radius = m_radius * side});
-        }
+            return SensorVolume::Capsule(
+                NS::Phys::MakeScaledCapsule(center, parts.rotation, parts.scale, m_radius, m_halfHeight));
         case HitSensorShape::Box:
         {
             const NS::Vector3 half{m_boxHalfExtents.x * std::abs(parts.scale.x),

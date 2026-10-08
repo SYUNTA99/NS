@@ -98,14 +98,26 @@ TEST(SensorVolume, BoxesUseSeparatingAxes)
     const NS::Obj::SensorVolume a = NS::Obj::SensorVolume::Box(
         NS::MakeOBB(Vector3{0.0f, 0.0f, 0.0f}, NS::Quaternion::Identity, Vector3{1.0f, 1.0f, 1.0f}));
     // 45 度回した箱は、角が軸並行の外接箱より内側にある
-    const NS::Quaternion turned =
-        NS::Quaternion::CreateFromYawPitchRoll(NS::k_Pi * 0.25f, 0.0f, 0.0f);
+    const NS::Quaternion turned = NS::Quaternion::CreateFromYawPitchRoll(NS::k_Pi * 0.25f, 0.0f, 0.0f);
     EXPECT_TRUE(NS::Obj::VolumesOverlap(
-        a,
-        NS::Obj::SensorVolume::Box(NS::MakeOBB(Vector3{2.3f, 0.0f, 0.0f}, turned, Vector3{1.0f, 1.0f, 1.0f}))));
+        a, NS::Obj::SensorVolume::Box(NS::MakeOBB(Vector3{2.3f, 0.0f, 0.0f}, turned, Vector3{1.0f, 1.0f, 1.0f}))));
     EXPECT_FALSE(NS::Obj::VolumesOverlap(
-        a,
-        NS::Obj::SensorVolume::Box(NS::MakeOBB(Vector3{2.5f, 0.0f, 0.0f}, turned, Vector3{1.0f, 1.0f, 1.0f}))));
+        a, NS::Obj::SensorVolume::Box(NS::MakeOBB(Vector3{2.5f, 0.0f, 0.0f}, turned, Vector3{1.0f, 1.0f, 1.0f}))));
+}
+
+TEST(MakeScaledCapsule, RadiusTakesTheLargerSideScale)
+{
+    const NS::Quaternion turned = NS::Quaternion::CreateFromYawPitchRoll(0.0f, 0.0f, NS::k_Pi * 0.5f);
+    const NS::Phys::Capsule capsule =
+        NS::Phys::MakeScaledCapsule(Vector3{1.0f, 2.0f, 3.0f}, turned, Vector3{-2.0f, 3.0f, 0.5f}, 0.5f, 1.0f);
+    EXPECT_FLOAT_EQ(capsule.center.y, 2.0f);
+    EXPECT_FLOAT_EQ(capsule.halfHeight, 3.0f);
+    EXPECT_FLOAT_EQ(capsule.radius, 1.0f);
+    EXPECT_NEAR(capsule.axis.x, -1.0f, 1e-5f);
+
+    const NS::Phys::Capsule deeper = NS::Phys::MakeScaledCapsule(
+        Vector3{0.0f, 0.0f, 0.0f}, NS::Quaternion::Identity, Vector3{0.5f, 3.0f, -2.0f}, 0.5f, 1.0f);
+    EXPECT_FLOAT_EQ(deeper.radius, 1.0f);
 }
 
 TEST(HitSensor, WorldVolumeFollowsRootScale)
