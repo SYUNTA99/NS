@@ -106,8 +106,8 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
                                      {"よじ登りの所要時間", 0.25f},
                                      {"縁の横移動速度", 2.0f},
                                      {"振り向きの速さ", 970.0f},
-                                     {"突進速度", 20.0f},
-                                     {"突進距離", 10.0f},
+                                     {"チャージ突進の速度", 20.0f},
+                                     {"チャージ突進の距離", 10.0f},
                                      {"放つ角度の上限", 40.0f},
                                      {"通常突進の初速", 15.0f},
                                      {"通常突進の上向き初速", 3.0f},
@@ -165,7 +165,7 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
     NS::Obj::SetObjectJsonClass(entry, "Player");
     NS::Obj::SetObjectJsonId(entry, 1);
     entry["parts"] = {
-        {"Params", {{"走行速度", 9.0f}, {"突進距離", 14.0f}, {"上昇重力", -21.0f}, {"下降重力", -39.0f}, {"体力", 6}}}};
+        {"Params", {{"走行速度", 9.0f}, {"チャージ突進の距離", 14.0f}, {"上昇重力", -21.0f}, {"下降重力", -39.0f}, {"体力", 6}}}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
     scene.LoadJson(doc);
     const nlohmann::json saved = scene.ToJson();

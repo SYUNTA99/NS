@@ -97,7 +97,7 @@ TEST(PlayerOvercharge, ForcedLaunchWaitsUntilASlamCanStart)
 {
     Player player;
     UseShortOvercharge(player);
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"突進距離", 1000.0f}}), 0u);
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージ突進の距離", 1000.0f}}), 0u);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     // 溜めて放した長い突進の間に押し直し、突進の最中に溜めすぎきらせる
     for (int held = 0; held < FramesFor(1.0f); ++held)
@@ -139,7 +139,7 @@ TEST(PlayerOvercharge, ReleasingWhileWaitingFiresNothingNew)
 {
     Player player;
     UseShortOvercharge(player);
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"突進距離", 1000.0f}}), 0u);
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージ突進の距離", 1000.0f}}), 0u);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     for (int held = 0; held < FramesFor(1.0f); ++held)
     {

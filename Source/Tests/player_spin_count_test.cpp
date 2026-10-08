@@ -144,7 +144,7 @@ TEST(PlayerSpinCount, ChargedSlamTurnsItsOwnCount)
     const float turns = FieldOf(*player, "溜めた突進の届くまでの回転数");
     EXPECT_GE(turns - FieldOf(*player, "通常突進の届くまでの回転数"), 2.0f);
     const float perFrame =
-        turns * 360.0f * FieldOf(*player, "突進速度") / FieldOf(*player, "突進距離") * k_FrameSeconds;
+        turns * 360.0f * FieldOf(*player, "チャージ突進の速度") / FieldOf(*player, "チャージ突進の距離") * k_FrameSeconds;
     EXPECT_NEAR(SpinWhileSlamming(*player, 1.0f), turns * 360.0f, perFrame * 1.01f);
 }
 
