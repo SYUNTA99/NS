@@ -121,7 +121,6 @@ namespace NS::Obj
         //! 回している途中の向きはそのまま残す
         void ClearRebound() noexcept;
 
-        //! 将来 Settings UI から繋ぐ
         void SetSensX(float radPerPixel) noexcept;
         [[nodiscard]] float SensX() const noexcept { return m_sensX; }
         void SetSensY(float radPerPixel) noexcept;
@@ -131,16 +130,7 @@ namespace NS::Obj
         void SetInvertY(bool invert) noexcept;
         [[nodiscard]] bool IsInvertY() const noexcept { return m_invertY; }
 
-        //! 自動ズームの距離 3 段を idle / run / jump で設定する。非正値は無視する
-        void SetAutoDistances(float idle, float run, float jump) noexcept;
-        //! 自動ズームで run 距離へ切替える水平速度しきい値
-        void SetRunSpeedThreshold(float speed) noexcept;
-
-        //! 距離を手動固定。自動ズームを止め、ClearManualDistance() で戻す
-        void SetDistance(float distance) noexcept;
-        void ClearManualDistance() noexcept;
         [[nodiscard]] float Distance() const noexcept { return m_distance; }
-        [[nodiscard]] bool IsManualDistance() const noexcept { return m_manualDistance; }
 
         [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
         [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
@@ -266,7 +256,6 @@ namespace NS::Obj
         float m_distance = 6.0f;        // 現在のカメラ距離
         float m_desiredDistance = 6.0f; // 目標カメラ距離
         float m_springOmega = 6.0f;     // 距離バネの追従の速さ
-        bool m_manualDistance = false;  // 距離を手動固定中か
 
         float m_idleDistance = 5.0f;      // 静止時の距離
         float m_runDistance = 6.0f;       // 走行時の距離

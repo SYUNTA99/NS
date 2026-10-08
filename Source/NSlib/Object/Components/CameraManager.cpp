@@ -144,7 +144,7 @@ namespace NS::Obj
 
     bool CameraManager::AddTrauma(const CameraTraumaDesc& desc)
     {
-        if (!std::isfinite(desc.trauma) || desc.trauma < 0.0f)
+        if (!NS::IsNonNegativeFinite(desc.trauma))
         {
             return false;
         }
@@ -154,7 +154,7 @@ namespace NS::Obj
 
     bool CameraManager::HoldTrauma(float level, const CameraTraumaShape& shape)
     {
-        if (!std::isfinite(level) || level < 0.0f)
+        if (!NS::IsNonNegativeFinite(level))
         {
             return false;
         }

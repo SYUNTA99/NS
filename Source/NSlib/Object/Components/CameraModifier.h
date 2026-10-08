@@ -321,9 +321,6 @@ namespace NS::Obj
         //! @param[in] onScreen 画面へ写すずれか
         //! @return 種類の印
         [[nodiscard]] static const void* KindFor(bool onScreen) noexcept;
-
-        //! 世界の向きのままずらす物の種類の印
-        [[nodiscard]] static const void* StaticKind() noexcept { return KindFor(false); }
         [[nodiscard]] const void* Kind() const noexcept override { return KindFor(m_desc.onScreen); }
 
         //! 揺れなので平行移動の揺れと同じ順。寄りと傾きより先に掛ける

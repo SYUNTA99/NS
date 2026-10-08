@@ -592,11 +592,8 @@ namespace NS::Obj
         // プレイ開始 / rebuild ごとに初期姿勢へ戻す。editor で置いた向きからプレイを始め、手動回転はここから積む
         m_yaw = m_initialYaw;
         m_pitch = m_initialPitch;
-        if (!m_manualDistance)
-        {
-            m_distance = m_idleDistance;
-            m_desiredDistance = m_idleDistance;
-        }
+        m_distance = m_idleDistance;
+        m_desiredDistance = m_idleDistance;
         ClearCharge();
         ClearRebound();
     }
@@ -616,39 +613,6 @@ namespace NS::Obj
     void ThirdPersonFollow::SetInvertY(bool invert) noexcept
     {
         m_invertY = invert;
-    }
-
-    void ThirdPersonFollow::SetAutoDistances(float idle, float run, float jump) noexcept
-    {
-        if (idle > 0.0f)
-        {
-            m_idleDistance = idle;
-        }
-        if (run > 0.0f)
-        {
-            m_runDistance = run;
-        }
-        if (jump > 0.0f)
-        {
-            m_jumpDistance = jump;
-        }
-    }
-
-    void ThirdPersonFollow::SetRunSpeedThreshold(float speed) noexcept
-    {
-        m_runSpeedThreshold = speed;
-    }
-
-    void ThirdPersonFollow::SetDistance(float distance) noexcept
-    {
-        m_distance = distance;
-        m_desiredDistance = distance;
-        m_manualDistance = true;
-    }
-
-    void ThirdPersonFollow::ClearManualDistance() noexcept
-    {
-        m_manualDistance = false;
     }
 
     void ThirdPersonFollow::SetInitialPoseFromCameraPosition(const NS::Vector3& cameraPosition) noexcept
@@ -757,39 +721,36 @@ namespace NS::Obj
         // カメラを後ろへ下げる。反動の間は書き換えない
         // 今の目標でなく今の距離から測る
         // 目標へ寄っている途中に目標へ足すと、見えている距離より下がりすぎるか寄る
-        if (!m_manualDistance)
+        if (reboundBegan)
         {
-            if (reboundBegan)
+            m_reboundBaseDistance = m_distance;
+            if (rebound.pullBack)
             {
-                m_reboundBaseDistance = m_distance;
-                if (rebound.pullBack)
-                {
-                    m_reboundBaseDistance += std::max(m_reboundPullBack, 0.0f);
-                }
-                m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
+                m_reboundBaseDistance += std::max(m_reboundPullBack, 0.0f);
             }
-            else if (m_reboundPhase == ReboundPhase::Following)
-            {
-                // 反動の間は当たった瞬間に決めた距離に、相手を収める引きだけを足す
-                m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
-            }
-            else if (framingHeld)
-            {
-                // 体当たりから止めの明けまでは今の距離のまま。突進で浮いても空中の距離へ引かない
-                m_desiredDistance = m_distance;
-            }
-            else if (m_hasFollowMotion && !m_followGrounded)
-            {
-                m_desiredDistance = m_jumpDistance;
-            }
-            else if (m_hasFollowMotion && m_followHorizontalSpeed > m_runSpeedThreshold)
-            {
-                m_desiredDistance = m_runDistance;
-            }
-            else
-            {
-                m_desiredDistance = m_idleDistance;
-            }
+            m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
+        }
+        else if (m_reboundPhase == ReboundPhase::Following)
+        {
+            // 反動の間は当たった瞬間に決めた距離に、相手を収める引きだけを足す
+            m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
+        }
+        else if (framingHeld)
+        {
+            // 体当たりから止めの明けまでは今の距離のまま。突進で浮いても空中の距離へ引かない
+            m_desiredDistance = m_distance;
+        }
+        else if (m_hasFollowMotion && !m_followGrounded)
+        {
+            m_desiredDistance = m_jumpDistance;
+        }
+        else if (m_hasFollowMotion && m_followHorizontalSpeed > m_runSpeedThreshold)
+        {
+            m_desiredDistance = m_runDistance;
+        }
+        else
+        {
+            m_desiredDistance = m_idleDistance;
         }
         m_distance = SpringApproach(m_distance, m_desiredDistance, m_springOmega, dt);
 

@@ -88,10 +88,8 @@ namespace NS::Obj
     std::unique_ptr<CameraShakeModifier> CameraShakeModifier::Create(const CameraShakeDesc& desc, float firstSideSign)
     {
         // 壊れた値が pose へ流れると視点が消える。入口で捨てる
-        const bool finite = std::isfinite(desc.sideAmplitude) && std::isfinite(desc.upAmplitude) &&
-                            NS::IsFinite(desc.firstSideDirection);
-        if (!finite || desc.sideAmplitude < 0.0f || desc.upAmplitude < 0.0f || desc.frames <= 0 ||
-            desc.longestFlipFrames < 1)
+        if (!NS::IsNonNegativeFinite(desc.sideAmplitude) || !NS::IsNonNegativeFinite(desc.upAmplitude) ||
+            !NS::IsFinite(desc.firstSideDirection) || desc.frames <= 0 || desc.longestFlipFrames < 1)
         {
             return nullptr;
         }
@@ -190,11 +188,10 @@ namespace NS::Obj
     std::unique_ptr<CameraSinkModifier> CameraSinkModifier::Create(const CameraSinkDesc& desc)
     {
         // 壊れた値が姿へ流れると画面が消える。入口で捨てる
-        const bool finite =
-            std::isfinite(desc.bottomPixels) && std::isfinite(desc.tremblePixels) && std::isfinite(desc.overshootRatio);
-        if (!finite || desc.bottomPixels < 0.0f || desc.tremblePixels < 0.0f || desc.frames <= 0 ||
-            desc.sinkFrames < 1 || desc.trembleFrames < 0 || desc.tremblePeriodFrames < 1 ||
-            desc.bouncePeriodFrames < 1 || !(desc.overshootRatio > 0.0f) || !(desc.overshootRatio < 1.0f))
+        if (!NS::IsNonNegativeFinite(desc.bottomPixels) || !NS::IsNonNegativeFinite(desc.tremblePixels) ||
+            !std::isfinite(desc.overshootRatio) || desc.frames <= 0 || desc.sinkFrames < 1 || desc.trembleFrames < 0 ||
+            desc.tremblePeriodFrames < 1 || desc.bouncePeriodFrames < 1 || !(desc.overshootRatio > 0.0f) ||
+            !(desc.overshootRatio < 1.0f))
         {
             return nullptr;
         }
