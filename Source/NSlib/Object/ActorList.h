@@ -134,16 +134,16 @@ namespace NS::Obj
         // 1 体ずつ入れる口は開始の手前で止まる。開始まで済ませる Scene の湧かす口だけに開く
         friend class Scene;
 
-        //! 組み上がった配置物を id を振らずに 1 体加える。実行時に湧く一時オブジェクト用で、保存も参照もされない
-        //! Scene の湧かす口だけが呼ぶ。シーンへの付けと開始は呼び手の Scene が済ませる
+        //! 組み上がった配置物を id を振らずに 1 体加える
+        //! Scene の湧かす口だけが呼ぶ。Init はここで済ませ、シーンへの付けと開始は呼び手が済ませる
         Actor* Append(std::unique_ptr<Actor> obj);
 
         //! 永続 id を振り、名前が既存と重なれば番号を付けて 1 体加える
-        //! Scene の湧かす口だけが呼ぶ。シーンへの付けと開始は呼び手の Scene が済ませる
+        //! Scene の湧かす口だけが呼ぶ。Init はここで済ませ、シーンへの付けと開始は呼び手が済ませる
         Actor* AppendWithNewId(std::unique_ptr<Actor> obj, std::string name);
 
         //! 組み直さずに 1 体だけ入れる。名前は既存と重なれば番号を付ける。index が末尾より先なら末尾
-        //! Scene の湧かす口だけが呼ぶ。シーンへの付けと親子の結び付けと開始は呼び手の Scene が済ませる
+        //! Scene の湧かす口だけが呼ぶ。Init はここで済ませ、シーンへの付けと親子と開始は呼び手が済ませる
         Actor* InsertFromJson(std::unique_ptr<Actor> obj, const nlohmann::json& entry, std::size_t index);
 
         //! 並びが変わったので索引を捨てる。並びを変える箇所は必ず呼び、破棄した配置物を索引に残さない

@@ -59,7 +59,7 @@ namespace NS::Editor
     //! 複数居ても先頭を正とする。2 体以上の警告は EnsurePlayerObject を通した時だけ出る
     [[nodiscard]] std::size_t FindPlayerObjectIndex(const nlohmann::json& scene) noexcept;
 
-    //! プレイヤーのひな形の JSON を作る。構成は Player の Init が決める
+    //! プレイヤーのひな形の JSON を作る。構成は Player の Init が決め、transform 以外の欄は書かない
     [[nodiscard]] nlohmann::json MakePlayerObject(const NS::Vector3& position, const NS::Quaternion& rotation);
 
     //! @brief プレイヤーが 1 体も居なければ既定構成で足し、永続 id まで振る。2 体以上なら警告して先頭を正とする

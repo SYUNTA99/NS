@@ -1,9 +1,9 @@
 ﻿#include "NSlib/Object/Scene/SceneJson.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ObjectName.h"
 #include "NSlib/Object/Reflection/SubObjectEntry.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>
@@ -22,7 +22,8 @@ namespace NS::Obj
         //! 保存形式のバージョン。形式を変えたら上げ、読込は一致のみ受け付ける
         //! 3: リフレクション欄名を日本語化。旧欄名のファイルを黙って既定値で読まないための引き上げ
         //! 4: transform の回転を Euler 度 3 要素から クォータニオン 4 要素の 1 欄へ
-        constexpr int k_FormatVersion = 5;
+        //! 6: 部品の鍵を parts から subObjects へ
+        constexpr int k_FormatVersion = 6;
 
         //! 読込時の上限。巨大 size / 要素数による メモリ枯渇を防ぐ
         constexpr std::size_t k_MaxSceneFileBytes = 16u * 1024u * 1024u;

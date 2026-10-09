@@ -57,6 +57,7 @@ namespace NS::Obj
     //! object の Actor を作る。className 一致の登録があればその生成関数、該当しなければ素の Actor を返す
     [[nodiscard]] std::unique_ptr<Actor> CreateRegisteredObject(const nlohmann::json& object);
 
+    //! 型名から部品をコードの既定値で作る。持ち主と名前は付かない。未登録の型名と Actor の型名は nullptr
     [[nodiscard]] std::unique_ptr<SubObject> CreateSubObjOfType(std::string_view typeName);
 
     //! @brief エディタで置ける Actor の登録の一覧。表示名の順で安定

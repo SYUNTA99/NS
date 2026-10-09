@@ -1,12 +1,12 @@
 #include "Game/Level/FollowCamera.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/CameraTarget.h"
-#include "NSlib/Object/SubObjects/CameraManager.h"
-#include "NSlib/Object/SubObjects/CameraModifier.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
+#include "NSlib/Object/SubObjects/CameraManager.h"
+#include "NSlib/Object/SubObjects/CameraModifier.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 
@@ -61,9 +61,8 @@ namespace
     public:
         [[nodiscard]] NS::Obj::CameraPose EvaluatePose(float alpha) const noexcept override
         {
-            return MakePose(NS::Vector3{0.0f, 0.0f, -5.0f},
-                            NS::Vector3{10.0f * alpha, 0.0f, 0.0f},
-                            NS::Vector3{0.0f, 1.0f, 0.0f});
+            return MakePose(
+                NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{10.0f * alpha, 0.0f, 0.0f}, NS::Vector3{0.0f, 1.0f, 0.0f});
         }
         NS_REFLECT_NONE(AlphaCamera, NS::Obj::VirtualCamera)
     };
@@ -341,7 +340,7 @@ TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
 }
 
 // 追従カメラは出荷の姿で生まれる。プレイ中かは世界の駆動が答え、部品の active へ写さない
-TEST(FollowCamera, VcamIsLiveFromConstruction)
+TEST(FollowCamera, VcamIsLiveFromInit)
 {
     NS::Game::Level::FollowCamera camera;
     camera.EnsureInit();

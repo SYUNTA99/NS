@@ -37,6 +37,19 @@ namespace
         }
     };
 
+    class NameClashActor final : public NS::Obj::Actor
+    {
+    public:
+        NS::Obj::Model* model = nullptr;
+
+    protected:
+        void Init() override
+        {
+            CreateSubObj<PlainSubObj>("Model");
+            model = CreateSubObj<NS::Obj::Model>(ModelSlot());
+        }
+    };
+
     // 基底の Init を呼ばずに、共通の部分を InitShape に出す
     class MiddleActor : public NS::Obj::Actor
     {
@@ -116,6 +129,14 @@ TEST(SubObject, SecondCreateInTheSameSlotIsRefused)
     actor.EnsureInit();
     EXPECT_EQ(actor.refused, nullptr);
     EXPECT_EQ(actor.CollisionSubObj(), actor.box);
+}
+
+TEST(SubObject, SlotIsRefusedWhenItsNameIsTaken)
+{
+    NameClashActor actor;
+    actor.EnsureInit();
+    EXPECT_EQ(actor.model, nullptr);
+    EXPECT_EQ(actor.ModelSubObj(), nullptr);
 }
 
 TEST(SubObject, GrandchildReplacesTheCollisionTypeChosenByTheMiddleBase)

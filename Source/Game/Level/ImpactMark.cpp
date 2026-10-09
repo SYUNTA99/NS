@@ -28,7 +28,7 @@ namespace NS::Game::Level
             return nullptr;
         }
 
-        // 組み立ててから渡す。SpawnTransient の資産の引き当ては渡した時に持っている SubObject にしか効かない
+        // 部品は渡した後に Init が作る。ここで触るのは根だけ
         std::unique_ptr<ImpactMark> owned = std::make_unique<ImpactMark>();
         owned->Root().SetPosition(position);
         return scene->SpawnTransient(std::move(owned));

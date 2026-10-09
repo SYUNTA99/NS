@@ -10,8 +10,8 @@ namespace NS::Obj
 namespace NS::Game::Level
 {
     //! @brief センサーの種類。誰が誰に応じるかを決める Game の語彙
-    //! @details 種類は Player / MapObj / Goal / DeathZone のコンストラクタが付ける。保存はしない
-    //! 値は Runtime の HitSensor には名前の無い数として渡る。調べ役は種類を見ずに重なった組の両方へ知らせ、
+    //! @details 種類は Player / MapObj / Goal / DeathZone の Init が付ける。保存はしない
+    //! HitSensor には名前の無い数として渡り、HitSensorDirector は種類を見ずに重なった組の両方へ知らせる
     //! 応じるかを決めるのは Goal / DeathZone の AttackSensor と、体当たりの相手を絞る ImpactResolver
     enum class SensorKind : std::uint8_t
     {

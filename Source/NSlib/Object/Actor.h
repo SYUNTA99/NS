@@ -162,15 +162,16 @@ namespace NS::Obj
     protected:
         //! @brief 部品を作る。EnsureInit から 1 回だけ呼ばれる。既定は何もしない
         //! @details 部品は CreateSubObj で作る。基底の枠の型を替える派生は、基底の Init を呼ばずに自分で作る
+        //! 所属の Scene は入る道によって付いていないので、ここでは読まない
         virtual void Init() {}
 
         //! @brief 基底の枠 slot に、枠の型 TBase の派生 T を作って付ける
-        //! @return 作った部品。枠が作り済みなら NS_LOG_ERROR を出して作らず nullptr
+        //! @return 作った部品。枠の名前の部品を持っていれば NS_LOG_ERROR を出して作らず nullptr
         template <class T, class TBase, class... TArgs>
             requires std::derived_from<T, TBase>
         T* CreateSubObj(SubObjSlot<TBase> slot, TArgs&&... args)
         {
-            if (*slot.member != nullptr)
+            if (FindSubObj(slot.name) != nullptr)
             {
                 ReportTakenName(slot.name);
                 return nullptr;

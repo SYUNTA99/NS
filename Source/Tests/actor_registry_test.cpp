@@ -44,7 +44,7 @@ TEST(ActorRegistry, PlayerAndSubObjectsAreNotPlaceable)
     // プレイヤーは新しいレベルに自動で 1 体入るので置く一覧に出さない。部品も置く物ではない
     EXPECT_EQ(FindPlaceable("Player"), nullptr);
     EXPECT_EQ(FindPlaceable("Model"), nullptr);
-    EXPECT_EQ(FindPlaceable("GoalSubObject"), nullptr);
+    EXPECT_EQ(FindPlaceable("GoalParams"), nullptr);
 }
 
 TEST(ActorRegistry, PlaceableEntriesAreSortedByLabel)

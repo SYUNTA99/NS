@@ -38,7 +38,8 @@ namespace NS::Obj
     {
         const SubObject* const ranked[] = {
             m_rootSubObj, m_model, m_animation, m_shadow, m_collision, m_bodySensor, m_attackSensor, m_hitReaction};
-        return static_cast<std::size_t>(std::find(std::begin(ranked), std::end(ranked), subObject) - std::begin(ranked));
+        return static_cast<std::size_t>(std::find(std::begin(ranked), std::end(ranked), subObject) -
+                                        std::begin(ranked));
     }
 
     void Actor::AdoptSubObjBase(std::unique_ptr<SubObject> subObject, std::string_view name)
@@ -156,6 +157,7 @@ namespace NS::Obj
             }
         }
         m_subObjOrder.clear();
+        // 作った順の逆に壊す。clear は壊す順を決めていない
         while (!m_subObjects.empty())
         {
             m_subObjects.pop_back();
