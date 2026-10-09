@@ -17,7 +17,7 @@
 #include <variant>
 #include <vector>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief 事象が起きる外れの向き。面の上の位置 (u, v) の絶対値の大きい方の軸と符号で決まる
     //! @details 番号はファイルに書かず、名前 (HitDirectionName) で書く。
@@ -555,4 +555,4 @@ namespace NS::Game::Level
         std::set<int> m_reportedTiers;                               // 引けないとエラーを出した段の番号
         bool m_loaded = false;
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

@@ -5,7 +5,7 @@
 
 #include <cmath>
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     PlayerParams::PlayerParams() noexcept
     {
@@ -47,4 +47,4 @@ namespace NS::Game::Player
     }
 
     NS_CLASS(PlayerParams)
-} // namespace NS::Game::Player
+} // namespace GL::Player

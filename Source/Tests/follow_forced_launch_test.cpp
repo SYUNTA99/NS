@@ -47,13 +47,13 @@ namespace
     {
         NS::Obj::Scene scene;
         LaunchTargetProbe* target = nullptr;
-        NS::Game::Level::FollowCamera* camera = nullptr;
+        GL::Level::FollowCamera* camera = nullptr;
 
         void Load()
         {
             target =
                 static_cast<LaunchTargetProbe*>(scene.SpawnObject(std::make_unique<LaunchTargetProbe>(), "target"));
-            camera = scene.SpawnTransient<NS::Game::Level::FollowCamera>();
+            camera = scene.SpawnTransient<GL::Level::FollowCamera>();
             NS::Obj::ApplyJsonFields(camera->Vcam(),
                                      nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
                                                     {"強制発射の追う速さ", 4.0f},

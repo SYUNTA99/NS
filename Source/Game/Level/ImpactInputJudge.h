@@ -1,6 +1,6 @@
 #pragma once
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief 体当たりの発動種別
     enum class SlamKind
@@ -89,4 +89,4 @@ namespace NS::Game::Level
         SlamKind m_fired = SlamKind::None;
         HoldPhase m_phase = HoldPhase::Charging;
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

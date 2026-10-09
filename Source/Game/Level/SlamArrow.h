@@ -25,7 +25,7 @@ namespace NS::Obj
     class Collider;
 }
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! 地面の矢印を組む時点の、溜めと狙いの様子
     struct SlamArrowState
@@ -111,7 +111,7 @@ namespace NS::Game::Level
     //! @param[in] desc 道筋の刻みと浮かせる高さ
     //! @param[in,out] shape BuildSlamArrow が組んだ形。帯の板と矢じりの板を置き直す
     void PlaceSlamArrowOnPath(const SlamArrowGroundProbe& probe,
-                              const NS::Game::Player::LaunchPath& path,
+                              const GL::Player::LaunchPath& path,
                               float ballCenterHeight,
                               const SlamArrowDesc& desc,
                               SlamArrowShape& shape);
@@ -248,4 +248,4 @@ namespace NS::Game::Level
         NS::Gfx::Material* m_headMaterial = nullptr;   // 矢じりのマテリアル (非所有)
         std::vector<NS::Gfx::DrawItem> m_drawScratch;  // 描く単位を毎フレーム積み直す置き場。確保を使い回す
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

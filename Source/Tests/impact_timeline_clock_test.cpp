@@ -35,7 +35,7 @@
 
 namespace
 {
-    using namespace NS::Game::Level;
+    using namespace GL::Level;
 
     // 自機 (id 1) と、その前の置物 (id 2) の場面。mass が正なら置物の質量を書く
     Player* PlaceClockScene(NS::Obj::Scene& scene, float rockX, float rockZ, float mass)
@@ -95,7 +95,7 @@ namespace
     int CountLayers(Player& player, std::string_view name)
     {
         int count = 0;
-        for (const NS::Game::Player::EffectLayerRecord& record : player.ImpactVisuals().Layers().Records())
+        for (const GL::Player::EffectLayerRecord& record : player.ImpactVisuals().Layers().Records())
         {
             if (record.name == name)
             {
@@ -699,7 +699,7 @@ TEST(ImpactTimelineClock, MissCameraLurchesAlongTheSlamAndSwaysAlongTheRebound)
 // 外れの火花は外した側へ 7 割、相手の表面に沿って滑る向きへ 3 割で流す。面の真ん中は向きが決まらない
 TEST(ImpactTimelineClock, MissSparksFlowTowardTheSideThatWasMissed)
 {
-    NS::Game::Player::ImpactEffects effects;
+    GL::Player::ImpactEffects effects;
     const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
     // 右の縁: 外した側 +X、滑る向き (0.6, 0, 0.8)。0.7 × (1, 0, 0) + 0.3 × (0.6, 0, 0.8) を正規化
     const NS::Vector3 right = effects.MissSparkHeading(0.8f, 0.0f, forward);
@@ -730,9 +730,9 @@ TEST(ImpactTimelineClock, MissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
     const ImpactRecord& impact = player->Resolver().LastImpact();
     ASSERT_EQ(impact.tier, HitTier::Wide);
 
-    const NS::Game::Player::EffectLayerRecord* core = nullptr;
-    const NS::Game::Player::EffectLayerRecord* sparks = nullptr;
-    for (const NS::Game::Player::EffectLayerRecord& record : player->ImpactVisuals().Layers().Records())
+    const GL::Player::EffectLayerRecord* core = nullptr;
+    const GL::Player::EffectLayerRecord* sparks = nullptr;
+    for (const GL::Player::EffectLayerRecord& record : player->ImpactVisuals().Layers().Records())
     {
         if (record.name == "impact.core")
         {
@@ -1271,8 +1271,8 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsWhenTheBeforeContactClockStarts)
         }
     }
     ASSERT_GE(beforeContactStep, 0);
-    const NS::Game::Player::EffectLayerRecord* burst = nullptr;
-    for (const NS::Game::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
+    const GL::Player::EffectLayerRecord* burst = nullptr;
+    for (const GL::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
     {
         if (record.name == "release.burst")
         {
@@ -1305,8 +1305,8 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsOnTheContactFrameWithoutBeforeContactE
         }
     }
     ASSERT_GE(contactStep, 0);
-    const NS::Game::Player::EffectLayerRecord* burst = nullptr;
-    for (const NS::Game::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
+    const GL::Player::EffectLayerRecord* burst = nullptr;
+    for (const GL::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
     {
         if (record.name == "release.burst")
         {
@@ -1379,8 +1379,8 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsThreeFramesBeforeThePredictedContact)
         }
     }
     ASSERT_GE(contactStep, 0);
-    const NS::Game::Player::EffectLayerRecord* burst = nullptr;
-    for (const NS::Game::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
+    const GL::Player::EffectLayerRecord* burst = nullptr;
+    for (const GL::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
     {
         if (record.name == "release.burst")
         {

@@ -19,7 +19,7 @@ namespace NS::Obj
 // コースの仕掛けと進行役がやり取りする知らせ。型ごとに「送る」と「調べる」を対で置く
 // 受け手が応じたかは送る関数の戻り値で分かる
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! 受け手を即死させる知らせ。落下死の範囲がプレイヤーの体へ送る
     class MsgInstantDeath final : public NS::Obj::Message
@@ -223,4 +223,4 @@ namespace NS::Game::Level
     };
     bool SendMsgTackleRelease(NS::Obj::Actor& receiver, const TackleReleaseDesc& desc);
     [[nodiscard]] bool IsMsgTackleRelease(const NS::Obj::Message& msg) noexcept;
-} // namespace NS::Game::Level
+} // namespace GL::Level

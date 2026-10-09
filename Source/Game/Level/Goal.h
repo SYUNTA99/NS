@@ -3,7 +3,7 @@
 #include "Game/Level/GoalParams.h"
 #include "NSlib/Object/Actor.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief 触れたらクリアになるゴール。金色の立方体と、範囲のセンサーを持つ
     //! @details 範囲がプレイヤーの体に重なったら MsgGoal を送る。クリアの流れは受け取ったプレイヤーと進行役が決める
@@ -22,4 +22,4 @@ namespace NS::Game::Level
     private:
         GoalParams* m_params = nullptr;
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

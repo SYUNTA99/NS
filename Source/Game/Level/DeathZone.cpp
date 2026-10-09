@@ -5,7 +5,7 @@
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     void DeathZone::OnInit()
     {
@@ -24,4 +24,4 @@ namespace NS::Game::Level
     }
 
     NS_PLACEABLE(DeathZone, "落下死の範囲")
-} // namespace NS::Game::Level
+} // namespace GL::Level

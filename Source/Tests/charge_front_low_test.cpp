@@ -27,10 +27,10 @@ namespace
         return static_cast<int>(std::lround(seconds / NS::OS::FrameTimer::FixedDelta()));
     }
 
-    const NS::Game::Player::EffectLayerRecord* LiveLayer(const NS::Game::Player::ChargeEffects& effects,
+    const GL::Player::EffectLayerRecord* LiveLayer(const GL::Player::ChargeEffects& effects,
                                                          std::string_view name)
     {
-        for (const NS::Game::Player::EffectLayerRecord& record : effects.Layers().Records())
+        for (const GL::Player::EffectLayerRecord& record : effects.Layers().Records())
         {
             if (record.name == name && !record.endStep.has_value())
             {
@@ -70,12 +70,12 @@ TEST(ChargeFrontLow, GatherRootFacesTheAimLineEveryFrame)
         for (int frame = 0; frame < 3; ++frame)
         {
             player->Update(true);
-            NS::Game::Level::AimLine aim{};
+            GL::Level::AimLine aim{};
             ASSERT_TRUE(player->TryGetAimLine(aim));
-            const NS::Game::Player::EffectLayerRecord* gather = LiveLayer(player->ChargeVisuals(), "charge.gather");
+            const GL::Player::EffectLayerRecord* gather = LiveLayer(player->ChargeVisuals(), "charge.gather");
             ASSERT_NE(gather, nullptr);
             ASSERT_TRUE(gather->rotation.has_value());
-            const NS::Quaternion expected = NS::Game::Player::ChargeEffects::YawToward(aim.direction);
+            const NS::Quaternion expected = GL::Player::ChargeEffects::YawToward(aim.direction);
             EXPECT_NEAR(gather->rotation->x, expected.x, 0.00001f);
             EXPECT_NEAR(gather->rotation->y, expected.y, 0.00001f);
             EXPECT_NEAR(gather->rotation->z, expected.z, 0.00001f);

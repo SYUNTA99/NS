@@ -29,12 +29,12 @@ namespace
     // 反動の初速と着地までの秒を同じ曲線から出す。組は実際に当てる重力 (Player::ReboundGravity) と同じ
     // PlayerParams::ReboundGravity。曲線は上りの重力を正の大きさで、下りの重力を上りに対する倍率で持つので、
     // 符号を反転して下降重力を上りの重力で割る
-    [[nodiscard]] NS::Game::Level::LaunchArc ReboundLaunchArc(const NS::Game::Player::PlayerParams& params,
-                                                              const NS::Game::Player::ReboundArc& arc) noexcept
+    [[nodiscard]] GL::Level::LaunchArc ReboundLaunchArc(const GL::Player::PlayerParams& params,
+                                                              const GL::Player::ReboundArc& arc) noexcept
     {
-        const NS::Game::Player::PlayerGravity gravity = params.ReboundGravity();
+        const GL::Player::PlayerGravity gravity = params.ReboundGravity();
         const float riseGravity = -gravity.rise;
-        return NS::Game::Level::LaunchArc{.direction = arc.direction,
+        return GL::Level::LaunchArc{.direction = arc.direction,
                                           .distance = arc.distance,
                                           .apexHeight = arc.apexHeight,
                                           .riseGravity = riseGravity,
@@ -164,11 +164,11 @@ void Player::EndBodySlam() noexcept
 
     if (body.IsGrounded())
     {
-        (void)m_states->Change<NS::Game::Player::WalkPlayerState>();
+        (void)m_states->Change<GL::Player::WalkPlayerState>();
     }
     else
     {
-        (void)m_states->Change<NS::Game::Player::FallPlayerState>();
+        (void)m_states->Change<GL::Player::FallPlayerState>();
     }
     m_playerEvents.onBodySlamEnded.Invoke();
 }
@@ -332,12 +332,12 @@ bool Player::BodySlam() noexcept
     // 縁を離れれば出るが、その時の丸まりは掴まりで解けている
     ChangeCurled(true);
 
-    (void)m_states->Change<NS::Game::Player::BodySlamPlayerState>();
+    (void)m_states->Change<GL::Player::BodySlamPlayerState>();
     m_playerEvents.onBodySlamStarted.Invoke();
     return true;
 }
 
-bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept
+bool Player::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
 {
     // 曲線にならない反動で移すと、弾かれないまま速度が 0 に消える。移さずに偽を返し、速度は呼び手に任せる
     const NS::Vector3 velocity = ReboundVelocityFor(arc);
@@ -361,24 +361,24 @@ bool Player::BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept
     m_rebound.missTumble = arc.missTumble;
     ++m_rebound.count;
     m_rebound.spinSpeed =
-        SpinSpeedFor(turns, NS::Game::Level::LaunchArcFlightSeconds(ReboundLaunchArc(*m_params, arc)));
+        SpinSpeedFor(turns, GL::Level::LaunchArcFlightSeconds(ReboundLaunchArc(*m_params, arc)));
     m_body->SetVelocity(velocity);
-    (void)m_states->Change<NS::Game::Player::ReboundPlayerState>();
+    (void)m_states->Change<GL::Player::ReboundPlayerState>();
     return true;
 }
 
-NS::Vector3 Player::ReboundVelocityFor(const NS::Game::Player::ReboundArc& arc) const noexcept
+NS::Vector3 Player::ReboundVelocityFor(const GL::Player::ReboundArc& arc) const noexcept
 {
     // 下りは普段の落ち方のままにする
-    return NS::Game::Level::LaunchArcInitialVelocity(ReboundLaunchArc(*m_params, arc));
+    return GL::Level::LaunchArcInitialVelocity(ReboundLaunchArc(*m_params, arc));
 }
 
 void Player::SetCurled(bool curled) noexcept
 {
     // 掴まりからは突進が出ない。玉のままぶら下がると、押しても突進が出ないのに玉の見た目だけが残る
     // 掴まっている間に玉にすると縁を測り直す手の高さが下がり、押したフレームに縁を放して 0.5 m 落ちた
-    if (curled && (m_states->IsCurrent<NS::Game::Player::LedgeHangingPlayerState>() ||
-                   m_states->IsCurrent<NS::Game::Player::LedgeClimbingPlayerState>()))
+    if (curled && (m_states->IsCurrent<GL::Player::LedgeHangingPlayerState>() ||
+                   m_states->IsCurrent<GL::Player::LedgeClimbingPlayerState>()))
     {
         return;
     }

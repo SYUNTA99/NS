@@ -3,7 +3,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 
-namespace NS::Game::Player
+namespace GL::Player
 {
 
     //! 跳びの判定
@@ -167,4 +167,4 @@ namespace NS::Game::Player
             return idle || walk || fall || rebound;
         }
     };
-} // namespace NS::Game::Player
+} // namespace GL::Player

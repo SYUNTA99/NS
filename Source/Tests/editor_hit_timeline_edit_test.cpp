@@ -10,7 +10,7 @@
 
 namespace
 {
-    using namespace NS::Game::Level;
+    using namespace GL::Level;
 
     HitTimeline MakeTwoEvents()
     {

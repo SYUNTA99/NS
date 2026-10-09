@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     NS::Gfx::EffectPlayDesc ChargeEffects::PlayDesc(const NS::Vector3& position,
                                                     const NS::Quaternion& rotation,
@@ -64,7 +64,7 @@ namespace NS::Game::Player
             return;
         }
 
-        const NS::Game::Level::ImpactInputJudge& judge = m_actor->ChargeJudge();
+        const GL::Level::ImpactInputJudge& judge = m_actor->ChargeJudge();
         const NS::Vector3 center = RootTransform().Position();
         // 溜めすぎで出た後は押したままでも溜めの層を消す
         const bool held = judge.IsHoldingCharge();
@@ -213,7 +213,7 @@ namespace NS::Game::Player
 
     void ChargeEffects::PlaySwaySparks(NS::Gfx::EffectScene* effects, const NS::Vector3& center)
     {
-        NS::Game::Level::AimLine line{};
+        GL::Level::AimLine line{};
         if (!m_actor->TryGetAimLine(line))
         {
             return;
@@ -400,7 +400,7 @@ namespace NS::Game::Player
 
     NS::Vector3 ChargeEffects::HeldAimDirection() const noexcept
     {
-        NS::Game::Level::AimLine line{};
+        GL::Level::AimLine line{};
         if (m_actor != nullptr)
         {
             if (m_actor->TryGetAimLine(line))
@@ -433,4 +433,4 @@ namespace NS::Game::Player
     }
 
     NS_CLASS(ChargeEffects)
-} // namespace NS::Game::Player
+} // namespace GL::Player

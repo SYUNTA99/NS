@@ -4,7 +4,7 @@
 
 class Player;
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     //! 反動。移る先は立ち・ぶら下がり・突進
     class ReboundPlayerState final : public PlayerState<ReboundPlayerState>
@@ -16,4 +16,4 @@ namespace NS::Game::Player
     private:
         NS::Coroutine Run(::Player& player);
     };
-} // namespace NS::Game::Player
+} // namespace GL::Player

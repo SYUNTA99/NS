@@ -5,7 +5,7 @@
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     NS_PLACEABLE(FollowCamera, "追従カメラ")
 
@@ -61,4 +61,4 @@ namespace NS::Game::Level
         m_vcam->ClearRebound();
         NS::Obj::Actor::OnKill();
     }
-} // namespace NS::Game::Level
+} // namespace GL::Level

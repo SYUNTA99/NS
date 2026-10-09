@@ -12,12 +12,12 @@
 
 class Player;
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     class ImpactResolver;
-} // namespace NS::Game::Level
+} // namespace GL::Level
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     class PlayerAppearance;
 
@@ -165,6 +165,6 @@ namespace NS::Game::Player
 
         const ::Player* m_actor = nullptr;              // 押し・溜め量・突進の速度・狙いの向きを答える自機。非所有
         const PlayerAppearance* m_appearance = nullptr; // 玉の回転の正。非所有
-        const NS::Game::Level::ImpactResolver* m_resolver = nullptr; // 止めの頭の正。非所有
+        const GL::Level::ImpactResolver* m_resolver = nullptr; // 止めの頭の正。非所有
     };
-} // namespace NS::Game::Player
+} // namespace GL::Player

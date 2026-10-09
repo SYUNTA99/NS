@@ -32,11 +32,11 @@
 namespace
 {
     using NS::Vector3;
-    using NS::Game::Level::HitFace;
-    using NS::Game::Level::HitFaceJudgement;
-    using NS::Game::Level::HitTier;
-    using NS::Game::Level::HitZones;
-    using NS::Game::Level::JudgeHitFace;
+    using GL::Level::HitFace;
+    using GL::Level::HitFaceJudgement;
+    using GL::Level::HitTier;
+    using GL::Level::HitZones;
+    using GL::Level::JudgeHitFace;
     using NS::Obj::HitSensorShape;
     using NS::Obj::SensorVolume;
 
@@ -125,7 +125,7 @@ namespace
 
     // 溜め 0 で +z へ突進させ、本番の 1 フレームを 1 回回す。裁定は決定の段で身体が動く前に記録される
     // 溜め 0 のチャージ倍率は 1
-    const NS::Game::Level::ImpactRecord& SlamOnce(Player& player)
+    const GL::Level::ImpactRecord& SlamOnce(Player& player)
     {
         player.RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
         EXPECT_TRUE(player.BodySlam());
@@ -524,8 +524,8 @@ TEST(HitZonesTest, MapObjAnswersWithItsFaceAndBody)
     const HitZones* zones = HitZonesOf(*rock);
     ASSERT_NE(zones, nullptr);
 
-    NS::Game::Level::TackleTargetAnswer answer{};
-    ASSERT_TRUE(NS::Game::Level::SendMsgAskTackleTarget(*rock->BodySensorSubObj(), answer));
+    GL::Level::TackleTargetAnswer answer{};
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*rock->BodySensorSubObj(), answer));
     EXPECT_EQ(answer.face.round, zones->Face().round);
     EXPECT_FLOAT_EQ(answer.face.width, zones->Face().width);
     EXPECT_FLOAT_EQ(answer.face.centerU, 0.25f);
@@ -550,8 +550,8 @@ TEST(HitZonesTest, InstanceOverrideChangesOnlyThatTarget)
     ASSERT_NE(plain, nullptr);
 
     const auto judgeThroughCenter = [&](NS::Obj::Actor& target) {
-        NS::Game::Level::TackleTargetAnswer answer{};
-        EXPECT_TRUE(NS::Game::Level::SendMsgAskTackleTarget(*target.BodySensorSubObj(), answer));
+        GL::Level::TackleTargetAnswer answer{};
+        EXPECT_TRUE(GL::Level::SendMsgAskTackleTarget(*target.BodySensorSubObj(), answer));
         const Vector3 center = answer.body.Center();
         HitFaceJudgement result;
         EXPECT_TRUE(JudgeHitFace(answer.face,
@@ -609,8 +609,8 @@ TEST(HitZonesTest, InstanceOverrideSurvivesSaveAndLoad)
 // 面は相手の正面に接する平面に立ち、自機の方を向く。横と縦の半分の幅は判定と同じ「半幅 + 自機の半径」
 TEST(HitZonesTest, FaceFrameStandsOnTheFrontOfTheBodyFacingThePlayer)
 {
-    NS::Game::Level::HitFaceFrame frame;
-    ASSERT_TRUE(NS::Game::Level::MakeHitFaceFrame(
+    GL::Level::HitFaceFrame frame;
+    ASSERT_TRUE(GL::Level::MakeHitFaceFrame(
         SensorVolume::Sphere(Vector3{0.0f, 0.0f, 0.0f}, 0.5f), Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius, frame));
     EXPECT_NEAR(frame.center.x, -0.5f, k_Tolerance);
     EXPECT_NEAR(frame.center.y, 0.0f, k_Tolerance);
@@ -625,7 +625,7 @@ TEST(HitZonesTest, FaceFrameStandsOnTheFrontOfTheBodyFacingThePlayer)
 
     const SensorVolume capsule = SensorVolume::Capsule(NS::Phys::Capsule{
         .center = Vector3{0.0f, 1.0f, 0.0f}, .axis = Vector3{0.0f, 1.0f, 0.0f}, .halfHeight = 0.8f, .radius = 0.4f});
-    ASSERT_TRUE(NS::Game::Level::MakeHitFaceFrame(capsule, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius, frame));
+    ASSERT_TRUE(GL::Level::MakeHitFaceFrame(capsule, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius, frame));
     EXPECT_NEAR(frame.center.x, -0.4f, k_Tolerance);
     EXPECT_NEAR(frame.center.y, 1.0f, k_Tolerance);
     EXPECT_NEAR(frame.reachU, 0.4f + k_PlayerRadius, k_Tolerance);
@@ -638,21 +638,21 @@ TEST(HitZonesTest, FaceFrameStandsOnTheFrontOfTheBodyFacingThePlayer)
     box.halfExtentY = 0.5f;
     box.halfExtentZ = 2.0f;
     ASSERT_TRUE(
-        NS::Game::Level::MakeHitFaceFrame(SensorVolume::Box(box), Vector3{0.0f, 0.0f, 1.0f}, k_PlayerRadius, frame));
+        GL::Level::MakeHitFaceFrame(SensorVolume::Box(box), Vector3{0.0f, 0.0f, 1.0f}, k_PlayerRadius, frame));
     EXPECT_NEAR(frame.center.z, -2.0f, k_Tolerance);
     EXPECT_NEAR(frame.reachU, 1.0f + k_PlayerRadius, k_Tolerance);
     EXPECT_NEAR(frame.reachV, 0.5f + k_PlayerRadius, k_Tolerance);
     EXPECT_EQ(frame.bodyShape, HitSensorShape::Box);
 
-    EXPECT_FALSE(NS::Game::Level::MakeHitFaceFrame(
+    EXPECT_FALSE(GL::Level::MakeHitFaceFrame(
         SensorVolume::Sphere(Vector3{0.0f, 0.0f, 0.0f}, 0.5f), Vector3{0.0f, 1.0f, 0.0f}, k_PlayerRadius, frame));
 }
 
 // 描く形は、外れの面を先に、段の決まりを優先の低い順に並べる。当てはまる段の色が上に見える
 TEST(HitZonesTest, ShapesStackFromTheRemainderUpToTheHighestPriority)
 {
-    const std::vector<NS::Game::Level::HitFaceShape> onBall =
-        NS::Game::Level::HitFaceShapes(HitFace{}, HitSensorShape::Sphere);
+    const std::vector<GL::Level::HitFaceShape> onBall =
+        GL::Level::HitFaceShapes(HitFace{}, HitSensorShape::Sphere);
     ASSERT_EQ(onBall.size(), 2u);
     EXPECT_EQ(onBall.front().tier, HitTier::Wide);
     // 球の相手は触れられる丸の中だけが外れ
@@ -668,8 +668,8 @@ TEST(HitZonesTest, ShapesStackFromTheRemainderUpToTheHighestPriority)
     boxRed.round = false;
     boxRed.centerU = 0.25f;
     boxRed.centerV = -0.5f;
-    const std::vector<NS::Game::Level::HitFaceShape> onBox =
-        NS::Game::Level::HitFaceShapes(boxRed, HitSensorShape::Box);
+    const std::vector<GL::Level::HitFaceShape> onBox =
+        GL::Level::HitFaceShapes(boxRed, HitSensorShape::Box);
     ASSERT_EQ(onBox.size(), 2u);
     EXPECT_FALSE(onBox.front().round);
     EXPECT_FALSE(onBox.back().round);
@@ -679,7 +679,7 @@ TEST(HitZonesTest, ShapesStackFromTheRemainderUpToTheHighestPriority)
     // 幅 0 の赤はどこも覆わないので描かない
     HitFace noRed;
     noRed.width = 0.0f;
-    EXPECT_EQ(NS::Game::Level::HitFaceShapes(noRed, HitSensorShape::Sphere).size(), 1u);
+    EXPECT_EQ(GL::Level::HitFaceShapes(noRed, HitSensorShape::Sphere).size(), 1u);
 }
 
 // 描いた赤の縁の少し内側は判定でも赤、少し外側は外れ。描く形と判定が同じ値から出ている
@@ -707,14 +707,14 @@ TEST(HitZonesTest, RedOutlineAgreesWithTheJudgement)
     {
         for (const SensorVolume& body : {ball, capsule})
         {
-            NS::Game::Level::HitFaceFrame frame;
-            ASSERT_TRUE(NS::Game::Level::MakeHitFaceFrame(body, direction, k_PlayerRadius, frame));
-            const std::vector<NS::Game::Level::HitFaceShape> shapes =
-                NS::Game::Level::HitFaceShapes(face, frame.bodyShape);
+            GL::Level::HitFaceFrame frame;
+            ASSERT_TRUE(GL::Level::MakeHitFaceFrame(body, direction, k_PlayerRadius, frame));
+            const std::vector<GL::Level::HitFaceShape> shapes =
+                GL::Level::HitFaceShapes(face, frame.bodyShape);
             ASSERT_FALSE(shapes.empty());
-            const NS::Game::Level::HitFaceShape& red = shapes.back();
+            const GL::Level::HitFaceShape& red = shapes.back();
             ASSERT_EQ(red.tier, HitTier::Center);
-            const std::vector<NS::Vector2> outline = NS::Game::Level::HitFaceShapeOutline(red);
+            const std::vector<NS::Vector2> outline = GL::Level::HitFaceShapeOutline(red);
             ASSERT_GE(outline.size(), 4u);
             for (const NS::Vector2& edge : outline)
             {
@@ -722,7 +722,7 @@ TEST(HitZonesTest, RedOutlineAgreesWithTheJudgement)
                 for (const float scale : {0.98f, 1.02f})
                 {
                     const NS::Vector2 at = center + (edge - center) * scale;
-                    const Vector3 onFace = NS::Game::Level::HitFacePoint(frame, at.x, at.y);
+                    const Vector3 onFace = GL::Level::HitFacePoint(frame, at.x, at.y);
                     HitFaceJudgement result;
                     ASSERT_TRUE(JudgeHitFace(face, body, onFace - direction * 4.0f, direction, k_PlayerRadius, result));
                     EXPECT_NEAR(result.u, at.x, k_Tolerance);
@@ -768,7 +768,7 @@ TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
     player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
     player->Update(false);
-    const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
+    const GL::Level::ImpactRecord& impact = player->Resolver().LastImpact();
     ASSERT_EQ(impact.sequence, 1u);
 
     const Vector3 center = body.Center();
@@ -784,7 +784,7 @@ TEST(HitZonesTest, BodyThatIsNoShapeFallsToWideWithTheRemainderPower)
     face.powerScale = 1.2f;
     face.remainderPowerScale = 0.6f;
     const SensorVolume broken = SensorVolume::Sphere(Vector3{1.0f, 2.0f, 3.0f}, 0.0f);
-    const HitFaceJudgement fallen = NS::Game::Level::JudgeHitFaceOrWide(
+    const HitFaceJudgement fallen = GL::Level::JudgeHitFaceOrWide(
         face, broken, Vector3{-3.0f, 2.0f, 3.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius);
     EXPECT_EQ(fallen.tier, HitTier::Wide);
     EXPECT_FLOAT_EQ(fallen.powerScale, 0.6f);
@@ -795,7 +795,7 @@ TEST(HitZonesTest, BodyThatIsNoShapeFallsToWideWithTheRemainderPower)
 
     // 赤の外の倍率の非数は、判定と同じく 0 と読む
     face.remainderPowerScale = std::numeric_limits<float>::quiet_NaN();
-    EXPECT_FLOAT_EQ(NS::Game::Level::JudgeHitFaceOrWide(
+    EXPECT_FLOAT_EQ(GL::Level::JudgeHitFaceOrWide(
                         face, broken, Vector3{-3.0f, 2.0f, 3.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius)
                         .powerScale,
                     0.0f);
@@ -805,7 +805,7 @@ TEST(HitZonesTest, BodyThatIsNoShapeFallsToWideWithTheRemainderPower)
     HitFaceJudgement judged;
     ASSERT_TRUE(
         JudgeHitFace(face, ball, Vector3{-3.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius, judged));
-    const HitFaceJudgement passed = NS::Game::Level::JudgeHitFaceOrWide(
+    const HitFaceJudgement passed = GL::Level::JudgeHitFaceOrWide(
         face, ball, Vector3{-3.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_PlayerRadius);
     EXPECT_EQ(passed.tier, HitTier::Center);
     EXPECT_FLOAT_EQ(passed.powerScale, judged.powerScale);
@@ -819,7 +819,7 @@ TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
     NS::Obj::Scene plainScene;
     Player* plain = PlaceSlamTarget(plainScene, {{"HitZones", {{"威力の倍率", 1.1f}, {"残りの威力の倍率", 0.6f}}}});
     ASSERT_NE(plain, nullptr);
-    const NS::Game::Level::ImpactRecord& centered = SlamOnce(*plain);
+    const GL::Level::ImpactRecord& centered = SlamOnce(*plain);
     ASSERT_EQ(centered.sequence, 1u);
     EXPECT_EQ(centered.tier, HitTier::Center);
     EXPECT_FLOAT_EQ(centered.positionFactor, 1.1f);
@@ -830,7 +830,7 @@ TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
     Player* moved = PlaceSlamTarget(
         movedScene, {{"HitZones", {{"上下の位置", 0.8f}, {"縦の幅", 0.15f}, {"残りの威力の倍率", 0.6f}}}});
     ASSERT_NE(moved, nullptr);
-    const NS::Game::Level::ImpactRecord& missed = SlamOnce(*moved);
+    const GL::Level::ImpactRecord& missed = SlamOnce(*moved);
     ASSERT_EQ(missed.sequence, 1u);
     EXPECT_EQ(missed.tier, HitTier::Wide);
     EXPECT_FLOAT_EQ(missed.positionFactor, 0.6f);
@@ -849,7 +849,7 @@ TEST(HitZonesTest, VerdictMissesWhenTheLinePassesBelowTheRed)
     ASSERT_TRUE(player->BodySlam());
     player->Resolver().ObserveImpact();
     player->Resolver().StepState();
-    const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
+    const GL::Level::ImpactRecord& impact = player->Resolver().LastImpact();
     ASSERT_EQ(impact.sequence, 1u);
     EXPECT_EQ(impact.tier, HitTier::Wide);
     EXPECT_FLOAT_EQ(impact.positionFactor, 0.7f);
@@ -870,7 +870,7 @@ TEST(HitZonesTest, VerdictJudgesTheBallWhereThisStepMovesIt)
     ASSERT_FLOAT_EQ(player->BodySlamVelocity().y, riseSpeed);
     player->Resolver().ObserveImpact();
     player->Resolver().StepState();
-    const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
+    const GL::Level::ImpactRecord& impact = player->Resolver().LastImpact();
     ASSERT_EQ(impact.sequence, 1u);
     EXPECT_EQ(impact.tier, HitTier::Center);
 }
@@ -886,10 +886,10 @@ TEST(HitZonesTest, AimPredictionGivesTheSameTierAsTheVerdict)
         NS::Obj::Scene scene;
         Player* player = PlaceSlamTarget(scene, entry.first);
         ASSERT_NE(player, nullptr);
-        NS::Game::Level::SlamLineTarget predicted{};
+        GL::Level::SlamLineTarget predicted{};
         ASSERT_TRUE(player->Resolver().FindSlamLineTarget(Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
         EXPECT_EQ(predicted.tier, entry.second);
-        const NS::Game::Level::ImpactRecord& impact = SlamOnce(*player);
+        const GL::Level::ImpactRecord& impact = SlamOnce(*player);
         ASSERT_EQ(impact.sequence, 1u);
         EXPECT_EQ(predicted.tier, impact.tier);
         EXPECT_FLOAT_EQ(predicted.offset, impact.offset01);
@@ -905,24 +905,24 @@ TEST(HitZonesTest, AimHeightIsTheRedCenterOnTheFace)
     HitFace face;
     face.centerV = 0.5f;
     float height = 0.0f;
-    ASSERT_TRUE(NS::Game::Level::HitFaceAimHeight(face, ball, forward, k_PlayerRadius, height));
+    ASSERT_TRUE(GL::Level::HitFaceAimHeight(face, ball, forward, k_PlayerRadius, height));
     EXPECT_NEAR(height, 1.0f + 0.5f * k_BallReach, k_Tolerance);
 
     face.width = 0.0f;
-    ASSERT_TRUE(NS::Game::Level::HitFaceAimHeight(face, ball, forward, k_PlayerRadius, height));
+    ASSERT_TRUE(GL::Level::HitFaceAimHeight(face, ball, forward, k_PlayerRadius, height));
     EXPECT_NEAR(height, 1.0f, k_Tolerance);
 
     // 丸めて読む。上下の位置の 2 は 1
     HitFace beyond;
     beyond.centerV = 2.0f;
-    ASSERT_TRUE(NS::Game::Level::HitFaceAimHeight(beyond, ball, forward, k_PlayerRadius, height));
+    ASSERT_TRUE(GL::Level::HitFaceAimHeight(beyond, ball, forward, k_PlayerRadius, height));
     EXPECT_NEAR(height, 1.0f + k_BallReach, k_Tolerance);
 
     // 判定できない体と向きは false で、書き換えない
     height = 7.0f;
-    EXPECT_FALSE(NS::Game::Level::HitFaceAimHeight(
+    EXPECT_FALSE(GL::Level::HitFaceAimHeight(
         face, SensorVolume::Sphere(Vector3{}, 0.0f), forward, k_PlayerRadius, height));
-    EXPECT_FALSE(NS::Game::Level::HitFaceAimHeight(face, ball, Vector3{0.0f, 1.0f, 0.0f}, k_PlayerRadius, height));
+    EXPECT_FALSE(GL::Level::HitFaceAimHeight(face, ball, Vector3{0.0f, 1.0f, 0.0f}, k_PlayerRadius, height));
     EXPECT_FLOAT_EQ(height, 7.0f);
 }
 
@@ -932,10 +932,10 @@ TEST(ImpactResolver, TackleSkipsANearerAreaSensor)
     NS::Obj::Scene scene;
     Player* player = PlaceSlamTarget(scene, nlohmann::json::object());
     ASSERT_NE(player, nullptr);
-    NS::Game::Level::Goal* goal = scene.SpawnTransient<NS::Game::Level::Goal>();
+    GL::Level::Goal* goal = scene.SpawnTransient<GL::Level::Goal>();
     goal->Root().SetPosition(Vector3{0.0f, 1.0f, 0.3f});
 
-    const NS::Game::Level::ImpactRecord& impact = SlamOnce(*player);
+    const GL::Level::ImpactRecord& impact = SlamOnce(*player);
     ASSERT_EQ(impact.sequence, 1u);
     EXPECT_EQ(impact.targetId, 2u);
 }
@@ -949,10 +949,10 @@ TEST(ImpactResolver, SlamLineSkipsAnAreaSensorOnTheLine)
     NS::Obj::Actor* rock = scene.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
     rock->Root().SetPosition(Vector3{0.0f, 0.5f, 3.0f});
-    NS::Game::Level::Goal* goal = scene.SpawnTransient<NS::Game::Level::Goal>();
+    GL::Level::Goal* goal = scene.SpawnTransient<GL::Level::Goal>();
     goal->Root().SetPosition(Vector3{0.0f, 0.5f, 1.5f});
 
-    NS::Game::Level::SlamLineTarget predicted{};
+    GL::Level::SlamLineTarget predicted{};
     ASSERT_TRUE(player->Resolver().FindSlamLineTarget(Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
     EXPECT_EQ(predicted.target.id, 2u);
 }
@@ -974,6 +974,6 @@ TEST(HitSensor, UnsetKindIsNotATackleTarget)
     bare->Root().SetPosition(Vector3{0.0f, 0.5f, 2.0f});
     ASSERT_NE(scene.SpawnTransient(std::move(bare)), nullptr);
 
-    NS::Game::Level::SlamLineTarget predicted{};
+    GL::Level::SlamLineTarget predicted{};
     EXPECT_FALSE(player->Resolver().FindSlamLineTarget(Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
 }

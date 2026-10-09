@@ -19,8 +19,8 @@
 #include <type_traits>
 #include <utility>
 
-static_assert(std::is_base_of_v<NS::Obj::StateOf<NS::Game::Player::IdlePlayerState, ::Player>,
-                                NS::Game::Player::IdlePlayerState>);
+static_assert(std::is_base_of_v<NS::Obj::StateOf<GL::Player::IdlePlayerState, ::Player>,
+                                GL::Player::IdlePlayerState>);
 
 namespace
 {
@@ -54,7 +54,7 @@ TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
     ASSERT_NE(movement, nullptr);
     player->Root().SetPosition(NS::Vector3{});
     player->ClimbLedge();
-    ASSERT_TRUE(player->States().IsCurrent<NS::Game::Player::LedgeClimbingPlayerState>());
+    ASSERT_TRUE(player->States().IsCurrent<GL::Player::LedgeClimbingPlayerState>());
     EXPECT_FLOAT_EQ(player->Root().Position().y, 0.0f);
     const float top = player->Collider().CapsuleHalfHeight() + player->Collider().CapsuleRadius();
     player->States().Step(0.0625f);
@@ -62,7 +62,7 @@ TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
     player->States().Step(0.0625f);
     EXPECT_NEAR(player->Root().Position().y, top, 0.00001f);
     player->States().Step(0.125f);
-    EXPECT_TRUE(player->States().IsCurrent<NS::Game::Player::IdlePlayerState>());
+    EXPECT_TRUE(player->States().IsCurrent<GL::Player::IdlePlayerState>());
     EXPECT_TRUE(movement->IsGrounded());
 }
 
@@ -75,7 +75,7 @@ TEST(PlayerStateSequence, LeavingClimbCannotResumeAnOldPositionWrite)
     ASSERT_NE(movement, nullptr);
     player->ClimbLedge();
     player->States().Step(0.0625f);
-    ASSERT_TRUE(player->States().Change<NS::Game::Player::IdlePlayerState>());
+    ASSERT_TRUE(player->States().Change<GL::Player::IdlePlayerState>());
     player->Root().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
     player->States().Step(0.0625f);
     EXPECT_FLOAT_EQ(player->Root().Position().y, 3.0f);
@@ -87,7 +87,7 @@ TEST(PlayerStateSequence, OnlyActorUpdateAdvancesTheOwnedStateMachine)
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
     player->Body().SetGrounded(true);
-    ASSERT_TRUE(player->States().IsCurrent<NS::Game::Player::IdlePlayerState>());
+    ASSERT_TRUE(player->States().IsCurrent<GL::Player::IdlePlayerState>());
     EXPECT_EQ(player->States().StepsInState(), 0u);
     player->Body().SetGrounded(true);
     player->Update();
@@ -171,19 +171,19 @@ TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)
     NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement"));
     ASSERT_NE(movement, nullptr);
     movement->SetGrounded(true);
-    const NS::Game::Player::ReboundArc arc{.apexHeight = 1.0f, .distance = 5.0f};
+    const GL::Player::ReboundArc arc{.apexHeight = 1.0f, .distance = 5.0f};
     const NS::Vector3 initial = player->ReboundVelocityFor(arc);
     ASSERT_TRUE(player->BeginRebound(arc));
     EXPECT_FLOAT_EQ(movement->VerticalVelocity(), initial.y);
     player->SetJumpPressed();
     player->States().Step(0.01f);
     EXPECT_NEAR(movement->VerticalVelocity(), initial.y - 0.125f, 0.00001f);
-    EXPECT_TRUE(player->States().IsCurrent<NS::Game::Player::ReboundPlayerState>());
+    EXPECT_TRUE(player->States().IsCurrent<GL::Player::ReboundPlayerState>());
     player->States().Step(0.02f);
     EXPECT_NEAR(movement->VerticalVelocity(), initial.y - 0.375f, 0.00001f);
     movement->SetVerticalVelocity(0.0f);
     player->States().Step(0.01f);
-    EXPECT_TRUE(player->States().IsCurrent<NS::Game::Player::IdlePlayerState>());
+    EXPECT_TRUE(player->States().IsCurrent<GL::Player::IdlePlayerState>());
 }
 
 // 反動の 1 フレームに当てる重力は、普段と同じ選び方 ChooseGravity へ反動の組 (上りだけ倍率付き) を渡した値
@@ -195,14 +195,14 @@ TEST(PlayerStateSequence, ReboundGravityIsTheChoiceWithTheReboundRise)
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"頂点滞空 Vy", 3.0f}, {"頂点滞空倍率", 0.3f}}), 0u);
     constexpr float k_Dt = 1.0f / 60.0f;
-    const NS::Game::Player::PlayerGravity gravity = player->Params().ReboundGravity();
+    const GL::Player::PlayerGravity gravity = player->Params().ReboundGravity();
     for (const float vertical : {5.0f, 1.0f, -1.0f, -5.0f})
     {
         SCOPED_TRACE(vertical);
         player->Body().SetVerticalVelocity(vertical);
         player->ReboundGravity(k_Dt);
         EXPECT_FLOAT_EQ(player->Body().VerticalVelocity(),
-                        vertical + NS::Game::Player::ChooseGravity(gravity, vertical) * k_Dt);
+                        vertical + GL::Player::ChooseGravity(gravity, vertical) * k_Dt);
     }
 }
 
@@ -249,8 +249,8 @@ TEST(PlayerStateSequence, TheBaseOwnsTheMachineFromInit)
     Player player;
     player.Init();
     ASSERT_NE(player.GetStateMachine(), nullptr);
-    EXPECT_EQ(player.GetStateMachine()->CurrentId(), NS::Obj::StateIdOf<NS::Game::Player::IdlePlayerState>());
-    EXPECT_TRUE(NS::Obj::IsState<NS::Game::Player::IdlePlayerState>(player));
+    EXPECT_EQ(player.GetStateMachine()->CurrentId(), NS::Obj::StateIdOf<GL::Player::IdlePlayerState>());
+    EXPECT_TRUE(NS::Obj::IsState<GL::Player::IdlePlayerState>(player));
 }
 
 TEST(PlayerStateSequence, ReboundAndBodySlamAreNeverBothTrue)
@@ -260,7 +260,7 @@ TEST(PlayerStateSequence, ReboundAndBodySlamAreNeverBothTrue)
     ASSERT_NE(player, nullptr);
     NS::Obj::Body& movement = player->Body();
     movement.SetGrounded(true);
-    ASSERT_TRUE(player->BeginRebound(NS::Game::Player::ReboundArc{.apexHeight = 1.0f, .distance = 5.0f}));
+    ASSERT_TRUE(player->BeginRebound(GL::Player::ReboundArc{.apexHeight = 1.0f, .distance = 5.0f}));
     EXPECT_TRUE(player->IsRebounding());
     EXPECT_FALSE(player->IsBodySlamming());
 
@@ -269,7 +269,7 @@ TEST(PlayerStateSequence, ReboundAndBodySlamAreNeverBothTrue)
     EXPECT_TRUE(player->IsBodySlamming());
     EXPECT_FALSE(player->IsRebounding());
 
-    ASSERT_TRUE(player->BeginRebound(NS::Game::Player::ReboundArc{.apexHeight = 1.0f, .distance = 5.0f}));
+    ASSERT_TRUE(player->BeginRebound(GL::Player::ReboundArc{.apexHeight = 1.0f, .distance = 5.0f}));
     EXPECT_TRUE(player->IsRebounding());
     EXPECT_FALSE(player->IsBodySlamming());
 }

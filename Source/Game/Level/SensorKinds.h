@@ -7,7 +7,7 @@ namespace NS::Obj
     class HitSensor;
 }
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief センサーの種類。誰が誰に応じるかを決める Game の語彙
     //! @details 種類は Player / MapObj / Goal / DeathZone の OnInit が付ける。保存はしない
@@ -31,4 +31,4 @@ namespace NS::Game::Level
     //! @param[in] kind 照合する種類
     //! @return 指定の種類の場合 true、それ以外の場合は false。Unset を問うと常に false
     [[nodiscard]] bool IsSensorKind(const NS::Obj::HitSensor& sensor, SensorKind kind) noexcept;
-} // namespace NS::Game::Level
+} // namespace GL::Level

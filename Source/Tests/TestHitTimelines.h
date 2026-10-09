@@ -20,7 +20,7 @@ class ScopedHitTimelineDirectory
 {
 public:
     explicit ScopedHitTimelineDirectory(std::string_view name)
-        : m_previous(NS::Game::Level::HitTimelineLibrary::Get().Directory())
+        : m_previous(GL::Level::HitTimelineLibrary::Get().Directory())
     {
         using NS::OS::FileSystem;
         m_directory = FileSystem::Combine(
@@ -31,10 +31,10 @@ public:
             std::error_code error;
             std::filesystem::remove(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(path)}, error);
         }
-        NS::Game::Level::HitTimelineLibrary::Get().SetDirectory(m_directory);
+        GL::Level::HitTimelineLibrary::Get().SetDirectory(m_directory);
     }
 
-    ~ScopedHitTimelineDirectory() { NS::Game::Level::HitTimelineLibrary::Get().SetDirectory(m_previous); }
+    ~ScopedHitTimelineDirectory() { GL::Level::HitTimelineLibrary::Get().SetDirectory(m_previous); }
 
     ScopedHitTimelineDirectory(const ScopedHitTimelineDirectory&) = delete;
     ScopedHitTimelineDirectory& operator=(const ScopedHitTimelineDirectory&) = delete;
@@ -48,10 +48,10 @@ public:
     }
 
     //! 真ん中と外れの両方を timeline にする。段に依らない振る舞いを見る試しが使う
-    static void SetBothTiers(const NS::Game::Level::HitTimeline& timeline)
+    static void SetBothTiers(const GL::Level::HitTimeline& timeline)
     {
-        NS::Game::Level::HitTimelineLibrary::Get().Set("center", timeline);
-        NS::Game::Level::HitTimelineLibrary::Get().Set("miss", timeline);
+        GL::Level::HitTimelineLibrary::Get().Set("center", timeline);
+        GL::Level::HitTimelineLibrary::Get().Set("miss", timeline);
     }
 
 private:
@@ -62,9 +62,9 @@ private:
 //! @brief 移す前の返りを、止めの長さ stopSteps の当たりについて写したタイムライン
 //! @details 止め [1, N]、潰れは止めの間、明け N + 1 に反動と相手を飛ばすと伸び、伸びは 6 フレームで戻す。
 //! 白・揺れ・寄り・振動・エフェクトの事象は持たない (自機と相手の動きだけを見る試しが使う)
-inline NS::Game::Level::HitTimeline MakeLegacyHitTimeline(int stopSteps)
+inline GL::Level::HitTimeline MakeLegacyHitTimeline(int stopSteps)
 {
-    using namespace NS::Game::Level;
+    using namespace GL::Level;
     const float n = static_cast<float>(stopSteps);
     ShapeEvent shape;
     shape.along.count = 3;

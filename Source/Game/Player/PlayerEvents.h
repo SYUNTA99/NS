@@ -2,7 +2,7 @@
 
 #include "NSlib/Object/SubObjects/BodyEvents.h"
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     //! @brief 自機の通知
     //! @details 命の増減は持たない。増減を扱うのは Health
@@ -16,4 +16,4 @@ namespace NS::Game::Player
         NS::Obj::BodyEvent onBodySlamStarted; //!< 体当たりが出たフレーム
         NS::Obj::BodyEvent onBodySlamEnded;   //!< 体当たりが終わったフレーム
     };
-} // namespace NS::Game::Player
+} // namespace GL::Player

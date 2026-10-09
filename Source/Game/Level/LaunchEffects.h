@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     class MapObj;
     class MapObjParams;
@@ -50,7 +50,7 @@ namespace NS::Game::Level
         void CancelTrail();
 
         //! 出すと決めた層の記録
-        [[nodiscard]] const NS::Game::Player::EffectLayerList& Layers() const noexcept { return m_layers; }
+        [[nodiscard]] const GL::Player::EffectLayerList& Layers() const noexcept { return m_layers; }
 
         //! 出ている尾が残るフレーム数。尾が無ければ 0
         [[nodiscard]] int TrailFrames() const noexcept { return m_trailFrames; }
@@ -78,7 +78,7 @@ namespace NS::Game::Level
         // 尾を消し、床に落ちていればその場へ粉を出す
         void EndTrail(NS::Gfx::EffectScene* effects);
 
-        NS::Game::Player::EffectLayerList m_layers;
+        GL::Player::EffectLayerList m_layers;
         MapObj* m_body = nullptr;
         std::uint32_t m_trail = 0;                 // 飛び出しの尾。消したら 0
         int m_trailStartStep = 0;                  // 尾を出したフレーム。このフレームは出した姿のまま
@@ -87,4 +87,4 @@ namespace NS::Game::Level
         NS::Vector3 m_launchDir{1.0f, 0.0f, 0.0f}; // 飛ぶ水平の向き
         float m_landDustScale = 0.0f;              // 落ちた所の粉の大きさ (m)
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

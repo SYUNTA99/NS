@@ -1,6 +1,6 @@
 #pragma once
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief プレイヤーの命。残量の所有と増減の能力だけ持ち、誰に削られるかは知らない
     //! @details 命を動かすのは持ち主の Player だけで、Player::Die が Deplete を、Player::ApplyDamage が ApplyDamage を呼ぶ
@@ -30,4 +30,4 @@ namespace NS::Game::Level
         int m_maxHealth = 8; // 8 段階
         int m_current = 8;   // プレイ中の残量。保存せず、プレイ突入とリスタートで満タンに戻る
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

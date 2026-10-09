@@ -21,7 +21,7 @@
 namespace
 {
     using NS::Vector3;
-    using NS::Game::Level::SensorKind;
+    using GL::Level::SensorKind;
 
     // 重なった相手を控える試しの Actor
     class SensorProbe final : public NS::Obj::Actor
@@ -53,7 +53,7 @@ namespace
         void OnInit() override
         {
             m_sensor = CreateSubObj<NS::Obj::ShapeHitSensor>(BodySensorSlot());
-            NS::Game::Level::SetSensorKind(*m_sensor, m_kind);
+            GL::Level::SetSensorKind(*m_sensor, m_kind);
             m_sensor->SetSphere(m_radius);
         }
 
@@ -220,7 +220,7 @@ TEST(HitSensorDirector, BothOwnersHearAnOverlap)
 TEST(Goal, IgnoresARockBody)
 {
     NS::Obj::Scene scene;
-    (void)scene.SpawnTransient<NS::Game::Level::Goal>();
+    (void)scene.SpawnTransient<GL::Level::Goal>();
     SensorProbe* rock = scene.SpawnTransient<SensorProbe>(SensorKind::MapObjBody, 0.5f);
     SensorProbe* body = scene.SpawnTransient<SensorProbe>(SensorKind::PlayerBody, 0.5f);
 
@@ -229,14 +229,14 @@ TEST(Goal, IgnoresARockBody)
     EXPECT_TRUE(rock->received.empty());
     // 同じ所の自機の体には届く。照合が相手の種類を見ている証し
     ASSERT_EQ(body->received.size(), 1u);
-    EXPECT_EQ(body->received[0], NS::Game::Level::MsgGoal::StaticKind());
+    EXPECT_EQ(body->received[0], GL::Level::MsgGoal::StaticKind());
 }
 
 // 落下死の範囲も自機の体にだけ知らせる
 TEST(DeathZone, IgnoresARockBody)
 {
     NS::Obj::Scene scene;
-    (void)scene.SpawnTransient<NS::Game::Level::DeathZone>();
+    (void)scene.SpawnTransient<GL::Level::DeathZone>();
     SensorProbe* rock = scene.SpawnTransient<SensorProbe>(SensorKind::MapObjBody, 0.5f);
     SensorProbe* body = scene.SpawnTransient<SensorProbe>(SensorKind::PlayerBody, 0.5f);
 
@@ -244,7 +244,7 @@ TEST(DeathZone, IgnoresARockBody)
 
     EXPECT_TRUE(rock->received.empty());
     ASSERT_EQ(body->received.size(), 1u);
-    EXPECT_EQ(body->received[0], NS::Game::Level::MsgInstantDeath::StaticKind());
+    EXPECT_EQ(body->received[0], GL::Level::MsgInstantDeath::StaticKind());
 }
 
 // 先読みの問いは仕組みの条件だけで絞る。種類は問う側が見る

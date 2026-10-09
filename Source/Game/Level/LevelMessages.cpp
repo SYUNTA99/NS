@@ -3,7 +3,7 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     bool SendMsgInstantDeath(NS::Obj::HitSensor& receiver, NS::Obj::HitSensor& sender)
     {
@@ -97,4 +97,4 @@ namespace NS::Game::Level
     {
         return NS::Obj::IsMsg<MsgTackleRelease>(msg);
     }
-} // namespace NS::Game::Level
+} // namespace GL::Level

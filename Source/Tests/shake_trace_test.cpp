@@ -30,7 +30,7 @@
 
 namespace
 {
-    using NS::Game::Level::HitTier;
+    using GL::Level::HitTier;
 
     constexpr int k_HitFrames = 30;    // 検知のフレームから書き出すフレーム数
     constexpr int k_ChargeFrames = 60; // 溜めの揺れを書き出すフレーム数
@@ -142,7 +142,7 @@ namespace
         NS::Obj::Scene scene;
         ChargingTarget* target =
             NS::Obj::Cast<ChargingTarget>(scene.SpawnObject(std::make_unique<ChargingTarget>(), "target"));
-        NS::Game::Level::FollowCamera* actor = scene.SpawnTransient<NS::Game::Level::FollowCamera>();
+        GL::Level::FollowCamera* actor = scene.SpawnTransient<GL::Level::FollowCamera>();
         if (target == nullptr || actor == nullptr)
         {
             return offsets;

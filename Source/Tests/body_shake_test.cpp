@@ -37,7 +37,7 @@ TEST(BodyShake, OffsetHoldsEachSideForTheFlipFramesAndFallsLinearly)
     for (int frame = 1; frame < k_Length; ++frame)
     {
         SCOPED_TRACE(frame);
-        const float offset = NS::Game::Level::BodyShakeOffset(frame, k_Length, 0.1f, 7u, -1.0f, k_Flip);
+        const float offset = GL::Level::BodyShakeOffset(frame, k_Length, 0.1f, 7u, -1.0f, k_Flip);
         const float envelope = 0.1f * (1.0f - static_cast<float>(frame) / static_cast<float>(k_Length));
         EXPECT_GE(std::abs(offset), envelope * 0.7f - 1.0e-6f);
         EXPECT_LE(std::abs(offset), envelope + 1.0e-6f);
@@ -49,21 +49,21 @@ TEST(BodyShake, OffsetHoldsEachSideForTheFlipFramesAndFallsLinearly)
         }
         EXPECT_GT(offset * sign, 0.0f);
     }
-    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeOffset(k_Length, k_Length, 0.1f, 7u, -1.0f, k_Flip), 0.0f);
-    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeOffset(0, k_Length, 0.1f, 7u, -1.0f, k_Flip), 0.0f);
-    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeOffset(3, 0, 0.1f, 7u, -1.0f, k_Flip), 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::BodyShakeOffset(k_Length, k_Length, 0.1f, 7u, -1.0f, k_Flip), 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::BodyShakeOffset(0, k_Length, 0.1f, 7u, -1.0f, k_Flip), 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::BodyShakeOffset(3, 0, 0.1f, 7u, -1.0f, k_Flip), 0.0f);
     // 入れ替えのフレーム数が 1 未満なら 1 フレームごとに入れ替える
-    EXPECT_LT(NS::Game::Level::BodyShakeOffset(1, k_Length, 0.1f, 7u, 1.0f, 0) *
-                  NS::Game::Level::BodyShakeOffset(2, k_Length, 0.1f, 7u, 1.0f, 0),
+    EXPECT_LT(GL::Level::BodyShakeOffset(1, k_Length, 0.1f, 7u, 1.0f, 0) *
+                  GL::Level::BodyShakeOffset(2, k_Length, 0.1f, 7u, 1.0f, 0),
               0.0f);
     // 同じ種は同じ揺れ、違う種はばらつきが違う
-    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeOffset(2, k_Length, 0.1f, 7u, 1.0f, k_Flip),
-                    NS::Game::Level::BodyShakeOffset(2, k_Length, 0.1f, 7u, 1.0f, k_Flip));
+    EXPECT_FLOAT_EQ(GL::Level::BodyShakeOffset(2, k_Length, 0.1f, 7u, 1.0f, k_Flip),
+                    GL::Level::BodyShakeOffset(2, k_Length, 0.1f, 7u, 1.0f, k_Flip));
     bool differs = false;
     for (int frame = 1; frame < k_Length; ++frame)
     {
-        differs = differs || NS::Game::Level::BodyShakeOffset(frame, k_Length, 0.1f, 7u, 1.0f, k_Flip) !=
-                                 NS::Game::Level::BodyShakeOffset(frame, k_Length, 0.1f, 8u, 1.0f, k_Flip);
+        differs = differs || GL::Level::BodyShakeOffset(frame, k_Length, 0.1f, 7u, 1.0f, k_Flip) !=
+                                 GL::Level::BodyShakeOffset(frame, k_Length, 0.1f, 8u, 1.0f, k_Flip);
     }
     EXPECT_TRUE(differs);
 }
@@ -118,13 +118,13 @@ TEST(BodyShake, GhostsSitAtPlusAndMinusTheSpreadAroundTheRoot)
 // 残像の離れは、横揺れの振れ幅の包み (振れ幅 × 残り) に倍率を掛けた物。揺れの外では 0
 TEST(BodyShake, ReachIsTheEnvelopeWithoutTheSpreadOrSide)
 {
-    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeReach(3, 12, 0.2f), 0.2f * (1.0f - 3.0f / 12.0f));
-    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeReach(0, 12, 0.2f), 0.0f);
-    EXPECT_FLOAT_EQ(NS::Game::Level::BodyShakeReach(12, 12, 0.2f), 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::BodyShakeReach(3, 12, 0.2f), 0.2f * (1.0f - 3.0f / 12.0f));
+    EXPECT_FLOAT_EQ(GL::Level::BodyShakeReach(0, 12, 0.2f), 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::BodyShakeReach(12, 12, 0.2f), 0.0f);
     for (int frame = 1; frame < 12; ++frame)
     {
         SCOPED_TRACE(frame);
-        EXPECT_LE(std::abs(NS::Game::Level::BodyShakeOffset(frame, 12, 0.2f, 5u, 1.0f, 2)),
-                  NS::Game::Level::BodyShakeReach(frame, 12, 0.2f) + 1.0e-6f);
+        EXPECT_LE(std::abs(GL::Level::BodyShakeOffset(frame, 12, 0.2f, 5u, 1.0f, 2)),
+                  GL::Level::BodyShakeReach(frame, 12, 0.2f) + 1.0e-6f);
     }
 }

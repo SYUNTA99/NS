@@ -55,12 +55,12 @@ namespace
     }
 } // namespace
 
-const NS::Game::Level::ImpactInputJudge& Player::ChargeJudge() const noexcept
+const GL::Level::ImpactInputJudge& Player::ChargeJudge() const noexcept
 {
     return m_charge.judge;
 }
 
-bool Player::TryGetAimLine(NS::Game::Level::AimLine& outLine) const noexcept
+bool Player::TryGetAimLine(GL::Level::AimLine& outLine) const noexcept
 {
     if (!m_charge.hasAimLine)
     {
@@ -70,7 +70,7 @@ bool Player::TryGetAimLine(NS::Game::Level::AimLine& outLine) const noexcept
     return true;
 }
 
-bool Player::TryGetAimTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept
+bool Player::TryGetAimTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
 {
     if (!m_charge.hasAimTarget)
     {
@@ -80,7 +80,7 @@ bool Player::TryGetAimTarget(NS::Game::Level::SlamLineTarget& outTarget) const n
     return true;
 }
 
-bool Player::TryGetLineTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept
+bool Player::TryGetLineTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
 {
     if (!m_charge.hasLineTarget)
     {
@@ -122,7 +122,7 @@ void Player::ObserveCharge(bool held)
     {
         return;
     }
-    m_charge.observedAimLine = NS::Game::Level::AimLine{.origin = Root().Position(),
+    m_charge.observedAimLine = GL::Level::AimLine{.origin = Root().Position(),
                                                         .direction = direction,
                                                         .length = BodySlamDistance(),
                                                         .launchVerticalSpeed = 0.0f,
@@ -139,7 +139,7 @@ void Player::ObserveCharge(bool held)
 
 void Player::AdvanceCharge(float dt)
 {
-    NS::Game::Level::ImpactInputJudge& judge = m_charge.judge;
+    GL::Level::ImpactInputJudge& judge = m_charge.judge;
     judge.chargeThresholdSteps = SecondsToSteps(m_params->m_chargeThresholdSeconds, dt);
     judge.chargeMaxSteps = SecondsToSteps(m_params->m_chargeFullSeconds, dt);
     judge.overchargeSteps = SecondsToSteps(m_params->m_overchargeSeconds, dt);
@@ -170,16 +170,16 @@ void Player::AdvanceCharge(float dt)
             RequestBodySlam(charge01, overcharge01);
         }
     };
-    const NS::Game::Level::SlamKind fired = judge.TakeFired();
-    if (fired == NS::Game::Level::SlamKind::Charged)
+    const GL::Level::SlamKind fired = judge.TakeFired();
+    if (fired == GL::Level::SlamKind::Charged)
     {
         requestCharged(judge.Charge01(), judge.Overcharge01());
-        NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", NS::Game::Level::SlamKindLabel(fired), judge.Charge01());
+        NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", GL::Level::SlamKindLabel(fired), judge.Charge01());
     }
-    else if (fired == NS::Game::Level::SlamKind::Tap)
+    else if (fired == GL::Level::SlamKind::Tap)
     {
         RequestBodySlam(0.0f);
-        NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", NS::Game::Level::SlamKindLabel(fired), 0.0f);
+        NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", GL::Level::SlamKindLabel(fired), 0.0f);
     }
     else if (judge.IsAwaitingLaunch())
     {
@@ -219,7 +219,7 @@ void Player::AdvanceCharge(float dt)
 
 void Player::ApplyChargeSway(float dt)
 {
-    const NS::Game::Level::ImpactInputJudge& judge = m_charge.judge;
+    const GL::Level::ImpactInputJudge& judge = m_charge.judge;
     const int steps = judge.OverchargedSteps();
     // 紫に入ったフレームに数える。離したフレームは控えた値が残るので、押している間だけ見る
     if (steps == 1 && judge.IsHeld())

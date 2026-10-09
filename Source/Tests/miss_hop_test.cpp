@@ -6,8 +6,8 @@
 
 namespace
 {
-    using NS::Game::Level::MissHopDesc;
-    using NS::Game::Level::MissHopVelocity;
+    using GL::Level::MissHopDesc;
+    using GL::Level::MissHopVelocity;
 
     constexpr float k_Pi = 3.14159265358979f;
 

@@ -25,20 +25,20 @@ namespace NS::Obj
     class PlayerInput;
 } // namespace NS::Obj
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     class PlayerParams;
     class PlayerAppearance;
     class ChargeEffects;
     class ImpactEffects;
-} // namespace NS::Game::Player
+} // namespace GL::Player
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     class ImpactResolver;
     class TargetMarker;
     class SlamArrow;
-} // namespace NS::Game::Level
+} // namespace GL::Level
 
 //! @brief プレイヤーキャラクタ。固定の部品をコードで組む
 //! @details 部品と部品名は OnInit が正。Body の部品名は Movement、PlayerInput の部品名は Input。
@@ -75,10 +75,10 @@ public:
     //! 体の周りの地形はこれを渡して問う
     [[nodiscard]] NS::Obj::Collider& Collider() noexcept { return *m_collider; }
     [[nodiscard]] const NS::Obj::Collider& Collider() const noexcept { return *m_collider; }
-    [[nodiscard]] NS::Game::Player::PlayerParams& Params() noexcept { return *m_params; }
-    [[nodiscard]] const NS::Game::Player::PlayerParams& Params() const noexcept { return *m_params; }
+    [[nodiscard]] GL::Player::PlayerParams& Params() noexcept { return *m_params; }
+    [[nodiscard]] const GL::Player::PlayerParams& Params() const noexcept { return *m_params; }
     //! 溜めの判定を読むだけの口。溜め量・押しているか・溜めている間かは、見た目の部品と追従カメラがここから読む
-    [[nodiscard]] const NS::Game::Level::ImpactInputJudge& ChargeJudge() const noexcept;
+    [[nodiscard]] const GL::Level::ImpactInputJudge& ChargeJudge() const noexcept;
     //! @brief 押している間に控えた狙いの線を読む
     //! @details 押している間は毎フレーム、自機の位置から CameraForwardHorizontal の向きへ、
     //! BodySlamDistance の長さの線を控える。向きは効果を掛ける前の遊びの視点から作り、仮想カメラが無ければ +Z。
@@ -87,21 +87,21 @@ public:
     //! 押していないフレーム、カメラの管理役が無いフレーム、向きが非数のフレームは控えが無い
     //! @param[out] outLine 控えた狙いの線。控えが無い場合は書き換えない
     //! @return 控えがある場合 true、それ以外の場合は false
-    [[nodiscard]] bool TryGetAimLine(NS::Game::Level::AimLine& outLine) const noexcept;
+    [[nodiscard]] bool TryGetAimLine(GL::Level::AimLine& outLine) const noexcept;
     //! @brief 押している間に控えた狙う相手を読む
     //! @details 押している間は毎フレーム、狙いの線の向きと長さで ImpactResolver::FindSlamLineTarget を呼び、
     //! 線を進む自機の縁が突進が止まる所までに触れる相手を控える。
     //! 押していないフレームと、狙いの線が無いフレームは控えが無い
     //! @param[out] outTarget 控えた狙う相手。控えが無い場合は書き換えない
     //! @return 控えがある場合 true、それ以外の場合は false
-    [[nodiscard]] bool TryGetAimTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept;
+    [[nodiscard]] bool TryGetAimTarget(GL::Level::SlamLineTarget& outTarget) const noexcept;
     //! @brief 狙いの線 (紫の揺れを足した向き) を進んだ時に最初に触れる相手を読む
     //! @details 揺れていない間は TryGetAimTarget と同じ相手。紫の揺れで線が振れている間は、振れた線の向きで
     //! ImpactResolver::FindSlamLineTarget を引き直した相手で、矢印の先はこれで決まる。
     //! 狙う相手の枠と放つ縦の速さは揺れていない線の相手 (TryGetAimTarget) のまま
     //! @param[out] outTarget 線の上の相手。控えが無い場合は書き換えない
     //! @return 控えがある場合 true、それ以外の場合は false
-    [[nodiscard]] bool TryGetLineTarget(NS::Game::Level::SlamLineTarget& outTarget) const noexcept;
+    [[nodiscard]] bool TryGetLineTarget(GL::Level::SlamLineTarget& outTarget) const noexcept;
     //! @brief 紫の揺れの位相 (ラジアン) を返す
     //! @details 溜めすぎのフレーム数から閉じた式で出す。紫になりきった瞬間に π/2 を通る。紫でない間は 0
     [[nodiscard]] float ChargeSwayPhase() const noexcept { return m_charge.swayPhase; }
@@ -117,12 +117,12 @@ public:
     //! 描く形へ書くのは PlayerAppearance で、ここは問いに答えるだけ
     //! @return 元の形を 1 とした縦の倍率
     [[nodiscard]] float StanceHeight() const noexcept;
-    [[nodiscard]] NS::Game::Level::ImpactResolver& Resolver() noexcept { return *m_resolver; }
-    [[nodiscard]] NS::Game::Player::PlayerAppearance& Appearance() noexcept { return *m_appearance; }
-    [[nodiscard]] NS::Game::Level::TargetMarker& TargetIndicator() noexcept { return *m_targetMarker; }
-    [[nodiscard]] NS::Game::Level::SlamArrow& SlamIndicator() noexcept { return *m_slamArrow; }
-    [[nodiscard]] NS::Game::Player::ChargeEffects& ChargeVisuals() noexcept { return *m_chargeEffects; }
-    [[nodiscard]] NS::Game::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
+    [[nodiscard]] GL::Level::ImpactResolver& Resolver() noexcept { return *m_resolver; }
+    [[nodiscard]] GL::Player::PlayerAppearance& Appearance() noexcept { return *m_appearance; }
+    [[nodiscard]] GL::Level::TargetMarker& TargetIndicator() noexcept { return *m_targetMarker; }
+    [[nodiscard]] GL::Level::SlamArrow& SlamIndicator() noexcept { return *m_slamArrow; }
+    [[nodiscard]] GL::Player::ChargeEffects& ChargeVisuals() noexcept { return *m_chargeEffects; }
+    [[nodiscard]] GL::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
 
     [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Player; }
     void ReadInput() override;
@@ -169,7 +169,7 @@ public:
     //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
     void SyncGroundState() noexcept;
     //! 自機だけの通知の受け口。身体の Events() は接地の 2 件を返すので名前を分ける
-    [[nodiscard]] NS::Game::Player::PlayerEvents& PlayerEventsRef() noexcept { return m_playerEvents; }
+    [[nodiscard]] GL::Player::PlayerEvents& PlayerEventsRef() noexcept { return m_playerEvents; }
 
     // 突進・反発・丸まりの読み取り
     //! 突進中の場合 true、それ以外の場合は false
@@ -214,7 +214,7 @@ public:
     [[nodiscard]] float ReboundSpinSpeed() const noexcept { return m_rebound.spinSpeed; }
     //! @brief 最後に始めた反動の外れの回り方を返す
     //! @details 外れの反動の時だけ値を持つ。書くのは BeginRebound
-    [[nodiscard]] const std::optional<NS::Game::Player::MissTumble>& ReboundMissTumble() const noexcept
+    [[nodiscard]] const std::optional<GL::Player::MissTumble>& ReboundMissTumble() const noexcept
     {
         return m_rebound.missTumble;
     }
@@ -337,14 +337,14 @@ public:
     //! 接地していて上向きの速度が無くなったフレームに立ちへ移る
     //! @param[in] arc 弾かれる向きと頂点の高さと横の距離
     //! @return 反動を始めた場合 true、ReboundVelocityFor が 0 を返す arc で何も変えなかった場合は false
-    [[nodiscard]] bool BeginRebound(const NS::Game::Player::ReboundArc& arc) noexcept;
+    [[nodiscard]] bool BeginRebound(const GL::Player::ReboundArc& arc) noexcept;
     //! @brief arc の反動を始める瞬間の速度 (m/s) を返す
     //! @details 飛ばした物の曲線と同じ式 LaunchArcInitialVelocity で出す。
     //! 上りの重力は上昇重力 × 反動の上りの重力倍率、下りは下降重力、頂点の帯は頂点滞空 Vy と頂点滞空倍率
     //! @param[in] arc 弾かれる向きと頂点の高さと横の距離
     //! @return 反動の初速。高さか距離が有限の正でない時、向きに水平の成分が無い時、
     //! 重力の欄から曲線が組めない時は 0
-    [[nodiscard]] NS::Vector3 ReboundVelocityFor(const NS::Game::Player::ReboundArc& arc) const noexcept;
+    [[nodiscard]] NS::Vector3 ReboundVelocityFor(const GL::Player::ReboundArc& arc) const noexcept;
     //! @brief 丸まりを入れるか解く
     //! @details 押している間は毎フレーム true が入る。自分で解くので、false はプレイを終える時だけ渡す。
     //! 丸まると当たりを球にして根を立ち姿の半長ぶん下げ、解くと立ち姿へ戻して上げる。
@@ -436,7 +436,7 @@ private:
     {
         NS::Vector3 direction{};                                  // 最後に始めた反動の水平の向き。正規化済み
         float spinSpeed = 0.0f;                                   // 最後に始めた反動の玉の回る速さ (度/秒)
-        std::optional<NS::Game::Player::MissTumble> missTumble{}; // 最後に始めた反動の外れの回り方
+        std::optional<GL::Player::MissTumble> missTumble{}; // 最後に始めた反動の外れの回り方
         std::uint32_t count = 0;                                  // 反動を始めた回数
     };
 
@@ -451,20 +451,20 @@ private:
     //! @details 読み手が見るのは確定した側だけ。CancelCharge で全部を初期値へ戻す
     struct ChargeRecord
     {
-        NS::Game::Level::ImpactInputJudge judge{};           // 通常突進と溜めの判定
+        GL::Level::ImpactInputJudge judge{};           // 通常突進と溜めの判定
         bool observedHeld = false;                           // 観測の段で読んだ体当たりの押し
-        NS::Game::Level::AimLine observedAimLine{};          // 観測の段で引いた狙いの線
+        GL::Level::AimLine observedAimLine{};          // 観測の段で引いた狙いの線
         bool observedHasAimLine = false;                     // 観測の段で狙いの線を引けたか
-        NS::Game::Level::SlamLineTarget observedAimTarget{}; // 観測の段で見つけた狙う相手
+        GL::Level::SlamLineTarget observedAimTarget{}; // 観測の段で見つけた狙う相手
         bool observedHasAimTarget = false;                   // 観測の段で狙う相手が見つかったか
         // 押している間の狙いの線。hasAimLine が偽の間は読まない
-        NS::Game::Level::AimLine aimLine{};
+        GL::Level::AimLine aimLine{};
         bool hasAimLine = false;
         // 押している間の狙う相手。hasAimTarget が偽の間は読まない
-        NS::Game::Level::SlamLineTarget aimTarget{};
+        GL::Level::SlamLineTarget aimTarget{};
         bool hasAimTarget = false;
         // 紫の揺れを足した狙いの線で最初に触れる相手。hasLineTarget が偽の間は読まない
-        NS::Game::Level::SlamLineTarget lineTarget{};
+        GL::Level::SlamLineTarget lineTarget{};
         bool hasLineTarget = false;
         float swayPhase = 0.0f;       // 紫の揺れの位相 (ラジアン)
         float swayOffset = 0.0f;      // 紫の揺れの横のずれ (m)。狙いの線の右が正
@@ -546,19 +546,19 @@ private:
     [[nodiscard]] bool FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noexcept;
     [[nodiscard]] std::string_view ChooseClip(float lateralSpeed) const noexcept;
     [[nodiscard]] float ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept;
-    NS::Game::Player::PlayerParams* m_params = nullptr;
+    GL::Player::PlayerParams* m_params = nullptr;
     std::string m_appliedClip{};
     NS::Obj::PlayerInput* m_input = nullptr;
     NS::Obj::Body* m_body = nullptr;
     NS::Obj::Collider* m_collider = nullptr;
-    NS::Game::Player::PlayerAppearance* m_appearance = nullptr;
-    NS::Game::Level::ImpactResolver* m_resolver = nullptr;
-    NS::Game::Level::TargetMarker* m_targetMarker = nullptr;
-    NS::Game::Level::SlamArrow* m_slamArrow = nullptr;
-    NS::Game::Player::ChargeEffects* m_chargeEffects = nullptr;
-    NS::Game::Player::ImpactEffects* m_impactEffects = nullptr;
+    GL::Player::PlayerAppearance* m_appearance = nullptr;
+    GL::Level::ImpactResolver* m_resolver = nullptr;
+    GL::Level::TargetMarker* m_targetMarker = nullptr;
+    GL::Level::SlamArrow* m_slamArrow = nullptr;
+    GL::Player::ChargeEffects* m_chargeEffects = nullptr;
+    GL::Player::ImpactEffects* m_impactEffects = nullptr;
     NS::Obj::StateMachine<Player>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
-    NS::Game::Level::Health m_health;
+    GL::Level::Health m_health;
 
     bool m_prevJumpHeld = false; // 前のフレームの長押し状態
     int m_jumpsRemaining = 1;    // 残りジャンプ回数
@@ -589,7 +589,7 @@ private:
     NS::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};
     float m_ledgeMantleTimer = 0.0f; // よじ登りの経過秒
 
-    NS::Game::Player::PlayerEvents m_playerEvents;
+    GL::Player::PlayerEvents m_playerEvents;
 };
 
 //! live の配置物からプレイヤーを引く。無ければ nullptr

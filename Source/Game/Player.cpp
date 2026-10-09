@@ -49,34 +49,34 @@ void Player::OnInit()
     NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
     model->SetMaterialRef("player");
     model->SetBaseColor(NS::Vector3{0.5f, 0.5f, 0.5f});
-    m_appearance = CreateSubObj<NS::Game::Player::PlayerAppearance>("Appearance");
+    m_appearance = CreateSubObj<GL::Player::PlayerAppearance>("Appearance");
     m_body = CreateSubObj<NS::Obj::Body>("Movement");
     m_collider = CreateSubObj<NS::Obj::Collider>("Collider");
     m_input = CreateSubObj<NS::Obj::PlayerInput>("Input");
-    m_params = CreateSubObj<NS::Game::Player::PlayerParams>("Params");
+    m_params = CreateSubObj<GL::Player::PlayerParams>("Params");
     CreateSubObj<NS::Obj::Shadow>(ShadowSlot());
     // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
     NS::Obj::FollowHitSensor* bodySensor = CreateSubObj<NS::Obj::FollowHitSensor>(
         BodySensorSlot(),
         [collider = m_collider] { return NS::Obj::SensorVolume::Capsule(collider->WorldCapsule()); });
-    NS::Game::Level::SetSensorKind(*bodySensor, NS::Game::Level::SensorKind::PlayerBody);
-    m_resolver = CreateSubObj<NS::Game::Level::ImpactResolver>("ImpactResolver");
+    GL::Level::SetSensorKind(*bodySensor, GL::Level::SensorKind::PlayerBody);
+    m_resolver = CreateSubObj<GL::Level::ImpactResolver>("ImpactResolver");
     CreateSubObj<NS::Obj::HitReaction>(HitReactionSlot());
-    m_targetMarker = CreateSubObj<NS::Game::Level::TargetMarker>("TargetMarker");
-    m_slamArrow = CreateSubObj<NS::Game::Level::SlamArrow>("SlamArrow");
-    m_chargeEffects = CreateSubObj<NS::Game::Player::ChargeEffects>("ChargeEffects");
-    m_impactEffects = CreateSubObj<NS::Game::Player::ImpactEffects>("ImpactEffects");
+    m_targetMarker = CreateSubObj<GL::Level::TargetMarker>("TargetMarker");
+    m_slamArrow = CreateSubObj<GL::Level::SlamArrow>("SlamArrow");
+    m_chargeEffects = CreateSubObj<GL::Player::ChargeEffects>("ChargeEffects");
+    m_impactEffects = CreateSubObj<GL::Player::ImpactEffects>("ImpactEffects");
     // 部品を全部作った後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
     (void)BuildStateMachine<Player,
-                            NS::Game::Player::IdlePlayerState,
-                            NS::Game::Player::WalkPlayerState,
-                            NS::Game::Player::FallPlayerState,
-                            NS::Game::Player::LedgeHangingPlayerState,
-                            NS::Game::Player::LedgeClimbingPlayerState,
-                            NS::Game::Player::BodySlamPlayerState,
-                            NS::Game::Player::BrakePlayerState,
-                            NS::Game::Player::ReboundPlayerState,
-                            NS::Game::Player::SkidPlayerState>(*this, m_states);
+                            GL::Player::IdlePlayerState,
+                            GL::Player::WalkPlayerState,
+                            GL::Player::FallPlayerState,
+                            GL::Player::LedgeHangingPlayerState,
+                            GL::Player::LedgeClimbingPlayerState,
+                            GL::Player::BodySlamPlayerState,
+                            GL::Player::BrakePlayerState,
+                            GL::Player::ReboundPlayerState,
+                            GL::Player::SkidPlayerState>(*this, m_states);
 }
 
 NS::Obj::CameraTargetState Player::GetCameraTargetState() const
@@ -96,15 +96,15 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
         .slamDirection = BodySlamDirection(),
     };
     // 真ん中の反動は、飛んでいく相手を画面に残す。外れはいつもどおり自機だけを追う (外れのカメラは寄り無し)
-    const NS::Game::Level::ImpactRecord& impact = m_resolver->LastImpact();
+    const GL::Level::ImpactRecord& impact = m_resolver->LastImpact();
     // 外れはカメラを突進の向きへ回り込ませない。回り込むと画面が振り回され、自機がどちらへ逸れたかも読めない
     // 後ろへも下げない。下げるのは飛んでいく相手を画面に収めるためで、外れの相手はほとんど飛ばない
-    if (IsRebounding() && impact.tier == NS::Game::Level::HitTier::Wide)
+    if (IsRebounding() && impact.tier == GL::Level::HitTier::Wide)
     {
         state.rebound.slamDirection = NS::Vector3{};
         state.rebound.pullBack = false;
     }
-    if (IsRebounding() && impact.tier == NS::Game::Level::HitTier::Center && OwningScene() != nullptr)
+    if (IsRebounding() && impact.tier == GL::Level::HitTier::Center && OwningScene() != nullptr)
     {
         if (const NS::Obj::Actor* partner = OwningScene()->Objects().FindByObjectId(impact.targetId))
         {
@@ -113,14 +113,14 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
     }
     // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す。溜めすぎで出た後は押していても
     // 溜めの締めと揺れを解く
-    const NS::Game::Level::ImpactInputJudge& judge = ChargeJudge();
+    const GL::Level::ImpactInputJudge& judge = ChargeJudge();
     state.hasCharge = true;
     state.charge.held = judge.IsHoldingCharge();
     if (state.charge.held)
     {
         state.charge.charge01 = judge.Charge01();
     }
-    NS::Game::Level::SlamLineTarget aim{};
+    GL::Level::SlamLineTarget aim{};
     state.charge.hasAimTarget = TryGetAimTarget(aim);
     if (state.charge.hasAimTarget)
     {
@@ -234,7 +234,7 @@ void Player::VisualStep()
 
 std::string_view Player::ChooseClip(float lateralSpeed) const noexcept
 {
-    if (m_states->IsCurrent<NS::Game::Player::LedgeHangingPlayerState>())
+    if (m_states->IsCurrent<GL::Player::LedgeHangingPlayerState>())
     {
         if (!m_params->m_ledgeHangClip.empty())
         {
@@ -301,38 +301,38 @@ void Player::InitAfterPlacement()
 {
     ResetHealth();
     // 死とゴールを伝える先。先に作っておくと、最初の知らせの段で流れが進む
-    (void)NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(*this);
+    (void)NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*this);
 }
 
 bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver)
 {
     (void)sender;
     (void)receiver;
-    if (NS::Game::Level::IsMsgInstantDeath(msg))
+    if (GL::Level::IsMsgInstantDeath(msg))
     {
         Die();
-        if (NS::Game::Level::CourseDirector* director =
-                NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(*this))
+        if (GL::Level::CourseDirector* director =
+                NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*this))
         {
             director->NotifyPlayerDead();
         }
         return true;
     }
-    if (const NS::Game::Level::MsgGoal* goal = NS::Obj::MsgCast<NS::Game::Level::MsgGoal>(msg))
+    if (const GL::Level::MsgGoal* goal = NS::Obj::MsgCast<GL::Level::MsgGoal>(msg))
     {
-        if (NS::Game::Level::CourseDirector* director =
-                NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(*this))
+        if (GL::Level::CourseDirector* director =
+                NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*this))
         {
             director->NotifyGoal(goal->FadeOutSeconds(), goal->FadeInSeconds());
         }
         return true;
     }
-    if (const NS::Game::Level::MsgCourseRestart* restart = NS::Obj::MsgCast<NS::Game::Level::MsgCourseRestart>(msg))
+    if (const GL::Level::MsgCourseRestart* restart = NS::Obj::MsgCast<GL::Level::MsgCourseRestart>(msg))
     {
         RestartFrom(restart->Baseline());
         return true;
     }
-    if (const NS::Game::Level::MsgInputLock* lock = NS::Obj::MsgCast<NS::Game::Level::MsgInputLock>(msg))
+    if (const GL::Level::MsgInputLock* lock = NS::Obj::MsgCast<GL::Level::MsgInputLock>(msg))
     {
         m_input->SetLocked(lock->Locked());
         // 押しが偽になった歩を放したと読むと、溜めた突進が出る。止める時は放させずに溜めを捨てる
@@ -462,7 +462,7 @@ float Player::RunSpeed() const noexcept
 bool Player::IsBodySlamming() const noexcept
 {
     // 状態機械を組んでいる最中 (先頭の OnEnter) はまだ預かっていないので nullptr を見る
-    return m_states != nullptr && m_states->IsCurrent<NS::Game::Player::BodySlamPlayerState>();
+    return m_states != nullptr && m_states->IsCurrent<GL::Player::BodySlamPlayerState>();
 }
 
 float Player::BodySlamProgress01() const noexcept
@@ -481,12 +481,12 @@ float Player::BodySlamDistance() const noexcept
 
 bool Player::IsRebounding() const noexcept
 {
-    return m_states != nullptr && m_states->IsCurrent<NS::Game::Player::ReboundPlayerState>();
+    return m_states != nullptr && m_states->IsCurrent<GL::Player::ReboundPlayerState>();
 }
 
 bool Player::IsSkidding() const noexcept
 {
-    return m_states != nullptr && m_states->IsCurrent<NS::Game::Player::SkidPlayerState>();
+    return m_states != nullptr && m_states->IsCurrent<GL::Player::SkidPlayerState>();
 }
 
 bool Player::SkidsOnLanding() const noexcept
@@ -500,7 +500,7 @@ float Player::SkidSpeedScale() const noexcept
     {
         return 1.0f;
     }
-    return NS::Game::Level::MissSkidSpeedScale(
+    return GL::Level::MissSkidSpeedScale(
         m_skid.elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
 }
 
@@ -557,11 +557,11 @@ void Player::SkipBodyStep() noexcept
 void Player::PrepareStateStep()
 {
     const bool locomotion =
-        NS::Game::Player::PlayerJudgeLocomotion::Judge(m_states->IsCurrent<NS::Game::Player::IdlePlayerState>(),
-                                                       m_states->IsCurrent<NS::Game::Player::WalkPlayerState>(),
-                                                       m_states->IsCurrent<NS::Game::Player::FallPlayerState>(),
-                                                       m_states->IsCurrent<NS::Game::Player::ReboundPlayerState>());
-    if (NS::Game::Player::PlayerJudgeBodySlam::Judge(
+        GL::Player::PlayerJudgeLocomotion::Judge(m_states->IsCurrent<GL::Player::IdlePlayerState>(),
+                                                       m_states->IsCurrent<GL::Player::WalkPlayerState>(),
+                                                       m_states->IsCurrent<GL::Player::FallPlayerState>(),
+                                                       m_states->IsCurrent<GL::Player::ReboundPlayerState>());
+    if (GL::Player::PlayerJudgeBodySlam::Judge(
             m_request.bufferRemaining, m_request.spent, m_slam.wasSlamming, locomotion))
     {
         if (BodySlam())

@@ -25,7 +25,7 @@
 
 namespace
 {
-    using namespace NS::Game::Level;
+    using namespace GL::Level;
 
     constexpr std::uint32_t k_RockId = 2;
 

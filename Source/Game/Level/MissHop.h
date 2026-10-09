@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! 外れで飛んだ相手が着地のたびに跳ねる時の値
     struct MissHopDesc
@@ -29,4 +29,4 @@ namespace NS::Game::Level
                                                     const MissHopDesc& desc,
                                                     std::uint32_t seed,
                                                     int hopIndex) noexcept;
-} // namespace NS::Game::Level
+} // namespace GL::Level

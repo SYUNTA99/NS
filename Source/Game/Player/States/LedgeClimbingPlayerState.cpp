@@ -2,7 +2,7 @@
 
 #include "Game/Player.h"
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     void LedgeClimbingPlayerState::OnEnter(::Player& player)
     {
@@ -21,4 +21,4 @@ namespace NS::Game::Player
             }
         }
     }
-} // namespace NS::Game::Player
+} // namespace GL::Player

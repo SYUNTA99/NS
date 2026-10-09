@@ -8,7 +8,7 @@
 // 突進の狙いの予測の型
 // Player と ImpactResolver の両方が使うので、どちらのヘッダにも置かない
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief 押している間の狙いの線。狙う相手を探す線で、溜めている間は SlamArrow がこの線の向きへ放った玉の道筋に
     //! 矢印を描く。溜めて放した突進はこの線の向きと縦の速さで出て、突進の間も向きを曲げない
@@ -42,4 +42,4 @@ namespace NS::Game::Level
         //! 段の予測。放つ縦の速さの道筋が launchContact で居る高さで、裁定と同じ面の判定で出す
         HitTier tier = HitTier::Wide;
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

@@ -11,7 +11,7 @@
 
 namespace
 {
-    NS::Game::Level::MapObj* PlaceMovingRock(NS::Obj::Scene& scene)
+    GL::Level::MapObj* PlaceMovingRock(NS::Obj::Scene& scene)
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json rock = NS::Obj::MakeObjectJson();
@@ -20,22 +20,22 @@ namespace
         NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.LoadJson(doc);
-        return static_cast<NS::Game::Level::MapObj*>(scene.Objects().FindByObjectId(1));
+        return static_cast<GL::Level::MapObj*>(scene.Objects().FindByObjectId(1));
     }
 
-    void ReleaseRock(NS::Game::Level::MapObj& rock)
+    void ReleaseRock(GL::Level::MapObj& rock)
     {
-        NS::Game::Level::TackleReleaseDesc release;
+        GL::Level::TackleReleaseDesc release;
         release.arc.distance = 5.0f;
         release.arc.apexHeight = 1.0f;
-        EXPECT_TRUE(NS::Game::Level::SendMsgTackleRelease(rock, release));
+        EXPECT_TRUE(GL::Level::SendMsgTackleRelease(rock, release));
     }
 } // namespace
 
 TEST(MapObjMotion, ActorMovesAndUpdatesStaticCollision)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
+    GL::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
     ASSERT_NE(rock->GetStateMachine(), nullptr);
     ReleaseRock(*rock);
@@ -54,7 +54,7 @@ TEST(MapObjMotion, ActorMovesAndUpdatesStaticCollision)
 TEST(MapObjMotion, LandingRollsThenReturnsToRest)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
+    GL::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
     NS::OBB floor;
     floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -67,8 +67,8 @@ TEST(MapObjMotion, LandingRollsThenReturnsToRest)
     {
         rock->UpdateMotion();
     }
-    NS::Game::Level::TackleTargetAnswer answer;
-    ASSERT_TRUE(NS::Game::Level::SendMsgAskTackleTarget(*rock->BodySensorSubObj(), answer));
+    GL::Level::TackleTargetAnswer answer;
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*rock->BodySensorSubObj(), answer));
     EXPECT_TRUE(answer.placed);
     EXPECT_GT(rock->Root().Position().x, 5.0f);
     EXPECT_NEAR(rock->Root().Position().y, 0.5f, 0.002f);
@@ -81,7 +81,7 @@ TEST(MapObjMotion, LandingRollsThenReturnsToRest)
 TEST(MapObjMotion, WallReflectsFlightBeforeItCanTunnel)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
+    GL::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
     NS::OBB wall;
     wall.center = NS::Vector3{2.0f, 2.0f, 0.0f};
@@ -109,10 +109,10 @@ TEST(MapObjMotion, WallReflectsFlightBeforeItCanTunnel)
 TEST(MapObjMotion, UnobstructedFlightKeepsAnalyticArc)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
+    GL::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
     ReleaseRock(*rock);
-    NS::Game::Level::LaunchArc arc;
+    GL::Level::LaunchArc arc;
     arc.distance = 5.0f;
     arc.apexHeight = 1.0f;
     float seconds = 0.0f;
@@ -120,7 +120,7 @@ TEST(MapObjMotion, UnobstructedFlightKeepsAnalyticArc)
     {
         seconds += NS::OS::FrameTimer::FixedDelta();
         rock->UpdateMotion();
-        const NS::Vector3 expected = NS::Game::Level::LaunchArcOffsetAt(arc, seconds);
+        const NS::Vector3 expected = GL::Level::LaunchArcOffsetAt(arc, seconds);
         EXPECT_NEAR(rock->Root().Position().x, expected.x, 0.0001f);
         EXPECT_NEAR(rock->Root().Position().y, 0.5f + expected.y, 0.0001f);
     }
@@ -129,7 +129,7 @@ TEST(MapObjMotion, UnobstructedFlightKeepsAnalyticArc)
 TEST(MapObjMotion, SceneGravityRotatesTheFlightPlane)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
+    GL::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
     scene.SetGravityDirection(NS::Vector3{0.0f, 0.0f, 1.0f});
     ReleaseRock(*rock);
@@ -145,7 +145,7 @@ TEST(MapObjMotion, SceneGravityRotatesTheFlightPlane)
 TEST(MapObjMotion, RestartCancelsFlightAndRestoresPlacement)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
+    GL::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
     const nlohmann::json baseline = scene.ToJson();
     ReleaseRock(*rock);
@@ -153,7 +153,7 @@ TEST(MapObjMotion, RestartCancelsFlightAndRestoresPlacement)
     {
         rock->UpdateMotion();
     }
-    ASSERT_TRUE(NS::Game::Level::SendMsgCourseRestart(*rock, baseline));
+    ASSERT_TRUE(GL::Level::SendMsgCourseRestart(*rock, baseline));
     EXPECT_FALSE(rock->IsFlying());
     rock->UpdateMotion();
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 0.0f);
@@ -164,12 +164,12 @@ TEST(MapObjMotion, RestartCancelsFlightAndRestoresPlacement)
 TEST(MapObjMotion, ZeroLengthFreezeStillWaitsForReleaseGrace)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
+    GL::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::Game::Level::TackleFreezeDesc freeze;
+    GL::Level::TackleFreezeDesc freeze;
     freeze.pushInDistance = 0.1f;
     freeze.squashThickness = 0.8f;
-    ASSERT_TRUE(NS::Game::Level::SendMsgTackleFreeze(*rock, freeze));
+    ASSERT_TRUE(GL::Level::SendMsgTackleFreeze(*rock, freeze));
     for (int step = 0; step < 3; ++step)
     {
         rock->UpdateMotion();
@@ -184,7 +184,7 @@ TEST(MapObjMotion, ZeroLengthFreezeStillWaitsForReleaseGrace)
 TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
+    GL::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
     NS::OBB floor;
     floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -196,11 +196,11 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
     {
         rock->UpdateMotion();
     }
-    const NS::Game::Level::LaunchEffects* effects =
-        NS::Obj::Cast<NS::Game::Level::LaunchEffects>(rock->FindSubObj("LaunchEffects"));
+    const GL::Level::LaunchEffects* effects =
+        NS::Obj::Cast<GL::Level::LaunchEffects>(rock->FindSubObj("LaunchEffects"));
     ASSERT_NE(effects, nullptr);
     int dustCount = 0;
-    for (const NS::Game::Player::EffectLayerRecord& record : effects->Layers().Records())
+    for (const GL::Player::EffectLayerRecord& record : effects->Layers().Records())
     {
         if (record.name == "launch.landDust")
         {
@@ -214,14 +214,14 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
 TEST(MapObjMotion, FreezeWithoutSquashPreservesExistingDrawScale)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
+    GL::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
     NS::Obj::Model* mesh = rock->ModelSubObj();
     ASSERT_NE(mesh, nullptr);
     ASSERT_TRUE(mesh->SnapDrawScale(NS::Vector3{0.9f, 0.9f, 0.9f}));
-    NS::Game::Level::TackleFreezeDesc freeze;
+    GL::Level::TackleFreezeDesc freeze;
     freeze.squash = false;
-    ASSERT_TRUE(NS::Game::Level::SendMsgTackleFreeze(*rock, freeze));
+    ASSERT_TRUE(GL::Level::SendMsgTackleFreeze(*rock, freeze));
     for (int step = 0; step < 4; ++step)
     {
         rock->UpdateMotion();
@@ -231,7 +231,7 @@ TEST(MapObjMotion, FreezeWithoutSquashPreservesExistingDrawScale)
 
 TEST(MapObjMotion, EffectClockIsSeparateFromItsPostMovementUpdate)
 {
-    NS::Game::Level::LaunchEffects effects;
+    GL::Level::LaunchEffects effects;
     effects.BeginStep();
     EXPECT_EQ(effects.Layers().Step(), 1);
     effects.OnUpdate();
@@ -241,7 +241,7 @@ TEST(MapObjMotion, EffectClockIsSeparateFromItsPostMovementUpdate)
 TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
+    GL::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
     NS::OBB floor;
     floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -249,14 +249,14 @@ TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
     floor.halfExtentZ = 100.0f;
     scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
     ReleaseRock(*rock);
-    const NS::Game::Level::LaunchEffects* effects =
-        NS::Obj::Cast<NS::Game::Level::LaunchEffects>(rock->FindSubObj("LaunchEffects"));
+    const GL::Level::LaunchEffects* effects =
+        NS::Obj::Cast<GL::Level::LaunchEffects>(rock->FindSubObj("LaunchEffects"));
     ASSERT_NE(effects, nullptr);
     bool landed = false;
     for (int step = 0; step < 100 && !landed; ++step)
     {
         rock->Update();
-        for (const NS::Game::Player::EffectLayerRecord& record : effects->Layers().Records())
+        for (const GL::Player::EffectLayerRecord& record : effects->Layers().Records())
         {
             if (record.name == "launch.landDust")
             {
@@ -272,7 +272,7 @@ TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
 TEST(MapObjMotion, StateAdvancesThroughTheBaseMachine)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
+    GL::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
     NS::Obj::IStateMachine* machine = rock->GetStateMachine();
     ASSERT_NE(machine, nullptr);

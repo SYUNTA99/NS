@@ -63,7 +63,7 @@ namespace NS::Editor
         bool hit = false;                       //!< 選んだ相手に当たった場合 true
         std::string error;                      //!< 当たらなかった理由。当たった時は空
         HitPreviewDesc desc{};                  //!< 走らせた条件
-        NS::Game::Level::ImpactRecord impact{}; //!< 当たりの記録。当たらなかった時は既定のまま
+        GL::Level::ImpactRecord impact{}; //!< 当たりの記録。当たらなかった時は既定のまま
         int detectionIndex = -1;                //!< 当たりを検知したフレームの frames の添字。当たらなかった時は -1
         std::vector<HitPreviewFrame> frames;    //!< 突進を出した次の 1 歩から並ぶ
         NS::Vector3 playerStart{};              //!< 写しの中で自機の根を置き直した位置

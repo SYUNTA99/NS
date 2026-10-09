@@ -14,71 +14,71 @@
 
 namespace
 {
-    using NS::Game::Level::HitTimeline;
-    using NS::Game::Level::HitTimelineLibrary;
+    using GL::Level::HitTimeline;
+    using GL::Level::HitTimelineLibrary;
 
     // 種類ごとに 1 つずつ、欄と向きを既定から動かした並び
     HitTimeline MakeEveryKindTimeline()
     {
         HitTimeline timeline;
-        NS::Game::Level::ShapeEvent shape;
+        GL::Level::ShapeEvent shape;
         shape.along.count = 2;
         shape.along.keys[0] = NS::Obj::Curve::Key{0.0f, 0.7f};
         shape.along.keys[1] = NS::Obj::Curve::Key{11.0f, 0.7f};
         shape.height.count = 1;
         shape.height.keys[0] = NS::Obj::Curve::Key{0.0f, 1.1f};
-        NS::Game::Level::TargetFreezeEvent freeze;
+        GL::Level::TargetFreezeEvent freeze;
         freeze.pushInDistance = 0.1f;
-        NS::Game::Level::CameraShakeEvent shake;
+        GL::Level::CameraShakeEvent shake;
         shake.sideWeight = 1.0f;
         shake.longestFlipFrames = 3;
-        NS::Game::Level::ZoomRollEvent zoom;
+        GL::Level::ZoomRollEvent zoom;
         zoom.zoom = 1.3f;
-        NS::Game::Level::PadVibrationEvent pad;
+        GL::Level::PadVibrationEvent pad;
         pad.right.count = 2;
         pad.right.keys[0] = NS::Obj::Curve::Key{0.0f, 0.6f};
         pad.right.keys[1] = NS::Obj::Curve::Key{16.0f, 0.0f};
-        NS::Game::Level::FlashEvent flash;
+        GL::Level::FlashEvent flash;
         flash.alpha = 0.25f;
-        NS::Game::Level::CameraLurchEvent lurch;
+        GL::Level::CameraLurchEvent lurch;
         lurch.distance.count = 2;
         lurch.distance.keys[0] = NS::Obj::Curve::Key{0.0f, 0.3f};
         lurch.distance.keys[1] = NS::Obj::Curve::Key{8.0f, 0.0f};
-        NS::Game::Level::GroundWaveEvent wave;
+        GL::Level::GroundWaveEvent wave;
         wave.radius.count = 2;
         wave.radius.keys[0] = NS::Obj::Curve::Key{0.0f, 0.5f};
         wave.radius.keys[1] = NS::Obj::Curve::Key{10.0f, 6.0f};
-        NS::Game::Level::DistortionRingEvent ring;
+        GL::Level::DistortionRingEvent ring;
         ring.halfWidth = 0.07f;
-        NS::Game::Level::ShakeLinesEvent lines;
+        GL::Level::ShakeLinesEvent lines;
         lines.gapPixels = 20.0f;
-        NS::Game::Level::CameraReboundSwayEvent sway;
+        GL::Level::CameraReboundSwayEvent sway;
         sway.distance.count = 2;
         sway.distance.keys[0] = NS::Obj::Curve::Key{0.0f, -0.5f};
         sway.distance.keys[1] = NS::Obj::Curve::Key{12.0f, 0.8f};
         timeline.events = {
-            {NS::Game::Level::HitStopEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
-            {shape, -6, 18, NS::Game::Level::HitDirection::Any},
-            {freeze, 1, 12, NS::Game::Level::HitDirection::Any},
-            {NS::Game::Level::TargetLaunchEvent{}, 13, 1, NS::Game::Level::HitDirection::Any},
-            {NS::Game::Level::ReboundEvent{}, 13, 1, NS::Game::Level::HitDirection::Any},
-            {shake, 1, 16, NS::Game::Level::HitDirection::Left},
-            {zoom, 1, 18, NS::Game::Level::HitDirection::Any},
-            {pad, 1, 16, NS::Game::Level::HitDirection::Right},
-            {flash, 1, 6, NS::Game::Level::HitDirection::Up},
-            {NS::Game::Level::HitEffectEvent{}, 1, 1, NS::Game::Level::HitDirection::Down},
-            {NS::Game::Level::FlightEffectEvent{}, 13, 0, NS::Game::Level::HitDirection::Any},
-            {lurch, 1, 9, NS::Game::Level::HitDirection::Any},
-            {sway, 1, 29, NS::Game::Level::HitDirection::Right},
-            {lines, 1, 12, NS::Game::Level::HitDirection::Any},
-            {wave, 1, 18, NS::Game::Level::HitDirection::Any},
-            {ring, 2, 10, NS::Game::Level::HitDirection::Any},
-            {NS::Game::Level::CameraTraumaEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
-            {NS::Game::Level::GradualReleaseEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
-            {NS::Game::Level::ImpactTremorEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
-            {NS::Game::Level::CameraSinkEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
-            {NS::Game::Level::OthersStopEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
-            {NS::Game::Level::BodyShakeEvent{}, 1, 12, NS::Game::Level::HitDirection::Any},
+            {GL::Level::HitStopEvent{}, 1, 12, GL::Level::HitDirection::Any},
+            {shape, -6, 18, GL::Level::HitDirection::Any},
+            {freeze, 1, 12, GL::Level::HitDirection::Any},
+            {GL::Level::TargetLaunchEvent{}, 13, 1, GL::Level::HitDirection::Any},
+            {GL::Level::ReboundEvent{}, 13, 1, GL::Level::HitDirection::Any},
+            {shake, 1, 16, GL::Level::HitDirection::Left},
+            {zoom, 1, 18, GL::Level::HitDirection::Any},
+            {pad, 1, 16, GL::Level::HitDirection::Right},
+            {flash, 1, 6, GL::Level::HitDirection::Up},
+            {GL::Level::HitEffectEvent{}, 1, 1, GL::Level::HitDirection::Down},
+            {GL::Level::FlightEffectEvent{}, 13, 0, GL::Level::HitDirection::Any},
+            {lurch, 1, 9, GL::Level::HitDirection::Any},
+            {sway, 1, 29, GL::Level::HitDirection::Right},
+            {lines, 1, 12, GL::Level::HitDirection::Any},
+            {wave, 1, 18, GL::Level::HitDirection::Any},
+            {ring, 2, 10, GL::Level::HitDirection::Any},
+            {GL::Level::CameraTraumaEvent{}, 1, 12, GL::Level::HitDirection::Any},
+            {GL::Level::GradualReleaseEvent{}, 1, 12, GL::Level::HitDirection::Any},
+            {GL::Level::ImpactTremorEvent{}, 1, 12, GL::Level::HitDirection::Any},
+            {GL::Level::CameraSinkEvent{}, 1, 12, GL::Level::HitDirection::Any},
+            {GL::Level::OthersStopEvent{}, 1, 12, GL::Level::HitDirection::Any},
+            {GL::Level::BodyShakeEvent{}, 1, 12, GL::Level::HitDirection::Any},
         };
         return timeline;
     }
@@ -86,14 +86,14 @@ namespace
 
 TEST(HitTimeline, ValueTypeFieldsRoundTripThroughJson)
 {
-    NS::Game::Level::CameraShakeEvent shake;
+    GL::Level::CameraShakeEvent shake;
     shake.strength = 0.2f;
     shake.longestFlipFrames = 4;
     const nlohmann::json fields = NS::Obj::SerializeValueFields(shake);
     EXPECT_FLOAT_EQ(fields["強さ"].get<float>(), 0.2f);
     EXPECT_EQ(fields["入れ替わりの最長フレーム数"].get<int>(), 4);
 
-    NS::Game::Level::CameraShakeEvent read;
+    GL::Level::CameraShakeEvent read;
     EXPECT_EQ(NS::Obj::ApplyValueFields(read, fields), 0u);
     EXPECT_FLOAT_EQ(read.strength, 0.2f);
     EXPECT_EQ(read.longestFlipFrames, 4);
@@ -102,15 +102,15 @@ TEST(HitTimeline, ValueTypeFieldsRoundTripThroughJson)
 TEST(HitTimeline, EveryKindRoundTripsThroughTheFileForm)
 {
     const HitTimeline written = MakeEveryKindTimeline();
-    ASSERT_EQ(written.events.size(), std::variant_size_v<NS::Game::Level::HitEventValue>);
-    const nlohmann::json doc = NS::Game::Level::HitTimelineToJson(written);
+    ASSERT_EQ(written.events.size(), std::variant_size_v<GL::Level::HitEventValue>);
+    const nlohmann::json doc = GL::Level::HitTimelineToJson(written);
     EXPECT_EQ(doc["version"].get<int>(), 1);
     ASSERT_EQ(doc["events"].size(), written.events.size());
     EXPECT_EQ(doc["events"][0]["type"].get<std::string>(), "HitStop");
     EXPECT_EQ(doc["events"][5]["direction"].get<std::string>(), "left");
 
     std::string error;
-    const std::optional<HitTimeline> read = NS::Game::Level::ParseHitTimeline(doc, error);
+    const std::optional<HitTimeline> read = GL::Level::ParseHitTimeline(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     ASSERT_EQ(read->events.size(), written.events.size());
     for (std::size_t i = 0; i < written.events.size(); ++i)
@@ -121,10 +121,10 @@ TEST(HitTimeline, EveryKindRoundTripsThroughTheFileForm)
         EXPECT_EQ(read->events[i].length, written.events[i].length);
         EXPECT_EQ(read->events[i].direction, written.events[i].direction);
     }
-    EXPECT_EQ(NS::Game::Level::HitTimelineToJson(*read), doc);
-    const NS::Game::Level::ShapeEvent* shape = std::get_if<NS::Game::Level::ShapeEvent>(&read->events[1].value);
+    EXPECT_EQ(GL::Level::HitTimelineToJson(*read), doc);
+    const GL::Level::ShapeEvent* shape = std::get_if<GL::Level::ShapeEvent>(&read->events[1].value);
     ASSERT_NE(shape, nullptr);
-    EXPECT_EQ(shape->along, std::get<NS::Game::Level::ShapeEvent>(written.events[1].value).along);
+    EXPECT_EQ(shape->along, std::get<GL::Level::ShapeEvent>(written.events[1].value).along);
 }
 
 TEST(HitTimeline, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
@@ -134,13 +134,13 @@ TEST(HitTimeline, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
         {"type": "CameraShake", "start": 1, "length": 12}
     ]})");
     std::string error;
-    const std::optional<HitTimeline> read = NS::Game::Level::ParseHitTimeline(doc, error);
+    const std::optional<HitTimeline> read = GL::Level::ParseHitTimeline(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     ASSERT_EQ(read->events.size(), 2u);
-    EXPECT_FLOAT_EQ(std::get<NS::Game::Level::FlashEvent>(read->events[0].value).alpha, 0.3f);
-    EXPECT_EQ(read->events[0].direction, NS::Game::Level::HitDirection::Any);
-    EXPECT_FLOAT_EQ(std::get<NS::Game::Level::CameraShakeEvent>(read->events[1].value).strength,
-                    NS::Game::Level::CameraShakeEvent{}.strength);
+    EXPECT_FLOAT_EQ(std::get<GL::Level::FlashEvent>(read->events[0].value).alpha, 0.3f);
+    EXPECT_EQ(read->events[0].direction, GL::Level::HitDirection::Any);
+    EXPECT_FLOAT_EQ(std::get<GL::Level::CameraShakeEvent>(read->events[1].value).strength,
+                    GL::Level::CameraShakeEvent{}.strength);
 }
 
 TEST(HitTimeline, BrokenFilesAreRejectedWithAReason)
@@ -162,16 +162,16 @@ TEST(HitTimeline, BrokenFilesAreRejectedWithAReason)
     {
         SCOPED_TRACE(text);
         std::string error;
-        EXPECT_FALSE(NS::Game::Level::ParseHitTimeline(nlohmann::json::parse(text), error).has_value());
+        EXPECT_FALSE(GL::Level::ParseHitTimeline(nlohmann::json::parse(text), error).has_value());
         EXPECT_FALSE(error.empty());
     }
 }
 
 TEST(HitTimeline, TiersNameTheirFiles)
 {
-    EXPECT_EQ(NS::Game::Level::HitTimelineNameOf(NS::Game::Level::HitTier::Center), "center");
-    EXPECT_EQ(NS::Game::Level::HitTimelineNameOf(NS::Game::Level::HitTier::Wide), "miss");
-    EXPECT_TRUE(NS::Game::Level::HitTimelineNameOf(static_cast<NS::Game::Level::HitTier>(7)).empty());
+    EXPECT_EQ(GL::Level::HitTimelineNameOf(GL::Level::HitTier::Center), "center");
+    EXPECT_EQ(GL::Level::HitTimelineNameOf(GL::Level::HitTier::Wide), "miss");
+    EXPECT_TRUE(GL::Level::HitTimelineNameOf(static_cast<GL::Level::HitTier>(7)).empty());
 }
 
 TEST(HitTimeline, LibrarySavesAndReadsBackTheSameTimeline)
@@ -181,9 +181,9 @@ TEST(HitTimeline, LibrarySavesAndReadsBackTheSameTimeline)
     HitTimelineLibrary::Get().Set("center", written);
     ASSERT_TRUE(HitTimelineLibrary::Get().Save("center"));
     HitTimelineLibrary::Get().Reload();
-    const HitTimeline* read = HitTimelineLibrary::Get().FindForTier(NS::Game::Level::HitTier::Center);
+    const HitTimeline* read = HitTimelineLibrary::Get().FindForTier(GL::Level::HitTier::Center);
     ASSERT_NE(read, nullptr);
-    EXPECT_EQ(NS::Game::Level::HitTimelineToJson(*read), NS::Game::Level::HitTimelineToJson(written));
+    EXPECT_EQ(GL::Level::HitTimelineToJson(*read), GL::Level::HitTimelineToJson(written));
     EXPECT_FALSE(HitTimelineLibrary::Get().Save("graze"));
 }
 
@@ -193,9 +193,9 @@ TEST(HitTimeline, LibraryHasNoTimelineForAMissingOrBrokenFile)
     directory.WriteFile("center", R"({"version": 1, "events": [{"type": "Explode", "start": 1, "length": 1}]})");
     directory.WriteFile("miss", "{ not json");
     HitTimelineLibrary::Get().Reload();
-    EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(NS::Game::Level::HitTier::Center), nullptr);
-    EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(NS::Game::Level::HitTier::Wide), nullptr);
-    EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(static_cast<NS::Game::Level::HitTier>(7)), nullptr);
+    EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(GL::Level::HitTier::Center), nullptr);
+    EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(GL::Level::HitTier::Wide), nullptr);
+    EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(static_cast<GL::Level::HitTier>(7)), nullptr);
     EXPECT_EQ(HitTimelineLibrary::Get().Find("graze"), nullptr);
 }
 
@@ -214,7 +214,7 @@ namespace
             return std::nullopt;
         }
         std::string error;
-        return NS::Game::Level::ParseHitTimeline(nlohmann::json::parse(*text), error);
+        return GL::Level::ParseHitTimeline(nlohmann::json::parse(*text), error);
     }
 } // namespace
 
@@ -224,15 +224,15 @@ TEST(HitTimeline, ShippedCenterShrinksBeforeContactAndMissDoesNot)
 {
     const std::optional<HitTimeline> center = ReadShippedTimeline("center");
     ASSERT_TRUE(center.has_value());
-    const NS::Game::Level::HitEvent* shape = nullptr;
-    const NS::Game::Level::HitEvent* othersStop = nullptr;
-    for (const NS::Game::Level::HitEvent& event : center->events)
+    const GL::Level::HitEvent* shape = nullptr;
+    const GL::Level::HitEvent* othersStop = nullptr;
+    for (const GL::Level::HitEvent& event : center->events)
     {
-        if (std::holds_alternative<NS::Game::Level::ShapeEvent>(event.value))
+        if (std::holds_alternative<GL::Level::ShapeEvent>(event.value))
         {
             shape = &event;
         }
-        if (std::holds_alternative<NS::Game::Level::OthersStopEvent>(event.value))
+        if (std::holds_alternative<GL::Level::OthersStopEvent>(event.value))
         {
             othersStop = &event;
         }
@@ -242,7 +242,7 @@ TEST(HitTimeline, ShippedCenterShrinksBeforeContactAndMissDoesNot)
     EXPECT_EQ(shape->start, -6);
     EXPECT_EQ(othersStop->start, -2);
     EXPECT_EQ(othersStop->length, 2);
-    const NS::Obj::Curve& along = std::get<NS::Game::Level::ShapeEvent>(shape->value).along;
+    const NS::Obj::Curve& along = std::get<GL::Level::ShapeEvent>(shape->value).along;
     // 横軸は形の始まり (-6) からのフレーム数
     const float atStart = along.Evaluate(0.0f);
     const float halfway = along.Evaluate(3.0f);
@@ -256,9 +256,9 @@ TEST(HitTimeline, ShippedCenterShrinksBeforeContactAndMissDoesNot)
 
     const std::optional<HitTimeline> miss = ReadShippedTimeline("miss");
     ASSERT_TRUE(miss.has_value());
-    for (const NS::Game::Level::HitEvent& event : miss->events)
+    for (const GL::Level::HitEvent& event : miss->events)
     {
-        EXPECT_GE(event.start, 0) << NS::Game::Level::HitEventTypeName(event.value);
+        EXPECT_GE(event.start, 0) << GL::Level::HitEventTypeName(event.value);
     }
 }
 
@@ -270,17 +270,17 @@ TEST(HitTimeline, ShippedCenterSlowsTheWorldOnlyForPurple)
     ASSERT_TRUE(center.has_value());
     int stopEnd = 0;
     int releases = 0;
-    for (const NS::Game::Level::HitEvent& event : center->events)
+    for (const GL::Level::HitEvent& event : center->events)
     {
-        if (std::holds_alternative<NS::Game::Level::HitStopEvent>(event.value))
+        if (std::holds_alternative<GL::Level::HitStopEvent>(event.value))
         {
             stopEnd = event.start + event.length;
         }
     }
-    for (const NS::Game::Level::HitEvent& event : center->events)
+    for (const GL::Level::HitEvent& event : center->events)
     {
-        if (const NS::Game::Level::GradualReleaseEvent* release =
-                std::get_if<NS::Game::Level::GradualReleaseEvent>(&event.value))
+        if (const GL::Level::GradualReleaseEvent* release =
+                std::get_if<GL::Level::GradualReleaseEvent>(&event.value))
         {
             ++releases;
             EXPECT_TRUE(release->overchargedOnly);
@@ -290,9 +290,9 @@ TEST(HitTimeline, ShippedCenterSlowsTheWorldOnlyForPurple)
     EXPECT_EQ(releases, 1);
     const std::optional<HitTimeline> miss = ReadShippedTimeline("miss");
     ASSERT_TRUE(miss.has_value());
-    for (const NS::Game::Level::HitEvent& event : miss->events)
+    for (const GL::Level::HitEvent& event : miss->events)
     {
-        EXPECT_FALSE(std::holds_alternative<NS::Game::Level::GradualReleaseEvent>(event.value));
+        EXPECT_FALSE(std::holds_alternative<GL::Level::GradualReleaseEvent>(event.value));
     }
 }
 
@@ -303,17 +303,17 @@ TEST(HitTimeline, ShippedCenterSinksAndPunchesOnceWhenTheShockReachesTheBack)
     ASSERT_TRUE(center.has_value());
     int sinks = 0;
     int punches = 0;
-    for (const NS::Game::Level::HitEvent& event : center->events)
+    for (const GL::Level::HitEvent& event : center->events)
     {
-        EXPECT_FALSE(std::holds_alternative<NS::Game::Level::CameraShakeEvent>(event.value));
-        if (const NS::Game::Level::ZoomRollEvent* zoom = std::get_if<NS::Game::Level::ZoomRollEvent>(&event.value))
+        EXPECT_FALSE(std::holds_alternative<GL::Level::CameraShakeEvent>(event.value));
+        if (const GL::Level::ZoomRollEvent* zoom = std::get_if<GL::Level::ZoomRollEvent>(&event.value))
         {
             ++punches;
             EXPECT_EQ(event.start, 7);
             EXPECT_FLOAT_EQ(zoom->rollDegrees, 0.0f);
             EXPECT_GT(zoom->zoom, 1.0f);
         }
-        if (std::holds_alternative<NS::Game::Level::CameraSinkEvent>(event.value))
+        if (std::holds_alternative<GL::Level::CameraSinkEvent>(event.value))
         {
             ++sinks;
             EXPECT_EQ(event.start, 1);
@@ -329,13 +329,13 @@ TEST(HitTimeline, ShippedCenterSinksAndPunchesOnceWhenTheShockReachesTheBack)
 // 下の外れだけ、擦れの頭にもう 1 度重い一打が来る。向きの付かない振動の行は置かない
 TEST(HitTimeline, ShippedMissVibratesHeavyHeadThenLightTailPerDirection)
 {
-    using NS::Game::Level::HitDirection;
+    using GL::Level::HitDirection;
     const std::optional<HitTimeline> miss = ReadShippedTimeline("miss");
     ASSERT_TRUE(miss.has_value());
     int rows[5] = {};
-    for (const NS::Game::Level::HitEvent& event : miss->events)
+    for (const GL::Level::HitEvent& event : miss->events)
     {
-        const NS::Game::Level::PadVibrationEvent* pad = std::get_if<NS::Game::Level::PadVibrationEvent>(&event.value);
+        const GL::Level::PadVibrationEvent* pad = std::get_if<GL::Level::PadVibrationEvent>(&event.value);
         if (pad == nullptr)
         {
             continue;

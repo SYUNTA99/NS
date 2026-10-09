@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     namespace
     {
@@ -474,4 +474,4 @@ namespace NS::Game::Level
         }
         return true;
     }
-} // namespace NS::Game::Level
+} // namespace GL::Level

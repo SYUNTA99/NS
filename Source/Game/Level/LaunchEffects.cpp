@@ -12,7 +12,7 @@
 #include <cmath>
 #include <cstddef>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     namespace
     {
@@ -88,7 +88,7 @@ namespace NS::Game::Level
     void LaunchEffects::OnStart()
     {
         m_body = NS::Obj::Cast<MapObj>(Owner());
-        NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
+        NS::Gfx::EffectScene* effects = GL::Player::EffectsOf(*this);
         if (effects == nullptr)
         {
             return;
@@ -100,7 +100,7 @@ namespace NS::Game::Level
 
     void LaunchEffects::BeginTrail(HitTier tier, float power, float launchScale, const NS::Vector3& launchDir)
     {
-        NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
+        NS::Gfx::EffectScene* effects = GL::Player::EffectsOf(*this);
         // 尾は 1 本ずつ持つ。前の尾が残っていればここで消す
         if (m_trail != 0)
         {
@@ -149,13 +149,13 @@ namespace NS::Game::Level
 
     void LaunchEffects::BeginStep()
     {
-        NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
+        NS::Gfx::EffectScene* effects = GL::Player::EffectsOf(*this);
         m_layers.BeginStep(effects);
     }
 
     void LaunchEffects::OnUpdate()
     {
-        NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
+        NS::Gfx::EffectScene* effects = GL::Player::EffectsOf(*this);
         const int step = m_layers.Step();
         if (m_trail == 0 || step == m_trailStartStep || Owner() == nullptr || m_body == nullptr)
         {
@@ -163,7 +163,7 @@ namespace NS::Game::Level
         }
         if (m_body->IsArc())
         {
-            if (const NS::Game::Player::EffectLayerRecord* record = m_layers.Find(m_trail);
+            if (const GL::Player::EffectLayerRecord* record = m_layers.Find(m_trail);
                 record != nullptr && effects != nullptr)
             {
                 const Vector3 head = Owner()->Root().Position();
@@ -186,12 +186,12 @@ namespace NS::Game::Level
 
     void LaunchEffects::CancelTrail()
     {
-        EndTrail(NS::Game::Player::EffectsOf(*this));
+        EndTrail(GL::Player::EffectsOf(*this));
     }
 
     void LaunchEffects::NotifyLanding(const Vector3& position, const Vector3& normal)
     {
-        NS::Gfx::EffectScene* effects = NS::Game::Player::EffectsOf(*this);
+        NS::Gfx::EffectScene* effects = GL::Player::EffectsOf(*this);
         EndTrail(effects);
         const Vector3 at = position + normal * m_dustRingLift;
         const std::uint32_t dust = m_layers.Play(
@@ -203,4 +203,4 @@ namespace NS::Game::Level
     }
 
     NS_CLASS(LaunchEffects)
-} // namespace NS::Game::Level
+} // namespace GL::Level

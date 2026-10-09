@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief 置物の重さ・転がり・壊れ方・飛び方の見た目の調整値の欄を持つ部品
     class MapObjParams : public NS::Obj::SubObject
@@ -130,4 +130,4 @@ namespace NS::Game::Level
         float m_missHopTurnDegrees = 30.0f;
         float m_missHopKeep = 0.7f;
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

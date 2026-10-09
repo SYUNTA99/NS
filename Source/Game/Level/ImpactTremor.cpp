@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     float ScreenPixelsToMeters(float pixels, const NS::Obj::CameraPose& pose, const NS::Vector3& at, float referenceHeight) noexcept
     {
@@ -69,4 +69,4 @@ namespace NS::Game::Level
         tremor.ringFrames = static_cast<float>(ringFrames);
         return tremor;
     }
-} // namespace NS::Game::Level
+} // namespace GL::Level

@@ -6,7 +6,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief 衝突の配分の計算が読む調整値
     //! @details MakeImpactTuning が PlayerParams の欄から全部入れる。値の正は PlayerParams 1 つで、
@@ -62,7 +62,7 @@ namespace NS::Game::Level
         float massFactor = 0.0f;                               //!< 質量 ÷ (質量 + 1)
         float reboundScale = 0.0f;                             //!< 自機の反動の高さと距離に掛けた比
         float launchScale = 0.0f;                              //!< 相手の曲線の距離と高さに掛けた比
-        NS::Game::Player::ReboundArc reboundArc{};             //!< 自機の反動の向きと高さと距離
+        GL::Player::ReboundArc reboundArc{};             //!< 自機の反動の向きと高さと距離
         LaunchArc launchArc{};                                 //!< 相手の飛ぶ曲線
         NS::Vector3 breakSelfVelocity{0.0f, 0.0f, 0.0f}; //!< 貫通で明けに自機が持つ速度。貫通しない当たりは 0
         //! 貫通の当たりの止めるフレーム数。押し飛ばしの当たりの止めはタイムラインが持つので 0
@@ -125,4 +125,4 @@ namespace NS::Game::Level
     //! @return ずれ。frame が 1 より前か length 以降は 0
     [[nodiscard]] float BodyShakeOffset(
         int frame, int length, float amplitude, std::uint32_t seed, float firstSign, int flipFrames) noexcept;
-} // namespace NS::Game::Level
+} // namespace GL::Level

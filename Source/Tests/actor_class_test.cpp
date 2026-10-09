@@ -40,7 +40,7 @@ TEST(ActorClass, MapPartsCollidesWithItsMesh)
 
 TEST(ActorClass, MapObjOwnsMotionAndStaticCollision)
 {
-    NS::Game::Level::MapObj obj;
+    GL::Level::MapObj obj;
     obj.Init();
     EXPECT_NE(obj.ModelSubObj(), nullptr);
     EXPECT_NE(NS::Obj::Cast<NS::Obj::SphereCollision>(obj.FindSubObj("Collision")), nullptr);
@@ -51,30 +51,30 @@ TEST(ActorClass, MapObjOwnsMotionAndStaticCollision)
     // 体当たりは物の体のセンサーで調べられ、受け方と尾は自分で持つ
     const NS::Obj::HitSensor* sensor = obj.BodySensorSubObj();
     ASSERT_NE(sensor, nullptr);
-    EXPECT_TRUE(NS::Game::Level::IsSensorKind(*sensor, NS::Game::Level::SensorKind::MapObjBody));
+    EXPECT_TRUE(GL::Level::IsSensorKind(*sensor, GL::Level::SensorKind::MapObjBody));
     EXPECT_EQ(obj.FindSubObj("TackleReaction"), nullptr);
-    EXPECT_NE(NS::Obj::Cast<NS::Game::Level::LaunchEffects>(obj.FindSubObj("LaunchEffects")), nullptr);
+    EXPECT_NE(NS::Obj::Cast<GL::Level::LaunchEffects>(obj.FindSubObj("LaunchEffects")), nullptr);
     EXPECT_NE(obj.GetStateMachine(), nullptr);
     EXPECT_FALSE(obj.IsFlying());
 }
 
 TEST(ActorClass, GoalHasMarkerAndArea)
 {
-    NS::Game::Level::Goal goal;
+    GL::Level::Goal goal;
     goal.Init();
     EXPECT_NE(goal.ModelSubObj(), nullptr);
     const NS::Obj::HitSensor* area = goal.BodySensorSubObj();
     ASSERT_NE(area, nullptr);
-    EXPECT_TRUE(NS::Game::Level::IsSensorKind(*area, NS::Game::Level::SensorKind::Area));
+    EXPECT_TRUE(GL::Level::IsSensorKind(*area, GL::Level::SensorKind::Area));
 }
 
 TEST(ActorClass, DeathZoneIsBoxAreaWithoutTerrainCollision)
 {
-    NS::Game::Level::DeathZone zone;
+    GL::Level::DeathZone zone;
     zone.Init();
     const NS::Obj::ShapeHitSensor* area = NS::Obj::Cast<NS::Obj::ShapeHitSensor>(zone.BodySensorSubObj());
     ASSERT_NE(area, nullptr);
-    EXPECT_TRUE(NS::Game::Level::IsSensorKind(*area, NS::Game::Level::SensorKind::Area));
+    EXPECT_TRUE(GL::Level::IsSensorKind(*area, GL::Level::SensorKind::Area));
     EXPECT_EQ(area->Shape(), NS::Obj::HitSensorShape::Box);
     EXPECT_GE(area->BoxHalfExtents().x, 100.0f);
     // 地形の当たりを持つと、落ちてきたプレイヤーが上面に着地してしまう
@@ -83,7 +83,7 @@ TEST(ActorClass, DeathZoneIsBoxAreaWithoutTerrainCollision)
 
 TEST(ActorClass, FollowCameraHasFollowAndFeed)
 {
-    NS::Game::Level::FollowCamera camera;
+    GL::Level::FollowCamera camera;
     camera.Init();
     EXPECT_NE(NS::Obj::Cast<NS::Obj::ThirdPersonFollow>(camera.FindSubObj("Vcam")), nullptr);
     EXPECT_EQ(NS::Obj::Cast<NS::Obj::ThirdPersonFollow>(camera.FindSubObj("Vcam")), &camera.Vcam());
@@ -108,28 +108,28 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
     EXPECT_EQ(player.Phase(), NS::Obj::UpdatePhase::Player);
     EXPECT_EQ(&player.Input(), NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input")));
     EXPECT_EQ(&player.Body(), NS::Obj::Cast<NS::Obj::Body>(player.FindSubObj("Movement")));
-    EXPECT_NE(NS::Obj::Cast<NS::Game::Level::ImpactResolver>(player.FindSubObj("ImpactResolver")), nullptr);
+    EXPECT_NE(NS::Obj::Cast<GL::Level::ImpactResolver>(player.FindSubObj("ImpactResolver")), nullptr);
     EXPECT_NE(player.HitReactionSubObj(), nullptr);
     const NS::Obj::HitSensor* body = player.BodySensorSubObj();
     ASSERT_NE(body, nullptr);
-    EXPECT_TRUE(NS::Game::Level::IsSensorKind(*body, NS::Game::Level::SensorKind::PlayerBody));
+    EXPECT_TRUE(GL::Level::IsSensorKind(*body, GL::Level::SensorKind::PlayerBody));
 }
 
 TEST(SensorKinds, SetKindIsSeenByIsKindOnlyForThatKind)
 {
     // 付けた種類にだけ真で、他の種類と未設定には偽
     NS::Obj::ShapeHitSensor sensor;
-    const NS::Game::Level::SensorKind kinds[] = {NS::Game::Level::SensorKind::PlayerBody,
-                                                 NS::Game::Level::SensorKind::MapObjBody,
-                                                 NS::Game::Level::SensorKind::Area};
-    for (const NS::Game::Level::SensorKind set : kinds)
+    const GL::Level::SensorKind kinds[] = {GL::Level::SensorKind::PlayerBody,
+                                                 GL::Level::SensorKind::MapObjBody,
+                                                 GL::Level::SensorKind::Area};
+    for (const GL::Level::SensorKind set : kinds)
     {
-        NS::Game::Level::SetSensorKind(sensor, set);
-        for (const NS::Game::Level::SensorKind asked : kinds)
+        GL::Level::SetSensorKind(sensor, set);
+        for (const GL::Level::SensorKind asked : kinds)
         {
-            EXPECT_EQ(NS::Game::Level::IsSensorKind(sensor, asked), set == asked);
+            EXPECT_EQ(GL::Level::IsSensorKind(sensor, asked), set == asked);
         }
-        EXPECT_FALSE(NS::Game::Level::IsSensorKind(sensor, NS::Game::Level::SensorKind::Unset));
+        EXPECT_FALSE(GL::Level::IsSensorKind(sensor, GL::Level::SensorKind::Unset));
     }
 }
 
@@ -138,10 +138,10 @@ TEST(SensorKinds, NewSensorIsUnsetAndUnsetCanBeWrittenBack)
     // 作ったばかりのセンサーはどの種類でもない。付け忘れたセンサーが黙って体当たりの相手にならない
     NS::Obj::ShapeHitSensor sensor;
     EXPECT_EQ(sensor.Kind(), 0u);
-    EXPECT_FALSE(NS::Game::Level::IsSensorKind(sensor, NS::Game::Level::SensorKind::MapObjBody));
+    EXPECT_FALSE(GL::Level::IsSensorKind(sensor, GL::Level::SensorKind::MapObjBody));
     // 未設定を書くと未設定へ戻る
-    NS::Game::Level::SetSensorKind(sensor, NS::Game::Level::SensorKind::Area);
-    NS::Game::Level::SetSensorKind(sensor, NS::Game::Level::SensorKind::Unset);
-    EXPECT_FALSE(NS::Game::Level::IsSensorKind(sensor, NS::Game::Level::SensorKind::Area));
+    GL::Level::SetSensorKind(sensor, GL::Level::SensorKind::Area);
+    GL::Level::SetSensorKind(sensor, GL::Level::SensorKind::Unset);
+    EXPECT_FALSE(GL::Level::IsSensorKind(sensor, GL::Level::SensorKind::Area));
     EXPECT_EQ(sensor.Kind(), 0u);
 }

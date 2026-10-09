@@ -60,7 +60,7 @@ namespace NS::Editor
         void RenderPlayback() noexcept;
 
         // 編集する段を tier にし、置き場から写しを取り直す
-        void LoadWorking(NS::Game::Level::HitTier tier);
+        void LoadWorking(GL::Level::HitTier tier);
         // 写しを置き場へ差し替え、下見し直しを頼む
         void ApplyWorking();
         // 写しの場面で下見する
@@ -68,8 +68,8 @@ namespace NS::Editor
 
         [[nodiscard]] TimelineFrameRange PlaybackRange() const noexcept;
 
-        NS::Game::Level::HitTier m_tier = NS::Game::Level::HitTier::Center; // 編集している段
-        NS::Game::Level::HitTimeline m_working;                             // 編集している段の写し
+        GL::Level::HitTier m_tier = GL::Level::HitTier::Center; // 編集している段
+        GL::Level::HitTimeline m_working;                             // 編集している段の写し
         bool m_dirty = false;                                               // 保存していない変更があるか
         std::string m_status;                                               // 保存・読み直しの結果の 1 行
 

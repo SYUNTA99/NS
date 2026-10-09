@@ -13,7 +13,7 @@ namespace NS::Obj
     class ScreenFade;
 } // namespace NS::Obj
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief コースの進行役。シーンに 1 つの物で、プレイヤーの死とゴールに応じてコースの流れを進める
     //! @details プレイヤーは知らせを受けて進行役へ伝えるだけで、流れは知らない
@@ -77,4 +77,4 @@ namespace NS::Game::Level
         bool m_playerDead = false;                   // 次の段でやり直すか
         bool m_goalReached = false;                  // 次の段でクリアの流れを始めるか
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

@@ -55,7 +55,7 @@ namespace
     }
 } // namespace
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     PlayerAppearance::PlayerAppearance() noexcept : NS::Obj::SubObject() {}
 
@@ -147,7 +147,7 @@ namespace NS::Game::Player
             // 放せば出る向きへ回す。溜めて放した突進は狙いの線の向きへ、通常突進と線の無い時は
             // AimDirection の向きへ出る。狙いが決まらないフレームは前の軸で回し続ける
             NS::Vector3 aim = m_actor->AimDirection();
-            NS::Game::Level::AimLine line{};
+            GL::Level::AimLine line{};
             if (m_actor->ChargeJudge().IsCharging() && m_actor->TryGetAimLine(line))
             {
                 aim = line.direction;
@@ -401,4 +401,4 @@ namespace NS::Game::Player
     }
 
     NS_CLASS(PlayerAppearance)
-} // namespace NS::Game::Player
+} // namespace GL::Player

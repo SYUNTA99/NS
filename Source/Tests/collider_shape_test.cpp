@@ -194,7 +194,7 @@ TEST(ColliderShape, FollowingBodySensorsShowNoFields)
     // 形の正は Collider と Collision。映すだけのセンサーに効かない欄を出さない
     Player player;
     player.Init();
-    NS::Game::Level::MapObj obj;
+    GL::Level::MapObj obj;
     obj.Init();
     ASSERT_NE(player.BodySensorSubObj(), nullptr);
     ASSERT_NE(obj.BodySensorSubObj(), nullptr);
@@ -205,9 +205,9 @@ TEST(ColliderShape, FollowingBodySensorsShowNoFields)
 TEST(ColliderShape, AreaSensorsKeepTheirSavedFieldNames)
 {
     // ゴールと落下死の範囲は形を自分で持つ。保存済みの欄の表示名がそのまま読める
-    NS::Game::Level::Goal goal;
+    GL::Level::Goal goal;
     goal.Init();
-    NS::Game::Level::DeathZone zone;
+    GL::Level::DeathZone zone;
     zone.Init();
     ASSERT_NE(goal.BodySensorSubObj(), nullptr);
     ASSERT_NE(zone.BodySensorSubObj(), nullptr);

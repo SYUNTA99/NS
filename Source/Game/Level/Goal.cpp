@@ -6,7 +6,7 @@
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     void Goal::OnInit()
     {
@@ -31,4 +31,4 @@ namespace NS::Game::Level
     }
 
     NS_PLACEABLE(Goal, "ゴール")
-} // namespace NS::Game::Level
+} // namespace GL::Level

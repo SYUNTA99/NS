@@ -2,7 +2,7 @@
 
 #include "Game/Player/PlayerGravity.h"
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     //! @brief 溜めて放った玉の道筋を決める値
     //! @details 水平は一定の速さで進み、縦は 1 フレームずつ ChooseGravity の強さで変わる。Player が突進の間に当てる
@@ -60,4 +60,4 @@ namespace NS::Game::Player
     //! @return 求めた縦の速さと届くか。入力に有限でない値がある時、水平の速さか dt が正でない時、
     //! 触れる所までの距離が負の時は届かない
     [[nodiscard]] LaunchPitchResult LaunchPitch(const LaunchPitchDesc& desc) noexcept;
-} // namespace NS::Game::Player
+} // namespace GL::Player

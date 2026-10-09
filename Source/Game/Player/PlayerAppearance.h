@@ -19,12 +19,12 @@ namespace NS::Obj
     class Body;
 }
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     class ImpactResolver;
-} // namespace NS::Game::Level
+} // namespace GL::Level
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     struct MissTumble;
 
@@ -108,7 +108,7 @@ namespace NS::Game::Player
         bool m_curled = false;
         const NS::Obj::Body* m_body = nullptr; // 接地の問い先。非所有
         const ::Player* m_actor = nullptr;     // 突進の速度と狙いの向きと溜めと構えの縮みの問い先。非所有
-        const NS::Game::Level::ImpactResolver* m_resolver = nullptr; // 当たりの潰れと伸びの問い先。非所有
+        const GL::Level::ImpactResolver* m_resolver = nullptr; // 当たりの潰れと伸びの問い先。非所有
 
         // 回る速さは 3 つとも 1 フレーム 180 度未満 (1/60 秒のフレームで 10800 度/秒未満) で使う。超えると描く時の
         // 補間が短い側を通り、逆回りに見える
@@ -143,4 +143,4 @@ namespace NS::Game::Player
         float m_landingSquash = 0.8f;        // 反動のまま着地したフレームの縦の倍率
         int m_landingSquashRecoverSteps = 6; // 着地の潰れを 1 へ戻すまでのフレーム数
     };
-} // namespace NS::Game::Player
+} // namespace GL::Player

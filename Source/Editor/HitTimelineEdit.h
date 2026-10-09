@@ -21,19 +21,19 @@ namespace NS::Editor
     //! @param[in] value 足す事象の種類と値
     //! @param[in] start 始まりのフレーム。パネルの再生の位置
     //! @return 足した事象の行の番号
-    std::size_t AddHitEvent(NS::Game::Level::HitTimeline& timeline,
-                            const NS::Game::Level::HitEventValue& value,
+    std::size_t AddHitEvent(GL::Level::HitTimeline& timeline,
+                            const GL::Level::HitEventValue& value,
                             int start);
 
     //! @brief row の行の事象を消し、後ろの行を詰める
     //! @return 消した場合 true。row が範囲の外の場合は false
-    bool RemoveHitEvent(NS::Game::Level::HitTimeline& timeline, std::size_t row) noexcept;
+    bool RemoveHitEvent(GL::Level::HitTimeline& timeline, std::size_t row) noexcept;
 
     //! @brief 事象の始まりと終わり、下見の記録の最初と最後のフレームを全部含む範囲を返す
     //! @param[in] timeline 帯に描くタイムライン
     //! @param[in] preview 下見の結果。nullptr か当たらなかった結果なら事象だけで決める
     //! @return 範囲。事象も下見も無ければ 0 から 0
-    [[nodiscard]] TimelineFrameRange HitTimelineFrameRange(const NS::Game::Level::HitTimeline& timeline,
+    [[nodiscard]] TimelineFrameRange HitTimelineFrameRange(const GL::Level::HitTimeline& timeline,
                                                            const HitPreviewResult* preview) noexcept;
 
     //! @brief 下見で row の行の事象が実際に始まったフレームを、検知のフレームを 0 にして返す

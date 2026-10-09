@@ -42,7 +42,7 @@ namespace
     struct PreviewResult
     {
         int impactFrame = -1;
-        NS::Game::Level::ImpactRecord record{};
+        GL::Level::ImpactRecord record{};
     };
 
     // 編集中の場面の写しから別の場面を組み、入力を止めた自機へ突進を直接頼んで、当たるまで場面の 1 歩で進める

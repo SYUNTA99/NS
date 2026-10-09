@@ -10,21 +10,21 @@
 
 class Player;
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     class PlayerParams;
-} // namespace NS::Game::Player
+} // namespace GL::Player
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     class ImpactResolver;
     class SlamArrow;
     struct ImpactTuning;
     // ImpactResolver.h が宣言して ImpactResolver.cpp が定義する。friend に書くために先に宣言しておく
-    ImpactTuning MakeImpactTuning(const NS::Game::Player::PlayerParams& params) noexcept;
-} // namespace NS::Game::Level
+    ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams& params) noexcept;
+} // namespace GL::Level
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     //! @brief 自機の遊びの調整値の欄を持つ部品
     //! @details 移動・溜め・衝突はここの欄を読む。見た目と演出の欄は描く部品 (PlayerAppearance・ChargeEffects・
@@ -188,9 +188,9 @@ namespace NS::Game::Player
         float m_launchHeightTolerance = LaunchPitchDesc{}.heightTolerance;
         float m_launchAngleGuardDegrees = LaunchPitchDesc{}.angleGuardDegrees;
         int m_launchMaxFrames = LaunchPath{}.maxFrames;
-        friend class NS::Game::Level::ImpactResolver;
-        friend class NS::Game::Level::SlamArrow;
-        friend NS::Game::Level::ImpactTuning NS::Game::Level::MakeImpactTuning(const PlayerParams& params) noexcept;
+        friend class GL::Level::ImpactResolver;
+        friend class GL::Level::SlamArrow;
+        friend GL::Level::ImpactTuning GL::Level::MakeImpactTuning(const PlayerParams& params) noexcept;
         float m_reboundApexHeight = 1.15f;
         float m_reboundDistance = 0.575f;
         // 真ん中の当たりは、後ろのカメラの方へ低く速く弾き返す。手前へ来る動きは真後ろから大きくなって見え、
@@ -304,4 +304,4 @@ namespace NS::Game::Player
         float m_reboundRiseGravityScale = 0.5f;
         float m_reboundAirAcceleration = 2.0f;
     };
-} // namespace NS::Game::Player
+} // namespace GL::Player

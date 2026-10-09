@@ -6,7 +6,7 @@
 
 #include <utility>
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     void EffectLayerList::BeginStep(NS::Gfx::EffectScene* effects)
     {
@@ -176,4 +176,4 @@ namespace NS::Game::Player
         }
         return owner->GetEffectScene();
     }
-} // namespace NS::Game::Player
+} // namespace GL::Player

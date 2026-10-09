@@ -33,7 +33,7 @@ namespace
         HeadlessImGui& operator=(const HeadlessImGui&) = delete;
 
         // 窓を 1 つ開いて事象の欄を描く。focusFirst なら最初の欄を打ち込みの状態にする
-        NS::Editor::ValueEditResult Frame(NS::Game::Level::FlashEvent& flash, bool focusFirst)
+        NS::Editor::ValueEditResult Frame(GL::Level::FlashEvent& flash, bool focusFirst)
         {
             ImGui::NewFrame();
             ImGui::Begin("値の欄");
@@ -56,7 +56,7 @@ namespace
 TEST(EditorValueFields, TypingIntoAnEventFieldWritesTheValue)
 {
     HeadlessImGui gui;
-    NS::Game::Level::FlashEvent flash;
+    GL::Level::FlashEvent flash;
     flash.alpha = 0.5f;
 
     // フォーカスの頼みは次のフレームの頭で効き、欄が打ち込みの状態になる。打つのはその後
@@ -84,7 +84,7 @@ TEST(EditorValueFields, TypingIntoAnEventFieldWritesTheValue)
 TEST(EditorValueFields, DrawingAloneLeavesTheValue)
 {
     HeadlessImGui gui;
-    NS::Game::Level::FlashEvent flash;
+    GL::Level::FlashEvent flash;
     flash.alpha = 0.5f;
     const NS::Editor::ValueEditResult result = gui.Frame(flash, false);
     EXPECT_FALSE(result.changed);

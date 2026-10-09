@@ -17,7 +17,7 @@
 #include <optional>
 #include <string_view>
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     namespace
     {
@@ -153,12 +153,12 @@ namespace NS::Game::Player
     // 入力の番号は段の番号と別に持つ。段の番号をそのまま使うと、3 番の段を足した時に核の出始めの大きさ (3 番)
     // を上書きする
     void ImpactEffects::ApplyTierRow(ImpactShape& shape,
-                                     const NS::Game::Level::ImpactRecord& impact,
+                                     const GL::Level::ImpactRecord& impact,
                                      float power) const noexcept
     {
         switch (impact.tier)
         {
-        case NS::Game::Level::HitTier::Center:
+        case GL::Level::HitTier::Center:
         {
             shape.coreInput = 0;
             shape.coreHold = CoreHoldMotion::Pulse;
@@ -195,7 +195,7 @@ namespace NS::Game::Player
             shape.recoilCountInput = 0;
             return;
         }
-        case NS::Game::Level::HitTier::Wide:
+        case GL::Level::HitTier::Wide:
             break;
         }
         // 大きな外れの行。番号から作った段の外の値もこの行で出し、中心近くの層を足さない
@@ -212,7 +212,7 @@ namespace NS::Game::Player
         shape.recoilCountInput = 2;
     }
 
-    ImpactShape ImpactEffects::ShapeFor(const NS::Game::Level::ImpactRecord& impact) const noexcept
+    ImpactShape ImpactEffects::ShapeFor(const GL::Level::ImpactRecord& impact) const noexcept
     {
         ImpactShape shape;
         shape.tier = impact.tier;
@@ -252,7 +252,7 @@ namespace NS::Game::Player
         {
             return Vector3{};
         }
-        const Vector3 normal = NS::Game::Level::MissSurfaceNormal(u, v, 2.0f, forward);
+        const Vector3 normal = GL::Level::MissSurfaceNormal(u, v, 2.0f, forward);
         const Vector3 slide = NormalizedOr(forward - normal * NS::Dot(forward, normal), side);
         const float sideShare = std::clamp(m_missSparkSideShare, 0.0f, 1.0f);
         return NormalizedOr(side * sideShare + slide * (1.0f - sideShare), side);
@@ -298,7 +298,7 @@ namespace NS::Game::Player
         return leaned * -1.0f;
     }
 
-    void ImpactEffects::BeginHit(NS::Gfx::EffectScene* effects, const NS::Game::Level::ImpactRecord& impact)
+    void ImpactEffects::BeginHit(NS::Gfx::EffectScene* effects, const GL::Level::ImpactRecord& impact)
     {
         // 前の当たりの層が残っていても、次の核は当たりの絵の頭から出す。前の粉は親を止めて短くする
         FinishHeldLayers(effects);
@@ -654,7 +654,7 @@ namespace NS::Game::Player
         bool missed = false;
         if (m_resolver != nullptr)
         {
-            missed = m_resolver->LastImpact().tier == NS::Game::Level::HitTier::Wide;
+            missed = m_resolver->LastImpact().tier == GL::Level::HitTier::Wide;
         }
         if (m_player != nullptr && m_player->IsRebounding() && !missed)
         {
@@ -751,4 +751,4 @@ namespace NS::Game::Player
     }
 
     NS_CLASS(ImpactEffects)
-} // namespace NS::Game::Player
+} // namespace GL::Player

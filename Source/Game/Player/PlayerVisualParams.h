@@ -3,7 +3,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/Reflection/Curve.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! ロックオンの枠の見た目の調整値。TargetMarker が欄として持つ
     struct TargetMarkerDesc
@@ -83,4 +83,4 @@ namespace NS::Game::Level
         float occludedHeadAlpha = 0.7f;
     };
 
-} // namespace NS::Game::Level
+} // namespace GL::Level

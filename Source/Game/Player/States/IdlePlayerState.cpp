@@ -7,7 +7,7 @@
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Object/SubObjects/Body.h"
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     void IdlePlayerState::OnStep(::Player& player, float dt)
     {
@@ -30,4 +30,4 @@ namespace NS::Game::Player
             player.States().Change<WalkPlayerState>();
         }
     }
-} // namespace NS::Game::Player
+} // namespace GL::Player

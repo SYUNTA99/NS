@@ -12,7 +12,7 @@
 #include <limits>
 #include <utility>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     namespace
     {
@@ -285,4 +285,4 @@ namespace NS::Game::Level
     }
 
     NS_CLASS(TargetMarker)
-} // namespace NS::Game::Level
+} // namespace GL::Level

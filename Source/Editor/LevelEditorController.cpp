@@ -173,20 +173,20 @@ namespace
     // 面の上の形を 1 つ描く。中心から縁の点へ扇に塗り、縁の点を線で結ぶ
     // 形と縁の点と面の置き方は HitZones の関数が出す。判定と同じ値から描くので、色の境目が判定とずれない
     void DrawHitFaceShape(NS::Gfx::DebugShapes& shapes,
-                          const NS::Game::Level::HitFaceFrame& frame,
-                          const NS::Game::Level::HitFaceShape& shape) noexcept
+                          const GL::Level::HitFaceFrame& frame,
+                          const GL::Level::HitFaceShape& shape) noexcept
     {
-        const std::vector<NS::Vector2> outline = NS::Game::Level::HitFaceShapeOutline(shape);
+        const std::vector<NS::Vector2> outline = GL::Level::HitFaceShapeOutline(shape);
         const NS::Color edgeColor = NS::Editor::HitZoneColor(shape.tier);
         NS::Color fillColor = edgeColor;
         fillColor.A(k_HitFaceAlpha);
-        const NS::Vector3 center = NS::Game::Level::HitFacePoint(frame, shape.centerU, shape.centerV);
+        const NS::Vector3 center = GL::Level::HitFacePoint(frame, shape.centerU, shape.centerV);
         for (std::size_t i = 0; i < outline.size(); ++i)
         {
             const NS::Vector2& from = outline[i];
             const NS::Vector2& to = outline[(i + 1) % outline.size()];
-            const NS::Vector3 a = NS::Game::Level::HitFacePoint(frame, from.x, from.y);
-            const NS::Vector3 b = NS::Game::Level::HitFacePoint(frame, to.x, to.y);
+            const NS::Vector3 a = GL::Level::HitFacePoint(frame, from.x, from.y);
+            const NS::Vector3 b = GL::Level::HitFacePoint(frame, to.x, to.y);
             shapes.Triangle(center, a, b, fillColor);
             shapes.Line(a, b, edgeColor);
         }
@@ -468,8 +468,8 @@ void LevelEditorController::EnterPlay() noexcept
 
     // 凍結を取り、そこから走行を最初から。プレイの間の判定と編集復帰の姿はこの凍結を読む
     // 手順は出荷と同じ CourseDirector::StartCourse の持ち物
-    if (NS::Game::Level::CourseDirector* director =
-            NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(*m_scene))
+    if (GL::Level::CourseDirector* director =
+            NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*m_scene))
     {
         director->StartCourse();
     }
@@ -914,7 +914,7 @@ void LevelEditorController::RefreshGizmoSelectables()
 
 NS::Obj::ThirdPersonFollow* LevelEditorController::SelectedFollowCamera() noexcept
 {
-    if (NS::Game::Level::FollowCamera* camera = NS::Obj::Cast<NS::Game::Level::FollowCamera>(SelectedObjectActor()))
+    if (GL::Level::FollowCamera* camera = NS::Obj::Cast<GL::Level::FollowCamera>(SelectedObjectActor()))
     {
         return &camera->Vcam();
     }
@@ -928,7 +928,7 @@ void LevelEditorController::SyncFollowCameraPoses()
     const NS::Obj::ActorList& objects = m_scene->Objects();
     for (NS::Obj::Actor* object : objects)
     {
-        NS::Game::Level::FollowCamera* camera = NS::Obj::Cast<NS::Game::Level::FollowCamera>(object);
+        GL::Level::FollowCamera* camera = NS::Obj::Cast<GL::Level::FollowCamera>(object);
         if (camera == nullptr)
         {
             continue;
@@ -1063,7 +1063,7 @@ void LevelEditorController::RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
     }();
     for (NS::Obj::Actor* object : objects)
     {
-        NS::Game::Level::FollowCamera* camera = NS::Obj::Cast<NS::Game::Level::FollowCamera>(object);
+        GL::Level::FollowCamera* camera = NS::Obj::Cast<GL::Level::FollowCamera>(object);
         if (camera == nullptr)
         {
             continue;
@@ -1150,7 +1150,7 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
     // 自機が居ない場面は半径 0 として、相手の輪郭の大きさで描く
     float playerRadius = 0.0f;
     NS::Vector3 ballCenter{};
-    NS::Game::Level::SlamLineTarget aim{};
+    GL::Level::SlamLineTarget aim{};
     bool aiming = false;
     if (player != nullptr)
     {
@@ -1168,8 +1168,8 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
         {
             continue;
         }
-        const NS::Game::Level::HitZones* zones =
-            NS::Obj::Cast<NS::Game::Level::HitZones>(object->FindSubObj("HitZones"));
+        const GL::Level::HitZones* zones =
+            NS::Obj::Cast<GL::Level::HitZones>(object->FindSubObj("HitZones"));
         const NS::Obj::HitSensor* bodySensor = object->BodySensorSubObj();
         if (zones == nullptr || bodySensor == nullptr)
         {
@@ -1191,13 +1191,13 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
             direction = aim.direction;
         }
         // 真上や真下から見て水平の向きが決まらない相手は描かない
-        NS::Game::Level::HitFaceFrame frame;
-        if (!NS::Game::Level::MakeHitFaceFrame(body, direction, playerRadius, frame))
+        GL::Level::HitFaceFrame frame;
+        if (!GL::Level::MakeHitFaceFrame(body, direction, playerRadius, frame))
         {
             continue;
         }
-        for (const NS::Game::Level::HitFaceShape& shape :
-             NS::Game::Level::HitFaceShapes(zones->Face(), frame.bodyShape))
+        for (const GL::Level::HitFaceShape& shape :
+             GL::Level::HitFaceShapes(zones->Face(), frame.bodyShape))
         {
             DrawHitFaceShape(shapes, frame, shape);
         }
@@ -1207,7 +1207,7 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
     {
         return;
     }
-    const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
+    const GL::Level::ImpactRecord& impact = player->Resolver().LastImpact();
     // まだ 1 度も当てていない
     if (impact.sequence == 0)
     {

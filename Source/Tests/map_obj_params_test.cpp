@@ -25,14 +25,14 @@ TEST(MapObjParams, SceneOverrideControlsMassAndToughness)
     scene.LoadJson(doc);
     NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    const NS::Game::Level::MapObjParams* params =
-        NS::Obj::Cast<NS::Game::Level::MapObjParams>(actor->FindSubObj("Params"));
+    const GL::Level::MapObjParams* params =
+        NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     EXPECT_FLOAT_EQ(params->Mass(), 2.0f);
     EXPECT_FLOAT_EQ(params->Toughness(), 3.0f);
     EXPECT_EQ(actor->FindSubObj("Breakable"), nullptr);
-    NS::Game::Level::TackleTargetAnswer answer;
-    ASSERT_TRUE(NS::Game::Level::SendMsgAskTackleTarget(*actor->BodySensorSubObj(), answer));
+    GL::Level::TackleTargetAnswer answer;
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*actor->BodySensorSubObj(), answer));
     EXPECT_FLOAT_EQ(answer.mass, 2.0f);
     EXPECT_FLOAT_EQ(answer.toughness, 3.0f);
 }
@@ -59,8 +59,8 @@ TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
             }
             const NS::Obj::Actor* rock = scene.Objects().FindByObjectId(NS::Obj::ObjectJsonId(entry));
             ASSERT_NE(rock, nullptr);
-            const NS::Game::Level::MapObjParams* params =
-                NS::Obj::Cast<NS::Game::Level::MapObjParams>(rock->FindSubObj("Params"));
+            const GL::Level::MapObjParams* params =
+                NS::Obj::Cast<GL::Level::MapObjParams>(rock->FindSubObj("Params"));
             ASSERT_NE(params, nullptr);
             masses.push_back(params->Mass());
             toughnesses.push_back(params->Toughness());
@@ -92,8 +92,8 @@ TEST(MapObjParams, InvalidOverridesKeepPhysicalValuesSafe)
     scene.LoadJson(doc);
     const NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    const NS::Game::Level::MapObjParams* params =
-        NS::Obj::Cast<NS::Game::Level::MapObjParams>(actor->FindSubObj("Params"));
+    const GL::Level::MapObjParams* params =
+        NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     EXPECT_FLOAT_EQ(params->Mass(), 1.0f);
     EXPECT_FLOAT_EQ(params->Toughness(), 0.0f);
@@ -103,14 +103,14 @@ TEST(MapObjParams, InvalidOverridesKeepPhysicalValuesSafe)
 
 TEST(MapObjParams, LaunchSizeDefaultsBelongToParams)
 {
-    NS::Game::Level::MapObjParams params;
+    GL::Level::MapObjParams params;
     const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(params);
     const nlohmann::json expected = {{"飛び出しの尾が残るフレーム数の基準", 8},
                                      {"飛び出しの尾が残るフレーム数の飛ばしの比あたり", 4.0f},
                                      {"着地の粉の大きさの基準", 0.8f},
                                      {"着地の粉の大きさの質量の平方根あたり", 0.4f},
                                      {"着地の粉の大きさの威力あたりの伸び", 0.5f}};
-    NS::Game::Level::LaunchEffects effects;
+    GL::Level::LaunchEffects effects;
     const nlohmann::json effectFields = NS::Obj::SerializeSubObjectFields(effects);
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
     {
@@ -131,10 +131,10 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
     scene.LoadJson(doc);
     NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    NS::Game::Level::MapObjParams* params =
-        NS::Obj::Cast<NS::Game::Level::MapObjParams>(actor->FindSubObj("Params"));
-    NS::Game::Level::LaunchEffects* effects =
-        NS::Obj::Cast<NS::Game::Level::LaunchEffects>(actor->FindSubObj("LaunchEffects"));
+    GL::Level::MapObjParams* params =
+        NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
+    GL::Level::LaunchEffects* effects =
+        NS::Obj::Cast<GL::Level::LaunchEffects>(actor->FindSubObj("LaunchEffects"));
     ASSERT_NE(params, nullptr);
     ASSERT_NE(effects, nullptr);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(*params,
@@ -145,10 +145,10 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
                                         {"着地の粉の大きさの質量の平方根あたり", 0.5f},
                                         {"着地の粉の大きさの威力あたりの伸び", 0.25f}}),
               0u);
-    NS::Game::Level::TackleReleaseDesc release{};
-    release.arc = NS::Game::Level::LaunchArc{.distance = 5.0f, .apexHeight = 1.0f};
-    ASSERT_TRUE(NS::Game::Level::SendMsgTackleRelease(*actor, release));
-    effects->BeginTrail(NS::Game::Level::HitTier::Center, 2.0f, 1.0f, NS::Vector3{1.0f, 0.0f, 0.0f});
+    GL::Level::TackleReleaseDesc release{};
+    release.arc = GL::Level::LaunchArc{.distance = 5.0f, .apexHeight = 1.0f};
+    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(*actor, release));
+    effects->BeginTrail(GL::Level::HitTier::Center, 2.0f, 1.0f, NS::Vector3{1.0f, 0.0f, 0.0f});
     EXPECT_EQ(effects->TrailFrames(), 20);
     EXPECT_FLOAT_EQ(effects->LandDustScale(), 2.5f);
 }

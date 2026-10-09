@@ -34,7 +34,7 @@
 #include <variant>
 #include <vector>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     namespace
     {
@@ -263,7 +263,7 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    const NS::Game::Player::PlayerParams& ImpactResolver::Tuning() const noexcept
+    const GL::Player::PlayerParams& ImpactResolver::Tuning() const noexcept
     {
         // 呼ぶのは OnStart が持ち主を引き当てた後だけ
         return m_player->Params();
@@ -411,7 +411,7 @@ namespace NS::Game::Level
         TackleTargetAnswer answer{};
         if (SendMsgAskTackleTarget(*firstSensor, answer))
         {
-            const NS::Game::Player::PlayerParams& params = Tuning();
+            const GL::Player::PlayerParams& params = Tuning();
             float aimHeight = ballCenter.y;
             (void)HitFaceAimHeight(answer.face, answer.body, lineDir, playerRadius, aimHeight);
             // 触れる所は、着きたい高さで線を進めた玉が触れる所。今の高さで測ると、高さの違う相手の上の縁をかすめる
@@ -430,8 +430,8 @@ namespace NS::Game::Level
                                                   std::max(params.m_contactTolerance, 0.0f));
             }
             const float dt = NS::OS::FrameTimer::FixedDelta();
-            const NS::Game::Player::LaunchPitchResult pitch = NS::Game::Player::LaunchPitch(
-                NS::Game::Player::LaunchPitchDesc{.ballHeight = ballCenter.y,
+            const GL::Player::LaunchPitchResult pitch = GL::Player::LaunchPitch(
+                GL::Player::LaunchPitchDesc{.ballHeight = ballCenter.y,
                                                   .targetHeight = aimHeight,
                                                   .contactDistance = aimedContact,
                                                   .horizontalSpeed = params.m_bodySlamSpeed,
@@ -448,14 +448,14 @@ namespace NS::Game::Level
                 first.launchContact = aimedContact;
             }
             // 段と横ずれは裁定と同じく相手の答えの面で決める。玉の高さは放つ縦の速さの道筋が触れる所で居る高さ
-            const NS::Game::Player::LaunchPath path{.horizontalSpeed = params.m_bodySlamSpeed,
+            const GL::Player::LaunchPath path{.horizontalSpeed = params.m_bodySlamSpeed,
                                                     .verticalSpeed = pitch.verticalSpeed,
                                                     .gravity = params.Gravity(),
                                                     .dt = dt,
                                                     .grounded = m_body->IsGrounded(),
                                                     .maxFrames = params.m_launchMaxFrames};
             const NS::Vector3 arrival{
-                ballCenter.x, ballCenter.y + NS::Game::Player::LaunchHeightAt(path, first.launchContact), ballCenter.z};
+                ballCenter.x, ballCenter.y + GL::Player::LaunchHeightAt(path, first.launchContact), ballCenter.z};
             judgement = JudgeHitFaceOrWide(answer.face, answer.body, arrival, lineDir, playerRadius);
         }
         first.offset = judgement.offset01;
@@ -1679,7 +1679,7 @@ namespace NS::Game::Level
         }
     }
 
-    ImpactTuning MakeImpactTuning(const NS::Game::Player::PlayerParams& params) noexcept
+    ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams& params) noexcept
     {
         return ImpactTuning{.centerHitStopScale = params.m_centerHitStopScale,
                             .breakEnabled = params.m_breakEnabled,
@@ -1773,4 +1773,4 @@ namespace NS::Game::Level
     }
 
     NS_CLASS(ImpactResolver)
-} // namespace NS::Game::Level
+} // namespace GL::Level

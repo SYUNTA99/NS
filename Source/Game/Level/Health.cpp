@@ -1,6 +1,6 @@
 ﻿#include "Game/Level/Health.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     void Health::SetMaxHealth(int value) noexcept
     {
@@ -28,4 +28,4 @@ namespace NS::Game::Level
         }
     }
 
-} // namespace NS::Game::Level
+} // namespace GL::Level

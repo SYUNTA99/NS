@@ -71,7 +71,7 @@ TEST(ReflectionGroup, FindFieldSeesOnlyFields)
 // 自機の調整値は先頭の欄から見出しの下にあり、どの見出しも欄を 1 つ以上持つ
 TEST(ReflectionGroup, PlayerParamsFieldsAllSitUnderAGroup)
 {
-    const NS::Obj::ReflectionInfo* info = NS::Game::Player::PlayerParams::StaticReflection();
+    const NS::Obj::ReflectionInfo* info = GL::Player::PlayerParams::StaticReflection();
     ASSERT_GE(info->groupCount, 2u);
     EXPECT_EQ(info->groups[0].firstField, 0u);
     for (std::size_t i = 0; i < info->groupCount; ++i)

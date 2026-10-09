@@ -6,7 +6,7 @@
 #include "Game/Player/States/SkidPlayerState.h"
 #include "NSlib/Object/SubObjects/Body.h"
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     void ReboundPlayerState::OnEnter(::Player& player)
     {
@@ -42,4 +42,4 @@ namespace NS::Game::Player
             }
         }
     }
-} // namespace NS::Game::Player
+} // namespace GL::Player

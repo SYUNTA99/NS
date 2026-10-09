@@ -114,7 +114,7 @@ void Player::TickTimers(float dt) noexcept
 
 bool Player::TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const noexcept
 {
-    if (!NS::Game::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->StickDeadzone()) ||
+    if (!GL::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->StickDeadzone()) ||
         !NS::TryNormalizeHorizontal(DesiredDirection(), outDirection))
     {
         return false;
@@ -154,7 +154,7 @@ void Player::ApplyBrake(float dt) noexcept
 void Player::Jump(float) noexcept
 {
     NS::Obj::Body& body = *m_body;
-    if (NS::Game::Player::PlayerJudgeJump::Judge(
+    if (GL::Player::PlayerJudgeJump::Judge(
             body.IsGrounded(), m_coyoteTimer, m_jumpsRemaining, m_input->JumpPressed(), m_bufferTimer))
     {
         body.SetVerticalVelocity(m_params->m_jumpImpulse);
@@ -178,7 +178,7 @@ void Player::Gravity(float dt) noexcept
 {
     // 強さの選び方は LaunchPitch と同じ関数。写すと欄を変えた時に放つ角度の予測と実際の落ち方が割れる
     NS::Obj::Body& body = *m_body;
-    body.Gravity(NS::Game::Player::ChooseGravity(m_params->Gravity(), body.VerticalVelocity()), dt);
+    body.Gravity(GL::Player::ChooseGravity(m_params->Gravity(), body.VerticalVelocity()), dt);
 }
 
 void Player::TapSlamGravity(float dt) noexcept
@@ -207,7 +207,7 @@ void Player::ReboundGravity(float dt) noexcept
 {
     // 上りだけ倍率付きの組を PlayerParams が持つ。選び方は普段の重力と同じ ChooseGravity 1 つ
     NS::Obj::Body& body = *m_body;
-    body.Gravity(NS::Game::Player::ChooseGravity(m_params->ReboundGravity(), body.VerticalVelocity()), dt);
+    body.Gravity(GL::Player::ChooseGravity(m_params->ReboundGravity(), body.VerticalVelocity()), dt);
 }
 
 void Player::AccelerateDuringRebound(float dt) noexcept
@@ -237,7 +237,7 @@ bool Player::AdvanceSkid() noexcept
 {
     ++m_skid.elapsedSteps;
     // 着いた速さに依らず同じフレーム数で止まりきり、操作が戻る
-    const float scale = NS::Game::Level::MissSkidSpeedScale(
+    const float scale = GL::Level::MissSkidSpeedScale(
         m_skid.elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
     m_body->SetLateralVelocity(m_skid.landingVelocity * scale);
     return m_skid.elapsedSteps >= m_params->m_missSkidSteps;
@@ -311,7 +311,7 @@ namespace
 bool Player::LedgeGrab() noexcept
 {
     NS::Obj::Body& body = *m_body;
-    if (!NS::Game::Player::PlayerJudgeLedgeGrab::Judge(body.IsGrounded(), body.VerticalVelocity(), m_slam.wasSlamming))
+    if (!GL::Player::PlayerJudgeLedgeGrab::Judge(body.IsGrounded(), body.VerticalVelocity(), m_slam.wasSlamming))
     {
         return false;
     }
@@ -342,7 +342,7 @@ bool Player::LedgeGrab() noexcept
     for (const NS::AABB& box : BoxesTouchingBand(collider, probe, m_params->m_ledgeGrabBelowHand, above))
     {
         const float top = box.Center.y + box.Extents.y;
-        if (!NS::Game::Player::PlayerJudgeLedgeGrab::InBand(probe, box, m_params->m_ledgeGrabBelowHand, above))
+        if (!GL::Player::PlayerJudgeLedgeGrab::InBand(probe, box, m_params->m_ledgeGrabBelowHand, above))
         {
             continue;
         }
@@ -395,7 +395,7 @@ bool Player::LedgeGrab() noexcept
         body.SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
         m_ledgeTopY = top;
         m_ledgeFaceNormal = faceNormal;
-        (void)m_states->Change<NS::Game::Player::LedgeHangingPlayerState>();
+        (void)m_states->Change<GL::Player::LedgeHangingPlayerState>();
         m_playerEvents.onLedgeGrabbed.Invoke();
         return true;
     }
@@ -430,7 +430,7 @@ bool Player::LedgeJump() noexcept
     NS::Obj::Body& body = *m_body;
     body.SetVerticalVelocity(m_params->m_jumpImpulse);
     body.SetGrounded(false);
-    (void)m_states->Change<NS::Game::Player::FallPlayerState>();
+    (void)m_states->Change<GL::Player::FallPlayerState>();
     m_playerEvents.onJump.Invoke();
     return true;
 }
@@ -449,7 +449,7 @@ void Player::ClimbLedge() noexcept
         pos.z - m_ledgeFaceNormal.z * mantleStep,
     };
     m_ledgeMantleTimer = 0.0f;
-    (void)m_states->Change<NS::Game::Player::LedgeClimbingPlayerState>();
+    (void)m_states->Change<GL::Player::LedgeClimbingPlayerState>();
     body.SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
     m_playerEvents.onLedgeClimbing.Invoke();
 }
@@ -457,7 +457,7 @@ void Player::ClimbLedge() noexcept
 void Player::DropLedge() noexcept
 {
     NS::Obj::Body& body = *m_body;
-    (void)m_states->Change<NS::Game::Player::FallPlayerState>();
+    (void)m_states->Change<GL::Player::FallPlayerState>();
     body.SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
     body.SetGrounded(false);
     // 壁と逆を向いて落ちる。壁を向いたままだと、帯の上の余白に縁が入って次のフレームで掴み直す
@@ -515,7 +515,7 @@ void Player::UpdateLedgeClimb(float dt) noexcept
     if (t >= 1.0f)
     {
         Root().SetPosition(m_ledgeMantleEnd);
-        (void)m_states->Change<NS::Game::Player::IdlePlayerState>();
+        (void)m_states->Change<GL::Player::IdlePlayerState>();
         body.SetGrounded(true);
         m_jumpsRemaining = 1;
         m_coyoteTimer = m_params->m_coyoteTime;
@@ -535,7 +535,7 @@ bool Player::FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noe
 
     for (const NS::AABB& box : BoxesTouchingBand(collider, probe, m_params->m_ledgeGrabBelowHand, 0.0f))
     {
-        if (!NS::Game::Player::PlayerJudgeLedgeGrab::InBand(probe, box, m_params->m_ledgeGrabBelowHand, 0.0f))
+        if (!GL::Player::PlayerJudgeLedgeGrab::InBand(probe, box, m_params->m_ledgeGrabBelowHand, 0.0f))
         {
             continue;
         }

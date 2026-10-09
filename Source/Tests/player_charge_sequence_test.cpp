@@ -110,8 +110,8 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
 {
     Player player;
     player.Init();
-    NS::Game::Player::PlayerParams* params =
-        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
+    GL::Player::PlayerParams* params =
+        NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     player.Update(true);
     player.RestartFrom(NS::Obj::MakeSceneJson());
@@ -137,8 +137,8 @@ TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
 {
     Player player;
     player.Init();
-    NS::Game::Player::PlayerParams* params =
-        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
+    GL::Player::PlayerParams* params =
+        NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 1.0f}}), 0u);
     // 溜め量は (押したフレーム数 − しきい値) / (満タン − しきい値)
@@ -224,7 +224,7 @@ TEST(PlayerChargeSequence, ChargedReleaseUsesTheLastHeldAimBeforeClearingIt)
         player->Update(true);
     }
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
-    NS::Game::Level::AimLine aim{};
+    GL::Level::AimLine aim{};
     ASSERT_TRUE(player->TryGetAimLine(aim));
     EXPECT_FLOAT_EQ(aim.direction.z, 1.0f);
     camera->SetPose(NS::Vector3{}, NS::Vector3{1.0f, 0.0f, 0.0f});
@@ -259,7 +259,7 @@ TEST(PlayerChargeSequence, AimLineFollowsTheViewCameraNotTheDrawnCamera)
     }
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
 
-    NS::Game::Level::AimLine aim{};
+    GL::Level::AimLine aim{};
     ASSERT_TRUE(player->TryGetAimLine(aim));
     EXPECT_FLOAT_EQ(aim.direction.x, 1.0f);
     EXPECT_FLOAT_EQ(aim.direction.z, 0.0f);

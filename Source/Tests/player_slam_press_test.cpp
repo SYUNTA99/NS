@@ -45,9 +45,9 @@ namespace
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
-    NS::Game::Level::MapObj* RockOf(NS::Obj::Scene& scene)
+    GL::Level::MapObj* RockOf(NS::Obj::Scene& scene)
     {
-        return NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+        return NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
     }
 
     // 接地するまで回す
@@ -60,7 +60,7 @@ namespace
     }
 
     // 1 フレーム進め、そのフレームに突進が始まった場合 true を返す
-    bool StepAndSeeSlamStart(Player& player, NS::Game::Level::MapObj* rock)
+    bool StepAndSeeSlamStart(Player& player, GL::Level::MapObj* rock)
     {
         const bool before = player.IsBodySlamming();
         player.Update(false);
@@ -107,7 +107,7 @@ TEST(PlayerSlamPress, PressDuringTheHitStopDoesNotFireOnTheRelease)
     NS::Obj::Scene scene;
     Player* player = PlacePressScene(scene, true, 1.0f);
     ASSERT_NE(player, nullptr);
-    NS::Game::Level::MapObj* rock = RockOf(scene);
+    GL::Level::MapObj* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
     Settle(*player);
     player->RequestBodySlam(1.0f, k_Forward);
@@ -138,7 +138,7 @@ TEST(PlayerSlamPress, PressDuringTheReboundOfAGroundSlamFiresTheAirShot)
         NS::Obj::Scene scene;
         Player* player = PlacePressScene(scene, true, 1.0f);
         ASSERT_NE(player, nullptr);
-        NS::Game::Level::MapObj* rock = RockOf(scene);
+        GL::Level::MapObj* rock = RockOf(scene);
         ASSERT_NE(rock, nullptr);
         Settle(*player);
         ASSERT_TRUE(player->Body().IsGrounded());

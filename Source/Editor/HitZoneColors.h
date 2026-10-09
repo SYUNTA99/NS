@@ -10,5 +10,5 @@ namespace NS::Editor
     //! 段を足す時は行を足す。表に行の無い段は外れの行の色
     //! @param[in] tier 段
     //! @return 段の色。不透明。真ん中は赤、外れは青
-    [[nodiscard]] NS::Color HitZoneColor(NS::Game::Level::HitTier tier) noexcept;
+    [[nodiscard]] NS::Color HitZoneColor(GL::Level::HitTier tier) noexcept;
 } // namespace NS::Editor

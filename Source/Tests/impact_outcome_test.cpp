@@ -7,17 +7,17 @@
 
 namespace
 {
-    using NS::Game::Level::ComputeImpactOutcome;
-    using NS::Game::Level::HitTier;
-    using NS::Game::Level::ImpactInput;
-    using NS::Game::Level::ImpactOutcome;
-    using NS::Game::Level::ImpactTuning;
-    using NS::Game::Level::MakeImpactTuning;
+    using GL::Level::ComputeImpactOutcome;
+    using GL::Level::HitTier;
+    using GL::Level::ImpactInput;
+    using GL::Level::ImpactOutcome;
+    using GL::Level::ImpactTuning;
+    using GL::Level::MakeImpactTuning;
 
     // 既定の PlayerParams から作った調整値。値の正は PlayerParams 1 つなので、ここでも同じ作り方を通す
     ImpactTuning DefaultTuning()
     {
-        const NS::Game::Player::PlayerParams params;
+        const GL::Player::PlayerParams params;
         return MakeImpactTuning(params);
     }
 
@@ -214,18 +214,18 @@ namespace
 TEST(ImpactOutcome, MissSurfaceNormalReadsTheFacePositionByShape)
 {
     const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
-    const NS::Vector3 middle = NS::Game::Level::MissSurfaceNormal(0.0f, 0.0f, 2.0f, forward);
+    const NS::Vector3 middle = GL::Level::MissSurfaceNormal(0.0f, 0.0f, 2.0f, forward);
     EXPECT_NEAR(middle.z, -1.0f, 0.0001f);
     // 右寄り・少し上の当たり。丸は上へ 0.40、四角は縁に沿って右へ逸れ、上へは 0.02
-    const NS::Vector3 round = NS::Game::Level::MissSurfaceNormal(0.85f, 0.4f, 2.0f, forward);
-    const NS::Vector3 box = NS::Game::Level::MissSurfaceNormal(0.85f, 0.4f, 6.0f, forward);
+    const NS::Vector3 round = GL::Level::MissSurfaceNormal(0.85f, 0.4f, 2.0f, forward);
+    const NS::Vector3 box = GL::Level::MissSurfaceNormal(0.85f, 0.4f, 6.0f, forward);
     EXPECT_NEAR(round.y, 0.40f, 0.005f);
     EXPECT_NEAR(box.y, 0.02f, 0.005f);
     EXPECT_GT(round.x, 0.0f);
     EXPECT_NEAR(round.Length(), 1.0f, 0.0001f);
     EXPECT_NEAR(box.Length(), 1.0f, 0.0001f);
     // 縁の外 (1 を超える位置) は縁で頭打ち
-    const NS::Vector3 beyond = NS::Game::Level::MissSurfaceNormal(1.4f, 0.0f, 2.0f, forward);
+    const NS::Vector3 beyond = GL::Level::MissSurfaceNormal(1.4f, 0.0f, 2.0f, forward);
     EXPECT_NEAR(beyond.x, 1.0f, 0.0001f);
 }
 
@@ -309,11 +309,11 @@ TEST(ImpactOutcome, MissTwistsAroundTheSurfaceNormalCrossTheSlide)
 // こすって止まる速さの倍率は (1 − 経過 ÷ N)^c。着いた速さに依らず N フレームで 0 になる
 TEST(ImpactOutcome, MissSkidSpeedScaleFallsToZeroInTheSkidFrames)
 {
-    EXPECT_FLOAT_EQ(NS::Game::Level::MissSkidSpeedScale(0, 18, 2.0f), 1.0f);
-    EXPECT_FLOAT_EQ(NS::Game::Level::MissSkidSpeedScale(9, 18, 2.0f), 0.25f);
-    EXPECT_FLOAT_EQ(NS::Game::Level::MissSkidSpeedScale(18, 18, 2.0f), 0.0f);
-    EXPECT_FLOAT_EQ(NS::Game::Level::MissSkidSpeedScale(30, 18, 2.0f), 0.0f);
-    EXPECT_FLOAT_EQ(NS::Game::Level::MissSkidSpeedScale(0, 0, 2.0f), 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::MissSkidSpeedScale(0, 18, 2.0f), 1.0f);
+    EXPECT_FLOAT_EQ(GL::Level::MissSkidSpeedScale(9, 18, 2.0f), 0.25f);
+    EXPECT_FLOAT_EQ(GL::Level::MissSkidSpeedScale(18, 18, 2.0f), 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::MissSkidSpeedScale(30, 18, 2.0f), 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::MissSkidSpeedScale(0, 0, 2.0f), 0.0f);
     // 減り方が有限の正でない時は直線
-    EXPECT_FLOAT_EQ(NS::Game::Level::MissSkidSpeedScale(9, 18, -1.0f), 0.5f);
+    EXPECT_FLOAT_EQ(GL::Level::MissSkidSpeedScale(9, 18, -1.0f), 0.5f);
 }

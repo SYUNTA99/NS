@@ -325,7 +325,7 @@ TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
 {
     NS::Obj::Scene scene;
     NS::Obj::Actor* target = scene.SpawnObject(std::make_unique<FollowTargetProbe>(), "target");
-    NS::Game::Level::FollowCamera* actor = scene.SpawnTransient<NS::Game::Level::FollowCamera>();
+    GL::Level::FollowCamera* actor = scene.SpawnTransient<GL::Level::FollowCamera>();
     NS::Obj::ThirdPersonFollow& vcam = actor->Vcam();
     NS::Obj::ApplyJsonFields(vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
     actor->Update();
@@ -342,7 +342,7 @@ TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
 // 追従カメラは出荷の姿で生まれる。プレイ中かは世界の駆動が答え、部品の active へ写さない
 TEST(FollowCamera, VcamIsLiveFromInit)
 {
-    NS::Game::Level::FollowCamera camera;
+    GL::Level::FollowCamera camera;
     camera.Init();
     EXPECT_TRUE(camera.Vcam().IsActiveSelf());
 }
@@ -351,7 +351,7 @@ TEST(FollowCamera, VcamIsLiveFromInit)
 TEST(SceneCameraOnRender, RunningWorldWritesTheFollowPoseOnRender)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::FollowCamera* follow = scene.SpawnTransient<NS::Game::Level::FollowCamera>();
+    GL::Level::FollowCamera* follow = scene.SpawnTransient<GL::Level::FollowCamera>();
     ASSERT_NE(follow, nullptr);
     // 追う相手の居ない追従カメラは (0, 0, -5) から原点を見る
     const NS::Obj::CameraPose expected = follow->Vcam().EvaluatePose(1.0f);
@@ -369,7 +369,7 @@ TEST(SceneCameraOnRender, RunningWorldWritesTheFollowPoseOnRender)
 TEST(SceneCameraOnRender, StoppedWorldLeavesTheRealCameraToWhoeverStoppedIt)
 {
     NS::Obj::Scene scene;
-    ASSERT_NE(scene.SpawnTransient<NS::Game::Level::FollowCamera>(), nullptr);
+    ASSERT_NE(scene.SpawnTransient<GL::Level::FollowCamera>(), nullptr);
     scene.SetSimulationEnabled(false);
     scene.MainCamera()->SetPosition(NS::Vector3{100.0f, 0.0f, 0.0f});
 

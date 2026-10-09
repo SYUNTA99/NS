@@ -8,19 +8,19 @@ namespace NS::Editor
     {
         struct HitZoneColorRow
         {
-            NS::Game::Level::HitTier tier;
+            GL::Level::HitTier tier;
             float red;
             float green;
             float blue;
         };
 
         constexpr std::array<HitZoneColorRow, 2> k_HitZoneColors{{
-            {NS::Game::Level::HitTier::Center, 1.0f, 0.25f, 0.25f},
-            {NS::Game::Level::HitTier::Wide, 0.25f, 0.45f, 1.0f},
+            {GL::Level::HitTier::Center, 1.0f, 0.25f, 0.25f},
+            {GL::Level::HitTier::Wide, 0.25f, 0.45f, 1.0f},
         }};
     } // namespace
 
-    NS::Color HitZoneColor(NS::Game::Level::HitTier tier) noexcept
+    NS::Color HitZoneColor(GL::Level::HitTier tier) noexcept
     {
         for (const HitZoneColorRow& row : k_HitZoneColors)
         {
@@ -30,9 +30,9 @@ namespace NS::Editor
             }
         }
         // 番号から作った段や欠番が来ても赤に見せない
-        if (tier != NS::Game::Level::HitTier::Wide)
+        if (tier != GL::Level::HitTier::Wide)
         {
-            return HitZoneColor(NS::Game::Level::HitTier::Wide);
+            return HitZoneColor(GL::Level::HitTier::Wide);
         }
         // 外れの行まで消した表。どの段とも見分けられる白
         return NS::Color{1.0f, 1.0f, 1.0f, 1.0f};

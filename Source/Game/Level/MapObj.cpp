@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     class MapObj::RestingState : public NS::Obj::StateOf<RestingState, MapObj>
     {
@@ -597,4 +597,4 @@ namespace NS::Game::Level
     }
 
     NS_PLACEABLE(MapObj, "置物")
-} // namespace NS::Game::Level
+} // namespace GL::Level

@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     //! @brief 自機の重力の強さを選ぶ欄の写し
     //! @details 値の正は PlayerParams の欄で、PlayerParams::Gravity が写して渡す。
@@ -34,4 +34,4 @@ namespace NS::Game::Player
         }
         return strength;
     }
-} // namespace NS::Game::Player
+} // namespace GL::Player

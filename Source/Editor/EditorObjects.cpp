@@ -50,12 +50,12 @@ namespace NS::Editor
 
         bool IsDeathZoneObject(const nlohmann::json& object) noexcept
         {
-            return NS::Obj::ObjectJsonClass(object) == NS::Game::Level::DeathZone::StaticReflection()->typeName;
+            return NS::Obj::ObjectJsonClass(object) == GL::Level::DeathZone::StaticReflection()->typeName;
         }
 
         nlohmann::json MakeDeathZoneObject()
         {
-            nlohmann::json object = NS::Obj::MakePrototypeJson<NS::Game::Level::DeathZone>();
+            nlohmann::json object = NS::Obj::MakePrototypeJson<GL::Level::DeathZone>();
             // 上面 y=-50 は従来の落下死の高さ
             NS::Obj::SetObjectPosition(object, NS::Vector3{0.0f, -55.0f, 0.0f});
             return object;

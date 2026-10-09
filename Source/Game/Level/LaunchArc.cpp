@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     namespace
     {
@@ -171,4 +171,4 @@ namespace NS::Game::Level
         return arc.distance / shape.horizontalSpeed;
     }
 
-} // namespace NS::Game::Level
+} // namespace GL::Level

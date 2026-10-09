@@ -81,7 +81,7 @@ namespace NS::Editor
                                            NS::Vector3{0.0f, k_CameraHeight, 0.0f};
                 for (NS::Obj::Actor* object : scene->Objects())
                 {
-                    if (NS::Game::Level::FollowCamera* camera = NS::Obj::Cast<NS::Game::Level::FollowCamera>(object))
+                    if (GL::Level::FollowCamera* camera = NS::Obj::Cast<GL::Level::FollowCamera>(object))
                     {
                         camera->Vcam().SetInitialPoseFromCameraPosition(behind);
                     }
@@ -98,7 +98,7 @@ namespace NS::Editor
             result.frames.clear();
             result.hit = false;
             result.error.clear();
-            result.impact = NS::Game::Level::ImpactRecord{};
+            result.impact = GL::Level::ImpactRecord{};
             result.detectionIndex = -1;
             // 手元の機器を読まず、振動を手元のパッドへ送らない。組む前から入れる (配置物が組む時に機器を読んでも中立)
             const NS::OS::ScopedNeutralInput neutral;
@@ -147,8 +147,8 @@ namespace NS::Editor
                 {
                     result.detectionIndex = step;
                     result.impact = player->Resolver().LastImpact();
-                    if (const NS::Game::Level::HitTimeline* timeline =
-                            NS::Game::Level::HitTimelineLibrary::Get().FindForTier(result.impact.tier))
+                    if (const GL::Level::HitTimeline* timeline =
+                            GL::Level::HitTimelineLibrary::Get().FindForTier(result.impact.tier))
                     {
                         lastEventClock = HitTimelineFrameRange(*timeline, nullptr).last;
                     }
@@ -190,7 +190,7 @@ namespace NS::Editor
         {
             const NS::Obj::HitSensor* bodySensor = object.BodySensorSubObj();
             return bodySensor != nullptr && bodySensor->IsValid() &&
-                   NS::Obj::Cast<NS::Game::Level::HitZones>(object.FindSubObj("HitZones")) != nullptr;
+                   NS::Obj::Cast<GL::Level::HitZones>(object.FindSubObj("HitZones")) != nullptr;
         }
 
         // 自機の根に一番近い、下見の相手になれる配置物の id。居なければ 0
@@ -272,8 +272,8 @@ namespace NS::Editor
         const NS::Sphere ball = player->SlamBallAt(root);
         const NS::Vector3 ballOffset = ball.center - root;
         // 向きはエディタが面を描く時と同じく、自機の玉から相手の体の中心へ
-        NS::Game::Level::HitFaceFrame face;
-        if (!NS::Game::Level::MakeHitFaceFrame(body, body.Center() - ball.center, ball.radius, face))
+        GL::Level::HitFaceFrame face;
+        if (!GL::Level::MakeHitFaceFrame(body, body.Center() - ball.center, ball.radius, face))
         {
             result.error = std::format("id {} の配置物の面を置けない (真上か真下に居るか、体の形が分からない)",
                                        result.desc.targetId);
@@ -283,7 +283,7 @@ namespace NS::Editor
 
         // 玉の中心が面の点から自機の半径だけ手前で触れるので、そこから突進の向きの逆へ空けて置く
         const NS::Vector3 contactCenter =
-            NS::Game::Level::HitFacePoint(face, desc.faceU, desc.faceV) + face.normal * ball.radius;
+            GL::Level::HitFacePoint(face, desc.faceU, desc.faceV) + face.normal * ball.radius;
         NS::Vector3 ballStart = contactCenter + face.normal * k_FirstLeadDistance;
         // 選んだ位置に一番近く当てた回。床より下へ置き直して当たらなくなった時はこれを返す
         HitPreviewResult best;
@@ -344,7 +344,7 @@ namespace NS::Editor
         }
         // 鍵と並びは当たりの記録 hits.jsonl の 1 行に合わせる
         using Json = nlohmann::ordered_json;
-        const NS::Game::Level::ImpactRecord& impact = result.impact;
+        const GL::Level::ImpactRecord& impact = result.impact;
         const NS::Vector3& launch = impact.launchVelocity;
         Json root;
         root["f"] = result.detectionIndex;

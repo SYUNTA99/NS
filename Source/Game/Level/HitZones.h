@@ -7,7 +7,7 @@
 
 #include <vector>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief 相手の面の赤 1 つと、赤の外の威力の倍率
     //! @details 面の上の位置 (左右 u・上下 v、どちらも -1〜1) のうち赤が覆う所を、形・広さ・位置で決める
@@ -203,4 +203,4 @@ namespace NS::Game::Level
     private:
         HitFace m_face;
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

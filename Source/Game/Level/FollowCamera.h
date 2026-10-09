@@ -3,7 +3,7 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     class FollowCamera : public NS::Obj::Actor
     {
@@ -25,4 +25,4 @@ namespace NS::Game::Level
     private:
         NS::Obj::ThirdPersonFollow* m_vcam = nullptr;
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     namespace
     {
@@ -40,4 +40,4 @@ namespace NS::Game::Level
         const float kept = speed * desc.keep;
         return turned * kept + up * (kept * desc.heightRatio * lift);
     }
-} // namespace NS::Game::Level
+} // namespace GL::Level

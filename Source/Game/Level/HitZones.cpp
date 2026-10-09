@@ -7,7 +7,7 @@
 #include <array>
 #include <cmath>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     namespace
     {
@@ -428,4 +428,4 @@ namespace NS::Game::Level
     }
 
     NS_CLASS(HitZones)
-} // namespace NS::Game::Level
+} // namespace GL::Level

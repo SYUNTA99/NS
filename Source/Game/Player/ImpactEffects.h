@@ -15,13 +15,13 @@
 
 class Player;
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     class ImpactResolver;
     struct ImpactRecord;
-} // namespace NS::Game::Level
+} // namespace GL::Level
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     //! @brief 核が最大近くに留まる間の大きさの動かし方
     enum class CoreHoldMotion
@@ -42,7 +42,7 @@ namespace NS::Game::Player
     //! 段で変わる物は ShapeFor が段ごとの 1 行から埋め、層を出す側は段を比べずにこの欄を読む
     struct ImpactShape
     {
-        NS::Game::Level::HitTier tier = NS::Game::Level::HitTier::Center; //!< 当たりの段
+        GL::Level::HitTier tier = GL::Level::HitTier::Center; //!< 当たりの段
         std::size_t coreInput = 0;                        //!< 核の絵 impact.core の、段の色の節を出す動的入力の番号
         CoreHoldMotion coreHold = CoreHoldMotion::Pulse;  //!< 核が最大近くに留まる間の大きさの動かし方
         SparkHeading sparkHeading = SparkHeading::Launch; //!< 火花の向き
@@ -95,7 +95,7 @@ namespace NS::Game::Player
     //! Player の見た目の段 (VisualStep) が最後に呼ぶ。
     //! 同じフレームの ImpactResolver が事象から頼みを置いた後と、自機の移動の段の後に走る。
     //! 物理の段と、飛ばした相手が自分の段階を切り替える Triggers の段よりは前に走る
-    //! 依存: EffectLayerList, NS::Game::Level::ImpactResolver, Player, カメラの窓口
+    //! 依存: EffectLayerList, GL::Level::ImpactResolver, Player, カメラの窓口
     class ImpactEffects : public NS::Obj::SubObject
     {
     public:
@@ -122,7 +122,7 @@ namespace NS::Game::Player
         //! @brief 当たりの内訳から、層の大きさと量を決める
         //! @param[in] impact 当たりの内訳
         //! @return 層の大きさと量
-        [[nodiscard]] ImpactShape ShapeFor(const NS::Game::Level::ImpactRecord& impact) const noexcept;
+        [[nodiscard]] ImpactShape ShapeFor(const GL::Level::ImpactRecord& impact) const noexcept;
 
         //! @brief 反動の着地の粉が広がりきる半径を、着地の前のフレームの落ちる速さから決める
         //! @param[in] fallSpeed 落ちる速さ。単位は m/s。負は 0 と見なす
@@ -251,7 +251,7 @@ namespace NS::Game::Player
         float m_floorLift = 0.03f;
         float m_landDustAssetRadius = 1.2f;
         // 段で変わる層の形を段ごとの 1 行から埋める。段を足したら行を足す
-        void ApplyTierRow(ImpactShape& shape, const NS::Game::Level::ImpactRecord& impact, float power) const noexcept;
+        void ApplyTierRow(ImpactShape& shape, const GL::Level::ImpactRecord& impact, float power) const noexcept;
         // 当たりの絵の頭から数えた当たり 1 回の段取り。層の番号 0 はまだ出していない印
         struct HitPlan
         {
@@ -285,7 +285,7 @@ namespace NS::Game::Player
             int reboundStartStep = 0;       // 反動の尾を出したフレーム。このフレームは出した姿のまま置き直さない
         };
 
-        void BeginHit(NS::Gfx::EffectScene* effects, const NS::Game::Level::ImpactRecord& impact);
+        void BeginHit(NS::Gfx::EffectScene* effects, const GL::Level::ImpactRecord& impact);
         void AdvanceHit(NS::Gfx::EffectScene* effects);
         void PlaySparks(NS::Gfx::EffectScene* effects);
         void PlayEmbers(NS::Gfx::EffectScene* effects);
@@ -301,7 +301,7 @@ namespace NS::Game::Player
         [[nodiscard]] std::optional<NS::Vector3> CameraPosition() const;
 
         EffectLayerList m_layers;
-        NS::Game::Level::ImpactResolver* m_resolver = nullptr;
+        GL::Level::ImpactResolver* m_resolver = nullptr;
         ::Player* m_player = nullptr;
         HitPlan m_plan;
         Flight m_flight;
@@ -379,4 +379,4 @@ namespace NS::Game::Player
         float m_landDustRadiusBase = 1.2f;
         float m_landDustRadiusPerFallSpeed = 0.04f;
     };
-} // namespace NS::Game::Player
+} // namespace GL::Player

@@ -26,45 +26,45 @@ namespace NS::Editor
     namespace
     {
         // 事象の種類の並び。HitEventValue の選択肢の順で、種類を足すとここにも出る
-        const std::vector<NS::Game::Level::HitEventValue>& EventTypes()
+        const std::vector<GL::Level::HitEventValue>& EventTypes()
         {
-            static const std::vector<NS::Game::Level::HitEventValue> s_types =
+            static const std::vector<GL::Level::HitEventValue> s_types =
                 []<std::size_t... I>(std::index_sequence<I...>) {
-                    return std::vector<NS::Game::Level::HitEventValue>{
-                        NS::Game::Level::HitEventValue{std::in_place_index<I>}...};
-                }(std::make_index_sequence<std::variant_size_v<NS::Game::Level::HitEventValue>>{});
+                    return std::vector<GL::Level::HitEventValue>{
+                        GL::Level::HitEventValue{std::in_place_index<I>}...};
+                }(std::make_index_sequence<std::variant_size_v<GL::Level::HitEventValue>>{});
             return s_types;
         }
 
-        constexpr NS::Game::Level::HitDirection k_Directions[] = {NS::Game::Level::HitDirection::Any,
-                                                                  NS::Game::Level::HitDirection::Right,
-                                                                  NS::Game::Level::HitDirection::Left,
-                                                                  NS::Game::Level::HitDirection::Up,
-                                                                  NS::Game::Level::HitDirection::Down};
+        constexpr GL::Level::HitDirection k_Directions[] = {GL::Level::HitDirection::Any,
+                                                                  GL::Level::HitDirection::Right,
+                                                                  GL::Level::HitDirection::Left,
+                                                                  GL::Level::HitDirection::Up,
+                                                                  GL::Level::HitDirection::Down};
 
         // 向きのパネルに出す名前
-        const char* DirectionLabel(NS::Game::Level::HitDirection direction) noexcept
+        const char* DirectionLabel(GL::Level::HitDirection direction) noexcept
         {
             switch (direction)
             {
-            case NS::Game::Level::HitDirection::Any:
+            case GL::Level::HitDirection::Any:
                 return "どの向きでも";
-            case NS::Game::Level::HitDirection::Right:
+            case GL::Level::HitDirection::Right:
                 return "右の外れ";
-            case NS::Game::Level::HitDirection::Left:
+            case GL::Level::HitDirection::Left:
                 return "左の外れ";
-            case NS::Game::Level::HitDirection::Up:
+            case GL::Level::HitDirection::Up:
                 return "上の外れ";
-            case NS::Game::Level::HitDirection::Down:
+            case GL::Level::HitDirection::Down:
                 return "下の外れ";
             }
             return "?";
         }
 
         // 段のパネルに出す名前
-        const char* TierLabel(NS::Game::Level::HitTier tier) noexcept
+        const char* TierLabel(GL::Level::HitTier tier) noexcept
         {
-            if (tier == NS::Game::Level::HitTier::Center)
+            if (tier == GL::Level::HitTier::Center)
             {
                 return "真ん中";
             }
@@ -93,25 +93,25 @@ namespace NS::Editor
         m_needsRun = true;
     }
 
-    void HitTimelinePanel::LoadWorking(NS::Game::Level::HitTier tier)
+    void HitTimelinePanel::LoadWorking(GL::Level::HitTier tier)
     {
         m_tier = tier;
-        const NS::Game::Level::HitTimeline* found =
-            NS::Game::Level::HitTimelineLibrary::Get().Find(NS::Game::Level::HitTimelineNameOf(tier));
+        const GL::Level::HitTimeline* found =
+            GL::Level::HitTimelineLibrary::Get().Find(GL::Level::HitTimelineNameOf(tier));
         if (found != nullptr)
         {
             m_working = *found;
         }
         else
         {
-            m_working = NS::Game::Level::HitTimeline{};
+            m_working = GL::Level::HitTimeline{};
         }
         m_selectedRow.reset();
     }
 
     void HitTimelinePanel::ApplyWorking()
     {
-        NS::Game::Level::HitTimelineLibrary::Get().Set(NS::Game::Level::HitTimelineNameOf(m_tier), m_working);
+        GL::Level::HitTimelineLibrary::Get().Set(GL::Level::HitTimelineNameOf(m_tier), m_working);
         m_dirty = true;
         m_needsRun = true;
     }
@@ -140,12 +140,12 @@ namespace NS::Editor
         HitPreviewDesc desc = m_desc;
         // 手入力の開始時刻が過大でも、取り直しを無制限に回さないための上限
         constexpr int k_MaxPreviewFrames = 10000;
-        for (const NS::Game::Level::HitTier tier : NS::Game::Level::HitTiers())
+        for (const GL::Level::HitTier tier : GL::Level::HitTiers())
         {
-            if (const NS::Game::Level::HitTimeline* timeline =
-                    NS::Game::Level::HitTimelineLibrary::Get().FindForTier(tier))
+            if (const GL::Level::HitTimeline* timeline =
+                    GL::Level::HitTimelineLibrary::Get().FindForTier(tier))
             {
-                for (const NS::Game::Level::HitEvent& event : timeline->events)
+                for (const GL::Level::HitEvent& event : timeline->events)
                 {
                     const std::int64_t end = static_cast<std::int64_t>(event.start) + std::max(event.length, 1) +
                                              desc.leadFrames + desc.framesAfterRebound;
@@ -333,7 +333,7 @@ namespace NS::Editor
 
         if (m_result.hit)
         {
-            const NS::Game::Level::ImpactRecord& impact = m_result.impact;
+            const GL::Level::ImpactRecord& impact = m_result.impact;
             ImGui::Text("当たった段: %s / 面の位置 (%.2f, %.2f) / 突進を出して %d フレーム目に検知 / 威力 %.2f",
                         TierLabel(impact.tier),
                         impact.faceU,
@@ -363,7 +363,7 @@ namespace NS::Editor
         ImGui::SetNextItemWidth(120.0f);
         if (ImGui::BeginCombo("編集する段", TierLabel(m_tier)))
         {
-            for (const NS::Game::Level::HitTier tier : NS::Game::Level::HitTiers())
+            for (const GL::Level::HitTier tier : GL::Level::HitTiers())
             {
                 if (ImGui::Selectable(TierLabel(tier), tier == m_tier))
                 {
@@ -376,12 +376,12 @@ namespace NS::Editor
         if (ImGui::Button("保存"))
         {
             // 変更の有無は両方の段で 1 つなので、開いていない段の変更も書く
-            NS::Game::Level::HitTimelineLibrary& library = NS::Game::Level::HitTimelineLibrary::Get();
-            library.Set(NS::Game::Level::HitTimelineNameOf(m_tier), m_working);
+            GL::Level::HitTimelineLibrary& library = GL::Level::HitTimelineLibrary::Get();
+            library.Set(GL::Level::HitTimelineNameOf(m_tier), m_working);
             std::string failed;
-            for (const NS::Game::Level::HitTier tier : NS::Game::Level::HitTiers())
+            for (const GL::Level::HitTier tier : GL::Level::HitTiers())
             {
-                const std::string_view name = NS::Game::Level::HitTimelineNameOf(tier);
+                const std::string_view name = GL::Level::HitTimelineNameOf(tier);
                 if (library.Find(name) != nullptr && !library.Save(name))
                 {
                     failed += std::format(" {}.json", name);
@@ -401,7 +401,7 @@ namespace NS::Editor
         if (ImGui::Button("元に戻す"))
         {
             // 置き場ごと読み直すので、もう片方の段の保存していない変更も戻る
-            NS::Game::Level::HitTimelineLibrary::Get().Reload();
+            GL::Level::HitTimelineLibrary::Get().Reload();
             LoadWorking(m_tier);
             m_dirty = false;
             m_needsRun = true;
@@ -413,15 +413,15 @@ namespace NS::Editor
             ImGui::TextColored(k_OverriddenFieldColor, "保存していない変更がある");
         }
 
-        const std::vector<NS::Game::Level::HitEventValue>& types = EventTypes();
+        const std::vector<GL::Level::HitEventValue>& types = EventTypes();
         m_addType = std::clamp(m_addType, 0, static_cast<int>(types.size()) - 1);
         ImGui::SetNextItemWidth(160.0f);
-        const std::string currentLabel{NS::Game::Level::HitEventLabel(types[static_cast<std::size_t>(m_addType)])};
+        const std::string currentLabel{GL::Level::HitEventLabel(types[static_cast<std::size_t>(m_addType)])};
         if (ImGui::BeginCombo("##add-type", currentLabel.c_str()))
         {
             for (std::size_t i = 0; i < types.size(); ++i)
             {
-                const std::string label{NS::Game::Level::HitEventLabel(types[i])};
+                const std::string label{GL::Level::HitEventLabel(types[i])};
                 if (ImGui::Selectable(label.c_str(), static_cast<int>(i) == m_addType))
                 {
                     m_addType = static_cast<int>(i);
@@ -478,10 +478,10 @@ namespace NS::Editor
         tracks.reserve(m_working.events.size());
         for (std::size_t row = 0; row < m_working.events.size(); ++row)
         {
-            const NS::Game::Level::HitEvent& event = m_working.events[row];
+            const GL::Level::HitEvent& event = m_working.events[row];
             TimelineTrack track;
-            track.label = NS::Game::Level::HitEventLabel(event.value);
-            if (event.direction != NS::Game::Level::HitDirection::Any)
+            track.label = GL::Level::HitEventLabel(event.value);
+            if (event.direction != GL::Level::HitDirection::Any)
             {
                 track.label += std::format(" ({})", DirectionLabel(event.direction));
             }
@@ -640,8 +640,8 @@ namespace NS::Editor
         {
             return;
         }
-        NS::Game::Level::HitEvent& event = m_working.events[*m_selectedRow];
-        const std::string title{NS::Game::Level::HitEventLabel(event.value)};
+        GL::Level::HitEvent& event = m_working.events[*m_selectedRow];
+        const std::string title{GL::Level::HitEventLabel(event.value)};
         ImGui::SeparatorText(title.c_str());
         bool changed = false;
         if (BeginFieldTable("##event-row"))
@@ -651,7 +651,7 @@ namespace NS::Editor
             if (ImGui::DragInt("##start", &start, 0.2f))
             {
                 // 触れる前に置けない種類はマイナスへ動かさない。読み込みが弾く形をパネルで作らない
-                if (start < 0 && !NS::Game::Level::CanStartBeforeContact(event.value))
+                if (start < 0 && !GL::Level::CanStartBeforeContact(event.value))
                 {
                     start = 0;
                 }
@@ -668,7 +668,7 @@ namespace NS::Editor
             FieldRow("向き");
             if (ImGui::BeginCombo("##direction", DirectionLabel(event.direction)))
             {
-                for (const NS::Game::Level::HitDirection direction : k_Directions)
+                for (const GL::Level::HitDirection direction : k_Directions)
                 {
                     if (ImGui::Selectable(DirectionLabel(direction), direction == event.direction))
                     {
@@ -680,9 +680,9 @@ namespace NS::Editor
             }
             EndFieldTable();
         }
-        if (const NS::Obj::ReflectionInfo* info = NS::Game::Level::HitEventReflection(event.value))
+        if (const NS::Obj::ReflectionInfo* info = GL::Level::HitEventReflection(event.value))
         {
-            const ValueEditResult fields = DrawReflectedValue(NS::Game::Level::HitEventFields(event.value), *info);
+            const ValueEditResult fields = DrawReflectedValue(GL::Level::HitEventFields(event.value), *info);
             changed |= fields.changed;
         }
         if (ImGui::Button("この事象を消す"))

@@ -90,7 +90,7 @@ TEST(ActorLifecycle, KillStopsUpdatesAndAppearResumesOnce)
 TEST(ActorLifecycle, PhysicsAndSensorsLeaveTheirRegistries)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* actor = scene.SpawnTransient<NS::Game::Level::MapObj>();
+    GL::Level::MapObj* actor = scene.SpawnTransient<GL::Level::MapObj>();
     scene.SyncPhysics();
     const std::size_t sensors = scene.HitSensors().Sensors().size();
     ASSERT_GT(sensors, 0u);
@@ -129,7 +129,7 @@ TEST(ActorLifecycle, ParentKillRemovesChildPhysicsWithoutChangingChildLife)
 {
     NS::Obj::Scene scene;
     LifeProbe* parent = scene.SpawnTransient<LifeProbe>();
-    NS::Game::Level::MapObj* child = scene.SpawnTransient<NS::Game::Level::MapObj>();
+    GL::Level::MapObj* child = scene.SpawnTransient<GL::Level::MapObj>();
     child->SetParent(parent);
     scene.SyncPhysics();
     parent->Kill();

@@ -4,7 +4,7 @@
 #include <cmath>
 #include <limits>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     namespace
     {
@@ -167,7 +167,7 @@ namespace NS::Game::Level
         outcome.reboundScale = power * 2.0f * outcome.massFactor;
         // 中心近くの当たりは距離を伸ばして高さを下げる。真ん中に当てた時は低く速く後ろへ、カメラの方へ戻る
         const float reboundDistance = tuning.reboundDistance * outcome.reboundScale * tierScales.reboundDistance;
-        outcome.reboundArc = NS::Game::Player::ReboundArc{
+        outcome.reboundArc = GL::Player::ReboundArc{
             .direction = NS::Vector3{input.awayDirection.x, 0.0f, input.awayDirection.z},
             .apexHeight = tuning.reboundApexHeight * outcome.reboundScale * tierScales.reboundHeight,
             .distance = reboundDistance};
@@ -221,7 +221,7 @@ namespace NS::Game::Level
                 slide = slide - normal * slide.Dot(normal);
             }
             outcome.reboundArc.missTumble =
-                NS::Game::Player::MissTumble{.twist = normal.Cross(slide), .power = input.power};
+                GL::Player::MissTumble{.twist = normal.Cross(slide), .power = input.power};
             // 浮く感じは真ん中だけの物にする。下を向いた面は地面へ叩きつけられ、さらに低く跳ねる
             const float downward = NS::Clamp(-normal.y, 0.0f, 1.0f);
             const float slam = 1.0f - (1.0f - tuning.missSlamBounce) * downward;
@@ -255,4 +255,4 @@ namespace NS::Game::Level
         }
         return outcome;
     }
-} // namespace NS::Game::Level
+} // namespace GL::Level

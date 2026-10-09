@@ -48,7 +48,7 @@ namespace
     {
         NS::Obj::Scene scene;
         PartnerTargetProbe* target = nullptr;
-        NS::Game::Level::FollowCamera* camera = nullptr;
+        GL::Level::FollowCamera* camera = nullptr;
 
         explicit PartnerScene(const std::optional<NS::Vector3>& partner, bool pullBack = true)
         {
@@ -56,7 +56,7 @@ namespace
                 static_cast<PartnerTargetProbe*>(scene.SpawnObject(std::make_unique<PartnerTargetProbe>(), "target"));
             target->partner = partner;
             target->pullBack = pullBack;
-            camera = scene.SpawnTransient<NS::Game::Level::FollowCamera>();
+            camera = scene.SpawnTransient<GL::Level::FollowCamera>();
             NS::Obj::ApplyJsonFields(camera->Vcam(),
                                      nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
                                                     {"反動の間に相手を収める重み", 0.3f},
@@ -163,7 +163,7 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
         NS::Obj::Scene scene;
         Player* player = PlacePartnerScene(scene, rockX);
         ASSERT_NE(player, nullptr);
-        NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+        GL::Level::MapObj* rock = NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
         player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
         int checked = 0;
@@ -185,7 +185,7 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
             const NS::Obj::CameraTargetState state = player->GetCameraTargetState();
             // 反動の間はもう保たない。保つのは体当たりから止めの明けまで
             EXPECT_FALSE(state.framingHeld);
-            if (player->Resolver().LastImpact().tier == NS::Game::Level::HitTier::Center)
+            if (player->Resolver().LastImpact().tier == GL::Level::HitTier::Center)
             {
                 ASSERT_TRUE(state.rebound.partnerPosition.has_value());
                 EXPECT_TRUE(state.rebound.partnerPosition.value() == rock->Root().Position());
@@ -206,11 +206,11 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
         EXPECT_GT(held, 0);
         if (rockX == 0.0f)
         {
-            EXPECT_EQ(player->Resolver().LastImpact().tier, NS::Game::Level::HitTier::Center);
+            EXPECT_EQ(player->Resolver().LastImpact().tier, GL::Level::HitTier::Center);
         }
         else
         {
-            EXPECT_EQ(player->Resolver().LastImpact().tier, NS::Game::Level::HitTier::Wide);
+            EXPECT_EQ(player->Resolver().LastImpact().tier, GL::Level::HitTier::Wide);
         }
     }
 }

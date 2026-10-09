@@ -41,8 +41,8 @@ TEST(PlayerAnimation, PlayerParamsKeepAllAnimatorNamesAndDefaults)
 {
     Player player;
     player.Init();
-    const NS::Game::Player::PlayerParams* params =
-        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
+    const GL::Player::PlayerParams* params =
+        NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*params);
     const nlohmann::json expected = {{"立ちのクリップ", "idle"},
@@ -71,8 +71,8 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
     player.Init();
     NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
-    NS::Game::Player::PlayerParams* params =
-        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
+    GL::Player::PlayerParams* params =
+        NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(
                   *params, {{"跳ぶクリップ", "jump"}, {"落ちるクリップ", "fall"}, {"ぶら下がりのクリップ", "hang"}}),
@@ -84,7 +84,7 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
     player.Body().SetVerticalVelocity(-2.0f);
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 2u);
-    ASSERT_TRUE(player.States().Change<NS::Game::Player::LedgeHangingPlayerState>());
+    ASSERT_TRUE(player.States().Change<GL::Player::LedgeHangingPlayerState>());
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 3u);
 }
@@ -97,8 +97,8 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
     player.Init();
     NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
-    NS::Game::Player::PlayerParams* params =
-        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
+    GL::Player::PlayerParams* params =
+        NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     player.Body().SetGrounded(true);
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});

@@ -13,7 +13,7 @@ namespace NS::Obj
     class SubObject;
 }
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     //! @brief 自機のエフェクトの部品が出すと決めた層 1 つの記録
     //! @details フレームは持ち主の EffectLayerList::Step の数え方で、部品の OnUpdate 1 回が 1 フレーム
@@ -134,4 +134,4 @@ namespace NS::Game::Player
     //! @param[in] subObject 持ち主の世界を引く部品
     //! @return 持ち主の世界の EffectScene。持ち主か世界が無いか、描画の無い世界なら nullptr
     [[nodiscard]] NS::Gfx::EffectScene* EffectsOf(const NS::Obj::SubObject& subObject) noexcept;
-} // namespace NS::Game::Player
+} // namespace GL::Player

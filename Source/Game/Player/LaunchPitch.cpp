@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     float LaunchHeightAt(const LaunchPath& path, float distance) noexcept
     {
@@ -119,4 +119,4 @@ namespace NS::Game::Player
         }
         return LaunchPitchResult{.verticalSpeed = (low + high) * 0.5f, .reachable = true};
     }
-} // namespace NS::Game::Player
+} // namespace GL::Player

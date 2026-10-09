@@ -8,7 +8,7 @@
 
 namespace
 {
-    using NS::Game::Level::HitTier;
+    using GL::Level::HitTier;
 
     bool SameColor(const NS::Color& a, const NS::Color& b)
     {

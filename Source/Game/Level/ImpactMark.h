@@ -9,7 +9,7 @@ namespace NS::Obj
     class Scene;
 }
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief ぶつかった場所の床へ寝かせる跡
     //! @details 半透明の板を置き、時間で縮めて消す。消えた跡はシーンが更新の終わりに破棄する
@@ -44,4 +44,4 @@ namespace NS::Game::Level
         float m_lifeSeconds = 6.0f; // 消えるまでの秒
         float m_age = 0.0f;         // 出てからの経過秒
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

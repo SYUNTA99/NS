@@ -12,7 +12,7 @@
 
 #include <optional>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief 動く・反応する置物。岩・箱・樽
     //! 影は種類の既定値が足す。個体ごとの見た目と重さは個体の上書きで変える
@@ -129,4 +129,4 @@ namespace NS::Game::Level
         std::uint32_t m_hopSeed = 0;              // 跳ね方の種
         std::optional<NS::Sphere> m_syncedSphere; // 最後に当たりへ置いた世界座標の球。置く前は空
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

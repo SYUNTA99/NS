@@ -2,7 +2,7 @@
 
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     NS_CLASS(GoalParams)
 }

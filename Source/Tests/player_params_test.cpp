@@ -27,7 +27,7 @@
 #include <string_view>
 #include <type_traits>
 
-static_assert(!std::is_base_of_v<NS::Obj::SubObject, NS::Game::Level::Health>);
+static_assert(!std::is_base_of_v<NS::Obj::SubObject, GL::Level::Health>);
 
 TEST(PlayerParams, MaxHealthBelongsToPlayer)
 {
@@ -41,7 +41,7 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
     scene.LoadJson(doc);
     Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    ASSERT_NE(NS::Obj::Cast<NS::Game::Player::PlayerParams>(player->FindSubObj("Params")), nullptr);
+    ASSERT_NE(NS::Obj::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params")), nullptr);
     EXPECT_EQ(player->Health(), 5);
     ASSERT_NE(NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement")), nullptr);
     player->ApplyDamage(2);
@@ -50,8 +50,8 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
     EXPECT_EQ(player->Health(), 5);
 
     // エディタで体力を書き換えてから再生すると、満タンは書き換えた値になる
-    NS::Game::Player::PlayerParams* params =
-        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player->FindSubObj("Params"));
+    GL::Player::PlayerParams* params =
+        NS::Obj::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, nlohmann::json{{"体力", 3}}), 0u);
     player->ResetHealth();
@@ -81,8 +81,8 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
 {
     Player player;
     player.Init();
-    const NS::Game::Player::PlayerParams* params =
-        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
+    const GL::Player::PlayerParams* params =
+        NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*params);
     const nlohmann::json expected = {{"ジャンプ初速", 12.0f},
@@ -142,8 +142,8 @@ TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
 {
     Player player;
     player.Init();
-    NS::Game::Player::PlayerParams* params =
-        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
+    GL::Player::PlayerParams* params =
+        NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player.FindSubObj("Movement"));
     ASSERT_NE(params, nullptr);
     ASSERT_NE(movement, nullptr);
@@ -180,8 +180,8 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
     EXPECT_FLOAT_EQ(player->RunSpeed(), 9.0f);
     EXPECT_FLOAT_EQ(player->BodySlamDistance(), 14.0f);
     EXPECT_EQ(player->Health(), 6);
-    const NS::Game::Player::PlayerParams* params =
-        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player->FindSubObj("Params"));
+    const GL::Player::PlayerParams* params =
+        NS::Obj::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*params);
     EXPECT_FLOAT_EQ(fields["上昇重力"].get<float>(), -21.0f);
@@ -357,10 +357,10 @@ TEST(PlayerParams, LiveImpactVisualTuningDrivesShapeAndLandingDust)
                                         {"着地の粉の半径の基準", 2.0f},
                                         {"着地の粉の半径の落ちる速さあたり", 0.1f}}),
               0u);
-    NS::Game::Level::ImpactRecord impact{};
-    impact.tier = NS::Game::Level::HitTier::Center;
+    GL::Level::ImpactRecord impact{};
+    impact.tier = GL::Level::HitTier::Center;
     impact.power = 2.0f;
-    const NS::Game::Player::ImpactShape shape = player.ImpactVisuals().ShapeFor(impact);
+    const GL::Player::ImpactShape shape = player.ImpactVisuals().ShapeFor(impact);
     EXPECT_FLOAT_EQ(shape.coreDiameter, 1.0f);
     EXPECT_FLOAT_EQ(shape.streakLength, 11.0f);
     EXPECT_FLOAT_EQ(player.ImpactVisuals().LandDustRadiusFor(5.0f), 2.5f);
@@ -370,10 +370,10 @@ TEST(PlayerParams, LiveImpactVisualTuningDrivesShapeAndLandingDust)
 // 段で変わる絵の決まりは段ごとの 1 行から来る。絵を出す側は段を比べずに形の欄を読む
 TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
 {
-    using NS::Game::Level::HitTier;
-    using NS::Game::Player::CoreHoldMotion;
-    using NS::Game::Player::ImpactShape;
-    using NS::Game::Player::SparkHeading;
+    using GL::Level::HitTier;
+    using GL::Player::CoreHoldMotion;
+    using GL::Player::ImpactShape;
+    using GL::Player::SparkHeading;
     Player player;
     player.Init();
     // 中心近くと大きな外れで本数が違えば、どちらの行から来たかが分かる
@@ -381,7 +381,7 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
                   player.ImpactVisuals(),
                   {{"弾かれ線の本数", 9}, {"大きな外れの弾かれ線の本数", 4}, {"大きな外れの火花の大きさ", 2.5f}}),
               0u);
-    NS::Game::Level::ImpactRecord impact{};
+    GL::Level::ImpactRecord impact{};
     impact.power = 1.0f;
     impact.hitStopSteps = 8;
     impact.targetPlaced = true;
@@ -455,7 +455,7 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     ASSERT_TRUE(player->BodySlam());
     player->Update(false);
     ASSERT_TRUE(player->Resolver().DidRebound());
-    const NS::Game::Level::ImpactRecord& impact = player->Resolver().LastImpact();
+    const GL::Level::ImpactRecord& impact = player->Resolver().LastImpact();
     EXPECT_FLOAT_EQ(impact.launchDistance, 8.0f);
     EXPECT_FLOAT_EQ(impact.launchApexHeight, 3.0f);
     EXPECT_FLOAT_EQ(impact.reboundApexHeight, 2.0f);
@@ -465,8 +465,8 @@ TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)
 {
     Player player;
     player.Init();
-    const NS::Game::Level::TargetMarkerDesc marker{};
-    const NS::Game::Level::SlamArrowDesc arrow{};
+    const GL::Level::TargetMarkerDesc marker{};
+    const GL::Level::SlamArrowDesc arrow{};
     const nlohmann::json markerFields = {
         {"印の色", {marker.color.x, marker.color.y, marker.color.z}},
         {"印の太さ", marker.lineThickness},
@@ -547,14 +547,14 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
         player->Update(true);
     }
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
-    NS::Game::Level::LockOnFrameShape frame{};
+    GL::Level::LockOnFrameShape frame{};
     const NS::Matrix view = NS::Matrix::CreateLookAt(eye, lookAt, NS::Vector3::UnitY);
     const NS::Matrix projection =
         NS::Matrix::CreatePerspectiveFieldOfView(1.0f, 16.0f / 9.0f, 0.1f, 100.0f);
     ASSERT_TRUE(player->TargetIndicator().BuildShownShape(view * projection, NS::Size2D{1280, 720}, frame));
     ASSERT_EQ(frame.corners.size(), 8u);
     EXPECT_FLOAT_EQ(frame.corners.front().height, 7.0f);
-    NS::Game::Level::SlamArrowShape arrow{};
+    GL::Level::SlamArrowShape arrow{};
     ASSERT_TRUE(player->SlamIndicator().TryGetShownArrow(arrow));
     EXPECT_FLOAT_EQ(arrow.stageColor.x, 0.2f);
     EXPECT_FLOAT_EQ(arrow.stageColor.y, 0.3f);

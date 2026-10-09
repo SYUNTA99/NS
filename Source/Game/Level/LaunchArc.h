@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @details Player::ReboundVelocityFor も自機の反動の初速をこの形の式で出す
     //! 上りは riseGravity で減速する。強さは飛ばす側の調整値から渡す
@@ -37,4 +37,4 @@ namespace NS::Game::Level
     //! arc が LaunchArcInitialVelocity の挙げる曲線にならない値の時は 0 を返す
     [[nodiscard]] float LaunchArcFlightSeconds(const LaunchArc& arc) noexcept;
 
-} // namespace NS::Game::Level
+} // namespace GL::Level

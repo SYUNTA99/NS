@@ -21,8 +21,8 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
 {
     Player player;
     player.Init();
-    NS::Game::Player::PlayerParams* params =
-        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
+    GL::Player::PlayerParams* params =
+        NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*params);
     const nlohmann::json expected = {{"チャージしきい値秒", 0.2f},
@@ -51,8 +51,8 @@ TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
 {
     Player player;
     player.Init();
-    NS::Game::Player::PlayerParams* params =
-        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
+    GL::Player::PlayerParams* params =
+        NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     EXPECT_FLOAT_EQ(params->ChargeFactorFor(0.5f), 1.5f);
 
@@ -82,8 +82,8 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
 {
     Player player;
     player.Init();
-    NS::Game::Player::PlayerParams* params =
-        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
+    GL::Player::PlayerParams* params =
+        NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params,
                                        {{"チャージ減速率", 0.4f},

@@ -85,9 +85,9 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
 {
     Player player;
     player.Init();
-    NS::Game::Level::MapObj rock;
+    GL::Level::MapObj rock;
     rock.Init();
-    NS::Game::Level::FollowCamera camera;
+    GL::Level::FollowCamera camera;
     camera.Init();
     NS::Obj::Light light;
     light.Init();

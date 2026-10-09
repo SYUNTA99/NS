@@ -2,7 +2,7 @@
 
 #include <array>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief 相手の正面の面のどこに当てたかで分けた当たりの段
     //! 当たりの記録 "tier" と台本の期待はこの番号で段を読むので、番号を変えると台本の意味が変わる
@@ -18,4 +18,4 @@ namespace NS::Game::Level
     {
         return {HitTier::Center, HitTier::Wide};
     }
-} // namespace NS::Game::Level
+} // namespace GL::Level

@@ -32,8 +32,8 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShapeAndSurviveSceneReload)
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->ImpactVisuals(),
                                        {{"核の留まりの上限フレーム", 2}, {"中心の火花の開始フレーム", 5}}),
               0u);
-    NS::Game::Level::ImpactRecord impact;
-    impact.tier = NS::Game::Level::HitTier::Center;
+    GL::Level::ImpactRecord impact;
+    impact.tier = GL::Level::HitTier::Center;
     impact.hitStopSteps = 12;
     EXPECT_EQ(player->ImpactVisuals().ShapeFor(impact).holdLastFrame, 2);
     EXPECT_EQ(player->ImpactVisuals().ShapeFor(impact).sparkStartFrame, 5);
@@ -55,9 +55,9 @@ TEST(GameTuning, ChargeLayerLifetimeReadsTheEditedField)
     {
         player->Update(true);
     }
-    const NS::Game::Player::EffectLayerList& layers = player->ChargeVisuals().Layers();
+    const GL::Player::EffectLayerList& layers = player->ChargeVisuals().Layers();
     ASSERT_FALSE(layers.Records().empty());
-    const NS::Game::Player::EffectLayerRecord& curl = layers.Records().front();
+    const GL::Player::EffectLayerRecord& curl = layers.Records().front();
     EXPECT_EQ(curl.name, "charge.curl");
     ASSERT_TRUE(curl.endStep.has_value());
     EXPECT_EQ(*curl.endStep - curl.startStep, 2);
@@ -70,11 +70,11 @@ TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->ChargeVisuals(), {{"丸まりの殻の資産", "custom.curl"}}), 0u);
     player->Update(true);
-    const NS::Game::Player::EffectLayerList& layers = player->ChargeVisuals().Layers();
+    const GL::Player::EffectLayerList& layers = player->ChargeVisuals().Layers();
     ASSERT_FALSE(layers.Records().empty());
     EXPECT_EQ(layers.Records().front().name, "custom.curl");
     const nlohmann::json saved = NS::Obj::SerializeSubObjectFields(player->ChargeVisuals());
-    NS::Game::Player::ChargeEffects restored;
+    GL::Player::ChargeEffects restored;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(restored, saved), 0u);
     EXPECT_EQ(NS::Obj::SerializeSubObjectFields(restored)["丸まりの殻の資産"], "custom.curl");
 }
@@ -90,8 +90,8 @@ TEST(GameTuning, DefaultSpawnReadsThePlayerInstance)
 
 TEST(GameTuning, EffectHistoryRetentionBelongsToEachList)
 {
-    NS::Game::Player::EffectLayerList shortHistory{2};
-    NS::Game::Player::EffectLayerList longHistory{6};
+    GL::Player::EffectLayerList shortHistory{2};
+    GL::Player::EffectLayerList longHistory{6};
     const std::uint32_t shortId = shortHistory.Play(nullptr, "test", {});
     const std::uint32_t longId = longHistory.Play(nullptr, "test", {});
     shortHistory.Stop(nullptr, shortId);
@@ -108,18 +108,18 @@ TEST(GameTuning, EffectHistoryRetentionBelongsToEachList)
 TEST(GameTuning, LaunchDustLifetimeReadsItsOwnSubObject)
 {
     NS::Obj::Scene scene;
-    NS::Game::Level::MapObj* rock = scene.SpawnTransient<NS::Game::Level::MapObj>();
+    GL::Level::MapObj* rock = scene.SpawnTransient<GL::Level::MapObj>();
     ASSERT_NE(rock, nullptr);
     NS::Obj::SubObject* subObject = rock->FindSubObj("LaunchEffects");
     ASSERT_NE(subObject, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*subObject, {{"着地の粉の寿命フレーム", 2}}), 0u);
-    NS::Game::Level::LaunchEffects* effects = NS::Obj::Cast<NS::Game::Level::LaunchEffects>(subObject);
+    GL::Level::LaunchEffects* effects = NS::Obj::Cast<GL::Level::LaunchEffects>(subObject);
     ASSERT_NE(effects, nullptr);
-    effects->BeginTrail(NS::Game::Level::HitTier::Center, 1.0f, 1.0f, {0.0f, 0.0f, 1.0f});
+    effects->BeginTrail(GL::Level::HitTier::Center, 1.0f, 1.0f, {0.0f, 0.0f, 1.0f});
     effects->NotifyLanding({}, {0.0f, 1.0f, 0.0f});
     effects->BeginStep();
     effects->BeginStep();
-    const NS::Game::Player::EffectLayerRecord& dust = effects->Layers().Records().back();
+    const GL::Player::EffectLayerRecord& dust = effects->Layers().Records().back();
     EXPECT_EQ(dust.name, "launch.landDust");
     ASSERT_TRUE(dust.endStep.has_value());
     EXPECT_EQ(*dust.endStep - dust.startStep, 2);
@@ -127,14 +127,14 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnSubObject)
 
 TEST(GameTuning, EditedPowerRangeAndTrailAngleKeepTheOutputFinite)
 {
-    NS::Game::Player::ImpactEffects effects;
+    GL::Player::ImpactEffects effects;
     ASSERT_EQ(
         NS::Obj::ApplyJsonFields(
             effects,
             {{"火花の数を振る威力の下限", 1.0f}, {"火花の数を振る威力の上限", 1.0f}, {"反動の尾の最小横成分", 2.0f}}),
         0u);
-    NS::Game::Level::ImpactRecord impact;
-    impact.tier = NS::Game::Level::HitTier::Center;
+    GL::Level::ImpactRecord impact;
+    impact.tier = GL::Level::HitTier::Center;
     impact.power = 1.0f;
     EXPECT_EQ(effects.ShapeFor(impact).sparkCount, 30);
     const NS::Vector3 heading = effects.ReboundTrailHeading({0.0f, 1.0f, 10.0f}, {}, NS::Vector3{0.0f, 0.0f, -5.0f});
@@ -146,22 +146,22 @@ TEST(GameTuning, EditedPowerRangeAndTrailAngleKeepTheOutputFinite)
 
 TEST(GameTuning, EditableSparkDirectionAndMarkerWidthReachTheirShapes)
 {
-    NS::Game::Player::ImpactEffects effects;
+    GL::Player::ImpactEffects effects;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(effects, {{"外れの火花の横の割合", 1.0f}}), 0u);
     const NS::Vector3 heading = effects.MissSparkHeading(0.8f, 0.0f, {0.0f, 0.0f, 1.0f});
     EXPECT_NEAR(heading.x, 1.0f, 0.001f);
     EXPECT_NEAR(heading.z, 0.0f, 0.001f);
-    NS::Game::Level::TargetMarker marker;
+    GL::Level::TargetMarker marker;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(marker, {{"枠の縁の幅", 3.0f}}), 0u);
     const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(marker);
     EXPECT_EQ(fields["枠の縁の幅"], 3.0f);
-    NS::Game::Level::TargetMarkerDesc desc;
+    GL::Level::TargetMarkerDesc desc;
     desc.outlineWidth = 3.0f;
     NS::AABB bounds;
     bounds.Center = {0.0f, 0.0f, 0.5f};
     bounds.Extents = {0.1f, 0.1f, 0.1f};
-    NS::Game::Level::LockOnFrameShape frame;
-    ASSERT_TRUE(NS::Game::Level::BuildLockOnFrame(NS::Matrix::Identity, {1280, 720}, bounds, {}, desc, frame));
+    GL::Level::LockOnFrameShape frame;
+    ASSERT_TRUE(GL::Level::BuildLockOnFrame(NS::Matrix::Identity, {1280, 720}, bounds, {}, desc, frame));
     ASSERT_FALSE(frame.corners.empty());
     ASSERT_EQ(frame.outline.size(), frame.corners.size());
     EXPECT_NEAR(frame.outline.front().width - frame.corners.front().width, 6.0f, 0.001f);

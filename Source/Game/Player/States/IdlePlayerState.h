@@ -4,7 +4,7 @@
 
 class Player;
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     //! 立ち。落下と走りへ移る
     class IdlePlayerState final : public PlayerState<IdlePlayerState>
@@ -12,4 +12,4 @@ namespace NS::Game::Player
     public:
         void OnStep(::Player& player, float dt) override;
     };
-} // namespace NS::Game::Player
+} // namespace GL::Player

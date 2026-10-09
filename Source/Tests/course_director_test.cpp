@@ -59,7 +59,7 @@ namespace
     nlohmann::json CourseWithPlayerOnGoal()
     {
         nlohmann::json doc = CourseWithPlayer();
-        nlohmann::json goal = NS::Obj::MakePrototypeJson<NS::Game::Level::Goal>();
+        nlohmann::json goal = NS::Obj::MakePrototypeJson<GL::Level::Goal>();
         NS::Obj::SetObjectPosition(goal, SpawnOf(doc));
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(goal));
         NS::Obj::EnsureUniqueObjectIds(doc);
@@ -71,11 +71,11 @@ TEST(CourseDirector, PlayerCreatesDirectorAfterPlacement)
 {
     NS::Obj::Scene scene;
     scene.LoadJson(CourseWithPlayer());
-    EXPECT_NE(NS::Obj::FindSceneObj<NS::Game::Level::CourseDirector>(scene), nullptr);
+    EXPECT_NE(NS::Obj::FindSceneObj<GL::Level::CourseDirector>(scene), nullptr);
 
     // 組み直すと捨てられ、プレイヤーの居ないシーンでは作られない
     scene.LoadJson(NS::Obj::MakeSceneJson());
-    EXPECT_EQ(NS::Obj::FindSceneObj<NS::Game::Level::CourseDirector>(scene), nullptr);
+    EXPECT_EQ(NS::Obj::FindSceneObj<GL::Level::CourseDirector>(scene), nullptr);
 }
 
 TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
@@ -92,7 +92,7 @@ TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
     scene.HitSensors().OnTick();
     EXPECT_TRUE(player->IsDead());
 
-    NS::Game::Level::CourseDirector* director = NS::Obj::FindSceneObj<NS::Game::Level::CourseDirector>(scene);
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneObj<GL::Level::CourseDirector>(scene);
     ASSERT_NE(director, nullptr);
     director->OnTick();
     // 出現位置へ戻り、命も満タンへ戻る
@@ -103,7 +103,7 @@ TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
 TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
 {
     nlohmann::json doc = CourseWithPlayer();
-    nlohmann::json goal = NS::Obj::MakePrototypeJson<NS::Game::Level::Goal>();
+    nlohmann::json goal = NS::Obj::MakePrototypeJson<GL::Level::Goal>();
     NS::Obj::SetObjectPosition(goal, SpawnOf(doc));
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(goal));
     NS::Obj::EnsureUniqueObjectIds(doc);
@@ -113,7 +113,7 @@ TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
     (void)scene.BeginPlayBaseline();
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    NS::Game::Level::CourseDirector* director = NS::Obj::FindSceneObj<NS::Game::Level::CourseDirector>(scene);
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneObj<GL::Level::CourseDirector>(scene);
     ASSERT_NE(director, nullptr);
 
     scene.HitSensors().OnTick();
@@ -140,7 +140,7 @@ TEST(CourseDirector, ClearLockStopsTheHeldSlamButton)
     (void)scene.BeginPlayBaseline();
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    NS::Game::Level::CourseDirector* director = NS::Obj::FindSceneObj<NS::Game::Level::CourseDirector>(scene);
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneObj<GL::Level::CourseDirector>(scene);
     ASSERT_NE(director, nullptr);
 
     MouseLeftPress press;
@@ -173,7 +173,7 @@ TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
     (void)scene.BeginPlayBaseline();
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    NS::Game::Level::CourseDirector* director = NS::Obj::FindSceneObj<NS::Game::Level::CourseDirector>(scene);
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneObj<GL::Level::CourseDirector>(scene);
     ASSERT_NE(director, nullptr);
 
     player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -215,7 +215,7 @@ TEST(CourseDirector, InputLockDropsTheChargeInsteadOfReleasingIt)
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
     const std::uint32_t impacts = player->Resolver().LastImpact().sequence;
 
-    EXPECT_TRUE(NS::Game::Level::SendMsgInputLock(*player, true));
+    EXPECT_TRUE(GL::Level::SendMsgInputLock(*player, true));
     EXPECT_FALSE(player->ChargeJudge().IsCharging());
     EXPECT_FLOAT_EQ(player->StanceHeight(), 1.0f);
 
@@ -247,7 +247,7 @@ TEST(CourseDirector, RestartReturnsObjectsToBaseline)
     ASSERT_NE(placed, nullptr);
     placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
 
-    NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(scene)->RestartCourse();
+    NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(scene)->RestartCourse();
     EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
 }
 
@@ -261,7 +261,7 @@ TEST(CourseDirector, StartCourseFreezesThePlacedSceneAndStartsEveryoneFromIt)
     player->Root().SetPosition(placedAt);
     player->Body().SetVelocity(NS::Vector3{2.0f, 4.0f, 3.0f});
 
-    NS::Obj::GetOrCreateSceneObj<NS::Game::Level::CourseDirector>(scene)->StartCourse();
+    NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(scene)->StartCourse();
 
     // 凍結は呼んだ時の配置を写し、自機はそこからやり直しと同じ姿で始まる
     const nlohmann::json& baseline = scene.PlayBaseline();

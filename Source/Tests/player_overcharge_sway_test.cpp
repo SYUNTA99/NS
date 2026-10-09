@@ -62,7 +62,7 @@ TEST(PlayerOverchargeSway, RedHoldsStillAndPurpleReleaseFollowsTheSwayedLine)
     {
         player.Update(true);
     }
-    NS::Game::Level::AimLine aim{};
+    GL::Level::AimLine aim{};
     ASSERT_TRUE(player.TryGetAimLine(aim));
     EXPECT_FLOAT_EQ(SwayAngle(aim.direction), 0.0f);
 
@@ -110,7 +110,7 @@ TEST(PlayerOverchargeSway, ForcedLaunchLeavesAtAnEdgeThatAlternates)
     for (int round = 0; round < 2; ++round)
     {
         player.ResetState();
-        NS::Game::Level::AimLine aim{};
+        GL::Level::AimLine aim{};
         for (int held = 1; held < forced; ++held)
         {
             player.Update(true);
@@ -136,7 +136,7 @@ TEST(PlayerOverchargeSway, PurplePowerRisesToTheCapFromTheFullCharge)
     Player player;
     player.Init();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"紫の威力の上限", 1.5f}}), 0u);
-    const NS::Game::Player::PlayerParams& params = player.Params();
+    const GL::Player::PlayerParams& params = player.Params();
     const float full = params.ChargeFactorFor(1.0f);
     EXPECT_FLOAT_EQ(params.ChargeFactorFor(1.0f, 0.0f), full);
     EXPECT_FLOAT_EQ(params.ChargeFactorFor(1.0f, 0.5f), full * 1.25f);

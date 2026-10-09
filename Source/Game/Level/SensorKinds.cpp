@@ -2,7 +2,7 @@
 
 #include "NSlib/Object/SubObjects/HitSensor.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     void SetSensorKind(NS::Obj::HitSensor& sensor, SensorKind kind) noexcept
     {
@@ -18,4 +18,4 @@ namespace NS::Game::Level
         }
         return sensor.Kind() == static_cast<std::uint8_t>(kind);
     }
-} // namespace NS::Game::Level
+} // namespace GL::Level

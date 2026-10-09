@@ -1,6 +1,6 @@
 ﻿#include "Game/Level/ImpactInputJudge.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     const char* SlamKindLabel(SlamKind kind) noexcept
     {
@@ -178,4 +178,4 @@ namespace NS::Game::Level
             m_phase = HoldPhase::Spent;
         }
     }
-} // namespace NS::Game::Level
+} // namespace GL::Level

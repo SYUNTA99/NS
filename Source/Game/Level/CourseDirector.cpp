@@ -10,7 +10,7 @@
 
 #include <vector>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     CourseDirector::CourseDirector(NS::Obj::Scene& scene)
         : m_scene(scene), m_fade(std::make_unique<NS::Obj::ScreenFade>())
@@ -98,4 +98,4 @@ namespace NS::Game::Level
 
         SendInputLock(false);
     }
-} // namespace NS::Game::Level
+} // namespace GL::Level

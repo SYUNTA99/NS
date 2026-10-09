@@ -483,13 +483,13 @@ TEST(EditorHitTimelinePanel, SaveWritesEveryTier)
 {
     const ScopedHitTimelineDirectory directory("EditorTimelineSave");
     ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
-    NS::Game::Level::HitTimelineLibrary& library = NS::Game::Level::HitTimelineLibrary::Get();
+    GL::Level::HitTimelineLibrary& library = GL::Level::HitTimelineLibrary::Get();
     TimelineGui gui;
     NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
     NS::Editor::HitTimelinePanel timeline;
     // パネルは真ん中の段を開いている。外れの段は置き場にだけ変更がある
-    NS::Game::Level::HitTimeline miss = MakeLegacyHitTimeline(2);
+    GL::Level::HitTimeline miss = MakeLegacyHitTimeline(2);
     miss.events.pop_back();
     library.Set("miss", miss);
 
@@ -512,7 +512,7 @@ TEST(EditorHitTimelinePanel, SaveWritesEveryTier)
 
     library.Reload();
     ASSERT_NE(library.Find("center"), nullptr);
-    const NS::Game::Level::HitTimeline* saved = library.Find("miss");
+    const GL::Level::HitTimeline* saved = library.Find("miss");
     ASSERT_NE(saved, nullptr);
     EXPECT_EQ(saved->events.size(), miss.events.size());
 }

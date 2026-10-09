@@ -52,13 +52,13 @@ namespace
     }
 
     // 右の縁で外した反動。+Z へ進み、右へ逸れる
-    NS::Game::Player::ReboundArc MissArc(float distance)
+    GL::Player::ReboundArc MissArc(float distance)
     {
-        return NS::Game::Player::ReboundArc{
+        return GL::Player::ReboundArc{
             .direction = NS::Vector3{0.96f, 0.0f, 0.28f},
             .apexHeight = 0.35f,
             .distance = distance,
-            .missTumble = NS::Game::Player::MissTumble{.twist = NS::Vector3{0.0f, -0.8f, 0.0f}, .power = 1.0f}};
+            .missTumble = GL::Player::MissTumble{.twist = NS::Vector3{0.0f, -0.8f, 0.0f}, .power = 1.0f}};
     }
 
     float LateralSpeed(const Player& player)
@@ -123,7 +123,7 @@ TEST(MissTumble, CenterReboundAndZeroSkidFramesLandWithoutSkidding)
         NS::Obj::Scene scene;
         Player* player = PlaceTumblePlayer(scene);
         ASSERT_NE(player, nullptr);
-        NS::Game::Player::ReboundArc arc = MissArc(3.0f);
+        GL::Player::ReboundArc arc = MissArc(3.0f);
         if (miss)
         {
             ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"外れのこすって止まるまでのフレーム数", 0}}), 0u);

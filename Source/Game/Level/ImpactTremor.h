@@ -5,7 +5,7 @@
 #include "NSlib/Graphics/FrameConstants.h"
 #include "NSlib/Object/SubObjects/CameraModifier.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief 画面の上の画素数を、カメラから見た at の奥行きでの世界の長さへ直す
     //! @details at がカメラより後ろにある時は、奥行きの代わりにカメラとの距離で測る
@@ -35,4 +35,4 @@ namespace NS::Game::Level
                                                const NS::Vector3& root,
                                                float bodyLength,
                                                const NS::Obj::CameraPose& pose) noexcept;
-} // namespace NS::Game::Level
+} // namespace GL::Level

@@ -19,7 +19,7 @@
 
 class Player;
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     class PlayerParams;
 }
@@ -31,13 +31,13 @@ namespace NS::Obj
     class HitSensor;
 } // namespace NS::Obj
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief 配分の計算 ComputeImpactOutcome へ渡す調整値を、params の欄から全部入れて作る
     //! @details ImpactTuning の値の正は PlayerParams 1 つで、ここがその写し先の組み立てを 1 か所で持つ
     //! @param[in] params 自機の調整値の欄
     //! @return params の欄と今の固定ステップの秒を写した調整値
-    [[nodiscard]] ImpactTuning MakeImpactTuning(const NS::Game::Player::PlayerParams& params) noexcept;
+    [[nodiscard]] ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams& params) noexcept;
 
     //! @brief 当たり 1 回の裁定の内訳
     struct ImpactRecord
@@ -220,7 +220,7 @@ namespace NS::Game::Level
         NS_REFLECT_NONE(ImpactResolver, NS::Obj::SubObject)
 
     private:
-        [[nodiscard]] const NS::Game::Player::PlayerParams& Tuning() const noexcept;
+        [[nodiscard]] const GL::Player::PlayerParams& Tuning() const noexcept;
         // 次の固定ステップの自機に重なる置物の体のセンサーのうち中心が最も近い 1 つ。無ければ nullptr
         // 事前条件: m_movement が非 null
         [[nodiscard]] NS::Obj::HitSensor* FindOverlapped(const NS::Vector3& predictedVelocity) const;
@@ -343,7 +343,7 @@ namespace NS::Game::Level
         HitTier m_beforeContactTier = HitTier::Center;  // 触れる前の時計を始めた予測の段
         // 明けたフレームに自機が持つ速度。反動の当たりは、明けに BeginRebound が同じ m_pendingReboundArc から出し直す
         NS::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};
-        NS::Game::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離
+        GL::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離
         LaunchArc m_pendingLaunchArc{};                     // 明けたフレームに相手を飛ばす曲線
         NS::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f};   // 発射の水平方向。食い込みと振動の軸
         NS::Obj::ActorRef m_pendingTarget{};                // 知らせる相手。凍結をまたぐので使うたびに引く
@@ -406,4 +406,4 @@ namespace NS::Game::Level
         NS::Obj::Body* m_body = nullptr;               // 同じ配置物の身体。非所有
         NS::Obj::HitReaction* m_hitReaction = nullptr; // 同じ配置物の当たりの演出。非所有
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

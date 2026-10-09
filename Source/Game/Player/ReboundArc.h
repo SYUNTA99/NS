@@ -4,7 +4,7 @@
 
 #include <optional>
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     //! @brief 外れの反動の回り方のうち、当たりが決める物
     //! @details 速さの欄と、回転を寄せるフレーム数・軸のぶれは Player の欄が持つ
@@ -27,4 +27,4 @@ namespace NS::Game::Player
         // 外れの時だけ持つ。玉が軸のぶれるねじれで回り、着地の後にこすって止まる
         std::optional<MissTumble> missTumble{};
     };
-} // namespace NS::Game::Player
+} // namespace GL::Player

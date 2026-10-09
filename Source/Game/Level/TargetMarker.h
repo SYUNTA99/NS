@@ -13,7 +13,7 @@
 
 class Player;
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! 画面へ重ねる四角 1 枚。座標は描画先の画素で、左上が原点
     struct MarkerRect
@@ -137,4 +137,4 @@ namespace NS::Game::Level
         int m_framesSinceLost = -1;
         const ::Player* m_player = nullptr; // 溜めと狙う相手の問い先。非所有
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

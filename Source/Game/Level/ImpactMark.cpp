@@ -7,7 +7,7 @@
 #include <memory>
 #include <utility>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     ImpactMark::ImpactMark() noexcept
     {
@@ -71,4 +71,4 @@ namespace NS::Game::Level
             Kill();
         }
     }
-} // namespace NS::Game::Level
+} // namespace GL::Level

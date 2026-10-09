@@ -2,7 +2,7 @@
 
 #include "NSlib/Object/Actor.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     //! @brief 触れたプレイヤーを即死させる範囲。奈落の下へ大きく置き、落下死をレベルのデータとして表す
     //! @details 箱の範囲のセンサーを持ち、プレイヤーの体に重なったら MsgInstantDeath
@@ -20,4 +20,4 @@ namespace NS::Game::Level
     protected:
         void OnInit() override;
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

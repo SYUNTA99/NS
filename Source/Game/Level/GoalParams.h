@@ -3,7 +3,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/SubObject.h"
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     class GoalParams : public NS::Obj::SubObject
     {
@@ -35,4 +35,4 @@ namespace NS::Game::Level
         float m_fadeOutSeconds = 0.4f;
         float m_fadeInSeconds = 0.4f;
     };
-} // namespace NS::Game::Level
+} // namespace GL::Level

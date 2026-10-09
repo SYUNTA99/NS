@@ -78,7 +78,7 @@ namespace
     }
 
     // 置物に当てて、反動の始まりから着地までに回った角度の和 (度) を返す。反動しなければ負
-    float SpinWhileRebounding(Player& player, NS::Game::Level::MapObj& rock, float charge01)
+    float SpinWhileRebounding(Player& player, GL::Level::MapObj& rock, float charge01)
     {
         player.RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f});
         float degrees = 0.0f;
@@ -157,7 +157,7 @@ TEST(PlayerSpinCount, ReboundTurnsTheCountOfTheSlamThatHit)
         NS::Obj::Scene scene;
         Player* player = PlaceSpinScene(scene, true);
         ASSERT_NE(player, nullptr);
-        NS::Game::Level::MapObj* rock = NS::Obj::Cast<NS::Game::Level::MapObj>(scene.Objects().FindByObjectId(2));
+        GL::Level::MapObj* rock = NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
         const char* field = "溜めて当てた反動の回転数";
         if (charge01 <= 0.0f)

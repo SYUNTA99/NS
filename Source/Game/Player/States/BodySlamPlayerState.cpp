@@ -2,10 +2,10 @@
 
 #include "Game/Player.h"
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     void BodySlamPlayerState::OnStep(::Player& player, float dt)
     {
         player.UpdateBodySlam(dt);
     }
-} // namespace NS::Game::Player
+} // namespace GL::Player

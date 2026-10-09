@@ -27,7 +27,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace NS::Game::Level
+namespace GL::Level
 {
     namespace
     {
@@ -395,7 +395,7 @@ namespace NS::Game::Level
     }
 
     void PlaceSlamArrowOnPath(const SlamArrowGroundProbe& probe,
-                              const NS::Game::Player::LaunchPath& path,
+                              const GL::Player::LaunchPath& path,
                               float ballCenterHeight,
                               const SlamArrowDesc& desc,
                               SlamArrowShape& shape)
@@ -413,7 +413,7 @@ namespace NS::Game::Level
         const float radius = shape.bandWidth * 0.5f;
         // 線に沿った距離 along で玉の一番下の点が居る高さ + 浮かせる高さ
         const auto surfaceAt = [&](float along) {
-            const float center = ballCenterHeight + NS::Game::Player::LaunchHeightAt(path, along);
+            const float center = ballCenterHeight + GL::Player::LaunchHeightAt(path, along);
             float bottom = center - radius;
             if (probe)
             {
@@ -597,8 +597,8 @@ namespace NS::Game::Level
         else
         {
             // 道筋は放つ縦の速さを決めた LaunchPitch と同じ重力の計算。矢印と実際の飛び方をずらさない
-            const NS::Game::Player::PlayerParams& params = m_player->Params();
-            const NS::Game::Player::LaunchPath path{.horizontalSpeed = params.m_bodySlamSpeed,
+            const GL::Player::PlayerParams& params = m_player->Params();
+            const GL::Player::LaunchPath path{.horizontalSpeed = params.m_bodySlamSpeed,
                                                     .verticalSpeed = state.line.launchVerticalSpeed,
                                                     .gravity = params.Gravity(),
                                                     .dt = NS::OS::FrameTimer::FixedDelta(),
@@ -644,4 +644,4 @@ namespace NS::Game::Level
     }
 
     NS_CLASS(SlamArrow)
-} // namespace NS::Game::Level
+} // namespace GL::Level

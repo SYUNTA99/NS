@@ -5,7 +5,7 @@
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/PlayerInput.h"
 
-namespace NS::Game::Player
+namespace GL::Player
 {
     void LedgeHangingPlayerState::OnStep(::Player& player, float dt)
     {
@@ -29,4 +29,4 @@ namespace NS::Game::Player
         }
         player.Shimmy(dt);
     }
-} // namespace NS::Game::Player
+} // namespace GL::Player

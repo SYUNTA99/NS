@@ -7,14 +7,14 @@
 namespace NS::Editor
 {
 
-    std::size_t AddHitEvent(NS::Game::Level::HitTimeline& timeline,
-                            const NS::Game::Level::HitEventValue& value,
+    std::size_t AddHitEvent(GL::Level::HitTimeline& timeline,
+                            const GL::Level::HitEventValue& value,
                             int start)
     {
-        NS::Game::Level::HitEvent event;
+        GL::Level::HitEvent event;
         event.value = value;
         event.start = start;
-        if (start < 0 && !NS::Game::Level::CanStartBeforeContact(value))
+        if (start < 0 && !GL::Level::CanStartBeforeContact(value))
         {
             event.start = 0;
         }
@@ -22,7 +22,7 @@ namespace NS::Editor
         return timeline.events.size() - 1;
     }
 
-    bool RemoveHitEvent(NS::Game::Level::HitTimeline& timeline, std::size_t row) noexcept
+    bool RemoveHitEvent(GL::Level::HitTimeline& timeline, std::size_t row) noexcept
     {
         if (row >= timeline.events.size())
         {
@@ -32,11 +32,11 @@ namespace NS::Editor
         return true;
     }
 
-    TimelineFrameRange HitTimelineFrameRange(const NS::Game::Level::HitTimeline& timeline,
+    TimelineFrameRange HitTimelineFrameRange(const GL::Level::HitTimeline& timeline,
                                              const HitPreviewResult* preview) noexcept
     {
         TimelineFrameRange range;
-        for (const NS::Game::Level::HitEvent& event : timeline.events)
+        for (const GL::Level::HitEvent& event : timeline.events)
         {
             range.first = std::min(range.first, event.start);
             // 長さ 1 の事象は始まりのフレームだけを占める

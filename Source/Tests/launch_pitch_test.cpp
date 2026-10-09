@@ -14,13 +14,13 @@
 
 namespace
 {
-    using NS::Game::Player::ChooseGravity;
-    using NS::Game::Player::LaunchHeightAt;
-    using NS::Game::Player::LaunchPath;
-    using NS::Game::Player::LaunchPitch;
-    using NS::Game::Player::LaunchPitchDesc;
-    using NS::Game::Player::LaunchPitchResult;
-    using NS::Game::Player::PlayerGravity;
+    using GL::Player::ChooseGravity;
+    using GL::Player::LaunchHeightAt;
+    using GL::Player::LaunchPath;
+    using GL::Player::LaunchPitch;
+    using GL::Player::LaunchPitchDesc;
+    using GL::Player::LaunchPitchResult;
+    using GL::Player::PlayerGravity;
 
     constexpr float k_Dt = 1.0f / 60.0f;
     // 二分探索は 1 mm まで詰める。浮動小数の丸めを足して 2 mm で見る
