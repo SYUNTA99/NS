@@ -522,12 +522,12 @@ namespace NS::Obj
         m_sceneRenderer.UnregisterRenderable(renderable);
     }
 
-    void Scene::RegisterOverlay(OverlayRenderer* overlay)
+    void Scene::RegisterOverlay(IOverlay* overlay)
     {
         m_sceneRenderer.RegisterOverlay(overlay);
     }
 
-    void Scene::UnregisterOverlay(OverlayRenderer* overlay)
+    void Scene::UnregisterOverlay(IOverlay* overlay)
     {
         m_sceneRenderer.UnregisterOverlay(overlay);
     }

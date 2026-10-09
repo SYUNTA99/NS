@@ -1,11 +1,11 @@
 #pragma once
 
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/IUse/IUseCollision.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
 #include "NSlib/Object/IUse/IUseSceneObj.h"
-#include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Scene/HitSensorDirector.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
@@ -34,7 +34,7 @@ namespace NS::Obj
     class SubObject;
     class DirectionalLight;
     class IRenderable;
-    class OverlayRenderer;
+    class IOverlay;
     class UIActor;
 
     //! @brief シーンの JSON 文書から組んだ ActorList を駆動するシーン
@@ -66,11 +66,11 @@ namespace NS::Obj
         //! IRenderable SubObject の自己解除。Model 等が OnEndPlay で呼ぶ
         void UnregisterRenderable(IRenderable* renderable);
 
-        //! OverlayRenderer の自己登録。基底の OnStart が呼ぶ。二重登録は無視する
-        //! 並びは priority 昇順に保たれ、同値なら後から登録した方が後ろになる
-        void RegisterOverlay(OverlayRenderer* overlay);
-        //! OverlayRenderer の自己解除。基底の OnEndPlay が呼ぶ
-        void UnregisterOverlay(OverlayRenderer* overlay);
+        //! 重ね描きの登録。部品は OverlayRenderer の OnStart が呼ぶ。二重登録は無視する
+        //! 並びは OverlayOrder 昇順に保たれ、同値なら後から登録した方が後ろになる
+        void RegisterOverlay(IOverlay* overlay);
+        //! 重ね描きの解除。部品は OverlayRenderer の OnEndPlay が呼ぶ
+        void UnregisterOverlay(IOverlay* overlay);
 
         //! 平行光の自己登録。DirectionalLight が OnStart で呼ぶ。二重登録は無視する
         //! 並びは登録順。ResolveSceneSettings はこの順に読む

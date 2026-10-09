@@ -7,7 +7,10 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
+#include "NSlib/Object/IUse/IUseSceneObj.h"
 #include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Scene/HitScreenDirector.h"
+#include "NSlib/Object/Scene/PadRumbleDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/CameraManager.h"
@@ -36,6 +39,30 @@
 namespace
 {
     using namespace GL::Level;
+
+    // HitScreenDirector と PadRumbleDirector
+    // は描く支度の段で進む。自機と相手を手で回す試しは、回した後にこれを呼んで同じ順にする
+    void TickHitDirectors(Player& player)
+    {
+        if (NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(player))
+        {
+            screen->OnTick();
+        }
+        if (NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneObj<NS::Obj::PadRumbleDirector>(player))
+        {
+            pad->OnTick();
+        }
+    }
+
+    int FlashRemaining(const Player& player)
+    {
+        const NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(player);
+        if (screen == nullptr)
+        {
+            return 0;
+        }
+        return screen->FlashFramesRemaining();
+    }
 
     // 自機 (id 1) と、その前の置物 (id 2) の場面。mass が正なら置物の質量を書く
     Player* PlaceClockScene(NS::Obj::Scene& scene, float rockX, float rockZ, float mass)
@@ -115,6 +142,7 @@ namespace
         {
             player.Update(false);
             rock.Update();
+            TickHitDirectors(player);
             if (!detected && player.Resolver().LastImpact().sequence == 0)
             {
                 continue;
@@ -131,7 +159,7 @@ namespace
             now.rockFlying = rock.IsFlying();
             now.shape = player.Resolver().ShapeFactors();
             now.shapeAnimating = player.Resolver().IsShapeAnimating();
-            now.flashRemaining = player.HitReactionSubObj()->FlashFramesRemaining();
+            now.flashRemaining = FlashRemaining(player);
             now.padLeft = NS::OS::Input::Get().Gamepad().Vibration().left;
             if (const NS::Obj::CameraManager* cameras = player.GetCameraManager())
             {
@@ -411,17 +439,19 @@ TEST(ImpactTimelineClock, ANewHitAbortsTheRunningTimeline)
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         rehit = player->Resolver().LastImpact().sequence == 2;
         if (rehit)
         {
             // 前の当たりの返りも止まる。2 回目のタイムラインには白が無い
             EXPECT_FALSE(player->Resolver().IsShapeAnimating());
-            EXPECT_EQ(player->HitReactionSubObj()->FlashFramesRemaining(), 0);
+            EXPECT_EQ(FlashRemaining(*player), 0);
         }
     }
     ASSERT_TRUE(rehit);
     player->Update(false);
     rock->Update();
+    TickHitDirectors(*player);
     EXPECT_TRUE(player->Resolver().FreezeBeganThisStep());
     EXPECT_FALSE(player->Resolver().IsShapeAnimating());
 }
@@ -443,6 +473,7 @@ TEST(ImpactTimelineClock, GradualReleaseSlowsTheWorldFromItsFrame)
     EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
     player->Update(false);
     rock->Update();
+    TickHitDirectors(*player);
     EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.25f);
     EXPECT_TRUE(player->Resolver().LastImpact().localStop);
     EXPECT_TRUE(player->Resolver().LastImpact().gradualRelease);
@@ -476,6 +507,7 @@ TEST(ImpactTimelineClock, PurpleOnlyGradualReleaseSkipsTheRedHit)
         ASSERT_EQ(RunHit(*player, *rock, 1.0f, 6, overcharge).size(), 6u);
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         EXPECT_FLOAT_EQ(player->Resolver().LastImpact().overcharge01, overcharge);
         if (purple == 1)
         {
@@ -538,11 +570,13 @@ TEST(ImpactTimelineClock, TraumaEventAddsTraumaThatStacksOnTheNextHit)
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         rehit = player->Resolver().LastImpact().sequence == 2;
     }
     ASSERT_TRUE(rehit);
     player->Update(false);
     rock->Update();
+    TickHitDirectors(*player);
     EXPECT_GT(cameras->Trauma(), added);
 }
 
@@ -811,6 +845,7 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
         const NS::Vector3 selfRootBefore = player->Root().Position();
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
         {
             continue;
@@ -889,6 +924,7 @@ TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         const float selfAmplitude = player->ModelSubObj()->Tremor().amplitude;
         if (!(selfAmplitude > 0.0f))
         {
@@ -931,13 +967,14 @@ TEST(ImpactTimelineClock, ShakeLinesFrameTheTargetForTheStop)
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
         {
             continue;
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Obj::HitReaction& reaction = *player->HitReactionSubObj();
+        const NS::Obj::HitScreenDirector& reaction = *NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(*player);
         if (clock < 1 || clock > 6)
         {
             EXPECT_EQ(reaction.ShakeLinesFramesRemaining(), 0);
@@ -995,6 +1032,7 @@ TEST(ImpactTimelineClock, GroundWaveSpreadsFromTheContactForItsLength)
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
         {
             continue;
@@ -1055,6 +1093,7 @@ TEST(ImpactTimelineClock, DistortionRingSpreadsFromTheContactForItsLength)
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
         {
             continue;
@@ -1110,6 +1149,7 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
         {
             continue;
@@ -1228,6 +1268,7 @@ TEST(ImpactTimelineClock, NegativeEventsStartBeforeContact)
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         shaping.push_back(player->Resolver().IsShapeAnimating());
         if (player->Resolver().LastImpact().sequence != 0)
         {
@@ -1244,9 +1285,11 @@ TEST(ImpactTimelineClock, NegativeEventsStartBeforeContact)
     // 形の事象は -3 から 5 フレームなので、検知の次のフレーム (1) が最後
     player->Update(false);
     rock->Update();
+    TickHitDirectors(*player);
     EXPECT_TRUE(player->Resolver().IsShapeAnimating());
     player->Update(false);
     rock->Update();
+    TickHitDirectors(*player);
     EXPECT_FALSE(player->Resolver().IsShapeAnimating());
 }
 
@@ -1265,6 +1308,7 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsWhenTheBeforeContactClockStarts)
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         if (beforeContactStep < 0 && player->Resolver().IsBeforeContact())
         {
             beforeContactStep = player->ChargeVisuals().Layers().Step();
@@ -1299,6 +1343,7 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsOnTheContactFrameWithoutBeforeContactE
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         if (player->Resolver().LastImpact().sequence != 0)
         {
             contactStep = player->ChargeVisuals().Layers().Step();
@@ -1341,6 +1386,7 @@ TEST(ImpactTimelineClock, FramesToPredictedContactCountDownToTheDetection)
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         frames.push_back(player->Resolver().FramesToPredictedContact());
     }
     ASSERT_GE(frames.size(), 5u);
@@ -1373,6 +1419,7 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsThreeFramesBeforeThePredictedContact)
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         if (player->Resolver().LastImpact().sequence != 0)
         {
             contactStep = player->ChargeVisuals().Layers().Step();
@@ -1407,6 +1454,7 @@ TEST(ImpactTimelineClock, AMissedPredictionStopsTheEarlyEvents)
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         started = player->Resolver().IsShapeAnimating();
     }
     ASSERT_TRUE(started);
@@ -1415,6 +1463,7 @@ TEST(ImpactTimelineClock, AMissedPredictionStopsTheEarlyEvents)
     rock->Root().SetPosition(rock->Root().Position() + NS::Vector3{10.0f, 0.0f, 0.0f});
     player->Update(false);
     rock->Update();
+    TickHitDirectors(*player);
     EXPECT_FALSE(player->Resolver().IsShapeAnimating());
     EXPECT_FLOAT_EQ(player->Resolver().ShapeFactors().y, 1.0f);
     EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
@@ -1576,6 +1625,7 @@ TEST(ImpactTimelineClock, SinkShakeHoldsTheBottomUntilTheReboundFrame)
     {
         player->Update(false);
         rock->Update();
+        TickHitDirectors(*player);
         // カメラの効果はカメラの段で 1 フレーム進む
         scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Camera);
         detected = detected || player->Resolver().LastImpact().sequence != 0;

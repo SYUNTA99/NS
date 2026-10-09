@@ -217,8 +217,8 @@ namespace NS::Obj
         //! 既定は何もしない
         virtual void BodyStep() {}
         //! @brief 見た目の段
-        //! @details 動いた後の姿から見た目・演出・寿命の減りを進める。既定は HitReaction を進める
-        virtual void VisualStep();
+        //! @details 動いた後の姿から見た目・演出・寿命の減りを進める。既定は何もしない
+        virtual void VisualStep() {}
         static void TickSubObj(SubObject* subObject)
         {
             if (subObject != nullptr && subObject->IsActive())

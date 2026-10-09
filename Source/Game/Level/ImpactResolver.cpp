@@ -18,8 +18,10 @@
 #include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
+#include "NSlib/Object/IUse/IUseSceneObj.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/Scene/HitScreenDirector.h"
 #include "NSlib/Object/Scene/HitSensorDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Physics/Capsule.h"
@@ -281,11 +283,16 @@ namespace GL::Level
 
     int ImpactResolver::CenterHitFlashStepsRemaining() const noexcept
     {
-        if (m_hitReaction == nullptr)
+        if (Owner() == nullptr)
         {
             return 0;
         }
-        return m_hitReaction->FlashFramesRemaining();
+        const NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(*Owner());
+        if (screen == nullptr)
+        {
+            return 0;
+        }
+        return screen->FlashFramesRemaining();
     }
 
     NS::Obj::HitSensor* ImpactResolver::FindOverlapped(const NS::Vector3& predictedVelocity) const

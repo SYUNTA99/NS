@@ -304,11 +304,6 @@ namespace NS::Obj
         StepStateMachine();
     }
 
-    void Actor::VisualStep()
-    {
-        TickSubObj(m_hitReaction);
-    }
-
     void Actor::PrepareRender()
     {
         TickSubObj(m_animation);

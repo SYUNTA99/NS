@@ -223,7 +223,6 @@ void Player::VisualStep()
     UpdateAnimation();
     TickSubObj(m_targetMarker);
     TickSubObj(m_slamArrow);
-    TickSubObj(HitReactionSubObj());
     // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
     m_resolver->WriteTremor();
     TickSubObj(m_appearance);

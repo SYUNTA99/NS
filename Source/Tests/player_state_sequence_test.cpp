@@ -6,21 +6,21 @@
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/SubObjects/HitReaction.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/IUse/IUseSceneObj.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/HitScreenDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/Body.h"
+#include "NSlib/Object/SubObjects/Collider.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 
 #include <gtest/gtest.h>
 
 #include <type_traits>
 #include <utility>
 
-static_assert(std::is_base_of_v<NS::Obj::StateOf<GL::Player::IdlePlayerState, ::Player>,
-                                GL::Player::IdlePlayerState>);
+static_assert(std::is_base_of_v<NS::Obj::StateOf<GL::Player::IdlePlayerState, ::Player>, GL::Player::IdlePlayerState>);
 
 namespace
 {
@@ -29,7 +29,7 @@ namespace
     public:
         void OnStep(::Player& player, float) override
         {
-            EXPECT_EQ(player.HitReactionSubObj()->FlashFramesRemaining(), 3);
+            EXPECT_EQ(NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(player)->FlashFramesRemaining(), 3);
         }
     };
 
@@ -110,15 +110,16 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
-    ASSERT_NE(reaction, nullptr);
-    reaction->StartFlash(3, 1.0f);
-    reaction->OnUpdate();
-    ASSERT_EQ(reaction->FlashFramesRemaining(), 3);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(*player);
+    ASSERT_NE(screen, nullptr);
+    screen->StartFlash(*player, 3, 1.0f);
+    screen->OnTick();
+    ASSERT_EQ(screen->FlashFramesRemaining(), 3);
     player->States().Build<ObservePlayerEffectsState>(*player);
-    player->Update();
+    // HitScreenDirector は描く支度の段で進む。自機の状態の歩は、薄れる前の白を見る
+    scene.OnUpdate();
     EXPECT_EQ(player->States().StepsInState(), 1u);
-    EXPECT_EQ(reaction->FlashFramesRemaining(), 2);
+    EXPECT_EQ(screen->FlashFramesRemaining(), 2);
 }
 
 // 止めは本物の当たりで作る。止めの間は状態の歩が進まず、当たりの演出は薄れていく
@@ -152,15 +153,15 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
         player->Update();
     }
     ASSERT_TRUE(player->Resolver().FreezeBeganThisStep());
-    NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
-    ASSERT_NE(reaction, nullptr);
-    reaction->StartFlash(3, 1.0f);
-    reaction->OnUpdate();
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(*player);
+    ASSERT_NE(screen, nullptr);
+    screen->StartFlash(*player, 3, 1.0f);
+    screen->OnTick();
     const std::uint32_t stateStep = player->States().StepsInState();
-    player->Update();
+    scene.OnUpdate();
     ASSERT_TRUE(player->Resolver().IsHitStopping());
     EXPECT_EQ(player->States().StepsInState(), stateStep);
-    EXPECT_EQ(reaction->FlashFramesRemaining(), 2);
+    EXPECT_EQ(screen->FlashFramesRemaining(), 2);
 }
 
 TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)

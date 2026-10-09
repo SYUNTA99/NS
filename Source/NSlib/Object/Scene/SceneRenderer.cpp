@@ -109,7 +109,7 @@ namespace NS::Obj
         }
     }
 
-    void SceneRenderer::RegisterOverlay(OverlayRenderer* overlay)
+    void SceneRenderer::RegisterOverlay(IOverlay* overlay)
     {
         if (overlay == nullptr)
         {
@@ -121,14 +121,14 @@ namespace NS::Obj
         }
 
         // 挿入の時点で priority 昇順を保つ。同値は後から来た方が後ろ
-        const std::vector<OverlayRenderer*>::iterator at = std::upper_bound(
-            m_overlays.begin(), m_overlays.end(), overlay, [](const OverlayRenderer* a, const OverlayRenderer* b) {
+        const std::vector<IOverlay*>::iterator at =
+            std::upper_bound(m_overlays.begin(), m_overlays.end(), overlay, [](const IOverlay* a, const IOverlay* b) {
                 return a->OverlayOrder() < b->OverlayOrder();
             });
         m_overlays.insert(at, overlay);
     }
 
-    void SceneRenderer::UnregisterOverlay(OverlayRenderer* overlay)
+    void SceneRenderer::UnregisterOverlay(IOverlay* overlay)
     {
         std::erase(m_overlays, overlay);
     }
@@ -196,10 +196,9 @@ namespace NS::Obj
 
     void SceneRenderer::DrawOverlays(const NS::Gfx::RenderContext& context)
     {
-        // 更新・当たりと同じ IsActive で切る。自分の値だけ見ると親を寝かせても描き続ける
-        for (OverlayRenderer* overlay : m_overlays)
+        for (IOverlay* overlay : m_overlays)
         {
-            if (overlay != nullptr && overlay->IsActive())
+            if (overlay != nullptr && overlay->IsOverlayVisible())
             {
                 overlay->OnRenderOverlay(context);
             }

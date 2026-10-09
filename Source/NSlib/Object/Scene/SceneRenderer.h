@@ -31,7 +31,7 @@ namespace NS::Obj
     class SceneCamera;
     class DirectionalLight;
     class IRenderable;
-    class OverlayRenderer;
+    class IOverlay;
     class UIActor;
 
     //! @brief 指定の描画先へ指定の視点でシーンを描く単位
@@ -95,11 +95,11 @@ namespace NS::Obj
         //! IRenderable SubObject の自己解除
         void UnregisterRenderable(IRenderable* renderable);
 
-        //! OverlayRenderer の自己登録。二重登録は無視する
-        //! 並びは priority 昇順に保たれ、同値なら後から登録した方が後ろになる
-        void RegisterOverlay(OverlayRenderer* overlay);
-        //! OverlayRenderer の自己解除
-        void UnregisterOverlay(OverlayRenderer* overlay);
+        //! 重ね描きの登録。二重登録は無視する
+        //! 並びは OverlayOrder 昇順に保たれ、同値なら後から登録した方が後ろになる
+        void RegisterOverlay(IOverlay* overlay);
+        //! 重ね描きの解除
+        void UnregisterOverlay(IOverlay* overlay);
 
         //! 画面に出す物の登録。二重登録は無視する。並びは DrawOrder 昇順、同値なら後から入れた方が後ろ
         void RegisterUIActor(UIActor* actor);
@@ -172,8 +172,8 @@ namespace NS::Obj
         };
         std::vector<RenderEntry> m_renderables;
 
-        std::vector<OverlayRenderer*> m_overlays; // 重ね描きの登録簿。priority 昇順、非所有
-        std::vector<UIActor*> m_uiActors;         // 画面に出す物の登録簿。DrawOrder 昇順、非所有
+        std::vector<IOverlay*> m_overlays; // 重ね描きの登録簿。OverlayOrder 昇順、非所有
+        std::vector<UIActor*> m_uiActors;  // 画面に出す物の登録簿。DrawOrder 昇順、非所有
 
         std::vector<DirectionalLight*> m_lights; // 平行光の登録簿。登録順、非所有
 
