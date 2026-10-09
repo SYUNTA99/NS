@@ -241,15 +241,17 @@ namespace
     }
 } // namespace
 
-// 震えの欄は物ごとの定数の最後に置く。頂点のシェーダーの cbuffer と並びを揃える
-TEST(TremorShader, ConstantsSitAtTheEndOfTheFrameConstants)
+// 震えの欄は物ごとの定数の照明の後、不透明度の欄はその後に置く。Common.hlsli の cbuffer と並びを揃える
+TEST(TremorShader, ConstantsSitAfterTheLightingInTheFrameConstants)
 {
     EXPECT_EQ(sizeof(NS::Gfx::TremorCB), 64u);
     EXPECT_EQ(offsetof(NS::Gfx::FrameCB, tremor), 208u);
-    EXPECT_EQ(sizeof(NS::Gfx::FrameCB), 272u);
-    // 書いていない震えは振れ幅 0 で、どの物も震えない
+    EXPECT_EQ(offsetof(NS::Gfx::FrameCB, opacity), 272u);
+    EXPECT_EQ(sizeof(NS::Gfx::FrameCB), 288u);
+    // 書いていない震えは振れ幅 0 で、どの物も震えない。書いていない不透明度は 1
     const NS::Gfx::FrameCB constants{};
     EXPECT_FLOAT_EQ(constants.tremor.amplitude, 0.0f);
+    EXPECT_FLOAT_EQ(constants.opacity, 1.0f);
 }
 
 // 頂点のシェーダーは、衝突点からの距離の分だけ遅れて始まり、1 か所は ringFrames で弱まって止まる震えを足す

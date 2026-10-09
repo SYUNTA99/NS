@@ -61,7 +61,16 @@ namespace GL::Level
         up.Normalize();
 
         tremor.contactOffset = desc.contactOffset;
-        tremor.amplitude = std::max(ScreenPixelsToMeters(desc.amplitudePixels, pose, root, desc.referenceHeight), 0.0f);
+        // 割合は体に対する比を保つ。画素から直すと遠ざかるほど体に対して大きくなる
+        if (std::isfinite(desc.amplitudeRatio) && desc.amplitudeRatio > 0.0f)
+        {
+            tremor.amplitude = desc.amplitudeRatio * std::max(bodyLength, 0.0f) * 0.5f;
+        }
+        else
+        {
+            tremor.amplitude =
+                std::max(ScreenPixelsToMeters(desc.amplitudePixels, pose, root, desc.referenceHeight), 0.0f);
+        }
         tremor.right = right;
         tremor.up = up;
         tremor.elapsedFrames = static_cast<float>(elapsedFrames);

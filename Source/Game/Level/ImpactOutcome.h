@@ -120,4 +120,17 @@ namespace GL::Level
     //! @return ずれ。frame が 1 より前か length 以降は 0
     [[nodiscard]] float BodyShakeOffset(
         int frame, int length, float amplitude, std::uint32_t seed, float firstSign, int flipFrames) noexcept;
+
+    //! @brief 止めの間の奥揺れの、frame フレーム目の押す向きへのずれを返す
+    //! @details 幅 × 押した時の止めの残りの割合 × ばらつき × returnRatio の、押してから経ったフレーム数乗
+    //! ばらつきは seed と押しの番号で決まる 0.75〜1 の値
+    //! @param[in] frame 揺れの何フレーム目か。始まりのフレームが 1
+    //! @param[in] length 揺れのフレーム数。0 以下は揺らさない
+    //! @param[in] depth 最初の幅
+    //! @param[in] pushFrames 押し直すフレーム数。1 未満は 1
+    //! @param[in] returnRatio 押してから 1 フレームごとにずれに掛ける倍率
+    //! @param[in] seed ばらつきの種
+    //! @return ずれ。frame が 1 より前か length より後は 0
+    [[nodiscard]] float DepthShakeOffset(
+        int frame, int length, float depth, int pushFrames, float returnRatio, std::uint32_t seed) noexcept;
 } // namespace GL::Level

@@ -274,8 +274,20 @@ namespace GL::Level
         void StartBodyShake(const BodyShakeEvent& shake, int length);
         // 自機の横揺れを 1 フレーム進めて、描く時だけのずれを書く。長さの終わりで 0 を書いて止める
         void AdvanceBodyShake();
-        // 自機の横揺れを止め、描く時だけのずれを 0 へ戻す
+        // 自機の揺れを止め、描く時だけのずれを 0 へ戻す
         void StopBodyShake() noexcept;
+        // 奥揺れを始める。押す向きが水平に無ければ揺らさない
+        void StartDepthShake(const DepthShakeEvent& shake, int length);
+        // 自機の揺れを控えて始めたフレームの分を書き、相手へ other を知らせる
+        void BeginShake(const TackleShakeDesc& self, const TackleShakeDesc& other);
+        // 知らせる相手を今の場面から引く。居なければ nullptr
+        [[nodiscard]] NS::Obj::Actor* PendingTargetActor() const noexcept;
+        // 残像を始める。自機の残像を控え、相手へ知らせる。カメラが無い世界では出さない
+        void StartGhost(const GhostEvent& ghost, int length);
+        // 自機の残像を 1 フレーム進める。明けの写しが消えたら止める
+        void AdvanceGhost();
+        // 自機の残像を止め、左右の写しと明けの写しを消す
+        void StopGhost() noexcept;
         // 衝撃の震えを始める。自機の震えを控え、相手へ同じ衝突点からの震えを知らせる
         // 裏まで届くフレーム数は length の半分までに抑える
         void StartTremor(const ImpactTremorEvent& tremor, int length);
@@ -353,7 +365,6 @@ namespace GL::Level
         float m_pendingPower = 0.0f;                      // この衝突の威力。揺れの最初の振れに掛ける
         float m_pendingMassFactor = 0.0f;                 // この衝突の質量の効き。揺れの最初の振れに掛ける
         std::uint32_t m_pendingShakeSeed = 0;             // この衝突の揺れの、入れ替わりの間隔を選ぶ種
-        // 自機の横揺れ。始めた時計の値から数え、長さの終わりで止める
         struct BodyShakeRun
         {
             TackleShakeDesc desc{};
@@ -361,6 +372,15 @@ namespace GL::Level
             bool active = false;
         };
         BodyShakeRun m_bodyShake;
+        // 自機の残像。止めの後も明けの写しが残るので、時計でなく進めた回数で数える
+        struct GhostRun
+        {
+            TackleGhostDesc desc{};
+            int frame = 0;
+            bool active = false;
+            bool startedThisStep = false; // 始めた時に進めたので、この固定ステップでは StepState が進めない
+        };
+        GhostRun m_ghost;
         // 自機の衝撃の震え。始めた時計の値から数え、長さの終わりで止める
         struct TremorRun
         {

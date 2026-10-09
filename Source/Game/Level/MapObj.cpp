@@ -131,6 +131,8 @@ namespace GL::Level
         TickSubObj(m_effects);
         // 震えは止めが明けて飛んでいく間に通り抜けるので、状態に依らず根を動かした後で進める
         AdvanceTremor();
+        // 明けの写しは止めの後も残り、写し取る姿は揺れを書いた後の姿なので、状態の歩の後で進める
+        AdvanceGhost();
     }
 
     void MapObj::UpdateMotion()
@@ -183,13 +185,9 @@ namespace GL::Level
             return;
         }
         ++m_shake.frame;
-        const TackleShakeDesc& desc = m_shake.desc;
-        const float offset =
-            BodyShakeOffset(m_shake.frame, desc.length, desc.amplitude, desc.seed, desc.firstSign, desc.flipFrames);
-        (void)ModelSubObj()->SetDrawOffset(desc.axis * offset);
-        (void)ModelSubObj()->SetGhostSpread(
-            desc.axis * (BodyShakeReach(m_shake.frame, desc.length, desc.amplitude) * desc.ghostRatio));
-        if (m_shake.frame >= desc.length)
+        (void)ModelSubObj()->SetDrawOffset(m_shake.desc.OffsetAt(m_shake.frame));
+        // 奥揺れは止めの最後のフレームまで揺れるので、長さの次のフレームで 0 を書いてから止める
+        if (m_shake.frame > m_shake.desc.length)
         {
             m_shake.active = false;
         }
@@ -201,7 +199,26 @@ namespace GL::Level
         if (ModelSubObj() != nullptr)
         {
             (void)ModelSubObj()->SetDrawOffset(NS::Vector3{0.0f, 0.0f, 0.0f});
+        }
+    }
+
+    void MapObj::AdvanceGhost()
+    {
+        if (!m_ghost.active || ModelSubObj() == nullptr)
+        {
+            return;
+        }
+        ++m_ghost.frame;
+        m_ghost.active = m_ghost.desc.WriteTo(*ModelSubObj(), m_ghost.frame);
+    }
+
+    void MapObj::StopGhost()
+    {
+        m_ghost.active = false;
+        if (ModelSubObj() != nullptr)
+        {
             (void)ModelSubObj()->SetGhostSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
+            (void)ModelSubObj()->SetAfterimageOpacity(0.0f);
         }
     }
 
@@ -513,6 +530,7 @@ namespace GL::Level
             EndFreeze();
         }
         StopShake();
+        StopGhost();
         StopTremor();
         (void)m_states->Change<RestingState>();
         m_states->Reset();
@@ -571,6 +589,11 @@ namespace GL::Level
         if (const MsgTackleShake* shake = NS::Obj::MsgCast<MsgTackleShake>(msg))
         {
             m_shake = ShakeRun{.desc = shake->Desc(), .frame = 0, .active = true};
+            return true;
+        }
+        if (const MsgTackleGhost* ghost = NS::Obj::MsgCast<MsgTackleGhost>(msg))
+        {
+            m_ghost = GhostRun{.desc = ghost->Desc(), .frame = 0, .active = true};
             return true;
         }
         if (const MsgTackleTremor* tremor = NS::Obj::MsgCast<MsgTackleTremor>(msg))

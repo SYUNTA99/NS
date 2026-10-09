@@ -68,10 +68,12 @@ namespace GL::Level
         // 止めを解く。置かれていたか状態機械が終わっていれば Resting、他は Launched
         void LeaveFreeze();
         void StepFreeze();
-        // 横揺れを 1 フレーム進め、描く時だけのずれを書く。長さの終わりで 0 を書いて止める
         void AdvanceShake();
-        // 横揺れを止め、描く時だけのずれを 0 へ戻す
+        // 止めの間の揺れを止め、描く時だけのずれを 0 へ戻す
         void StopShake();
+        void AdvanceGhost();
+        // 残像を止め、左右の写しと明けの写しを消す
+        void StopGhost();
         // 衝撃の震えを 1 フレーム進めて描く所へ書く。長さの終わりで振れ幅 0 を書いて止める
         void AdvanceTremor();
         // 衝撃の震えを止め、振れ幅 0 を書く
@@ -98,7 +100,7 @@ namespace GL::Level
         NS::Obj::StateMachine<MapObj>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
         NS::Obj::SubStateMachine<MapObj> m_motion;
         TackleFreezeDesc m_freeze;
-        // 止めの間の横揺れ。知らせを受けたフレームの止めの 1 歩を 1 フレーム目に数える
+        // 止めの間の揺れ。知らせを受けたフレームの止めの 1 歩を 1 フレーム目に数える
         struct ShakeRun
         {
             TackleShakeDesc desc{};
@@ -106,6 +108,14 @@ namespace GL::Level
             bool active = false;
         };
         ShakeRun m_shake;
+        // 残像。知らせを受けたフレームの見た目の 1 歩を 1 フレーム目に数え、止めの後も状態に依らず進める
+        struct GhostRun
+        {
+            TackleGhostDesc desc{};
+            int frame = 0;
+            bool active = false;
+        };
+        GhostRun m_ghost;
         // 衝撃の震え。知らせを受けたフレームの見た目の 1 歩を 0 フレーム目に数え、状態に依らず進める
         struct TremorRun
         {

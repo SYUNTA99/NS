@@ -80,6 +80,8 @@ namespace
             {GL::Level::CameraSinkEvent{}, 1, 12, GL::Level::HitDirection::Any},
             {GL::Level::OthersStopEvent{}, 1, 12, GL::Level::HitDirection::Any},
             {GL::Level::BodyShakeEvent{}, 1, 12, GL::Level::HitDirection::Any},
+            {GL::Level::DepthShakeEvent{}, 1, 12, GL::Level::HitDirection::Any},
+            {GL::Level::GhostEvent{}, 1, 12, GL::Level::HitDirection::Any},
         };
         return timeline;
     }

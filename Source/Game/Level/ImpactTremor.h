@@ -20,10 +20,8 @@ namespace GL::Level
                                              float referenceHeight = 720.0f) noexcept;
 
     //! @brief 衝撃の震えの、elapsedFrames フレーム目に描く所へ渡す震えを作る
-    //! @details 衝突点は desc.contactOffset を根からのずれのまま渡し、描く形と一緒に動かす
-    //! 振れ幅は画素の欄を根の位置の奥行きで世界の長さへ直した物
-    //! 衝突点から bodyLength 離れた所へ desc.reachFrames で届く速さで遅らせ、1 か所は desc.length − desc.reachFrames
-    //! で弱まって止める。揺らす向きは画面の右と上
+    //! @details 振れ幅は割合が正なら 割合 × bodyLength ÷ 2、他は画素の欄を根の位置の奥行きで世界の長さへ直した物
+    //! 衝突点から bodyLength 離れた所へ届くフレーム数で遅らせ、1 か所は 長さ − 届くフレーム数 で弱まって止める
     //! @param[in] desc 震えの形
     //! @param[in] elapsedFrames 震え始めてからのゲームのフレーム数。始まりのフレームが 0
     //! @param[in] root 持ち主の根の今の位置

@@ -132,9 +132,8 @@ namespace NS::Obj
 
         //! @brief 描く時だけの残像の離れを書く
         //! @details 描く形を根から +離れ と −離れ だけずらした所へ、半透明の写しを 1 つずつ描く。描く時だけのずれは
-        //! 写しに足さないので、体が片側へ振れても写しは根を挟んで左右に残る。写しの不透明度は共有の water の
-        //! material が決める。補間しない。保存はせず、根の Transform と当たりは変えない。有限でない成分を含む離れは
-        //! 何も変えない
+        //! 写しに足さないので、体が片側へ振れても写しは根を挟んで左右に残る。不透明度は 0.45。
+        //! 補間しない。保存はせず、根の Transform と当たりは変えない。有限でない成分を含む離れは何も変えない
         //! @param[in] spread 世界の長さの離れ (m)。(0, 0, 0) で写しを描かない
         //! @return 成分が全部有限で書いた場合 true、それ以外の場合は false
         [[nodiscard]] bool SetGhostSpread(const NS::Vector3& spread) noexcept;
@@ -145,6 +144,18 @@ namespace NS::Obj
         //! @param[in] alpha 前の固定フレームから今の固定フレームまでの補間の割合 0..1
         //! @param[in] side 離れに掛ける向き。+1 か −1
         [[nodiscard]] NS::Matrix GhostWorldMatrix(float alpha, float side) const noexcept;
+
+        //! @brief 今の描く world 行列 DrawWorldMatrix(1) を、明けの写しの姿として控える
+        //! @details 控えた姿は根が動いても動かない。写しを描くのは不透明度が正の間だけ
+        void CaptureAfterimage() noexcept;
+        //! @brief 明けの写しの不透明度を書く
+        //! @param[in] opacity 0..1。0 で写しを描かない
+        //! @return 有限で書いた場合 true、それ以外の場合は false
+        [[nodiscard]] bool SetAfterimageOpacity(float opacity) noexcept;
+        //! 明けの写しの不透明度を返す。書かれていなければ 0
+        [[nodiscard]] float AfterimageOpacity() const noexcept { return m_afterimageOpacity; }
+        //! 控えた明けの写しの world 行列を返す。控えていなければ単位行列
+        [[nodiscard]] const NS::Matrix& AfterimageWorldMatrix() const noexcept { return m_afterimageWorld; }
 
         //! @brief 描く world 行列を返す
         //! @details 前と今の局所の回転を alpha で補間した行列を、根の補間 world 行列の前に掛ける
@@ -250,6 +261,9 @@ namespace NS::Obj
         NS::Gfx::TremorCB m_tremor{};
         // 描く時だけの残像の離れ。他の SubObject が書き直すので保存しない。補間しない
         NS::Vector3 m_ghostSpread{0.0f, 0.0f, 0.0f};
+        // 明けの写しの控えた姿と不透明度。他の SubObject が書き直すので保存しない
+        NS::Matrix m_afterimageWorld = NS::Matrix::Identity;
+        float m_afterimageOpacity = 0.0f;
         NS::Gfx::Material* m_ghostMaterial = nullptr; // 残像の共有 water material (非所有)
         Ghosts m_ghosts{*this};                       // 残像を描く物。Scene へは self と並べて登録する
     };

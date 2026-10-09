@@ -15,6 +15,7 @@ namespace NS::Obj
 {
     class Actor;
     class HitSensor;
+    class Model;
 } // namespace NS::Obj
 
 // コースの仕掛けと進行役がやり取りする知らせ。型ごとに「送る」と「調べる」を対で置く
@@ -149,19 +150,33 @@ namespace GL::Level
     bool SendMsgTackleFreeze(NS::Obj::Actor& receiver, const TackleFreezeDesc& desc);
     [[nodiscard]] bool IsMsgTackleFreeze(const NS::Obj::Message& msg) noexcept;
 
-    //! @brief 止めの間の横揺れ。受け手は描く形だけを axis の向きへ BodyShakeOffset のずれで揺らす
+    //! @brief 止めの間の揺れの形
+    enum class TackleShakeShape
+    {
+        Side,  //!< 左右へ振る横揺れ。BodyShakeOffset
+        Depth, //!< 押す向きへ押しては戻す奥揺れ。DepthShakeOffset
+    };
+
+    //! @brief 止めの間の揺れ。受け手は描く形だけを axis の向きへ OffsetAt のずれで揺らす
     struct TackleShakeDesc
     {
-        NS::Vector3 axis{1.0f, 0.0f, 0.0f}; //!< 揺らす世界の向き。画面の横を床に沿わせた長さ 1 の向き
+        TackleShakeShape shape = TackleShakeShape::Side;
+        NS::Vector3 axis{1.0f, 0.0f, 0.0f}; //!< 揺らす世界の長さ 1 の向き。横は画面の横、奥は押す向き
         float amplitude = 0.0f;             //!< 最初の振れ幅 (m)
         int length = 0;                     //!< 揺れのフレーム数
         std::uint32_t seed = 0;             //!< 振れ幅のばらつきの種
-        float firstSign = 1.0f;             //!< 1 フレーム目の向き
-        int flipFrames = 1;                 //!< 左右を入れ替えるフレーム数
-        float ghostRatio = 0.0f;            //!< 残像の離れの、振れ幅の包みに対する倍率。0 なら出さない
+        float firstSign = 1.0f;             //!< 横の 1 フレーム目の向き
+        int flipFrames = 1;                 //!< 横の左右を入れ替えるフレーム数
+        int pushFrames = 1;                 //!< 奥の押し直すフレーム数
+        float returnRatio = 0.0f;           //!< 奥の押してから 1 フレームごとの倍率
+
+        //! @brief frame フレーム目の、描く形の世界のずれを返す
+        //! @param[in] frame 揺れの何フレーム目か。始まりのフレームが 1
+        //! @return ずれ。frame が 1 より前、横は length 以降、奥は length より後で 0 ベクトル
+        [[nodiscard]] NS::Vector3 OffsetAt(int frame) const noexcept;
     };
 
-    //! @brief 止めの間の横揺れを知らせる。受け手は止めの間、知らせを受けたフレームを 1 フレーム目として揺れる
+    //! @brief 止めの間の揺れを知らせる。受け手は止めの間、知らせを受けたフレームを 1 フレーム目として揺れる
     class MsgTackleShake final : public NS::Obj::Message
     {
         NS_MESSAGE(MsgTackleShake)
@@ -176,11 +191,42 @@ namespace GL::Level
     bool SendMsgTackleShake(NS::Obj::Actor& receiver, const TackleShakeDesc& desc);
     [[nodiscard]] bool IsMsgTackleShake(const NS::Obj::Message& msg) noexcept;
 
+    //! @brief 残像。止めの間は根の左右に写しを置き、明けに止めの最後の姿を残して薄める
+    struct TackleGhostDesc
+    {
+        NS::Vector3 axis{1.0f, 0.0f, 0.0f}; //!< 左右の写しを離す世界の長さ 1 の向き
+        float spread = 0.0f;                //!< 左右の写しの最初の離れ (m)
+        int stopLength = 0;                 //!< 止めのフレーム数。このフレームで姿を写し取る
+        int releaseFrames = 0;              //!< 明けの写しを残すフレーム数
+        float releaseOpacity = 0.0f;        //!< 明けの写しの最初の不透明度
+
+        //! @brief frame フレーム目の左右の写しの離れ、写し取り、明けの写しの不透明度を model へ書く
+        //! @param[in] frame 残像の何フレーム目か。始まりのフレームが 1
+        //! @return まだ続く場合 true、明けの写しが消えて終わった場合は false
+        bool WriteTo(NS::Obj::Model& model, int frame) const noexcept;
+    };
+
+    //! @brief 残像を知らせる。受け手は知らせを受けたフレームを 1 フレーム目として、止めの後も明けの写しを進める
+    class MsgTackleGhost final : public NS::Obj::Message
+    {
+        NS_MESSAGE(MsgTackleGhost)
+
+    public:
+        explicit MsgTackleGhost(const TackleGhostDesc& desc) noexcept : m_desc(desc) {}
+        [[nodiscard]] const TackleGhostDesc& Desc() const noexcept { return m_desc; }
+
+    private:
+        const TackleGhostDesc& m_desc;
+    };
+    bool SendMsgTackleGhost(NS::Obj::Actor& receiver, const TackleGhostDesc& desc);
+    [[nodiscard]] bool IsMsgTackleGhost(const NS::Obj::Message& msg) noexcept;
+
     //! @brief 衝撃の震え。受け手は長さの間、描く所の震えを毎フレーム MakeTremor で書き直す
     struct TackleTremorDesc
     {
         NS::Vector3 contactOffset{};    //!< 衝突点の、受け手の根の位置からのずれ (m)。体と一緒に動く
         float amplitudePixels = 0.0f;   //!< 振れ幅。高さ referenceHeight 画素の画面の上の画素数
+        float amplitudeRatio = 0.0f;    //!< 振れ幅の体の半径に対する割合。正なら画素の欄より先に使う
         int reachFrames = 0;            //!< 衝突点から体の一番遠い所へ届くまでのフレーム数
         int length = 0;                 //!< 震えのフレーム数
         float referenceHeight = 720.0f; //!< 画素寸法を決めた基準の画面の高さ

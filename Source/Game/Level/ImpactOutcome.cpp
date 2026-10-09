@@ -138,6 +138,23 @@ namespace GL::Level
         return amplitude * left * spread * sign;
     }
 
+    float DepthShakeOffset(
+        int frame, int length, float depth, int pushFrames, float returnRatio, std::uint32_t seed) noexcept
+    {
+        if (length <= 0 || frame < 1 || frame > length)
+        {
+            return 0.0f;
+        }
+        const int push = std::max(pushFrames, 1);
+        const int index = (frame - 1) / push;
+        const int since = (frame - 1) % push;
+        const float left = 1.0f - static_cast<float>(index * push) / static_cast<float>(length);
+        // 1 つの押しの間はばらつきを変えない。変えると戻る途中で押し直したように跳ねる
+        const float spread = 0.75f + 0.25f * static_cast<float>(NS::NoiseHash(index, seed)) *
+                                         (1.0f / static_cast<float>(std::numeric_limits<std::uint32_t>::max()));
+        return depth * left * spread * std::pow(returnRatio, static_cast<float>(since));
+    }
+
     ImpactOutcome ComputeImpactOutcome(const ImpactInput& input, const ImpactTuning& tuning) noexcept
     {
         ImpactOutcome outcome{};

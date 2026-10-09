@@ -27,7 +27,7 @@ namespace NS::Gfx
     };
     static_assert(sizeof(TremorCB) == 64, "TremorCB は Common.hlsli の震えの欄と同じ 64 byte");
 
-    //! @brief 描画 1 回ごとの定数バッファ。standard.{vs,ps} と完全一致で sizeof=272、row_major LH
+    //! @brief 描画 1 回ごとの定数バッファ。standard.{vs,ps} と完全一致で sizeof=288、row_major LH
     //! @details world / viewProj のオブジェクト単位値に照明と床の波を束ねる。Material の内蔵 CB へ流す
     struct alignas(16) FrameCB
     {
@@ -44,9 +44,13 @@ namespace NS::Gfx
         float groundWaveStrength = 0.0f; //!< 床の波の強さ。0 以下なら出さない
         NS::Vector3 groundColor = NS::Gfx::RenderSettings{}.groundColor;
         float exposure = NS::Gfx::RenderSettings{}.exposure;
-        TremorCB tremor{}; //!< 物の震え。頂点のシェーダーが読む。書かなければ震えない
+        TremorCB tremor{};    //!< 物の震え。頂点のシェーダーが読む。書かなければ震えない
+        float opacity = 1.0f; //!< 半透明の材質が出す不透明度 0..1。読むのは water.ps だけ
+        float pad0 = 0.0f;
+        float pad1 = 0.0f;
+        float pad2 = 0.0f;
     };
-    static_assert(sizeof(FrameCB) == 272, "FrameCB size は standard.vs と完全一致 (272 byte)");
+    static_assert(sizeof(FrameCB) == 288, "FrameCB size は standard.vs と完全一致 (288 byte)");
     static_assert(alignof(FrameCB) == 16, "FrameCB は 16 byte alignment");
 
 } // namespace NS::Gfx

@@ -514,6 +514,7 @@ namespace GL::Level
         m_releasedThisStep = false;
         m_framesToPredictedContact = -1;
         m_rowsStartedThisStep.clear();
+        m_ghost.startedThisStep = false;
         // 白の光と振動の進みは HitReaction が持つ。止まっている間も薄れる
         if (m_body == nullptr)
         {
@@ -530,6 +531,11 @@ namespace GL::Level
             }
         }
         AdvanceBodyShake();
+        // 写し取る姿は揺れを書いた後の姿
+        if (!m_ghost.startedThisStep)
+        {
+            AdvanceGhost();
+        }
         AdvanceTremor();
         AdvanceGroundWave();
         // 止めた自機を動かし直すまでは新しい衝突を見ない。止まった自機は重なったままなので、見ると毎フレーム検知し直す
@@ -825,6 +831,16 @@ namespace GL::Level
             resolver.StartBodyShake(shake, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps));
         }
 
+        void operator()(const DepthShakeEvent& shake) const
+        {
+            resolver.StartDepthShake(shake, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps));
+        }
+
+        void operator()(const GhostEvent& ghost) const
+        {
+            resolver.StartGhost(ghost, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps));
+        }
+
         void operator()(const ImpactTremorEvent& tremor) const
         {
             resolver.StartTremor(tremor, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps));
@@ -975,8 +991,9 @@ namespace GL::Level
         m_events = std::move(events);
         m_eventRows = std::move(rows);
         m_breakStopSteps = breakStopSteps;
-        // 前の当たりの横揺れ・震え・床の波は、新しい時計で数えると長さの終わりが来ない
+        // 前の当たりの揺れ・震え・床の波は、新しい時計で数えると長さの終わりが来ない
         StopBodyShake();
+        StopGhost();
         StopTremor();
         StopGroundWave();
         StopDistortionRing();
@@ -1137,6 +1154,7 @@ namespace GL::Level
         }
         m_beforeContact = false;
         StopBodyShake();
+        StopGhost();
         StopTremor();
         StopGroundWave();
         StopDistortionRing();
@@ -1391,41 +1409,102 @@ namespace GL::Level
             }
         }
         // 種は何回目の当たりか。毎回少し違い、同じ入力の再生では同じ
-        const std::uint32_t seed = m_lastImpact.sequence;
-        m_bodyShake =
-            BodyShakeRun{.desc = TackleShakeDesc{.axis = axis,
-                                                 .amplitude = ScreenPixelsToMeters(
-                                                     shake.selfAmplitudePixels, *pose, Owner()->Root().Position()),
-                                                 .length = length,
-                                                 .seed = seed,
-                                                 .firstSign = firstSign,
-                                                 .flipFrames = shake.flipFrames,
-                                                 .ghostRatio = shake.ghostRatio},
-                         .startClock = m_clock,
-                         .active = true};
-        // 始めたフレームから描く。時計の 0 の事象は時計を進めた後に起きるので、ここで書かないと 1 フレーム遅れる
-        AdvanceBodyShake();
-
+        const TackleShakeDesc self{
+            .shape = TackleShakeShape::Side,
+            .axis = axis,
+            .amplitude = ScreenPixelsToMeters(shake.selfAmplitudePixels, *pose, Owner()->Root().Position()),
+            .length = length,
+            .seed = m_lastImpact.sequence,
+            .firstSign = firstSign,
+            .flipFrames = shake.flipFrames};
         // 相手は逆向きに揺れる。真後ろからは二人が重なるので、相手の欄を大きくすると誰が震えているかが分かる
-        NS::Obj::Scene* scene = Owner()->OwningScene();
-        if (scene == nullptr)
+        TackleShakeDesc other = self;
+        other.firstSign = -firstSign;
+        other.amplitude = 0.0f;
+        const NS::Obj::Actor* target = PendingTargetActor();
+        if (target != nullptr)
+        {
+            other.amplitude = ScreenPixelsToMeters(shake.amplitudePixels, *pose, target->Root().Position());
+        }
+        BeginShake(self, other);
+    }
+
+    void ImpactResolver::StartDepthShake(const DepthShakeEvent& shake, int length)
+    {
+        StopBodyShake();
+        NS::Vector3 dir{};
+        if (Owner() == nullptr || length <= 0 || !std::isfinite(shake.depth) || !std::isfinite(shake.selfDepth) ||
+            !std::isfinite(shake.returnRatio) || !NS::TryNormalizeHorizontal(m_pendingImpactDir, dir))
         {
             return;
         }
-        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
+        // 種は何回目の当たりか
+        const TackleShakeDesc self{.shape = TackleShakeShape::Depth,
+                                   .axis = -dir,
+                                   .amplitude = shake.selfDepth,
+                                   .length = length,
+                                   .seed = m_lastImpact.sequence,
+                                   .pushFrames = shake.pushFrames,
+                                   .returnRatio = shake.returnRatio};
+        TackleShakeDesc other = self;
+        other.axis = dir;
+        other.amplitude = shake.depth;
+        BeginShake(self, other);
+    }
+
+    void ImpactResolver::BeginShake(const TackleShakeDesc& self, const TackleShakeDesc& other)
+    {
+        m_bodyShake = BodyShakeRun{.desc = self, .startClock = m_clock, .active = true};
+        // 始めたフレームから描く。時計の 0 の事象は時計を進めた後に起きるので、ここで書かないと 1 フレーム遅れる
+        AdvanceBodyShake();
+        NS::Obj::Actor* target = PendingTargetActor();
+        if (target != nullptr)
+        {
+            (void)SendMsgTackleShake(*target, other);
+        }
+    }
+
+    NS::Obj::Actor* ImpactResolver::PendingTargetActor() const noexcept
+    {
+        if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
+        {
+            return nullptr;
+        }
+        return Owner()->OwningScene()->Objects().FindObject(m_pendingTarget);
+    }
+
+    void ImpactResolver::StartGhost(const GhostEvent& ghost, int length)
+    {
+        StopGhost();
+        if (Owner() == nullptr || length <= 0 || !std::isfinite(ghost.spreadPixels) ||
+            !std::isfinite(ghost.selfSpreadPixels) || !std::isfinite(ghost.releaseOpacity))
+        {
+            return;
+        }
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*Owner());
+        if (!pose.has_value())
+        {
+            return;
+        }
+        // 写しは画面の横を床に沿わせた向きへ離す
+        const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(*Owner());
+        const TackleGhostDesc self{.axis = NS::Vector3{forward.z, 0.0f, -forward.x},
+                                   .spread =
+                                       ScreenPixelsToMeters(ghost.selfSpreadPixels, *pose, Owner()->Root().Position()),
+                                   .stopLength = length,
+                                   .releaseFrames = ghost.releaseFrames,
+                                   .releaseOpacity = ghost.releaseOpacity};
+        m_ghost = GhostRun{.desc = self, .frame = 0, .active = true, .startedThisStep = true};
+        // 始めたフレームから描く。startedThisStep が true の間は StepState が同じ固定ステップで進めない
+        AdvanceGhost();
+        NS::Obj::Actor* target = PendingTargetActor();
         if (target == nullptr)
         {
             return;
         }
-        const TackleShakeDesc other{.axis = axis,
-                                    .amplitude =
-                                        ScreenPixelsToMeters(shake.amplitudePixels, *pose, target->Root().Position()),
-                                    .length = length,
-                                    .seed = seed,
-                                    .firstSign = -firstSign,
-                                    .flipFrames = shake.flipFrames,
-                                    .ghostRatio = shake.ghostRatio};
-        (void)SendMsgTackleShake(*target, other);
+        TackleGhostDesc other = self;
+        other.spread = ScreenPixelsToMeters(ghost.spreadPixels, *pose, target->Root().Position());
+        (void)SendMsgTackleGhost(*target, other);
     }
 
     void ImpactResolver::StartShakeLines(const ShakeLinesEvent& lines, int length)
@@ -1468,12 +1547,9 @@ namespace GL::Level
         }
         const TackleShakeDesc& desc = m_bodyShake.desc;
         const int frame = m_clock - m_bodyShake.startClock + 1;
-        const float offset =
-            BodyShakeOffset(frame, desc.length, desc.amplitude, desc.seed, desc.firstSign, desc.flipFrames);
-        (void)m_player->ModelSubObj()->SetDrawOffset(desc.axis * offset);
-        (void)m_player->ModelSubObj()->SetGhostSpread(
-            desc.axis * (BodyShakeReach(frame, desc.length, desc.amplitude) * desc.ghostRatio));
-        if (frame >= desc.length)
+        (void)m_player->ModelSubObj()->SetDrawOffset(desc.OffsetAt(frame));
+        // 奥揺れは止めの最後のフレームまで揺れるので、長さの次のフレームで 0 を書いてから止める
+        if (frame > desc.length)
         {
             m_bodyShake.active = false;
         }
@@ -1485,7 +1561,27 @@ namespace GL::Level
         if (m_player != nullptr && m_player->ModelSubObj() != nullptr)
         {
             (void)m_player->ModelSubObj()->SetDrawOffset(NS::Vector3{0.0f, 0.0f, 0.0f});
+        }
+    }
+
+    void ImpactResolver::AdvanceGhost()
+    {
+        if (!m_ghost.active || m_player->ModelSubObj() == nullptr)
+        {
+            return;
+        }
+        // 明けの写しは時計が止まった後も残るので、時計でなく進めた回数で数える
+        ++m_ghost.frame;
+        m_ghost.active = m_ghost.desc.WriteTo(*m_player->ModelSubObj(), m_ghost.frame);
+    }
+
+    void ImpactResolver::StopGhost() noexcept
+    {
+        m_ghost.active = false;
+        if (m_player != nullptr && m_player->ModelSubObj() != nullptr)
+        {
             (void)m_player->ModelSubObj()->SetGhostSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
+            (void)m_player->ModelSubObj()->SetAfterimageOpacity(0.0f);
         }
     }
 
@@ -1521,6 +1617,8 @@ namespace GL::Level
         }
         TackleTremorDesc other = m_tremor.desc;
         other.contactOffset = contact - target->Root().Position();
+        // 相手は飛んで遠ざかるので体に対する割合で震わせる
+        other.amplitudeRatio = tremor.targetAmplitudeRatio;
         (void)SendMsgTackleTremor(*target, other);
     }
 

@@ -905,6 +905,58 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
     EXPECT_GE(clock, 20);
 }
 
+// 相手の振れ幅の割合が正なら、相手の震えは 割合 × 体の半径 で、飛んで遠ざかっても体に対する比が変わらない
+// 自機は画素の欄のまま
+TEST(ImpactTimelineClock, TargetTremorRatioKeepsTheSameShareOfTheBody)
+{
+    ImpactTremorEvent tremor;
+    tremor.amplitudePixels = 3.0f;
+    tremor.targetAmplitudeRatio = 0.14f;
+    HitTimeline timeline;
+    timeline.events = {{HitStopEvent{}, 1, 6, HitDirection::Any},
+                       {TargetFreezeEvent{}, 1, 6, HitDirection::Any},
+                       {TargetLaunchEvent{}, 7, 1, HitDirection::Any},
+                       {ReboundEvent{}, 7, 1, HitDirection::Any},
+                       {tremor, 7, 10, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("TremorRatio");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    ASSERT_NE(rock, nullptr);
+
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+    int clock = -1;
+    std::vector<float> depths;
+    for (int frame = 0; frame < 120 && clock < 14; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        TickHitDirectors(*player);
+        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        {
+            continue;
+        }
+        ++clock;
+        SCOPED_TRACE(clock);
+        if (clock < 7 || clock >= 13)
+        {
+            continue;
+        }
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*player);
+        ASSERT_TRUE(pose.has_value());
+        EXPECT_NEAR(rock->ModelSubObj()->Tremor().amplitude, 0.14f * RockRadius(*rock), 1.0e-6f);
+        EXPECT_NEAR(player->ModelSubObj()->Tremor().amplitude,
+                    MetersForPixels(*pose, player->Root().Position(), 3.0f),
+                    1.0e-5f);
+        depths.push_back((rock->Root().Position() - pose->position).Length());
+    }
+    // 相手は震えの間に遠ざかっている。画素の欄なら振れ幅が伸びる場面
+    ASSERT_EQ(depths.size(), 6u);
+    EXPECT_GT(depths.back(), depths.front() + 0.5f);
+}
+
 TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
 {
     ImpactTremorEvent tremor;
@@ -1127,7 +1179,6 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
     BodyShakeEvent shake;
     shake.amplitudePixels = 10.0f;
     shake.selfAmplitudePixels = 30.0f;
-    shake.ghostRatio = 2.0f;
     HitTimeline timeline;
     timeline.events = {{HitStopEvent{}, 1, 6, HitDirection::Any},
                        {TargetFreezeEvent{}, 1, 6, HitDirection::Any},
@@ -1170,15 +1221,6 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
             EXPECT_NEAR(self.y, 0.0f, 1.0e-6f);
             EXPECT_LT(self.Dot(other), 0.0f);
             EXPECT_GT(self.Length(), other.Length());
-            // 残像は同じ画面の横の向きに、振れ幅の包みの 2 倍だけ離れる。体のずれは包みを超えない
-            for (const NS::Obj::Actor* each :
-                 {static_cast<const NS::Obj::Actor*>(player), static_cast<const NS::Obj::Actor*>(rock)})
-            {
-                const NS::Vector3 ghost = each->ModelSubObj()->GhostSpread();
-                EXPECT_NEAR(ghost.Dot(forward), 0.0f, 1.0e-5f);
-                EXPECT_NEAR(ghost.y, 0.0f, 1.0e-6f);
-                EXPECT_GE(ghost.Length(), each->ModelSubObj()->DrawOffset().Length() * 2.0f - 1.0e-5f);
-            }
             const float side = self.Dot(NS::Vector3{forward.z, 0.0f, -forward.x});
             if (clock > 1)
             {
@@ -1198,11 +1240,158 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
         {
             EXPECT_FLOAT_EQ(self.Length(), 0.0f);
             EXPECT_FLOAT_EQ(other.Length(), 0.0f);
-            EXPECT_FLOAT_EQ(player->ModelSubObj()->GhostSpread().Length(), 0.0f);
-            EXPECT_FLOAT_EQ(rock->ModelSubObj()->GhostSpread().Length(), 0.0f);
+        }
+        // 横揺れは残像を出さない。残像は残像の事象が出す
+        EXPECT_FLOAT_EQ(player->ModelSubObj()->GhostSpread().Length(), 0.0f);
+        EXPECT_FLOAT_EQ(rock->ModelSubObj()->GhostSpread().Length(), 0.0f);
+    }
+    EXPECT_GE(clock, 9);
+}
+
+// 奥揺れは止めの間、相手が受けた力の向きへ、自機をその逆へだけ押して戻す。横と縦へは動かさない
+// 行の長さ 3 は使わず、止めの最後のフレーム 6 まで揺らし、明けで 0 に戻す
+TEST(ImpactTimelineClock, DepthShakePushesEachBodyAlongTheForceItTook)
+{
+    DepthShakeEvent depth;
+    depth.depth = 1.2f;
+    depth.selfDepth = 0.8f;
+    depth.pushFrames = 2;
+    depth.returnRatio = 0.45f;
+    HitTimeline timeline;
+    timeline.events = {{HitStopEvent{}, 1, 6, HitDirection::Any},
+                       {TargetFreezeEvent{}, 1, 6, HitDirection::Any},
+                       {depth, 1, 3, HitDirection::Any},
+                       {TargetLaunchEvent{}, 7, 1, HitDirection::Any},
+                       {ReboundEvent{}, 7, 1, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("DepthShake");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    ASSERT_NE(rock, nullptr);
+
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+    int clock = -1;
+    for (int frame = 0; frame < 90 && clock < 9; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        TickHitDirectors(*player);
+        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        {
+            continue;
+        }
+        ++clock;
+        SCOPED_TRACE(clock);
+        const NS::Vector3 self = player->ModelSubObj()->DrawOffset();
+        const NS::Vector3 other = rock->ModelSubObj()->DrawOffset();
+        if (clock >= 1 && clock <= 6)
+        {
+            const std::uint32_t seed = player->Resolver().LastImpact().sequence;
+            // 真正面から当てたので、受けた力の向きは +z
+            EXPECT_NEAR(other.x, 0.0f, 1.0e-5f);
+            EXPECT_NEAR(other.y, 0.0f, 1.0e-6f);
+            EXPECT_NEAR(other.z, DepthShakeOffset(clock, 6, 1.2f, 2, 0.45f, seed), 1.0e-5f);
+            EXPECT_NEAR(self.x, 0.0f, 1.0e-5f);
+            EXPECT_NEAR(self.y, 0.0f, 1.0e-6f);
+            EXPECT_NEAR(self.z, -DepthShakeOffset(clock, 6, 0.8f, 2, 0.45f, seed), 1.0e-5f);
+            EXPECT_GT(other.z, 0.0f);
+            EXPECT_LT(self.z, 0.0f);
+        }
+        if (clock >= 7)
+        {
+            EXPECT_FLOAT_EQ(self.Length(), 0.0f);
+            EXPECT_FLOAT_EQ(other.Length(), 0.0f);
         }
     }
     EXPECT_GE(clock, 9);
+}
+
+// 残像は止めの間、自機と相手の根の左右に写しを置き、離れは画素の欄に止めの残りの割合を掛けた物。止めが明けると、
+// 止めの最後のフレームの姿を当たった所に残し、不透明度を 0.45 から 6 フレームで 0 へ薄める
+TEST(ImpactTimelineClock, GhostSpreadsSideCopiesThenLeavesTheStoppedPose)
+{
+    GhostEvent ghost;
+    ghost.spreadPixels = 112.5f;
+    ghost.selfSpreadPixels = 35.0f;
+    ghost.releaseFrames = 6;
+    ghost.releaseOpacity = 0.45f;
+    HitTimeline timeline;
+    timeline.events = {{HitStopEvent{}, 1, 6, HitDirection::Any},
+                       {TargetFreezeEvent{}, 1, 6, HitDirection::Any},
+                       {ghost, 1, 3, HitDirection::Any},
+                       {TargetLaunchEvent{}, 7, 1, HitDirection::Any},
+                       {ReboundEvent{}, 7, 1, HitDirection::Any}};
+    const ScopedHitTimelineDirectory directory("Ghost");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    ASSERT_NE(rock, nullptr);
+    const NS::Vector3 forward = player->GetCameraManager()->ForwardHorizontal();
+
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+    int clock = -1;
+    float selfSpread = 0.0f;
+    float otherSpread = 0.0f;
+    NS::Vector3 selfStopped{};
+    NS::Vector3 otherStopped{};
+    for (int frame = 0; frame < 90 && clock < 15; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        TickHitDirectors(*player);
+        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        {
+            continue;
+        }
+        ++clock;
+        SCOPED_TRACE(clock);
+        const NS::Obj::Model& self = *player->ModelSubObj();
+        const NS::Obj::Model& other = *rock->ModelSubObj();
+        if (clock == 1)
+        {
+            const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*player);
+            ASSERT_TRUE(pose.has_value());
+            selfSpread = MetersForPixels(*pose, player->Root().Position(), 35.0f);
+            otherSpread = MetersForPixels(*pose, rock->Root().Position(), 112.5f);
+        }
+        if (clock >= 1 && clock <= 5)
+        {
+            const float left = 1.0f - static_cast<float>(clock) / 6.0f;
+            for (const NS::Obj::Model* each : {&self, &other})
+            {
+                EXPECT_NEAR(each->GhostSpread().Dot(forward), 0.0f, 1.0e-5f);
+                EXPECT_NEAR(each->GhostSpread().y, 0.0f, 1.0e-6f);
+                EXPECT_FLOAT_EQ(each->AfterimageOpacity(), 0.0f);
+            }
+            EXPECT_NEAR(self.GhostSpread().Length(), selfSpread * left, 1.0e-4f);
+            EXPECT_NEAR(other.GhostSpread().Length(), otherSpread * left, 1.0e-4f);
+        }
+        if (clock == 6)
+        {
+            EXPECT_FLOAT_EQ(self.GhostSpread().Length(), 0.0f);
+            EXPECT_FLOAT_EQ(other.GhostSpread().Length(), 0.0f);
+            selfStopped = self.DrawWorldMatrix(1.0f).Translation();
+            otherStopped = other.DrawWorldMatrix(1.0f).Translation();
+        }
+        if (clock >= 7 && clock <= 12)
+        {
+            const float opacity = 0.45f * (1.0f - static_cast<float>(clock - 7) / 6.0f);
+            EXPECT_NEAR(self.AfterimageOpacity(), opacity, 1.0e-6f);
+            EXPECT_NEAR(other.AfterimageOpacity(), opacity, 1.0e-6f);
+            EXPECT_NEAR((self.AfterimageWorldMatrix().Translation() - selfStopped).Length(), 0.0f, 1.0e-5f);
+            EXPECT_NEAR((other.AfterimageWorldMatrix().Translation() - otherStopped).Length(), 0.0f, 1.0e-5f);
+        }
+        if (clock >= 13)
+        {
+            EXPECT_FLOAT_EQ(self.AfterimageOpacity(), 0.0f);
+            EXPECT_FLOAT_EQ(other.AfterimageOpacity(), 0.0f);
+        }
+    }
+    EXPECT_GE(clock, 15);
 }
 
 // 揺れの最初の振れは 強さ × 威力 × 質量の効き。横と縦の重みは向きだけを決める

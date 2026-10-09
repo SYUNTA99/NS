@@ -132,6 +132,7 @@ namespace GL::Level
         //! z と w は色の付いた部分と付いていない部分の塗りの平均の不透明度
         NS::Vector4 rearAndFill{};
         NS::Gfx::TremorCB tremor{}; //!< standard.vs.hlsl が読む震えの欄。振れ幅 0 のまま送り、矢印は震わせない
+        NS::Vector4 opacity{};      //!< FrameCB の不透明度の欄の場所。矢印のシェーダーは読まない
     };
 
     //! 矢印を描く資材。どれも非所有

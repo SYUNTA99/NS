@@ -115,7 +115,45 @@ TEST(BodyShake, GhostsSitAtPlusAndMinusTheSpreadAroundTheRoot)
     EXPECT_FLOAT_EQ(model->GhostSpread().x, 0.3f);
 }
 
-// 残像の離れは、横揺れの振れ幅の包み (振れ幅 × 残り) に倍率を掛けた物。揺れの外では 0
+// 奥揺れは押し直すたびに弱まりながら押しては戻し、止めの最後のフレームまで揺れる
+TEST(BodyShake, DepthOffsetPushesEveryPushFramesAndReturnsBetween)
+{
+    constexpr int k_Length = 12;
+    constexpr int k_Push = 4;
+    for (int frame = 1; frame <= k_Length; ++frame)
+    {
+        SCOPED_TRACE(frame);
+        const float offset = GL::Level::DepthShakeOffset(frame, k_Length, 1.2f, k_Push, 0.45f, 7u);
+        const int push = (frame - 1) / k_Push;
+        const int since = (frame - 1) % k_Push;
+        const float envelope = 1.2f * (1.0f - static_cast<float>(push * k_Push) / static_cast<float>(k_Length)) *
+                               std::pow(0.45f, static_cast<float>(since));
+        EXPECT_GE(offset, envelope * 0.75f - 1.0e-6f);
+        EXPECT_LE(offset, envelope + 1.0e-6f);
+        // 1 つの押しの間はばらつきが同じなので、戻りの残りの比で減る
+        if (since > 0)
+        {
+            EXPECT_NEAR(
+                offset, GL::Level::DepthShakeOffset(frame - 1, k_Length, 1.2f, k_Push, 0.45f, 7u) * 0.45f, 1.0e-6f);
+        }
+    }
+    EXPECT_FLOAT_EQ(GL::Level::DepthShakeOffset(0, k_Length, 1.2f, k_Push, 0.45f, 7u), 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::DepthShakeOffset(k_Length + 1, k_Length, 1.2f, k_Push, 0.45f, 7u), 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::DepthShakeOffset(3, 0, 1.2f, k_Push, 0.45f, 7u), 0.0f);
+    // 押す間が 1 未満なら毎フレーム押し直す
+    EXPECT_GT(GL::Level::DepthShakeOffset(2, k_Length, 1.2f, 0, 0.45f, 7u),
+              GL::Level::DepthShakeOffset(1, k_Length, 1.2f, 0, 0.45f, 7u) * 0.45f + 1.0e-3f);
+    // 違う種は押しのばらつきが違う
+    bool differs = false;
+    for (int frame = 1; frame <= k_Length; frame += k_Push)
+    {
+        differs = differs || GL::Level::DepthShakeOffset(frame, k_Length, 1.2f, k_Push, 0.45f, 7u) !=
+                                 GL::Level::DepthShakeOffset(frame, k_Length, 1.2f, k_Push, 0.45f, 8u);
+    }
+    EXPECT_TRUE(differs);
+}
+
+// 残像の離れは、横揺れの振れ幅 × 残りから、ばらつきと左右を除いた物。揺れの外では 0
 TEST(BodyShake, ReachIsTheEnvelopeWithoutTheSpreadOrSide)
 {
     EXPECT_FLOAT_EQ(GL::Level::BodyShakeReach(3, 12, 0.2f), 0.2f * (1.0f - 3.0f / 12.0f));

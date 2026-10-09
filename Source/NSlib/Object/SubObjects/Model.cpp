@@ -16,6 +16,8 @@ namespace
 {
     // 描く時だけの倍率の既定。この値の間は描く行列にも境界にも何も掛けない
     const NS::Vector3 k_NoDrawScale{1.0f, 1.0f, 1.0f};
+    // 止めの間の左右の写しの不透明度
+    constexpr float k_SideGhostOpacity = 0.45f;
 
     // 0 以下と非数・無限大の成分を弾き、全部が有限の正の時だけ真を返す
     [[nodiscard]] bool IsPositiveFiniteScale(const NS::Vector3& scale) noexcept
@@ -141,6 +143,21 @@ namespace NS::Obj
     NS::Matrix Model::GhostWorldMatrix(float alpha, float side) const noexcept
     {
         return DrawWorldMatrixWithOffset(alpha, m_ghostSpread * side);
+    }
+
+    void Model::CaptureAfterimage() noexcept
+    {
+        m_afterimageWorld = DrawWorldMatrix(1.0f);
+    }
+
+    bool Model::SetAfterimageOpacity(float opacity) noexcept
+    {
+        if (!std::isfinite(opacity))
+        {
+            return false;
+        }
+        m_afterimageOpacity = std::clamp(opacity, 0.0f, 1.0f);
+        return true;
     }
 
     bool Model::SetTremor(const NS::Gfx::TremorCB& tremor) noexcept
@@ -269,20 +286,29 @@ namespace NS::Obj
 
     void Model::Ghosts::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
     {
-        const NS::Vector3& spread = m_model.m_ghostSpread;
-        if (spread.x == 0.0f && spread.y == 0.0f && spread.z == 0.0f)
-        {
-            return;
-        }
         if (!m_model.IsActive() || m_model.m_mesh == nullptr || m_model.m_ghostMaterial == nullptr ||
             m_model.Owner() == nullptr)
         {
             return;
         }
-        for (const float side : {1.0f, -1.0f})
+        const NS::Vector3& spread = m_model.m_ghostSpread;
+        if (spread.x != 0.0f || spread.y != 0.0f || spread.z != 0.0f)
         {
-            out.push_back(
-                m_model.MakeDrawItem(context, m_model.m_ghostMaterial, m_model.GhostWorldMatrix(context.alpha, side)));
+            for (const float side : {1.0f, -1.0f})
+            {
+                NS::Gfx::DrawItem item = m_model.MakeDrawItem(
+                    context, m_model.m_ghostMaterial, m_model.GhostWorldMatrix(context.alpha, side));
+                item.constants.opacity = k_SideGhostOpacity;
+                out.push_back(item);
+            }
+        }
+        if (m_model.m_afterimageOpacity > 0.0f)
+        {
+            // 控えた姿のまま残す。震えを足すと止まった姿に見えない
+            NS::Gfx::DrawItem item = m_model.MakeDrawItem(context, m_model.m_ghostMaterial, m_model.m_afterimageWorld);
+            item.constants.tremor = NS::Gfx::TremorCB{};
+            item.constants.opacity = m_model.m_afterimageOpacity;
+            out.push_back(item);
         }
     }
 
@@ -295,6 +321,16 @@ namespace NS::Obj
         out.Extents.x += std::abs(spread.x) + std::abs(offset.x);
         out.Extents.y += std::abs(spread.y) + std::abs(offset.y);
         out.Extents.z += std::abs(spread.z) + std::abs(offset.z);
+        const NS::AABB* local = m_model.DrawnLocalBounds();
+        if (m_model.m_afterimageOpacity > 0.0f && local != nullptr)
+        {
+            // 明けの写しは根が飛び去った後も当たった所に残るので、控えた姿の箱も包む
+            NS::AABB afterimage{};
+            local->Transform(afterimage, m_model.m_afterimageWorld);
+            NS::AABB merged{};
+            NS::AABB::CreateMerged(merged, out, afterimage);
+            return merged;
+        }
         return out;
     }
 

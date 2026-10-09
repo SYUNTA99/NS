@@ -293,15 +293,56 @@ namespace GL::Level
         float selfAmplitudePixels = 10.0f;
         //! 左右を入れ替えるフレーム数。1 未満は 1
         int flipFrames = 1;
-        //! 残像を根から左右へ離す、振れ幅の包み (振れ幅 × 残り) に対する倍率。0 なら残像を出さない。
-        //! 真後ろからは体の横揺れが重なって見えにくいので、左右に残る半透明の写しで揺れの幅を見せる
-        float ghostRatio = 0.0f;
 
         NS_REFLECT_BEGIN(BodyShakeEvent, void)
         NS_REFLECT_FIELD(amplitudePixels, "振れ幅の画素")
         NS_REFLECT_FIELD(selfAmplitudePixels, "自機の振れ幅の画素")
         NS_REFLECT_FIELD(flipFrames, "左右を入れ替えるフレーム数")
-        NS_REFLECT_FIELD(ghostRatio, "残像の離れの倍率")
+        NS_REFLECT_END_VALUE()
+    };
+
+    //! @brief 止めの間の奥揺れ。相手を受けた力の向きへ、自機をその逆へ、押しては戻す
+    //! @details 揺れのフレーム数はこの当たりで効く止めのフレーム数で、行の長さは使わない。止めの最後のフレームまで
+    //! 揺れ、明けで 0 に戻す。ずれは DepthShakeOffset。揺らすのは描く形だけで、当たりは動かさない
+    struct DepthShakeEvent
+    {
+        std::string_view typeName = "DepthShake";
+        std::string_view label = "奥揺れ";
+        bool beforeContact = false; //!< 押す向きは当たりで決まる
+
+        float depth = 1.2f;        //!< 相手を奥へ押す最初の幅 (m)
+        float selfDepth = 0.8f;    //!< 自機を手前へ押す最初の幅 (m)
+        int pushFrames = 4;        //!< 押し直すフレーム数。1 未満は 1
+        float returnRatio = 0.45f; //!< 押してから 1 フレームごとにずれに掛ける倍率
+
+        NS_REFLECT_BEGIN(DepthShakeEvent, void)
+        NS_REFLECT_FIELD(depth, "相手の奥の幅")
+        NS_REFLECT_FIELD(selfDepth, "自機の手前の幅")
+        NS_REFLECT_FIELD(pushFrames, "押す間のフレーム数")
+        NS_REFLECT_FIELD(returnRatio, "戻りの残り")
+        NS_REFLECT_END_VALUE()
+    };
+
+    //! @brief 残像。止めの間は自機と相手の根の左右に写しを置き、明けに止めの最後の姿を残して薄める
+    //! @details 止めのフレーム数は行の長さでなく、この当たりで効く止めのフレーム数。左右の離れは
+    //! 画素の欄に止めの残りの割合を掛けた物。明けの写しは止めの後も releaseFrames だけ残る
+    struct GhostEvent
+    {
+        std::string_view typeName = "Ghost";
+        std::string_view label = "残像";
+        bool beforeContact = false; //!< 写す二人は当たりで決まる
+
+        //! 相手の左右の写しの最初の離れ。高さ 720 画素の画面の上の画素数で持ち、始まりのフレームに世界の長さへ直す
+        float spreadPixels = 112.5f;
+        float selfSpreadPixels = 35.0f; //!< 自機の左右の写しの最初の離れ。画素の数え方は spreadPixels と同じ
+        int releaseFrames = 6;          //!< 明けの写しを残すフレーム数。0 以下は残さない
+        float releaseOpacity = 0.45f;   //!< 明けの写しの最初の不透明度
+
+        NS_REFLECT_BEGIN(GhostEvent, void)
+        NS_REFLECT_FIELD(spreadPixels, "離れの画素")
+        NS_REFLECT_FIELD(selfSpreadPixels, "自機の離れの画素")
+        NS_REFLECT_FIELD(releaseFrames, "明けの残像のフレーム数")
+        NS_REFLECT_FIELD(releaseOpacity, "明けの残像の不透明度")
         NS_REFLECT_END_VALUE()
     };
 
@@ -319,11 +360,14 @@ namespace GL::Level
         float amplitudePixels = 3.0f;
         //! 衝突点から体の一番遠い所へ届くまでのフレーム数。震えのフレーム数の半分を超える分は使わない
         int reachFrames = 6;
+        //! 相手の振れ幅の、体の半径に対する割合。正なら相手だけ画素の欄の代わりに使う。0 は画素の欄のまま
+        float targetAmplitudeRatio = 0.0f;
 
         float referenceHeight = 720.0f;
         NS_REFLECT_BEGIN(ImpactTremorEvent, void)
         NS_REFLECT_FIELD(amplitudePixels, "振れ幅の画素")
         NS_REFLECT_FIELD(reachFrames, "裏まで届くフレーム数")
+        NS_REFLECT_FIELD(targetAmplitudeRatio, "相手の振れ幅の割合")
         NS_REFLECT_FIELD(referenceHeight, "画素寸法の基準の高さ")
         NS_REFLECT_END_VALUE()
     };
@@ -437,6 +481,8 @@ namespace GL::Level
                                        OthersStopEvent,
                                        CameraSinkEvent,
                                        BodyShakeEvent,
+                                       DepthShakeEvent,
+                                       GhostEvent,
                                        ImpactTremorEvent,
                                        CameraLurchEvent,
                                        CameraReboundSwayEvent,
