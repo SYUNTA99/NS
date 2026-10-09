@@ -148,7 +148,7 @@ namespace NS::Editor
                     result.detectionIndex = step;
                     result.impact = player->Resolver().LastImpact();
                     if (const GL::Level::HitTimeline* timeline =
-                            GL::Level::HitTimelineLibrary::Get().FindForTier(result.impact.tier))
+                            GL::Level::HitTimelineLibrary::Get().Find(result.impact.timeline))
                     {
                         lastEventClock = HitTimelineFrameRange(*timeline, nullptr).last;
                     }

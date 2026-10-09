@@ -516,6 +516,15 @@ namespace GL::Level
     //! @return 真ん中は "center"、外れは "miss"。番号から作った段の外の値は空
     [[nodiscard]] std::string_view HitTimelineNameOf(HitTier tier) noexcept;
 
+    //! @brief 相手の名前に使えるかを返す
+    //! @details ファイル名の一部になるので、空・. を含む・使えない文字・前後の空白・予約名を断る
+    //! @return 使える場合 true、それ以外の場合は false
+    [[nodiscard]] bool IsValidHitTimelineName(std::string_view name) noexcept;
+
+    //! @brief 相手の名前と段のタイムラインのファイル名を拡張子なしで返す
+    //! @return 名前が空なら段の名前、それ以外は <名前>.<段の名前>
+    [[nodiscard]] std::string HitTimelineFileName(std::string_view name, HitTier tier);
+
     //! @brief 当たりのタイムラインの置き場。1 つの段につき Directory()/<名前>.json を 1 つ持つ
     //! @details 初めて引いた時に Directory() の *.json を全て読む。壊れたファイルは読む時にエラーを 1 回出して持たない
     class HitTimelineLibrary
@@ -539,6 +548,25 @@ namespace GL::Level
         //! @details 無いか壊れている段、段の外の値は nullptr で、段ごとに 1 回だけエラーを出す
         [[nodiscard]] const HitTimeline* FindForTier(HitTier tier);
 
+        //! @brief 相手の名前と段から、使うタイムラインの名前を決める
+        //! @details <名前>.<段の名前> があればそれ、無ければ段の名前。名前で始まる物が 1 つも無い時は、
+        //! 名前ごとに 1 回だけエラーを出す
+        //! @param[in] name 相手の欄「当たりのタイムライン」の値。空なら段の名前
+        [[nodiscard]] std::string NameFor(std::string_view name, HitTier tier);
+
+        //! @brief NameFor の名前のタイムライン
+        //! @details 段の名前に戻った時は FindForTier と同じ
+        [[nodiscard]] const HitTimeline* FindFor(std::string_view name, HitTier tier);
+
+        //! 読んだ全部のタイムラインの事象の一番早い始まり。0 より早い物が無ければ 0
+        [[nodiscard]] int EarliestStart();
+
+        //! 読んだタイムラインの名前の並び。段の既定は入らない
+        [[nodiscard]] std::vector<std::string> TargetNames();
+
+        //! 読んだ全部のタイムラインのファイル名の並び。拡張子は含まない
+        [[nodiscard]] std::vector<std::string> FileNames();
+
         //! name のタイムラインを差し替える。ファイルへは書かない
         void Set(std::string_view name, HitTimeline timeline);
 
@@ -553,6 +581,7 @@ namespace GL::Level
         std::string m_directory;                                     // 空なら既定のディレクトリ
         std::map<std::string, HitTimeline, std::less<>> m_timelines; // 名前からタイムライン
         std::set<int> m_reportedTiers;                               // 引けないとエラーを出した段の番号
+        std::set<std::string, std::less<>> m_reportedNames;          // 1 つも無いとエラーを出した相手の名前
         bool m_loaded = false;
     };
 } // namespace GL::Level

@@ -465,6 +465,7 @@ namespace GL::Level
             const NS::Vector3 arrival{
                 ballCenter.x, ballCenter.y + GL::Player::LaunchHeightAt(path, first.launchContact), ballCenter.z};
             judgement = JudgeHitFaceOrWide(answer.face, answer.body, arrival, lineDir, playerRadius);
+            first.hitTimeline = answer.hitTimeline;
         }
         first.offset = judgement.offset01;
         first.tier = judgement.tier;
@@ -677,7 +678,8 @@ namespace GL::Level
         }
 
         const HitDirection direction = HitDirectionOf(judgement.u, judgement.v);
-        const HitTimeline* timeline = HitTimelineLibrary::Get().FindForTier(tier);
+        const std::string timelineName = HitTimelineLibrary::Get().NameFor(answer.hitTimeline, tier);
+        const HitTimeline* timeline = HitTimelineLibrary::Get().FindFor(answer.hitTimeline, tier);
         // 同じ相手と同じ段の予測で触れる前の時計を始めていれば、止めずに 0 から続ける
         // それ以外で前の当たりの事象が走っていれば、この当たりの事象を起こす前に止める。始めた返りも止め、
         // この当たりのタイムラインに置いた返りだけが出る
@@ -719,6 +721,7 @@ namespace GL::Level
         m_lastImpact.positionFactor = positionFactor;
         m_lastImpact.offset01 = offset01;
         m_lastImpact.tier = tier;
+        m_lastImpact.timeline = timelineName;
         m_lastImpact.direction = direction;
         m_lastImpact.faceU = judgement.u;
         m_lastImpact.faceV = judgement.v;
@@ -1021,19 +1024,8 @@ namespace GL::Level
 
     void ImpactResolver::UpdateBeforeContact()
     {
-        // 触れる前の事象を置いた段が無ければ、線を掃かない
-        int earliest = 0;
-        for (const HitTier tier : HitTiers())
-        {
-            if (const HitTimeline* timeline = HitTimelineLibrary::Get().FindForTier(tier))
-            {
-                for (const HitEvent& event : timeline->events)
-                {
-                    earliest = std::min(earliest, event.start);
-                }
-            }
-        }
-        if (earliest >= 0)
+        // 触れる前の事象を置いたタイムラインが無ければ、線を掃かない。相手の名前は掃くまで分からないので全部を見る
+        if (HitTimelineLibrary::Get().EarliestStart() >= 0)
         {
             DropBeforeContact();
             return;
@@ -1062,7 +1054,7 @@ namespace GL::Level
             DropBeforeContact();
         }
 
-        const HitTimeline* timeline = HitTimelineLibrary::Get().FindForTier(predicted.tier);
+        const HitTimeline* timeline = HitTimelineLibrary::Get().FindFor(predicted.hitTimeline, predicted.tier);
         if (timeline == nullptr)
         {
             return;

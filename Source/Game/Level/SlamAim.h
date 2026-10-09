@@ -5,6 +5,8 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/Reflection/ActorRef.h"
 
+#include <string>
+
 // 突進の狙いの予測の型
 // Player と ImpactResolver の両方が使うので、どちらのヘッダにも置かない
 
@@ -41,5 +43,7 @@ namespace GL::Level
         float launchContact = 0.0f;
         //! 段の予測。放つ縦の速さの道筋が launchContact で居る高さで、裁定と同じ面の判定で出す
         HitTier tier = HitTier::Wide;
+        //! 相手が答えた当たりのタイムラインの名前。応じない相手は空
+        std::string hitTimeline;
     };
 } // namespace GL::Level

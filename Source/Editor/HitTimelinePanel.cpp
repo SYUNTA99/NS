@@ -117,16 +117,21 @@ namespace NS::Editor
     HitTimelinePanel::HitTimelinePanel()
     {
         m_playback.speed = k_QuarterSpeed;
-        LoadWorking(m_tier);
+        LoadWorking(m_name, m_tier);
         // 開いた最初のフレームから、自機に一番近い相手への真ん中の当たりを見せる
         m_needsRun = true;
     }
 
-    void HitTimelinePanel::LoadWorking(GL::Level::HitTier tier)
+    void HitTimelinePanel::LoadWorking(std::string_view name, GL::Level::HitTier tier)
     {
+        m_name = std::string{name};
         m_tier = tier;
-        const GL::Level::HitTimeline* found =
-            GL::Level::HitTimelineLibrary::Get().Find(GL::Level::HitTimelineNameOf(tier));
+        GL::Level::HitTimelineLibrary& library = GL::Level::HitTimelineLibrary::Get();
+        const GL::Level::HitTimeline* found = library.Find(WorkingFileName());
+        if (found == nullptr)
+        {
+            found = library.Find(GL::Level::HitTimelineNameOf(tier));
+        }
         if (found != nullptr)
         {
             m_working = *found;
@@ -138,9 +143,14 @@ namespace NS::Editor
         m_selectedRow.reset();
     }
 
+    std::string HitTimelinePanel::WorkingFileName() const
+    {
+        return GL::Level::HitTimelineFileName(m_name, m_tier);
+    }
+
     void HitTimelinePanel::ApplyWorking()
     {
-        GL::Level::HitTimelineLibrary::Get().Set(GL::Level::HitTimelineNameOf(m_tier), m_working);
+        GL::Level::HitTimelineLibrary::Get().Set(WorkingFileName(), m_working);
         m_dirty = true;
         m_needsRun = true;
     }
@@ -169,9 +179,11 @@ namespace NS::Editor
         HitPreviewDesc desc = m_desc;
         // 手入力の開始時刻が過大でも、取り直しを無制限に回さないための上限
         constexpr int k_MaxPreviewFrames = 10000;
-        for (const GL::Level::HitTier tier : GL::Level::HitTiers())
+        // 相手の名前は下見するまで分からないので、読んだ全部のタイムラインを見る
+        GL::Level::HitTimelineLibrary& library = GL::Level::HitTimelineLibrary::Get();
+        for (const std::string& file : library.FileNames())
         {
-            if (const GL::Level::HitTimeline* timeline = GL::Level::HitTimelineLibrary::Get().FindForTier(tier))
+            if (const GL::Level::HitTimeline* timeline = library.Find(file))
             {
                 for (const GL::Level::HitEvent& event : timeline->events)
                 {
@@ -363,17 +375,19 @@ namespace NS::Editor
         if (m_result.hit)
         {
             const GL::Level::ImpactRecord& impact = m_result.impact;
-            ImGui::Text("当たった段: %s / 面の位置 (%.2f, %.2f) / 突進を出して %d フレーム目に検知 / 威力 %.2f",
-                        TierLabel(impact.tier),
-                        impact.faceU,
-                        impact.faceV,
-                        m_result.detectionIndex,
-                        impact.power);
-            if (impact.tier != m_tier)
+            ImGui::Text(
+                "当たったタイムライン: %s / 面の位置 (%.2f, %.2f) / 突進を出して %d フレーム目に検知 / 威力 %.2f",
+                impact.timeline.c_str(),
+                impact.faceU,
+                impact.faceV,
+                m_result.detectionIndex,
+                impact.power);
+            if (impact.timeline != WorkingFileName())
             {
-                ImGui::TextColored(k_OverriddenFieldColor,
-                                   "編集している段 (%s) と当たった段が違うので、帯に実際の始まりを重ねない",
-                                   TierLabel(m_tier));
+                ImGui::TextColored(
+                    k_OverriddenFieldColor,
+                    "編集しているタイムライン (%s) と当たったタイムラインが違うので、帯に実際の始まりを重ねない",
+                    WorkingFileName().c_str());
             }
         }
         else if (!m_result.error.empty())
@@ -389,6 +403,35 @@ namespace NS::Editor
     {
 #if NS_EDITOR_ENABLED
         ImGui::SeparatorText("タイムライン");
+        GL::Level::HitTimelineLibrary& library = GL::Level::HitTimelineLibrary::Get();
+        std::vector<std::string> names = library.TargetNames();
+        if (!m_name.empty() && std::find(names.begin(), names.end(), m_name) == names.end())
+        {
+            // 足したばかりで、まだファイルの無い名前
+            names.push_back(m_name);
+        }
+        std::string nameLabel = m_name;
+        if (m_name.empty())
+        {
+            nameLabel = "既定";
+        }
+        ImGui::SetNextItemWidth(140.0f);
+        if (ImGui::BeginCombo("相手の名前", nameLabel.c_str()))
+        {
+            if (ImGui::Selectable("既定", m_name.empty()))
+            {
+                LoadWorking("", m_tier);
+            }
+            for (const std::string& name : names)
+            {
+                if (ImGui::Selectable(name.c_str(), name == m_name))
+                {
+                    LoadWorking(name, m_tier);
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::SameLine();
         ImGui::SetNextItemWidth(120.0f);
         if (ImGui::BeginCombo("編集する段", TierLabel(m_tier)))
         {
@@ -396,30 +439,47 @@ namespace NS::Editor
             {
                 if (ImGui::Selectable(TierLabel(tier), tier == m_tier))
                 {
-                    LoadWorking(tier);
+                    LoadWorking(m_name, tier);
                 }
             }
             ImGui::EndCombo();
         }
+        ImGui::SetNextItemWidth(140.0f);
+        ImGui::InputTextWithHint("##new-name", "新しい相手の名前", m_newName, sizeof(m_newName));
+        ImGui::SameLine();
+        if (ImGui::Button("名前を足す"))
+        {
+            const std::string newName{m_newName};
+            if (GL::Level::IsValidHitTimelineName(newName))
+            {
+                LoadWorking(newName, m_tier);
+                m_status = std::format("{} を編集する。保存すると {}.json ができる", newName, WorkingFileName());
+                m_newName[0] = '\0';
+            }
+            else
+            {
+                m_status =
+                    std::format("使えない名前: \"{}\"。空・.・ファイル名に使えない文字・前後の空白は使えない", newName);
+            }
+        }
         ImGui::SameLine();
         if (ImGui::Button("保存"))
         {
-            // 変更の有無は両方の段で 1 つなので、開いていない段の変更も書く
-            GL::Level::HitTimelineLibrary& library = GL::Level::HitTimelineLibrary::Get();
-            library.Set(GL::Level::HitTimelineNameOf(m_tier), m_working);
+            // 変更の有無は名前の全部の段で 1 つなので、開いていない段の変更も書く
+            library.Set(WorkingFileName(), m_working);
             std::string failed;
             for (const GL::Level::HitTier tier : GL::Level::HitTiers())
             {
-                const std::string_view name = GL::Level::HitTimelineNameOf(tier);
-                if (library.Find(name) != nullptr && !library.Save(name))
+                const std::string file = GL::Level::HitTimelineFileName(m_name, tier);
+                if (library.Find(file) != nullptr && !library.Save(file))
                 {
-                    failed += std::format(" {}.json", name);
+                    failed += std::format(" {}.json", file);
                 }
             }
             if (failed.empty())
             {
                 m_dirty = false;
-                m_status = std::format("{} へ両方の段を書いた", library.Directory());
+                m_status = std::format("{} へ {} の段を書いた", library.Directory(), nameLabel);
             }
             else
             {
@@ -429,12 +489,12 @@ namespace NS::Editor
         ImGui::SameLine();
         if (ImGui::Button("元に戻す"))
         {
-            // 置き場ごと読み直すので、もう片方の段の保存していない変更も戻る
-            GL::Level::HitTimelineLibrary::Get().Reload();
-            LoadWorking(m_tier);
+            // 置き場ごと読み直すので、ほかの名前と段の保存していない変更も戻る
+            library.Reload();
+            LoadWorking(m_name, m_tier);
             m_dirty = false;
             m_needsRun = true;
-            m_status = "最後に保存した中身へ戻した (両方の段)";
+            m_status = "最後に保存した中身へ戻した (全部の名前と段)";
         }
         if (m_dirty)
         {
@@ -541,7 +601,7 @@ namespace NS::Editor
             preview = &m_result;
         }
         const TimelineFrameRange range = HitTimelineFrameRange(m_working, preview);
-        const bool overlay = m_result.hit && m_result.impact.tier == m_tier;
+        const bool overlay = m_result.hit && m_result.impact.timeline == WorkingFileName();
         std::vector<TimelineTrack> tracks;
         tracks.reserve(m_working.events.size());
         for (std::size_t row = 0; row < m_working.events.size(); ++row)

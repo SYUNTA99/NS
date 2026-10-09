@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 namespace GL::Level
 {
@@ -80,6 +81,8 @@ namespace GL::Level
         [[nodiscard]] float ContactSkin() const noexcept { return std::max(m_contactSkin, 0.0f); }
         [[nodiscard]] float StopSpeed() const noexcept { return std::max(m_stopSpeed, 0.0f); }
         [[nodiscard]] int MaxContacts() const noexcept { return std::max(m_maxContacts, 1); }
+        //! 欄「当たりのタイムライン」の値。空なら段の既定のタイムラインを使う
+        [[nodiscard]] const std::string& HitTimelineName() const noexcept { return m_hitTimeline; }
 
         NS_REFLECT_BEGIN(MapObjParams, NS::Obj::SubObject)
         NS_REFLECT_FIELD(m_mass, "質量")
@@ -109,6 +112,7 @@ namespace GL::Level
         NS_REFLECT_FIELD(m_contactSkin, "接触の余白")
         NS_REFLECT_FIELD(m_stopSpeed, "停止とみなす速さ")
         NS_REFLECT_FIELD(m_maxContacts, "接触を解く回数")
+        NS_REFLECT_FIELD(m_hitTimeline, "当たりのタイムライン")
         NS_REFLECT_END()
 
     private:
@@ -147,5 +151,6 @@ namespace GL::Level
         float m_missHopHeightRatio = 0.35f;
         float m_missHopTurnDegrees = 30.0f;
         float m_missHopKeep = 0.7f;
+        std::string m_hitTimeline;
     };
 } // namespace GL::Level

@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <optional>
 #include <string>
+#include <string_view>
 
 class LevelEditorController;
 struct ImDrawList;
@@ -61,8 +62,9 @@ namespace NS::Editor
         // 事象の種類と層の名前の入り切り。切った物は保存しない
         void RenderSwitches();
 
-        // 編集する段を tier にし、置き場から写しを取り直す
-        void LoadWorking(GL::Level::HitTier tier);
+        // 名前のファイルが無ければ段の既定の写し。それも無ければ空
+        void LoadWorking(std::string_view name, GL::Level::HitTier tier);
+        [[nodiscard]] std::string WorkingFileName() const;
         // 写しを置き場へ差し替え、下見し直しを頼む
         void ApplyWorking();
         // 写しの場面で下見する
@@ -70,10 +72,12 @@ namespace NS::Editor
 
         [[nodiscard]] TimelineFrameRange PlaybackRange() const noexcept;
 
+        std::string m_name;                                     // 編集している相手の名前。空は段の既定
         GL::Level::HitTier m_tier = GL::Level::HitTier::Center; // 編集している段
-        GL::Level::HitTimeline m_working;                       // 編集している段の写し
-        bool m_dirty = false;                                   // 保存していない変更があるか
-        std::string m_status;                                   // 保存・読み直しの結果の 1 行
+        char m_newName[64] = {};
+        GL::Level::HitTimeline m_working; // 編集している段の写し
+        bool m_dirty = false;             // 保存していない変更があるか
+        std::string m_status;             // 保存・読み直しの結果の 1 行
 
         HitPreviewDesc m_desc{};                  // 下見の条件
         HitPreviewResult m_result{};              // 直近の下見の結果

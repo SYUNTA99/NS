@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
 // 当たりのタイムラインのファイルの形・読み込みと保存の往復・壊れたファイルの扱いを縛る
 
@@ -197,6 +198,80 @@ TEST(HitTimeline, LibraryHasNoTimelineForAMissingOrBrokenFile)
     EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(GL::Level::HitTier::Wide), nullptr);
     EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(static_cast<GL::Level::HitTier>(7)), nullptr);
     EXPECT_EQ(HitTimelineLibrary::Get().Find("graze"), nullptr);
+}
+
+TEST(HitTimeline, LibraryUsesTheTargetsTimelineAndFallsBackPerTier)
+{
+    const ScopedHitTimelineDirectory directory("Named");
+    HitTimeline barrelCenter;
+    barrelCenter.events = {{GL::Level::HitStopEvent{}, 1, 3, GL::Level::HitDirection::Any}};
+    HitTimelineLibrary::Get().Set("center", HitTimeline{});
+    HitTimelineLibrary::Get().Set("miss", HitTimeline{});
+    HitTimelineLibrary::Get().Set("barrel.center", barrelCenter);
+    HitTimelineLibrary& library = HitTimelineLibrary::Get();
+
+    EXPECT_EQ(library.NameFor("barrel", GL::Level::HitTier::Center), "barrel.center");
+    EXPECT_EQ(library.NameFor("barrel", GL::Level::HitTier::Wide), "miss");
+    EXPECT_EQ(library.NameFor("", GL::Level::HitTier::Center), "center");
+    EXPECT_EQ(library.FindFor("barrel", GL::Level::HitTier::Center), library.Find("barrel.center"));
+    EXPECT_EQ(library.FindFor("barrel", GL::Level::HitTier::Wide), library.Find("miss"));
+    EXPECT_EQ(library.FindFor("", GL::Level::HitTier::Center), library.Find("center"));
+}
+
+TEST(HitTimeline, LibraryUsesTheTierTimelineForANameWithNoTimelines)
+{
+    const ScopedHitTimelineDirectory directory("UnknownName");
+    HitTimelineLibrary::Get().Set("center", HitTimeline{});
+    HitTimelineLibrary::Get().Set("miss", HitTimeline{});
+    HitTimelineLibrary& library = HitTimelineLibrary::Get();
+
+    EXPECT_EQ(library.NameFor("crate", GL::Level::HitTier::Center), "center");
+    EXPECT_EQ(library.FindFor("crate", GL::Level::HitTier::Center), library.Find("center"));
+    EXPECT_EQ(library.FindFor("crate", GL::Level::HitTier::Wide), library.Find("miss"));
+}
+
+TEST(HitTimeline, TargetNamesAreCheckedBeforeTheyBecomeFileNames)
+{
+    EXPECT_TRUE(GL::Level::IsValidHitTimelineName("barrel"));
+    EXPECT_TRUE(GL::Level::IsValidHitTimelineName("大岩_2"));
+    for (const std::string_view bad :
+         {"", "a.b", "a/b", "a\\b", "a:b", "a*b", "a?b", "a\"b", "a<b", "a>b", "a|b", "a ", " a", "a\tb", ".."})
+    {
+        EXPECT_FALSE(GL::Level::IsValidHitTimelineName(bad)) << bad;
+    }
+    EXPECT_EQ(GL::Level::HitTimelineFileName("", GL::Level::HitTier::Wide), "miss");
+    EXPECT_EQ(GL::Level::HitTimelineFileName("barrel", GL::Level::HitTier::Center), "barrel.center");
+}
+
+TEST(HitTimeline, LibraryListsTheTargetNamesItRead)
+{
+    const ScopedHitTimelineDirectory directory("TargetNames");
+    HitTimelineLibrary::Get().Set("center", HitTimeline{});
+    HitTimelineLibrary::Get().Set("barrel.center", HitTimeline{});
+    HitTimelineLibrary::Get().Set("barrel.miss", HitTimeline{});
+    HitTimelineLibrary::Get().Set("rock.miss", HitTimeline{});
+    const std::vector<std::string> expected{"barrel", "rock"};
+    EXPECT_EQ(HitTimelineLibrary::Get().TargetNames(), expected);
+
+    ASSERT_TRUE(HitTimelineLibrary::Get().Save(GL::Level::HitTimelineFileName("rock", GL::Level::HitTier::Wide)));
+    HitTimelineLibrary::Get().Reload();
+    EXPECT_EQ(HitTimelineLibrary::Get().TargetNames(), std::vector<std::string>{"rock"});
+    EXPECT_NE(HitTimelineLibrary::Get().Find("rock.miss"), nullptr);
+}
+
+TEST(HitTimeline, EarliestStartLooksAtEveryLoadedTimeline)
+{
+    const ScopedHitTimelineDirectory directory("Earliest");
+    HitTimeline late;
+    late.events = {{GL::Level::HitStopEvent{}, 1, 3, GL::Level::HitDirection::Any}};
+    HitTimelineLibrary::Get().Set("center", late);
+    HitTimelineLibrary::Get().Set("miss", late);
+    EXPECT_EQ(HitTimelineLibrary::Get().EarliestStart(), 0);
+
+    HitTimeline early;
+    early.events = {{GL::Level::ShapeEvent{}, -4, 5, GL::Level::HitDirection::Any}};
+    HitTimelineLibrary::Get().Set("barrel.center", early);
+    EXPECT_EQ(HitTimelineLibrary::Get().EarliestStart(), -4);
 }
 
 namespace

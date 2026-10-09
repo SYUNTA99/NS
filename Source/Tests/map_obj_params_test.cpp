@@ -6,6 +6,7 @@
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Windows/FileSystem.h"
 
 #include <gtest/gtest.h>
@@ -34,6 +35,42 @@ TEST(MapObjParams, SceneOverrideControlsMassAndToughness)
     ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*actor->BodySensorSubObj(), answer));
     EXPECT_FLOAT_EQ(answer.mass, 2.0f);
     EXPECT_FLOAT_EQ(answer.toughness, 3.0f);
+}
+
+TEST(MapObjParams, HitTimelineNameIsEmptyByDefaultAndReachesTheAnswer)
+{
+    NS::Obj::Scene scene;
+    nlohmann::json doc = NS::Obj::MakeSceneJson();
+    for (const std::uint32_t id : {1u, 2u})
+    {
+        nlohmann::json rock = NS::Obj::MakeObjectJson();
+        NS::Obj::SetObjectJsonClass(rock, "MapObj");
+        NS::Obj::SetObjectJsonId(rock, id);
+        NS::Obj::SetObjectPosition(rock, NS::Vector3{static_cast<float>(id) * 5.0f, 0.5f, 0.0f});
+        if (id == 2)
+        {
+            rock["subObjects"] = {{"Params", {{"当たりのタイムライン", "barrel"}}}};
+        }
+        NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+    }
+    scene.LoadJson(doc);
+    for (const std::uint32_t id : {1u, 2u})
+    {
+        SCOPED_TRACE(id);
+        std::string_view expected;
+        if (id == 2)
+        {
+            expected = "barrel";
+        }
+        NS::Obj::Actor* actor = scene.Objects().FindByObjectId(id);
+        ASSERT_NE(actor, nullptr);
+        const GL::Level::MapObjParams* params = NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
+        ASSERT_NE(params, nullptr);
+        EXPECT_EQ(params->HitTimelineName(), expected);
+        GL::Level::TackleTargetAnswer answer;
+        ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*actor->BodySensorSubObj(), answer));
+        EXPECT_EQ(answer.hitTimeline, expected);
+    }
 }
 
 TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)

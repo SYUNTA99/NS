@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
 class Player;
@@ -50,6 +51,7 @@ namespace GL::Level
         float positionFactor = 0.0f;
         float offset01 = 0.0f;          //!< 面の判定の横ずれ。相手の半幅と自機の半径の和で割った 0..1
         HitTier tier = HitTier::Center; //!< 当たりの段。相手の面の判定で決まる
+        std::string timeline;           //!< 引こうとしたタイムラインの名前。例 center・barrel.center
         //! 面の上の位置から決めた外れの向き。タイムラインの向きの付いた行を選ぶ
         HitDirection direction = HitDirection::Any;
         float faceU = 0.0f;        //!< 段を決めた面の上の左右の位置。自機から見て右が正。判定できない体は 0

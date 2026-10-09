@@ -5,6 +5,7 @@
 #include "NSlib/Windows/FileSystem.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <format>
@@ -343,6 +344,46 @@ namespace GL::Level
         return {};
     }
 
+    bool IsValidHitTimelineName(std::string_view name) noexcept
+    {
+        if (name.empty() || name.front() == ' ' || name.back() == ' ')
+        {
+            return false;
+        }
+        for (const char c : name)
+        {
+            if (static_cast<unsigned char>(c) < 0x20 ||
+                std::string_view{".<>:\"/\\|?*"}.find(c) != std::string_view::npos)
+            {
+                return false;
+            }
+        }
+        // Windows は拡張子が付いても、この名前のファイルを作れない
+        std::string upper{name};
+        std::transform(upper.begin(), upper.end(), upper.begin(), [](char c) {
+            return static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        });
+        for (const std::string_view reserved : {"CON", "PRN", "AUX", "NUL"})
+        {
+            if (upper == reserved)
+            {
+                return false;
+            }
+        }
+        const bool numberedDevice = upper.size() == 4 && (upper.starts_with("COM") || upper.starts_with("LPT")) &&
+                                    upper[3] >= '1' && upper[3] <= '9';
+        return !numberedDevice;
+    }
+
+    std::string HitTimelineFileName(std::string_view name, HitTier tier)
+    {
+        if (name.empty())
+        {
+            return std::string{HitTimelineNameOf(tier)};
+        }
+        return std::format("{}.{}", name, HitTimelineNameOf(tier));
+    }
+
     HitTimelineLibrary& HitTimelineLibrary::Get()
     {
         static HitTimelineLibrary instance;
@@ -377,6 +418,7 @@ namespace GL::Level
     {
         m_timelines.clear();
         m_reportedTiers.clear();
+        m_reportedNames.clear();
         m_loaded = true;
 
         const std::string& directory = Directory();
@@ -443,6 +485,86 @@ namespace GL::Level
                          name);
         }
         return timeline;
+    }
+
+    std::string HitTimelineLibrary::NameFor(std::string_view name, HitTier tier)
+    {
+        const std::string_view tierName = HitTimelineNameOf(tier);
+        if (name.empty())
+        {
+            return std::string{tierName};
+        }
+        EnsureLoaded();
+        const std::string prefix = std::string{name} + ".";
+        const std::string own = HitTimelineFileName(name, tier);
+        if (!tierName.empty() && m_timelines.contains(own))
+        {
+            return own;
+        }
+        // 段だけ無いのはエラーにしない。名前で始まる物が 1 つも無い時だけ出す
+        const std::map<std::string, HitTimeline, std::less<>>::const_iterator next = m_timelines.lower_bound(prefix);
+        const bool anyOwn = next != m_timelines.end() && next->first.starts_with(prefix);
+        if (!anyOwn && m_reportedNames.insert(std::string{name}).second)
+        {
+            NS_LOG_ERROR(Game, "当たりのタイムライン {}.* が 1 つも無いので、段の既定を使う", name);
+        }
+        return std::string{tierName};
+    }
+
+    const HitTimeline* HitTimelineLibrary::FindFor(std::string_view name, HitTier tier)
+    {
+        const std::string resolved = NameFor(name, tier);
+        if (resolved == HitTimelineNameOf(tier))
+        {
+            return FindForTier(tier);
+        }
+        return Find(resolved);
+    }
+
+    int HitTimelineLibrary::EarliestStart()
+    {
+        EnsureLoaded();
+        int earliest = 0;
+        for (const std::pair<const std::string, HitTimeline>& entry : m_timelines)
+        {
+            for (const HitEvent& event : entry.second.events)
+            {
+                earliest = std::min(earliest, event.start);
+            }
+        }
+        return earliest;
+    }
+
+    std::vector<std::string> HitTimelineLibrary::TargetNames()
+    {
+        std::vector<std::string> names;
+        for (const std::string& file : FileNames())
+        {
+            const std::size_t dot = file.find('.');
+            if (dot == std::string::npos)
+            {
+                continue;
+            }
+            // 並びは鍵の順なので、同じ名前は続けて来る
+            const std::string name = file.substr(0, dot);
+            if (names.empty() || names.back() != name)
+            {
+                names.push_back(name);
+            }
+        }
+        return names;
+    }
+
+    std::vector<std::string> HitTimelineLibrary::FileNames()
+    {
+        EnsureLoaded();
+        std::vector<std::string> files;
+        files.reserve(m_timelines.size());
+        for (const std::pair<const std::string, HitTimeline>& entry : m_timelines)
+        {
+            files.push_back(entry.first);
+        }
+        return files;
     }
 
     void HitTimelineLibrary::Set(std::string_view name, HitTimeline timeline)

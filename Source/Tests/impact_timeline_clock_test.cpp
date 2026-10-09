@@ -64,8 +64,8 @@ namespace
         return screen->FlashFramesRemaining();
     }
 
-    // 自機 (id 1) と、その前の置物 (id 2) の場面。mass が正なら置物の質量を書く
-    Player* PlaceClockScene(NS::Obj::Scene& scene, float rockX, float rockZ, float mass)
+    Player* PlaceClockScene(
+        NS::Obj::Scene& scene, float rockX, float rockZ, float mass, std::string_view hitTimeline = {})
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json player = NS::Obj::MakeObjectJson();
@@ -80,6 +80,10 @@ namespace
         if (mass > 0.0f)
         {
             NS::Obj::ObjectJsonSubObjs(rock)["Params"]["質量"] = mass;
+        }
+        if (!hitTimeline.empty())
+        {
+            NS::Obj::ObjectJsonSubObjs(rock)["Params"]["当たりのタイムライン"] = std::string{hitTimeline};
         }
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.LoadJson(doc);
@@ -1792,4 +1796,62 @@ TEST(ImpactTimelineClock, DirectedPadVibrationsAreBlendedByTheFacePosition)
     EXPECT_NEAR(trace[1].padLeft, expected, 0.0001f);
     EXPECT_NEAR(trace[3].padLeft, expected, 0.0001f);
     EXPECT_NEAR(record.padStart.left, expected, 0.0001f);
+}
+
+// 名前を持つ相手は、その名前のタイムラインで止めの長さが決まる
+TEST(ImpactTimelineClock, TheTargetsNamedTimelineDecidesTheHit)
+{
+    const ScopedHitTimelineDirectory directory("NamedHit");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeSplitReleaseTimeline());
+    HitTimeline barrel;
+    barrel.events = {{HitStopEvent{}, 1, 3, HitDirection::Any},
+                     {TargetLaunchEvent{}, 4, 1, HitDirection::Any},
+                     {ReboundEvent{}, 4, 1, HitDirection::Any}};
+    HitTimelineLibrary::Get().Set("barrel.center", barrel);
+    HitTimelineLibrary::Get().Set("barrel.miss", barrel);
+    for (const std::string_view name : {std::string_view{"barrel"}, std::string_view{}})
+    {
+        SCOPED_TRACE(name);
+        NS::Obj::Scene scene;
+        Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f, name);
+        ASSERT_NE(player, nullptr);
+        ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 2).empty());
+        const ImpactRecord& record = player->Resolver().LastImpact();
+        EXPECT_EQ(record.timeline, HitTimelineLibrary::Get().NameFor(name, record.tier));
+        if (name.empty())
+        {
+            EXPECT_EQ(record.hitStopSteps, 5);
+        }
+        else
+        {
+            EXPECT_EQ(record.hitStopSteps, 3);
+        }
+    }
+}
+
+// 段の既定に触れる前の事象が無くても、予測した相手のタイムラインにあれば触れる前から縮む
+TEST(ImpactTimelineClock, BeforeContactUsesThePredictedTargetsTimeline)
+{
+    const ScopedHitTimelineDirectory directory("NamedBeforeContact");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeSplitReleaseTimeline());
+    HitTimelineLibrary::Get().Set("barrel.center", MakeBeforeContactTimeline());
+    HitTimelineLibrary::Get().Set("barrel.miss", MakeBeforeContactTimeline());
+    NS::Obj::Scene scene;
+    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f, "barrel");
+    ASSERT_NE(player, nullptr);
+    MapObj* rock = RockOf(scene);
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+    bool shrankBeforeContact = false;
+    for (int frame = 0; frame < 60 && player->Resolver().LastImpact().sequence == 0; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        TickHitDirectors(*player);
+        if (player->Resolver().LastImpact().sequence == 0 && player->Resolver().IsShapeAnimating())
+        {
+            shrankBeforeContact = true;
+        }
+    }
+    ASSERT_NE(player->Resolver().LastImpact().sequence, 0u);
+    EXPECT_TRUE(shrankBeforeContact);
 }
