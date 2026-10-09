@@ -6,8 +6,8 @@
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Graphics/RenderProxyList.h"
 #include "NSlib/Graphics/RenderSettings.h"
-#include "NSlib/Object/SubObjects/VirtualCamera.h"
 #include "NSlib/Object/ITickable.h"
+#include "NSlib/Object/SubObjects/VirtualCamera.h"
 
 #include <functional>
 #include <memory>
