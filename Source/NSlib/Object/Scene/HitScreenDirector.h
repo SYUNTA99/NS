@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/ITickable.h"
+#include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Scene/SceneObjHolder.h"
 #include "NSlib/Object/SubObjects/OverlayRenderer.h"
 
@@ -26,6 +27,16 @@ namespace NS::Obj
         float lengthPixels = 80.0f; //!< 内側の線の長さの画素。外の線ほど短い
         float widthPixels = 7.0f;   //!< 線の太さの画素
         float gapPixels = 16.0f;    //!< 輪郭から内側の線までの間の画素。線どうしの間もこれから決める
+    };
+
+    //! @brief 歪みの輪 1 回。長さの欄はどれも画面の高さに対する割合
+    struct HitDistortionRingDesc
+    {
+        NS::Vector3 center{};   //!< 輪の中心。世界の点
+        Curve radius{};         //!< 輪の半径。始めたフレームを 0 にしたフレーム数で引く
+        Curve push{};           //!< 輪の真ん中で絵を押し出す長さ。0 以下のフレームは歪めない
+        float halfWidth = 0.0f; //!< 輪の半分の幅
+        int frames = 0;         //!< 出すフレーム数。0 以下なら出さない
     };
 
     //! @brief 線で挟む物が画面の上で占める横の幅と、縦の中心。座標は描画先の画素で左上が原点
@@ -56,7 +67,7 @@ namespace NS::Obj
                                                                  const HitShakeLineSpan& span,
                                                                  float pixelScale) noexcept;
 
-    //! @brief 当たりの白と震えの線を進めて画面へ重ねる、シーンに 1 つの物
+    //! @brief 当たりの白・震えの線・歪みの輪を進めて画面へ出す、シーンに 1 つの物
     //! @details 部品の HitReaction が頼む。頼んだフレームは最初の姿を出し、次の更新から進める。
     //! 描く支度の段で進むので、世界の速さに従い、自機以外の止めの間も進む
     class HitScreenDirector final : public ISceneObj, public ITickable, public IOverlay
@@ -79,6 +90,14 @@ namespace NS::Obj
         //! requester が頼んだ白と震えの線を消す。ほかの物が頼んだ物は残す
         void Stop(const Actor& requester) noexcept;
 
+        //! @brief 歪みの輪を始め、始まりの姿を場面へ書く。前の輪が残っていても始め直す
+        //! @param[in] requester 頼んだ物。StopDistortionRing で同じ物を渡すと消える
+        //! @param[in] desc 歪みの輪の設定。フレーム数が 0 以下なら出さない
+        void StartDistortionRing(const Actor& requester, const HitDistortionRingDesc& desc) noexcept;
+
+        //! requester が頼んだ歪みの輪を消す。ほかの物が頼んだ輪と、白と震えの線は残す
+        void StopDistortionRing(const Actor& requester) noexcept;
+
         //! 白の残りフレーム数。出していない場合 0
         [[nodiscard]] int FlashFramesRemaining() const noexcept { return m_flashRemaining; }
         //! 今の白の濃さ。始めの濃さ × 残りのフレーム数 ÷ 始めのフレーム数
@@ -88,7 +107,7 @@ namespace NS::Obj
         //! 最後に始めた震えの線の設定
         [[nodiscard]] const HitShakeLinesDesc& ShakeLines() const noexcept { return m_lines; }
 
-        //! 白を 1 フレーム薄め、震えの線を 1 フレーム進める
+        //! 白を 1 フレーム薄め、震えの線と歪みの輪を 1 フレーム進める
         void OnTick() override;
 
         [[nodiscard]] int OverlayOrder() const noexcept override { return 1; }
@@ -98,6 +117,8 @@ namespace NS::Obj
     private:
         // 震えの線を挟む物の中心と半径から投げて描く。どれかがカメラの後ろにある時は描かない
         void RenderShakeLines(const NS::Gfx::RenderContext& context) const noexcept;
+        void WriteDistortionRing() noexcept;
+        void EndDistortionRing() noexcept;
 
         Scene& m_scene;
         // 頼んだ物は見分けるだけで、指す先は読まない
@@ -110,5 +131,10 @@ namespace NS::Obj
         HitShakeLinesDesc m_lines{};
         int m_linesRemaining = 0;
         bool m_linesJustStarted = false;
+        const Actor* m_ringRequester = nullptr;
+        HitDistortionRingDesc m_ring{};
+        int m_ringElapsed = 0;
+        bool m_ringActive = false;
+        bool m_ringJustStarted = false;
     };
 } // namespace NS::Obj

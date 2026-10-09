@@ -165,3 +165,72 @@ TEST(HitScreenDirector, ShakeLinesSitOutsideTheOutlineAndJitterByTheFlipFrames)
         EXPECT_NE(flipped[i].x, first[i].x);
     }
 }
+
+TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceTwo(scene);
+    ASSERT_NE(player, nullptr);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(*player);
+    ASSERT_NE(screen, nullptr);
+    NS::Obj::HitDistortionRingDesc desc;
+    desc.center = NS::Vector3{1.0f, 2.0f, 3.0f};
+    desc.radius.count = 2;
+    desc.radius.keys[0] = NS::Obj::Curve::Key{0.0f, 0.0f};
+    desc.radius.keys[1] = NS::Obj::Curve::Key{4.0f, 0.4f};
+    desc.push.count = 1;
+    desc.push.keys[0] = NS::Obj::Curve::Key{0.0f, 0.03f};
+    desc.halfWidth = 0.05f;
+    desc.frames = 3;
+
+    screen->StartDistortionRing(*player, desc);
+    for (int frame = 0; frame < 3; ++frame)
+    {
+        SCOPED_TRACE(frame);
+        const NS::Gfx::DistortionRing& now = scene.DistortionRingShown();
+        EXPECT_TRUE(now.center == desc.center);
+        EXPECT_NEAR(now.radius, 0.1f * static_cast<float>(frame), 1.0e-6f);
+        EXPECT_FLOAT_EQ(now.push, 0.03f);
+        EXPECT_FLOAT_EQ(now.halfWidth, 0.05f);
+        screen->OnTick();
+        if (frame == 0)
+        {
+            // 頼んだフレームの更新では進めない
+            EXPECT_FLOAT_EQ(scene.DistortionRingShown().radius, 0.0f);
+            screen->OnTick();
+        }
+    }
+    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.0f);
+    // フレーム数 0 以下は出さない
+    desc.frames = 0;
+    screen->StartDistortionRing(*player, desc);
+    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.0f);
+}
+
+// 歪みの輪は、頼んだ物が止めた時だけ消える
+TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
+{
+    NS::Obj::Scene scene;
+    Player* player = PlaceTwo(scene);
+    ASSERT_NE(player, nullptr);
+    NS::Obj::Actor* rock = scene.Objects().FindByObjectId(2);
+    ASSERT_NE(rock, nullptr);
+    NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
+    ASSERT_NE(reaction, nullptr);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(*player);
+    ASSERT_NE(screen, nullptr);
+    NS::Obj::HitDistortionRingDesc desc;
+    desc.push.count = 1;
+    desc.push.keys[0] = NS::Obj::Curve::Key{0.0f, 0.03f};
+    desc.frames = 10;
+
+    reaction->StartDistortionRing(desc);
+    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
+    screen->StopDistortionRing(*rock);
+    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
+    // 白と線を止めても、輪は止めない
+    reaction->Stop();
+    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
+    reaction->StopDistortionRing();
+    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.0f);
+}

@@ -9,7 +9,7 @@ namespace NS::Obj
 {
     //! @brief 当たりの演出を頼む部品
     //! @details 並びと始めるフレームは当たりのタイムラインが決める。揺れと寄りは CameraManager、
-    //! 白と震えの線は HitScreenDirector、振動は PadRumbleDirector が進める
+    //! 白・震えの線・歪みの輪は HitScreenDirector、振動は PadRumbleDirector が進める
     class HitReaction : public SubObject
     {
     public:
@@ -55,6 +55,14 @@ namespace NS::Obj
         //! @brief 震えの線を頼む。前の線が残っていても始め直す
         //! @param[in] desc 震えの線の設定。半径かフレーム数が 0 以下なら出さない
         void StartShakeLines(const HitShakeLinesDesc& desc) noexcept;
+
+        //! @brief 歪みの輪を頼む。前の輪が残っていても始め直す
+        //! @param[in] desc 歪みの輪の設定。フレーム数が 0 以下なら出さない
+        void StartDistortionRing(const HitDistortionRingDesc& desc) noexcept;
+
+        //! @brief この部品が頼んだ歪みの輪を消す
+        //! @details Stop は輪を消さない
+        void StopDistortionRing() noexcept;
 
         //! @brief パッドの振動を頼む。前の振動が残っていても始め直す
         //! @param[in] pad 振動の設定

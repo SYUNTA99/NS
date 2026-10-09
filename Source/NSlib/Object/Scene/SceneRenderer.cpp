@@ -6,6 +6,7 @@
 #include "NSlib/Graphics/EffectScene.h"
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Graphics/ScreenPasses.h"
 #include "NSlib/Object/IRenderable.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
 #include "NSlib/Object/SubObjects/CameraManager.h"
@@ -45,7 +46,7 @@ namespace NS::Obj
     {
         m_renderer = renderer;
         // 描画先は前のレンダラーの device で作った物なので、差し替えたら作り直す
-        m_blooms.clear();
+        m_viewPasses.clear();
         if (renderer == nullptr)
         {
             m_effects.reset();
@@ -107,6 +108,7 @@ namespace NS::Obj
             m_renderScene.Unregister(it->handle);
             m_renderables.erase(it);
         }
+        m_bodyMask.erase(std::remove(m_bodyMask.begin(), m_bodyMask.end(), renderable), m_bodyMask.end());
     }
 
     void SceneRenderer::RegisterOverlay(IOverlay* overlay)
@@ -248,7 +250,7 @@ namespace NS::Obj
         // ビュー列が空なら現描画先へ CameraManager の視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
         if (m_sceneViews.empty())
         {
-            RenderViewWithOverlays(cameras, camera, skyboxPath, SceneView{}, alpha, BloomForView(0));
+            RenderViewWithOverlays(cameras, camera, skyboxPath, SceneView{}, alpha, PassesForView(0));
             return;
         }
 
@@ -256,17 +258,48 @@ namespace NS::Obj
         {
             const SceneView& view = m_sceneViews[i];
             m_renderer->BeginSceneView(view.target);
-            RenderViewWithOverlays(cameras, camera, skyboxPath, view, alpha, BloomForView(i));
+            RenderViewWithOverlays(cameras, camera, skyboxPath, view, alpha, PassesForView(i));
         }
     }
 
-    NS::Gfx::Bloom& SceneRenderer::BloomForView(std::size_t index)
+    const NS::Gfx::Texture* SceneRenderer::BodyMaskShown(std::size_t viewIndex) const noexcept
     {
-        while (m_blooms.size() <= index)
+        if (viewIndex >= m_viewPasses.size())
         {
-            m_blooms.push_back(std::make_unique<NS::Gfx::Bloom>(NS::Gfx::BloomDesc{}));
+            return nullptr;
         }
-        return *m_blooms[index];
+        return m_viewPasses[viewIndex].screen->BodyMask();
+    }
+
+    void SceneRenderer::DrawBodyMask(const NS::Gfx::RenderContext& context, NS::Gfx::ScreenPasses& screen)
+    {
+        if (m_bodyMask.empty() || !screen.BeginBodyMask(*m_renderer))
+        {
+            screen.DropBodyMask();
+            return;
+        }
+        m_bodyMaskItems.clear();
+        for (IRenderable* renderable : m_bodyMask)
+        {
+            renderable->Collect(context, m_bodyMaskItems);
+        }
+        for (const NS::Gfx::DrawItem& item : m_bodyMaskItems)
+        {
+            screen.DrawBodyMaskItem(*m_renderer, item);
+        }
+        screen.EndBodyMask(*m_renderer);
+    }
+
+    SceneRenderer::ViewPasses& SceneRenderer::PassesForView(std::size_t index)
+    {
+        while (m_viewPasses.size() <= index)
+        {
+            ViewPasses passes;
+            passes.bloom = std::make_unique<NS::Gfx::Bloom>(NS::Gfx::BloomDesc{});
+            passes.screen = std::make_unique<NS::Gfx::ScreenPasses>();
+            m_viewPasses.push_back(std::move(passes));
+        }
+        return m_viewPasses[index];
     }
 
     void SceneRenderer::RenderViewWithOverlays(CameraManager& cameras,
@@ -274,9 +307,9 @@ namespace NS::Obj
                                                std::string_view skyboxPath,
                                                const SceneView& view,
                                                float alpha,
-                                               NS::Gfx::Bloom& bloom)
+                                               ViewPasses& passes)
     {
-        const NS::Gfx::RenderContext ctx = RenderWorld(cameras, camera, skyboxPath, view.viewPose, alpha, bloom);
+        const NS::Gfx::RenderContext ctx = RenderWorld(cameras, camera, skyboxPath, view.viewPose, alpha, passes);
 
 #if !defined(NS_SHIPPING)
         NS::Gfx::DebugDraw::Draw(*ctx.renderer, ctx.viewProjection);
@@ -297,13 +330,13 @@ namespace NS::Obj
     namespace
     {
         // 歪みの輪を描画先の画素へ直す。中心がカメラの後ろか、描画先が無い時は歪めない
-        [[nodiscard]] NS::Gfx::BloomRing ToBloomRing(const NS::Gfx::DistortionRing& ring,
-                                                     const NS::Matrix& viewProjection,
-                                                     NS::Size2D size) noexcept
+        [[nodiscard]] NS::Gfx::ScreenRing ToScreenRing(const NS::Gfx::DistortionRing& ring,
+                                                       const NS::Matrix& viewProjection,
+                                                       NS::Size2D size) noexcept
         {
             if (!(ring.push > 0.0f) || size.width <= 0 || size.height <= 0)
             {
-                return NS::Gfx::BloomRing{};
+                return NS::Gfx::ScreenRing{};
             }
             const float width = static_cast<float>(size.width);
             const float height = static_cast<float>(size.height);
@@ -311,12 +344,12 @@ namespace NS::Obj
             float centerW = 0.0f;
             if (!NS::Gfx::TryProjectToPixels(viewProjection, ring.center, width, height, centerPixel, centerW))
             {
-                return NS::Gfx::BloomRing{};
+                return NS::Gfx::ScreenRing{};
             }
-            return NS::Gfx::BloomRing{.centerPixel = centerPixel,
-                                      .radiusPixels = ring.radius * height,
-                                      .pushPixels = ring.push * height,
-                                      .halfWidthPixels = ring.halfWidth * height};
+            return NS::Gfx::ScreenRing{.centerPixel = centerPixel,
+                                       .radiusPixels = ring.radius * height,
+                                       .pushPixels = ring.push * height,
+                                       .halfWidthPixels = ring.halfWidth * height};
         }
     } // namespace
 
@@ -325,7 +358,7 @@ namespace NS::Obj
                                                       std::string_view skyboxPath,
                                                       const std::optional<CameraPose>& viewOverride,
                                                       float alpha,
-                                                      NS::Gfx::Bloom& bloom)
+                                                      ViewPasses& passes)
     {
         // レンダラーの現在サイズから毎回取り直し、リサイズとビュー切替に追従する
         camera.SetAspectRatioFromRenderer(*m_renderer);
@@ -364,7 +397,7 @@ namespace NS::Obj
 
         // 物の絵は S 字で 1 以下に書くので、にじむのは 1 を超えて書いたエフェクトだけ
         // 深度は今の描画先の物を使うので、後で描くデバッグの線も世界の深度で隠れる
-        bloom.BeginWorld(*m_renderer, m_renderer->Settings().clearColor);
+        passes.bloom->BeginWorld(*m_renderer, m_renderer->Settings().clearColor);
         DrawOpaque(ctx);
         m_renderer->DrawSky(*viewCamera, skyboxPath);
         DrawTransparent(ctx);
@@ -373,8 +406,10 @@ namespace NS::Obj
         {
             m_effects->Draw(*viewCamera);
         }
-        // 重ね描きとデバッグの線はにじませないので、この後に今の描画先へ描く
-        bloom.EndWorld(*m_renderer, ToBloomRing(ctx.distortionRing, ctx.viewProjection, m_renderer->Size()));
+        // 重ね描きとデバッグの線はにじませも歪ませもしないので、この後に今の描画先へ描く
+        passes.bloom->EndWorld(*m_renderer);
+        DrawBodyMask(ctx, *passes.screen);
+        passes.screen->Distort(*m_renderer, ToScreenRing(ctx.distortionRing, ctx.viewProjection, m_renderer->Size()));
         return ctx;
     }
 } // namespace NS::Obj

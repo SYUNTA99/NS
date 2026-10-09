@@ -23,6 +23,8 @@ namespace NS::Gfx
     class EffectScene;
     class Renderer;
     class RenderTarget;
+    class ScreenPasses;
+    class Texture;
 } // namespace NS::Gfx
 
 namespace NS::Obj
@@ -52,6 +54,7 @@ namespace NS::Obj
     //! 描画は Scene::OnRender が Render を 1 回呼んで駆動する
     //! エフェクトの世界はエフェクトの段の登録物として、その段の Actor が出した演出を受けて進む
     //! 世界は NS::Gfx::Bloom の浮動小数の描画先へ描き、1 を超えた分をにじませて書き戻す
+    //! 書き戻した絵に NS::Gfx::ScreenPasses の段を掛けてから、重ね描きを描く
     //! 依存: NS::Gfx::Renderer, NS::Gfx::RenderProxyList, NS::Gfx::EffectScene, NS::Gfx::Bloom, CameraManager
     class SceneRenderer : public NS::NonCopyable, public ITickable
     {
@@ -89,6 +92,14 @@ namespace NS::Obj
         void SetDistortionRing(const NS::Gfx::DistortionRing& ring) noexcept { m_distortionRing = ring; }
         //! 描く時に使う歪みの輪
         [[nodiscard]] const NS::Gfx::DistortionRing& DistortionRingShown() const noexcept { return m_distortionRing; }
+
+        //! @brief 体の型に写す描く物を差し替える。空なら型を描かない
+        //! @details 登録を外した描く物は、ここからも外す
+        //! @param[in] renderables 型に写す描く物、非所有
+        void SetBodyMask(std::vector<IRenderable*> renderables) noexcept { m_bodyMask = std::move(renderables); }
+        //! @brief ビュー列の index 番目に、今のフレームで描いた体の型を返す
+        //! @return 1 色 8 ビットの型。描いていなければ null
+        [[nodiscard]] const NS::Gfx::Texture* BodyMaskShown(std::size_t viewIndex) const noexcept;
 
         //! IRenderable SubObject の自己登録。二重登録は無視する
         void RegisterRenderable(IRenderable* renderable);
@@ -140,6 +151,13 @@ namespace NS::Obj
         [[nodiscard]] NS::Gfx::RenderSettings ResolveSceneSettings(const NS::Gfx::RenderSettings& projectDefaults);
 
     private:
+        //! ビューごとの画面の段。ビューごとに描画先の大きさが違うので分けて持つ
+        struct ViewPasses
+        {
+            std::unique_ptr<NS::Gfx::Bloom> bloom;
+            std::unique_ptr<NS::Gfx::ScreenPasses> screen;
+        };
+
         //! @brief 1 ビュー分のシーンを描き、その上へデバッグ描画と OverlayRenderer の重ね描きを出す
         //! @details デバッグ描画は、この固定ステップの図形、view.drawShapes が積んだ図形の順に描く
         //! view.viewPose が空なら実カメラで描く
@@ -148,21 +166,23 @@ namespace NS::Obj
                                     std::string_view skyboxPath,
                                     const SceneView& view,
                                     float alpha,
-                                    NS::Gfx::Bloom& bloom);
+                                    ViewPasses& passes);
 
         //! 不透明→空→半透明→エフェクトの順に 1 ビュー分を bloom の描画先へ描く
-        //! にじみを足して今の描画先へ書き戻す
+        //! にじみを足して今の描画先へ書き戻し、画面の段を掛ける
         //! 組んだ RenderContext を返す。viewOverride が空なら実カメラで描く
         [[nodiscard]] NS::Gfx::RenderContext RenderWorld(CameraManager& cameras,
                                                          SceneCamera& camera,
                                                          std::string_view skyboxPath,
                                                          const std::optional<CameraPose>& viewOverride,
                                                          float alpha,
-                                                         NS::Gfx::Bloom& bloom);
+                                                         ViewPasses& passes);
 
-        //! ビュー列の index 番目に使う Bloom。無ければ作る
-        //! ビューごとに描画先の大きさが違うので分けて持つ
-        [[nodiscard]] NS::Gfx::Bloom& BloomForView(std::size_t index);
+        //! ビュー列の index 番目に使う画面の段。無ければ作る
+        [[nodiscard]] ViewPasses& PassesForView(std::size_t index);
+
+        //! 体の型に写す描く物を、世界の深度で隠して型へ描く。写す物が無ければ型を描かない
+        void DrawBodyMask(const NS::Gfx::RenderContext& context, NS::Gfx::ScreenPasses& screen);
 
         //! IRenderable と RenderProxyList 登録ハンドルの対。renderable は非所有
         struct RenderEntry
@@ -188,11 +208,13 @@ namespace NS::Obj
 
         std::unique_ptr<NS::Gfx::EffectScene> m_effects; // エフェクトの再生と描画。レンダラー未設定の間は空
 
-        // 光のにじみ。ビュー列と同じ並び。レンダラーを差し替えると畳み、描く時に作る
-        std::vector<std::unique_ptr<NS::Gfx::Bloom>> m_blooms;
+        // 光のにじみと画面の段。ビュー列と同じ並び。レンダラーを差し替えると畳み、描く時に作る
+        std::vector<ViewPasses> m_viewPasses;
 
-        std::string m_effectRoot;                   // .efkefc を探すディレクトリ。空なら既定の Assets/Effects
-        NS::Gfx::GroundWave m_groundWave{};         // 描く床の波。書くのは当たりの裁定役だけ
-        NS::Gfx::DistortionRing m_distortionRing{}; // 描く歪みの輪。書くのは当たりの裁定役だけ
+        std::string m_effectRoot;                       // .efkefc を探すディレクトリ。空なら既定の Assets/Effects
+        NS::Gfx::GroundWave m_groundWave{};             // 描く床の波。書くのは当たりの裁定役だけ
+        NS::Gfx::DistortionRing m_distortionRing{};     // 描く歪みの輪。書くのは当たりの裁定役だけ
+        std::vector<IRenderable*> m_bodyMask;           // 体の型に写す描く物、非所有
+        std::vector<NS::Gfx::DrawItem> m_bodyMaskItems; // 体の型に描く物。描くたびに組み直す
     };
 } // namespace NS::Obj

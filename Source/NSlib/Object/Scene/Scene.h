@@ -139,6 +139,19 @@ namespace NS::Obj
             return m_sceneRenderer.DistortionRingShown();
         }
 
+        //! @brief 体の型に写す描く物を差し替える。空なら型を描かない
+        //! @param[in] renderables 型に写す描く物、非所有。登録を外した物は型からも外れる
+        void SetBodyMask(std::vector<IRenderable*> renderables) noexcept
+        {
+            m_sceneRenderer.SetBodyMask(std::move(renderables));
+        }
+        //! @brief ビュー列の index 番目に、今のフレームで描いた体の型を返す
+        //! @return 1 色 8 ビットの型。描いていなければ null
+        [[nodiscard]] const NS::Gfx::Texture* BodyMaskShown(std::size_t viewIndex) const noexcept
+        {
+            return m_sceneRenderer.BodyMaskShown(viewIndex);
+        }
+
         //! エフェクトを探すディレクトリを SceneRenderer へ渡す。空のままなら ContentRoot の Assets/Effects
         //! effectRoot は EffectScene の構築時に固まる。SetRenderer より前に差す
         void SetEffectRoot(std::string root) noexcept { m_sceneRenderer.SetEffectRoot(std::move(root)); }

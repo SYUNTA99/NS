@@ -98,6 +98,51 @@ namespace NS::Obj
         }
     }
 
+    void HitScreenDirector::StartDistortionRing(const Actor& requester, const HitDistortionRingDesc& desc) noexcept
+    {
+        EndDistortionRing();
+        if (desc.frames <= 0)
+        {
+            return;
+        }
+        m_ringRequester = &requester;
+        m_ring = desc;
+        m_ringElapsed = 0;
+        m_ringActive = true;
+        m_ringJustStarted = true;
+        WriteDistortionRing();
+    }
+
+    void HitScreenDirector::StopDistortionRing(const Actor& requester) noexcept
+    {
+        if (m_ringRequester == &requester)
+        {
+            EndDistortionRing();
+        }
+    }
+
+    void HitScreenDirector::WriteDistortionRing() noexcept
+    {
+        const float frame = static_cast<float>(m_ringElapsed);
+        m_scene.SetDistortionRing(NS::Gfx::DistortionRing{.center = m_ring.center,
+                                                          .radius = m_ring.radius.Evaluate(frame),
+                                                          .push = m_ring.push.Evaluate(frame),
+                                                          .halfWidth = m_ring.halfWidth});
+    }
+
+    void HitScreenDirector::EndDistortionRing() noexcept
+    {
+        // 輪を出していない時は、場面の輪に触らない
+        if (!m_ringActive)
+        {
+            return;
+        }
+        m_ringActive = false;
+        m_ringJustStarted = false;
+        m_ringRequester = nullptr;
+        m_scene.SetDistortionRing(NS::Gfx::DistortionRing{});
+    }
+
     float HitScreenDirector::FlashAlpha() const noexcept
     {
         if (m_flashRemaining <= 0 || m_flashFrames <= 0)
@@ -125,6 +170,22 @@ namespace NS::Obj
         else if (m_linesRemaining > 0)
         {
             --m_linesRemaining;
+        }
+        if (m_ringJustStarted)
+        {
+            m_ringJustStarted = false;
+        }
+        else if (m_ringActive)
+        {
+            ++m_ringElapsed;
+            if (m_ringElapsed >= m_ring.frames)
+            {
+                EndDistortionRing();
+            }
+            else
+            {
+                WriteDistortionRing();
+            }
         }
     }
 

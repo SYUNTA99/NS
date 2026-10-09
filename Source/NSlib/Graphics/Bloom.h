@@ -31,15 +31,6 @@ namespace NS::Gfx
         int levels = 5;
     };
 
-    //! @brief 書き戻す時に掛ける歪みの輪。長さはどれも描画先の画素
-    struct BloomRing
-    {
-        NS::Vector2 centerPixel{};    //!< 中心。左上が原点
-        float radiusPixels = 0.0f;    //!< 輪の半径
-        float pushPixels = 0.0f;      //!< 輪の真ん中で絵を押し出す長さ。0 以下なら歪めない
-        float halfWidthPixels = 0.0f; //!< 輪の半分の幅。0 以下なら歪めない
-    };
-
     //! @brief 世界を 1 を超える明るさまで持てる描画先へ描かせ、超えた分を縮めてぼかして元の描画先へ足す
     //! @details BeginWorld で今の描画先を控えて浮動小数の描画先へ差し替える
     //! EndWorld でにじみを足し、控えた描画先へ書き戻す
@@ -69,8 +60,7 @@ namespace NS::Gfx
         //! @brief 浮動小数の絵ににじみを足し、1 へ丸めて BeginWorld で控えた描画先へ書く
         //! @details 描画先とビューポートを BeginWorld の前へ戻す。BeginWorld が差し替えなかった時は何もしない
         //! @param[in,out] renderer 描く命令を借りる先。BeginWorld に渡した物と同じ Renderer
-        //! @param[in] ring 書き戻す時に絵を押し出す輪。押しが 0 なら歪めない
-        void EndWorld(Renderer& renderer, const BloomRing& ring) noexcept;
+        void EndWorld(Renderer& renderer) noexcept;
 
     private:
         // 描画先の大きさと段の数に合わせて浮動小数の描画先を揃える。作れなければ false
@@ -86,7 +76,6 @@ namespace NS::Gfx
                       NS::Size2D destinationSize) noexcept;
 
         BloomDesc m_desc{};
-        BloomRing m_ring{}; // 今の書き戻しで掛ける歪みの輪。EndWorld が書き、DrawPass が定数へ写す
 
         std::unique_ptr<Shader> m_vs;              // 全画面三角形
         std::unique_ptr<Shader> m_thresholdPs;     // 閾値を超えた分だけを残す

@@ -285,11 +285,9 @@ namespace GL::Level
         void AdvanceGroundWave();
         // 床の波を消す。出していなければ何もしない
         void StopGroundWave() noexcept;
-        // 触れた点を中心にした歪みの輪を、length フレームだけ出す
+        // 触れた点を中心にした歪みの輪を、length フレームだけ HitReaction へ頼む
         void StartDistortionRing(const DistortionRingEvent& ring, int length);
-        // 歪みの輪の半径と押しを今の時計で曲線から引き、場面へ書く。長さの終わりで消す
-        void AdvanceDistortionRing();
-        // 歪みの輪を消す。出していなければ何もしない
+        // 頼んだ歪みの輪を消す。頼んでいなければ何もしない
         void StopDistortionRing() noexcept;
         // 相手と自機の今の形をまとめて挟む震えの線を、length フレームだけ出す
         void StartShakeLines(const ShakeLinesEvent& lines, int length);
@@ -384,17 +382,6 @@ namespace GL::Level
             bool active = false;
         };
         GroundWaveRun m_groundWave;
-
-        // 出している歪みの輪。場面へ書くのはこの裁定役だけ
-        struct DistortionRingRun
-        {
-            DistortionRingEvent event{};
-            NS::Vector3 center{};
-            int length = 0;
-            int startClock = 0;
-            bool active = false;
-        };
-        DistortionRingRun m_distortionRing;
 
         bool m_didRebound = false;          // 直近の更新で反発を検知したか
         bool m_didBreak = false;            // 直近の更新で貫通を検知したか

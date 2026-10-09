@@ -532,7 +532,6 @@ namespace GL::Level
         AdvanceBodyShake();
         AdvanceTremor();
         AdvanceGroundWave();
-        AdvanceDistortionRing();
         // 止めた自機を動かし直すまでは新しい衝突を見ない。止まった自機は重なったままなので、見ると毎フレーム検知し直す
         if (IsHoldingPlayer())
         {
@@ -1610,52 +1609,23 @@ namespace GL::Level
 
     void ImpactResolver::StartDistortionRing(const DistortionRingEvent& ring, int length)
     {
-        StopDistortionRing();
-        if (length <= 0)
+        if (m_hitReaction == nullptr)
         {
             return;
         }
         // 中心は自機の玉が相手の表面に触れた点
-        m_distortionRing = DistortionRingRun{.event = ring,
-                                             .center = m_lastImpact.surfacePoint,
-                                             .length = length,
-                                             .startClock = m_clock,
-                                             .active = true};
-        // 始めたフレームから描く。時計の事象は時計を進めた後に起きるので、ここで書かないと 1 フレーム遅れる
-        AdvanceDistortionRing();
-    }
-
-    void ImpactResolver::AdvanceDistortionRing()
-    {
-        if (!m_distortionRing.active || Owner() == nullptr || Owner()->OwningScene() == nullptr)
-        {
-            return;
-        }
-        const int elapsed = m_clock - m_distortionRing.startClock;
-        if (elapsed >= m_distortionRing.length)
-        {
-            StopDistortionRing();
-            return;
-        }
-        const float frame = static_cast<float>(elapsed);
-        Owner()->OwningScene()->SetDistortionRing(
-            NS::Gfx::DistortionRing{.center = m_distortionRing.center,
-                                    .radius = m_distortionRing.event.radius.Evaluate(frame),
-                                    .push = m_distortionRing.event.push.Evaluate(frame),
-                                    .halfWidth = m_distortionRing.event.halfWidth});
+        m_hitReaction->StartDistortionRing(NS::Obj::HitDistortionRingDesc{.center = m_lastImpact.surfacePoint,
+                                                                          .radius = ring.radius,
+                                                                          .push = ring.push,
+                                                                          .halfWidth = ring.halfWidth,
+                                                                          .frames = length});
     }
 
     void ImpactResolver::StopDistortionRing() noexcept
     {
-        // 書いた時だけ消す。歪みの輪を出していない裁定役が、他の物の輪を消さない
-        if (!m_distortionRing.active)
+        if (m_hitReaction != nullptr)
         {
-            return;
-        }
-        m_distortionRing.active = false;
-        if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
-        {
-            Owner()->OwningScene()->SetDistortionRing(NS::Gfx::DistortionRing{});
+            m_hitReaction->StopDistortionRing();
         }
     }
 

@@ -149,6 +149,30 @@ namespace NS::Obj
         }
     }
 
+    void HitReaction::StartDistortionRing(const HitDistortionRingDesc& desc) noexcept
+    {
+        if (Owner() == nullptr)
+        {
+            return;
+        }
+        if (HitScreenDirector* screen = FindSceneObj<HitScreenDirector>(*Owner()))
+        {
+            screen->StartDistortionRing(*Owner(), desc);
+        }
+    }
+
+    void HitReaction::StopDistortionRing() noexcept
+    {
+        if (Owner() == nullptr)
+        {
+            return;
+        }
+        if (HitScreenDirector* screen = FindSceneObj<HitScreenDirector>(*Owner()))
+        {
+            screen->StopDistortionRing(*Owner());
+        }
+    }
+
     void HitReaction::StartPadVibration(const HitPadVibration& pad)
     {
         if (Owner() == nullptr)

@@ -24,11 +24,9 @@ namespace NS::Gfx
             float destinationTexel[2];
             float threshold;
             float intensity;
-            float ringHalfWidth;
-            float padding;
-            float ring[4]; // 歪みの輪の中心の x・y、半径、押し。どれも描画先の画素
+            float padding[2];
         };
-        static_assert(sizeof(BloomCB) == 48, "BloomCB は HLSL の cbuffer b0 とバイト一致が必要");
+        static_assert(sizeof(BloomCB) == 32, "BloomCB は HLSL の cbuffer b0 とバイト一致が必要");
 
         // 1 を超える明るさを持つ。16 ビットの浮動小数は 1 付近の刻みが 1/2048 で、8 ビットの 1/255 より細かい
         constexpr DXGI_FORMAT k_HdrFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
@@ -162,14 +160,13 @@ namespace NS::Gfx
         m_active = true;
     }
 
-    void Bloom::EndWorld(Renderer& renderer, const BloomRing& ring) noexcept
+    void Bloom::EndWorld(Renderer& renderer) noexcept
     {
         if (!m_active)
         {
             return;
         }
         m_active = false;
-        m_ring = ring;
 
         CommandList& cmd = renderer.Commands();
         // 縮めと山形は画素の間を線形で拾う。端の外は端の色を伸ばし、画面の外から黒が入らないようにする
@@ -251,11 +248,6 @@ namespace NS::Gfx
         cbData.destinationTexel[1] = 1.0f / static_cast<float>(destinationSize.height);
         cbData.threshold = m_desc.threshold;
         cbData.intensity = m_desc.intensity;
-        cbData.ringHalfWidth = m_ring.halfWidthPixels;
-        cbData.ring[0] = m_ring.centerPixel.x;
-        cbData.ring[1] = m_ring.centerPixel.y;
-        cbData.ring[2] = m_ring.radiusPixels;
-        cbData.ring[3] = m_ring.pushPixels;
         cmd.UpdateSubresource(*m_cb, &cbData, sizeof(cbData));
 
         cmd.SetPipeline(pipeline);

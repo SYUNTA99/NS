@@ -20,6 +20,7 @@
 #include "NSlib/Graphics/RenderSettings.h"
 #include "NSlib/Graphics/RenderTarget.h"
 #include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Graphics/ScreenPasses.h"
 #include "NSlib/Graphics/Shader.h"
 #include "NSlib/Graphics/SkeletalMesh.h"
 #include "NSlib/Graphics/Skeleton.h"
