@@ -23,7 +23,7 @@ namespace
     };
 
     // 描画や当たりの部品と同じく、出る時に開始の処理で登録し直す部品
-    class RegisterCountPart final : public NS::Obj::Component
+    class RegisterCountSubObj final : public NS::Obj::SubObject
     {
     public:
         void OnAppear() override { OnStart(); }
@@ -36,13 +36,10 @@ namespace
     class CountedActor final : public NS::Obj::Actor
     {
     public:
-        CountedActor() { AttachFixedComponent(part); }
-        void ForEachPart(const PartVisitor& visitor) const override
-        {
-            NS::Obj::Actor::ForEachPart(visitor);
-            visitor("Counted", part);
-        }
-        mutable RegisterCountPart part;
+        RegisterCountSubObj* part = nullptr;
+
+    protected:
+        void OnInit() override { part = CreateSubObj<RegisterCountSubObj>("Counted"); }
     };
 } // namespace
 
@@ -50,8 +47,8 @@ TEST(ActorLifecycle, StartRegistersEachPartOnce)
 {
     NS::Obj::Scene scene;
     CountedActor* actor = scene.SpawnTransient<CountedActor>();
-    EXPECT_EQ(actor->part.registers, 1);
-    EXPECT_EQ(actor->part.unregisters, 0);
+    EXPECT_EQ(actor->part->registers, 1);
+    EXPECT_EQ(actor->part->unregisters, 0);
 }
 
 TEST(ActorLifecycle, ReparentingKeepsRegistrationWhileActivityIsUnchanged)
@@ -61,15 +58,15 @@ TEST(ActorLifecycle, ReparentingKeepsRegistrationWhileActivityIsUnchanged)
     CountedActor* child = scene.SpawnTransient<CountedActor>();
     child->SetParent(parent);
     child->SetParent(nullptr);
-    EXPECT_EQ(child->part.registers, 1);
-    EXPECT_EQ(child->part.unregisters, 0);
+    EXPECT_EQ(child->part->registers, 1);
+    EXPECT_EQ(child->part->unregisters, 0);
 
     // 消えている親の下へ入れると外れ、出ている所へ戻すと登録し直す
     child->SetParent(parent);
     parent->Kill();
-    EXPECT_EQ(child->part.unregisters, 1);
+    EXPECT_EQ(child->part->unregisters, 1);
     child->SetParent(nullptr);
-    EXPECT_EQ(child->part.registers, 2);
+    EXPECT_EQ(child->part->registers, 2);
 }
 
 TEST(ActorLifecycle, KillStopsUpdatesAndAppearResumesOnce)

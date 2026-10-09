@@ -10,7 +10,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Graphics/DebugDraw.h"
 #include "NSlib/Graphics/RenderContext.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/UI/ImGuiContext.h"

@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/SubObjects/Model.h"
 
 namespace NS::Obj
 {
@@ -35,6 +35,7 @@ namespace NS::Game::Level
         void SetLifeSeconds(float seconds) noexcept;
 
     protected:
+        void OnInit() override;
         //! 経過秒を進めて縮め、寿命が尽きたら退場する
         void VisualStep() override;
 

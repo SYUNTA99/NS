@@ -1,8 +1,8 @@
 #include "Game/Player.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
-#include "NSlib/Object/Components/Body.h"
-#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/SubObjects/Body.h"
+#include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
@@ -26,6 +26,7 @@ namespace
 TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
 {
     Player player;
+    player.Init();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}),
               0u);
     const int threshold = FramesFor(0.2f);
@@ -82,6 +83,7 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
 TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
 {
     Player player;
+    player.Init();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     const int threshold = FramesFor(0.2f);
     player.Update(true);
@@ -107,8 +109,9 @@ TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
 TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
 {
     Player player;
+    player.Init();
     NS::Game::Player::PlayerParams* params =
-        NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
+        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     player.Update(true);
     player.RestartFrom(NS::Obj::MakeSceneJson());
@@ -133,8 +136,9 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
 TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
 {
     Player player;
+    player.Init();
     NS::Game::Player::PlayerParams* params =
-        NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
+        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 1.0f}}), 0u);
     // 溜め量は (押したフレーム数 − しきい値) / (満タン − しきい値)
@@ -165,6 +169,7 @@ TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
 TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 {
     Player player;
+    player.Init();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     const NS::Vector3 one{1.0f, 1.0f, 1.0f};
     player.Update(true);
@@ -186,16 +191,17 @@ TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 TEST(PlayerChargeSequence, EndPlayWhileHeldRestoresStanceAndUncurls)
 {
     Player player;
+    player.Init();
     player.Appearance().OnStart();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     for (int frame = 0; frame < FramesFor(0.2f); ++frame)
     {
         player.Update(true);
     }
-    ASSERT_FLOAT_EQ(player.ModelPart()->DrawScale().y, 0.95f);
+    ASSERT_FLOAT_EQ(player.ModelSubObj()->DrawScale().y, 0.95f);
     player.OnEndPlay();
     EXPECT_FLOAT_EQ(player.StanceHeight(), 1.0f);
-    EXPECT_TRUE(player.ModelPart()->DrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
+    EXPECT_TRUE(player.ModelSubObj()->DrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
     EXPECT_FALSE(player.IsCurled());
 }
 

@@ -12,7 +12,7 @@
 namespace NS::Obj
 {
     class Actor;
-    class ObjectList;
+    class ActorList;
 } // namespace NS::Obj
 
 namespace NS::Editor
@@ -27,13 +27,13 @@ namespace NS::Editor
     [[nodiscard]] std::int16_t ObjectCellZ(const NS::Obj::Actor& object) noexcept;
 
     //! live の objects から cell 一致の最初の cell ブラシ配置物の永続 id。無ければ k_NoObjectId
-    [[nodiscard]] std::uint32_t FindObjectIdAtCell(const NS::Obj::ObjectList& objects,
+    [[nodiscard]] std::uint32_t FindObjectIdAtCell(const NS::Obj::ActorList& objects,
                                                    std::int16_t x,
                                                    std::int16_t y,
                                                    std::int16_t z) noexcept;
 
     //! live の objects に、種類を問わず cell 一致の配置物が居る場合 true、それ以外の場合は false
-    [[nodiscard]] bool HasPlacedObjectAtCell(const NS::Obj::ObjectList& objects,
+    [[nodiscard]] bool HasPlacedObjectAtCell(const NS::Obj::ActorList& objects,
                                              std::int16_t x,
                                              std::int16_t y,
                                              std::int16_t z) noexcept;
@@ -59,7 +59,7 @@ namespace NS::Editor
     //! 複数居ても先頭を正とする。2 体以上の警告は EnsurePlayerObject を通した時だけ出る
     [[nodiscard]] std::size_t FindPlayerObjectIndex(const nlohmann::json& scene) noexcept;
 
-    //! プレイヤーのひな形の JSON を作る。構成は Player のコンストラクタが決め、値はコードの既定を使う
+    //! プレイヤーのひな形の JSON を作る。構成は Player の OnInit が決め、transform 以外の欄は書かない
     [[nodiscard]] nlohmann::json MakePlayerObject(const NS::Vector3& position, const NS::Quaternion& rotation);
 
     //! @brief プレイヤーが 1 体も居なければ既定構成で足し、永続 id まで振る。2 体以上なら警告して先頭を正とする

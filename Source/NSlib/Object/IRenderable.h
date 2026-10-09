@@ -22,11 +22,11 @@ namespace NS::Obj
         Transparent
     };
 
-    //! @brief 描画機能を持つ Component が多重継承する基底インターフェース
-    //! @details Model 等の描画責務を持つ Component は IRenderable を多重継承して
+    //! @brief 描画機能を持つ SubObject が多重継承する基底インターフェース
+    //! @details Model 等の描画責務を持つ SubObject は IRenderable を多重継承して
     //! Collect(...) で自分の DrawItem を積む。OnStart で
     //! Owner()->OwningScene()->RegisterRenderable(this) を呼んで自己登録し、OnEndPlay で解除する
-    //! 描画発行は Scene が DrawItem を集めて 1 箇所で行うため、Component は GPU を触らない
+    //! 描画発行は Scene が DrawItem を集めて 1 箇所で行うため、SubObject は GPU を触らない
     class IRenderable : public NS::NonCopyable
     {
     public:

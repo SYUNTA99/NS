@@ -21,7 +21,7 @@ namespace NS::Obj
 {
     class Body;
     class Collider;
-    class ObjectList;
+    class ActorList;
     class PlayerInput;
 } // namespace NS::Obj
 
@@ -41,7 +41,7 @@ namespace NS::Game::Level
 } // namespace NS::Game::Level
 
 //! @brief プレイヤーキャラクタ。固定の部品をコードで組む
-//! @details 部品と部品名は ForEachPart が正。Body が Movement、Collider が Collider、PlayerInput が Input を名乗る。
+//! @details 部品と部品名は OnInit が正。Body の部品名は Movement、PlayerInput の部品名は Input。
 //! 値はプレイヤーの種類の既定値と個体の上書きから写す。
 //! 状態機械と命は Actor 自身が持ち、入力の窓口・移動の組み立て・崖つかまり・突進と反発とそれらの記録はここが持つ。
 //! 速度と接地の計算は身体の部品 (Body) へ、当たりの寸法と地形に当てて押し返す移動は Collider へ任せる。
@@ -53,10 +53,8 @@ namespace NS::Game::Level
 class Player : public NS::Obj::Actor, public NS::Obj::ICameraTarget
 {
 public:
-    //! 既定の構成と見た目で組む。Mesh / Material は後からファクトリが入れる
     Player() noexcept;
     ~Player() override;
-    void ForEachPart(const PartVisitor& visitor) const override;
 
     Player(const Player&) = delete;
     Player& operator=(const Player&) = delete;
@@ -65,7 +63,7 @@ public:
 
     //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
     NS_REFLECT_NONE(Player, NS::Obj::Actor)
-    //! 基底が所有する自機の状態機械。コンストラクタが組むので、作った直後から立ちの状態に居る
+    //! 基底が所有する自機の状態機械。OnInit が組むので、Init の後から立ちの状態に居る
     [[nodiscard]] NS::Obj::StateMachine<Player>& States() noexcept { return *m_states; }
     [[nodiscard]] const NS::Obj::StateMachine<Player>& States() const noexcept { return *m_states; }
     [[nodiscard]] NS::Obj::PlayerInput& Input() noexcept { return *m_input; }
@@ -387,6 +385,7 @@ public:
     [[nodiscard]] int Health() const noexcept;
 
 protected:
+    void OnInit() override;
     //! PlayerInput の体当たりの押しと狙いの観測 (ObserveCharge)、
     //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
     void ObserveStep() override;
@@ -547,18 +546,18 @@ private:
     [[nodiscard]] bool FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noexcept;
     [[nodiscard]] std::string_view ChooseClip(float lateralSpeed) const noexcept;
     [[nodiscard]] float ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept;
-    std::unique_ptr<NS::Game::Player::PlayerParams> m_params;
+    NS::Game::Player::PlayerParams* m_params = nullptr;
     std::string m_appliedClip{};
-    std::unique_ptr<NS::Obj::PlayerInput> m_input;
-    std::unique_ptr<NS::Obj::Body> m_body;
-    std::unique_ptr<NS::Obj::Collider> m_collider;
-    std::unique_ptr<NS::Game::Player::PlayerAppearance> m_appearance;
-    std::unique_ptr<NS::Game::Level::ImpactResolver> m_resolver;
-    std::unique_ptr<NS::Game::Level::TargetMarker> m_targetMarker;
-    std::unique_ptr<NS::Game::Level::SlamArrow> m_slamArrow;
-    std::unique_ptr<NS::Game::Player::ChargeEffects> m_chargeEffects;
-    std::unique_ptr<NS::Game::Player::ImpactEffects> m_impactEffects;
-    NS::Obj::StateMachine<Player>* m_states = nullptr; // 基底が所有する。コンストラクタが預けた直後から有効
+    NS::Obj::PlayerInput* m_input = nullptr;
+    NS::Obj::Body* m_body = nullptr;
+    NS::Obj::Collider* m_collider = nullptr;
+    NS::Game::Player::PlayerAppearance* m_appearance = nullptr;
+    NS::Game::Level::ImpactResolver* m_resolver = nullptr;
+    NS::Game::Level::TargetMarker* m_targetMarker = nullptr;
+    NS::Game::Level::SlamArrow* m_slamArrow = nullptr;
+    NS::Game::Player::ChargeEffects* m_chargeEffects = nullptr;
+    NS::Game::Player::ImpactEffects* m_impactEffects = nullptr;
+    NS::Obj::StateMachine<Player>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
     NS::Game::Level::Health m_health;
 
     bool m_prevJumpHeld = false; // 前のフレームの長押し状態
@@ -595,4 +594,4 @@ private:
 
 //! live の配置物からプレイヤーを引く。無ければ nullptr
 //! @param[in,out] objects 探す先の配置物。返した Player* から中身が書き換わる
-[[nodiscard]] Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept;
+[[nodiscard]] Player* FindPlayer(NS::Obj::ActorList& objects) noexcept;

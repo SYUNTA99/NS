@@ -1,6 +1,6 @@
 #include "Game/Player.h"
-#include "NSlib/Object/Components/HitReaction.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/HitReaction.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Input.h"
@@ -27,7 +27,7 @@ namespace
         {
             return nullptr;
         }
-        return player->HitReactionPart();
+        return player->HitReactionSubObj();
     }
 
     float PadLeft()

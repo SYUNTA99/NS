@@ -12,17 +12,17 @@
 
 namespace NS::Obj
 {
-    //! @brief 配置物の "parts" を返す
+    //! @brief 配置物の "subObjects" を返す
     //! @return 無いか object でなければ空の object
-    [[nodiscard]] const nlohmann::json& ObjectJsonParts(const nlohmann::json& object) noexcept;
-    //! @brief 配置物の "parts" を返す。無いか object でなければ空の object を作って入れる
-    [[nodiscard]] nlohmann::json& ObjectJsonParts(nlohmann::json& object);
+    [[nodiscard]] const nlohmann::json& ObjectJsonSubObjs(const nlohmann::json& object) noexcept;
+    //! @brief 配置物の "subObjects" を返す。無いか object でなければ空の object を作って入れる
+    [[nodiscard]] nlohmann::json& ObjectJsonSubObjs(nlohmann::json& object);
     //! @brief 部品名 partName の欄の object を返す
     //! @return 無いか object でなければ nullptr
-    [[nodiscard]] const nlohmann::json* PartFields(const nlohmann::json& object, std::string_view partName) noexcept;
+    [[nodiscard]] const nlohmann::json* SubObjFields(const nlohmann::json& object, std::string_view partName) noexcept;
     //! @brief 部品名 partName の欄の object を返す。無い部品は作らない
     //! @return 無いか object でなければ nullptr
-    [[nodiscard]] nlohmann::json* PartFields(nlohmann::json& object, std::string_view partName) noexcept;
+    [[nodiscard]] nlohmann::json* SubObjFields(nlohmann::json& object, std::string_view partName) noexcept;
     //! @brief 配置物 1 体の JSON を作る
     //! @details 配置物が自分を書き出した保存形式で、実体でない姿はどれもこの形で持つ
     //! ファイルの 1 配置物・undo の控え・プレイ開始時の凍結・パレットのひな形が同じ形を使う
@@ -64,8 +64,8 @@ namespace NS::Obj
     //! 参照の欄を辿る処理はここだけに置き、欄の形を知る場所を 1 つにする
     template <class Fn> void ForEachRefValue(nlohmann::json& object, Fn&& fn)
     {
-        nlohmann::json& components = ObjectJsonParts(object);
-        for (nlohmann::json& entry : components)
+        nlohmann::json& subObjects = ObjectJsonSubObjs(object);
+        for (nlohmann::json& entry : subObjects)
         {
             if (!entry.is_object())
             {

@@ -7,37 +7,31 @@
 
 namespace NS::Game::Level
 {
-    FollowCamera::FollowCamera() noexcept
-    {
-        AttachFixedComponent(m_vcam);
-    }
-
     NS_PLACEABLE(FollowCamera, "追従カメラ")
 
-    void FollowCamera::ForEachPart(const PartVisitor& visitor) const
+    void FollowCamera::OnInit()
     {
-        NS::Obj::Actor::ForEachPart(visitor);
-        visitor("Vcam", const_cast<NS::Obj::ThirdPersonFollow&>(m_vcam));
+        m_vcam = CreateSubObj<NS::Obj::ThirdPersonFollow>("Vcam");
     }
 
     void FollowCamera::ObserveStep()
     {
-        if (!m_vcam.IsActive())
+        if (!m_vcam->IsActive())
         {
             return;
         }
         if (NS::Obj::Scene* scene = OwningScene())
         {
-            NS::Obj::Actor* target = scene->Objects().FindObject(m_vcam.TargetRef());
+            NS::Obj::Actor* target = scene->Objects().FindObject(m_vcam->TargetRef());
             if (target != nullptr)
             {
                 if (const NS::Obj::ICameraTarget* cameraTarget = target->GetCameraTarget())
                 {
                     const NS::Obj::CameraTargetState state = cameraTarget->GetCameraTargetState();
-                    m_vcam.SetFollowMotion(state.grounded, state.velocity);
-                    m_vcam.SetTargetHeightOffset(state.heightOffset);
-                    m_vcam.SetFollowFramingHeld(state.framingHeld);
-                    if (state.hasRebound && !m_vcam.SetFollowRebound(state.rebound))
+                    m_vcam->SetFollowMotion(state.grounded, state.velocity);
+                    m_vcam->SetTargetHeightOffset(state.heightOffset);
+                    m_vcam->SetFollowFramingHeld(state.framingHeld);
+                    if (state.hasRebound && !m_vcam->SetFollowRebound(state.rebound))
                     {
                         NS_LOG_WARN(Game,
                                     "突進の向きが壊れていて、反動をカメラへ渡さなかった: ({}, {}, {})",
@@ -45,7 +39,7 @@ namespace NS::Game::Level
                                     state.rebound.slamDirection.y,
                                     state.rebound.slamDirection.z);
                     }
-                    if (state.hasCharge && !m_vcam.SetFollowCharge(state.charge))
+                    if (state.hasCharge && !m_vcam->SetFollowCharge(state.charge))
                     {
                         NS_LOG_WARN(
                             Game, "溜めの状態が壊れていて、追従カメラへ渡さなかった: 溜め量 {}", state.charge.charge01);
@@ -57,14 +51,14 @@ namespace NS::Game::Level
 
     void FollowCamera::BodyStep()
     {
-        TickPart(&m_vcam);
+        TickSubObj(m_vcam);
     }
 
     void FollowCamera::OnKill() noexcept
     {
-        m_vcam.SetTargetHeightOffset(0.0f);
-        m_vcam.ClearCharge();
-        m_vcam.ClearRebound();
+        m_vcam->SetTargetHeightOffset(0.0f);
+        m_vcam->ClearCharge();
+        m_vcam->ClearRebound();
         NS::Obj::Actor::OnKill();
     }
 } // namespace NS::Game::Level

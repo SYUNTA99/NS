@@ -9,10 +9,10 @@
 #include "NSlib/Graphics/StaticMesh.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/AssetManager.h"
-#include "NSlib/Object/Components/Body.h"
-#include "NSlib/Object/Components/Collider.h"
-#include "NSlib/Object/Components/Model.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/SubObjects/Body.h"
+#include "NSlib/Object/SubObjects/Collider.h"
+#include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Windows/Clock.h"
 #include <algorithm>
 #include <cmath>
@@ -57,9 +57,7 @@ namespace
 
 namespace NS::Game::Player
 {
-    // 配置物を組む経路では参照の引き当てが Player::ForEachPart の並びに回る。Model が自分の参照から mesh
-    // を差した後に差し直す
-    PlayerAppearance::PlayerAppearance() noexcept : NS::Obj::Component() {}
+    PlayerAppearance::PlayerAppearance() noexcept : NS::Obj::SubObject() {}
 
     void PlayerAppearance::Curl() noexcept
     {
@@ -104,7 +102,7 @@ namespace NS::Game::Player
         {
             return;
         }
-        if (NS::Obj::Model* renderer = Owner()->ModelPart())
+        if (NS::Obj::Model* renderer = Owner()->ModelSubObj())
         {
             (void)renderer->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
         }
@@ -116,7 +114,7 @@ namespace NS::Game::Player
         NS::Obj::Model* renderer = nullptr;
         if (Owner() != nullptr)
         {
-            renderer = Owner()->ModelPart();
+            renderer = Owner()->ModelSubObj();
         }
 
         if (!m_curled)
@@ -310,7 +308,7 @@ namespace NS::Game::Player
         {
             return;
         }
-        NS::Obj::Model* renderer = Owner()->ModelPart();
+        NS::Obj::Model* renderer = Owner()->ModelSubObj();
         if (renderer == nullptr)
         {
             return;
@@ -383,7 +381,7 @@ namespace NS::Game::Player
         {
             return;
         }
-        NS::Obj::Model* renderer = Owner()->ModelPart();
+        NS::Obj::Model* renderer = Owner()->ModelSubObj();
         if (renderer == nullptr)
         {
             return;

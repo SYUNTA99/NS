@@ -3,7 +3,7 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/ObjectList.h"
+#include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/ScreenFade.h"
 #include "NSlib/Windows/Clock.h"

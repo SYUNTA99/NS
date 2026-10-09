@@ -2,8 +2,8 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObj.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/HitSensor.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 
@@ -31,7 +31,7 @@ TEST(MapObjTackle, RockAnswersTheAsk)
     NS::Obj::Scene scene;
     NS::Obj::Actor* rock = PlaceRock(scene, NS::Vector3{2.0f, 1.0f, 0.0f});
     ASSERT_NE(rock, nullptr);
-    NS::Obj::HitSensor* body = rock->BodySensorPart();
+    NS::Obj::HitSensor* body = rock->BodySensorSubObj();
     ASSERT_NE(body, nullptr);
 
     NS::Game::Level::TackleTargetAnswer answer{};
@@ -78,7 +78,7 @@ TEST(MapObjTackle, FlyingRockIsNotPushedIn)
     ASSERT_TRUE(NS::Game::Level::SendMsgTackleRelease(*rock, release));
 
     NS::Game::Level::TackleTargetAnswer answer{};
-    ASSERT_TRUE(NS::Game::Level::SendMsgAskTackleTarget(*rock->BodySensorPart(), answer));
+    ASSERT_TRUE(NS::Game::Level::SendMsgAskTackleTarget(*rock->BodySensorSubObj(), answer));
     EXPECT_FALSE(answer.placed);
 
     const NS::Game::Level::TackleFreezeDesc freeze{
@@ -95,7 +95,7 @@ TEST(MapObjTackle, DestructionRemainsDisabled)
     NS::Game::Level::TackleReleaseDesc release{};
     release.breaks = true;
     ASSERT_TRUE(NS::Game::Level::SendMsgTackleRelease(*rock, release));
-    EXPECT_TRUE(rock->BodySensorPart()->IsValid());
+    EXPECT_TRUE(rock->BodySensorSubObj()->IsValid());
     EXPECT_TRUE(rock->IsActiveInHierarchy());
 }
 

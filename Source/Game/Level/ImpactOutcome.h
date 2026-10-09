@@ -4,7 +4,7 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
 
 namespace NS::Game::Level
 {

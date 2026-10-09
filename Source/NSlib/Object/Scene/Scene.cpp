@@ -2,9 +2,9 @@
 
 #include "NSlib/Graphics/DebugDraw.h"
 #include "NSlib/Graphics/EffectScene.h"
-#include "NSlib/Object/Components/CameraManager.h"
+#include "NSlib/Object/SubObjects/CameraManager.h"
 #include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
@@ -88,7 +88,7 @@ namespace NS::Obj
         return m_playBaseline;
     }
 
-    void Scene::WritePlayBaselineField(const Component& comp, std::string_view fieldName)
+    void Scene::WritePlayBaselineField(const SubObject& comp, std::string_view fieldName)
     {
         const Actor* owner = comp.Owner();
         if (owner == nullptr)
@@ -100,18 +100,18 @@ namespace NS::Obj
         {
             return;
         }
-        const std::string_view role = owner->PartName(comp);
+        const std::string_view role = comp.Name();
         if (role.empty())
         {
             return;
         }
-        const nlohmann::json fields = SerializePartFields(comp);
+        const nlohmann::json fields = SerializeSubObjFields(comp);
         const nlohmann::json::const_iterator value = fields.find(std::string{fieldName});
         if (value == fields.end())
         {
             return;
         }
-        ObjectJsonParts(SceneJsonObjects(m_playBaseline)[index])[std::string{role}][std::string{fieldName}] = *value;
+        ObjectJsonSubObjs(SceneJsonObjects(m_playBaseline)[index])[std::string{role}][std::string{fieldName}] = *value;
     }
 
     void Scene::SetSimulationEnabled(bool enabled) noexcept
@@ -262,9 +262,12 @@ namespace NS::Obj
         // AssetManager が無い間は跳ばす。テストは資産なしでシーンを立てる
         if (m_assets != nullptr)
         {
-            obj.ForEachPart([this](std::string_view, Component& part) { part.ResolveAssets(*m_assets); });
+            for (SubObject* subObject : obj.SubObjs())
+            {
+                subObject->ResolveAssets(*m_assets);
+            }
         }
-        // 開始は引き当ての後。OnStart の中で資産を読む Component が空の参照を掴まない
+        // 開始は引き当ての後。OnStart の中で資産を読む SubObject が空の参照を掴まない
         obj.OnStart();
         // 後から入る物は他の配置物が既に揃っている
         obj.InitAfterPlacement();
@@ -305,7 +308,7 @@ namespace NS::Obj
         std::unique_ptr<Actor> built = ObjectFromJson(object, nullptr);
         if (!built)
         {
-            // 組める component が無い姿は、居ない姿として扱う
+            // 組める SubObject が無い姿は、居ない姿として扱う
             DestroyObject(id);
             return nullptr;
         }
@@ -350,15 +353,14 @@ namespace NS::Obj
         // 控えは個体の上書きだけを持つ。上書きの無い欄も種類の既定値へ戻すため、全欄の姿へ広げてから比べる
         const nlohmann::json object = ExpandObjectJson(snapshot);
         bool same = ObjectJsonClass(object) == std::string_view{obj->ClassName()};
-        std::size_t count = 0;
-        obj->ForEachPart([&same, &count, &object](std::string_view role, Component&) {
-            ++count;
-            if (PartFields(object, role) == nullptr)
+        for (const SubObject* subObject : obj->SubObjs())
+        {
+            if (SubObjFields(object, subObject->Name()) == nullptr)
             {
                 same = false;
             }
-        });
-        if (!same || count != ObjectJsonParts(object).size())
+        }
+        if (!same || obj->SubObjs().size() != ObjectJsonSubObjs(object).size())
         {
             return ReplaceFromJson(snapshot);
         }
@@ -374,18 +376,19 @@ namespace NS::Obj
             parent = nullptr;
         }
         obj->SetParent(parent);
-        obj->ForEachPart([this, &object](std::string_view role, Component& part) {
-            const nlohmann::json* fields = PartFields(object, role);
-            if (fields == nullptr || SerializePartFields(part) == *fields)
+        for (SubObject* subObject : obj->SubObjs())
+        {
+            const nlohmann::json* fields = SubObjFields(object, subObject->Name());
+            if (fields == nullptr || SerializeSubObjFields(*subObject) == *fields)
             {
-                return;
+                continue;
             }
-            (void)ApplyJsonFields(part, *fields);
+            (void)ApplyJsonFields(*subObject, *fields);
             if (m_assets != nullptr)
             {
-                part.ResolveAssets(*m_assets);
+                subObject->ResolveAssets(*m_assets);
             }
-        });
+        }
         return obj;
     }
 
@@ -413,7 +416,7 @@ namespace NS::Obj
 #endif
         // シーンに 1 つの物 (進行役など) は最初の状態から作り直させる。組み直した配置物の開始が必要な物を作る
         m_sceneObjs.Clear();
-        // Actor の型選択は登録一覧、参照の実体化は各 component の ResolveAssets が行う
+        // Actor の型選択は登録一覧、参照の実体化は各 SubObject の ResolveAssets が行う
         // vcam の cameras への付け外しは VirtualCamera が OnStart / OnEndPlay で自分で行う
         m_objects.Rebuild(
             scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, m_assets); });

@@ -1,12 +1,12 @@
 #include "Game/Level/FollowCamera.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/CameraTarget.h"
-#include "NSlib/Object/Components/CameraManager.h"
-#include "NSlib/Object/Components/CameraModifier.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
+#include "NSlib/Object/SubObjects/CameraManager.h"
+#include "NSlib/Object/SubObjects/CameraModifier.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 
@@ -16,8 +16,8 @@
 #include <optional>
 #include <type_traits>
 
-static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Obj::CameraManager>);
-static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Obj::SceneCamera>);
+static_assert(!std::is_base_of_v<NS::Obj::SubObject, NS::Obj::CameraManager>);
+static_assert(!std::is_base_of_v<NS::Obj::SubObject, NS::Obj::SceneCamera>);
 // 実カメラは遊びの向きを答えない。向きの口は IUseCamera の補助関数 1 本だけ
 template <class T>
 concept AnswersForwardHorizontal = requires(const T& camera) { camera.ForwardHorizontal(); };
@@ -61,9 +61,8 @@ namespace
     public:
         [[nodiscard]] NS::Obj::CameraPose EvaluatePose(float alpha) const noexcept override
         {
-            return MakePose(NS::Vector3{0.0f, 0.0f, -5.0f},
-                            NS::Vector3{10.0f * alpha, 0.0f, 0.0f},
-                            NS::Vector3{0.0f, 1.0f, 0.0f});
+            return MakePose(
+                NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{10.0f * alpha, 0.0f, 0.0f}, NS::Vector3{0.0f, 1.0f, 0.0f});
         }
         NS_REFLECT_NONE(AlphaCamera, NS::Obj::VirtualCamera)
     };
@@ -71,13 +70,10 @@ namespace
     class AlphaCameraHost final : public NS::Obj::Actor
     {
     public:
-        AlphaCameraHost() { AttachFixedComponent(vcam); }
-        void ForEachPart(const PartVisitor& visitor) const override
-        {
-            NS::Obj::Actor::ForEachPart(visitor);
-            visitor("Vcam", vcam);
-        }
-        mutable AlphaCamera vcam;
+        AlphaCamera* vcam = nullptr;
+
+    protected:
+        void OnInit() override { vcam = CreateSubObj<AlphaCamera>("Vcam"); }
     };
 
     class OrderProbe final : public NS::Obj::CameraModifier
@@ -173,6 +169,7 @@ TEST(CameraManager, FinishedModifiersAreRemovedOnTick)
 TEST(CameraManager, ModifiersApplyInOrder)
 {
     TestViewCameraHost host;
+    host.Init();
     host.Vcam().SetPose(NS::Vector3{1.0f, 0.0f, -5.0f}, NS::Vector3{1.0f, 0.0f, 0.0f});
     NS::Obj::CameraManager cameras;
     cameras.AddVirtualCamera(&host.Vcam());
@@ -225,12 +222,14 @@ TEST(CameraManager, ForwardIgnoresTheDrawAlphaDuringABlend)
     // 1 歩で半分まで進むブレンド
     cameras.SetBlendDuration(NS::OS::FrameTimer::FixedDelta() * 2.0f);
     TestViewCameraHost from;
+    from.Init();
     cameras.AddVirtualCamera(&from.Vcam());
     cameras.OnTick();
     cameras.Evaluate(1.0f);
     AlphaCameraHost to;
-    to.vcam.SetVcamPriority(1);
-    cameras.AddVirtualCamera(&to.vcam);
+    to.Init();
+    to.vcam->SetVcamPriority(1);
+    cameras.AddVirtualCamera(to.vcam);
     cameras.OnTick();
     cameras.Evaluate(0.0f);
 
@@ -251,6 +250,7 @@ TEST(CameraManager, ForwardLeavesOutTheModifiers)
     NS::Obj::CameraManager cameras;
     cameras.SetCamera(&drawn);
     TestViewCameraHost host;
+    host.Init();
     cameras.AddVirtualCamera(&host.Vcam());
     // 位置の x を 0*2+10 = 10 へずらし、描く視線を斜めにする
     ASSERT_TRUE(cameras.AddModifier(std::make_unique<OrderProbe>(100, 10.0f)));
@@ -340,9 +340,10 @@ TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
 }
 
 // 追従カメラは出荷の姿で生まれる。プレイ中かは世界の駆動が答え、部品の active へ写さない
-TEST(FollowCamera, VcamIsLiveFromConstruction)
+TEST(FollowCamera, VcamIsLiveFromInit)
 {
-    const NS::Game::Level::FollowCamera camera;
+    NS::Game::Level::FollowCamera camera;
+    camera.Init();
     EXPECT_TRUE(camera.Vcam().IsActiveSelf());
 }
 

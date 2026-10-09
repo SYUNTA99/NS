@@ -1,6 +1,6 @@
 #include "NSlib/Graphics/DebugDraw.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Component.h"
+#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/IUse/IUseSceneObj.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -53,10 +53,10 @@ namespace
         TickLog& m_log;
     };
 
-    class LoggingComponent final : public NS::Obj::Component
+    class LoggingSubObject final : public NS::Obj::SubObject
     {
     public:
-        explicit LoggingComponent(TickLog* log = nullptr) noexcept : NS::Obj::Component(), m_log(log) {}
+        explicit LoggingSubObject(TickLog* log = nullptr) noexcept : NS::Obj::SubObject(), m_log(log) {}
         void OnUpdate() override
         {
             if (m_log != nullptr)
@@ -64,7 +64,7 @@ namespace
                 m_log->order.push_back("component");
             }
         }
-        NS_REFLECT_NONE(LoggingComponent, NS::Obj::Component)
+        NS_REFLECT_NONE(LoggingSubObject, NS::Obj::SubObject)
 
     private:
         TickLog* m_log = nullptr;
@@ -73,24 +73,19 @@ namespace
     class LoggingActor final : public NS::Obj::Actor
     {
     public:
-        explicit LoggingActor(TickLog& log) noexcept : m_log(log), m_part(&log) { AttachFixedComponent(m_part); }
-
-        void ForEachPart(const PartVisitor& visitor) const override
-        {
-            NS::Obj::Actor::ForEachPart(visitor);
-            visitor("Logging", m_part);
-        }
+        explicit LoggingActor(TickLog& log) noexcept : m_log(log) {}
 
     protected:
+        void OnInit() override { m_part = CreateSubObj<LoggingSubObject>("Logging", &m_log); }
         void StateStep() override
         {
             m_log.order.push_back("actor");
-            TickPart(&m_part);
+            TickSubObj(m_part);
         }
 
     private:
         TickLog& m_log;
-        mutable LoggingComponent m_part;
+        LoggingSubObject* m_part = nullptr;
     };
 } // namespace
 
@@ -136,7 +131,7 @@ TEST(UIActor, OpenRegistersForUpdateAndCloseRemoves)
     EXPECT_EQ(ui.updates, 1);
 }
 
-TEST(ObjectListTicker, TickerRunsAfterComponentsOfSameBand)
+TEST(ActorListTicker, TickerRunsAfterSubObjectsOfSameBand)
 {
     NS::Obj::Scene scene;
     TickLog log;
@@ -158,7 +153,7 @@ TEST(ObjectListTicker, TickerRunsAfterComponentsOfSameBand)
     EXPECT_EQ(log.order[1], "component");
 }
 
-TEST(ObjectListTicker, ActorTickFollowsBands)
+TEST(ActorListTicker, ActorTickFollowsBands)
 {
     NS::Obj::Scene scene;
     TickLog log;

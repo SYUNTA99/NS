@@ -2,8 +2,8 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/VirtualCamera.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/VirtualCamera.h"
 
 //! @brief 試し用の仮想カメラ。差し替えた位置と注視点をそのまま返す
 //! @details 遊びはカメラの管理役が仮想カメラから合成した視点を読み、実カメラは読まない
@@ -39,20 +39,14 @@ private:
 class TestViewCameraHost final : public NS::Obj::Actor
 {
 public:
-    TestViewCameraHost() { AttachFixedComponent(m_vcam); }
-
-    //! 基底の部品に続けて仮想カメラを "Vcam" で渡す
-    void ForEachPart(const PartVisitor& visitor) const override
-    {
-        NS::Obj::Actor::ForEachPart(visitor);
-        visitor("Vcam", m_vcam);
-    }
-
     //! 持っている仮想カメラ
-    [[nodiscard]] TestViewCamera& Vcam() noexcept { return m_vcam; }
+    [[nodiscard]] TestViewCamera& Vcam() noexcept { return *m_vcam; }
+
+protected:
+    void OnInit() override { m_vcam = CreateSubObj<TestViewCamera>("Vcam"); }
 
 private:
-    mutable TestViewCamera m_vcam; // 固定の部品。ForEachPart が const のまま部品を渡すため mutable
+    TestViewCamera* m_vcam = nullptr;
 };
 
 //! @brief position から target を見る試し用の仮想カメラをシーンへ湧かす
@@ -60,9 +54,7 @@ private:
 //! @param[in] position カメラの位置
 //! @param[in] target 注視点
 //! @return 湧かした仮想カメラ。湧かせなかった場合は nullptr
-inline TestViewCamera* PlaceViewCamera(NS::Obj::Scene& scene,
-                                       const NS::Vector3& position,
-                                       const NS::Vector3& target)
+inline TestViewCamera* PlaceViewCamera(NS::Obj::Scene& scene, const NS::Vector3& position, const NS::Vector3& target)
 {
     TestViewCameraHost* host = scene.SpawnTransient<TestViewCameraHost>();
     if (host == nullptr)

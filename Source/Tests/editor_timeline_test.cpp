@@ -13,8 +13,8 @@
 #include "NSlib/Graphics/Texture.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/AssetManager.h"
-#include "NSlib/Object/Components/Model.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/Model.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Filesystem.h"
@@ -56,15 +56,13 @@ namespace
 
     class TimelineMovingActor : public NS::Obj::Actor
     {
-    public:
-        TimelineMovingActor()
-        {
-            (void)CreatePart("Model");
-            ModelPart()->SetMeshRef("cube");
-            ModelPart()->SetMaterialRef("player");
-        }
-
     protected:
+        void OnInit() override
+        {
+            NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
+            model->SetMeshRef("cube");
+            model->SetMaterialRef("player");
+        }
         void BodyStep() override { Root().SetPosition(Root().Position() + NS::Vector3{0.1f, 0.0f, 0.0f}); }
     };
 

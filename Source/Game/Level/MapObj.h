@@ -5,10 +5,10 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/HitSensor.h"
-#include "NSlib/Object/Components/Model.h"
-#include "NSlib/Object/Components/SphereCollision.h"
 #include "NSlib/Object/StateMachine.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/SubObjects/Model.h"
+#include "NSlib/Object/SubObjects/SphereCollision.h"
 
 #include <optional>
 
@@ -20,7 +20,6 @@ namespace NS::Game::Level
     {
     public:
         MapObj() noexcept;
-        void ForEachPart(const PartVisitor& visitor) const override;
 
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         NS_REFLECT_NONE(MapObj, NS::Obj::Actor)
@@ -42,13 +41,14 @@ namespace NS::Game::Level
         [[nodiscard]] bool IsArc() const noexcept;
         //! 自分で動かしている速度。単位は m/s。置かれている間は 0
         [[nodiscard]] NS::Vector3 Velocity() const noexcept { return m_velocity; }
-        [[nodiscard]] const MapObjParams& Params() const noexcept { return m_params; }
+        [[nodiscard]] const MapObjParams& Params() const noexcept { return *m_params; }
 
         //! 体当たりの問い・止め・明けと、コースのやり直しに応じる
         //! やり直しでは、プレイ開始時の凍結の自分の位置と向きへ置かれた物として戻る
         bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
     protected:
+        void OnInit() override;
         //! 発光の層の歩を始める
         void ObserveStep() override;
         //! 当たりの球が動いていれば物理へ置き直す
@@ -90,12 +90,12 @@ namespace NS::Game::Level
 
         [[nodiscard]] NS::Obj::SphereCollision& Sphere() noexcept
         {
-            return *static_cast<NS::Obj::SphereCollision*>(CollisionPart());
+            return *static_cast<NS::Obj::SphereCollision*>(CollisionSubObj());
         }
-        MapObjParams m_params;
-        HitZones m_hitZones;
-        LaunchEffects m_effects;
-        NS::Obj::StateMachine<MapObj>* m_states = nullptr; // 基底が所有する。コンストラクタが預けた直後から有効
+        MapObjParams* m_params = nullptr;
+        HitZones* m_hitZones = nullptr;
+        LaunchEffects* m_effects = nullptr;
+        NS::Obj::StateMachine<MapObj>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
         NS::Obj::SubStateMachine<MapObj> m_motion;
         TackleFreezeDesc m_freeze;
         // 止めの間の横揺れ。知らせを受けたフレームの止めの 1 歩を 1 フレーム目に数える

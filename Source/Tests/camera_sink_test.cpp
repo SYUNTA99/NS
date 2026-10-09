@@ -1,6 +1,6 @@
 #include "NSlib/Core/CameraData.h"
-#include "NSlib/Object/Components/CameraManager.h"
-#include "NSlib/Object/Components/CameraModifier.h"
+#include "NSlib/Object/SubObjects/CameraManager.h"
+#include "NSlib/Object/SubObjects/CameraModifier.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "Tests/TestViewCamera.h"

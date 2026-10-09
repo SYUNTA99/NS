@@ -1,19 +1,13 @@
 #include "NSlib/Object/Actors/Light.h"
 
-#include "NSlib/Object/Components/DirectionalLight.h"
+#include "NSlib/Object/SubObjects/DirectionalLight.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
 namespace NS::Obj
 {
-    Light::Light() noexcept
+    void Light::OnInit()
     {
-        AttachFixedComponent(m_light);
-    }
-
-    void Light::ForEachPart(const PartVisitor& visitor) const
-    {
-        Actor::ForEachPart(visitor);
-        visitor("DirectionalLight", m_light);
+        (void)CreateSubObj<DirectionalLight>("DirectionalLight");
     }
 
     NS_PLACEABLE(Light, "ライト")

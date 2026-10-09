@@ -1,6 +1,6 @@
 #include "Game/Player.h"
-#include "NSlib/Object/Components/Body.h"
-#include "NSlib/Object/Components/PlayerInput.h"
+#include "NSlib/Object/SubObjects/Body.h"
+#include "NSlib/Object/SubObjects/PlayerInput.h"
 #include "NSlib/Windows/Input.h"
 
 #include <gtest/gtest.h>
@@ -8,7 +8,8 @@
 TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
 {
     Player player;
-    NS::Obj::PlayerInput* input = NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input"));
+    player.Init();
+    NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     NS::Obj::Body& movement = player.Body();
     input->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -28,7 +29,8 @@ TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
 TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
 {
     Player player;
-    NS::Obj::PlayerInput* input = NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input"));
+    player.Init();
+    NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     NS::Obj::Body& movement = player.Body();
     movement.OnStart();
@@ -53,7 +55,8 @@ TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
 TEST(PlayerInputOwnership, RestartClearsSharedInputAndHeldJumpCutsOnlyOnce)
 {
     Player player;
-    NS::Obj::PlayerInput* input = NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input"));
+    player.Init();
+    NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     NS::Obj::Body& movement = player.Body();
     movement.OnStart();
@@ -79,7 +82,8 @@ TEST(PlayerInputOwnership, SlamTappedBetweenPlayerStepsIsSeenOnce)
     // 遅い世界では入力の段だけが毎歩回る。自機が読まない歩に押して放した突進を、次に読む歩で 1 回押したと見せる
     NS::OS::Input& platform = NS::OS::Input::Get();
     Player player;
-    NS::Obj::PlayerInput* input = NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player.Part("Input"));
+    player.Init();
+    NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     platform.Mouse().OnButtonDown(NS::OS::MouseButton::Left);
     input->OnUpdate();

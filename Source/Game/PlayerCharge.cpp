@@ -4,8 +4,8 @@
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/DebugDraw.h"
-#include "NSlib/Object/Components/Body.h"
-#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/SubObjects/Body.h"
+#include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 
 #include <algorithm>

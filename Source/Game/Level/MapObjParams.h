@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game/Level/MissHop.h"
-#include "NSlib/Object/Component.h"
+#include "NSlib/Object/SubObject.h"
 
 #include <algorithm>
 #include <cmath>
@@ -9,7 +9,7 @@
 namespace NS::Game::Level
 {
     //! @brief 置物の重さ・転がり・壊れ方・飛び方の見た目の調整値の欄を持つ部品
-    class MapObjParams : public NS::Obj::Component
+    class MapObjParams : public NS::Obj::SubObject
     {
     public:
         //! 欄「質量」の値。有限の正でなければ 1
@@ -70,7 +70,7 @@ namespace NS::Game::Level
         [[nodiscard]] float StopSpeed() const noexcept { return std::max(m_stopSpeed, 0.0f); }
         [[nodiscard]] int MaxContacts() const noexcept { return std::max(m_maxContacts, 1); }
 
-        NS_REFLECT_BEGIN(MapObjParams, NS::Obj::Component)
+        NS_REFLECT_BEGIN(MapObjParams, NS::Obj::SubObject)
         NS_REFLECT_FIELD(m_mass, "質量")
         NS_REFLECT_FIELD(m_friction, "摩擦")
         NS_REFLECT_FIELD(m_restitution, "跳ね返り")

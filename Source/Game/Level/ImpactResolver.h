@@ -7,8 +7,8 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SlamAim.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Component.h"
-#include "NSlib/Object/Components/HitReaction.h"
+#include "NSlib/Object/SubObject.h"
+#include "NSlib/Object/SubObjects/HitReaction.h"
 #include "NSlib/Object/Reflection/ActorRef.h"
 #include "NSlib/Windows/Gamepad.h"
 
@@ -83,7 +83,7 @@ namespace NS::Game::Level
         float reboundScale = 0.0f; //!< 自機の反動の高さと距離に掛けた比。威力 × 2 × 質量 ÷ (質量 + 1)
     };
 
-    //! @brief ぶつかった結果を自機側で決める Component
+    //! @brief ぶつかった結果を自機側で決める SubObject
     //! @details Player の観測の段 (ObserveStep) と決定の段 (DecideStep) が、状態と移動の段より前に呼ぶ。
     //! 身体が動く前にその 1 固定ステップの結末を決めるので、
     //! 壁の手前で止められて速度を消された後から結果を推測し直さずに済む
@@ -97,7 +97,7 @@ namespace NS::Game::Level
     //! 白の光・カメラの揺れと寄り・パッドの振動の事象は同居する HitReaction で始め、
     //! 当たりと飛びの絵の事象は同居する ImpactEffects へ頼みを置く
     //! 依存: NS::Obj::Body / Collider, PlayerParams, HitTier, NS::Obj::HitSensor, NS::Obj::HitReaction, ImpactEffects
-    class ImpactResolver : public NS::Obj::Component
+    class ImpactResolver : public NS::Obj::SubObject
     {
     public:
         ImpactResolver() noexcept = default;
@@ -217,7 +217,7 @@ namespace NS::Game::Level
         [[nodiscard]] NS::Vector3 ShapeFactors() const noexcept;
 
         // 返り方は当てた時の手触りそのもの。プレイ中に Inspector で触って詰められるよう公開する
-        NS_REFLECT_NONE(ImpactResolver, NS::Obj::Component)
+        NS_REFLECT_NONE(ImpactResolver, NS::Obj::SubObject)
 
     private:
         [[nodiscard]] const NS::Game::Player::PlayerParams& Tuning() const noexcept;

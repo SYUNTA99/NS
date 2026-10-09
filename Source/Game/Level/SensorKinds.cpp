@@ -1,6 +1,6 @@
 #include "Game/Level/SensorKinds.h"
 
-#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
 
 namespace NS::Game::Level
 {

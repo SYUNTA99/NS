@@ -1,4 +1,4 @@
-#include "NSlib/Object/Components/CameraModifier.h"
+#include "NSlib/Object/SubObjects/CameraModifier.h"
 
 #include <gtest/gtest.h>
 

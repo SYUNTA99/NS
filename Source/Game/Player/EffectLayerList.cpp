@@ -1,7 +1,7 @@
 #include "Game/Player/EffectLayerList.h"
 
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Component.h"
+#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/Scene/Scene.h"
 
 #include <utility>
@@ -166,10 +166,10 @@ namespace NS::Game::Player
         }
     }
 
-    NS::Gfx::EffectScene* EffectsOf(const NS::Obj::Component& component) noexcept
+    NS::Gfx::EffectScene* EffectsOf(const NS::Obj::SubObject& subObject) noexcept
     {
         // エフェクトの窓口から引く。持ち主がシーンに居なければ窓口が nullptr を返す
-        const NS::Obj::Actor* owner = component.Owner();
+        const NS::Obj::Actor* owner = subObject.Owner();
         if (owner == nullptr)
         {
             return nullptr;

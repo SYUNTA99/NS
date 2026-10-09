@@ -6,12 +6,12 @@
 #include "Game/Level/HitZones.h"
 #include "Game/Player.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/CameraManager.h"
-#include "NSlib/Object/Components/CameraModifier.h"
-#include "NSlib/Object/Components/HitSensor.h"
-#include "NSlib/Object/Components/PlayerInput.h"
-#include "NSlib/Object/Components/ThirdPersonFollow.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/CameraManager.h"
+#include "NSlib/Object/SubObjects/CameraModifier.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/SubObjects/PlayerInput.h"
+#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Input.h"
 
@@ -188,9 +188,9 @@ namespace NS::Editor
         // 突進が当たる体と面を持つ配置物か。下見の相手になれる
         bool IsHitTarget(NS::Obj::Actor& object)
         {
-            const NS::Obj::HitSensor* bodySensor = object.BodySensorPart();
+            const NS::Obj::HitSensor* bodySensor = object.BodySensorSubObj();
             return bodySensor != nullptr && bodySensor->IsValid() &&
-                   NS::Obj::ComponentCast<NS::Game::Level::HitZones>(object.Part("HitZones")) != nullptr;
+                   NS::Obj::Cast<NS::Game::Level::HitZones>(object.FindSubObj("HitZones")) != nullptr;
         }
 
         // 自機の根に一番近い、下見の相手になれる配置物の id。居なければ 0
@@ -261,7 +261,7 @@ namespace NS::Editor
             result.error = std::format("id {} の配置物が場面に無い", result.desc.targetId);
             return result;
         }
-        const NS::Obj::HitSensor* bodySensor = target->BodySensorPart();
+        const NS::Obj::HitSensor* bodySensor = target->BodySensorSubObj();
         if (bodySensor == nullptr || !bodySensor->IsValid())
         {
             result.error = std::format("id {} の配置物に突進が当たる体が無い", result.desc.targetId);

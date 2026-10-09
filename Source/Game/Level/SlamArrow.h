@@ -6,7 +6,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Graphics/DrawItem.h"
 #include "NSlib/Graphics/FrameConstants.h"
-#include "NSlib/Object/Components/OverlayRenderer.h"
+#include "NSlib/Object/SubObjects/OverlayRenderer.h"
 
 #include <functional>
 #include <string>
@@ -161,7 +161,7 @@ namespace NS::Game::Level
                                   const SlamArrowDrawAssets& assets,
                                   std::vector<NS::Gfx::DrawItem>& out);
 
-    //! @brief 溜めている間、狙いの線の向きへ放った玉の道筋に矢印を描く Component
+    //! @brief 溜めている間、狙いの線の向きへ放った玉の道筋に矢印を描く SubObject
     //! @details 溜めている間だけ OnUpdate で形を組み、描く時は板を積む。狙う相手はいなくても組む
     //! 接地して縦の速さが 0 なら床へ光線で貼り、それ以外は LaunchPitch と同じ重力の道筋に置く
     //! 矢じりは手前の物に隠れた画素へも薄く描く。世界のにじみの後の重ね描きで、奥行きを読む

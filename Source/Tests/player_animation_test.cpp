@@ -2,8 +2,8 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "NSlib/Graphics/Animation.h"
-#include "NSlib/Object/Components/Animation.h"
-#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/SubObjects/Animation.h"
+#include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -16,7 +16,8 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
     const std::vector<NS::Gfx::AnimationClip> clips = {
         {.name = "idle", .duration = 10.0f}, {.name = "run", .duration = 10.0f}, {.name = "walk", .duration = 10.0f}};
     Player player;
-    NS::Obj::Animation* animation = NS::Obj::ComponentCast<NS::Obj::Animation>(player.CreatePart("Animation"));
+    player.Init();
+    NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
     player.Body().SetGrounded(true);
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
@@ -38,11 +39,12 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
 
 TEST(PlayerAnimation, PlayerParamsKeepAllAnimatorNamesAndDefaults)
 {
-    const Player player;
+    Player player;
+    player.Init();
     const NS::Game::Player::PlayerParams* params =
-        NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
+        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
-    const nlohmann::json fields = NS::Obj::SerializeComponentFields(*params);
+    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*params);
     const nlohmann::json expected = {{"立ちのクリップ", "idle"},
                                      {"歩きのクリップ", "walk"},
                                      {"走りのクリップ", "run"},
@@ -56,7 +58,7 @@ TEST(PlayerAnimation, PlayerParamsKeepAllAnimatorNamesAndDefaults)
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
     }
-    EXPECT_EQ(player.Part("PlayerAnimator"), nullptr);
+    EXPECT_EQ(player.FindSubObj("PlayerAnimator"), nullptr);
 }
 
 TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
@@ -66,10 +68,11 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
                                                        {.name = "fall", .duration = 10.0f},
                                                        {.name = "hang", .duration = 10.0f}};
     Player player;
-    NS::Obj::Animation* animation = NS::Obj::ComponentCast<NS::Obj::Animation>(player.CreatePart("Animation"));
+    player.Init();
+    NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
     NS::Game::Player::PlayerParams* params =
-        NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
+        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(
                   *params, {{"跳ぶクリップ", "jump"}, {"落ちるクリップ", "fall"}, {"ぶら下がりのクリップ", "hang"}}),
@@ -91,10 +94,11 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
     const std::vector<NS::Gfx::AnimationClip> clips = {{.name = "idle", .duration = 10.0f},
                                                        {.name = "walk", .duration = 10.0f}};
     Player player;
-    NS::Obj::Animation* animation = NS::Obj::ComponentCast<NS::Obj::Animation>(player.CreatePart("Animation"));
+    player.Init();
+    NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
     NS::Game::Player::PlayerParams* params =
-        NS::Obj::ComponentCast<NS::Game::Player::PlayerParams>(player.Part("Params"));
+        NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     player.Body().SetGrounded(true);
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});

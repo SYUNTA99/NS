@@ -14,11 +14,11 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/Body.h"
-#include "NSlib/Object/Components/Collider.h"
-#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/SubObjects/Body.h"
+#include "NSlib/Object/SubObjects/Collider.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
-#include "NSlib/Object/ObjectList.h"
+#include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/HitSensorDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -275,7 +275,7 @@ namespace NS::Game::Level
         {
             m_player = ownerPlayer;
             m_body = &ownerPlayer->Body();
-            m_hitReaction = ownerPlayer->HitReactionPart();
+            m_hitReaction = ownerPlayer->HitReactionSubObj();
         }
     }
 
@@ -1431,14 +1431,14 @@ namespace NS::Game::Level
             return;
         }
         NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
-        if (target == nullptr || target->ModelPart() == nullptr || m_player->ModelPart() == nullptr)
+        if (target == nullptr || target->ModelSubObj() == nullptr || m_player->ModelSubObj() == nullptr)
         {
             return;
         }
         // 止めの間の二人は食い込んだ所に留まり、描く形が揺れるだけなので、始めた時の形で挟めば最後まで外れない
         // 真後ろのカメラでは自機が相手に重なるので、二人をまとめて挟む
-        const NS::AABB other = target->ModelPart()->WorldBounds();
-        const NS::AABB self = m_player->ModelPart()->WorldBounds();
+        const NS::AABB other = target->ModelSubObj()->WorldBounds();
+        const NS::AABB self = m_player->ModelSubObj()->WorldBounds();
         m_hitReaction->StartShakeLines(
             NS::Obj::HitShakeLinesDesc{.center = NS::Vector3{other.Center.x, other.Center.y, other.Center.z},
                                        .radius = std::max({other.Extents.x, other.Extents.y, other.Extents.z}),
@@ -1453,7 +1453,7 @@ namespace NS::Game::Level
 
     void ImpactResolver::AdvanceBodyShake()
     {
-        if (!m_bodyShake.active || m_player->ModelPart() == nullptr)
+        if (!m_bodyShake.active || m_player->ModelSubObj() == nullptr)
         {
             return;
         }
@@ -1461,8 +1461,8 @@ namespace NS::Game::Level
         const int frame = m_clock - m_bodyShake.startClock + 1;
         const float offset =
             BodyShakeOffset(frame, desc.length, desc.amplitude, desc.seed, desc.firstSign, desc.flipFrames);
-        (void)m_player->ModelPart()->SetDrawOffset(desc.axis * offset);
-        (void)m_player->ModelPart()->SetGhostSpread(
+        (void)m_player->ModelSubObj()->SetDrawOffset(desc.axis * offset);
+        (void)m_player->ModelSubObj()->SetGhostSpread(
             desc.axis * (BodyShakeReach(frame, desc.length, desc.amplitude) * desc.ghostRatio));
         if (frame >= desc.length)
         {
@@ -1473,10 +1473,10 @@ namespace NS::Game::Level
     void ImpactResolver::StopBodyShake() noexcept
     {
         m_bodyShake.active = false;
-        if (m_player != nullptr && m_player->ModelPart() != nullptr)
+        if (m_player != nullptr && m_player->ModelSubObj() != nullptr)
         {
-            (void)m_player->ModelPart()->SetDrawOffset(NS::Vector3{0.0f, 0.0f, 0.0f});
-            (void)m_player->ModelPart()->SetGhostSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
+            (void)m_player->ModelSubObj()->SetDrawOffset(NS::Vector3{0.0f, 0.0f, 0.0f});
+            (void)m_player->ModelSubObj()->SetGhostSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
         }
     }
 
@@ -1525,7 +1525,7 @@ namespace NS::Game::Level
 
     void ImpactResolver::WriteTremor()
     {
-        if (!m_tremor.active || Owner() == nullptr || m_player->ModelPart() == nullptr)
+        if (!m_tremor.active || Owner() == nullptr || m_player->ModelSubObj() == nullptr)
         {
             return;
         }
@@ -1538,7 +1538,7 @@ namespace NS::Game::Level
             tremor = MakeTremor(
                 m_tremor.desc, elapsed, Owner()->Root().Position(), 2.0f * m_player->Collider().CapsuleRadius(), *pose);
         }
-        (void)m_player->ModelPart()->SetTremor(tremor);
+        (void)m_player->ModelSubObj()->SetTremor(tremor);
         if (elapsed >= m_tremor.desc.length)
         {
             m_tremor.active = false;
@@ -1652,9 +1652,9 @@ namespace NS::Game::Level
     void ImpactResolver::StopTremor() noexcept
     {
         m_tremor.active = false;
-        if (m_player != nullptr && m_player->ModelPart() != nullptr)
+        if (m_player != nullptr && m_player->ModelSubObj() != nullptr)
         {
-            (void)m_player->ModelPart()->SetTremor(NS::Gfx::TremorCB{});
+            (void)m_player->ModelSubObj()->SetTremor(NS::Gfx::TremorCB{});
         }
     }
 

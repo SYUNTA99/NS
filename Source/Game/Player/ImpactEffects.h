@@ -5,7 +5,7 @@
 #include "Game/Level/HitTier.h"
 #include "Game/Player/EffectLayerList.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Component.h"
+#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 
 #include <cstddef>
@@ -96,7 +96,7 @@ namespace NS::Game::Player
     //! 同じフレームの ImpactResolver が事象から頼みを置いた後と、自機の移動の段の後に走る。
     //! 物理の段と、飛ばした相手が自分の段階を切り替える Triggers の段よりは前に走る
     //! 依存: EffectLayerList, NS::Game::Level::ImpactResolver, Player, カメラの窓口
-    class ImpactEffects : public NS::Obj::Component
+    class ImpactEffects : public NS::Obj::SubObject
     {
     public:
         ImpactEffects() noexcept;
@@ -155,7 +155,7 @@ namespace NS::Game::Player
         [[nodiscard]] NS::Vector3 MissSparkHeading(float u, float v, const NS::Vector3& slamDirection) const noexcept;
 
         // 当たりの層の大きさと量は当てた瞬間の手触りそのもの。Inspector で触って詰められるよう公開する
-        NS_REFLECT_BEGIN(ImpactEffects, NS::Obj::Component)
+        NS_REFLECT_BEGIN(ImpactEffects, NS::Obj::SubObject)
         NS_REFLECT_GROUP("核")
         NS_REFLECT_FIELD(m_coreDiameterBase, "核の直径の基準")
         NS_REFLECT_FIELD(m_coreDiameterPerPower, "核の直径の威力あたり")

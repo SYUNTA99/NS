@@ -2,7 +2,7 @@
 
 #include "Editor/EditorUi.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Component.h"
+#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Reflection/Reflection.h"
@@ -23,7 +23,7 @@ namespace NS::Editor
     {
         // 同じ欄を 2 体から読んで見比べる
         template <class T>
-        bool SameValue(const NS::Obj::Component& a, const NS::Obj::Component& b, const NS::Obj::FieldDesc& field)
+        bool SameValue(const NS::Obj::SubObject& a, const NS::Obj::SubObject& b, const NS::Obj::FieldDesc& field)
         {
             T lhs{};
             T rhs{};
@@ -34,7 +34,7 @@ namespace NS::Editor
 
         // 同じ欄を src から dst へ写す
         template <class T>
-        void CopyValue(NS::Obj::Component& dst, const NS::Obj::Component& src, const NS::Obj::FieldDesc& field)
+        void CopyValue(NS::Obj::SubObject& dst, const NS::Obj::SubObject& src, const NS::Obj::FieldDesc& field)
         {
             T value{};
             field.get(&src, &value);
@@ -42,13 +42,13 @@ namespace NS::Editor
         }
     } // namespace
 
-    ComponentDefaults::ComponentDefaults() noexcept = default;
-    ComponentDefaults::~ComponentDefaults() noexcept = default;
+    SubObjectDefaults::SubObjectDefaults() noexcept = default;
+    SubObjectDefaults::~SubObjectDefaults() noexcept = default;
 
-    const NS::Obj::Component* ComponentDefaults::Find(const NS::Obj::Component& comp)
+    const NS::Obj::SubObject* SubObjectDefaults::Find(const NS::Obj::SubObject& comp)
     {
         // 持ち主のクラスの既定の 1 体の同じ部品。値はコードの既定値に種類の既定値を当てた物
-        if (const NS::Obj::Component* part = NS::Obj::FindBaselinePart(comp))
+        if (const NS::Obj::SubObject* part = NS::Obj::FindBaselineSubObj(comp))
         {
             return part;
         }
@@ -60,23 +60,23 @@ namespace NS::Editor
         return FindTypeDefault(info->typeName);
     }
 
-    const NS::Obj::Component* ComponentDefaults::FindTypeDefault(std::string_view typeName)
+    const NS::Obj::SubObject* SubObjectDefaults::FindTypeDefault(std::string_view typeName)
     {
-        for (const std::pair<std::string, std::unique_ptr<NS::Obj::Component>>& entry : m_byType)
+        for (const std::pair<std::string, std::unique_ptr<NS::Obj::SubObject>>& entry : m_byType)
         {
             if (entry.first == typeName)
             {
                 return entry.second.get();
             }
         }
-        std::unique_ptr<NS::Obj::Component> created = NS::Obj::CreatePartDefault(typeName);
-        const NS::Obj::Component* result = created.get();
+        std::unique_ptr<NS::Obj::SubObject> created = NS::Obj::CreateSubObjOfType(typeName);
+        const NS::Obj::SubObject* result = created.get();
         m_byType.emplace_back(std::string(typeName), std::move(created));
         return result;
     }
 
-    bool FieldDiffersFromDefault(const NS::Obj::Component& comp,
-                                 const NS::Obj::Component* defaults,
+    bool FieldDiffersFromDefault(const NS::Obj::SubObject& comp,
+                                 const NS::Obj::SubObject* defaults,
                                  const NS::Obj::FieldDesc& field) noexcept
     {
         if (defaults == nullptr)
@@ -105,8 +105,8 @@ namespace NS::Editor
         return false;
     }
 
-    void RevertFieldToDefault(NS::Obj::Component& comp,
-                              const NS::Obj::Component& defaults,
+    void RevertFieldToDefault(NS::Obj::SubObject& comp,
+                              const NS::Obj::SubObject& defaults,
                               const NS::Obj::FieldDesc& field) noexcept
     {
         switch (field.type)
@@ -903,7 +903,7 @@ namespace NS::Editor
 
             result.activated |= ImGui::IsItemActivated();
             // 編集無しのクリックでもラッチを解くため、確定ではなく非活性化で committed を立てる
-            // 空編集は CommitComponentEdit が before==after で弾くので履歴は汚れない
+            // 空編集は CommitSubObjectEdit が before==after で弾くので履歴は汚れない
             result.committed |= ImGui::IsItemDeactivated();
             return result;
         }
@@ -983,22 +983,22 @@ namespace NS::Editor
         }
     } // namespace
 
-    ComponentEditResult DrawReflectedComponent(NS::Obj::Component& comp,
+    SubObjectEditResult DrawReflectedSubObject(NS::Obj::SubObject& comp,
                                                std::span<const ObjectRefOption> refOptions,
-                                               const NS::Obj::Component* defaults,
+                                               const NS::Obj::SubObject* defaults,
                                                const char* filter) noexcept
     {
         const NS::Obj::ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr || info->fieldCount == 0)
         {
-            return ComponentEditResult{};
+            return SubObjectEditResult{};
         }
         if (!BeginFieldTable("##fields"))
         {
-            return ComponentEditResult{};
+            return SubObjectEditResult{};
         }
 
-        ComponentEditResult result;
+        SubObjectEditResult result;
         // リフレクションの欄を 1 つずつ ImGui ウィジェットへ落とす
         const auto drawRow = [&](std::size_t i) {
             const NS::Obj::FieldDesc& field = info->fields[i];
@@ -1075,12 +1075,12 @@ namespace NS::Editor
     }
 
 #else
-    ComponentEditResult DrawReflectedComponent(NS::Obj::Component&,
+    SubObjectEditResult DrawReflectedSubObject(NS::Obj::SubObject&,
                                                std::span<const ObjectRefOption>,
-                                               const NS::Obj::Component*,
+                                               const NS::Obj::SubObject*,
                                                const char*) noexcept
     {
-        return ComponentEditResult{};
+        return SubObjectEditResult{};
     }
 
     ValueEditResult DrawReflectedValue(void*, const NS::Obj::ReflectionInfo&, std::span<const ObjectRefOption>) noexcept

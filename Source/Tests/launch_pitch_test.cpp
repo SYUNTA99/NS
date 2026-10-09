@@ -2,7 +2,7 @@
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
-#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 
 #include <gtest/gtest.h>
@@ -97,6 +97,7 @@ TEST(LaunchPitchTest, PlayerGravityMatchesTheSharedChoice)
     for (int pass = 0; pass < 2; ++pass)
     {
         Player player;
+        player.Init();
         if (pass == 1)
         {
             ASSERT_EQ(NS::Obj::ApplyJsonFields(
@@ -207,6 +208,7 @@ TEST(LaunchPitchTest, ChargedSlamStartsFromTheGivenVerticalSpeed)
     const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
     {
         Player player;
+        player.Init();
         player.Body().SetVerticalVelocity(8.0f);
         player.RequestBodySlam(1.0f, forward);
         ASSERT_TRUE(player.BodySlam());
@@ -214,6 +216,7 @@ TEST(LaunchPitchTest, ChargedSlamStartsFromTheGivenVerticalSpeed)
     }
     {
         Player player;
+        player.Init();
         player.Body().SetVerticalVelocity(8.0f);
         player.RequestBodySlam(1.0f, forward, 4.5f);
         ASSERT_TRUE(player.BodySlam());
@@ -222,6 +225,7 @@ TEST(LaunchPitchTest, ChargedSlamStartsFromTheGivenVerticalSpeed)
     {
         // 向きを添えない要求は前の上下の速さを残さない
         Player player;
+        player.Init();
         player.RequestBodySlam(1.0f, forward, 4.5f);
         player.RequestBodySlam(1.0f);
         player.Body().SetVerticalVelocity(8.0f);
@@ -232,6 +236,7 @@ TEST(LaunchPitchTest, ChargedSlamStartsFromTheGivenVerticalSpeed)
     {
         // 通常突進は今のまま「通常突進の上向き初速」で跳ぶ
         Player player;
+        player.Init();
         player.RequestBodySlam(0.0f, forward, 4.5f);
         ASSERT_TRUE(player.BodySlam());
         EXPECT_FLOAT_EQ(player.Body().VerticalVelocity(), 3.0f);

@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Graphics/Renderer.h"
-#include "NSlib/Object/Components/VirtualCamera.h"
+#include "NSlib/Object/SubObjects/VirtualCamera.h"
 
 namespace NS::Obj
 {

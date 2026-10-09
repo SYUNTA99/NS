@@ -3,8 +3,8 @@
 #include "Editor/PlacementCatalog.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/MeshCollision.h"
-#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/SubObjects/MeshCollision.h"
+#include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Filesystem.h"
 
@@ -43,11 +43,11 @@ TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
     NS::Obj::Actor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
     ASSERT_NE(placed, nullptr);
     EXPECT_EQ(std::string_view{placed->ClassName()}, "MapParts");
-    const NS::Obj::Model* renderer = placed->ModelPart();
+    const NS::Obj::Model* renderer = placed->ModelSubObj();
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(renderer->MeshRef(), "wedge45");
     // 当たりは見た目のメッシュに付いて来る
-    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::MeshCollision>(placed->Part("Collision")), nullptr);
+    EXPECT_NE(NS::Obj::Cast<NS::Obj::MeshCollision>(placed->FindSubObj("Collision")), nullptr);
 }
 
 TEST(EditorPlacement, UndoRemovesPlacedActor)
@@ -85,10 +85,10 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
     NS::Obj::Actor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
     ASSERT_NE(placed, nullptr);
     EXPECT_EQ(std::string_view{placed->ClassName()}, "MapParts");
-    const NS::Obj::Model* renderer = placed->ModelPart();
+    const NS::Obj::Model* renderer = placed->ModelSubObj();
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(renderer->MeshRef(), "Assets/Models/__ns_missing_terrain__.glb");
-    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::MeshCollision>(placed->Part("Collision")), nullptr);
+    EXPECT_NE(NS::Obj::Cast<NS::Obj::MeshCollision>(placed->FindSubObj("Collision")), nullptr);
     // 名前はファイル名から付く
     EXPECT_EQ(placed->Name(), "__ns_missing_terrain__");
 }

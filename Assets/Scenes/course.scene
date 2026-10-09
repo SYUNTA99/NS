@@ -7,7 +7,7 @@
         {
             "class": "Player",
             "id": 2,
-            "parts": {
+            "subObjects": {
                 "Appearance": {
                     "玉のメッシュ": "",
                     "着地の潰れ": 0.800000011920929,
@@ -52,6 +52,8 @@
                     },
                     "チャージ減速率": 0.699999988079071,
                     "チャージ満タン秒": 1,
+                    "チャージ突進の距離": 10,
+                    "チャージ突進の速度": 20,
                     "ブレーキのしきい値": -0.800000011920929,
                     "ブレーキの減速度": 40,
                     "上昇重力": -25,
@@ -75,8 +77,6 @@
                     "歩き速度": 4,
                     "破壊を許可": false,
                     "空中の加速度": 40,
-                    "突進距離": 10,
-                    "突進速度": 20,
                     "貫通の止め秒": 0.06666667014360428,
                     "貫通時の減速倍率": 0.75,
                     "走行速度": 8,
@@ -128,7 +128,7 @@
             "class": "FollowCamera",
             "id": 3,
             "name": "Player Camera",
-            "parts": {
+            "subObjects": {
                 "Transform": {
                     "スケール": [
                         1,
@@ -175,7 +175,7 @@
         {
             "class": "Light",
             "id": 4,
-            "parts": {
+            "subObjects": {
                 "DirectionalLight": {
                     "地面環境光": [
                         0.23999999463558197,
@@ -223,7 +223,7 @@
             "class": "MapParts",
             "id": 100,
             "name": "始まりの床",
-            "parts": {
+            "subObjects": {
                 "Collision": {},
                 "Model": {
                     "マテリアル": "",
@@ -258,7 +258,7 @@
             "class": "MapParts",
             "id": 104,
             "name": "広場の床",
-            "parts": {
+            "subObjects": {
                 "Collision": {},
                 "Model": {
                     "マテリアル": "",
@@ -293,7 +293,7 @@
             "class": "MapParts",
             "id": 108,
             "name": "上の台",
-            "parts": {
+            "subObjects": {
                 "Collision": {},
                 "Model": {
                     "マテリアル": "",
@@ -328,7 +328,7 @@
             "class": "MapParts",
             "id": 112,
             "name": "扉の壁 左",
-            "parts": {
+            "subObjects": {
                 "Collision": {},
                 "Model": {
                     "マテリアル": "",
@@ -363,7 +363,7 @@
             "class": "MapParts",
             "id": 116,
             "name": "扉の壁 右",
-            "parts": {
+            "subObjects": {
                 "Collision": {},
                 "Model": {
                     "マテリアル": "",
@@ -398,7 +398,7 @@
             "class": "MapObj",
             "id": 120,
             "name": "扉の岩",
-            "parts": {
+            "subObjects": {
                 "Collision": {
                     "中心オフセット": [
                         0,
@@ -457,7 +457,7 @@
             "class": "MapObj",
             "id": 130,
             "name": "手前の球",
-            "parts": {
+            "subObjects": {
                 "Collision": {
                     "中心オフセット": [
                         0,
@@ -516,7 +516,7 @@
             "class": "MapObj",
             "id": 140,
             "name": "奥の球",
-            "parts": {
+            "subObjects": {
                 "Collision": {
                     "中心オフセット": [
                         0,
@@ -575,7 +575,7 @@
             "class": "Goal",
             "id": 150,
             "name": "ゴール",
-            "parts": {
+            "subObjects": {
                 "BodySensor": {
                     "半径": 0.8999999761581421
                 },
@@ -612,7 +612,7 @@
             "class": "DeathZone",
             "id": 160,
             "name": "落下死の体積",
-            "parts": {
+            "subObjects": {
                 "BodySensor": {
                     "中心オフセット": [
                         0,
@@ -646,5 +646,5 @@
             }
         }
     ],
-    "version": 5
+    "version": 6
 }

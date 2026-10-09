@@ -3,7 +3,7 @@
 #include "Game/Level/LevelMessages.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Graphics/FrameConstants.h"
-#include "NSlib/Object/Components/CameraModifier.h"
+#include "NSlib/Object/SubObjects/CameraModifier.h"
 
 namespace NS::Game::Level
 {

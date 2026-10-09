@@ -53,7 +53,7 @@ namespace NS::Obj
 
     private:
         bool m_alive = false;
-        friend class ObjectList;
+        friend class ActorList;
         void SetName(std::string name) noexcept { m_name = std::move(name); }
         std::string m_name;
         Scene* m_scene = nullptr; // 所有 Scene、attach 前後は nullptr

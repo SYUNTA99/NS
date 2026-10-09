@@ -12,7 +12,7 @@
 #include "NSlib/Graphics/SkeletalMesh.h"
 #include "NSlib/Graphics/StaticMesh.h"
 #include "NSlib/Graphics/Texture.h"
-#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Physics/MeshShape.h"
 #include "NSlib/Windows/Filesystem.h"
 

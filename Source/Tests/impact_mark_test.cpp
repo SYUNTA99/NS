@@ -7,7 +7,7 @@
 #include <type_traits>
 
 static_assert(std::is_base_of_v<NS::Obj::Actor, NS::Game::Level::ImpactMark>);
-static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Game::Level::ImpactMark>);
+static_assert(!std::is_base_of_v<NS::Obj::SubObject, NS::Game::Level::ImpactMark>);
 
 TEST(ImpactMark, TemporaryActorShrinksAndStops)
 {
@@ -21,11 +21,11 @@ TEST(ImpactMark, TemporaryActorShrinksAndStops)
     mark->SetLifeSeconds(NS::OS::FrameTimer::FixedDelta());
     mark->Update();
     EXPECT_FALSE(mark->IsActiveSelf());
-    ASSERT_NE(mark->ModelPart(), nullptr);
-    EXPECT_FALSE(mark->ModelPart()->IsActive());
+    ASSERT_NE(mark->ModelSubObj(), nullptr);
+    EXPECT_FALSE(mark->ModelSubObj()->IsActive());
 }
 
-TEST(ImpactMark, ExpiredMarkLeavesTheObjectList)
+TEST(ImpactMark, ExpiredMarkLeavesTheActorList)
 {
     NS::Obj::Scene scene;
     const std::size_t before = scene.Objects().ObjectCount();

@@ -10,16 +10,16 @@ namespace NS::Game::Level
     class Goal : public NS::Obj::Actor
     {
     public:
-        Goal() noexcept;
-        void ForEachPart(const PartVisitor& visitor) const override;
-
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         NS_REFLECT_NONE(Goal, NS::Obj::Actor)
 
         //! 範囲に入ったプレイヤーの体へ MsgGoal を送る
         void AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other) override;
 
+    protected:
+        void OnInit() override;
+
     private:
-        GoalParams m_params;
+        GoalParams* m_params = nullptr;
     };
 } // namespace NS::Game::Level

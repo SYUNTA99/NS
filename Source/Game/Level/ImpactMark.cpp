@@ -11,10 +11,14 @@ namespace NS::Game::Level
 {
     ImpactMark::ImpactMark() noexcept
     {
-        (void)CreatePart("Model");
-        ModelPart()->SetMeshRef("shadowQuad");
-        ModelPart()->SetMaterialRef("shadow");
         Root().SetScale(NS::Vector3{m_diameter, 1.0f, m_diameter});
+    }
+
+    void ImpactMark::OnInit()
+    {
+        NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
+        model->SetMeshRef("shadowQuad");
+        model->SetMaterialRef("shadow");
     }
 
     NS::Obj::Actor* ImpactMark::SpawnAt(NS::Obj::Scene* scene, const NS::Vector3& position)
@@ -24,7 +28,7 @@ namespace NS::Game::Level
             return nullptr;
         }
 
-        // 組み立ててから渡す。SpawnTransient の資産の引き当ては渡した時に持っている Component にしか効かない
+        // 部品は渡した後に OnInit が作る。ここで触るのは根だけ
         std::unique_ptr<ImpactMark> owned = std::make_unique<ImpactMark>();
         owned->Root().SetPosition(position);
         return scene->SpawnTransient(std::move(owned));

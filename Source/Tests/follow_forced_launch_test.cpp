@@ -1,7 +1,7 @@
 #include "Game/Level/FollowCamera.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/CameraTarget.h"
-#include "NSlib/Object/Components/ThirdPersonFollow.h"
+#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"

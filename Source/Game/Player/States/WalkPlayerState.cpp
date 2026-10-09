@@ -6,7 +6,7 @@
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
-#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/SubObjects/Body.h"
 
 namespace NS::Game::Player
 {

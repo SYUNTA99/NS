@@ -21,16 +21,17 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/SkidPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
-#include "NSlib/Object/Components/Animation.h"
-#include "NSlib/Object/Components/Body.h"
-#include "NSlib/Object/Components/Collider.h"
-#include "NSlib/Object/Components/HitReaction.h"
-#include "NSlib/Object/Components/HitSensor.h"
-#include "NSlib/Object/Components/Model.h"
-#include "NSlib/Object/Components/PlayerInput.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/Animation.h"
+#include "NSlib/Object/SubObjects/Body.h"
+#include "NSlib/Object/SubObjects/Collider.h"
+#include "NSlib/Object/SubObjects/HitReaction.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/SubObjects/Model.h"
+#include "NSlib/Object/SubObjects/PlayerInput.h"
+#include "NSlib/Object/SubObjects/Shadow.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/IUse/IUseSceneObj.h"
-#include "NSlib/Object/ObjectList.h"
+#include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -39,38 +40,33 @@
 
 NS_CLASS(Player)
 
-Player::Player() noexcept
+Player::Player() noexcept = default;
+
+Player::~Player() = default;
+
+void Player::OnInit()
 {
-    m_appearance = std::make_unique<NS::Game::Player::PlayerAppearance>();
-    m_body = std::make_unique<NS::Obj::Body>();
-    m_collider = std::make_unique<NS::Obj::Collider>();
-    m_input = std::make_unique<NS::Obj::PlayerInput>();
-    m_params = std::make_unique<NS::Game::Player::PlayerParams>();
-    m_resolver = std::make_unique<NS::Game::Level::ImpactResolver>();
-    m_targetMarker = std::make_unique<NS::Game::Level::TargetMarker>();
-    m_slamArrow = std::make_unique<NS::Game::Level::SlamArrow>();
-    m_chargeEffects = std::make_unique<NS::Game::Player::ChargeEffects>();
-    m_impactEffects = std::make_unique<NS::Game::Player::ImpactEffects>();
-    (void)CreatePart("Model");
-    ModelPart()->SetMaterialRef("player");
-    ModelPart()->SetBaseColor(NS::Vector3{0.5f, 0.5f, 0.5f});
-    AttachFixedComponent(*m_appearance);
-    AttachFixedComponent(*m_body);
-    AttachFixedComponent(*m_collider);
-    AttachFixedComponent(*m_input);
-    AttachFixedComponent(*m_params);
-    (void)CreatePart("Shadow");
+    NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
+    model->SetMaterialRef("player");
+    model->SetBaseColor(NS::Vector3{0.5f, 0.5f, 0.5f});
+    m_appearance = CreateSubObj<NS::Game::Player::PlayerAppearance>("Appearance");
+    m_body = CreateSubObj<NS::Obj::Body>("Movement");
+    m_collider = CreateSubObj<NS::Obj::Collider>("Collider");
+    m_input = CreateSubObj<NS::Obj::PlayerInput>("Input");
+    m_params = CreateSubObj<NS::Game::Player::PlayerParams>("Params");
+    CreateSubObj<NS::Obj::Shadow>(ShadowSlot());
     // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
-    SetBodySensorPart(std::make_unique<NS::Obj::FollowHitSensor>(
-        [collider = m_collider.get()] { return NS::Obj::SensorVolume::Capsule(collider->WorldCapsule()); }));
-    NS::Game::Level::SetSensorKind(*BodySensorPart(), NS::Game::Level::SensorKind::PlayerBody);
-    AttachFixedComponent(*m_resolver);
-    (void)CreatePart("HitReaction");
-    AttachFixedComponent(*m_targetMarker);
-    AttachFixedComponent(*m_slamArrow);
-    AttachFixedComponent(*m_chargeEffects);
-    AttachFixedComponent(*m_impactEffects);
-    // 部品を全部付けた後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
+    NS::Obj::FollowHitSensor* bodySensor = CreateSubObj<NS::Obj::FollowHitSensor>(
+        BodySensorSlot(),
+        [collider = m_collider] { return NS::Obj::SensorVolume::Capsule(collider->WorldCapsule()); });
+    NS::Game::Level::SetSensorKind(*bodySensor, NS::Game::Level::SensorKind::PlayerBody);
+    m_resolver = CreateSubObj<NS::Game::Level::ImpactResolver>("ImpactResolver");
+    CreateSubObj<NS::Obj::HitReaction>(HitReactionSlot());
+    m_targetMarker = CreateSubObj<NS::Game::Level::TargetMarker>("TargetMarker");
+    m_slamArrow = CreateSubObj<NS::Game::Level::SlamArrow>("SlamArrow");
+    m_chargeEffects = CreateSubObj<NS::Game::Player::ChargeEffects>("ChargeEffects");
+    m_impactEffects = CreateSubObj<NS::Game::Player::ImpactEffects>("ImpactEffects");
+    // 部品を全部作った後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
     (void)BuildStateMachine<Player,
                             NS::Game::Player::IdlePlayerState,
                             NS::Game::Player::WalkPlayerState,
@@ -81,23 +77,6 @@ Player::Player() noexcept
                             NS::Game::Player::BrakePlayerState,
                             NS::Game::Player::ReboundPlayerState,
                             NS::Game::Player::SkidPlayerState>(*this, m_states);
-}
-
-Player::~Player() = default;
-
-void Player::ForEachPart(const PartVisitor& visitor) const
-{
-    NS::Obj::Actor::ForEachPart(visitor);
-    visitor("Appearance", *m_appearance);
-    visitor("Movement", *m_body);
-    visitor("Collider", *m_collider);
-    visitor("Input", *m_input);
-    visitor("Params", *m_params);
-    visitor("ImpactResolver", *m_resolver);
-    visitor("TargetMarker", *m_targetMarker);
-    visitor("SlamArrow", *m_slamArrow);
-    visitor("ChargeEffects", *m_chargeEffects);
-    visitor("ImpactEffects", *m_impactEffects);
 }
 
 NS::Obj::CameraTargetState Player::GetCameraTargetState() const
@@ -153,7 +132,7 @@ NS::Obj::CameraTargetState Player::GetCameraTargetState() const
 
 void Player::UpdateAnimation()
 {
-    NS::Obj::Animation* animation = AnimationPart();
+    NS::Obj::Animation* animation = AnimationSubObj();
     if (animation == nullptr)
     {
         return;
@@ -179,7 +158,7 @@ void Player::UpdateAnimation()
 
 void Player::ReadInput()
 {
-    TickPart(m_input.get());
+    TickSubObj(m_input);
 }
 
 void Player::Update(bool chargeHeld)
@@ -240,14 +219,14 @@ void Player::BodyStep()
 void Player::VisualStep()
 {
     UpdateAnimation();
-    TickPart(m_targetMarker.get());
-    TickPart(m_slamArrow.get());
-    TickPart(HitReactionPart());
+    TickSubObj(m_targetMarker);
+    TickSubObj(m_slamArrow);
+    TickSubObj(HitReactionSubObj());
     // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
     m_resolver->WriteTremor();
-    TickPart(m_appearance.get());
-    TickPart(m_chargeEffects.get());
-    TickPart(m_impactEffects.get());
+    TickSubObj(m_appearance);
+    TickSubObj(m_chargeEffects);
+    TickSubObj(m_impactEffects);
 #if !defined(NS_SHIPPING)
     DrawChargeRing();
 #endif
@@ -607,7 +586,7 @@ void Player::FinishStateStep(float dt)
     }
 }
 
-Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept
+Player* FindPlayer(NS::Obj::ActorList& objects) noexcept
 {
     for (NS::Obj::Actor* obj : objects)
     {

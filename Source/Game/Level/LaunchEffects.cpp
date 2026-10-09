@@ -4,7 +4,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Graphics/EffectScene.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/SphereCollision.h"
+#include "NSlib/Object/SubObjects/SphereCollision.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -68,7 +68,7 @@ namespace NS::Game::Level
         [[nodiscard]] bool TryGetCollisionBounds(const NS::Obj::Actor& object, NS::AABB& outBounds) noexcept
         {
             if (const NS::Obj::SphereCollision* sphere =
-                    NS::Obj::ComponentCast<NS::Obj::SphereCollision>(object.CollisionPart()))
+                    NS::Obj::Cast<NS::Obj::SphereCollision>(object.CollisionSubObj()))
             {
                 outBounds = sphere->WorldAABB();
                 return true;
@@ -77,7 +77,7 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    LaunchEffects::LaunchEffects() noexcept : NS::Obj::Component() {}
+    LaunchEffects::LaunchEffects() noexcept : NS::Obj::SubObject() {}
 
     const MapObjParams& LaunchEffects::Tuning() const noexcept
     {

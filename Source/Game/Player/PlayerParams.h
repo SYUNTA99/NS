@@ -2,7 +2,7 @@
 
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerGravity.h"
-#include "NSlib/Object/Component.h"
+#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/Reflection/Curve.h"
 
 #include <algorithm>
@@ -30,7 +30,7 @@ namespace NS::Game::Player
     //! @details 移動・溜め・衝突はここの欄を読む。見た目と演出の欄は描く部品 (PlayerAppearance・ChargeEffects・
     //! ImpactEffects・TargetMarker・SlamArrow) が自分で持つ。ここに残る演出の欄は、Player が自分の計算に読む
     //! 突進の回転数・構えの縮み・アニメーションの選び方だけ
-    class PlayerParams : public NS::Obj::Component
+    class PlayerParams : public NS::Obj::SubObject
     {
     public:
         PlayerParams() noexcept;
@@ -75,7 +75,7 @@ namespace NS::Game::Player
         //! @return 最高速へ掛ける倍率
         [[nodiscard]] float ChargingSpeedScale() const noexcept;
 
-        NS_REFLECT_BEGIN(PlayerParams, NS::Obj::Component)
+        NS_REFLECT_BEGIN(PlayerParams, NS::Obj::SubObject)
         NS_REFLECT_GROUP("体力")
         NS_REFLECT_FIELD(m_maxHealth, "体力")
         NS_REFLECT_GROUP("ジャンプ")
@@ -105,8 +105,8 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_ledgeClimbDuration, "よじ登りの所要時間")
         NS_REFLECT_FIELD(m_ledgeShimmySpeed, "縁の横移動速度")
         NS_REFLECT_GROUP("突進")
-        NS_REFLECT_FIELD(m_bodySlamSpeed, "突進速度")
-        NS_REFLECT_FIELD(m_bodySlamDistance, "突進距離")
+        NS_REFLECT_FIELD(m_bodySlamSpeed, "チャージ突進の速度")
+        NS_REFLECT_FIELD(m_bodySlamDistance, "チャージ突進の距離")
         NS_REFLECT_FIELD(m_launchPitchLimitDegrees, "放つ角度の上限")
         NS_REFLECT_FIELD(m_tapSlamSpeed, "通常突進の初速")
         NS_REFLECT_FIELD(m_tapSlamUpSpeed, "通常突進の上向き初速")

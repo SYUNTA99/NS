@@ -5,7 +5,7 @@
 #include "Game/Level/HitTier.h"
 #include "Game/Player/EffectLayerList.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Component.h"
+#include "NSlib/Object/SubObject.h"
 
 #include <cstdint>
 #include <vector>
@@ -22,7 +22,7 @@ namespace NS::Game::Level
     //! MapObj の観測の段 (ObserveStep) が発光の歩を始め、見た目の段 (VisualStep) が進める。
     //! 尾を出す BeginTrail は自機の段に届く放しの知らせの中で走り、置物が自分を動かす Triggers の段より前なので、
     //! 尾の頭は放した時の速度で 1 フレーム先へ置く
-    class LaunchEffects : public NS::Obj::Component
+    class LaunchEffects : public NS::Obj::SubObject
     {
     public:
         LaunchEffects() noexcept;
@@ -59,7 +59,7 @@ namespace NS::Game::Level
         [[nodiscard]] float LandDustScale() const noexcept { return m_landDustScale; }
 
         // 飛んでいく物の尾と落ちた所の粉は、飛ばした手応えそのもの。Inspector で触って詰められるよう公開する
-        NS_REFLECT_BEGIN(LaunchEffects, NS::Obj::Component)
+        NS_REFLECT_BEGIN(LaunchEffects, NS::Obj::SubObject)
         NS_REFLECT_FIELD(m_landDustLife, "着地の粉の寿命フレーム")
         NS_REFLECT_FIELD(m_dustRingLift, "着地の粉を浮かせる高さ")
         NS_REFLECT_FIELD(m_launchTrailAsset, "飛び出しの尾の資産")

@@ -1,6 +1,6 @@
 {
   "class": "Light",
-  "parts": {
+  "subObjects": {
     "DirectionalLight": {
       "地面環境光": [
         0.23999999463558197,

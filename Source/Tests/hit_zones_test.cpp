@@ -7,11 +7,11 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/HitSensor.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
@@ -86,7 +86,7 @@ namespace
                 // 位置は Transform の件に入っているので、件ごと置き換えずに足す
                 for (nlohmann::json::const_iterator it = overriddenParts.begin(); it != overriddenParts.end(); ++it)
                 {
-                    NS::Obj::ObjectJsonParts(rock)[it.key()] = it.value();
+                    NS::Obj::ObjectJsonSubObjs(rock)[it.key()] = it.value();
                 }
             }
             NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -97,7 +97,7 @@ namespace
 
     const HitZones* HitZonesOf(const NS::Obj::Actor& actor)
     {
-        return NS::Obj::ComponentCast<HitZones>(actor.Part("HitZones"));
+        return NS::Obj::Cast<HitZones>(actor.FindSubObj("HitZones"));
     }
 
     // 自機を根 (0, 1, 0) に、半径 0.5 m の置物を 1 m 先の高さ rockHeight に置く
@@ -116,7 +116,7 @@ namespace
         NS::Obj::SetObjectPosition(rock, Vector3{0.0f, rockHeight, 1.0f});
         for (nlohmann::json::const_iterator it = rockParts.begin(); it != rockParts.end(); ++it)
         {
-            NS::Obj::ObjectJsonParts(rock)[it.key()] = it.value();
+            NS::Obj::ObjectJsonSubObjs(rock)[it.key()] = it.value();
         }
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.LoadJson(doc);
@@ -460,7 +460,7 @@ TEST(HitZonesTest, LinePointIsTheCenterDroppedOntoTheLineAtTheCenterHeight)
 TEST(HitZonesTest, FieldDefaultsAreARoundRedOfPoint43)
 {
     const HitZones zones;
-    const nlohmann::json fields = NS::Obj::SerializeComponentFields(zones);
+    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(zones);
     EXPECT_EQ(fields["丸"], true);
     EXPECT_FLOAT_EQ(fields["横幅"].get<float>(), 0.43f);
     EXPECT_FLOAT_EQ(fields["縦の幅"].get<float>(), 0.43f);
@@ -504,7 +504,7 @@ TEST(HitZonesTest, MapObjArchetypeWritesTheRedDefaults)
 {
     const nlohmann::json* archetype = NS::Obj::ArchetypeLibrary::Get().Find("MapObj");
     ASSERT_NE(archetype, nullptr);
-    const nlohmann::json* fields = NS::Obj::PartFields(*archetype, "HitZones");
+    const nlohmann::json* fields = NS::Obj::SubObjFields(*archetype, "HitZones");
     ASSERT_NE(fields, nullptr);
     EXPECT_EQ((*fields)["丸"], true);
     EXPECT_FLOAT_EQ(NS::Obj::FieldFloat(*fields, "横幅", -1.0f), 0.43f);
@@ -525,14 +525,14 @@ TEST(HitZonesTest, MapObjAnswersWithItsFaceAndBody)
     ASSERT_NE(zones, nullptr);
 
     NS::Game::Level::TackleTargetAnswer answer{};
-    ASSERT_TRUE(NS::Game::Level::SendMsgAskTackleTarget(*rock->BodySensorPart(), answer));
+    ASSERT_TRUE(NS::Game::Level::SendMsgAskTackleTarget(*rock->BodySensorSubObj(), answer));
     EXPECT_EQ(answer.face.round, zones->Face().round);
     EXPECT_FLOAT_EQ(answer.face.width, zones->Face().width);
     EXPECT_FLOAT_EQ(answer.face.centerU, 0.25f);
     EXPECT_FLOAT_EQ(answer.face.powerScale, 1.1f);
     EXPECT_FLOAT_EQ(answer.face.remainderPowerScale, zones->Face().remainderPowerScale);
 
-    const SensorVolume expected = rock->BodySensorPart()->WorldVolume();
+    const SensorVolume expected = rock->BodySensorSubObj()->WorldVolume();
     EXPECT_FALSE(answer.body.isBox);
     EXPECT_FLOAT_EQ(answer.body.radius, expected.radius);
     EXPECT_FLOAT_EQ(answer.body.a.x, 8.0f);
@@ -551,7 +551,7 @@ TEST(HitZonesTest, InstanceOverrideChangesOnlyThatTarget)
 
     const auto judgeThroughCenter = [&](NS::Obj::Actor& target) {
         NS::Game::Level::TackleTargetAnswer answer{};
-        EXPECT_TRUE(NS::Game::Level::SendMsgAskTackleTarget(*target.BodySensorPart(), answer));
+        EXPECT_TRUE(NS::Game::Level::SendMsgAskTackleTarget(*target.BodySensorSubObj(), answer));
         const Vector3 center = answer.body.Center();
         HitFaceJudgement result;
         EXPECT_TRUE(JudgeHitFace(answer.face,
@@ -578,14 +578,14 @@ TEST(HitZonesTest, InstanceOverrideSurvivesSaveAndLoad)
     }
     const nlohmann::json& objects = NS::Obj::SceneJsonObjects(saved);
     const nlohmann::json* plainFields =
-        NS::Obj::PartFields(objects[NS::Obj::FindObjectIndexById(saved, 1)], "HitZones");
+        NS::Obj::SubObjFields(objects[NS::Obj::FindObjectIndexById(saved, 1)], "HitZones");
     if (plainFields != nullptr)
     {
         EXPECT_FALSE(NS::Obj::HasField(*plainFields, "上下の位置"));
         EXPECT_FALSE(NS::Obj::HasField(*plainFields, "丸"));
     }
     const nlohmann::json* overriddenFields =
-        NS::Obj::PartFields(objects[NS::Obj::FindObjectIndexById(saved, 2)], "HitZones");
+        NS::Obj::SubObjFields(objects[NS::Obj::FindObjectIndexById(saved, 2)], "HitZones");
     ASSERT_NE(overriddenFields, nullptr);
     EXPECT_FLOAT_EQ(NS::Obj::FieldFloat(*overriddenFields, "上下の位置", 0.0f), 0.3f);
     EXPECT_FALSE(NS::Obj::HasField(*overriddenFields, "横幅"));
@@ -763,7 +763,7 @@ TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
     ASSERT_NE(player, nullptr);
     const NS::Obj::Actor* target = scene.Objects().FindByObjectId(2);
     ASSERT_NE(target, nullptr);
-    const SensorVolume body = target->BodySensorPart()->WorldVolume();
+    const SensorVolume body = target->BodySensorSubObj()->WorldVolume();
 
     player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
@@ -968,7 +968,7 @@ TEST(HitSensor, UnsetKindIsNotATackleTarget)
     ASSERT_NE(rock, nullptr);
     rock->Root().SetPosition(Vector3{0.0f, 0.5f, -5.0f});
     std::unique_ptr<NS::Obj::Actor> bare = std::make_unique<NS::Obj::Actor>();
-    NS::Obj::ShapeHitSensor* sensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(bare->CreatePart("BodySensor"));
+    NS::Obj::ShapeHitSensor* sensor = NS::Obj::Cast<NS::Obj::ShapeHitSensor>(bare->CreateSubObj("BodySensor"));
     ASSERT_NE(sensor, nullptr);
     sensor->SetSphere(0.5f);
     bare->Root().SetPosition(Vector3{0.0f, 0.5f, 2.0f});
