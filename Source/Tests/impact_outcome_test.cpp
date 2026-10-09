@@ -1,6 +1,7 @@
 #include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Level/MapObjParams.h"
 #include "Game/Player/PlayerParams.h"
 
 #include <gtest/gtest.h>
@@ -14,7 +15,7 @@ namespace
     using GL::Level::ImpactTuning;
     using GL::Level::MakeImpactTuning;
 
-    // 既定の PlayerParams から作った調整値。値の正は PlayerParams 1 つなので、ここでも同じ作り方を通す
+    // 既定の PlayerParams から作った調整値。本番と同じ作り方を通す
     ImpactTuning DefaultTuning()
     {
         const GL::Player::PlayerParams params;
@@ -31,6 +32,8 @@ namespace
         input.awayDirection = NS::Vector3{1.0f, 0.0f, 0.0f};
         input.launchDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
         input.slamVelocity = NS::Vector3{-8.0f, 0.0f, 0.0f};
+        // 飛び方は相手の欄の既定。本番は相手が当たりの答えで渡す
+        input.launch = GL::Level::MapObjParams{}.Launch();
         return input;
     }
 } // namespace
@@ -85,8 +88,8 @@ TEST(ImpactOutcome, TiersDifferOnlyByTheCenterDistanceAndMissHeight)
     tuning.centerHitReboundHeightScale = 1.0f;
     tuning.missReboundDistanceScale = 1.0f;
     tuning.missReboundHeightRatio = 1.0f;
-    tuning.missLaunchDistanceRatio = 1.0f;
     ImpactInput wide = BaseInput();
+    wide.launch.missDistanceRatio = 1.0f;
     ImpactInput center = BaseInput();
     center.tier = HitTier::Center;
 
@@ -256,9 +259,10 @@ TEST(ImpactOutcome, MissLaunchShrinksWithTheSquareOfThePushAndStaysLow)
 {
     const ImpactTuning tuning = DefaultTuning();
     // 面の向き n = 0.8 右 + 0.6 手前。押し込む成分は 0.6
-    const ImpactOutcome miss = ComputeImpactOutcome(MissAlongZ(0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere), tuning);
-    EXPECT_NEAR(miss.launchArc.distance, 29.0f * 0.36f * tuning.missLaunchDistanceRatio, 0.001f);
-    EXPECT_NEAR(miss.launchArc.apexHeight, 2.0f * 0.36f * tuning.missLaunchHeightRatio, 0.001f);
+    const ImpactInput missInput = MissAlongZ(0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere);
+    const ImpactOutcome miss = ComputeImpactOutcome(missInput, tuning);
+    EXPECT_NEAR(miss.launchArc.distance, 29.0f * 0.36f * missInput.launch.missDistanceRatio, 0.001f);
+    EXPECT_NEAR(miss.launchArc.apexHeight, 2.0f * 0.36f * missInput.launch.missHeightRatio, 0.001f);
 
     ImpactInput center = MissAlongZ(0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere);
     center.tier = HitTier::Center;
@@ -316,4 +320,25 @@ TEST(ImpactOutcome, MissSkidSpeedScaleFallsToZeroInTheSkidFrames)
     EXPECT_FLOAT_EQ(GL::Level::MissSkidSpeedScale(0, 0, 2.0f), 0.0f);
     // 減り方が有限の正でない時は直線
     EXPECT_FLOAT_EQ(GL::Level::MissSkidSpeedScale(9, 18, -1.0f), 0.5f);
+}
+
+// 相手の曲線は、相手が答えた飛び方で組む。同じ調整値でも、相手の高さと重力が違えば曲線が違う
+TEST(ImpactOutcome, LaunchShapeComesFromTheInput)
+{
+    const ImpactTuning tuning = DefaultTuning();
+    ImpactInput input = BaseInput();
+    input.tier = HitTier::Center;
+    input.launch.apexHeight = 3.0f;
+    input.launch.riseGravity = 40.0f;
+    input.launch.fallGravityScale = 2.0f;
+    input.launch.apexBandSpeed = 0.5f;
+    input.launch.apexBandGravityScale = 0.25f;
+
+    const ImpactOutcome outcome = ComputeImpactOutcome(input, tuning);
+
+    EXPECT_FLOAT_EQ(outcome.launchArc.apexHeight, 3.0f * outcome.launchScale);
+    EXPECT_FLOAT_EQ(outcome.launchArc.riseGravity, 40.0f);
+    EXPECT_FLOAT_EQ(outcome.launchArc.fallGravityScale, 2.0f);
+    EXPECT_FLOAT_EQ(outcome.launchArc.apexBandSpeed, 0.5f);
+    EXPECT_FLOAT_EQ(outcome.launchArc.apexBandGravityScale, 0.25f);
 }

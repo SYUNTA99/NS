@@ -559,6 +559,7 @@ namespace GL::Level
             answer.bounds = body.Bounds();
             answer.face = m_hitZones->Face();
             answer.body = body;
+            answer.launch = m_params->Launch();
             return true;
         }
         if (const MsgTackleFreeze* freeze = NS::Obj::MsgCast<MsgTackleFreeze>(msg))

@@ -1,4 +1,4 @@
-﻿#include "Game/Level/ImpactResolver.h"
+#include "Game/Level/ImpactResolver.h"
 
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactOutcome.h"
@@ -627,6 +627,7 @@ namespace GL::Level
         impactInput.mass = mass;
         impactInput.toughness = answer.toughness;
         impactInput.breakable = answer.breakable;
+        impactInput.launch = answer.launch;
         impactInput.awayDirection = NS::Vector3{awayX, 0.0f, awayZ};
         impactInput.launchDirection = launchDir;
         impactInput.slamVelocity = velocity;
@@ -1692,18 +1693,11 @@ namespace GL::Level
                             .missReboundDistanceScale = params.m_missReboundDistanceScale,
                             .launchDistance = params.m_launchDistance,
                             .launchMassExponent = params.m_launchMassExponent,
-                            .launchApexHeight = params.m_launchApexHeight,
-                            .launchRiseGravity = params.m_launchRiseGravity,
-                            .launchFallGravityScale = params.m_launchFallGravityScale,
-                            .launchApexBandSpeed = params.m_launchApexBandSpeed,
-                            .launchApexBandGravityScale = params.m_launchApexBandGravityScale,
                             .hitStopMaxSeconds = params.m_hitStopMaxSeconds,
                             .fixedDelta = NS::OS::FrameTimer::FixedDelta(),
                             .missReboundHeightRatio = params.m_missReboundHeightRatio,
                             .missSlamBounce = params.m_missSlamBounce,
-                            .missBoxEdgeSharpness = params.m_missBoxEdgeSharpness,
-                            .missLaunchHeightRatio = params.m_missLaunchHeightRatio,
-                            .missLaunchDistanceRatio = params.m_missLaunchDistanceRatio};
+                            .missBoxEdgeSharpness = params.m_missBoxEdgeSharpness};
     }
 
     void ImpactResolver::ApplyRebound()

@@ -1,6 +1,7 @@
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
+#include "Game/Level/MapObjParams.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
@@ -10,15 +11,15 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/OBB.h"
+#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/SubObjects/PlayerInput.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
-#include "NSlib/Object/IUse/IUseSceneObj.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestHitTimelines.h"
 #include "Tests/TestViewCamera.h"
@@ -285,8 +286,7 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
         ASSERT_NE(rock, nullptr);
         const NS::Vector3 rockHome = rock->Root().Position();
         ASSERT_TRUE(SlamIntoTheRock(*player, *rock, waitForFreeze));
-        GL::Level::CourseDirector* director =
-            NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(scene);
+        GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(scene);
         ASSERT_NE(director, nullptr);
         director->RestartCourse();
         for (int frame = 0; frame < 20; ++frame)
@@ -367,9 +367,9 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
             left = std::max(1.0f - static_cast<float>(frame - bulgeAt) / 5.0f, 0.0f);
         }
         const float side = 0.3f * left;
-        ExpectSameVector(player->ModelSubObj()->DrawScale(),
-                         NS::Vector3{
-                             squash.x + side * dir.z * dir.z, squash.y + 0.2f * left, squash.z + side * dir.x * dir.x});
+        ExpectSameVector(
+            player->ModelSubObj()->DrawScale(),
+            NS::Vector3{squash.x + side * dir.z * dir.z, squash.y + 0.2f * left, squash.z + side * dir.x * dir.x});
         player->Update(false);
         rock->Update();
         released = player->Resolver().ReleasedThisStep();
@@ -380,9 +380,8 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
     // 明けは潰れ 0.7 から 3 フレームで突進の向きへ 1.25 まで伸び、縦は 1.1 から 0.9 へ細る。明けはその 1 フレーム目
     const float along = 0.7f + 0.55f / 3.0f;
     const float height = 1.1f - 0.2f / 3.0f;
-    ExpectSameVector(
-        player->ModelSubObj()->DrawScale(),
-        NS::Vector3{1.0f - (1.0f - along) * dir.x * dir.x, height, 1.0f - (1.0f - along) * dir.z * dir.z});
+    ExpectSameVector(player->ModelSubObj()->DrawScale(),
+                     NS::Vector3{1.0f - (1.0f - along) * dir.x * dir.x, height, 1.0f - (1.0f - along) * dir.z * dir.z});
     for (int frame = 0; frame < 30 && player->Resolver().IsShapeAnimating(); ++frame)
     {
         SCOPED_TRACE(frame);
@@ -594,19 +593,22 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
         // 止めの間の置物の位置は、根を往復させていた頃から食い込みの距離だけの値へ直した
         // 溜めは 1.5 秒押して紫に入ってから放す
         // 見るのは状態の移り方なので、欄の既定を触っても基準を取り直さずに済むよう留める
-        NS::Obj::ApplyJsonFields(player->Params(),
-                                 nlohmann::json{{"通常突進の初速", 10.0f},
-                                                {"紫の揺れの最大のずれ", 0.0f},
-                                                {"紫の威力の上限", 1.0f},
-                                                {"外れの反動の高さの割合", 1.0f},
-                                                {"外れの反動の距離の倍率", 1.0f},
-                                                {"外れで飛ばす相手の距離の割合", 1.0f},
-                                                {"叩きつけた時の跳ね", 1.0f},
-                                                {"外れのこすって止まるまでのフレーム数", 0},
-                                                {"中心近くの当たりの反動の距離の倍率", 2.0f},
-                                                {"中心近くの当たりの反動の高さの倍率", 1.0f}});
+        EXPECT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
+                                           nlohmann::json{{"通常突進の初速", 10.0f},
+                                                          {"紫の揺れの最大のずれ", 0.0f},
+                                                          {"紫の威力の上限", 1.0f},
+                                                          {"外れの反動の高さの割合", 1.0f},
+                                                          {"外れの反動の距離の倍率", 1.0f},
+                                                          {"叩きつけた時の跳ね", 1.0f},
+                                                          {"外れのこすって止まるまでのフレーム数", 0},
+                                                          {"中心近くの当たりの反動の距離の倍率", 2.0f},
+                                                          {"中心近くの当たりの反動の高さの倍率", 1.0f}}),
+                  0u);
         GL::Level::MapObj* rock = NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
+        GL::Level::MapObjParams* rockParams = NS::Obj::Cast<GL::Level::MapObjParams>(rock->FindSubObj("Params"));
+        ASSERT_NE(rockParams, nullptr);
+        EXPECT_EQ(NS::Obj::ApplyJsonFields(*rockParams, nlohmann::json{{"外れで飛ばす相手の距離の割合", 1.0f}}), 0u);
         int impact = -1;
         int freeze = -1;
         int release = -1;
@@ -664,15 +666,12 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                 }
                 SCOPED_TRACE(scenario);
                 SCOPED_TRACE(frame);
-                ExpectSameVector(
-                    player->Root().Position(),
-                    NS::Vector3{sample[1].get<float>(), sample[2].get<float>(), sample[3].get<float>()});
-                ExpectSameVector(
-                    player->Body().Velocity(),
-                    NS::Vector3{sample[4].get<float>(), sample[5].get<float>(), sample[6].get<float>()});
-                ExpectSameVector(
-                    rock->Root().Position(),
-                    NS::Vector3{sample[7].get<float>(), sample[8].get<float>(), sample[9].get<float>()});
+                ExpectSameVector(player->Root().Position(),
+                                 NS::Vector3{sample[1].get<float>(), sample[2].get<float>(), sample[3].get<float>()});
+                ExpectSameVector(player->Body().Velocity(),
+                                 NS::Vector3{sample[4].get<float>(), sample[5].get<float>(), sample[6].get<float>()});
+                ExpectSameVector(rock->Root().Position(),
+                                 NS::Vector3{sample[7].get<float>(), sample[8].get<float>(), sample[9].get<float>()});
             }
         }
         EXPECT_EQ(impact, expected[1].get<int>());

@@ -240,18 +240,18 @@ namespace GL::Level
         outcome.launchScale = power / std::pow(mass, massExponent);
         outcome.launchArc = LaunchArc{.direction = launchDirection,
                                       .distance = tuning.launchDistance * outcome.launchScale,
-                                      .apexHeight = tuning.launchApexHeight * outcome.launchScale,
-                                      .riseGravity = tuning.launchRiseGravity,
-                                      .fallGravityScale = tuning.launchFallGravityScale,
-                                      .apexBandSpeed = tuning.launchApexBandSpeed,
-                                      .apexBandGravityScale = tuning.launchApexBandGravityScale};
+                                      .apexHeight = input.launch.apexHeight * outcome.launchScale,
+                                      .riseGravity = input.launch.riseGravity,
+                                      .fallGravityScale = input.launch.fallGravityScale,
+                                      .apexBandSpeed = input.launch.apexBandSpeed,
+                                      .apexBandGravityScale = input.launch.apexBandGravityScale};
         // 外れは力が相手へ真っすぐ入らない。飛ぶ量を押し込む成分の 2 乗で減らした上から距離と弧をさらに縮め、
         // 相手は少しずれるだけにして、真ん中の「弾き飛ばした」に見せない
         if (input.tier == HitTier::Wide)
         {
             const float pushSquared = missPush * missPush;
-            outcome.launchArc.distance *= pushSquared * tuning.missLaunchDistanceRatio;
-            outcome.launchArc.apexHeight *= pushSquared * tuning.missLaunchHeightRatio;
+            outcome.launchArc.distance *= pushSquared * input.launch.missDistanceRatio;
+            outcome.launchArc.apexHeight *= pushSquared * input.launch.missHeightRatio;
         }
         return outcome;
     }

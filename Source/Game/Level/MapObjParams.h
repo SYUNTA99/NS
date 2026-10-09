@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Level/LaunchArc.h"
 #include "Game/Level/MissHop.h"
 #include "NSlib/Object/SubObject.h"
 
@@ -65,6 +66,16 @@ namespace GL::Level
             return MissHopDesc{
                 .heightRatio = m_missHopHeightRatio, .turnDegrees = m_missHopTurnDegrees, .keep = m_missHopKeep};
         }
+        [[nodiscard]] LaunchShape Launch() const noexcept
+        {
+            return LaunchShape{.apexHeight = m_launchApexHeight,
+                               .riseGravity = m_launchRiseGravity,
+                               .fallGravityScale = m_launchFallGravityScale,
+                               .apexBandSpeed = m_launchApexBandSpeed,
+                               .apexBandGravityScale = m_launchApexBandGravityScale,
+                               .missHeightRatio = m_missLaunchHeightRatio,
+                               .missDistanceRatio = m_missLaunchDistanceRatio};
+        }
 
         [[nodiscard]] float ContactSkin() const noexcept { return std::max(m_contactSkin, 0.0f); }
         [[nodiscard]] float StopSpeed() const noexcept { return std::max(m_stopSpeed, 0.0f); }
@@ -84,6 +95,13 @@ namespace GL::Level
         NS_REFLECT_FIELD(m_debrisScale, "破片の大きさ")
         NS_REFLECT_FIELD(m_debrisBaseColor, "破片の色")
         NS_REFLECT_FIELD(m_markProbeDistance, "跡の床探しの距離")
+        NS_REFLECT_FIELD(m_launchApexHeight, "押し飛ばしの高さ")
+        NS_REFLECT_FIELD(m_launchRiseGravity, "押し飛ばしの上昇重力")
+        NS_REFLECT_FIELD(m_launchFallGravityScale, "下りの速さの倍率")
+        NS_REFLECT_FIELD(m_launchApexBandSpeed, "頂点の帯の縦速度")
+        NS_REFLECT_FIELD(m_launchApexBandGravityScale, "頂点の帯の重力倍率")
+        NS_REFLECT_FIELD(m_missLaunchHeightRatio, "外れで飛ばす相手の弧の高さの割合")
+        NS_REFLECT_FIELD(m_missLaunchDistanceRatio, "外れで飛ばす相手の距離の割合")
         NS_REFLECT_FIELD(m_trailFramesBase, "飛び出しの尾が残るフレーム数の基準")
         NS_REFLECT_FIELD(m_trailFramesPerLaunch, "飛び出しの尾が残るフレーム数の飛ばしの比あたり")
         NS_REFLECT_FIELD(m_landDustBase, "着地の粉の大きさの基準")
@@ -122,6 +140,17 @@ namespace GL::Level
         float m_debrisScale = 0.25f;
         NS::Vector3 m_debrisBaseColor{0.35f, 0.32f, 0.30f};
         float m_markProbeDistance = 64.0f;
+        float m_launchApexHeight = 2.0f;
+        float m_launchRiseGravity = 25.0f;
+        float m_launchFallGravityScale = 1.4f;
+        float m_launchApexBandSpeed = 1.0f;
+        float m_launchApexBandGravityScale = 0.5f;
+        // 外れの相手は低く飛ばす。真ん中と同じ角度の弧だと弾き飛ばしに見える
+        // 距離と同じ押し込む成分の 2 乗の縮みの上から、高さへ掛ける割合
+        float m_missLaunchHeightRatio = 0.35f;
+        // 外れの相手は触れた所から少しずれるだけにする
+        // 押し込む成分の 2 乗の縮みの上から、距離へ掛ける割合
+        float m_missLaunchDistanceRatio = 0.1f;
         // 外れで飛ばされた置物は、着地で 1 回だけ小さく向きを変えて跳ね、転がって止まる。真ん中のまっすぐ飛ぶ弧と
         // 違って、力がまともに入らずかすめた事を相手の動きで見せる。何度も跳ねると目を引いて派手になるので 1 回、
         // 跳ねの高さは水平の速さの 0.35 倍まで、向きは左右 30 度までぶらし、速さは跳ねると 7 割に落とす

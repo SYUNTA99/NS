@@ -99,6 +99,7 @@ namespace GL::Level
         NS::AABB bounds{};                      //!< 体の外接箱 (世界座標)
         HitFace face{};                         //!< 面の赤の欄の写し。段と威力の倍率を JudgeHitFace で決める
         NS::Obj::SensorVolume body{};           //!< 体のセンサーの世界の形。面の大きさを出す
+        LaunchShape launch{};                   //!< 押し飛ばされた時の飛び方。既定は無いので受け手が必ず書く
     };
 
     //! @brief 体当たりを受けるかを問う知らせ。体当たりの裁定が、重なった物の体のセンサーへ送る

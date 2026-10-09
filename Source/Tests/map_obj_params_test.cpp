@@ -98,6 +98,52 @@ TEST(MapObjParams, InvalidOverridesKeepPhysicalValuesSafe)
     EXPECT_FLOAT_EQ(params->Restitution(), 0.0f);
 }
 
+// 飛び方の欄の表示名と既定。表示名は保存の鍵になる
+TEST(MapObjParams, LaunchShapeDefaultsBelongToParams)
+{
+    GL::Level::MapObjParams params;
+    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(params);
+    const nlohmann::json expected = {{"押し飛ばしの高さ", 2.0f},
+                                     {"押し飛ばしの上昇重力", 25.0f},
+                                     {"下りの速さの倍率", 1.4f},
+                                     {"頂点の帯の縦速度", 1.0f},
+                                     {"頂点の帯の重力倍率", 0.5f},
+                                     {"外れで飛ばす相手の弧の高さの割合", 0.35f},
+                                     {"外れで飛ばす相手の距離の割合", 0.1f}};
+    for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
+    {
+        ASSERT_TRUE(fields.contains(it.key())) << it.key();
+        EXPECT_EQ(fields[it.key()], it.value()) << it.key();
+    }
+    const GL::Level::LaunchShape shape = params.Launch();
+    EXPECT_FLOAT_EQ(shape.apexHeight, 2.0f);
+    EXPECT_FLOAT_EQ(shape.riseGravity, 25.0f);
+    EXPECT_FLOAT_EQ(shape.fallGravityScale, 1.4f);
+    EXPECT_FLOAT_EQ(shape.apexBandSpeed, 1.0f);
+    EXPECT_FLOAT_EQ(shape.apexBandGravityScale, 0.5f);
+    EXPECT_FLOAT_EQ(shape.missHeightRatio, 0.35f);
+    EXPECT_FLOAT_EQ(shape.missDistanceRatio, 0.1f);
+}
+
+TEST(MapObjParams, TackleAnswerCarriesTheLaunchShape)
+{
+    NS::Obj::Scene scene;
+    nlohmann::json doc = NS::Obj::MakeSceneJson();
+    nlohmann::json rock = NS::Obj::MakeObjectJson();
+    NS::Obj::SetObjectJsonClass(rock, "MapObj");
+    NS::Obj::SetObjectJsonId(rock, 1);
+    rock["subObjects"] = {{"Params", {{"押し飛ばしの高さ", 3.0f}, {"外れで飛ばす相手の距離の割合", 0.5f}}}};
+    NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+    scene.LoadJson(doc);
+    NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(actor, nullptr);
+    GL::Level::TackleTargetAnswer answer;
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*actor->BodySensorSubObj(), answer));
+    EXPECT_FLOAT_EQ(answer.launch.apexHeight, 3.0f);
+    EXPECT_FLOAT_EQ(answer.launch.missDistanceRatio, 0.5f);
+    EXPECT_FLOAT_EQ(answer.launch.riseGravity, 25.0f);
+}
+
 TEST(MapObjParams, LaunchSizeDefaultsBelongToParams)
 {
     GL::Level::MapObjParams params;

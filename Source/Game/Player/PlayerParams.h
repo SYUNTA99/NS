@@ -137,18 +137,11 @@ namespace GL::Player
         NS_REFLECT_FIELD(m_missReboundHeightRatio, "外れの反動の高さの割合")
         NS_REFLECT_FIELD(m_missSlamBounce, "叩きつけた時の跳ね")
         NS_REFLECT_FIELD(m_missBoxEdgeSharpness, "四角の角の鋭さ")
-        NS_REFLECT_FIELD(m_missLaunchHeightRatio, "外れで飛ばす相手の弧の高さの割合")
-        NS_REFLECT_FIELD(m_missLaunchDistanceRatio, "外れで飛ばす相手の距離の割合")
         NS_REFLECT_FIELD(m_missSkidSteps, "外れのこすって止まるまでのフレーム数")
         NS_REFLECT_FIELD(m_missSkidExponent, "外れのこすって止まる減り方")
         NS_REFLECT_GROUP("押し飛ばし")
         NS_REFLECT_FIELD(m_launchDistance, "押し飛ばしの距離")
         NS_REFLECT_FIELD(m_launchMassExponent, "押し飛ばしの質量指数")
-        NS_REFLECT_FIELD(m_launchApexHeight, "押し飛ばしの高さ")
-        NS_REFLECT_FIELD(m_launchRiseGravity, "押し飛ばしの上昇重力")
-        NS_REFLECT_FIELD(m_launchFallGravityScale, "下りの速さの倍率")
-        NS_REFLECT_FIELD(m_launchApexBandSpeed, "頂点の帯の縦速度")
-        NS_REFLECT_FIELD(m_launchApexBandGravityScale, "頂点の帯の重力倍率")
         NS_REFLECT_GROUP("ヒットストップ")
         NS_REFLECT_FIELD(m_centerHitStopScale, "中心近くの当たりのヒットストップ倍率")
         NS_REFLECT_FIELD(m_hitStopMaxSeconds, "ヒットストップの上限秒")
@@ -208,12 +201,6 @@ namespace GL::Player
         float m_missSlamBounce = 0.4f;
         // 箱の相手の面の読み方。見本の出発点 6 で、縁に沿った所は縁の向きへ真っすぐ、角の近くだけ斜めに逸れる
         float m_missBoxEdgeSharpness = 6.0f;
-        // 外れの相手は低く短く飛んで地面を跳ねる。真ん中と同じ角度の弧だと「弾き飛ばした」に見えるので、
-        // 距離を押し込む成分の 2 乗で縮めた上から、高さだけさらに 0.35 倍にして地面すれすれに出す
-        float m_missLaunchHeightRatio = 0.35f;
-        // 外れは手応えが来ない「すかし」。相手は触れた所から少しずれるだけにする。押し込む成分の 2 乗の上から
-        // 0.1 倍で、端の外れは 1 m ほど、赤のすぐ外でも 3 m ほどしか動かず、画面の中に残る
-        float m_missLaunchDistanceRatio = 0.1f;
         // 外れの着地からこすって止まり、操作が戻るまで。着いた速さに依らず同じフレーム数で戻り、身体で覚えられる
         // 0 はこすらずに、着いたフレームに立ちへ戻る。外れはすぐ次を狙えるよう 10
         int m_missSkidSteps = 10;
@@ -221,11 +208,6 @@ namespace GL::Player
         float m_missSkidExponent = 2.0f;
         float m_launchDistance = 29.0f;
         float m_launchMassExponent = 0.35f;
-        float m_launchApexHeight = 2.0f;
-        float m_launchRiseGravity = 25.0f;
-        float m_launchFallGravityScale = 1.4f;
-        float m_launchApexBandSpeed = 1.0f;
-        float m_launchApexBandGravityScale = 0.5f;
         float m_centerHitStopScale = 2.0f;
         float m_hitStopMaxSeconds = 12.0f / 60.0f;
         bool m_breakEnabled = false;

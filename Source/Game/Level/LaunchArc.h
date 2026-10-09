@@ -21,6 +21,19 @@ namespace GL::Level
         float apexBandGravityScale = 1.0f; // 頂点の帯の間に重力へ掛ける倍率
     };
 
+    //! @brief 相手ごとの飛び方。飛ぶ距離と質量で割る強さは自機の欄が持ち、ここには無い
+    //! @details 既定は持たない。値の正は MapObjParams の欄で、Launch がまとめて返す
+    struct LaunchShape
+    {
+        float apexHeight{};           //!< 質量 1・威力 1 の飛ぶ高さ。単位は m
+        float riseGravity{};          //!< 上りの重力。単位は m/s²
+        float fallGravityScale{};     //!< 下りの重力 ÷ 上りの重力
+        float apexBandSpeed{};        //!< 頂点の帯の縦速度。単位は m/s
+        float apexBandGravityScale{}; //!< 頂点の帯の間に重力へ掛ける倍率
+        float missHeightRatio{};      //!< 外れで、弧の高さに距離と同じ縮みの上から掛ける割合
+        float missDistanceRatio{};    //!< 外れで、距離に押し込む成分の縮みの上から掛ける割合
+    };
+
     //! @brief 曲線の発射の瞬間の速度 (m/s) を返す
     //! @details 水平は飛ぶ距離 ÷ 発射の高さへ戻るまでの秒、上向きは頂点の高さへちょうど届く速さ
     //! 距離・高さ・上りの重力・2 つの倍率が有限の正でない時、帯の縦速度が有限の 0 以上でない時、

@@ -9,8 +9,8 @@
 namespace GL::Level
 {
     //! @brief 衝突の配分の計算が読む調整値
-    //! @details MakeImpactTuning が PlayerParams の欄から全部入れる。値の正は PlayerParams 1 つで、
-    //! ここには既定を持たない (既定の写しを持つと、PlayerParams の既定を変えた時に静かに食い違う)
+    //! @details MakeImpactTuning が自機の PlayerParams の欄から全部入れる。ここには既定を持たない。
+    //! 既定の写しを持つと、PlayerParams の既定を変えた時に静かに食い違う
     struct ImpactTuning
     {
         float centerHitStopScale{};            //!< 中心近くの当たりの貫通の止めの倍率
@@ -24,18 +24,11 @@ namespace GL::Level
         float missReboundDistanceScale{};      //!< 外れの反動の距離の倍率
         float launchDistance{};                //!< 質量 1・威力 1 の相手の飛ぶ距離 (m)
         float launchMassExponent{};            //!< 質量で割る指数。範囲は 0〜1
-        float launchApexHeight{};              //!< 質量 1・威力 1 の相手の飛ぶ高さ (m)
-        float launchRiseGravity{};             //!< 相手の上りの重力 (m/s²)
-        float launchFallGravityScale{};        //!< 相手の下りの重力の倍率
-        float launchApexBandSpeed{};           //!< 頂点の帯の縦速度 (m/s)
-        float launchApexBandGravityScale{};    //!< 頂点の帯の重力倍率
         float hitStopMaxSeconds{};             //!< 貫通の止めの上限秒
         float fixedDelta{};                    //!< 固定ステップの秒
         float missReboundHeightRatio{};        //!< 外れの反動の高さの、同じ威力と質量の真ん中に対する割合
         float missSlamBounce{};                //!< 真下を向いた面で外した時の、外れの反動の高さに掛ける割合
         float missBoxEdgeSharpness{};          //!< 箱の相手の面を、角を丸めた箱の表面として読む時の鋭さ。2 で球
-        float missLaunchHeightRatio{};         //!< 外れで飛ばした相手の弧の高さに、距離と同じ縮みの上から掛ける割合
-        float missLaunchDistanceRatio{};       //!< 外れで飛ばした相手の距離に、押し込む成分の縮みの上から掛ける割合
     };
 
     //! @brief 衝突の配分の計算へ渡す、検知で決まった値
@@ -52,6 +45,7 @@ namespace GL::Level
         float faceU = 0.0f; //!< 段を決めた面の上の左右の位置。自機から見て右が正。外れの逸れる向きを決める
         float faceV = 0.0f; //!< 段を決めた面の上の上下の位置。上が正
         NS::Obj::HitSensorShape bodyShape = NS::Obj::HitSensorShape::Sphere; //!< 相手の体の形の種類
+        LaunchShape launch{}; //!< 相手が当たりの答えで返した飛び方
     };
 
     //! @brief 衝突の配分の計算の結果
@@ -74,7 +68,8 @@ namespace GL::Level
     //! 反動の初速は自機の重力から出すので、反動しない貫通以外は Player::ReboundVelocityFor へ reboundArc を渡して得る
     //! @pre input.mass は有限で 0 より大きい (MapObjParams::Mass が保つ)。
     //! awayDirection と launchDirection は水平で正規化済み (呼び手の ImpactResolver が組む)。
-    //! tuning は MakeImpactTuning が PlayerParams から作った値で、fixedDelta は 0 より大きい
+    //! tuning は MakeImpactTuning が PlayerParams から作った値で、fixedDelta は 0 より大きい。
+    //! input.launch は相手の MapObjParams::Launch の値
     //! @param[in] input 検知で決まった値
     //! @param[in] tuning 調整値
     //! @return 配分の結果

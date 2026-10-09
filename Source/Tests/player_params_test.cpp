@@ -253,7 +253,7 @@ TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
     EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(std::numeric_limits<float>::infinity()), 0.5f);
 }
 
-TEST(PlayerParams, ImpactDefaultsKeepAllFortySevenDisplayNamesAndValues)
+TEST(PlayerParams, ImpactDefaultsKeepAllFortyTwoDisplayNamesAndValues)
 {
     Player player;
     player.Init();
@@ -264,17 +264,21 @@ TEST(PlayerParams, ImpactDefaultsKeepAllFortySevenDisplayNamesAndValues)
                                  {"中心近くの当たりの反動の高さの倍率", 0.6f},
                                  {"押し飛ばしの距離", 29.0f},
                                  {"押し飛ばしの質量指数", 0.35f},
-                                 {"押し飛ばしの高さ", 2.0f},
-                                 {"押し飛ばしの上昇重力", 25.0f},
-                                 {"下りの速さの倍率", 1.4f},
-                                 {"頂点の帯の縦速度", 1.0f},
-                                 {"頂点の帯の重力倍率", 0.5f},
                                  {"中心近くの当たりのヒットストップ倍率", 2.0f},
                                  {"ヒットストップの上限秒", 12.0f / 60.0f},
                                  {"破壊を許可", false},
                                  {"貫通時の減速倍率", 0.75f},
                                  {"貫通の止め秒", 4.0f / 60.0f}};
     ExpectSubObjFields(player.Params(), play);
+    // 相手の飛び方は MapObjParams の欄。自機の欄に置くと相手ごとに変えられない
+    ExpectNotInParams(player,
+                      {{"押し飛ばしの高さ", 0},
+                       {"押し飛ばしの上昇重力", 0},
+                       {"下りの速さの倍率", 0},
+                       {"頂点の帯の縦速度", 0},
+                       {"頂点の帯の重力倍率", 0},
+                       {"外れで飛ばす相手の弧の高さの割合", 0},
+                       {"外れで飛ばす相手の距離の割合", 0}});
     const nlohmann::json expected = {{"核の直径の基準", 0.3f},
                                      {"核の直径の威力あたり", 0.2f},
                                      {"核の直径の上限", 0.7f},
@@ -437,16 +441,16 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     // 自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さ。赤の真ん中に当たり、威力の倍率は 1
     NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 1.0f});
     // 位置は部品の件 Transform に入っているので、件ごと置き換えずに足す
-    NS::Obj::ObjectJsonSubObjs(rock)["Params"] = {{"質量", 1.0f}};
+    // 飛び方の高さは相手の欄に書く
+    NS::Obj::ObjectJsonSubObjs(rock)["Params"] = {{"質量", 1.0f}, {"押し飛ばしの高さ", 3.0f}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.LoadJson(doc);
     Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
-                                       {{"押し飛ばしの距離", 8.0f},
-                                        {"押し飛ばしの高さ", 3.0f},
-                                        {"反動の高さ", 2.0f},
-                                        {"中心近くの当たりの反動の高さの倍率", 1.0f}}),
+    EXPECT_FALSE(NS::Obj::SerializeSubObjectFields(player->Params()).contains("押し飛ばしの高さ"));
+    EXPECT_EQ(NS::Obj::ApplyJsonFields(
+                  player->Params(),
+                  {{"押し飛ばしの距離", 8.0f}, {"反動の高さ", 2.0f}, {"中心近くの当たりの反動の高さの倍率", 1.0f}}),
               0u);
     player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
