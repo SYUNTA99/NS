@@ -24,7 +24,7 @@ namespace NS::Game::Player
         return desc;
     }
 
-    ChargeEffects::ChargeEffects() noexcept : NS::Obj::Component() {}
+    ChargeEffects::ChargeEffects() noexcept : NS::Obj::SubObject() {}
 
     void ChargeEffects::OnStart()
     {

@@ -11,7 +11,7 @@ namespace NS::Game::Level
     {
     public:
         Goal() noexcept;
-        void ForEachPart(const PartVisitor& visitor) const override;
+        void ForEachSubObj(const SubObjVisitor& visitor) const override;
 
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         NS_REFLECT_NONE(Goal, NS::Obj::Actor)

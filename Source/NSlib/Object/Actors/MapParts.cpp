@@ -1,7 +1,7 @@
 #include "NSlib/Object/Actors/MapParts.h"
 
-#include "NSlib/Object/Components/MeshCollision.h"
-#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/SubObjects/MeshCollision.h"
+#include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
 namespace NS::Obj
@@ -10,7 +10,7 @@ namespace NS::Obj
     {
         // 色はテクスチャが無い時の見た目。床の既定の灰色
         (void)CreatePart("Model");
-        Model* mesh = ModelPart();
+        Model* mesh = ModelSubObj();
         mesh->SetMeshRef("cube");
         mesh->SetBaseColor(NS::Vector3{0.70f, 0.70f, 0.75f});
         // 当たりは見た目のメッシュの三角形そのもの。メッシュを差し替えると当たりも付いて来る

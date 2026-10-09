@@ -11,7 +11,7 @@
 #include "NSlib/Graphics/StaticMesh.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/AssetManager.h"
-#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Transform.h"

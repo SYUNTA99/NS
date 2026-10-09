@@ -1,14 +1,14 @@
 ﻿#include "NSlib/Object/Actor.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/Component.h"
-#include "NSlib/Object/Components/Animation.h"
-#include "NSlib/Object/Components/BoxCollision.h"
-#include "NSlib/Object/Components/HitReaction.h"
-#include "NSlib/Object/Components/HitSensor.h"
-#include "NSlib/Object/Components/Model.h"
-#include "NSlib/Object/Components/Shadow.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObject.h"
+#include "NSlib/Object/SubObjects/Animation.h"
+#include "NSlib/Object/SubObjects/BoxCollision.h"
+#include "NSlib/Object/SubObjects/HitReaction.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/SubObjects/Model.h"
+#include "NSlib/Object/SubObjects/Shadow.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
@@ -18,16 +18,16 @@ namespace NS::Obj
 
     Actor::Actor() noexcept
     {
-        m_rootPart = std::make_unique<TransformComponent>();
-        m_transform = &m_rootPart->Root();
-        AttachFixedComponent(*m_rootPart);
+        m_rootSubObj = std::make_unique<TransformSubObject>();
+        m_transform = &m_rootSubObj->Root();
+        AttachFixedSubObject(*m_rootSubObj);
         Appear();
     }
 
-    void Actor::ForEachPart(const PartVisitor& visitor) const
+    void Actor::ForEachSubObj(const SubObjVisitor& visitor) const
     {
-        visitor(k_TransformPartName, *m_rootPart);
-        const auto visit = [&visitor](std::string_view name, Component* part) {
+        visitor(k_TransformSubObjName, *m_rootSubObj);
+        const auto visit = [&visitor](std::string_view name, SubObject* part) {
             if (part != nullptr)
             {
                 visitor(name, *part);
@@ -42,10 +42,10 @@ namespace NS::Obj
         visit("HitReaction", m_hitReaction.get());
     }
 
-    Component* Actor::Part(std::string_view name) const
+    SubObject* Actor::FindSubObj(std::string_view name) const
     {
-        Component* found = nullptr;
-        ForEachPart([name, &found](std::string_view partName, Component& part) {
+        SubObject* found = nullptr;
+        ForEachSubObj([name, &found](std::string_view partName, SubObject& part) {
             if (name == partName)
             {
                 found = &part;
@@ -54,10 +54,10 @@ namespace NS::Obj
         return found;
     }
 
-    std::string_view Actor::PartName(const Component& part) const
+    std::string_view Actor::PartName(const SubObject& part) const
     {
         std::string_view found;
-        ForEachPart([&part, &found](std::string_view name, Component& candidate) {
+        ForEachSubObj([&part, &found](std::string_view name, SubObject& candidate) {
             if (&part == &candidate)
             {
                 found = name;
@@ -66,13 +66,13 @@ namespace NS::Obj
         return found;
     }
 
-    Component* Actor::CreatePart(std::string_view name)
+    SubObject* Actor::CreatePart(std::string_view name)
     {
-        if (Component* existing = Part(name))
+        if (SubObject* existing = FindSubObj(name))
         {
             return existing;
         }
-        Component* created = nullptr;
+        SubObject* created = nullptr;
         if (name == "Model")
         {
             m_model = std::make_unique<Model>();
@@ -110,7 +110,7 @@ namespace NS::Obj
         }
         if (created != nullptr)
         {
-            AttachFixedComponent(*created);
+            AttachFixedSubObject(*created);
         }
         return created;
     }
@@ -122,7 +122,7 @@ namespace NS::Obj
             return;
         }
         m_collision = std::move(collision);
-        AttachFixedComponent(*m_collision);
+        AttachFixedSubObject(*m_collision);
     }
 
     void Actor::SetBodySensorPart(std::unique_ptr<HitSensor> sensor)
@@ -132,7 +132,7 @@ namespace NS::Obj
             return;
         }
         m_bodySensor = std::move(sensor);
-        AttachFixedComponent(*m_bodySensor);
+        AttachFixedSubObject(*m_bodySensor);
     }
 
     IStateMachine* Actor::GetStateMachine() noexcept
@@ -251,16 +251,16 @@ namespace NS::Obj
         m_parent = nullptr;
     }
 
-    void Actor::AttachFixedComponent(Component& component)
+    void Actor::AttachFixedSubObject(SubObject& subObject)
     {
-        component.AttachOwner(this);
+        subObject.AttachOwner(this);
     }
 
     void Actor::OnStart()
     {
         // 部品の登録は部品の OnStart が済ませる。続けて OnAppear を呼ぶと、出る時に OnStart
         // を呼び直す部品が二重に登録する
-        ForEachPart([](std::string_view, Component& part) { part.OnStart(); });
+        ForEachSubObj([](std::string_view, SubObject& part) { part.OnStart(); });
         if (!IsActiveInHierarchy())
         {
             OnKill();
@@ -274,7 +274,7 @@ namespace NS::Obj
         {
             return;
         }
-        ForEachPart([](std::string_view, Component& part) {
+        ForEachSubObj([](std::string_view, SubObject& part) {
             if (part.IsActive())
             {
                 part.OnAppear();
@@ -292,7 +292,7 @@ namespace NS::Obj
         {
             return;
         }
-        ForEachPart([](std::string_view, Component& part) { part.OnKill(); });
+        ForEachSubObj([](std::string_view, SubObject& part) { part.OnKill(); });
         for (Actor* child : m_children)
         {
             child->OnKill();
@@ -324,18 +324,18 @@ namespace NS::Obj
 
     void Actor::VisualStep()
     {
-        TickPart(m_hitReaction.get());
+        TickSubObj(m_hitReaction.get());
     }
 
     void Actor::PrepareRender()
     {
-        TickPart(m_animation.get());
+        TickSubObj(m_animation.get());
     }
 
     void Actor::OnEndPlay()
     {
         Kill();
-        ForEachPart([](std::string_view, Component& part) { part.OnEndPlay(); });
+        ForEachSubObj([](std::string_view, SubObject& part) { part.OnEndPlay(); });
     }
 
 } // namespace NS::Obj

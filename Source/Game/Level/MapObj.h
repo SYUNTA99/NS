@@ -5,9 +5,9 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/HitSensor.h"
-#include "NSlib/Object/Components/Model.h"
-#include "NSlib/Object/Components/SphereCollision.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/SubObjects/Model.h"
+#include "NSlib/Object/SubObjects/SphereCollision.h"
 #include "NSlib/Object/StateMachine.h"
 
 #include <optional>
@@ -20,7 +20,7 @@ namespace NS::Game::Level
     {
     public:
         MapObj() noexcept;
-        void ForEachPart(const PartVisitor& visitor) const override;
+        void ForEachSubObj(const SubObjVisitor& visitor) const override;
 
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         NS_REFLECT_NONE(MapObj, NS::Obj::Actor)
@@ -90,7 +90,7 @@ namespace NS::Game::Level
 
         [[nodiscard]] NS::Obj::SphereCollision& Sphere() noexcept
         {
-            return *static_cast<NS::Obj::SphereCollision*>(CollisionPart());
+            return *static_cast<NS::Obj::SphereCollision*>(CollisionSubObj());
         }
         MapObjParams m_params;
         HitZones m_hitZones;

@@ -1,6 +1,6 @@
 {
   "class": "FollowCamera",
-  "parts": {
+  "subObjects": {
     "Vcam": {
       "ファークリップ": 100,
       "優先度": 0

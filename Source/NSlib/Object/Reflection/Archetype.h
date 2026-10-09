@@ -16,11 +16,11 @@
 namespace NS::Obj
 {
     class Actor;
-    class Component;
+    class SubObject;
 
     //! @brief クラス名から種類の既定値を引く置き場
     //! @details 1 クラスにつき Directory()/<クラス名>.json を 1 つ持つ。形は配置物の JSON から id と位置を除いた物
-    //! {"class": クラス名, "parts": {部品名: {欄の名前: 値}, ...}}
+    //! {"class": クラス名, "subObjects": {部品名: {欄の名前: 値}, ...}}
     //! 参照の欄 (ActorRef) はシーンの中の相手を指すので、読む時に落として種類の既定値には持たせない
     //! 初めて引いた時に Directory() の *.json を全て読む
     class ArchetypeLibrary
@@ -81,16 +81,16 @@ namespace NS::Obj
 
     //! comp に対応する、持ち主のクラスの Baseline の部品。持ち主が無いか対応が無ければ nullptr
     //! 種類の既定値を変えると指す先が作り直されるので、そのフレームの間だけ使う
-    [[nodiscard]] const Component* FindBaselinePart(const Component& comp);
+    [[nodiscard]] const SubObject* FindBaselineSubObj(const SubObject& comp);
 
     //! 部品 comp の欄 fieldName が、持ち主のクラスの種類の既定値と違うか
-    [[nodiscard]] bool IsFieldOverridden(const Component& comp, std::string_view fieldName);
+    [[nodiscard]] bool IsFieldOverridden(const SubObject& comp, std::string_view fieldName);
 
     //! 種類の既定値へ上げてよい欄か。参照の欄と位置・回転・拡縮は個体の物なので上げられない
     //! 持ち主の無い部品も、部品名が引けないので上げられない
-    [[nodiscard]] bool IsArchetypeField(const Component& comp, std::string_view fieldName);
+    [[nodiscard]] bool IsArchetypeField(const SubObject& comp, std::string_view fieldName);
 
     //! @brief 部品 comp の欄 fieldName の今の値を、持ち主のクラスの種類の既定値へ書く
     //! @details ファイルへは書かない。上げられない欄と持ち主の無い部品は何もせず false
-    [[nodiscard]] bool WriteFieldToArchetype(const Component& comp, std::string_view fieldName);
+    [[nodiscard]] bool WriteFieldToArchetype(const SubObject& comp, std::string_view fieldName);
 } // namespace NS::Obj

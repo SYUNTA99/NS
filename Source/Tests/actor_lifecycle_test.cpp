@@ -23,7 +23,7 @@ namespace
     };
 
     // 描画や当たりの部品と同じく、出る時に開始の処理で登録し直す部品
-    class RegisterCountPart final : public NS::Obj::Component
+    class RegisterCountSubObj final : public NS::Obj::SubObject
     {
     public:
         void OnAppear() override { OnStart(); }
@@ -36,13 +36,13 @@ namespace
     class CountedActor final : public NS::Obj::Actor
     {
     public:
-        CountedActor() { AttachFixedComponent(part); }
-        void ForEachPart(const PartVisitor& visitor) const override
+        CountedActor() { AttachFixedSubObject(part); }
+        void ForEachSubObj(const SubObjVisitor& visitor) const override
         {
-            NS::Obj::Actor::ForEachPart(visitor);
+            NS::Obj::Actor::ForEachSubObj(visitor);
             visitor("Counted", part);
         }
-        mutable RegisterCountPart part;
+        mutable RegisterCountSubObj part;
     };
 } // namespace
 

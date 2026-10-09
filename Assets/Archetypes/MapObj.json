@@ -1,6 +1,6 @@
 {
   "class": "MapObj",
-  "parts": {
+  "subObjects": {
     "Collision": {
       "中心オフセット": [
         0,

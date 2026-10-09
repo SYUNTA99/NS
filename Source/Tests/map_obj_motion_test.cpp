@@ -1,8 +1,8 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObj.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/Components/HitSensor.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Windows/Clock.h"
@@ -68,7 +68,7 @@ TEST(MapObjMotion, LandingRollsThenReturnsToRest)
         rock->UpdateMotion();
     }
     NS::Game::Level::TackleTargetAnswer answer;
-    ASSERT_TRUE(NS::Game::Level::SendMsgAskTackleTarget(*rock->BodySensorPart(), answer));
+    ASSERT_TRUE(NS::Game::Level::SendMsgAskTackleTarget(*rock->BodySensorSubObj(), answer));
     EXPECT_TRUE(answer.placed);
     EXPECT_GT(rock->Root().Position().x, 5.0f);
     EXPECT_NEAR(rock->Root().Position().y, 0.5f, 0.002f);
@@ -178,7 +178,7 @@ TEST(MapObjMotion, ZeroLengthFreezeStillWaitsForReleaseGrace)
     rock->UpdateMotion();
     EXPECT_FALSE(rock->IsFrozen());
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 0.0f);
-    EXPECT_FLOAT_EQ(rock->ModelPart()->DrawScale().x, 1.0f);
+    EXPECT_FLOAT_EQ(rock->ModelSubObj()->DrawScale().x, 1.0f);
 }
 
 TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
@@ -197,7 +197,7 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
         rock->UpdateMotion();
     }
     const NS::Game::Level::LaunchEffects* effects =
-        NS::Obj::ComponentCast<NS::Game::Level::LaunchEffects>(rock->Part("LaunchEffects"));
+        NS::Obj::Cast<NS::Game::Level::LaunchEffects>(rock->FindSubObj("LaunchEffects"));
     ASSERT_NE(effects, nullptr);
     int dustCount = 0;
     for (const NS::Game::Player::EffectLayerRecord& record : effects->Layers().Records())
@@ -216,7 +216,7 @@ TEST(MapObjMotion, FreezeWithoutSquashPreservesExistingDrawScale)
     NS::Obj::Scene scene;
     NS::Game::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::Obj::Model* mesh = rock->ModelPart();
+    NS::Obj::Model* mesh = rock->ModelSubObj();
     ASSERT_NE(mesh, nullptr);
     ASSERT_TRUE(mesh->SnapDrawScale(NS::Vector3{0.9f, 0.9f, 0.9f}));
     NS::Game::Level::TackleFreezeDesc freeze;
@@ -250,7 +250,7 @@ TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
     scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
     ReleaseRock(*rock);
     const NS::Game::Level::LaunchEffects* effects =
-        NS::Obj::ComponentCast<NS::Game::Level::LaunchEffects>(rock->Part("LaunchEffects"));
+        NS::Obj::Cast<NS::Game::Level::LaunchEffects>(rock->FindSubObj("LaunchEffects"));
     ASSERT_NE(effects, nullptr);
     bool landed = false;
     for (int step = 0; step < 100 && !landed; ++step)

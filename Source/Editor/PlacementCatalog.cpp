@@ -1,7 +1,7 @@
 #include "Editor/PlacementCatalog.h"
 
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
@@ -24,7 +24,7 @@ namespace NS::Editor
         // 地形の部品の見た目のメッシュを差し替える
         void SetPartsMesh(nlohmann::json& prototype, std::string_view meshName)
         {
-            if (nlohmann::json* renderer = NS::Obj::PartFields(prototype, "Model"))
+            if (nlohmann::json* renderer = NS::Obj::SubObjFields(prototype, "Model"))
             {
                 NS::Obj::SetField(*renderer, "メッシュ", meshName);
             }
@@ -94,7 +94,7 @@ namespace NS::Editor
 
     float PartsSlopeAngleDegrees(const nlohmann::json& prototype) noexcept
     {
-        const nlohmann::json* renderer = NS::Obj::PartFields(prototype, "Model");
+        const nlohmann::json* renderer = NS::Obj::SubObjFields(prototype, "Model");
         if (renderer == nullptr)
         {
             return -1.0f;

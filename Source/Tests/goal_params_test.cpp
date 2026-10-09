@@ -1,7 +1,7 @@
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/Goal.h"
 #include "Game/Player.h"
-#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -22,7 +22,7 @@ TEST(GameTuning, GoalFadeUsesTheSavedGoalFields)
     scene.LoadJson(std::move(doc));
     NS::Obj::Actor* goal = scene.Objects().FindByObjectId(2);
     ASSERT_NE(goal, nullptr);
-    NS::Obj::Component* params = goal->Part("Params");
+    NS::Obj::SubObject* params = goal->FindSubObj("Params");
     ASSERT_NE(params, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"クリアの暗転秒", 0.1f}, {"クリアの明転秒", 0.2f}}), 0u);
     const nlohmann::json saved = scene.ToJson();

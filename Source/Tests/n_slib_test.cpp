@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-TEST(NSlibLink, UnreferencedComponentsRemainRegistered)
+TEST(NSlibLink, UnreferencedSubObjectsRemainRegistered)
 {
     const NS::Obj::TypeRegistry::Entry* entry = NS::Obj::TypeRegistry::Get().Find("Model");
     ASSERT_NE(entry, nullptr);

@@ -1,6 +1,6 @@
 {
     "class": "Player",
-    "parts": {
+    "subObjects": {
         "Appearance": {
             "玉のメッシュ": "",
             "立ち姿のメッシュ": ""

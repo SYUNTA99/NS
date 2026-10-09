@@ -6,10 +6,10 @@
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/Components/Body.h"
-#include "NSlib/Object/Components/Collider.h"
-#include "NSlib/Object/Components/HitReaction.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/Body.h"
+#include "NSlib/Object/SubObjects/Collider.h"
+#include "NSlib/Object/SubObjects/HitReaction.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -29,7 +29,7 @@ namespace
     public:
         void OnStep(::Player& player, float) override
         {
-            EXPECT_EQ(player.HitReactionPart()->FlashFramesRemaining(), 3);
+            EXPECT_EQ(player.HitReactionSubObj()->FlashFramesRemaining(), 3);
         }
     };
 
@@ -50,7 +50,7 @@ TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player->Part("Movement"));
+    NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement"));
     ASSERT_NE(movement, nullptr);
     player->Root().SetPosition(NS::Vector3{});
     player->ClimbLedge();
@@ -71,7 +71,7 @@ TEST(PlayerStateSequence, LeavingClimbCannotResumeAnOldPositionWrite)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player->Part("Movement"));
+    NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement"));
     ASSERT_NE(movement, nullptr);
     player->ClimbLedge();
     player->States().Step(0.0625f);
@@ -110,7 +110,7 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitReaction* reaction = player->HitReactionPart();
+    NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);
     reaction->StartFlash(3, 1.0f);
     reaction->OnUpdate();
@@ -152,7 +152,7 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
         player->Update();
     }
     ASSERT_TRUE(player->Resolver().FreezeBeganThisStep());
-    NS::Obj::HitReaction* reaction = player->HitReactionPart();
+    NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);
     reaction->StartFlash(3, 1.0f);
     reaction->OnUpdate();
@@ -168,7 +168,7 @@ TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player->Part("Movement"));
+    NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement"));
     ASSERT_NE(movement, nullptr);
     movement->SetGrounded(true);
     const NS::Game::Player::ReboundArc arc{.apexHeight = 1.0f, .distance = 5.0f};
@@ -234,7 +234,7 @@ TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::Body* movement = NS::Obj::ComponentCast<NS::Obj::Body>(player->Part("Movement"));
+    NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement"));
     ASSERT_NE(movement, nullptr);
     player->ClimbLedge();
     player->States().Step(0.0625f);

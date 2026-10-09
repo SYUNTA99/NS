@@ -6,9 +6,9 @@
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/Components/Body.h"
-#include "NSlib/Object/Components/Collider.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/Body.h"
+#include "NSlib/Object/SubObjects/Collider.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
@@ -51,7 +51,7 @@ namespace
             NS::Obj::SetObjectScale(rock, Vector3{targetScale, targetScale, targetScale});
             for (nlohmann::json::const_iterator it = targetParts.begin(); it != targetParts.end(); ++it)
             {
-                NS::Obj::ObjectJsonParts(rock)[it.key()] = it.value();
+                NS::Obj::ObjectJsonSubObjs(rock)[it.key()] = it.value();
             }
             NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         }

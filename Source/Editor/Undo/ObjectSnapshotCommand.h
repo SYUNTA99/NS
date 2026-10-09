@@ -9,7 +9,7 @@ namespace NS::Editor
 {
 
     //! @brief 永続 id で指す 1 オブジェクトを before → after の JSON で切り替える唯一の編集コマンド
-    //! @details 追加・削除・変形・複製・材質・コンポーネント増減を全てこの 1 種で表す
+    //! @details 追加・削除・変形・複製・材質・サブオブジェクト増減を全てこの 1 種で表す
     //! after 有 = その姿へ組み直して差し替え/新規、after 無 = 除去。Undo は before へ同じ手で戻す
     //! 派生状態 (物理・参照・カメラ) の同期は適用側の ApplyObjectSnapshot が面倒を見る
     //! 対象は objectId で再特定するので、間に別の追加削除で並びが動いても追従する

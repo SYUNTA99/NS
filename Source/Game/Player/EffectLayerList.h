@@ -10,7 +10,7 @@
 
 namespace NS::Obj
 {
-    class Component;
+    class SubObject;
 }
 
 namespace NS::Game::Player
@@ -131,7 +131,7 @@ namespace NS::Game::Player
     };
 
     //! @brief 部品の持ち主が居る世界の EffectScene を返す
-    //! @param[in] component 持ち主の世界を引く部品
+    //! @param[in] subObject 持ち主の世界を引く部品
     //! @return 持ち主の世界の EffectScene。持ち主か世界が無いか、描画の無い世界なら nullptr
-    [[nodiscard]] NS::Gfx::EffectScene* EffectsOf(const NS::Obj::Component& component) noexcept;
+    [[nodiscard]] NS::Gfx::EffectScene* EffectsOf(const NS::Obj::SubObject& subObject) noexcept;
 } // namespace NS::Game::Player

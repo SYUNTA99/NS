@@ -39,12 +39,12 @@ TEST(ActorRegistry, PlaceableClassesHaveLabels)
     }
 }
 
-TEST(ActorRegistry, PlayerAndComponentsAreNotPlaceable)
+TEST(ActorRegistry, PlayerAndSubObjectsAreNotPlaceable)
 {
     // プレイヤーは新しいレベルに自動で 1 体入るので置く一覧に出さない。部品も置く物ではない
     EXPECT_EQ(FindPlaceable("Player"), nullptr);
     EXPECT_EQ(FindPlaceable("Model"), nullptr);
-    EXPECT_EQ(FindPlaceable("GoalComponent"), nullptr);
+    EXPECT_EQ(FindPlaceable("GoalSubObject"), nullptr);
 }
 
 TEST(ActorRegistry, PlaceableEntriesAreSortedByLabel)
@@ -88,8 +88,8 @@ TEST(ActorRegistry, UnknownClassFallsBackToPlainActor)
 
 TEST(ActorRegistry, PartDefaultsAreOwnedWithoutAnActor)
 {
-    const std::unique_ptr<NS::Obj::Component> first = NS::Obj::CreatePartDefault("Model");
-    const std::unique_ptr<NS::Obj::Component> second = NS::Obj::CreatePartDefault("Model");
+    const std::unique_ptr<NS::Obj::SubObject> first = NS::Obj::CreatePartDefault("Model");
+    const std::unique_ptr<NS::Obj::SubObject> second = NS::Obj::CreatePartDefault("Model");
     ASSERT_NE(first, nullptr);
     ASSERT_NE(second, nullptr);
     EXPECT_NE(first.get(), second.get());

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Components/ThirdPersonFollow.h"
+#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
 
 namespace NS::Obj
 {

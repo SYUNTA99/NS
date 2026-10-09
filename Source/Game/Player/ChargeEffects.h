@@ -2,7 +2,7 @@
 
 #include "Game/Player/EffectLayerList.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Component.h"
+#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 
 #include <cstdint>
@@ -25,7 +25,7 @@ namespace NS::Game::Player
     //! 時間と向きは自分の保存欄から読む
     //! PlayerAppearance の後に見た目の段で更新する
     //! 描画のない世界でも層の記録を残す
-    class ChargeEffects : public NS::Obj::Component
+    class ChargeEffects : public NS::Obj::SubObject
     {
     public:
         ChargeEffects() noexcept;
@@ -55,7 +55,7 @@ namespace NS::Game::Player
         //! @return 回転。水平の長さが 0 か有限でなければ回さない
         [[nodiscard]] static NS::Quaternion YawToward(const NS::Vector3& direction) noexcept;
 
-        NS_REFLECT_BEGIN(ChargeEffects, NS::Obj::Component)
+        NS_REFLECT_BEGIN(ChargeEffects, NS::Obj::SubObject)
         NS_REFLECT_GROUP("放しの弾け")
         NS_REFLECT_FIELD(m_tapBurstScale, "通常突進の弾けの大きさ")
         NS_REFLECT_FIELD(m_fullBurstScaleGain, "溜めきりで足す弾けの大きさ")

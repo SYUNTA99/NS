@@ -6,9 +6,9 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/TransformComponent.h"
-#include "NSlib/Object/ObjectList.h"
-#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/ActorList.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 
 #include <cstdint>
@@ -30,10 +30,10 @@ namespace NS::Editor
         const NS::Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
         const NS::Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
 
-        std::vector<NS::Obj::Component*> ReflectedComponents(NS::Obj::Actor& go)
+        std::vector<NS::Obj::SubObject*> ReflectedSubObjects(NS::Obj::Actor& go)
         {
-            std::vector<NS::Obj::Component*> result;
-            go.ForEachPart([&result](std::string_view, NS::Obj::Component& part) {
+            std::vector<NS::Obj::SubObject*> result;
+            go.ForEachSubObj([&result](std::string_view, NS::Obj::SubObject& part) {
                 if (part.GetReflection() != nullptr)
                 {
                     result.push_back(&part);
@@ -79,7 +79,7 @@ namespace NS::Editor
 
             // 直前の HasInspectableSelection が同じ id を引けているので非 null
             NS::Obj::Actor* go = editor.SelectedObjectActor();
-            const std::vector<NS::Obj::Component*> components = ReflectedComponents(*go);
+            const std::vector<NS::Obj::SubObject*> subObjects = ReflectedSubObjects(*go);
 
             // 名前は直接ここで書き換えられる。選択が変わったら今の表示名を入れ直す
             const std::uint32_t selectedId = editor.SelectedObjectId();
@@ -193,34 +193,34 @@ namespace NS::Editor
             ImGui::SetNextItemWidth(-1.0f);
             ImGui::InputTextWithHint("##fieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
 
-            NS::Editor::ComponentEditResult componentEdit{};
-            for (std::size_t k = 0; k < components.size(); ++k)
+            NS::Editor::SubObjectEditResult subObjectEdit{};
+            for (std::size_t k = 0; k < subObjects.size(); ++k)
             {
-                const std::string typeName{components[k]->ClassName()};
+                const std::string typeName{subObjects[k]->ClassName()};
                 // 根の部品は上の専用パネルが編集するので一覧に出さない
-                if (go->PartName(*components[k]) == NS::Obj::k_TransformPartName)
+                if (go->PartName(*subObjects[k]) == NS::Obj::k_TransformSubObjName)
                 {
                     continue;
                 }
 
                 ImGui::PushID(static_cast<int>(k));
 
-                // 入力 component を休止させると player が動かなくなるので active を触らせない
-                const bool lockedComponent = (typeName == "PlayerInput");
-                bool enabled = components[k]->IsEnabled();
-                ImGui::BeginDisabled(lockedComponent);
+                // 入力 SubObject を休止させると player が動かなくなるので active を触らせない
+                const bool lockedSubObject = (typeName == "PlayerInput");
+                bool enabled = subObjects[k]->IsEnabled();
+                ImGui::BeginDisabled(lockedSubObject);
                 if (ImGui::Checkbox("##enabled", &enabled))
                 {
-                    editor.SetComponentEnabledOnSelected(*components[k], enabled);
+                    editor.SetSubObjectEnabledOnSelected(*subObjects[k], enabled);
                 }
                 ImGui::EndDisabled();
                 ImGui::SameLine();
 
                 // ヘッダを中身より明るくして、どこからどこまでが 1 個か見えるようにする
-                ImGui::PushStyleColor(ImGuiCol_Header, NS::Editor::k_ComponentHeaderColor);
-                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, NS::Editor::k_ComponentHeaderHoveredColor);
-                ImGui::PushStyleColor(ImGuiCol_HeaderActive, NS::Editor::k_ComponentHeaderActiveColor);
-                std::string header{go->PartName(*components[k])};
+                ImGui::PushStyleColor(ImGuiCol_Header, NS::Editor::k_SubObjectHeaderColor);
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, NS::Editor::k_SubObjectHeaderHoveredColor);
+                ImGui::PushStyleColor(ImGuiCol_HeaderActive, NS::Editor::k_SubObjectHeaderActiveColor);
+                std::string header{go->PartName(*subObjects[k])};
                 if (header != typeName)
                 {
                     header += " (";
@@ -233,23 +233,23 @@ namespace NS::Editor
 
                 if (open)
                 {
-                    NS::Obj::Component* live = components[k];
+                    NS::Obj::SubObject* live = subObjects[k];
                     // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
-                    const NS::Obj::Component* baseline = m_defaults.Find(*live);
-                    const NS::Editor::ComponentEditResult r =
-                        NS::Editor::DrawReflectedComponent(*live, refOptions, baseline, m_fieldFilter);
-                    componentEdit.activated |= r.activated;
-                    componentEdit.committed |= r.committed;
-                    componentEdit.changed |= r.changed;
+                    const NS::Obj::SubObject* baseline = m_defaults.Find(*live);
+                    const NS::Editor::SubObjectEditResult r =
+                        NS::Editor::DrawReflectedSubObject(*live, refOptions, baseline, m_fieldFilter);
+                    subObjectEdit.activated |= r.activated;
+                    subObjectEdit.committed |= r.committed;
+                    subObjectEdit.changed |= r.changed;
                     if (r.revertField != nullptr)
                     {
-                        componentEdit.revertTarget = r.revertTarget;
-                        componentEdit.revertField = r.revertField;
+                        subObjectEdit.revertTarget = r.revertTarget;
+                        subObjectEdit.revertField = r.revertField;
                     }
                     if (r.promoteField != nullptr)
                     {
-                        componentEdit.promoteTarget = r.promoteTarget;
-                        componentEdit.promoteField = r.promoteField;
+                        subObjectEdit.promoteTarget = r.promoteTarget;
+                        subObjectEdit.promoteField = r.promoteField;
                     }
                     // プレイ中の手編集は編集復帰の組み直しで消えるので、編集された欄だけ凍結側へも写す
                     if (r.changedTarget != nullptr && r.changedField != nullptr)
@@ -260,31 +260,31 @@ namespace NS::Editor
                 ImGui::PopID();
             }
             // 戻すは控えを取ってから live を書く。順を逆にすると変更後が控えになり履歴が空になる
-            if (componentEdit.revertTarget != nullptr && componentEdit.revertField != nullptr)
+            if (subObjectEdit.revertTarget != nullptr && subObjectEdit.revertField != nullptr)
             {
-                const NS::Obj::Component* baseline = m_defaults.Find(*componentEdit.revertTarget);
+                const NS::Obj::SubObject* baseline = m_defaults.Find(*subObjectEdit.revertTarget);
                 if (baseline != nullptr)
                 {
-                    editor.BeginComponentEdit();
+                    editor.BeginSubObjectEdit();
                     NS::Editor::RevertFieldToDefault(
-                        *componentEdit.revertTarget, *baseline, *componentEdit.revertField);
+                        *subObjectEdit.revertTarget, *baseline, *subObjectEdit.revertField);
                     // 既定へ戻すのも手編集。プレイ中は凍結側へも写して残す
-                    editor.MirrorPlayEditToBaseline(*componentEdit.revertTarget, componentEdit.revertField->name);
-                    editor.CommitComponentEdit();
+                    editor.MirrorPlayEditToBaseline(*subObjectEdit.revertTarget, subObjectEdit.revertField->name);
+                    editor.CommitSubObjectEdit();
                 }
             }
             // 種類の既定にするのは、同じ種類の全ての個体とファイルを書き換える。既定の部品を作り直すので描画の後で行う
-            if (componentEdit.promoteTarget != nullptr && componentEdit.promoteField != nullptr)
+            if (subObjectEdit.promoteTarget != nullptr && subObjectEdit.promoteField != nullptr)
             {
-                (void)editor.PromoteFieldToArchetype(*componentEdit.promoteTarget, componentEdit.promoteField->name);
+                (void)editor.PromoteFieldToArchetype(*subObjectEdit.promoteTarget, subObjectEdit.promoteField->name);
             }
-            if (componentEdit.activated)
+            if (subObjectEdit.activated)
             {
-                editor.BeginComponentEdit();
+                editor.BeginSubObjectEdit();
             }
-            if (componentEdit.committed)
+            if (subObjectEdit.committed)
             {
-                editor.CommitComponentEdit();
+                editor.CommitSubObjectEdit();
             }
         }
         ImGui::End();

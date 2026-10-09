@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/SubObjects/Model.h"
 
 namespace NS::Obj
 {

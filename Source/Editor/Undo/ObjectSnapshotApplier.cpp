@@ -1,7 +1,7 @@
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/ObjectList.h"
+#include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Scene/Scene.h"
 
@@ -19,7 +19,7 @@ namespace NS::Editor
         {
             return std::nullopt;
         }
-        // undo は編集値ごと戻すため、配置物が自分を全 component 値まで忠実に書き出す
+        // undo は編集値ごと戻すため、配置物が自分を全 SubObject 値まで忠実に書き出す
         return NS::Obj::ObjectToJson(*obj);
     }
 
@@ -30,7 +30,7 @@ namespace NS::Editor
             return;
         }
 
-        // 対象 1 体へ姿を書き戻す。構成が同じなら実体は残し、component が増減した時だけ作り直す
+        // 対象 1 体へ姿を書き戻す。構成が同じなら実体は残し、SubObject が増減した時だけ作り直す
         if (desired)
         {
             nlohmann::json entry = *desired;

@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 
@@ -257,19 +257,19 @@ namespace NS::Obj
         }
     } // namespace
 
-    nlohmann::json SerializePartFields(const Component& part)
+    nlohmann::json SerializeSubObjFields(const SubObject& part)
     {
-        nlohmann::json fields = SerializeComponentFields(part);
+        nlohmann::json fields = SerializeSubObjectFields(part);
         fields["enabled"] = part.IsEnabled();
         return fields;
     }
 
-    nlohmann::json SerializeComponentFields(const Component& comp)
+    nlohmann::json SerializeSubObjectFields(const SubObject& comp)
     {
         const ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr)
         {
-            NS_LOG_WARN(Game, "リフレクションの無い Component を直列化しようとした");
+            NS_LOG_WARN(Game, "リフレクションの無い SubObject を直列化しようとした");
             return nlohmann::json::object();
         }
         return SerializeReflectedFields(&comp, *info);
@@ -327,7 +327,7 @@ namespace NS::Obj
         }
     } // namespace
 
-    std::size_t ApplyJsonFields(Component& comp, const nlohmann::json& fields)
+    std::size_t ApplyJsonFields(SubObject& comp, const nlohmann::json& fields)
     {
         const ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr || !fields.is_object())

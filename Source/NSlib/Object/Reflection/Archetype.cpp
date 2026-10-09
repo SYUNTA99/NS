@@ -2,8 +2,8 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Component.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObject.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
@@ -24,9 +24,9 @@ namespace NS::Obj
 
         // 位置・回転・拡縮は個体の物。種類の既定値に持たせず、保存の差分でも落とさない
         // 保存側は JSON の件しか持たないので、型でなく保存の鍵の部品名で見分ける
-        [[nodiscard]] bool IsInstanceOnlyPart(std::string_view partName) noexcept
+        [[nodiscard]] bool IsInstanceOnlySubObj(std::string_view partName) noexcept
         {
-            return partName == k_TransformPartName;
+            return partName == k_TransformSubObjName;
         }
 
         // 種類の既定値に持たせない物を落とした写し。参照の欄・id・位置と回転と拡縮は個体の物
@@ -34,11 +34,11 @@ namespace NS::Obj
         {
             nlohmann::json out = nlohmann::json::object();
             SetObjectJsonClass(out, className);
-            nlohmann::json& parts = ObjectJsonParts(out);
-            const nlohmann::json& source = ObjectJsonParts(archetype);
+            nlohmann::json& parts = ObjectJsonSubObjs(out);
+            const nlohmann::json& source = ObjectJsonSubObjs(archetype);
             for (nlohmann::json::const_iterator entry = source.begin(); entry != source.end(); ++entry)
             {
-                if (IsInstanceOnlyPart(entry.key()) || !entry.value().is_object())
+                if (IsInstanceOnlySubObj(entry.key()) || !entry.value().is_object())
                 {
                     continue;
                 }
@@ -57,9 +57,9 @@ namespace NS::Obj
         }
 
         // comp の欄 fieldName の値を JSON で読む。無ければ nullopt
-        [[nodiscard]] std::optional<nlohmann::json> FieldValue(const Component& comp, std::string_view fieldName)
+        [[nodiscard]] std::optional<nlohmann::json> FieldValue(const SubObject& comp, std::string_view fieldName)
         {
-            const nlohmann::json fields = SerializeComponentFields(comp);
+            const nlohmann::json fields = SerializeSubObjectFields(comp);
             const nlohmann::json::const_iterator it = fields.find(std::string{fieldName});
             if (it == fields.end())
             {
@@ -224,18 +224,18 @@ namespace NS::Obj
             return;
         }
         // 種類の既定値は部品を足せる。どの部品を持つかも種類で決める
-        ApplyObjectParts(actor, *archetype, PartCreation::Allow);
+        ApplyObjectSubObjs(actor, *archetype, SubObjCreation::Allow);
     }
 
     nlohmann::json ExpandObjectJson(const nlohmann::json& object)
     {
         const Actor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json full = object;
-        nlohmann::json& target = ObjectJsonParts(full);
+        nlohmann::json& target = ObjectJsonSubObjs(full);
         target = nlohmann::json::object();
-        baseline.ForEachPart([&object, &target](std::string_view name, Component& part) {
-            nlohmann::json fields = SerializePartFields(part);
-            if (const nlohmann::json* source = PartFields(object, name))
+        baseline.ForEachSubObj([&object, &target](std::string_view name, SubObject& part) {
+            nlohmann::json fields = SerializeSubObjFields(part);
+            if (const nlohmann::json* source = SubObjFields(object, name))
             {
                 fields.update(*source);
             }
@@ -248,17 +248,17 @@ namespace NS::Obj
     {
         const Actor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json out = object;
-        baseline.ForEachPart([&out](std::string_view name, Component& part) {
-            if (IsInstanceOnlyPart(name))
+        baseline.ForEachSubObj([&out](std::string_view name, SubObject& part) {
+            if (IsInstanceOnlySubObj(name))
             {
                 return;
             }
-            nlohmann::json* fields = PartFields(out, name);
+            nlohmann::json* fields = SubObjFields(out, name);
             if (fields == nullptr)
             {
                 return;
             }
-            const nlohmann::json defaults = SerializePartFields(part);
+            const nlohmann::json defaults = SerializeSubObjFields(part);
             for (nlohmann::json::iterator field = fields->begin(); field != fields->end();)
             {
                 const nlohmann::json::const_iterator original = defaults.find(field.key());
@@ -275,7 +275,7 @@ namespace NS::Obj
         return out;
     }
 
-    const Component* FindBaselinePart(const Component& comp)
+    const SubObject* FindBaselineSubObj(const SubObject& comp)
     {
         const Actor* owner = comp.Owner();
         if (owner == nullptr)
@@ -284,7 +284,7 @@ namespace NS::Obj
         }
         const Actor& baseline = ArchetypeLibrary::Get().Baseline(owner->ClassName());
         const std::string_view role = owner->PartName(comp);
-        const Component* found = baseline.Part(role);
+        const SubObject* found = baseline.FindSubObj(role);
         if (found != nullptr && std::string_view{found->ClassName()} == comp.ClassName())
         {
             return found;
@@ -292,9 +292,9 @@ namespace NS::Obj
         return nullptr;
     }
 
-    bool IsFieldOverridden(const Component& comp, std::string_view fieldName)
+    bool IsFieldOverridden(const SubObject& comp, std::string_view fieldName)
     {
-        const Component* part = FindBaselinePart(comp);
+        const SubObject* part = FindBaselineSubObj(comp);
         if (part == nullptr)
         {
             return false;
@@ -302,11 +302,11 @@ namespace NS::Obj
         return FieldValue(comp, fieldName) != FieldValue(*part, fieldName);
     }
 
-    bool IsArchetypeField(const Component& comp, std::string_view fieldName)
+    bool IsArchetypeField(const SubObject& comp, std::string_view fieldName)
     {
         // どの部品かは持ち主の部品名で決まる。持ち主の無い部品は種類を持たない
         const Actor* owner = comp.Owner();
-        if (owner == nullptr || IsInstanceOnlyPart(owner->PartName(comp)))
+        if (owner == nullptr || IsInstanceOnlySubObj(owner->PartName(comp)))
         {
             return false;
         }
@@ -318,7 +318,7 @@ namespace NS::Obj
         return field->type != FieldType::ActorRef;
     }
 
-    bool WriteFieldToArchetype(const Component& comp, std::string_view fieldName)
+    bool WriteFieldToArchetype(const SubObject& comp, std::string_view fieldName)
     {
         const Actor* owner = comp.Owner();
         if (owner == nullptr || !IsArchetypeField(comp, fieldName))
@@ -337,7 +337,7 @@ namespace NS::Obj
         {
             archetype = *current;
         }
-        nlohmann::json& fields = ObjectJsonParts(archetype)[std::string{role}];
+        nlohmann::json& fields = ObjectJsonSubObjs(archetype)[std::string{role}];
         if (!fields.is_object())
         {
             fields = nlohmann::json::object();

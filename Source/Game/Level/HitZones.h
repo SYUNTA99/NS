@@ -2,8 +2,8 @@
 
 #include "Game/Level/HitTier.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Component.h"
-#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/SubObject.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
 
 #include <vector>
 
@@ -168,7 +168,7 @@ namespace NS::Game::Level
     //! @brief 置物の面の赤 1 つと残りの威力の倍率を持つ部品
     //! @details 種類の既定値 (MapObj.json) が全部の置物の既定を決め、個体は値だけを上書きする
     //! 段は持ち主が体当たりの答えに載せた写しで JudgeHitFace が決める
-    class HitZones : public NS::Obj::Component
+    class HitZones : public NS::Obj::SubObject
     {
     public:
         //! 赤の欄
@@ -190,7 +190,7 @@ namespace NS::Game::Level
         void SetRemainderPowerScale(float scale) noexcept;
 
         // 種類の既定値と個体の Inspector で赤を決める
-        NS_REFLECT_BEGIN(HitZones, NS::Obj::Component)
+        NS_REFLECT_BEGIN(HitZones, NS::Obj::SubObject)
         NS_REFLECT_ACCESSOR(bool, "丸", Face().round, SetRound)
         NS_REFLECT_ACCESSOR(float, "横幅", Face().width, SetWidth)
         NS_REFLECT_ACCESSOR(float, "縦の幅", Face().height, SetHeight)

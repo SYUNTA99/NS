@@ -8,9 +8,9 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/Body.h"
-#include "NSlib/Object/Components/PlayerInput.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/Body.h"
+#include "NSlib/Object/SubObjects/PlayerInput.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/IUse/IUseSceneObj.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -120,7 +120,7 @@ TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
     director->OnTick();
     EXPECT_TRUE(director->IsClearing());
     EXPECT_TRUE(director->Fade().IsFading());
-    const NS::Obj::PlayerInput* input = NS::Obj::ComponentCast<NS::Obj::PlayerInput>(player->Part("Input"));
+    const NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player->FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     EXPECT_TRUE(input->IsLocked());
     EXPECT_TRUE(input->IsActiveSelf());

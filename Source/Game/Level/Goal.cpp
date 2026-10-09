@@ -2,29 +2,29 @@
 
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
-#include "NSlib/Object/Components/HitSensor.h"
-#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
 namespace NS::Game::Level
 {
     Goal::Goal() noexcept
     {
-        AttachFixedComponent(m_params);
+        AttachFixedSubObject(m_params);
         // 目印の金色の立方体
         (void)CreatePart("Model");
-        NS::Obj::Model* mesh = ModelPart();
+        NS::Obj::Model* mesh = ModelSubObj();
         mesh->SetMeshRef("cube");
         mesh->SetBaseColor(NS::Vector3{1.0f, 0.84f, 0.0f});
         // 「触れた」とみなすプレイヤー中心からの距離 0.9m の球。プレイヤーの体の寸法ぶん手前で触れる
-        NS::Obj::ShapeHitSensor* area = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(CreatePart("BodySensor"));
+        NS::Obj::ShapeHitSensor* area = NS::Obj::Cast<NS::Obj::ShapeHitSensor>(CreatePart("BodySensor"));
         SetSensorKind(*area, SensorKind::Area);
         area->SetSphere(0.9f);
     }
 
-    void Goal::ForEachPart(const PartVisitor& visitor) const
+    void Goal::ForEachSubObj(const SubObjVisitor& visitor) const
     {
-        NS::Obj::Actor::ForEachPart(visitor);
+        NS::Obj::Actor::ForEachSubObj(visitor);
         visitor("Params", const_cast<GoalParams&>(m_params));
     }
 

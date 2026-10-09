@@ -11,26 +11,26 @@
 namespace NS::Obj
 {
     class AssetManager;
-    class Component;
+    class SubObject;
     class Actor;
 
     //! JSON の部品の件に、Actor がまだ持たない部品があった時にどうするか
-    enum class PartCreation
+    enum class SubObjCreation
     {
         Allow,
         Forbid,
     };
 
-    //! @brief 配置物の JSON の "parts" の欄を、同じ部品名の obj の部品へ書く
+    //! @brief 配置物の JSON の "subObjects" の欄を、同じ部品名の obj の部品へ書く
     //! @details 部品を作れないか作らない時は警告を出してその部品を読み飛ばす
     //! @param[in,out] obj 書く先の配置物
     //! @param[in] object 配置物の JSON
     //! @param[in] creation obj がまだ持たない部品を CreatePart で作るか
-    void ApplyObjectParts(Actor& obj, const nlohmann::json& object, PartCreation creation);
+    void ApplyObjectSubObjs(Actor& obj, const nlohmann::json& object, SubObjCreation creation);
 
     //! @brief 配置物の JSON から配置物を組む唯一の汎用経路
     //! @details Actor の型は TypeRegistry の class で選ぶ。値はコードの既定値に種類の既定値 (ArchetypeLibrary) を重ね、
-    //! assets があれば各 component の ResolveAssets で参照を実体化する。id と名前は書かない。シーンへ積む ObjectList
+    //! assets があれば各 SubObject の ResolveAssets で参照を実体化する。id と名前は書かない。シーンへ積む ActorList
     //! が書く class の無い JSON は配置物でないため nullptr。assets=nullptr (テスト等) は解決だけ跳ばす
     [[nodiscard]] std::unique_ptr<Actor> ObjectFromJson(const nlohmann::json& object, AssetManager* assets);
 

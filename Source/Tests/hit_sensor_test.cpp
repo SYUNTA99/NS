@@ -4,8 +4,8 @@
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/HitSensor.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/Message.h"
 #include "NSlib/Object/Scene/HitSensorDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -29,7 +29,7 @@ namespace
     public:
         SensorProbe(SensorKind kind, float radius)
         {
-            m_sensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(CreatePart("BodySensor"));
+            m_sensor = NS::Obj::Cast<NS::Obj::ShapeHitSensor>(CreatePart("BodySensor"));
             NS::Game::Level::SetSensorKind(*m_sensor, kind);
             m_sensor->SetSphere(radius);
         }
@@ -123,7 +123,7 @@ TEST(MakeScaledCapsule, RadiusTakesTheLargerSideScale)
 TEST(HitSensor, WorldVolumeFollowsRootScale)
 {
     NS::Obj::Actor actor;
-    NS::Obj::ShapeHitSensor* sensor = NS::Obj::ComponentCast<NS::Obj::ShapeHitSensor>(actor.CreatePart("BodySensor"));
+    NS::Obj::ShapeHitSensor* sensor = NS::Obj::Cast<NS::Obj::ShapeHitSensor>(actor.CreatePart("BodySensor"));
     ASSERT_NE(sensor, nullptr);
     sensor->SetSphere(0.5f);
     actor.Root().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
@@ -137,7 +137,7 @@ TEST(HitSensor, ShapeSensorKeepsItsFourSavedFieldLabels)
 {
     // 欄の表示名は保存の鍵。ゴールと落下死の範囲の保存済みの値がこの 4 つで読まれる
     NS::Obj::Actor actor;
-    NS::Obj::Component* sensor = actor.CreatePart("BodySensor");
+    NS::Obj::SubObject* sensor = actor.CreatePart("BodySensor");
     ASSERT_NE(sensor, nullptr);
     const NS::Obj::ReflectionInfo* info = sensor->GetReflection();
     std::vector<std::string> labels;

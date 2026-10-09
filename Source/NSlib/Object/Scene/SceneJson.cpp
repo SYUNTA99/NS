@@ -1,9 +1,9 @@
 ﻿#include "NSlib/Object/Scene/SceneJson.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ObjectName.h"
-#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>
@@ -41,8 +41,8 @@ namespace NS::Obj
             SetObjectJsonName(object, ObjectJsonName(json));
             SetObjectJsonParent(object, ObjectJsonParent(json));
             SetObjectJsonActive(object, ObjectJsonActive(json));
-            nlohmann::json& parts = ObjectJsonParts(object);
-            const nlohmann::json& source = ObjectJsonParts(json);
+            nlohmann::json& parts = ObjectJsonSubObjs(object);
+            const nlohmann::json& source = ObjectJsonSubObjs(json);
             for (nlohmann::json::const_iterator part = source.begin(); part != source.end(); ++part)
             {
                 if (part.value().is_object())
@@ -50,7 +50,7 @@ namespace NS::Obj
                     parts[part.key()] = part.value();
                 }
             }
-            (void)EnsureTransformComponent(object);
+            (void)EnsureTransformSubObject(object);
             return object;
         }
 

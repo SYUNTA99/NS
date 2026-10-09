@@ -1,8 +1,8 @@
 #include "Game/Level/FollowCamera.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/CameraTarget.h"
-#include "NSlib/Object/Components/CameraManager.h"
-#include "NSlib/Object/Components/CameraModifier.h"
+#include "NSlib/Object/SubObjects/CameraManager.h"
+#include "NSlib/Object/SubObjects/CameraModifier.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -16,8 +16,8 @@
 #include <optional>
 #include <type_traits>
 
-static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Obj::CameraManager>);
-static_assert(!std::is_base_of_v<NS::Obj::Component, NS::Obj::SceneCamera>);
+static_assert(!std::is_base_of_v<NS::Obj::SubObject, NS::Obj::CameraManager>);
+static_assert(!std::is_base_of_v<NS::Obj::SubObject, NS::Obj::SceneCamera>);
 // 実カメラは遊びの向きを答えない。向きの口は IUseCamera の補助関数 1 本だけ
 template <class T>
 concept AnswersForwardHorizontal = requires(const T& camera) { camera.ForwardHorizontal(); };
@@ -71,10 +71,10 @@ namespace
     class AlphaCameraHost final : public NS::Obj::Actor
     {
     public:
-        AlphaCameraHost() { AttachFixedComponent(vcam); }
-        void ForEachPart(const PartVisitor& visitor) const override
+        AlphaCameraHost() { AttachFixedSubObject(vcam); }
+        void ForEachSubObj(const SubObjVisitor& visitor) const override
         {
-            NS::Obj::Actor::ForEachPart(visitor);
+            NS::Obj::Actor::ForEachSubObj(visitor);
             visitor("Vcam", vcam);
         }
         mutable AlphaCamera vcam;

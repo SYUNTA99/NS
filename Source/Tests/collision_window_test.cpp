@@ -1,8 +1,8 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/Collider.h"
-#include "NSlib/Object/Components/SphereCollision.h"
+#include "NSlib/Object/SubObjects/Collider.h"
+#include "NSlib/Object/SubObjects/SphereCollision.h"
 #include "NSlib/Object/IUse/IUseCollision.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Physics/PhysicsScene.h"
@@ -19,12 +19,12 @@ namespace
     public:
         CollisionProbe()
         {
-            AttachFixedComponent(collider);
-            AttachFixedComponent(sphere);
+            AttachFixedSubObject(collider);
+            AttachFixedSubObject(sphere);
         }
-        void ForEachPart(const PartVisitor& visitor) const override
+        void ForEachSubObj(const SubObjVisitor& visitor) const override
         {
-            NS::Obj::Actor::ForEachPart(visitor);
+            NS::Obj::Actor::ForEachSubObj(visitor);
             visitor("Collider", collider);
             visitor("Sphere", sphere);
         }

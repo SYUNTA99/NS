@@ -2,8 +2,8 @@
 #include "Game/Level/DeathZone.h"
 #include "Game/Player.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/SphereCollision.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/SphereCollision.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -33,7 +33,7 @@ namespace
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(object));
     }
 
-    // 開始の手前で止まる ObjectList の口を外から呼べるか。テンプレートにして、呼べない時を偽として受ける
+    // 開始の手前で止まる ActorList の口を外から呼べるか。テンプレートにして、呼べない時を偽として受ける
     template <class List>
     concept CanAppendFromOutside =
         requires(List& list, std::unique_ptr<NS::Obj::Actor> obj) { list.Append(std::move(obj)); };
@@ -53,10 +53,10 @@ namespace
 TEST(SceneActor, SpawningGoesThroughTheSceneOnly)
 {
     // 配置物を湧かすのは開始まで済ませる Scene の口だけ。開始を飛ばして並びへ入れる道を外へ開けない
-    static_assert(!CanAppendFromOutside<NS::Obj::ObjectList>);
-    static_assert(!CanAppendWithNewIdFromOutside<NS::Obj::ObjectList>);
-    static_assert(!CanInsertFromJsonFromOutside<NS::Obj::ObjectList>);
-    static_assert(!CanSpawnFromOutside<NS::Obj::ObjectList>);
+    static_assert(!CanAppendFromOutside<NS::Obj::ActorList>);
+    static_assert(!CanAppendWithNewIdFromOutside<NS::Obj::ActorList>);
+    static_assert(!CanInsertFromJsonFromOutside<NS::Obj::ActorList>);
+    static_assert(!CanSpawnFromOutside<NS::Obj::ActorList>);
 }
 
 TEST(SceneActor, ClassOnlyObjectBuildsWholeComposition)
@@ -71,7 +71,7 @@ TEST(SceneActor, ClassOnlyObjectBuildsWholeComposition)
     NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(std::string_view{actor->ClassName()}, "MapObj");
-    EXPECT_NE(NS::Obj::ComponentCast<NS::Obj::SphereCollision>(actor->Part("Collision")), nullptr);
+    EXPECT_NE(NS::Obj::Cast<NS::Obj::SphereCollision>(actor->FindSubObj("Collision")), nullptr);
 }
 
 TEST(SceneActor, ToJsonKeepsClassAndValues)
@@ -83,7 +83,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     scene.LoadJson(doc);
     NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    NS::Obj::SphereCollision* sphere = NS::Obj::ComponentCast<NS::Obj::SphereCollision>(actor->Part("Collision"));
+    NS::Obj::SphereCollision* sphere = NS::Obj::Cast<NS::Obj::SphereCollision>(actor->FindSubObj("Collision"));
     ASSERT_NE(sphere, nullptr);
     sphere->SetRadius(1.5f);
     actor->Root().SetPosition(NS::Vector3{3.0f, 4.0f, 5.0f});
@@ -100,7 +100,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     ASSERT_NE(again, nullptr);
     EXPECT_EQ(std::string_view{again->ClassName()}, "MapObj");
     const NS::Obj::SphereCollision* sphereAgain =
-        NS::Obj::ComponentCast<NS::Obj::SphereCollision>(again->Part("Collision"));
+        NS::Obj::Cast<NS::Obj::SphereCollision>(again->FindSubObj("Collision"));
     ASSERT_NE(sphereAgain, nullptr);
     EXPECT_FLOAT_EQ(sphereAgain->Radius(), 1.5f);
     EXPECT_FLOAT_EQ(again->Root().Position().x, 3.0f);
@@ -153,7 +153,7 @@ TEST(SceneActor, InvalidGravityDirectionFallsBackToDown)
     EXPECT_EQ(scene.Physics().Gravity(), (NS::Vector3{0.0f, -25.0f, 0.0f}));
 }
 
-TEST(SceneActor, PhysicsSettingsIsNotAPlaceableComponent)
+TEST(SceneActor, PhysicsSettingsIsNotAPlaceableSubObject)
 {
     EXPECT_EQ(NS::Obj::TypeRegistry::Get().Find("PhysicsSettings"), nullptr);
 }
@@ -247,7 +247,7 @@ TEST(SceneActor, EnsuredPlayerStandsOnTheAssumedFloorForItsCapsule)
     // 補う自機の高さはカプセルの寸法から出す。床の上面 0.5 + 半分の高さ + 半径 + 余白 1cm
     // 種類の既定の半径を変えても、足元が床の 1cm 上に出る
     const ScopedPlayerArchetype archetype{
-        nlohmann::json{{"class", "Player"}, {"parts", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
+        nlohmann::json{{"class", "Player"}, {"subObjects", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     EXPECT_TRUE(NS::Editor::EnsurePlayerObject(doc));
 
@@ -260,7 +260,7 @@ TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosit
 {
     // 補う位置とやり直しの落ち先は同じ DefaultSpawnPosition から出る。数字の写しが戻ると片方だけずれる
     const ScopedPlayerArchetype archetype{
-        nlohmann::json{{"class", "Player"}, {"parts", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
+        nlohmann::json{{"class", "Player"}, {"subObjects", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     ASSERT_TRUE(NS::Editor::EnsurePlayerObject(doc));
     const NS::Vector3 ensured = NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(doc)[0]);

@@ -40,7 +40,7 @@ namespace NS::Obj
         [[nodiscard]] const NS::Vector3& PreviousScale() const noexcept { return m_previousScale; }
 
         //! 現在 PRS を previous に退避する。Scene::OnUpdate 先頭で全 Transform に一括実行する
-        //! Component の OnUpdate 内で個別実行すると parent-child の世代がずれるため禁止
+        //! SubObject の OnUpdate 内で個別実行すると parent-child の世代がずれるため禁止
         void Snapshot() noexcept;
 
         //! Local 行列。Scale * Rotate * Translate の合成

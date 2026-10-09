@@ -1,5 +1,5 @@
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/Model.h"
+#include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/UpdatePhase.h"
@@ -196,7 +196,7 @@ TEST(InterpolationSnapshot, ModelWrittenByAnEarlierPhaseStartsFromTheValueBefore
     NS::Obj::Scene scene;
     NS::Obj::Actor* drawn = scene.SpawnTransient<NS::Obj::Actor>();
     ASSERT_NE(drawn->CreatePart("Model"), nullptr);
-    NS::Obj::Model* model = drawn->ModelPart();
+    NS::Obj::Model* model = drawn->ModelSubObj();
     scene.SpawnTransient<DrawScaleWriterActor>(*model);
 
     scene.OnUpdate();
@@ -211,7 +211,7 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
     NS::Obj::Scene scene;
     NS::Obj::Actor* drawn = scene.SpawnTransient<NS::Obj::Actor>();
     ASSERT_NE(drawn->CreatePart("Model"), nullptr);
-    NS::Obj::Model* model = drawn->ModelPart();
+    NS::Obj::Model* model = drawn->ModelSubObj();
     scene.SetSimulationPaused(true);
     ASSERT_TRUE(model->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
 
@@ -272,7 +272,7 @@ TEST(WorldSpeed, SlowWorldInterpolatesAcrossTheSkippedSteps)
     NS::Obj::Scene scene;
     NS::Obj::Actor* drawn = scene.SpawnTransient<NS::Obj::Actor>();
     ASSERT_NE(drawn->CreatePart("Model"), nullptr);
-    NS::Obj::Model* model = drawn->ModelPart();
+    NS::Obj::Model* model = drawn->ModelSubObj();
     scene.SpawnTransient<DrawScaleWriterActor>(*model);
     scene.SetWorldSpeed(0.5f);
 

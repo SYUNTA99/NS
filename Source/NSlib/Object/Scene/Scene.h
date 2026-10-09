@@ -5,7 +5,7 @@
 #include "NSlib/Object/IUse/IUseCollision.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
 #include "NSlib/Object/IUse/IUseSceneObj.h"
-#include "NSlib/Object/ObjectList.h"
+#include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Scene/HitSensorDirector.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
@@ -31,21 +31,21 @@ namespace NS::Obj
 {
     class AssetManager;
     class CameraManager;
-    class Component;
+    class SubObject;
     class DirectionalLight;
     class IRenderable;
     class OverlayRenderer;
     class UIActor;
 
-    //! @brief シーンの JSON 文書から組んだ ObjectList を駆動するシーン
-    //! @details ObjectList と skybox を所有し、JSON
+    //! @brief シーンの JSON 文書から組んだ ActorList を駆動するシーン
+    //! @details ActorList と skybox を所有し、JSON
     //! 文書への書き出しと読み込み・プレイの凍結・標準のシーン描画パスを受け持つ Application から OnUpdate /
     //! OnRender / OnShutdown を順に呼び戻される 固定ステップの更新と可変フレームの描画で駆動し、IRenderable と
-    //! OverlayRenderer の自己登録先も兼ねる live な Actor/Component が唯一の表現で、JSON は実体でない姿
+    //! OverlayRenderer の自己登録先も兼ねる live な Actor/SubObject が唯一の表現で、JSON は実体でない姿
     //! (ファイル・凍結・undo の控え) にだけ使う 配置物は TypeRegistry と ResolveAssets
     //! で自力で組む。寿命は SceneManager が unique_ptr
     //! で所有する 窓口 (カメラ・シーンに 1 つの物・地形の当たり・エフェクト) の出所。Actor と UIActor はここへ繋ぐ
-    //! 依存: ObjectList / SceneJson / ObjectBuilder / TypeRegistry
+    //! 依存: ActorList / SceneJson / ObjectBuilder / TypeRegistry
     class Scene : public NS::NonCopyable,
                   public IUseCamera,
                   public IUseSceneObj,
@@ -60,10 +60,10 @@ namespace NS::Obj
         //! @details 世界が回っている間だけ、描く前に CameraManager が実カメラを 1 回書く
         void OnRender();
 
-        //! IRenderable Component の自己登録。Model 等が OnStart で呼ぶ。二重登録は無視する
+        //! IRenderable SubObject の自己登録。Model 等が OnStart で呼ぶ。二重登録は無視する
         //! 登録簿は SceneRenderer が持つ
         void RegisterRenderable(IRenderable* renderable);
-        //! IRenderable Component の自己解除。Model 等が OnEndPlay で呼ぶ
+        //! IRenderable SubObject の自己解除。Model 等が OnEndPlay で呼ぶ
         void UnregisterRenderable(IRenderable* renderable);
 
         //! OverlayRenderer の自己登録。基底の OnStart が呼ぶ。二重登録は無視する
@@ -149,15 +149,15 @@ namespace NS::Obj
         void SetSkyboxPath(std::string path) noexcept { m_skyboxPath = std::move(path); }
 
         //! @brief シーンの配置物の一覧
-        [[nodiscard]] NS::Obj::ObjectList& Objects() noexcept { return m_objects; }
-        [[nodiscard]] const NS::Obj::ObjectList& Objects() const noexcept { return m_objects; }
+        [[nodiscard]] NS::Obj::ActorList& Objects() noexcept { return m_objects; }
+        [[nodiscard]] const NS::Obj::ActorList& Objects() const noexcept { return m_objects; }
 
         //! @brief シーンの JSON 文書を取り込み配置物を組み直す。文書は取込後に用済みになる
         //! @details 組む前に id と名前を一意に揃える。前の世界の固定ステップで積んだ開発用の図形は捨てる
         void LoadJson(nlohmann::json scene);
 
         //! @brief シーンが自分を JSON 文書へ書き出す。保存と凍結の出所を実体に一本化する
-        //! @details 一時オブジェクトを除く全配置物を、全 component 値まで忠実に写す
+        //! @details 一時オブジェクトを除く全配置物を、全 SubObject 値まで忠実に写す
         [[nodiscard]] nlohmann::json ToJson() const;
 
         //! @brief 編集で動いた live の当たりを張り直し、一時オブジェクトへ知らせる。object は作り直さない
@@ -169,13 +169,13 @@ namespace NS::Obj
         //! @brief 直近の凍結。プレイ中に限り意味を持つ
         [[nodiscard]] const nlohmann::json& PlayBaseline() const noexcept { return m_playBaseline; }
 
-        //! @brief live component の欄 1 つを凍結スナップショットの同じ欄へ写す
+        //! @brief live SubObject の欄 1 つを凍結スナップショットの同じ欄へ写す
         //! @details プレイ中の手編集を、凍結から組み直す編集復帰の後へ残すための口
-        //! component 丸写しにしないのは、シミュレーションが動かした値まで写すと試走の結果が凍結へ漏れるため
+        //! SubObject 丸写しにしないのは、シミュレーションが動かした値まで写すと試走の結果が凍結へ漏れるため
         //! 凍結に居ない相手 (プレイ中に湧いた object・一時オブジェクト) は写す先が無く、何もしない
-        //! @param[in] comp 手編集を受けた live component
+        //! @param[in] comp 手編集を受けた live SubObject
         //! @param[in] fieldName リフレクションのフィールド名。持っていない欄なら何もしない
-        void WritePlayBaselineField(const Component& comp, std::string_view fieldName);
+        void WritePlayBaselineField(const SubObject& comp, std::string_view fieldName);
 
         //! @brief 世界を回すかの切替。既定は回す。エディタが編集モードの間だけ下ろす
         //! @details 「世界がプレイ中か」の持ち主はこの切替 1 つで、部品の active へ写さない
@@ -237,7 +237,7 @@ namespace NS::Obj
             return raw;
         }
 
-        //! @brief 実行時の一時オブジェクトを ObjectList へ入れる。一時オブジェクトの印はここで立てる
+        //! @brief 実行時の一時オブジェクトを ActorList へ入れる。一時オブジェクトの印はここで立てる
         //! @details 保存・凍結に写らず、データからの組み直し後も残る。更新は配置物と同じく自分の段で回る
         //! 型が実行時にしか決まらない時の受け口。型が分かっているなら SpawnTransient<T> を使う
         Actor* SpawnTransient(std::unique_ptr<Actor> obj);
@@ -296,8 +296,8 @@ namespace NS::Obj
 
         SceneRenderer m_sceneRenderer;
 
-        //! 衝突判定の PhysicsScene。当たりの有る scene だけ ObjectList::SyncPhysics が body を入れ、無ければ空のまま
-        //! m_objects より前に宣言してあるので破棄は後になり、これを借りる移動の Component より長く生きる
+        //! 衝突判定の PhysicsScene。当たりの有る scene だけ ActorList::SyncPhysics が body を入れ、無ければ空のまま
+        //! m_objects より前に宣言してあるので破棄は後になり、これを借りる移動の SubObject より長く生きる
         NS::Phys::PhysicsScene m_physicsScene;
         NS::Vector3 m_gravityDirection{0.0f, -1.0f, 0.0f};
 
@@ -305,7 +305,7 @@ namespace NS::Obj
         HitSensorDirector m_hitSensors;
         SceneCamera m_mainCamera;
         std::unique_ptr<NS::Obj::CameraManager> m_cameraManager;
-        NS::Obj::ObjectList m_objects; // 配置物の一覧
+        NS::Obj::ActorList m_objects; // 配置物の一覧
         // シーンに 1 つの物。配置物と画面の一覧を借りるので、それより後に宣言して先に破棄する
         // const の窓口からも作れるよう mutable にする。作っても見かけのシーンの状態は変わらない
         mutable SceneObjHolder m_sceneObjs{*this};

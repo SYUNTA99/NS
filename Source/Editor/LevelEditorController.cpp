@@ -20,20 +20,20 @@
 #include "NSlib/Core/Sphere.h"
 #include "NSlib/Graphics/DebugDraw.h"
 #include "NSlib/Object/AssetManager.h"
-#include "NSlib/Object/Components/BoxCollision.h"
-#include "NSlib/Object/Components/CameraManager.h"
-#include "NSlib/Object/Components/CapsuleCollision.h"
-#include "NSlib/Object/Components/Collider.h"
-#include "NSlib/Object/Components/HitSensor.h"
-#include "NSlib/Object/Components/MeshCollision.h"
-#include "NSlib/Object/Components/Model.h"
-#include "NSlib/Object/Components/SphereCollision.h"
-#include "NSlib/Object/Components/ThirdPersonFollow.h"
-#include "NSlib/Object/Components/TransformComponent.h"
-#include "NSlib/Object/Components/VirtualCamera.h"
+#include "NSlib/Object/SubObjects/BoxCollision.h"
+#include "NSlib/Object/SubObjects/CameraManager.h"
+#include "NSlib/Object/SubObjects/CapsuleCollision.h"
+#include "NSlib/Object/SubObjects/Collider.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/SubObjects/MeshCollision.h"
+#include "NSlib/Object/SubObjects/Model.h"
+#include "NSlib/Object/SubObjects/SphereCollision.h"
+#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/VirtualCamera.h"
 #include "NSlib/Object/ObjectName.h"
 #include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
@@ -50,9 +50,9 @@
 namespace
 {
     // 部品の欄 1 つの値を JSON で読む。無い欄は null
-    nlohmann::json FieldJson(const NS::Obj::Component& comp, std::string_view fieldName)
+    nlohmann::json FieldJson(const NS::Obj::SubObject& comp, std::string_view fieldName)
     {
-        const nlohmann::json fields = NS::Obj::SerializeComponentFields(comp);
+        const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(comp);
         const nlohmann::json::const_iterator it = fields.find(std::string{fieldName});
         if (it == fields.end())
         {
@@ -83,10 +83,10 @@ namespace
     const NS::Obj::Collider* ColliderOf(const NS::Obj::Actor& object) noexcept
     {
         const NS::Obj::Collider* found = nullptr;
-        object.ForEachPart([&found](std::string_view, NS::Obj::Component& part) {
+        object.ForEachSubObj([&found](std::string_view, NS::Obj::SubObject& part) {
             if (found == nullptr)
             {
-                found = NS::Obj::ComponentCast<NS::Obj::Collider>(&part);
+                found = NS::Obj::Cast<NS::Obj::Collider>(&part);
             }
         });
         return found;
@@ -95,17 +95,17 @@ namespace
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状
     void DrawCollisionWireframe(NS::Gfx::DebugShapes& shapes, NS::Obj::Actor& object, const NS::Color& color) noexcept
     {
-        if (NS::Obj::BoxCollision* box = NS::Obj::ComponentCast<NS::Obj::BoxCollision>(object.CollisionPart()))
+        if (NS::Obj::BoxCollision* box = NS::Obj::Cast<NS::Obj::BoxCollision>(object.CollisionSubObj()))
         {
             shapes.OBB(box->WorldOBB(), color);
         }
         else if (NS::Obj::SphereCollision* sphere =
-                     NS::Obj::ComponentCast<NS::Obj::SphereCollision>(object.CollisionPart()))
+                     NS::Obj::Cast<NS::Obj::SphereCollision>(object.CollisionSubObj()))
         {
             shapes.Sphere(sphere->WorldSphere(), color);
         }
         else if (NS::Obj::CapsuleCollision* capsule =
-                     NS::Obj::ComponentCast<NS::Obj::CapsuleCollision>(object.CollisionPart()))
+                     NS::Obj::Cast<NS::Obj::CapsuleCollision>(object.CollisionSubObj()))
         {
             NS::Phys::Capsule worldCapsule = capsule->WorldCapsule();
             worldCapsule.axis.Normalize();
@@ -118,10 +118,10 @@ namespace
             const NS::Phys::Capsule bodyCapsule = collider->CapsuleAt(object.Root().Position());
             shapes.Capsule(bodyCapsule.center, bodyCapsule.axis * bodyCapsule.halfHeight, bodyCapsule.radius, color);
         }
-        else if (NS::Obj::ComponentCast<NS::Obj::MeshCollision>(object.CollisionPart()) != nullptr)
+        else if (NS::Obj::Cast<NS::Obj::MeshCollision>(object.CollisionSubObj()) != nullptr)
         {
             // メッシュの当たりは見た目の三角形そのもの。三角形は多いので、見た目のメッシュを包む箱を出す
-            const NS::Obj::Model* renderer = object.ModelPart();
+            const NS::Obj::Model* renderer = object.ModelSubObj();
             if (renderer == nullptr || renderer->GetMesh() == nullptr)
             {
                 return;
@@ -140,7 +140,7 @@ namespace
     // 配置物 1 体のヒットセンサーの形を線で描く。範囲 (落下死・ゴール) は地形の当たりを持たないので、ここで見せる
     void DrawSensorWireframe(NS::Gfx::DebugShapes& shapes, NS::Obj::Actor& object, const NS::Color& color) noexcept
     {
-        for (const NS::Obj::HitSensor* sensor : {object.BodySensorPart(), object.AttackSensorPart()})
+        for (const NS::Obj::HitSensor* sensor : {object.BodySensorSubObj(), object.AttackSensorSubObj()})
         {
             if (sensor == nullptr)
             {
@@ -331,7 +331,7 @@ void LevelEditorController::ApplyPlayCursor(NS::Editor::PlayCursor cursor) noexc
     app->SetCursorCaptured(cursor == NS::Editor::PlayCursor::Captured);
 }
 
-const NS::Obj::ObjectList& LevelEditorController::Objects() const noexcept
+const NS::Obj::ActorList& LevelEditorController::Objects() const noexcept
 {
     return m_scene->Objects();
 }
@@ -653,7 +653,7 @@ void LevelEditorController::SetSceneViews(std::vector<NS::Obj::SceneView> views)
 
 void LevelEditorController::Tick()
 {
-    // プレイ中のクリア / 死亡は応答 component が出荷と同じ手順で完結させる
+    // プレイ中のクリア / 死亡は応答 SubObject が出荷と同じ手順で完結させる
     // editor は割り込まず、編集へ戻るのは Tab / Pause modal の明示操作だけ
     if (m_mode == Mode::Edit)
     {
@@ -859,7 +859,7 @@ std::size_t LevelEditorController::SelectedObjectIndex() const noexcept
     {
         return NS::Obj::k_NoObjectIndex;
     }
-    const NS::Obj::ObjectList& objects = m_scene->Objects();
+    const NS::Obj::ActorList& objects = m_scene->Objects();
     const std::size_t index = objects.IndexOfObjectId(m_selectedObjectId);
     if (index == objects.ObjectCount())
     {
@@ -876,7 +876,7 @@ bool LevelEditorController::HasInspectableSelection() const noexcept
 
 NS::Obj::Actor* LevelEditorController::SelectedObjectActor() noexcept
 {
-    // 選択の真実は永続 id。player も含め全配置物が ObjectList に居るので id で引く
+    // 選択の真実は永続 id。player も含め全配置物が ActorList に居るので id で引く
     if (m_selectedObjectId == NS::Obj::k_NoObjectId)
     {
         return nullptr;
@@ -906,7 +906,7 @@ void LevelEditorController::RefreshGizmoSelectables()
             continue;
         }
         m_selectablePtrs.push_back(object);
-        m_selectablePickable.push_back(static_cast<std::uint8_t>(object->ModelPart() != nullptr));
+        m_selectablePickable.push_back(static_cast<std::uint8_t>(object->ModelSubObj() != nullptr));
     }
 
     m_gizmo.SetSelectableObjects(m_selectablePtrs, m_selectablePickable);
@@ -925,7 +925,7 @@ void LevelEditorController::SyncFollowCameraPoses()
 {
     // 追従カメラは位置を持たないので、edit 中は実プレイの視点位置へ Root を寄せて frustum / pick / ギズモを出す
     // ドラッグ中の選択カメラだけは gizmo が Root を握るため触らず、その位置を初期姿勢へ逆算する側に任せる
-    const NS::Obj::ObjectList& objects = m_scene->Objects();
+    const NS::Obj::ActorList& objects = m_scene->Objects();
     for (NS::Obj::Actor* object : objects)
     {
         NS::Game::Level::FollowCamera* camera = NS::Obj::Cast<NS::Game::Level::FollowCamera>(object);
@@ -945,7 +945,7 @@ void LevelEditorController::SyncFollowCameraPoses()
 void LevelEditorController::ApplyFollowCameraGizmoDrag()
 {
     // ドラッグ中の追従カメラは、gizmo が動かした Root 位置から初期姿勢の yaw/pitch/距離を逆算して
-    // live component へ書き戻す。Root 位置は初期姿勢由来なので保存対象は component 側になる
+    // live SubObject へ書き戻す。Root 位置は初期姿勢由来なので保存対象は SubObject 側になる
     if (!m_gizmo.IsDragging())
     {
         return;
@@ -1035,7 +1035,7 @@ void LevelEditorController::SetPrimarySelection(std::uint32_t id) noexcept
     // ハンドルを出すため Object ツールへ切替える。Build のままだとギズモが描かれない
     SetObjectToolActive(true);
 
-    // player も含め全配置物が ObjectList に居る。選択した Root を id で引いてギズモへ貼る
+    // player も含め全配置物が ActorList に居る。選択した Root を id で引いてギズモへ貼る
     if (NS::Obj::Actor* go = m_scene->Objects().FindByObjectId(id))
     {
         m_gizmo.SetSelected(&go->Root());
@@ -1052,7 +1052,7 @@ void LevelEditorController::RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
 {
     // edit 中、各カメラの視錐台を点線の四角錐で、視点位置を小箱で可視化する
     // 選択中は強調色にする。追従カメラは pose がプレイヤー基準なので、錐台はプレイ中に居る視点位置へ出る
-    const NS::Obj::ObjectList& objects = m_scene->Objects();
+    const NS::Obj::ActorList& objects = m_scene->Objects();
     // 錐台の横幅は実ビューポート比で出す。viewport が潰れている時だけ 16:9 目安へフォールバックする
     const float aspect = [viewport]() -> float {
         if (viewport.height > 0)
@@ -1169,8 +1169,8 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
             continue;
         }
         const NS::Game::Level::HitZones* zones =
-            NS::Obj::ComponentCast<NS::Game::Level::HitZones>(object->Part("HitZones"));
-        const NS::Obj::HitSensor* bodySensor = object->BodySensorPart();
+            NS::Obj::Cast<NS::Game::Level::HitZones>(object->FindSubObj("HitZones"));
+        const NS::Obj::HitSensor* bodySensor = object->BodySensorSubObj();
         if (zones == nullptr || bodySensor == nullptr)
         {
             continue;
@@ -1231,7 +1231,7 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
         m_selectedObjectId = NS::Obj::k_NoObjectId;
         return;
     }
-    // player も ObjectList に居るので、ビューポートのピックと同じ経路で引ける
+    // player も ActorList に居るので、ビューポートのピックと同じ経路で引ける
     for (NS::Obj::Actor* object : m_scene->Objects())
     {
         if (&object->Root() == selected)
@@ -1255,7 +1255,7 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
     }
 
     // 選択 id が現存する配置物を指すなら gizmo に貼り直す。不在なら gizmo を外す
-    // player も ObjectList に居るので id で引ける。rebuild を跨いでも掴める状態を保つ
+    // player も ActorList に居るので id で引ける。rebuild を跨いでも掴める状態を保つ
     if (m_selectedObjectId != NS::Obj::k_NoObjectId)
     {
         if (NS::Obj::Actor* go = m_scene->Objects().FindByObjectId(m_selectedObjectId))
@@ -1311,14 +1311,14 @@ void LevelEditorController::SetSelectedFreeScale(NS::Vector3 scale)
 
 void LevelEditorController::MirrorRootEditToBaseline(NS::Obj::Actor& actor, std::string_view fieldName)
 {
-    if (NS::Obj::TransformComponent* transform =
-            NS::Obj::ComponentCast<NS::Obj::TransformComponent>(actor.Part(NS::Obj::k_TransformPartName)))
+    if (NS::Obj::TransformSubObject* transform =
+            NS::Obj::Cast<NS::Obj::TransformSubObject>(actor.FindSubObj(NS::Obj::k_TransformSubObjName)))
     {
         MirrorPlayEditToBaseline(*transform, fieldName);
     }
 }
 
-void LevelEditorController::MirrorPlayEditToBaseline(const NS::Obj::Component& comp, std::string_view fieldName)
+void LevelEditorController::MirrorPlayEditToBaseline(const NS::Obj::SubObject& comp, std::string_view fieldName)
 {
     // 写すのはプレイ中だけ。編集モードで写すと次のプレイ突入の捕捉と二重管理になる
     if (m_mode != Mode::Play || m_scene == nullptr)
@@ -1328,7 +1328,7 @@ void LevelEditorController::MirrorPlayEditToBaseline(const NS::Obj::Component& c
     m_scene->WritePlayBaselineField(comp, fieldName);
 }
 
-bool LevelEditorController::PromoteFieldToArchetype(NS::Obj::Component& comp, std::string_view fieldName)
+bool LevelEditorController::PromoteFieldToArchetype(NS::Obj::SubObject& comp, std::string_view fieldName)
 {
     NS::Obj::Actor* owner = comp.Owner();
     const NS::Obj::ReflectionInfo* info = comp.GetReflection();
@@ -1340,19 +1340,19 @@ bool LevelEditorController::PromoteFieldToArchetype(NS::Obj::Component& comp, st
     const std::string_view typeName{info->typeName};
 
     // 上げる前の既定の値。これと同じ値の個体は上書きしていないので、新しい既定値へ付いて行く
-    if (NS::Obj::FindBaselinePart(comp) == nullptr)
+    if (NS::Obj::FindBaselineSubObj(comp) == nullptr)
     {
         return false;
     }
 
-    std::vector<NS::Obj::Component*> followers;
+    std::vector<NS::Obj::SubObject*> followers;
     for (NS::Obj::Actor* actor : m_scene->Objects())
     {
         if (actor == owner || actor->IsTransient() || className != actor->ClassName())
         {
             continue;
         }
-        NS::Obj::Component* part = actor->Part(owner->PartName(comp));
+        NS::Obj::SubObject* part = actor->FindSubObj(owner->PartName(comp));
         if (part == nullptr || part->GetReflection() == nullptr || typeName != part->GetReflection()->typeName)
         {
             continue;
@@ -1376,7 +1376,7 @@ bool LevelEditorController::PromoteFieldToArchetype(NS::Obj::Component& comp, st
     nlohmann::json fields = nlohmann::json::object();
     fields[std::string{fieldName}] = FieldJson(comp, fieldName);
     NS::Application* app = NS::Application::Get();
-    for (NS::Obj::Component* part : followers)
+    for (NS::Obj::SubObject* part : followers)
     {
         (void)NS::Obj::ApplyJsonFields(*part, fields);
         if (app != nullptr)
@@ -1532,7 +1532,7 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
     return true;
 }
 
-void LevelEditorController::SetComponentEnabledOnSelected(NS::Obj::Component& comp, bool enabled)
+void LevelEditorController::SetSubObjectEnabledOnSelected(NS::Obj::SubObject& comp, bool enabled)
 {
     const std::uint32_t id = m_selectedObjectId;
     if (id == NS::Obj::k_NoObjectId)
@@ -1548,9 +1548,9 @@ void LevelEditorController::SetComponentEnabledOnSelected(NS::Obj::Component& co
     {
         return;
     }
-    // 入力 component を休止させると player が動かなくなる。根の部品も同様に守る
+    // 入力 SubObject を休止させると player が動かなくなる。根の部品も同様に守る
     const std::string_view typeName = comp.ClassName();
-    if (typeName == "PlayerInput" || object->PartName(comp) == NS::Obj::k_TransformPartName)
+    if (typeName == "PlayerInput" || object->PartName(comp) == NS::Obj::k_TransformSubObjName)
     {
         return;
     }
@@ -1930,9 +1930,9 @@ void LevelEditorController::CommitTransformEdit() noexcept
     m_editor.Undo().Record(MakeUndoUnit(std::move(commands)));
 }
 
-void LevelEditorController::BeginComponentEdit() noexcept
+void LevelEditorController::BeginSubObjectEdit() noexcept
 {
-    if (m_componentEditing)
+    if (m_subObjectEditing)
     {
         return;
     }
@@ -1941,34 +1941,34 @@ void LevelEditorController::BeginComponentEdit() noexcept
     {
         return;
     }
-    m_componentEditBaseline = std::move(*baseline);
-    m_componentEditBaselineId = m_selectedObjectId;
-    m_componentEditing = true;
+    m_subObjectEditBaseline = std::move(*baseline);
+    m_subObjectEditBaselineId = m_selectedObjectId;
+    m_subObjectEditing = true;
 }
 
-void LevelEditorController::CommitComponentEdit() noexcept
+void LevelEditorController::CommitSubObjectEdit() noexcept
 {
-    if (!m_componentEditing)
+    if (!m_subObjectEditing)
     {
         return;
     }
-    m_componentEditing = false;
+    m_subObjectEditing = false;
 
-    // リフレクション編集は live component へ直接入っている。after は live の忠実な写しで、baseline と同じなら積まない
+    // リフレクション編集は live SubObject へ直接入っている。after は live の忠実な写しで、baseline と同じなら積まない
     // プレイ中の控えはプレイの姿なので積まない
     if (m_mode != Mode::Edit)
     {
         return;
     }
-    std::optional<nlohmann::json> after = m_applier.CaptureObject(m_componentEditBaselineId);
-    if (!after || *after == m_componentEditBaseline)
+    std::optional<nlohmann::json> after = m_applier.CaptureObject(m_subObjectEditBaselineId);
+    if (!after || *after == m_subObjectEditBaseline)
     {
         return;
     }
 
     // live は既に after なので Do を呼ばず履歴だけ積む
     m_editor.Undo().Record(std::make_unique<NS::Editor::ObjectSnapshotCommand>(
-        m_componentEditBaselineId, m_componentEditBaseline, std::move(*after)));
+        m_subObjectEditBaselineId, m_subObjectEditBaseline, std::move(*after)));
 }
 
 bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
@@ -1989,7 +1989,7 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
         return false;
     }
 
-    NS::Obj::Model* mesh = go->ModelPart();
+    NS::Obj::Model* mesh = go->ModelSubObj();
     if (mesh == nullptr)
     {
         return false;
@@ -2001,7 +2001,7 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
         return false;
     }
 
-    // .mat パスは ContentRoot 相対で持つ。材質の正データは matRef なので live component へ書き込む
+    // .mat パスは ContentRoot 相対で持つ。材質の正データは matRef なので live SubObject へ書き込む
     const std::string stored = RelativeToRoot(matPath, NS::OS::FileSystem::ContentRoot());
 
     // 差替前を忠実に写す。matRef を live へ書き込み、差替後との差分を undo 履歴へ積む

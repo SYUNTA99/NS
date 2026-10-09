@@ -13,8 +13,8 @@
 #include "NSlib/Graphics/Texture.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/AssetManager.h"
-#include "NSlib/Object/Components/Model.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/Model.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Filesystem.h"
@@ -60,8 +60,8 @@ namespace
         TimelineMovingActor()
         {
             (void)CreatePart("Model");
-            ModelPart()->SetMeshRef("cube");
-            ModelPart()->SetMaterialRef("player");
+            ModelSubObj()->SetMeshRef("cube");
+            ModelSubObj()->SetMaterialRef("player");
         }
 
     protected:

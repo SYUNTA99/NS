@@ -9,14 +9,14 @@ namespace NS::Game::Level
 {
     FollowCamera::FollowCamera() noexcept
     {
-        AttachFixedComponent(m_vcam);
+        AttachFixedSubObject(m_vcam);
     }
 
     NS_PLACEABLE(FollowCamera, "追従カメラ")
 
-    void FollowCamera::ForEachPart(const PartVisitor& visitor) const
+    void FollowCamera::ForEachSubObj(const SubObjVisitor& visitor) const
     {
-        NS::Obj::Actor::ForEachPart(visitor);
+        NS::Obj::Actor::ForEachSubObj(visitor);
         visitor("Vcam", const_cast<NS::Obj::ThirdPersonFollow&>(m_vcam));
     }
 
@@ -57,7 +57,7 @@ namespace NS::Game::Level
 
     void FollowCamera::BodyStep()
     {
-        TickPart(&m_vcam);
+        TickSubObj(&m_vcam);
     }
 
     void FollowCamera::OnKill() noexcept

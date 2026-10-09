@@ -8,7 +8,7 @@
 #include "Editor/PlayControls.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/Object/Components/VirtualCamera.h"
+#include "NSlib/Object/SubObjects/VirtualCamera.h"
 
 #include <cstdint>
 #include <memory>
@@ -23,8 +23,8 @@ namespace NS::Obj
     class Transform;
     class CameraManager;
     class SceneCamera;
-    class Component;
-    class ObjectList;
+    class SubObject;
+    class ActorList;
     class ThirdPersonFollow;
     class Scene;
     struct SceneView;
@@ -129,8 +129,8 @@ public:
     //! @param[in] gameImageClicked このフレームに Game の画像を左クリックしたか
     void RecaptureCursorOnGameClick(bool gameImageClicked) noexcept;
 
-    //! 編集対象の live な ObjectList。一覧 UI と参照候補は範囲 for か ObjectAt でここを直接読む
-    [[nodiscard]] const NS::Obj::ObjectList& Objects() const noexcept;
+    //! 編集対象の live な ActorList。一覧 UI と参照候補は範囲 for か ObjectAt でここを直接読む
+    [[nodiscard]] const NS::Obj::ActorList& Objects() const noexcept;
 
     //! 配置ツールのモード (Build / Object) を取得する
     [[nodiscard]] bool ObjectToolActive() const noexcept { return m_objectToolActive; }
@@ -168,18 +168,18 @@ public:
     void CommitTransformEdit() noexcept;
 
     //! Inspector のリフレクション項目をドラッグで編集し始める / 確定する
-    void BeginComponentEdit() noexcept;
-    void CommitComponentEdit() noexcept;
+    void BeginSubObjectEdit() noexcept;
+    void CommitSubObjectEdit() noexcept;
 
     //! プレイ中の手編集を凍結スナップショットへも写す。編集復帰の組み直しを跨いで調整値が残る
     //! 編集モードでは live が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
-    void MirrorPlayEditToBaseline(const NS::Obj::Component& comp, std::string_view fieldName);
+    void MirrorPlayEditToBaseline(const NS::Obj::SubObject& comp, std::string_view fieldName);
 
     //! @brief 部品 comp の欄 fieldName の今の値を、持ち主のクラスの種類の既定値にしてファイルへ書く
     //! @details 同じ種類の個体のうち、その欄を上書きしていなかった物にも新しい値を写す。上書きしている個体はそのまま
     //! 種類の既定値はシーンの外のファイルなので undo の履歴には積まない。プレイ中も使え、編集へ戻っても残る
     //! @return 書けた場合 true。種類を持たない配置物・参照の欄・位置は false
-    bool PromoteFieldToArchetype(NS::Obj::Component& comp, std::string_view fieldName);
+    bool PromoteFieldToArchetype(NS::Obj::SubObject& comp, std::string_view fieldName);
 
     //! @brief 置ける物を 1 体、編集視点の中心あたりへ置いて選択する。Undo 対応
     //! @param[in] item 置ける物の一覧 (PlacementItems) の 1 つ
@@ -206,10 +206,10 @@ public:
     //! @details 見た目が動かないよう、今の world 変換を新しい親空間の local へ計算し直して持ち替える
     bool SetObjectParent(std::uint32_t id, std::uint32_t parentId);
 
-    //! @brief 選択中の配置物のコンポーネント 1 個について、データの active を切り替える
+    //! @brief 選択中の配置物のサブオブジェクト 1 個について、データの active を切り替える
     //! @details false は保存に残り、読み直しても false のまま。player の入力と transform は守って何もしない
     //! @param comp 選択中の配置物が持つ部品
-    void SetComponentEnabledOnSelected(NS::Obj::Component& comp, bool enabled);
+    void SetSubObjectEnabledOnSelected(NS::Obj::SubObject& comp, bool enabled);
 
     //! 選択中の配置物を新しい永続 id で複製して undo へ積む。プレイヤーは複製の対象から外す
     void DuplicateSelectedObject();
@@ -325,7 +325,7 @@ private:
     // 編集開始時の状態スナップショット。選択している分だけ並ぶ
     std::vector<std::pair<std::uint32_t, nlohmann::json>> m_editBaselines;
 
-    bool m_componentEditing = false;                                 // コンポーネント編集の開始状態
-    std::uint32_t m_componentEditBaselineId = NS::Obj::k_NoObjectId; // 編集開始時の対象 id
-    nlohmann::json m_componentEditBaseline;                          // 編集開始時の状態スナップショット
+    bool m_subObjectEditing = false;
+    std::uint32_t m_subObjectEditBaselineId = NS::Obj::k_NoObjectId; // 編集開始時の対象 id
+    nlohmann::json m_subObjectEditBaseline;                          // 編集開始時の状態スナップショット
 };

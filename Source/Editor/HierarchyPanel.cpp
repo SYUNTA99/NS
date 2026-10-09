@@ -6,7 +6,7 @@
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/ObjectList.h"
+#include "NSlib/Object/ActorList.h"
 
 #include <algorithm>
 #include <cstdint>

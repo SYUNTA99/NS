@@ -14,7 +14,7 @@
 
 namespace NS::Obj
 {
-    class Component;
+    class SubObject;
 
     //! リフレクションが扱うフィールド型タグ
     // TODO: 角度の欄は素の float / Vector3 で、単位は欄名だけが持つ。Core/Math.h の Radians を FieldType へ足す
@@ -96,7 +96,7 @@ namespace NS::Obj
 
     //! @brief リフレクションされた 1 フィールドの記述子
     //! @details get/set は型消去した関数ポインタ。obj はリフレクション対象そのものへの生ポインタで、
-    //! Component でも素の値型でもよい。マクロが宣言時の具象型へ static_cast して読み書きする
+    //! SubObject でも素の値型でもよい。マクロが宣言時の具象型へ static_cast して読み書きする
     struct FieldDesc
     {
         const char* name;                                      // フィールド名
@@ -113,9 +113,9 @@ namespace NS::Obj
         std::size_t firstField; // この見出しの最初の欄の、fields の添字
     };
 
-    //! @brief 1 コンポーネント型のリフレクション情報。マクロで宣言したフィールドの名前 / 型 / get / set を束ねる
-    //! @details エディタは Component* 越しに fields を列挙して編集 UI を自動生成する
-    //! base は基底型のリフレクションを指し、Component::IsA はこれを辿って継承関係を判定する。
+    //! @brief 1 サブオブジェクト型のリフレクション情報。マクロで宣言したフィールドの名前 / 型 / get / set を束ねる
+    //! @details エディタは SubObject* 越しに fields を列挙して編集 UI を自動生成する
+    //! base は基底型のリフレクションを指し、SubObject::IsA はこれを辿って継承関係を判定する。
     //! 見出しは fields に混ざらず groups に別に並ぶので、保存と読み込みは見出しを見ない
     //! 依存: NS
     struct ReflectionInfo
@@ -123,7 +123,7 @@ namespace NS::Obj
         const char* typeName;               // リフレクションする型名
         const FieldDesc* fields;            // フィールド記述子配列 (static 寿命)
         std::size_t fieldCount;             // fields の要素数
-        const ReflectionInfo* base;         // 基底型のリフレクション。Component 直下は nullptr
+        const ReflectionInfo* base;         // 基底型のリフレクション。SubObject 直下は nullptr
         const FieldGroup* groups = nullptr; // 欄の見出しの配列 (static 寿命)。宣言の並び
         std::size_t groupCount = 0;         // groups の要素数
     };
@@ -173,7 +173,7 @@ namespace NS::Obj
         std::vector<FieldGroup> m_groups; // 見出し。宣言の並び
     };
 
-    //! 基底型のリフレクションを返す。Component 直下は Component、素の値型は void を渡し、いずれも nullptr になる
+    //! 基底型のリフレクションを返す。SubObject 直下は SubObject、素の値型は void を渡し、いずれも nullptr になる
     template <class TBase> [[nodiscard]] const ReflectionInfo* ReflectionBaseOf() noexcept
     {
         if constexpr (std::is_same_v<TBase, void>)
@@ -252,7 +252,7 @@ namespace NS::Obj
         return StaticReflection();                                                                                     \
     }
 
-//! 値型用のフィールド宣言終了。Component を継承しない型向けに、仮想の GetReflection を出さず静的関数だけ定義する
+//! 値型用のフィールド宣言終了。SubObject を継承しない型向けに、仮想の GetReflection を出さず静的関数だけ定義する
 #define NS_REFLECT_END_VALUE()                                                                                         \
     }                                                                                                                  \
     ;                                                                                                                  \

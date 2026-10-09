@@ -2,7 +2,7 @@
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
-#include "NSlib/Object/Components/Body.h"
+#include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 
 #include <gtest/gtest.h>

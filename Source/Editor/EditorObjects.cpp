@@ -5,12 +5,12 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/Mesh.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/Collider.h"
-#include "NSlib/Object/Components/Model.h"
-#include "NSlib/Object/Components/TransformComponent.h"
-#include "NSlib/Object/ObjectList.h"
+#include "NSlib/Object/SubObjects/Collider.h"
+#include "NSlib/Object/SubObjects/Model.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
@@ -70,7 +70,7 @@ namespace NS::Editor
         {
             return false;
         }
-        const NS::Obj::Model* model = object.ModelPart();
+        const NS::Obj::Model* model = object.ModelSubObj();
         if (model == nullptr)
         {
             return false;
@@ -94,7 +94,7 @@ namespace NS::Editor
         return static_cast<std::int16_t>(std::lround(object.Root().Position().z));
     }
 
-    std::uint32_t FindObjectIdAtCell(const NS::Obj::ObjectList& objects,
+    std::uint32_t FindObjectIdAtCell(const NS::Obj::ActorList& objects,
                                      std::int16_t x,
                                      std::int16_t y,
                                      std::int16_t z) noexcept
@@ -111,7 +111,7 @@ namespace NS::Editor
         return NS::Obj::k_NoObjectId;
     }
 
-    bool HasPlacedObjectAtCell(const NS::Obj::ObjectList& objects,
+    bool HasPlacedObjectAtCell(const NS::Obj::ActorList& objects,
                                std::int16_t x,
                                std::int16_t y,
                                std::int16_t z) noexcept
@@ -152,7 +152,7 @@ namespace NS::Editor
 
     NS::AABB PickLocalBounds(const NS::Obj::Actor& object) noexcept
     {
-        const NS::Obj::Model* renderer = object.ModelPart();
+        const NS::Obj::Model* renderer = object.ModelSubObj();
         if (renderer != nullptr && renderer->GetMesh() != nullptr)
         {
             return renderer->GetMesh()->LocalBounds();

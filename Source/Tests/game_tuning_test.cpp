@@ -8,7 +8,7 @@
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerParams.h"
-#include "NSlib/Object/Components/HitSensor.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
@@ -73,10 +73,10 @@ TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
     const NS::Game::Player::EffectLayerList& layers = player->ChargeVisuals().Layers();
     ASSERT_FALSE(layers.Records().empty());
     EXPECT_EQ(layers.Records().front().name, "custom.curl");
-    const nlohmann::json saved = NS::Obj::SerializeComponentFields(player->ChargeVisuals());
+    const nlohmann::json saved = NS::Obj::SerializeSubObjectFields(player->ChargeVisuals());
     NS::Game::Player::ChargeEffects restored;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(restored, saved), 0u);
-    EXPECT_EQ(NS::Obj::SerializeComponentFields(restored)["丸まりの殻の資産"], "custom.curl");
+    EXPECT_EQ(NS::Obj::SerializeSubObjectFields(restored)["丸まりの殻の資産"], "custom.curl");
 }
 
 TEST(GameTuning, DefaultSpawnReadsThePlayerInstance)
@@ -104,15 +104,15 @@ TEST(GameTuning, EffectHistoryRetentionBelongsToEachList)
     EXPECT_EQ(longHistory.Records().size(), 1u);
 }
 
-TEST(GameTuning, LaunchDustLifetimeReadsItsOwnComponent)
+TEST(GameTuning, LaunchDustLifetimeReadsItsOwnSubObject)
 {
     NS::Obj::Scene scene;
     NS::Game::Level::MapObj* rock = scene.SpawnTransient<NS::Game::Level::MapObj>();
     ASSERT_NE(rock, nullptr);
-    NS::Obj::Component* component = rock->Part("LaunchEffects");
-    ASSERT_NE(component, nullptr);
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(*component, {{"着地の粉の寿命フレーム", 2}}), 0u);
-    NS::Game::Level::LaunchEffects* effects = NS::Obj::ComponentCast<NS::Game::Level::LaunchEffects>(component);
+    NS::Obj::SubObject* subObject = rock->FindSubObj("LaunchEffects");
+    ASSERT_NE(subObject, nullptr);
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(*subObject, {{"着地の粉の寿命フレーム", 2}}), 0u);
+    NS::Game::Level::LaunchEffects* effects = NS::Obj::Cast<NS::Game::Level::LaunchEffects>(subObject);
     ASSERT_NE(effects, nullptr);
     effects->BeginTrail(NS::Game::Level::HitTier::Center, 1.0f, 1.0f, {0.0f, 0.0f, 1.0f});
     effects->NotifyLanding({}, {0.0f, 1.0f, 0.0f});
@@ -152,7 +152,7 @@ TEST(GameTuning, EditableSparkDirectionAndMarkerWidthReachTheirShapes)
     EXPECT_NEAR(heading.z, 0.0f, 0.001f);
     NS::Game::Level::TargetMarker marker;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(marker, {{"枠の縁の幅", 3.0f}}), 0u);
-    const nlohmann::json fields = NS::Obj::SerializeComponentFields(marker);
+    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(marker);
     EXPECT_EQ(fields["枠の縁の幅"], 3.0f);
     NS::Game::Level::TargetMarkerDesc desc;
     desc.outlineWidth = 3.0f;

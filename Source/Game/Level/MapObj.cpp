@@ -4,7 +4,7 @@
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactTremor.h"
 #include "Game/Level/SensorKinds.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/Gravity.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -29,7 +29,7 @@ namespace NS::Game::Level
                 owner.m_restAge += dt;
                 if (owner.m_restAge >= owner.m_params.RestLifeSeconds())
                 {
-                    owner.BodySensorPart()->Invalidate();
+                    owner.BodySensorSubObj()->Invalidate();
                     owner.Sphere().RemoveFromPhysics();
                     owner.Kill();
                 }
@@ -67,25 +67,25 @@ namespace NS::Game::Level
     MapObj::MapObj() noexcept
     {
         (void)CreatePart("Model");
-        ModelPart()->SetMeshRef("sphere");
-        ModelPart()->SetBaseColor(NS::Vector3{0.72f, 0.70f, 0.66f});
+        ModelSubObj()->SetMeshRef("sphere");
+        ModelSubObj()->SetBaseColor(NS::Vector3{0.72f, 0.70f, 0.66f});
         SetCollisionPart(std::make_unique<NS::Obj::SphereCollision>());
-        AttachFixedComponent(m_params);
-        AttachFixedComponent(m_hitZones);
-        AttachFixedComponent(m_effects);
+        AttachFixedSubObject(m_params);
+        AttachFixedSubObject(m_hitZones);
+        AttachFixedSubObject(m_effects);
         // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
         SetBodySensorPart(std::make_unique<NS::Obj::FollowHitSensor>([collision = &Sphere()] {
             const NS::Sphere sphere = collision->WorldSphere();
             return NS::Obj::SensorVolume::Sphere(sphere.center, sphere.radius);
         }));
-        SetSensorKind(*BodySensorPart(), SensorKind::MapObjBody);
+        SetSensorKind(*BodySensorSubObj(), SensorKind::MapObjBody);
         (void)BuildStateMachine<MapObj, RestingState, FreezeState, LaunchedState>(*this, m_states);
         m_motion.Finish();
     }
 
-    void MapObj::ForEachPart(const PartVisitor& visitor) const
+    void MapObj::ForEachSubObj(const SubObjVisitor& visitor) const
     {
-        NS::Obj::Actor::ForEachPart(visitor);
+        NS::Obj::Actor::ForEachSubObj(visitor);
         visitor("Params", const_cast<MapObjParams&>(m_params));
         visitor("HitZones", const_cast<HitZones&>(m_hitZones));
         visitor("LaunchEffects", const_cast<LaunchEffects&>(m_effects));
@@ -132,7 +132,7 @@ namespace NS::Game::Level
 
     void MapObj::VisualStep()
     {
-        TickPart(&m_effects);
+        TickSubObj(&m_effects);
         // 震えは止めが明けて飛んでいく間に通り抜けるので、状態に依らず根を動かした後で進める
         AdvanceTremor();
     }
@@ -172,7 +172,7 @@ namespace NS::Game::Level
             {
                 const float x2 = desc.impactDir.x * desc.impactDir.x;
                 const float z2 = desc.impactDir.z * desc.impactDir.z;
-                m_freeze.squash = ModelPart()->SnapDrawScale(NS::Vector3{1.0f + (desc.squashThickness - 1.0f) * x2,
+                m_freeze.squash = ModelSubObj()->SnapDrawScale(NS::Vector3{1.0f + (desc.squashThickness - 1.0f) * x2,
                                                                          desc.squashHeight,
                                                                          1.0f + (desc.squashThickness - 1.0f) * z2});
             }
@@ -182,7 +182,7 @@ namespace NS::Game::Level
 
     void MapObj::AdvanceShake()
     {
-        if (!m_shake.active || ModelPart() == nullptr)
+        if (!m_shake.active || ModelSubObj() == nullptr)
         {
             return;
         }
@@ -190,8 +190,8 @@ namespace NS::Game::Level
         const TackleShakeDesc& desc = m_shake.desc;
         const float offset =
             BodyShakeOffset(m_shake.frame, desc.length, desc.amplitude, desc.seed, desc.firstSign, desc.flipFrames);
-        (void)ModelPart()->SetDrawOffset(desc.axis * offset);
-        (void)ModelPart()->SetGhostSpread(
+        (void)ModelSubObj()->SetDrawOffset(desc.axis * offset);
+        (void)ModelSubObj()->SetGhostSpread(
             desc.axis * (BodyShakeReach(m_shake.frame, desc.length, desc.amplitude) * desc.ghostRatio));
         if (m_shake.frame >= desc.length)
         {
@@ -202,16 +202,16 @@ namespace NS::Game::Level
     void MapObj::StopShake()
     {
         m_shake.active = false;
-        if (ModelPart() != nullptr)
+        if (ModelSubObj() != nullptr)
         {
-            (void)ModelPart()->SetDrawOffset(NS::Vector3{0.0f, 0.0f, 0.0f});
-            (void)ModelPart()->SetGhostSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
+            (void)ModelSubObj()->SetDrawOffset(NS::Vector3{0.0f, 0.0f, 0.0f});
+            (void)ModelSubObj()->SetGhostSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
         }
     }
 
     void MapObj::AdvanceTremor()
     {
-        if (!m_tremor.active || ModelPart() == nullptr)
+        if (!m_tremor.active || ModelSubObj() == nullptr)
         {
             return;
         }
@@ -224,7 +224,7 @@ namespace NS::Game::Level
             tremor = MakeTremor(
                 m_tremor.desc, m_tremor.elapsed, Root().Position(), 2.0f * Sphere().WorldSphere().radius, *pose);
         }
-        (void)ModelPart()->SetTremor(tremor);
+        (void)ModelSubObj()->SetTremor(tremor);
         if (m_tremor.elapsed >= m_tremor.desc.length)
         {
             m_tremor.active = false;
@@ -234,9 +234,9 @@ namespace NS::Game::Level
     void MapObj::StopTremor()
     {
         m_tremor.active = false;
-        if (ModelPart() != nullptr)
+        if (ModelSubObj() != nullptr)
         {
-            (void)ModelPart()->SetTremor(NS::Gfx::TremorCB{});
+            (void)ModelSubObj()->SetTremor(NS::Gfx::TremorCB{});
         }
     }
 
@@ -249,7 +249,7 @@ namespace NS::Game::Level
         }
         if (m_freeze.squash)
         {
-            (void)ModelPart()->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
+            (void)ModelSubObj()->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
             m_freeze.squash = false;
         }
     }
@@ -526,7 +526,7 @@ namespace NS::Game::Level
         Root().SetPosition(position);
         Root().SetRotation(rotation);
         Appear();
-        BodySensorPart()->Validate();
+        BodySensorSubObj()->Validate();
         m_effects.CancelTrail();
         SyncCollision();
     }
@@ -547,7 +547,7 @@ namespace NS::Game::Level
         (void)receiver;
         if (const MsgAskTackleTarget* ask = NS::Obj::MsgCast<MsgAskTackleTarget>(msg))
         {
-            if (!IsActiveInHierarchy() || !BodySensorPart()->IsValid())
+            if (!IsActiveInHierarchy() || !BodySensorSubObj()->IsValid())
             {
                 return false;
             }
@@ -558,7 +558,7 @@ namespace NS::Game::Level
             answer.breakable = false;
             answer.placed = !IsFlying();
             answer.position = Root().Position();
-            const NS::Obj::SensorVolume body = BodySensorPart()->WorldVolume();
+            const NS::Obj::SensorVolume body = BodySensorSubObj()->WorldVolume();
             answer.bounds = body.Bounds();
             answer.face = m_hitZones.Face();
             answer.body = body;

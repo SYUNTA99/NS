@@ -21,7 +21,7 @@ namespace NS::Obj
 {
     class Body;
     class Collider;
-    class ObjectList;
+    class ActorList;
     class PlayerInput;
 } // namespace NS::Obj
 
@@ -41,7 +41,7 @@ namespace NS::Game::Level
 } // namespace NS::Game::Level
 
 //! @brief プレイヤーキャラクタ。固定の部品をコードで組む
-//! @details 部品と部品名は ForEachPart が正。Body が Movement、Collider が Collider、PlayerInput が Input を名乗る。
+//! @details 部品と部品名は ForEachSubObj が正。Body が Movement、Collider が Collider、PlayerInput が Input を名乗る。
 //! 値はプレイヤーの種類の既定値と個体の上書きから写す。
 //! 状態機械と命は Actor 自身が持ち、入力の窓口・移動の組み立て・崖つかまり・突進と反発とそれらの記録はここが持つ。
 //! 速度と接地の計算は身体の部品 (Body) へ、当たりの寸法と地形に当てて押し返す移動は Collider へ任せる。
@@ -56,7 +56,7 @@ public:
     //! 既定の構成と見た目で組む。Mesh / Material は後からファクトリが入れる
     Player() noexcept;
     ~Player() override;
-    void ForEachPart(const PartVisitor& visitor) const override;
+    void ForEachSubObj(const SubObjVisitor& visitor) const override;
 
     Player(const Player&) = delete;
     Player& operator=(const Player&) = delete;
@@ -595,4 +595,4 @@ private:
 
 //! live の配置物からプレイヤーを引く。無ければ nullptr
 //! @param[in,out] objects 探す先の配置物。返した Player* から中身が書き換わる
-[[nodiscard]] Player* FindPlayer(NS::Obj::ObjectList& objects) noexcept;
+[[nodiscard]] Player* FindPlayer(NS::Obj::ActorList& objects) noexcept;

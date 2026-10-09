@@ -19,7 +19,7 @@ namespace NS::Obj
 
     void TypeRegistry::Register(const char* className,
                                 ActorCreateFn create,
-                                ComponentDefaultFn attach,
+                                SubObjectDefaultFn attach,
                                 const char* label)
     {
         if (className == nullptr)
@@ -39,7 +39,7 @@ namespace NS::Obj
         {
             return;
         }
-        // 置けるのは Actor だけ。Component に表示名を付けても一覧には出さない
+        // 置けるのは Actor だけ。SubObject に表示名を付けても一覧には出さない
         const char* placeableLabel = nullptr;
         if (create != nullptr)
         {
@@ -93,7 +93,7 @@ namespace NS::Obj
         return std::make_unique<Actor>();
     }
 
-    std::unique_ptr<Component> CreatePartDefault(std::string_view typeName)
+    std::unique_ptr<SubObject> CreatePartDefault(std::string_view typeName)
     {
         const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(typeName);
         if (entry != nullptr && entry->createDefault != nullptr)

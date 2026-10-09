@@ -8,7 +8,7 @@
       "class": "MapParts",
       "id": 1,
       "name": "Object",
-      "parts": {
+      "subObjects": {
         "Collision": {},
         "Model": {
           "マテリアル": "",
@@ -43,7 +43,7 @@
       "class": "Player",
       "id": 2,
       "name": "Object_1",
-      "parts": {
+      "subObjects": {
         "Appearance": {},
         "BodySensor": {},
         "ChargeEffects": {},
@@ -82,7 +82,7 @@
       "class": "FollowCamera",
       "id": 3,
       "name": "Player Camera",
-      "parts": {
+      "subObjects": {
         "Transform": {
           "スケール": [
             1,
@@ -112,7 +112,7 @@
       "class": "Light",
       "id": 4,
       "name": "Object_2",
-      "parts": {
+      "subObjects": {
         "DirectionalLight": {},
         "Transform": {
           "スケール": [
@@ -138,7 +138,7 @@
       "class": "MapObj",
       "id": 35,
       "name": "Object_3",
-      "parts": {
+      "subObjects": {
         "BodySensor": {},
         "Collision": {},
         "LaunchEffects": {},
@@ -180,7 +180,7 @@
       "class": "MapObj",
       "id": 41,
       "name": "Object_4",
-      "parts": {
+      "subObjects": {
         "BodySensor": {},
         "Collision": {},
         "LaunchEffects": {},
@@ -222,7 +222,7 @@
       "class": "MapObj",
       "id": 47,
       "name": "Object_5",
-      "parts": {
+      "subObjects": {
         "BodySensor": {},
         "Collision": {},
         "LaunchEffects": {},
@@ -264,7 +264,7 @@
       "class": "MapObj",
       "id": 53,
       "name": "Object_6",
-      "parts": {
+      "subObjects": {
         "BodySensor": {},
         "Collision": {},
         "LaunchEffects": {},

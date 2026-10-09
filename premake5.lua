@@ -461,9 +461,9 @@ project "GameApp"
     links { "Game", "NSlib" }
 
     -- Object の自己登録は NSlib モジュールの生成設定が保持する。
-    -- Game 層の配置物 Component も同じ理由で落ちる。Source/Game/Level/ に足した Component は
+    -- Game 層の配置物 SubObject も同じ理由で落ちる。Source/Game/Level/ に足した SubObject は
     -- 他のコードから型を参照されない限り Game.lib の中で未参照のまま残り、
-    -- 対策が無いと登録ごと捨てられてエディタのコンポーネント追加一覧に出ない
+    -- 対策が無いと登録ごと捨てられてエディタのサブオブジェクト追加一覧に出ない
     linkoptions { "/WHOLEARCHIVE:Game.lib" }
 
     -- 出荷 (GameRelease) のみ exe 隣へ Shaders/ Assets/ をコピーする (exe 相対で読込む配布レイアウト)

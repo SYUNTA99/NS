@@ -12,8 +12,8 @@ namespace NS::Game::Level
     ImpactMark::ImpactMark() noexcept
     {
         (void)CreatePart("Model");
-        ModelPart()->SetMeshRef("shadowQuad");
-        ModelPart()->SetMaterialRef("shadow");
+        ModelSubObj()->SetMeshRef("shadowQuad");
+        ModelSubObj()->SetMaterialRef("shadow");
         Root().SetScale(NS::Vector3{m_diameter, 1.0f, m_diameter});
     }
 
@@ -24,7 +24,7 @@ namespace NS::Game::Level
             return nullptr;
         }
 
-        // 組み立ててから渡す。SpawnTransient の資産の引き当ては渡した時に持っている Component にしか効かない
+        // 組み立ててから渡す。SpawnTransient の資産の引き当ては渡した時に持っている SubObject にしか効かない
         std::unique_ptr<ImpactMark> owned = std::make_unique<ImpactMark>();
         owned->Root().SetPosition(position);
         return scene->SpawnTransient(std::move(owned));

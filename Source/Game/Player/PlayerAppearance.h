@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Component.h"
+#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 
 #include <cstdint>
@@ -46,12 +46,12 @@ namespace NS::Game::Player
     //! 溜め量の正は持ち主の Player::ChargeJudge で、ここは読むだけ
     //! Player の見た目の段 (VisualStep) が移動の段と HitReaction の後に呼ぶ。
     //! 配置物を組む経路 (ObjectFromJson / StartSpawned) では
-    //! 参照の引き当てが Player::ForEachPart の並びに回るので、Model が自分の参照から mesh を差した後にこちらが差す
+    //! 参照の引き当てが Player::ForEachSubObj の並びに回るので、Model が自分の参照から mesh を差した後にこちらが差す
     //! 依存: Player, NS::Obj::Body / Collider, NS::Game::Level::ImpactResolver,
     //! NS::Obj::Model, NS::Obj::AssetManager
     // TODO: Scene::ApplyFromJson は値の変わった部品だけ引き直す。Model の値の undo で mesh が
     // 組み込みの cube に戻り、当たり (Collider) の寸法の変更に見た目が付いてこない。編集へ戻る時の LoadJson で直る
-    class PlayerAppearance : public NS::Obj::Component
+    class PlayerAppearance : public NS::Obj::SubObject
     {
     public:
         PlayerAppearance() noexcept;
@@ -87,7 +87,7 @@ namespace NS::Game::Player
         //! @return 直前の OnUpdate で回した軸。止めの間は止まる前の軸、立ち姿では (1, 0, 0)
         [[nodiscard]] NS::Vector3 SpinAxis() const noexcept { return m_spinAxis; }
 
-        NS_REFLECT_BEGIN(PlayerAppearance, NS::Obj::Component)
+        NS_REFLECT_BEGIN(PlayerAppearance, NS::Obj::SubObject)
         NS_REFLECT_GROUP("姿")
         NS_REFLECT_FIELD(m_standingMeshRef, "立ち姿のメッシュ")
         NS_REFLECT_FIELD(m_ballMeshRef, "玉のメッシュ")

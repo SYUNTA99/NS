@@ -6,8 +6,8 @@
 #include "Game/Player/PlayerJudges.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/Body.h"
-#include "NSlib/Object/Components/Collider.h"
+#include "NSlib/Object/SubObjects/Body.h"
+#include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
@@ -91,7 +91,7 @@ namespace NS::Game::Player
 
     } // namespace
 
-    ImpactEffects::ImpactEffects() noexcept : NS::Obj::Component() {}
+    ImpactEffects::ImpactEffects() noexcept : NS::Obj::SubObject() {}
 
     void ImpactEffects::OnStart()
     {

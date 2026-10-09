@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/VirtualCamera.h"
+#include "NSlib/Object/SubObjects/VirtualCamera.h"
 #include "NSlib/Object/Scene/Scene.h"
 
 //! @brief 試し用の仮想カメラ。差し替えた位置と注視点をそのまま返す
@@ -39,12 +39,12 @@ private:
 class TestViewCameraHost final : public NS::Obj::Actor
 {
 public:
-    TestViewCameraHost() { AttachFixedComponent(m_vcam); }
+    TestViewCameraHost() { AttachFixedSubObject(m_vcam); }
 
     //! 基底の部品に続けて仮想カメラを "Vcam" で渡す
-    void ForEachPart(const PartVisitor& visitor) const override
+    void ForEachSubObj(const SubObjVisitor& visitor) const override
     {
-        NS::Obj::Actor::ForEachPart(visitor);
+        NS::Obj::Actor::ForEachSubObj(visitor);
         visitor("Vcam", m_vcam);
     }
 
@@ -52,7 +52,7 @@ public:
     [[nodiscard]] TestViewCamera& Vcam() noexcept { return m_vcam; }
 
 private:
-    mutable TestViewCamera m_vcam; // 固定の部品。ForEachPart が const のまま部品を渡すため mutable
+    mutable TestViewCamera m_vcam; // 固定の部品。ForEachSubObj が const のまま部品を渡すため mutable
 };
 
 //! @brief position から target を見る試し用の仮想カメラをシーンへ湧かす

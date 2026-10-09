@@ -4,7 +4,7 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/Components/TransformComponent.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -52,7 +52,7 @@ namespace
 
     float FieldOf(Player& player, const char* name)
     {
-        return NS::Obj::SerializeComponentFields(player.Params())[name].get<float>();
+        return NS::Obj::SerializeSubObjectFields(player.Params())[name].get<float>();
     }
 
     // 突進を出して、突進の間に回った角度の和 (度) を返す

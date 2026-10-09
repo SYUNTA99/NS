@@ -14,11 +14,11 @@ namespace NS::Obj
     //! Actor 派生を生成する関数
     using ActorCreateFn = std::unique_ptr<Actor> (*)();
 
-    using ComponentDefaultFn = std::unique_ptr<Component> (*)();
+    using SubObjectDefaultFn = std::unique_ptr<SubObject> (*)();
 
-    //! @brief クラス名から型を引く自己登録の集約先。Actor 派生と Component を 1 表で持つ
+    //! @brief クラス名から型を引く自己登録の集約先。Actor 派生と SubObject を 1 表で持つ
     //! @details 各型は自身の .cpp で NS_CLASS を書くと、クラス名をキーに生成関数が静的初期化時に積まれる
-    //! Actor 側か Component 側かは NS_CLASS が継承で見分ける。中央の手書き列挙は持たない
+    //! Actor 側か SubObject 側かは NS_CLASS が継承で見分ける。中央の手書き列挙は持たない
     //! 登録マクロを書いた型しか生成できないので、信頼できない型名でも不正な生成はできない
     //! editor 専用コンポと抽象基底は登録しない
     //! StaticLib では自己登録の翻訳単位がリンカに除去され得るため、実行体側で除去対策を要する
@@ -30,15 +30,15 @@ namespace NS::Obj
         struct Entry
         {
             const char* className;            // 保存形式に書くクラス名
-            ActorCreateFn create;             // Actor 側の生成関数。Component 側の登録は nullptr
-            ComponentDefaultFn createDefault; // Component 側の生成関数。Actor 側の登録は nullptr
+            ActorCreateFn create;             // Actor 側の生成関数。SubObject 側の登録は nullptr
+            SubObjectDefaultFn createDefault; // SubObject 側の生成関数。Actor 側の登録は nullptr
             const char* label;                // エディタで置ける Actor の表示名。置けない型は nullptr
         };
 
         //! label はエディタで置ける Actor にだけ渡す。同名の二重登録は先勝ちで拒否し debug では assert で落とす
         void Register(const char* className,
                       ActorCreateFn create,
-                      ComponentDefaultFn attach,
+                      SubObjectDefaultFn attach,
                       const char* label = nullptr);
 
         [[nodiscard]] const std::vector<Entry>& Entries() const noexcept;
@@ -57,24 +57,24 @@ namespace NS::Obj
     //! object の Actor を作る。className 一致の登録があればその生成関数、該当しなければ素の Actor を返す
     [[nodiscard]] std::unique_ptr<Actor> CreateRegisteredObject(const nlohmann::json& object);
 
-    [[nodiscard]] std::unique_ptr<Component> CreatePartDefault(std::string_view typeName);
+    [[nodiscard]] std::unique_ptr<SubObject> CreatePartDefault(std::string_view typeName);
 
     //! @brief エディタで置ける Actor の登録の一覧。表示名の順で安定
     //! @details ヒエラルキーの追加メニューとパレットが、置ける種類の列挙に使う
     [[nodiscard]] const std::vector<const TypeRegistry::Entry*>& PlaceableEntries();
 
-    //! NS_CLASS / NS_PLACEABLE の実体。T の継承で Actor 側か Component 側かを見分けて登録する
+    //! NS_CLASS / NS_PLACEABLE の実体。T の継承で Actor 側か SubObject 側かを見分けて登録する
     //! label を渡すのはエディタで置ける Actor だけ
     template <class T> void RegisterClass(const char* className, const char* label = nullptr)
     {
-        if constexpr (std::is_base_of_v<Component, T>)
+        if constexpr (std::is_base_of_v<SubObject, T>)
         {
             TypeRegistry::Get().Register(
-                className, nullptr, +[]() -> std::unique_ptr<Component> { return std::make_unique<T>(); });
+                className, nullptr, +[]() -> std::unique_ptr<SubObject> { return std::make_unique<T>(); });
         }
         else
         {
-            static_assert(std::is_base_of_v<Actor, T>, "NS_CLASS は Actor か Component の派生に書く");
+            static_assert(std::is_base_of_v<Actor, T>, "NS_CLASS は Actor か SubObject の派生に書く");
             TypeRegistry::Get().Register(
                 className, +[]() -> std::unique_ptr<Actor> { return std::make_unique<T>(); }, nullptr, label);
         }
@@ -82,7 +82,7 @@ namespace NS::Obj
 } // namespace NS::Obj
 
 //! 型をクラス名で自己登録する。その型の .cpp で 1 度だけ書く。#Type が保存形式と検索のキーになる
-//! Component は既定コンストラクタで生成されるので、値はリフレクション field と ResolveAssets で後から入れる
+//! SubObject は既定コンストラクタで生成されるので、値はリフレクション field と ResolveAssets で後から入れる
 #define NS_CLASS(Type)                                                                                                 \
     namespace                                                                                                          \
     {                                                                                                                  \

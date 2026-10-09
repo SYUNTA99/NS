@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Components/DirectionalLight.h"
+#include "NSlib/Object/SubObjects/DirectionalLight.h"
 
 namespace NS::Obj
 {
@@ -10,7 +10,7 @@ namespace NS::Obj
     {
     public:
         Light() noexcept;
-        void ForEachPart(const PartVisitor& visitor) const override;
+        void ForEachSubObj(const SubObjVisitor& visitor) const override;
 
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         NS_REFLECT_NONE(Light, NS::Obj::Actor)

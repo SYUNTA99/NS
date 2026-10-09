@@ -1,19 +1,19 @@
 #include "NSlib/Object/ObjectJson.h"
 
-#include "NSlib/Object/Reflection/ComponentEntry.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 
 #include <string>
 
 namespace NS::Obj
 {
-    const nlohmann::json& ObjectJsonParts(const nlohmann::json& object) noexcept
+    const nlohmann::json& ObjectJsonSubObjs(const nlohmann::json& object) noexcept
     {
         static const nlohmann::json empty = nlohmann::json::object();
         if (!object.is_object())
         {
             return empty;
         }
-        const nlohmann::json::const_iterator found = object.find("parts");
+        const nlohmann::json::const_iterator found = object.find("subObjects");
         if (found == object.end() || !found->is_object())
         {
             return empty;
@@ -21,13 +21,13 @@ namespace NS::Obj
         return *found;
     }
 
-    nlohmann::json& ObjectJsonParts(nlohmann::json& object)
+    nlohmann::json& ObjectJsonSubObjs(nlohmann::json& object)
     {
         if (!object.is_object())
         {
             object = nlohmann::json::object();
         }
-        nlohmann::json& parts = object["parts"];
+        nlohmann::json& parts = object["subObjects"];
         if (!parts.is_object())
         {
             parts = nlohmann::json::object();
@@ -35,9 +35,9 @@ namespace NS::Obj
         return parts;
     }
 
-    const nlohmann::json* PartFields(const nlohmann::json& object, std::string_view partName) noexcept
+    const nlohmann::json* SubObjFields(const nlohmann::json& object, std::string_view partName) noexcept
     {
-        const nlohmann::json& parts = ObjectJsonParts(object);
+        const nlohmann::json& parts = ObjectJsonSubObjs(object);
         const nlohmann::json::const_iterator found = parts.find(std::string{partName});
         if (found == parts.end() || !found->is_object())
         {
@@ -46,14 +46,14 @@ namespace NS::Obj
         return &*found;
     }
 
-    nlohmann::json* PartFields(nlohmann::json& object, std::string_view partName) noexcept
+    nlohmann::json* SubObjFields(nlohmann::json& object, std::string_view partName) noexcept
     {
-        const nlohmann::json* found = PartFields(static_cast<const nlohmann::json&>(object), partName);
+        const nlohmann::json* found = SubObjFields(static_cast<const nlohmann::json&>(object), partName);
         if (found == nullptr)
         {
             return nullptr;
         }
-        return &ObjectJsonParts(object)[std::string{partName}];
+        return &ObjectJsonSubObjs(object)[std::string{partName}];
     }
     namespace
     {
@@ -92,7 +92,7 @@ namespace NS::Obj
     {
         nlohmann::json object = nlohmann::json::object();
         object["id"] = 0u;
-        object["parts"] = nlohmann::json::object();
+        object["subObjects"] = nlohmann::json::object();
         return object;
     }
 

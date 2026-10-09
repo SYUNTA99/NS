@@ -5,7 +5,7 @@
 #include "Game/Player/PlayerVisualParams.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Components/OverlayRenderer.h"
+#include "NSlib/Object/SubObjects/OverlayRenderer.h"
 #include "NSlib/Object/Reflection/ActorRef.h"
 #include "NSlib/Object/Reflection/Curve.h"
 
@@ -67,7 +67,7 @@ namespace NS::Game::Level
                                         const TargetMarkerDesc& desc,
                                         LockOnFrameShape& outFrame);
 
-    //! @brief 溜めている間、狙う相手のロックオンの枠を画面へ重ねて描く Component
+    //! @brief 溜めている間、狙う相手のロックオンの枠を画面へ重ねて描く SubObject
     //! @details 溜めている間 (Player::ChargeJudge の IsCharging) だけ、同じ配置物の Player が控えた
     //! 狙う相手に枠を付ける。
     //! 溜めている間に相手が外れたら、直前の枠を縮めて欄のフレーム数だけ出す。
