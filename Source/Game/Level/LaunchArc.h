@@ -12,8 +12,8 @@ namespace GL::Level
     struct LaunchArc
     {
         NS::Vector3 direction{1.0f, 0.0f, 0.0f}; // 飛ぶ向き。水平の成分だけを使う
-        float distance = 0.0f;                         // 発射から発射の高さへ戻るまでの水平の距離 (m)
-        float apexHeight = 0.0f;                       // 発射の高さから頂点までの高さ (m)
+        float distance = 0.0f;                   // 発射から発射の高さへ戻るまでの水平の距離 (m)
+        float apexHeight = 0.0f;                 // 発射の高さから頂点までの高さ (m)
         // 上りの重力の大きさ (m/s²)
         float riseGravity = 25.0f;
         float fallGravityScale = 1.0f;     // 下りの重力 ÷ 上りの重力

@@ -2,10 +2,10 @@
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
-#include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Windows/FileSystem.h"
 
 #include <gtest/gtest.h>
@@ -25,8 +25,7 @@ TEST(MapObjParams, SceneOverrideControlsMassAndToughness)
     scene.LoadJson(doc);
     NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    const GL::Level::MapObjParams* params =
-        NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
+    const GL::Level::MapObjParams* params = NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     EXPECT_FLOAT_EQ(params->Mass(), 2.0f);
     EXPECT_FLOAT_EQ(params->Toughness(), 3.0f);
@@ -59,8 +58,7 @@ TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
             }
             const NS::Obj::Actor* rock = scene.Objects().FindByObjectId(NS::Obj::ObjectJsonId(entry));
             ASSERT_NE(rock, nullptr);
-            const GL::Level::MapObjParams* params =
-                NS::Obj::Cast<GL::Level::MapObjParams>(rock->FindSubObj("Params"));
+            const GL::Level::MapObjParams* params = NS::Obj::Cast<GL::Level::MapObjParams>(rock->FindSubObj("Params"));
             ASSERT_NE(params, nullptr);
             masses.push_back(params->Mass());
             toughnesses.push_back(params->Toughness());
@@ -92,8 +90,7 @@ TEST(MapObjParams, InvalidOverridesKeepPhysicalValuesSafe)
     scene.LoadJson(doc);
     const NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    const GL::Level::MapObjParams* params =
-        NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
+    const GL::Level::MapObjParams* params = NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     EXPECT_FLOAT_EQ(params->Mass(), 1.0f);
     EXPECT_FLOAT_EQ(params->Toughness(), 0.0f);
@@ -131,10 +128,8 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
     scene.LoadJson(doc);
     NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    GL::Level::MapObjParams* params =
-        NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
-    GL::Level::LaunchEffects* effects =
-        NS::Obj::Cast<GL::Level::LaunchEffects>(actor->FindSubObj("LaunchEffects"));
+    GL::Level::MapObjParams* params = NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
+    GL::Level::LaunchEffects* effects = NS::Obj::Cast<GL::Level::LaunchEffects>(actor->FindSubObj("LaunchEffects"));
     ASSERT_NE(params, nullptr);
     ASSERT_NE(effects, nullptr);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(*params,
