@@ -33,7 +33,7 @@ namespace
         PassivePart* passive = nullptr;
 
     protected:
-        void Init() override { passive = CreateSubObj<PassivePart>("Passive"); }
+        void OnInit() override { passive = CreateSubObj<PassivePart>("Passive"); }
     };
 
 } // namespace
@@ -41,7 +41,7 @@ namespace
 TEST(FixedParts, BaseActorDoesNotImplicitlyUpdateEveryEnumeratedPart)
 {
     FixedPartActor actor;
-    actor.EnsureInit();
+    actor.Init();
     ASSERT_EQ(actor.FindSubObj("Passive"), actor.passive);
     actor.Update();
     EXPECT_EQ(actor.passive->updates, 0);
@@ -84,15 +84,15 @@ TEST(FixedParts, SensorsHaveDistinctRoleNames)
 TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     NS::Game::Level::MapObj rock;
-    rock.EnsureInit();
+    rock.Init();
     NS::Game::Level::FollowCamera camera;
-    camera.EnsureInit();
+    camera.Init();
     NS::Obj::Light light;
-    light.EnsureInit();
+    light.Init();
     NS::Obj::MapParts terrain;
-    terrain.EnsureInit();
+    terrain.Init();
     EXPECT_EQ(player.FindSubObj("Input"), &player.Input());
     EXPECT_EQ(player.FindSubObj("Movement"), &player.Body());
     EXPECT_NE(player.FindSubObj("Params"), nullptr);

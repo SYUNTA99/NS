@@ -53,9 +53,9 @@ namespace NS::Obj
         [[nodiscard]] IStateMachine* GetStateMachine() noexcept override;
         [[nodiscard]] const IStateMachine* GetStateMachine() const noexcept override;
 
-        //! @brief Init を 1 回だけ呼ぶ。2 回目からは何もしない
+        //! @brief OnInit を 1 回だけ呼ぶ。2 回目からは何もしない
         //! @details CreateActorOfClass と ActorList に入る所が呼ぶ。Scene に入れずに部品を触る時は自分で呼ぶ
-        void EnsureInit();
+        void Init();
 
         //! 根の Transform、基底の枠を Model から HitReaction まで決まった順、派生の部品を作った順に並べた全部の部品
         [[nodiscard]] const std::vector<SubObject*>& SubObjs() const noexcept { return m_subObjOrder; }
@@ -160,10 +160,10 @@ namespace NS::Obj
         }
 
     protected:
-        //! @brief 部品を作る。EnsureInit から 1 回だけ呼ばれる。既定は何もしない
-        //! @details 部品は CreateSubObj で作る。基底の枠の型を替える派生は、基底の Init を呼ばずに自分で作る
+        //! @brief 部品を作る。Init から 1 回だけ呼ばれる。既定は何もしない
+        //! @details 部品は CreateSubObj で作る。基底の枠の型を替える派生は、基底の OnInit を呼ばずに自分で作る
         //! 所属の Scene は入る道によって付いていないので、ここでは読まない
-        virtual void Init() {}
+        virtual void OnInit() {}
 
         //! @brief 基底の枠 slot に、枠の型 TBase の派生 T を作って付ける
         //! @return 作った部品。枠の名前の部品を持っていれば NS_LOG_ERROR を出して作らず nullptr
@@ -296,7 +296,7 @@ namespace NS::Obj
         HitSensor* m_attackSensor = nullptr;
         std::unique_ptr<IStateMachine> m_stateMachine; // BuildStateMachine が 1 回だけ預かる。持たない種類は nullptr
         HitReaction* m_hitReaction = nullptr;
-        bool m_initialized = false;       // EnsureInit が Init を呼んだか
+        bool m_initialized = false;       // Init が OnInit を呼んだか
         Transform* m_transform = nullptr; // TransformSubObject が持つ実体、Actor が必ず 1 つ積む
         std::vector<Actor*> m_children;   // 子 Actor、非所有
         Actor* m_parent = nullptr;        // 親 Actor、root なら nullptr

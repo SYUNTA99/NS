@@ -20,7 +20,7 @@
 TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -50,7 +50,7 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
 TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -81,7 +81,7 @@ TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
 TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -156,7 +156,7 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
 TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     const nlohmann::json* archetype = NS::Obj::ArchetypeLibrary::Get().Find("Player");
     ASSERT_NE(archetype, nullptr);
     for (nlohmann::json::const_iterator it = NS::Obj::ObjectJsonSubObjs(*archetype).begin();

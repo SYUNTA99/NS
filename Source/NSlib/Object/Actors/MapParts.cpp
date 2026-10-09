@@ -6,7 +6,7 @@
 
 namespace NS::Obj
 {
-    void MapParts::Init()
+    void MapParts::OnInit()
     {
         // 色はテクスチャが無い時の見た目。床の既定の灰色
         Model* mesh = CreateSubObj<Model>(ModelSlot());

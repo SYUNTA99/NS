@@ -76,7 +76,7 @@ namespace
         explicit LoggingActor(TickLog& log) noexcept : m_log(log) {}
 
     protected:
-        void Init() override { m_part = CreateSubObj<LoggingSubObject>("Logging", &m_log); }
+        void OnInit() override { m_part = CreateSubObj<LoggingSubObject>("Logging", &m_log); }
         void StateStep() override
         {
             m_log.order.push_back("actor");

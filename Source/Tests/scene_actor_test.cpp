@@ -61,7 +61,7 @@ TEST(SceneActor, SpawningGoesThroughTheSceneOnly)
 
 TEST(SceneActor, ClassOnlyObjectBuildsWholeComposition)
 {
-    // 部品の一覧を持たないデータでも、クラスの Init が部品を全て積む
+    // 部品の一覧を持たないデータでも、クラスの OnInit が部品を全て積む
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     AddClassObject(doc, "MapObj", 1);
 

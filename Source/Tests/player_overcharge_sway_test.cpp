@@ -134,7 +134,7 @@ TEST(PlayerOverchargeSway, ForcedLaunchLeavesAtAnEdgeThatAlternates)
 TEST(PlayerOverchargeSway, PurplePowerRisesToTheCapFromTheFullCharge)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"紫の威力の上限", 1.5f}}), 0u);
     const NS::Game::Player::PlayerParams& params = player.Params();
     const float full = params.ChargeFactorFor(1.0f);

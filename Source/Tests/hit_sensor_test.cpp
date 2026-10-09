@@ -50,7 +50,7 @@ namespace
         bool acceptMessages = true;
 
     protected:
-        void Init() override
+        void OnInit() override
         {
             m_sensor = CreateSubObj<NS::Obj::ShapeHitSensor>(BodySensorSlot());
             NS::Game::Level::SetSensorKind(*m_sensor, m_kind);

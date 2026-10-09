@@ -43,7 +43,7 @@ public:
     [[nodiscard]] TestViewCamera& Vcam() noexcept { return *m_vcam; }
 
 protected:
-    void Init() override { m_vcam = CreateSubObj<TestViewCamera>("Vcam"); }
+    void OnInit() override { m_vcam = CreateSubObj<TestViewCamera>("Vcam"); }
 
 private:
     TestViewCamera* m_vcam = nullptr;

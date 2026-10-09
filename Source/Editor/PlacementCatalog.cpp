@@ -12,7 +12,7 @@ namespace NS::Editor
 {
     namespace
     {
-        // クラスの Init が積む構成をそのまま写したひな形。値はコード既定に任せる
+        // クラスの OnInit が積む構成をそのまま写したひな形。値はコード既定に任せる
         [[nodiscard]] nlohmann::json PrototypeOf(const NS::Obj::TypeRegistry::Entry& entry)
         {
             const std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::CreateActorOfClass(entry.className);

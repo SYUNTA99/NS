@@ -57,7 +57,7 @@ namespace
     class TimelineMovingActor : public NS::Obj::Actor
     {
     protected:
-        void Init() override
+        void OnInit() override
         {
             NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
             model->SetMeshRef("cube");

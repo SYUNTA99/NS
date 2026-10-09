@@ -7,7 +7,7 @@
 
 namespace NS::Game::Level
 {
-    void DeathZone::Init()
+    void DeathZone::OnInit()
     {
         // 厚み 10m と 2km 四方は、固定ステップの移動量では突き抜けられない
         NS::Obj::ShapeHitSensor* area = CreateSubObj<NS::Obj::ShapeHitSensor>(BodySensorSlot());

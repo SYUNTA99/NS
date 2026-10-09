@@ -48,7 +48,7 @@ namespace NS::Game::Level
         bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
     protected:
-        void Init() override;
+        void OnInit() override;
         //! 発光の層の歩を始める
         void ObserveStep() override;
         //! 当たりの球が動いていれば物理へ置き直す
@@ -95,7 +95,7 @@ namespace NS::Game::Level
         MapObjParams* m_params = nullptr;
         HitZones* m_hitZones = nullptr;
         LaunchEffects* m_effects = nullptr;
-        NS::Obj::StateMachine<MapObj>* m_states = nullptr; // 基底が所有する。Init が預けた直後から有効
+        NS::Obj::StateMachine<MapObj>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
         NS::Obj::SubStateMachine<MapObj> m_motion;
         TackleFreezeDesc m_freeze;
         // 止めの間の横揺れ。知らせを受けたフレームの止めの 1 歩を 1 フレーム目に数える

@@ -8,7 +8,7 @@
 
 namespace NS::Game::Level
 {
-    void Goal::Init()
+    void Goal::OnInit()
     {
         m_params = CreateSubObj<GoalParams>("Params");
         // 目印の金色の立方体

@@ -26,7 +26,7 @@ namespace
 TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}),
               0u);
     const int threshold = FramesFor(0.2f);
@@ -83,7 +83,7 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
 TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     const int threshold = FramesFor(0.2f);
     player.Update(true);
@@ -109,7 +109,7 @@ TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
 TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -136,7 +136,7 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
 TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -169,7 +169,7 @@ TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
 TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     const NS::Vector3 one{1.0f, 1.0f, 1.0f};
     player.Update(true);
@@ -191,7 +191,7 @@ TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 TEST(PlayerChargeSequence, EndPlayWhileHeldRestoresStanceAndUncurls)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     player.Appearance().OnStart();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     for (int frame = 0; frame < FramesFor(0.2f); ++frame)

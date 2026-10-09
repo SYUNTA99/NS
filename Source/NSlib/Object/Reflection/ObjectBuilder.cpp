@@ -50,7 +50,7 @@ namespace NS::Obj
 
     std::unique_ptr<Actor> ObjectFromJson(const nlohmann::json& object, AssetManager* assets)
     {
-        // 部品はクラスの Init と種類の既定値が積む。クラスの無い JSON は配置物でない
+        // 部品はクラスの OnInit と種類の既定値が積む。クラスの無い JSON は配置物でない
         if (ObjectJsonClass(object).empty())
         {
             return nullptr;

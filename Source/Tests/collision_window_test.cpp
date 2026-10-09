@@ -21,7 +21,7 @@ namespace
         NS::Obj::SphereCollision* sphere = nullptr;
 
     protected:
-        void Init() override
+        void OnInit() override
         {
             collider = CreateSubObj<NS::Obj::Collider>("Collider");
             sphere = CreateSubObj<NS::Obj::SphereCollision>("Sphere");
@@ -58,7 +58,7 @@ namespace
 TEST(CollisionWindow, OverlapBoxIsEmptyOutsideAScene)
 {
     CollisionProbe loose;
-    loose.EnsureInit();
+    loose.Init();
     EXPECT_TRUE(NS::Obj::OverlapBoxCollision(loose, BandAcrossFloorTop()).empty());
 }
 
@@ -90,7 +90,7 @@ TEST(CollisionWindow, ColliderAnswersWithItsOwnersPhysicsScene)
     EXPECT_EQ(bareWindow.GetPhysicsScene(), nullptr);
 
     CollisionProbe loose;
-    loose.EnsureInit();
+    loose.Init();
     const NS::Obj::IUseCollision& looseWindow = *loose.collider;
     EXPECT_EQ(looseWindow.GetPhysicsScene(), nullptr);
 
@@ -103,7 +103,7 @@ TEST(CollisionWindow, ColliderAnswersWithItsOwnersPhysicsScene)
 TEST(CollisionWindow, CollisionSyncsIntoItsOwnersPhysicsScene)
 {
     CollisionProbe loose;
-    loose.EnsureInit();
+    loose.Init();
     loose.sphere->SyncToPhysics();
     EXPECT_TRUE(loose.sphere->BodyId().IsInvalid());
 

@@ -13,6 +13,6 @@ namespace NS::Obj
         NS_REFLECT_NONE(Light, NS::Obj::Actor)
 
     protected:
-        void Init() override;
+        void OnInit() override;
     };
 } // namespace NS::Obj

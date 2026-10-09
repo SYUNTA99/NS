@@ -24,14 +24,14 @@ namespace NS::Obj
         Appear();
     }
 
-    void Actor::EnsureInit()
+    void Actor::Init()
     {
         if (m_initialized)
         {
             return;
         }
         m_initialized = true;
-        Init();
+        OnInit();
     }
 
     std::size_t Actor::OrderRank(const SubObject* subObject) const noexcept

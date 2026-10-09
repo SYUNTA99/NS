@@ -97,7 +97,7 @@ namespace NS::Obj
             actor = std::make_unique<Actor>();
         }
         // 部品を作ってから返す。データの読み込みは返った部品へ欄を流し込む
-        actor->EnsureInit();
+        actor->Init();
         return actor;
     }
 

@@ -73,7 +73,7 @@ namespace
         AlphaCamera* vcam = nullptr;
 
     protected:
-        void Init() override { vcam = CreateSubObj<AlphaCamera>("Vcam"); }
+        void OnInit() override { vcam = CreateSubObj<AlphaCamera>("Vcam"); }
     };
 
     class OrderProbe final : public NS::Obj::CameraModifier
@@ -169,7 +169,7 @@ TEST(CameraManager, FinishedModifiersAreRemovedOnTick)
 TEST(CameraManager, ModifiersApplyInOrder)
 {
     TestViewCameraHost host;
-    host.EnsureInit();
+    host.Init();
     host.Vcam().SetPose(NS::Vector3{1.0f, 0.0f, -5.0f}, NS::Vector3{1.0f, 0.0f, 0.0f});
     NS::Obj::CameraManager cameras;
     cameras.AddVirtualCamera(&host.Vcam());
@@ -222,12 +222,12 @@ TEST(CameraManager, ForwardIgnoresTheDrawAlphaDuringABlend)
     // 1 歩で半分まで進むブレンド
     cameras.SetBlendDuration(NS::OS::FrameTimer::FixedDelta() * 2.0f);
     TestViewCameraHost from;
-    from.EnsureInit();
+    from.Init();
     cameras.AddVirtualCamera(&from.Vcam());
     cameras.OnTick();
     cameras.Evaluate(1.0f);
     AlphaCameraHost to;
-    to.EnsureInit();
+    to.Init();
     to.vcam->SetVcamPriority(1);
     cameras.AddVirtualCamera(to.vcam);
     cameras.OnTick();
@@ -250,7 +250,7 @@ TEST(CameraManager, ForwardLeavesOutTheModifiers)
     NS::Obj::CameraManager cameras;
     cameras.SetCamera(&drawn);
     TestViewCameraHost host;
-    host.EnsureInit();
+    host.Init();
     cameras.AddVirtualCamera(&host.Vcam());
     // 位置の x を 0*2+10 = 10 へずらし、描く視線を斜めにする
     ASSERT_TRUE(cameras.AddModifier(std::make_unique<OrderProbe>(100, 10.0f)));
@@ -343,7 +343,7 @@ TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
 TEST(FollowCamera, VcamIsLiveFromInit)
 {
     NS::Game::Level::FollowCamera camera;
-    camera.EnsureInit();
+    camera.Init();
     EXPECT_TRUE(camera.Vcam().IsActiveSelf());
 }
 

@@ -35,7 +35,7 @@ namespace NS::Game::Level
         void SetLifeSeconds(float seconds) noexcept;
 
     protected:
-        void Init() override;
+        void OnInit() override;
         //! 経過秒を進めて縮め、寿命が尽きたら退場する
         void VisualStep() override;
 

@@ -61,7 +61,7 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
 TEST(PlayerParams, DeactivatingPlayerKeepsHealth)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     player.ResetHealth();
     const int full = player.Health();
 
@@ -80,7 +80,7 @@ TEST(PlayerParams, DeactivatingPlayerKeepsHealth)
 TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     const NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -141,7 +141,7 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
 TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player.FindSubObj("Movement"));
@@ -212,7 +212,7 @@ static void ExpectNotInParams(const Player& player, const nlohmann::json& expect
 TEST(PlayerParams, AppearanceAndChargeVisualDefaultsBelongToThePartsThatDrawThem)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     const nlohmann::json appearance = {{"立ち姿のメッシュ", ""},
                                        {"玉のメッシュ", ""},
                                        {"溜め 0 の回る速さ", 360.0f},
@@ -245,7 +245,7 @@ TEST(PlayerParams, AppearanceAndChargeVisualDefaultsBelongToThePartsThatDrawThem
 TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     EXPECT_EQ(NS::Obj::ApplyJsonFields(player.ChargeVisuals(),
                                        {{"通常突進の弾けの大きさ", 0.5f}, {"溜めきりで足す弾けの大きさ", 0.4f}}),
               0u);
@@ -259,7 +259,7 @@ TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
 TEST(PlayerParams, ImpactDefaultsKeepAllFortySevenDisplayNamesAndValues)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(player.Params());
     const nlohmann::json play = {{"反動の高さ", 1.15f},
                                  {"反動の距離", 0.575f},
@@ -347,7 +347,7 @@ TEST(PlayerParams, ImpactDefaultsKeepAllFortySevenDisplayNamesAndValues)
 TEST(PlayerParams, LiveImpactVisualTuningDrivesShapeAndLandingDust)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     EXPECT_EQ(NS::Obj::ApplyJsonFields(player.ImpactVisuals(),
                                        {{"核の直径の基準", 0.4f},
                                         {"核の直径の威力あたり", 0.3f},
@@ -375,7 +375,7 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     using NS::Game::Player::ImpactShape;
     using NS::Game::Player::SparkHeading;
     Player player;
-    player.EnsureInit();
+    player.Init();
     // 中心近くと大きな外れで本数が違えば、どちらの行から来たかが分かる
     ASSERT_EQ(NS::Obj::ApplyJsonFields(
                   player.ImpactVisuals(),
@@ -464,7 +464,7 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
 TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     const NS::Game::Level::TargetMarkerDesc marker{};
     const NS::Game::Level::SlamArrowDesc arrow{};
     const nlohmann::json markerFields = {
@@ -568,7 +568,7 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
 {
     const auto expectEveryFieldRead = [](const nlohmann::json& entry, std::string_view source) {
         Player player;
-        player.EnsureInit();
+        player.Init();
         const nlohmann::json& parts = NS::Obj::ObjectJsonSubObjs(entry);
         for (nlohmann::json::const_iterator it = parts.begin(); it != parts.end(); ++it)
         {

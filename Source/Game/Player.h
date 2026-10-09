@@ -41,7 +41,7 @@ namespace NS::Game::Level
 } // namespace NS::Game::Level
 
 //! @brief プレイヤーキャラクタ。固定の部品をコードで組む
-//! @details 部品と部品名は Init が正。Body の部品名は Movement、PlayerInput の部品名は Input。
+//! @details 部品と部品名は OnInit が正。Body の部品名は Movement、PlayerInput の部品名は Input。
 //! 値はプレイヤーの種類の既定値と個体の上書きから写す。
 //! 状態機械と命は Actor 自身が持ち、入力の窓口・移動の組み立て・崖つかまり・突進と反発とそれらの記録はここが持つ。
 //! 速度と接地の計算は身体の部品 (Body) へ、当たりの寸法と地形に当てて押し返す移動は Collider へ任せる。
@@ -63,7 +63,7 @@ public:
 
     //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
     NS_REFLECT_NONE(Player, NS::Obj::Actor)
-    //! 基底が所有する自機の状態機械。Init が組むので、EnsureInit の後から立ちの状態に居る
+    //! 基底が所有する自機の状態機械。OnInit が組むので、Init の後から立ちの状態に居る
     [[nodiscard]] NS::Obj::StateMachine<Player>& States() noexcept { return *m_states; }
     [[nodiscard]] const NS::Obj::StateMachine<Player>& States() const noexcept { return *m_states; }
     [[nodiscard]] NS::Obj::PlayerInput& Input() noexcept { return *m_input; }
@@ -385,7 +385,7 @@ public:
     [[nodiscard]] int Health() const noexcept;
 
 protected:
-    void Init() override;
+    void OnInit() override;
     //! PlayerInput の体当たりの押しと狙いの観測 (ObserveCharge)、
     //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
     void ObserveStep() override;
@@ -557,7 +557,7 @@ private:
     NS::Game::Level::SlamArrow* m_slamArrow = nullptr;
     NS::Game::Player::ChargeEffects* m_chargeEffects = nullptr;
     NS::Game::Player::ImpactEffects* m_impactEffects = nullptr;
-    NS::Obj::StateMachine<Player>* m_states = nullptr; // 基底が所有する。Init が預けた直後から有効
+    NS::Obj::StateMachine<Player>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
     NS::Game::Level::Health m_health;
 
     bool m_prevJumpHeld = false; // 前のフレームの長押し状態

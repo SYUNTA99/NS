@@ -39,7 +39,7 @@ namespace
         RegisterCountSubObj* part = nullptr;
 
     protected:
-        void Init() override { part = CreateSubObj<RegisterCountSubObj>("Counted"); }
+        void OnInit() override { part = CreateSubObj<RegisterCountSubObj>("Counted"); }
     };
 } // namespace
 

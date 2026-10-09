@@ -14,7 +14,7 @@ namespace NS::Game::Level
         Root().SetScale(NS::Vector3{m_diameter, 1.0f, m_diameter});
     }
 
-    void ImpactMark::Init()
+    void ImpactMark::OnInit()
     {
         NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
         model->SetMeshRef("shadowQuad");
@@ -28,7 +28,7 @@ namespace NS::Game::Level
             return nullptr;
         }
 
-        // 部品は渡した後に Init が作る。ここで触るのは根だけ
+        // 部品は渡した後に OnInit が作る。ここで触るのは根だけ
         std::unique_ptr<ImpactMark> owned = std::make_unique<ImpactMark>();
         owned->Root().SetPosition(position);
         return scene->SpawnTransient(std::move(owned));

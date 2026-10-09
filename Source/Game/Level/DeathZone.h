@@ -18,6 +18,6 @@ namespace NS::Game::Level
         void AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other) override;
 
     protected:
-        void Init() override;
+        void OnInit() override;
     };
 } // namespace NS::Game::Level

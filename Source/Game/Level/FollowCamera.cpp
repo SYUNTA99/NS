@@ -9,7 +9,7 @@ namespace NS::Game::Level
 {
     NS_PLACEABLE(FollowCamera, "追従カメラ")
 
-    void FollowCamera::Init()
+    void FollowCamera::OnInit()
     {
         m_vcam = CreateSubObj<NS::Obj::ThirdPersonFollow>("Vcam");
     }

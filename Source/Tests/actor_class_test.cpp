@@ -23,12 +23,12 @@
 
 #include <gtest/gtest.h>
 
-// 各 Actor のクラスが、自分の部品を Init で組み立てることを縛る
+// 各 Actor のクラスが、自分の部品を OnInit で組み立てることを縛る
 
 TEST(ActorClass, MapPartsCollidesWithItsMesh)
 {
     NS::Obj::MapParts parts;
-    parts.EnsureInit();
+    parts.Init();
     const NS::Obj::Model* mesh = parts.ModelSubObj();
     ASSERT_NE(mesh, nullptr);
     EXPECT_EQ(mesh->MeshRef(), "cube");
@@ -41,12 +41,12 @@ TEST(ActorClass, MapPartsCollidesWithItsMesh)
 TEST(ActorClass, MapObjOwnsMotionAndStaticCollision)
 {
     NS::Game::Level::MapObj obj;
-    obj.EnsureInit();
+    obj.Init();
     EXPECT_NE(obj.ModelSubObj(), nullptr);
     EXPECT_NE(NS::Obj::Cast<NS::Obj::SphereCollision>(obj.FindSubObj("Collision")), nullptr);
     EXPECT_EQ(obj.FindSubObj("Breakable"), nullptr);
     EXPECT_EQ(obj.FindSubObj("LaunchedBody"), nullptr);
-    // 影は種類の既定値が足す部品。Init は積まない
+    // 影は種類の既定値が足す部品。OnInit は積まない
     EXPECT_EQ(obj.ShadowSubObj(), nullptr);
     // 体当たりは物の体のセンサーで調べられ、受け方と尾は自分で持つ
     const NS::Obj::HitSensor* sensor = obj.BodySensorSubObj();
@@ -61,7 +61,7 @@ TEST(ActorClass, MapObjOwnsMotionAndStaticCollision)
 TEST(ActorClass, GoalHasMarkerAndArea)
 {
     NS::Game::Level::Goal goal;
-    goal.EnsureInit();
+    goal.Init();
     EXPECT_NE(goal.ModelSubObj(), nullptr);
     const NS::Obj::HitSensor* area = goal.BodySensorSubObj();
     ASSERT_NE(area, nullptr);
@@ -71,7 +71,7 @@ TEST(ActorClass, GoalHasMarkerAndArea)
 TEST(ActorClass, DeathZoneIsBoxAreaWithoutTerrainCollision)
 {
     NS::Game::Level::DeathZone zone;
-    zone.EnsureInit();
+    zone.Init();
     const NS::Obj::ShapeHitSensor* area = NS::Obj::Cast<NS::Obj::ShapeHitSensor>(zone.BodySensorSubObj());
     ASSERT_NE(area, nullptr);
     EXPECT_TRUE(NS::Game::Level::IsSensorKind(*area, NS::Game::Level::SensorKind::Area));
@@ -84,7 +84,7 @@ TEST(ActorClass, DeathZoneIsBoxAreaWithoutTerrainCollision)
 TEST(ActorClass, FollowCameraHasFollowAndFeed)
 {
     NS::Game::Level::FollowCamera camera;
-    camera.EnsureInit();
+    camera.Init();
     EXPECT_NE(NS::Obj::Cast<NS::Obj::ThirdPersonFollow>(camera.FindSubObj("Vcam")), nullptr);
     EXPECT_EQ(NS::Obj::Cast<NS::Obj::ThirdPersonFollow>(camera.FindSubObj("Vcam")), &camera.Vcam());
 }
@@ -92,7 +92,7 @@ TEST(ActorClass, FollowCameraHasFollowAndFeed)
 TEST(ActorClass, LightHasDirectionalLight)
 {
     NS::Obj::Light light;
-    light.EnsureInit();
+    light.Init();
     EXPECT_NE(NS::Obj::Cast<NS::Obj::DirectionalLight>(light.FindSubObj("DirectionalLight")), nullptr);
 }
 
@@ -100,7 +100,7 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
 {
     // 以前はシーンのデータが足していた体当たりと当たりの部品も、クラスが組み立てる
     Player player;
-    player.EnsureInit();
+    player.Init();
     EXPECT_NE(NS::Obj::Cast<NS::Obj::Body>(player.FindSubObj("Movement")), nullptr);
     EXPECT_NE(NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input")), nullptr);
     EXPECT_EQ(player.FindSubObj("PlayerInputRelay"), nullptr);

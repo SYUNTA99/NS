@@ -16,7 +16,7 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
     const std::vector<NS::Gfx::AnimationClip> clips = {
         {.name = "idle", .duration = 10.0f}, {.name = "run", .duration = 10.0f}, {.name = "walk", .duration = 10.0f}};
     Player player;
-    player.EnsureInit();
+    player.Init();
     NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
     player.Body().SetGrounded(true);
@@ -40,7 +40,7 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
 TEST(PlayerAnimation, PlayerParamsKeepAllAnimatorNamesAndDefaults)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     const NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -68,7 +68,7 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
                                                        {.name = "fall", .duration = 10.0f},
                                                        {.name = "hang", .duration = 10.0f}};
     Player player;
-    player.EnsureInit();
+    player.Init();
     NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
     NS::Game::Player::PlayerParams* params =
@@ -94,7 +94,7 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
     const std::vector<NS::Gfx::AnimationClip> clips = {{.name = "idle", .duration = 10.0f},
                                                        {.name = "walk", .duration = 10.0f}};
     Player player;
-    player.EnsureInit();
+    player.Init();
     NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
     NS::Game::Player::PlayerParams* params =

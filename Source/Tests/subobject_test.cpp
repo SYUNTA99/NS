@@ -27,7 +27,7 @@ namespace
         NS::Obj::SphereCollision* refused = nullptr;
 
     protected:
-        void Init() override
+        void OnInit() override
         {
             first = CreateSubObj<PlainSubObj>("First");
             box = CreateSubObj<NS::Obj::BoxCollision>(CollisionSlot());
@@ -43,18 +43,18 @@ namespace
         NS::Obj::Model* model = nullptr;
 
     protected:
-        void Init() override
+        void OnInit() override
         {
             CreateSubObj<PlainSubObj>("Model");
             model = CreateSubObj<NS::Obj::Model>(ModelSlot());
         }
     };
 
-    // 基底の Init を呼ばずに、共通の部分を InitShape に出す
+    // 基底の OnInit を呼ばずに、共通の部分を InitShape に出す
     class MiddleActor : public NS::Obj::Actor
     {
     protected:
-        void Init() override
+        void OnInit() override
         {
             InitShape();
             CreateSubObj<NS::Obj::BoxCollision>(CollisionSlot());
@@ -65,7 +65,7 @@ namespace
     class GrandActor final : public MiddleActor
     {
     protected:
-        void Init() override
+        void OnInit() override
         {
             InitShape();
             CreateSubObj<NS::Obj::SphereCollision>(CollisionSlot());
@@ -95,7 +95,7 @@ public:
     NS_REFLECT_NONE(SubObjectInitProbe, NS::Obj::Actor)
 
 protected:
-    void Init() override
+    void OnInit() override
     {
         ++inits;
         CreateSubObj<NS::Obj::Model>(ModelSlot());
@@ -106,7 +106,7 @@ NS_CLASS(SubObjectInitProbe)
 TEST(SubObject, CreateWritesNameAndEnumeratesRootThenSlotsThenDerivedInCreationOrder)
 {
     OrderActor actor;
-    actor.EnsureInit();
+    actor.Init();
     ASSERT_NE(actor.first, nullptr);
     ASSERT_NE(actor.second, nullptr);
     EXPECT_EQ(actor.first->Name(), "First");
@@ -126,7 +126,7 @@ TEST(SubObject, CreateWritesNameAndEnumeratesRootThenSlotsThenDerivedInCreationO
 TEST(SubObject, SecondCreateInTheSameSlotIsRefused)
 {
     OrderActor actor;
-    actor.EnsureInit();
+    actor.Init();
     EXPECT_EQ(actor.refused, nullptr);
     EXPECT_EQ(actor.CollisionSubObj(), actor.box);
 }
@@ -134,7 +134,7 @@ TEST(SubObject, SecondCreateInTheSameSlotIsRefused)
 TEST(SubObject, SlotIsRefusedWhenItsNameIsTaken)
 {
     NameClashActor actor;
-    actor.EnsureInit();
+    actor.Init();
     EXPECT_EQ(actor.model, nullptr);
     EXPECT_EQ(actor.ModelSubObj(), nullptr);
 }
@@ -142,11 +142,11 @@ TEST(SubObject, SlotIsRefusedWhenItsNameIsTaken)
 TEST(SubObject, GrandchildReplacesTheCollisionTypeChosenByTheMiddleBase)
 {
     MiddleActor middle;
-    middle.EnsureInit();
+    middle.Init();
     EXPECT_NE(NS::Obj::Cast<NS::Obj::BoxCollision>(middle.CollisionSubObj()), nullptr);
 
     GrandActor grand;
-    grand.EnsureInit();
+    grand.Init();
     EXPECT_NE(NS::Obj::Cast<NS::Obj::SphereCollision>(grand.CollisionSubObj()), nullptr);
     EXPECT_NE(grand.ModelSubObj(), nullptr);
 }
@@ -162,7 +162,7 @@ TEST(SubObject, ActorInSceneAndBaselineAreInitializedExactlyOnce)
     SubObjectInitProbe* placed = scene.SpawnTransient<SubObjectInitProbe>();
     EXPECT_EQ(placed->inits, 1);
     EXPECT_NE(placed->ModelSubObj(), nullptr);
-    placed->EnsureInit();
+    placed->Init();
     EXPECT_EQ(placed->inits, 1);
 
     const NS::Obj::Actor& baseline = NS::Obj::ArchetypeLibrary::Get().Baseline("SubObjectInitProbe");

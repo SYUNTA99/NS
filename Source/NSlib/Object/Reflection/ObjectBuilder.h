@@ -40,13 +40,13 @@ namespace NS::Obj
     //! @details transform 以外の値は写さずコード既定に任せる疎な写し。id は 0 で、置く時に振る
     [[nodiscard]] nlohmann::json MakePrototypeJson(const Actor& obj);
 
-    //! @brief Actor 派生 T の Init が積む構成からひな形の JSON を作る
+    //! @brief Actor 派生 T の OnInit が積む構成からひな形の JSON を作る
     //! @details 派生クラスの構成を手書きレシピへ並記せず、クラス自身を構成と既定値の唯一の出所にする
     template <class T> [[nodiscard]] nlohmann::json MakePrototypeJson()
     {
         static_assert(std::is_base_of_v<Actor, T>, "T は Actor 派生でなければならない");
         T prototype{};
-        prototype.EnsureInit();
+        prototype.Init();
         return MakePrototypeJson(prototype);
     }
 } // namespace NS::Obj

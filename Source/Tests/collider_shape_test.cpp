@@ -100,7 +100,7 @@ TEST(ColliderShape, PlayerOwnsAFixedColliderPart)
 {
     // 動く体の当たりは自機の固定の部品 "Collider"。作り直しを頼んでも同じ部品を返す
     Player player;
-    player.EnsureInit();
+    player.Init();
     EXPECT_EQ(player.FindSubObj("Collider"), &player.Collider());
     EXPECT_EQ(player.CreateSubObj("Collider"), &player.Collider());
 }
@@ -109,7 +109,7 @@ TEST(ColliderShape, BodyHasNoShapeFields)
 {
     // 寸法の正は Collider 1 つ。Movement に欄が残ると、同じ値の置き場が 2 つに割れる
     Player player;
-    player.EnsureInit();
+    player.Init();
     const NS::Obj::SubObject* movement = player.FindSubObj("Movement");
     ASSERT_NE(movement, nullptr);
     ASSERT_NE(movement->GetReflection(), nullptr);
@@ -190,9 +190,9 @@ TEST(ColliderShape, FollowingBodySensorsShowNoFields)
 {
     // 形の正は Collider と Collision。映すだけのセンサーに効かない欄を出さない
     Player player;
-    player.EnsureInit();
+    player.Init();
     NS::Game::Level::MapObj obj;
-    obj.EnsureInit();
+    obj.Init();
     ASSERT_NE(player.BodySensorSubObj(), nullptr);
     ASSERT_NE(obj.BodySensorSubObj(), nullptr);
     EXPECT_EQ(player.BodySensorSubObj()->GetReflection()->fieldCount, 0u);
@@ -203,9 +203,9 @@ TEST(ColliderShape, AreaSensorsKeepTheirSavedFieldNames)
 {
     // ゴールと落下死の範囲は形を自分で持つ。保存済みの欄の表示名がそのまま読める
     NS::Game::Level::Goal goal;
-    goal.EnsureInit();
+    goal.Init();
     NS::Game::Level::DeathZone zone;
-    zone.EnsureInit();
+    zone.Init();
     ASSERT_NE(goal.BodySensorSubObj(), nullptr);
     ASSERT_NE(zone.BodySensorSubObj(), nullptr);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(*goal.BodySensorSubObj(), {{"半径", 0.9f}}), 0u);

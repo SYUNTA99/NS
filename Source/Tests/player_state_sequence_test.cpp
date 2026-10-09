@@ -247,7 +247,7 @@ TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
 TEST(PlayerStateSequence, TheBaseOwnsTheMachineFromInit)
 {
     Player player;
-    player.EnsureInit();
+    player.Init();
     ASSERT_NE(player.GetStateMachine(), nullptr);
     EXPECT_EQ(player.GetStateMachine()->CurrentId(), NS::Obj::StateIdOf<NS::Game::Player::IdlePlayerState>());
     EXPECT_TRUE(NS::Obj::IsState<NS::Game::Player::IdlePlayerState>(player));

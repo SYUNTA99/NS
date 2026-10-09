@@ -5,7 +5,7 @@
 
 namespace NS::Obj
 {
-    void Light::Init()
+    void Light::OnInit()
     {
         (void)CreateSubObj<DirectionalLight>("DirectionalLight");
     }

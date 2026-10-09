@@ -44,7 +44,7 @@ Player::Player() noexcept = default;
 
 Player::~Player() = default;
 
-void Player::Init()
+void Player::OnInit()
 {
     NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
     model->SetMaterialRef("player");

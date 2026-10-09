@@ -91,7 +91,7 @@ namespace NS::Obj
 
     //! @brief 形を自分で持つ調べ役。ゴールと落下死の範囲と、2 つ目のセンサーの枠 AttackSensor が使う
     //! @details 形 (球・カプセル・箱) と大きさを欄に持ち、大きさは根の世界のスケールに付いて来る
-    //! 種類と形はクラスが Init で決め、大きさは値で調整する
+    //! 種類と形はクラスが OnInit で決め、大きさは値で調整する
     class ShapeHitSensor final : public HitSensor
     {
     public:

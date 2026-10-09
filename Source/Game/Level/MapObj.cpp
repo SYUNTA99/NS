@@ -69,7 +69,7 @@ namespace NS::Game::Level
         m_motion.Finish();
     }
 
-    void MapObj::Init()
+    void MapObj::OnInit()
     {
         NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
         model->SetMeshRef("sphere");
