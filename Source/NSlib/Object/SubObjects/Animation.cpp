@@ -5,8 +5,8 @@
 #include "NSlib/Graphics/Buffer.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/AssetManager.h"
-#include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
