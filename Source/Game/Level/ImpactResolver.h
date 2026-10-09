@@ -7,9 +7,9 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SlamAim.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/Object/Reflection/ActorRef.h"
 #include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/SubObjects/HitReaction.h"
-#include "NSlib/Object/Reflection/ActorRef.h"
 #include "NSlib/Windows/Gamepad.h"
 
 #include <cstddef>
@@ -343,13 +343,13 @@ namespace GL::Level
         HitTier m_beforeContactTier = HitTier::Center;  // 触れる前の時計を始めた予測の段
         // 明けたフレームに自機が持つ速度。反動の当たりは、明けに BeginRebound が同じ m_pendingReboundArc から出し直す
         NS::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};
-        GL::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離
-        LaunchArc m_pendingLaunchArc{};                     // 明けたフレームに相手を飛ばす曲線
-        NS::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f};   // 発射の水平方向。食い込みと振動の軸
-        NS::Obj::ActorRef m_pendingTarget{};                // 知らせる相手。凍結をまたぐので使うたびに引く
-        float m_pendingPower = 0.0f;                        // この衝突の威力。揺れの最初の振れに掛ける
-        float m_pendingMassFactor = 0.0f;                   // この衝突の質量の効き。揺れの最初の振れに掛ける
-        std::uint32_t m_pendingShakeSeed = 0;               // この衝突の揺れの、入れ替わりの間隔を選ぶ種
+        GL::Player::ReboundArc m_pendingReboundArc{};     // 明けたフレームに自機を弾く反動の向きと高さと距離
+        LaunchArc m_pendingLaunchArc{};                   // 明けたフレームに相手を飛ばす曲線
+        NS::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f}; // 発射の水平方向。食い込みと振動の軸
+        NS::Obj::ActorRef m_pendingTarget{};              // 知らせる相手。凍結をまたぐので使うたびに引く
+        float m_pendingPower = 0.0f;                      // この衝突の威力。揺れの最初の振れに掛ける
+        float m_pendingMassFactor = 0.0f;                 // この衝突の質量の効き。揺れの最初の振れに掛ける
+        std::uint32_t m_pendingShakeSeed = 0;             // この衝突の揺れの、入れ替わりの間隔を選ぶ種
         // 自機の横揺れ。始めた時計の値から数え、長さの終わりで止める
         struct BodyShakeRun
         {

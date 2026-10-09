@@ -14,16 +14,16 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/IUse/IUseSceneObj.h"
-#include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/HitScreenDirector.h"
 #include "NSlib/Object/Scene/HitSensorDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/Body.h"
+#include "NSlib/Object/SubObjects/Collider.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Physics/Capsule.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -439,16 +439,16 @@ namespace GL::Level
             const float dt = NS::OS::FrameTimer::FixedDelta();
             const GL::Player::LaunchPitchResult pitch = GL::Player::LaunchPitch(
                 GL::Player::LaunchPitchDesc{.ballHeight = ballCenter.y,
-                                                  .targetHeight = aimHeight,
-                                                  .contactDistance = aimedContact,
-                                                  .horizontalSpeed = params.m_bodySlamSpeed,
-                                                  .gravity = params.Gravity(),
-                                                  .maxAngleDegrees = params.m_launchPitchLimitDegrees,
-                                                  .grounded = m_body->IsGrounded(),
-                                                  .dt = dt,
-                                                  .heightTolerance = params.m_launchHeightTolerance,
-                                                  .angleGuardDegrees = params.m_launchAngleGuardDegrees,
-                                                  .maxFrames = params.m_launchMaxFrames});
+                                            .targetHeight = aimHeight,
+                                            .contactDistance = aimedContact,
+                                            .horizontalSpeed = params.m_bodySlamSpeed,
+                                            .gravity = params.Gravity(),
+                                            .maxAngleDegrees = params.m_launchPitchLimitDegrees,
+                                            .grounded = m_body->IsGrounded(),
+                                            .dt = dt,
+                                            .heightTolerance = params.m_launchHeightTolerance,
+                                            .angleGuardDegrees = params.m_launchAngleGuardDegrees,
+                                            .maxFrames = params.m_launchMaxFrames});
             first.launchVerticalSpeed = pitch.verticalSpeed;
             if (pitch.reachable)
             {
@@ -456,11 +456,11 @@ namespace GL::Level
             }
             // 段と横ずれは裁定と同じく相手の答えの面で決める。玉の高さは放つ縦の速さの道筋が触れる所で居る高さ
             const GL::Player::LaunchPath path{.horizontalSpeed = params.m_bodySlamSpeed,
-                                                    .verticalSpeed = pitch.verticalSpeed,
-                                                    .gravity = params.Gravity(),
-                                                    .dt = dt,
-                                                    .grounded = m_body->IsGrounded(),
-                                                    .maxFrames = params.m_launchMaxFrames};
+                                              .verticalSpeed = pitch.verticalSpeed,
+                                              .gravity = params.Gravity(),
+                                              .dt = dt,
+                                              .grounded = m_body->IsGrounded(),
+                                              .maxFrames = params.m_launchMaxFrames};
             const NS::Vector3 arrival{
                 ballCenter.x, ballCenter.y + GL::Player::LaunchHeightAt(path, first.launchContact), ballCenter.z};
             judgement = JudgeHitFaceOrWide(answer.face, answer.body, arrival, lineDir, playerRadius);

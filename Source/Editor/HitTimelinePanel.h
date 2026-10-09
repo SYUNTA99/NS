@@ -69,9 +69,9 @@ namespace NS::Editor
         [[nodiscard]] TimelineFrameRange PlaybackRange() const noexcept;
 
         GL::Level::HitTier m_tier = GL::Level::HitTier::Center; // 編集している段
-        GL::Level::HitTimeline m_working;                             // 編集している段の写し
-        bool m_dirty = false;                                               // 保存していない変更があるか
-        std::string m_status;                                               // 保存・読み直しの結果の 1 行
+        GL::Level::HitTimeline m_working;                       // 編集している段の写し
+        bool m_dirty = false;                                   // 保存していない変更があるか
+        std::string m_status;                                   // 保存・読み直しの結果の 1 行
 
         HitPreviewDesc m_desc{};                  // 下見の条件
         HitPreviewResult m_result{};              // 直近の下見の結果

@@ -6,10 +6,10 @@
 #include "Game/Player/PlayerJudges.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/Body.h"
+#include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>

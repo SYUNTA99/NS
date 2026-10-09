@@ -4,8 +4,8 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Graphics/EffectScene.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/SubObjects/SphereCollision.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/SubObjects/SphereCollision.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>

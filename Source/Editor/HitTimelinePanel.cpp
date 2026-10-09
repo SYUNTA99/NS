@@ -30,17 +30,16 @@ namespace NS::Editor
         {
             static const std::vector<GL::Level::HitEventValue> s_types =
                 []<std::size_t... I>(std::index_sequence<I...>) {
-                    return std::vector<GL::Level::HitEventValue>{
-                        GL::Level::HitEventValue{std::in_place_index<I>}...};
+                    return std::vector<GL::Level::HitEventValue>{GL::Level::HitEventValue{std::in_place_index<I>}...};
                 }(std::make_index_sequence<std::variant_size_v<GL::Level::HitEventValue>>{});
             return s_types;
         }
 
         constexpr GL::Level::HitDirection k_Directions[] = {GL::Level::HitDirection::Any,
-                                                                  GL::Level::HitDirection::Right,
-                                                                  GL::Level::HitDirection::Left,
-                                                                  GL::Level::HitDirection::Up,
-                                                                  GL::Level::HitDirection::Down};
+                                                            GL::Level::HitDirection::Right,
+                                                            GL::Level::HitDirection::Left,
+                                                            GL::Level::HitDirection::Up,
+                                                            GL::Level::HitDirection::Down};
 
         // 向きのパネルに出す名前
         const char* DirectionLabel(GL::Level::HitDirection direction) noexcept
@@ -142,8 +141,7 @@ namespace NS::Editor
         constexpr int k_MaxPreviewFrames = 10000;
         for (const GL::Level::HitTier tier : GL::Level::HitTiers())
         {
-            if (const GL::Level::HitTimeline* timeline =
-                    GL::Level::HitTimelineLibrary::Get().FindForTier(tier))
+            if (const GL::Level::HitTimeline* timeline = GL::Level::HitTimelineLibrary::Get().FindForTier(tier))
             {
                 for (const GL::Level::HitEvent& event : timeline->events)
                 {
