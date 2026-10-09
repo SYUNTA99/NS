@@ -110,12 +110,12 @@ namespace NS::Obj
 
         //! @brief トラウマを足す。トラウマの揺れが積まれていなければ積む
         //! @details 揺れの途中なら今のトラウマに足す (上限 1)。続けて当てた時に揺れが重なる
-        //! @return 足した場合 true、非数か負の量で何も変えなかった場合は false
+        //! @return 足した場合 true、量か形が壊れていて何も変えなかった場合は false
         bool AddTrauma(const CameraTraumaDesc& desc);
 
         //! @brief このフレームのトラウマを少なくとも level に保つ。トラウマの揺れが積まれていなければ積む
         //! @details 溜めのように続く揺れが毎フレーム呼ぶ。呼ばなかったフレームから減り始める
-        //! @return 保った場合 true、非数か負の量で何も変えなかった場合は false
+        //! @return 保った場合 true、量か形が壊れていて何も変えなかった場合は false
         bool HoldTrauma(float level, const CameraTraumaShape& shape);
 
         //! 今のトラウマ。トラウマの揺れが無い時は 0

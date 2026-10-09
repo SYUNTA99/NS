@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Coroutine.h"
 #include "NSlib/Object/IUse/IUseState.h"
 
@@ -191,11 +192,15 @@ namespace NS::Obj
         //! @brief 印 id の状態へ移る予約をする。確定は次の Step
         //! @details 予約を入れた時に今の状態の OnExit を呼び、コルーチンを捨てる。予約の上書きでは呼ばない。
         //! OnExit と確定の時の OnEnter へは Build で控えた所有者を渡す
+        //! 組み立て済みで Build に並べていない状態はアサートで止める
         //! @param[in] id 移る先の状態の印
         //! @return 予約できたか既にその状態の場合 true、未組立か Build に並べていない状態の場合 false
         bool Change(StateId id) override
         {
             State<TOwner>* next = Find(id);
+            // 組み立て済みで見つからないのは Build への並べ忘れ。黙って断ると遷移しないまま動き続ける
+            NS_ASSERT(
+                Scene, m_owner == nullptr || next != nullptr, "StateMachine: Build に並べていない状態へ移ろうとした");
             if (next == nullptr)
             {
                 return false;

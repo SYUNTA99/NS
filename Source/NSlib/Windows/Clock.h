@@ -37,6 +37,34 @@ namespace NS::OS
         }
     };
 
+    //! 1 フレームに回す固定更新の上限。超えた分は世界の時間から捨てる
+    inline constexpr int k_MaxFixedStepsPerFrame = 5;
+
+    //! 1 フレームの経過を固定更新へ刻んだ結果
+    struct FixedStepAdvance
+    {
+        int steps = 0;            //!< このフレームで回す固定更新の回数
+        float accumulator = 0.0f; //!< 刻んだ残りの秒
+    };
+
+    //! @brief 貯めに経過秒を足し、固定更新の回数と残りを返す
+    //! @pre fixedDelta は 0 より大きい
+    [[nodiscard]] inline FixedStepAdvance AdvanceFixedSteps(float accumulator, float dt, float fixedDelta) noexcept
+    {
+        FixedStepAdvance advance;
+        advance.accumulator = accumulator + dt;
+        advance.steps = static_cast<int>(advance.accumulator / fixedDelta);
+        if (advance.steps > k_MaxFixedStepsPerFrame)
+        {
+            // 詰まりの後にまとめて回すと世界が早送りに見え、重い更新は次の詰まりを生む
+            advance.steps = k_MaxFixedStepsPerFrame;
+            advance.accumulator = 0.0f;
+            return advance;
+        }
+        advance.accumulator -= static_cast<float>(advance.steps) * fixedDelta;
+        return advance;
+    }
+
     //! @brief デルタタイムと固定タイムステップを管理する静的クラス
     //! @details 毎フレームの経過時間を蓄積し、固定時間ぶんだけ処理ステップを回す
     class FrameTimer
@@ -54,9 +82,9 @@ namespace NS::OS
             s_total += static_cast<double>(dt);
             ++s_frame;
 
-            s_accumulator += dt;
-            s_fixedSteps = static_cast<int>(s_accumulator / s_fixedDelta);
-            s_accumulator -= static_cast<float>(s_fixedSteps) * s_fixedDelta;
+            const FixedStepAdvance advance = AdvanceFixedSteps(s_accumulator, dt, s_fixedDelta);
+            s_fixedSteps = advance.steps;
+            s_accumulator = advance.accumulator;
         }
 
         //! 状態を初期化

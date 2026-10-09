@@ -75,6 +75,15 @@ namespace NS::Gfx
                     Graphics, "{}: buffer 読込失敗 (path={}, code={})", caller, path, static_cast<int>(result));
                 return false;
             }
+
+            // accessor の読み出しは添字の範囲を見ないので、数の食い違いと親子の循環をここで断る
+            result = cgltf_validate(outFile.data);
+            if (result != cgltf_result_success)
+            {
+                NS_LOG_ERROR(
+                    Graphics, "{}: glTF の中身が壊れている (path={}, code={})", caller, path, static_cast<int>(result));
+                return false;
+            }
             return true;
         }
 

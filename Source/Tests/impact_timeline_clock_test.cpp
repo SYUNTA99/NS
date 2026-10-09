@@ -5,6 +5,10 @@
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "NSlib/Core/OBB.h"
+#include "NSlib/Object/ITickable.h"
+#include "NSlib/Object/IUse/IUseCamera.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/CameraManager.h"
 #include "NSlib/Object/SubObjects/CameraModifier.h"
@@ -12,10 +16,6 @@
 #include "NSlib/Object/SubObjects/HitReaction.h"
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
-#include "NSlib/Object/ITickable.h"
-#include "NSlib/Object/IUse/IUseCamera.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/UpdatePhase.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Input.h"
@@ -509,7 +509,8 @@ TEST(ImpactTimelineClock, TraumaEventAddsTraumaThatStacksOnTheNextHit)
 {
     CameraTraumaEvent trauma;
     trauma.trauma = 0.3f;
-    trauma.decayPerSecond = 0.0f;
+    // 2 回の当たりの間でほぼ減らさない。0 は終わらない揺れとして断られる
+    trauma.decayPerSecond = 1.0e-6f;
     HitTimeline timeline;
     timeline.events = {{HitStopEvent{}, 1, 1, HitDirection::Any},
                        {trauma, 1, 1, HitDirection::Any},
@@ -897,7 +898,8 @@ TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
         ASSERT_TRUE(pose.has_value());
         EXPECT_NEAR(selfAmplitude, MetersForPixels(*pose, player->Root().Position(), 3.0f) * 0.5f, 0.00001f);
         EXPECT_NEAR(rock->ModelSubObj()->Tremor().amplitude,
-                    MetersForPixels(*pose, rock->Root().Position(), 3.0f) * 0.5f, 0.00001f);
+                    MetersForPixels(*pose, rock->Root().Position(), 3.0f) * 0.5f,
+                    0.00001f);
         return;
     }
     FAIL();

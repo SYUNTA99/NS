@@ -42,7 +42,7 @@ namespace NS::Obj
         //! 当たりのカプセルの半径 (m)。欄「半径」の値で、球にしている間も変わらない
         [[nodiscard]] float CapsuleRadius() const noexcept { return m_radius; }
         //! @brief 当たりのカプセルの半径を置く
-        //! @details 負は 0 にし、有限でない値は捨てて元の値を残す
+        //! @details 0 以下と有限でない値は捨てて元の値を残す
         //! @param[in] radius 半径 (m)
         void SetCapsuleRadius(float radius) noexcept;
         //! 今の当たりの円柱の半分の高さ。球にしていなければ StandingHalfHeight と同じ。

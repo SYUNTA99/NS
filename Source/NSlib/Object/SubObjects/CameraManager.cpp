@@ -11,6 +11,14 @@ namespace NS::Obj
 {
     namespace
     {
+        // 減る速さが 0 以下だと揺れが終わらず、非数は姿勢を非数にして画面を消す
+        [[nodiscard]] bool IsValidTraumaShape(const CameraTraumaShape& shape) noexcept
+        {
+            return NS::IsPositiveFinite(shape.decayPerSecond) && std::isfinite(shape.yawDegrees) &&
+                   std::isfinite(shape.pitchDegrees) && std::isfinite(shape.rollDegrees) &&
+                   std::isfinite(shape.frequency) && std::isfinite(shape.exponent);
+        }
+
         // 姿勢の視線の水平から右、視線と右から上を作る。どちらも長さ 1
         [[nodiscard]] CameraAxes ViewAxes(const CameraPose& pose) noexcept
         {
@@ -144,7 +152,8 @@ namespace NS::Obj
 
     bool CameraManager::AddTrauma(const CameraTraumaDesc& desc)
     {
-        if (!NS::IsNonNegativeFinite(desc.trauma))
+        if (!NS::IsNonNegativeFinite(desc.trauma) || !IsValidTraumaShape(desc.shape) ||
+            !std::isfinite(desc.kick.degrees))
         {
             return false;
         }
@@ -154,7 +163,7 @@ namespace NS::Obj
 
     bool CameraManager::HoldTrauma(float level, const CameraTraumaShape& shape)
     {
-        if (!NS::IsNonNegativeFinite(level))
+        if (!NS::IsNonNegativeFinite(level) || !IsValidTraumaShape(shape))
         {
             return false;
         }

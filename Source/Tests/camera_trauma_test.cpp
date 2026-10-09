@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <optional>
 
@@ -209,6 +210,26 @@ TEST(CameraTrauma, HitEffectsStopKeepsTheTrauma)
     EXPECT_FLOAT_EQ(cameras->ZoomRoll().zoom, 1.0f);
     EXPECT_FLOAT_EQ(cameras->Trauma(), 0.4f);
     NS::Obj::StopCameraEffects(scene);
+    EXPECT_FLOAT_EQ(cameras->Trauma(), 0.0f);
+}
+
+// 減らない形と非数の形は入口で断る。受けると揺れが終わらないか、画面が消える
+TEST(CameraTrauma, ShapeThatNeverEndsIsRejected)
+{
+    NS::Obj::Scene scene;
+    ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
+    NS::Obj::CameraManager* cameras = scene.GetCameraManager();
+    ASSERT_NE(cameras, nullptr);
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+
+    NS::Obj::CameraTraumaDesc still = TraumaOf(0.5f);
+    still.shape.decayPerSecond = 0.0f;
+    EXPECT_FALSE(cameras->AddTrauma(still));
+    NS::Obj::CameraTraumaDesc kick = TraumaOf(0.5f);
+    kick.kick.degrees = nan;
+    EXPECT_FALSE(cameras->AddTrauma(kick));
+    EXPECT_FALSE(cameras->HoldTrauma(0.5f, ShapeOf(10.0f, -1.0f)));
+    EXPECT_FALSE(cameras->HoldTrauma(0.5f, ShapeOf(nan, 1.0f)));
     EXPECT_FLOAT_EQ(cameras->Trauma(), 0.0f);
 }
 

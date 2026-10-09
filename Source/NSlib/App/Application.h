@@ -108,6 +108,7 @@ namespace NS
         std::function<bool()> m_quitGuard;
 
         bool m_shutdownCalled = false; //!< 終了処理の二重呼び出しを防ぐフラグ
+        bool m_attached = false;       //!< Init で全レイヤーの OnAttach を呼んだか
         std::chrono::steady_clock::time_point
             m_lastStutterWarnAt{}; //!< 連続して処理落ち警告を出さないための最終警告時刻
 

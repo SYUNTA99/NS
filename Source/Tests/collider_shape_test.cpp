@@ -81,11 +81,14 @@ TEST(ColliderShape, CapsuleAtPutsTheCurrentShapeAroundTheRoot)
 
 TEST(ColliderShape, ShapeFieldsRejectNegativeAndNonFinite)
 {
-    // 負は 0 にし、有限でない値は書く前の寸法を残す
+    // 半径は 0 以下を、半長は負を受けない。半長 0 は球で、半径 0 は形を作れない
     NS::Obj::Collider collider;
+    const float radiusBefore = collider.CapsuleRadius();
+    collider.SetCapsuleRadius(0.0f);
+    EXPECT_FLOAT_EQ(collider.CapsuleRadius(), radiusBefore);
     collider.SetCapsuleRadius(-1.0f);
     collider.SetStandingHalfHeight(-1.0f);
-    EXPECT_FLOAT_EQ(collider.CapsuleRadius(), 0.0f);
+    EXPECT_FLOAT_EQ(collider.CapsuleRadius(), radiusBefore);
     EXPECT_FLOAT_EQ(collider.StandingHalfHeight(), 0.0f);
 
     collider.SetCapsuleRadius(0.3f);

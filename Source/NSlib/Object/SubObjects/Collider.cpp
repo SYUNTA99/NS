@@ -27,7 +27,11 @@ namespace NS::Obj
 {
     void Collider::SetCapsuleRadius(float radius) noexcept
     {
-        m_radius = NonNegativeLength(radius, m_radius);
+        // 半径 0 以下の体は作れない。断る NS_ASSERT は Release で消える
+        if (NS::IsPositiveFinite(radius))
+        {
+            m_radius = radius;
+        }
     }
 
     void Collider::SetStandingHalfHeight(float halfHeight) noexcept

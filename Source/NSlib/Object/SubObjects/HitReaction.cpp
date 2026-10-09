@@ -221,7 +221,10 @@ namespace NS::Obj
         }
         if (!AddCameraTrauma(*Owner(), desc))
         {
-            NS_LOG_WARN(Scene, "トラウマの量が壊れていて、揺らさなかった: {}", desc.trauma);
+            NS_LOG_WARN(Scene,
+                        "トラウマの量か形が壊れていて、揺らさなかった: 量 {} 減る速さ {}",
+                        desc.trauma,
+                        desc.shape.decayPerSecond);
             return false;
         }
         return true;

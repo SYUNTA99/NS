@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <cstdio>
 #include <cstdlib>
 
 namespace NS
@@ -62,6 +63,23 @@ namespace NS
             ::CreateDirectoryW(wide.c_str(), nullptr);
         }
 
+        bool CanAppendTo(std::string_view path)
+        {
+            const HANDLE handle = ::CreateFileW(WidenPath(path).c_str(),
+                                                FILE_APPEND_DATA,
+                                                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                                nullptr,
+                                                OPEN_ALWAYS,
+                                                FILE_ATTRIBUTE_NORMAL,
+                                                nullptr);
+            if (handle == INVALID_HANDLE_VALUE)
+            {
+                return false;
+            }
+            ::CloseHandle(handle);
+            return true;
+        }
+
         spdlog::level::level_enum ToSpdLevel(LogLevel level)
         {
             switch (level)
@@ -95,11 +113,20 @@ namespace NS
 
             const std::string logsDir = LogsDirectory(desc);
             const std::string logFilePath = logsDir + "/" + desc.logName + ".log";
-            std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> file =
-                std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-                    logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, desc.rotateOnOpen);
-            file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
-            sinks.push_back(file);
+            // 例外を切った spdlog は開けないファイルで abort するので、書けない場所ではファイルへ出さない
+            if (CanAppendTo(logFilePath))
+            {
+                std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> file =
+                    std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+                        logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, desc.rotateOnOpen);
+                file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
+                sinks.push_back(file);
+            }
+            else
+            {
+                std::fprintf(
+                    stderr, "Logger: ログファイルを開けないのでファイルへは出さない (%s)\n", logFilePath.c_str());
+            }
 
             std::shared_ptr<spdlog::sinks::msvc_sink_mt> msvc = std::make_shared<spdlog::sinks::msvc_sink_mt>();
             msvc->set_pattern("[%H:%M:%S.%e] [%l] [%n] [%s:%#] %v");

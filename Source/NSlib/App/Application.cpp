@@ -83,21 +83,25 @@ namespace NS
 
     NS::OS::Window& Application::Window() noexcept
     {
+        NS_ASSERT(App, m_window, "構築の失敗後 / Shutdown 後に Window() を呼んでいる");
         return *m_window;
     }
 
     const NS::OS::Window& Application::Window() const noexcept
     {
+        NS_ASSERT(App, m_window, "構築の失敗後 / Shutdown 後に Window() を呼んでいる");
         return *m_window;
     }
 
     NS::Gfx::Renderer& Application::Renderer() noexcept
     {
+        NS_ASSERT(App, m_renderer, "構築の失敗後 / Shutdown 後に Renderer() を呼んでいる");
         return *m_renderer;
     }
 
     const NS::Gfx::Renderer& Application::Renderer() const noexcept
     {
+        NS_ASSERT(App, m_renderer, "構築の失敗後 / Shutdown 後に Renderer() を呼んでいる");
         return *m_renderer;
     }
 
@@ -174,6 +178,7 @@ namespace NS
         {
             layer->OnAttach();
         }
+        m_attached = true;
     }
 
     bool Application::WantExit() noexcept
@@ -269,9 +274,14 @@ namespace NS
 
         m_shutdownCalled = true;
 
-        for (std::vector<std::unique_ptr<Layer>>::reverse_iterator it = m_layers.rbegin(); it != m_layers.rend(); ++it)
+        // 起動を断った時は OnAttach が走っていない
+        if (m_attached)
         {
-            (*it)->OnDetach();
+            for (std::vector<std::unique_ptr<Layer>>::reverse_iterator it = m_layers.rbegin(); it != m_layers.rend();
+                 ++it)
+            {
+                (*it)->OnDetach();
+            }
         }
 
         // 終了の後は Update が来ないので、止めないと最後に送った振動が実機に残る

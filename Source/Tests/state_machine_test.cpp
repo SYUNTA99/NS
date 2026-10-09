@@ -268,7 +268,6 @@ TEST(StateMachine, LastValidRequestWinsWithoutExitingTwice)
     ASSERT_TRUE(machine.Change<ActiveState>());
     ASSERT_TRUE(machine.Change<DeltaState>());
     ASSERT_TRUE(machine.Change<DeltaState>());
-    EXPECT_FALSE(machine.Change<ChildState>());
     EXPECT_TRUE(machine.IsCurrent<DeltaState>());
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
     machine.Step(0.1f);
