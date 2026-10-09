@@ -2,12 +2,12 @@
 #include "Game/Level/DeathZone.h"
 #include "Game/Player.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/SubObjects/SphereCollision.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/SubObjects/SphereCollision.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <gtest/gtest.h>
@@ -61,7 +61,7 @@ TEST(SceneActor, SpawningGoesThroughTheSceneOnly)
 
 TEST(SceneActor, ClassOnlyObjectBuildsWholeComposition)
 {
-    // 部品の一覧を持たないデータでも、クラスのコンストラクタが部品を全て積む
+    // 部品の一覧を持たないデータでも、クラスの Init が部品を全て積む
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     AddClassObject(doc, "MapObj", 1);
 

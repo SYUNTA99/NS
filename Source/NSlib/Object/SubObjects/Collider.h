@@ -1,8 +1,8 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/IUse/IUseCollision.h"
+#include "NSlib/Object/SubObject.h"
 #include "NSlib/Physics/Capsule.h"
 #include "NSlib/Physics/JoltCharacter.h"
 
@@ -20,14 +20,14 @@ namespace NS::Obj
     {
         NS::Vector3 position{0.0f, 0.0f, 0.0f}; //!< 地形に当てて押し返した後の根の位置
         NS::Vector3 velocity{0.0f, 0.0f, 0.0f}; //!< 接触面へ射影した後の速度
-        bool grounded = false;                        //!< 移動の後に足場に立っているか
-        bool inWorld = false;                         //!< 地形を見たか。持ち主が Scene に居なければ偽
+        bool grounded = false;                  //!< 移動の後に足場に立っているか
+        bool inWorld = false;                   //!< 地形を見たか。持ち主が Scene に居なければ偽
     };
 
     //! @brief 動く体の当たり。カプセルの寸法と、地形に当てて押し返す 1 フレームの移動の部品
     //! @details 世界に問う側で、自分は静的な世界 (PhysicsScene の body) に登録しない。
     //! 登録すると自分の掃引が自分に当たる。
-    //! 置く当たりの一族 (Collision) とは別の型で、部品名は持ち主が ForEachSubObj で付ける (自機は "Collider")。
+    //! 置く当たり Collision とは別の型。部品名は持ち主が作る時に付ける
     //! カプセルは根を中心にした縦向きで、寸法 (半径・半分の高さ) はリフレクションの欄として自分が持つ。
     //! 持ち主が無くても OnStart の前でも欄の値を返す。速度と接地は持たず、Body が Move の結果を書く。
     //! IUseCollision を継ぎ、PhysicsScene は使う時に持ち主の Scene から引く。

@@ -100,7 +100,7 @@ namespace NS::Obj
         {
             return;
         }
-        const std::string_view role = owner->PartName(comp);
+        const std::string_view role = comp.Name();
         if (role.empty())
         {
             return;
@@ -262,7 +262,10 @@ namespace NS::Obj
         // AssetManager が無い間は跳ばす。テストは資産なしでシーンを立てる
         if (m_assets != nullptr)
         {
-            obj.ForEachSubObj([this](std::string_view, SubObject& part) { part.ResolveAssets(*m_assets); });
+            for (SubObject* subObject : obj.SubObjs())
+            {
+                subObject->ResolveAssets(*m_assets);
+            }
         }
         // 開始は引き当ての後。OnStart の中で資産を読む SubObject が空の参照を掴まない
         obj.OnStart();
@@ -350,15 +353,14 @@ namespace NS::Obj
         // 控えは個体の上書きだけを持つ。上書きの無い欄も種類の既定値へ戻すため、全欄の姿へ広げてから比べる
         const nlohmann::json object = ExpandObjectJson(snapshot);
         bool same = ObjectJsonClass(object) == std::string_view{obj->ClassName()};
-        std::size_t count = 0;
-        obj->ForEachSubObj([&same, &count, &object](std::string_view role, SubObject&) {
-            ++count;
-            if (SubObjFields(object, role) == nullptr)
+        for (const SubObject* subObject : obj->SubObjs())
+        {
+            if (SubObjFields(object, subObject->Name()) == nullptr)
             {
                 same = false;
             }
-        });
-        if (!same || count != ObjectJsonSubObjs(object).size())
+        }
+        if (!same || obj->SubObjs().size() != ObjectJsonSubObjs(object).size())
         {
             return ReplaceFromJson(snapshot);
         }
@@ -374,18 +376,19 @@ namespace NS::Obj
             parent = nullptr;
         }
         obj->SetParent(parent);
-        obj->ForEachSubObj([this, &object](std::string_view role, SubObject& part) {
-            const nlohmann::json* fields = SubObjFields(object, role);
-            if (fields == nullptr || SerializeSubObjFields(part) == *fields)
+        for (SubObject* subObject : obj->SubObjs())
+        {
+            const nlohmann::json* fields = SubObjFields(object, subObject->Name());
+            if (fields == nullptr || SerializeSubObjFields(*subObject) == *fields)
             {
-                return;
+                continue;
             }
-            (void)ApplyJsonFields(part, *fields);
+            (void)ApplyJsonFields(*subObject, *fields);
             if (m_assets != nullptr)
             {
-                part.ResolveAssets(*m_assets);
+                subObject->ResolveAssets(*m_assets);
             }
-        });
+        }
         return obj;
     }
 

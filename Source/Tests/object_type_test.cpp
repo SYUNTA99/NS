@@ -7,7 +7,7 @@ template <class T> constexpr bool k_HasPersistentId = requires(const T& object) 
 template <class T> constexpr bool k_HasObjectName = requires(const T& object) { object.Name(); };
 template <class T> constexpr bool k_HasPartArray = requires(T& actor) { actor.SubObjects(); };
 template <class T>
-constexpr bool k_HasDynamicPartAddition = requires(T& actor) { actor.template AddSubObject<NS::Obj::Model>(); };
+constexpr bool k_HasDynamicPartAddition = requires(T& actor) { actor.template CreateSubObj<NS::Obj::Model>("Model"); };
 template <class T>
 constexpr bool k_HasPartTypeSearch = requires(T& actor) { actor.template FindSubObject<NS::Obj::Model>(); };
 static_assert(!k_HasPersistentId<NS::Obj::Object>);
@@ -15,7 +15,7 @@ static_assert(!k_HasObjectName<NS::Obj::Object>);
 static_assert(k_HasPersistentId<NS::Obj::Actor>);
 static_assert(k_HasObjectName<NS::Obj::ActorBase>);
 static_assert(!k_HasPersistentId<NS::Obj::SubObject>);
-static_assert(!k_HasObjectName<NS::Obj::SubObject>);
+static_assert(k_HasObjectName<NS::Obj::SubObject>);
 static_assert(!k_HasPartArray<NS::Obj::Actor>);
 static_assert(!k_HasDynamicPartAddition<NS::Obj::Actor>);
 static_assert(!k_HasPartTypeSearch<NS::Obj::Actor>);

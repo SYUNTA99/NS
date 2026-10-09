@@ -9,10 +9,10 @@
 #include "NSlib/Graphics/StaticMesh.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/AssetManager.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Windows/Clock.h"
 #include <algorithm>
 #include <cmath>
@@ -57,8 +57,6 @@ namespace
 
 namespace NS::Game::Player
 {
-    // 配置物を組む経路では参照の引き当てが Player::ForEachSubObj の並びに回る。Model が自分の参照から mesh
-    // を差した後に差し直す
     PlayerAppearance::PlayerAppearance() noexcept : NS::Obj::SubObject() {}
 
     void PlayerAppearance::Curl() noexcept

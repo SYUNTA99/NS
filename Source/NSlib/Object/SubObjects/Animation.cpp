@@ -198,7 +198,7 @@ namespace NS::Obj
 
         SetMesh(loaded.mesh);
 
-        // 参照解決は Actor::ForEachSubObj の並びで回るので、Model はここより先に解決済み
+        // 参照解決は部品の並びで回るので、Model はここより先に解決済み
         // ここで差し替えないと skinned mesh が見た目に反映されない
         if (Actor* owner = Owner())
         {

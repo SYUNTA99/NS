@@ -30,7 +30,7 @@ namespace NS::Obj
         bool isBox = false;
         NS::Vector3 a{0.0f, 0.0f, 0.0f}; // 線分の片端。球は a と b が同じ
         NS::Vector3 b{0.0f, 0.0f, 0.0f}; // 線分のもう片端
-        float radius = 0.0f;                   // 線分からの半径。箱は 0
+        float radius = 0.0f;             // 線分からの半径。箱は 0
         NS::OBB box{};                   // 箱の形。isBox の時だけ使う
 
         [[nodiscard]] static SensorVolume Sphere(const NS::Vector3& center, float radius) noexcept;
@@ -91,7 +91,7 @@ namespace NS::Obj
 
     //! @brief 形を自分で持つ調べ役。ゴールと落下死の範囲と、2 つ目のセンサーの枠 AttackSensor が使う
     //! @details 形 (球・カプセル・箱) と大きさを欄に持ち、大きさは根の世界のスケールに付いて来る
-    //! 種類と形はクラスがコンストラクタで決め、大きさは値で調整する
+    //! 種類と形はクラスが Init で決め、大きさは値で調整する
     class ShapeHitSensor final : public HitSensor
     {
     public:
@@ -126,8 +126,8 @@ namespace NS::Obj
 
     private:
         HitSensorShape m_shape = HitSensorShape::Sphere;
-        float m_radius = 0.5f;                                // 球とカプセルの半径 (スケール前)
-        float m_halfHeight = 0.5f;                            // カプセルの中心から端の半球の中心まで (スケール前)
+        float m_radius = 0.5f;                          // 球とカプセルの半径 (スケール前)
+        float m_halfHeight = 0.5f;                      // カプセルの中心から端の半球の中心まで (スケール前)
         NS::Vector3 m_boxHalfExtents{0.5f, 0.5f, 0.5f}; // 箱の中心から各面まで (スケール前)
         NS::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};   // 根からの中心のずれ
     };

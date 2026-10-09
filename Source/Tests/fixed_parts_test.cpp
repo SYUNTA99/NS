@@ -30,13 +30,10 @@ namespace
     class FixedPartActor final : public NS::Obj::Actor
     {
     public:
-        FixedPartActor() { AttachFixedSubObject(passive); }
-        void ForEachSubObj(const SubObjVisitor& visitor) const override
-        {
-            NS::Obj::Actor::ForEachSubObj(visitor);
-            visitor("Passive", passive);
-        }
-        mutable PassivePart passive;
+        PassivePart* passive = nullptr;
+
+    protected:
+        void Init() override { passive = CreateSubObj<PassivePart>("Passive"); }
     };
 
 } // namespace
@@ -44,31 +41,35 @@ namespace
 TEST(FixedParts, BaseActorDoesNotImplicitlyUpdateEveryEnumeratedPart)
 {
     FixedPartActor actor;
-    ASSERT_EQ(actor.FindSubObj("Passive"), &actor.passive);
+    actor.EnsureInit();
+    ASSERT_EQ(actor.FindSubObj("Passive"), actor.passive);
     actor.Update();
-    EXPECT_EQ(actor.passive.updates, 0);
+    EXPECT_EQ(actor.passive->updates, 0);
 }
 
 TEST(FixedParts, CommonSlotsAreOptionalAndCreationIsIdempotent)
 {
     NS::Obj::Actor actor;
     EXPECT_EQ(actor.ModelSubObj(), nullptr);
-    NS::Obj::SubObject* created = actor.CreatePart("Model");
+    NS::Obj::SubObject* created = actor.CreateSubObj("Model");
     ASSERT_NE(created, nullptr);
     EXPECT_EQ(created, actor.ModelSubObj());
-    EXPECT_EQ(created, actor.CreatePart("Model"));
+    EXPECT_EQ(created, actor.CreateSubObj("Model"));
     EXPECT_EQ(created->Owner(), &actor);
-    EXPECT_EQ(actor.CreatePart("UnknownPart"), nullptr);
+    EXPECT_EQ(actor.CreateSubObj("UnknownPart"), nullptr);
     std::vector<std::string> names;
-    actor.ForEachSubObj([&names](std::string_view name, NS::Obj::SubObject&) { names.emplace_back(name); });
+    for (const NS::Obj::SubObject* subObject : actor.SubObjs())
+    {
+        names.push_back(subObject->Name());
+    }
     EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model"}));
 }
 
 TEST(FixedParts, SensorsHaveDistinctRoleNames)
 {
     NS::Obj::Actor actor;
-    NS::Obj::SubObject* body = actor.CreatePart("BodySensor");
-    NS::Obj::SubObject* attack = actor.CreatePart("AttackSensor");
+    NS::Obj::SubObject* body = actor.CreateSubObj("BodySensor");
+    NS::Obj::SubObject* attack = actor.CreateSubObj("AttackSensor");
     ASSERT_NE(body, nullptr);
     ASSERT_NE(attack, nullptr);
     EXPECT_NE(body, attack);
@@ -83,10 +84,15 @@ TEST(FixedParts, SensorsHaveDistinctRoleNames)
 TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
 {
     Player player;
+    player.EnsureInit();
     NS::Game::Level::MapObj rock;
+    rock.EnsureInit();
     NS::Game::Level::FollowCamera camera;
+    camera.EnsureInit();
     NS::Obj::Light light;
+    light.EnsureInit();
     NS::Obj::MapParts terrain;
+    terrain.EnsureInit();
     EXPECT_EQ(player.FindSubObj("Input"), &player.Input());
     EXPECT_EQ(player.FindSubObj("Movement"), &player.Body());
     EXPECT_NE(player.FindSubObj("Params"), nullptr);

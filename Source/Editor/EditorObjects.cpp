@@ -5,14 +5,14 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/Mesh.h"
 #include "NSlib/Object/Actor.h"
+#include "NSlib/Object/ActorList.h"
+#include "NSlib/Object/Reflection/Archetype.h"
+#include "NSlib/Object/Reflection/ObjectBuilder.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
-#include "NSlib/Object/ActorList.h"
-#include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/SubObjectEntry.h"
-#include "NSlib/Object/Reflection/ObjectBuilder.h"
-#include "NSlib/Object/Reflection/TypeRegistry.h"
 
 #include <algorithm>
 
@@ -175,7 +175,6 @@ namespace NS::Editor
 
     nlohmann::json MakePlayerObject(const NS::Vector3& position, const NS::Quaternion& rotation)
     {
-        // 構成は Player のコンストラクタが決める。ひな形は型名だけ持ち、値はコード既定を使う
         nlohmann::json object = NS::Obj::MakePrototypeJson<::Player>();
         NS::Obj::SetObjectPosition(object, position);
         NS::Obj::SetObjectRotation(object, rotation);

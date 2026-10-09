@@ -37,7 +37,7 @@ namespace NS::Obj
             SubObject* target = obj.FindSubObj(entry.key());
             if (target == nullptr && creation == SubObjCreation::Allow)
             {
-                target = obj.CreatePart(entry.key());
+                target = obj.CreateSubObj(entry.key());
             }
             if (target == nullptr)
             {
@@ -50,7 +50,7 @@ namespace NS::Obj
 
     std::unique_ptr<Actor> ObjectFromJson(const nlohmann::json& object, AssetManager* assets)
     {
-        // 部品はクラスのコンストラクタと種類の既定値が積む。クラスの無い JSON は配置物でない
+        // 部品はクラスの Init と種類の既定値が積む。クラスの無い JSON は配置物でない
         if (ObjectJsonClass(object).empty())
         {
             return nullptr;
@@ -64,7 +64,10 @@ namespace NS::Obj
         // 参照文字列の実体化は SubObject 自身の仕事。AssetManager が無い間は文字列のまま持たせておく
         if (assets != nullptr)
         {
-            obj->ForEachSubObj([assets](std::string_view, SubObject& part) { part.ResolveAssets(*assets); });
+            for (SubObject* subObject : obj->SubObjs())
+            {
+                subObject->ResolveAssets(*assets);
+            }
         }
         return obj;
     }
@@ -73,8 +76,10 @@ namespace NS::Obj
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, 0u);
         nlohmann::json& parts = ObjectJsonSubObjs(object);
-        obj.ForEachSubObj(
-            [&parts](std::string_view name, SubObject&) { parts[std::string{name}] = nlohmann::json::object(); });
+        for (const SubObject* subObject : obj.SubObjs())
+        {
+            parts[subObject->Name()] = nlohmann::json::object();
+        }
         SetObjectPosition(object, obj.Root().Position());
         SetObjectRotation(object, obj.Root().Rotation());
         SetObjectScale(object, obj.Root().Scale());
@@ -85,8 +90,10 @@ namespace NS::Obj
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, obj.Id());
         nlohmann::json& parts = ObjectJsonSubObjs(object);
-        obj.ForEachSubObj(
-            [&parts](std::string_view name, SubObject& part) { parts[std::string{name}] = SerializeSubObjFields(part); });
+        for (const SubObject* subObject : obj.SubObjs())
+        {
+            parts[subObject->Name()] = SerializeSubObjFields(*subObject);
+        }
         return DiffObjectJson(object);
     }
 } // namespace NS::Obj

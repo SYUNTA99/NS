@@ -11,9 +11,10 @@ namespace NS::Obj
     class MapParts : public Actor
     {
     public:
-        MapParts() noexcept;
-
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         NS_REFLECT_NONE(MapParts, NS::Obj::Actor)
+
+    protected:
+        void Init() override;
     };
 } // namespace NS::Obj

@@ -5,15 +5,9 @@
 
 namespace NS::Obj
 {
-    Light::Light() noexcept
+    void Light::Init()
     {
-        AttachFixedSubObject(m_light);
-    }
-
-    void Light::ForEachSubObj(const SubObjVisitor& visitor) const
-    {
-        Actor::ForEachSubObj(visitor);
-        visitor("DirectionalLight", m_light);
+        (void)CreateSubObj<DirectionalLight>("DirectionalLight");
     }
 
     NS_PLACEABLE(Light, "ライト")

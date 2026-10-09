@@ -12,127 +12,100 @@
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
+#include <iterator>
 
 namespace NS::Obj
 {
 
     Actor::Actor() noexcept
     {
-        m_rootSubObj = std::make_unique<TransformSubObject>();
+        (void)AdoptSubObj(std::make_unique<TransformSubObject>(), k_TransformSubObjName, m_rootSubObj);
         m_transform = &m_rootSubObj->Root();
-        AttachFixedSubObject(*m_rootSubObj);
         Appear();
     }
 
-    void Actor::ForEachSubObj(const SubObjVisitor& visitor) const
+    void Actor::EnsureInit()
     {
-        visitor(k_TransformSubObjName, *m_rootSubObj);
-        const auto visit = [&visitor](std::string_view name, SubObject* part) {
-            if (part != nullptr)
-            {
-                visitor(name, *part);
-            }
-        };
-        visit("Model", m_model.get());
-        visit("Animation", m_animation.get());
-        visit("Shadow", m_shadow.get());
-        visit("Collision", m_collision.get());
-        visit("BodySensor", m_bodySensor.get());
-        visit("AttackSensor", m_attackSensor.get());
-        visit("HitReaction", m_hitReaction.get());
+        if (m_initialized)
+        {
+            return;
+        }
+        m_initialized = true;
+        Init();
+    }
+
+    std::size_t Actor::OrderRank(const SubObject* subObject) const noexcept
+    {
+        const SubObject* const ranked[] = {
+            m_rootSubObj, m_model, m_animation, m_shadow, m_collision, m_bodySensor, m_attackSensor, m_hitReaction};
+        return static_cast<std::size_t>(std::find(std::begin(ranked), std::end(ranked), subObject) - std::begin(ranked));
+    }
+
+    void Actor::AdoptSubObjBase(std::unique_ptr<SubObject> subObject, std::string_view name)
+    {
+        subObject->SetName(name);
+        subObject->AttachOwner(this);
+        const std::size_t rank = OrderRank(subObject.get());
+        const std::vector<SubObject*>::iterator at =
+            std::find_if(m_subObjOrder.begin(), m_subObjOrder.end(), [this, rank](const SubObject* placed) {
+                return OrderRank(placed) > rank;
+            });
+        m_subObjOrder.insert(at, subObject.get());
+        m_subObjects.push_back(std::move(subObject));
+    }
+
+    void Actor::ReportTakenName(std::string_view name) const
+    {
+        NS_LOG_ERROR(Scene, "Actor::CreateSubObj: 部品名 {} は {} が使っている。2 回目は作らない", name, ClassName());
     }
 
     SubObject* Actor::FindSubObj(std::string_view name) const
     {
-        SubObject* found = nullptr;
-        ForEachSubObj([name, &found](std::string_view partName, SubObject& part) {
-            if (name == partName)
+        for (SubObject* subObject : m_subObjOrder)
+        {
+            if (subObject->Name() == name)
             {
-                found = &part;
+                return subObject;
             }
-        });
-        return found;
+        }
+        return nullptr;
     }
 
-    std::string_view Actor::PartName(const SubObject& part) const
-    {
-        std::string_view found;
-        ForEachSubObj([&part, &found](std::string_view name, SubObject& candidate) {
-            if (&part == &candidate)
-            {
-                found = name;
-            }
-        });
-        return found;
-    }
-
-    SubObject* Actor::CreatePart(std::string_view name)
+    SubObject* Actor::CreateSubObj(std::string_view name)
     {
         if (SubObject* existing = FindSubObj(name))
         {
             return existing;
         }
-        SubObject* created = nullptr;
         if (name == "Model")
         {
-            m_model = std::make_unique<Model>();
-            created = m_model.get();
+            return CreateSubObj<Model>(ModelSlot());
         }
-        else if (name == "Animation")
+        if (name == "Animation")
         {
-            m_animation = std::make_unique<Animation>();
-            created = m_animation.get();
+            return CreateSubObj<Animation>(AnimationSlot());
         }
-        else if (name == "Shadow")
+        if (name == "Shadow")
         {
-            m_shadow = std::make_unique<Shadow>();
-            created = m_shadow.get();
+            return CreateSubObj<Shadow>(ShadowSlot());
         }
-        else if (name == "Collision")
+        if (name == "Collision")
         {
-            m_collision = std::make_unique<BoxCollision>();
-            created = m_collision.get();
+            return CreateSubObj<BoxCollision>(CollisionSlot());
         }
-        else if (name == "BodySensor")
+        if (name == "BodySensor")
         {
-            m_bodySensor = std::make_unique<ShapeHitSensor>();
-            created = m_bodySensor.get();
+            return CreateSubObj<ShapeHitSensor>(BodySensorSlot());
         }
-        else if (name == "AttackSensor")
+        if (name == "AttackSensor")
         {
-            m_attackSensor = std::make_unique<ShapeHitSensor>();
-            created = m_attackSensor.get();
+            return CreateSubObj<ShapeHitSensor>(AttackSensorSlot());
         }
-        else if (name == "HitReaction")
+        if (name == "HitReaction")
         {
-            m_hitReaction = std::make_unique<HitReaction>();
-            created = m_hitReaction.get();
+            return CreateSubObj<HitReaction>(HitReactionSlot());
         }
-        if (created != nullptr)
-        {
-            AttachFixedSubObject(*created);
-        }
-        return created;
-    }
-
-    void Actor::SetCollisionPart(std::unique_ptr<Collision> collision)
-    {
-        if (m_collision != nullptr || collision == nullptr)
-        {
-            return;
-        }
-        m_collision = std::move(collision);
-        AttachFixedSubObject(*m_collision);
-    }
-
-    void Actor::SetBodySensorPart(std::unique_ptr<HitSensor> sensor)
-    {
-        if (m_bodySensor != nullptr || sensor == nullptr)
-        {
-            return;
-        }
-        m_bodySensor = std::move(sensor);
-        AttachFixedSubObject(*m_bodySensor);
+        return nullptr;
     }
 
     IStateMachine* Actor::GetStateMachine() noexcept
@@ -181,6 +154,11 @@ namespace NS::Obj
             {
                 child->OnAppear();
             }
+        }
+        m_subObjOrder.clear();
+        while (!m_subObjects.empty())
+        {
+            m_subObjects.pop_back();
         }
     }
 
@@ -251,16 +229,14 @@ namespace NS::Obj
         m_parent = nullptr;
     }
 
-    void Actor::AttachFixedSubObject(SubObject& subObject)
-    {
-        subObject.AttachOwner(this);
-    }
-
     void Actor::OnStart()
     {
         // 部品の登録は部品の OnStart が済ませる。続けて OnAppear を呼ぶと、出る時に OnStart
         // を呼び直す部品が二重に登録する
-        ForEachSubObj([](std::string_view, SubObject& part) { part.OnStart(); });
+        for (SubObject* subObject : m_subObjOrder)
+        {
+            subObject->OnStart();
+        }
         if (!IsActiveInHierarchy())
         {
             OnKill();
@@ -274,12 +250,13 @@ namespace NS::Obj
         {
             return;
         }
-        ForEachSubObj([](std::string_view, SubObject& part) {
-            if (part.IsActive())
+        for (SubObject* subObject : m_subObjOrder)
+        {
+            if (subObject->IsActive())
             {
-                part.OnAppear();
+                subObject->OnAppear();
             }
-        });
+        }
         for (Actor* child : m_children)
         {
             child->OnAppear();
@@ -292,7 +269,10 @@ namespace NS::Obj
         {
             return;
         }
-        ForEachSubObj([](std::string_view, SubObject& part) { part.OnKill(); });
+        for (SubObject* subObject : m_subObjOrder)
+        {
+            subObject->OnKill();
+        }
         for (Actor* child : m_children)
         {
             child->OnKill();
@@ -324,18 +304,21 @@ namespace NS::Obj
 
     void Actor::VisualStep()
     {
-        TickSubObj(m_hitReaction.get());
+        TickSubObj(m_hitReaction);
     }
 
     void Actor::PrepareRender()
     {
-        TickSubObj(m_animation.get());
+        TickSubObj(m_animation);
     }
 
     void Actor::OnEndPlay()
     {
         Kill();
-        ForEachSubObj([](std::string_view, SubObject& part) { part.OnEndPlay(); });
+        for (SubObject* subObject : m_subObjOrder)
+        {
+            subObject->OnEndPlay();
+        }
     }
 
 } // namespace NS::Obj

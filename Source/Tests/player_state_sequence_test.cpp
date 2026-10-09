@@ -244,9 +244,10 @@ TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
     EXPECT_FLOAT_EQ(player->Root().Position().y, 3.0f);
 }
 
-TEST(PlayerStateSequence, TheBaseOwnsTheMachineFromConstruction)
+TEST(PlayerStateSequence, TheBaseOwnsTheMachineFromInit)
 {
     Player player;
+    player.EnsureInit();
     ASSERT_NE(player.GetStateMachine(), nullptr);
     EXPECT_EQ(player.GetStateMachine()->CurrentId(), NS::Obj::StateIdOf<NS::Game::Player::IdlePlayerState>());
     EXPECT_TRUE(NS::Obj::IsState<NS::Game::Player::IdlePlayerState>(player));

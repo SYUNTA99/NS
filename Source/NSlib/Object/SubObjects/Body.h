@@ -13,7 +13,7 @@ namespace NS::Obj
     //! 速度の横縦分解・接地・接地の知らせだけを持ち、能力も調整値も当たりの寸法も持たない。
     //! いつ何を呼ぶかは持ち主の Actor が決める。更新の入口 (OnUpdate) は持たない。
     //! 地形に当てて押し返す移動は同じ Actor の Collider に頼み、その結果で根の位置・速度・接地を書く。
-    //! TypeRegistry には登録しない。部品名は持ち主が ForEachSubObj で付ける。
+    //! TypeRegistry には登録しない。部品名は持ち主が作る時に付ける
     //! dt は呼び手が引数で渡す。呼び手は固定ステップの秒を渡し、描画フレームの秒は渡さない
     //! 依存: NS, NS::Obj::Actor / Collider
     class Body : public NS::Obj::SubObject

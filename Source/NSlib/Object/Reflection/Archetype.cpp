@@ -2,12 +2,12 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/SubObject.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/SubObject.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <cstddef>
@@ -233,14 +233,15 @@ namespace NS::Obj
         nlohmann::json full = object;
         nlohmann::json& target = ObjectJsonSubObjs(full);
         target = nlohmann::json::object();
-        baseline.ForEachSubObj([&object, &target](std::string_view name, SubObject& part) {
-            nlohmann::json fields = SerializeSubObjFields(part);
-            if (const nlohmann::json* source = SubObjFields(object, name))
+        for (const SubObject* subObject : baseline.SubObjs())
+        {
+            nlohmann::json fields = SerializeSubObjFields(*subObject);
+            if (const nlohmann::json* source = SubObjFields(object, subObject->Name()))
             {
                 fields.update(*source);
             }
-            target[std::string{name}] = std::move(fields);
-        });
+            target[subObject->Name()] = std::move(fields);
+        }
         return full;
     }
 
@@ -248,17 +249,18 @@ namespace NS::Obj
     {
         const Actor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json out = object;
-        baseline.ForEachSubObj([&out](std::string_view name, SubObject& part) {
-            if (IsInstanceOnlySubObj(name))
+        for (const SubObject* subObject : baseline.SubObjs())
+        {
+            if (IsInstanceOnlySubObj(subObject->Name()))
             {
-                return;
+                continue;
             }
-            nlohmann::json* fields = SubObjFields(out, name);
+            nlohmann::json* fields = SubObjFields(out, subObject->Name());
             if (fields == nullptr)
             {
-                return;
+                continue;
             }
-            const nlohmann::json defaults = SerializeSubObjFields(part);
+            const nlohmann::json defaults = SerializeSubObjFields(*subObject);
             for (nlohmann::json::iterator field = fields->begin(); field != fields->end();)
             {
                 const nlohmann::json::const_iterator original = defaults.find(field.key());
@@ -271,7 +273,7 @@ namespace NS::Obj
                     ++field;
                 }
             }
-        });
+        }
         return out;
     }
 
@@ -283,8 +285,7 @@ namespace NS::Obj
             return nullptr;
         }
         const Actor& baseline = ArchetypeLibrary::Get().Baseline(owner->ClassName());
-        const std::string_view role = owner->PartName(comp);
-        const SubObject* found = baseline.FindSubObj(role);
+        const SubObject* found = baseline.FindSubObj(comp.Name());
         if (found != nullptr && std::string_view{found->ClassName()} == comp.ClassName())
         {
             return found;
@@ -304,9 +305,8 @@ namespace NS::Obj
 
     bool IsArchetypeField(const SubObject& comp, std::string_view fieldName)
     {
-        // どの部品かは持ち主の部品名で決まる。持ち主の無い部品は種類を持たない
-        const Actor* owner = comp.Owner();
-        if (owner == nullptr || IsInstanceOnlySubObj(owner->PartName(comp)))
+        // 持ち主の無い部品は種類を持たない
+        if (comp.Owner() == nullptr || IsInstanceOnlySubObj(comp.Name()))
         {
             return false;
         }
@@ -325,7 +325,7 @@ namespace NS::Obj
         {
             return false;
         }
-        const std::string_view role = owner->PartName(comp);
+        const std::string_view role = comp.Name();
         const std::optional<nlohmann::json> value = FieldValue(comp, fieldName);
         if (role.empty() || !value.has_value())
         {

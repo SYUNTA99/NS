@@ -73,24 +73,19 @@ namespace
     class LoggingActor final : public NS::Obj::Actor
     {
     public:
-        explicit LoggingActor(TickLog& log) noexcept : m_log(log), m_part(&log) { AttachFixedSubObject(m_part); }
-
-        void ForEachSubObj(const SubObjVisitor& visitor) const override
-        {
-            NS::Obj::Actor::ForEachSubObj(visitor);
-            visitor("Logging", m_part);
-        }
+        explicit LoggingActor(TickLog& log) noexcept : m_log(log) {}
 
     protected:
+        void Init() override { m_part = CreateSubObj<LoggingSubObject>("Logging", &m_log); }
         void StateStep() override
         {
             m_log.order.push_back("actor");
-            TickSubObj(&m_part);
+            TickSubObj(m_part);
         }
 
     private:
         TickLog& m_log;
-        mutable LoggingSubObject m_part;
+        LoggingSubObject* m_part = nullptr;
     };
 } // namespace
 

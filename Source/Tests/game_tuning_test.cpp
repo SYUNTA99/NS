@@ -82,6 +82,7 @@ TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
 TEST(GameTuning, DefaultSpawnReadsThePlayerInstance)
 {
     Player player;
+    player.EnsureInit();
     const float before = player.DefaultSpawnPosition().y;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"補う床の上面", 2.5f}, {"補う足元の余白", 0.11f}}), 0u);
     EXPECT_NEAR(player.DefaultSpawnPosition().y - before, 2.1f, 0.0001f);

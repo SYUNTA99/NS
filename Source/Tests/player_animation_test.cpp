@@ -16,7 +16,8 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
     const std::vector<NS::Gfx::AnimationClip> clips = {
         {.name = "idle", .duration = 10.0f}, {.name = "run", .duration = 10.0f}, {.name = "walk", .duration = 10.0f}};
     Player player;
-    NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreatePart("Animation"));
+    player.EnsureInit();
+    NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
     player.Body().SetGrounded(true);
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
@@ -38,7 +39,8 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
 
 TEST(PlayerAnimation, PlayerParamsKeepAllAnimatorNamesAndDefaults)
 {
-    const Player player;
+    Player player;
+    player.EnsureInit();
     const NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -66,7 +68,8 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
                                                        {.name = "fall", .duration = 10.0f},
                                                        {.name = "hang", .duration = 10.0f}};
     Player player;
-    NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreatePart("Animation"));
+    player.EnsureInit();
+    NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
     NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
@@ -91,7 +94,8 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
     const std::vector<NS::Gfx::AnimationClip> clips = {{.name = "idle", .duration = 10.0f},
                                                        {.name = "walk", .duration = 10.0f}};
     Player player;
-    NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreatePart("Animation"));
+    player.EnsureInit();
+    NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
     NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));

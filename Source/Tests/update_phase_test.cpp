@@ -195,7 +195,7 @@ TEST(InterpolationSnapshot, ModelWrittenByAnEarlierPhaseStartsFromTheValueBefore
     // 前の値を書き手より後の段で控えると、先の段で書いた倍率が始点にもなり補間されずに飛ぶ
     NS::Obj::Scene scene;
     NS::Obj::Actor* drawn = scene.SpawnTransient<NS::Obj::Actor>();
-    ASSERT_NE(drawn->CreatePart("Model"), nullptr);
+    ASSERT_NE(drawn->CreateSubObj("Model"), nullptr);
     NS::Obj::Model* model = drawn->ModelSubObj();
     scene.SpawnTransient<DrawScaleWriterActor>(*model);
 
@@ -210,7 +210,7 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
     // 止めている間は段が回らない。前の値の控えも段に置くと、止める前に書いた倍率から補間し続けて絵が揺れる
     NS::Obj::Scene scene;
     NS::Obj::Actor* drawn = scene.SpawnTransient<NS::Obj::Actor>();
-    ASSERT_NE(drawn->CreatePart("Model"), nullptr);
+    ASSERT_NE(drawn->CreateSubObj("Model"), nullptr);
     NS::Obj::Model* model = drawn->ModelSubObj();
     scene.SetSimulationPaused(true);
     ASSERT_TRUE(model->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
@@ -271,7 +271,7 @@ TEST(WorldSpeed, SlowWorldInterpolatesAcrossTheSkippedSteps)
     // 世界を進めない歩に前の値を控えると補間が止まる。割合は前に世界を進めてからの溜めで出す
     NS::Obj::Scene scene;
     NS::Obj::Actor* drawn = scene.SpawnTransient<NS::Obj::Actor>();
-    ASSERT_NE(drawn->CreatePart("Model"), nullptr);
+    ASSERT_NE(drawn->CreateSubObj("Model"), nullptr);
     NS::Obj::Model* model = drawn->ModelSubObj();
     scene.SpawnTransient<DrawScaleWriterActor>(*model);
     scene.SetWorldSpeed(0.5f);

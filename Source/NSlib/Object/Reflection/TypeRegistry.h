@@ -51,13 +51,13 @@ namespace NS::Obj
         std::vector<Entry> m_entries; // 登録順のまま持つ。型の種類は少数なので線形照合で足りる
     };
 
-    //! クラス名から Actor をコードの既定値で作る。未登録のクラスと空の名前は素の Actor
+    //! クラス名から Actor をコードの既定値で作り、Init を済ませて返す。未登録のクラスと空の名前は素の Actor
     [[nodiscard]] std::unique_ptr<Actor> CreateActorOfClass(std::string_view className);
 
     //! object の Actor を作る。className 一致の登録があればその生成関数、該当しなければ素の Actor を返す
     [[nodiscard]] std::unique_ptr<Actor> CreateRegisteredObject(const nlohmann::json& object);
 
-    [[nodiscard]] std::unique_ptr<SubObject> CreatePartDefault(std::string_view typeName);
+    [[nodiscard]] std::unique_ptr<SubObject> CreateSubObjOfType(std::string_view typeName);
 
     //! @brief エディタで置ける Actor の登録の一覧。表示名の順で安定
     //! @details ヒエラルキーの追加メニューとパレットが、置ける種類の列挙に使う

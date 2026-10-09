@@ -29,6 +29,7 @@ namespace
 TEST(PlayerOvercharge, ForcedLaunchFiresOnceAndThenStopsTheChargeShow)
 {
     Player player;
+    player.EnsureInit();
     UseShortOvercharge(player);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     const int full = FramesFor(1.0f);
@@ -96,6 +97,7 @@ TEST(PlayerOvercharge, ForcedLaunchFiresOnceAndThenStopsTheChargeShow)
 TEST(PlayerOvercharge, ForcedLaunchWaitsUntilASlamCanStart)
 {
     Player player;
+    player.EnsureInit();
     UseShortOvercharge(player);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージ突進の距離", 1000.0f}}), 0u);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -138,6 +140,7 @@ TEST(PlayerOvercharge, ForcedLaunchWaitsUntilASlamCanStart)
 TEST(PlayerOvercharge, ReleasingWhileWaitingFiresNothingNew)
 {
     Player player;
+    player.EnsureInit();
     UseShortOvercharge(player);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージ突進の距離", 1000.0f}}), 0u);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);

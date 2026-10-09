@@ -11,10 +11,14 @@ namespace NS::Game::Level
 {
     ImpactMark::ImpactMark() noexcept
     {
-        (void)CreatePart("Model");
-        ModelSubObj()->SetMeshRef("shadowQuad");
-        ModelSubObj()->SetMaterialRef("shadow");
         Root().SetScale(NS::Vector3{m_diameter, 1.0f, m_diameter});
+    }
+
+    void ImpactMark::Init()
+    {
+        NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
+        model->SetMeshRef("shadowQuad");
+        model->SetMaterialRef("shadow");
     }
 
     NS::Obj::Actor* ImpactMark::SpawnAt(NS::Obj::Scene* scene, const NS::Vector3& position)

@@ -56,15 +56,13 @@ namespace
 
     class TimelineMovingActor : public NS::Obj::Actor
     {
-    public:
-        TimelineMovingActor()
-        {
-            (void)CreatePart("Model");
-            ModelSubObj()->SetMeshRef("cube");
-            ModelSubObj()->SetMaterialRef("player");
-        }
-
     protected:
+        void Init() override
+        {
+            NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
+            model->SetMeshRef("cube");
+            model->SetMaterialRef("player");
+        }
         void BodyStep() override { Root().SetPosition(Root().Position() + NS::Vector3{0.1f, 0.0f, 0.0f}); }
     };
 

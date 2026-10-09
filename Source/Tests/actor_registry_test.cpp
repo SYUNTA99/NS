@@ -88,15 +88,15 @@ TEST(ActorRegistry, UnknownClassFallsBackToPlainActor)
 
 TEST(ActorRegistry, PartDefaultsAreOwnedWithoutAnActor)
 {
-    const std::unique_ptr<NS::Obj::SubObject> first = NS::Obj::CreatePartDefault("Model");
-    const std::unique_ptr<NS::Obj::SubObject> second = NS::Obj::CreatePartDefault("Model");
+    const std::unique_ptr<NS::Obj::SubObject> first = NS::Obj::CreateSubObjOfType("Model");
+    const std::unique_ptr<NS::Obj::SubObject> second = NS::Obj::CreateSubObjOfType("Model");
     ASSERT_NE(first, nullptr);
     ASSERT_NE(second, nullptr);
     EXPECT_NE(first.get(), second.get());
     EXPECT_EQ(first->Owner(), nullptr);
     EXPECT_EQ(second->Owner(), nullptr);
-    EXPECT_EQ(NS::Obj::CreatePartDefault("Player"), nullptr);
-    EXPECT_EQ(NS::Obj::CreatePartDefault("NoSuchPart"), nullptr);
+    EXPECT_EQ(NS::Obj::CreateSubObjOfType("Player"), nullptr);
+    EXPECT_EQ(NS::Obj::CreateSubObjOfType("NoSuchPart"), nullptr);
 }
 
 TEST(ActorRegistry, RetiredMapObjectAbilitiesCannotBeCreated)

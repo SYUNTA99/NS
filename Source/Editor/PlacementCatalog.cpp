@@ -1,8 +1,8 @@
 #include "Editor/PlacementCatalog.h"
 
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
 #include <algorithm>
@@ -12,10 +12,10 @@ namespace NS::Editor
 {
     namespace
     {
-        // クラスのコンストラクタが積む構成をそのまま写したひな形。値はコード既定に任せる
+        // クラスの Init が積む構成をそのまま写したひな形。値はコード既定に任せる
         [[nodiscard]] nlohmann::json PrototypeOf(const NS::Obj::TypeRegistry::Entry& entry)
         {
-            const std::unique_ptr<NS::Obj::Actor> actor = entry.create();
+            const std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::CreateActorOfClass(entry.className);
             nlohmann::json prototype = NS::Obj::MakePrototypeJson(*actor);
             NS::Obj::SetObjectJsonClass(prototype, entry.className);
             return prototype;

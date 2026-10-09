@@ -17,19 +17,15 @@ namespace
     class CollisionProbe final : public NS::Obj::Actor
     {
     public:
-        CollisionProbe()
+        NS::Obj::Collider* collider = nullptr;
+        NS::Obj::SphereCollision* sphere = nullptr;
+
+    protected:
+        void Init() override
         {
-            AttachFixedSubObject(collider);
-            AttachFixedSubObject(sphere);
+            collider = CreateSubObj<NS::Obj::Collider>("Collider");
+            sphere = CreateSubObj<NS::Obj::SphereCollision>("Sphere");
         }
-        void ForEachSubObj(const SubObjVisitor& visitor) const override
-        {
-            NS::Obj::Actor::ForEachSubObj(visitor);
-            visitor("Collider", collider);
-            visitor("Sphere", sphere);
-        }
-        mutable NS::Obj::Collider collider;
-        mutable NS::Obj::SphereCollision sphere;
     };
 
     // 上面が y = 0 の床
@@ -62,6 +58,7 @@ namespace
 TEST(CollisionWindow, OverlapBoxIsEmptyOutsideAScene)
 {
     CollisionProbe loose;
+    loose.EnsureInit();
     EXPECT_TRUE(NS::Obj::OverlapBoxCollision(loose, BandAcrossFloorTop()).empty());
 }
 
@@ -93,29 +90,31 @@ TEST(CollisionWindow, ColliderAnswersWithItsOwnersPhysicsScene)
     EXPECT_EQ(bareWindow.GetPhysicsScene(), nullptr);
 
     CollisionProbe loose;
-    const NS::Obj::IUseCollision& looseWindow = loose.collider;
+    loose.EnsureInit();
+    const NS::Obj::IUseCollision& looseWindow = *loose.collider;
     EXPECT_EQ(looseWindow.GetPhysicsScene(), nullptr);
 
     NS::Obj::Scene scene;
     CollisionProbe* placed = scene.SpawnTransient<CollisionProbe>();
-    const NS::Obj::IUseCollision& placedWindow = placed->collider;
+    const NS::Obj::IUseCollision& placedWindow = *placed->collider;
     EXPECT_EQ(placedWindow.GetPhysicsScene(), &scene.Physics());
 }
 
 TEST(CollisionWindow, CollisionSyncsIntoItsOwnersPhysicsScene)
 {
     CollisionProbe loose;
-    loose.sphere.SyncToPhysics();
-    EXPECT_TRUE(loose.sphere.BodyId().IsInvalid());
+    loose.EnsureInit();
+    loose.sphere->SyncToPhysics();
+    EXPECT_TRUE(loose.sphere->BodyId().IsInvalid());
 
     NS::Obj::Scene scene;
     CollisionProbe* placed = scene.SpawnTransient<CollisionProbe>();
     const NS::Vector3 above{0.0f, 2.0f, 0.0f};
-    placed->sphere.RemoveFromPhysics();
-    EXPECT_TRUE(placed->sphere.BodyId().IsInvalid());
+    placed->sphere->RemoveFromPhysics();
+    EXPECT_TRUE(placed->sphere->BodyId().IsInvalid());
     EXPECT_FALSE(HitsDownFrom(scene, above));
 
-    placed->sphere.SyncToPhysics();
-    EXPECT_FALSE(placed->sphere.BodyId().IsInvalid());
+    placed->sphere->SyncToPhysics();
+    EXPECT_FALSE(placed->sphere->BodyId().IsInvalid());
     EXPECT_TRUE(HitsDownFrom(scene, above));
 }

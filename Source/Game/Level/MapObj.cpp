@@ -4,11 +4,11 @@
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactTremor.h"
 #include "Game/Level/SensorKinds.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/Gravity.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 
 #include <algorithm>
 #include <cmath>
@@ -24,10 +24,10 @@ namespace NS::Game::Level
         }
         void OnStep(MapObj& owner, float dt) override
         {
-            if (owner.m_hasLaunched && owner.m_params.RestLifeSeconds() > 0.0f)
+            if (owner.m_hasLaunched && owner.m_params->RestLifeSeconds() > 0.0f)
             {
                 owner.m_restAge += dt;
-                if (owner.m_restAge >= owner.m_params.RestLifeSeconds())
+                if (owner.m_restAge >= owner.m_params->RestLifeSeconds())
                 {
                     owner.BodySensorSubObj()->Invalidate();
                     owner.Sphere().RemoveFromPhysics();
@@ -66,29 +66,25 @@ namespace NS::Game::Level
 
     MapObj::MapObj() noexcept
     {
-        (void)CreatePart("Model");
-        ModelSubObj()->SetMeshRef("sphere");
-        ModelSubObj()->SetBaseColor(NS::Vector3{0.72f, 0.70f, 0.66f});
-        SetCollisionPart(std::make_unique<NS::Obj::SphereCollision>());
-        AttachFixedSubObject(m_params);
-        AttachFixedSubObject(m_hitZones);
-        AttachFixedSubObject(m_effects);
-        // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
-        SetBodySensorPart(std::make_unique<NS::Obj::FollowHitSensor>([collision = &Sphere()] {
-            const NS::Sphere sphere = collision->WorldSphere();
-            return NS::Obj::SensorVolume::Sphere(sphere.center, sphere.radius);
-        }));
-        SetSensorKind(*BodySensorSubObj(), SensorKind::MapObjBody);
-        (void)BuildStateMachine<MapObj, RestingState, FreezeState, LaunchedState>(*this, m_states);
         m_motion.Finish();
     }
 
-    void MapObj::ForEachSubObj(const SubObjVisitor& visitor) const
+    void MapObj::Init()
     {
-        NS::Obj::Actor::ForEachSubObj(visitor);
-        visitor("Params", const_cast<MapObjParams&>(m_params));
-        visitor("HitZones", const_cast<HitZones&>(m_hitZones));
-        visitor("LaunchEffects", const_cast<LaunchEffects&>(m_effects));
+        NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
+        model->SetMeshRef("sphere");
+        model->SetBaseColor(NS::Vector3{0.72f, 0.70f, 0.66f});
+        NS::Obj::SphereCollision* sphere = CreateSubObj<NS::Obj::SphereCollision>(CollisionSlot());
+        m_params = CreateSubObj<MapObjParams>("Params");
+        m_hitZones = CreateSubObj<HitZones>("HitZones");
+        m_effects = CreateSubObj<LaunchEffects>("LaunchEffects");
+        // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
+        NS::Obj::FollowHitSensor* bodySensor = CreateSubObj<NS::Obj::FollowHitSensor>(BodySensorSlot(), [sphere] {
+            const NS::Sphere world = sphere->WorldSphere();
+            return NS::Obj::SensorVolume::Sphere(world.center, world.radius);
+        });
+        SetSensorKind(*bodySensor, SensorKind::MapObjBody);
+        (void)BuildStateMachine<MapObj, RestingState, FreezeState, LaunchedState>(*this, m_states);
     }
 
     void MapObj::InitAfterPlacement()
@@ -113,9 +109,9 @@ namespace NS::Game::Level
 
     void MapObj::ObserveStep()
     {
-        if (m_effects.IsActive())
+        if (m_effects->IsActive())
         {
-            m_effects.BeginStep();
+            m_effects->BeginStep();
         }
     }
 
@@ -132,7 +128,7 @@ namespace NS::Game::Level
 
     void MapObj::VisualStep()
     {
-        TickSubObj(&m_effects);
+        TickSubObj(m_effects);
         // 震えは止めが明けて飛んでいく間に通り抜けるので、状態に依らず根を動かした後で進める
         AdvanceTremor();
     }
@@ -173,8 +169,8 @@ namespace NS::Game::Level
                 const float x2 = desc.impactDir.x * desc.impactDir.x;
                 const float z2 = desc.impactDir.z * desc.impactDir.z;
                 m_freeze.squash = ModelSubObj()->SnapDrawScale(NS::Vector3{1.0f + (desc.squashThickness - 1.0f) * x2,
-                                                                         desc.squashHeight,
-                                                                         1.0f + (desc.squashThickness - 1.0f) * z2});
+                                                                           desc.squashHeight,
+                                                                           1.0f + (desc.squashThickness - 1.0f) * z2});
             }
         }
         SyncCollision();
@@ -305,7 +301,7 @@ namespace NS::Game::Level
         m_hopsLeft = 0;
         if (desc.tier == HitTier::Wide)
         {
-            m_hopsLeft = m_params.MissHopCount();
+            m_hopsLeft = m_params->MissHopCount();
         }
         m_hopIndex = 0;
         m_hopSeed = desc.hopSeed;
@@ -313,7 +309,7 @@ namespace NS::Game::Level
         m_hasLaunched = true;
         m_motion.Build<ArcState, RollingState>(*this);
         (void)m_states->Change<LaunchedState>();
-        m_effects.BeginTrail(desc.tier, desc.power, desc.launchScale, desc.arc.direction);
+        m_effects->BeginTrail(desc.tier, desc.power, desc.launchScale, desc.arc.direction);
         SyncCollision();
     }
 
@@ -363,7 +359,7 @@ namespace NS::Game::Level
         if (NS::Dot(m_velocity, m_arcUp) <= 0.0f)
         {
             NS::Vector3 normal{};
-            if (ProbeFloor(Sphere().WorldSphere().radius / m_params.FloorDot() + m_params.ContactSkin(), normal))
+            if (ProbeFloor(Sphere().WorldSphere().radius / m_params->FloorDot() + m_params->ContactSkin(), normal))
             {
                 Land(normal);
             }
@@ -377,7 +373,7 @@ namespace NS::Game::Level
         const NS::Vector3 down = NS::Obj::GravityDirection(*this);
         if (!NS::Obj::RaycastCollision(
                 *this, sphere.center, down, distance, hitDistance, outNormal, Sphere().BodyId()) ||
-            NS::Dot(outNormal, -down) < m_params.FloorDot())
+            NS::Dot(outNormal, -down) < m_params->FloorDot())
         {
             return false;
         }
@@ -387,7 +383,7 @@ namespace NS::Game::Level
         {
             return false;
         }
-        Root().SetPosition(Root().Position() + down * (hitDistance - clearance - m_params.ContactSkin()));
+        Root().SetPosition(Root().Position() + down * (hitDistance - clearance - m_params->ContactSkin()));
         return true;
     }
 
@@ -396,27 +392,28 @@ namespace NS::Game::Level
         // 外れの跳ねが残っていれば、向きを変えて跳ね直し、曲線の重力で落ちる
         if (m_hopsLeft > 0)
         {
-            const NS::Vector3 hop = MissHopVelocity(m_velocity, m_arcUp, m_params.MissHop(), m_hopSeed, m_hopIndex);
+            const NS::Vector3 hop = MissHopVelocity(m_velocity, m_arcUp, m_params->MissHop(), m_hopSeed, m_hopIndex);
             if (NS::Dot(hop, m_arcUp) > 0.0f)
             {
                 m_velocity = hop;
                 m_arcDeflected = true;
                 --m_hopsLeft;
                 ++m_hopIndex;
-                m_effects.NotifyLanding(Sphere().WorldSphere().center - normal * Sphere().WorldSphere().radius, normal);
+                m_effects->NotifyLanding(Sphere().WorldSphere().center - normal * Sphere().WorldSphere().radius,
+                                         normal);
                 return;
             }
             m_hopsLeft = 0;
         }
         m_velocity -= normal * NS::Dot(m_velocity, normal);
         (void)m_motion.Machine().Change<RollingState>();
-        m_effects.NotifyLanding(Sphere().WorldSphere().center - normal * Sphere().WorldSphere().radius, normal);
+        m_effects->NotifyLanding(Sphere().WorldSphere().center - normal * Sphere().WorldSphere().radius, normal);
     }
 
     void MapObj::StepRolling(float dt)
     {
         NS::Vector3 normal{};
-        if (!ProbeFloor(Sphere().WorldSphere().radius / m_params.FloorDot() + 0.01f, normal))
+        if (!ProbeFloor(Sphere().WorldSphere().radius / m_params->FloorDot() + 0.01f, normal))
         {
             m_arcDeflected = true;
             (void)m_motion.Machine().Change<ArcState>();
@@ -426,8 +423,8 @@ namespace NS::Game::Level
         const NS::Vector3 downhill = NS::Obj::GravityDirection(*this);
         m_velocity += (downhill - normal * NS::Dot(downhill, normal)) * (m_arc.riseGravity * dt);
         const float speed = m_velocity.Length();
-        const float reduced = std::max(0.0f, speed - m_params.Friction() * m_arc.riseGravity * dt);
-        if (reduced <= m_params.StopSpeed())
+        const float reduced = std::max(0.0f, speed - m_params->Friction() * m_arc.riseGravity * dt);
+        if (reduced <= m_params->StopSpeed())
         {
             m_velocity = NS::Vector3{};
             m_motion.Finish();
@@ -440,10 +437,10 @@ namespace NS::Game::Level
     void MapObj::MoveLaunched(float dt)
     {
         float remaining = dt;
-        for (int contact = 0; contact < m_params.MaxContacts() && remaining > 0.0f; ++contact)
+        for (int contact = 0; contact < m_params->MaxContacts() && remaining > 0.0f; ++contact)
         {
             const float speed = m_velocity.Length();
-            if (!(speed > m_params.StopSpeed()))
+            if (!(speed > m_params->StopSpeed()))
             {
                 break;
             }
@@ -458,7 +455,7 @@ namespace NS::Game::Level
             const float approach = -NS::Dot(direction, normal);
             if (blocked && approach > 0.0001f)
             {
-                allowed = std::max(0.0f, distance - sphere.radius / approach - m_params.ContactSkin());
+                allowed = std::max(0.0f, distance - sphere.radius / approach - m_params->ContactSkin());
                 blocked = allowed < travel;
             }
             else
@@ -472,7 +469,7 @@ namespace NS::Game::Level
             }
             Root().SetPosition(Root().Position() + direction * allowed);
             remaining -= allowed / speed;
-            if (NS::Dot(normal, -NS::Obj::GravityDirection(*this)) >= m_params.FloorDot() &&
+            if (NS::Dot(normal, -NS::Obj::GravityDirection(*this)) >= m_params->FloorDot() &&
                 m_motion.Machine().IsCurrent<ArcState>())
             {
                 Land(normal);
@@ -481,14 +478,14 @@ namespace NS::Game::Level
             const float into = NS::Dot(m_velocity, normal);
             if (into < 0.0f)
             {
-                m_velocity -= normal * ((1.0f + m_params.Restitution()) * into);
+                m_velocity -= normal * ((1.0f + m_params->Restitution()) * into);
                 m_arcDeflected = true;
             }
-            Root().SetPosition(Root().Position() + normal * m_params.ContactSkin());
+            Root().SetPosition(Root().Position() + normal * m_params->ContactSkin());
         }
         const NS::Vector3 up = -NS::Obj::GravityDirection(*this);
         const NS::Vector3 horizontal = m_velocity - up * NS::Dot(m_velocity, up);
-        const NS::Vector3 spin = NS::Cross(up, horizontal) * m_params.SpinPerSpeed();
+        const NS::Vector3 spin = NS::Cross(up, horizontal) * m_params->SpinPerSpeed();
         const float rate = spin.Length();
         if (std::isfinite(rate) && rate > 0.0001f)
         {
@@ -503,7 +500,7 @@ namespace NS::Game::Level
         float distance = 0.0f;
         NS::Vector3 normal{};
         if (NS::Obj::RaycastCollision(
-                *this, sphere.center, down, m_params.MarkProbeDistance(), distance, normal, Sphere().BodyId()))
+                *this, sphere.center, down, m_params->MarkProbeDistance(), distance, normal, Sphere().BodyId()))
         {
             (void)ImpactMark::SpawnAt(OwningScene(), sphere.center + down * distance + normal * 0.02f);
         }
@@ -527,7 +524,7 @@ namespace NS::Game::Level
         Root().SetRotation(rotation);
         Appear();
         BodySensorSubObj()->Validate();
-        m_effects.CancelTrail();
+        m_effects->CancelTrail();
         SyncCollision();
     }
 
@@ -552,15 +549,15 @@ namespace NS::Game::Level
                 return false;
             }
             TackleTargetAnswer& answer = ask->Answer();
-            answer.mass = m_params.Mass();
-            answer.toughness = m_params.Toughness();
+            answer.mass = m_params->Mass();
+            answer.toughness = m_params->Toughness();
             // TODO: 壊れる動きは破壊を再開する時に足す。それまで壊れない
             answer.breakable = false;
             answer.placed = !IsFlying();
             answer.position = Root().Position();
             const NS::Obj::SensorVolume body = BodySensorSubObj()->WorldVolume();
             answer.bounds = body.Bounds();
-            answer.face = m_hitZones.Face();
+            answer.face = m_hitZones->Face();
             answer.body = body;
             return true;
         }

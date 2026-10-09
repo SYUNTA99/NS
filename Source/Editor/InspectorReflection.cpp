@@ -69,7 +69,7 @@ namespace NS::Editor
                 return entry.second.get();
             }
         }
-        std::unique_ptr<NS::Obj::SubObject> created = NS::Obj::CreatePartDefault(typeName);
+        std::unique_ptr<NS::Obj::SubObject> created = NS::Obj::CreateSubObjOfType(typeName);
         const NS::Obj::SubObject* result = created.get();
         m_byType.emplace_back(std::string(typeName), std::move(created));
         return result;

@@ -33,12 +33,13 @@ namespace NS::Editor
         std::vector<NS::Obj::SubObject*> ReflectedSubObjects(NS::Obj::Actor& go)
         {
             std::vector<NS::Obj::SubObject*> result;
-            go.ForEachSubObj([&result](std::string_view, NS::Obj::SubObject& part) {
-                if (part.GetReflection() != nullptr)
+            for (NS::Obj::SubObject* subObject : go.SubObjs())
+            {
+                if (subObject->GetReflection() != nullptr)
                 {
-                    result.push_back(&part);
+                    result.push_back(subObject);
                 }
-            });
+            }
             return result;
         }
     } // namespace
@@ -198,7 +199,7 @@ namespace NS::Editor
             {
                 const std::string typeName{subObjects[k]->ClassName()};
                 // 根の部品は上の専用パネルが編集するので一覧に出さない
-                if (go->PartName(*subObjects[k]) == NS::Obj::k_TransformSubObjName)
+                if (subObjects[k]->Name() == NS::Obj::k_TransformSubObjName)
                 {
                     continue;
                 }
@@ -220,7 +221,7 @@ namespace NS::Editor
                 ImGui::PushStyleColor(ImGuiCol_Header, NS::Editor::k_SubObjectHeaderColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderHovered, NS::Editor::k_SubObjectHeaderHoveredColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderActive, NS::Editor::k_SubObjectHeaderActiveColor);
-                std::string header{go->PartName(*subObjects[k])};
+                std::string header{subObjects[k]->Name()};
                 if (header != typeName)
                 {
                     header += " (";

@@ -82,18 +82,26 @@ namespace NS::Obj
 
     std::unique_ptr<Actor> CreateActorOfClass(std::string_view className)
     {
+        std::unique_ptr<Actor> actor;
+        const TypeRegistry::Entry* entry = nullptr;
         if (!className.empty())
         {
-            const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
-            if (entry != nullptr && entry->create != nullptr)
-            {
-                return entry->create();
-            }
+            entry = TypeRegistry::Get().Find(className);
         }
-        return std::make_unique<Actor>();
+        if (entry != nullptr && entry->create != nullptr)
+        {
+            actor = entry->create();
+        }
+        else
+        {
+            actor = std::make_unique<Actor>();
+        }
+        // 部品を作ってから返す。データの読み込みは返った部品へ欄を流し込む
+        actor->EnsureInit();
+        return actor;
     }
 
-    std::unique_ptr<SubObject> CreatePartDefault(std::string_view typeName)
+    std::unique_ptr<SubObject> CreateSubObjOfType(std::string_view typeName)
     {
         const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(typeName);
         if (entry != nullptr && entry->createDefault != nullptr)

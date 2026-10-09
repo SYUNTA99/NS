@@ -25,7 +25,7 @@ namespace NS::Obj
     //! @details 部品を作れないか作らない時は警告を出してその部品を読み飛ばす
     //! @param[in,out] obj 書く先の配置物
     //! @param[in] object 配置物の JSON
-    //! @param[in] creation obj がまだ持たない部品を CreatePart で作るか
+    //! @param[in] creation obj がまだ持たない部品を CreateSubObj で作るか
     void ApplyObjectSubObjs(Actor& obj, const nlohmann::json& object, SubObjCreation creation);
 
     //! @brief 配置物の JSON から配置物を組む唯一の汎用経路
@@ -40,12 +40,13 @@ namespace NS::Obj
     //! @details transform 以外の値は写さずコード既定に任せる疎な写し。id は 0 で、置く時に振る
     [[nodiscard]] nlohmann::json MakePrototypeJson(const Actor& obj);
 
-    //! @brief Actor 派生 T のコンストラクタが積む構成からひな形の JSON を作る
+    //! @brief Actor 派生 T の Init が積む構成からひな形の JSON を作る
     //! @details 派生クラスの構成を手書きレシピへ並記せず、クラス自身を構成と既定値の唯一の出所にする
     template <class T> [[nodiscard]] nlohmann::json MakePrototypeJson()
     {
         static_assert(std::is_base_of_v<Actor, T>, "T は Actor 派生でなければならない");
-        const T prototype{};
+        T prototype{};
+        prototype.EnsureInit();
         return MakePrototypeJson(prototype);
     }
 } // namespace NS::Obj

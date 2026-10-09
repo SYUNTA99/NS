@@ -20,6 +20,7 @@
 TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
 {
     Player player;
+    player.EnsureInit();
     NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -49,6 +50,7 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
 TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
 {
     Player player;
+    player.EnsureInit();
     NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -79,6 +81,7 @@ TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
 TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
 {
     Player player;
+    player.EnsureInit();
     NS::Game::Player::PlayerParams* params =
         NS::Obj::Cast<NS::Game::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -152,7 +155,8 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
 // クラスに無い部品の鍵が同梱の種類の既定値と場面に残ると、読むたびに読み飛ばしの警告が出る
 TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
 {
-    const Player player;
+    Player player;
+    player.EnsureInit();
     const nlohmann::json* archetype = NS::Obj::ArchetypeLibrary::Get().Find("Player");
     ASSERT_NE(archetype, nullptr);
     for (nlohmann::json::const_iterator it = NS::Obj::ObjectJsonSubObjs(*archetype).begin();

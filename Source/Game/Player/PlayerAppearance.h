@@ -1,8 +1,8 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/Reflection/Reflection.h"
+#include "NSlib/Object/SubObject.h"
 
 #include <cstdint>
 #include <string>
@@ -29,26 +29,9 @@ namespace NS::Game::Player
     struct MissTumble;
 
     //! @brief 自機の立ち姿と玉の 2 つの見た目を持ち、丸まる時に同居する Model の mesh を持ち替える
-    //! @details 見た目の欄が空なら仮の形を使う。立ち姿は当たりのカプセルと同じ寸法のカプセル、玉は同じ半径の球
-    //! 寸法は当たりの部品 Collider が移動に使うカプセルから引き、見た目の側には数を持たない
-    //! 欄に ContentRoot 相対の参照を書けば、そのファイルの mesh を使う。引き当てられない参照は仮の形へ戻す
-    //! 根の Transform は書かない。位置は移動が持ち、スケールは配置の値のまま
-    //! 自機の描く形の倍率を書くのはここだけで、OnUpdate で 1 回組んで同居する Model の描く時だけの倍率へ書く。
-    //! 当たりの形が動いている間は ImpactResolver::ShapeFactors、それ以外は縦を Player::StanceHeight に
-    //! した倍率を元にし、着地の潰れを成分ごとに掛ける
-    //! 丸まっているかの正は持ち主の Player が持ち、毎フレームそれを見た目へ写す
-    //! 玉の間は同居する Model の局所の回転を回す。溜めている間は狙いの線の向きへ、溜めに入る前に
-    //! 押している間と線の無い時は Player::AimDirection へ、突進中は進む向きへ、
-    //! 反動の間は弾かれた向きへ前転する。外れの反動と着地からこすって止まる間は、突進の回転から当たりが決めた
-    //! ねじれへ寄せ、軸をぶらして回る
-    //! 反動のまま着地したフレームに、同居する Model の描く時だけの倍率で縦に潰し、決めたフレーム数で戻す。
-    //! 跳びの着地は潰さない
-    //! 溜め量の正は持ち主の Player::ChargeJudge で、ここは読むだけ
-    //! Player の見た目の段 (VisualStep) が移動の段と HitReaction の後に呼ぶ。
-    //! 配置物を組む経路 (ObjectFromJson / StartSpawned) では
-    //! 参照の引き当てが Player::ForEachSubObj の並びに回るので、Model が自分の参照から mesh を差した後にこちらが差す
-    //! 依存: Player, NS::Obj::Body / Collider, NS::Game::Level::ImpactResolver,
-    //! NS::Obj::Model, NS::Obj::AssetManager
+    //! @details 見た目の欄が空なら仮の形を使う。寸法は Collider のカプセルから引き、ここには数を持たない
+    //! 根の Transform は書かない。丸まりと溜め量の正は持ち主の Player で、ここは写すか読むだけ
+    //! 参照の引き当ては部品の並びで回る。Model が mesh を差した後にこちらが差す
     // TODO: Scene::ApplyFromJson は値の変わった部品だけ引き直す。Model の値の undo で mesh が
     // 組み込みの cube に戻り、当たり (Collider) の寸法の変更に見た目が付いてこない。編集へ戻る時の LoadJson で直る
     class PlayerAppearance : public NS::Obj::SubObject

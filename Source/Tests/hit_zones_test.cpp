@@ -968,7 +968,7 @@ TEST(HitSensor, UnsetKindIsNotATackleTarget)
     ASSERT_NE(rock, nullptr);
     rock->Root().SetPosition(Vector3{0.0f, 0.5f, -5.0f});
     std::unique_ptr<NS::Obj::Actor> bare = std::make_unique<NS::Obj::Actor>();
-    NS::Obj::ShapeHitSensor* sensor = NS::Obj::Cast<NS::Obj::ShapeHitSensor>(bare->CreatePart("BodySensor"));
+    NS::Obj::ShapeHitSensor* sensor = NS::Obj::Cast<NS::Obj::ShapeHitSensor>(bare->CreateSubObj("BodySensor"));
     ASSERT_NE(sensor, nullptr);
     sensor->SetSphere(0.5f);
     bare->Root().SetPosition(Vector3{0.0f, 0.5f, 2.0f});

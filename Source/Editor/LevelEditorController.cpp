@@ -82,14 +82,14 @@ namespace
     // 部品のうち動く体の当たり (Collider) を返す。持たなければ nullptr
     const NS::Obj::Collider* ColliderOf(const NS::Obj::Actor& object) noexcept
     {
-        const NS::Obj::Collider* found = nullptr;
-        object.ForEachSubObj([&found](std::string_view, NS::Obj::SubObject& part) {
-            if (found == nullptr)
+        for (const NS::Obj::SubObject* subObject : object.SubObjs())
+        {
+            if (const NS::Obj::Collider* collider = NS::Obj::Cast<NS::Obj::Collider>(subObject))
             {
-                found = NS::Obj::Cast<NS::Obj::Collider>(&part);
+                return collider;
             }
-        });
-        return found;
+        }
+        return nullptr;
     }
 
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状
@@ -1352,7 +1352,7 @@ bool LevelEditorController::PromoteFieldToArchetype(NS::Obj::SubObject& comp, st
         {
             continue;
         }
-        NS::Obj::SubObject* part = actor->FindSubObj(owner->PartName(comp));
+        NS::Obj::SubObject* part = actor->FindSubObj(comp.Name());
         if (part == nullptr || part->GetReflection() == nullptr || typeName != part->GetReflection()->typeName)
         {
             continue;
@@ -1550,7 +1550,7 @@ void LevelEditorController::SetSubObjectEnabledOnSelected(NS::Obj::SubObject& co
     }
     // 入力 SubObject を休止させると player が動かなくなる。根の部品も同様に守る
     const std::string_view typeName = comp.ClassName();
-    if (typeName == "PlayerInput" || object->PartName(comp) == NS::Obj::k_TransformSubObjName)
+    if (typeName == "PlayerInput" || comp.Name() == NS::Obj::k_TransformSubObjName)
     {
         return;
     }
