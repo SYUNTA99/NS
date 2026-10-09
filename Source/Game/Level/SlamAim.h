@@ -16,7 +16,7 @@ namespace GL::Level
     {
         NS::Vector3 origin;    //!< 線を引き始める自機の位置 (配置物の根)。世界座標
         NS::Vector3 direction; //!< カメラの管理役の ViewPose から作った水平の前。正規化済みで y は 0
-        float length = 0.0f;         //!< 線に沿って突進が止まる所までの距離。欄「突進距離」の値で、単位は m
+        float length = 0.0f;   //!< 線に沿って突進が止まる所までの距離。欄「突進距離」の値で、単位は m
         //! 溜めて放つ瞬間の縦の速さ (m/s)。上が正。狙う相手の SlamLineTarget::launchVerticalSpeed で、相手が無ければ 0
         float launchVerticalSpeed = 0.0f;
         bool grounded = false; //!< 線を控えた時に接地していたか。真なら道筋は放った高さより下へ行かない
@@ -25,12 +25,12 @@ namespace GL::Level
     //! @brief 突進の線で最初に触れる相手の予測
     struct SlamLineTarget
     {
-        NS::Obj::ActorRef target{};  //!< 相手の配置物
-        NS::AABB bounds{};     //!< 相手の当たりの外接箱。世界座標
-        NS::Vector3 origin;    //!< 探した時の自機の位置。世界座標
-        NS::Vector3 direction; //!< 探した水平の向き。正規化済みで y は 0
-        float along = 0.0f;          //!< 自機の位置から相手の外接箱の中心までの、線に沿った水平の距離。単位は m
-        float offset = 0.0f;         //!< 面の判定の横ずれ。0 以上 1 以下で、裁定の当たりの横ずれと同じ式
+        NS::Obj::ActorRef target{}; //!< 相手の配置物
+        NS::AABB bounds{};          //!< 相手の当たりの外接箱。世界座標
+        NS::Vector3 origin;         //!< 探した時の自機の位置。世界座標
+        NS::Vector3 direction;      //!< 探した水平の向き。正規化済みで y は 0
+        float along = 0.0f;         //!< 自機の位置から相手の外接箱の中心までの、線に沿った水平の距離。単位は m
+        float offset = 0.0f;        //!< 面の判定の横ずれ。0 以上 1 以下で、裁定の当たりの横ずれと同じ式
         //! 線を進む自機の当たりの玉が相手の当たりの形に初めて触れるまでに、玉の中心が線に沿って進む距離。単位は m。
         //! 1 mm の幅で、触れている側へ丸める
         float contact = 0.0f;

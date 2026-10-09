@@ -279,8 +279,7 @@ TEST(HitTimeline, ShippedCenterSlowsTheWorldOnlyForPurple)
     }
     for (const GL::Level::HitEvent& event : center->events)
     {
-        if (const GL::Level::GradualReleaseEvent* release =
-                std::get_if<GL::Level::GradualReleaseEvent>(&event.value))
+        if (const GL::Level::GradualReleaseEvent* release = std::get_if<GL::Level::GradualReleaseEvent>(&event.value))
         {
             ++releases;
             EXPECT_TRUE(release->overchargedOnly);
