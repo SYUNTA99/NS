@@ -5,7 +5,10 @@
 
 namespace GL::Level
 {
-    float ScreenPixelsToMeters(float pixels, const NS::Obj::CameraPose& pose, const NS::Vector3& at, float referenceHeight) noexcept
+    float ScreenPixelsToMeters(float pixels,
+                               const NS::Obj::CameraPose& pose,
+                               const NS::Vector3& at,
+                               float referenceHeight) noexcept
     {
         if (!std::isfinite(referenceHeight) || referenceHeight <= 0.0f)
         {

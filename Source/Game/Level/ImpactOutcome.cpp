@@ -220,8 +220,7 @@ namespace GL::Level
             {
                 slide = slide - normal * slide.Dot(normal);
             }
-            outcome.reboundArc.missTumble =
-                GL::Player::MissTumble{.twist = normal.Cross(slide), .power = input.power};
+            outcome.reboundArc.missTumble = GL::Player::MissTumble{.twist = normal.Cross(slide), .power = input.power};
             // 浮く感じは真ん中だけの物にする。下を向いた面は地面へ叩きつけられ、さらに低く跳ねる
             const float downward = NS::Clamp(-normal.y, 0.0f, 1.0f);
             const float slam = 1.0f - (1.0f - tuning.missSlamBounce) * downward;

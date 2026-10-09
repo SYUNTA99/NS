@@ -32,9 +32,7 @@ namespace
 
     // 試しの側で書いた震えの式。シェーダーの式と別に書き、出力と比べる
     // 衝突点は world 行列の位置 origin からのずれ
-    NS::Vector3 ExpectedOffset(const NS::Gfx::TremorCB& tremor,
-                                     const NS::Vector3& origin,
-                                     const NS::Vector3& pos)
+    NS::Vector3 ExpectedOffset(const NS::Gfx::TremorCB& tremor, const NS::Vector3& origin, const NS::Vector3& pos)
     {
         if (!(tremor.amplitude > 0.0f) || !(tremor.ringFrames > 0.0f))
         {
@@ -118,8 +116,8 @@ namespace
 
         // points は模型の空間の位置。world は origin への平行移動にし、出力は世界の位置
         std::vector<NS::Vector3> Run(const NS::Gfx::TremorCB& tremor,
-                                           const NS::Vector3& origin,
-                                           const std::vector<NS::Vector3>& points)
+                                     const NS::Vector3& origin,
+                                     const std::vector<NS::Vector3>& points)
         {
             std::vector<NS::Vector3> out;
             NS::Gfx::FrameCB constants{};
@@ -237,8 +235,7 @@ namespace
         for (int i = 0; i < 24; ++i)
         {
             const float a = static_cast<float>(i) * k_Pi / 12.0f;
-            points.push_back(
-                NS::Vector3{0.5f * std::cos(a), 0.5f * std::sin(a) * 0.6f, 0.5f * std::sin(a) * 0.8f});
+            points.push_back(NS::Vector3{0.5f * std::cos(a), 0.5f * std::sin(a) * 0.6f, 0.5f * std::sin(a) * 0.8f});
         }
         return points;
     }

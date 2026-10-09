@@ -15,12 +15,12 @@ namespace NS::Gfx
     struct alignas(16) TremorCB
     {
         NS::Vector3 contactOffset{};         //!< 衝突点の、world 行列の位置からのずれ (世界の長さ、m)
-        float amplitude = 0.0f;                    //!< 振れ幅 (m)。0 で震えない
+        float amplitude = 0.0f;              //!< 振れ幅 (m)。0 で震えない
         NS::Vector3 right{1.0f, 0.0f, 0.0f}; //!< 画面の右の世界の向き。長さ 1
-        float elapsedFrames = 0.0f;                //!< 震え始めてからのゲームのフレーム数。始まりのフレームが 0
+        float elapsedFrames = 0.0f;          //!< 震え始めてからのゲームのフレーム数。始まりのフレームが 0
         NS::Vector3 up{0.0f, 1.0f, 0.0f};    //!< 画面の上の世界の向き。長さ 1
-        float framesPerMeter = 0.0f;               //!< 衝突点から 1 m 離れるごとに遅れて始まるフレーム数
-        float ringFrames = 0.0f;                   //!< 1 か所が震えるフレーム数。0 以下は震えない
+        float framesPerMeter = 0.0f;         //!< 衝突点から 1 m 離れるごとに遅れて始まるフレーム数
+        float ringFrames = 0.0f;             //!< 1 か所が震えるフレーム数。0 以下は震えない
         float pad0 = 0.0f;
         float pad1 = 0.0f;
         float pad2 = 0.0f;

@@ -3,8 +3,8 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Graphics/DrawItem.h"
-#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/IRenderable.h"
+#include "NSlib/Object/SubObject.h"
 
 #include <string>
 #include <utility>
@@ -209,8 +209,7 @@ namespace NS::Obj
         };
 
         // 描く world 行列。描く時だけのずれの代わりに offset を足す
-        [[nodiscard]] NS::Matrix DrawWorldMatrixWithOffset(float alpha,
-                                                                 const NS::Vector3& offset) const noexcept;
+        [[nodiscard]] NS::Matrix DrawWorldMatrixWithOffset(float alpha, const NS::Vector3& offset) const noexcept;
         // material と world 行列を詰めた DrawItem を作る。他の定数は形と描く設定から詰める
         [[nodiscard]] NS::Gfx::DrawItem MakeDrawItem(const NS::Gfx::RenderContext& context,
                                                      NS::Gfx::Material* material,
@@ -219,8 +218,8 @@ namespace NS::Obj
         // 描く形の局所の境界。差された境界を先に、無ければ mesh の境界。どちらも無ければ nullptr
         [[nodiscard]] const NS::AABB* DrawnLocalBounds() const noexcept;
 
-        NS::Gfx::Mesh* m_mesh = nullptr;                 // 描画する Mesh (非所有)
-        NS::Gfx::Material* m_material = nullptr;         // 描画に使う Material (非所有)
+        NS::Gfx::Mesh* m_mesh = nullptr;           // 描画する Mesh (非所有)
+        NS::Gfx::Material* m_material = nullptr;   // 描画に使う Material (非所有)
         NS::Vector3 m_baseColor{1.0f, 1.0f, 1.0f}; // 個体色、lighting と別系統
         // 保存・編集される参照文字列。build 時に解決して m_mesh / m_material へ実体を当てる
         std::string m_meshRef{};
