@@ -3,6 +3,7 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Transform.h"
+#include "NSlib/Windows/Clock.h"
 
 namespace NS::Obj
 {
@@ -32,6 +33,15 @@ namespace NS::Obj
             return nullptr;
         }
         return m_owner->OwningScene();
+    }
+
+    float SubObject::BodyDelta() const noexcept
+    {
+        if (m_owner == nullptr)
+        {
+            return NS::OS::FrameTimer::FixedDelta();
+        }
+        return m_owner->BodyDelta();
     }
 
     Transform& SubObject::RootTransform() noexcept

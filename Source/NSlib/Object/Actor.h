@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Object/ActorBase.h"
+#include "NSlib/Object/IUse/IUseTime.h"
 #include "NSlib/Object/StateMachine.h"
 #include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/Transform.h"
@@ -38,8 +39,9 @@ namespace NS::Obj
     };
 
     //! @brief 世界に置く物の基底。Transform と部品を持ち、MapParts / MapObj / Player などが派生する
-    //! @details 所属シーンと窓口 (IUse〜) は土台の ActorBase が持つ
-    class Actor : public ActorBase
+    //! @details 所属シーンと IUse〜 は基底の ActorBase が持つ
+    //! 体の時計 IUseTime は体を持つ Actor だけが継ぐ
+    class Actor : public ActorBase, public IUseTime
     {
     public:
         Actor() noexcept;
@@ -52,6 +54,11 @@ namespace NS::Obj
         [[nodiscard]] const Transform& Root() const noexcept { return *m_transform; }
         [[nodiscard]] IStateMachine* GetStateMachine() noexcept override;
         [[nodiscard]] const IStateMachine* GetStateMachine() const noexcept override;
+        [[nodiscard]] float BodyDelta() const noexcept override;
+        [[nodiscard]] float BodyTimeScale() const noexcept override { return m_bodyTimeScale; }
+        //! @brief 体の倍率を書く
+        //! @return 書いた場合 true、非有限か 0 以下で断って前の値を残した場合は false
+        [[nodiscard]] bool SetBodyTimeScale(float scale) noexcept;
 
         //! @brief OnInit を 1 回だけ呼ぶ。2 回目からは何もしない
         //! @details CreateActorOfClass と ActorList に入る所が呼ぶ。Scene に入れずに部品を触る時は自分で呼ぶ
@@ -301,6 +308,7 @@ namespace NS::Obj
         std::vector<Actor*> m_children;   // 子 Actor、非所有
         Actor* m_parent = nullptr;        // 親 Actor、root なら nullptr
         bool m_transient = false;         // 一時オブジェクトの印。保存・凍結に写らない
+        float m_bodyTimeScale = 1.0f;
 
         void DetachFromParent() noexcept;
     };

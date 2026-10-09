@@ -13,7 +13,6 @@
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Windows/Clock.h"
 #include <algorithm>
 #include <cmath>
 
@@ -169,7 +168,7 @@ namespace GL::Player
         }
         // 放した後の空中と、反動に入らずに突進が終わった後は、直前のフレームの軸と速さのまま回る
 
-        const float degrees = m_spinSpeed * NS::OS::FrameTimer::FixedDelta();
+        const float degrees = m_spinSpeed * BodyDelta();
         const float radians = NS::ToRadians(NS::Degrees{degrees}).value;
         const NS::Quaternion turn = NS::Quaternion::CreateFromAxisAngle(m_spinAxis, radians);
         // 既に回った姿勢の後に今の軸の回転を足す。SimpleMath の q1 * q2 は q1 の後に q2 で、軸は根の空間で固定
@@ -229,9 +228,10 @@ namespace GL::Player
         NS::Vector3 side = axis.Cross(helper);
         side.Normalize();
         const NS::Vector3 other = axis.Cross(side);
+        // TODO: 歩の数に今の歩の秒を掛けるので、倍率が途中で変わると位相が跳ぶ
+        // 外した反動の間に倍率を動かす時に、経過の秒を足し込む形へ変える
         const float phase = m_tumbleWobblePhase + 2.0f * NS::k_Pi * m_missWobbleTurnsPerSecond *
-                                                      static_cast<float>(m_tumbleSteps) *
-                                                      NS::OS::FrameTimer::FixedDelta();
+                                                      static_cast<float>(m_tumbleSteps) * BodyDelta();
         const float tilt = NS::ToRadians(NS::Degrees{m_missWobbleDegrees}).value;
         const NS::Vector3 lean = side * std::cos(phase) + other * std::sin(phase);
         NS::Vector3 tilted = axis * std::cos(tilt) + lean * std::sin(tilt);

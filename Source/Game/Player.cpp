@@ -34,7 +34,6 @@
 #include "NSlib/Object/IUse/IUseSceneObj.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
-#include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>
@@ -181,7 +180,7 @@ void Player::ObserveStep()
 
 void Player::DecideStep()
 {
-    AdvanceCharge(NS::OS::FrameTimer::FixedDelta());
+    AdvanceCharge(BodyDelta());
     if (m_resolver->IsActive())
     {
         m_resolver->StepState();
@@ -195,7 +194,7 @@ void Player::DecideStep()
 
 void Player::StateStep()
 {
-    const float dt = NS::OS::FrameTimer::FixedDelta();
+    const float dt = BodyDelta();
     if (CanMoveBody() && dt > 0.0f)
     {
         PrepareStateStep();
@@ -211,7 +210,7 @@ void Player::StateStep()
 
 void Player::BodyStep()
 {
-    const float dt = NS::OS::FrameTimer::FixedDelta();
+    const float dt = BodyDelta();
     if (CanMoveBody() && dt > 0.0f)
     {
         MoveBody(dt);

@@ -20,7 +20,7 @@ namespace NS::Obj
     //! ライフサイクル:
     //!   - OnStart() — Scene attach 直後に 1 回
     //!   - OnUpdate() — 持ち主の Actor のクラスが自分の Update の中で呼んだ時だけ。IsActive()==false なら呼ばれない
-    //!     dt は NS::OS::FrameTimer::FixedDelta() で取得する。全て static なので Application 不要
+    //!     体の動きと見た目の dt は BodyDelta で持ち主の体の時計から取る
     //!   - OnEndPlay() — Scene 破棄 / SubObject 廃棄前に 1 回
     class SubObject : public Object
     {
@@ -38,6 +38,9 @@ namespace NS::Obj
 
         //! 持ち主の居る Scene。持ち主が無いか Scene に居なければ nullptr
         [[nodiscard]] Scene* OwningScene() const noexcept;
+
+        //! 持ち主の体の 1 歩の秒。持ち主が無ければ固定の 1 歩の秒
+        [[nodiscard]] float BodyDelta() const noexcept;
 
         //! 所有 Actor の root Transform への近道。型名衝突回避のため RootTransform 命名
         [[nodiscard]] Transform& RootTransform() noexcept;

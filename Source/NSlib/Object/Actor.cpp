@@ -12,6 +12,7 @@
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 
 namespace NS::Obj
@@ -130,11 +131,30 @@ namespace NS::Obj
         return true;
     }
 
+    float Actor::BodyDelta() const noexcept
+    {
+        return NS::OS::FrameTimer::FixedDelta() * m_bodyTimeScale;
+    }
+
+    bool Actor::SetBodyTimeScale(float scale) noexcept
+    {
+        if (!std::isfinite(scale) || !(scale > 0.0f))
+        {
+            NS_LOG_ERROR(Scene,
+                         "Actor::SetBodyTimeScale: 体の倍率 {} は正の有限値でない。前の {} を残す",
+                         scale,
+                         m_bodyTimeScale);
+            return false;
+        }
+        m_bodyTimeScale = scale;
+        return true;
+    }
+
     void Actor::StepStateMachine()
     {
         if (m_stateMachine != nullptr)
         {
-            m_stateMachine->Step(NS::OS::FrameTimer::FixedDelta());
+            m_stateMachine->Step(BodyDelta());
         }
     }
 

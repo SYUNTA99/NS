@@ -7,7 +7,6 @@
 #include "NSlib/Object/AssetManager.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
 #include <cctype>
@@ -259,7 +258,7 @@ namespace NS::Obj
         const float duration = Duration();
         if (m_playing && duration > 0.0f)
         {
-            m_time += NS::OS::FrameTimer::FixedDelta() * m_speed;
+            m_time += BodyDelta() * m_speed;
             if (m_looping)
             {
                 m_time = std::fmod(m_time, duration);

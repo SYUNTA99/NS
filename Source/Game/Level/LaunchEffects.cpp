@@ -6,7 +6,6 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/SphereCollision.h"
-#include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>
@@ -119,7 +118,7 @@ namespace GL::Level
 
         // 置物が自分を動かす Triggers の段より前に走るので、帯の頭は放した時の速度で 1 フレーム先へ置く
         // 帯の点の +Y を飛ぶ向きへ回す。揃えないと、横から見た時に幅が道に沿って潰れる
-        const Vector3 head = Owner()->Root().Position() + m_body->Velocity() * NS::OS::FrameTimer::FixedDelta();
+        const Vector3 head = Owner()->Root().Position() + m_body->Velocity() * BodyDelta();
         NS::Gfx::EffectPlayDesc desc =
             PlayAt(head, TurnUpTo(NormalizedOr(m_body->Velocity(), m_launchDir)), Uniform(m_trailScale));
         // 0 番が橙、1 番が大きな外れの灰。2 番が点の寿命
