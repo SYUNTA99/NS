@@ -28,6 +28,7 @@ namespace NS::Obj
 namespace GL::Player
 {
     class PlayerParams;
+    class PlayerClips;
     class PlayerAppearance;
     class ChargeEffects;
     class ImpactEffects;
@@ -547,6 +548,7 @@ private:
     [[nodiscard]] std::string_view ChooseClip(float lateralSpeed) const noexcept;
     [[nodiscard]] float ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept;
     GL::Player::PlayerParams* m_params = nullptr;
+    GL::Player::PlayerClips* m_clips = nullptr;
     std::string m_appliedClip{};
     NS::Obj::PlayerInput* m_input = nullptr;
     NS::Obj::Body* m_body = nullptr;

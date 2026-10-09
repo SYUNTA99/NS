@@ -1,4 +1,5 @@
 #include "Game/Player.h"
+#include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/Archetype.h"
@@ -24,15 +25,21 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
     GL::Player::PlayerParams* params = NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*params);
-    const nlohmann::json expected = {{"チャージしきい値秒", 0.2f},
-                                     {"チャージ満タン秒", 1.0f},
-                                     {"チャージ減速率", 0.7f},
-                                     {"構えの縮み", 0.95f},
-                                     {"押しの構えの縮み", 0.97f}};
+    const nlohmann::json expected = {
+        {"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}, {"チャージ減速率", 0.7f}};
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
     {
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
+    }
+    // 構えの縮みは体の形を描く PlayerAppearance の欄
+    const nlohmann::json appearance = NS::Obj::SerializeSubObjectFields(player.Appearance());
+    const nlohmann::json squash = {{"構えの縮み", 0.95f}, {"押しの構えの縮み", 0.97f}};
+    for (nlohmann::json::const_iterator it = squash.begin(); it != squash.end(); ++it)
+    {
+        ASSERT_TRUE(appearance.contains(it.key())) << it.key();
+        EXPECT_EQ(appearance[it.key()], it.value()) << it.key();
+        EXPECT_FALSE(fields.contains(it.key())) << it.key();
     }
     ASSERT_TRUE(fields.contains("チャージ倍率カーブ"));
     // 段と威力は相手の面の赤で決める。鍵が戻ると、保存した場面に効かない境目と曲線が載る

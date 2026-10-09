@@ -79,12 +79,6 @@ namespace GL::Level
 
     LaunchEffects::LaunchEffects() noexcept : NS::Obj::SubObject() {}
 
-    const MapObjParams& LaunchEffects::Tuning() const noexcept
-    {
-        // 呼ぶのは OnStart が持ち主の MapObj を引き当てた後だけ
-        return m_body->Params();
-    }
-
     void LaunchEffects::OnStart()
     {
         m_body = NS::Obj::Cast<MapObj>(Owner());
@@ -113,14 +107,13 @@ namespace GL::Level
         }
 
         // 軽い物ほど遠くへ速く飛ぶので、尾も長く残す。重い物は短い
-        const float trailFrames = static_cast<float>(Tuning().m_trailFramesBase) +
-                                  Tuning().m_trailFramesPerLaunch * std::max(launchScale, 0.0f);
+        const float trailFrames =
+            static_cast<float>(m_trailFramesBase) + m_trailFramesPerLaunch * std::max(launchScale, 0.0f);
         m_trailFrames = std::max(1, static_cast<int>(std::lround(trailFrames)));
         // 威力 1 で質量だけの大きさ。強く飛ばした物ほど高く上がって強く落ちるので威力でも伸ばす
-        const float mass = Tuning().Mass();
-        const float powerGrowth = std::max(0.0f, 1.0f + Tuning().m_landDustPerPower * (std::max(power, 0.0f) - 1.0f));
-        m_landDustScale =
-            (Tuning().m_landDustBase + Tuning().m_landDustPerRootMass * std::sqrt(std::max(mass, 0.0f))) * powerGrowth;
+        const float mass = m_body->Params().Mass();
+        const float powerGrowth = std::max(0.0f, 1.0f + m_landDustPerPower * (std::max(power, 0.0f) - 1.0f));
+        m_landDustScale = (m_landDustBase + m_landDustPerRootMass * std::sqrt(std::max(mass, 0.0f))) * powerGrowth;
 
         // 再生の大きさは自分の直径。帯の幅は絵の定義が直径への割合で持つ
         m_trailScale = 1.0f;

@@ -69,6 +69,8 @@ namespace GL::Player
         //! 外れの反動の間は水平とは限らない
         //! @return 直前の OnUpdate で回した軸。止めの間は止まる前の軸、立ち姿では (1, 0, 0)
         [[nodiscard]] NS::Vector3 SpinAxis() const noexcept { return m_spinAxis; }
+        [[nodiscard]] float ChargeSquashScale() const noexcept { return m_chargeSquashScale; }
+        [[nodiscard]] float PressSquashScale() const noexcept { return m_pressSquashScale; }
 
         NS_REFLECT_BEGIN(PlayerAppearance, NS::Obj::SubObject)
         NS_REFLECT_GROUP("姿")
@@ -86,6 +88,9 @@ namespace GL::Player
         NS_REFLECT_GROUP("着地の潰れ")
         NS_REFLECT_FIELD(m_landingSquash, "着地の潰れ")
         NS_REFLECT_FIELD(m_landingSquashRecoverSteps, "着地の潰れを戻すフレーム数")
+        NS_REFLECT_GROUP("構えの縮み")
+        NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
+        NS_REFLECT_FIELD(m_pressSquashScale, "押しの構えの縮み")
         NS_REFLECT_END()
 
     private:
@@ -142,5 +147,7 @@ namespace GL::Player
         float m_missWobbleTurnsPerSecond = 1.5f;
         float m_landingSquash = 0.8f;        // 反動のまま着地したフレームの縦の倍率
         int m_landingSquashRecoverSteps = 6; // 着地の潰れを 1 へ戻すまでのフレーム数
+        float m_chargeSquashScale = 0.95f;
+        float m_pressSquashScale = 0.97f;
     };
 } // namespace GL::Player

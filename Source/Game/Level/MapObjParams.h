@@ -102,11 +102,6 @@ namespace GL::Level
         NS_REFLECT_FIELD(m_launchApexBandGravityScale, "頂点の帯の重力倍率")
         NS_REFLECT_FIELD(m_missLaunchHeightRatio, "外れで飛ばす相手の弧の高さの割合")
         NS_REFLECT_FIELD(m_missLaunchDistanceRatio, "外れで飛ばす相手の距離の割合")
-        NS_REFLECT_FIELD(m_trailFramesBase, "飛び出しの尾が残るフレーム数の基準")
-        NS_REFLECT_FIELD(m_trailFramesPerLaunch, "飛び出しの尾が残るフレーム数の飛ばしの比あたり")
-        NS_REFLECT_FIELD(m_landDustBase, "着地の粉の大きさの基準")
-        NS_REFLECT_FIELD(m_landDustPerRootMass, "着地の粉の大きさの質量の平方根あたり")
-        NS_REFLECT_FIELD(m_landDustPerPower, "着地の粉の大きさの威力あたりの伸び")
         NS_REFLECT_FIELD(m_missHopCount, "外れで跳ねる回数")
         NS_REFLECT_FIELD(m_missHopHeightRatio, "外れで跳ねる高さの割合")
         NS_REFLECT_FIELD(m_missHopTurnDegrees, "外れで跳ねる向きのぶれの角度")
@@ -120,12 +115,6 @@ namespace GL::Level
         float m_contactSkin = 0.001f;
         float m_stopSpeed = 0.01f;
         int m_maxContacts = 4;
-        friend class LaunchEffects;
-        int m_trailFramesBase = 8;
-        float m_trailFramesPerLaunch = 4.0f;
-        float m_landDustBase = 0.8f;
-        float m_landDustPerRootMass = 0.4f;
-        float m_landDustPerPower = 0.5f;
         float m_mass = 1.0f;
         float m_friction = 0.6f;
         float m_restitution = 0.35f;

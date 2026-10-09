@@ -1,4 +1,5 @@
 #include "Game/Player.h"
+#include "Game/Player/PlayerClips.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "NSlib/Graphics/Animation.h"
@@ -37,14 +38,15 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
     EXPECT_EQ(animation->CurrentClip(), 0u);
 }
 
-TEST(PlayerAnimation, PlayerParamsKeepAllAnimatorNamesAndDefaults)
+// アニメの欄はアニメの欄だけの部品 Clips が持ち、遊びの欄と並ばない
+TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
 {
     Player player;
     player.Init();
-    const GL::Player::PlayerParams* params =
-        NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
-    ASSERT_NE(params, nullptr);
-    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*params);
+    const GL::Player::PlayerClips* clipParts = NS::Obj::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
+    ASSERT_NE(clipParts, nullptr);
+    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*clipParts);
+    const nlohmann::json paramFields = NS::Obj::SerializeSubObjectFields(player.Params());
     const nlohmann::json expected = {{"立ちのクリップ", "idle"},
                                      {"歩きのクリップ", "walk"},
                                      {"走りのクリップ", "run"},
@@ -57,6 +59,7 @@ TEST(PlayerAnimation, PlayerParamsKeepAllAnimatorNamesAndDefaults)
     {
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
+        EXPECT_FALSE(paramFields.contains(it.key())) << it.key();
     }
     EXPECT_EQ(player.FindSubObj("PlayerAnimator"), nullptr);
 }
@@ -71,12 +74,11 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
     player.Init();
     NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
-    GL::Player::PlayerParams* params =
-        NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
-    ASSERT_NE(params, nullptr);
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(
-                  *params, {{"跳ぶクリップ", "jump"}, {"落ちるクリップ", "fall"}, {"ぶら下がりのクリップ", "hang"}}),
-              0u);
+    GL::Player::PlayerClips* clipParts = NS::Obj::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
+    ASSERT_NE(clipParts, nullptr);
+    const nlohmann::json airborne = {
+        {"跳ぶクリップ", "jump"}, {"落ちるクリップ", "fall"}, {"ぶら下がりのクリップ", "hang"}};
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(*clipParts, airborne), 0u);
     player.Body().SetGrounded(false);
     player.Body().SetVerticalVelocity(2.0f);
     player.UpdateAnimation();
@@ -97,15 +99,14 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
     player.Init();
     NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
-    GL::Player::PlayerParams* params =
-        NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
-    ASSERT_NE(params, nullptr);
+    GL::Player::PlayerClips* clipParts = NS::Obj::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
+    ASSERT_NE(clipParts, nullptr);
     player.Body().SetGrounded(true);
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 0u);
     player.Body().SetLateralVelocity(NS::Vector3{1.0f, 0.0f, 0.0f});
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"再生速度の下限", 0.75f}}), 0u);
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(*clipParts, {{"再生速度の下限", 0.75f}}), 0u);
     player.UpdateAnimation();
     ASSERT_EQ(animation->CurrentClip(), 1u);
     animation->OnUpdate();

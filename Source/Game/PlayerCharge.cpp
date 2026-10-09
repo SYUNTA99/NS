@@ -1,6 +1,7 @@
 #include "Game/Player.h"
 
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/DebugDraw.h"
@@ -98,9 +99,9 @@ float Player::StanceHeight() const noexcept
     }
     if (m_charge.judge.IsCharging())
     {
-        return m_params->m_chargeSquashScale;
+        return m_appearance->ChargeSquashScale();
     }
-    return m_params->m_pressSquashScale;
+    return m_appearance->PressSquashScale();
 }
 
 void Player::ObserveCharge(bool held)

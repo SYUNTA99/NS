@@ -144,22 +144,23 @@ TEST(MapObjParams, TackleAnswerCarriesTheLaunchShape)
     EXPECT_FLOAT_EQ(answer.launch.riseGravity, 25.0f);
 }
 
-TEST(MapObjParams, LaunchSizeDefaultsBelongToParams)
+// 尾と粉の大きさは描く LaunchEffects の欄。遊びの欄と並ばない
+TEST(MapObjParams, LaunchSizeDefaultsBelongToLaunchEffects)
 {
-    GL::Level::MapObjParams params;
-    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(params);
+    GL::Level::LaunchEffects effects;
+    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(effects);
     const nlohmann::json expected = {{"飛び出しの尾が残るフレーム数の基準", 8},
                                      {"飛び出しの尾が残るフレーム数の飛ばしの比あたり", 4.0f},
                                      {"着地の粉の大きさの基準", 0.8f},
                                      {"着地の粉の大きさの質量の平方根あたり", 0.4f},
                                      {"着地の粉の大きさの威力あたりの伸び", 0.5f}};
-    GL::Level::LaunchEffects effects;
-    const nlohmann::json effectFields = NS::Obj::SerializeSubObjectFields(effects);
+    GL::Level::MapObjParams params;
+    const nlohmann::json paramFields = NS::Obj::SerializeSubObjectFields(params);
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
     {
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
-        EXPECT_FALSE(effectFields.contains(it.key())) << it.key();
+        EXPECT_FALSE(paramFields.contains(it.key())) << it.key();
     }
 }
 
@@ -178,9 +179,9 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
     GL::Level::LaunchEffects* effects = NS::Obj::Cast<GL::Level::LaunchEffects>(actor->FindSubObj("LaunchEffects"));
     ASSERT_NE(params, nullptr);
     ASSERT_NE(effects, nullptr);
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(*params,
-                                       {{"質量", 4.0f},
-                                        {"飛び出しの尾が残るフレーム数の基準", 13},
+    EXPECT_EQ(NS::Obj::ApplyJsonFields(*params, {{"質量", 4.0f}}), 0u);
+    EXPECT_EQ(NS::Obj::ApplyJsonFields(*effects,
+                                       {{"飛び出しの尾が残るフレーム数の基準", 13},
                                         {"飛び出しの尾が残るフレーム数の飛ばしの比あたり", 7.0f},
                                         {"着地の粉の大きさの基準", 1.0f},
                                         {"着地の粉の大きさの質量の平方根あたり", 0.5f},

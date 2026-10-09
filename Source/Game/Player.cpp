@@ -10,6 +10,7 @@
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
+#include "Game/Player/PlayerClips.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
@@ -54,6 +55,7 @@ void Player::OnInit()
     m_collider = CreateSubObj<NS::Obj::Collider>("Collider");
     m_input = CreateSubObj<NS::Obj::PlayerInput>("Input");
     m_params = CreateSubObj<GL::Player::PlayerParams>("Params");
+    m_clips = CreateSubObj<GL::Player::PlayerClips>("Clips");
     CreateSubObj<NS::Obj::Shadow>(ShadowSlot());
     // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
     NS::Obj::FollowHitSensor* bodySensor = CreateSubObj<NS::Obj::FollowHitSensor>(
@@ -147,9 +149,9 @@ void Player::UpdateAnimation()
         {
             m_appliedClip = clip;
         }
-        else if (animation->SelectClip(m_params->m_idleClip))
+        else if (animation->SelectClip(m_clips->m_idleClip))
         {
-            m_appliedClip = m_params->m_idleClip;
+            m_appliedClip = m_clips->m_idleClip;
         }
     }
 
@@ -236,46 +238,46 @@ std::string_view Player::ChooseClip(float lateralSpeed) const noexcept
 {
     if (m_states->IsCurrent<GL::Player::LedgeHangingPlayerState>())
     {
-        if (!m_params->m_ledgeHangClip.empty())
+        if (!m_clips->m_ledgeHangClip.empty())
         {
-            return m_params->m_ledgeHangClip;
+            return m_clips->m_ledgeHangClip;
         }
-        return m_params->m_idleClip;
+        return m_clips->m_idleClip;
     }
 
     if (!m_body->IsGrounded())
     {
-        if (m_body->VerticalVelocity() > 0.0f && !m_params->m_jumpClip.empty())
+        if (m_body->VerticalVelocity() > 0.0f && !m_clips->m_jumpClip.empty())
         {
-            return m_params->m_jumpClip;
+            return m_clips->m_jumpClip;
         }
-        if (m_body->VerticalVelocity() <= 0.0f && !m_params->m_fallClip.empty())
+        if (m_body->VerticalVelocity() <= 0.0f && !m_clips->m_fallClip.empty())
         {
-            return m_params->m_fallClip;
+            return m_clips->m_fallClip;
         }
-        return m_params->m_idleClip;
+        return m_clips->m_idleClip;
     }
 
     if (lateralSpeed <= NS::k_Epsilon)
     {
-        return m_params->m_idleClip;
+        return m_clips->m_idleClip;
     }
 
     const float maxSpeed = MaxSpeed();
-    if (maxSpeed > 0.0f && lateralSpeed >= maxSpeed * m_params->m_runBlendRatio && !m_params->m_runClip.empty())
+    if (maxSpeed > 0.0f && lateralSpeed >= maxSpeed * m_clips->m_runBlendRatio && !m_clips->m_runClip.empty())
     {
-        return m_params->m_runClip;
+        return m_clips->m_runClip;
     }
-    if (!m_params->m_walkClip.empty())
+    if (!m_clips->m_walkClip.empty())
     {
-        return m_params->m_walkClip;
+        return m_clips->m_walkClip;
     }
-    return m_params->m_idleClip;
+    return m_clips->m_idleClip;
 }
 
 float Player::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept
 {
-    if (clip != m_params->m_walkClip && clip != m_params->m_runClip)
+    if (clip != m_clips->m_walkClip && clip != m_clips->m_runClip)
     {
         return 1.0f;
     }
@@ -285,7 +287,7 @@ float Player::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) con
     {
         return 1.0f;
     }
-    return std::max(m_params->m_minPlaybackSpeed, lateralSpeed / maxSpeed);
+    return std::max(m_clips->m_minPlaybackSpeed, lateralSpeed / maxSpeed);
 }
 
 void Player::OnEndPlay()

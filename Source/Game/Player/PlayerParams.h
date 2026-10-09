@@ -6,7 +6,6 @@
 #include "NSlib/Object/Reflection/Curve.h"
 
 #include <algorithm>
-#include <string>
 
 class Player;
 
@@ -27,9 +26,8 @@ namespace GL::Level
 namespace GL::Player
 {
     //! @brief 自機の遊びの調整値の欄を持つ部品
-    //! @details 移動・溜め・衝突はここの欄を読む。見た目と演出の欄は描く部品 (PlayerAppearance・ChargeEffects・
-    //! ImpactEffects・TargetMarker・SlamArrow) が自分で持つ。ここに残る演出の欄は、Player が自分の計算に読む
-    //! 突進の回転数・構えの縮み・アニメーションの選び方だけ
+    //! @details 移動・溜め・衝突・反動はここの欄を読む。見た目と演出の欄は描く部品が持ち、
+    //! アニメの欄は PlayerClips が持つ。ここに残る演出の欄は、Player が回転の計算に読む突進の回転数だけ
     class PlayerParams : public NS::Obj::SubObject
     {
     public:
@@ -154,18 +152,7 @@ namespace GL::Player
         NS_REFLECT_FIELD(m_tapSlamTurns, "通常突進の届くまでの回転数")
         NS_REFLECT_FIELD(m_chargedReboundTurns, "溜めて当てた反動の回転数")
         NS_REFLECT_FIELD(m_tapReboundTurns, "通常突進で当てた反動の回転数")
-        NS_REFLECT_GROUP("演出: 構えの縮み")
-        NS_REFLECT_FIELD(m_chargeSquashScale, "構えの縮み")
-        NS_REFLECT_FIELD(m_pressSquashScale, "押しの構えの縮み")
-        NS_REFLECT_GROUP("演出: アニメーション")
-        NS_REFLECT_FIELD(m_idleClip, "立ちのクリップ")
-        NS_REFLECT_FIELD(m_walkClip, "歩きのクリップ")
-        NS_REFLECT_FIELD(m_runClip, "走りのクリップ")
-        NS_REFLECT_FIELD(m_jumpClip, "跳ぶクリップ")
-        NS_REFLECT_FIELD(m_fallClip, "落ちるクリップ")
-        NS_REFLECT_FIELD(m_ledgeHangClip, "ぶら下がりのクリップ")
-        NS_REFLECT_FIELD(m_runBlendRatio, "走りへ移る速さの比")
-        NS_REFLECT_FIELD(m_minPlaybackSpeed, "再生速度の下限")
+        NS_REFLECT_GROUP("計算の内部")
         NS_REFLECT_FIELD(m_spawnFloorTop, "補う床の上面")
         NS_REFLECT_FIELD(m_spawnClearance, "補う足元の余白")
         NS_REFLECT_FIELD(m_contactTolerance, "突進の接触探索の誤差")
@@ -237,16 +224,6 @@ namespace GL::Player
         float m_overchargePowerMax = 1.5f;
         float m_chargeSlowRate = 0.7f;
         NS::Obj::Curve m_chargeFactorCurve{};
-        float m_chargeSquashScale = 0.95f;
-        float m_pressSquashScale = 0.97f;
-        std::string m_idleClip = "idle";
-        std::string m_walkClip = "walk";
-        std::string m_runClip = "run";
-        std::string m_jumpClip{};
-        std::string m_fallClip{};
-        std::string m_ledgeHangClip{};
-        float m_runBlendRatio = 0.4f;
-        float m_minPlaybackSpeed = 0.5f;
         int m_maxHealth = 8;
         float m_jumpImpulse = 12.0f;
         float m_gravityUp = -25.0f;
