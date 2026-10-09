@@ -35,23 +35,15 @@ namespace GL::Player
             m_resolver = &ownerPlayer->Resolver();
         }
 
-        NS::Gfx::EffectScene* effects = EffectsOf(*this);
-        if (effects == nullptr)
-        {
-            return;
-        }
-        // 読めない絵は EffectScene が警告を出し、その層は記録だけ残る。遊びは止めない
-        for (std::string_view name : {m_curlAsset,
-                                      m_spinAsset,
-                                      m_grindAsset,
-                                      m_gatherAsset,
-                                      m_fullAsset,
-                                      m_burstAsset,
-                                      m_trailAsset,
-                                      m_swaySparksAsset})
-        {
-            static_cast<void>(effects->Preload(name));
-        }
+        PreloadLayers(EffectsOf(*this),
+                      {m_curlAsset,
+                       m_spinAsset,
+                       m_grindAsset,
+                       m_gatherAsset,
+                       m_fullAsset,
+                       m_burstAsset,
+                       m_trailAsset,
+                       m_swaySparksAsset});
     }
 
     void ChargeEffects::OnUpdate()

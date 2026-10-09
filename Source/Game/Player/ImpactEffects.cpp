@@ -100,25 +100,17 @@ namespace GL::Player
             m_resolver = &ownerPlayer->Resolver();
             m_player = ownerPlayer;
         }
-        NS::Gfx::EffectScene* effects = EffectsOf(*this);
-        if (effects == nullptr)
-        {
-            return;
-        }
-        // 読めない絵は Play が無効なハンドルを返し、記録だけ残る。警告は EffectScene が名前ごとに 1 回出す
-        for (const std::string_view name : {m_coreAsset,
-                                            m_streakAsset,
-                                            m_ringAsset,
-                                            m_sparksAsset,
-                                            m_embersAsset,
-                                            m_glowAsset,
-                                            m_recoilAsset,
-                                            m_dustAsset,
-                                            m_reboundTrailAsset,
-                                            m_landDustAsset})
-        {
-            static_cast<void>(effects->Preload(name));
-        }
+        PreloadLayers(EffectsOf(*this),
+                      {m_coreAsset,
+                       m_streakAsset,
+                       m_ringAsset,
+                       m_sparksAsset,
+                       m_embersAsset,
+                       m_glowAsset,
+                       m_recoilAsset,
+                       m_dustAsset,
+                       m_reboundTrailAsset,
+                       m_landDustAsset});
     }
 
     void ImpactEffects::OnUpdate()

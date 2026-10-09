@@ -82,14 +82,7 @@ namespace GL::Level
     void LaunchEffects::OnStart()
     {
         m_body = NS::Obj::Cast<MapObj>(Owner());
-        NS::Gfx::EffectScene* effects = GL::Player::EffectsOf(*this);
-        if (effects == nullptr)
-        {
-            return;
-        }
-        // 読めない絵は Play が無効なハンドルを返し、記録だけ残る。警告は EffectScene が名前ごとに 1 回出す
-        static_cast<void>(effects->Preload(m_launchTrailAsset));
-        static_cast<void>(effects->Preload(m_launchLandDustAsset));
+        GL::Player::PreloadLayers(GL::Player::EffectsOf(*this), {m_launchTrailAsset, m_launchLandDustAsset});
     }
 
     void LaunchEffects::BeginTrail(HitTier tier, float power, float launchScale, const NS::Vector3& launchDir)

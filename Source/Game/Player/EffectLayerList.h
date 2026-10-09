@@ -3,6 +3,7 @@
 #include "NSlib/Graphics/EffectScene.h"
 
 #include <cstdint>
+#include <initializer_list>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -59,7 +60,7 @@ namespace GL::Player
         //! @param[in,out] effects 再生先。null なら再生せずに記録だけ残す
         //! @param[in] name 層の名前。EffectScene::Preload に渡した名前と同じ綴り
         //! @param[in] desc 再生の姿勢・色・動的入力
-        //! @return 記録の番号。StopRoot・Stop・Find に渡す
+        //! @return 記録の番号。StopRoot・Stop・Find に渡す。切った層は 0
         [[nodiscard]] std::uint32_t Play(NS::Gfx::EffectScene* effects,
                                          std::string_view name,
                                          const NS::Gfx::EffectPlayDesc& desc);
@@ -129,6 +130,12 @@ namespace GL::Player
         int m_step = 0;
         std::uint32_t m_nextId = 1;
     };
+
+    //! @brief 層の名前を EffectSwitches に知らせ、絵を先に読む
+    //! @details 描画の無い世界でも名前は知らせる。知らせていない層は切れない
+    //! @param[in,out] effects 読み込み先。null なら名前だけ知らせる
+    //! @param[in] names 部品が出す層の名前
+    void PreloadLayers(NS::Gfx::EffectScene* effects, std::initializer_list<std::string_view> names);
 
     //! @brief 部品の持ち主が居る世界の EffectScene を返す
     //! @param[in] subObject 持ち主の世界を引く部品

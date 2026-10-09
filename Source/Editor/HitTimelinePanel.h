@@ -58,6 +58,8 @@ namespace NS::Editor
         void RenderSelectedRow() noexcept;
         // 再生・止め・コマ送り・速さ
         void RenderPlayback() noexcept;
+        // 事象の種類と層の名前の入り切り。切った物は保存しない
+        void RenderSwitches();
 
         // 編集する段を tier にし、置き場から写しを取り直す
         void LoadWorking(GL::Level::HitTier tier);

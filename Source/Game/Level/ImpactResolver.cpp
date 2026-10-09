@@ -1,5 +1,6 @@
 #include "Game/Level/ImpactResolver.h"
 
+#include "Game/Level/EffectSwitches.h"
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactTremor.h"
@@ -955,6 +956,15 @@ namespace GL::Level
         }
     };
 
+    void ImpactResolver::RunEvent(const HitEvent& event)
+    {
+        if (EffectSwitches::Get().IsOff(HitEventTypeName(event.value)))
+        {
+            return;
+        }
+        std::visit(EventRunner{.resolver = *this, .event = event}, event.value);
+    }
+
     void ImpactResolver::StartTimeline(std::vector<HitEvent> events,
                                        std::vector<std::size_t> rows,
                                        int breakStopSteps,
@@ -1001,7 +1011,7 @@ namespace GL::Level
                 {
                     m_clock = event.start;
                     m_rowsStartedThisStep.push_back(m_eventRows[i]);
-                    std::visit(EventRunner{.resolver = *this, .event = event}, event.value);
+                    RunEvent(event);
                 }
             }
             m_clock = 0;
@@ -1100,7 +1110,7 @@ namespace GL::Level
             {
                 m_clock = event.start;
                 m_rowsStartedThisStep.push_back(m_eventRows[i]);
-                std::visit(EventRunner{.resolver = *this, .event = event}, event.value);
+                RunEvent(event);
             }
         }
         m_clock = now;
@@ -1163,7 +1173,7 @@ namespace GL::Level
             if (event.start == m_clock && (m_clock >= 0 || CanStartBeforeContact(event.value)))
             {
                 m_rowsStartedThisStep.push_back(m_eventRows[i]);
-                std::visit(EventRunner{.resolver = *this, .event = event}, event.value);
+                RunEvent(event);
             }
         }
         if (m_stopStarted && m_clock == m_stopEnd + 1)

@@ -1,5 +1,6 @@
 #include "Game/Player/EffectLayerList.h"
 
+#include "Game/Level/EffectSwitches.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObject.h"
@@ -49,6 +50,10 @@ namespace GL::Player
                                         std::string_view name,
                                         const NS::Gfx::EffectPlayDesc& desc)
     {
+        if (GL::Level::EffectSwitches::Get().IsOff(name))
+        {
+            return 0;
+        }
         EffectLayerRecord record;
         record.id = m_nextId;
         ++m_nextId;
@@ -163,6 +168,19 @@ namespace GL::Player
                 continue;
             }
             out.push_back(record.name);
+        }
+    }
+
+    void PreloadLayers(NS::Gfx::EffectScene* effects, std::initializer_list<std::string_view> names)
+    {
+        for (const std::string_view name : names)
+        {
+            GL::Level::EffectSwitches::Get().AddLayerName(name);
+            // 読めない絵は Play が無効なハンドルを返し、記録だけ残る。警告は EffectScene が名前ごとに 1 回出す
+            if (effects != nullptr)
+            {
+                static_cast<void>(effects->Preload(name));
+            }
         }
     }
 
