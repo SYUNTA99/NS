@@ -43,7 +43,13 @@ namespace GL::Level
         if (m_playerDead)
         {
             m_playerDead = false;
+            m_respawnPending = false;
             RestartCourse();
+        }
+        if (m_respawnPending)
+        {
+            m_respawnPending = false;
+            RespawnObjects();
         }
     }
 
@@ -56,6 +62,16 @@ namespace GL::Level
 
     void CourseDirector::RestartCourse()
     {
+        SendRestart(nullptr);
+    }
+
+    void CourseDirector::RespawnObjects()
+    {
+        SendRestart(FindPlayer(m_scene.Objects()));
+    }
+
+    void CourseDirector::SendRestart(const NS::Obj::Actor* skip)
+    {
         // 送る先は控えた並びで回す。受け手が戻る間に配置物の並びが変わっても崩れない
         // 一時オブジェクト (破片・跡) は凍結に無いので送らない
         const nlohmann::json& baseline = m_scene.PlayBaseline();
@@ -63,7 +79,7 @@ namespace GL::Level
         receivers.reserve(m_scene.Objects().ObjectCount());
         for (NS::Obj::Actor* actor : m_scene.Objects())
         {
-            if (!actor->IsTransient())
+            if (!actor->IsTransient() && actor != skip)
             {
                 receivers.push_back(actor);
             }

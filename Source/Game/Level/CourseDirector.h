@@ -9,6 +9,7 @@
 
 namespace NS::Obj
 {
+    class Actor;
     class Scene;
     class ScreenFade;
 } // namespace NS::Obj
@@ -30,6 +31,9 @@ namespace GL::Level
 
         //! プレイヤーの命が尽きた知らせ。次の進行役の段でコースを最初からやり直す
         void NotifyPlayerDead() noexcept { m_playerDead = true; }
+
+        //! 置物の出し直しのボタンが押された知らせ。次の進行役の段で、自機の他の配置物を凍結の姿へ戻す
+        void RequestRespawnObjects() noexcept { m_respawnPending = true; }
 
         //! ゴールに着いた知らせ。次の進行役の段でクリアの流れを始める。流れの最中は無視する
         void NotifyGoal(float fadeOutSeconds, float fadeInSeconds) noexcept
@@ -58,6 +62,9 @@ namespace GL::Level
         //! @details 凍結 (StartCourse が取ったシーンの JSON 文書) にある姿へ、受け手が自分で戻る
         void RestartCourse();
 
+        //! @brief 自機の他の配置物へ MsgCourseRestart を送り、凍結の姿へ戻す。自機の位置と状態は変えない
+        void RespawnObjects();
+
         //! 知らせを受けた分だけ流れを進める
         void OnTick() override;
 
@@ -68,6 +75,9 @@ namespace GL::Level
         //! プレイヤーへ操作を止めるか戻す知らせを送る
         void SendInputLock(bool locked);
 
+        //! skip の他の、一時オブジェクトでない配置物へ MsgCourseRestart を送る。skip が nullptr なら全員へ
+        void SendRestart(const NS::Obj::Actor* skip);
+
         float m_fadeOutSeconds = 0.0f;
         float m_fadeInSeconds = 0.0f;
 
@@ -75,6 +85,7 @@ namespace GL::Level
         std::unique_ptr<NS::Obj::ScreenFade> m_fade; // 開いて持つ暗転
         NS::CoroutineRunner m_sequences;             // クリアの流れ
         bool m_playerDead = false;                   // 次の段でやり直すか
-        bool m_goalReached = false;                  // 次の段でクリアの流れを始めるか
+        bool m_respawnPending = false;
+        bool m_goalReached = false; // 次の段でクリアの流れを始めるか
     };
 } // namespace GL::Level

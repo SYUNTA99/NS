@@ -49,6 +49,7 @@ namespace NS::Obj
         m_jumpPressed = false;
         m_releaseLedgePressed = false;
         m_slamSeen = false;
+        m_respawnPressed = false;
     }
 
     void PlayerInput::ResetMovementInput() noexcept
@@ -166,6 +167,8 @@ namespace NS::Obj
         m_climbForward = localZ;
         m_jumpPressed = m_jumpPressed || jumpPressed;
         m_jumpHeld = jumpHeld;
+        m_respawnPressed =
+            m_respawnPressed || (!wantKb && kb.IsPressed(NS::OS::Key::R)) || pad.IsPressed(NS::OS::GamepadButton::Back);
 
         // 体当たりのマウス左は、ゲームがマウスのボタンを受け取っている間だけ数える
         const bool slamHeld = (input.GameReceivesMouseButton(NS::OS::MouseButton::Left) &&

@@ -170,6 +170,16 @@ void Player::Update(bool chargeHeld)
 void Player::ObserveStep()
 {
     NS::Obj::Actor::ObserveStep();
+    // 当たりの途中は受け付けない。相手だけが戻ると、走っている当たりのタイムラインが戻った相手を飛ばす
+    // 押しは同じ歩の状態の段で消費されるので、当たりの途中の押しは持ち越さない
+    const bool inImpact = m_resolver->IsHitStopping() || m_resolver->IsAwaitingRebound();
+    if (m_input->RespawnPressed() && !inImpact)
+    {
+        if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*this))
+        {
+            director->RequestRespawnObjects();
+        }
+    }
     ObserveCharge(m_input->SlamHeld());
     if (m_resolver->IsActive())
     {

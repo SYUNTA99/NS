@@ -17,6 +17,7 @@
 #include "NSlib/Object/SubObjects/PlayerInput.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Windows/Input.h"
+#include "NSlib/Windows/Keyboard.h"
 #include "NSlib/Windows/Mouse.h"
 
 #include <gtest/gtest.h>
@@ -32,6 +33,15 @@ namespace
         ~MouseLeftPress() noexcept { NS::OS::Input::Get().Mouse().ClearState(); }
         MouseLeftPress(const MouseLeftPress&) = delete;
         MouseLeftPress& operator=(const MouseLeftPress&) = delete;
+    };
+
+    // 本物のキーを押したままにする。試しの終わりにキーボードの状態を空へ戻す
+    struct KeyPress
+    {
+        explicit KeyPress(NS::OS::Key key) noexcept { NS::OS::Input::Get().Keyboard().OnKeyDown(key); }
+        ~KeyPress() noexcept { NS::OS::Input::Get().Keyboard().ClearState(); }
+        KeyPress(const KeyPress&) = delete;
+        KeyPress& operator=(const KeyPress&) = delete;
     };
 
     // 本番の入力の段と Player の段を 1 歩ずつ回す
@@ -98,6 +108,48 @@ TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
     // 出現位置へ戻り、命も満タンへ戻る
     EXPECT_FALSE(player->IsDead());
     EXPECT_FLOAT_EQ(player->Root().Position().y, SpawnOf(doc).y);
+}
+
+// 置物の出し直しのボタンを押すと、次の進行役の段で岩だけが置いた所へ戻り、自機はその場に残る
+TEST(CourseDirector, RespawnButtonReturnsObjectsButKeepsPlayer)
+{
+    nlohmann::json doc = CourseWithPlayer();
+    nlohmann::json rock = NS::Obj::MakeObjectJson();
+    NS::Obj::SetObjectJsonClass(rock, "MapObj");
+    NS::Obj::SetObjectPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
+    NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+    NS::Obj::EnsureUniqueObjectIds(doc);
+
+    NS::Obj::Scene scene;
+    scene.LoadJson(doc);
+    (void)scene.BeginPlayBaseline();
+    Player* player = FindPlayer(scene.Objects());
+    ASSERT_NE(player, nullptr);
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneObj<GL::Level::CourseDirector>(scene);
+    ASSERT_NE(director, nullptr);
+    NS::Obj::Actor* placed = nullptr;
+    for (NS::Obj::Actor* actor : scene.Objects())
+    {
+        if (std::string_view{actor->ClassName()} == "MapObj")
+        {
+            placed = actor;
+        }
+    }
+    ASSERT_NE(placed, nullptr);
+    placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
+    const NS::Vector3 spawn = SpawnOf(doc);
+    const NS::Vector3 movedTo{spawn.x + 3.0f, spawn.y, spawn.z + 3.0f};
+    player->Root().SetPosition(movedTo);
+
+    {
+        const KeyPress press{NS::OS::Key::R};
+        StepPlayer(*player);
+    }
+    director->OnTick();
+
+    EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
+    EXPECT_FLOAT_EQ(player->Root().Position().x, movedTo.x);
+    EXPECT_FLOAT_EQ(player->Root().Position().z, movedTo.z);
 }
 
 TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)

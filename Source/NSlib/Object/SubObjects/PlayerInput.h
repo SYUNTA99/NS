@@ -8,7 +8,8 @@ namespace NS::Obj
     //! @brief Keyboard / Gamepad / マウスのボタンの入力を読んで値として持つ SubObject
     //! @details WASD + 左スティックを camera forward 相対の world 方向に変換し、Space / Gamepad A の
     //! 押した瞬間と押しっぱなし、マウス右ボタン / 左トリガーの手放し、
-    //! マウス左 / Gamepad X の体当たりの押しを合わせた 8 つの値を持つ。渡し先は知らない
+    //! マウス左 / Gamepad X の体当たりの押し、R / Gamepad Back の出し直しの押しの 9 つの値を持つ
+    //! 渡し先は知らない
     //! 操作の停止 (SetLocked) の間は機器を読んでも全ての値を中立に書く
     //! 基準の forward は毎ステップ scene の CameraManager から自分で読む
     //! 入力はプロセス全体で 1 個の Input::Get() を直接読む
@@ -34,7 +35,7 @@ namespace NS::Obj
         void SetReleaseLedgePressed() noexcept { m_releaseLedgePressed = true; }
         //! 跳びの押しっぱなしを書く
         void SetJumpHeld(bool held) noexcept { m_jumpHeld = held; }
-        //! 跳びと掴まりの手放しの押した瞬間と、突進の押しの控えを下ろす
+        //! 跳びと掴まりの手放しの押した瞬間と、突進の押しの控えと、出し直しの押しを下ろす
         void ConsumePressed() noexcept;
         //! 移動・掴まり・跳びの入力を全て 0 と false に戻す
         void ResetMovementInput() noexcept;
@@ -61,6 +62,8 @@ namespace NS::Obj
         [[nodiscard]] bool ReleaseLedgePressed() const noexcept { return m_releaseLedgePressed; }
         //! 体当たりのボタン (マウス左かゲームパッドの X) を押している場合 true、それ以外の場合は false
         [[nodiscard]] bool SlamHeld() const noexcept { return m_slamHeld; }
+        //! 置物の出し直しのボタン (R かゲームパッドの Back) を押した場合 true、それ以外の場合は false
+        [[nodiscard]] bool RespawnPressed() const noexcept { return m_respawnPressed; }
 
         void OnUpdate() override;
 
@@ -81,6 +84,7 @@ namespace NS::Obj
         bool m_prevReleaseLedgeHeld = false;
         bool m_slamHeld = false;
         bool m_slamSeen = false; // ConsumePressed の後に突進を押したか
-        bool m_locked = false;   // 操作の停止中か。保存しない
+        bool m_respawnPressed = false;
+        bool m_locked = false; // 操作の停止中か。保存しない
     };
 } // namespace NS::Obj
