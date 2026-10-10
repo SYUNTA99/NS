@@ -1,9 +1,9 @@
 #pragma once
 
 #include "NSlib/Core/Coroutine.h"
-#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/Scene/SceneObjHolder.h"
+#include "NSlib/Object/SubObject.h"
 
 #include <memory>
 

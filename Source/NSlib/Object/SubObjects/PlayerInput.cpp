@@ -158,8 +158,7 @@ namespace NS::Obj
         // ジャンプの押下と長押し
         const bool jumpPressed =
             (!wantKb && kb.IsPressed(NS::OS::Key::Space)) || pad.IsPressed(NS::OS::GamepadButton::A);
-        const bool jumpHeld =
-            (!wantKb && kb.IsHeld(NS::OS::Key::Space)) || pad.IsHeld(NS::OS::GamepadButton::A);
+        const bool jumpHeld = (!wantKb && kb.IsHeld(NS::OS::Key::Space)) || pad.IsHeld(NS::OS::GamepadButton::A);
 
         m_desiredDir = worldDir;
         m_desiredSpeedScale = speedScale;

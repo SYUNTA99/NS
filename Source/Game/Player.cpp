@@ -22,6 +22,9 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/SkidPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
+#include "NSlib/Object/ActorList.h"
+#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/Animation.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/Collider.h"
@@ -31,9 +34,6 @@
 #include "NSlib/Object/SubObjects/PlayerInput.h"
 #include "NSlib/Object/SubObjects/Shadow.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
-#include "NSlib/Object/IUse/IUseSceneObj.h"
-#include "NSlib/Object/ActorList.h"
-#include "NSlib/Object/Reflection/TypeRegistry.h"
 
 #include <algorithm>
 #include <cmath>
@@ -58,8 +58,7 @@ void Player::OnInit()
     CreateSubObj<NS::Obj::Shadow>(ShadowSlot());
     // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
     NS::Obj::FollowHitSensor* bodySensor = CreateSubObj<NS::Obj::FollowHitSensor>(
-        BodySensorSlot(),
-        [collider = m_collider] { return NS::Obj::SensorVolume::Capsule(collider->WorldCapsule()); });
+        BodySensorSlot(), [collider = m_collider] { return NS::Obj::SensorVolume::Capsule(collider->WorldCapsule()); });
     GL::Level::SetSensorKind(*bodySensor, GL::Level::SensorKind::PlayerBody);
     m_resolver = CreateSubObj<GL::Level::ImpactResolver>("ImpactResolver");
     CreateSubObj<NS::Obj::HitReaction>(HitReactionSlot());
@@ -311,8 +310,7 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
     if (GL::Level::IsMsgInstantDeath(msg))
     {
         Die();
-        if (GL::Level::CourseDirector* director =
-                NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*this))
+        if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*this))
         {
             director->NotifyPlayerDead();
         }
@@ -320,8 +318,7 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
     }
     if (const GL::Level::MsgGoal* goal = NS::Obj::MsgCast<GL::Level::MsgGoal>(msg))
     {
-        if (GL::Level::CourseDirector* director =
-                NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*this))
+        if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*this))
         {
             director->NotifyGoal(goal->FadeOutSeconds(), goal->FadeInSeconds());
         }
@@ -500,8 +497,7 @@ float Player::SkidSpeedScale() const noexcept
     {
         return 1.0f;
     }
-    return GL::Level::MissSkidSpeedScale(
-        m_skid.elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
+    return GL::Level::MissSkidSpeedScale(m_skid.elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
 }
 
 bool Player::CanMoveBody() const noexcept
@@ -558,9 +554,9 @@ void Player::PrepareStateStep()
 {
     const bool locomotion =
         GL::Player::PlayerJudgeLocomotion::Judge(m_states->IsCurrent<GL::Player::IdlePlayerState>(),
-                                                       m_states->IsCurrent<GL::Player::WalkPlayerState>(),
-                                                       m_states->IsCurrent<GL::Player::FallPlayerState>(),
-                                                       m_states->IsCurrent<GL::Player::ReboundPlayerState>());
+                                                 m_states->IsCurrent<GL::Player::WalkPlayerState>(),
+                                                 m_states->IsCurrent<GL::Player::FallPlayerState>(),
+                                                 m_states->IsCurrent<GL::Player::ReboundPlayerState>());
     if (GL::Player::PlayerJudgeBodySlam::Judge(
             m_request.bufferRemaining, m_request.spent, m_slam.wasSlamming, locomotion))
     {
