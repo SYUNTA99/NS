@@ -1,6 +1,5 @@
 #pragma once
 
-#include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/System/SceneSystem.h"
 
@@ -16,7 +15,7 @@ namespace NS::Obj
     //! 自分と相手を入れ替えて 1 回ずつ呼ぶ。種類は見ない。相手の種類を見て応じるかは受け手の持ち主が決める
     //! 重なりは物理エンジンを使わずに形どうしで直に解くので、物理の層と関係ない。
     //! Scene が値で持ち、ActorList の更新へ自分を登録する
-    class HitSensorDirector final : public SceneSystem, public ITickable
+    class HitSensorDirector final : public SceneSystem
     {
     public:
         //! センサーを入れる。二重登録は無視する

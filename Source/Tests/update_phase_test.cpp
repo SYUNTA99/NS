@@ -104,7 +104,7 @@ namespace
         NS::Obj::Model& m_target;
     };
 
-    class PhaseTicker final : public NS::Obj::ITickable
+    class PhaseTicker final : public NS::Obj::SceneSystem
     {
     public:
         PhaseTicker(std::vector<std::string>& log, std::string label) : m_log(log), m_label(std::move(label)) {}
@@ -129,11 +129,11 @@ TEST(UpdatePhase, SceneRunsTheNamedTableAroundPhysics)
     PhaseTicker ui(log, "ui");
     PhaseTicker effects(log, "effects");
     PhaseTicker physics(log, "physics");
-    scene.Objects().AddTicker(&physics, NS::Obj::UpdatePhase::Physics);
-    scene.Objects().AddTicker(&sensors, NS::Obj::UpdatePhase::Sensors);
-    scene.Objects().AddTicker(&course, NS::Obj::UpdatePhase::Course);
-    scene.Objects().AddTicker(&ui, NS::Obj::UpdatePhase::UI);
-    scene.Objects().AddTicker(&effects, NS::Obj::UpdatePhase::Effects);
+    scene.AddSystemTick(physics, NS::Obj::UpdatePhase::Physics);
+    scene.AddSystemTick(sensors, NS::Obj::UpdatePhase::Sensors);
+    scene.AddSystemTick(course, NS::Obj::UpdatePhase::Course);
+    scene.AddSystemTick(ui, NS::Obj::UpdatePhase::UI);
+    scene.AddSystemTick(effects, NS::Obj::UpdatePhase::Effects);
     scene.OnUpdate();
     EXPECT_EQ(log,
               (std::vector<std::string>{"input",
@@ -147,11 +147,11 @@ TEST(UpdatePhase, SceneRunsTheNamedTableAroundPhysics)
                                         "ui",
                                         "render-prep",
                                         "effects"}));
-    scene.Objects().RemoveTicker(&physics);
-    scene.Objects().RemoveTicker(&sensors);
-    scene.Objects().RemoveTicker(&course);
-    scene.Objects().RemoveTicker(&ui);
-    scene.Objects().RemoveTicker(&effects);
+    scene.RemoveSystemTick(physics);
+    scene.RemoveSystemTick(sensors);
+    scene.RemoveSystemTick(course);
+    scene.RemoveSystemTick(ui);
+    scene.RemoveSystemTick(effects);
 }
 
 TEST(UpdatePhase, StableActorOrderAndRemovedTickerArePreserved)
@@ -161,11 +161,11 @@ TEST(UpdatePhase, StableActorOrderAndRemovedTickerArePreserved)
     scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Triggers, log, "first");
     scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Triggers, log, "second");
     PhaseTicker ticker(log, "ticker");
-    scene.Objects().AddTicker(&ticker, NS::Obj::UpdatePhase::Triggers);
+    scene.AddSystemTick(ticker, NS::Obj::UpdatePhase::Triggers);
     scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     // 登録物は段の Actor が出した物を受けてまとめる役なので、同じ段の Actor の後に動く
     EXPECT_EQ(log, (std::vector<std::string>{"first", "second", "ticker"}));
-    scene.Objects().RemoveTicker(&ticker);
+    scene.RemoveSystemTick(ticker);
     log.clear();
     scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     EXPECT_EQ(log, (std::vector<std::string>{"first", "second"}));
@@ -240,9 +240,9 @@ TEST(WorldSpeed, SlowWorldStepsOnceInFiveAndRealTimePhasesEveryStep)
     PhaseTicker physics(log, "physics");
     PhaseTicker ui(log, "ui");
     PhaseTicker effects(log, "effects");
-    scene.Objects().AddTicker(&physics, NS::Obj::UpdatePhase::Physics);
-    scene.Objects().AddTicker(&ui, NS::Obj::UpdatePhase::UI);
-    scene.Objects().AddTicker(&effects, NS::Obj::UpdatePhase::Effects);
+    scene.AddSystemTick(physics, NS::Obj::UpdatePhase::Physics);
+    scene.AddSystemTick(ui, NS::Obj::UpdatePhase::UI);
+    scene.AddSystemTick(effects, NS::Obj::UpdatePhase::Effects);
     scene.SetWorldSpeed(0.2f);
 
     for (int i = 0; i < 10; ++i)
@@ -261,9 +261,9 @@ TEST(WorldSpeed, SlowWorldStepsOnceInFiveAndRealTimePhasesEveryStep)
     EXPECT_EQ(log[7], std::string{"ui"});
     EXPECT_EQ(log[8], std::string{"input"});
     EXPECT_EQ(log[9], std::string{"player"});
-    scene.Objects().RemoveTicker(&physics);
-    scene.Objects().RemoveTicker(&ui);
-    scene.Objects().RemoveTicker(&effects);
+    scene.RemoveSystemTick(physics);
+    scene.RemoveSystemTick(ui);
+    scene.RemoveSystemTick(effects);
 }
 
 TEST(WorldSpeed, SlowWorldInterpolatesAcrossTheSkippedSteps)
@@ -355,11 +355,11 @@ TEST(OthersHold, HoldingOthersRunsOnlyThePlayerSideForItsSteps)
     PhaseTicker course(log, "course");
     PhaseTicker ui(log, "ui");
     PhaseTicker effects(log, "effects");
-    scene.Objects().AddTicker(&physics, NS::Obj::UpdatePhase::Physics);
-    scene.Objects().AddTicker(&sensors, NS::Obj::UpdatePhase::Sensors);
-    scene.Objects().AddTicker(&course, NS::Obj::UpdatePhase::Course);
-    scene.Objects().AddTicker(&ui, NS::Obj::UpdatePhase::UI);
-    scene.Objects().AddTicker(&effects, NS::Obj::UpdatePhase::Effects);
+    scene.AddSystemTick(physics, NS::Obj::UpdatePhase::Physics);
+    scene.AddSystemTick(sensors, NS::Obj::UpdatePhase::Sensors);
+    scene.AddSystemTick(course, NS::Obj::UpdatePhase::Course);
+    scene.AddSystemTick(ui, NS::Obj::UpdatePhase::UI);
+    scene.AddSystemTick(effects, NS::Obj::UpdatePhase::Effects);
     scene.HoldOthers(2);
     EXPECT_TRUE(scene.IsHoldingOthers());
 
@@ -377,11 +377,11 @@ TEST(OthersHold, HoldingOthersRunsOnlyThePlayerSideForItsSteps)
     {
         EXPECT_EQ(std::count(log.begin(), log.end(), std::string{label}), 1) << label;
     }
-    scene.Objects().RemoveTicker(&physics);
-    scene.Objects().RemoveTicker(&sensors);
-    scene.Objects().RemoveTicker(&course);
-    scene.Objects().RemoveTicker(&ui);
-    scene.Objects().RemoveTicker(&effects);
+    scene.RemoveSystemTick(physics);
+    scene.RemoveSystemTick(sensors);
+    scene.RemoveSystemTick(course);
+    scene.RemoveSystemTick(ui);
+    scene.RemoveSystemTick(effects);
 }
 
 TEST(OthersHold, ZeroStepsAndRestartingThePlayReleaseTheHold)

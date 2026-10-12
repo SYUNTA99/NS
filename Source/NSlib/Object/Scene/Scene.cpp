@@ -32,12 +32,12 @@ namespace NS::Obj
         m_mainCamera.SetUp({0.0f, 1.0f, 0.0f});
         m_cameraManager->SetCamera(&m_mainCamera);
         // 当たりの調べ役はセンサーの段 (物理の後、仕掛けとゴールの前) で回る
-        m_objects.AddTicker(&m_hitSensors, UpdatePhase::Sensors);
+        AddSystemTick(m_hitSensors, UpdatePhase::Sensors);
         // 管理役は vcam を動かす追従カメラの後で選び直す
-        m_objects.AddTicker(m_cameraManager.get(), UpdatePhase::Camera);
+        AddSystemTick(*m_cameraManager, UpdatePhase::Camera);
         // エフェクトの世界は同じ歩の Actor が出した演出を受けてから進む
-        m_objects.AddTicker(&m_sceneRenderer, UpdatePhase::Effects);
-        m_objects.AddTicker(&m_ui, UpdatePhase::UI);
+        AddSystemTick(m_sceneRenderer, UpdatePhase::Effects);
+        AddSystemTick(m_ui, UpdatePhase::UI);
     }
 
     Scene::~Scene() = default;
@@ -568,6 +568,16 @@ namespace NS::Obj
     NS::Gfx::EffectScene* Scene::GetEffectScene() const noexcept
     {
         return m_sceneRenderer.Effects();
+    }
+
+    void Scene::AddSystemTick(SceneSystem& system, UpdatePhase phase)
+    {
+        m_objects.AddTicker(&system, phase);
+    }
+
+    void Scene::RemoveSystemTick(SceneSystem& system) noexcept
+    {
+        m_objects.RemoveTicker(&system);
     }
 
     SceneCamera* Scene::MainCamera() noexcept

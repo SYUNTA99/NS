@@ -1,7 +1,6 @@
 #pragma once
 
 #include "NSlib/Core/Coroutine.h"
-#include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/System/SceneSystem.h"
 
@@ -17,7 +16,7 @@ namespace GL::Level
     //! @details クリア時は操作停止、暗転、やり直し、明転の順で進む
     //! 暗転はシーンの画面描画機能を呼び、世界は止めない
     //! シーンの組み直しで捨てられ、最初の状態から作り直される
-    class CourseDirector final : public NS::Obj::SceneSystem, public NS::Obj::ITickable
+    class CourseDirector final : public NS::Obj::SceneSystem
     {
     public:
         explicit CourseDirector(NS::Obj::Scene& scene);

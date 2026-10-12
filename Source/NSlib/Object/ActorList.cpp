@@ -349,7 +349,7 @@ namespace NS::Obj
         m_updating = false;
     }
 
-    void ActorList::AddTicker(ITickable* ticker, UpdatePhase phase)
+    void ActorList::AddTicker(SceneSystem* ticker, UpdatePhase phase)
     {
         if (ticker == nullptr)
         {
@@ -366,7 +366,7 @@ namespace NS::Obj
         m_tickers.push_back(TickerEntry{.ticker = ticker, .phase = phase});
     }
 
-    void ActorList::RemoveTicker(ITickable* ticker) noexcept
+    void ActorList::RemoveTicker(SceneSystem* ticker) noexcept
     {
         std::erase_if(m_tickers, [ticker](const TickerEntry& entry) noexcept { return entry.ticker == ticker; });
     }

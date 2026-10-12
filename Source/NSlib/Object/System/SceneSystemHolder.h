@@ -46,14 +46,9 @@ namespace NS::Obj
             return result;
         }
 
-        //! 作った物を全て、作った順の逆に捨てる
-        void Clear() noexcept
-        {
-            while (!m_objects.empty())
-            {
-                m_objects.pop_back();
-            }
-        }
+        //! @brief 作った物を全て、作った順の逆に捨てる
+        //! @details 捨てる直前に Scene の更新の登録から外す。管理役は自分で解除しない
+        void Clear() noexcept;
 
     private:
         // 型ごとに 1 つの印。関数内の static の番地は型ごとに 1 つに決まり、RTTI を使わずに型を見分けられる

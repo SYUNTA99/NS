@@ -1,6 +1,5 @@
 #pragma once
 
-#include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/System/SceneSystem.h"
 
@@ -22,7 +21,7 @@ namespace NS::Obj
     //! @brief パッドの振動を進めて書く、シーンに 1 つの物
     //! @details 部品の HitReaction が頼む。頼んだフレームに最初の値を書き、次の更新から進める。
     //! 書かれなかったフレームは Gamepad::Update が 0 にするので、振動の間は毎フレーム書く。捨てる時に 0 を書く
-    class PadRumbleDirector final : public SceneSystem, public ITickable
+    class PadRumbleDirector final : public SceneSystem
     {
     public:
         explicit PadRumbleDirector(Scene& scene);

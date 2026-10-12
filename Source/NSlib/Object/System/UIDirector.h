@@ -1,6 +1,5 @@
 #pragma once
 
-#include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/System/SceneSystem.h"
 
 #include <vector>
@@ -12,7 +11,7 @@ namespace NS::Obj
     //! @brief 開いている画面を束ね、UI の段で動かし、描く順を返す
     //! @details 画面は所有しない。寿命は開いた側が持ち、UIActor の Open と Close が出し入れする
     //! Scene がメンバーで持つので、配置物を組み直しても開いた画面は残る
-    class UIDirector final : public SceneSystem, public ITickable
+    class UIDirector final : public SceneSystem
     {
     public:
         //! 画面を一覧の末尾へ入れる。入っていれば何もしない

@@ -102,6 +102,13 @@ namespace NS::Obj
         [[nodiscard]] NS::Gfx::ScreenFade& Fade() noexcept { return m_sceneRenderer.Fade(); }
         [[nodiscard]] const NS::Gfx::ScreenFade& Fade() const noexcept { return m_sceneRenderer.Fade(); }
 
+        //! @brief 管理役を段 phase の更新へ登録する。登録済みなら段だけを差し替える
+        //! @details 同じ段の Actor の後に登録順で OnTick が呼ばれる
+        //! 更新の最中に登録した物は、その歩の残りでは呼ばれない
+        void AddSystemTick(SceneSystem& system, UpdatePhase phase);
+        //! 管理役を更新から外す。更新の最中に外した物は、その歩の残りでは呼ばれない
+        void RemoveSystemTick(SceneSystem& system) noexcept;
+
         //! 開いている画面の管理役。UIActor の Open と Close が出し入れする
         [[nodiscard]] UIDirector& UI() noexcept { return m_ui; }
         [[nodiscard]] const UIDirector& UI() const noexcept { return m_ui; }

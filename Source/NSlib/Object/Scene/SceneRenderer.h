@@ -6,7 +6,6 @@
 #include "NSlib/Graphics/RenderProxyList.h"
 #include "NSlib/Graphics/RenderSettings.h"
 #include "NSlib/Graphics/ScreenFade.h"
-#include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/SubObjects/VirtualCamera.h"
 #include "NSlib/Object/System/SceneSystem.h"
 
@@ -57,7 +56,7 @@ namespace NS::Obj
     //! 世界は NS::Gfx::Bloom の浮動小数の描画先へ描き、1 を超えた分をにじませて書き戻す
     //! 書き戻した絵に NS::Gfx::ScreenPasses の段を掛けてから、重ね描きを描く
     //! 依存: NS::Gfx::Renderer, NS::Gfx::RenderProxyList, NS::Gfx::EffectScene, NS::Gfx::Bloom, CameraManager
-    class SceneRenderer : public SceneSystem, public ITickable
+    class SceneRenderer : public SceneSystem
     {
     public:
         //! EffectScene を前方宣言のまま持つ。unique_ptr が完全型を要る境目は .cpp 側

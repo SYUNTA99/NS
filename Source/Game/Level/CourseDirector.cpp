@@ -14,12 +14,11 @@ namespace GL::Level
     CourseDirector::CourseDirector(NS::Obj::Scene& scene)
         : m_scene(scene)
     {
-        m_scene.Objects().AddTicker(this, NS::Obj::UpdatePhase::Course);
+        m_scene.AddSystemTick(*this, NS::Obj::UpdatePhase::Course);
     }
 
     CourseDirector::~CourseDirector() noexcept
     {
-        m_scene.Objects().RemoveTicker(this);
         // 進行中のクリア演出も取り消す
         if (m_sequences.IsRunning())
         {

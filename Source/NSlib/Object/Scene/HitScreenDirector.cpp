@@ -49,14 +49,13 @@ namespace NS::Obj
 
     HitScreenDirector::HitScreenDirector(Scene& scene) : m_scene(scene)
     {
-        m_scene.Objects().AddTicker(this, UpdatePhase::RenderPrep);
+        m_scene.AddSystemTick(*this, UpdatePhase::RenderPrep);
         m_scene.RegisterOverlay(this);
     }
 
     HitScreenDirector::~HitScreenDirector() noexcept
     {
         m_scene.UnregisterOverlay(this);
-        m_scene.Objects().RemoveTicker(this);
     }
 
     void HitScreenDirector::StartFlash(const Actor& requester, int frames, float alpha) noexcept

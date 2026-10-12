@@ -2,9 +2,9 @@
 
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ActorRef.h"
+#include "NSlib/Object/System/SceneSystem.h"
 
 #include <cstddef>
 #include <functional>
@@ -79,17 +79,12 @@ namespace NS::Obj
         void SyncPhysics(NS::Phys::PhysicsScene& physics);
 
         //! @brief 段 phase に属する物を 1 回ずつ呼ぶ
-        //! @details 出ている Actor を配置の並びに呼び、続けて AddTicker で登録した物を登録順に呼ぶ
+        //! @details 出ている Actor を配置の並びに呼び、続けて Scene::AddSystemTick の管理役を登録順に呼ぶ
         //! 登録物は段の Actor が出した物を受けてまとめる役なので Actor の後に動く
         //! 出ているかは IsActiveInHierarchy で見る。Input の段は全 Actor の ReadInput
         //! RenderPrep の段は全 Actor の PrepareRender、他は Phase が一致する Actor の Update
         //! 途中で外れた物はそのフレームの残りでは呼ばない。入れ子で呼ぶことはできない
         void ExecutePhase(UpdatePhase phase);
-        //! @brief 部品でない物を段 phase に登録する
-        //! @details 登録済みなら段だけを差し替える。nullptr は無視する
-        void AddTicker(ITickable* ticker, UpdatePhase phase);
-        //! 登録を外す。更新の最中に外した物は、そのフレームの残りでは呼ばれない
-        void RemoveTicker(ITickable* ticker) noexcept;
 
         //! 全配置物の補間の前の値を控える。根の Transform と Model の previous を current へ揃える
         void SnapshotObjects();
@@ -132,7 +127,13 @@ namespace NS::Obj
 
     private:
         // 1 体ずつ入れる口は開始の手前で止まる。開始まで済ませる Scene の湧かす口だけに開く
+        // 管理役の更新の登録も Scene の口だけに開く
         friend class Scene;
+
+        //! 管理役を段 phase に登録する。登録済みなら段だけを差し替える。nullptr は無視する
+        void AddTicker(SceneSystem* ticker, UpdatePhase phase);
+        //! 登録を外す。更新の最中に外した物は、そのフレームの残りでは呼ばれない
+        void RemoveTicker(SceneSystem* ticker) noexcept;
 
         //! 組み上がった配置物を id を振らずに 1 体加える
         //! Scene の湧かす口だけが呼ぶ。Init はここで済ませ、シーンへの付けと開始は呼び手が済ませる
@@ -152,20 +153,20 @@ namespace NS::Obj
         void ApplyIdentity(Actor& obj, const nlohmann::json& entry);
 
         std::vector<std::unique_ptr<Actor>> m_objects; // 配置物の単一所有リスト
-        // 更新の予定 1 件。部品か、部品でない物のどちらか片方を持つ
+        // 更新の予定 1 件。Actor か管理役のどちらか片方を持つ
         struct ScheduledTick
         {
             Actor* actor = nullptr;
-            ITickable* ticker = nullptr;
+            SceneSystem* ticker = nullptr;
         };
-        // 部品でない物の登録 1 件
+        // 管理役の登録 1 件
         struct TickerEntry
         {
-            ITickable* ticker = nullptr;
+            SceneSystem* ticker = nullptr;
             UpdatePhase phase = UpdatePhase::Triggers;
         };
         std::vector<ScheduledTick> m_scheduled; // ExecutePhase がその段で呼ぶ物を呼ぶ順に積む作業用の並び
-        std::vector<TickerEntry> m_tickers;     // 部品でない物の登録。登録順
+        std::vector<TickerEntry> m_tickers;     // 管理役の登録。登録順
         std::unordered_map<std::uint32_t, Actor*>
             m_index;                      // 永続 id から配置物への索引。汚れていれば次に引く時に作り直す
         bool m_indexDirty = true;         // 索引が所有リストと食い違っているか

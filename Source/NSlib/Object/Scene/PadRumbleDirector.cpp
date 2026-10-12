@@ -10,12 +10,11 @@ namespace NS::Obj
 {
     PadRumbleDirector::PadRumbleDirector(Scene& scene) : m_scene(scene)
     {
-        m_scene.Objects().AddTicker(this, UpdatePhase::RenderPrep);
+        m_scene.AddSystemTick(*this, UpdatePhase::RenderPrep);
     }
 
     PadRumbleDirector::~PadRumbleDirector() noexcept
     {
-        m_scene.Objects().RemoveTicker(this);
         // 振動の途中で場面を捨てても、パッドを震わせたままにしない
         if (m_running)
         {

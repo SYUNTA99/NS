@@ -1,7 +1,6 @@
 #include "Game/Level/CourseDirector.h"
 #include "NSlib/Graphics/DebugDraw.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Scene/HitScreenDirector.h"
 #include "NSlib/Object/Scene/HitSensorDirector.h"
@@ -33,6 +32,18 @@ static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::PadRumbleDirector
 static_assert(std::is_base_of_v<NS::Obj::SceneSystem, GL::Level::CourseDirector>);
 static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::UIDirector>);
 
+// 更新の登録の口は Scene の 1 つで、SceneSystem の派生だけを受ける
+template <class T>
+concept CanAddSystemTick =
+    requires(NS::Obj::Scene& scene, T& system) { scene.AddSystemTick(system, NS::Obj::UpdatePhase::Triggers); };
+template <class T>
+concept CanAddTickerDirectly =
+    requires(NS::Obj::ActorList& list, T* system) { list.AddTicker(system, NS::Obj::UpdatePhase::Triggers); };
+static_assert(CanAddSystemTick<NS::Obj::UIDirector>);
+static_assert(!CanAddSystemTick<NS::Obj::Actor>);
+static_assert(!CanAddSystemTick<NS::Obj::UIActor>);
+static_assert(!CanAddTickerDirectly<NS::Obj::SceneSystem>);
+
 namespace
 {
     class CountedSceneObj final : public NS::Obj::SceneSystem
@@ -45,6 +56,18 @@ namespace
         }
         ~CountedSceneObj() noexcept override { --s_alive; }
         static inline int s_alive = 0;
+    };
+
+    // 作られた時に更新へ登録し、解除を自分では書かない管理役
+    class SelfRegisteringSystem final : public NS::Obj::SceneSystem
+    {
+    public:
+        explicit SelfRegisteringSystem(NS::Obj::Scene& scene)
+        {
+            scene.AddSystemTick(*this, NS::Obj::UpdatePhase::Triggers);
+        }
+        void OnTick() override { ++s_ticks; }
+        static inline int s_ticks = 0;
     };
 
     class CountingUI final : public NS::Obj::UIActor
@@ -61,7 +84,7 @@ namespace
         std::vector<std::string> order;
     };
 
-    class LoggingTicker final : public NS::Obj::ITickable
+    class LoggingTicker final : public NS::Obj::SceneSystem
     {
     public:
         explicit LoggingTicker(TickLog& log) noexcept : m_log(log) {}
@@ -123,6 +146,20 @@ TEST(SceneSystemHolder, OneInstancePerTypeAndClearDestroys)
     EXPECT_EQ(NS::Obj::FindSceneSystem<CountedSceneObj>(scene), nullptr);
 }
 
+// 保持体は捨てる前に更新から外す。管理役はデストラクタに解除を書かなくてよい
+TEST(SceneSystemHolder, ClearRemovesTheSystemFromTheUpdate)
+{
+    NS::Obj::Scene scene;
+    SelfRegisteringSystem::s_ticks = 0;
+    ASSERT_NE(NS::Obj::GetOrCreateSceneSystem<SelfRegisteringSystem>(scene), nullptr);
+    scene.OnUpdate();
+    EXPECT_EQ(SelfRegisteringSystem::s_ticks, 1);
+
+    scene.LoadJson(NS::Obj::MakeSceneJson());
+    scene.OnUpdate();
+    EXPECT_EQ(SelfRegisteringSystem::s_ticks, 1);
+}
+
 TEST(SceneSystemHolder, ActorReachesSceneObjectsThroughWindow)
 {
     NS::Obj::Scene scene;
@@ -155,7 +192,7 @@ TEST(ActorListTicker, TickerRunsAfterSubObjectsOfSameBand)
     TickLog log;
     scene.SpawnTransient<LoggingActor>(log);
     LoggingTicker ticker(log);
-    scene.Objects().AddTicker(&ticker, NS::Obj::UpdatePhase::Triggers);
+    scene.AddSystemTick(ticker, NS::Obj::UpdatePhase::Triggers);
 
     scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     ASSERT_EQ(log.order.size(), 3u);
@@ -163,7 +200,7 @@ TEST(ActorListTicker, TickerRunsAfterSubObjectsOfSameBand)
     EXPECT_EQ(log.order[1], "component");
     EXPECT_EQ(log.order[2], "ticker");
 
-    scene.Objects().RemoveTicker(&ticker);
+    scene.RemoveSystemTick(ticker);
     log.order.clear();
     scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     ASSERT_EQ(log.order.size(), 2u);

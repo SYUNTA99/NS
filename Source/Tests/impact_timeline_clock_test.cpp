@@ -5,7 +5,7 @@
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/ITickable.h"
+#include "NSlib/Object/System/SceneSystem.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/ObjectJson.h"
@@ -1665,7 +1665,7 @@ TEST(ImpactTimelineClock, AMissedPredictionStopsTheEarlyEvents)
 namespace
 {
     // 自機以外の段で回った歩を数える
-    class CountingTicker final : public NS::Obj::ITickable
+    class CountingTicker final : public NS::Obj::SceneSystem
     {
     public:
         void OnTick() override { ++ticks; }
@@ -1719,13 +1719,13 @@ TEST(ImpactTimelineClock, OthersStopHoldsTheWorldButNotThePlayerBeforeContact)
     Player* player = PlaceClockScene(scene, 0.0f, 6.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     CountingTicker others;
-    scene.Objects().AddTicker(&others, NS::Obj::UpdatePhase::Triggers);
+    scene.AddSystemTick(others, NS::Obj::UpdatePhase::Triggers);
     for (int frame = 0; frame < 30; ++frame)
     {
         scene.OnUpdate();
     }
     const std::vector<OthersStep> steps = RunUntilDetection(scene, *player, others);
-    scene.Objects().RemoveTicker(&others);
+    scene.RemoveSystemTick(others);
     ASSERT_GE(steps.size(), 5u);
     ASSERT_NE(player->Resolver().LastImpact().sequence, 0u);
     const std::size_t detect = steps.size() - 1;
@@ -1753,13 +1753,13 @@ TEST(ImpactTimelineClock, OthersStopDoesNotRunForAMissPrediction)
     Player* player = PlaceClockScene(scene, 0.75f, 6.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     CountingTicker others;
-    scene.Objects().AddTicker(&others, NS::Obj::UpdatePhase::Triggers);
+    scene.AddSystemTick(others, NS::Obj::UpdatePhase::Triggers);
     for (int frame = 0; frame < 30; ++frame)
     {
         scene.OnUpdate();
     }
     const std::vector<OthersStep> steps = RunUntilDetection(scene, *player, others);
-    scene.Objects().RemoveTicker(&others);
+    scene.RemoveSystemTick(others);
     ASSERT_NE(player->Resolver().LastImpact().sequence, 0u);
     ASSERT_EQ(player->Resolver().LastImpact().tier, HitTier::Wide);
     for (const OthersStep& step : steps)

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/SubObjects/CameraModifier.h"
 #include "NSlib/Object/SubObjects/VirtualCamera.h"
 #include "NSlib/Object/System/SceneSystem.h"
@@ -24,7 +23,7 @@ namespace NS::Obj
     //! 遊びが読む向きは ViewPose が効果の前まで合成する。遊びは実カメラを読まない
     //! シーンがカメラの段の登録物にするので、vcam を動かす追従カメラ (カメラの段の Actor) の後で選び直す
     //! 依存: NS, NS::Obj::SubObject / SceneCamera / VirtualCamera / CameraModifier
-    class CameraManager : public SceneSystem, public ITickable
+    class CameraManager : public SceneSystem
     {
     public:
         CameraManager() noexcept;
