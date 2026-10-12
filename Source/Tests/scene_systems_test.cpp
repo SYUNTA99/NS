@@ -1,19 +1,35 @@
+#include "Game/Level/CourseDirector.h"
 #include "NSlib/Graphics/DebugDraw.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
+#include "NSlib/Object/Scene/HitScreenDirector.h"
+#include "NSlib/Object/Scene/HitSensorDirector.h"
+#include "NSlib/Object/Scene/PadRumbleDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/Scene/SceneRenderer.h"
 #include "NSlib/Object/SubObject.h"
+#include "NSlib/Object/SubObjects/CameraManager.h"
+#include "NSlib/Object/System/SceneSystem.h"
 #include "NSlib/Object/UIActor.h"
 
 #include <gtest/gtest.h>
 
 #include <cstddef>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 // シーンに 1 つの物の置き場、画面に出す物 (UIActor)、部品でない物の更新の登録口を縛る
+
+// シーンの管理役は全部 SceneSystem の派生
+static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::SceneRenderer>);
+static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::HitSensorDirector>);
+static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::CameraManager>);
+static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::HitScreenDirector>);
+static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::PadRumbleDirector>);
+static_assert(std::is_base_of_v<NS::Obj::SceneSystem, GL::Level::CourseDirector>);
 
 namespace
 {
