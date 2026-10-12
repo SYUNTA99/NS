@@ -4,7 +4,6 @@
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactTremor.h"
 #include "Game/Level/SensorKinds.h"
-#include "NSlib/Object/Gravity.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
@@ -296,7 +295,7 @@ namespace GL::Level
             LeaveFreeze();
         }
         SpawnMark();
-        const NS::Vector3 up = -NS::Obj::GravityDirection(*this);
+        const NS::Vector3 up = -GravityDirection();
         NS::Vector3 forward = desc.arc.direction - up * NS::Dot(desc.arc.direction, up);
         const float length = forward.Length();
         if (!NS::IsFinite(forward) || !(length > 0.0001f))
@@ -366,7 +365,7 @@ namespace GL::Level
             {
                 gravity *= m_arc.apexBandGravityScale;
             }
-            NS::Obj::AddGravity(*this, m_velocity, gravity, dt);
+            AddGravity(m_velocity, gravity, dt);
         }
         MoveLaunched(dt);
         if (!m_motion.Machine().IsCurrent<ArcState>())
@@ -387,7 +386,7 @@ namespace GL::Level
     {
         const NS::Sphere sphere = Sphere().WorldSphere();
         float hitDistance = 0.0f;
-        const NS::Vector3 down = NS::Obj::GravityDirection(*this);
+        const NS::Vector3 down = GravityDirection();
         if (!NS::Obj::RaycastCollision(
                 *this, sphere.center, down, distance, hitDistance, outNormal, Sphere().BodyId()) ||
             NS::Dot(outNormal, -down) < m_params->FloorDot())
@@ -437,7 +436,7 @@ namespace GL::Level
             return;
         }
         m_velocity -= normal * NS::Dot(m_velocity, normal);
-        const NS::Vector3 downhill = NS::Obj::GravityDirection(*this);
+        const NS::Vector3 downhill = GravityDirection();
         m_velocity += (downhill - normal * NS::Dot(downhill, normal)) * (m_arc.riseGravity * dt);
         const float speed = m_velocity.Length();
         const float reduced = std::max(0.0f, speed - m_params->Friction() * m_arc.riseGravity * dt);
@@ -486,7 +485,7 @@ namespace GL::Level
             }
             Root().SetPosition(Root().Position() + direction * allowed);
             remaining -= allowed / speed;
-            if (NS::Dot(normal, -NS::Obj::GravityDirection(*this)) >= m_params->FloorDot() &&
+            if (NS::Dot(normal, -GravityDirection()) >= m_params->FloorDot() &&
                 m_motion.Machine().IsCurrent<ArcState>())
             {
                 Land(normal);
@@ -500,7 +499,7 @@ namespace GL::Level
             }
             Root().SetPosition(Root().Position() + normal * m_params->ContactSkin());
         }
-        const NS::Vector3 up = -NS::Obj::GravityDirection(*this);
+        const NS::Vector3 up = -GravityDirection();
         const NS::Vector3 horizontal = m_velocity - up * NS::Dot(m_velocity, up);
         const NS::Vector3 spin = NS::Cross(up, horizontal) * m_params->SpinPerSpeed();
         const float rate = spin.Length();
@@ -512,7 +511,7 @@ namespace GL::Level
 
     void MapObj::SpawnMark()
     {
-        const NS::Vector3 down = NS::Obj::GravityDirection(*this);
+        const NS::Vector3 down = GravityDirection();
         const NS::Sphere sphere = Sphere().WorldSphere();
         float distance = 0.0f;
         NS::Vector3 normal{};

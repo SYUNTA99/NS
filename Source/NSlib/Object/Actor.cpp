@@ -1,6 +1,7 @@
 ﻿#include "NSlib/Object/Actor.h"
 
 #include "NSlib/Core/Logger.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/SubObjects/Animation.h"
 #include "NSlib/Object/SubObjects/BoxCollision.h"
@@ -134,6 +135,25 @@ namespace NS::Obj
     float Actor::BodyDelta() const noexcept
     {
         return NS::OS::FrameTimer::FixedDelta() * m_bodyTimeScale;
+    }
+
+    NS::Vector3 Actor::GravityDirection() const noexcept
+    {
+        const Scene* scene = OwningScene();
+        if (scene == nullptr)
+        {
+            return NS::Vector3{0.0f, -1.0f, 0.0f};
+        }
+        return scene->GravityDirection();
+    }
+
+    void Actor::AddGravity(NS::Vector3& velocity, float strength, float dt) const noexcept
+    {
+        if (!std::isfinite(strength) || !std::isfinite(dt) || !(dt > 0.0f))
+        {
+            return;
+        }
+        velocity += GravityDirection() * (strength * dt);
     }
 
     bool Actor::SetBodyTimeScale(float scale) noexcept

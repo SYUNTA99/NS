@@ -2,7 +2,6 @@
 
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/Gravity.h"
 #include "NSlib/Object/Transform.h"
 
 #include <cmath>
@@ -85,7 +84,7 @@ namespace NS::Obj
             m_velocity.y += gravity * dt;
             return;
         }
-        NS::Obj::AddGravity(*owner, m_velocity, -gravity, dt);
+        owner->AddGravity(m_velocity, -gravity, dt);
     }
 
     // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、

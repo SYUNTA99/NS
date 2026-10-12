@@ -60,6 +60,16 @@ namespace NS::Obj
         //! @return 書いた場合 true、非有限か 0 以下で断って前の値を残した場合は false
         [[nodiscard]] bool SetBodyTimeScale(float scale) noexcept;
 
+        //! @brief 居るシーンの重力の向きを返す
+        //! @return シーンに居なければ (0, -1, 0)
+        [[nodiscard]] NS::Vector3 GravityDirection() const noexcept;
+        //! @brief 居るシーンの重力の向きへ、strength × dt だけ velocity を足す
+        //! @details strength か dt が有限でない時と、dt が 0 以下の時は何もしない
+        //! @param[in,out] velocity 足す先の速度
+        //! @param[in] strength 重力の強さ。単位は m/s²
+        //! @param[in] dt 進める秒
+        void AddGravity(NS::Vector3& velocity, float strength, float dt) const noexcept;
+
         //! @brief OnInit を 1 回だけ呼ぶ。2 回目からは何もしない
         //! @details CreateActorOfClass と ActorList に入る所が呼ぶ。Scene に入れずに部品を触る時は自分で呼ぶ
         void Init();
