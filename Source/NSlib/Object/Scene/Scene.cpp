@@ -2,13 +2,13 @@
 
 #include "NSlib/Graphics/DebugDraw.h"
 #include "NSlib/Graphics/EffectScene.h"
-#include "NSlib/Object/SubObjects/CameraManager.h"
 #include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
+#include "NSlib/Object/SubObjects/CameraManager.h"
 #include "NSlib/Object/UIActor.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -37,6 +37,7 @@ namespace NS::Obj
         m_objects.AddTicker(m_cameraManager.get(), UpdatePhase::Camera);
         // エフェクトの世界は同じ歩の Actor が出した演出を受けてから進む
         m_objects.AddTicker(&m_sceneRenderer, UpdatePhase::Effects);
+        m_objects.AddTicker(&m_ui, UpdatePhase::UI);
     }
 
     Scene::~Scene() = default;
@@ -515,7 +516,7 @@ namespace NS::Obj
         {
             m_cameraManager->Evaluate(alpha);
         }
-        m_sceneRenderer.Render(*m_cameraManager, m_mainCamera, m_skyboxPath, alpha);
+        m_sceneRenderer.Render(*m_cameraManager, m_mainCamera, m_ui, m_skyboxPath, alpha);
     }
 
     void Scene::RegisterRenderable(IRenderable* renderable)
@@ -567,19 +568,6 @@ namespace NS::Obj
     NS::Gfx::EffectScene* Scene::GetEffectScene() const noexcept
     {
         return m_sceneRenderer.Effects();
-    }
-
-    void Scene::RegisterUIActor(UIActor* actor)
-    {
-        m_sceneRenderer.RegisterUIActor(actor);
-        // 進む順は DrawOrder でなく開いた順
-        m_objects.AddTicker(actor, UpdatePhase::UI);
-    }
-
-    void Scene::UnregisterUIActor(UIActor* actor) noexcept
-    {
-        m_sceneRenderer.UnregisterUIActor(actor);
-        m_objects.RemoveTicker(actor);
     }
 
     SceneCamera* Scene::MainCamera() noexcept

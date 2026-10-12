@@ -35,7 +35,7 @@ namespace NS::Obj
     class DirectionalLight;
     class IRenderable;
     class IOverlay;
-    class UIActor;
+    class UIDirector;
 
     //! @brief 指定の描画先へ指定の視点でシーンを描く単位
     //! @details target が null なら backbuffer、viewPose が空なら CameraManager の選ぶカメラで描く
@@ -117,13 +117,6 @@ namespace NS::Obj
         //! 重ね描きの解除
         void UnregisterOverlay(IOverlay* overlay);
 
-        //! 画面に出す物の登録。二重登録は無視する。並びは DrawOrder 昇順、同値なら後から入れた方が後ろ
-        void RegisterUIActor(UIActor* actor);
-        //! 画面に出す物の解除
-        void UnregisterUIActor(UIActor* actor) noexcept;
-        //! 画面に出す物の一覧。DrawOrder 昇順、非所有
-        [[nodiscard]] const std::vector<UIActor*>& UIActors() const noexcept { return m_uiActors; }
-
         //! 平行光の自己登録。二重登録は無視する
         //! 並びは登録順。ResolveSceneSettings はこの順に読む
         void RegisterLight(DirectionalLight* light);
@@ -137,20 +130,25 @@ namespace NS::Obj
         //! @details レンダラー未設定なら何も描かない。ビューごとに Renderer::BeginSceneView で描画先を差し替える
         //! @param[in,out] cameras 実カメラの行列を引く CameraManager。姿勢は Scene::OnRender が書き終えている
         //! @param[in,out] camera cameras が駆動する実カメラ。アスペクト比をレンダラーの現在サイズへ揃える
+        //! @param[in] ui 重ね描きの上へ描く画面の管理役。覚えずに、描く間だけ読む
         //! @param[in] skyboxPath 描く skybox の ContentRoot 配下相対パス。空なら skybox を描かない
         //! @param[in] alpha 前の固定フレームから今の固定フレームまでの補間の割合 0..1
         //! 1 なら今の固定フレームの姿
-        void Render(CameraManager& cameras, SceneCamera& camera, std::string_view skyboxPath, float alpha);
+        void Render(CameraManager& cameras,
+                    SceneCamera& camera,
+                    const UIDirector& ui,
+                    std::string_view skyboxPath,
+                    float alpha);
 
         //! Opaque バケットを視錐台で絞り、並べ替えずに描画する
         void DrawOpaque(const NS::Gfx::RenderContext& context);
         //! Transparent バケットを視錐台で絞り、context.cameraPosition から遠い順に描画する
         //! 距離が同じなら SortPriority 昇順
         void DrawTransparent(const NS::Gfx::RenderContext& context);
-        //! 登録中の OverlayRenderer を priority 昇順で描画し、その上へ画面に出す物を DrawOrder 昇順で描く
+        //! 登録中の OverlayRenderer を priority 昇順で描画し、その上へ ui の画面を DrawOrder 昇順で描く
         //! OverlayRenderer は IsActive が偽なら飛ばす
         //! 最後にシーン全体の暗転を重ねる
-        void DrawOverlays(const NS::Gfx::RenderContext& context);
+        void DrawOverlays(const NS::Gfx::RenderContext& context, const UIDirector& ui);
 
         //! @brief プロジェクト既定値からシーンの描画設定を作る。有効な平行光があれば照明を上書きする
         //! @details 登録が無ければプロジェクト既定値がそのまま残る
@@ -169,6 +167,7 @@ namespace NS::Obj
         //! view.viewPose が空なら実カメラで描く
         void RenderViewWithOverlays(CameraManager& cameras,
                                     SceneCamera& camera,
+                                    const UIDirector& ui,
                                     std::string_view skyboxPath,
                                     const SceneView& view,
                                     float alpha,
@@ -199,7 +198,6 @@ namespace NS::Obj
         std::vector<RenderEntry> m_renderables;
 
         std::vector<IOverlay*> m_overlays; // 重ね描きの登録簿。OverlayOrder 昇順、非所有
-        std::vector<UIActor*> m_uiActors;  // 画面に出す物の登録簿。DrawOrder 昇順、非所有
         NS::Gfx::ScreenFade m_fade;
 
         std::vector<DirectionalLight*> m_lights; // 平行光の登録簿。登録順、非所有

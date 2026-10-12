@@ -12,6 +12,7 @@
 #include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/SubObjects/CameraManager.h"
 #include "NSlib/Object/System/SceneSystem.h"
+#include "NSlib/Object/System/UIDirector.h"
 #include "NSlib/Object/UIActor.h"
 
 #include <gtest/gtest.h>
@@ -30,6 +31,7 @@ static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::CameraManager>);
 static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::HitScreenDirector>);
 static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::PadRumbleDirector>);
 static_assert(std::is_base_of_v<NS::Obj::SceneSystem, GL::Level::CourseDirector>);
+static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::UIDirector>);
 
 namespace
 {

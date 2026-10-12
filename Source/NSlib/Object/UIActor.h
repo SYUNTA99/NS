@@ -1,7 +1,6 @@
 #pragma once
 
 #include "NSlib/Object/ActorBase.h"
-#include "NSlib/Object/ITickable.h"
 #include "NSlib/UI/UISystem.h"
 
 namespace NS::Gfx
@@ -14,7 +13,7 @@ namespace NS::Obj
     //! @brief 体力の表示やメニューなど、画面に出す物の基底
     //! @details 寿命は開いた側が持ち、Open で登録し Close か破棄で外れる
     //! UI の段で開いた順に更新し、世界の後に DrawOrder 順で描く
-    class UIActor : public ActorBase, public ITickable
+    class UIActor : public ActorBase
     {
     public:
         UIActor() noexcept = default;
@@ -33,7 +32,7 @@ namespace NS::Obj
         [[nodiscard]] bool IsOpen() const noexcept { return IsAlive() && OwningScene() != nullptr; }
 
         //! UI の段で 1 固定ステップに 1 回呼ばれる。シミュレーションが止まっている間は呼ばれない。既定は何もしない
-        void OnTick() override {}
+        virtual void OnTick() {}
 
         //! 世界と重ね描きの部品を描いた後の画面へ重ねて描く
         virtual void OnRenderOverlay(const NS::Gfx::RenderContext& context);

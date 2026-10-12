@@ -32,7 +32,7 @@ namespace NS::Obj
     {
         if (Scene* scene = OwningScene())
         {
-            scene->RegisterUIActor(this);
+            scene->UI().Add(*this);
         }
     }
 
@@ -40,7 +40,7 @@ namespace NS::Obj
     {
         if (Scene* scene = OwningScene())
         {
-            scene->UnregisterUIActor(this);
+            scene->UI().Remove(*this);
         }
     }
 

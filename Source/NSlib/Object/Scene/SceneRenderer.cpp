@@ -12,6 +12,7 @@
 #include "NSlib/Object/SubObjects/CameraManager.h"
 #include "NSlib/Object/SubObjects/DirectionalLight.h"
 #include "NSlib/Object/SubObjects/OverlayRenderer.h"
+#include "NSlib/Object/System/UIDirector.h"
 #include "NSlib/Object/UIActor.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Filesystem.h"
@@ -135,24 +136,6 @@ namespace NS::Obj
         std::erase(m_overlays, overlay);
     }
 
-    void SceneRenderer::RegisterUIActor(UIActor* actor)
-    {
-        if (actor == nullptr || std::find(m_uiActors.begin(), m_uiActors.end(), actor) != m_uiActors.end())
-        {
-            return;
-        }
-        const std::vector<UIActor*>::iterator at =
-            std::upper_bound(m_uiActors.begin(), m_uiActors.end(), actor, [](const UIActor* a, const UIActor* b) {
-                return a->DrawOrder() < b->DrawOrder();
-            });
-        m_uiActors.insert(at, actor);
-    }
-
-    void SceneRenderer::UnregisterUIActor(UIActor* actor) noexcept
-    {
-        std::erase(m_uiActors, actor);
-    }
-
     void SceneRenderer::RegisterLight(DirectionalLight* light)
     {
         if (light == nullptr)
@@ -196,7 +179,7 @@ namespace NS::Obj
         m_renderScene.DrawBucket(context, true);
     }
 
-    void SceneRenderer::DrawOverlays(const NS::Gfx::RenderContext& context)
+    void SceneRenderer::DrawOverlays(const NS::Gfx::RenderContext& context, const UIDirector& ui)
     {
         for (IOverlay* overlay : m_overlays)
         {
@@ -206,7 +189,7 @@ namespace NS::Obj
             }
         }
         // 画面に出す物は世界の上の重ね描きよりさらに上
-        for (UIActor* actor : m_uiActors)
+        for (UIActor* actor : ui.DrawOrdered())
         {
             actor->OnRenderOverlay(context);
         }
@@ -245,7 +228,8 @@ namespace NS::Obj
         return resolved;
     }
 
-    void SceneRenderer::Render(CameraManager& cameras, SceneCamera& camera, std::string_view skyboxPath, float alpha)
+    void SceneRenderer::Render(
+        CameraManager& cameras, SceneCamera& camera, const UIDirector& ui, std::string_view skyboxPath, float alpha)
     {
         if (m_renderer == nullptr)
         {
@@ -255,7 +239,7 @@ namespace NS::Obj
         // ビュー列が空なら現描画先へ CameraManager の視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
         if (m_sceneViews.empty())
         {
-            RenderViewWithOverlays(cameras, camera, skyboxPath, SceneView{}, alpha, PassesForView(0));
+            RenderViewWithOverlays(cameras, camera, ui, skyboxPath, SceneView{}, alpha, PassesForView(0));
             return;
         }
 
@@ -263,7 +247,7 @@ namespace NS::Obj
         {
             const SceneView& view = m_sceneViews[i];
             m_renderer->BeginSceneView(view.target);
-            RenderViewWithOverlays(cameras, camera, skyboxPath, view, alpha, PassesForView(i));
+            RenderViewWithOverlays(cameras, camera, ui, skyboxPath, view, alpha, PassesForView(i));
         }
     }
 
@@ -309,6 +293,7 @@ namespace NS::Obj
 
     void SceneRenderer::RenderViewWithOverlays(CameraManager& cameras,
                                                SceneCamera& camera,
+                                               const UIDirector& ui,
                                                std::string_view skyboxPath,
                                                const SceneView& view,
                                                float alpha,
@@ -329,7 +314,7 @@ namespace NS::Obj
         }
 #endif
 
-        DrawOverlays(ctx);
+        DrawOverlays(ctx, ui);
     }
 
     namespace

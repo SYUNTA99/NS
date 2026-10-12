@@ -1,5 +1,7 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/System/UIDirector.h"
 #include "NSlib/Object/UIActor.h"
 #include "NSlib/UI/ColorRect.h"
 
@@ -25,6 +27,31 @@ namespace
         std::vector<std::string>& m_log;
         std::string m_name;
         int m_drawOrder = 0;
+    };
+
+    // 自分の番で、ほかの画面を開くか閉じる画面の物
+    class TogglingUI final : public NS::Obj::UIActor
+    {
+    public:
+        TogglingUI(NS::Obj::Scene& scene, NS::Obj::UIActor& target, bool opens) noexcept
+            : m_scene(scene), m_target(target), m_opens(opens)
+        {}
+        void OnTick() override
+        {
+            if (m_opens)
+            {
+                m_target.Open(m_scene);
+            }
+            else
+            {
+                m_target.Close();
+            }
+        }
+
+    private:
+        NS::Obj::Scene& m_scene;
+        NS::Obj::UIActor& m_target;
+        bool m_opens = false;
     };
 } // namespace
 
@@ -64,6 +91,75 @@ TEST(UIActorWidgets, OpenScreensTickInOpenOrderOnTheUIPhase)
     ASSERT_EQ(log.size(), 1u);
     EXPECT_EQ(log[0], "back");
     back.Close();
+}
+
+// 描く順は DrawOrder の昇順で、同じ値は開いた順
+TEST(UIActorWidgets, OpenScreensDrawInAscendingDrawOrder)
+{
+    NS::Obj::Scene scene;
+    std::vector<std::string> log;
+    OrderedUI front(log, "front", 1);
+    OrderedUI back(log, "back", 0);
+    OrderedUI frontLater(log, "frontLater", 1);
+    front.Open(scene);
+    back.Open(scene);
+    frontLater.Open(scene);
+
+    const std::vector<NS::Obj::UIActor*> order = scene.UI().DrawOrdered();
+    ASSERT_EQ(order.size(), 3u);
+    EXPECT_EQ(order[0], &back);
+    EXPECT_EQ(order[1], &front);
+    EXPECT_EQ(order[2], &frontLater);
+}
+
+// 配置物を組み直しても、開いている画面は開いたまま動く
+TEST(UIActorWidgets, OpenScreenKeepsTickingAfterTheWorldIsRebuilt)
+{
+    NS::Obj::Scene scene;
+    std::vector<std::string> log;
+    OrderedUI ui(log, "ui", 0);
+    ui.Open(scene);
+
+    scene.LoadJson(NS::Obj::MakeSceneJson());
+
+    EXPECT_TRUE(ui.IsOpen());
+    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::UI);
+    ASSERT_EQ(log.size(), 1u);
+    EXPECT_EQ(log[0], "ui");
+}
+
+// UI の段の最中に開いた画面は、その歩では動かない
+TEST(UIActorWidgets, ScreenOpenedDuringTheUIPhaseWaitsForTheNextStep)
+{
+    NS::Obj::Scene scene;
+    std::vector<std::string> log;
+    OrderedUI late(log, "late", 0);
+    TogglingUI opener(scene, late, true);
+    opener.Open(scene);
+
+    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::UI);
+    EXPECT_TRUE(late.IsOpen());
+    EXPECT_TRUE(log.empty());
+
+    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::UI);
+    ASSERT_EQ(log.size(), 1u);
+    EXPECT_EQ(log[0], "late");
+}
+
+// UI の段の最中に閉じた画面は、その歩の残りで動かない
+TEST(UIActorWidgets, ScreenClosedDuringTheUIPhaseIsSkipped)
+{
+    NS::Obj::Scene scene;
+    std::vector<std::string> log;
+    OrderedUI victim(log, "victim", 0);
+    TogglingUI closer(scene, victim, false);
+    closer.Open(scene);
+    victim.Open(scene);
+
+    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::UI);
+
+    EXPECT_FALSE(victim.IsOpen());
+    EXPECT_TRUE(log.empty());
 }
 
 TEST(UIActorWidgets, WidgetsStretchToTheViewport)

@@ -12,6 +12,7 @@
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/Scene/SceneRenderer.h"
 #include "NSlib/Object/System/SceneSystemHolder.h"
+#include "NSlib/Object/System/UIDirector.h"
 #include "NSlib/Physics/PhysicsScene.h"
 
 #include <cstdint>
@@ -101,10 +102,9 @@ namespace NS::Obj
         [[nodiscard]] NS::Gfx::ScreenFade& Fade() noexcept { return m_sceneRenderer.Fade(); }
         [[nodiscard]] const NS::Gfx::ScreenFade& Fade() const noexcept { return m_sceneRenderer.Fade(); }
 
-        //! 画面に出す物を描画の一覧と UI の段の登録物へ入れる。UIActor::Open が呼ぶ。二重登録は無視する
-        void RegisterUIActor(UIActor* actor);
-        //! 画面に出す物を描画の一覧と UI の段の登録物から外す。UIActor::Close が呼ぶ
-        void UnregisterUIActor(UIActor* actor) noexcept;
+        //! 開いている画面の管理役。UIActor の Open と Close が出し入れする
+        [[nodiscard]] UIDirector& UI() noexcept { return m_ui; }
+        [[nodiscard]] const UIDirector& UI() const noexcept { return m_ui; }
 
         //! PhysicsScene への参照。Scene が値で持つので寿命は Scene と同じ
         [[nodiscard]] NS::Phys::PhysicsScene& Physics() noexcept { return m_physicsScene; }
@@ -288,7 +288,7 @@ namespace NS::Obj
         //! 世界の駆動はここが持つ
         //! 物理の段では、Jolt の 1 歩、その段に置いた物の順に呼ぶ
         //! 段の中は Actor、登録物の順に呼ぶ。CameraManager は Camera の段、エフェクトの世界は Effects の段、
-        //! 開いている UIActor は UI の段の登録物
+        //! 開いている画面の管理役は UI の段の登録物
         //! 読み込んだら回り続けるのが既定で、止める口は SetSimulationEnabled / SetSimulationPaused
         void OnUpdate();
 
@@ -312,6 +312,8 @@ namespace NS::Obj
         void StartSpawned(Actor& obj);
 
         SceneRenderer m_sceneRenderer;
+        // 配置物が持つ画面は破棄で自分を外すので、配置物より先に宣言して後に破棄する
+        UIDirector m_ui;
 
         //! 衝突判定の PhysicsScene。当たりの有る scene だけ ActorList::SyncPhysics が body を入れ、無ければ空のまま
         //! m_objects より前に宣言してあるので破棄は後になり、これを借りる移動の SubObject より長く生きる
