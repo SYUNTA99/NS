@@ -137,6 +137,62 @@ namespace NS::Obj
         return NS::OS::FrameTimer::FixedDelta() * m_bodyTimeScale;
     }
 
+    void Actor::Appear()
+    {
+        if (m_alive)
+        {
+            return;
+        }
+        m_alive = true;
+        OnAppear();
+    }
+
+    void Actor::Kill() noexcept
+    {
+        if (!m_alive)
+        {
+            return;
+        }
+        m_alive = false;
+        OnKill();
+    }
+
+    CameraManager* Actor::GetCameraManager() const noexcept
+    {
+        if (m_scene == nullptr)
+        {
+            return nullptr;
+        }
+        return m_scene->GetCameraManager();
+    }
+
+    SceneSystemHolder* Actor::GetSceneSystemHolder() const noexcept
+    {
+        if (m_scene == nullptr)
+        {
+            return nullptr;
+        }
+        return m_scene->GetSceneSystemHolder();
+    }
+
+    NS::Phys::PhysicsScene* Actor::GetPhysicsScene() const noexcept
+    {
+        if (m_scene == nullptr)
+        {
+            return nullptr;
+        }
+        return m_scene->GetPhysicsScene();
+    }
+
+    NS::Gfx::EffectScene* Actor::GetEffectScene() const noexcept
+    {
+        if (m_scene == nullptr)
+        {
+            return nullptr;
+        }
+        return m_scene->GetEffectScene();
+    }
+
     NS::Vector3 Actor::GravityDirection() const noexcept
     {
         const Scene* scene = OwningScene();

@@ -55,7 +55,7 @@ namespace
     };
 } // namespace
 
-// 段で回る口は Actor だけが持ち、UIActor と ActorBase には無い
+// 段で回る口は Actor だけが持ち、UIActor には無い
 template <class T>
 concept HasPhaseHooks = requires(T& actor) {
     actor.Phase();
@@ -68,7 +68,6 @@ concept HasAnyPhaseHook = requires(T& actor) { actor.Phase(); } || requires(T& a
                           requires(T& actor) { actor.Update(); } || requires(T& actor) { actor.PrepareRender(); };
 static_assert(HasPhaseHooks<NS::Obj::Actor>);
 static_assert(!HasAnyPhaseHook<NS::Obj::UIActor>);
-static_assert(!HasAnyPhaseHook<NS::Obj::ActorBase>);
 
 // 更新の順は開いた順で、描く順とは別の一覧になる
 TEST(UIActorWidgets, OpenScreensTickInOpenOrderOnTheUIPhase)

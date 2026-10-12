@@ -3,7 +3,7 @@
 #include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Graphics/ScreenFade.h"
 #include "NSlib/Graphics/Texture.h"
-#include "NSlib/Object/ActorBase.h"
+#include "NSlib/Object/Object.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneRenderer.h"
 #include "NSlib/Object/System/UIDirector.h"
@@ -62,7 +62,7 @@ namespace
     }
 } // namespace
 
-static_assert(!std::is_base_of_v<NS::Obj::ActorBase, NS::Gfx::ScreenFade>);
+static_assert(!std::is_base_of_v<NS::Obj::Object, NS::Gfx::ScreenFade>);
 
 TEST(ScreenFade, HoldsBlackUntilFadeInAndCanCancel)
 {

@@ -1,8 +1,13 @@
 ﻿#pragma once
 
 #include "NSlib/Core/Assert.h"
-#include "NSlib/Object/ActorBase.h"
+#include "NSlib/Object/IUse/IUseCamera.h"
+#include "NSlib/Object/IUse/IUseCollision.h"
+#include "NSlib/Object/IUse/IUseEffect.h"
+#include "NSlib/Object/IUse/IUseSceneSystem.h"
+#include "NSlib/Object/IUse/IUseState.h"
 #include "NSlib/Object/IUse/IUseTime.h"
+#include "NSlib/Object/Object.h"
 #include "NSlib/Object/StateMachine.h"
 #include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/Transform.h"
@@ -12,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -39,15 +45,38 @@ namespace NS::Obj
     };
 
     //! @brief 世界に置く物の基底。Transform と部品を持ち、MapParts / MapObj / Player などが派生する
-    //! @details 所属シーンと IUse〜 は基底の ActorBase が持つ
-    //! 体の時計 IUseTime は体を持つ Actor だけが継ぐ
-    class Actor : public ActorBase, public IUseTime
+    //! @details 所属シーンを持ち、IUse〜 の問いを居るシーンへ繋ぐ。シーンに居ない間の問いは nullptr を返す
+    class Actor : public Object,
+                  public IUseCamera,
+                  public IUseSceneSystem,
+                  public IUseCollision,
+                  public IUseEffect,
+                  public IUseState,
+                  public IUseTime
     {
     public:
         Actor() noexcept;
         virtual ~Actor() noexcept;
         [[nodiscard]] std::uint32_t Id() const noexcept { return m_id; }
-        NS_REFLECT_NONE(Actor, ActorBase)
+        [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
+        NS_REFLECT_NONE(Actor, Object)
+
+        //! @brief 世界に出す。更新の段・描画・当たり・センサーへ登録する。出ていれば何もしない
+        void Appear();
+        //! @brief 世界から外す。出ていなければ何もしない
+        //! @details 配置を止めるだけで、ゲームの死ではない。死の意味を足す派生は別の名前の関数から呼ぶ
+        void Kill() noexcept;
+        [[nodiscard]] bool IsAlive() const noexcept { return m_alive; }
+
+        //! 所有 Scene。Scene attach 前 / 破棄後は nullptr
+        [[nodiscard]] Scene* OwningScene() const noexcept { return m_scene; }
+        //! Scene 側が attach 時に呼ぶ。派生から手動で呼ばない
+        void AttachScene(Scene* scene) noexcept { m_scene = scene; }
+
+        [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
+        [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
+        [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
+        [[nodiscard]] NS::Gfx::EffectScene* GetEffectScene() const noexcept override;
 
         //! TransformSubObject が持つ Root Transform。階層構築は SetParent で
         [[nodiscard]] Transform& Root() noexcept { return *m_transform; }
@@ -216,8 +245,8 @@ namespace NS::Obj
         [[nodiscard]] SubObjSlot<HitSensor> AttackSensorSlot() noexcept { return {"AttackSensor", &m_attackSensor}; }
         [[nodiscard]] SubObjSlot<HitReaction> HitReactionSlot() noexcept { return {"HitReaction", &m_hitReaction}; }
 
-        void OnAppear() override;
-        void OnKill() noexcept override;
+        virtual void OnAppear();
+        virtual void OnKill() noexcept;
         //! @brief 観測の段。この歩の始まり
         //! @details 世界と相手を読んで控え、歩ごとの記録の時計を進める。状態・身体・見た目を書かない。
         //! 既定は何もしない。補間の前の値は段でなく固定ステップの頭で控える
@@ -282,6 +311,7 @@ namespace NS::Obj
         //! 状態機械を預かる。既に持っていれば NS_LOG_ERROR を出して machine を捨て、false を返す
         [[nodiscard]] bool AdoptStateMachine(std::unique_ptr<IStateMachine> machine);
         void SetId(std::uint32_t id) noexcept { m_id = id; }
+        void SetName(std::string name) noexcept { m_name = std::move(name); }
         template <class T> T* AdoptSubObj(std::unique_ptr<T> subObject, std::string_view name)
         {
             T* raw = subObject.get();
@@ -302,6 +332,9 @@ namespace NS::Obj
         //! SubObjs の並びの順位。根が 0、基底の枠が決まった順に 1 から 7、派生の部品は 8
         [[nodiscard]] std::size_t OrderRank(const SubObject* subObject) const noexcept;
         std::uint32_t m_id = 0;
+        std::string m_name;
+        Scene* m_scene = nullptr; // 所有 Scene、attach 前後は nullptr
+        bool m_alive = false;
         std::vector<std::unique_ptr<SubObject>> m_subObjects; // 根と作った部品の全部。作った順で、壊す時は逆順
         std::vector<SubObject*> m_subObjOrder;
         TransformSubObject* m_rootSubObj = nullptr;

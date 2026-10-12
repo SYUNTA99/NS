@@ -24,33 +24,17 @@ namespace NS::Obj
         {
             return;
         }
-        AttachScene(&scene);
-        Appear();
-    }
-
-    void UIActor::OnAppear()
-    {
-        if (Scene* scene = OwningScene())
-        {
-            scene->UI().Add(*this);
-        }
-    }
-
-    void UIActor::OnKill() noexcept
-    {
-        if (Scene* scene = OwningScene())
-        {
-            scene->UI().Remove(*this);
-        }
+        m_scene = &scene;
+        scene.UI().Add(*this);
     }
 
     void UIActor::Close() noexcept
     {
-        if (OwningScene() == nullptr)
+        if (m_scene == nullptr)
         {
             return;
         }
-        Kill();
-        AttachScene(nullptr);
+        m_scene->UI().Remove(*this);
+        m_scene = nullptr;
     }
 } // namespace NS::Obj

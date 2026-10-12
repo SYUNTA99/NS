@@ -12,7 +12,7 @@ namespace NS::Obj
     class VirtualCamera;
 
     //! @brief カメラの窓口。シーンに 1 つのカメラの管理役 (CameraManager) を引ける物が持つ
-    //! @details Actor・UIActor・シーンが持つ。部品は持ち主の Actor から引く
+    //! @details Actor とシーンが持つ。部品は持ち主の Actor から引く
     //! 揺れや寄りのような効果は、下の補助関数で管理役へモディファイアを積む。管理役の中身は触らない
     class IUseCamera
     {

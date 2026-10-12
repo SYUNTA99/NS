@@ -8,7 +8,7 @@ namespace NS::Gfx
 namespace NS::Obj
 {
     //! @brief エフェクトの窓口。シーンの EffectScene を引ける物が持つ
-    //! @details Actor・UIActor・シーンが持つ。部品は持ち主の Actor から引く
+    //! @details Actor とシーンが持つ。部品は持ち主の Actor から引く
     class IUseEffect
     {
     public:

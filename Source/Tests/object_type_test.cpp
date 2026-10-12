@@ -1,5 +1,8 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/SubObjects/Model.h"
+#include "NSlib/Object/UIActor.h"
+
+#include <type_traits>
 
 #include <gtest/gtest.h>
 
@@ -13,7 +16,15 @@ constexpr bool k_HasPartTypeSearch = requires(T& actor) { actor.template FindSub
 static_assert(!k_HasPersistentId<NS::Obj::Object>);
 static_assert(!k_HasObjectName<NS::Obj::Object>);
 static_assert(k_HasPersistentId<NS::Obj::Actor>);
-static_assert(k_HasObjectName<NS::Obj::ActorBase>);
+static_assert(k_HasObjectName<NS::Obj::Actor>);
+// 世界に置く物と画面は Object から別々に派生し、画面はシーンへの問いの口を継がない
+static_assert(std::is_base_of_v<NS::Obj::Object, NS::Obj::Actor>);
+static_assert(std::is_base_of_v<NS::Obj::Object, NS::Obj::UIActor>);
+static_assert(!std::is_base_of_v<NS::Obj::Actor, NS::Obj::UIActor>);
+static_assert(!std::is_base_of_v<NS::Obj::UIActor, NS::Obj::Actor>);
+static_assert(!std::is_base_of_v<NS::Obj::IUseCamera, NS::Obj::UIActor>);
+static_assert(!std::is_base_of_v<NS::Obj::IUseSceneSystem, NS::Obj::UIActor>);
+static_assert(!k_HasObjectName<NS::Obj::UIActor>);
 static_assert(!k_HasPersistentId<NS::Obj::SubObject>);
 static_assert(k_HasObjectName<NS::Obj::SubObject>);
 static_assert(!k_CanCreateTypedSubObjFromOutside<NS::Obj::Actor>);
@@ -34,7 +45,6 @@ TEST(ObjectType, ActorAndPartsShareTheReflectionCastWithoutRtti)
     NS::Obj::Object* object = &actor;
     EXPECT_EQ(NS::Obj::Cast<ReflectedActor>(object), &actor);
     EXPECT_EQ(NS::Obj::Cast<NS::Obj::Actor>(object), &actor);
-    EXPECT_EQ(NS::Obj::Cast<NS::Obj::ActorBase>(object), &actor);
     EXPECT_EQ(NS::Obj::Cast<NS::Obj::Model>(object), nullptr);
     EXPECT_STREQ(object->ClassName(), "ReflectedActor");
     const NS::Obj::Object* constant = object;

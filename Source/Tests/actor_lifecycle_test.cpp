@@ -106,19 +106,20 @@ TEST(ActorLifecycle, PhysicsAndSensorsLeaveTheirRegistries)
     EXPECT_TRUE(scene.Physics().Raycast(from, -NS::Vector3::UnitY, 4.0f, distance));
 }
 
-TEST(ActorLifecycle, UIKillAndAppearKeepTheSceneAttachment)
+TEST(ActorLifecycle, UICloseStopsTheUpdateAndOpenResumesIt)
 {
     NS::Obj::Scene scene;
     LifeUI ui;
     ui.Open(scene);
     scene.OnUpdate();
     EXPECT_EQ(ui.updates, 1);
-    ui.Kill();
+    ui.Close();
     EXPECT_FALSE(ui.IsOpen());
-    EXPECT_EQ(ui.OwningScene(), &scene);
+    EXPECT_EQ(ui.OwningScene(), nullptr);
     scene.OnUpdate();
     EXPECT_EQ(ui.updates, 1);
-    ui.Appear();
+    ui.Open(scene);
+    EXPECT_EQ(ui.OwningScene(), &scene);
     scene.OnUpdate();
     EXPECT_EQ(ui.updates, 2);
     ui.Close();
@@ -136,10 +137,8 @@ TEST(ActorLifecycle, ParentKillRemovesChildPhysicsWithoutChangingChildLife)
     EXPECT_TRUE(child->IsAlive());
     EXPECT_TRUE(scene.HitSensors().Sensors().empty());
     float distance = 0.0f;
-    EXPECT_FALSE(
-        scene.Physics().Raycast(NS::Vector3{0.0f, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance));
+    EXPECT_FALSE(scene.Physics().Raycast(NS::Vector3{0.0f, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance));
     parent->Appear();
     EXPECT_FALSE(scene.HitSensors().Sensors().empty());
-    EXPECT_TRUE(
-        scene.Physics().Raycast(NS::Vector3{0.0f, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance));
+    EXPECT_TRUE(scene.Physics().Raycast(NS::Vector3{0.0f, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance));
 }
