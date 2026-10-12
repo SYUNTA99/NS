@@ -5,13 +5,13 @@
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/IUse/IUseCollision.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
-#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Scene/HitSensorDirector.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
 #include "NSlib/Object/Scene/SceneJson.h"
-#include "NSlib/Object/Scene/SceneObjHolder.h"
 #include "NSlib/Object/Scene/SceneRenderer.h"
+#include "NSlib/Object/System/SceneSystemHolder.h"
 #include "NSlib/Physics/PhysicsScene.h"
 
 #include <cstdint>
@@ -48,7 +48,7 @@ namespace NS::Obj
     //! 依存: ActorList / SceneJson / ObjectBuilder / TypeRegistry
     class Scene : public NS::NonCopyable,
                   public IUseCamera,
-                  public IUseSceneObj,
+                  public IUseSceneSystem,
                   public IUseCollision,
                   public IUseEffect
     {
@@ -85,7 +85,7 @@ namespace NS::Obj
         [[nodiscard]] SceneCamera* MainCamera() noexcept;
 
         //! シーンに 1 つの物の置き場
-        [[nodiscard]] SceneObjHolder* GetSceneObjHolder() const noexcept override;
+        [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
 
         //! 地形の当たりの PhysicsScene
         [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
@@ -325,7 +325,7 @@ namespace NS::Obj
         NS::Obj::ActorList m_objects; // 配置物の一覧
         // シーンに 1 つの物。配置物と画面の一覧を借りるので、それより後に宣言して先に破棄する
         // const の窓口からも作れるよう mutable にする。作っても見かけのシーンの状態は変わらない
-        mutable SceneObjHolder m_sceneObjs{*this};
+        mutable SceneSystemHolder m_sceneObjs{*this};
         std::string m_skyboxPath; // skybox のパス。実体側の唯一の出所
 
         AssetManager* m_assets = nullptr; // AssetManager、非所有。未設定なら参照の実体化を跳ばす

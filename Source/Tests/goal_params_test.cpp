@@ -1,11 +1,11 @@
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/Goal.h"
 #include "Game/Player.h"
-#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Graphics/ScreenFade.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Graphics/ScreenFade.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
 
 #include <gtest/gtest.h>
 
@@ -28,7 +28,7 @@ TEST(GameTuning, GoalFadeUsesTheSavedGoalFields)
     const nlohmann::json saved = scene.ToJson();
     scene.LoadJson(saved);
     (void)scene.BeginPlayBaseline();
-    GL::Level::CourseDirector* director = NS::Obj::FindSceneObj<GL::Level::CourseDirector>(scene);
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(scene);
     ASSERT_NE(director, nullptr);
     scene.HitSensors().OnTick();
     director->OnTick();

@@ -3,7 +3,7 @@
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/IUse/IUseCollision.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
-#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/IUse/IUseState.h"
 #include "NSlib/Object/Object.h"
 
@@ -16,7 +16,7 @@ namespace NS::Obj
     //! オデッセイは LiveActor と LayoutActor が窓口だけを共有する。NS は土台を 1 つにし、シーンとの繋ぎを 2 回書かない
     class ActorBase : public Object,
                       public IUseCamera,
-                      public IUseSceneObj,
+                      public IUseSceneSystem,
                       public IUseCollision,
                       public IUseEffect,
                       public IUseState
@@ -41,7 +41,7 @@ namespace NS::Obj
         void AttachScene(Scene* scene) noexcept { m_scene = scene; }
 
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
-        [[nodiscard]] SceneObjHolder* GetSceneObjHolder() const noexcept override;
+        [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
         [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
         [[nodiscard]] NS::Gfx::EffectScene* GetEffectScene() const noexcept override;
         [[nodiscard]] IStateMachine* GetStateMachine() noexcept override { return nullptr; }

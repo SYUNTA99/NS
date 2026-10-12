@@ -2,7 +2,7 @@
 
 #include "Game/Level/CourseDirector.h"
 #include "NSlib/App/Application.h"
-#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Windows/Filesystem.h"
@@ -110,8 +110,7 @@ void Game::StartLoadedScene()
         return;
     }
     // 自機の居ないシーンでも CourseDirector を作って凍結を取る。読み直しの後に前のシーンの凍結が残らない
-    if (GL::Level::CourseDirector* director =
-            NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*scene))
+    if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(*scene))
     {
         director->StartCourse();
     }

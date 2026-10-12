@@ -1,25 +1,25 @@
 #pragma once
 
-#include "NSlib/Object/Scene/SceneObjHolder.h"
+#include "NSlib/Object/System/SceneSystemHolder.h"
 
 namespace NS::Obj
 {
     //! @brief シーンに 1 つの物の窓口
     //! @details Actor・UIActor・シーンが持つ。部品は持ち主の Actor から引く
-    class IUseSceneObj
+    class IUseSceneSystem
     {
     public:
         //! シーンに 1 つの物の置き場。シーンに居ない間は nullptr
-        [[nodiscard]] virtual SceneObjHolder* GetSceneObjHolder() const noexcept = 0;
+        [[nodiscard]] virtual SceneSystemHolder* GetSceneSystemHolder() const noexcept = 0;
 
     protected:
-        ~IUseSceneObj() = default;
+        ~IUseSceneSystem() = default;
     };
 
     //! 型 T のシーンに 1 つの物。作っていないかシーンに居なければ nullptr
-    template <class T> [[nodiscard]] T* FindSceneObj(const IUseSceneObj& user) noexcept
+    template <class T> [[nodiscard]] T* FindSceneSystem(const IUseSceneSystem& user) noexcept
     {
-        SceneObjHolder* holder = user.GetSceneObjHolder();
+        SceneSystemHolder* holder = user.GetSceneSystemHolder();
         if (holder == nullptr)
         {
             return nullptr;
@@ -28,9 +28,9 @@ namespace NS::Obj
     }
 
     //! 型 T のシーンに 1 つの物。まだ作っていなければ作る。シーンに居なければ nullptr
-    template <class T> T* GetOrCreateSceneObj(const IUseSceneObj& user)
+    template <class T> T* GetOrCreateSceneSystem(const IUseSceneSystem& user)
     {
-        SceneObjHolder* holder = user.GetSceneObjHolder();
+        SceneSystemHolder* holder = user.GetSceneSystemHolder();
         if (holder == nullptr)
         {
             return nullptr;

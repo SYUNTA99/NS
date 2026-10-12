@@ -23,7 +23,7 @@
 #include "Game/Player/States/SkidPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Object/ActorList.h"
-#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/Animation.h"
 #include "NSlib/Object/SubObjects/Body.h"
@@ -175,7 +175,7 @@ void Player::ObserveStep()
     const bool inImpact = m_resolver->IsHitStopping() || m_resolver->IsAwaitingRebound();
     if (m_input->RespawnPressed() && !inImpact)
     {
-        if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*this))
+        if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(*this))
         {
             director->RequestRespawnObjects();
         }
@@ -310,7 +310,7 @@ void Player::InitAfterPlacement()
 {
     ResetHealth();
     // 死とゴールを伝える先。先に作っておくと、最初の知らせの段で流れが進む
-    (void)NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*this);
+    (void)NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(*this);
 }
 
 bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver)
@@ -320,7 +320,7 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
     if (GL::Level::IsMsgInstantDeath(msg))
     {
         Die();
-        if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*this))
+        if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(*this))
         {
             director->NotifyPlayerDead();
         }
@@ -328,7 +328,7 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
     }
     if (const GL::Level::MsgGoal* goal = NS::Obj::MsgCast<GL::Level::MsgGoal>(msg))
     {
-        if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*this))
+        if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(*this))
         {
             director->NotifyGoal(goal->FadeOutSeconds(), goal->FadeInSeconds());
         }

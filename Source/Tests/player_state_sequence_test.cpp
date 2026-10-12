@@ -6,7 +6,7 @@
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/HitScreenDirector.h"
@@ -29,7 +29,7 @@ namespace
     public:
         void OnStep(::Player& player, float) override
         {
-            EXPECT_EQ(NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(player)->FlashFramesRemaining(), 3);
+            EXPECT_EQ(NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player)->FlashFramesRemaining(), 3);
         }
     };
 
@@ -110,7 +110,7 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(*player);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
     ASSERT_NE(screen, nullptr);
     screen->StartFlash(*player, 3, 1.0f);
     screen->OnTick();
@@ -153,7 +153,7 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
         player->Update();
     }
     ASSERT_TRUE(player->Resolver().FreezeBeganThisStep());
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(*player);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
     ASSERT_NE(screen, nullptr);
     screen->StartFlash(*player, 3, 1.0f);
     screen->OnTick();

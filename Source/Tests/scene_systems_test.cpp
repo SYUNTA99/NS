@@ -1,10 +1,10 @@
 #include "NSlib/Graphics/DebugDraw.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/ITickable.h"
-#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/UIActor.h"
 
 #include <gtest/gtest.h>
@@ -17,7 +17,7 @@
 
 namespace
 {
-    class CountedSceneObj final : public NS::Obj::ISceneObj
+    class CountedSceneObj final : public NS::Obj::SceneSystem
     {
     public:
         explicit CountedSceneObj(NS::Obj::Scene& scene) noexcept
@@ -89,30 +89,30 @@ namespace
     };
 } // namespace
 
-TEST(SceneObjHolder, OneInstancePerTypeAndClearDestroys)
+TEST(SceneSystemHolder, OneInstancePerTypeAndClearDestroys)
 {
     NS::Obj::Scene scene;
-    CountedSceneObj* first = NS::Obj::GetOrCreateSceneObj<CountedSceneObj>(scene);
-    CountedSceneObj* second = NS::Obj::GetOrCreateSceneObj<CountedSceneObj>(scene);
+    CountedSceneObj* first = NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(scene);
+    CountedSceneObj* second = NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(scene);
     ASSERT_NE(first, nullptr);
     EXPECT_EQ(first, second);
-    EXPECT_EQ(NS::Obj::FindSceneObj<CountedSceneObj>(scene), first);
+    EXPECT_EQ(NS::Obj::FindSceneSystem<CountedSceneObj>(scene), first);
     EXPECT_EQ(CountedSceneObj::s_alive, 1);
 
     // 配置物を組み直すと最初の状態から作り直させる
     scene.LoadJson(NS::Obj::MakeSceneJson());
     EXPECT_EQ(CountedSceneObj::s_alive, 0);
-    EXPECT_EQ(NS::Obj::FindSceneObj<CountedSceneObj>(scene), nullptr);
+    EXPECT_EQ(NS::Obj::FindSceneSystem<CountedSceneObj>(scene), nullptr);
 }
 
-TEST(SceneObjHolder, ActorReachesSceneObjectsThroughWindow)
+TEST(SceneSystemHolder, ActorReachesSceneObjectsThroughWindow)
 {
     NS::Obj::Scene scene;
     NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
-    CountedSceneObj* made = NS::Obj::GetOrCreateSceneObj<CountedSceneObj>(*actor);
-    EXPECT_EQ(made, NS::Obj::FindSceneObj<CountedSceneObj>(scene));
+    CountedSceneObj* made = NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(*actor);
+    EXPECT_EQ(made, NS::Obj::FindSceneSystem<CountedSceneObj>(scene));
     NS::Obj::Actor loose;
-    EXPECT_EQ(NS::Obj::GetOrCreateSceneObj<CountedSceneObj>(loose), nullptr);
+    EXPECT_EQ(NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(loose), nullptr);
 }
 
 TEST(UIActor, OpenRegistersForUpdateAndCloseRemoves)
@@ -171,9 +171,7 @@ TEST(SceneStepShapes, RebuildingTheWorldDropsTheStepShapes)
     namespace DD = NS::Gfx::DebugDraw;
     NS::Obj::Scene scene;
     DD::Clear();
-    DD::Line(NS::Vector3{0.0f, 0.0f, 0.0f},
-             NS::Vector3{1.0f, 0.0f, 0.0f},
-             NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
+    DD::Line(NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
     DD::Triangle(NS::Vector3{0.0f, 0.0f, 0.0f},
                  NS::Vector3{1.0f, 0.0f, 0.0f},
                  NS::Vector3{0.0f, 1.0f, 0.0f},
@@ -192,9 +190,7 @@ TEST(SceneStepShapes, ShutdownDropsTheStepShapes)
     namespace DD = NS::Gfx::DebugDraw;
     NS::Obj::Scene scene;
     DD::Clear();
-    DD::Line(NS::Vector3{0.0f, 0.0f, 0.0f},
-             NS::Vector3{1.0f, 0.0f, 0.0f},
-             NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
+    DD::Line(NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
 
     scene.OnShutdown();
 

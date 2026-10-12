@@ -553,7 +553,7 @@ namespace NS::Obj
         return m_cameraManager.get();
     }
 
-    SceneObjHolder* Scene::GetSceneObjHolder() const noexcept
+    SceneSystemHolder* Scene::GetSceneSystemHolder() const noexcept
     {
         return &m_sceneObjs;
     }

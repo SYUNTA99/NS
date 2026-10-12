@@ -3,7 +3,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
-#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
 namespace NS::Obj
@@ -33,8 +33,8 @@ namespace NS::Obj
         {
             return;
         }
-        (void)GetOrCreateSceneObj<HitScreenDirector>(*Owner());
-        (void)GetOrCreateSceneObj<PadRumbleDirector>(*Owner());
+        (void)GetOrCreateSceneSystem<HitScreenDirector>(*Owner());
+        (void)GetOrCreateSceneSystem<PadRumbleDirector>(*Owner());
     }
 
     void HitReaction::StartFlash(int frames, float alpha) noexcept
@@ -43,7 +43,7 @@ namespace NS::Obj
         {
             return;
         }
-        if (HitScreenDirector* screen = FindSceneObj<HitScreenDirector>(*Owner()))
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(*Owner()))
         {
             screen->StartFlash(*Owner(), frames, alpha);
         }
@@ -143,7 +143,7 @@ namespace NS::Obj
         {
             return;
         }
-        if (HitScreenDirector* screen = FindSceneObj<HitScreenDirector>(*Owner()))
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(*Owner()))
         {
             screen->StartShakeLines(*Owner(), desc);
         }
@@ -155,7 +155,7 @@ namespace NS::Obj
         {
             return;
         }
-        if (HitScreenDirector* screen = FindSceneObj<HitScreenDirector>(*Owner()))
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(*Owner()))
         {
             screen->StartDistortionRing(*Owner(), desc);
         }
@@ -167,7 +167,7 @@ namespace NS::Obj
         {
             return;
         }
-        if (HitScreenDirector* screen = FindSceneObj<HitScreenDirector>(*Owner()))
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(*Owner()))
         {
             screen->StopDistortionRing(*Owner());
         }
@@ -179,7 +179,7 @@ namespace NS::Obj
         {
             return;
         }
-        if (PadRumbleDirector* rumble = FindSceneObj<PadRumbleDirector>(*Owner()))
+        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(*Owner()))
         {
             rumble->Start(*Owner(), pad);
         }
@@ -191,7 +191,7 @@ namespace NS::Obj
         {
             return;
         }
-        if (PadRumbleDirector* rumble = FindSceneObj<PadRumbleDirector>(*Owner()))
+        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(*Owner()))
         {
             rumble->Blend(*Owner(), pad);
         }
@@ -203,11 +203,11 @@ namespace NS::Obj
         {
             return;
         }
-        if (HitScreenDirector* screen = FindSceneObj<HitScreenDirector>(*Owner()))
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(*Owner()))
         {
             screen->Stop(*Owner());
         }
-        if (PadRumbleDirector* rumble = FindSceneObj<PadRumbleDirector>(*Owner()))
+        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(*Owner()))
         {
             rumble->Stop(*Owner());
         }

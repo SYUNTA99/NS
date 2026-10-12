@@ -3,8 +3,8 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/Reflection/Curve.h"
-#include "NSlib/Object/Scene/SceneObjHolder.h"
 #include "NSlib/Object/SubObjects/OverlayRenderer.h"
+#include "NSlib/Object/System/SceneSystem.h"
 
 #include <array>
 
@@ -70,7 +70,7 @@ namespace NS::Obj
     //! @brief 当たりの白・震えの線・歪みの輪を進めて画面へ出す、シーンに 1 つの物
     //! @details 部品の HitReaction が頼む。頼んだフレームは最初の姿を出し、次の更新から進める。
     //! 描く支度の段で進むので、世界の速さに従い、自機以外の止めの間も進む
-    class HitScreenDirector final : public ISceneObj, public ITickable, public IOverlay
+    class HitScreenDirector final : public SceneSystem, public ITickable, public IOverlay
     {
     public:
         explicit HitScreenDirector(Scene& scene);

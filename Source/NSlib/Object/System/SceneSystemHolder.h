@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Object/System/SceneSystem.h"
 
 #include <memory>
 #include <utility>
@@ -10,27 +11,19 @@ namespace NS::Obj
 {
     class Scene;
 
-    //! @brief シーンに 1 つの物の共通基底。コースの進行役・当たりの調べ役など
-    //! @details SceneObjHolder が型ごとに 1 つ作って持つ。作るのは初めて引いた時で、コンストラクタがシーンを受け取る
-    class ISceneObj : public NS::NonCopyable
-    {
-    public:
-        virtual ~ISceneObj() noexcept = default;
-    };
-
-    //! @brief シーンに 1 つの物の置き場。オデッセイの SceneObjHolder に当たる
-    //! @details 型ごとに 1 つを持ち、IUseSceneObj の窓口から FindSceneObj / GetOrCreateSceneObj で引く
+    //! @brief 要る時に作る管理役の置き場
+    //! @details 型ごとに 1 つ持つ。初めて引いた時に T の Scene& を取るコンストラクタで作る
     //! 配置物を組み直す時に全て捨て、最初の状態から作り直させる。捨てる順は作った順の逆
-    class SceneObjHolder : public NS::NonCopyable
+    class SceneSystemHolder : public NS::NonCopyable
     {
     public:
-        explicit SceneObjHolder(Scene& scene) noexcept : m_scene(scene) {}
-        ~SceneObjHolder() noexcept { Clear(); }
+        explicit SceneSystemHolder(Scene& scene) noexcept : m_scene(scene) {}
+        ~SceneSystemHolder() noexcept { Clear(); }
 
         //! 型 T の物。まだ作っていなければ nullptr
         template <class T> [[nodiscard]] T* Find() const noexcept
         {
-            for (const std::pair<const void*, std::unique_ptr<ISceneObj>>& entry : m_objects)
+            for (const std::pair<const void*, std::unique_ptr<SceneSystem>>& entry : m_objects)
             {
                 if (entry.first == KeyOf<T>())
                 {
@@ -71,6 +64,6 @@ namespace NS::Obj
         }
 
         Scene& m_scene;
-        std::vector<std::pair<const void*, std::unique_ptr<ISceneObj>>> m_objects; // 作った順
+        std::vector<std::pair<const void*, std::unique_ptr<SceneSystem>>> m_objects; // 作った順
     };
 } // namespace NS::Obj

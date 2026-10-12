@@ -20,6 +20,13 @@
 #include "NSlib/Core/Sphere.h"
 #include "NSlib/Graphics/DebugDraw.h"
 #include "NSlib/Object/AssetManager.h"
+#include "NSlib/Object/ObjectName.h"
+#include "NSlib/Object/Reflection/Archetype.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneCamera.h"
+#include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/SubObjects/BoxCollision.h"
 #include "NSlib/Object/SubObjects/CameraManager.h"
 #include "NSlib/Object/SubObjects/CapsuleCollision.h"
@@ -31,13 +38,6 @@
 #include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/SubObjects/VirtualCamera.h"
-#include "NSlib/Object/ObjectName.h"
-#include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/SubObjectEntry.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneCamera.h"
-#include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Input.h"
@@ -99,8 +99,7 @@ namespace
         {
             shapes.OBB(box->WorldOBB(), color);
         }
-        else if (NS::Obj::SphereCollision* sphere =
-                     NS::Obj::Cast<NS::Obj::SphereCollision>(object.CollisionSubObj()))
+        else if (NS::Obj::SphereCollision* sphere = NS::Obj::Cast<NS::Obj::SphereCollision>(object.CollisionSubObj()))
         {
             shapes.Sphere(sphere->WorldSphere(), color);
         }
@@ -468,8 +467,7 @@ void LevelEditorController::EnterPlay() noexcept
 
     // 凍結を取り、そこから走行を最初から。プレイの間の判定と編集復帰の姿はこの凍結を読む
     // 手順は出荷と同じ CourseDirector::StartCourse の持ち物
-    if (GL::Level::CourseDirector* director =
-            NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(*m_scene))
+    if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(*m_scene))
     {
         director->StartCourse();
     }
@@ -1168,8 +1166,7 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
         {
             continue;
         }
-        const GL::Level::HitZones* zones =
-            NS::Obj::Cast<GL::Level::HitZones>(object->FindSubObj("HitZones"));
+        const GL::Level::HitZones* zones = NS::Obj::Cast<GL::Level::HitZones>(object->FindSubObj("HitZones"));
         const NS::Obj::HitSensor* bodySensor = object->BodySensorSubObj();
         if (zones == nullptr || bodySensor == nullptr)
         {
@@ -1196,8 +1193,7 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
         {
             continue;
         }
-        for (const GL::Level::HitFaceShape& shape :
-             GL::Level::HitFaceShapes(zones->Face(), frame.bodyShape))
+        for (const GL::Level::HitFaceShape& shape : GL::Level::HitFaceShapes(zones->Face(), frame.bodyShape))
         {
             DrawHitFaceShape(shapes, frame, shape);
         }

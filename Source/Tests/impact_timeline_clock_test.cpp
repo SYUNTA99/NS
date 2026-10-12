@@ -7,7 +7,7 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
-#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Scene/HitScreenDirector.h"
 #include "NSlib/Object/Scene/PadRumbleDirector.h"
@@ -44,11 +44,11 @@ namespace
     // は描く支度の段で進む。自機と相手を手で回す試しは、回した後にこれを呼んで同じ順にする
     void TickHitDirectors(Player& player)
     {
-        if (NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(player))
+        if (NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player))
         {
             screen->OnTick();
         }
-        if (NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneObj<NS::Obj::PadRumbleDirector>(player))
+        if (NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(player))
         {
             pad->OnTick();
         }
@@ -56,7 +56,7 @@ namespace
 
     int FlashRemaining(const Player& player)
     {
-        const NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(player);
+        const NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
         if (screen == nullptr)
         {
             return 0;
@@ -1030,7 +1030,7 @@ TEST(ImpactTimelineClock, ShakeLinesFrameTheTargetForTheStop)
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Obj::HitScreenDirector& reaction = *NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(*player);
+        const NS::Obj::HitScreenDirector& reaction = *NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
         if (clock < 1 || clock > 6)
         {
             EXPECT_EQ(reaction.ShakeLinesFramesRemaining(), 0);

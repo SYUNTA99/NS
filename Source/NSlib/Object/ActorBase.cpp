@@ -33,13 +33,13 @@ namespace NS::Obj
         return m_scene->GetCameraManager();
     }
 
-    SceneObjHolder* ActorBase::GetSceneObjHolder() const noexcept
+    SceneSystemHolder* ActorBase::GetSceneSystemHolder() const noexcept
     {
         if (m_scene == nullptr)
         {
             return nullptr;
         }
-        return m_scene->GetSceneObjHolder();
+        return m_scene->GetSceneSystemHolder();
     }
 
     NS::Phys::PhysicsScene* ActorBase::GetPhysicsScene() const noexcept

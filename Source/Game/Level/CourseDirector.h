@@ -2,8 +2,8 @@
 
 #include "NSlib/Core/Coroutine.h"
 #include "NSlib/Object/ITickable.h"
-#include "NSlib/Object/Scene/SceneObjHolder.h"
 #include "NSlib/Object/SubObject.h"
+#include "NSlib/Object/System/SceneSystem.h"
 
 namespace NS::Obj
 {
@@ -17,7 +17,7 @@ namespace GL::Level
     //! @details クリア時は操作停止、暗転、やり直し、明転の順で進む
     //! 暗転はシーンの画面描画機能を呼び、世界は止めない
     //! シーンの組み直しで捨てられ、最初の状態から作り直される
-    class CourseDirector final : public NS::Obj::ISceneObj, public NS::Obj::ITickable
+    class CourseDirector final : public NS::Obj::SceneSystem, public NS::Obj::ITickable
     {
     public:
         explicit CourseDirector(NS::Obj::Scene& scene);
@@ -73,8 +73,8 @@ namespace GL::Level
         float m_fadeInSeconds = 0.0f;
 
         NS::Obj::Scene& m_scene;
-        NS::CoroutineRunner m_sequences;             // クリアの流れ
-        bool m_playerDead = false;                   // 次の段でやり直すか
+        NS::CoroutineRunner m_sequences; // クリアの流れ
+        bool m_playerDead = false;       // 次の段でやり直すか
         bool m_respawnPending = false;
         bool m_goalReached = false; // 次の段でクリアの流れを始めるか
     };

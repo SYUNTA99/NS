@@ -17,7 +17,7 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
-#include "NSlib/Object/IUse/IUseSceneObj.h"
+#include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/HitScreenDirector.h"
 #include "NSlib/Object/Scene/HitSensorDirector.h"
@@ -288,7 +288,7 @@ namespace GL::Level
         {
             return 0;
         }
-        const NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneObj<NS::Obj::HitScreenDirector>(*Owner());
+        const NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*Owner());
         if (screen == nullptr)
         {
             return 0;
