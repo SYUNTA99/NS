@@ -5,7 +5,7 @@
 #include "NSlib/Graphics/Texture.h"
 #include "NSlib/Object/Object.h"
 #include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneRenderer.h"
+#include "NSlib/Object/System/SceneRenderer.h"
 #include "NSlib/Object/System/UIDirector.h"
 #include "NSlib/Object/UIActor.h"
 #include "NSlib/Windows/Clock.h"

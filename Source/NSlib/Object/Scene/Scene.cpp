@@ -8,7 +8,7 @@
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
-#include "NSlib/Object/SubObjects/CameraManager.h"
+#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/UIActor.h"
 #include "NSlib/Windows/Clock.h"
 

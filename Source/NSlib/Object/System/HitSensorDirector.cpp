@@ -1,4 +1,4 @@
-#include "NSlib/Object/Scene/HitSensorDirector.h"
+#include "NSlib/Object/System/HitSensorDirector.h"
 
 #include "NSlib/Object/Actor.h"
 

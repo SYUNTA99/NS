@@ -1,7 +1,7 @@
 #include "Game/Player.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Scene/HitScreenDirector.h"
+#include "NSlib/Object/System/HitScreenDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/HitReaction.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"

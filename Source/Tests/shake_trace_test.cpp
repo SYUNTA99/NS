@@ -4,7 +4,7 @@
 #include "Game/Player.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/CameraTarget.h"
-#include "NSlib/Object/SubObjects/CameraManager.h"
+#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/SubObjects/CameraModifier.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ObjectJson.h"

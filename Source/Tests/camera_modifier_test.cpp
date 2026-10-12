@@ -5,7 +5,7 @@
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
-#include "NSlib/Object/SubObjects/CameraManager.h"
+#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/SubObjects/CameraModifier.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"

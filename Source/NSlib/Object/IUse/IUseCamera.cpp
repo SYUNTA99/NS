@@ -1,6 +1,6 @@
 #include "NSlib/Object/IUse/IUseCamera.h"
 
-#include "NSlib/Object/SubObjects/CameraManager.h"
+#include "NSlib/Object/System/CameraManager.h"
 
 namespace NS::Obj
 {

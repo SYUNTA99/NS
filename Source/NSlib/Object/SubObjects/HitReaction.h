@@ -1,7 +1,7 @@
 #pragma once
 
-#include "NSlib/Object/Scene/HitScreenDirector.h"
-#include "NSlib/Object/Scene/PadRumbleDirector.h"
+#include "NSlib/Object/System/HitScreenDirector.h"
+#include "NSlib/Object/System/PadRumbleDirector.h"
 #include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/SubObjects/CameraModifier.h"
 

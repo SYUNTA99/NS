@@ -17,7 +17,7 @@
 #include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/SubObjects/Animation.h"
 #include "NSlib/Object/SubObjects/BoxCollision.h"
-#include "NSlib/Object/SubObjects/CameraManager.h"
+#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/SubObjects/CapsuleCollision.h"
 #include "NSlib/Object/SubObjects/Collision.h"
 #include "NSlib/Object/SubObjects/MeshCollision.h"

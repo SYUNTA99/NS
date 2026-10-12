@@ -1,4 +1,4 @@
-#include "NSlib/Object/Scene/PadRumbleDirector.h"
+#include "NSlib/Object/System/PadRumbleDirector.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/ActorList.h"

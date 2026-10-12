@@ -1,4 +1,4 @@
-﻿#include "NSlib/Object/SubObjects/CameraManager.h"
+﻿#include "NSlib/Object/System/CameraManager.h"
 
 #include "NSlib/Object/SubObjects/VirtualCamera.h"
 #include "NSlib/Object/Scene/SceneCamera.h"

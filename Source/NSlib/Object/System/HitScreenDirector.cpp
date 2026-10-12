@@ -1,4 +1,4 @@
-#include "NSlib/Object/Scene/HitScreenDirector.h"
+#include "NSlib/Object/System/HitScreenDirector.h"
 
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Graphics/Renderer.h"

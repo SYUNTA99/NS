@@ -3,7 +3,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
-#include "NSlib/Object/Scene/HitSensorDirector.h"
+#include "NSlib/Object/System/HitSensorDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Physics/Capsule.h"
 

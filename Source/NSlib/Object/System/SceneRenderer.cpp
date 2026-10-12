@@ -1,4 +1,4 @@
-#include "NSlib/Object/Scene/SceneRenderer.h"
+#include "NSlib/Object/System/SceneRenderer.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/Bloom.h"
@@ -9,7 +9,7 @@
 #include "NSlib/Graphics/ScreenPasses.h"
 #include "NSlib/Object/IRenderable.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
-#include "NSlib/Object/SubObjects/CameraManager.h"
+#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/SubObjects/DirectionalLight.h"
 #include "NSlib/Object/SubObjects/OverlayRenderer.h"
 #include "NSlib/Object/System/UIDirector.h"
