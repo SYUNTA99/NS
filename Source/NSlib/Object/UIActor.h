@@ -11,11 +11,9 @@ namespace NS::Gfx
 
 namespace NS::Obj
 {
-    //! @brief 画面に出す物の基底。暗転・体力の表示・メニューなど
-    //! @details 世界の座標と当たりを持たず、世界を描いた後の画面へ重ねて描く。オデッセイの LayoutActor に当たる
-    //! 寿命は開いた側が持つ。Open でシーンの画面の一覧と UI の段の登録物へ入り、Close か破棄で外れる
-    //! 更新は UI の段の Actor の後で、開いた順に OnTick が呼ばれる。描画は世界と重ね描きの部品の後で、
-    //! 描く順は開いた順でなく DrawOrder が決める
+    //! @brief 体力の表示やメニューなど、画面に出す物の基底
+    //! @details 寿命は開いた側が持ち、Open で登録し Close か破棄で外れる
+    //! UI の段で開いた順に更新し、世界の後に DrawOrder 順で描く
     class UIActor : public ActorBase, public ITickable
     {
     public:

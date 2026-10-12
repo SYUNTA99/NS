@@ -6,6 +6,7 @@
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Graphics/RenderProxyList.h"
 #include "NSlib/Graphics/RenderSettings.h"
+#include "NSlib/Graphics/ScreenFade.h"
 #include "NSlib/Object/ITickable.h"
 #include "NSlib/Object/SubObjects/VirtualCamera.h"
 
@@ -73,6 +74,10 @@ namespace NS::Obj
 
         //! 所有している EffectScene。レンダラー未設定の間は nullptr
         [[nodiscard]] NS::Gfx::EffectScene* Effects() const noexcept { return m_effects.get(); }
+
+        //! シーン全体の暗転。全ての重ね描きと UI の後に描く
+        [[nodiscard]] NS::Gfx::ScreenFade& Fade() noexcept { return m_fade; }
+        [[nodiscard]] const NS::Gfx::ScreenFade& Fade() const noexcept { return m_fade; }
 
         //! エフェクトの世界を固定ステップの刻み幅ぶん進める。EffectScene が無ければ何もしない
         void OnTick() override;
@@ -144,6 +149,7 @@ namespace NS::Obj
         void DrawTransparent(const NS::Gfx::RenderContext& context);
         //! 登録中の OverlayRenderer を priority 昇順で描画し、その上へ画面に出す物を DrawOrder 昇順で描く
         //! OverlayRenderer は IsActive が偽なら飛ばす
+        //! 最後にシーン全体の暗転を重ねる
         void DrawOverlays(const NS::Gfx::RenderContext& context);
 
         //! @brief プロジェクト既定値からシーンの描画設定を作る。有効な平行光があれば照明を上書きする
@@ -194,6 +200,7 @@ namespace NS::Obj
 
         std::vector<IOverlay*> m_overlays; // 重ね描きの登録簿。OverlayOrder 昇順、非所有
         std::vector<UIActor*> m_uiActors;  // 画面に出す物の登録簿。DrawOrder 昇順、非所有
+        NS::Gfx::ScreenFade m_fade;
 
         std::vector<DirectionalLight*> m_lights; // 平行光の登録簿。登録順、非所有
 

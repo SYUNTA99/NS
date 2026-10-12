@@ -1,20 +1,20 @@
 #pragma once
 
-#include "NSlib/Object/UIActor.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <cstdint>
 
-namespace NS::Obj
+namespace NS::Gfx
 {
-    //! @brief 画面の最前面へ黒を重ねる暗転と明転。何のための暗転かは知らない
-    //! @details 暗転する理由を知る側が開いて持つ
-    //! 暗転しきったら BeginIn まで全黒を保持する。UI の段で fixed step ぶん進み、
-    //! 開いた側は全黒 (IsBlack) を見て次の手を打つ。描画は世界と重ね描きの部品の後
-    class ScreenFade final : public UIActor
+    class Renderer;
+
+    //! @brief 全画面へ黒を重ねる暗転と明転
+    //! @details Advance で時間を進め、全 UI の後に Render を呼ぶ
+    //! 暗転しきったら BeginIn まで全黒を保持する
+    class ScreenFade final : public NS::NonCopyable
     {
     public:
-        ScreenFade() noexcept;
-        NS_REFLECT_NONE(ScreenFade, UIActor)
+        ScreenFade() noexcept = default;
 
         //! 暗転を始める。seconds かけて透明から全黒へ。演出中の呼び直しは無視する
         void BeginOut(float seconds) noexcept;
@@ -28,8 +28,8 @@ namespace NS::Obj
         //! dt 秒だけ進める。透明時と全黒の保持中は何もしない
         void Advance(float dt) noexcept;
 
-        //! UI の段で fixed step ぶん進む。時間停止中は段ごと止まるので凍る
-        void OnTick() override;
+        //! 現在の描画先の全体へ黒を重ねる。透明時は何もしない
+        void Render(Renderer& renderer) const noexcept;
 
         //! 暗転か明転が進行中か
         [[nodiscard]] bool IsFading() const noexcept { return m_stage == Stage::Out || m_stage == Stage::In; }
@@ -40,11 +40,7 @@ namespace NS::Obj
         //! 画面に重ねる黒の不透明度 (0=透明 / 1=全黒)
         [[nodiscard]] float Alpha() const noexcept;
 
-        //! 暗転は他の画面の物より上に重ねる
-        [[nodiscard]] int DrawOrder() const noexcept override { return 1000; }
-
     private:
-        void SyncWidget() noexcept;
         // 演出の段階。None は透明、Hold は全黒の保持
         enum class Stage : std::uint8_t
         {
@@ -59,4 +55,4 @@ namespace NS::Obj
         float m_timer = 0.0f;    // 今の段階の経過秒。段階が変わるたび 0 へ戻す
     };
 
-} // namespace NS::Obj
+}

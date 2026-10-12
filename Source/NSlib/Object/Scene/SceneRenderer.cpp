@@ -205,10 +205,15 @@ namespace NS::Obj
                 overlay->OnRenderOverlay(context);
             }
         }
-        // 画面に出す物は世界の上の重ね描きよりさらに上。暗転は白の光も覆う
+        // 画面に出す物は世界の上の重ね描きよりさらに上
         for (UIActor* actor : m_uiActors)
         {
             actor->OnRenderOverlay(context);
+        }
+        // 暗転は UIActor の描く順に依らず、全ての UI と光を覆う
+        if (context.renderer != nullptr)
+        {
+            m_fade.Render(*context.renderer);
         }
     }
 

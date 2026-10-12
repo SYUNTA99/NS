@@ -1,28 +1,18 @@
-#include "NSlib/Object/ScreenFade.h"
+#include "NSlib/Graphics/ScreenFade.h"
 
-#include "NSlib/Windows/Clock.h"
-#include "NSlib/UI/ColorRect.h"
+#include "NSlib/Graphics/Renderer.h"
 
 #include <algorithm>
 
-namespace NS::Obj
+namespace NS::Gfx
 {
-    ScreenFade::ScreenFade() noexcept
+    void ScreenFade::Render(Renderer& renderer) const noexcept
     {
-        NS::UI::ColorRect* black = Widgets().Root().AddChild<NS::UI::ColorRect>();
-        black->SetStretch(true);
-        black->SetColor(NS::Color{0.0f, 0.0f, 0.0f, 1.0f});
-        SyncWidget();
-    }
-
-    void ScreenFade::SyncWidget() noexcept
-    {
-        Widgets().Root().SetAlpha(Alpha());
-    }
-
-    void ScreenFade::OnTick()
-    {
-        Advance(NS::OS::FrameTimer::FixedDelta());
+        const float alpha = Alpha();
+        if (alpha > 0.0f)
+        {
+            renderer.DrawFullscreenColor(NS::Color{0.0f, 0.0f, 0.0f, alpha});
+        }
     }
 
     void ScreenFade::BeginOut(float seconds) noexcept
@@ -34,13 +24,11 @@ namespace NS::Obj
         if (seconds <= 0.0f)
         {
             m_stage = Stage::Hold;
-            SyncWidget();
             return;
         }
         m_stage = Stage::Out;
         m_duration = seconds;
         m_timer = 0.0f;
-        SyncWidget();
     }
 
     void ScreenFade::BeginIn(float seconds) noexcept
@@ -52,20 +40,17 @@ namespace NS::Obj
         if (seconds <= 0.0f)
         {
             m_stage = Stage::None;
-            SyncWidget();
             return;
         }
         m_stage = Stage::In;
         m_duration = seconds;
         m_timer = 0.0f;
-        SyncWidget();
     }
 
     void ScreenFade::Cancel() noexcept
     {
         m_stage = Stage::None;
         m_timer = 0.0f;
-        SyncWidget();
     }
 
     void ScreenFade::Advance(float dt) noexcept
@@ -77,7 +62,6 @@ namespace NS::Obj
         m_timer += dt;
         if (m_timer < m_duration)
         {
-            SyncWidget();
             return;
         }
         if (m_stage == Stage::Out)
@@ -88,7 +72,6 @@ namespace NS::Obj
         {
             m_stage = Stage::None;
         }
-        SyncWidget();
     }
 
     float ScreenFade::Alpha() const noexcept
@@ -105,4 +88,4 @@ namespace NS::Obj
             return 0.0f;
         }
     }
-} // namespace NS::Obj
+}

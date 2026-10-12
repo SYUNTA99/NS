@@ -5,7 +5,7 @@
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/ScreenFade.h"
+#include "NSlib/Graphics/ScreenFade.h"
 
 #include <gtest/gtest.h>
 
@@ -33,7 +33,7 @@ TEST(GameTuning, GoalFadeUsesTheSavedGoalFields)
     scene.HitSensors().OnTick();
     director->OnTick();
     ASSERT_TRUE(director->IsClearing());
-    NS::Obj::ScreenFade& fade = const_cast<NS::Obj::ScreenFade&>(director->Fade());
+    NS::Gfx::ScreenFade& fade = scene.Fade();
     fade.Advance(0.05f);
     EXPECT_NEAR(fade.Alpha(), 0.5f, 0.001f);
     fade.Advance(0.05f);

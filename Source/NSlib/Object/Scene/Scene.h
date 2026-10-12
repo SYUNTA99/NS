@@ -97,6 +97,10 @@ namespace NS::Obj
         [[nodiscard]] HitSensorDirector& HitSensors() noexcept { return m_hitSensors; }
         [[nodiscard]] const HitSensorDirector& HitSensors() const noexcept { return m_hitSensors; }
 
+        //! シーン全体の暗転。UI の段で進め、全 UI の後に描く。時間停止中は凍る
+        [[nodiscard]] NS::Gfx::ScreenFade& Fade() noexcept { return m_sceneRenderer.Fade(); }
+        [[nodiscard]] const NS::Gfx::ScreenFade& Fade() const noexcept { return m_sceneRenderer.Fade(); }
+
         //! 画面に出す物を描画の一覧と UI の段の登録物へ入れる。UIActor::Open が呼ぶ。二重登録は無視する
         void RegisterUIActor(UIActor* actor);
         //! 画面に出す物を描画の一覧と UI の段の登録物から外す。UIActor::Close が呼ぶ

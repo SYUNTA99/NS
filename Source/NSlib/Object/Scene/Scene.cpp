@@ -416,6 +416,7 @@ namespace NS::Obj
 #endif
         // シーンに 1 つの物 (進行役など) は最初の状態から作り直させる。組み直した配置物の開始が必要な物を作る
         m_sceneObjs.Clear();
+        Fade().Cancel();
         // Actor の型選択は登録一覧、参照の実体化は各 SubObject の ResolveAssets が行う
         // vcam の cameras への付け外しは VirtualCamera が OnStart / OnEndPlay で自分で行う
         m_objects.Rebuild(
@@ -472,6 +473,10 @@ namespace NS::Obj
             }
             // 物理の段に置いた物は、Jolt を 1 歩進めた直後に呼ばれる
             m_objects.ExecutePhase(phase);
+            if (phase == UpdatePhase::UI)
+            {
+                Fade().Advance(NS::OS::FrameTimer::FixedDelta());
+            }
         }
         m_objects.RemoveKilledTransients();
         // 止めは世界を進めた歩で数える。遅い世界でも、止めた歩の数だけ自機が進む
@@ -487,6 +492,7 @@ namespace NS::Obj
     {
         // シーンに 1 つの物は配置物と画面の一覧を借りるので先に捨てる
         m_sceneObjs.Clear();
+        Fade().Cancel();
         m_objects.Clear();
         ClearEffects();
         m_cameraManager->SetCamera(nullptr);

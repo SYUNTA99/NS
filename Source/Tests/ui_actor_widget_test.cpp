@@ -1,6 +1,5 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/ScreenFade.h"
 #include "NSlib/Object/UIActor.h"
 #include "NSlib/UI/ColorRect.h"
 
@@ -67,36 +66,14 @@ TEST(UIActorWidgets, OpenScreensTickInOpenOrderOnTheUIPhase)
     back.Close();
 }
 
-TEST(UIActorWidgets, FadeOwnsAFullScreenWidgetAndKeepsTheExistingAlphaTiming)
+TEST(UIActorWidgets, WidgetsStretchToTheViewport)
 {
     NS::Obj::Scene scene;
-    NS::Obj::ScreenFade fade;
-    EXPECT_TRUE(fade.Widgets().Root().HasChildren());
-    EXPECT_FLOAT_EQ(fade.Widgets().Root().Alpha(), 0.0f);
-    fade.Open(scene);
-    fade.Widgets().Layout(1600.0f, 900.0f);
-    EXPECT_NEAR(fade.Widgets().Root().LayoutRect().width, 1920.0f, 0.0001f);
-    EXPECT_FLOAT_EQ(fade.Widgets().Root().LayoutRect().height, 1080.0f);
-    fade.BeginOut(0.4f);
-    fade.Advance(0.1f);
-    EXPECT_FLOAT_EQ(fade.Alpha(), 0.25f);
-    EXPECT_FLOAT_EQ(fade.Widgets().Root().Alpha(), fade.Alpha());
-    fade.Advance(0.3f);
-    EXPECT_TRUE(fade.IsBlack());
-    EXPECT_FLOAT_EQ(fade.Widgets().Root().Alpha(), 1.0f);
-    fade.BeginIn(0.4f);
-    fade.Advance(0.1f);
-    EXPECT_FLOAT_EQ(fade.Widgets().Root().Alpha(), 0.75f);
-    fade.Cancel();
-    EXPECT_FLOAT_EQ(fade.Widgets().Root().Alpha(), 0.0f);
-    fade.Close();
-}
-
-TEST(UIActorWidgets, ZeroDurationFadeChangesTheWidgetImmediately)
-{
-    NS::Obj::ScreenFade fade;
-    fade.BeginOut(0.0f);
-    EXPECT_FLOAT_EQ(fade.Widgets().Root().Alpha(), 1.0f);
-    fade.BeginIn(0.0f);
-    EXPECT_FLOAT_EQ(fade.Widgets().Root().Alpha(), 0.0f);
+    NS::Obj::UIActor ui;
+    ui.Widgets().Root().AddChild<NS::UI::ColorRect>()->SetStretch(true);
+    ui.Open(scene);
+    ui.Widgets().Layout(1600.0f, 900.0f);
+    EXPECT_NEAR(ui.Widgets().Root().LayoutRect().width, 1920.0f, 0.0001f);
+    EXPECT_FLOAT_EQ(ui.Widgets().Root().LayoutRect().height, 1080.0f);
+    ui.Close();
 }

@@ -12,11 +12,11 @@
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
-#include "NSlib/Object/ScreenFade.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/PlayerInput.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Windows/Input.h"
+#include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Keyboard.h"
 #include "NSlib/Windows/Mouse.h"
 
@@ -86,6 +86,44 @@ TEST(CourseDirector, PlayerCreatesDirectorAfterPlacement)
     // 組み直すと捨てられ、プレイヤーの居ないシーンでは作られない
     scene.LoadJson(NS::Obj::MakeSceneJson());
     EXPECT_EQ(NS::Obj::FindSceneObj<GL::Level::CourseDirector>(scene), nullptr);
+}
+
+TEST(CourseDirector, ClearSequenceUsesTheSceneFadeAndUnlocksInput)
+{
+    NS::Obj::Scene scene;
+    scene.LoadJson(CourseWithPlayer());
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneObj<GL::Level::CourseDirector>(scene);
+    ASSERT_NE(director, nullptr);
+    director->StartCourse();
+    Player* player = FindPlayer(scene.Objects());
+    ASSERT_NE(player, nullptr);
+    const NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player->FindSubObj("Input"));
+    ASSERT_NE(input, nullptr);
+    const float duration = NS::OS::FrameTimer::FixedDelta() * 2.0f;
+    director->NotifyGoal(duration, duration);
+
+    scene.OnUpdate();
+    ASSERT_TRUE(director->IsClearing());
+    EXPECT_TRUE(input->IsLocked());
+    EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.5f);
+    scene.OnUpdate();
+    EXPECT_TRUE(scene.Fade().IsBlack());
+    scene.OnUpdate();
+    EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.5f);
+    scene.OnUpdate();
+    EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.0f);
+    scene.OnUpdate();
+    EXPECT_FALSE(director->IsClearing());
+    EXPECT_FALSE(input->IsLocked());
+}
+
+TEST(CourseDirector, RemovingAnIdleDirectorKeepsAnIndependentSceneFade)
+{
+    NS::Obj::Scene scene;
+    (void)NS::Obj::GetOrCreateSceneObj<GL::Level::CourseDirector>(scene);
+    scene.Fade().BeginOut(0.0f);
+    scene.GetSceneObjHolder()->Clear();
+    EXPECT_TRUE(scene.Fade().IsBlack());
 }
 
 TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
@@ -171,7 +209,7 @@ TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
     scene.HitSensors().OnTick();
     director->OnTick();
     EXPECT_TRUE(director->IsClearing());
-    EXPECT_TRUE(director->Fade().IsFading());
+    EXPECT_TRUE(scene.Fade().IsFading());
     const NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player->FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     EXPECT_TRUE(input->IsLocked());

@@ -13,7 +13,6 @@
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/ScreenFade.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <cmath>

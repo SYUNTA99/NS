@@ -5,7 +5,6 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/ScreenFade.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <vector>
@@ -13,18 +12,20 @@
 namespace GL::Level
 {
     CourseDirector::CourseDirector(NS::Obj::Scene& scene)
-        : m_scene(scene), m_fade(std::make_unique<NS::Obj::ScreenFade>())
+        : m_scene(scene)
     {
-        m_fade->Open(scene);
         m_scene.Objects().AddTicker(this, NS::Obj::UpdatePhase::Course);
     }
 
     CourseDirector::~CourseDirector() noexcept
     {
         m_scene.Objects().RemoveTicker(this);
-        // 流れを途中のまま捨てる。暗転は閉じて画面の一覧から外す
+        // 進行中のクリア演出も取り消す
+        if (m_sequences.IsRunning())
+        {
+            m_scene.Fade().Cancel();
+        }
         m_sequences.CancelAll();
-        m_fade->Close();
     }
 
     void CourseDirector::OnTick()
@@ -103,14 +104,14 @@ namespace GL::Level
         // 世界は止めず操作だけ止める。暗転の間も重力とカメラは動いたまま
         SendInputLock(true);
 
-        m_fade->BeginOut(m_fadeOutSeconds);
-        co_await NS::WaitUntil{[this] { return m_fade->IsBlack(); }};
+        m_scene.Fade().BeginOut(m_fadeOutSeconds);
+        co_await NS::WaitUntil{[this] { return m_scene.Fade().IsBlack(); }};
 
         // 全黒の裏でやり直すので、出現位置への瞬間移動が黒に隠れる
         RestartCourse();
 
-        m_fade->BeginIn(m_fadeInSeconds);
-        co_await NS::WaitUntil{[this] { return !m_fade->IsFading(); }};
+        m_scene.Fade().BeginIn(m_fadeInSeconds);
+        co_await NS::WaitUntil{[this] { return !m_scene.Fade().IsFading(); }};
 
         SendInputLock(false);
     }
