@@ -135,7 +135,7 @@ namespace NS::Obj
         //! 1 なら今の固定フレームの姿
         void Render(CameraManager& cameras,
                     SceneCamera& camera,
-                    const UIDirector& ui,
+                    UIDirector& ui,
                     std::string_view skyboxPath,
                     float alpha);
 
@@ -147,7 +147,7 @@ namespace NS::Obj
         //! 登録中の OverlayRenderer を priority 昇順で描画し、その上へ ui の画面を DrawOrder 昇順で描く
         //! OverlayRenderer は IsActive が偽なら飛ばす
         //! 最後にシーン全体の暗転を重ねる
-        void DrawOverlays(const NS::Gfx::RenderContext& context, const UIDirector& ui);
+        void DrawOverlays(const NS::Gfx::RenderContext& context, UIDirector& ui);
 
         //! @brief プロジェクト既定値からシーンの描画設定を作る。有効な平行光があれば照明を上書きする
         //! @details 登録が無ければプロジェクト既定値がそのまま残る
@@ -166,7 +166,7 @@ namespace NS::Obj
         //! view.viewPose が空なら実カメラで描く
         void RenderViewWithOverlays(CameraManager& cameras,
                                     SceneCamera& camera,
-                                    const UIDirector& ui,
+                                    UIDirector& ui,
                                     std::string_view skyboxPath,
                                     const SceneView& view,
                                     float alpha,

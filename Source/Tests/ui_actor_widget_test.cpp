@@ -1,9 +1,13 @@
+#include "NSlib/Graphics/RenderContext.h"
+#include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/System/UIDirector.h"
 #include "NSlib/Object/UIActor.h"
 #include "NSlib/UI/ColorRect.h"
+#include "NSlib/UI/UICanvas.h"
+#include "NSlib/Windows/Window.h"
 
 #include <gtest/gtest.h>
 
@@ -165,10 +169,53 @@ TEST(UIActorWidgets, WidgetsStretchToTheViewport)
 {
     NS::Obj::Scene scene;
     NS::Obj::UIActor ui;
-    ui.Widgets().Root().AddChild<NS::UI::ColorRect>()->SetStretch(true);
+    ui.Widgets()->Root().AddChild<NS::UI::ColorRect>()->SetStretch(true);
     ui.Open(scene);
-    ui.Widgets().Layout(1600.0f, 900.0f);
-    EXPECT_NEAR(ui.Widgets().Root().LayoutRect().width, 1920.0f, 0.0001f);
-    EXPECT_FLOAT_EQ(ui.Widgets().Root().LayoutRect().height, 1080.0f);
+    ui.Widgets()->Layout(NS::UI::MakeUICanvas(1600.0f, 900.0f));
+    EXPECT_NEAR(ui.Widgets()->Root().LayoutRect().width, 1920.0f, 0.0001f);
+    EXPECT_FLOAT_EQ(ui.Widgets()->Root().LayoutRect().height, 1080.0f);
     ui.Close();
+}
+
+TEST(UIActorWidgets, CanvasScalesByTheViewportHeight)
+{
+    const NS::UI::UICanvas canvas = NS::UI::MakeUICanvas(1600.0f, 900.0f);
+    EXPECT_FLOAT_EQ(canvas.scale, 900.0f / 1080.0f);
+    EXPECT_NEAR(canvas.rect.width, 1920.0f, 0.0001f);
+    EXPECT_FLOAT_EQ(canvas.rect.height, 1080.0f);
+
+    const NS::UI::UICanvas empty = NS::UI::MakeUICanvas(0.0f, 900.0f);
+    EXPECT_FLOAT_EQ(empty.scale, 1.0f);
+    EXPECT_FLOAT_EQ(empty.rect.width, 0.0f);
+    EXPECT_FLOAT_EQ(empty.rect.height, 0.0f);
+}
+
+// 拡縮と矩形は管理役が描く時に 1 つ出し、開いている画面は全部それで並ぶ
+TEST(UIActorWidgets, DirectorLaysOutEveryOpenScreenWithOneCanvas)
+{
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "画面の拡縮の試し", .size = {64, 36}, .visible = false});
+    NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
+    ASSERT_TRUE(renderer.IsValid());
+    NS::Obj::Scene scene;
+    NS::Obj::UIActor first;
+    NS::Obj::UIActor second;
+    first.Widgets()->Root().AddChild<NS::UI::ColorRect>()->SetStretch(true);
+    second.Widgets()->Root().AddChild<NS::UI::ColorRect>()->SetStretch(true);
+    first.Open(scene);
+    second.Open(scene);
+    NS::Gfx::RenderContext context;
+    context.renderer = &renderer;
+
+    renderer.BeginFrame();
+    scene.UI().Draw(context);
+
+    const NS::Size2D size = renderer.Size();
+    const NS::UI::UICanvas expected =
+        NS::UI::MakeUICanvas(static_cast<float>(size.width), static_cast<float>(size.height));
+    EXPECT_FLOAT_EQ(scene.UI().Canvas().scale, expected.scale);
+    EXPECT_FLOAT_EQ(first.Widgets()->Root().LayoutRect().width, expected.rect.width);
+    EXPECT_FLOAT_EQ(second.Widgets()->Root().LayoutRect().width, expected.rect.width);
+    EXPECT_FLOAT_EQ(first.Widgets()->Root().LayoutRect().height, 1080.0f);
+    first.Close();
+    second.Close();
 }

@@ -12,10 +12,11 @@ namespace NS::Obj
 
     void UIActor::OnRenderOverlay(const NS::Gfx::RenderContext& context)
     {
-        if (context.renderer != nullptr)
+        if (context.renderer == nullptr || m_scene == nullptr)
         {
-            m_widgets.Render(*context.renderer);
+            return;
         }
+        m_widgets.Draw(context.renderer, m_scene->UI().Canvas());
     }
 
     void UIActor::Open(Scene& scene)

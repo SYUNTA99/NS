@@ -1,14 +1,20 @@
 #pragma once
 
 #include "NSlib/Object/System/SceneSystem.h"
+#include "NSlib/UI/UICanvas.h"
 
 #include <vector>
+
+namespace NS::Gfx
+{
+    struct RenderContext;
+} // namespace NS::Gfx
 
 namespace NS::Obj
 {
     class UIActor;
 
-    //! @brief 開いている画面を束ね、UI の段で動かし、描く順を返す
+    //! @brief 開いている画面を束ね、UI の段で動かし、描く順に描く
     //! @details 画面は所有しない。寿命は開いた側が持ち、UIActor の Open と Close が出し入れする
     //! Scene がメンバーで持つので、配置物を組み直しても開いた画面は残る
     class UIDirector final : public SceneSystem
@@ -27,7 +33,15 @@ namespace NS::Obj
         //! @return DrawOrder の昇順で同じ値は開いた順の一覧、非所有
         [[nodiscard]] std::vector<UIActor*> DrawOrdered() const;
 
+        //! @brief 描画先の大きさから UICanvas を作って控え、画面を描く順に描く
+        //! @details renderer が null なら UICanvas は既定の値で、画面は呼ぶ
+        void Draw(const NS::Gfx::RenderContext& context);
+
+        //! 直近の Draw で控えた拡縮と全画面の矩形。画面が描く時に借りる
+        [[nodiscard]] const NS::UI::UICanvas& Canvas() const noexcept { return m_canvas; }
+
     private:
         std::vector<UIActor*> m_screens; // 開いた順、非所有
+        NS::UI::UICanvas m_canvas{};     // 直近の Draw の描画先で作った値
     };
 } // namespace NS::Obj

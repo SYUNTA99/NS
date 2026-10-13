@@ -1,5 +1,7 @@
 #include "NSlib/Object/System/UIDirector.h"
 
+#include "NSlib/Graphics/RenderContext.h"
+#include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Object/UIActor.h"
 
 #include <algorithm>
@@ -41,5 +43,19 @@ namespace NS::Obj
             return a->DrawOrder() < b->DrawOrder();
         });
         return ordered;
+    }
+
+    void UIDirector::Draw(const NS::Gfx::RenderContext& context)
+    {
+        m_canvas = NS::UI::UICanvas{};
+        if (context.renderer != nullptr)
+        {
+            const NS::Size2D size = context.renderer->Size();
+            m_canvas = NS::UI::MakeUICanvas(static_cast<float>(size.width), static_cast<float>(size.height));
+        }
+        for (UIActor* screen : DrawOrdered())
+        {
+            screen->OnRenderOverlay(context);
+        }
     }
 } // namespace NS::Obj

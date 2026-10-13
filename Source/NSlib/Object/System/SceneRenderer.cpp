@@ -9,9 +9,9 @@
 #include "NSlib/Graphics/ScreenPasses.h"
 #include "NSlib/Object/IRenderable.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
-#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/SubObjects/DirectionalLight.h"
 #include "NSlib/Object/SubObjects/OverlayRenderer.h"
+#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/System/UIDirector.h"
 #include "NSlib/Object/UIActor.h"
 #include "NSlib/Windows/Clock.h"
@@ -179,7 +179,7 @@ namespace NS::Obj
         m_renderScene.DrawBucket(context, true);
     }
 
-    void SceneRenderer::DrawOverlays(const NS::Gfx::RenderContext& context, const UIDirector& ui)
+    void SceneRenderer::DrawOverlays(const NS::Gfx::RenderContext& context, UIDirector& ui)
     {
         for (IOverlay* overlay : m_overlays)
         {
@@ -189,10 +189,7 @@ namespace NS::Obj
             }
         }
         // 画面に出す物は世界の上の重ね描きよりさらに上
-        for (UIActor* actor : ui.DrawOrdered())
-        {
-            actor->OnRenderOverlay(context);
-        }
+        ui.Draw(context);
         // 暗転は UIActor の描く順に依らず、全ての UI と光を覆う
         if (context.renderer != nullptr)
         {
@@ -229,7 +226,7 @@ namespace NS::Obj
     }
 
     void SceneRenderer::Render(
-        CameraManager& cameras, SceneCamera& camera, const UIDirector& ui, std::string_view skyboxPath, float alpha)
+        CameraManager& cameras, SceneCamera& camera, UIDirector& ui, std::string_view skyboxPath, float alpha)
     {
         if (m_renderer == nullptr)
         {
@@ -293,7 +290,7 @@ namespace NS::Obj
 
     void SceneRenderer::RenderViewWithOverlays(CameraManager& cameras,
                                                SceneCamera& camera,
-                                               const UIDirector& ui,
+                                               UIDirector& ui,
                                                std::string_view skyboxPath,
                                                const SceneView& view,
                                                float alpha,

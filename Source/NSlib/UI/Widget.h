@@ -30,7 +30,7 @@ namespace NS::UI
     };
 
     //! @brief 画面 UI の最小単位。木を成し、親の矩形への貼り付け方と重ね順 (子の並び) を持つ
-    //! @details 座標は基準解像度 (高さ 1080) 単位で書き、実ピクセルへの一様拡縮は UISystem が決める
+    //! @details 座標は基準解像度 (高さ 1080) 単位で書き、実ピクセルへの一様拡縮は UICanvas が持つ
     //! anchor は親矩形内の基準点 (0..1)、pivot は自分の矩形のどこを anchor に合わせるか
     //! alpha は子へ掛け算で伝わり、木ごとまとめて薄くできる
     class Widget : public NS::NonCopyable
@@ -78,7 +78,7 @@ namespace NS::UI
         //! 直近の Layout で確定した矩形 (基準解像度単位)。当たり判定とテストが読む
         [[nodiscard]] const WidgetRect& LayoutRect() const noexcept { return m_layoutRect; }
 
-        //! 親矩形から自分と子孫の矩形を確定する。UISystem が根から呼ぶ
+        //! 親矩形から自分と子孫の矩形を確定する。WidgetSubObj が根から呼ぶ
         void Layout(const WidgetRect& parent) noexcept;
 
         //! 自分と子孫を描く。scale は基準解像度 → 実ピクセルの拡縮率

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Object/Object.h"
-#include "NSlib/UI/UISystem.h"
+#include "NSlib/UI/WidgetSubObj.h"
 
 namespace NS::Gfx
 {
@@ -20,8 +20,8 @@ namespace NS::Obj
     public:
         UIActor() noexcept = default;
         ~UIActor() noexcept override;
-        //! この画面が持つ UI の部品の一覧
-        [[nodiscard]] NS::UI::UISystem& Widgets() noexcept { return m_widgets; }
+        //! この画面の Widget の木を持つ部品
+        [[nodiscard]] NS::UI::WidgetSubObj* Widgets() noexcept { return &m_widgets; }
         NS_REFLECT_NONE(UIActor, Object)
 
         //! scene の画面の一覧へ入る。開いていれば何もしない
@@ -39,14 +39,15 @@ namespace NS::Obj
         //! UI の段で 1 固定ステップに 1 回呼ばれる。シミュレーションが止まっている間は呼ばれない。既定は何もしない
         virtual void OnTick() {}
 
-        //! 世界と重ね描きの部品を描いた後の画面へ重ねて描く
+        //! @brief 世界と重ね描きの部品を描いた後の画面へ重ねて描く
+        //! @details 既定は開いた先の UIDirector の UICanvas で木を描く。開いていなければ描かない
         virtual void OnRenderOverlay(const NS::Gfx::RenderContext& context);
 
         //! 描く順。小さいほど先に描き、後から描く物が上に重なる
         [[nodiscard]] virtual int DrawOrder() const noexcept { return 0; }
 
     private:
-        NS::UI::UISystem m_widgets;
+        NS::UI::WidgetSubObj m_widgets;
         Scene* m_scene = nullptr; // 開いている先、非所有
     };
 } // namespace NS::Obj
