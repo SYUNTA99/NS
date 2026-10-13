@@ -294,6 +294,11 @@ namespace NS::Obj
         //! 読み込んだら回り続けるのが既定で、止める口は SetSimulationEnabled / SetSimulationPaused
         void OnUpdate();
 
+        //! @brief 段 phase を 1 回だけ回す。OnUpdate が段ごとに呼ぶ
+        //! @details 有効な Actor を配置順に、続いてその段に登録した管理役を登録順に更新する
+        //! 回している間は配置物を解放する口を断る。再入は禁止
+        void ExecutePhase(UpdatePhase phase);
+
         //! 配置物と、配置物から借りている物と、固定ステップで積んだ開発用の図形を捨てる
         void OnShutdown();
 
@@ -327,6 +332,14 @@ namespace NS::Obj
         SceneCamera m_mainCamera;
         std::unique_ptr<NS::Obj::CameraManager> m_cameraManager;
         NS::Obj::ActorList m_objects; // 配置物の一覧
+        // 更新へ登録した管理役 1 件
+        struct SystemEntry
+        {
+            SceneSystem* system = nullptr; // 非所有。実体はこのシーンのメンバーか保持体が持つ
+            UpdatePhase phase = UpdatePhase::Triggers;
+        };
+        std::vector<SystemEntry> m_systems;           // このシーンが回す管理役と段。登録順
+        std::vector<SceneSystem*> m_scheduledSystems; // ExecutePhase がその段で呼ぶ管理役を積む作業用の並び
         // シーンに 1 つの物。配置物と画面の一覧を借りるので、それより後に宣言して先に破棄する
         // const の窓口からも作れるよう mutable にする。作っても見かけのシーンの状態は変わらない
         mutable SceneSystemHolder m_sceneObjs{*this};

@@ -83,14 +83,14 @@ TEST(UIActorWidgets, OpenScreensTickInOpenOrderOnTheUIPhase)
     front.Open(scene);
     back.Open(scene);
 
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::UI);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::UI);
     ASSERT_EQ(log.size(), 2u);
     EXPECT_EQ(log[0], "front");
     EXPECT_EQ(log[1], "back");
 
     front.Close();
     log.clear();
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::UI);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::UI);
     ASSERT_EQ(log.size(), 1u);
     EXPECT_EQ(log[0], "back");
     back.Close();
@@ -126,7 +126,7 @@ TEST(UIActorWidgets, OpenScreenKeepsTickingAfterTheWorldIsRebuilt)
     scene.LoadJson(NS::Obj::MakeSceneJson());
 
     EXPECT_TRUE(ui.IsOpen());
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::UI);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::UI);
     ASSERT_EQ(log.size(), 1u);
     EXPECT_EQ(log[0], "ui");
 }
@@ -140,11 +140,11 @@ TEST(UIActorWidgets, ScreenOpenedDuringTheUIPhaseWaitsForTheNextStep)
     TogglingUI opener(scene, late, true);
     opener.Open(scene);
 
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::UI);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::UI);
     EXPECT_TRUE(late.IsOpen());
     EXPECT_TRUE(log.empty());
 
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::UI);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::UI);
     ASSERT_EQ(log.size(), 1u);
     EXPECT_EQ(log[0], "late");
 }
@@ -159,7 +159,7 @@ TEST(UIActorWidgets, ScreenClosedDuringTheUIPhaseIsSkipped)
     closer.Open(scene);
     victim.Open(scene);
 
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::UI);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::UI);
 
     EXPECT_FALSE(victim.IsOpen());
     EXPECT_TRUE(log.empty());

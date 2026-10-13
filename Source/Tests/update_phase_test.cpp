@@ -1,7 +1,7 @@
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/UpdatePhase.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -114,7 +114,74 @@ namespace
         std::vector<std::string>& m_log;
         std::string m_label;
     };
+
+    class CountingTicker final : public NS::Obj::SceneSystem
+    {
+    public:
+        void OnTick() override { ++ticks; }
+        int ticks = 0;
+    };
+
+    // 自分の段の中で、渡された管理役を同じ段へ登録する
+    class LateRegisterActor final : public NS::Obj::Actor
+    {
+    public:
+        LateRegisterActor(NS::Obj::Scene& scene, NS::Obj::SceneSystem& system) : m_scene(scene), m_system(system) {}
+        NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Triggers; }
+
+    protected:
+        void StateStep() override { m_scene.AddSystemTick(m_system, NS::Obj::UpdatePhase::Triggers); }
+
+    private:
+        NS::Obj::Scene& m_scene;
+        NS::Obj::SceneSystem& m_system;
+    };
+
+    // 自分の更新の中で、控えた id の配置物をシーンから消しに行く
+    class DestroyerSystem final : public NS::Obj::SceneSystem
+    {
+    public:
+        explicit DestroyerSystem(NS::Obj::Scene& scene) : m_scene(scene) {}
+        void SetTarget(std::uint32_t objectId) noexcept { m_target = objectId; }
+        void OnTick() override { m_scene.DestroyObject(m_target); }
+
+    private:
+        NS::Obj::Scene& m_scene;
+        std::uint32_t m_target = NS::Obj::k_NoObjectId;
+    };
 } // namespace
+
+TEST(UpdatePhase, SystemAddedDuringItsPhaseWaitsForTheNextFrame)
+{
+    // 段で呼ぶ物は段の始まりに決める。段の Actor が足した管理役をその段で呼ぶと、登録の時期で呼ぶ回数が変わる
+    NS::Obj::Scene scene;
+    CountingTicker late;
+    scene.SpawnTransient<LateRegisterActor>(scene, late);
+
+    scene.OnUpdate();
+    EXPECT_EQ(late.ticks, 0);
+    scene.OnUpdate();
+    EXPECT_EQ(late.ticks, 1);
+    scene.RemoveSystemTick(late);
+}
+
+TEST(UpdatePhase, DestroyingFromASystemTickIsRefused)
+{
+    // 管理役の更新も段の中。ここで配置物を解放すると、同じ段で後に呼ぶ管理役が破棄済みの相手を読む
+    NS::Obj::Scene scene;
+    std::unique_ptr<CountingActor> victimOwned = std::make_unique<CountingActor>();
+    CountingActor* victim = victimOwned.get();
+    ASSERT_NE(scene.SpawnObject(std::move(victimOwned), "Victim"), nullptr);
+    const std::uint32_t victimId = victim->Id();
+    DestroyerSystem destroyer(scene);
+    destroyer.SetTarget(victimId);
+    scene.AddSystemTick(destroyer, NS::Obj::UpdatePhase::Triggers);
+
+    scene.OnUpdate();
+
+    EXPECT_EQ(scene.Objects().FindByObjectId(victimId), victim);
+    scene.RemoveSystemTick(destroyer);
+}
 
 TEST(UpdatePhase, SceneRunsTheNamedTableAroundPhysics)
 {
@@ -162,12 +229,12 @@ TEST(UpdatePhase, StableActorOrderAndRemovedTickerArePreserved)
     scene.SpawnTransient<PhaseActor>(NS::Obj::UpdatePhase::Triggers, log, "second");
     PhaseTicker ticker(log, "ticker");
     scene.AddSystemTick(ticker, NS::Obj::UpdatePhase::Triggers);
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     // 登録物は段の Actor が出した物を受けてまとめる役なので、同じ段の Actor の後に動く
     EXPECT_EQ(log, (std::vector<std::string>{"first", "second", "ticker"}));
     scene.RemoveSystemTick(ticker);
     log.clear();
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     EXPECT_EQ(log, (std::vector<std::string>{"first", "second"}));
 }
 
@@ -184,7 +251,7 @@ TEST(UpdatePhase, DestroyingDuringAPhaseIsRefused)
     const std::uint32_t victimId = victim->Id();
     destroyer->SetTarget(victimId);
 
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
 
     ASSERT_EQ(scene.Objects().FindByObjectId(victimId), victim);
     EXPECT_EQ(victim->updates, 1);

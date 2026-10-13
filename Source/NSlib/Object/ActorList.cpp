@@ -288,10 +288,20 @@ namespace NS::Obj
         }
     }
 
-    void ActorList::ExecutePhase(UpdatePhase phase)
+    void ActorList::BeginPhase() noexcept
     {
         NS_ASSERT(Scene, !m_updating, "段の更新を入れ子で呼んでいる");
         m_updating = true;
+    }
+
+    void ActorList::EndPhase() noexcept
+    {
+        m_updating = false;
+    }
+
+    void ActorList::ExecutePhase(UpdatePhase phase)
+    {
+        NS_ASSERT(Scene, m_updating, "BeginPhase の前に段を回している");
         m_scheduled.clear();
         for (const std::unique_ptr<Actor>& obj : m_objects)
         {
@@ -301,72 +311,29 @@ namespace NS::Obj
             }
             if (phase == UpdatePhase::Input || phase == UpdatePhase::RenderPrep || obj->Phase() == phase)
             {
-                m_scheduled.push_back(ScheduledTick{.actor = obj.get()});
+                m_scheduled.push_back(obj.get());
             }
         }
-        // 登録物は段の Actor が出した物を受けてまとめる役なので、Actor の後に積む
-        for (const TickerEntry& entry : m_tickers)
+        for (Actor* actor : m_scheduled)
         {
-            if (entry.phase == phase)
+            // 解放の口は段の間は断るので、積んだ生ポインタは生きている。途中で消えた物だけ飛ばす
+            if (!actor->IsActiveInHierarchy())
             {
-                m_scheduled.push_back(ScheduledTick{.ticker = entry.ticker});
-            }
-        }
-        for (const ScheduledTick& tick : m_scheduled)
-        {
-            if (tick.actor != nullptr)
-            {
-                // 解放の口は段の間は断るので、積んだ生ポインタは生きている。途中で消えた物だけ飛ばす
-                if (!tick.actor->IsActiveInHierarchy())
-                {
-                    continue;
-                }
-                if (phase == UpdatePhase::Input)
-                {
-                    tick.actor->ReadInput();
-                }
-                else if (phase == UpdatePhase::RenderPrep)
-                {
-                    tick.actor->PrepareRender();
-                }
-                else
-                {
-                    tick.actor->Update();
-                }
                 continue;
             }
-            const bool stillRegistered =
-                std::any_of(m_tickers.begin(), m_tickers.end(), [&tick, phase](const TickerEntry& entry) noexcept {
-                    return entry.ticker == tick.ticker && entry.phase == phase;
-                });
-            if (stillRegistered)
+            if (phase == UpdatePhase::Input)
             {
-                tick.ticker->OnTick();
+                actor->ReadInput();
+            }
+            else if (phase == UpdatePhase::RenderPrep)
+            {
+                actor->PrepareRender();
+            }
+            else
+            {
+                actor->Update();
             }
         }
-        m_updating = false;
-    }
-
-    void ActorList::AddTicker(SceneSystem* ticker, UpdatePhase phase)
-    {
-        if (ticker == nullptr)
-        {
-            return;
-        }
-        for (TickerEntry& entry : m_tickers)
-        {
-            if (entry.ticker == ticker)
-            {
-                entry.phase = phase;
-                return;
-            }
-        }
-        m_tickers.push_back(TickerEntry{.ticker = ticker, .phase = phase});
-    }
-
-    void ActorList::RemoveTicker(SceneSystem* ticker) noexcept
-    {
-        std::erase_if(m_tickers, [ticker](const TickerEntry& entry) noexcept { return entry.ticker == ticker; });
     }
 
     void ActorList::ApplyIdentity(Actor& obj, const nlohmann::json& entry)

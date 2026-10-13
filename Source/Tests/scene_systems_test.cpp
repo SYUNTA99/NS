@@ -39,13 +39,15 @@ static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::UIDirector>);
 template <class T>
 concept CanAddSystemTick =
     requires(NS::Obj::Scene& scene, T& system) { scene.AddSystemTick(system, NS::Obj::UpdatePhase::Triggers); };
-template <class T>
-concept CanAddTickerDirectly =
-    requires(NS::Obj::ActorList& list, T* system) { list.AddTicker(system, NS::Obj::UpdatePhase::Triggers); };
 static_assert(CanAddSystemTick<NS::Obj::UIDirector>);
 static_assert(!CanAddSystemTick<NS::Obj::Actor>);
 static_assert(!CanAddSystemTick<NS::Obj::UIActor>);
-static_assert(!CanAddTickerDirectly<NS::Obj::SceneSystem>);
+
+// 段を回す口も Scene の 1 つ。配置物の一覧を直に回すと、同じ段の管理役が呼ばれない
+template <class T>
+concept CanExecutePhase = requires(T& target) { target.ExecutePhase(NS::Obj::UpdatePhase::Triggers); };
+static_assert(CanExecutePhase<NS::Obj::Scene>);
+static_assert(!CanExecutePhase<NS::Obj::ActorList>);
 
 // 知らせを受ける口は送る関数だけが呼べる
 template <class T>
@@ -205,7 +207,7 @@ TEST(ActorListTicker, TickerRunsAfterSubObjectsOfSameBand)
     LoggingTicker ticker(log);
     scene.AddSystemTick(ticker, NS::Obj::UpdatePhase::Triggers);
 
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     ASSERT_EQ(log.order.size(), 3u);
     EXPECT_EQ(log.order[0], "actor");
     EXPECT_EQ(log.order[1], "component");
@@ -213,7 +215,7 @@ TEST(ActorListTicker, TickerRunsAfterSubObjectsOfSameBand)
 
     scene.RemoveSystemTick(ticker);
     log.order.clear();
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     ASSERT_EQ(log.order.size(), 2u);
     EXPECT_EQ(log.order[0], "actor");
     EXPECT_EQ(log.order[1], "component");

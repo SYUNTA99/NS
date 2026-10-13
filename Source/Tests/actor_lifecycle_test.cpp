@@ -74,16 +74,16 @@ TEST(ActorLifecycle, KillStopsUpdatesAndAppearResumesOnce)
     NS::Obj::Scene scene;
     LifeProbe* actor = scene.SpawnTransient<LifeProbe>();
     EXPECT_TRUE(actor->IsAlive());
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     EXPECT_EQ(actor->updates, 1);
     actor->Kill();
     actor->Kill();
     EXPECT_FALSE(actor->IsAlive());
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     EXPECT_EQ(actor->updates, 1);
     actor->Appear();
     actor->Appear();
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     EXPECT_EQ(actor->updates, 2);
 }
 

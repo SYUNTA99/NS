@@ -1821,7 +1821,7 @@ TEST(ImpactTimelineClock, SinkShakeHoldsTheBottomUntilTheReboundFrame)
         rock->Update();
         TickHitDirectors(*player);
         // カメラの効果はカメラの段で 1 フレーム進む
-        scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Camera);
+        scene.ExecutePhase(NS::Obj::UpdatePhase::Camera);
         detected = detected || player->Resolver().LastImpact().sequence != 0;
         if (!detected)
         {

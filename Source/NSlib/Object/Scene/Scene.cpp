@@ -473,7 +473,7 @@ namespace NS::Obj
                 m_physicsScene.Update(NS::OS::FrameTimer::FixedDelta());
             }
             // 物理の段に置いた物は、Jolt を 1 歩進めた直後に呼ばれる
-            m_objects.ExecutePhase(phase);
+            ExecutePhase(phase);
             if (phase == UpdatePhase::UI)
             {
                 Fade().Advance(NS::OS::FrameTimer::FixedDelta());
@@ -572,12 +572,49 @@ namespace NS::Obj
 
     void Scene::AddSystemTick(SceneSystem& system, UpdatePhase phase)
     {
-        m_objects.AddTicker(&system, phase);
+        for (SystemEntry& entry : m_systems)
+        {
+            if (entry.system == &system)
+            {
+                entry.phase = phase;
+                return;
+            }
+        }
+        m_systems.push_back(SystemEntry{.system = &system, .phase = phase});
     }
 
     void Scene::RemoveSystemTick(SceneSystem& system) noexcept
     {
-        m_objects.RemoveTicker(&system);
+        std::erase_if(m_systems, [&system](const SystemEntry& entry) noexcept { return entry.system == &system; });
+    }
+
+    void Scene::ExecutePhase(UpdatePhase phase)
+    {
+        m_objects.BeginPhase();
+        // 段で呼ぶ管理役は Actor を回す前に決める。段の Actor が足した管理役はこの段では呼ばない
+        m_scheduledSystems.clear();
+        for (const SystemEntry& entry : m_systems)
+        {
+            if (entry.phase == phase)
+            {
+                m_scheduledSystems.push_back(entry.system);
+            }
+        }
+        m_objects.ExecutePhase(phase);
+        // 管理役は段の Actor が出した物を受けてまとめるので、Actor の後に回す
+        for (SceneSystem* system : m_scheduledSystems)
+        {
+            // 段の途中で外した物と、段を替えた物は呼ばない
+            const bool stillRegistered =
+                std::any_of(m_systems.begin(), m_systems.end(), [system, phase](const SystemEntry& entry) noexcept {
+                    return entry.system == system && entry.phase == phase;
+                });
+            if (stillRegistered)
+            {
+                system->OnTick();
+            }
+        }
+        m_objects.EndPhase();
     }
 
     SceneCamera* Scene::MainCamera() noexcept

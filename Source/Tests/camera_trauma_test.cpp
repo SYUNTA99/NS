@@ -169,7 +169,7 @@ TEST(CameraTrauma, ShakesTheDrawnPoseOnlyAndScalesBySetting)
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
     NS::Obj::CameraManager* cameras = scene.GetCameraManager();
     ASSERT_NE(cameras, nullptr);
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Camera);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::Camera);
     const NS::Vector3 forwardBefore = cameras->ForwardHorizontal();
     const std::optional<NS::Obj::CameraPose> calm = cameras->ComposePose(1.0f);
     ASSERT_TRUE(calm.has_value());

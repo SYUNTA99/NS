@@ -41,7 +41,7 @@ TEST(CameraManager, CameraPhaseSelectsTheVirtualCamera)
     ASSERT_NE(cameras, nullptr);
     ASSERT_EQ(cameras->ActiveVirtualCamera(), nullptr);
 
-    scene.Objects().ExecutePhase(NS::Obj::UpdatePhase::Camera);
+    scene.ExecutePhase(NS::Obj::UpdatePhase::Camera);
 
     EXPECT_NE(cameras->ActiveVirtualCamera(), nullptr);
 }
