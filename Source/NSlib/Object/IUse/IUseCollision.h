@@ -30,13 +30,13 @@ namespace NS::Obj
 
     //! @brief origin から direction へ maxDistance までで一番近い当たりまでの距離を outDistance に返す
     //! @return 当たりがあれば true。シーンに居ない時と当たりが無い時は false で outDistance を変えない
-    [[nodiscard]] bool RaycastCollision(const IUseCollision& user,
+    [[nodiscard]] bool RaycastCollision(const IUseCollision* user,
                                         const NS::Vector3& origin,
                                         const NS::Vector3& direction,
                                         float maxDistance,
                                         float& outDistance);
 
-    [[nodiscard]] bool RaycastCollision(const IUseCollision& user,
+    [[nodiscard]] bool RaycastCollision(const IUseCollision* user,
                                         const NS::Vector3& origin,
                                         const NS::Vector3& direction,
                                         float maxDistance,
@@ -49,6 +49,5 @@ namespace NS::Obj
     //! @param[in] user 問う物。シーンの PhysicsScene をここから引く
     //! @param[in] region 調べる軸並行の箱。幅 0 の柱や点も渡せる
     //! @return 重なった body の境界箱の並び。シーンに居ない時と重なりが無い時は空
-    [[nodiscard]] std::vector<NS::AABB> OverlapBoxCollision(const IUseCollision& user,
-                                                                  const NS::AABB& region);
+    [[nodiscard]] std::vector<NS::AABB> OverlapBoxCollision(const IUseCollision* user, const NS::AABB& region);
 } // namespace NS::Obj

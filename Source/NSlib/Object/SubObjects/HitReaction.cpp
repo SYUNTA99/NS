@@ -33,8 +33,8 @@ namespace NS::Obj
         {
             return;
         }
-        (void)GetOrCreateSceneSystem<HitScreenDirector>(*Owner());
-        (void)GetOrCreateSceneSystem<PadRumbleDirector>(*Owner());
+        (void)GetOrCreateSceneSystem<HitScreenDirector>(Owner());
+        (void)GetOrCreateSceneSystem<PadRumbleDirector>(Owner());
     }
 
     void HitReaction::StartFlash(int frames, float alpha) noexcept
@@ -43,7 +43,7 @@ namespace NS::Obj
         {
             return;
         }
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(*Owner()))
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(Owner()))
         {
             screen->StartFlash(*Owner(), frames, alpha);
         }
@@ -59,7 +59,7 @@ namespace NS::Obj
         {
             return false;
         }
-        if (!StartCameraShake(*Owner(), desc))
+        if (!StartCameraShake(Owner(), desc))
         {
             NS_LOG_WARN(Scene,
                         "揺れの設定が壊れていて、揺らさなかった: 横 {} 縦 {} フレーム数 {} 最長 {}",
@@ -82,7 +82,7 @@ namespace NS::Obj
         {
             return false;
         }
-        if (!AddCameraModifier(*Owner(), CameraSinkModifier::Create(desc)))
+        if (!AddCameraModifier(Owner(), CameraSinkModifier::Create(desc)))
         {
             NS_LOG_WARN(Scene,
                         "沈む揺れの設定が壊れていて、揺らさなかった: 深さ {} 震え {} 行き過ぎ {} フレーム数 {}",
@@ -105,7 +105,7 @@ namespace NS::Obj
         {
             return false;
         }
-        if (!AddCameraModifier(*Owner(), CameraNudgeModifier::Create(desc)))
+        if (!AddCameraModifier(Owner(), CameraNudgeModifier::Create(desc)))
         {
             NS_LOG_WARN(Scene,
                         "ずれの設定が壊れていて、ずらさなかった: 向き ({}, {}, {}) フレーム数 {}",
@@ -124,7 +124,7 @@ namespace NS::Obj
         {
             return false;
         }
-        if (!StartCameraZoomRoll(*Owner(), desc))
+        if (!StartCameraZoomRoll(Owner(), desc))
         {
             NS_LOG_WARN(Scene,
                         "寄りと傾きの設定が壊れていて、寄せなかった: 倍率 {} 傾き {} 保つ {} 戻す {}",
@@ -143,7 +143,7 @@ namespace NS::Obj
         {
             return;
         }
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(*Owner()))
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(Owner()))
         {
             screen->StartShakeLines(*Owner(), desc);
         }
@@ -155,7 +155,7 @@ namespace NS::Obj
         {
             return;
         }
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(*Owner()))
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(Owner()))
         {
             screen->StartDistortionRing(*Owner(), desc);
         }
@@ -167,7 +167,7 @@ namespace NS::Obj
         {
             return;
         }
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(*Owner()))
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(Owner()))
         {
             screen->StopDistortionRing(*Owner());
         }
@@ -179,7 +179,7 @@ namespace NS::Obj
         {
             return;
         }
-        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(*Owner()))
+        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(Owner()))
         {
             rumble->Start(*Owner(), pad);
         }
@@ -191,7 +191,7 @@ namespace NS::Obj
         {
             return;
         }
-        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(*Owner()))
+        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(Owner()))
         {
             rumble->Blend(*Owner(), pad);
         }
@@ -203,15 +203,15 @@ namespace NS::Obj
         {
             return;
         }
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(*Owner()))
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(Owner()))
         {
             screen->Stop(*Owner());
         }
-        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(*Owner()))
+        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(Owner()))
         {
             rumble->Stop(*Owner());
         }
-        StopCameraHitEffects(*Owner());
+        StopCameraHitEffects(Owner());
     }
 
     bool HitReaction::AddTrauma(const CameraTraumaDesc& desc)
@@ -221,7 +221,7 @@ namespace NS::Obj
         {
             return false;
         }
-        if (!AddCameraTrauma(*Owner(), desc))
+        if (!AddCameraTrauma(Owner(), desc))
         {
             NS_LOG_WARN(Scene,
                         "トラウマの量か形が壊れていて、揺らさなかった: 量 {} 減る速さ {}",
@@ -238,7 +238,7 @@ namespace NS::Obj
         // プレイを終えた後の視点にトラウマを残さない
         if (Owner() != nullptr)
         {
-            StopCameraEffects(*Owner());
+            StopCameraEffects(Owner());
         }
     }
 

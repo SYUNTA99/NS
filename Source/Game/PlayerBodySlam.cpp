@@ -30,17 +30,17 @@ namespace
     // PlayerParams::ReboundGravity。曲線は上りの重力を正の大きさで、下りの重力を上りに対する倍率で持つので、
     // 符号を反転して下降重力を上りの重力で割る
     [[nodiscard]] GL::Level::LaunchArc ReboundLaunchArc(const GL::Player::PlayerParams& params,
-                                                              const GL::Player::ReboundArc& arc) noexcept
+                                                        const GL::Player::ReboundArc& arc) noexcept
     {
         const GL::Player::PlayerGravity gravity = params.ReboundGravity();
         const float riseGravity = -gravity.rise;
         return GL::Level::LaunchArc{.direction = arc.direction,
-                                          .distance = arc.distance,
-                                          .apexHeight = arc.apexHeight,
-                                          .riseGravity = riseGravity,
-                                          .fallGravityScale = -gravity.fall / riseGravity,
-                                          .apexBandSpeed = gravity.apexSpeed,
-                                          .apexBandGravityScale = gravity.apexScale};
+                                    .distance = arc.distance,
+                                    .apexHeight = arc.apexHeight,
+                                    .riseGravity = riseGravity,
+                                    .fallGravityScale = -gravity.fall / riseGravity,
+                                    .apexBandSpeed = gravity.apexSpeed,
+                                    .apexBandGravityScale = gravity.apexScale};
     }
 } // namespace
 
@@ -205,7 +205,7 @@ NS::Vector3 Player::AimDirection() const noexcept
     // 反発後の滑りなど残った速度が向きに勝つと狙いと食い違う方へ飛ぶ。入力が無ければ速度よりカメラの前を先に見る
     if (length < NS::k_Epsilon && GetCameraManager() != nullptr)
     {
-        const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(*this);
+        const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(this);
         dir = NS::Vector3{forward.x, 0.0f, forward.z};
         length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
     }
@@ -360,8 +360,7 @@ bool Player::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
     m_rebound.direction = direction;
     m_rebound.missTumble = arc.missTumble;
     ++m_rebound.count;
-    m_rebound.spinSpeed =
-        SpinSpeedFor(turns, GL::Level::LaunchArcFlightSeconds(ReboundLaunchArc(*m_params, arc)));
+    m_rebound.spinSpeed = SpinSpeedFor(turns, GL::Level::LaunchArcFlightSeconds(ReboundLaunchArc(*m_params, arc)));
     m_body->SetVelocity(velocity);
     (void)m_states->Change<GL::Player::ReboundPlayerState>();
     return true;

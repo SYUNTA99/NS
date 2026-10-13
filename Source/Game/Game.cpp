@@ -110,7 +110,7 @@ void Game::StartLoadedScene()
         return;
     }
     // 自機の居ないシーンでも CourseDirector を作って凍結を取る。読み直しの後に前のシーンの凍結が残らない
-    if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(*scene))
+    if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(scene))
     {
         director->StartCourse();
     }

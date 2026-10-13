@@ -29,11 +29,11 @@ TEST_F(IUseEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
     ASSERT_NE(actor.CreateSubObj("Effect"), nullptr);
     ASSERT_NE(actor.GetEffectKeeper(), nullptr);
 
-    const std::uint32_t id = NS::Obj::PlayEffect(actor, "test.spark", NS::Gfx::EffectPlayDesc{});
+    const std::uint32_t id = NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
 
     EXPECT_NE(id, 0u);
     EXPECT_EQ(actor.GetEffectKeeper()->Records().size(), 1u);
-    const EffectRecord* record = NS::Obj::FindEffect(actor, id);
+    const EffectRecord* record = NS::Obj::FindEffect(&actor, id);
     ASSERT_NE(record, nullptr);
     EXPECT_EQ(record->name, "test.spark");
 }
@@ -42,28 +42,28 @@ TEST_F(IUseEffectTest, SwitchedOffNameIsNotPlayed)
 {
     NS::Obj::Actor actor;
     ASSERT_NE(actor.CreateSubObj("Effect"), nullptr);
-    NS::Obj::PreloadEffects(actor, {"test.spark", "test.ring"});
+    NS::Obj::PreloadEffects(&actor, {"test.spark", "test.ring"});
     ASSERT_TRUE(EffectSwitches::Get().EffectNames().contains("test.ring"));
     EffectSwitches::Get().TurnOff("test.spark");
 
-    EXPECT_EQ(NS::Obj::PlayEffect(actor, "test.spark", NS::Gfx::EffectPlayDesc{}), 0u);
+    EXPECT_EQ(NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{}), 0u);
     EXPECT_TRUE(actor.GetEffectKeeper()->Records().empty());
-    EXPECT_NE(NS::Obj::PlayEffect(actor, "test.ring", NS::Gfx::EffectPlayDesc{}), 0u);
+    EXPECT_NE(NS::Obj::PlayEffect(&actor, "test.ring", NS::Gfx::EffectPlayDesc{}), 0u);
 }
 
 TEST_F(IUseEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
 {
     NS::Obj::Actor actor;
     ASSERT_NE(actor.CreateSubObj("Effect"), nullptr);
-    const std::uint32_t id = NS::Obj::PlayEffect(actor, "test.spark", NS::Gfx::EffectPlayDesc{});
+    const std::uint32_t id = NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
     actor.Update();
-    ASSERT_EQ(NS::Obj::EffectStep(actor), 1);
+    ASSERT_EQ(NS::Obj::EffectStep(&actor), 1);
 
-    NS::Obj::SetEffectAmount(actor, id, 3.0f);
-    NS::Obj::StopEffectRoot(actor, id);
-    NS::Obj::StopEffect(actor, id);
+    NS::Obj::SetEffectAmount(&actor, id, 3.0f);
+    NS::Obj::StopEffectRoot(&actor, id);
+    NS::Obj::StopEffect(&actor, id);
 
-    const EffectRecord* record = NS::Obj::FindEffect(actor, id);
+    const EffectRecord* record = NS::Obj::FindEffect(&actor, id);
     ASSERT_NE(record, nullptr);
     ASSERT_TRUE(record->amount.has_value());
     EXPECT_FLOAT_EQ(record->amount.value(), 3.0f);
@@ -77,13 +77,13 @@ TEST_F(IUseEffectTest, StopEffectAfterEndsOnTheScheduledStep)
 {
     NS::Obj::Actor actor;
     ASSERT_NE(actor.CreateSubObj("Effect"), nullptr);
-    const std::uint32_t id = NS::Obj::PlayEffect(actor, "test.spark", NS::Gfx::EffectPlayDesc{});
-    NS::Obj::StopEffectAfter(actor, id, 2);
+    const std::uint32_t id = NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
+    NS::Obj::StopEffectAfter(&actor, id, 2);
 
     actor.Update();
-    EXPECT_FALSE(NS::Obj::FindEffect(actor, id)->endStep.has_value());
+    EXPECT_FALSE(NS::Obj::FindEffect(&actor, id)->endStep.has_value());
     actor.Update();
-    EXPECT_TRUE(NS::Obj::FindEffect(actor, id)->endStep.has_value());
+    EXPECT_TRUE(NS::Obj::FindEffect(&actor, id)->endStep.has_value());
 }
 
 TEST_F(IUseEffectTest, ActorWithoutTheSlotDoesNothing)
@@ -91,15 +91,15 @@ TEST_F(IUseEffectTest, ActorWithoutTheSlotDoesNothing)
     NS::Obj::Actor actor;
     ASSERT_EQ(actor.GetEffectKeeper(), nullptr);
 
-    NS::Obj::PreloadEffects(actor, {"test.spark"});
-    EXPECT_EQ(NS::Obj::PlayEffect(actor, "test.spark", NS::Gfx::EffectPlayDesc{}), 0u);
-    NS::Obj::StopEffect(actor, 1);
-    NS::Obj::StopEffectRoot(actor, 1);
-    NS::Obj::StopEffectAfter(actor, 1, 1);
-    NS::Obj::SetEffectTransform(actor, 1, NS::Vector3{}, NS::Quaternion::Identity, NS::Vector3{1.0f, 1.0f, 1.0f});
-    NS::Obj::SetEffectDynamicInput(actor, 1, 0, 1.0f);
-    NS::Obj::SetEffectAmount(actor, 1, 1.0f);
-    NS::Obj::SetEffectRotation(actor, 1, NS::Quaternion::Identity);
-    EXPECT_EQ(NS::Obj::FindEffect(actor, 1), nullptr);
-    EXPECT_EQ(NS::Obj::EffectStep(actor), 0);
+    NS::Obj::PreloadEffects(&actor, {"test.spark"});
+    EXPECT_EQ(NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{}), 0u);
+    NS::Obj::StopEffect(&actor, 1);
+    NS::Obj::StopEffectRoot(&actor, 1);
+    NS::Obj::StopEffectAfter(&actor, 1, 1);
+    NS::Obj::SetEffectTransform(&actor, 1, NS::Vector3{}, NS::Quaternion::Identity, NS::Vector3{1.0f, 1.0f, 1.0f});
+    NS::Obj::SetEffectDynamicInput(&actor, 1, 0, 1.0f);
+    NS::Obj::SetEffectAmount(&actor, 1, 1.0f);
+    NS::Obj::SetEffectRotation(&actor, 1, NS::Quaternion::Identity);
+    EXPECT_EQ(NS::Obj::FindEffect(&actor, 1), nullptr);
+    EXPECT_EQ(NS::Obj::EffectStep(&actor), 0);
 }

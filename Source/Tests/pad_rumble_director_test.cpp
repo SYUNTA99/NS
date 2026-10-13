@@ -47,7 +47,7 @@ TEST(PadRumbleDirector, BlendedVibrationsAddAndEndOnTheirOwnLength)
     NS::Obj::Scene scene;
     Player* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(*player);
+    NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(player);
     ASSERT_NE(pad, nullptr);
 
     const NS::Obj::HitPadVibration first = FadingLeft(0.5f, 4);
@@ -93,7 +93,7 @@ TEST(PadRumbleDirector, DiscardingTheDirectorWritesZero)
     NS::Obj::Scene scene;
     Player* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(*player);
+    NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(player);
     ASSERT_NE(pad, nullptr);
     pad->Start(*player, FadingLeft(1.0f, 30));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);

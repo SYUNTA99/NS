@@ -83,7 +83,7 @@ namespace GL::Level
         m_body = NS::Obj::Cast<MapObj>(Owner());
         if (m_body != nullptr)
         {
-            NS::Obj::PreloadEffects(*m_body, {m_launchTrailAsset, m_launchLandDustAsset});
+            NS::Obj::PreloadEffects(m_body, {m_launchTrailAsset, m_launchLandDustAsset});
         }
     }
 
@@ -96,7 +96,7 @@ namespace GL::Level
         // 尾は 1 本ずつ持つ。前の尾が残っていればここで消す
         if (m_trail != 0)
         {
-            NS::Obj::StopEffect(*m_body, m_trail);
+            NS::Obj::StopEffect(m_body, m_trail);
             m_trail = 0;
         }
         if (!m_body->IsArc())
@@ -133,20 +133,20 @@ namespace GL::Level
         desc.dynamicInputs[TrailColorInputFor(tier)] = 1.0f;
         desc.dynamicInputs[2] = static_cast<float>(m_trailFrames);
         desc.dynamicInputs[3] = 0.0f;
-        m_trail = NS::Obj::PlayEffect(*m_body, m_launchTrailAsset, desc);
-        NS::Obj::SetEffectAmount(*m_body, m_trail, static_cast<float>(m_trailFrames));
-        m_trailStartStep = NS::Obj::EffectStep(*m_body);
+        m_trail = NS::Obj::PlayEffect(m_body, m_launchTrailAsset, desc);
+        NS::Obj::SetEffectAmount(m_body, m_trail, static_cast<float>(m_trailFrames));
+        m_trailStartStep = NS::Obj::EffectStep(m_body);
     }
 
     void LaunchEffects::OnUpdate()
     {
-        if (m_trail == 0 || m_body == nullptr || NS::Obj::EffectStep(*m_body) == m_trailStartStep)
+        if (m_trail == 0 || m_body == nullptr || NS::Obj::EffectStep(m_body) == m_trailStartStep)
         {
             return;
         }
         if (m_body->IsArc())
         {
-            NS::Obj::SetEffectTransform(*m_body,
+            NS::Obj::SetEffectTransform(m_body,
                                         m_trail,
                                         m_body->Root().Position(),
                                         TurnUpTo(NormalizedOr(m_body->Velocity(), m_launchDir)),
@@ -163,7 +163,7 @@ namespace GL::Level
             return;
         }
         // 帯と輪はここで消す。点は世界に残るので、通った道が柱のように残る
-        NS::Obj::StopEffect(*m_body, m_trail);
+        NS::Obj::StopEffect(m_body, m_trail);
         m_trail = 0;
     }
 
@@ -181,11 +181,11 @@ namespace GL::Level
         EndTrail();
         const Vector3 at = position + normal * m_dustRingLift;
         const std::uint32_t dust = NS::Obj::PlayEffect(
-            *m_body,
+            m_body,
             m_launchLandDustAsset,
             PlayAt(at, TurnUpTo(normal), Uniform(m_landDustScale / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
-        NS::Obj::SetEffectAmount(*m_body, dust, m_landDustScale);
-        NS::Obj::StopEffectAfter(*m_body, dust, std::max(m_landDustLife, 1));
+        NS::Obj::SetEffectAmount(m_body, dust, m_landDustScale);
+        NS::Obj::StopEffectAfter(m_body, dust, std::max(m_landDustLife, 1));
     }
 
     NS_CLASS(LaunchEffects)

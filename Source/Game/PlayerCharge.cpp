@@ -5,9 +5,9 @@
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/DebugDraw.h"
+#include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/IUse/IUseCamera.h"
 
 #include <algorithm>
 #include <cmath>
@@ -118,16 +118,16 @@ void Player::ObserveCharge(bool held)
     {
         return;
     }
-    const NS::Vector3 direction = NS::Obj::CameraForwardHorizontal(*this);
+    const NS::Vector3 direction = NS::Obj::CameraForwardHorizontal(this);
     if (!std::isfinite(direction.x) || !std::isfinite(direction.z))
     {
         return;
     }
     m_charge.observedAimLine = GL::Level::AimLine{.origin = Root().Position(),
-                                                        .direction = direction,
-                                                        .length = BodySlamDistance(),
-                                                        .launchVerticalSpeed = 0.0f,
-                                                        .grounded = m_body->IsGrounded()};
+                                                  .direction = direction,
+                                                  .length = BodySlamDistance(),
+                                                  .launchVerticalSpeed = 0.0f,
+                                                  .grounded = m_body->IsGrounded()};
     m_charge.observedHasAimLine = true;
     m_charge.observedHasAimTarget = m_resolver->FindSlamLineTarget(
         m_charge.observedAimLine.direction, m_charge.observedAimLine.length, m_charge.observedAimTarget);

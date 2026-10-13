@@ -39,7 +39,7 @@ TEST(HitScreenDirector, FlashStartsAtFullAlphaAndFadesFromTheNextTick)
     NS::Obj::Scene scene;
     Player* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
 
     screen->StartFlash(*player, 3, 0.9f);
@@ -63,7 +63,7 @@ TEST(HitScreenDirector, ShakeLinesRunForTheirFrames)
     NS::Obj::Scene scene;
     Player* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     screen->StartShakeLines(*player, NS::Obj::HitShakeLinesDesc{.radius = 0.5f, .frames = 3});
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 3);
@@ -85,7 +85,7 @@ TEST(HitScreenDirector, StopClearsOnlyWhatTheRequesterStarted)
     ASSERT_NE(player, nullptr);
     NS::Obj::Actor* rock = scene.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
 
     screen->StartFlash(*rock, 3, 1.0f);
@@ -105,7 +105,7 @@ TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
     ASSERT_NE(player, nullptr);
     NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     reaction->StartFlash(4, 1.0f);
     reaction->StartShakeLines(NS::Obj::HitShakeLinesDesc{.radius = 0.5f, .frames = 4});
@@ -122,7 +122,7 @@ TEST(HitScreenDirector, FlashKeepsFadingWhileOthersAreHeld)
     NS::Obj::Scene scene;
     Player* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     scene.HoldOthers(10);
     screen->StartFlash(*player, 3, 1.0f);
@@ -171,7 +171,7 @@ TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
     NS::Obj::Scene scene;
     Player* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     NS::Obj::HitDistortionRingDesc desc;
     desc.center = NS::Vector3{1.0f, 2.0f, 3.0f};
@@ -217,7 +217,7 @@ TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
     ASSERT_NE(rock, nullptr);
     NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     NS::Obj::HitDistortionRingDesc desc;
     desc.push.count = 1;

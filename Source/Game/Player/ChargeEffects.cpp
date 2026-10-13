@@ -39,7 +39,7 @@ namespace GL::Player
 
         if (const NS::Obj::Actor* owner = Owner())
         {
-            NS::Obj::PreloadEffects(*owner,
+            NS::Obj::PreloadEffects(owner,
                                     {m_curlAsset,
                                      m_spinAsset,
                                      m_grindAsset,
@@ -78,7 +78,7 @@ namespace GL::Player
         m_framesSinceFull = 0;
         if (held && m_fullShown)
         {
-            m_framesSinceFull = NS::Obj::EffectStep(*m_actor) - m_fullStep + 1;
+            m_framesSinceFull = NS::Obj::EffectStep(m_actor) - m_fullStep + 1;
         }
         if (held)
         {
@@ -150,7 +150,7 @@ namespace GL::Player
             {
                 return;
             }
-            const NS::Obj::EffectRecord* record = NS::Obj::FindEffect(*m_actor, id);
+            const NS::Obj::EffectRecord* record = NS::Obj::FindEffect(m_actor, id);
             if (record != nullptr && record->endStep.has_value())
             {
                 id = 0;
@@ -170,29 +170,28 @@ namespace GL::Player
         m_fullShown = false;
         m_spinDegrees = 0.0f;
 
-        m_curl = NS::Obj::PlayEffect(*m_actor, m_curlAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
-        NS::Obj::StopEffectAfter(*m_actor, m_curl, std::max(m_curlSteps, 1));
-        m_spin = NS::Obj::PlayEffect(*m_actor, m_spinAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
+        m_curl = NS::Obj::PlayEffect(m_actor, m_curlAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
+        NS::Obj::StopEffectAfter(m_actor, m_curl, std::max(m_curlSteps, 1));
+        m_spin = NS::Obj::PlayEffect(m_actor, m_spinAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
         // 玉を包む光は押したフレームから出し、丸まりの殻が消えた後も放すまで途切れさせない
         StopAndClear(m_gather);
-        m_gather = NS::Obj::PlayEffect(*m_actor, m_gatherAsset, PlayDesc(center, YawToward(HeldAimDirection()), 0.0f));
+        m_gather = NS::Obj::PlayEffect(m_actor, m_gatherAsset, PlayDesc(center, YawToward(HeldAimDirection()), 0.0f));
     }
 
     void ChargeEffects::StartCharging(const NS::Vector3& center)
     {
         StopAndClear(m_grind);
         const float charge01 = m_actor->ChargeJudge().Charge01();
-        m_grind =
-            NS::Obj::PlayEffect(*m_actor, m_grindAsset, PlayDesc(center, YawToward(HeldAimDirection()), charge01));
+        m_grind = NS::Obj::PlayEffect(m_actor, m_grindAsset, PlayDesc(center, YawToward(HeldAimDirection()), charge01));
     }
 
     void ChargeEffects::StartFullFlash(const NS::Vector3& center)
     {
         m_fullShown = true;
-        m_fullStep = NS::Obj::EffectStep(*m_actor);
+        m_fullStep = NS::Obj::EffectStep(m_actor);
         StopAndClear(m_full);
-        m_full = NS::Obj::PlayEffect(*m_actor, m_fullAsset, PlayDesc(center, NS::Quaternion::Identity, 1.0f));
-        NS::Obj::StopEffectAfter(*m_actor, m_full, std::max(m_fullFlashSteps, 1));
+        m_full = NS::Obj::PlayEffect(m_actor, m_fullAsset, PlayDesc(center, NS::Quaternion::Identity, 1.0f));
+        NS::Obj::StopEffectAfter(m_actor, m_full, std::max(m_fullFlashSteps, 1));
     }
 
     void ChargeEffects::PlaySwaySparks(const NS::Vector3& center)
@@ -224,7 +223,7 @@ namespace GL::Player
         // 秒の速さを 1 フレームの距離にして絵へ渡す
         sparks.dynamicInputs[2] = speed / 60.0f;
         sparks.dynamicInputs[3] = 0.0f;
-        static_cast<void>(NS::Obj::PlayEffect(*m_actor, m_swaySparksAsset, sparks));
+        static_cast<void>(NS::Obj::PlayEffect(m_actor, m_swaySparksAsset, sparks));
     }
 
     void ChargeEffects::FollowHeldEffects(const NS::Vector3& center, float charge01) noexcept
@@ -271,8 +270,8 @@ namespace GL::Player
         // 大きさを変えるのは輪・丸屋根・筋だけにする
         NS::Gfx::EffectPlayDesc burst = PlayDesc(center, facing, charge01);
         burst.dynamicInputs[m_burstScaleInput] = ReleaseBurstScale(charge01);
-        const std::uint32_t burstId = NS::Obj::PlayEffect(*m_actor, m_burstAsset, burst);
-        NS::Obj::StopEffectAfter(*m_actor, burstId, std::max(m_burstSteps, 1));
+        const std::uint32_t burstId = NS::Obj::PlayEffect(m_actor, m_burstAsset, burst);
+        NS::Obj::StopEffectAfter(m_actor, burstId, std::max(m_burstSteps, 1));
         m_burst = burstId;
 
         // 前の突進の尾がまだ伸びていれば止め、新しい尾と繋げない
@@ -281,7 +280,7 @@ namespace GL::Player
             StopTrailRoot();
         }
         m_trailAwaitsFreeze = false;
-        m_trail = NS::Obj::PlayEffect(*m_actor, m_trailAsset, PlayDesc(center, facing, charge01));
+        m_trail = NS::Obj::PlayEffect(m_actor, m_trailAsset, PlayDesc(center, facing, charge01));
     }
 
     void ChargeEffects::UpdateTrail(const NS::Vector3& center, bool slamming) noexcept
@@ -290,7 +289,7 @@ namespace GL::Player
         {
             return;
         }
-        const NS::Obj::EffectRecord* record = NS::Obj::FindEffect(*m_actor, m_trail);
+        const NS::Obj::EffectRecord* record = NS::Obj::FindEffect(m_actor, m_trail);
         if (record == nullptr || record->rootStopStep.has_value())
         {
             return;
@@ -332,8 +331,8 @@ namespace GL::Player
 
     void ChargeEffects::StopTrailRoot() noexcept
     {
-        NS::Obj::StopEffectRoot(*m_actor, m_trail);
-        NS::Obj::StopEffectAfter(*m_actor, m_trail, std::max(m_trailFadeSteps, 1));
+        NS::Obj::StopEffectRoot(m_actor, m_trail);
+        NS::Obj::StopEffectAfter(m_actor, m_trail, std::max(m_trailFadeSteps, 1));
         m_trailAwaitsFreeze = false;
     }
 
@@ -343,15 +342,15 @@ namespace GL::Player
         {
             return;
         }
-        const NS::Obj::EffectRecord* record = NS::Obj::FindEffect(*m_actor, id);
+        const NS::Obj::EffectRecord* record = NS::Obj::FindEffect(m_actor, id);
         if (record == nullptr || record->endStep.has_value())
         {
             return;
         }
         // 描画の無い世界でも向きは記録に残し、試しが読む
-        NS::Obj::SetEffectRotation(*m_actor, id, rotation);
+        NS::Obj::SetEffectRotation(m_actor, id, rotation);
         // TODO: 固定ステップの位置へ置いている。60 を超える画面で段々に見えたら、補間の位置で渡す
-        NS::Obj::SetEffectTransform(*m_actor, id, position, rotation, NS::Vector3::One);
+        NS::Obj::SetEffectTransform(m_actor, id, position, rotation, NS::Vector3::One);
     }
 
     void ChargeEffects::SetCharge(std::uint32_t id, float charge01) const noexcept
@@ -365,12 +364,12 @@ namespace GL::Player
         {
             return;
         }
-        const NS::Obj::EffectRecord* record = NS::Obj::FindEffect(*m_actor, id);
+        const NS::Obj::EffectRecord* record = NS::Obj::FindEffect(m_actor, id);
         if (record == nullptr || record->endStep.has_value())
         {
             return;
         }
-        NS::Obj::SetEffectDynamicInput(*m_actor, id, index, value);
+        NS::Obj::SetEffectDynamicInput(m_actor, id, index, value);
     }
 
     NS::Vector3 ChargeEffects::HeldAimDirection() const noexcept
@@ -403,7 +402,7 @@ namespace GL::Player
         {
             return;
         }
-        NS::Obj::StopEffect(*m_actor, id);
+        NS::Obj::StopEffect(m_actor, id);
         id = 0;
     }
 

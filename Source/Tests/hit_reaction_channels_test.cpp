@@ -51,8 +51,8 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
     ASSERT_NE(player, nullptr);
     NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
-    NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(*player);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
+    NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(player);
     ASSERT_NE(screen, nullptr);
     ASSERT_NE(pad, nullptr);
     const auto tick = [&]() {
@@ -93,7 +93,7 @@ TEST(HitReactionChannels, ShakeAndZoomStartSeparately)
     ASSERT_NE(player, nullptr);
     NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     EXPECT_TRUE(reaction->StartShake(NS::Obj::CameraShakeDesc{.upAmplitude = 0.1f, .frames = 4}));
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);

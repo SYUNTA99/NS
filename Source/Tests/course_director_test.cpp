@@ -81,18 +81,18 @@ TEST(CourseDirector, PlayerCreatesDirectorAfterPlacement)
 {
     NS::Obj::Scene scene;
     scene.LoadJson(CourseWithPlayer());
-    EXPECT_NE(NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(scene), nullptr);
+    EXPECT_NE(NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene), nullptr);
 
     // 組み直すと捨てられ、プレイヤーの居ないシーンでは作られない
     scene.LoadJson(NS::Obj::MakeSceneJson());
-    EXPECT_EQ(NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(scene), nullptr);
+    EXPECT_EQ(NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene), nullptr);
 }
 
 TEST(CourseDirector, ClearSequenceUsesTheSceneFadeAndUnlocksInput)
 {
     NS::Obj::Scene scene;
     scene.LoadJson(CourseWithPlayer());
-    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(scene);
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
     director->StartCourse();
     Player* player = FindPlayer(scene.Objects());
@@ -120,7 +120,7 @@ TEST(CourseDirector, ClearSequenceUsesTheSceneFadeAndUnlocksInput)
 TEST(CourseDirector, RemovingAnIdleDirectorKeepsAnIndependentSceneFade)
 {
     NS::Obj::Scene scene;
-    (void)NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(scene);
+    (void)NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
     scene.Fade().BeginOut(0.0f);
     scene.GetSceneSystemHolder()->Clear();
     EXPECT_TRUE(scene.Fade().IsBlack());
@@ -140,7 +140,7 @@ TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
     scene.HitSensors().OnTick();
     EXPECT_TRUE(player->IsDead());
 
-    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(scene);
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
     director->OnTick();
     // 出現位置へ戻り、命も満タンへ戻る
@@ -163,7 +163,7 @@ TEST(CourseDirector, RespawnButtonReturnsObjectsButKeepsPlayer)
     (void)scene.BeginPlayBaseline();
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(scene);
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
     NS::Obj::Actor* placed = nullptr;
     for (NS::Obj::Actor* actor : scene.Objects())
@@ -203,7 +203,7 @@ TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
     (void)scene.BeginPlayBaseline();
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(scene);
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
 
     scene.HitSensors().OnTick();
@@ -230,7 +230,7 @@ TEST(CourseDirector, ClearLockStopsTheHeldSlamButton)
     (void)scene.BeginPlayBaseline();
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(scene);
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
 
     MouseLeftPress press;
@@ -263,7 +263,7 @@ TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
     (void)scene.BeginPlayBaseline();
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(scene);
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
 
     player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -337,7 +337,7 @@ TEST(CourseDirector, RestartReturnsObjectsToBaseline)
     ASSERT_NE(placed, nullptr);
     placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
 
-    NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(scene)->RestartCourse();
+    NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->RestartCourse();
     EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
 }
 
@@ -351,7 +351,7 @@ TEST(CourseDirector, StartCourseFreezesThePlacedSceneAndStartsEveryoneFromIt)
     player->Root().SetPosition(placedAt);
     player->Body().SetVelocity(NS::Vector3{2.0f, 4.0f, 3.0f});
 
-    NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(scene)->StartCourse();
+    NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->StartCourse();
 
     // 凍結は呼んだ時の配置を写し、自機はそこからやり直しと同じ姿で始まる
     const nlohmann::json& baseline = scene.PlayBaseline();

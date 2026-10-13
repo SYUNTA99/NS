@@ -192,7 +192,7 @@ TEST(IUseCamera, ForwardFollowsTheVirtualCameraNotTheDrawnCamera)
     NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
     ASSERT_NE(actor, nullptr);
 
-    const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(*actor);
+    const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(actor);
 
     EXPECT_FLOAT_EQ(forward.x, 0.0f);
     EXPECT_FLOAT_EQ(forward.z, 1.0f);
@@ -207,7 +207,7 @@ TEST(IUseCamera, ForwardWithoutAVirtualCameraIsPlusZ)
     NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
     ASSERT_NE(actor, nullptr);
 
-    const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(*actor);
+    const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(actor);
 
     EXPECT_FLOAT_EQ(forward.x, 0.0f);
     EXPECT_FLOAT_EQ(forward.z, 1.0f);
@@ -273,12 +273,12 @@ TEST(IUseCamera, ViewPoseLeavesOutTheShake)
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
     NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
     ASSERT_NE(actor, nullptr);
-    ASSERT_TRUE(NS::Obj::StartCameraShake(*actor, ShakeOf(5)));
+    ASSERT_TRUE(NS::Obj::StartCameraShake(actor, ShakeOf(5)));
     const std::optional<NS::Obj::CameraPose> drawn = scene.GetCameraManager()->ComposePose(1.0f);
     ASSERT_TRUE(drawn.has_value());
     ASSERT_NE(drawn->position.x, 0.0f);
 
-    const std::optional<NS::Obj::CameraPose> view = NS::Obj::CameraViewPose(*actor);
+    const std::optional<NS::Obj::CameraPose> view = NS::Obj::CameraViewPose(actor);
 
     ASSERT_TRUE(view.has_value());
     EXPECT_FLOAT_EQ(view->position.x, 0.0f);
@@ -292,15 +292,15 @@ TEST(IUseCamera, ActorReachesSceneCameraManager)
     NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->GetCameraManager(), scene.GetCameraManager());
-    EXPECT_TRUE(NS::Obj::StartCameraShake(*actor, ShakeOf(5)));
+    EXPECT_TRUE(NS::Obj::StartCameraShake(actor, ShakeOf(5)));
     EXPECT_NE(scene.GetCameraManager()->FindModifier<NS::Obj::CameraShakeModifier>(), nullptr);
-    NS::Obj::StopCameraEffects(*actor);
+    NS::Obj::StopCameraEffects(actor);
     EXPECT_EQ(scene.GetCameraManager()->FindModifier<NS::Obj::CameraShakeModifier>(), nullptr);
 
     // シーンに居ない Actor は窓口が何もしない
     NS::Obj::Actor loose;
     EXPECT_EQ(loose.GetCameraManager(), nullptr);
-    EXPECT_FALSE(NS::Obj::StartCameraShake(loose, ShakeOf(5)));
+    EXPECT_FALSE(NS::Obj::StartCameraShake(&loose, ShakeOf(5)));
 }
 
 namespace

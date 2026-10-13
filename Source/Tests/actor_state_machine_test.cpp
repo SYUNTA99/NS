@@ -71,7 +71,7 @@ namespace
         void VisualStep() override
         {
             NS::Obj::Actor::VisualStep();
-            stepsSeenInVisual = StepsInState(*this);
+            stepsSeenInVisual = StepsInState(this);
         }
     };
 } // namespace
@@ -82,7 +82,7 @@ TEST(ActorStateMachine, ActorWithoutMachineUpdatesQuietly)
     EXPECT_EQ(actor.GetStateMachine(), nullptr);
     actor.Update();
     EXPECT_EQ(actor.GetStateMachine(), nullptr);
-    EXPECT_FALSE(NS::Obj::IsState<OwnedState>(actor));
+    EXPECT_FALSE(NS::Obj::IsState<OwnedState>(&actor));
 }
 
 TEST(ActorStateMachine, BaseOwnsTheMachineAndUpdateStepsIt)
@@ -92,13 +92,13 @@ TEST(ActorStateMachine, BaseOwnsTheMachineAndUpdateStepsIt)
 
     ASSERT_NE(actor.GetStateMachine(), nullptr);
     EXPECT_EQ(actor.GetStateMachine(), machine);
-    EXPECT_TRUE(NS::Obj::IsState<OwnedState>(actor));
-    EXPECT_TRUE(NS::Obj::IsFirstStep(actor));
+    EXPECT_TRUE(NS::Obj::IsState<OwnedState>(&actor));
+    EXPECT_TRUE(NS::Obj::IsFirstStep(&actor));
     actor.Update();
-    EXPECT_EQ(NS::Obj::StepsInState(actor), 1u);
+    EXPECT_EQ(NS::Obj::StepsInState(&actor), 1u);
     actor.Update();
-    EXPECT_EQ(NS::Obj::StepsInState(actor), 2u);
-    EXPECT_TRUE(NS::Obj::SetState<OwnedState>(actor));
+    EXPECT_EQ(NS::Obj::StepsInState(&actor), 2u);
+    EXPECT_TRUE(NS::Obj::SetState<OwnedState>(&actor));
 }
 
 TEST(ActorStateMachine, StepsInStateIsReachableUnqualifiedInsideAnActor)
@@ -132,5 +132,5 @@ TEST(ActorStateMachine, SecondBuildFailsAndKeepsTheFirstMachine)
 
     EXPECT_EQ(actor.machine, first);
     EXPECT_EQ(actor.GetStateMachine(), first);
-    EXPECT_TRUE(NS::Obj::IsState<ProbeState>(actor));
+    EXPECT_TRUE(NS::Obj::IsState<ProbeState>(&actor));
 }

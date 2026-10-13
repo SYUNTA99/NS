@@ -59,7 +59,7 @@ TEST(CollisionWindow, OverlapBoxIsEmptyOutsideAScene)
 {
     CollisionProbe loose;
     loose.Init();
-    EXPECT_TRUE(NS::Obj::OverlapBoxCollision(loose, BandAcrossFloorTop()).empty());
+    EXPECT_TRUE(NS::Obj::OverlapBoxCollision(&loose, BandAcrossFloorTop()).empty());
 }
 
 TEST(CollisionWindow, OverlapBoxAnswersLikeThePhysicsScene)
@@ -69,7 +69,7 @@ TEST(CollisionWindow, OverlapBoxAnswersLikeThePhysicsScene)
     CollisionProbe* placed = scene.SpawnTransient<CollisionProbe>();
 
     const std::vector<NS::AABB> expected = scene.Physics().OverlapBox(BandAcrossFloorTop());
-    const std::vector<NS::AABB> actual = NS::Obj::OverlapBoxCollision(*placed, BandAcrossFloorTop());
+    const std::vector<NS::AABB> actual = NS::Obj::OverlapBoxCollision(placed, BandAcrossFloorTop());
     ASSERT_FALSE(expected.empty());
     ASSERT_EQ(actual.size(), expected.size());
     for (std::size_t i = 0; i < expected.size(); ++i)

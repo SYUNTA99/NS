@@ -29,7 +29,7 @@ namespace
     public:
         void OnStep(::Player& player, float) override
         {
-            EXPECT_EQ(NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player)->FlashFramesRemaining(), 3);
+            EXPECT_EQ(NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(&player)->FlashFramesRemaining(), 3);
         }
     };
 
@@ -110,7 +110,7 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
     NS::Obj::Scene scene;
     Player* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     screen->StartFlash(*player, 3, 1.0f);
     screen->OnTick();
@@ -153,7 +153,7 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
         player->Update();
     }
     ASSERT_TRUE(player->Resolver().FreezeBeganThisStep());
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
+    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     screen->StartFlash(*player, 3, 1.0f);
     screen->OnTick();
@@ -251,7 +251,7 @@ TEST(PlayerStateSequence, TheBaseOwnsTheMachineFromInit)
     player.Init();
     ASSERT_NE(player.GetStateMachine(), nullptr);
     EXPECT_EQ(player.GetStateMachine()->CurrentId(), NS::Obj::StateIdOf<GL::Player::IdlePlayerState>());
-    EXPECT_TRUE(NS::Obj::IsState<GL::Player::IdlePlayerState>(player));
+    EXPECT_TRUE(NS::Obj::IsState<GL::Player::IdlePlayerState>(&player));
 }
 
 TEST(PlayerStateSequence, ReboundAndBodySlamAreNeverBothTrue)

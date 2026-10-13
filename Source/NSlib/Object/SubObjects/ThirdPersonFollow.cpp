@@ -520,7 +520,7 @@ namespace NS::Obj
             shape.pitchDegrees = m_chargeShakePitchDegrees;
             shape.frequency = m_chargeShakeFrequency;
             shape.decayPerSecond = m_chargeShakeDecayPerSecond;
-            (void)HoldCameraTrauma(*Owner(), holdCharge, shape);
+            (void)HoldCameraTrauma(Owner(), holdCharge, shape);
         }
 
         // 構図は押したフレームから動かし、溜めに入った時には相手を枠へ入れておく

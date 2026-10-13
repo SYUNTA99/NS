@@ -119,7 +119,7 @@ TEST(CameraSink, ShiftsTheDrawnScreenOnlyAndScalesBySetting)
     EXPECT_NEAR(half->screenOffset.y, -desc.bottomPixels * k_PixelToScreen * 0.5f, 1.0e-6f);
 
     // 当たりの演出を止めると外れる
-    NS::Obj::StopCameraHitEffects(scene);
+    NS::Obj::StopCameraHitEffects(&scene);
     EXPECT_EQ(cameras->FindModifier<NS::Obj::CameraSinkModifier>(), nullptr);
 }
 

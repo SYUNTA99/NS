@@ -45,11 +45,11 @@ namespace
     // は描く支度の段で進む。自機と相手を手で回す試しは、回した後にこれを呼んで同じ順にする
     void TickHitDirectors(Player& player)
     {
-        if (NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player))
+        if (NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(&player))
         {
             screen->OnTick();
         }
-        if (NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(player))
+        if (NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(&player))
         {
             pad->OnTick();
         }
@@ -57,7 +57,7 @@ namespace
 
     int FlashRemaining(const Player& player)
     {
-        const NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
+        const NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(&player);
         if (screen == nullptr)
         {
             return 0;
@@ -866,7 +866,7 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
             EXPECT_FLOAT_EQ(other.amplitude, 0.0f);
             continue;
         }
-        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*player);
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
         NS::Vector3 forward = pose->target - pose->position;
         forward.Normalize();
@@ -945,7 +945,7 @@ TEST(ImpactTimelineClock, TargetTremorRatioKeepsTheSameShareOfTheBody)
         {
             continue;
         }
-        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*player);
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
         EXPECT_NEAR(rock->ModelSubObj()->Tremor().amplitude, 0.14f * RockRadius(*rock), 1.0e-6f);
         EXPECT_NEAR(player->ModelSubObj()->Tremor().amplitude,
@@ -987,7 +987,7 @@ TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
         {
             continue;
         }
-        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*player);
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
         EXPECT_NEAR(selfAmplitude, MetersForPixels(*pose, player->Root().Position(), 3.0f) * 0.5f, 0.00001f);
         EXPECT_NEAR(rock->ModelSubObj()->Tremor().amplitude,
@@ -1031,7 +1031,7 @@ TEST(ImpactTimelineClock, ShakeLinesFrameTheTargetForTheStop)
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Obj::HitScreenDirector& reaction = *NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*player);
+        const NS::Obj::HitScreenDirector& reaction = *NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
         if (clock < 1 || clock > 6)
         {
             EXPECT_EQ(reaction.ShakeLinesFramesRemaining(), 0);
@@ -1354,7 +1354,7 @@ TEST(ImpactTimelineClock, GhostSpreadsSideCopiesThenLeavesTheStoppedPose)
         const NS::Obj::Model& other = *rock->ModelSubObj();
         if (clock == 1)
         {
-            const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*player);
+            const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(player);
             ASSERT_TRUE(pose.has_value());
             selfSpread = MetersForPixels(*pose, player->Root().Position(), 35.0f);
             otherSpread = MetersForPixels(*pose, rock->Root().Position(), 112.5f);

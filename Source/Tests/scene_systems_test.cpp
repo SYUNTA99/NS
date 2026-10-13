@@ -133,17 +133,17 @@ namespace
 TEST(SceneSystemHolder, OneInstancePerTypeAndClearDestroys)
 {
     NS::Obj::Scene scene;
-    CountedSceneObj* first = NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(scene);
-    CountedSceneObj* second = NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(scene);
+    CountedSceneObj* first = NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(&scene);
+    CountedSceneObj* second = NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(&scene);
     ASSERT_NE(first, nullptr);
     EXPECT_EQ(first, second);
-    EXPECT_EQ(NS::Obj::FindSceneSystem<CountedSceneObj>(scene), first);
+    EXPECT_EQ(NS::Obj::FindSceneSystem<CountedSceneObj>(&scene), first);
     EXPECT_EQ(CountedSceneObj::s_alive, 1);
 
     // 配置物を組み直すと最初の状態から作り直させる
     scene.LoadJson(NS::Obj::MakeSceneJson());
     EXPECT_EQ(CountedSceneObj::s_alive, 0);
-    EXPECT_EQ(NS::Obj::FindSceneSystem<CountedSceneObj>(scene), nullptr);
+    EXPECT_EQ(NS::Obj::FindSceneSystem<CountedSceneObj>(&scene), nullptr);
 }
 
 // 保持体は捨てる前に更新から外す。管理役はデストラクタに解除を書かなくてよい
@@ -151,7 +151,7 @@ TEST(SceneSystemHolder, ClearRemovesTheSystemFromTheUpdate)
 {
     NS::Obj::Scene scene;
     SelfRegisteringSystem::s_ticks = 0;
-    ASSERT_NE(NS::Obj::GetOrCreateSceneSystem<SelfRegisteringSystem>(scene), nullptr);
+    ASSERT_NE(NS::Obj::GetOrCreateSceneSystem<SelfRegisteringSystem>(&scene), nullptr);
     scene.OnUpdate();
     EXPECT_EQ(SelfRegisteringSystem::s_ticks, 1);
 
@@ -164,10 +164,10 @@ TEST(SceneSystemHolder, ActorReachesSceneObjectsThroughWindow)
 {
     NS::Obj::Scene scene;
     NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
-    CountedSceneObj* made = NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(*actor);
-    EXPECT_EQ(made, NS::Obj::FindSceneSystem<CountedSceneObj>(scene));
+    CountedSceneObj* made = NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(actor);
+    EXPECT_EQ(made, NS::Obj::FindSceneSystem<CountedSceneObj>(&scene));
     NS::Obj::Actor loose;
-    EXPECT_EQ(NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(loose), nullptr);
+    EXPECT_EQ(NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(&loose), nullptr);
 }
 
 TEST(UIActor, OpenRegistersForUpdateAndCloseRemoves)

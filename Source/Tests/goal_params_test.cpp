@@ -28,7 +28,7 @@ TEST(GameTuning, GoalFadeUsesTheSavedGoalFields)
     const nlohmann::json saved = scene.ToJson();
     scene.LoadJson(saved);
     (void)scene.BeginPlayBaseline();
-    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(scene);
+    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
     scene.HitSensors().OnTick();
     director->OnTick();

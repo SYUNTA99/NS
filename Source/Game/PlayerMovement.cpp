@@ -237,8 +237,8 @@ bool Player::AdvanceSkid() noexcept
 {
     ++m_skid.elapsedSteps;
     // 着いた速さに依らず同じフレーム数で止まりきり、操作が戻る
-    const float scale = GL::Level::MissSkidSpeedScale(
-        m_skid.elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
+    const float scale =
+        GL::Level::MissSkidSpeedScale(m_skid.elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
     m_body->SetLateralVelocity(m_skid.landingVelocity * scale);
     return m_skid.elapsedSteps >= m_params->m_missSkidSteps;
 }
@@ -277,7 +277,7 @@ namespace
         NS::AABB region;
         region.Center = NS::Vector3{probe.x, probe.y + 0.5f * (above - below), probe.z};
         region.Extents = NS::Vector3{0.0f, 0.5f * (above + below), 0.0f};
-        return NS::Obj::OverlapBoxCollision(collider, region);
+        return NS::Obj::OverlapBoxCollision(&collider, region);
     }
 
     [[nodiscard]] std::vector<NS::AABB> BoxesAtPoint(const NS::Obj::IUseCollision& collider, const NS::Vector3& point)
@@ -285,7 +285,7 @@ namespace
         NS::AABB region;
         region.Center = point;
         region.Extents = NS::Vector3{0.0f, 0.0f, 0.0f};
-        return NS::Obj::OverlapBoxCollision(collider, region);
+        return NS::Obj::OverlapBoxCollision(&collider, region);
     }
 
     [[nodiscard]] bool AABBContainsPoint(const NS::AABB& box, const NS::Vector3& p) noexcept

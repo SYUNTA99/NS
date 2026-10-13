@@ -206,10 +206,10 @@ TEST(CameraTrauma, HitEffectsStopKeepsTheTrauma)
     ASSERT_NE(cameras, nullptr);
     ASSERT_TRUE(cameras->AddTrauma(TraumaOf(0.4f)));
     ASSERT_TRUE(cameras->StartZoomRoll(NS::Obj::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 5}));
-    NS::Obj::StopCameraHitEffects(scene);
+    NS::Obj::StopCameraHitEffects(&scene);
     EXPECT_FLOAT_EQ(cameras->ZoomRoll().zoom, 1.0f);
     EXPECT_FLOAT_EQ(cameras->Trauma(), 0.4f);
-    NS::Obj::StopCameraEffects(scene);
+    NS::Obj::StopCameraEffects(&scene);
     EXPECT_FLOAT_EQ(cameras->Trauma(), 0.0f);
 }
 

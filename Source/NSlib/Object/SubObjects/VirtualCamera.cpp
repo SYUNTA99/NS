@@ -9,7 +9,7 @@ namespace NS::Obj
         // scene に着いていない裸の Actor 上でも OnStart は走る。管理役が無ければ窓口が何もしない
         if (Owner() != nullptr)
         {
-            RegisterVirtualCamera(*Owner(), this);
+            RegisterVirtualCamera(Owner(), this);
         }
     }
 
@@ -17,7 +17,7 @@ namespace NS::Obj
     {
         if (Owner() != nullptr)
         {
-            UnregisterVirtualCamera(*Owner(), this);
+            UnregisterVirtualCamera(Owner(), this);
         }
     }
 } // namespace NS::Obj

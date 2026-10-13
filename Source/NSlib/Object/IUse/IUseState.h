@@ -1,5 +1,7 @@
 #pragma once
 
+#include "NSlib/Core/Assert.h"
+
 #include <cstdint>
 
 namespace NS::Obj
@@ -60,31 +62,35 @@ namespace NS::Obj
 
     //! @brief user の状態機械を TState へ移す予約をする
     //! @return 予約できたか既に TState の場合 true、それ以外の場合は false
-    template <typename TState> bool SetState(IUseState& user)
+    template <typename TState> bool SetState(IUseState* user)
     {
-        IStateMachine* machine = user.GetStateMachine();
+        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        IStateMachine* machine = user->GetStateMachine();
         return machine != nullptr && machine->Change(StateIdOf<TState>());
     }
 
     //! user の今の状態が TState の場合 true、それ以外の場合は false
-    template <typename TState> [[nodiscard]] bool IsState(const IUseState& user) noexcept
+    template <typename TState> [[nodiscard]] bool IsState(const IUseState* user) noexcept
     {
-        const IStateMachine* machine = user.GetStateMachine();
+        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        const IStateMachine* machine = user->GetStateMachine();
         return machine != nullptr && machine->CurrentId() == StateIdOf<TState>();
     }
 
     //! user が今の状態に入った最初のフレームの場合 true、それ以外の場合は false
-    [[nodiscard]] inline bool IsFirstStep(const IUseState& user) noexcept
+    [[nodiscard]] inline bool IsFirstStep(const IUseState* user) noexcept
     {
-        const IStateMachine* machine = user.GetStateMachine();
+        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        const IStateMachine* machine = user->GetStateMachine();
         return machine != nullptr && machine->CurrentId() != nullptr && machine->StepsInState() == 0;
     }
 
     //! @brief user が今の状態に入ってから進めたフレーム数を返す
     //! @return 状態機械を持たなければ 0
-    [[nodiscard]] inline std::uint32_t StepsInState(const IUseState& user) noexcept
+    [[nodiscard]] inline std::uint32_t StepsInState(const IUseState* user) noexcept
     {
-        const IStateMachine* machine = user.GetStateMachine();
+        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        const IStateMachine* machine = user->GetStateMachine();
         if (machine == nullptr)
         {
             return 0;

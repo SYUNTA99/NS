@@ -86,8 +86,8 @@ namespace
     HitRun RunHit(NS::Obj::Scene& scene, Player& player)
     {
         MapObj* rock = NS::Obj::Cast<MapObj>(scene.Objects().FindByObjectId(2));
-        NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
-        NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(player);
+        NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(&player);
+        NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(&player);
         HitRun run;
         if (rock == nullptr || screen == nullptr || pad == nullptr)
         {

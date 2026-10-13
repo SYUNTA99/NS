@@ -25,39 +25,39 @@ namespace NS::Obj
     };
 
     //! モディファイアを積む。管理役が無ければ何もせず false
-    bool AddCameraModifier(const IUseCamera& user, std::unique_ptr<CameraModifier> modifier);
+    bool AddCameraModifier(const IUseCamera* user, std::unique_ptr<CameraModifier> modifier);
 
     //! 画面揺れを始める。管理役が無いか壊れた設定なら false
-    bool StartCameraShake(const IUseCamera& user, const CameraShakeDesc& desc);
+    bool StartCameraShake(const IUseCamera* user, const CameraShakeDesc& desc);
 
     //! 寄りと傾きを始める。管理役が無いか壊れた設定なら false
-    bool StartCameraZoomRoll(const IUseCamera& user, const CameraZoomRollDesc& desc);
+    bool StartCameraZoomRoll(const IUseCamera* user, const CameraZoomRollDesc& desc);
 
     //! 積んだ効果を全て止める
-    void StopCameraEffects(const IUseCamera& user) noexcept;
+    void StopCameraEffects(const IUseCamera* user) noexcept;
 
     //! トラウマを足す。管理役が無いか壊れた量なら false
-    bool AddCameraTrauma(const IUseCamera& user, const CameraTraumaDesc& desc);
+    bool AddCameraTrauma(const IUseCamera* user, const CameraTraumaDesc& desc);
 
     //! このフレームのトラウマを少なくとも level に保つ。管理役が無いか壊れた量なら false
-    bool HoldCameraTrauma(const IUseCamera& user, float level, const CameraTraumaShape& shape);
+    bool HoldCameraTrauma(const IUseCamera* user, float level, const CameraTraumaShape& shape);
 
     //! @brief 当たりで始めた揺れ・ずれ・寄りを止める。トラウマは残す
     //! @details 次の当たりは前の当たりの揺れと寄りを止めてから始めるが、トラウマは続けて当てると足される
-    void StopCameraHitEffects(const IUseCamera& user) noexcept;
+    void StopCameraHitEffects(const IUseCamera* user) noexcept;
 
     //! 今のカメラの画面で direction が右と左のどちらの側か。左なら -1、それ以外と管理役が無い時は 1
-    [[nodiscard]] float CameraSideSignOf(const IUseCamera& user, const NS::Vector3& direction) noexcept;
+    [[nodiscard]] float CameraSideSignOf(const IUseCamera* user, const NS::Vector3& direction) noexcept;
 
     //! 遊びが読む水平の前。効果を掛ける前の視点から作る。管理役か選べる仮想カメラが無ければ +Z
-    [[nodiscard]] NS::Vector3 CameraForwardHorizontal(const IUseCamera& user) noexcept;
+    [[nodiscard]] NS::Vector3 CameraForwardHorizontal(const IUseCamera* user) noexcept;
 
     //! 効果を掛ける前の、遊びが読む視点。管理役か選べる仮想カメラが無ければ nullopt
-    [[nodiscard]] std::optional<CameraPose> CameraViewPose(const IUseCamera& user) noexcept;
+    [[nodiscard]] std::optional<CameraPose> CameraViewPose(const IUseCamera* user) noexcept;
 
     //! 仮想カメラを管理役の候補へ入れる。管理役が無ければ何もしない
-    void RegisterVirtualCamera(const IUseCamera& user, VirtualCamera* vcam);
+    void RegisterVirtualCamera(const IUseCamera* user, VirtualCamera* vcam);
 
     //! 仮想カメラを管理役の候補から外す。管理役が無ければ何もしない
-    void UnregisterVirtualCamera(const IUseCamera& user, VirtualCamera* vcam) noexcept;
+    void UnregisterVirtualCamera(const IUseCamera* user, VirtualCamera* vcam) noexcept;
 } // namespace NS::Obj

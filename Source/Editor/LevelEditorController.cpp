@@ -467,7 +467,7 @@ void LevelEditorController::EnterPlay() noexcept
 
     // 凍結を取り、そこから走行を最初から。プレイの間の判定と編集復帰の姿はこの凍結を読む
     // 手順は出荷と同じ CourseDirector::StartCourse の持ち物
-    if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(*m_scene))
+    if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(m_scene))
     {
         director->StartCourse();
     }

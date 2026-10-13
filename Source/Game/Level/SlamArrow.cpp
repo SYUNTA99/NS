@@ -11,9 +11,9 @@
 #include "NSlib/Graphics/StaticMesh.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/AssetManager.h"
-#include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/Transform.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -581,7 +581,7 @@ namespace GL::Level
         {
             probe = [collider](const NS::Vector3& from, float maxDepth, float& outGroundY) {
                 float distance = 0.0f;
-                if (!NS::Obj::RaycastCollision(*collider, from, NS::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
+                if (!NS::Obj::RaycastCollision(collider, from, NS::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
                 {
                     return false;
                 }
@@ -599,11 +599,11 @@ namespace GL::Level
             // 道筋は放つ縦の速さを決めた LaunchPitch と同じ重力の計算。矢印と実際の飛び方をずらさない
             const GL::Player::PlayerParams& params = m_player->Params();
             const GL::Player::LaunchPath path{.horizontalSpeed = params.m_bodySlamSpeed,
-                                                    .verticalSpeed = state.line.launchVerticalSpeed,
-                                                    .gravity = params.Gravity(),
-                                                    .dt = NS::OS::FrameTimer::FixedDelta(),
-                                                    .grounded = state.line.grounded,
-                                                    .maxFrames = params.m_launchMaxFrames};
+                                              .verticalSpeed = state.line.launchVerticalSpeed,
+                                              .gravity = params.Gravity(),
+                                              .dt = NS::OS::FrameTimer::FixedDelta(),
+                                              .grounded = state.line.grounded,
+                                              .maxFrames = params.m_launchMaxFrames};
             // 線の始まりは根。玉の中心は持ち主の SlamBallAt が決める
             const float ballCenterHeight = m_player->SlamBallAt(state.line.origin).center.y;
             PlaceSlamArrowOnPath(probe, path, ballCenterHeight, m_desc, shape);

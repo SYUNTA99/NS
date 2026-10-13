@@ -84,7 +84,7 @@ namespace NS::Obj
         const NS::Vector3 origin{ownerWorld._41, ownerWorld._42, ownerWorld._43};
 
         float dist = 0.0f;
-        if (!RaycastCollision(*owner, origin, NS::Vector3{0.0f, -1.0f, 0.0f}, m_maxDrop, dist))
+        if (!RaycastCollision(owner, origin, NS::Vector3{0.0f, -1.0f, 0.0f}, m_maxDrop, dist))
         {
             return; // 真下 maxDrop 以内に地面が無ければ描かない
         }

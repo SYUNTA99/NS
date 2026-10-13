@@ -288,7 +288,7 @@ namespace GL::Level
         {
             return 0;
         }
-        const NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(*Owner());
+        const NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(Owner());
         if (screen == nullptr)
         {
             return 0;
@@ -1300,7 +1300,7 @@ namespace GL::Level
         desc.kick.direction = NS::Vector2{m_lastImpact.faceU, m_lastImpact.faceV};
         if (desc.kick.direction.LengthSquared() <= NS::k_Epsilon * NS::k_Epsilon)
         {
-            desc.kick.direction = NS::Vector2{NS::Obj::CameraSideSignOf(*Owner(), m_pendingReboundArc.direction), 0.0f};
+            desc.kick.direction = NS::Vector2{NS::Obj::CameraSideSignOf(Owner(), m_pendingReboundArc.direction), 0.0f};
         }
         return desc;
     }
@@ -1357,7 +1357,7 @@ namespace GL::Level
             if (zoomRoll != nullptr && !zoomRollRecorded)
             {
                 // 当たりの記録は検知のフレームに読まれるので、傾きの向きもここで今のカメラから決める
-                const float rollSign = NS::Obj::CameraSideSignOf(*Owner(), m_pendingImpactDir);
+                const float rollSign = NS::Obj::CameraSideSignOf(Owner(), m_pendingImpactDir);
                 m_lastImpact.zoomStart = zoomRoll->zoom;
                 m_lastImpact.rollStart = zoomRoll->rollDegrees * rollSign;
                 zoomRollRecorded = true;
@@ -1387,13 +1387,13 @@ namespace GL::Level
         {
             return;
         }
-        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*Owner());
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(Owner());
         if (!pose.has_value())
         {
             return;
         }
         // 画面の横を床に沿わせた向き。後ろから見る NS では、地上でも空中でも視線に直角でよく見える
-        const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(*Owner());
+        const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(Owner());
         const NS::Vector3 axis{forward.z, 0.0f, -forward.x};
         // 1 フレーム目の向き。外れは自機が外した側 (面の上の位置 u の側) へ逃げ、カメラの最初のひと揺れ・火花・
         // 逸れ方と揃える。真ん中は画面の右から
@@ -1481,13 +1481,13 @@ namespace GL::Level
         {
             return;
         }
-        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*Owner());
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(Owner());
         if (!pose.has_value())
         {
             return;
         }
         // 写しは画面の横を床に沿わせた向きへ離す
-        const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(*Owner());
+        const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(Owner());
         const TackleGhostDesc self{.axis = NS::Vector3{forward.z, 0.0f, -forward.x},
                                    .spread =
                                        ScreenPixelsToMeters(ghost.selfSpreadPixels, *pose, Owner()->Root().Position()),
@@ -1638,7 +1638,7 @@ namespace GL::Level
         }
         const int elapsed = m_tremor.elapsed;
         NS::Gfx::TremorCB tremor{};
-        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*Owner());
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(Owner());
         if (pose.has_value())
         {
             // 自機の玉の差し渡しで裏まで届く

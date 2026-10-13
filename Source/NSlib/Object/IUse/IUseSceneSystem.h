@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Object/System/SceneSystemHolder.h"
 
 namespace NS::Obj
@@ -17,9 +18,10 @@ namespace NS::Obj
     };
 
     //! 型 T のシーンに 1 つの物。作っていないかシーンに居なければ nullptr
-    template <class T> [[nodiscard]] T* FindSceneSystem(const IUseSceneSystem& user) noexcept
+    template <class T> [[nodiscard]] T* FindSceneSystem(const IUseSceneSystem* user) noexcept
     {
-        SceneSystemHolder* holder = user.GetSceneSystemHolder();
+        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        SceneSystemHolder* holder = user->GetSceneSystemHolder();
         if (holder == nullptr)
         {
             return nullptr;
@@ -28,9 +30,10 @@ namespace NS::Obj
     }
 
     //! 型 T のシーンに 1 つの物。まだ作っていなければ作る。シーンに居なければ nullptr
-    template <class T> T* GetOrCreateSceneSystem(const IUseSceneSystem& user)
+    template <class T> T* GetOrCreateSceneSystem(const IUseSceneSystem* user)
     {
-        SceneSystemHolder* holder = user.GetSceneSystemHolder();
+        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        SceneSystemHolder* holder = user->GetSceneSystemHolder();
         if (holder == nullptr)
         {
             return nullptr;

@@ -223,7 +223,7 @@ namespace GL::Level
         }
         ++m_tremor.elapsed;
         NS::Gfx::TremorCB tremor{};
-        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(*this);
+        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(this);
         if (pose.has_value())
         {
             // 球の差し渡しで裏まで届く
@@ -382,7 +382,7 @@ namespace GL::Level
         float hitDistance = 0.0f;
         const NS::Vector3 down = GravityDirection();
         if (!NS::Obj::RaycastCollision(
-                *this, sphere.center, down, distance, hitDistance, outNormal, Sphere().BodyId()) ||
+                this, sphere.center, down, distance, hitDistance, outNormal, Sphere().BodyId()) ||
             NS::Dot(outNormal, -down) < m_params->FloorDot())
         {
             return false;
@@ -461,7 +461,7 @@ namespace GL::Level
             NS::Vector3 normal{};
             float allowed = travel;
             bool blocked = NS::Obj::RaycastCollision(
-                *this, sphere.center, direction, travel + sphere.radius * 2.0f, distance, normal, Sphere().BodyId());
+                this, sphere.center, direction, travel + sphere.radius * 2.0f, distance, normal, Sphere().BodyId());
             const float approach = -NS::Dot(direction, normal);
             if (blocked && approach > 0.0001f)
             {
@@ -510,7 +510,7 @@ namespace GL::Level
         float distance = 0.0f;
         NS::Vector3 normal{};
         if (NS::Obj::RaycastCollision(
-                *this, sphere.center, down, m_params->MarkProbeDistance(), distance, normal, Sphere().BodyId()))
+                this, sphere.center, down, m_params->MarkProbeDistance(), distance, normal, Sphere().BodyId()))
         {
             (void)ImpactMark::SpawnAt(OwningScene(), sphere.center + down * distance + normal * 0.02f);
         }

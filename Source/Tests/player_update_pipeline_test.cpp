@@ -286,7 +286,7 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
         ASSERT_NE(rock, nullptr);
         const NS::Vector3 rockHome = rock->Root().Position();
         ASSERT_TRUE(SlamIntoTheRock(*player, *rock, waitForFreeze));
-        GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(scene);
+        GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
         ASSERT_NE(director, nullptr);
         director->RestartCourse();
         for (int frame = 0; frame < 20; ++frame)
