@@ -5,6 +5,7 @@
 #include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/SubObjects/Animation.h"
 #include "NSlib/Object/SubObjects/BoxCollision.h"
+#include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "NSlib/Object/SubObjects/HitReaction.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/Model.h"
@@ -38,8 +39,15 @@ namespace NS::Obj
 
     std::size_t Actor::OrderRank(const SubObject* subObject) const noexcept
     {
-        const SubObject* const ranked[] = {
-            m_rootSubObj, m_model, m_animation, m_shadow, m_collision, m_bodySensor, m_attackSensor, m_hitReaction};
+        const SubObject* const ranked[] = {m_rootSubObj,
+                                           m_model,
+                                           m_animation,
+                                           m_shadow,
+                                           m_collision,
+                                           m_bodySensor,
+                                           m_attackSensor,
+                                           m_hitReaction,
+                                           m_effectKeeper};
         return static_cast<std::size_t>(std::find(std::begin(ranked), std::end(ranked), subObject) -
                                         std::begin(ranked));
     }
@@ -107,6 +115,10 @@ namespace NS::Obj
         if (name == "HitReaction")
         {
             return CreateSubObj<HitReaction>(HitReactionSlot());
+        }
+        if (name == "Effect")
+        {
+            return CreateSubObj<EffectKeeper>(EffectSlot());
         }
         return nullptr;
     }
@@ -379,6 +391,10 @@ namespace NS::Obj
 
     void Actor::Update()
     {
+        if (m_effectKeeper != nullptr && m_effectKeeper->IsActive())
+        {
+            m_effectKeeper->BeginStep();
+        }
         ObserveStep();
         DecideStep();
         StateStep();

@@ -30,6 +30,7 @@ namespace NS::Obj
     class Animation;
     class Shadow;
     class Collision;
+    class EffectKeeper;
     class HitReaction;
     class ICameraTarget;
     class Message;
@@ -103,7 +104,7 @@ namespace NS::Obj
         //! @details CreateActorOfClass と ActorList に入る所が呼ぶ。Scene に入れずに部品を触る時は自分で呼ぶ
         void Init();
 
-        //! 根の Transform、基底の枠を Model から HitReaction まで決まった順、派生の部品を作った順に並べた全部の部品
+        //! 根の Transform、基底の枠を Model から Effect まで決まった順、派生の部品を作った順に並べた全部の部品
         [[nodiscard]] const std::vector<SubObject*>& SubObjs() const noexcept { return m_subObjOrder; }
         //! @brief 部品名 name の部品を返す
         //! @return 持たなければ nullptr
@@ -129,6 +130,8 @@ namespace NS::Obj
         [[nodiscard]] const HitSensor* AttackSensorSubObj() const noexcept { return m_attackSensor; }
         [[nodiscard]] HitReaction* HitReactionSubObj() noexcept { return m_hitReaction; }
         [[nodiscard]] const HitReaction* HitReactionSubObj() const noexcept { return m_hitReaction; }
+        //! 出したエフェクトを覚える部品。枠 Effect を作っていなければ nullptr
+        [[nodiscard]] EffectKeeper* GetEffectKeeper() const noexcept { return m_effectKeeper; }
 
         //! @brief Update を呼ばれる段を返す
         //! @return 既定は Triggers
@@ -137,7 +140,7 @@ namespace NS::Obj
         virtual void ReadInput() {}
         //! @brief Phase が返す段で、1 固定ステップを観測、決定、状態、身体、見た目の順に 1 回ずつ進める
         //! @details 順は基底のここ 1 か所で決まり、派生は上書きできない。派生は段の中身だけを ObserveStep などで書く。
-        //! 部品は自分では回らないので、各段で順に呼ぶ
+        //! 部品は自分では回らないので、各段で順に呼ぶ。枠 Effect の部品だけは、観測の前に基底が 1 フレーム進める
         void Update();
         //! RenderPrep の段で、出ている全ての Actor に呼ばれる。既定は Animation を進める
         virtual void PrepareRender();
@@ -244,6 +247,7 @@ namespace NS::Obj
         [[nodiscard]] SubObjSlot<HitSensor> BodySensorSlot() noexcept { return {"BodySensor", &m_bodySensor}; }
         [[nodiscard]] SubObjSlot<HitSensor> AttackSensorSlot() noexcept { return {"AttackSensor", &m_attackSensor}; }
         [[nodiscard]] SubObjSlot<HitReaction> HitReactionSlot() noexcept { return {"HitReaction", &m_hitReaction}; }
+        [[nodiscard]] SubObjSlot<EffectKeeper> EffectSlot() noexcept { return {"Effect", &m_effectKeeper}; }
 
         virtual void OnAppear();
         virtual void OnKill() noexcept;
@@ -329,7 +333,7 @@ namespace NS::Obj
         void AdoptSubObjBase(std::unique_ptr<SubObject> subObject, std::string_view name);
         //! 部品名 name が使われていて作れない事を NS_LOG_ERROR で知らせる
         void ReportTakenName(std::string_view name) const;
-        //! SubObjs の並びの順位。根が 0、基底の枠が決まった順に 1 から 7、派生の部品は 8
+        //! SubObjs の並びの順位。根が 0、基底の枠が決まった順に 1 から 8、派生の部品は 9
         [[nodiscard]] std::size_t OrderRank(const SubObject* subObject) const noexcept;
         std::uint32_t m_id = 0;
         std::string m_name;
@@ -346,6 +350,7 @@ namespace NS::Obj
         HitSensor* m_attackSensor = nullptr;
         std::unique_ptr<IStateMachine> m_stateMachine; // BuildStateMachine が 1 回だけ預かる。持たない種類は nullptr
         HitReaction* m_hitReaction = nullptr;
+        EffectKeeper* m_effectKeeper = nullptr;
         bool m_initialized = false;       // Init が OnInit を呼んだか
         Transform* m_transform = nullptr; // TransformSubObject が持つ実体、Actor が必ず 1 つ積む
         std::vector<Actor*> m_children;   // 子 Actor、非所有
