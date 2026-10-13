@@ -23,11 +23,6 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Gfx
-{
-    class EffectScene;
-}
-
 namespace NS::Obj
 {
     class HitSensor;
@@ -84,7 +79,6 @@ namespace NS::Obj
         [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
         //! 出したエフェクトを覚える部品。枠 Effect を作っていなければ nullptr
         [[nodiscard]] EffectKeeper* GetEffectKeeper() const noexcept override { return m_effectKeeper; }
-        [[nodiscard]] NS::Gfx::EffectScene* GetEffectScene() const noexcept;
 
         //! TransformSubObject が持つ Root Transform。階層構築は SetParent で
         [[nodiscard]] Transform& Root() noexcept { return *m_transform; }

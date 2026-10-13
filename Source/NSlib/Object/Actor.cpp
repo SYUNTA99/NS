@@ -196,15 +196,6 @@ namespace NS::Obj
         return m_scene->GetPhysicsScene();
     }
 
-    NS::Gfx::EffectScene* Actor::GetEffectScene() const noexcept
-    {
-        if (m_scene == nullptr)
-        {
-            return nullptr;
-        }
-        return m_scene->GetEffectScene();
-    }
-
     NS::Vector3 Actor::GravityDirection() const noexcept
     {
         const Scene* scene = OwningScene();
