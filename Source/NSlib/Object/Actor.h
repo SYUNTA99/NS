@@ -32,7 +32,6 @@ namespace NS::Obj
     class Collision;
     class EffectKeeper;
     class HitReaction;
-    class ICameraTarget;
     class Message;
     class Scene;
     class TransformSubObject;
@@ -163,9 +162,6 @@ namespace NS::Obj
             (void)self;
             (void)other;
         }
-
-        //! 追従カメラに追われる時の窓口。追われない物は nullptr
-        [[nodiscard]] virtual const ICameraTarget* GetCameraTarget() const noexcept { return nullptr; }
 
         [[nodiscard]] Actor* Parent() const noexcept { return m_parent; }
         //! parent==nullptr で root 化。Transform の親子関係も同期更新する

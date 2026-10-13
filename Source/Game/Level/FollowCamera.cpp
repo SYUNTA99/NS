@@ -1,7 +1,7 @@
 #include "Game/Level/FollowCamera.h"
 
+#include "Game/Player.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/CameraTarget.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 
@@ -25,9 +25,9 @@ namespace GL::Level
             NS::Obj::Actor* target = scene->Objects().FindObject(m_vcam->TargetRef());
             if (target != nullptr)
             {
-                if (const NS::Obj::ICameraTarget* cameraTarget = target->GetCameraTarget())
+                if (const ::Player* player = NS::Obj::Cast<::Player>(target))
                 {
-                    const NS::Obj::CameraTargetState state = cameraTarget->GetCameraTargetState();
+                    const GL::Player::CameraTargetState state = player->GetCameraTargetState();
                     m_vcam->SetFollowMotion(state.grounded, state.velocity);
                     m_vcam->SetTargetHeightOffset(state.heightOffset);
                     m_vcam->SetFollowFramingHeld(state.framingHeld);

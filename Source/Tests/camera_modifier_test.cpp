@@ -1,12 +1,13 @@
 #include "Game/Level/FollowCamera.h"
+#include "Game/Player.h"
+#include "Game/Player/PlayerParams.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/CameraTarget.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
-#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/SubObjects/CameraModifier.h"
+#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 
@@ -303,39 +304,32 @@ TEST(IUseCamera, ActorReachesSceneCameraManager)
     EXPECT_FALSE(NS::Obj::StartCameraShake(&loose, ShakeOf(5)));
 }
 
-namespace
-{
-    class FollowTargetProbe final : public NS::Obj::Actor, public NS::Obj::ICameraTarget
-    {
-    public:
-        const NS::Obj::ICameraTarget* GetCameraTarget() const noexcept override { return this; }
-        NS::Obj::CameraTargetState GetCameraTargetState() const noexcept override
-        {
-            NS::Obj::CameraTargetState state;
-            state.grounded = true;
-            state.hasCharge = true;
-            state.charge.held = true;
-            state.charge.charge01 = 1.0f;
-            return state;
-        }
-    };
-} // namespace
-
+// 追従カメラの個体は、欄「追従対象」で指した自機の溜めを読んで仮想カメラへ渡す
 TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
 {
     NS::Obj::Scene scene;
-    NS::Obj::Actor* target = scene.SpawnObject(std::make_unique<FollowTargetProbe>(), "target");
+    Player* player = NS::Obj::Cast<Player>(scene.SpawnObject(std::make_unique<Player>(), "player"));
+    ASSERT_NE(player, nullptr);
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}),
+              0u);
     GL::Level::FollowCamera* actor = scene.SpawnTransient<GL::Level::FollowCamera>();
     NS::Obj::ThirdPersonFollow& vcam = actor->Vcam();
-    NS::Obj::ApplyJsonFields(vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
-    actor->Update();
+    NS::Obj::ApplyJsonFields(vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", player->Id()}}}});
+    // しきい値を越えるまで押し続ける
+    for (int held = 0; held < 30; ++held)
+    {
+        player->Update(true);
+        actor->Update();
+    }
+    ASSERT_TRUE(player->ChargeJudge().IsHoldingCharge());
     EXPECT_GT(vcam.ChargeNarrowDegrees(), 0.0f);
     actor->Kill();
     EXPECT_FLOAT_EQ(vcam.ChargeNarrowDegrees(), 0.0f);
     actor->Appear();
+    player->Update(true);
     actor->Update();
     EXPECT_GT(vcam.ChargeNarrowDegrees(), 0.0f);
-    scene.DestroyObject(target->Id());
+    scene.DestroyObject(player->Id());
     actor->Update();
 }
 

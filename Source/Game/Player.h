@@ -3,12 +3,12 @@
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/SlamAim.h"
+#include "Game/Player/CameraTargetState.h"
 #include "Game/Player/PlayerEvents.h"
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Sphere.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/CameraTarget.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/StateMachine.h"
 
@@ -51,7 +51,7 @@ namespace GL::Level
 //! 実装は 4 つに分ける。Player.cpp (生成・部品・更新の流れ・入力・記録)、
 //! PlayerMovement.cpp (移動の組み立てと崖つかまり)、PlayerBodySlam.cpp (突進・反動・丸まり)、
 //! PlayerCharge.cpp (溜めと狙い)
-class Player : public NS::Obj::Actor, public NS::Obj::ICameraTarget
+class Player : public NS::Obj::Actor
 {
 public:
     Player() noexcept;
@@ -352,11 +352,8 @@ public:
     //! 縁に掴まっている間とよじ登っている間の true は受けない
     void SetCurled(bool curled) noexcept;
 
-    //! 追従カメラに追われる時の窓口。自分の状態を自分で答える
-    [[nodiscard]] const NS::Obj::ICameraTarget* GetCameraTarget() const noexcept override { return this; }
-
     //! 接地・速度・見る高さ・反動・溜めの状態を自分の部品から組む
-    [[nodiscard]] NS::Obj::CameraTargetState GetCameraTargetState() const override;
+    [[nodiscard]] GL::Player::CameraTargetState GetCameraTargetState() const;
 
     //! コースの進行役を用意する。全ての配置物が揃った後に呼ばれる
     void InitAfterPlacement() override;

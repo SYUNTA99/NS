@@ -81,9 +81,9 @@ void Player::OnInit()
                             GL::Player::SkidPlayerState>(*this, m_states);
 }
 
-NS::Obj::CameraTargetState Player::GetCameraTargetState() const
+GL::Player::CameraTargetState Player::GetCameraTargetState() const
 {
-    NS::Obj::CameraTargetState state{};
+    GL::Player::CameraTargetState state{};
     state.grounded = m_body->IsGrounded();
     state.velocity = m_body->Velocity();
     // 当たりの足元に立ち姿のカプセルを立てた時の中心を見る。玉の間は根が立ち姿の半長ぶん下がっているので、

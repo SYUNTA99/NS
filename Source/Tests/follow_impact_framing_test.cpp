@@ -1,11 +1,10 @@
 #include "Game/Level/FollowCamera.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/CameraTarget.h"
-#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 
 #include <gtest/gtest.h>
 
@@ -17,22 +16,21 @@
 namespace
 {
     // 溜め・突進・明けの状態を試しが書く追われる物。動かない
-    class FramingTargetProbe final : public NS::Obj::Actor, public NS::Obj::ICameraTarget
+    class FramingTargetProbe final : public NS::Obj::Actor
     {
     public:
-        const NS::Obj::ICameraTarget* GetCameraTarget() const noexcept override { return this; }
-        NS::Obj::CameraTargetState GetCameraTargetState() const noexcept override
+        // 接地・溜め・保つかを仮想カメラの口へ渡す
+        void Feed(NS::Obj::ThirdPersonFollow& vcam) const
         {
-            NS::Obj::CameraTargetState state;
-            state.grounded = grounded;
-            state.hasCharge = true;
-            state.charge.held = held;
-            state.charge.charge01 = charge01;
-            state.framingHeld = framingHeld;
-            state.charge.hasAimTarget = hasAim;
-            state.charge.aimTargetCenter = aim;
-            state.charge.aimTargetRadius = 0.5f;
-            return state;
+            vcam.SetFollowMotion(grounded, NS::Vector3{});
+            vcam.SetFollowFramingHeld(framingHeld);
+            NS::Obj::FollowChargeDesc charge{};
+            charge.held = held;
+            charge.charge01 = charge01;
+            charge.hasAimTarget = hasAim;
+            charge.aimTargetCenter = aim;
+            charge.aimTargetRadius = 0.5f;
+            (void)vcam.SetFollowCharge(charge);
         }
 
         bool hasAim = false;
@@ -62,6 +60,7 @@ namespace
         {
             for (int frame = 0; frame < frames; ++frame)
             {
+                target->Feed(camera->Vcam());
                 camera->Update();
             }
         }

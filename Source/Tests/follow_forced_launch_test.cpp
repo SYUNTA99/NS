@@ -1,9 +1,8 @@
 #include "Game/Level/FollowCamera.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/CameraTarget.h"
-#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
@@ -14,19 +13,18 @@
 namespace
 {
     // 状態を試しが書く追われる物。勝手に出た突進の最中か・反動の状態かを毎フレーム渡す
-    class LaunchTargetProbe final : public NS::Obj::Actor, public NS::Obj::ICameraTarget
+    class LaunchTargetProbe final : public NS::Obj::Actor
     {
     public:
-        const NS::Obj::ICameraTarget* GetCameraTarget() const noexcept override { return this; }
-        NS::Obj::CameraTargetState GetCameraTargetState() const noexcept override
+        // 接地と反動の状態を仮想カメラの口へ渡す
+        void Feed(NS::Obj::ThirdPersonFollow& vcam) const
         {
-            NS::Obj::CameraTargetState state;
-            state.grounded = true;
-            state.hasRebound = true;
-            state.rebound.rebounding = rebounding;
-            state.rebound.forcedSlamming = forcedSlamming;
-            state.rebound.slamDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
-            return state;
+            vcam.SetFollowMotion(true, NS::Vector3{});
+            NS::Obj::FollowReboundDesc rebound{};
+            rebound.rebounding = rebounding;
+            rebound.forcedSlamming = forcedSlamming;
+            rebound.slamDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
+            (void)vcam.SetFollowRebound(rebound);
         }
 
         bool rebounding = false;
@@ -61,15 +59,22 @@ namespace
             // 止まった所から始める
             for (int frame = 0; frame < 30; ++frame)
             {
-                camera->Update();
+                Tick();
             }
+        }
+
+        // 追われる物の状態を渡してから、カメラを 1 フレーム進める
+        void Tick()
+        {
+            target->Feed(camera->Vcam());
+            camera->Update();
         }
 
         // 追われる物を 1 秒に 20 m で +Z へ進め、カメラを 1 フレーム進める
         void Step()
         {
             target->Root().ShiftPosition(NS::Vector3{0.0f, 0.0f, 20.0f * NS::OS::FrameTimer::FixedDelta()});
-            camera->Update();
+            Tick();
         }
     };
 } // namespace
@@ -121,7 +126,7 @@ TEST(FollowForcedLaunch, ReboundStartsFromTheLaggedLookWithoutAJump)
     const NS::Vector3 before = vcam.EvaluatePose(1.0f).target;
     s.target->forcedSlamming = false;
     s.target->rebounding = true;
-    s.camera->Update();
+    s.Tick();
     const NS::Vector3 after = vcam.EvaluatePose(1.0f).target;
     EXPECT_LT((after - before).Length(), 0.5f);
 
@@ -135,6 +140,6 @@ TEST(FollowForcedLaunch, ReboundStartsFromTheLaggedLookWithoutAJump)
     }
     const NS::Vector3 held = t.camera->Vcam().EvaluatePose(1.0f).target;
     t.target->forcedSlamming = false;
-    t.camera->Update();
+    t.Tick();
     EXPECT_LT((t.camera->Vcam().EvaluatePose(1.0f).target - held).Length(), 0.5f);
 }

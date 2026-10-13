@@ -3,13 +3,12 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/CameraTarget.h"
-#include "NSlib/Object/System/CameraManager.h"
-#include "NSlib/Object/SubObjects/CameraModifier.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/CameraModifier.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Windows/FileSystem.h"
 #include "Tests/TestViewCamera.h"
 
@@ -119,18 +118,17 @@ namespace
     }
 
     // 溜めの量が 1 秒で 1 まで上がり、そのまま押し続ける相手
-    class ChargingTarget final : public NS::Obj::Actor, public NS::Obj::ICameraTarget
+    class ChargingTarget final : public NS::Obj::Actor
     {
     public:
-        const NS::Obj::ICameraTarget* GetCameraTarget() const noexcept override { return this; }
-        NS::Obj::CameraTargetState GetCameraTargetState() const noexcept override
+        // 接地と溜めを仮想カメラの口へ渡す
+        void Feed(NS::Obj::ThirdPersonFollow& vcam) const
         {
-            NS::Obj::CameraTargetState state;
-            state.grounded = true;
-            state.hasCharge = true;
-            state.charge.held = true;
-            state.charge.charge01 = std::min(static_cast<float>(frame) / 60.0f, 1.0f);
-            return state;
+            vcam.SetFollowMotion(true, NS::Vector3{});
+            NS::Obj::FollowChargeDesc charge{};
+            charge.held = true;
+            charge.charge01 = std::min(static_cast<float>(frame) / 60.0f, 1.0f);
+            (void)vcam.SetFollowCharge(charge);
         }
         int frame = 0;
     };
@@ -152,6 +150,7 @@ namespace
         for (int frame = 0; frame < k_ChargeFrames; ++frame)
         {
             target->frame = frame;
+            target->Feed(vcam);
             scene.OnUpdate();
             NS::Vector3 angles{};
             const NS::Obj::CameraManager* cameras = scene.GetCameraManager();

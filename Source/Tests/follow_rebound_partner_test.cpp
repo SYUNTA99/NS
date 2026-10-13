@@ -4,12 +4,11 @@
 #include "Game/Player.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/CameraTarget.h"
-#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -24,20 +23,19 @@
 namespace
 {
     // 反動の状態と、画面に残す相手を試しが書く追われる物。動かない
-    class PartnerTargetProbe final : public NS::Obj::Actor, public NS::Obj::ICameraTarget
+    class PartnerTargetProbe final : public NS::Obj::Actor
     {
     public:
-        const NS::Obj::ICameraTarget* GetCameraTarget() const noexcept override { return this; }
-        NS::Obj::CameraTargetState GetCameraTargetState() const noexcept override
+        // 空中と反動の状態を仮想カメラの口へ渡す
+        void Feed(NS::Obj::ThirdPersonFollow& vcam) const
         {
-            NS::Obj::CameraTargetState state;
-            state.grounded = false;
-            state.hasRebound = true;
-            state.rebound.rebounding = true;
-            state.rebound.slamDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
-            state.rebound.partnerPosition = partner;
-            state.rebound.pullBack = pullBack;
-            return state;
+            vcam.SetFollowMotion(false, NS::Vector3{});
+            NS::Obj::FollowReboundDesc rebound{};
+            rebound.rebounding = true;
+            rebound.slamDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
+            rebound.partnerPosition = partner;
+            rebound.pullBack = pullBack;
+            (void)vcam.SetFollowRebound(rebound);
         }
 
         std::optional<NS::Vector3> partner;
@@ -68,6 +66,7 @@ namespace
             // 反動の間は遅れて追う形のまま 3 秒回し、ばねを落ち着かせる
             for (int frame = 0; frame < 180; ++frame)
             {
+                target->Feed(camera->Vcam());
                 camera->Update();
             }
         }
@@ -182,7 +181,7 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
             {
                 continue;
             }
-            const NS::Obj::CameraTargetState state = player->GetCameraTargetState();
+            const GL::Player::CameraTargetState state = player->GetCameraTargetState();
             // 反動の間はもう保たない。保つのは体当たりから止めの明けまで
             EXPECT_FALSE(state.framingHeld);
             if (player->Resolver().LastImpact().tier == GL::Level::HitTier::Center)
