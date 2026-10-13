@@ -1,5 +1,4 @@
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/EffectSwitches.h"
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
 
 #include <gtest/gtest.h>
@@ -12,18 +11,9 @@ namespace
 {
     using NS::Obj::EffectKeeper;
     using NS::Obj::EffectRecord;
-    using NS::Obj::EffectSwitches;
-
-    // EffectSwitches はプロセスに 1 つなので、試しの前後で全部入りへ戻す
-    class EffectKeeperTest : public ::testing::Test
-    {
-    protected:
-        void SetUp() override { EffectSwitches::Get().TurnOnAll(); }
-        void TearDown() override { EffectSwitches::Get().TurnOnAll(); }
-    };
 } // namespace
 
-TEST_F(EffectKeeperTest, PlayWithoutAnOwnerLeavesOneRecord)
+TEST(EffectKeeperTest, PlayWithoutAnOwnerLeavesOneRecord)
 {
     EffectKeeper keeper;
     const std::uint32_t id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
@@ -38,18 +28,7 @@ TEST_F(EffectKeeperTest, PlayWithoutAnOwnerLeavesOneRecord)
     EXPECT_FALSE(record->handle.IsValid());
 }
 
-TEST_F(EffectKeeperTest, SwitchedOffNameLeavesNoRecord)
-{
-    EffectKeeper keeper;
-    keeper.Preload("test.spark");
-    ASSERT_TRUE(EffectSwitches::Get().EffectNames().contains("test.spark"));
-    EffectSwitches::Get().TurnOff("test.spark");
-
-    EXPECT_EQ(keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{}), 0u);
-    EXPECT_TRUE(keeper.Records().empty());
-}
-
-TEST_F(EffectKeeperTest, StopWritesTheStepItEndedOn)
+TEST(EffectKeeperTest, StopWritesTheStepItEndedOn)
 {
     EffectKeeper keeper;
     keeper.BeginStep();
@@ -68,7 +47,7 @@ TEST_F(EffectKeeperTest, StopWritesTheStepItEndedOn)
     EXPECT_EQ(record->endStep.value(), 3);
 }
 
-TEST_F(EffectKeeperTest, StopAfterEndsOnTheScheduledStep)
+TEST(EffectKeeperTest, StopAfterEndsOnTheScheduledStep)
 {
     EffectKeeper keeper;
     const std::uint32_t id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
@@ -81,7 +60,7 @@ TEST_F(EffectKeeperTest, StopAfterEndsOnTheScheduledStep)
     EXPECT_EQ(keeper.Find(id)->endStep.value(), 2);
 }
 
-TEST_F(EffectKeeperTest, EndedRecordIsDroppedAfterTheKeepSteps)
+TEST(EffectKeeperTest, EndedRecordIsDroppedAfterTheKeepSteps)
 {
     EffectKeeper keeper{3};
     const std::uint32_t id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
@@ -96,7 +75,7 @@ TEST_F(EffectKeeperTest, EndedRecordIsDroppedAfterTheKeepSteps)
     EXPECT_EQ(keeper.Find(id), nullptr);
 }
 
-TEST_F(EffectKeeperTest, AmountAndRotationAreWrittenToTheRecord)
+TEST(EffectKeeperTest, AmountAndRotationAreWrittenToTheRecord)
 {
     EffectKeeper keeper;
     const std::uint32_t id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
@@ -112,7 +91,7 @@ TEST_F(EffectKeeperTest, AmountAndRotationAreWrittenToTheRecord)
     EXPECT_EQ(record->rotation.value(), turned);
 }
 
-TEST_F(EffectKeeperTest, ActorUpdateAdvancesTheSlotKeeperOnce)
+TEST(EffectKeeperTest, ActorUpdateAdvancesTheSlotKeeperOnce)
 {
     NS::Obj::Actor actor;
     EffectKeeper* keeper = NS::Obj::Cast<EffectKeeper>(actor.CreateSubObj("Effect"));
@@ -127,7 +106,7 @@ TEST_F(EffectKeeperTest, ActorUpdateAdvancesTheSlotKeeperOnce)
     EXPECT_EQ(keeper->Step(), 1);
 }
 
-TEST_F(EffectKeeperTest, SlotKeeperIsOrderedAfterHitReaction)
+TEST(EffectKeeperTest, SlotKeeperIsOrderedAfterHitReaction)
 {
     NS::Obj::Actor actor;
     NS::Obj::SubObject* keeper = actor.CreateSubObj("Effect");

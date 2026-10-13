@@ -7,7 +7,6 @@
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/EffectSwitches.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 
 #include <algorithm>
@@ -35,34 +34,6 @@ namespace NS::Editor
                     return std::vector<GL::Level::HitEventValue>{GL::Level::HitEventValue{std::in_place_index<I>}...};
                 }(std::make_index_sequence<std::variant_size_v<GL::Level::HitEventValue>>{});
             return s_types;
-        }
-
-        // 切ると当たりの止めと飛び方が変わる事象の種類。入り切りの並びで演出と分けて出す
-        constexpr std::string_view k_PlayEventTypes[] = {
-            "HitStop", "TargetFreeze", "TargetLaunch", "Rebound", "GradualRelease", "OthersStop"};
-
-        [[nodiscard]] bool DrivesPlay(std::string_view typeName) noexcept
-        {
-            return std::ranges::find(k_PlayEventTypes, typeName) != std::end(k_PlayEventTypes);
-        }
-
-        bool SwitchCheckbox(const std::string& name, const std::string& label)
-        {
-            bool on = !NS::Obj::EffectSwitches::Get().IsOff(name);
-            if (!ImGui::Checkbox(std::format("{}##switch-{}", label, name).c_str(), &on))
-            {
-                return false;
-            }
-            if (on)
-            {
-                NS::Obj::EffectSwitches::Get().TurnOn(name);
-            }
-            else
-            {
-                const std::vector<std::string> rejected = GL::Level::TurnOffEffectSwitches({name});
-                NS_ASSERT(Game, rejected.empty(), "知らない名前 {} を入り切りに並べた", name);
-            }
-            return true;
         }
 
         constexpr GL::Level::HitDirection k_Directions[] = {GL::Level::HitDirection::Any,
@@ -290,7 +261,6 @@ namespace NS::Editor
                 RenderPlayback();
                 RenderBands();
                 RenderSelectedRow();
-                RenderSwitches();
             }
         }
         ImGui::End();
@@ -532,45 +502,6 @@ namespace NS::Editor
         if (!m_status.empty())
         {
             ImGui::TextUnformatted(m_status.c_str());
-        }
-#endif
-    }
-
-    void HitTimelinePanel::RenderSwitches()
-    {
-#if NS_EDITOR_ENABLED
-        if (!ImGui::CollapsingHeader("演出の入り切り"))
-        {
-            return;
-        }
-        ImGui::TextUnformatted("切った物は保存しない。立ち上げ直すと全部入る");
-        bool changed = false;
-        ImGui::SeparatorText("遊びを動かす事象");
-        for (const GL::Level::HitEventValue& type : EventTypes())
-        {
-            if (DrivesPlay(GL::Level::HitEventTypeName(type)))
-            {
-                changed |= SwitchCheckbox(std::string{GL::Level::HitEventTypeName(type)},
-                                          std::string{GL::Level::HitEventLabel(type)});
-            }
-        }
-        ImGui::SeparatorText("演出の事象");
-        for (const GL::Level::HitEventValue& type : EventTypes())
-        {
-            if (!DrivesPlay(GL::Level::HitEventTypeName(type)))
-            {
-                changed |= SwitchCheckbox(std::string{GL::Level::HitEventTypeName(type)},
-                                          std::string{GL::Level::HitEventLabel(type)});
-            }
-        }
-        ImGui::SeparatorText("エフェクトの層");
-        for (const std::string& name : NS::Obj::EffectSwitches::Get().EffectNames())
-        {
-            changed |= SwitchCheckbox(name, name);
-        }
-        if (changed)
-        {
-            m_needsRun = true;
         }
 #endif
     }

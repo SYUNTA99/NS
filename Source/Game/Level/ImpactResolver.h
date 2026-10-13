@@ -258,7 +258,6 @@ namespace GL::Level
         // 時計の今のフレームに始まる事象を並びの順に起こし、止めの明けを数える
         void AdvanceTimeline();
 
-        // 事象を 1 つ起こす。EffectSwitches で切った種類は起こさない
         void RunEvent(const HitEvent& event);
 
         // 揺れの事象から、この当たりのカメラの揺れを組む。最初の振れは 強さ × 威力 × 質量の効きで、

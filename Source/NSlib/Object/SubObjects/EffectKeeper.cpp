@@ -1,7 +1,6 @@
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
 
 #include "NSlib/Graphics/EffectScene.h"
-#include "NSlib/Object/EffectSwitches.h"
 #include "NSlib/Object/Scene/Scene.h"
 
 #include <utility>
@@ -53,7 +52,6 @@ namespace NS::Obj
 
     void EffectKeeper::Preload(std::string_view name)
     {
-        EffectSwitches::Get().AddEffectName(name);
         // 読めない絵は Play が無効なハンドルを返し、記録だけ残る。警告は EffectScene が名前ごとに 1 回出す
         if (NS::Gfx::EffectScene* effects = Effects())
         {
@@ -63,10 +61,6 @@ namespace NS::Obj
 
     std::uint32_t EffectKeeper::Play(std::string_view name, const NS::Gfx::EffectPlayDesc& desc)
     {
-        if (EffectSwitches::Get().IsOff(name))
-        {
-            return 0;
-        }
         EffectRecord record;
         record.id = m_nextId;
         ++m_nextId;

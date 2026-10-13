@@ -51,14 +51,13 @@ namespace NS::Obj
         //! 今のフレームの番号。BeginStep を呼ぶ前は 0
         [[nodiscard]] int Step() const noexcept { return m_step; }
 
-        //! @brief 名前を EffectSwitches に知らせ、絵を先に読む
-        //! @details 描画の無い世界でも名前は知らせる。知らせていない名前は切れない
+        //! 絵を先に読む。描画の無い世界では何もしない
         void Preload(std::string_view name);
 
         //! @brief エフェクトを 1 つ出し、今のフレームに出した記録を残す
         //! @details 絵を読めていない名前は再生されず、記録は無効なハンドルで残る
         //! @param[in] name Preload に渡した名前
-        //! @return 記録の番号。EffectSwitches で切った名前は記録を残さず 0
+        //! @return 記録の番号
         [[nodiscard]] std::uint32_t Play(std::string_view name, const NS::Gfx::EffectPlayDesc& desc);
 
         //! @brief 親を止める。出ていた子は寿命まで残る

@@ -1,7 +1,6 @@
 #include "Game/Level/HitTimeline.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/EffectSwitches.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Windows/FileSystem.h"
 
@@ -149,22 +148,6 @@ namespace GL::Level
     std::optional<HitEventValue> MakeHitEventValue(std::string_view typeName)
     {
         return MakeByName(typeName, std::type_identity<HitEventValue>{});
-    }
-
-    std::vector<std::string> TurnOffEffectSwitches(const std::vector<std::string>& names)
-    {
-        NS::Obj::EffectSwitches& switches = NS::Obj::EffectSwitches::Get();
-        std::vector<std::string> rejected;
-        for (const std::string& name : names)
-        {
-            if (!MakeHitEventValue(name).has_value() && !switches.EffectNames().contains(name))
-            {
-                rejected.push_back(name);
-                continue;
-            }
-            switches.TurnOff(name);
-        }
-        return rejected;
     }
 
     const NS::Obj::ReflectionInfo* HitEventReflection(const HitEventValue& value) noexcept

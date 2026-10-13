@@ -1,5 +1,4 @@
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/EffectSwitches.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
 
@@ -12,18 +11,9 @@
 namespace
 {
     using NS::Obj::EffectRecord;
-    using NS::Obj::EffectSwitches;
-
-    // EffectSwitches はプロセスに 1 つなので、試しの前後で全部入りへ戻す
-    class IUseEffectTest : public ::testing::Test
-    {
-    protected:
-        void SetUp() override { EffectSwitches::Get().TurnOnAll(); }
-        void TearDown() override { EffectSwitches::Get().TurnOnAll(); }
-    };
 } // namespace
 
-TEST_F(IUseEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
+TEST(IUseEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
 {
     NS::Obj::Actor actor;
     ASSERT_NE(actor.CreateSubObj("Effect"), nullptr);
@@ -38,20 +28,7 @@ TEST_F(IUseEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
     EXPECT_EQ(record->name, "test.spark");
 }
 
-TEST_F(IUseEffectTest, SwitchedOffNameIsNotPlayed)
-{
-    NS::Obj::Actor actor;
-    ASSERT_NE(actor.CreateSubObj("Effect"), nullptr);
-    NS::Obj::PreloadEffects(&actor, {"test.spark", "test.ring"});
-    ASSERT_TRUE(EffectSwitches::Get().EffectNames().contains("test.ring"));
-    EffectSwitches::Get().TurnOff("test.spark");
-
-    EXPECT_EQ(NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{}), 0u);
-    EXPECT_TRUE(actor.GetEffectKeeper()->Records().empty());
-    EXPECT_NE(NS::Obj::PlayEffect(&actor, "test.ring", NS::Gfx::EffectPlayDesc{}), 0u);
-}
-
-TEST_F(IUseEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
+TEST(IUseEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
 {
     NS::Obj::Actor actor;
     ASSERT_NE(actor.CreateSubObj("Effect"), nullptr);
@@ -73,7 +50,7 @@ TEST_F(IUseEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
     EXPECT_EQ(record->endStep.value(), 1);
 }
 
-TEST_F(IUseEffectTest, StopEffectAfterEndsOnTheScheduledStep)
+TEST(IUseEffectTest, StopEffectAfterEndsOnTheScheduledStep)
 {
     NS::Obj::Actor actor;
     ASSERT_NE(actor.CreateSubObj("Effect"), nullptr);
@@ -86,7 +63,7 @@ TEST_F(IUseEffectTest, StopEffectAfterEndsOnTheScheduledStep)
     EXPECT_TRUE(NS::Obj::FindEffect(&actor, id)->endStep.has_value());
 }
 
-TEST_F(IUseEffectTest, ActorWithoutTheSlotDoesNothing)
+TEST(IUseEffectTest, ActorWithoutTheSlotDoesNothing)
 {
     NS::Obj::Actor actor;
     ASSERT_EQ(actor.GetEffectKeeper(), nullptr);

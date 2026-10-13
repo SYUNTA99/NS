@@ -15,7 +15,6 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/ActorList.h"
-#include "NSlib/Object/EffectSwitches.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
@@ -976,10 +975,6 @@ namespace GL::Level
 
     void ImpactResolver::RunEvent(const HitEvent& event)
     {
-        if (NS::Obj::EffectSwitches::Get().IsOff(HitEventTypeName(event.value)))
-        {
-            return;
-        }
         std::visit(EventRunner{.resolver = *this, .event = event}, event.value);
     }
 

@@ -25,13 +25,13 @@ namespace NS::Obj
         ~IUseEffect() = default;
     };
 
-    //! @brief 出す名前を EffectSwitches に知らせ、絵を先に読む。EffectKeeper が無ければ何もしない
-    //! @details 描画の無い世界でも名前は知らせる。持ち主がシーンに入った後の OnStart で呼ぶ
+    //! @brief 出す名前の絵を先に読む。EffectKeeper が無ければ何もしない
+    //! @details 持ち主がシーンに入った後の OnStart で呼ぶ
     void PreloadEffects(const IUseEffect* user, std::initializer_list<std::string_view> names);
 
     //! @brief エフェクトを 1 つ出す
     //! @param[in] name PreloadEffects に渡した名前
-    //! @return 記録の番号。EffectSwitches で切った名前と、EffectKeeper が無い時は 0
+    //! @return 記録の番号。EffectKeeper が無い時は 0
     [[nodiscard]] std::uint32_t PlayEffect(const IUseEffect* user,
                                            std::string_view name,
                                            const NS::Gfx::EffectPlayDesc& desc);
