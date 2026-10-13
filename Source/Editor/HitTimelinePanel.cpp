@@ -4,10 +4,10 @@
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
-#include "Game/Level/EffectSwitches.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Object/Actor.h"
+#include "NSlib/Object/EffectSwitches.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 
 #include <algorithm>
@@ -48,18 +48,18 @@ namespace NS::Editor
 
         bool SwitchCheckbox(const std::string& name, const std::string& label)
         {
-            bool on = !GL::Level::EffectSwitches::Get().IsOff(name);
+            bool on = !NS::Obj::EffectSwitches::Get().IsOff(name);
             if (!ImGui::Checkbox(std::format("{}##switch-{}", label, name).c_str(), &on))
             {
                 return false;
             }
             if (on)
             {
-                GL::Level::EffectSwitches::Get().TurnOn(name);
+                NS::Obj::EffectSwitches::Get().TurnOn(name);
             }
             else
             {
-                const std::vector<std::string> rejected = GL::Level::EffectSwitches::Get().TurnOff({name});
+                const std::vector<std::string> rejected = GL::Level::TurnOffEffectSwitches({name});
                 NS_ASSERT(Game, rejected.empty(), "知らない名前 {} を入り切りに並べた", name);
             }
             return true;
@@ -564,7 +564,7 @@ namespace NS::Editor
             }
         }
         ImGui::SeparatorText("エフェクトの層");
-        for (const std::string& name : GL::Level::EffectSwitches::Get().LayerNames())
+        for (const std::string& name : NS::Obj::EffectSwitches::Get().EffectNames())
         {
             changed |= SwitchCheckbox(name, name);
         }

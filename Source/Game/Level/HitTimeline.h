@@ -518,6 +518,11 @@ namespace GL::Level
     //! @return 知らない名前の場合は std::nullopt
     [[nodiscard]] std::optional<HitEventValue> MakeHitEventValue(std::string_view typeName);
 
+    //! @brief 事象の種類の名前とエフェクトの名前を EffectSwitches で切る
+    //! @param[in] names 事象の種類の名前か、EffectSwitches が知っているエフェクトの名前
+    //! @return 知らないので切らなかった名前。全部切れた場合は空
+    [[nodiscard]] std::vector<std::string> TurnOffEffectSwitches(const std::vector<std::string>& names);
+
     //! value の種類のリフレクション。欄の無い種類は nullptr
     [[nodiscard]] const NS::Obj::ReflectionInfo* HitEventReflection(const HitEventValue& value) noexcept;
 

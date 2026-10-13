@@ -1,7 +1,7 @@
 #include "Game/Player/EffectLayerList.h"
 
-#include "Game/Level/EffectSwitches.h"
 #include "NSlib/Object/Actor.h"
+#include "NSlib/Object/EffectSwitches.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObject.h"
 
@@ -50,7 +50,7 @@ namespace GL::Player
                                         std::string_view name,
                                         const NS::Gfx::EffectPlayDesc& desc)
     {
-        if (GL::Level::EffectSwitches::Get().IsOff(name))
+        if (NS::Obj::EffectSwitches::Get().IsOff(name))
         {
             return 0;
         }
@@ -175,7 +175,7 @@ namespace GL::Player
     {
         for (const std::string_view name : names)
         {
-            GL::Level::EffectSwitches::Get().AddLayerName(name);
+            NS::Obj::EffectSwitches::Get().AddEffectName(name);
             // 読めない絵は Play が無効なハンドルを返し、記録だけ残る。警告は EffectScene が名前ごとに 1 回出す
             if (effects != nullptr)
             {

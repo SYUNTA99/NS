@@ -1,6 +1,5 @@
 #include "Game/Level/ImpactResolver.h"
 
-#include "Game/Level/EffectSwitches.h"
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactTremor.h"
@@ -16,15 +15,16 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/ActorList.h"
+#include "NSlib/Object/EffectSwitches.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
-#include "NSlib/Object/System/HitScreenDirector.h"
-#include "NSlib/Object/System/HitSensorDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/System/HitScreenDirector.h"
+#include "NSlib/Object/System/HitSensorDirector.h"
 #include "NSlib/Physics/Capsule.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -976,7 +976,7 @@ namespace GL::Level
 
     void ImpactResolver::RunEvent(const HitEvent& event)
     {
-        if (EffectSwitches::Get().IsOff(HitEventTypeName(event.value)))
+        if (NS::Obj::EffectSwitches::Get().IsOff(HitEventTypeName(event.value)))
         {
             return;
         }

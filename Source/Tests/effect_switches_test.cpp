@@ -1,10 +1,10 @@
-#include "Game/Level/EffectSwitches.h"
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
 #include "Game/Player/ImpactEffects.h"
 #include "NSlib/Core/OBB.h"
+#include "NSlib/Object/EffectSwitches.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/System/HitScreenDirector.h"
@@ -26,6 +26,7 @@
 namespace
 {
     using namespace GL::Level;
+    using NS::Obj::EffectSwitches;
 
     // EffectSwitches はプロセスに 1 つなので、試しの前後で全部入りへ戻す
     class EffectSwitchesTest : public ::testing::Test
@@ -132,7 +133,7 @@ TEST_F(EffectSwitchesTest, TurningOffFlashSkipsTheFlashEvent)
         NS::Obj::Scene scene;
         Player* player = PlaceHitScene(scene);
         ASSERT_NE(player, nullptr);
-        EXPECT_TRUE(EffectSwitches::Get().TurnOff({"Flash"}).empty());
+        EXPECT_TRUE(TurnOffEffectSwitches({"Flash"}).empty());
         EXPECT_TRUE(EffectSwitches::Get().IsOff("Flash"));
         const HitRun run = RunHit(scene, *player);
         ASSERT_TRUE(run.hit);
@@ -163,7 +164,7 @@ TEST_F(EffectSwitchesTest, TurningOffALayerKeepsPlayFromShowingIt)
     NS::Obj::Scene scene;
     Player* player = PlaceHitScene(scene);
     ASSERT_NE(player, nullptr);
-    EXPECT_TRUE(EffectSwitches::Get().TurnOff({"impact.sparks"}).empty());
+    EXPECT_TRUE(TurnOffEffectSwitches({"impact.sparks"}).empty());
     ASSERT_TRUE(RunHit(scene, *player).hit);
     EXPECT_EQ(CountLayers(*player, "impact.sparks"), 0);
     EXPECT_GT(CountLayers(*player, "impact.core"), 0);
@@ -173,7 +174,7 @@ TEST_F(EffectSwitchesTest, UnknownNamesAreRejectedAndReturned)
 {
     NS::Obj::Scene scene;
     ASSERT_NE(PlaceHitScene(scene), nullptr);
-    const std::vector<std::string> rejected = EffectSwitches::Get().TurnOff({"Flash", "impact.sparks", "NoSuchEffect"});
+    const std::vector<std::string> rejected = TurnOffEffectSwitches({"Flash", "impact.sparks", "NoSuchEffect"});
     EXPECT_EQ(rejected, std::vector<std::string>{"NoSuchEffect"});
     EXPECT_TRUE(EffectSwitches::Get().IsOff("Flash"));
     EXPECT_TRUE(EffectSwitches::Get().IsOff("impact.sparks"));
