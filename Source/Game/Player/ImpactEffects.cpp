@@ -6,6 +6,7 @@
 #include "Game/Player/PlayerJudges.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Object/Actor.h"
+#include "NSlib/Object/IUse/IUseEffect.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/Body.h"
@@ -69,26 +70,6 @@ namespace GL::Player
             return Vector3{value, value, value};
         }
 
-        // 出ている層の姿勢を置き直す。描画の無い世界と、読めなかった絵では何もしない
-        void PlaceLayer(NS::Gfx::EffectScene* effects,
-                        const EffectLayerList& layers,
-                        std::uint32_t id,
-                        const Vector3& position,
-                        const Quaternion& rotation,
-                        const Vector3& scale) noexcept
-        {
-            if (effects == nullptr)
-            {
-                return;
-            }
-            const EffectLayerRecord* record = layers.Find(id);
-            if (record == nullptr)
-            {
-                return;
-            }
-            effects->SetTransform(record->handle, position, rotation, scale);
-        }
-
     } // namespace
 
     ImpactEffects::ImpactEffects() noexcept : NS::Obj::SubObject() {}
@@ -100,23 +81,24 @@ namespace GL::Player
             m_resolver = &ownerPlayer->Resolver();
             m_player = ownerPlayer;
         }
-        PreloadLayers(EffectsOf(*this),
-                      {m_coreAsset,
-                       m_streakAsset,
-                       m_ringAsset,
-                       m_sparksAsset,
-                       m_embersAsset,
-                       m_glowAsset,
-                       m_recoilAsset,
-                       m_dustAsset,
-                       m_reboundTrailAsset,
-                       m_landDustAsset});
+        if (const NS::Obj::Actor* owner = Owner())
+        {
+            NS::Obj::PreloadEffects(*owner,
+                                    {m_coreAsset,
+                                     m_streakAsset,
+                                     m_ringAsset,
+                                     m_sparksAsset,
+                                     m_embersAsset,
+                                     m_glowAsset,
+                                     m_recoilAsset,
+                                     m_dustAsset,
+                                     m_reboundTrailAsset,
+                                     m_landDustAsset});
+        }
     }
 
     void ImpactEffects::OnUpdate()
     {
-        NS::Gfx::EffectScene* effects = EffectsOf(*this);
-        m_layers.BeginStep(effects);
         // 頼みは同じフレームの決定の段で事象が置く。読んだら消し、次のフレームへ持ち越さない
         const bool hitRequested = m_hitRequested;
         const bool flightRequested = m_flightRequested;
@@ -128,17 +110,17 @@ namespace GL::Player
         }
         if (hitRequested)
         {
-            BeginHit(effects, m_resolver->LastImpact());
+            BeginHit(m_resolver->LastImpact());
         }
         // 同じフレームに置かれた 2 つの頼みは、当たりの絵の後に飛びの絵を出す
         if (m_plan.active && flightRequested)
         {
-            m_plan.releaseStep = m_layers.Step();
-            BeginFlight(effects);
+            m_plan.releaseStep = NS::Obj::EffectStep(*Owner());
+            BeginFlight();
         }
-        AdvanceHit(effects);
-        AdvanceFlight(effects);
-        AdvanceLanding(effects);
+        AdvanceHit();
+        AdvanceFlight();
+        AdvanceLanding();
     }
 
     // 段で変わる絵を段ごとに 1 行で埋める。段を足したら行を足す
@@ -290,25 +272,25 @@ namespace GL::Player
         return leaned * -1.0f;
     }
 
-    void ImpactEffects::BeginHit(NS::Gfx::EffectScene* effects, const GL::Level::ImpactRecord& impact)
+    void ImpactEffects::BeginHit(const GL::Level::ImpactRecord& impact)
     {
         // 前の当たりの層が残っていても、次の核は当たりの絵の頭から出す。前の粉は親を止めて短くする
-        FinishHeldLayers(effects);
+        FinishHeldLayers();
         // 頂点の前に次に当てたら、その反動はここで終わる。尾は輪ごと消す
         if (m_flight.reboundTrail != 0)
         {
-            m_layers.Stop(effects, m_flight.reboundTrail);
+            NS::Obj::StopEffect(*Owner(), m_flight.reboundTrail);
             m_flight.reboundTrail = 0;
         }
         for (const std::uint32_t dust : m_dusts)
         {
-            m_layers.StopRoot(effects, dust);
+            NS::Obj::StopEffectRoot(*Owner(), dust);
         }
         m_dusts.clear();
 
         HitPlan plan;
         plan.active = true;
-        plan.freezeStep = m_layers.Step();
+        plan.freezeStep = NS::Obj::EffectStep(*Owner());
         plan.shape = ShapeFor(impact);
         plan.targetId = impact.targetId;
 
@@ -378,8 +360,8 @@ namespace GL::Player
         core.dynamicInputs[2] = 0.0f;
         core.dynamicInputs[shape.coreInput] = 1.0f;
         core.dynamicInputs[3] = m_coreBirthScale / std::max(m_coreHoldPulse, NS::k_Epsilon);
-        m_plan.core = m_layers.Play(effects, m_coreAsset, core);
-        m_layers.SetAmount(m_plan.core, shape.coreDiameter);
+        m_plan.core = NS::Obj::PlayEffect(*Owner(), m_coreAsset, core);
+        NS::Obj::SetEffectAmount(*Owner(), m_plan.core, shape.coreDiameter);
 
         // 照りは核と同じ当たりの絵の頭から。手本の弾きは接触のコマで既に床が照らされ、画面の明るさが最大の 4
         // 割まで上がる
@@ -388,12 +370,13 @@ namespace GL::Player
             // 板の法線 (+Z) を上へ向け、床に寝かせる
             const Quaternion lieFlat = TurnNormalTo(Vector3{0.0f, 1.0f, 0.0f});
             const float riseDiameter = shape.glowDiameter * std::sqrt(std::clamp(m_glowRiseShare, 0.0f, 1.0f));
-            m_plan.glow = m_layers.Play(effects, m_glowAsset, PlayAt(m_plan.floor, lieFlat, Uniform(riseDiameter)));
-            m_layers.SetAmount(m_plan.glow, shape.glowDiameter * 0.5f);
+            m_plan.glow =
+                NS::Obj::PlayEffect(*Owner(), m_glowAsset, PlayAt(m_plan.floor, lieFlat, Uniform(riseDiameter)));
+            NS::Obj::SetEffectAmount(*Owner(), m_plan.glow, shape.glowDiameter * 0.5f);
         }
     }
 
-    void ImpactEffects::PlaySparks(NS::Gfx::EffectScene* effects)
+    void ImpactEffects::PlaySparks()
     {
         const ImpactShape& shape = m_plan.shape;
         // 粒の数は段ごとの節の入力に入れ、他の節は 0。3 番の節はどの段も使わない
@@ -409,41 +392,42 @@ namespace GL::Player
         sparks.dynamicInputs[shape.sparkCountInput] = static_cast<float>(shape.sparkCount);
         // 秒の速さを 1 フレームの距離にして絵へ渡す
         sparks.dynamicInputs[2] = shape.sparkSpeed / 60.0f;
-        const std::uint32_t id = m_layers.Play(effects, m_sparksAsset, sparks);
-        m_layers.SetAmount(id, shape.sparkAmount);
-        m_layers.SetRotation(id, heading);
+        const std::uint32_t id = NS::Obj::PlayEffect(*Owner(), m_sparksAsset, sparks);
+        NS::Obj::SetEffectAmount(*Owner(), id, shape.sparkAmount);
+        NS::Obj::SetEffectRotation(*Owner(), id, heading);
     }
 
-    void ImpactEffects::PlayEmbers(NS::Gfx::EffectScene* effects)
+    void ImpactEffects::PlayEmbers()
     {
         const ImpactShape& shape = m_plan.shape;
         // 相手の飛ぶ向きを +Y にし、絵は四方へ散らす。数は 0 番、速さの上限は 1 番 (m/フレーム)
         NS::Gfx::EffectPlayDesc embers = PlayAt(m_plan.contact, TurnUpTo(m_plan.launchDir), Uniform(1.0f));
         embers.dynamicInputs[0] = static_cast<float>(shape.emberCount);
         embers.dynamicInputs[1] = shape.sparkSpeed / 60.0f;
-        m_layers.SetAmount(m_layers.Play(effects, m_embersAsset, embers), static_cast<float>(shape.emberCount));
+        NS::Obj::SetEffectAmount(
+            *Owner(), NS::Obj::PlayEffect(*Owner(), m_embersAsset, embers), static_cast<float>(shape.emberCount));
     }
 
-    void ImpactEffects::AdvanceHit(NS::Gfx::EffectScene* effects)
+    void ImpactEffects::AdvanceHit()
     {
         if (!m_plan.active)
         {
             return;
         }
-        const int step = m_layers.Step();
+        const int step = NS::Obj::EffectStep(*Owner());
         const int frame = step - m_plan.freezeStep;
         const ImpactShape& shape = m_plan.shape;
 
         if (!m_plan.sparksPlayed && frame == shape.sparkStartFrame)
         {
             m_plan.sparksPlayed = true;
-            PlaySparks(effects);
+            PlaySparks();
         }
 
         if (!m_plan.embersPlayed && shape.emberCount > 0 && frame == shape.emberStartFrame)
         {
             m_plan.embersPlayed = true;
-            PlayEmbers(effects);
+            PlayEmbers();
         }
 
         if (m_plan.core != 0)
@@ -465,39 +449,36 @@ namespace GL::Player
                 {
                     diameter = shape.coreDiameter * m_coreHoldPulse;
                 }
-                PlaceLayer(effects, m_layers, m_plan.core, m_plan.contact, Quaternion::Identity, Uniform(diameter));
-                if (frame == 1 && effects != nullptr)
+                NS::Obj::SetEffectTransform(
+                    *Owner(), m_plan.core, m_plan.contact, Quaternion::Identity, Uniform(diameter));
+                if (frame == 1)
                 {
                     // 星形と芯を出始めの大きさから再生の大きさへ戻す
-                    const EffectLayerRecord* record = m_layers.Find(m_plan.core);
-                    if (record != nullptr)
-                    {
-                        effects->SetDynamicInput(record->handle, 3, 1.0f);
-                    }
+                    NS::Obj::SetEffectDynamicInput(*Owner(), m_plan.core, 3, 1.0f);
                 }
             }
             if (shape.coreCut)
             {
                 if (frame > shape.holdLastFrame)
                 {
-                    m_layers.Stop(effects, m_plan.core);
+                    NS::Obj::StopEffect(*Owner(), m_plan.core);
                     m_plan.core = 0;
                 }
             }
             else if (frame >= shape.holdLastFrame)
             {
-                m_layers.StopRoot(effects, m_plan.core);
+                NS::Obj::StopEffectRoot(*Owner(), m_plan.core);
                 m_plan.core = 0;
             }
         }
 
         if (shape.streakLength > 0.0f && frame == 1)
         {
-            m_plan.streak =
-                m_layers.Play(effects,
-                              m_streakAsset,
-                              PlayAt(m_plan.contact, Quaternion::Identity, Vector3{shape.streakLength, 1.0f, 1.0f}));
-            m_layers.SetAmount(m_plan.streak, shape.streakLength);
+            m_plan.streak = NS::Obj::PlayEffect(
+                *Owner(),
+                m_streakAsset,
+                PlayAt(m_plan.contact, Quaternion::Identity, Vector3{shape.streakLength, 1.0f, 1.0f}));
+            NS::Obj::SetEffectAmount(*Owner(), m_plan.streak, shape.streakLength);
         }
         if (m_plan.streak != 0)
         {
@@ -505,15 +486,15 @@ namespace GL::Player
             const int fadeStart = shape.holdLastFrame + std::max(m_streakTailFrames, 0);
             if (frame >= fadeStart + std::max(m_streakFadeFrames, 0))
             {
-                m_layers.Stop(effects, m_plan.streak);
+                NS::Obj::StopEffect(*Owner(), m_plan.streak);
                 m_plan.streak = 0;
             }
             else if (frame >= fadeStart)
             {
                 // 親を止めた後は太さを置き直さず、絵の定義の落ちるフレーム数で薄れる
-                m_layers.StopRoot(effects, m_plan.streak);
+                NS::Obj::StopEffectRoot(*Owner(), m_plan.streak);
             }
-            else if (effects != nullptr)
+            else
             {
                 // 1 から細りきった太さへ、留まりの終わりの次のフレームまでに細り、その後は細いまま残る。
                 // 留まる間は核と同じ偶数のフレームだけ長さを縮める
@@ -525,12 +506,8 @@ namespace GL::Player
                 {
                     length = shape.streakLength * m_coreHoldPulse;
                 }
-                PlaceLayer(effects,
-                           m_layers,
-                           m_plan.streak,
-                           m_plan.contact,
-                           Quaternion::Identity,
-                           Vector3{length, thickness, 1.0f});
+                NS::Obj::SetEffectTransform(
+                    *Owner(), m_plan.streak, m_plan.contact, Quaternion::Identity, Vector3{length, thickness, 1.0f});
             }
         }
         if (m_plan.glow != 0 && frame >= 1 && frame <= shape.holdLastFrame)
@@ -548,37 +525,37 @@ namespace GL::Player
                 share = static_cast<float>(shape.holdLastFrame + 2 - frame) / span;
             }
             const Quaternion lieFlat = TurnNormalTo(Vector3{0.0f, 1.0f, 0.0f});
-            PlaceLayer(
-                effects, m_layers, m_plan.glow, m_plan.floor, lieFlat, Uniform(shape.glowDiameter * std::sqrt(share)));
+            NS::Obj::SetEffectTransform(
+                *Owner(), m_plan.glow, m_plan.floor, lieFlat, Uniform(shape.glowDiameter * std::sqrt(share)));
         }
         if (m_plan.glow != 0 && frame >= shape.holdLastFrame)
         {
-            m_layers.StopRoot(effects, m_plan.glow);
+            NS::Obj::StopEffectRoot(*Owner(), m_plan.glow);
             m_plan.glow = 0;
         }
 
         if (shape.ringRadius > 0.0f && frame == std::max(m_ringStart, 0))
         {
-            m_plan.ring =
-                m_layers.Play(effects,
-                              m_ringAsset,
-                              PlayAt(m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(m_ringStartRadius)));
-            m_layers.SetAmount(m_plan.ring, shape.ringRadius);
+            m_plan.ring = NS::Obj::PlayEffect(
+                *Owner(),
+                m_ringAsset,
+                PlayAt(m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(m_ringStartRadius)));
+            NS::Obj::SetEffectAmount(*Owner(), m_plan.ring, shape.ringRadius);
         }
         if (m_plan.ring != 0)
         {
             if (frame >= m_ringEnd)
             {
-                m_layers.Stop(effects, m_plan.ring);
+                NS::Obj::StopEffect(*Owner(), m_plan.ring);
                 m_plan.ring = 0;
             }
-            else if (effects != nullptr)
+            else
             {
                 const float t = static_cast<float>(frame - std::max(m_ringStart, 0)) /
                                 static_cast<float>(std::max(m_ringFull - std::max(m_ringStart, 0), 1));
                 const float radius = m_ringStartRadius + (shape.ringRadius - m_ringStartRadius) * EaseOutCubic(t);
-                PlaceLayer(
-                    effects, m_layers, m_plan.ring, m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(radius));
+                NS::Obj::SetEffectTransform(
+                    *Owner(), m_plan.ring, m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(radius));
             }
         }
 
@@ -594,8 +571,8 @@ namespace GL::Player
                     NS::Gfx::EffectPlayDesc dust =
                         PlayAt(m_aim.dustOrigin, Quaternion::Identity, Uniform(shape.dustScale));
                     dust.dynamicInputs[0] = static_cast<float>(shape.dustCount);
-                    const std::uint32_t id = m_layers.Play(effects, m_dustAsset, dust);
-                    m_layers.SetAmount(id, shape.dustScale);
+                    const std::uint32_t id = NS::Obj::PlayEffect(*Owner(), m_dustAsset, dust);
+                    NS::Obj::SetEffectAmount(*Owner(), id, shape.dustScale);
                     m_dusts.push_back(id);
                 }
             }
@@ -620,7 +597,8 @@ namespace GL::Player
                 recoil.dynamicInputs[2] = 0.0f;
                 recoil.dynamicInputs[shape.recoilCountInput] = static_cast<float>(shape.recoilCount);
                 recoil.dynamicInputs[1] = shape.recoilLength;
-                m_layers.SetAmount(m_layers.Play(effects, m_recoilAsset, recoil), shape.recoilLength);
+                NS::Obj::SetEffectAmount(
+                    *Owner(), NS::Obj::PlayEffect(*Owner(), m_recoilAsset, recoil), shape.recoilLength);
             }
         }
 
@@ -632,13 +610,13 @@ namespace GL::Player
         }
     }
 
-    void ImpactEffects::BeginFlight(NS::Gfx::EffectScene* effects)
+    void ImpactEffects::BeginFlight()
     {
-        const int step = m_layers.Step();
+        const int step = NS::Obj::EffectStep(*Owner());
         // 前の当たりの尾が残っていれば、ここで消す。尾は 1 本ずつ持つ
         if (m_flight.reboundTrail != 0)
         {
-            m_layers.Stop(effects, m_flight.reboundTrail);
+            NS::Obj::StopEffect(*Owner(), m_flight.reboundTrail);
             m_flight.reboundTrail = 0;
         }
         // 貫通した時と反動の初速が 0 の時は反動に入らないので、尾は出さない
@@ -653,42 +631,42 @@ namespace GL::Player
             const Vector3 ball = Owner()->Root().Position();
             const Vector3 heading = ReboundTrailHeading(m_player->Body().Velocity(), ball, CameraPosition());
             m_flight.reboundTrail =
-                m_layers.Play(effects, m_reboundTrailAsset, PlayAt(ball, TurnUpTo(heading), Uniform(1.0f)));
+                NS::Obj::PlayEffect(*Owner(), m_reboundTrailAsset, PlayAt(ball, TurnUpTo(heading), Uniform(1.0f)));
             m_flight.reboundStartStep = step;
         }
         // 飛ばした相手の飛び出しの尾は、相手が自分で出す (LaunchEffects)
     }
 
-    void ImpactEffects::AdvanceFlight(NS::Gfx::EffectScene* effects)
+    void ImpactEffects::AdvanceFlight()
     {
-        const int step = m_layers.Step();
+        const int step = NS::Obj::EffectStep(*Owner());
         if (m_flight.reboundTrail != 0 && step != m_flight.reboundStartStep)
         {
             // 頂点の前に反動を抜けた時 (縁を掴んだ時など) は、そこで輪ごと消す
             if (m_player == nullptr || !m_player->IsRebounding() ||
                 PlayerJudgeLand::Judge(m_player->Body().IsGrounded(), m_player->Body().VerticalVelocity()))
             {
-                m_layers.Stop(effects, m_flight.reboundTrail);
+                NS::Obj::StopEffect(*Owner(), m_flight.reboundTrail);
                 m_flight.reboundTrail = 0;
             }
             else if (!(m_player->Body().VerticalVelocity() > 0.0f))
             {
                 // 頂点は縦の速さが 0 以下になったフレーム。親を止め、筋は頂点の位置と向きのまま薄れる
                 // 親を止めた後の筋は置き直しても動かない (Effekseer は親の最後の姿で子を描く)
-                m_layers.StopRoot(effects, m_flight.reboundTrail);
-                m_layers.StopAfter(m_flight.reboundTrail, std::max(m_reboundTrailFadeSteps, 1));
+                NS::Obj::StopEffectRoot(*Owner(), m_flight.reboundTrail);
+                NS::Obj::StopEffectAfter(*Owner(), m_flight.reboundTrail, std::max(m_reboundTrailFadeSteps, 1));
                 m_flight.reboundTrail = 0;
             }
             else
             {
                 const Vector3 ball = Owner()->Root().Position();
                 const Vector3 heading = ReboundTrailHeading(m_player->Body().Velocity(), ball, CameraPosition());
-                PlaceLayer(effects, m_layers, m_flight.reboundTrail, ball, TurnUpTo(heading), Uniform(1.0f));
+                NS::Obj::SetEffectTransform(*Owner(), m_flight.reboundTrail, ball, TurnUpTo(heading), Uniform(1.0f));
             }
         }
     }
 
-    void ImpactEffects::AdvanceLanding(NS::Gfx::EffectScene* effects)
+    void ImpactEffects::AdvanceLanding()
     {
         if (m_player == nullptr)
         {
@@ -708,12 +686,12 @@ namespace GL::Player
             const NS::Phys::Capsule capsule = m_player->Collider().CapsuleAt(Owner()->Root().Position());
             Vector3 at = capsule.center - capsule.axis * (capsule.halfHeight + capsule.radius);
             at.y += m_dustRingLift;
-            const std::uint32_t dust = m_layers.Play(
-                effects,
+            const std::uint32_t dust = NS::Obj::PlayEffect(
+                *Owner(),
                 m_landDustAsset,
                 PlayAt(at, Quaternion::Identity, Uniform(radius / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
-            m_layers.SetAmount(dust, radius);
-            m_layers.StopAfter(dust, std::max(m_landDustLife, 1));
+            NS::Obj::SetEffectAmount(*Owner(), dust, radius);
+            NS::Obj::StopEffectAfter(*Owner(), dust, std::max(m_landDustLife, 1));
         }
         m_lastVerticalVelocity = m_player->Body().VerticalVelocity();
     }
@@ -729,16 +707,16 @@ namespace GL::Player
         return pose->position;
     }
 
-    void ImpactEffects::FinishHeldLayers(NS::Gfx::EffectScene* effects)
+    void ImpactEffects::FinishHeldLayers()
     {
         if (!m_plan.active)
         {
             return;
         }
-        m_layers.StopRoot(effects, m_plan.core);
-        m_layers.StopRoot(effects, m_plan.glow);
-        m_layers.Stop(effects, m_plan.streak);
-        m_layers.Stop(effects, m_plan.ring);
+        NS::Obj::StopEffectRoot(*Owner(), m_plan.core);
+        NS::Obj::StopEffectRoot(*Owner(), m_plan.glow);
+        NS::Obj::StopEffect(*Owner(), m_plan.streak);
+        NS::Obj::StopEffect(*Owner(), m_plan.ring);
         m_plan = HitPlan{};
     }
 

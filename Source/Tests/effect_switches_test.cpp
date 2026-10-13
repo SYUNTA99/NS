@@ -7,10 +7,11 @@
 #include "NSlib/Object/EffectSwitches.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/EffectKeeper.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/System/HitScreenDirector.h"
 #include "NSlib/Object/System/PadRumbleDirector.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "Tests/TestHitTimelines.h"
 #include "Tests/TestViewCamera.h"
 
@@ -114,7 +115,7 @@ namespace
     int CountLayers(Player& player, std::string_view name)
     {
         int count = 0;
-        for (const GL::Player::EffectLayerRecord& record : player.ImpactVisuals().Layers().Records())
+        for (const NS::Obj::EffectRecord& record : player.GetEffectKeeper()->Records())
         {
             if (record.name == name)
             {

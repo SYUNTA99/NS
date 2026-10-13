@@ -55,9 +55,10 @@ TEST(GameTuning, ChargeLayerLifetimeReadsTheEditedField)
     {
         player->Update(true);
     }
-    const GL::Player::EffectLayerList& layers = player->ChargeVisuals().Layers();
-    ASSERT_FALSE(layers.Records().empty());
-    const GL::Player::EffectLayerRecord& curl = layers.Records().front();
+    const NS::Obj::EffectKeeper* keeper = player->GetEffectKeeper();
+    ASSERT_NE(keeper, nullptr);
+    ASSERT_FALSE(keeper->Records().empty());
+    const NS::Obj::EffectRecord& curl = keeper->Records().front();
     EXPECT_EQ(curl.name, "charge.curl");
     ASSERT_TRUE(curl.endStep.has_value());
     EXPECT_EQ(*curl.endStep - curl.startStep, 2);
@@ -70,9 +71,10 @@ TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->ChargeVisuals(), {{"丸まりの殻の資産", "custom.curl"}}), 0u);
     player->Update(true);
-    const GL::Player::EffectLayerList& layers = player->ChargeVisuals().Layers();
-    ASSERT_FALSE(layers.Records().empty());
-    EXPECT_EQ(layers.Records().front().name, "custom.curl");
+    const NS::Obj::EffectKeeper* keeper = player->GetEffectKeeper();
+    ASSERT_NE(keeper, nullptr);
+    ASSERT_FALSE(keeper->Records().empty());
+    EXPECT_EQ(keeper->Records().front().name, "custom.curl");
     const nlohmann::json saved = NS::Obj::SerializeSubObjectFields(player->ChargeVisuals());
     GL::Player::ChargeEffects restored;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(restored, saved), 0u);
@@ -88,18 +90,18 @@ TEST(GameTuning, DefaultSpawnReadsThePlayerInstance)
     EXPECT_NEAR(player.DefaultSpawnPosition().y - before, 2.1f, 0.0001f);
 }
 
-TEST(GameTuning, EffectHistoryRetentionBelongsToEachList)
+TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
 {
-    GL::Player::EffectLayerList shortHistory{2};
-    GL::Player::EffectLayerList longHistory{6};
-    const std::uint32_t shortId = shortHistory.Play(nullptr, "test", {});
-    const std::uint32_t longId = longHistory.Play(nullptr, "test", {});
-    shortHistory.Stop(nullptr, shortId);
-    longHistory.Stop(nullptr, longId);
+    NS::Obj::EffectKeeper shortHistory{2};
+    NS::Obj::EffectKeeper longHistory{6};
+    const std::uint32_t shortId = shortHistory.Play("test", {});
+    const std::uint32_t longId = longHistory.Play("test", {});
+    shortHistory.Stop(shortId);
+    longHistory.Stop(longId);
     for (int frame = 0; frame < 3; ++frame)
     {
-        shortHistory.BeginStep(nullptr);
-        longHistory.BeginStep(nullptr);
+        shortHistory.BeginStep();
+        longHistory.BeginStep();
     }
     EXPECT_TRUE(shortHistory.Records().empty());
     EXPECT_EQ(longHistory.Records().size(), 1u);

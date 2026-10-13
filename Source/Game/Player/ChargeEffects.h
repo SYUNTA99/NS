@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Game/Player/EffectLayerList.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/SubObject.h"
+#include "NSlib/Graphics/EffectTypes.h"
 #include "NSlib/Object/Reflection/Reflection.h"
+#include "NSlib/Object/SubObject.h"
 
 #include <cstdint>
 #include <string>
@@ -24,21 +24,18 @@ namespace GL::Player
     //! 溜めと放しの演出を出し、層の寿命を管理する
     //! 時間と向きは自分の保存欄から読む
     //! PlayerAppearance の後に見た目の段で更新する
-    //! 描画のない世界でも層の記録を残す
+    //! 記録は持ち主の EffectKeeper に残る。描画のない世界でも残る
     class ChargeEffects : public NS::Obj::SubObject
     {
     public:
         ChargeEffects() noexcept;
 
-        //! 同居する部品を控え、描画のある世界なら受け持つ層の絵を読み込む
+        //! 同居する部品を控え、描画のある世界なら受け持つエフェクトの絵を読み込む
         void OnStart() override;
-        //! 記録のフレームを 1 つ進め、このフレームの結末を読んで層を出す・付いていかせる・消す
+        //! このフレームの結末を読んでエフェクトを出す・付いていかせる・消す
         void OnUpdate() override;
-        //! 残っている層を全部消す
+        //! 番号を控えている溜めと放しのエフェクトを消す
         void OnEndPlay() override;
-
-        //! 出すと決めた層の記録
-        [[nodiscard]] const EffectLayerList& Layers() const noexcept { return m_layers; }
 
         //! @brief 溜まる光へ動的入力 1 番で渡す、溜めきってからの数
         //! @return 押し続けている間、溜めきったフレームを 1 とした数。溜めきる前と押していない間は 0
@@ -97,28 +94,25 @@ namespace GL::Player
                                          const NS::Quaternion& rotation,
                                          float charge01) const noexcept;
         void ForgetEndedLayers() noexcept;
-        void StartPress(NS::Gfx::EffectScene* effects, const NS::Vector3& center);
-        void StartCharging(NS::Gfx::EffectScene* effects, const NS::Vector3& center);
-        void StartFullFlash(NS::Gfx::EffectScene* effects, const NS::Vector3& center);
+        void StartPress(const NS::Vector3& center);
+        void StartCharging(const NS::Vector3& center);
+        void StartFullFlash(const NS::Vector3& center);
         // 紫の揺れが端へ来たフレームに、その側へ火花を散らす
-        void PlaySwaySparks(NS::Gfx::EffectScene* effects, const NS::Vector3& center);
+        void PlaySwaySparks(const NS::Vector3& center);
         // 押している間の層を玉へ付いていかせ、溜め量を渡す
-        void FollowHeldLayers(NS::Gfx::EffectScene* effects, const NS::Vector3& center, float charge01) noexcept;
-        void ClearHeldLayers(NS::Gfx::EffectScene* effects) noexcept;
-        void StartRelease(NS::Gfx::EffectScene* effects, const NS::Vector3& center);
-        void UpdateTrail(NS::Gfx::EffectScene* effects, const NS::Vector3& center, bool slamming) noexcept;
-        void StopTrailRoot(NS::Gfx::EffectScene* effects) noexcept;
+        void FollowHeldLayers(const NS::Vector3& center, float charge01) noexcept;
+        void ClearHeldLayers() noexcept;
+        void StartRelease(const NS::Vector3& center);
+        void UpdateTrail(const NS::Vector3& center, bool slamming) noexcept;
+        void StopTrailRoot() noexcept;
         // 層を今の位置・向き・大きさへ置き直し、向きを記録に書く。描画の無い世界では記録だけ書く
-        void Place(NS::Gfx::EffectScene* effects,
-                   std::uint32_t id,
-                   const NS::Vector3& position,
-                   const NS::Quaternion& rotation) noexcept;
-        void SetCharge(NS::Gfx::EffectScene* effects, std::uint32_t id, float charge01) const noexcept;
+        void Place(std::uint32_t id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept;
+        void SetCharge(std::uint32_t id, float charge01) const noexcept;
         // 動的入力 index 番に value を入れる。描画の無い世界か、再生できなかった層なら何もしない
-        void SetInput(NS::Gfx::EffectScene* effects, std::uint32_t id, int index, float value) const noexcept;
+        void SetInput(std::uint32_t id, int index, float value) const noexcept;
         // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ Player::AimDirection
         [[nodiscard]] NS::Vector3 HeldAimDirection() const noexcept;
-        void StopLayer(NS::Gfx::EffectScene* effects, std::uint32_t& id) noexcept;
+        void StopLayer(std::uint32_t& id) noexcept;
         // 跳ね返りか破壊が起きたか、触れる見込みが m_burstClearFrames 以内か
         [[nodiscard]] bool IsContactNear() const noexcept;
 
@@ -143,9 +137,7 @@ namespace GL::Player
         float m_overchargeSparkSpeedMin = 2.5f;
         float m_overchargeSparkSpeedMax = 5.0f;
 
-        EffectLayerList m_layers;
-
-        // 出ている層の記録の番号。0 は出ていない
+        // 出ているエフェクトの記録の番号。0 は出ていない
         std::uint32_t m_curl = 0;
         std::uint32_t m_spin = 0;
         std::uint32_t m_grind = 0;

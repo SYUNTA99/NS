@@ -28,6 +28,7 @@
 #include "NSlib/Object/SubObjects/Animation.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/Collider.h"
+#include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "NSlib/Object/SubObjects/HitReaction.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/Model.h"
@@ -64,6 +65,7 @@ void Player::OnInit()
     CreateSubObj<NS::Obj::HitReaction>(HitReactionSlot());
     m_targetMarker = CreateSubObj<GL::Level::TargetMarker>("TargetMarker");
     m_slamArrow = CreateSubObj<GL::Level::SlamArrow>("SlamArrow");
+    (void)CreateSubObj<NS::Obj::EffectKeeper>(EffectSlot());
     m_chargeEffects = CreateSubObj<GL::Player::ChargeEffects>("ChargeEffects");
     m_impactEffects = CreateSubObj<GL::Player::ImpactEffects>("ImpactEffects");
     // 部品を全部作った後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる

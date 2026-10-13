@@ -16,6 +16,7 @@
 #include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/SubObjects/CameraModifier.h"
 #include "NSlib/Object/SubObjects/Collider.h"
+#include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "NSlib/Object/SubObjects/HitReaction.h"
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
@@ -126,7 +127,7 @@ namespace
     int CountLayers(Player& player, std::string_view name)
     {
         int count = 0;
-        for (const GL::Player::EffectLayerRecord& record : player.ImpactVisuals().Layers().Records())
+        for (const NS::Obj::EffectRecord& record : player.GetEffectKeeper()->Records())
         {
             if (record.name == name)
             {
@@ -768,9 +769,9 @@ TEST(ImpactTimelineClock, MissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
     const ImpactRecord& impact = player->Resolver().LastImpact();
     ASSERT_EQ(impact.tier, HitTier::Wide);
 
-    const GL::Player::EffectLayerRecord* core = nullptr;
-    const GL::Player::EffectLayerRecord* sparks = nullptr;
-    for (const GL::Player::EffectLayerRecord& record : player->ImpactVisuals().Layers().Records())
+    const NS::Obj::EffectRecord* core = nullptr;
+    const NS::Obj::EffectRecord* sparks = nullptr;
+    for (const NS::Obj::EffectRecord& record : player->GetEffectKeeper()->Records())
     {
         if (record.name == "impact.core")
         {
@@ -1504,12 +1505,12 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsWhenTheBeforeContactClockStarts)
         TickHitDirectors(*player);
         if (beforeContactStep < 0 && player->Resolver().IsBeforeContact())
         {
-            beforeContactStep = player->ChargeVisuals().Layers().Step();
+            beforeContactStep = player->GetEffectKeeper()->Step();
         }
     }
     ASSERT_GE(beforeContactStep, 0);
-    const GL::Player::EffectLayerRecord* burst = nullptr;
-    for (const GL::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
+    const NS::Obj::EffectRecord* burst = nullptr;
+    for (const NS::Obj::EffectRecord& record : player->GetEffectKeeper()->Records())
     {
         if (record.name == "release.burst")
         {
@@ -1539,12 +1540,12 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsOnTheContactFrameWithoutBeforeContactE
         TickHitDirectors(*player);
         if (player->Resolver().LastImpact().sequence != 0)
         {
-            contactStep = player->ChargeVisuals().Layers().Step();
+            contactStep = player->GetEffectKeeper()->Step();
         }
     }
     ASSERT_GE(contactStep, 0);
-    const GL::Player::EffectLayerRecord* burst = nullptr;
-    for (const GL::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
+    const NS::Obj::EffectRecord* burst = nullptr;
+    for (const NS::Obj::EffectRecord& record : player->GetEffectKeeper()->Records())
     {
         if (record.name == "release.burst")
         {
@@ -1615,12 +1616,12 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsThreeFramesBeforeThePredictedContact)
         TickHitDirectors(*player);
         if (player->Resolver().LastImpact().sequence != 0)
         {
-            contactStep = player->ChargeVisuals().Layers().Step();
+            contactStep = player->GetEffectKeeper()->Step();
         }
     }
     ASSERT_GE(contactStep, 0);
-    const GL::Player::EffectLayerRecord* burst = nullptr;
-    for (const GL::Player::EffectLayerRecord& record : player->ChargeVisuals().Layers().Records())
+    const NS::Obj::EffectRecord* burst = nullptr;
+    for (const NS::Obj::EffectRecord& record : player->GetEffectKeeper()->Records())
     {
         if (record.name == "release.burst")
         {

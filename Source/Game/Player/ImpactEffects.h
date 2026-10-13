@@ -3,10 +3,9 @@
 #include <string>
 
 #include "Game/Level/HitTier.h"
-#include "Game/Player/EffectLayerList.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/Reflection/Reflection.h"
+#include "NSlib/Object/SubObject.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -43,12 +42,12 @@ namespace GL::Player
     struct ImpactShape
     {
         GL::Level::HitTier tier = GL::Level::HitTier::Center; //!< 当たりの段
-        std::size_t coreInput = 0;                        //!< 核の絵 impact.core の、段の色の節を出す動的入力の番号
-        CoreHoldMotion coreHold = CoreHoldMotion::Pulse;  //!< 核が最大近くに留まる間の大きさの動かし方
-        SparkHeading sparkHeading = SparkHeading::Launch; //!< 火花の向き
-        std::size_t sparkCountInput = 0;                  //!< 火花の絵 impact.sparks の、粒の数を入れる動的入力の番号
-        std::size_t recoilCountInput = 0;                 //!< 弾かれ線の絵 impact.recoil の、本数を入れる動的入力の番号
-        int holdLastFrame = 1; //!< 核が最大近くに留まる最後のフレーム。当たりの絵の頭を 0 と数える
+        std::size_t coreInput = 0;                            //!< 核の絵 impact.core の、段の色の節を出す動的入力の番号
+        CoreHoldMotion coreHold = CoreHoldMotion::Pulse;      //!< 核が最大近くに留まる間の大きさの動かし方
+        SparkHeading sparkHeading = SparkHeading::Launch;     //!< 火花の向き
+        std::size_t sparkCountInput = 0;  //!< 火花の絵 impact.sparks の、粒の数を入れる動的入力の番号
+        std::size_t recoilCountInput = 0; //!< 弾かれ線の絵 impact.recoil の、本数を入れる動的入力の番号
+        int holdLastFrame = 1;            //!< 核が最大近くに留まる最後のフレーム。当たりの絵の頭を 0 と数える
         //! 核を留まりの次のフレームで消すか。偽なら留まりの最後のフレームに親を止め、絵の定義の落ちるフレーム数で薄れる
         bool coreCut = false;
         int sparkStartFrame = 0; //!< 火花を出すフレーム。当たりの絵の頭を 0 と数え、中心近くだけ 3
@@ -81,7 +80,7 @@ namespace GL::Player
         NS::Vector3 ringNormal;   //!< 輪の面の法線。相手の飛ぶ向きをカメラへ起こした向き
     };
 
-    //! @brief 自機が当ててから着地するまでのエフェクトの層を出し、出すと決めた記録を持つ
+    //! @brief 自機が当ててから着地するまでのエフェクトを出す
     //! @details 受け持つ層の名前は impact.・rebound.・land. で始まる
     //! 当たりのタイムラインの事象が置いた頼みを読み、当たりの絵の頭に核と照り、次のフレームから光条、
     //! 3 フレーム目から輪、飛びの絵の頭に粉、その 4 フレーム後に弾かれ線を出す。火花は中心近くが 3 フレーム目、
@@ -91,11 +90,11 @@ namespace GL::Player
     //! 飛ばした相手の飛び出しの尾と落ちた所の粉は、相手が自分で出す (LaunchEffects)。相手の部品は読まない
     //! 当たりの絵の事象を置いていないタイムラインの当たりと、タイムラインの引けない当たりでは何も出さない
     //! 層の時間 (留まり・広がり・消えるフレーム) はここが持ち、形と色は絵が持つ
-    //! 描画の無い世界でも記録は残し、試しは Layers を読む
+    //! 記録は持ち主の EffectKeeper に残る。描画の無い世界でも残る
     //! Player の見た目の段 (VisualStep) が最後に呼ぶ。
     //! 同じフレームの ImpactResolver が事象から頼みを置いた後と、自機の移動の段の後に走る。
     //! 物理の段と、飛ばした相手が自分の段階を切り替える Triggers の段よりは前に走る
-    //! 依存: EffectLayerList, GL::Level::ImpactResolver, Player, カメラの窓口
+    //! 依存: GL::Level::ImpactResolver, Player, カメラの窓口
     class ImpactEffects : public NS::Obj::SubObject
     {
     public:
@@ -104,20 +103,17 @@ namespace GL::Player
         //! 同居する ImpactResolver を控え、描画のある世界なら層の絵を読み込む
         void OnStart() override;
 
-        //! 記録のフレームを 1 つ進め、置かれた頼みを読んで層を出し、出ている層の大きさを置き直す
+        //! 置かれた頼みを読んでエフェクトを出し、出ているエフェクトの大きさを置き直す
         void OnUpdate() override;
 
         //! @brief 当たりの絵を始める頼みを置く。同じフレームの OnUpdate が、同居する ImpactResolver
         //! の直近の当たりから層を出す
-        //! @details 決定の段から直に層を出すと EffectLayerList::BeginStep より前に出て、始まりのフレームが 1 つずれる
+        //! @details 出すのは見た目の段。同じフレームの ChargeEffects のエフェクトの後に出る
         void RequestHitEffect() noexcept { m_hitRequested = true; }
 
         //! @brief 飛びの絵を始める頼みを置く。同じフレームの OnUpdate が反動の尾を出す
         //! @details 当たりの絵の段取りが終わった後の頼みは何もしない
         void RequestFlightEffect() noexcept { m_flightRequested = true; }
-
-        //! 出すと決めた層の記録
-        [[nodiscard]] const EffectLayerList& Layers() const noexcept { return m_layers; }
 
         //! @brief 当たりの内訳から、層の大きさと量を決める
         //! @param[in] impact 当たりの内訳
@@ -256,7 +252,7 @@ namespace GL::Player
         struct HitPlan
         {
             bool active = false;
-            int freezeStep = 0;   // 当たりの絵の頭の EffectLayerList のフレーム
+            int freezeStep = 0;   // 当たりの絵の頭の EffectKeeper のフレーム
             int releaseStep = -1; // 飛びの絵の頭のフレーム。まだ始めていなければ -1
             ImpactShape shape;
             NS::Vector3 contact;        // 接触点。自機の玉の縁の、相手へ向いた点
@@ -285,22 +281,21 @@ namespace GL::Player
             int reboundStartStep = 0;       // 反動の尾を出したフレーム。このフレームは出した姿のまま置き直さない
         };
 
-        void BeginHit(NS::Gfx::EffectScene* effects, const GL::Level::ImpactRecord& impact);
-        void AdvanceHit(NS::Gfx::EffectScene* effects);
-        void PlaySparks(NS::Gfx::EffectScene* effects);
-        void PlayEmbers(NS::Gfx::EffectScene* effects);
+        void BeginHit(const GL::Level::ImpactRecord& impact);
+        void AdvanceHit();
+        void PlaySparks();
+        void PlayEmbers();
         // 前の当たりの層のうち、ここが消える時を持っている物を今のフレームで畳む
-        void FinishHeldLayers(NS::Gfx::EffectScene* effects);
+        void FinishHeldLayers();
         // 飛びの絵の頭に反動の尾を出す
-        void BeginFlight(NS::Gfx::EffectScene* effects);
+        void BeginFlight();
         // 反動の尾を自機へ付いていかせる。頂点で親を止める
-        void AdvanceFlight(NS::Gfx::EffectScene* effects);
+        void AdvanceFlight();
         // 反動の着地のフレームに足元へ粉を出し、次のフレームのために縦の速さを控える
-        void AdvanceLanding(NS::Gfx::EffectScene* effects);
+        void AdvanceLanding();
         // 効果を掛ける前の視点の位置。カメラが無い・姿が決まらない世界では空
         [[nodiscard]] std::optional<NS::Vector3> CameraPosition() const;
 
-        EffectLayerList m_layers;
         GL::Level::ImpactResolver* m_resolver = nullptr;
         ::Player* m_player = nullptr;
         HitPlan m_plan;

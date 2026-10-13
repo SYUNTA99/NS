@@ -3,6 +3,7 @@
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "NSlib/Windows/Clock.h"
 #include "TestEffectFiles.h"
 #include "Tests/TestViewCamera.h"
@@ -27,10 +28,9 @@ namespace
         return static_cast<int>(std::lround(seconds / NS::OS::FrameTimer::FixedDelta()));
     }
 
-    const GL::Player::EffectLayerRecord* LiveLayer(const GL::Player::ChargeEffects& effects,
-                                                         std::string_view name)
+    const NS::Obj::EffectRecord* LiveEffect(const Player& player, std::string_view name)
     {
-        for (const GL::Player::EffectLayerRecord& record : effects.Layers().Records())
+        for (const NS::Obj::EffectRecord& record : player.GetEffectKeeper()->Records())
         {
             if (record.name == name && !record.endStep.has_value())
             {
@@ -72,7 +72,7 @@ TEST(ChargeFrontLow, GatherRootFacesTheAimLineEveryFrame)
             player->Update(true);
             GL::Level::AimLine aim{};
             ASSERT_TRUE(player->TryGetAimLine(aim));
-            const GL::Player::EffectLayerRecord* gather = LiveLayer(player->ChargeVisuals(), "charge.gather");
+            const NS::Obj::EffectRecord* gather = LiveEffect(*player, "charge.gather");
             ASSERT_NE(gather, nullptr);
             ASSERT_TRUE(gather->rotation.has_value());
             const NS::Quaternion expected = GL::Player::ChargeEffects::YawToward(aim.direction);
