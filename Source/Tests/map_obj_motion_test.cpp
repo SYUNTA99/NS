@@ -1,6 +1,7 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObj.h"
 #include "NSlib/Core/OBB.h"
+#include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -196,11 +197,10 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
     {
         rock->UpdateMotion();
     }
-    const GL::Level::LaunchEffects* effects =
-        NS::Obj::Cast<GL::Level::LaunchEffects>(rock->FindSubObj("LaunchEffects"));
-    ASSERT_NE(effects, nullptr);
+    const NS::Obj::EffectKeeper* keeper = rock->GetEffectKeeper();
+    ASSERT_NE(keeper, nullptr);
     int dustCount = 0;
-    for (const GL::Player::EffectLayerRecord& record : effects->Layers().Records())
+    for (const NS::Obj::EffectRecord& record : keeper->Records())
     {
         if (record.name == "launch.landDust")
         {
@@ -231,11 +231,17 @@ TEST(MapObjMotion, FreezeWithoutSquashPreservesExistingDrawScale)
 
 TEST(MapObjMotion, EffectClockIsSeparateFromItsPostMovementUpdate)
 {
-    GL::Level::LaunchEffects effects;
-    effects.BeginStep();
-    EXPECT_EQ(effects.Layers().Step(), 1);
-    effects.OnUpdate();
-    EXPECT_EQ(effects.Layers().Step(), 1);
+    NS::Obj::Scene scene;
+    GL::Level::MapObj* rock = PlaceMovingRock(scene);
+    ASSERT_NE(rock, nullptr);
+    const NS::Obj::EffectKeeper* keeper = rock->GetEffectKeeper();
+    ASSERT_NE(keeper, nullptr);
+    NS::Obj::SubObject* effects = rock->FindSubObj("LaunchEffects");
+    ASSERT_NE(effects, nullptr);
+    rock->Update();
+    EXPECT_EQ(keeper->Step(), 1);
+    effects->OnUpdate();
+    EXPECT_EQ(keeper->Step(), 1);
 }
 
 TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
@@ -249,18 +255,17 @@ TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
     floor.halfExtentZ = 100.0f;
     scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
     ReleaseRock(*rock);
-    const GL::Level::LaunchEffects* effects =
-        NS::Obj::Cast<GL::Level::LaunchEffects>(rock->FindSubObj("LaunchEffects"));
-    ASSERT_NE(effects, nullptr);
+    const NS::Obj::EffectKeeper* keeper = rock->GetEffectKeeper();
+    ASSERT_NE(keeper, nullptr);
     bool landed = false;
     for (int step = 0; step < 100 && !landed; ++step)
     {
         rock->Update();
-        for (const GL::Player::EffectLayerRecord& record : effects->Layers().Records())
+        for (const NS::Obj::EffectRecord& record : keeper->Records())
         {
             if (record.name == "launch.landDust")
             {
-                EXPECT_EQ(record.startStep, effects->Layers().Step());
+                EXPECT_EQ(record.startStep, keeper->Step());
                 EXPECT_FALSE(rock->IsArc());
                 landed = true;
             }

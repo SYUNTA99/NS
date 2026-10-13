@@ -13,6 +13,7 @@
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <cmath>
@@ -116,9 +117,12 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnSubObject)
     ASSERT_NE(effects, nullptr);
     effects->BeginTrail(GL::Level::HitTier::Center, 1.0f, 1.0f, {0.0f, 0.0f, 1.0f});
     effects->NotifyLanding({}, {0.0f, 1.0f, 0.0f});
-    effects->BeginStep();
-    effects->BeginStep();
-    const GL::Player::EffectLayerRecord& dust = effects->Layers().Records().back();
+    NS::Obj::EffectKeeper* keeper = rock->GetEffectKeeper();
+    ASSERT_NE(keeper, nullptr);
+    keeper->BeginStep();
+    keeper->BeginStep();
+    ASSERT_FALSE(keeper->Records().empty());
+    const NS::Obj::EffectRecord& dust = keeper->Records().back();
     EXPECT_EQ(dust.name, "launch.landDust");
     ASSERT_TRUE(dust.endStep.has_value());
     EXPECT_EQ(*dust.endStep - dust.startStep, 2);

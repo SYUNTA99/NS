@@ -7,6 +7,7 @@
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
 
 #include <algorithm>
@@ -76,6 +77,7 @@ namespace GL::Level
         NS::Obj::SphereCollision* sphere = CreateSubObj<NS::Obj::SphereCollision>(CollisionSlot());
         m_params = CreateSubObj<MapObjParams>("Params");
         m_hitZones = CreateSubObj<HitZones>("HitZones");
+        (void)CreateSubObj<NS::Obj::EffectKeeper>(EffectSlot());
         m_effects = CreateSubObj<LaunchEffects>("LaunchEffects");
         // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
         NS::Obj::FollowHitSensor* bodySensor = CreateSubObj<NS::Obj::FollowHitSensor>(BodySensorSlot(), [sphere] {
@@ -104,14 +106,6 @@ namespace GL::Level
     bool MapObj::IsArc() const noexcept
     {
         return IsFlying() && m_motion.Machine().IsCurrent<ArcState>();
-    }
-
-    void MapObj::ObserveStep()
-    {
-        if (m_effects->IsActive())
-        {
-            m_effects->BeginStep();
-        }
     }
 
     void MapObj::BodyStep()

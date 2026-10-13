@@ -3,7 +3,6 @@
 #include <string>
 
 #include "Game/Level/HitTier.h"
-#include "Game/Player/EffectLayerList.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/SubObject.h"
 
@@ -17,8 +16,8 @@ namespace GL::Level
     //! @brief 押し飛ばされた物が自分で出す飛び出しの尾と、床に落ちた所の粉。置物に載せる
     //! @details 受け持つ層の名前は launch. で始まる。飛んでいる自分の後ろへ尾を付けていき、曲線を離れたフレームで消す
     //! 尾の色は当たりの段、残る長さは飛ばしの比、粉の大きさは威力と自分の重さで決める
-    //! 描画の無い世界でも記録は残し、試しは Layers を読む
-    //! MapObj の観測の段 (ObserveStep) が発光の歩を始め、見た目の段 (VisualStep) が進める。
+    //! 記録は持ち主の EffectKeeper に残る。描画の無い世界でも残り、試しはそれを読む
+    //! MapObj の見た目の段 (VisualStep) が進める。
     //! 尾を出す BeginTrail は自機の段に届く放しの知らせの中で走り、置物が自分を動かす Triggers の段より前なので、
     //! 尾の頭は放した時の速度で 1 フレーム先へ置く
     class LaunchEffects : public NS::Obj::SubObject
@@ -29,8 +28,6 @@ namespace GL::Level
         //! 同じ置物の飛び方を控え、描画のある世界なら層の絵を読み込む
         void OnStart() override;
 
-        //! 記録のフレームを 1 つ進め、止めると決めたフレームに来た層を止める
-        void BeginStep();
         //! 曲線を飛んでいる間は尾の頭を自分の位置へ付けていき、曲線を離れたら尾を消す
         void OnUpdate() override;
 
@@ -47,9 +44,6 @@ namespace GL::Level
         void NotifyLanding(const NS::Vector3& position, const NS::Vector3& normal);
         //! 出ている尾を消す。粉は出さない
         void CancelTrail();
-
-        //! 出すと決めた層の記録
-        [[nodiscard]] const GL::Player::EffectLayerList& Layers() const noexcept { return m_layers; }
 
         //! 出ている尾が残るフレーム数。尾が無ければ 0
         [[nodiscard]] int TrailFrames() const noexcept { return m_trailFrames; }
@@ -84,9 +78,8 @@ namespace GL::Level
         float m_landDustPerRootMass = 0.4f;
         float m_landDustPerPower = 0.5f;
         // 尾を消し、床に落ちていればその場へ粉を出す
-        void EndTrail(NS::Gfx::EffectScene* effects);
+        void EndTrail();
 
-        GL::Player::EffectLayerList m_layers;
         MapObj* m_body = nullptr;
         std::uint32_t m_trail = 0;                 // 飛び出しの尾。消したら 0
         int m_trailStartStep = 0;                  // 尾を出したフレーム。このフレームは出した姿のまま

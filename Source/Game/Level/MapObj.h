@@ -49,8 +49,6 @@ namespace GL::Level
 
     protected:
         void OnInit() override;
-        //! 発光の層の歩を始める
-        void ObserveStep() override;
         //! 当たりの球が動いていれば物理へ置き直す
         void BodyStep() override;
         //! 発光の層を進める。HitReaction は進めない
