@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 
 // シーン 1 つの JSON 文書と、その読み書き・読込時の整え
 // 実体は Scene と配置物だけで、実体でないシーンの姿 (ファイル・プレイ開始時の凍結) はこの JSON で持つ
@@ -54,6 +55,9 @@ namespace NS::Obj
 
     //! @details 未割当と重複には新 id を振り、nextObjectId を既存最大 id より先へ進める。重複は先勝ち
     void EnsureUniqueObjectIds(nlohmann::json& scene);
+
+    //! 未使用の名前を返す。空なら Object、重複したら _1、_2 と番号を付ける
+    [[nodiscard]] std::string MakeUniqueActorName(std::string_view base, const std::unordered_set<std::string>& used);
 
     //! ファイルの参照は名前で書くので、名前が 1 つに決まることを保存と読込が当てにする
     void EnsureUniqueObjectNames(nlohmann::json& scene);

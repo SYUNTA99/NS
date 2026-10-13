@@ -1,7 +1,6 @@
 ﻿#include "NSlib/Object/Scene/SceneJson.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/ActorName.h"
 #include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Windows/Filesystem.h"
@@ -288,6 +287,27 @@ namespace NS::Obj
         }
         SetSceneJsonNextObjectId(scene, nextObjectId);
         EnsureUniqueObjectNames(scene);
+    }
+
+    std::string MakeUniqueActorName(std::string_view base, const std::unordered_set<std::string>& used)
+    {
+        std::string name{"Object"};
+        if (!base.empty())
+        {
+            name = std::string{base};
+        }
+        if (!used.contains(name))
+        {
+            return name;
+        }
+        for (std::uint32_t n = 1;; ++n)
+        {
+            std::string candidate = name + "_" + std::to_string(n);
+            if (!used.contains(candidate))
+            {
+                return candidate;
+            }
+        }
     }
 
     void EnsureUniqueObjectNames(nlohmann::json& scene)
