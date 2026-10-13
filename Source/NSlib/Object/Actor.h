@@ -23,6 +23,11 @@
 #include <utility>
 #include <vector>
 
+namespace NS::Gfx
+{
+    class EffectScene;
+}
+
 namespace NS::Obj
 {
     class HitSensor;
@@ -77,7 +82,9 @@ namespace NS::Obj
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
         [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
         [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
-        [[nodiscard]] NS::Gfx::EffectScene* GetEffectScene() const noexcept override;
+        //! 出したエフェクトを覚える部品。枠 Effect を作っていなければ nullptr
+        [[nodiscard]] EffectKeeper* GetEffectKeeper() const noexcept override { return m_effectKeeper; }
+        [[nodiscard]] NS::Gfx::EffectScene* GetEffectScene() const noexcept;
 
         //! TransformSubObject が持つ Root Transform。階層構築は SetParent で
         [[nodiscard]] Transform& Root() noexcept { return *m_transform; }
@@ -130,8 +137,6 @@ namespace NS::Obj
         [[nodiscard]] const HitSensor* AttackSensorSubObj() const noexcept { return m_attackSensor; }
         [[nodiscard]] HitReaction* HitReactionSubObj() noexcept { return m_hitReaction; }
         [[nodiscard]] const HitReaction* HitReactionSubObj() const noexcept { return m_hitReaction; }
-        //! 出したエフェクトを覚える部品。枠 Effect を作っていなければ nullptr
-        [[nodiscard]] EffectKeeper* GetEffectKeeper() const noexcept { return m_effectKeeper; }
 
         //! @brief Update を呼ばれる段を返す
         //! @return 既定は Triggers

@@ -4,12 +4,11 @@
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/IUse/IUseCollision.h"
-#include "NSlib/Object/IUse/IUseEffect.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Reflection/Curve.h"
-#include "NSlib/Object/System/HitSensorDirector.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/System/HitSensorDirector.h"
 #include "NSlib/Object/System/SceneRenderer.h"
 #include "NSlib/Object/System/SceneSystemHolder.h"
 #include "NSlib/Object/System/UIDirector.h"
@@ -45,13 +44,9 @@ namespace NS::Obj
     //! OverlayRenderer の自己登録先も兼ねる live な Actor/SubObject が唯一の表現で、JSON は実体でない姿
     //! (ファイル・凍結・undo の控え) にだけ使う 配置物は TypeRegistry と ResolveAssets
     //! で自力で組む。寿命は SceneManager が unique_ptr
-    //! で所有する 窓口 (カメラ・シーンに 1 つの物・地形の当たり・エフェクト) の出所。Actor と UIActor はここへ繋ぐ
+    //! で所有する 窓口 (カメラ・シーンに 1 つの物・地形の当たり) の出所。Actor はここへ繋ぐ
     //! 依存: ActorList / SceneJson / ObjectBuilder / TypeRegistry
-    class Scene : public NS::NonCopyable,
-                  public IUseCamera,
-                  public IUseSceneSystem,
-                  public IUseCollision,
-                  public IUseEffect
+    class Scene : public NS::NonCopyable, public IUseCamera, public IUseSceneSystem, public IUseCollision
     {
     public:
         Scene();
@@ -92,7 +87,7 @@ namespace NS::Obj
         [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
 
         //! エフェクトの EffectScene。描画を持たないシーン (試し) では nullptr
-        [[nodiscard]] NS::Gfx::EffectScene* GetEffectScene() const noexcept override;
+        [[nodiscard]] NS::Gfx::EffectScene* GetEffectScene() const noexcept;
 
         //! シーンのヒットセンサーの調べ役。HitSensor が OnStart で入り OnEndPlay で出る
         [[nodiscard]] HitSensorDirector& HitSensors() noexcept { return m_hitSensors; }

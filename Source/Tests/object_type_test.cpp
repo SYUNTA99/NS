@@ -1,4 +1,5 @@
 #include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/UIActor.h"
 
@@ -24,6 +25,10 @@ static_assert(!std::is_base_of_v<NS::Obj::Actor, NS::Obj::UIActor>);
 static_assert(!std::is_base_of_v<NS::Obj::UIActor, NS::Obj::Actor>);
 static_assert(!std::is_base_of_v<NS::Obj::IUseCamera, NS::Obj::UIActor>);
 static_assert(!std::is_base_of_v<NS::Obj::IUseSceneSystem, NS::Obj::UIActor>);
+// エフェクトの窓口は保持役の枠を持つ個体だけが継ぐ。シーンは出す先の EffectScene を持つだけで継がない
+static_assert(std::is_base_of_v<NS::Obj::IUseEffect, NS::Obj::Actor>);
+static_assert(!std::is_base_of_v<NS::Obj::IUseEffect, NS::Obj::Scene>);
+static_assert(!std::is_base_of_v<NS::Obj::IUseEffect, NS::Obj::UIActor>);
 static_assert(!k_HasObjectName<NS::Obj::UIActor>);
 static_assert(!k_HasPersistentId<NS::Obj::SubObject>);
 static_assert(k_HasObjectName<NS::Obj::SubObject>);
