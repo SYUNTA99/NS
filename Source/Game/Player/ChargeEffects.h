@@ -93,15 +93,15 @@ namespace GL::Player
         NS::Gfx::EffectPlayDesc PlayDesc(const NS::Vector3& position,
                                          const NS::Quaternion& rotation,
                                          float charge01) const noexcept;
-        void ForgetEndedLayers() noexcept;
+        void ForgetEndedEffects() noexcept;
         void StartPress(const NS::Vector3& center);
         void StartCharging(const NS::Vector3& center);
         void StartFullFlash(const NS::Vector3& center);
         // 紫の揺れが端へ来たフレームに、その側へ火花を散らす
         void PlaySwaySparks(const NS::Vector3& center);
         // 押している間の層を玉へ付いていかせ、溜め量を渡す
-        void FollowHeldLayers(const NS::Vector3& center, float charge01) noexcept;
-        void ClearHeldLayers() noexcept;
+        void FollowHeldEffects(const NS::Vector3& center, float charge01) noexcept;
+        void ClearHeldEffects() noexcept;
         void StartRelease(const NS::Vector3& center);
         void UpdateTrail(const NS::Vector3& center, bool slamming) noexcept;
         void StopTrailRoot() noexcept;
@@ -112,7 +112,7 @@ namespace GL::Player
         void SetInput(std::uint32_t id, int index, float value) const noexcept;
         // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ Player::AimDirection
         [[nodiscard]] NS::Vector3 HeldAimDirection() const noexcept;
-        void StopLayer(std::uint32_t& id) noexcept;
+        void StopAndClear(std::uint32_t& id) noexcept;
         // 跳ね返りか破壊が起きたか、触れる見込みが m_burstClearFrames 以内か
         [[nodiscard]] bool IsContactNear() const noexcept;
 

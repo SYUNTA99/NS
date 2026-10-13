@@ -286,7 +286,7 @@ namespace GL::Player
         void PlaySparks();
         void PlayEmbers();
         // 前の当たりの層のうち、ここが消える時を持っている物を今のフレームで畳む
-        void FinishHeldLayers();
+        void FinishHeldEffects();
         // 飛びの絵の頭に反動の尾を出す
         void BeginFlight();
         // 反動の尾を自機へ付いていかせる。頂点で親を止める

@@ -57,7 +57,7 @@ namespace GL::Player
         {
             return;
         }
-        ForgetEndedLayers();
+        ForgetEndedEffects();
 
         const GL::Level::ImpactInputJudge& judge = m_actor->ChargeJudge();
         const NS::Vector3 center = RootTransform().Position();
@@ -82,7 +82,7 @@ namespace GL::Player
         }
         if (held)
         {
-            FollowHeldLayers(center, judge.Charge01());
+            FollowHeldEffects(center, judge.Charge01());
             if (m_actor->ChargeSwayReachedEdge())
             {
                 PlaySwaySparks(center);
@@ -90,7 +90,7 @@ namespace GL::Player
         }
         else if (m_wasHeld)
         {
-            ClearHeldLayers();
+            ClearHeldEffects();
         }
 
         const bool slamming = m_actor->IsBodySlamming();
@@ -103,7 +103,7 @@ namespace GL::Player
         // 外れになる当たりも、触れる見込みが近づいたら消し、触れた瞬間の前を光で飾らない
         if (m_burst != 0 && m_resolver != nullptr && (m_resolver->IsBeforeContact() || IsContactNear()))
         {
-            StopLayer(m_burst);
+            StopAndClear(m_burst);
         }
 
         m_wasHeld = held;
@@ -112,9 +112,9 @@ namespace GL::Player
 
     void ChargeEffects::OnEndPlay()
     {
-        ClearHeldLayers();
-        StopLayer(m_trail);
-        StopLayer(m_burst);
+        ClearHeldEffects();
+        StopAndClear(m_trail);
+        StopAndClear(m_burst);
         m_wasHeld = false;
         m_wasSlamming = false;
         m_trailAwaitsFreeze = false;
@@ -143,7 +143,7 @@ namespace GL::Player
         return NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, yaw);
     }
 
-    void ChargeEffects::ForgetEndedLayers() noexcept
+    void ChargeEffects::ForgetEndedEffects() noexcept
     {
         const auto forgetIfEnded = [this](std::uint32_t& id) {
             if (id == 0)
@@ -165,8 +165,8 @@ namespace GL::Player
     void ChargeEffects::StartPress(const NS::Vector3& center)
     {
         // 前の押しの層が残っていれば、新しい押しの層と重ねない
-        StopLayer(m_curl);
-        StopLayer(m_spin);
+        StopAndClear(m_curl);
+        StopAndClear(m_spin);
         m_fullShown = false;
         m_spinDegrees = 0.0f;
 
@@ -174,13 +174,13 @@ namespace GL::Player
         NS::Obj::StopEffectAfter(*m_actor, m_curl, std::max(m_curlSteps, 1));
         m_spin = NS::Obj::PlayEffect(*m_actor, m_spinAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
         // 玉を包む光は押したフレームから出し、丸まりの殻が消えた後も放すまで途切れさせない
-        StopLayer(m_gather);
+        StopAndClear(m_gather);
         m_gather = NS::Obj::PlayEffect(*m_actor, m_gatherAsset, PlayDesc(center, YawToward(HeldAimDirection()), 0.0f));
     }
 
     void ChargeEffects::StartCharging(const NS::Vector3& center)
     {
-        StopLayer(m_grind);
+        StopAndClear(m_grind);
         const float charge01 = m_actor->ChargeJudge().Charge01();
         m_grind =
             NS::Obj::PlayEffect(*m_actor, m_grindAsset, PlayDesc(center, YawToward(HeldAimDirection()), charge01));
@@ -190,7 +190,7 @@ namespace GL::Player
     {
         m_fullShown = true;
         m_fullStep = NS::Obj::EffectStep(*m_actor);
-        StopLayer(m_full);
+        StopAndClear(m_full);
         m_full = NS::Obj::PlayEffect(*m_actor, m_fullAsset, PlayDesc(center, NS::Quaternion::Identity, 1.0f));
         NS::Obj::StopEffectAfter(*m_actor, m_full, std::max(m_fullFlashSteps, 1));
     }
@@ -227,7 +227,7 @@ namespace GL::Player
         static_cast<void>(NS::Obj::PlayEffect(*m_actor, m_swaySparksAsset, sparks));
     }
 
-    void ChargeEffects::FollowHeldLayers(const NS::Vector3& center, float charge01) noexcept
+    void ChargeEffects::FollowHeldEffects(const NS::Vector3& center, float charge01) noexcept
     {
         if (m_appearance != nullptr)
         {
@@ -249,16 +249,16 @@ namespace GL::Player
         SetInput(m_gather, m_fullFramesInput, static_cast<float>(m_framesSinceFull));
     }
 
-    void ChargeEffects::ClearHeldLayers() noexcept
+    void ChargeEffects::ClearHeldEffects() noexcept
     {
         // 空中の粉も溜まる光の点も同じフレームに消す。放した後に溜めの層を残さない
         // 通常突進は押した次のフレームに放すので、丸まりの殻もまだ出ている。消さないと放した後に足元の輪が残る
         // 溜めきりの次のフレームに放すと閃きもまだ出ている。残すと放した後の縦の柱が溜めの層として写る
-        StopLayer(m_curl);
-        StopLayer(m_spin);
-        StopLayer(m_grind);
-        StopLayer(m_gather);
-        StopLayer(m_full);
+        StopAndClear(m_curl);
+        StopAndClear(m_spin);
+        StopAndClear(m_grind);
+        StopAndClear(m_gather);
+        StopAndClear(m_full);
     }
 
     void ChargeEffects::StartRelease(const NS::Vector3& center)
@@ -397,7 +397,7 @@ namespace GL::Player
         return frames >= 0 && frames <= std::max(m_burstClearFrames, 0);
     }
 
-    void ChargeEffects::StopLayer(std::uint32_t& id) noexcept
+    void ChargeEffects::StopAndClear(std::uint32_t& id) noexcept
     {
         if (id == 0)
         {

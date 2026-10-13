@@ -275,7 +275,7 @@ namespace GL::Player
     void ImpactEffects::BeginHit(const GL::Level::ImpactRecord& impact)
     {
         // 前の当たりの層が残っていても、次の核は当たりの絵の頭から出す。前の粉は親を止めて短くする
-        FinishHeldLayers();
+        FinishHeldEffects();
         // 頂点の前に次に当てたら、その反動はここで終わる。尾は輪ごと消す
         if (m_flight.reboundTrail != 0)
         {
@@ -707,7 +707,7 @@ namespace GL::Player
         return pose->position;
     }
 
-    void ImpactEffects::FinishHeldLayers()
+    void ImpactEffects::FinishHeldEffects()
     {
         if (!m_plan.active)
         {
