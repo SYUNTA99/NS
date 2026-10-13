@@ -1,7 +1,7 @@
 ﻿#include "NSlib/Object/Scene/SceneJson.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/ObjectName.h"
+#include "NSlib/Object/ActorName.h"
 #include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Windows/Filesystem.h"
@@ -305,7 +305,7 @@ namespace NS::Obj
         }
         for (nlohmann::json* object : pending)
         {
-            const std::string name = MakeUniqueObjectName(ObjectJsonName(*object), used);
+            const std::string name = MakeUniqueActorName(ObjectJsonName(*object), used);
             SetObjectJsonName(*object, name);
             used.insert(name);
         }

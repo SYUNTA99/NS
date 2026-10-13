@@ -2,9 +2,9 @@
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/SubObjects/Collision.h"
-#include "NSlib/Object/ObjectName.h"
+#include "NSlib/Object/ActorName.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/SubObjects/Collision.h"
 #include "NSlib/Physics/PhysicsScene.h"
 
 #include <algorithm>
@@ -194,8 +194,7 @@ namespace NS::Obj
         if (m_updating)
         {
             NS_LOG_ERROR(
-                Scene,
-                "ActorList::RemoveKilledTransients: 段の更新の最中に呼ばれたので一時オブジェクトの解放を断った");
+                Scene, "ActorList::RemoveKilledTransients: 段の更新の最中に呼ばれたので一時オブジェクトの解放を断った");
             return;
         }
         const std::size_t removed = std::erase_if(m_objects, [](const std::unique_ptr<Actor>& obj) {
@@ -425,7 +424,7 @@ namespace NS::Obj
                 used.insert(existing->Name());
             }
         }
-        obj.SetName(MakeUniqueObjectName(name, used));
+        obj.SetName(MakeUniqueActorName(name, used));
     }
 
     void ActorList::Clear()

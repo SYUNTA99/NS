@@ -1,10 +1,10 @@
-#include "NSlib/Object/ObjectName.h"
+#include "NSlib/Object/ActorName.h"
 
 #include <cstdint>
 
 namespace NS::Obj
 {
-    std::string MakeUniqueObjectName(std::string_view base, const std::unordered_set<std::string>& used)
+    std::string MakeUniqueActorName(std::string_view base, const std::unordered_set<std::string>& used)
     {
         std::string name{"Object"};
         if (!base.empty())
