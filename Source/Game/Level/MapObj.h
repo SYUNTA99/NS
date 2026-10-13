@@ -43,11 +43,11 @@ namespace GL::Level
         [[nodiscard]] NS::Vector3 Velocity() const noexcept { return m_velocity; }
         [[nodiscard]] const MapObjParams& Params() const noexcept { return *m_params; }
 
+    protected:
         //! 体当たりの問い・止め・明けと、コースのやり直しに応じる
         //! やり直しでは、プレイ開始時の凍結の自分の位置と向きへ置かれた物として戻る
         bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
-    protected:
         void OnInit() override;
         //! 当たりの球が動いていれば物理へ置き直す
         void BodyStep() override;

@@ -4,11 +4,11 @@
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Message/Message.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/TransformSubObject.h"
-#include "NSlib/Object/Message.h"
 #include "NSlib/Object/System/HitSensorDirector.h"
-#include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Physics/Capsule.h"
 
 #include <gtest/gtest.h>

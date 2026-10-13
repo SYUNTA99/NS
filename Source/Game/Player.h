@@ -361,10 +361,6 @@ public:
     //! コースの進行役を用意する。全ての配置物が揃った後に呼ばれる
     void InitAfterPlacement() override;
 
-    //! @brief 即死・ゴール・コースのやり直し・操作の停止の知らせに応じる
-    //! @details 操作の停止は PlayerInput の止め (SetLocked) へ写し、止める時は CancelCharge で溜めを捨てる
-    bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
-
     //! @brief プレイ開始時の凍結 (baseline) の自分の位置へ戻り、動きと命を最初の状態へ戻す
     //! @details 凍結に自分が居なければ、DefaultSpawnPosition の位置へ戻す
     void RestartFrom(const nlohmann::json& baseline) noexcept;
@@ -386,6 +382,10 @@ public:
     [[nodiscard]] int Health() const noexcept;
 
 protected:
+    //! @brief 即死・ゴール・コースのやり直し・操作の停止の知らせに応じる
+    //! @details 操作の停止は PlayerInput の止め (SetLocked) へ写し、止める時は CancelCharge で溜めを捨てる
+    bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
+
     void OnInit() override;
     //! PlayerInput の体当たりの押しと狙いの観測 (ObserveCharge)、
     //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
@@ -435,10 +435,10 @@ private:
     //! 反動の記録
     struct ReboundRecord
     {
-        NS::Vector3 direction{};                                  // 最後に始めた反動の水平の向き。正規化済み
-        float spinSpeed = 0.0f;                                   // 最後に始めた反動の玉の回る速さ (度/秒)
+        NS::Vector3 direction{};                            // 最後に始めた反動の水平の向き。正規化済み
+        float spinSpeed = 0.0f;                             // 最後に始めた反動の玉の回る速さ (度/秒)
         std::optional<GL::Player::MissTumble> missTumble{}; // 最後に始めた反動の外れの回り方
-        std::uint32_t count = 0;                                  // 反動を始めた回数
+        std::uint32_t count = 0;                            // 反動を始めた回数
     };
 
     //! 外れの着地からこすって止まる間の記録。書くのは BeginSkid と AdvanceSkid
@@ -453,11 +453,11 @@ private:
     struct ChargeRecord
     {
         GL::Level::ImpactInputJudge judge{};           // 通常突進と溜めの判定
-        bool observedHeld = false;                           // 観測の段で読んだ体当たりの押し
+        bool observedHeld = false;                     // 観測の段で読んだ体当たりの押し
         GL::Level::AimLine observedAimLine{};          // 観測の段で引いた狙いの線
-        bool observedHasAimLine = false;                     // 観測の段で狙いの線を引けたか
+        bool observedHasAimLine = false;               // 観測の段で狙いの線を引けたか
         GL::Level::SlamLineTarget observedAimTarget{}; // 観測の段で見つけた狙う相手
-        bool observedHasAimTarget = false;                   // 観測の段で狙う相手が見つかったか
+        bool observedHasAimTarget = false;             // 観測の段で狙う相手が見つかったか
         // 押している間の狙いの線。hasAimLine が偽の間は読まない
         GL::Level::AimLine aimLine{};
         bool hasAimLine = false;

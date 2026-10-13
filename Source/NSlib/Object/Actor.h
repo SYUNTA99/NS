@@ -167,16 +167,6 @@ namespace NS::Obj
         //! 追従カメラに追われる時の窓口。追われない物は nullptr
         [[nodiscard]] virtual const ICameraTarget* GetCameraTarget() const noexcept { return nullptr; }
 
-        //! @brief 知らせを受け取る。応じた場合 true、知らない知らせと応じなかった知らせは false
-        //! @details sender と receiver は知らせを運んだセンサー。センサーを介さない知らせでは nullptr
-        virtual bool ReceiveMsg(const Message& msg, HitSensor* sender, HitSensor* receiver)
-        {
-            (void)msg;
-            (void)sender;
-            (void)receiver;
-            return false;
-        }
-
         [[nodiscard]] Actor* Parent() const noexcept { return m_parent; }
         //! parent==nullptr で root 化。Transform の親子関係も同期更新する
         void SetParent(Actor* parent) noexcept;
@@ -208,6 +198,17 @@ namespace NS::Obj
         }
 
     protected:
+        //! @brief 知らせを受け取る。応じた場合 true、知らない知らせと応じなかった知らせは false
+        //! @details 呼べるのは SendMsg と SendMsgToActor だけ。sender と receiver は知らせを運んだセンサーで、
+        //! センサーを介さない知らせでは nullptr
+        virtual bool ReceiveMsg(const Message& msg, HitSensor* sender, HitSensor* receiver)
+        {
+            (void)msg;
+            (void)sender;
+            (void)receiver;
+            return false;
+        }
+
         //! @brief 部品を作る。Init から 1 回だけ呼ばれる。既定は何もしない
         //! @details 部品は CreateSubObj で作る。基底の枠の型を替える派生は、基底の OnInit を呼ばずに自分で作る
         //! 所属の Scene は入る道によって付いていないので、ここでは読まない
@@ -308,6 +309,8 @@ namespace NS::Obj
 
     private:
         friend class ActorList;
+        friend bool SendMsg(const Message& msg, HitSensor& receiver, HitSensor* sender);
+        friend bool SendMsgToActor(const Message& msg, Actor& receiver);
         //! @brief 補間の前の値として、根の Transform と Model の今の値を控える
         //! @details ActorList::SnapshotObjects が固定ステップの頭で全ての Actor に呼ぶ。世界を止めている間も呼ばれる
         void SnapshotForInterpolation() noexcept;

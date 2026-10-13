@@ -5,7 +5,7 @@
 #include "Game/Level/LaunchArc.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Message.h"
+#include "NSlib/Object/Message/Message.h"
 #include "NSlib/Object/ObjectJson.h"
 
 #include <cstdint>

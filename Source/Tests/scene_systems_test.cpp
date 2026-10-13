@@ -1,15 +1,18 @@
 #include "Game/Level/CourseDirector.h"
+#include "Game/Level/MapObj.h"
+#include "Game/Player.h"
 #include "NSlib/Graphics/DebugDraw.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
+#include "NSlib/Object/Message/Message.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/SubObject.h"
+#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/System/HitScreenDirector.h"
 #include "NSlib/Object/System/HitSensorDirector.h"
 #include "NSlib/Object/System/PadRumbleDirector.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/System/SceneRenderer.h"
-#include "NSlib/Object/SubObject.h"
-#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/System/SceneSystem.h"
 #include "NSlib/Object/System/UIDirector.h"
 #include "NSlib/Object/UIActor.h"
@@ -43,6 +46,14 @@ static_assert(CanAddSystemTick<NS::Obj::UIDirector>);
 static_assert(!CanAddSystemTick<NS::Obj::Actor>);
 static_assert(!CanAddSystemTick<NS::Obj::UIActor>);
 static_assert(!CanAddTickerDirectly<NS::Obj::SceneSystem>);
+
+// 知らせを受ける口は送る関数だけが呼べる
+template <class T>
+concept CanReceiveMsgDirectly =
+    requires(T& actor, const NS::Obj::Message& msg) { actor.ReceiveMsg(msg, nullptr, nullptr); };
+static_assert(!CanReceiveMsgDirectly<NS::Obj::Actor>);
+static_assert(!CanReceiveMsgDirectly<Player>);
+static_assert(!CanReceiveMsgDirectly<GL::Level::MapObj>);
 
 namespace
 {

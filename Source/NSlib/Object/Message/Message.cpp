@@ -1,4 +1,4 @@
-#include "NSlib/Object/Message.h"
+#include "NSlib/Object/Message/Message.h"
 
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
