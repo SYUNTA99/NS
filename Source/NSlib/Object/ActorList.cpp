@@ -188,17 +188,16 @@ namespace NS::Obj
         }
     }
 
-    void ActorList::RemoveDisappearedTransients()
+    void ActorList::RemoveDestroyed()
     {
         if (m_updating)
         {
-            NS_LOG_ERROR(
-                Scene,
-                "ActorList::RemoveDisappearedTransients: 段の更新の最中に呼ばれたので一時オブジェクトの解放を断った");
+            NS_LOG_ERROR(Scene,
+                         "ActorList::RemoveDestroyed: 段の更新の最中に呼ばれたので Destroy した個体の解放を断った");
             return;
         }
         const std::size_t removed = std::erase_if(m_objects, [](const std::unique_ptr<Actor>& obj) {
-            if (!obj->IsTransient() || obj->IsAppeared())
+            if (!obj->IsPendingDestroy())
             {
                 return false;
             }

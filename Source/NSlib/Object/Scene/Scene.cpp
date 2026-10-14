@@ -486,7 +486,7 @@ namespace NS::Obj
                 Fade().Advance(NS::OS::FrameTimer::FixedDelta());
             }
         }
-        m_objects.RemoveDisappearedTransients();
+        m_objects.RemoveDestroyed();
         // 止めは世界を進めた歩で数える。遅い世界でも、止めた歩の数だけ自機が進む
         if (worldStep && m_othersHeldSteps > 0)
         {

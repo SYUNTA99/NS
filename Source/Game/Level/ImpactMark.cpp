@@ -68,7 +68,7 @@ namespace GL::Level
         Root().SetScale(NS::Vector3{size, 1.0f, size});
         if (t >= 1.0f)
         {
-            Disappear();
+            Destroy();
         }
     }
 } // namespace GL::Level

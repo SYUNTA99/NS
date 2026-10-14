@@ -62,12 +62,19 @@ namespace NS::Obj
         NS_REFLECT_NONE(Actor, Object)
 
         //! @brief 世界に出す。更新の段・描画・当たり・センサーへ登録する。出ていれば何もしない
+        //! @details Destroy の後に呼ぶのは呼び手のバグで、NS_ASSERT が止める。出荷版では何もしない
         void Appear();
         //! @brief 世界から外す。出ていなければ何もしない
         //! @details 解放はしないので Appear で戻せる。子の値は触らないので、親を戻せば子も一緒に戻る
         void Disappear() noexcept;
+        //! @brief 世界から外し、段を回し終えた後に解放させる。2 回目からは何もしない
+        //! @details その場では解放しないので、同じ段の中では指したまま読める。やり直しの知らせは
+        //! 届かず戻らないので、戻す物は Disappear を使う。子は解放せず、根になって残る
+        void Destroy() noexcept;
         //! この配置物自身が世界に出ているか。親の状態は含まない
         [[nodiscard]] bool IsAppeared() const noexcept { return m_appeared; }
+        //! Destroy を呼ばれて、段の後の解放を待っている場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsPendingDestroy() const noexcept { return m_pendingDestroy; }
 
         //! 所有 Scene。Scene attach 前 / 破棄後は nullptr
         [[nodiscard]] Scene* OwningScene() const noexcept { return m_scene; }
@@ -322,6 +329,7 @@ namespace NS::Obj
         std::string m_name;
         Scene* m_scene = nullptr; // 所有 Scene、attach 前後は nullptr
         bool m_appeared = false;
+        bool m_pendingDestroy = false;
         std::vector<std::unique_ptr<SubObject>> m_subObjects; // 根と作った部品の全部。作った順で、壊す時は逆順
         std::vector<SubObject*> m_subObjOrder;
         TransformSubObject* m_rootSubObj = nullptr;
