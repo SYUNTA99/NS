@@ -13,6 +13,9 @@ namespace NS::Obj
     void Light::OnInit()
     {
         (void)CreateSubObj(m_light, "DirectionalLight");
+        NS::Vector3 initialDirection{-0.3f, -1.0f, -0.2f};
+        initialDirection.Normalize();
+        Root().SetRotation(NS::Quaternion::FromToRotation(NS::Vector3::UnitZ, initialDirection));
     }
 
     NS_PLACEABLE(Light, "ライト")

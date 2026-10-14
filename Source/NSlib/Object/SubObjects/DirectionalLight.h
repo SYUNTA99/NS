@@ -9,8 +9,9 @@ namespace NS::Obj
     class DirectionalLight : public SubObject
     {
     public:
-        //! 平行光の向き。正規化前で良く、シェーダ側で正規化する
-        [[nodiscard]] const NS::Vector3& Direction() const noexcept { return m_direction; }
+        //! @brief 平行光の向き。持ち主の根の姿勢で +Z を回した、長さ 1 の向き
+        //! @details 向きの欄は持たない。エディタのギズモで個体を回すと光も回る
+        [[nodiscard]] NS::Vector3 Direction() const noexcept;
         //! 平行光の色。1.0 超の HDR 値も許容する
         [[nodiscard]] const NS::Vector3& Color() const noexcept { return m_color; }
         //! 空側の環境光。上を向いた面へ回る
@@ -28,7 +29,6 @@ namespace NS::Obj
         void OnEndPlay() override;
 
         NS_REFLECT_BEGIN(DirectionalLight, SubObject)
-        NS_REFLECT_FIELD(m_direction, "方向")
         NS_REFLECT_FIELD(m_color, "色")
         NS_REFLECT_FIELD(m_ambient, "環境光")
         NS_REFLECT_FIELD(m_ground, "地面環境光")
@@ -36,7 +36,6 @@ namespace NS::Obj
         NS_REFLECT_END()
 
     private:
-        NS::Vector3 m_direction{-0.3f, -1.0f, -0.2f};
         NS::Vector3 m_color{1.0f, 1.0f, 1.0f};
         NS::Vector3 m_ambient{0.30f, 0.34f, 0.40f};
         NS::Vector3 m_ground{0.24f, 0.21f, 0.18f};

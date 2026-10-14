@@ -96,6 +96,28 @@ TEST(ActorClass, LightHasDirectionalLight)
     EXPECT_NE(NS::Obj::Cast<NS::Obj::DirectionalLight>(light.FindSubObj("DirectionalLight")), nullptr);
 }
 
+TEST(ActorClass, LightShinesAlongItsRotation)
+{
+    NS::Obj::Light light;
+    light.Init();
+    const NS::Obj::DirectionalLight* sun =
+        NS::Obj::Cast<NS::Obj::DirectionalLight>(light.FindSubObj("DirectionalLight"));
+    ASSERT_NE(sun, nullptr);
+
+    NS::Vector3 initial{-0.3f, -1.0f, -0.2f};
+    initial.Normalize();
+    EXPECT_NEAR(sun->Direction().x, initial.x, 1.0e-5f);
+    EXPECT_NEAR(sun->Direction().y, initial.y, 1.0e-5f);
+    EXPECT_NEAR(sun->Direction().z, initial.z, 1.0e-5f);
+
+    const NS::Quaternion turned = NS::Quaternion::CreateFromAxisAngle(NS::Vector3::UnitY, 1.0f);
+    light.Root().SetRotation(turned);
+    const NS::Vector3 expected = NS::Vector3::Transform(NS::Vector3::UnitZ, turned);
+    EXPECT_NEAR(sun->Direction().x, expected.x, 1.0e-5f);
+    EXPECT_NEAR(sun->Direction().y, expected.y, 1.0e-5f);
+    EXPECT_NEAR(sun->Direction().z, expected.z, 1.0e-5f);
+}
+
 TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
 {
     // 以前はシーンのデータが足していた体当たりと当たりの部品も、クラスが組み立てる
@@ -119,9 +141,8 @@ TEST(SensorKinds, SetKindIsSeenByIsKindOnlyForThatKind)
 {
     // 付けた種類にだけ真で、他の種類と未設定には偽
     NS::Obj::ShapeHitSensor sensor;
-    const GL::Level::SensorKind kinds[] = {GL::Level::SensorKind::PlayerBody,
-                                                 GL::Level::SensorKind::MapObjBody,
-                                                 GL::Level::SensorKind::Area};
+    const GL::Level::SensorKind kinds[] = {
+        GL::Level::SensorKind::PlayerBody, GL::Level::SensorKind::MapObjBody, GL::Level::SensorKind::Area};
     for (const GL::Level::SensorKind set : kinds)
     {
         GL::Level::SetSensorKind(sensor, set);
