@@ -3,7 +3,7 @@
 #include "Game/Level/MapObj.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 

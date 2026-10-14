@@ -12,7 +12,7 @@
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 
 #include <algorithm>
 

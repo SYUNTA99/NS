@@ -9,7 +9,7 @@
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/SubObjects/Animation.h"
 #include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 

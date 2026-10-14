@@ -2,7 +2,7 @@
 #include "Game/Player.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/SubObjects/PlayerInput.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "Tests/TestViewCamera.h"

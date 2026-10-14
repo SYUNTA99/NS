@@ -10,7 +10,7 @@
 #include "NSlib/Object/Object.h"
 #include "NSlib/Object/StateMachine.h"
 #include "NSlib/Object/SubObject.h"
-#include "NSlib/Object/Transform.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/UpdatePhase.h"
 
 #include <concepts>
@@ -34,7 +34,6 @@ namespace NS::Obj
     class HitReaction;
     class Message;
     class Scene;
-    class TransformSubObject;
 
     //! @brief 基底の部品の枠。Actor の枠の関数だけが作り、CreateSubObj に渡す
     //! @details member は作った Actor の枠のメンバーを指すので、別の Actor へ渡さない
@@ -87,7 +86,7 @@ namespace NS::Obj
         //! 出したエフェクトを覚える部品。枠 Effect を作っていなければ nullptr
         [[nodiscard]] EffectKeeper* GetEffectKeeper() const noexcept override { return m_effectKeeper.get(); }
 
-        //! TransformSubObject が持つ Root Transform。階層構築は SetParent で
+        //! 根の部品 Transform。階層構築は SetParent で
         [[nodiscard]] Transform& Root() noexcept;
         [[nodiscard]] const Transform& Root() const noexcept;
         [[nodiscard]] IStateMachine* GetStateMachine() noexcept override;
@@ -302,7 +301,7 @@ namespace NS::Obj
         Scene* m_scene = nullptr; // 所有 Scene、attach 前後は nullptr
         bool m_appeared = false;
         bool m_pendingDestroy = false;
-        std::unique_ptr<TransformSubObject> m_transform;
+        std::unique_ptr<Transform> m_transform;
         std::unique_ptr<Model> m_model;
         std::unique_ptr<Animation> m_animation;
         std::unique_ptr<Shadow> m_shadow;

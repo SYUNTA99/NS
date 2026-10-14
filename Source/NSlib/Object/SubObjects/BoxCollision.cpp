@@ -4,7 +4,7 @@
 
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
-#include "NSlib/Object/Transform.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Physics/PhysicsScene.h"
 
 #include <cmath>

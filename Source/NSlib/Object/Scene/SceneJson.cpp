@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Reflection/SubObjectEntry.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>

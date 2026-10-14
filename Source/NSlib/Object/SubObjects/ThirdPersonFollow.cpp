@@ -5,7 +5,7 @@
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Transform.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Gamepad.h"
 #include "NSlib/Windows/Input.h"

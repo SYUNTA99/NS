@@ -4,7 +4,7 @@
 #include "NSlib/Object/System/HitScreenDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/HitReaction.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 
 #include <gtest/gtest.h>
 

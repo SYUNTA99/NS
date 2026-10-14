@@ -14,7 +14,7 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/AssetManager.h"
 #include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Filesystem.h"

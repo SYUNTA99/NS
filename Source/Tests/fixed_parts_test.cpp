@@ -12,7 +12,7 @@
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/SubObjects/PlayerInput.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 
 #include <gtest/gtest.h>
 
@@ -110,15 +110,26 @@ TEST(FixedParts, MemberOwnershipSupportsLookupLifecycleAndDestruction)
 TEST(FixedParts, TransformUsesTheSamePartLookupAndFieldEditing)
 {
     NS::Obj::Actor actor;
-    NS::Obj::TransformSubObject* transform = NS::Obj::Cast<NS::Obj::TransformSubObject>(actor.FindSubObj("Transform"));
+    NS::Obj::Transform* transform = NS::Obj::Cast<NS::Obj::Transform>(actor.FindSubObj("Transform"));
     ASSERT_NE(transform, nullptr);
     EXPECT_EQ(transform->Owner(), &actor);
     EXPECT_EQ(actor.CreateSubObj("Transform"), transform);
-    EXPECT_EQ(&actor.Root(), &transform->Root());
+    EXPECT_EQ(&actor.Root(), transform);
     NS::Obj::ApplyJsonFields(*transform, nlohmann::json{{"位置", {2.0f, 3.0f, 4.0f}}});
     EXPECT_EQ(actor.Root().Position(), (NS::Vector3{2.0f, 3.0f, 4.0f}));
     EXPECT_EQ(NS::Obj::ObjectToJson(actor)["subObjects"]["Transform"]["位置"],
               (nlohmann::json::array({2.0f, 3.0f, 4.0f})));
+}
+
+// 外から来る大きさだけを下限で止める。コードからの値は跡を 0 まで縮めるので止めない
+TEST(FixedParts, TransformClampsOnlyTheScaleFromTheField)
+{
+    NS::Obj::Actor actor;
+    NS::Obj::ApplyJsonFields(actor.Root(), nlohmann::json{{"スケール", {0.001f, -1.0f, 2.0f}}});
+    EXPECT_EQ(actor.Root().Scale(), (NS::Vector3{0.01f, 0.01f, 2.0f}));
+
+    actor.Root().SetScale(NS::Vector3{0.0f, 1.0f, 0.0f});
+    EXPECT_EQ(actor.Root().Scale(), (NS::Vector3{0.0f, 1.0f, 0.0f}));
 }
 
 TEST(FixedParts, BaseActorDoesNotImplicitlyUpdateEveryEnumeratedPart)

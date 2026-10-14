@@ -2,7 +2,7 @@
 
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/Transform.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 
 #include <cmath>
 

@@ -8,7 +8,7 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/SubObjectEntry.h"

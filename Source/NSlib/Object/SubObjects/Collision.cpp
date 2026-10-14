@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Transform.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Physics/PhysicsScene.h"
 
 namespace

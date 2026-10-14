@@ -7,7 +7,7 @@
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/CameraModifier.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Windows/FileSystem.h"
 #include "Tests/TestViewCamera.h"

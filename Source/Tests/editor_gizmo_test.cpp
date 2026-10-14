@@ -1,7 +1,7 @@
 #include "Editor/GizmoEditor.h"
 #include "Editor/GridMath.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Transform.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Windows/Input.h"
 
 #include <gtest/gtest.h>

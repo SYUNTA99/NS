@@ -5,7 +5,7 @@
 #include "NSlib/Object/System/PadRumbleDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/HitReaction.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Windows/Input.h"
 
 #include <gtest/gtest.h>

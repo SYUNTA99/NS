@@ -19,7 +19,7 @@
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "NSlib/Object/SubObjects/HitReaction.h"
 #include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/UpdatePhase.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Input.h"

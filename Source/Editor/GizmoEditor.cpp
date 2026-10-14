@@ -5,7 +5,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/Transform.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/Keyboard.h"

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NSlib/Core/Math.h"
 #include "NSlib/Object/Reflection/ActorRef.h"
 
 #pragma warning(push, 0)
@@ -81,4 +82,18 @@ namespace NS::Obj
     //! @brief object の参照の欄のうち、idMap に載った id を指す物を載った先の id へ付け替える
     //! @details 複製で使う。コピーした範囲の中を指す参照だけをコピー側へ向け、範囲の外を指す参照は元のまま残す
     void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<std::uint32_t, std::uint32_t>& idMap);
+
+    //! 配置物の JSON の姿勢を読み書きする。
+    //! 実体は subObjects 内の k_TransformSubObjName の欄
+    //! Set は対象エントリが無ければ EnsureTransformSubObject で 1 つ作る
+    [[nodiscard]] NS::Vector3 ObjectPosition(const nlohmann::json& object) noexcept;
+    void SetObjectPosition(nlohmann::json& object, const NS::Vector3& position) noexcept;
+    [[nodiscard]] NS::Quaternion ObjectRotation(const nlohmann::json& object) noexcept;
+    void SetObjectRotation(nlohmann::json& object, const NS::Quaternion& rotation) noexcept;
+    [[nodiscard]] NS::Vector3 ObjectScale(const nlohmann::json& object) noexcept;
+    void SetObjectScale(nlohmann::json& object, const NS::Vector3& scale) noexcept;
+
+    //! object に Transform のエントリが無ければ既定値(位置0 / 回転なし / スケール1)で 1 つ足して返す
+    //! 既にあればそれを返す。シーンの JSON を読む所で通し、全 object が Transform を必ず 1 つ持つようにする
+    nlohmann::json& EnsureTransformSubObject(nlohmann::json& object);
 } // namespace NS::Obj

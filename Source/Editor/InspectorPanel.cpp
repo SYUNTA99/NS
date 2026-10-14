@@ -9,7 +9,7 @@
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Scene/SceneJson.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 
 #include <cstdint>
 #include <cstdio>

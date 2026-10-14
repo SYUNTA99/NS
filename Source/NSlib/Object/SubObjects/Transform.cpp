@@ -1,4 +1,4 @@
-﻿#include "NSlib/Object/Transform.h"
+﻿#include "NSlib/Object/SubObjects/Transform.h"
 
 #include <algorithm>
 
@@ -12,7 +12,7 @@ namespace NS::Obj
         {
             if (child != nullptr)
             {
-				child->m_parent = nullptr;
+                child->m_parent = nullptr;
             }
         }
     }
@@ -30,6 +30,13 @@ namespace NS::Obj
     void Transform::SetScale(const NS::Vector3& scale) noexcept
     {
         m_scale = scale;
+    }
+
+    void Transform::SetScaleField(const NS::Vector3& scale) noexcept
+    {
+        constexpr float k_MinScale = 0.01f;
+        SetScale(
+            NS::Vector3{std::max(scale.x, k_MinScale), std::max(scale.y, k_MinScale), std::max(scale.z, k_MinScale)});
     }
 
     void Transform::ShiftPosition(const NS::Vector3& delta) noexcept
@@ -57,7 +64,7 @@ namespace NS::Obj
     {
         if (m_parent == nullptr)
         {
-			return LocalMatrix();
+            return LocalMatrix();
         }
         return LocalMatrix() * m_parent->WorldMatrix();
     }

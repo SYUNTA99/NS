@@ -34,7 +34,7 @@
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/SubObjects/SphereCollision.h"
 #include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/SubObjects/VirtualCamera.h"
 #include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Windows/Clock.h"
@@ -1295,8 +1295,8 @@ void LevelEditorController::SetSelectedFreeScale(NS::Vector3 scale)
 
 void LevelEditorController::MirrorRootEditToBaseline(NS::Obj::Actor& actor, std::string_view fieldName)
 {
-    if (NS::Obj::TransformSubObject* transform =
-            NS::Obj::Cast<NS::Obj::TransformSubObject>(actor.FindSubObj(NS::Obj::k_TransformSubObjName)))
+    if (NS::Obj::Transform* transform =
+            NS::Obj::Cast<NS::Obj::Transform>(actor.FindSubObj(NS::Obj::k_TransformSubObjName)))
     {
         MirrorPlayEditToBaseline(*transform, fieldName);
     }

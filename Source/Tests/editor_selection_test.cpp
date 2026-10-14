@@ -7,7 +7,7 @@
 #include "Editor/PlacementCatalog.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"

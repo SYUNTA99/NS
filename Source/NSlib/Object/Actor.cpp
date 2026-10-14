@@ -10,7 +10,6 @@
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/SubObjects/Shadow.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
@@ -38,12 +37,12 @@ namespace NS::Obj
 
     Transform& Actor::Root() noexcept
     {
-        return m_transform->Root();
+        return *m_transform;
     }
 
     const Transform& Actor::Root() const noexcept
     {
-        return m_transform->Root();
+        return *m_transform;
     }
 
     void Actor::ForEachSubObj(const SubObjVisitor& visit) const

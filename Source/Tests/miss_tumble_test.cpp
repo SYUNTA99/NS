@@ -4,7 +4,7 @@
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"

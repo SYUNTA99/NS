@@ -4,7 +4,7 @@
 #include "NSlib/Object/SubObjects/Shadow.h"
 #include "NSlib/Object/SubObjects/SphereCollision.h"
 #include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"

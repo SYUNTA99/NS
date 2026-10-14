@@ -7,7 +7,7 @@
 #include "NSlib/Object/Message/Message.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/System/HitSensorDirector.h"
 #include "NSlib/Physics/Capsule.h"
 
