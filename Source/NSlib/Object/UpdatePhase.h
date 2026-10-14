@@ -9,7 +9,7 @@ namespace NS::Obj
         Input,
         Player,
         Enemy,
-        Physics,
+        Physics, //!< 管理役が Jolt を進める段。この段の Actor は Jolt の前に回る
         Sensors,
         Triggers,
         Course,

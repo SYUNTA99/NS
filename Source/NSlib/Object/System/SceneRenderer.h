@@ -68,10 +68,6 @@ namespace NS::Obj
         //! 所有している EffectScene。レンダラー未設定の間は nullptr
         [[nodiscard]] NS::Gfx::EffectScene* Effects() const noexcept { return m_effects.get(); }
 
-        //! シーン全体の暗転。全ての重ね描きと UI の後に描く
-        [[nodiscard]] NS::Gfx::ScreenFade& Fade() noexcept { return m_fade; }
-        [[nodiscard]] const NS::Gfx::ScreenFade& Fade() const noexcept { return m_fade; }
-
         //! エフェクトの世界を固定ステップの刻み幅ぶん進める。EffectScene が無ければ何もしない
         void OnTick() override;
 
@@ -123,6 +119,7 @@ namespace NS::Obj
         void Render(CameraManager& cameras,
                     SceneCamera& camera,
                     UIDirector& ui,
+                    const NS::Gfx::ScreenFade& fade,
                     std::string_view skyboxPath,
                     float alpha);
 
@@ -131,10 +128,10 @@ namespace NS::Obj
         //! Transparent バケットを視錐台で絞り、context.cameraPosition から遠い順に描画する
         //! 距離が同じなら SortPriority 昇順
         void DrawTransparent(const NS::Gfx::RenderContext& context);
-        //! 登録中の OverlayRenderer を priority 昇順で描画し、その上へ ui の画面を DrawOrder 昇順で描く
-        //! OverlayRenderer は IsActive が偽なら飛ばす
-        //! 最後にシーン全体の暗転を重ねる
-        void DrawOverlays(const NS::Gfx::RenderContext& context, UIDirector& ui);
+        //! 登録中の重ね描きを OverlayOrder 昇順で描画し、その上へ ui の画面を DrawOrder 昇順で描く
+        //! IsOverlayVisible が false の重ね描きは飛ばす
+        //! 最後にシーン全体の暗転 fade を重ねる
+        void DrawOverlays(const NS::Gfx::RenderContext& context, UIDirector& ui, const NS::Gfx::ScreenFade& fade);
 
         //! @brief プロジェクト既定値からシーンの描画設定を作る。有効な平行光があれば照明を上書きする
         //! @details 登録が無ければプロジェクト既定値がそのまま残る
@@ -154,6 +151,7 @@ namespace NS::Obj
         void RenderViewWithOverlays(CameraManager& cameras,
                                     SceneCamera& camera,
                                     UIDirector& ui,
+                                    const NS::Gfx::ScreenFade& fade,
                                     std::string_view skyboxPath,
                                     const SceneView& view,
                                     float alpha,
@@ -184,7 +182,6 @@ namespace NS::Obj
         std::vector<RenderEntry> m_renderables;
 
         std::vector<IOverlay*> m_overlays; // 重ね描きの登録簿。OverlayOrder 昇順、非所有
-        NS::Gfx::ScreenFade m_fade;
 
         std::vector<DirectionalLight*> m_lights; // 平行光の登録簿。登録順、非所有
 

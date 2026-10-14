@@ -27,17 +27,21 @@ namespace
 
 namespace NS::Obj
 {
-    Scene::Scene() : m_cameraManager(std::make_unique<NS::Obj::CameraManager>())
+    Scene::Scene()
     {
         m_mainCamera.SetUp({0.0f, 1.0f, 0.0f});
-        m_cameraManager->SetCamera(&m_mainCamera);
+        m_cameraManager.SetCamera(&m_mainCamera);
+        // Jolt は物理の段に置いた個体の後で進む
+        AddSystemTick(m_physics, UpdatePhase::Physics);
         // 当たりの調べ役はセンサーの段 (物理の後、仕掛けとゴールの前) で回る
         AddSystemTick(m_hitSensors, UpdatePhase::Sensors);
         // 管理役は vcam を動かす追従カメラの後で選び直す
-        AddSystemTick(*m_cameraManager, UpdatePhase::Camera);
+        AddSystemTick(m_cameraManager, UpdatePhase::Camera);
         // エフェクトの世界は同じ歩の Actor が出した演出を受けてから進む
         AddSystemTick(m_sceneRenderer, UpdatePhase::Effects);
         AddSystemTick(m_ui, UpdatePhase::UI);
+        // 暗転は UI の後に進める。UI の段は実時間なので、ヒットストップと遅い世界でも同じ速さで進む
+        AddSystemTick(m_fade, UpdatePhase::UI);
     }
 
     Scene::~Scene() = default;
@@ -73,13 +77,13 @@ namespace NS::Obj
     void Scene::SetGravityDirection(const NS::Vector3& direction) noexcept
     {
         m_gravityDirection = NormalizeGravityDirection(direction);
-        m_physicsScene.SetGravity(m_gravityDirection * -NS::Phys::k_DefaultGravityY);
+        m_physics.Physics().SetGravity(m_gravityDirection * -NS::Phys::k_DefaultGravityY);
     }
 
     void Scene::SyncPhysics()
     {
         // ギズモで動いた実体の当たりを張り直す。object を作り直さないので選択・参照はそのまま保たれる
-        m_objects.SyncPhysics(m_physicsScene);
+        m_objects.SyncPhysics(m_physics.Physics());
     }
 
     const nlohmann::json& Scene::BeginPlayBaseline()
@@ -429,7 +433,7 @@ namespace NS::Obj
         // vcam の cameras への付け外しは VirtualCamera が OnStart / OnEndPlay で自分で行う
         m_objects.RebuildFromJson(
             scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, m_assets); });
-        m_objects.SyncPhysics(m_physicsScene);
+        m_objects.SyncPhysics(m_physics.Physics());
     }
 
     void Scene::OnUpdate()
@@ -475,16 +479,7 @@ namespace NS::Obj
             {
                 continue;
             }
-            if (phase == UpdatePhase::Physics)
-            {
-                m_physicsScene.Update(NS::OS::FrameTimer::FixedDelta());
-            }
-            // 物理の段に置いた物は、Jolt を 1 歩進めた直後に呼ばれる
             ExecutePhase(phase);
-            if (phase == UpdatePhase::UI)
-            {
-                Fade().Advance(NS::OS::FrameTimer::FixedDelta());
-            }
         }
         m_objects.RemoveDestroyed();
         // 止めは世界を進めた歩で数える。遅い世界でも、止めた歩の数だけ自機が進む
@@ -503,7 +498,7 @@ namespace NS::Obj
         Fade().Cancel();
         m_objects.Clear();
         ClearEffects();
-        m_cameraManager->SetCamera(nullptr);
+        m_cameraManager.SetCamera(nullptr);
 #if !defined(NS_SHIPPING)
         // 溜め場は静的な 1 つなので、畳んだ世界の線が次のシーンの描画へ残る
         NS::Gfx::DebugDraw::Clear();
@@ -521,9 +516,9 @@ namespace NS::Obj
         // 姿勢はビューに依らないので 1 フレームに 1 回。止めている間の実カメラは止めた側が書く
         if (m_simulationEnabled)
         {
-            m_cameraManager->Evaluate(alpha);
+            m_cameraManager.Evaluate(alpha);
         }
-        m_sceneRenderer.Render(*m_cameraManager, m_mainCamera, m_ui, m_skyboxPath, alpha);
+        m_sceneRenderer.Render(m_cameraManager, m_mainCamera, m_ui, m_fade.Fade(), m_skyboxPath, alpha);
     }
 
     void Scene::RegisterRenderable(IRenderable* renderable)
@@ -558,7 +553,7 @@ namespace NS::Obj
 
     CameraManager* Scene::GetCameraManager() const noexcept
     {
-        return m_cameraManager.get();
+        return const_cast<CameraManager*>(&m_cameraManager);
     }
 
     SceneSystemHolder* Scene::GetSceneSystemHolder() const noexcept
@@ -569,7 +564,7 @@ namespace NS::Obj
     NS::Phys::PhysicsScene* Scene::GetPhysicsScene() const noexcept
     {
         // 地形を問う関数のほか、Collision も持ち主の Scene の body を出し入れする時にここから引く
-        return const_cast<NS::Phys::PhysicsScene*>(&m_physicsScene);
+        return const_cast<NS::Phys::PhysicsScene*>(&m_physics.Physics());
     }
 
     NS::Gfx::EffectScene* Scene::GetEffectScene() const noexcept

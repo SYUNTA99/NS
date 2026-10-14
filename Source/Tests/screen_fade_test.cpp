@@ -6,6 +6,7 @@
 #include "NSlib/Object/Object.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/System/SceneRenderer.h"
+#include "NSlib/Object/System/ScreenFadeDirector.h"
 #include "NSlib/Object/System/UIDirector.h"
 #include "NSlib/Object/UIActor.h"
 #include "NSlib/Windows/Clock.h"
@@ -130,9 +131,9 @@ TEST(ScreenFade, SceneAdvancesOncePerStepWithoutWorldTimeOrAnActor)
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.5f);
     EXPECT_EQ(scene.Objects().ObjectCount(), 0u);
 
-    NS::Obj::SceneRenderer renderer;
-    renderer.Fade().BeginOut(0.0f);
-    EXPECT_TRUE(renderer.Fade().IsBlack());
+    NS::Obj::ScreenFadeDirector director;
+    director.Fade().BeginOut(0.0f);
+    EXPECT_TRUE(director.Fade().IsBlack());
 }
 
 TEST(ScreenFade, ScenePauseAndDisabledSimulationFreezeTheFade)
@@ -180,6 +181,7 @@ TEST(ScreenFade, FullscreenDrawCoversUIAndTheResizedTarget)
     const std::unique_ptr<NS::Gfx::RenderTarget> target = NS::Gfx::RenderTarget::Create({64, 36});
     ASSERT_TRUE(target->IsValid());
     NS::Obj::SceneRenderer sceneRenderer;
+    NS::Gfx::ScreenFade fade;
     WhiteScreen ui;
     NS::Obj::UIDirector screens;
     screens.Add(ui);
@@ -187,21 +189,21 @@ TEST(ScreenFade, FullscreenDrawCoversUIAndTheResizedTarget)
     context.renderer = &renderer;
 
     renderer.SetSceneTarget(target.get());
-    sceneRenderer.Fade().BeginOut(0.0f);
+    fade.BeginOut(0.0f);
     renderer.BeginFrame();
-    sceneRenderer.DrawOverlays(context, screens);
+    sceneRenderer.DrawOverlays(context, screens, fade);
     ExpectEveryPixel(*target->Color(), 0);
 
-    sceneRenderer.Fade().BeginIn(0.4f);
-    sceneRenderer.Fade().Advance(0.2f);
+    fade.BeginIn(0.4f);
+    fade.Advance(0.2f);
     target->Resize({37, 53});
     renderer.BeginFrame();
-    sceneRenderer.DrawOverlays(context, screens);
+    sceneRenderer.DrawOverlays(context, screens, fade);
     ExpectEveryPixel(*target->Color(), 128);
 
-    sceneRenderer.Fade().Cancel();
+    fade.Cancel();
     renderer.BeginFrame();
-    sceneRenderer.DrawOverlays(context, screens);
+    sceneRenderer.DrawOverlays(context, screens, fade);
     ExpectEveryPixel(*target->Color(), 255);
     renderer.SetSceneTarget(nullptr);
     renderer.BindBackbuffer();

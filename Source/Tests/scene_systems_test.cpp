@@ -12,8 +12,10 @@
 #include "NSlib/Object/System/HitScreenDirector.h"
 #include "NSlib/Object/System/HitSensorDirector.h"
 #include "NSlib/Object/System/PadRumbleDirector.h"
+#include "NSlib/Object/System/PhysicsDirector.h"
 #include "NSlib/Object/System/SceneRenderer.h"
 #include "NSlib/Object/System/SceneSystem.h"
+#include "NSlib/Object/System/ScreenFadeDirector.h"
 #include "NSlib/Object/System/UIDirector.h"
 #include "NSlib/Object/UIActor.h"
 
@@ -34,6 +36,8 @@ static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::HitScreenDirector
 static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::PadRumbleDirector>);
 static_assert(std::is_base_of_v<NS::Obj::SceneSystem, GL::Level::CourseDirector>);
 static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::UIDirector>);
+static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::PhysicsDirector>);
+static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::ScreenFadeDirector>);
 
 // 更新の登録の口は Scene の 1 つで、SceneSystem の派生だけを受ける
 template <class T>

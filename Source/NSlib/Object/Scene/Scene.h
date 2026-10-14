@@ -8,11 +8,13 @@
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/System/HitSensorDirector.h"
+#include "NSlib/Object/System/PhysicsDirector.h"
 #include "NSlib/Object/System/SceneRenderer.h"
 #include "NSlib/Object/System/SceneSystemHolder.h"
+#include "NSlib/Object/System/ScreenFadeDirector.h"
 #include "NSlib/Object/System/UIDirector.h"
-#include "NSlib/Physics/PhysicsScene.h"
 
 #include <cstdint>
 #include <memory>
@@ -30,7 +32,6 @@ namespace NS::Gfx
 namespace NS::Obj
 {
     class AssetManager;
-    class CameraManager;
     class SubObject;
     class DirectionalLight;
     class IRenderable;
@@ -84,8 +85,8 @@ namespace NS::Obj
         [[nodiscard]] const HitSensorDirector& HitSensors() const noexcept { return m_hitSensors; }
 
         //! シーン全体の暗転。UI の段で進め、全 UI の後に描く。時間停止中は凍る
-        [[nodiscard]] NS::Gfx::ScreenFade& Fade() noexcept { return m_sceneRenderer.Fade(); }
-        [[nodiscard]] const NS::Gfx::ScreenFade& Fade() const noexcept { return m_sceneRenderer.Fade(); }
+        [[nodiscard]] NS::Gfx::ScreenFade& Fade() noexcept { return m_fade.Fade(); }
+        [[nodiscard]] const NS::Gfx::ScreenFade& Fade() const noexcept { return m_fade.Fade(); }
 
         //! @brief 管理役を段 phase の更新へ登録する。登録済みなら段だけを差し替える
         //! @details 同じ段の Actor の後に登録順で OnTick が呼ばれる
@@ -99,8 +100,8 @@ namespace NS::Obj
         [[nodiscard]] const UIDirector& UI() const noexcept { return m_ui; }
 
         //! PhysicsScene への参照。Scene が値で持つので寿命は Scene と同じ
-        [[nodiscard]] NS::Phys::PhysicsScene& Physics() noexcept { return m_physicsScene; }
-        [[nodiscard]] const NS::Phys::PhysicsScene& Physics() const noexcept { return m_physicsScene; }
+        [[nodiscard]] NS::Phys::PhysicsScene& Physics() noexcept { return m_physics.Physics(); }
+        [[nodiscard]] const NS::Phys::PhysicsScene& Physics() const noexcept { return m_physics.Physics(); }
 
         [[nodiscard]] const NS::Vector3& GravityDirection() const noexcept { return m_gravityDirection; }
         //! 重力方向を正規化して、物理の重力方向も揃える
@@ -278,18 +279,21 @@ namespace NS::Obj
         void StartSpawned(Actor& obj);
 
         SceneRenderer m_sceneRenderer;
+        // m_sceneObjs が持つ CourseDirector が破棄で暗転を取り消すので、m_sceneObjs より先に宣言して後に破棄する
+        ScreenFadeDirector m_fade;
         // 配置物が持つ画面は破棄で自分を外すので、配置物より先に宣言して後に破棄する
         UIDirector m_ui;
 
-        //! 衝突判定の PhysicsScene。当たりの有る scene だけ ActorList::SyncPhysics が body を入れ、無ければ空のまま
-        //! m_objects より前に宣言してあるので破棄は後になり、これを借りる移動の SubObject より長く生きる
-        NS::Phys::PhysicsScene m_physicsScene;
+        //! 衝突判定の PhysicsScene を持つ。ActorList::SyncPhysics が Collision の body を入れる
+        //! Collision が OnEndPlay で body を外し、Collider が借りるので、m_objects より先に宣言して後に破棄する
+        PhysicsDirector m_physics;
         NS::Vector3 m_gravityDirection{0.0f, -1.0f, 0.0f};
 
         // ヒットセンサーの調べ役。配置物の部品が OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         HitSensorDirector m_hitSensors;
         SceneCamera m_mainCamera;
-        std::unique_ptr<NS::Obj::CameraManager> m_cameraManager;
+        // 仮想カメラの部品が OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
+        CameraManager m_cameraManager;
         NS::Obj::ActorList m_objects; // 配置物の一覧
         // 更新へ登録した管理役 1 件
         struct SystemEntry

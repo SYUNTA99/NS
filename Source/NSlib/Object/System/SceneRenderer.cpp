@@ -179,7 +179,9 @@ namespace NS::Obj
         m_renderScene.DrawBucket(context, true);
     }
 
-    void SceneRenderer::DrawOverlays(const NS::Gfx::RenderContext& context, UIDirector& ui)
+    void SceneRenderer::DrawOverlays(const NS::Gfx::RenderContext& context,
+                                     UIDirector& ui,
+                                     const NS::Gfx::ScreenFade& fade)
     {
         for (IOverlay* overlay : m_overlays)
         {
@@ -193,7 +195,7 @@ namespace NS::Obj
         // 暗転は UIActor の描く順に依らず、全ての UI と光を覆う
         if (context.renderer != nullptr)
         {
-            m_fade.Render(*context.renderer);
+            fade.Render(*context.renderer);
         }
     }
 
@@ -225,8 +227,12 @@ namespace NS::Obj
         return resolved;
     }
 
-    void SceneRenderer::Render(
-        CameraManager& cameras, SceneCamera& camera, UIDirector& ui, std::string_view skyboxPath, float alpha)
+    void SceneRenderer::Render(CameraManager& cameras,
+                               SceneCamera& camera,
+                               UIDirector& ui,
+                               const NS::Gfx::ScreenFade& fade,
+                               std::string_view skyboxPath,
+                               float alpha)
     {
         if (m_renderer == nullptr)
         {
@@ -236,7 +242,7 @@ namespace NS::Obj
         // ビュー列が空なら現描画先へ CameraManager の視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
         if (m_sceneViews.empty())
         {
-            RenderViewWithOverlays(cameras, camera, ui, skyboxPath, SceneView{}, alpha, PassesForView(0));
+            RenderViewWithOverlays(cameras, camera, ui, fade, skyboxPath, SceneView{}, alpha, PassesForView(0));
             return;
         }
 
@@ -244,7 +250,7 @@ namespace NS::Obj
         {
             const SceneView& view = m_sceneViews[i];
             m_renderer->BeginSceneView(view.target);
-            RenderViewWithOverlays(cameras, camera, ui, skyboxPath, view, alpha, PassesForView(i));
+            RenderViewWithOverlays(cameras, camera, ui, fade, skyboxPath, view, alpha, PassesForView(i));
         }
     }
 
@@ -291,6 +297,7 @@ namespace NS::Obj
     void SceneRenderer::RenderViewWithOverlays(CameraManager& cameras,
                                                SceneCamera& camera,
                                                UIDirector& ui,
+                                               const NS::Gfx::ScreenFade& fade,
                                                std::string_view skyboxPath,
                                                const SceneView& view,
                                                float alpha,
@@ -311,7 +318,7 @@ namespace NS::Obj
         }
 #endif
 
-        DrawOverlays(ctx, ui);
+        DrawOverlays(ctx, ui, fade);
     }
 
     namespace
