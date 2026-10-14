@@ -16,8 +16,8 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
 {
     const std::vector<NS::Gfx::AnimationClip> clips = {
         {.name = "idle", .duration = 10.0f}, {.name = "run", .duration = 10.0f}, {.name = "walk", .duration = 10.0f}};
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
     player.Body().SetGrounded(true);
@@ -41,8 +41,8 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
 // アニメの欄はアニメの欄だけの部品 Clips が持ち、遊びの欄と並ばない
 TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     const GL::Player::PlayerClips* clipParts = NS::Obj::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
     ASSERT_NE(clipParts, nullptr);
     const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*clipParts);
@@ -70,8 +70,8 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
                                                        {.name = "jump", .duration = 10.0f},
                                                        {.name = "fall", .duration = 10.0f},
                                                        {.name = "hang", .duration = 10.0f}};
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
     GL::Player::PlayerClips* clipParts = NS::Obj::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
@@ -95,8 +95,8 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
 {
     const std::vector<NS::Gfx::AnimationClip> clips = {{.name = "idle", .duration = 10.0f},
                                                        {.name = "walk", .duration = 10.0f}};
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
     animation->AddClips(clips);
     GL::Player::PlayerClips* clipParts = NS::Obj::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));

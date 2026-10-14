@@ -49,8 +49,7 @@ namespace
 
         void Load()
         {
-            target =
-                static_cast<LaunchTargetProbe*>(scene.SpawnObject(std::make_unique<LaunchTargetProbe>(), "target"));
+            target = scene.SpawnObject<LaunchTargetProbe>("target");
             camera = scene.SpawnTransient<GL::Level::FollowCamera>();
             NS::Obj::ApplyJsonFields(camera->Vcam(),
                                      nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},

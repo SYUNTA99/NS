@@ -150,8 +150,8 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
     float times[2] = {};
     for (int index = 0; index < 2; ++index)
     {
-        Player player;
-        player.Init();
+        const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+        Player& player = *playerOwned;
         NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
         ASSERT_NE(animation, nullptr);
         animation->AddClips(clips);
@@ -168,8 +168,8 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
 
 TEST(ActorBodyTime, SubObjectReadsItsOwnersClock)
 {
-    NS::Obj::Actor actor;
-    actor.Init();
+    const std::unique_ptr<NS::Obj::Actor> actorOwned = NS::Obj::CreateActor<NS::Obj::Actor>();
+    NS::Obj::Actor& actor = *actorOwned;
     NS::Obj::SubObject* animation = actor.CreateSubObj("Animation");
     ASSERT_NE(animation, nullptr);
     ASSERT_TRUE(actor.SetBodyTimeScale(1.5f));

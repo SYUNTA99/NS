@@ -247,8 +247,8 @@ TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
 
 TEST(PlayerStateSequence, TheBaseOwnsTheMachineFromInit)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     ASSERT_NE(player.GetStateMachine(), nullptr);
     EXPECT_EQ(player.GetStateMachine()->CurrentId(), NS::Obj::StateIdOf<GL::Player::IdlePlayerState>());
     EXPECT_TRUE(NS::Obj::IsState<GL::Player::IdlePlayerState>(&player));

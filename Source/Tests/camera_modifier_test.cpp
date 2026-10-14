@@ -170,8 +170,8 @@ TEST(CameraManager, FinishedModifiersAreRemovedOnTick)
 
 TEST(CameraManager, ModifiersApplyInOrder)
 {
-    TestViewCameraHost host;
-    host.Init();
+    const std::unique_ptr<TestViewCameraHost> hostOwned = NS::Obj::CreateActor<TestViewCameraHost>();
+    TestViewCameraHost& host = *hostOwned;
     host.Vcam().SetPose(NS::Vector3{1.0f, 0.0f, -5.0f}, NS::Vector3{1.0f, 0.0f, 0.0f});
     NS::Obj::CameraManager cameras;
     cameras.AddVirtualCamera(&host.Vcam());
@@ -223,13 +223,13 @@ TEST(CameraManager, ForwardIgnoresTheDrawAlphaDuringABlend)
     cameras.SetCamera(&drawn);
     // 1 歩で半分まで進むブレンド
     cameras.SetBlendDuration(NS::OS::FrameTimer::FixedDelta() * 2.0f);
-    TestViewCameraHost from;
-    from.Init();
+    const std::unique_ptr<TestViewCameraHost> fromOwned = NS::Obj::CreateActor<TestViewCameraHost>();
+    TestViewCameraHost& from = *fromOwned;
     cameras.AddVirtualCamera(&from.Vcam());
     cameras.OnTick();
     cameras.Evaluate(1.0f);
-    AlphaCameraHost to;
-    to.Init();
+    const std::unique_ptr<AlphaCameraHost> toOwned = NS::Obj::CreateActor<AlphaCameraHost>();
+    AlphaCameraHost& to = *toOwned;
     to.vcam->SetVcamPriority(1);
     cameras.AddVirtualCamera(to.vcam.get());
     cameras.OnTick();
@@ -251,8 +251,8 @@ TEST(CameraManager, ForwardLeavesOutTheModifiers)
     NS::Obj::SceneCamera drawn;
     NS::Obj::CameraManager cameras;
     cameras.SetCamera(&drawn);
-    TestViewCameraHost host;
-    host.Init();
+    const std::unique_ptr<TestViewCameraHost> hostOwned = NS::Obj::CreateActor<TestViewCameraHost>();
+    TestViewCameraHost& host = *hostOwned;
     cameras.AddVirtualCamera(&host.Vcam());
     // 位置の x を 0*2+10 = 10 へずらし、描く視線を斜めにする
     ASSERT_TRUE(cameras.AddModifier(std::make_unique<OrderProbe>(100, 10.0f)));
@@ -309,7 +309,7 @@ TEST(IUseCamera, ActorReachesSceneCameraManager)
 TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
 {
     NS::Obj::Scene scene;
-    Player* player = NS::Obj::Cast<Player>(scene.SpawnObject(std::make_unique<Player>(), "player"));
+    Player* player = scene.SpawnObject<Player>("player");
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}),
               0u);
@@ -337,8 +337,8 @@ TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
 // 追従カメラは出荷の姿で生まれる。プレイ中かは世界の駆動が答え、部品の active へ写さない
 TEST(FollowCamera, VcamIsLiveFromInit)
 {
-    GL::Level::FollowCamera camera;
-    camera.Init();
+    const std::unique_ptr<GL::Level::FollowCamera> cameraOwned = NS::Obj::CreateActor<GL::Level::FollowCamera>();
+    GL::Level::FollowCamera& camera = *cameraOwned;
     EXPECT_TRUE(camera.Vcam().IsActiveSelf());
 }
 

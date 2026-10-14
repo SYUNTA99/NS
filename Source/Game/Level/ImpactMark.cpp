@@ -4,8 +4,6 @@
 #include "NSlib/Windows/Clock.h"
 
 #include <cmath>
-#include <memory>
-#include <utility>
 
 namespace GL::Level
 {
@@ -28,10 +26,9 @@ namespace GL::Level
             return nullptr;
         }
 
-        // 部品は渡した後に OnInit が作る。ここで触るのは根だけ
-        std::unique_ptr<ImpactMark> owned = std::make_unique<ImpactMark>();
-        owned->Root().SetPosition(position);
-        return scene->SpawnTransient(std::move(owned));
+        ImpactMark* mark = scene->SpawnTransient<ImpactMark>();
+        mark->Root().SetPosition(position);
+        return mark;
     }
 
     void ImpactMark::SetDiameter(float diameter) noexcept

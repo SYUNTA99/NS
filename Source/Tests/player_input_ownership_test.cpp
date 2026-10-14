@@ -7,8 +7,8 @@
 
 TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     NS::Obj::Body& movement = player.Body();
@@ -28,8 +28,8 @@ TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
 
 TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     NS::Obj::Body& movement = player.Body();
@@ -54,8 +54,8 @@ TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
 
 TEST(PlayerInputOwnership, RestartClearsSharedInputAndHeldJumpCutsOnlyOnce)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     NS::Obj::Body& movement = player.Body();
@@ -81,8 +81,8 @@ TEST(PlayerInputOwnership, SlamTappedBetweenPlayerStepsIsSeenOnce)
 {
     // 遅い世界では入力の段だけが毎歩回る。自機が読まない歩に押して放した突進を、次に読む歩で 1 回押したと見せる
     NS::OS::Input& platform = NS::OS::Input::Get();
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     platform.Mouse().OnButtonDown(NS::OS::MouseButton::Left);

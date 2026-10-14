@@ -7,14 +7,14 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/SubObjects/HitSensor.h"
-#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Physics/Capsule.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -637,8 +637,7 @@ TEST(HitZonesTest, FaceFrameStandsOnTheFrontOfTheBodyFacingThePlayer)
     box.halfExtentX = 1.0f;
     box.halfExtentY = 0.5f;
     box.halfExtentZ = 2.0f;
-    ASSERT_TRUE(
-        GL::Level::MakeHitFaceFrame(SensorVolume::Box(box), Vector3{0.0f, 0.0f, 1.0f}, k_PlayerRadius, frame));
+    ASSERT_TRUE(GL::Level::MakeHitFaceFrame(SensorVolume::Box(box), Vector3{0.0f, 0.0f, 1.0f}, k_PlayerRadius, frame));
     EXPECT_NEAR(frame.center.z, -2.0f, k_Tolerance);
     EXPECT_NEAR(frame.reachU, 1.0f + k_PlayerRadius, k_Tolerance);
     EXPECT_NEAR(frame.reachV, 0.5f + k_PlayerRadius, k_Tolerance);
@@ -651,8 +650,7 @@ TEST(HitZonesTest, FaceFrameStandsOnTheFrontOfTheBodyFacingThePlayer)
 // 描く形は、外れの面を先に、段の決まりを優先の低い順に並べる。当てはまる段の色が上に見える
 TEST(HitZonesTest, ShapesStackFromTheRemainderUpToTheHighestPriority)
 {
-    const std::vector<GL::Level::HitFaceShape> onBall =
-        GL::Level::HitFaceShapes(HitFace{}, HitSensorShape::Sphere);
+    const std::vector<GL::Level::HitFaceShape> onBall = GL::Level::HitFaceShapes(HitFace{}, HitSensorShape::Sphere);
     ASSERT_EQ(onBall.size(), 2u);
     EXPECT_EQ(onBall.front().tier, HitTier::Wide);
     // 球の相手は触れられる丸の中だけが外れ
@@ -668,8 +666,7 @@ TEST(HitZonesTest, ShapesStackFromTheRemainderUpToTheHighestPriority)
     boxRed.round = false;
     boxRed.centerU = 0.25f;
     boxRed.centerV = -0.5f;
-    const std::vector<GL::Level::HitFaceShape> onBox =
-        GL::Level::HitFaceShapes(boxRed, HitSensorShape::Box);
+    const std::vector<GL::Level::HitFaceShape> onBox = GL::Level::HitFaceShapes(boxRed, HitSensorShape::Box);
     ASSERT_EQ(onBox.size(), 2u);
     EXPECT_FALSE(onBox.front().round);
     EXPECT_FALSE(onBox.back().round);
@@ -709,8 +706,7 @@ TEST(HitZonesTest, RedOutlineAgreesWithTheJudgement)
         {
             GL::Level::HitFaceFrame frame;
             ASSERT_TRUE(GL::Level::MakeHitFaceFrame(body, direction, k_PlayerRadius, frame));
-            const std::vector<GL::Level::HitFaceShape> shapes =
-                GL::Level::HitFaceShapes(face, frame.bodyShape);
+            const std::vector<GL::Level::HitFaceShape> shapes = GL::Level::HitFaceShapes(face, frame.bodyShape);
             ASSERT_FALSE(shapes.empty());
             const GL::Level::HitFaceShape& red = shapes.back();
             ASSERT_EQ(red.tier, HitTier::Center);
@@ -920,8 +916,8 @@ TEST(HitZonesTest, AimHeightIsTheRedCenterOnTheFace)
 
     // 判定できない体と向きは false で、書き換えない
     height = 7.0f;
-    EXPECT_FALSE(GL::Level::HitFaceAimHeight(
-        face, SensorVolume::Sphere(Vector3{}, 0.0f), forward, k_PlayerRadius, height));
+    EXPECT_FALSE(
+        GL::Level::HitFaceAimHeight(face, SensorVolume::Sphere(Vector3{}, 0.0f), forward, k_PlayerRadius, height));
     EXPECT_FALSE(GL::Level::HitFaceAimHeight(face, ball, Vector3{0.0f, 1.0f, 0.0f}, k_PlayerRadius, height));
     EXPECT_FLOAT_EQ(height, 7.0f);
 }
@@ -957,6 +953,20 @@ TEST(ImpactResolver, SlamLineSkipsAnAreaSensorOnTheLine)
     EXPECT_EQ(predicted.target.id, 2u);
 }
 
+namespace
+{
+    // 種類を付けない体のセンサーだけを持つ。センサーは開始で登録するので、OnInit で組む
+    class UnsetKindSensorActor final : public NS::Obj::Actor
+    {
+    protected:
+        void OnInit() override
+        {
+            NS::Obj::ShapeHitSensor* sensor = CreateSubObj<NS::Obj::ShapeHitSensor>(BodySensorSlot());
+            sensor->SetSphere(0.5f);
+        }
+    };
+} // namespace
+
 // 種類を付けていないセンサーは体当たりの相手にならない。付け忘れが黙って相手になる道は無い
 TEST(HitSensor, UnsetKindIsNotATackleTarget)
 {
@@ -967,12 +977,8 @@ TEST(HitSensor, UnsetKindIsNotATackleTarget)
     NS::Obj::Actor* rock = scene.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
     rock->Root().SetPosition(Vector3{0.0f, 0.5f, -5.0f});
-    std::unique_ptr<NS::Obj::Actor> bare = std::make_unique<NS::Obj::Actor>();
-    NS::Obj::ShapeHitSensor* sensor = NS::Obj::Cast<NS::Obj::ShapeHitSensor>(bare->CreateSubObj("BodySensor"));
-    ASSERT_NE(sensor, nullptr);
-    sensor->SetSphere(0.5f);
-    bare->Root().SetPosition(Vector3{0.0f, 0.5f, 2.0f});
-    ASSERT_NE(scene.SpawnTransient(std::move(bare)), nullptr);
+    UnsetKindSensorActor* unset = scene.SpawnTransient<UnsetKindSensorActor>();
+    unset->Root().SetPosition(Vector3{0.0f, 0.5f, 2.0f});
 
     GL::Level::SlamLineTarget predicted{};
     EXPECT_FALSE(player->Resolver().FindSlamLineTarget(Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));

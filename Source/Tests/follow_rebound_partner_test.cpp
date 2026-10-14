@@ -50,8 +50,7 @@ namespace
 
         explicit PartnerScene(const std::optional<NS::Vector3>& partner, bool pullBack = true)
         {
-            target =
-                static_cast<PartnerTargetProbe*>(scene.SpawnObject(std::make_unique<PartnerTargetProbe>(), "target"));
+            target = scene.SpawnObject<PartnerTargetProbe>("target");
             target->partner = partner;
             target->pullBack = pullBack;
             camera = scene.SpawnTransient<GL::Level::FollowCamera>();

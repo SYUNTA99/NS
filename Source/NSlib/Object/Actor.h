@@ -104,10 +104,6 @@ namespace NS::Obj
         //! 非有限値または dt が 0 以下なら変更しない
         void AddGravity(NS::Vector3& velocity, float strength, float dt) const noexcept;
 
-        //! @brief OnInit を 1 回だけ呼ぶ。2 回目からは何もしない
-        //! @details CreateActorOfClass と ActorList に入る所が呼ぶ。Scene に入れずに部品を触る時は自分で呼ぶ
-        void Init();
-
         using SubObjVisitor = std::function<void(SubObject*)>;
         // 基底の部品を先に、派生の固定メンバーを後に渡す。所有は移さない
         void ForEachSubObj(const SubObjVisitor& visit) const;
@@ -280,6 +276,10 @@ namespace NS::Obj
         friend class ActorList;
         friend bool SendMsg(const Message& msg, HitSensor& receiver, HitSensor* sender);
         friend bool SendMsgToActor(const Message& msg, Actor& receiver);
+        template <class T, class... TArgs> friend std::unique_ptr<T> CreateActor(TArgs&&... args);
+        friend std::unique_ptr<Actor> CreateActorOfClass(std::string_view className);
+        // 呼ぶのは作る関数 2 つだけで、作った直後に 1 回。private にして 2 回目を起こさない
+        void Init() { OnInit(); }
         //! @brief 補間の前の値として、根の Transform と Model の今の値を控える
         //! @details ActorList::SnapshotObjects が固定ステップの頭で全ての Actor に呼ぶ。世界を止めている間も呼ばれる
         void SnapshotForInterpolation() noexcept;
@@ -317,7 +317,6 @@ namespace NS::Obj
         std::unique_ptr<IStateMachine> m_stateMachine; // BuildStateMachine が 1 回だけ預かる。持たない種類は nullptr
         std::unique_ptr<HitReaction> m_hitReaction;
         std::unique_ptr<EffectKeeper> m_effectKeeper;
-        bool m_initialized = false;     // Init が OnInit を呼んだか
         std::vector<Actor*> m_children; // 子 Actor、非所有
         Actor* m_parent = nullptr;      // 親 Actor、root なら nullptr
         bool m_transient = false;       // 一時オブジェクトの印。保存・凍結に写らない
@@ -325,5 +324,17 @@ namespace NS::Obj
 
         void DetachFromParent() noexcept;
     };
+
+    //! @brief T を作り、OnInit で部品を組んでから返す
+    //! @details Scene の中に作る時は Scene::SpawnTransient か Scene::SpawnObject を使う (中でこの関数を呼ぶ)。
+    //! Scene に入れずに部品を触る試しは、この関数で作る
+    template <class T, class... TArgs> [[nodiscard]] std::unique_ptr<T> CreateActor(TArgs&&... args)
+    {
+        static_assert(std::derived_from<T, Actor>, "T は Actor の派生でなければならない");
+        std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
+        Actor& base = *actor;
+        base.Init();
+        return actor;
+    }
 
 } // namespace NS::Obj

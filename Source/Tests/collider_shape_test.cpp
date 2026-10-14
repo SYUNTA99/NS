@@ -102,8 +102,8 @@ TEST(ColliderShape, ShapeFieldsRejectNegativeAndNonFinite)
 TEST(ColliderShape, PlayerOwnsAFixedColliderPart)
 {
     // 動く体の当たりは自機の固定の部品 "Collider"。作り直しを頼んでも同じ部品を返す
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     EXPECT_EQ(player.FindSubObj("Collider"), &player.Collider());
     EXPECT_EQ(player.CreateSubObj("Collider"), &player.Collider());
 }
@@ -111,8 +111,8 @@ TEST(ColliderShape, PlayerOwnsAFixedColliderPart)
 TEST(ColliderShape, BodyHasNoShapeFields)
 {
     // 寸法の正は Collider 1 つ。Movement に欄が残ると、同じ値の置き場が 2 つに割れる
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     const NS::Obj::SubObject* movement = player.FindSubObj("Movement");
     ASSERT_NE(movement, nullptr);
     ASSERT_NE(movement->GetReflection(), nullptr);
@@ -192,10 +192,10 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
 TEST(ColliderShape, FollowingBodySensorsShowNoFields)
 {
     // 形の正は Collider と Collision。映すだけのセンサーに効かない欄を出さない
-    Player player;
-    player.Init();
-    GL::Level::MapObj obj;
-    obj.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
+    const std::unique_ptr<GL::Level::MapObj> objOwned = NS::Obj::CreateActor<GL::Level::MapObj>();
+    GL::Level::MapObj& obj = *objOwned;
     ASSERT_NE(player.BodySensorSubObj(), nullptr);
     ASSERT_NE(obj.BodySensorSubObj(), nullptr);
     EXPECT_EQ(player.BodySensorSubObj()->GetReflection()->fieldCount, 0u);
@@ -205,10 +205,10 @@ TEST(ColliderShape, FollowingBodySensorsShowNoFields)
 TEST(ColliderShape, AreaSensorsKeepTheirSavedFieldNames)
 {
     // ゴールと落下死の範囲は形を自分で持つ。保存済みの欄の表示名がそのまま読める
-    GL::Level::Goal goal;
-    goal.Init();
-    GL::Level::DeathZone zone;
-    zone.Init();
+    const std::unique_ptr<GL::Level::Goal> goalOwned = NS::Obj::CreateActor<GL::Level::Goal>();
+    GL::Level::Goal& goal = *goalOwned;
+    const std::unique_ptr<GL::Level::DeathZone> zoneOwned = NS::Obj::CreateActor<GL::Level::DeathZone>();
+    GL::Level::DeathZone& zone = *zoneOwned;
     ASSERT_NE(goal.BodySensorSubObj(), nullptr);
     ASSERT_NE(zone.BodySensorSubObj(), nullptr);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(*goal.BodySensorSubObj(), {{"半径", 0.9f}}), 0u);

@@ -32,11 +32,6 @@ namespace NS::Obj
         ActorList();
         ~ActorList();
 
-        //! scene の objects から配置物を組み直す。既存の配置物は一時オブジェクトも含めて先に空へ戻す
-        //! 当たりの同期は含まない。呼出側が続けて SyncPhysics を呼ぶ
-        //! factory が空の起動前 / テストでは物を組まない。段の更新の最中は断る
-        void RebuildFromJson(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory);
-
         //! objectId の配置物の並びの位置。居なければ ObjectCount()
         [[nodiscard]] std::size_t IndexOfObjectId(std::uint32_t objectId) const noexcept;
 
@@ -108,9 +103,15 @@ namespace NS::Obj
         [[nodiscard]] Iterator end() const noexcept { return Iterator{m_objects.data() + m_objects.size()}; }
 
     private:
-        // 1 体ずつ入れる口は開始の手前で止まる。開始まで済ませる Scene の湧かす口だけに開く
+        // 入れる口は開始の手前で止まるので、開始まで済ませる Scene だけに開く
         // 段を回す口も Scene だけに開く。同じ段の管理役を Scene が続けて回す
         friend class Scene;
+
+        //! scene の objects から配置物を組み直す。既存の配置物は一時オブジェクトも含めて先に空へ戻す
+        //! 当たりの同期は含まない。呼出側が続けて SyncPhysics を呼ぶ
+        //! factory は CreateActorOfClass で作った個体を返す。factory が空なら物を組まない。
+        //! 段の更新の最中は断る
+        void RebuildFromJson(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory);
 
         //! 段の更新を始める。EndPhase まで解放の口を断る。再入は禁止
         void BeginPhase() noexcept;
@@ -122,15 +123,15 @@ namespace NS::Obj
         void ExecutePhase(UpdatePhase phase);
 
         //! 組み上がった配置物を id を振らずに 1 体加える
-        //! Scene の湧かす口だけが呼ぶ。Init はここで済ませ、シーンへの付けと開始は呼び手が済ませる
+        //! シーンへの付けと開始は呼び手が済ませる
         Actor* Append(std::unique_ptr<Actor> obj);
 
         //! 永続 id を振り、名前が既存と重なれば番号を付けて 1 体加える
-        //! Scene の湧かす口だけが呼ぶ。Init はここで済ませ、シーンへの付けと開始は呼び手が済ませる
+        //! シーンへの付けと開始は呼び手が済ませる
         Actor* AppendWithNewId(std::unique_ptr<Actor> obj, std::string name);
 
         //! 組み直さずに 1 体だけ入れる。名前は既存と重なれば番号を付ける。index が末尾より先なら末尾
-        //! Scene の湧かす口だけが呼ぶ。Init はここで済ませ、シーンへの付けと親子と開始は呼び手が済ませる
+        //! シーンへの付けと親子と開始は呼び手が済ませる
         Actor* InsertFromJson(std::unique_ptr<Actor> obj, const nlohmann::json& entry, std::size_t index);
 
         //! 並びが変わったので索引を捨てる。並びを変える箇所は必ず呼び、破棄した配置物を索引に残さない

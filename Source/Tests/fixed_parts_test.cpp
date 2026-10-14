@@ -87,8 +87,8 @@ TEST(FixedParts, MemberOwnershipSupportsLookupLifecycleAndDestruction)
 {
     std::vector<std::string> destroyed;
     {
-        MemberOwnedActor actor(destroyed);
-        actor.Init();
+        const std::unique_ptr<MemberOwnedActor> owned = NS::Obj::CreateActor<MemberOwnedActor>(destroyed);
+        MemberOwnedActor& actor = *owned;
         ASSERT_NE(actor.first, nullptr);
         ASSERT_NE(actor.second, nullptr);
         EXPECT_EQ(actor.first->Owner(), &actor);
@@ -134,8 +134,8 @@ TEST(FixedParts, TransformClampsOnlyTheScaleFromTheField)
 
 TEST(FixedParts, BaseActorDoesNotImplicitlyUpdateEveryEnumeratedPart)
 {
-    FixedPartActor actor;
-    actor.Init();
+    const std::unique_ptr<FixedPartActor> owned = NS::Obj::CreateActor<FixedPartActor>();
+    FixedPartActor& actor = *owned;
     ASSERT_EQ(actor.FindSubObj("Passive"), actor.passive.get());
     actor.Update();
     EXPECT_EQ(actor.passive->updates, 0);
@@ -174,16 +174,16 @@ TEST(FixedParts, SensorsHaveDistinctRoleNames)
 
 TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
 {
-    Player player;
-    player.Init();
-    GL::Level::MapObj rock;
-    rock.Init();
-    GL::Level::FollowCamera camera;
-    camera.Init();
-    NS::Obj::Light light;
-    light.Init();
-    NS::Obj::MapParts terrain;
-    terrain.Init();
+    const std::unique_ptr<Player> ownedPlayer = NS::Obj::CreateActor<Player>();
+    const std::unique_ptr<GL::Level::MapObj> ownedRock = NS::Obj::CreateActor<GL::Level::MapObj>();
+    const std::unique_ptr<GL::Level::FollowCamera> ownedCamera = NS::Obj::CreateActor<GL::Level::FollowCamera>();
+    const std::unique_ptr<NS::Obj::Light> ownedLight = NS::Obj::CreateActor<NS::Obj::Light>();
+    const std::unique_ptr<NS::Obj::MapParts> ownedTerrain = NS::Obj::CreateActor<NS::Obj::MapParts>();
+    Player& player = *ownedPlayer;
+    GL::Level::MapObj& rock = *ownedRock;
+    GL::Level::FollowCamera& camera = *ownedCamera;
+    NS::Obj::Light& light = *ownedLight;
+    NS::Obj::MapParts& terrain = *ownedTerrain;
     EXPECT_EQ(player.FindSubObj("Input"), &player.Input());
     EXPECT_EQ(player.FindSubObj("Movement"), &player.Body());
     EXPECT_NE(player.FindSubObj("Params"), nullptr);

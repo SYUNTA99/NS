@@ -20,8 +20,8 @@
 
 TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     GL::Player::PlayerParams* params = NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*params);
@@ -55,8 +55,8 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
 // 溜めの倍率と溜め中の減速は欄の持ち主 PlayerParams が答える。裁定役と自機の溜めは同じ答えを読む
 TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     GL::Player::PlayerParams* params = NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     EXPECT_FLOAT_EQ(params->ChargeFactorFor(0.5f), 1.5f);
@@ -85,8 +85,8 @@ TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
 
 TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     GL::Player::PlayerParams* params = NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params,
@@ -159,8 +159,8 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
 // クラスに無い部品の鍵が同梱の種類の既定値と場面に残ると、読むたびに読み飛ばしの警告が出る
 TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     const nlohmann::json* archetype = NS::Obj::ArchetypeLibrary::Get().Find("Player");
     ASSERT_NE(archetype, nullptr);
     for (nlohmann::json::const_iterator it = NS::Obj::ObjectJsonSubObjs(*archetype).begin();

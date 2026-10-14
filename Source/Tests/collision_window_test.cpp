@@ -61,8 +61,8 @@ namespace
 
 TEST(CollisionWindow, OverlapBoxIsEmptyOutsideAScene)
 {
-    CollisionProbe loose;
-    loose.Init();
+    const std::unique_ptr<CollisionProbe> looseOwned = NS::Obj::CreateActor<CollisionProbe>();
+    CollisionProbe& loose = *looseOwned;
     EXPECT_TRUE(NS::Obj::OverlapBoxCollision(&loose, BandAcrossFloorTop()).empty());
 }
 
@@ -93,8 +93,8 @@ TEST(CollisionWindow, ColliderAnswersWithItsOwnersPhysicsScene)
     const NS::Obj::IUseCollision& bareWindow = bare;
     EXPECT_EQ(bareWindow.GetPhysicsScene(), nullptr);
 
-    CollisionProbe loose;
-    loose.Init();
+    const std::unique_ptr<CollisionProbe> looseOwned = NS::Obj::CreateActor<CollisionProbe>();
+    CollisionProbe& loose = *looseOwned;
     const NS::Obj::IUseCollision& looseWindow = *loose.collider;
     EXPECT_EQ(looseWindow.GetPhysicsScene(), nullptr);
 
@@ -106,8 +106,8 @@ TEST(CollisionWindow, ColliderAnswersWithItsOwnersPhysicsScene)
 
 TEST(CollisionWindow, CollisionSyncsIntoItsOwnersPhysicsScene)
 {
-    CollisionProbe loose;
-    loose.Init();
+    const std::unique_ptr<CollisionProbe> looseOwned = NS::Obj::CreateActor<CollisionProbe>();
+    CollisionProbe& loose = *looseOwned;
     loose.sphere->SyncToPhysics();
     EXPECT_TRUE(loose.sphere->BodyId().IsInvalid());
 

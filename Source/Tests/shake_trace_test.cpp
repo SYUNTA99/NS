@@ -138,8 +138,7 @@ namespace
     {
         std::vector<NS::Vector3> offsets;
         NS::Obj::Scene scene;
-        ChargingTarget* target =
-            NS::Obj::Cast<ChargingTarget>(scene.SpawnObject(std::make_unique<ChargingTarget>(), "target"));
+        ChargingTarget* target = scene.SpawnObject<ChargingTarget>("target");
         GL::Level::FollowCamera* actor = scene.SpawnTransient<GL::Level::FollowCamera>();
         if (target == nullptr || actor == nullptr)
         {

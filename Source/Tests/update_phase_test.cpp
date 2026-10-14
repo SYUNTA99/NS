@@ -169,9 +169,7 @@ TEST(UpdatePhase, DestroyingFromASystemTickIsRefused)
 {
     // 管理役の更新も段の中。ここで配置物を解放すると、同じ段で後に呼ぶ管理役が破棄済みの相手を読む
     NS::Obj::Scene scene;
-    std::unique_ptr<CountingActor> victimOwned = std::make_unique<CountingActor>();
-    CountingActor* victim = victimOwned.get();
-    ASSERT_NE(scene.SpawnObject(std::move(victimOwned), "Victim"), nullptr);
+    CountingActor* victim = scene.SpawnObject<CountingActor>("Victim");
     const std::uint32_t victimId = victim->Id();
     DestroyerSystem destroyer(scene);
     destroyer.SetTarget(victimId);
@@ -242,12 +240,8 @@ TEST(UpdatePhase, DestroyingDuringAPhaseIsRefused)
 {
     // 段の最中に配置物を解放すると、その段で後に呼ぶ予定の生ポインタが破棄済みになる。解放の口は段の間は断る
     NS::Obj::Scene scene;
-    std::unique_ptr<DestroyerActor> destroyerOwned = std::make_unique<DestroyerActor>(scene);
-    std::unique_ptr<CountingActor> victimOwned = std::make_unique<CountingActor>();
-    DestroyerActor* destroyer = destroyerOwned.get();
-    CountingActor* victim = victimOwned.get();
-    ASSERT_NE(scene.SpawnObject(std::move(destroyerOwned), "Destroyer"), nullptr);
-    ASSERT_NE(scene.SpawnObject(std::move(victimOwned), "Victim"), nullptr);
+    DestroyerActor* destroyer = scene.SpawnObject<DestroyerActor>("Destroyer", scene);
+    CountingActor* victim = scene.SpawnObject<CountingActor>("Victim");
     const std::uint32_t victimId = victim->Id();
     destroyer->SetTarget(victimId);
 

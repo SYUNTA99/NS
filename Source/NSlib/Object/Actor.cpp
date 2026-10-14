@@ -25,16 +25,6 @@ namespace NS::Obj
         Appear();
     }
 
-    void Actor::Init()
-    {
-        if (m_initialized)
-        {
-            return;
-        }
-        m_initialized = true;
-        OnInit();
-    }
-
     Transform& Actor::Root() noexcept
     {
         return *m_transform;

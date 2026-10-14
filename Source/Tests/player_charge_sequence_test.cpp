@@ -25,8 +25,8 @@ namespace
 // 押したフレームに丸まり、しきい値のフレームに減速して横を止め、放したフレームに発動する
 TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}),
               0u);
     const int threshold = FramesFor(0.2f);
@@ -82,8 +82,8 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
 
 TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     const int threshold = FramesFor(0.2f);
     player.Update(true);
@@ -108,8 +108,8 @@ TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
 
 TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     GL::Player::PlayerParams* params =
         NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -135,8 +135,8 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
 
 TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     GL::Player::PlayerParams* params =
         NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -168,8 +168,8 @@ TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
 // 構えは縦の倍率を答えるだけで、根のスケールは押しても溜めても放しても配置の値のまま
 TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     const NS::Vector3 one{1.0f, 1.0f, 1.0f};
     player.Update(true);
@@ -190,8 +190,8 @@ TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 
 TEST(PlayerChargeSequence, EndPlayWhileHeldRestoresStanceAndUncurls)
 {
-    Player player;
-    player.Init();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    Player& player = *playerOwned;
     player.Appearance().OnStart();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     for (int frame = 0; frame < FramesFor(0.2f); ++frame)

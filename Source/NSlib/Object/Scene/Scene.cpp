@@ -226,7 +226,7 @@ namespace NS::Obj
         return true;
     }
 
-    Actor* Scene::SpawnTransient(std::unique_ptr<Actor> obj)
+    Actor* Scene::AdoptTransient(std::unique_ptr<Actor> obj)
     {
         if (!obj)
         {
@@ -244,7 +244,7 @@ namespace NS::Obj
         return raw;
     }
 
-    Actor* Scene::SpawnObject(std::unique_ptr<Actor> obj, std::string name)
+    Actor* Scene::AdoptObject(std::unique_ptr<Actor> obj, std::string name)
     {
         if (!obj)
         {

@@ -49,8 +49,7 @@ namespace
 
         FramingScene()
         {
-            target =
-                static_cast<FramingTargetProbe*>(scene.SpawnObject(std::make_unique<FramingTargetProbe>(), "target"));
+            target = scene.SpawnObject<FramingTargetProbe>("target");
             camera = scene.SpawnTransient<GL::Level::FollowCamera>();
             NS::Obj::ApplyJsonFields(camera->Vcam(),
                                      nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});

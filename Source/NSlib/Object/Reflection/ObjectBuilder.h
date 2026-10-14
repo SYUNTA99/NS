@@ -3,6 +3,7 @@
 // 配置物が自分を JSON へ書き出し、JSON から組み上がる経路
 // 値はコードの既定値 < 種類の既定値 < 個体の上書きの 3 段で重なる。種類の既定値は Archetype.h
 
+#include "NSlib/Object/Actor.h"
 #include "NSlib/Object/ObjectJson.h"
 
 #include <memory>
@@ -12,7 +13,6 @@ namespace NS::Obj
 {
     class AssetManager;
     class SubObject;
-    class Actor;
 
     //! JSON の部品の件に、Actor がまだ持たない部品があった時にどうするか
     enum class SubObjCreation
@@ -40,8 +40,7 @@ namespace NS::Obj
     template <class T> [[nodiscard]] nlohmann::json MakePrototypeJson()
     {
         static_assert(std::is_base_of_v<Actor, T>, "T は Actor 派生でなければならない");
-        T prototype{};
-        prototype.Init();
-        return MakePrototypeJson(prototype);
+        const std::unique_ptr<T> prototype = CreateActor<T>();
+        return MakePrototypeJson(*prototype);
     }
 } // namespace NS::Obj

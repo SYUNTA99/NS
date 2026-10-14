@@ -57,7 +57,6 @@ namespace NS::Obj
                     continue; // 組み立てる SubObject が無いオブジェクトはファクトリが nullptr を返す
                 }
 
-                obj->Init();
                 obj->AttachScene(&owner);
                 ApplyIdentity(*obj, entry);
                 m_objects.push_back(std::move(obj));
@@ -121,7 +120,6 @@ namespace NS::Obj
         {
             return nullptr;
         }
-        obj->Init();
         Actor* raw = obj.get();
         m_objects.push_back(std::move(obj));
         MarkIndexDirty();
@@ -338,7 +336,6 @@ namespace NS::Obj
         {
             return nullptr;
         }
-        obj->Init();
         ApplyIdentity(*obj, entry);
         // 名前はシーンの中で一意に保つ。組み直さずに 1 体だけ入れるので、読込の一意化を通らない
         RenameObject(*obj, obj->Name());

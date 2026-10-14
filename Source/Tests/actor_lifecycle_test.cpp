@@ -93,8 +93,7 @@ TEST(ActorLifecycle, DestroyedPlacedActorLeavesAfterTheStep)
 {
     NS::Obj::Scene scene;
     const std::size_t before = scene.Objects().ObjectCount();
-    NS::Obj::Actor* actor = scene.SpawnObject(std::make_unique<LifeProbe>(), "Probe");
-    ASSERT_NE(actor, nullptr);
+    NS::Obj::Actor* actor = scene.SpawnObject<LifeProbe>("Probe");
     actor->Destroy();
     EXPECT_FALSE(actor->IsAppeared());
     // 段を回している途中の呼び手がまだ指しているので、その場では解放しない

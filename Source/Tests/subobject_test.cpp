@@ -10,7 +10,9 @@
 
 #include <gtest/gtest.h>
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace
@@ -89,6 +91,23 @@ namespace
         }
     };
 
+    // Init は作る関数だけが呼ぶ。外から呼べると、1 つの個体に 2 回書ける
+    template <class TActor = NS::Obj::Actor> void CheckInitIsClosed()
+    {
+        static_assert(!requires(TActor& actor) { actor.Init(); });
+    }
+
+    // シーンは外で作った個体を受けない。受けると、Init していない個体が一覧に入る
+    template <class TScene = NS::Obj::Scene> void CheckSceneBuildsItsOwnActors()
+    {
+        static_assert(!requires(TScene& scene, std::unique_ptr<NS::Obj::Actor> actor) {
+            scene.SpawnTransient(std::move(actor));
+        });
+        static_assert(!requires(TScene& scene, std::unique_ptr<NS::Obj::Actor> actor) {
+            scene.SpawnObject(std::move(actor), std::string{});
+        });
+    }
+
 } // namespace
 
 class SubObjectInitProbe final : public NS::Obj::Actor
@@ -108,18 +127,17 @@ NS_CLASS(SubObjectInitProbe)
 
 TEST(SubObject, CreateWritesNameAndEnumeratesRootThenSlotsThenDerivedInCreationOrder)
 {
-    OrderActor actor;
-    actor.Init();
-    ASSERT_NE(actor.first, nullptr);
-    ASSERT_NE(actor.second, nullptr);
-    EXPECT_EQ(actor.first->Name(), "First");
-    EXPECT_EQ(actor.first->Owner(), &actor);
-    EXPECT_EQ(actor.FindSubObj("Second"), actor.second.get());
-    ASSERT_NE(actor.CollisionSubObj(), nullptr);
-    EXPECT_EQ(actor.CollisionSubObj()->Name(), "Collision");
+    const std::unique_ptr<OrderActor> actor = NS::Obj::CreateActor<OrderActor>();
+    ASSERT_NE(actor->first, nullptr);
+    ASSERT_NE(actor->second, nullptr);
+    EXPECT_EQ(actor->first->Name(), "First");
+    EXPECT_EQ(actor->first->Owner(), actor.get());
+    EXPECT_EQ(actor->FindSubObj("Second"), actor->second.get());
+    ASSERT_NE(actor->CollisionSubObj(), nullptr);
+    EXPECT_EQ(actor->CollisionSubObj()->Name(), "Collision");
     std::vector<std::string> names;
-    actor.ForEachSubObj([&](const NS::Obj::SubObject* subObject) {
-        EXPECT_EQ(subObject->Owner(), &actor);
+    actor->ForEachSubObj([&](const NS::Obj::SubObject* subObject) {
+        EXPECT_EQ(subObject->Owner(), actor.get());
         names.push_back(subObject->Name());
     });
     EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model", "Collision", "First", "Second"}));
@@ -127,30 +145,26 @@ TEST(SubObject, CreateWritesNameAndEnumeratesRootThenSlotsThenDerivedInCreationO
 
 TEST(SubObject, SecondCreateInTheSameSlotIsRefused)
 {
-    OrderActor actor;
-    actor.Init();
-    EXPECT_EQ(actor.refused, nullptr);
-    EXPECT_EQ(actor.CollisionSubObj(), actor.box);
+    const std::unique_ptr<OrderActor> actor = NS::Obj::CreateActor<OrderActor>();
+    EXPECT_EQ(actor->refused, nullptr);
+    EXPECT_EQ(actor->CollisionSubObj(), actor->box);
 }
 
 TEST(SubObject, SlotIsRefusedWhenItsNameIsTaken)
 {
-    NameClashActor actor;
-    actor.Init();
-    EXPECT_EQ(actor.model, nullptr);
-    EXPECT_EQ(actor.ModelSubObj(), nullptr);
+    const std::unique_ptr<NameClashActor> actor = NS::Obj::CreateActor<NameClashActor>();
+    EXPECT_EQ(actor->model, nullptr);
+    EXPECT_EQ(actor->ModelSubObj(), nullptr);
 }
 
 TEST(SubObject, GrandchildReplacesTheCollisionTypeChosenByTheMiddleBase)
 {
-    MiddleActor middle;
-    middle.Init();
-    EXPECT_NE(NS::Obj::Cast<NS::Obj::BoxCollision>(middle.CollisionSubObj()), nullptr);
+    const std::unique_ptr<MiddleActor> middle = NS::Obj::CreateActor<MiddleActor>();
+    EXPECT_NE(NS::Obj::Cast<NS::Obj::BoxCollision>(middle->CollisionSubObj()), nullptr);
 
-    GrandActor grand;
-    grand.Init();
-    EXPECT_NE(NS::Obj::Cast<NS::Obj::SphereCollision>(grand.CollisionSubObj()), nullptr);
-    EXPECT_NE(grand.ModelSubObj(), nullptr);
+    const std::unique_ptr<GrandActor> grand = NS::Obj::CreateActor<GrandActor>();
+    EXPECT_NE(NS::Obj::Cast<NS::Obj::SphereCollision>(grand->CollisionSubObj()), nullptr);
+    EXPECT_NE(grand->ModelSubObj(), nullptr);
 }
 
 TEST(SubObject, SlotAcceptsOnlyDerivedTypesOfItsBase)
@@ -158,14 +172,29 @@ TEST(SubObject, SlotAcceptsOnlyDerivedTypesOfItsBase)
     SlotProbe::CheckSlotTypes();
 }
 
-TEST(SubObject, ActorInSceneAndBaselineAreInitializedExactlyOnce)
+TEST(SubObject, OnlyTheBuildersCanInitAndEnterAnActor)
+{
+    CheckInitIsClosed();
+    CheckSceneBuildsItsOwnActors();
+}
+
+TEST(SubObject, EveryBuildPathRunsOnInitExactlyOnce)
 {
     NS::Obj::Scene scene;
-    SubObjectInitProbe* placed = scene.SpawnTransient<SubObjectInitProbe>();
+    const SubObjectInitProbe* transient = scene.SpawnTransient<SubObjectInitProbe>();
+    EXPECT_EQ(transient->inits, 1);
+    EXPECT_NE(transient->ModelSubObj(), nullptr);
+
+    const SubObjectInitProbe* placed = scene.SpawnObject<SubObjectInitProbe>("Placed");
     EXPECT_EQ(placed->inits, 1);
-    EXPECT_NE(placed->ModelSubObj(), nullptr);
-    placed->Init();
-    EXPECT_EQ(placed->inits, 1);
+
+    const std::unique_ptr<SubObjectInitProbe> loose = NS::Obj::CreateActor<SubObjectInitProbe>();
+    EXPECT_EQ(loose->inits, 1);
+
+    const SubObjectInitProbe* fromJson =
+        NS::Obj::Cast<SubObjectInitProbe>(scene.SpawnFromJson(NS::Obj::MakePrototypeJson<SubObjectInitProbe>()));
+    ASSERT_NE(fromJson, nullptr);
+    EXPECT_EQ(fromJson->inits, 1);
 
     const NS::Obj::Actor& baseline = NS::Obj::ArchetypeLibrary::Get().Baseline("SubObjectInitProbe");
     const SubObjectInitProbe* probe = NS::Obj::Cast<SubObjectInitProbe>(&baseline);

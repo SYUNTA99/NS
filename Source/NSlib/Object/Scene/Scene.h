@@ -214,24 +214,26 @@ namespace NS::Obj
         //! @details 空でない間は各ビューを順に bind して描き分ける。出荷 (Editor 無し) では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneRenderer.SetSceneViews(std::move(views)); }
 
-        //! @brief 型 T の一時オブジェクトをシーンの中で作って入れる。呼出側へは生ポインタだけ返す
-        //! @details 所有はシーンが握る。印立てと開始は unique_ptr を取る SpawnTransient が行う
+        //! @brief 型 T の一時オブジェクトをシーンの中で作って入れ、開始する。呼出側へは生ポインタだけ返す
+        //! @details 所有はシーンが握る。保存・凍結に写らず、データからの組み直しで捨てる。
+        //! 更新は配置物と同じく自分の段で回る。入れる前に値を書く口は無いので、返った個体へ書く
         template <class T, class... Args> T* SpawnTransient(Args&&... args)
         {
-            std::unique_ptr<T> obj = std::make_unique<T>(std::forward<Args>(args)...);
+            std::unique_ptr<T> obj = CreateActor<T>(std::forward<Args>(args)...);
             T* raw = obj.get();
-            SpawnTransient(std::unique_ptr<Actor>{std::move(obj)});
+            AdoptTransient(std::move(obj));
             return raw;
         }
 
-        //! @brief 実行時の一時オブジェクトを ActorList へ入れる。ここで一時オブジェクトにする (SetTransient(true))
-        //! @details 保存・凍結に写らず、データからの組み直しで捨てる。更新は配置物と同じく自分の段で回る
-        //! 型が実行時にしか決まらない時に使う。型が分かっているなら SpawnTransient<T> を使う
-        Actor* SpawnTransient(std::unique_ptr<Actor> obj);
-
-        //! @brief 実行時に配置物を 1 体入れる。新しい永続 id と名前を振る。名前は既存と重なれば番号を付ける
-        //! @details 一時オブジェクトと違い保存に写る
-        Actor* SpawnObject(std::unique_ptr<Actor> obj, std::string name);
+        //! @brief 型 T の配置物をシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
+        //! @details 名前は既存と重なれば番号を付ける。一時オブジェクトと違い保存に写る
+        template <class T, class... Args> T* SpawnObject(std::string name, Args&&... args)
+        {
+            std::unique_ptr<T> obj = CreateActor<T>(std::forward<Args>(args)...);
+            T* raw = obj.get();
+            AdoptObject(std::move(obj), std::move(name));
+            return raw;
+        }
 
         //! @brief 配置物の JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
         //! @details 名前は既存と重なれば番号を付ける。親の id があれば親へぶら下げ、資産を引き当ててから開始する
@@ -274,6 +276,10 @@ namespace NS::Obj
 
         //! @brief 渡されたシーンの JSON 文書から配置物と当たりの body を組み直す
         void RebuildSceneFrom(const nlohmann::json& scene);
+
+        // SpawnTransient と SpawnObject の中身。外から個体を受けると、OnInit を通っていない個体が入る
+        Actor* AdoptTransient(std::unique_ptr<Actor> obj);
+        Actor* AdoptObject(std::unique_ptr<Actor> obj, std::string name);
 
         //! 実行時に入れた配置物の資産を引き当ててから開始する
         void StartSpawned(Actor& obj);
