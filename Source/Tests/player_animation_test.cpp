@@ -3,10 +3,11 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "NSlib/Graphics/Animation.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/SubObjects/Animation.h"
 #include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Windows/Clock.h"
+#include "TestAnimatedPlayer.h"
 
 #include <gtest/gtest.h>
 
@@ -16,9 +17,9 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
 {
     const std::vector<NS::Gfx::AnimationClip> clips = {
         {.name = "idle", .duration = 10.0f}, {.name = "run", .duration = 10.0f}, {.name = "walk", .duration = 10.0f}};
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<TestAnimatedPlayer>();
     Player& player = *playerOwned;
-    NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
+    NS::Obj::Animation* animation = player.AnimationSubObj();
     animation->AddClips(clips);
     player.Body().SetGrounded(true);
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
@@ -41,7 +42,7 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
 // アニメの欄はアニメの欄だけの部品 Clips が持ち、遊びの欄と並ばない
 TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<TestAnimatedPlayer>();
     Player& player = *playerOwned;
     const GL::Player::PlayerClips* clipParts = NS::Obj::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
     ASSERT_NE(clipParts, nullptr);
@@ -70,9 +71,9 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
                                                        {.name = "jump", .duration = 10.0f},
                                                        {.name = "fall", .duration = 10.0f},
                                                        {.name = "hang", .duration = 10.0f}};
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<TestAnimatedPlayer>();
     Player& player = *playerOwned;
-    NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
+    NS::Obj::Animation* animation = player.AnimationSubObj();
     animation->AddClips(clips);
     GL::Player::PlayerClips* clipParts = NS::Obj::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
     ASSERT_NE(clipParts, nullptr);
@@ -95,9 +96,9 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
 {
     const std::vector<NS::Gfx::AnimationClip> clips = {{.name = "idle", .duration = 10.0f},
                                                        {.name = "walk", .duration = 10.0f}};
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<TestAnimatedPlayer>();
     Player& player = *playerOwned;
-    NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
+    NS::Obj::Animation* animation = player.AnimationSubObj();
     animation->AddClips(clips);
     GL::Player::PlayerClips* clipParts = NS::Obj::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
     ASSERT_NE(clipParts, nullptr);

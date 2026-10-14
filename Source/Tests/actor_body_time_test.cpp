@@ -11,6 +11,7 @@
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Windows/Clock.h"
+#include "TestAnimatedPlayer.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -150,9 +151,9 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
     float times[2] = {};
     for (int index = 0; index < 2; ++index)
     {
-        const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
+        const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<TestAnimatedPlayer>();
         Player& player = *playerOwned;
-        NS::Obj::Animation* animation = NS::Obj::Cast<NS::Obj::Animation>(player.CreateSubObj("Animation"));
+        NS::Obj::Animation* animation = player.AnimationSubObj();
         ASSERT_NE(animation, nullptr);
         animation->AddClips(clips);
         ASSERT_TRUE(player.SetBodyTimeScale(static_cast<float>(index + 1)));
@@ -168,9 +169,9 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
 
 TEST(ActorBodyTime, SubObjectReadsItsOwnersClock)
 {
-    const std::unique_ptr<NS::Obj::Actor> actorOwned = NS::Obj::CreateActor<NS::Obj::Actor>();
+    const std::unique_ptr<NS::Obj::Actor> actorOwned = NS::Obj::CreateActor<TestAnimatedPlayer>();
     NS::Obj::Actor& actor = *actorOwned;
-    NS::Obj::SubObject* animation = actor.CreateSubObj("Animation");
+    NS::Obj::SubObject* animation = actor.AnimationSubObj();
     ASSERT_NE(animation, nullptr);
     ASSERT_TRUE(actor.SetBodyTimeScale(1.5f));
     EXPECT_EQ(animation->BodyDelta(), actor.BodyDelta());

@@ -4,7 +4,7 @@
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/SubObjects/Animation.h"
-#include "NSlib/Object/SubObjects/BoxCollision.h"
+#include "NSlib/Object/SubObjects/Collision.h"
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "NSlib/Object/SubObjects/HitReaction.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
@@ -71,47 +71,6 @@ namespace NS::Obj
             }
         });
         return found;
-    }
-
-    SubObject* Actor::CreateSubObj(std::string_view name)
-    {
-        if (SubObject* existing = FindSubObj(name))
-        {
-            return existing;
-        }
-        if (name == "Model")
-        {
-            return CreateSubObj<Model>(ModelSlot());
-        }
-        if (name == "Animation")
-        {
-            return CreateSubObj<Animation>(AnimationSlot());
-        }
-        if (name == "Shadow")
-        {
-            return CreateSubObj<Shadow>(ShadowSlot());
-        }
-        if (name == "Collision")
-        {
-            return CreateSubObj<BoxCollision>(CollisionSlot());
-        }
-        if (name == "BodySensor")
-        {
-            return CreateSubObj<ShapeHitSensor>(BodySensorSlot());
-        }
-        if (name == "AttackSensor")
-        {
-            return CreateSubObj<ShapeHitSensor>(AttackSensorSlot());
-        }
-        if (name == "HitReaction")
-        {
-            return CreateSubObj<HitReaction>(HitReactionSlot());
-        }
-        if (name == "Effect")
-        {
-            return CreateSubObj<EffectKeeper>(EffectSlot());
-        }
-        return nullptr;
     }
 
     IStateMachine* Actor::GetStateMachine() noexcept

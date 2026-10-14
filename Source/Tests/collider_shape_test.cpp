@@ -2,15 +2,15 @@
 #include "Game/Level/Goal.h"
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
+#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/SphereCollision.h"
 #include "NSlib/Object/SubObjects/Transform.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneJson.h"
 
 #include <gtest/gtest.h>
 
@@ -101,11 +101,9 @@ TEST(ColliderShape, ShapeFieldsRejectNegativeAndNonFinite)
 
 TEST(ColliderShape, PlayerOwnsAFixedColliderPart)
 {
-    // 動く体の当たりは自機の固定の部品 "Collider"。作り直しを頼んでも同じ部品を返す
     const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
     Player& player = *playerOwned;
     EXPECT_EQ(player.FindSubObj("Collider"), &player.Collider());
-    EXPECT_EQ(player.CreateSubObj("Collider"), &player.Collider());
 }
 
 TEST(ColliderShape, BodyHasNoShapeFields)
@@ -177,9 +175,9 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
         NS::Obj::Cast<NS::Obj::SphereCollision>(placed->FindSubObj("Collision"));
     ASSERT_NE(collision, nullptr);
 
-    ASSERT_EQ(
-        NS::Obj::ApplyJsonFields(*placed->FindSubObj("Collision"), {{"半径", 0.8f}, {"中心オフセット", {0.0f, 0.25f, 0.0f}}}),
-        0u);
+    ASSERT_EQ(NS::Obj::ApplyJsonFields(*placed->FindSubObj("Collision"),
+                                       {{"半径", 0.8f}, {"中心オフセット", {0.0f, 0.25f, 0.0f}}}),
+              0u);
     const NS::Sphere sphere = collision->WorldSphere();
     const NS::Obj::SensorVolume volume = placed->BodySensorSubObj()->WorldVolume();
     EXPECT_FLOAT_EQ(sphere.radius, 0.8f);

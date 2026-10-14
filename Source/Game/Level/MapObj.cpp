@@ -8,6 +8,7 @@
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
+#include "NSlib/Object/SubObjects/Shadow.h"
 #include "NSlib/Object/SubObjects/Transform.h"
 
 #include <algorithm>
@@ -76,19 +77,22 @@ namespace GL::Level
 
     void MapObj::OnInit()
     {
-        NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
+        NS::Obj::Model* model = CreateSubObj(m_model, "Model");
         model->SetMeshRef("sphere");
         model->SetBaseColor(NS::Vector3{0.72f, 0.70f, 0.66f});
-        NS::Obj::SphereCollision* sphere = CreateSubObj<NS::Obj::SphereCollision>(CollisionSlot());
+        (void)CreateSubObj(m_shadow, "Shadow");
+        NS::Obj::SphereCollision* sphere =
+            CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(m_collision, "Collision");
         (void)CreateSubObj(m_params, "Params");
         (void)CreateSubObj(m_hitZones, "HitZones");
-        (void)CreateSubObj<NS::Obj::EffectKeeper>(EffectSlot());
+        (void)CreateSubObj(m_effectKeeper, "Effect");
         (void)CreateSubObj(m_effects, "LaunchEffects");
         // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
-        NS::Obj::FollowHitSensor* bodySensor = CreateSubObj<NS::Obj::FollowHitSensor>(BodySensorSlot(), [sphere] {
-            const NS::Sphere world = sphere->WorldSphere();
-            return NS::Obj::SensorVolume::Sphere(world.center, world.radius);
-        });
+        NS::Obj::FollowHitSensor* bodySensor =
+            CreateSubObj<NS::Obj::HitSensor, NS::Obj::FollowHitSensor>(m_bodySensor, "BodySensor", [sphere] {
+                const NS::Sphere world = sphere->WorldSphere();
+                return NS::Obj::SensorVolume::Sphere(world.center, world.radius);
+            });
         SetSensorKind(*bodySensor, SensorKind::MapObjBody);
         (void)BuildStateMachine<MapObj, RestingState, FreezeState, LaunchedState>(*this, m_states);
     }

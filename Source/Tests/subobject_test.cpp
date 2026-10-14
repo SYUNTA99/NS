@@ -33,10 +33,10 @@ namespace
         void OnInit() override
         {
             (void)CreateSubObj(first, "First");
-            box = CreateSubObj<NS::Obj::BoxCollision>(CollisionSlot());
+            box = CreateSubObj<NS::Obj::Collision, NS::Obj::BoxCollision>(m_collision, "Collision");
             (void)CreateSubObj(second, "Second");
-            CreateSubObj<NS::Obj::Model>(ModelSlot());
-            refused = CreateSubObj<NS::Obj::SphereCollision>(CollisionSlot());
+            CreateSubObj(m_model, "Model");
+            refused = CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(m_collision, "Collision");
         }
     };
 
@@ -51,7 +51,7 @@ namespace
         void OnInit() override
         {
             (void)CreateSubObj(clash, "Model");
-            model = CreateSubObj<NS::Obj::Model>(ModelSlot());
+            model = CreateSubObj(m_model, "Model");
         }
     };
 
@@ -62,9 +62,9 @@ namespace
         void OnInit() override
         {
             InitShape();
-            CreateSubObj<NS::Obj::BoxCollision>(CollisionSlot());
+            CreateSubObj<NS::Obj::Collision, NS::Obj::BoxCollision>(m_collision, "Collision");
         }
-        void InitShape() { CreateSubObj<NS::Obj::Model>(ModelSlot()); }
+        void InitShape() { CreateSubObj(m_model, "Model"); }
     };
 
     class GrandActor final : public MiddleActor
@@ -73,21 +73,7 @@ namespace
         void OnInit() override
         {
             InitShape();
-            CreateSubObj<NS::Obj::SphereCollision>(CollisionSlot());
-        }
-    };
-
-    class SlotProbe final : public NS::Obj::Actor
-    {
-    public:
-        // 枠の型の派生だけを作れる。requires は templated の中でないと誤りを偽にできない
-        template <class TSelf = SlotProbe> static void CheckSlotTypes()
-        {
-            static_assert(
-                requires(TSelf& self) { self.template CreateSubObj<NS::Obj::SphereCollision>(self.CollisionSlot()); });
-            static_assert(!requires(TSelf& self) { self.template CreateSubObj<NS::Obj::Model>(self.CollisionSlot()); });
-            static_assert(
-                !requires(TSelf& self) { self.template CreateSubObj<NS::Obj::BoxCollision>(self.ModelSlot()); });
+            CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(m_collision, "Collision");
         }
     };
 
@@ -120,7 +106,7 @@ protected:
     void OnInit() override
     {
         ++inits;
-        CreateSubObj<NS::Obj::Model>(ModelSlot());
+        CreateSubObj(m_model, "Model");
     }
 };
 NS_CLASS(SubObjectInitProbe)
@@ -165,11 +151,6 @@ TEST(SubObject, GrandchildReplacesTheCollisionTypeChosenByTheMiddleBase)
     const std::unique_ptr<GrandActor> grand = NS::Obj::CreateActor<GrandActor>();
     EXPECT_NE(NS::Obj::Cast<NS::Obj::SphereCollision>(grand->CollisionSubObj()), nullptr);
     EXPECT_NE(grand->ModelSubObj(), nullptr);
-}
-
-TEST(SubObject, SlotAcceptsOnlyDerivedTypesOfItsBase)
-{
-    SlotProbe::CheckSlotTypes();
 }
 
 TEST(SubObject, OnlyTheBuildersCanInitAndEnterAnActor)

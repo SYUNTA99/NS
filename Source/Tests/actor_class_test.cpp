@@ -46,8 +46,7 @@ TEST(ActorClass, MapObjOwnsMotionAndStaticCollision)
     EXPECT_NE(NS::Obj::Cast<NS::Obj::SphereCollision>(obj.FindSubObj("Collision")), nullptr);
     EXPECT_EQ(obj.FindSubObj("Breakable"), nullptr);
     EXPECT_EQ(obj.FindSubObj("LaunchedBody"), nullptr);
-    // 影は種類の既定値が足す部品。OnInit は積まない
-    EXPECT_EQ(obj.ShadowSubObj(), nullptr);
+    EXPECT_NE(obj.ShadowSubObj(), nullptr);
     // 体当たりは物の体のセンサーで調べられ、受け方と尾は自分で持つ
     const NS::Obj::HitSensor* sensor = obj.BodySensorSubObj();
     ASSERT_NE(sensor, nullptr);

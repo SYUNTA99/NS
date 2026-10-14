@@ -1,15 +1,15 @@
 #include "Editor/LevelEditorController.h"
 #include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Reflection/Archetype.h"
+#include "NSlib/Object/Reflection/ObjectBuilder.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/SubObjects/DirectionalLight.h"
 #include "NSlib/Object/SubObjects/Shadow.h"
 #include "NSlib/Object/SubObjects/SphereCollision.h"
 #include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
 #include "NSlib/Object/SubObjects/Transform.h"
-#include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/SubObjectEntry.h"
-#include "NSlib/Object/Reflection/ObjectBuilder.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/StringUtils.h"
 
@@ -82,8 +82,7 @@ namespace
 
     float RadiusOf(const NS::Obj::Actor& actor)
     {
-        const NS::Obj::SphereCollision* sphere =
-            NS::Obj::Cast<NS::Obj::SphereCollision>(actor.FindSubObj("Collision"));
+        const NS::Obj::SphereCollision* sphere = NS::Obj::Cast<NS::Obj::SphereCollision>(actor.FindSubObj("Collision"));
         if (sphere == nullptr)
         {
             return -1.0f;
@@ -104,8 +103,7 @@ TEST(Archetype, CodeDefaultWithoutArchetype)
     const std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::ObjectFromJson(MapObjJson(1), nullptr);
     ASSERT_NE(actor, nullptr);
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 0.5f);
-    // 種類の既定値が無いので、種類が足す影も無い
-    EXPECT_EQ(actor->ShadowSubObj(), nullptr);
+    EXPECT_NE(actor->ShadowSubObj(), nullptr);
 }
 
 TEST(Archetype, ArchetypeOverridesCodeDefault)
@@ -130,14 +128,15 @@ TEST(Archetype, InstanceOverridesArchetype)
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 3.0f);
 }
 
-TEST(Archetype, ArchetypeDecidesOptionalParts)
+TEST(Archetype, ArchetypeCannotAddParts)
 {
-    const ScopedArchetypeDirectory scope("OptionalParts");
-    nlohmann::json shadow = nlohmann::json::object();
-    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", "Shadow", std::move(shadow)));
+    const ScopedArchetypeDirectory scope("FixedParts");
+    NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", "AttackSensor", nlohmann::json::object()));
 
     const std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::ObjectFromJson(MapObjJson(1), nullptr);
     ASSERT_NE(actor, nullptr);
+    EXPECT_EQ(actor->AttackSensorSubObj(), nullptr);
+    EXPECT_EQ(actor->FindSubObj("AttackSensor"), nullptr);
     EXPECT_NE(actor->ShadowSubObj(), nullptr);
 }
 
@@ -149,7 +148,6 @@ TEST(Archetype, InstanceCannotAddParts)
 
     const std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::ObjectFromJson(object, nullptr);
     ASSERT_NE(actor, nullptr);
-    // どの部品を持つかはクラスと種類の既定値が決める
     EXPECT_EQ(NS::Obj::Cast<NS::Obj::DirectionalLight>(actor->FindSubObj("DirectionalLight")), nullptr);
 }
 

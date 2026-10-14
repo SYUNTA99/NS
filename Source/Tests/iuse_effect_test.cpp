@@ -1,6 +1,7 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
+#include "TestEffectActor.h"
 
 #include <gtest/gtest.h>
 
@@ -15,8 +16,8 @@ namespace
 
 TEST(IUseEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
 {
-    NS::Obj::Actor actor;
-    ASSERT_NE(actor.CreateSubObj("Effect"), nullptr);
+    const std::unique_ptr<TestEffectActor> owned = NS::Obj::CreateActor<TestEffectActor>();
+    TestEffectActor& actor = *owned;
     ASSERT_NE(actor.GetEffectKeeper(), nullptr);
 
     const std::uint32_t id = NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
@@ -30,8 +31,8 @@ TEST(IUseEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
 
 TEST(IUseEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
 {
-    NS::Obj::Actor actor;
-    ASSERT_NE(actor.CreateSubObj("Effect"), nullptr);
+    const std::unique_ptr<TestEffectActor> owned = NS::Obj::CreateActor<TestEffectActor>();
+    TestEffectActor& actor = *owned;
     const std::uint32_t id = NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
     actor.Update();
     ASSERT_EQ(NS::Obj::EffectStep(&actor), 1);
@@ -52,8 +53,8 @@ TEST(IUseEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
 
 TEST(IUseEffectTest, StopEffectAfterEndsOnTheScheduledStep)
 {
-    NS::Obj::Actor actor;
-    ASSERT_NE(actor.CreateSubObj("Effect"), nullptr);
+    const std::unique_ptr<TestEffectActor> owned = NS::Obj::CreateActor<TestEffectActor>();
+    TestEffectActor& actor = *owned;
     const std::uint32_t id = NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
     NS::Obj::StopEffectAfter(&actor, id, 2);
 

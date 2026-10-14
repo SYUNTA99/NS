@@ -29,16 +29,12 @@ namespace NS::Obj
         }
     } // namespace
 
-    void ApplyObjectSubObjs(Actor& obj, const nlohmann::json& object, SubObjCreation creation)
+    void ApplyObjectSubObjs(Actor& obj, const nlohmann::json& object)
     {
         const nlohmann::json& parts = ObjectJsonSubObjs(object);
         for (nlohmann::json::const_iterator entry = parts.begin(); entry != parts.end(); ++entry)
         {
             SubObject* target = obj.FindSubObj(entry.key());
-            if (target == nullptr && creation == SubObjCreation::Allow)
-            {
-                target = obj.CreateSubObj(entry.key());
-            }
             if (target == nullptr)
             {
                 NS_LOG_WARN(Scene, "{} の部品 {} はクラスに無いので読み飛ばす", obj.ClassName(), entry.key());
@@ -50,7 +46,7 @@ namespace NS::Obj
 
     std::unique_ptr<Actor> ObjectFromJson(const nlohmann::json& object, AssetManager* assets)
     {
-        // 部品はクラスの OnInit と種類の既定値が積む。クラスの無い JSON は配置物でない
+        // 部品構成はクラスの OnInit で決まる。クラスの無い JSON は配置物でない
         if (ObjectJsonClass(object).empty())
         {
             return nullptr;
@@ -59,7 +55,7 @@ namespace NS::Obj
         // コードの既定値 < 種類の既定値 < 個体の上書き の順に重ねる
         std::unique_ptr<Actor> obj = CreateRegisteredObject(object);
         ApplyArchetype(*obj);
-        ApplyObjectSubObjs(*obj, object, SubObjCreation::Forbid);
+        ApplyObjectSubObjs(*obj, object);
 
         // 参照文字列の実体化は SubObject 自身の仕事。AssetManager が無い間は文字列のまま持たせておく
         if (assets != nullptr)

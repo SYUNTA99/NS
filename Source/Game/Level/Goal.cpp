@@ -16,11 +16,12 @@ namespace GL::Level
     void Goal::OnInit()
     {
         (void)CreateSubObj(m_params, "Params");
-        NS::Obj::Model* mesh = CreateSubObj<NS::Obj::Model>(ModelSlot());
+        NS::Obj::Model* mesh = CreateSubObj(m_model, "Model");
         mesh->SetMeshRef("cube");
         mesh->SetBaseColor(NS::Vector3{1.0f, 0.84f, 0.0f});
         // ゴールの半径 0.9 m にプレイヤーの体が重なれば触れたとみなす
-        NS::Obj::ShapeHitSensor* area = CreateSubObj<NS::Obj::ShapeHitSensor>(BodySensorSlot());
+        NS::Obj::ShapeHitSensor* area =
+            CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_bodySensor, "BodySensor");
         SetSensorKind(*area, SensorKind::Area);
         area->SetSphere(0.9f);
     }

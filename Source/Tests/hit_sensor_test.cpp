@@ -52,7 +52,7 @@ namespace
     protected:
         void OnInit() override
         {
-            m_sensor = CreateSubObj<NS::Obj::ShapeHitSensor>(BodySensorSlot());
+            m_sensor = CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_bodySensor, "BodySensor");
             GL::Level::SetSensorKind(*m_sensor, m_kind);
             m_sensor->SetSphere(m_radius);
         }
@@ -129,8 +129,9 @@ TEST(MakeScaledCapsule, RadiusTakesTheLargerSideScale)
 
 TEST(HitSensor, WorldVolumeFollowsRootScale)
 {
-    NS::Obj::Actor actor;
-    NS::Obj::ShapeHitSensor* sensor = NS::Obj::Cast<NS::Obj::ShapeHitSensor>(actor.CreateSubObj("BodySensor"));
+    const std::unique_ptr<SensorProbe> owned = NS::Obj::CreateActor<SensorProbe>(SensorKind::Area, 0.5f);
+    SensorProbe& actor = *owned;
+    NS::Obj::ShapeHitSensor* sensor = actor.m_sensor;
     ASSERT_NE(sensor, nullptr);
     sensor->SetSphere(0.5f);
     actor.Root().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
@@ -143,8 +144,9 @@ TEST(HitSensor, WorldVolumeFollowsRootScale)
 TEST(HitSensor, ShapeSensorKeepsItsFourSavedFieldLabels)
 {
     // 欄の表示名は保存の鍵。ゴールと落下死の範囲の保存済みの値がこの 4 つで読まれる
-    NS::Obj::Actor actor;
-    NS::Obj::SubObject* sensor = actor.CreateSubObj("BodySensor");
+    const std::unique_ptr<SensorProbe> owned = NS::Obj::CreateActor<SensorProbe>(SensorKind::Area, 0.5f);
+    SensorProbe& actor = *owned;
+    NS::Obj::SubObject* sensor = actor.m_sensor;
     ASSERT_NE(sensor, nullptr);
     const NS::Obj::ReflectionInfo* info = sensor->GetReflection();
     std::vector<std::string> labels;

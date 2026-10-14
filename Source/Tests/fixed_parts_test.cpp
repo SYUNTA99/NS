@@ -12,6 +12,7 @@
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/SubObjects/PlayerInput.h"
+#include "NSlib/Object/SubObjects/SphereCollision.h"
 #include "NSlib/Object/SubObjects/Transform.h"
 
 #include <gtest/gtest.h>
@@ -22,6 +23,46 @@
 
 namespace
 {
+    template <class T>
+    constexpr bool k_CanCreatePartByName = requires(T& actor) { actor.CreateSubObj(std::string_view{"Model"}); };
+
+    class DirectMemberActor final : public NS::Obj::Actor
+    {
+    public:
+        std::unique_ptr<NS::Obj::Collision> shape;
+
+    protected:
+        void OnInit() override { (void)CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(shape, "Shape"); }
+        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, shape); }
+
+    public:
+        template <class TSelf = DirectMemberActor> static void CheckTypes()
+        {
+            static_assert(requires(TSelf& self) {
+                self.template CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(self.shape, "Shape");
+            });
+            static_assert(!requires(TSelf& self) {
+                self.template CreateSubObj<NS::Obj::Collision, NS::Obj::Model>(self.shape, "Shape");
+            });
+        }
+    };
+
+    class ModelPartActor final : public NS::Obj::Actor
+    {
+    protected:
+        void OnInit() override { (void)CreateSubObj(m_model, "Model"); }
+    };
+
+    class SensorPartsActor final : public NS::Obj::Actor
+    {
+    protected:
+        void OnInit() override
+        {
+            (void)CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_bodySensor, "BodySensor");
+            (void)CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_attackSensor, "AttackSensor");
+        }
+    };
+
     class MemberOwnedPart final : public NS::Obj::SubObject
     {
     public:
@@ -83,6 +124,28 @@ namespace
 
 } // namespace
 
+TEST(FixedParts, PartCreationRequiresAnOwningMember)
+{
+    EXPECT_FALSE(k_CanCreatePartByName<NS::Obj::Actor>);
+}
+
+TEST(FixedParts, MemberTypeCanOwnADerivedPartWithoutASlot)
+{
+    DirectMemberActor::CheckTypes();
+    const std::unique_ptr<DirectMemberActor> actor = NS::Obj::CreateActor<DirectMemberActor>();
+    ASSERT_NE(actor->shape, nullptr);
+    EXPECT_NE(NS::Obj::Cast<NS::Obj::SphereCollision>(actor->shape.get()), nullptr);
+    EXPECT_EQ(actor->shape->Owner(), actor.get());
+    EXPECT_EQ(actor->FindSubObj("Shape"), actor->shape.get());
+}
+
+TEST(FixedParts, MapObjCreatesShadowBeforeArchetypeIsApplied)
+{
+    const std::unique_ptr<GL::Level::MapObj> actor = NS::Obj::CreateActor<GL::Level::MapObj>();
+    ASSERT_NE(actor->ShadowSubObj(), nullptr);
+    EXPECT_EQ(actor->FindSubObj("Shadow"), actor->ShadowSubObj());
+}
+
 TEST(FixedParts, MemberOwnershipSupportsLookupLifecycleAndDestruction)
 {
     std::vector<std::string> destroyed;
@@ -113,7 +176,6 @@ TEST(FixedParts, TransformUsesTheSamePartLookupAndFieldEditing)
     NS::Obj::Transform* transform = NS::Obj::Cast<NS::Obj::Transform>(actor.FindSubObj("Transform"));
     ASSERT_NE(transform, nullptr);
     EXPECT_EQ(transform->Owner(), &actor);
-    EXPECT_EQ(actor.CreateSubObj("Transform"), transform);
     EXPECT_EQ(&actor.Root(), transform);
     NS::Obj::ApplyJsonFields(*transform, nlohmann::json{{"位置", {2.0f, 3.0f, 4.0f}}});
     EXPECT_EQ(actor.Root().Position(), (NS::Vector3{2.0f, 3.0f, 4.0f}));
@@ -141,16 +203,16 @@ TEST(FixedParts, BaseActorDoesNotImplicitlyUpdateEveryEnumeratedPart)
     EXPECT_EQ(actor.passive->updates, 0);
 }
 
-TEST(FixedParts, CommonSlotsAreOptionalAndCreationIsIdempotent)
+TEST(FixedParts, CommonMembersAreCreatedByTheActorClass)
 {
-    NS::Obj::Actor actor;
-    EXPECT_EQ(actor.ModelSubObj(), nullptr);
-    NS::Obj::SubObject* created = actor.CreateSubObj("Model");
-    ASSERT_NE(created, nullptr);
-    EXPECT_EQ(created, actor.ModelSubObj());
-    EXPECT_EQ(created, actor.CreateSubObj("Model"));
-    EXPECT_EQ(created->Owner(), &actor);
-    EXPECT_EQ(actor.CreateSubObj("UnknownPart"), nullptr);
+    const NS::Obj::Actor empty;
+    EXPECT_EQ(empty.ModelSubObj(), nullptr);
+    const std::unique_ptr<ModelPartActor> owned = NS::Obj::CreateActor<ModelPartActor>();
+    NS::Obj::Actor& actor = *owned;
+    NS::Obj::Model* model = actor.ModelSubObj();
+    ASSERT_NE(model, nullptr);
+    EXPECT_EQ(actor.FindSubObj("Model"), model);
+    EXPECT_EQ(model->Owner(), &actor);
     std::vector<std::string> names;
     actor.ForEachSubObj([&](const NS::Obj::SubObject* subObject) { names.push_back(subObject->Name()); });
     EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model"}));
@@ -158,16 +220,16 @@ TEST(FixedParts, CommonSlotsAreOptionalAndCreationIsIdempotent)
 
 TEST(FixedParts, SensorsHaveDistinctRoleNames)
 {
-    NS::Obj::Actor actor;
-    NS::Obj::SubObject* body = actor.CreateSubObj("BodySensor");
-    NS::Obj::SubObject* attack = actor.CreateSubObj("AttackSensor");
+    const std::unique_ptr<SensorPartsActor> owned = NS::Obj::CreateActor<SensorPartsActor>();
+    NS::Obj::Actor& actor = *owned;
+    NS::Obj::SubObject* body = actor.BodySensorSubObj();
+    NS::Obj::SubObject* attack = actor.AttackSensorSubObj();
     ASSERT_NE(body, nullptr);
     ASSERT_NE(attack, nullptr);
     EXPECT_NE(body, attack);
     EXPECT_EQ(actor.FindSubObj("BodySensor"), body);
     EXPECT_EQ(actor.FindSubObj("AttackSensor"), attack);
     EXPECT_EQ(actor.FindSubObj("Missing"), nullptr);
-    // どちらも形を自分で持つセンサー
     EXPECT_NE(NS::Obj::Cast<NS::Obj::ShapeHitSensor>(body), nullptr);
     EXPECT_NE(NS::Obj::Cast<NS::Obj::ShapeHitSensor>(attack), nullptr);
 }

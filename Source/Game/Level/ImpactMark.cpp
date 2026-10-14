@@ -14,7 +14,7 @@ namespace GL::Level
 
     void ImpactMark::OnInit()
     {
-        NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
+        NS::Obj::Model* model = CreateSubObj(m_model, "Model");
         model->SetMeshRef("shadowQuad");
         model->SetMaterialRef("shadow");
     }

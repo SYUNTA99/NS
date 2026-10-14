@@ -1,5 +1,7 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
+#include "NSlib/Object/SubObjects/HitReaction.h"
+#include "TestEffectActor.h"
 
 #include <gtest/gtest.h>
 
@@ -11,6 +13,16 @@
 
 namespace
 {
+    class ReactionEffectActor final : public TestEffectActor
+    {
+    protected:
+        void OnInit() override
+        {
+            TestEffectActor::OnInit();
+            (void)CreateSubObj(m_hitReaction, "HitReaction");
+        }
+    };
+
     using NS::Obj::EffectKeeper;
     using NS::Obj::EffectRecord;
 } // namespace
@@ -95,8 +107,9 @@ TEST(EffectKeeperTest, AmountAndRotationAreWrittenToTheRecord)
 
 TEST(EffectKeeperTest, ActorUpdateAdvancesTheSlotKeeperOnce)
 {
-    NS::Obj::Actor actor;
-    EffectKeeper* keeper = NS::Obj::Cast<EffectKeeper>(actor.CreateSubObj("Effect"));
+    const std::unique_ptr<TestEffectActor> owned = NS::Obj::CreateActor<TestEffectActor>();
+    TestEffectActor& actor = *owned;
+    EffectKeeper* keeper = actor.GetEffectKeeper();
     ASSERT_NE(keeper, nullptr);
     ASSERT_EQ(keeper->Step(), 0);
 
@@ -110,9 +123,10 @@ TEST(EffectKeeperTest, ActorUpdateAdvancesTheSlotKeeperOnce)
 
 TEST(EffectKeeperTest, SlotKeeperIsOrderedAfterHitReaction)
 {
-    NS::Obj::Actor actor;
-    NS::Obj::SubObject* keeper = actor.CreateSubObj("Effect");
-    NS::Obj::SubObject* reaction = actor.CreateSubObj("HitReaction");
+    const std::unique_ptr<ReactionEffectActor> owned = NS::Obj::CreateActor<ReactionEffectActor>();
+    ReactionEffectActor& actor = *owned;
+    NS::Obj::SubObject* keeper = actor.GetEffectKeeper();
+    NS::Obj::SubObject* reaction = actor.HitReactionSubObj();
     ASSERT_NE(keeper, nullptr);
     ASSERT_NE(reaction, nullptr);
 
@@ -121,5 +135,5 @@ TEST(EffectKeeperTest, SlotKeeperIsOrderedAfterHitReaction)
     ASSERT_EQ(parts.size(), 3u);
     EXPECT_EQ(parts[1], reaction);
     EXPECT_EQ(parts[2], keeper);
-    EXPECT_EQ(actor.CreateSubObj("Effect"), keeper);
+    EXPECT_EQ(actor.FindSubObj("Effect"), keeper);
 }

@@ -15,7 +15,7 @@
 namespace GL::Level
 {
     //! @brief 動く・反応する置物。岩・箱・樽
-    //! 影は種類の既定値が足す。個体ごとの見た目と重さは個体の上書きで変える
+    // 個体ごとの見た目と重さは個体の上書きで変える
     class MapObj : public NS::Obj::Actor
     {
     public:

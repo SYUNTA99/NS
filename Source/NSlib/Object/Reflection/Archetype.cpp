@@ -223,8 +223,7 @@ namespace NS::Obj
         {
             return;
         }
-        // 種類の既定値は部品を足せる。どの部品を持つかも種類で決める
-        ApplyObjectSubObjs(actor, *archetype, SubObjCreation::Allow);
+        ApplyObjectSubObjs(actor, *archetype);
     }
 
     nlohmann::json ExpandObjectJson(const nlohmann::json& object)

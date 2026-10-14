@@ -14,16 +14,8 @@ namespace NS::Obj
     class AssetManager;
     class SubObject;
 
-    //! JSON の部品の件に、Actor がまだ持たない部品があった時にどうするか
-    enum class SubObjCreation
-    {
-        Allow,
-        Forbid,
-    };
-
-    //! 同じ部品名へ JSON の値を適用する。作れない部品は警告して読み飛ばす
-    //! creation は不足する部品を追加するかを指定する
-    void ApplyObjectSubObjs(Actor& obj, const nlohmann::json& object, SubObjCreation creation);
+    // 既存の部品へ値を適用する。クラスに無い部品名は警告して読み飛ばす
+    void ApplyObjectSubObjs(Actor& obj, const nlohmann::json& object);
 
     //! 型登録から Actor を作り、種類の既定値と個体の値を適用する。id と名前は設定しない
     //! class がなければ nullptr。assets がなければ資産の解決を省く
