@@ -6,9 +6,7 @@
 
 namespace NS::Gfx
 {
-    //! @brief 基本プリミティブ生成処理が返す、CPU側のジオメトリデータ
-    //! @details 描画用メッシュの構築パラメータとして使用する
-    //! @note メッシュの構築処理内でグラフィックスメモリへ転送されるため、構築完了後は破棄してよい
+    //! GPU メッシュ構築用の CPU データ。構築後は破棄してよい
     struct MeshGeometry
     {
         std::vector<StaticVertex> vertices; // 頂点データ
@@ -17,34 +15,22 @@ namespace NS::Gfx
         bool hasBounds = false;             // 有効なら StaticMesh がこれを使い、無ければ頂点から算出
     };
 
-    //! @brief 立方体プリミティブのジオメトリを生成する
-    //! @details 各面に独立した法線を持つ（24頂点、36インデックス）
-    //! @param[in] extents 幅・高さ・奥行きのサイズ
-    //! @note メモリ確保に失敗すると例外を送出する
+    //! extents は各軸の半幅。面ごとに独立した法線を持つ
     [[nodiscard]] MeshGeometry MakeCube(const NS::Vector3& extents);
 
-    //! @brief 平面プリミティブのジオメトリを生成する（4頂点、6インデックス）
-    //! @param[in] extents 幅・高さ・奥行きのサイズ
+    //! 原点中心の XZ 平面。extents は X・Z 方向の半幅
     [[nodiscard]] MeshGeometry MakePlane(const NS::Vector2& extents);
 
-    //! @brief Z 軸プラス方向へ上るスロープを作る（18頂点、24インデックス）
-    //! @param[in] angleDegrees スロープの傾斜角
-    //! @param[in] extents 幅・高さ・奥行きのサイズ
+    //! +Z 側が高い斜面。angleDegrees は度、extents は各軸の半幅
     [[nodiscard]] MeshGeometry MakeSlope(float angleDegrees, const NS::Vector3& extents);
 
     //! @brief 原点中心の球のジオメトリを生成する
-    //! @param[in] radius 球の半径
     //! @param[in] rings 上下方向の分割数。2 未満は 2 に切り上げる
     //! @param[in] segments 周方向の分割数。3 未満は 3 に切り上げる
     [[nodiscard]] MeshGeometry MakeSphere(float radius, std::uint32_t rings = 16, std::uint32_t segments = 32);
 
-    //! @brief 原点中心で Y 軸に沿って伸びるカプセルのジオメトリを生成する
-    //! @details 半径 radius の円柱の上下に同じ半径の半球を付けた形。上端は y = halfHeight + radius
-    //! halfHeight は NS::Phys::Capsule と同じく中心から端の半球の中心までの距離で、半球を含まない
-    //! @param[in] radius 円柱と半球の半径。負は 0 として扱う
-    //! @param[in] halfHeight 円柱部の長さの半分。0 なら同じ半径の球になる。負は 0 として扱う
-    //! @param[in] rings 半球 1 つあたりの上下方向の分割数。1 未満は 1 に切り上げる
-    //! @param[in] segments 周方向の分割数。3 未満は 3 に切り上げる
+    //! Y 軸方向のカプセル。halfHeight は半球を含まない円柱部の半長で、0 なら球
+    //! 負の寸法は 0、分割数は rings が 1、segments が 3 を下限とする
     [[nodiscard]] MeshGeometry MakeCapsule(float radius,
                                            float halfHeight,
                                            std::uint32_t rings = 8,

@@ -8,12 +8,7 @@
 namespace NS::Obj
 {
 
-    //! @brief 階層構造を持つ位置 / 回転 / スケール
-    //! @details 親子関係を SetParent で構築し、WorldMatrix() で root から再計算した world 変換を返す
-    //! 前フレーム値を保持し Snapshot() で現在値を一括退避する
-    //! 描画側は世界が回っている間 FrameTimer::Alpha() で previous-current を補間し、
-    //! ガタつきのない軌道を再現する
-    //! 所有関係は持たず、Transform 間は生参照で寿命は Actor が支配する
+    //! 非所有の親子関係を持つ姿勢。Snapshot で控えた固定更新間の姿勢を描画時に補間する
     class Transform : public NS::NonCopyable
     {
     public:
@@ -22,7 +17,7 @@ namespace NS::Obj
 
         //! 親空間の Local position。Snapshot で previous に退避
         void SetPosition(const NS::Vector3& position) noexcept;
-        //! 親空間の Local rotation で quaternion 表現
+        //! 親の座標系での回転。クォータニオン表現
         void SetRotation(const NS::Quaternion& rotation) noexcept;
         //! Local scale。default は各軸 1
         void SetScale(const NS::Vector3& scale) noexcept;
@@ -40,12 +35,12 @@ namespace NS::Obj
         [[nodiscard]] const NS::Vector3& PreviousScale() const noexcept { return m_previousScale; }
 
         //! 現在 PRS を previous に退避する。Scene::OnUpdate 先頭で全 Transform に一括実行する
-        //! SubObject の OnUpdate 内で個別実行すると parent-child の世代がずれるため禁止
+        //! SubObject の OnUpdate 内で個別実行すると親子の世代がずれるため禁止
         void Snapshot() noexcept;
 
         //! Local 行列。Scale * Rotate * Translate の合成
         [[nodiscard]] NS::Matrix LocalMatrix() const noexcept;
-        //! World 行列で Local * parent.World を row-major LH で合成する。親が無ければ Local と同値
+        //! World 行列で Local * parent.World を行優先の左手系で合成する。親が無ければ Local と同値
         [[nodiscard]] NS::Matrix WorldMatrix() const noexcept;
         //! Alpha 補間付き Local 行列。alpha=1 で現在 PRS、alpha=0 で previous PRS
         //! 割合 1 以上は前の値を読まず LocalMatrix と同じ値を返す
@@ -53,7 +48,7 @@ namespace NS::Obj
         //! Alpha 補間付き World 行列。階層全体を補間値で再計算する
         [[nodiscard]] NS::Matrix InterpolatedWorldMatrix(float alpha) const noexcept;
 
-        //! 親を切替える。null で root 化。サイクル検出は呼出側責任で現状では行わない
+        //! 親を切り替える。未指定なら根になる。循環を検出しないため、呼び出し側で防ぐ
         void SetParent(Transform* parent) noexcept;
         [[nodiscard]] Transform* Parent() const noexcept { return m_parent; }
         [[nodiscard]] const std::vector<Transform*>& Children() const noexcept { return m_children; }

@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <cmath>
 
-// ---- 溜めと狙い ----
 
 namespace
 {

@@ -21,18 +21,14 @@ namespace GL::Player
 {
     class PlayerAppearance;
 
-    //! 溜めと放しの演出を出し、層の寿命を管理する
-    //! 時間と向きは自分の保存欄から読む
-    //! PlayerAppearance の後に見た目の段で更新する
-    //! 記録は持ち主の EffectKeeper に残る。描画のない世界でも残る
+    //! 溜めと放しの演出を出し、寿命を管理する部品
+    //! PlayerAppearance の後に更新する
     class ChargeEffects : public NS::Obj::SubObject
     {
     public:
         ChargeEffects() noexcept;
 
-        //! 同居する部品を控え、描画のある世界なら受け持つエフェクトの絵を読み込む
         void OnStart() override;
-        //! このフレームの結末を読んでエフェクトを出す・付いていかせる・消す
         void OnUpdate() override;
         //! 番号を控えている溜めと放しのエフェクトを消す
         void OnEndPlay() override;
@@ -41,15 +37,10 @@ namespace GL::Player
         //! @return 押し続けている間、溜めきったフレームを 1 とした数。溜めきる前と押していない間は 0
         [[nodiscard]] int FramesSinceFullCharge() const noexcept { return m_framesSinceFull; }
 
-        //! @brief 放しの弾けの大きさの倍率
-        //! @param[in] charge01 突進を出した時の溜め量 0..1。範囲の外は丸める。有限でなければ 0 とみなす
-        //! @return 欄「通常突進の弾けの大きさ」+ 欄「溜めきりで足す弾けの大きさ」× 溜め量。
-        //! 既定で通常突進 0.75、溜めきり 1
+        //! 放しの弾けの倍率を返す。charge01 は 0〜1 に丸め、非有限は 0 とする
         [[nodiscard]] float ReleaseBurstScale(float charge01) const noexcept;
 
-        //! @brief +Z を水平の向き direction へ向ける Y 軸まわりの回転
-        //! @param[in] direction 向ける先。縦の成分は使わない
-        //! @return 回転。水平の長さが 0 か有限でなければ回さない
+        //! +Z を direction の水平成分へ向ける。水平の向きが無効なら無回転
         [[nodiscard]] static NS::Quaternion YawToward(const NS::Vector3& direction) noexcept;
 
         NS_REFLECT_BEGIN(ChargeEffects, NS::Obj::SubObject)
@@ -108,7 +99,6 @@ namespace GL::Player
         // 層を今の位置・向き・大きさへ置き直し、向きを記録に書く。描画の無い世界では記録だけ書く
         void Place(std::uint32_t id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept;
         void SetCharge(std::uint32_t id, float charge01) const noexcept;
-        // 動的入力 index 番に value を入れる。描画の無い世界か、再生できなかった層なら何もしない
         void SetInput(std::uint32_t id, int index, float value) const noexcept;
         // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ Player::AimDirection
         [[nodiscard]] NS::Vector3 HeldAimDirection() const noexcept;
@@ -125,13 +115,10 @@ namespace GL::Player
         //! 紫の火花の横方向に混ぜる上向きの重み
         float m_sideLift = 1.0f;
 
-        // 放しの弾けの輪・丸屋根・筋の大きさ。溜めきりで輪が半径 3.2 m まで広がる
-        // 通常突進の 0.75 は輪が半径 2.4 m で、押した瞬間の丸まりの殻 (半径 1.2 m) の倍。0.4 (半径 1.3 m) は
-        // 放した次のフレームの輪が殻と同じ大きさに見えた
+        // 放しの弾けのうち、輪・丸屋根・筋に掛ける大きさ
         float m_tapBurstScale = 0.75f;
         float m_fullBurstScaleGain = 0.25f;
-        // 揺れが端へ来るたびにその側へ散らす火花の数と速さ (m/秒)。紫の深さで始めから終わりへ上げ、勝手に出る直前ほど
-        // バチバチを強くする。当たりの大きな外れの火花 (16 本・4 m/秒) より少なく遅い所から始め、終わりで並ぶ
+        // 溜めすぎの深さに応じて火花の数と速さ (m/s) を上げる
         int m_overchargeSparkCountMin = 4;
         int m_overchargeSparkCountMax = 14;
         float m_overchargeSparkSpeedMin = 2.5f;
@@ -149,11 +136,11 @@ namespace GL::Player
         int m_fullStep = 0;               // 溜めきりの閃きを出したフレームの記録の番号
         int m_framesSinceFull = 0;        // FramesSinceFullCharge の値。OnUpdate が毎フレーム決める
         bool m_fullShown = false;         // この押しで溜めきりの閃きを出したか。押し直すまで 2 回目を出さない
-        bool m_wasHeld = false;           // 前のフレームに押していたか
-        bool m_wasSlamming = false;       // 前のフレームに突進していたか
+        bool m_wasHeld = false;
+        bool m_wasSlamming = false;
         bool m_trailAwaitsFreeze = false; // 当たりを検知して突進が終わった。次のフレームの止めの頭で尾の親を止める
         float m_spinDegrees = 0.0f;       // 押してから玉が回った角度の累計。回転の弧の板の回りの角度
-        NS::Vector3 m_slamDirection;      // 突進の尾を向ける水平の向き
+        NS::Vector3 m_slamDirection;
 
         const ::Player* m_actor = nullptr;              // 押し・溜め量・突進の速度・狙いの向きを答える自機。非所有
         const PlayerAppearance* m_appearance = nullptr; // 玉の回転の正。非所有

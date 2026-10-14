@@ -11,9 +11,7 @@ namespace NS::Editor
 {
     class IObjectSnapshotApplier;
 
-    //! @brief Undo/Redo 履歴管理スタック
-    //! @note 上限 (200 操作 / 50 MB) を超えた場合、古い履歴から自動的に破棄する
-    //! @note 適用は live 実体を触る IObjectSnapshotApplier 越し。コマンドは objectId の before/after を往復させる
+    //! Undo・Redo の履歴。200 操作か 50 MB を超えた分は古い履歴から捨てる
     class UndoStack : public NS::NonCopyable
     {
     public:
@@ -26,7 +24,7 @@ namespace NS::Editor
         //! @brief コマンドを実行して Undo 履歴へ積む。Redo 履歴は捨てる
         void Push(std::unique_ptr<ICommand> cmd, IObjectSnapshotApplier& target) noexcept;
 
-        //! @brief 既に適用済みの編集を Do を呼ばずに履歴へ積む。ドラッグ確定など live を先に動かした編集用
+        //! @brief 既に適用済みの編集を Do を呼ばずに履歴へ積む。ドラッグ確定など実体を先に動かした編集用
         void Record(std::unique_ptr<ICommand> cmd) noexcept;
 
         //! @brief 最新の Undo 操作を戻し、Redo 履歴へ移動する
@@ -38,9 +36,7 @@ namespace NS::Editor
         //! @brief 履歴を全消去する。レベル遷移時に使用
         void Clear() noexcept;
 
-        //! @brief 履歴が動いた通算回数
-        //! @details 保存時の値と突き合わせて未保存かどうかを見る。戻して同じ内容に帰っても値は進むので、
-        //! 保存済みを未保存と誤る側にしか外れない
+        //! 履歴変更の通算回数。同じ内容へ戻しても進むため、未保存判定は変更ありとみなす側にずれる
         [[nodiscard]] std::uint64_t Version() const noexcept { return m_version; }
 
         [[nodiscard]] std::size_t UndoSize() const noexcept { return m_undo.size(); }
@@ -48,11 +44,11 @@ namespace NS::Editor
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept { return m_undoBytes + m_redoBytes; }
 
     private:
-        std::deque<std::unique_ptr<ICommand>> m_undo; // Undo 待ちの Command 列
-        std::deque<std::unique_ptr<ICommand>> m_redo; // Redo 待ちの Command 列
+        std::deque<std::unique_ptr<ICommand>> m_undo;
+        std::deque<std::unique_ptr<ICommand>> m_redo;
         std::size_t m_undoBytes = 0;                  // Undo 履歴の概算メモリ使用量
         std::size_t m_redoBytes = 0;                  // Redo 履歴の概算メモリ使用量
-        std::uint64_t m_version = 0;                  // 履歴が動いた通算回数
+        std::uint64_t m_version = 0;
 
         void PushRecorded(std::unique_ptr<ICommand> cmd) noexcept;
         void TrimOldest() noexcept;

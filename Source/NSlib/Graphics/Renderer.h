@@ -37,17 +37,12 @@ namespace NS::Gfx
     class Skybox;
     enum class BlendMode;
 
-    //! @brief D3D11 の device / context / swapchain を持ち、フレームの描画を発行するクラス
-    //! @details ウィンドウ 1 つにつき 1 つ作る。ウィンドウのリサイズを購読して描画領域を作り直す
-    //! 構築した device と context は Gpu() へ公開し、Texture や Shader はそこから引く
-    //! 構築に失敗した場合は例外を送出せず、無効な状態として扱う
-    //! @warning
-    //! 破棄順序のバグを防ぐため、静的・グローバル変数での保持は禁止。必ずメンバ変数かスタック上で管理すること
+    //! ウィンドウに対応する D3D11 の描画基盤。構築失敗は IsValid で確認する
+    //! @warning 静的変数として保持せず、GPU 資源より後に破棄する
     class Renderer : public NS::NonCopyable
     {
     public:
         //! @brief 描画システムを構築する
-        //! @param[in] desc 初期化パラメータ
         //! @param[in,out] window 紐づける対象のウィンドウ
         Renderer(const RendererDesc& desc, ::NS::OS::Window& window) noexcept;
         ~Renderer();
@@ -55,13 +50,7 @@ namespace NS::Gfx
         //! 描画できる状態か。構築失敗のほか、Present で device 喪失を検知した後も false になる
         [[nodiscard]] bool IsValid() const noexcept;
 
-        //! @brief 新しいフレームの描画を始める
-        //! @details 画面と深度バッファをクリアし、描画先として設定する。SetSceneTarget が
-        //! 設定されている間はオフスクリーン側もクリアし、そちらを描画先にする
-        //! @param[in] r クリア色の赤成分
-        //! @param[in] g クリア色の緑成分
-        //! @param[in] b クリア色の青成分
-        //! @param[in] a クリア色のアルファ成分
+        //! 色と深度をクリアし、設定中の描画先でフレームを始める
         void BeginFrame(float r, float g, float b, float a) noexcept;
 
         //! 既定のクリア色で新しいフレームの描画を始める
@@ -83,14 +72,12 @@ namespace NS::Gfx
         [[nodiscard]] NS::Size2D Size() const noexcept;
 
         //! @brief シーンの描画先をオフスクリーンへ切り替える
-        //! @param[in,out] target 非所有の描画先。null で backbuffer へ戻す
-        //! @note 反映は次の BeginFrame から。target を破棄する前に必ず null を渡して外すこと
+        //! @param[in,out] target 非所有の描画先。空の参照でウィンドウの描画先へ戻す
+        //! @note 反映は次の BeginFrame から。target の破棄前に空の参照を渡して外す
         void SetSceneTarget(RenderTarget* target) noexcept;
 
-        //! @brief 指定ターゲットを描画先にして clear + bind + viewport する
-        //! @param[in,out] target 非所有の描画先。null なら backbuffer へ。以降 Size() もこの描画先を返す
-        //! @details 1 フレーム内で複数のオフスクリーンビューを順に描くための口
-        //! BeginFrame と違い backbuffer は clear しない。破棄前の target を渡さないこと
+        //! 非所有の描画先とビューポートを切り替える。nullptr はバックバッファ
+        //! オフスクリーンだけをクリアする。描画先の破棄後は渡さない
         void BeginSceneView(RenderTarget* target) noexcept;
 
         //! @brief backbuffer を描画先へ戻し viewport を張り直す
@@ -103,12 +90,8 @@ namespace NS::Gfx
         //! @return 書き出せた場合 true、それ以外の場合は false
         [[nodiscard]] bool CaptureBackbufferToPng(const std::filesystem::path& path) noexcept;
 
-        //! @brief 今の backbuffer の内容を BGRA の画素として読み出す
-        //! @details CPU から読める写しへ複写してから読む。IsValid() が false の間は何もしない
-        //! BGRA へ直せない形式の backbuffer も読み出さない
-        //! @param[out] outBgra 左上から行ごとに並ぶ BGRA の画素。false のときは書き換えない
-        //! @param[out] outSize 読み出した絵の幅と高さ (画素)
-        //! @return 読み出せた場合 true、それ以外の場合は false
+        //! バックバッファを左上から行順の BGRA と画素サイズへ読み出す
+        //! 失敗時は出力を変更せず false。無効な描画基盤や変換できない形式では読まない
         [[nodiscard]] bool ReadBackbufferPixels(std::vector<std::uint8_t>& outBgra, NS::Size2D& outSize) noexcept;
 
         //! よく使われる共通の描画ステート
@@ -129,23 +112,14 @@ namespace NS::Gfx
         //! @note 共通パイプラインと一緒に構築の最後に作るので、構築に失敗した Renderer では呼んではいけない
         [[nodiscard]] const Pipeline& OccludedPipeline(bool twoSided = false) const noexcept;
 
-        //! @brief 画面全体をアルファ込みの指定色で塗る。描画済みシーンの上へ半透明合成で重ねる
-        //! @details 全画面三角形を 1 枚描く。当てた瞬間の白い光など、色の意味は呼び出し側が決める
-        //! 資源は初回呼び出し時に一度だけ構築し、失敗時は以後何もしない。最前面に出すため全描画の最後に呼ぶ
+        //! 全画面に指定色を半透明合成する。最前面に出す場合は最後に呼ぶ
         void DrawFullscreenColor(const NS::Color& color) noexcept;
 
-        //! @brief 現在の描画先へ色付き矩形を 1 枚重ねる。座標は描画先のピクセルで左上原点
-        //! @details 画面 UI の下地・板・ゲージに使う。何を表すかは呼び出し側が決める
-        //! 半透明合成で最前面に出すため全描画の後に呼ぶ。資源は初回呼び出し時に一度だけ構築し、失敗時は以後何もしない
+        //! 左上原点の画素座標で矩形を半透明合成する。最前面に出す場合は最後に呼ぶ
         void DrawScreenRect(float x, float y, float width, float height, const NS::Color& color) noexcept;
 
-        //! @brief cubemap を読んで camera 中心に空を描く。同じパスを読み込んだ後は読み直さない
-        //! @details パスは ContentRoot 配下だけ許可し、外を指す値は読み込まない
-        //! 読込失敗は cubemap を保ち、次の呼び出しで読み直す
-        //! Skybox は空でないパスの初回の呼び出しで一度だけ構築し、失敗時は以後何もしない
-        //! 不透明の描画後・半透明の描画前に呼ぶ
-        //! @param[in] camera 空を貼る視点。view の平行移動成分は使わない
-        //! @param[in] cubemapPath ContentRoot 配下相対の cubemap ディレクトリまたは .dds。空パスは何も描かない
+        //! 不透明の後、半透明の前に空を描く。ContentRoot 内の .dds またはキューブマップのディレクトリを使う
+        //! 空パスでは描かない。画像読込失敗は前の画像を保って再試行し、GPU 資源の生成失敗は再試行しない
         void DrawSky(const NS::CameraData& camera, std::string_view cubemapPath) noexcept;
 
     private:
@@ -197,7 +171,7 @@ namespace NS::Gfx
         std::unique_ptr<Skybox> m_skybox;
         std::string m_loadedSkyboxPath; // 前回判定した cubemap のパス。読めた物と拒否した物が入り、差分の時だけ読み直す
         bool m_skyboxTried = false;     // 構築を試みたか
-        RenderTarget* m_sceneTarget = nullptr; //!< 非所有のシーン描画先。null なら backbuffer へ描く
+        RenderTarget* m_sceneTarget = nullptr; //!< 非所有のシーン描画先。未指定ならウィンドウへ描く
         ::NS::OS::Window* m_window = nullptr;
         RenderSettings m_settings{};
         bool m_vsync = true;

@@ -18,9 +18,7 @@ namespace NS::Gfx
 
     class Renderer;
 
-    //! @brief DirectXTK CommonStates のラッパ
-    //! @details 戻り値は型付きの D3D11 State ポインタで、Renderer / Material が直接 bind する
-    //! 構築できるのは friend の Renderer だけ
+    //! Renderer が所有する DirectXTK の共通描画ステート
     class CommonStates : public NS::NonCopyable
     {
     public:

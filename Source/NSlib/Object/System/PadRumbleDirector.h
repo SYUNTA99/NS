@@ -18,9 +18,7 @@ namespace NS::Obj
         int frames = 0; //!< 書くフレーム数。0 なら震わせない
     };
 
-    //! @brief パッドの振動を進めて書く、シーンに 1 つの物
-    //! @details 部品の HitReaction が頼む。頼んだフレームに最初の値を書き、次の更新から進める。
-    //! 書かれなかったフレームは Gamepad::Update が 0 にするので、振動の間は毎フレーム書く。捨てる時に 0 を書く
+    //! シーン共通の振動。開始時に初期値を出し、更新ごとに実機へ書き、破棄時に停止する
     class PadRumbleDirector final : public SceneSystem
     {
     public:
@@ -31,11 +29,7 @@ namespace NS::Obj
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
         //! @param[in] pad 振動の設定
         void Start(const Actor& requester, const HitPadVibration& pad);
-        //! @brief 書いている振動に pad を重ねる
-        //! @details 重ねたフレームを 0 として pad を進め、値を足す。pad の長さを過ぎたら 0 を足す。
-        //! 何も書いていなければ Start と同じ
-        //! @param[in] requester 頼んだ物
-        //! @param[in] pad 重ねる振動
+        //! requester の振動を重ねる。振動していなければ Start と同じ
         void Blend(const Actor& requester, const HitPadVibration& pad);
 
         //! requester が頼んだ振動を外して書き直す。残りが無ければ 0 を書いて止める

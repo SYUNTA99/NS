@@ -11,9 +11,7 @@
 
 namespace NS::Obj
 {
-    //! @brief 状態機械の 1 状態。素のクラスで、所有者の能力を呼ぶ判断と遷移だけを書く
-    //! @details 調整値や続きのデータは所有者側に置き、状態は持たない。どの状態からでも同じ記録を読める
-    //! 直接派生させず StateOf を挟む。Id はそちらが埋める
+    //! 状態の判断と遷移。共有する調整値や進行データは持ち主に置き、StateOf から派生する
     template <typename TOwner> class State
     {
     public:
@@ -67,9 +65,7 @@ namespace NS::Obj
     template <typename TOwner> class StateMachine : public IStateMachine
     {
     public:
-        //! @brief 状態の型の並びから状態列を組み、先頭へ入る
-        //! @details 並びに書いた型が、この機械の持てる状態の全部になる
-        //! @param[in] owner 状態へ渡す所有者。控えて Step と Change でも使う
+        //! TStates の先頭へ入り、以後の状態に渡す持ち主を固定する
         template <typename... TStates> void Build(TOwner& owner)
         {
             static_assert(sizeof...(TStates) > 0, "状態を 1 つ以上並べる");
@@ -189,12 +185,8 @@ namespace NS::Obj
             }
         }
 
-        //! @brief 印 id の状態へ移る予約をする。確定は次の Step
-        //! @details 予約を入れた時に今の状態の OnExit を呼び、コルーチンを捨てる。予約の上書きでは呼ばない。
-        //! OnExit と確定の時の OnEnter へは Build で控えた所有者を渡す
-        //! 組み立て済みで Build に並べていない状態はアサートで止める
-        //! @param[in] id 移る先の状態の印
-        //! @return 予約できたか既にその状態の場合 true、未組立か Build に並べていない状態の場合 false
+        //! 遷移を予約する。予約時に OnExit とコルーチン破棄、次の確定時に OnEnter を行う
+        //! 未組立は false、未登録の状態はアサート。同じ状態または予約成功なら true
         bool Change(StateId id) override
         {
             State<TOwner>* next = Find(id);

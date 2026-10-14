@@ -1,6 +1,6 @@
 #pragma once
 
-// Core 層の公開ヘッダをまとめて取り込む umbrella
+// Core 層の公開ヘッダーをまとめる共通ヘッダー
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/CameraData.h"

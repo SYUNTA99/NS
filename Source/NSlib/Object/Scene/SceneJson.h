@@ -13,16 +13,12 @@
 #include <string_view>
 #include <unordered_set>
 
-// シーン 1 つの JSON 文書と、その読み書き・読込時の整え
-// 実体は Scene と配置物だけで、実体でないシーンの姿 (ファイル・プレイ開始時の凍結) はこの JSON で持つ
-// メモリ上とファイル上の違いは参照の書き方だけで、メモリ上は id、ファイル上は名前
-// nlohmann の既定辞書順キー出力で、同じ文書の 2 回保存は byte 一致になる
+// 保存・プレイ開始時の控えに使うシーン文書。参照はメモリ上で id、ファイル上で名前を使う
+// キーを辞書順で書くため、同じ文書を保存した結果はバイト単位で一致する
 
 namespace NS::Obj
 {
-    //! @brief 空のシーン文書を作る
-    //! @details {"version": 形式, "environment": {"skybox": パス}, "objects": [配置物の JSON...], "nextObjectId": 次の
-    //! id} nextObjectId は単調増加で欠番は再利用しない。削除済み id が別物を指す事故を防ぐ
+    //! 既定の空文書を作る。nextObjectId は単調増加し、削除済み id を再利用しない
     [[nodiscard]] nlohmann::json MakeSceneJson();
 
     //! 配置物の JSON の配列。無いか壊れていれば空の配列

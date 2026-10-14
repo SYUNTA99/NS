@@ -21,17 +21,12 @@ namespace NS::Obj
         Forbid,
     };
 
-    //! @brief 配置物の JSON の "subObjects" の欄を、同じ部品名の obj の部品へ書く
-    //! @details 部品を作れないか作らない時は警告を出してその部品を読み飛ばす
-    //! @param[in,out] obj 書く先の配置物
-    //! @param[in] object 配置物の JSON
-    //! @param[in] creation obj がまだ持たない部品を CreateSubObj で作るか
+    //! 同じ部品名へ JSON の値を適用する。作れない部品は警告して読み飛ばす
+    //! creation は不足する部品を追加するかを指定する
     void ApplyObjectSubObjs(Actor& obj, const nlohmann::json& object, SubObjCreation creation);
 
-    //! @brief 配置物の JSON から配置物を組む唯一の汎用経路
-    //! @details Actor の型は TypeRegistry の class で選ぶ。値はコードの既定値に種類の既定値 (ArchetypeLibrary) を重ね、
-    //! assets があれば各 SubObject の ResolveAssets で参照を実体化する。id と名前は書かない。シーンへ積む ActorList
-    //! が書く class の無い JSON は配置物でないため nullptr。assets=nullptr (テスト等) は解決だけ跳ばす
+    //! 型登録から Actor を作り、種類の既定値と個体の値を適用する。id と名前は設定しない
+    //! class がなければ nullptr。assets がなければ資産の解決を省く
     [[nodiscard]] std::unique_ptr<Actor> ObjectFromJson(const nlohmann::json& object, AssetManager* assets);
 
     //! @brief obj が自分を JSON へ書き出す。欄はクラスの種類の既定値と違う物 (個体の上書き) だけを書く

@@ -15,7 +15,6 @@ namespace
         {
             ::NS::LoggerDesc desc;
             desc.logName = "game";
-            // 起動するたびに新しいログファイルを作る
             desc.rotateOnOpen = true;
 #if defined(NS_SHIPPING)
             desc.logDirectory = ::NS::OS::FileSystem::GetExeDirectory();

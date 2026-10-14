@@ -66,10 +66,8 @@ namespace NS::Editor
         void SetInput(NS::OS::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
 
-        //! @brief 選択できる配置物を設定する
-        //! @param[in] objects 選択対象となるオブジェクト
-        //! @param[in] pickable objects と同じ添字の優先度。0 の配置物は 1 の配置物に当たらなかった時だけ選ぶ。
-        //! 省略すると全部を同じに扱う
+        //! 選択候補を非所有で参照する。配列の格納元は使用中、有効に保つ
+        //! pickable は objects と同じ添字。1 に当たらない場合だけ 0 を調べ、省略時は同じ優先度
         void SetSelectableObjects(std::span<NS::Obj::Actor* const> objects,
                                   std::span<const std::uint8_t> pickable = {}) noexcept;
 
@@ -87,7 +85,7 @@ namespace NS::Editor
 
         void SetSpace(GizmoSpace space) noexcept { m_space = space; }
 
-        //! ギズモの座標系を Local / World で切り替える
+        //! ギズモを局所座標系と世界座標系で切り替える
         void ToggleSpace() noexcept
         {
             if (m_space == GizmoSpace::Local)
@@ -122,7 +120,6 @@ namespace NS::Editor
             m_dragAxis = GizmoAxis::None;
         }
 
-        //! ギズモのハンドルをドラッグして操作中かどうかを返す
         [[nodiscard]] bool IsDragging() const noexcept { return m_dragging; }
 
         //! @brief 視線レイを配置物の OBB へ当て、最も手前の添字を返す
@@ -182,16 +179,16 @@ namespace NS::Editor
         NS::OS::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
 
-        std::span<NS::Obj::Actor* const> m_objects{}; //!< 選択判定の対象となるオブジェクト
+        std::span<NS::Obj::Actor* const> m_objects{};
         std::span<const std::uint8_t> m_pickable{};   //!< 選択の優先度。1 の配置物を先に選ぶ
 
-        bool m_active = false;                    //!< ギズモ操作が有効かどうか
-        GizmoTool m_tool = GizmoTool::Move;       //!< 現在の変形ツール
-        GizmoSpace m_space = GizmoSpace::Local;   //!< 変形の座標系
-        NS::Obj::Transform* m_selected = nullptr; //!< 選択中の Transform
+        bool m_active = false;
+        GizmoTool m_tool = GizmoTool::Move;
+        GizmoSpace m_space = GizmoSpace::Local;
+        NS::Obj::Transform* m_selected = nullptr;
 
-        bool m_dragging = false;                //!< ドラッグ中か
-        GizmoAxis m_dragAxis = GizmoAxis::None; //!< ドラッグ中の軸
+        bool m_dragging = false;
+        GizmoAxis m_dragAxis = GizmoAxis::None;
         NS::Vector2 m_dragStartScreen{};        //!< ドラッグ開始時のスクリーン座標
         TransformState m_dragBefore{};          //!< ドラッグ開始時の 位置・回転・スケール
     };

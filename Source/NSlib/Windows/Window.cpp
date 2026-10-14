@@ -15,13 +15,11 @@ namespace NS::OS
 
         constexpr wchar_t k_ClassName[] = L"NS_Window";
 
-        // キーボード系メッセージ
         [[nodiscard]] constexpr bool IsKeyboardMessage(UINT msg) noexcept
         {
             return msg == WM_KEYDOWN || msg == WM_KEYUP || msg == WM_SYSKEYDOWN || msg == WM_SYSKEYUP;
         }
 
-        // マウス系メッセージ
         [[nodiscard]] constexpr bool IsMouseMessage(UINT msg) noexcept
         {
             switch (msg)
@@ -42,13 +40,11 @@ namespace NS::OS
             }
         }
 
-        // Input へ送る Win32 メッセージの判定
         [[nodiscard]] constexpr bool IsInputMessage(UINT msg) noexcept
         {
             return IsKeyboardMessage(msg) || IsMouseMessage(msg) || msg == WM_KILLFOCUS;
         }
 
-        // 離しのメッセージ
         [[nodiscard]] constexpr bool IsReleaseMessage(UINT msg) noexcept
         {
             switch (msg)
@@ -104,13 +100,11 @@ namespace NS::OS
             window->m_hasFocus = false;
         }
 
-        // OSからのメッセージを ImGui に送る
         if (window->m_messageHook)
         {
             window->m_messageHook(hwnd, msg, wparam, lparam);
         }
 
-        // 入力メッセージは Input へ振り分け
         if (IsInputMessage(msg))
         {
             if (window->m_input != nullptr)
@@ -127,7 +121,6 @@ namespace NS::OS
             return ::DefWindowProcW(hwnd, msg, wparam, lparam);
         }
 
-        // ウィンドウ管理メッセージ
         switch (msg)
         {
         case WM_ERASEBKGND:
@@ -204,7 +197,6 @@ namespace NS::OS
         m_hInstance = ::GetModuleHandleW(nullptr);
         m_size = desc.size;
 
-        // ウィンドウクラス登録
         WNDCLASSEXW wc{};
         wc.cbSize = sizeof(wc);
         wc.style = CS_HREDRAW | CS_VREDRAW;
@@ -223,7 +215,6 @@ namespace NS::OS
             return;
         }
 
-        // ウィンドウ生成
         RECT rect{0, 0, desc.size.width, desc.size.height};
         const DWORD style = WS_OVERLAPPEDWINDOW;
         const DWORD exStyle = 0;
@@ -253,7 +244,6 @@ namespace NS::OS
             return;
         }
 
-        // Raw Input のマウス登録
         RAWINPUTDEVICE rid{};
         rid.usUsagePage = 0x01;
         rid.usUsage = 0x02;

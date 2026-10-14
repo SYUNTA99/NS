@@ -6,9 +6,7 @@
 
 namespace NS::Editor
 {
-    //! @brief ドックホストとパネル全面化。レイアウトと全面化の状態を持ち、controller には触れない
-    //! @details 各パネルの中身は描かない。描くのはホストの設置・ 全面化の出入り・ タブ焦点の確定だけで、
-    //! 全面化中にどのパネルを描くかは呼び出し側が MaximizedPanel() を見て振り分ける
+    //! ドック配置とパネルの全面化を管理する。パネルの内容は呼び手が描く
     class DockController : public NS::NonCopyable
     {
     public:
@@ -23,13 +21,12 @@ namespace NS::Editor
         //! レイアウトを組み直した次フレームで前面タブを確定させる
         void TickTabFocus() noexcept;
 
-        //! 全面化中か
         [[nodiscard]] bool IsMaximized() const noexcept { return !m_maximizedPanel.empty(); }
 
         //! 全面化中のパネル名。通常時は空
         [[nodiscard]] const std::string& MaximizedPanel() const noexcept { return m_maximizedPanel; }
 
-        //! 未知名を掴んだ時の保険として状態だけ全面化を解く
+        //! レイアウトを復元せず、全面化状態だけを解除する
         void ClearMaximized() noexcept { m_maximizedPanel.clear(); }
 
     private:

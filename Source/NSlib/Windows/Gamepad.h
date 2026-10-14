@@ -49,51 +49,41 @@ namespace NS::OS
         Gamepad() = default;
         explicit Gamepad(int userIndex) noexcept;
 
-        //! @brief デバイスの接続状態を返す
         [[nodiscard]] bool IsConnected() const noexcept;
 
         //! @brief ボタンが現在のフレームで新たに押されたかどうかを判定する
         [[nodiscard]] bool IsPressed(GamepadButton b) const noexcept;
 
-        //! @brief ボタンが現在押され続けているかどうかを判定する
         [[nodiscard]] bool IsHeld(GamepadButton b) const noexcept;
 
         //! @brief ボタンが現在のフレームで離されたかどうかを判定する
         [[nodiscard]] bool IsReleased(GamepadButton b) const noexcept;
 
-        //! @brief 左スティックの入力を取得する
         [[nodiscard]] Stick LeftStick() const noexcept;
 
-        //! @brief 右スティックの入力を取得する
         [[nodiscard]] Stick RightStick() const noexcept;
 
-        //! @brief 左トリガーの入力を取得する
+        //! 0〜1 の入力。XInput のしきい値未満は 0
         [[nodiscard]] float LeftTrigger() const noexcept;
 
-        //! @brief 右トリガーの入力を取得する
+        //! 正規化の範囲としきい値は LeftTrigger と同じ
         [[nodiscard]] float RightTrigger() const noexcept;
 
         //! @brief Update で状態を読む XInput のユーザー番号を返す
         [[nodiscard]] int UserIndex() const noexcept;
 
-        //! @brief 振動の速さを書く
-        //! @details 範囲の外か非数は何も変えない。実機へは次の Update で送る。振動を続ける間は Update ごとに書き直す
-        //! @param[in] left 低い周波数のモーターの速さ (0.0〜1.0)
-        //! @param[in] right 高い周波数のモーターの速さ (0.0〜1.0)
-        //! @return 書いた場合 true、それ以外の場合は false
+        //! left は低周波、right は高周波の強さ 0〜1。範囲外・非有限値は変更せず false
+        //! 次の Update で実機へ送り、継続中は更新ごとに設定する
         [[nodiscard]] bool SetVibration(float left, float right) noexcept;
 
         //! @brief 書かれている振動の速さを返す
         //! @return 最後に書いた速さ。書かれずに Update を過ぎた後と、止めた後は 0
         [[nodiscard]] GamepadVibration Vibration() const noexcept;
 
-        //! @brief 振動を止める
-        //! @details 速さを 0 にし、実機へ 0 でない速さを送っていた場合はその場で 0 を送る。Update が来ない時に使う
+        //! 更新を待たずに実機の振動を止める
         void StopVibration() noexcept;
 
-        //! @brief 最新のハードウェア状態を同期する
-        //! @details 前の Update の後に書かれなかった振動は 0 にする。
-        //! 繋がっていて、送った速さと違う場合だけ実機へ送る
+        //! 入力を更新し、前回の更新後に指定されなかった振動を止める
         void Update() noexcept;
 
     private:

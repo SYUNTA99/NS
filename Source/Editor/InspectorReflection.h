@@ -25,13 +25,11 @@ namespace NS::Editor
     //! @brief ActorRef の欄で参照可能なオブジェクトの選択肢
     struct ObjectRefOption
     {
-        std::uint32_t id = 0; // 参照先の永続ID
-        std::string label;    // UI表示用のラベル
+        std::uint32_t id = 0;
+        std::string label;
     };
 
-    //! @brief 部品ごとの既定の値を引く置き場
-    //! @details リフレクション欄の上書きの印と戻すボタンが、今の値と比べる相手として引く
-    //! 持ち主のクラスの既定の 1 体 (コードの既定値に種類の既定値を当てた物) の同じ部品が相手になる
+    //! 欄の比較と復元に使う既定値。所有者の種類の既定を優先し、なければ部品の型の既定を使う
     class SubObjectDefaults : public NS::NonCopyable
     {
     public:
@@ -58,7 +56,7 @@ namespace NS::Editor
         bool committed = false; // いずれかのウィジェットが非活性化した (編集の有無は問わない)
 
         // 既定へ戻す要求。ボタンが押されたフレームだけ対象と欄が入る
-        // 値をこの場で書くと undo の控えを取る前に live が動くので、適用は呼び出し側へ預ける
+        // 値をこの場で書くと 取り消し の控えを取る前に実体が動くので、適用は呼び出し側へ預ける
         NS::Obj::SubObject* revertTarget = nullptr;
         const NS::Obj::FieldDesc* revertField = nullptr;
 
@@ -84,13 +82,9 @@ namespace NS::Editor
                               const NS::Obj::SubObject& defaults,
                               const NS::Obj::FieldDesc& field) noexcept;
 
-    //! @brief サブオブジェクトのフィールドをImGuiウィジェットとして描画する
-    //! @details 欄の見出し (ReflectionInfo::groups) ごとに畳める行を挟む
-    //! @param[in,out] comp 編集対象のサブオブジェクト
-    //! @param[in] refOptions 参照先候補のリスト。指定しない場合は数値入力となる
-    //! @param[in] defaults 既定の部品。渡すと既定と違う欄に上書きの印が付き、戻すか種類の既定にするかを選べる
-    //! @param[in] filter 欄の名前の検索語。空でない間は名前に含む欄と、その欄を持つ見出しだけを出す。nullptr は空
-    //! @return 値の編集有無と、編集の開始・確定フレームを集約した結果
+    //! リフレクション欄を編集し、Undo に必要な編集開始・終了と変更内容を返す
+    //! refOptions が空なら参照は数値入力、defaults があれば上書きの表示と復元を使える
+    //! filter は欄名の部分一致。空か nullptr なら絞らない
     [[nodiscard]] SubObjectEditResult DrawReflectedSubObject(NS::Obj::SubObject& comp,
                                                              std::span<const ObjectRefOption> refOptions = {},
                                                              const NS::Obj::SubObject* defaults = nullptr,
@@ -106,29 +100,17 @@ namespace NS::Editor
         const NS::Obj::FieldDesc* changedField = nullptr;
     };
 
-    //! @brief 部品でない値型 (タイムラインの事象など) の欄を、部品と同じウィジェットで描く
-    //! @details 欄の並べ方とウィジェットは DrawReflectedSubObject と同じ。既定と比べる印と戻すボタンは出さない
-    //! (値型には持ち主の種類の既定が無い)
-    //! @param[in,out] value 編集する値の実体。info が表す型の物
-    //! @param[in] info 値型のリフレクション (T::StaticReflection())
-    //! @param[in] refOptions 参照先候補のリスト。指定しない場合は数値入力となる
-    //! @return 値の編集有無と、編集の開始・確定フレーム
+    //! info の型として value を編集する。部品と同じ UI を使い、既定値との比較は行わない
+    //! refOptions が空なら参照は数値入力
     [[nodiscard]] ValueEditResult DrawReflectedValue(void* value,
                                                      const NS::Obj::ReflectionInfo& info,
                                                      std::span<const ObjectRefOption> refOptions = {}) noexcept;
 
-    //! @brief 曲線のグラフの横軸の範囲を決める
-    //! @details 点の x が 0〜1 に収まる曲線は 0〜1 のまま (部品の欄の曲線は割合を横軸にする)。外へ出る曲線
-    //! (横軸がフレーム数のタイムラインの事象の曲線) は点を全部含め、右へ 1
-    //! 割の余白を足して点を右へ引き伸ばせるようにする
-    //! @param[in] curve 描く曲線
-    //! @param[out] outMin 左端の x
-    //! @param[out] outMax 右端の x。outMin より大きい
+    //! 点の x が 0〜1 なら表示も 0〜1。範囲外の点があれば全点と右側の 1 割の余白を含める
+    //! outMax は outMin より大きい
     void CurveGraphXRange(const NS::Obj::Curve& curve, float& outMin, float& outMax) noexcept;
 
-    //! @brief DrawReflectedValue を型から呼ぶ
-    //! @param[in,out] value 編集する値。T は NS_REFLECT_END_VALUE で欄を宣言した型
-    //! @return 値の編集有無と、編集の開始・確定フレーム
+    //! T は NS_REFLECT_END_VALUE で欄を宣言した型
     template <class T> [[nodiscard]] ValueEditResult DrawReflectedValue(T& value) noexcept
     {
         return DrawReflectedValue(&value, *T::StaticReflection());

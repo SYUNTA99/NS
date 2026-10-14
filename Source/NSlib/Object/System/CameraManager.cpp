@@ -263,7 +263,7 @@ namespace NS::Obj
         VirtualCamera* next = SelectActive();
         if (next != m_active)
         {
-            // 直前まで写していた pose から新 vcam へ繋ぐ。旧 pose が無い初回 active 化はカットする
+            // 直前まで写していた pose から新 仮想カメラへ繋ぐ。旧 pose が無い初回 active 化はカットする
             if (m_active != nullptr && m_blendDuration > 0.0f)
             {
                 m_blendFrom = m_lastPose;
@@ -326,7 +326,7 @@ namespace NS::Obj
         }
         CameraPose pose = *composed;
 
-        // 効果はブレンドの後に掛ける。どの vcam が選ばれていてもブレンド中でも一様に掛かる
+        // 効果はブレンドの後に掛ける。どの 仮想カメラが選ばれていてもブレンド中でも一様に掛かる
         // 軸は効果を掛ける前の姿勢から 1 度だけ作る。揺れは平行移動なので、後の傾きの軸は変わらない
         const CameraAxes axes = ViewAxes(pose);
         for (const std::unique_ptr<CameraModifier>& modifier : m_modifiers)
@@ -346,7 +346,7 @@ namespace NS::Obj
 
     void CameraManager::Evaluate(float alpha) noexcept
     {
-        // 非 active になった vcam の pose は書かない。一時停止で OnTick が回らない間も選び直す
+        // 非 active になった 仮想カメラの pose は書かない。一時停止で OnTick が回らない間も選び直す
         if (m_active == nullptr || !m_active->IsActive())
         {
             m_active = SelectActive();

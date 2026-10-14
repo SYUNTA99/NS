@@ -20,21 +20,19 @@ namespace NS::Gfx
     //! 定数バッファサイズを0に指定した場合、内部バッファは構築されずパラメータ更新関数は機能しない
     struct MaterialDesc
     {
-        Shader* vertexShader = nullptr;      //!< 頂点シェーダー
-        Shader* pixelShader = nullptr;       //!< ピクセルシェーダー
+        Shader* vertexShader = nullptr;
+        Shader* pixelShader = nullptr;
         std::size_t constantBufferSize = 0;  //!< 内蔵定数バッファのサイズ
         unsigned cbSlot = 1;                 //!< 定数バッファのバインド先スロット
         BlendMode blend = BlendMode::Opaque; //!< 描画順序の分類基準
         int renderPriority = 0;              //!< 半透明描画時のソート優先度
     };
 
-    //! @brief シェーダー、テクスチャ、および内蔵の定数バッファを管理する汎用マテリアル
-    //! @details シェーダーは非所有の参照として保持するため、本クラスの寿命が尽きるまで外部で有効に保つ必要がある
-    //! サンプラは線形ラップ設定に固定されている。描画システム経由でのバインド処理を想定する
+    //! シェーダーとテクスチャ、定数バッファを組み合わせるマテリアル
+    //! シェーダーは非所有で、マテリアルより長く生きること。サンプラは線形ラップ固定
     class Material : public NS::NonCopyable
     {
     public:
-        //! マテリアルを生成する
         [[nodiscard]] static std::unique_ptr<Material> Create(const MaterialDesc& desc);
 
         ~Material();
@@ -63,8 +61,7 @@ namespace NS::Gfx
             UpdateParamsRaw(renderer, &params, sizeof(T));
         }
 
-        //! @brief シェーダー、テクスチャ、定数バッファ、サンプラなどの状態を描画システムに一括でバインドする
-        //! @note 実際の描画処理の直前に呼び出すこと
+        //! 描画の直前にシェーダー・テクスチャ・定数バッファ・サンプラを設定する
         void Bind(Renderer& renderer) noexcept;
 
         //! @brief 保持している頂点シェーダーを利用して、対象メッシュの入力レイアウトを生成する
@@ -79,7 +76,7 @@ namespace NS::Gfx
         Shader* m_vertexShader = nullptr; // 非所有の参照
         Shader* m_pixelShader = nullptr;  // 非所有の参照
         std::map<unsigned, const Texture*> m_textures;
-        std::unique_ptr<Buffer> m_cb; // 内蔵の定数バッファ
+        std::unique_ptr<Buffer> m_cb;
         unsigned m_cbSlot = 1;
         BlendMode m_blend = BlendMode::Opaque;
         int m_renderPriority = 0;

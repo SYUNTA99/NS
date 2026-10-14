@@ -87,7 +87,7 @@ namespace NS::Phys
             return JPH::EMotionQuality::Discrete;
         }
 
-        // 形の組を body の原点から見た 1 つの形にする。部品が残らないか、作れなければ null
+        // body の原点を基準に形をまとめる。部品なし・生成失敗時は空
         [[nodiscard]] JPH::ShapeRefC BuildMovingShape(std::span<const ShapePart> parts,
                                                       JPH::Vec3Arg origin,
                                                       JPH::QuatArg rotation)

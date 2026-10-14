@@ -15,7 +15,6 @@ namespace NS::Gfx
                                                std::size_t vertexCount,
                                                std::size_t boneCount)
     {
-        // 既定は影響なし。頂点が当たったボーンだけ後で半径を入れる
         std::vector<BoneSphere> spheres(boneCount, BoneSphere{.radius = -1.0f});
         if (vertices == nullptr || vertexCount == 0u || boneCount == 0u)
         {

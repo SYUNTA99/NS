@@ -37,7 +37,7 @@ namespace GL::Level
         //! hasTarget が偽の間は読まない
         float targetContact = 0.0f;
         int framesSinceShown = 0;  //!< 矢印を出したフレームを 0 として数えたフレーム数
-        float charge01 = 0.0f;     //!< 溜め量 0..1
+        float charge01 = 0.0f;
         bool chargeFull = false;   //!< 溜めきりの場合 true
         float overcharge01 = 0.0f; //!< 溜めすぎの深さ 0..1。溜めきりの間だけ色に効く
     };
@@ -55,7 +55,7 @@ namespace GL::Level
     struct SlamArrowShape
     {
         NS::Vector3 origin;               //!< 狙いの線の始まり。世界座標
-        NS::Vector3 direction;            //!< 狙いの水平の向き。正規化済みで y は 0
+        NS::Vector3 direction;
         float bandWidth = 0.0f;           //!< 帯の幅 (玉の通る幅)。単位は m
         float start = 0.0f;               //!< 帯の始まり (玉の縁) の距離。単位は m
         float tip = 0.0f;                 //!< このフレームの矢じりの先の距離。伸びている途中はその長さ。単位は m
@@ -73,43 +73,18 @@ namespace GL::Level
     //! @details 床があれば true、無ければ false を返し、outGroundY を書き換えない
     using SlamArrowGroundProbe = std::function<bool(const NS::Vector3& from, float maxDepth, float& outGroundY)>;
 
-    //! @brief 溜めと狙いの様子から、地面の矢印の長さ・色の付いた部分・色を組む。床の高さは置かない
-    //! @details 帯は玉の縁 (state.ballRadius) から始まる。伸びきった先は、狙う相手がいれば state.targetContact +
-    //! state.ballRadius で狙う相手の手前の面、いなければ線の長さ + state.ballRadius で突進が止まる所の玉の縁。
-    //! このフレームの先は、矢印を出したフレームを 1 フレーム目として、desc.growFrames フレームで
-    //! 伸びきった先まで等速に伸びる。矢じりの奥行きは、desc.headDepthRatio × 先の距離を desc.headDepthMin と
-    //! desc.headDepthMax で抑えた値。色の付いた部分の先は、玉の縁 + (伸びきった先 − 玉の縁) × 溜め量。
-    //! 溜めきりなら全部に色を付ける。
-    //! 段の色は、溜めきりなら desc.fullColor、溜め量が desc.lateStageFrom 未満なら desc.earlyColor、
-    //! それ以外は desc.lateColor。伸びきった先が玉の縁より手前なら、先を玉の縁に置き、描く物は無い
-    //! @param[in] state 溜めと狙いの様子
-    //! @param[in] desc 形と色を決める値
-    //! @param[out] outShape 組んだ形。帯の板と矢じりの板は空。false の場合は書き換えない
-    //! @return 組めた場合 true。desc の 0 以下にできない欄が 0 以下の場合、有限でない値がある場合、
-    //! 狙いの線の向きの水平の長さが 0 の場合と、フレーム数が負の場合は false
+    //! 溜めと狙いから矢印の形・色を組む。床への配置は別途行う
+    //! 帯は玉の縁から始まり、相手への接触点か突進の終点まで growFrames で伸びる
+    //! 不正な調整値・入力なら false で outShape を変更しない。成功時も帯と矢じりの板は空
     [[nodiscard]] bool BuildSlamArrow(const SlamArrowState& state, const SlamArrowDesc& desc, SlamArrowShape& outShape);
 
-    //! @brief 組んだ矢印の真下の床を探し、帯の板と矢じりの板を置く
-    //! @details 玉の下の床 (線の始まりの真下) を先に探す。見つからなければ何も置かない。
-    //! 帯を指定した刻みで区切り、玉の下の床まで探す
-    //! 床から指定高さへ浮かせ、同じ高さの区切りをつなぐ
-    //! 矢じりは奥行きの真ん中の真下を同じ深さまで探し、床があれば置く
-    //! @param[in] probe 床を探す関数
-    //! @param[in] desc 床を探す刻みと距離と浮かせる高さ
-    //! @param[in,out] shape BuildSlamArrow が組んだ形。帯の板と矢じりの板を置き直す
+    //! BuildSlamArrow の形を床へ貼り、帯と矢じりの板を置き直す
+    //! 起点の床が無ければ置かない。起点の床より深い所には貼らない
     void PlaceSlamArrowOnGround(const SlamArrowGroundProbe& probe, const SlamArrowDesc& desc, SlamArrowShape& shape);
 
-    //! @brief 組んだ矢印を、放った玉の一番下の点が通る道筋に置く
-    //! 指定した刻みで区切り、両端の高さを傾いた板で結ぶ
-    //! 端の高さは玉の底に指定した浮かせる高さを足す
-    //! 玉の中心の高さと放った高さの高い方から、その一番下の点までの間に床があれば、玉は床に着いて転がるので床の高さに置く。
-    //! 床を見るのは玉の中心が止まる所 (伸びきった先 − 玉の半径) までで、その先は止まる所の真下の床を見る。
-    //! 矢じりも奥行きの両端の高さで同じく置く
-    //! @param[in] probe 床を探す関数。空なら床を見ない
-    //! @param[in] path 放った玉の道筋
-    //! @param[in] ballCenterHeight 放つ時の玉の中心の高さ (世界の y)
-    //! @param[in] desc 道筋の刻みと浮かせる高さ
-    //! @param[in,out] shape BuildSlamArrow が組んだ形。帯の板と矢じりの板を置き直す
+    //! BuildSlamArrow の形を玉の底の道筋へ置き、板を置き直す。ballCenterHeight は放つ時の世界 y
+    //! 道筋に床があれば床上へ置く。床の探索は玉の中心の終点までとし、その先は終点直下の床を使う
+    //! probe が空なら床を探さない
     void PlaceSlamArrowOnPath(const SlamArrowGroundProbe& probe,
                               const GL::Player::LaunchPath& path,
                               float ballCenterHeight,
@@ -139,22 +114,13 @@ namespace GL::Level
     struct SlamArrowDrawAssets
     {
         NS::Gfx::StaticMesh* mesh = nullptr;       //!< 共有の上向きの板
-        NS::Gfx::Material* bandMaterial = nullptr; //!< 帯のマテリアル
-        NS::Gfx::Material* headMaterial = nullptr; //!< 矢じりのマテリアル
+        NS::Gfx::Material* bandMaterial = nullptr;
+        NS::Gfx::Material* headMaterial = nullptr;
     };
 
-    //! @brief 置いた矢印の帯の板と矢じりの板、隠れた所へ描く矢じりの板を、描く単位にして out の後ろへ積む
-    //! @details 帯の板を shape.band の順に積み、矢じりがあれば矢じりの板と、隠れた画素だけへ描く矢じりの板を積む。
-    //! 帯は始まりでぼかし、色の付いた部分の先 (shape.colorFront) で色を切る。矢じりは溜めの始めから段の色で全部を塗り、
-    //! ぼかさない。どの板も裏からも描く。カメラが矢じりの後ろにあり、矢じりの手前の端を見る角度が
-    //! desc.headMinViewDegrees を下回る時は、矢じりの板を手前の端を軸に長さを変えずにカメラの方へ起こし、
-    //! 起こす角度は指定した上限まで。空の資材でも積む
-    //! @param[in] shape PlaceSlamArrowOnGround か PlaceSlamArrowOnPath で置いた形
-    //! @param[in] desc 色と不透明度を決める値
-    //! @param[in] viewProjection 描く視点のビュー × 射影
-    //! @param[in] cameraPosition 描く視点のカメラの位置。世界座標
-    //! @param[in] assets 板とマテリアル
-    //! @param[in,out] out 描く単位の並び
+    //! 配置済みの帯・矢じりと、隠れた部分用の矢じりを out へ追加する。資材が空でも追加する
+    //! 板は両面を描く。低い視点では指定の上限まで矢じりを起こす
+    //! viewProjection はビュー × 射影、cameraPosition は世界座標
     void AppendSlamArrowDrawItems(const SlamArrowShape& shape,
                                   const SlamArrowDesc& desc,
                                   const NS::Matrix& viewProjection,
@@ -162,10 +128,9 @@ namespace GL::Level
                                   const SlamArrowDrawAssets& assets,
                                   std::vector<NS::Gfx::DrawItem>& out);
 
-    //! @brief 溜めている間、狙いの線の向きへ放った玉の道筋に矢印を描く SubObject
-    //! @details 溜めている間だけ OnUpdate で形を組み、描く時は板を積む。狙う相手はいなくても組む
-    //! 接地して縦の速さが 0 なら床へ光線で貼り、それ以外は LaunchPitch と同じ重力の道筋に置く
-    //! 矢じりは手前の物に隠れた画素へも薄く描く。世界のにじみの後の重ね描きで、奥行きを読む
+    //! @brief 溜め中に、放つ玉の道筋へ矢印を描く部品
+    //! @details 接地した水平突進は床へ貼り、それ以外は LaunchPitch と同じ道筋へ置く
+    //! にじみの後に奥行きを読み、隠れた矢じりも薄く描く
     class SlamArrow : public NS::Obj::OverlayRenderer
     {
     public:
@@ -175,18 +140,14 @@ namespace GL::Level
         //! どちらかが無ければ以後何も組まない
         void OnStart() override;
 
-        //! 組み込みの板と、帯と矢じりのマテリアルを引き当てる
         void ResolveAssets(NS::Obj::AssetManager& assets) override;
 
-        //! 溜めていて狙いの線がある間は矢印を出してからのフレーム数を数え、矢印を組んで道筋に置いて控える。
-        //! 溜めていないか狙いの線が無いフレームは控えを消し、フレーム数を戻す
+        //! 溜め中の矢印を控える。狙いが無いか溜めを終えたら、控えと経過フレーム数を戻す
         void OnUpdate() override;
 
         //! ロックオンの枠 (TargetMarker の 0) より先に描き、枠を矢印の上に重ねる
         [[nodiscard]] int OverlayOrder() const noexcept override { return -1; }
 
-        //! 控えた矢印の帯の板と矢じりの板、隠れた所へ描く矢じりの板を描く。控えが無いか、資材が引けていないか、
-        //! 描く装置が無ければ何も描かない
         void OnRenderOverlay(const NS::Gfx::RenderContext& context) override;
 
         //! @brief このフレームに控えた矢印を読む
@@ -238,7 +199,7 @@ namespace GL::Level
         std::string m_meshAsset = "shadowQuad";
         std::string m_bandMaterialAsset = "Assets/Materials/ground_arrow_band.mat";
         std::string m_headMaterialAsset = "Assets/Materials/ground_arrow_head.mat";
-        SlamArrowDesc m_desc{};   // 矢印の見た目の調整値
+        SlamArrowDesc m_desc{};
         SlamArrowShape m_shown{}; // 控えた矢印。m_hasShown が偽の間は読まない
         bool m_hasShown = false;
         int m_framesSinceShown = -1;                   // 矢印を出していない間は負

@@ -79,7 +79,7 @@ namespace NS::Obj
 
     NS::AABB BoxCollision::WorldAABB() const noexcept
     {
-        // 原点中心 + 半径の local box に、当たり箱の local offset / 回転 → owner の world 変換の順で重ねる
+        // 原点中心の箱に局所のずれと回転を掛け、その後で持ち主の世界変換を掛ける
         // 回転時は内包する軸並行 AABB になる
         const NS::Matrix combined = ShapeWorldMatrix(m_localRotation, m_centerOffset);
         const NS::AABB local(NS::Vector3{0.0f, 0.0f, 0.0f}, m_halfExtents);

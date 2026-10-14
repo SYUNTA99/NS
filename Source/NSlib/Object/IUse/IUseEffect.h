@@ -12,9 +12,7 @@ namespace NS::Obj
     class EffectKeeper;
     struct EffectRecord;
 
-    //! @brief エフェクトの窓口。出したエフェクトを覚える部品 EffectKeeper を引ける物が持つ
-    //! @details Actor が持つ。部品は持ち主の Actor を渡す。
-    //! エフェクトは下の補助関数で出して止め、記録の番号で指す。EffectKeeper の中身は触らない
+    //! 個体のエフェクト記録を取得するインターフェース。操作は下の関数で行う
     class IUseEffect
     {
     public:

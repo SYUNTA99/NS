@@ -8,20 +8,19 @@
 
 namespace GL::Level
 {
-    //! @brief 衝突の配分の計算が読む調整値
-    //! @details MakeImpactTuning が自機の PlayerParams の欄から全部入れる。ここには既定を持たない。
-    //! 既定の写しを持つと、PlayerParams の既定を変えた時に静かに食い違う
+    //! @brief 衝突の配分に使う調整値
+    //! @details 既定値の重複を避け、MakeImpactTuning が PlayerParams から全項目を入れる
     struct ImpactTuning
     {
         float centerHitStopScale{};            //!< 中心近くの当たりの貫通の止めの倍率
-        bool breakEnabled{};                   //!< 破壊を許すか
+        bool breakEnabled{};
         float breakSpeedScale{};               //!< 貫通で自機が持つ速度の倍率
-        float breakStopSeconds{};              //!< 貫通の止めの秒
+        float breakStopSeconds{};
         float reboundDistance{};               //!< 質量 1・威力 1 の自機の反動の距離 (m)
         float reboundApexHeight{};             //!< 質量 1・威力 1 の自機の反動の高さ (m)
         float centerHitReboundDistanceScale{}; //!< 中心近くの当たりの反動の距離の倍率
         float centerHitReboundHeightScale{};   //!< 中心近くの当たりの反動の高さの倍率
-        float missReboundDistanceScale{};      //!< 外れの反動の距離の倍率
+        float missReboundDistanceScale{};
         float launchDistance{};                //!< 質量 1・威力 1 の相手の飛ぶ距離 (m)
         float launchMassExponent{};            //!< 質量で割る指数。範囲は 0〜1
         float hitStopMaxSeconds{};             //!< 貫通の止めの上限秒
@@ -36,15 +35,15 @@ namespace GL::Level
     {
         float power = 0.0f;           //!< 最終威力。溜めの倍率と、相手の正面の面で当てはまった決まりの威力の倍率の積
         HitTier tier = HitTier::Wide; //!< 当たりの段。反動の距離と貫通の止めの倍率を段で引く
-        float mass = 1.0f;            //!< 相手の質量
-        float toughness = 0.0f;       //!< 相手の耐久
+        float mass = 1.0f;
+        float toughness = 0.0f;
         bool breakable = false;       //!< 相手が壊れる動きを持つ場合 true
         NS::Vector3 awayDirection{1.0f, 0.0f, 0.0f};   //!< 自機が弾かれる水平の向き。正規化済み
         NS::Vector3 launchDirection{1.0f, 0.0f, 0.0f}; //!< 相手を飛ばす水平の向き。正規化済み
         NS::Vector3 slamVelocity{0.0f, 0.0f, 0.0f};    //!< 突進の狙いの速度
         float faceU = 0.0f; //!< 段を決めた面の上の左右の位置。自機から見て右が正。外れの逸れる向きを決める
         float faceV = 0.0f; //!< 段を決めた面の上の上下の位置。上が正
-        NS::Obj::HitSensorShape bodyShape = NS::Obj::HitSensorShape::Sphere; //!< 相手の体の形の種類
+        NS::Obj::HitSensorShape bodyShape = NS::Obj::HitSensorShape::Sphere;
         LaunchShape launch{};                                                //!< 相手が当たりの答えで返した飛び方
     };
 
@@ -56,36 +55,21 @@ namespace GL::Level
         float massFactor = 0.0f;                         //!< 質量 ÷ (質量 + 1)
         float reboundScale = 0.0f;                       //!< 自機の反動の高さと距離に掛けた比
         float launchScale = 0.0f;                        //!< 相手の曲線の距離と高さに掛けた比
-        GL::Player::ReboundArc reboundArc{};             //!< 自機の反動の向きと高さと距離
-        LaunchArc launchArc{};                           //!< 相手の飛ぶ曲線
+        GL::Player::ReboundArc reboundArc{};
+        LaunchArc launchArc{};
         NS::Vector3 breakSelfVelocity{0.0f, 0.0f, 0.0f}; //!< 貫通で明けに自機が持つ速度。貫通しない当たりは 0
         //! 貫通の当たりの止めるフレーム数。押し飛ばしの当たりの止めはタイムラインが持つので 0
         int stopSteps = 0;
     };
 
-    //! @brief 威力と質量と調整値から、衝突の配分を決める
-    //! @details 状態を持たない。重い相手ほど自機の反動が大きく、相手の飛ぶ距離と高さは小さい。
-    //! 反動の初速は自機の重力から出すので、反動しない貫通以外は Player::ReboundVelocityFor へ reboundArc を渡して得る
-    //! @pre input.mass は有限で 0 より大きい (MapObjParams::Mass が保つ)。
-    //! awayDirection と launchDirection は水平で正規化済み (呼び手の ImpactResolver が組む)。
-    //! tuning は MakeImpactTuning が PlayerParams から作った値で、fixedDelta は 0 より大きい。
-    //! input.launch は相手の MapObjParams::Launch の値
-    //! @param[in] input 検知で決まった値
-    //! @param[in] tuning 調整値
-    //! @return 配分の結果
+    //! 威力・質量・調整値から反動と飛ばしを決める。反動の初速は Player::ReboundVelocityFor で求める
+    //! 前提: mass は有限の正、両方向は水平で正規化済み、fixedDelta は正
+    //! tuning は MakeImpactTuning、input.launch は MapObjParams::Launch の値を渡す
     [[nodiscard]] ImpactOutcome ComputeImpactOutcome(const ImpactInput& input, const ImpactTuning& tuning) noexcept;
 
-    //! @brief 外れで自機が触れた相手の表面の向きを、面の上の位置から出す
-    //! @details 面の上の位置を、角の鋭さ sharpness の超楕円の面の上の点として読む。端の近さ
-    //! e = (|u|^p + |v|^p)^(1/p) (1 で頭打ち)、面の上の逸れる向き = (符号 u × |u|^(p−1), 符号 v × |v|^(p−1)) を
-    //! 正規化した物、向き = e × (面の右と上への逸れる向き) + √(1 − e²) × 自機へ向かう向き。p = 2 は球の表面と同じ。
-    //! p を大きくすると、縁に沿った所はどこでも縁の向きへ真っすぐ、角の近くだけ斜めに逸れる。
-    //! 面の右は JudgeHitFace と同じく、上から見て進む向きの右
-    //! @param[in] u 面の上の左右の位置。自機から見て右が正
-    //! @param[in] v 面の上の上下の位置。上が正
-    //! @param[in] sharpness 角の鋭さ p。2 より小さい値と有限でない値は 2
-    //! @param[in] slamDirection 突進の向き。縦の成分は捨てる
-    //! @return 表面の向き。正規化済みで自機の側を向く。突進の水平の向きが決まらない時は (0, 0, 0)
+    //! 面の位置を角の鋭さ sharpness の超楕円として読み、自機側を向く単位法線を返す
+    //! u は右、v は上が正。sharpness は 2 で球、2 未満・非有限は 2 に補正する
+    //! slamDirection は水平成分を使う。水平の向きが決まらない時は (0, 0, 0)
     [[nodiscard]] NS::Vector3 MissSurfaceNormal(float u,
                                                 float v,
                                                 float sharpness,
@@ -107,30 +91,15 @@ namespace GL::Level
     //! @return 包み。frame が 1 より前か length 以降は 0
     [[nodiscard]] float BodyShakeReach(int frame, int length, float amplitude) noexcept;
 
-    //! @brief 止めの間の横揺れの、frame フレーム目の符号付きのずれを返す
-    //! @details 振れ幅 × (1 − frame ÷ length) × ばらつき × 向き。向きは 1 フレーム目から flipFrames の間が firstSign
-    //! で、 そこから flipFrames ごとに入れ替わる。ばらつきは seed と frame から出す 0.7〜1 で、同じ種と frame
-    //! なら同じ値
-    //! @param[in] frame 揺れの何フレーム目か。始まりのフレームが 1
-    //! @param[in] length 揺れのフレーム数。0 以下は揺らさない
-    //! @param[in] amplitude 最初の振れ幅
-    //! @param[in] seed ばらつきの種
-    //! @param[in] firstSign 1 フレーム目の向き。負なら −、それ以外は +
-    //! @param[in] flipFrames 左右を入れ替えるフレーム数。1 未満は 1
-    //! @return ずれ。frame が 1 より前か length 以降は 0
+    //! 横揺れの符号付きのずれを返す。BodyShakeReach の範囲で弱め、同じ seed・frame では同じ値
+    //! frame は開始を 1 とする。1 未満か length 以降、length が非正なら 0
+    //! firstSign は負なら −、他は +。flipFrames ごとに左右を反転し、1 未満は 1 に補正する
     [[nodiscard]] float BodyShakeOffset(
         int frame, int length, float amplitude, std::uint32_t seed, float firstSign, int flipFrames) noexcept;
 
-    //! @brief 止めの間の奥揺れの、frame フレーム目の押す向きへのずれを返す
-    //! @details 幅 × 押した時の止めの残りの割合 × ばらつき × returnRatio の、押してから経ったフレーム数乗
-    //! ばらつきは seed と押しの番号で決まる 0.75〜1 の値
-    //! @param[in] frame 揺れの何フレーム目か。始まりのフレームが 1
-    //! @param[in] length 揺れのフレーム数。0 以下は揺らさない
-    //! @param[in] depth 最初の幅
-    //! @param[in] pushFrames 押し直すフレーム数。1 未満は 1
-    //! @param[in] returnRatio 押してから 1 フレームごとにずれに掛ける倍率
-    //! @param[in] seed ばらつきの種
-    //! @return ずれ。frame が 1 より前か length より後は 0
+    //! 押して戻す揺れのずれを返す。同じ seed と押し番号では同じばらつき
+    //! frame は開始を 1 とする。1 未満か length より後、length が非正なら 0
+    //! pushFrames は 1 以上に補正する。returnRatio は押した後の毎フレームの減衰倍率
     [[nodiscard]] float DepthShakeOffset(
         int frame, int length, float depth, int pushFrames, float returnRatio, std::uint32_t seed) noexcept;
 } // namespace GL::Level

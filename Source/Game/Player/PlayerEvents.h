@@ -4,10 +4,7 @@
 
 namespace GL::Player
 {
-    //! @brief 自機の通知
-    //! @details 命の増減は持たない。増減を扱うのは Health
-    //! 回転攻撃・持ち上げ・投げ・踏みつけ・空中ダイブ・バク宙・滑空・ダッシュ・しゃがみも持たない。その遊びが無い
-    //! 体当たりの 2 つはこの作品だけの通知
+    //! @brief 自機の行動を始めた・終えた時の通知
     struct PlayerEvents
     {
         NS::Obj::BodyEvent onJump;            //!< 跳んだフレーム

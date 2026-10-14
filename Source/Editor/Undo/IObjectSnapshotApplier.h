@@ -5,15 +5,10 @@
 #include <cstdint>
 #include <optional>
 
-// live 実体を唯一の正データとして編集するための、objectId 単位の捕捉・適用の経路
-// undo コマンドはこの抽象越しに 1 体の before/after を配置物の JSON で往復させる
 
 namespace NS::Editor
 {
-    //! @brief objectId 1 体の状態を配置物の JSON で捕捉・適用する経路
-    //! @details live な world を持つシーンへ写す側が実装する。編集・undo はこの 2 口だけを叩く
-    //! ApplyObjectSnapshot は「desired があればその 1 体へ姿を書き戻す/新規、無ければ除去」の一手で、
-    //! 物理・参照・カメラ等の派生状態の同期まで実装側が面倒を見る
+    //! 永続 id ごとに現在状態を取得・適用する。適用後の物理や参照の同期も実装側が行う
     class IObjectSnapshotApplier
     {
     public:

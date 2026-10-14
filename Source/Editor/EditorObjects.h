@@ -21,18 +21,18 @@ namespace NS::Editor
     //! @details 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない
     [[nodiscard]] bool IsCellBrushObject(const NS::Obj::Actor& object) noexcept;
 
-    //! live 実体の cell 座標 = Root 位置を最近接整数へ丸めた値
+    //! 実体のセル座標。Root の位置を最も近い整数へ丸めた値
     [[nodiscard]] std::int16_t ObjectCellX(const NS::Obj::Actor& object) noexcept;
     [[nodiscard]] std::int16_t ObjectCellY(const NS::Obj::Actor& object) noexcept;
     [[nodiscard]] std::int16_t ObjectCellZ(const NS::Obj::Actor& object) noexcept;
 
-    //! live の objects から cell 一致の最初の cell ブラシ配置物の永続 id。無ければ k_NoObjectId
+    //! objects からセルが一致する最初のセルブラシ配置物の永続識別番号を返す。不在は k_NoObjectId
     [[nodiscard]] std::uint32_t FindObjectIdAtCell(const NS::Obj::ActorList& objects,
                                                    std::int16_t x,
                                                    std::int16_t y,
                                                    std::int16_t z) noexcept;
 
-    //! live の objects に、種類を問わず cell 一致の配置物が居る場合 true、それ以外の場合は false
+    //! objects に種類を問わずセルが一致する配置物がある場合 true、それ以外の場合は false
     [[nodiscard]] bool HasPlacedObjectAtCell(const NS::Obj::ActorList& objects,
                                              std::int16_t x,
                                              std::int16_t y,
@@ -41,18 +41,13 @@ namespace NS::Editor
     //! object の今の回転に、世界の Y 軸まわりの 90° を足す。傾きは残る
     void AddCellQuarterTurn(nlohmann::json& object) noexcept;
 
-    //! object の回転を rotationStep に対応する Y 軸 yaw quaternion に設定する
+    //! object の回転を rotationStep に対応する Y 軸回転のクォータニオンに設定する
     void SetCellRotationStep(nlohmann::json& object, std::uint8_t rotationStep) noexcept;
 
-    //! @brief UI に出す名前。付けた名前があればそれ、無ければクラスの表示名
-    //! @details 置けるクラスは登録の表示名、置けないクラスはクラス名、クラスの無い素の Actor は "Actor"
+    //! 個体名を優先し、空なら登録の表示名かクラス名。未登録の型は Actor
     [[nodiscard]] const char* ObjectDisplayName(const NS::Obj::Actor& object);
 
-    //! @brief クリックで配置物を選ぶ時の判定箱を、Root のローカル空間で返す
-    //! @details メッシュを描く配置物はメッシュの境界、描かない配置物 (カメラ・光・空の Actor) と
-    //! メッシュが未解決の配置物は 1m 立方
-    //! @param[in] object 判定箱を求める配置物
-    //! @return Root のローカル空間の軸並行境界ボックス
+    //! 選択判定に使う根の局所空間の AABB。メッシュ境界がなければ 1 m 立方
     [[nodiscard]] NS::AABB PickLocalBounds(const NS::Obj::Actor& object) noexcept;
 
     //! シーンの JSON 文書からプレイヤーを探す。最初の 1 件の添字、無ければ k_NoObjectIndex
@@ -62,10 +57,8 @@ namespace NS::Editor
     //! プレイヤーのひな形の JSON を作る。構成は Player の OnInit が決め、transform 以外の欄は書かない
     [[nodiscard]] nlohmann::json MakePlayerObject(const NS::Vector3& position, const NS::Quaternion& rotation);
 
-    //! @brief プレイヤーが 1 体も居なければ既定構成で足し、永続 id まで振る。2 体以上なら警告して先頭を正とする
-    //! @details 足す位置は DefaultSpawnPosition に、プレイヤーの種類の既定のカプセルを当てて求める
-    //! @param[in,out] scene 補う先のシーンの JSON 文書
-    //! @return 足した場合 true、それ以外の場合は false
+    //! 不在なら種類の既定構成でプレイヤーを追加し、採番する。追加時だけ true
+    //! 足元は DefaultSpawnPosition とカプセル寸法から決める。複数いれば警告し、先頭を使う
     [[nodiscard]] bool EnsurePlayerObject(nlohmann::json& scene);
 
     //! 落下死の範囲が 1 つも無ければ既定の物を敷き、永続 id まで振る

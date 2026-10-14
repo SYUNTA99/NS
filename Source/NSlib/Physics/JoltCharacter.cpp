@@ -132,19 +132,13 @@ namespace NS::Phys
             {
                 continue;
             }
-            // 登れる急さの面で打ち消すのは、先に済ませた接地の法線だけ
-            // 縦の成分を 0 にした向きで抜くと坂を上る前進まで消える
-            // 30° の坂を上り続けるはずの 1 秒で 55 cm 下がった
+            // 登れる斜面は接地の法線で処理済み。ここで水平化して打ち消すと登る速度まで消える。
             if (IsWalkableNormal(contact.mContactNormal.GetY()))
             {
                 continue;
             }
 
-            // 上を向いた急な面では法線の縦の成分を 0 にした向きで抜く
-            // 斜めの法線のまま打ち消すと前進の一部が上向きの速度に変わり、登れない 27 cm の段を越えた
-            // 速さ 20 m/s では 0.6 m 跳ねた
-            // 下を向いた面は法線のまま抜く。縦の成分を 0 にすると天井に当たった上向きの速度が残る
-            // 天井に 25 フレーム張り付いた
+            // 急斜面は水平化して段差での跳ね上がりを防ぐ。天井は上向き速度を消すため法線をそのまま使う。
             JPH::Vec3 cancelNormal = contact.mContactNormal;
             if (cancelNormal.GetY() > 0.0f)
             {
@@ -159,9 +153,7 @@ namespace NS::Phys
             const JPH::Vec3 groundNormal = m_character->GetGroundNormal();
             const bool standingOnWalkable = IsWalkableNormal(groundNormal.GetY());
 
-            // 上向きの速度は足場の面に沿って進む分まで残す
-            // 角を滑り上がった速度は次のフレームへ持ち越さない。持ち越すと 25 cm の段で 9 cm 跳ね、27 cm の段を越えた
-            // 0 で切ると登り坂の速さまで削れ、登り坂の基準の軌跡が 8 m ずれた
+            // 登り坂に必要な上向き速度は保ち、角で跳ね上がった余剰分だけを消す。
             float alongGroundY = 0.0f;
             if (standingOnWalkable)
             {
@@ -172,9 +164,7 @@ namespace NS::Phys
             }
             correctedVelocity.SetY(std::min(correctedVelocity.GetY(), std::max(alongGroundY, 0.0f)));
 
-            // 並んだ床の継ぎ目で角に押し上げられた分を、同じフレームのうちに床へ戻す
-            // 戻さないと速さ 20 m/s で 8 cm 浮き、継ぎ目を走る間に接地を 43 フレーム失った
-            // 探すのは足場の接点の高さまで。それより低い床へ吸い付くと、床の端で角に沿って 20 cm 沈んだ
+            // 継ぎ目で浮いた身体を、足場の接点の高さまで戻す。低い床まで探すと端で沈む。
             const JPH::RVec3 bottomSphereCenter = m_character->GetPosition() - JPH::Vec3{0.0f, m_halfHeight, 0.0f};
             const float groundY = static_cast<float>(m_character->GetGroundPosition().GetY());
             const float rayLength = static_cast<float>(bottomSphereCenter.GetY()) - groundY + k_CollisionTolerance;
@@ -182,9 +172,7 @@ namespace NS::Phys
             const bool floorAtFootHeight =
                 CastRayDown(m_physics.m_physicsSystem, bottomSphereCenter, rayLength, floorDistance);
             const bool hoveringOverFloor = floorAtFootHeight && floorDistance - m_radius > k_CollisionTolerance;
-            // 進む先の角へは真下に床が無くても戻す。1 フレームで角の接平面に沿って進むと角から浮く
-            // 戻さないと、速さ 20 m/s で 19 cm の段を登ったフレームに段の上面より 1 cm 浮いた
-            // 離れていく後ろの角へ戻すと、速さ 20 m/s で床の端を走り抜ける時に 31 cm 沈んだ
+            // 前方の角で浮いた分は戻す。離れていく後方の角へ戻すと床の端で沈む。
             const JPH::Vec3 toGround = JPH::Vec3(m_character->GetGroundPosition() - bottomSphereCenter);
             const bool groundAhead = toGround.GetX() * velocity.x + toGround.GetZ() * velocity.z > 0.0f;
             const bool hoveringOverGroundAhead = groundAhead && toGround.Length() - m_radius > k_CollisionTolerance;

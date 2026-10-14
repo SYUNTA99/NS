@@ -7,13 +7,11 @@
 
 #include <string>
 
-// 突進の狙いの予測の型
-// Player と ImpactResolver の両方が使うので、どちらのヘッダにも置かない
 
 namespace GL::Level
 {
-    //! @brief 押している間の狙いの線。狙う相手を探す線で、溜めている間は SlamArrow がこの線の向きへ放った玉の道筋に
-    //! 矢印を描く。溜めて放した突進はこの線の向きと縦の速さで出て、突進の間も向きを曲げない
+    //! @brief 溜め中の狙いと、放つ突進の向き・縦速度
+    //! @details 突進中も向きは曲げない
     struct AimLine
     {
         NS::Vector3 origin;    //!< 線を引き始める自機の位置 (配置物の根)。世界座標
@@ -27,7 +25,7 @@ namespace GL::Level
     //! @brief 突進の線で最初に触れる相手の予測
     struct SlamLineTarget
     {
-        NS::Obj::ActorRef target{}; //!< 相手の配置物
+        NS::Obj::ActorRef target{};
         NS::AABB bounds{};          //!< 相手の当たりの外接箱。世界座標
         NS::Vector3 origin;         //!< 探した時の自機の位置。世界座標
         NS::Vector3 direction;      //!< 探した水平の向き。正規化済みで y は 0

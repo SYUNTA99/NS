@@ -6,7 +6,6 @@ class Player;
 
 namespace GL::Player
 {
-    //! 突進。移る先は走りと落下
     class BodySlamPlayerState final : public PlayerState<BodySlamPlayerState>
     {
     public:

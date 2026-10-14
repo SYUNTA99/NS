@@ -17,11 +17,6 @@ namespace NS
         float halfExtentZ{0.5f};
     };
 
-    //! @brief 中心・回転・半径から OBB を組む
-    //! @details 3 軸は rotation で回した単位軸。半径は絶対値を取るので、負の scale を掛けた値を渡してよい
-    //! @param[in] center 中心
-    //! @param[in] rotation 3 軸の向き
-    //! @param[in] halfExtents 中心から各面までの距離
-    //! @return 組み上がった OBB
+    //! rotation で向きを決め、halfExtents の絶対値を各軸の半幅にする
     [[nodiscard]] OBB MakeOBB(const Vector3& center, const Quaternion& rotation, const Vector3& halfExtents) noexcept;
 } // namespace NS

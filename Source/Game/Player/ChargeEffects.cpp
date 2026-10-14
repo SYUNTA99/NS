@@ -99,8 +99,7 @@ namespace GL::Player
             StartRelease(center);
         }
         UpdateTrail(center, slamming);
-        // 触れる前の時計が走り始めたら放しの弾けを消す。光が画面を覆ったままだと、触れる直前の縮みと止まる間が見えない
-        // 外れになる当たりも、触れる見込みが近づいたら消し、触れた瞬間の前を光で飾らない
+        // 接触前の縮みや止めを光で隠さないよう、接触が近づいたら放しの弾けを消す
         if (m_burst != 0 && m_resolver != nullptr && (m_resolver->IsBeforeContact() || IsContactNear()))
         {
             StopAndClear(m_burst);
@@ -138,7 +137,6 @@ namespace GL::Player
         {
             return NS::Quaternion::Identity;
         }
-        // Y 軸まわりに角度 a 回すと +Z は (sin a, 0, cos a) へ向く
         const float yaw = std::atan2(direction.x, direction.z);
         return NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, yaw);
     }
@@ -250,9 +248,7 @@ namespace GL::Player
 
     void ChargeEffects::ClearHeldEffects() noexcept
     {
-        // 空中の粉も溜まる光の点も同じフレームに消す。放した後に溜めの層を残さない
-        // 通常突進は押した次のフレームに放すので、丸まりの殻もまだ出ている。消さないと放した後に足元の輪が残る
-        // 溜めきりの次のフレームに放すと閃きもまだ出ている。残すと放した後の縦の柱が溜めの層として写る
+        // すぐ放した時も殻や閃きが残らないよう、保持中の層を同時に消す
         StopAndClear(m_curl);
         StopAndClear(m_spin);
         StopAndClear(m_grind);

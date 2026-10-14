@@ -8,9 +8,7 @@
 
 namespace NS::Obj
 {
-    //! @brief 点列を結ぶカーブの値型。点は最大 8 個で x 昇順に持ち、区間の形は両端の点の補間モードで決まる
-    //! @details 固定長なので値の写しにメモリ確保が要らず、FieldDesc の get / set が写しだけで完結する。
-    //! 既定との比較も既定の比較演算子で書ける。手で形を決める用途なので 8 点で足りる
+    //! 最大 8 点の曲線。使用する点は x 昇順で持つ
     struct Curve
     {
         static constexpr std::size_t k_MaxKeys = 8; // 保持できる点の上限
@@ -28,7 +26,6 @@ namespace NS::Obj
         {
             float x = 0.0f;
             float y = 0.0f;
-            // 既定は Linear。既存データの評価結果を 1 ビットも変えないため
             InterpMode mode = InterpMode::Linear;
             // 接線は dy/dx の傾きで持つ。t 基準の値にすると区間の幅が変わるたびに意味が変わるため
             float inTangent = 0.0f;
@@ -40,9 +37,7 @@ namespace NS::Obj
         Key keys[k_MaxKeys]{};   // 点の並び。有効なのは先頭 count 個
         std::uint32_t count = 0; // 有効な点の数
 
-        //! x に対応する y を返す。点が無ければ 0、範囲の外は端の点の
-        //! y、点の間は両端のモードに応じて線形かエルミートで補間
-        //! 事前条件: keys の先頭 count 個が x 昇順。同じ x が並ぶ区間は後の点の y になる
+        //! 空なら 0、範囲外は端点、区間内は両端のモードで補間する。同じ x の区間は後の点を使う
         [[nodiscard]] float Evaluate(float x) const noexcept;
 
         //! keys の先頭 count 個を x 昇順に並べ直す。同じ x は元の並びを保つ

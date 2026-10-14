@@ -73,7 +73,7 @@ namespace NS::Gfx
         void DropBodyMask() noexcept { m_bodyMaskDrawn = false; }
 
         //! @brief 今のフレームに描いた体の型を返す
-        //! @return 1 色 8 ビットの描画先と同じ大きさの型。描いていなければ null
+        //! @return 1 色 8 ビットの描画先と同じ大きさの型。未描画なら空
         [[nodiscard]] const Texture* BodyMask() const noexcept;
 
     private:

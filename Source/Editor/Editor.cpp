@@ -83,7 +83,7 @@ void Editor::OnDetach()
     // overlay は逆順で OnDetach されるので、scene を破棄する Game::OnDetach より先にここが走る
     if (m_controller)
     {
-        // world が抱えるビュー列を空にしてから、その参照先ターゲットを破棄する
+        // シーンの描画視点を外してから、参照先の描画先を破棄する
         m_controller->SetSceneViews({});
         m_controller->Teardown();
     }
@@ -131,7 +131,7 @@ void Editor::OnRender()
         return;
     }
 
-    // ImGui の 1 フレームを Layer が囲う。Renderer::BeginFrame 済の RT へ EndFrame の Render が描く
+    // Layer が ImGui のフレームを管理する。Renderer::BeginFrame の描画先へ EndFrame で描く
     m_imgui->BeginFrame();
 
     // 編集用の ImGui の上乗せ。カーソルの枠 / パレット / ギズモ。立体の図形は Scene タブを描く時に積む
@@ -288,7 +288,7 @@ void Editor::OnRender()
     app->Input().SetUiCapture(
         {.wantMouse = owner.uiMouse, .wantKeyboard = owner.uiKeyboard, .leftButtonToGame = owner.leftButtonToGame});
 
-    // 見回しドラッグの立ち下がりで押しっぱなしのキーが残らないよう解除する。WM_KEYUP も UI 捕捉中は届かない
+    // 見回し終了時にキー状態を解除し、操作対象の切替へ押しっぱなしを持ち越さない
     if (m_sceneView.ConsumeFreeFlyReleased())
     {
         app->Input().Keyboard().ClearState();
@@ -397,7 +397,6 @@ float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
         const float totalWidth = buttonWidth * 3.0f + style.ItemSpacing.x * 2.0f;
         ImGui::SetCursorPosX(std::max(0.0f, (ImGui::GetWindowSize().x - totalWidth) * 0.5f));
 
-        // 開始 / 停止トグル。編集中は ▶ で再生開始、再生中は ■ で実行から抜ける
         if (state.playActive)
         {
             ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_ButtonActive]);
@@ -423,7 +422,6 @@ float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
             ImGui::PopStyleColor();
         }
 
-        // 一時停止 / 再開。抜けずに時間だけ止める
         ImGui::SameLine();
         ImGui::BeginDisabled(!state.pauseEnabled);
         if (state.pauseDown)
@@ -440,7 +438,6 @@ float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
         }
         ImGui::EndDisabled();
 
-        // コマ送り。一時停止したまま 1 fixed step だけ進める
         ImGui::SameLine();
         ImGui::BeginDisabled(!state.stepEnabled);
         if (ImGui::Button("▶|", ImVec2(buttonWidth, 0.0f)))
@@ -467,7 +464,6 @@ void Editor::RenderMainMenuBar(LevelEditorController& editor) noexcept
     // 縦の余白を詰めてバーを細くする。横は掴みやすさのため残す
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{9.0f, 1.0f});
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{10.0f, 4.0f});
-    // ドロップダウンと同じ配色に揃え、バーも明るい背景＋濃い文字にする
     ImGui::PushStyleColor(ImGuiCol_MenuBarBg, k_MenuBarBg);
     ImGui::PushStyleColor(ImGuiCol_Text, k_MenuBarText);
     if (ImGui::BeginMainMenuBar())
@@ -578,7 +574,7 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
     }
     else
     {
-        m_dock.ClearMaximized(); // 未知名は保険で解除
+        m_dock.ClearMaximized();
     }
 #else
     (void)editor;
@@ -589,7 +585,7 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
 void Editor::HandleEditShortcuts(LevelEditorController& editor) noexcept
 {
 #if NS_EDITOR_ENABLED
-    // プレイ中の配置物は live がそのまま保存対象なので、誤爆で消さないよう編集中だけ効かせる
+    // プレイ中の配置物は実体がそのまま保存対象なので、誤爆で消さないよう編集中だけ効かせる
     if (editor.CurrentMode() != LevelEditorController::Mode::Edit)
     {
         return;

@@ -24,7 +24,6 @@ namespace NS::Gfx
     class Buffer : public NS::NonCopyable
     {
     public:
-        //! バッファを生成する
         [[nodiscard]] static std::unique_ptr<Buffer> Create(const BufferDesc& desc);
         //! ID3D11Buffer の生成に成功しているか
         [[nodiscard]] bool IsValid() const noexcept;
@@ -34,9 +33,7 @@ namespace NS::Gfx
         [[nodiscard]] std::size_t Stride() const noexcept;
         //! 確保したバイト数。定数バッファは 16 バイト境界へ切り上げ済み
         [[nodiscard]] std::size_t ByteSize() const noexcept;
-        //! インデックスバッファのフォーマット
         [[nodiscard]] DXGI_FORMAT Format() const noexcept;
-        //! CPUからの動的な内容更新が可能かどうか
         [[nodiscard]] bool IsDynamic() const noexcept;
 
     private:
@@ -48,27 +45,18 @@ namespace NS::Gfx
         bool m_dynamic = false;
     };
 
-    //! 頂点バッファ用 BufferDesc を作成する。byteSize = vertexCount * stride、bind = VERTEX
-    //! @param[in] data        頂点データの先頭。DEFAULT usage では必須
-    //! @param[in] vertexCount 頂点の個数
-    //! @param[in] stride      頂点 1 個のバイト数
-    //! @param[in] usage       バッファの用途。既定は GPU 読み取り専用の DEFAULT
+    //! DEFAULT の場合は data が必須。stride は頂点 1 個のバイト数
     [[nodiscard]] BufferDesc MakeVertexBufferDesc(const void* data,
                                                   std::size_t vertexCount,
                                                   std::size_t stride,
                                                   D3D11_USAGE usage = D3D11_USAGE_DEFAULT) noexcept;
 
-    //! インデックスバッファ用 BufferDesc を作成する。byteSize = indexCount * 要素サイズ、bind = INDEX
-    //! @param[in] data       index データの先頭。DEFAULT usage では必須
-    //! @param[in] indexCount index の個数
-    //! @param[in] format     index の型。R16_UINT か R32_UINT
-    //! @param[in] usage      バッファの用途。既定は GPU 読み取り専用の DEFAULT
+    //! DEFAULT の場合は data が必須。format は R16_UINT または R32_UINT
     [[nodiscard]] BufferDesc MakeIndexBufferDesc(const void* data,
                                                  std::size_t indexCount,
                                                  DXGI_FORMAT format = DXGI_FORMAT_R32_UINT,
                                                  D3D11_USAGE usage = D3D11_USAGE_DEFAULT) noexcept;
 
-    //! 定数バッファ用 BufferDesc を作成する。usage = Dynamic、bind = CONSTANT、byteSize はコンストラクタが 16 切り上げ
-    //! @param[in] byteSize 構造体のバイト数。内部で 16 バイト境界へ切り上げる
+    //! 動的な定数バッファ用。byteSize は内部で 16 バイト境界へ切り上げる
     [[nodiscard]] BufferDesc MakeConstantBufferDesc(std::size_t byteSize) noexcept;
 } // namespace NS::Gfx

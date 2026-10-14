@@ -80,18 +80,16 @@ namespace NS::OS
         Count
     };
 
-    //! @brief キーボード入力の現在および前フレームの状態を追跡・管理するクラス
-    //! @note スレッドセーフではないため、単一スレッドからのアクセスを前提とする
+    //! 単一スレッドで読むキー状態。Update を境界に押下・解放の差分を判定する
     class Keyboard
     {
     public:
-        //! @brief 対象のキーが現在のフレームで新たに押されたかどうかを判定する
+        //! 直前の Update 後に押されたか
         [[nodiscard]] bool IsPressed(Key k) const noexcept;
 
-        //! @brief 対象のキーが現在押され続けているかどうかを判定する
         [[nodiscard]] bool IsHeld(Key k) const noexcept;
 
-        //! @brief 対象のキーが現在のフレームで離されたかどうかを判定する
+        //! 直前の Update 後に離されたか
         [[nodiscard]] bool IsReleased(Key k) const noexcept;
 
         //! @brief 入力状態のフレーム境界を更新し、差分判定の基準を進める
@@ -105,8 +103,7 @@ namespace NS::OS
         //! @note Key::Unknown は処理されず無視される
         void OnKeyUp(Key k) noexcept;
 
-        //! @brief すべてのキーを離した状態へ強制的に戻す
-        //! @note ウィンドウのフォーカス消失時など、キーが押されたまま内部で固着するバグを防ぐために利用する
+        //! フォーカス消失時などの押しっぱなしを防ぐため、入力を解除する
         void ClearState() noexcept;
 
     private:

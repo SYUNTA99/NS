@@ -21,7 +21,6 @@ namespace NS::Editor
 {
     namespace
     {
-        // 同じ欄を 2 体から読んで見比べる
         template <class T>
         bool SameValue(const NS::Obj::SubObject& a, const NS::Obj::SubObject& b, const NS::Obj::FieldDesc& field)
         {
@@ -32,7 +31,6 @@ namespace NS::Editor
             return lhs == rhs;
         }
 
-        // 同じ欄を src から dst へ写す
         template <class T>
         void CopyValue(NS::Obj::SubObject& dst, const NS::Obj::SubObject& src, const NS::Obj::FieldDesc& field)
         {
@@ -557,7 +555,6 @@ namespace NS::Editor
                     break;
                 }
 
-                // 参照候補リストから選択するためのコンボボックスを描画する
                 const char* currentLabel = "未設定";
                 if (value.IsSet())
                 {
@@ -999,7 +996,6 @@ namespace NS::Editor
         }
 
         SubObjectEditResult result;
-        // リフレクションの欄を 1 つずつ ImGui ウィジェットへ落とす
         const auto drawRow = [&](std::size_t i) {
             const NS::Obj::FieldDesc& field = info->fields[i];
             const bool changed = FieldDiffersFromDefault(comp, defaults, field);

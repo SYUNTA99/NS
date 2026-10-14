@@ -14,11 +14,8 @@ namespace NS::Gfx
 {
     class Renderer;
 
-    //! @brief 線と半透明の面を溜める入れ物。値の型で、持ち主が好きな寿命で捨てる
-    //! @details 描いても捨てない (Draw は const)。捨てるのは持ち主が呼ぶ Clear だけ
-    //! 線の上限は 4096 頂点、面の上限は三角形 12960 枚。超えたら最も古い物から捨てる
-    //! 描く GPU のシェーダと頂点バッファは DebugDraw と共有する 1 組で、持ち主ごとには作らない
-    //! 依存: NS::AABB, NS::OBB, NS::Sphere
+    //! 描画しても消えないデバッグ図形の記録。破棄は Clear で行う
+    //! 線は 4096 頂点、面は 12960 三角形を超えると古いものから捨てる
     class DebugShapes
     {
     public:
@@ -39,18 +36,13 @@ namespace NS::Gfx
         //! @param[in] center 円の中心の座標
         //! @param[in] u 円の平面を張る 1 本目の軸。長さが半径
         //! @param[in] v u と直交する 2 本目の軸。長さは u と揃える
-        //! @param[in] color 描画色
         void Circle(const NS::Vector3& center,
                     const NS::Vector3& u,
                     const NS::Vector3& v,
                     const NS::Color& color);
 
-        //! @brief カプセル形状の枠線を追加する
-        //! @details 円柱の両端の円 2 つと、軸に平行な側面の線 4 本を追加する。両端の半球の弧は描かない
-        //! @param[in] base カプセル中心の座標
-        //! @param[in] axis 中心から端の半球中心へ向かうベクトル
-        //! @param[in] radius カプセルの半径
-        //! @param[in] color 描画色
+        //! カプセルの円柱部分の枠線。端の半球の弧は描かない
+        //! base は中心、axis は中心から半球中心へのベクトル
         void Capsule(const NS::Vector3& base,
                      const NS::Vector3& axis,
                      float radius,
@@ -58,9 +50,6 @@ namespace NS::Gfx
 
         //! @brief 半透明の三角形を追加する
         //! @details 線より先に、裏表の両方を深度を見ずに描く。手前の物にも隠れない。透け具合は色のアルファで決める
-        //! @param[in] a 1 つ目の頂点の座標
-        //! @param[in] b 2 つ目の頂点の座標
-        //! @param[in] c 3 つ目の頂点の座標
         //! @param[in] color 描画色。アルファが不透明度
         void Triangle(const NS::Vector3& a,
                       const NS::Vector3& b,
@@ -83,7 +72,7 @@ namespace NS::Gfx
         [[nodiscard]] std::size_t FaceVertexCount() const noexcept { return m_faces.size(); }
 
     private:
-        //! POSITION(12) + COLOR(16) の 28 byte。頂点バッファの 1 頂点と同じ並び
+        //! POSITION(12) + COLOR(16) の 28 バイト。頂点バッファの 1 頂点と同じ並び
         struct Vertex
         {
             NS::Vector3 position;
@@ -100,43 +89,29 @@ namespace NS::Gfx
 namespace NS::Gfx::DebugDraw
 {
     //! @brief 2点間に線分を追加する
-    //! @param[in] a 始点の座標
-    //! @param[in] b 終点の座標
-    //! @param[in] color 描画色
     void Line(const NS::Vector3& a, const NS::Vector3& b, const NS::Color& color) noexcept;
 
     //! @brief AABB の枠線を追加する
-    //! @param[in] box 描画するAABBデータ
-    //! @param[in] color 描画色
     void AABB(const NS::AABB& box, const NS::Color& color) noexcept;
 
     //! @brief OBB の枠線を追加する
-    //! @param[in] obb 描画するOBBデータ
-    //! @param[in] color 描画色
     void OBB(const NS::OBB& obb, const NS::Color& color) noexcept;
 
     //! @brief 球の枠線を追加する
     //! @details 座標面ごとの大円を 3 本描く。どの向きから見ても 1 本は線に潰れないので半径が読める
-    //! @param[in] sphere 描画する球データ
-    //! @param[in] color 描画色
     void Sphere(const NS::Sphere& sphere, const NS::Color& color) noexcept;
 
     //! @brief 円の枠線を追加する
     //! @param[in] center 円の中心の座標
     //! @param[in] u 円の平面を張る 1 本目の軸。長さが半径
     //! @param[in] v u と直交する 2 本目の軸。長さは u と揃える
-    //! @param[in] color 描画色
     void Circle(const NS::Vector3& center,
                 const NS::Vector3& u,
                 const NS::Vector3& v,
                 const NS::Color& color) noexcept;
 
-    //! @brief カプセル形状の枠線を追加する
-    //! @details 円柱の両端の円 2 つと、軸に平行な側面の線 4 本を追加する。両端の半球の弧は描かない
-    //! @param[in] base カプセル中心の座標
-    //! @param[in] axis 中心から端の半球中心へ向かうベクトル
-    //! @param[in] radius カプセルの半径
-    //! @param[in] color 描画色
+    //! カプセルの円柱部分の枠線。端の半球の弧は描かない
+    //! base は中心、axis は中心から半球中心へのベクトル
     void Capsule(const NS::Vector3& base,
                  const NS::Vector3& axis,
                  float radius,
@@ -161,9 +136,6 @@ namespace NS::Gfx::DebugDraw
     //! @brief 半透明の三角形を追加する
     //! @details 線より先に、裏表の両方を深度を見ずに描く。手前の物にも隠れない。透け具合は色のアルファで決める
     //! 上限の 12960 枚を超える時は最も古い三角形を捨てる
-    //! @param[in] a 1 つ目の頂点の座標
-    //! @param[in] b 2 つ目の頂点の座標
-    //! @param[in] c 3 つ目の頂点の座標
     //! @param[in] color 描画色。アルファが不透明度
     void Triangle(const NS::Vector3& a,
                   const NS::Vector3& b,

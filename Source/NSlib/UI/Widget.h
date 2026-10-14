@@ -29,10 +29,9 @@ namespace NS::UI
         }
     };
 
-    //! @brief 画面 UI の最小単位。木を成し、親の矩形への貼り付け方と重ね順 (子の並び) を持つ
-    //! @details 座標は基準解像度 (高さ 1080) 単位で書き、実ピクセルへの一様拡縮は UICanvas が持つ
-    //! anchor は親矩形内の基準点 (0..1)、pivot は自分の矩形のどこを anchor に合わせるか
-    //! alpha は子へ掛け算で伝わり、木ごとまとめて薄くできる
+    //! UI の矩形の木。子は後から追加した順に上へ描く
+    //! 座標は高さ 1080 を基準とし、alpha は子へ乗算して伝わる
+    //! anchor は親内の基準点 0〜1、pivot は自分の対応点
     class Widget : public NS::NonCopyable
     {
     public:

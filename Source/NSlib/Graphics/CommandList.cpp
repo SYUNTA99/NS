@@ -234,7 +234,6 @@ namespace NS::Gfx
         }
     }
 
-    // 頂点シェーダー
     // 実型は生成時のステージで決まる。Type を検証してから static_cast で下ろす
     void CommandList::VSSetShader(const Shader& shader) noexcept
     {
@@ -289,7 +288,6 @@ namespace NS::Gfx
         m_context->VSSetConstantBuffers(slot, 1u, buffers);
     }
 
-    // ピクセルシェーダー
     void CommandList::PSSetShader(const Shader& shader) noexcept
     {
         if (m_context == nullptr)
@@ -342,7 +340,6 @@ namespace NS::Gfx
         m_context->PSSetConstantBuffers(slot, 1u, buffers);
     }
 
-    // ジオメトリシェーダー
     void CommandList::GSSetShader(const Shader& shader) noexcept
     {
         if (m_context == nullptr)
@@ -395,7 +392,6 @@ namespace NS::Gfx
         m_context->GSSetConstantBuffers(slot, 1u, buffers);
     }
 
-    // コンピュートシェーダー
     void CommandList::CSSetShader(const Shader& shader) noexcept
     {
         if (m_context == nullptr)

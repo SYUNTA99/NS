@@ -96,12 +96,8 @@ namespace NS::Phys
         [[nodiscard]] bool operator==(const BodyMotion& other) const = default;
     };
 
-    //! @brief JPH::PhysicsSystem と、一時メモリ・ジョブ・layer の絞り込みを同じ寿命で持つ当たりの世界
-    //! @details 最初の 1 個の構築か、形を作る最初の CreateMeshShape で、Jolt の登録を 1 度だけ通す
-    //! 登録は JPH::RegisterDefaultAllocator / JPH::Factory / JPH::RegisterTypes
-    //! 型の登録解除はプロセス終了時
-    //! Add 系はどれも body を 1 つ作り、shape を作れなければ無効な BodyID を返す
-    //! 作った時点で動くのは AddDynamic の付く 2 つと SyncMovingBody だけで、これらだけが起きた状態で入る
+    //! Jolt の物理世界。初回の構築かメッシュ形状の生成時に共通の型登録を行う
+    //! Add 系で形状を作れなければ無効な BodyID
     class PhysicsScene : public NS::NonCopyable
     {
     public:
@@ -123,8 +119,7 @@ namespace NS::Phys
         JPH::BodyID AddCapsule(const Capsule& capsule, JPH::ObjectLayer layer);
         //! id の body を capsule の形と姿勢・layer へ書き換えて id を返す。id が無効なら新しく作る
         JPH::BodyID SyncCapsule(JPH::BodyID id, const Capsule& capsule, JPH::ObjectLayer layer);
-        //! @brief 三角形群をまとめて 1 つの mesh body にする。空なら作らない
-        //! @details 呼出側が std::vector と std::array<Triangle, 8> のどちらでも写さずに渡せるよう span で受ける
+        //! 三角形群を 1 つの静的 body にする。空なら作らない
         JPH::BodyID AddMesh(std::span<const Triangle> triangles, JPH::ObjectLayer layer);
         //! id の body を三角形群の形と layer へ書き換えて id を返す。id が無効なら新しく作る
         //! 空か、形を作れなければ無効な BodyID を返し、id の body は外さない
@@ -132,7 +127,7 @@ namespace NS::Phys
         //! @brief id の body を collision の形で、位置・回転・拡縮へ置いて id を返す。id が無効なら新しく作る
         //! @details 形は作り直さずに共有する。拡縮が 1 でなければ、共有した形を拡縮つきの形で包む
         //! 位置・回転・拡縮で表せない歪みは受け取れない。歪みのある配置は SyncMesh に世界座標の三角形を渡す
-        //! collision の形が null か、拡縮の 3 軸がどれも 0 に近ければ無効な BodyID を返す。id の body は外さない
+        //! 形がないか、拡縮の 3 軸とも零に近ければ無効な BodyID を返す。既存の物体は外さない
         JPH::BodyID SyncMeshShape(JPH::BodyID id,
                                   const MeshShape& collision,
                                   const NS::Vector3& position,
@@ -145,12 +140,9 @@ namespace NS::Phys
         //! 中心と半径をそのまま動的な球 body にする
         JPH::BodyID AddDynamicSphere(const NS::Sphere& sphere, const DynamicBodyDesc& desc);
 
-        //! @brief 形の組を 1 つの動く body にまとめ、position・rotation を原点にして置いた id を返す
-        //! @details id が無効なら新しく作る。id が静的な body なら作り直し、古い body は外さない
-        //! 形は世界座標の置き場所ごと受け取り、body の原点から見た位置と向きへ直して入れる
-        //! 形が 2 つ以上なら合成形状、1 つなら位置と向きをずらした形にする
-        //! 形が null か静的にしか使えない部品は飛ばす。1 つも残らないか形を作れなければ無効な BodyID を返し、id の body
-        //! は外さない 置き直しは瞬間移動で、速度はそのまま残る
+        //! 世界座標の形状群を動く body にまとめ、位置と回転を更新する。速度は保つ
+        //! 無効な id または静的 body は新規作成し、元の body は削除しない
+        //! 動的に使えない形状は除外し、有効な形状がなければ無効な BodyID
         JPH::BodyID SyncMovingBody(JPH::BodyID id,
                                    std::span<const ShapePart> parts,
                                    const NS::Vector3& position,
@@ -183,7 +175,6 @@ namespace NS::Phys
         //! 眠っている body を起こす。無効な BodyID は何もしない
         void WakeBody(JPH::BodyID id);
 
-        //! @brief 世界の重力 (m/s^2) を置く。既定は DefaultGravity
         //! @details 置き換えるのは動く body に掛かる重力だけ。自機は重力を自分で持つので変わらない
         //! 非有限の成分を含む値は受け取らない
         void SetGravity(const NS::Vector3& gravity);
@@ -205,21 +196,15 @@ namespace NS::Phys
         //! この PhysicsScene を deltaTime 秒ぶん進める。衝突の分割は 1 で、渡した時間を刻まない
         void Update(float deltaTime);
 
-        //! @brief origin から direction へ maxDistance までの間で最も近い命中までの距離を outDistance に返す
-        //! @details direction の長さは問わない。outDistance は direction の長さに依らずワールドの距離
-        //! layer でも shape でも絞らないので、この PhysicsScene の全 body が対象
-        //! maxDistance か direction の長さが正でなければ false。命中が無ければ outDistance を変えない
+        //! 光線上の最も近い命中までの世界距離を返す。direction の長さは問わず、全 body を調べる
+        //! maxDistance か direction の長さが正でなければ false。未命中では outDistance を変更しない
         [[nodiscard]] bool Raycast(const NS::Vector3& origin,
                                    const NS::Vector3& direction,
                                    float maxDistance,
                                    float& outDistance) const;
 
-        //! @brief 上と同じ光線を、ignoredBody を除いて飛ばし、最も近い命中の距離と面の法線を返す
-        //! @details 引数が有限でない時と、maxDistance か direction の長さが正でない時は false
-        //! 命中が無い時と false を返す時は outDistance も outNormal も変えない
-        //! @param[out] outNormal 命中した面の世界座標の法線
-        //! @param[in] ignoredBody 当たりから除く body。自分の body を渡す
-        //! @return 命中した場合 true、それ以外の場合は false
+        //! ignoredBody を除き、最も近い命中の世界距離と面の世界法線を返す
+        //! 非有限値・正でない距離や方向長・未命中では、出力を変えず false
         [[nodiscard]] bool Raycast(const NS::Vector3& origin,
                                    const NS::Vector3& direction,
                                    float maxDistance,

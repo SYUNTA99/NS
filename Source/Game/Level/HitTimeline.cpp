@@ -584,7 +584,7 @@ namespace GL::Level
         {
             return false;
         }
-        // 種類の既定値と同じく辞書順のキーで書く。同じ中身の 2 回の保存は byte 一致になる
+        // 種類の既定値と同じく辞書順のキーで書く。同じ中身の 2 回の保存はバイト一致になる
         const std::string text =
             HitTimelineToJson(*timeline).dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
         const std::string path = NS::OS::FileSystem::Combine(Directory(), std::string{name} + ".json");

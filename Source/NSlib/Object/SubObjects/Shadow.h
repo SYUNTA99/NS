@@ -15,20 +15,15 @@ namespace NS::Gfx
 
 namespace NS::Obj
 {
-    //! @brief owner の真下の地面に半透明の接地シャドウを描く IRenderable SubObject
-    //! @details 所属 Scene の PhysicsScene へ下向きのレイを撃ち、命中点の高さに水平な半透明クアッドを置く
-    //! 高さに応じて薄く・小さくし、空中でも着地点が分かる目印にする。真下に地面が無ければ描かない
-    //! Alpha 合成で深度テストON 書込OFF の半透明バケットで描かれ、手前のジオメトリに遮蔽される
-    //! 毎 Collect で Scene から PhysicsScene を引き直す。落下先を控えないので、当たりを張り直した後の位置に影が乗る
-    //! quad mesh / shadow material は AssetManager の共有物を ResolveAssets が差す。本 SubObject は非所有
+    //! 真下の地形へ丸影を描く。地面がなければ描かず、高さに応じて薄く小さくする
+    //! 位置は描画時に衝突へ問い合わせ、過去の命中位置を保持しない
     class Shadow : public SubObject, public IRenderable
     {
     public:
         //! 真下の地面に影クアッドの DrawItem を積む。地面が無い / リソース未設定なら何も積まない
         void Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out) override;
-        //! 半透明バケットに分類させる
         [[nodiscard]] RenderBucket Bucket() const noexcept override { return RenderBucket::Transparent; }
-        //! 半透明ソート用の中心で owner world 位置を返す
+        //! 半透明の並べ替えに使う中心として、持ち主の世界座標の位置を返す
         [[nodiscard]] NS::Vector3 SortCenter() const noexcept override;
 
         //! owner 直下の落下可動域を丸ごと覆う AABB。影がどこに落ちても視錐台判定で外さない

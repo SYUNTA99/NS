@@ -1,6 +1,6 @@
 #pragma once
 
-// Windows 層の公開ヘッダをまとめて取り込む umbrella
+// Windows 層の公開ヘッダーをまとめる共通ヘッダー
 
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Filesystem.h"

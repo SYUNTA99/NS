@@ -1,7 +1,7 @@
 #pragma once
 
-// glTF skin 取込の純粋ヘルパ。重み正規化 / RH→LH 変換 / 親を先にする並べ替えを cgltf 非依存で行う
-// RH→LH は S = diag(1,1,-1) の相似変換 (position の Z 反転、回転の x,y 反転、inverseBind の S*M*S 共役)
+// glTF の骨格取り込み用。重みの正規化・座標系の変換・親優先の並べ替えを cgltf に依存せず行う
+// 右手系から左手系への変換は S = diag(1,1,-1) で相似変換する。位置の Z と回転の x,y を反転する
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Graphics/Skeleton.h"
@@ -31,13 +31,13 @@ namespace NS::Gfx::detail
         }
     }
 
-    //! position / translation を Z 反転で RH→LH 変換する
+    //! position / translation を Z 反転で右手系から左手系へ変換する
     [[nodiscard]] inline NS::Vector3 MirrorZ(const NS::Vector3& v) noexcept
     {
         return NS::Vector3{v.x, v.y, -v.z};
     }
 
-    //! 回転 quaternion を RH→LH 変換する。Z 反転の相似変換では (x,y,z,w) → (-x,-y,z,w)
+    //! 回転クォータニオンを右手系から左手系へ変換する。Z 反転の相似変換では (x,y,z,w) → (-x,-y,z,w)
     [[nodiscard]] inline NS::Quaternion MirrorQuaternionZ(const NS::Quaternion& q) noexcept
     {
         return NS::Quaternion{-q.x, -q.y, q.z, q.w};
@@ -51,7 +51,7 @@ namespace NS::Gfx::detail
             m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], m[12], m[13], m[14], m[15]};
     }
 
-    //! 行列を Z 反転で相似変換し inverseBind を RH→LH する。S = diag(1,1,-1) として S * M * S
+    //! inverseBind を Z 反転で右手系から左手系へ変換する。S = diag(1,1,-1) として S * M * S
     [[nodiscard]] inline NS::Matrix ConjugateZMatrix(const NS::Matrix& m) noexcept
     {
         const NS::Matrix s = NS::Matrix::CreateScale(1.0f, 1.0f, -1.0f);

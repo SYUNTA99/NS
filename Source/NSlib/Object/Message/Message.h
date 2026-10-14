@@ -5,11 +5,7 @@ namespace NS::Obj
     class Actor;
     class HitSensor;
 
-    //! @brief Actor から Actor へ送る知らせの共通の基底
-    //! @details 中身の無い基底から型ごとに派生し、種類は型そのもので表す。大半の知らせは種類だけで中身を持たない
-    //! 受け手は Actor::ReceiveMsg で種類を調べ (IsMsg / MsgCast)、応じたかを真偽値で返す。どう応じるかは受け手が決める
-    //! 型ごとに「送る」関数と「調べる」関数を対で用意する。オデッセイの SensorMsg に当たる
-    //! 型の見分けは NS_MESSAGE が作る型ごとの印で行う。RTTI は使わない
+    //! 個体間のメッセージ。NS_MESSAGE の識別値で種類を判定し、受け手が応答を決める
     class Message
     {
     public:

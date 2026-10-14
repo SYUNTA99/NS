@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-// Graphics 層の公開ヘッダをまとめて取り込む umbrella
+// Graphics 層の公開ヘッダーをまとめる共通ヘッダー
 
 #include "NSlib/Graphics/Animation.h"
 #include "NSlib/Graphics/Bloom.h"

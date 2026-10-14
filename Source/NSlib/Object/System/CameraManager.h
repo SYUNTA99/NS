@@ -14,15 +14,8 @@ namespace NS::Obj
 {
     class SceneCamera;
 
-    //! @brief シーンに 1 つのカメラの管理役。仮想カメラ群を束ね、選ばれた 1 個の pose に効果を掛けて実カメラへ流す
-    //! @details UE の PlayerCameraManager、オデッセイの CameraDirector に当たる。部品と Actor は IUseCamera
-    //! から引く。登録済み VirtualCamera のうち active かつ最高 VcamPriority のものを毎フレーム選ぶ。active 切替は
-    //! SetBlendDuration 秒の ease-in-out で旧 pose から繋ぎ、0 で即時カット。揺れや寄りのような効果はモディファイア
-    //! (CameraModifier) として積み、ブレンドの後に Order の順で掛ける。効果を足す側は管理役を触らずモディファイアを 1
-    //! つ積むだけでよい。描き終えたモディファイアは管理役が外す。描く絵は Evaluate が効果まで掛けて実カメラへ書き、
-    //! 遊びが読む向きは ViewPose が効果の前まで合成する。遊びは実カメラを読まない
-    //! シーンがカメラの段の登録物にするので、vcam を動かす追従カメラ (カメラの段の Actor) の後で選び直す
-    //! 依存: NS, NS::Obj::SubObject / SceneCamera / VirtualCamera / CameraModifier
+    //! @brief 有効な仮想カメラを優先度で選び、切り替えを補間して効果を重ねる
+    //! @details 遊びの判定は効果を含まない ViewPose を使う。実カメラへの反映は描画時に行う
     class CameraManager : public SceneSystem
     {
     public:
@@ -31,10 +24,10 @@ namespace NS::Obj
         //! 姿勢を書き込む実カメラを差し替える。非所有で、nullptr は書き込む先が無い状態
         void SetCamera(SceneCamera* camera) noexcept { m_camera = camera; }
 
-        //! 候補 vcam を登録する。null と重複は無視する。寿命は呼出側が支配する非所有参照
+        //! 候補 vcam を登録する。空と重複は無視する。所有せず、呼び出し側が寿命を保つ
         void AddVirtualCamera(VirtualCamera* vcam);
 
-        //! 登録済み vcam を外す。未登録と null は無視する。外した vcam が active 中なら選び直す
+        //! 登録済み vcam を外す。未登録と空は無視する。使用中のカメラを外したら選び直す
         //! 寿命を呼出側が握る vcam を破棄する前に呼んで無効参照を防ぐ
         void RemoveVirtualCamera(VirtualCamera* vcam) noexcept;
 
@@ -42,13 +35,11 @@ namespace NS::Obj
         void SetBlendDuration(float seconds) noexcept;
         [[nodiscard]] float BlendDuration() const noexcept { return m_blendDuration; }
 
-        //! fixed step で active 切替を検出しブレンドタイマーを進める。描画はしない
+        //! 固定ステップで使用するカメラの切り替えを検出し、補間の時間を進める。描画はしない
         void OnTick() override;
 
-        //! 現在の active vcam の EvaluatePose(alpha) を実カメラへ書く。ブレンド中なら旧 pose と補間する
-        //! 呼ぶのは Scene::OnRender だけで、世界が回っている間に 1 フレーム 1 回、Scene が決めた割合を渡す
-        //! 遊びは実カメラを読まず ViewPose を読む
-        //! タイマーは進めない
+        //! 補間した姿勢と効果を実カメラへ反映する。時間は進めない
+        //! 遊びの判定は ViewPose を使い、実カメラを読まない
         void Evaluate(float alpha) noexcept;
 
         //! Evaluate 後に有効。選ばれている vcam を返し、無ければ nullptr
@@ -62,9 +53,9 @@ namespace NS::Obj
         [[nodiscard]] const CameraPose& LastPose() const noexcept { return m_lastPose; }
 
         //! @brief モディファイアを積む
-        //! @details 同じ種類の印 (Kind) の物が積まれていれば外してから積む。null は何もしない
+        //! @details 同じ Kind があれば置き換える。参照先がなければ何もしない
         //! 積んだ後に初めて来る OnTick ではフレームを進めない。積んだフレームに最初の姿を描く
-        //! @return 積んだ場合 true、null で何もしなかった場合は false
+        //! @return 積んだ場合 true、参照先がなく処理しなかった場合は false
         bool AddModifier(std::unique_ptr<CameraModifier> modifier);
 
         //! 種類の印が kind のモディファイアを外す
@@ -73,10 +64,7 @@ namespace NS::Obj
         //! 積んだモディファイアを全て外す。プレイを終えた後の視点に効果が残らないようにする
         void ClearModifiers() noexcept;
 
-        //! @brief 型 T (StaticKind を持つモディファイア) の積まれている物を返す
-        //! @details 1 つの型が向きの取り方などで幾つかの印を使い分ける時は、探す印を kind に渡す
-        //! @param[in] kind 探す種類の印。省くと T::StaticKind
-        //! @return 見つけた物。無ければ nullptr
+        //! kind は検索する種類の識別値。省略時は T::StaticKind、未登録なら nullptr
         template <class T> [[nodiscard]] const T* FindModifier(const void* kind = T::StaticKind()) const noexcept
         {
             for (const std::unique_ptr<CameraModifier>& modifier : m_modifiers)
@@ -121,14 +109,10 @@ namespace NS::Obj
         [[nodiscard]] float Trauma() const noexcept;
 
         //! @brief 揺れの振れ幅に掛ける設定の倍率を置く。0〜1 に収め、非数は受けない
-        //! @details 揺れの効果 (IsShake が真) にだけ掛ける。寄りと傾き・止めには掛けない。既定は 1
         void SetShakeScale(float scale) noexcept;
         [[nodiscard]] float ShakeScale() const noexcept { return m_shakeScale; }
 
-        //! @brief 今のカメラの画面で direction が右と左のどちらの側かを返す
-        //! @details ForwardHorizontal から作った右と direction
-        //! の内積で決める。揺れの最初の横の向きと傾きの向きもこの決まり
-        //! @param[in] direction 世界の向き
+        //! @brief 効果を含まないカメラの右に対する direction の側を返す
         //! @return 内積が負の場合 -1、それ以外の場合は 1
         [[nodiscard]] float SideSignOf(const NS::Vector3& direction) const noexcept;
 
@@ -138,10 +122,8 @@ namespace NS::Obj
         //! @return 合成した姿勢。選べる仮想カメラが無い場合は nullopt
         [[nodiscard]] std::optional<CameraPose> ComposePose(float alpha) const noexcept;
 
-        //! @brief 効果を掛ける前の、遊びが読む視点を返す
-        //! @details 仮想カメラとブレンドを割合 1 で合成する。固定ステップの状態だけで決まり、描画の割合も実カメラも
-        //! 読まない。揺れ・寄り・傾きは描く絵にだけ掛け、入力と狙いが読む向きは揺らさない
-        //! @return 合成した視点。選べる仮想カメラが無い場合は nullopt
+        //! 固定更新の視点を効果なしで返す。入力や狙いの判定に使い、描画の補間割合に依存しない
+        //! 選べる仮想カメラがなければ nullopt
         [[nodiscard]] std::optional<CameraPose> ViewPose() const noexcept;
 
         //! @brief 登録済みから priority 最高の vcam の pose を返す。候補が無ければ nullopt
@@ -151,9 +133,7 @@ namespace NS::Obj
         //! 実カメラの視点と投影の行列。実カメラが無ければ単位行列
         [[nodiscard]] NS::Matrix ViewProjection() const noexcept;
 
-        //! @brief 遊びが読む水平の前を返す
-        //! @details ViewPose の位置から注視点への向きを水平にして長さ 1 にする。移動の基準・狙いの線・突進の向きが読む
-        //! @return 水平の前。視点が無いか水平の成分が無い場合は +Z
+        //! ViewPose の視線を水平に正規化する。視点か水平成分がなければ +Z
         [[nodiscard]] NS::Vector3 ForwardHorizontal() const noexcept;
 
         //! 姿勢を書き込む実カメラ。無ければ nullptr

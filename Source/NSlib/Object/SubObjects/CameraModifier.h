@@ -18,11 +18,8 @@ namespace NS::Obj
         NS::Vector3 up{0.0f, 1.0f, 0.0f};    // 視線と右から作った上
     };
 
-    //! @brief カメラの姿勢へ後から掛ける効果 1 つ。UE の UCameraModifier に当たる
-    //! @details CameraManager が積んで持ち、仮想カメラとブレンドの後に Order の小さい順に掛ける
-    //! 効果を足す側は管理役の中身を触らず、モディファイアを 1 つ積むだけでよい
-    //! 固定ステップごとに Tick で進み、IsFinished が真になると管理役が外す
-    //! 積んだ後の最初の Tick では進めない。積んだフレームに最初の姿を描く
+    //! CameraManager が所有する姿勢の効果。Order 順に適用し、完了すると外す
+    //! 最初の Tick は進めず、追加したフレームに初期姿勢を描く
     class CameraModifier : public NS::NonCopyable
     {
     public:
@@ -59,12 +56,8 @@ namespace NS::Obj
         int m_frame = 0;
     };
 
-    //! @brief 画面揺れの形の設定
-    //! @details ずれはカメラの右と上の向きへの平行移動
-    //! 大きさは始めたフレームが最大で、残りのフレーム数に比例して直線に減る
-    //! 横と縦の向きはそれぞれ 1〜longestFlipFrames フレームごとに入れ替わる
-    //! longestFlipFrames が 2 以上なら続けて同じ間隔にならない
-    //! 間隔は seed から選び、横と縦は別の並びになる。縦の最初の振れは下
+    //! カメラの右と上へずらす揺れ。振れ幅は直線で減り、seed から反転間隔を決める
+    //! 縦の初回は下向き。longestFlipFrames が 2 以上なら同じ間隔を連続させない
     struct CameraShakeDesc
     {
         float sideAmplitude = 0.0f;                       // 最初の振れの横の大きさ (m)
@@ -157,12 +150,7 @@ namespace NS::Obj
         int m_returnFrames = 0;  // 戻すフレーム数
     };
 
-    //! @brief 沈む揺れ (真ん中) の 4 拍の形
-    //! @details 画面の縦のずれを、高さ 1080 の画面の画素で持つ。下が負。
-    //! 沈む: 始めたフレームから sinkFrames で底へ (sin の 4 分の 1 周)。
-    //! 震える: 続く trembleFrames の間、底を中心に tremblePixels から直線に弱まる cos で揺れる。
-    //! こらえる: 跳ね返りの頭まで底のまま。
-    //! 跳ね返る: bounceStartFrame から、1 往復 bouncePeriodFrames・行き過ぎの割合 overshootRatio の減衰振動で 0 へ戻る
+    //! 沈む・震える・保持・跳ね返りの縦揺れ。高さ 1080 基準の画素で、下が負
     struct CameraSinkDesc
     {
         float bottomPixels = 0.0f;   // 底の深さ (画素)。0 以上
@@ -176,15 +164,10 @@ namespace NS::Obj
         int frames = 0;              // 描くフレーム数。始めたフレームを含む
     };
 
-    //! @brief 沈む揺れの frame フレーム目の縦のずれを返す
-    //! @param[in] desc 4 拍の形
-    //! @param[in] frame 始めたフレームを 0 とした番号
-    //! @return 縦のずれ (画素、下が負)。0 未満か frames 以上のフレームは 0
+    //! 開始を 0 とした frame の縦ずれ。画素単位で下が負、範囲外は 0
     [[nodiscard]] float CameraSinkPixelsAt(const CameraSinkDesc& desc, int frame) noexcept;
 
-    //! @brief 沈む揺れ (真ん中)。射影の後の画面をずらすので、カメラの位置と向きは変えない
-    //! @details 姿の画面のずれ (CameraPose::screenOffset) の縦に足す。カメラとの距離で揺れの画素数が変わらず、
-    //! 遊びが読む前の向きも変わらない
+    //! 射影後の画面を縦にずらす。カメラとの距離や遊びの入力方向には影響しない
     class CameraSinkModifier final : public CameraModifier
     {
     public:
@@ -225,9 +208,7 @@ namespace NS::Obj
         float exponent = 2.0f;       // トラウマを振れ幅にする指数
     };
 
-    //! @brief 衝撃の向きへカメラを一度振って戻す一撃
-    //! @details 角度は degrees × (f ÷ peakFrames) × e^(1 − f ÷ peakFrames)。f は足したフレームを 1 と数える。
-    //! f が peakFrames のフレームに最大になり、その後は滑らかに戻る
+    //! peakFrames で最大になる、衝撃方向への減衰回転
     struct CameraKick
     {
         float degrees = 0.0f;    // 山の大きさ (度)
@@ -244,10 +225,7 @@ namespace NS::Obj
         CameraKick kick;         // 重ねる一撃。大きさ 0 なら重ねない
     };
 
-    //! @brief トラウマの揺れ。カメラの位置は動かさず、視線を横と縦に首振りし、傾ける
-    //! @details 角度は種と時刻から引く値ノイズ (ValueNoise1D) × トラウマ^指数 × 最大の角度に、一撃の角度を足す。
-    //! 隣り合うフレームでずれが跳ばない。続けて足すとトラウマが足される (上限 1)。
-    //! 遊びが読む向き (CameraManager::ViewPose) には掛からない
+    //! トラウマに応じて視線と傾きを揺らす。追加分は上限 1 まで重ね、遊びの ViewPose には適用しない
     class CameraTraumaModifier final : public CameraModifier
     {
     public:
@@ -264,11 +242,7 @@ namespace NS::Obj
         //! @param[in] desc 足す量と形
         void AddTrauma(const CameraTraumaDesc& desc) noexcept;
 
-        //! @brief このフレームのトラウマを少なくとも level に保つ
-        //! @details 毎フレーム呼ぶ。呼ばなかったフレームからは減り始める。level
-        //! が今のトラウマ以上の時だけ形を置き換える
-        //! @param[in] level 保つトラウマ 0〜1
-        //! @param[in] shape 揺れの形
+        //! 毎歩 level 0〜1 を下限に保つ。現在値以上の場合だけ形を置き換え、未指定の歩から減衰する
         void HoldTrauma(float level, const CameraTraumaShape& shape) noexcept;
 
         //! 今のトラウマ 0〜1
@@ -306,10 +280,8 @@ namespace NS::Obj
         bool onScreen = false;   // 向きをカメラの右と上へ写した画面の上の向きでずらすか。偽は世界の向きのまま
     };
 
-    //! @brief カメラのずれ。位置と注視点を、決まった向きへ曲線の距離だけ同じだけずらす
-    //! @details 画面へ写す時は奥へ向かう分を捨て、画面の上で見える向きだけでずらす。写した向きがほぼ無い
-    //! (向きが真っすぐ画面の奥か手前を指す) 時は動かさない。種類の印は向きの取り方 (世界 / 画面) ごとに分かれ、
-    //! 同じ取り方のずれを積み直すと前の物が外れる。取り方の違うずれは重なる
+    //! 位置と注視点を同じだけずらす。画面上の方向がなければ動かさない
+    //! 世界方向と画面方向は併用でき、同じ方式の再指定は前の効果を置き換える
     class CameraNudgeModifier final : public CameraModifier
     {
     public:
@@ -317,9 +289,6 @@ namespace NS::Obj
         //! @details 非数を含む・長さ 1 でない向き・フレーム数 0 以下・非数の点を持つ曲線は壊れた設定で nullptr
         [[nodiscard]] static std::unique_ptr<CameraNudgeModifier> Create(const CameraNudgeDesc& desc);
 
-        //! @brief 向きの取り方ごとの種類の印を返す
-        //! @param[in] onScreen 画面へ写すずれか
-        //! @return 種類の印
         [[nodiscard]] static const void* KindFor(bool onScreen) noexcept;
         [[nodiscard]] const void* Kind() const noexcept override { return KindFor(m_desc.onScreen); }
 

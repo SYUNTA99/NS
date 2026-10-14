@@ -29,7 +29,7 @@ namespace NS::Editor
 
     void EditorCamera::ApplyPan(float panX, float panY) noexcept
     {
-        // View space の right / up 軸に沿った平行移動。感度は distance に比例
+        // yaw に合わせた横移動と世界の上下移動。距離に比例して移動量を変える
         const float sinYaw = std::sin(m_yaw);
         const float cosYaw = std::cos(m_yaw);
         const NS::Vector3 right{cosYaw, 0.0f, -sinYaw};
@@ -75,12 +75,11 @@ namespace NS::Editor
         const float sinPitch = std::sin(m_pitch);
         const float sinYaw = std::sin(m_yaw);
         const float cosYaw = std::cos(m_yaw);
-        // 視線方向 forward = normalize(center - eye)。LH look-at の前方で pitch を含むので見ている方向へ進める
+        // 視点から注視点への単位方向を使い、上下の傾きを含めて進める
         const NS::Vector3 forward{-cosPitch * sinYaw, -sinPitch, -cosPitch * cosYaw};
-        // 画面右。世界の上と forward の外積で、LH なので yaw=0 で -X
+        // 画面右は世界の上と forward の外積。左手系なので yaw=0 では -X
         const NS::Vector3 right{-cosYaw, 0.0f, sinYaw};
-        // 速さは distance 比例のままだが、寄った時に動けなくならないよう距離に下限を置く
-        // 立方体 1 個へ注視すると distance は下限の 2m まで落ち、比例のままでは 1.2m/s と歩くより遅い
+        // 近距離でも操作できる速さを残すため、距離比例の下限を設ける
         const float step = m_tuning.keyMoveSpeed * std::max(m_distance, k_MinMoveDistance) * dt * speedScale;
         m_center.x += (forward.x * forwardAxis + right.x * strafeAxis) * step;
         m_center.y += (forward.y * forwardAxis + verticalAxis) * step;
@@ -108,7 +107,6 @@ namespace NS::Editor
             ApplyFlyMove(input.forwardAxis, input.strafeAxis, input.verticalAxis, input.deltaSeconds, speedScale);
         }
 
-        // distance を臨界減衰バネで目標距離へ滑らかに寄せる
         m_distance += (m_desiredDistance - m_distance) * std::min(1.0f, m_tuning.springOmega * input.deltaSeconds);
     }
 
@@ -130,7 +128,7 @@ namespace NS::Editor
         const float dt = NS::OS::FrameTimer::FixedDelta();
         NS::OS::Input& input = NS::OS::Input::Get();
 
-        // Platform Input から 1 フレーム分の free-fly 入力を組む。感度適用とバネは注入する側に任せる
+        // Platform Input から 1 フレーム分の自由視点入力を組む。感度適用とバネは注入する側に任せる
         EditorCameraInput frameInput{};
         frameInput.deltaSeconds = dt;
 
@@ -189,7 +187,7 @@ namespace NS::Editor
             }
         }
 
-        // Gamepad は ImGui キャプチャ対象外、常に入力する。free-fly 入力とは別枠でその場に適用する
+        // Gamepad は ImGui キャプチャ対象外、常に入力する。自由視点入力とは別枠でその場に適用する
         {
             NS::OS::Gamepad& gp = input.Gamepad();
             if (gp.IsConnected())

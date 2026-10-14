@@ -77,33 +77,19 @@ namespace NS::Editor
         NS::Gfx::Renderer* renderer = nullptr;   //!< 描き手。空ならエフェクトの世界を描かない
     };
 
-    //! @brief 編集中の場面の写しで、選んだ条件の当たりを 1 回下見する
-    //! @details 自機を、突進の線が相手の面の (faceU, faceV) を通り、leadFrames の後に検知する所へ置き直し、入力を止めて
-    //! 突進を直接頼む。向きは編集中の自機の玉から相手の体の中心への水平。置き直しは実際に当てた面の位置と検知のフレームを
-    //! 見て最大 6 回まで詰め、合った回を返す。組む・進める・壊す間は入力を中立にする
-    //! (NS::OS::ScopedNeutralInput)。合わなければ選んだ位置に一番近く当てた回を返す。届かない位置
-    //! (床に乗った玉より下など) は詰め切れず、impact の faceU・faceV に実際に当たった位置が残る。snapshot
-    //! は書き換えない
-    //! @param[in] snapshot 編集中の場面の写し (Scene::ToJson)
-    //! @param[in] desc 当たりの条件
-    //! @param[in] world 写しの場面に渡す資産と描き手
-    //! @return 下見の結果。自機か相手が居ない、相手に体のセンサーか面が無い、選んだ相手に当たらなかった場合は hit
-    //! が偽で error に理由が入る
+    //! snapshot を変えずに別シーンで当たりを再現する。実行中は入力を中立にし、実機へ振動を送らない
+    //! 面の位置と検知時刻を最大 6 回調整する。合わなければ最も近い結果を返す
+    //! hit が false なら error に理由が入り、成功時の impact には実際の命中位置が残る
     [[nodiscard]] HitPreviewResult RunHitPreview(const nlohmann::json& snapshot,
                                                  const HitPreviewDesc& desc,
                                                  const HitPreviewWorld& world = {});
 
-    //! @brief 下見で決めた位置・向き・溜めで、開始直後の場面を作る
-    //! @details 記録の 0 番目はこの場面を 1 歩進めた姿
-    //! RunHitPreview と同じ開始処理を使う
-    //! @return 生成した場面。当たらなかった結果の場合は nullptr
+    //! 下見結果と同じ開始状態のシーンを作る。記録の先頭はこの状態を 1 歩進めた姿
+    //! 当たらなかった結果では nullptr
     [[nodiscard]] std::unique_ptr<NS::Obj::Scene> MakeHitPreviewScene(const nlohmann::json& snapshot,
                                                                       const HitPreviewResult& result,
                                                                       const HitPreviewWorld& world = {});
 
-    //! @brief 下見の当たりを、当たりの記録 hits.jsonl と同じ鍵と並びの 1 行の JSON にする
-    //! @details f は検知のフレームの frames の添字
-    //! @param[in] result RunHitPreview の結果
-    //! @return 改行を含まない 1 行。当たらなかった結果は空の文字列
+    //! hits.jsonl と同じ形式の 1 行を返す。改行は含めず、未命中では空文字列
     [[nodiscard]] std::string HitPreviewHitLine(const HitPreviewResult& result);
 } // namespace NS::Editor

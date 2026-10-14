@@ -7,11 +7,8 @@
 
 namespace NS::Obj
 {
-    //! @brief カプセル collision を Scene に登録する SubObject
-    //! @details 地形として出す形で、持ち主のクラスが部品 Collision に入れる。動く体の形は Collider が自分で持つ。
-    //! owner の world 変換から中心・軸・半径・半高を個別に返す
-    //! 既定は縦向き Y 軸の capsule。local 回転で寝かせられる。半径は X/Z scale の最大、半高は Y scale で拡縮する
-    //! 回転と非一様 scale を併用すると近似になる
+    //! 地形として登録する Y 軸方向のカプセル。動く身体には Collider を使う
+    //! 半径は XZ の最大スケール、半長は Y で拡縮する。回転と非一様スケールの併用は近似
     class CapsuleCollision : public Collision
     {
     public:
@@ -30,24 +27,22 @@ namespace NS::Obj
         //! 円柱部の半長を返す。owner の scale を掛ける前の値
         [[nodiscard]] float HalfHeight() const noexcept;
 
-        //! owner local 空間での中心オフセット
+        //! 持ち主の局所座標系での中心オフセット
         void SetCenterOffset(const NS::Vector3& offset) noexcept;
         [[nodiscard]] NS::Vector3 CenterOffset() const noexcept;
 
-        //! local 回転を quaternion で直接設定 / 取得する
+        //! 局所回転をクォータニオンで直接設定 / 取得する
         void SetLocalRotation(const NS::Quaternion& rotation) noexcept;
         [[nodiscard]] NS::Quaternion LocalRotation() const noexcept;
 
-        //! local 回転を pitch/yaw/roll の Euler 角 (度) で読み書きする。寝かせ用に内部は quaternion 保持
+        //! 局所回転を仰角・方位角・傾きのオイラー角 (度) で読み書きする。寝かせ用に内部はクォータニオン保持
         void SetRotationEulerDegrees(const NS::Vector3& eulerDegrees) noexcept;
         [[nodiscard]] NS::Vector3 RotationEulerDegrees() const noexcept;
 
-        //! owner の world 変換に local offset / 回転を重ねた capsule を返す
-        //! axis は local 回転で回した Y 軸、半径は X/Z scale 最大、半高は Y scale で拡縮する
-        //! Owner 未登録時は local offset / 回転だけを反映する。例外は投げない
+        //! 持ち主の世界変換と局所変換を重ねる。持ち主がなければ局所変換だけを使う
         [[nodiscard]] NS::Phys::Capsule WorldCapsule() const noexcept;
 
-        //! owner の world 変換を反映した世界軸並行 AABB を返す。Owner 未登録時は local だけを反映する
+        //! owner の世界変換を反映した世界軸並行 AABB を返す。Owner 未登録時は局所の値だけを反映する
         [[nodiscard]] NS::AABB WorldAABB() const noexcept;
 
         NS_REFLECT_BEGIN(CapsuleCollision, Collision)
@@ -62,7 +57,7 @@ namespace NS::Obj
 
         float m_radius = 0.4f;                                     // capsule 半径
         float m_halfHeight = 0.5f;                                 // 円柱部の半長、半球を除く
-        NS::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};              // owner local 空間での中心オフセット
-        NS::Quaternion m_localRotation = NS::Quaternion::Identity; // owner 回転に重ねる local 回転
+        NS::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};              // 持ち主の局所座標系での中心オフセット
+        NS::Quaternion m_localRotation = NS::Quaternion::Identity; // owner 回転に重ねる局所回転
     };
 } // namespace NS::Obj

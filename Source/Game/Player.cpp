@@ -304,7 +304,6 @@ void Player::OnEndPlay()
     m_states->Reset();
     m_appliedClip.clear();
     NS::Obj::Actor::OnEndPlay();
-    // 部品の OnEndPlay の後に置く。後ろの部品は丸まりも構えも読まないので、捨てる時機はここで足りる
     EndCharge();
 }
 
@@ -356,7 +355,7 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
 
 void Player::RestartFrom(const nlohmann::json& baseline) noexcept
 {
-    // 出現位置はエディタで配置したプレイヤーの capsule 中心の world 位置そのもの
+    // 出現位置は配置したプレイヤーのカプセル中心の世界座標
     // 凍結に既にある値なので写しは持たず、その都度読む。居なければ新規レベルで補う位置へ戻す
     NS::Vector3 spawn = DefaultSpawnPosition();
     const std::size_t index = NS::Obj::FindObjectIndexById(baseline, Id());

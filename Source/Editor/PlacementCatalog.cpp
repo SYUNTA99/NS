@@ -21,7 +21,6 @@ namespace NS::Editor
             return prototype;
         }
 
-        // 地形の部品の見た目のメッシュを差し替える
         void SetPartsMesh(nlohmann::json& prototype, std::string_view meshName)
         {
             if (nlohmann::json* renderer = NS::Obj::SubObjFields(prototype, "Model"))

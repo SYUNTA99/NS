@@ -14,14 +14,8 @@ namespace NS::Obj
     class Scene;
     class Transform;
 
-    //! @brief 振る舞いを表現する再利用ブロック。通常は派生して使う
-    //! SubObject 自身は所有者 Actor を生参照する。owner は生成後に Actor が注入する
-    //! scene が持つ物は OnStart で OwningScene() 経由で借りる
-    //! ライフサイクル:
-    //!   - OnStart() — Scene attach 直後に 1 回
-    //!   - OnUpdate() — 持ち主の Actor のクラスが自分の Update の中で呼んだ時だけ。IsActive()==false なら呼ばれない
-    //!     体の動きと見た目の dt は BodyDelta で持ち主の体の時計から取る
-    //!   - OnEndPlay() — Scene 破棄 / SubObject 廃棄前に 1 回
+    //! @brief Actor が所有する部品。更新は持ち主が呼び、体の経過秒は BodyDelta から取る
+    //! @details シーンへの接続後に OnStart、破棄前に OnEndPlay を呼ぶ
     class SubObject : public Object
     {
     public:
@@ -32,7 +26,7 @@ namespace NS::Obj
         //! 持ち主の中の部品名。保存の鍵とインスペクタの見出しに使う。Actor が部品を積む時に付ける
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
 
-        //! 所有 Actor。Scene attach 後は non-null
+        //! 持ち主の Actor。シーンへの所属後は必ず設定される
         [[nodiscard]] Actor* Owner() noexcept { return m_owner; }
         [[nodiscard]] const Actor* Owner() const noexcept { return m_owner; }
 
@@ -42,7 +36,6 @@ namespace NS::Obj
         //! 持ち主の体の 1 歩の秒。持ち主が無ければ固定の 1 歩の秒
         [[nodiscard]] float BodyDelta() const noexcept;
 
-        //! 所有 Actor の root Transform への近道。型名衝突回避のため RootTransform 命名
         [[nodiscard]] Transform& RootTransform() noexcept;
         [[nodiscard]] const Transform& RootTransform() const noexcept;
 
@@ -53,11 +46,8 @@ namespace NS::Obj
 
         //! この SubObject 自身の active 値。owner の状態は含まない
         [[nodiscard]] bool IsActiveSelf() const noexcept { return m_active; }
-        //! @brief 自分の active を切り替える
-        //! @details 設定できるのは自分の分だけで、階層は見ない。実行中に部品を外す口で、外した仮想カメラは
-        //! CameraManager が選ばない。編集の休止・当たりの止め・操作の停止の印には使わない。
-        //! 編集の休止の正は Scene の世界の駆動、当たりの止めの正は ImpactResolver の数え、操作の停止の正は
-        //! PlayerInput の止め
+        //! @brief 実行中の部品の有効状態を切り替える
+        //! @details シーンの休止、ヒットストップ、操作ロックには使わない。階層や保存値は変更しない
         void SetActive(bool active) noexcept { m_active = active; }
 
         //! データに書かれた active 値。false は保存にも残り、読み直しても false のまま
@@ -65,15 +55,12 @@ namespace NS::Obj
         //! データの active を切り替える。実行中に部品を外す SetActive とは別系統で、互いを上書きしない
         void SetEnabled(bool enabled) noexcept { m_enabled = enabled; }
 
-        //! 持ち主が世界へ出直した時に呼ばれる。自分が効いていない間は呼ばれない。既定は何もしない
         virtual void OnAppear() {}
-        //! 持ち主が世界から外れた時に呼ばれる。既定は何もしない
         virtual void OnDisappear() noexcept {}
         virtual void OnStart() {}
         virtual void OnUpdate() {}
         virtual void OnEndPlay() {}
 
-        //! リフレクションで運んだ参照文字列 (mesh / material 等) を資産の実体へ引き当てる。既定は何もしない
         //! 配置物の組み立てが値の適用後に呼ぶ。AssetManager が無い間 (テスト等) は呼ばれない
         virtual void ResolveAssets(AssetManager&) {}
 

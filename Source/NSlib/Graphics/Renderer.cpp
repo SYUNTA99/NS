@@ -227,7 +227,7 @@ namespace NS::Gfx
         }
 
         // CommonStates の private コンストラクタは make_unique から呼べない。例外を使わず nothrow new で構築し
-        // 確保失敗は null 判定で扱う
+        // 確保できたかは参照先の有無で判定する
         m_states.reset(new (std::nothrow) CommonStates(m_device.Get()));
         if (!m_states)
         {

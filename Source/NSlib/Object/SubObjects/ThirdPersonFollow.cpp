@@ -388,9 +388,7 @@ namespace NS::Obj
 
         if (m_reboundPhase == ReboundPhase::Launching)
         {
-            // 横と前後は臨界減衰のバネで追う。バネの値は切らず、見せる遅れだけを 上限 × tanh(遅れ ÷ 上限) で丸める
-            // 届いたフレームに切ると、カメラの速さが急に突進と同じになって引っかかったように見える
-            // 高さは追う相手の頭のまま
+            // 表示する遅れだけをなめらかに制限し、バネの速度が急変しないよう状態は切らない。
             CriticalSpringStep(m_reboundAnchor.x, m_reboundAnchorVelocity.x, head.x, m_forcedLaunchFollowOmega, dt);
             CriticalSpringStep(m_reboundAnchor.z, m_reboundAnchorVelocity.z, head.z, m_forcedLaunchFollowOmega, dt);
             const float lagX = m_reboundAnchor.x - head.x;
@@ -543,11 +541,7 @@ namespace NS::Obj
             const float aimHalfHeight = std::max(aim.halfHeight - charge.aimTargetRadius, 0.0f);
             wanted.x = FrameAxisShift(self.usable, self.right, self.halfWidth, aim.usable, aim.right, aimHalfWidth);
             wanted.y = FrameAxisShift(self.usable, self.up, self.halfHeight, aim.usable, aim.up, aimHalfHeight);
-            // 縦は自機と相手の真ん中を画面の中心へ寄せる。注視点は頭の高さなので、枠に入れるだけだと二人は画面の
-            // 下の方に写り、当たりの揺れが小さく見える。寄せは注視点だけを下げて下を向かせ、カメラの位置は下げない。
-            // 位置を下げると見下ろす角が浅くなり、奥の相手が自機の真後ろに重なる
-            // 寄せる量は締めと同じ寄りの量で増やし、溜めるにつれて速まりながら下を向く。相手を見付けたフレームに
-            // 一気に動かさない
+            // 二人を中央へ寄せても奥の相手が重ならないよう、カメラの位置は下げず注視点だけを下げる。
             if (self.usable && aim.usable)
             {
                 const NS::Vector3 middle = (root + charge.aimTargetCenter) * 0.5f;
@@ -716,11 +710,7 @@ namespace NS::Obj
         }
         UpdateReboundPartner(rebound, head, dt);
 
-        // 接地と速度で決める自動ズーム距離
-        // 反動になったフレームに、目標を当たった瞬間の距離にする。下げる反動なら欄の分だけ伸ばし、
-        // カメラを後ろへ下げる。反動の間は書き換えない
-        // 今の目標でなく今の距離から測る
-        // 目標へ寄っている途中に目標へ足すと、見えている距離より下がりすぎるか寄る
+        // 反動の引きは現在の距離から測る。補間中の目標から測ると、見えている距離からずれる。
         if (reboundBegan)
         {
             m_reboundBaseDistance = m_distance;
@@ -773,9 +763,7 @@ namespace NS::Obj
         const NS::Vector3 tgtPos = target->InterpolatedWorldMatrix(alpha).Translation();
         // ずれは補間しない。根を ShiftPosition で上げ下げしていれば、補間の途中でも 根 + ずれ は動かない
         NS::Vector3 headPos{tgtPos.x, tgtPos.y + m_targetHeightOffset + m_headHeight, tgtPos.z};
-        // 反動の間と寄せ戻しの間の注視点は固定ステップごとに決めるので、
-        // 前のフレームと今のフレームの間を補間する
-        // 1 − alpha と alpha で重み付けし、alpha が 1 なら今のフレームの注視点そのものになる
+        // 固定更新で決めた注視点を描画時に補間する。
         if (m_reboundPhase != ReboundPhase::None)
         {
             headPos = m_previousLook * (1.0f - alpha) + m_look * alpha;

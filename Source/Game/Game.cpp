@@ -36,7 +36,6 @@ void Game::OnAttach()
     }
 
     // AssetManager とレンダラーを預ける。立てるシーンがここから受け取る
-    // 編集機能は Editor がオーバーレイとして乗せる
     m_scenes.SetAssets(&app->Assets());
     m_scenes.SetRenderer(&app->Renderer());
 
@@ -57,7 +56,6 @@ void Game::OnDetach()
 
 void Game::OnUpdate()
 {
-    // 世界の駆動はシーン自身が持つ。プレイ中のカーソルと Esc は構成ごとの外枠 (StandaloneLayer / Editor) が持つ
     m_scenes.Update();
 }
 

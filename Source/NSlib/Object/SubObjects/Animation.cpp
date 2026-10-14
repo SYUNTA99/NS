@@ -80,9 +80,7 @@ namespace NS::Obj
 
     void Animation::SetSpeed(float speed) noexcept
     {
-        // 正の無限大は speed > 0.0f を通り、m_time の折り返しで std::fmod が非数を返す。非数は大小比較が
-        // 全て偽になるので以後の補正に引っかからず、速度を戻しても再生時刻が戻らない
-        // 非有限値の扱いは SetMaxSpeedScale と同じ。0 に落とすと再生が止まる
+        // 非有限値で再生時刻が壊れると速度を戻しても復帰できないため、設定を拒否する。
         if (!std::isfinite(speed))
         {
             return;

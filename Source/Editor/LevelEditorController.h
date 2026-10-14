@@ -40,35 +40,28 @@ namespace NS::Gfx
     class DebugShapes;
 }
 
-//! @brief レベル編集機能およびプレイモードの切り替えを統括するコントローラ
-//! @details Scene 上の live な配置物 / カメラ / プレイ進行を操作し、cursor / palette / undo の
-//! EditorMode ・ギズモ変形・free-fly カメラ・編集↔プレイのモード切替を実現する。Editor が 1 個所有し、
-//! 出荷 build には本クラスも Editor も含めない
+//! シーンの編集操作と編集・プレイの切替を管理する
 class LevelEditorController : public NS::NonCopyable
 {
 public:
     explicit LevelEditorController(NS::Obj::Scene* scene) noexcept;
     ~LevelEditorController();
 
-    //! scene の OnStart 完了後に呼ぶ。free-fly カメラ / EditorMode / ギズモを立ち上げ編集モードへ入る
+    //! scene の OnStart 完了後に呼ぶ。自由視点カメラ / EditorMode / ギズモを立ち上げ編集モードへ入る
     void Setup(NS::UI::ImGuiContext* imgui);
 
-    //! fixed step 更新。編集中は free-fly カメラ / ギズモ / EditorMode を回す。プレイ中は Esc
+    //! 固定ステップ更新。編集中は自由視点カメラ / ギズモ / EditorMode を回す。プレイ中は Esc
     //! で隠したカーソルを出すだけ
     void Tick();
 
     //! 編集中のカーソルの枠 / パレット / ギズモを ImGui のフレームへ重ねる。プレイ中は何もしない
     void Render();
 
-    //! @brief Scene タブを描く時に、そのビューへ出す開発用の図形を積む
-    //! @details 編集中はカーソル・カメラの錐台と印・選択中の当たり線・正面の面・選択枠、
-    //! プレイ中は全配置物の当たり線と正面の面
-    //! SceneRenderer がビューの描画の中で呼び、積んだ図形はそのビューを描いたら捨てられる
-    //! @param[in,out] shapes 積む先。空で渡される
-    //! @param[in] viewProjection そのビューのビュー射影。カメラの印の大きさを画面上で揃えるのに使う
+    //! Scene ビューの図形を積む。編集時は選択中、プレイ時は全配置物の当たりを表示する
+    //! shapes は空で渡され、ビューの描画後に破棄される。viewProjection はそのビューの行列
     void DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes, const NS::Matrix& viewProjection) noexcept;
 
-    //! scene 破棄の前に呼ぶ。ギズモ選択解除と free-fly カメラの後始末
+    //! scene 破棄の前に呼ぶ。ギズモ選択解除と自由視点カメラの後始末
     void Teardown();
 
     //! 編集モードかプレイモードか
@@ -86,21 +79,20 @@ public:
     //! プレイモードから編集モードへ移行する
     void EnterEdit() noexcept;
 
-    //! プレイ中に 1 fixed step だけコマ送りする。自動で一時停止に入り、手触り検証で 1 コマずつ観察する
+    //! プレイ中に 1 固定ステップだけコマ送りする。自動で一時停止に入り、手触り検証で 1 コマずつ観察する
     void RequestStepFrame() noexcept;
 
-    //! 前面のパネル (編集= Scene / プレイ= Game) が image を描いたフレームで矩形と hover を渡す
+    //! 前面のパネルが画像を描いたフレームで、矩形とカーソルの重なりを渡す
     void SetGameView(int x, int y, int width, int height, bool hovered) noexcept;
-    //! F5 の全画面直描き用。予備の全画面矩形 + hover 真を立てる
+    //! F5 の全画面描画用。予備の矩形を使い、カーソルが重なっている状態にする
     void ClearGameView() noexcept;
     //! UI 表示中に前面のパネルが裏へ隠れたフレームで呼ぶ。編集入力とオーバーレイを止める
     void HideGameView() noexcept;
     //! 現在の表示矩形。未設定時は全画面の予備矩形を返す
     [[nodiscard]] NS::Editor::ViewRect CurrentViewRect() const noexcept;
-    //! 前面のパネルが裏へ隠れているか
     [[nodiscard]] bool GameViewHidden() const noexcept { return m_gameViewHidden; }
 
-    //! プレイ中に Scene タブへ自由視点を映すフレームで毎回呼ぶ。入力を free-fly カメラへ流す
+    //! プレイ中に Scene タブへ自由視点を映すフレームで毎回呼ぶ。入力を自由視点カメラへ流す
     //! 編集モード中は何もしない
     void TickPlaySceneView(const NS::Editor::EditorCameraInput& input) noexcept;
 
@@ -124,20 +116,17 @@ public:
     [[nodiscard]] bool PlayPaused() const noexcept;
     void TogglePlayPause() noexcept;
 
-    //! @brief 出したカーソルを、Game の画像の左クリックで固定へ戻す
-    //! @details 止めている間と、カーソルを固定している間は何もしない
-    //! @param[in] gameImageClicked このフレームに Game の画像を左クリックしたか
+    //! Game 画像の左クリックで視点操作を再開する。一時停止中か捕捉中なら何もしない
     void RecaptureCursorOnGameClick(bool gameImageClicked) noexcept;
 
-    //! 編集対象の live な ActorList。一覧 UI と参照候補は範囲 for か ObjectAt でここを直接読む
+    //! 編集対象の ActorList。一覧と参照候補はここから直接取得する
     [[nodiscard]] const NS::Obj::ActorList& Objects() const noexcept;
 
-    //! 配置ツールのモード (Build / Object) を取得する
     [[nodiscard]] bool ObjectToolActive() const noexcept { return m_objectToolActive; }
     //! 配置ツールを Build / Object 切替える。Build へ戻す時はギズモ選択を解除する
     void SetObjectToolActive(bool active) noexcept;
 
-    //! 現在選択中の配置物の表示用添字。選択の真実は永続 id で、添字は live から引き直す
+    //! 現在選択中の配置物の表示用添字。選択の真実は永続 id で、添字は実体から引き直す
     [[nodiscard]] std::size_t SelectedObjectIndex() const noexcept;
     //! 永続 id で配置物を 1 体だけ選択する。0 を渡すと選択を外す
     void SelectObjectById(std::uint32_t id) noexcept;
@@ -146,19 +135,16 @@ public:
 
     //! 選択中の全配置物の永続 id。主対象も含む
     [[nodiscard]] const std::vector<std::uint32_t>& SelectedObjectIds() const noexcept { return m_selectionIds; }
-    //! id が選択に含まれるか
     [[nodiscard]] bool IsObjectSelected(std::uint32_t id) const noexcept;
     //! 選択へ足す / 選択から外す。足した物が主対象になる
     void ToggleObjectSelection(std::uint32_t id) noexcept;
-    //! @brief 選択を丸ごと差し替える
-    //! @param[in] ids 選択する永続 id 一覧
-    //! @param[in] primary 主対象。ids に無ければ足す
+    //! 選択を差し替える。primary が ids に含まれていなければ追加する
     void SelectObjects(std::vector<std::uint32_t> ids, std::uint32_t primary) noexcept;
 
     //! Inspector が編集 / 表示できる選択を持つか
     [[nodiscard]] bool HasInspectableSelection() const noexcept;
 
-    //! 選択中の配置物の位置 / 回転 / スケールを live へ直接設定する。非選択時は何もしない
+    //! 選択中の配置物の位置 / 回転 / スケールを実体へ直接設定する。非選択時は何もしない
     void SetSelectedFreePosition(NS::Vector3 position);
     void SetSelectedFreeRotation(NS::Quaternion rotation);
     void SetSelectedFreeScale(NS::Vector3 scale);
@@ -172,17 +158,14 @@ public:
     void CommitSubObjectEdit() noexcept;
 
     //! プレイ中の手編集を凍結スナップショットへも写す。編集復帰の組み直しを跨いで調整値が残る
-    //! 編集モードでは live が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
+    //! 編集モードでは実体が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
     void MirrorPlayEditToBaseline(const NS::Obj::SubObject& comp, std::string_view fieldName);
 
-    //! @brief 部品 comp の欄 fieldName の今の値を、持ち主のクラスの種類の既定値にしてファイルへ書く
-    //! @details 同じ種類の個体のうち、その欄を上書きしていなかった物にも新しい値を写す。上書きしている個体はそのまま
-    //! 種類の既定値はシーンの外のファイルなので undo の履歴には積まない。プレイ中も使え、編集へ戻っても残る
-    //! @return 書けた場合 true。種類を持たない配置物・参照の欄・位置は false
+    //! 種類の既定値と未上書きの個体を更新する。変更できた場合 true、参照・姿勢など対象外の欄は false
+    //! ファイル保存に失敗してもメモリ上の変更は残し、警告する。Undo の対象外
     bool PromoteFieldToArchetype(NS::Obj::SubObject& comp, std::string_view fieldName);
 
-    //! @brief 置ける物を 1 体、編集視点の中心あたりへ置いて選択する。Undo 対応
-    //! @param[in] item 置ける物の一覧 (PlacementItems) の 1 つ
+    //! 編集視点の中心付近へ配置し、選択と Undo 履歴へ追加する
     void PlaceItem(const NS::Editor::PlacementItem& item);
 
     //! @brief メッシュ資産を地形の部品として編集視点の中心あたりへ置く。Undo 対応
@@ -194,21 +177,14 @@ public:
     //! 選択中の配置物がプレイヤー実体か
     [[nodiscard]] bool SelectedIsPlayerObject() const noexcept;
 
-    //! @brief 配置物の表示名を差し替えて undo へ積む
-    //! @param[in] id 対象の永続 object id。居なければ何もしない
-    //! @param[in] name 新しい表示名。空にすると型からの導出名へ戻る
+    //! 改名して Undo 履歴へ追加する。不在なら何もしない。重複には番号を付け、空名は Object にする
     void RenameObject(std::uint32_t id, std::string_view name);
 
-    //! @brief 配置物の親を差し替えて undo へ積む
-    //! @param[in] id 対象の永続 object id
-    //! @param[in] parentId 新しい親の永続 id。0 で root へ戻す
-    //! @retresult 付け替えたら true。自分自身や自分の子孫を親に指定した場合は false で何もしない
-    //! @details 見た目が動かないよう、今の world 変換を新しい親空間の local へ計算し直して持ち替える
+    //! 親を変更して Undo 履歴へ追加する。parentId が 0 なら根。循環・不在・変更なしは false
+    //! 世界姿勢を保つよう局所姿勢を再計算する。分解に失敗した場合は親だけを変更し、警告する
     bool SetObjectParent(std::uint32_t id, std::uint32_t parentId);
 
-    //! @brief 選択中の配置物のサブオブジェクト 1 個について、データの active を切り替える
-    //! @details false は保存に残り、読み直しても false のまま。player の入力と transform は守って何もしない
-    //! @param comp 選択中の配置物が持つ部品
+    //! 部品の保存される有効値を切り替える。プレイヤーの入力と根の姿勢は変更しない
     void SetSubObjectEnabledOnSelected(NS::Obj::SubObject& comp, bool enabled);
 
     //! 選択中の配置物を新しい永続 id で複製して undo へ積む。プレイヤーは複製の対象から外す
@@ -249,14 +225,11 @@ private:
     void RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
                             const NS::Matrix& viewProjection,
                             NS::Size2D viewport) noexcept;
-    //! @brief 当たり形状を線で積む
-    //! @param[in,out] shapes 積む先
-    //! @param[in] all 真なら全配置物、偽なら選んでいる分だけ
+    //! 当たり形状を積む。all が true なら全配置物、false なら選択分だけ
     void RenderCollisionWireframes(NS::Gfx::DebugShapes& shapes, bool all) noexcept;
 
-    //! @brief 赤の欄 (部品 HitZones) を持つ相手ごとに、自機の方を向いた正面の面と、直近の当たりの触れた点を描く
-    //! @details 面の向きは、溜めて狙っている相手には狙いの線、それ以外は自機の玉の中心から相手の中心への水平の向き。
-    //! 自機が居なければエディタのカメラから相手への水平の向き。外れの面に段の形を色の表の色で重ね、縁を線で描く
+    //! 判定と同じ面と命中点を描く。狙い対象は狙いの方向、他は自機から相手への水平方向を使う
+    //! 自機がなければ編集カメラからの水平方向を使う
     void RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcept;
 
     //! 主対象以外の選択物を枠で見せる。ギズモは 1 体にしか出ないので、選んだ範囲を目で追えるようにする
@@ -267,7 +240,7 @@ private:
     //! 主対象だけを差し替える。選択集合には触らない
     void SetPrimarySelection(std::uint32_t id) noexcept;
 
-    //! ドラッグ開始時に、主対象以外の選択物の world 変換を控える
+    //! ドラッグ開始時に、主対象以外の選択物の世界変換を控える
     void CaptureDragFollowers() noexcept;
     //! 主対象がドラッグで動いた分を、控えた残りの選択へ同じだけ効かせる
     void ApplyDragToFollowers() noexcept;
@@ -281,7 +254,7 @@ private:
     [[nodiscard]] NS::Obj::SceneCamera* MainCamera() const noexcept;
 
     NS::Obj::Scene* m_scene = nullptr;           // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
-    NS::Editor::ObjectSnapshotApplier m_applier; // 編集を live へ写す口。undo コマンドが叩く適用先
+    NS::Editor::ObjectSnapshotApplier m_applier; // 履歴の操作を実体へ適用する
 
     // 前面のパネルの表示矩形。未設定時は CurrentViewRect が全画面の予備矩形を返す
     NS::Editor::ViewRect m_gameViewRect{};
@@ -289,21 +262,21 @@ private:
     bool m_gameViewHovered = false;
     bool m_gameViewHidden = false; // UI 表示中に前面のパネルが裏へ隠れているか
 
-    NS::Editor::EditorCamera m_editorCamera; // 編集用自由視点カメラ
+    NS::Editor::EditorCamera m_editorCamera;
 
     // 編集復帰時にプレイ視点から自由視点へ繋ぐブレンド。TickEdit が進める
     NS::Obj::CameraPose m_editBlendFrom{};
     float m_editBlendElapsed = 0.0f;
     bool m_editBlending = false;
 
-    NS::Editor::EditorMode m_editor{}; // カーソルと Undo を持つ編集モード
-    Mode m_mode = Mode::Edit;          // 現在の実行モード
+    NS::Editor::EditorMode m_editor{};
+    Mode m_mode = Mode::Edit;
 
     bool m_objectToolActive = true; // false の時は Build
 
-    NS::Editor::GizmoEditor m_gizmo{}; // 変形ギズモ管理
+    NS::Editor::GizmoEditor m_gizmo{};
 
-    std::vector<NS::Obj::Actor*> m_selectablePtrs;  // 選択可能なオブジェクト
+    std::vector<NS::Obj::Actor*> m_selectablePtrs;
     std::vector<std::uint8_t> m_selectablePickable; // 1 は Model を持つ配置物。ギズモが先に選ぶ
 
     std::uint32_t m_selectedObjectId = NS::Obj::k_NoObjectId; // 主対象の永続 id。選択の一次情報
@@ -317,10 +290,10 @@ private:
         NS::Matrix world{};
     };
     std::vector<DragFollower> m_dragFollowers; // 主対象に付いて動く残りの選択
-    NS::Matrix m_dragPrimaryWorld{};           // ドラッグ開始時の主対象の world 変換
+    NS::Matrix m_dragPrimaryWorld{};           // ドラッグ開始時の主対象の世界変換
 
-    bool m_gizmoWasDragging = false; // ドラッグ状態の保持
-    bool m_transformEditing = false; // 変形編集の開始状態
+    bool m_gizmoWasDragging = false;
+    bool m_transformEditing = false;
 
     // 編集開始時の状態スナップショット。選択している分だけ並ぶ
     std::vector<std::pair<std::uint32_t, nlohmann::json>> m_editBaselines;

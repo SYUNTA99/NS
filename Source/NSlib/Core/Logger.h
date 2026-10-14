@@ -34,10 +34,7 @@ namespace NS
         std::string logDirectory = {};
     };
 
-    //! @brief spdlog を隠すロガー。直接は呼ばず NS_LOG_* マクロを使うこと
-    //! @details
-    //! 各マクロは std::format と同じ書き方ができる
-    //! sink は spdlog の _mt 系を使うため、複数スレッドから同時に呼んでも安全
+    //! NS_LOG_* から使うスレッド対応のロガー。書式は std::format に合わせる
     class Logger
     {
     public:

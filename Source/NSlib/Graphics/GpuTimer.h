@@ -8,11 +8,8 @@
 namespace NS::Gfx
 {
 
-    //! @brief Begin と End の間に積んだ描画に、描画装置が掛けた時間を測る
-    //! @details D3D11 の時刻の問い合わせで、Begin と End の位置で描画装置が読んだ時刻の差を返す。
-    //! 読む時は描画装置が End まで進むのを待つので、読んだ後のフレームは遅れる。測る道具の中だけで使う
-    //! 構築時に Gpu() の device を使う。Renderer が未構築なら無効な状態になり、何もしない
-    //! @warning Renderer より先に破棄すること
+    //! GPU の Begin〜End の時間を測る。読み取りは GPU を待つため計測用に限る
+    //! Renderer が未構築なら無効。Renderer より先に破棄する
     class GpuTimer : public NS::NonCopyable
     {
     public:

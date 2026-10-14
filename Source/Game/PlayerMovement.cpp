@@ -32,7 +32,6 @@ namespace
     }
 
     // from を Y 軸まわりに最大 maxRadians だけ to へ寄せた向き。from と to は正規化した水平の向き。
-    // 使うのは MoveBody の振り向きだけなので、ここに置く
     NS::Vector3 TurnHorizontalToward(const NS::Vector3& from, const NS::Vector3& to, float maxRadians) noexcept
     {
         const float angle = HorizontalAngleBetween(from, to);
@@ -49,9 +48,6 @@ namespace
     }
 } // namespace
 
-// ---- 移動の組み立て ----
-// 状態の OnStep と、身体の段 (BodyStep) から呼ぶ MoveBody が、ここの関数を呼ぶ。
-// 身体 (Body) の速度・接地・重力の計算を呼ぶだけで、値は PlayerParams から読む
 
 void Player::MoveBody(float dt) noexcept
 {
@@ -59,7 +55,6 @@ void Player::MoveBody(float dt) noexcept
     NS::Vector3 target{};
     if (NS::TryNormalizeHorizontal(m_body->LateralVelocity(), target))
     {
-        // 一定の速さで回す。速さの理由は m_turnSpeed の欄
         NS::Vector3 current{};
         if (m_params->m_turnSpeed > 0.0f && NS::TryNormalizeHorizontal(m_facingDir, current))
         {
@@ -220,8 +215,7 @@ void Player::AccelerateDuringRebound(float dt) noexcept
         return;
     }
 
-    // 入力の向きからずれた速度は削らない。削ると横へ倒しただけで相手から離れる流れが消え、
-    // 弾かれる向きが当て方でなくスティックで決まる。触って詰める値ではないので欄にしない
+    // 横入力で反動方向を消さないよう、入力からずれた速度は削らない
     const float turningDrag = 0.0f;
     // 明けのフレームは止める前の接地の印が残っている。接地を見て地上の加速度を選ぶと、そのフレームだけ大きく曲がる
     body.Accelerate(direction, turningDrag, m_params->m_reboundAirAcceleration, topSpeed, dt);
@@ -263,8 +257,6 @@ void Player::UpdateBodySlam(float dt) noexcept
     }
 }
 
-// ---- 崖つかまり ----
-// 縁の検出・つかまり・登り
 
 namespace
 {
@@ -322,10 +314,7 @@ bool Player::LedgeGrab() noexcept
         return false;
     }
 
-    // 手の高さ = カプセルの円柱部の上端。そこから前方へ伸ばした probe 点がブロックの XZ 内に入り、
-    // かつブロック上端が手の上下の帯に収まれば縁とみなす
-    // 縁は立ち姿で掴む。当たりの足元に立ち姿を立てた中心と、立ち姿の半長で測る。玉の間は根が半長ぶん下がっている
-    // 玉の寸法のまま測ると手が円柱の長さぶん低い所を探し、縁の横を玉で落ちている間は掴めなかった
+    // 縁は立ち姿の手の高さで測る。玉の寸法では低すぎる所を探し、落下中に掴めない
     const NS::Obj::Collider& collider = *m_collider;
     const float halfHeight = collider.StandingHalfHeight();
     NS::Vector3 pos = Root().Position();

@@ -56,7 +56,6 @@ namespace NS::Gfx
     {
     public:
         //! @brief パイプラインを生成する
-        //! @param[in] desc 初期化パラメータ
         //! @return 生成失敗時も非nullのインスタンスを返すが、無効な状態となる
         [[nodiscard]] static std::unique_ptr<Pipeline> Create(const PipelineDesc& desc);
 

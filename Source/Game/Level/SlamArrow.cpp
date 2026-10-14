@@ -146,16 +146,13 @@ namespace GL::Level
                               1.0f};
         }
 
-        // 帯と矢じりの板 1 枚ぶんの描く値
         struct PlateLook
         {
             float edgeAlpha = 0.0f;      // 色の付いた部分の明るい縁の不透明度
             float fillAlpha = 0.0f;      // 色の付いた部分の塗りの平均の不透明度
             float plainEdgeAlpha = 0.0f; // 色の付いていない部分の明るい縁の不透明度
             float plainFillAlpha = 0.0f; // 色の付いていない部分の塗りの平均の不透明度
-            // 帯の場合 true。帯だけが始まりでぼけ、溜め量の所で色が切れ、矢じりの後ろの端で切れる。矢じりは溜めの
-            // 始めから段の色で全部を塗り、ぼかさない。白っぽい薄い塗りは市松の床に溶け、出たばかりの短い矢印では
-            // 始まりのぼかしに矢じりまで消えていた
+            // ぼかしは帯だけに掛ける。短い矢印の矢じりまでぼかすと見えなくなる
             bool isBand = false;
         };
 
@@ -515,13 +512,10 @@ namespace GL::Level
         out.push_back(occludedItem);
     }
 
-    // Player の見た目の段 (VisualStep) が呼ぶ。溜めを観測する観測の段より後なので、
-    // このフレームの狙いの線と狙う相手を控えた後に読む
     SlamArrow::SlamArrow() noexcept : NS::Obj::OverlayRenderer() {}
 
     void SlamArrow::OnStart()
     {
-        // 基底が重ね描きの登録簿へ自分を入れる
         NS::Obj::OverlayRenderer::OnStart();
 
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))

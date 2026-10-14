@@ -51,7 +51,6 @@ namespace NS::Editor
             }
         }
 
-        // UIがキーボード入力中の場合は、ショートカット操作を無視する
         const bool wantKeyboard = imgui != nullptr && imgui->WantCaptureKeyboard();
         if (wantKeyboard)
         {
@@ -78,9 +77,7 @@ namespace NS::Editor
         constexpr float k_TopMargin = 20.0f;
         const float width = std::min(k_DesiredWidth, static_cast<float>(viewRect.width));
 
-        // 初回だけ Scene ビュー上端中央へ置く。以降はドラッグで動かすが位置は自前で持ち、毎フレーム
-        // Scene ビュー内へクランプする。窓の枠は Begin 時点の位置で描かれるため、Begin 前に
-        // クランプ済みの位置を SetNextWindowPos(Always) で渡し、枠ごと内側へ収める
+        // 枠は Begin 時点の位置で描かれるため、先に Scene ビュー内へ位置を収める
         if (!m_toolbarPlaced)
         {
             m_toolbarX = static_cast<float>(viewRect.x) + (static_cast<float>(viewRect.width) - width) * 0.5f;
@@ -104,8 +101,7 @@ namespace NS::Editor
         // End は Begin の戻り値に依らず必ず呼ぶ。中身を描くのは開いている間だけ
         if (ImGui::Begin("Toolbar", nullptr, k_ToolbarFlags))
         {
-            // ボタンの無い余白を掴んでいる間だけ自前でドラッグ移動する。移動量は次フレームの位置へ反映され、
-            // 常にクランプ済みなので枠が Scene ビューの外へ出ることはない
+            // 余白からのドラッグだけを受け、ボタン操作と区別する
             if (!m_toolbarDragging && ImGui::IsWindowHovered() && !ImGui::IsAnyItemHovered() &&
                 ImGui::IsMouseClicked(ImGuiMouseButton_Left))
             {
@@ -125,7 +121,6 @@ namespace NS::Editor
                 }
             }
 
-            // 各ブラシのスロットボタンを横並びで描画する
             for (std::size_t i = 0; i < k_PaletteSlotCount; ++i)
             {
                 if (i > 0)
@@ -138,7 +133,6 @@ namespace NS::Editor
                 const char* label = PaletteTemplateSlots()[i].name;
                 const bool isActive = (i == m_activeSlot);
 
-                // アクティブなスロットは色を変えてハイライトする
                 if (isActive)
                 {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.80f, 0.50f, 0.30f, 1.0f));

@@ -5,9 +5,7 @@
 
 namespace NS::Obj
 {
-    //! @brief シーンの平行光 (太陽) を 1 本供給する SubObject
-    //! @details 配置物に載せ、Scene が有効な平行光を選んで描画のシーン段照明の出所にする
-    //! 位置は無関係で向き / 色 / 環境光だけを持つ。複数置いた場合の多灯合成は非対応で、有効な 1 本のみが効く
+    //! シーンへ向き・色・環境光を渡す平行光。複数置いても有効な一つだけを使う
     class DirectionalLight : public SubObject
     {
     public:
@@ -38,10 +36,10 @@ namespace NS::Obj
         NS_REFLECT_END()
 
     private:
-        NS::Vector3 m_direction{-0.3f, -1.0f, -0.2f}; // 平行光の向き
-        NS::Vector3 m_color{1.0f, 1.0f, 1.0f};        // 平行光の色
-        NS::Vector3 m_ambient{0.30f, 0.34f, 0.40f};   // 空側の環境光
-        NS::Vector3 m_ground{0.24f, 0.21f, 0.18f};    // 地面側の環境光
-        float m_exposure = 1.35f;                           // 画面へ出す前の露出
+        NS::Vector3 m_direction{-0.3f, -1.0f, -0.2f};
+        NS::Vector3 m_color{1.0f, 1.0f, 1.0f};
+        NS::Vector3 m_ambient{0.30f, 0.34f, 0.40f};
+        NS::Vector3 m_ground{0.24f, 0.21f, 0.18f};
+        float m_exposure = 1.35f;
     };
 } // namespace NS::Obj

@@ -11,20 +11,18 @@
 
 namespace NS::Phys
 {
-    //! @brief 形 1 つと、その世界座標の置き場所
-    //! @details 寸法は拡縮を掛け終えた世界の大きさで持つ
-    //! 動く body の合成形状へ入れる時は、PhysicsScene::SyncMovingBody が body の座標へ直す
+    //! 拡縮済みの世界座標の形状。合成 body の登録時に body 内の座標へ変換する
     struct ShapePart
     {
-        JPH::ShapeRefC shape;                                            // 形。作れなかった時は null
+        JPH::ShapeRefC shape;                                            // 形。生成失敗時は空
         NS::Vector3 position{0.0f, 0.0f, 0.0f};                    // 形の原点の世界座標
         NS::Quaternion rotation = NS::Quaternion::Identity; // 形の世界の向き
     };
 
-    //! OBB の中心と 3 軸をそのまま箱の形にする。形を作れなければ形は null
+    //! OBB の中心と 3 軸から箱を作る。生成失敗時は空
     [[nodiscard]] ShapePart MakeBoxPart(const NS::OBB& box);
-    //! 中心と半径をそのまま球の形にする。形を作れなければ形は null
+    //! 中心と半径から球を作る。生成失敗時は空
     [[nodiscard]] ShapePart MakeSpherePart(const NS::Sphere& sphere);
-    //! capsule.axis の向きのカプセルの形にする。軸が零ベクトルなら Y 軸。形を作れなければ形は null
+    //! capsule.axis の向きでカプセルを作る。軸が零なら Y 軸。生成失敗時は空
     [[nodiscard]] ShapePart MakeCapsulePart(const Capsule& capsule);
 } // namespace NS::Phys

@@ -9,9 +9,7 @@ namespace NS::Gfx
 {
     class Renderer;
 
-    //! @brief 床の波。上を向いた面に、中心からの水平の距離が半径の所を走る光の輪を出す
-    //! @details 床は頂点の少ない箱なので形は曲げず、画素のシェーダーが光と面の向きだけを変える。
-    //! 式は Shaders/Common.hlsli の GroundWaveNormal と GroundWaveGlow が持つ
+    //! 上向きの面に広がる光の輪。形状は変えず、画素シェーダーで表現する
     struct GroundWave
     {
         float centerX = 0.0f;  //!< 中心の世界の x
@@ -55,14 +53,8 @@ namespace NS::Gfx
         DistortionRing distortionRing{};
     };
 
-    //! @brief 世界の点を描画先の画素 (左上が原点) へ投げる
-    //! @param[in] viewProjection カメラのビュープロジェクション行列
-    //! @param[in] point 投げる世界の点
-    //! @param[in] width 描画先の幅の画素
-    //! @param[in] height 描画先の高さの画素
-    //! @param[out] outPixel 投げた画素。false の時は書かない
-    //! @param[out] outW 投げた w。奥行きで大きさを割る時に使う。false の時は書かない
-    //! @return 投げられた場合 true。カメラの後ろ (投げた w が 0 以下) なら false
+    //! 世界座標を描画先の左上原点の画素座標へ投影する。width・height は画素数
+    //! カメラの後ろなら false で出力を変更しない。outW は投影後の奥行き係数
     [[nodiscard]] inline bool TryProjectToPixels(const NS::Matrix& viewProjection,
                                                  const NS::Vector3& point,
                                                  float width,
@@ -83,14 +75,8 @@ namespace NS::Gfx
         return true;
     }
 
-    //! @brief 投げた点と同じ奥行きの面の上の世界の長さを、描画先の画素の長さにする
-    //! @details 行列の縦の成分のうち世界の x・y・z に掛かる 3 つの長さは、ビューの回転で変わらず射影の縦の倍率になる。
-    //! カメラの向きで大きさが変わらない
-    //! @param[in] viewProjection カメラのビュープロジェクション行列
-    //! @param[in] length 世界の長さ
-    //! @param[in] projectedW TryProjectToPixels が返した w。0 より大きい
-    //! @param[in] height 描画先の高さの画素
-    //! @return 画素の長さ
+    //! projectedW の奥行きで、世界座標の長さを画素数へ変換する。カメラの回転に依存しない
+    //! projectedW は TryProjectToPixels の正の出力、height は描画先の高さの画素数
     [[nodiscard]] inline float ProjectedLengthPixels(const NS::Matrix& viewProjection,
                                                      float length,
                                                      float projectedW,

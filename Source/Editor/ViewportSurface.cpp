@@ -48,7 +48,7 @@ namespace NS::Editor
                     }
                 }
 
-                // 可視なら次フレームの描画先サイズを立てる。RT 未生成でも記録する
+                // 可視なら次フレームの描画先サイズを立てる。描画先未生成でも記録する
                 m_visible = true;
                 m_size = NS::Size2D{static_cast<int>(draw.x), static_cast<int>(draw.y)};
 

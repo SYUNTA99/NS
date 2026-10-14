@@ -8,9 +8,7 @@
     </compatibility>
     <application xmlns="urn:schemas-microsoft-com:asm.v3">
         <windowsSettings>
-            <!-- パスの文字コードを UTF-8 に固定する。Windows 10 1903 以降で効く
-                 これが無いと CRT の fopen は日本語を含むパスを開けず、ログが書けない。
-                 実行ファイルの置き場所は動かす人が決めるので、命名の規約では防げない -->
+            <!-- 日本語を含む配置パスでも CRT でファイルを開けるよう UTF-8 を使う。Windows 10 1903 以降 -->
             <activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>
             <!-- 260 文字を超えるパスを扱う。OS 側のレジストリ LongPathsEnabled も要る -->
             <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>

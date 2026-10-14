@@ -23,7 +23,6 @@ namespace NS::Gfx
             const char* target;
             ShaderType stage;
         };
-        // ファイル名の拡張子等からシェーダのステージを判定するためのテーブル
         constexpr ShaderTypeInfo k_StageTable[] = {
             {".vs.", "VSMain", "vs_5_0", ShaderType::Vertex},
             {".ps.", "PSMain", "ps_5_0", ShaderType::Pixel},
@@ -151,7 +150,6 @@ namespace NS::Gfx
             return blob;
         }
 
-        // ステージに応じて適切なシェーダオブジェクトを生成する
         [[nodiscard]] bool CreateStageObject(ID3D11Device* device,
                                              ShaderType stage,
                                              const ComPtr<ID3DBlob>& blob,
@@ -314,7 +312,7 @@ namespace NS::Gfx
         {
             m_vsBytecode = std::move(bytecode);
         }
-        m_fallback = false; // 実ファイルの再コンパイル成功はフォールバックではない
+        m_fallback = false;
         return true;
     }
 

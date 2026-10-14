@@ -23,10 +23,7 @@ namespace NS::Obj
     //! @brief 部品名 partName の欄の object を返す。無い部品は作らない
     //! @return 無いか object でなければ nullptr
     [[nodiscard]] nlohmann::json* SubObjFields(nlohmann::json& object, std::string_view partName) noexcept;
-    //! @brief 配置物 1 体の JSON を作る
-    //! @details 配置物が自分を書き出した保存形式で、実体でない姿はどれもこの形で持つ
-    //! ファイルの 1 配置物・undo の控え・プレイ開始時の凍結・パレットのひな形が同じ形を使う
-    //! 参照の欄はメモリ上では id、ファイル上だけ名前で書く
+    //! 配置物の保存・凍結・編集履歴で共用する JSON。参照はメモリ上では id、ファイルでは名前
     [[nodiscard]] nlohmann::json MakeObjectJson();
 
     //! 配置物の永続 id。未採番と壊れた形は 0
@@ -44,7 +41,7 @@ namespace NS::Obj
     //! 名前を書く。空は未設定の印なので消す
     void SetObjectJsonName(nlohmann::json& object, std::string_view name);
 
-    //! 親の永続 id。0 は root。transform は親空間の local として解釈される
+    //! 親の永続識別番号。0 は根。transform は親の座標系での値
     [[nodiscard]] std::uint32_t ObjectJsonParent(const nlohmann::json& object) noexcept;
     //! 親の永続 id を書く。0 は root の印なので消す
     void SetObjectJsonParent(nlohmann::json& object, std::uint32_t parentId);

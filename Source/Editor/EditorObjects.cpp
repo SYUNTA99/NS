@@ -23,8 +23,7 @@ namespace NS::Editor
         // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す係数
         constexpr float k_QuarterTurnYaw = NS::k_Pi * 0.5f;
 
-        // クラス名から UI に出す名前を引く。置けるクラスは登録の表示名、置けないクラスはクラス名
-        // 戻り値は登録か JSON の文字列を指すので、呼出側が持っている間は切れない
+        // 登録の表示名、なければクラス名。未登録は Actor。返す文字列は登録情報が所有する
         const char* ClassDisplayName(std::string_view className) noexcept
         {
             if (className.empty())

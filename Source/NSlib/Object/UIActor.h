@@ -36,11 +36,9 @@ namespace NS::Obj
         //! 開いている先の Scene。開いていなければ nullptr
         [[nodiscard]] Scene* OwningScene() const noexcept { return m_scene; }
 
-        //! UI の段で 1 固定ステップに 1 回呼ばれる。シミュレーションが止まっている間は呼ばれない。既定は何もしない
         virtual void OnTick() {}
 
         //! @brief 世界と重ね描きの部品を描いた後の画面へ重ねて描く
-        //! @details 既定は開いた先の UIDirector の UICanvas で木を描く。開いていなければ描かない
         virtual void OnRenderOverlay(const NS::Gfx::RenderContext& context);
 
         //! 描く順。小さいほど先に描き、後から描く物が上に重なる

@@ -14,13 +14,8 @@ namespace NS::Editor
 {
     struct HitPreviewResult;
 
-    //! @brief 事象を並びの最後へ足す
-    //! @details 触れる前に置けない種類 (CanStartBeforeContact が偽) をマイナスへ置こうとした時は 0 から始める。
-    //! 読み込みが弾く形をパネルで作らないため。長さは事象の既定 (1)
-    //! @param[in,out] timeline 足す先
-    //! @param[in] value 足す事象の種類と値
-    //! @param[in] start 始まりのフレーム。パネルの再生の位置
-    //! @return 足した事象の行の番号
+    //! 末尾に事象を足し、行番号を返す。start は検知を 0 とするフレーム、長さは既定の 1
+    //! 接触前に開始できない種類は、負の start を 0 にする
     std::size_t AddHitEvent(GL::Level::HitTimeline& timeline,
                             const GL::Level::HitEventValue& value,
                             int start);
@@ -29,10 +24,7 @@ namespace NS::Editor
     //! @return 消した場合 true。row が範囲の外の場合は false
     bool RemoveHitEvent(GL::Level::HitTimeline& timeline, std::size_t row) noexcept;
 
-    //! @brief 事象の始まりと終わり、下見の記録の最初と最後のフレームを全部含む範囲を返す
-    //! @param[in] timeline 帯に描くタイムライン
-    //! @param[in] preview 下見の結果。nullptr か当たらなかった結果なら事象だけで決める
-    //! @return 範囲。事象も下見も無ければ 0 から 0
+    //! 事象と命中した下見の全フレームを含む範囲。下見がなければ事象だけ、両方なければ 0〜0
     [[nodiscard]] TimelineFrameRange HitTimelineFrameRange(const GL::Level::HitTimeline& timeline,
                                                            const HitPreviewResult* preview) noexcept;
 

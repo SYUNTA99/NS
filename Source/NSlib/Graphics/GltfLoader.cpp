@@ -102,7 +102,7 @@ namespace NS::Gfx
             return false;
         }
 
-        // world 3x3 の逆転置を余因子で求める。cgltf は列優先なので 1 行目が m[0]/m[4]/m[8]
+        // 世界変換行列の 3×3 部分の逆転置を余因子で求める。cgltf は列優先で、1 行目は m[0]/m[4]/m[8]
         // 余因子は逆転置の行列式倍。行列式の大きさは後の正規化で消えるが、符号は残る
         // TODO: 行列式が負の node は未対応。法線と三角形の表裏が逆になる
         void ComputeNormalMatrix(const float m[16], float out[9])
@@ -121,7 +121,7 @@ namespace NS::Gfx
             out[8] = a * e - b * d;
         }
 
-        // NORMAL 無し primitive 向け: 面法線を面積で重み付けして積算した smooth normal を RH
+        // NORMAL がない形では、面法線を面積で重み付けして右手系の滑らかな法線を
         // ローカル空間で計算。縮退頂点は (0,0,1)
         std::vector<std::array<float, 3>> ComputeSmoothNormals(const cgltf_primitive& prim,
                                                                const cgltf_accessor& posAcc,
@@ -250,7 +250,7 @@ namespace NS::Gfx
                 computedNormals = ComputeSmoothNormals(prim, *posAcc, vertexCount);
             }
 
-            // 頂点を world 変換して LH で積む
+            // 頂点を世界変換して左手系で積む
             geom.vertices.reserve(geom.vertices.size() + vertexCount);
             // 頂点を積むついでに軸並行境界を広げ、StaticMesh 側の二度目の全走査を省く
             NS::Vector3 pmin{0.0f, 0.0f, 0.0f};
@@ -259,7 +259,7 @@ namespace NS::Gfx
             {
                 float p[3] = {0.0f, 0.0f, 0.0f};
                 cgltf_accessor_read_float(posAcc, i, p, 3);
-                // 右手空間の node world 変換を適用してから、Z 反転で左手へ
+                // 右手空間の node 世界変換を適用してから、Z 反転で左手へ
                 const float wx = world[0] * p[0] + world[4] * p[1] + world[8] * p[2] + world[12];
                 const float wy = world[1] * p[0] + world[5] * p[1] + world[9] * p[2] + world[13];
                 const float wz = world[2] * p[0] + world[6] * p[1] + world[10] * p[2] + world[14];
@@ -363,7 +363,7 @@ namespace NS::Gfx
             return geom;
         }
 
-        // node ごとに world 変換して mesh を連結
+        // node ごとに世界変換して mesh を連結
         bool anyNodeMesh = false;
         for (cgltf_size n = 0; n < model.nodes_count; ++n)
         {
@@ -416,7 +416,7 @@ namespace NS::Gfx
             return -1;
         }
 
-        // joint node の local TRS を RH→LH 変換して返す。has_* フラグで cgltf 既定値への依存を避ける
+        // 関節の局所の位置・回転・拡縮を左手系に変換する。has_* で値の有無を確認する
         BonePose ReadJointLocalPose(const cgltf_node& node)
         {
             BonePose pose;
@@ -510,7 +510,7 @@ namespace NS::Gfx
             return true;
         }
 
-        // root joint の親ノード world 変換を LH で返しアーマチュア変換を skinned 出力へ反映。親なしは恒等
+        // 根の関節の親ノードの世界変換を左手系で返し、骨格付きメッシュへ反映する。親がなければ単位行列
         NS::Matrix ComputeSkeletonRootTransform(const cgltf_skin& skin)
         {
             for (cgltf_size i = 0; i < skin.joints_count; ++i)
@@ -567,7 +567,7 @@ namespace NS::Gfx
                 computedNormals = ComputeSmoothNormals(prim, *posAcc, vertexCount);
             }
 
-            // 頂点を LH で積みつつ joint / weight を正規化
+            // 頂点を左手系で積みつつ joint / weight を正規化
             vertices.reserve(vertices.size() + vertexCount);
             for (cgltf_size i = 0; i < vertexCount; ++i)
             {
@@ -656,7 +656,7 @@ namespace NS::Gfx
                 float duration = 0.0f;
                 std::vector<BoneTrack> tracks;
 
-                // channel ごとに TRS トラックを組む
+                // channel ごとに位置・回転・拡縮トラックを組む
                 for (cgltf_size c = 0; c < anim.channels_count; ++c)
                 {
                     const cgltf_animation_channel& channel = anim.channels[c];
@@ -761,7 +761,7 @@ namespace NS::Gfx
             }
         }
 
-        // animation 対象 node と祖先から source skeleton を組む。skin 非依存で bones は親先順、outRootXf は LH 上位変換
+        // アニメの対象ノードと祖先から骨格を作る。bones は親が先、outRootXf は左手系の上位変換
         bool BuildSourceSkeleton(const cgltf_data& model,
                                  const std::string& path,
                                  std::vector<Bone>& outBones,
@@ -799,7 +799,7 @@ namespace NS::Gfx
 
             outBones.clear();
             outNodeToBone.clear();
-            // 親が included でない root から pre-order で並べると親が必ず子より前になる
+            // 含まれていない親を持つ根から親を先に辿り、親が必ず子より前に並ぶようにする
             std::function<void(const cgltf_node*)> visit = [&](const cgltf_node* node) {
                 const int index = static_cast<int>(outBones.size());
                 outNodeToBone.emplace(node, index);
@@ -842,7 +842,7 @@ namespace NS::Gfx
                 {
                     continue;
                 }
-                // 最初の root の親アーマチュアの world を skeleton 上位変換として採る
+                // 最初の根の関節の親アーマチュアの世界変換を、骨格全体の変換に使う
                 if (!rootXfSet && node->parent != nullptr)
                 {
                     float world[16];

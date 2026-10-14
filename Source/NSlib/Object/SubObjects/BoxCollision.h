@@ -7,10 +7,7 @@
 
 namespace NS::Obj
 {
-    //! @brief 箱型 collision を Scene に登録する SubObject
-    //! @details owner の world 変換を重ねた当たり箱を返す。body は WorldOBB の形と姿勢で入れる
-    //! WorldAABB は回転時に内包する軸並行ボックスにするが、WorldOBB は回転・非一様 scale を厳密に保持する
-    //! Mesh と分離し、視覚と衝突を独立に調整できるようにする
+    //! 描画と独立した箱の衝突形状。WorldOBB は回転と非一様スケールを保持する
     class BoxCollision : public Collision
     {
     public:
@@ -25,24 +22,24 @@ namespace NS::Obj
         //! 当たり箱の各軸の半径を返す。owner の scale を掛ける前の値
         [[nodiscard]] NS::Vector3 HalfExtents() const noexcept;
 
-        //! owner local 空間での中心オフセットを設定 / 取得する。当たり箱を視覚と独立にずらすのに使う
+        //! 持ち主の局所座標系での中心オフセットを設定 / 取得する。当たり箱を視覚と独立にずらすのに使う
         void SetCenterOffset(const NS::Vector3& offset) noexcept;
         [[nodiscard]] NS::Vector3 CenterOffset() const noexcept;
 
-        //! owner local 空間での回転を quaternion で設定 / 取得する。owner 回転にこれを重ねて当たり箱を回す
+        //! 持ち主の局所座標系での回転をクォータニオンで設定 / 取得する。owner 回転にこれを重ねて当たり箱を回す
         void SetLocalRotation(const NS::Quaternion& rotation) noexcept;
         [[nodiscard]] NS::Quaternion LocalRotation() const noexcept;
 
-        //! local 回転を pitch/yaw/roll の Euler 角 (度) で読み書きする Inspector 用アクセサ。内部は quaternion 保持
+        //! 局所回転を仰角・方位角・傾きのオイラー角 (度) で読み書きする Inspector 用アクセサ。内部はクォータニオン保持
         void SetRotationEulerDegrees(const NS::Vector3& eulerDegrees) noexcept;
         [[nodiscard]] NS::Vector3 RotationEulerDegrees() const noexcept;
 
-        //! Owner の world 変換に当たり箱の local offset / 回転を重ねた AABB を返す。回転時は内包する軸並行にする
-        //! Owner が未登録の場合は local offset / 回転だけを反映した AABB を返す。例外は投げない
+        //! Owner の世界変換に当たり箱の局所のずれと回転を重ねた AABB を返す。回転時は内包する軸並行にする
+        //! Owner が未登録の場合は局所のずれと回転だけを反映した AABB を返す。例外は投げない
         [[nodiscard]] NS::AABB WorldAABB() const noexcept;
 
-        //! Owner の world 変換に当たり箱の local offset / 回転を重ねた有向境界ボックスを返す
-        //! 回転・非一様 scale を厳密に保持する。Owner 未登録時は local offset / 回転だけを反映する
+        //! Owner の世界変換に当たり箱の局所のずれと回転を重ねた有向境界ボックスを返す
+        //! 回転・非一様 scale を厳密に保持する。Owner 未登録時は局所のずれと回転だけを反映する
         [[nodiscard]] NS::OBB WorldOBB() const noexcept;
 
         // 当たり箱の形状の半径と Transform からの独立オフセット / 回転を Inspector へ公開する
@@ -58,7 +55,7 @@ namespace NS::Obj
         [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
 
         NS::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f};               // 当たり箱の各軸半径
-        NS::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};              // owner local 空間での中心オフセット
-        NS::Quaternion m_localRotation = NS::Quaternion::Identity; // owner 回転に重ねる local 回転
+        NS::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};              // 持ち主の局所座標系での中心オフセット
+        NS::Quaternion m_localRotation = NS::Quaternion::Identity; // owner 回転に重ねる局所回転
     };
 } // namespace NS::Obj

@@ -81,7 +81,6 @@ namespace GL::Level
     public:
         explicit MsgInputLock(bool locked) noexcept : m_locked(locked) {}
 
-        //! 止めるなら true、戻すなら false
         [[nodiscard]] bool Locked() const noexcept { return m_locked; }
 
     private:
@@ -93,15 +92,15 @@ namespace GL::Level
     //! @brief 体当たりの相手の答え。MsgAskTackleTarget の受け手が書く
     struct TackleTargetAnswer
     {
-        float mass = 1.0f;                      //!< 重さ。押し飛ばしの距離と止めの長さに効く
-        float toughness = 0.0f;                 //!< 耐久。破壊を許した時だけ、威力がこれ以下なら壊れる
+        float mass = 1.0f;                      //!< 重さ。反動と押し飛ばしの量に効く
+        float toughness = 0.0f;                 //!< 耐久。破壊を許し、威力が耐久以上なら壊れる
         bool breakable = false;                 //!< 壊れる動きを持つか。偽なら破壊を許しても押し飛ばしへ回る
         bool placed = true;                     //!< 置かれているか。飛んでいる相手は食い込ませない
         NS::Vector3 position{0.0f, 0.0f, 0.0f}; //!< 根の位置 (世界座標)
         NS::AABB bounds{};                      //!< 体の外接箱 (世界座標)
         HitFace face{};                         //!< 面の赤の欄の写し。段と威力の倍率を JudgeHitFace で決める
         NS::Obj::SensorVolume body{};           //!< 体のセンサーの世界の形。面の大きさを出す
-        LaunchShape launch{};                   //!< 押し飛ばされた時の飛び方。既定は無いので受け手が必ず書く
+        LaunchShape launch{};
         std::string hitTimeline;                //!< 当たりのタイムラインの名前。空なら段の既定
     };
 
@@ -115,7 +114,6 @@ namespace GL::Level
     public:
         explicit MsgAskTackleTarget(TackleTargetAnswer& answer) noexcept : m_answer(answer) {}
 
-        //! 受け手が書く答え
         [[nodiscard]] TackleTargetAnswer& Answer() const noexcept { return m_answer; }
 
     private:
@@ -253,7 +251,7 @@ namespace GL::Level
         LaunchArc arc{};                //!< 飛ぶ曲線。壊れる時は使わない
         bool breaks = false;            //!< 壊れるか。破壊を許した時だけ真になる
         HitTier tier = HitTier::Center; //!< 当たりの段。尾の色が変わる
-        float power = 0.0f;             //!< 最終威力
+        float power = 0.0f;
         float launchScale = 0.0f;       //!< 曲線の距離と高さに掛けた比。尾の長さに効く
         std::uint32_t hopSeed = 0;      //!< 外れで着地した後の跳ね方の種。何回目の当たりか
     };

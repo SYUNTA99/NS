@@ -46,34 +46,25 @@ namespace NS::Gfx
     //! ボーンデータをシェーダへ転送する際のスロット番号
     inline constexpr unsigned k_BonePaletteSlot = 1;
 
-    //! @brief ボーン1本が動かす頂点群の広がりを表す球
-    //! @details 中心はバインド空間、半径は中心から最遠の影響頂点まで。実行時に現在ポーズのパレットで
-    //! 中心だけ動かし半径そのままの箱にすると、回転しても半径が変わらずポーズ追従の境界になる
+    //! バインド空間の影響頂点を包む球。姿勢に追従する境界の計算に使う
     struct BoneSphere
     {
         NS::Vector3 center{0.0f, 0.0f, 0.0f}; // バインド空間での影響頂点の中心
         float radius = 0.0f;                        // 中心から最遠の影響頂点までの距離、負なら影響頂点なし
     };
 
-    //! @brief スキン頂点からボーンごとの影響球を求める
-    //! @details 頂点を weight>0 の全ボーンへ算入し、ボーンごとに中心=影響頂点の軸並行中心、
-    //! 半径=中心からの最遠影響頂点距離を返す。要素数は boneCount。影響の無いボーンは半径を負にする
+    //! 重みが正の頂点から、ボーンごとの影響球を求める。影響のないボーンは負の半径
     [[nodiscard]] std::vector<BoneSphere> ComputeBoneSpheres(const SkinnedVertex* vertices,
                                                              std::size_t vertexCount,
                                                              std::size_t boneCount);
 
-    //! @brief ボーン球とボーンパレットから現在ポーズのモデル空間境界を組む
-    //! @details 各球の中心を palette[i] で動かし半径そのままの箱にして全ボーン分を包む
-    //! 影響球が1つも無ければ fallback を返す。手足が箱を割る過小を作らない保守的な包み方
+    //! 姿勢に追従する球で境界を保守的に包む。影響球がなければ fallback
     [[nodiscard]] NS::AABB MergeSkinnedBounds(const std::vector<BoneSphere>& spheres,
                                                     const NS::Matrix* palette,
                                                     std::size_t paletteCount,
                                                     const NS::AABB& fallback);
 
-    //! @brief スキンメッシュの形状
-    //! @details ボーン番号と重みを持つ頂点データを保持し、描画へ渡す
-    //! @note 姿勢は持たない。同じメッシュを複数のキャラクターが別々のポーズで使うため、
-    //! ボーンパレットは描画する側が持つ
+    //! スキン頂点のメッシュ。複数個体で共有するため、姿勢は描画側が持つ
     class SkeletalMesh : public Mesh
     {
     public:

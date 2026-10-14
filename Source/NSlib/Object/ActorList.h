@@ -25,13 +25,7 @@ namespace NS::Obj
     //! 配置物の JSON 1 件から配置物を組むファクトリ。組めない JSON には nullptr を返し、Rebuild が読み飛ばす
     using ObjectFactoryFn = std::function<std::unique_ptr<Actor>(const nlohmann::json&)>;
 
-    //! @brief 配置物 Actor の単一所有リスト
-    //! @details シーンの JSON 文書から一括で組み直す。runtime も editor も同じ Rebuild 経路を通る
-    //! 1 体ずつ入れる口は Scene の湧かす口だけに開き、undo は組み直さずにそちらを通る
-    //! 配置物 1 件の組み立ては呼出側のファクトリに委ね、Actor の型選択や資産解決は持たない
-    //! 特定の 1 体は永続 id の解決で引く
-    //! 非 const の Actor* と SubObject* で、呼び出し側はそこから書き換えられる
-    //! 依存: NS::Obj::Actor, ObjectJson, NS::Phys::PhysicsScene
+    //! 配置物を所有し、永続 id から参照を解決する一覧。個体の構築は渡された生成関数が行う
     class ActorList : public NS::NonCopyable
     {
     public:
@@ -63,7 +57,7 @@ namespace NS::Obj
         //! @details 段の更新の最中は断るので、段を回し終えた後に呼ぶ
         void RemoveDestroyed();
 
-        //! objectId 一致の配置物を返す。居なければ nullptr。選択・編集の live 索引
+        //! objectId 一致の配置物を返す。居なければ nullptr。選択・編集の実体索引
         //! 0 は未採番の印なので常に nullptr。索引から引くので、毎フレーム引いても全配置物を辿らない
         [[nodiscard]] Actor* FindByObjectId(std::uint32_t objectId) noexcept;
 
@@ -92,10 +86,7 @@ namespace NS::Obj
         //! index 番目の配置物。範囲外は nullptr。所有は ActorList が持ったまま外へ出さない
         [[nodiscard]] Actor* ObjectAt(std::size_t index) const noexcept;
 
-        //! 範囲 for 用の反復子。辿ると生ポインタが出るので、所有の入れ物を外へ見せずに全配置物を回せる
-        //! 添字が要る呼び出し側は ObjectCount / ObjectAt を使う
-        //! std::vector<Actor*> を返す関数は作らない。毎回確保になる
-        //! 配置物の生ポインタの配列もメンバに持たない。m_objects と食い違う
+        //! 所有を渡さず、配置物を生ポインタで辿る反復子
         class Iterator
         {
         public:

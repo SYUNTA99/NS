@@ -169,7 +169,6 @@ namespace NS
         DrainPendingQuit();
         NS::OS::FrameTimer::Reset();
 
-        // アセットマネージャーを準備する
         m_assets = std::make_unique<NS::Obj::AssetManager>(NS::OS::FileSystem::ContentRoot());
         m_assets->RegisterBuiltins();
         m_assets->RegisterSharedMaterials();
@@ -220,7 +219,6 @@ namespace NS
 
             const int steps = NS::OS::FrameTimer::FixedStepsThisFrame();
 
-            // 1フレームの更新が多すぎる場合は警告を出す
             if (steps >= 2)
             {
                 const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
@@ -250,7 +248,6 @@ namespace NS
                 }
             }
 
-            // 描画
             renderer.BeginFrame();
 
             for (std::unique_ptr<Layer>& layer : stack)
@@ -295,7 +292,6 @@ namespace NS
             m_window->AttachInput(nullptr);
         }
 
-        // レンダラーより先にアセットマネージャーを解放する
         if (m_assets)
         {
             m_assets->Clear();

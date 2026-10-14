@@ -13,10 +13,7 @@ namespace NS::Gfx
     class Pipeline;
     enum class Topology;
 
-    //! @brief ID3D11DeviceContext を包むラッパー
-    //! @details 作れるのは Renderer だけ。描く命令は Renderer::Commands から借りる
-    //! 問い合わせ・転送・外部ライブラリのような CommandList を通さない継ぎ目は、層内部から Gpu().context を直に使う
-    //! 変換や一括設定が要る処理だけをラップし、その他は operator-> で元の API を直接呼ぶ
+    //! Renderer が所有する描画コンテキスト。変換や一括設定はメソッド、それ以外は operator-> を使う
     class CommandList : public NS::NonCopyable
     {
     public:
@@ -25,13 +22,10 @@ namespace NS::Gfx
         //--------------------------------------------------------
         //!@{
 
-        //! 描画先のレンダーターゲットと深度バッファを設定する
         void SetRenderTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv) noexcept;
-        //! 描画先を指定した色でクリアする
         void ClearRenderTarget(ID3D11RenderTargetView* rtv, float r, float g, float b, float a) noexcept;
         //! 深度・ステンシルバッファをクリアする
         void ClearDepth(ID3D11DepthStencilView* dsv, float depth = 1.0f) noexcept;
-        //! ビューポートのサイズを設定する
         void SetViewport(float width, float height) noexcept;
 
         //!@}
@@ -42,13 +36,9 @@ namespace NS::Gfx
 
         //! シェーダとブレンド・深度・ラスタライザを一括で適用する
         void SetPipeline(const Pipeline& pipeline) noexcept;
-        //! 頂点の入力レイアウトを設定する
         void SetInputLayout(ID3D11InputLayout* layout) noexcept;
-        //! 頂点バッファを設定する
         void SetVertexBuffer(const Buffer& buffer, unsigned slot = 0) noexcept;
-        //! インデックスバッファを設定する
         void SetIndexBuffer(const Buffer& buffer) noexcept;
-        //! インデックスを三角形と線分のどちらとして読むかを設定する
         void SetTopology(Topology topology) noexcept;
         //! 指定したデータでバッファの内容を更新する
         void UpdateSubresource(const Buffer& buffer, const void* data, std::size_t bytes) noexcept;
@@ -98,7 +88,6 @@ namespace NS::Gfx
         //--------------------------------------------------------
         //!@{
 
-        //! インデックス付きの描画
         void DrawIndexed(unsigned indexCount) noexcept;
         //! インデックスを使わない描画。線分の並びなどインデックスを持たない形に使う
         void Draw(unsigned vertexCount) noexcept;

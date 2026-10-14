@@ -18,9 +18,7 @@ namespace NS::Gfx
 namespace NS::UI
 {
 
-    //! @brief デバッグ・エディタ用の ImGui の寿命
-    //! @details ウィンドウと Renderer に紐付き、初期化から毎フレームの描画までを持つ
-    //! ImGui を外したビルドでは何もしないスタブになる
+    //! ウィンドウと Renderer に対応する開発用 ImGui。無効な構成では何もしない
     class ImGuiContext : public NS::NonCopyable
     {
     public:

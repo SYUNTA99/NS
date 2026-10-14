@@ -8,12 +8,12 @@ namespace NS::Obj
     //! 仮想カメラが返す 1 フレーム分のカメラ姿勢 + 投影設定。CameraManager が実 Camera へそのまま書く
     struct CameraPose
     {
-        NS::Vector3 position{0.0f, 0.0f, -5.0f};                         // カメラ位置
-        NS::Vector3 target{0.0f, 0.0f, 0.0f};                            // 注視点
-        NS::Vector3 up{0.0f, 1.0f, 0.0f};                                // アップベクトル
-        NS::Radians fovY{NS::ToRadians(NS::Degrees{60.0f})}; // 垂直視野角
-        float nearPlane = 0.1f;                                                // ニアクリップ距離
-        float farPlane = 1000.0f;                                              // ファークリップ距離
+        NS::Vector3 position{0.0f, 0.0f, -5.0f};
+        NS::Vector3 target{0.0f, 0.0f, 0.0f};
+        NS::Vector3 up{0.0f, 1.0f, 0.0f};
+        NS::Radians fovY{NS::ToRadians(NS::Degrees{60.0f})};
+        float nearPlane = 0.1f;
+        float farPlane = 1000.0f;
         // 射影の後の画面のずれ。縦横とも画面の幅を 2
         // とした座標で、右と上が正。位置と向きを変えずに画面ごと動かす揺れが書く
         NS::Vector2 screenOffset{0.0f, 0.0f};
@@ -35,14 +35,8 @@ namespace NS::Obj
         }
     };
 
-    //! @brief 実カメラを持たない「仮想カメラ」基底
-    //! @details 描画も実 Camera 所有もせず、EvaluatePose(alpha) で位置 / 注視点 / up と
-    //! 投影設定をまとめた目標 pose を返すだけ。CameraManager が登録済みの
-    //! vcam から最高優先度の active なものを選び、その pose を 1 個の実 SceneCamera へ書く
-    //! 状態は fixed step の OnUpdate で進め、最終姿勢は EvaluatePose で返す。follow 系は
-    //! render 時に alpha で補間 target を追うため、姿勢決定を pose 返却へ分離する
-    //! カメラの窓口から管理役へ OnStart で自分を登録し、OnEndPlay で外す
-    //! 依存: NS, NS::Obj::SubObject
+    //! 実カメラを変更せず、CameraManager が選ぶ目標姿勢を返す部品
+    //! 状態は固定更新で進め、描画時の EvaluatePose で補間する
     class VirtualCamera : public SubObject
     {
     public:
@@ -57,7 +51,7 @@ namespace NS::Obj
         //! 管理役から自分を外す。派生で上書きするなら基底のこれを呼ぶ
         void OnEndPlay() override;
 
-        //! この vcam の最終姿勢を返す。alpha は補間係数で、follow 系が補間 target に使い free-fly は無視してよい
+        //! 最終姿勢を返す。alpha は追従対象の補間係数で、自由視点では使わない
         [[nodiscard]] virtual CameraPose EvaluatePose(float alpha) const noexcept = 0;
 
         //! CameraManager の選択優先度。大きいほど優先、同値は登録順。active な vcam の中から最大が選ばれる
@@ -93,9 +87,9 @@ namespace NS::Obj
         }
 
     private:
-        int m_vcamPriority = 0;                                                  // CameraManager の選択優先度
-        NS::Radians m_fovY{NS::ToRadians(NS::Degrees{60.0f})}; // 垂直視野角
-        float m_nearPlane = 0.1f;                                                // ニアクリップ距離
-        float m_farPlane = 1000.0f;                                              // ファークリップ距離
+        int m_vcamPriority = 0;
+        NS::Radians m_fovY{NS::ToRadians(NS::Degrees{60.0f})};
+        float m_nearPlane = 0.1f;
+        float m_farPlane = 1000.0f;
     };
 } // namespace NS::Obj

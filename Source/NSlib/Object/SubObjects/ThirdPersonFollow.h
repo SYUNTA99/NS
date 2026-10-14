@@ -37,21 +37,8 @@ namespace NS::Obj
         bool pullBack = true;
     };
 
-    //! @brief Mario 系ジャンプアクションの追従カメラ
-    //! @details 実カメラは持たず、追従姿勢を pose として返す。CameraManager が実カメラへ書く
-    //! distance は臨界減衰バネでなめらかに寄せ、マウス / 右スティックで手動回転できる
-    //! 感度・反転と idle / run / jump 3 段の自動ズーム距離は setter で調整できる
-    //! FOV は基底 VirtualCamera が持つ
-    //! 受けた溜めから視野角の締め・縦の揺れ・構図のずらしを作って姿勢に足す
-    //! 構図のずらしは追う相手と狙う相手を枠に収めるよう、位置と注視点を同じだけ動かす
-    //! 反動の状態の間は、注視点の高さを反動の始まりに留め、横と前後は遅れて付いていく
-    //! 反動の間に相手の位置を受けた時は、注視点を相手へ重みで寄せ、二人が離れた分だけ後ろへ引く。
-    //! 重みは相手が見送りの距離へ近づくほど 0 へ落ち、見送った後は追う相手だけを見る
-    //! 勝手に出た突進の間は、注視点の横と前後がその場に取り残されてから引っ張られるように追い付く
-    //! 追う相手が画面の上下の帯を越えそうな時だけ追い、
-    //! 反動の状態が外れたら普通の追い方へ寄せ戻す
-    //! 反動になったフレームから、水平の向きを反動を起こした突進を出した向きへ回し、
-    //! 下げる反動なら距離の目標を当たった瞬間の距離より伸ばす。接地するまで回す入力を受けない
+    //! @brief 溜めと反動に応じて構図を調整する三人称の追従カメラ
+    //! @details 実カメラは変更せず、CameraManager が採用する姿勢を返す
     class ThirdPersonFollow : public VirtualCamera
     {
     public:
@@ -68,24 +55,18 @@ namespace NS::Obj
 
         //! 自動ズームの判定に使う接地と速度を値で受け取る。移動 SubObject の型を include せずに済む
         void SetFollowMotion(bool grounded, const NS::Vector3& velocity) noexcept;
-        //! @brief 追う相手の根から、注視の高さを測り始める所までの縦のずれを受け取る
-        //! @details 注視点は 根 + ずれ + 頭の高さ。追う相手が形を変えて根だけを上げ下げする時に、見る高さを保つ。
-        //! 既定は 0。ずれには描画の補間を掛けないので、根を上げ下げする側は
-        //! Transform::ShiftPosition で前フレームの位置も一緒にずらす
+        //! 根を上下させても見る高さを保つためのずれ。注視点は根 + ずれ + 頭の高さ
+        //! ずれは補間しないため、根の移動は Transform::ShiftPosition で前後の値を揃える
         void SetTargetHeightOffset(float offset) noexcept;
 
         //! @brief このフレームの溜めの状態を受け取る
         //! @details 受けた値は次の OnUpdate だけで使う。渡されなかったフレームは押していないのと同じに扱う
         //! 非数・0 未満・1 を超える溜め量と、狙う相手がいる時の非数の中心・非数か負の半径は壊れた値
-        //! @param[in] desc 溜めの状態
         //! @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
         bool SetFollowCharge(const FollowChargeDesc& desc) noexcept;
 
-        //! @brief このフレームに、距離と溜めの締めを今のまま保つかを受け取る
-        //! @details 追う相手の体当たりから止めの明けまで真を渡す。当たる瞬間に画面が引くと、揺れを見せたい止めの間に
-        //! 二人が小さく遠ざかる。受けた値は次の OnUpdate だけで使い、渡されなかったフレームは偽と同じ。
-        //! 真の間は距離の目標を今の距離にし、放した後の締めを戻し始めず、構図のずらしも動かさない
-        //! @param[in] held 保つか
+        //! @brief 距離・溜めの締め・構図を次の更新で固定する
+        //! @details ヒットストップ中に画面が引くのを防ぐ。更新ごとに渡し、未指定なら固定しない
         void SetFollowFramingHeld(bool held) noexcept { m_framingHeld = held; }
 
         //! @brief 溜めで締めている視野角を返す
@@ -99,26 +80,13 @@ namespace NS::Obj
         //! @brief 溜めの締め・揺れ・構図のずらしをその場で 0 にし、受けた溜めの状態を捨てる
         void ClearCharge() noexcept;
 
-        //! @brief このフレームに追う相手が反動の状態かと、
-        //! 反動を起こした突進を出した向きを受け取る
-        //! @details 受けた値は次の OnUpdate だけで使う。
-        //! 渡されなかったフレームは反動でないのと同じに扱う。
-        //! 反動になったフレームから反動の状態が外れるまで反動の間の追い方で追い、
-        //! 外れたら普通の追い方へ寄せ戻す。
-        //! 反動になったフレームから、水平の向きを突進の向きへ近い側から回し始める。
-        //! 反動になってから、反動の状態でなく接地したフレームまでは、
-        //! マウスと右スティックで回せない。
-        //! 接地は SetFollowMotion で受けた値で見て、
-        //! 一度も受けていなければ反動の状態が外れたフレームで回せるようにする。
-        //! 突進の向きに有限でない成分があれば壊れた値
-        //! @param[in] desc 反動の状態
+        //! @brief 次の更新で使う反動の状態を受け取る
+        //! @details 未指定なら反動なし。反動開始時に突進方向へ回し、接地まで手動回転を止める
+        //! 接地が未入力なら反動終了時に回転を許可する。突進方向の非有限値は拒否する
         //! @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
         bool SetFollowRebound(const FollowReboundDesc& desc) noexcept;
 
-        //! @brief 反動の間の追い方と寄せ戻しと向きの回しをその場で止め、
-        //! 受けた反動の状態を捨てる
-        //! @details 次の姿勢から普通の追い方になり、次のフレームから回す入力が効く。
-        //! 回している途中の向きはそのまま残す
+        //! @brief 反動の追従・回転と入力制限を解除する。現在の向きは保つ
         void ClearRebound() noexcept;
 
         void SetSensX(float radPerPixel) noexcept;
@@ -135,23 +103,19 @@ namespace NS::Obj
         [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
         [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
 
-        //! プレイ開始時の向き。OnStart で現在 yaw/pitch へ写し、以降はプレイ中の手動回転で動く
+        //! プレイ開始時の向き。OnStart で現在方位角・仰角へ写し、以降はプレイ中の手動回転で動く
         [[nodiscard]] float InitialYaw() const noexcept { return m_initialYaw; }
         [[nodiscard]] float InitialPitch() const noexcept { return m_initialPitch; }
 
-        //! editor のギズモで置いたカメラ world 位置から、target 頭を基準に yaw/pitch/距離を逆算し初期姿勢へ書く
-        //! target 未解決や距離ほぼ 0 なら何もしない。初期姿勢は data 保存され、プレイ開始時の向きになる
-        //! 逆算後の yaw/pitch/distance を現在値にも即反映し、edit 中の EvaluatePose 表示をその場で追従させる
+        //! 指定位置から初期姿勢を逆算し、現在姿勢にも反映する。対象なし・距離ゼロなら変更しない
         void SetInitialPoseFromCameraPosition(const NS::Vector3& cameraPosition) noexcept;
 
-        //! fixed step で yaw/pitch・distance spring を更新。最終姿勢は EvaluatePose が返してガタつきを避ける
+        //! 固定ステップで向きと距離を更新する。EvaluatePose が補間した姿勢を返し、描画のガタつきを避ける
         void OnUpdate() override;
 
         //! alpha で補間した target を追う最終姿勢を返す。CameraManager が選択時に実カメラへ書く
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
-        // 追従カメラの感触を Inspector へ公開する。毎フレーム読まれるのでライブで効く
-        // 追従対象は永続参照で、使うたびに引くので書き換えもその場で効く
         NS_REFLECT_BEGIN(ThirdPersonFollow, VirtualCamera)
         NS_REFLECT_FIELD(m_targetRef, "追従対象")
         NS_REFLECT_FIELD(m_initialYaw, "初期ヨー")
@@ -207,23 +171,16 @@ namespace NS::Obj
                           const NS::Vector3& look,
                           float dt) noexcept;
 
-        // 反動になったフレームかと反動の状態から、反動の間の追い方の段を進める
-        // 勝手に出た突進になったフレームと、その最中かも見る
-        // 距離と注視点を決める前に呼ぶ
-        // head は追う相手の頭
+        // 距離と注視点を決める前に、反動と強制突進の状態を更新する
         void UpdateReboundPhase(
             bool began, bool rebounding, bool launchBegan, bool launching, const NS::Vector3& head) noexcept;
 
-        // 反動になったフレームかと受けた反動の状態から、回す入力を受けないかを決め、
-        // 水平の向きの回しを 1 フレーム進める
-        // 回す入力を足す前に呼ぶ
+        // 手動入力を適用する前に、反動の回転と入力制限を更新する
         void UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept;
         // 反動の間に受けた相手の位置から、注視点の寄せと引きのばねを 1 フレーム進める。反動の間でなければ 0 へ戻す
         void UpdateReboundPartner(const FollowReboundDesc& rebound, const NS::Vector3& head, float dt) noexcept;
 
-        // 今の段でこのフレームの注視点を決めて控える
-        // 普通の追い方の時は head をそのまま返す
-        // ball は画面の上下の帯に入れておく追う相手の点
+        // ball を上下の帯に保つ注視点。通常時は head を返す
         [[nodiscard]] NS::Vector3 UpdateReboundLook(const NS::Vector3& head,
                                                     const NS::Vector3& ball,
                                                     float dt) noexcept;
@@ -253,8 +210,8 @@ namespace NS::Obj
         float m_initialYaw = 0.0f;
         float m_initialPitch = -0.2618f;
 
-        float m_distance = 6.0f;        // 現在のカメラ距離
-        float m_desiredDistance = 6.0f; // 目標カメラ距離
+        float m_distance = 6.0f;
+        float m_desiredDistance = 6.0f;
         float m_springOmega = 6.0f;     // 距離バネの追従の速さ
 
         float m_idleDistance = 5.0f;      // 静止時の距離
@@ -268,16 +225,15 @@ namespace NS::Obj
         float m_sensY = 0.0030f;   // マウス垂直感度
         float m_stickSensX = 2.0f; // スティック水平感度
         float m_stickSensY = 1.5f; // スティック垂直感度
-        bool m_invertX = false;    // 水平反転
-        bool m_invertY = false;    // 垂直反転
+        bool m_invertX = false;
+        bool m_invertY = false;
 
         float m_pitchMin = -1.396f;  // 仰俯角の下限
         float m_pitchMax = -0.0873f; // 仰俯角の上限
 
         float m_chargeNarrowMaxDegrees = 15.0f; // 溜めきりで締める視野角 (度)
         int m_chargeNarrowReturnFrames = 6;     // 放してから締めを 0 へ戻すフレーム数
-        // 締めと真ん中への下向きに掛ける、溜めの量の指数。1 で溜めに比例、2 で溜めの半分では 4 分の 1 で終わりにかけて
-        // 速まる。溜めの揺れのトラウマの 2 乗とそろえ、揺れと寄りが一緒に高まる
+        // 溜め量の指数乗で寄りを強める。揺れと同じ 2 乗を既定にして、終盤に一緒に高める
         float m_chargeApproachExponent = 2.0f;
         float m_chargeShakePitchDegrees = 0.3f;   // 溜めきりの溜めの揺れの縦の首振りの最大 (度)
         float m_chargeShakeYawDegrees = 0.15f;    // 溜めきりの溜めの揺れの横の首振りの最大 (度)
@@ -294,9 +250,7 @@ namespace NS::Obj
         int m_reboundReturnFrames = 20;    // 反動が外れてから普通の追い方へ寄せ戻すフレーム数
         int m_reboundTurnFrames = 20;      // 反動になってから突進の向きへ回し終えるフレーム数
         float m_reboundPullBack = 1.0f;    // 反動の間に当たった瞬間の距離より伸ばす距離 (m)
-        // 真ん中の反動は、自分の跳ね返り方と飛んでいく相手の飛び方の差を見せる。主役は自機のまま、相手も画面に残す
-        // 注視点 = 自機 + 重み × (相手 − 自機)、重み = 最大 × (1 − 二人の距離 ÷ 見送りの距離)
-        // 最大 0.3 は手触りで決めた値
+        // 自機を中心に相手も画面に残し、離れるにつれて相手への重みを減らす
         float m_reboundPartnerWeight = 0.3f;
         // 相手がこれより遠くへ飛ぶと重みが 0 になり、自機だけを追う (m)。出発点で、値は撮って詰める
         float m_reboundPartnerReleaseDistance = 30.0f;
@@ -328,7 +282,7 @@ namespace NS::Obj
         bool m_reboundLookHeld = false;                   // 反動になってから接地するまで、回す入力を受けないか
         float m_reboundTurnAngle = 0.0f;                  // 反動になったフレームに決めた、回す角度 (ラジアン)
         int m_reboundTurnFrame = 0;                       // 回しの何フレーム目か。欄のフレーム数で回し終える
-        ReboundPhase m_reboundPhase = ReboundPhase::None; // 今の段
+        ReboundPhase m_reboundPhase = ReboundPhase::None;
         NS::Vector3 m_reboundAnchor{};                    // 横と前後を遅らせて追う注視点。高さは留める
         NS::Vector3 m_reboundAnchorVelocity{};            // 注視点の横と前後の速さ (m/秒)。縦は使わない
         float m_reboundLagCap = 0.0f;                     // 反動の間の遅れの今の上限 (m)。欄の上限より下にはしない

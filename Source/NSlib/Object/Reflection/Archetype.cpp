@@ -188,7 +188,7 @@ namespace NS::Obj
         {
             return false;
         }
-        // シーンのファイルと同じく辞書順のキーで書く。同じ中身の 2 回の保存は byte 一致になる
+        // シーンのファイルと同じく辞書順のキーで書く。同じ中身の 2 回の保存はバイト一致になる
         const std::string text = archetype->dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
         const std::string path = NS::OS::FileSystem::Combine(Directory(), std::string{className} + ".json");
         const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());

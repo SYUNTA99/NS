@@ -36,15 +36,14 @@ namespace GL::Player
         Scrape, //!< 横ずれの側と飛ぶ向きと上の間
     };
 
-    //! @brief 当たり 1 回の層の大きさと量
-    //! @details ImpactEffects::ShapeFor が当たりの内訳と欄から決める。0 の層は出さない
-    //! 段で変わる物は ShapeFor が段ごとの 1 行から埋め、層を出す側は段を比べずにこの欄を読む
+    //! @brief 当たり 1 回の演出の大きさと量
+    //! @details ShapeFor が段と調整値から決める。大きさや数が 0 の層は出さない
     struct ImpactShape
     {
-        GL::Level::HitTier tier = GL::Level::HitTier::Center; //!< 当たりの段
+        GL::Level::HitTier tier = GL::Level::HitTier::Center;
         std::size_t coreInput = 0;                            //!< 核の絵 impact.core の、段の色の節を出す動的入力の番号
         CoreHoldMotion coreHold = CoreHoldMotion::Pulse;      //!< 核が最大近くに留まる間の大きさの動かし方
-        SparkHeading sparkHeading = SparkHeading::Launch;     //!< 火花の向き
+        SparkHeading sparkHeading = SparkHeading::Launch;
         std::size_t sparkCountInput = 0;  //!< 火花の絵 impact.sparks の、粒の数を入れる動的入力の番号
         std::size_t recoilCountInput = 0; //!< 弾かれ線の絵 impact.recoil の、本数を入れる動的入力の番号
         int holdLastFrame = 1;            //!< 核が最大近くに留まる最後のフレーム。当たりの絵の頭を 0 と数える
@@ -55,13 +54,13 @@ namespace GL::Player
         float coreDiameter = 0.0f; //!< 核の直径。単位は m
         float streakLength = 0.0f; //!< 光条の長さ。単位は m。中心近くだけ
         float ringRadius = 0.0f;   //!< 輪が広がりきった半径。単位は m。大きな外れは 0
-        int sparkCount = 0;        //!< 火花の粒の数
+        int sparkCount = 0;
         float sparkSpeed = 0.0f;  //!< 火花の速さ。単位は m/s。大きさ 1 の時の速さで、絵の上では大きさを掛けた速さになる
         float sparkScale = 1.0f;  //!< 火花の絵の全体に掛ける大きさ。粒の大きさ・散る範囲・速さが一緒に伸びる
         float sparkAmount = 0.0f; //!< 火花の量。粒の数 × 速さ (本・m/s)。記録の量に使う
         int emberCount = 0;       //!< 火の粉の粒の数。中心近くだけで、他の段は 0
         float glowDiameter = 0.0f; //!< 照りの直径。単位は m。中心近くで相手が置かれていた時だけ
-        int recoilCount = 0;       //!< 弾かれ線の本数
+        int recoilCount = 0;
         float recoilLength = 0.0f; //!< 弾かれ線の長さ。単位は m
         int dustCount = 0;         //!< 当たりの粉の塊の数。飛んでいた相手は 0
         float dustScale = 0.0f;    //!< 当たりの粉の塊の大きさ。単位は m
@@ -80,44 +79,25 @@ namespace GL::Player
         NS::Vector3 ringNormal;   //!< 輪の面の法線。相手の飛ぶ向きをカメラへ起こした向き
     };
 
-    //! @brief 自機が当ててから着地するまでのエフェクトを出す
-    //! @details 受け持つ層の名前は impact.・rebound.・land. で始まる
-    //! 当たりのタイムラインの事象が置いた頼みを読み、当たりの絵の頭に核と照り、次のフレームから光条、
-    //! 3 フレーム目から輪、飛びの絵の頭に粉、その 4 フレーム後に弾かれ線を出す。火花は中心近くが 3 フレーム目、
-    //! 他は当たりの絵の頭。中心近くは核が落ちるフレームに火の粉を出す
-    //! 飛びの絵の頭に、反動に入った自機へ反動の尾を出し、毎フレーム付いていかせる。反動の尾は頂点で親を止めて 8
-    //! フレーム後に消す 反動の着地 (着地の潰れと同じフレーム) には足元へ粉を出す
-    //! 飛ばした相手の飛び出しの尾と落ちた所の粉は、相手が自分で出す (LaunchEffects)。相手の部品は読まない
-    //! 当たりの絵の事象を置いていないタイムラインの当たりと、タイムラインの引けない当たりでは何も出さない
-    //! 層の時間 (留まり・広がり・消えるフレーム) はここが持ち、形と色は絵が持つ
-    //! 記録は持ち主の EffectKeeper に残る。描画の無い世界でも残る
-    //! Player の見た目の段 (VisualStep) が最後に呼ぶ。
-    //! 同じフレームの ImpactResolver が事象から頼みを置いた後と、自機の移動の段の後に走る。
-    //! 物理の段と、飛ばした相手が自分の段階を切り替える Triggers の段よりは前に走る
-    //! 依存: GL::Level::ImpactResolver, Player, カメラの窓口
+    //! @brief 自機の命中・反動・着地のエフェクトを出す部品
+    //! @details タイムラインからの要求を移動後の VisualStep で消費する。要求の無い命中では出さない
+    //! 相手の飛行・着地の演出は相手の LaunchEffects に任せる
     class ImpactEffects : public NS::Obj::SubObject
     {
     public:
         ImpactEffects() noexcept;
 
-        //! 同居する ImpactResolver を控え、描画のある世界なら層の絵を読み込む
         void OnStart() override;
 
-        //! 置かれた頼みを読んでエフェクトを出し、出ているエフェクトの大きさを置き直す
         void OnUpdate() override;
 
-        //! @brief 当たりの絵を始める頼みを置く。同じフレームの OnUpdate が、同居する ImpactResolver
-        //! の直近の当たりから層を出す
-        //! @details 出すのは見た目の段。同じフレームの ChargeEffects のエフェクトの後に出る
+        //! 同じフレームの OnUpdate に命中演出を要求する。ChargeEffects の後に出す
         void RequestHitEffect() noexcept { m_hitRequested = true; }
 
-        //! @brief 飛びの絵を始める頼みを置く。同じフレームの OnUpdate が反動の尾を出す
-        //! @details 当たりの絵の段取りが終わった後の頼みは何もしない
+        //! 同じフレームの OnUpdate に反動の尾を要求する。命中演出の終了後は無効
         void RequestFlightEffect() noexcept { m_flightRequested = true; }
 
-        //! @brief 当たりの内訳から、層の大きさと量を決める
-        //! @param[in] impact 当たりの内訳
-        //! @return 層の大きさと量
+        //! 当たりの内訳から、演出の大きさと量を決める
         [[nodiscard]] ImpactShape ShapeFor(const GL::Level::ImpactRecord& impact) const noexcept;
 
         //! @brief 反動の着地の粉が広がりきる半径を、着地の前のフレームの落ちる速さから決める
@@ -125,13 +105,8 @@ namespace GL::Player
         //! @return 広がりきった半径。単位は m
         [[nodiscard]] float LandDustRadiusFor(float fallSpeed) const noexcept;
 
-        //! @brief 反動の尾の再生の向き (+Y) を、自機の速度とカメラの位置から決める
-        //! @details 速度の向きが視線に近い時だけ、画面の上の向きを保ったまま視線から起こす。起こす量は、筋の一番太い
-        //! 真ん中が下塗りの幅ごと玉の輪郭の外に出るまで。視線に斜めに飛ぶ時とカメラが無い時は速度の向きのまま
-        //! @param[in] velocity 自機の速度 (m/s)。長さが 0 なら真上へ飛ぶと見なす
-        //! @param[in] ballCenter 玉の中心
-        //! @param[in] cameraPosition カメラの位置。無ければ起こさない
-        //! @return 長さ 1 の向き
+        //! 尾の +Y を速度方向へ向け、視線に近い時は輪郭の外へ見えるよう傾ける
+        //! 座標は世界。速度 0 は真上、カメラ位置が無ければ傾けない。戻り値は単位方向
         [[nodiscard]] NS::Vector3 ReboundTrailHeading(const NS::Vector3& velocity,
                                                       const NS::Vector3& ballCenter,
                                                       const std::optional<NS::Vector3>& cameraPosition) const noexcept;
@@ -139,18 +114,10 @@ namespace GL::Player
         //! 直近の当たりの層を置いた所と向き。まだ当たっていなければ全部 0
         [[nodiscard]] const ImpactAim& LastAim() const noexcept { return m_aim; }
 
-        //! @brief 外れの火花の向きを、当てた面の上の位置と突進の向きから決める
-        //! 外した側と面に沿って滑る向きを、欄の割合で混ぜる
-        //! 既定は外した側を 7 割、滑る向きを 3 割とする
-        //! 面の右は、上から見て突進の向きの右
-        //! @param[in] u 面の上の左右の位置。自機から見て右が正
-        //! @param[in] v 面の上の上下の位置。上が正
-        //! @param[in] slamDirection 突進の向き。縦の成分は捨てる
-        //! @return 長さ 1 の向き。位置が面の真ん中で外した側が決まらない時と、突進の水平の向きが決まらない時は (0, 0,
-        //! 0)
+        //! 外した側と面に沿う滑りを混ぜ、火花の単位方向を返す。u は右、v は上が正
+        //! slamDirection は水平成分を使う。面の原点か水平の向きが決まらない時は (0, 0, 0)
         [[nodiscard]] NS::Vector3 MissSparkHeading(float u, float v, const NS::Vector3& slamDirection) const noexcept;
 
-        // 当たりの層の大きさと量は当てた瞬間の手触りそのもの。Inspector で触って詰められるよう公開する
         NS_REFLECT_BEGIN(ImpactEffects, NS::Obj::SubObject)
         NS_REFLECT_GROUP("核")
         NS_REFLECT_FIELD(m_coreDiameterBase, "核の直径の基準")
@@ -260,7 +227,7 @@ namespace GL::Player
             NS::Vector3 sideDir;        // 相手の面に沿った、横ずれの側の水平の向き
             NS::Vector3 scrapeDir;      // 大きな外れの火花の向き。ImpactAim::sparkDir と同じ決め方
             NS::Vector3 selfDir;        // 自機の反動の初速の向き
-            NS::Vector3 ringNormal;     // 輪の面の法線
+            NS::Vector3 ringNormal;
             NS::Vector3 floor;          // 相手が置かれていた床の上の点
             NS::Vector3 awayDir;        // 自機から相手への水平の向き。当たりの粉を自機から離す側
             std::uint32_t targetId = 0; // 当たった相手の配置物の id
@@ -287,7 +254,6 @@ namespace GL::Player
         void PlayEmbers();
         // 前の当たりの層のうち、ここが消える時を持っている物を今のフレームで畳む
         void FinishHeldEffects();
-        // 飛びの絵の頭に反動の尾を出す
         void BeginFlight();
         // 反動の尾を自機へ付いていかせる。頂点で親を止める
         void AdvanceFlight();
@@ -355,14 +321,13 @@ namespace GL::Player
         float m_sparkSpeedPerLaunch = 3.0f;
         int m_wideSparkCount = 16;
         float m_wideSparkSpeed = 4.0f;
-        // 外れの火花の絵の全体に掛ける大きさ。粒の大きさ・散る範囲・速さが一緒に伸びる
-        // 本人「HTML のやつの 3 倍ぐらい大きくしてほしい」から 3。1 では後ろからのカメラで自機の玉の陰に入った
+        // 外れの火花全体の倍率。粒・散る範囲・速さが一緒に伸びる
         float m_wideSparkScale = 3.0f;
         float m_emberShare = 7.0f;
         float m_glowDiameterBase = 2.0f;
         float m_glowDiameterPerPower = 1.6f;
         int m_recoilCount = 8;
-        // 外れは弾かれた手応えが来ない「すかし」。弾かれ線は弾き返された印に見えるので出さない
+        // 外れには弾き返された印となる線を出さない
         int m_wideRecoilCount = 0;
         float m_recoilLengthBase = 0.6f;
         float m_recoilLengthPerRebound = 0.5f;

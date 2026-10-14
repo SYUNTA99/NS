@@ -13,28 +13,22 @@ namespace NS::Phys
 
 namespace NS::Obj
 {
-    //! @brief メッシュ資産の三角形を当たりにする SubObject
-    //! @details 球 / 箱で表せない取り込み形状向け
-    //! 当たりは AssetManager が資産ごとに持ち、同じ資産を置いた配置物はその形を共有する
-    //! 自分が持つのは借りた当たりへの参照だけで、body は自分の位置・回転・拡縮で置く
+    //! メッシュの三角形による地形。資産ごとに形状を共有し、個体の姿勢で配置する
     class MeshCollision : public Collision
     {
     public:
-        //! 空の collision で構築する
         MeshCollision() noexcept = default;
 
-        //! 使う当たりを差し替える。所有しないので、この SubObject より長く生きる物を渡す。null で当たり無し
+        //! 所有しない当たりを差し替える。この SubObject より長く生きる物を渡す。未指定なら当たりなし
         void SetShape(const NS::Phys::MeshShape* shape) noexcept;
-        //! 借りている当たり。無ければ null
+        //! 借りている当たり。なければ空
         [[nodiscard]] const NS::Phys::MeshShape* Shape() const noexcept;
 
-        //! owner の world 変換を各頂点に乗せた world 三角形群を返す。Owner 未登録なら資産の座標のまま返す
+        //! 持ち主の世界変換を各頂点に掛け、世界座標の三角形群を返す。持ち主が未登録なら資産の座標のまま
         //! 当たりが無ければ空
         [[nodiscard]] std::vector<NS::Phys::Triangle> WorldTriangles() const;
 
-        //! 同じ object の Model の参照から当たりを借りる
-        //! 解決できない参照は描画と同じく cube にする
-        //! Model が無ければ警告を出して当たり無しのまま
+        //! Model の参照から形状を借りる。解決失敗は cube、Model がなければ衝突なし
         void ResolveAssets(AssetManager& assets) override;
 
         // 当たりはリフレクションで運ばない。ResolveAssets が描画の参照から借りるので、型名だけ登録しておく

@@ -20,9 +20,7 @@ namespace GL::Player
         float vertical = path.verticalSpeed;
         for (int frame = 0; frame < path.maxFrames; ++frame)
         {
-            // 速さへ重力を足してから位置を進める。Player::UpdateBodySlam の Gravity の後に
-            // 身体の段の MoveBody が動かす順。足し方は NS::Obj::AddGravity の速度 += 重力の向き × 強さ × dt を、
-            // 向き -Y で縦だけにした物
+            // 実際の突進と同じく、重力を速度へ加えてから位置を進める
             vertical += ChooseGravity(path.gravity, vertical) * path.dt;
             float next = height + vertical * path.dt;
             // 接地して放った玉は床で止まり、床の上を水平に進む

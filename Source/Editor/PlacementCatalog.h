@@ -19,9 +19,7 @@ namespace NS::Editor
         bool rotatable = false;   //!< パレットで 90 度ずつ回せるか。地形の部品の箱と坂だけ
     };
 
-    //! @brief 置ける物の一覧
-    //! @details 置ける Actor のクラスごとに 1 つ並べる。地形の部品だけは形 (立方体・球・坂) ごとに並べる
-    //! 地形の部品の当たりは見た目のメッシュに付いて来るので、形の違いはメッシュの参照の違いだけ
+    //! 登録済みの配置可能な Actor を並べる。地形の部品はメッシュの形ごとに分ける
     [[nodiscard]] const std::vector<PlacementItem>& PlacementItems();
 
     //! label が一致する物。無ければ nullptr
@@ -32,9 +30,7 @@ namespace NS::Editor
     //! 地形の部品の 45 度の坂の名前
     inline constexpr std::string_view k_PartsSlopeLabel = "地形の部品 (坂)";
 
-    //! @brief メッシュ資産から置く地形の部品のひな形を作る
-    //! @details 当たりは MeshCollision が描画と同じ三角形から作るので、描いた形と当たりがずれない
-    //! @param[in] meshRef ContentRoot 相対のメッシュの参照
+    //! ContentRoot 相対の meshRef から地形のひな形を作る。衝突は描画と同じ三角形を使う
     [[nodiscard]] nlohmann::json MakeMeshPartsPrototype(std::string_view meshRef);
 
     //! ひな形の見た目が組み込みの坂なら、その角度 (度)。坂でなければ負の値

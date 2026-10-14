@@ -13,21 +13,17 @@ namespace GL::Level
     //! 発動種別の日本語の表示名を返す
     [[nodiscard]] const char* SlamKindLabel(SlamKind kind) noexcept;
 
-    //! @brief 押下時間から体当たりの発動種別を判定する
-    //! @details 毎ステップ Step で保持を数え込み、このフレームの発動を TakeFired で 1 回だけ引く
-    //! 発動は離したフレームだけで、保持がしきい値未満なら通常突進、以上ならチャージ突進を控える。両方は出ない。
-    //! ただし溜めきりから溜めすぎのフレーム数だけ押し続けると、押したままでもチャージを 1 回控えて出るのを待ち
-    //! (IsAwaitingLaunch)、出たと知らされた後 (MarkLaunched) は放すまで溜め無しとして答える。待つ間と出た後の放しは
-    //! 何も控えない
+    //! @brief 押下時間から体当たりの発動種別を決める
+    //! @details Step の後、TakeFired で一度だけ消費する。離した時の保持時間で通常・チャージを選ぶ
+    //! 溜めすぎきると保持中でも一度発動を控える。MarkLaunched の後は放すまで溜めず、放しても再発動しない
     struct ImpactInputJudge
     {
-        //! 保持を 1 固定ステップぶん数え込む。離したフレームに、保持の長さに応じて通常突進かチャージ突進を控える
+        //! 保持を 1 固定ステップ進め、発動を控える
         void Step(bool held) noexcept;
 
         //! このフレームに発動した種別を返し、消費する。発動が無ければ None
         [[nodiscard]] SlamKind TakeFired() noexcept;
 
-        //! 押し始めたフレームの場合 true、それ以外の場合は false
         [[nodiscard]] bool JustPressed() const noexcept;
 
         //! ボタンを保持している場合 true、それ以外の場合は false。溜めすぎで出た後も押している間は true
@@ -42,7 +38,6 @@ namespace GL::Level
         //! チャージに入ったフレームの場合 true、それ以外の場合は false。押し直すたびにもう一度 true になる
         [[nodiscard]] bool JustStartedCharging() const noexcept;
 
-        //! 溜めが満タンに達している場合 true、それ以外の場合は false
         [[nodiscard]] bool IsChargeFull() const noexcept;
 
         //! しきい値から満タンまでの溜め量を 0..1 で返す。離したフレームは控えた値から読む。溜めすぎで出た後は 0
@@ -65,7 +60,6 @@ namespace GL::Level
         void MarkLaunched() noexcept;
 
         // 秒でなくフレーム数で持つのは、固定ステップの整数で数えると同じ入力列が必ず同じ判定になるため
-        // 秒からの換算は Player::AdvanceCharge が毎ステップ入れ直すので、この既定は単体テストでだけ効く
         int chargeThresholdSteps = 12;
         int chargeMaxSteps = 60;
         int overchargeSteps = 180; // 満タンから押したままで出るまで

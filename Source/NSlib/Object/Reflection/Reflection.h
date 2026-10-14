@@ -79,9 +79,7 @@ namespace NS::Obj
         }
     }
 
-    // テンプレートの外の if constexpr は捨てる枝も検査される
-    // マクロへ直に書くと clang が Vector3 の欄で AssignIfFinite(Vector3&, float) を型エラーにする
-    //! in の値を target へ書く。Field が float のときだけ AssignIfFinite を通し、他はそのまま代入する
+    // 捨てる枝の型検査を避けるため、マクロの外のテンプレートで分岐する
     template <class Field> void AssignFieldValue(Field& target, const void* in) noexcept
     {
         if constexpr (std::is_same_v<Field, float>)
@@ -94,13 +92,11 @@ namespace NS::Obj
         }
     }
 
-    //! @brief リフレクションされた 1 フィールドの記述子
-    //! @details get/set は型消去した関数ポインタ。obj はリフレクション対象そのものへの生ポインタで、
-    //! SubObject でも素の値型でもよい。マクロが宣言時の具象型へ static_cast して読み書きする
+    //! 型消去したフィールドの取得・設定関数。obj は宣言した具象型を指す
     struct FieldDesc
     {
-        const char* name;                                      // フィールド名
-        FieldType type;                                        // 値の型タグ
+        const char* name;
+        FieldType type;
         void (*get)(const void* obj, void* outValue) noexcept; // obj から値を outValue へ取り出す
         void (*set)(void* obj, const void* inValue) noexcept;  // inValue を obj へ書き込む
     };
@@ -109,23 +105,19 @@ namespace NS::Obj
     //! @details 見出しは次の見出しの手前の欄までを束ねる。次の見出しと firstField が同じなら欄を持たない
     struct FieldGroup
     {
-        const char* name;       // 見出しの名前
+        const char* name;
         std::size_t firstField; // この見出しの最初の欄の、fields の添字
     };
 
-    //! @brief 1 サブオブジェクト型のリフレクション情報。マクロで宣言したフィールドの名前 / 型 / get / set を束ねる
-    //! @details エディタは SubObject* 越しに fields を列挙して編集 UI を自動生成する
-    //! base は基底型のリフレクションを指し、SubObject::IsA はこれを辿って継承関係を判定する。
-    //! 見出しは fields に混ざらず groups に別に並ぶので、保存と読み込みは見出しを見ない
-    //! 依存: NS
+    //! フィールドと継承関係の情報。見出しは保存対象のフィールドと分けて保持する
     struct ReflectionInfo
     {
-        const char* typeName;               // リフレクションする型名
+        const char* typeName;
         const FieldDesc* fields;            // フィールド記述子配列 (static 寿命)
-        std::size_t fieldCount;             // fields の要素数
+        std::size_t fieldCount;
         const ReflectionInfo* base;         // 基底型のリフレクション。SubObject 直下は nullptr
         const FieldGroup* groups = nullptr; // 欄の見出しの配列 (static 寿命)。宣言の並び
-        std::size_t groupCount = 0;         // groups の要素数
+        std::size_t groupCount = 0;
     };
 
     //! @brief マクロが宣言の並びのまま積む 1 項目。欄か見出しのどちらか 1 つ
@@ -135,9 +127,7 @@ namespace NS::Obj
         const char* group; // 見出しの名前。欄の項目では nullptr
     };
 
-    //! @brief 宣言の並びを、欄の配列と見出しの配列に分けて持つ
-    //! @details 型ごとに StaticReflection の中で 1 つだけ作り、生涯書き換えない。ReflectionInfo は中の配列を指すので
-    //! 写しを作らない
+    //! 型ごとの不変なフィールド配列。ReflectionInfo が参照するためコピーしない
     class ReflectedFields
     {
     public:
@@ -159,10 +149,7 @@ namespace NS::Obj
         ReflectedFields(const ReflectedFields&) = delete;
         ReflectedFields& operator=(const ReflectedFields&) = delete;
 
-        //! @brief 分けた配列を指すリフレクション情報を返す
-        //! @param[in] typeName リフレクションする型名
-        //! @param[in] base 基底型のリフレクション。無ければ nullptr
-        //! @return 欄と見出しを指すリフレクション情報。指す先はこの物が生きている間だけ有効
+        //! 戻り値の配列参照は、このオブジェクトが生存している間だけ有効
         [[nodiscard]] ReflectionInfo MakeInfo(const char* typeName, const ReflectionInfo* base) const noexcept
         {
             return ReflectionInfo{typeName, m_fields.data(), m_fields.size(), base, m_groups.data(), m_groups.size()};

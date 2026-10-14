@@ -11,12 +11,11 @@ namespace NS::Obj
     class Scene;
 } // namespace NS::Obj
 
-//! @brief アプリケーション層とシーン管理層を仲介するメインゲームレイヤー
+//! @brief シーンの更新・描画をアプリから呼ぶゲームレイヤー
 class Game : public NS::Layer
 {
 public:
     //! @brief 開始シーンのパスを控える。読み込みは OnAttach
-    //! @param[in] startScenePath ContentRoot からの相対パス。既定は同梱の開始シーン
     explicit Game(std::string_view startScenePath = "Assets/Scenes/new_scene.scene");
     ~Game() override;
 
@@ -30,37 +29,29 @@ public:
     void OnUpdate() override;
     void OnRender() override;
 
-    //! @brief ContentRoot 配下のシーンを読み込み、立て直す
-    //! @details 絶対パスと ContentRoot の外へ出るパスは受け付けない
-    //! @param[in] scenePath ContentRoot からの相対パス。空文字列は受け付けない
-    //! @return 読めなければ false を返し、その時は今のシーンをそのまま保つ
+    //! ContentRoot からの相対パスでシーンを読み、立て直す
+    //! 空・絶対パス・範囲外のパスや読み込み失敗は false で、現在のシーンを保つ
     bool LoadScene(std::string_view scenePath);
 
-    //! @brief 構築時に受けた開始シーンを読む
-    //! @details 結果は StartSceneLoaded() に残る
-    //! @return 読めた場合 true、それ以外の場合は false
+    //! 開始シーンを読み、成否を返す。結果は StartSceneLoaded に残る
     bool LoadStartScene();
 
     //! 直近の LoadStartScene が読めた場合 true。呼ぶ前は false
     [[nodiscard]] bool StartSceneLoaded() const noexcept { return m_startSceneLoaded; }
 
-    //! @brief 現在ロードされているシーンを取得する
-    //! @return シーン未ロードなら nullptr を返す
+    //! シーン未ロードなら nullptr
     [[nodiscard]] NS::Obj::Scene* CurrentScene() noexcept;
 
-    //! @brief シングルトンインスタンスを取得する
     [[nodiscard]] static Game* Get() noexcept { return s_instance; }
 
 private:
-    //! @brief 立てたばかりのシーンでプレイを始める
-    //! @details 凍結と 1 走目は CourseDirector::StartCourse が持つ。シーンを立てる道 (LoadScene
-    //! と起動時の空シーンへの退避) は全部ここを通る
+    //! 読み込み経路を問わず、新しいシーンで CourseDirector の開始処理を呼ぶ
     void StartLoadedScene();
 
     std::string m_startScenePath;
     bool m_startSceneLoaded = false;
 
-    NS::Obj::SceneManager m_scenes; // シーンの所有と遷移管理
+    NS::Obj::SceneManager m_scenes;
 
     static Game* s_instance;
 };

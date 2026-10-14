@@ -81,7 +81,6 @@ namespace NS::Editor
 
     NS::Vector3 SnapWorldPointToGrid(NS::Vector3 p, float g) noexcept
     {
-        // 最も近い整数に丸める
         const float gx = std::floor(p.x / g + 0.5f) * g;
         const float gy = std::floor(p.y / g + 0.5f) * g;
         const float gz = std::floor(p.z / g + 0.5f) * g;
@@ -113,7 +112,6 @@ namespace NS::Editor
     NS::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept
     {
         const std::uint8_t r = static_cast<std::uint8_t>(rotation & 0x03);
-        // 90 度刻み = π/2 ラジアン
         const float angle = static_cast<float>(r) * (NS::k_Pi * 0.5f);
         return NS::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, angle);
     }

@@ -48,7 +48,7 @@
 
 namespace
 {
-    // 部品の欄 1 つの値を JSON で読む。無い欄は null
+    // 部品の欄の値を JSON で読む。欄が無ければ値なしを返す
     nlohmann::json FieldJson(const NS::Obj::SubObject& comp, std::string_view fieldName)
     {
         const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(comp);
@@ -377,10 +377,10 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     // 起動直後は出現地点の block を真ん中近めに見せる距離。1m cube が画面の十数 % を占める
     m_editorCamera.SetDistance(5.0f);
 
-    // 保存は live 実体から作り、読込は取込関数がデータを実体へ写して用済みにする
+    // 保存は実体から作り、読込は取込関数がデータを実体へ写して用済みにする
     m_editor.SetCaptureLevelFn([this]() { return m_scene->ToJson(); });
     m_editor.SetLoadLevelFn([this](nlohmann::json&& fresh) { m_scene->LoadJson(std::move(fresh)); });
-    // grid 編集・undo は適用経路を通して live へ写す。セル照会・採番は live 側から引く
+    // セル編集と取り消しは適用処理を通す。照会・採番は実体で行う
     m_editor.SetApplier(&m_applier);
     m_editor.SetFindCellObjectFn([this](std::int16_t x, std::int16_t y, std::int16_t z) {
         return NS::Editor::FindObjectIdAtCell(m_scene->Objects(), x, y, z);
@@ -424,7 +424,6 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
         }
     }
 
-    // ギズモに依存先を注入する。選択候補は RefreshGizmoSelectables が別に渡す
     m_gizmo.SetInput(&app->Input());
     m_gizmo.SetImGui(imgui);
 
@@ -461,7 +460,7 @@ void LevelEditorController::EnterPlay() noexcept
     m_dragFollowers.clear();
     m_gizmoWasDragging = false;
     m_gizmo.SetActive(false);
-    // live が唯一の出所なので組み直しは要らない。編集で動いた当たりだけ張り直してプレイへ入る
+    // 実体が唯一の出所なので組み直しは要らない。編集で動いた当たりだけ張り直してプレイへ入る
     m_scene->SyncPhysics();
 
     // 凍結を取り、そこから走行を最初から。プレイの間の判定と編集復帰の姿はこの凍結を読む
@@ -475,7 +474,6 @@ void LevelEditorController::EnterPlay() noexcept
     {
         cameras->BeginBlendFrom(m_editorCamera.Pose());
     }
-    // 世界を回す。止まっているのは編集モードの間だけ
     m_scene->SetSimulationEnabled(true);
 
     // プレイ突入はカーソルを消し、マウスを相対モードにして視点操作をカーソル位置から切り離す
@@ -525,21 +523,16 @@ void LevelEditorController::RequestStepFrame() noexcept
 
 void LevelEditorController::LeavePlayForEdit()
 {
-    // free-fly カメラはこの外で editor が握る
     if (m_scene == nullptr)
     {
         return;
     }
-    // 編集モードの間は世界を止める
     m_scene->SetSimulationEnabled(false);
 
-    // プレイは試走。位置・生成・破棄・演出の進行を live に残さず、突入時の凍結から世界を組み直す
-    // 演出の破棄もゴールの旗戻しも組み直しが済ませるので、個別の後始末は置かない
-    // 一時オブジェクトの実カメラは凍結に写らないが、Rebuild が退避して残す
+    // プレイで変わった配置を編集へ持ち込まないため、開始時の控えから復元する
     nlohmann::json baseline = m_scene->PlayBaseline();
     m_scene->LoadJson(std::move(baseline));
 
-    // 編集モードはカーソルを出し、カーソル位置ベースの操作へ戻す
     if (NS::Application* app = NS::Application::Get())
     {
         app->SetCursorCaptured(false);
@@ -560,14 +553,14 @@ void LevelEditorController::SetGameView(int x, int y, int width, int height, boo
             app->Window().SetCursorLockPoint(x + width / 2, y + height / 2);
         }
     }
-    // 編集入力はこの表示矩形基準でレイを飛ばす。hover 偽の間は配置カーソルを立てない
+    // 編集入力は表示矩形から光線を飛ばす。カーソルが重なっていない間は配置位置を表示しない
     m_editor.SetViewRect(m_gameViewRect);
     m_editor.SetViewHovered(hovered);
 }
 
 void LevelEditorController::ClearGameView() noexcept
 {
-    // 全画面直描き。フォールバックの全画面矩形を使わせるため矩形無効 + hover 真にする
+    // 全画面描画では予備の矩形を使い、カーソルが重なっている状態にする
     m_gameViewRectValid = false;
     m_gameViewHovered = true;
     m_gameViewHidden = false;
@@ -603,7 +596,7 @@ NS::Editor::ViewRect LevelEditorController::CurrentViewRect() const noexcept
 void LevelEditorController::TickPlaySceneView(const NS::Editor::EditorCameraInput& input) noexcept
 {
     // プレイ中に Scene タブへ自由視点を映すフレームだけ効かせる。編集モード中は実カメラを触らない
-    // 描画視点は SceneViewPose が free-fly の pose を渡すので、ここは入力適用だけでよい
+    // 描画視点は SceneViewPose が自由視点の pose を渡すので、ここは入力適用だけでよい
     if (m_mode != Mode::Play)
     {
         return;
@@ -613,7 +606,7 @@ void LevelEditorController::TickPlaySceneView(const NS::Editor::EditorCameraInpu
 
 std::optional<NS::Obj::CameraPose> LevelEditorController::SceneViewPose() noexcept
 {
-    // 編集中は実カメラ (TickEdit が free-fly の pose を書く) 任せ。プレイ中だけ自由視点を上書きする
+    // 編集中は実カメラ (TickEdit が自由視点の pose を書く) 任せ。プレイ中だけ自由視点を上書きする
     if (m_mode != Mode::Play)
     {
         return std::nullopt;
@@ -658,8 +651,7 @@ void LevelEditorController::Tick()
         return;
     }
 
-    // プレイ中の Esc は隠したカーソルを出すだけ。出ている時の Esc で終えると、出したカーソルでタブを押しに
-    // 行く途中でアプリごと終わる。プレイから抜けるのは Tab / Start / 帯の停止
+    // Esc はカーソルの解放に使い、パネルを操作する途中でプレイを終了させない
     NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
@@ -679,8 +671,7 @@ void LevelEditorController::TickEdit()
         return;
     }
 
-    // F5 で編集中の HLSL を再起動なしで反映する。プレイ中の F5 はエディタ UI の表示トグルに使うため
-    // 編集モードのここでだけ再読み込みする。ImGui 入力中は誤爆を防ぐため無効化する
+    // F5 のシェーダ再読込は編集時だけ。プレイ時は UI 表示の切替に使う
     if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::OS::Key::F5))
     {
         app->Assets().ReloadAllShaders();
@@ -701,7 +692,7 @@ void LevelEditorController::TickEdit()
 
     m_editorCamera.Tick();
 
-    // free-fly 更新後に実カメラへ反映し、ギズモ / 編集の ray-pick が当フレームの視点を使えるようにする
+    // 自由視点を更新して実カメラへ反映し、ギズモと編集の光線判定に同じ視点を使う
     // 編集中は世界が止まり CameraManager が実カメラを書かないので、この書き込みが上書きされずに残る
     if (NS::Obj::SceneCamera* camera = MainCamera())
     {
@@ -710,7 +701,7 @@ void LevelEditorController::TickEdit()
         {
             m_editBlendElapsed += NS::OS::FrameTimer::FixedDelta();
             const float t = std::min(m_editBlendElapsed / k_EditBlendSeconds, 1.0f);
-            const float eased = NS::SmoothStep(t); // ease-in-out
+            const float eased = NS::SmoothStep(t);
             pose = NS::Obj::CameraPose::Lerp(m_editBlendFrom, pose, eased);
             if (t >= 1.0f)
             {
@@ -731,8 +722,7 @@ void LevelEditorController::TickEdit()
         // 追従カメラの Root を実プレイ視点位置へ寄せてからギズモを回す。判定箱とギズモがその位置に出る
         SyncFollowCameraPoses();
 
-        // 毎フレーム live な scene から候補 span を作り直し、選択を id から今のオブジェクトへ引き直す
-        // 作り直さないと編集復帰 / undo の rebuild で破棄された実体を指したままになる
+        // 組み直しで破棄された配置物を参照しないよう、候補と選択を現在の実体へ引き直す
         RefreshGizmoSelectables();
         ResolveSelectionFromId();
 
@@ -941,8 +931,8 @@ void LevelEditorController::SyncFollowCameraPoses()
 
 void LevelEditorController::ApplyFollowCameraGizmoDrag()
 {
-    // ドラッグ中の追従カメラは、gizmo が動かした Root 位置から初期姿勢の yaw/pitch/距離を逆算して
-    // live SubObject へ書き戻す。Root 位置は初期姿勢由来なので保存対象は SubObject 側になる
+    // ドラッグ中の追従カメラは、gizmo が動かした Root 位置から初期姿勢の方位角・仰角/距離を逆算して
+    // 実体の SubObject へ書き戻す。Root 位置は初期姿勢由来なので保存対象は SubObject 側になる
     if (!m_gizmo.IsDragging())
     {
         return;
@@ -1203,7 +1193,6 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
         return;
     }
     const GL::Level::ImpactRecord& impact = player->Resolver().LastImpact();
-    // まだ 1 度も当てていない
     if (impact.sequence == 0)
     {
         return;
@@ -1273,7 +1262,7 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
 
 void LevelEditorController::SetSelectedFreePosition(NS::Vector3 position)
 {
-    // live の Root を直接動かす。undo の記録は CommitTransformEdit、当たりの追従は SyncPhysics が担う
+    // 実体の Root を直接動かす。取り消し の記録は CommitTransformEdit、当たりの追従は SyncPhysics が担う
     if (NS::Obj::Actor* go = SelectedObjectActor())
     {
         go->Root().SetPosition(position);
@@ -1386,7 +1375,6 @@ bool LevelEditorController::PromoteFieldToArchetype(NS::Obj::SubObject& comp, st
 
 void LevelEditorController::PlaceItem(const NS::Editor::PlacementItem& item)
 {
-    // 新しい配置物は編集視点の中心あたりへ置く。採番・履歴・選択は PushCreateObject が担う
     nlohmann::json object = item.prototype;
     NS::Obj::SetObjectPosition(object, m_editorCamera.Center());
     PushCreateObject(std::move(object));
@@ -1410,11 +1398,10 @@ void LevelEditorController::PushCreateObject(nlohmann::json object)
     {
         return;
     }
-    // 新規配置物に永続 id を 1 個振る
     const std::uint32_t id = m_scene->Objects().AllocateObjectId();
     NS::Obj::SetObjectJsonId(object, id);
 
-    // 追加を undo 履歴へ。Do がひな形から live へ 1 体組んで入れる
+    // 追加を 取り消し 履歴へ。Do がひな形から実体へ 1 体組んで入れる
     m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::nullopt, std::move(object)),
                          m_applier);
 
@@ -1493,14 +1480,13 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
         return false;
     }
 
-    // 親空間が変わっても見た目が動かないよう、今のワールド変換から新しいローカル変換を割り出す
     NS::Matrix local = child->Root().WorldMatrix();
     if (parent != nullptr)
     {
         local *= parent->Root().WorldMatrix().Invert();
     }
 
-    // 実体の親を直接付け替える。付け替えは local の値を保つので、割り出した local を後から入れる
+    // 親の付け替えは局所の値を保つため、計算した局所の値を後から設定する
     child->SetParent(parent);
     NS::Vector3 scale{};
     NS::Quaternion rotation{};
@@ -1513,7 +1499,7 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
     }
     else
     {
-        // 分解できない変換は local を触らず親だけ差し替える。見た目は動くが編集は通す
+        // 分解できない変換は局所の値を触らず親だけ差し替える。見た目は動くが編集は通す
         NS_LOG_WARN(App, "変換を分解できないため object {} の見た目を保てなかった", id);
     }
 
@@ -1901,7 +1887,7 @@ void LevelEditorController::CommitTransformEdit() noexcept
     }
     m_transformEditing = false;
 
-    // ドラッグは live Root を既に動かしている。after は live の忠実な写し。baseline と同じなら履歴に積まない
+    // ドラッグは実体の Root を既に動かしている。after は実体の忠実な写し。baseline と同じなら履歴に積まない
     std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
     for (std::pair<std::uint32_t, nlohmann::json>& entry : m_editBaselines)
     {
@@ -1921,7 +1907,7 @@ void LevelEditorController::CommitTransformEdit() noexcept
         return;
     }
 
-    // live は既に after なので Do を呼ばず履歴だけ積む。undo で baseline へ、redo で after へ戻す
+    // 実体は既に after なので Do を呼ばず履歴だけ積む。取り消し で baseline へ、やり直し で after へ戻す
     m_editor.Undo().Record(MakeUndoUnit(std::move(commands)));
 }
 
@@ -1949,7 +1935,7 @@ void LevelEditorController::CommitSubObjectEdit() noexcept
     }
     m_subObjectEditing = false;
 
-    // リフレクション編集は live SubObject へ直接入っている。after は live の忠実な写しで、baseline と同じなら積まない
+    // リフレクション編集は実体の SubObject へ直接入っている。after は実体の忠実な写しで、baseline と同じなら積まない
     // プレイ中の控えはプレイの姿なので積まない
     if (m_mode != Mode::Edit)
     {
@@ -1961,7 +1947,7 @@ void LevelEditorController::CommitSubObjectEdit() noexcept
         return;
     }
 
-    // live は既に after なので Do を呼ばず履歴だけ積む
+    // 実体は既に after なので Do を呼ばず履歴だけ積む
     m_editor.Undo().Record(std::make_unique<NS::Editor::ObjectSnapshotCommand>(
         m_subObjectEditBaselineId, m_subObjectEditBaseline, std::move(*after)));
 }
@@ -1996,10 +1982,10 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
         return false;
     }
 
-    // .mat パスは ContentRoot 相対で持つ。材質の正データは matRef なので live SubObject へ書き込む
+    // .mat パスは ContentRoot 相対で持つ。材質の正データは matRef なので実体の SubObject へ書き込む
     const std::string stored = RelativeToRoot(matPath, NS::OS::FileSystem::ContentRoot());
 
-    // 差替前を忠実に写す。matRef を live へ書き込み、差替後との差分を undo 履歴へ積む
+    // 差替前を忠実に写す。matRef を実体へ書き込み、差替後との差分を 取り消し 履歴へ積む
     std::optional<nlohmann::json> before = m_applier.CaptureObject(m_selectedObjectId);
 
     mesh->SetMaterial(loaded.material);

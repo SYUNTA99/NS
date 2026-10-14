@@ -8,16 +8,11 @@
 namespace NS::Editor
 {
 
-    //! @brief 永続 id で指す 1 オブジェクトを before → after の JSON で切り替える唯一の編集コマンド
-    //! @details 追加・削除・変形・複製・材質・サブオブジェクト増減を全てこの 1 種で表す
-    //! after 有 = その姿へ組み直して差し替え/新規、after 無 = 除去。Undo は before へ同じ手で戻す
-    //! 派生状態 (物理・参照・カメラ) の同期は適用側の ApplyObjectSnapshot が面倒を見る
-    //! 対象は objectId で再特定するので、間に別の追加削除で並びが動いても追従する
+    //! 永続 id で対象を引き、JSON の before・after を切り替える。派生状態の同期は適用側が行う
     class ObjectSnapshotCommand final : public ICommand
     {
     public:
-        //! 永続 id id を after の姿へ置くコマンド。Undo で before へ戻す
-        //! 追加は before 無 / after 有、削除は before 有 / after 無、編集は両方
+        //! before は Undo、after は実行・Redo の状態。nullopt は個体が存在しない状態
         ObjectSnapshotCommand(std::uint32_t id,
                               std::optional<nlohmann::json> before,
                               std::optional<nlohmann::json> after) noexcept;

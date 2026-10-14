@@ -18,14 +18,13 @@ namespace NS::Gfx
     public:
         //! @brief 指定サイズのオフスクリーン描画先を生成する
         //! @param[in] size 幅と高さ。0 以下の成分があると無効なインスタンスを返す
-        //! @return 生成に失敗しても非 null を返す。成否は IsValid で見る
+        //! @return 成否にかかわらず参照先を返す。成否は IsValid で確認する
         [[nodiscard]] static std::unique_ptr<RenderTarget> Create(NS::Size2D size);
 
         ~RenderTarget();
 
         [[nodiscard]] bool IsValid() const noexcept;
 
-        //! カラーと深度のサイズを取得する
         [[nodiscard]] NS::Size2D Size() const noexcept;
 
         //! @brief 描画先のサイズを変更する

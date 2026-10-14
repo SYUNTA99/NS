@@ -6,9 +6,7 @@
 
 namespace NS::Obj
 {
-    //! @brief 引数の無い通知
-    //! @details 購読は複数持てる。描画と音の部品が同じ通知を同時に受け取るため
-    //! 呼ぶ順は購読を足した順
+    //! 引数のない通知。登録順に複数の購読先へ送る
     class BodyEvent
     {
     public:
@@ -36,8 +34,7 @@ namespace NS::Obj
         std::vector<std::function<void()>> m_callbacks;
     };
 
-    //! @brief 登場人物に共通する通知
-    //! @details 敵も同じ物を持つ。レールの乗り降りは持たない。レールが無い
+    //! 身体の接地状態が切り替わったときの通知
     struct BodyEvents
     {
         BodyEvent onGroundEnter; //!< 着地したフレーム

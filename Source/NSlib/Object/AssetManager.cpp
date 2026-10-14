@@ -174,7 +174,6 @@ namespace NS::Obj
         out.vertexShader = j["vs"].get<std::string>();
         out.pixelShader = j["ps"].get<std::string>();
 
-        // textures は任意
         out.textures.clear();
         if (j.contains("textures") && j["textures"].is_array())
         {
@@ -187,10 +186,8 @@ namespace NS::Obj
             }
         }
 
-        // baseColor は任意の 3 要素
         out.baseColor = FieldVector3(j, "baseColor", NS::Vector3{1.0f, 1.0f, 1.0f});
 
-        // blend は任意
         out.blend = NS::Gfx::BlendMode::Opaque;
         if (j.contains("blend") && j["blend"].is_string())
         {
@@ -331,7 +328,6 @@ namespace NS::Obj
                 return LoadedSkinnedModel{};
             }
 
-            // GPU 生成用の記述子を組む
             NS::Gfx::SkinnedMeshDesc smd{};
             smd.vertices = data.vertices.data();
             smd.vertexCount = data.vertices.size();
@@ -365,7 +361,7 @@ namespace NS::Obj
     const NS::Gfx::AnimationSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
     {
         const std::string key = NS::OS::FileSystem::Normalize(path);
-        // null エントリは負キャッシュした失敗 path を表す。get() が nullptr を返し再読込を短絡する
+        // 空の項目は読み込み失敗の記録。get() が nullptr を返し、再読み込みを避ける
         if (const std::map<std::string, std::unique_ptr<NS::Gfx::AnimationSource>>::iterator it =
                 m_animationSources.find(key);
             it != m_animationSources.end())
@@ -491,7 +487,6 @@ namespace NS::Obj
             return LoadedMaterial{};
         }
 
-        // JSON を MaterialFileDesc へ解析する
         MaterialFileDesc fileDesc{};
         std::string parseError;
         if (!ParseMaterialJson(*textOpt, fileDesc, parseError))
@@ -515,7 +510,6 @@ namespace NS::Obj
         matDesc.blend = fileDesc.blend;
         std::unique_ptr<NS::Gfx::Material> material = NS::Gfx::Material::Create(matDesc);
 
-        // texture を slot 順に bind する
         for (std::size_t i = 0; i < fileDesc.textures.size(); ++i)
         {
             NS::Gfx::Texture* texture = GetOrLoadTexture(resolve(fileDesc.textures[i]));

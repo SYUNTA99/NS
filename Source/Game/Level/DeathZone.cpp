@@ -9,7 +9,6 @@ namespace GL::Level
 {
     void DeathZone::OnInit()
     {
-        // 厚み 10m と 2km 四方は、固定ステップの移動量では突き抜けられない
         NS::Obj::ShapeHitSensor* area = CreateSubObj<NS::Obj::ShapeHitSensor>(BodySensorSlot());
         SetSensorKind(*area, SensorKind::Area);
         area->SetBox(NS::Vector3{1000.0f, 5.0f, 1000.0f});

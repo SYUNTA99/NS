@@ -37,11 +37,11 @@ namespace NS::Obj
     class UIDirector;
 
     //! @brief 指定の描画先へ指定の視点でシーンを描く単位
-    //! @details target が null なら backbuffer、viewPose が空なら CameraManager の選ぶカメラで描く
+    //! @details target が未指定ならウィンドウへ、viewPose が空なら CameraManager のカメラで描く
     //! drawShapes を持つビューだけ、描く直前に使い捨ての DebugShapes へ図形を積ませて描く
     struct SceneView
     {
-        NS::Gfx::RenderTarget* target = nullptr; // 描画先、非所有。null は backbuffer
+        NS::Gfx::RenderTarget* target = nullptr; // 非所有の描画先。未指定ならウィンドウへ描く
         std::optional<CameraPose> viewPose;      // 描画視点。空なら CameraManager の選ぶカメラ
 
         //! そのビューを描く間だけ要る開発用の図形を積む口。空なら積まない
@@ -49,21 +49,15 @@ namespace NS::Obj
         std::function<void(NS::Gfx::DebugShapes&, const NS::Matrix&)> drawShapes;
     };
 
-    //! @brief 描画物・重ね描き・平行光の登録簿を持ち、1 フレーム分のシーンを描く
-    //! @details 登録は SubObject が OnStart / OnEndPlay で自分で行い、Scene の同名メソッドがここへ転送する
-    //! 描画は Scene::OnRender が Render を 1 回呼んで駆動する
-    //! エフェクトの世界はエフェクトの段の登録物として、その段の Actor が出した演出を受けて進む
-    //! 世界は NS::Gfx::Bloom の浮動小数の描画先へ描き、1 を超えた分をにじませて書き戻す
-    //! 書き戻した絵に NS::Gfx::ScreenPasses の段を掛けてから、重ね描きを描く
-    //! 依存: NS::Gfx::Renderer, NS::Gfx::RenderProxyList, NS::Gfx::EffectScene, NS::Gfx::Bloom, CameraManager
+    //! @brief シーンの描画物を登録し、各ビューへ描画する
+    //! @details 世界と後処理の後に重ね描きと UI、最後にシーン全体の暗転を描く
     class SceneRenderer : public SceneSystem
     {
     public:
-        //! EffectScene を前方宣言のまま持つ。unique_ptr が完全型を要る境目は .cpp 側
         SceneRenderer();
         ~SceneRenderer();
 
-        //! @brief レンダラーを非所有で差す。EffectScene を作り直し、null なら畳む
+        //! @brief レンダラーを非所有で差す。EffectScene を作り直し、未設定なら畳む
         //! @details EffectScene は構築時に Gpu() を読む。Renderer が立つまで作れない
         void SetRenderer(NS::Gfx::Renderer* renderer) noexcept;
 
@@ -86,13 +80,11 @@ namespace NS::Obj
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneViews = std::move(views); }
 
         //! @brief 次に描くフレームから使う床の波を書く。強さ 0 で消える
-        //! @param[in] wave 床の波
         void SetGroundWave(const NS::Gfx::GroundWave& wave) noexcept { m_groundWave = wave; }
         //! 描く時に使う床の波
         [[nodiscard]] const NS::Gfx::GroundWave& GroundWaveShown() const noexcept { return m_groundWave; }
 
         //! @brief 次に描くフレームから使う歪みの輪を書く。押し 0 で消える
-        //! @param[in] ring 歪みの輪
         void SetDistortionRing(const NS::Gfx::DistortionRing& ring) noexcept { m_distortionRing = ring; }
         //! 描く時に使う歪みの輪
         [[nodiscard]] const NS::Gfx::DistortionRing& DistortionRingShown() const noexcept { return m_distortionRing; }
@@ -102,7 +94,7 @@ namespace NS::Obj
         //! @param[in] renderables 型に写す描く物、非所有
         void SetBodyMask(std::vector<IRenderable*> renderables) noexcept { m_bodyMask = std::move(renderables); }
         //! @brief ビュー列の index 番目に、今のフレームで描いた体の型を返す
-        //! @return 1 色 8 ビットの型。描いていなければ null
+        //! @return 1 色 8 ビットの型。未描画なら空
         [[nodiscard]] const NS::Gfx::Texture* BodyMaskShown(std::size_t viewIndex) const noexcept;
 
         //! IRenderable SubObject の自己登録。二重登録は無視する
@@ -125,14 +117,9 @@ namespace NS::Obj
         //! 登録中の全 renderable の bounds とソート情報を RenderProxyList へ同期する。描画の入口で呼ぶ
         void SyncRenderBounds();
 
-        //! @brief ビュー列を順に描く。列が空なら現描画先へ 1 回だけ描く
-        //! @details レンダラー未設定なら何も描かない。ビューごとに Renderer::BeginSceneView で描画先を差し替える
-        //! @param[in,out] cameras 実カメラの行列を引く CameraManager。姿勢は Scene::OnRender が書き終えている
-        //! @param[in,out] camera cameras が駆動する実カメラ。アスペクト比をレンダラーの現在サイズへ揃える
-        //! @param[in] ui 重ね描きの上へ描く画面の管理役。覚えずに、描く間だけ読む
-        //! @param[in] skyboxPath 描く skybox の ContentRoot 配下相対パス。空なら skybox を描かない
-        //! @param[in] alpha 前の固定フレームから今の固定フレームまでの補間の割合 0..1
-        //! 1 なら今の固定フレームの姿
+        //! ビューを順に描く。未指定なら現在の描画先、レンダラーなしなら描画しない
+        //! カメラの姿勢は呼ぶ前に確定する。alpha は固定更新間の割合 0〜1
+        //! skyboxPath は ContentRoot 内の相対パス。空なら空を描かない
         void Render(CameraManager& cameras,
                     SceneCamera& camera,
                     UIDirector& ui,

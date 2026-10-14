@@ -46,12 +46,7 @@ namespace NS::Obj
     //! 2 つの形が重なるか。触れているだけも重なりに数える
     [[nodiscard]] bool VolumesOverlap(const SensorVolume& lhs, const SensorVolume& rhs) noexcept;
 
-    //! @brief Actor に付く当たりの調べ役の基底。オデッセイの HitSensor に当たる
-    //! @details 種類と、シーンの HitSensorDirector へ OnStart で入り OnEndPlay で出る登録だけを持つ
-    //! 調べ役は 1 フレームに 1 回、センサーの段で持ち主の違うセンサーの重なりを調べ、重なった組の両方の持ち主の
-    //! Actor::AttackSensor を呼ぶ。相手の種類を見て応じるかは持ち主が決める
-    //! 形は派生が決める。欄は持たず、派生ごとに持つ (Collision の一族と同じ形)
-    //! 抽象基底なので TypeRegistry には登録しない
+    //! シーンへ登録するセンサーの基底。形状は派生、種類への応答は持ち主が決める
     class HitSensor : public SubObject
     {
     public:
@@ -64,9 +59,7 @@ namespace NS::Obj
         //! シーンの調べ役から出る
         void OnEndPlay() override;
 
-        //! @brief 種類を書く
-        //! @details 値に名前は付けない。名前と、どの種類に応じるかは Game の SensorKinds.h が持つ
-        //! @param[in] kind 種類の値。0 は未設定
+        //! 0 は未設定。種類の意味はゲーム側が定義する
         void SetKind(std::uint8_t kind) noexcept { m_kind = kind; }
         //! 種類の値。0 は未設定
         [[nodiscard]] std::uint8_t Kind() const noexcept { return m_kind; }
@@ -89,9 +82,7 @@ namespace NS::Obj
         bool m_registered = false; // 調べ役へ入っているか
     };
 
-    //! @brief 形を自分で持つ調べ役。ゴールと落下死の範囲と、2 つ目のセンサーの枠 AttackSensor が使う
-    //! @details 形 (球・カプセル・箱) と大きさを欄に持ち、大きさは根の世界のスケールに付いて来る
-    //! 種類と形はクラスが OnInit で決め、大きさは値で調整する
+    //! 独立した形状を持つセンサー。寸法は持ち主の世界スケールに従う
     class ShapeHitSensor final : public HitSensor
     {
     public:
@@ -132,10 +123,7 @@ namespace NS::Obj
         NS::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};   // 根からの中心のずれ
     };
 
-    //! @brief 持ち主の体の形をそのまま映す調べ役。自機と置物の体のセンサーが使う
-    //! @details 形の正は持ち主の当たりの部品 (Collider・SphereCollision) で、ここは毎回それを読むだけ。
-    //! 写しを持たないので、寸法の欄を変えたその場で範囲の照合とエディタの線に効く。欄は持たない
-    //! 関数は持ち主のクラスがコンストラクタで渡す。既定コンストラクタが無いので TypeRegistry には登録しない
+    //! 持ち主の衝突形状を毎回読むセンサー。形状の写しや編集用の寸法は持たない
     class FollowHitSensor final : public HitSensor
     {
     public:

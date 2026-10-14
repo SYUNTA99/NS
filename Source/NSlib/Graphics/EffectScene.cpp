@@ -74,9 +74,7 @@ namespace NS::Gfx
             return static_cast<std::uint8_t>(std::lround(value * 255.0f));
         }
 
-        // 名前と、その名前を何回目に出したかから乱数の種を作る。名前を FNV-1a で 32 ビットに畳み、回数を混ぜる
-        // Effekseer は既定で std::rand から種を引くので、他の絵や std::rand の使い手が 1 つ増えるだけで
-        // 全部の絵の乱数がずれる
+        // 他の再生や std::rand の呼び出しに影響されないよう、名前と再生回数から乱数の種を作る。
         std::int32_t SeedOf(std::string_view name, std::uint32_t playIndex) noexcept
         {
             std::uint32_t hash = 2166136261u;

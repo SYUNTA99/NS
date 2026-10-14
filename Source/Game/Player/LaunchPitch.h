@@ -4,9 +4,8 @@
 
 namespace GL::Player
 {
-    //! @brief 溜めて放った玉の道筋を決める値
-    //! @details 水平は一定の速さで進み、縦は 1 フレームずつ ChooseGravity の強さで変わる。Player が突進の間に当てる
-    //! 重力と同じ選び方と順で、速さへ重力を足してから位置を進める
+    //! @brief 放った玉の道筋の入力
+    //! @details 自機と同じ重力・順序で、速度を更新してから位置を進める
     struct LaunchPath
     {
         float horizontalSpeed = 0.0f; //!< 水平の速さ (m/s)
@@ -53,11 +52,7 @@ namespace GL::Player
         bool reachable = false;     //!< 上限の角度の中で着きたい高さに着く場合 true
     };
 
-    //! @brief 触れる所で着きたい高さになる、放つ瞬間の縦の速さを探す
-    //! @details LaunchHeightAt と同じ道筋で、縦の速さを上限の角度の中で二分探索する。接地していれば下限は 0
-    //! で水平、空中なら上限と同じ角度の下向き。上限の角度の中で着かない時は届かないとして縦の速さ 0 を返す
-    //! @param[in] desc 探す時の入力
-    //! @return 求めた縦の速さと届くか。入力に有限でない値がある時、水平の速さか dt が正でない時、
-    //! 触れる所までの距離が負の時は届かない
+    //! 指定高さに届く縦速度を、LaunchHeightAt と同じ道筋で探す。接地中は下向きに放たない
+    //! 不正な入力か角度上限内で届かない場合は reachable が false、縦速度は 0
     [[nodiscard]] LaunchPitchResult LaunchPitch(const LaunchPitchDesc& desc) noexcept;
 } // namespace GL::Player

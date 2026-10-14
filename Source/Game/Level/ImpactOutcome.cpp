@@ -22,7 +22,6 @@ namespace GL::Level
         // 秒をフレーム数へ換算して 0 から MaxHitStopSteps までに丸める
         [[nodiscard]] int SecondsToSteps(const ImpactTuning& tuning, float seconds) noexcept
         {
-            // 整数のフレームへ丸めるので、同じ秒の指定は毎回同じ長さ止まる
             const float raw = seconds / tuning.fixedDelta;
             if (!std::isfinite(raw))
             {
@@ -31,12 +30,11 @@ namespace GL::Level
             return NS::Clamp(static_cast<int>(std::lround(raw)), 0, MaxHitStopSteps(tuning));
         }
 
-        // 段が配分に掛ける倍率
         struct TierScales
         {
-            float hitStop = 1.0f;         // 貫通の止めの倍率
+            float hitStop = 1.0f;
             float reboundDistance = 1.0f; // 反動の距離の倍率。外れの高さは外れの節で下げる
-            float reboundHeight = 1.0f;   // 反動の高さの倍率
+            float reboundHeight = 1.0f;
         };
 
         // 段ごとに 1 行の表。段を足したら行を足す。真偽で分けると段が 2 つと決め打ちになる
@@ -165,9 +163,7 @@ namespace GL::Level
         const TierScales tierScales = TierScalesFor(input.tier, tuning);
         const float hitStopScale = tierScales.hitStop;
 
-        // 破壊を許可していない間は耐久を見ない。壊れる相手も押し飛ばしと反発へ回る
-        // 壊れる動きを持たない相手も同じ。貫通させると、残った相手の当たりへ自機がめり込んで止まる
-        // 反動と飛ばしの比は押し飛ばしの当たりだけが埋める。貫通は反動も飛ばしもしないので 0
+        // 壊れない相手は押し飛ばしへ回す。貫通させると残った当たりへ自機がめり込む
         if (tuning.breakEnabled && input.breakable && input.toughness <= power)
         {
             outcome.broke = true;
@@ -177,10 +173,8 @@ namespace GL::Level
             return outcome;
         }
 
-        // 質量因子 mass/(mass+1) は質量が大きいほど 1 へ寄る。軽い物は勢いを持っていくのでほとんど返らない
-        // 2 倍して質量 1 で 1 にし、欄を質量 1・威力 1 の高さと距離で持つ
-        // 高さと距離に同じ倍率を掛け、威力と質量が変わっても弾かれ始めの角度を揃える
-        // TODO: 質量 0.5 より軽い物では自機の返りが 0 に近づく。軽い物を置く時は、先に高さと距離の下限を足す
+        // 質量 1・威力 1 を基準にし、高さと距離を同率で伸ばして初角度を保つ
+        // TODO: 質量 0.5 未満の相手を置く時は、反動の高さと距離に下限を足す
         outcome.reboundScale = power * 2.0f * outcome.massFactor;
         // 中心近くの当たりは距離を伸ばして高さを下げる。真ん中に当てた時は低く速く後ろへ、カメラの方へ戻る
         const float reboundDistance = tuning.reboundDistance * outcome.reboundScale * tierScales.reboundDistance;
@@ -192,11 +186,8 @@ namespace GL::Level
         // 外れで相手へ押し込む成分。突進の向きと触れた面の向きの内積で、面の真ん中は 1、端ほど 0 へ寄る
         float missPush = 1.0f;
 
-        // 外れは触れた表面の向き n で来た勢いを分ける。n へ押し込む成分は跳ね返り、面に沿って滑る成分はそのまま
-        // 残るので、真ん中は来た向きへ戻り、端は勢いの多くが横へ逃げて相手の脇を逸れる。量は今の配分のまま、
-        // 向きと符号だけをこの分け方から借りる。相手は押し込む成分だけを受け取り、−n の向きへ押される
-        // 水平の向きは n の水平の成分で映す。縦の成分まで映すと、上の縁の外れが前へ抜けて相手を越え、
-        // 低い反動の弧のまま相手へもう 1 度ぶつかる。上下の縁は高さだけで分ける
+        // 外れは勢いを法線への反発と面に沿う滑りへ分け、配分量は維持する
+        // 水平だけ反射する。縦も映すと上の縁を越え、低い反動の弧で相手に再衝突する
         if (input.tier == HitTier::Wide)
         {
             float sharpness = 2.0f;
@@ -261,8 +252,7 @@ namespace GL::Level
                                       .fallGravityScale = input.launch.fallGravityScale,
                                       .apexBandSpeed = input.launch.apexBandSpeed,
                                       .apexBandGravityScale = input.launch.apexBandGravityScale};
-        // 外れは力が相手へ真っすぐ入らない。飛ぶ量を押し込む成分の 2 乗で減らした上から距離と弧をさらに縮め、
-        // 相手は少しずれるだけにして、真ん中の「弾き飛ばした」に見せない
+        // 外れは押し込む成分に応じて飛ぶ量を減らし、弾き飛ばしに見えないよう距離と高さも抑える
         if (input.tier == HitTier::Wide)
         {
             const float pushSquared = missPush * missPush;

@@ -18,10 +18,7 @@ namespace NS::Obj
 {
     namespace
     {
-        //! 保存形式のバージョン。形式を変えたら上げ、読込は一致のみ受け付ける
-        //! 3: リフレクション欄名を日本語化。旧欄名のファイルを黙って既定値で読まないための引き上げ
-        //! 4: transform の回転を Euler 度 3 要素から クォータニオン 4 要素の 1 欄へ
-        //! 6: 部品の鍵を parts から subObjects へ
+        // 保存形式を変えたら上げる。読み込みは一致する版だけを受け付ける
         constexpr int k_FormatVersion = 6;
 
         //! 読込時の上限。巨大 size / 要素数による メモリ枯渇を防ぐ
@@ -476,7 +473,7 @@ namespace NS::Obj
         {
             NS_LOG_WARN(Scene, "存在しない object を指す参照を {} 件未設定に戻した", prunedRefs);
         }
-        // 循環した親を残すと world 変換の再帰が止まらないので入口で断つ
+        // 循環した親を残すと世界変換の再帰が止まらないので入口で断つ
         const std::size_t prunedParents = PruneInvalidParents(outScene);
         if (prunedParents > 0)
         {

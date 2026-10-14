@@ -11,9 +11,8 @@ namespace NS::Obj
 
 namespace GL::Level
 {
-    //! @brief ぶつかった場所の床へ寝かせる跡
-    //! @details 半透明の板を置き、時間で縮めて消す。消えた跡はシーンが更新の終わりに破棄する
-    //! 依存: NS::Obj::Model, NS::Obj::Scene
+    //! @brief 床へ置き、時間で縮めて消す半透明の跡
+    //! @details 寿命後はシーンが更新の終わりに破棄する
     class ImpactMark : public NS::Obj::Actor
     {
     public:
@@ -24,7 +23,6 @@ namespace GL::Level
         //! 指定の位置へ跡の一時オブジェクトを出す。scene が nullptr なら nullptr を返す
         [[nodiscard]] static NS::Obj::Actor* SpawnAt(NS::Obj::Scene* scene, const NS::Vector3& position);
 
-        //! 跡は効果の段で進む
         [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Effects; }
 
         //! @brief 出た直後の水平の大きさを差し替え、根の倍率へ写す
@@ -36,12 +34,11 @@ namespace GL::Level
 
     protected:
         void OnInit() override;
-        //! 経過秒を進めて縮め、寿命が尽きたら退場する
         void VisualStep() override;
 
     private:
         float m_diameter = 1.5f;    // 出た直後の水平の大きさ
-        float m_lifeSeconds = 6.0f; // 消えるまでの秒
+        float m_lifeSeconds = 6.0f;
         float m_age = 0.0f;         // 出てからの経過秒
     };
 } // namespace GL::Level

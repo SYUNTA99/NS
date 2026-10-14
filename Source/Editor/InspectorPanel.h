@@ -9,8 +9,7 @@ class LevelEditorController;
 
 namespace NS::Editor
 {
-    //! @brief 選択中の対象のトランスフォームとサブオブジェクト構成を編集するインスペクターパネル
-    //! @details 名前欄の一時状態を自分で持つ。改名は world を組み直すので、パネルを描き終えてから流す
+    //! 選択物の名前・姿勢・部品の値を編集する。改名の適用は描画後に行う
     class InspectorPanel : public NS::NonCopyable
     {
     public:

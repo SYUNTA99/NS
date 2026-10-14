@@ -5,11 +5,7 @@
 
 #if defined(NS_ENABLE_ASSERT) && NS_ENABLE_ASSERT
 
-//! @brief 条件が偽なら Fatal ログを出してプロセスを止める
-//! @details アサートを無効にした構成ではマクロごと消えるので、条件式に処理を書かない
-//! @param[in] cat ログのカテゴリ
-//! @param[in] cond 偽の場合に停止する条件式
-//! @param[in] ... 停止時に出力するメッセージ
+//! 条件が偽なら Fatal ログを出して停止する。無効な構成では評価しないため、条件式に副作用を含めない
 #define NS_ASSERT(cat, cond, ...)                                                                                      \
     do                                                                                                                 \
     {                                                                                                                  \

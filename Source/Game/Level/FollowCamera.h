@@ -8,7 +8,6 @@ namespace GL::Level
     class FollowCamera : public NS::Obj::Actor
     {
     public:
-        //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         NS_REFLECT_NONE(FollowCamera, NS::Obj::Actor)
         [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Camera; }
         [[nodiscard]] NS::Obj::ThirdPersonFollow& Vcam() noexcept { return *m_vcam; }
@@ -18,7 +17,6 @@ namespace GL::Level
         void OnInit() override;
         //! 追う相手の状態を読んで仮想カメラへ渡す
         void ObserveStep() override;
-        //! 仮想カメラを 1 歩進める
         void BodyStep() override;
         void OnDisappear() noexcept override;
 

@@ -16,21 +16,17 @@
 
 namespace NS::Obj
 {
-    //! @brief クリップを時間再生して SkeletalMesh のボーンパレットを更新する
-    //! @details 毎フレーム再生時刻を進める。AnimationClip をサンプリングしたポーズを
-    //! Skeleton でボーンパレット化し、SkeletalMesh に渡す。再生 / 停止 / 速度 / ループ / クリップ選択を制御できる
-    //! mesh / skeleton / clips は全て非所有で、AssetManager 等の所有側が寿命を保証する
-    //! OnUpdate は Actor::PrepareRender が RenderPrep の段で呼ぶ。
-    //! 移動と物理の段の後なので、骨は動いた後の姿に付いていく
+    //! 固定更新後にボーンの姿勢を計算する部品
+    //! メッシュ・骨格・クリップは非所有で、所有元が寿命を保証する
     class Animation : public SubObject
     {
     public:
         Animation() noexcept;
         ~Animation();
 
-        //! 更新先の SkeletalMesh を差し替える。非所有で null の間 ApplyPose は何もしない
+        //! 非所有の SkeletalMesh を差し替える。参照先がない間は ApplyPose を行わない
         void SetMesh(NS::Gfx::SkeletalMesh* mesh) noexcept;
-        //! ボーンパレット計算用の骨格を差し替える。非所有で呼出側が寿命を保証する。null の間 ApplyPose は何もしない
+        //! 骨格を差し替える。呼び出し側が寿命を保つ。参照先がない間は ApplyPose を行わない
         void SetSkeleton(const NS::Gfx::Skeleton* skeleton) noexcept;
 
         //! この SubObject が表す skinned モデルの参照。ContentRoot 配下の glTF 相対パス
@@ -93,11 +89,11 @@ namespace NS::Obj
         std::string m_clipsRef{}; // 追加アニメーションの参照一覧。セミコロン区切りで ResolveAssets が結合する
         const NS::Gfx::Skeleton* m_skeleton = nullptr;      // ボーンパレット計算用の骨格 (非所有)
         std::vector<const NS::Gfx::AnimationClip*> m_clips; // 再生できるクリップ一覧 (非所有)
-        std::size_t m_current = 0;                          // 選択中クリップの添字
-        float m_time = 0.0f;                                // 現在の再生時刻
-        float m_speed = 1.0f;                               // 再生速度
-        bool m_playing = true;                              // 再生中か
-        bool m_looping = true;                              // 末尾でループするか
+        std::size_t m_current = 0;
+        float m_time = 0.0f;
+        float m_speed = 1.0f;
+        bool m_playing = true;
+        bool m_looping = true;
         std::vector<NS::Gfx::BonePose> m_poseScratch;       // サンプリング結果の一時ポーズ
         std::vector<NS::Matrix> m_paletteScratch;     // ボーンパレットの一時バッファ
 

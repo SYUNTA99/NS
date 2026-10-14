@@ -1,7 +1,6 @@
 #pragma once
 
-// 仮実装の Audio 層一括 include ヘッダ
-// 将来 DirectXTK::Audio + XAudio2 で BGM / SE 機能を実装予定
+// TODO: 背景音楽・効果音 が必要になった時に音声機能を実装する。
 
 namespace NS::Audio
 {

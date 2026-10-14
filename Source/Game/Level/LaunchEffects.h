@@ -13,22 +13,15 @@ namespace GL::Level
 {
     class MapObj;
 
-    //! @brief 押し飛ばされた物が自分で出す飛び出しの尾と、床に落ちた所の粉。置物に載せる
-    //! @details 受け持つ層の名前は launch. で始まる。飛んでいる自分の後ろへ尾を付けていき、曲線を離れたフレームで消す
-    //! 尾の色は当たりの段、残る長さは飛ばしの比、粉の大きさは威力と自分の重さで決める
-    //! 記録は持ち主の EffectKeeper に残る。描画の無い世界でも残り、試しはそれを読む
-    //! MapObj の見た目の段 (VisualStep) が進める。
-    //! 尾を出す BeginTrail は自機の段に届く放しの知らせの中で走り、置物が自分を動かす Triggers の段より前なので、
-    //! 尾の頭は放した時の速度で 1 フレーム先へ置く
+    //! @brief 押し飛ばされた配置物の尾と、着地の粉を出す部品
+    //! @details 尾は曲線を離れた時に消す。段で色、飛ばしの比で長さ、威力と質量で粉の大きさを決める
     class LaunchEffects : public NS::Obj::SubObject
     {
     public:
         LaunchEffects() noexcept;
 
-        //! 同じ置物の飛び方を控え、描画のある世界なら層の絵を読み込む
         void OnStart() override;
 
-        //! 曲線を飛んでいる間は尾の頭を自分の位置へ付けていき、曲線を離れたら尾を消す
         void OnUpdate() override;
 
         //! @brief 押し飛ばされた所から尾を出す。前の尾が残っていれば消してから出す
@@ -51,7 +44,6 @@ namespace GL::Level
         //! 落ちた所の粉の大きさ (m)
         [[nodiscard]] float LandDustScale() const noexcept { return m_landDustScale; }
 
-        // 飛んでいく物の尾と落ちた所の粉は、飛ばした手応えそのもの。Inspector で触って詰められるよう公開する
         NS_REFLECT_BEGIN(LaunchEffects, NS::Obj::SubObject)
         NS_REFLECT_FIELD(m_landDustLife, "着地の粉の寿命フレーム")
         NS_REFLECT_FIELD(m_dustRingLift, "着地の粉を浮かせる高さ")
@@ -83,9 +75,9 @@ namespace GL::Level
         MapObj* m_body = nullptr;
         std::uint32_t m_trail = 0;                 // 飛び出しの尾。消したら 0
         int m_trailStartStep = 0;                  // 尾を出したフレーム。このフレームは出した姿のまま
-        int m_trailFrames = 0;                     // 尾が残るフレーム数
+        int m_trailFrames = 0;
         float m_trailScale = 1.0f;                 // 尾の再生の大きさ。自分の直径 (m)
-        NS::Vector3 m_launchDir{1.0f, 0.0f, 0.0f}; // 飛ぶ水平の向き
+        NS::Vector3 m_launchDir{1.0f, 0.0f, 0.0f};
         float m_landDustScale = 0.0f;              // 落ちた所の粉の大きさ (m)
     };
 } // namespace GL::Level

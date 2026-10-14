@@ -12,9 +12,7 @@ namespace NS::Obj
 {
     struct CameraPose;
 
-    //! @brief Scene が 1 つ持つ実カメラ。NS::CameraData を値で内包する
-    //! @details Getter / Setter は内包する CameraData への薄いラッパー
-    //! 描画とエディタが書いて読む。遊びは読まず、向きと位置は IUseCamera の補助関数から引く
+    //! シーンの実カメラ。描画と編集用で、遊びの向きは IUseCamera から取得する
     class SceneCamera
     {
     public:

@@ -29,7 +29,6 @@ namespace NS::Editor
         constexpr float k_ScaleSnapStep = 0.25f;
         constexpr float k_ScaleSensitivity = 0.01f;
 
-        // スケールの最小値
         constexpr float k_ScaleMin = 0.01f;
 
         // ワールド空間におけるギズモハンドルの基本長
@@ -56,7 +55,6 @@ namespace NS::Editor
         // AABB交差判定時の平行閾値
         constexpr float k_RayAABBParallelEpsilon = 1e-8f;
 
-        // 指定の刻み幅へ丸める
         [[nodiscard]] float SnapTo(float value, float step) noexcept
         {
             if (step <= 0.0f)
@@ -81,13 +79,11 @@ namespace NS::Editor
             }
         }
 
-        // 指定された軸ベクトルを、与えられた回転クォータニオンで変換して返す
         [[nodiscard]] NS::Vector3 OrientedAxis(GizmoAxis axis, const NS::Quaternion& rotation) noexcept
         {
             return NS::Vector3::Transform(AxisVector(axis), rotation);
         }
 
-        // ツールと座標系モードに基づき、ギズモハンドルの基準となる回転を決定する
         [[nodiscard]] NS::Quaternion EffectiveAxisOrientation(GizmoTool tool,
                                                               GizmoSpace space,
                                                               const NS::Quaternion& objectRotation) noexcept
@@ -99,7 +95,6 @@ namespace NS::Editor
             return objectRotation;
         }
 
-        // レイと平面の交点を算出する
         [[nodiscard]] bool IntersectRayWithPlane(const NS::Ray& ray,
                                                  const NS::Vector3& planePoint,
                                                  const NS::Vector3& planeNormal,
@@ -115,7 +110,6 @@ namespace NS::Editor
             return true;
         }
 
-        // レイが原点中心の AABB と交差するか
         [[nodiscard]] bool IntersectRayCenteredAABB(const NS::Vector3& origin,
                                                     const NS::Vector3& direction,
                                                     const NS::Vector3& halfExtents,
@@ -167,7 +161,6 @@ namespace NS::Editor
             return true;
         }
 
-        // ワールド座標をスクリーン座標へ投影する
         [[nodiscard]] bool ProjectToScreen(const NS::Vector3& world,
                                            const NS::Matrix& vp,
                                            NS::Size2D viewport,
@@ -184,7 +177,6 @@ namespace NS::Editor
             return k_HandleLength * ScreenConstantScale(origin, vp);
         }
 
-        // 点から線分までの最短距離を算出する
         [[nodiscard]] float DistancePointToSegment(NS::Vector2 p, NS::Vector2 a, NS::Vector2 b) noexcept
         {
             const float abx = b.x - a.x;
@@ -250,7 +242,6 @@ namespace NS::Editor
             target.SetScale(scale);
         }
 
-        // スクリーンのドラッグ操作を評価し、新しいトランスフォーム状態を計算する
         [[nodiscard]] TransformState ComputeDragResult(const TransformState& before,
                                                        GizmoTool tool,
                                                        GizmoSpace space,
@@ -339,7 +330,6 @@ namespace NS::Editor
             return center + u * c + v * s;
         }
 
-        // スクリーン上における、指定したリングとマウス座標との最短距離を算出する
         [[nodiscard]] float DistanceToRing(GizmoAxis axis,
                                            const NS::Vector3& center,
                                            const NS::Quaternion& rotation,
@@ -403,7 +393,7 @@ namespace NS::Editor
         // 右ドラッグ中の W/A/S/D/Q/E は編集カメラの移動なので、ツール切替に食われないようにする
         const bool cameraFlying = mouse.IsHeld(NS::OS::MouseButton::Right);
 
-        // Q/W/E/R でツール、X で Local / World を切り替える
+        // Q/W/E/R でツール、X で局所座標系と世界座標系を切り替える
         if (!imguiWantsKeyboard && !m_dragging && !cameraFlying)
         {
             for (const NS::OS::Key key : {NS::OS::Key::Q, NS::OS::Key::W, NS::OS::Key::E, NS::OS::Key::R})
@@ -562,7 +552,6 @@ namespace NS::Editor
 
         const ImVec2 originPx = toPx(origin2d);
 
-        // 今の座標系 (Local / World) を文字で出す
         const bool worldEffective = (m_tool != GizmoTool::Scale) && (m_space == GizmoSpace::World);
         const char* spaceLabel = "Local";
         if (worldEffective)
@@ -582,7 +571,6 @@ namespace NS::Editor
 
         if (m_tool == GizmoTool::Rotate)
         {
-            // 回転ツール時のリングを描画する
             constexpr int k_Segments = 48;
             for (int a = 0; a < 3; ++a)
             {
@@ -606,7 +594,6 @@ namespace NS::Editor
         }
         else
         {
-            // 移動・スケールツール時の軸線と端点を描画する
             for (int i = 0; i < 3; ++i)
             {
                 const NS::Vector3 dir = OrientedAxis(axes[i], rotation);
@@ -633,7 +620,6 @@ namespace NS::Editor
                 }
                 else
                 {
-                    // 移動ハンドルの矢印を描画する
                     const float dx = endPx.x - originPx.x;
                     const float dy = endPx.y - originPx.y;
                     const float len = std::sqrt(dx * dx + dy * dy);
@@ -657,7 +643,6 @@ namespace NS::Editor
                 }
             }
 
-            // スケールの中央ハンドル
             if (m_tool == GizmoTool::Scale)
             {
                 constexpr float k_CenterHalf = 5.0f;
@@ -696,13 +681,11 @@ namespace NS::Editor
                                     std::span<const NS::AABB> localBounds,
                                     std::span<const std::uint8_t> pickMask) noexcept
     {
-        // 全部にレイを当てて、最も手前の添字を選ぶ
         const std::size_t count = std::min(worldMatrices.size(), localBounds.size());
         int best = -1;
         float bestT = 0.0f;
         for (std::size_t i = 0; i < count; ++i)
         {
-            // マスクで無効化されたオブジェクトをスキップする
             if (!pickMask.empty() && (i >= pickMask.size() || pickMask[i] == 0))
             {
                 continue;
@@ -763,7 +746,6 @@ namespace NS::Editor
 
         float delta = (p1 - p0).Dot(a);
 
-        // 算出した移動量をスナップして適用する
         if (snap)
         {
             delta = SnapTo(delta, k_MoveSnapStep);
@@ -790,7 +772,6 @@ namespace NS::Editor
         const NS::Ray rayNow = NS::Editor::ScreenToWorldRay(
             viewProjection, viewport, static_cast<int>(screenEnd.x), static_cast<int>(screenEnd.y));
 
-        // 軸直交平面との交点を算出し、ワールド座標上の操作点を特定する
         NS::Vector3 hitStart{};
         NS::Vector3 hitNow{};
         if (!IntersectRayWithPlane(rayStart, origin, n, hitStart) || !IntersectRayWithPlane(rayNow, origin, n, hitNow))
@@ -805,7 +786,6 @@ namespace NS::Editor
             return 0.0f;
         }
 
-        // 操作点の前回・今回のベクトルから、軸周りの回転角を算出する
         const float sinComponent = v0.Cross(v1).Dot(n);
         const float cosComponent = v0.Dot(v1);
         return std::atan2(sinComponent, cosComponent);
@@ -901,7 +881,6 @@ namespace NS::Editor
                                           const NS::Matrix& viewProjection,
                                           NS::Size2D viewport) noexcept
     {
-        // 選択ツールはハンドルを持たない
         if (tool == GizmoTool::Select)
         {
             return GizmoAxis::None;
@@ -917,7 +896,6 @@ namespace NS::Editor
             return GizmoAxis::None;
         }
 
-        // 回転リング
         if (tool == GizmoTool::Rotate)
         {
             const GizmoAxis ringAxes[3] = {GizmoAxis::X, GizmoAxis::Y, GizmoAxis::Z};

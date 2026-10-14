@@ -91,7 +91,6 @@ namespace NS::Editor
         HandleSaveLoadInput();
         m_palette.TickInput(m_input, m_imgui);
 
-        // カーソルの回転状態に合わせて、表示用のヨー角を滑らかに追従させる
         const NS::Quaternion targetQuat = RotationToQuaternion(m_currentRotation);
         constexpr float k_RotationSpringRate = 12.0f;
         const float dt = NS::OS::FrameTimer::FixedDelta();
@@ -151,7 +150,7 @@ namespace NS::Editor
 
     bool EditorMode::SaveLevelToName(std::string_view name) noexcept
     {
-        // 休止中はプレイ中。live はプレイで動いた後の姿で、編集の内容ではないので書かない
+        // 休止中はプレイ中。実体はプレイで動いた後の姿で、編集の内容ではないので書かない
         if (!m_active || !m_captureLevel)
         {
             return false;
@@ -167,7 +166,7 @@ namespace NS::Editor
 
         (void)EnsureScenesDirectoryExists();
 
-        // 保存の出所は live 実体。捕捉関数で実体からシーンの JSON 文書を作って書く
+        // 保存の出所は実体。捕捉関数で実体からシーンの JSON 文書を作って書く
         const nlohmann::json snapshot = m_captureLevel();
         const bool ok = NS::Obj::SaveSceneToJsonFile(snapshot, *path);
         if (ok)
@@ -361,7 +360,6 @@ namespace NS::Editor
 
         const CursorScreenProjector project{vp, originX, originY, vpW, vpH};
 
-        // 選択セルの境界ボックスを描画する
         const NS::Vector3 boxCorners[8] = {
             {c.x - h, c.y - h, c.z - h},
             {c.x + h, c.y - h, c.z - h},
@@ -410,7 +408,6 @@ namespace NS::Editor
             }
         }
 
-        // スロープが選択されている場合、向きを視覚化するためにウェッジ形状を描画する
         const float slopeAngle = m_palette.CurrentSlopeAngleDegrees();
         if (slopeAngle >= 0.0f)
         {
@@ -470,7 +467,6 @@ namespace NS::Editor
             return;
         }
 
-        // 回転対象外は回転 step を 0 にする
         const std::uint8_t rotation = [this]() -> std::uint8_t {
             if (m_palette.CurrentIsRotatable())
             {
@@ -479,7 +475,6 @@ namespace NS::Editor
             return std::uint8_t{0};
         }();
 
-        // パレット雛形を cell 座標と回転 step だけ書き込んで 1 体分の姿を作る
         nlohmann::json placed = m_palette.CurrentTemplate();
         NS::Obj::SetObjectPosition(placed,
                                    NS::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
@@ -682,7 +677,7 @@ namespace NS::Editor
     void EditorMode::HandlePlaceDeleteInput() noexcept
     {
         // Game 窓の上では ImGui が常にマウスを要求するため、UI 上かどうかの判定は
-        // カーソルの有効性 (パネル hover + 矩形内) に任せる
+        // カーソルがパネルの矩形内にあるかで判定する
         if (m_input == nullptr || !m_cursor.valid)
         {
             return;

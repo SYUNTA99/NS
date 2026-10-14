@@ -11,10 +11,10 @@ namespace GL::Player
         bool grounded = true;                   //!< 接地しているか。自動ズームの判定に使う
         NS::Vector3 velocity{0.0f, 0.0f, 0.0f}; //!< 速度 (m/s)
         float heightOffset = 0.0f;              //!< 根から見る所までの高さのずれ (m)
-        bool hasRebound = false;                //!< 反動の状態を出すか
-        NS::Obj::FollowReboundDesc rebound{};   //!< 反動の状態
-        bool hasCharge = false;                 //!< 溜めの状態を出すか
-        NS::Obj::FollowChargeDesc charge{};     //!< 溜めの状態
+        bool hasRebound = false;
+        NS::Obj::FollowReboundDesc rebound{};
+        bool hasCharge = false;
+        NS::Obj::FollowChargeDesc charge{};
         //! 体当たりから止めの明けまでか。真の間、カメラは距離と溜めの締めをその時のまま保つ
         bool framingHeld = false;
     };

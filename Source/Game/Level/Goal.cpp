@@ -11,11 +11,10 @@ namespace GL::Level
     void Goal::OnInit()
     {
         m_params = CreateSubObj<GoalParams>("Params");
-        // 目印の金色の立方体
         NS::Obj::Model* mesh = CreateSubObj<NS::Obj::Model>(ModelSlot());
         mesh->SetMeshRef("cube");
         mesh->SetBaseColor(NS::Vector3{1.0f, 0.84f, 0.0f});
-        // 「触れた」とみなすプレイヤー中心からの距離 0.9m の球。プレイヤーの体の寸法ぶん手前で触れる
+        // ゴールの半径 0.9 m にプレイヤーの体が重なれば触れたとみなす
         NS::Obj::ShapeHitSensor* area = CreateSubObj<NS::Obj::ShapeHitSensor>(BodySensorSlot());
         SetSensorKind(*area, SensorKind::Area);
         area->SetSphere(0.9f);

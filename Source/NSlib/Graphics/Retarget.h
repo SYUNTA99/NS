@@ -13,11 +13,8 @@ namespace NS::Gfx
     //! 最後の : か | までを取り除き、残りを前後の空白なしの小文字にする
     [[nodiscard]] std::string NormalizeBoneName(std::string_view raw);
 
-    //! @brief クリップの各トラックを、source の骨名と正規化名が一致する target の骨 index へ張替える
-    //! @details 一致する骨が無いトラックは落とす。全トラックが落ちたクリップは結果に含めず警告だけ出す
-    //! トラックが空のクリップを返すと IsValid() が false で bind ポーズに戻るだけの無効データになり、
-    //! クリップ数の水増しで添字選択もずれるため
-    //! target 側で正規化後の名前が重複したときは先の骨へ張り、警告する
+    //! 正規化した骨名でトラックを張り替える。一致しないトラックと空のクリップは除く
+    //! 対象の骨名が重複した場合は先の骨を使い、警告する
     [[nodiscard]] std::vector<AnimationClip> BindClipsByName(const std::vector<AnimationClip>& sourceClips,
                                                              const Skeleton& sourceSkeleton,
                                                              const Skeleton& targetSkeleton);

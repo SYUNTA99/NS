@@ -18,7 +18,7 @@ namespace NS::Editor
         void Render(LevelEditorController& editor) noexcept;
 
     private:
-        bool m_open = false;       // modal 表示中か
+        bool m_open = false;
         bool m_confirmed = false;  // 終了を確定したか。二度目の終了要求を素通しする
         bool m_saveFailed = false; // 直前の保存が失敗したか。modal に赤字で出す
     };

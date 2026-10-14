@@ -15,9 +15,7 @@ namespace NS::Phys
 
 namespace NS::Obj
 {
-    //! @brief 地形の当たりの窓口。シーンの PhysicsScene を引ける物が持つ
-    //! @details Actor とシーンと、動く体の当たりの部品 Collider が持つ。他の部品は持ち主の Actor から引く
-    //! Actor 同士の当たりはヒットセンサーとメッセージで見る。ここは床や壁との当たりを問う口
+    //! 地形への衝突問い合わせ。個体同士の判定はヒットセンサーを使う
     class IUseCollision
     {
     public:
@@ -44,10 +42,7 @@ namespace NS::Obj
                                         NS::Vector3& outNormal,
                                         JPH::BodyID ignoredBody);
 
-    //! @brief region に重なる body の世界座標の境界箱を集めて返す
-    //! @details 重なりを見るのも返すのも軸並行の境界箱で、shape の形は見ない。答えは PhysicsScene::OverlapBox と同じ
-    //! @param[in] user 問う物。シーンの PhysicsScene をここから引く
-    //! @param[in] region 調べる軸並行の箱。幅 0 の柱や点も渡せる
-    //! @return 重なった body の境界箱の並び。シーンに居ない時と重なりが無い時は空
+    //! 軸並行の境界箱で重なりを調べ、世界座標の境界箱を返す。実形状は判定しない
+    //! region は幅 0 の点や柱も受け付ける。シーンなし・重なりなしなら空
     [[nodiscard]] std::vector<NS::AABB> OverlapBoxCollision(const IUseCollision* user, const NS::AABB& region);
 } // namespace NS::Obj

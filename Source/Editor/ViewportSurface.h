@@ -21,22 +21,18 @@ namespace NS::Obj
 
 namespace NS::Editor
 {
-    //! @brief 中央ビュー 1 枚のオフスクリーン描画先を持ち、ImGui パネルへ貼る共通の道具
-    //! @details Scene / Game 各パネルが 1 つずつ持つ。前フレームに用意した RT を今フレームの Image が映す
-    //! 1 フレーム遅延方式。RT の生成 / リサイズと貼り付けをここへ集め、パネル側は overlay と入力だけ持つ
+    //! パネルに貼るオフスクリーン描画先。画像表示後に次フレームのサイズへ合わせる
     class ViewportSurface : public NS::NonCopyable
     {
     public:
-        //! RenderTarget を不完全型のまま持つので、実体は両方 .cpp 側に置く
-        //! コンストラクタも対象で、例外時の巻き戻しで unique_ptr が破棄されるため完全型が要る
+// RenderTarget の完全型が必要なため、構築と破棄は .cpp で定義する
         ViewportSurface();
         ~ViewportSurface();
 
         //! 描画先の初期目標サイズを窓サイズに合わせ、初回フレームから映せるようにする
         void SetInitialSize(const NS::Size2D& size) noexcept { m_size = size; }
 
-        //! @brief 画角を固定する縦横比を決める。0 以下ならパネルの形に追従する
-        //! @details ゲーム画面はパネルの形で見え方が変わると手触りを詰める基準が動くので、出荷と同じ比率で固定する
+        //! 映像の縦横比を固定する。0 以下ならパネルの形に追従する
         void SetFixedAspect(float aspect) noexcept { m_fixedAspect = aspect; }
 
         //! フレーム先頭で可視状態と焦点を false にする。このフレームに BeginView されなければ不可視のままになる
@@ -46,16 +42,15 @@ namespace NS::Editor
             m_focused = false;
         }
 
-        //! @brief windowName のパネルを Begin し、content 領域があれば目標サイズを更新して RT を貼る
-        //! @param[out] outMin,outMax,outHovered 貼った映像の矩形と hover。映像を貼れた時だけ埋まる
-        //! @return 映像を貼れたか (可視かつ RT 有効)。可視否かに関わらず EndView を必ず呼ぶ
+        //! パネルに画像を貼れた時だけ矩形とカーソルの重なりを更新し、true を返す
+        //! 戻り値に関わらず EndView を呼ぶ
         [[nodiscard]] bool BeginView(const char* windowName, ImVec2& outMin, ImVec2& outMax, bool& outHovered) noexcept;
 
         //! BeginView と対で必ず呼ぶ。Begin した窓を閉じ、積んだスタイルを戻す
         void EndView() noexcept;
 
-        //! @brief 目標サイズに追従して RT を用意し、pose とセットのビューを返す
-        //! @return 可視だったフレームは {RT, pose}。不可視やサイズ不足なら nullopt
+        //! @brief 目標サイズに追従して描画先を用意し、pose とセットのビューを返す
+        //! @return 可視だったフレームは {描画先, pose}。不可視やサイズ不足なら nullopt
         [[nodiscard]] std::optional<NS::Obj::SceneView> CollectView(std::optional<NS::Obj::CameraPose> pose) noexcept;
 
         //! @brief 貼り付け中の描画先をリサイズせず、pose とセットで返す
@@ -76,8 +71,8 @@ namespace NS::Editor
     private:
         std::unique_ptr<NS::Gfx::RenderTarget> m_target;
         NS::Size2D m_size{0, 0};    // content 領域。次フレームの描画先サイズ
-        float m_fixedAspect = 0.0f; // 固定する縦横比。0 以下はパネルの形に追従
-        bool m_visible = false;     // このフレームにパネルが可視だったか
-        bool m_focused = false;     // このフレームにパネルへ焦点があったか
+        float m_fixedAspect = 0.0f;
+        bool m_visible = false;
+        bool m_focused = false;
     };
 } // namespace NS::Editor

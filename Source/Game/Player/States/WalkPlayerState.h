@@ -6,7 +6,6 @@ class Player;
 
 namespace GL::Player
 {
-    //! 走り。落下・ブレーキ・立ちへ移る
     class WalkPlayerState final : public PlayerState<WalkPlayerState>
     {
     public:

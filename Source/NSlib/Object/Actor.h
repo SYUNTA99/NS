@@ -101,11 +101,8 @@ namespace NS::Obj
         //! @brief 居るシーンの重力の向きを返す
         //! @return シーンに居なければ (0, -1, 0)
         [[nodiscard]] NS::Vector3 GravityDirection() const noexcept;
-        //! @brief 居るシーンの重力の向きへ、strength × dt だけ velocity を足す
-        //! @details strength か dt が有限でない時と、dt が 0 以下の時は何もしない
-        //! @param[in,out] velocity 足す先の速度
-        //! @param[in] strength 重力の強さ。単位は m/s²
-        //! @param[in] dt 進める秒
+        //! シーンの重力方向へ加速する。strength は m/s²、dt は秒
+        //! 非有限値または dt が 0 以下なら変更しない
         void AddGravity(NS::Vector3& velocity, float strength, float dt) const noexcept;
 
         //! @brief OnInit を 1 回だけ呼ぶ。2 回目からは何もしない
@@ -140,15 +137,11 @@ namespace NS::Obj
         [[nodiscard]] const HitReaction* HitReactionSubObj() const noexcept { return m_hitReaction; }
 
         //! @brief Update を呼ばれる段を返す
-        //! @return 既定は Triggers
         [[nodiscard]] virtual UpdatePhase Phase() const noexcept { return UpdatePhase::Triggers; }
-        //! Input の段で、出ている全ての Actor に呼ばれる。既定は何もしない
         virtual void ReadInput() {}
-        //! @brief Phase が返す段で、1 固定ステップを観測、決定、状態、身体、見た目の順に 1 回ずつ進める
-        //! @details 順は基底のここ 1 か所で決まり、派生は上書きできない。派生は段の中身だけを ObserveStep などで書く。
-        //! 部品は自分では回らないので、各段で順に呼ぶ。枠 Effect の部品だけは、観測の前に基底が 1 フレーム進める
+        //! 観測・裁定・状態・身体・見た目を固定順で更新する。部品は各段で明示的に呼ぶ
+        //! エフェクトの記録は観測前に進める
         void Update();
-        //! RenderPrep の段で、出ている全ての Actor に呼ばれる。既定は Animation を進める
         virtual void PrepareRender();
 
         //! 実行時にコードが足す一時オブジェクトか。true は保存・凍結・作業データに写らず、
@@ -158,13 +151,11 @@ namespace NS::Obj
         //! 一時オブジェクトの印。Scene::SpawnTransient が立てる。テストは直接立ててよい
         void SetTransient(bool transient) noexcept { m_transient = transient; }
 
-        //! @brief 全ての配置物の開始が済んだ後に 1 回呼ばれる。オデッセイの initAfterPlacement に当たる
-        //! @details シーンに 1 つの物を作るなど、他の配置物が揃っている前提の用意を書く
+        //! 全配置物の初期化後に一度呼ぶ。他の配置物を必要とする初期化を行う
         virtual void InitAfterPlacement() {}
 
-        //! @brief 自分のセンサー self が、持ち主の違うセンサー other に重なったフレームに呼ばれる
-        //! @details 重なっている間は毎フレーム呼ばれ、相手の持ち主にも向きを入れ替えて同じフレームに呼ばれる。
-        //! 調べ役は種類を見ないので、相手の種類を見て知らせを送るかはここで決める。オデッセイの attackSensor
+        //! 異なる持ち主のセンサーが重なる間、互いに毎歩呼ばれる
+        //! センサーの種類を判断し、必要なメッセージを送る
         virtual void AttackSensor(HitSensor& self, HitSensor& other)
         {
             (void)self;
@@ -197,7 +188,6 @@ namespace NS::Obj
             return false;
         }
 
-        //! @brief 部品を作る。Init から 1 回だけ呼ばれる。既定は何もしない
         //! @details 部品は CreateSubObj で作る。基底の枠の型を替える派生は、基底の OnInit を呼ばずに自分で作る
         //! 所属の Scene は入る道によって付いていないので、ここでは読まない
         virtual void OnInit() {}
@@ -239,23 +229,15 @@ namespace NS::Obj
 
         virtual void OnAppear();
         virtual void OnDisappear() noexcept;
-        //! @brief 観測の段。この歩の始まり
-        //! @details 世界と相手を読んで控え、歩ごとの記録の時計を進める。状態・身体・見た目を書かない。
-        //! 既定は何もしない。補間の前の値は段でなく固定ステップの頭で控える
+        //! 世界と相手を観測する段。状態・身体・見た目は変更しない
         virtual void ObserveStep() {}
-        //! @brief 裁定の段
-        //! @details 観測から、この歩に使う値を決め、知らせを送る。既定は何もしない
+        //! 観測結果からこの歩の値を決め、メッセージを送る段
         virtual void DecideStep() {}
-        //! @brief 状態機械の段
-        //! @details 状態機械を 1 歩進める。上書きするのは状態機械の前後に持ち主の処理を挟む時だけで、
-        //! 状態機械を持たない物は上書きしない。既定は状態機械を 1 歩進め、持たなければ何もしない
+        //! 状態機械を進める段。上書きは状態更新の前後に処理を挟む場合だけ
         virtual void StateStep();
-        //! @brief 身体の段
-        //! @details 身体を動かし、物理と当たりの置き場を今の姿へ揃える。カメラは仮想カメラをここで 1 歩進める。
-        //! 既定は何もしない
+        //! 身体を動かし、衝突形状を揃える段。仮想カメラもここで更新する
         virtual void BodyStep() {}
-        //! @brief 見た目の段
-        //! @details 動いた後の姿から見た目・演出・寿命の減りを進める。既定は何もしない
+        //! 移動後の姿勢から見た目・演出・寿命を更新する段
         virtual void VisualStep() {}
         static void TickSubObj(SubObject* subObject)
         {
@@ -264,17 +246,9 @@ namespace NS::Obj
                 subObject->OnUpdate();
             }
         }
-        //! @brief 持ち主の型 TOwner の状態機械を TStates で組み、基底に預けて先頭の状態へ入る
-        //! @details 状態機械は 1 体に 1 つで、Update が 1 固定ステップ進める。既に持っている時は組まずに
-        //! NS_LOG_ERROR で知らせて false を返し、今の機械をそのまま残す (動いている機械は状態の中から呼ばれて
-        //! いることがあり、捨てると呼び出し中の状態が消える)。型付きのポインタは先頭の OnEnter より前に
-        //! outMachine へ書くので、OnEnter の中からも引ける。持ち主は OnEnter の触る所を作り終えてから呼ぶ。
-        //! 持ち主を受けるのはここだけで、機械は生涯この持ち主を状態へ渡す
-        //! @tparam TOwner 呼ぶ派生の型。状態は StateOf<自分の型, TOwner> から派生する
-        //! @tparam TStates 状態の型の並び。先頭が初期状態で、並べた型が移れる状態の全部になる
-        //! @param[in] owner 状態へ渡す持ち主。自分自身を渡す
-        //! @param[out] outMachine 組んだ状態機械の置き場。基底が所有するので持ち主は参照を持つだけ。失敗時は触らない
-        //! @return 組めた場合 true、既に状態機械を持っていて組まなかった場合 false
+        //! 自分を持ち主に、TStates の先頭へ入る状態機械を一度だけ構築する
+        //! OnEnter が使う部品を先に用意する。outMachine は OnEnter 前に設定する
+        //! 基底が所有し、型付きポインタは非所有。既に構築済みなら変更せず false
         template <typename TOwner, typename... TStates>
         bool BuildStateMachine(TOwner& owner, StateMachine<TOwner>*& outMachine)
         {
@@ -321,9 +295,7 @@ namespace NS::Obj
             return AdoptSubObj(std::move(subObject), name);
         }
         void AdoptSubObjBase(std::unique_ptr<SubObject> subObject, std::string_view name);
-        //! 部品名 name が使われていて作れない事を NS_LOG_ERROR で知らせる
         void ReportTakenName(std::string_view name) const;
-        //! SubObjs の並びの順位。根が 0、基底の枠が決まった順に 1 から 8、派生の部品は 9
         [[nodiscard]] std::size_t OrderRank(const SubObject* subObject) const noexcept;
         std::uint32_t m_id = 0;
         std::string m_name;

@@ -194,8 +194,7 @@ namespace GL::Player
 
         shape.coreDiameter = std::min(m_coreDiameterMax, m_coreDiameterBase + m_coreDiameterPerPower * power);
         ApplyTierRow(shape, impact, power);
-        // 量は数と速さの積。数は威力で、速さは飛ばしの比 (重い相手ほど遅い) で決まるので、積は威力の順と
-        // 同じ威力での質量の順の両方に並ぶ。速さだけでは質量 8 の溜めきりが質量 1 の通常突進より小さく出た
+        // 粒数と速さの積で量を測り、威力と質量の両方による差を残す
         shape.sparkAmount = static_cast<float>(shape.sparkCount) * shape.sparkSpeed;
 
         shape.recoilLength = m_recoilLengthBase + m_recoilLengthPerRebound * std::max(impact.reboundScale, 0.0f);
@@ -351,8 +350,7 @@ namespace GL::Player
         m_aim.ringNormal = plan.ringNormal;
 
         const ImpactShape& shape = m_plan.shape;
-        // 当たりの絵の頭は放射の線を留まる間の縮んだフレームと同じ大きさで出し、星形と核 (動的入力 3 番が掛かる) だけを
-        // 出始めの大きさにする。手本は接触のコマで既に光が広がり、層の広がりが次のコマの 9 割を超える
+        // 放射は広がった大きさから始め、星形と核だけ出始めの倍率を掛ける
         NS::Gfx::EffectPlayDesc core =
             PlayAt(m_plan.contact, Quaternion::Identity, Uniform(shape.coreDiameter * m_coreHoldPulse));
         core.dynamicInputs[0] = 0.0f;
@@ -363,8 +361,7 @@ namespace GL::Player
         m_plan.core = NS::Obj::PlayEffect(Owner(), m_coreAsset, core);
         NS::Obj::SetEffectAmount(Owner(), m_plan.core, shape.coreDiameter);
 
-        // 照りは核と同じ当たりの絵の頭から。手本の弾きは接触のコマで既に床が照らされ、画面の明るさが最大の 4
-        // 割まで上がる
+        // 照りも命中演出の最初から出す
         if (shape.glowDiameter > 0.0f)
         {
             // 板の法線 (+Z) を上へ向け、床に寝かせる
@@ -512,8 +509,7 @@ namespace GL::Player
         }
         if (m_plan.glow != 0 && frame >= 1 && frame <= shape.holdLastFrame)
         {
-            // 照らす面積を、弱め始めるフレームで最大にし、そこから光の塊が消えた次のフレーム (e + 2) の 0 まで
-            // 線形に減らす。加算の円なので、画面の明るさに足す量は面積に沿って減る
+            // 加算の円は面積で明るさが変わるため、消えるまでの面積を線形に減らす
             float share = std::clamp(m_glowRiseShare, 0.0f, 1.0f);
             if (frame == m_glowDimStart)
             {
@@ -584,8 +580,7 @@ namespace GL::Player
             }
             if (recoilDue && shape.recoilCount > 0)
             {
-                // 玉の縁のうち反動の向きの逆の点から、反動の向きへ開く扇にする。接触点 (玉の相手の側) から出すと、
-                // 線の出た側を玉の後ろと読まれ、上へ弾かれた玉が横へ動いて見えた
+                // 接触点から出すと動く方向を誤読しやすいため、反動と逆側の玉の縁から線を出す
                 float radius = 0.0f;
                 if (m_player != nullptr)
                 {

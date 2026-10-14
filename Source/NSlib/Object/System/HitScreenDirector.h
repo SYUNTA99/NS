@@ -12,9 +12,7 @@ namespace NS::Obj
     class Actor;
     class Scene;
 
-    //! @brief 震えの線 1 回。挟む物の輪郭の外の左右に縦の短い線を 3 本ずつ出し、決めたフレーム数ごとに外と内へずらす
-    //! @details 挟む物は 1 つか 2 つ。2 つの時は画面の上で両方を囲む幅の外に出す。画素の欄は描画先の高さが 720 の
-    //! ときの大きさで書く
+    //! 対象の輪郭の左右へ出す震えの線。寸法は高さ 720 基準の画素
     struct HitShakeLinesDesc
     {
         NS::Vector3 center{};       //!< 線で挟む物の中心。世界の点
@@ -55,20 +53,14 @@ namespace NS::Obj
         float height = 0.0f;
     };
 
-    //! @brief 震えの線の矩形を作る。左の 3 本、右の 3 本の順
-    //! @param[in] desc 震えの線の設定
-    //! @param[in] frame 始めたフレームを 0 にしたフレーム数
-    //! @param[in] span 挟む物の画面の上の幅。線はこの外に出す
-    //! @param[in] pixelScale 描画先の高さを 720 で割った値。画素の欄に掛ける
-    //! @return 6 枚の矩形
+    //! 対象の画面幅 span の外へ、左 3 本・右 3 本の順で矩形を返す
+    //! frame は開始を 0 とした歩数、pixelScale は描画先の高さ ÷ 720
     [[nodiscard]] std::array<HitShakeLineRect, 6> ShakeLineRects(const HitShakeLinesDesc& desc,
                                                                  int frame,
                                                                  const HitShakeLineSpan& span,
                                                                  float pixelScale) noexcept;
 
-    //! @brief 当たりの白・震えの線・歪みの輪を進めて画面へ出す、シーンに 1 つの物
-    //! @details 部品の HitReaction が頼む。頼んだフレームは最初の姿を出し、次の更新から進める。
-    //! 描く支度の段で進むので、世界の速さに従い、自機以外の止めの間も進む
+    //! シーン共通の画面演出。開始した歩は初期状態を描き、次の更新から世界の速さで進める
     class HitScreenDirector final : public SceneSystem, public IOverlay
     {
     public:

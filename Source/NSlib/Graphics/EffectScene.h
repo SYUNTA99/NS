@@ -27,10 +27,8 @@ namespace NS::Gfx
 {
     class Texture;
 
-    //! @brief Effekseer のエフェクトを読み込み、再生して描くクラス
-    //! @details 構築時に Gpu() の device と context を使う。NS の Renderer が未構築なら無効な状態になる
-    //! 無効な状態では IsValid が false を返し、各操作は何もしない
-    //! エフェクトは Preload で読み込んでから Play で再生する。Play はファイルを読まない
+    //! Effekseer の再生と描画。Renderer の構築後に作り、Preload 後に再生する
+    //! 無効な状態では各操作を行わない
     class EffectScene : public NS::NonCopyable
     {
     public:
@@ -42,76 +40,45 @@ namespace NS::Gfx
         //! 構築に成功した場合 true、それ以外の場合は false
         [[nodiscard]] bool IsValid() const noexcept;
 
-        //! @brief effectRoot から name.efkefc を読み込み、Play で再生できるようにする
-        //! @param[in] name 拡張子を除いた effectRoot 相対のパス。UTF-8 で渡す
-        //! @return 読み込めたか読み込み済みの場合 true、それ以外の場合は false
-        //! @details 参照するテクスチャ・モデル・マテリアル・カーブを 1 つでも読めなければ失敗にする
-        //! 読み込めた name は 2 回目以降ファイルを読まない
+        //! @brief .efkefc と参照資産を読み込む。読み込み済みの名前は再利用する
+        //! @param[in] name effectRoot 相対の拡張子なしのパス UTF-8
+        //! @return 全資産を読み込めた場合 true、それ以外の場合は false
         [[nodiscard]] bool Preload(std::string_view name) noexcept;
 
-        //! @brief Preload 済みのエフェクトを 1 つ再生する
-        //! @param[in] name Preload に渡した名前
-        //! @param[in] position 再生位置のワールド座標。省略すると原点
-        //! @return 再生したエフェクトのハンドル。Preload していない名前なら IsValid が false のハンドル
-        //! @details Preload していない名前の警告は名前ごとに 1 回だけ出す
+        //! 読み込み済みの名前を世界座標の position で再生する。未読み込みなら無効なハンドル
         [[nodiscard]] EffectHandle Play(std::string_view name, NS::Vector3 position = {}) noexcept;
 
-        //! @brief Preload 済みのエフェクトを、姿勢と見た目を決めて 1 つ再生する
-        //! @param[in] name Preload に渡した名前
-        //! @param[in] desc 再生の姿勢・色・動的入力
-        //! @return 再生したエフェクトのハンドル。Preload していない名前なら IsValid が false のハンドル
-        //! @details 絵が生まれるのは次の Update で、生まれた瞬間の姿がその後の Draw に写る。
-        //! 乱数の種は name と、その name を何回目に再生したかで決まる。他のエフェクトの再生や std::rand の呼び出しに
-        //! 左右されない。Preload していない名前の警告は名前ごとに 1 回だけ出す
+        //! 読み込み済みの名前を再生する。粒の生成は次の Update、未読み込みなら無効なハンドル
+        //! 同じ名前の再生回数から乱数を決めるため、他のエフェクトの乱数に影響されない
         [[nodiscard]] EffectHandle Play(std::string_view name, const EffectPlayDesc& desc) noexcept;
 
-        //! @brief handle のエフェクトの位置・向き・大きさを置き直す
-        //! @param[in] handle Play が返したハンドル。IsValid が false なら何もしない
-        //! @param[in] position ワールド座標の位置
-        //! @param[in] rotation 向き
-        //! @param[in] scale 大きさの倍率
-        //! @details 物に付いていく層は、物が動いたフレームごとに呼ぶ。描く位置が変わるのは次の Update の後
+        //! 世界座標の姿勢を設定する。反映は次の Update、無効なハンドルでは何もしない
         void SetTransform(EffectHandle handle,
                           const NS::Vector3& position,
                           const NS::Quaternion& rotation,
                           const NS::Vector3& scale) noexcept;
 
-        //! @brief handle のエフェクトの動的入力を 1 つ書き換える
-        //! @param[in] handle Play が返したハンドル。IsValid が false なら何もしない
-        //! @param[in] index 動的入力の番号。0〜3 の外なら警告を出して何もしない
-        //! @param[in] value 入れる値
-        //! @details 生成の数のように生まれる時に読む値は、最初の Update より前に書いた時だけ効く
+        //! 動的入力 index 0〜3 を設定する。生成時の値は最初の Update 前に設定する
+        //! 範囲外の番号や無効なハンドルでは何もしない
         void SetDynamicInput(EffectHandle handle, int index, float value) noexcept;
 
-        //! @brief handle のエフェクトを止める
-        //! @param[in] handle Play が返したハンドル。IsValid が false なら何もしない
-        //! @details 子も含めて次の Update で消える。経過 0 の Update でも消える
+        //! 子も含めて次の Update で消す。経過秒 0 の更新でも反映し、無効なハンドルは無視する
         void Stop(EffectHandle handle) noexcept;
 
-        //! @brief handle のエフェクトの親だけを止める
-        //! @param[in] handle Play が返したハンドル。IsValid が false なら何もしない
-        //! @details 新しい子は出なくなり、出ていた子は寿命まで残る。子が全部消えると Exists が false になる
+        //! 新しい子の生成を止め、出ていた子は寿命まで残す。無効なハンドルは無視する
         void StopRoot(EffectHandle handle) noexcept;
 
         //! 再生中の全エフェクトを止める
         void StopAll() noexcept;
 
-        //! @brief handle のエフェクトが Effekseer の Manager に残っているかを返す
-        //! @param[in] handle Play が返したハンドル
-        //! @return 残っている場合 true、それ以外の場合は false
         [[nodiscard]] bool Exists(EffectHandle handle) const noexcept;
 
         //! @brief 全エフェクトを deltaSeconds だけ進める
         //! @param[in] deltaSeconds 経過秒数。0 なら進めずに Play と Stop だけを描画へ反映する。負なら何もしない
         void Update(float deltaSeconds) noexcept;
 
-        //! @brief camera から見た全エフェクトを現在の描画先へ描く
-        //! @param[in] camera ビュー行列・投影行列・位置を使う視点
-        //! @details 描画先に結ばれた奥行き (D24_UNORM_S8_UINT) を別のテクスチャへ写してエフェクトへ渡し、
-        //! 柔らかい粒の欄を入れた層は物と重なる所の近くほど薄く描く。写し先は大きさごとに 2 枚まで控え、
-        //! 同じ大きさの描画先では作り直さない。奥行きが結ばれていない時は奥行き無しで描く。
-        //! 写せない奥行きの時と写し先を作れなかった時はエラーを 1 回出して奥行き無しで描き、IsUsingDepthFallback が
-        //! true を返す
+        //! 全エフェクトを描く。D24_UNORM_S8_UINT の深度を渡せない場合は深度なしで描く
+        //! 深度のコピーに失敗した場合は IsUsingDepthFallback で確認できる
         void Draw(const NS::CameraData& camera) noexcept;
 
         //! 直前の Draw がエフェクトへ奥行きを渡した場合 true、それ以外の場合は false

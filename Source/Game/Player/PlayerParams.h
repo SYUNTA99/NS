@@ -19,15 +19,12 @@ namespace GL::Level
     class ImpactResolver;
     class SlamArrow;
     struct ImpactTuning;
-    // ImpactResolver.h が宣言して ImpactResolver.cpp が定義する。friend に書くために先に宣言しておく
     ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams& params) noexcept;
 } // namespace GL::Level
 
 namespace GL::Player
 {
-    //! @brief 自機の遊びの調整値の欄を持つ部品
-    //! @details 移動・溜め・衝突・反動はここの欄を読む。見た目と演出の欄は描く部品が持ち、
-    //! アニメの欄は PlayerClips が持つ。ここに残る演出の欄は、Player が回転の計算に読む突進の回転数だけ
+    //! @brief 自機の移動・溜め・衝突・反動の調整値を持つ部品
     class PlayerParams : public NS::Obj::SubObject
     {
     public:
@@ -35,9 +32,9 @@ namespace GL::Player
 
         //! 欄「体力」の値。1 未満は 1 として返す
         [[nodiscard]] int MaxHealth() const noexcept { return std::max(m_maxHealth, 1); }
-        //! 欄「スティック遊び」の値。スティックの倒しがこれ以下なら入力なしとして扱う
+        //! スティックの倒しがこの値未満なら入力なしとして扱う
         [[nodiscard]] float StickDeadzone() const noexcept { return m_stickDeadzone; }
-        //! 欄「ブレーキのしきい値」の値。進行方向と入力方向の内積がこれ以下ならブレーキに入る
+        //! 入力方向への水平速度成分がこの値未満ならブレーキに入る
         [[nodiscard]] float BrakeThreshold() const noexcept { return m_brakeThreshold; }
         //! 欄「上昇重力」「下降重力」「頂点滞空 Vy」「頂点滞空倍率」の写し。重力の強さを選ぶ ChooseGravity へ渡す
         [[nodiscard]] PlayerGravity Gravity() const noexcept
@@ -45,9 +42,7 @@ namespace GL::Player
             return PlayerGravity{
                 .rise = m_gravityUp, .fall = m_gravityDown, .apexSpeed = m_apexHangVy, .apexScale = m_apexHangScale};
         }
-        //! @brief 反動の間の重力の組。上りだけ欄「反動の上りの重力倍率」を掛け、下りと頂点の帯は Gravity() と同じ
-        //! @details Player::ReboundGravity が ChooseGravity へ渡す組と、Player::ReboundVelocityFor が初速の曲線を組む
-        //! 元の組は同じ。どちらかだけ欄の選び方を変える道を残さない
+        //! 上りだけ反動の倍率を掛けた重力を返す。移動と初速の計算に同じ値を使う
         [[nodiscard]] PlayerGravity ReboundGravity() const noexcept
         {
             return PlayerGravity{.rise = m_gravityUp * m_reboundRiseGravityScale,
@@ -67,10 +62,7 @@ namespace GL::Player
         //! @param[in] overcharge01 溜めすぎの深さ
         //! @return 威力の倍率
         [[nodiscard]] float ChargeFactorFor(float charge01, float overcharge01) const noexcept;
-        //! @brief 溜め中に最高速へ掛ける倍率を返す
-        //! @details 1 − 欄「チャージ減速率」を 0..1 に丸める。
-        //! 溜めている間に Player::AdvanceCharge が自機の最高速度へ掛ける
-        //! @return 最高速へ掛ける倍率
+        //! 溜め中の最高速度の倍率を返す。1 − チャージ減速率を 0〜1 に丸める
         [[nodiscard]] float ChargingSpeedScale() const noexcept;
 
         NS_REFLECT_BEGIN(PlayerParams, NS::Obj::SubObject)
@@ -173,23 +165,18 @@ namespace GL::Player
         friend GL::Level::ImpactTuning GL::Level::MakeImpactTuning(const PlayerParams& params) noexcept;
         float m_reboundApexHeight = 1.15f;
         float m_reboundDistance = 0.575f;
-        // 真ん中の当たりは、後ろのカメラの方へ低く速く弾き返す。手前へ来る動きは真後ろから大きくなって見え、
-        // 弾き返されたと読める。距離 4.5 倍 (威力 2・質量 1 で 5.2 m) と高さ 0.6 倍 (頂点 1.4 m) で、
-        // 真ん中だけの印の浮きは残す。前は 2 倍と 1 倍で、頂点 2.3 m・横の速さ秒速 2 m のほぼ真上の跳ねだった
+        // 真ん中はカメラ側へ低く速く弾き返し、浮きを抑える
         float m_centerHitReboundDistanceScale = 4.5f;
         float m_centerHitReboundHeightScale = 0.6f;
-        // 外れは手応えが来ない「すかし」。勢いが相手に止められず、外した側へ滑って抜けていく。距離を 2.5 倍に
-        // 伸ばして高さを下げ、浮かずに速く横へ抜けて、後ろからのカメラでどちらへ外したかが見える量にする
+        // 外れは外した側へ低く滑って抜ける
         float m_missReboundDistanceScale = 2.5f;
-        // 外れは浮かせず、地面すれすれを滑って抜け、すぐ次を狙わせる。真ん中の 5% で、0.15 では反動の上りの
-        // 弱い重力のせいで 0.2 m ほどの弧に 24 フレームかかり、ふわっと浮いて見えた
+        // 外れの浮きを抑え、次の狙いへ早く戻す
         float m_missReboundHeightRatio = 0.05f;
         // 下の縁の外れは地面へ叩きつけ、少し跳ねてこする。真下を向いた面で外れの高さの 4 割
         float m_missSlamBounce = 0.4f;
         // 箱の相手の面の読み方。見本の出発点 6 で、縁に沿った所は縁の向きへ真っすぐ、角の近くだけ斜めに逸れる
         float m_missBoxEdgeSharpness = 6.0f;
-        // 外れの着地からこすって止まり、操作が戻るまで。着いた速さに依らず同じフレーム数で戻り、身体で覚えられる
-        // 0 はこすらずに、着いたフレームに立ちへ戻る。外れはすぐ次を狙えるよう 10
+        // 着地時の速さに依らず、この固定フレーム数で操作を戻す。0 なら着地直後に戻す
         int m_missSkidSteps = 10;
         // 速さ = 着いた速さ × (1 − 経過 ÷ フレーム数)^減り方。2 で、すぐ落ちて最後に少し擦れが残る
         float m_missSkidExponent = 2.0f;
@@ -200,27 +187,24 @@ namespace GL::Player
         bool m_breakEnabled = false;
         float m_breakSpeedScale = 0.75f;
         float m_breakStopSeconds = 4.0f / 60.0f;
-        // 回転は届くまでの回転数で持ち、回る速さは届くまでの秒から毎回出す。速さや距離を触っても回る数が変わらない
-        // 通常突進 2 は本人の「到達まで一回転か 2, 3 回転」から、溜めた突進 5 は通常突進とはっきり違う数から始める
+        // 回転数で指定し、到達時間から速さを求める。速度や距離を変えても回る数を保つ
         float m_chargedSlamTurns = 5.0f; // 溜めた突進が届くまでに回る回転数
         float m_tapSlamTurns = 2.0f;     // 通常突進が届くまでに回る回転数
-        // 反動は溜めて当てた時と通常突進で当てた時で変える。1 と 3 は 1〜3 の両端で、差が一番分かる組
         float m_chargedReboundTurns = 3.0f; // 溜めて当てた反動が着地までに回る回転数
         float m_tapReboundTurns = 1.0f;     // 通常突進で当てた反動が着地までに回る回転数
         friend class ::Player;
         float m_chargeThresholdSeconds = 0.2f;
         float m_chargeFullSeconds = 1.0f;
-        // 溜めきりから押したままで勝手に出るまで。3 は本人の「3 秒ほど赤からゆっくりと紫に」から
+        // 溜めきりから自動発動までの秒
         float m_overchargeSeconds = 3.0f;
-        // 紫の揺れは相手の所の横のずれ (m) で持つ。角度で持つと、同じ揺れでも遠い相手ほど外れる
-        // 2.2 は見本 overcharge-sway.html の値。真ん中の半幅 0.4 m に対し、振れきると外れまで届く
+        // 相手の位置での横ずれ (m)。角度指定だと遠い相手ほど外れやすくなる
         float m_overchargeSwayMaxOffset = 2.2f;
-        // 1 秒に振れる回数。紫の始めは遅く、紫の深さの 2 乗で終わりの速さへ上がる。見本の 0.8〜2.6 回
+        // 揺れの回数 (回/秒)。溜めすぎの深さの 2 乗で終わりの速さへ寄せる
         float m_overchargeSwayStartRate = 0.8f;
         float m_overchargeSwayEndRate = 2.6f;
-        // 狙う相手がいない時にずれを角度へ直す距離 (m)。10 は欄「突進距離」の既定で、矢印の先が最大のずれだけ振れる
+        // 相手がいない時に、横ずれを角度へ変換する距離 (m)
         float m_overchargeSwayFallbackDistance = 10.0f;
-        // 紫になりきった時に溜めきりの威力へ掛ける倍率。見本の 1.5
+        // 溜めすぎきった時に、溜めきりの威力へ掛ける倍率
         float m_overchargePowerMax = 1.5f;
         float m_chargeSlowRate = 0.7f;
         NS::Obj::Curve m_chargeFactorCurve{};
@@ -250,11 +234,9 @@ namespace GL::Player
         float m_turnSpeed = 970.0f;
         float m_bodySlamSpeed = 20.0f;
         float m_bodySlamDistance = 10.0f;
-        // 溜めて放つ突進を相手の赤の高さへ向ける角度の上限 (度)。上向きも下向きもこの角度で切る
-        // 突進が高い所へ登る手段にならない所で止める。水平 20 m/s・上りの重力 -25 で上がれる高さは 45 度で約 8 m、
-        // 40 度で約 5.6 m、30 度で約 2.6 m。2026-10-03 本人の指定で 40
+        // 赤の高さへ向ける角度の上限 (度)。突進で高所へ登れる範囲を抑える
         float m_launchPitchLimitDegrees = 40.0f;
-        // 軽く当てても速く届かせる。溜めきりの 20 m/s の 4 分の 3 から始める。距離は変えないので届くまで約 0.42 秒
+        // 通常突進の速度 (m/s)。距離は溜めた突進と同じ
         float m_tapSlamSpeed = 15.0f;
         float m_tapSlamUpSpeed = 3.0f;
         float m_tapSlamDistance = 6.25f;

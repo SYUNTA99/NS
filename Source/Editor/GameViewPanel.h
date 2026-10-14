@@ -8,8 +8,7 @@ class LevelEditorController;
 namespace NS::Editor
 {
     class TimelinePreview;
-    //! @brief ゲーム視点の出力を映すパネル。プレイ中は入力を持ち、編集中はゲームカメラを貼るだけ
-    //! @details 出力を映すだけで、自由視点のようなナビゲーションは持たない。描画先は ViewportSurface が持つ
+    //! ゲーム視点を映すパネル。ゲーム操作の入力はプレイ中だけ受け付ける
     class GameViewPanel : public NS::NonCopyable
     {
     public:
@@ -24,10 +23,10 @@ namespace NS::Editor
         //! フレーム先頭で可視状態を false にする。描画パス (通常 / 全面化) が立て直す
         void ResetVisibility() noexcept { m_surface.ResetVisibility(); }
 
-        //! Game パネルを 1 枚描く。プレイ中は入力矩形と hover を controller へ渡す
+        //! Game パネルを描き、プレイ中は入力矩形とカーソルの重なりを controller へ渡す
         void Render(LevelEditorController& editor) noexcept;
 
-        //! 中央以外を全面化する間、前面の矩形と hover を無効化する
+        //! 中央以外を全面化する間、前面の矩形とカーソルの重なりを無効化する
         void Suppress(LevelEditorController& editor) noexcept;
 
         //! @brief 描画先とゲーム視点のビューを返す
@@ -41,18 +40,17 @@ namespace NS::Editor
         //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
         void ReleaseTarget() noexcept { m_surface.Release(); }
 
-        //! 全マウス解放中だけ hover に追従してラッチを更新する
+        //! 全ボタン解放中だけ、カーソルの重なりに合わせて受付を更新する
         void UpdateMouseLatch() noexcept;
 
-        //! ボタン押下中は hover を凍結し、パネル発のドラッグを外まで続けさせる状態
+        //! ボタン押下中は判定を保ち、パネル外でもドラッグを続ける状態
         [[nodiscard]] bool IsMouseLatched() const noexcept { return m_mouseLatch; }
 
-        //! このフレームに Game パネルへ焦点があったか
         [[nodiscard]] bool IsFocused() const noexcept { return m_surface.IsFocused(); }
 
     private:
         ViewportSurface m_surface;
         bool m_hovered = false;    // マウスが Game パネルの画像上に居るか
-        bool m_mouseLatch = false; // ボタン押下中は hover を凍結し、ドラッグを外まで続けさせる
+        bool m_mouseLatch = false; // ボタン押下中は判定を保ち、パネル外でもドラッグを続ける
     };
 } // namespace NS::Editor

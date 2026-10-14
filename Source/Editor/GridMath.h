@@ -23,16 +23,13 @@ namespace NS::Editor
     //! スクリーン座標が矩形内かを返す。右端 (x+width) と下端 (y+height) は外側扱い
     [[nodiscard]] bool ViewRectContains(const ViewRect& rect, int screenX, int screenY) noexcept;
 
-    //! 矩形の幅と高さを返す
     [[nodiscard]] NS::Size2D ViewRectSize(const ViewRect& rect) noexcept;
 
     //! @brief スクリーン座標を矩形原点基準のローカル座標へ変換する
     //! @note 矩形外でも変換自体は返す。範囲判定は ViewRectContains が担う
     void ViewRectToLocal(const ViewRect& rect, int screenX, int screenY, int& outX, int& outY) noexcept;
 
-    //! @brief ウィンドウ内座標のマウスを、パネル矩形と同じ空間へ移す
-    //! @details パネルを別窓へ出せる設定では矩形が OS の画面座標で来る。ウィンドウ内座標のまま
-    //! 引き算するとタイトルバーと枠のぶんずれるので、ここで足して揃える
+    //! ウィンドウ内のマウス座標を、別窓にも対応するパネルのスクリーン座標へ変換する
     void WindowMouseToViewSpace(int mouseX, int mouseY, int& outX, int& outY) noexcept;
 
     //! @brief スクリーンの2D座標からワールド空間へ向かう Ray を生成する

@@ -13,13 +13,9 @@
 
 namespace NS::Obj
 {
-    //! @brief 数 3 つの配列 [x,y,z] を読む
-    //! @param[out] out 読めた値。失敗した場合は書き換えない
-    //! @return 読めた場合 true、配列でない・長さが違う・数でない成分がある場合は false
+    //! 数 3 個の [x,y,z] を読む。形式が違えば出力を変更せず false
     [[nodiscard]] bool ReadVector3(const nlohmann::json& value, NS::Vector3& out) noexcept;
-    //! @brief 数 4 つの配列 [x,y,z,w] を読む
-    //! @param[out] out 読めた値。失敗した場合は書き換えない
-    //! @return 読めた場合 true、配列でない・長さが違う・数でない成分がある場合は false
+    //! 数 4 個の [x,y,z,w] を読む。形式が違えば出力を変更せず false
     [[nodiscard]] bool ReadQuaternion(const nlohmann::json& value, NS::Quaternion& out) noexcept;
 
     //! entry から値を型付きで読む。不在・型不一致は fallback

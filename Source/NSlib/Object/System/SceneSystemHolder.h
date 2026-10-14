@@ -11,9 +11,7 @@ namespace NS::Obj
 {
     class Scene;
 
-    //! @brief 要る時に作る管理役の置き場
-    //! @details 型ごとに 1 つ持つ。初めて引いた時に T の Scene& を取るコンストラクタで作る
-    //! 配置物を組み直す時に全て捨て、最初の状態から作り直させる。捨てる順は作った順の逆
+    //! 型ごとに一つのシステムを必要時に生成する。配置の再構築時に生成と逆順で破棄する
     class SceneSystemHolder : public NS::NonCopyable
     {
     public:

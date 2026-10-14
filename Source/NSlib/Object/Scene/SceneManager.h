@@ -16,11 +16,7 @@ namespace NS::Obj
     class AssetManager;
     class Scene;
 
-    //! @brief シーンデータから scene を立てて寿命を握る単一 scene ホルダ
-    //! @details ロード中の scene 1 つを保持し、OnUpdate / OnRender / OnShutdown を
-    //! Application から現 scene へ取り次ぐ
-    //! 受け取るのは型でなくデータで、立てる実体は常に Scene
-    //! scene を重ねる要件が出たら stack へ広げる
+    //! シーン一つを所有し、アプリケーションの更新・描画・終了を転送する
     class SceneManager : public NS::NonCopyable
     {
     public:
@@ -34,7 +30,7 @@ namespace NS::Obj
         void SetRenderer(NS::Gfx::Renderer* renderer) noexcept;
 
         //! シーンの JSON 文書から scene を立てる。現 scene は破棄してから作り直す
-        //! 文書は取込後に用済みで、以降の出所は live 実体になる
+        //! 文書は取込後に用済みで、以降の出所は実体になる
         Scene& LoadScene(nlohmann::json&& scene);
 
         //! 現 scene を破棄して scene 無し状態にする。未ロードなら何もしない

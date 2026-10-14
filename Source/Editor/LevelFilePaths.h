@@ -12,21 +12,16 @@ namespace NS::Editor
     //! @return 検証に失敗した場合は空文字列を返す
     [[nodiscard]] std::string SanitizeLevelPath(std::string_view relativePath) noexcept;
 
-    //! @brief 区切りの無い素の名前を Scenes/ 配下の識別子に直す
-    //! @details 保存と起動読込が同じファイルを指すよう、素の名前の置き場を Scenes/ に固定する
-    //! @return 区切り付きの相対パスと空文字列はそのまま返す
+    //! 区切りのない名前を Scenes/ 配下へ直す。区切り付きのパスと空文字列はそのまま
     [[nodiscard]] std::string QualifyLevelPath(std::string_view sanitizedPath) noexcept;
 
-    //! @brief レベル名から Assets/<相対パス>.scene のフルパスを組む
-    //! @details 区切りの無い素の名前は Scenes/ 配下として解決する
-    //! @return 構築に失敗した場合は std::nullopt を返す
+    //! Assets 配下の .scene パスを作る。素の名前は Scenes/ 配下、無効な名前は nullopt
     [[nodiscard]] std::optional<std::string> BuildLevelPath(std::string_view name) noexcept;
 
     //! @brief レベル保存用ディレクトリが存在することを確認し、なければ作成する
     //! @return 作成に失敗した場合は false を返す
     [[nodiscard]] bool EnsureScenesDirectoryExists() noexcept;
 
-    //! @brief 置き場の *.scene を全部探してファイル名を並べる
-    //! @return ファイル名のリスト。列挙中に問題が発生した場合はその時点でのリストを返す
+    //! Assets 配下の有効な .scene を相対名の辞書順で返す。直下のファイルと無効な名前は除外する
     [[nodiscard]] std::vector<std::string> EnumerateLevelFiles() noexcept;
 } // namespace NS::Editor

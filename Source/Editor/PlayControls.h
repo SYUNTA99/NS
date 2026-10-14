@@ -17,8 +17,8 @@ namespace NS::Editor
     //! @brief ツールバー状態の入力。現在のモードと一時停止フラグの写し
     struct PlayModeSnapshot
     {
-        bool playMode = false; // プレイモード中か
-        bool paused = false;   // 一時停止中か
+        bool playMode = false;
+        bool paused = false;
     };
 
     //! @brief ツールバー 3 ボタンの表示状態
@@ -36,8 +36,8 @@ namespace NS::Editor
     //! @brief タブ自動フォーカスの切替検知に使う、前フレームと今フレームのモードの組
     struct ModeTransition
     {
-        bool wasPlayMode = false; // 前フレームがプレイモードだったか
-        bool playMode = false;    // 今フレームがプレイモードか
+        bool wasPlayMode = false;
+        bool playMode = false;
     };
 
     //! モードが変わったフレームだけフォーカス先のタブを返す。変化が無ければ空
@@ -46,7 +46,7 @@ namespace NS::Editor
     //! @brief 入力の持ち主を決める材料。フレームの終わりに集め、次のフレームのメッセージの振り分けに効く
     struct InputOwnerQuery
     {
-        bool playMode = false;                 // プレイモード中か
+        bool playMode = false;
         bool uiWantsMouse = false;             // ImGui がマウスを欲しがっているか
         bool uiWantsKeyboard = false;          // ImGui がキーボードを欲しがっているか。項目を押している間も立つ
         bool textInput = false;                // 文字の入力欄に居るか
@@ -61,8 +61,8 @@ namespace NS::Editor
     //! @brief UI とゲームの入力の取り分
     struct InputOwnership
     {
-        bool uiMouse = false;          // UI がマウスを持つか
-        bool uiKeyboard = false;       // UI がキーボードを持つか
+        bool uiMouse = false;
+        bool uiKeyboard = false;
         bool leftButtonToGame = false; // UI がマウスを持つ間も、左ボタンだけゲームへ渡すか
     };
 
@@ -90,8 +90,8 @@ namespace NS::Editor
     //! @brief カーソルを固定へ戻すかを決める材料
     struct RecaptureQuery
     {
-        bool playMode = false;         // プレイモード中か
-        bool paused = false;           // 一時停止中か
+        bool playMode = false;
+        bool paused = false;
         bool cursorReleased = false;   // カーソルを出して固定を解いているか
         bool gameImageClicked = false; // このフレームに Game の画像を左クリックしたか
     };

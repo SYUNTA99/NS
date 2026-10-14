@@ -17,10 +17,8 @@ namespace NS::OS
     public:
         FileSystem() = delete;
 
-        //! 指定パスが存在する場合は true を返す
         [[nodiscard]] static bool Exists(std::string_view path) noexcept;
 
-        //! 指定パスが存在しディレクトリの場合は true を返す
         [[nodiscard]] static bool IsDirectory(std::string_view path) noexcept;
 
         //! 空ファイルの場合は空の配列を返す
@@ -50,17 +48,11 @@ namespace NS::OS
         //! 実行ファイルが置かれているディレクトリの絶対パスを返す
         [[nodiscard]] static std::string GetExeDirectory();
 
-        //! @brief アセットやシェーダなど、ランタイムコンテンツの基準ディレクトリ
-        //! @details
-        //! 出荷用ビルドでは実行ファイルと同階層を返す
-        //! 開発環境ではリポジトリのルートディレクトリを探索して返すため、ビルド毎のファイル転送なしで開発アセットを直接読み込める
-        //! ルートの探索に失敗した場合は実行ファイルと同階層にフォールバックする
+        //! 出荷版は実行ファイルのディレクトリ、開発時はリポジトリのルートを返す
+        //! ルートを見つけられなければ実行ファイルのディレクトリ
         [[nodiscard]] static std::string ContentRoot();
 
-        //! @brief base ディレクトリ配下に収まる相対パスのみを繋ぎ、正規化して返す
-        //! @details 絶対パスやドライブ指定、または「..」などで階層を遡った結果として base
-        //! の外へ出るパスが渡された場合は nullopt を返す
-        //! プロジェクト外の不正なファイル読み込みを防ぐためのガードとして使用する
+        //! base 内に収まる相対パスを正規化する。絶対パス・ドライブ指定・領域外への遡りは nullopt
         [[nodiscard]] static std::optional<std::string> ResolveUnder(std::string_view base, std::string_view relative);
 
         //! base と relative を区切り 1 つで繋ぐ。base の末尾が区切りの場合は足さない

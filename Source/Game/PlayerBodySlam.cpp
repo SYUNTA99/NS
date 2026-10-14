@@ -26,9 +26,7 @@ namespace
         return turns * 360.0f / seconds;
     }
 
-    // 反動の初速と着地までの秒を同じ曲線から出す。組は実際に当てる重力 (Player::ReboundGravity) と同じ
-    // PlayerParams::ReboundGravity。曲線は上りの重力を正の大きさで、下りの重力を上りに対する倍率で持つので、
-    // 符号を反転して下降重力を上りの重力で割る
+    // 実際の反動と同じ重力で曲線を組む。LaunchArc には正の上昇重力と下降倍率を渡す
     [[nodiscard]] GL::Level::LaunchArc ReboundLaunchArc(const GL::Player::PlayerParams& params,
                                                         const GL::Player::ReboundArc& arc) noexcept
     {
@@ -44,7 +42,6 @@ namespace
     }
 } // namespace
 
-// ---- 突進と反発 ----
 
 bool Player::AcceptsBodySlamRequest() const noexcept
 {
@@ -301,8 +298,7 @@ bool Player::BodySlam() noexcept
     else
     {
         m_slam.distanceTarget = m_params->m_bodySlamDistance;
-        // 縦はジャンプのどこで放ったかでなく狙いで決める。同じ狙いならいつも矢印と同じ道筋で出て、ジャンプの上向きの
-        // 勢いに乗って放つ角度の上限と別の道で高く上がることも無い。届く相手が無ければ 0 で水平に出て重力で落ちる
+        // ジャンプの縦速度を捨て、狙いと同じ道筋で放つ。ジャンプで角度上限を越えないようにする
         float vertical = 0.0f;
         if (m_request.hasDir)
         {
@@ -368,7 +364,6 @@ bool Player::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
 
 NS::Vector3 Player::ReboundVelocityFor(const GL::Player::ReboundArc& arc) const noexcept
 {
-    // 下りは普段の落ち方のままにする
     return GL::Level::LaunchArcInitialVelocity(ReboundLaunchArc(*m_params, arc));
 }
 
@@ -393,17 +388,14 @@ void Player::ChangeCurled(bool curled) noexcept
     }
     m_curled = curled;
     collider.SetSphereShape(curled);
-    // 立ち姿の下端は 中心 − 半長 − 半径、玉の下端は 中心 − 半径。中心を立ち姿の半長ぶん上げ下げすると下端が揃う
-    // 下げずに玉にすると、当たりの下端が半長ぶん上がる
+    // 半長ぶん根を上げ下げして、立ち姿と玉の当たりの下端を揃える
     float rise = collider.StandingHalfHeight();
     if (curled)
     {
         rise = -rise;
     }
-    // TODO: 低い天井の下で立ち姿へ戻す時の検査は無い。コースに低い天井が無いうちは、
-    // 作り直したキャラクターの食い込みは次の Step の接触の解決に任せる
-    // 形の持ち替えは動きではないので、前フレームの位置も一緒にずらす。今の位置だけを動かすと、持ち替えたフレームの
-    // 描画の補間で玉が床から浮き (立ち姿は床へ沈み)、立ち姿の中心を見る追従カメラの注視点も半長ぶん揺れる
+    // TODO: 低い天井で立ち姿へ戻す検査は無い。現在のコースでは次の接触解決に任せる
+    // 形の変更を動きとして補間しないよう、前フレームの位置もずらす
     Root().ShiftPosition(NS::Vector3{0.0f, rise, 0.0f});
 }
 

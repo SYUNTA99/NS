@@ -25,9 +25,7 @@ namespace NS::Gfx
         UInt4,  //!< R32G32B32A32_UINT
     };
 
-    //! @brief 入力レイアウトの1要素
-    //! @details セマンティックインデックスは常に 0、入力ストリームもスロット 0 の 1 本だけを前提とする
-    //! オフセット値は派生クラス側で構造体のメモリ配置から算出して設定する
+    //! 入力レイアウトの要素。セマンティック番号とストリームのスロットは 0 固定
     struct InputElement
     {
         std::string semanticName;
@@ -42,10 +40,7 @@ namespace NS::Gfx
         LineList
     };
 
-    //! @brief 描けるジオメトリの基底
-    //! @details 頂点バッファ・インデックスバッファ・入力レイアウトを持つ。自分では描かず、
-    //! 公開したデータを DrawMesh が読んでバインドと DrawIndexed を出す。
-    //! 頂点フォーマットとバッファの構築は派生が決める
+    //! 頂点とインデックスの GPU データ。描画は DrawMesh が行う
     class Mesh : public NS::NonCopyable
     {
     public:
@@ -60,35 +55,24 @@ namespace NS::Gfx
         [[nodiscard]] std::size_t VertexCount() const noexcept;
         [[nodiscard]] std::size_t IndexCount() const noexcept;
 
-        //! @brief モデル空間の軸並行境界ボックス。カリングで world 変換して視錐台に掛ける
+        //! @brief モデル空間の軸並行境界ボックス。カリングで世界変換して視錐台に掛ける
         //! @details 派生が build 時に頂点から算出して登録する。未登録なら原点の単位ボックス
         [[nodiscard]] const NS::AABB& LocalBounds() const noexcept;
 
         //! @brief 頂点シェーダーを利用して入力レイアウトを生成する
-        //! @param[in] vertexShader 入力レイアウトの生成元となる頂点シェーダー
         //! @note 生成済みの場合や、グラフィックスデバイスが無効な場合は何もしない
         void CreateInputLayout(const Shader& vertexShader) noexcept;
 
-        //! 頂点バッファを返す
         [[nodiscard]] const Buffer* VertexBuffer() const noexcept;
-        //! インデックスバッファを返す
         [[nodiscard]] const Buffer* IndexBuffer() const noexcept;
-        //! 入力レイアウトを返す
         [[nodiscard]] ID3D11InputLayout* InputLayout() const noexcept;
-        //! プリミティブ形状を返す
         [[nodiscard]] Topology GetTopology() const noexcept;
 
     protected:
         Mesh();
 
-        //! @brief 頂点とインデックスから GPU のバッファを作り、成功した時だけ登録する
-        //! @param[in] vertices 頂点データの先頭
-        //! @param[in] vertexCount 頂点数
-        //! @param[in] stride 頂点 1 個のバイト数
-        //! @param[in] indices インデックスデータの先頭
-        //! @param[in] indexCount インデックス数
-        //! @param[in] usingFallback 代替ジオメトリとして構築するか
-        //! @return 両方のバッファを作れた場合 true、それ以外の場合は false。false の時は何も登録しない
+        //! 成功時だけ両方の GPU バッファを登録する。失敗時は変更せず false
+        //! stride は頂点 1 個のバイト数、usingFallback は代替形状かを示す
         [[nodiscard]] bool BuildGeometry(const void* vertices,
                                          std::size_t vertexCount,
                                          std::size_t stride,
@@ -96,12 +80,8 @@ namespace NS::Gfx
                                          std::size_t indexCount,
                                          bool usingFallback) noexcept;
 
-        //! @brief 派生クラスで定義した頂点フォーマットのレイアウト要素を登録する
-        //! @param[in] elements 登録する入力レイアウトの要素配列
         void SetVertexLayout(std::vector<InputElement> elements) noexcept;
 
-        //! @brief 派生クラスで定義したプリミティブ形状を登録する
-        //! @param[in] topology 登録するプリミティブ形状
         void SetTopology(Topology topology) noexcept;
 
         //! @brief 派生クラスが頂点から算出したモデル空間境界ボックスを登録する

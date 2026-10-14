@@ -1,10 +1,7 @@
 #pragma once
 
-// 種類ごとの既定値 (アーキタイプ)
-// 値は 3 段で重なる。コードの既定値 < 種類の既定値 (1 クラスに JSON 1 つ) < 個体の上書き
-// 種類の既定値は、クラスの OnInit が積まない部品を足すこともできる
-// 個体のデータは値だけを上書きし、部品は足せない
-// 保存・プレイ開始時の凍結・undo の控えは、種類の既定値と違う欄だけを書く
+// 値はコードの既定値、種類の既定値、個体の上書きの順に重ねる。
+// 部品の追加は種類の既定値まで。保存は種類の既定値との差分だけを持つ。
 
 #include "NSlib/Object/ObjectJson.h"
 
@@ -19,11 +16,8 @@ namespace NS::Obj
     class Actor;
     class SubObject;
 
-    //! @brief クラス名から種類の既定値を引く置き場
-    //! @details 1 クラスにつき Directory()/<クラス名>.json を 1 つ持つ。形は配置物の JSON から id と位置を除いた物
-    //! {"class": クラス名, "subObjects": {部品名: {欄の名前: 値}, ...}}
-    //! 参照の欄 (ActorRef) はシーンの中の相手を指すので、読む時に落として種類の既定値には持たせない
-    //! 初めて引いた時に Directory() の *.json を全て読む
+    //! クラスごとの既定値を Directory()/<クラス名>.json から読む
+    //! ActorRef はシーン内の参照なので既定値には含めない
     class ArchetypeLibrary
     {
     public:
@@ -31,7 +25,6 @@ namespace NS::Obj
 
         ~ArchetypeLibrary();
 
-        //! 読み書きするディレクトリ。既定は ContentRoot/Assets/Archetypes
         [[nodiscard]] const std::string& Directory();
 
         //! ディレクトリを差し替えて読み直す。試しは一時ディレクトリへ向ける
@@ -52,9 +45,7 @@ namespace NS::Obj
         //! className の種類の既定値を Directory() へ書く。無いか書けなければ false
         [[nodiscard]] bool Save(std::string_view className);
 
-        //! @brief className のクラスをコードの既定値で作り、種類の既定値を当てた 1 体
-        //! @details 個体の上書きが無い時の姿。保存の差分と、インスペクタの上書きの印が比べる相手
-        //! シーンには入れないので、開始も更新も描画も走らない。種類の既定値を変えると作り直すので、参照は持ち越さない
+        //! 個体の上書き前の比較用 Actor。シーンへ入らず、種類の既定値変更で参照は無効になる
         [[nodiscard]] const Actor& Baseline(std::string_view className);
 
     private:
@@ -71,9 +62,7 @@ namespace NS::Obj
     //! actor のクラスの種類の既定値を当てる。足す部品を作り、欄の値を写す
     void ApplyArchetype(Actor& actor);
 
-    //! @brief 個体の上書きだけを持つ配置物の JSON を、全欄を持つ姿へ広げる
-    //! @details 部品の並びと欄は Baseline に揃え、個体の上書きと id・名前・有効を重ねる。個体にしか無い部品は落とす
-    //! 実体を作り直さずに値を書き戻す経路 (undo の適用) が、上書きの無い欄も種類の既定値へ戻すために使う
+    //! 個体の差分を全欄へ展開する。部品構成は Baseline に揃え、個体だけの部品は除く
     [[nodiscard]] nlohmann::json ExpandObjectJson(const nlohmann::json& object);
 
     //! @brief 全欄を持つ配置物の JSON から、種類の既定値と同じ欄を除く

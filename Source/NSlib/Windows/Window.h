@@ -17,13 +17,11 @@ namespace NS::OS
     //! @brief ウィンドウ作成時の初期パラメータ
     struct WindowDesc
     {
-        //! ウィンドウのタイトル
         std::string title = "NS";
 
         //! クライアント領域のサイズ
         NS::Size2D size{1920, 1080};
 
-        //! ウィンドウ生成時の初期表示フラグ
         bool visible = true;
     };
 
@@ -54,20 +52,17 @@ namespace NS::OS
         //! @brief ウィンドウハンドルを返す。構築に失敗した時は nullptr
         [[nodiscard]] HWND NativeHandle() const noexcept;
 
-        //! @brief ウィンドウのタイトルを変更する
         void SetTitle(std::string_view utf8Title) noexcept;
 
         //! @brief クライアント領域におけるマウスカーソルの表示・非表示を切り替える
         void SetCursorVisible(bool visible) noexcept;
 
-        //! @brief 現在のマウスカーソルの表示状態を取得する
         [[nodiscard]] bool IsCursorVisible() const noexcept;
 
         //! @brief カーソルの固定を切り替える
         //! @note 固定中は PollMessages が毎フレームカーソルを固定点へ戻す。フォーカスを失っている間は戻さない
         void SetCursorLocked(bool locked) noexcept;
 
-        //! @brief 現在のカーソル固定状態を取得する
         [[nodiscard]] bool IsCursorLocked() const noexcept;
 
         //! @brief カーソル固定の戻し先をクライアント座標で設定する

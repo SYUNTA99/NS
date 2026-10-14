@@ -4,9 +4,8 @@
 
 #include <cstdint>
 
-//! @brief 単体の遊びの外枠。Editor が載らない構成で、プレイ中のカーソルと Esc を持つ
-//! @details 起動でカーソルを握り、Esc で出し、出ている状態の Esc でアプリを終える。
-//! 積むのは構成を組み立てる GameMain だけ。エディタはプレイ中の Esc を自分で読む
+//! @brief 単体構成のカーソルと Esc の操作
+//! @details 最初の Esc でカーソルを出し、表示中の Esc で終了する
 class StandaloneLayer : public NS::Layer
 {
 public:
@@ -19,15 +18,10 @@ public:
 
     StandaloneLayer();
 
-    //! @brief カーソルを握り、視点操作をカーソル位置から切り離す
     void OnAttach() override;
 
-    //! @brief Esc を読み、ResolveEscape の応答どおりにカーソルを出すかアプリを終える
     void OnUpdate() override;
 
-    //! @brief Esc の応答を返す
-    //! @details 1 回目で隠したカーソルを出し、出ている状態の 2 回目で終える。カーソルの状態がそのまま段階の記録になる
-    //! @param[in] cursorVisible 押した時にカーソルが出ていたか
-    //! @return Esc への応答
+    //! 非表示ならカーソルを解放し、表示中なら終了する
     [[nodiscard]] static EscapeResponse ResolveEscape(bool cursorVisible) noexcept;
 };

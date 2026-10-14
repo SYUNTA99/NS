@@ -20,10 +20,8 @@ namespace NS::Gfx
         Compute,
     };
 
-    //! @brief シェーダ 1 本
-    //! @details 頂点・ピクセルなどの種類をファイル名から決め、実行時にコンパイルする
-    //! 頂点・ピクセルは読み込みに失敗するとピンク一色のフォールバックへ差し替わり、画面で失敗が見える
-    //! コンパイル後のシェーダオブジェクトは CommandList がステージ別のバインドで使う
+    //! ファイル名からステージを判定して実行時にコンパイルするシェーダ
+    //! 頂点・ピクセルシェーダの読込失敗はピンクの代替表示で示す
     class Shader : public NS::NonCopyable
     {
     public:
@@ -39,10 +37,8 @@ namespace NS::Gfx
         //! 読み込みに失敗してピンクのフォールバックへ差し替わっているか
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-        //! シェーダの種類を返す
         [[nodiscard]] ShaderType Type() const noexcept;
 
-        //! DX11 のシェーダを取得する
         [[nodiscard]] ID3D11DeviceChild* Native() const noexcept;
 
         //! 頂点レイアウト生成用のバイナリコードを取得する

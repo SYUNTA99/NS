@@ -33,7 +33,6 @@ namespace GL::Level
             outCorners.push_back(MarkerRect{right - thickness, bottom - arm, thickness, arm});
         }
 
-        // 枠の欄が組める値か
         [[nodiscard]] bool IsValidFrameDesc(const TargetMarkerDesc& desc) noexcept
         {
             if (!NS::IsFinite(desc.color) || !NS::IsFinite(desc.appearColor) || !NS::IsFinite(desc.outlineColor))
@@ -56,7 +55,6 @@ namespace GL::Level
                    desc.appearCurve.count <= NS::Obj::Curve::k_MaxKeys;
         }
 
-        // 欄の値と描画先の大きさが組める値か
         [[nodiscard]] bool CanBuild(NS::Size2D targetSize, const TargetMarkerDesc& desc) noexcept
         {
             if (!NS::IsPositiveFinite(desc.lineThickness) || !NS::IsPositiveFinite(desc.armRatio))
@@ -172,13 +170,10 @@ namespace GL::Level
         return true;
     }
 
-    // Player の見た目の段 (VisualStep) が呼ぶ。溜めを観測する観測の段より後なので、
-    // このフレームの狙う相手を控えた後に読む
     TargetMarker::TargetMarker() noexcept : NS::Obj::OverlayRenderer() {}
 
     void TargetMarker::OnStart()
     {
-        // 基底が重ね描きの登録簿へ自分を入れる
         NS::Obj::OverlayRenderer::OnStart();
 
         if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))

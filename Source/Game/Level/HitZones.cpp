@@ -116,11 +116,8 @@ namespace GL::Level
             return true;
         }
 
-        // 自機の玉が相手の表面に触れる向き。core から見た単位ベクトル
-        // 玉の中心が core から touchRadius の球に入った所で触れる
-        // 直線がその球に入る点の向きで測り、origin がもう球の中でも入った点へ戻る
-        // 予測は遠くから、当たりは触れてから呼ぶので、今の位置で測ると両者が割れる
-        // 直線が届かない時と、球が origin の後ろにある時は、直線に一番近い点の向き
+        // 予測と接触後で判定を揃えるため、直線が接触球へ入る点から向きを測る。球内からも侵入点へ戻る
+        // 届かない線や後方の球は、直線に最も近い点の向きを使う
         [[nodiscard]] NS::Vector3 FindTouchDirection(const NS::Vector3& core,
                                                      float touchRadius,
                                                      const NS::Vector3& origin,

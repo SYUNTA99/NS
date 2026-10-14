@@ -46,9 +46,8 @@ namespace GL::Level
             return static_cast<std::uint32_t>(static_cast<std::int32_t>(std::lround(value)));
         }
 
-        // 揺れの並びの種。相手の番号・横ずれ (1/1000)・相手の飛ぶ水平の角度 (0.1 度)・相手の位置 (1 cm) を丸めて畳む
-        // 丸めた整数だけを混ぜるので、浮動小数の最後の桁の違いでは種が変わらない
-        // seed_seq の畳み方は規格で決まっていて、実装によらず同じ値から同じ種を出す
+        // 横ずれ・角度・位置を丸めて種を作り、浮動小数の末尾の差で揺れが変わらないようにする
+        // seed_seq の混ぜ方は規格で決まるため、同じ値から同じ種になる
         [[nodiscard]] std::uint32_t ShakeSeed(std::uint32_t targetId,
                                               float offset01,
                                               const NS::Vector3& impactDir,
@@ -75,11 +74,9 @@ namespace GL::Level
             float ratio = 0.0f; // 線から相手の中心までの横ずれ ÷ (相手の半幅 + 自機の半径)。0〜1 へ丸めない
         };
 
-        // 狙う相手の絞りだけが使う。段と横ずれの値は裁定と同じく JudgeHitFace で出す
-        // 分母は AABB を向きに直交する軸へ投影した半幅に自機の半径を足した値
-        // 触れられる横ずれの上限が比 1 になる。斜めの箱でも角をかすめる当たりが 1
-        // 球と傾いた箱は外接箱で測るので実際の縁より広く出る
-        // 事前条件: direction の水平の長さが 0 でない
+        // 探索の絞りに使う AABB の横ずれ比。実際の段は JudgeHitFace で決める
+        // 半幅と自機半径の和を 1 とする。球や傾いた箱では実際の縁より広い
+        // 前提: direction の水平成分が非零
         [[nodiscard]] LineOffset MeasureLineOffset(const NS::Vector3& position,
                                                    const NS::AABB& bounds,
                                                    const NS::Vector3& direction,
@@ -353,7 +350,6 @@ namespace GL::Level
             return false;
         }
 
-        // 非数・負・無限の距離では玉を掃けない
         if (!(maxDistance >= 0.0f) || !std::isfinite(maxDistance))
         {
             return false;
@@ -382,7 +378,6 @@ namespace GL::Level
             const NS::AABB bounds = volume.Bounds();
 
             const LineOffset line = MeasureLineOffset(position, bounds, lineDir, playerRadius);
-            // 真横と後ろの相手は線の先に居ない
             if (!(line.along > 0.0f))
             {
                 continue;
@@ -546,7 +541,6 @@ namespace GL::Level
         // 押していない接触は物理の停止だけで済ませるため、体当たり中でないフレームは裁定しない
         if (!m_player->IsBodySlamming())
         {
-            // 当たらずに突進が終わったので、触れる前の予測は外れた
             DropBeforeContact();
             return;
         }
@@ -597,9 +591,7 @@ namespace GL::Level
 
         const float mass = answer.mass;
 
-        // 段と威力の当たり位置の係数は、相手の面で当てはまった同じ決まりから取る
-        // 玉の中心は重なりを見た所と同じく、この固定ステップで進んだ先。今の位置で見ると、縦に動く突進は 1 ステップ
-        // ぶん違う高さで段が決まる。玉は狙う相手の探し方と同じ Player::SlamBallAt から引く
+        // 重なりと面の判定を同じステップ先で見る。現在位置を使うと、縦移動中の段がずれる
         const NS::Vector3 stepped = PositionAfterStep(position, velocity);
         const NS::Vector3 ballCenter = m_player->SlamBallAt(stepped).center;
         const HitFaceJudgement judgement =
@@ -608,7 +600,6 @@ namespace GL::Level
         const float chargeFactor = Tuning().ChargeFactorFor(charge01, m_player->BodySlamOvercharge01());
         const float positionFactor = judgement.powerScale;
         const HitTier tier = judgement.tier;
-        // 読むのは記録とログだけ
         const bool centerHit = tier == HitTier::Center;
         // 最終威力 = チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
         const float power = chargeFactor * positionFactor;
@@ -684,9 +675,7 @@ namespace GL::Level
         const HitDirection direction = HitDirectionOf(judgement.u, judgement.v);
         const std::string timelineName = HitTimelineLibrary::Get().NameFor(answer.hitTimeline, tier);
         const HitTimeline* timeline = HitTimelineLibrary::Get().FindFor(answer.hitTimeline, tier);
-        // 同じ相手と同じ段の予測で触れる前の時計を始めていれば、止めずに 0 から続ける
-        // それ以外で前の当たりの事象が走っていれば、この当たりの事象を起こす前に止める。始めた返りも止め、
-        // この当たりのタイムラインに置いた返りだけが出る
+        // 同じ相手・段の接触前予測は時計を続ける。それ以外は前の演出を止め、新しい当たりだけを出す
         const bool continuesBeforeContact = m_beforeContact && timeline != nullptr &&
                                             m_beforeContactTarget == m_pendingTarget && m_beforeContactTier == tier;
         if (!continuesBeforeContact)
@@ -845,7 +834,6 @@ namespace GL::Level
             resolver.StartTremor(tremor, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps));
         }
 
-        // 震えの線も横揺れと同じく、止めと同じフレーム数だけ出す
         void operator()(const ShakeLinesEvent& lines) const
         {
             resolver.StartShakeLines(lines, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps));
@@ -947,7 +935,6 @@ namespace GL::Level
             {
                 return;
             }
-            // 戻りは世界の速さの持ち主が進める。ここは始めるだけ
             scene->StartWorldSpeedRamp(release.startSpeed, release.returnSeconds, release.shape);
             resolver.m_startedGradualRelease = true;
         }
@@ -959,7 +946,6 @@ namespace GL::Level
             {
                 return;
             }
-            // 止めの数えは世界の持ち主が進める。ここは始めるだけ
             scene->HoldOthers(event.length);
             resolver.m_heldOthers = true;
         }
@@ -1390,8 +1376,7 @@ namespace GL::Level
         // 画面の横を床に沿わせた向き。後ろから見る NS では、地上でも空中でも視線に直角でよく見える
         const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(Owner());
         const NS::Vector3 axis{forward.z, 0.0f, -forward.x};
-        // 1 フレーム目の向き。外れは自機が外した側 (面の上の位置 u の側) へ逃げ、カメラの最初のひと揺れ・火花・
-        // 逸れ方と揃える。真ん中は画面の右から
+        // 外れは面の u の側へ逃がし、カメラ・火花・逸れる方向を揃える。真ん中は画面右から
         float firstSign = 1.0f;
         NS::Vector3 slam{};
         if (m_lastImpact.tier == HitTier::Wide && m_lastImpact.faceU != 0.0f &&
@@ -1412,7 +1397,7 @@ namespace GL::Level
             .seed = m_lastImpact.sequence,
             .firstSign = firstSign,
             .flipFrames = shake.flipFrames};
-        // 相手は逆向きに揺れる。真後ろからは二人が重なるので、相手の欄を大きくすると誰が震えているかが分かる
+        // 相手は逆方向へ揺らし、後ろから重なる二人を区別する
         TackleShakeDesc other = self;
         other.firstSign = -firstSign;
         other.amplitude = 0.0f;
@@ -1433,7 +1418,6 @@ namespace GL::Level
         {
             return;
         }
-        // 種は何回目の当たりか
         const TackleShakeDesc self{.shape = TackleShakeShape::Depth,
                                    .axis = -dir,
                                    .amplitude = shake.selfDepth,
@@ -1706,7 +1690,6 @@ namespace GL::Level
         {
             return;
         }
-        // 中心は自機の玉が相手の表面に触れた点
         m_hitReaction->StartDistortionRing(NS::Obj::HitDistortionRingDesc{.center = m_lastImpact.surfacePoint,
                                                                           .radius = ring.radius,
                                                                           .push = ring.push,
@@ -1733,7 +1716,7 @@ namespace GL::Level
 
     void ImpactResolver::CancelImpact() noexcept
     {
-        // 白・揺れ・振動を始めたのは裁定役なので止めるのも裁定役。自機を止めていない時は前の当たりの薄れを残す
+        // 自機を止めていない時は、前の当たりの薄れを残す
         const bool hadStop = IsHoldingPlayer();
         AbortTimeline();
         m_pendingBreak = false;
@@ -1829,8 +1812,7 @@ namespace GL::Level
 
     NS::Vector3 ImpactResolver::AlongImpactFactors(float along, float height, float side) const noexcept
     {
-        // 衝突は水平でしか起きない。進行の軸成分の 2 乗で倍率を混ぜ、軸に載った衝突では素の倍率になる
-        // 横は進行に直角な水平の軸なので、x には z の成分の 2 乗、z には x の成分の 2 乗で混ぜる
+        // 水平軸の 2 乗で along と side を混ぜ、軸に沿う衝突では元の倍率を保つ
         const float dx2 = m_pendingImpactDir.x * m_pendingImpactDir.x;
         const float dz2 = m_pendingImpactDir.z * m_pendingImpactDir.z;
         return NS::Vector3{1.0f + (along - 1.0f) * dx2 + (side - 1.0f) * dz2,

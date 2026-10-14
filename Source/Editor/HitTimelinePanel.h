@@ -1,8 +1,5 @@
 #pragma once
 
-// 当たりのタイムラインのパネル。事象の帯を並べて足し引きと欄の変更をし、選んだ条件の当たりを下見して、
-// 置いた事象と実際に起きたフレームを重ねて見せる
-// 出荷ビルドには載らない
 
 #include "Editor/HitPreview.h"
 #include "Editor/HitTimelineEdit.h"
@@ -22,9 +19,8 @@ struct ImDrawList;
 
 namespace NS::Editor
 {
-    //! @brief 当たりのタイムラインを編集して下見するパネル
-    //! @details 編集はパネルの中で持ち、変えるたびにタイムラインの置き場へ差し替えて (ファイルへは書かない)
-    //! 下見し直す。 「保存」でファイルへ書き、「元に戻す」で最後に保存した中身を読み直す。編集中の場面は変えない
+    //! 当たりのタイムラインを編集・下見する。編集はメモリへ即反映し、保存でファイルへ書く
+    //! 下見は別シーンで行い、編集中のシーンを変更しない
     class HitTimelinePanel : public NS::NonCopyable
     {
     public:
@@ -47,17 +43,13 @@ namespace NS::Editor
         void ResetPreview() noexcept;
 
     private:
-        // 条件の欄と下見の結果の行
         void RenderConditions(LevelEditorController& editor) noexcept;
-        // 保存・元に戻す・事象を足す
         void RenderFileButtons() noexcept;
         // 事象ごとの帯と、下見で実際に始まったフレームの印と、再生の位置
         void RenderBands() noexcept;
         // 下見の揺れ・トラウマ・世界の速さを帯の下に折れ線で描く。横は帯と同じフレームの並び
         void RenderPreviewGraphs(ImDrawList& draw, const TimelineLayout& layout) noexcept;
-        // 選んだ行の始まり・長さ・向きと、事象の欄
         void RenderSelectedRow() noexcept;
-        // 再生・止め・コマ送り・速さ
         void RenderPlayback() noexcept;
 
         // 名前のファイルが無ければ段の既定の写し。それも無ければ空
@@ -65,7 +57,6 @@ namespace NS::Editor
         [[nodiscard]] std::string WorkingFileName() const;
         // 写しを置き場へ差し替え、下見し直しを頼む
         void ApplyWorking();
-        // 写しの場面で下見する
         void RunPreview(LevelEditorController& editor);
 
         [[nodiscard]] TimelineFrameRange PlaybackRange() const noexcept;

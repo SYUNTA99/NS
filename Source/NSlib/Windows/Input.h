@@ -9,8 +9,8 @@ namespace NS::OS
     //! @brief UI が取る入力の登録内容
     struct UiCaptureDesc
     {
-        bool wantMouse = false;        // UI がマウスを持つか
-        bool wantKeyboard = false;     // UI がキーボードを持つか
+        bool wantMouse = false;
+        bool wantKeyboard = false;
         bool leftButtonToGame = false; // UI がマウスを持つ間も、左ボタンだけゲームへ渡すか
     };
 
@@ -35,42 +35,31 @@ namespace NS::OS
         [[nodiscard]] NS::OS::Gamepad& Gamepad() noexcept { return m_gamepad; }
         [[nodiscard]] const NS::OS::Gamepad& Gamepad() const noexcept { return m_gamepad; }
 
-        //! @brief Gamepad が読む XInput のユーザー番号を切り替える
-        //! @details 0〜3 の外は何もしない。切り替えると状態を空に戻し、次の Update から読み直す
-        //! @param[in] userIndex 0〜3 の XInput のユーザー番号
-        //! @return 切り替えた場合 true、それ以外の場合は false
+        //! XInput の番号 0〜3 に切り替える。状態を初期化し、次の Update から読む
+        //! 範囲外は変更せず false
         [[nodiscard]] bool SetGamepadUserIndex(int userIndex) noexcept;
 
         //! @brief 各入力デバイスの内部状態を更新する
         void Update() noexcept;
 
-        //! @brief 機器の状態を、何も押していない中立の物へ一時的に差し替える
-        //! @details エディタの下見が、手元の機器を読まずに場面を進めるのに使う。中立の間に書いた振動は中立のパッドに
-        //! 残るだけで、手元のパッドへは送らない (送るのは Update)。EndNeutral で手元の状態へ戻す。重ねて始めた時は、
-        //! 同じ数だけ終えるまで中立のまま。中立の間に Update を呼ばない (中立のパッドが機器を読みに行く)
+        //! 入力を中立へ一時的に差し替える。重ねた回数だけ EndNeutral が必要
+        //! 中立中は Update を呼ばない。振動は実機へ送らない
         void BeginNeutral() noexcept;
 
         //! @brief BeginNeutral で差し替えた機器の状態を元へ戻す
         //! @details 中立でない時は何もしない
         void EndNeutral() noexcept;
 
-        //! 機器の状態を中立へ差し替えている場合 true、それ以外の場合は false
         [[nodiscard]] bool IsNeutral() const noexcept { return m_neutralDepth > 0; }
 
-        //! @brief UIがマウスやキーボードの入力をキャプチャしている状態を登録する
-        //! @note 出荷ビルド等でUIが存在しない環境では常にfalseとなり、すべての入力がゲーム側へ渡る前提となる
-        //! @param[in] desc UI が取る入力。既定値はすべてゲームへ渡す
         void SetUiCapture(const UiCaptureDesc& desc) noexcept { m_uiCapture = desc; }
 
-        //! UIがマウス入力をキャプチャしているかどうかを返す
         [[nodiscard]] bool UiWantsMouse() const noexcept { return m_uiCapture.wantMouse; }
 
-        //! UIがキーボード入力をキャプチャしているかどうかを返す
         [[nodiscard]] bool UiWantsKeyboard() const noexcept { return m_uiCapture.wantKeyboard; }
 
         //! @brief ゲームがマウスのボタンを受け取るかを返す
         //! @details UI がマウスを持つ間は受け取らない。ただし左ボタンの受け渡しを登録した間は左だけ受け取る
-        //! @param[in] button 調べるボタン
         //! @return ゲームへ渡す場合 true、それ以外の場合は false
         [[nodiscard]] bool GameReceivesMouseButton(MouseButton button) const noexcept
         {
@@ -95,8 +84,7 @@ namespace NS::OS
         int m_neutralDepth = 0; // BeginNeutral を重ねた数
     };
 
-    //! @brief 生きている間だけ入力を中立へ差し替える
-    //! @details 作る時に Input::Get().BeginNeutral()、壊す時に EndNeutral() を呼ぶ
+    //! 有効期間中だけ入力を中立にし、破棄時に元へ戻す
     class ScopedNeutralInput
     {
     public:

@@ -87,7 +87,6 @@ namespace NS::Editor
     {
         Result result;
 #if NS_EDITOR_ENABLED
-        // 保存ダイアログ
         if (m_saveModalOpen)
         {
             ImGuiViewport* const vp = ImGui::GetMainViewport();
@@ -135,7 +134,6 @@ namespace NS::Editor
             ImGui::End();
         }
 
-        // 読込ダイアログ
         if (m_loadModalOpen)
         {
             ImGuiViewport* const vp = ImGui::GetMainViewport();

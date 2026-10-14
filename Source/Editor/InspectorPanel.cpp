@@ -78,7 +78,7 @@ namespace NS::Editor
                 return;
             }
 
-            // 直前の HasInspectableSelection が同じ id を引けているので非 null
+            // 直前の HasInspectableSelection で同じ識別番号の対象を確認済み
             NS::Obj::Actor* go = editor.SelectedObjectActor();
             const std::vector<NS::Obj::SubObject*> subObjects = ReflectedSubObjects(*go);
 
@@ -154,7 +154,7 @@ namespace NS::Editor
                     [&] { editor.SetSelectedFreePosition(NS::Vector3{pos[0], pos[1], pos[2]}); },
                     [&] { editor.SetSelectedFreePosition(k_DefaultPosition); });
 
-                // 回転は内部 quaternion を度の Euler に直して編集し、入力を quaternion へ戻す
+                // 回転は内部のクォータニオンを度のオイラー角へ変換して編集し、入力をクォータニオンへ戻す
                 // 滑らかに回し続けるならギズモの回転ツールが向く。ここは角度の直接入力 / 微調整用
                 const NS::Quaternion q = go->Root().Rotation();
                 const NS::Vector3 euler = NS::QuaternionToEulerDegrees(q);
@@ -185,8 +185,6 @@ namespace NS::Editor
                 NS::Editor::EndFieldTable();
             }
 
-            // Model のマテリアルの欄はリフレクション一覧に出る。適用は Assets パネルのドロップ /
-            // クリックから
             ImGui::Separator();
 
             // 部品はクラスが決めるので、ここでは値だけを変える。足し引きはできない
@@ -217,7 +215,6 @@ namespace NS::Editor
                 ImGui::EndDisabled();
                 ImGui::SameLine();
 
-                // ヘッダを中身より明るくして、どこからどこまでが 1 個か見えるようにする
                 ImGui::PushStyleColor(ImGuiCol_Header, NS::Editor::k_SubObjectHeaderColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderHovered, NS::Editor::k_SubObjectHeaderHoveredColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderActive, NS::Editor::k_SubObjectHeaderActiveColor);
@@ -260,7 +257,7 @@ namespace NS::Editor
                 }
                 ImGui::PopID();
             }
-            // 戻すは控えを取ってから live を書く。順を逆にすると変更後が控えになり履歴が空になる
+            // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり履歴が空になる
             if (subObjectEdit.revertTarget != nullptr && subObjectEdit.revertField != nullptr)
             {
                 const NS::Obj::SubObject* baseline = m_defaults.Find(*subObjectEdit.revertTarget);

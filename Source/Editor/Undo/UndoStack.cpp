@@ -21,7 +21,7 @@ namespace NS::Editor
             return;
         }
 
-        // live は呼出側が既に動かしている。Do を呼ぶと同じ姿を組み直す無駄が出るので履歴へ積むだけにする
+        // 実体は呼出側が既に動かしている。Do を呼ぶと同じ姿を組み直す無駄が出るので履歴へ積むだけにする
         PushRecorded(std::move(cmd));
     }
 

@@ -12,10 +12,7 @@ namespace NS::Obj
 
 namespace NS::Editor
 {
-    //! @brief 編集した 1 体分の姿を live のシーンへ写す口
-    //! @details Scene の公開 API だけを組み合わせる
-    //! 適用は対象 1 体だけへ姿を書き戻す・入れる・消す。他の配置物は触らないので、実行時の状態も保たれる
-    //! クラス名と部品名の組が同じなら実体はそのまま値だけ写り、違う時だけ作り直して OnStart からやり直す
+    //! 1 個体の状態をシーンへ適用する。クラスと部品構成が同じなら実体を保ち、異なる時だけ再構築する
     class ObjectSnapshotApplier final : public IObjectSnapshotApplier
     {
     public:

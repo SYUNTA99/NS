@@ -14,9 +14,7 @@ class LevelEditorController;
 
 namespace NS::Editor
 {
-    //! @brief 配置物の親子ツリーを出すヒエラルキーパネル
-    //! @details 選択・改名・親付け替え・複製/削除・範囲選択の UI 状態を自分で持ち、
-    //! 実際の適用は controller へ流す。world を跨ぐので要求は木を描き終えてから一括で流す
+    //! 配置物の親子関係と選択を表示する。改名・親変更などの適用は描画後に行う
     class HierarchyPanel : public NS::NonCopyable
     {
     public:
@@ -24,8 +22,7 @@ namespace NS::Editor
         void Render(LevelEditorController& editor) noexcept;
 
     private:
-        //! @brief 1 行を描く
-        //! @param[in] withChildren 真なら子を再帰で下へ潜る。検索中は一致した物だけを平らに並べるので偽で呼ぶ
+        //! 検索中は withChildren を false にし、一致する配置物だけを平らに並べる
         void RenderNode(LevelEditorController& editor, NS::Obj::Actor& object, bool withChildren) noexcept;
 
         //! 対象を改名待ちにして、入力欄へ現在の表示名を入れる

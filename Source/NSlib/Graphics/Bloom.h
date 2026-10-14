@@ -23,21 +23,14 @@ namespace NS::Gfx
     {
         //! これを超えた分の明るさだけをにじませる。色の成分ごとに引く
         float threshold = 1.0f;
-        //! @brief にじみを足す強さ
-        //! @details 段ごとに超えた分の光を全部持って足し合わせる
-        //! 段の数の逆数なら、画面が切り捨てる分と同じ量を周りへ配る
+        //! 各ぼかし段から加算する光の強さ
         float intensity = 0.2f;
         //! 縮める段の数。1 段目は描画先の半分の大きさ。1 未満は 1 として扱う
         int levels = 5;
     };
 
-    //! @brief 世界を 1 を超える明るさまで持てる描画先へ描かせ、超えた分を縮めてぼかして元の描画先へ足す
-    //! @details BeginWorld で今の描画先を控えて浮動小数の描画先へ差し替える
-    //! EndWorld でにじみを足し、控えた描画先へ書き戻す
-    //! 深度は控えた描画先の物をそのまま使うので、EndWorld の後に描く線も世界の深度で隠れる
-    //! 縮めは 13 点で拾い、戻しは 3×3 の山形で拾って 1 段ずつ足す
-    //! 構築時に Gpu() の device を使う。Renderer が未構築なら無効な状態になり、何もしない
-    //! 描く命令は BeginWorld と EndWorld に渡された Renderer の Commands() から出す
+    //! @brief HDR の明るい部分をぼかして元の描画先へ加算する
+    //! @details BeginWorld と EndWorld で描画先を切り替える。深度は元の描画先を共有する
     //! @warning Renderer より先に破棄すること
     class Bloom : public NS::NonCopyable
     {
@@ -50,16 +43,11 @@ namespace NS::Gfx
         //! 構築に成功した場合 true、それ以外の場合は false
         [[nodiscard]] bool IsValid() const noexcept;
 
-        //! @brief 今の描画先を控え、同じ大きさの浮動小数の描画先を clearColor で塗って描画先にする
-        //! @details 深度は控えた描画先の物をそのまま差す。大きさが前と違えば浮動小数の描画先を作り直す
-        //! 無効な状態・描画先が無い・作り直しに失敗した時は何もせず、世界は今の描画先へそのまま描かれる
-        //! @param[in,out] renderer 描く命令を借りる先。今の描画先とビューポートもここから読む
-        //! @param[in] clearColor 今の描画先を塗った色。空を描かない所に残る
+        //! HDR 描画へ切り替える。準備に失敗した場合は元の描画先で続ける
+        //! 深度は共有し、clearColor で背景を塗る
         void BeginWorld(Renderer& renderer, const NS::Color& clearColor) noexcept;
 
-        //! @brief 浮動小数の絵ににじみを足し、1 へ丸めて BeginWorld で控えた描画先へ書く
-        //! @details 描画先とビューポートを BeginWorld の前へ戻す。BeginWorld が差し替えなかった時は何もしない
-        //! @param[in,out] renderer 描く命令を借りる先。BeginWorld に渡した物と同じ Renderer
+        //! にじみを加算し、元の描画先とビューポートへ戻す。BeginWorld と同じ Renderer を渡す
         void EndWorld(Renderer& renderer) noexcept;
 
     private:

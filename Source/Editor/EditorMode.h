@@ -29,12 +29,11 @@ namespace NS::Editor
 {
     class IObjectSnapshotApplier;
 
-    //! @brief カーソル・パレット・Undo 履歴をまとめた編集機能
-    //! @details シーンに対する編集操作を管理し、非アクティブ時はすべての入力・描画処理をスキップする
+    //! グリッド配置・保存・Undo の編集機能。非アクティブ中は編集入力と描画を止める
     class EditorMode : public NS::NonCopyable
     {
     public:
-        //! @brief cell 1 個分の整数座標。live 照会の受け渡しに使う
+        //! @brief セルの整数座標。実体の照会に使う
         struct CellCoord
         {
             std::int16_t x = 0;
@@ -52,16 +51,16 @@ namespace NS::Editor
             CellCoord place{};             //!< 配置先セル
         };
 
-        //! @brief 保存時に live 実体からシーンの JSON 文書を作る捕捉関数を差す。未設定なら保存できない
+        //! @brief 保存時に実体からシーンの JSON 文書を作る捕捉関数を差す。未設定なら保存できない
         void SetCaptureLevelFn(std::function<nlohmann::json()> fn) noexcept { m_captureLevel = std::move(fn); }
 
-        //! @brief grid 編集・ undo を live へ通す適用経路を差す。未設定なら grid 編集は何もしない
+        //! @brief セル編集・取り消しを実体へ適用する処理を設定する。未設定ならセル編集は何もしない
         void SetApplier(IObjectSnapshotApplier* applier) noexcept { m_applier = applier; }
 
         //! @brief 読込済みシーンデータを実体側へ取り込む関数を差す。読込の完了時に呼ぶ
         void SetLoadLevelFn(std::function<void(nlohmann::json&&)> fn) noexcept { m_loadLevel = std::move(fn); }
 
-        //! @brief cell に居る cell ブラシ配置物の永続 id を live から引く関数を差す。不在は k_NoObjectId
+        //! @brief セルにあるセルブラシ配置物の永続識別番号を取得する処理を設定する。不在は k_NoObjectId
         void SetFindCellObjectFn(std::function<std::uint32_t(std::int16_t, std::int16_t, std::int16_t)> fn) noexcept
         {
             m_findCellObject = std::move(fn);
@@ -73,7 +72,7 @@ namespace NS::Editor
             m_cellOccupied = std::move(fn);
         }
 
-        //! @brief live の全 cell ブラシ配置物の cell 座標一覧を返す関数を差す。カーソルの ray 判定が読む
+        //! @brief 全セルブラシ配置物の座標を実体から取得する処理を設定する。カーソルの光線判定で使う
         void SetCollectCellsFn(std::function<std::vector<CellCoord>()> fn) noexcept { m_collectCells = std::move(fn); }
 
         //! @brief 新規配置物へ永続 id を 1 個振る関数を差す
@@ -98,7 +97,6 @@ namespace NS::Editor
         //! ギズモドラッグ中だけ undo/redo を止める。旧 Transform への書込を防ぐ
         void SetUndoRedoSuppressed(bool suppressed) noexcept { m_undoRedoSuppressed = suppressed; }
 
-        //! @brief 毎フレーム入力を見て、対応する編集操作を実行する
         void Tick() noexcept;
 
         //! @brief カーソル位置に置いた時のプレビュー枠を、Scene タブの図形として積む
@@ -123,13 +121,11 @@ namespace NS::Editor
         //! @brief 今開いているレベル名。まだ名前が決まっていなければ空
         [[nodiscard]] const std::string& CurrentLevelName() const noexcept { return m_currentLevelName; }
 
-        //! @brief 前回の取り込みからレベルデータが変わったか
         [[nodiscard]] bool IsLevelDirty() const noexcept { return m_levelDirty; }
         void ClearLevelDirty() noexcept { m_levelDirty = false; }
 
         [[nodiscard]] CategoryPalette& Palette() noexcept { return m_palette; }
 
-        //! @brief 保存と読み込みのショートカット入力を見る
         void HandleSaveLoadInput() noexcept;
 
         //! 保存 / 読込のモーダルを描き、確定した操作をその場で実行する
@@ -152,18 +148,17 @@ namespace NS::Editor
         void RequestSave() noexcept;
         //! 名前を付けて保存のモーダルを開く
         void OpenSaveModal() noexcept { m_fileBrowser.OpenSaveModal(m_currentLevelName); }
-        //! 読込のモーダルを開く
         void OpenLoadModal() noexcept { m_fileBrowser.OpenLoadModal(); }
 
     private:
-        std::function<nlohmann::json()> m_captureLevel;    // 保存時に live からシーンの JSON 文書を作る
-        IObjectSnapshotApplier* m_applier = nullptr;       // grid 編集・ undo を live へ通す適用経路
-        std::function<void(nlohmann::json&&)> m_loadLevel; // 読み込んだ文書を実体側へ取り込む
+        std::function<nlohmann::json()> m_captureLevel;
+        IObjectSnapshotApplier* m_applier = nullptr;
+        std::function<void(nlohmann::json&&)> m_loadLevel;
         std::function<std::uint32_t(std::int16_t, std::int16_t, std::int16_t)>
-            m_findCellObject; // cell に居る配置物の永続 id を live から引く
-        std::function<bool(std::int16_t, std::int16_t, std::int16_t)> m_cellOccupied; // 種類を問わず居るか
-        std::function<std::vector<CellCoord>()> m_collectCells;                       // live の cell ブラシ座標一覧
-        std::function<std::uint32_t()> m_allocateId;                                  // 新規配置物の永続 id 採番
+            m_findCellObject;
+        std::function<bool(std::int16_t, std::int16_t, std::int16_t)> m_cellOccupied;
+        std::function<std::vector<CellCoord>()> m_collectCells;
+        std::function<std::uint32_t()> m_allocateId;
         NS::OS::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
         NS::Obj::SceneCamera* m_camera = nullptr;
@@ -197,7 +192,7 @@ namespace NS::Editor
         void HandleRotationInput() noexcept;
         void HandleUndoRedoInput() noexcept;
 
-        //! cell に cell ブラシ配置物が居るか。live 照会が未設定なら常に不在
+        //! セルにセルブラシ配置物があるか。実体の照会が未設定なら常に不在
         [[nodiscard]] bool HasObjectAtCell(std::int16_t x, std::int16_t y, std::int16_t z) const noexcept;
         //! cell に種類を問わず配置物が居るか。置けるかの判定だけが読む
         [[nodiscard]] bool IsCellOccupied(std::int16_t x, std::int16_t y, std::int16_t z) const noexcept;

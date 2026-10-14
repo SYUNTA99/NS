@@ -109,9 +109,8 @@ namespace NS
         void await_resume() const noexcept {}
     };
 
-    //! @brief 所有するシーケンスの待ちを進め、明けた物を再開する
-    //! @details いつ Tick するかは持ち主が決める。止めている間は全シーケンスが止まる。一時停止はこれで効く
-    //! CancelAll はシーケンスを途中のまま破棄する。コルーチンフレームのデストラクタは走る。破棄後の再開は無い
+    //! Tick で待ちを進めるシーケンスの所有者。Tick を止めれば全シーケンスが停止する
+    //! CancelAll は再開せずに破棄する。コルーチンフレーム内のデストラクタは呼ばれる
     class CoroutineRunner : public NS::NonCopyable
     {
     public:
@@ -220,7 +219,6 @@ namespace NS
             m_cancelPending = false;
         }
 
-        //! 進行中のシーケンスが 1 本でも残っている場合 true、それ以外の場合は false
         [[nodiscard]] bool IsRunning() const noexcept { return !m_handles.empty(); }
 
     private:

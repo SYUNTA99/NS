@@ -54,7 +54,6 @@ namespace NS::Editor
             ImGui::DockBuilderDockWindow(k_PanelEditMode, leftId);
             ImGui::DockBuilderDockWindow(k_PanelHierarchy, leftId);
             ImGui::DockBuilderDockWindow(k_PanelInspector, rightId);
-            // Assets と Console は下段でタブに重ねる
             ImGui::DockBuilderDockWindow(k_PanelConsole, bottomId);
             ImGui::DockBuilderDockWindow(k_PanelAssets, bottomId);
             ImGui::DockBuilderDockWindow(k_PanelHitTimeline, bottomId);
@@ -88,7 +87,6 @@ namespace NS::Editor
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0.0f, 0.0f});
             ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-            // 普段は半透明の下地、触れた時だけ明るくする
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.0f, 0.0f, 0.0f, 0.45f});
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{1.0f, 1.0f, 1.0f, 0.22f});
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{1.0f, 1.0f, 1.0f, 0.35f});
@@ -154,7 +152,6 @@ namespace NS::Editor
     void DockController::EnterMaximize(const char* name) noexcept
     {
 #if NS_EDITOR_ENABLED
-        // 復元用に現在のドックレイアウトを控えてから全面化対象を記録する
         std::size_t iniSize = 0;
         const char* ini = ImGui::SaveIniSettingsToMemory(&iniSize);
         if (ini != nullptr)
@@ -170,7 +167,6 @@ namespace NS::Editor
     void DockController::ExitMaximize() noexcept
     {
 #if NS_EDITOR_ENABLED
-        // 控えていたドックレイアウトへ丸ごと書き戻す
         if (!m_savedImGuiIni.empty())
         {
             ImGui::LoadIniSettingsFromMemory(m_savedImGuiIni.data(), m_savedImGuiIni.size());

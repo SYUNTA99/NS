@@ -34,13 +34,9 @@ namespace NS::Obj
         //! @brief 今の状態に入ってから進めたフレーム数を返す
         //! @return 入った最初のフレームは 0
         [[nodiscard]] virtual std::uint32_t StepsInState() const noexcept = 0;
-        //! @brief 印 id の状態へ移る予約をする
-        //! @param[in] id 移る先の状態の印
-        //! @return 予約できたか既にその状態の場合 true、それ以外の場合は false
+        //! 状態遷移を予約する。予約できたか同じ状態なら true
         virtual bool Change(StateId id) = 0;
-        //! @brief 今の状態を 1 フレーム進める
-        //! @details 組む時に控えた所有者で進めるので、所有者の型を知らない基底から呼べる。組んでいなければ何もしない
-        //! @param[in] dt 進める秒数
+        //! 組み立て時の持ち主で dt 秒進める。未組立なら何もしない
         virtual void Step(float dt) = 0;
     };
 

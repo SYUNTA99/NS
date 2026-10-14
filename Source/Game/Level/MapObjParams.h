@@ -59,7 +59,6 @@ namespace GL::Level
         [[nodiscard]] float DebrisScale() const noexcept { return m_debrisScale; }
         [[nodiscard]] NS::Vector3 DebrisBaseColor() const noexcept { return m_debrisBaseColor; }
         [[nodiscard]] float MarkProbeDistance() const noexcept { return m_markProbeDistance; }
-        //! 欄「外れで跳ねる回数」の値。負は 0
         [[nodiscard]] int MissHopCount() const noexcept { return std::max(m_missHopCount, 0); }
         //! 外れで着地した後の跳ね方の欄をまとめた値
         [[nodiscard]] MissHopDesc MissHop() const noexcept
@@ -125,7 +124,6 @@ namespace GL::Level
         float m_spinPerSpeed = 0.2f;
         float m_toughness = 1.0f;
         float m_restLifeSeconds = 0.0f;
-        //! 法線の上向き成分。既定は 45 度までの面を床とする
         float m_floorDot = 0.7071f;
         int m_debrisCount = 5;
         float m_debrisSpeed = 6.0f;
@@ -138,15 +136,11 @@ namespace GL::Level
         float m_launchFallGravityScale = 1.4f;
         float m_launchApexBandSpeed = 1.0f;
         float m_launchApexBandGravityScale = 0.5f;
-        // 外れの相手は低く飛ばす。真ん中と同じ角度の弧だと弾き飛ばしに見える
-        // 距離と同じ押し込む成分の 2 乗の縮みの上から、高さへ掛ける割合
+        // 押し込む成分による縮小に加え、外れの弧を低くしてかすめた動きにする
         float m_missLaunchHeightRatio = 0.35f;
-        // 外れの相手は触れた所から少しずれるだけにする
-        // 押し込む成分の 2 乗の縮みの上から、距離へ掛ける割合
+        // 押し込む成分による縮小に加え、外れの相手の移動を抑える
         float m_missLaunchDistanceRatio = 0.1f;
-        // 外れで飛ばされた置物は、着地で 1 回だけ小さく向きを変えて跳ね、転がって止まる。真ん中のまっすぐ飛ぶ弧と
-        // 違って、力がまともに入らずかすめた事を相手の動きで見せる。何度も跳ねると目を引いて派手になるので 1 回、
-        // 跳ねの高さは水平の速さの 0.35 倍まで、向きは左右 30 度までぶらし、速さは跳ねると 7 割に落とす
+        // 外れは着地後に小さく跳ねて転がり、真ん中の弾き飛ばしと区別する
         int m_missHopCount = 1;
         float m_missHopHeightRatio = 0.35f;
         float m_missHopTurnDegrees = 30.0f;

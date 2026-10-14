@@ -255,7 +255,6 @@ namespace NS::Gfx
             return;
         }
 
-        // スカイボックス用の立方体メッシュを生成する
         MeshGeometry geom = MakeCube({0.5f, 0.5f, 0.5f});
         MeshDesc md{};
         md.vertices = geom.vertices.data();
@@ -269,7 +268,6 @@ namespace NS::Gfx
             return;
         }
 
-        // 専用シェーダを読み込む
         m_vs = Shader::CreateBuiltin("skybox.vs.hlsl");
         m_ps = Shader::CreateBuiltin("skybox.ps.hlsl");
         if (!m_vs->IsValid() || !m_ps->IsValid())

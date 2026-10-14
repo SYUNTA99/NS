@@ -12,6 +12,5 @@ namespace NS::Gfx
         ID3D11DeviceContext* context = nullptr;
     };
 
-    //! GraphicObject を返す
     [[nodiscard]] GraphicObject& Gpu() noexcept;
 } // namespace NS::Gfx

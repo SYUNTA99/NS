@@ -39,12 +39,8 @@ namespace NS::Gfx
         //! 画像が未読み込み、または直近の読み込みに失敗したか
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-        //! @brief スカイボックスの描画コマンドを発行する
-        //! @details 描画前の深度・ラスタライザ・ブレンドのステートを退避し、描いた後に戻す。無効な状態では何もしない
-        //! @param[in,out] commands コマンドの発行先
-        //! @param[in] viewProjNoTranslate カメラの移動成分を排除したビュー・プロジェクション行列
-        //! @param[in] sampler キューブマップを拾うサンプラ。線形で端を固定する物
-        //! @note 不透明なオブジェクトを描画した後、かつ半透明なオブジェクトを描画する前に呼び出すこと
+        //! 不透明の後、半透明の前に描く。変更した描画ステートは終了時に戻す
+        //! viewProjNoTranslate はカメラの平行移動を除く行列、sampler は線形・端固定
         void Draw(CommandList& commands,
                   const NS::Matrix& viewProjNoTranslate,
                   ID3D11SamplerState* sampler) const noexcept;

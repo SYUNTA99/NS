@@ -129,7 +129,7 @@ namespace NS::Editor
     void SceneViewPanel::UpdateMouseLatch() noexcept
     {
 #if NS_EDITOR_ENABLED
-        // 全マウスボタン解放中だけ hover に追従し、パネル発のドラッグ中は離すまで追従を維持する
+        // マウスボタンを離すまで、パネルから始めたドラッグを外でも続ける
         if (!ImGui::IsAnyMouseDown())
         {
             m_mouseLatch = m_editHovered;

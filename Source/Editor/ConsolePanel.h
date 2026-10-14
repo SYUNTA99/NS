@@ -8,7 +8,7 @@ namespace NS::Editor
     class ConsolePanel : public NS::NonCopyable
     {
     public:
-        //! FPS とフレーム時間 / fixed step を 1 枚描く
+        //! 毎秒の描画回数・フレーム時間・固定ステップを表示する
         void Render() noexcept;
     };
 } // namespace NS::Editor

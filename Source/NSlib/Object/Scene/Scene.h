@@ -37,15 +37,8 @@ namespace NS::Obj
     class IOverlay;
     class UIActor;
 
-    //! @brief シーンの JSON 文書から組んだ ActorList を駆動するシーン
-    //! @details ActorList と skybox を所有し、JSON
-    //! 文書への書き出しと読み込み・プレイの凍結・標準のシーン描画パスを受け持つ Application から OnUpdate /
-    //! OnRender / OnShutdown を順に呼び戻される 固定ステップの更新と可変フレームの描画で駆動し、IRenderable と
-    //! OverlayRenderer の自己登録先も兼ねる live な Actor/SubObject が唯一の表現で、JSON は実体でない姿
-    //! (ファイル・凍結・undo の控え) にだけ使う 配置物は TypeRegistry と ResolveAssets
-    //! で自力で組む。寿命は SceneManager が unique_ptr
-    //! で所有する 窓口 (カメラ・シーンに 1 つの物・地形の当たり) の出所。Actor はここへ繋ぐ
-    //! 依存: ActorList / SceneJson / ObjectBuilder / TypeRegistry
+    //! @brief 配置物と共有システムを所有し、固定更新と描画を行うシーン
+    //! @details JSON は保存・凍結・編集履歴に使い、実行中の状態は Actor と部品が持つ
     class Scene : public NS::NonCopyable, public IUseCamera, public IUseSceneSystem, public IUseCollision
     {
     public:
@@ -74,16 +67,13 @@ namespace NS::Obj
         //! 平行光の自己解除。DirectionalLight が OnEndPlay で呼ぶ
         void UnregisterLight(DirectionalLight* light);
 
-        //! シーンに 1 つのカメラ管理
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
 
         //! カメラ管理が描画に使う実カメラ
         [[nodiscard]] SceneCamera* MainCamera() noexcept;
 
-        //! シーンに 1 つの物の置き場
         [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
 
-        //! 地形の当たりの PhysicsScene
         [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
 
         //! エフェクトの EffectScene。描画を持たないシーン (試し) では nullptr
@@ -112,10 +102,8 @@ namespace NS::Obj
         [[nodiscard]] NS::Phys::PhysicsScene& Physics() noexcept { return m_physicsScene; }
         [[nodiscard]] const NS::Phys::PhysicsScene& Physics() const noexcept { return m_physicsScene; }
 
-        //! シーンに 1 つの重力の向き。長さ 1 で、既定は -Y
         [[nodiscard]] const NS::Vector3& GravityDirection() const noexcept { return m_gravityDirection; }
-        //! @brief 重力の向きを差し替え、物理の重力も同じ向きにする
-        //! @details NormalizeGravityDirection で長さ 1 に揃えてから使う
+        //! 重力方向を正規化して、物理の重力方向も揃える
         void SetGravityDirection(const NS::Vector3& direction) noexcept;
 
         //! AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
@@ -125,7 +113,6 @@ namespace NS::Obj
         void SetRenderer(NS::Gfx::Renderer* renderer) noexcept { m_sceneRenderer.SetRenderer(renderer); }
 
         //! @brief 次に描くフレームから使う床の波を書く。強さ 0 で消える
-        //! @param[in] wave 床の波
         void SetGroundWave(const NS::Gfx::GroundWave& wave) noexcept { m_sceneRenderer.SetGroundWave(wave); }
         //! 描く時に使う床の波
         [[nodiscard]] const NS::Gfx::GroundWave& GroundWaveShown() const noexcept
@@ -134,7 +121,6 @@ namespace NS::Obj
         }
 
         //! @brief 次に描くフレームから使う歪みの輪を書く。押し 0 で消える
-        //! @param[in] ring 歪みの輪
         void SetDistortionRing(const NS::Gfx::DistortionRing& ring) noexcept
         {
             m_sceneRenderer.SetDistortionRing(ring);
@@ -152,7 +138,7 @@ namespace NS::Obj
             m_sceneRenderer.SetBodyMask(std::move(renderables));
         }
         //! @brief ビュー列の index 番目に、今のフレームで描いた体の型を返す
-        //! @return 1 色 8 ビットの型。描いていなければ null
+        //! @return 1 色 8 ビットの型。未描画なら空
         [[nodiscard]] const NS::Gfx::Texture* BodyMaskShown(std::size_t viewIndex) const noexcept
         {
             return m_sceneRenderer.BodyMaskShown(viewIndex);
@@ -179,26 +165,21 @@ namespace NS::Obj
         //! @details 一時オブジェクトを除く全配置物を、全 SubObject 値まで忠実に写す
         [[nodiscard]] nlohmann::json ToJson() const;
 
-        //! @brief 編集で動いた live の当たりを張り直し、一時オブジェクトへ知らせる。object は作り直さない
+        //! @brief 編集で動いた実体の当たりを張り直し、一時オブジェクトへ知らせる。object は作り直さない
         void SyncPhysics();
 
-        //! @brief プレイ突入時に live を JSON 文書へ凍結して返す。プレイ規則の判定と編集復帰の姿はこの凍結を読む
+        //! @brief プレイ突入時に実体を JSON 文書へ凍結して返す。プレイ規則の判定と編集復帰の姿はこの凍結を読む
         const nlohmann::json& BeginPlayBaseline();
 
         //! @brief 直近の凍結。プレイ中に限り意味を持つ
         [[nodiscard]] const nlohmann::json& PlayBaseline() const noexcept { return m_playBaseline; }
 
-        //! @brief live SubObject の欄 1 つを凍結スナップショットの同じ欄へ写す
-        //! @details プレイ中の手編集を、凍結から組み直す編集復帰の後へ残すための口
-        //! SubObject 丸写しにしないのは、シミュレーションが動かした値まで写すと試走の結果が凍結へ漏れるため
-        //! 凍結に居ない相手 (プレイ中に湧いた object・一時オブジェクト) は写す先が無く、何もしない
-        //! @param[in] comp 手編集を受けた live SubObject
-        //! @param[in] fieldName リフレクションのフィールド名。持っていない欄なら何もしない
+        //! 手編集した欄だけを凍結へ写し、編集復帰後も残す。実行で動いた値は写さない
+        //! 凍結にない個体や存在しない欄は変更しない
         void WritePlayBaselineField(const SubObject& comp, std::string_view fieldName);
 
-        //! @brief 世界を回すかの切替。既定は回す。エディタが編集モードの間だけ下ろす
-        //! @details 「世界がプレイ中か」の持ち主はこの切替 1 つで、部品の active へ写さない
-        //! 下ろしている間は CameraManager も実カメラを書かず、止めた側が書く。切替時に一時停止とコマ送りは払う
+        //! シミュレーションを切り替え、一時停止とコマ送りを解除する
+        //! 無効中はカメラも更新せず、部品の有効状態には反映しない
         void SetSimulationEnabled(bool enabled) noexcept;
         [[nodiscard]] bool IsSimulationEnabled() const noexcept { return m_simulationEnabled; }
 
@@ -207,39 +188,25 @@ namespace NS::Obj
         void SetSimulationPaused(bool paused) noexcept { m_simulationPaused = paused; }
         [[nodiscard]] bool IsSimulationPaused() const noexcept { return m_simulationPaused; }
 
-        //! @brief 止めたまま次の fixed step を 1 コマだけ進める。動いていればまず止める
+        //! @brief 止めたまま次の固定ステップを 1 コマだけ進める。動いていればまず止める
         void StepSimulation() noexcept;
 
-        //! @brief 世界の速さを置く。0〜1 に収め、非数は受けない
-        //! @details 1 未満の間は、世界の時計の段 (ClockOf が World) を速さの分だけ間引いて回す。実時間の段は毎歩回る。
-        //! 1
-        //! 歩の中身は変えないので、フレーム数で数える物も経過秒で進む物も同じだけ遅くなり、同じ入力から同じ結果が出る。
-        //! プレイを入れ直すと 1 へ戻る
-        //! @param[in] speed 世界の速さ。1 が普段の速さ、0 で世界が止まる
+        //! 世界の更新を間引いて減速する。0 で停止、1 で通常。実時間の段は毎歩更新する
+        //! 非有限値は拒否し、0〜1 に収める。プレイ開始時に 1 へ戻す
         void SetWorldSpeed(float speed) noexcept;
         [[nodiscard]] float WorldSpeed() const noexcept { return m_worldSpeed; }
 
-        //! @brief 世界の速さを fromSpeed から 1 へ、実時間の realSeconds 秒で戻し始める (段階的な明け)
-        //! @details 戻り方は shape (横軸は 0〜1 の経過の割合、縦軸は 0〜1 の戻りの割合)。点の無い曲線は直線。
-        //! 戻る間も毎歩の速さは SetWorldSpeed と同じに効く。SetWorldSpeed と SetSimulationEnabled は戻りを止める
-        //! @param[in] fromSpeed 始まりの速さ。0〜1 に収める
-        //! @param[in] realSeconds 1 へ戻るまでの実時間の秒。0 以下ならすぐ 1 へ戻す
-        //! @param[in] shape 戻り方
+        //! fromSpeed 0〜1 から通常速度へ、実時間 realSeconds 秒で戻す。0 秒以下なら即時
+        //! shape は経過割合から復帰割合への曲線で、空なら直線。速度設定やシミュレーション切替で解除する
         void StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept;
 
-        //! @brief 自機以外の世界を steps 歩のあいだ止める
-        //! @details 止めている間は、RunsWhileOthersHeld が偽の段を飛ばす。歩の途中で呼ぶと、その歩の残りの段から効き、
-        //! その歩も 1 歩と数える。今の残りより長い時だけ置き直し、0 は止めを解く。プレイを入れ直すと解ける
-        //! @param[in] steps 止める歩の数。0 以下で止めを解く
+        //! 自機以外を steps 歩停止する。呼んだ歩の残りから効き、その歩も数える
+        //! 残り時間は延長だけを受け付ける。0 以下またはプレイ開始で解除する
         void HoldOthers(int steps) noexcept;
         //! 自機以外の世界を止めている場合 true、それ以外の場合は false
         [[nodiscard]] bool IsHoldingOthers() const noexcept { return m_othersHeldSteps > 0; }
 
-        //! @brief 描く補間の割合を返す
-        //! @details 世界の速さが 1 未満の間は、前に世界を進めてからの溜めに、実時間の割合 × 速さを足す。
-        //! 止めている間は 1 (同じフレームの絵が描くたびに揺れないように)
-        //! @param[in] frameAlpha 固定ステップの間の実時間の割合 (FrameTimer::Alpha)
-        //! @return 0〜1 の割合
+        //! 減速中の経過に合わせた補間割合 0〜1。停止中は絵の変動を避けるため 1
         [[nodiscard]] float RenderAlpha(float frameAlpha) const noexcept;
 
         //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ CameraManager の視点で 1 回だけ描く
@@ -274,11 +241,8 @@ namespace NS::Obj
         //! @details 部品の増減も含めて姿を丸ごと入れ替える。当たりは呼出側が SyncPhysics で張り直す
         Actor* ReplaceFromJson(const nlohmann::json& object);
 
-        //! @brief 同じ id の配置物へ JSON の姿を書き戻す。undo / redo が通る
-        //! @details クラス名と部品名の組が同じなら実体を残し、名前・有効・親と、部品の有効と値だけを写す
-        //! 部品の型はクラスと部品名で決まるので比べない。値の変わった部品だけ資産を引き直す
-        //! 構成が違えば ReplaceFromJson で作り直し、居なければ SpawnFromJson で置く
-        //! 当たりは呼出側が SyncPhysics で張り直す
+        //! 同じ id の個体へ JSON を適用する。構成が同じなら実体を保ち、違えば再構築する
+        //! 未配置なら生成する。衝突の再同期は呼び手が SyncPhysics で行う
         Actor* ApplyFromJson(const nlohmann::json& object);
 
         //! @brief 配置物を 1 体消す。居なければ何もしない
@@ -286,12 +250,7 @@ namespace NS::Obj
         //! 子は根として残る。まとめて消したい呼び出し側が並びを決めて 1 体ずつ呼ぶ
         void DestroyObject(std::uint32_t objectId);
 
-        //! 補間スナップショットの後に、UpdatePhase の段を表の順に 1 つずつ回す
-        //! 世界の駆動はここが持つ
-        //! 物理の段では、Jolt の 1 歩、その段に置いた物の順に呼ぶ
-        //! 段の中は Actor、登録物の順に呼ぶ。CameraManager は Camera の段、エフェクトの世界は Effects の段、
-        //! 開いている画面の管理役は UI の段の登録物
-        //! 読み込んだら回り続けるのが既定で、止める口は SetSimulationEnabled / SetSimulationPaused
+        //! 固定更新の段を順に実行する。同じ段では Actor の後にシステムを更新する
         void OnUpdate();
 
         //! @brief 段 phase を 1 回だけ回す。OnUpdate が段ごとに呼ぶ
@@ -351,7 +310,7 @@ namespace NS::Obj
 
         bool m_simulationEnabled = true;         // 世界を回すか。エディタの編集モードだけが下ろす
         bool m_simulationPaused = false;         // 時間停止中か
-        std::int32_t m_simulationStepFrames = 0; // コマ送り残り fixed step 数。止めたままこの数だけ進める
+        std::int32_t m_simulationStepFrames = 0; // コマ送り残り固定ステップ数。止めたままこの数だけ進める
         float m_worldSpeed = 1.0f;               // 世界の速さ (0〜1)
         float m_worldCarry = 0.0f;               // 前に世界を進めてから足した速さ。1 に届いたら世界を 1 歩進める
         bool m_rampActive = false;               // 世界の速さを戻している間か

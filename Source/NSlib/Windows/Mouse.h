@@ -18,29 +18,23 @@ namespace NS::OS
         Count
     };
 
-    //! @brief マウス入力の現在および前フレームの状態を追跡・管理するクラス
-    //! @details 座標系はクライアント領域の左上を原点とする
-    //! @note スレッドセーフではないため、単一スレッドからのアクセスを前提とする
+    //! 単一スレッドで読むマウス状態。座標はクライアント領域の左上原点
     class Mouse
     {
     public:
         //! @brief 対象のボタンが現在のフレームで新たに押されたかどうかを判定する
         [[nodiscard]] bool IsPressed(MouseButton b) const noexcept;
 
-        //! @brief 対象のボタンが現在押され続けているかどうかを判定する
         [[nodiscard]] bool IsHeld(MouseButton b) const noexcept;
 
         //! @brief 対象のボタンが現在のフレームで離されたかどうかを判定する
         [[nodiscard]] bool IsReleased(MouseButton b) const noexcept;
 
-        //! @brief クライアント領域のX座標を取得する
         [[nodiscard]] int GetX() const noexcept { return m_x; }
 
-        //! @brief クライアント領域のY座標を取得する
         [[nodiscard]] int GetY() const noexcept { return m_y; }
 
-        //! @brief 前フレームからのX軸の移動差分を取得する
-        //! @note 相対マウスモード中は画面座標の差分でなく Raw Input の物理的な移動量を返す
+        //! 相対モードでは画面座標差ではなく Raw Input の移動量を返す
         [[nodiscard]] int GetDeltaX() const noexcept
         {
             if (m_relativeMode)
@@ -50,8 +44,7 @@ namespace NS::OS
             return m_x - m_prevX;
         }
 
-        //! @brief 前フレームからのY軸の移動差分を取得する
-        //! @note 相対マウスモード中は画面座標の差分でなく Raw Input の物理的な移動量を返す
+        //! 相対モードでは画面座標差ではなく Raw Input の移動量を返す
         [[nodiscard]] int GetDeltaY() const noexcept
         {
             if (m_relativeMode)
@@ -79,11 +72,9 @@ namespace NS::OS
         //! @brief OSのホイールスクロールイベントを受け取る内部API
         void OnWheel(int delta) noexcept;
 
-        //! @brief 相対マウスモードの有効/無効を切り替える
-        //! @note プレイ中の視点操作など、マウスポインタが画面端に到達しても操作を継続させたい場合に有効化する
+        //! 画面端に達しても移動量を受け取る。切替時は未消化の移動量を捨てる
         void SetRelativeMode(bool enabled) noexcept;
 
-        //! @brief 相対マウスモードが有効かどうかを判定する
         [[nodiscard]] bool IsRelativeMode() const noexcept { return m_relativeMode; }
 
         //! @brief 相対マウスモード用に、OS からの Raw Input の移動量を蓄積する内部 API
@@ -93,9 +84,7 @@ namespace NS::OS
         //! @note 最初の 1 回は座標を記録するだけで移動量は積まない
         void OnRawMoveAbsolute(int screenX, int screenY) noexcept;
 
-        //! @brief ボタンとホイールの入力状態を強制的にリセットする
-        //! @note
-        //! ウィンドウのフォーカス消失時など、ボタンが押されたまま内部で固着するバグを防ぐために利用する。座標は維持される
+        //! フォーカス消失時の押しっぱなしを防ぐため入力を解除する。座標は保つ
         void ClearState() noexcept;
 
     private:

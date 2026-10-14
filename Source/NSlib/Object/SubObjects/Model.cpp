@@ -372,7 +372,7 @@ namespace NS::Obj
             return {}; // 描くものが無い。間引かれても Collect が何も積まず結果は変わらない
         }
         NS::AABB out{};
-        // m_mesh は確かめ済みなので、描く境界は null にならない
+        // m_mesh は確認済みで、描画の境界を取得できる
         DrawnLocalBounds()->Transform(out, owner->Root().WorldMatrix());
 
         // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま

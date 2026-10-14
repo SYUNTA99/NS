@@ -14,14 +14,14 @@ namespace NS::Gfx
     class Shader;
 
     //! @brief 1回の描画に必要なデータをまとめた構造体
-    // FrameCB の 16 byte 整列を値で抱えるため DrawItem に想定どおりのパディングが入る。C4324 を黙らせる
+    // FrameCB の 16 バイト整列を値で抱えるため DrawItem に想定どおりのパディングが入る。C4324 を黙らせる
 #pragma warning(push)
 #pragma warning(disable : 4324)
     struct DrawItem
     {
-        Mesh* mesh = nullptr;                //!< 描画する形状データ
-        Material* material = nullptr;        //!< 表面の質感やシェーダ設定
-        BlendMode blend = BlendMode::Opaque; //!< 合成モード
+        Mesh* mesh = nullptr;
+        Material* material = nullptr;
+        BlendMode blend = BlendMode::Opaque;
         //! 手前の物に隠れた画素だけへ描く場合 true。その時の合成は blend に関わらず半透明で、深度は書かない
         bool occludedOnly = false;
         bool twoSided = false; //!< 裏からも描く場合 true。偽なら裏を向いた面は描かない

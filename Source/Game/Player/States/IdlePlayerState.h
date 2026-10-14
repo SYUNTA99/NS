@@ -6,7 +6,6 @@ class Player;
 
 namespace GL::Player
 {
-    //! 立ち。落下と走りへ移る
     class IdlePlayerState final : public PlayerState<IdlePlayerState>
     {
     public:

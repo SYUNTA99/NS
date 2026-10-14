@@ -126,7 +126,6 @@ namespace NS::UI
         }
 
         ::ImGuiIO& io = ::ImGui::GetIO();
-        // 既定はカレント直下で、リポジトリのルートに配置ファイルが残る
         io.IniFilename = "build/imgui.ini";
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         // パネルをメインウィンドウの外へドラッグしても各自が OS ウィンドウとして描画され続ける
@@ -168,7 +167,6 @@ namespace NS::UI
             }
         }
 
-        // Win32 backend 初期化
         HWND hwnd = window.NativeHandle();
         if (hwnd == nullptr || !::ImGui_ImplWin32_Init(hwnd))
         {
@@ -178,7 +176,6 @@ namespace NS::UI
             return;
         }
 
-        // DX11 backend 初期化
         (void)renderer;
         ID3D11Device* device = NS::Gfx::Gpu().device;
         ID3D11DeviceContext* context = NS::Gfx::Gpu().context;

@@ -36,10 +36,7 @@ namespace NS
         float fixedDelta = NS::OS::FrameTimer::k_DefaultFixedDelta;
     };
 
-    //! @brief サブシステムを管理しメインループを駆動するアプリケーション
-    //! @details レイヤー構成は起動時に確定させる必要があり、メインループ実行中の動的な追加・削除は禁止
-    //! アプリケーションは単一インスタンスであり多重起動はできない
-    //! 時刻や補間割合が必要な場合は NS::OS::FrameTimer を直接参照する
+    //! 単一インスタンスのメインループ。レイヤーの構成は起動時に確定する
     class Application : public NS::NonCopyable
     {
     public:
@@ -72,11 +69,8 @@ namespace NS
         [[nodiscard]] NS::Obj::AssetManager& Assets() noexcept;
         [[nodiscard]] const NS::Obj::AssetManager& Assets() const noexcept;
 
-        //! @brief カーソルの表示・固定とマウスの相対モードを必ず揃えて切り替える
-        //! @param[in] captured 握る場合 true、出す場合 false
-        //! @details 握ると、カーソルを隠し、固定し、相対モードにする。出すと 3 つとも戻す。
-        //! 見えるカーソルと相対モードの併存は挙動が矛盾するので、3 つを別々に切り替える道は呼び手へ渡さない
-        //! @note 固定の戻し先 Window::SetCursorLockPoint は握る・出すと別の話なので触らない
+        //! 表示・固定・相対モードをまとめて切り替える。captured が true ならカーソルを隠す
+        //! 固定点の設定は変更しない
         void SetCursorCaptured(bool captured) noexcept;
 
         //! 未構築時は nullptr を返す

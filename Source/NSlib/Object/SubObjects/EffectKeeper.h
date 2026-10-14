@@ -34,10 +34,8 @@ namespace NS::Obj
         std::optional<NS::Quaternion> rotation;
     };
 
-    //! @brief 個体が出したエフェクトを、出した順に覚える部品。Actor の基底の枠 Effect に作る
-    //! @details 出す・親を止める・消すをここに通し、再生と記録を 1 か所で揃える。
-    //! 出す先は持ち主の居るシーンから引く。持ち主が無いか描画の無い世界では再生せず、記録だけ残す。
-    //! 使う側は IUseEffect.h の関数から呼ぶ
+    //! 個体のエフェクト再生と記録。描画先がなくても記録を残す
+    //! 利用側は IUseEffect の関数を使う
     class EffectKeeper : public SubObject
     {
     public:

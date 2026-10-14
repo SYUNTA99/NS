@@ -116,10 +116,8 @@ namespace GL::Level
         NS_REFLECT_END_VALUE()
     };
 
-    //! @brief トラウマの揺れ (外れ)。始まりのフレームにトラウマを足し、外した側へ一撃を振る。始まりのフレームに 1
-    //! 回だけ起きる
-    //! @details 足すトラウマは 欄のトラウマ × 威力。揺れの長さはトラウマが減る速さで決まる。
-    //! 続けて当てると前のトラウマに足される
+    //! @brief 開始時に威力に応じたトラウマを加え、外した側へ一撃を振る
+    //! @details 連続命中は加算する。揺れの長さは行の長さでなく decayPerSecond で決まる
     struct CameraTraumaEvent
     {
         std::string_view typeName = "CameraTrauma";
@@ -234,10 +232,8 @@ namespace GL::Level
         NS_REFLECT_END_VALUE()
     };
 
-    //! @brief 沈む揺れ (真ん中)。画面ごと下へ沈み、底で震え、反動の頭までこらえ、反動の頭で跳ね返る
-    //! @details 長さが揺れのフレーム数。跳ね返りは同じタイムラインの反動の事象の始まりから。
-    //! 底の深さと震えは 最大 × (1 − e^(−威力 ÷ 基準)) で、威力が上がるほど頭打ちに増える。
-    //! 画素は高さ 1080 の画面の画素で、射影の後の画面をずらすのでカメラの位置と向きは変えない
+    //! @brief 画面を沈めて震わせ、同じタイムラインの反動開始時に跳ね返す
+    //! @details 深さと震えは威力に応じて頭打ちになる。画素は高さ 1080 基準で、カメラの位置と向きは変えない
     struct CameraSinkEvent
     {
         std::string_view typeName = "CameraSink";
@@ -265,9 +261,8 @@ namespace GL::Level
         NS_REFLECT_END_VALUE()
     };
 
-    //! @brief 自機以外の止め。始まりから長さのフレームの間、自機以外の世界 (置物・物理・エフェクトなど) を止める
-    //! @details 止める段は RunsWhileOthersHeld の表で決まる。自機・入力・カメラ・画面は回る。
-    //! 真ん中の触れる前に置き、世界が止まった中で自機だけが縮みながら突っ込む対比で当たりを予感させる
+    //! @brief 長さの間、自機以外の世界を止める
+    //! @details 対象は RunsWhileOthersHeld で決まる。自機・入力・カメラ・画面は更新を続ける
     struct OthersStopEvent
     {
         std::string_view typeName = "OthersStop";
@@ -275,11 +270,8 @@ namespace GL::Level
         bool beforeContact = true; //!< 予測した当たりの前に置く
     };
 
-    //! @brief 止めの間の横揺れ。自機と相手を画面の横 (床に沿う向き) へ逆向きに、体ごと揺らす
-    //! @details 揺れのフレーム数はこの当たりで効く止めのフレーム数で、行の長さは使わない。振れ幅に
-    //! (1 − 経過 ÷ フレーム数) を掛けて止めの終わりで 0 にする
-    //! 決めたフレーム数ごとに左右を入れ替え、振れ幅を 7〜10
-    //! 割でばらつかせる。揺らすのは描く形だけで、当たりは動かさない
+    //! @brief 自機と相手の描く形を、床に沿う画面の横方向へ逆向きに揺らす
+    //! @details 行の長さは使わず、当たりの止めに合わせて弱める。当たりの位置は動かさない
     struct BodyShakeEvent
     {
         std::string_view typeName = "BodyShake";
@@ -301,9 +293,8 @@ namespace GL::Level
         NS_REFLECT_END_VALUE()
     };
 
-    //! @brief 止めの間の奥揺れ。相手を受けた力の向きへ、自機をその逆へ、押しては戻す
-    //! @details 揺れのフレーム数はこの当たりで効く止めのフレーム数で、行の長さは使わない。止めの最後のフレームまで
-    //! 揺れ、明けで 0 に戻す。ずれは DepthShakeOffset。揺らすのは描く形だけで、当たりは動かさない
+    //! @brief 相手の描く形を受けた力の向きへ、自機を逆向きへ押して戻す
+    //! @details 行の長さは使わず、止めの最後まで揺らして明けに戻す。当たりの位置は動かさない
     struct DepthShakeEvent
     {
         std::string_view typeName = "DepthShake";
@@ -323,9 +314,8 @@ namespace GL::Level
         NS_REFLECT_END_VALUE()
     };
 
-    //! @brief 残像。止めの間は自機と相手の根の左右に写しを置き、明けに止めの最後の姿を残して薄める
-    //! @details 止めのフレーム数は行の長さでなく、この当たりで効く止めのフレーム数。左右の離れは
-    //! 画素の欄に止めの残りの割合を掛けた物。明けの写しは止めの後も releaseFrames だけ残る
+    //! @brief 止めの間は左右の残像を出し、明けには止めの最後の姿を薄めて残す
+    //! @details 行の長さは使わず、当たりの止めに合わせる。明けの残像は releaseFrames だけ残る
     struct GhostEvent
     {
         std::string_view typeName = "Ghost";
@@ -346,10 +336,8 @@ namespace GL::Level
         NS_REFLECT_END_VALUE()
     };
 
-    //! @brief 衝撃の震え。自機と相手の体を、衝突点から裏へ数画素の震えが遅れて伝わる
-    //! @details 震えのフレーム数はこの当たりで効く止めのフレーム数で、行の長さは使わない。衝突点から体の一番遠い所へ
-    //! 届くフレーム数 (フレーム数の半分まで) で裏まで伝わり、1 か所は フレーム数 − 届くフレーム数 で弱まって止まる。
-    //! 揺らすのは描く形だけで、当たりと根の位置は動かさない
+    //! @brief 衝突点から体の裏へ震えを伝える
+    //! @details 行の長さは使わず、当たりの止めに合わせる。描く形だけを揺らし、当たりと根の位置は動かさない
     struct ImpactTremorEvent
     {
         std::string_view typeName = "ImpactTremor";
@@ -372,9 +360,8 @@ namespace GL::Level
         NS_REFLECT_END_VALUE()
     };
 
-    //! @brief 床の波。触れた点の真下を中心に、上を向いた面へ光の輪を広げる
-    //! @details 長さが出すフレーム数。半径と強さは始まりからのフレーム数を横軸にした曲線。真後ろのカメラから
-    //! 床は斜めに大きく見えるので、二人の足元から広がる輪で当たりの力が周りへ伝わった事を見せる
+    //! @brief 触れた点の真下から、上を向いた面へ光の輪を広げる
+    //! @details 長さが表示フレーム数。曲線の横軸は開始からのフレーム数
     struct GroundWaveEvent
     {
         std::string_view typeName = "GroundWave";
@@ -390,9 +377,8 @@ namespace GL::Level
         NS_REFLECT_END_VALUE()
     };
 
-    //! @brief 歪みの輪。触れた点を中心に、画面の上で広がる輪の所の絵を外へ押し出す
-    //! @details 長さが出すフレーム数。半径と押しは始まりからのフレーム数を横軸にした曲線で、どれも画面の高さに
-    //! 対する割合。真後ろのカメラからも、当たった所から空気が押し出された事を画面の歪みで見せる
+    //! @brief 触れた点から画面に輪を広げ、輪の部分の絵を外へ押し出す
+    //! @details 長さが表示フレーム数。曲線の横軸は開始からのフレーム数
     struct DistortionRingEvent
     {
         std::string_view typeName = "DistortionRing";
@@ -410,10 +396,8 @@ namespace GL::Level
         NS_REFLECT_END_VALUE()
     };
 
-    //! @brief 震えの線。相手と自機をまとめた輪郭の外の左右に縦の短い線を 3
-    //! 本ずつ画面へ描き、横揺れと同じ拍で外と内へずらす
-    //! @details 線のフレーム数はこの当たりで効く止めのフレーム数で、行の長さは使わない。挟む中心と半径は始めた時の
-    //! 二人の形。真後ろのカメラでは体の横揺れが小さく見えるので、揺れている事を画面の線で読ませる
+    //! @brief 二人を囲む線を画面へ描き、横揺れと同じ拍で動かす
+    //! @details 行の長さは使わず、当たりの止めに合わせる。範囲は開始時の二人の形で決まる
     struct ShakeLinesEvent
     {
         std::string_view typeName = "ShakeLines";
@@ -433,8 +417,8 @@ namespace GL::Level
         NS_REFLECT_END_VALUE()
     };
 
-    //! @brief つんのめり。カメラの位置と注視点を、突進の水平の向きへ曲線の距離だけ同じだけずらす
-    //! @details 長さが描くフレーム数。向きと地平線は変えない。外れで、止まるはずの勢いが止まらず空振りした事を見せる
+    //! @brief カメラの位置と注視点を、突進の水平の向きへ曲線の距離だけずらす
+    //! @details 長さが表示フレーム数。向きと地平線は変えない
     struct CameraLurchEvent
     {
         std::string_view typeName = "CameraLurch";
@@ -448,9 +432,8 @@ namespace GL::Level
         NS_REFLECT_END_VALUE()
     };
 
-    //! @brief 反動の揺れ。カメラの位置と注視点を、カメラから見た反動の向きの軸で曲線の距離だけ同じだけずらす
-    //! @details 長さが描くフレーム数。反動の水平の向きをカメラの右と上へ写した画面の上の向きを使い、奥へ向かう分は
-    //! 使わない。写した向きがほぼ無い (反動が真っすぐ奥か手前) 時は揺らさない。向きと地平線は変えない
+    //! @brief 反動の画面方向へ、カメラの位置と注視点を曲線の距離だけずらす
+    //! @details 長さが表示フレーム数。奥行き成分は捨て、画面方向が無ければ揺らさない。向きと地平線は保つ
     struct CameraReboundSwayEvent
     {
         std::string_view typeName = "CameraReboundSway";
@@ -503,13 +486,11 @@ namespace GL::Level
     struct HitTimeline
     {
         int version = 1;
-        std::vector<HitEvent> events; //!< 事象の並び
+        std::vector<HitEvent> events;
     };
 
-    //! value の種類のファイルに書く名前
     [[nodiscard]] std::string_view HitEventTypeName(const HitEventValue& value) noexcept;
 
-    //! value の種類のパネルに出す名前
     [[nodiscard]] std::string_view HitEventLabel(const HitEventValue& value) noexcept;
 
     [[nodiscard]] bool CanStartBeforeContact(const HitEventValue& value) noexcept;
@@ -525,34 +506,21 @@ namespace GL::Level
     [[nodiscard]] void* HitEventFields(HitEventValue& value) noexcept;
     [[nodiscard]] const void* HitEventFields(const HitEventValue& value) noexcept;
 
-    //! @brief 面の上の位置から外れの向きを決める
-    //! @details 絶対値の大きい方の軸の符号で決め、絶対値が等しい時は左右にする
-    //! @param[in] u 面の上の左右の位置。自機から見て右が正
-    //! @param[in] v 面の上の上下の位置。上が正
-    //! @return 右・左・上・下のどれか
+    //! 絶対値の大きい軸の符号で外れの向きを決める。同値なら左右。u は右、v は上が正
     [[nodiscard]] HitDirection HitDirectionOf(float u, float v) noexcept;
 
-    //! @brief 向きの付いた事象を、面の上の位置の当たりでどれだけ効かせるか
-    //! @details 位置の角度 (右 0 度・上 90 度・左 180 度・下 270 度) で、隣り合う 2 つの向きを直線に混ぜる。
-    //! 4 つの向きの重みを足すと 1。位置が真ん中 (0, 0) の時は HitDirectionOf の向きだけ 1
-    //! @param[in] direction 事象の向き
-    //! @param[in] u 面の上の左右の位置。自機から見て右が正
-    //! @param[in] v 面の上の上下の位置。上が正
-    //! @return 重み 0〜1。Any は常に 1
+    //! 位置の角度で隣り合う向きの重みを直線補間する。u は右、v は上が正
+    //! 4 方向の重みの和は 1。原点では HitDirectionOf の向きだけ 1、Any は常に 1
     [[nodiscard]] float HitDirectionWeight(HitDirection direction, float u, float v) noexcept;
 
-    //! direction のファイルに書く名前
     [[nodiscard]] std::string_view HitDirectionName(HitDirection direction) noexcept;
 
     //! @brief ファイルに書く名前から向きを引く
     //! @return 知らない名前の場合は std::nullopt
     [[nodiscard]] std::optional<HitDirection> ParseHitDirection(std::string_view name) noexcept;
 
-    //! @brief タイムラインのファイルの JSON を読む
-    //! @details 種類の欄に無い鍵は 1 件ずつ警告し、残りを読む
-    //! @param[in] doc ファイルの JSON
-    //! @param[out] error 読めなかった場合に、読めなかった所を書く
-    //! @return 読めた場合はタイムライン。版が違う・形が壊れている・知らない種類がある場合は std::nullopt
+    //! JSON を読む。未知の欄は警告して読み飛ばす
+    //! 版・形式・種類が不正なら std::nullopt を返し、error に理由を書く
     [[nodiscard]] std::optional<HitTimeline> ParseHitTimeline(const nlohmann::json& doc, std::string& error);
 
     //! timeline をファイルの JSON の形 {"version": 1, "events": [...]} へ書き出す
@@ -562,23 +530,21 @@ namespace GL::Level
     //! @return 真ん中は "center"、外れは "miss"。番号から作った段の外の値は空
     [[nodiscard]] std::string_view HitTimelineNameOf(HitTier tier) noexcept;
 
-    //! @brief 相手の名前に使えるかを返す
-    //! @details ファイル名の一部になるので、空・. を含む・使えない文字・前後の空白・予約名を断る
-    //! @return 使える場合 true、それ以外の場合は false
+    //! ファイル名に使える場合 true、それ以外の場合は false
+    //! 空・ドット・禁止文字・前後の空白・予約名を拒否する
     [[nodiscard]] bool IsValidHitTimelineName(std::string_view name) noexcept;
 
     //! @brief 相手の名前と段のタイムラインのファイル名を拡張子なしで返す
     //! @return 名前が空なら段の名前、それ以外は <名前>.<段の名前>
     [[nodiscard]] std::string HitTimelineFileName(std::string_view name, HitTier tier);
 
-    //! @brief 当たりのタイムラインの置き場。1 つの段につき Directory()/<名前>.json を 1 つ持つ
-    //! @details 初めて引いた時に Directory() の *.json を全て読む。壊れたファイルは読む時にエラーを 1 回出して持たない
+    //! @brief 名前ごとに Directory()/<名前>.json を管理するタイムライン集
+    //! @details 初回検索時に全ファイルを読む。不正なファイルはエラーを一度出し、保持しない
     class HitTimelineLibrary
     {
     public:
         [[nodiscard]] static HitTimelineLibrary& Get();
 
-        //! 読み書きするディレクトリ。既定は ContentRoot/Assets/HitTimelines
         [[nodiscard]] const std::string& Directory();
 
         //! ディレクトリを差し替えて読み直す。試しは一時ディレクトリへ向ける
@@ -594,10 +560,8 @@ namespace GL::Level
         //! @details 無いか壊れている段、段の外の値は nullptr で、段ごとに 1 回だけエラーを出す
         [[nodiscard]] const HitTimeline* FindForTier(HitTier tier);
 
-        //! @brief 相手の名前と段から、使うタイムラインの名前を決める
-        //! @details <名前>.<段の名前> があればそれ、無ければ段の名前。名前で始まる物が 1 つも無い時は、
-        //! 名前ごとに 1 回だけエラーを出す
-        //! @param[in] name 相手の欄「当たりのタイムライン」の値。空なら段の名前
+        //! <名前>.<段名> があれば優先し、無ければ段名を使う。空の名前も段名を使う
+        //! 名前に対応するファイルが一つも無ければ、名前ごとに一度エラーを出す
         [[nodiscard]] std::string NameFor(std::string_view name, HitTier tier);
 
         //! @brief NameFor の名前のタイムライン
@@ -607,7 +571,6 @@ namespace GL::Level
         //! 読んだ全部のタイムラインの事象の一番早い始まり。0 より早い物が無ければ 0
         [[nodiscard]] int EarliestStart();
 
-        //! 読んだタイムラインの名前の並び。段の既定は入らない
         [[nodiscard]] std::vector<std::string> TargetNames();
 
         //! 読んだ全部のタイムラインのファイル名の並び。拡張子は含まない
@@ -625,7 +588,7 @@ namespace GL::Level
 
         std::size_t m_maxFileBytes = 1024 * 1024;
         std::string m_directory;                                     // 空なら既定のディレクトリ
-        std::map<std::string, HitTimeline, std::less<>> m_timelines; // 名前からタイムライン
+        std::map<std::string, HitTimeline, std::less<>> m_timelines;
         std::set<int> m_reportedTiers;                               // 引けないとエラーを出した段の番号
         std::set<std::string, std::less<>> m_reportedNames;          // 1 つも無いとエラーを出した相手の名前
         bool m_loaded = false;

@@ -14,16 +14,11 @@ namespace NS::Phys
 
 namespace NS::Obj
 {
-    //! @brief 当たり形状 SubObject の共通基底
-    //! @details どの形の body として PhysicsScene へ入れるかは派生が決める
-    //! ActorList::SyncPhysics はこの型だけを見て回るので、形状を足しても同期側は変わらない
-    //! body は id でだけ持つ。どの PhysicsScene に居るかは持ち主の Scene が決め、PhysicsScene の控えは持たない
-    //! 抽象基底なので TypeRegistry には登録しない
-    //! 依存: NS::Phys::PhysicsScene, JPH::BodyID
+    //! 所属シーンへ地形の body を登録する部品の基底。具体的な形状は派生が決める
     class Collision : public SubObject
     {
     public:
-        //! world 座標の当たりを body 1 個として持ち主の Scene の PhysicsScene へ入れる。入れた body があれば置き直す
+        //! 世界座標の当たりを body 1 個として持ち主の Scene の PhysicsScene へ入れる。入れた body があれば置き直す
         //! 何も入れない形状もある。持ち主が Scene に居なければ何もしない
         void SyncToPhysics();
 
@@ -34,10 +29,9 @@ namespace NS::Obj
         //! 持ち主が Scene に居なければ何もせず、id も持ったまま
         void RemoveFromPhysics();
 
-        //! 配置物ごと消える前に、持ち主の Scene の PhysicsScene から自分の body を外す
-        //! body を持ったまま Scene に居なければ外す先が分からないので、エラーを出して id だけ手放す
         void OnAppear() override;
         void OnDisappear() noexcept override { Collision::OnEndPlay(); }
+        //! body を外す。所属シーンがなければエラーを出し、id だけを手放す
         void OnEndPlay() override;
 
         NS_REFLECT_NONE(Collision, SubObject)
@@ -49,11 +43,7 @@ namespace NS::Obj
                                                   const NS::Vector3& centerOffset) const noexcept;
 
     private:
-        // current の body を自分の形と姿勢へ置き直した id を返す
-        // current が無効なら新しく作る。入れない形状は無効を返す
-        // 外から別の PhysicsScene を渡されると、覚えている id がどの PhysicsScene の物か言えなくなる
-        // 別の PhysicsScene は同じ index と使い回し回数を配るので、無関係の body を作り変える
-        // private にし、持ち主の Scene の PhysicsScene を引いた SyncToPhysics だけが呼ぶ
+        // 無効な current は新規作成。所属と異なる PhysicsScene の id と混同しないよう、SyncToPhysics だけが呼ぶ
         [[nodiscard]] virtual JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) = 0;
 
         JPH::BodyID m_bodyId;

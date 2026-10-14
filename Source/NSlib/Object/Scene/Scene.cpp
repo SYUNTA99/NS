@@ -78,7 +78,7 @@ namespace NS::Obj
 
     void Scene::SyncPhysics()
     {
-        // ギズモで動いた live の当たりを張り直す。object を作り直さないので選択・参照はそのまま保たれる
+        // ギズモで動いた実体の当たりを張り直す。object を作り直さないので選択・参照はそのまま保たれる
         m_objects.SyncPhysics(m_physicsScene);
     }
 
@@ -314,7 +314,7 @@ namespace NS::Obj
             return nullptr;
         }
 
-        // 子は古い方の破棄で根に落ちるので、先に控えて新しい方へ付け直す。local の姿はそのまま残る
+        // 子は古い方の破棄で根に落ちるので、先に控えて新しい方へ付け直す。局所の姿はそのまま残る
         std::vector<std::uint32_t> childIds;
         childIds.reserve(old->Children().size());
         for (const Actor* child : old->Children())

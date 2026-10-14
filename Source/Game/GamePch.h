@@ -1,7 +1,7 @@
 #pragma once
 
 // Game / Editor 側の共通プリコンパイルヘッダ。各 .cpp へ /FI で強制 include される
-// 安定した Runtime 公開 API とよく使う標準ライブラリだけを入れ、windows.h を巻き込むヘッダは避ける
+// 安定した NSlib 公開 API と標準ライブラリを入れ、windows.h を巻き込むヘッダは避ける
 
 #include "NSlib/App/App.h"
 #include "NSlib/Core/Core.h"
@@ -39,9 +39,7 @@
 #include "NSlib/Object/Scene/SceneManager.h"
 #include "NSlib/Object/Transform.h"
 
-// 標準ライブラリは CommonStl.h にまとめ、各層 PCH と同じセットを使う
 #include "NSlib/CommonStl.h"
 
-// Game / Editor がよく使う重い標準ライブラリも足す
 #include <algorithm>
 #include <cmath>

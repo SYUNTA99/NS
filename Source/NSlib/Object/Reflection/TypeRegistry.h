@@ -16,12 +16,8 @@ namespace NS::Obj
 
     using SubObjectDefaultFn = std::unique_ptr<SubObject> (*)();
 
-    //! @brief クラス名から型を引く自己登録の集約先。Actor 派生と SubObject を 1 表で持つ
-    //! @details 各型は自身の .cpp で NS_CLASS を書くと、クラス名をキーに生成関数が静的初期化時に積まれる
-    //! Actor 側か SubObject 側かは NS_CLASS が継承で見分ける。中央の手書き列挙は持たない
-    //! 登録マクロを書いた型しか生成できないので、信頼できない型名でも不正な生成はできない
-    //! editor 専用コンポと抽象基底は登録しない
-    //! StaticLib では自己登録の翻訳単位がリンカに除去され得るため、実行体側で除去対策を要する
+    //! NS_CLASS で登録した Actor と部品をクラス名から生成する
+    //! 静的ライブラリでは自己登録の翻訳単位がリンク時に除去されないようにする
     class TypeRegistry
     {
     public:

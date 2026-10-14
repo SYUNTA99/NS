@@ -28,10 +28,8 @@ namespace NS::Editor
         void Reset(std::function<std::unique_ptr<NS::Obj::Scene>()> create, TimelineFrameRange range);
         //! @brief 場面と生成関数を手放す
         void Clear() noexcept;
-        //! @brief frame まで場面を進め、一時停止して返す
-        //! @details 今のフレームより前へ戻る時だけ、開始から組み直す
-        //! 同じフレームは更新しない。機器への入力と振動は中立
-        //! @return 非所有の場面。生成できなかった場合は nullptr
+        //! 指定フレームまで進めて停止したシーンを非所有で返す。生成失敗は nullptr
+        //! 巻き戻しは開始から再生成し、同じフレームは更新しない。入力と実機振動は中立
         [[nodiscard]] NS::Obj::Scene* Seek(int frame);
         [[nodiscard]] NS::Obj::Scene* Scene() const noexcept { return m_scene.get(); }
         [[nodiscard]] std::optional<int> Frame() const noexcept { return m_frame; }

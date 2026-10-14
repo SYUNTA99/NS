@@ -21,14 +21,12 @@ namespace GL::Level
     public:
         MapObj() noexcept;
 
-        //! 保存形式と TypeRegistry の登録名。読込はこの名前で Actor の型を選ぶ
         NS_REFLECT_NONE(MapObj, NS::Obj::Actor)
 
         //! 配置が揃った後に、当たりの球を物理へ入れる
         void InitAfterPlacement() override;
 
-        //! @brief 状態機械の段と身体の段を 1 回ずつ進める
-        //! @details 状態機械を 1 固定ステップ進め、当たりの球が動いていれば物理へ置き直す
+        //! 状態を 1 固定ステップ進め、動いた当たりの球を物理へ同期する
         void UpdateMotion();
         void OnEndPlay() override;
         //! 体当たりの止めの最中の場合 true、それ以外の場合は false
@@ -49,7 +47,6 @@ namespace GL::Level
         bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
         void OnInit() override;
-        //! 当たりの球が動いていれば物理へ置き直す
         void BodyStep() override;
         //! 発光の層を進める。HitReaction は進めない
         void VisualStep() override;
@@ -67,14 +64,11 @@ namespace GL::Level
         void LeaveFreeze();
         void StepFreeze();
         void AdvanceShake();
-        // 止めの間の揺れを止め、描く時だけのずれを 0 へ戻す
         void StopShake();
         void AdvanceGhost();
-        // 残像を止め、左右の写しと明けの写しを消す
         void StopGhost();
         // 衝撃の震えを 1 フレーム進めて描く所へ書く。長さの終わりで振れ幅 0 を書いて止める
         void AdvanceTremor();
-        // 衝撃の震えを止め、振れ幅 0 を書く
         void StopTremor();
         void Release(const TackleReleaseDesc& desc);
         void ResetTo(const NS::Vector3& position, const NS::Quaternion& rotation);
@@ -134,7 +128,7 @@ namespace GL::Level
         bool m_arcDeflected = false;
         int m_hopsLeft = 0;                       // 外れで着地した後に残っている跳ねの回数。外れでなければ 0
         int m_hopIndex = 0;                       // 次の跳ねが何回目か。0 から数える
-        std::uint32_t m_hopSeed = 0;              // 跳ね方の種
+        std::uint32_t m_hopSeed = 0;
         std::optional<NS::Sphere> m_syncedSphere; // 最後に当たりへ置いた世界座標の球。置く前は空
     };
 } // namespace GL::Level

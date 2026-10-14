@@ -66,9 +66,9 @@ namespace NS::Obj
     //! 再生状態はインスタンス側が持つが、skeleton / clips のデータは不変なので複数インスタンスで共有する
     struct LoadedSkinnedModel
     {
-        NS::Gfx::SkeletalMesh* mesh = nullptr;                      // AssetManager 所有
-        const NS::Gfx::Skeleton* skeleton = nullptr;                // AssetManager 所有
-        const std::vector<NS::Gfx::AnimationClip>* clips = nullptr; // AssetManager 所有
+        NS::Gfx::SkeletalMesh* mesh = nullptr;
+        const NS::Gfx::Skeleton* skeleton = nullptr;
+        const std::vector<NS::Gfx::AnimationClip>* clips = nullptr;
         bool valid = false;
     };
 
@@ -80,7 +80,7 @@ namespace NS::Obj
         explicit AssetManager(std::string baseDir) noexcept;
         ~AssetManager();
 
-        //! path キーで Shader を共有して返す。同一 path は同一インスタンス。失敗時も非 null で fallback を返す
+        //! path ごとに Shader を共有する。失敗時も代替シェーダーを返す
         [[nodiscard]] NS::Gfx::Shader* GetOrLoadShader(std::string_view path);
         //! path キーで Texture を共有して返す。同一 path は同一インスタンス
         [[nodiscard]] NS::Gfx::Texture* GetOrLoadTexture(std::string_view path);
@@ -88,13 +88,8 @@ namespace NS::Obj
         //! 即 nullptr を返す。修正した file の再試行は Clear() でキャッシュを解いてから
         [[nodiscard]] NS::Gfx::Mesh* GetOrLoadMesh(std::string_view path);
 
-        //! meshRef の形を当たりにして返す。参照の引き方は ResolveMeshFromRef と同じ
-        //! 三角形は描画の index の並びのままで、法線 (v1 - v0) × (v2 - v0) が表面の外を向く
-        //! Jolt の形は最初に頼まれた時に 1 度だけ作り、以後は同じ当たりを返す。歪みの無い配置物はその形を共有する
-        //! 同じ file を指す参照には、区切り文字や . / .. の書き方が違っても同じ当たりを返す
-        //! file は GetOrLoadMesh と同じ読込を通るので、glTF を読むのは描画と合わせて 1 回
-        //! device が無くても当たりは作れる。読めなかった参照も負キャッシュする
-        //! 空文字・トラバーサル・読込失敗は nullptr。返す当たりは AssetManager 所有で Clear() まで有効
+        //! 資産ごとの衝突形状を共有する。GPU がなくても作成でき、同じファイルは重複して読まない
+        //! 空・領域外の参照・読込失敗は nullptr。失敗をキャッシュし、参照は Clear まで有効
         [[nodiscard]] const NS::Phys::MeshShape* GetOrLoadMeshShape(const std::string& meshRef);
 
         //! skinned glTF を読み SkeletalMesh を path キーで重複なく所有して返す。skeleton / clips は
@@ -105,10 +100,8 @@ namespace NS::Obj
         //! 以後は再読込せず nullptr を返す。修正した file の再試行は Clear() でキャッシュを解いてから
         [[nodiscard]] const NS::Gfx::AnimationSource* GetOrLoadAnimationSource(std::string_view path);
 
-        //! clipPath のアニメーションを modelPath の骨格へ骨名で結合した結果を両 path の組で重複なく所有して
-        //! 返す。クリップ側の読込失敗は負キャッシュして nullptr、model 側の失敗はキャッシュせず nullptr を
-        //! 返し後で再試行できる。結合できるトラックが 1 本も無ければ空の一覧を非 null で返す
-        //! 同じ組で呼ぶ全インスタンスが結果を共有する
+        //! 骨名で結合したクリップをパスの組ごとに共有する。結合対象がなければ空の一覧
+        //! クリップ読込失敗は負キャッシュ、モデル読込失敗は再試行可能な nullptr
         [[nodiscard]] const std::vector<NS::Gfx::AnimationClip>* GetOrLoadBoundClips(std::string_view clipPath,
                                                                                      std::string_view modelPath);
 
@@ -120,12 +113,8 @@ namespace NS::Obj
         //! 同じ名前の当たりは RegisterBuiltins 無しでも GetOrLoadMeshShape が返す
         [[nodiscard]] NS::Gfx::StaticMesh* Builtin(std::string_view name) const noexcept;
 
-        //! @brief 半径と半分の高さの組ごとに 1 度だけカプセルの StaticMesh を作り、以後は同じ mesh を返す
-        //! @details 寸法の意味は NS::Gfx::MakeCapsule と同じ。半分の高さ 0 は同じ半径の球になる
-        //! 返す mesh は AssetManager 所有で Clear() まで有効。作れなかった寸法は覚えず、次に頼まれた時に作り直す
-        //! @param[in] radius 円柱と半球の半径
-        //! @param[in] halfHeight 円柱部の長さの半分
-        //! @return カプセルの mesh。寸法が有限でない・device が無い・GPU 生成に失敗した場合は nullptr
+        //! 寸法ごとに共有するカプセルメッシュ。半長 0 で球になり、参照は Clear まで有効
+        //! 非有限の寸法・GPU なし・生成失敗は nullptr。生成失敗は次回に再試行する
         [[nodiscard]] NS::Gfx::StaticMesh* GetOrMakeCapsuleMesh(float radius, float halfHeight);
 
         //! matPath の .mat を読み込み composite Material を組んで返す。shader / texture は内部 leaf を借りて共有
@@ -156,10 +145,10 @@ namespace NS::Obj
             NS::Vector3 baseColor{1.0f, 1.0f, 1.0f};
         };
 
-        // file の mesh 1 件。描画と当たりを 1 回の読込から両方作る。読込に失敗した path も両方 null で残す
+        // ファイルのメッシュ 1 件。描画と当たりを一度の読み込みで作る。失敗時は両方空で記録する
         struct MeshRecord
         {
-            std::unique_ptr<NS::Gfx::Mesh> mesh;            // GPU 生成に失敗したら null
+            std::unique_ptr<NS::Gfx::Mesh> mesh;            // GPU での生成に失敗したら空
             std::unique_ptr<NS::Phys::MeshShape> collision; // Jolt の形は当たりを頼まれた時に作る
         };
 
@@ -174,8 +163,8 @@ namespace NS::Obj
         };
 
         std::string m_baseDir;                                               // 相対 path 解決の基準ディレクトリ
-        std::map<std::string, std::unique_ptr<NS::Gfx::Shader>> m_shaders;   // path キーの Shader キャッシュ
-        std::map<std::string, std::unique_ptr<NS::Gfx::Texture>> m_textures; // path キーの Texture キャッシュ
+        std::map<std::string, std::unique_ptr<NS::Gfx::Shader>> m_shaders;
+        std::map<std::string, std::unique_ptr<NS::Gfx::Texture>> m_textures;
         std::map<std::string, MeshRecord> m_meshes;                          // path キーの file mesh
         std::map<std::string, std::unique_ptr<NS::Phys::MeshShape>> m_builtinCollisions; // 組み込み名キーの当たり
         std::map<std::string, std::unique_ptr<NS::Gfx::StaticMesh>> m_builtins;          // path 無し、leaf と別容器
@@ -186,8 +175,8 @@ namespace NS::Obj
         std::map<std::string, SkinnedModelRecord>
             m_skinnedModels; // skinned glTF。record は挿入後に書き換えず、配った参照を安定させる
         std::map<std::string, std::unique_ptr<NS::Gfx::AnimationSource>>
-            m_animationSources; // アニメ専用 glTF、null は負キャッシュ
+            m_animationSources; // アニメ専用 glTF。空の値は読み込み失敗の記録
         std::map<std::pair<std::string, std::string>, std::unique_ptr<std::vector<NS::Gfx::AnimationClip>>>
-            m_boundClips; // clip と model の path 組がキーの結合済クリップ、null は負キャッシュ
+            m_boundClips; // clip と model の path の組で引く結合済みクリップ。空の値は読み込み失敗の記録
     };
 } // namespace NS::Obj

@@ -21,9 +21,7 @@ namespace NS::UI
 
 class LevelEditorController;
 
-//! @brief エディタ用のUIを提供するレイヤー
-//! @details
-//! ゲームを止めずに、UI パネル・ギズモ・自由視点カメラを world の上へ重ねる
+//! ゲームの更新・描画に編集用の UI と自由視点を重ねるレイヤー
 class Editor : public NS::Layer
 {
 public:
@@ -59,16 +57,16 @@ private:
     std::unique_ptr<NS::UI::ImGuiContext> m_imgui;
     std::unique_ptr<LevelEditorController> m_controller;
 
-    NS::Editor::HierarchyPanel m_hierarchy;     // 配置物ツリーのパネル。UI 状態を自分で持つ
-    NS::Editor::InspectorPanel m_inspector;     // 選択物の編集パネル。名前欄の状態を自分で持つ
-    NS::Editor::ConsolePanel m_console;         // フレーム統計パネル
-    NS::Editor::ToolModePanel m_toolMode;       // 編集モード切替パネル
-    NS::Editor::AssetsPanel m_assets;           // アセットツリーと適用パネル
-    NS::Editor::QuitModal m_quitModal;          // 終了時の保存確認モーダル
-    NS::Editor::DockController m_dock;          // ドックホストとパネル全面化の状態
-    NS::Editor::SceneViewPanel m_sceneView;     // 編集 / 自由視点ビュー
-    NS::Editor::GameViewPanel m_gameView;       // ゲーム視点ビュー
-    NS::Editor::HitTimelinePanel m_hitTimeline; // 当たりのタイムラインの編集と下見
+    NS::Editor::HierarchyPanel m_hierarchy;
+    NS::Editor::InspectorPanel m_inspector;
+    NS::Editor::ConsolePanel m_console;
+    NS::Editor::ToolModePanel m_toolMode;
+    NS::Editor::AssetsPanel m_assets;
+    NS::Editor::QuitModal m_quitModal;
+    NS::Editor::DockController m_dock;
+    NS::Editor::SceneViewPanel m_sceneView;
+    NS::Editor::GameViewPanel m_gameView;
+    NS::Editor::HitTimelinePanel m_hitTimeline;
 
     bool m_uiVisible = true;
     bool m_lastModeWasPlay = false; // 前フレームがプレイモードだったか。タブ自動フォーカスの切替検知に使う

@@ -18,7 +18,6 @@ namespace NS::Obj
 
     //! @brief 位置・回転・スケールの実体を持ち、リフレクション経路 (Inspector / undo / 直列化) へ載せるサブオブジェクト
     //! @details Actor はコンストラクタでこれを 1 つ積み、Root() はここが持つ Transform を指す
-    //! 依存: NS
     class TransformSubObject : public SubObject
     {
     public:
@@ -47,7 +46,7 @@ namespace NS::Obj
         Transform m_transform; // Actor の Root() が指す実体
     };
 
-    // 配置物データに書かれた transform も同じ物を指すので、live クラスと同じ場所に置く
+    // 配置物データに書かれた transform も同じ物を指すので、実体クラスと同じ場所に置く
 
     //! 根の部品 TransformSubObject の部品名。保存の鍵そのもので、名指す所は全てこれを使う
     inline constexpr std::string_view k_TransformSubObjName = "Transform";

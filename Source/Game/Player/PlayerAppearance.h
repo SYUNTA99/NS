@@ -28,12 +28,9 @@ namespace GL::Player
 {
     struct MissTumble;
 
-    //! @brief 自機の立ち姿と玉の 2 つの見た目を持ち、丸まる時に同居する Model の mesh を持ち替える
-    //! @details 見た目の欄が空なら仮の形を使う。寸法は Collider のカプセルから引き、ここには数を持たない
-    //! 根の Transform は書かない。丸まりと溜め量の正は持ち主の Player で、ここは写すか読むだけ
-    //! 参照の引き当ては部品の並びで回る。Model が mesh を差した後にこちらが差す
-    // TODO: Scene::ApplyFromJson は値の変わった部品だけ引き直す。Model の値の undo で mesh が
-    // 組み込みの cube に戻り、当たり (Collider) の寸法の変更に見た目が付いてこない。編集へ戻る時の LoadJson で直る
+    //! @brief 自機の立ち姿・玉と、描画時の回転・変形を管理する部品
+    //! @details 空の参照は Collider の寸法で仮の形を作る。Model の後に資産を解決する
+    // TODO: 部分的な JSON 適用では Model の undo や Collider の寸法変更を再反映できない。LoadJson で直る
     class PlayerAppearance : public NS::Obj::SubObject
     {
     public:
@@ -45,7 +42,6 @@ namespace GL::Player
         //! @brief 立ち姿へ戻す。既に立ち姿なら何もしない
         //! @details 持ち主の Player があれば、次の OnUpdate でその丸まりに合わせ直す
         void Uncurl() noexcept;
-        //! 玉の見た目の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsCurled() const noexcept { return m_curled; }
 
         //! 2 つの見た目を引き当て、今の姿の mesh を同居する Model へ差す
@@ -53,7 +49,6 @@ namespace GL::Player
 
         //! 同居する身体の部品と ImpactResolver を控える。身体の部品が無ければ以後は丸まりを写さない
         void OnStart() override;
-        //! Player の丸まりを見た目へ写し、玉の回転と着地の潰れを 1 フレーム進め、描く形の倍率を組んで書く
         void OnUpdate() override;
         //! 描く形の倍率を 1 へ戻す。プレイを終えた後に潰れた形が残らない
         void OnEndPlay() override;
@@ -94,11 +89,8 @@ namespace GL::Player
         NS_REFLECT_END()
 
     private:
-        // 今の姿の mesh を同居する Model へ差す
         void ShowCurrentLook() noexcept;
-        // 玉の回転を 1 フレーム進め、同居する Model の局所の回転へ書く
         void AdvanceSpin() noexcept;
-        // 外れの回り方で、このフレームに回す軸と速さを m_spinAxis と m_spinSpeed へ書く
         void AdvanceMissTumble(const MissTumble& tumble) noexcept;
         // 反動の着地で縦の潰れを始めるか、潰れを 1 フレーム戻す。書くのは WriteDrawScale
         void AdvanceLandingSquash() noexcept;
@@ -120,7 +112,7 @@ namespace GL::Player
 
         // 立ち姿の間の軸。丸まった直後に狙いが決まらなければこの軸で回る
 
-        NS::Quaternion m_spin = NS::Quaternion::Identity; // 玉の今の回転
+        NS::Quaternion m_spin = NS::Quaternion::Identity;
         NS::Vector3 m_spinAxis = NS::Vector3::UnitX;      // 直前のフレームに回した軸
         float m_spinSpeed = 0.0f;                         // 直前のフレームに回した速さ。度/秒
         float m_spinDegreesThisFrame = 0.0f;              // 直前の OnUpdate で回った角度。度
@@ -134,15 +126,13 @@ namespace GL::Player
 
         float m_emptyChargeSpinSpeed = 360.0f; // 溜め 0 の玉が回る速さ。度/秒
         float m_fullChargeSpinSpeed = 1440.0f; // 溜めきりの玉が回る速さ。度/秒
-        // 外れの玉は止まりかけのコマのように、かすった所の摩擦の軸でねじれ、その軸自体が傾いてぐらぐら回る
-        // ねじれは縁で威力 1 の時の毎秒の回転数。威力と端の近さを掛ける
+        // 縁で威力 1 の時のねじれの回転数 (回/秒)。威力と縁への近さを掛ける
         float m_missTwistTurnsPerSecond = 2.0f;
         // 溜めて外したほど大きく振り回される。突進の回転をこの割合だけ残してねじれに足す
         float m_missSpinCarryRatio = 0.4f;
         // 突進の回転からこのフレーム数で寄せる。急に変えると絵が飛ぶ
         int m_missSpinBlendSteps = 6;
-        // 軸がねじれの軸から傾く角度 (度) と、傾いた軸が回る速さ (回/秒)。ぐらつきは気持ち悪さに寄るので
-        // かすった感じが残る 10 度に抑える
+        // ねじれの軸を傾ける角度 (度)
         float m_missWobbleDegrees = 10.0f;
         float m_missWobbleTurnsPerSecond = 1.5f;
         float m_landingSquash = 0.8f;        // 反動のまま着地したフレームの縦の倍率

@@ -6,7 +6,7 @@ class Player;
 
 namespace GL::Player
 {
-    //! 外れの反動の着地から、こすって止まる。止まりきるまで操作を受けない。移る先は立ちと落下
+    //! 外れの反動で着地した後の滑り。止まるまで操作を受けない
     class SkidPlayerState final : public PlayerState<SkidPlayerState>
     {
     public:

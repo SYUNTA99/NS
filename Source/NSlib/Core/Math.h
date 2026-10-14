@@ -8,31 +8,23 @@
 namespace NS
 {
 
-    //! 2次元ベクトル
     using Vector2 = DirectX::SimpleMath::Vector2;
 
-    //! 3次元ベクトル
     using Vector3 = DirectX::SimpleMath::Vector3;
 
-    //! 4次元ベクトル
     using Vector4 = DirectX::SimpleMath::Vector4;
 
-    //! 4x4の変換行列
     using Matrix = DirectX::SimpleMath::Matrix;
 
-    //! クォータニオン
     using Quaternion = DirectX::SimpleMath::Quaternion;
 
-    //! 3次元空間上の平面
     using Plane = DirectX::SimpleMath::Plane;
 
     //! 半直線
     using Ray = DirectX::SimpleMath::Ray;
 
-    //! ビューポート
     using Viewport = DirectX::SimpleMath::Viewport;
 
-    //! 色
     using Color = DirectX::SimpleMath::Color;
 
     //! 2つのベクトルの内積
@@ -47,7 +39,6 @@ namespace NS
         return Vector3{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
     }
 
-    //! 円周率
     inline constexpr float k_Pi = 3.14159265358979323846f;
 
     //! @brief 度をラジアンへ変換する
@@ -147,7 +138,6 @@ namespace NS
         return static_cast<float>(s.width) / static_cast<float>(s.height);
     }
 
-    //! 指定された値を、下限から上限の範囲内に収める
     template <typename T> [[nodiscard]] constexpr T Clamp(T value, T lo, T hi) noexcept
     {
         if (value < lo)
@@ -161,27 +151,19 @@ namespace NS
         return value;
     }
 
-    //! @brief 2つの値の間を線形補間する
-    //! @param[in] a t=0 のときの値
-    //! @param[in] b t=1 のときの値
-    //! @param[in] t 補間係数。0〜1 の外も受け付ける
+    //! t は 0〜1 の範囲外も受け付ける
     [[nodiscard]] constexpr float Lerp(float a, float b, float t) noexcept
     {
         return a + (b - a) * t;
     }
 
-    //! @brief 滑らかに始まって滑らかに終わる補間の重み
-    //! @param[in] t 0〜1 の進み具合。範囲の外は丸めない
-    //! @return t が 0 で 0、1 で 1 ちょうど。3t^2 - 2t^3
+    //! 両端で傾き 0 の補間重み。t の範囲 0〜1 は丸めない
     [[nodiscard]] constexpr float SmoothStep(float t) noexcept
     {
         return t * t * (3.0f - 2.0f * t);
     }
 
-    //! @brief 整数の位置と種から 32 ビットの値を返す
-    //! @details 状態を持たない混ぜ合わせ。同じ位置と種からはいつも同じ値で、隣の位置の値とは相関しない
-    //! @param[in] position 整数の位置
-    //! @param[in] seed 種
+    //! 同じ位置と種から同じ値を返す、状態を持たないハッシュ
     [[nodiscard]] constexpr std::uint32_t NoiseHash(std::int32_t position, std::uint32_t seed) noexcept
     {
         // 掛ける数は上位と下位のビットがよく混ざる奇数。足して右へずらして排他的論理和を取り、位置の近さを壊す
@@ -199,12 +181,8 @@ namespace NS
         return mixed;
     }
 
-    //! @brief 1 次元の値ノイズを返す
-    //! @details 整数の格子に NoiseHash から -1〜1 の値を置き、間を SmoothStep で補間する。状態を持たないので、
-    //! 種と位置だけで好きな時刻の値を引ける。値は位置について連続で、格子の上で傾きが 0
-    //! @param[in] x 格子 1 つを 1 とする位置 (時刻 × 周波数)
-    //! @param[in] seed 種。違う種は違う並び
-    //! @return -1〜1 の値
+    //! 同じ位置と種から連続した -1〜1 のノイズを返す。格子上の傾きは 0
+    //! x は格子間隔を 1 とする位置 (時刻 × 周波数)
     [[nodiscard]] inline float ValueNoise1D(float x, std::uint32_t seed) noexcept
     {
         const float cell = std::floor(x);
@@ -248,7 +226,6 @@ namespace NS
     //! @param[in] v 元のベクトル。y 成分は捨てる
     //! @param[out] outDirection 正規化した向き。y は 0。失敗した場合は書き換えない
     //! @return 正規化できた場合 true、長さが k_Epsilon 未満の場合は false
-    //! @details 除算よけの下限を関数の中へ閉じる。呼ぶ側は下限の値を知らずに済む
     [[nodiscard]] inline bool TryNormalizeHorizontal(const Vector3& v, Vector3& outDirection) noexcept
     {
         const float lengthSq = v.x * v.x + v.z * v.z;

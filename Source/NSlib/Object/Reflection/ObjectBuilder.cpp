@@ -2,11 +2,11 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/SubObject.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/SubObject.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 
 #include <string>
 

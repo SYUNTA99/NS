@@ -74,7 +74,6 @@ namespace GL::Player
     class PlayerJudgeIdle
     {
     public:
-        //! 接地していて歩いていない場合 true、それ以外の場合は false
         [[nodiscard]] static bool Judge(bool grounded, bool walking) noexcept { return grounded && !walking; }
     };
 
@@ -115,7 +114,6 @@ namespace GL::Player
     class PlayerJudgeFall
     {
     public:
-        //! 接地を外れている場合 true、それ以外の場合は false
         [[nodiscard]] static bool Judge(bool grounded) noexcept { return !grounded; }
     };
 
@@ -145,7 +143,6 @@ namespace GL::Player
     class PlayerJudgeClimbLedge
     {
     public:
-        //! 前入力が出ている場合 true、それ以外の場合は false
         [[nodiscard]] static bool Judge(float climbForward) noexcept { return climbForward > 0.0f; }
     };
 
@@ -153,7 +150,6 @@ namespace GL::Player
     class PlayerJudgeDropLedge
     {
     public:
-        //! 手放しのボタンが押された場合 true、それ以外の場合は false
         [[nodiscard]] static bool Judge(bool releasePressed) noexcept { return releasePressed; }
     };
 
@@ -161,7 +157,6 @@ namespace GL::Player
     class PlayerJudgeLocomotion
     {
     public:
-        //! 立ち・走り・落下・反動のどれかの状態の場合 true、それ以外の場合は false
         [[nodiscard]] static bool Judge(bool idle, bool walk, bool fall, bool rebound) noexcept
         {
             return idle || walk || fall || rebound;

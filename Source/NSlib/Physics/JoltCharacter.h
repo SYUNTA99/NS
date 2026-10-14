@@ -26,12 +26,8 @@ namespace NS::Phys
         //! @pre radius は 0 より大きい。halfHeight は 0 以上
         void Resize(float radius, float halfHeight);
 
-        //! @brief 開始位置と開始速度を渡して dt 秒ぶん進め、補正後の状態を内部へ保持する
-        //! @param[in] position 開始位置
-        //! @param[in] velocity 開始速度
-        //! @param[in] dt 進める秒数
-        //! @param[in] maxStepHeight 走ったまま登れる段の高さ (m)。負の値は 0 として扱う
-        //! 半径 × (1 − cos 45°) より低い値を渡しても、その高さまでの角は滑って登る
+        //! dt 秒後の補正した姿勢と速度を保持する。重力は呼び手が速度へ加える
+        //! maxStepHeight は登れる段差 m。負は 0、半径 × (1 − cos 45°) までは角を滑って登る
         void Step(const NS::Vector3& position, const NS::Vector3& velocity, float dt, float maxStepHeight);
 
         //! 直近の Step 後の位置
@@ -48,9 +44,6 @@ namespace NS::Phys
         JPH::Ref<JPH::CharacterVirtual> m_character;
     };
 
-    //! @brief 面の法線の上向き成分が、歩いて登れる斜面のものかを返す
-    //! @details 登れる急さの上限は 45°
-    //! @param[in] normalY 単位法線の Y 成分
-    //! @return 歩いて登れる場合 true、それ以外の場合は false
+    //! 単位法線の Y 成分から、45° 以下の登れる斜面かを判定する
     [[nodiscard]] bool IsWalkableNormal(float normalY) noexcept;
 } // namespace NS::Phys

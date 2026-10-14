@@ -13,7 +13,7 @@
 
 namespace
 {
-    //! 水平 forward を XZ 平面正規化。長さ 0 の入力は world +Z にフォールバック
+    //! 水平 forward を XZ 平面正規化。長さ 0 の入力は世界座標の +Z にフォールバック
     [[nodiscard]] NS::Vector3 NormalizeHorizontal(const NS::Vector3& v) noexcept
     {
         NS::Vector3 out{};
@@ -104,7 +104,6 @@ namespace NS::Obj
         // UI のテキスト入力中はキーボード由来の移動 / ジャンプを取り合わない。gamepad は維持する
         const bool wantKb = input.UiWantsKeyboard();
 
-        // WASD の前後左右入力
         float kbForward = 0.0f;
         float kbRight = 0.0f;
         if (!wantKb)
@@ -127,7 +126,6 @@ namespace NS::Obj
             }
         }
 
-        // スティック合成と入力の大きさクランプ
         const NS::OS::Stick lstick = pad.LeftStick();
 
         float localX = kbRight + lstick.x;
@@ -146,7 +144,6 @@ namespace NS::Obj
             speedScale = localMag;
         }
 
-        // camera 相対の world 方向変換
         const NS::Vector3 fwd = NormalizeHorizontal(m_cameraForward);
         const NS::Vector3 right{fwd.z, 0.0f, -fwd.x};
 
@@ -156,7 +153,6 @@ namespace NS::Obj
             right.z * localX + fwd.z * localZ,
         };
 
-        // ジャンプの押下と長押し
         const bool jumpPressed =
             (!wantKb && kb.IsPressed(NS::OS::Key::Space)) || pad.IsPressed(NS::OS::GamepadButton::A);
         const bool jumpHeld = (!wantKb && kb.IsHeld(NS::OS::Key::Space)) || pad.IsHeld(NS::OS::GamepadButton::A);
