@@ -22,7 +22,7 @@ namespace NS::Phys
 namespace NS::Obj
 {
     class Scene;
-    //! 配置物の JSON 1 件から配置物を組むファクトリ。組めない JSON には nullptr を返し、Rebuild が読み飛ばす
+    //! 配置物の JSON 1 件から配置物を組むファクトリ。組めない JSON には nullptr を返し、RebuildFromJson が読み飛ばす
     using ObjectFactoryFn = std::function<std::unique_ptr<Actor>(const nlohmann::json&)>;
 
     //! 配置物を所有し、永続 id から参照を解決する一覧。個体の構築は渡された生成関数が行う
@@ -32,10 +32,10 @@ namespace NS::Obj
         ActorList();
         ~ActorList();
 
-        //! scene の objects から配置物を組み直す。既存の配置物は先に空へ戻し、一時オブジェクトだけ残す
+        //! scene の objects から配置物を組み直す。既存の配置物は一時オブジェクトも含めて先に空へ戻す
         //! 当たりの同期は含まない。呼出側が続けて SyncPhysics を呼ぶ
         //! factory が空の起動前 / テストでは物を組まない。段の更新の最中は断る
-        void Rebuild(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory);
+        void RebuildFromJson(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory);
 
         //! objectId の配置物の並びの位置。居なければ ObjectCount()
         [[nodiscard]] std::size_t IndexOfObjectId(std::uint32_t objectId) const noexcept;
@@ -43,7 +43,7 @@ namespace NS::Obj
         //! obj の名前を変える。他の配置物と重なれば番号を付ける。名前を書けるのはシーンの配置物を持つここだけ
         void RenameObject(Actor& obj, std::string_view name);
 
-        //! 配置物の OnEndPlay を逆順に呼んでから所有物を空へ戻す。scene の OnShutdown と Rebuild 冒頭が呼ぶ
+        //! 配置物の OnEndPlay を逆順に呼んでから所有物を空へ戻す。scene の OnShutdown と RebuildFromJson の冒頭が呼ぶ
         //! 段の更新の最中は断る。その段で後に呼ぶ予定の配置物を解放しない
         void Clear();
 

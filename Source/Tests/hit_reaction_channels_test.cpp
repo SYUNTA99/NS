@@ -22,7 +22,7 @@ namespace
         NS::Obj::SetObjectJsonId(entry, 1);
         NS::Obj::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-        scene.LoadJson(doc);
+        scene.ResetFromJson(doc);
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 

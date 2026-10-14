@@ -159,7 +159,7 @@ namespace NS::Obj
 
         //! @brief シーンの JSON 文書を取り込み配置物を組み直す。文書は取込後に用済みになる
         //! @details 組む前に id と名前を一意に揃える。前の世界の固定ステップで積んだ開発用の図形は捨てる
-        void LoadJson(nlohmann::json scene);
+        void ResetFromJson(nlohmann::json scene);
 
         //! @brief シーンが自分を JSON 文書へ書き出す。保存と凍結の出所を実体に一本化する
         //! @details 一時オブジェクトを除く全配置物を、全 SubObject 値まで忠実に写す
@@ -223,13 +223,13 @@ namespace NS::Obj
             return raw;
         }
 
-        //! @brief 実行時の一時オブジェクトを ActorList へ入れる。一時オブジェクトの印はここで立てる
-        //! @details 保存・凍結に写らず、データからの組み直し後も残る。更新は配置物と同じく自分の段で回る
-        //! 型が実行時にしか決まらない時の受け口。型が分かっているなら SpawnTransient<T> を使う
+        //! @brief 実行時の一時オブジェクトを ActorList へ入れる。ここで一時オブジェクトにする (SetTransient(true))
+        //! @details 保存・凍結に写らず、データからの組み直しで捨てる。更新は配置物と同じく自分の段で回る
+        //! 型が実行時にしか決まらない時に使う。型が分かっているなら SpawnTransient<T> を使う
         Actor* SpawnTransient(std::unique_ptr<Actor> obj);
 
         //! @brief 実行時に配置物を 1 体入れる。新しい永続 id と名前を振る。名前は既存と重なれば番号を付ける
-        //! @details 一時オブジェクトと違い保存に写り、データからの組み直しで他の配置物と一緒に消える
+        //! @details 一時オブジェクトと違い保存に写る
         Actor* SpawnObject(std::unique_ptr<Actor> obj, std::string name);
 
         //! @brief 配置物の JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
@@ -272,7 +272,7 @@ namespace NS::Obj
         void AdvanceWorldSpeedRamp() noexcept;
 
         //! @brief 渡されたシーンの JSON 文書から配置物と当たりの body を組み直す
-        void RebuildObjectsFrom(const nlohmann::json& scene);
+        void RebuildSceneFrom(const nlohmann::json& scene);
 
         //! 実行時に入れた配置物の資産を引き当ててから開始する
         void StartSpawned(Actor& obj);

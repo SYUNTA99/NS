@@ -91,7 +91,7 @@ namespace
             }
             NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         }
-        scene.LoadJson(doc);
+        scene.ResetFromJson(doc);
         return scene.Objects().FindByObjectId(2);
     }
 
@@ -119,7 +119,7 @@ namespace
             NS::Obj::ObjectJsonSubObjs(rock)[it.key()] = it.value();
         }
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
-        scene.LoadJson(doc);
+        scene.ResetFromJson(doc);
         return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     }
 
@@ -591,7 +591,7 @@ TEST(HitZonesTest, InstanceOverrideSurvivesSaveAndLoad)
     EXPECT_FALSE(NS::Obj::HasField(*overriddenFields, "横幅"));
 
     NS::Obj::Scene reloaded;
-    reloaded.LoadJson(saved);
+    reloaded.ResetFromJson(saved);
     const NS::Obj::Actor* rock = reloaded.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
     const HitZones* zones = HitZonesOf(*rock);
@@ -758,7 +758,7 @@ TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
     NS::Obj::SetObjectJsonId(rock, 2);
     NS::Obj::SetObjectPosition(rock, Vector3{0.0f, 1.0f, 1.0f});
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     const NS::Obj::Actor* target = scene.Objects().FindByObjectId(2);

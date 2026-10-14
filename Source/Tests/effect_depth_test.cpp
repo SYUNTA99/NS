@@ -172,7 +172,7 @@ TEST(EffectLifecycle, RebuildingThePausedSceneClearsPixelsBeforeAnotherStep)
     EXPECT_EQ(CountEffectPixels(*effects), pixels);
 
     scene.SetSimulationEnabled(false);
-    scene.LoadJson(baseline);
+    scene.ResetFromJson(baseline);
     EXPECT_FALSE(effects->Exists(core));
     EXPECT_FALSE(effects->Exists(trail));
     EXPECT_EQ(CountEffectPixels(*effects), 0);

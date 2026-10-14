@@ -379,7 +379,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
 
     // 保存は実体から作り、読込は取込関数がデータを実体へ写して用済みにする
     m_editor.SetCaptureLevelFn([this]() { return m_scene->ToJson(); });
-    m_editor.SetLoadLevelFn([this](nlohmann::json&& fresh) { m_scene->LoadJson(std::move(fresh)); });
+    m_editor.SetLoadLevelFn([this](nlohmann::json&& fresh) { m_scene->ResetFromJson(std::move(fresh)); });
     // セル編集と取り消しは適用処理を通す。照会・採番は実体で行う
     m_editor.SetApplier(&m_applier);
     m_editor.SetFindCellObjectFn([this](std::int16_t x, std::int16_t y, std::int16_t z) {
@@ -531,7 +531,7 @@ void LevelEditorController::LeavePlayForEdit()
 
     // プレイで変わった配置を編集へ持ち込まないため、開始時の控えから復元する
     nlohmann::json baseline = m_scene->PlayBaseline();
-    m_scene->LoadJson(std::move(baseline));
+    m_scene->ResetFromJson(std::move(baseline));
 
     if (NS::Application* app = NS::Application::Get())
     {

@@ -80,18 +80,18 @@ namespace
 TEST(CourseDirector, PlayerCreatesDirectorAfterPlacement)
 {
     NS::Obj::Scene scene;
-    scene.LoadJson(CourseWithPlayer());
+    scene.ResetFromJson(CourseWithPlayer());
     EXPECT_NE(NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene), nullptr);
 
     // 組み直すと捨てられ、プレイヤーの居ないシーンでは作られない
-    scene.LoadJson(NS::Obj::MakeSceneJson());
+    scene.ResetFromJson(NS::Obj::MakeSceneJson());
     EXPECT_EQ(NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene), nullptr);
 }
 
 TEST(CourseDirector, ClearSequenceUsesTheSceneFadeAndUnlocksInput)
 {
     NS::Obj::Scene scene;
-    scene.LoadJson(CourseWithPlayer());
+    scene.ResetFromJson(CourseWithPlayer());
     GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
     director->StartCourse();
@@ -130,7 +130,7 @@ TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
 {
     const nlohmann::json doc = CourseWithPlayer();
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     (void)scene.BeginPlayBaseline();
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
@@ -159,7 +159,7 @@ TEST(CourseDirector, RespawnButtonReturnsObjectsButKeepsPlayer)
     NS::Obj::EnsureUniqueObjectIds(doc);
 
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     (void)scene.BeginPlayBaseline();
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
@@ -199,7 +199,7 @@ TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
     NS::Obj::EnsureUniqueObjectIds(doc);
 
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     (void)scene.BeginPlayBaseline();
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
@@ -226,7 +226,7 @@ TEST(CourseDirector, ClearLockStopsTheHeldSlamButton)
 {
     const nlohmann::json doc = CourseWithPlayerOnGoal();
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     (void)scene.BeginPlayBaseline();
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
@@ -259,7 +259,7 @@ TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
 {
     const nlohmann::json doc = CourseWithPlayerOnGoal();
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     (void)scene.BeginPlayBaseline();
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
@@ -293,7 +293,7 @@ TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
 TEST(CourseDirector, InputLockDropsTheChargeInsteadOfReleasingIt)
 {
     NS::Obj::Scene scene;
-    scene.LoadJson(CourseWithPlayer());
+    scene.ResetFromJson(CourseWithPlayer());
     (void)scene.BeginPlayBaseline();
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
@@ -324,7 +324,7 @@ TEST(CourseDirector, RestartReturnsObjectsToBaseline)
     NS::Obj::EnsureUniqueObjectIds(doc);
 
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     (void)scene.BeginPlayBaseline();
     NS::Obj::Actor* placed = nullptr;
     for (NS::Obj::Actor* actor : scene.Objects())
@@ -344,7 +344,7 @@ TEST(CourseDirector, RestartReturnsObjectsToBaseline)
 TEST(CourseDirector, StartCourseFreezesThePlacedSceneAndStartsEveryoneFromIt)
 {
     NS::Obj::Scene scene;
-    scene.LoadJson(CourseWithPlayer());
+    scene.ResetFromJson(CourseWithPlayer());
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     const NS::Vector3 placedAt{5.0f, 5.0f, 5.0f};

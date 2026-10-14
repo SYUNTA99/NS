@@ -30,7 +30,7 @@ namespace
         NS::Obj::SetObjectJsonId(player, 1);
         NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
-        scene.LoadJson(doc);
+        scene.ResetFromJson(doc);
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
         floor.halfExtentX = 100.0f;

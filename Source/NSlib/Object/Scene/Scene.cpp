@@ -42,13 +42,13 @@ namespace NS::Obj
 
     Scene::~Scene() = default;
 
-    void Scene::LoadJson(nlohmann::json scene)
+    void Scene::ResetFromJson(nlohmann::json scene)
     {
         m_skyboxPath = std::string{SceneJsonSkybox(scene)};
         SetGravityDirection(SceneJsonGravityDirection(scene));
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
         EnsureUniqueObjectIds(scene);
-        RebuildObjectsFrom(scene);
+        RebuildSceneFrom(scene);
     }
 
     nlohmann::json Scene::ToJson() const
@@ -415,7 +415,7 @@ namespace NS::Obj
         }
     }
 
-    void Scene::RebuildObjectsFrom(const nlohmann::json& scene)
+    void Scene::RebuildSceneFrom(const nlohmann::json& scene)
     {
         ClearEffects();
 #if !defined(NS_SHIPPING)
@@ -427,7 +427,7 @@ namespace NS::Obj
         Fade().Cancel();
         // Actor の型選択は登録一覧、参照の実体化は各 SubObject の ResolveAssets が行う
         // vcam の cameras への付け外しは VirtualCamera が OnStart / OnEndPlay で自分で行う
-        m_objects.Rebuild(
+        m_objects.RebuildFromJson(
             scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, m_assets); });
         m_objects.SyncPhysics(m_physicsScene);
     }

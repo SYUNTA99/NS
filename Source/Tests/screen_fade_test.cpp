@@ -160,7 +160,7 @@ TEST(ScreenFade, SceneReloadAndShutdownCancelTheFade)
 {
     NS::Obj::Scene scene;
     scene.Fade().BeginOut(0.0f);
-    scene.LoadJson(NS::Obj::MakeSceneJson());
+    scene.ResetFromJson(NS::Obj::MakeSceneJson());
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.0f);
     scene.Fade().BeginOut(0.0f);
     scene.OnShutdown();

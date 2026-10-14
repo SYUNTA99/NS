@@ -1,5 +1,6 @@
 #include "Game/Level/MapObj.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/UIActor.h"
 
 #include <gtest/gtest.h>
@@ -111,6 +112,15 @@ TEST(ActorLifecycle, DisappearedTransientStaysAfterTheStep)
     ASSERT_EQ(scene.Objects().ObjectCount(), before + 1);
     actor->Appear();
     EXPECT_TRUE(actor->IsAppeared());
+}
+
+TEST(ActorLifecycle, RebuildingFromJsonDropsTransients)
+{
+    NS::Obj::Scene scene;
+    (void)scene.SpawnTransient<LifeProbe>();
+    ASSERT_EQ(scene.Objects().ObjectCount(), 1u);
+    scene.ResetFromJson(NS::Obj::MakeSceneJson());
+    EXPECT_EQ(scene.Objects().ObjectCount(), 0u);
 }
 
 TEST(ActorLifecycle, PhysicsAndSensorsLeaveTheirRegistries)

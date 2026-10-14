@@ -175,7 +175,7 @@ TEST(EditorHitPreview, LeavesTheEditedSceneAloneAndRepeats)
     const ScopedHitTimelineDirectory directory("EditorHitPreviewRepeat");
     ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
     NS::Obj::Scene edited;
-    edited.LoadJson(MakePreviewSceneJson());
+    edited.ResetFromJson(MakePreviewSceneJson());
     edited.SetSimulationEnabled(false);
     const nlohmann::json before = edited.ToJson();
 
@@ -270,7 +270,7 @@ TEST(EditorHitPreview, MatchesADirectRunFromTheSamePlacement)
     NS::Obj::SetObjectPosition(NS::Obj::SceneJsonObjects(placed)[playerIndex], preview.playerStart);
     NS::Obj::Scene scene;
     scene.SetAssets(&assets.assets);
-    scene.LoadJson(placed);
+    scene.ResetFromJson(placed);
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     player->Input().SetLocked(true);

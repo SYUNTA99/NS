@@ -154,7 +154,7 @@ TEST(SceneSystemHolder, OneInstancePerTypeAndClearDestroys)
     EXPECT_EQ(CountedSceneObj::s_alive, 1);
 
     // 配置物を組み直すと最初の状態から作り直させる
-    scene.LoadJson(NS::Obj::MakeSceneJson());
+    scene.ResetFromJson(NS::Obj::MakeSceneJson());
     EXPECT_EQ(CountedSceneObj::s_alive, 0);
     EXPECT_EQ(NS::Obj::FindSceneSystem<CountedSceneObj>(&scene), nullptr);
 }
@@ -168,7 +168,7 @@ TEST(SceneSystemHolder, ClearRemovesTheSystemFromTheUpdate)
     scene.OnUpdate();
     EXPECT_EQ(SelfRegisteringSystem::s_ticks, 1);
 
-    scene.LoadJson(NS::Obj::MakeSceneJson());
+    scene.ResetFromJson(NS::Obj::MakeSceneJson());
     scene.OnUpdate();
     EXPECT_EQ(SelfRegisteringSystem::s_ticks, 1);
 }
@@ -245,7 +245,7 @@ TEST(SceneStepShapes, RebuildingTheWorldDropsTheStepShapes)
                  NS::Vector3{0.0f, 1.0f, 0.0f},
                  NS::Color{1.0f, 1.0f, 1.0f, 0.5f});
 
-    scene.LoadJson(NS::Obj::MakeSceneJson());
+    scene.ResetFromJson(NS::Obj::MakeSceneJson());
 
     EXPECT_EQ(DD::VertexCount(), std::size_t{0});
     EXPECT_EQ(DD::FaceVertexCount(), std::size_t{0});

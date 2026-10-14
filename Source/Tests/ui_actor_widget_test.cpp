@@ -123,7 +123,7 @@ TEST(UIActorWidgets, OpenScreenKeepsTickingAfterTheWorldIsRebuilt)
     OrderedUI ui(log, "ui", 0);
     ui.Open(scene);
 
-    scene.LoadJson(NS::Obj::MakeSceneJson());
+    scene.ResetFromJson(NS::Obj::MakeSceneJson());
 
     EXPECT_TRUE(ui.IsOpen());
     scene.ExecutePhase(NS::Obj::UpdatePhase::UI);

@@ -112,8 +112,8 @@ TEST(PlayerChargeParams, SceneOverridesKeepTheirCurvesAfterReload)
     entry["subObjects"] = {
         {"Params", {{"チャージ減速率", 0.25f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-    scene.LoadJson(doc);
-    scene.LoadJson(scene.ToJson());
+    scene.ResetFromJson(doc);
+    scene.ResetFromJson(scene.ToJson());
     const Player* player = static_cast<const Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     EXPECT_FLOAT_EQ(player->Params().ChargingSpeedScale(), 0.75f);

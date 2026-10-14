@@ -19,14 +19,14 @@ TEST(GameTuning, GoalFadeUsesTheSavedGoalFields)
     nlohmann::json goalDoc = NS::Obj::MakePrototypeJson<GL::Level::Goal>();
     NS::Obj::SetObjectJsonId(goalDoc, 2);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(goalDoc));
-    scene.LoadJson(std::move(doc));
+    scene.ResetFromJson(std::move(doc));
     NS::Obj::Actor* goal = scene.Objects().FindByObjectId(2);
     ASSERT_NE(goal, nullptr);
     NS::Obj::SubObject* params = goal->FindSubObj("Params");
     ASSERT_NE(params, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"クリアの暗転秒", 0.1f}, {"クリアの明転秒", 0.2f}}), 0u);
     const nlohmann::json saved = scene.ToJson();
-    scene.LoadJson(saved);
+    scene.ResetFromJson(saved);
     (void)scene.BeginPlayBaseline();
     GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);

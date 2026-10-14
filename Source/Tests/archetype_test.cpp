@@ -169,7 +169,7 @@ TEST(Archetype, SaveWritesOnlyOverrides)
     NS::Obj::SceneJsonObjects(doc).push_back(MapObjJson(1));
     NS::Obj::SceneJsonObjects(doc).push_back(MapObjJson(2));
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     NS::Obj::Actor* changed = scene.Objects().FindByObjectId(2);
     ASSERT_NE(changed, nullptr);
     NS::Obj::Cast<NS::Obj::SphereCollision>(changed->FindSubObj("Collision"))->SetRadius(4.0f);
@@ -208,7 +208,7 @@ TEST(Archetype, ChangedArchetypeReachesInstancesWithoutOverride)
     // 種類の既定値を変えてから読むと、上書きの無い個体だけが新しい値になる
     NS::Obj::ArchetypeLibrary::Get().Set("MapObj", ArchetypeWith("MapObj", "Collision", SphereEntry(6.0f)));
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(1)), 6.0f);
     EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 4.0f);
 }
@@ -222,7 +222,7 @@ TEST(Archetype, ApplyingSnapshotResetsFieldsWithoutOverride)
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     NS::Obj::SceneJsonObjects(doc).push_back(MapObjJson(1));
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
     const nlohmann::json snapshot = NS::Obj::ObjectToJson(*actor);
@@ -289,7 +289,7 @@ TEST(Archetype, OverrideIsDetectedAgainstBaseline)
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     NS::Obj::SceneJsonObjects(doc).push_back(MapObjJson(1));
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     NS::Obj::SphereCollision* sphere =
         NS::Obj::Cast<NS::Obj::SphereCollision>(scene.Objects().FindByObjectId(1)->FindSubObj("Collision"));
     ASSERT_NE(sphere, nullptr);
@@ -350,7 +350,7 @@ TEST(Archetype, PromoteReachesOtherInstancesAndFile)
     NS::Obj::ObjectJsonSubObjs(keeps)["Collision"] = SphereEntry(4.0f);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(keeps));
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     LevelEditorController editor(&scene);
 
     NS::Obj::SphereCollision* sphere =
@@ -374,7 +374,7 @@ TEST(Archetype, PromoteRejectsReferenceField)
     NS::Obj::SetObjectJsonId(camera, 1);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(camera));
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     LevelEditorController editor(&scene);
 
     NS::Obj::ThirdPersonFollow* follow =

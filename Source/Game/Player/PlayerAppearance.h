@@ -30,7 +30,7 @@ namespace GL::Player
 
     //! @brief 自機の立ち姿・玉と、描画時の回転・変形を管理する部品
     //! @details 空の参照は Collider の寸法で仮の形を作る。Model の後に資産を解決する
-    // TODO: 部分的な JSON 適用では Model の undo や Collider の寸法変更を再反映できない。LoadJson で直る
+    // TODO: 部分的な JSON 適用では Model の undo や Collider の寸法変更を再反映できない。ResetFromJson で直る
     class PlayerAppearance : public NS::Obj::SubObject
     {
     public:

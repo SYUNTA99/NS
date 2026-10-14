@@ -18,26 +18,16 @@ namespace NS::Obj
         Clear();
     }
 
-    void ActorList::Rebuild(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory)
+    void ActorList::RebuildFromJson(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory)
     {
-        // 一時オブジェクトの退避は Clear より前に並びを動かすので、Clear の断りを待たずにここで断る
+        // Clear が断った後に組むと古い配置物の後ろへ新しい配置物が並ぶので、組む前にここで断る
         if (m_updating)
         {
-            NS_LOG_ERROR(Scene, "ActorList::Rebuild: 段の更新の最中に呼ばれたので組み直しを断った");
+            NS_LOG_ERROR(Scene, "ActorList::RebuildFromJson: 段の更新の最中に呼ばれたので組み直しを断った");
             return;
         }
 
-        // 実行時の一時オブジェクトはデータ由来でないため、退避して組み直し後も残す
-        std::vector<std::unique_ptr<Actor>> transients;
-        for (std::unique_ptr<Actor>& obj : m_objects)
-        {
-            if (obj->IsTransient())
-            {
-                transients.push_back(std::move(obj));
-            }
-        }
-        std::erase_if(m_objects, [](const std::unique_ptr<Actor>& obj) { return obj == nullptr; });
-
+        // 一時オブジェクトも捨てる。組み直す JSON に戻り先が無い
         Clear();
 
         // カウンタは 1 始まりでファイルの id を知らない。読込値まで上げないと次に置く 1 個目が既存とぶつかる
@@ -52,7 +42,7 @@ namespace NS::Obj
             }
         }
 
-        m_objects.reserve(objects.size() + transients.size());
+        m_objects.reserve(objects.size());
 
         // 配置物の組み立ては呼出側の知識。ファクトリの無い起動前 / テストでは何も組まない
         if (factory)
@@ -119,13 +109,6 @@ namespace NS::Obj
                 objPtr->InitAfterPlacement();
             }
         }
-
-        // 退避した一時オブジェクトを末尾へ戻す。開始済みなので OnStart は呼ばない
-        for (std::unique_ptr<Actor>& obj : transients)
-        {
-            m_objects.push_back(std::move(obj));
-        }
-        MarkIndexDirty();
 
         // 生成直後は previous PRS が原点/単位回転のため Snapshot で current に揃える
         // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全配置物が振れる

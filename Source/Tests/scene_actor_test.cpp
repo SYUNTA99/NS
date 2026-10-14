@@ -66,7 +66,7 @@ TEST(SceneActor, ClassOnlyObjectBuildsWholeComposition)
     AddClassObject(doc, "MapObj", 1);
 
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
 
     NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
@@ -80,7 +80,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     AddClassObject(doc, "MapObj", 1);
 
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
     NS::Obj::SphereCollision* sphere = NS::Obj::Cast<NS::Obj::SphereCollision>(actor->FindSubObj("Collision"));
@@ -95,7 +95,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
 
     // 読み直すと同じクラスで組まれ、変えた値が戻る
     NS::Obj::Scene reloaded;
-    reloaded.LoadJson(saved);
+    reloaded.ResetFromJson(saved);
     NS::Obj::Actor* again = reloaded.Objects().FindByObjectId(1);
     ASSERT_NE(again, nullptr);
     EXPECT_EQ(std::string_view{again->ClassName()}, "MapObj");
@@ -135,7 +135,7 @@ TEST(SceneActor, GravityDirectionRoundTripsThroughFileAndScene)
     EXPECT_EQ(NS::Obj::SceneJsonGravityDirection(decoded), (NS::Vector3{1.0f, 0.0f, 0.0f}));
 
     NS::Obj::Scene scene;
-    scene.LoadJson(decoded);
+    scene.ResetFromJson(decoded);
     EXPECT_EQ(scene.GravityDirection(), (NS::Vector3{1.0f, 0.0f, 0.0f}));
     EXPECT_EQ(scene.Physics().Gravity(), (NS::Vector3{25.0f, 0.0f, 0.0f}));
     EXPECT_EQ(NS::Obj::SceneJsonGravityDirection(scene.ToJson()), (NS::Vector3{1.0f, 0.0f, 0.0f}));
@@ -266,7 +266,7 @@ TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosit
     const NS::Vector3 ensured = NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(doc)[0]);
 
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     const NS::Vector3 fallback = player->DefaultSpawnPosition();

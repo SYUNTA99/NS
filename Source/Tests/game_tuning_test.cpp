@@ -26,7 +26,7 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShapeAndSurviveSceneReload)
     nlohmann::json entry = NS::Obj::MakePrototypeJson<Player>();
     NS::Obj::SetObjectJsonId(entry, 1);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-    scene.LoadJson(std::move(doc));
+    scene.ResetFromJson(std::move(doc));
     Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->ImpactVisuals(),
@@ -38,7 +38,7 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShapeAndSurviveSceneReload)
     EXPECT_EQ(player->ImpactVisuals().ShapeFor(impact).holdLastFrame, 2);
     EXPECT_EQ(player->ImpactVisuals().ShapeFor(impact).sparkStartFrame, 5);
     const nlohmann::json saved = scene.ToJson();
-    scene.LoadJson(saved);
+    scene.ResetFromJson(saved);
     player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     EXPECT_EQ(player->ImpactVisuals().ShapeFor(impact).holdLastFrame, 2);

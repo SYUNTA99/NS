@@ -49,7 +49,7 @@ namespace NS::Editor
             std::unique_ptr<NS::Obj::Scene> made = std::make_unique<NS::Obj::Scene>();
             made->SetAssets(world.assets);
             made->SetRenderer(world.renderer);
-            made->LoadJson(scene);
+            made->ResetFromJson(scene);
             return made;
         }
 

@@ -144,8 +144,7 @@ namespace NS::Obj
         void Update();
         virtual void PrepareRender();
 
-        //! 実行時にコードが足す一時オブジェクトか。true は保存・凍結・作業データに写らず、
-        //! データからの組み直し後も残る
+        //! 実行時にコードが足す一時オブジェクトか。true は保存・凍結・作業データに写らない
         [[nodiscard]] bool IsTransient() const noexcept { return m_transient; }
 
         //! 一時オブジェクトの印。Scene::SpawnTransient が立てる。テストは直接立ててよい

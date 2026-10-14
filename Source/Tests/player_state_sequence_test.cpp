@@ -40,7 +40,7 @@ namespace
         NS::Obj::SetObjectJsonClass(entry, "Player");
         NS::Obj::SetObjectJsonId(entry, 1);
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-        scene.LoadJson(doc);
+        scene.ResetFromJson(doc);
         return static_cast<Player*>(scene.Objects().FindByObjectId(1));
     }
 } // namespace
@@ -137,7 +137,7 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
     NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     NS::Obj::Scene scene;
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     NS::OBB floor{};
     floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
     floor.halfExtentX = 100.0f;

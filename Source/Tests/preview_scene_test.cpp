@@ -50,7 +50,7 @@ namespace
     {
         PreviewResult result;
         NS::Obj::Scene preview;
-        preview.LoadJson(snapshot);
+        preview.ResetFromJson(snapshot);
         AddFloor(preview);
         PlaceViewCamera(preview, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
         Player* player = NS::Obj::Cast<Player>(preview.Objects().FindByObjectId(1));
@@ -79,7 +79,7 @@ namespace
 TEST(PreviewScene, CopiedSceneReachesTheImpactWithoutTouchingTheEditedScene)
 {
     NS::Obj::Scene edited;
-    edited.LoadJson(MakeSlamSceneJson());
+    edited.ResetFromJson(MakeSlamSceneJson());
     AddFloor(edited);
     edited.SetSimulationEnabled(false);
     Player* editedPlayer = NS::Obj::Cast<Player>(edited.Objects().FindByObjectId(1));

@@ -21,7 +21,7 @@ namespace
         NS::Obj::SetObjectJsonId(rock, 1);
         NS::Obj::SetObjectPosition(rock, position);
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
-        scene.LoadJson(doc);
+        scene.ResetFromJson(doc);
         return scene.Objects().FindByObjectId(1);
     }
 } // namespace

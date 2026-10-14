@@ -29,7 +29,7 @@ namespace
         NS::Obj::SetObjectJsonId(entry, 1);
         entry["subObjects"] = parts;
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-        scene.LoadJson(doc);
+        scene.ResetFromJson(doc);
     }
 
     const NS::Obj::Collider* PlayerCollider(NS::Obj::Scene& scene)
@@ -170,7 +170,7 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
     NS::Obj::SetObjectJsonId(rock, 1);
     NS::Obj::SetObjectPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     NS::Obj::Actor* placed = scene.Objects().FindByObjectId(1);
     ASSERT_NE(placed, nullptr);
     const NS::Obj::SphereCollision* collision =
@@ -231,7 +231,7 @@ TEST(ColliderShape, ShapeSurvivesSaveAndReloadUnderCollider)
     EXPECT_FLOAT_EQ(parts["Collider"]["半径"].get<float>(), 0.3f);
     EXPECT_FLOAT_EQ(parts["Collider"]["半分の高さ"].get<float>(), 0.8f);
 
-    scene.LoadJson(saved);
+    scene.ResetFromJson(saved);
     const NS::Obj::Collider* collider = PlayerCollider(scene);
     ASSERT_NE(collider, nullptr);
     EXPECT_FLOAT_EQ(collider->CapsuleRadius(), 0.3f);

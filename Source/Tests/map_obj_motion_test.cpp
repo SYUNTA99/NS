@@ -20,7 +20,7 @@ namespace
         NS::Obj::SetObjectJsonId(rock, 1);
         NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
-        scene.LoadJson(doc);
+        scene.ResetFromJson(doc);
         return static_cast<GL::Level::MapObj*>(scene.Objects().FindByObjectId(1));
     }
 

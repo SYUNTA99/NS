@@ -50,7 +50,7 @@ TEST(ChargeFrontLow, GatherRootFacesTheAimLineEveryFrame)
     NS::Obj::SetObjectJsonClass(entry, "Player");
     NS::Obj::SetObjectJsonId(entry, 1);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);

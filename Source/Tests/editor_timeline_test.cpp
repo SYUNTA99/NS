@@ -366,7 +366,7 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         NS::Obj::SetObjectPosition(rock, {0.0f, 1.5f, 7.0f});
         NS::Obj::SetObjectScale(rock, {3.0f, 3.0f, 3.0f});
         NS::Obj::SceneJsonObjects(snapshot).push_back(std::move(rock));
-        scene.LoadJson(std::move(snapshot));
+        scene.ResetFromJson(std::move(snapshot));
         scene.SetSimulationEnabled(false);
         LevelEditorController editor(&scene);
         NS::Editor::GameViewPanel game;

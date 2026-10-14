@@ -38,7 +38,7 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
     NS::Obj::SetObjectJsonId(entry, 1);
     entry["subObjects"] = {{"Params", {{"体力", 5}}}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_NE(NS::Obj::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params")), nullptr);
@@ -168,9 +168,9 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
         {"Params",
          {{"走行速度", 9.0f}, {"チャージ突進の距離", 14.0f}, {"上昇重力", -21.0f}, {"下降重力", -39.0f}, {"体力", 6}}}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     const nlohmann::json saved = scene.ToJson();
-    scene.LoadJson(saved);
+    scene.ResetFromJson(saved);
     const Player* player = static_cast<const Player*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     const NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement"));
@@ -444,7 +444,7 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     // 飛び方の高さは相手の欄に書く
     NS::Obj::ObjectJsonSubObjs(rock)["Params"] = {{"質量", 1.0f}, {"押し飛ばしの高さ", 3.0f}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     EXPECT_FALSE(NS::Obj::SerializeSubObjectFields(player->Params()).contains("押し飛ばしの高さ"));
@@ -530,7 +530,7 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     NS::Obj::SetObjectJsonId(rock, 2);
     NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.0f, 4.0f});
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
-    scene.LoadJson(doc);
+    scene.ResetFromJson(doc);
     Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     const NS::Vector3 eye{0.0f, 0.0f, -6.0f};
