@@ -8,15 +8,9 @@
 namespace GL::Level
 {
     NS_PLACEABLE(FollowCamera, "追従カメラ")
-
-    void FollowCamera::VisitExtraSubObjs(const SubObjVisitor& visit) const
-    {
-        VisitSubObjMembers(visit, m_vcam);
-    }
-
     void FollowCamera::OnInit()
     {
-        (void)CreateSubObj(m_vcam, "Vcam");
+        (void)CreateSubObj(m_vcam);
     }
 
     void FollowCamera::ObserveStep()

@@ -1,5 +1,8 @@
 #include "Game/Player/PlayerParams.h"
+#include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Reflection/Reflection.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/SubObjects/Model.h"
 
 #include <gtest/gtest.h>
 
@@ -7,6 +10,25 @@
 
 namespace
 {
+    class MixedReflectionActor final : public NS::Obj::Actor
+    {
+    public:
+        std::unique_ptr<NS::Obj::Model> part;
+        std::unique_ptr<NS::Obj::Model> absentPart;
+        float value = 2.0f;
+        int count = 3;
+        NS_REFLECT_BEGIN(MixedReflectionActor, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(part, "Part")
+        NS_REFLECT_FIELD(value, "値")
+        NS_REFLECT_GROUP("数")
+        NS_REFLECT_SUBOBJ(absentPart, "AbsentPart")
+        NS_REFLECT_FIELD(count, "個数")
+        NS_REFLECT_END()
+
+    protected:
+        void OnInit() override { (void)CreateSubObj(part); }
+    };
+
     // 見出しの前の欄・空の見出し・続く見出しを 1 つずつ持つ値型
     struct GroupedValue
     {
@@ -26,6 +48,20 @@ namespace
         NS_REFLECT_END_VALUE()
     };
 } // namespace
+
+TEST(ReflectionGroup, OwnedPartsDoNotBecomeValueFieldsOrChangeGroupOffsets)
+{
+    const std::unique_ptr<MixedReflectionActor> actor = NS::Obj::CreateActor<MixedReflectionActor>();
+    const NS::Obj::ReflectionInfo* info = actor->GetReflection();
+    ASSERT_EQ(info->fieldCount, 2u);
+    ASSERT_EQ(info->subObjectCount, 2u);
+    ASSERT_EQ(info->groupCount, 1u);
+    EXPECT_EQ(info->groups[0].firstField, 1u);
+    EXPECT_EQ(info->subObjects[0].get(actor.get()), actor->part.get());
+    EXPECT_EQ(info->subObjects[0].member(actor.get()), &actor->part);
+    EXPECT_EQ(info->subObjects[1].get(actor.get()), nullptr);
+    EXPECT_EQ(NS::Obj::SerializeReflectedFields(actor.get(), *info), (nlohmann::json{{"値", 2.0f}, {"個数", 3}}));
+}
 
 // 欄の配列には見出しが混ざらない。保存と読み込みは欄の配列だけを回すので、見出しが保存の鍵にならない
 TEST(ReflectionGroup, FieldsExcludeGroups)

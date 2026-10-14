@@ -23,34 +23,55 @@
 
 namespace
 {
+    template <class T> constexpr bool k_HasPartName = requires(const T& part) { part.Name(); };
+    template <class T>
+    constexpr bool k_HasReflectedParts = requires(const T& info) {
+        info.subObjects;
+        info.subObjectCount;
+    };
+
+    class MemberCreationProbe final : public NS::Obj::Actor
+    {
+    public:
+        template <class TSelf = MemberCreationProbe> static constexpr bool CanCreateWithoutName()
+        {
+            return requires(TSelf& self) { self.CreateSubObj(self.part); };
+        }
+
+    private:
+        std::unique_ptr<NS::Obj::Model> part;
+    };
+
     template <class T>
     constexpr bool k_CanCreatePartByName = requires(T& actor) { actor.CreateSubObj(std::string_view{"Model"}); };
 
     class DirectMemberActor final : public NS::Obj::Actor
     {
     public:
+        NS_REFLECT_BEGIN(DirectMemberActor, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(shape, "Shape")
+        NS_REFLECT_END()
+
         std::unique_ptr<NS::Obj::Collision> shape;
 
     protected:
-        void OnInit() override { (void)CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(shape, "Shape"); }
-        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, shape); }
+        void OnInit() override { (void)CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(shape); }
 
     public:
         template <class TSelf = DirectMemberActor> static void CheckTypes()
         {
             static_assert(requires(TSelf& self) {
-                self.template CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(self.shape, "Shape");
+                self.template CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(self.shape);
             });
-            static_assert(!requires(TSelf& self) {
-                self.template CreateSubObj<NS::Obj::Collision, NS::Obj::Model>(self.shape, "Shape");
-            });
+            static_assert(
+                !requires(TSelf& self) { self.template CreateSubObj<NS::Obj::Collision, NS::Obj::Model>(self.shape); });
         }
     };
 
     class ModelPartActor final : public NS::Obj::Actor
     {
     protected:
-        void OnInit() override { (void)CreateSubObj(m_model, "Model"); }
+        void OnInit() override { (void)CreateSubObj(m_model); }
     };
 
     class SensorPartsActor final : public NS::Obj::Actor
@@ -58,8 +79,8 @@ namespace
     protected:
         void OnInit() override
         {
-            (void)CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_bodySensor, "BodySensor");
-            (void)CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_attackSensor, "AttackSensor");
+            (void)CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_bodySensor);
+            (void)CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_attackSensor);
         }
     };
 
@@ -84,22 +105,23 @@ namespace
     class MemberOwnedActor final : public NS::Obj::Actor
     {
     public:
+        NS_REFLECT_BEGIN(MemberOwnedActor, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(first, "First")
+        NS_REFLECT_SUBOBJ(second, "Second")
+        NS_REFLECT_END()
+
         explicit MemberOwnedActor(std::vector<std::string>& destroyed) : m_destroyed(destroyed) {}
         std::unique_ptr<MemberOwnedPart> first;
         std::unique_ptr<MemberOwnedPart> second;
 
-        MemberOwnedPart* ReplaceFirst()
-        {
-            return CreateSubObj(first, "Replacement", m_destroyed, std::string{"replacement"});
-        }
+        MemberOwnedPart* ReplaceFirst() { return CreateSubObj(first, m_destroyed, std::string{"replacement"}); }
 
     protected:
         void OnInit() override
         {
-            (void)CreateSubObj(first, "First", m_destroyed, std::string{"first"});
-            (void)CreateSubObj(second, "Second", m_destroyed, std::string{"second"});
+            (void)CreateSubObj(first, m_destroyed, std::string{"first"});
+            (void)CreateSubObj(second, m_destroyed, std::string{"second"});
         }
-        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, first, second); }
 
     private:
         std::vector<std::string>& m_destroyed;
@@ -115,14 +137,160 @@ namespace
     class FixedPartActor final : public NS::Obj::Actor
     {
     public:
+        NS_REFLECT_BEGIN(FixedPartActor, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(passive, "Passive")
+        NS_REFLECT_END()
+
         std::unique_ptr<PassivePart> passive;
 
     protected:
-        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, passive); }
-        void OnInit() override { (void)CreateSubObj(passive, "Passive"); }
+        void OnInit() override { (void)CreateSubObj(passive); }
+    };
+
+    class ReflectedProbePart final : public NS::Obj::SubObject
+    {
+    public:
+        float value = 0.0f;
+        int starts = 0;
+        int ends = 0;
+        void OnStart() override { ++starts; }
+        void OnEndPlay() override { ++ends; }
+        NS_REFLECT_BEGIN(ReflectedProbePart, NS::Obj::SubObject)
+        NS_REFLECT_FIELD(value, "値")
+        NS_REFLECT_END()
+    };
+
+    class ReflectedParentActor : public NS::Obj::Actor
+    {
+    public:
+        std::unique_ptr<ReflectedProbePart> parentPart;
+        NS_REFLECT_BEGIN(ReflectedParentActor, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(parentPart, "ParentPart")
+        NS_REFLECT_END()
+
+    protected:
+        void OnInit() override { (void)CreateSubObj(parentPart); }
+    };
+
+    class ReflectedHierarchyActor final : public ReflectedParentActor
+    {
+    public:
+        std::unique_ptr<ReflectedProbePart> childPart;
+        std::unique_ptr<ReflectedProbePart> absentPart;
+        NS_REFLECT_BEGIN(ReflectedHierarchyActor, ReflectedParentActor)
+        NS_REFLECT_SUBOBJ(childPart, "ChildPart")
+        NS_REFLECT_SUBOBJ(absentPart, "AbsentPart")
+        NS_REFLECT_END()
+
+    protected:
+        void OnInit() override
+        {
+            ReflectedParentActor::OnInit();
+            (void)CreateSubObj(childPart);
+        }
+    };
+    NS_CLASS(ReflectedHierarchyActor)
+
+    class UnregisteredPartActor final : public NS::Obj::Actor
+    {
+    public:
+        std::unique_ptr<ReflectedProbePart> part;
+
+    protected:
+        void OnInit() override { (void)CreateSubObj(part); }
+    };
+
+    class OffsetPrefix
+    {
+    public:
+        virtual ~OffsetPrefix() = default;
+        int prefix = 0;
+    };
+
+    class OffsetPartActor final : public OffsetPrefix, public NS::Obj::Actor
+    {
+    public:
+        std::unique_ptr<ReflectedProbePart> part;
+        NS_REFLECT_BEGIN(OffsetPartActor, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(part, "OffsetPart")
+        NS_REFLECT_END()
+
+    protected:
+        void OnInit() override { (void)CreateSubObj(part); }
     };
 
 } // namespace
+
+TEST(ReflectedParts, PartsDoNotStoreAnInstanceName)
+{
+    EXPECT_FALSE(k_HasPartName<NS::Obj::SubObject>);
+}
+
+TEST(ReflectedParts, CreationOnlyNeedsTheOwningMember)
+{
+    EXPECT_TRUE(MemberCreationProbe::CanCreateWithoutName());
+}
+
+TEST(ReflectedParts, ReflectionDescribesOwnedParts)
+{
+    EXPECT_TRUE(k_HasReflectedParts<NS::Obj::ReflectionInfo>);
+}
+
+TEST(ReflectedParts, InheritedMembersDriveEnumerationAndLifecycleWithoutAnOverride)
+{
+    const std::unique_ptr<ReflectedHierarchyActor> actor = NS::Obj::CreateActor<ReflectedHierarchyActor>();
+    ASSERT_NE(actor->parentPart, nullptr);
+    ASSERT_NE(actor->childPart, nullptr);
+    EXPECT_EQ(actor->absentPart, nullptr);
+    std::vector<std::string> keys;
+    actor->ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, NS::Obj::SubObject* part) {
+        keys.emplace_back(field.key);
+        EXPECT_EQ(part->Owner(), actor.get());
+    });
+    EXPECT_EQ(keys, (std::vector<std::string>{"Transform", "ParentPart", "ChildPart"}));
+    actor->OnStart();
+    actor->OnEndPlay();
+    EXPECT_EQ(actor->parentPart->starts, 1);
+    EXPECT_EQ(actor->childPart->starts, 1);
+    EXPECT_EQ(actor->parentPart->ends, 1);
+    EXPECT_EQ(actor->childPart->ends, 1);
+    EXPECT_EQ(NS::Obj::Cast<ReflectedParentActor>(actor.get()), actor.get());
+}
+
+TEST(ReflectedParts, SameTypedMembersSaveAndReloadThroughTheirRegisteredKeys)
+{
+    const std::unique_ptr<ReflectedHierarchyActor> actor = NS::Obj::CreateActor<ReflectedHierarchyActor>();
+    actor->parentPart->value = 2.0f;
+    actor->childPart->value = 7.0f;
+    const nlohmann::json saved = NS::Obj::ObjectToJson(*actor);
+    EXPECT_FLOAT_EQ(saved["subObjects"]["ParentPart"]["値"].get<float>(), 2.0f);
+    EXPECT_FLOAT_EQ(saved["subObjects"]["ChildPart"]["値"].get<float>(), 7.0f);
+    EXPECT_FALSE(saved["subObjects"].contains("AbsentPart"));
+    const std::unique_ptr<NS::Obj::Actor> loaded = NS::Obj::ObjectFromJson(saved, nullptr);
+    const ReflectedHierarchyActor* restored = NS::Obj::Cast<ReflectedHierarchyActor>(loaded.get());
+    ASSERT_NE(restored, nullptr);
+    EXPECT_FLOAT_EQ(restored->parentPart->value, 2.0f);
+    EXPECT_FLOAT_EQ(restored->childPart->value, 7.0f);
+    EXPECT_EQ(restored->SubObjKey(*restored->parentPart), "ParentPart");
+    EXPECT_EQ(restored->SubObjKey(*restored->childPart), "ChildPart");
+    const ReflectedProbePart foreign;
+    EXPECT_TRUE(restored->SubObjKey(foreign).empty());
+}
+
+TEST(ReflectedParts, UnregisteredMembersCannotCreateInvisibleParts)
+{
+    const std::unique_ptr<UnregisteredPartActor> actor = NS::Obj::CreateActor<UnregisteredPartActor>();
+    EXPECT_EQ(actor->part, nullptr);
+}
+
+TEST(ReflectedParts, AccessorsAdjustTheActorBaseAddress)
+{
+    const std::unique_ptr<OffsetPartActor> actor = NS::Obj::CreateActor<OffsetPartActor>();
+    ASSERT_NE(actor->part, nullptr);
+    EXPECT_EQ(actor->FindSubObj("OffsetPart"), actor->part.get());
+    EXPECT_EQ(actor->part->Owner(), static_cast<NS::Obj::Actor*>(actor.get()));
+    EXPECT_EQ(NS::Obj::Cast<OffsetPartActor>(static_cast<NS::Obj::Object*>(actor.get())), actor.get());
+}
 
 TEST(FixedParts, PartCreationRequiresAnOwningMember)
 {
@@ -214,7 +382,7 @@ TEST(FixedParts, CommonMembersAreCreatedByTheActorClass)
     EXPECT_EQ(actor.FindSubObj("Model"), model);
     EXPECT_EQ(model->Owner(), &actor);
     std::vector<std::string> names;
-    actor.ForEachSubObj([&](const NS::Obj::SubObject* subObject) { names.push_back(subObject->Name()); });
+    actor.ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, NS::Obj::SubObject*) { names.push_back(field.key); });
     EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model"}));
 }
 

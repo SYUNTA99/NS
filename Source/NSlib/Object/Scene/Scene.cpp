@@ -105,7 +105,7 @@ namespace NS::Obj
         {
             return;
         }
-        const std::string_view role = comp.Name();
+        const std::string_view role = owner->SubObjKey(comp);
         if (role.empty())
         {
             return;
@@ -356,9 +356,9 @@ namespace NS::Obj
         const nlohmann::json object = ExpandObjectJson(snapshot);
         bool same = ObjectJsonClass(object) == std::string_view{obj->ClassName()};
         std::size_t subObjectCount = 0;
-        obj->ForEachSubObj([&](const SubObject* subObject) {
+        obj->ForEachSubObj([&](const SubObjectDesc& field, SubObject*) {
             ++subObjectCount;
-            if (SubObjFields(object, subObject->Name()) == nullptr)
+            if (SubObjFields(object, field.key) == nullptr)
             {
                 same = false;
             }
@@ -386,8 +386,8 @@ namespace NS::Obj
             parent = nullptr;
         }
         obj->SetParent(parent);
-        obj->ForEachSubObj([&](SubObject* subObject) {
-            const nlohmann::json* fields = SubObjFields(object, subObject->Name());
+        obj->ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, SubObject* subObject) {
+            const nlohmann::json* fields = SubObjFields(object, field.key);
             if (fields == nullptr || SerializeSubObjFields(*subObject) == *fields)
             {
                 return;

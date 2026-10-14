@@ -21,7 +21,11 @@ namespace GL::Level
     public:
         MapObj() noexcept;
 
-        NS_REFLECT_NONE(MapObj, NS::Obj::Actor)
+        NS_REFLECT_BEGIN(MapObj, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(m_params, "Params")
+        NS_REFLECT_SUBOBJ(m_hitZones, "HitZones")
+        NS_REFLECT_SUBOBJ(m_effects, "LaunchEffects")
+        NS_REFLECT_END()
 
         //! 配置が揃った後に、当たりの球を物理へ入れる
         void InitAfterPlacement() override;
@@ -47,7 +51,6 @@ namespace GL::Level
         bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
         void OnInit() override;
-        void VisitExtraSubObjs(const SubObjVisitor& visit) const override;
         void BodyStep() override;
         //! 発光の層を進める。HitReaction は進めない
         void VisualStep() override;

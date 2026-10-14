@@ -131,11 +131,14 @@ namespace
     class LoggingActor final : public NS::Obj::Actor
     {
     public:
+        NS_REFLECT_BEGIN(LoggingActor, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(m_part, "Logging")
+        NS_REFLECT_END()
+
         explicit LoggingActor(TickLog& log) noexcept : m_log(log) {}
 
     protected:
-        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, m_part); }
-        void OnInit() override { (void)CreateSubObj(m_part, "Logging", &m_log); }
+        void OnInit() override { (void)CreateSubObj(m_part, &m_log); }
         void StateStep() override
         {
             m_log.order.push_back("actor");

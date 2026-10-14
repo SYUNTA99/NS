@@ -30,17 +30,6 @@ namespace NS::Editor
         const NS::Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
         const NS::Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
 
-        std::vector<NS::Obj::SubObject*> ReflectedSubObjects(NS::Obj::Actor& go)
-        {
-            std::vector<NS::Obj::SubObject*> result;
-            go.ForEachSubObj([&](NS::Obj::SubObject* subObject) {
-                if (subObject->GetReflection() != nullptr)
-                {
-                    result.push_back(subObject);
-                }
-            });
-            return result;
-        }
     } // namespace
 #endif
 
@@ -79,7 +68,6 @@ namespace NS::Editor
 
             // 直前の HasInspectableSelection で同じ識別番号の対象を確認済み
             NS::Obj::Actor* go = editor.SelectedObjectActor();
-            const std::vector<NS::Obj::SubObject*> subObjects = ReflectedSubObjects(*go);
 
             // 名前は直接ここで書き換えられる。選択が変わったら今の表示名を入れ直す
             const std::uint32_t selectedId = editor.SelectedObjectId();
@@ -192,24 +180,27 @@ namespace NS::Editor
             ImGui::InputTextWithHint("##fieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
 
             NS::Editor::SubObjectEditResult subObjectEdit{};
-            for (std::size_t k = 0; k < subObjects.size(); ++k)
-            {
-                const std::string typeName{subObjects[k]->ClassName()};
-                // 根の部品は上の専用パネルが編集するので一覧に出さない
-                if (subObjects[k]->Name() == NS::Obj::k_TransformSubObjName)
+            go->ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, NS::Obj::SubObject* live) {
+                if (live->GetReflection() == nullptr)
                 {
-                    continue;
+                    return;
+                }
+                const std::string typeName{live->ClassName()};
+                // 根の部品は上の専用パネルが編集するので一覧に出さない
+                if (live == &go->Root())
+                {
+                    return;
                 }
 
-                ImGui::PushID(static_cast<int>(k));
+                ImGui::PushID(field.key);
 
                 // 入力 SubObject を休止させると player が動かなくなるので active を触らせない
                 const bool lockedSubObject = (typeName == "PlayerInput");
-                bool enabled = subObjects[k]->IsEnabled();
+                bool enabled = live->IsEnabled();
                 ImGui::BeginDisabled(lockedSubObject);
                 if (ImGui::Checkbox("##enabled", &enabled))
                 {
-                    editor.SetSubObjectEnabledOnSelected(*subObjects[k], enabled);
+                    editor.SetSubObjectEnabledOnSelected(*live, enabled);
                 }
                 ImGui::EndDisabled();
                 ImGui::SameLine();
@@ -217,7 +208,7 @@ namespace NS::Editor
                 ImGui::PushStyleColor(ImGuiCol_Header, NS::Editor::k_SubObjectHeaderColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderHovered, NS::Editor::k_SubObjectHeaderHoveredColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderActive, NS::Editor::k_SubObjectHeaderActiveColor);
-                std::string header{subObjects[k]->Name()};
+                std::string header{field.key};
                 if (header != typeName)
                 {
                     header += " (";
@@ -230,7 +221,6 @@ namespace NS::Editor
 
                 if (open)
                 {
-                    NS::Obj::SubObject* live = subObjects[k];
                     // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
                     const NS::Obj::SubObject* baseline = m_defaults.Find(*live);
                     const NS::Editor::SubObjectEditResult r =
@@ -255,7 +245,7 @@ namespace NS::Editor
                     }
                 }
                 ImGui::PopID();
-            }
+            });
             // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり履歴が空になる
             if (subObjectEdit.revertTarget != nullptr && subObjectEdit.revertField != nullptr)
             {

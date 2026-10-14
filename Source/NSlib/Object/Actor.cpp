@@ -18,10 +18,22 @@
 namespace NS::Obj
 {
 
+    NS_REFLECT_BEGIN_IMPL(Actor, Object)
+    NS_REFLECT_SUBOBJ(m_transform, "Transform")
+    NS_REFLECT_SUBOBJ(m_model, "Model")
+    NS_REFLECT_SUBOBJ(m_animation, "Animation")
+    NS_REFLECT_SUBOBJ(m_shadow, "Shadow")
+    NS_REFLECT_SUBOBJ(m_collision, "Collision")
+    NS_REFLECT_SUBOBJ(m_bodySensor, "BodySensor")
+    NS_REFLECT_SUBOBJ(m_attackSensor, "AttackSensor")
+    NS_REFLECT_SUBOBJ(m_hitReaction, "HitReaction")
+    NS_REFLECT_SUBOBJ(m_effectKeeper, "Effect")
+    NS_REFLECT_END_VALUE()
+
     Actor::Actor() noexcept
     {
         // Init 前にも姿勢と親子関係を使うため、Transform はここで用意する
-        (void)CreateSubObj(m_transform, k_TransformSubObjName);
+        (void)CreateSubObj(m_transform);
         Appear();
     }
 
@@ -35,39 +47,83 @@ namespace NS::Obj
         return *m_transform;
     }
 
+    namespace
+    {
+        void VisitReflectedSubObjects(const Object& owner,
+                                      const ReflectionInfo* info,
+                                      const Actor::SubObjFieldVisitor& visit)
+        {
+            if (info == nullptr)
+            {
+                return;
+            }
+            VisitReflectedSubObjects(owner, info->base, visit);
+            for (std::size_t i = 0; i < info->subObjectCount; ++i)
+            {
+                const SubObjectDesc& field = info->subObjects[i];
+                if (SubObject* part = field.get(&owner))
+                {
+                    visit(field, part);
+                }
+            }
+        }
+    } // namespace
+
     void Actor::ForEachSubObj(const SubObjVisitor& visit) const
     {
-        VisitSubObjMembers(visit,
-                           m_transform,
-                           m_model,
-                           m_animation,
-                           m_shadow,
-                           m_collision,
-                           m_bodySensor,
-                           m_attackSensor,
-                           m_hitReaction,
-                           m_effectKeeper);
-        VisitExtraSubObjs(visit);
+        ForEachSubObj([&](const SubObjectDesc&, SubObject* part) { visit(part); });
     }
 
-    void Actor::AttachSubObj(SubObject& subObject, std::string_view name)
+    void Actor::ForEachSubObj(const SubObjFieldVisitor& visit) const
     {
-        subObject.SetName(name);
-        subObject.AttachOwner(this);
+        VisitReflectedSubObjects(*this, GetReflection(), visit);
     }
 
-    void Actor::ReportTakenName(std::string_view name) const
+    const SubObjectDesc* Actor::FindSubObjMember(const void* member) const
     {
-        NS_LOG_ERROR(Scene, "Actor::CreateSubObj: 部品名 {} は {} が使っている。2 回目は作らない", name, ClassName());
+        for (const ReflectionInfo* info = GetReflection(); info != nullptr; info = info->base)
+        {
+            for (std::size_t i = 0; i < info->subObjectCount; ++i)
+            {
+                const SubObjectDesc& field = info->subObjects[i];
+                if (field.member(this) == member)
+                {
+                    return &field;
+                }
+            }
+        }
+        return nullptr;
     }
 
-    SubObject* Actor::FindSubObj(std::string_view name) const
+    void Actor::ReportInvalidSubObj(const SubObjectDesc* field) const
+    {
+        if (field == nullptr)
+        {
+            NS_LOG_ERROR(Scene, "{} の部品の所有メンバーがリフレクションに未登録", ClassName());
+            return;
+        }
+        NS_LOG_ERROR(Scene, "{} の部品 {} は作成済みか、保存キーが使用済み", ClassName(), field->key);
+    }
+
+    std::string_view Actor::SubObjKey(const SubObject& part) const
+    {
+        std::string_view key;
+        ForEachSubObj([&](const SubObjectDesc& field, SubObject* candidate) {
+            if (candidate == &part)
+            {
+                key = field.key;
+            }
+        });
+        return key;
+    }
+
+    SubObject* Actor::FindSubObj(std::string_view key) const
     {
         SubObject* found = nullptr;
-        ForEachSubObj([&](SubObject* subObject) {
-            if (subObject->Name() == name)
+        ForEachSubObj([&](const SubObjectDesc& field, SubObject* part) {
+            if (field.key == key)
             {
-                found = subObject;
+                found = part;
             }
         });
         return found;

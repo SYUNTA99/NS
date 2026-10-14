@@ -69,7 +69,7 @@ namespace NS::Obj
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, 0u);
         nlohmann::json& parts = ObjectJsonSubObjs(object);
-        obj.ForEachSubObj([&](const SubObject* subObject) { parts[subObject->Name()] = nlohmann::json::object(); });
+        obj.ForEachSubObj([&](const SubObjectDesc& field, SubObject*) { parts[field.key] = nlohmann::json::object(); });
         SetObjectPosition(object, obj.Root().Position());
         SetObjectRotation(object, obj.Root().Rotation());
         SetObjectScale(object, obj.Root().Scale());
@@ -80,8 +80,9 @@ namespace NS::Obj
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, obj.Id());
         nlohmann::json& parts = ObjectJsonSubObjs(object);
-        obj.ForEachSubObj(
-            [&](const SubObject* subObject) { parts[subObject->Name()] = SerializeSubObjFields(*subObject); });
+        obj.ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, const SubObject* subObject) {
+            parts[field.key] = SerializeSubObjFields(*subObject);
+        });
         return DiffObjectJson(object);
     }
 } // namespace NS::Obj

@@ -17,18 +17,19 @@ namespace
     class CollisionProbe final : public NS::Obj::Actor
     {
     public:
+        NS_REFLECT_BEGIN(CollisionProbe, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(collider, "Collider")
+        NS_REFLECT_SUBOBJ(sphere, "Sphere")
+        NS_REFLECT_END()
+
         std::unique_ptr<NS::Obj::Collider> collider;
         std::unique_ptr<NS::Obj::SphereCollision> sphere;
 
     protected:
-        void VisitExtraSubObjs(const SubObjVisitor& visit) const override
-        {
-            VisitSubObjMembers(visit, collider, sphere);
-        }
         void OnInit() override
         {
-            (void)CreateSubObj(collider, "Collider");
-            (void)CreateSubObj(sphere, "Sphere");
+            (void)CreateSubObj(collider);
+            (void)CreateSubObj(sphere);
         }
     };
 

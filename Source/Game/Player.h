@@ -54,7 +54,7 @@ public:
     Player(Player&&) = delete;
     Player& operator=(Player&&) = delete;
 
-    NS_REFLECT_NONE(Player, NS::Obj::Actor)
+    NS_REFLECT_DECLARE()
     //! 基底が所有する自機の状態機械。OnInit が組むので、Init の後から立ちの状態に居る
     [[nodiscard]] NS::Obj::StateMachineOf<Player>& States() noexcept { return *m_states; }
     [[nodiscard]] const NS::Obj::StateMachineOf<Player>& States() const noexcept { return *m_states; }
@@ -293,7 +293,6 @@ protected:
     bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
     void OnInit() override;
-    void VisitExtraSubObjs(const SubObjVisitor& visit) const override;
     //! PlayerInput の体当たりの押しと狙いの観測 (ObserveCharge)、
     //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
     void ObserveStep() override;

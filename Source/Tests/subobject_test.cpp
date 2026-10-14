@@ -23,35 +23,42 @@ namespace
     class OrderActor final : public NS::Obj::Actor
     {
     public:
+        NS_REFLECT_BEGIN(OrderActor, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(first, "First")
+        NS_REFLECT_SUBOBJ(second, "Second")
+        NS_REFLECT_END()
+
         std::unique_ptr<PlainSubObj> first;
         std::unique_ptr<PlainSubObj> second;
         NS::Obj::BoxCollision* box = nullptr;
         NS::Obj::SphereCollision* refused = nullptr;
 
     protected:
-        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, first, second); }
         void OnInit() override
         {
-            (void)CreateSubObj(first, "First");
-            box = CreateSubObj<NS::Obj::Collision, NS::Obj::BoxCollision>(m_collision, "Collision");
-            (void)CreateSubObj(second, "Second");
-            CreateSubObj(m_model, "Model");
-            refused = CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(m_collision, "Collision");
+            (void)CreateSubObj(first);
+            box = CreateSubObj<NS::Obj::Collision, NS::Obj::BoxCollision>(m_collision);
+            (void)CreateSubObj(second);
+            CreateSubObj(m_model);
+            refused = CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(m_collision);
         }
     };
 
     class NameClashActor final : public NS::Obj::Actor
     {
     public:
+        NS_REFLECT_BEGIN(NameClashActor, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(clash, "Model")
+        NS_REFLECT_END()
+
         NS::Obj::Model* model = nullptr;
         std::unique_ptr<PlainSubObj> clash;
 
     protected:
-        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, clash); }
         void OnInit() override
         {
-            (void)CreateSubObj(clash, "Model");
-            model = CreateSubObj(m_model, "Model");
+            (void)CreateSubObj(clash);
+            model = CreateSubObj(m_model);
         }
     };
 
@@ -62,9 +69,9 @@ namespace
         void OnInit() override
         {
             InitShape();
-            CreateSubObj<NS::Obj::Collision, NS::Obj::BoxCollision>(m_collision, "Collision");
+            CreateSubObj<NS::Obj::Collision, NS::Obj::BoxCollision>(m_collision);
         }
-        void InitShape() { CreateSubObj(m_model, "Model"); }
+        void InitShape() { CreateSubObj(m_model); }
     };
 
     class GrandActor final : public MiddleActor
@@ -73,7 +80,7 @@ namespace
         void OnInit() override
         {
             InitShape();
-            CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(m_collision, "Collision");
+            CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(m_collision);
         }
     };
 
@@ -106,7 +113,7 @@ protected:
     void OnInit() override
     {
         ++inits;
-        CreateSubObj(m_model, "Model");
+        CreateSubObj(m_model);
     }
 };
 NS_CLASS(SubObjectInitProbe)
@@ -116,15 +123,15 @@ TEST(SubObject, CreateWritesNameAndEnumeratesRootThenSlotsThenDerivedInCreationO
     const std::unique_ptr<OrderActor> actor = NS::Obj::CreateActor<OrderActor>();
     ASSERT_NE(actor->first, nullptr);
     ASSERT_NE(actor->second, nullptr);
-    EXPECT_EQ(actor->first->Name(), "First");
+    EXPECT_EQ(actor->SubObjKey(*actor->first), "First");
     EXPECT_EQ(actor->first->Owner(), actor.get());
     EXPECT_EQ(actor->FindSubObj("Second"), actor->second.get());
     ASSERT_NE(actor->CollisionSubObj(), nullptr);
-    EXPECT_EQ(actor->CollisionSubObj()->Name(), "Collision");
+    EXPECT_EQ(actor->SubObjKey(*actor->CollisionSubObj()), "Collision");
     std::vector<std::string> names;
-    actor->ForEachSubObj([&](const NS::Obj::SubObject* subObject) {
+    actor->ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, const NS::Obj::SubObject* subObject) {
         EXPECT_EQ(subObject->Owner(), actor.get());
-        names.push_back(subObject->Name());
+        names.push_back(field.key);
     });
     EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model", "Collision", "First", "Second"}));
 }

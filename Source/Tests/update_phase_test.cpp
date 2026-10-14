@@ -93,7 +93,7 @@ namespace
     class DrawModelActor final : public NS::Obj::Actor
     {
     protected:
-        void OnInit() override { (void)CreateSubObj(m_model, "Model"); }
+        void OnInit() override { (void)CreateSubObj(m_model); }
     };
 
     // Player の段で、別の Actor の Model の描く倍率を書く

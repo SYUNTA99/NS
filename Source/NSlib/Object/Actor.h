@@ -50,7 +50,7 @@ namespace NS::Obj
         virtual ~Actor() noexcept;
         [[nodiscard]] std::uint32_t Id() const noexcept { return m_id; }
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
-        NS_REFLECT_NONE(Actor, Object)
+        NS_REFLECT_DECLARE()
 
         //! @brief 世界に出す。更新の段・描画・当たり・センサーへ登録する。出ていれば何もしない
         //! @details Destroy の後に呼ぶのは呼び手のバグで、NS_ASSERT が止める。出荷版では何もしない
@@ -97,10 +97,13 @@ namespace NS::Obj
         void AddGravity(NS::Vector3& velocity, float strength, float dt) const noexcept;
 
         using SubObjVisitor = std::function<void(SubObject*)>;
+        using SubObjFieldVisitor = std::function<void(const SubObjectDesc&, SubObject*)>;
         // 基底の部品を先に、派生の固定メンバーを後に渡す。所有は移さない
         void ForEachSubObj(const SubObjVisitor& visit) const;
-        //! @brief 部品名 name の部品を返す
-        //! @return 持たなければ nullptr
+        void ForEachSubObj(const SubObjFieldVisitor& visit) const;
+        // 登録情報の保存キー。この Actor の部品でなければ空
+        [[nodiscard]] std::string_view SubObjKey(const SubObject& part) const;
+        // 保存キーに対応する部品。作っていなければ nullptr
         [[nodiscard]] SubObject* FindSubObj(std::string_view name) const;
         [[nodiscard]] Model* ModelSubObj() noexcept { return m_model.get(); }
         [[nodiscard]] const Model* ModelSubObj() const noexcept { return m_model.get(); }
@@ -175,30 +178,22 @@ namespace NS::Obj
         //! 所属の Scene は入る道によって付いていないので、ここでは読まない
         virtual void OnInit() {}
 
-        // 部品名は保存のキー。使用済みのメンバーや名前は変更せず nullptr を返す
+        // 未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
         template <class TBase, class T = TBase, class... TArgs>
             requires std::derived_from<T, TBase> && std::derived_from<T, SubObject>
-        T* CreateSubObj(std::unique_ptr<TBase>& member, std::string_view name, TArgs&&... args)
+        T* CreateSubObj(std::unique_ptr<TBase>& member, TArgs&&... args)
         {
-            if (member != nullptr || FindSubObj(name) != nullptr)
+            const SubObjectDesc* field = FindSubObjMember(&member);
+            if (field == nullptr || member != nullptr || FindSubObj(field->key) != nullptr)
             {
-                ReportTakenName(name);
+                ReportInvalidSubObj(field);
                 return nullptr;
             }
             std::unique_ptr<T> subObject = std::make_unique<T>(std::forward<TArgs>(args)...);
             T* raw = subObject.get();
-            AttachSubObj(*raw, name);
+            raw->AttachOwner(this);
             member = std::move(subObject);
             return raw;
-        }
-
-        // 自分の部品だけを列挙する。部品を持つ親クラスがあれば、その列挙も呼ぶ
-        virtual void VisitExtraSubObjs(const SubObjVisitor& visit) const { (void)visit; }
-
-        template <class... TParts>
-        static void VisitSubObjMembers(const SubObjVisitor& visit, const std::unique_ptr<TParts>&... parts)
-        {
-            (VisitSubObjMember(visit, parts), ...);
         }
 
         virtual void OnAppear();
@@ -258,15 +253,8 @@ namespace NS::Obj
         [[nodiscard]] bool AdoptStateMachine(std::unique_ptr<IStateMachine> machine);
         void SetId(std::uint32_t id) noexcept { m_id = id; }
         void SetName(std::string name) noexcept { m_name = std::move(name); }
-        template <class T> static void VisitSubObjMember(const SubObjVisitor& visit, const std::unique_ptr<T>& part)
-        {
-            if (part != nullptr)
-            {
-                visit(part.get());
-            }
-        }
-        void AttachSubObj(SubObject& subObject, std::string_view name);
-        void ReportTakenName(std::string_view name) const;
+        [[nodiscard]] const SubObjectDesc* FindSubObjMember(const void* member) const;
+        void ReportInvalidSubObj(const SubObjectDesc* field) const;
         // PendingDestroy からはどこへも移らない
         enum class Presence : std::uint8_t
         {

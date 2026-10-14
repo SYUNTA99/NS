@@ -9,13 +9,14 @@ namespace GL::Level
     class Goal : public NS::Obj::Actor
     {
     public:
-        NS_REFLECT_NONE(Goal, NS::Obj::Actor)
+        NS_REFLECT_BEGIN(Goal, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(m_params, "Params")
+        NS_REFLECT_END()
 
         void AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other) override;
 
     protected:
         void OnInit() override;
-        void VisitExtraSubObjs(const SubObjVisitor& visit) const override;
 
     private:
         std::unique_ptr<GoalParams> m_params;

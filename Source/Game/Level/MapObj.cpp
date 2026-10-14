@@ -69,27 +69,20 @@ namespace GL::Level
     {
         m_motion.Finish();
     }
-
-    void MapObj::VisitExtraSubObjs(const SubObjVisitor& visit) const
-    {
-        VisitSubObjMembers(visit, m_params, m_hitZones, m_effects);
-    }
-
     void MapObj::OnInit()
     {
-        NS::Obj::Model* model = CreateSubObj(m_model, "Model");
+        NS::Obj::Model* model = CreateSubObj(m_model);
         model->SetMeshRef("sphere");
         model->SetBaseColor(NS::Vector3{0.72f, 0.70f, 0.66f});
-        (void)CreateSubObj(m_shadow, "Shadow");
-        NS::Obj::SphereCollision* sphere =
-            CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(m_collision, "Collision");
-        (void)CreateSubObj(m_params, "Params");
-        (void)CreateSubObj(m_hitZones, "HitZones");
-        (void)CreateSubObj(m_effectKeeper, "Effect");
-        (void)CreateSubObj(m_effects, "LaunchEffects");
+        (void)CreateSubObj(m_shadow);
+        NS::Obj::SphereCollision* sphere = CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(m_collision);
+        (void)CreateSubObj(m_params);
+        (void)CreateSubObj(m_hitZones);
+        (void)CreateSubObj(m_effectKeeper);
+        (void)CreateSubObj(m_effects);
         // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
         NS::Obj::FollowHitSensor* bodySensor =
-            CreateSubObj<NS::Obj::HitSensor, NS::Obj::FollowHitSensor>(m_bodySensor, "BodySensor", [sphere] {
+            CreateSubObj<NS::Obj::HitSensor, NS::Obj::FollowHitSensor>(m_bodySensor, [sphere] {
                 const NS::Sphere world = sphere->WorldSphere();
                 return NS::Obj::SensorVolume::Sphere(world.center, world.radius);
             });

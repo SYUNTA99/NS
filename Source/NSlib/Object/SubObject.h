@@ -4,8 +4,6 @@
 #include "NSlib/Object/Reflection/Reflection.h"
 
 #include <concepts>
-#include <string>
-#include <string_view>
 
 namespace NS::Obj
 {
@@ -22,9 +20,6 @@ namespace NS::Obj
         SubObject() noexcept;
 
         virtual ~SubObject() noexcept;
-
-        // 保存の鍵とインスペクタの見出しに使う部品名。Actor が作成時に付ける
-        [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
 
         //! 持ち主の Actor。シーンへの所属後は必ず設定される
         [[nodiscard]] Actor* Owner() noexcept { return m_owner; }
@@ -69,9 +64,7 @@ namespace NS::Obj
     private:
         friend class Actor;
         void AttachOwner(Actor* owner) noexcept { m_owner = owner; }
-        void SetName(std::string_view name) { m_name = name; }
 
-        std::string m_name;
         Actor* m_owner = nullptr; // 所有 Actor、attach 前は nullptr
         bool m_active = true;     // false なら OnUpdate を skip
         bool m_enabled = true;    // データの active 値、false なら OnUpdate を飛ばす

@@ -232,13 +232,13 @@ namespace NS::Obj
         nlohmann::json full = object;
         nlohmann::json& target = ObjectJsonSubObjs(full);
         target = nlohmann::json::object();
-        baseline.ForEachSubObj([&](const SubObject* subObject) {
+        baseline.ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, const SubObject* subObject) {
             nlohmann::json fields = SerializeSubObjFields(*subObject);
-            if (const nlohmann::json* source = SubObjFields(object, subObject->Name()))
+            if (const nlohmann::json* source = SubObjFields(object, field.key))
             {
                 fields.update(*source);
             }
-            target[subObject->Name()] = std::move(fields);
+            target[field.key] = std::move(fields);
         });
         return full;
     }
@@ -247,12 +247,12 @@ namespace NS::Obj
     {
         const Actor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json out = object;
-        baseline.ForEachSubObj([&](const SubObject* subObject) {
-            if (IsInstanceOnlySubObj(subObject->Name()))
+        baseline.ForEachSubObj([&](const SubObjectDesc& member, const SubObject* subObject) {
+            if (IsInstanceOnlySubObj(member.key))
             {
                 return;
             }
-            nlohmann::json* fields = SubObjFields(out, subObject->Name());
+            nlohmann::json* fields = SubObjFields(out, member.key);
             if (fields == nullptr)
             {
                 return;
@@ -282,7 +282,7 @@ namespace NS::Obj
             return nullptr;
         }
         const Actor& baseline = ArchetypeLibrary::Get().Baseline(owner->ClassName());
-        const SubObject* found = baseline.FindSubObj(comp.Name());
+        const SubObject* found = baseline.FindSubObj(owner->SubObjKey(comp));
         if (found != nullptr && std::string_view{found->ClassName()} == comp.ClassName())
         {
             return found;
@@ -303,7 +303,7 @@ namespace NS::Obj
     bool IsArchetypeField(const SubObject& comp, std::string_view fieldName)
     {
         // 持ち主の無い部品は種類を持たない
-        if (comp.Owner() == nullptr || IsInstanceOnlySubObj(comp.Name()))
+        if (comp.Owner() == nullptr || IsInstanceOnlySubObj(comp.Owner()->SubObjKey(comp)))
         {
             return false;
         }
@@ -322,7 +322,7 @@ namespace NS::Obj
         {
             return false;
         }
-        const std::string_view role = comp.Name();
+        const std::string_view role = owner->SubObjKey(comp);
         const std::optional<nlohmann::json> value = FieldValue(comp, fieldName);
         if (role.empty() || !value.has_value())
         {

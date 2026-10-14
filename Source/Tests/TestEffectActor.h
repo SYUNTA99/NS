@@ -6,5 +6,5 @@
 class TestEffectActor : public NS::Obj::Actor
 {
 protected:
-    void OnInit() override { (void)CreateSubObj(m_effectKeeper, "Effect"); }
+    void OnInit() override { (void)CreateSubObj(m_effectKeeper); }
 };

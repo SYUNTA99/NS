@@ -37,11 +37,14 @@ namespace
     class CountedActor final : public NS::Obj::Actor
     {
     public:
+        NS_REFLECT_BEGIN(CountedActor, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(part, "Counted")
+        NS_REFLECT_END()
+
         std::unique_ptr<RegisterCountSubObj> part;
 
     protected:
-        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, part); }
-        void OnInit() override { (void)CreateSubObj(part, "Counted"); }
+        void OnInit() override { (void)CreateSubObj(part); }
     };
 } // namespace
 

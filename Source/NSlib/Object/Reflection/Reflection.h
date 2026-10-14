@@ -14,6 +14,7 @@
 
 namespace NS::Obj
 {
+    class Object;
     class SubObject;
 
     //! リフレクションが扱うフィールド型タグ
@@ -109,34 +110,48 @@ namespace NS::Obj
         std::size_t firstField; // この見出しの最初の欄の、fields の添字
     };
 
-    //! フィールドと継承関係の情報。見出しは保存対象のフィールドと分けて保持する
+    // 保存キーと固定メンバーへのアクセス。所有や部品の交換は行わない
+    struct SubObjectDesc
+    {
+        const char* key;
+        SubObject* (*get)(const Object* owner) noexcept;
+        const void* (*member)(const Object* owner) noexcept;
+    };
+
+    // 型ごとの不変な情報。値の欄・見出し・部品メンバーは別々に保持する
     struct ReflectionInfo
     {
         const char* typeName;
-        const FieldDesc* fields;            // フィールド記述子配列 (static 寿命)
+        const FieldDesc* fields; // フィールド記述子配列 (static 寿命)
         std::size_t fieldCount;
         const ReflectionInfo* base;         // 基底型のリフレクション。SubObject 直下は nullptr
         const FieldGroup* groups = nullptr; // 欄の見出しの配列 (static 寿命)。宣言の並び
         std::size_t groupCount = 0;
+        const SubObjectDesc* subObjects = nullptr;
+        std::size_t subObjectCount = 0;
     };
 
-    //! @brief マクロが宣言の並びのまま積む 1 項目。欄か見出しのどちらか 1 つ
+    // マクロが宣言順に積む、値の欄・見出し・部品メンバーのいずれか
     struct ReflectEntry
     {
         FieldDesc field;   // 欄。見出しの項目では空
         const char* group; // 見出しの名前。欄の項目では nullptr
+        SubObjectDesc subObject{};
     };
 
     //! 型ごとの不変なフィールド配列。ReflectionInfo が参照するためコピーしない
     class ReflectedFields
     {
     public:
-        //! @param[in] entries 欄と見出しを宣言の並びのまま並べた物
         explicit ReflectedFields(std::span<const ReflectEntry> entries) noexcept
         {
             for (const ReflectEntry& entry : entries)
             {
-                if (entry.group != nullptr)
+                if (entry.subObject.key != nullptr)
+                {
+                    m_subObjects.push_back(entry.subObject);
+                }
+                else if (entry.group != nullptr)
                 {
                     m_groups.push_back(FieldGroup{entry.group, m_fields.size()});
                 }
@@ -152,10 +167,18 @@ namespace NS::Obj
         //! 戻り値の配列参照は、このオブジェクトが生存している間だけ有効
         [[nodiscard]] ReflectionInfo MakeInfo(const char* typeName, const ReflectionInfo* base) const noexcept
         {
-            return ReflectionInfo{typeName, m_fields.data(), m_fields.size(), base, m_groups.data(), m_groups.size()};
+            return ReflectionInfo{typeName,
+                                  m_fields.data(),
+                                  m_fields.size(),
+                                  base,
+                                  m_groups.data(),
+                                  m_groups.size(),
+                                  m_subObjects.data(),
+                                  m_subObjects.size()};
         }
 
     private:
+        std::vector<SubObjectDesc> m_subObjects;
         std::vector<FieldDesc> m_fields;  // 見出しを除いた欄。宣言の並び
         std::vector<FieldGroup> m_groups; // 見出し。宣言の並び
     };
@@ -238,6 +261,34 @@ namespace NS::Obj
     {                                                                                                                  \
         return StaticReflection();                                                                                     \
     }
+
+// 保存キーは既存データとの対応に使う。型が同じ部品もメンバーごとに区別する
+#define NS_REFLECT_SUBOBJ(memberName, savedKey)                                                                        \
+    NS::Obj::ReflectEntry{NS::Obj::FieldDesc{},                                                                        \
+                          nullptr,                                                                                     \
+                          NS::Obj::SubObjectDesc{savedKey,                                                             \
+                                                 +[](const NS::Obj::Object* owner) noexcept -> NS::Obj::SubObject* {   \
+                                                     return static_cast<const Self*>(owner)->memberName.get();         \
+                                                 },                                                                    \
+                                                 +[](const NS::Obj::Object* owner) noexcept -> const void* {           \
+                                                     return &static_cast<const Self*>(owner)->memberName;              \
+                                                 }}},
+
+// 部品の型を前方宣言するクラスでは、情報の定義を実装ファイルへ置く
+#define NS_REFLECT_DECLARE()                                                                                           \
+    [[nodiscard]] static const NS::Obj::ReflectionInfo* StaticReflection() noexcept;                                   \
+    [[nodiscard]] const NS::Obj::ReflectionInfo* GetReflection() const noexcept override                               \
+    {                                                                                                                  \
+        return StaticReflection();                                                                                     \
+    }
+
+#define NS_REFLECT_BEGIN_IMPL(ThisType, BaseType)                                                                      \
+    const NS::Obj::ReflectionInfo* ThisType::StaticReflection() noexcept                                               \
+    {                                                                                                                  \
+        using Self = ThisType;                                                                                         \
+        using ReflectBase = BaseType;                                                                                  \
+        static constexpr const char* k_TypeName = #ThisType;                                                           \
+        static const NS::Obj::ReflectEntry k_Entries[] = {
 
 //! 値型用のフィールド宣言終了。SubObject を継承しない型向けに、仮想の GetReflection を出さず静的関数だけ定義する
 #define NS_REFLECT_END_VALUE()                                                                                         \

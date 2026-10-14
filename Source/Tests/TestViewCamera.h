@@ -39,12 +39,15 @@ private:
 class TestViewCameraHost final : public NS::Obj::Actor
 {
 public:
+    NS_REFLECT_BEGIN(TestViewCameraHost, NS::Obj::Actor)
+    NS_REFLECT_SUBOBJ(m_vcam, "Vcam")
+    NS_REFLECT_END()
+
     //! 持っている仮想カメラ
     [[nodiscard]] TestViewCamera& Vcam() noexcept { return *m_vcam; }
 
 protected:
-    void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, m_vcam); }
-    void OnInit() override { (void)CreateSubObj(m_vcam, "Vcam"); }
+    void OnInit() override { (void)CreateSubObj(m_vcam); }
 
 private:
     std::unique_ptr<TestViewCamera> m_vcam;

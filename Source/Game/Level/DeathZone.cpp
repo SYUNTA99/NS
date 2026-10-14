@@ -9,8 +9,7 @@ namespace GL::Level
 {
     void DeathZone::OnInit()
     {
-        NS::Obj::ShapeHitSensor* area =
-            CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_bodySensor, "BodySensor");
+        NS::Obj::ShapeHitSensor* area = CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_bodySensor);
         SetSensorKind(*area, SensorKind::Area);
         area->SetBox(NS::Vector3{1000.0f, 5.0f, 1000.0f});
     }

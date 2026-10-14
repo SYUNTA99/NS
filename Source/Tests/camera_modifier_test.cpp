@@ -71,11 +71,14 @@ namespace
     class AlphaCameraHost final : public NS::Obj::Actor
     {
     public:
+        NS_REFLECT_BEGIN(AlphaCameraHost, NS::Obj::Actor)
+        NS_REFLECT_SUBOBJ(vcam, "Vcam")
+        NS_REFLECT_END()
+
         std::unique_ptr<AlphaCamera> vcam;
 
     protected:
-        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, vcam); }
-        void OnInit() override { (void)CreateSubObj(vcam, "Vcam"); }
+        void OnInit() override { (void)CreateSubObj(vcam); }
     };
 
     class OrderProbe final : public NS::Obj::CameraModifier

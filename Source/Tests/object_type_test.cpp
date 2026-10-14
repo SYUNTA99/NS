@@ -31,7 +31,7 @@ static_assert(!std::is_base_of_v<NS::Obj::IUseEffect, NS::Obj::Scene>);
 static_assert(!std::is_base_of_v<NS::Obj::IUseEffect, NS::Obj::UIActor>);
 static_assert(!k_HasObjectName<NS::Obj::UIActor>);
 static_assert(!k_HasPersistentId<NS::Obj::SubObject>);
-static_assert(k_HasObjectName<NS::Obj::SubObject>);
+static_assert(!k_HasObjectName<NS::Obj::SubObject>);
 static_assert(!k_CanCreateTypedSubObjFromOutside<NS::Obj::Actor>);
 static_assert(!k_HasPartTypeSearch<NS::Obj::Actor>);
 

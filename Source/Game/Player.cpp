@@ -39,53 +39,50 @@
 #include <algorithm>
 #include <cmath>
 
+NS_REFLECT_BEGIN_IMPL(Player, NS::Obj::Actor)
+NS_REFLECT_SUBOBJ(m_appearance, "Appearance")
+NS_REFLECT_SUBOBJ(m_body, "Movement")
+NS_REFLECT_SUBOBJ(m_collider, "Collider")
+NS_REFLECT_SUBOBJ(m_input, "Input")
+NS_REFLECT_SUBOBJ(m_params, "Params")
+NS_REFLECT_SUBOBJ(m_clips, "Clips")
+NS_REFLECT_SUBOBJ(m_resolver, "ImpactResolver")
+NS_REFLECT_SUBOBJ(m_targetMarker, "TargetMarker")
+NS_REFLECT_SUBOBJ(m_slamArrow, "SlamArrow")
+NS_REFLECT_SUBOBJ(m_chargeEffects, "ChargeEffects")
+NS_REFLECT_SUBOBJ(m_impactEffects, "ImpactEffects")
+NS_REFLECT_END_VALUE()
+
 NS_CLASS(Player)
 
 Player::Player() noexcept = default;
 
 Player::~Player() = default;
-
-void Player::VisitExtraSubObjs(const SubObjVisitor& visit) const
-{
-    VisitSubObjMembers(visit,
-                       m_appearance,
-                       m_body,
-                       m_collider,
-                       m_input,
-                       m_params,
-                       m_clips,
-                       m_resolver,
-                       m_targetMarker,
-                       m_slamArrow,
-                       m_chargeEffects,
-                       m_impactEffects);
-}
-
 void Player::OnInit()
 {
-    NS::Obj::Model* model = CreateSubObj(m_model, "Model");
+    NS::Obj::Model* model = CreateSubObj(m_model);
     model->SetMaterialRef("player");
     model->SetBaseColor(NS::Vector3{0.5f, 0.5f, 0.5f});
-    (void)CreateSubObj(m_appearance, "Appearance");
-    (void)CreateSubObj(m_body, "Movement");
-    (void)CreateSubObj(m_collider, "Collider");
-    (void)CreateSubObj(m_input, "Input");
-    (void)CreateSubObj(m_params, "Params");
-    (void)CreateSubObj(m_clips, "Clips");
-    CreateSubObj(m_shadow, "Shadow");
+    (void)CreateSubObj(m_appearance);
+    (void)CreateSubObj(m_body);
+    (void)CreateSubObj(m_collider);
+    (void)CreateSubObj(m_input);
+    (void)CreateSubObj(m_params);
+    (void)CreateSubObj(m_clips);
+    CreateSubObj(m_shadow);
     // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
-    NS::Obj::FollowHitSensor* bodySensor = CreateSubObj<NS::Obj::HitSensor, NS::Obj::FollowHitSensor>(
-        m_bodySensor, "BodySensor", [collider = m_collider.get()] {
+    NS::Obj::FollowHitSensor* bodySensor =
+        CreateSubObj<NS::Obj::HitSensor, NS::Obj::FollowHitSensor>(m_bodySensor, [collider = m_collider.get()] {
             return NS::Obj::SensorVolume::Capsule(collider->WorldCapsule());
         });
     GL::Level::SetSensorKind(*bodySensor, GL::Level::SensorKind::PlayerBody);
-    (void)CreateSubObj(m_resolver, "ImpactResolver");
-    CreateSubObj(m_hitReaction, "HitReaction");
-    (void)CreateSubObj(m_targetMarker, "TargetMarker");
-    (void)CreateSubObj(m_slamArrow, "SlamArrow");
-    (void)CreateSubObj(m_effectKeeper, "Effect");
-    (void)CreateSubObj(m_chargeEffects, "ChargeEffects");
-    (void)CreateSubObj(m_impactEffects, "ImpactEffects");
+    (void)CreateSubObj(m_resolver);
+    CreateSubObj(m_hitReaction);
+    (void)CreateSubObj(m_targetMarker);
+    (void)CreateSubObj(m_slamArrow);
+    (void)CreateSubObj(m_effectKeeper);
+    (void)CreateSubObj(m_chargeEffects);
+    (void)CreateSubObj(m_impactEffects);
     // 部品を全部作った後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
     (void)BuildStateMachine<Player,
                             GL::Player::IdlePlayerState,

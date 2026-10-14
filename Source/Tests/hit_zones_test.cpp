@@ -961,8 +961,7 @@ namespace
     protected:
         void OnInit() override
         {
-            NS::Obj::ShapeHitSensor* sensor =
-                CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_bodySensor, "BodySensor");
+            NS::Obj::ShapeHitSensor* sensor = CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_bodySensor);
             sensor->SetSphere(0.5f);
         }
     };
