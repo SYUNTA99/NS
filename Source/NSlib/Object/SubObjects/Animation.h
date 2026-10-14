@@ -66,7 +66,8 @@ namespace NS::Obj
         [[nodiscard]] float Duration() const noexcept;
         [[nodiscard]] bool IsPlaying() const noexcept;
 
-        void OnStart() override;
+        //! 骨の定数バッファを作り、持ち主の Model へ差して今の時刻の姿勢を書く
+        void BindToModel();
         void OnUpdate() override;
 
         //! modelRef から skinned glTF を解決し mesh / skeleton / clips を差す。同じ object の Model
@@ -94,7 +95,7 @@ namespace NS::Obj
         float m_speed = 1.0f;
         bool m_playing = true;
         bool m_looping = true;
-        std::vector<NS::Gfx::BonePose> m_poseScratch;       // サンプリング結果の一時ポーズ
+        std::vector<NS::Gfx::BonePose> m_poseScratch; // サンプリング結果の一時ポーズ
         std::vector<NS::Matrix> m_paletteScratch;     // ボーンパレットの一時バッファ
 
         // ボーンパレットはオブジェクト単位の状態なので mesh でなく本 SubObject が所有する

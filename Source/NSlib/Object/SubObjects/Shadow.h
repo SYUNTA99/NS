@@ -2,8 +2,8 @@
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/IRenderable.h"
+#include "NSlib/Object/SubObject.h"
 
 #include <vector>
 
@@ -30,11 +30,9 @@ namespace NS::Obj
         [[nodiscard]] NS::AABB WorldBounds() const noexcept override;
 
         //! OwningScene に自分を IRenderable として登録する
-        void OnAppear() override { Shadow::OnStart(); }
-        void OnDisappear() noexcept override { Shadow::OnEndPlay(); }
-        void OnStart() override;
+        void Register();
         //! OwningScene から自分を解除する
-        void OnEndPlay() override;
+        void Unregister();
 
         //! 共有の quad mesh と shadow material を引き当てる。参照文字列は持たず資材は固定
         void ResolveAssets(AssetManager& assets) override;

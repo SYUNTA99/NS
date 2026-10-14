@@ -29,10 +29,8 @@ namespace NS::Obj
         //! 持ち主が Scene に居なければ何もせず、id も持ったまま
         void RemoveFromPhysics();
 
-        void OnAppear() override;
-        void OnDisappear() noexcept override { Collision::OnEndPlay(); }
         //! body を外す。所属シーンがなければエラーを出し、id だけを手放す
-        void OnEndPlay() override;
+        void Unregister();
 
         NS_REFLECT_NONE(Collision, SubObject)
 

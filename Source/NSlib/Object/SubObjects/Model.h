@@ -55,8 +55,8 @@ namespace NS::Obj
         [[nodiscard]] const std::string& MaterialRef() const noexcept { return m_materialRef; }
         void SetMaterialRef(std::string ref) noexcept { m_materialRef = std::move(ref); }
 
-        //! 個体ごとの頂点シェーダーの定数を設定する。同じ Actor の別部品が OnStart
-        //! で設定する。cpuData があれば、描画側が毎回バッファーへ転送してから設定する
+        //! 個体ごとの頂点シェーダーの定数を設定する。同じ Actor の Animation がプレイの始まりに設定する
+        //! cpuData があれば、描画側が毎回バッファーへ転送してから設定する
         void SetPerObjectVsConstant(const NS::Gfx::Buffer* cb,
                                     const void* cpuData,
                                     std::size_t cpuDataSize,
@@ -145,11 +145,9 @@ namespace NS::Obj
         [[nodiscard]] NS::AABB WorldBounds() const noexcept override;
 
         //! OwningScene に自身と残像を IRenderable として登録する。持ち主かシーンがなければ何もしない
-        void OnAppear() override { Model::OnStart(); }
-        void OnDisappear() noexcept override { Model::OnEndPlay(); }
-        void OnStart() override;
+        void Register();
         //! Owner の OwningScene から self と残像を解除する。無効ポインタを残さないよう Scene 破棄前に呼ぶ
-        void OnEndPlay() override;
+        void Unregister();
         //! 固定更新の先頭で補間用の姿勢を控える。時間停止中も前後の値を揃える
         void Snapshot() noexcept;
 

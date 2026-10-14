@@ -245,7 +245,7 @@ namespace NS::Obj
         return SegmentSegmentDistanceSq(lhs.a, lhs.b, rhs.a, rhs.b) <= reach * reach;
     }
 
-    void HitSensor::OnStart()
+    void HitSensor::Register()
     {
         Scene* scene = OwningScene();
         if (m_registered || scene == nullptr)
@@ -256,7 +256,7 @@ namespace NS::Obj
         m_registered = true;
     }
 
-    void HitSensor::OnEndPlay()
+    void HitSensor::Unregister()
     {
         Scene* scene = OwningScene();
         if (!m_registered || scene == nullptr)

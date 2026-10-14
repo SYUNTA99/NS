@@ -229,7 +229,7 @@ namespace NS::Obj
         }
     }
 
-    void Animation::OnStart()
+    void Animation::BindToModel()
     {
         NS::Gfx::BufferDesc cbDesc = NS::Gfx::MakeConstantBufferDesc(sizeof(NS::Gfx::BonePaletteCB));
         m_bonePaletteCB = NS::Gfx::Buffer::Create(cbDesc);

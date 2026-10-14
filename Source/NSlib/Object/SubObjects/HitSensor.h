@@ -52,12 +52,10 @@ namespace NS::Obj
     public:
         HitSensor() noexcept = default;
 
-        //! シーンの調べ役へ入る
-        void OnAppear() override { HitSensor::OnStart(); }
-        void OnDisappear() noexcept override { HitSensor::OnEndPlay(); }
-        void OnStart() override;
+        //! シーンの調べ役へ入る。入っていれば何もしない
+        void Register();
         //! シーンの調べ役から出る
-        void OnEndPlay() override;
+        void Unregister();
 
         //! 0 は未設定。種類の意味はゲーム側が定義する
         void SetKind(NS::uint8 kind) noexcept { m_kind = kind; }

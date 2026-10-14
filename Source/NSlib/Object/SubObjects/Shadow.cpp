@@ -18,7 +18,7 @@ namespace NS::Obj
         m_material = assets.SharedMaterial("shadow");
     }
 
-    void Shadow::OnStart()
+    void Shadow::Register()
     {
         Scene* scene = OwningScene();
         if (scene == nullptr)
@@ -28,7 +28,7 @@ namespace NS::Obj
         scene->RegisterRenderable(this);
     }
 
-    void Shadow::OnEndPlay()
+    void Shadow::Unregister()
     {
         Scene* scene = OwningScene();
         if (scene == nullptr)

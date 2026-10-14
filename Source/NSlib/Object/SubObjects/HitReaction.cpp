@@ -38,7 +38,7 @@ namespace NS::Obj
         }
     } // namespace
 
-    void HitReaction::OnStart()
+    void HitReaction::CreateDirectors()
     {
         if (Owner() == nullptr)
         {
@@ -219,7 +219,7 @@ namespace NS::Obj
         return true;
     }
 
-    void HitReaction::OnEndPlay()
+    void HitReaction::StopAll()
     {
         Stop();
         // プレイを終えた後の視点にトラウマを残さない

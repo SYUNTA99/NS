@@ -62,12 +62,7 @@ namespace NS::Obj
         m_bodyId = JPH::BodyID{};
     }
 
-    void Collision::OnAppear()
-    {
-        SyncToPhysics();
-    }
-
-    void Collision::OnEndPlay()
+    void Collision::Unregister()
     {
         if (m_bodyId.IsInvalid())
         {

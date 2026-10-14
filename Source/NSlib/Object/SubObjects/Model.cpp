@@ -72,7 +72,7 @@ namespace NS::Obj
         m_ghostMaterial = assets.SharedMaterial("water");
     }
 
-    void Model::OnStart()
+    void Model::Register()
     {
         Scene* scene = OwningScene();
         if (scene == nullptr)
@@ -83,7 +83,7 @@ namespace NS::Obj
         scene->RegisterRenderable(&m_ghosts);
     }
 
-    void Model::OnEndPlay()
+    void Model::Unregister()
     {
         Scene* scene = OwningScene();
         if (scene == nullptr)

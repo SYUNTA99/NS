@@ -154,7 +154,7 @@ namespace NS::Obj
         [[nodiscard]] const std::vector<Actor*>& Children() const noexcept { return m_children; }
 
         //! 配下 SubObject の OnStart を伝播
-        void OnStart();
+        virtual void OnStart();
         //! 世界から外し、全ての部品の OnEndPlay を呼ぶ
         virtual void OnEndPlay();
 

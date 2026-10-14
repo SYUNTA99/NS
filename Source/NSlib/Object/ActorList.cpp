@@ -225,19 +225,19 @@ namespace NS::Obj
     {
         for (const std::unique_ptr<Actor>& actor : m_objects)
         {
-            actor->ForEachSubObj([&](SubObject* subObject) {
-                if (Collision* collision = Cast<Collision>(subObject))
-                {
-                    if (collision->IsActive())
-                    {
-                        collision->SyncToPhysics();
-                    }
-                    else
-                    {
-                        collision->RemoveFromPhysics();
-                    }
-                }
-            });
+            Collision* collision = actor->CollisionSubObj();
+            if (collision == nullptr)
+            {
+                continue;
+            }
+            if (collision->IsActive())
+            {
+                collision->SyncToPhysics();
+            }
+            else
+            {
+                collision->RemoveFromPhysics();
+            }
         }
         physics.OptimizeBroadPhase();
     }

@@ -357,6 +357,30 @@ namespace NS::Obj
     {
         // 部品の登録は部品の OnStart が済ませる。続けて OnAppear を呼ぶと、出る時に OnStart
         // を呼び直す部品が二重に登録する
+        if (m_model != nullptr)
+        {
+            m_model->Register();
+        }
+        if (m_animation != nullptr)
+        {
+            m_animation->BindToModel();
+        }
+        if (m_shadow != nullptr)
+        {
+            m_shadow->Register();
+        }
+        if (m_bodySensor != nullptr)
+        {
+            m_bodySensor->Register();
+        }
+        if (m_attackSensor != nullptr)
+        {
+            m_attackSensor->Register();
+        }
+        if (m_hitReaction != nullptr)
+        {
+            m_hitReaction->CreateDirectors();
+        }
         ForEachSubObj([&](SubObject* subObject) { subObject->OnStart(); });
         if (!IsActiveInHierarchy())
         {
@@ -370,6 +394,26 @@ namespace NS::Obj
         if (OwningScene() == nullptr || !IsActiveInHierarchy())
         {
             return;
+        }
+        if (m_model != nullptr && m_model->IsActive())
+        {
+            m_model->Register();
+        }
+        if (m_shadow != nullptr && m_shadow->IsActive())
+        {
+            m_shadow->Register();
+        }
+        if (m_collision != nullptr && m_collision->IsActive())
+        {
+            m_collision->SyncToPhysics();
+        }
+        if (m_bodySensor != nullptr && m_bodySensor->IsActive())
+        {
+            m_bodySensor->Register();
+        }
+        if (m_attackSensor != nullptr && m_attackSensor->IsActive())
+        {
+            m_attackSensor->Register();
         }
         ForEachSubObj([&](SubObject* subObject) {
             if (subObject->IsActive())
@@ -388,6 +432,30 @@ namespace NS::Obj
         if (OwningScene() == nullptr)
         {
             return;
+        }
+        if (m_model != nullptr)
+        {
+            m_model->Unregister();
+        }
+        if (m_shadow != nullptr)
+        {
+            m_shadow->Unregister();
+        }
+        if (m_collision != nullptr)
+        {
+            m_collision->Unregister();
+        }
+        if (m_bodySensor != nullptr)
+        {
+            m_bodySensor->Unregister();
+        }
+        if (m_attackSensor != nullptr)
+        {
+            m_attackSensor->Unregister();
+        }
+        if (m_hitReaction != nullptr)
+        {
+            m_hitReaction->StopAll();
         }
         ForEachSubObj([&](SubObject* subObject) { subObject->OnDisappear(); });
         for (Actor* child : m_children)
@@ -431,6 +499,30 @@ namespace NS::Obj
     void Actor::OnEndPlay()
     {
         Disappear();
+        if (m_model != nullptr)
+        {
+            m_model->Unregister();
+        }
+        if (m_shadow != nullptr)
+        {
+            m_shadow->Unregister();
+        }
+        if (m_collision != nullptr)
+        {
+            m_collision->Unregister();
+        }
+        if (m_bodySensor != nullptr)
+        {
+            m_bodySensor->Unregister();
+        }
+        if (m_attackSensor != nullptr)
+        {
+            m_attackSensor->Unregister();
+        }
+        if (m_hitReaction != nullptr)
+        {
+            m_hitReaction->StopAll();
+        }
         ForEachSubObj([&](SubObject* subObject) { subObject->OnEndPlay(); });
     }
 

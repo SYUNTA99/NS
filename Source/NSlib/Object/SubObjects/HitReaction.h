@@ -1,9 +1,9 @@
 #pragma once
 
-#include "NSlib/Object/System/HitScreenDirector.h"
-#include "NSlib/Object/System/PadRumbleDirector.h"
 #include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/SubObjects/CameraModifier.h"
+#include "NSlib/Object/System/HitScreenDirector.h"
+#include "NSlib/Object/System/PadRumbleDirector.h"
 
 namespace NS::Obj
 {
@@ -17,7 +17,7 @@ namespace NS::Obj
 
         //! シーンに 1 つの HitScreenDirector と PadRumbleDirector
         //! を作る。更新の最中に作ると、そのフレームの段に間に合わない
-        void OnStart() override;
+        void CreateDirectors();
 
         //! @brief 白の光を頼む。前の白が残っていても始め直す
         //! @param[in] frames 白の光のフレーム数。0 以下なら光らない
@@ -77,9 +77,8 @@ namespace NS::Obj
         //! @details トラウマは残す。次の当たりが止めてから始め直しても、続けて当てたトラウマは足される
         void Stop();
 
-        //! 途中で外れても振動とカメラの効果を残さない
-        void OnDisappear() noexcept override { OnEndPlay(); }
-        void OnEndPlay() override;
+        //! Stop に加えて、カメラに積んだ効果をトラウマも含めて全部外す。途中で外れても効果を残さない
+        void StopAll();
 
         // 状態は保存しない。型検索で引けるよう型名だけ登録する
         NS_REFLECT_NONE(HitReaction, SubObject)
