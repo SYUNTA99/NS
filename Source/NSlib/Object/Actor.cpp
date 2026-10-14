@@ -152,29 +152,29 @@ namespace NS::Obj
 
     void Actor::Appear()
     {
-        NS_ASSERT(Scene, !m_pendingDestroy, "Destroy した個体を Appear で出そうとしている: {}", m_name);
-        if (m_appeared || m_pendingDestroy)
+        NS_ASSERT(Scene, !IsPendingDestroy(), "Destroy した個体を Appear で出そうとしている: {}", m_name);
+        if (m_presence != Presence::Disappeared)
         {
             return;
         }
-        m_appeared = true;
+        m_presence = Presence::Appeared;
         OnAppear();
     }
 
     void Actor::Disappear() noexcept
     {
-        if (!m_appeared)
+        if (m_presence != Presence::Appeared)
         {
             return;
         }
-        m_appeared = false;
+        m_presence = Presence::Disappeared;
         OnDisappear();
     }
 
     void Actor::Destroy() noexcept
     {
         Disappear();
-        m_pendingDestroy = true;
+        m_presence = Presence::PendingDestroy;
     }
 
     CameraManager* Actor::GetCameraManager() const noexcept

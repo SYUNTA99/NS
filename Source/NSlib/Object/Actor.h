@@ -71,9 +71,9 @@ namespace NS::Obj
         //! 届かず戻らないので、戻す物は Disappear を使う。子は解放せず、根になって残る
         void Destroy() noexcept;
         //! この配置物自身が世界に出ているか。親の状態は含まない
-        [[nodiscard]] bool IsAppeared() const noexcept { return m_appeared; }
+        [[nodiscard]] bool IsAppeared() const noexcept { return m_presence == Presence::Appeared; }
         //! Destroy を呼ばれて、段の後の解放を待っている場合 true、それ以外の場合は false
-        [[nodiscard]] bool IsPendingDestroy() const noexcept { return m_pendingDestroy; }
+        [[nodiscard]] bool IsPendingDestroy() const noexcept { return m_presence == Presence::PendingDestroy; }
 
         //! 所有 Scene。Scene attach 前 / 破棄後は nullptr
         [[nodiscard]] Scene* OwningScene() const noexcept { return m_scene; }
@@ -296,11 +296,17 @@ namespace NS::Obj
         }
         void AttachSubObj(SubObject& subObject, std::string_view name);
         void ReportTakenName(std::string_view name) const;
+        // PendingDestroy からはどこへも移らない
+        enum class Presence : std::uint8_t
+        {
+            Disappeared,
+            Appeared,
+            PendingDestroy,
+        };
         std::uint32_t m_id = 0;
         std::string m_name;
         Scene* m_scene = nullptr; // 所有 Scene、attach 前後は nullptr
-        bool m_appeared = false;
-        bool m_pendingDestroy = false;
+        Presence m_presence = Presence::Disappeared;
         std::unique_ptr<Transform> m_transform;
         std::unique_ptr<Model> m_model;
         std::unique_ptr<Animation> m_animation;
