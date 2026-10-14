@@ -50,7 +50,7 @@ namespace NS::Obj
     class HitSensor : public SubObject
     {
     public:
-        HitSensor() noexcept;
+        HitSensor() noexcept = default;
 
         //! シーンの調べ役へ入る
         void OnAppear() override { HitSensor::OnStart(); }
@@ -86,7 +86,7 @@ namespace NS::Obj
     class ShapeHitSensor final : public HitSensor
     {
     public:
-        ShapeHitSensor() noexcept;
+        ShapeHitSensor() noexcept = default;
 
         //! 球にする。半径は根のスケール前
         void SetSphere(float radius) noexcept;

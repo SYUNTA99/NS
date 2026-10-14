@@ -10,10 +10,7 @@ namespace NS::Obj
         DetachFromParent();
         for (Transform* child : m_children)
         {
-            if (child != nullptr)
-            {
-                child->m_parent = nullptr;
-            }
+            child->m_parent = nullptr;
         }
     }
 

@@ -8,9 +8,9 @@
 
 namespace NS::Obj
 {
-    PadRumbleDirector::PadRumbleDirector(Scene& scene) : m_scene(scene)
+    PadRumbleDirector::PadRumbleDirector(Scene& scene)
     {
-        m_scene.AddSystemTick(*this, UpdatePhase::RenderPrep);
+        scene.AddSystemTick(*this, UpdatePhase::RenderPrep);
     }
 
     PadRumbleDirector::~PadRumbleDirector() noexcept

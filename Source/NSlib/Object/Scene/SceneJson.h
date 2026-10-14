@@ -55,15 +55,6 @@ namespace NS::Obj
     //! 未使用の名前を返す。空なら Object、重複したら _1、_2 と番号を付ける
     [[nodiscard]] std::string MakeUniqueActorName(std::string_view base, const std::unordered_set<std::string>& used);
 
-    //! ファイルの参照は名前で書くので、名前が 1 つに決まることを保存と読込が当てにする
-    void EnsureUniqueObjectNames(nlohmann::json& scene);
-
-    //! @brief 宙に浮いた参照を未設定へ戻し、直した件数を返す
-    [[nodiscard]] std::size_t PruneDanglingObjectRefs(nlohmann::json& scene);
-
-    //! 辿れない親を root の 0 へ戻し、直した件数を返す。自分自身・不在の親・循環が対象
-    [[nodiscard]] std::size_t PruneInvalidParents(nlohmann::json& scene);
-
     //! シーン文書をファイルの JSON 文字列へ直列化する。参照は名前へ直して書く
     [[nodiscard]] std::string SerializeSceneToJson(const nlohmann::json& scene);
 

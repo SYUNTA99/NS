@@ -1,8 +1,8 @@
 ﻿#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
 
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/ActorList.h"
+#include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/Transform.h"
@@ -587,7 +587,6 @@ namespace NS::Obj
         m_yaw = m_initialYaw;
         m_pitch = m_initialPitch;
         m_distance = m_idleDistance;
-        m_desiredDistance = m_idleDistance;
         ClearCharge();
         ClearRebound();
     }
@@ -640,7 +639,6 @@ namespace NS::Obj
         m_yaw = yaw;
         m_pitch = pitch;
         m_distance = distance;
-        m_desiredDistance = distance;
     }
 
     void ThirdPersonFollow::OnUpdate()
@@ -711,6 +709,7 @@ namespace NS::Obj
         UpdateReboundPartner(rebound, head, dt);
 
         // 反動の引きは現在の距離から測る。補間中の目標から測ると、見えている距離からずれる。
+        float desiredDistance = 0.0f;
         if (reboundBegan)
         {
             m_reboundBaseDistance = m_distance;
@@ -718,31 +717,31 @@ namespace NS::Obj
             {
                 m_reboundBaseDistance += std::max(m_reboundPullBack, 0.0f);
             }
-            m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
+            desiredDistance = m_reboundBaseDistance + m_partnerPull;
         }
         else if (m_reboundPhase == ReboundPhase::Following)
         {
             // 反動の間は当たった瞬間に決めた距離に、相手を収める引きだけを足す
-            m_desiredDistance = m_reboundBaseDistance + m_partnerPull;
+            desiredDistance = m_reboundBaseDistance + m_partnerPull;
         }
         else if (framingHeld)
         {
             // 体当たりから止めの明けまでは今の距離のまま。突進で浮いても空中の距離へ引かない
-            m_desiredDistance = m_distance;
+            desiredDistance = m_distance;
         }
         else if (m_hasFollowMotion && !m_followGrounded)
         {
-            m_desiredDistance = m_jumpDistance;
+            desiredDistance = m_jumpDistance;
         }
         else if (m_hasFollowMotion && m_followHorizontalSpeed > m_runSpeedThreshold)
         {
-            m_desiredDistance = m_runDistance;
+            desiredDistance = m_runDistance;
         }
         else
         {
-            m_desiredDistance = m_idleDistance;
+            desiredDistance = m_idleDistance;
         }
-        m_distance = SpringApproach(m_distance, m_desiredDistance, m_springOmega, dt);
+        m_distance = SpringApproach(m_distance, desiredDistance, m_springOmega, dt);
 
         const NS::Vector3 look = UpdateReboundLook(head, root, dt);
         UpdateCharge(charge, framingHeld, *target, look, dt);

@@ -3,8 +3,8 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
-#include "NSlib/Object/System/HitSensorDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/System/HitSensorDirector.h"
 #include "NSlib/Physics/Capsule.h"
 
 #include <algorithm>
@@ -245,8 +245,6 @@ namespace NS::Obj
         return SegmentSegmentDistanceSq(lhs.a, lhs.b, rhs.a, rhs.b) <= reach * reach;
     }
 
-    HitSensor::HitSensor() noexcept = default;
-
     void HitSensor::OnStart()
     {
         Scene* scene = OwningScene();
@@ -268,8 +266,6 @@ namespace NS::Obj
         scene->HitSensors().Unregister(this);
         m_registered = false;
     }
-
-    ShapeHitSensor::ShapeHitSensor() noexcept = default;
 
     void ShapeHitSensor::SetSphere(float radius) noexcept
     {

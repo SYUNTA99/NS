@@ -2,70 +2,57 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Reflection/Reflection.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
 
 namespace NS::Obj
 {
     namespace
     {
+        // field.type が T を指している時だけ呼ぶ
+        template <class T> T ReadField(const void* owner, const FieldDesc& field)
+        {
+            T value{};
+            field.get(owner, &value);
+            return value;
+        }
+
         // field を JSON 値へ変換する。素の配列で書くのは Vector3=[x,y,z] と Quaternion=[x,y,z,w]
         nlohmann::json FieldToJson(const void* owner, const FieldDesc& field)
         {
             switch (field.type)
             {
             case FieldType::Float:
-            {
-                float value = 0.0f;
-                field.get(owner, &value);
-                return value;
-            }
+                return ReadField<float>(owner, field);
             case FieldType::Int:
-            {
-                int value = 0;
-                field.get(owner, &value);
-                return value;
-            }
+                return ReadField<int>(owner, field);
             case FieldType::Bool:
-            {
-                bool value = false;
-                field.get(owner, &value);
-                return value;
-            }
+                return ReadField<bool>(owner, field);
             case FieldType::Vector3:
             {
-                NS::Vector3 value{};
-                field.get(owner, &value);
+                const NS::Vector3 value = ReadField<NS::Vector3>(owner, field);
                 return nlohmann::json{value.x, value.y, value.z};
             }
             case FieldType::Quaternion:
             {
                 // 配列の長さで Vector3 と区別できるため単キー object で包まない
-                NS::Quaternion value{};
-                field.get(owner, &value);
+                const NS::Quaternion value = ReadField<NS::Quaternion>(owner, field);
                 return nlohmann::json{value.x, value.y, value.z, value.w};
             }
             case FieldType::String:
-            {
-                std::string value;
-                field.get(owner, &value);
-                return value;
-            }
+                return ReadField<std::string>(owner, field);
             case FieldType::ActorRef:
             {
                 // 素の数値だと読み込み時に Int と区別できないため {"ref": id} の単キー object で書く
-                ActorRef value{};
-                field.get(owner, &value);
                 nlohmann::json out;
-                out["ref"] = value.id;
+                out["ref"] = ReadField<ActorRef>(owner, field).id;
                 return out;
             }
             case FieldType::Curve:
             {
                 // 素の配列だと読み込み時に Vector3 と区別できないため {"curve": [[x,y], ...]} の単キー object で書く
-                Curve value{};
-                field.get(owner, &value);
+                const Curve value = ReadField<Curve>(owner, field);
                 nlohmann::json points = nlohmann::json::array();
                 for (std::uint32_t i = 0; i < value.count; ++i)
                 {

@@ -64,40 +64,21 @@ namespace NS::Obj
 
             // 親子は全 object が揃ってから結ぶ。子が親より前に並ぶファイルでも同じ形に組める
             // 循環は SetParent が輪を閉じる結び付けを拒むので、手編集のデータでも組み上がる
-            // id 引きを線形で回すと体数の二乗に効くので、組み立ての間だけ使う対応表で引く
-            // 索引として持ち越さないのは、所有リストと同期を保つ手間を抱え込まないため
-            std::unordered_map<std::uint32_t, Actor*> byObjectId;
-            byObjectId.reserve(m_objects.size());
-            for (std::unique_ptr<Actor>& obj : m_objects)
-            {
-                byObjectId.emplace(obj->Id(), obj.get());
-            }
-
-            const auto find = [&byObjectId](std::uint32_t id) -> Actor* {
-                const std::unordered_map<std::uint32_t, Actor*>::iterator it = byObjectId.find(id);
-                if (it == byObjectId.end())
-                {
-                    return nullptr;
-                }
-                return it->second;
-            };
-
+            // 積み終えた並びで索引を作り直させる。親子を結ぶ id 引きと、開始中に参照を引く SubObject が使う
+            MarkIndexDirty();
             for (const nlohmann::json& entry : objects)
             {
                 if (ObjectJsonParent(entry) == k_NoObjectId)
                 {
                     continue;
                 }
-                Actor* child = find(ObjectJsonId(entry));
-                Actor* parent = find(ObjectJsonParent(entry));
+                Actor* child = FindByObjectId(ObjectJsonId(entry));
+                Actor* parent = FindByObjectId(ObjectJsonParent(entry));
                 if (child != nullptr && parent != nullptr && child != parent)
                 {
                     child->SetParent(parent);
                 }
             }
-
-            // 開始中に参照を引く SubObject がいる。積み終えた並びで索引を作り直させる
-            MarkIndexDirty();
             for (std::unique_ptr<Actor>& objPtr : m_objects)
             {
                 objPtr->OnStart();

@@ -45,8 +45,7 @@ namespace NS::Obj
         {
             return {};
         }
-        const NS::Matrix m = owner->Root().WorldMatrix();
-        return NS::Vector3{m._41, m._42, m._43};
+        return owner->Root().WorldMatrix().Translation();
     }
 
     NS::AABB Shadow::WorldBounds() const noexcept
@@ -57,7 +56,7 @@ namespace NS::Obj
             return {};
         }
         const NS::Matrix world = owner->Root().WorldMatrix();
-        const NS::Vector3 origin{world._41, world._42, world._43};
+        const NS::Vector3 origin = world.Translation();
         // 影は owner 直下 [-maxDrop, 0] のどこかに baseDiameter 幅で落ちる。その可動域を全部覆う
         const NS::Vector3 center{origin.x, origin.y - m_maxDrop * 0.5f, origin.z};
         const NS::Vector3 extents{m_baseDiameter, m_maxDrop * 0.5f, m_baseDiameter};
@@ -81,7 +80,7 @@ namespace NS::Obj
             return;
         }
         const NS::Matrix ownerWorld = owner->Root().InterpolatedWorldMatrix(context.alpha);
-        const NS::Vector3 origin{ownerWorld._41, ownerWorld._42, ownerWorld._43};
+        const NS::Vector3 origin = ownerWorld.Translation();
 
         float dist = 0.0f;
         if (!RaycastCollision(owner, origin, NS::Vector3{0.0f, -1.0f, 0.0f}, m_maxDrop, dist))

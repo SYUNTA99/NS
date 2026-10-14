@@ -290,6 +290,9 @@ namespace NS::Obj
         static constexpr const char* k_TypeName = #ThisType;                                                           \
         static const NS::Obj::ReflectEntry k_Entries[] = {
 
+// NS_REFLECT_BEGIN_IMPL の終了。仮想の GetReflection は NS_REFLECT_DECLARE が宣言に置く
+#define NS_REFLECT_END_IMPL() NS_REFLECT_END_VALUE()
+
 //! 値型用のフィールド宣言終了。SubObject を継承しない型向けに、仮想の GetReflection を出さず静的関数だけ定義する
 #define NS_REFLECT_END_VALUE()                                                                                         \
     }                                                                                                                  \

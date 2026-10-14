@@ -92,12 +92,13 @@ TEST(HitTimeline, ValueTypeFieldsRoundTripThroughJson)
     GL::Level::CameraShakeEvent shake;
     shake.strength = 0.2f;
     shake.longestFlipFrames = 4;
-    const nlohmann::json fields = NS::Obj::SerializeValueFields(shake);
+    const NS::Obj::ReflectionInfo& info = *GL::Level::CameraShakeEvent::StaticReflection();
+    const nlohmann::json fields = NS::Obj::SerializeReflectedFields(&shake, info);
     EXPECT_FLOAT_EQ(fields["強さ"].get<float>(), 0.2f);
     EXPECT_EQ(fields["入れ替わりの最長フレーム数"].get<int>(), 4);
 
     GL::Level::CameraShakeEvent read;
-    EXPECT_EQ(NS::Obj::ApplyValueFields(read, fields), 0u);
+    EXPECT_EQ(NS::Obj::ApplyReflectedFields(&read, info, fields), 0u);
     EXPECT_FLOAT_EQ(read.strength, 0.2f);
     EXPECT_EQ(read.longestFlipFrames, 4);
 }

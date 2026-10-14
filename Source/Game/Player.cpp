@@ -51,7 +51,7 @@ NS_REFLECT_SUBOBJ(m_targetMarker, "TargetMarker")
 NS_REFLECT_SUBOBJ(m_slamArrow, "SlamArrow")
 NS_REFLECT_SUBOBJ(m_chargeEffects, "ChargeEffects")
 NS_REFLECT_SUBOBJ(m_impactEffects, "ImpactEffects")
-NS_REFLECT_END_VALUE()
+NS_REFLECT_END_IMPL()
 
 NS_CLASS(Player)
 

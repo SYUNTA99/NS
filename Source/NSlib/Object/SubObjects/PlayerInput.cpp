@@ -144,7 +144,7 @@ namespace NS::Obj
             speedScale = localMag;
         }
 
-        const NS::Vector3 fwd = NormalizeHorizontal(m_cameraForward);
+        const NS::Vector3& fwd = m_cameraForward;
         const NS::Vector3 right{fwd.z, 0.0f, -fwd.x};
 
         const NS::Vector3 worldDir{

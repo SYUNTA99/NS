@@ -223,7 +223,7 @@ namespace NS::Obj
 
         // 中心は描く形の下端の真ん中。局所の回転は含めない。回した箱を包む箱は玉の下端より下へ出るので、
         // 中心が床より下に来て、潰すと玉が床へめり込む
-        NS::Vector3 pivot{root._41, root._42, root._43};
+        NS::Vector3 pivot = root.Translation();
         if (const NS::AABB* localBounds = DrawnLocalBounds())
         {
             NS::AABB worldBounds{};
@@ -351,8 +351,7 @@ namespace NS::Obj
         {
             return {};
         }
-        const NS::Matrix world = owner->Root().WorldMatrix();
-        return NS::Vector3{world._41, world._42, world._43};
+        return owner->Root().WorldMatrix().Translation();
     }
 
     int Model::SortPriority() const noexcept

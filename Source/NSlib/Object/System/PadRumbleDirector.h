@@ -50,7 +50,6 @@ namespace NS::Obj
             const Actor* requester = nullptr;
         };
 
-        Scene& m_scene;
         std::vector<Layer> m_layers; // 書いている振動。始めた振動と、重ねた振動
         int m_elapsed = 0;           // 振動を始めたフレームから数えたフレーム数
         bool m_running = false;      // 振動を書いている最中か

@@ -263,6 +263,113 @@ namespace NS::Obj
         return k_NoObjectIndex;
     }
 
+    namespace
+    {
+        // ファイルの参照は名前で書くので、名前が 1 つに決まることを保存と読込が当てにする
+        void EnsureUniqueObjectNames(nlohmann::json& scene)
+        {
+            nlohmann::json& objects = SceneJsonObjects(scene);
+            std::unordered_set<std::string> used;
+            std::vector<nlohmann::json*> pending;
+            for (nlohmann::json& object : objects)
+            {
+                const std::string name{ObjectJsonName(object)};
+                if (name.empty() || !used.insert(name).second)
+                {
+                    pending.push_back(&object);
+                }
+            }
+            for (nlohmann::json* object : pending)
+            {
+                const std::string name = MakeUniqueActorName(ObjectJsonName(*object), used);
+                SetObjectJsonName(*object, name);
+                used.insert(name);
+            }
+        }
+
+        // 存在しない object を指す参照を 0 へ戻した件数を返す。0 は元から未設定なので数えない
+        std::size_t PruneDanglingObjectRefs(nlohmann::json& scene)
+        {
+            nlohmann::json& objects = SceneJsonObjects(scene);
+            std::unordered_set<std::uint32_t> ids;
+            for (const nlohmann::json& object : objects)
+            {
+                ids.insert(ObjectJsonId(object));
+            }
+            std::size_t pruned = 0;
+            for (nlohmann::json& object : objects)
+            {
+                ForEachRefValue(object, [&ids, &pruned](nlohmann::json& value) {
+                    nlohmann::json& ref = value["ref"];
+                    if (!ref.is_number_unsigned())
+                    {
+                        return;
+                    }
+                    const std::uint32_t id = ref.get<std::uint32_t>();
+                    if (id == 0 || ids.contains(id))
+                    {
+                        return;
+                    }
+                    ref = 0u;
+                    ++pruned;
+                });
+            }
+            return pruned;
+        }
+
+        // 辿れない親を root の 0 へ戻し、直した件数を返す。自分自身・不在の親・循環が対象
+        std::size_t PruneInvalidParents(nlohmann::json& scene)
+        {
+            nlohmann::json& objects = SceneJsonObjects(scene);
+            std::unordered_map<std::uint32_t, std::size_t> indexById;
+            indexById.reserve(objects.size());
+            for (std::size_t i = 0; i < objects.size(); ++i)
+            {
+                indexById.emplace(ObjectJsonId(objects[i]), i);
+            }
+
+            std::size_t prunedCount = 0;
+            for (nlohmann::json& object : objects)
+            {
+                const std::uint32_t objectId = ObjectJsonId(object);
+                const std::uint32_t parentId = ObjectJsonParent(object);
+                if (parentId == k_NoObjectId)
+                {
+                    continue;
+                }
+
+                bool valid = parentId != objectId && indexById.contains(parentId);
+                // 祖先を辿って自分へ戻れば循環。その場で root へ落とすので、輪の残りは正当な親子として通る
+                std::uint32_t ancestor = parentId;
+                for (std::size_t step = 0; valid && step < objects.size(); ++step)
+                {
+                    const std::unordered_map<std::uint32_t, std::size_t>::iterator it = indexById.find(ancestor);
+                    if (it == indexById.end())
+                    {
+                        valid = false;
+                        break;
+                    }
+                    ancestor = ObjectJsonParent(objects[it->second]);
+                    if (ancestor == k_NoObjectId)
+                    {
+                        break;
+                    }
+                    if (ancestor == objectId)
+                    {
+                        valid = false;
+                    }
+                }
+
+                if (!valid)
+                {
+                    SetObjectJsonParent(object, k_NoObjectId);
+                    ++prunedCount;
+                }
+            }
+            return prunedCount;
+        }
+    } // namespace
+
     void EnsureUniqueObjectIds(nlohmann::json& scene)
     {
         nlohmann::json& objects = SceneJsonObjects(scene);
@@ -305,107 +412,6 @@ namespace NS::Obj
                 return candidate;
             }
         }
-    }
-
-    void EnsureUniqueObjectNames(nlohmann::json& scene)
-    {
-        nlohmann::json& objects = SceneJsonObjects(scene);
-        std::unordered_set<std::string> used;
-        std::vector<nlohmann::json*> pending;
-        for (nlohmann::json& object : objects)
-        {
-            const std::string name{ObjectJsonName(object)};
-            if (name.empty() || !used.insert(name).second)
-            {
-                pending.push_back(&object);
-            }
-        }
-        for (nlohmann::json* object : pending)
-        {
-            const std::string name = MakeUniqueActorName(ObjectJsonName(*object), used);
-            SetObjectJsonName(*object, name);
-            used.insert(name);
-        }
-    }
-
-    std::size_t PruneDanglingObjectRefs(nlohmann::json& scene)
-    {
-        nlohmann::json& objects = SceneJsonObjects(scene);
-        std::unordered_set<std::uint32_t> ids;
-        for (const nlohmann::json& object : objects)
-        {
-            ids.insert(ObjectJsonId(object));
-        }
-        std::size_t pruned = 0;
-        for (nlohmann::json& object : objects)
-        {
-            ForEachRefValue(object, [&ids, &pruned](nlohmann::json& value) {
-                nlohmann::json& ref = value["ref"];
-                if (!ref.is_number_unsigned())
-                {
-                    return;
-                }
-                const std::uint32_t id = ref.get<std::uint32_t>();
-                if (id == 0 || ids.contains(id))
-                {
-                    return;
-                }
-                ref = 0u;
-                ++pruned;
-            });
-        }
-        return pruned;
-    }
-
-    std::size_t PruneInvalidParents(nlohmann::json& scene)
-    {
-        nlohmann::json& objects = SceneJsonObjects(scene);
-        std::unordered_map<std::uint32_t, std::size_t> indexById;
-        indexById.reserve(objects.size());
-        for (std::size_t i = 0; i < objects.size(); ++i)
-        {
-            indexById.emplace(ObjectJsonId(objects[i]), i);
-        }
-
-        std::size_t prunedCount = 0;
-        for (nlohmann::json& object : objects)
-        {
-            const std::uint32_t objectId = ObjectJsonId(object);
-            const std::uint32_t parentId = ObjectJsonParent(object);
-            if (parentId == k_NoObjectId)
-            {
-                continue;
-            }
-
-            bool valid = parentId != objectId && indexById.contains(parentId);
-            // 祖先を辿って自分へ戻れば循環。その場で root へ落とすので、輪の残りは正当な親子として通る
-            std::uint32_t ancestor = parentId;
-            for (std::size_t step = 0; valid && step < objects.size(); ++step)
-            {
-                const std::unordered_map<std::uint32_t, std::size_t>::iterator it = indexById.find(ancestor);
-                if (it == indexById.end())
-                {
-                    valid = false;
-                    break;
-                }
-                ancestor = ObjectJsonParent(objects[it->second]);
-                if (ancestor == k_NoObjectId)
-                {
-                    break;
-                }
-                if (ancestor == objectId)
-                {
-                    valid = false;
-                }
-            }
-
-            if (!valid)
-            {
-                SetObjectJsonParent(object, k_NoObjectId);
-                ++prunedCount;
-            }
-        }
-        return prunedCount;
     }
 
     std::string SerializeSceneToJson(const nlohmann::json& scene)

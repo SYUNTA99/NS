@@ -6,7 +6,6 @@
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
 
-
 namespace NS::Obj
 {
     //! @brief 部品の欄を、配置物の JSON の "subObjects" の 1 件の形で書き出す
@@ -25,16 +24,4 @@ namespace NS::Obj
 
     //! owner を info の型として扱い、JSON の値を適用する。処理と戻り値は ApplyJsonFields と同じ
     std::size_t ApplyReflectedFields(void* owner, const ReflectionInfo& info, const nlohmann::json& fields);
-
-    //! value の型 T のリフレクションで SerializeReflectedFields を呼ぶ
-    template <class T> [[nodiscard]] nlohmann::json SerializeValueFields(const T& value)
-    {
-        return SerializeReflectedFields(&value, *T::StaticReflection());
-    }
-
-    //! value の型 T のリフレクションで ApplyReflectedFields を呼ぶ
-    template <class T> std::size_t ApplyValueFields(T& value, const nlohmann::json& fields)
-    {
-        return ApplyReflectedFields(&value, *T::StaticReflection(), fields);
-    }
 } // namespace NS::Obj

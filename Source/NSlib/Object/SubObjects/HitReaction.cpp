@@ -25,6 +25,17 @@ namespace NS::Obj
             }
             return owner != nullptr && owner->GetCameraManager() != nullptr;
         }
+
+        // 持ち主が nullptr の間は引かない。FindSceneSystem に nullptr を渡すと NS_ASSERT
+        // で止まり、出荷版では検査されない
+        template <class T> T* FindDirector(Actor* owner)
+        {
+            if (owner == nullptr)
+            {
+                return nullptr;
+            }
+            return FindSceneSystem<T>(owner);
+        }
     } // namespace
 
     void HitReaction::OnStart()
@@ -39,11 +50,7 @@ namespace NS::Obj
 
     void HitReaction::StartFlash(int frames, float alpha) noexcept
     {
-        if (Owner() == nullptr)
-        {
-            return;
-        }
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(Owner()))
+        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(Owner()))
         {
             screen->StartFlash(*Owner(), frames, alpha);
         }
@@ -139,11 +146,7 @@ namespace NS::Obj
 
     void HitReaction::StartShakeLines(const HitShakeLinesDesc& desc) noexcept
     {
-        if (Owner() == nullptr)
-        {
-            return;
-        }
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(Owner()))
+        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(Owner()))
         {
             screen->StartShakeLines(*Owner(), desc);
         }
@@ -151,11 +154,7 @@ namespace NS::Obj
 
     void HitReaction::StartDistortionRing(const HitDistortionRingDesc& desc) noexcept
     {
-        if (Owner() == nullptr)
-        {
-            return;
-        }
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(Owner()))
+        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(Owner()))
         {
             screen->StartDistortionRing(*Owner(), desc);
         }
@@ -163,11 +162,7 @@ namespace NS::Obj
 
     void HitReaction::StopDistortionRing() noexcept
     {
-        if (Owner() == nullptr)
-        {
-            return;
-        }
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(Owner()))
+        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(Owner()))
         {
             screen->StopDistortionRing(*Owner());
         }
@@ -175,11 +170,7 @@ namespace NS::Obj
 
     void HitReaction::StartPadVibration(const HitPadVibration& pad)
     {
-        if (Owner() == nullptr)
-        {
-            return;
-        }
-        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(Owner()))
+        if (PadRumbleDirector* rumble = FindDirector<PadRumbleDirector>(Owner()))
         {
             rumble->Start(*Owner(), pad);
         }
@@ -187,11 +178,7 @@ namespace NS::Obj
 
     void HitReaction::BlendPadVibration(const HitPadVibration& pad)
     {
-        if (Owner() == nullptr)
-        {
-            return;
-        }
-        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(Owner()))
+        if (PadRumbleDirector* rumble = FindDirector<PadRumbleDirector>(Owner()))
         {
             rumble->Blend(*Owner(), pad);
         }

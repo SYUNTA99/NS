@@ -28,7 +28,7 @@ namespace NS::Obj
     NS_REFLECT_SUBOBJ(m_attackSensor, "AttackSensor")
     NS_REFLECT_SUBOBJ(m_hitReaction, "HitReaction")
     NS_REFLECT_SUBOBJ(m_effectKeeper, "Effect")
-    NS_REFLECT_END_VALUE()
+    NS_REFLECT_END_IMPL()
 
     Actor::Actor() noexcept
     {
@@ -66,6 +66,24 @@ namespace NS::Obj
                     visit(field, part);
                 }
             }
+        }
+
+        // ForEachSubObj の std::function を介さず、登録を直接たどる
+        template <class TMatch> const SubObjectDesc* FindCreatedSubObj(const Actor& owner, TMatch match)
+        {
+            for (const ReflectionInfo* info = owner.GetReflection(); info != nullptr; info = info->base)
+            {
+                for (std::size_t i = 0; i < info->subObjectCount; ++i)
+                {
+                    const SubObjectDesc& field = info->subObjects[i];
+                    const SubObject* part = field.get(&owner);
+                    if (part != nullptr && match(field, *part))
+                    {
+                        return &field;
+                    }
+                }
+            }
+            return nullptr;
         }
     } // namespace
 
@@ -107,26 +125,24 @@ namespace NS::Obj
 
     std::string_view Actor::SubObjKey(const SubObject& part) const
     {
-        std::string_view key;
-        ForEachSubObj([&](const SubObjectDesc& field, SubObject* candidate) {
-            if (candidate == &part)
-            {
-                key = field.key;
-            }
-        });
-        return key;
+        const SubObjectDesc* field = FindCreatedSubObj(
+            *this, [&part](const SubObjectDesc&, const SubObject& candidate) { return &candidate == &part; });
+        if (field == nullptr)
+        {
+            return {};
+        }
+        return field->key;
     }
 
     SubObject* Actor::FindSubObj(std::string_view key) const
     {
-        SubObject* found = nullptr;
-        ForEachSubObj([&](const SubObjectDesc& field, SubObject* part) {
-            if (field.key == key)
-            {
-                found = part;
-            }
-        });
-        return found;
+        const SubObjectDesc* field = FindCreatedSubObj(
+            *this, [key](const SubObjectDesc& candidate, const SubObject&) { return candidate.key == key; });
+        if (field == nullptr)
+        {
+            return nullptr;
+        }
+        return field->get(this);
     }
 
     IStateMachine* Actor::GetStates() noexcept

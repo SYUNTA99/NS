@@ -1,8 +1,8 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/SubObjects/VirtualCamera.h"
 #include "NSlib/Object/Reflection/ActorRef.h"
+#include "NSlib/Object/SubObjects/VirtualCamera.h"
 
 #include <optional>
 
@@ -211,8 +211,7 @@ namespace NS::Obj
         float m_initialPitch = -0.2618f;
 
         float m_distance = 6.0f;
-        float m_desiredDistance = 6.0f;
-        float m_springOmega = 6.0f;     // 距離バネの追従の速さ
+        float m_springOmega = 6.0f; // 距離バネの追従の速さ
 
         float m_idleDistance = 5.0f;      // 静止時の距離
         float m_runDistance = 6.0f;       // 走行時の距離
@@ -276,26 +275,26 @@ namespace NS::Obj
         float m_chargeCenterTilt = 0.0f;         // 二人を縦の中心へ寄せる、注視点だけの上の向きのずれ (m)
         float m_chargeCenterTiltVelocity = 0.0f; // 寄せの速さ (m/秒)
 
-        FollowReboundDesc m_rebound{};                    // 次の OnUpdate で使う反動の状態
-        bool m_wasRebounding = false;                     // 前のフレームに反動の状態だったか
-        bool m_wasForcedSlamming = false;                 // 前のフレームに勝手に出た突進の最中だったか
-        bool m_reboundLookHeld = false;                   // 反動になってから接地するまで、回す入力を受けないか
-        float m_reboundTurnAngle = 0.0f;                  // 反動になったフレームに決めた、回す角度 (ラジアン)
-        int m_reboundTurnFrame = 0;                       // 回しの何フレーム目か。欄のフレーム数で回し終える
+        FollowReboundDesc m_rebound{};    // 次の OnUpdate で使う反動の状態
+        bool m_wasRebounding = false;     // 前のフレームに反動の状態だったか
+        bool m_wasForcedSlamming = false; // 前のフレームに勝手に出た突進の最中だったか
+        bool m_reboundLookHeld = false;   // 反動になってから接地するまで、回す入力を受けないか
+        float m_reboundTurnAngle = 0.0f;  // 反動になったフレームに決めた、回す角度 (ラジアン)
+        int m_reboundTurnFrame = 0;       // 回しの何フレーム目か。欄のフレーム数で回し終える
         ReboundPhase m_reboundPhase = ReboundPhase::None;
-        NS::Vector3 m_reboundAnchor{};                    // 横と前後を遅らせて追う注視点。高さは留める
-        NS::Vector3 m_reboundAnchorVelocity{};            // 注視点の横と前後の速さ (m/秒)。縦は使わない
-        float m_reboundLagCap = 0.0f;                     // 反動の間の遅れの今の上限 (m)。欄の上限より下にはしない
-        NS::Vector3 m_reboundReturnOffset{};              // 寄せ戻し始めの、注視点 − 追う相手の頭 (m)
-        int m_reboundReturnFrame = 0;                     // 寄せ戻しの何フレーム目か
-        float m_reboundBaseDistance = 0.0f;  // 反動になったフレームに決めた、相手を収める引きの前の距離 (m)
-        NS::Vector3 m_partnerLean{};         // 注視点を相手へ寄せている量 (m)
-        NS::Vector3 m_partnerLeanVelocity{}; // 寄せの速さ (m/秒)
-        float m_partnerPull = 0.0f;          // 相手を収めるために引いている距離 (m)
-        float m_partnerPullVelocity = 0.0f;  // 引きの速さ (m/秒)
-        NS::Vector3 m_look{};                // このフレームの注視点。反動と寄せ戻しで使う
-        NS::Vector3 m_previousLook{};        // 前のフレームの注視点。描画の補間に使う
-        bool m_hasLook = false;              // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
+        NS::Vector3 m_reboundAnchor{};         // 横と前後を遅らせて追う注視点。高さは留める
+        NS::Vector3 m_reboundAnchorVelocity{}; // 注視点の横と前後の速さ (m/秒)。縦は使わない
+        float m_reboundLagCap = 0.0f;          // 反動の間の遅れの今の上限 (m)。欄の上限より下にはしない
+        NS::Vector3 m_reboundReturnOffset{};   // 寄せ戻し始めの、注視点 − 追う相手の頭 (m)
+        int m_reboundReturnFrame = 0;          // 寄せ戻しの何フレーム目か
+        float m_reboundBaseDistance = 0.0f;    // 反動になったフレームに決めた、相手を収める引きの前の距離 (m)
+        NS::Vector3 m_partnerLean{};           // 注視点を相手へ寄せている量 (m)
+        NS::Vector3 m_partnerLeanVelocity{};   // 寄せの速さ (m/秒)
+        float m_partnerPull = 0.0f;            // 相手を収めるために引いている距離 (m)
+        float m_partnerPullVelocity = 0.0f;    // 引きの速さ (m/秒)
+        NS::Vector3 m_look{};                  // このフレームの注視点。反動と寄せ戻しで使う
+        NS::Vector3 m_previousLook{};          // 前のフレームの注視点。描画の補間に使う
+        bool m_hasLook = false;                // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
     };
 
 } // namespace NS::Obj
