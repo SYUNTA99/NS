@@ -38,7 +38,7 @@ TEST(MapObjMotion, ActorMovesAndUpdatesStaticCollision)
     NS::Obj::Scene scene;
     GL::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    ASSERT_NE(rock->GetStateMachine(), nullptr);
+    ASSERT_NE(rock->GetStates(), nullptr);
     ReleaseRock(*rock);
     for (int step = 0; step < 10; ++step)
     {
@@ -279,10 +279,10 @@ TEST(MapObjMotion, StateAdvancesThroughTheBaseMachine)
     NS::Obj::Scene scene;
     GL::Level::MapObj* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::Obj::IStateMachine* machine = rock->GetStateMachine();
+    NS::Obj::IStateMachine* machine = rock->GetStates();
     ASSERT_NE(machine, nullptr);
     const std::uint32_t before = machine->StepsInState();
     rock->Update();
     EXPECT_EQ(machine->StepsInState(), before + 1);
-    EXPECT_EQ(rock->GetStateMachine(), machine);
+    EXPECT_EQ(rock->GetStates(), machine);
 }

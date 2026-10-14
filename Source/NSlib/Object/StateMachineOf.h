@@ -39,7 +39,7 @@ namespace NS::Obj
         [[nodiscard]] float StepDelta() const noexcept { return m_stepDelta; }
 
     private:
-        template <typename> friend class StateMachine;
+        template <typename> friend class StateMachineOf;
         void TickCoroutines(float dt)
         {
             m_stepDelta = dt;
@@ -62,10 +62,10 @@ namespace NS::Obj
     //! @brief 型の並びから組む状態機械。先頭が初期状態で、Build 時に OnEnter する
     //! @details 所有者は Build で 1 回だけ受けて控え、Step と Change はその控えを状態へ渡す。
     //! OnStep の中で Change しても呼び出し元の OnStep は続くので、遷移したら即 return する
-    template <typename TOwner> class StateMachine : public IStateMachine
+    template <typename TOwner> class StateMachineOf : public IStateMachine
     {
     public:
-        //! TStates の先頭へ入り、以後の状態に渡す持ち主を固定する
+        //! 先頭の状態へ入る。この後の Step と Change は、ここで渡した owner を状態へ渡す
         template <typename... TStates> void Build(TOwner& owner)
         {
             static_assert(sizeof...(TStates) > 0, "状態を 1 つ以上並べる");
@@ -156,8 +156,6 @@ namespace NS::Obj
             return CurrentId() == StateIdOf<TState>();
         }
 
-        //! @brief Build で控えた所有者で、現在状態の OnStep を 1 回呼ぶ
-        //! @details 未組立は何もしない
         void Step(float dt) override
         {
             if (m_owner == nullptr)
@@ -192,7 +190,7 @@ namespace NS::Obj
             State<TOwner>* next = Find(id);
             // 組み立て済みで見つからないのは Build への並べ忘れ。黙って断ると遷移しないまま動き続ける
             NS_ASSERT(
-                Scene, m_owner == nullptr || next != nullptr, "StateMachine: Build に並べていない状態へ移ろうとした");
+                Scene, m_owner == nullptr || next != nullptr, "StateMachineOf: Build に並べていない状態へ移ろうとした");
             if (next == nullptr)
             {
                 return false;
@@ -212,7 +210,6 @@ namespace NS::Obj
             return true;
         }
 
-        //! 状態 TState へ移る予約をする。返す値は Change(StateId) と同じ
         template <typename TState> bool Change() { return Change(StateIdOf<TState>()); }
 
     private:
@@ -253,14 +250,14 @@ namespace NS::Obj
     template <typename TOwner> class SubStateMachine : public IUseState
     {
     public:
-        //! @brief 状態の型の並びから組み直し、先頭へ入る。終わった印も下ろす
+        //! Finish の後でも、組み直すとまた進む
         template <typename... TStates> void Build(TOwner& owner)
         {
             m_dead = false;
             m_machine.template Build<TStates...>(owner);
         }
 
-        //! 終わっていなければ、Build で控えた所有者と今の状態で 1 フレーム進める
+        //! Finish の後は、次の Build まで何もしない
         void Step(float dt)
         {
             if (!m_dead)
@@ -269,7 +266,7 @@ namespace NS::Obj
             }
         }
 
-        //! 終わった印を立て、今の状態のコルーチンと移る予約を捨てる
+        //! 今の状態のコルーチンと、移る予約を捨てる
         void Finish() noexcept
         {
             m_dead = true;
@@ -277,13 +274,13 @@ namespace NS::Obj
         }
         //! Finish の後、次の Build までの場合 true、それ以外の場合は false
         [[nodiscard]] bool IsDead() const noexcept { return m_dead; }
-        [[nodiscard]] StateMachine<TOwner>& Machine() noexcept { return m_machine; }
-        [[nodiscard]] const StateMachine<TOwner>& Machine() const noexcept { return m_machine; }
-        [[nodiscard]] IStateMachine* GetStateMachine() noexcept override { return &m_machine; }
-        [[nodiscard]] const IStateMachine* GetStateMachine() const noexcept override { return &m_machine; }
+        [[nodiscard]] StateMachineOf<TOwner>& Machine() noexcept { return m_machine; }
+        [[nodiscard]] const StateMachineOf<TOwner>& Machine() const noexcept { return m_machine; }
+        [[nodiscard]] IStateMachine* GetStates() noexcept override { return &m_machine; }
+        [[nodiscard]] const IStateMachine* GetStates() const noexcept override { return &m_machine; }
 
     private:
-        StateMachine<TOwner> m_machine;
+        StateMachineOf<TOwner> m_machine;
         bool m_dead = false;
     };
 

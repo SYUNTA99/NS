@@ -53,7 +53,7 @@ TEST(ActorClass, MapObjOwnsMotionAndStaticCollision)
     EXPECT_TRUE(GL::Level::IsSensorKind(*sensor, GL::Level::SensorKind::MapObjBody));
     EXPECT_EQ(obj.FindSubObj("TackleReaction"), nullptr);
     EXPECT_NE(NS::Obj::Cast<GL::Level::LaunchEffects>(obj.FindSubObj("LaunchEffects")), nullptr);
-    EXPECT_NE(obj.GetStateMachine(), nullptr);
+    EXPECT_NE(obj.GetStates(), nullptr);
     EXPECT_FALSE(obj.IsFlying());
 }
 
@@ -125,7 +125,7 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
     EXPECT_NE(NS::Obj::Cast<NS::Obj::Body>(player.FindSubObj("Movement")), nullptr);
     EXPECT_NE(NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input")), nullptr);
     EXPECT_EQ(player.FindSubObj("PlayerInputRelay"), nullptr);
-    EXPECT_NE(player.GetStateMachine(), nullptr);
+    EXPECT_NE(player.GetStates(), nullptr);
     EXPECT_EQ(player.Phase(), NS::Obj::UpdatePhase::Player);
     EXPECT_EQ(&player.Input(), NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input")));
     EXPECT_EQ(&player.Body(), NS::Obj::Cast<NS::Obj::Body>(player.FindSubObj("Movement")));

@@ -47,10 +47,10 @@ namespace NS::Obj
     public:
         //! @brief 自分の状態機械を返す
         //! @return 状態機械を持たなければ nullptr
-        [[nodiscard]] virtual IStateMachine* GetStateMachine() noexcept = 0;
+        [[nodiscard]] virtual IStateMachine* GetStates() noexcept = 0;
         //! @brief 自分の状態機械を返す
         //! @return 状態機械を持たなければ nullptr
-        [[nodiscard]] virtual const IStateMachine* GetStateMachine() const noexcept = 0;
+        [[nodiscard]] virtual const IStateMachine* GetStates() const noexcept = 0;
 
     protected:
         ~IUseState() = default;
@@ -61,7 +61,7 @@ namespace NS::Obj
     template <typename TState> bool SetState(IUseState* user)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        IStateMachine* machine = user->GetStateMachine();
+        IStateMachine* machine = user->GetStates();
         return machine != nullptr && machine->Change(StateIdOf<TState>());
     }
 
@@ -69,7 +69,7 @@ namespace NS::Obj
     template <typename TState> [[nodiscard]] bool IsState(const IUseState* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        const IStateMachine* machine = user->GetStateMachine();
+        const IStateMachine* machine = user->GetStates();
         return machine != nullptr && machine->CurrentId() == StateIdOf<TState>();
     }
 
@@ -77,7 +77,7 @@ namespace NS::Obj
     [[nodiscard]] inline bool IsFirstStep(const IUseState* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        const IStateMachine* machine = user->GetStateMachine();
+        const IStateMachine* machine = user->GetStates();
         return machine != nullptr && machine->CurrentId() != nullptr && machine->StepsInState() == 0;
     }
 
@@ -86,7 +86,7 @@ namespace NS::Obj
     [[nodiscard]] inline std::uint32_t StepsInState(const IUseState* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        const IStateMachine* machine = user->GetStateMachine();
+        const IStateMachine* machine = user->GetStates();
         if (machine == nullptr)
         {
             return 0;

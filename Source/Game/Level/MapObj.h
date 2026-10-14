@@ -5,7 +5,7 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/StateMachine.h"
+#include "NSlib/Object/StateMachineOf.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/SubObjects/SphereCollision.h"
@@ -90,7 +90,7 @@ namespace GL::Level
         std::unique_ptr<MapObjParams> m_params;
         std::unique_ptr<HitZones> m_hitZones;
         std::unique_ptr<LaunchEffects> m_effects;
-        NS::Obj::StateMachine<MapObj>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
+        NS::Obj::StateMachineOf<MapObj>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
         NS::Obj::SubStateMachine<MapObj> m_motion;
         TackleFreezeDesc m_freeze;
         // 止めの間の揺れ。知らせを受けたフレームの止めの 1 歩を 1 フレーム目に数える

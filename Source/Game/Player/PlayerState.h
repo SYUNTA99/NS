@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NSlib/Object/StateMachine.h"
+#include "NSlib/Object/StateMachineOf.h"
 
 class Player;
 

@@ -73,12 +73,12 @@ namespace NS::Obj
         return found;
     }
 
-    IStateMachine* Actor::GetStateMachine() noexcept
+    IStateMachine* Actor::GetStates() noexcept
     {
         return m_stateMachine.get();
     }
 
-    const IStateMachine* Actor::GetStateMachine() const noexcept
+    const IStateMachine* Actor::GetStates() const noexcept
     {
         return m_stateMachine.get();
     }

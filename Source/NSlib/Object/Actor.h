@@ -8,7 +8,7 @@
 #include "NSlib/Object/IUse/IUseState.h"
 #include "NSlib/Object/IUse/IUseTime.h"
 #include "NSlib/Object/Object.h"
-#include "NSlib/Object/StateMachine.h"
+#include "NSlib/Object/StateMachineOf.h"
 #include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/UpdatePhase.h"
@@ -81,8 +81,8 @@ namespace NS::Obj
         //! 根の部品 Transform。階層構築は SetParent で
         [[nodiscard]] Transform& Root() noexcept;
         [[nodiscard]] const Transform& Root() const noexcept;
-        [[nodiscard]] IStateMachine* GetStateMachine() noexcept override;
-        [[nodiscard]] const IStateMachine* GetStateMachine() const noexcept override;
+        [[nodiscard]] IStateMachine* GetStates() noexcept override;
+        [[nodiscard]] const IStateMachine* GetStates() const noexcept override;
         [[nodiscard]] float BodyDelta() const noexcept override;
         [[nodiscard]] float BodyTimeScale() const noexcept override { return m_bodyTimeScale; }
         //! @brief 体の倍率を書く
@@ -224,14 +224,14 @@ namespace NS::Obj
         //! OnEnter が使う部品を先に用意する。outMachine は OnEnter 前に設定する
         //! 基底が所有し、型付きポインタは非所有。既に構築済みなら変更せず false
         template <typename TOwner, typename... TStates>
-        bool BuildStateMachine(TOwner& owner, StateMachine<TOwner>*& outMachine)
+        bool BuildStateMachine(TOwner& owner, StateMachineOf<TOwner>*& outMachine)
         {
             static_assert(std::is_base_of_v<Actor, TOwner>, "持ち主は Actor の派生");
             NS_ASSERT(Scene,
                       static_cast<const Actor*>(&owner) == this,
                       "Actor::BuildStateMachine: 持ち主に自分以外の Actor を渡している");
-            std::unique_ptr<StateMachine<TOwner>> machine = std::make_unique<StateMachine<TOwner>>();
-            StateMachine<TOwner>* built = machine.get();
+            std::unique_ptr<StateMachineOf<TOwner>> machine = std::make_unique<StateMachineOf<TOwner>>();
+            StateMachineOf<TOwner>* built = machine.get();
             if (!AdoptStateMachine(std::move(machine)))
             {
                 return false;

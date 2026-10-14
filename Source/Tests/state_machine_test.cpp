@@ -1,5 +1,5 @@
 #include "NSlib/Core/Coroutine.h"
-#include "NSlib/Object/StateMachine.h"
+#include "NSlib/Object/StateMachineOf.h"
 
 #include <gtest/gtest.h>
 
@@ -14,7 +14,7 @@ namespace
 
     struct StateOwner
     {
-        NS::Obj::StateMachine<StateOwner>* machine = nullptr;
+        NS::Obj::StateMachineOf<StateOwner>* machine = nullptr;
         NS::Obj::SubStateMachine<StateOwner>* child = nullptr;
         std::vector<int> calls;
         bool change = false;
@@ -141,10 +141,10 @@ namespace
 
 } // namespace
 
-TEST(StateMachine, TransitionOrderAndFirstStep)
+TEST(StateMachineOf, TransitionOrderAndFirstStep)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     EXPECT_TRUE(machine.IsFirstStep());
@@ -165,10 +165,10 @@ TEST(StateMachine, TransitionOrderAndFirstStep)
     EXPECT_EQ(owner.calls.back(), 5);
 }
 
-TEST(StateMachine, OwnerComesFromBuildOnly)
+TEST(StateMachineOf, OwnerComesFromBuildOnly)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     ASSERT_TRUE(machine.Change<ActiveState>());
@@ -177,10 +177,10 @@ TEST(StateMachine, OwnerComesFromBuildOnly)
     EXPECT_EQ(owner.activeSteppedBy, &owner);
 }
 
-TEST(StateMachine, LeavingStateCancelsItsCoroutine)
+TEST(StateMachineOf, LeavingStateCancelsItsCoroutine)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     ASSERT_TRUE(machine.Change<ActiveState>());
@@ -188,10 +188,10 @@ TEST(StateMachine, LeavingStateCancelsItsCoroutine)
     EXPECT_EQ(owner.resumed, 0);
 }
 
-TEST(StateMachine, CoroutineCanLeaveItsStateWhileResuming)
+TEST(StateMachineOf, CoroutineCanLeaveItsStateWhileResuming)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     owner.coroutineChangesState = true;
     machine.Build<IdleState, ActiveState>(owner);
@@ -201,7 +201,7 @@ TEST(StateMachine, CoroutineCanLeaveItsStateWhileResuming)
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 4}));
 }
 
-TEST(StateMachine, ChildFinishStopsStepsAndCancelsCoroutine)
+TEST(StateMachineOf, ChildFinishStopsStepsAndCancelsCoroutine)
 {
     StateOwner owner;
     NS::Obj::SubStateMachine<StateOwner> child;
@@ -217,10 +217,10 @@ TEST(StateMachine, ChildFinishStopsStepsAndCancelsCoroutine)
     EXPECT_EQ(owner.resumed, 0);
 }
 
-TEST(StateMachine, CoroutineReadsTheCurrentStepDelta)
+TEST(StateMachineOf, CoroutineReadsTheCurrentStepDelta)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     machine.Build<DeltaState>(owner);
     EXPECT_TRUE(owner.deltas.empty());
     machine.Step(0.1f);
@@ -228,10 +228,10 @@ TEST(StateMachine, CoroutineReadsTheCurrentStepDelta)
     EXPECT_EQ(owner.deltas, (std::vector<float>{0.1f, 0.2f}));
 }
 
-TEST(StateMachine, ExternalRequestDefersEntryUntilTheNextStepBoundary)
+TEST(StateMachineOf, ExternalRequestDefersEntryUntilTheNextStepBoundary)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     ASSERT_TRUE(machine.Change<ActiveState>());
@@ -245,10 +245,10 @@ TEST(StateMachine, ExternalRequestDefersEntryUntilTheNextStepBoundary)
     EXPECT_EQ(owner.resumed, 0);
 }
 
-TEST(StateMachine, EntryDoesNotInterruptThePreviousStep)
+TEST(StateMachineOf, EntryDoesNotInterruptThePreviousStep)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     owner.change = true;
     owner.recordAfterChange = true;
@@ -259,10 +259,10 @@ TEST(StateMachine, EntryDoesNotInterruptThePreviousStep)
     EXPECT_EQ(machine.StepsInState(), 0u);
 }
 
-TEST(StateMachine, LastValidRequestWinsWithoutExitingTwice)
+TEST(StateMachineOf, LastValidRequestWinsWithoutExitingTwice)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState, DeltaState>(owner);
     ASSERT_TRUE(machine.Change<ActiveState>());
@@ -275,10 +275,10 @@ TEST(StateMachine, LastValidRequestWinsWithoutExitingTwice)
     EXPECT_EQ(owner.deltas, (std::vector<float>{0.1f}));
 }
 
-TEST(StateMachine, ResetDiscardsAPendingEntry)
+TEST(StateMachineOf, ResetDiscardsAPendingEntry)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     machine.Change<ActiveState>();
@@ -289,7 +289,7 @@ TEST(StateMachine, ResetDiscardsAPendingEntry)
     EXPECT_EQ(owner.resumed, 0);
 }
 
-TEST(StateMachine, ChildFinishDiscardsAnEntryRequestedDuringItsStep)
+TEST(StateMachineOf, ChildFinishDiscardsAnEntryRequestedDuringItsStep)
 {
     StateOwner owner;
     NS::Obj::SubStateMachine<StateOwner> child;
@@ -306,10 +306,10 @@ TEST(StateMachine, ChildFinishDiscardsAnEntryRequestedDuringItsStep)
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3, 2}));
 }
 
-TEST(StateMachine, ReturningToTheExitedStateReentersAtTheBoundary)
+TEST(StateMachineOf, ReturningToTheExitedStateReentersAtTheBoundary)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     machine.Change<ActiveState>();
@@ -319,10 +319,10 @@ TEST(StateMachine, ReturningToTheExitedStateReentersAtTheBoundary)
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 1, 2}));
 }
 
-TEST(StateMachine, RequestingTheCurrentStateDoesNotResetItsStep)
+TEST(StateMachineOf, RequestingTheCurrentStateDoesNotResetItsStep)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     machine.Step(0.1f);
@@ -331,10 +331,10 @@ TEST(StateMachine, RequestingTheCurrentStateDoesNotResetItsStep)
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2}));
 }
 
-TEST(StateMachine, EntryRequestAtTheOpeningBoundaryDoesNotStepTheExitedState)
+TEST(StateMachineOf, EntryRequestAtTheOpeningBoundaryDoesNotStepTheExitedState)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     owner.entryChangesState = true;
     machine.Build<IdleState, ActiveState, DeltaState>(owner);
@@ -348,10 +348,10 @@ TEST(StateMachine, EntryRequestAtTheOpeningBoundaryDoesNotStepTheExitedState)
     EXPECT_EQ(owner.deltas, (std::vector<float>{0.2f}));
 }
 
-TEST(StateMachine, EntryRequestAtTheClosingBoundaryWaitsUntilTheNextStep)
+TEST(StateMachineOf, EntryRequestAtTheClosingBoundaryWaitsUntilTheNextStep)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     owner.entryChangesState = true;
     owner.change = true;
@@ -366,10 +366,10 @@ TEST(StateMachine, EntryRequestAtTheClosingBoundaryWaitsUntilTheNextStep)
     EXPECT_EQ(owner.deltas, (std::vector<float>{0.2f}));
 }
 
-TEST(StateMachine, ExitCanReplaceThePendingTargetWithoutRecursiveExit)
+TEST(StateMachineOf, ExitCanReplaceThePendingTargetWithoutRecursiveExit)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     owner.exitChangesState = true;
     machine.Build<IdleState, ActiveState, DeltaState>(owner);
@@ -381,10 +381,10 @@ TEST(StateMachine, ExitCanReplaceThePendingTargetWithoutRecursiveExit)
     EXPECT_EQ(owner.deltas, (std::vector<float>{0.1f}));
 }
 
-TEST(StateMachine, RebuildDiscardsThePreviousPendingEntry)
+TEST(StateMachineOf, RebuildDiscardsThePreviousPendingEntry)
 {
     StateOwner owner;
-    NS::Obj::StateMachine<StateOwner> machine;
+    NS::Obj::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     machine.Change<ActiveState>();
@@ -395,7 +395,7 @@ TEST(StateMachine, RebuildDiscardsThePreviousPendingEntry)
     EXPECT_EQ(owner.resumed, 1);
 }
 
-TEST(StateMachine, ChildFinishDuringCoroutineStopsTheRemainingStateStep)
+TEST(StateMachineOf, ChildFinishDuringCoroutineStopsTheRemainingStateStep)
 {
     StateOwner owner;
     NS::Obj::SubStateMachine<StateOwner> child;
@@ -413,7 +413,7 @@ TEST(StateMachine, ChildFinishDuringCoroutineStopsTheRemainingStateStep)
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
 }
 
-TEST(StateMachine, ChildFinishDuringEntryStopsTheFirstStateStep)
+TEST(StateMachineOf, ChildFinishDuringEntryStopsTheFirstStateStep)
 {
     StateOwner owner;
     NS::Obj::SubStateMachine<StateOwner> child;

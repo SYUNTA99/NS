@@ -1,6 +1,6 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/IUse/IUseState.h"
-#include "NSlib/Object/StateMachine.h"
+#include "NSlib/Object/StateMachineOf.h"
 
 #include <gtest/gtest.h>
 
@@ -18,9 +18,9 @@ namespace
     class MachineActor final : public NS::Obj::Actor
     {
     public:
-        NS::Obj::StateMachine<NS::Obj::Actor>* BuildOwned()
+        NS::Obj::StateMachineOf<NS::Obj::Actor>* BuildOwned()
         {
-            NS::Obj::StateMachine<NS::Obj::Actor>* machine = nullptr;
+            NS::Obj::StateMachineOf<NS::Obj::Actor>* machine = nullptr;
             (void)BuildStateMachine<NS::Obj::Actor, OwnedState>(*this, machine);
             return machine;
         }
@@ -47,8 +47,8 @@ namespace
     public:
         bool BuildProbe() { return BuildStateMachine<ProbeActor, ProbeState>(*this, machine); }
         bool BuildSecond() { return BuildStateMachine<ProbeActor, SecondProbeState>(*this, machine); }
-        NS::Obj::StateMachine<ProbeActor>* machine = nullptr;
-        NS::Obj::StateMachine<ProbeActor>* machineSeenInEnter = nullptr;
+        NS::Obj::StateMachineOf<ProbeActor>* machine = nullptr;
+        NS::Obj::StateMachineOf<ProbeActor>* machineSeenInEnter = nullptr;
     };
 
     void ProbeState::OnEnter(ProbeActor& owner)
@@ -62,7 +62,7 @@ namespace
     public:
         void BuildOwned()
         {
-            NS::Obj::StateMachine<NS::Obj::Actor>* machine = nullptr;
+            NS::Obj::StateMachineOf<NS::Obj::Actor>* machine = nullptr;
             (void)BuildStateMachine<NS::Obj::Actor, OwnedState>(*this, machine);
         }
         std::uint32_t stepsSeenInVisual = 0;
@@ -79,19 +79,19 @@ namespace
 TEST(ActorStateMachine, ActorWithoutMachineUpdatesQuietly)
 {
     NS::Obj::Actor actor;
-    EXPECT_EQ(actor.GetStateMachine(), nullptr);
+    EXPECT_EQ(actor.GetStates(), nullptr);
     actor.Update();
-    EXPECT_EQ(actor.GetStateMachine(), nullptr);
+    EXPECT_EQ(actor.GetStates(), nullptr);
     EXPECT_FALSE(NS::Obj::IsState<OwnedState>(&actor));
 }
 
 TEST(ActorStateMachine, BaseOwnsTheMachineAndUpdateStepsIt)
 {
     MachineActor actor;
-    NS::Obj::StateMachine<NS::Obj::Actor>* machine = actor.BuildOwned();
+    NS::Obj::StateMachineOf<NS::Obj::Actor>* machine = actor.BuildOwned();
 
-    ASSERT_NE(actor.GetStateMachine(), nullptr);
-    EXPECT_EQ(actor.GetStateMachine(), machine);
+    ASSERT_NE(actor.GetStates(), nullptr);
+    EXPECT_EQ(actor.GetStates(), machine);
     EXPECT_TRUE(NS::Obj::IsState<OwnedState>(&actor));
     EXPECT_TRUE(NS::Obj::IsFirstStep(&actor));
     actor.Update();
@@ -119,18 +119,18 @@ TEST(ActorStateMachine, TypedPointerIsReadableFromFirstStateOnEnter)
 
     ASSERT_NE(actor.machine, nullptr);
     EXPECT_EQ(actor.machineSeenInEnter, actor.machine);
-    EXPECT_EQ(actor.GetStateMachine(), actor.machine);
+    EXPECT_EQ(actor.GetStates(), actor.machine);
 }
 
 TEST(ActorStateMachine, SecondBuildFailsAndKeepsTheFirstMachine)
 {
     ProbeActor actor;
     ASSERT_TRUE(actor.BuildProbe());
-    NS::Obj::StateMachine<ProbeActor>* first = actor.machine;
+    NS::Obj::StateMachineOf<ProbeActor>* first = actor.machine;
 
     EXPECT_FALSE(actor.BuildSecond());
 
     EXPECT_EQ(actor.machine, first);
-    EXPECT_EQ(actor.GetStateMachine(), first);
+    EXPECT_EQ(actor.GetStates(), first);
     EXPECT_TRUE(NS::Obj::IsState<ProbeState>(&actor));
 }

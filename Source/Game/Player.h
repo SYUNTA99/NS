@@ -10,7 +10,7 @@
 #include "NSlib/Core/Sphere.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Scene/SceneJson.h"
-#include "NSlib/Object/StateMachine.h"
+#include "NSlib/Object/StateMachineOf.h"
 
 #include <cstdint>
 #include <optional>
@@ -56,8 +56,8 @@ public:
 
     NS_REFLECT_NONE(Player, NS::Obj::Actor)
     //! 基底が所有する自機の状態機械。OnInit が組むので、Init の後から立ちの状態に居る
-    [[nodiscard]] NS::Obj::StateMachine<Player>& States() noexcept { return *m_states; }
-    [[nodiscard]] const NS::Obj::StateMachine<Player>& States() const noexcept { return *m_states; }
+    [[nodiscard]] NS::Obj::StateMachineOf<Player>& States() noexcept { return *m_states; }
+    [[nodiscard]] const NS::Obj::StateMachineOf<Player>& States() const noexcept { return *m_states; }
     [[nodiscard]] NS::Obj::PlayerInput& Input() noexcept { return *m_input; }
     [[nodiscard]] const NS::Obj::PlayerInput& Input() const noexcept { return *m_input; }
     //! 速度・接地を持つ身体の部品。部品名は保存の鍵なので "Movement" のまま
@@ -448,7 +448,7 @@ private:
     std::unique_ptr<GL::Level::SlamArrow> m_slamArrow;
     std::unique_ptr<GL::Player::ChargeEffects> m_chargeEffects;
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
-    NS::Obj::StateMachine<Player>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
+    NS::Obj::StateMachineOf<Player>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
     GL::Level::Health m_health;
 
     bool m_prevJumpHeld = false;
