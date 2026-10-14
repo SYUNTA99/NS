@@ -31,6 +31,8 @@ namespace NS::Obj
         //! 寿命を呼出側が握る vcam を破棄する前に呼んで無効参照を防ぐ
         void RemoveVirtualCamera(VirtualCamera* vcam) noexcept;
 
+        [[nodiscard]] std::size_t VirtualCameraCount() const noexcept { return m_vcams.size(); }
+
         //! active 切替時のブレンド秒数。0 以下で即時カット。負値は 0 に丸める
         void SetBlendDuration(float seconds) noexcept;
         [[nodiscard]] float BlendDuration() const noexcept { return m_blendDuration; }

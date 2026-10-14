@@ -68,6 +68,11 @@ namespace NS::Obj
         //! 平行光の自己解除。DirectionalLight が OnEndPlay で呼ぶ
         void UnregisterLight(DirectionalLight* light);
 
+        //! 描く物・重ね描き・平行光の登録簿に入っている数
+        [[nodiscard]] std::size_t RenderableCount() const noexcept { return m_sceneRenderer.RenderableCount(); }
+        [[nodiscard]] std::size_t OverlayCount() const noexcept { return m_sceneRenderer.OverlayCount(); }
+        [[nodiscard]] std::size_t LightCount() const noexcept { return m_sceneRenderer.LightCount(); }
+
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
 
         //! カメラ管理が描画に使う実カメラ

@@ -110,6 +110,10 @@ namespace NS::Obj
         //! 平行光の自己解除
         void UnregisterLight(DirectionalLight* light);
 
+        [[nodiscard]] std::size_t RenderableCount() const noexcept { return m_renderables.size(); }
+        [[nodiscard]] std::size_t OverlayCount() const noexcept { return m_overlays.size(); }
+        [[nodiscard]] std::size_t LightCount() const noexcept { return m_lights.size(); }
+
         //! 登録中の全 renderable の bounds とソート情報を RenderProxyList へ同期する。描画の入口で呼ぶ
         void SyncRenderBounds();
 
