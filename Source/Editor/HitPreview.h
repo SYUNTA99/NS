@@ -8,8 +8,8 @@
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Windows/Gamepad.h"
 
+#include "NSlib/Core/Types.h"
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -31,7 +31,7 @@ namespace NS::Editor
     struct HitPreviewDesc
     {
         //! 当てる相手の配置物の id。0 は自機に一番近い、突進が当たる体と面を持つ配置物 (結果の desc に選んだ id が入る)
-        std::uint32_t targetId = 0;
+        NS::uint32 targetId = 0;
         float faceU = 0.0f;          //!< 当てる面の上の左右の位置。自機から見て右が正。-1..1 が面の端
         float faceV = 0.0f;          //!< 当てる面の上の上下の位置。上が正。-1..1 が面の端
         float charge01 = 1.0f;       //!< 溜め量 0..1。0 は通常突進
@@ -60,14 +60,14 @@ namespace NS::Editor
     //! @brief 下見の結果
     struct HitPreviewResult
     {
-        bool hit = false;                       //!< 選んだ相手に当たった場合 true
-        std::string error;                      //!< 当たらなかった理由。当たった時は空
-        HitPreviewDesc desc{};                  //!< 走らせた条件
-        GL::Level::ImpactRecord impact{}; //!< 当たりの記録。当たらなかった時は既定のまま
-        int detectionIndex = -1;                //!< 当たりを検知したフレームの frames の添字。当たらなかった時は -1
-        std::vector<HitPreviewFrame> frames;    //!< 突進を出した次の 1 歩から並ぶ
-        NS::Vector3 playerStart{};              //!< 写しの中で自機の根を置き直した位置
-        NS::Vector3 direction{};                //!< 突進の水平の向き
+        bool hit = false;                    //!< 選んだ相手に当たった場合 true
+        std::string error;                   //!< 当たらなかった理由。当たった時は空
+        HitPreviewDesc desc{};               //!< 走らせた条件
+        GL::Level::ImpactRecord impact{};    //!< 当たりの記録。当たらなかった時は既定のまま
+        int detectionIndex = -1;             //!< 当たりを検知したフレームの frames の添字。当たらなかった時は -1
+        std::vector<HitPreviewFrame> frames; //!< 突進を出した次の 1 歩から並ぶ
+        NS::Vector3 playerStart{};           //!< 写しの中で自機の根を置き直した位置
+        NS::Vector3 direction{};             //!< 突進の水平の向き
     };
 
     //! @brief 写しの場面を組む時に渡す物。描かない下見では空でよい

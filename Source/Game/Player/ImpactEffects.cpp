@@ -1,4 +1,5 @@
 #include "Game/Player/ImpactEffects.h"
+#include "NSlib/Core/Types.h"
 
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
@@ -281,7 +282,7 @@ namespace GL::Player
             NS::Obj::StopEffect(Owner(), m_flight.reboundTrail);
             m_flight.reboundTrail = 0;
         }
-        for (const std::uint32_t dust : m_dusts)
+        for (const NS::uint32 dust : m_dusts)
         {
             NS::Obj::StopEffectRoot(Owner(), dust);
         }
@@ -389,7 +390,7 @@ namespace GL::Player
         sparks.dynamicInputs[shape.sparkCountInput] = static_cast<float>(shape.sparkCount);
         // 秒の速さを 1 フレームの距離にして絵へ渡す
         sparks.dynamicInputs[2] = shape.sparkSpeed / 60.0f;
-        const std::uint32_t id = NS::Obj::PlayEffect(Owner(), m_sparksAsset, sparks);
+        const NS::uint32 id = NS::Obj::PlayEffect(Owner(), m_sparksAsset, sparks);
         NS::Obj::SetEffectAmount(Owner(), id, shape.sparkAmount);
         NS::Obj::SetEffectRotation(Owner(), id, heading);
     }
@@ -567,7 +568,7 @@ namespace GL::Player
                     NS::Gfx::EffectPlayDesc dust =
                         PlayAt(m_aim.dustOrigin, Quaternion::Identity, Uniform(shape.dustScale));
                     dust.dynamicInputs[0] = static_cast<float>(shape.dustCount);
-                    const std::uint32_t id = NS::Obj::PlayEffect(Owner(), m_dustAsset, dust);
+                    const NS::uint32 id = NS::Obj::PlayEffect(Owner(), m_dustAsset, dust);
                     NS::Obj::SetEffectAmount(Owner(), id, shape.dustScale);
                     m_dusts.push_back(id);
                 }
@@ -681,7 +682,7 @@ namespace GL::Player
             const NS::Phys::Capsule capsule = m_player->Collider().CapsuleAt(Owner()->Root().Position());
             Vector3 at = capsule.center - capsule.axis * (capsule.halfHeight + capsule.radius);
             at.y += m_dustRingLift;
-            const std::uint32_t dust = NS::Obj::PlayEffect(
+            const NS::uint32 dust = NS::Obj::PlayEffect(
                 Owner(),
                 m_landDustAsset,
                 PlayAt(at, Quaternion::Identity, Uniform(radius / std::max(m_landDustAssetRadius, NS::k_Epsilon))));

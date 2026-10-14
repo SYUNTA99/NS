@@ -5,7 +5,7 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/SubObject.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <functional>
 
 namespace NS::Phys
@@ -60,9 +60,9 @@ namespace NS::Obj
         void OnEndPlay() override;
 
         //! 0 は未設定。種類の意味はゲーム側が定義する
-        void SetKind(std::uint8_t kind) noexcept { m_kind = kind; }
+        void SetKind(NS::uint8 kind) noexcept { m_kind = kind; }
         //! 種類の値。0 は未設定
-        [[nodiscard]] std::uint8_t Kind() const noexcept { return m_kind; }
+        [[nodiscard]] NS::uint8 Kind() const noexcept { return m_kind; }
 
         //! 調べる対象か。部品が効いていて、無効にされていない時だけ真
         [[nodiscard]] bool IsValid() const noexcept { return m_valid && IsActive(); }
@@ -77,7 +77,7 @@ namespace NS::Obj
         NS_REFLECT_NONE(HitSensor, SubObject)
 
     private:
-        std::uint8_t m_kind = 0;   // 種類の値。0 は未設定で、どの受け手も応じない
+        NS::uint8 m_kind = 0;      // 種類の値。0 は未設定で、どの受け手も応じない
         bool m_valid = true;       // 調べる対象か
         bool m_registered = false; // 調べ役へ入っているか
     };

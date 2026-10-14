@@ -1,4 +1,5 @@
 #include "Game/Level/SensorKinds.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Object/SubObjects/HitSensor.h"
 
@@ -6,7 +7,7 @@ namespace GL::Level
 {
     void SetSensorKind(NS::Obj::HitSensor& sensor, SensorKind kind) noexcept
     {
-        sensor.SetKind(static_cast<std::uint8_t>(kind));
+        sensor.SetKind(static_cast<NS::uint8>(kind));
     }
 
     bool IsSensorKind(const NS::Obj::HitSensor& sensor, SensorKind kind) noexcept
@@ -16,6 +17,6 @@ namespace GL::Level
         {
             return false;
         }
-        return sensor.Kind() == static_cast<std::uint8_t>(kind);
+        return sensor.Kind() == static_cast<NS::uint8>(kind);
     }
 } // namespace GL::Level

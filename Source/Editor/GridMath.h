@@ -1,8 +1,8 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/Math.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 
 //! @brief エディタでのグリッド計算やレイキャスト判定を補助する数学ユーティリティ
 
@@ -49,7 +49,7 @@ namespace NS::Editor
                                               float gridSize = k_GridSize) noexcept;
 
     //! 0〜3の段階的な回転値を、Y軸周りの90度刻みのクォータニオンに変換する
-    [[nodiscard]] NS::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept;
+    [[nodiscard]] NS::Quaternion RotationToQuaternion(NS::uint8 rotation) noexcept;
 
     //! @brief 画面上の見かけの大きさを一定に近づける、世界の長さの倍率を返す
     //! @details 深度 10 までは 1、遠いほど深度に比例して伸ばす。clip.w が 0.001 以下なら 1

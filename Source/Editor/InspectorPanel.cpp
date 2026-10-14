@@ -11,7 +11,7 @@
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/SubObjects/Transform.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <cstdio>
 #include <functional>
 #include <string>
@@ -70,7 +70,7 @@ namespace NS::Editor
             NS::Obj::Actor* go = editor.SelectedObjectActor();
 
             // 名前は直接ここで書き換えられる。選択が変わったら今の表示名を入れ直す
-            const std::uint32_t selectedId = editor.SelectedObjectId();
+            const NS::uint32 selectedId = editor.SelectedObjectId();
             // 打っている間は入れ直さない。打った名前は打ち始めた対象へ確定する
             if (m_nameEditId == 0 && m_nameId != selectedId)
             {

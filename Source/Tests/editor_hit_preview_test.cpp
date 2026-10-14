@@ -5,19 +5,19 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player.h"
 #include "NSlib/Object/AssetManager.h"
-#include "NSlib/Object/SubObjects/PlayerInput.h"
-#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/PlayerInput.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Windows/FileSystem.h"
 #include "NSlib/Windows/Input.h"
 #include "Tests/TestHitTimelines.h"
 
 #include <gtest/gtest.h>
 
+#include "NSlib/Core/Types.h"
 #include <algorithm>
 #include <cstddef>
-#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -27,7 +27,7 @@ namespace
 {
     using namespace GL::Level;
 
-    constexpr std::uint32_t k_RockId = 2;
+    constexpr NS::uint32 k_RockId = 2;
 
     // 床の当たりは組み込みの立方体のメッシュから作るので、資産の置き場を差す。描き手は要らない
     struct PreviewAssets
@@ -250,7 +250,7 @@ TEST(EditorHitPreview, HitLineHasTheRecordKeys)
         "dir",   "targetPos", "cameraShake", "flashStart", "zoomStart",  "rollStart",  "padStart"};
     EXPECT_EQ(keys, expected);
     EXPECT_EQ(line["f"].get<int>(), result.detectionIndex);
-    EXPECT_EQ(line["victim"].get<std::uint32_t>(), k_RockId);
+    EXPECT_EQ(line["victim"].get<NS::uint32>(), k_RockId);
 }
 
 // 下見は試しの道 (入力を止めて突進を直接頼み、場面の 1 歩で進める) と同じ記録を出す

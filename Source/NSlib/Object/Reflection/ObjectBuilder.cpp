@@ -1,4 +1,5 @@
-﻿#include "NSlib/Object/Reflection/ObjectBuilder.h"
+#include "NSlib/Object/Reflection/ObjectBuilder.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Actor.h"
@@ -14,7 +15,7 @@ namespace NS::Obj
 {
     namespace
     {
-        nlohmann::json MakeObjectHeaderJson(const Actor& obj, std::uint32_t id)
+        nlohmann::json MakeObjectHeaderJson(const Actor& obj, NS::uint32 id)
         {
             nlohmann::json object = nlohmann::json::object();
             SetObjectJsonId(object, id);

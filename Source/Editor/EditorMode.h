@@ -1,10 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include "Editor/CategoryPalette.h"
 #include "Editor/GridMath.h"
 #include "Editor/LevelFileBrowser.h"
 #include "Editor/Undo/UndoStack.h"
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 
 #include <functional>
@@ -36,9 +37,9 @@ namespace NS::Editor
         //! @brief セルの整数座標。実体の照会に使う
         struct CellCoord
         {
-            std::int16_t x = 0;
-            std::int16_t y = 0;
-            std::int16_t z = 0;
+            NS::int16 x = 0;
+            NS::int16 y = 0;
+            NS::int16 z = 0;
         };
 
         //! @brief 編集中のカーソル状態。レイキャスト結果や配置候補のセル情報を保持する
@@ -61,13 +62,13 @@ namespace NS::Editor
         void SetLoadLevelFn(std::function<void(nlohmann::json&&)> fn) noexcept { m_loadLevel = std::move(fn); }
 
         //! @brief セルにあるセルブラシ配置物の永続識別番号を取得する処理を設定する。不在は k_NoObjectId
-        void SetFindCellObjectFn(std::function<std::uint32_t(std::int16_t, std::int16_t, std::int16_t)> fn) noexcept
+        void SetFindCellObjectFn(std::function<NS::uint32(NS::int16, NS::int16, NS::int16)> fn) noexcept
         {
             m_findCellObject = std::move(fn);
         }
 
         //! @brief cell に種類を問わず配置物が居るかを引く関数を差す
-        void SetCellOccupiedFn(std::function<bool(std::int16_t, std::int16_t, std::int16_t)> fn) noexcept
+        void SetCellOccupiedFn(std::function<bool(NS::int16, NS::int16, NS::int16)> fn) noexcept
         {
             m_cellOccupied = std::move(fn);
         }
@@ -76,7 +77,7 @@ namespace NS::Editor
         void SetCollectCellsFn(std::function<std::vector<CellCoord>()> fn) noexcept { m_collectCells = std::move(fn); }
 
         //! @brief 新規配置物へ永続 id を 1 個振る関数を差す
-        void SetAllocateIdFn(std::function<std::uint32_t()> fn) noexcept { m_allocateId = std::move(fn); }
+        void SetAllocateIdFn(std::function<NS::uint32()> fn) noexcept { m_allocateId = std::move(fn); }
         void SetInput(NS::OS::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
         void SetSceneCamera(NS::Obj::SceneCamera* camera) noexcept { m_camera = camera; }
@@ -111,9 +112,9 @@ namespace NS::Editor
         [[nodiscard]] NS::Editor::UndoStack& Undo() noexcept { return m_undo; }
 
         //! @brief テストや自動処理向けに、入力を介さずに指定座標へ直接編集操作を実行する
-        void PlaceUnderCursorProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
-        void DeleteAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
-        void RotateAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
+        void PlaceUnderCursorProgrammatic(NS::int16 x, NS::int16 y, NS::int16 z) noexcept;
+        void DeleteAtProgrammatic(NS::int16 x, NS::int16 y, NS::int16 z) noexcept;
+        void RotateAtProgrammatic(NS::int16 x, NS::int16 y, NS::int16 z) noexcept;
 
         //! @brief 最後の保存 / 読込のあとに編集が入ったか
         [[nodiscard]] bool HasUnsavedChanges() const noexcept { return m_undo.Version() != m_savedUndoVersion; }
@@ -154,11 +155,10 @@ namespace NS::Editor
         std::function<nlohmann::json()> m_captureLevel;
         IObjectSnapshotApplier* m_applier = nullptr;
         std::function<void(nlohmann::json&&)> m_loadLevel;
-        std::function<std::uint32_t(std::int16_t, std::int16_t, std::int16_t)>
-            m_findCellObject;
-        std::function<bool(std::int16_t, std::int16_t, std::int16_t)> m_cellOccupied;
+        std::function<NS::uint32(NS::int16, NS::int16, NS::int16)> m_findCellObject;
+        std::function<bool(NS::int16, NS::int16, NS::int16)> m_cellOccupied;
         std::function<std::vector<CellCoord>()> m_collectCells;
-        std::function<std::uint32_t()> m_allocateId;
+        std::function<NS::uint32()> m_allocateId;
         NS::OS::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
         NS::Obj::SceneCamera* m_camera = nullptr;
@@ -167,9 +167,9 @@ namespace NS::Editor
         bool m_inputSuppressed = false;
         bool m_undoRedoSuppressed = false; // ギズモドラッグ中だけ立てて undo/redo を止める
         bool m_levelDirty = true;
-        ViewRect m_viewRect{};              // 編集入力が基準にする表示矩形。幅 0 の間は入力を受けない
-        bool m_viewHovered = true;          // マウスがパネル上に居るか。全画面直描き時は常に真
-        std::uint8_t m_currentRotation = 0; // 90度刻みの回転状態 (0〜3)
+        ViewRect m_viewRect{};           // 編集入力が基準にする表示矩形。幅 0 の間は入力を受けない
+        bool m_viewHovered = true;       // マウスがパネル上に居るか。全画面直描き時は常に真
+        NS::uint8 m_currentRotation = 0; // 90度刻みの回転状態 (0〜3)
 
         CursorState m_cursor{};
         CategoryPalette m_palette{};
@@ -177,8 +177,8 @@ namespace NS::Editor
         LevelFileBrowser m_fileBrowser{};
 
         std::string m_currentLevelName;
-        bool m_bootLevelLoadFailed = false;   // 起動レベルが実在かつ読込失敗した
-        std::uint64_t m_savedUndoVersion = 0; // 最後に保存 / 読込した時点の履歴の版
+        bool m_bootLevelLoadFailed = false; // 起動レベルが実在かつ読込失敗した
+        NS::uint64 m_savedUndoVersion = 0;  // 最後に保存 / 読込した時点の履歴の版
 
         std::string m_statusMessage;
         bool m_statusError = false;
@@ -193,9 +193,9 @@ namespace NS::Editor
         void HandleUndoRedoInput() noexcept;
 
         //! セルにセルブラシ配置物があるか。実体の照会が未設定なら常に不在
-        [[nodiscard]] bool HasObjectAtCell(std::int16_t x, std::int16_t y, std::int16_t z) const noexcept;
+        [[nodiscard]] bool HasObjectAtCell(NS::int16 x, NS::int16 y, NS::int16 z) const noexcept;
         //! cell に種類を問わず配置物が居るか。置けるかの判定だけが読む
-        [[nodiscard]] bool IsCellOccupied(std::int16_t x, std::int16_t y, std::int16_t z) const noexcept;
+        [[nodiscard]] bool IsCellOccupied(NS::int16 x, NS::int16 y, NS::int16 z) const noexcept;
 
         [[nodiscard]] bool SaveLevelToName(std::string_view name) noexcept;
         void OverwriteCurrentLevel() noexcept;

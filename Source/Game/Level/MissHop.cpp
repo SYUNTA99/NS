@@ -1,4 +1,5 @@
 #include "Game/Level/MissHop.h"
+#include "NSlib/Core/Types.h"
 
 #include <cmath>
 
@@ -7,9 +8,9 @@ namespace GL::Level
     namespace
     {
         // 種と番号を混ぜて 0〜1 の値にする。整数の混ぜ方は種の近い当たりでも値が散る形
-        [[nodiscard]] float Hash01(std::uint32_t seed, std::uint32_t salt) noexcept
+        [[nodiscard]] float Hash01(NS::uint32 seed, NS::uint32 salt) noexcept
         {
-            std::uint32_t x = seed * 0x9E3779B1u + salt * 0x85EBCA77u;
+            NS::uint32 x = seed * 0x9E3779B1u + salt * 0x85EBCA77u;
             x ^= x >> 16;
             x *= 0x7FEB352Du;
             x ^= x >> 15;
@@ -22,7 +23,7 @@ namespace GL::Level
     NS::Vector3 MissHopVelocity(const NS::Vector3& velocity,
                                 const NS::Vector3& up,
                                 const MissHopDesc& desc,
-                                std::uint32_t seed,
+                                NS::uint32 seed,
                                 int hopIndex) noexcept
     {
         const NS::Vector3 horizontal = velocity - up * velocity.Dot(up);
@@ -31,7 +32,7 @@ namespace GL::Level
         {
             return NS::Vector3{0.0f, 0.0f, 0.0f};
         }
-        const std::uint32_t index = static_cast<std::uint32_t>(hopIndex);
+        const NS::uint32 index = static_cast<NS::uint32>(hopIndex);
         const float turn = NS::DegreesToRadians((Hash01(seed, index * 2u) * 2.0f - 1.0f) * desc.turnDegrees);
         const float lift = 0.5f + 0.5f * Hash01(seed, index * 2u + 1u);
         const NS::Vector3 forward = horizontal / speed;

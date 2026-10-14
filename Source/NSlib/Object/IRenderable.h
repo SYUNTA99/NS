@@ -5,7 +5,7 @@
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Graphics/DrawItem.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <vector>
 
 namespace NS::Gfx
@@ -16,7 +16,7 @@ namespace NS::Gfx
 namespace NS::Obj
 {
     //! 描画バケット。Opaque は登録順、Transparent はカメラから遠い順にソートされる
-    enum class RenderBucket : std::uint8_t
+    enum class RenderBucket : NS::uint8
     {
         Opaque,
         Transparent

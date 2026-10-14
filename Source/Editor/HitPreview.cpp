@@ -1,4 +1,5 @@
 #include "Editor/HitPreview.h"
+#include "NSlib/Core/Types.h"
 
 #include "Editor/EditorObjects.h"
 #include "Editor/HitTimelineEdit.h"
@@ -7,12 +8,12 @@
 #include "Game/Player.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/SubObjects/CameraModifier.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/PlayerInput.h"
 #include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
 #include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Windows/Input.h"
 
 #include <algorithm>
@@ -194,10 +195,10 @@ namespace NS::Editor
         }
 
         // 自機の根に一番近い、下見の相手になれる配置物の id。居なければ 0
-        std::uint32_t FindNearestTarget(NS::Obj::Scene& scene, const Player& player)
+        NS::uint32 FindNearestTarget(NS::Obj::Scene& scene, const Player& player)
         {
             const NS::Vector3 from = player.Root().Position();
-            std::uint32_t nearest = 0;
+            NS::uint32 nearest = 0;
             float nearestDistance = 0.0f;
             for (NS::Obj::Actor* object : scene.Objects())
             {

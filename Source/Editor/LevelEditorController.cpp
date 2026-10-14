@@ -1,4 +1,5 @@
 #include "Editor/LevelEditorController.h"
+#include "NSlib/Core/Types.h"
 
 #include "Editor/EditorObjects.h"
 #include "Editor/GridMath.h"
@@ -255,7 +256,7 @@ namespace
     }
 
     // 子を先、自分を後の順で永続 id を集める。削除はこの順で流し、undo は逆順に親から戻る
-    void CollectSubtreeIds(const NS::Obj::Actor& root, std::vector<std::uint32_t>& out)
+    void CollectSubtreeIds(const NS::Obj::Actor& root, std::vector<NS::uint32>& out)
     {
         for (const NS::Obj::Actor* child : root.Children())
         {
@@ -382,10 +383,10 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_editor.SetLoadLevelFn([this](nlohmann::json&& fresh) { m_scene->ResetFromJson(std::move(fresh)); });
     // セル編集と取り消しは適用処理を通す。照会・採番は実体で行う
     m_editor.SetApplier(&m_applier);
-    m_editor.SetFindCellObjectFn([this](std::int16_t x, std::int16_t y, std::int16_t z) {
+    m_editor.SetFindCellObjectFn([this](NS::int16 x, NS::int16 y, NS::int16 z) {
         return NS::Editor::FindObjectIdAtCell(m_scene->Objects(), x, y, z);
     });
-    m_editor.SetCellOccupiedFn([this](std::int16_t x, std::int16_t y, std::int16_t z) {
+    m_editor.SetCellOccupiedFn([this](NS::int16 x, NS::int16 y, NS::int16 z) {
         return NS::Editor::HasPlacedObjectAtCell(m_scene->Objects(), x, y, z);
     });
     m_editor.SetCollectCellsFn([this]() {
@@ -893,7 +894,7 @@ void LevelEditorController::RefreshGizmoSelectables()
             continue;
         }
         m_selectablePtrs.push_back(object);
-        m_selectablePickable.push_back(static_cast<std::uint8_t>(object->ModelSubObj() != nullptr));
+        m_selectablePickable.push_back(static_cast<NS::uint8>(object->ModelSubObj() != nullptr));
     }
 
     m_gizmo.SetSelectableObjects(m_selectablePtrs, m_selectablePickable);
@@ -950,7 +951,7 @@ void LevelEditorController::ApplyFollowCameraGizmoDrag()
     follow->SetInitialPoseFromCameraPosition(go->Root().Position());
 }
 
-void LevelEditorController::SelectObjectById(std::uint32_t id) noexcept
+void LevelEditorController::SelectObjectById(NS::uint32 id) noexcept
 {
     m_selectionIds.clear();
     if (id != NS::Obj::k_NoObjectId)
@@ -960,7 +961,7 @@ void LevelEditorController::SelectObjectById(std::uint32_t id) noexcept
     SetPrimarySelection(id);
 }
 
-bool LevelEditorController::IsObjectSelected(std::uint32_t id) const noexcept
+bool LevelEditorController::IsObjectSelected(NS::uint32 id) const noexcept
 {
     if (id == NS::Obj::k_NoObjectId)
     {
@@ -969,14 +970,14 @@ bool LevelEditorController::IsObjectSelected(std::uint32_t id) const noexcept
     return std::find(m_selectionIds.begin(), m_selectionIds.end(), id) != m_selectionIds.end();
 }
 
-void LevelEditorController::ToggleObjectSelection(std::uint32_t id) noexcept
+void LevelEditorController::ToggleObjectSelection(NS::uint32 id) noexcept
 {
     if (id == NS::Obj::k_NoObjectId)
     {
         return;
     }
 
-    const std::vector<std::uint32_t>::iterator it = std::find(m_selectionIds.begin(), m_selectionIds.end(), id);
+    const std::vector<NS::uint32>::iterator it = std::find(m_selectionIds.begin(), m_selectionIds.end(), id);
     if (it != m_selectionIds.end())
     {
         m_selectionIds.erase(it);
@@ -985,7 +986,7 @@ void LevelEditorController::ToggleObjectSelection(std::uint32_t id) noexcept
             return;
         }
         // 主対象を外したので、残っている中の直近へ譲る
-        std::uint32_t next = NS::Obj::k_NoObjectId;
+        NS::uint32 next = NS::Obj::k_NoObjectId;
         if (!m_selectionIds.empty())
         {
             next = m_selectionIds.back();
@@ -998,7 +999,7 @@ void LevelEditorController::ToggleObjectSelection(std::uint32_t id) noexcept
     SetPrimarySelection(id);
 }
 
-void LevelEditorController::SelectObjects(std::vector<std::uint32_t> ids, std::uint32_t primary) noexcept
+void LevelEditorController::SelectObjects(std::vector<NS::uint32> ids, NS::uint32 primary) noexcept
 {
     m_selectionIds = std::move(ids);
     if (primary != NS::Obj::k_NoObjectId && !IsObjectSelected(primary))
@@ -1008,7 +1009,7 @@ void LevelEditorController::SelectObjects(std::vector<std::uint32_t> ids, std::u
     SetPrimarySelection(primary);
 }
 
-void LevelEditorController::SetPrimarySelection(std::uint32_t id) noexcept
+void LevelEditorController::SetPrimarySelection(NS::uint32 id) noexcept
 {
     m_selectedObjectId = id;
 
@@ -1081,7 +1082,7 @@ void LevelEditorController::RenderSelectionOutlines(NS::Gfx::DebugShapes& shapes
     }
 
     const NS::Color color{1.0f, 0.65f, 0.15f, 1.0f};
-    for (const std::uint32_t id : m_selectionIds)
+    for (const NS::uint32 id : m_selectionIds)
     {
         if (id == m_selectedObjectId)
         {
@@ -1121,7 +1122,7 @@ void LevelEditorController::RenderCollisionWireframes(NS::Gfx::DebugShapes& shap
     }
 
     // 編集中は選んだ分だけ。全部出すと線が重なって、どれの形か読み取れない
-    for (const std::uint32_t id : m_selectionIds)
+    for (const NS::uint32 id : m_selectionIds)
     {
         if (NS::Obj::Actor* objPtr = m_scene->Objects().FindByObjectId(id))
         {
@@ -1398,7 +1399,7 @@ void LevelEditorController::PushCreateObject(nlohmann::json object)
     {
         return;
     }
-    const std::uint32_t id = m_scene->Objects().AllocateObjectId();
+    const NS::uint32 id = m_scene->Objects().AllocateObjectId();
     NS::Obj::SetObjectJsonId(object, id);
 
     // 追加を 取り消し 履歴へ。Do がひな形から実体へ 1 体組んで入れる
@@ -1413,7 +1414,7 @@ void LevelEditorController::PushCreateObject(nlohmann::json object)
     ResolveSelectionFromId();
 }
 
-void LevelEditorController::RenameObject(std::uint32_t id, std::string_view name)
+void LevelEditorController::RenameObject(NS::uint32 id, std::string_view name)
 {
     if (m_mode != Mode::Edit || id == NS::Obj::k_NoObjectId)
     {
@@ -1443,7 +1444,7 @@ void LevelEditorController::RenameObject(std::uint32_t id, std::string_view name
     ResolveSelectionFromId();
 }
 
-bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t parentId)
+bool LevelEditorController::SetObjectParent(NS::uint32 id, NS::uint32 parentId)
 {
     if (m_mode != Mode::Edit || id == NS::Obj::k_NoObjectId || id == parentId)
     {
@@ -1515,7 +1516,7 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
 
 void LevelEditorController::SetSubObjectEnabledOnSelected(NS::Obj::SubObject& comp, bool enabled)
 {
-    const std::uint32_t id = m_selectedObjectId;
+    const NS::uint32 id = m_selectedObjectId;
     if (id == NS::Obj::k_NoObjectId)
     {
         return;
@@ -1565,8 +1566,8 @@ void LevelEditorController::DuplicateSelectedObject()
     // 元の id から新しい id への表を作り、コピーの中の親と参照を付け替えるのに使う
     std::vector<nlohmann::json> copies;
     copies.reserve(m_selectionIds.size());
-    std::unordered_map<std::uint32_t, std::uint32_t> idMap;
-    for (const std::uint32_t id : m_selectionIds)
+    std::unordered_map<NS::uint32, NS::uint32> idMap;
+    for (const NS::uint32 id : m_selectionIds)
     {
         // プレイヤーは必ず 1 体。複製で 2 体目を作らせない
         if (player != nullptr && id == player->Id())
@@ -1578,7 +1579,7 @@ void LevelEditorController::DuplicateSelectedObject()
         {
             continue;
         }
-        const std::uint32_t newId = m_scene->Objects().AllocateObjectId();
+        const NS::uint32 newId = m_scene->Objects().AllocateObjectId();
         idMap.emplace(id, newId);
         NS::Obj::SetObjectJsonId(*source, newId);
 
@@ -1591,10 +1592,10 @@ void LevelEditorController::DuplicateSelectedObject()
 
     // 親も一緒に複製したなら、コピーの親はコピー側へ向ける。親が選択外ならそのまま元の親へぶら下がる
     // 参照も同じで、コピーした範囲の中を指す物だけコピー側へ向け、範囲の外を指す物は元の相手のまま残す
-    std::unordered_set<std::uint32_t> copiedIds;
+    std::unordered_set<NS::uint32> copiedIds;
     for (nlohmann::json& copy : copies)
     {
-        const std::unordered_map<std::uint32_t, std::uint32_t>::const_iterator parent =
+        const std::unordered_map<NS::uint32, NS::uint32>::const_iterator parent =
             idMap.find(NS::Obj::ObjectJsonParent(copy));
         if (NS::Obj::ObjectJsonParent(copy) != NS::Obj::k_NoObjectId && parent != idMap.end())
         {
@@ -1606,17 +1607,17 @@ void LevelEditorController::DuplicateSelectedObject()
 
     // 1 体ずつ組んで入れるので、コピーの親はコピーの子より先に入れる。後だと子が親を引けず根に落ちる
     std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
-    std::vector<std::uint32_t> created;
+    std::vector<NS::uint32> created;
     commands.reserve(copies.size());
     created.reserve(copies.size());
-    std::unordered_set<std::uint32_t> placed;
+    std::unordered_set<NS::uint32> placed;
     while (created.size() < copies.size())
     {
         const std::size_t before = created.size();
         for (nlohmann::json& copy : copies)
         {
-            const std::uint32_t copyId = NS::Obj::ObjectJsonId(copy);
-            const std::uint32_t parentId = NS::Obj::ObjectJsonParent(copy);
+            const NS::uint32 copyId = NS::Obj::ObjectJsonId(copy);
+            const NS::uint32 parentId = NS::Obj::ObjectJsonParent(copy);
             if (placed.contains(copyId) || (copiedIds.contains(parentId) && !placed.contains(parentId)))
             {
                 continue;
@@ -1630,7 +1631,7 @@ void LevelEditorController::DuplicateSelectedObject()
         {
             for (nlohmann::json& copy : copies)
             {
-                const std::uint32_t copyId = NS::Obj::ObjectJsonId(copy);
+                const NS::uint32 copyId = NS::Obj::ObjectJsonId(copy);
                 if (!placed.insert(copyId).second)
                 {
                     continue;
@@ -1656,8 +1657,8 @@ void LevelEditorController::DeleteSelectedObject()
     }
 
     // 親だけ消すと子が宙に浮くので、ぶら下がっている分もまとめて消す
-    std::vector<std::uint32_t> victims;
-    for (const std::uint32_t id : m_selectionIds)
+    std::vector<NS::uint32> victims;
+    for (const NS::uint32 id : m_selectionIds)
     {
         NS::Obj::Actor* target = m_scene->Objects().FindByObjectId(id);
         if (target != nullptr)
@@ -1667,9 +1668,9 @@ void LevelEditorController::DeleteSelectedObject()
     }
 
     // 親と子を両方選んでいると同じ物が二度並ぶ。葉が先の順は崩さずに重複だけ落とす
-    std::vector<std::uint32_t> ordered;
+    std::vector<NS::uint32> ordered;
     ordered.reserve(victims.size());
-    for (const std::uint32_t victim : victims)
+    for (const NS::uint32 victim : victims)
     {
         if (std::find(ordered.begin(), ordered.end(), victim) == ordered.end())
         {
@@ -1687,7 +1688,7 @@ void LevelEditorController::DeleteSelectedObject()
 
     std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
     commands.reserve(ordered.size());
-    for (const std::uint32_t victim : ordered)
+    for (const NS::uint32 victim : ordered)
     {
         std::optional<nlohmann::json> before = m_applier.CaptureObject(victim);
         if (!before)
@@ -1721,7 +1722,7 @@ void LevelEditorController::FocusSelectedInView() noexcept
     std::vector<NS::Vector3> centers;
     float extent = 0.0f;
     centers.reserve(m_selectionIds.size());
-    for (const std::uint32_t id : m_selectionIds)
+    for (const NS::uint32 id : m_selectionIds)
     {
         NS::Obj::Actor* object = m_scene->Objects().FindByObjectId(id);
         if (object == nullptr)
@@ -1770,7 +1771,7 @@ void LevelEditorController::CaptureDragFollowers() noexcept
     }
     m_dragPrimaryWorld = primary->Root().WorldMatrix();
 
-    for (const std::uint32_t id : m_selectionIds)
+    for (const NS::uint32 id : m_selectionIds)
     {
         if (id == m_selectedObjectId)
         {
@@ -1864,7 +1865,7 @@ void LevelEditorController::BeginTransformEdit() noexcept
     }
     m_editBaselines.clear();
     // 選択している分をまとめて控える。動かなかった物は確定時に落ちる
-    for (const std::uint32_t id : m_selectionIds)
+    for (const NS::uint32 id : m_selectionIds)
     {
         std::optional<nlohmann::json> baseline = m_applier.CaptureObject(id);
         if (baseline)
@@ -1889,9 +1890,9 @@ void LevelEditorController::CommitTransformEdit() noexcept
 
     // ドラッグは実体の Root を既に動かしている。after は実体の忠実な写し。baseline と同じなら履歴に積まない
     std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
-    for (std::pair<std::uint32_t, nlohmann::json>& entry : m_editBaselines)
+    for (std::pair<NS::uint32, nlohmann::json>& entry : m_editBaselines)
     {
-        const std::uint32_t& id = entry.first;
+        const NS::uint32& id = entry.first;
         nlohmann::json& baseline = entry.second;
         std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
         if (!after || *after == baseline)

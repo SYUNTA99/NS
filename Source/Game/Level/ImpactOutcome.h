@@ -4,6 +4,7 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 
 namespace GL::Level
@@ -12,22 +13,22 @@ namespace GL::Level
     //! @details 既定値の重複を避け、MakeImpactTuning が PlayerParams から全項目を入れる
     struct ImpactTuning
     {
-        float centerHitStopScale{};            //!< 中心近くの当たりの貫通の止めの倍率
+        float centerHitStopScale{}; //!< 中心近くの当たりの貫通の止めの倍率
         bool breakEnabled{};
-        float breakSpeedScale{};               //!< 貫通で自機が持つ速度の倍率
+        float breakSpeedScale{}; //!< 貫通で自機が持つ速度の倍率
         float breakStopSeconds{};
         float reboundDistance{};               //!< 質量 1・威力 1 の自機の反動の距離 (m)
         float reboundApexHeight{};             //!< 質量 1・威力 1 の自機の反動の高さ (m)
         float centerHitReboundDistanceScale{}; //!< 中心近くの当たりの反動の距離の倍率
         float centerHitReboundHeightScale{};   //!< 中心近くの当たりの反動の高さの倍率
         float missReboundDistanceScale{};
-        float launchDistance{};                //!< 質量 1・威力 1 の相手の飛ぶ距離 (m)
-        float launchMassExponent{};            //!< 質量で割る指数。範囲は 0〜1
-        float hitStopMaxSeconds{};             //!< 貫通の止めの上限秒
-        float fixedDelta{};                    //!< 固定ステップの秒
-        float missReboundHeightRatio{};        //!< 外れの反動の高さの、同じ威力と質量の真ん中に対する割合
-        float missSlamBounce{};                //!< 真下を向いた面で外した時の、外れの反動の高さに掛ける割合
-        float missBoxEdgeSharpness{};          //!< 箱の相手の面を、角を丸めた箱の表面として読む時の鋭さ。2 で球
+        float launchDistance{};         //!< 質量 1・威力 1 の相手の飛ぶ距離 (m)
+        float launchMassExponent{};     //!< 質量で割る指数。範囲は 0〜1
+        float hitStopMaxSeconds{};      //!< 貫通の止めの上限秒
+        float fixedDelta{};             //!< 固定ステップの秒
+        float missReboundHeightRatio{}; //!< 外れの反動の高さの、同じ威力と質量の真ん中に対する割合
+        float missSlamBounce{};         //!< 真下を向いた面で外した時の、外れの反動の高さに掛ける割合
+        float missBoxEdgeSharpness{};   //!< 箱の相手の面を、角を丸めた箱の表面として読む時の鋭さ。2 で球
     };
 
     //! @brief 衝突の配分の計算へ渡す、検知で決まった値
@@ -37,24 +38,24 @@ namespace GL::Level
         HitTier tier = HitTier::Wide; //!< 当たりの段。反動の距離と貫通の止めの倍率を段で引く
         float mass = 1.0f;
         float toughness = 0.0f;
-        bool breakable = false;       //!< 相手が壊れる動きを持つ場合 true
+        bool breakable = false;                        //!< 相手が壊れる動きを持つ場合 true
         NS::Vector3 awayDirection{1.0f, 0.0f, 0.0f};   //!< 自機が弾かれる水平の向き。正規化済み
         NS::Vector3 launchDirection{1.0f, 0.0f, 0.0f}; //!< 相手を飛ばす水平の向き。正規化済み
         NS::Vector3 slamVelocity{0.0f, 0.0f, 0.0f};    //!< 突進の狙いの速度
         float faceU = 0.0f; //!< 段を決めた面の上の左右の位置。自機から見て右が正。外れの逸れる向きを決める
         float faceV = 0.0f; //!< 段を決めた面の上の上下の位置。上が正
         NS::Obj::HitSensorShape bodyShape = NS::Obj::HitSensorShape::Sphere;
-        LaunchShape launch{};                                                //!< 相手が当たりの答えで返した飛び方
+        LaunchShape launch{}; //!< 相手が当たりの答えで返した飛び方
     };
 
     //! @brief 衝突の配分の計算の結果
     //! @details 貫通の当たりは反動も飛ばしもしないので、曲線と比は 0 のまま
     struct ImpactOutcome
     {
-        bool broke = false;                              //!< 貫通する場合 true
-        float massFactor = 0.0f;                         //!< 質量 ÷ (質量 + 1)
-        float reboundScale = 0.0f;                       //!< 自機の反動の高さと距離に掛けた比
-        float launchScale = 0.0f;                        //!< 相手の曲線の距離と高さに掛けた比
+        bool broke = false;        //!< 貫通する場合 true
+        float massFactor = 0.0f;   //!< 質量 ÷ (質量 + 1)
+        float reboundScale = 0.0f; //!< 自機の反動の高さと距離に掛けた比
+        float launchScale = 0.0f;  //!< 相手の曲線の距離と高さに掛けた比
         GL::Player::ReboundArc reboundArc{};
         LaunchArc launchArc{};
         NS::Vector3 breakSelfVelocity{0.0f, 0.0f, 0.0f}; //!< 貫通で明けに自機が持つ速度。貫通しない当たりは 0
@@ -95,11 +96,11 @@ namespace GL::Level
     //! frame は開始を 1 とする。1 未満か length 以降、length が非正なら 0
     //! firstSign は負なら −、他は +。flipFrames ごとに左右を反転し、1 未満は 1 に補正する
     [[nodiscard]] float BodyShakeOffset(
-        int frame, int length, float amplitude, std::uint32_t seed, float firstSign, int flipFrames) noexcept;
+        int frame, int length, float amplitude, NS::uint32 seed, float firstSign, int flipFrames) noexcept;
 
     //! 押して戻す揺れのずれを返す。同じ seed と押し番号では同じばらつき
     //! frame は開始を 1 とする。1 未満か length より後、length が非正なら 0
     //! pushFrames は 1 以上に補正する。returnRatio は押した後の毎フレームの減衰倍率
     [[nodiscard]] float DepthShakeOffset(
-        int frame, int length, float depth, int pushFrames, float returnRatio, std::uint32_t seed) noexcept;
+        int frame, int length, float depth, int pushFrames, float returnRatio, NS::uint32 seed) noexcept;
 } // namespace GL::Level

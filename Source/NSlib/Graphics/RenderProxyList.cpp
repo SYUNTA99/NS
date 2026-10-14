@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/RenderProxyList.h"
+#include "NSlib/Graphics/RenderProxyList.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Frustum.h"
@@ -10,7 +11,7 @@ namespace NS::Gfx
 {
     RenderHandle RenderProxyList::Register(const RenderProxyDesc& desc)
     {
-        std::uint32_t slot = static_cast<std::uint32_t>(m_proxies.size());
+        NS::uint32 slot = static_cast<NS::uint32>(m_proxies.size());
         if (!m_freeSlots.empty())
         {
             slot = m_freeSlots.back();
@@ -62,7 +63,7 @@ namespace NS::Gfx
         const NS::Frustum frustum = NS::Frustum::FromViewProjection(context.viewProjection);
 
         m_visibleScratch.clear();
-        for (std::uint32_t slot = 0; slot < m_proxies.size(); ++slot)
+        for (NS::uint32 slot = 0; slot < m_proxies.size(); ++slot)
         {
             const Proxy& p = m_proxies[slot];
             if (!p.alive || p.desc.transparent != transparent)
@@ -80,20 +81,19 @@ namespace NS::Gfx
         {
             const NS::Vector3 camPos = context.cameraPosition;
             // 距離も優先度も同じ物はスロット順のまま残すため stable_sort
-            std::stable_sort(m_visibleScratch.begin(),
-                             m_visibleScratch.end(),
-                             [this, camPos](std::uint32_t a, std::uint32_t b) noexcept {
-                                 const float da = (m_proxies[a].desc.sortCenter - camPos).LengthSquared();
-                                 const float db = (m_proxies[b].desc.sortCenter - camPos).LengthSquared();
-                                 if (da != db)
-                                 {
-                                     return da > db; // 遠い順に描かないと半透明の重なりが崩れる
-                                 }
-                                 return m_proxies[a].desc.sortPriority < m_proxies[b].desc.sortPriority;
-                             });
+            std::stable_sort(
+                m_visibleScratch.begin(), m_visibleScratch.end(), [this, camPos](NS::uint32 a, NS::uint32 b) noexcept {
+                    const float da = (m_proxies[a].desc.sortCenter - camPos).LengthSquared();
+                    const float db = (m_proxies[b].desc.sortCenter - camPos).LengthSquared();
+                    if (da != db)
+                    {
+                        return da > db; // 遠い順に描かないと半透明の重なりが崩れる
+                    }
+                    return m_proxies[a].desc.sortPriority < m_proxies[b].desc.sortPriority;
+                });
         }
 
-        for (const std::uint32_t slot : m_visibleScratch)
+        for (const NS::uint32 slot : m_visibleScratch)
         {
             const Proxy& p = m_proxies[slot];
             if (p.desc.collect == nullptr)
@@ -114,8 +114,7 @@ namespace NS::Gfx
 
     std::size_t RenderProxyList::Count() const noexcept
     {
-        return static_cast<std::size_t>(
-            std::ranges::count_if(m_proxies, [](const Proxy& p) { return p.alive; }));
+        return static_cast<std::size_t>(std::ranges::count_if(m_proxies, [](const Proxy& p) { return p.alive; }));
     }
 
     bool RenderProxyList::IsLive(RenderHandle handle) const noexcept

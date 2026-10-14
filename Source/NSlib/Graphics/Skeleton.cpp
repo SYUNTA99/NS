@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/Skeleton.h"
+#include "NSlib/Graphics/Skeleton.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 
@@ -105,7 +106,7 @@ namespace NS::Gfx
     }
 
     NS::Vector3 Skeleton::SkinPositionReference(const SkinnedVertex& vertex,
-                                                      std::span<const NS::Matrix> palette) noexcept
+                                                std::span<const NS::Matrix> palette) noexcept
     {
         NS::Vector3 result(0.0f, 0.0f, 0.0f);
         for (int i = 0; i < 4; ++i)
@@ -115,7 +116,7 @@ namespace NS::Gfx
             {
                 continue;
             }
-            const std::uint32_t joint = vertex.joints[i];
+            const NS::uint32 joint = vertex.joints[i];
             if (joint >= palette.size())
             {
                 continue;

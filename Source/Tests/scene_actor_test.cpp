@@ -12,8 +12,8 @@
 
 #include <gtest/gtest.h>
 
+#include "NSlib/Core/Types.h"
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -25,7 +25,7 @@
 namespace
 {
     // class と id だけを持つ配置物を doc へ足す
-    void AddClassObject(nlohmann::json& doc, std::string_view className, std::uint32_t id)
+    void AddClassObject(nlohmann::json& doc, std::string_view className, NS::uint32 id)
     {
         nlohmann::json object = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(object, className);

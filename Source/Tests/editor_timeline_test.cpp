@@ -21,8 +21,8 @@
 #include "NSlib/Windows/Window.h"
 #include "Tests/TestHitTimelines.h"
 
+#include "NSlib/Core/Types.h"
 #include <algorithm>
-#include <cstdint>
 #include <functional>
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -43,7 +43,7 @@ namespace
             io.IniFilename = nullptr;
             io.DisplaySize = ImVec2{1000.0f, 800.0f};
             io.DeltaTime = 1.0f / 60.0f;
-            unsigned char* pixels = nullptr;
+            NS::uint8* pixels = nullptr;
             int width = 0;
             int height = 0;
             io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
@@ -80,7 +80,7 @@ namespace
         std::function<void()> m_check;
     };
 
-    std::vector<std::uint8_t> ReadPixels(NS::Gfx::RenderTarget& target)
+    std::vector<NS::uint8> ReadPixels(NS::Gfx::RenderTarget& target)
     {
         ID3D11Texture2D* texture = target.Color()->Native();
         D3D11_TEXTURE2D_DESC desc{};
@@ -100,10 +100,10 @@ namespace
         {
             return {};
         }
-        std::vector<std::uint8_t> pixels;
+        std::vector<NS::uint8> pixels;
         for (UINT y = 0; y < desc.Height; ++y)
         {
-            const std::uint8_t* row = static_cast<const std::uint8_t*>(mapped.pData) + y * mapped.RowPitch;
+            const NS::uint8* row = static_cast<const NS::uint8*>(mapped.pData) + y * mapped.RowPitch;
             pixels.insert(pixels.end(), row, row + desc.Width * 4);
         }
         NS::Gfx::Gpu().context->Unmap(staging.Get(), 0);
@@ -212,11 +212,11 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
     renderer.BeginFrame();
     ASSERT_NE(preview.Seek(0), nullptr);
     ASSERT_TRUE(preview.RenderView(view));
-    const std::vector<std::uint8_t> first = ReadPixels(*target);
+    const std::vector<NS::uint8> first = ReadPixels(*target);
     ASSERT_FALSE(first.empty());
     ASSERT_NE(preview.Seek(15), nullptr);
     ASSERT_TRUE(preview.RenderView(view));
-    const std::vector<std::uint8_t> later = ReadPixels(*target);
+    const std::vector<NS::uint8> later = ReadPixels(*target);
     EXPECT_NE(first, later);
     ASSERT_NE(preview.Seek(0), nullptr);
     ASSERT_TRUE(preview.RenderView(view));
@@ -318,7 +318,7 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     renderer.BeginFrame();
     ASSERT_NE(preview.Seek(0), nullptr);
     EXPECT_TRUE(game.RenderPreview(preview));
-    const std::vector<std::uint8_t> first = ReadPixels(*view->target);
+    const std::vector<NS::uint8> first = ReadPixels(*view->target);
     ASSERT_NE(preview.Seek(15), nullptr);
     EXPECT_TRUE(game.RenderPreview(preview));
     EXPECT_NE(first, ReadPixels(*view->target));
@@ -411,7 +411,7 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         EXPECT_EQ(firstFrame, 0);
         const nlohmann::json original = scene.ToJson();
         EXPECT_TRUE(game.RenderPreview(*preview));
-        const std::vector<std::uint8_t> firstPixels = ReadPixels(*view->target);
+        const std::vector<NS::uint8> firstPixels = ReadPixels(*view->target);
         ImGui::EndFrame();
         begin();
         timeline.Tick(editor, 0.5f);

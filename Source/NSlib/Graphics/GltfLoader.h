@@ -1,5 +1,6 @@
-﻿#pragma once
+#pragma once
 
+#include "NSlib/Core/Types.h"
 #include "NSlib/Graphics/Animation.h"
 #include "NSlib/Graphics/MeshPrimitives.h"
 #include "NSlib/Graphics/Skeleton.h"
@@ -18,7 +19,7 @@ namespace NS::Gfx
     struct SkinnedMeshData
     {
         std::vector<SkinnedVertex> vertices;   //!< スキニング用の頂点データ列
-        std::vector<std::uint32_t> indices;    //!< 全プリミティブを連結したインデックス列
+        std::vector<NS::uint32> indices;       //!< 全プリミティブを連結したインデックス列
         Skeleton skeleton;                     //!< ボーン階層と逆バインド行列
         std::vector<AnimationClip> animations; //!< 読み込まれたアニメーションクリップ群
 

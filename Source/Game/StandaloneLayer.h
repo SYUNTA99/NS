@@ -2,7 +2,7 @@
 
 #include "NSlib/App/Layer.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 
 //! @brief 単体構成のカーソルと Esc の操作
 //! @details 最初の Esc でカーソルを出し、表示中の Esc で終了する
@@ -10,7 +10,7 @@ class StandaloneLayer : public NS::Layer
 {
 public:
     //! @brief プレイ中に Esc を押した時の応答
-    enum class EscapeResponse : std::uint8_t
+    enum class EscapeResponse : NS::uint8
     {
         ReleaseCursor, //!< カーソルを出し、固定と相対を解く
         Quit           //!< アプリを終える

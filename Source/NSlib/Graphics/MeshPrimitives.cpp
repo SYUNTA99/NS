@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/MeshPrimitives.h"
+#include "NSlib/Graphics/MeshPrimitives.h"
+#include "NSlib/Core/Types.h"
 
 #include <algorithm>
 
@@ -8,16 +9,16 @@ namespace NS::Gfx
     {
         // 1 行 segments + 1 頂点で rows 行並んだ格子を、隣り合う 2 行ずつ三角形 2 枚の帯で繋ぐ
         // 行が下へ進むほど経線を南へ下る並びで、各面が外側を向く
-        void AppendLatticeIndices(std::uint32_t rows, std::uint32_t segments, std::vector<std::uint32_t>& outIndices)
+        void AppendLatticeIndices(NS::uint32 rows, NS::uint32 segments, std::vector<NS::uint32>& outIndices)
         {
-            const std::uint32_t stride = segments + 1;
+            const NS::uint32 stride = segments + 1;
             outIndices.reserve(outIndices.size() + static_cast<std::size_t>(rows - 1) * segments * 6);
-            for (std::uint32_t row = 0; row + 1 < rows; ++row)
+            for (NS::uint32 row = 0; row + 1 < rows; ++row)
             {
-                for (std::uint32_t segment = 0; segment < segments; ++segment)
+                for (NS::uint32 segment = 0; segment < segments; ++segment)
                 {
-                    const std::uint32_t upper = row * stride + segment;
-                    const std::uint32_t lower = upper + stride;
+                    const NS::uint32 upper = row * stride + segment;
+                    const NS::uint32 lower = upper + stride;
                     outIndices.push_back(upper);
                     outIndices.push_back(lower);
                     outIndices.push_back(upper + 1);
@@ -155,7 +156,7 @@ namespace NS::Gfx
         return geom;
     }
 
-    MeshGeometry MakeSphere(float radius, std::uint32_t rings, std::uint32_t segments)
+    MeshGeometry MakeSphere(float radius, NS::uint32 rings, NS::uint32 segments)
     {
         rings = std::max(rings, 2u);
         segments = std::max(segments, 3u);
@@ -164,13 +165,13 @@ namespace NS::Gfx
         geom.vertices.reserve(static_cast<std::size_t>(rings + 1) * (segments + 1));
 
         // 経線の継ぎ目で u が 0 と 1 に割れるよう、一周した先にもう 1 列重ねて置く
-        for (std::uint32_t ring = 0; ring <= rings; ++ring)
+        for (NS::uint32 ring = 0; ring <= rings; ++ring)
         {
             const float v = static_cast<float>(ring) / static_cast<float>(rings);
             const float phi = v * NS::k_Pi;
             const float y = std::cos(phi);
             const float ringRadius = std::sin(phi);
-            for (std::uint32_t segment = 0; segment <= segments; ++segment)
+            for (NS::uint32 segment = 0; segment <= segments; ++segment)
             {
                 const float u = static_cast<float>(segment) / static_cast<float>(segments);
                 const float theta = u * NS::k_Pi * 2.0f;
@@ -184,7 +185,7 @@ namespace NS::Gfx
         return geom;
     }
 
-    MeshGeometry MakeCapsule(float radius, float halfHeight, std::uint32_t rings, std::uint32_t segments)
+    MeshGeometry MakeCapsule(float radius, float halfHeight, NS::uint32 rings, NS::uint32 segments)
     {
         radius = std::max(radius, 0.0f);
         halfHeight = std::max(halfHeight, 0.0f);
@@ -196,13 +197,13 @@ namespace NS::Gfx
         const float meridian = 2.0f * quarterArc + 2.0f * halfHeight;
 
         // 上の半球を北極から赤道へ、続けて下の半球を赤道から南極へ置く。赤道は上下で 2 列あり、その間が円柱になる
-        const std::uint32_t rows = 2 * (rings + 1);
-        const std::uint32_t stride = segments + 1;
+        const NS::uint32 rows = 2 * (rings + 1);
+        const NS::uint32 stride = segments + 1;
         MeshGeometry geom;
         geom.vertices.reserve(static_cast<std::size_t>(rows) * stride);
-        for (std::uint32_t row = 0; row < rows; ++row)
+        for (NS::uint32 row = 0; row < rows; ++row)
         {
-            std::uint32_t step = row;
+            NS::uint32 step = row;
             float centerY = halfHeight;
             float phiStart = 0.0f;
             float arcBefore = 0.0f;
@@ -224,7 +225,7 @@ namespace NS::Gfx
             }
 
             // 経線の継ぎ目で u が 0 と 1 に割れるよう、一周した先にもう 1 列重ねて置く
-            for (std::uint32_t segment = 0; segment <= segments; ++segment)
+            for (NS::uint32 segment = 0; segment <= segments; ++segment)
             {
                 const float u = static_cast<float>(segment) / static_cast<float>(segments);
                 const float theta = u * NS::k_Pi * 2.0f;

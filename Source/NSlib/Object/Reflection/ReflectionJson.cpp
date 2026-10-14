@@ -1,4 +1,5 @@
-﻿#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
@@ -54,7 +55,7 @@ namespace NS::Obj
                 // 素の配列だと読み込み時に Vector3 と区別できないため {"curve": [[x,y], ...]} の単キー object で書く
                 const Curve value = ReadField<Curve>(owner, field);
                 nlohmann::json points = nlohmann::json::array();
-                for (std::uint32_t i = 0; i < value.count; ++i)
+                for (NS::uint32 i = 0; i < value.count; ++i)
                 {
                     const Curve::Key& key = value.keys[i];
                     // 直線の点は従来の 2 要素のまま書く。要素を足すと古い記述との互換が切れるため
@@ -155,7 +156,7 @@ namespace NS::Obj
                 {
                     return;
                 }
-                ActorRef v{it->get<std::uint32_t>()};
+                ActorRef v{it->get<NS::uint32>()};
                 field.set(owner, &v);
                 return;
             }

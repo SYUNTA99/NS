@@ -2,9 +2,8 @@
 
 #include "NSlib/Object/ObjectJson.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <optional>
-
 
 namespace NS::Editor
 {
@@ -15,9 +14,9 @@ namespace NS::Editor
         virtual ~IObjectSnapshotApplier() = default;
 
         //! objectId の現在状態を配置物の JSON へ写す。居なければ nullopt
-        [[nodiscard]] virtual std::optional<nlohmann::json> CaptureObject(std::uint32_t objectId) const = 0;
+        [[nodiscard]] virtual std::optional<nlohmann::json> CaptureObject(NS::uint32 objectId) const = 0;
 
         //! objectId を desired の姿へ揃える。desired 有=姿を書き戻す/新規、nullopt=除去
-        virtual void ApplyObjectSnapshot(std::uint32_t objectId, const std::optional<nlohmann::json>& desired) = 0;
+        virtual void ApplyObjectSnapshot(NS::uint32 objectId, const std::optional<nlohmann::json>& desired) = 0;
     };
 } // namespace NS::Editor

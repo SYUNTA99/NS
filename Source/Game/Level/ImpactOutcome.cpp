@@ -1,4 +1,5 @@
 #include "Game/Level/ImpactOutcome.h"
+#include "NSlib/Core/Types.h"
 
 #include <algorithm>
 #include <cmath>
@@ -111,7 +112,7 @@ namespace GL::Level
     }
 
     float BodyShakeOffset(
-        int frame, int length, float amplitude, std::uint32_t seed, float firstSign, int flipFrames) noexcept
+        int frame, int length, float amplitude, NS::uint32 seed, float firstSign, int flipFrames) noexcept
     {
         if (length <= 0 || frame < 1 || frame >= length)
         {
@@ -120,7 +121,7 @@ namespace GL::Level
         const float left = 1.0f - static_cast<float>(frame) / static_cast<float>(length);
         // 振れ幅だけをばらつかせ、左右の入れ替わりは乱さない。乱すと止まって見えるフレームができる
         const float spread = 0.7f + 0.3f * static_cast<float>(NS::NoiseHash(frame, seed)) *
-                                        (1.0f / static_cast<float>(std::numeric_limits<std::uint32_t>::max()));
+                                        (1.0f / static_cast<float>(std::numeric_limits<NS::uint32>::max()));
         float sign = 1.0f;
         if (firstSign < 0.0f)
         {
@@ -137,7 +138,7 @@ namespace GL::Level
     }
 
     float DepthShakeOffset(
-        int frame, int length, float depth, int pushFrames, float returnRatio, std::uint32_t seed) noexcept
+        int frame, int length, float depth, int pushFrames, float returnRatio, NS::uint32 seed) noexcept
     {
         if (length <= 0 || frame < 1 || frame > length)
         {
@@ -149,7 +150,7 @@ namespace GL::Level
         const float left = 1.0f - static_cast<float>(index * push) / static_cast<float>(length);
         // 1 つの押しの間はばらつきを変えない。変えると戻る途中で押し直したように跳ねる
         const float spread = 0.75f + 0.25f * static_cast<float>(NS::NoiseHash(index, seed)) *
-                                         (1.0f / static_cast<float>(std::numeric_limits<std::uint32_t>::max()));
+                                         (1.0f / static_cast<float>(std::numeric_limits<NS::uint32>::max()));
         return depth * left * spread * std::pow(returnRatio, static_cast<float>(since));
     }
 

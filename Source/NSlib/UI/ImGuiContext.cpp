@@ -1,4 +1,5 @@
-﻿#include "NSlib/UI/ImGuiContext.h"
+#include "NSlib/UI/ImGuiContext.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/GraphicObject.h"
@@ -261,10 +262,7 @@ namespace NS::UI
 #endif
     }
 
-    bool ImGuiContext::ForwardWndProc(void* hwnd,
-                                      std::uint32_t msg,
-                                      std::uintptr_t wParam,
-                                      std::intptr_t lParam) noexcept
+    bool ImGuiContext::ForwardWndProc(void* hwnd, NS::uint32 msg, NS::uintptr wParam, NS::intptr lParam) noexcept
     {
 #if NS_EDITOR_ENABLED
         if (!IsValid())

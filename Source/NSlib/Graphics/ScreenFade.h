@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/NonCopyable.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 
 namespace NS::Gfx
 {
@@ -42,7 +42,7 @@ namespace NS::Gfx
 
     private:
         // 演出の段階。None は透明、Hold は全黒の保持
-        enum class Stage : std::uint8_t
+        enum class Stage : NS::uint8
         {
             None,
             Out,
@@ -55,4 +55,4 @@ namespace NS::Gfx
         float m_timer = 0.0f;    // 今の段階の経過秒。段階が変わるたび 0 へ戻す
     };
 
-}
+} // namespace NS::Gfx

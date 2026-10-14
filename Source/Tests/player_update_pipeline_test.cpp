@@ -11,6 +11,7 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/OBB.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
@@ -228,7 +229,7 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
     EXPECT_TRUE(player->Resolver().IsHitStopping());
     EXPECT_FALSE(player->CanMoveBody());
     const NS::Vector3 position = player->Root().Position();
-    const std::uint32_t stateStep = player->States().StepsInState();
+    const NS::uint32 stateStep = player->States().StepsInState();
     // 真ん中は止めが明けた後、伸びきって反動の事象が来るまでも止まったまま
     for (int frame = 0; frame < 30; ++frame)
     {
@@ -469,7 +470,7 @@ TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl
     player->Body().SetActive(false);
     const NS::Vector3 position = player->Root().Position();
     const NS::Vector3 velocity = player->Body().Velocity();
-    const std::uint32_t stateStep = player->States().StepsInState();
+    const NS::uint32 stateStep = player->States().StepsInState();
     player->Update(false);
     ExpectSameVector(player->Root().Position(), position);
     ExpectSameVector(player->Body().Velocity(), velocity);

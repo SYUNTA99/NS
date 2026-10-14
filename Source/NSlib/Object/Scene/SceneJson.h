@@ -7,8 +7,8 @@
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
 
+#include "NSlib/Core/Types.h"
 #include <cstddef>
-#include <cstdint>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -27,8 +27,8 @@ namespace NS::Obj
     [[nodiscard]] nlohmann::json& SceneJsonObjects(nlohmann::json& scene);
 
     //! 次に割り当てる永続 id。無ければ 1
-    [[nodiscard]] std::uint32_t SceneJsonNextObjectId(const nlohmann::json& scene) noexcept;
-    void SetSceneJsonNextObjectId(nlohmann::json& scene, std::uint32_t nextObjectId);
+    [[nodiscard]] NS::uint32 SceneJsonNextObjectId(const nlohmann::json& scene) noexcept;
+    void SetSceneJsonNextObjectId(nlohmann::json& scene, NS::uint32 nextObjectId);
 
     //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空文字なら skybox を描かない
     [[nodiscard]] std::string_view SceneJsonSkybox(const nlohmann::json& scene) noexcept;
@@ -47,7 +47,7 @@ namespace NS::Obj
     inline constexpr std::size_t k_NoObjectIndex = static_cast<std::size_t>(-1);
 
     //! 永続 id が id の配置物の添字。無ければ k_NoObjectIndex、k_NoObjectId は常に該当無し
-    [[nodiscard]] std::size_t FindObjectIndexById(const nlohmann::json& scene, std::uint32_t id) noexcept;
+    [[nodiscard]] std::size_t FindObjectIndexById(const nlohmann::json& scene, NS::uint32 id) noexcept;
 
     //! @details 未割当と重複には新 id を振り、nextObjectId を既存最大 id より先へ進める。重複は先勝ち
     void EnsureUniqueObjectIds(nlohmann::json& scene);

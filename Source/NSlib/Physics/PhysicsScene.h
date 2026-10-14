@@ -1,10 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Sphere.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Physics/Capsule.h"
 #include "NSlib/Physics/MeshShape.h"
 #include "NSlib/Physics/ShapePart.h"
@@ -32,7 +33,7 @@ namespace NS::Phys
         inline constexpr JPH::ObjectLayer Terrain = 0;
         inline constexpr JPH::ObjectLayer Rock = 1;
         inline constexpr JPH::ObjectLayer Debris = 2;
-        inline constexpr JPH::uint Count = 3;
+        inline constexpr NS::uint Count = 3;
     } // namespace ObjectLayers
 
     namespace BroadPhaseLayers
@@ -48,7 +49,7 @@ namespace NS::Phys
         inline constexpr JPH::BroadPhaseLayer Terrain = FromObjectLayer(ObjectLayers::Terrain);
         inline constexpr JPH::BroadPhaseLayer Rock = FromObjectLayer(ObjectLayers::Rock);
         inline constexpr JPH::BroadPhaseLayer Debris = FromObjectLayer(ObjectLayers::Debris);
-        inline constexpr JPH::uint Count = ObjectLayers::Count;
+        inline constexpr NS::uint Count = ObjectLayers::Count;
     } // namespace BroadPhaseLayers
 
     //! @brief 重力の既定の Y 成分 (m/s^2)
@@ -105,7 +106,7 @@ namespace NS::Phys
         ~PhysicsScene();
 
         //! 入っている body の数
-        [[nodiscard]] JPH::uint BodyCount() const noexcept;
+        [[nodiscard]] NS::uint BodyCount() const noexcept;
 
         //! OBB の中心と 3 軸をそのまま box body にする
         JPH::BodyID AddBox(const NS::OBB& box, JPH::ObjectLayer layer);
@@ -254,7 +255,7 @@ namespace NS::Phys
         class BPLayerInterface final : public JPH::BroadPhaseLayerInterface
         {
         public:
-            [[nodiscard]] JPH::uint GetNumBroadPhaseLayers() const override;
+            [[nodiscard]] NS::uint GetNumBroadPhaseLayers() const override;
             [[nodiscard]] JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer layer) const override;
         };
 

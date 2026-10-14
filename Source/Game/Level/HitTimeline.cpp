@@ -1,4 +1,5 @@
 #include "Game/Level/HitTimeline.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
@@ -352,8 +353,7 @@ namespace GL::Level
         }
         for (const char c : name)
         {
-            if (static_cast<unsigned char>(c) < 0x20 ||
-                std::string_view{".<>:\"/\\|?*"}.find(c) != std::string_view::npos)
+            if (static_cast<NS::uint8>(c) < 0x20 || std::string_view{".<>:\"/\\|?*"}.find(c) != std::string_view::npos)
             {
                 return false;
             }
@@ -361,7 +361,7 @@ namespace GL::Level
         // Windows は拡張子が付いても、この名前のファイルを作れない
         std::string upper{name};
         std::transform(upper.begin(), upper.end(), upper.begin(), [](char c) {
-            return static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+            return static_cast<char>(std::toupper(static_cast<NS::uint8>(c)));
         });
         for (const std::string_view reserved : {"CON", "PRN", "AUX", "NUL"})
         {

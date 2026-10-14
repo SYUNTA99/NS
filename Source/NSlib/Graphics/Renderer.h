@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
@@ -6,7 +6,7 @@
 #include "NSlib/Graphics/RenderSettings.h"
 #include "NSlib/Windows/Window.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -92,7 +92,7 @@ namespace NS::Gfx
 
         //! バックバッファを左上から行順の BGRA と画素サイズへ読み出す
         //! 失敗時は出力を変更せず false。無効な描画基盤や変換できない形式では読まない
-        [[nodiscard]] bool ReadBackbufferPixels(std::vector<std::uint8_t>& outBgra, NS::Size2D& outSize) noexcept;
+        [[nodiscard]] bool ReadBackbufferPixels(std::vector<NS::uint8>& outBgra, NS::Size2D& outSize) noexcept;
 
         //! よく使われる共通の描画ステート
         [[nodiscard]] CommonStates& States() noexcept;
@@ -145,7 +145,7 @@ namespace NS::Gfx
         void DrawOverlay(const OverlayResources& overlay,
                          const void* constants,
                          std::size_t constantBytes,
-                         unsigned vertexCount,
+                         NS::uint vertexCount,
                          bool vsReadsConstants) noexcept;
 
         // 描画先とビューポートを差す

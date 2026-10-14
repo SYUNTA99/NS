@@ -7,6 +7,7 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
@@ -303,7 +304,7 @@ TEST(CourseDirector, InputLockDropsTheChargeInsteadOfReleasingIt)
         player->Update(true);
     }
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
-    const std::uint32_t impacts = player->Resolver().LastImpact().sequence;
+    const NS::uint32 impacts = player->Resolver().LastImpact().sequence;
 
     EXPECT_TRUE(GL::Level::SendMsgInputLock(*player, true));
     EXPECT_FALSE(player->ChargeJudge().IsCharging());

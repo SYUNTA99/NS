@@ -5,7 +5,7 @@
 
 #include <gtest/gtest.h>
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 
 // エフェクトの関数は窓口だけを受け、個体の枠の保持役へ渡す
 
@@ -20,7 +20,7 @@ TEST(IUseEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
     TestEffectActor& actor = *owned;
     ASSERT_NE(actor.GetEffectKeeper(), nullptr);
 
-    const std::uint32_t id = NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
 
     EXPECT_NE(id, 0u);
     EXPECT_EQ(actor.GetEffectKeeper()->Records().size(), 1u);
@@ -33,7 +33,7 @@ TEST(IUseEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
 {
     const std::unique_ptr<TestEffectActor> owned = NS::Obj::CreateActor<TestEffectActor>();
     TestEffectActor& actor = *owned;
-    const std::uint32_t id = NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
     actor.Update();
     ASSERT_EQ(NS::Obj::EffectStep(&actor), 1);
 
@@ -55,7 +55,7 @@ TEST(IUseEffectTest, StopEffectAfterEndsOnTheScheduledStep)
 {
     const std::unique_ptr<TestEffectActor> owned = NS::Obj::CreateActor<TestEffectActor>();
     TestEffectActor& actor = *owned;
-    const std::uint32_t id = NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = NS::Obj::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
     NS::Obj::StopEffectAfter(&actor, id, 2);
 
     actor.Update();

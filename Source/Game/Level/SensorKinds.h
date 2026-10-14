@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 
 namespace NS::Obj
 {
@@ -11,7 +11,7 @@ namespace GL::Level
 {
     //! @brief センサーの応答先を識別する Game の種類
     //! @details 保存しない。重なりは全組へ通知され、応答の可否は各受け手が決める
-    enum class SensorKind : std::uint8_t
+    enum class SensorKind : NS::uint8
     {
         Unset = 0,  //!< 未設定。どの受け手も応じない
         PlayerBody, //!< 自機の体。ゴールと落下死の範囲が応じる

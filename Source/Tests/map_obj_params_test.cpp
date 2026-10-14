@@ -2,6 +2,7 @@
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
@@ -41,7 +42,7 @@ TEST(MapObjParams, HitTimelineNameIsEmptyByDefaultAndReachesTheAnswer)
 {
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
-    for (const std::uint32_t id : {1u, 2u})
+    for (const NS::uint32 id : {1u, 2u})
     {
         nlohmann::json rock = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(rock, "MapObj");
@@ -54,7 +55,7 @@ TEST(MapObjParams, HitTimelineNameIsEmptyByDefaultAndReachesTheAnswer)
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     }
     scene.ResetFromJson(doc);
-    for (const std::uint32_t id : {1u, 2u})
+    for (const NS::uint32 id : {1u, 2u})
     {
         SCOPED_TRACE(id);
         std::string_view expected;

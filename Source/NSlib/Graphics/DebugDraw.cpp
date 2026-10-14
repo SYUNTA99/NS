@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/DebugDraw.h"
+#include "NSlib/Graphics/DebugDraw.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Logger.h"
@@ -85,7 +86,7 @@ namespace
             device->CreateInputLayout(layout, 2u, bytecode.data(), bytecode.size(), b.inputLayout.GetAddressOf());
         if (FAILED(hr))
         {
-            NS_LOG_ERROR(Graphics, "DebugDraw: CreateInputLayout 失敗 (hr=0x{:08X})", static_cast<unsigned>(hr));
+            NS_LOG_ERROR(Graphics, "DebugDraw: CreateInputLayout 失敗 (hr=0x{:08X})", static_cast<NS::uint>(hr));
             return false;
         }
 
@@ -204,10 +205,7 @@ namespace NS::Gfx
         }
     }
 
-    void DebugShapes::Capsule(const NS::Vector3& base,
-                              const NS::Vector3& axis,
-                              float radius,
-                              const NS::Color& color)
+    void DebugShapes::Capsule(const NS::Vector3& base, const NS::Vector3& axis, float radius, const NS::Color& color)
     {
         // 上下端の基準点
         const NS::Vector3 top = base + axis;
@@ -247,10 +245,7 @@ namespace NS::Gfx
         }
     }
 
-    void DebugShapes::Triangle(const NS::Vector3& a,
-                               const NS::Vector3& b,
-                               const NS::Vector3& c,
-                               const NS::Color& color)
+    void DebugShapes::Triangle(const NS::Vector3& a, const NS::Vector3& b, const NS::Vector3& c, const NS::Color& color)
     {
         // 線と同じく、上限を超える時は最も古い三角形を捨てる
         if (m_faces.size() + 3 > k_MaxFaceVertices)
@@ -296,7 +291,7 @@ namespace NS::Gfx
             cmd.SetPipeline(*b.facePipeline);
             cmd.SetVertexBuffer(*b.faceVb, 0u);
             cmd.SetTopology(Topology::TriangleList);
-            cmd.Draw(static_cast<unsigned>(m_faces.size()));
+            cmd.Draw(static_cast<NS::uint>(m_faces.size()));
         }
 
         // 溜めた頂点データを一括で描画する
@@ -306,7 +301,7 @@ namespace NS::Gfx
             cmd.SetPipeline(renderer.CommonPipeline(BlendMode::Opaque));
             cmd.SetVertexBuffer(*b.vb, 0u);
             cmd.SetTopology(Topology::LineList);
-            cmd.Draw(static_cast<unsigned>(m_lines.size()));
+            cmd.Draw(static_cast<NS::uint>(m_lines.size()));
         }
     }
 
@@ -339,18 +334,12 @@ namespace NS::Gfx::DebugDraw
         StepShapes().Sphere(sphere, color);
     }
 
-    void Circle(const NS::Vector3& center,
-                const NS::Vector3& u,
-                const NS::Vector3& v,
-                const NS::Color& color) noexcept
+    void Circle(const NS::Vector3& center, const NS::Vector3& u, const NS::Vector3& v, const NS::Color& color) noexcept
     {
         StepShapes().Circle(center, u, v, color);
     }
 
-    void Capsule(const NS::Vector3& base,
-                 const NS::Vector3& axis,
-                 float radius,
-                 const NS::Color& color) noexcept
+    void Capsule(const NS::Vector3& base, const NS::Vector3& axis, float radius, const NS::Color& color) noexcept
     {
         StepShapes().Capsule(base, axis, radius, color);
     }
@@ -375,10 +364,7 @@ namespace NS::Gfx::DebugDraw
         return StepShapes().VertexCount();
     }
 
-    void Triangle(const NS::Vector3& a,
-                  const NS::Vector3& b,
-                  const NS::Vector3& c,
-                  const NS::Color& color) noexcept
+    void Triangle(const NS::Vector3& a, const NS::Vector3& b, const NS::Vector3& c, const NS::Color& color) noexcept
     {
         StepShapes().Triangle(a, b, c, color);
     }

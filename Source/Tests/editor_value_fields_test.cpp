@@ -1,5 +1,6 @@
 #include "Editor/InspectorReflection.h"
 #include "Game/Level/HitTimeline.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/Reflection/Curve.h"
 
 #include <gtest/gtest.h>
@@ -21,7 +22,7 @@ namespace
             io.IniFilename = nullptr;
             io.DisplaySize = ImVec2{800.0f, 600.0f};
             io.DeltaTime = 1.0f / 60.0f;
-            unsigned char* pixels = nullptr;
+            NS::uint8* pixels = nullptr;
             int width = 0;
             int height = 0;
             io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);

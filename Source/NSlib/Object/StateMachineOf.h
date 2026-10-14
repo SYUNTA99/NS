@@ -4,7 +4,7 @@
 #include "NSlib/Core/Coroutine.h"
 #include "NSlib/Object/IUse/IUseState.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <memory>
 #include <type_traits>
 #include <vector>
@@ -123,12 +123,12 @@ namespace NS::Obj
         }
 
         //! @brief 今の状態に入ってから進めたフレーム数を返す
-        //! @return 入った最初のフレームは 0。移る予約があれば std::uint32_t の最大値
-        [[nodiscard]] std::uint32_t StepsInState() const noexcept override
+        //! @return 入った最初のフレームは 0。移る予約があれば NS::uint32 の最大値
+        [[nodiscard]] NS::uint32 StepsInState() const noexcept override
         {
             if (m_next != nullptr)
             {
-                return static_cast<std::uint32_t>(-1);
+                return static_cast<NS::uint32>(-1);
             }
             return m_step;
         }
@@ -241,7 +241,7 @@ namespace NS::Obj
         State<TOwner>* m_current = nullptr;
         State<TOwner>* m_next = nullptr;
         TOwner* m_owner = nullptr; // 書くのは Build だけ。未組立は nullptr
-        std::uint32_t m_step = 0;
+        NS::uint32 m_step = 0;
         bool m_stepCancelled = false;
     };
 

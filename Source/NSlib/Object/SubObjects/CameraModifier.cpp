@@ -1,4 +1,5 @@
 #include "NSlib/Object/SubObjects/CameraModifier.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Windows/Clock.h"
 
@@ -33,10 +34,10 @@ namespace NS::Obj
             }
             if (previous < 1)
             {
-                return 1 + static_cast<int>(generator() % static_cast<std::uint32_t>(longest));
+                return 1 + static_cast<int>(generator() % static_cast<NS::uint32>(longest));
             }
             // previous を除いた longest - 1 通りから選び、previous 以上は 1 つ後ろへずらす
-            int picked = 1 + static_cast<int>(generator() % static_cast<std::uint32_t>(longest - 1));
+            int picked = 1 + static_cast<int>(generator() % static_cast<NS::uint32>(longest - 1));
             if (picked >= previous)
             {
                 ++picked;
@@ -401,7 +402,7 @@ namespace NS::Obj
         {
             return nullptr;
         }
-        for (std::uint32_t i = 0; i < desc.distance.count; ++i)
+        for (NS::uint32 i = 0; i < desc.distance.count; ++i)
         {
             const Curve::Key& key = desc.distance.keys[i];
             if (!std::isfinite(key.x) || !std::isfinite(key.y) || !std::isfinite(key.inTangent) ||

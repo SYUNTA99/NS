@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/Skybox.h"
+#include "NSlib/Graphics/Skybox.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/Buffer.h"
@@ -49,7 +50,7 @@ namespace NS::Gfx
                 return false;
             }
 
-            const std::uint8_t magenta[4] = {0xFF, 0x00, 0xFF, 0xFF};
+            const NS::uint8 magenta[4] = {0xFF, 0x00, 0xFF, 0xFF};
 
             D3D11_TEXTURE2D_DESC td{};
             td.Width = 1;
@@ -74,7 +75,7 @@ namespace NS::Gfx
             if (FAILED(hr))
             {
                 NS_LOG_ERROR(
-                    Graphics, "Skybox fallback cubemap CreateTexture2D 失敗 (hr=0x{:08X})", static_cast<unsigned>(hr));
+                    Graphics, "Skybox fallback cubemap CreateTexture2D 失敗 (hr=0x{:08X})", static_cast<NS::uint>(hr));
                 return false;
             }
 
@@ -88,7 +89,7 @@ namespace NS::Gfx
             if (FAILED(hr))
             {
                 NS_LOG_ERROR(
-                    Graphics, "Skybox fallback cubemap CreateSRV 失敗 (hr=0x{:08X})", static_cast<unsigned>(hr));
+                    Graphics, "Skybox fallback cubemap CreateSRV 失敗 (hr=0x{:08X})", static_cast<NS::uint>(hr));
                 return false;
             }
             return true;
@@ -111,7 +112,7 @@ namespace NS::Gfx
                                                                    outSrv.GetAddressOf());
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(Graphics, "Skybox .dds ロード失敗: {} (hr=0x{:08X})", path, static_cast<unsigned>(hr));
+                NS_LOG_ERROR(Graphics, "Skybox .dds ロード失敗: {} (hr=0x{:08X})", path, static_cast<NS::uint>(hr));
                 return false;
             }
             return true;
@@ -151,7 +152,7 @@ namespace NS::Gfx
                 const HRESULT hr =
                     DirectX::CreateWICTextureFromMemoryEx(device,
                                                           nullptr,
-                                                          reinterpret_cast<const std::uint8_t*>(bytes.data()),
+                                                          reinterpret_cast<const NS::uint8*>(bytes.data()),
                                                           bytes.size(),
                                                           0u,
                                                           D3D11_USAGE_DEFAULT,
@@ -164,7 +165,7 @@ namespace NS::Gfx
                 if (FAILED(hr) || !resource)
                 {
                     NS_LOG_ERROR(
-                        Graphics, "Skybox 6-face: WIC 読込失敗 {} (hr=0x{:08X})", facePath, static_cast<unsigned>(hr));
+                        Graphics, "Skybox 6-face: WIC 読込失敗 {} (hr=0x{:08X})", facePath, static_cast<NS::uint>(hr));
                     return false;
                 }
 
@@ -214,7 +215,7 @@ namespace NS::Gfx
             {
                 NS_LOG_ERROR(Graphics,
                              "Skybox 6-face: cubemap 本体の CreateTexture2D 失敗 (hr=0x{:08X})",
-                             static_cast<unsigned>(hr));
+                             static_cast<NS::uint>(hr));
                 return false;
             }
 
@@ -233,7 +234,7 @@ namespace NS::Gfx
             hr = device->CreateShaderResourceView(cubeTex.Get(), &srvDesc, outSrv.GetAddressOf());
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(Graphics, "Skybox 6-face: cubemap SRV 作成失敗 (hr=0x{:08X})", static_cast<unsigned>(hr));
+                NS_LOG_ERROR(Graphics, "Skybox 6-face: cubemap SRV 作成失敗 (hr=0x{:08X})", static_cast<NS::uint>(hr));
                 return false;
             }
             return true;

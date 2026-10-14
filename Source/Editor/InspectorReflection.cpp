@@ -1,12 +1,13 @@
 #include "Editor/InspectorReflection.h"
+#include "NSlib/Core/Types.h"
 
 #include "Editor/EditorUi.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/Object/SubObject.h"
 
 #include <algorithm>
 #include <climits>
@@ -140,7 +141,7 @@ namespace NS::Editor
     {
         float low = 0.0f;
         float high = 1.0f;
-        for (std::uint32_t i = 0; i < curve.count; ++i)
+        for (NS::uint32 i = 0; i < curve.count; ++i)
         {
             low = std::min(low, curve.keys[i].x);
             high = std::max(high, curve.keys[i].x);
@@ -187,7 +188,7 @@ namespace NS::Editor
         {
             float low = 0.0f;
             float high = 1.0f;
-            for (std::uint32_t i = 0; i < curve.count; ++i)
+            for (NS::uint32 i = 0; i < curve.count; ++i)
             {
                 low = std::min(low, curve.keys[i].y);
                 high = std::max(high, curve.keys[i].y);
@@ -215,7 +216,7 @@ namespace NS::Editor
         }
 
         // 昇格の初期値も表示も実際に効いている傾きから作る。ずれると掴んだ瞬間に形が飛ぶため
-        float DisplayTangent(const NS::Obj::Curve& curve, std::uint32_t index, bool leftSide) noexcept
+        float DisplayTangent(const NS::Obj::Curve& curve, NS::uint32 index, bool leftSide) noexcept
         {
             const NS::Obj::Curve::Key& key = curve.keys[index];
             if (key.mode == NS::Obj::Curve::InterpMode::Manual)
@@ -296,7 +297,7 @@ namespace NS::Editor
         {
             int nearest = -1;
             float nearestSq = radius * radius;
-            for (std::uint32_t i = 0; i < curve.count; ++i)
+            for (NS::uint32 i = 0; i < curve.count; ++i)
             {
                 const ImVec2 center = CurveToScreen(view, curve.keys[i].x, curve.keys[i].y);
                 const float dx = center.x - pos.x;
@@ -312,7 +313,7 @@ namespace NS::Editor
         }
 
         // ドラッグ中の SortKeys は掴んでいる点の番号を飛ばすため、動かした点だけ入れ替えて移動先の番号を返す
-        std::uint32_t MoveKey(NS::Obj::Curve& curve, std::uint32_t index, NS::Obj::Curve::Key newKey) noexcept
+        NS::uint32 MoveKey(NS::Obj::Curve& curve, NS::uint32 index, NS::Obj::Curve::Key newKey) noexcept
         {
             curve.keys[index] = newKey;
             while (index > 0 && curve.keys[index - 1].x > newKey.x)
@@ -330,7 +331,7 @@ namespace NS::Editor
             return index;
         }
 
-        void RemoveKey(NS::Obj::Curve& curve, std::uint32_t index) noexcept
+        void RemoveKey(NS::Obj::Curve& curve, NS::uint32 index) noexcept
         {
             std::copy(curve.keys + index + 1, curve.keys + curve.count, curve.keys + index);
             --curve.count;
@@ -368,7 +369,7 @@ namespace NS::Editor
                 // Evaluate は範囲の外を端の値で止めるので、見た目も両端まで水平に延ばす
                 const ImVec2 firstPoint = CurveToScreen(view, curve.keys[0].x, curve.keys[0].y);
                 drawList.AddLine(CurveToScreen(view, view.xMin, curve.keys[0].y), firstPoint, k_CurveLineColor, 2.0f);
-                for (std::uint32_t i = 0; i + 1 < curve.count; ++i)
+                for (NS::uint32 i = 0; i + 1 < curve.count; ++i)
                 {
                     const NS::Obj::Curve::Key& left = curve.keys[i];
                     const NS::Obj::Curve::Key& right = curve.keys[i + 1];
@@ -398,9 +399,9 @@ namespace NS::Editor
                 drawList.AddLine(lastPoint, CurveToScreen(view, view.xMax, lastKey.y), k_CurveLineColor, 2.0f);
             }
 
-            if (selected >= 0 && static_cast<std::uint32_t>(selected) < curve.count)
+            if (selected >= 0 && static_cast<NS::uint32>(selected) < curve.count)
             {
-                const std::uint32_t selectedIndex = static_cast<std::uint32_t>(selected);
+                const NS::uint32 selectedIndex = static_cast<NS::uint32>(selected);
                 const ImVec2 center = CurveToScreen(view, curve.keys[selectedIndex].x, curve.keys[selectedIndex].y);
                 const ImVec2 inTip = TangentHandleTip(view, center, DisplayTangent(curve, selectedIndex, true), true);
                 const ImVec2 outTip =
@@ -411,7 +412,7 @@ namespace NS::Editor
                 drawList.AddCircleFilled(outTip, 3.5f, k_CurveHandleColor);
             }
 
-            for (std::uint32_t i = 0; i < curve.count; ++i)
+            for (NS::uint32 i = 0; i < curve.count; ++i)
             {
                 const ImVec2 center = CurveToScreen(view, curve.keys[i].x, curve.keys[i].y);
                 ImU32 color = k_CurvePointColor;
@@ -547,7 +548,7 @@ namespace NS::Editor
                         }
                         else
                         {
-                            value.id = static_cast<std::uint32_t>(id);
+                            value.id = static_cast<NS::uint32>(id);
                         }
                         field.set(owner, &value);
                         result.changed = true;
@@ -632,7 +633,7 @@ namespace NS::Editor
 
                 // 点の削除は選択も解くが、既定へ戻すは点数だけ減らして選択を残すため、範囲の外へ出た選択は毎フレーム解く
                 int selected = storage->GetInt(selectedId, -1);
-                if (selected >= 0 && static_cast<std::uint32_t>(selected) >= value.count)
+                if (selected >= 0 && static_cast<NS::uint32>(selected) >= value.count)
                 {
                     selected = -1;
                     storage->SetInt(selectedId, -1);
@@ -647,9 +648,9 @@ namespace NS::Editor
                     if (leftHeld)
                     {
                         // 点よりハンドルを先に判定する。重なった時に点の掴みが勝つと選択が移って接線を触れないため
-                        if (selected >= 0 && static_cast<std::uint32_t>(selected) < value.count)
+                        if (selected >= 0 && static_cast<NS::uint32>(selected) < value.count)
                         {
-                            const std::uint32_t selectedIndex = static_cast<std::uint32_t>(selected);
+                            const NS::uint32 selectedIndex = static_cast<NS::uint32>(selected);
                             const ImVec2 center =
                                 CurveToScreen(view, value.keys[selectedIndex].x, value.keys[selectedIndex].y);
                             const ImVec2 inTip =
@@ -699,7 +700,7 @@ namespace NS::Editor
                     value.keys[value.count] = added;
                     ++value.count;
                     // 追加してから掴み直す手間を省くため、追加した点をそのまま掴んだ扱いにする
-                    const std::uint32_t inserted = MoveKey(value, value.count - 1, added);
+                    const NS::uint32 inserted = MoveKey(value, value.count - 1, added);
                     storage->SetInt(grabbedId, static_cast<int>(inserted));
                     storage->SetInt(grabKindId, k_GrabPoint);
                     storage->SetInt(selectedId, static_cast<int>(inserted));
@@ -712,7 +713,7 @@ namespace NS::Editor
                 {
                     const int grabbed = storage->GetInt(grabbedId, -1);
                     const int grabKind = storage->GetInt(grabKindId, k_GrabPoint);
-                    if (grabbed >= 0 && static_cast<std::uint32_t>(grabbed) < value.count)
+                    if (grabbed >= 0 && static_cast<NS::uint32>(grabbed) < value.count)
                     {
                         if (grabKind == k_GrabPoint)
                         {
@@ -725,8 +726,7 @@ namespace NS::Editor
                             moved.y = targetKey.y;
                             if (moved != value.keys[grabbed])
                             {
-                                const std::uint32_t movedTo =
-                                    MoveKey(value, static_cast<std::uint32_t>(grabbed), moved);
+                                const NS::uint32 movedTo = MoveKey(value, static_cast<NS::uint32>(grabbed), moved);
                                 storage->SetInt(grabbedId, static_cast<int>(movedTo));
                                 storage->SetInt(selectedId, static_cast<int>(movedTo));
                                 highlighted = static_cast<int>(movedTo);
@@ -741,7 +741,7 @@ namespace NS::Editor
                             // 昇格は動かした瞬間に行う。掴んだだけで昇格するとクリックだけでモードが変わるため
                             if (key.mode != NS::Obj::Curve::InterpMode::Manual)
                             {
-                                const std::uint32_t grabbedIndex = static_cast<std::uint32_t>(grabbed);
+                                const NS::uint32 grabbedIndex = static_cast<NS::uint32>(grabbed);
                                 const float inNow = DisplayTangent(value, grabbedIndex, true);
                                 const float outNow = DisplayTangent(value, grabbedIndex, false);
                                 key.mode = NS::Obj::Curve::InterpMode::Manual;
@@ -777,7 +777,7 @@ namespace NS::Editor
                 if (ImGui::BeginPopup("curve-menu"))
                 {
                     const int menuPoint = storage->GetInt(menuPointId, -1);
-                    if (menuPoint >= 0 && static_cast<std::uint32_t>(menuPoint) < value.count)
+                    if (menuPoint >= 0 && static_cast<NS::uint32>(menuPoint) < value.count)
                     {
                         NS::Obj::Curve::Key& key = value.keys[menuPoint];
                         const bool isLinear = key.mode == NS::Obj::Curve::InterpMode::Linear;
@@ -795,7 +795,7 @@ namespace NS::Editor
                         ImGui::Separator();
                         if (ImGui::MenuItem("削除"))
                         {
-                            RemoveKey(value, static_cast<std::uint32_t>(menuPoint));
+                            RemoveKey(value, static_cast<NS::uint32>(menuPoint));
                             storage->SetInt(selectedId, -1);
                             edited = true;
                         }
@@ -806,7 +806,7 @@ namespace NS::Editor
                                                         storage->GetFloat(menuYId, 0.0f)};
                         value.keys[value.count] = added;
                         ++value.count;
-                        const std::uint32_t inserted = MoveKey(value, value.count - 1, added);
+                        const NS::uint32 inserted = MoveKey(value, value.count - 1, added);
                         storage->SetInt(selectedId, static_cast<int>(inserted));
                         edited = true;
                     }
@@ -830,7 +830,7 @@ namespace NS::Editor
                 {
                     const float deleteButtonWidth =
                         ImGui::CalcTextSize("削除").x + ImGui::GetStyle().FramePadding.x * 2.0f;
-                    for (std::uint32_t pointIndex = 0; pointIndex < value.count; ++pointIndex)
+                    for (NS::uint32 pointIndex = 0; pointIndex < value.count; ++pointIndex)
                     {
                         ImGui::PushID(static_cast<int>(pointIndex));
                         float xy[2] = {value.keys[pointIndex].x, value.keys[pointIndex].y};
@@ -855,7 +855,7 @@ namespace NS::Editor
                         ImGui::PopID();
                     }
                     const int selectedPoint = storage->GetInt(selectedId, -1);
-                    if (selectedPoint >= 0 && static_cast<std::uint32_t>(selectedPoint) < value.count &&
+                    if (selectedPoint >= 0 && static_cast<NS::uint32>(selectedPoint) < value.count &&
                         value.keys[selectedPoint].mode == NS::Obj::Curve::InterpMode::Manual)
                     {
                         float tangents[2] = {value.keys[selectedPoint].inTangent, value.keys[selectedPoint].outTangent};

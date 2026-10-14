@@ -1,5 +1,6 @@
-﻿#include "NSlib/Object/SubObjects/Animation.h"
+#include "NSlib/Object/SubObjects/Animation.h"
 #include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/Buffer.h"
@@ -30,11 +31,11 @@ namespace NS::Obj
                     end = refs.size();
                 }
                 std::string_view entry(refs.data() + begin, end - begin);
-                while (!entry.empty() && std::isspace(static_cast<unsigned char>(entry.front())) != 0)
+                while (!entry.empty() && std::isspace(static_cast<NS::uint8>(entry.front())) != 0)
                 {
                     entry.remove_prefix(1);
                 }
-                while (!entry.empty() && std::isspace(static_cast<unsigned char>(entry.back())) != 0)
+                while (!entry.empty() && std::isspace(static_cast<NS::uint8>(entry.back())) != 0)
                 {
                     entry.remove_suffix(1);
                 }

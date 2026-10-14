@@ -7,8 +7,8 @@
 #include "NSlib/Object/Reflection/Reflection.h"
 #include "NSlib/Object/SubObject.h"
 
+#include "NSlib/Core/Types.h"
 #include <cstddef>
-#include <cstdint>
 #include <optional>
 #include <vector>
 
@@ -41,8 +41,8 @@ namespace GL::Player
     struct ImpactShape
     {
         GL::Level::HitTier tier = GL::Level::HitTier::Center;
-        std::size_t coreInput = 0;                            //!< 核の絵 impact.core の、段の色の節を出す動的入力の番号
-        CoreHoldMotion coreHold = CoreHoldMotion::Pulse;      //!< 核が最大近くに留まる間の大きさの動かし方
+        std::size_t coreInput = 0;                       //!< 核の絵 impact.core の、段の色の節を出す動的入力の番号
+        CoreHoldMotion coreHold = CoreHoldMotion::Pulse; //!< 核が最大近くに留まる間の大きさの動かし方
         SparkHeading sparkHeading = SparkHeading::Launch;
         std::size_t sparkCountInput = 0;  //!< 火花の絵 impact.sparks の、粒の数を入れる動的入力の番号
         std::size_t recoilCountInput = 0; //!< 弾かれ線の絵 impact.recoil の、本数を入れる動的入力の番号
@@ -222,19 +222,19 @@ namespace GL::Player
             int freezeStep = 0;   // 当たりの絵の頭の EffectKeeper のフレーム
             int releaseStep = -1; // 飛びの絵の頭のフレーム。まだ始めていなければ -1
             ImpactShape shape;
-            NS::Vector3 contact;        // 接触点。自機の玉の縁の、相手へ向いた点
-            NS::Vector3 launchDir;      // 相手の飛ぶ水平の向き
-            NS::Vector3 sideDir;        // 相手の面に沿った、横ずれの側の水平の向き
-            NS::Vector3 scrapeDir;      // 大きな外れの火花の向き。ImpactAim::sparkDir と同じ決め方
-            NS::Vector3 selfDir;        // 自機の反動の初速の向き
+            NS::Vector3 contact;   // 接触点。自機の玉の縁の、相手へ向いた点
+            NS::Vector3 launchDir; // 相手の飛ぶ水平の向き
+            NS::Vector3 sideDir;   // 相手の面に沿った、横ずれの側の水平の向き
+            NS::Vector3 scrapeDir; // 大きな外れの火花の向き。ImpactAim::sparkDir と同じ決め方
+            NS::Vector3 selfDir;   // 自機の反動の初速の向き
             NS::Vector3 ringNormal;
-            NS::Vector3 floor;          // 相手が置かれていた床の上の点
-            NS::Vector3 awayDir;        // 自機から相手への水平の向き。当たりの粉を自機から離す側
-            std::uint32_t targetId = 0; // 当たった相手の配置物の id
-            std::uint32_t core = 0;
-            std::uint32_t streak = 0;
-            std::uint32_t ring = 0;
-            std::uint32_t glow = 0;
+            NS::Vector3 floor;       // 相手が置かれていた床の上の点
+            NS::Vector3 awayDir;     // 自機から相手への水平の向き。当たりの粉を自機から離す側
+            NS::uint32 targetId = 0; // 当たった相手の配置物の id
+            NS::uint32 core = 0;
+            NS::uint32 streak = 0;
+            NS::uint32 ring = 0;
+            NS::uint32 glow = 0;
             bool sparksPlayed = false;
             bool embersPlayed = false;
             bool recoilPlayed = false;
@@ -244,8 +244,8 @@ namespace GL::Player
         // 飛びの絵の頭から、自機の反動が終わるまでの尾。当たりの段取りより長く残る。層の番号 0 は無い印
         struct Flight
         {
-            std::uint32_t reboundTrail = 0; // 反動の尾。親を止めたか消したら 0
-            int reboundStartStep = 0;       // 反動の尾を出したフレーム。このフレームは出した姿のまま置き直さない
+            NS::uint32 reboundTrail = 0; // 反動の尾。親を止めたか消したら 0
+            int reboundStartStep = 0;    // 反動の尾を出したフレーム。このフレームは出した姿のまま置き直さない
         };
 
         void BeginHit(const GL::Level::ImpactRecord& impact);
@@ -269,9 +269,9 @@ namespace GL::Player
         float m_lastVerticalVelocity = 0.0f; // 前のフレームの自機の縦の速さ (m/s)。着地のフレームは既に 0
         bool m_landingDustPlayed = false;    // この反動の着地の粉を出した。反動を抜けたら戻す
         ImpactAim m_aim;
-        std::vector<std::uint32_t> m_dusts; // 出した粉。次の当たりの絵の頭で親を止める
-        bool m_hitRequested = false;        // 事象が置いた、当たりの絵を始める頼み。OnUpdate が読んで消す
-        bool m_flightRequested = false;     // 事象が置いた、飛びの絵を始める頼み。OnUpdate が読んで消す
+        std::vector<NS::uint32> m_dusts; // 出した粉。次の当たりの絵の頭で親を止める
+        bool m_hitRequested = false;     // 事象が置いた、当たりの絵を始める頼み。OnUpdate が読んで消す
+        bool m_flightRequested = false;  // 事象が置いた、飛びの絵を始める頼み。OnUpdate が読んで消す
 
         int m_coreHoldMax = 10;
         int m_wideCoreHoldLast = 1;

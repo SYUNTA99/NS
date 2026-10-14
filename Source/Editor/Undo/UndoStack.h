@@ -3,7 +3,7 @@
 #include "Editor/Undo/ICommand.h"
 #include "NSlib/Core/NonCopyable.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <deque>
 #include <memory>
 
@@ -37,7 +37,7 @@ namespace NS::Editor
         void Clear() noexcept;
 
         //! 履歴変更の通算回数。同じ内容へ戻しても進むため、未保存判定は変更ありとみなす側にずれる
-        [[nodiscard]] std::uint64_t Version() const noexcept { return m_version; }
+        [[nodiscard]] NS::uint64 Version() const noexcept { return m_version; }
 
         [[nodiscard]] std::size_t UndoSize() const noexcept { return m_undo.size(); }
         [[nodiscard]] std::size_t RedoSize() const noexcept { return m_redo.size(); }
@@ -46,9 +46,9 @@ namespace NS::Editor
     private:
         std::deque<std::unique_ptr<ICommand>> m_undo;
         std::deque<std::unique_ptr<ICommand>> m_redo;
-        std::size_t m_undoBytes = 0;                  // Undo 履歴の概算メモリ使用量
-        std::size_t m_redoBytes = 0;                  // Redo 履歴の概算メモリ使用量
-        std::uint64_t m_version = 0;
+        std::size_t m_undoBytes = 0; // Undo 履歴の概算メモリ使用量
+        std::size_t m_redoBytes = 0; // Redo 履歴の概算メモリ使用量
+        NS::uint64 m_version = 0;
 
         void PushRecorded(std::unique_ptr<ICommand> cmd) noexcept;
         void TrimOldest() noexcept;

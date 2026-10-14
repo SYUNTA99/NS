@@ -12,8 +12,8 @@
 #include "NSlib/Object/SubObjects/HitReaction.h"
 #include "NSlib/Windows/Gamepad.h"
 
+#include "NSlib/Core/Types.h"
 #include <cstddef>
-#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
@@ -40,8 +40,8 @@ namespace GL::Level
     //! @brief 当たり 1 回の裁定の内訳
     struct ImpactRecord
     {
-        std::uint32_t sequence = 0;
-        std::uint32_t targetId = 0;
+        NS::uint32 sequence = 0;
+        NS::uint32 targetId = 0;
         float power = 0.0f;
         float charge01 = 0.0f;
         float overcharge01 = 0.0f; //!< 突進を出した時の溜めすぎの深さ 0..1。赤で放した突進と通常突進は 0
@@ -284,31 +284,31 @@ namespace GL::Level
         std::optional<int> m_padStartClock;             // 振動を始めた時計の値。同じ値に始まる振動は重ねる
         int m_clockEnd = 0;                             // 最後の事象が終わる時計の値。ここまで進めたら時計を止める
         bool m_clockRunning = false;
-        bool m_holdArmed = false;                       // この当たりで自機を止めるか。止めの事象のある当たりで立つ
+        bool m_holdArmed = false; // この当たりで自機を止めるか。止めの事象のある当たりで立つ
         bool m_holdReleased = false;
         bool m_hasReboundEvent = false;
         bool m_stopStarted = false;
-        bool m_startedGradualRelease = false;           // 段階的な明けで世界を遅くしたか。打ち切りで普段の速さへ戻す
-        bool m_heldOthers = false;                      // 自機以外の止めを置いたか。打ち切りで解く
-        int m_stopEnd = 0;                              // 止めの事象の最後のフレーム
-        int m_breakStopSteps = -1;                      // 貫通の当たりの止めのフレーム数。負なら止めの事象の長さのまま
+        bool m_startedGradualRelease = false; // 段階的な明けで世界を遅くしたか。打ち切りで普段の速さへ戻す
+        bool m_heldOthers = false;            // 自機以外の止めを置いたか。打ち切りで解く
+        int m_stopEnd = 0;                    // 止めの事象の最後のフレーム
+        int m_breakStopSteps = -1;            // 貫通の当たりの止めのフレーム数。負なら止めの事象の長さのまま
         ShapeEvent m_shape{};
         int m_shapeStart = 0;
         int m_shapeLength = 0;
         bool m_shapeActive = false;
-        int m_framesToPredictedContact = -1;            // 線の先の相手を検知するまでの見込み。無ければ -1
-        bool m_beforeContact = false;                   // 時計が触れる前 (マイナスのフレーム) を進めているか
+        int m_framesToPredictedContact = -1; // 線の先の相手を検知するまでの見込み。無ければ -1
+        bool m_beforeContact = false;        // 時計が触れる前 (マイナスのフレーム) を進めているか
         NS::Obj::ActorRef m_beforeContactTarget{};
         HitTier m_beforeContactTier = HitTier::Center;
         // 明けたフレームに自機が持つ速度。反動の当たりは、明けに BeginRebound が同じ m_pendingReboundArc から出し直す
         NS::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};
-        GL::Player::ReboundArc m_pendingReboundArc{};     // 明けたフレームに自機を弾く反動の向きと高さと距離
+        GL::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離
         LaunchArc m_pendingLaunchArc{};
         NS::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f}; // 発射の水平方向。食い込みと振動の軸
         NS::Obj::ActorRef m_pendingTarget{};              // 知らせる相手。凍結をまたぐので使うたびに引く
         float m_pendingPower = 0.0f;                      // この衝突の威力。揺れの最初の振れに掛ける
         float m_pendingMassFactor = 0.0f;                 // この衝突の質量の効き。揺れの最初の振れに掛ける
-        std::uint32_t m_pendingShakeSeed = 0;             // この衝突の揺れの、入れ替わりの間隔を選ぶ種
+        NS::uint32 m_pendingShakeSeed = 0;                // この衝突の揺れの、入れ替わりの間隔を選ぶ種
         struct BodyShakeRun
         {
             TackleShakeDesc desc{};

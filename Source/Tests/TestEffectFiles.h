@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NSlib/Core/Types.h"
 #include <Effekseer.h>
 
 #include <fstream>
@@ -23,7 +24,7 @@ inline Effekseer::EffectRef LoadEffectFile(const char* path)
     const Effekseer::SettingRef setting = Effekseer::Setting::Create();
     // 左手系で読むと、生む位置の球の回転の符号が読み込みで反転される。ゲームと同じ値を見るために揃える
     setting->SetCoordinateSystem(Effekseer::CoordinateSystem::LH);
-    return Effekseer::Effect::Create(setting, bytes.data(), static_cast<int32_t>(bytes.size()));
+    return Effekseer::Effect::Create(setting, bytes.data(), static_cast<NS::int32>(bytes.size()));
 }
 
 //! 根から深さ優先で節を並べる。Effekseer は並べ替えずにこの順で描く
@@ -39,7 +40,7 @@ inline void CollectEffectNodesInDrawOrder(Effekseer::EffectNode* node, std::vect
 //! 節の色のテクスチャのファイル名を返す。テクスチャを持たない節は空
 inline std::u16string EffectNodeColorTexture(const Effekseer::EffectRef& effect, Effekseer::EffectNode* node)
 {
-    const int32_t index = node->GetBasicRenderParameter().TextureIndexes[0];
+    const NS::int32 index = node->GetBasicRenderParameter().TextureIndexes[0];
     if (index < 0 || index >= effect->GetColorImageCount())
     {
         return std::u16string();

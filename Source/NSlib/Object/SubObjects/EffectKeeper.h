@@ -4,7 +4,7 @@
 #include "NSlib/Graphics/EffectTypes.h"
 #include "NSlib/Object/SubObject.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <optional>
 #include <string>
 #include <string_view>
@@ -21,7 +21,7 @@ namespace NS::Obj
     //! @details フレームは持ち主の EffectKeeper::Step の数え方で、Actor::Update 1 回が 1 フレーム
     struct EffectRecord
     {
-        std::uint32_t id = 0;            //!< 記録の番号。1 から振り、同じ EffectKeeper の中で使い回さない
+        NS::uint32 id = 0;               //!< 記録の番号。1 から振り、同じ EffectKeeper の中で使い回さない
         std::string name;                //!< エフェクトの名前。charge.curl のように組の頭から書く
         int startStep = 0;               //!< 出したフレーム
         std::optional<int> rootStopStep; //!< 親を止めたフレーム。止めていなければ空
@@ -56,39 +56,39 @@ namespace NS::Obj
         //! @details 絵を読めていない名前は再生されず、記録は無効なハンドルで残る
         //! @param[in] name Preload に渡した名前
         //! @return 記録の番号
-        [[nodiscard]] std::uint32_t Play(std::string_view name, const NS::Gfx::EffectPlayDesc& desc);
+        [[nodiscard]] NS::uint32 Play(std::string_view name, const NS::Gfx::EffectPlayDesc& desc);
 
         //! @brief 親を止める。出ていた子は寿命まで残る
         //! @details 無い番号、親を止めた後、消えた後なら何もしない
-        void StopRoot(std::uint32_t id) noexcept;
+        void StopRoot(NS::uint32 id) noexcept;
 
         //! @brief 子も含めて消し、消えたフレームを今のフレームにする
         //! @details 無い番号、消えた後なら何もしない
-        void Stop(std::uint32_t id) noexcept;
+        void Stop(NS::uint32 id) noexcept;
 
         //! @brief 今から steps フレーム後の BeginStep で、子も含めて消す
         //! @details steps が 0 以下なら次の BeginStep で消す。その時に消えた後なら何もしない
-        void StopAfter(std::uint32_t id, int steps);
+        void StopAfter(NS::uint32 id, int steps);
 
         //! @brief 位置・向き・大きさを置き直す。無い番号と再生していない記録では何もしない
         //! @param[in] position ワールド座標の位置
-        void SetTransform(std::uint32_t id,
+        void SetTransform(NS::uint32 id,
                           const NS::Vector3& position,
                           const NS::Quaternion& rotation,
                           const NS::Vector3& scale) noexcept;
 
         //! @brief 動的入力を 1 つ書き換える。無い番号と再生していない記録では何もしない
         //! @param[in] index 動的入力の番号。0 から 3
-        void SetDynamicInput(std::uint32_t id, int index, float value) noexcept;
+        void SetDynamicInput(NS::uint32 id, int index, float value) noexcept;
 
         //! 大きさか量を記録に書く。無い番号なら何もしない。2 回書くと後の値が残る
-        void SetAmount(std::uint32_t id, float amount) noexcept;
+        void SetAmount(NS::uint32 id, float amount) noexcept;
         //! 根を置いた向きを記録に書く。無い番号なら何もしない。描画の無い世界でも書く
-        void SetRotation(std::uint32_t id, const NS::Quaternion& rotation) noexcept;
+        void SetRotation(NS::uint32 id, const NS::Quaternion& rotation) noexcept;
 
         //! @brief 番号の記録を返す
         //! @return 記録。無い番号か、捨てた後なら nullptr
-        [[nodiscard]] const EffectRecord* Find(std::uint32_t id) const noexcept;
+        [[nodiscard]] const EffectRecord* Find(NS::uint32 id) const noexcept;
 
         //! 出した順に並んだ記録
         [[nodiscard]] const std::vector<EffectRecord>& Records() const noexcept { return m_records; }
@@ -111,18 +111,18 @@ namespace NS::Obj
     private:
         struct ScheduledStop
         {
-            std::uint32_t id = 0;
+            NS::uint32 id = 0;
             int step = 0;
         };
 
         //! 持ち主の居るシーンの EffectScene。持ち主が無いか描画の無い世界なら nullptr
         [[nodiscard]] NS::Gfx::EffectScene* Effects() const noexcept;
-        [[nodiscard]] EffectRecord* FindMutable(std::uint32_t id) noexcept;
+        [[nodiscard]] EffectRecord* FindMutable(NS::uint32 id) noexcept;
 
         int m_keepEndedSteps;
         std::vector<EffectRecord> m_records;
         std::vector<ScheduledStop> m_scheduledStops;
         int m_step = 0;
-        std::uint32_t m_nextId = 1;
+        NS::uint32 m_nextId = 1;
     };
 } // namespace NS::Obj

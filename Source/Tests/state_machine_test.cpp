@@ -1,4 +1,5 @@
 #include "NSlib/Core/Coroutine.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/StateMachineOf.h"
 
 #include <gtest/gtest.h>
@@ -237,7 +238,7 @@ TEST(StateMachineOf, ExternalRequestDefersEntryUntilTheNextStepBoundary)
     ASSERT_TRUE(machine.Change<ActiveState>());
     EXPECT_TRUE(machine.IsCurrent<ActiveState>());
     EXPECT_FALSE(machine.IsFirstStep());
-    EXPECT_EQ(machine.StepsInState(), static_cast<std::uint32_t>(-1));
+    EXPECT_EQ(machine.StepsInState(), static_cast<NS::uint32>(-1));
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
     machine.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 4, 5}));
@@ -360,7 +361,7 @@ TEST(StateMachineOf, EntryRequestAtTheClosingBoundaryWaitsUntilTheNextStep)
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3, 4}));
     EXPECT_TRUE(machine.IsCurrent<DeltaState>());
     EXPECT_FALSE(machine.IsFirstStep());
-    EXPECT_EQ(machine.StepsInState(), static_cast<std::uint32_t>(-1));
+    EXPECT_EQ(machine.StepsInState(), static_cast<NS::uint32>(-1));
     EXPECT_TRUE(owner.deltas.empty());
     machine.Step(0.2f);
     EXPECT_EQ(owner.deltas, (std::vector<float>{0.2f}));

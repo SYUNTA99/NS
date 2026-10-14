@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 
 namespace GL::Level
 {
@@ -17,8 +17,8 @@ namespace GL::Level
     //! 着地後の跳ねる速度 (m/s) を返す。水平速度が 0 なら 0
     //! up は正規化した反重力方向、hopIndex は 0 始まり。同じ seed・番号では同じ跳ね方になる
     [[nodiscard]] NS::Vector3 MissHopVelocity(const NS::Vector3& velocity,
-                                                    const NS::Vector3& up,
-                                                    const MissHopDesc& desc,
-                                                    std::uint32_t seed,
-                                                    int hopIndex) noexcept;
+                                              const NS::Vector3& up,
+                                              const MissHopDesc& desc,
+                                              NS::uint32 seed,
+                                              int hopIndex) noexcept;
 } // namespace GL::Level

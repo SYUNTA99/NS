@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <optional>
 
 //! @brief プレイ制御ツールバーと中央タブ (Scene / Game) の表示状態を決める純関数群
@@ -8,7 +8,7 @@
 namespace NS::Editor
 {
     //! 中央ノードのタブ
-    enum class CenterTab : std::uint8_t
+    enum class CenterTab : NS::uint8
     {
         Scene,
         Game
@@ -71,7 +71,7 @@ namespace NS::Editor
     [[nodiscard]] InputOwnership ResolveInputOwnership(InputOwnerQuery query) noexcept;
 
     //! @brief プレイ中のカーソルの置き方
-    enum class PlayCursor : std::uint8_t
+    enum class PlayCursor : NS::uint8
     {
         Captured, // 消して Game の画像の中心へ固定し、マウスを相対にする。視点を回せる
         Released  // 出して固定と相対を解く。タブやパネルを押せる

@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/Texture.h"
+#include "NSlib/Graphics/Texture.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/D3dCommon.h"
@@ -26,7 +27,7 @@ namespace NS::Gfx
                 {
                     NS_LOG_ERROR(Graphics,
                                  "Texture: ID3D11Texture2D への QI 失敗、 2D 以外のリソースの可能性 (hr=0x{:X})",
-                                 static_cast<unsigned>(hr));
+                                 static_cast<NS::uint>(hr));
                 }
             }
             return tex2d;
@@ -73,7 +74,7 @@ namespace NS::Gfx
                 if (FAILED(hr))
                 {
                     NS_LOG_ERROR(
-                        Graphics, "Texture: CreateShaderResourceView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                        Graphics, "Texture: CreateShaderResourceView 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
                 }
             }
             if (bindFlags & D3D11_BIND_RENDER_TARGET)
@@ -82,7 +83,7 @@ namespace NS::Gfx
                 if (FAILED(hr))
                 {
                     NS_LOG_ERROR(
-                        Graphics, "Texture: CreateRenderTargetView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                        Graphics, "Texture: CreateRenderTargetView 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
                 }
             }
             if (bindFlags & D3D11_BIND_DEPTH_STENCIL)
@@ -91,7 +92,7 @@ namespace NS::Gfx
                 if (FAILED(hr))
                 {
                     NS_LOG_ERROR(
-                        Graphics, "Texture: CreateDepthStencilView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                        Graphics, "Texture: CreateDepthStencilView 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
                 }
             }
         }
@@ -104,7 +105,7 @@ namespace NS::Gfx
             {
                 return false;
             }
-            const std::uint8_t magenta[4] = {0xFF, 0x00, 0xFF, 0xFF};
+            const NS::uint8 magenta[4] = {0xFF, 0x00, 0xFF, 0xFF};
 
             D3D11_TEXTURE2D_DESC td{};
             td.Width = 1;
@@ -124,14 +125,14 @@ namespace NS::Gfx
             HRESULT hr = device->CreateTexture2D(&td, &srd, tex2d.GetAddressOf());
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(Graphics, "Texture fallback CreateTexture2D 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                NS_LOG_ERROR(Graphics, "Texture fallback CreateTexture2D 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
                 return false;
             }
 
             hr = device->CreateShaderResourceView(tex2d.Get(), nullptr, outSrv.GetAddressOf());
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(Graphics, "Texture fallback CreateSRV 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                NS_LOG_ERROR(Graphics, "Texture fallback CreateSRV 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
                 return false;
             }
 
@@ -141,7 +142,7 @@ namespace NS::Gfx
 
         bool TryLoadDds(ID3D11Device* device,
                         ID3D11DeviceContext* context,
-                        const std::uint8_t* bytes,
+                        const NS::uint8* bytes,
                         std::size_t size,
                         ComPtr<ID3D11Resource>& outResource,
                         ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
@@ -150,7 +151,7 @@ namespace NS::Gfx
                 device, context, bytes, size, outResource.GetAddressOf(), outSrv.GetAddressOf());
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(Graphics, "CreateDDSTextureFromMemory 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                NS_LOG_ERROR(Graphics, "CreateDDSTextureFromMemory 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
                 return false;
             }
             return true;
@@ -160,7 +161,7 @@ namespace NS::Gfx
         // sRGB へ強制しない。NS はどこでも色空間を変換しておらず、Skybox も IGNORE_SRGB で読む
         bool TryLoadWic(ID3D11Device* device,
                         ID3D11DeviceContext* context,
-                        const std::uint8_t* bytes,
+                        const NS::uint8* bytes,
                         std::size_t size,
                         ComPtr<ID3D11Resource>& outResource,
                         ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
@@ -181,7 +182,7 @@ namespace NS::Gfx
 
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(Graphics, "CreateWICTextureFromMemoryEx 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                NS_LOG_ERROR(Graphics, "CreateWICTextureFromMemoryEx 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
                 return false;
             }
             return true;
@@ -208,7 +209,7 @@ namespace NS::Gfx
                              "Texture: CreateTexture2D 失敗 (W={} H={} hr=0x{:X})",
                              desc.width,
                              desc.height,
-                             static_cast<unsigned>(hr));
+                             static_cast<NS::uint>(hr));
                 return false;
             }
             return true;
@@ -255,7 +256,7 @@ namespace NS::Gfx
             if (bytesOpt.has_value())
             {
                 const std::vector<std::byte>& bytes = bytesOpt.value();
-                const std::uint8_t* data = reinterpret_cast<const std::uint8_t*>(bytes.data());
+                const NS::uint8* data = reinterpret_cast<const NS::uint8*>(bytes.data());
                 if (detail::IsDdsExtension(desc.path))
                 {
                     // DDS は内蔵 mipmap を尊重して作り直さない

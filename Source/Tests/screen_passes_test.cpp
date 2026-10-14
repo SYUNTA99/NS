@@ -6,10 +6,10 @@
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 
+#include "NSlib/Core/Types.h"
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <cstdint>
 #include <cstdlib>
 #include <string>
 #include <vector>
@@ -137,20 +137,19 @@ namespace
         [[nodiscard]] const std::string& CompileError() const { return m_compileError; }
 
         // bodyMask は行の順に 1 画素 1 バイト。空なら型を差さない
-        std::vector<Rgba> Run(const NS::Gfx::ScreenDistortionCB& constants,
-                              const std::vector<std::uint8_t>& bodyMask = {})
+        std::vector<Rgba> Run(const NS::Gfx::ScreenDistortionCB& constants, const std::vector<NS::uint8>& bodyMask = {})
         {
             std::vector<Rgba> out;
-            std::vector<std::uint8_t> pixels(k_Size * k_Size * 4);
+            std::vector<NS::uint8> pixels(k_Size * k_Size * 4);
             for (UINT y = 0; y < k_Size; ++y)
             {
                 for (UINT x = 0; x < k_Size; ++x)
                 {
                     const Rgba color = Pattern(static_cast<int>(x), static_cast<int>(y));
-                    std::uint8_t* pixel = &pixels[(y * k_Size + x) * 4];
-                    pixel[0] = static_cast<std::uint8_t>(color.r);
-                    pixel[1] = static_cast<std::uint8_t>(color.g);
-                    pixel[2] = static_cast<std::uint8_t>(color.b);
+                    NS::uint8* pixel = &pixels[(y * k_Size + x) * 4];
+                    pixel[0] = static_cast<NS::uint8>(color.r);
+                    pixel[1] = static_cast<NS::uint8>(color.g);
+                    pixel[2] = static_cast<NS::uint8>(color.b);
                     pixel[3] = 255;
                 }
             }
@@ -239,7 +238,7 @@ namespace
             }
             for (UINT y = 0; y < k_Size; ++y)
             {
-                const std::uint8_t* row = static_cast<const std::uint8_t*>(mapped.pData) + y * mapped.RowPitch;
+                const NS::uint8* row = static_cast<const NS::uint8*>(mapped.pData) + y * mapped.RowPitch;
                 for (UINT x = 0; x < k_Size; ++x)
                 {
                     out.push_back(Rgba{row[x * 4], row[x * 4 + 1], row[x * 4 + 2]});
@@ -315,7 +314,7 @@ TEST(ScreenDistortion, KeepsThePixelsOnTheBodyMask)
     }
     ASSERT_TRUE(rig.Valid()) << rig.CompileError();
 
-    std::vector<std::uint8_t> mask(k_Size * k_Size, 0);
+    std::vector<NS::uint8> mask(k_Size * k_Size, 0);
     for (UINT y = 0; y < k_Size; ++y)
     {
         for (UINT x = 0; x < k_Size / 2; ++x)

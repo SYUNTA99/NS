@@ -1,8 +1,8 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/NonCopyable.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <memory>
 
 namespace NS::OS
@@ -43,10 +43,7 @@ namespace NS::UI
 
         //! @brief OSからのウィンドウメッセージをUI側へ転送して処理する
         //! @return UI がメッセージを消費した場合 true、それ以外の場合は false。true ならゲーム側は入力を無視する
-        [[nodiscard]] bool ForwardWndProc(void* hwnd,
-                                          std::uint32_t msg,
-                                          std::uintptr_t wParam,
-                                          std::intptr_t lParam) noexcept;
+        [[nodiscard]] bool ForwardWndProc(void* hwnd, NS::uint32 msg, NS::uintptr wParam, NS::intptr lParam) noexcept;
 
         //! UI ウィンドウを操作中などで、UI がマウス入力を要求しているかを返す
         [[nodiscard]] bool WantCaptureMouse() const noexcept;

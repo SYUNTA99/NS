@@ -1,4 +1,5 @@
-﻿#include "Editor/GizmoEditor.h"
+#include "Editor/GizmoEditor.h"
+#include "NSlib/Core/Types.h"
 
 #include "Editor/EditorObjects.h"
 #include "Editor/GridMath.h"
@@ -372,7 +373,7 @@ namespace NS::Editor
     } // namespace
 
     void GizmoEditor::SetSelectableObjects(std::span<NS::Obj::Actor* const> objects,
-                                           std::span<const std::uint8_t> pickable) noexcept
+                                           std::span<const NS::uint8> pickable) noexcept
     {
         m_objects = objects;
         m_pickable = pickable;
@@ -679,7 +680,7 @@ namespace NS::Editor
     int GizmoEditor::PickNearestOBB(const NS::Ray& ray,
                                     std::span<const NS::Matrix> worldMatrices,
                                     std::span<const NS::AABB> localBounds,
-                                    std::span<const std::uint8_t> pickMask) noexcept
+                                    std::span<const NS::uint8> pickMask) noexcept
     {
         const std::size_t count = std::min(worldMatrices.size(), localBounds.size());
         int best = -1;

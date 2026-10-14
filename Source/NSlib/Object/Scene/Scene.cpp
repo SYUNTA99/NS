@@ -1,4 +1,5 @@
-﻿#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Graphics/DebugDraw.h"
 #include "NSlib/Graphics/EffectScene.h"
@@ -299,7 +300,7 @@ namespace NS::Obj
 
     Actor* Scene::ReplaceFromJson(const nlohmann::json& object)
     {
-        const std::uint32_t id = ObjectJsonId(object);
+        const NS::uint32 id = ObjectJsonId(object);
         const std::size_t index = m_objects.IndexOfObjectId(id);
         Actor* old = m_objects.FindByObjectId(id);
         if (old == nullptr)
@@ -316,7 +317,7 @@ namespace NS::Obj
         }
 
         // 子は古い方の破棄で根に落ちるので、先に控えて新しい方へ付け直す。局所の姿はそのまま残る
-        std::vector<std::uint32_t> childIds;
+        std::vector<NS::uint32> childIds;
         childIds.reserve(old->Children().size());
         for (const Actor* child : old->Children())
         {
@@ -334,7 +335,7 @@ namespace NS::Obj
         {
             raw->SetParent(parent);
         }
-        for (const std::uint32_t childId : childIds)
+        for (const NS::uint32 childId : childIds)
         {
             if (Actor* child = m_objects.FindByObjectId(childId))
             {
@@ -401,7 +402,7 @@ namespace NS::Obj
         return obj;
     }
 
-    void Scene::DestroyObject(std::uint32_t objectId)
+    void Scene::DestroyObject(NS::uint32 objectId)
     {
         m_objects.RemoveByObjectId(objectId);
     }

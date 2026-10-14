@@ -3,8 +3,8 @@
 #include "NSlib/Core/LogType.h"
 #include "NSlib/Core/Logger.h"
 
+#include "NSlib/Core/Types.h"
 #include <chrono>
-#include <cstdint>
 #include <string>
 #include <utility>
 
@@ -103,7 +103,7 @@ namespace NS::OS
         //! 起動からの累計秒
         [[nodiscard]] static double TotalSeconds() noexcept { return s_total; }
         //! 累計フレーム数
-        [[nodiscard]] static std::uint64_t FrameNumber() noexcept { return s_frame; }
+        [[nodiscard]] static NS::uint64 FrameNumber() noexcept { return s_frame; }
 
         //! デフォルトは毎秒 60 回の固定更新
         static constexpr float k_DefaultFixedDelta = 1.0f / 60.0f;
@@ -127,7 +127,7 @@ namespace NS::OS
         static inline std::chrono::steady_clock::time_point s_lastTime{std::chrono::steady_clock::now()};
         static inline float s_delta = 0.0f;                     //!< 前フレームからの経過秒
         static inline double s_total = 0.0;                     //!< 起動からの累計秒
-        static inline std::uint64_t s_frame = 0;                //!< 累計フレーム数
+        static inline NS::uint64 s_frame = 0;                   //!< 累計フレーム数
         static inline float s_fixedDelta = k_DefaultFixedDelta; //!< 固定更新の間隔（秒）
         static inline float s_accumulator = 0.0f;               //!< 未消化の経過時間。固定ステップを刻んだ残り
         static inline int s_fixedSteps = 0;                     //!< 今フレームで固定更新を回す回数

@@ -1,4 +1,5 @@
 #include "Editor/Undo/ObjectSnapshotCommand.h"
+#include "NSlib/Core/Types.h"
 
 #include "Editor/Undo/IObjectSnapshotApplier.h"
 
@@ -32,7 +33,7 @@ namespace NS::Editor
         }
     } // namespace
 
-    ObjectSnapshotCommand::ObjectSnapshotCommand(std::uint32_t id,
+    ObjectSnapshotCommand::ObjectSnapshotCommand(NS::uint32 id,
                                                  std::optional<nlohmann::json> before,
                                                  std::optional<nlohmann::json> after) noexcept
         : m_id(id), m_before(std::move(before)), m_after(std::move(after))

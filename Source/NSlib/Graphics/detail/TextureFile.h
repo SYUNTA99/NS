@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NSlib/Core/Types.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>
@@ -13,7 +14,7 @@ namespace NS::Gfx::detail
     {
         std::string ext = NS::OS::FileSystem::Extension(path);
         std::transform(
-            ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            ext.begin(), ext.end(), ext.begin(), [](NS::uint8 c) { return static_cast<char>(std::tolower(c)); });
         return ext == ".dds";
     }
 } // namespace NS::Gfx::detail

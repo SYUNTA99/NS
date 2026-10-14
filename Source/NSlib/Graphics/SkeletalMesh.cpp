@@ -1,12 +1,12 @@
-﻿#include "NSlib/Graphics/SkeletalMesh.h"
+#include "NSlib/Graphics/SkeletalMesh.h"
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/GraphicObject.h"
 
+#include "NSlib/Core/Types.h"
 #include <algorithm>
 #include <cmath>
-#include <cstdint>
 #include <limits>
 
 namespace NS::Gfx
@@ -36,7 +36,7 @@ namespace NS::Gfx
                 {
                     continue;
                 }
-                const std::uint32_t j = v.joints[k];
+                const NS::uint32 j = v.joints[k];
                 if (j >= boneCount)
                 {
                     continue;
@@ -65,7 +65,7 @@ namespace NS::Gfx
                 {
                     continue;
                 }
-                const std::uint32_t j = v.joints[k];
+                const NS::uint32 j = v.joints[k];
                 if (j >= boneCount)
                 {
                     continue;
@@ -88,9 +88,9 @@ namespace NS::Gfx
     }
 
     NS::AABB MergeSkinnedBounds(const std::vector<BoneSphere>& spheres,
-                                      const NS::Matrix* palette,
-                                      std::size_t paletteCount,
-                                      const NS::AABB& fallback)
+                                const NS::Matrix* palette,
+                                std::size_t paletteCount,
+                                const NS::AABB& fallback)
     {
         if (palette == nullptr)
         {
@@ -193,13 +193,13 @@ namespace NS::Gfx
     {
         static const std::vector<InputElement> k_Layout = {
             InputElement{
-                "POSITION", InputElementFormat::Float3, static_cast<unsigned>(offsetof(SkinnedVertex, position))},
-            InputElement{"TEXCOORD", InputElementFormat::Float2, static_cast<unsigned>(offsetof(SkinnedVertex, uv))},
-            InputElement{"NORMAL", InputElementFormat::Float3, static_cast<unsigned>(offsetof(SkinnedVertex, normal))},
+                "POSITION", InputElementFormat::Float3, static_cast<NS::uint>(offsetof(SkinnedVertex, position))},
+            InputElement{"TEXCOORD", InputElementFormat::Float2, static_cast<NS::uint>(offsetof(SkinnedVertex, uv))},
+            InputElement{"NORMAL", InputElementFormat::Float3, static_cast<NS::uint>(offsetof(SkinnedVertex, normal))},
             InputElement{
-                "BLENDINDICES", InputElementFormat::UInt4, static_cast<unsigned>(offsetof(SkinnedVertex, joints))},
+                "BLENDINDICES", InputElementFormat::UInt4, static_cast<NS::uint>(offsetof(SkinnedVertex, joints))},
             InputElement{
-                "BLENDWEIGHT", InputElementFormat::Float4, static_cast<unsigned>(offsetof(SkinnedVertex, weights))},
+                "BLENDWEIGHT", InputElementFormat::Float4, static_cast<NS::uint>(offsetof(SkinnedVertex, weights))},
         };
         return k_Layout;
     }

@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/CameraData.h"
@@ -88,8 +89,8 @@ namespace NS::Gfx
             {
                 NS_LOG_WARN(Graphics,
                             "D3D11CreateDeviceAndSwapChain failed (hr=0x{:X}, flags=0x{:X})",
-                            static_cast<unsigned>(hr),
-                            static_cast<unsigned>(createFlags));
+                            static_cast<NS::uint>(hr),
+                            static_cast<NS::uint>(createFlags));
                 return false;
             }
             return true;
@@ -139,7 +140,7 @@ namespace NS::Gfx
             const HRESULT hr = swapchain->GetBuffer(0, IID_PPV_ARGS(bb.GetAddressOf()));
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(Graphics, "SwapChain::GetBuffer 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                NS_LOG_ERROR(Graphics, "SwapChain::GetBuffer 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
                 return false;
             }
 
@@ -297,7 +298,7 @@ namespace NS::Gfx
         if (FAILED(hr))
         {
             NS_LOG_ERROR(
-                Graphics, "CaptureBackbufferToPng: backbuffer を取れない (hr=0x{:08X})", static_cast<unsigned>(hr));
+                Graphics, "CaptureBackbufferToPng: backbuffer を取れない (hr=0x{:08X})", static_cast<NS::uint>(hr));
             return false;
         }
 
@@ -306,14 +307,14 @@ namespace NS::Gfx
         {
             NS_LOG_ERROR(Graphics,
                          "CaptureBackbufferToPng: 書き出しに失敗 (hr=0x{:08X}): {}",
-                         static_cast<unsigned>(hr),
+                         static_cast<NS::uint>(hr),
                          path.string());
             return false;
         }
         return true;
     }
 
-    bool Renderer::ReadBackbufferPixels(std::vector<std::uint8_t>& outBgra, NS::Size2D& outSize) noexcept
+    bool Renderer::ReadBackbufferPixels(std::vector<NS::uint8>& outBgra, NS::Size2D& outSize) noexcept
     {
         if (!m_valid || !m_swapchain || !m_context)
         {
@@ -325,7 +326,7 @@ namespace NS::Gfx
         if (FAILED(hr))
         {
             NS_LOG_ERROR(
-                Graphics, "ReadBackbufferPixels: backbuffer を取れない (hr=0x{:08X})", static_cast<unsigned>(hr));
+                Graphics, "ReadBackbufferPixels: backbuffer を取れない (hr=0x{:08X})", static_cast<NS::uint>(hr));
             return false;
         }
 
@@ -359,7 +360,7 @@ namespace NS::Gfx
         if (FAILED(hr))
         {
             NS_LOG_ERROR(
-                Graphics, "ReadBackbufferPixels: 読み出し用の写しを作れない (hr=0x{:08X})", static_cast<unsigned>(hr));
+                Graphics, "ReadBackbufferPixels: 読み出し用の写しを作れない (hr=0x{:08X})", static_cast<NS::uint>(hr));
             return false;
         }
         m_context->CopyResource(staging.Get(), backbuffer.Get());
@@ -368,13 +369,13 @@ namespace NS::Gfx
         hr = m_context->Map(staging.Get(), 0u, D3D11_MAP_READ, 0u, &mapped);
         if (FAILED(hr))
         {
-            NS_LOG_ERROR(Graphics, "ReadBackbufferPixels: Map に失敗 (hr=0x{:08X})", static_cast<unsigned>(hr));
+            NS_LOG_ERROR(Graphics, "ReadBackbufferPixels: Map に失敗 (hr=0x{:08X})", static_cast<NS::uint>(hr));
             return false;
         }
 
         const std::size_t rowBytes = static_cast<std::size_t>(desc.Width) * 4u;
         outBgra.resize(rowBytes * desc.Height);
-        const std::uint8_t* source = static_cast<const std::uint8_t*>(mapped.pData);
+        const NS::uint8* source = static_cast<const NS::uint8*>(mapped.pData);
         for (UINT y = 0; y < desc.Height; ++y)
         {
             std::memcpy(
@@ -480,7 +481,7 @@ namespace NS::Gfx
     void Renderer::DrawOverlay(const OverlayResources& overlay,
                                const void* constants,
                                std::size_t constantBytes,
-                               unsigned vertexCount,
+                               NS::uint vertexCount,
                                bool vsReadsConstants) noexcept
     {
         CommandList& cmd = *m_commands;
@@ -664,7 +665,7 @@ namespace NS::Gfx
         const HRESULT hr = m_swapchain->Present(sync, 0);
         if (FAILED(hr))
         {
-            NS_LOG_ERROR(Graphics, "SwapChain::Present 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+            NS_LOG_ERROR(Graphics, "SwapChain::Present 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
             // device 喪失は復帰不能。以降の描画を止め、毎フレームのログ連発も防ぐ
             if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
             {
@@ -697,7 +698,7 @@ namespace NS::Gfx
             0, static_cast<UINT>(size.width), static_cast<UINT>(size.height), DXGI_FORMAT_UNKNOWN, 0);
         if (FAILED(hr))
         {
-            NS_LOG_ERROR(Graphics, "SwapChain::ResizeBuffers 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+            NS_LOG_ERROR(Graphics, "SwapChain::ResizeBuffers 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
             return;
         }
 

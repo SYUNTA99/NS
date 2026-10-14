@@ -7,9 +7,9 @@
 
 #include <gtest/gtest.h>
 
+#include "NSlib/Core/Types.h"
 #include <algorithm>
 #include <cmath>
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -70,14 +70,14 @@ namespace
     public:
         explicit DestroyerActor(NS::Obj::Scene& scene) : m_scene(scene) {}
         NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Triggers; }
-        void SetTarget(std::uint32_t objectId) noexcept { m_target = objectId; }
+        void SetTarget(NS::uint32 objectId) noexcept { m_target = objectId; }
 
     protected:
         void StateStep() override { m_scene.DestroyObject(m_target); }
 
     private:
         NS::Obj::Scene& m_scene;
-        std::uint32_t m_target = NS::Obj::k_NoObjectId;
+        NS::uint32 m_target = NS::Obj::k_NoObjectId;
     };
 
     class CountingActor final : public NS::Obj::Actor
@@ -148,12 +148,12 @@ namespace
     {
     public:
         explicit DestroyerSystem(NS::Obj::Scene& scene) : m_scene(scene) {}
-        void SetTarget(std::uint32_t objectId) noexcept { m_target = objectId; }
+        void SetTarget(NS::uint32 objectId) noexcept { m_target = objectId; }
         void OnTick() override { m_scene.DestroyObject(m_target); }
 
     private:
         NS::Obj::Scene& m_scene;
-        std::uint32_t m_target = NS::Obj::k_NoObjectId;
+        NS::uint32 m_target = NS::Obj::k_NoObjectId;
     };
 } // namespace
 
@@ -176,7 +176,7 @@ TEST(UpdatePhase, DestroyingFromASystemTickIsRefused)
     // 管理役の更新も段の中。ここで配置物を解放すると、同じ段で後に呼ぶ管理役が破棄済みの相手を読む
     NS::Obj::Scene scene;
     CountingActor* victim = scene.SpawnObject<CountingActor>("Victim");
-    const std::uint32_t victimId = victim->Id();
+    const NS::uint32 victimId = victim->Id();
     DestroyerSystem destroyer(scene);
     destroyer.SetTarget(victimId);
     scene.AddSystemTick(destroyer, NS::Obj::UpdatePhase::Triggers);
@@ -248,7 +248,7 @@ TEST(UpdatePhase, DestroyingDuringAPhaseIsRefused)
     NS::Obj::Scene scene;
     DestroyerActor* destroyer = scene.SpawnObject<DestroyerActor>("Destroyer", scene);
     CountingActor* victim = scene.SpawnObject<CountingActor>("Victim");
-    const std::uint32_t victimId = victim->Id();
+    const NS::uint32 victimId = victim->Id();
     destroyer->SetTarget(victimId);
 
     scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);

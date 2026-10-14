@@ -5,7 +5,7 @@
 #include "NSlib/Object/Reflection/Reflection.h"
 #include "NSlib/Object/SubObject.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <string>
 #include <string_view>
 #include <vector>
@@ -97,12 +97,12 @@ namespace GL::Player
         void UpdateTrail(const NS::Vector3& center, bool slamming) noexcept;
         void StopTrailRoot() noexcept;
         // 層を今の位置・向き・大きさへ置き直し、向きを記録に書く。描画の無い世界では記録だけ書く
-        void Place(std::uint32_t id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept;
-        void SetCharge(std::uint32_t id, float charge01) const noexcept;
-        void SetInput(std::uint32_t id, int index, float value) const noexcept;
+        void Place(NS::uint32 id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept;
+        void SetCharge(NS::uint32 id, float charge01) const noexcept;
+        void SetInput(NS::uint32 id, int index, float value) const noexcept;
         // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ Player::AimDirection
         [[nodiscard]] NS::Vector3 HeldAimDirection() const noexcept;
-        void StopAndClear(std::uint32_t& id) noexcept;
+        void StopAndClear(NS::uint32& id) noexcept;
         // 跳ね返りか破壊が起きたか、触れる見込みが m_burstClearFrames 以内か
         [[nodiscard]] bool IsContactNear() const noexcept;
 
@@ -125,17 +125,17 @@ namespace GL::Player
         float m_overchargeSparkSpeedMax = 5.0f;
 
         // 出ているエフェクトの記録の番号。0 は出ていない
-        std::uint32_t m_curl = 0;
-        std::uint32_t m_spin = 0;
-        std::uint32_t m_grind = 0;
-        std::uint32_t m_gather = 0;
-        std::uint32_t m_full = 0;
-        std::uint32_t m_trail = 0;
-        std::uint32_t m_burst = 0;
+        NS::uint32 m_curl = 0;
+        NS::uint32 m_spin = 0;
+        NS::uint32 m_grind = 0;
+        NS::uint32 m_gather = 0;
+        NS::uint32 m_full = 0;
+        NS::uint32 m_trail = 0;
+        NS::uint32 m_burst = 0;
 
-        int m_fullStep = 0;               // 溜めきりの閃きを出したフレームの記録の番号
-        int m_framesSinceFull = 0;        // FramesSinceFullCharge の値。OnUpdate が毎フレーム決める
-        bool m_fullShown = false;         // この押しで溜めきりの閃きを出したか。押し直すまで 2 回目を出さない
+        int m_fullStep = 0;        // 溜めきりの閃きを出したフレームの記録の番号
+        int m_framesSinceFull = 0; // FramesSinceFullCharge の値。OnUpdate が毎フレーム決める
+        bool m_fullShown = false;  // この押しで溜めきりの閃きを出したか。押し直すまで 2 回目を出さない
         bool m_wasHeld = false;
         bool m_wasSlamming = false;
         bool m_trailAwaitsFreeze = false; // 当たりを検知して突進が終わった。次のフレームの止めの頭で尾の親を止める

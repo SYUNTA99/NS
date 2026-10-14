@@ -1,5 +1,6 @@
-﻿#include "NSlib/Object/SubObjects/Model.h"
+#include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Graphics/Material.h"
 #include "NSlib/Graphics/Mesh.h"
@@ -31,7 +32,7 @@ namespace NS::Obj
     void Model::SetPerObjectVsConstant(const NS::Gfx::Buffer* cb,
                                        const void* cpuData,
                                        std::size_t cpuDataSize,
-                                       unsigned slot) noexcept
+                                       NS::uint slot) noexcept
     {
         m_perObjectVsCb = cb;
         m_perObjectVsData = cpuData;

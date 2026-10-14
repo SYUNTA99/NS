@@ -6,7 +6,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/SubObject.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <vector>
 
 namespace GL::Level
@@ -73,11 +73,11 @@ namespace GL::Level
         void EndTrail();
 
         MapObj* m_body = nullptr;
-        std::uint32_t m_trail = 0;                 // 飛び出しの尾。消したら 0
-        int m_trailStartStep = 0;                  // 尾を出したフレーム。このフレームは出した姿のまま
+        NS::uint32 m_trail = 0;   // 飛び出しの尾。消したら 0
+        int m_trailStartStep = 0; // 尾を出したフレーム。このフレームは出した姿のまま
         int m_trailFrames = 0;
-        float m_trailScale = 1.0f;                 // 尾の再生の大きさ。自分の直径 (m)
+        float m_trailScale = 1.0f; // 尾の再生の大きさ。自分の直径 (m)
         NS::Vector3 m_launchDir{1.0f, 0.0f, 0.0f};
-        float m_landDustScale = 0.0f;              // 落ちた所の粉の大きさ (m)
+        float m_landDustScale = 0.0f; // 落ちた所の粉の大きさ (m)
     };
 } // namespace GL::Level

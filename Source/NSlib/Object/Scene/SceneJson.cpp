@@ -1,4 +1,5 @@
-﻿#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Reflection/SubObjectEntry.h"
@@ -56,7 +57,7 @@ namespace NS::Obj
         {
             nlohmann::json& objects = SceneJsonObjects(scene);
             std::unordered_map<std::string, int> counts;
-            std::unordered_map<std::uint32_t, std::string> names;
+            std::unordered_map<NS::uint32, std::string> names;
             for (const nlohmann::json& object : objects)
             {
                 ++counts[std::string{ObjectJsonName(object)}];
@@ -77,8 +78,8 @@ namespace NS::Obj
                     {
                         return;
                     }
-                    const std::unordered_map<std::uint32_t, std::string>::const_iterator found =
-                        names.find(ref.get<std::uint32_t>());
+                    const std::unordered_map<NS::uint32, std::string>::const_iterator found =
+                        names.find(ref.get<NS::uint32>());
                     if (found != names.end())
                     {
                         ref = found->second;
@@ -91,7 +92,7 @@ namespace NS::Obj
         void ReadRefsByName(nlohmann::json& scene)
         {
             nlohmann::json& objects = SceneJsonObjects(scene);
-            std::unordered_map<std::string, std::uint32_t> ids;
+            std::unordered_map<std::string, NS::uint32> ids;
             for (const nlohmann::json& object : objects)
             {
                 ids.emplace(std::string{ObjectJsonName(object)}, ObjectJsonId(object));
@@ -104,7 +105,7 @@ namespace NS::Obj
                     {
                         return;
                     }
-                    const std::unordered_map<std::string, std::uint32_t>::const_iterator found =
+                    const std::unordered_map<std::string, NS::uint32>::const_iterator found =
                         ids.find(ref.get<std::string>());
                     if (found == ids.end())
                     {
@@ -175,12 +176,12 @@ namespace NS::Obj
         return objects;
     }
 
-    std::uint32_t SceneJsonNextObjectId(const nlohmann::json& scene) noexcept
+    NS::uint32 SceneJsonNextObjectId(const nlohmann::json& scene) noexcept
     {
         return FieldUnsigned(scene, "nextObjectId", 1);
     }
 
-    void SetSceneJsonNextObjectId(nlohmann::json& scene, std::uint32_t nextObjectId)
+    void SetSceneJsonNextObjectId(nlohmann::json& scene, NS::uint32 nextObjectId)
     {
         if (!scene.is_object())
         {
@@ -246,7 +247,7 @@ namespace NS::Obj
             nlohmann::json::array({normalized.x, normalized.y, normalized.z});
     }
 
-    std::size_t FindObjectIndexById(const nlohmann::json& scene, std::uint32_t id) noexcept
+    std::size_t FindObjectIndexById(const nlohmann::json& scene, NS::uint32 id) noexcept
     {
         if (id == k_NoObjectId)
         {
@@ -291,7 +292,7 @@ namespace NS::Obj
         std::size_t PruneDanglingObjectRefs(nlohmann::json& scene)
         {
             nlohmann::json& objects = SceneJsonObjects(scene);
-            std::unordered_set<std::uint32_t> ids;
+            std::unordered_set<NS::uint32> ids;
             for (const nlohmann::json& object : objects)
             {
                 ids.insert(ObjectJsonId(object));
@@ -305,7 +306,7 @@ namespace NS::Obj
                     {
                         return;
                     }
-                    const std::uint32_t id = ref.get<std::uint32_t>();
+                    const NS::uint32 id = ref.get<NS::uint32>();
                     if (id == 0 || ids.contains(id))
                     {
                         return;
@@ -321,7 +322,7 @@ namespace NS::Obj
         std::size_t PruneInvalidParents(nlohmann::json& scene)
         {
             nlohmann::json& objects = SceneJsonObjects(scene);
-            std::unordered_map<std::uint32_t, std::size_t> indexById;
+            std::unordered_map<NS::uint32, std::size_t> indexById;
             indexById.reserve(objects.size());
             for (std::size_t i = 0; i < objects.size(); ++i)
             {
@@ -331,8 +332,8 @@ namespace NS::Obj
             std::size_t prunedCount = 0;
             for (nlohmann::json& object : objects)
             {
-                const std::uint32_t objectId = ObjectJsonId(object);
-                const std::uint32_t parentId = ObjectJsonParent(object);
+                const NS::uint32 objectId = ObjectJsonId(object);
+                const NS::uint32 parentId = ObjectJsonParent(object);
                 if (parentId == k_NoObjectId)
                 {
                     continue;
@@ -340,10 +341,10 @@ namespace NS::Obj
 
                 bool valid = parentId != objectId && indexById.contains(parentId);
                 // 祖先を辿って自分へ戻れば循環。その場で root へ落とすので、輪の残りは正当な親子として通る
-                std::uint32_t ancestor = parentId;
+                NS::uint32 ancestor = parentId;
                 for (std::size_t step = 0; valid && step < objects.size(); ++step)
                 {
-                    const std::unordered_map<std::uint32_t, std::size_t>::iterator it = indexById.find(ancestor);
+                    const std::unordered_map<NS::uint32, std::size_t>::iterator it = indexById.find(ancestor);
                     if (it == indexById.end())
                     {
                         valid = false;
@@ -373,18 +374,18 @@ namespace NS::Obj
     void EnsureUniqueObjectIds(nlohmann::json& scene)
     {
         nlohmann::json& objects = SceneJsonObjects(scene);
-        std::uint32_t nextObjectId = std::max(SceneJsonNextObjectId(scene), 1u);
+        NS::uint32 nextObjectId = std::max(SceneJsonNextObjectId(scene), 1u);
         for (const nlohmann::json& object : objects)
         {
             nextObjectId = std::max(nextObjectId, ObjectJsonId(object) + 1);
         }
-        std::unordered_set<std::uint32_t> seen;
+        std::unordered_set<NS::uint32> seen;
         for (nlohmann::json& object : objects)
         {
-            const std::uint32_t id = ObjectJsonId(object);
+            const NS::uint32 id = ObjectJsonId(object);
             if (id == 0 || !seen.insert(id).second)
             {
-                const std::uint32_t fresh = nextObjectId++;
+                const NS::uint32 fresh = nextObjectId++;
                 SetObjectJsonId(object, fresh);
                 seen.insert(fresh);
             }
@@ -404,7 +405,7 @@ namespace NS::Obj
         {
             return name;
         }
-        for (std::uint32_t n = 1;; ++n)
+        for (NS::uint32 n = 1;; ++n)
         {
             std::string candidate = name + "_" + std::to_string(n);
             if (!used.contains(candidate))

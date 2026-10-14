@@ -4,6 +4,7 @@
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/StateMachineOf.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
@@ -132,7 +133,7 @@ namespace GL::Level
         bool m_arcDeflected = false;
         int m_hopsLeft = 0; // 外れで着地した後に残っている跳ねの回数。外れでなければ 0
         int m_hopIndex = 0; // 次の跳ねが何回目か。0 から数える
-        std::uint32_t m_hopSeed = 0;
+        NS::uint32 m_hopSeed = 0;
         std::optional<NS::Sphere> m_syncedSphere; // 最後に当たりへ置いた世界座標の球。置く前は空
     };
 } // namespace GL::Level

@@ -15,7 +15,7 @@
 
 #include <gtest/gtest.h>
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -72,7 +72,7 @@ namespace
         return nlohmann::json{{"半径", radius}};
     }
 
-    nlohmann::json MapObjJson(std::uint32_t id)
+    nlohmann::json MapObjJson(NS::uint32 id)
     {
         nlohmann::json object = NS::Obj::MakeObjectJson();
         NS::Obj::SetObjectJsonClass(object, "MapObj");

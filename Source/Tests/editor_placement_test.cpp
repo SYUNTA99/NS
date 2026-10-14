@@ -3,14 +3,14 @@
 #include "Editor/PlacementCatalog.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "NSlib/Object/Actor.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/MeshCollision.h"
 #include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <gtest/gtest.h>
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <string_view>
 
 // エディタの配置 (ヒエラルキーの追加メニュー・メッシュの投げ込み) が、Actor のクラスごと置くことを縛る
@@ -24,7 +24,7 @@ TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 
     editor.PlaceItem(*item);
 
-    const std::uint32_t id = editor.SelectedObjectId();
+    const NS::uint32 id = editor.SelectedObjectId();
     ASSERT_NE(id, NS::Obj::k_NoObjectId);
     NS::Obj::Actor* placed = scene.Objects().FindByObjectId(id);
     ASSERT_NE(placed, nullptr);
@@ -58,7 +58,7 @@ TEST(EditorPlacement, UndoRemovesPlacedActor)
     ASSERT_NE(item, nullptr);
 
     editor.PlaceItem(*item);
-    const std::uint32_t id = editor.SelectedObjectId();
+    const NS::uint32 id = editor.SelectedObjectId();
     ASSERT_NE(scene.Objects().FindByObjectId(id), nullptr);
 
     NS::Editor::ObjectSnapshotApplier applier{&scene};

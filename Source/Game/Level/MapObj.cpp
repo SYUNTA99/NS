@@ -1,4 +1,5 @@
 #include "Game/Level/MapObj.h"
+#include "NSlib/Core/Types.h"
 
 #include "Game/Level/ImpactMark.h"
 #include "Game/Level/ImpactOutcome.h"
@@ -265,7 +266,7 @@ namespace GL::Level
     void MapObj::StepFreeze()
     {
         AdvanceShake();
-        if (m_states->StepsInState() >= static_cast<std::uint32_t>(std::max(m_freeze.stopSteps, 1)) + 2)
+        if (m_states->StepsInState() >= static_cast<NS::uint32>(std::max(m_freeze.stopSteps, 1)) + 2)
         {
             LeaveFreeze();
         }

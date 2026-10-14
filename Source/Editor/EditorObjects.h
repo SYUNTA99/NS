@@ -5,6 +5,7 @@
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 
 #include <string_view>
@@ -22,27 +23,27 @@ namespace NS::Editor
     [[nodiscard]] bool IsCellBrushObject(const NS::Obj::Actor& object) noexcept;
 
     //! 実体のセル座標。Root の位置を最も近い整数へ丸めた値
-    [[nodiscard]] std::int16_t ObjectCellX(const NS::Obj::Actor& object) noexcept;
-    [[nodiscard]] std::int16_t ObjectCellY(const NS::Obj::Actor& object) noexcept;
-    [[nodiscard]] std::int16_t ObjectCellZ(const NS::Obj::Actor& object) noexcept;
+    [[nodiscard]] NS::int16 ObjectCellX(const NS::Obj::Actor& object) noexcept;
+    [[nodiscard]] NS::int16 ObjectCellY(const NS::Obj::Actor& object) noexcept;
+    [[nodiscard]] NS::int16 ObjectCellZ(const NS::Obj::Actor& object) noexcept;
 
     //! objects からセルが一致する最初のセルブラシ配置物の永続識別番号を返す。不在は k_NoObjectId
-    [[nodiscard]] std::uint32_t FindObjectIdAtCell(const NS::Obj::ActorList& objects,
-                                                   std::int16_t x,
-                                                   std::int16_t y,
-                                                   std::int16_t z) noexcept;
+    [[nodiscard]] NS::uint32 FindObjectIdAtCell(const NS::Obj::ActorList& objects,
+                                                NS::int16 x,
+                                                NS::int16 y,
+                                                NS::int16 z) noexcept;
 
     //! objects に種類を問わずセルが一致する配置物がある場合 true、それ以外の場合は false
     [[nodiscard]] bool HasPlacedObjectAtCell(const NS::Obj::ActorList& objects,
-                                             std::int16_t x,
-                                             std::int16_t y,
-                                             std::int16_t z) noexcept;
+                                             NS::int16 x,
+                                             NS::int16 y,
+                                             NS::int16 z) noexcept;
 
     //! object の今の回転に、世界の Y 軸まわりの 90° を足す。傾きは残る
     void AddCellQuarterTurn(nlohmann::json& object) noexcept;
 
     //! object の回転を rotationStep に対応する Y 軸回転のクォータニオンに設定する
-    void SetCellRotationStep(nlohmann::json& object, std::uint8_t rotationStep) noexcept;
+    void SetCellRotationStep(nlohmann::json& object, NS::uint8 rotationStep) noexcept;
 
     //! 個体名を優先し、空なら登録の表示名かクラス名。未登録の型は Actor
     [[nodiscard]] const char* ObjectDisplayName(const NS::Obj::Actor& object);

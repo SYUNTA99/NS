@@ -1,4 +1,5 @@
-﻿#include "NSlib/Windows/Input.h"
+#include "NSlib/Windows/Input.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Windows/detail/InputWin32.h"
@@ -50,13 +51,13 @@ namespace NS::OS
         }
 
         // スティック値を -1.0〜1.0 へ正規化
-        [[nodiscard]] Stick NormalizeStick(short rawX, short rawY, unsigned short deadzone) noexcept
+        [[nodiscard]] Stick NormalizeStick(short rawX, short rawY, NS::uint16 deadzone) noexcept
         {
             const float dz = static_cast<float>(deadzone) / 32767.0f;
             return Stick{NormalizeAxis(rawX, dz), NormalizeAxis(rawY, dz)};
         }
 
-        [[nodiscard]] float NormalizeTrigger(std::uint8_t raw) noexcept
+        [[nodiscard]] float NormalizeTrigger(NS::uint8 raw) noexcept
         {
             if (raw < XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
             {
@@ -66,13 +67,13 @@ namespace NS::OS
         }
 
         // 0.0〜1.0 のモーターの速さを XInput の 0〜65535 へ写す
-        [[nodiscard]] std::uint16_t ToMotorSpeed(float speed01) noexcept
+        [[nodiscard]] NS::uint16 ToMotorSpeed(float speed01) noexcept
         {
-            return static_cast<std::uint16_t>(std::lround(speed01 * 65535.0f));
+            return static_cast<NS::uint16>(std::lround(speed01 * 65535.0f));
         }
 
         // 送れた場合 true。繋がっていない番号は失敗で返る
-        [[nodiscard]] bool SendMotorSpeeds(int userIndex, std::uint16_t left, std::uint16_t right) noexcept
+        [[nodiscard]] bool SendMotorSpeeds(int userIndex, NS::uint16 left, NS::uint16 right) noexcept
         {
             XINPUT_VIBRATION vibration{};
             vibration.wLeftMotorSpeed = left;
@@ -81,7 +82,7 @@ namespace NS::OS
         }
 
         // XINPUT_GAMEPAD::wButtons と GamepadButton の対応表
-        constexpr std::array<unsigned short, static_cast<std::size_t>(GamepadButton::Count)> k_ButtonBits{
+        constexpr std::array<NS::uint16, static_cast<std::size_t>(GamepadButton::Count)> k_ButtonBits{
             XINPUT_GAMEPAD_A,
             XINPUT_GAMEPAD_B,
             XINPUT_GAMEPAD_X,
@@ -395,8 +396,8 @@ namespace NS::OS
         m_rightTrigger = NormalizeTrigger(state.Gamepad.bRightTrigger);
 
         // 同じ速さを毎フレーム送り直さない
-        const std::uint16_t leftMotor = ToMotorSpeed(m_vibration.left);
-        const std::uint16_t rightMotor = ToMotorSpeed(m_vibration.right);
+        const NS::uint16 leftMotor = ToMotorSpeed(m_vibration.left);
+        const NS::uint16 rightMotor = ToMotorSpeed(m_vibration.right);
         if (leftMotor == m_sentLeftMotor && rightMotor == m_sentRightMotor)
         {
             return;
@@ -462,7 +463,7 @@ namespace NS::OS
 
     namespace
     {
-        Key MapVkToKey(unsigned int vk) noexcept
+        Key MapVkToKey(NS::uint vk) noexcept
         {
             if (vk >= 'A' && vk <= 'Z')
             {
@@ -527,14 +528,14 @@ namespace NS::OS
         case WM_SYSKEYDOWN:
         {
             // lparam のスキャンコード、bit 30 のリピートフラグ、拡張キーは現状未使用
-            const Key k = MapVkToKey(static_cast<unsigned int>(wparam));
+            const Key k = MapVkToKey(static_cast<NS::uint>(wparam));
             input.Keyboard().OnKeyDown(k);
             break;
         }
         case WM_KEYUP:
         case WM_SYSKEYUP:
         {
-            const Key k = MapVkToKey(static_cast<unsigned int>(wparam));
+            const Key k = MapVkToKey(static_cast<NS::uint>(wparam));
             input.Keyboard().OnKeyUp(k);
             break;
         }

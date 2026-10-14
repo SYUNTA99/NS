@@ -2,8 +2,8 @@
 
 #include "NSlib/Core/Math.h"
 
+#include "NSlib/Core/Types.h"
 #include <array>
-#include <cstdint>
 #include <optional>
 
 namespace NS::Gfx
@@ -11,7 +11,7 @@ namespace NS::Gfx
     //! @brief EffectScene::Play が返す、再生したエフェクトのハンドル
     struct EffectHandle
     {
-        std::int32_t value = -1; //!< Effekseer の Manager が返したハンドル値。既定の -1 は無効
+        NS::int32 value = -1; //!< Effekseer の Manager が返したハンドル値。既定の -1 は無効
 
         //! value が 0 以上の場合 true、それ以外の場合は false
         //! @details エフェクトが今も残っているかは EffectScene::Exists で見る

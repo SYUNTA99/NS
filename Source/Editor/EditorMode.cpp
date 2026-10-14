@@ -1,4 +1,5 @@
 #include "Editor/EditorMode.h"
+#include "NSlib/Core/Types.h"
 
 #include "Editor/EditorObjects.h"
 #include "Editor/EditorUi.h"
@@ -10,9 +11,9 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Graphics/DebugDraw.h"
 #include "NSlib/Graphics/RenderContext.h"
-#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/Scene/SceneCamera.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Gamepad.h"
@@ -38,9 +39,9 @@ namespace NS::Editor
 
         constexpr float k_StatusToastSeconds = 2.5f;
 
-        [[nodiscard]] std::int16_t RoundToCell(float v) noexcept
+        [[nodiscard]] NS::int16 RoundToCell(float v) noexcept
         {
-            return static_cast<std::int16_t>(std::lround(v));
+            return static_cast<NS::int16>(std::lround(v));
         }
 
         //! ワールド座標をパネル上のスクリーン座標へ射影する。カメラの後ろ (w <= 0) なら false を返す
@@ -67,12 +68,12 @@ namespace NS::Editor
         };
     } // namespace
 
-    bool EditorMode::HasObjectAtCell(std::int16_t x, std::int16_t y, std::int16_t z) const noexcept
+    bool EditorMode::HasObjectAtCell(NS::int16 x, NS::int16 y, NS::int16 z) const noexcept
     {
         return m_findCellObject && m_findCellObject(x, y, z) != NS::Obj::k_NoObjectId;
     }
 
-    bool EditorMode::IsCellOccupied(std::int16_t x, std::int16_t y, std::int16_t z) const noexcept
+    bool EditorMode::IsCellOccupied(NS::int16 x, NS::int16 y, NS::int16 z) const noexcept
     {
         return m_cellOccupied && m_cellOccupied(x, y, z);
     }
@@ -460,19 +461,19 @@ namespace NS::Editor
 #endif
     }
 
-    void EditorMode::PlaceUnderCursorProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
+    void EditorMode::PlaceUnderCursorProgrammatic(NS::int16 x, NS::int16 y, NS::int16 z) noexcept
     {
         if (m_applier == nullptr || !m_findCellObject || !m_allocateId)
         {
             return;
         }
 
-        const std::uint8_t rotation = [this]() -> std::uint8_t {
+        const NS::uint8 rotation = [this]() -> NS::uint8 {
             if (m_palette.CurrentIsRotatable())
             {
                 return m_currentRotation;
             }
-            return std::uint8_t{0};
+            return NS::uint8{0};
         }();
 
         nlohmann::json placed = m_palette.CurrentTemplate();
@@ -482,7 +483,7 @@ namespace NS::Editor
 
         // 既存 cell は同じ永続 id で置換、空 cell は新規採番
         std::optional<nlohmann::json> before;
-        std::uint32_t id = m_findCellObject(x, y, z);
+        NS::uint32 id = m_findCellObject(x, y, z);
         if (id != NS::Obj::k_NoObjectId)
         {
             before = m_applier->CaptureObject(id);
@@ -503,14 +504,14 @@ namespace NS::Editor
         m_levelDirty = true;
     }
 
-    void EditorMode::DeleteAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
+    void EditorMode::DeleteAtProgrammatic(NS::int16 x, NS::int16 y, NS::int16 z) noexcept
     {
         if (m_applier == nullptr || !m_findCellObject)
         {
             return;
         }
 
-        const std::uint32_t id = m_findCellObject(x, y, z);
+        const NS::uint32 id = m_findCellObject(x, y, z);
         if (id == NS::Obj::k_NoObjectId)
         {
             return;
@@ -525,14 +526,14 @@ namespace NS::Editor
         m_levelDirty = true;
     }
 
-    void EditorMode::RotateAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
+    void EditorMode::RotateAtProgrammatic(NS::int16 x, NS::int16 y, NS::int16 z) noexcept
     {
         if (m_applier == nullptr || !m_findCellObject)
         {
             return;
         }
 
-        const std::uint32_t id = m_findCellObject(x, y, z);
+        const NS::uint32 id = m_findCellObject(x, y, z);
         if (id == NS::Obj::k_NoObjectId)
         {
             return;
@@ -648,9 +649,9 @@ namespace NS::Editor
 
         if (hit)
         {
-            const CellCoord place{static_cast<std::int16_t>(hitCell.x + normal.x),
-                                  static_cast<std::int16_t>(hitCell.y + normal.y),
-                                  static_cast<std::int16_t>(hitCell.z + normal.z)};
+            const CellCoord place{static_cast<NS::int16>(hitCell.x + normal.x),
+                                  static_cast<NS::int16>(hitCell.y + normal.y),
+                                  static_cast<NS::int16>(hitCell.z + normal.z)};
 
             m_cursor.valid = true;
             m_cursor.hit = hitCell;
@@ -744,7 +745,7 @@ namespace NS::Editor
         }
         else if (m_palette.CurrentIsRotatable())
         {
-            m_currentRotation = static_cast<std::uint8_t>((m_currentRotation + 1) & 0x03);
+            m_currentRotation = static_cast<NS::uint8>((m_currentRotation + 1) & 0x03);
         }
     }
 

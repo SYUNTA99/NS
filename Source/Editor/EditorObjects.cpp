@@ -1,4 +1,5 @@
 #include "Editor/EditorObjects.h"
+#include "NSlib/Core/Types.h"
 
 #include "Game/Level/DeathZone.h"
 #include "Game/Player.h"
@@ -78,25 +79,22 @@ namespace NS::Editor
         return mesh == "cube" || mesh == "wedge45";
     }
 
-    std::int16_t ObjectCellX(const NS::Obj::Actor& object) noexcept
+    NS::int16 ObjectCellX(const NS::Obj::Actor& object) noexcept
     {
-        return static_cast<std::int16_t>(std::lround(object.Root().Position().x));
+        return static_cast<NS::int16>(std::lround(object.Root().Position().x));
     }
 
-    std::int16_t ObjectCellY(const NS::Obj::Actor& object) noexcept
+    NS::int16 ObjectCellY(const NS::Obj::Actor& object) noexcept
     {
-        return static_cast<std::int16_t>(std::lround(object.Root().Position().y));
+        return static_cast<NS::int16>(std::lround(object.Root().Position().y));
     }
 
-    std::int16_t ObjectCellZ(const NS::Obj::Actor& object) noexcept
+    NS::int16 ObjectCellZ(const NS::Obj::Actor& object) noexcept
     {
-        return static_cast<std::int16_t>(std::lround(object.Root().Position().z));
+        return static_cast<NS::int16>(std::lround(object.Root().Position().z));
     }
 
-    std::uint32_t FindObjectIdAtCell(const NS::Obj::ActorList& objects,
-                                     std::int16_t x,
-                                     std::int16_t y,
-                                     std::int16_t z) noexcept
+    NS::uint32 FindObjectIdAtCell(const NS::Obj::ActorList& objects, NS::int16 x, NS::int16 y, NS::int16 z) noexcept
     {
         for (NS::Obj::Actor* objPtr : objects)
         {
@@ -110,10 +108,7 @@ namespace NS::Editor
         return NS::Obj::k_NoObjectId;
     }
 
-    bool HasPlacedObjectAtCell(const NS::Obj::ActorList& objects,
-                               std::int16_t x,
-                               std::int16_t y,
-                               std::int16_t z) noexcept
+    bool HasPlacedObjectAtCell(const NS::Obj::ActorList& objects, NS::int16 x, NS::int16 y, NS::int16 z) noexcept
     {
         for (const NS::Obj::Actor* object : objects)
         {
@@ -133,7 +128,7 @@ namespace NS::Editor
         NS::Obj::SetObjectRotation(object, NS::Obj::ObjectRotation(object) * quarter);
     }
 
-    void SetCellRotationStep(nlohmann::json& object, std::uint8_t rotationStep) noexcept
+    void SetCellRotationStep(nlohmann::json& object, NS::uint8 rotationStep) noexcept
     {
         const float yaw = static_cast<float>(rotationStep & 0x03) * k_QuarterTurnYaw;
         const NS::Quaternion rotation = NS::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);

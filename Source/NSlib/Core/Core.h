@@ -8,6 +8,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Sphere.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/LogType.h"
 #include "NSlib/Core/Logger.h"

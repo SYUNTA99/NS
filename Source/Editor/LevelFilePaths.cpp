@@ -1,4 +1,5 @@
-﻿#include "Editor/LevelFilePaths.h"
+#include "Editor/LevelFilePaths.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Windows/Filesystem.h"
@@ -24,7 +25,7 @@ namespace NS::Editor
             upper.reserve(name.size());
             for (char c : name)
             {
-                upper.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(c))));
+                upper.push_back(static_cast<char>(std::toupper(static_cast<NS::uint8>(c))));
             }
             for (const std::string_view& r : k_ReservedNames)
             {

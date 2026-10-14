@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Graphics/DrawItem.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <vector>
 
 namespace NS::Gfx
@@ -14,10 +14,10 @@ namespace NS::Gfx
     //! @brief 描画オブジェクトを一意に識別するための登録ハンドル
     struct RenderHandle
     {
-        static constexpr std::uint32_t k_InvalidSlot = 0xffffffffu;
+        static constexpr NS::uint32 k_InvalidSlot = 0xffffffffu;
 
-        std::uint32_t slot = k_InvalidSlot;
-        std::uint32_t generation = 0;
+        NS::uint32 slot = k_InvalidSlot;
+        NS::uint32 generation = 0;
 
         [[nodiscard]] bool IsValid() const noexcept { return slot != k_InvalidSlot; }
     };
@@ -73,15 +73,15 @@ namespace NS::Gfx
         struct Proxy
         {
             RenderProxyDesc desc{};
-            std::uint32_t generation = 0;
+            NS::uint32 generation = 0;
             bool alive = false;
         };
 
         [[nodiscard]] bool IsLive(RenderHandle handle) const noexcept;
 
         std::vector<Proxy> m_proxies;
-        std::vector<std::uint32_t> m_freeSlots;
-        std::vector<std::uint32_t> m_visibleScratch;
+        std::vector<NS::uint32> m_freeSlots;
+        std::vector<NS::uint32> m_visibleScratch;
         std::vector<DrawItem> m_drawScratch;
     };
 

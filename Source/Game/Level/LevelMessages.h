@@ -8,7 +8,7 @@
 #include "NSlib/Object/Message/Message.h"
 #include "NSlib/Object/ObjectJson.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <string>
 
 namespace NS::Obj
@@ -101,7 +101,7 @@ namespace GL::Level
         HitFace face{};                         //!< 面の赤の欄の写し。段と威力の倍率を JudgeHitFace で決める
         NS::Obj::SensorVolume body{};           //!< 体のセンサーの世界の形。面の大きさを出す
         LaunchShape launch{};
-        std::string hitTimeline;                //!< 当たりのタイムラインの名前。空なら段の既定
+        std::string hitTimeline; //!< 当たりのタイムラインの名前。空なら段の既定
     };
 
     //! @brief 体当たりを受けるかを問う知らせ。体当たりの裁定が、重なった物の体のセンサーへ送る
@@ -162,7 +162,7 @@ namespace GL::Level
         NS::Vector3 axis{1.0f, 0.0f, 0.0f}; //!< 揺らす世界の長さ 1 の向き。横は画面の横、奥は押す向き
         float amplitude = 0.0f;             //!< 最初の振れ幅 (m)
         int length = 0;                     //!< 揺れのフレーム数
-        std::uint32_t seed = 0;             //!< 振れ幅のばらつきの種
+        NS::uint32 seed = 0;                //!< 振れ幅のばらつきの種
         float firstSign = 1.0f;             //!< 横の 1 フレーム目の向き
         int flipFrames = 1;                 //!< 横の左右を入れ替えるフレーム数
         int pushFrames = 1;                 //!< 奥の押し直すフレーム数
@@ -252,8 +252,8 @@ namespace GL::Level
         bool breaks = false;            //!< 壊れるか。破壊を許した時だけ真になる
         HitTier tier = HitTier::Center; //!< 当たりの段。尾の色が変わる
         float power = 0.0f;
-        float launchScale = 0.0f;       //!< 曲線の距離と高さに掛けた比。尾の長さに効く
-        std::uint32_t hopSeed = 0;      //!< 外れで着地した後の跳ね方の種。何回目の当たりか
+        float launchScale = 0.0f; //!< 曲線の距離と高さに掛けた比。尾の長さに効く
+        NS::uint32 hopSeed = 0;   //!< 外れで着地した後の跳ね方の種。何回目の当たりか
     };
 
     //! @brief 体当たりの止めが明けたことを知らせる。受け手は元の位置と形へ戻ってから飛ぶか壊れ、床に跡を残す

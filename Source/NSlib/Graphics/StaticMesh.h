@@ -1,7 +1,8 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Graphics/Mesh.h"
 
 #include <memory>
@@ -17,14 +18,15 @@ namespace NS::Gfx
         NS::Vector3 normal;
     };
     static_assert(sizeof(StaticVertex) == 32, "頂点レイアウトの制約上、StaticVertexは32バイトである必要があります。");
-    static_assert(std::is_standard_layout_v<StaticVertex>,"GPUへ正しく転送するため、StaticVertexは標準レイアウトである必要があります。");
+    static_assert(std::is_standard_layout_v<StaticVertex>,
+                  "GPUへ正しく転送するため、StaticVertexは標準レイアウトである必要があります。");
 
     //! 静的メッシュの初期化パラメータ
     struct MeshDesc
     {
         const StaticVertex* vertices = nullptr;
         std::size_t vertexCount = 0;
-        const std::uint32_t* indices = nullptr;
+        const NS::uint32* indices = nullptr;
         std::size_t indexCount = 0;
         const NS::AABB* precomputedBounds = nullptr; // あれば頂点走査を省いて局所境界に使う
     };

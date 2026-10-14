@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/GltfLoader.h"
+#include "NSlib/Graphics/GltfLoader.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Logger.h"
@@ -192,9 +193,9 @@ namespace NS::Gfx
         // primitive の index を baseVertex offset 付きで積み、この primitive
         // 分だけ三角形の巻き順を右手から左手へ反転する index を持たない primitive は頂点の並び順を index とみなす
         void AppendIndicesLeftHanded(const cgltf_primitive& prim,
-                                     std::uint32_t baseVertex,
+                                     NS::uint32 baseVertex,
                                      cgltf_size vertexCount,
-                                     std::vector<std::uint32_t>& outIndices)
+                                     std::vector<NS::uint32>& outIndices)
         {
             const std::size_t indexStart = outIndices.size();
             if (prim.indices != nullptr)
@@ -204,7 +205,7 @@ namespace NS::Gfx
                 for (cgltf_size i = 0; i < indexCount; ++i)
                 {
                     outIndices.push_back(baseVertex +
-                                         static_cast<std::uint32_t>(cgltf_accessor_read_index(prim.indices, i)));
+                                         static_cast<NS::uint32>(cgltf_accessor_read_index(prim.indices, i)));
                 }
             }
             else
@@ -212,7 +213,7 @@ namespace NS::Gfx
                 outIndices.reserve(outIndices.size() + vertexCount);
                 for (cgltf_size i = 0; i < vertexCount; ++i)
                 {
-                    outIndices.push_back(baseVertex + static_cast<std::uint32_t>(i));
+                    outIndices.push_back(baseVertex + static_cast<NS::uint32>(i));
                 }
             }
 
@@ -239,7 +240,7 @@ namespace NS::Gfx
             float nm[9];
             ComputeNormalMatrix(world, nm);
 
-            const std::uint32_t baseVertex = static_cast<std::uint32_t>(geom.vertices.size());
+            const NS::uint32 baseVertex = static_cast<NS::uint32>(geom.vertices.size());
             const cgltf_size vertexCount = posAcc->count;
 
             std::vector<std::array<float, 3>> computedNormals;
@@ -538,7 +539,7 @@ namespace NS::Gfx
                                     cgltf_size jointsCount,
                                     const std::string& path,
                                     std::vector<SkinnedVertex>& vertices,
-                                    std::vector<std::uint32_t>& indices)
+                                    std::vector<NS::uint32>& indices)
         {
             const cgltf_accessor* posAcc = FindAttribute(prim, cgltf_attribute_type_position, 0);
             if (posAcc == nullptr)
@@ -556,7 +557,7 @@ namespace NS::Gfx
                 return false;
             }
 
-            const std::uint32_t baseVertex = static_cast<std::uint32_t>(vertices.size());
+            const NS::uint32 baseVertex = static_cast<NS::uint32>(vertices.size());
             const cgltf_size vertexCount = posAcc->count;
 
             std::vector<std::array<float, 3>> computedNormals;
@@ -596,7 +597,7 @@ namespace NS::Gfx
                 normal.Normalize();
                 v.normal = normal;
 
-                std::array<std::uint32_t, 4> joints{};
+                std::array<NS::uint32, 4> joints{};
                 cgltf_accessor_read_uint(jointsAcc, i, joints.data(), 4);
                 std::array<float, 4> weights{};
                 cgltf_accessor_read_float(weightsAcc, i, weights.data(), 4);
@@ -916,7 +917,7 @@ namespace NS::Gfx
         // 同一 skin を共有する全 mesh node を連結する。Mixamo は本体と関節マーカーが別 mesh に分かれており、
         // 先頭だけ読むと関節マーカーしか出ない。joint index 整合のため skin が一致する node のみ対象とする
         std::vector<SkinnedVertex> vertices;
-        std::vector<std::uint32_t> indices;
+        std::vector<NS::uint32> indices;
         for (cgltf_size n = 0; n < model.nodes_count; ++n)
         {
             const cgltf_node& node = model.nodes[n];
@@ -956,7 +957,7 @@ namespace NS::Gfx
         }
 
         // bone 並べ替えに合わせて頂点の joint index を張り替える
-        const std::vector<std::uint32_t> remap = detail::TopologicalSortBones(bones);
+        const std::vector<NS::uint32> remap = detail::TopologicalSortBones(bones);
         for (SkinnedVertex& v : vertices)
         {
             for (int k = 0; k < 4; ++k)

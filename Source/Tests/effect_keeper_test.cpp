@@ -7,7 +7,7 @@
 
 #include <vector>
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 
 // 描画の無い世界の保持役は再生せず、出した記録だけを残す
 
@@ -30,7 +30,7 @@ namespace
 TEST(EffectKeeperTest, PlayWithoutAnOwnerLeavesOneRecord)
 {
     EffectKeeper keeper;
-    const std::uint32_t id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
 
     EXPECT_NE(id, 0u);
     ASSERT_EQ(keeper.Records().size(), 1u);
@@ -46,7 +46,7 @@ TEST(EffectKeeperTest, StopWritesTheStepItEndedOn)
 {
     EffectKeeper keeper;
     keeper.BeginStep();
-    const std::uint32_t id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
     keeper.BeginStep();
     keeper.StopRoot(id);
     keeper.BeginStep();
@@ -64,7 +64,7 @@ TEST(EffectKeeperTest, StopWritesTheStepItEndedOn)
 TEST(EffectKeeperTest, StopAfterEndsOnTheScheduledStep)
 {
     EffectKeeper keeper;
-    const std::uint32_t id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
     keeper.StopAfter(id, 2);
 
     keeper.BeginStep();
@@ -77,7 +77,7 @@ TEST(EffectKeeperTest, StopAfterEndsOnTheScheduledStep)
 TEST(EffectKeeperTest, EndedRecordIsDroppedAfterTheKeepSteps)
 {
     EffectKeeper keeper{3};
-    const std::uint32_t id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
     keeper.Stop(id);
 
     for (int step = 0; step < 3; ++step)
@@ -92,7 +92,7 @@ TEST(EffectKeeperTest, EndedRecordIsDroppedAfterTheKeepSteps)
 TEST(EffectKeeperTest, AmountAndRotationAreWrittenToTheRecord)
 {
     EffectKeeper keeper;
-    const std::uint32_t id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
     const NS::Quaternion turned = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, 1.0f);
     keeper.SetAmount(id, 2.5f);
     keeper.SetRotation(id, turned);

@@ -22,10 +22,10 @@
 #include <dxgi.h>
 #include <wrl/client.h>
 
+#include "NSlib/Core/Types.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -38,8 +38,8 @@ using Microsoft::WRL::ComPtr;
 namespace
 {
     // EffectScene と同じ値
-    constexpr std::int32_t k_MaxSprites = 8000;
-    constexpr std::int32_t k_MaxInstances = 8000;
+    constexpr NS::int32 k_MaxSprites = 8000;
+    constexpr NS::int32 k_MaxInstances = 8000;
 
     struct Options
     {
@@ -50,19 +50,19 @@ namespace
         float distance = 6.0f;
         float eyeHeight = 0.0f;
         std::array<float, 3> background{0.08f, 0.08f, 0.10f};
-        std::int32_t startFrame = 0;
-        std::vector<std::pair<std::int32_t, float>> inputs; // 動的入力の番号と値
+        NS::int32 startFrame = 0;
+        std::vector<std::pair<NS::int32, float>> inputs; // 動的入力の番号と値
         bool writePng = true;
     };
 
     // PNG は無圧縮の deflate で書く。見るための絵なので大きさは問わない
-    std::uint32_t Crc32(const std::uint8_t* data, std::size_t length, std::uint32_t crc)
+    NS::uint32 Crc32(const NS::uint8* data, std::size_t length, NS::uint32 crc)
     {
-        static std::array<std::uint32_t, 256> table = [] {
-            std::array<std::uint32_t, 256> result{};
-            for (std::uint32_t n = 0; n < 256; ++n)
+        static std::array<NS::uint32, 256> table = [] {
+            std::array<NS::uint32, 256> result{};
+            for (NS::uint32 n = 0; n < 256; ++n)
             {
-                std::uint32_t c = n;
+                NS::uint32 c = n;
                 for (int k = 0; k < 8; ++k)
                 {
                     if ((c & 1u) != 0)
@@ -86,35 +86,35 @@ namespace
         return ~crc;
     }
 
-    void PutBigEndian32(std::vector<std::uint8_t>& out, std::uint32_t value)
+    void PutBigEndian32(std::vector<NS::uint8>& out, NS::uint32 value)
     {
-        out.push_back(static_cast<std::uint8_t>(value >> 24));
-        out.push_back(static_cast<std::uint8_t>(value >> 16));
-        out.push_back(static_cast<std::uint8_t>(value >> 8));
-        out.push_back(static_cast<std::uint8_t>(value));
+        out.push_back(static_cast<NS::uint8>(value >> 24));
+        out.push_back(static_cast<NS::uint8>(value >> 16));
+        out.push_back(static_cast<NS::uint8>(value >> 8));
+        out.push_back(static_cast<NS::uint8>(value));
     }
 
-    void PutChunk(std::vector<std::uint8_t>& out, const char* type, const std::vector<std::uint8_t>& data)
+    void PutChunk(std::vector<NS::uint8>& out, const char* type, const std::vector<NS::uint8>& data)
     {
-        PutBigEndian32(out, static_cast<std::uint32_t>(data.size()));
-        std::vector<std::uint8_t> typed(type, type + 4);
+        PutBigEndian32(out, static_cast<NS::uint32>(data.size()));
+        std::vector<NS::uint8> typed(type, type + 4);
         typed.insert(typed.end(), data.begin(), data.end());
         out.insert(out.end(), typed.begin(), typed.end());
         PutBigEndian32(out, Crc32(typed.data(), typed.size(), 0));
     }
 
-    bool WritePngRgb(const std::filesystem::path& path, int width, int height, const std::vector<std::uint8_t>& rgb)
+    bool WritePngRgb(const std::filesystem::path& path, int width, int height, const std::vector<NS::uint8>& rgb)
     {
-        std::vector<std::uint8_t> raw;
+        std::vector<NS::uint8> raw;
         raw.reserve(static_cast<std::size_t>((width * 3 + 1) * height));
         for (int y = 0; y < height; ++y)
         {
             raw.push_back(0);
-            const std::uint8_t* row = rgb.data() + static_cast<std::size_t>(y) * width * 3;
+            const NS::uint8* row = rgb.data() + static_cast<std::size_t>(y) * width * 3;
             raw.insert(raw.end(), row, row + width * 3);
         }
 
-        std::vector<std::uint8_t> zlib{0x78, 0x01};
+        std::vector<NS::uint8> zlib{0x78, 0x01};
         std::size_t offset = 0;
         while (offset < raw.size() || raw.empty())
         {
@@ -128,10 +128,10 @@ namespace
             {
                 zlib.push_back(0);
             }
-            zlib.push_back(static_cast<std::uint8_t>(blockLength & 0xFF));
-            zlib.push_back(static_cast<std::uint8_t>(blockLength >> 8));
-            zlib.push_back(static_cast<std::uint8_t>(~blockLength & 0xFF));
-            zlib.push_back(static_cast<std::uint8_t>((~blockLength >> 8) & 0xFF));
+            zlib.push_back(static_cast<NS::uint8>(blockLength & 0xFF));
+            zlib.push_back(static_cast<NS::uint8>(blockLength >> 8));
+            zlib.push_back(static_cast<NS::uint8>(~blockLength & 0xFF));
+            zlib.push_back(static_cast<NS::uint8>((~blockLength >> 8) & 0xFF));
             zlib.insert(zlib.end(), raw.begin() + offset, raw.begin() + offset + blockLength);
             offset += blockLength;
             if (last)
@@ -139,19 +139,19 @@ namespace
                 break;
             }
         }
-        std::uint32_t a = 1;
-        std::uint32_t b = 0;
-        for (std::uint8_t value : raw)
+        NS::uint32 a = 1;
+        NS::uint32 b = 0;
+        for (NS::uint8 value : raw)
         {
             a = (a + value) % 65521u;
             b = (b + a) % 65521u;
         }
         PutBigEndian32(zlib, (b << 16) | a);
 
-        std::vector<std::uint8_t> png{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
-        std::vector<std::uint8_t> header;
-        PutBigEndian32(header, static_cast<std::uint32_t>(width));
-        PutBigEndian32(header, static_cast<std::uint32_t>(height));
+        std::vector<NS::uint8> png{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
+        std::vector<NS::uint8> header;
+        PutBigEndian32(header, static_cast<NS::uint32>(width));
+        PutBigEndian32(header, static_cast<NS::uint32>(height));
         header.insert(header.end(), {8, 2, 0, 0, 0});
         PutChunk(png, "IHDR", header);
         PutChunk(png, "IDAT", zlib);
@@ -276,7 +276,7 @@ namespace
             const Effekseer::ParameterCommonValues& common = implemented->CommonValues;
             const Effekseer::ParameterRendererCommon& renderer = implemented->RendererCommon;
             std::string texture = "(無し)";
-            const int32_t textureIndex = renderer.TextureIndexes[0];
+            const NS::int32 textureIndex = renderer.TextureIndexes[0];
             if (textureIndex >= 0 && textureIndex < effect->GetColorImageCount())
             {
                 texture = ToUtf8(effect->GetColorImagePath(textureIndex));
@@ -307,7 +307,7 @@ namespace
     int CountMissingResources(const Effekseer::EffectRef& effect)
     {
         int missing = 0;
-        for (int32_t i = 0; i < effect->GetColorImageCount(); ++i)
+        for (NS::int32 i = 0; i < effect->GetColorImageCount(); ++i)
         {
             if (effect->GetColorImage(i) == nullptr)
             {
@@ -315,7 +315,7 @@ namespace
                 ++missing;
             }
         }
-        for (int32_t i = 0; i < effect->GetNormalImageCount(); ++i)
+        for (NS::int32 i = 0; i < effect->GetNormalImageCount(); ++i)
         {
             if (effect->GetNormalImage(i) == nullptr)
             {
@@ -323,7 +323,7 @@ namespace
                 ++missing;
             }
         }
-        for (int32_t i = 0; i < effect->GetDistortionImageCount(); ++i)
+        for (NS::int32 i = 0; i < effect->GetDistortionImageCount(); ++i)
         {
             if (effect->GetDistortionImage(i) == nullptr)
             {
@@ -331,7 +331,7 @@ namespace
                 ++missing;
             }
         }
-        for (int32_t i = 0; i < effect->GetModelCount(); ++i)
+        for (NS::int32 i = 0; i < effect->GetModelCount(); ++i)
         {
             if (effect->GetModel(i) == nullptr)
             {
@@ -339,7 +339,7 @@ namespace
                 ++missing;
             }
         }
-        for (int32_t i = 0; i < effect->GetMaterialCount(); ++i)
+        for (NS::int32 i = 0; i < effect->GetMaterialCount(); ++i)
         {
             if (effect->GetMaterial(i) == nullptr)
             {
@@ -347,7 +347,7 @@ namespace
                 ++missing;
             }
         }
-        for (int32_t i = 0; i < effect->GetCurveCount(); ++i)
+        for (NS::int32 i = 0; i < effect->GetCurveCount(); ++i)
         {
             if (effect->GetCurve(i) == nullptr)
             {
@@ -403,7 +403,7 @@ namespace
             }
             else if (flag == L"--input" && hasValue)
             {
-                std::int32_t index = 0;
+                NS::int32 index = 0;
                 float value = 0.0f;
                 if (swscanf_s(argv[++i], L"%d=%f", &index, &value) != 2 || index < 0 || index >= 4)
                 {
@@ -543,13 +543,13 @@ int wmain(int argc, wchar_t** argv)
     {
         std::printf("Play の開始フレーム: %d\n", options.startFrame);
     }
-    for (const std::pair<std::int32_t, float>& input : options.inputs)
+    for (const std::pair<NS::int32, float>& input : options.inputs)
     {
         manager->SetDynamicInput(handle, input.first, input.second);
         std::printf("動的入力 %d: %g\n", input.first, input.second);
     }
     int lastAliveFrame = 0;
-    std::vector<std::uint8_t> rgb(static_cast<std::size_t>(options.size) * options.size * 3);
+    std::vector<NS::uint8> rgb(static_cast<std::size_t>(options.size) * options.size * 3);
     std::array<int, 3> backgroundBytes{};
     for (std::size_t channel = 0; channel < backgroundBytes.size(); ++channel)
     {
@@ -560,7 +560,7 @@ int wmain(int argc, wchar_t** argv)
     {
         manager->Update(1.0f);
         const bool alive = manager->Exists(handle);
-        int32_t instances = 0;
+        NS::int32 instances = 0;
         if (alive)
         {
             instances = manager->GetInstanceCount(handle);
@@ -598,11 +598,11 @@ int wmain(int argc, wchar_t** argv)
         }
         for (int y = 0; y < options.size; ++y)
         {
-            const std::uint8_t* row =
-                static_cast<const std::uint8_t*>(mapped.pData) + static_cast<std::size_t>(y) * mapped.RowPitch;
+            const NS::uint8* row =
+                static_cast<const NS::uint8*>(mapped.pData) + static_cast<std::size_t>(y) * mapped.RowPitch;
             for (int x = 0; x < options.size; ++x)
             {
-                std::uint8_t* out = rgb.data() + (static_cast<std::size_t>(y) * options.size + x) * 3;
+                NS::uint8* out = rgb.data() + (static_cast<std::size_t>(y) * options.size + x) * 3;
                 out[0] = row[x * 4 + 0];
                 out[1] = row[x * 4 + 1];
                 out[2] = row[x * 4 + 2];

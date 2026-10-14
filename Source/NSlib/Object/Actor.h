@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
@@ -13,8 +13,8 @@
 #include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/UpdatePhase.h"
 
+#include "NSlib/Core/Types.h"
 #include <concepts>
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -48,7 +48,7 @@ namespace NS::Obj
     public:
         Actor() noexcept;
         virtual ~Actor() noexcept;
-        [[nodiscard]] std::uint32_t Id() const noexcept { return m_id; }
+        [[nodiscard]] NS::uint32 Id() const noexcept { return m_id; }
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
         NS_REFLECT_DECLARE()
 
@@ -251,18 +251,18 @@ namespace NS::Obj
         void SnapshotForInterpolation() noexcept;
         //! 状態機械を預かる。既に持っていれば NS_LOG_ERROR を出して machine を捨て、false を返す
         [[nodiscard]] bool AdoptStateMachine(std::unique_ptr<IStateMachine> machine);
-        void SetId(std::uint32_t id) noexcept { m_id = id; }
+        void SetId(NS::uint32 id) noexcept { m_id = id; }
         void SetName(std::string name) noexcept { m_name = std::move(name); }
         [[nodiscard]] const SubObjectDesc* FindSubObjMember(const void* member) const;
         void ReportInvalidSubObj(const SubObjectDesc* field) const;
         // PendingDestroy からはどこへも移らない
-        enum class Presence : std::uint8_t
+        enum class Presence : NS::uint8
         {
             Disappeared,
             Appeared,
             PendingDestroy,
         };
-        std::uint32_t m_id = 0;
+        NS::uint32 m_id = 0;
         std::string m_name;
         Scene* m_scene = nullptr; // 所有 Scene、attach 前後は nullptr
         Presence m_presence = Presence::Disappeared;

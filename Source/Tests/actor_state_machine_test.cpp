@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 
 namespace
 {
@@ -65,7 +65,7 @@ namespace
             NS::Obj::StateMachineOf<NS::Obj::Actor>* machine = nullptr;
             (void)BuildStateMachine<NS::Obj::Actor, OwnedState>(*this, machine);
         }
-        std::uint32_t stepsSeenInVisual = 0;
+        NS::uint32 stepsSeenInVisual = 0;
 
     protected:
         void VisualStep() override

@@ -27,10 +27,10 @@
 #include "NSlib/Physics/Capsule.h"
 #include "NSlib/Windows/Clock.h"
 
+#include "NSlib/Core/Types.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdint>
 #include <random>
 #include <utility>
 #include <variant>
@@ -41,17 +41,17 @@ namespace GL::Level
     namespace
     {
         // 丸めた整数を 32 ビットの符号なしへ写す。負の値も同じ値なら同じビットになる
-        [[nodiscard]] std::uint32_t RoundedBits(float value) noexcept
+        [[nodiscard]] NS::uint32 RoundedBits(float value) noexcept
         {
-            return static_cast<std::uint32_t>(static_cast<std::int32_t>(std::lround(value)));
+            return static_cast<NS::uint32>(static_cast<NS::int32>(std::lround(value)));
         }
 
         // 横ずれ・角度・位置を丸めて種を作り、浮動小数の末尾の差で揺れが変わらないようにする
         // seed_seq の混ぜ方は規格で決まるため、同じ値から同じ種になる
-        [[nodiscard]] std::uint32_t ShakeSeed(std::uint32_t targetId,
-                                              float offset01,
-                                              const NS::Vector3& impactDir,
-                                              const NS::Vector3& targetPos)
+        [[nodiscard]] NS::uint32 ShakeSeed(NS::uint32 targetId,
+                                           float offset01,
+                                           const NS::Vector3& impactDir,
+                                           const NS::Vector3& targetPos)
         {
             const float headingDegrees = NS::RadiansToDegrees(std::atan2(impactDir.z, impactDir.x));
             std::seed_seq values{
@@ -62,7 +62,7 @@ namespace GL::Level
                 RoundedBits(targetPos.y * 100.0f),
                 RoundedBits(targetPos.z * 100.0f),
             };
-            std::array<std::uint32_t, 1> seed{};
+            std::array<NS::uint32, 1> seed{};
             values.generate(seed.begin(), seed.end());
             return seed[0];
         }
@@ -197,7 +197,7 @@ namespace GL::Level
         [[nodiscard]] NS::Obj::Curve ScaledCurve(const NS::Obj::Curve& curve, float scale) noexcept
         {
             NS::Obj::Curve scaled = curve;
-            for (std::uint32_t i = 0; i < scaled.count; ++i)
+            for (NS::uint32 i = 0; i < scaled.count; ++i)
             {
                 scaled.keys[i].y *= scale;
                 scaled.keys[i].inTangent *= scale;

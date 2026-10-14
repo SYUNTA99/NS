@@ -1,8 +1,8 @@
-﻿#pragma once
+#pragma once
 
+#include "NSlib/Core/Types.h"
 #include <array>
 #include <cstddef>
-#include <cstdint>
 
 namespace NS::OS
 {
@@ -100,8 +100,8 @@ namespace NS::OS
         GamepadVibration m_vibration{};
         bool m_vibrationWritten = false; // 前の Update の後に振動が書かれたか
         // 実機へ最後に送った速さ。XInput の 0〜65535
-        std::uint16_t m_sentLeftMotor = 0;
-        std::uint16_t m_sentRightMotor = 0;
+        NS::uint16 m_sentLeftMotor = 0;
+        NS::uint16 m_sentRightMotor = 0;
     };
 
 } // namespace NS::OS

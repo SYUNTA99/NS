@@ -1,7 +1,8 @@
-﻿#include "NSlib/Physics/PhysicsScene.h"
+#include "NSlib/Physics/PhysicsScene.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Sphere.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Physics/detail/JoltConversion.h"
@@ -27,10 +28,10 @@ namespace NS::Phys
 {
     namespace
     {
-        constexpr JPH::uint k_MaxBodies = 4096;
-        constexpr JPH::uint k_MaxBodyPairs = 16384;
-        constexpr JPH::uint k_MaxContactConstraints = 4096;
-        constexpr JPH::uint k_MaxJobs = 1024;
+        constexpr NS::uint k_MaxBodies = 4096;
+        constexpr NS::uint k_MaxBodyPairs = 16384;
+        constexpr NS::uint k_MaxContactConstraints = 4096;
+        constexpr NS::uint k_MaxJobs = 1024;
         constexpr std::size_t k_TempAllocatorBytes = 10 * 1024 * 1024;
 
         [[nodiscard]] float FiniteOr(float value, float fallback) noexcept
@@ -142,7 +143,7 @@ namespace NS::Phys
         detail::InitJoltRuntime();
     }
 
-    JPH::uint PhysicsScene::BPLayerInterface::GetNumBroadPhaseLayers() const
+    NS::uint PhysicsScene::BPLayerInterface::GetNumBroadPhaseLayers() const
     {
         return BroadPhaseLayers::Count;
     }
@@ -221,7 +222,7 @@ namespace NS::Phys
 
     PhysicsScene::~PhysicsScene() = default;
 
-    JPH::uint PhysicsScene::BodyCount() const noexcept
+    NS::uint PhysicsScene::BodyCount() const noexcept
     {
         return m_physicsSystem.GetNumBodies();
     }

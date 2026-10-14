@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Editor/Undo/ICommand.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/ObjectJson.h"
 
 #include <optional>
@@ -13,7 +14,7 @@ namespace NS::Editor
     {
     public:
         //! before は Undo、after は実行・Redo の状態。nullopt は個体が存在しない状態
-        ObjectSnapshotCommand(std::uint32_t id,
+        ObjectSnapshotCommand(NS::uint32 id,
                               std::optional<nlohmann::json> before,
                               std::optional<nlohmann::json> after) noexcept;
 
@@ -23,7 +24,7 @@ namespace NS::Editor
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override;
 
     private:
-        std::uint32_t m_id;                              // 対象オブジェクトの永続 id
+        NS::uint32 m_id;                        // 対象オブジェクトの永続 id
         std::optional<nlohmann::json> m_before; // 適用前の姿 (Undo 復元用、無ければ未存在)
         std::optional<nlohmann::json> m_after;  // 適用後の姿 (無ければ除去)
     };

@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/Buffer.h"
+#include "NSlib/Graphics/Buffer.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/D3dCommon.h"
@@ -92,7 +93,7 @@ namespace NS::Gfx
                          "Buffer 構築失敗 (device={}, bytes={}, bind=0x{:X})",
                          static_cast<const void*>(device),
                          bytes,
-                         static_cast<unsigned>(desc.bindFlags));
+                         static_cast<NS::uint>(desc.bindFlags));
             return;
         }
 
@@ -121,9 +122,9 @@ namespace NS::Gfx
         {
             NS_LOG_ERROR(Graphics,
                          "CreateBuffer 失敗 (hr=0x{:X}, bytes={}, bind=0x{:X})",
-                         static_cast<unsigned>(hr),
+                         static_cast<NS::uint>(hr),
                          bytes,
-                         static_cast<unsigned>(desc.bindFlags));
+                         static_cast<NS::uint>(desc.bindFlags));
             m_buffer.Reset();
         }
     }

@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Graphics/DrawItem.h"
 #include "NSlib/Object/IRenderable.h"
 #include "NSlib/Object/SubObject.h"
@@ -59,7 +60,7 @@ namespace NS::Obj
         void SetPerObjectVsConstant(const NS::Gfx::Buffer* cb,
                                     const void* cpuData,
                                     std::size_t cpuDataSize,
-                                    unsigned slot) noexcept;
+                                    NS::uint slot) noexcept;
 
         //! skinned など mesh 固定の LocalBounds では現在ポーズを包めない時に、同じ object の SubObject が毎フレーム
         //! 現在ポーズの局所境界を差す。差された間は WorldBounds がこれを世界変換して使う
@@ -197,7 +198,7 @@ namespace NS::Obj
         const NS::Gfx::Buffer* m_perObjectVsCb = nullptr;
         const void* m_perObjectVsData = nullptr;
         std::size_t m_perObjectVsSize = 0;
-        unsigned m_perObjectVsSlot = 1;
+        NS::uint m_perObjectVsSlot = 1;
 
         // Animation が現在ポーズから与える局所境界
         NS::AABB m_localBoundsOverride{};

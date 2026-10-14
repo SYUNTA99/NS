@@ -7,7 +7,7 @@
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <string_view>
 #include <unordered_map>
 
@@ -28,9 +28,9 @@ namespace NS::Obj
     [[nodiscard]] nlohmann::json MakeObjectJson();
 
     //! 配置物の永続 id。未採番と壊れた形は 0
-    [[nodiscard]] std::uint32_t ObjectJsonId(const nlohmann::json& object) noexcept;
+    [[nodiscard]] NS::uint32 ObjectJsonId(const nlohmann::json& object) noexcept;
     //! 配置物の永続 id を書く
-    void SetObjectJsonId(nlohmann::json& object, std::uint32_t id);
+    void SetObjectJsonId(nlohmann::json& object, NS::uint32 id);
 
     //! 生成する Actor のクラス名。空は素の Actor
     [[nodiscard]] std::string_view ObjectJsonClass(const nlohmann::json& object) noexcept;
@@ -43,9 +43,9 @@ namespace NS::Obj
     void SetObjectJsonName(nlohmann::json& object, std::string_view name);
 
     //! 親の永続識別番号。0 は根。transform は親の座標系での値
-    [[nodiscard]] std::uint32_t ObjectJsonParent(const nlohmann::json& object) noexcept;
+    [[nodiscard]] NS::uint32 ObjectJsonParent(const nlohmann::json& object) noexcept;
     //! 親の永続 id を書く。0 は root の印なので消す
-    void SetObjectJsonParent(nlohmann::json& object, std::uint32_t parentId);
+    void SetObjectJsonParent(nlohmann::json& object, NS::uint32 parentId);
 
     //! 配置物自身の active 値。欄が無ければ有効
     [[nodiscard]] bool ObjectJsonActive(const nlohmann::json& object) noexcept;
@@ -81,7 +81,7 @@ namespace NS::Obj
 
     //! @brief object の参照の欄のうち、idMap に載った id を指す物を載った先の id へ付け替える
     //! @details 複製で使う。コピーした範囲の中を指す参照だけをコピー側へ向け、範囲の外を指す参照は元のまま残す
-    void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<std::uint32_t, std::uint32_t>& idMap);
+    void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<NS::uint32, NS::uint32>& idMap);
 
     //! 配置物の JSON の姿勢を読み書きする。
     //! 実体は subObjects 内の k_TransformSubObjName の欄

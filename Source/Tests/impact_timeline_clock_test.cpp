@@ -5,21 +5,22 @@
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/System/SceneSystem.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/System/HitScreenDirector.h"
-#include "NSlib/Object/System/PadRumbleDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Object/SubObjects/CameraModifier.h"
 #include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "NSlib/Object/SubObjects/HitReaction.h"
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/Object/System/CameraManager.h"
+#include "NSlib/Object/System/HitScreenDirector.h"
+#include "NSlib/Object/System/PadRumbleDirector.h"
+#include "NSlib/Object/System/SceneSystem.h"
 #include "NSlib/Object/UpdatePhase.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Input.h"
@@ -1289,7 +1290,7 @@ TEST(ImpactTimelineClock, DepthShakePushesEachBodyAlongTheForceItTook)
         const NS::Vector3 other = rock->ModelSubObj()->DrawOffset();
         if (clock >= 1 && clock <= 6)
         {
-            const std::uint32_t seed = player->Resolver().LastImpact().sequence;
+            const NS::uint32 seed = player->Resolver().LastImpact().sequence;
             // 真正面から当てたので、受けた力の向きは +z
             EXPECT_NEAR(other.x, 0.0f, 1.0e-5f);
             EXPECT_NEAR(other.y, 0.0f, 1.0e-6f);

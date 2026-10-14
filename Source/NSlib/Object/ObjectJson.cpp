@@ -1,4 +1,5 @@
 #include "NSlib/Object/ObjectJson.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/SubObjects/Transform.h"
@@ -97,12 +98,12 @@ namespace NS::Obj
         return object;
     }
 
-    std::uint32_t ObjectJsonId(const nlohmann::json& object) noexcept
+    NS::uint32 ObjectJsonId(const nlohmann::json& object) noexcept
     {
         return FieldUnsigned(object, "id", 0);
     }
 
-    void SetObjectJsonId(nlohmann::json& object, std::uint32_t id)
+    void SetObjectJsonId(nlohmann::json& object, NS::uint32 id)
     {
         WriteOrErase(object, "id", false, id);
     }
@@ -127,12 +128,12 @@ namespace NS::Obj
         WriteOrErase(object, "name", name.empty(), std::string{name});
     }
 
-    std::uint32_t ObjectJsonParent(const nlohmann::json& object) noexcept
+    NS::uint32 ObjectJsonParent(const nlohmann::json& object) noexcept
     {
         return FieldUnsigned(object, "parent", k_NoObjectId);
     }
 
-    void SetObjectJsonParent(nlohmann::json& object, std::uint32_t parentId)
+    void SetObjectJsonParent(nlohmann::json& object, NS::uint32 parentId)
     {
         WriteOrErase(object, "parent", parentId == k_NoObjectId, parentId);
     }
@@ -156,7 +157,7 @@ namespace NS::Obj
         WriteOrErase(object, "active", active, active);
     }
 
-    void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<std::uint32_t, std::uint32_t>& idMap)
+    void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<NS::uint32, NS::uint32>& idMap)
     {
         ForEachRefValue(object, [&idMap](nlohmann::json& value) {
             const nlohmann::json::iterator it = value.find("ref");
@@ -164,8 +165,7 @@ namespace NS::Obj
             {
                 return;
             }
-            const std::unordered_map<std::uint32_t, std::uint32_t>::const_iterator mapped =
-                idMap.find(it->get<std::uint32_t>());
+            const std::unordered_map<NS::uint32, NS::uint32>::const_iterator mapped = idMap.find(it->get<NS::uint32>());
             if (mapped != idMap.end())
             {
                 *it = mapped->second;

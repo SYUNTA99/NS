@@ -7,10 +7,11 @@
 #include "Editor/PlacementCatalog.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/SubObjects/Transform.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -127,7 +128,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
-        const std::uint32_t id = editor.SelectedObjectId();
+        const NS::uint32 id = editor.SelectedObjectId();
         const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
 
         editor.EnterPlay();
@@ -157,7 +158,7 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
-        const std::uint32_t id = editor.SelectedObjectId();
+        const NS::uint32 id = editor.SelectedObjectId();
 
         editor.EnterPlay();
         const NS::Quaternion rotation = NS::Quaternion::CreateFromYawPitchRoll(0.5f, 0.0f, 0.0f);
@@ -241,9 +242,9 @@ TEST(EditorSelection, DraggingAChildLeavesTheSelectedParent)
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
-        const std::uint32_t parentId = editor.SelectedObjectId();
+        const NS::uint32 parentId = editor.SelectedObjectId();
         editor.PlaceItem(*item);
-        const std::uint32_t childId = editor.SelectedObjectId();
+        const NS::uint32 childId = editor.SelectedObjectId();
         ASSERT_TRUE(editor.SetObjectParent(childId, parentId));
         editor.SelectObjects({parentId, childId}, childId);
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
@@ -257,7 +258,7 @@ TEST(EditorSelection, DraggingAChildLeavesTheSelectedParent)
         editor.FocusSelectedInView();
         editor.Tick();
 
-        const auto worldPosition = [&scene](std::uint32_t id) {
+        const auto worldPosition = [&scene](NS::uint32 id) {
             return scene.Objects().FindByObjectId(id)->Root().WorldMatrix().Translation();
         };
         const NS::Obj::Actor* child = scene.Objects().FindByObjectId(childId);
@@ -296,11 +297,11 @@ TEST(EditorSelection, GizmoFollowsAChildUnderAnOffsetParent)
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
-        const std::uint32_t parentId = editor.SelectedObjectId();
+        const NS::uint32 parentId = editor.SelectedObjectId();
         const NS::Vector3 placed = scene.Objects().FindByObjectId(parentId)->Root().Position();
         editor.SetSelectedFreePosition(placed + NS::Vector3{3.0f, 0.0f, 0.0f});
         editor.PlaceItem(*item);
-        const std::uint32_t childId = editor.SelectedObjectId();
+        const NS::uint32 childId = editor.SelectedObjectId();
         ASSERT_TRUE(editor.SetObjectParent(childId, parentId));
         editor.SelectObjectById(childId);
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
@@ -373,7 +374,7 @@ TEST(EditorBrush, RotateKeepsTheTilt)
         editor.Editor().Palette().SetActiveSlot(0);
         editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
         ASSERT_EQ(scene.Objects().ObjectCount(), 1u);
-        const std::uint32_t id = scene.Objects().ObjectAt(0)->Id();
+        const NS::uint32 id = scene.Objects().ObjectAt(0)->Id();
         editor.SelectObjectById(id);
         editor.SetSelectedFreeRotation(NS::Quaternion::CreateFromYawPitchRoll(0.0f, 0.5f, 0.0f));
         const auto up = [&scene, id] {
@@ -395,7 +396,7 @@ TEST(EditorSelection, RenameGoesToTheObjectBeingTyped)
     io.IniFilename = nullptr;
     io.DisplaySize = ImVec2{800.0f, 600.0f};
     io.DeltaTime = 1.0f / 60.0f;
-    unsigned char* pixels = nullptr;
+    NS::uint8* pixels = nullptr;
     int width = 0;
     int height = 0;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
@@ -405,9 +406,9 @@ TEST(EditorSelection, RenameGoesToTheObjectBeingTyped)
     const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
     ASSERT_NE(item, nullptr);
     editor.PlaceItem(*item);
-    const std::uint32_t first = editor.SelectedObjectId();
+    const NS::uint32 first = editor.SelectedObjectId();
     editor.PlaceItem(*item);
-    const std::uint32_t second = editor.SelectedObjectId();
+    const NS::uint32 second = editor.SelectedObjectId();
     ASSERT_NE(first, second);
     const std::string secondName = NS::Editor::ObjectDisplayName(*scene.Objects().FindByObjectId(second));
     editor.SelectObjectById(first);

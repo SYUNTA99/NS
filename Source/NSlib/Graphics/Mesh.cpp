@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/Mesh.h"
+#include "NSlib/Graphics/Mesh.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Logger.h"
@@ -70,7 +71,7 @@ namespace NS::Gfx
             {
                 NS_LOG_ERROR(Graphics,
                              "Mesh::CreateInputLayout: CreateInputLayout 失敗 (hr=0x{:X}, elements={})",
-                             static_cast<unsigned>(hr),
+                             static_cast<NS::uint>(hr),
                              elements.size());
                 return false;
             }
@@ -84,7 +85,7 @@ namespace NS::Gfx
     bool Mesh::BuildGeometry(const void* vertices,
                              std::size_t vertexCount,
                              std::size_t stride,
-                             const std::uint32_t* indices,
+                             const NS::uint32* indices,
                              std::size_t indexCount,
                              bool usingFallback) noexcept
     {
@@ -187,7 +188,7 @@ namespace NS::Gfx
         commands.SetVertexBuffer(*mesh.VertexBuffer(), 0);
         commands.SetIndexBuffer(*mesh.IndexBuffer());
         commands.SetTopology(mesh.GetTopology());
-        commands.DrawIndexed(static_cast<unsigned>(mesh.IndexCount()));
+        commands.DrawIndexed(static_cast<NS::uint>(mesh.IndexCount()));
     }
 
     const Buffer* Mesh::VertexBuffer() const noexcept

@@ -1,6 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Graphics/D3dCommon.h"
 
 #include <cstddef>
@@ -37,14 +38,14 @@ namespace NS::Gfx
         //! シェーダとブレンド・深度・ラスタライザを一括で適用する
         void SetPipeline(const Pipeline& pipeline) noexcept;
         void SetInputLayout(ID3D11InputLayout* layout) noexcept;
-        void SetVertexBuffer(const Buffer& buffer, unsigned slot = 0) noexcept;
+        void SetVertexBuffer(const Buffer& buffer, NS::uint slot = 0) noexcept;
         void SetIndexBuffer(const Buffer& buffer) noexcept;
         void SetTopology(Topology topology) noexcept;
         //! 指定したデータでバッファの内容を更新する
         void UpdateSubresource(const Buffer& buffer, const void* data, std::size_t bytes) noexcept;
         //! @brief 指定したデータでテクスチャ全体を更新する
         //! @param[in] rowPitch 画像 1 行あたりのバイト数
-        void UpdateSubresource(const Texture& texture, const void* data, unsigned rowPitch) noexcept;
+        void UpdateSubresource(const Texture& texture, const void* data, NS::uint rowPitch) noexcept;
 
         //!@}
         //--------------------------------------------------------
@@ -54,33 +55,33 @@ namespace NS::Gfx
         //! @name 頂点シェーダー (VS)
         //!@{
         void VSSetShader(const Shader& shader) noexcept;
-        void VSSetShaderResource(const Texture& texture, unsigned slot) noexcept;
-        void VSSetSampler(ID3D11SamplerState* sampler, unsigned slot) noexcept;
-        void VSSetConstantBuffer(const Buffer& buffer, unsigned slot) noexcept;
+        void VSSetShaderResource(const Texture& texture, NS::uint slot) noexcept;
+        void VSSetSampler(ID3D11SamplerState* sampler, NS::uint slot) noexcept;
+        void VSSetConstantBuffer(const Buffer& buffer, NS::uint slot) noexcept;
         //!@}
 
         //! @name ピクセルシェーダー (PS)
         //!@{
         void PSSetShader(const Shader& shader) noexcept;
-        void PSSetShaderResource(const Texture& texture, unsigned slot) noexcept;
-        void PSSetSampler(ID3D11SamplerState* sampler, unsigned slot) noexcept;
-        void PSSetConstantBuffer(const Buffer& buffer, unsigned slot) noexcept;
+        void PSSetShaderResource(const Texture& texture, NS::uint slot) noexcept;
+        void PSSetSampler(ID3D11SamplerState* sampler, NS::uint slot) noexcept;
+        void PSSetConstantBuffer(const Buffer& buffer, NS::uint slot) noexcept;
         //!@}
 
         //! @name ジオメトリシェーダー (GS)
         //!@{
         void GSSetShader(const Shader& shader) noexcept;
-        void GSSetShaderResource(const Texture& texture, unsigned slot) noexcept;
-        void GSSetSampler(ID3D11SamplerState* sampler, unsigned slot) noexcept;
-        void GSSetConstantBuffer(const Buffer& buffer, unsigned slot) noexcept;
+        void GSSetShaderResource(const Texture& texture, NS::uint slot) noexcept;
+        void GSSetSampler(ID3D11SamplerState* sampler, NS::uint slot) noexcept;
+        void GSSetConstantBuffer(const Buffer& buffer, NS::uint slot) noexcept;
         //!@}
 
         //! @name コンピュートシェーダー (CS)
         //!@{
         void CSSetShader(const Shader& shader) noexcept;
-        void CSSetShaderResource(const Texture& texture, unsigned slot) noexcept;
-        void CSSetSampler(ID3D11SamplerState* sampler, unsigned slot) noexcept;
-        void CSSetConstantBuffer(const Buffer& buffer, unsigned slot) noexcept;
+        void CSSetShaderResource(const Texture& texture, NS::uint slot) noexcept;
+        void CSSetSampler(ID3D11SamplerState* sampler, NS::uint slot) noexcept;
+        void CSSetConstantBuffer(const Buffer& buffer, NS::uint slot) noexcept;
         //!@}
 
         //--------------------------------------------------------
@@ -88,9 +89,9 @@ namespace NS::Gfx
         //--------------------------------------------------------
         //!@{
 
-        void DrawIndexed(unsigned indexCount) noexcept;
+        void DrawIndexed(NS::uint indexCount) noexcept;
         //! インデックスを使わない描画。線分の並びなどインデックスを持たない形に使う
-        void Draw(unsigned vertexCount) noexcept;
+        void Draw(NS::uint vertexCount) noexcept;
 
         //!@}
         //--------------------------------------------------------

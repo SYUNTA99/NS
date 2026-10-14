@@ -1,9 +1,9 @@
-﻿#include "Editor/GridMath.h"
+#include "Editor/GridMath.h"
 
 #include "NSlib/Core/Math.h"
 
+#include "NSlib/Core/Types.h"
 #include <algorithm>
-#include <cstdint>
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -109,9 +109,9 @@ namespace NS::Editor
         return true;
     }
 
-    NS::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept
+    NS::Quaternion RotationToQuaternion(NS::uint8 rotation) noexcept
     {
-        const std::uint8_t r = static_cast<std::uint8_t>(rotation & 0x03);
+        const NS::uint8 r = static_cast<NS::uint8>(rotation & 0x03);
         const float angle = static_cast<float>(r) * (NS::k_Pi * 0.5f);
         return NS::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, angle);
     }

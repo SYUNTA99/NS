@@ -2,10 +2,10 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/Object/SubObjects/VirtualCamera.h"
 #include "NSlib/Object/Reflection/Curve.h"
+#include "NSlib/Object/SubObjects/VirtualCamera.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <memory>
 #include <vector>
 
@@ -65,7 +65,7 @@ namespace NS::Obj
         int frames = 0;                                   // 揺れを描くフレーム数。始めたフレームを含む
         int longestFlipFrames = 1;                        // 向きが入れ替わるまでの最長フレーム数。横と縦の両方に掛かる
         NS::Vector3 firstSideDirection{1.0f, 0.0f, 0.0f}; // 最初の横の振れを向ける世界の向き
-        std::uint32_t seed = 0;                           // 入れ替わりの間隔を選ぶ種
+        NS::uint32 seed = 0;                              // 入れ替わりの間隔を選ぶ種
     };
 
     //! @brief 寄りと傾きの設定
@@ -221,7 +221,7 @@ namespace NS::Obj
     {
         float trauma = 0.0f;     // 足すトラウマ 0〜1。足した後も 1 で頭打ち
         CameraTraumaShape shape; // 揺れの形。足した後はこの形で揺れる
-        std::uint32_t seed = 0;  // ノイズの種。同じ当たりは同じ揺れになる
+        NS::uint32 seed = 0;     // ノイズの種。同じ当たりは同じ揺れになる
         CameraKick kick;         // 重ねる一撃。大きさ 0 なら重ねない
     };
 
@@ -265,7 +265,7 @@ namespace NS::Obj
         CameraTraumaShape m_shape{}; // 揺れの形
         float m_trauma = 0.0f;       // 今のトラウマ
         float m_held = 0.0f;         // このフレームに保つと頼まれたトラウマ。次の Advance で下ろす
-        std::uint32_t m_seed = 0;    // ノイズの種
+        NS::uint32 m_seed = 0;       // ノイズの種
         CameraKick m_kick{};         // 重ねている一撃
         int m_kickFrame = 0;         // 一撃のフレーム。足したフレームが 1、一撃が無ければ 0
     };

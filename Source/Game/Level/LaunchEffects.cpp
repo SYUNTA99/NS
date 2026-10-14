@@ -1,4 +1,5 @@
 #include "Game/Level/LaunchEffects.h"
+#include "NSlib/Core/Types.h"
 
 #include "Game/Level/MapObj.h"
 #include "NSlib/Core/AABB.h"
@@ -180,7 +181,7 @@ namespace GL::Level
         }
         EndTrail();
         const Vector3 at = position + normal * m_dustRingLift;
-        const std::uint32_t dust = NS::Obj::PlayEffect(
+        const NS::uint32 dust = NS::Obj::PlayEffect(
             m_body,
             m_launchLandDustAsset,
             PlayAt(at, TurnUpTo(normal), Uniform(m_landDustScale / std::max(m_landDustAssetRadius, NS::k_Epsilon))));

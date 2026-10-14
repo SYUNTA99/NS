@@ -1,5 +1,6 @@
-﻿#pragma once
+#pragma once
 
+#include "NSlib/Core/Types.h"
 #include "NSlib/Graphics/FrameConstants.h"
 #include "NSlib/Graphics/Pipeline.h"
 
@@ -31,7 +32,7 @@ namespace NS::Gfx
         const Buffer* extraVsCb = nullptr;
         const void* extraVsData = nullptr;
         std::size_t extraVsSize = 0;
-        unsigned extraVsSlot = 1;
+        NS::uint extraVsSlot = 1;
     };
 #pragma warning(pop)
 

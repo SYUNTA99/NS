@@ -1,4 +1,5 @@
 #include "Editor/Undo/ObjectSnapshotApplier.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/ActorList.h"
@@ -7,7 +8,7 @@
 
 namespace NS::Editor
 {
-    std::optional<nlohmann::json> ObjectSnapshotApplier::CaptureObject(std::uint32_t objectId) const
+    std::optional<nlohmann::json> ObjectSnapshotApplier::CaptureObject(NS::uint32 objectId) const
     {
         if (m_scene == nullptr)
         {
@@ -23,7 +24,7 @@ namespace NS::Editor
         return NS::Obj::ObjectToJson(*obj);
     }
 
-    void ObjectSnapshotApplier::ApplyObjectSnapshot(std::uint32_t objectId, const std::optional<nlohmann::json>& desired)
+    void ObjectSnapshotApplier::ApplyObjectSnapshot(NS::uint32 objectId, const std::optional<nlohmann::json>& desired)
     {
         if (m_scene == nullptr)
         {

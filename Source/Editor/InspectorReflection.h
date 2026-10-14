@@ -5,7 +5,7 @@
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <memory>
 #include <span>
 #include <string>
@@ -25,7 +25,7 @@ namespace NS::Editor
     //! @brief ActorRef の欄で参照可能なオブジェクトの選択肢
     struct ObjectRefOption
     {
-        std::uint32_t id = 0;
+        NS::uint32 id = 0;
         std::string label;
     };
 

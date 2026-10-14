@@ -1,11 +1,12 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObj.h"
 #include "NSlib/Core/OBB.h"
+#include "NSlib/Core/Types.h"
+#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/Transform.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
@@ -281,7 +282,7 @@ TEST(MapObjMotion, StateAdvancesThroughTheBaseMachine)
     ASSERT_NE(rock, nullptr);
     NS::Obj::IStateMachine* machine = rock->GetStates();
     ASSERT_NE(machine, nullptr);
-    const std::uint32_t before = machine->StepsInState();
+    const NS::uint32 before = machine->StepsInState();
     rock->Update();
     EXPECT_EQ(machine->StepsInState(), before + 1);
     EXPECT_EQ(rock->GetStates(), machine);

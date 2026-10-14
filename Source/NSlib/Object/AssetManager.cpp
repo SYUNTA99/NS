@@ -1,4 +1,4 @@
-﻿#include "NSlib/Object/AssetManager.h"
+#include "NSlib/Object/AssetManager.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
@@ -16,9 +16,9 @@
 #include "NSlib/Physics/MeshShape.h"
 #include "NSlib/Windows/Filesystem.h"
 
+#include "NSlib/Core/Types.h"
 #include <array>
 #include <cmath>
-#include <cstdint>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -98,9 +98,9 @@ namespace NS::Obj
             const std::size_t vertexCount = geom.vertices.size();
             for (std::size_t i = 0; i + 2 < geom.indices.size(); i += 3)
             {
-                const std::uint32_t a = geom.indices[i];
-                const std::uint32_t b = geom.indices[i + 1];
-                const std::uint32_t c = geom.indices[i + 2];
+                const NS::uint32 a = geom.indices[i];
+                const NS::uint32 b = geom.indices[i + 1];
+                const NS::uint32 c = geom.indices[i + 2];
                 if (a >= vertexCount || b >= vertexCount || c >= vertexCount)
                 {
                     continue;
@@ -513,7 +513,7 @@ namespace NS::Obj
         for (std::size_t i = 0; i < fileDesc.textures.size(); ++i)
         {
             NS::Gfx::Texture* texture = GetOrLoadTexture(resolve(fileDesc.textures[i]));
-            material->SetTexture(static_cast<unsigned>(i), texture);
+            material->SetTexture(static_cast<NS::uint>(i), texture);
         }
 
         NS::Gfx::Material* rawMaterial = material.get();

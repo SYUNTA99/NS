@@ -1,4 +1,5 @@
 #include "NSlib/Core/CameraData.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Graphics/EffectScene.h"
 #include "NSlib/Graphics/GraphicObject.h"
 #include "NSlib/Graphics/Renderer.h"
@@ -131,7 +132,7 @@ namespace
         int count = 0;
         for (UINT y = 0; y < desc.Height; ++y)
         {
-            const std::uint8_t* row = static_cast<const std::uint8_t*>(mapped.pData) + y * mapped.RowPitch;
+            const NS::uint8* row = static_cast<const NS::uint8*>(mapped.pData) + y * mapped.RowPitch;
             for (UINT x = 0; x < desc.Width; ++x)
             {
                 if (row[x * 4] != 0 || row[x * 4 + 1] != 0 || row[x * 4 + 2] != 0)
@@ -147,8 +148,7 @@ namespace
 
 TEST(EffectLifecycle, RebuildingThePausedSceneClearsPixelsBeforeAnotherStep)
 {
-    NS::OS::Window window(
-        NS::OS::WindowDesc{.title = "エフェクト終了の試し", .size = {32, 32}, .visible = false});
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "エフェクト終了の試し", .size = {32, 32}, .visible = false});
     NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
     ASSERT_TRUE(renderer.IsValid());
     NS::Obj::Scene scene;

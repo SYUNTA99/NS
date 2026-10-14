@@ -2,7 +2,7 @@
 
 #include "Editor/Undo/IObjectSnapshotApplier.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <optional>
 
 namespace NS::Obj
@@ -19,10 +19,10 @@ namespace NS::Editor
         explicit ObjectSnapshotApplier(NS::Obj::Scene* scene) noexcept : m_scene(scene) {}
 
         //! objectId の現在の姿を写す。居なければ nullopt。シーン未設定も nullopt
-        [[nodiscard]] std::optional<nlohmann::json> CaptureObject(std::uint32_t objectId) const override;
+        [[nodiscard]] std::optional<nlohmann::json> CaptureObject(NS::uint32 objectId) const override;
 
         //! objectId を desired の姿へ揃える。シーン未設定なら何もしない
-        void ApplyObjectSnapshot(std::uint32_t objectId, const std::optional<nlohmann::json>& desired) override;
+        void ApplyObjectSnapshot(NS::uint32 objectId, const std::optional<nlohmann::json>& desired) override;
 
     private:
         NS::Obj::Scene* m_scene = nullptr; // 編集対象のシーン、非所有

@@ -1,8 +1,8 @@
 #include "Editor/Timeline.h"
 
+#include "NSlib/Core/Types.h"
 #include <algorithm>
 #include <cmath>
-#include <cstdint>
 #include <cstdio>
 
 #if NS_EDITOR_ENABLED
@@ -42,10 +42,10 @@ namespace NS::Editor
 
     void TimelinePlayback::StepBy(int steps, TimelineFrameRange range) noexcept
     {
-        const std::int64_t requested = static_cast<std::int64_t>(frame) + steps;
+        const NS::int64 requested = static_cast<NS::int64>(frame) + steps;
         Seek(static_cast<int>(std::clamp(requested,
-                                         static_cast<std::int64_t>(range.first),
-                                         static_cast<std::int64_t>(std::max(range.first, range.last)))),
+                                         static_cast<NS::int64>(range.first),
+                                         static_cast<NS::int64>(std::max(range.first, range.last)))),
              range);
     }
 

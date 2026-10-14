@@ -1,4 +1,5 @@
 #include "Game/Level/MissHop.h"
+#include "NSlib/Core/Types.h"
 
 #include <gtest/gtest.h>
 
@@ -43,7 +44,7 @@ TEST(MissHop, TurnStaysWithinTheAngleAndRepeatsForTheSameSeed)
     bool turnedRight = false;
     for (int index = 0; index < 3; ++index)
     {
-        for (unsigned seed = 1u; seed < 40u; ++seed)
+        for (NS::uint seed = 1u; seed < 40u; ++seed)
         {
             const NS::Vector3 hop = MissHopVelocity(landing, up, Desc(), seed, index);
             const float angle = std::atan2(hop.x, hop.z) * 180.0f / k_Pi;

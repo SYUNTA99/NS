@@ -1,4 +1,5 @@
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Graphics/EffectScene.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -59,7 +60,7 @@ namespace NS::Obj
         }
     }
 
-    std::uint32_t EffectKeeper::Play(std::string_view name, const NS::Gfx::EffectPlayDesc& desc)
+    NS::uint32 EffectKeeper::Play(std::string_view name, const NS::Gfx::EffectPlayDesc& desc)
     {
         EffectRecord record;
         record.id = m_nextId;
@@ -74,7 +75,7 @@ namespace NS::Obj
         return m_records.back().id;
     }
 
-    void EffectKeeper::StopRoot(std::uint32_t id) noexcept
+    void EffectKeeper::StopRoot(NS::uint32 id) noexcept
     {
         EffectRecord* record = FindMutable(id);
         if (record == nullptr || record->rootStopStep.has_value() || record->endStep.has_value())
@@ -88,7 +89,7 @@ namespace NS::Obj
         }
     }
 
-    void EffectKeeper::Stop(std::uint32_t id) noexcept
+    void EffectKeeper::Stop(NS::uint32 id) noexcept
     {
         EffectRecord* record = FindMutable(id);
         if (record == nullptr || record->endStep.has_value())
@@ -102,12 +103,12 @@ namespace NS::Obj
         }
     }
 
-    void EffectKeeper::StopAfter(std::uint32_t id, int steps)
+    void EffectKeeper::StopAfter(NS::uint32 id, int steps)
     {
         m_scheduledStops.push_back(ScheduledStop{.id = id, .step = m_step + steps});
     }
 
-    void EffectKeeper::SetTransform(std::uint32_t id,
+    void EffectKeeper::SetTransform(NS::uint32 id,
                                     const NS::Vector3& position,
                                     const NS::Quaternion& rotation,
                                     const NS::Vector3& scale) noexcept
@@ -121,7 +122,7 @@ namespace NS::Obj
         effects->SetTransform(record->handle, position, rotation, scale);
     }
 
-    void EffectKeeper::SetDynamicInput(std::uint32_t id, int index, float value) noexcept
+    void EffectKeeper::SetDynamicInput(NS::uint32 id, int index, float value) noexcept
     {
         const EffectRecord* record = Find(id);
         NS::Gfx::EffectScene* effects = Effects();
@@ -132,7 +133,7 @@ namespace NS::Obj
         effects->SetDynamicInput(record->handle, index, value);
     }
 
-    void EffectKeeper::SetAmount(std::uint32_t id, float amount) noexcept
+    void EffectKeeper::SetAmount(NS::uint32 id, float amount) noexcept
     {
         EffectRecord* record = FindMutable(id);
         if (record == nullptr)
@@ -142,7 +143,7 @@ namespace NS::Obj
         record->amount = amount;
     }
 
-    void EffectKeeper::SetRotation(std::uint32_t id, const NS::Quaternion& rotation) noexcept
+    void EffectKeeper::SetRotation(NS::uint32 id, const NS::Quaternion& rotation) noexcept
     {
         EffectRecord* record = FindMutable(id);
         if (record == nullptr)
@@ -152,7 +153,7 @@ namespace NS::Obj
         record->rotation = rotation;
     }
 
-    const EffectRecord* EffectKeeper::Find(std::uint32_t id) const noexcept
+    const EffectRecord* EffectKeeper::Find(NS::uint32 id) const noexcept
     {
         for (const EffectRecord& record : m_records)
         {
@@ -164,7 +165,7 @@ namespace NS::Obj
         return nullptr;
     }
 
-    EffectRecord* EffectKeeper::FindMutable(std::uint32_t id) noexcept
+    EffectRecord* EffectKeeper::FindMutable(NS::uint32 id) noexcept
     {
         return const_cast<EffectRecord*>(std::as_const(*this).Find(id));
     }

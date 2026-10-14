@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
@@ -9,8 +9,8 @@
 #include <EffekseerRendererCommon/EffekseerRenderer.Renderer.h>
 #pragma warning(pop)
 
+#include "NSlib/Core/Types.h"
 #include <array>
-#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -88,7 +88,7 @@ namespace NS::Gfx
         [[nodiscard]] bool IsUsingDepthFallback() const noexcept { return m_depthFallback; }
 
         //! 奥行きの写し先を作った回数
-        [[nodiscard]] std::uint32_t DepthCopiesCreated() const noexcept { return m_depthCopiesCreated; }
+        [[nodiscard]] NS::uint32 DepthCopiesCreated() const noexcept { return m_depthCopiesCreated; }
 
     private:
         // 奥行きの写し先 1 枚。描画先の大きさで引く
@@ -96,30 +96,30 @@ namespace NS::Gfx
         {
             std::unique_ptr<Texture> texture;
             Effekseer::Backend::TextureRef effekseerTexture;
-            std::uint32_t width = 0;
-            std::uint32_t height = 0;
-            std::uint32_t lastUsed = 0; // 最後に使った Draw の番号。3 つ目の大きさが来たら古い方を捨てる
+            NS::uint32 width = 0;
+            NS::uint32 height = 0;
+            NS::uint32 lastUsed = 0; // 最後に使った Draw の番号。3 つ目の大きさが来たら古い方を捨てる
         };
 
         // 描画先に結ばれた奥行きを写し先へ写してエフェクトへ渡す。渡せない時は奥行きを外す
         void PassDepth(const NS::CameraData& camera) noexcept;
         // 大きさの合う写し先を返す。無ければ作る。作れなければ nullptr
-        [[nodiscard]] DepthCopy* DepthCopyFor(std::uint32_t width, std::uint32_t height) noexcept;
+        [[nodiscard]] DepthCopy* DepthCopyFor(NS::uint32 width, NS::uint32 height) noexcept;
         // 奥行き無しへ倒す。同じ理由と大きさでは 2 回目からエラーを出さない
-        void FallBackWithoutDepth(std::string_view reason, std::uint32_t width, std::uint32_t height) noexcept;
+        void FallBackWithoutDepth(std::string_view reason, NS::uint32 width, NS::uint32 height) noexcept;
 
         Effekseer::ManagerRef m_manager;
         EffekseerRenderer::RendererRef m_renderer;
         std::unordered_map<std::string, Effekseer::EffectRef> m_effects;
         std::unordered_set<std::string> m_warnedMissing;
         // 名前ごとに Play した回数。乱数の種に混ぜる
-        std::unordered_map<std::string, std::uint32_t> m_playCounts;
+        std::unordered_map<std::string, NS::uint32> m_playCounts;
         std::string m_effectRoot;
         float m_elapsedSeconds = 0.0f;
 
         std::array<DepthCopy, 2> m_depthCopies{}; // Bloom と同じくゲームの絵とエディタのビューで 1 枚ずつ
-        std::uint32_t m_depthCopiesCreated = 0;
-        std::uint32_t m_drawCount = 0;
+        NS::uint32 m_depthCopiesCreated = 0;
+        NS::uint32 m_drawCount = 0;
         bool m_depthFallback = false;
         std::string m_failedDepthKey; // 最後にエラーを出した理由と大きさ。同じ失敗を毎フレーム出さない
     };

@@ -1,6 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Graphics/Pipeline.h"
 
 #include <map>
@@ -23,7 +24,7 @@ namespace NS::Gfx
         Shader* vertexShader = nullptr;
         Shader* pixelShader = nullptr;
         std::size_t constantBufferSize = 0;  //!< 内蔵定数バッファのサイズ
-        unsigned cbSlot = 1;                 //!< 定数バッファのバインド先スロット
+        NS::uint cbSlot = 1;                 //!< 定数バッファのバインド先スロット
         BlendMode blend = BlendMode::Opaque; //!< 描画順序の分類基準
         int renderPriority = 0;              //!< 半透明描画時のソート優先度
     };
@@ -48,7 +49,7 @@ namespace NS::Gfx
         [[nodiscard]] int RenderPriority() const noexcept;
 
         //! テクスチャを設定する。nullptr ならその枠を外す
-        void SetTexture(unsigned slot, const Texture* texture) noexcept;
+        void SetTexture(NS::uint slot, const Texture* texture) noexcept;
 
         //! @brief 定数バッファのパラメータを更新する
         //! @details 定数バッファを持たない Material では何もしない
@@ -75,9 +76,9 @@ namespace NS::Gfx
 
         Shader* m_vertexShader = nullptr; // 非所有の参照
         Shader* m_pixelShader = nullptr;  // 非所有の参照
-        std::map<unsigned, const Texture*> m_textures;
+        std::map<NS::uint, const Texture*> m_textures;
         std::unique_ptr<Buffer> m_cb;
-        unsigned m_cbSlot = 1;
+        NS::uint m_cbSlot = 1;
         BlendMode m_blend = BlendMode::Opaque;
         int m_renderPriority = 0;
         bool m_valid = false;

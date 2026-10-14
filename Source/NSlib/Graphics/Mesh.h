@@ -1,11 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Graphics/D3dCommon.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <memory>
 #include <string>
 
@@ -30,7 +30,7 @@ namespace NS::Gfx
     {
         std::string semanticName;
         InputElementFormat format = InputElementFormat::Float3;
-        unsigned byteOffset = 0;
+        NS::uint byteOffset = 0;
     };
 
     //! インデックスバッファの解釈方法を表すプリミティブ形状
@@ -76,7 +76,7 @@ namespace NS::Gfx
         [[nodiscard]] bool BuildGeometry(const void* vertices,
                                          std::size_t vertexCount,
                                          std::size_t stride,
-                                         const std::uint32_t* indices,
+                                         const NS::uint32* indices,
                                          std::size_t indexCount,
                                          bool usingFallback) noexcept;
 

@@ -15,8 +15,8 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 
+#include "NSlib/Core/Types.h"
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -50,7 +50,7 @@ namespace
     };
 
     // 型を行の順に 1 画素 1 バイトで読む。読めなければ空
-    std::vector<std::uint8_t> ReadMask(const NS::Gfx::Texture& mask)
+    std::vector<NS::uint8> ReadMask(const NS::Gfx::Texture& mask)
     {
         ID3D11Texture2D* texture = mask.Native();
         D3D11_TEXTURE2D_DESC desc{};
@@ -75,10 +75,10 @@ namespace
         {
             return {};
         }
-        std::vector<std::uint8_t> pixels;
+        std::vector<NS::uint8> pixels;
         for (UINT y = 0; y < desc.Height; ++y)
         {
-            const std::uint8_t* row = static_cast<const std::uint8_t*>(mapped.pData) + y * mapped.RowPitch;
+            const NS::uint8* row = static_cast<const NS::uint8*>(mapped.pData) + y * mapped.RowPitch;
             pixels.insert(pixels.end(), row, row + desc.Width);
         }
         NS::Gfx::Gpu().context->Unmap(staging.Get(), 0);
@@ -106,7 +106,7 @@ namespace
         [[nodiscard]] bool Valid() const { return m_renderer.IsValid() && m_target != nullptr && m_target->IsValid(); }
 
         // 1 回描いて型を返す。型が無ければ空
-        std::vector<std::uint8_t> Render(const NS::Vector3& masked, const std::optional<NS::Vector3>& other)
+        std::vector<NS::uint8> Render(const NS::Vector3& masked, const std::optional<NS::Vector3>& other)
         {
             NS::Obj::Scene scene;
             scene.SetAssets(&m_assets);
@@ -142,10 +142,10 @@ namespace
         std::unique_ptr<NS::Gfx::RenderTarget> m_target;
     };
 
-    int CountSet(const std::vector<std::uint8_t>& mask)
+    int CountSet(const std::vector<NS::uint8>& mask)
     {
         int count = 0;
-        for (std::uint8_t value : mask)
+        for (NS::uint8 value : mask)
         {
             if (value != 0)
             {
@@ -161,19 +161,18 @@ TEST(BodyMask, WritesOnlyTheChosenRenderable)
     BodyMaskRig rig;
     ASSERT_TRUE(rig.Valid());
 
-    const std::vector<std::uint8_t> alone = rig.Render(NS::Vector3{0.0f, 0.0f, 0.0f}, std::nullopt);
+    const std::vector<NS::uint8> alone = rig.Render(NS::Vector3{0.0f, 0.0f, 0.0f}, std::nullopt);
     ASSERT_EQ(alone.size(), static_cast<std::size_t>(k_Width * k_Height));
     const int aloneCount = CountSet(alone);
     EXPECT_GT(aloneCount, 100);
     EXPECT_LT(aloneCount, k_Width * k_Height / 2);
-    for (std::uint8_t value : alone)
+    for (NS::uint8 value : alone)
     {
         EXPECT_TRUE(value == 0 || value == 255);
     }
 
     // 選んでいない箱を横に離して置いても、型は変わらない
-    const std::vector<std::uint8_t> withOther =
-        rig.Render(NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{3.0f, 0.0f, 0.0f});
+    const std::vector<NS::uint8> withOther = rig.Render(NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{3.0f, 0.0f, 0.0f});
     EXPECT_EQ(withOther, alone);
 }
 
@@ -183,9 +182,9 @@ TEST(BodyMask, HiddenPixelsAreLeftOut)
     BodyMaskRig rig;
     ASSERT_TRUE(rig.Valid());
 
-    const std::vector<std::uint8_t> alone = rig.Render(NS::Vector3{0.0f, 0.0f, 0.0f}, std::nullopt);
+    const std::vector<NS::uint8> alone = rig.Render(NS::Vector3{0.0f, 0.0f, 0.0f}, std::nullopt);
     ASSERT_EQ(alone.size(), static_cast<std::size_t>(k_Width * k_Height));
-    const std::vector<std::uint8_t> covered = rig.Render(NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{0.6f, 0.0f, -2.0f});
+    const std::vector<NS::uint8> covered = rig.Render(NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{0.6f, 0.0f, -2.0f});
     ASSERT_EQ(covered.size(), alone.size());
 
     int hidden = 0;

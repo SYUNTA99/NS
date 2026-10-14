@@ -12,7 +12,7 @@
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/StateMachineOf.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <optional>
 #include <string>
 #include <string_view>
@@ -167,7 +167,7 @@ public:
     }
     //! @brief 反動を始めた回数を返す
     //! @details 見た目が新しい反動の始まりを知るために読む。ResetState では戻さない
-    [[nodiscard]] std::uint32_t ReboundCount() const noexcept { return m_rebound.count; }
+    [[nodiscard]] NS::uint32 ReboundCount() const noexcept { return m_rebound.count; }
     //! @brief こすって止まる間の、着いた水平の速さに掛けている今の倍率を返す
     //! @return 0〜1。こすって止まる状態でない間は 1
     [[nodiscard]] float SkidSpeedScale() const noexcept;
@@ -340,7 +340,7 @@ private:
         NS::Vector3 direction{}; // 最後に始めた反動の水平の向き。正規化済み
         float spinSpeed = 0.0f;  // 最後に始めた反動の玉の回る速さ (度/秒)
         std::optional<GL::Player::MissTumble> missTumble{};
-        std::uint32_t count = 0;
+        NS::uint32 count = 0;
     };
 
     //! 外れの着地からこすって止まる間の記録。書くのは BeginSkid と AdvanceSkid

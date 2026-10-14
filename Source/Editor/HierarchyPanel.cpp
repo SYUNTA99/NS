@@ -8,8 +8,8 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/ActorList.h"
 
+#include "NSlib/Core/Types.h"
 #include <algorithm>
-#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -145,7 +145,7 @@ namespace NS::Editor
             {
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(k_HierarchyDragType))
                 {
-                    std::uint32_t dragged = 0;
+                    NS::uint32 dragged = 0;
                     std::memcpy(&dragged, payload->Data, sizeof(dragged));
                     m_reparentChildId = dragged;
                     m_reparentParentId = 0;
@@ -189,8 +189,8 @@ namespace NS::Editor
                     {
                         std::swap(from, to);
                     }
-                    std::vector<std::uint32_t> range(m_visibleOrder.begin() + static_cast<std::ptrdiff_t>(from),
-                                                     m_visibleOrder.begin() + static_cast<std::ptrdiff_t>(to) + 1);
+                    std::vector<NS::uint32> range(m_visibleOrder.begin() + static_cast<std::ptrdiff_t>(from),
+                                                  m_visibleOrder.begin() + static_cast<std::ptrdiff_t>(to) + 1);
                     editor.SelectObjects(std::move(range), m_rangeSelectToId);
                 }
             }
@@ -224,7 +224,7 @@ namespace NS::Editor
     void HierarchyPanel::RenderNode(LevelEditorController& editor, NS::Obj::Actor& object, bool withChildren) noexcept
     {
 #if NS_EDITOR_ENABLED
-        const std::uint32_t id = object.Id();
+        const NS::uint32 id = object.Id();
 
         bool hasChildren = false;
         if (withChildren)
@@ -326,7 +326,7 @@ namespace NS::Editor
         {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(k_HierarchyDragType))
             {
-                std::uint32_t dragged = 0;
+                NS::uint32 dragged = 0;
                 std::memcpy(&dragged, payload->Data, sizeof(dragged));
                 m_reparentChildId = dragged;
                 m_reparentParentId = id;

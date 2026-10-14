@@ -8,12 +8,13 @@
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerParams.h"
-#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
+#include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <cmath>
@@ -94,8 +95,8 @@ TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
 {
     NS::Obj::EffectKeeper shortHistory{2};
     NS::Obj::EffectKeeper longHistory{6};
-    const std::uint32_t shortId = shortHistory.Play("test", {});
-    const std::uint32_t longId = longHistory.Play("test", {});
+    const NS::uint32 shortId = shortHistory.Play("test", {});
+    const NS::uint32 longId = longHistory.Play("test", {});
     shortHistory.Stop(shortId);
     longHistory.Stop(longId);
     for (int frame = 0; frame < 3; ++frame)

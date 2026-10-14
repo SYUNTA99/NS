@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/EffectScene.h"
+#include "NSlib/Graphics/EffectScene.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Logger.h"
@@ -21,8 +22,8 @@ namespace NS::Gfx
 
         // TODO: 仮の値で、Effekseer のサンプルと同じ 8000。衝突のエフェクトを作ったら同時に出る最大数を測って決める
         // 超えた分のインスタンスは作られず、スプライトは描かれない
-        constexpr std::int32_t k_MaxSprites = 8000;
-        constexpr std::int32_t k_MaxInstances = 8000;
+        constexpr NS::int32 k_MaxSprites = 8000;
+        constexpr NS::int32 k_MaxInstances = 8000;
 
         // 平行移動を 4 行目に置く並びが DirectXMath と Effekseer で同じなので、転置しない
         Effekseer::Matrix44 ToEffekseer(const NS::Matrix& matrix) noexcept
@@ -46,9 +47,8 @@ namespace NS::Gfx
                                                  const NS::Quaternion& rotation,
                                                  const NS::Vector3& scale) noexcept
         {
-            const NS::Matrix world = NS::Matrix::CreateScale(scale) *
-                                           NS::Matrix::CreateFromQuaternion(rotation) *
-                                           NS::Matrix::CreateTranslation(position);
+            const NS::Matrix world = NS::Matrix::CreateScale(scale) * NS::Matrix::CreateFromQuaternion(rotation) *
+                                     NS::Matrix::CreateTranslation(position);
             Effekseer::Matrix43 result;
             for (int row = 0; row < 4; ++row)
             {
@@ -61,7 +61,7 @@ namespace NS::Gfx
         }
 
         // 0〜1 の色の成分を 0〜255 にする。非数と 0 以下は 0、1 以上は 255
-        std::uint8_t ToColorByte(float value) noexcept
+        NS::uint8 ToColorByte(float value) noexcept
         {
             if (!(value > 0.0f))
             {
@@ -71,20 +71,20 @@ namespace NS::Gfx
             {
                 return 255;
             }
-            return static_cast<std::uint8_t>(std::lround(value * 255.0f));
+            return static_cast<NS::uint8>(std::lround(value * 255.0f));
         }
 
         // 他の再生や std::rand の呼び出しに影響されないよう、名前と再生回数から乱数の種を作る。
-        std::int32_t SeedOf(std::string_view name, std::uint32_t playIndex) noexcept
+        NS::int32 SeedOf(std::string_view name, NS::uint32 playIndex) noexcept
         {
-            std::uint32_t hash = 2166136261u;
+            NS::uint32 hash = 2166136261u;
             for (const char c : name)
             {
-                hash ^= static_cast<std::uint8_t>(c);
+                hash ^= static_cast<NS::uint8>(c);
                 hash *= 16777619u;
             }
             hash ^= playIndex * 2654435761u;
-            return static_cast<std::int32_t>(hash & 0x7FFFFFFFu);
+            return static_cast<NS::int32>(hash & 0x7FFFFFFFu);
         }
 
         std::string ToUtf8(const char16_t* path)
@@ -97,10 +97,10 @@ namespace NS::Gfx
         }
 
         template <typename GetResource, typename GetPath>
-        int CountMissing(std::int32_t count, GetResource getResource, GetPath getPath, std::string_view kind)
+        int CountMissing(NS::int32 count, GetResource getResource, GetPath getPath, std::string_view kind)
         {
             int missing = 0;
-            for (std::int32_t i = 0; i < count; ++i)
+            for (NS::int32 i = 0; i < count; ++i)
             {
                 if (getResource(i) == nullptr)
                 {
@@ -117,33 +117,33 @@ namespace NS::Gfx
             int missing = 0;
             missing += CountMissing(
                 effect->GetColorImageCount(),
-                [&](std::int32_t i) { return effect->GetColorImage(i); },
-                [&](std::int32_t i) { return effect->GetColorImagePath(i); },
+                [&](NS::int32 i) { return effect->GetColorImage(i); },
+                [&](NS::int32 i) { return effect->GetColorImagePath(i); },
                 "テクスチャ");
             missing += CountMissing(
                 effect->GetNormalImageCount(),
-                [&](std::int32_t i) { return effect->GetNormalImage(i); },
-                [&](std::int32_t i) { return effect->GetNormalImagePath(i); },
+                [&](NS::int32 i) { return effect->GetNormalImage(i); },
+                [&](NS::int32 i) { return effect->GetNormalImagePath(i); },
                 "法線テクスチャ");
             missing += CountMissing(
                 effect->GetDistortionImageCount(),
-                [&](std::int32_t i) { return effect->GetDistortionImage(i); },
-                [&](std::int32_t i) { return effect->GetDistortionImagePath(i); },
+                [&](NS::int32 i) { return effect->GetDistortionImage(i); },
+                [&](NS::int32 i) { return effect->GetDistortionImagePath(i); },
                 "歪みテクスチャ");
             missing += CountMissing(
                 effect->GetModelCount(),
-                [&](std::int32_t i) { return effect->GetModel(i); },
-                [&](std::int32_t i) { return effect->GetModelPath(i); },
+                [&](NS::int32 i) { return effect->GetModel(i); },
+                [&](NS::int32 i) { return effect->GetModelPath(i); },
                 "モデル");
             missing += CountMissing(
                 effect->GetMaterialCount(),
-                [&](std::int32_t i) { return effect->GetMaterial(i); },
-                [&](std::int32_t i) { return effect->GetMaterialPath(i); },
+                [&](NS::int32 i) { return effect->GetMaterial(i); },
+                [&](NS::int32 i) { return effect->GetMaterialPath(i); },
                 "マテリアル");
             missing += CountMissing(
                 effect->GetCurveCount(),
-                [&](std::int32_t i) { return effect->GetCurve(i); },
-                [&](std::int32_t i) { return effect->GetCurvePath(i); },
+                [&](NS::int32 i) { return effect->GetCurve(i); },
+                [&](NS::int32 i) { return effect->GetCurvePath(i); },
                 "カーブ");
             return missing;
         }
@@ -283,7 +283,7 @@ namespace NS::Gfx
         const Effekseer::Handle handle =
             m_manager->Play(found->second, desc.position.x, desc.position.y, desc.position.z);
         // Play が std::rand から引いた種を上書きする。節が生まれる最初の Update より前なので、この種で生まれる
-        std::uint32_t& playCount = m_playCounts[key];
+        NS::uint32& playCount = m_playCounts[key];
         m_manager->SetRandomSeed(handle, SeedOf(key, playCount));
         ++playCount;
         // Play は節を作らず、最初の Update で作る。ここで渡した姿勢・色・入力は生まれる時に読まれる
@@ -297,7 +297,7 @@ namespace NS::Gfx
         {
             if (desc.dynamicInputs[i].has_value())
             {
-                m_manager->SetDynamicInput(handle, static_cast<std::int32_t>(i), desc.dynamicInputs[i].value());
+                m_manager->SetDynamicInput(handle, static_cast<NS::int32>(i), desc.dynamicInputs[i].value());
             }
         }
         return EffectHandle{handle};
@@ -478,7 +478,7 @@ namespace NS::Gfx
         m_failedDepthKey.clear();
     }
 
-    EffectScene::DepthCopy* EffectScene::DepthCopyFor(std::uint32_t width, std::uint32_t height) noexcept
+    EffectScene::DepthCopy* EffectScene::DepthCopyFor(NS::uint32 width, NS::uint32 height) noexcept
     {
         DepthCopy* oldest = &m_depthCopies[0];
         for (DepthCopy& copy : m_depthCopies)
@@ -527,7 +527,7 @@ namespace NS::Gfx
         return oldest;
     }
 
-    void EffectScene::FallBackWithoutDepth(std::string_view reason, std::uint32_t width, std::uint32_t height) noexcept
+    void EffectScene::FallBackWithoutDepth(std::string_view reason, NS::uint32 width, NS::uint32 height) noexcept
     {
         // 前の奥行きを残すと、別の描画先の物で薄くなる
         m_renderer->SetDepth(nullptr, EffekseerRenderer::DepthReconstructionParameter{});

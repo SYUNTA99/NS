@@ -3,7 +3,7 @@
 #include "NSlib/Graphics/RenderTarget.h"
 #include "NSlib/Object/Scene/Scene.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -58,8 +58,8 @@ namespace NS::Editor
                     const ImVec2 cursor = ImGui::GetCursorPos();
                     ImGui::SetCursorPos(
                         ImVec2{cursor.x + (avail.x - draw.x) * 0.5f, cursor.y + (avail.y - draw.y) * 0.5f});
-                    ImGui::Image(
-                        static_cast<ImTextureID>(reinterpret_cast<std::uintptr_t>(m_target->UiTextureHandle())), draw);
+                    ImGui::Image(static_cast<ImTextureID>(reinterpret_cast<NS::uintptr>(m_target->UiTextureHandle())),
+                                 draw);
                     outHovered = ImGui::IsItemHovered();
                     outMin = ImGui::GetItemRectMin();
                     outMax = ImGui::GetItemRectMax();

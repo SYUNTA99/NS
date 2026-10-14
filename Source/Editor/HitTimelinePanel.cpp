@@ -9,8 +9,8 @@
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 
+#include "NSlib/Core/Types.h"
 #include <algorithm>
-#include <cstdint>
 #include <format>
 #include <functional>
 #include <string_view>
@@ -158,11 +158,10 @@ namespace NS::Editor
             {
                 for (const GL::Level::HitEvent& event : timeline->events)
                 {
-                    const std::int64_t end = static_cast<std::int64_t>(event.start) + std::max(event.length, 1) +
-                                             desc.leadFrames + desc.framesAfterRebound;
-                    desc.maxFrames =
-                        std::max(desc.maxFrames,
-                                 static_cast<int>(std::clamp(end, std::int64_t{0}, std::int64_t{k_MaxPreviewFrames})));
+                    const NS::int64 end = static_cast<NS::int64>(event.start) + std::max(event.length, 1) +
+                                          desc.leadFrames + desc.framesAfterRebound;
+                    desc.maxFrames = std::max(
+                        desc.maxFrames, static_cast<int>(std::clamp(end, NS::int64{0}, NS::int64{k_MaxPreviewFrames})));
                 }
             }
         }

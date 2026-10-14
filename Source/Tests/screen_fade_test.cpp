@@ -1,3 +1,4 @@
+#include "NSlib/Core/Types.h"
 #include "NSlib/Graphics/GraphicObject.h"
 #include "NSlib/Graphics/RenderTarget.h"
 #include "NSlib/Graphics/Renderer.h"
@@ -45,7 +46,7 @@ namespace
         int mismatches = 0;
         for (UINT y = 0; y < desc.Height; ++y)
         {
-            const unsigned char* row = static_cast<const unsigned char*>(mapped.pData) + y * mapped.RowPitch;
+            const NS::uint8* row = static_cast<const NS::uint8*>(mapped.pData) + y * mapped.RowPitch;
             for (UINT x = 0; x < desc.Width; ++x)
             {
                 for (UINT channel = 0; channel < 3; ++channel)

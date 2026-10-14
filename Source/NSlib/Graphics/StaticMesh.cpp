@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/StaticMesh.h"
+#include "NSlib/Graphics/StaticMesh.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Logger.h"
@@ -97,9 +98,9 @@ namespace NS::Gfx
     {
         static const std::vector<InputElement> k_Layout = {
             InputElement{
-                "POSITION", InputElementFormat::Float3, static_cast<unsigned>(offsetof(StaticVertex, position))},
-            InputElement{"TEXCOORD", InputElementFormat::Float2, static_cast<unsigned>(offsetof(StaticVertex, uv))},
-            InputElement{"NORMAL", InputElementFormat::Float3, static_cast<unsigned>(offsetof(StaticVertex, normal))},
+                "POSITION", InputElementFormat::Float3, static_cast<NS::uint>(offsetof(StaticVertex, position))},
+            InputElement{"TEXCOORD", InputElementFormat::Float2, static_cast<NS::uint>(offsetof(StaticVertex, uv))},
+            InputElement{"NORMAL", InputElementFormat::Float3, static_cast<NS::uint>(offsetof(StaticVertex, normal))},
         };
         return k_Layout;
     }

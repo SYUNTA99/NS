@@ -1,6 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/Actor.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ActorRef.h"
@@ -33,7 +34,7 @@ namespace NS::Obj
         ~ActorList();
 
         //! objectId の配置物の並びの位置。居なければ ObjectCount()
-        [[nodiscard]] std::size_t IndexOfObjectId(std::uint32_t objectId) const noexcept;
+        [[nodiscard]] std::size_t IndexOfObjectId(NS::uint32 objectId) const noexcept;
 
         //! obj の名前を変える。他の配置物と重なれば番号を付ける。名前を書けるのはシーンの配置物を持つここだけ
         void RenameObject(Actor& obj, std::string_view name);
@@ -46,7 +47,7 @@ namespace NS::Obj
         //! 当たり箱もここで揃えるので、組み直さずに 1 体だけ消せる
         //! 子は根として残る。親子の切り離しは Actor の破棄が行う
         //! 0 は未採番の印なので何もしない。段の更新の最中は断る
-        void RemoveByObjectId(std::uint32_t objectId);
+        void RemoveByObjectId(NS::uint32 objectId);
 
         //! @brief Actor::Destroy を呼ばれた配置物を破棄して所有リストから外す
         //! @details 段の更新の最中は断るので、段を回し終えた後に呼ぶ
@@ -54,7 +55,7 @@ namespace NS::Obj
 
         //! objectId 一致の配置物を返す。居なければ nullptr。選択・編集の実体索引
         //! 0 は未採番の印なので常に nullptr。索引から引くので、毎フレーム引いても全配置物を辿らない
-        [[nodiscard]] Actor* FindByObjectId(std::uint32_t objectId) noexcept;
+        [[nodiscard]] Actor* FindByObjectId(NS::uint32 objectId) noexcept;
 
         //! ActorRef の指す配置物を返す。未設定と該当なしは nullptr
         //! 並びが変わるたびに索引を捨てるので、破棄した相手を指す参照は必ず nullptr になる
@@ -70,10 +71,10 @@ namespace NS::Obj
         void SnapshotObjects();
 
         //! 永続 object id を 1 個割り当ててカウンタを進める
-        [[nodiscard]] std::uint32_t AllocateObjectId() noexcept { return m_nextObjectId++; }
+        [[nodiscard]] NS::uint32 AllocateObjectId() noexcept { return m_nextObjectId++; }
 
         //! 次に割り当てる永続 id。保存がファイルへ書き戻すために読む
-        [[nodiscard]] std::uint32_t NextObjectId() const noexcept { return m_nextObjectId; }
+        [[nodiscard]] NS::uint32 NextObjectId() const noexcept { return m_nextObjectId; }
 
         //! 抱えている配置物の数
         [[nodiscard]] std::size_t ObjectCount() const noexcept { return m_objects.size(); }
@@ -139,12 +140,11 @@ namespace NS::Obj
 
         void ApplyIdentity(Actor& obj, const nlohmann::json& entry);
 
-        std::vector<std::unique_ptr<Actor>> m_objects; // 配置物の単一所有リスト
-        std::vector<Actor*> m_scheduled;               // ExecutePhase がその段で呼ぶ Actor を呼ぶ順に積む作業用の並び
-        std::unordered_map<std::uint32_t, Actor*>
-            m_index;                      // 永続 id から配置物への索引。汚れていれば次に引く時に作り直す
-        bool m_indexDirty = true;         // 索引が所有リストと食い違っているか
-        std::uint32_t m_nextObjectId = 1; // 次に割り当てる永続 id。単調増加で欠番は再利用しない
+        std::vector<std::unique_ptr<Actor>> m_objects;  // 配置物の単一所有リスト
+        std::vector<Actor*> m_scheduled;                // ExecutePhase がその段で呼ぶ Actor を呼ぶ順に積む作業用の並び
+        std::unordered_map<NS::uint32, Actor*> m_index; // 永続 id から配置物への索引。汚れていれば次に引く時に作り直す
+        bool m_indexDirty = true;                       // 索引が所有リストと食い違っているか
+        NS::uint32 m_nextObjectId = 1;                  // 次に割り当てる永続 id。単調増加で欠番は再利用しない
         bool m_updating = false; // BeginPhase から EndPhase の間か。入れ子の検知と、段の最中の解放を断るのに使う
     };
 

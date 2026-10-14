@@ -1,4 +1,5 @@
 #include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Windows/StringUtils.h"
@@ -265,14 +266,14 @@ namespace NS::OS
             }
             for (std::size_t i = 0; i < ext.size(); ++i)
             {
-                const unsigned char c = static_cast<unsigned char>(ext[i]);
+                const NS::uint8 c = static_cast<NS::uint8>(ext[i]);
                 if (c > 127)
                 {
                     return false;
                 }
 
                 const int a = std::tolower(static_cast<int>(c));
-                const int b = std::tolower(static_cast<unsigned char>(extension[i]));
+                const int b = std::tolower(static_cast<NS::uint8>(extension[i]));
                 if (a != b)
                 {
                     return false;
@@ -431,8 +432,8 @@ namespace NS::OS
             }
             if (HasDriveLetter(base))
             {
-                return std::tolower(static_cast<unsigned char>(base[0])) !=
-                       std::tolower(static_cast<unsigned char>(relative[0]));
+                return std::tolower(static_cast<NS::uint8>(base[0])) !=
+                       std::tolower(static_cast<NS::uint8>(relative[0]));
             }
             return true;
         }

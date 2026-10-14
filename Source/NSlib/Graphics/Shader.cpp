@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/Shader.h"
+#include "NSlib/Graphics/Shader.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/D3dCommon.h"
@@ -88,7 +89,7 @@ namespace NS::Gfx
                          "Shader compile failed: target={}, entry={}, hr=0x{:X}, msg={}",
                          target,
                          entryPoint,
-                         static_cast<unsigned>(hr),
+                         static_cast<NS::uint>(hr),
                          msg);
         }
 
@@ -205,7 +206,7 @@ namespace NS::Gfx
             }
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(Graphics, "Create*Shader 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                NS_LOG_ERROR(Graphics, "Create*Shader 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
                 return false;
             }
             return true;
@@ -219,8 +220,7 @@ namespace NS::Gfx
 
     std::unique_ptr<Shader> Shader::CreateBuiltin(std::string_view fileName)
     {
-        const std::string shaderDir =
-            ::NS::OS::FileSystem::Combine(::NS::OS::FileSystem::ContentRoot(), "Shaders");
+        const std::string shaderDir = ::NS::OS::FileSystem::Combine(::NS::OS::FileSystem::ContentRoot(), "Shaders");
         return Create(::NS::OS::FileSystem::Combine(shaderDir, fileName));
     }
 

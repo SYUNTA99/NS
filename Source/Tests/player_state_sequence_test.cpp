@@ -6,14 +6,15 @@
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "NSlib/Core/OBB.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/System/HitScreenDirector.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/Object/System/HitScreenDirector.h"
 
 #include <gtest/gtest.h>
 
@@ -157,7 +158,7 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
     ASSERT_NE(screen, nullptr);
     screen->StartFlash(*player, 3, 1.0f);
     screen->OnTick();
-    const std::uint32_t stateStep = player->States().StepsInState();
+    const NS::uint32 stateStep = player->States().StepsInState();
     scene.OnUpdate();
     ASSERT_TRUE(player->Resolver().IsHitStopping());
     EXPECT_EQ(player->States().StepsInState(), stateStep);

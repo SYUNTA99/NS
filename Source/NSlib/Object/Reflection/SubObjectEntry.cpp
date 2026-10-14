@@ -1,4 +1,5 @@
-﻿#include "NSlib/Object/Reflection/SubObjectEntry.h"
+#include "NSlib/Object/Reflection/SubObjectEntry.h"
+#include "NSlib/Core/Types.h"
 
 namespace NS::Obj
 {
@@ -49,14 +50,14 @@ namespace NS::Obj
         return value->get<int>();
     }
 
-    std::uint32_t FieldUnsigned(const nlohmann::json& entry, std::string_view name, std::uint32_t fallback) noexcept
+    NS::uint32 FieldUnsigned(const nlohmann::json& entry, std::string_view name, NS::uint32 fallback) noexcept
     {
         const nlohmann::json* value = FindFieldValue(entry, name);
         if (value == nullptr || !value->is_number_unsigned())
         {
             return fallback;
         }
-        return value->get<std::uint32_t>();
+        return value->get<NS::uint32>();
     }
 
     bool ReadVector3(const nlohmann::json& value, NS::Vector3& out) noexcept
@@ -134,7 +135,7 @@ namespace NS::Obj
         {
             return ActorRef{};
         }
-        return ActorRef{refIt->get<std::uint32_t>()};
+        return ActorRef{refIt->get<NS::uint32>()};
     }
 
     bool HasField(const nlohmann::json& entry, std::string_view name) noexcept

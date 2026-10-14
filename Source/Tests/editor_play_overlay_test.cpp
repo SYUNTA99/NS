@@ -5,8 +5,8 @@
 
 #include <gtest/gtest.h>
 
+#include "NSlib/Core/Types.h"
 #include <cstddef>
-#include <cstdint>
 #include <vector>
 
 // Scene タブを描く時に渡される溜め場へ、エディタが図形を積むことを縛る
@@ -83,11 +83,11 @@ TEST(EditorSceneViewShapes, SelectionOutlinesLeaveOutThePrimary)
     NS::Obj::Scene scene;
     LevelEditorController editor(&scene);
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
-    const std::uint32_t first = editor.SelectedObjectId();
+    const NS::uint32 first = editor.SelectedObjectId();
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
-    const std::uint32_t second = editor.SelectedObjectId();
+    const NS::uint32 second = editor.SelectedObjectId();
 
-    const auto countLines = [&editor](std::vector<std::uint32_t> ids) {
+    const auto countLines = [&editor](std::vector<NS::uint32> ids) {
         editor.SelectObjects(std::move(ids), NS::Obj::k_NoObjectId);
         NS::Gfx::DebugShapes shapes;
         editor.DrawSceneViewShapes(shapes, NS::Matrix::Identity);

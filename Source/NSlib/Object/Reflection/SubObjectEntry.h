@@ -7,7 +7,7 @@
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <string>
 #include <string_view>
 
@@ -21,9 +21,9 @@ namespace NS::Obj
     //! entry から値を型付きで読む。不在・型不一致は fallback
     [[nodiscard]] float FieldFloat(const nlohmann::json& entry, std::string_view name, float fallback) noexcept;
     [[nodiscard]] int FieldInt(const nlohmann::json& entry, std::string_view name, int fallback) noexcept;
-    [[nodiscard]] std::uint32_t FieldUnsigned(const nlohmann::json& entry,
-                                              std::string_view name,
-                                              std::uint32_t fallback) noexcept;
+    [[nodiscard]] NS::uint32 FieldUnsigned(const nlohmann::json& entry,
+                                           std::string_view name,
+                                           NS::uint32 fallback) noexcept;
     [[nodiscard]] NS::Vector3 FieldVector3(const nlohmann::json& entry,
                                            std::string_view name,
                                            const NS::Vector3& fallback) noexcept;

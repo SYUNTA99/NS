@@ -16,7 +16,7 @@
 #include "NSlib/Object/System/ScreenFadeDirector.h"
 #include "NSlib/Object/System/UIDirector.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <memory>
 #include <string>
 #include <string_view>
@@ -251,7 +251,7 @@ namespace NS::Obj
         //! @brief 配置物を 1 体消す。居なければ何もしない
         //! @details 当たり箱も揃うので、走っている世界を止めずに消せる
         //! 子は根として残る。まとめて消したい呼び出し側が並びを決めて 1 体ずつ呼ぶ
-        void DestroyObject(std::uint32_t objectId);
+        void DestroyObject(NS::uint32 objectId);
 
         //! 固定更新の段を順に実行する。同じ段では Actor の後にシステムを更新する
         void OnUpdate();
@@ -318,16 +318,16 @@ namespace NS::Obj
 
         nlohmann::json m_playBaseline = MakeSceneJson(); // プレイ突入時の凍結
 
-        bool m_simulationEnabled = true;         // 世界を回すか。エディタの編集モードだけが下ろす
-        bool m_simulationPaused = false;         // 時間停止中か
-        std::int32_t m_simulationStepFrames = 0; // コマ送り残り固定ステップ数。止めたままこの数だけ進める
-        float m_worldSpeed = 1.0f;               // 世界の速さ (0〜1)
-        float m_worldCarry = 0.0f;               // 前に世界を進めてから足した速さ。1 に届いたら世界を 1 歩進める
-        bool m_rampActive = false;               // 世界の速さを戻している間か
-        float m_rampFrom = 1.0f;                 // 戻りの始まりの速さ
-        float m_rampSeconds = 0.0f;              // 戻りの実時間の長さ (秒)
-        float m_rampElapsed = 0.0f;              // 戻りを始めてからの実時間 (秒)
-        Curve m_rampShape{};                     // 戻り方。点が無ければ直線
-        int m_othersHeldSteps = 0;               // 自機以外の世界を止める残りの歩数
+        bool m_simulationEnabled = true;      // 世界を回すか。エディタの編集モードだけが下ろす
+        bool m_simulationPaused = false;      // 時間停止中か
+        NS::int32 m_simulationStepFrames = 0; // コマ送り残り固定ステップ数。止めたままこの数だけ進める
+        float m_worldSpeed = 1.0f;            // 世界の速さ (0〜1)
+        float m_worldCarry = 0.0f;            // 前に世界を進めてから足した速さ。1 に届いたら世界を 1 歩進める
+        bool m_rampActive = false;            // 世界の速さを戻している間か
+        float m_rampFrom = 1.0f;              // 戻りの始まりの速さ
+        float m_rampSeconds = 0.0f;           // 戻りの実時間の長さ (秒)
+        float m_rampElapsed = 0.0f;           // 戻りを始めてからの実時間 (秒)
+        Curve m_rampShape{};                  // 戻り方。点が無ければ直線
+        int m_othersHeldSteps = 0;            // 自機以外の世界を止める残りの歩数
     };
 } // namespace NS::Obj

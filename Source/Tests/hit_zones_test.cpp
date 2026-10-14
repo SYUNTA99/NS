@@ -20,8 +20,8 @@
 
 #include <gtest/gtest.h>
 
+#include "NSlib/Core/Types.h"
 #include <cmath>
-#include <cstdint>
 #include <limits>
 #include <memory>
 #include <utility>
@@ -75,7 +75,7 @@ namespace
     NS::Obj::Actor* PlaceRocks(NS::Obj::Scene& scene, const nlohmann::json& overriddenParts)
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
-        for (std::uint32_t id = 1; id <= 2; ++id)
+        for (NS::uint32 id = 1; id <= 2; ++id)
         {
             nlohmann::json rock = NS::Obj::MakeObjectJson();
             NS::Obj::SetObjectJsonClass(rock, "MapObj");

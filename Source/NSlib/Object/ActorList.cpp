@@ -1,4 +1,5 @@
-﻿#include "NSlib/Object/ActorList.h"
+#include "NSlib/Object/ActorList.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
@@ -120,7 +121,7 @@ namespace NS::Obj
         return Append(std::move(obj));
     }
 
-    void ActorList::RemoveByObjectId(std::uint32_t objectId)
+    void ActorList::RemoveByObjectId(NS::uint32 objectId)
     {
         // 段の最中に解放すると、その段で後に呼ぶ予定の生ポインタが破棄済みになる
         if (m_updating)
@@ -181,7 +182,7 @@ namespace NS::Obj
         return m_objects[index].get();
     }
 
-    Actor* ActorList::FindByObjectId(std::uint32_t objectId) noexcept
+    Actor* ActorList::FindByObjectId(NS::uint32 objectId) noexcept
     {
         // 0 は未採番の印。一時オブジェクトは id を持たないので、素通しすると先頭の一時が引ける
         if (objectId == k_NoObjectId)
@@ -201,7 +202,7 @@ namespace NS::Obj
             m_indexDirty = false;
         }
 
-        const std::unordered_map<std::uint32_t, Actor*>::iterator it = m_index.find(objectId);
+        const std::unordered_map<NS::uint32, Actor*>::iterator it = m_index.find(objectId);
         if (it == m_index.end())
         {
             return nullptr;
@@ -330,7 +331,7 @@ namespace NS::Obj
         return raw;
     }
 
-    std::size_t ActorList::IndexOfObjectId(std::uint32_t objectId) const noexcept
+    std::size_t ActorList::IndexOfObjectId(NS::uint32 objectId) const noexcept
     {
         if (objectId == k_NoObjectId)
         {

@@ -10,7 +10,7 @@
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Object/SubObjects/VirtualCamera.h"
 
-#include <cstdint>
+#include "NSlib/Core/Types.h"
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -65,7 +65,7 @@ public:
     void Teardown();
 
     //! 編集モードかプレイモードか
-    enum class Mode : std::uint8_t
+    enum class Mode : NS::uint8
     {
         Edit,
         Play
@@ -129,17 +129,17 @@ public:
     //! 現在選択中の配置物の表示用添字。選択の真実は永続 id で、添字は実体から引き直す
     [[nodiscard]] std::size_t SelectedObjectIndex() const noexcept;
     //! 永続 id で配置物を 1 体だけ選択する。0 を渡すと選択を外す
-    void SelectObjectById(std::uint32_t id) noexcept;
+    void SelectObjectById(NS::uint32 id) noexcept;
     //! 現在の主対象の永続 id。未選択は 0。ギズモと Inspector はこの 1 体を見る
-    [[nodiscard]] std::uint32_t SelectedObjectId() const noexcept { return m_selectedObjectId; }
+    [[nodiscard]] NS::uint32 SelectedObjectId() const noexcept { return m_selectedObjectId; }
 
     //! 選択中の全配置物の永続 id。主対象も含む
-    [[nodiscard]] const std::vector<std::uint32_t>& SelectedObjectIds() const noexcept { return m_selectionIds; }
-    [[nodiscard]] bool IsObjectSelected(std::uint32_t id) const noexcept;
+    [[nodiscard]] const std::vector<NS::uint32>& SelectedObjectIds() const noexcept { return m_selectionIds; }
+    [[nodiscard]] bool IsObjectSelected(NS::uint32 id) const noexcept;
     //! 選択へ足す / 選択から外す。足した物が主対象になる
-    void ToggleObjectSelection(std::uint32_t id) noexcept;
+    void ToggleObjectSelection(NS::uint32 id) noexcept;
     //! 選択を差し替える。primary が ids に含まれていなければ追加する
-    void SelectObjects(std::vector<std::uint32_t> ids, std::uint32_t primary) noexcept;
+    void SelectObjects(std::vector<NS::uint32> ids, NS::uint32 primary) noexcept;
 
     //! Inspector が編集 / 表示できる選択を持つか
     [[nodiscard]] bool HasInspectableSelection() const noexcept;
@@ -178,11 +178,11 @@ public:
     [[nodiscard]] bool SelectedIsPlayerObject() const noexcept;
 
     //! 改名して Undo 履歴へ追加する。不在なら何もしない。重複には番号を付け、空名は Object にする
-    void RenameObject(std::uint32_t id, std::string_view name);
+    void RenameObject(NS::uint32 id, std::string_view name);
 
     //! 親を変更して Undo 履歴へ追加する。parentId が 0 なら根。循環・不在・変更なしは false
     //! 世界姿勢を保つよう局所姿勢を再計算する。分解に失敗した場合は親だけを変更し、警告する
-    bool SetObjectParent(std::uint32_t id, std::uint32_t parentId);
+    bool SetObjectParent(NS::uint32 id, NS::uint32 parentId);
 
     //! 部品の保存される有効値を切り替える。プレイヤーの入力と根の姿勢は変更しない
     void SetSubObjectEnabledOnSelected(NS::Obj::SubObject& comp, bool enabled);
@@ -238,7 +238,7 @@ private:
     void ResolveSelectionFromId() noexcept;
 
     //! 主対象だけを差し替える。選択集合には触らない
-    void SetPrimarySelection(std::uint32_t id) noexcept;
+    void SetPrimarySelection(NS::uint32 id) noexcept;
 
     //! ドラッグ開始時に、主対象以外の選択物の世界変換を控える
     void CaptureDragFollowers() noexcept;
@@ -277,16 +277,16 @@ private:
     NS::Editor::GizmoEditor m_gizmo{};
 
     std::vector<NS::Obj::Actor*> m_selectablePtrs;
-    std::vector<std::uint8_t> m_selectablePickable; // 1 は Model を持つ配置物。ギズモが先に選ぶ
+    std::vector<NS::uint8> m_selectablePickable; // 1 は Model を持つ配置物。ギズモが先に選ぶ
 
-    std::uint32_t m_selectedObjectId = NS::Obj::k_NoObjectId; // 主対象の永続 id。選択の一次情報
-    std::vector<std::uint32_t> m_selectionIds;                // 選択中の全配置物。主対象も含む
-    NS::Obj::Transform* m_lastGizmoSelected = nullptr;        // 前フレームの選択対象
+    NS::uint32 m_selectedObjectId = NS::Obj::k_NoObjectId; // 主対象の永続 id。選択の一次情報
+    std::vector<NS::uint32> m_selectionIds;                // 選択中の全配置物。主対象も含む
+    NS::Obj::Transform* m_lastGizmoSelected = nullptr;     // 前フレームの選択対象
 
     //! ドラッグ開始時点の姿。主対象の動きを同じだけ他へ流すための控え
     struct DragFollower
     {
-        std::uint32_t id = 0;
+        NS::uint32 id = 0;
         NS::Matrix world{};
     };
     std::vector<DragFollower> m_dragFollowers; // 主対象に付いて動く残りの選択
@@ -296,9 +296,9 @@ private:
     bool m_transformEditing = false;
 
     // 編集開始時の状態スナップショット。選択している分だけ並ぶ
-    std::vector<std::pair<std::uint32_t, nlohmann::json>> m_editBaselines;
+    std::vector<std::pair<NS::uint32, nlohmann::json>> m_editBaselines;
 
     bool m_subObjectEditing = false;
-    std::uint32_t m_subObjectEditBaselineId = NS::Obj::k_NoObjectId; // 編集開始時の対象 id
-    nlohmann::json m_subObjectEditBaseline;                          // 編集開始時の状態スナップショット
+    NS::uint32 m_subObjectEditBaselineId = NS::Obj::k_NoObjectId; // 編集開始時の対象 id
+    nlohmann::json m_subObjectEditBaseline;                       // 編集開始時の状態スナップショット
 };

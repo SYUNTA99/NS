@@ -6,16 +6,16 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Graphics/Skeleton.h"
 
+#include "NSlib/Core/Types.h"
 #include <array>
 #include <cstddef>
-#include <cstdint>
 #include <utility>
 #include <vector>
 
 namespace NS::Gfx::detail
 {
     //! joint weights を合計 1 へ正規化する。合計が極小なら joints[0]=0, weights={1,0,0,0} にする
-    inline void NormalizeJointWeights(std::array<std::uint32_t, 4>& joints, std::array<float, 4>& weights) noexcept
+    inline void NormalizeJointWeights(std::array<NS::uint32, 4>& joints, std::array<float, 4>& weights) noexcept
     {
         const float sum = weights[0] + weights[1] + weights[2] + weights[3];
         if (sum < 1e-8f)
@@ -60,10 +60,10 @@ namespace NS::Gfx::detail
 
     //! bones を親が子より前に来る順へ並べ替え、old→new index の remap を返す
     //! 出力 bones の parentIndex は new index に張り替え済。呼出側は remap で頂点 joint index を変換する
-    [[nodiscard]] inline std::vector<std::uint32_t> TopologicalSortBones(std::vector<Bone>& bones) noexcept
+    [[nodiscard]] inline std::vector<NS::uint32> TopologicalSortBones(std::vector<Bone>& bones) noexcept
     {
         const std::size_t boneCount = bones.size();
-        std::vector<std::uint32_t> oldToNew(boneCount, 0u);
+        std::vector<NS::uint32> oldToNew(boneCount, 0u);
         std::vector<bool> emitted(boneCount, false);
         std::vector<Bone> sorted;
         sorted.reserve(boneCount);
@@ -81,7 +81,7 @@ namespace NS::Gfx::detail
                 const int parent = bones[i].parentIndex;
                 if (parent < 0 || emitted[static_cast<std::size_t>(parent)])
                 {
-                    oldToNew[i] = static_cast<std::uint32_t>(sorted.size());
+                    oldToNew[i] = static_cast<NS::uint32>(sorted.size());
                     sorted.push_back(bones[i]);
                     emitted[i] = true;
                     progress = true;
@@ -94,7 +94,7 @@ namespace NS::Gfx::detail
         {
             if (!emitted[i])
             {
-                oldToNew[i] = static_cast<std::uint32_t>(sorted.size());
+                oldToNew[i] = static_cast<NS::uint32>(sorted.size());
                 sorted.push_back(bones[i]);
             }
         }

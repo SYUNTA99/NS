@@ -1,5 +1,6 @@
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player.h"
+#include "NSlib/Core/Types.h"
 
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
@@ -143,7 +144,7 @@ namespace GL::Player
 
     void ChargeEffects::ForgetEndedEffects() noexcept
     {
-        const auto forgetIfEnded = [this](std::uint32_t& id) {
+        const auto forgetIfEnded = [this](NS::uint32& id) {
             if (id == 0)
             {
                 return;
@@ -266,7 +267,7 @@ namespace GL::Player
         // 大きさを変えるのは輪・丸屋根・筋だけにする
         NS::Gfx::EffectPlayDesc burst = PlayDesc(center, facing, charge01);
         burst.dynamicInputs[m_burstScaleInput] = ReleaseBurstScale(charge01);
-        const std::uint32_t burstId = NS::Obj::PlayEffect(m_actor, m_burstAsset, burst);
+        const NS::uint32 burstId = NS::Obj::PlayEffect(m_actor, m_burstAsset, burst);
         NS::Obj::StopEffectAfter(m_actor, burstId, std::max(m_burstSteps, 1));
         m_burst = burstId;
 
@@ -332,7 +333,7 @@ namespace GL::Player
         m_trailAwaitsFreeze = false;
     }
 
-    void ChargeEffects::Place(std::uint32_t id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept
+    void ChargeEffects::Place(NS::uint32 id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept
     {
         if (id == 0)
         {
@@ -349,12 +350,12 @@ namespace GL::Player
         NS::Obj::SetEffectTransform(m_actor, id, position, rotation, NS::Vector3::One);
     }
 
-    void ChargeEffects::SetCharge(std::uint32_t id, float charge01) const noexcept
+    void ChargeEffects::SetCharge(NS::uint32 id, float charge01) const noexcept
     {
         SetInput(id, m_chargeInput, charge01);
     }
 
-    void ChargeEffects::SetInput(std::uint32_t id, int index, float value) const noexcept
+    void ChargeEffects::SetInput(NS::uint32 id, int index, float value) const noexcept
     {
         if (id == 0)
         {
@@ -392,7 +393,7 @@ namespace GL::Player
         return frames >= 0 && frames <= std::max(m_burstClearFrames, 0);
     }
 
-    void ChargeEffects::StopAndClear(std::uint32_t& id) noexcept
+    void ChargeEffects::StopAndClear(NS::uint32& id) noexcept
     {
         if (id == 0)
         {

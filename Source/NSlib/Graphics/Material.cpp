@@ -1,4 +1,5 @@
-﻿#include "NSlib/Graphics/Material.h"
+#include "NSlib/Graphics/Material.h"
+#include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/Buffer.h"
@@ -82,7 +83,7 @@ namespace NS::Gfx
         return m_renderPriority;
     }
 
-    void Material::SetTexture(unsigned slot, const Texture* texture) noexcept
+    void Material::SetTexture(NS::uint slot, const Texture* texture) noexcept
     {
         if (texture == nullptr)
         {
@@ -111,7 +112,7 @@ namespace NS::Gfx
         renderer.Commands().VSSetShader(*m_vertexShader);
         renderer.Commands().PSSetShader(*m_pixelShader);
 
-        for (std::pair<const unsigned, const Texture*>& entry : m_textures)
+        for (std::pair<const NS::uint, const Texture*>& entry : m_textures)
         {
             renderer.Commands().PSSetShaderResource(*entry.second, entry.first);
         }
