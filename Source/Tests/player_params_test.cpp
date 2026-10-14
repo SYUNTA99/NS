@@ -65,15 +65,15 @@ TEST(PlayerParams, DeactivatingPlayerKeepsHealth)
     const int full = player.Health();
 
     // 配置を止めて戻すのは死ではない。命は減らない
-    player.SetActive(false);
-    EXPECT_FALSE(player.IsActiveSelf());
+    player.Disappear();
+    EXPECT_FALSE(player.IsAppeared());
     EXPECT_FALSE(player.IsDead());
-    player.SetActive(true);
+    player.Appear();
     EXPECT_EQ(player.Health(), full);
 
     player.Die();
     EXPECT_TRUE(player.IsDead());
-    EXPECT_FALSE(player.IsActiveSelf());
+    EXPECT_FALSE(player.IsAppeared());
 }
 
 TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)

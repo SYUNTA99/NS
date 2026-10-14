@@ -68,7 +68,7 @@ namespace NS::Obj
         //! 持ち主が世界へ出直した時に呼ばれる。自分が効いていない間は呼ばれない。既定は何もしない
         virtual void OnAppear() {}
         //! 持ち主が世界から外れた時に呼ばれる。既定は何もしない
-        virtual void OnKill() noexcept {}
+        virtual void OnDisappear() noexcept {}
         virtual void OnStart() {}
         virtual void OnUpdate() {}
         virtual void OnEndPlay() {}

@@ -28,7 +28,7 @@ namespace
     public:
         void OnAppear() override { OnStart(); }
         void OnStart() override { ++registers; }
-        void OnKill() noexcept override { ++unregisters; }
+        void OnDisappear() noexcept override { ++unregisters; }
         int registers = 0;
         int unregisters = 0;
     };
@@ -63,22 +63,22 @@ TEST(ActorLifecycle, ReparentingKeepsRegistrationWhileActivityIsUnchanged)
 
     // 消えている親の下へ入れると外れ、出ている所へ戻すと登録し直す
     child->SetParent(parent);
-    parent->Kill();
+    parent->Disappear();
     EXPECT_EQ(child->part->unregisters, 1);
     child->SetParent(nullptr);
     EXPECT_EQ(child->part->registers, 2);
 }
 
-TEST(ActorLifecycle, KillStopsUpdatesAndAppearResumesOnce)
+TEST(ActorLifecycle, DisappearStopsUpdatesAndAppearResumesOnce)
 {
     NS::Obj::Scene scene;
     LifeProbe* actor = scene.SpawnTransient<LifeProbe>();
-    EXPECT_TRUE(actor->IsAlive());
+    EXPECT_TRUE(actor->IsAppeared());
     scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     EXPECT_EQ(actor->updates, 1);
-    actor->Kill();
-    actor->Kill();
-    EXPECT_FALSE(actor->IsAlive());
+    actor->Disappear();
+    actor->Disappear();
+    EXPECT_FALSE(actor->IsAppeared());
     scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     EXPECT_EQ(actor->updates, 1);
     actor->Appear();
@@ -97,7 +97,7 @@ TEST(ActorLifecycle, PhysicsAndSensorsLeaveTheirRegistries)
     float distance = 0.0f;
     const NS::Vector3 from{0.0f, 2.0f, 0.0f};
     ASSERT_TRUE(scene.Physics().Raycast(from, -NS::Vector3::UnitY, 4.0f, distance));
-    actor->Kill();
+    actor->Disappear();
     EXPECT_TRUE(scene.HitSensors().Sensors().empty());
     EXPECT_FALSE(scene.Physics().Raycast(from, -NS::Vector3::UnitY, 4.0f, distance));
     actor->Appear();
@@ -126,15 +126,15 @@ TEST(ActorLifecycle, UICloseStopsTheUpdateAndOpenResumesIt)
     EXPECT_EQ(ui.OwningScene(), nullptr);
 }
 
-TEST(ActorLifecycle, ParentKillRemovesChildPhysicsWithoutChangingChildLife)
+TEST(ActorLifecycle, ParentDisappearRemovesChildPhysicsWithoutChangingChildState)
 {
     NS::Obj::Scene scene;
     LifeProbe* parent = scene.SpawnTransient<LifeProbe>();
     GL::Level::MapObj* child = scene.SpawnTransient<GL::Level::MapObj>();
     child->SetParent(parent);
     scene.SyncPhysics();
-    parent->Kill();
-    EXPECT_TRUE(child->IsAlive());
+    parent->Disappear();
+    EXPECT_TRUE(child->IsAppeared());
     EXPECT_TRUE(scene.HitSensors().Sensors().empty());
     float distance = 0.0f;
     EXPECT_FALSE(scene.Physics().Raycast(NS::Vector3{0.0f, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance));

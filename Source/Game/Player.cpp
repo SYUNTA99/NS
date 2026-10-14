@@ -379,7 +379,7 @@ void Player::ApplyDamage(int amount) noexcept
 void Player::Die() noexcept
 {
     m_health.Deplete();
-    Kill();
+    Disappear();
 }
 
 void Player::ResetHealth() noexcept

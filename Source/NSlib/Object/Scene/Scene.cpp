@@ -370,7 +370,14 @@ namespace NS::Obj
         {
             m_objects.RenameObject(*obj, name);
         }
-        obj->SetActive(ObjectJsonActive(object));
+        if (ObjectJsonActive(object))
+        {
+            obj->Appear();
+        }
+        else
+        {
+            obj->Disappear();
+        }
         Actor* parent = m_objects.FindByObjectId(ObjectJsonParent(object));
         if (parent == obj)
         {
@@ -479,7 +486,7 @@ namespace NS::Obj
                 Fade().Advance(NS::OS::FrameTimer::FixedDelta());
             }
         }
-        m_objects.RemoveKilledTransients();
+        m_objects.RemoveDisappearedTransients();
         // 止めは世界を進めた歩で数える。遅い世界でも、止めた歩の数だけ自機が進む
         if (worldStep && m_othersHeldSteps > 0)
         {

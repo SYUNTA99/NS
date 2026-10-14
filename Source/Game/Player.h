@@ -368,7 +368,7 @@ public:
     void ApplyDamage(int amount) noexcept;
 
     //! @brief 即死する。命を 0 にして世界から消える
-    //! @details 配置を止めるだけの Kill / SetActive(false) は命に触らない。死は落下死などの知らせだけが起こす
+    //! @details 世界から外すだけの Disappear は命に触らない。死は落下死などの知らせだけが起こす
     void Die() noexcept;
 
     //! @brief 命を満タンへ戻す。プレイ突入とリスタートで呼ばれる

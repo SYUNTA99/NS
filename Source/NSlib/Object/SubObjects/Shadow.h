@@ -36,7 +36,7 @@ namespace NS::Obj
 
         //! OwningScene に自分を IRenderable として登録する
         void OnAppear() override { Shadow::OnStart(); }
-        void OnKill() noexcept override { Shadow::OnEndPlay(); }
+        void OnDisappear() noexcept override { Shadow::OnEndPlay(); }
         void OnStart() override;
         //! OwningScene から自分を解除する
         void OnEndPlay() override;

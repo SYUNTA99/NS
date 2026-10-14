@@ -20,7 +20,7 @@ TEST(ImpactMark, TemporaryActorShrinksAndStops)
     GL::Level::ImpactMark* mark = static_cast<GL::Level::ImpactMark*>(spawned);
     mark->SetLifeSeconds(NS::OS::FrameTimer::FixedDelta());
     mark->Update();
-    EXPECT_FALSE(mark->IsActiveSelf());
+    EXPECT_FALSE(mark->IsAppeared());
     ASSERT_NE(mark->ModelSubObj(), nullptr);
     EXPECT_FALSE(mark->ModelSubObj()->IsActive());
 }

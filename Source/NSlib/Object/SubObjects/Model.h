@@ -184,7 +184,7 @@ namespace NS::Obj
 
         //! OwningScene に self と残像を IRenderable として登録する。Owner/Scene が null なら何もしない
         void OnAppear() override { Model::OnStart(); }
-        void OnKill() noexcept override { Model::OnEndPlay(); }
+        void OnDisappear() noexcept override { Model::OnEndPlay(); }
         void OnStart() override;
         //! Owner の OwningScene から self と残像を解除する。無効ポインタを残さないよう Scene 破棄前に呼ぶ
         void OnEndPlay() override;

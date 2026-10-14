@@ -54,11 +54,11 @@ namespace GL::Level
         TickSubObj(m_vcam);
     }
 
-    void FollowCamera::OnKill() noexcept
+    void FollowCamera::OnDisappear() noexcept
     {
         m_vcam->SetTargetHeightOffset(0.0f);
         m_vcam->ClearCharge();
         m_vcam->ClearRebound();
-        NS::Obj::Actor::OnKill();
+        NS::Obj::Actor::OnDisappear();
     }
 } // namespace GL::Level

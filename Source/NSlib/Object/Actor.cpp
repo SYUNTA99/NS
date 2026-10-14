@@ -151,22 +151,22 @@ namespace NS::Obj
 
     void Actor::Appear()
     {
-        if (m_alive)
+        if (m_appeared)
         {
             return;
         }
-        m_alive = true;
+        m_appeared = true;
         OnAppear();
     }
 
-    void Actor::Kill() noexcept
+    void Actor::Disappear() noexcept
     {
-        if (!m_alive)
+        if (!m_appeared)
         {
             return;
         }
-        m_alive = false;
-        OnKill();
+        m_appeared = false;
+        OnDisappear();
     }
 
     CameraManager* Actor::GetCameraManager() const noexcept
@@ -268,7 +268,7 @@ namespace NS::Obj
         // 1 つでも active が false なら効かない。循環は SetParent が作らせないので必ず root で止まる
         for (const Actor* node = this; node != nullptr; node = node->m_parent)
         {
-            if (!node->IsAlive())
+            if (!node->IsAppeared())
             {
                 return false;
             }
@@ -311,7 +311,7 @@ namespace NS::Obj
         const bool isActive = IsActiveInHierarchy();
         if (wasActive && !isActive)
         {
-            OnKill();
+            OnDisappear();
         }
         else if (!wasActive && isActive)
         {
@@ -340,7 +340,7 @@ namespace NS::Obj
         }
         if (!IsActiveInHierarchy())
         {
-            OnKill();
+            OnDisappear();
         }
     }
 
@@ -364,7 +364,7 @@ namespace NS::Obj
         }
     }
 
-    void Actor::OnKill() noexcept
+    void Actor::OnDisappear() noexcept
     {
         if (OwningScene() == nullptr)
         {
@@ -372,11 +372,11 @@ namespace NS::Obj
         }
         for (SubObject* subObject : m_subObjOrder)
         {
-            subObject->OnKill();
+            subObject->OnDisappear();
         }
         for (Actor* child : m_children)
         {
-            child->OnKill();
+            child->OnDisappear();
         }
     }
 
@@ -414,7 +414,7 @@ namespace NS::Obj
 
     void Actor::OnEndPlay()
     {
-        Kill();
+        Disappear();
         for (SubObject* subObject : m_subObjOrder)
         {
             subObject->OnEndPlay();

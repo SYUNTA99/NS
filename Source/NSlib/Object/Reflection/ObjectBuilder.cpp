@@ -20,7 +20,7 @@ namespace NS::Obj
             SetObjectJsonId(object, id);
             SetObjectJsonClass(object, obj.ClassName());
             SetObjectJsonName(object, obj.Name());
-            SetObjectJsonActive(object, obj.IsActiveSelf());
+            SetObjectJsonActive(object, obj.IsAppeared());
             if (const Actor* parent = obj.Parent())
             {
                 SetObjectJsonParent(object, parent->Id());

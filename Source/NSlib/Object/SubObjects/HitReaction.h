@@ -78,7 +78,7 @@ namespace NS::Obj
         void Stop();
 
         //! 途中で外れても振動とカメラの効果を残さない
-        void OnKill() noexcept override { OnEndPlay(); }
+        void OnDisappear() noexcept override { OnEndPlay(); }
         void OnEndPlay() override;
 
         // 状態は保存しない。型検索で引けるよう型名だけ登録する

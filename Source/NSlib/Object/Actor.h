@@ -64,9 +64,10 @@ namespace NS::Obj
         //! @brief 世界に出す。更新の段・描画・当たり・センサーへ登録する。出ていれば何もしない
         void Appear();
         //! @brief 世界から外す。出ていなければ何もしない
-        //! @details 配置を止めるだけで、ゲームの死ではない。死の意味を足す派生は別の名前の関数から呼ぶ
-        void Kill() noexcept;
-        [[nodiscard]] bool IsAlive() const noexcept { return m_alive; }
+        //! @details 解放はしないので Appear で戻せる。子の値は触らないので、親を戻せば子も一緒に戻る
+        void Disappear() noexcept;
+        //! この配置物自身が世界に出ているか。親の状態は含まない
+        [[nodiscard]] bool IsAppeared() const noexcept { return m_appeared; }
 
         //! 所有 Scene。Scene attach 前 / 破棄後は nullptr
         [[nodiscard]] Scene* OwningScene() const noexcept { return m_scene; }
@@ -173,25 +174,9 @@ namespace NS::Obj
         //! 世界から外し、全ての部品の OnEndPlay を呼ぶ
         virtual void OnEndPlay();
 
-        //! この配置物自身の active 値。親の状態は含まない
-        [[nodiscard]] bool IsActiveSelf() const noexcept { return IsAlive(); }
-
-        //! @brief 自分と全ての祖先が有効か
+        //! @brief 自分と全ての祖先が世界に出ているか
         //! @details SubObject::IsActive がこれを見るので、偽の間は配下 SubObject が更新も描画も当たりも止まる
         [[nodiscard]] bool IsActiveInHierarchy() const noexcept;
-
-        //! active を切り替える。子の値は触らないので、親を戻せば子も一緒に戻る
-        void SetActive(bool active) noexcept
-        {
-            if (active)
-            {
-                Appear();
-            }
-            else
-            {
-                Kill();
-            }
-        }
 
     protected:
         //! @brief 知らせを受け取る。応じた場合 true、知らない知らせと応じなかった知らせは false
@@ -246,7 +231,7 @@ namespace NS::Obj
         [[nodiscard]] SubObjSlot<EffectKeeper> EffectSlot() noexcept { return {"Effect", &m_effectKeeper}; }
 
         virtual void OnAppear();
-        virtual void OnKill() noexcept;
+        virtual void OnDisappear() noexcept;
         //! @brief 観測の段。この歩の始まり
         //! @details 世界と相手を読んで控え、歩ごとの記録の時計を進める。状態・身体・見た目を書かない。
         //! 既定は何もしない。補間の前の値は段でなく固定ステップの頭で控える
@@ -336,7 +321,7 @@ namespace NS::Obj
         std::uint32_t m_id = 0;
         std::string m_name;
         Scene* m_scene = nullptr; // 所有 Scene、attach 前後は nullptr
-        bool m_alive = false;
+        bool m_appeared = false;
         std::vector<std::unique_ptr<SubObject>> m_subObjects; // 根と作った部品の全部。作った順で、壊す時は逆順
         std::vector<SubObject*> m_subObjOrder;
         TransformSubObject* m_rootSubObj = nullptr;

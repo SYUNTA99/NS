@@ -62,7 +62,7 @@ namespace NS::Obj
         //! @brief 世界から外れた一時オブジェクトを破棄して所有リストから外す
         //! @details 一時オブジェクトは id を持たず、出し直す道も無い。残すと出すたびに並びが伸び続ける
         //! 段の更新の最中は断るので、段を回し終えた後に呼ぶ
-        void RemoveKilledTransients();
+        void RemoveDisappearedTransients();
 
         //! objectId 一致の配置物を返す。居なければ nullptr。選択・編集の live 索引
         //! 0 は未採番の印なので常に nullptr。索引から引くので、毎フレーム引いても全配置物を辿らない

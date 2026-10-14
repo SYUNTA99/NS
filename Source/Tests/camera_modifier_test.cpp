@@ -323,7 +323,7 @@ TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
     }
     ASSERT_TRUE(player->ChargeJudge().IsHoldingCharge());
     EXPECT_GT(vcam.ChargeNarrowDegrees(), 0.0f);
-    actor->Kill();
+    actor->Disappear();
     EXPECT_FLOAT_EQ(vcam.ChargeNarrowDegrees(), 0.0f);
     actor->Appear();
     player->Update(true);

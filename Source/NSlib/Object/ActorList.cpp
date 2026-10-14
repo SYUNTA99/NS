@@ -188,16 +188,17 @@ namespace NS::Obj
         }
     }
 
-    void ActorList::RemoveKilledTransients()
+    void ActorList::RemoveDisappearedTransients()
     {
         if (m_updating)
         {
             NS_LOG_ERROR(
-                Scene, "ActorList::RemoveKilledTransients: 段の更新の最中に呼ばれたので一時オブジェクトの解放を断った");
+                Scene,
+                "ActorList::RemoveDisappearedTransients: 段の更新の最中に呼ばれたので一時オブジェクトの解放を断った");
             return;
         }
         const std::size_t removed = std::erase_if(m_objects, [](const std::unique_ptr<Actor>& obj) {
-            if (!obj->IsTransient() || obj->IsAlive())
+            if (!obj->IsTransient() || obj->IsAppeared())
             {
                 return false;
             }
@@ -340,7 +341,14 @@ namespace NS::Obj
     {
         obj.SetId(ObjectJsonId(entry));
         obj.SetName(std::string{ObjectJsonName(entry)});
-        obj.SetActive(ObjectJsonActive(entry));
+        if (ObjectJsonActive(entry))
+        {
+            obj.Appear();
+        }
+        else
+        {
+            obj.Disappear();
+        }
     }
 
     Actor* ActorList::InsertFromJson(std::unique_ptr<Actor> obj, const nlohmann::json& entry, std::size_t index)

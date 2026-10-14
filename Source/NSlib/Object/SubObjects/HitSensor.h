@@ -59,7 +59,7 @@ namespace NS::Obj
 
         //! シーンの調べ役へ入る
         void OnAppear() override { HitSensor::OnStart(); }
-        void OnKill() noexcept override { HitSensor::OnEndPlay(); }
+        void OnDisappear() noexcept override { HitSensor::OnEndPlay(); }
         void OnStart() override;
         //! シーンの調べ役から出る
         void OnEndPlay() override;

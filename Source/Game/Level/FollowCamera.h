@@ -20,7 +20,7 @@ namespace GL::Level
         void ObserveStep() override;
         //! 仮想カメラを 1 歩進める
         void BodyStep() override;
-        void OnKill() noexcept override;
+        void OnDisappear() noexcept override;
 
     private:
         NS::Obj::ThirdPersonFollow* m_vcam = nullptr;

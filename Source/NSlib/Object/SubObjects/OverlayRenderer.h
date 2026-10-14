@@ -41,7 +41,7 @@ namespace NS::Obj
 
         //! 所属 scene の重ね描きの登録簿へ自分を入れる。派生で上書きするなら基底のこれを呼ぶ
         void OnAppear() override { OverlayRenderer::OnStart(); }
-        void OnKill() noexcept override { OverlayRenderer::OnEndPlay(); }
+        void OnDisappear() noexcept override { OverlayRenderer::OnEndPlay(); }
         void OnStart() override;
         //! 所属 scene の重ね描きの登録簿から自分を外す。派生で上書きするなら基底のこれを呼ぶ
         void OnEndPlay() override;

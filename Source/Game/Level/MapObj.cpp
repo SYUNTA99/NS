@@ -31,7 +31,7 @@ namespace GL::Level
                 {
                     owner.BodySensorSubObj()->Invalidate();
                     owner.Sphere().RemoveFromPhysics();
-                    owner.Kill();
+                    owner.Disappear();
                 }
             }
         }

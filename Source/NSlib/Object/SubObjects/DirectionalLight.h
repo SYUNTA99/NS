@@ -24,7 +24,7 @@ namespace NS::Obj
 
         //! 所属 scene の平行光の登録簿へ自分を入れる
         void OnAppear() override { DirectionalLight::OnStart(); }
-        void OnKill() noexcept override { DirectionalLight::OnEndPlay(); }
+        void OnDisappear() noexcept override { DirectionalLight::OnEndPlay(); }
         void OnStart() override;
         //! 所属 scene の平行光の登録簿から自分を外す
         void OnEndPlay() override;
