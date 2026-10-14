@@ -71,10 +71,11 @@ namespace
     class AlphaCameraHost final : public NS::Obj::Actor
     {
     public:
-        AlphaCamera* vcam = nullptr;
+        std::unique_ptr<AlphaCamera> vcam;
 
     protected:
-        void OnInit() override { vcam = CreateSubObj<AlphaCamera>("Vcam"); }
+        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, vcam); }
+        void OnInit() override { (void)CreateSubObj(vcam, "Vcam"); }
     };
 
     class OrderProbe final : public NS::Obj::CameraModifier
@@ -230,7 +231,7 @@ TEST(CameraManager, ForwardIgnoresTheDrawAlphaDuringABlend)
     AlphaCameraHost to;
     to.Init();
     to.vcam->SetVcamPriority(1);
-    cameras.AddVirtualCamera(to.vcam);
+    cameras.AddVirtualCamera(to.vcam.get());
     cameras.OnTick();
     cameras.Evaluate(0.0f);
 

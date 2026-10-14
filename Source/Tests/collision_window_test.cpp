@@ -1,10 +1,10 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/SubObjects/SphereCollision.h"
 #include "NSlib/Object/IUse/IUseCollision.h"
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/Collider.h"
+#include "NSlib/Object/SubObjects/SphereCollision.h"
 #include "NSlib/Physics/PhysicsScene.h"
 
 #include <gtest/gtest.h>
@@ -17,14 +17,18 @@ namespace
     class CollisionProbe final : public NS::Obj::Actor
     {
     public:
-        NS::Obj::Collider* collider = nullptr;
-        NS::Obj::SphereCollision* sphere = nullptr;
+        std::unique_ptr<NS::Obj::Collider> collider;
+        std::unique_ptr<NS::Obj::SphereCollision> sphere;
 
     protected:
+        void VisitExtraSubObjs(const SubObjVisitor& visit) const override
+        {
+            VisitSubObjMembers(visit, collider, sphere);
+        }
         void OnInit() override
         {
-            collider = CreateSubObj<NS::Obj::Collider>("Collider");
-            sphere = CreateSubObj<NS::Obj::SphereCollision>("Sphere");
+            (void)CreateSubObj(collider, "Collider");
+            (void)CreateSubObj(sphere, "Sphere");
         }
     };
 

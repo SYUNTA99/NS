@@ -64,10 +64,7 @@ namespace NS::Obj
         // 参照文字列の実体化は SubObject 自身の仕事。AssetManager が無い間は文字列のまま持たせておく
         if (assets != nullptr)
         {
-            for (SubObject* subObject : obj->SubObjs())
-            {
-                subObject->ResolveAssets(*assets);
-            }
+            obj->ForEachSubObj([&](SubObject* subObject) { subObject->ResolveAssets(*assets); });
         }
         return obj;
     }
@@ -76,10 +73,7 @@ namespace NS::Obj
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, 0u);
         nlohmann::json& parts = ObjectJsonSubObjs(object);
-        for (const SubObject* subObject : obj.SubObjs())
-        {
-            parts[subObject->Name()] = nlohmann::json::object();
-        }
+        obj.ForEachSubObj([&](const SubObject* subObject) { parts[subObject->Name()] = nlohmann::json::object(); });
         SetObjectPosition(object, obj.Root().Position());
         SetObjectRotation(object, obj.Root().Rotation());
         SetObjectScale(object, obj.Root().Scale());
@@ -90,10 +84,8 @@ namespace NS::Obj
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, obj.Id());
         nlohmann::json& parts = ObjectJsonSubObjs(object);
-        for (const SubObject* subObject : obj.SubObjs())
-        {
-            parts[subObject->Name()] = SerializeSubObjFields(*subObject);
-        }
+        obj.ForEachSubObj(
+            [&](const SubObject* subObject) { parts[subObject->Name()] = SerializeSubObjFields(*subObject); });
         return DiffObjectJson(object);
     }
 } // namespace NS::Obj

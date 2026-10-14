@@ -43,10 +43,11 @@ public:
     [[nodiscard]] TestViewCamera& Vcam() noexcept { return *m_vcam; }
 
 protected:
-    void OnInit() override { m_vcam = CreateSubObj<TestViewCamera>("Vcam"); }
+    void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, m_vcam); }
+    void OnInit() override { (void)CreateSubObj(m_vcam, "Vcam"); }
 
 private:
-    TestViewCamera* m_vcam = nullptr;
+    std::unique_ptr<TestViewCamera> m_vcam;
 };
 
 //! @brief position から target を見る試し用の仮想カメラをシーンへ湧かす

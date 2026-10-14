@@ -3,6 +3,8 @@
 
 #include <gtest/gtest.h>
 
+#include <vector>
+
 #include <cstdint>
 
 // 描画の無い世界の保持役は再生せず、出した記録だけを残す
@@ -114,8 +116,10 @@ TEST(EffectKeeperTest, SlotKeeperIsOrderedAfterHitReaction)
     ASSERT_NE(keeper, nullptr);
     ASSERT_NE(reaction, nullptr);
 
-    ASSERT_EQ(actor.SubObjs().size(), 3u);
-    EXPECT_EQ(actor.SubObjs()[1], reaction);
-    EXPECT_EQ(actor.SubObjs()[2], keeper);
+    std::vector<NS::Obj::SubObject*> parts;
+    actor.ForEachSubObj([&](NS::Obj::SubObject* part) { parts.push_back(part); });
+    ASSERT_EQ(parts.size(), 3u);
+    EXPECT_EQ(parts[1], reaction);
+    EXPECT_EQ(parts[2], keeper);
     EXPECT_EQ(actor.CreateSubObj("Effect"), keeper);
 }

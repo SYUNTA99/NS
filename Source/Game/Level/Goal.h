@@ -15,8 +15,9 @@ namespace GL::Level
 
     protected:
         void OnInit() override;
+        void VisitExtraSubObjs(const SubObjVisitor& visit) const override;
 
     private:
-        GoalParams* m_params = nullptr;
+        std::unique_ptr<GoalParams> m_params;
     };
 } // namespace GL::Level

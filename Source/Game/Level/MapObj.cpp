@@ -69,16 +69,21 @@ namespace GL::Level
         m_motion.Finish();
     }
 
+    void MapObj::VisitExtraSubObjs(const SubObjVisitor& visit) const
+    {
+        VisitSubObjMembers(visit, m_params, m_hitZones, m_effects);
+    }
+
     void MapObj::OnInit()
     {
         NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
         model->SetMeshRef("sphere");
         model->SetBaseColor(NS::Vector3{0.72f, 0.70f, 0.66f});
         NS::Obj::SphereCollision* sphere = CreateSubObj<NS::Obj::SphereCollision>(CollisionSlot());
-        m_params = CreateSubObj<MapObjParams>("Params");
-        m_hitZones = CreateSubObj<HitZones>("HitZones");
+        (void)CreateSubObj(m_params, "Params");
+        (void)CreateSubObj(m_hitZones, "HitZones");
         (void)CreateSubObj<NS::Obj::EffectKeeper>(EffectSlot());
-        m_effects = CreateSubObj<LaunchEffects>("LaunchEffects");
+        (void)CreateSubObj(m_effects, "LaunchEffects");
         // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
         NS::Obj::FollowHitSensor* bodySensor = CreateSubObj<NS::Obj::FollowHitSensor>(BodySensorSlot(), [sphere] {
             const NS::Sphere world = sphere->WorldSphere();
@@ -121,7 +126,7 @@ namespace GL::Level
 
     void MapObj::VisualStep()
     {
-        TickSubObj(m_effects);
+        TickSubObj(m_effects.get());
         // 震えは止めが明けて飛んでいく間に通り抜けるので、状態に依らず根を動かした後で進める
         AdvanceTremor();
         // 明けの写しは止めの後も残り、写し取る姿は揺れを書いた後の姿なので、状態の歩の後で進める

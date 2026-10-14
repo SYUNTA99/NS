@@ -16,8 +16,6 @@ namespace NS::Obj
     inline constexpr const char* k_RotationFieldName = "回転";
     inline constexpr const char* k_ScaleFieldName = "スケール";
 
-    //! @brief 位置・回転・スケールの実体を持ち、リフレクション経路 (Inspector / undo / 直列化) へ載せるサブオブジェクト
-    //! @details Actor はコンストラクタでこれを 1 つ積み、Root() はここが持つ Transform を指す
     class TransformSubObject : public SubObject
     {
     public:

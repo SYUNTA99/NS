@@ -37,10 +37,11 @@ namespace
     class CountedActor final : public NS::Obj::Actor
     {
     public:
-        RegisterCountSubObj* part = nullptr;
+        std::unique_ptr<RegisterCountSubObj> part;
 
     protected:
-        void OnInit() override { part = CreateSubObj<RegisterCountSubObj>("Counted"); }
+        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, part); }
+        void OnInit() override { (void)CreateSubObj(part, "Counted"); }
     };
 } // namespace
 

@@ -293,6 +293,7 @@ protected:
     bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
     void OnInit() override;
+    void VisitExtraSubObjs(const SubObjVisitor& visit) const override;
     //! PlayerInput の体当たりの押しと狙いの観測 (ObserveCharge)、
     //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
     void ObserveStep() override;
@@ -435,18 +436,18 @@ private:
     [[nodiscard]] bool FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noexcept;
     [[nodiscard]] std::string_view ChooseClip(float lateralSpeed) const noexcept;
     [[nodiscard]] float ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept;
-    GL::Player::PlayerParams* m_params = nullptr;
-    GL::Player::PlayerClips* m_clips = nullptr;
+    std::unique_ptr<GL::Player::PlayerParams> m_params;
+    std::unique_ptr<GL::Player::PlayerClips> m_clips;
     std::string m_appliedClip{};
-    NS::Obj::PlayerInput* m_input = nullptr;
-    NS::Obj::Body* m_body = nullptr;
-    NS::Obj::Collider* m_collider = nullptr;
-    GL::Player::PlayerAppearance* m_appearance = nullptr;
-    GL::Level::ImpactResolver* m_resolver = nullptr;
-    GL::Level::TargetMarker* m_targetMarker = nullptr;
-    GL::Level::SlamArrow* m_slamArrow = nullptr;
-    GL::Player::ChargeEffects* m_chargeEffects = nullptr;
-    GL::Player::ImpactEffects* m_impactEffects = nullptr;
+    std::unique_ptr<NS::Obj::PlayerInput> m_input;
+    std::unique_ptr<NS::Obj::Body> m_body;
+    std::unique_ptr<NS::Obj::Collider> m_collider;
+    std::unique_ptr<GL::Player::PlayerAppearance> m_appearance;
+    std::unique_ptr<GL::Level::ImpactResolver> m_resolver;
+    std::unique_ptr<GL::Level::TargetMarker> m_targetMarker;
+    std::unique_ptr<GL::Level::SlamArrow> m_slamArrow;
+    std::unique_ptr<GL::Player::ChargeEffects> m_chargeEffects;
+    std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
     NS::Obj::StateMachine<Player>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
     GL::Level::Health m_health;
 

@@ -2,15 +2,20 @@
 
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
+#include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Object/Reflection/TypeRegistry.h"
 
 namespace GL::Level
 {
+    void Goal::VisitExtraSubObjs(const SubObjVisitor& visit) const
+    {
+        VisitSubObjMembers(visit, m_params);
+    }
+
     void Goal::OnInit()
     {
-        m_params = CreateSubObj<GoalParams>("Params");
+        (void)CreateSubObj(m_params, "Params");
         NS::Obj::Model* mesh = CreateSubObj<NS::Obj::Model>(ModelSlot());
         mesh->SetMeshRef("cube");
         mesh->SetBaseColor(NS::Vector3{1.0f, 0.84f, 0.0f});

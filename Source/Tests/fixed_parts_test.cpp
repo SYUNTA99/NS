@@ -2,24 +2,68 @@
 #include "Game/Level/MapObj.h"
 #include "Game/Player.h"
 #include "NSlib/Object/Actor.h"
+#include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Actors/Light.h"
 #include "NSlib/Object/Actors/MapParts.h"
+#include "NSlib/Object/Reflection/ObjectBuilder.h"
+#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/SubObjects/PlayerInput.h"
-#include "NSlib/Object/ActorList.h"
-#include "NSlib/Object/Reflection/ObjectBuilder.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 
 #include <gtest/gtest.h>
 
+#include <functional>
 #include <string>
 #include <vector>
 
 namespace
 {
+    class MemberOwnedPart final : public NS::Obj::SubObject
+    {
+    public:
+        MemberOwnedPart(std::vector<std::string>& destroyed, std::string name)
+            : m_destroyed(destroyed), m_name(std::move(name))
+        {}
+
+        ~MemberOwnedPart() override { m_destroyed.push_back(m_name); }
+        void OnStart() override { ++starts; }
+        void OnEndPlay() override { ++ends; }
+        int starts = 0;
+        int ends = 0;
+
+    private:
+        std::vector<std::string>& m_destroyed;
+        std::string m_name;
+    };
+
+    class MemberOwnedActor final : public NS::Obj::Actor
+    {
+    public:
+        explicit MemberOwnedActor(std::vector<std::string>& destroyed) : m_destroyed(destroyed) {}
+        std::unique_ptr<MemberOwnedPart> first;
+        std::unique_ptr<MemberOwnedPart> second;
+
+        MemberOwnedPart* ReplaceFirst()
+        {
+            return CreateSubObj(first, "Replacement", m_destroyed, std::string{"replacement"});
+        }
+
+    protected:
+        void OnInit() override
+        {
+            (void)CreateSubObj(first, "First", m_destroyed, std::string{"first"});
+            (void)CreateSubObj(second, "Second", m_destroyed, std::string{"second"});
+        }
+        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, first, second); }
+
+    private:
+        std::vector<std::string>& m_destroyed;
+    };
+
     class PassivePart final : public NS::Obj::SubObject
     {
     public:
@@ -30,19 +74,58 @@ namespace
     class FixedPartActor final : public NS::Obj::Actor
     {
     public:
-        PassivePart* passive = nullptr;
+        std::unique_ptr<PassivePart> passive;
 
     protected:
-        void OnInit() override { passive = CreateSubObj<PassivePart>("Passive"); }
+        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, passive); }
+        void OnInit() override { (void)CreateSubObj(passive, "Passive"); }
     };
 
 } // namespace
+
+TEST(FixedParts, MemberOwnershipSupportsLookupLifecycleAndDestruction)
+{
+    std::vector<std::string> destroyed;
+    {
+        MemberOwnedActor actor(destroyed);
+        actor.Init();
+        ASSERT_NE(actor.first, nullptr);
+        ASSERT_NE(actor.second, nullptr);
+        EXPECT_EQ(actor.first->Owner(), &actor);
+        EXPECT_EQ(actor.FindSubObj("First"), actor.first.get());
+        EXPECT_EQ(actor.FindSubObj("Second"), actor.second.get());
+        EXPECT_EQ(actor.ReplaceFirst(), nullptr);
+        EXPECT_EQ(actor.FindSubObj("First"), actor.first.get());
+        EXPECT_EQ(actor.FindSubObj("Replacement"), nullptr);
+        actor.OnStart();
+        EXPECT_EQ(actor.first->starts, 1);
+        EXPECT_EQ(actor.second->starts, 1);
+        actor.OnEndPlay();
+        EXPECT_EQ(actor.first->ends, 1);
+        EXPECT_EQ(actor.second->ends, 1);
+    }
+    EXPECT_EQ(destroyed, (std::vector<std::string>{"second", "first"}));
+}
+
+TEST(FixedParts, TransformUsesTheSamePartLookupAndFieldEditing)
+{
+    NS::Obj::Actor actor;
+    NS::Obj::TransformSubObject* transform = NS::Obj::Cast<NS::Obj::TransformSubObject>(actor.FindSubObj("Transform"));
+    ASSERT_NE(transform, nullptr);
+    EXPECT_EQ(transform->Owner(), &actor);
+    EXPECT_EQ(actor.CreateSubObj("Transform"), transform);
+    EXPECT_EQ(&actor.Root(), &transform->Root());
+    NS::Obj::ApplyJsonFields(*transform, nlohmann::json{{"位置", {2.0f, 3.0f, 4.0f}}});
+    EXPECT_EQ(actor.Root().Position(), (NS::Vector3{2.0f, 3.0f, 4.0f}));
+    EXPECT_EQ(NS::Obj::ObjectToJson(actor)["subObjects"]["Transform"]["位置"],
+              (nlohmann::json::array({2.0f, 3.0f, 4.0f})));
+}
 
 TEST(FixedParts, BaseActorDoesNotImplicitlyUpdateEveryEnumeratedPart)
 {
     FixedPartActor actor;
     actor.Init();
-    ASSERT_EQ(actor.FindSubObj("Passive"), actor.passive);
+    ASSERT_EQ(actor.FindSubObj("Passive"), actor.passive.get());
     actor.Update();
     EXPECT_EQ(actor.passive->updates, 0);
 }
@@ -58,10 +141,7 @@ TEST(FixedParts, CommonSlotsAreOptionalAndCreationIsIdempotent)
     EXPECT_EQ(created->Owner(), &actor);
     EXPECT_EQ(actor.CreateSubObj("UnknownPart"), nullptr);
     std::vector<std::string> names;
-    for (const NS::Obj::SubObject* subObject : actor.SubObjs())
-    {
-        names.push_back(subObject->Name());
-    }
+    actor.ForEachSubObj([&](const NS::Obj::SubObject* subObject) { names.push_back(subObject->Name()); });
     EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model"}));
 }
 

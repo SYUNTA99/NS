@@ -134,16 +134,17 @@ namespace
         explicit LoggingActor(TickLog& log) noexcept : m_log(log) {}
 
     protected:
-        void OnInit() override { m_part = CreateSubObj<LoggingSubObject>("Logging", &m_log); }
+        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, m_part); }
+        void OnInit() override { (void)CreateSubObj(m_part, "Logging", &m_log); }
         void StateStep() override
         {
             m_log.order.push_back("actor");
-            TickSubObj(m_part);
+            TickSubObj(m_part.get());
         }
 
     private:
         TickLog& m_log;
-        LoggingSubObject* m_part = nullptr;
+        std::unique_ptr<LoggingSubObject> m_part;
     };
 } // namespace
 

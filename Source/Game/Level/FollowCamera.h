@@ -15,12 +15,13 @@ namespace GL::Level
 
     protected:
         void OnInit() override;
+        void VisitExtraSubObjs(const SubObjVisitor& visit) const override;
         //! 追う相手の状態を読んで仮想カメラへ渡す
         void ObserveStep() override;
         void BodyStep() override;
         void OnDisappear() noexcept override;
 
     private:
-        NS::Obj::ThirdPersonFollow* m_vcam = nullptr;
+        std::unique_ptr<NS::Obj::ThirdPersonFollow> m_vcam;
     };
 } // namespace GL::Level

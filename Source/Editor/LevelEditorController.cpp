@@ -81,14 +81,14 @@ namespace
     // 部品のうち動く体の当たり (Collider) を返す。持たなければ nullptr
     const NS::Obj::Collider* ColliderOf(const NS::Obj::Actor& object) noexcept
     {
-        for (const NS::Obj::SubObject* subObject : object.SubObjs())
-        {
-            if (const NS::Obj::Collider* collider = NS::Obj::Cast<NS::Obj::Collider>(subObject))
+        const NS::Obj::Collider* found = nullptr;
+        object.ForEachSubObj([&](const NS::Obj::SubObject* subObject) {
+            if (found == nullptr)
             {
-                return collider;
+                found = NS::Obj::Cast<NS::Obj::Collider>(subObject);
             }
-        }
-        return nullptr;
+        });
+        return found;
     }
 
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状

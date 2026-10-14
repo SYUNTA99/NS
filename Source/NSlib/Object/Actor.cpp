@@ -15,15 +15,14 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iterator>
 
 namespace NS::Obj
 {
 
     Actor::Actor() noexcept
     {
-        (void)AdoptSubObj(std::make_unique<TransformSubObject>(), k_TransformSubObjName, m_rootSubObj);
-        m_transform = &m_rootSubObj->Root();
+        // Init 前にも姿勢と親子関係を使うため、Transform はここで用意する
+        (void)CreateSubObj(m_transform, k_TransformSubObjName);
         Appear();
     }
 
@@ -37,32 +36,35 @@ namespace NS::Obj
         OnInit();
     }
 
-    std::size_t Actor::OrderRank(const SubObject* subObject) const noexcept
+    Transform& Actor::Root() noexcept
     {
-        const SubObject* const ranked[] = {m_rootSubObj,
-                                           m_model,
-                                           m_animation,
-                                           m_shadow,
-                                           m_collision,
-                                           m_bodySensor,
-                                           m_attackSensor,
-                                           m_hitReaction,
-                                           m_effectKeeper};
-        return static_cast<std::size_t>(std::find(std::begin(ranked), std::end(ranked), subObject) -
-                                        std::begin(ranked));
+        return m_transform->Root();
     }
 
-    void Actor::AdoptSubObjBase(std::unique_ptr<SubObject> subObject, std::string_view name)
+    const Transform& Actor::Root() const noexcept
     {
-        subObject->SetName(name);
-        subObject->AttachOwner(this);
-        const std::size_t rank = OrderRank(subObject.get());
-        const std::vector<SubObject*>::iterator at =
-            std::find_if(m_subObjOrder.begin(), m_subObjOrder.end(), [this, rank](const SubObject* placed) {
-                return OrderRank(placed) > rank;
-            });
-        m_subObjOrder.insert(at, subObject.get());
-        m_subObjects.push_back(std::move(subObject));
+        return m_transform->Root();
+    }
+
+    void Actor::ForEachSubObj(const SubObjVisitor& visit) const
+    {
+        VisitSubObjMembers(visit,
+                           m_transform,
+                           m_model,
+                           m_animation,
+                           m_shadow,
+                           m_collision,
+                           m_bodySensor,
+                           m_attackSensor,
+                           m_hitReaction,
+                           m_effectKeeper);
+        VisitExtraSubObjs(visit);
+    }
+
+    void Actor::AttachSubObj(SubObject& subObject, std::string_view name)
+    {
+        subObject.SetName(name);
+        subObject.AttachOwner(this);
     }
 
     void Actor::ReportTakenName(std::string_view name) const
@@ -72,14 +74,14 @@ namespace NS::Obj
 
     SubObject* Actor::FindSubObj(std::string_view name) const
     {
-        for (SubObject* subObject : m_subObjOrder)
-        {
+        SubObject* found = nullptr;
+        ForEachSubObj([&](SubObject* subObject) {
             if (subObject->Name() == name)
             {
-                return subObject;
+                found = subObject;
             }
-        }
-        return nullptr;
+        });
+        return found;
     }
 
     SubObject* Actor::CreateSubObj(std::string_view name)
@@ -255,18 +257,12 @@ namespace NS::Obj
             }
             const bool wasActive = child->IsActiveInHierarchy();
             child->m_parent = nullptr;
-            child->m_transform->SetParent(nullptr);
+            child->Root().SetParent(nullptr);
             // 消えていた親の下に居た子だけが根になって出る。出ていた子は登録をそのまま保つ
             if (!wasActive)
             {
                 child->OnAppear();
             }
-        }
-        m_subObjOrder.clear();
-        // 作った順の逆に壊す。clear は壊す順を決めていない
-        while (!m_subObjects.empty())
-        {
-            m_subObjects.pop_back();
         }
     }
 
@@ -310,9 +306,9 @@ namespace NS::Obj
         Transform* parentRoot = nullptr;
         if (parent != nullptr)
         {
-            parentRoot = parent->m_transform;
+            parentRoot = &parent->Root();
         }
-        m_transform->SetParent(parentRoot);
+        Root().SetParent(parentRoot);
         // 登録し直すのは出ているかが変わった時だけ。毎回外して入れ直すと当たりの body の id が変わる
         // 姿勢の変化は呼び手の SyncPhysics が同じ id のまま揃える
         const bool isActive = IsActiveInHierarchy();
@@ -341,10 +337,7 @@ namespace NS::Obj
     {
         // 部品の登録は部品の OnStart が済ませる。続けて OnAppear を呼ぶと、出る時に OnStart
         // を呼び直す部品が二重に登録する
-        for (SubObject* subObject : m_subObjOrder)
-        {
-            subObject->OnStart();
-        }
+        ForEachSubObj([&](SubObject* subObject) { subObject->OnStart(); });
         if (!IsActiveInHierarchy())
         {
             OnDisappear();
@@ -358,13 +351,12 @@ namespace NS::Obj
         {
             return;
         }
-        for (SubObject* subObject : m_subObjOrder)
-        {
+        ForEachSubObj([&](SubObject* subObject) {
             if (subObject->IsActive())
             {
                 subObject->OnAppear();
             }
-        }
+        });
         for (Actor* child : m_children)
         {
             child->OnAppear();
@@ -377,10 +369,7 @@ namespace NS::Obj
         {
             return;
         }
-        for (SubObject* subObject : m_subObjOrder)
-        {
-            subObject->OnDisappear();
-        }
+        ForEachSubObj([&](SubObject* subObject) { subObject->OnDisappear(); });
         for (Actor* child : m_children)
         {
             child->OnDisappear();
@@ -402,7 +391,7 @@ namespace NS::Obj
 
     void Actor::SnapshotForInterpolation() noexcept
     {
-        m_transform->Snapshot();
+        Root().Snapshot();
         if (m_model != nullptr)
         {
             m_model->Snapshot();
@@ -416,16 +405,13 @@ namespace NS::Obj
 
     void Actor::PrepareRender()
     {
-        TickSubObj(m_animation);
+        TickSubObj(m_animation.get());
     }
 
     void Actor::OnEndPlay()
     {
         Disappear();
-        for (SubObject* subObject : m_subObjOrder)
-        {
-            subObject->OnEndPlay();
-        }
+        ForEachSubObj([&](SubObject* subObject) { subObject->OnEndPlay(); });
     }
 
 } // namespace NS::Obj

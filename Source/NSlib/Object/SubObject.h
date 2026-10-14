@@ -23,7 +23,7 @@ namespace NS::Obj
 
         virtual ~SubObject() noexcept;
 
-        //! 持ち主の中の部品名。保存の鍵とインスペクタの見出しに使う。Actor が部品を積む時に付ける
+        // 保存の鍵とインスペクタの見出しに使う部品名。Actor が作成時に付ける
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
 
         //! 持ち主の Actor。シーンへの所属後は必ず設定される

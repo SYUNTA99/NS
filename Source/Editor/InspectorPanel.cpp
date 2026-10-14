@@ -6,10 +6,10 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/Object/Actor.h"
-#include "NSlib/Object/SubObjects/TransformSubObject.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/Object/SubObjects/TransformSubObject.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -33,13 +33,12 @@ namespace NS::Editor
         std::vector<NS::Obj::SubObject*> ReflectedSubObjects(NS::Obj::Actor& go)
         {
             std::vector<NS::Obj::SubObject*> result;
-            for (NS::Obj::SubObject* subObject : go.SubObjs())
-            {
+            go.ForEachSubObj([&](NS::Obj::SubObject* subObject) {
                 if (subObject->GetReflection() != nullptr)
                 {
                     result.push_back(subObject);
                 }
-            }
+            });
             return result;
         }
     } // namespace

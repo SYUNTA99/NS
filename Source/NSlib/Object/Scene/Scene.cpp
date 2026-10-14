@@ -267,10 +267,7 @@ namespace NS::Obj
         // AssetManager が無い間は跳ばす。テストは資産なしでシーンを立てる
         if (m_assets != nullptr)
         {
-            for (SubObject* subObject : obj.SubObjs())
-            {
-                subObject->ResolveAssets(*m_assets);
-            }
+            obj.ForEachSubObj([&](SubObject* subObject) { subObject->ResolveAssets(*m_assets); });
         }
         // 開始は引き当ての後。OnStart の中で資産を読む SubObject が空の参照を掴まない
         obj.OnStart();
@@ -358,14 +355,15 @@ namespace NS::Obj
         // 控えは個体の上書きだけを持つ。上書きの無い欄も種類の既定値へ戻すため、全欄の姿へ広げてから比べる
         const nlohmann::json object = ExpandObjectJson(snapshot);
         bool same = ObjectJsonClass(object) == std::string_view{obj->ClassName()};
-        for (const SubObject* subObject : obj->SubObjs())
-        {
+        std::size_t subObjectCount = 0;
+        obj->ForEachSubObj([&](const SubObject* subObject) {
+            ++subObjectCount;
             if (SubObjFields(object, subObject->Name()) == nullptr)
             {
                 same = false;
             }
-        }
-        if (!same || obj->SubObjs().size() != ObjectJsonSubObjs(object).size())
+        });
+        if (!same || subObjectCount != ObjectJsonSubObjs(object).size())
         {
             return ReplaceFromJson(snapshot);
         }
@@ -388,19 +386,18 @@ namespace NS::Obj
             parent = nullptr;
         }
         obj->SetParent(parent);
-        for (SubObject* subObject : obj->SubObjs())
-        {
+        obj->ForEachSubObj([&](SubObject* subObject) {
             const nlohmann::json* fields = SubObjFields(object, subObject->Name());
             if (fields == nullptr || SerializeSubObjFields(*subObject) == *fields)
             {
-                continue;
+                return;
             }
             (void)ApplyJsonFields(*subObject, *fields);
             if (m_assets != nullptr)
             {
                 subObject->ResolveAssets(*m_assets);
             }
-        }
+        });
         return obj;
     }
 

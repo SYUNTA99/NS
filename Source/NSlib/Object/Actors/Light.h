@@ -14,5 +14,9 @@ namespace NS::Obj
 
     protected:
         void OnInit() override;
+        void VisitExtraSubObjs(const SubObjVisitor& visit) const override;
+
+    private:
+        std::unique_ptr<DirectionalLight> m_light;
     };
 } // namespace NS::Obj

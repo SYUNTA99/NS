@@ -233,15 +233,14 @@ namespace NS::Obj
         nlohmann::json full = object;
         nlohmann::json& target = ObjectJsonSubObjs(full);
         target = nlohmann::json::object();
-        for (const SubObject* subObject : baseline.SubObjs())
-        {
+        baseline.ForEachSubObj([&](const SubObject* subObject) {
             nlohmann::json fields = SerializeSubObjFields(*subObject);
             if (const nlohmann::json* source = SubObjFields(object, subObject->Name()))
             {
                 fields.update(*source);
             }
             target[subObject->Name()] = std::move(fields);
-        }
+        });
         return full;
     }
 
@@ -249,16 +248,15 @@ namespace NS::Obj
     {
         const Actor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json out = object;
-        for (const SubObject* subObject : baseline.SubObjs())
-        {
+        baseline.ForEachSubObj([&](const SubObject* subObject) {
             if (IsInstanceOnlySubObj(subObject->Name()))
             {
-                continue;
+                return;
             }
             nlohmann::json* fields = SubObjFields(out, subObject->Name());
             if (fields == nullptr)
             {
-                continue;
+                return;
             }
             const nlohmann::json defaults = SerializeSubObjFields(*subObject);
             for (nlohmann::json::iterator field = fields->begin(); field != fields->end();)
@@ -273,7 +271,7 @@ namespace NS::Obj
                     ++field;
                 }
             }
-        }
+        });
         return out;
     }
 

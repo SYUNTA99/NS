@@ -14,8 +14,8 @@
 #include "NSlib/Object/UpdatePhase.h"
 
 #include <concepts>
-#include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -41,7 +41,7 @@ namespace NS::Obj
     template <class TBase> struct SubObjSlot
     {
         std::string_view name;
-        TBase** member;
+        std::unique_ptr<TBase>* member;
     };
 
     //! @brief 世界に置く物の基底。Transform と部品を持ち、MapParts / MapObj / Player などが派生する
@@ -85,11 +85,11 @@ namespace NS::Obj
         [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
         [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
         //! 出したエフェクトを覚える部品。枠 Effect を作っていなければ nullptr
-        [[nodiscard]] EffectKeeper* GetEffectKeeper() const noexcept override { return m_effectKeeper; }
+        [[nodiscard]] EffectKeeper* GetEffectKeeper() const noexcept override { return m_effectKeeper.get(); }
 
         //! TransformSubObject が持つ Root Transform。階層構築は SetParent で
-        [[nodiscard]] Transform& Root() noexcept { return *m_transform; }
-        [[nodiscard]] const Transform& Root() const noexcept { return *m_transform; }
+        [[nodiscard]] Transform& Root() noexcept;
+        [[nodiscard]] const Transform& Root() const noexcept;
         [[nodiscard]] IStateMachine* GetStateMachine() noexcept override;
         [[nodiscard]] const IStateMachine* GetStateMachine() const noexcept override;
         [[nodiscard]] float BodyDelta() const noexcept override;
@@ -109,8 +109,9 @@ namespace NS::Obj
         //! @details CreateActorOfClass と ActorList に入る所が呼ぶ。Scene に入れずに部品を触る時は自分で呼ぶ
         void Init();
 
-        //! 根の Transform、基底の枠を Model から Effect まで決まった順、派生の部品を作った順に並べた全部の部品
-        [[nodiscard]] const std::vector<SubObject*>& SubObjs() const noexcept { return m_subObjOrder; }
+        using SubObjVisitor = std::function<void(SubObject*)>;
+        // 基底の部品を先に、派生の固定メンバーを後に渡す。所有は移さない
+        void ForEachSubObj(const SubObjVisitor& visit) const;
         //! @brief 部品名 name の部品を返す
         //! @return 持たなければ nullptr
         [[nodiscard]] SubObject* FindSubObj(std::string_view name) const;
@@ -118,23 +119,23 @@ namespace NS::Obj
         //! @details 種類の既定値が名前だけで部品を足す口。Collision は BoxCollision、センサーは ShapeHitSensor で作る
         //! @return 持っていた部品か作った部品。基底の枠でない名前は nullptr
         SubObject* CreateSubObj(std::string_view name);
-        [[nodiscard]] Model* ModelSubObj() noexcept { return m_model; }
-        [[nodiscard]] const Model* ModelSubObj() const noexcept { return m_model; }
-        [[nodiscard]] Animation* AnimationSubObj() noexcept { return m_animation; }
-        [[nodiscard]] const Animation* AnimationSubObj() const noexcept { return m_animation; }
-        [[nodiscard]] Shadow* ShadowSubObj() noexcept { return m_shadow; }
-        [[nodiscard]] const Shadow* ShadowSubObj() const noexcept { return m_shadow; }
-        [[nodiscard]] Collision* CollisionSubObj() noexcept { return m_collision; }
-        [[nodiscard]] const Collision* CollisionSubObj() const noexcept { return m_collision; }
+        [[nodiscard]] Model* ModelSubObj() noexcept { return m_model.get(); }
+        [[nodiscard]] const Model* ModelSubObj() const noexcept { return m_model.get(); }
+        [[nodiscard]] Animation* AnimationSubObj() noexcept { return m_animation.get(); }
+        [[nodiscard]] const Animation* AnimationSubObj() const noexcept { return m_animation.get(); }
+        [[nodiscard]] Shadow* ShadowSubObj() noexcept { return m_shadow.get(); }
+        [[nodiscard]] const Shadow* ShadowSubObj() const noexcept { return m_shadow.get(); }
+        [[nodiscard]] Collision* CollisionSubObj() noexcept { return m_collision.get(); }
+        [[nodiscard]] const Collision* CollisionSubObj() const noexcept { return m_collision.get(); }
         //! その物の体の広がりのセンサー。持たなければ nullptr
-        [[nodiscard]] HitSensor* BodySensorSubObj() noexcept { return m_bodySensor; }
-        [[nodiscard]] const HitSensor* BodySensorSubObj() const noexcept { return m_bodySensor; }
+        [[nodiscard]] HitSensor* BodySensorSubObj() noexcept { return m_bodySensor.get(); }
+        [[nodiscard]] const HitSensor* BodySensorSubObj() const noexcept { return m_bodySensor.get(); }
         //! @brief 体と別の広がりを持つ 2 つ目のセンサー。持たなければ nullptr
         //! @details 調べ役は体のセンサーと区別せずに扱う。今はこの枠を作る種類が無い
-        [[nodiscard]] HitSensor* AttackSensorSubObj() noexcept { return m_attackSensor; }
-        [[nodiscard]] const HitSensor* AttackSensorSubObj() const noexcept { return m_attackSensor; }
-        [[nodiscard]] HitReaction* HitReactionSubObj() noexcept { return m_hitReaction; }
-        [[nodiscard]] const HitReaction* HitReactionSubObj() const noexcept { return m_hitReaction; }
+        [[nodiscard]] HitSensor* AttackSensorSubObj() noexcept { return m_attackSensor.get(); }
+        [[nodiscard]] const HitSensor* AttackSensorSubObj() const noexcept { return m_attackSensor.get(); }
+        [[nodiscard]] HitReaction* HitReactionSubObj() noexcept { return m_hitReaction.get(); }
+        [[nodiscard]] const HitReaction* HitReactionSubObj() const noexcept { return m_hitReaction.get(); }
 
         //! @brief Update を呼ばれる段を返す
         [[nodiscard]] virtual UpdatePhase Phase() const noexcept { return UpdatePhase::Triggers; }
@@ -191,32 +192,40 @@ namespace NS::Obj
         //! 所属の Scene は入る道によって付いていないので、ここでは読まない
         virtual void OnInit() {}
 
-        //! @brief 基底の枠 slot に、枠の型 TBase の派生 T を作って付ける
-        //! @return 作った部品。枠の名前の部品を持っていれば NS_LOG_ERROR を出して作らず nullptr
+        // 使用済みのメンバーや部品名は変更せず nullptr を返す
         template <class T, class TBase, class... TArgs>
             requires std::derived_from<T, TBase>
         T* CreateSubObj(SubObjSlot<TBase> slot, TArgs&&... args)
         {
-            if (FindSubObj(slot.name) != nullptr)
+            std::unique_ptr<TBase>& member = *slot.member;
+            if (member != nullptr || FindSubObj(slot.name) != nullptr)
             {
                 ReportTakenName(slot.name);
                 return nullptr;
             }
-            return AdoptSubObj(std::make_unique<T>(std::forward<TArgs>(args)...), slot.name, *slot.member);
+            std::unique_ptr<T> subObject = std::make_unique<T>(std::forward<TArgs>(args)...);
+            T* raw = subObject.get();
+            AttachSubObj(*raw, slot.name);
+            member = std::move(subObject);
+            return raw;
         }
-        //! @brief 派生の部品 T を部品名 name で作って付ける
-        //! @return 作った部品。name の部品を持っていれば NS_LOG_ERROR を出して作らず nullptr
+
         template <class T, class... TArgs>
             requires std::derived_from<T, SubObject>
-        T* CreateSubObj(std::string_view name, TArgs&&... args)
+        T* CreateSubObj(std::unique_ptr<T>& member, std::string_view name, TArgs&&... args)
         {
-            if (FindSubObj(name) != nullptr)
-            {
-                ReportTakenName(name);
-                return nullptr;
-            }
-            return AdoptSubObj(std::make_unique<T>(std::forward<TArgs>(args)...), name);
+            return CreateSubObj<T>(SubObjSlot<T>{name, &member}, std::forward<TArgs>(args)...);
         }
+
+        // 自分の部品だけを列挙する。部品を持つ親クラスがあれば、その列挙も呼ぶ
+        virtual void VisitExtraSubObjs(const SubObjVisitor& visit) const { (void)visit; }
+
+        template <class... TParts>
+        static void VisitSubObjMembers(const SubObjVisitor& visit, const std::unique_ptr<TParts>&... parts)
+        {
+            (VisitSubObjMember(visit, parts), ...);
+        }
+
         [[nodiscard]] SubObjSlot<Model> ModelSlot() noexcept { return {"Model", &m_model}; }
         [[nodiscard]] SubObjSlot<Animation> AnimationSlot() noexcept { return {"Animation", &m_animation}; }
         [[nodiscard]] SubObjSlot<Shadow> ShadowSlot() noexcept { return {"Shadow", &m_shadow}; }
@@ -279,45 +288,34 @@ namespace NS::Obj
         [[nodiscard]] bool AdoptStateMachine(std::unique_ptr<IStateMachine> machine);
         void SetId(std::uint32_t id) noexcept { m_id = id; }
         void SetName(std::string name) noexcept { m_name = std::move(name); }
-        template <class T> T* AdoptSubObj(std::unique_ptr<T> subObject, std::string_view name)
+        template <class T> static void VisitSubObjMember(const SubObjVisitor& visit, const std::unique_ptr<T>& part)
         {
-            T* raw = subObject.get();
-            AdoptSubObjBase(std::unique_ptr<SubObject>{std::move(subObject)}, name);
-            return raw;
+            if (part != nullptr)
+            {
+                visit(part.get());
+            }
         }
-        //! @brief 根か基底の枠 member に入れてから一覧に積む
-        //! @details 並びの位置は member で決まるので、積む前に入れる
-        template <class T, class TBase>
-        T* AdoptSubObj(std::unique_ptr<T> subObject, std::string_view name, TBase*& member)
-        {
-            member = subObject.get();
-            return AdoptSubObj(std::move(subObject), name);
-        }
-        void AdoptSubObjBase(std::unique_ptr<SubObject> subObject, std::string_view name);
+        void AttachSubObj(SubObject& subObject, std::string_view name);
         void ReportTakenName(std::string_view name) const;
-        [[nodiscard]] std::size_t OrderRank(const SubObject* subObject) const noexcept;
         std::uint32_t m_id = 0;
         std::string m_name;
         Scene* m_scene = nullptr; // 所有 Scene、attach 前後は nullptr
         bool m_appeared = false;
         bool m_pendingDestroy = false;
-        std::vector<std::unique_ptr<SubObject>> m_subObjects; // 根と作った部品の全部。作った順で、壊す時は逆順
-        std::vector<SubObject*> m_subObjOrder;
-        TransformSubObject* m_rootSubObj = nullptr;
-        Model* m_model = nullptr;
-        Animation* m_animation = nullptr;
-        Shadow* m_shadow = nullptr;
-        Collision* m_collision = nullptr;
-        HitSensor* m_bodySensor = nullptr;
-        HitSensor* m_attackSensor = nullptr;
+        std::unique_ptr<TransformSubObject> m_transform;
+        std::unique_ptr<Model> m_model;
+        std::unique_ptr<Animation> m_animation;
+        std::unique_ptr<Shadow> m_shadow;
+        std::unique_ptr<Collision> m_collision;
+        std::unique_ptr<HitSensor> m_bodySensor;
+        std::unique_ptr<HitSensor> m_attackSensor;
         std::unique_ptr<IStateMachine> m_stateMachine; // BuildStateMachine が 1 回だけ預かる。持たない種類は nullptr
-        HitReaction* m_hitReaction = nullptr;
-        EffectKeeper* m_effectKeeper = nullptr;
-        bool m_initialized = false;       // Init が OnInit を呼んだか
-        Transform* m_transform = nullptr; // TransformSubObject が持つ実体、Actor が必ず 1 つ積む
-        std::vector<Actor*> m_children;   // 子 Actor、非所有
-        Actor* m_parent = nullptr;        // 親 Actor、root なら nullptr
-        bool m_transient = false;         // 一時オブジェクトの印。保存・凍結に写らない
+        std::unique_ptr<HitReaction> m_hitReaction;
+        std::unique_ptr<EffectKeeper> m_effectKeeper;
+        bool m_initialized = false;     // Init が OnInit を呼んだか
+        std::vector<Actor*> m_children; // 子 Actor、非所有
+        Actor* m_parent = nullptr;      // 親 Actor、root なら nullptr
+        bool m_transient = false;       // 一時オブジェクトの印。保存・凍結に写らない
         float m_bodyTimeScale = 1.0f;
 
         void DetachFromParent() noexcept;

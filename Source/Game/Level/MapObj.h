@@ -47,6 +47,7 @@ namespace GL::Level
         bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
         void OnInit() override;
+        void VisitExtraSubObjs(const SubObjVisitor& visit) const override;
         void BodyStep() override;
         //! 発光の層を進める。HitReaction は進めない
         void VisualStep() override;
@@ -86,9 +87,9 @@ namespace GL::Level
         {
             return *static_cast<NS::Obj::SphereCollision*>(CollisionSubObj());
         }
-        MapObjParams* m_params = nullptr;
-        HitZones* m_hitZones = nullptr;
-        LaunchEffects* m_effects = nullptr;
+        std::unique_ptr<MapObjParams> m_params;
+        std::unique_ptr<HitZones> m_hitZones;
+        std::unique_ptr<LaunchEffects> m_effects;
         NS::Obj::StateMachine<MapObj>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
         NS::Obj::SubStateMachine<MapObj> m_motion;
         TackleFreezeDesc m_freeze;
@@ -126,8 +127,8 @@ namespace GL::Level
         float m_restAge = 0.0f;
         bool m_hasLaunched = false;
         bool m_arcDeflected = false;
-        int m_hopsLeft = 0;                       // 外れで着地した後に残っている跳ねの回数。外れでなければ 0
-        int m_hopIndex = 0;                       // 次の跳ねが何回目か。0 から数える
+        int m_hopsLeft = 0; // 外れで着地した後に残っている跳ねの回数。外れでなければ 0
+        int m_hopIndex = 0; // 次の跳ねが何回目か。0 から数える
         std::uint32_t m_hopSeed = 0;
         std::optional<NS::Sphere> m_syncedSphere; // 最後に当たりへ置いた世界座標の球。置く前は空
     };

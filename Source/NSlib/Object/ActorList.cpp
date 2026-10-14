@@ -245,8 +245,7 @@ namespace NS::Obj
     {
         for (const std::unique_ptr<Actor>& actor : m_objects)
         {
-            for (SubObject* subObject : actor->SubObjs())
-            {
+            actor->ForEachSubObj([&](SubObject* subObject) {
                 if (Collision* collision = Cast<Collision>(subObject))
                 {
                     if (collision->IsActive())
@@ -258,7 +257,7 @@ namespace NS::Obj
                         collision->RemoveFromPhysics();
                     }
                 }
-            }
+            });
         }
         physics.OptimizeBroadPhase();
     }

@@ -45,29 +45,47 @@ Player::Player() noexcept = default;
 
 Player::~Player() = default;
 
+void Player::VisitExtraSubObjs(const SubObjVisitor& visit) const
+{
+    VisitSubObjMembers(visit,
+                       m_appearance,
+                       m_body,
+                       m_collider,
+                       m_input,
+                       m_params,
+                       m_clips,
+                       m_resolver,
+                       m_targetMarker,
+                       m_slamArrow,
+                       m_chargeEffects,
+                       m_impactEffects);
+}
+
 void Player::OnInit()
 {
     NS::Obj::Model* model = CreateSubObj<NS::Obj::Model>(ModelSlot());
     model->SetMaterialRef("player");
     model->SetBaseColor(NS::Vector3{0.5f, 0.5f, 0.5f});
-    m_appearance = CreateSubObj<GL::Player::PlayerAppearance>("Appearance");
-    m_body = CreateSubObj<NS::Obj::Body>("Movement");
-    m_collider = CreateSubObj<NS::Obj::Collider>("Collider");
-    m_input = CreateSubObj<NS::Obj::PlayerInput>("Input");
-    m_params = CreateSubObj<GL::Player::PlayerParams>("Params");
-    m_clips = CreateSubObj<GL::Player::PlayerClips>("Clips");
+    (void)CreateSubObj(m_appearance, "Appearance");
+    (void)CreateSubObj(m_body, "Movement");
+    (void)CreateSubObj(m_collider, "Collider");
+    (void)CreateSubObj(m_input, "Input");
+    (void)CreateSubObj(m_params, "Params");
+    (void)CreateSubObj(m_clips, "Clips");
     CreateSubObj<NS::Obj::Shadow>(ShadowSlot());
     // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
-    NS::Obj::FollowHitSensor* bodySensor = CreateSubObj<NS::Obj::FollowHitSensor>(
-        BodySensorSlot(), [collider = m_collider] { return NS::Obj::SensorVolume::Capsule(collider->WorldCapsule()); });
+    NS::Obj::FollowHitSensor* bodySensor =
+        CreateSubObj<NS::Obj::FollowHitSensor>(BodySensorSlot(), [collider = m_collider.get()] {
+            return NS::Obj::SensorVolume::Capsule(collider->WorldCapsule());
+        });
     GL::Level::SetSensorKind(*bodySensor, GL::Level::SensorKind::PlayerBody);
-    m_resolver = CreateSubObj<GL::Level::ImpactResolver>("ImpactResolver");
+    (void)CreateSubObj(m_resolver, "ImpactResolver");
     CreateSubObj<NS::Obj::HitReaction>(HitReactionSlot());
-    m_targetMarker = CreateSubObj<GL::Level::TargetMarker>("TargetMarker");
-    m_slamArrow = CreateSubObj<GL::Level::SlamArrow>("SlamArrow");
+    (void)CreateSubObj(m_targetMarker, "TargetMarker");
+    (void)CreateSubObj(m_slamArrow, "SlamArrow");
     (void)CreateSubObj<NS::Obj::EffectKeeper>(EffectSlot());
-    m_chargeEffects = CreateSubObj<GL::Player::ChargeEffects>("ChargeEffects");
-    m_impactEffects = CreateSubObj<GL::Player::ImpactEffects>("ImpactEffects");
+    (void)CreateSubObj(m_chargeEffects, "ChargeEffects");
+    (void)CreateSubObj(m_impactEffects, "ImpactEffects");
     // 部品を全部作った後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
     (void)BuildStateMachine<Player,
                             GL::Player::IdlePlayerState,
@@ -160,7 +178,7 @@ void Player::UpdateAnimation()
 
 void Player::ReadInput()
 {
-    TickSubObj(m_input);
+    TickSubObj(m_input.get());
 }
 
 void Player::Update(bool chargeHeld)
@@ -231,13 +249,13 @@ void Player::BodyStep()
 void Player::VisualStep()
 {
     UpdateAnimation();
-    TickSubObj(m_targetMarker);
-    TickSubObj(m_slamArrow);
+    TickSubObj(m_targetMarker.get());
+    TickSubObj(m_slamArrow.get());
     // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
     m_resolver->WriteTremor();
-    TickSubObj(m_appearance);
-    TickSubObj(m_chargeEffects);
-    TickSubObj(m_impactEffects);
+    TickSubObj(m_appearance.get());
+    TickSubObj(m_chargeEffects.get());
+    TickSubObj(m_impactEffects.get());
 #if !defined(NS_SHIPPING)
     DrawChargeRing();
 #endif

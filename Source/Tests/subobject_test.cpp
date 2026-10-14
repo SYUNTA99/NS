@@ -21,17 +21,18 @@ namespace
     class OrderActor final : public NS::Obj::Actor
     {
     public:
-        PlainSubObj* first = nullptr;
-        PlainSubObj* second = nullptr;
+        std::unique_ptr<PlainSubObj> first;
+        std::unique_ptr<PlainSubObj> second;
         NS::Obj::BoxCollision* box = nullptr;
         NS::Obj::SphereCollision* refused = nullptr;
 
     protected:
+        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, first, second); }
         void OnInit() override
         {
-            first = CreateSubObj<PlainSubObj>("First");
+            (void)CreateSubObj(first, "First");
             box = CreateSubObj<NS::Obj::BoxCollision>(CollisionSlot());
-            second = CreateSubObj<PlainSubObj>("Second");
+            (void)CreateSubObj(second, "Second");
             CreateSubObj<NS::Obj::Model>(ModelSlot());
             refused = CreateSubObj<NS::Obj::SphereCollision>(CollisionSlot());
         }
@@ -41,11 +42,13 @@ namespace
     {
     public:
         NS::Obj::Model* model = nullptr;
+        std::unique_ptr<PlainSubObj> clash;
 
     protected:
+        void VisitExtraSubObjs(const SubObjVisitor& visit) const override { VisitSubObjMembers(visit, clash); }
         void OnInit() override
         {
-            CreateSubObj<PlainSubObj>("Model");
+            (void)CreateSubObj(clash, "Model");
             model = CreateSubObj<NS::Obj::Model>(ModelSlot());
         }
     };
@@ -111,15 +114,14 @@ TEST(SubObject, CreateWritesNameAndEnumeratesRootThenSlotsThenDerivedInCreationO
     ASSERT_NE(actor.second, nullptr);
     EXPECT_EQ(actor.first->Name(), "First");
     EXPECT_EQ(actor.first->Owner(), &actor);
-    EXPECT_EQ(actor.FindSubObj("Second"), actor.second);
+    EXPECT_EQ(actor.FindSubObj("Second"), actor.second.get());
     ASSERT_NE(actor.CollisionSubObj(), nullptr);
     EXPECT_EQ(actor.CollisionSubObj()->Name(), "Collision");
     std::vector<std::string> names;
-    for (const NS::Obj::SubObject* subObject : actor.SubObjs())
-    {
+    actor.ForEachSubObj([&](const NS::Obj::SubObject* subObject) {
         EXPECT_EQ(subObject->Owner(), &actor);
         names.push_back(subObject->Name());
-    }
+    });
     EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model", "Collision", "First", "Second"}));
 }
 
