@@ -118,7 +118,9 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnSubObject)
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*subObject, {{"着地の粉の寿命フレーム", 2}}), 0u);
     GL::Level::LaunchEffects* effects = NS::Obj::Cast<GL::Level::LaunchEffects>(subObject);
     ASSERT_NE(effects, nullptr);
-    effects->BeginTrail(GL::Level::HitTier::Center, 1.0f, 1.0f, {0.0f, 0.0f, 1.0f});
+    const NS::Obj::SphereCollision* sphere = NS::Obj::Cast<NS::Obj::SphereCollision>(rock->CollisionSubObj());
+    ASSERT_NE(sphere, nullptr);
+    effects->BeginTrail(GL::Level::TackleReleaseDesc{}, rock->Flight(), rock->Params(), *sphere);
     effects->NotifyLanding({}, {0.0f, 1.0f, 0.0f});
     NS::Obj::EffectKeeper* keeper = rock->GetEffectKeeper();
     ASSERT_NE(keeper, nullptr);

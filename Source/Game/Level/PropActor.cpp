@@ -91,6 +91,12 @@ namespace GL::Level
         (void)BuildStateMachine<PropActor, RestingState, FreezeState, LaunchedState>(*this, m_states);
     }
 
+    void PropActor::OnStart()
+    {
+        NS::Obj::SceneActor::OnStart();
+        m_effects->Preload();
+    }
+
     void PropActor::InitAfterPlacement()
     {
         SyncCollision();
@@ -111,6 +117,15 @@ namespace GL::Level
         return IsFlying() && m_motion.Machine().IsCurrent<ArcState>();
     }
 
+    PropFlight PropActor::Flight() const noexcept
+    {
+        PropFlight flight;
+        flight.position = Root().Position();
+        flight.velocity = m_velocity;
+        flight.arc = IsArc();
+        return flight;
+    }
+
     void PropActor::BodyStep()
     {
         // 置き直すたびに形を作り直すので、球が変わらない間は置かない。止まっている置物の数だけ毎ステップ確保が走る
@@ -124,7 +139,9 @@ namespace GL::Level
 
     void PropActor::VisualStep()
     {
-        TickSubObj(m_effects.get());
+        // clang-format off
+        if (m_effects->IsActive()) { m_effects->Update(Flight()); }
+        // clang-format on
         // 震えは止めが明けて飛んでいく間に通り抜けるので、状態に依らず根を動かした後で進める
         AdvanceTremor();
         // 明けの写しは止めの後も残り、写し取る姿は揺れを書いた後の姿なので、状態の歩の後で進める
@@ -322,7 +339,7 @@ namespace GL::Level
         m_hasLaunched = true;
         m_motion.Build<ArcState, RollingState>(*this);
         (void)m_states->Change<LaunchedState>();
-        m_effects->BeginTrail(desc.tier, desc.power, desc.launchScale, desc.arc.direction);
+        m_effects->BeginTrail(desc, Flight(), *m_params, Sphere());
         SyncCollision();
     }
 

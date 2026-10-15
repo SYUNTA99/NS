@@ -1,12 +1,9 @@
 #include "Game/Level/LaunchEffects.h"
 #include "NSlib/Core/Types.h"
 
-#include "Game/Level/PropActor.h"
-#include "NSlib/Core/AABB.h"
 #include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
-#include "NSlib/Object/SubObjects/SphereCollision.h"
 
 #include <algorithm>
 #include <cmath>
@@ -63,94 +60,74 @@ namespace GL::Level
         {
             return Vector3{value, value, value};
         }
-
-        // 物理への登録に依らず、持ち主の変換と欄から作る
-        [[nodiscard]] bool TryGetCollisionBounds(const NS::Obj::SceneActor& object, NS::AABB& outBounds) noexcept
-        {
-            if (const NS::Obj::SphereCollision* sphere =
-                    NS::Obj::Cast<NS::Obj::SphereCollision>(object.CollisionSubObj()))
-            {
-                outBounds = sphere->WorldAABB();
-                return true;
-            }
-            return false;
-        }
     } // namespace
 
     LaunchEffects::LaunchEffects() noexcept : NS::Obj::SubObject() {}
 
-    void LaunchEffects::OnStart()
+    void LaunchEffects::Preload()
     {
-        m_body = NS::Obj::Cast<PropActor>(Owner());
-        if (m_body != nullptr)
-        {
-            NS::Obj::PreloadEffects(m_body, {m_launchTrailAsset, m_launchLandDustAsset});
-        }
+        NS::Obj::PreloadEffects(Owner(), {m_launchTrailAsset, m_launchLandDustAsset});
     }
 
-    void LaunchEffects::BeginTrail(HitTier tier, float power, float launchScale, const NS::Vector3& launchDir)
+    void LaunchEffects::BeginTrail(const TackleReleaseDesc& release,
+                                   const PropFlight& flight,
+                                   const MapObjParams& params,
+                                   const NS::Obj::SphereCollision& sphere)
     {
-        if (m_body == nullptr)
-        {
-            return;
-        }
         // 尾は 1 本ずつ持つ。前の尾が残っていればここで消す
         if (m_trail != 0)
         {
-            NS::Obj::StopEffect(m_body, m_trail);
+            NS::Obj::StopEffect(Owner(), m_trail);
             m_trail = 0;
         }
-        if (!m_body->IsArc())
+        if (!flight.arc)
         {
             return; // 壊れた物 (破片になって飛ばない) には付けない
         }
 
         // 軽い物ほど遠くへ速く飛ぶので、尾も長く残す。重い物は短い
         const float trailFrames =
-            static_cast<float>(m_trailFramesBase) + m_trailFramesPerLaunch * std::max(launchScale, 0.0f);
+            static_cast<float>(m_trailFramesBase) + m_trailFramesPerLaunch * std::max(release.launchScale, 0.0f);
         m_trailFrames = std::max(1, static_cast<int>(std::lround(trailFrames)));
         // 威力 1 で質量だけの大きさ。強く飛ばした物ほど高く上がって強く落ちるので威力でも伸ばす
-        const float mass = m_body->Params().Mass();
-        const float powerGrowth = std::max(0.0f, 1.0f + m_landDustPerPower * (std::max(power, 0.0f) - 1.0f));
+        const float mass = params.Mass();
+        const float powerGrowth =
+            std::max(0.0f, 1.0f + m_landDustPerPower * (std::max(release.power, 0.0f) - 1.0f));
         m_landDustScale = (m_landDustBase + m_landDustPerRootMass * std::sqrt(std::max(mass, 0.0f))) * powerGrowth;
 
-        // 再生の大きさは自分の直径。帯の幅は絵の定義が直径への割合で持つ
-        m_trailScale = 1.0f;
-        NS::AABB bounds{};
-        if (TryGetCollisionBounds(*m_body, bounds))
-        {
-            m_trailScale = 2.0f * std::max(bounds.Extents.x, bounds.Extents.z);
-        }
+        // 再生の大きさは自分の直径。帯の幅は絵の定義が直径への割合で持つ。物理への登録に依らず、変換と欄から作る
+        m_trailScale = 2.0f * sphere.WorldSphere().radius;
+        const Vector3& launchDir = release.arc.direction;
         m_launchDir = NormalizedOr(Vector3{launchDir.x, 0.0f, launchDir.z}, Vector3{1.0f, 0.0f, 0.0f});
 
         // 置物が自分を動かす Triggers の段より前に走るので、帯の頭は放した時の速度で 1 フレーム先へ置く
         // 帯の点の +Y を飛ぶ向きへ回す。揃えないと、横から見た時に幅が道に沿って潰れる
-        const Vector3 head = m_body->Root().Position() + m_body->Velocity() * BodyDelta();
+        const Vector3 head = flight.position + flight.velocity * BodyDelta();
         NS::Gfx::EffectPlayDesc desc =
-            PlayAt(head, TurnUpTo(NormalizedOr(m_body->Velocity(), m_launchDir)), Uniform(m_trailScale));
+            PlayAt(head, TurnUpTo(NormalizedOr(flight.velocity, m_launchDir)), Uniform(m_trailScale));
         // 0 番が橙、1 番が大きな外れの灰。2 番が点の寿命
         desc.dynamicInputs[0] = 0.0f;
         desc.dynamicInputs[1] = 0.0f;
-        desc.dynamicInputs[TrailColorInputFor(tier)] = 1.0f;
+        desc.dynamicInputs[TrailColorInputFor(release.tier)] = 1.0f;
         desc.dynamicInputs[2] = static_cast<float>(m_trailFrames);
         desc.dynamicInputs[3] = 0.0f;
-        m_trail = NS::Obj::PlayEffect(m_body, m_launchTrailAsset, desc);
-        NS::Obj::SetEffectAmount(m_body, m_trail, static_cast<float>(m_trailFrames));
-        m_trailStartStep = NS::Obj::EffectStep(m_body);
+        m_trail = NS::Obj::PlayEffect(Owner(), m_launchTrailAsset, desc);
+        NS::Obj::SetEffectAmount(Owner(), m_trail, static_cast<float>(m_trailFrames));
+        m_trailStartStep = NS::Obj::EffectStep(Owner());
     }
 
-    void LaunchEffects::OnUpdate()
+    void LaunchEffects::Update(const PropFlight& flight)
     {
-        if (m_trail == 0 || m_body == nullptr || NS::Obj::EffectStep(m_body) == m_trailStartStep)
+        if (m_trail == 0 || NS::Obj::EffectStep(Owner()) == m_trailStartStep)
         {
             return;
         }
-        if (m_body->IsArc())
+        if (flight.arc)
         {
-            NS::Obj::SetEffectTransform(m_body,
+            NS::Obj::SetEffectTransform(Owner(),
                                         m_trail,
-                                        m_body->Root().Position(),
-                                        TurnUpTo(NormalizedOr(m_body->Velocity(), m_launchDir)),
+                                        flight.position,
+                                        TurnUpTo(NormalizedOr(flight.velocity, m_launchDir)),
                                         Uniform(m_trailScale));
             return;
         }
@@ -159,12 +136,8 @@ namespace GL::Level
 
     void LaunchEffects::EndTrail()
     {
-        if (m_body == nullptr)
-        {
-            return;
-        }
         // 帯と輪はここで消す。点は世界に残るので、通った道が柱のように残る
-        NS::Obj::StopEffect(m_body, m_trail);
+        NS::Obj::StopEffect(Owner(), m_trail);
         m_trail = 0;
     }
 
@@ -175,18 +148,14 @@ namespace GL::Level
 
     void LaunchEffects::NotifyLanding(const Vector3& position, const Vector3& normal)
     {
-        if (m_body == nullptr)
-        {
-            return;
-        }
         EndTrail();
         const Vector3 at = position + normal * m_dustRingLift;
         const NS::uint32 dust = NS::Obj::PlayEffect(
-            m_body,
+            Owner(),
             m_launchLandDustAsset,
             PlayAt(at, TurnUpTo(normal), Uniform(m_landDustScale / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
-        NS::Obj::SetEffectAmount(m_body, dust, m_landDustScale);
-        NS::Obj::StopEffectAfter(m_body, dust, std::max(m_landDustLife, 1));
+        NS::Obj::SetEffectAmount(Owner(), dust, m_landDustScale);
+        NS::Obj::StopEffectAfter(Owner(), dust, std::max(m_landDustLife, 1));
     }
 
     NS_CLASS(LaunchEffects)

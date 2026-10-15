@@ -4,6 +4,7 @@
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
+#include "Game/Level/PropFlight.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/StateMachineOf.h"
@@ -28,6 +29,8 @@ namespace GL::Level
         NS_REFLECT_SUBOBJ(m_effects, "LaunchEffects")
         NS_REFLECT_END()
 
+        //! 尾と粉の絵を先に読む
+        void OnStart() override;
         //! 配置が揃った後に、当たりの球を物理へ入れる
         void InitAfterPlacement() override;
 
@@ -44,6 +47,8 @@ namespace GL::Level
         [[nodiscard]] bool IsArc() const noexcept;
         //! 自分で動かしている速度。単位は m/s。置かれている間は 0
         [[nodiscard]] NS::Vector3 Velocity() const noexcept { return m_velocity; }
+        //! 今どう飛んでいるか。呼ばれた時の状態機械から組む
+        [[nodiscard]] PropFlight Flight() const noexcept;
         [[nodiscard]] const MapObjParams& Params() const noexcept { return *m_params; }
 
     protected:

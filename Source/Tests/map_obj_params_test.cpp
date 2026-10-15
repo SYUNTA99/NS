@@ -1,5 +1,6 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LaunchEffects.h"
+#include "Game/Level/PropActor.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
 #include "NSlib/Core/Types.h"
@@ -228,7 +229,15 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
     GL::Level::TackleReleaseDesc release{};
     release.arc = GL::Level::LaunchArc{.distance = 5.0f, .apexHeight = 1.0f};
     ASSERT_TRUE(GL::Level::SendMsgTackleRelease(*actor, release));
-    effects->BeginTrail(GL::Level::HitTier::Center, 2.0f, 1.0f, NS::Vector3{1.0f, 0.0f, 0.0f});
+    GL::Level::TackleReleaseDesc trail = release;
+    trail.tier = GL::Level::HitTier::Center;
+    trail.power = 2.0f;
+    trail.launchScale = 1.0f;
+    const GL::Level::PropActor* prop = NS::Obj::Cast<GL::Level::PropActor>(actor);
+    const NS::Obj::SphereCollision* sphere = NS::Obj::Cast<NS::Obj::SphereCollision>(actor->CollisionSubObj());
+    ASSERT_NE(prop, nullptr);
+    ASSERT_NE(sphere, nullptr);
+    effects->BeginTrail(trail, prop->Flight(), *params, *sphere);
     EXPECT_EQ(effects->TrailFrames(), 20);
     EXPECT_FLOAT_EQ(effects->LandDustScale(), 2.5f);
 }

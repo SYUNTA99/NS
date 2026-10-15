@@ -237,11 +237,11 @@ TEST(MapObjMotion, EffectClockIsSeparateFromItsPostMovementUpdate)
     ASSERT_NE(rock, nullptr);
     const NS::Obj::EffectKeeper* keeper = rock->GetEffectKeeper();
     ASSERT_NE(keeper, nullptr);
-    NS::Obj::SubObject* effects = rock->FindSubObj("LaunchEffects");
+    GL::Level::LaunchEffects* effects = NS::Obj::Cast<GL::Level::LaunchEffects>(rock->FindSubObj("LaunchEffects"));
     ASSERT_NE(effects, nullptr);
     rock->Update();
     EXPECT_EQ(keeper->Step(), 1);
-    effects->OnUpdate();
+    effects->Update(rock->Flight());
     EXPECT_EQ(keeper->Step(), 1);
 }
 

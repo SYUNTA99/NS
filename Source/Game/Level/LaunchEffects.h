@@ -2,17 +2,18 @@
 
 #include <string>
 
-#include "Game/Level/HitTier.h"
+#include "Game/Level/LevelMessages.h"
+#include "Game/Level/MapObjParams.h"
+#include "Game/Level/PropFlight.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/SubObject.h"
+#include "NSlib/Object/SubObjects/SphereCollision.h"
 
 #include "NSlib/Core/Types.h"
 #include <vector>
 
 namespace GL::Level
 {
-    class PropActor;
-
     //! @brief 押し飛ばされた配置物の尾と、着地の粉を出す部品
     //! @details 尾は曲線を離れた時に消す。段で色、飛ばしの比で長さ、威力と質量で粉の大きさを決める
     class LaunchEffects : public NS::Obj::SubObject
@@ -20,16 +21,21 @@ namespace GL::Level
     public:
         LaunchEffects() noexcept;
 
-        void OnStart() override;
+        //! 尾と粉の絵を先に読む。持ち主の OnStart が呼ぶ
+        void Preload();
 
-        void OnUpdate() override;
+        //! 出ている尾を置物の今の位置と向きへ動かし、曲線を離れたら消す。持ち主の見た目の段が呼ぶ
+        void Update(const PropFlight& flight);
 
         //! @brief 押し飛ばされた所から尾を出す。前の尾が残っていれば消してから出す
-        //! @param[in] tier 当たりの段。尾の色を段ごとの表で引き、中心近くは橙、大きな外れは灰
-        //! @param[in] power 最終威力。落ちた所の粉を大きくする
-        //! @param[in] launchScale 飛ばしの比。尾を長く残す
-        //! @param[in] launchDir 飛ぶ水平の向き。速さが 0 の時の尾の向き
-        void BeginTrail(HitTier tier, float power, float launchScale, const NS::Vector3& launchDir);
+        //! @details 段で尾の色を引き (中心近くは橙、大きな外れは灰)、飛ばしの比で尾を長く残し、
+        //!          威力と質量で落ちた所の粉を大きくする。飛ぶ水平の向きは速さが 0 の時の尾の向き
+        //! @param[in] flight 放した直後の飛び。曲線の上でなければ尾を出さない
+        //! @param[in] sphere 置物の当たりの球。尾の太さを直径に合わせる
+        void BeginTrail(const TackleReleaseDesc& release,
+                        const PropFlight& flight,
+                        const MapObjParams& params,
+                        const NS::Obj::SphereCollision& sphere);
 
         //! @brief 尾を消し、落ちた所へ粉を出す
         //! @param[in] position 床に触れた点。世界座標
@@ -72,7 +78,6 @@ namespace GL::Level
         // 尾を消し、床に落ちていればその場へ粉を出す
         void EndTrail();
 
-        PropActor* m_body = nullptr;
         NS::uint32 m_trail = 0;   // 飛び出しの尾。消したら 0
         int m_trailStartStep = 0; // 尾を出したフレーム。このフレームは出した姿のまま
         int m_trailFrames = 0;
