@@ -357,12 +357,14 @@ namespace NS::Obj
     {
         // 部品の登録は部品の OnStart が済ませる。続けて OnAppear を呼ぶと、出る時に OnStart
         // を呼び直す部品が二重に登録する
-        CallIfPresent(m_model, &Model::Register);
-        CallIfPresent(m_animation, &Animation::BindToModel);
-        CallIfPresent(m_shadow, &Shadow::Register);
-        CallIfPresent(m_bodySensor, &HitSensor::Register);
-        CallIfPresent(m_attackSensor, &HitSensor::Register);
-        CallIfPresent(m_hitReaction, &HitReaction::CreateDirectors);
+        // clang-format off
+        if (m_model) { m_model->Register(); }
+        if (m_animation) { m_animation->BindToModel(); }
+        if (m_shadow) { m_shadow->Register(); }
+        if (m_bodySensor) { m_bodySensor->Register(); }
+        if (m_attackSensor) { m_attackSensor->Register(); }
+        if (m_hitReaction) { m_hitReaction->CreateDirectors(); }
+        // clang-format on
         ForEachSubObj([&](SubObject* subObject) { subObject->OnStart(); });
         if (!IsActiveInHierarchy())
         {
@@ -377,11 +379,13 @@ namespace NS::Obj
         {
             return;
         }
-        CallIfActive(m_model, &Model::Register);
-        CallIfActive(m_shadow, &Shadow::Register);
-        CallIfActive(m_collision, &Collision::SyncToPhysics);
-        CallIfActive(m_bodySensor, &HitSensor::Register);
-        CallIfActive(m_attackSensor, &HitSensor::Register);
+        // clang-format off
+        if (m_model && m_model->IsActive()) { m_model->Register(); }
+        if (m_shadow && m_shadow->IsActive()) { m_shadow->Register(); }
+        if (m_collision && m_collision->IsActive()) { m_collision->SyncToPhysics(); }
+        if (m_bodySensor && m_bodySensor->IsActive()) { m_bodySensor->Register(); }
+        if (m_attackSensor && m_attackSensor->IsActive()) { m_attackSensor->Register(); }
+        // clang-format on
         ForEachSubObj([&](SubObject* subObject) {
             if (subObject->IsActive())
             {
@@ -400,12 +404,14 @@ namespace NS::Obj
         {
             return;
         }
-        CallIfPresent(m_model, &Model::Unregister);
-        CallIfPresent(m_shadow, &Shadow::Unregister);
-        CallIfPresent(m_collision, &Collision::Unregister);
-        CallIfPresent(m_bodySensor, &HitSensor::Unregister);
-        CallIfPresent(m_attackSensor, &HitSensor::Unregister);
-        CallIfPresent(m_hitReaction, &HitReaction::StopAll);
+        // clang-format off
+        if (m_model) { m_model->Unregister(); }
+        if (m_shadow) { m_shadow->Unregister(); }
+        if (m_collision) { m_collision->Unregister(); }
+        if (m_bodySensor) { m_bodySensor->Unregister(); }
+        if (m_attackSensor) { m_attackSensor->Unregister(); }
+        if (m_hitReaction) { m_hitReaction->StopAll(); }
+        // clang-format on
         ForEachSubObj([&](SubObject* subObject) { subObject->OnDisappear(); });
         for (SceneActor* child : m_children)
         {
@@ -415,7 +421,9 @@ namespace NS::Obj
 
     void SceneActor::Update()
     {
-        CallIfActive(m_effectKeeper, &EffectKeeper::BeginStep);
+        // clang-format off
+        if (m_effectKeeper && m_effectKeeper->IsActive()) { m_effectKeeper->BeginStep(); }
+        // clang-format on
         ObserveStep();
         DecideStep();
         StateStep();
@@ -426,7 +434,9 @@ namespace NS::Obj
     void SceneActor::SnapshotForInterpolation() noexcept
     {
         Root().Snapshot();
-        CallIfPresent(m_model, &Model::Snapshot);
+        // clang-format off
+        if (m_model) { m_model->Snapshot(); }
+        // clang-format on
     }
 
     void SceneActor::StateStep()
@@ -442,12 +452,14 @@ namespace NS::Obj
     void SceneActor::OnEndPlay()
     {
         Disappear();
-        CallIfPresent(m_model, &Model::Unregister);
-        CallIfPresent(m_shadow, &Shadow::Unregister);
-        CallIfPresent(m_collision, &Collision::Unregister);
-        CallIfPresent(m_bodySensor, &HitSensor::Unregister);
-        CallIfPresent(m_attackSensor, &HitSensor::Unregister);
-        CallIfPresent(m_hitReaction, &HitReaction::StopAll);
+        // clang-format off
+        if (m_model) { m_model->Unregister(); }
+        if (m_shadow) { m_shadow->Unregister(); }
+        if (m_collision) { m_collision->Unregister(); }
+        if (m_bodySensor) { m_bodySensor->Unregister(); }
+        if (m_attackSensor) { m_attackSensor->Unregister(); }
+        if (m_hitReaction) { m_hitReaction->StopAll(); }
+        // clang-format on
         ForEachSubObj([&](SubObject* subObject) { subObject->OnEndPlay(); });
     }
 
