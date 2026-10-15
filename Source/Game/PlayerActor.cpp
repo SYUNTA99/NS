@@ -109,7 +109,7 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     state.hasRebound = true;
     state.rebound = NS::Obj::FollowReboundDesc{
         .rebounding = IsRebounding(),
-        .forcedSlamming = IsBodySlamming() && m_slam.forced,
+        .forcedSlamming = IsBodySlamming() && m_slam.m_forced,
         .slamDirection = BodySlamDirection(),
     };
     // 真ん中の反動は、飛んでいく相手を画面に残す。外れはいつもどおり自機だけを追う (外れのカメラは寄り無し)
@@ -505,11 +505,11 @@ bool PlayerActor::IsBodySlamming() const noexcept
 
 float PlayerActor::BodySlamProgress01() const noexcept
 {
-    if (!IsBodySlamming() || !(m_slam.distanceTarget > 0.0f))
+    if (!IsBodySlamming() || !(m_slam.m_distanceTarget > 0.0f))
     {
         return 0.0f;
     }
-    return NS::Clamp(m_slam.travelled / m_slam.distanceTarget, 0.0f, 1.0f);
+    return NS::Clamp(m_slam.m_travelled / m_slam.m_distanceTarget, 0.0f, 1.0f);
 }
 
 float PlayerActor::BodySlamDistance() const noexcept
@@ -529,7 +529,7 @@ bool PlayerActor::IsSkidding() const noexcept
 
 bool PlayerActor::SkidsOnLanding() const noexcept
 {
-    return m_rebound.missTumble.has_value() && m_params->m_missSkidSteps > 0;
+    return m_rebound.m_missTumble.has_value() && m_params->m_missSkidSteps > 0;
 }
 
 float PlayerActor::SkidSpeedScale() const noexcept
@@ -538,13 +538,24 @@ float PlayerActor::SkidSpeedScale() const noexcept
     {
         return 1.0f;
     }
-    return GL::Level::MissSkidSpeedScale(m_skid.elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
+    return GL::Level::MissSkidSpeedScale(m_skid.m_elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
 }
 
 bool PlayerActor::CanMoveBody() const noexcept
 {
     // 当たりの止めの正は裁定役の時計。身体の active へ写すと、やり直しが写しを戻し忘れた時に正と食い違う
     return m_body->IsActive() && !m_resolver->IsHitStopping() && !m_resolver->IsAwaitingRebound();
+}
+
+GL::Player::PlayerMotion PlayerActor::Motion() const noexcept
+{
+    return GL::Player::PlayerMotion{
+        .bodySlamming = IsBodySlamming(),
+        .rebounding = IsRebounding(),
+        .skidding = IsSkidding(),
+        .curled = m_curled,
+        .canMoveBody = CanMoveBody(),
+    };
 }
 
 void PlayerActor::ResetState() noexcept
@@ -568,11 +579,11 @@ void PlayerActor::ResetState() noexcept
     m_request.dir = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_request.hasDir = false;
     m_request.verticalSpeed = 0.0f;
-    m_slam = BodySlamRecord{};
-    m_rebound.direction = NS::Vector3{0.0f, 0.0f, 0.0f};
-    m_rebound.spinSpeed = 0.0f;
-    m_rebound.missTumble.reset();
-    m_skid = SkidRecord{};
+    m_slam = GL::Player::BodySlamStatus{};
+    m_rebound.m_direction = NS::Vector3{0.0f, 0.0f, 0.0f};
+    m_rebound.m_spinSpeed = 0.0f;
+    m_rebound.m_missTumble.reset();
+    m_skid = GL::Player::SkidStatus{};
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_curled = false;
@@ -599,7 +610,7 @@ void PlayerActor::PrepareStateStep()
                                                  m_states->IsCurrent<GL::Player::FallPlayerState>(),
                                                  m_states->IsCurrent<GL::Player::ReboundPlayerState>());
     if (GL::Player::PlayerJudgeBodySlam::Judge(
-            m_request.bufferRemaining, m_request.spent, m_slam.wasSlamming, locomotion))
+            m_request.bufferRemaining, m_request.spent, m_slam.m_wasSlamming, locomotion))
     {
         if (BodySlam())
         {

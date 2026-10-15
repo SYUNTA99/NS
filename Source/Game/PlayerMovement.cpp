@@ -73,7 +73,7 @@ void PlayerActor::MoveBody(float dt) noexcept
     m_lastMoveDistance = delta.Length();
     SyncGroundState();
     AdvanceBodySlamTravel(delta);
-    m_slam.wasSlamming = IsBodySlamming();
+    m_slam.m_wasSlamming = IsBodySlamming();
 }
 
 void PlayerActor::SyncGroundState() noexcept
@@ -223,18 +223,18 @@ void PlayerActor::AccelerateDuringRebound(float dt) noexcept
 
 void PlayerActor::BeginSkid() noexcept
 {
-    m_skid.landingVelocity = m_body->LateralVelocity();
-    m_skid.elapsedSteps = 0;
+    m_skid.m_landingVelocity = m_body->LateralVelocity();
+    m_skid.m_elapsedSteps = 0;
 }
 
 bool PlayerActor::AdvanceSkid() noexcept
 {
-    ++m_skid.elapsedSteps;
+    ++m_skid.m_elapsedSteps;
     // 着いた速さに依らず同じフレーム数で止まりきり、操作が戻る
     const float scale =
-        GL::Level::MissSkidSpeedScale(m_skid.elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
-    m_body->SetLateralVelocity(m_skid.landingVelocity * scale);
-    return m_skid.elapsedSteps >= m_params->m_missSkidSteps;
+        GL::Level::MissSkidSpeedScale(m_skid.m_elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
+    m_body->SetLateralVelocity(m_skid.m_landingVelocity * scale);
+    return m_skid.m_elapsedSteps >= m_params->m_missSkidSteps;
 }
 
 void PlayerActor::UpdateBodySlam(float dt) noexcept
@@ -242,12 +242,12 @@ void PlayerActor::UpdateBodySlam(float dt) noexcept
     NS::Obj::Body& body = *m_body;
     // 突進中に向きを変えられると当てる間合いを詰める意味が消えるので、水平は発動時の値で書き直す
     // 書き手はここだけで、壁に押し付けられて潰れた水平も次のフレームで戻る
-    if (!m_slam.isTap)
+    if (!m_slam.m_isTap)
     {
         body.SetLateralVelocity(BodySlamVelocity());
     }
 
-    if (m_slam.isTap)
+    if (m_slam.m_isTap)
     {
         TapSlamGravity(dt);
     }
@@ -303,7 +303,7 @@ namespace
 bool PlayerActor::LedgeGrab() noexcept
 {
     NS::Obj::Body& body = *m_body;
-    if (!GL::Player::PlayerJudgeLedgeGrab::Judge(body.IsGrounded(), body.VerticalVelocity(), m_slam.wasSlamming))
+    if (!GL::Player::PlayerJudgeLedgeGrab::Judge(body.IsGrounded(), body.VerticalVelocity(), m_slam.m_wasSlamming))
     {
         return false;
     }

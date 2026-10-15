@@ -105,7 +105,7 @@ void PlayerActor::RequestBodySlam(float charge01,
 
 float PlayerActor::BodySlamSpeed() const noexcept
 {
-    if (m_slam.isTap)
+    if (m_slam.m_isTap)
     {
         return m_params->m_tapSlamSpeed;
     }
@@ -115,11 +115,11 @@ float PlayerActor::BodySlamSpeed() const noexcept
 float PlayerActor::BodySlamSpinSpeed() const noexcept
 {
     float turns = m_params->m_chargedSlamTurns;
-    if (m_slam.isTap)
+    if (m_slam.m_isTap)
     {
         turns = m_params->m_tapSlamTurns;
     }
-    return SpinSpeedFor(turns, m_slam.distanceTarget / BodySlamSpeed());
+    return SpinSpeedFor(turns, m_slam.m_distanceTarget / BodySlamSpeed());
 }
 
 NS::Vector3 PlayerActor::BodySlamVelocity() const noexcept
@@ -131,7 +131,7 @@ NS::Vector3 PlayerActor::BodySlamVelocity() const noexcept
     }
 
     const float speed = BodySlamSpeed();
-    return NS::Vector3{m_slam.dir.x * speed, body.VerticalVelocity(), m_slam.dir.z * speed};
+    return NS::Vector3{m_slam.m_dir.x * speed, body.VerticalVelocity(), m_slam.m_dir.z * speed};
 }
 
 void PlayerActor::CancelBodySlam() noexcept
@@ -146,8 +146,8 @@ void PlayerActor::CancelBodySlam() noexcept
 void PlayerActor::EndBodySlam() noexcept
 {
     NS::Obj::Body& body = *m_body;
-    m_slam.travelled = 0.0f;
-    m_slam.distanceTarget = 0.0f;
+    m_slam.m_travelled = 0.0f;
+    m_slam.m_distanceTarget = 0.0f;
 
     // 加速は最高速を超えた速さを削らない。切らないと、倒している間は突進の速さのまま走り続ける
     const NS::Vector3 lateral = body.LateralVelocity();
@@ -179,15 +179,15 @@ void PlayerActor::AdvanceBodySlamTravel(const NS::Vector3& delta) noexcept
 
     // 進んだ距離は実際に動いた量から測る。突進の速さから積むと壁で止められたフレームも進んだ扱いになる
     const float stepDistance = std::sqrt(delta.x * delta.x + delta.z * delta.z);
-    m_slam.travelled += stepDistance;
+    m_slam.m_travelled += stepDistance;
 
     // 進めないフレームで打ち切る。壁で止められると進んだ距離が伸びず、突進から出られなくなる
     // 発動したフレームは見ない。ここで打ち切ると発動から打ち切りまでに ImpactResolver が
     // 一度も走らず、突進を見ないまま終わる
-    const bool stalled = !m_slam.justStarted && stepDistance < NS::k_Epsilon;
-    m_slam.justStarted = false;
+    const bool stalled = !m_slam.m_justStarted && stepDistance < NS::k_Epsilon;
+    m_slam.m_justStarted = false;
 
-    if (m_slam.travelled >= m_slam.distanceTarget || stalled)
+    if (m_slam.m_travelled >= m_slam.m_distanceTarget || stalled)
     {
         EndBodySlam();
     }
@@ -283,21 +283,21 @@ bool PlayerActor::BodySlam() noexcept
         return false;
     }
 
-    m_slam.charge01 = m_request.charge01;
-    m_slam.overcharge01 = m_request.overcharge01;
-    m_slam.isTap = !(m_request.charge01 > 0.0f);
-    m_slam.travelled = 0.0f;
-    m_slam.justStarted = true;
+    m_slam.m_charge01 = m_request.charge01;
+    m_slam.m_overcharge01 = m_request.overcharge01;
+    m_slam.m_isTap = !(m_request.charge01 > 0.0f);
+    m_slam.m_travelled = 0.0f;
+    m_slam.m_justStarted = true;
     const float speed = BodySlamSpeed();
 
-    if (m_slam.isTap)
+    if (m_slam.m_isTap)
     {
-        m_slam.distanceTarget = m_params->m_tapSlamDistance;
+        m_slam.m_distanceTarget = m_params->m_tapSlamDistance;
         body.SetVelocity(NS::Vector3{dir.x * speed, m_params->m_tapSlamUpSpeed, dir.z * speed});
     }
     else
     {
-        m_slam.distanceTarget = m_params->m_bodySlamDistance;
+        m_slam.m_distanceTarget = m_params->m_bodySlamDistance;
         // ジャンプの縦速度を捨て、狙いと同じ道筋で放つ。ジャンプで角度上限を越えないようにする
         float vertical = 0.0f;
         if (m_request.hasDir)
@@ -308,17 +308,17 @@ bool PlayerActor::BodySlam() noexcept
     }
 
     // 距離が 0 以下だと 1 フレーム目で終わって発動が消えるため、出さずに通常移動のままにする
-    if (!(m_slam.distanceTarget > 0.0f))
+    if (!(m_slam.m_distanceTarget > 0.0f))
     {
         return false;
     }
 
     // 出せた時だけ書く。反動の後のカメラと放した瞬間の絵が、突進の後も最後に出た突進の向きとして読む
-    m_slam.dir = dir;
+    m_slam.m_dir = dir;
     m_request.hasDir = false;
     // 溜めすぎで控えた突進なら、判定が頼み直しを止めて放すまで溜め無しになる
-    m_slam.forced = m_charge.judge.IsAwaitingLaunch();
-    m_charge.judge.MarkLaunched();
+    m_slam.m_forced = m_charge.m_judge.IsAwaitingLaunch();
+    m_charge.m_judge.MarkLaunched();
     // 地面から出した突進は数えない。数えると、浮いて当てた通常突進や上向きに放った突進の反動で空中の 1 発が出ない
     if (launchedInAir)
     {
@@ -349,14 +349,14 @@ bool PlayerActor::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
 
     // 反動は最後に出した突進が当たって始まるので、その突進が通常突進だったかで回転数を選ぶ
     float turns = m_params->m_chargedReboundTurns;
-    if (m_slam.isTap)
+    if (m_slam.m_isTap)
     {
         turns = m_params->m_tapReboundTurns;
     }
-    m_rebound.direction = direction;
-    m_rebound.missTumble = arc.missTumble;
-    ++m_rebound.count;
-    m_rebound.spinSpeed = SpinSpeedFor(turns, GL::Level::LaunchArcFlightSeconds(ReboundLaunchArc(*m_params, arc)));
+    m_rebound.m_direction = direction;
+    m_rebound.m_missTumble = arc.missTumble;
+    ++m_rebound.m_count;
+    m_rebound.m_spinSpeed = SpinSpeedFor(turns, GL::Level::LaunchArcFlightSeconds(ReboundLaunchArc(*m_params, arc)));
     m_body->SetVelocity(velocity);
     (void)m_states->Change<GL::Player::ReboundPlayerState>();
     return true;
@@ -428,7 +428,7 @@ void PlayerActor::UncurlWhenSettled() noexcept
         return;
     }
     // 当てたフレームは ImpactResolver が自分より先に突進を終える。今の状態だけを見ると、当てた瞬間に解ける
-    if (m_slam.wasSlamming)
+    if (m_slam.m_wasSlamming)
     {
         return;
     }

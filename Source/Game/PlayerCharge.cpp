@@ -57,46 +57,31 @@ namespace
 
 const GL::Level::ImpactInputJudge& PlayerActor::ChargeJudge() const noexcept
 {
-    return m_charge.judge;
+    return m_charge.Judge();
 }
 
 bool PlayerActor::TryGetAimLine(GL::Level::AimLine& outLine) const noexcept
 {
-    if (!m_charge.hasAimLine)
-    {
-        return false;
-    }
-    outLine = m_charge.aimLine;
-    return true;
+    return m_charge.TryGetAimLine(outLine);
 }
 
 bool PlayerActor::TryGetAimTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
 {
-    if (!m_charge.hasAimTarget)
-    {
-        return false;
-    }
-    outTarget = m_charge.aimTarget;
-    return true;
+    return m_charge.TryGetAimTarget(outTarget);
 }
 
 bool PlayerActor::TryGetLineTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
 {
-    if (!m_charge.hasLineTarget)
-    {
-        return false;
-    }
-    outTarget = m_charge.lineTarget;
-    return true;
+    return m_charge.TryGetLineTarget(outTarget);
 }
 
 float PlayerActor::StanceHeight() const noexcept
 {
-    if (!m_charge.judge.IsHoldingCharge())
+    if (!m_charge.m_judge.IsHoldingCharge())
     {
         return 1.0f;
     }
-    if (m_charge.judge.IsCharging())
+    if (m_charge.m_judge.IsCharging())
     {
         return m_appearance->ChargeSquashScale();
     }
@@ -105,9 +90,9 @@ float PlayerActor::StanceHeight() const noexcept
 
 void PlayerActor::ObserveCharge(bool held)
 {
-    m_charge.observedHeld = held;
-    m_charge.observedHasAimTarget = false;
-    m_charge.observedHasAimLine = false;
+    m_chargeObserved.held = held;
+    m_chargeObserved.hasAimTarget = false;
+    m_chargeObserved.hasAimLine = false;
     if (!held)
     {
         return;
@@ -122,28 +107,28 @@ void PlayerActor::ObserveCharge(bool held)
     {
         return;
     }
-    m_charge.observedAimLine = GL::Level::AimLine{.origin = Root().Position(),
+    m_chargeObserved.aimLine = GL::Level::AimLine{.origin = Root().Position(),
                                                   .direction = direction,
                                                   .length = BodySlamDistance(),
                                                   .launchVerticalSpeed = 0.0f,
                                                   .grounded = m_body->IsGrounded()};
-    m_charge.observedHasAimLine = true;
-    m_charge.observedHasAimTarget = m_resolver->FindSlamLineTarget(
-        m_charge.observedAimLine.direction, m_charge.observedAimLine.length, m_charge.observedAimTarget);
+    m_chargeObserved.hasAimLine = true;
+    m_chargeObserved.hasAimTarget = m_resolver->FindSlamLineTarget(
+        m_chargeObserved.aimLine.direction, m_chargeObserved.aimLine.length, m_chargeObserved.aimTarget);
     // 放す時に添える縦の速さ。届かない相手と相手が無い時は 0 で水平に放つ
-    if (m_charge.observedHasAimTarget)
+    if (m_chargeObserved.hasAimTarget)
     {
-        m_charge.observedAimLine.launchVerticalSpeed = m_charge.observedAimTarget.launchVerticalSpeed;
+        m_chargeObserved.aimLine.launchVerticalSpeed = m_chargeObserved.aimTarget.launchVerticalSpeed;
     }
 }
 
 void PlayerActor::AdvanceCharge(float dt)
 {
-    GL::Level::ImpactInputJudge& judge = m_charge.judge;
+    GL::Level::ImpactInputJudge& judge = m_charge.m_judge;
     judge.chargeThresholdSteps = SecondsToSteps(m_params->m_chargeThresholdSeconds, dt);
     judge.chargeMaxSteps = SecondsToSteps(m_params->m_chargeFullSeconds, dt);
     judge.overchargeSteps = SecondsToSteps(m_params->m_overchargeSeconds, dt);
-    judge.Step(m_charge.observedHeld);
+    judge.Step(m_chargeObserved.held);
 
     if (judge.JustPressed())
     {
@@ -161,9 +146,9 @@ void PlayerActor::AdvanceCharge(float dt)
     // スティックを見ずにその向きへ出す。通常突進は矢印が出ないので入力の向きへ出す
     // 紫で放した時と勝手に出た時は、控えた線に放す前のフレームの揺れが入っている
     const auto requestCharged = [this](float charge01, float overcharge01) {
-        if (m_charge.hasAimLine)
+        if (m_charge.m_hasAimLine)
         {
-            RequestBodySlam(charge01, m_charge.aimLine.direction, m_charge.aimLine.launchVerticalSpeed, overcharge01);
+            RequestBodySlam(charge01, m_charge.m_aimLine.direction, m_charge.m_aimLine.launchVerticalSpeed, overcharge01);
         }
         else
         {
@@ -202,38 +187,38 @@ void PlayerActor::AdvanceCharge(float dt)
         m_body->SetVelocity(NS::Vector3{0.0f, velocity.y, 0.0f});
     }
 
-    m_charge.hasAimLine = m_charge.observedHasAimLine;
-    m_charge.hasAimTarget = m_charge.observedHasAimTarget;
-    m_charge.aimLine = m_charge.observedAimLine;
-    m_charge.aimTarget = m_charge.observedAimTarget;
-    if (m_charge.hasAimLine)
+    m_charge.m_hasAimLine = m_chargeObserved.hasAimLine;
+    m_charge.m_hasAimTarget = m_chargeObserved.hasAimTarget;
+    m_charge.m_aimLine = m_chargeObserved.aimLine;
+    m_charge.m_aimTarget = m_chargeObserved.aimTarget;
+    if (m_charge.m_hasAimLine)
     {
-        m_charge.aimLine.origin = Root().Position();
+        m_charge.m_aimLine.origin = Root().Position();
     }
-    if (m_charge.hasAimTarget)
+    if (m_charge.m_hasAimTarget)
     {
-        m_charge.aimTarget.origin = Root().Position();
+        m_charge.m_aimTarget.origin = Root().Position();
     }
     ApplyChargeSway(dt);
 }
 
 void PlayerActor::ApplyChargeSway(float dt)
 {
-    const GL::Level::ImpactInputJudge& judge = m_charge.judge;
+    const GL::Level::ImpactInputJudge& judge = m_charge.m_judge;
     const int steps = judge.OverchargedSteps();
     // 紫に入ったフレームに数える。離したフレームは控えた値が残るので、押している間だけ見る
     if (steps == 1 && judge.IsHeld())
     {
         ++m_overchargeCount;
     }
-    m_charge.lineTarget = m_charge.aimTarget;
-    m_charge.hasLineTarget = m_charge.hasAimTarget;
-    m_charge.swayPhase = 0.0f;
-    m_charge.swayOffset = 0.0f;
-    m_charge.swayReachedEdge = false;
-    if (steps <= 0 || !m_charge.hasAimLine)
+    m_charge.m_lineTarget = m_charge.m_aimTarget;
+    m_charge.m_hasLineTarget = m_charge.m_hasAimTarget;
+    m_charge.m_swayPhase = 0.0f;
+    m_charge.m_swayOffset = 0.0f;
+    m_charge.m_swayReachedEdge = false;
+    if (steps <= 0 || !m_charge.m_hasAimLine)
     {
-        m_charge.hasSwayEdge = false;
+        m_charge.m_hasSwayEdge = false;
         return;
     }
 
@@ -241,7 +226,7 @@ void PlayerActor::ApplyChargeSway(float dt)
     // 位相がちょうど端に来る
     const float seconds = static_cast<float>(steps) * dt;
     const float overchargeSeconds = static_cast<float>(judge.overchargeSteps) * dt;
-    m_charge.swayPhase = OverchargeSwayPhase(
+    m_charge.m_swayPhase = OverchargeSwayPhase(
         seconds, overchargeSeconds, m_params->m_overchargeSwayStartRate, m_params->m_overchargeSwayEndRate);
     // 振れ幅は紫の深さの 2 乗。前半は真ん中に収まって強くなるだけの区間、後半で外れまで振れる
     float depth = 1.0f;
@@ -255,41 +240,42 @@ void PlayerActor::ApplyChargeSway(float dt)
     {
         side = -1.0f;
     }
-    m_charge.swayOffset = side * m_params->m_overchargeSwayMaxOffset * depth * depth * std::sin(m_charge.swayPhase);
+    m_charge.m_swayOffset = side * m_params->m_overchargeSwayMaxOffset * depth * depth * std::sin(m_charge.m_swayPhase);
     // 端は位相が π/2 + nπ を通る所。数を別に持たないので、矢印と火花の拍がずれない
-    const int edge = static_cast<int>(std::floor((m_charge.swayPhase - 0.5f * NS::k_Pi) / NS::k_Pi));
-    m_charge.swayReachedEdge = m_charge.hasSwayEdge && edge > m_charge.swayEdge;
-    m_charge.swayEdge = edge;
-    m_charge.hasSwayEdge = true;
+    const int edge = static_cast<int>(std::floor((m_charge.m_swayPhase - 0.5f * NS::k_Pi) / NS::k_Pi));
+    m_charge.m_swayReachedEdge = m_charge.m_hasSwayEdge && edge > m_charge.m_swayEdge;
+    m_charge.m_swayEdge = edge;
+    m_charge.m_hasSwayEdge = true;
 
     float distance = m_params->m_overchargeSwayFallbackDistance;
-    if (m_charge.hasAimTarget)
+    if (m_charge.m_hasAimTarget)
     {
-        distance = m_charge.aimTarget.along;
+        distance = m_charge.m_aimTarget.along;
     }
-    const NS::Vector3 forward = m_charge.aimLine.direction;
+    const NS::Vector3 forward = m_charge.m_aimLine.direction;
     const NS::Vector3 right{forward.z, 0.0f, -forward.x};
     NS::Vector3 swayed{};
     // 距離が 0 か非数で向きが作れない時は揺らさない
-    if (!(distance > 0.0f) || !NS::TryNormalizeHorizontal(forward * distance + right * m_charge.swayOffset, swayed) ||
+    if (!(distance > 0.0f) || !NS::TryNormalizeHorizontal(forward * distance + right * m_charge.m_swayOffset, swayed) ||
         !std::isfinite(swayed.x) || !std::isfinite(swayed.z))
     {
-        m_charge.swayOffset = 0.0f;
+        m_charge.m_swayOffset = 0.0f;
         return;
     }
     // 上下の角度は揺れていない線の相手へ合わせた縦の速さのまま。揺れは左右だけ
-    m_charge.aimLine.direction = swayed;
-    m_charge.hasLineTarget = m_resolver->FindSlamLineTarget(swayed, m_charge.aimLine.length, m_charge.lineTarget);
-    if (m_charge.hasLineTarget)
+    m_charge.m_aimLine.direction = swayed;
+    m_charge.m_hasLineTarget = m_resolver->FindSlamLineTarget(swayed, m_charge.m_aimLine.length, m_charge.m_lineTarget);
+    if (m_charge.m_hasLineTarget)
     {
-        m_charge.lineTarget.origin = Root().Position();
+        m_charge.m_lineTarget.origin = Root().Position();
     }
 }
 
 void PlayerActor::CancelCharge() noexcept
 {
     // 判定のしきい値の歩数は AdvanceCharge が毎回入れ直すので失われない
-    m_charge = ChargeRecord{};
+    m_charge = GL::Player::ChargeStatus{};
+    m_chargeObserved = ChargeObservation{};
     // 押しの印が真の間、自機は着地しても丸まりを解かない。印を書くのは押しを裁いた歩だけなので、ここで偽へ戻す
     m_bodySlamHeld = false;
     SetMaxSpeedScale(1.0f);
@@ -305,19 +291,19 @@ void PlayerActor::EndCharge() noexcept
 #if !defined(NS_SHIPPING)
 void PlayerActor::DrawChargeRing() const
 {
-    if (!m_charge.judge.IsCharging())
+    if (!m_charge.m_judge.IsCharging())
     {
         return;
     }
 
-    const float charge01 = m_charge.judge.Charge01();
+    const float charge01 = m_charge.m_judge.Charge01();
     // 輪は当たりのカプセルの下端 (中心 − 軸 × (半分の高さ + 半径)) に置く
     const NS::Phys::Capsule capsule = m_collider->CapsuleAt(Root().Position());
     const NS::Vector3 foot = capsule.center - capsule.axis * (capsule.halfHeight + capsule.radius);
     // 溜め量が輪の広がりに出ないと、満タンまでの途中が読めない
     const float radius = m_collider->CapsuleRadius() + 0.25f + charge01 * 0.75f;
     NS::Color color{1.0f, 0.85f, 0.2f, 1.0f};
-    if (m_charge.judge.IsChargeFull())
+    if (m_charge.m_judge.IsChargeFull())
     {
         color = NS::Color{1.0f, 1.0f, 1.0f, 1.0f};
     }
