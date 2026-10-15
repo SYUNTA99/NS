@@ -75,12 +75,12 @@ namespace GL::Level
         NS::Obj::Model* model = CreateSubObj(m_model);
         model->SetMeshRef("sphere");
         model->SetBaseColor(NS::Vector3{0.72f, 0.70f, 0.66f});
-        (void)CreateSubObj(m_shadow);
+        CreateSubObj(m_shadow);
         NS::Obj::SphereCollision* sphere = CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(m_collision);
-        (void)CreateSubObj(m_params);
-        (void)CreateSubObj(m_hitZones);
-        (void)CreateSubObj(m_effectKeeper);
-        (void)CreateSubObj(m_effects);
+        CreateSubObj(m_params);
+        CreateSubObj(m_hitZones);
+        CreateSubObj(m_effectKeeper);
+        CreateSubObj(m_effects);
         // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
         NS::Obj::FollowHitSensor* bodySensor =
             CreateSubObj<NS::Obj::HitSensor, NS::Obj::FollowHitSensor>(m_bodySensor, [sphere] {

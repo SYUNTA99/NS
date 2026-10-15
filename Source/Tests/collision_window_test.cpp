@@ -28,8 +28,8 @@ namespace
     protected:
         void OnInit() override
         {
-            (void)CreateSubObj(collider);
-            (void)CreateSubObj(sphere);
+            CreateSubObj(collider);
+            CreateSubObj(sphere);
         }
     };
 

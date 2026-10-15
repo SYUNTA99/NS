@@ -44,7 +44,7 @@ namespace
         std::unique_ptr<RegisterCountSubObj> part;
 
     protected:
-        void OnInit() override { (void)CreateSubObj(part); }
+        void OnInit() override { CreateSubObj(part); }
     };
 } // namespace
 

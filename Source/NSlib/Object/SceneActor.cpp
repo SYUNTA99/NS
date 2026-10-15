@@ -33,7 +33,7 @@ namespace NS::Obj
     SceneActor::SceneActor() noexcept
     {
         // Init 前にも姿勢と親子関係を使うため、Transform はここで用意する
-        (void)CreateSubObj(m_transform);
+        CreateSubObj(m_transform);
         Appear();
     }
 

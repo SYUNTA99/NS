@@ -55,7 +55,7 @@ namespace
         std::unique_ptr<NS::Obj::Collision> shape;
 
     protected:
-        void OnInit() override { (void)CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(shape); }
+        void OnInit() override { CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(shape); }
 
     public:
         template <class TSelf = DirectMemberActor> static void CheckTypes()
@@ -71,7 +71,7 @@ namespace
     class ModelPartActor final : public NS::Obj::SceneActor
     {
     protected:
-        void OnInit() override { (void)CreateSubObj(m_model); }
+        void OnInit() override { CreateSubObj(m_model); }
     };
 
     class SensorPartsActor final : public NS::Obj::SceneActor
@@ -79,8 +79,8 @@ namespace
     protected:
         void OnInit() override
         {
-            (void)CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_bodySensor);
-            (void)CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_attackSensor);
+            CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_bodySensor);
+            CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_attackSensor);
         }
     };
 
@@ -119,8 +119,8 @@ namespace
     protected:
         void OnInit() override
         {
-            (void)CreateSubObj(first, m_destroyed, std::string{"first"});
-            (void)CreateSubObj(second, m_destroyed, std::string{"second"});
+            CreateSubObj(first, m_destroyed, std::string{"first"});
+            CreateSubObj(second, m_destroyed, std::string{"second"});
         }
 
     private:
@@ -144,7 +144,7 @@ namespace
         std::unique_ptr<PassivePart> passive;
 
     protected:
-        void OnInit() override { (void)CreateSubObj(passive); }
+        void OnInit() override { CreateSubObj(passive); }
     };
 
     class ReflectedProbePart final : public NS::Obj::SubObject
@@ -169,7 +169,7 @@ namespace
         NS_REFLECT_END()
 
     protected:
-        void OnInit() override { (void)CreateSubObj(parentPart); }
+        void OnInit() override { CreateSubObj(parentPart); }
     };
 
     class ReflectedHierarchyActor final : public ReflectedParentActor
@@ -186,7 +186,7 @@ namespace
         void OnInit() override
         {
             ReflectedParentActor::OnInit();
-            (void)CreateSubObj(childPart);
+            CreateSubObj(childPart);
         }
     };
     NS_CLASS(ReflectedHierarchyActor)
@@ -197,7 +197,7 @@ namespace
         std::unique_ptr<ReflectedProbePart> part;
 
     protected:
-        void OnInit() override { (void)CreateSubObj(part); }
+        void OnInit() override { CreateSubObj(part); }
     };
 
     class OffsetPrefix
@@ -216,7 +216,7 @@ namespace
         NS_REFLECT_END()
 
     protected:
-        void OnInit() override { (void)CreateSubObj(part); }
+        void OnInit() override { CreateSubObj(part); }
     };
 
 } // namespace

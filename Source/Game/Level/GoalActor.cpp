@@ -10,7 +10,7 @@ namespace GL::Level
 {
     void GoalActor::OnInit()
     {
-        (void)CreateSubObj(m_params);
+        CreateSubObj(m_params);
         NS::Obj::Model* mesh = CreateSubObj(m_model);
         mesh->SetMeshRef("cube");
         mesh->SetBaseColor(NS::Vector3{1.0f, 0.84f, 0.0f});

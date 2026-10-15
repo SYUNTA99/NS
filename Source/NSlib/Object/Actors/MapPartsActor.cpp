@@ -13,7 +13,7 @@ namespace NS::Obj
         mesh->SetMeshRef("cube");
         mesh->SetBaseColor(NS::Vector3{0.70f, 0.70f, 0.75f});
         // 当たりは見た目のメッシュの三角形そのもの。メッシュを差し替えると当たりも付いて来る
-        (void)CreateSubObj<Collision, MeshCollision>(m_collision);
+        CreateSubObj<Collision, MeshCollision>(m_collision);
     }
 
     NS_PLACEABLE(MapPartsActor, "地形の部品")

@@ -9,6 +9,6 @@ protected:
     void OnInit() override
     {
         PlayerActor::OnInit();
-        (void)CreateSubObj(m_animation);
+        CreateSubObj(m_animation);
     }
 };

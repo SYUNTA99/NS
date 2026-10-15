@@ -10,7 +10,7 @@ namespace GL::Level
     NS_PLACEABLE(FollowCameraActor, "追従カメラ")
     void FollowCameraActor::OnInit()
     {
-        (void)CreateSubObj(m_vcam);
+        CreateSubObj(m_vcam);
     }
 
     // 仮想カメラはプレイの間ずっと候補に入れておく。消えている間は、カメラの管理役が IsActive を見て飛ばす

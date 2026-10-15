@@ -52,7 +52,7 @@ public:
     }
 
 protected:
-    void OnInit() override { (void)CreateSubObj(m_vcam); }
+    void OnInit() override { CreateSubObj(m_vcam); }
     void OnStart() override
     {
         NS::Obj::SceneActor::OnStart();

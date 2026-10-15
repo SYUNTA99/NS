@@ -19,7 +19,7 @@ namespace
         void OnInit() override
         {
             TestEffectActor::OnInit();
-            (void)CreateSubObj(m_hitReaction);
+            CreateSubObj(m_hitReaction);
         }
     };
 

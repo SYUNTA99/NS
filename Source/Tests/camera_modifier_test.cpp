@@ -84,7 +84,7 @@ namespace
         }
 
     protected:
-        void OnInit() override { (void)CreateSubObj(vcam); }
+        void OnInit() override { CreateSubObj(vcam); }
         void OnStart() override
         {
             NS::Obj::SceneActor::OnStart();

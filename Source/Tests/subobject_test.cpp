@@ -36,9 +36,9 @@ namespace
     protected:
         void OnInit() override
         {
-            (void)CreateSubObj(first);
+            CreateSubObj(first);
             box = CreateSubObj<NS::Obj::Collision, NS::Obj::BoxCollision>(m_collision);
-            (void)CreateSubObj(second);
+            CreateSubObj(second);
             CreateSubObj(m_model);
             refused = CreateSubObj<NS::Obj::Collision, NS::Obj::SphereCollision>(m_collision);
         }
@@ -57,7 +57,7 @@ namespace
     protected:
         void OnInit() override
         {
-            (void)CreateSubObj(clash);
+            CreateSubObj(clash);
             model = CreateSubObj(m_model);
         }
     };
